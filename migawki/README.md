@@ -1,6 +1,6 @@
 # Migawki kodu
 
-Projekt nie jest repozytorium git, więc stan kodu potrzebny do pomiarów porównawczych trzymamy tutaj. Plików nie zmieniać i nie usuwać do końca M2.
+Migawka powstała, zanim projekt stał się repozytorium git (2026-10-02). Stan kodu potrzebny do pomiarów porównawczych jest też w historii gita (commit `ec2c309` zawiera już zmiany S1–S4, więc do pomiaru M1 nadal służy ta migawka). Plików nie zmieniać i nie usuwać do końca M2.
 
 ## `m1-z-narzedziami-S0.tar`
 

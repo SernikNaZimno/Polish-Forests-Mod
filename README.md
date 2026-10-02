@@ -2,7 +2,7 @@
 
 Mod do Minecrafta 26.3 (Fabric), który generuje proceduralne krajobrazy Polski w skali 1:1 z przyrodniczo wiernymi lasami, florą i fauną oraz integracją z porami roku Serene Seasons.
 
-Stan: kamień milowy M1 (rama świata i model krajobrazu) z poprawkami po pierwszych testach w grze. Plan i decyzje są w katalogu `docs`.
+Stan: za nami M0, M1, skala rozgrywki oraz etap rzek, dolin i morza; trwa M2 (biomy, siedliska, gleby i temperatura), zrobiona jest faza 1 (kroki S0–S4: klasyfikator 36 biomów). Kod i teksty w grze są po angielsku (polski jako tłumaczenie), dokumentacja po polsku. Licencja: MIT. Plan i decyzje są w katalogu `docs`.
 
 ## Dokumentacja
 
@@ -11,8 +11,11 @@ Stan: kamień milowy M1 (rama świata i model krajobrazu) z poprawkami po pierws
 | `docs/00-decyzje-do-podjecia.md` | decyzje projektowe, podjęte i otwarte |
 | `docs/01-architektura.md` | architektura i kamienie milowe |
 | `docs/02-wydajnosc.md` | pomiary wydajności, zalecana paczka modów i ustawienia |
+| `docs/03-m2-biomy.md` | plan kamienia milowego M2: 36 biomów, strefy nadwodne, piętra, gleby, temperatura |
 | `docs/research/` | raporty badawcze: geografia, lasy, fauna, klimat, technika |
 | `docs/m1/` | podglądy modelu krajobrazu i zrzuty ekranu z gry po M1 |
+| `docs/rzeki-i-morze/` | podglądy i zrzuty po etapie rzek, dolin i morza |
+| `docs/m2/` | podglądy siedlisk M2, udziały biomów i stref, pomiary bazowe |
 
 ## Wymagania
 
