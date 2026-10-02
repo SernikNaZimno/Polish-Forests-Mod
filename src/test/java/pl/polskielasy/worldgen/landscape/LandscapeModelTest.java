@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
+import pl.polskielasy.worldgen.habitat.Pietra;
 
 class LandscapeModelTest {
 	private static final long SEED = 20260927L;
@@ -86,6 +87,16 @@ class LandscapeModelTest {
 				assertTrue(t.wydma() >= 0 && t.wydma() <= 23, "wydma" + at);
 				assertTrue(t.masyw() >= 0 && t.masyw() <= 1, "masyw" + at);
 				assertTrue(t.klif() >= 0 && (t.klif() > 0) == t.ma(Landform.KLIF), "klif" + at);
+				// Duży masyw (E12): najwyższy teren w promieniu 3 km·mspace, tylko w Beskidach od Pietra.SZCZYT_OD.
+				assertTrue(Double.isFinite(t.szczyt()), "szczyt" + at);
+				if (t.wBeskidy() > 0 && c.surface() >= Pietra.SZCZYT_OD) {
+					assertTrue(t.szczyt() >= c.surface() - 60 && t.szczyt() <= 1_760, "szczyt w Beskidach" + at);
+				} else {
+					assertEquals(0.0, t.szczyt(), "szczyt poza Beskidami lub nisko" + at);
+				}
+				assertTrue(t.niskiBrzeg() >= 0 && t.niskiBrzeg() <= 1, "niskiBrzeg" + at);
+				boolean pasLadu = c.type() == LandscapeType.POBRZEZE && c.waterKind() != WaterKind.SEA;
+				assertTrue(pasLadu ? t.golyPiasek() > 0 : Double.isNaN(t.golyPiasek()), "golyPiasek" + at);
 				if (t.wPogorze() + t.wBeskidy() > 0) {
 					flysch++;
 					assertTrue(t.grzbiet() >= 0 && t.grzbiet() <= 1.05, "grzbiet" + at);

@@ -14,10 +14,14 @@ import pl.polskielasy.worldgen.landscape.Landform;
  * regielGorny = 1150 + eks + dT
  * granicaLasu = 1390 + eks − 60·[GRZBIET i nach &lt; 15°] + dT
  * progHali    = 1650 + eks + dT
- * duzyMasyw   = szczyt w promieniu 3 km > 1470 m (E12), z pola teren.szczyt
+ * duzyMasyw   = szczyt w promieniu 3 km·mspace > 1470 m (E12), z pola teren.szczyt
  * </pre>
  *
- * Nachylenie w skali rozgrywki jest przeliczone na bloki ({@link Klasyfikator.Kolumna#nach}).
+ * Nachylenie w skali rozgrywki jest przeliczone na bloki ({@link Klasyfikator.Kolumna#nach}). Zasięgi buka
+ * i świerka (§9) nie są tu sprawdzane: w pasie górskim (wP + wB > 0,5) P jest bliskie 1, a oba gatunki mają
+ * zasięg przy P ≥ 0,4–0,5, więc buczyna i świerczyna górska leżą w zasięgu z geografii pól regionalnych.
+ * Jedlina wyżynna pod reglem dolnym ma te same warunki co strefowa ({@link Klasyfikator#jedlina}) i nie
+ * wchodzi w dna dolin.
  */
 public final class Pietra {
 	private Pietra() {
@@ -28,17 +32,16 @@ public final class Pietra {
 	public static final double REGIEL_GORNY = 1_150;
 	public static final double GRANICA_LASU = 1_390;
 	public static final double PROG_HALI = 1_650;
-	/** Najwyższy szczyt w promieniu ok. 3 km, od którego masyw ma kosodrzewinę i halę (E12). */
-	public static final double DUZY_MASYW = 1_470;
 	/**
-	 * Próg na polu {@code teren.szczyt} (wysokość grzbietów okolicy przy profilach dolin równych 1), dobrany
-	 * tak, by duży masyw był tylko tam, gdzie szczyt w promieniu 3 km przekracza {@link #DUZY_MASYW}: pole
-	 * zawyża rzeczywisty szczyt o 36–175 m (67 kolumn powyżej 1200 m wokół najwyższego masywu ziarna testowego,
-	 * docs/03-m2-biomy.md, Odstępstwo S4), więc próg to 1470 + 180 m.
+	 * Najwyższy szczyt w promieniu 3 km·mspace, od którego masyw ma kosodrzewinę i halę (E12). Pole
+	 * {@code teren.szczyt} to maksimum terenu bez dolin z siatki {@code PeakField}, więc próg jest wprost
+	 * w metrach szczytu.
 	 */
-	public static final double PROG_SZCZYTU = DUZY_MASYW + 180;
+	public static final double DUZY_MASYW = 1_470;
 	/** Przesunięcie progu przez ekspozycję (m) i amplituda szumu przejść (m, fala 150 m·k). */
 	public static final double EKSPOZYCJA = 50;
+	/** Ekspozycja działa od tego nachylenia (°); niżej teren jest płaski. */
+	public static final double EKSPOZYCJA_OD = 5;
 	public static final double SZUM = 40;
 	public static final double FALA_SZUMU = 150;
 	/** Obniżenie granicy lasu na grzbietach wystawionych na wiatr (m) przy nachyleniu poniżej 15°. */
@@ -47,6 +50,13 @@ public final class Pietra {
 	public static final double PAS_GRANICY = 60;
 	/** Największe możliwe obniżenie progu (ekspozycja i szum), do pomijania szumu nisko. */
 	public static final double MAKS_OBNIZENIE = EKSPOZYCJA + SZUM;
+	/**
+	 * Najniższa wysokość, na której duży masyw coś zmienia (pas granicy lasu na grzbiecie przy największym
+	 * obniżeniu). Model liczy pole {@code teren.szczyt} tylko od tej wysokości.
+	 */
+	public static final double SZCZYT_OD = GRANICA_LASU - MAKS_OBNIZENIE - GRZBIET_WIATR - PAS_GRANICY;
+	/** Grzbiet wystawiony na wiatr: nachylenie poniżej (°). */
+	static final double GRZBIET_WIATR_NACH = 15;
 	/** Wyżej niż tyle w reglu dolnym stoki N mają Abieti-Piceetum (m). */
 	static final double ABIETI_N = 900;
 	/** Inwersja: dna dolin powyżej tej wysokości przy półszerokości dna > 30 m·k (m). */
@@ -60,6 +70,10 @@ public final class Pietra {
 	static final double JAWORZYNA_NACH = 30;
 	/** Ziołorośla w żlebach regla górnego: profil fliszu poniżej. */
 	static final double ZLEB_GRZBIET = 0.15;
+	/** Jaworzyna w dolnej części zbocza: profil fliszu poniżej. */
+	static final double JAWORZYNA_GRZBIET = 0.5;
+	/** Jaworzyna na stokach od N do E: ekspozycja najwyżej (°). */
+	static final double JAWORZYNA_EKSP = 90;
 
 	/** Nominalny regiel górny (bez korekty): opis terenu, komendy, źródło biomów M1. */
 	public static boolean reglGorny(double metry) {
@@ -77,9 +91,9 @@ public final class Pietra {
 		return REGIEL_GORNY + korekta(c);
 	}
 
-	/** Duży masyw: szczyt w promieniu ok. 3 km ponad 1470 m (pole szczytu ponad {@link #PROG_SZCZYTU}). */
+	/** Duży masyw: szczyt w promieniu 3 km·mspace ponad {@link #DUZY_MASYW} (E12). */
 	static boolean duzyMasyw(Klasyfikator.Kolumna c) {
-		return c.t.szczyt() >= PROG_SZCZYTU;
+		return c.t.szczyt() > DUZY_MASYW;
 	}
 
 	/** Krok 4 klasyfikatora: piętra w pasie górskim (wP + wB > 0,5); {@code Wynik.BRAK} poza nim i nisko. */
@@ -94,7 +108,7 @@ public final class Pietra {
 		if (duzy && h >= PROG_HALI + kor) {
 			return Klasyfikator.Wynik.of(Biom.HALA, Strefa.BRAK, Zespol.TYPOWY);
 		}
-		double granica = GRANICA_LASU + kor - (grzbiet && c.nach < 15 ? GRZBIET_WIATR : 0);
+		double granica = GRANICA_LASU + kor - (grzbiet && c.nach < GRZBIET_WIATR_NACH ? GRZBIET_WIATR : 0);
 		if (duzy && h >= granica) {
 			return Klasyfikator.Wynik.of(Biom.KOSODRZEWINA, Strefa.BRAK, Zespol.TYPOWY);
 		}
@@ -121,7 +135,7 @@ public final class Pietra {
 		if (t == Trofia.L && h < POGORZE_GRAD) {
 			return Klasyfikator.Wynik.of(Biom.GRAD, Strefa.BRAK, Zespol.TYPOWY);
 		}
-		if (c.P >= Kalibracja.P_JEDLINA && Zasiegi.jodla(c.P, h, null) && c.wilgotnosc() != Wilgotnosc.BAGIENNA) {
+		if (Klasyfikator.jedlina(c, t) && c.wilgotnosc() != Wilgotnosc.BAGIENNA) {
 			return Klasyfikator.Wynik.of(Biom.JEDLINA_WYZYNNA, Strefa.BRAK, Zespol.TYPOWY);
 		}
 		return Klasyfikator.Wynik.BRAK;
@@ -131,7 +145,8 @@ public final class Pietra {
 	private static Zespol zespolBuczyny(Klasyfikator.Kolumna c, boolean uboga) {
 		double e = c.t.eksp();
 		double p0 = c.t.grzbiet();
-		if (c.nach > JAWORZYNA_NACH && !Double.isNaN(e) && e <= 90 && !Double.isNaN(p0) && p0 < 0.5) {
+		if (c.nach > JAWORZYNA_NACH && !Double.isNaN(e) && e <= JAWORZYNA_EKSP && !Double.isNaN(p0)
+				&& p0 < JAWORZYNA_GRZBIET) {
 			return Zespol.JAWORZYNA;
 		}
 		return uboga ? Zespol.KWASNY : Zespol.TYPOWY;

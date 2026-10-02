@@ -83,9 +83,9 @@ final class Lesistosc {
 			case LEG_WIERZBOWO_TOPOLOWY, LEG_JESIONOWO_OLSZOWY, OLSZYNA_GORSKA:
 				return Biom.LAKA_WILGOTNA;
 			case LEG_WIAZOWO_JESIONOWY:
-				return q < 0.8 ? Biom.LAKA_WILGOTNA : Biom.POLE;
+				return q < Kalibracja.D_LEG_LAKA ? Biom.LAKA_WILGOTNA : Biom.POLE;
 			case OLS:
-				return q < 0.7 ? Biom.LAKA_WILGOTNA : Biom.TORFOWISKO_NISKIE;
+				return q < Kalibracja.D_OLS_LAKA ? Biom.LAKA_WILGOTNA : Biom.TORFOWISKO_NISKIE;
 			case BOR_BAZYNOWY:
 				return Biom.WYDMA_SZARA;
 			case BUCZYNA_GORSKA, SWIERCZYNA_GORSKA, JEDLINA_WYZYNNA:
@@ -95,11 +95,12 @@ final class Lesistosc {
 		}
 		return switch (stl) {
 			case BS -> Biom.WRZOSOWISKO;
-			case BSW -> q < 0.6 ? Biom.POLE : Biom.WRZOSOWISKO;
-			case BW, BMW -> q < 0.6 ? Biom.LAKA_WILGOTNA : Biom.POLE;
+			case BSW -> q < Kalibracja.D_BOR_POLE ? Biom.POLE : Biom.WRZOSOWISKO;
+			case BW, BMW -> q < Kalibracja.D_BOR_POLE ? Biom.LAKA_WILGOTNA : Biom.POLE;
 			case BB, BMB -> Biom.TORFOWISKO_WYSOKIE;
 			case LW, LMW, LMB, OL -> Biom.LAKA_WILGOTNA;
-			default -> c.nach < 5 ? (q < 0.85 ? Biom.POLE : Biom.LAKA_SWIEZA) : Biom.LAKA_SWIEZA;
+			default -> c.nach < Kalibracja.D_POLE_NACH ? (q < Kalibracja.D_POLE ? Biom.POLE : Biom.LAKA_SWIEZA)
+					: Biom.LAKA_SWIEZA;
 		};
 	}
 }

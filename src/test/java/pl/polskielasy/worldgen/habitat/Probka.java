@@ -31,6 +31,9 @@ final class Probka {
 	double masyw;
 	double szczyt;
 	double klif;
+	/** Niski brzeg morski (0 = wysoki brzeg z klifem albo poza pasem) i granica gołego piasku. */
+	double niskiBrzeg;
+	double golyPiasek = Double.NaN;
 	double piask = 0.5;
 	double sBar = Double.NaN;
 	double nach = 1;
@@ -143,7 +146,7 @@ final class Probka {
 		double raw = Double.isNaN(rawSurface) ? surface : rawSurface;
 		double sb = Double.isNaN(sBar) ? surface : sBar;
 		ColumnSample.Teren t = new ColumnSample.Teren(raw, coastD, wSandr, wWysoczyzna, wRownina, wPogorze, wBeskidy,
-				wPobrzeze, formy, wyp, wydma, grzbiet, masyw, szczyt, klif, piask, sb, nach, eksp);
+				wPobrzeze, formy, wyp, wydma, grzbiet, masyw, szczyt, klif, niskiBrzeg, golyPiasek, piask, sb, nach, eksp);
 		ColumnSample.Wody w = new ColumnSample.Wody(rzad, zrodlo, odlKoryta, szerKoryta, poziomKoryta, wDnie, u,
 				polSzerDna, spadek, brzegWypukly, s, poziomBrzegu, rodzaj, torfOmbro, idJeziora, promien);
 		return new ColumnSample(surface, waterLevel, waterKind, type, substrate, 5, t, w,

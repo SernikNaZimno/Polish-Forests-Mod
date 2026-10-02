@@ -516,6 +516,8 @@ final class PodgladSiedlisk {
 				100 * r.lesistoscSandr(), 100 * g.lesistosc(), 100 * g.lesistoscSandr()));
 		sb.append(String.format(Locale.ROOT, "bory_w_lesie_wnetrza_sandru,,,,%.2f,,%.2f\n", 100 * r.boryWLesieSandr(),
 				100 * g.boryWLesieSandr()));
+		sb.append(String.format(Locale.ROOT, "bory_w_lesie_calego_sandru,,,,%.2f,,%.2f\n", 100 * r.boryWLesieSandrCaly(),
+				100 * g.boryWLesieSandrCaly()));
 		Files.writeString(out.resolve("m2_udzialy_biomow.csv"), sb.toString());
 		StringBuilder st = new StringBuilder("strefa,real_proc,rozgrywka_proc\n");
 		for (Strefa s : Strefa.values()) {

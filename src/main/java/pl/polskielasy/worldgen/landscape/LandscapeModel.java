@@ -67,6 +67,8 @@ public final class LandscapeModel {
 	private final RiverNetwork rivers;
 	/** Siatki z pamięcią (M2, S3): wygładzony teren z nachyleniem i ekspozycją oraz pola regionalne O, P. */
 	private final CoarseTerrainField coarse;
+	/** Najwyższy teren w promieniu 3 km·mspace (duży masyw w piętrach, E12). */
+	private final PeakField peaks;
 	private final RegionalField regional;
 
 	private final ConcurrentHashMap<Long, Cell> cells = new ConcurrentHashMap<>();
@@ -129,6 +131,7 @@ public final class LandscapeModel {
 		this.habitatPiask = root.derive("habitat.piask");
 		this.rivers = new RiverNetwork(this, root.derive("rivers"), scale);
 		this.coarse = new CoarseTerrainField(this, 32.0 * local);
+		this.peaks = new PeakField(this, 3_000 * mspace, 62.5 * mspace, 4);
 		this.regional = new RegionalField(this, root.derive("habitat.prowincje"), zs);
 	}
 
@@ -450,8 +453,6 @@ public final class LandscapeModel {
 		double wal;
 		/** Siła masywu (z komórki Beskidów). */
 		double masyw;
-		/** Wysokość grzbietów Beskidów w okolicy: dno + rzeźba · kopuły, z nasyceniem (z komórki Beskidów). */
-		double szczyt;
 		/** Profil dolin podłużnych p[0] komórki pogórza i Beskidów o największej wadze (jak w {@link #describe}). */
 		double pogorzeWaga = -1;
 		double pogorzeProfil = Double.NaN;
@@ -632,9 +633,6 @@ public final class LandscapeModel {
 			o.wyp += w * flyschConvexity(relief, p, rough);
 			o.flysch(LandscapeType.BESKIDY, w, p[0]);
 			o.masyw = massif;
-			// Grzbiety okolicy (profile dolin = 1, bez szorstkości): przybliżenie najwyższego szczytu
-			// w promieniu ok. 3 km, którego wymaga duży masyw w piętrach (habitat/Pietra, E12).
-			o.szczyt = saturatePeak(floor + relief * p[3]);
 		}
 		double h = floor + relief * flyschRelief(p) + rough;
 		// Łagodne nasycenie powyżej 1500 m: najwyższe szczyty Beskidów to ok. 1725 m (Babia Góra).
@@ -642,11 +640,6 @@ public final class LandscapeModel {
 			h = 1_500 + 250 * Math.tanh((h - 1_500) / 250);
 		}
 		return h;
-	}
-
-	/** Nasycenie wysokości Beskidów powyżej 1500 m, jak w {@link #mountainElevation}. */
-	private static double saturatePeak(double h) {
-		return h > 1_500 ? 1_500 + 250 * Math.tanh((h - 1_500) / 250) : h;
 	}
 
 	private double relief(double x, double z, double wavelength) {
@@ -706,13 +699,14 @@ public final class LandscapeModel {
 			LandscapeType t = coastD < 0 ? LandscapeType.MORZE : LandscapeType.POBRZEZE;
 			Substrate sub = coastD < 0 && -coastD > 3_000 * meso ? Substrate.LAKE_MUD : Substrate.SAND;
 			return new ColumnSample(surface, 0, WaterKind.SEA, t, coastD < 0 ? sub : Substrate.LAKE_MUD, 30.0,
-					teren(b, rz, t, rawSurface, coastD, 0, Double.NaN, x, z), ColumnSample.Wody.BRAK,
+					teren(b, rz, t, raw, rawSurface, coastD, 0, Double.NaN, Double.NaN, 0, x, z), ColumnSample.Wody.BRAK,
 					regional.sample(x, z));
 		}
+		double bare = Double.NaN;
 		if (coastD < beachWidth() + 400 * local) {
 			dominant = LandscapeType.POBRZEZE;
 			// Plaża i biała wydma bez darni; dalej od morza wydma szara, porośnięta.
-			double bare = beachWidth() + 220 * local * (0.6 + 0.4 * coast.at(x, z, 400 * local));
+			bare = beachWidth() + 220 * local * (0.6 + 0.4 * coast.at(x, z, 400 * local));
 			substrate = surface > 8 ? Substrate.GLACIAL_TILL : coastD < bare ? Substrate.BEACH_SAND : Substrate.SAND;
 		}
 
@@ -846,8 +840,11 @@ public final class LandscapeModel {
 						r.inFloor(), r.floorU(), r.floorHalf(), r.slope(), r.convexBank(), stShore, stLevel, stKind,
 						stOmbro, stId, stRadius);
 		int formy = forms(r, rz, dominant, surface, rawSurface, coastD, water);
+		// Duży masyw (E12): najwyższy teren w promieniu 3 km·mspace, tylko tam, gdzie piętra go potrzebują.
+		double szczyt = mountains > 0 && surface >= Pietra.SZCZYT_OD ? peaks.sample(x, z) : 0;
 		return new ColumnSample(surface, water, kind, dominant, substrate, cover,
-				teren(b, rz, dominant, rawSurface, coastD, formy, sandiness(x, z), x, z), wody, regional.sample(x, z));
+				teren(b, rz, dominant, raw, rawSurface, coastD, formy, sandiness(x, z), bare, szczyt, x, z), wody,
+				regional.sample(x, z));
 	}
 
 	/**
@@ -895,8 +892,8 @@ public final class LandscapeModel {
 	 * Rekord rzeźby z wag makroregionów, składowych zapisanych w {@code rz} i siatki wygładzonego terenu
 	 * w punkcie (x, z).
 	 */
-	private ColumnSample.Teren teren(Blend b, Rzezba rz, LandscapeType dominant, double rawSurface, double coastD,
-			int formy, double piask, double x, double z) {
+	private ColumnSample.Teren teren(Blend b, Rzezba rz, LandscapeType dominant, double raw, double rawSurface,
+			double coastD, int formy, double piask, double bare, double szczyt, double x, double z) {
 		// Krawędź klifu: teren przed wcięciem dolin w pasie formy KLIF.
 		double klif = (formy & Landform.KLIF.bit()) != 0 ? rawSurface : 0;
 		// Pas wybrzeża: 1 tam, gdzie próbka dostaje typ POBRZEZE, 0 na skraju pasa B + D + 2000k (§3.4 planu M2).
@@ -906,6 +903,8 @@ public final class LandscapeModel {
 		// wypukłość i wysokość wydmy skalujemy tak samo; bit WYDMY w formach liczony jest bez skalowania (jak w M1).
 		double band = 25_000 * meso;
 		double coastScale = coastD >= band ? 1.0 : 0.12 + 0.88 * Noise.smoothstep(0, band, coastD);
+		// Niski brzeg z wydmami albo wysoki z klifem: to samo „low” co w shapeCoast, z wysokości przed wybrzeżem.
+		double niski = coastD >= 0 && coastD < band ? 1 - Noise.smoothstep(6, 20, raw * coastScale) : 0;
 		CoarseTerrainField.Zgrubny g = coarse.sample(x, z);
 		double grzbiet = switch (dominant) {
 			case POGORZE -> rz.pogorzeProfil;
@@ -916,7 +915,7 @@ public final class LandscapeModel {
 				b.weight(LandscapeType.WYSOCZYZNA_MORENOWA), b.weight(LandscapeType.ROWNINA_STAROGLACJALNA),
 				b.weight(LandscapeType.POGORZE), b.weight(LandscapeType.BESKIDY), coastBand, formy, rz.wyp * coastScale,
 				rz.wydma * coastScale,
-				grzbiet, rz.masyw, rz.szczyt, klif, piask, g.sBar(), g.nach(), g.eksp());
+				grzbiet, rz.masyw, szczyt, klif, niski, bare, piask, g.sBar(), g.nach(), g.eksp());
 	}
 
 	/** Piaszczystość utworu 0–1: kwantyl szumu o fali 2 km·k, więc udział piasków to prosty próg. */

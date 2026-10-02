@@ -55,10 +55,16 @@ public record ColumnSample(double surface, int waterLevel, WaterKind waterKind, 
 	 * @param wydma        wysokość wydmy nad sandrem (m), 0 poza polami wydm i bez komórki sandru w mieszaniu
 	 * @param grzbiet      profil dolin podłużnych fliszu: 0 na osi doliny, ok. 1 na grzbiecie; NaN bez fliszu
 	 * @param masyw        siła wyższego masywu Beskidów 0–1 (typ Babiej Góry), 0 poza Beskidami
-	 * @param szczyt       wysokość grzbietów Beskidów w okolicy (m n.p.m.): dno pasma + rzeźba · kopuły, czyli
-	 *                     teren przy profilach dolin równych 1, z nasyceniem jak teren; przybliża najwyższy
-	 *                     szczyt w promieniu ok. 3 km (duży masyw w piętrach, E12); 0 bez komórki Beskidów
+	 * @param szczyt       najwyższy teren bez dolin ({@code landElevation}) w promieniu 3 km·mspace (m n.p.m.,
+	 *                     siatka {@code PeakField}; duży masyw w piętrach, E12); liczony tylko w Beskidach
+	 *                     (waga typu > 0) od wysokości {@code Pietra.SZCZYT_OD}, niżej i poza Beskidami 0
 	 * @param klif         wysokość krawędzi klifu (m) w pasie formy KLIF, poza nim 0
+	 * @param niskiBrzeg   niski brzeg morski 0–1 ({@code low} z kształtu wybrzeża: 1 − smoothstep(6, 20, hl)):
+	 *                     1 na brzegu z wydmami, 0 na wysokim brzegu z klifem; 0 poza pasem 25 km·meso od morza.
+	 *                     Glina, którą model daje każdej kolumnie pasa nadmorskiego wyższej niż 8 m, i forma
+	 *                     KLIF przy wysokiej wydmie przedniej nie oznaczają klifu, gdy brzeg jest niski
+	 * @param golyPiasek   granica gołego piasku plaży i wydmy białej (odległość od brzegu, m), jak w podłożu
+	 *                     pasa nadmorskiego (BEACH_SAND bliżej, SAND dalej); NaN poza pasem nadmorskim
 	 * @param piask        piaszczystość utworu 0–1 (kwantyl szumu o fali 2 km·k, więc rozkład jednostajny);
 	 *                     NaN w morzu i zalewie
 	 * @param sBar         wygładzony teren bez dolin i jezior (m n.p.m.): średnia 3 × 3 węzłów siatki co 32 m·k
@@ -72,7 +78,8 @@ public record ColumnSample(double surface, int waterLevel, WaterKind waterKind, 
 	 */
 	public record Teren(double rawSurface, double coastD, double wSandr, double wWysoczyzna, double wRownina,
 			double wPogorze, double wBeskidy, double wPobrzeze, int formy, double wyp, double wydma, double grzbiet,
-			double masyw, double szczyt, double klif, double piask, double sBar, double nach, double eksp) {
+			double masyw, double szczyt, double klif, double niskiBrzeg, double golyPiasek, double piask, double sBar,
+			double nach, double eksp) {
 		/** Czy {@code sample} rozpoznał formę (tylko formy z opisu pola {@code formy}). */
 		public boolean ma(Landform forma) {
 			return (formy & forma.bit()) != 0;

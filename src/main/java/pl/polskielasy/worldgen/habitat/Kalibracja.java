@@ -87,6 +87,14 @@ public final class Kalibracja {
 	 */
 	public static final double DNO_H = 2.3;
 	public static final double DNO_MIN_K = 80;
+	/**
+	 * Grunt niżej niż tyle metrów nad lustrem najbliższego koryta leży przy innym korycie niż to, nad którego
+	 * dnem jest (dopływ schodzący bystrzem do dna większej doliny): rozstrzyga wtedy flaga {@code wDnie},
+	 * a h = H − lustro − 1 nie jest określone.
+	 */
+	public static final double INNE_KORYTO_H = 1.15;
+	/** Dno doliny modelu leży co najmniej tyle metrów nad lustrem własnego koryta (lustro dla DGW). */
+	public static final double DNO_NAD_LUSTREM = 1.2;
 	/** Udział piasków sandru i pobrzeża, powyżej którego mady w dnach dostają trofię regionu, a nie L. */
 	public static final double MADY_NA_PIASKU = 0.5;
 
@@ -123,6 +131,8 @@ public final class Kalibracja {
 	public static final double KLASA_A_WR_RZAD3 = 15;
 	/** Szerokie dno dużej doliny (m·k): za łęgiem małego cieku reszta dna to łęg wiązowo-jesionowy. */
 	public static final double SZEROKIE_DNO_K = 250;
+	/** Szerokie dno dużej doliny: dolina dominująca co najmniej tego rzędu. */
+	public static final int SZEROKIE_DNO_RZAD = 2;
 	public static final double KLASA_SPADEK = 3.0;
 	/** Minima stref w blokach (E11). */
 	public static final double MIN_SZUWAR = 2;
@@ -135,6 +145,8 @@ public final class Kalibracja {
 	public static final double A_WIKLINA_K = 8, A_WIKLINA_W = 0.3;
 	public static final double A_WIKLINA_WYPUKLY_K = 15, A_WIKLINA_WYPUKLY_W = 1.0;
 	public static final double A_LACHA_W = 0.5;
+	/** Łacha w płatach: szum płatów (fala 35 m·k) powyżej progu (ok. 60% brzegu wypukłego). */
+	public static final double A_LACHA_PLAT = -0.2;
 	public static final double A_OKRAJEK_K = 4, A_OKRAJEK_W = 0.05;
 	public static final double A_DWB_W = 1.7, A_DWB_MIN = 30, A_DWB_MAX = 300;
 	public static final double A_DTOP_W = 3.3, A_DTOP_MIN = 80, A_DTOP_MAX = 500;
@@ -151,7 +163,10 @@ public final class Kalibracja {
 	public static final double FALA_ZASTOISK = 120;
 	public static final double A_ZASTOISKO_D_K = 60, A_ZASTOISKO_D_W = 2.0;
 	public static final double A_TORF_POLSZER_K = 300, A_TORF_SPADEK = 0.5;
-	/** Udział torfowiska niskiego w zastoiskach szerokich den (reszta to ols). */
+	/**
+	 * Udział torfowiska niskiego w zastoiskach szerokich den (reszta to ols); płaty o fali
+	 * {@link #FALA_ZASTOISK} m bez k, bo wybierają biom (Z9).
+	 */
 	public static final double A_TORF_UDZIAL = 0.4;
 	/** Luki w łęgu (strefa OKRAJEK): szum płatów poniżej progu. */
 	public static final double A_LUKI = -0.5;
@@ -174,8 +189,9 @@ public final class Kalibracja {
 	public static final double C_CARICI_H = 700, C_CARICI_P = 0.4;
 	public static final double C_MLAKA_H_OD = 400, C_MLAKA_H_DO = 1_100, C_MLAKA_DGW = 0.3;
 	/**
-	 * Źródliska: forma ZRODLO obejmuje całe dno odcinka źródłowego, więc źródlisko to płaty (kwantyl szumu
-	 * płatów poniżej {@link #ZRODLISKO_UDZIAL}) do {@link #ZRODLISKO_K}·k od koryta (promień 10–40k).
+	 * Źródliska: forma ZRODLO obejmuje całe dno odcinka źródłowego, więc źródlisko to pas od koryta
+	 * o szerokości 0–{@link #ZRODLISKO_K}·k zmiennej z szumem (promień 10–40k), średnio
+	 * {@link #ZRODLISKO_UDZIAL} pełnego pasa.
 	 */
 	public static final double ZRODLISKO_K = 40;
 	public static final double ZRODLISKO_UDZIAL = 0.3;
@@ -187,6 +203,16 @@ public final class Kalibracja {
 	public static final double FALA_PLATOW_OLSU = 120;
 	/** Wysięk u podnóża zbocza doliny (łęg jesionowo-olszowy): DGW najwyżej tyle. */
 	public static final double WYSIEK_DGW = 0.5;
+	/**
+	 * Wysięk tylko nisko nad ciekiem: najwyżej tyle metrów nad lustrem najbliższego koryta (dno leży 1,2–2,3 m
+	 * nad nim), w terenie wciętym w dolinę (rawSurface − H ≥ {@link #WCIECIE_OD}).
+	 */
+	public static final double WYSIEK_HL = 5;
+	/**
+	 * Źródliska w płatach o fali tyle metrów bez mnożnika k (płaty wybierają biom, Z9; przy fali 35 m·k
+	 * w GAMEPLAY powstawały wysepki i strzępy łęgu węższe niż 6 bloków).
+	 */
+	public static final double FALA_ZRODLISK = 120;
 	// Jeziora, oczka, starorzecza (§4.4)
 	public static final double J_GLEBIA = 5, J_GLEBIA_STARORZECZE = 3;
 	public static final double J_ELODEIDY = 1.5;
@@ -229,9 +255,29 @@ public final class Kalibracja {
 	public static final double WYDMA_SZARA_K = 170;
 	public static final double BOR_WIATROWY_K = 420;
 	public static final double BOR_BAZYNOWY_K = 2_000, BOR_BAZYNOWY_H = 40;
+	/** Drganie granicy boru bażynowego: ±15% (szum wariantów). */
+	public static final double BOR_BAZYNOWY_DRGANIE = 0.15;
+	/**
+	 * Brzeg wydmowy: pole {@code niskiBrzeg} (1 − smoothstep(6, 20, hl) z kształtu wybrzeża) co najmniej tyle,
+	 * czyli teren przy morzu niższy niż ok. 15 m. Tam wydmy, mierzeja i zalew; wyżej klif. Garb wydmy modelu
+	 * (6–20 m · low) przy low &lt; 0,5 chowa się pod terenem pasa (hl), więc brzeg niski poznajemy po hl,
+	 * a nie po kształcie wydmy (docs/03-m2-biomy.md, Odstępstwo S4, poprawka wybrzeża).
+	 */
+	public static final double NISKI_BRZEG = 0.25;
 	public static final double KLIF_H = 8, KLIF_KORONA_K = 20, KLIF_LAS_WIATROWY_K = 150;
 	/** Plaża kamienista pod klifem: teren przed wcięciem wyższy niż tyle (m). */
 	public static final double PLAZA_KAMIENISTA_RAW = 8;
+
+	// ------------------------------------------------------------------ tryb D (§2.2, kolumna D): biom nieleśny
+
+	/** Kwantyl wariantu poniżej progu: łęg → łąka wilgotna (dalej pole), ols → łąka wilgotna (dalej torfowisko). */
+	public static final double D_LEG_LAKA = 0.8;
+	public static final double D_OLS_LAKA = 0.7;
+	/** Bory świeże i wilgotne: pole (świeże) lub łąka wilgotna (wilgotne) poniżej progu, dalej wrzosowisko lub pole. */
+	public static final double D_BOR_POLE = 0.6;
+	/** Pozostałe siedliska na płaskim (nachylenie poniżej {@link #D_POLE_NACH}°): pole poniżej progu, dalej łąka świeża. */
+	public static final double D_POLE = 0.85;
+	public static final double D_POLE_NACH = 5;
 
 	// ------------------------------------------------------------------ zasięgi (§9)
 

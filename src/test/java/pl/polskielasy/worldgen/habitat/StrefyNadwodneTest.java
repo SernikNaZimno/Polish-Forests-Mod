@@ -15,15 +15,16 @@ import pl.polskielasy.worldgen.landscape.LandscapeModel;
 import pl.polskielasy.worldgen.landscape.LandscapeScale;
 
 /**
- * Strefy nadwodne na przekrojach rzek (docs/03-m2-biomy.md §4, §12.1): po ok. 35 przekrojów na klasę A, B i C
- * w każdej skali (razem ok. 200 rzek). Przekrój zaczyna się na brzegu koryta i idzie prosto wzdłuż normalnej
+ * Strefy nadwodne na przekrojach rzek (docs/03-m2-biomy.md §4, §12.1): do 150 przekrojów na klasę A, B i C
+ * w każdej skali, wybranych równomiernie z siatki 240 × 240 punktów (losowo według skrótu położenia, a nie
+ * według współrzędnych). Przekrój zaczyna się na brzegu koryta i idzie prosto wzdłuż normalnej
  * do koryta (gradient d na brzegu), aż d zacznie maleć (bliżej jest inne koryto albo zakole). Kolejność stref: koryto → wiklina → okrajek → łęg wierzbowy → topolowy →
  * wiązowy → zbocze (A), koryto → ziołorośla → OlJ → strefowe (B), koryto → kamieniec/wiklina → olszyna →
  * strefowe (C). Minima w blokach (E11): wiklina 3, OlJ 6, ols 10.
  */
 class StrefyNadwodneTest {
 	static final long SEED = 20260927L;
-	static final int NA_KLASE = 35;
+	static final int NA_KLASE = 150;
 
 	/** Przekrój: klasa cieku, kody kolumn co {@code krok} m od brzegu. */
 	record Przekroj(StrefyNadwodne.Klasa klasa, int[] kody, boolean[] dno, boolean[] stojaca, double krok, double x,
@@ -44,9 +45,9 @@ class StrefyNadwodneTest {
 				wynik.add(p);
 			}
 		});
-		// Kolejność niezależna od wątków; po NA_KLASE przekrojów na klasę.
+		// Kolejność niezależna od wątków i od położenia: według skrótu punktu startowego; po NA_KLASE na klasę.
 		List<Przekroj> l = new ArrayList<>(wynik);
-		l.sort((a, b) -> a.x() != b.x() ? Double.compare(a.x(), b.x()) : Double.compare(a.z(), b.z()));
+		l.sort((a, b) -> Long.compare(skrot(a), skrot(b)));
 		Map<StrefyNadwodne.Klasa, Integer> licz = new EnumMap<>(StrefyNadwodne.Klasa.class);
 		List<Przekroj> out = new ArrayList<>();
 		for (Przekroj p : l) {
@@ -57,6 +58,10 @@ class StrefyNadwodneTest {
 			}
 		}
 		return out;
+	}
+
+	private static long skrot(Przekroj p) {
+		return pl.polskielasy.worldgen.landscape.Noise.mix(Double.doubleToLongBits(p.x()) * 31 + Double.doubleToLongBits(p.z()));
 	}
 
 	/** Przekrój od brzegu koryta najbliższego punktowi (x0, z0), albo null, gdy punkt jest za daleko od cieku. */
@@ -253,8 +258,10 @@ class StrefyNadwodneTest {
 			// rzeki ukośnie, więc ich szerokości tu nie mierzymy.
 			ols.addAll(ciagi(p, i -> Siedlisko.biom(p.kody()[i]) == Biom.OLS && !p.stojaca()[i], false));
 		}
-		System.out.printf(Locale.ROOT, "%s: przekroje %s; pasy wikliny %d (min %.1f m), OlJ %d (min %.1f m), ols %d (min %.1f m)%n",
-				sc.id(), opis(wynik), wiklina.size(), min(wiklina), olj.size(), min(olj), ols.size(), min(ols));
+		System.out.printf(Locale.ROOT, "%s: przekroje %s; pasy wikliny %d (min %.1f m, co najmniej 3 bloki %.1f%%), "
+				+ "OlJ %d (min %.1f m, co najmniej 6 bloków %.1f%%), ols %d (min %.1f m, co najmniej 10 bloków %.1f%%)%n",
+				sc.id(), opis(wynik), wiklina.size(), min(wiklina), 100 * udzial(wiklina, Kalibracja.MIN_WIKLINA), olj.size(),
+				min(olj), 100 * udzial(olj, Kalibracja.MIN_OLJ), ols.size(), min(ols), 100 * udzial(ols, Kalibracja.MIN_OLS));
 		System.out.println("  nieuporządkowane (przykłady): " + nieuporzadkowane);
 		for (StrefyNadwodne.Klasa kl : StrefyNadwodne.Klasa.values()) {
 			int[] w = wynik.get(kl);

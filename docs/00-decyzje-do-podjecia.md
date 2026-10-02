@@ -58,7 +58,7 @@ Data: 2026-09-27. Źródło: raporty w `docs/research/01–08`. Status każdej d
 | D3 | Wiśnia (cherry grove) i inne niepolskie biomy/drzewa: usunąć z polskiego świata | **PODJĘTA 2026-10-02 (wynika z D7 i A6): świat Polska ma tylko biomy `polskielasy:*`** |
 | D4 | Grzyby: dekoracja czy system zbieractwa z jadalnością | **PODJĘTA 2026-09-27: grzybobranie** (jadalne i trujące z efektami, zależne od gatunku drzewa, pory roku i deszczu; owoce leśne jako jedzenie) |
 | D5 | Tekstury i modele: kto je robi (proceduralna baza + ręczne poprawki w Blockbench?) | OTWARTA |
-| D6 | Licencja moda (kod/assety) | OTWARTA |
+| D6 | Licencja moda (kod/assety) | **PODJĘTA 2026-10-02: MIT** dla kodu (plik `LICENSE`); licencja przyszłych tekstur i modeli do ustalenia przy D5 |
 | D7 | Biomy odpowiadają ~30 typom krajobrazu, a mezoregiony (344) są atrybutem | **PODJĘTA 2026-10-02: biom = grupa siedliskowa, 36 biomów** (18 leśnych, 12 nieleśnych, 6 wodnych); typ krajobrazu, zespół i wariant regionalny są danymi kolumny |
 | A10 | Ekran opcji generowania i komenda lokalizowania terenu | **PODJĘTA 2026-09-27 (prośba użytkownika): zrobione**, patrz `01-architektura.md`, sekcja 11 |
 | A11 | Zalecana paczka modów optymalizacyjnych | **PODJĘTA 2026-09-27 (prośba użytkownika): paczka .mrpack**, patrz `02-wydajnosc.md` |
@@ -87,3 +87,5 @@ Plan: `docs/03-m2-biomy.md`.
 | M2-5 | Chmury | **PODJĘTA 2026-10-02 (projekt)**: podniesione nad niziny (REAL ok. Y 1060, rozgrywka ok. Y 380) |
 | M2-6 | Bałtyk | **PODJĘTA 2026-10-02 (projekt)**: nie zamarza; rzeki zamarzają tylko w mrozy |
 | M2-7 | Światy z M1 | **PODJĘTA 2026-10-02 (projekt)**: bez migracji (szwy na styku starych i nowych chunków) |
+| M2-8 | Wysokość najwyższych masywów Beskidów | **PODJĘTA 2026-10-02: rzadkie masywy do ok. 1725 m (Babia Góra, Pilsko) w obu skalach**; razem z poprawką geometrii terenu, przed fazą 2 M2. Daje kosodrzewinę i halę, a w skali rozgrywki także regiel górny |
+| M2-9 | Nazwa i język moda | **PODJĘTA 2026-10-02: „Polish Forests”**, id `polishforests`; wszystko, co widzi gracz, i kod po angielsku, polski jako tłumaczenie; dokumentacja po polsku |

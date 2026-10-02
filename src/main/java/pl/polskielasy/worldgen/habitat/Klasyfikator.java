@@ -4,7 +4,9 @@ import pl.polskielasy.worldgen.landscape.ColumnSample;
 import pl.polskielasy.worldgen.landscape.Landform;
 import pl.polskielasy.worldgen.landscape.LandscapeModel;
 import pl.polskielasy.worldgen.landscape.LandscapeScale;
+import pl.polskielasy.worldgen.landscape.LandscapeType;
 import pl.polskielasy.worldgen.landscape.Noise;
+import pl.polskielasy.worldgen.landscape.Substrate;
 
 /**
  * Klasyfikator siedlisk (Z1, docs/03-m2-biomy.md §3.4): czysta funkcja próbki kolumny i jej położenia,
@@ -160,10 +162,13 @@ public final class Klasyfikator {
 		return Wynik.of(b, Strefa.BRAK, z);
 	}
 
-	/** Jedlina wyżynna: P ≥ 0,5, jodła w zasięgu, trofia BM, LM lub L (L tylko na stokach N), 250–650 m. */
+	/**
+	 * Jedlina wyżynna (§2.1 nr 14): P ≥ 0,5, jodła w zasięgu, trofia BM, LM lub L (L tylko na stokach N),
+	 * 250–650 m, poza dnami dolin.
+	 */
 	static boolean jedlina(Kolumna c, Trofia t) {
 		if (c.P < Kalibracja.P_JEDLINA || c.H < Kalibracja.H_JEDLINA_OD || c.H > Kalibracja.H_JEDLINA_DO
-				|| !Zasiegi.jodla(c.P, c.H, null) || t == Trofia.B) {
+				|| !Zasiegi.jodla(c.P, c.H, null) || t == Trofia.B || c.dno()) {
 			return false;
 		}
 		return t != Trofia.L || c.ekspozycjaN();
@@ -256,6 +261,8 @@ public final class Klasyfikator {
 		final double P;
 		/** Nachylenie w stopniach do porównań z progami: w GAMEPLAY przeliczone na bloki (§3.2). */
 		final double nach;
+		/** Podłoże dla siedlisk ({@link #podloze()}). */
+		final Substrate podloze;
 		private Trofia trofia;
 		private double dgw = Double.NaN;
 		private Wilgotnosc wilgotnosc;
@@ -291,6 +298,27 @@ public final class Klasyfikator {
 				n = Math.toDegrees(Math.atan(tan));
 			}
 			this.nach = n;
+			this.podloze = podloze(s, t);
+		}
+
+		/**
+		 * Podłoże dla siedlisk: utwór z próbki, z wyjątkiem pasa nadmorskiego na niskim brzegu. Model daje
+		 * glinę każdej kolumnie tego pasa wyższej niż 8 m, także wysokiej wydmie przedniej i wydmom za nią,
+		 * więc na brzegu wydmowym ({@code niskiBrzeg} ≥ {@link Kalibracja#NISKI_BRZEG}) taka glina to piasek
+		 * plaży i wydmy białej albo piasek wydmy szarej, jak przy niższej wydmie (granica z {@code golyPiasek}).
+		 */
+		private static Substrate podloze(ColumnSample s, ColumnSample.Teren t) {
+			Substrate sub = s.substrate();
+			if (sub == Substrate.GLACIAL_TILL && s.type() == LandscapeType.POBRZEZE && t.niskiBrzeg() >= Kalibracja.NISKI_BRZEG
+					&& !Double.isNaN(t.golyPiasek())) {
+				return t.coastD() < t.golyPiasek() ? Substrate.BEACH_SAND : Substrate.SAND;
+			}
+			return sub;
+		}
+
+		/** Brzeg morski z wydmami (niski), a nie z klifem. */
+		boolean brzegWydmowy() {
+			return t.niskiBrzeg() >= Kalibracja.NISKI_BRZEG;
 		}
 
 		Trofia trofia() {
@@ -334,7 +362,7 @@ public final class Klasyfikator {
 				boolean d = w.wDnie();
 				if (w.rzad() > 0 && !s.hasWater() && !Double.isNaN(w.poziomKoryta())) {
 					double hl = H - w.poziomKoryta();
-					if (hl >= 1.15) {
+					if (hl >= Kalibracja.INNE_KORYTO_H) {
 						double zasieg = Math.max(Kalibracja.DNO_MIN_K * k, Double.isNaN(w.polSzerDna()) ? 0 : w.polSzerDna());
 						d = hl <= Kalibracja.DNO_H && (d || w.odlKoryta() <= zasieg);
 					}
@@ -388,7 +416,7 @@ public final class Klasyfikator {
 		/** cos(ekspozycja − 180°): 1 stok S, −1 stok N; 0 na płaskim i poniżej 5°. */
 		double ekspozycja() {
 			double e = t.eksp();
-			if (Double.isNaN(e) || nach < 5.0) {
+			if (Double.isNaN(e) || nach < Pietra.EKSPOZYCJA_OD) {
 				return 0;
 			}
 			return Math.cos(Math.toRadians(e - 180.0));
@@ -412,13 +440,20 @@ public final class Klasyfikator {
 		}
 
 		/**
-		 * Wysięk u podnóża zbocza doliny: w zasięgu cieku, poza dnem, siedlisko bagienne (DGW ≤ 0,5, w pasie
-		 * 0,5–0,8 według szumu) przy żyznym podłożu (LM, L) poniżej 600 m. Bez warunku wcięcia (zbocze), bo inaczej skraj dna dostawał wąski pas olsu strefowego.
+		 * Wysięk u podnóża zbocza doliny: siedlisko bagienne (DGW ≤ 0,5, w pasie 0,5–0,8 według szumu) przy
+		 * żyznym podłożu (LM, L) poniżej 600 m, poza dnem, ale w dolinie i nisko nad ciekiem: teren wcięty co
+		 * najmniej {@link Kalibracja#WCIECIE_OD} poniżej terenu przed doliną i najwyżej {@link Kalibracja#WYSIEK_HL}
+		 * nad lustrem najbliższego koryta. Bez warunku odległości: granicę wysięku wyznacza wtedy granica siedliska
+		 * bagiennego albo poziomica, a nie linia równoległa do koryta, przy której zostawały strzępy łęgu węższe
+		 * niż 6 bloków. Bez warunku zbocza (wcięcie ≥ 2 m), bo wtedy skraj dna dostawał wąski pas olsu strefowego.
 		 */
 		boolean wysiek() {
+			if (w.rzad() <= 0 || dno() || s.hasWater() || H >= Kalibracja.H_LEG_OLJ || Double.isNaN(w.poziomKoryta())
+					|| t.rawSurface() - H < Kalibracja.WCIECIE_OD || H - w.poziomKoryta() > Kalibracja.WYSIEK_HL) {
+				return false;
+			}
 			Trofia tr = trofia();
-			return w.rzad() > 0 && !dno() && !s.hasWater() && H < Kalibracja.H_LEG_OLJ && (tr == Trofia.LM || tr == Trofia.L)
-					&& wilgotnosc() == Wilgotnosc.BAGIENNA;
+			return (tr == Trofia.LM || tr == Trofia.L) && wilgotnosc() == Wilgotnosc.BAGIENNA;
 		}
 
 		/** Szerokość koryta w skali 1:1 (m). */
@@ -432,14 +467,23 @@ public final class Klasyfikator {
 		 * najbliższe koryto jest wtedy inne (dopływ schodzący bystrzem do dna większej doliny).
 		 */
 		double hKoryta() {
-			double h = H - w.poziomKoryta() - 1;
-			return h < 0.15 ? Double.NaN : h;
+			double hl = H - w.poziomKoryta();
+			return hl < Kalibracja.INNE_KORYTO_H ? Double.NaN : hl - 1;
 		}
 
-		/** Źródlisko: forma ZRODLO, płatami do 40 m·k od koryta. */
+		/**
+		 * Źródlisko: forma ZRODLO, pas od koryta o szerokości 0–40 m·k zmiennej z szumem płatów (średnio
+		 * {@link Kalibracja#ZRODLISKO_UDZIAL} pasa). Pas zaczyna się przy korycie, więc łęg źródliska łączy się
+		 * z łęgiem dna i nie rozpada się na strzępy węższe niż 6 bloków. Szum wybiera biom, więc ma falę
+		 * {@link Kalibracja#FALA_ZRODLISK} m bez mnożnika k (Z9: biom tylko z wejść o fali ≥ 64 m).
+		 */
 		boolean zrodlisko() {
-			return t.ma(Landform.ZRODLO)
-					&& w.odlKoryta() <= Kalibracja.ZRODLISKO_K * k * drganie() && platQ(9) < Kalibracja.ZRODLISKO_UDZIAL;
+			if (!t.ma(Landform.ZRODLO)) {
+				return false;
+			}
+			double u = 2 * Kalibracja.ZRODLISKO_UDZIAL;
+			double f = Math.clamp((platQ(9, Kalibracja.FALA_ZRODLISK / k) - (1 - u)) / u, 0.0, 1.0);
+			return f > 0 && w.odlKoryta() <= Kalibracja.ZRODLISKO_K * k * drganie() * f;
 		}
 
 		boolean piaszczyste() {

@@ -13,7 +13,8 @@ import pl.polskielasy.worldgen.landscape.Noise;
 
 /**
  * Udziały biomów w trybie N „roślinność naturalna” (docs/03-m2-biomy.md §12.1): lesistość lądu ≥ 88%, a na
- * sandrze (wnętrze typu, waga ≥ 0,9) bory ≥ 85% lasu. Próbki: 200 tys. kolumn na skalę (3 ziarna), w skupiskach 8 × 8 co 125 m·k
+ * sandrze (wnętrze typu, waga ≥ 0,9) bory ≥ 85% lasu. Udział borów w lesie całego typu SANDR (z pasami
+ * mieszania z wysoczyzną) jest tylko wypisywany, do decyzji w punkcie kontrolnym 1. Próbki: 200 tys. kolumn na skalę (3 ziarna), w skupiskach 8 × 8 co 125 m·k
  * rozrzuconych losowo (deterministycznie) po kwadracie 1000 × 1000 km w REAL i 30 × 30 km w GAMEPLAY.
  * Skupiska wykorzystują kafle sieci rzecznej i siatki terenu, więc test jest kilkakrotnie szybszy niż
  * przy punktach całkiem rozrzuconych, a udziały w obszarze zostają nieobciążone.
@@ -27,6 +28,8 @@ public class BiomeSharesTest {
 	public static final class Udzialy {
 		public final long[] biom = new long[Biom.values().length];
 		public final long[] biomSandr = new long[Biom.values().length];
+		/** Kolumny typu SANDR bez warunku wagi (z pasami mieszania). */
+		public final long[] biomSandrCaly = new long[Biom.values().length];
 		public final long[] strefa = new long[Strefa.values().length];
 		public long kolumny;
 
@@ -34,6 +37,7 @@ public class BiomeSharesTest {
 			for (int i = 0; i < biom.length; i++) {
 				biom[i] += u.biom[i];
 				biomSandr[i] += u.biomSandr[i];
+				biomSandrCaly[i] += u.biomSandrCaly[i];
 			}
 			for (int i = 0; i < strefa.length; i++) {
 				strefa[i] += u.strefa[i];
@@ -50,14 +54,23 @@ public class BiomeSharesTest {
 			return lesistosc(biomSandr);
 		}
 
-		/** Udział borów w lesie na sandrze. */
+		/** Udział borów w lesie we wnętrzu sandru. */
 		public double boryWLesieSandr() {
+			return bory(biomSandr);
+		}
+
+		/** Udział borów w lesie w całym typie SANDR. */
+		public double boryWLesieSandrCaly() {
+			return bory(biomSandrCaly);
+		}
+
+		private static double bory(long[] t) {
 			long las = 0;
 			long bory = 0;
 			for (Biom b : Biom.values()) {
 				if (b.lesny()) {
-					las += biomSandr[b.ordinal()];
-					bory += b.bor() ? biomSandr[b.ordinal()] : 0;
+					las += t[b.ordinal()];
+					bory += b.bor() ? t[b.ordinal()] : 0;
 				}
 			}
 			return las == 0 ? Double.NaN : (double) bory / las;
@@ -108,8 +121,11 @@ public class BiomeSharesTest {
 					u.strefa[Siedlisko.strefa(kod).ordinal()]++;
 					// Sandr: wnętrze typu (waga ≥ 0,9), bez pasów mieszania z wysoczyzną, które w GAMEPLAY
 					// (regiony ok. 1,4 km) zajmują dużą część sandru.
-					if (s.type() == LandscapeType.SANDR && s.teren().wSandr() >= WNETRZE_SANDRU) {
-						u.biomSandr[b]++;
+					if (s.type() == LandscapeType.SANDR) {
+						u.biomSandrCaly[b]++;
+						if (s.teren().wSandr() >= WNETRZE_SANDRU) {
+							u.biomSandr[b]++;
+						}
 					}
 					u.kolumny++;
 				}
@@ -130,8 +146,9 @@ public class BiomeSharesTest {
 	}
 
 	static void wypisz(String nazwa, Udzialy u) {
-		System.out.printf(Locale.ROOT, "%s: %d kolumn, ląd %d; lesistość %.1f%%, na sandrze %.1f%%, bory w lesie sandru %.1f%%%n",
-				nazwa, u.kolumny, u.lad(), 100 * u.lesistosc(), 100 * u.lesistoscSandr(), 100 * u.boryWLesieSandr());
+		System.out.printf(Locale.ROOT, "%s: %d kolumn, ląd %d; lesistość %.1f%%, na sandrze %.1f%%, bory w lesie wnętrza sandru "
+				+ "%.1f%% (całego typu SANDR %.1f%%)%n", nazwa, u.kolumny, u.lad(), 100 * u.lesistosc(), 100 * u.lesistoscSandr(),
+				100 * u.boryWLesieSandr(), 100 * u.boryWLesieSandrCaly());
 		long sandr = 0;
 		for (long v : u.biomSandr) {
 			sandr += v;

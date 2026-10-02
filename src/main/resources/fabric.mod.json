@@ -8,7 +8,7 @@
 		"henke"
 	],
 	"contact": {},
-	"license": "All-Rights-Reserved",
+	"license": "MIT",
 	"environment": "*",
 	"entrypoints": {
 		"main": [

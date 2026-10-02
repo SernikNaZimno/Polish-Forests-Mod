@@ -173,6 +173,7 @@ class KlasyfikatorTest {
 		l.add(new Przypadek("korona klifu", Probka.wybrzeze(100, 20, Substrate.GLACIAL_TILL).build(), n, null,
 				Strefa.KLIF_KORONA, false));
 		Probka zaplecze = Probka.wybrzeze(400, 1.2, Substrate.SAND);
+		zaplecze.niskiBrzeg = 1;
 		l.add(new Przypadek("torfowisko niskie za mierzeją", zaplecze.build(), n, Biom.TORFOWISKO_NISKIE, Strefa.BRAK, false));
 		// Siedliska strefowe.
 		Probka bs = Probka.sandr().forma(Landform.WYDMY);
@@ -353,10 +354,21 @@ class KlasyfikatorTest {
 		Set<Biom> biomy = java.util.concurrent.ConcurrentHashMap.newKeySet();
 		Set<Strefa> strefy = java.util.concurrent.ConcurrentHashMap.newKeySet();
 		for (LandscapeScale sc : new LandscapeScale[] {LandscapeScale.REALISTIC, LandscapeScale.GAMEPLAY}) {
+			Set<Biom> wSkali = java.util.concurrent.ConcurrentHashMap.newKeySet();
+			Set<Strefa> strefyWSkali = java.util.concurrent.ConcurrentHashMap.newKeySet();
 			przegladaj(sc, Klasyfikator.Tryb.N, null, (k, s, x, z, kod) -> {
-				biomy.add(Siedlisko.biom(kod));
-				strefy.add(Siedlisko.strefa(kod));
+				wSkali.add(Siedlisko.biom(kod));
+				strefyWSkali.add(Siedlisko.strefa(kod));
 			});
+			// Osobno dla każdej skali: biomy i strefy, których nie ma w 64 skupiskach tej skali.
+			Set<Biom> brakB = EnumSet.allOf(Biom.class);
+			brakB.removeAll(wSkali);
+			Set<Strefa> brakS = EnumSet.allOf(Strefa.class);
+			brakS.removeAll(strefyWSkali);
+			System.out.println(sc.id() + ": biomy w świecie " + wSkali.size() + ", brak w skupiskach: " + brakB);
+			System.out.println(sc.id() + ": strefy brak w skupiskach: " + brakS);
+			biomy.addAll(wSkali);
+			strefy.addAll(strefyWSkali);
 		}
 		Set<Biom> synB = EnumSet.noneOf(Biom.class);
 		Set<Strefa> synS = EnumSet.noneOf(Strefa.class);
@@ -387,13 +399,26 @@ class KlasyfikatorTest {
 		assertTrue(biomy.size() >= 25, "biomy w świecie: " + biomy.size() + " " + biomy);
 	}
 
+	/**
+	 * Łęgi tylko przy wodzie płynącej, z kryteriów geometrycznych liczonych wprost z pól próbki (bez predykatów
+	 * klasyfikatora {@code dno()} i {@code wysiek()}): ciek w zasięgu, grunt w dnie modelu albo najwyżej
+	 * {@link Kalibracja#WYSIEK_HL} nad lustrem najbliższego koryta i w dolinie (grunt najwyżej
+	 * {@link Kalibracja#DNO_H} nad lustrem, teren wcięty co najmniej {@link Kalibracja#WCIECIE_OD} poniżej terenu
+	 * przed doliną albo pas 6 bloków przy brzegu). Źródliska: forma ZRODLO do 40 m·k (+20% drgania) od koryta.
+	 * Raportuje też skalę wysięków (łęg poza flagą dna modelu).
+	 */
 	@Test
 	void legiTylkoWDnieZrodliskachIWysiekach() {
 		AtomicLong legi = new AtomicLong();
 		AtomicLong poza = new AtomicLong();
 		AtomicLong wszystkie = new AtomicLong();
+		AtomicLong pozaFlaga = new AtomicLong();
+		AtomicLong wysokoNadLustrem = new AtomicLong();
+		java.util.concurrent.atomic.DoubleAccumulator maksHl = new java.util.concurrent.atomic.DoubleAccumulator(Math::max, 0);
+		java.util.concurrent.atomic.DoubleAccumulator maksZaDnem = new java.util.concurrent.atomic.DoubleAccumulator(Math::max, 0);
 		List<String> przyklady = java.util.Collections.synchronizedList(new ArrayList<>());
 		for (LandscapeScale sc : new LandscapeScale[] {LandscapeScale.REALISTIC, LandscapeScale.GAMEPLAY}) {
+			double kk = sc.local();
 			przegladaj(sc, Klasyfikator.Tryb.N, null, (k, s, x, z, kod) -> {
 				wszystkie.incrementAndGet();
 				Biom b = Siedlisko.biom(kod);
@@ -401,21 +426,39 @@ class KlasyfikatorTest {
 					return;
 				}
 				legi.incrementAndGet();
-				Klasyfikator.Kolumna c = new Klasyfikator.Kolumna(k, s, x, z);
-				boolean dozwolone = c.dno() || s.teren().ma(Landform.ZRODLO)
-						|| b == Biom.LEG_JESIONOWO_OLSZOWY && c.wysiek();
-				if (!dozwolone) {
+				ColumnSample.Wody w = s.wody();
+				double hl = s.surface() - w.poziomKoryta();
+				double polSzer = Double.isNaN(w.polSzerDna()) ? 0 : w.polSzerDna();
+				double zaDnem = w.odlKoryta() - polSzer;
+				boolean zrodlisko = s.teren().ma(Landform.ZRODLO)
+						&& w.odlKoryta() <= Kalibracja.ZRODLISKO_K * kk * (1 + Kalibracja.DRGANIE_SZEROKOSCI) + 1e-9;
+				boolean dolina = hl <= Kalibracja.DNO_H || s.teren().rawSurface() - s.surface() >= Kalibracja.WCIECIE_OD
+						|| w.odlKoryta() <= Kalibracja.MIN_OLJ;
+				boolean przyWodzie = w.rzad() > 0 && (w.wDnie() || hl <= Kalibracja.WYSIEK_HL && dolina);
+				if (!w.wDnie()) {
+					pozaFlaga.incrementAndGet();
+					if (hl > 3) {
+						wysokoNadLustrem.incrementAndGet();
+					}
+					maksHl.accumulate(hl);
+					maksZaDnem.accumulate(zaDnem / kk);
+				}
+				if (!(przyWodzie || zrodlisko)) {
 					poza.incrementAndGet();
 					if (przyklady.size() < 5) {
-						przyklady.add(String.format(Locale.ROOT, "%s (%.0f, %.0f) %s: %s", sc.id(), x, z, b, s));
+						przyklady.add(String.format(Locale.ROOT, "%s (%.0f, %.0f) %s: hl %.1f, za dnem %.0f, %s", sc.id(), x, z, b, hl,
+								zaDnem, s));
 					}
 				}
 			});
 		}
-		System.out.printf(Locale.ROOT, "Łęgi: %d z %d próbek, poza dnem %d%n", legi.get(), wszystkie.get(), poza.get());
+		System.out.printf(Locale.ROOT, "Łęgi: %d z %d próbek, poza kryteriami %d; poza flagą dna modelu %d (%.1f%% łęgów), "
+				+ "z nich wyżej niż 3 m nad lustrem %d; najwyżej %.1f m nad lustrem, najdalej %.0f m·k za skrajem dna%n", legi.get(),
+				wszystkie.get(), poza.get(), pozaFlaga.get(), 100.0 * pozaFlaga.get() / Math.max(1, legi.get()),
+				wysokoNadLustrem.get(), maksHl.get(), maksZaDnem.get());
 		assertTrue(wszystkie.get() >= 1_900_000, "za mało próbek");
 		assertTrue(legi.get() > 1_000, "za mało łęgów: " + legi.get());
-		assertEquals(0, poza.get(), "łęg poza dnem: " + przyklady);
+		assertEquals(0, poza.get(), "łęg z dala od wody płynącej: " + przyklady);
 	}
 
 	@Test
@@ -457,11 +500,11 @@ class KlasyfikatorTest {
 
 	@Test
 	void szczytBezDuzegoMasywuToLasDoWierzcholka() {
-		Probka bez = Probka.beskidy(1_500);
-		bez.szczyt = 1_500;
+		Probka bez = Probka.beskidy(1_460);
+		bez.szczyt = 1_460;
 		assertEquals(Biom.SWIERCZYNA_GORSKA, Siedlisko.biom(real(Klasyfikator.Tryb.N).klasyfikuj(bez.build(), 0, 0)));
 		Probka wiatr = Probka.beskidy(1_700);
-		wiatr.szczyt = 1_500;
+		wiatr.szczyt = 1_460;
 		assertEquals(Biom.SWIERCZYNA_GORSKA, Siedlisko.biom(real(Klasyfikator.Tryb.N).klasyfikuj(wiatr.build(), 0, 0)));
 	}
 }

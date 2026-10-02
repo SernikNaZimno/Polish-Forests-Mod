@@ -8,6 +8,11 @@ import pl.polskielasy.worldgen.landscape.Substrate;
  * Krok 2 klasyfikatora: pas wybrzeża cD &lt; B + D + 2000k (§5.2, raport ekologii §4). Plaża, wydmy,
  * bór bażynowy, klif i zaplecze zalewu; długości mnożone przez k. Dna dolin i brzegi wód stojących
  * zostawiamy strefom nadwodnym (poza plażą i wydmami).
+ *
+ * <p>Brzeg wydmowy i klifowy rozróżnia pole {@code teren.niskiBrzeg}, a nie podłoże: model daje glinę
+ * i formę KLIF każdej kolumnie pasa nadmorskiego wyższej niż 8 m, także wysokiej wydmie przedniej. Na brzegu
+ * wydmowym podłoże siedliska to piasek ({@link Klasyfikator.Kolumna#podloze}), a klif i jego zaplecze
+ * są tylko na brzegu wysokim.
  */
 final class Wybrzeze {
 	private Wybrzeze() {
@@ -19,18 +24,20 @@ final class Wybrzeze {
 		double cD = t.coastD();
 		double b = Kalibracja.PLAZA_B * k;
 		double d = Kalibracja.WYDMY_D * k;
-		if (cD < 0 || cD >= b + d + Kalibracja.BOR_BAZYNOWY_K * k) {
+		// Granica boru bażynowego (2000 m·k) drga z szumem wariantów, żeby nie była linią równoległą do brzegu;
+		// pas kończy się za jej najdalszym położeniem.
+		double bor = Kalibracja.BOR_BAZYNOWY_K * k;
+		if (cD < 0 || cD >= Math.max(b + d + bor, bor * (1 + Kalibracja.BOR_BAZYNOWY_DRGANIE))) {
 			return Klasyfikator.Wynik.BRAK;
 		}
-		Substrate sub = c.s.substrate();
-		// Klif: ściana z gołą gliną i korona z zaroślami w biomie wysoczyzny; dalej las wiatrowy.
+		Substrate sub = c.podloze;
+		boolean wydmowy = c.brzegWydmowy();
+		// Klif (tylko brzeg wysoki): ściana z gołą gliną i korona z zaroślami w biomie wysoczyzny; dalej las wiatrowy.
 		double raw = t.rawSurface();
-		if (t.ma(Landform.KLIF)) {
+		if (!wydmowy && t.ma(Landform.KLIF)) {
 			return Klasyfikator.Wynik.strefa(Strefa.KLIF_SCIANA);
 		}
-		// Wysoki brzeg z klifem leży na glinie (model daje glinę pobrzeża powyżej 8 m); wysokie wydmy i sandry
-		// przy morzu idą dalej do boru bażynowego.
-		if (sub == Substrate.GLACIAL_TILL && raw > Kalibracja.KLIF_H && c.H > Kalibracja.KLIF_H) {
+		if (!wydmowy && sub == Substrate.GLACIAL_TILL && raw > Kalibracja.KLIF_H && c.H > Kalibracja.KLIF_H) {
 			double krawedz = b + raw / 2.5 + Kalibracja.KLIF_KORONA_K * k;
 			if (cD < krawedz + Kalibracja.KLIF_KORONA_K * k) {
 				return Klasyfikator.Wynik.strefa(Strefa.KLIF_KORONA);
@@ -56,9 +63,10 @@ final class Wybrzeze {
 		if (sub != Substrate.SAND) {
 			return Klasyfikator.Wynik.BRAK;
 		}
-		// Zaplecze zalewu: niski brzeg za wydmami (lustro morza 0 m, h = H − 1).
+		// Zaplecze zalewu: niski brzeg za wydmami (lustro morza 0 m, h = H − 1); zalew i mierzeja powstają
+		// tylko na brzegu wydmowym.
 		double h = c.H - 1;
-		if (cD >= b + d) {
+		if (wydmowy && cD >= b + d) {
 			if (h <= Kalibracja.ZALEW_TORF_H) {
 				return Klasyfikator.Wynik.of(Biom.TORFOWISKO_NISKIE, Strefa.BRAK, Zespol.TYPOWY);
 			}
@@ -69,8 +77,7 @@ final class Wybrzeze {
 		if (cD < b + d + Kalibracja.WYDMA_SZARA_K * k) {
 			return Klasyfikator.Wynik.of(Biom.WYDMA_SZARA, Strefa.BRAK, Zespol.TYPOWY);
 		}
-		// Granica boru bażynowego (2000 m·k) drga o ±15% z szumem wariantów, żeby nie była linią równoległą do brzegu.
-		double zasieg = Kalibracja.BOR_BAZYNOWY_K * k * (0.85 + 0.3 * c.wariant(4));
+		double zasieg = bor * (1 + Kalibracja.BOR_BAZYNOWY_DRGANIE * (2 * c.wariant(4) - 1));
 		if (c.H >= Kalibracja.BOR_BAZYNOWY_H || cD >= zasieg) {
 			return Klasyfikator.Wynik.BRAK;
 		}

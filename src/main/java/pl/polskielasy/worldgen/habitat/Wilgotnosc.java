@@ -13,16 +13,16 @@ public enum Wilgotnosc {
 	SUCHA, SWIEZA, WILGOTNA, BAGIENNA;
 
 	/**
-	 * DGW kolumny (m). {@code L_w} i {@code r} to lustro (+0,3 m) i odległość wody w zasięgu 2 km·k: koryta,
-	 * wody stojącej i morza; bierzemy najniższe zwierciadło z nich. {@code i} to spadek zwierciadła: flisz
+	 * DGW kolumny (m). {@code L_w} i {@code r} to lustro (+0,3 m) i odległość wody: koryta, wody stojącej
+	 * i morza; bierzemy najniższe zwierciadło z nich. Odległość jest w skali 1:1 (r / k, Z7), bo w skali
+	 * rozgrywki odległości są ściśnięte przy podobnych wysokościach. {@code i} to spadek zwierciadła: flisz
 	 * w górach, piasek przy trofii B i BM, poza tym glina. Torf daje 0, brzeg na mule ≤ 0,2. Woda zawieszona
 	 * na glinie: wklęsłość terenu przed dolinami (rawSurface − sBar) ≤ −1,5 m daje DGW ≤ 1,0, a ≤ −3 m daje ≤ 0,3.
 	 */
 	static double dgw(Klasyfikator.Kolumna c) {
-		ColumnSample s = c.s;
 		ColumnSample.Teren t = c.t;
 		ColumnSample.Wody w = c.w;
-		Substrate sub = s.substrate();
+		Substrate sub = c.podloze;
 		if (sub == Substrate.PEAT) {
 			return 0;
 		}
@@ -38,17 +38,17 @@ public enum Wilgotnosc {
 		if (w.rzad() > 0 && Double.isFinite(w.odlKoryta()) && !Double.isNaN(w.poziomKoryta())) {
 			// Lustro najbliższego koryta bywa wyżej niż dno, przy którym leży kolumna (dopływ schodzący bystrzem
 			// do dna większej doliny); dno modelu leży co najmniej 1,2 m nad lustrem jego koryta.
-			double lustro = Math.min(w.poziomKoryta(), c.H - 1.2);
-			gw = Math.min(gw, lustro + Kalibracja.LUSTRO_PLUS + i * Math.max(0, w.odlKoryta()) + kara);
+			double lustro = Math.min(w.poziomKoryta(), c.H - Kalibracja.DNO_NAD_LUSTREM);
+			gw = Math.min(gw, lustro + Kalibracja.LUSTRO_PLUS + i * Math.max(0, w.odlKoryta()) / c.k + kara);
 		}
 		// Starorzecza pomijamy: leżą w dnie, gdzie zwierciadło wyznacza rzeka, a ich pierścienie (wycinki pierścienia
 		// z modelu, także bez wody przy wąskich ciekach) dawały w DGW prostokątne plamy.
 		if (Double.isFinite(w.s()) && w.poziomBrzegu() != ColumnSample.NO_WATER
 				&& w.rodzajStojacej() != ColumnSample.RodzajStojacej.STARORZECZE) {
-			gw = Math.min(gw, w.poziomBrzegu() + Kalibracja.LUSTRO_PLUS + i * Math.max(0, w.s()) + kara);
+			gw = Math.min(gw, w.poziomBrzegu() + Kalibracja.LUSTRO_PLUS + i * Math.max(0, w.s()) / c.k + kara);
 		}
 		// Morze bez ucięcia zasięgu: człon rośnie z cD, więc dalej od brzegu i tak przegrywa z terenem.
-		gw = Math.min(gw, Kalibracja.LUSTRO_PLUS + i * Math.max(0, t.coastD()));
+		gw = Math.min(gw, Kalibracja.LUSTRO_PLUS + i * Math.max(0, t.coastD()) / c.k);
 		double d = Math.clamp(c.H - gw, 0.0, Kalibracja.DGW_MAX);
 		if (sub == Substrate.LAKE_MUD) {
 			d = Math.min(d, Kalibracja.MUL_DGW);
@@ -70,7 +70,7 @@ public enum Wilgotnosc {
 	 */
 	static Wilgotnosc klasa(Klasyfikator.Kolumna c) {
 		double d = c.dgw();
-		if (c.s.substrate() == Substrate.PEAT) {
+		if (c.podloze == Substrate.PEAT) {
 			return BAGIENNA;
 		}
 		if (d <= Kalibracja.DGW_BAGIENNA) {
@@ -84,7 +84,7 @@ public enum Wilgotnosc {
 		if (d <= Kalibracja.DGW_SWIEZA) {
 			return WILGOTNA;
 		}
-		if (d > Kalibracja.DGW_SUCHA && c.s.substrate() == Substrate.SAND
+		if (d > Kalibracja.DGW_SUCHA && c.podloze == Substrate.SAND
 				&& (c.t.ma(Landform.WYDMY) || c.t.wydma() >= Kalibracja.WYDMA_SUCHA || c.wkl() > Kalibracja.WYP_SUCHA)) {
 			return SUCHA;
 		}

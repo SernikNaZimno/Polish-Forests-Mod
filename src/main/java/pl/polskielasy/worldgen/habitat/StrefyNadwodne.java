@@ -90,7 +90,7 @@ final class StrefyNadwodne {
 		}
 		double wik = szerokosc(Kalibracja.MIN_WIKLINA, pasWik, f);
 		Strefa strefa = Strefa.BRAK;
-		if (wypukly && d < Kalibracja.A_LACHA_W * szer * f && c.plat(3) > -0.2) {
+		if (wypukly && d < Kalibracja.A_LACHA_W * szer * f && c.plat(3) > Kalibracja.A_LACHA_PLAT) {
 			Biom b = pas(Kalibracja.A_LACHA_W * szer, Biom.WIKLINY);
 			if (b != null) {
 				return Klasyfikator.Wynik.of(b, Strefa.LACHA, Zespol.TYPOWY);
@@ -139,7 +139,7 @@ final class StrefyNadwodne {
 				&& (1 - Kalibracja.A_ZASTOISKO_U) * w.polSzerDna() >= 2 * Kalibracja.MIN_OLS
 				&& c.platQ(10, Kalibracja.FALA_ZASTOISK / k) < Kalibracja.ZASTOISKA_UDZIAL) {
 			boolean torf = w.polSzerDna() > Kalibracja.A_TORF_POLSZER_K * k && w.spadek() < Kalibracja.A_TORF_SPADEK
-					&& c.platQ(5) < Kalibracja.A_TORF_UDZIAL;
+					&& c.platQ(5, Kalibracja.FALA_ZASTOISK / k) < Kalibracja.A_TORF_UDZIAL;
 			Strefa s = strefa == Strefa.OKRAJEK ? Strefa.BRAK : strefa;
 			return Klasyfikator.Wynik.of(torf ? Biom.TORFOWISKO_NISKIE : Biom.OLS, s, Zespol.ZASTOISKO);
 		}
@@ -166,6 +166,11 @@ final class StrefyNadwodne {
 					Zespol.ZRODLISKOWY);
 		}
 		if (!c.dno()) {
+			// Wąskie dno (albo jego brak): łęg przy brzegu w pasie co najmniej 6 bloków (E11), nisko nad ciekiem.
+			if (d <= Kalibracja.MIN_OLJ && c.H < Kalibracja.H_LEG_OLJ && !Double.isNaN(c.w.poziomKoryta())
+					&& c.H - c.w.poziomKoryta() <= Kalibracja.WYSIEK_HL) {
+				return Klasyfikator.Wynik.of(Biom.LEG_JESIONOWO_OLSZOWY, strefa, Zespol.TYPOWY);
+			}
 			return zbocze(c, strefa);
 		}
 		double olj = Math.min(Kalibracja.B_OLJ_MAX_K * k, Math.max(Kalibracja.B_OLJ_MIN_K * k, Kalibracja.B_OLJ_W * szer));
@@ -180,13 +185,14 @@ final class StrefyNadwodne {
 		// Ols tylko w dnie z miejscem na płaty szersze niż 10 bloków za łęgiem (E11): pas co najmniej 2 × 10.
 		if (w.polSzerDna() > Kalibracja.B_OLS_POLSZER_K * k && w.polSzerDna() - odOls >= 2 * Kalibracja.MIN_OLS && d > odOls
 				&& c.H < Kalibracja.H_OLS
-				&& (c.s.substrate() == Substrate.PEAT || (c.hKoryta() < Kalibracja.B_OLS_H
+				&& (c.podloze == Substrate.PEAT || (c.hKoryta() < Kalibracja.B_OLS_H
 						|| c.uDrgane() > Kalibracja.B_OLS_U) && c.platQ(6, Kalibracja.FALA_PLATOW_OLSU / k) < Kalibracja.B_OLS_UDZIAL)) {
 			Strefa s = strefa == Strefa.BRAK && d < odOls + Kalibracja.B_LOZOWISKO_K * k ? Strefa.LOZOWISKO : strefa;
 			return Klasyfikator.Wynik.of(Biom.OLS, s, Zespol.TYPOWY);
 		}
 		// Mały ciek w szerokim dnie dużej doliny: dalej reszta jej dna.
-		if (w.polSzerDna() > Kalibracja.SZEROKIE_DNO_K * k && c.wN >= Kalibracja.KLASA_WN && w.rzad() >= 2) {
+		if (w.polSzerDna() > Kalibracja.SZEROKIE_DNO_K * k && c.wN >= Kalibracja.KLASA_WN
+				&& w.rzad() >= Kalibracja.SZEROKIE_DNO_RZAD) {
 			return resztaDna(c, d, szer, strefa);
 		}
 		// Skraj dna: siedlisko strefowe (glina: grąd niski, LMw; piasek: bór wilgotny, dalej świeży).
@@ -267,7 +273,7 @@ final class StrefyNadwodne {
 		double f = c.drganie();
 		double s = w.s();
 		double h = c.H - w.poziomBrzegu() - 1;
-		Substrate sub = c.s.substrate();
+		Substrate sub = c.podloze;
 		ColumnSample.RodzajStojacej rodzaj = w.rodzajStojacej();
 		if (rodzaj == ColumnSample.RodzajStojacej.OCZKO_TORFOWE) {
 			double promien = w.promienStojacej();

@@ -13,7 +13,7 @@ public enum Trofia {
 	B, BM, LM, L;
 
 	static Trofia oblicz(Klasyfikator.Kolumna c) {
-		Substrate sub = c.s.substrate();
+		Substrate sub = c.podloze;
 		// Wydmy śródlądowe i nadmorskie (na piasku): bory. Dalej pas nadmorski działa przez udziały POBRZEŻA
 		// (70% B) ważone wPobrzeze, więc granica nie jest prostą linią wzdłuż brzegu.
 		boolean piasek = sub == Substrate.SAND || sub == Substrate.BEACH_SAND;
@@ -38,10 +38,10 @@ public enum Trofia {
 
 	/**
 	 * Udział klasy {@code i} (0 B … 3 L) w %, zmieszany wagami typów. Pas nadmorski na glinie (wysoki brzeg
-	 * z klifem) ma udziały wysoczyzny, a nie piasków pobrzeża.
+	 * z klifem; na brzegu wydmowym podłoże siedliska to piasek) ma udziały wysoczyzny, a nie piasków pobrzeża.
 	 */
 	private static double udzial(Klasyfikator.Kolumna c, int i) {
-		double[] pob = c.s.substrate() == Substrate.GLACIAL_TILL ? Kalibracja.TROFIA_WYSOCZYZNA : Kalibracja.TROFIA_POBRZEZE;
+		double[] pob = c.podloze == Substrate.GLACIAL_TILL ? Kalibracja.TROFIA_WYSOCZYZNA : Kalibracja.TROFIA_POBRZEZE;
 		return c.wS * Kalibracja.TROFIA_SANDR[i] + c.wW * Kalibracja.TROFIA_WYSOCZYZNA[i]
 				+ c.wR * Kalibracja.TROFIA_ROWNINA[i] + c.wPob * pob[i]
 				+ c.wPg * Kalibracja.TROFIA_POGORZE[i] + c.wBs * Kalibracja.TROFIA_BESKIDY[i];
