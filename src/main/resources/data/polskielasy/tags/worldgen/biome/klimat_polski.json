@@ -1,0 +1,15 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:old_growth_pine_taiga",
+    "minecraft:forest",
+    "minecraft:plains",
+    "minecraft:meadow",
+    "minecraft:river",
+    "minecraft:swamp",
+    "minecraft:taiga",
+    "minecraft:old_growth_spruce_taiga",
+    "minecraft:ocean",
+    "minecraft:beach"
+  ]
+}

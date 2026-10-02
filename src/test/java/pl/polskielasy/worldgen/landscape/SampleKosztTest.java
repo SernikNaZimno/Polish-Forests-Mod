@@ -1,0 +1,191 @@
+package pl.polskielasy.worldgen.landscape;
+
+import java.util.Arrays;
+import java.util.LinkedHashSet;
+import java.util.Locale;
+import java.util.Set;
+import org.junit.jupiter.api.Test;
+
+/**
+ * Raport kosztu {@link LandscapeModel#sample} na jednym wątku (M2, krok S0). Bez asercji: wynik
+ * służy budżetowi z planu M2 (§3.6, „sample +≤ 5%”) i trafia do {@code docs/m2/pomiary-bazowe-m1.md}.
+ *
+ * <p>Obecny model i zamrożona kopia M1 ({@code landscape.m1}) są mierzone na przemian w tej samej JVM,
+ * po tych samych chunkach. Szum między uruchomieniami (±10–20%) jest większy od budżetu, więc
+ * rozstrzyga stosunek obecny/M1 z jednego uruchomienia, a nie porównanie liczb z różnych dni.
+ *
+ * <p>Próbkujemy tak jak generator: całe chunki 16 × 16 kolumn po kolei. 400 różnych chunków
+ * (102 400 kolumn) rozrzuconych po obszarze ok. 10 makroregionów. Rozgrzewka na innych chunkach,
+ * potem {@value #DEFAULT_ROUNDS} przebiegów (więcej: {@code -PkosztPrzebiegi=15}); podajemy medianę
+ * i minimum. Pierwszy przebieg trafia na zimne pamięci regionalne (komórki, sieć rzeczna), kolejne
+ * mierzą stan jak w grze. Osobno 400 chunków we wnętrzu Beskidów (najdroższy teren: gęsta sieć
+ * potoków), w miejscu łaty „beskidy” ze złotego testu. Obszar całości w skali realistycznej
+ * (±320 km wokół 0, 0) nie obejmuje gór.
+ */
+class SampleKosztTest {
+	private static final long SEED = 20260927L;
+	private static final int CHUNKS = 400;
+	private static final int DEFAULT_ROUNDS = 7;
+	private static final int ROUNDS = Math.max(3, Integer.getInteger("polskielasy.koszt.przebiegi", DEFAULT_ROUNDS));
+	/** Wnętrze Beskidów dla ziarna {@link #SEED} (łata „beskidy” w {@code zloty_teren_m1.txt}). */
+	private static final long[] BESKIDY_REAL = {154_834, 1_058_738};
+	private static final long[] BESKIDY_GAMEPLAY = {27_609, 3_254};
+
+	/** Zapobiega usunięciu wywołań przez JIT. */
+	private static volatile double sink;
+
+	@Test
+	void reportSampleCost() {
+		for (LandscapeScale scale : new LandscapeScale[] {LandscapeScale.REALISTIC, LandscapeScale.GAMEPLAY}) {
+			LandscapeModel m = new LandscapeModel(SEED, scale, 1.0);
+			pl.polskielasy.worldgen.landscape.m1.LandscapeModel old = new pl.polskielasy.worldgen.landscape.m1.LandscapeModel(
+					SEED, scale == LandscapeScale.REALISTIC ? pl.polskielasy.worldgen.landscape.m1.LandscapeScale.REALISTIC
+							: pl.polskielasy.worldgen.landscape.m1.LandscapeScale.GAMEPLAY, 1.0);
+			long half = (long) (m.regionSize() * 5);
+			long[][] chunks = chunks(0, 0, half, 0x5EED_0001L);
+			long[][] warm = chunks(0, 0, half, 0x5EED_0002L);
+			for (int r = 0; r < 3; r++) {
+				run(m, warm);
+				runM1(old, warm);
+			}
+			report(scale.id() + " (cały obszar)", m, old, chunks);
+			long[] b = scale == LandscapeScale.REALISTIC ? BESKIDY_REAL : BESKIDY_GAMEPLAY;
+			long bHalf = (long) (m.regionSize() * 0.15);
+			report(scale.id() + " (Beskidy)", m, old, chunks(b[0], b[1], bHalf, 0x5EED_0003L));
+		}
+	}
+
+	/**
+	 * Przebiegi po tych samych chunkach, na zmianę obecny model i kopia M1 (kolejność odwracana co
+	 * przebieg), potem rozkład obecnego modelu według typu krajobrazu.
+	 */
+	private static void report(String name, LandscapeModel m, pl.polskielasy.worldgen.landscape.m1.LandscapeModel old,
+			long[][] chunks) {
+		double[] now = new double[ROUNDS];
+		double[] m1 = new double[ROUNDS];
+		double[] ratio = new double[ROUNDS];
+		double columns = chunks.length * 256.0;
+		for (int r = 0; r < ROUNDS; r++) {
+			if (r % 2 == 0) {
+				now[r] = timeNow(m, chunks) / columns;
+				m1[r] = timeM1(old, chunks) / columns;
+			} else {
+				m1[r] = timeM1(old, chunks) / columns;
+				now[r] = timeNow(m, chunks) / columns;
+			}
+			ratio[r] = now[r] / m1[r];
+		}
+		System.out.println(String.format(Locale.ROOT,
+				"[koszt sample] %s: %d kolumn; obecny: mediana %.2f µs/kolumnę, minimum %.2f; M1: mediana %.2f, minimum %.2f;"
+						+ " obecny/M1: mediana %.3f, z minimów %.3f",
+				name, (int) columns, median(now), min(now), median(m1), min(m1), median(ratio), min(now) / min(m1)));
+		System.out.println(String.format(Locale.ROOT, "[koszt sample] %s: przebiegi obecny %s, M1 %s", name, format(now),
+				format(m1)));
+		System.out.println(String.format(Locale.ROOT,
+				"[koszt sample] %s: µs/kolumnę według typu w środku chunka (liczba chunków):%s", name, perType(m, chunks)));
+	}
+
+	private static double timeNow(LandscapeModel m, long[][] chunks) {
+		long t0 = System.nanoTime();
+		run(m, chunks);
+		return (System.nanoTime() - t0) / 1e3;
+	}
+
+	private static double timeM1(pl.polskielasy.worldgen.landscape.m1.LandscapeModel m, long[][] chunks) {
+		long t0 = System.nanoTime();
+		runM1(m, chunks);
+		return (System.nanoTime() - t0) / 1e3;
+	}
+
+	/** Koszt według typu krajobrazu w środku chunka (jedno przejście, orientacyjnie). */
+	private static String perType(LandscapeModel m, long[][] chunks) {
+		int types = LandscapeType.values().length;
+		long[] nanos = new long[types];
+		int[] count = new int[types];
+		for (long[] c : chunks) {
+			int t = m.sample(c[0] + 8, c[1] + 8).type().ordinal();
+			long t0 = System.nanoTime();
+			runChunk(m, c);
+			nanos[t] += System.nanoTime() - t0;
+			count[t]++;
+		}
+		StringBuilder perType = new StringBuilder();
+		for (LandscapeType t : LandscapeType.values()) {
+			if (count[t.ordinal()] > 0) {
+				perType.append(String.format(Locale.ROOT, " %s=%.2f (%d)", t, nanos[t.ordinal()] / 1e3
+						/ (count[t.ordinal()] * 256.0), count[t.ordinal()]));
+			}
+		}
+		return perType.toString();
+	}
+
+	/**
+	 * {@link #CHUNKS} różnych chunków rozrzuconych deterministycznie po kwadracie o połowie boku
+	 * {@code half} wokół (cx, cz).
+	 */
+	private static long[][] chunks(long cx, long cz, long half, long salt) {
+		Set<String> seen = new LinkedHashSet<>();
+		long[][] out = new long[CHUNKS][];
+		long h = salt;
+		int i = 0;
+		for (int attempt = 0; i < CHUNKS; attempt++) {
+			h = h * 6_364_136_223_846_793_005L + 1_442_695_040_888_963_407L;
+			long x = Math.floorMod(h >>> 20, 2 * half) - half;
+			h = h * 6_364_136_223_846_793_005L + 1_442_695_040_888_963_407L;
+			long z = Math.floorMod(h >>> 20, 2 * half) - half;
+			long[] c = {Math.floorDiv(cx + x, 16) * 16, Math.floorDiv(cz + z, 16) * 16};
+			// Powtórki tylko, gdy obszar ma za mało chunków (nie zdarza się dla obszarów tego testu).
+			if (seen.add(c[0] + "," + c[1]) || attempt > 100 * CHUNKS) {
+				out[i++] = c;
+			}
+		}
+		return out;
+	}
+
+	private static void run(LandscapeModel m, long[][] chunks) {
+		for (long[] c : chunks) {
+			runChunk(m, c);
+		}
+	}
+
+	private static void runChunk(LandscapeModel m, long[] c) {
+		double acc = 0;
+		for (int z = 0; z < 16; z++) {
+			for (int x = 0; x < 16; x++) {
+				acc += m.sample(c[0] + x, c[1] + z).surface();
+			}
+		}
+		sink += acc;
+	}
+
+	/** To samo dla kopii M1; osobna metoda, żeby JIT nie mieszał profili obu modeli w jednym wywołaniu. */
+	private static void runM1(pl.polskielasy.worldgen.landscape.m1.LandscapeModel m, long[][] chunks) {
+		for (long[] c : chunks) {
+			double acc = 0;
+			for (int z = 0; z < 16; z++) {
+				for (int x = 0; x < 16; x++) {
+					acc += m.sample(c[0] + x, c[1] + z).surface();
+				}
+			}
+			sink += acc;
+		}
+	}
+
+	private static double median(double[] v) {
+		double[] s = v.clone();
+		Arrays.sort(s);
+		return s.length % 2 == 1 ? s[s.length / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2;
+	}
+
+	private static double min(double[] v) {
+		return Arrays.stream(v).min().orElse(Double.NaN);
+	}
+
+	private static String format(double[] v) {
+		StringBuilder sb = new StringBuilder("[");
+		for (int i = 0; i < v.length; i++) {
+			sb.append(i == 0 ? "" : ", ").append(String.format(Locale.ROOT, "%.2f", v[i]));
+		}
+		return sb.append(']').toString();
+	}
+}

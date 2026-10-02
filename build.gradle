@@ -1,0 +1,167 @@
+plugins {
+	id 'net.fabricmc.fabric-loom' version "${loom_version}"
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+	archivesName = project.archives_base_name
+}
+
+repositories {
+	exclusiveContent {
+		forRepository {
+			maven {
+				name = 'Modrinth'
+				url = 'https://api.modrinth.com/maven'
+			}
+		}
+		filter {
+			includeGroup 'maven.modrinth'
+		}
+	}
+}
+
+loom {
+	splitEnvironmentSourceSets()
+
+	mods {
+		'polskielasy' {
+			sourceSet sourceSets.main
+			sourceSet sourceSets.client
+		}
+	}
+}
+
+fabricApi {
+	configureDataGeneration {
+		client = true
+	}
+	// Testy klienckie w grze (src/gametest): tworzą świat "Polska" i robią zrzuty ekranu.
+	// Testy serwerowe są wyłączone, więc nie jest potrzebna akceptacja EULA.
+	configureTests {
+		createSourceSet = true
+		modId = 'polskielasy-gametest'
+		enableGameTests = false
+		enableClientGameTests = true
+	}
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+
+	// Wymagane
+	implementation "maven.modrinth:geckolib:${project.geckolib_version}"
+	implementation "maven.modrinth:smartbrainlib:${project.smartbrainlib_version}"
+
+	// Opcjonalne: Serene Seasons. Kompilujemy przeciw API, w środowisku dev uruchamiamy z modem.
+	compileOnly "maven.modrinth:serene-seasons:${project.sereneseasons_version}"
+	localRuntime "maven.modrinth:serene-seasons:${project.sereneseasons_version}"
+	localRuntime "maven.modrinth:glitchcore:${project.glitchcore_version}"
+
+	// Mody optymalizacyjne z zalecanej paczki; w środowisku dev tylko z flagą -Poptymalizacja.
+	if (project.hasProperty('optymalizacja')) {
+		[
+			'sodium:bAZQdGpg',            // Sodium 0.9.2 (stabilne; wymagane przez Nvidium)
+			'lithium:WXHRsMRl',           // Lithium 0.26.1
+			'ferrite-core:d5ddUdiB',      // FerriteCore 9.0.0
+			'c2me-fabric:sSoXjAqP',       // C2ME 0.4.2-alpha.0.88
+			'immediatelyfast:3MP9UR23',   // ImmediatelyFast 1.17.1
+			'entityculling:F4loCvYt',     // EntityCulling 1.11.2
+			'scalablelux:g4eqNSKd',       // ScalableLux 0.3.0-alpha.0.6
+			'moreculling:zL2UEFXS',       // MoreCulling 1.9.0-beta.1
+			'cloth-config:fg2uyxOW',      // Cloth Config 26.3.159 (wymagany przez MoreCulling)
+			'badoptimizations:Sp0ctspw',  // BadOptimizations 2.4.1
+			'sodium-extra:te2y9qZn',      // Sodium Extra 0.9.4
+			'better-block-entities:9VvhfLcA', // Better Block Entities 1.3.9
+			'asyncparticles:iDHkUsnf',    // AsyncParticles 26.3.2.0-alpha.3
+			'rrls:CAVJGGfj',              // RRLS 5.2.8
+			'fastquit:ZZ5dfboC',          // FastQuit 3.1.5
+			'forcecloseworldloadingscreen:6XQXbIMc', // Force Close Loading Screen 2.3.7
+			'nvidium:8mVK1zbk',           // Nvidium 0.4.4-beta7 (tylko karty NVIDIA)
+			'modernfix-mvus:pa9cAfYg',    // ModernFix (MVUS) 5.27.20
+			'debugify:FMaS2nZn',          // Debugify 26.3.0.0
+			'packet-fixer:dTKbGYbb',      // Packet Fixer 3.3.6
+			'chunky:4Eotm6ov',            // Chunky 1.5.3
+			'ksyxis:9CU8nnVG',            // Ksyxis 1.4.5
+			'structure-layout-optimizer:crWm7jXS', // Structure Layout Optimizer 1.1.4
+			'resourceful-config:IFB0XCI9', // Resourceful Config 6.0.1 (wymagany przez SLO)
+			'zfastnoise:BWKn67tN',        // zFastNoise 1.1.0
+			'zconfig:tsgt79sG',           // zConfig 1.0.0 (wymagany przez zFastNoise)
+			'alternate-current:nSBWPz6x', // Alternate Current 1.9.0
+			'asynclogger:Ert0LmWj',       // AsyncLogger 2.2.2
+			'clumps:J4I1wxJZ',            // Clumps 26.3.2
+		].each { localRuntime "maven.modrinth:${it}" }
+	}
+
+	testImplementation 'org.junit.jupiter:junit-jupiter:5.13.4'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+test {
+	useJUnitPlatform()
+}
+
+processResources {
+	def version = project.version
+	inputs.property 'version', version
+
+	filesMatching('fabric.mod.json') {
+		expand 'version': version
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.release = 25
+	it.options.encoding = 'UTF-8'
+}
+
+java {
+	withSourcesJar()
+	sourceCompatibility = JavaVersion.VERSION_25
+	targetCompatibility = JavaVersion.VERSION_25
+}
+
+// Podgląd modelu krajobrazu do PNG, bez uruchamiania gry.
+tasks.register('landscapePreview', JavaExec) {
+	group = 'polskielasy'
+	description = 'Renderuje model krajobrazu do build/preview/*.png'
+	classpath = sourceSets.test.runtimeClasspath
+	mainClass = 'pl.polskielasy.worldgen.landscape.LandscapePreview'
+	args = [layout.buildDirectory.dir('preview').get().asFile.absolutePath]
+	// -PtylkoSiedliska: tylko podgląd siedlisk M2 (kadry, mapy O i P, przekroje dolin, CSV udziałów).
+	if (project.hasProperty('tylkoSiedliska')) {
+		args += ['20260927', 'siedliska']
+	}
+	jvmArgs = ['-Xmx3G', '-Djava.awt.headless=true']
+}
+
+test {
+	maxHeapSize = '3G'
+	testLogging {
+		showStandardStreams = true
+		exceptionFormat = 'full'
+	}
+	// Złoty test terenu (GoldenTerrainTest): z -PzlotyZapisz zapisuje nowy plik wzorcowy zamiast porównywać.
+	if (project.hasProperty('zlotyZapisz')) {
+		systemProperty 'polskielasy.zloty.zapisz', 'true'
+		systemProperty 'polskielasy.zloty.plik', file('src/test/resources/zloty_teren_m1.txt').absolutePath
+	}
+	// SampleKosztTest: liczba przebiegów (domyślnie 7), np. -PkosztPrzebiegi=15 przy rozstrzyganiu budżetu.
+	if (project.hasProperty('kosztPrzebiegi')) {
+		systemProperty 'polskielasy.koszt.przebiegi', project.property('kosztPrzebiegi')
+	}
+}
+
+// Wybór testów w grze: ./gradlew runClientGameTest -Pgametest=wydajnosc|etapy|widoki|klimat|ui|wszystko
+// Tylko wybrane widoki: -Pmiejsca=plaza,klif (nazwy z PolskaWorldClientGameTest).
+tasks.named('runClientGameTest') {
+	jvmArgs "-Dpolskielasy.gametest=${project.findProperty('gametest') ?: 'wszystko'}"
+	jvmArgs "-Dpolskielasy.miejsca=${project.findProperty('miejsca') ?: ''}"
+	if (project.hasProperty('profil')) {
+		jvmArgs "-XX:StartFlightRecording=filename=${layout.buildDirectory.file('profil.jfr').get().asFile.absolutePath},settings=profile"
+	}
+}

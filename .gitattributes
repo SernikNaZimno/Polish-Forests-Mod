@@ -1,0 +1,14 @@
+#
+# https://help.github.com/articles/dealing-with-line-endings/
+#
+# Linux start script should use lf
+/gradlew        text eol=lf
+
+# These are Windows script files and should use crlf
+*.bat           text eol=crlf
+
+
+# Pliki wzorcowe testów porównywane bajt po bajcie
+src/test/resources/*.txt text eol=lf
+*.tar binary
+*.png binary

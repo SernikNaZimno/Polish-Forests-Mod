@@ -1,0 +1,42 @@
+{
+	"schemaVersion": 1,
+	"id": "polskielasy",
+	"version": "${version}",
+	"name": "Przyrodniczo zgodne lasy",
+	"description": "Proceduralne krajobrazy Polski w skali 1:1 z przyrodniczo wiernymi lasami, florą i fauną oraz integracją z porami roku Serene Seasons.",
+	"authors": [
+		"henke"
+	],
+	"contact": {},
+	"license": "All-Rights-Reserved",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"pl.polskielasy.PolskieLasy"
+		],
+		"client": [
+			"pl.polskielasy.client.PolskieLasyClient"
+		],
+		"fabric-datagen": [
+			"pl.polskielasy.client.datagen.PolskieLasyDataGenerator"
+		]
+	},
+	"mixins": [
+		"polskielasy.mixins.json",
+		{
+			"config": "polskielasy.client.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.19.5",
+		"minecraft": "~26.3",
+		"java": ">=25",
+		"fabric-api": "*",
+		"geckolib": ">=5.5.7",
+		"smartbrainlib": ">=2.0.2"
+	},
+	"recommends": {
+		"sereneseasons": "*"
+	}
+}
