@@ -1,4 +1,4 @@
-# Architektura moda „Przyrodniczo zgodne lasy”
+# Architektura moda „Polish Forests” (dawniej „Przyrodniczo zgodne lasy”)
 
 Wersja dokumentu: 2026-09-27. Podstawa: decyzje w `00-decyzje-do-podjecia.md` i raporty `research/01–08`.
 
@@ -25,7 +25,7 @@ Zmieniona 2026-09-27 po uwagach z gry: przy poziomie morza Y −470 wanilijne st
 | Poziom morza | Y 63 | jak w wanilii; 0 m n.p.m. |
 | Odwzorowanie wysokości | 1:1 do ok. 880 m, płynne przejście, powyżej 1200 m ściskanie 1,76 razy | Rysy (2499 m) wypadają na Y 2000, zostaje ok. 30 bloków nad szczytem |
 
-Przykłady: Żuławy (−2 m) to Y 61, Warszawa (≈ 100 m) to Y 163, Babia Góra (1725 m) to Y ok. 1560, Śnieżka (1603 m) to Y ok. 1490. Model krajobrazu, biomy i piętra roślinności działają zawsze w prawdziwych metrach; odwzorowanie na bloki robi klasa `PolskaDimension`.
+Przykłady: Żuławy (−2 m) to Y 61, Warszawa (≈ 100 m) to Y 163, Babia Góra (1725 m) to Y ok. 1560, Śnieżka (1603 m) to Y ok. 1490. Model krajobrazu, biomy i piętra roślinności działają zawsze w prawdziwych metrach; odwzorowanie na bloki robi klasa `PolandDimension`.
 
 ## 3. Generator terenu
 
@@ -66,7 +66,7 @@ Pobrzeża: plaża z wydmą białą i szarą, klif morenowy, mierzeja z zalewem, 
 - Pola L0–L3 buforowane w kaflach (LRU, bezpieczne wątkowo), próbkowane rzadko i interpolowane.
 - Test wydajności przed rozbudową: liczba chunków na sekundę i KB na chunk przy wysokości 3056.
 - Narzędzie deweloperskie renderujące mapę wysokości i typów krajobrazu do PNG z samego modelu, bez uruchamiania gry.
-- Komenda `/polskielasy krajobraz` podająca typ krajobrazu, makroregion, wysokość n.p.m., glebę i siedlisko w miejscu gracza.
+- Komenda `/polishforests here` podająca typ krajobrazu, makroregion, wysokość n.p.m., glebę i siedlisko w miejscu gracza.
 - Zgodność z Distant Horizons do sprawdzenia, bo przy górach 2 km widok daleki ma duże znaczenie.
 
 ## 4. Biomy, gleby i piętra
@@ -116,7 +116,7 @@ Zrobione w kamieniu milowym M0: interfejs `SeasonProvider`, własny kalendarz i 
 | # | Zakres | Kryterium ukończenia |
 |---|---|---|
 | M0 | Szkielet projektu, kalendarz, most do Serene Seasons | **zrobione 2026-09-27**: build, testy i ładowanie gry przechodzą |
-| M1 | Rama świata i model krajobrazu v1 | **zrobione 2026-09-27**: world preset „Polska”, wymiar 3056 bloków, własny generator, 5 krajobrazów prototypowych, podgląd PNG, test w kliencie; szczegóły w sekcji 10 |
+| M1 | Rama świata i model krajobrazu v1 | **zrobione 2026-09-27**: world preset „Polska” (dziś `polishforests:poland`), wymiar 3056 bloków, własny generator, 5 krajobrazów prototypowych, podgląd PNG, test w kliencie; szczegóły w sekcji 10 |
 | M2 | Biomy i gleby | `BiomeSource`, 16 biomów leśnych i biomy nieleśne, bloki podłoża |
 | M3 | Drzewa | bloki pni o zmiennej grubości, generator 10 głównych gatunków, liście sezonowe, mapa drzewostanów |
 | M4 | Piętra lasu | podszyt, runo, mchy, ściółka, martwe drewno, grzybobranie, fenologia |
@@ -129,8 +129,8 @@ Zrobione w kamieniu milowym M0: interfejs `SeasonProvider`, własny kalendarz i 
 ## 9. Struktura kodu
 
 ```
-pl.polskielasy
-├── PolskieLasy                 punkt wejścia
+pl.polishforests
+├── PolishForests               punkt wejścia
 ├── season/                     kalendarz, most do Serene Seasons
 ├── worldgen/
 │   ├── landscape/              model krajobrazu L0–L5 (czysta Java, bez klas gry)
@@ -150,7 +150,7 @@ Model krajobrazu nie zależy od klas Minecrafta. Dzięki temu da się go testowa
 
 ### Co działa
 
-- Typ świata „Polska (przyrodniczo zgodne lasy)” na liście typów świata, z wymiarem Y −1024…2031 i poziomem morza Y −470.
+- Typ świata „Polska (przyrodniczo zgodne lasy)” (od M2-9 „Poland (1:1 Scale)”, `polishforests:poland`) na liście typów świata, z wymiarem Y −1024…2031 i poziomem morza Y −470.
 - Model krajobrazu w czystej Javie (`worldgen/landscape`): pasma górskie i strefa zlodowacenia (L0), makroregiony o zawirowanych granicach z regułą „Beskidy zawsze przez pogórze” (L1), rzeźba pięciu typów (L2), jeziora rynnowe, oczka i doliny wielkich rzek z własnym poziomem lustra (L3).
 - Generator chunków wypełniający kolumny bez gęstości 3D; źródło biomów z pamięcią próbki na kolumnę; mixin przenoszący horyzont nieba na poziom morza.
 - Testy jednostkowe: determinizm, reguła sąsiedztwa, zakres wysokości, woda zawsze otoczona brzegiem, pochodne szumu.
@@ -176,7 +176,7 @@ Model krajobrazu nie zależy od klas Minecrafta. Dzięki temu da się go testowa
 
 - **Rama pionowa** przeniesiona na poziom morza Y 63 (sekcja 2). Mixin przesuwający horyzont nieba nie jest już potrzebny i został usunięty.
 - **Ekran opcji generowania** pod przyciskiem „Dostosuj” typu świata „Polska”: rozmiar regionów (10–200%), tryb krajobrazu, udział lasów gospodarczych, gatunki obce. Działa przez mixin do `WorldCreationUiState.getPresetEditor`, bo wanilia trzyma edytory w niezmiennej mapie. Na razie tylko rozmiar regionów zmienia teren; pozostałe opcje zapisują się w świecie.
-- **Komendy:** `/polskielasy znajdz <cel>` szuka w tle najbliższego typu krajobrazu lub elementu terenu (sandr, morena, rownina, pogorze, beskidy, regiel_gorny, dolina_rzeki, rzeka, jezioro, torfowisko) i zwraca klikalne współrzędne; wymaga uprawnień jak `/locate`. `/polskielasy tutaj` opisuje teren w miejscu gracza.
+- **Komendy:** `/polishforests find <target>` szuka w tle najbliższego typu krajobrazu lub elementu terenu (outwash_plain, moraine_plateau, old_glacial_plain, foothills, beskids, upper_montane, river_valley, river, lake, peatland) i zwraca klikalne współrzędne; wymaga uprawnień jak `/locate`. `/polishforests here` opisuje teren w miejscu gracza.
 - **Wydajność:** wypełnianie terenu zapisuje sekcje jednolite paletą jednowartościową, a mieszane gotową paletą czterobitową; etap terenu jest ok. 13 razy szybszy. Pomiary i zalecana paczka modów są w `02-wydajnosc.md`.
 - **Odległości przy rzeczywistych rozmiarach regionów:** dla ziarna testowego najbliższe Beskidy leżą ok. 820 km od startu. Kto chce mieć góry bliżej, zmniejsza suwak rozmiaru regionów; przy 25% odległości maleją mniej więcej czterokrotnie.
 
@@ -186,27 +186,27 @@ Model krajobrazu nie zależy od klas Minecrafta. Dzięki temu da się go testowa
 
 | Cecha | Skala rzeczywista | Skala rozgrywki |
 |---|---|---|
-| Typ świata w menu | Polska (przyrodniczo zgodne lasy) | Polska (skala rozgrywki) |
+| Typ świata w menu | Poland (1:1 Scale), po polsku „Polska (skala 1:1)” (do M2-9 „Polska (przyrodniczo zgodne lasy)”) | Poland (Gameplay Scale), po polsku „Polska (skala rozgrywki)” |
 | Makroregion | ok. 64 km | ok. 1,4 km, ok. 2 razy więcej niż typowy biom wanilijny |
 | Formy średnie: doliny rzek, rynny, pasma moren, pola wydm | 1:1 | ok. 7 razy mniejsze |
 | Formy lokalne: pagórki, oczka, jeziora w rynnach | 1:1 | o połowę mniejsze |
 | Rozstaw grzbietów górskich | 1:1 | ok. 3 razy mniejszy |
 | Wysokości | 1:1 do ok. 900 m, wyżej ściśnięte; Rysy Y 2000 | bloki = 1,89 · metry^0,742; nizina Y ok. 133, Babia Góra Y ok. 540, Rysy Y ok. 690 |
-| Typ wymiaru | `polskielasy:polska`, Y od −64 do 2031 | `polskielasy:polska_rozgrywka`, Y od −64 do 767 |
+| Typ wymiaru | `polishforests:poland`, Y od −64 do 2031 | `polishforests:poland_gameplay`, Y od −64 do 767 |
 
-Skala jest polem `scale` w ustawieniach generatora (`realistyczna` albo `rozgrywka`) i przełącznikiem na ekranie opcji. Przełącznik podmienia też typ wymiaru, bo niższy świat ma ok. 2,5 raza mniej sekcji w kolumnie, co odciąża renderowanie, światło i pamięć. Model liczy zawsze w metrach, więc piętra roślinności i komendy działają tak samo w obu skalach.
+Skala jest polem `scale` w ustawieniach generatora (`realistic` albo `gameplay`) i przełącznikiem na ekranie opcji. Przełącznik podmienia też typ wymiaru, bo niższy świat ma ok. 2,5 raza mniej sekcji w kolumnie, co odciąża renderowanie, światło i pamięć. Model liczy zawsze w metrach, więc piętra roślinności i komendy działają tak samo w obu skalach.
 
 ### Komendy
 
 | Komenda | Działanie |
 |---|---|
-| `/polskielasy znajdz <cel>` | 21 celów w czterech grupach: krajobrazy, piętra górskie, wody i mokradła, formy terenu |
-| `/polskielasy wysokosc <od> <do>` | najbliższy suchy teren o wysokości w podanym przedziale, w m n.p.m. |
-| `/polskielasy najwyzszy [promien_km]` | najwyższy punkt w okolicy, domyślnie 20 km, a w skali rozgrywki 3 km |
-| `/polskielasy lista` | klikalna lista celów |
-| `/polskielasy tutaj` | typ krajobrazu, wysokość, podłoże, wody i formy terenu pod graczem |
+| `/polishforests find <target>` | 21 celów w czterech grupach: krajobrazy, piętra górskie, wody i mokradła, formy terenu |
+| `/polishforests elevation <from> <to>` | najbliższy suchy teren o wysokości w podanym przedziale, w m n.p.m. |
+| `/polishforests highest [radius_km]` | najwyższy punkt w okolicy, domyślnie 20 km, a w skali rozgrywki 3 km |
+| `/polishforests list` | klikalna lista celów |
+| `/polishforests here` | typ krajobrazu, wysokość, podłoże, wody i formy terenu pod graczem |
 
-Formy terenu rozpoznaje metoda `LandscapeModel.describe`: wydmy, wały morenowe, rynny (także suche), jeziora rynnowe, oczka wodne i torfowe, rzeki, dna i zbocza dolin, grzbiety, szczyty, przełęcze, doliny górskie oraz regiel dolny i górny. Od M2 (krok S2) tanie formy (wydmy, wał, grzbiet, dolina górska, plaża, wydmy nadmorskie, klif, źródło) zapisuje już `sample` w polu `teren.formy` próbki, razem z polami dla siedlisk (rekordy `ColumnSample.Teren`, `Wody`, `Region`; docs/03-m2-biomy.md §3.1). `describe` liczy osobno tylko rynnę, szczyt, przełęcz i regiel.
+Formy terenu rozpoznaje metoda `LandscapeModel.describe`: wydmy, wały morenowe, rynny (także suche), jeziora rynnowe, oczka wodne i torfowe, rzeki, dna i zbocza dolin, grzbiety, szczyty, przełęcze, doliny górskie oraz regiel dolny i górny. Od M2 (krok S2) tanie formy (wydmy, wał, grzbiet, dolina górska, plaża, wydmy nadmorskie, klif, źródło) zapisuje już `sample` w polu `terrain.landformBits` próbki, razem z polami dla siedlisk (rekordy `ColumnSample.Terrain`, `Waters`, `Region`; docs/03-m2-biomy.md §3.1). `describe` liczy osobno tylko rynnę, szczyt, przełęcz i regiel.
 
 ### Poprawki modelu wykryte testami skali rozgrywki
 
@@ -254,7 +254,7 @@ Etap wprowadzony po uwagach z gry: rzeki były zbyt proste, źródła urywały s
 
 ### Komendy
 
-`/polskielasy znajdz` ma teraz 31 celów w pięciu grupach. Nowe cele to morze, pobrzeże, potok, źródło, starorzecze, zalew, ujście, plaża, wydmy nadmorskie i klif. Obiekty wybrzeża są szukane dwuetapowo: najpierw zgrubnie po analitycznej odległości od linii brzegowej, potem gęsto przy znalezionym odcinku. Morze w skali rzeczywistej znajduje się w ułamku sekundy, choć bywa ok. 270 km od punktu startu. Test `PolskaCommandsTest` sprawdza, że każdy cel daje się znaleźć.
+`/polishforests find` ma teraz 31 celów w pięciu grupach. Nowe cele to morze, pobrzeże, potok, źródło, starorzecze, zalew, ujście, plaża, wydmy nadmorskie i klif. Obiekty wybrzeża są szukane dwuetapowo: najpierw zgrubnie po analitycznej odległości od linii brzegowej, potem gęsto przy znalezionym odcinku. Morze w skali rzeczywistej znajduje się w ułamku sekundy, choć bywa ok. 270 km od punktu startu. Test `PolishForestsCommandsTest` sprawdza, że każdy cel daje się znaleźć.
 
 ### Koszt
 
@@ -276,6 +276,32 @@ Pliki w `docs/rzeki-i-morze/`:
 - skala rozgrywki: `rozgrywka_rzeka_2km.png`, `rozgrywka_wybrzeze_4km.png`;
 - zrzuty z gry: `gra_plaza.png` (plaża i klif z morza), `gra_klif.png`.
 
+Nazwy plików są sprzed M2-9. Nowe przebiegi `./gradlew landscapePreview` zapisują te podglądy jako `lowland_river_6km.png`, `zoom_river_valley_40km.png`, `mountain_stream_3km.png`, `lagoon_20km.png`, `coast_6km.png`, `gameplay_river_2km.png` i `gameplay_coast_4km.png`.
+
 ### Co dalej
 
 Roślinność nadrzeczna (łęgi wierzbowo-topolowe, olsy, szuwary, ziołorośla) wymaga własnych biomów strefowanych od koryta (M2) i drzew (M3). Model podaje już do tego odległość od koryta, dno doliny i starorzecza.
+
+## 14. Zmiana nazwy na „Polish Forests” (M2-9, 2026-10-03)
+
+Decyzja M2-9: mod nazywa się „Polish Forests”, id `polishforests`, pakiet `pl.polishforests`. Kod i wszystko, co widzi gracz, są po angielsku, a polski zostaje jako tłumaczenie `pl_pl`. Dokumentacja zostaje po polsku. Zmieniły się identyfikatory generatora, typów wymiaru i presetów, więc światy utworzone wcześniej się nie wczytają (zgodnie z M2-7: bez migracji). Teren dla tego samego ziarna się nie zmienia (pilnuje tego złoty test).
+
+Dawne nazwy, które mogą się pojawić w starszych notatkach, logach i w migawce `migawki/m1-z-narzedziami-S0.tar`:
+
+| Dawniej | Od M2-9 |
+|---|---|
+| nazwa „Przyrodniczo zgodne lasy”, id `polskielasy`, pakiet `pl.polskielasy`, klasa `PolskieLasy` | „Polish Forests”, `polishforests`, `pl.polishforests`, `PolishForests` |
+| `/polskielasy znajdz <cel>`, `lista`, `tutaj`, `wysokosc <od> <do>`, `najwyzszy [promien_km]` | `/polishforests find <target>`, `list`, `here`, `elevation <from> <to>`, `highest [radius_km]` |
+| cele `sandr`, `morena`, `rownina`, `pogorze`, `beskidy`, `pobrzeze`, `regiel_dolny`, `regiel_gorny`, `jezioro_rynnowe`, `oczko`, `torfowisko`, `zrodlo`, `wydmy`, `wal_morenowy`… | `outwash_plain`, `moraine_plateau`, `old_glacial_plain`, `foothills`, `beskids`, `coastland`, `lower_montane`, `upper_montane`, `tunnel_valley_lake`, `kettle_pond`, `peatland`, `headwaters`, `inland_dunes`, `end_moraine`… (pełna lista w `README.md`) |
+| typy świata `polskielasy:polska` („Polska (przyrodniczo zgodne lasy)”) i `polskielasy:polska_rozgrywka` | `polishforests:poland` („Poland (1:1 Scale)”) i `polishforests:poland_gameplay` („Poland (Gameplay Scale)”) |
+| skala `realistyczna` / `rozgrywka` w presecie i `level.dat` | `realistic` / `gameplay` |
+| klasy `PolskaChunkGenerator`, `PolskaBiomeSource`, `PolskaDimension`, `PolskaCommands` … | `PolandChunkGenerator`, `PolandBiomeSource`, `PolandDimension`, `PolishForestsCommands` … (klasy siedlisk: `docs/03-m2-biomy.md`, §11) |
+| `-Pgametest=wszystko\|ui\|wydajnosc\|widoki\|etapy\|klimat` | `-Pgametest=all\|ui\|performance\|views\|stages\|climate` |
+| `-Pmiejsca=plaza,klif` | `-Psites=beach,cliff` |
+| `-PzlotyZapisz`, `-PkosztPrzebiegi`, `-Poptymalizacja`, `-Pprofil`, `-PtylkoSiedliska` | `-PwriteGolden`, `-PcostRuns`, `-Poptimization`, `-Pprofile`, `-PhabitatsOnly` |
+| `-Dpolskielasy.gametest`, `.miejsca`, `.zloty.zapisz`, `.zloty.plik`, `.koszt.przebiegi` | `-Dpolishforests.gametest`, `.sites`, `.golden.write`, `.golden.file`, `.cost.runs` |
+| `src/test/resources/zloty_teren_m1.txt`, `SampleKosztTest`, `PolskaCommandsTest` | `src/test/resources/golden_terrain_m1.txt`, `SampleCostTest`, `PolishForestsCommandsTest` |
+| podglądy `przeglad_typy_400km.png`, `zoom_sandr_20km.png`, `rozgrywka_*`, `m2_<kadr>_biomy.png`, `_strefy.png`, `_trofia.png` | `overview_types_400km.png`, `zoom_outwash_plain_20km.png`, `gameplay_*`, `m2_<frame>_biomes.png`, `_zones.png`, `_fertility.png` |
+| id biomów po polsku (np. `grad`, `ols`, `kosodrzewina`) | `oak_hornbeam_forest`, `alder_carr`, `dwarf_pine_scrub` (tabela w `docs/03-m2-biomy.md`, §2) |
+
+Obrazy w `docs/m1`, `docs/m2`, `docs/rzeki-i-morze` i `docs/skala-rozgrywki` mają nazwy plików sprzed M2-9. Sole szumów w `derive("…")`, także polskie (`habitat.*`), zostały bez zmian, bo inna sól to inny świat.

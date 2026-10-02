@@ -1,7 +1,7 @@
 # Fauna Polski: gatunki, siedliska, rozmieszczenie, zachowania - raport badawczy do symulacji w modzie
 
 Data: 2026-09-21
-Projekt: "Przyrodniczo zgodne lasy" (mod Minecraft / Fabric)
+Projekt: "Polish Forests", dawniej "Przyrodniczo zgodne lasy" (mod Minecraft / Fabric)
 Status pliku: ZAKOŃCZONY (budżet 30 wywołań WebSearch/WebFetch wykorzystany: 3 wyszukiwania + 27 pobrań; 2 pobrania nieudane - "Kraina rybna" 404, OTOP Trendy 2018 >10 MB). Treści oznaczone "własna wiedza / NIE ZWERYFIKOWANO" wymagają potwierdzenia w kolejnej iteracji.
 
 ## Streszczenie

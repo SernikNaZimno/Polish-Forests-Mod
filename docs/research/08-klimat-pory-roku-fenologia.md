@@ -1,7 +1,7 @@
 # 08. Klimat Polski, przebieg pór roku, fenologia roślin i zwierząt — integracja z Serene Seasons
 
 Data: 2026-09-21
-Autor: agent badawczy (Claude), projekt "Przyrodniczo zgodne lasy" (mod do Minecrafta, Fabric)
+Autor: agent badawczy (Claude), projekt "Polish Forests", dawniej "Przyrodniczo zgodne lasy" (mod do Minecrafta, Fabric)
 Status: ZAKOŃCZONO (budżet 30 wywołań WebSearch/WebFetch wyczerpany). Elementy oznaczone „NIE ZBADANO” lub „wiedza ogólna, niepotwierdzona” nie zostały zweryfikowane w źródle internetowym w tym badaniu.
 
 Konwencja oznaczeń: **[ZW]** = zweryfikowane w źródle podanym obok; **[WO]** = wiedza ogólna / wartość z briefu zadania, NIEPOTWIERDZONA w tym badaniu (do sprawdzenia przed użyciem jako „fakt” w dokumentacji moda); **[SZAC]** = szacunek/obliczenie własne na podstawie danych [ZW].

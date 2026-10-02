@@ -1,7 +1,7 @@
 # 04. Technika dodawania flory w Fabric: zestawy drewna, drzewa, podszyt, runo, mchy, ściółka, grzyby, martwe drewno, rozmieszczanie
 
 Data: 2026-09-21
-Projekt: "Przyrodniczo zgodne lasy" (mod Fabric do Minecrafta)
+Projekt: "Polish Forests", dawniej "Przyrodniczo zgodne lasy" (mod Fabric do Minecrafta)
 Status pliku: ZAKOŃCZONY (budżet 30 wywołań WebSearch/WebFetch wykorzystany w całości; elementy niezweryfikowane w sieci są oznaczone "NIE ZWERYFIKOWANE"/"z wiedzy ogólnej"/"do potwierdzenia" i zebrane w sekcji 11).
 
 ## Streszczenie

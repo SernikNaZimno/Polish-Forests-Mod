@@ -1,6 +1,6 @@
 # Wydajność i zalecana paczka modów
 
-Stan: 2026-09-29. Pomiary z testów w grze (`./gradlew runClientGameTest -Pgametest=wydajnosc`), to samo ziarno, zasięg widzenia 12 chunków, okno 854 × 480, kamera 30 bloków nad lasem 4,2 km od startu.
+Stan: 2026-09-29. Pomiary z testów w grze (`./gradlew runClientGameTest -Pgametest=performance`), to samo ziarno, zasięg widzenia 12 chunków, okno 854 × 480, kamera 30 bloków nad lasem 4,2 km od startu.
 
 ## Skąd bierze się obciążenie
 
@@ -105,7 +105,7 @@ ModernFix w wersji oryginalnej i Krypton nie mają wersji na 26.3.
 ## Środowisko deweloperskie
 
 ```bash
-./gradlew runClient -Poptymalizacja
+./gradlew runClient -Poptimization
 ```
 
-Flaga `-Poptymalizacja` dołącza mody z paczki do gry uruchamianej z projektu. Flaga `-Pprofil` przy testach w grze nagrywa profil JFR do `build/profil.jfr`.
+Flaga `-Poptimization` dołącza mody z paczki do gry uruchamianej z projektu. Flaga `-Pprofile` przy testach w grze nagrywa profil JFR do `build/profile.jfr`.

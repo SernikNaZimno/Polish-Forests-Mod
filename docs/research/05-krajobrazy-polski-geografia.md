@@ -1,7 +1,7 @@
 # Fizycznogeograficzne typy krajobrazu Polski – przegląd na potrzeby generatora terenu w rzeczywistej skali
 
 **Data:** 2026-09-21
-**Projekt:** mod "Przyrodniczo zgodne lasy" (Minecraft, Fabric)
+**Projekt:** mod "Polish Forests", dawniej "Przyrodniczo zgodne lasy" (Minecraft, Fabric)
 **Status:** raport ukończony w ramach budżetu 30 zapytań internetowych (26 WebFetch + 4 WebSearch; 2 adresy Wikipedii zwróciły 404). Fakty potwierdzone w źródle oznaczono gwiazdką (*) lub przypisem; fragmenty oparte na wiedzy ogólnej (Kondracki, podręczniki geomorfologii) są wyraźnie oznaczone "wiedza ogólna / do potwierdzenia"; braki oznaczono "NIE ZBADANO". Pełna lista niepewności – sekcja 10.
 
 ## Streszczenie

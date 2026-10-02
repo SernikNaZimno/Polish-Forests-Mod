@@ -1,7 +1,7 @@
 # Technika generacji terenu w Minecraft (Fabric) na potrzeby realistycznego krajobrazu Polski
 
 Data: 2026-09-21
-Projekt: "Przyrodniczo zgodne lasy" (mod Fabric)
+Projekt: "Polish Forests", dawniej "Przyrodniczo zgodne lasy" (mod Fabric)
 Status: raport ukończony w ramach budżetu 30 wywołań wyszukiwania/pobrania (2026-09-21/22). Braki są oznaczone "NIE ZBADANO", "NIE POTWIERDZONO" lub "DO POTWIERDZENIA".
 
 ## Streszczenie

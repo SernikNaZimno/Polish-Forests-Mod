@@ -1,7 +1,7 @@
 # Technika tworzenia zwierząt w Fabric: modele, tekstury, animacje, AI, spawn (50-80 gatunków polskiej fauny)
 
 Data: 2026-09-21
-Projekt: "Przyrodniczo zgodne lasy" (mod Fabric)
+Projekt: "Polish Forests", dawniej "Przyrodniczo zgodne lasy" (mod Fabric)
 Status: raport zakończony w ramach budżetu 30 zapytań WebSearch/WebFetch (wykorzystano 29) + odczyty kodu z GitHub (API/raw). Braki oznaczono "NIE ZBADANO" lub "do potwierdzenia".
 
 ## Streszczenie

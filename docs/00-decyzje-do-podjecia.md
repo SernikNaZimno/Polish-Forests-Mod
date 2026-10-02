@@ -55,7 +55,7 @@ Data: 2026-09-27. Źródło: raporty w `docs/research/01–08`. Status każdej d
 |---|---|---|
 | D1 | Które gatunki dostają pełny zestaw drewna (drzwi, łodzie, tabliczki), a które „lite” | OTWARTA |
 | D2 | Dąb, brzoza, świerk, topola: wanilijne bloki czy własne | OTWARTA |
-| D3 | Wiśnia (cherry grove) i inne niepolskie biomy/drzewa: usunąć z polskiego świata | **PODJĘTA 2026-10-02 (wynika z D7 i A6): świat Polska ma tylko biomy `polskielasy:*`** |
+| D3 | Wiśnia (cherry grove) i inne niepolskie biomy/drzewa: usunąć z polskiego świata | **PODJĘTA 2026-10-02 (wynika z D7 i A6): świat Polska ma tylko biomy `polishforests:*`** |
 | D4 | Grzyby: dekoracja czy system zbieractwa z jadalnością | **PODJĘTA 2026-09-27: grzybobranie** (jadalne i trujące z efektami, zależne od gatunku drzewa, pory roku i deszczu; owoce leśne jako jedzenie) |
 | D5 | Tekstury i modele: kto je robi (proceduralna baza + ręczne poprawki w Blockbench?) | OTWARTA |
 | D6 | Licencja moda (kod/assety) | **PODJĘTA 2026-10-02: MIT** dla kodu (plik `LICENSE`); licencja przyszłych tekstur i modeli do ustalenia przy D5 |

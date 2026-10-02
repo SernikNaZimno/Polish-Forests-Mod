@@ -1,7 +1,7 @@
 # Lasy Polski: siedliskowe typy lasu, zbiorowiska roślinne, skład warstw — słownik do budowy każdego typu lasu w grze
 
 Data: 2026-09-21
-Projekt: mod "Przyrodniczo zgodne lasy" (Minecraft, Fabric)
+Projekt: mod "Polish Forests", dawniej "Przyrodniczo zgodne lasy" (Minecraft, Fabric)
 Raport badawczy nr 06 — stan pracy: UKOŃCZONY (2026-09-27; sekcje 9–12 i streszczenie dopisane)
 
 ## Streszczenie
