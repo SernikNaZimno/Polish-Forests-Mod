@@ -8,7 +8,7 @@
 *.bat           text eol=crlf
 
 
-# Pliki wzorcowe testów porównywane bajt po bajcie
+# Test reference files compared byte for byte
 src/test/resources/*.txt text eol=lf
 *.tar binary
 *.png binary

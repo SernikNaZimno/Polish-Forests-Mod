@@ -29,30 +29,30 @@ import org.junit.jupiter.api.Test;
 import pl.polishforests.worldgen.chunk.VerticalScale;
 
 /**
- * Złoty test terenu (M2, krok S0). Liczy skrót pól {@link ColumnSample}, które istniały w M1
- * (surface z dokładnością 1e-6 m, waterLevel, waterKind, type, substrate, coverDepth z dokładnością 1e-6 m),
- * oraz Y bloków gruntu i wody w obu odwzorowaniach pionowych, i porównuje go z plikiem wzorcowym
- * {@code src/test/resources/zloty_teren_m1.txt}. Nowe pola dodane do próbki nie wchodzą do skrótu.
+ * Golden terrain test (M2, step S0). Computes a hash of the {@link ColumnSample} fields that existed in M1
+ * (surface to 1e-6 m, waterLevel, waterKind, type, substrate, coverDepth to 1e-6 m), plus the Y of the
+ * ground and water blocks in both vertical mappings, and compares it with the golden file
+ * {@code src/test/resources/golden_terrain_m1.txt}. New fields added to the sample are not part of the hash.
  *
- * <p>Zestawy: 2 skale × 2 ziarna przy suwaku regionów 1,0 i jeden zestaw z suwakiem 0,5. W każdym
- * siatka 32 × 32 na obszarze ok. 19 makroregionów i 17 łat 16 × 16 w miejscach trudnych (wybrzeże,
- * zalew, plaża, klif, ujście, rzeki, starorzecze, jeziora, oczko, torfowisko, potok, Beskidy, szczyt
- * z reglem górnym, Pogórze), razem 5376 kolumn. Każda łata ma cel (np. plaża: kolumny BEACH_SAND i forma
- * PLAZA), sprawdzany przy zapisie i przy każdym porównaniu. Środki łat szukamy tylko przy zapisie
- * pliku; przy porównaniu bierzemy je z pliku.
+ * <p>Sets: 2 scales × 2 seeds at region slider 1.0 and one set at slider 0.5. Each has a 32 × 32 grid
+ * over an area of about 19 macroregions and 17 patches of 16 × 16 at difficult places (coast, lagoon,
+ * beach, cliff, river mouth, rivers, oxbow lake, lakes, kettle pond, peatland, mountain stream, Beskids,
+ * summit with the upper montane belt, Foothills), 5376 columns in total. Each patch has a target (e.g. beach:
+ * BEACH_SAND columns and the BEACH landform), checked when writing and at every comparison. Patch centers
+ * are searched for only when writing the file; when comparing they are taken from the file.
  *
- * <p>Przy różnicy test liczy te same kolumny zamrożoną kopią kodu M1 ({@code landscape.m1}) i wypisuje,
- * o ile różnią się wartości (max |Δsurface|, liczba kolumn z innym enumem). Różnica rzędu 1e-12 m po
- * zmianie kolejności działań różni się wtedy wyraźnie od prawdziwej zmiany terenu.
+ * <p>On a difference the test computes the same columns with the frozen copy of the M1 code ({@code landscape.m1})
+ * and prints how much the values differ (max |Δsurface|, number of columns with a different enum). A difference
+ * of the order of 1e-12 m after reordering operations then clearly stands out from a real terrain change.
  *
- * <p>Nowy plik wzorcowy: {@code ./gradlew test --tests '*GoldenTerrainTest*' -PzlotyZapisz}.
- * Wolno go nadpisać tylko przy zamierzonej zmianie terenu, opisanej w dokumentacji.
+ * <p>New golden file: {@code ./gradlew test --tests '*GoldenTerrainTest*' -PwriteGolden}.
+ * It may be overwritten only for an intended terrain change described in the documentation.
  */
 class GoldenTerrainTest {
 	static final String RESOURCE = "/golden_terrain_m1.txt";
 	static final long SEED_A = 20260927L;
 	static final long SEED_B = -7_316_550_294_015_845_337L;
-	/** Zestawy kolumn: 2 skale × 2 ziarna przy suwaku 1,0 i jeden przy suwaku regionów 0,5. */
+	/** Column sets: 2 scales × 2 seeds at slider 1.0 and one at region slider 0.5. */
 	static final List<SetKey> SETS = List.of(
 			new SetKey(LandscapeScale.REALISTIC, SEED_A, 1.0),
 			new SetKey(LandscapeScale.REALISTIC, SEED_B, 1.0),
@@ -60,10 +60,10 @@ class GoldenTerrainTest {
 			new SetKey(LandscapeScale.GAMEPLAY, SEED_B, 1.0),
 			new SetKey(LandscapeScale.REALISTIC, SEED_A, 0.5));
 	static final String[] FIELDS = {"surface", "waterLevel", "waterKind", "type", "substrate", "coverDepth", "blocks"};
-	/** Najmniejsza liczba kolumn w zestawie (wymóg planu M2). */
+	/** Minimum number of columns in a set (M2 plan requirement). */
 	static final int MIN_COLUMNS = 4096;
 
-	/** Skala, ziarno i suwak regionów jednego zestawu. */
+	/** Scale, seed and region slider of one set. */
 	record SetKey(LandscapeScale scale, long seed, double regionScale) {
 		String key() {
 			return scale.id() + " " + seed + " " + regionScale;
@@ -80,7 +80,7 @@ class GoldenTerrainTest {
 		}
 	}
 
-	/** Łata kolumn: n × n punktów co {@code step} m wokół środka (x, z). */
+	/** Column patch: n × n points every {@code step} m around the center (x, z). */
 	record Patch(String name, int n, long x, long z, int step) {
 		long px(int i) {
 			return x + (long) (i - n / 2) * step;
@@ -95,13 +95,13 @@ class GoldenTerrainTest {
 		}
 	}
 
-	/** Zestaw z pliku wzorcowego: łaty i ich skróty. */
+	/** A set from the golden file: patches and their hashes. */
 	record GoldenSet(String key, List<Patch> patches, Map<String, String> hashes) {
 	}
 
 	/**
-	 * Pola kolumny z M1 niezależnie od wersji {@link ColumnSample} (enumy po nazwie), żeby ten sam skrót
-	 * liczył się z obecnego modelu i z zamrożonej kopii M1, także gdy próbka dostanie nowe pola.
+	 * M1 column fields independent of the {@link ColumnSample} version (enums by name), so that the same hash
+	 * is computed from the current model and from the frozen M1 copy, even when the sample gets new fields.
 	 */
 	record Column(double surface, int waterLevel, String waterKind, String type, String substrate, double coverDepth) {
 		/**
@@ -130,12 +130,12 @@ class GoldenTerrainTest {
 					s.coverDepth());
 		}
 
-		/** Jak {@link ColumnSample#hasWater()} w M1. */
+		/** As {@link ColumnSample#hasWater()} in M1. */
 		boolean hasWater() {
 			return waterLevel != ColumnSample.NO_WATER && waterLevel > (int) Math.floor(surface);
 		}
 
-		/** Y bloku gruntu i wody tak jak w {@code PolskaChunkGenerator} (bez przycięcia do ramy wymiaru). */
+		/** Y of the ground and water blocks as in {@code PolandChunkGenerator} (without clamping to the dimension bounds). */
 		int[] blocks() {
 			return new int[] {VerticalScale.REAL.topBlockY(surface),
 					hasWater() ? VerticalScale.REAL.topBlockY(waterLevel) : Integer.MIN_VALUE,
@@ -151,13 +151,13 @@ class GoldenTerrainTest {
 			return;
 		}
 		Map<String, GoldenSet> golden = read();
-		assertEquals(SETS.size(), golden.size(), "plik wzorcowy ma złą liczbę zestawów");
+		assertEquals(SETS.size(), golden.size(), "golden file has the wrong number of sets");
 		List<String> errors = new ArrayList<>();
 		for (SetKey k : SETS) {
 			GoldenSet expected = golden.get(k.key());
-			assertNotNull(expected, "brak zestawu " + k.key() + " w pliku wzorcowym");
+			assertNotNull(expected, "missing set " + k.key() + " in the golden file");
 			int points = expected.patches().stream().mapToInt(Patch::count).sum();
-			assertTrue(points >= MIN_COLUMNS, "set " + k.key() + " ma tylko " + points + " kolumn");
+			assertTrue(points >= MIN_COLUMNS, "set " + k.key() + " has only " + points + " columns");
 			LandscapeModel m = k.model();
 			List<ColumnSample[]> samples = samples(m, expected.patches());
 			List<Column[]> cols = columns(samples);
@@ -166,7 +166,7 @@ class GoldenTerrainTest {
 			for (Map.Entry<String, String> e : expected.hashes().entrySet()) {
 				String got = actual.get(e.getKey());
 				if (!e.getValue().equals(got)) {
-					errors.add(k.key() + " / " + e.getKey() + ": oczekiwano " + e.getValue() + ", jest " + got);
+					errors.add(k.key() + " / " + e.getKey() + ": expected " + e.getValue() + ", got " + got);
 					if (e.getKey().startsWith("patch ")) {
 						changed.add(e.getKey().substring("patch ".length()));
 					}
@@ -175,15 +175,15 @@ class GoldenTerrainTest {
 			if (!changed.isEmpty()) {
 				errors.addAll(diagnose(k, expected, cols, changed));
 			}
-			// Cele łat i pokrycie po skrótach, żeby duża zmiana terenu najpierw pokazała zmienione łaty.
+			// Patch targets and coverage after the hashes, so that a large terrain change shows the changed patches first.
 			errors.addAll(checkTargets(m, k.key(), expected.patches(), samples));
 		}
-		assertTrue(errors.isEmpty(), "Teren różni się od M1 (" + errors.size() + " uwag):\n" + String.join("\n", errors));
+		assertTrue(errors.isEmpty(), "Terrain differs from M1 (" + errors.size() + " issues):\n" + String.join("\n", errors));
 	}
 
 	/**
-	 * Zamrożona kopia kodu M1 daje te same skróty co plik wzorcowy. Pilnuje, że kopia jest wiernym
-	 * wzorcem dla diagnozy różnic i dla porównań kosztu w {@code SampleKosztTest}.
+	 * The frozen copy of the M1 code gives the same hashes as the golden file. Ensures that the copy is a faithful
+	 * reference for diagnosing differences and for the cost comparisons in {@code SampleCostTest}.
 	 */
 	@Test
 	void frozenM1CopyMatchesGolden() throws IOException {
@@ -194,7 +194,7 @@ class GoldenTerrainTest {
 		List<String> errors = new ArrayList<>();
 		for (SetKey k : SETS) {
 			GoldenSet expected = golden.get(k.key());
-			assertNotNull(expected, "brak zestawu " + k.key() + " w pliku wzorcowym");
+			assertNotNull(expected, "missing set " + k.key() + " in the golden file");
 			Map<String, String> actual = hashes(expected.patches(), samplesM1(k.modelM1(), expected.patches()));
 			for (Map.Entry<String, String> e : expected.hashes().entrySet()) {
 				if (!e.getValue().equals(actual.get(e.getKey()))) {
@@ -202,17 +202,17 @@ class GoldenTerrainTest {
 				}
 			}
 		}
-		assertTrue(errors.isEmpty(), "Kopia M1 (landscape.m1) różni się od pliku wzorcowego: inna JVM lub procesor, "
-				+ "zmieniona kopia albo plik wzorcowy wygenerowany z innego terenu:\n" + String.join("\n", errors));
+		assertTrue(errors.isEmpty(), "The M1 copy (landscape.m1) differs from the golden file: a different JVM or CPU, "
+				+ "a modified copy, or a golden file generated from different terrain:\n" + String.join("\n", errors));
 	}
 
-	/** Przy różnicy skrótu: o ile zmienione łaty różnią się od zamrożonej kopii M1. */
+	/** On a hash mismatch: how much the changed patches differ from the frozen M1 copy. */
 	private static List<String> diagnose(SetKey k, GoldenSet expected, List<Column[]> actual, Set<String> changed) {
 		List<String> out = new ArrayList<>();
 		List<Column[]> ref = samplesM1(k.modelM1(), expected.patches());
 		if (!hashes(expected.patches(), ref).equals(expected.hashes())) {
-			out.add(k.key() + ": UWAGA, zamrożona kopia M1 też nie zgadza się z plikiem wzorcowym, więc różnica "
-					+ "pochodzi z JVM lub procesora (albo z pliku wzorcowego), a nie ze zmiany kodu modelu");
+			out.add(k.key() + ": WARNING, the frozen M1 copy does not match the golden file either, so the difference "
+					+ "comes from the JVM or CPU (or from the golden file), not from a change in the model code");
 		}
 		for (int q = 0; q < expected.patches().size(); q++) {
 			Patch p = expected.patches().get(q);
@@ -234,15 +234,15 @@ class GoldenTerrainTest {
 				diff[4] += java.util.Arrays.equals(a.blocks(), b.blocks()) ? 0 : 1;
 			}
 			boolean numeric = dSurface < 1e-6 && dCover < 1e-6 && java.util.Arrays.stream(diff).sum() == 0;
-			out.add(String.format(Locale.ROOT, "%s / %s względem kopii M1: max|Δsurface| = %.3g m, max|ΔcoverDepth| = %.3g m,"
-					+ " różne kolumny (z %d): waterLevel %d, waterKind %d, type %d, substrate %d, bloki %d%s", k.key(), p.name(),
+			out.add(String.format(Locale.ROOT, "%s / %s versus the M1 copy: max|Δsurface| = %.3g m, max|ΔcoverDepth| = %.3g m,"
+					+ " differing columns (of %d): waterLevel %d, waterKind %d, type %d, substrate %d, blocks %d%s", k.key(), p.name(),
 					dSurface, dCover, p.count(), diff[0], diff[1], diff[2], diff[3], diff[4],
-					numeric ? " -> różnica tylko numeryczna (< 1e-6 m), zaokrąglenie skrótu trafiło na granicę" : ""));
+					numeric ? " -> numerical difference only (< 1e-6 m), the hash rounding hit a boundary" : ""));
 		}
 		return out;
 	}
 
-	/** Cele łat i pokrycie całego zestawu; zwraca listę uwag. */
+	/** Patch targets and coverage of the whole set; returns a list of issues. */
 	static List<String> checkTargets(LandscapeModel m, String key, List<Patch> patches, List<ColumnSample[]> samples) {
 		List<String> out = new ArrayList<>();
 		Set<String> kinds = new LinkedHashSet<>();
@@ -261,32 +261,32 @@ class GoldenTerrainTest {
 			}
 			Site site = site(p.name());
 			if (site == null) {
-				out.add(key + ": nieznana łata " + p.name());
+				out.add(key + ": unknown patch " + p.name());
 			} else if (!site.target().test(m, p, a)) {
-				out.add(key + " / " + p.name() + ": łata nie zawiera celu: " + site.description());
+				out.add(key + " / " + p.name() + ": patch does not contain its target: " + site.description());
 			}
 		}
 		for (WaterKind k : WaterKind.values()) {
 			if (!kinds.contains(k.name())) {
-				out.add(key + ": brak wody " + k + " w zestawie kolumn " + kinds);
+				out.add(key + ": missing water " + k + " in the column set " + kinds);
 			}
 		}
 		for (LandscapeType t : LandscapeType.values()) {
 			if (!types.contains(t.name())) {
-				out.add(key + ": brak typu " + t + " w zestawie kolumn " + types);
+				out.add(key + ": missing type " + t + " in the column set " + types);
 			}
 		}
 		for (Substrate s : Substrate.values()) {
 			if (!substrates.contains(s.name())) {
-				out.add(key + ": brak utworu " + s + " w zestawie kolumn " + substrates);
+				out.add(key + ": missing substrate " + s + " in the column set " + substrates);
 			}
 		}
 		return out;
 	}
 
 	/**
-	 * Próbki łat, wiersz po wierszu. Liczone równolegle jak w generatorze (C2ME), więc test pilnuje
-	 * też, że wynik nie zależy od kolejności wywołań ani od stanu pamięci podręcznych modelu.
+	 * Patch samples, row by row. Computed in parallel as in the generator (C2ME), so the test also ensures
+	 * that the result depends neither on the call order nor on the state of the model caches.
 	 */
 	static List<ColumnSample[]> samples(LandscapeModel m, List<Patch> patches) {
 		List<ColumnSample[]> out = new ArrayList<>();
@@ -298,7 +298,7 @@ class GoldenTerrainTest {
 		return out;
 	}
 
-	/** Te same kolumny policzone zamrożoną kopią kodu M1. */
+	/** The same columns computed with the frozen copy of the M1 code. */
 	static List<Column[]> samplesM1(pl.polishforests.worldgen.landscape.m1.LandscapeModel m, List<Patch> patches) {
 		List<Column[]> out = new ArrayList<>();
 		for (Patch p : patches) {
@@ -322,7 +322,7 @@ class GoldenTerrainTest {
 		return out;
 	}
 
-	/** Skróty łat, pól i całości dla zestawu kolumn; klucze w stałej kolejności. */
+	/** Hashes of the patches, the fields and the total for a column set; keys in a fixed order. */
 	static Map<String, String> hashes(List<Patch> patches, List<Column[]> samples) {
 		MessageDigest all = sha();
 		MessageDigest[] fields = new MessageDigest[FIELDS.length];
@@ -349,7 +349,7 @@ class GoldenTerrainTest {
 		return out;
 	}
 
-	/** Pola próbki z M1 jako bajty; nazwy enumów zamiast liczb porządkowych, żeby dopisanie wartości nic nie psuło. */
+	/** M1 sample fields as bytes; enum names instead of ordinals, so that adding values breaks nothing. */
 	static byte[][] fieldBytes(Column s) {
 		ByteBuffer blocks = ByteBuffer.allocate(16);
 		for (int y : s.blocks()) {
@@ -381,7 +381,7 @@ class GoldenTerrainTest {
 		return HexFormat.of().formatHex(d.digest());
 	}
 
-	// ---------------------------------------------------------------- odczyt i zapis pliku wzorcowego
+	// ---------------------------------------------------------------- reading and writing the golden file
 
 	private static Map<String, GoldenSet> read() throws IOException {
 		Map<String, GoldenSet> sets = new LinkedHashMap<>();
@@ -400,21 +400,21 @@ class GoldenTerrainTest {
 				String[] t = line.split("\\s+");
 				switch (t[0]) {
 					case "set" -> {
-						// zestaw <skala> <ziarno> [<suwak regionów>]
+						// set <scale> <seed> [<region slider>]
 						double regionScale = t.length > 3 ? Double.parseDouble(t[3]) : 1.0;
 						current = new GoldenSet(t[1] + " " + Long.parseLong(t[2]) + " " + regionScale, new ArrayList<>(),
 								new LinkedHashMap<>());
 						sets.put(current.key(), current);
 					}
 					case "patch" -> {
-						// miejsce <nazwa> <n> <x> <z> <krok> <skrót>
+						// patch <name> <n> <x> <z> <step> <hash>
 						current.patches().add(new Patch(t[1], Integer.parseInt(t[2]), Long.parseLong(t[3]),
 								Long.parseLong(t[4]), Integer.parseInt(t[5])));
 						current.hashes().put("patch " + t[1], t[6]);
 					}
 					case "field" -> current.hashes().put("field " + t[1], t[2]);
 					case "total" -> current.hashes().put("total", t[1]);
-					default -> fail("nieznany wiersz w pliku wzorcowym: " + line);
+					default -> fail("unknown line in the golden file: " + line);
 				}
 			}
 		}
@@ -436,14 +436,14 @@ class GoldenTerrainTest {
 			List<String> missing = new ArrayList<>();
 			List<Patch> patches = choosePatches(k.model(), missing);
 			for (String name : missing) {
-				errors.add(k.key() + ": nie znaleziono miejsca " + name);
+				errors.add(k.key() + ": site not found: " + name);
 			}
 			if (!missing.isEmpty()) {
 				continue;
 			}
 			int points = patches.stream().mapToInt(Patch::count).sum();
 			assertTrue(points >= MIN_COLUMNS);
-			// Skróty i cele liczy świeży model, tak jak przy porównaniu (bez pamięci podręcznej z wyszukiwania).
+			// Hashes and targets are computed by a fresh model, as in the comparison (without caches from the search).
 			LandscapeModel fresh = k.model();
 			List<ColumnSample[]> samples = samples(fresh, patches);
 			errors.addAll(checkTargets(fresh, k.key(), patches, samples));
@@ -458,36 +458,36 @@ class GoldenTerrainTest {
 			}
 			sb.append("total ").append(h.get("total")).append('\n');
 		}
-		assertTrue(errors.isEmpty(), "Plik wzorcowy niezapisany:\n" + String.join("\n", errors));
+		assertTrue(errors.isEmpty(), "Golden file not written:\n" + String.join("\n", errors));
 		Path path = Path.of(target);
 		Files.createDirectories(path.getParent());
 		Files.writeString(path, sb.toString().replace("\r\n", "\n"), StandardCharsets.UTF_8);
-		System.out.println("Zapisano plik wzorcowy złotego testu: " + path);
+		System.out.println("Saved the golden test file: " + path);
 	}
 
-	// ---------------------------------------------------------------- wybór łat
+	// ---------------------------------------------------------------- patch selection
 
-	/** Skąd zaczyna się spiralne szukanie środka łaty (WYBRZEZE: środek łaty „wybrzeze”). */
+	/** Where the spiral search for the patch center starts (COAST: the center of the "coast" patch). */
 	enum Start {
 		ZERO, COAST, BESKIDS, FOOTHILLS
 	}
 
-	/** Wstępny, tani warunek dla punktu spirali. */
+	/** Preliminary, cheap condition for a spiral point. */
 	interface Pre {
 		boolean test(LandscapeModel m, long x, long z, ColumnSample s);
 	}
 
-	/** Cel łaty: co musi w niej być. */
+	/** Patch target: what the patch must contain. */
 	interface Target {
 		boolean test(LandscapeModel m, Patch p, ColumnSample[] a);
 	}
 
 	/**
-	 * Miejsce łaty. Środka szukamy po spirali od punktu {@code start} z krokiem {@code searchReal} lub
-	 * {@code searchGameplay}: kandydatem jest punkt spełniający {@code pre} albo, gdy podano
-	 * {@code border}, punkt na granicy tego warunku (bisekcja między sąsiednimi punktami spirali).
-	 * Kandydat wygrywa, gdy łata wokół niego spełnia {@code target}. Poza górami pomijamy kandydatów
-	 * blisko łat już wybranych, żeby np. plaża nie powtarzała łaty wybrzeża.
+	 * Patch site. The center is searched for on a spiral from the point {@code start} with the step {@code searchReal} or
+	 * {@code searchGameplay}: a candidate is a point that meets {@code pre} or, when {@code border} is given,
+	 * a point on the boundary of that condition (bisection between neighboring spiral points).
+	 * A candidate wins when the patch around it meets {@code target}. Outside the mountains, candidates close
+	 * to patches already chosen are skipped, so that e.g. the beach does not repeat the coast patch.
 	 */
 	record Site(String name, int stepReal, int stepGameplay, Start start, double searchReal, double searchGameplay,
 			Pre pre, Predicate<ColumnSample> border, String description, Target target) {
@@ -500,70 +500,70 @@ class GoldenTerrainTest {
 
 	static final List<Site> SITES = List.of(
 			new Site("coast", 4, 4, Start.ZERO, 2_000, 100, null, SEA_OPEN,
-					"otwarte morze (SEA/MORZE) i suchy ląd, po co najmniej 16 kolumn",
+					"open sea (SEA/SEA) and dry land, at least 16 columns of each",
 					(m, p, a) -> count(a, SEA_OPEN) >= 16 && count(a, s -> !s.hasWater()) >= 16),
 			new Site("lagoon", 4, 4, Start.ZERO, 500, 25,
 					(m, x, z, s) -> s.waterKind() == WaterKind.SEA && s.type() == LandscapeType.COASTLAND, null,
-					"zalew (SEA/POBRZEZE)",
+					"lagoon (SEA/COASTLAND)",
 					(m, p, a) -> count(a, s -> s.waterKind() == WaterKind.SEA && s.type() == LandscapeType.COASTLAND) > 0),
 			new Site("beach", 6, 3, Start.ZERO, 1_700, 85, null, SEA,
-					"plaża: co najmniej 8 kolumn BEACH_SAND i forma PLAZA",
+					"beach: at least 8 BEACH_SAND columns and the BEACH landform",
 					(m, p, a) -> count(a, s -> s.substrate() == Substrate.BEACH_SAND) >= 8
 							&& hasForm(m, p, a, s -> s.substrate() == Substrate.BEACH_SAND, Landform.BEACH)),
-			new Site("cliff", 10, 6, Start.ZERO, 2_300, 115, null, SEA, "klif (forma KLIF)",
+			new Site("cliff", 10, 6, Start.ZERO, 2_300, 115, null, SEA, "cliff (CLIFF landform)",
 					(m, p, a) -> hasForm(m, p, a, s -> s.type() == LandscapeType.COASTLAND && !s.hasWater()
 							&& s.surface() > 8, Landform.CLIFF)),
 			new Site("river_mouth", 4, 3, Start.COAST, 250, 15,
 					(m, x, z, s) -> s.waterKind() == WaterKind.RIVER && m.coastDistance(x, z) < 3_000 * m.scale().meso(),
-					null, "ujście rzeki (RIVER z formą UJSCIE)", (m, p, a) -> hasForm(m, p, a, RIVER, Landform.RIVER_MOUTH)),
+					null, "river mouth (RIVER with the RIVER_MOUTH landform)", (m, p, a) -> hasForm(m, p, a, RIVER, Landform.RIVER_MOUTH)),
 			new Site("lowland_river", 3, 3, Start.ZERO, 500, 25,
-					(m, x, z, s) -> s.waterKind() == WaterKind.RIVER && s.type().isLowland(), null, "rzeka na nizinie",
+					(m, x, z, s) -> s.waterKind() == WaterKind.RIVER && s.type().isLowland(), null, "river in the lowland",
 					(m, p, a) -> count(a, s -> s.waterKind() == WaterKind.RIVER && s.type().isLowland()) > 0),
 			new Site("large_river", 8, 3, Start.ZERO, 1_500, 60,
 					(m, x, z, s) -> s.waterKind() == WaterKind.RIVER && s.type().isLowland(), null,
-					"rzeka rzędu ≥ 2 (forma RZEKA) zajmująca co najmniej 1/8 łaty",
+					"river of order ≥ 2 (RIVER landform) covering at least 1/8 of the patch",
 					(m, p, a) -> count(a, RIVER) >= 32 && hasForm(m, p, a, RIVER, Landform.RIVER)),
 			new Site("foothills_river", 3, 3, Start.FOOTHILLS, 250, 15,
 					(m, x, z, s) -> s.waterKind() == WaterKind.RIVER && s.type() == LandscapeType.FOOTHILLS, null,
-					"rzeka rzędu ≥ 2 (forma RZEKA) na Pogórzu",
+					"river of order ≥ 2 (RIVER landform) in the Foothills",
 					(m, p, a) -> hasForm(m, p, a, s -> s.waterKind() == WaterKind.RIVER && s.type() == LandscapeType.FOOTHILLS,
 							Landform.RIVER)),
 			new Site("oxbow_lake", 3, 3, Start.ZERO, 500, 25, (m, x, z, s) -> s.waterKind() == WaterKind.OXBOW, null,
-					"starorzecze (OXBOW)", (m, p, a) -> count(a, s -> s.waterKind() == WaterKind.OXBOW) > 0),
+					"oxbow lake (OXBOW)", (m, p, a) -> count(a, s -> s.waterKind() == WaterKind.OXBOW) > 0),
 			new Site("tunnel_valley_lake", 6, 6, Start.ZERO, 500, 25, (m, x, z, s) -> s.waterKind() == WaterKind.LAKE, null,
-					"jezioro rynnowe (LAKE)", (m, p, a) -> count(a, s -> s.waterKind() == WaterKind.LAKE) > 0),
+					"tunnel valley lake (LAKE)", (m, p, a) -> count(a, s -> s.waterKind() == WaterKind.LAKE) > 0),
 			new Site("outwash_plain_lake", 6, 6, Start.ZERO, 2_500, 150,
 					(m, x, z, s) -> s.type() == LandscapeType.OUTWASH_PLAIN
 							&& (s.waterKind() == WaterKind.LAKE || s.waterKind() == WaterKind.KETTLE), null,
-					"jezioro lub oczko (LAKE, KETTLE) na sandrze",
+					"lake or kettle pond (LAKE, KETTLE) on the outwash plain",
 					(m, p, a) -> count(a, s -> s.type() == LandscapeType.OUTWASH_PLAIN
 							&& (s.waterKind() == WaterKind.LAKE || s.waterKind() == WaterKind.KETTLE)) > 0),
 			new Site("kettle_pond", 4, 2, Start.ZERO, 500, 25,
 					(m, x, z, s) -> s.waterKind() == WaterKind.KETTLE && s.type() == LandscapeType.MORAINE_PLATEAU, null,
-					"oczko wytopiskowe (KETTLE) na wysoczyźnie",
+					"kettle pond (KETTLE) on the moraine plateau",
 					(m, p, a) -> count(a, s -> s.waterKind() == WaterKind.KETTLE) > 0),
 			new Site("peatland", 4, 2, Start.ZERO, 250, 15, (m, x, z, s) -> s.substrate() == Substrate.PEAT, null,
-					"torf (PEAT, forma OCZKO_TORFOWE)", (m, p, a) -> hasForm(m, p, a, s -> s.substrate() == Substrate.PEAT,
+					"peat (PEAT, KETTLE_BOG landform)", (m, p, a) -> hasForm(m, p, a, s -> s.substrate() == Substrate.PEAT,
 							Landform.KETTLE_BOG)),
 			new Site("mountain_stream", 2, 2, Start.BESKIDS, 20, 4,
 					(m, x, z, s) -> s.waterKind() == WaterKind.RIVER && s.type() == LandscapeType.BESKIDS, null,
-					"potok (forma POTOK) w Beskidach",
+					"stream (STREAM landform) in the Beskids",
 					(m, p, a) -> hasForm(m, p, a, s -> s.waterKind() == WaterKind.RIVER && s.type() == LandscapeType.BESKIDS,
 							Landform.STREAM)),
 			new Site("beskids", 60, 20, Start.BESKIDS, 5_000, 200, (m, x, z, s) -> true, null,
-					"wnętrze Beskidów (co najmniej 200 kolumn BESKIDY)",
+					"Beskids interior (at least 200 BESKIDS columns)",
 					(m, p, a) -> count(a, s -> s.type() == LandscapeType.BESKIDS) >= 200),
-			// W skali rozgrywki Beskidy rzadko sięgają 1150 m (ziarno 20260927: najwyżej ok. 1015 m w promieniu
-			// 8 km od wnętrza), więc tam łata wymaga tylko szczytu powyżej 900 m.
+			// At gameplay scale the Beskids rarely reach 1150 m (seed 20260927: at most about 1015 m within 8 km
+			// of the interior), so there the patch only requires a summit above 900 m.
 			new Site("summit", 20, 8, Start.BESKIDS, 200, 10,
 					(m, x, z, s) -> s.type() == LandscapeType.BESKIDS && s.surface() >= highPeak(m), null,
-					"szczyt (forma SZCZYT) powyżej 900 m, w skali realistycznej powyżej 1150 m z formą REGIEL_GORNY",
+					"summit (SUMMIT landform) above 900 m, at realistic scale above 1150 m with the UPPER_MONTANE landform",
 					(m, p, a) -> hasForm(m, p, a, s -> s.type() == LandscapeType.BESKIDS && s.surface() >= highPeak(m),
 							Landform.SUMMIT)
 							&& (m.scale() != LandscapeScale.REALISTIC || hasForm(m, p, a, s -> s.type() == LandscapeType.BESKIDS
 									&& s.surface() >= 1_150, Landform.UPPER_MONTANE))),
 			new Site("foothills", 40, 12, Start.FOOTHILLS, 5_000, 200, (m, x, z, s) -> true, null,
-					"wnętrze Pogórza (co najmniej 200 kolumn POGORZE)",
+					"Foothills interior (at least 200 FOOTHILLS columns)",
 					(m, p, a) -> count(a, s -> s.type() == LandscapeType.FOOTHILLS) >= 200));
 
 	static Site site(String name) {
@@ -575,7 +575,7 @@ class GoldenTerrainTest {
 		return null;
 	}
 
-	/** Próg wysokości łaty „szczyt”: regiel górny w skali realistycznej, 900 m w skali rozgrywki. */
+	/** Height threshold of the "summit" patch: the upper montane belt at realistic scale, 900 m at gameplay scale. */
 	static double highPeak(LandscapeModel m) {
 		return m.scale() == LandscapeScale.REALISTIC ? 1_150 : 900;
 	}
@@ -588,7 +588,7 @@ class GoldenTerrainTest {
 		return n;
 	}
 
-	/** Czy w którejś kolumnie spełniającej {@code test} opis terenu zawiera formę {@code form}. */
+	/** Whether the terrain description of any column that meets {@code test} contains the landform {@code form}. */
 	static boolean hasForm(LandscapeModel m, Patch p, ColumnSample[] a, Predicate<ColumnSample> test, Landform form) {
 		for (int k = 0; k < a.length; k++) {
 			if (test.test(a[k]) && m.describe(p.px(k % p.n()), p.pz(k / p.n())).forms().contains(form)) {
@@ -598,7 +598,7 @@ class GoldenTerrainTest {
 		return false;
 	}
 
-	/** Siatka 32 × 32 i łaty 16 × 16 z {@link #SITES}; nazwy nieznalezionych miejsc trafiają do {@code missing}. */
+	/** A 32 × 32 grid and 16 × 16 patches from {@link #SITES}; names of sites not found go to {@code missing}. */
 	static List<Patch> choosePatches(LandscapeModel m, List<String> missing) {
 		List<Patch> out = new ArrayList<>();
 		int gridStep = (int) Math.round(m.regionSize() * 0.6);
@@ -613,10 +613,10 @@ class GoldenTerrainTest {
 			Patch p = start == null ? null : search(m, site, start, out);
 			String time = String.format(Locale.ROOT, "%.1f s", (System.nanoTime() - t0) / 1e9);
 			if (p == null) {
-				System.out.println("Złoty test: nie znaleziono miejsca " + site.name() + " (" + time + ")");
+				System.out.println("Golden test: site not found: " + site.name() + " (" + time + ")");
 				missing.add(site.name());
 			} else {
-				System.out.println("Złoty test: " + site.name() + " x=" + p.x() + " z=" + p.z() + " (" + time + ")");
+				System.out.println("Golden test: " + site.name() + " x=" + p.x() + " z=" + p.z() + " (" + time + ")");
 				out.add(p);
 				if (site.start() == Start.ZERO && site.name().equals("coast")) {
 					starts.put(Start.COAST, new double[] {p.x(), p.z()});
@@ -626,7 +626,7 @@ class GoldenTerrainTest {
 		return out;
 	}
 
-	/** Spiralne szukanie środka łaty (zob. {@link Site}). */
+	/** Spiral search for the patch center (see {@link Site}). */
 	static Patch search(LandscapeModel m, Site site, double[] start, List<Patch> chosen) {
 		boolean real = m.scale() == LandscapeScale.REALISTIC;
 		double avoid = real ? 1_000 : 100;
@@ -678,7 +678,7 @@ class GoldenTerrainTest {
 		return false;
 	}
 
-	/** Punkt na granicy warunku między (ix, iz), gdzie warunek zachodzi, a (ox, oz), gdzie nie zachodzi. */
+	/** A point on the boundary of the condition between (ix, iz), where it holds, and (ox, oz), where it does not. */
 	private static long[] bisect(LandscapeModel m, Predicate<ColumnSample> test, long ix, long iz, long ox, long oz) {
 		double ax = ix;
 		double az = iz;

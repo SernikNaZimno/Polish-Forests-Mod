@@ -11,12 +11,12 @@ import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 
 /**
- * Sieć rzeczna, morze i wybrzeże: brzegi wód, poprawność spływu, brak klifów przy źródłach oraz pola
- * cieków eksportowane do {@link ColumnSample.Waters} (M2, krok S2).
+ * River network, sea and coast: water banks, correct flow, no cliffs at sources, and the watercourse
+ * fields exported to {@link ColumnSample.Waters} (M2, step S2).
  */
 class RiverNetworkTest {
 	private static final long SEED = 20260927L;
-	/** Wnętrze Beskidów dla ziarna {@link #SEED} (łata „beskidy” w {@code zloty_teren_m1.txt}); oszczędza szukania. */
+	/** Beskids interior for the seed {@link #SEED} (the "beskids" patch in {@code golden_terrain_m1.txt}); saves searching. */
 	private static final double[] BESKIDS_REAL = {154_834, 1_058_738};
 	private static final double[] BESKIDS_GAMEPLAY = {27_609, 3_254};
 
@@ -45,35 +45,35 @@ class RiverNetworkTest {
 							if (l.kind() != 1) {
 								if (l.kind() == 2) {
 									assertTrue(net.level(n) >= l.target().levelAt(l.targetT()) - 1e-9,
-											"poziom rośnie przy ujściu dopływu");
+											"level rises at a tributary mouth");
 								}
 								break;
 							}
 							RiverNetwork.Node d = net.node(order, l.di(), l.dj());
-							assertTrue(d.route() < n.route(), "spływ pod górę");
+							assertTrue(d.route() < n.route(), "flow runs uphill");
 							assertTrue(net.level(d) <= net.level(n) + 1e-9,
-									"poziom wody rośnie z biegiem cieku w " + n);
+									"water level rises downstream at " + n);
 							n = d;
 							checked++;
-							assertTrue(step < 4_999, "cykl w sieci rzecznej od węzła " + n);
+							assertTrue(step < 4_999, "cycle in the river network from node " + n);
 						}
 					}
 				}
 			}
-			assertTrue(checked > 50, "za mało sprawdzonych odcinków: " + checked);
+			assertTrue(checked > 50, "too few segments checked: " + checked);
 		}
 	}
 
 	/**
-	 * Przy źródłach potoków w górach różnica wysokości między sąsiednimi suchymi kolumnami nie może
-	 * przekraczać stromego stoku; stary model rzek dawał tu pionowy klif.
+	 * At the sources of mountain streams the height difference between neighboring dry columns must not
+	 * exceed a steep slope; the old river model produced a vertical cliff here.
 	 */
 	@Test
 	void mountainStreamSourcesHaveNoCliffs() {
 		LandscapeModel m = new LandscapeModel(SEED, 1.0);
 		RiverNetwork net = networkOf(m);
 		double[] site = find(m, s -> s.type() == LandscapeType.BESKIDS, 5_000);
-		assertTrue(site != null, "brak Beskidów w obszarze testowym");
+		assertTrue(site != null, "no Beskids in the test area");
 		int sources = 0;
 		double worst = 0;
 		String where = "";
@@ -93,7 +93,7 @@ class RiverNetworkTest {
 						double tl = Math.hypot(s.dx(t), s.dz(t));
 						double x = cx - s.dz(t) / tl * k;
 						double z = cz + s.dx(t) / tl * k;
-						// Tylko suchy teren: brzeg koryta nad wodą może być stromy.
+						// Dry terrain only: the channel bank above the water may be steep.
 						ColumnSample c0 = m.sample(x, z);
 						ColumnSample c1 = m.sample(x + 1, z);
 						ColumnSample c2 = m.sample(x, z + 1);
@@ -110,22 +110,22 @@ class RiverNetworkTest {
 				}
 			}
 		}
-		assertTrue(sources > 0, "brak źródeł potoków w górach");
-		assertTrue(worst < 3.0, "klif przy źródle: różnica " + worst + " m na 1 m w " + where);
+		assertTrue(sources > 0, "no mountain stream sources");
+		assertTrue(worst < 3.0, "cliff at a source: difference " + worst + " m per 1 m at " + where);
 	}
 
 	/**
-	 * d (odległość od brzegu koryta) jest ciągła i ma ograniczony spadek. W korycie d ≤ 0, a w dnie
-	 * doliny u ∈ [0, 1]. Miejsca: rzeka nizinna, rzeka rzędu 3 (silne meandry, dolina daleko od osi
-	 * odcinka), rzeka rzędu 2 na nizinie i potok w Beskidach.
+	 * d (distance from the channel bank) is continuous and has a bounded gradient. In the channel d ≤ 0, and on the
+	 * valley floor u ∈ [0, 1]. Sites: a lowland river, an order 3 river (strong meanders, valley far from the segment
+	 * axis), an order 2 river in the lowland and a stream in the Beskids.
 	 *
-	 * <p>Każdy krok transektu (1 m) o |Δd| > 1,5 m zagęszczamy do 1/256 m, a największy podkrok jeszcze
-	 * do 1/65536 m: skok (nieciągłość) zostaje wtedy duży, a stromy spadek maleje razem z krokiem.
-	 * d liczone jest w układzie doliny (u wzdłuż, v w poprzek), w którym rysowane jest koryto. Przy
-	 * silnie wygiętej dolinie układ jest ściśnięty, więc spadek d dochodzi lokalnie do ok. 8 m na 1 m
-	 * (Odstępstwo S2 w docs/03-m2-biomy.md). Sprawdzamy: brak skoków, spadek w pasie stref nadwodnych
-	 * (d ≤ 200 m·k) najwyżej 10 m na 1 m i powyżej 1,5 m na 1 m najwyżej w 1% kroków pasa, poza pasem
-	 * najwyżej 4 m na 1 m.
+	 * <p>Every transect step (1 m) with |Δd| > 1.5 m is refined to 1/256 m, and the largest substep further
+	 * to 1/65536 m: a jump (discontinuity) then stays large, while a steep gradient shrinks with the step.
+	 * d is computed in the valley frame (u along, v across) in which the channel is drawn. In a
+	 * strongly bent valley the frame is compressed, so the gradient of d locally reaches about 8 m per 1 m
+	 * (Deviation S2 in docs/03-m2-biomy.md). We check: no jumps, a gradient in the waterside zone belt
+	 * (d ≤ 200 m·k) of at most 10 m per 1 m and above 1.5 m per 1 m in at most 1% of the belt steps, outside the belt
+	 * at most 4 m per 1 m.
 	 */
 	@Test
 	void channelDistanceIsContinuousAndNonPositiveInChannel() {
@@ -140,12 +140,12 @@ class RiverNetworkTest {
 			sites.add(findStream(m, real ? BESKIDS_REAL : BESKIDS_GAMEPLAY));
 			int length = real ? 2_000 : 500;
 			double band = 200 * scale.local();
-			// {kroki, kroki w pasie, strome w pasie, kolumny koryta, kolumny dna, skoki}
+			// {steps, steps in the belt, steep in the belt, channel columns, floor columns, jumps}
 			long[] cnt = new long[6];
 			double[] worst = new double[2];
 			String[] where = {"", "", ""};
 			for (double[] site : sites) {
-				assertTrue(site != null, "brak miejsca testowego w skali " + scale.id());
+				assertTrue(site != null, "no test site at scale " + scale.id());
 				for (int a = 0; a < 16; a++) {
 					double ang = a * Math.PI / 16 + 0.1;
 					double dx = Math.cos(ang);
@@ -159,13 +159,13 @@ class RiverNetworkTest {
 						double d = w.channelDist();
 						if (c.waterKind() == WaterKind.RIVER) {
 							cnt[3]++;
-							assertTrue(d <= 0, "d > 0 w korycie: " + w + " w " + x + "," + z);
+							assertTrue(d <= 0, "d > 0 in the channel: " + w + " at " + x + "," + z);
 						}
 						if (w.inFloor()) {
 							cnt[4]++;
-							assertTrue(w.u() >= 0 && w.u() <= 1, "u poza [0, 1] w dnie: " + w);
+							assertTrue(w.u() >= 0 && w.u() <= 1, "u outside [0, 1] on the floor: " + w);
 						} else {
-							assertTrue(Double.isNaN(w.u()), "u poza dnem: " + w);
+							assertTrue(Double.isNaN(w.u()), "u outside the floor: " + w);
 						}
 						if (Double.isFinite(prev) && Double.isFinite(d)) {
 							cnt[0]++;
@@ -195,20 +195,20 @@ class RiverNetworkTest {
 				}
 			}
 			System.out.println(String.format(Locale.ROOT,
-					"[d koryta] %s: %d kroków (%d w pasie d ≤ 200 m·k, %d powyżej 1,5 m na 1 m), %d kolumn koryta, %d w dnie,"
-							+ " %d skoków; największy spadek w pasie %.2f m na 1 m w %s, poza pasem %.2f w %s",
+					"[channel d] %s: %d steps (%d in the belt d ≤ 200 m·k, %d above 1.5 m per 1 m), %d channel columns, %d on the floor,"
+							+ " %d jumps; largest gradient in the belt %.2f m per 1 m at %s, outside the belt %.2f at %s",
 					scale.id(), cnt[0], cnt[1], cnt[2], cnt[3], cnt[4], cnt[5], worst[0], where[0], worst[1], where[1]));
-			assertTrue(cnt[3] > 50 && cnt[4] > 500, "za mało koryt i den w transektach");
-			assertTrue(cnt[5] == 0, "d nieciągłe (" + cnt[5] + " skoków), np. w " + where[2]);
-			assertTrue(worst[0] <= 10, "spadek d w pasie stref " + worst[0] + " m na 1 m w " + where[0]);
-			assertTrue(worst[1] <= 4, "spadek d poza pasem stref " + worst[1] + " m na 1 m w " + where[1]);
-			assertTrue(cnt[2] <= 0.01 * cnt[1], "za dużo stromych kroków w pasie stref: " + cnt[2] + " z " + cnt[1]);
+			assertTrue(cnt[3] > 50 && cnt[4] > 500, "too few channels and floors in the transects");
+			assertTrue(cnt[5] == 0, "d discontinuous (" + cnt[5] + " jumps), e.g. at " + where[2]);
+			assertTrue(worst[0] <= 10, "gradient of d in the zone belt " + worst[0] + " m per 1 m at " + where[0]);
+			assertTrue(worst[1] <= 4, "gradient of d outside the zone belt " + worst[1] + " m per 1 m at " + where[1]);
+			assertTrue(cnt[2] <= 0.01 * cnt[1], "too many steep steps in the zone belt: " + cnt[2] + " of " + cnt[1]);
 		}
 	}
 
 	/**
-	 * Spadek d (m na 1 m) na odcinku 1 m od (x, z) w kierunku (dx, dz), z zagęszczeniem do 1/256 m i
-	 * największego podkroku do 1/65536 m; +∞, gdy różnica nie maleje z krokiem (skok).
+	 * Gradient of d (m per 1 m) over 1 m from (x, z) in the direction (dx, dz), refined to 1/256 m and the
+	 * largest substep to 1/65536 m; +∞ when the difference does not shrink with the step (a jump).
 	 */
 	private static double refinedGradient(LandscapeModel m, double x, double z, double dx, double dz) {
 		double best = 0;
@@ -239,12 +239,12 @@ class RiverNetworkTest {
 	}
 
 	/**
-	 * Brzeg wypukły: w zakolach rzek nizinnych z silnymi meandrami połowa brzegów jest wypukła. Liczymy
-	 * przekroje koryta: dla kolumny brzegu szukamy kolumny po drugiej stronie koryta (wzdłuż gradientu d)
-	 * i sprawdzamy, czy dokładnie jedna z nich jest wypukła. Udział powierzchni pasa brzegu jest mniejszy
-	 * od 1/2, bo w ciasnym zakolu brzeg wewnętrzny jest krótszy od zewnętrznego (promień R − W/2 wobec R + W/2).
-	 * Stronę w świecie sprawdzamy na co piątym przekroju: koryto otacza brzeg wewnętrzny, więc w kole
-	 * o promieniu 1,5W + d wokół brzegu wypukłego jest więcej wody niż wokół wklęsłego.
+	 * Convex bank: in the bends of strongly meandering lowland rivers half of the banks are convex. We count
+	 * channel cross-sections: for a bank column we look for the column on the other side of the channel (along the
+	 * gradient of d) and check that exactly one of them is convex. The area share of the bank belt is less
+	 * than 1/2, because in a tight bend the inner bank is shorter than the outer one (radius R − W/2 versus R + W/2).
+	 * The side in the world is checked on every fifth cross-section: the channel wraps around the inner bank, so a
+	 * circle of radius 1.5W + d around a convex bank contains more water than one around a concave bank.
 	 */
 	@Test
 	void aboutHalfOfMeanderBanksAreConvex() {
@@ -253,9 +253,9 @@ class RiverNetworkTest {
 			RiverNetwork net = networkOf(m);
 			double[] site = find(m, c -> c.waterKind() == WaterKind.RIVER && c.type().isLowland(),
 					scale == LandscapeScale.REALISTIC ? 500 : 25);
-			assertTrue(site != null, "brak rzeki nizinnej w skali " + scale.id());
-			// {kolumny brzegu, wypukłe, przekroje, przekroje z dokładnie jednym brzegiem wypukłym, wypukłe w przekrojach,
-			// przekroje z różną ilością wody wokół brzegów, w tym z większą przy wypukłym}
+			assertTrue(site != null, "no lowland river at scale " + scale.id());
+			// {bank columns, convex, cross-sections, cross-sections with exactly one convex bank, convex in cross-sections,
+			// cross-sections with different amounts of water around the banks, of which with more at the convex one}
 			long[] total = new long[7];
 			int reaches = 0;
 			for (int order = 3; order >= 2 && reaches < 5; order--) {
@@ -268,7 +268,7 @@ class RiverNetworkTest {
 						if (s == null || s.theta < 1.0 || s.len < 6 * s.lambda) {
 							continue;
 						}
-						// Środek odcinka (meandry nie są tu wygaszane), na korycie: dolina bywa daleko od osi odcinka.
+						// Middle of the segment (meanders are not damped here), on the channel: the valley may be far from the segment axis.
 						double tl = Math.hypot(s.dx(0.5), s.dz(0.5));
 						double off = s.channelOffset(0.5);
 						double cx = s.px(0.5) - s.dz(0.5) / tl * off;
@@ -296,7 +296,7 @@ class RiverNetworkTest {
 								if (wd.convexBank()) {
 									cnt[1]++;
 								}
-								// Druga strona koryta: wzdłuż gradientu d, o 2d + W.
+								// Other side of the channel: along the gradient of d, by 2d + W.
 								double gx = m.sample(x + 0.5, z).waters().channelDist() - m.sample(x - 0.5, z).waters().channelDist();
 								double gz = m.sample(x, z + 0.5).waters().channelDist() - m.sample(x, z - 0.5).waters().channelDist();
 								double gl = Math.hypot(gx, gz);
@@ -346,18 +346,18 @@ class RiverNetworkTest {
 			double share = total[2] == 0 ? 0 : total[4] / (2.0 * total[2]);
 			double sideOk = total[5] == 0 ? 0 : (double) total[6] / total[5];
 			System.out.println(String.format(Locale.ROOT,
-					"[brzeg wypukły] %s: %d odcinków, %d kolumn brzegu (wypukłych %.3f powierzchni), %d przekrojów:"
-							+ " dokładnie jeden brzeg wypukły w %.3f, wypukłych brzegów %.3f; więcej wody wokół wypukłego"
-							+ " w %.3f z %d rozstrzygniętych",
+					"[convex bank] %s: %d segments, %d bank columns (convex %.3f of the area), %d cross-sections:"
+							+ " exactly one convex bank in %.3f, convex banks %.3f; more water around the convex one"
+							+ " in %.3f of %d decided",
 					scale.id(), reaches, total[0], areaShare, total[2], opposite, share, sideOk, total[5]));
-			assertTrue(reaches > 0 && total[2] > 200, "za mało przekrojów zakoli: " + reaches + " odcinków, " + total[2]);
-			assertTrue(opposite > 0.8, "w przekroju koryta powinien być dokładnie jeden brzeg wypukły: " + opposite);
-			assertTrue(share > 0.4 && share < 0.6, "udział brzegów wypukłych w przekrojach " + share);
-			assertTrue(total[5] >= 20 && sideOk > 0.8, "brzeg wypukły po złej stronie łuku: " + sideOk + " z " + total[5]);
+			assertTrue(reaches > 0 && total[2] > 200, "too few bend cross-sections: " + reaches + " segments, " + total[2]);
+			assertTrue(opposite > 0.8, "a channel cross-section should have exactly one convex bank: " + opposite);
+			assertTrue(share > 0.4 && share < 0.6, "share of convex banks in cross-sections " + share);
+			assertTrue(total[5] >= 20 && sideOk > 0.8, "convex bank on the wrong side of the bend: " + sideOk + " of " + total[5]);
 		}
 	}
 
-	/** Udział kolumn rzeki w kole o promieniu r wokół (x, z): siatka biegunowa 8 × 24 z wagą pola. */
+	/** Share of river columns in a circle of radius r around (x, z): an 8 × 24 polar grid weighted by area. */
 	private static double riverAround(LandscapeModel m, double x, double z, double r) {
 		double water = 0;
 		for (int i = 0; i < 8; i++) {
@@ -373,14 +373,14 @@ class RiverNetworkTest {
 	}
 
 	/**
-	 * Strona łuku w układzie krzywej Kinoshity: w s = 0 krzywizna dθ/ds jest dodatnia (łuk w lewo, środek
-	 * po stronie +v), w s = 0,5 ujemna. Punkt tuż obok krzywej po stronie środka łuku jest wewnętrzny.
+	 * Side of the bend in the Kinoshita curve frame: at s = 0 the curvature dθ/ds is positive (a left bend, center
+	 * on the +v side), at s = 0.5 negative. A point just next to the curve on the side of the bend center is inner.
 	 */
 	@Test
 	void innerSideFollowsMeanderCurvature() {
 		double theta = 1.5;
 		for (double u : new double[] {0.0, 0.5}) {
-			// Położenie krzywej w poprzek przy danym u: minimum odległości.
+			// Position of the curve across the valley at the given u: minimum of the distance.
 			double v0 = 0;
 			double best = Double.MAX_VALUE;
 			for (int q = -400; q <= 400; q++) {
@@ -392,10 +392,10 @@ class RiverNetworkTest {
 				}
 			}
 			boolean leftInner = u == 0.0;
-			assertTrue(MeanderField.innerSide(u, v0 + 0.03, theta) == leftInner, "strona +v przy u = " + u);
-			assertTrue(MeanderField.innerSide(u, v0 - 0.03, theta) != leftInner, "strona -v przy u = " + u);
+			assertTrue(MeanderField.innerSide(u, v0 + 0.03, theta) == leftInner, "side +v at u = " + u);
+			assertTrue(MeanderField.innerSide(u, v0 - 0.03, theta) != leftInner, "side -v at u = " + u);
 		}
-		assertFalse(MeanderField.innerSide(0.0, 0.03, 0.0), "bez meandrów brzeg nie jest wypukły");
+		assertFalse(MeanderField.innerSide(0.0, 0.03, 0.0), "without meanders no bank is convex");
 	}
 
 	static RiverNetwork networkOf(LandscapeModel m) {
@@ -434,9 +434,9 @@ class RiverNetworkTest {
 		add(sites, names, "oxbow lake", find(m, s -> s.waterKind() == WaterKind.OXBOW, step / 4));
 		add(sites, names, "lowland river", find(m, s -> s.waterKind() == WaterKind.RIVER && s.type().isLowland(),
 				step / 4));
-		System.out.println("Miejsca testowe: " + names);
+		System.out.println("Test sites: " + names);
 		assertTrue(names.contains("coast") && names.contains("mountain stream") && names.contains("lowland river"),
-				"nie znaleziono wszystkich rodzajów wód: " + names);
+				"not all water kinds were found: " + names);
 		int[][] dirs = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
 		for (int q = 0; q < sites.size(); q++) {
 			double[] site = sites.get(q);
@@ -459,8 +459,8 @@ class RiverNetworkTest {
 						ColumnSample o = g[j + d[1]][i + d[0]];
 						boolean ok;
 						if (o.hasWater()) {
-							// Między kolumnami koryta dozwolone bystrza i kaskady (woda spada do wody),
-							// przy ujściu do jeziora lub morza najwyżej stopień 1 m.
+							// Rapids and cascades are allowed between channel columns (water falls into water),
+							// at a mouth into a lake or the sea at most a 1 m step.
 							boolean cascade = c.waterKind() == WaterKind.RIVER && o.waterKind() == WaterKind.RIVER;
 							boolean flowing = c.waterKind() == WaterKind.RIVER || o.waterKind() == WaterKind.RIVER;
 							ok = o.waterLevel() == c.waterLevel() || cascade
@@ -468,20 +468,20 @@ class RiverNetworkTest {
 						} else {
 							ok = o.surfaceMeters() >= c.waterLevel();
 						}
-						assertTrue(ok, names.get(q) + ": woda bez brzegu w " + (x0 + i) + "," + (z0 + j) + ": " + c
-								+ " obok " + o);
+						assertTrue(ok, names.get(q) + ": water without a bank at " + (x0 + i) + "," + (z0 + j) + ": " + c
+								+ " next to " + o);
 					}
 				}
 			}
 		}
 	}
 
-	/** Potok w górach: punkt na osi koryta cieku rzędu 1 lub 2 w Beskidach. */
+	/** Mountain stream: a point on the channel axis of an order 1 or 2 watercourse in the Beskids. */
 	static double[] findStream(LandscapeModel m) {
 		return findStream(m, find(m, s -> s.type() == LandscapeType.BESKIDS, m.scale() == LandscapeScale.REALISTIC ? 5_000 : 200));
 	}
 
-	/** Potok w górach w pobliżu punktu {@code site} w Beskidach. */
+	/** Mountain stream near the point {@code site} in the Beskids. */
 	static double[] findStream(LandscapeModel m, double[] site) {
 		RiverNetwork net = networkOf(m);
 		if (site == null) {

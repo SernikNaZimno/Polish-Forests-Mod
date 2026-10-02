@@ -1,44 +1,44 @@
 package pl.polishforests.worldgen.habitat;
 
 /**
- * Wariant w obrębie biomu (zespół, podzespół, postać): pole siedliska czytane przez palety drzewostanu
- * i runa (M3, M4) oraz faunę. Najwyżej 32 pozycje; kolejność stała, nowe tylko na końcu.
+ * Variant within a biome (association, subassociation, form): a habitat field read by the tree stand
+ * and ground layer palettes (M3, M4) and by fauna. At most 32 entries; the order is fixed, new ones go at the end only.
  */
 public enum Association {
 	TYPICAL,
-	/** Łęg wierzbowy Salicetum albae. */
+	/** White willow riparian forest, Salicetum albae. */
 	SALICETUM_ALBAE,
-	/** Łęg topolowy Populetum albae. */
+	/** White poplar riparian forest, Populetum albae. */
 	POPULETUM_ALBAE,
-	/** Podgórski łęg jesionowy Carici remotae-Fraxinetum. */
+	/** Submontane ash riparian forest, Carici remotae-Fraxinetum. */
 	CARICI_REMOTAE_FRAXINETUM,
-	/** Łęg źródliskowy (cardaminetosum amarae). */
+	/** Spring-fed riparian forest (cardaminetosum amarae). */
 	SPRING_FED,
-	/** Młaka (olszyna bagienna Caltho laetae-Alnetum). */
+	/** Spring fen (swamp alder wood, Caltho laetae-Alnetum). */
 	SPRING_FEN,
-	/** Jaworzyna na stromym rumoszu (Lunario-Aceretum). */
+	/** Sycamore ravine forest on steep rubble (Lunario-Aceretum). */
 	SYCAMORE_RAVINE_FOREST,
-	/** Ziołorośla w żlebach regla górnego. */
+	/** Tall-herb communities in gullies of the upper montane belt. */
 	GULLY_TALL_HERBS,
-	/** Dolnoreglowa jodłowo-świerkowa Abieti-Piceetum. */
+	/** Lower montane fir-spruce forest, Abieti-Piceetum. */
 	ABIETI_PICEETUM,
-	/** Odmiana kwaśna (buczyny na ubogich siedliskach). */
+	/** Acidophilous form (beech forests on poor sites). */
 	ACIDOPHILOUS,
-	/** Bór bażynowy karłowy (pas wiatrowy). */
+	/** Stunted crowberry pine forest (wind belt). */
 	STUNTED,
-	/** Plaża kamienista pod klifem. */
+	/** Shingle beach below a cliff. */
 	SHINGLE,
-	/** Las wiatrowy za krawędzią klifu. */
+	/** Windswept forest behind the cliff edge. */
 	WINDSWEPT,
-	/** Grąd zboczowy na zboczu doliny. */
+	/** Slope oak-hornbeam forest on a valley side. */
 	SLOPE,
-	/** Łozowisko i ols przy starorzeczu. */
+	/** Willow carr and alder carr by an oxbow lake. */
 	OXBOW_LAKE,
-	/** Bór na mierzei lub przy zalewie. */
+	/** Pine forest on a spit or by a lagoon. */
 	SPIT,
-	/** Jezioro lobeliowe (oligotroficzne, sandr). */
+	/** Lobelia lake (oligotrophic, outwash plain). */
 	LOBELIA_LAKE,
-	/** Zastoisko w dnie dużej doliny. */
+	/** Backswamp on the floor of a large valley. */
 	BACKSWAMP;
 
 	private static final Association[] VALUES = values();

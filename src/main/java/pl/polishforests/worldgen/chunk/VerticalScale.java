@@ -1,11 +1,11 @@
 package pl.polishforests.worldgen.chunk;
 
 /**
- * Odwzorowanie wysokości n.p.m. (w metrach modelu) na wysokość w blokach oraz rama wymiaru.
- * Wartości {@link #minY()} i {@link #height()} muszą zgadzać się z plikiem typu wymiaru.
+ * Mapping of the elevation a.s.l. (in model meters) to the height in blocks, plus the dimension frame.
+ * The values {@link #minY()} and {@link #height()} must match the dimension type file.
  */
 public interface VerticalScale {
-	/** Skala rzeczywista: 1:1 do ok. 900 m, powyżej płynnie ściśnięta; Rysy na Y 2000. */
+	/** Real scale: 1:1 up to about 900 m, smoothly compressed above; Rysy at Y 2000. */
 	VerticalScale REAL = new VerticalScale() {
 		@Override
 		public int minY() {
@@ -34,9 +34,9 @@ public interface VerticalScale {
 	};
 
 	/**
-	 * Skala przyjazna rozgrywce: bloki = 1,89 · metry^0,742. Niziny (130 m) leżą ok. 70 bloków nad
-	 * morzem, 1000 m to ok. 318 bloków, Babia Góra ok. 475, Rysy ok. 625 (Y ok. 690). Wymiar ma
-	 * wysokość 832 bloków (Y od -64 do 767).
+	 * Gameplay-friendly scale: blocks = 1.89 · meters^0.742. Lowlands (130 m) lie about 70 blocks above
+	 * the sea, 1000 m is about 318 blocks, Babia Gora about 475, Rysy about 625 (Y about 690). The
+	 * dimension is 832 blocks high (Y from -64 to 767).
 	 */
 	VerticalScale GAMEPLAY = new VerticalScale() {
 		private static final double A = 1.89;
@@ -79,18 +79,18 @@ public interface VerticalScale {
 		return minY() + height() - 1;
 	}
 
-	/** Liczba bloków nad poziomem morza dla wysokości {@code meters} n.p.m. */
+	/** Number of blocks above sea level for an elevation of {@code meters} a.s.l. */
 	double blocksForMeters(double meters);
 
-	/** Odwrotność {@link #blocksForMeters}. */
+	/** Inverse of {@link #blocksForMeters}. */
 	double metersForBlocks(double blocks);
 
-	/** Y najwyższego bloku gruntu dla powierzchni o wysokości {@code meters} n.p.m. */
+	/** Y of the topmost ground block for a surface at an elevation of {@code meters} a.s.l. */
 	default int topBlockY(double meters) {
 		return (int) Math.floor(seaLevelY() + blocksForMeters(meters)) - 1;
 	}
 
-	/** Wysokość n.p.m. górnej ściany bloku leżącego na {@code y}. */
+	/** Elevation a.s.l. of the top face of the block at {@code y}. */
 	default double metersAboveSea(int y) {
 		return metersForBlocks(y + 1 - seaLevelY());
 	}

@@ -5,11 +5,11 @@ import pl.polishforests.worldgen.landscape.LandscapeModel;
 import pl.polishforests.worldgen.landscape.Noise;
 
 /**
- * Maska lasu trybu D „dzisiejsza Polska” (raport ekologii §6). Las, gdy kwantyl gładkiego szumu F
- * (fala 4 km·k z drobnym szumem krawędzi 300 m·k) jest mniejszy niż P_las siedliska, więc przy stałym
- * P_las udział lasu wynosi P_las. Poza lasem biom nieleśny według siedliska (§2.2); strefy przywodne
- * zostają. Wartości P_las są startowe; kalibracja i test udziałów trybu D należą do kroku S8. W trybie N
- * (domyślnym do M8) klasyfikator maski nie używa.
+ * Forest mask of the PRESENT_DAY mode, "present-day Poland" (ecology report §6). Forest where the quantile of the
+ * smooth noise F (wavelength 4 km·k with fine edge noise of 300 m·k) is lower than the site's P_forest, so at a constant
+ * P_forest the forest share equals P_forest. Outside forest the non-forest biome follows the site (§2.2); waterside
+ * zones remain. The P_forest values are initial; calibration and the PRESENT_DAY share test belong to step S8. In the
+ * NATURAL mode (the default until M8) the classifier does not use the mask.
  */
 final class ForestCover {
 	private static final double WAVELENGTH = 4_000;
@@ -24,18 +24,18 @@ final class ForestCover {
 		this.k = k;
 	}
 
-	/** Kwantyl F w [0, 1]. */
+	/** Quantile of F in [0, 1]. */
 	private double f(double x, double z) {
 		double v = noise.at(x, z, WAVELENGTH * k) + EDGE * noise.at(x + 5_151, z - 919, EDGE_WAVELENGTH * k);
 		return LandscapeModel.noiseQuantile(Math.clamp(v / (1 + EDGE), -1.0, 1.0));
 	}
 
-	/** Czy kolumna biomu leśnego zostaje lasem w trybie D. */
+	/** Whether a column of a forest biome stays forested in the PRESENT_DAY mode. */
 	boolean isForested(HabitatClassifier.Column c, HabitatBiome biome, ForestSiteType siteType) {
 		return f(c.x, c.z) < forestProbability(c, biome, siteType);
 	}
 
-	/** P_las (raport ekologii §6.3, wartości startowe). */
+	/** P_forest (ecology report §6.3, initial values). */
 	static double forestProbability(HabitatClassifier.Column c, HabitatBiome biome, ForestSiteType siteType) {
 		switch (biome) {
 			case DWARF_PINE_SCRUB:
@@ -76,7 +76,7 @@ final class ForestCover {
 		};
 	}
 
-	/** Biom nieleśny dla niezalesionego siedliska (§2.2, kolumna D). */
+	/** Non-forest biome for an unforested site (§2.2, column D). */
 	HabitatBiome nonForest(HabitatClassifier.Column c, HabitatBiome biome, ForestSiteType siteType) {
 		double q = c.variant(3);
 		switch (biome) {

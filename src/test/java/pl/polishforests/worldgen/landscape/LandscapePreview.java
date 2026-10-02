@@ -8,8 +8,8 @@ import java.util.stream.IntStream;
 import javax.imageio.ImageIO;
 
 /**
- * Renderuje model krajobrazu do PNG bez uruchamiania gry. Uruchamiane zadaniem Gradle
- * {@code landscapePreview}. Argumenty: katalog wyjściowy, ziarno.
+ * Renders the landscape model to PNG without starting the game. Run by the Gradle task
+ * {@code landscapePreview}. Arguments: output directory, seed.
  */
 public final class LandscapePreview {
 	private LandscapePreview() {
@@ -19,7 +19,7 @@ public final class LandscapePreview {
 		Path out = Path.of(args.length > 0 ? args[0] : "build/preview");
 		long seed = args.length > 1 ? Long.parseLong(args[1]) : 20260927L;
 		Files.createDirectories(out);
-		// Trzeci argument „siedliska”: tylko podgląd siedlisk M2 (kadry, mapy, przekroje, CSV udziałów).
+		// Third argument "habitats": only the M2 habitat preview (frames, maps, cross-sections, share CSVs).
 		boolean habitatsOnly = args.length > 2 && args[2].equals("habitats");
 		HabitatPreview.main(out, seed);
 		if (habitatsOnly) {
@@ -27,11 +27,11 @@ public final class LandscapePreview {
 		}
 		LandscapeModel model = new LandscapeModel(seed, 1.0);
 
-		// Przegląd: 400 × 400 km, 500 m na piksel, kolory typów krajobrazu.
+		// Overview: 400 × 400 km, 500 m per pixel, landscape type colors.
 		render(model, out.resolve("overview_types_400km.png"), 0, 0, 800, 500, true);
-		// Ten sam obszar w kolorach wysokości.
+		// The same area in elevation colors.
 		render(model, out.resolve("overview_elevation_400km.png"), 0, 0, 800, 500, false);
-		// Zbliżenia na charakterystyczne miejsca wyszukane automatycznie.
+		// Close-ups of characteristic places found automatically.
 		double[] outwashPlain = find(model, LandscapeType.OUTWASH_PLAIN, true);
 		double[] moraine = find(model, LandscapeType.MORAINE_PLATEAU, true);
 		double[] plain = findRiver(model);
@@ -50,20 +50,20 @@ public final class LandscapePreview {
 			render(model, out.resolve("zoom_beskids_10km.png"), mountains[0], mountains[1], 800, 12.5, false);
 			printStats(model, "Beskids", mountains[0], mountains[1], 20_000);
 		}
-		// Skala przyjazna rozgrywce: przegląd 20 x 20 km i zbliżenia.
+		// Gameplay-friendly scale: 20 x 20 km overview and close-ups.
 		LandscapeModel g = new LandscapeModel(seed, LandscapeScale.GAMEPLAY, 1.0);
 		render(g, out.resolve("gameplay_types_20km.png"), 0, 0, 800, 25, true);
 		render(g, out.resolve("gameplay_elevation_20km.png"), 0, 0, 800, 25, false);
 		double[] gm = findInterior(g, LandscapeType.BESKIDS);
 		if (gm != null) {
 			render(g, out.resolve("gameplay_beskids_4km.png"), gm[0], gm[1], 800, 5, false);
-			printStats(g, "Beskidy (rozgrywka)", gm[0], gm[1], 3_000);
+			printStats(g, "Beskids (gameplay)", gm[0], gm[1], 3_000);
 		}
 		double[] gl = find(g, LandscapeType.MORAINE_PLATEAU, true);
 		if (gl != null) {
 			render(g, out.resolve("gameplay_moraine_plateau_4km.png"), gl[0], gl[1], 800, 5, false);
 		}
-		// Rzeki, doliny i morze.
+		// Rivers, valleys and the sea.
 		double[] coast = RiverNetworkTest.find(model, c -> c.type() == LandscapeType.COASTLAND, 2_000);
 		if (coast != null) {
 			render(model, out.resolve("coast_40km.png"), coast[0], coast[1], 800, 50, false);
@@ -95,10 +95,10 @@ public final class LandscapePreview {
 		if (gr != null) {
 			render(g, out.resolve("gameplay_river_2km.png"), gr[0], gr[1], 800, 2.5, false);
 		}
-		System.out.println("Zapisano podglądy w " + out.toAbsolutePath());
+		System.out.println("Saved previews in " + out.toAbsolutePath());
 	}
 
-	/** Wypisuje zakres wysokości i rozkład nachyleń w kwadracie o boku {@code size} metrów. */
+	/** Prints the elevation range and the slope distribution in a square with a side of {@code size} meters. */
 	static void printStats(LandscapeModel model, String name, double cx, double cz, double size) {
 		int n = 400;
 		double step = size / n;
@@ -124,12 +124,12 @@ public final class LandscapePreview {
 			}
 		}
 		double total = n * n;
-		System.out.printf("%s: wysokość %.0f–%.0f m; nachylenia <5°: %.0f%%, 5–15°: %.0f%%, 15–30°: %.0f%%, 30–45°: %.0f%%, >45°: %.0f%%%n",
+		System.out.printf("%s: elevation %.0f–%.0f m; slopes <5°: %.0f%%, 5–15°: %.0f%%, 15–30°: %.0f%%, 30–45°: %.0f%%, >45°: %.0f%%%n",
 				name, min, max, 100 * slopeBins[0] / total, 100 * slopeBins[1] / total, 100 * slopeBins[2] / total,
 				100 * slopeBins[3] / total, 100 * slopeBins[4] / total);
 	}
 
-	/** Szuka punktu z danym typem krajobrazu (opcjonalnie w jeziorze) na spirali od środka. */
+	/** Searches for a point with the given landscape type (optionally in a lake) on a spiral from the center. */
 	static double[] find(LandscapeModel model, LandscapeType type, boolean inLake) {
 		for (int r = 0; r < 400; r++) {
 			for (int k = 0; k < 24; k++) {
@@ -139,16 +139,16 @@ public final class LandscapePreview {
 				double z = Math.sin(a) * r * step;
 				ColumnSample s = model.sample(x, z);
 				if (s.type() == type && (!inLake || s.waterKind().isLake())) {
-					System.out.printf("%s: x=%.0f z=%.0f (%.0f m n.p.m.)%n", type, x, z, s.surface());
+					System.out.printf("%s: x=%.0f z=%.0f (%.0f m a.s.l.)%n", type, x, z, s.surface());
 					return new double[] {x, z};
 				}
 			}
 		}
-		System.out.println("Nie znaleziono: " + type);
+		System.out.println("Not found: " + type);
 		return null;
 	}
 
-	/** Szuka punktu, w którym dany typ ma wagę bliską 1 w promieniu 10 km. */
+	/** Searches for a point where the given type has a weight close to 1 within a radius of 10 km. */
 	static double[] findInterior(LandscapeModel model, LandscapeType type) {
 		for (int r = 0; r < 800; r++) {
 			for (int k = 0; k < 24; k++) {
@@ -163,16 +163,16 @@ public final class LandscapePreview {
 					ok = model.typeWeights(px, pz)[type.ordinal()] > 0.98;
 				}
 				if (ok) {
-					System.out.printf("%s (wnętrze): x=%.0f z=%.0f%n", type, x, z);
+					System.out.printf("%s (interior): x=%.0f z=%.0f%n", type, x, z);
 					return new double[] {x, z};
 				}
 			}
 		}
-		System.out.println("Nie znaleziono wnętrza: " + type);
+		System.out.println("Interior not found: " + type);
 		return find(model, type, false);
 	}
 
-	/** Szuka koryta wielkiej rzeki. */
+	/** Searches for the channel of a large river. */
 	static double[] findRiver(LandscapeModel model) {
 		for (int r = 0; r < 600; r++) {
 			for (int k = 0; k < 48; k++) {
@@ -182,12 +182,12 @@ public final class LandscapePreview {
 				double z = Math.sin(a) * r * step;
 				ColumnSample s = model.sample(x, z);
 				if (s.waterKind() == WaterKind.RIVER) {
-					System.out.printf("RZEKA: x=%.0f z=%.0f (lustro %d m n.p.m.)%n", x, z, s.waterLevel());
+					System.out.printf("RIVER: x=%.0f z=%.0f (water surface %d m a.s.l.)%n", x, z, s.waterLevel());
 					return new double[] {x, z};
 				}
 			}
 		}
-		System.out.println("Nie znaleziono rzeki");
+		System.out.println("River not found");
 		return null;
 	}
 
@@ -205,7 +205,7 @@ public final class LandscapePreview {
 			}
 		});
 		BufferedImage img = new BufferedImage(size, size, BufferedImage.TYPE_INT_RGB);
-		// Przewyższenie tylko dla widoków przeglądowych; zbliżenia w prawdziwej skali.
+		// Vertical exaggeration only for the overview views; close-ups at true scale.
 		double exaggeration = metersPerPx > 100 ? 6.0 : 1.0;
 		double lx = -0.55;
 		double ly = 0.65;
@@ -239,7 +239,7 @@ public final class LandscapePreview {
 			}
 		}
 		ImageIO.write(img, "png", file.toFile());
-		System.out.println("Zapisano " + file.getFileName());
+		System.out.println("Saved " + file.getFileName());
 	}
 
 	static int typeColor(LandscapeType t) {

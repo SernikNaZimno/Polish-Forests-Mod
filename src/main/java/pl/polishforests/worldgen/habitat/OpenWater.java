@@ -5,15 +5,15 @@ import pl.polishforests.worldgen.landscape.Noise;
 import pl.polishforests.worldgen.landscape.WaterKind;
 
 /**
- * Krok 1 klasyfikatora: kolumny z wodą (§2.3, §4.4). Morze, zalew, rzeka lub potok, jezioro albo jezioro
- * dystroficzne; w płytkiej wodzie eutroficznej szuwar (biom w pasie ≥ 12 m, węższy jako strefa SZUWAR),
- * w jeziorach strefy ELODEIDY i NYMFEIDY, w jeziorze dystroficznym pło.
+ * Classifier step 1: columns with water (§2.3, §4.4). Sea, lagoon, river or stream, lake or dystrophic
+ * lake; in shallow eutrophic water a reedbed (a biome in a belt ≥ 12 m, narrower as the REEDBED zone),
+ * in lakes the SUBMERGED_PLANTS and FLOATING_LEAVED_PLANTS zones, in a dystrophic lake a floating mat.
  */
 final class OpenWater {
 	private OpenWater() {
 	}
 
-	/** Troficzność wody stojącej. */
+	/** Trophic state of standing water. */
 	enum TrophicState {
 		EUTROPHIC, OLIGOTROPHIC, DYSTROPHIC
 	}
@@ -47,7 +47,7 @@ final class OpenWater {
 		TrophicState trophic = trophicState(c);
 		HabitatBiome biome = trophic == TrophicState.DYSTROPHIC ? HabitatBiome.DYSTROPHIC_LAKE : HabitatBiome.LAKE;
 		Association association = trophic == TrophicState.OLIGOTROPHIC ? Association.LOBELIA_LAKE : Association.TYPICAL;
-		// Odległość od brzegu w głąb wody (m); s jest ujemne w wodzie.
+		// Distance from the shore into the water (m); s is negative in water.
 		double waterDepth = Math.max(0, -c.w.s());
 		if (!Double.isFinite(waterDepth)) {
 			waterDepth = 0;
@@ -58,20 +58,20 @@ final class OpenWater {
 			}
 			return HabitatClassifier.Result.of(biome, z <= Calibration.LAKE_DEPTH ? Zone.SUBMERGED_PLANTS : Zone.NONE, association);
 		}
-		// Starorzecze: szuwar tylko w pasie przy brzegu (2–15 m), dalej nymfeidy na 60–90% lustra.
+		// Oxbow lake: reedbed only in a belt by the shore (2–15 m), beyond it floating-leaved plants on 60–90% of the surface.
 		boolean nearShore = !oxbow
 				|| waterDepth <= Math.max(Calibration.MIN_REEDBED, Calibration.LAKE_OXBOW_REEDBED_K * c.k) * c.jitter();
 		if (z <= Calibration.LAKE_REEDBED_Z && nearShore) {
 			if (trophic == TrophicState.EUTROPHIC) {
-				// Biom w zbiornikach z miejscem na pas ≥ 12 m (całą płyciznę, bez odwróconych pierścieni przy brzegu);
-				// w starorzeczach pas ma 15 m·k, w małych oczkach tylko strefa.
+				// A biome in water bodies with room for a belt ≥ 12 m (the whole shallows, without inverted rings by the shore);
+				// in oxbow lakes the belt is 15 m·k, in small kettle ponds only a zone.
 				double radius = c.w.standingWaterRadius();
 				double band = oxbow ? Calibration.LAKE_OXBOW_REEDBED_K * c.k
 						: Double.isNaN(radius) || radius >= Calibration.LAKE_REEDBED_BIOME_RADIUS_K * c.k ? Calibration.BIOME_BAND : 0;
 				return band >= Calibration.BIOME_BAND ? HabitatClassifier.Result.of(HabitatBiome.REEDBED, Zone.REEDBED, association)
 						: HabitatClassifier.Result.of(biome, Zone.REEDBED, association);
 			}
-			// Jezioro lobeliowe: szuwar tylko w płatach.
+			// Lobelia lake: reedbed only in patches.
 			if (c.patchQ(1) > Calibration.LAKE_LOBELIA_REEDBED) {
 				return HabitatClassifier.Result.of(biome, Zone.REEDBED, association);
 			}
@@ -90,9 +90,9 @@ final class OpenWater {
 	}
 
 	/**
-	 * Troficzność najbliższej wody stojącej: starorzecza i wody poza sandrem eutroficzne; jeziora rynnowe
-	 * i oczka na sandrze według skrótu zbiornika: dystroficzne (&lt; 0,3), oligotroficzne (lobeliowe) albo
-	 * eutroficzne.
+	 * Trophic state of the nearest standing water: oxbow lakes and waters outside the outwash plain are eutrophic;
+	 * tunnel valley lakes and kettle ponds on the outwash plain follow the water body hash: dystrophic (&lt; 0.3),
+	 * oligotrophic (lobelia lakes) or eutrophic.
 	 */
 	static TrophicState trophicState(HabitatClassifier.Column c) {
 		ColumnSample.StandingWaterKind r = c.w.standingWaterKind();

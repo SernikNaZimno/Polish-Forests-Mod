@@ -13,9 +13,9 @@ import pl.polishforests.worldgen.landscape.LandscapeScale;
 import pl.polishforests.worldgen.landscape.Noise;
 
 /**
- * Zasięgi gatunków (docs/03-m2-biomy.md §9, §12.1): w świecie (3 ziarna REAL na 1000 × 1000 km, 1 ziarno
- * GAMEPLAY na 30 × 30 km) nie ma buka przy O &lt; 0,35 i P &lt; 0,35, jodły przy P &lt; 0,45 ani naturalnego
- * świerka przy O &gt; 0,35 i P &lt; 0,45 (flagi siedliska i biomy, które ich wymagają).
+ * Species ranges (docs/03-m2-biomy.md §9, §12.1): in the world (3 REAL seeds over 1000 × 1000 km, 1 GAMEPLAY
+ * seed over 30 × 30 km) there is no beech at O &lt; 0.35 and P &lt; 0.35, no fir at P &lt; 0.45 and no natural
+ * spruce at O &gt; 0.35 and P &lt; 0.45 (habitat flags and the biomes that require them).
  */
 class SpeciesRangesTest {
 	static final int BEECH = 0;
@@ -72,26 +72,26 @@ class SpeciesRangesTest {
 
 	static void print(String label, AtomicLongArray l) {
 		double n = l.get(COLUMNS);
-		System.out.printf(Locale.ROOT, "%s: %d kolumn lądu; buk w zasięgu %.1f%%, jodła %.1f%%, świerk naturalny %.1f%%%n", label,
+		System.out.printf(Locale.ROOT, "%s: %d land columns; beech in range %.1f%%, fir %.1f%%, natural spruce %.1f%%%n", label,
 				l.get(COLUMNS), 100 * l.get(WITH_BEECH) / n, 100 * l.get(WITH_FIR) / n, 100 * l.get(WITH_SPRUCE) / n);
 	}
 
 	static void checkZeros(String label, AtomicLongArray l) {
-		assertEquals(0, l.get(BEECH), label + ": buk przy O < 0,35 i P < 0,35");
-		assertEquals(0, l.get(BEECH_FORESTS), label + ": buczyny przy O < 0,35 i P < 0,35");
-		assertEquals(0, l.get(FIR), label + ": jodła przy P < 0,45");
-		assertEquals(0, l.get(FIR_FORESTS), label + ": jedlina przy P < 0,45");
-		assertEquals(0, l.get(SPRUCE), label + ": świerk naturalny przy O > 0,35 i P < 0,45");
-		// Zasięgi nie mogą być puste: buk, jodła i świerk naturalny rosną gdzieś w świecie.
-		assertTrue(l.get(WITH_BEECH) > 0 && l.get(WITH_FIR) > 0 && l.get(WITH_SPRUCE) > 0, label + ": pusty zasięg");
+		assertEquals(0, l.get(BEECH), label + ": beech at O < 0.35 and P < 0.35");
+		assertEquals(0, l.get(BEECH_FORESTS), label + ": beech forests at O < 0.35 and P < 0.35");
+		assertEquals(0, l.get(FIR), label + ": fir at P < 0.45");
+		assertEquals(0, l.get(FIR_FORESTS), label + ": fir forest at P < 0.45");
+		assertEquals(0, l.get(SPRUCE), label + ": natural spruce at O > 0.35 and P < 0.45");
+		// The ranges must not be empty: beech, fir and natural spruce grow somewhere in the world.
+		assertTrue(l.get(WITH_BEECH) > 0 && l.get(WITH_FIR) > 0 && l.get(WITH_SPRUCE) > 0, label + ": empty range");
 	}
 
 	@Test
 	void rangesAtRealisticScale() {
 		for (long seed : BiomeSharesTest.SEEDS) {
 			AtomicLongArray l = check(seed, LandscapeScale.REALISTIC, 1_000_000, 800);
-			print("REAL, ziarno " + seed, l);
-			checkZeros("REAL, ziarno " + seed, l);
+			print("REAL, seed " + seed, l);
+			checkZeros("REAL, seed " + seed, l);
 		}
 	}
 
@@ -99,8 +99,8 @@ class SpeciesRangesTest {
 	void rangesAtGameplayScale() {
 		AtomicLongArray l = check(20260927L, LandscapeScale.GAMEPLAY, 30_000, 800);
 		print("GAMEPLAY", l);
-		// W 30 × 30 km skali rozgrywki (ok. 1400 km·zs w REAL) pola regionalne zmieniają się mało, więc
-		// sprawdzamy tylko zera (zasięg może być w całości po jednej stronie progu).
+		// Over 30 × 30 km at gameplay scale (about 1400 km·zs in REAL) the regional fields change little, so
+		// we only check the zeros (a range may lie entirely on one side of the threshold).
 		assertEquals(0, l.get(BEECH));
 		assertEquals(0, l.get(BEECH_FORESTS));
 		assertEquals(0, l.get(FIR));

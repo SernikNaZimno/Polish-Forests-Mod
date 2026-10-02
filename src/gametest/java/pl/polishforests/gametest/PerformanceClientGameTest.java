@@ -16,11 +16,11 @@ import pl.polishforests.PolishForests;
 import pl.polishforests.worldgen.chunk.PolandChunkGenerator;
 
 /**
- * Porównanie wydajności: średni FPS i czas wczytania nowego terenu w świecie wanilijnym
- * i w świecie "Polska", przy tych samych ustawieniach graficznych i tym samym ziarnie.
- * Uruchamiany, gdy {@code -Dpolskielasy.gametest} to {@code wydajnosc} lub {@code wszystko}.
- * Tryb {@code etapy} mierzy tylko czasy etapów generacji w trzech obszarach każdej skali (punkt
- * odniesienia M2, {@code docs/m2/pomiary-bazowe-m1.md}), bez pomiaru FPS i bez świata wanilijnego.
+ * Performance comparison: average FPS and new-terrain load time in a vanilla world and in a "Poland"
+ * world, with the same graphics settings and the same seed.
+ * Runs when {@code -Dpolishforests.gametest} is {@code performance} or {@code all}.
+ * The {@code stages} mode only measures generation stage times in three areas of each scale (M2
+ * baseline, {@code docs/m2/pomiary-bazowe-m1.md}), without measuring FPS and without a vanilla world.
  */
 public final class PerformanceClientGameTest implements FabricClientGameTest {
 	private static final String SEED = "20260927";
@@ -66,7 +66,7 @@ public final class PerformanceClientGameTest implements FabricClientGameTest {
 				return;
 			}
 
-			// Teleport w nowe miejsce 3 km od startu, 30 bloków nad gruntem, widok poziomy.
+			// Teleport to a new place 3 km from spawn, 30 blocks above ground, level view.
 			int x = 3_000;
 			int z = 3_000;
 			int ground = sp.getServer().computeOnServer(s -> {
@@ -76,7 +76,7 @@ public final class PerformanceClientGameTest implements FabricClientGameTest {
 			});
 			long t0 = System.nanoTime();
 			sp.getServer().runCommand(String.format(Locale.ROOT, "tp @a %d %d %d 45.0 8.0", x, ground + 30, z));
-			// Czekamy, aż klient wczyta 90% chunków w zasięgu widzenia (najwyżej 4 minuty).
+			// Wait until the client has loaded 90% of the chunks within render distance (at most 4 minutes).
 			int target = (int) (0.9 * (2 * RENDER_DISTANCE + 1) * (2 * RENDER_DISTANCE + 1));
 			int loaded = 0;
 			for (int i = 0; i < 240 && loaded < target; i++) {
@@ -84,9 +84,9 @@ public final class PerformanceClientGameTest implements FabricClientGameTest {
 				loaded = context.computeOnClient(mc -> mc.level.getChunkSource().getLoadedChunksCount());
 			}
 			double loadSeconds = (System.nanoTime() - t0) / 1e9;
-			PolishForests.LOG.info("[wydajnosc] {}: klient ma {} z {} chunków po {} s", name, loaded, target,
+			PolishForests.LOG.info("[performance] {}: client has {} of {} chunks after {} s", name, loaded, target,
 					String.format(Locale.ROOT, "%.1f", loadSeconds));
-			// Czas na zbudowanie siatek geometrii.
+			// Give the client time to build chunk meshes.
 			context.waitTicks(20 * 15);
 			double sum = 0;
 			int min = Integer.MAX_VALUE;
@@ -97,18 +97,19 @@ public final class PerformanceClientGameTest implements FabricClientGameTest {
 				sum += fps;
 				min = Math.min(min, fps);
 			}
-			PolishForests.LOG.info("[wydajnosc] {}: wczytanie nowego terenu {} s, FPS średnio {}, minimum {}", name,
+			PolishForests.LOG.info("[performance] {}: new terrain loaded in {} s, FPS average {}, minimum {}", name,
 					String.format(Locale.ROOT, "%.1f", loadSeconds), Math.round(sum / samples), min);
 			context.takeScreenshot("performance_" + name);
 		}
 	}
 
 	/**
-	 * Obszary 8 × 8 chunków do pomiaru etapów: północno-zachodni róg w blokach, ziarno {@link #SEED}. Pierwszy,
-	 * „nizina”, to ten sam punkt co w M1 (w obu skalach płaska nizina bez rzek), więc wyniki dają się
-	 * porównać z dawnymi. Tryb {@code etapy} mierzy też wnętrze Beskidów i dużą rzekę nizinną: tam M2
-	 * dokłada najwięcej pracy (piętra, strefy nadwodne, półka brzegowa). Środki z łat „beskidy”
-	 * i „wielka_rzeka” w {@code src/test/resources/zloty_teren_m1.txt}, daleko od miejsca startu.
+	 * 8 × 8 chunk areas for the stage measurement: north-west corner in blocks, seed {@link #SEED}. The first one,
+	 * "lowland", is the same spot as in M1 (flat lowland without rivers in both scales), so the results can be
+	 * compared with earlier ones. The {@code stages} mode also measures the interior of the Beskids and a large
+	 * lowland river: that is where M2 adds the most work (altitudinal belts, waterside zones, bank shelf). Centers
+	 * taken from the {@code beskids} and {@code large_river} patches in
+	 * {@code src/test/resources/golden_terrain_m1.txt}, far from the spawn point.
 	 */
 	private static final int[][] SPOTS_REAL = {{-40_000, 25_000}, {154_834 - 64, 1_058_738 - 64},
 			{-19_484 - 64, 11_253 - 64}};
@@ -117,11 +118,11 @@ public final class PerformanceClientGameTest implements FabricClientGameTest {
 	private static final String[] SPOT_NAMES = {"lowland", "beskids", "river"};
 
 	/**
-	 * Czas generacji 64 chunków do kolejnych etapów, na wątku serwera, w nowym obszarze. Liczniki
-	 * modelu i wypełniania ({@code PolskaChunkGenerator.SAMPLE_NANOS}, {@code FILL_NANOS}, {@code CHUNKS})
-	 * są statyczne i rosną przez cały proces (oba światy, start świata), więc logujemy tylko przyrost
-	 * w czasie pomiaru danego obszaru. Przyrost obejmuje też sąsiednie chunki potrzebne do dekoracji
-	 * i światła oraz chunki wczytywane w tym czasie w tle wokół gracza.
+	 * Time to generate 64 chunks up to successive stages, on the server thread, in a new area. The model
+	 * and fill counters ({@code PolandChunkGenerator.SAMPLE_NANOS}, {@code FILL_NANOS}, {@code CHUNKS})
+	 * are static and grow for the whole process (both worlds, world startup), so only the increase during
+	 * the measurement of the given area is logged. The increase also covers neighboring chunks needed for
+	 * decoration and light, and chunks loaded in the background around the player at the same time.
 	 */
 	private static void profileStages(TestSingleplayerContext sp, String name, boolean allSpots) {
 		boolean real = name.equals("poland");
@@ -149,15 +150,15 @@ public final class PerformanceClientGameTest implements FabricClientGameTest {
 			}
 			sb.append(stage.getName()).append('=').append(Math.round((System.nanoTime() - t0) / 1e6)).append(" ms ");
 		}
-		PolishForests.LOG.info("[wydajnosc] {}: etapy dla 64 chunków (przyrostowo): {}", name, sb);
+		PolishForests.LOG.info("[performance] {}: stages for 64 chunks (incremental): {}", name, sb);
 		long n = PolandChunkGenerator.CHUNKS.sum() - chunks0;
 		if (n > 0) {
-			PolishForests.LOG.info("[wydajnosc] {}: teren {} chunków w czasie pomiaru, próbkowanie {} ms/chunk, wypełnianie {} ms/chunk",
+			PolishForests.LOG.info("[performance] {}: terrain of {} chunks during the measurement, sampling {} ms/chunk, filling {} ms/chunk",
 					name, n,
 					String.format(Locale.ROOT, "%.2f", (PolandChunkGenerator.SAMPLE_NANOS.sum() - sample0) / 1e6 / n),
 					String.format(Locale.ROOT, "%.2f", (PolandChunkGenerator.FILL_NANOS.sum() - fill0) / 1e6 / n));
 		} else if (name.startsWith("poland")) {
-			PolishForests.LOG.warn("[wydajnosc] {}: obszar był już wygenerowany, pomiar nieważny", name);
+			PolishForests.LOG.warn("[performance] {}: area was already generated, measurement invalid", name);
 		}
 	}
 
@@ -173,6 +174,6 @@ public final class PerformanceClientGameTest implements FabricClientGameTest {
 				return;
 			}
 		}
-		throw new AssertionError("Brak presetu " + preset.identifier());
+		throw new AssertionError("Missing preset " + preset.identifier());
 	}
 }

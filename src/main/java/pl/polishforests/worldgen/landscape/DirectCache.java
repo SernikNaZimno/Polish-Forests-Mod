@@ -3,22 +3,22 @@ package pl.polishforests.worldgen.landscape;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
 /**
- * Pamięć podręczna niezmiennych kafli siatek ({@link CoarseTerrainField}, {@link RegionalField}) bez blokad
- * i bez czyszczenia całości (docs/03-m2-biomy.md §3.2).
+ * Lock-free cache of immutable grid tiles ({@link CoarseTerrainField}, {@link RegionalField}) that never
+ * clears everything at once (docs/03-m2-biomy.md §3.2).
  *
- * <p>Tablica {@link AtomicReferenceArray} ma stałą liczbę miejsc. Kafel może leżeć w jednym z dwóch miejsc
- * wyznaczonych dwiema połówkami skrótu jego współrzędnych. Nowy kafel trafia w wolne z nich, a gdy oba
- * są zajęte, w to, które wskazuje bit skrótu. Dwa miejsca prawie usuwają przepychanie się dwóch kafli
- * o tym samym miejscu (przy 400 kaflach w 4096 miejscach z jednym miejscem na kafel przepychało się ok. 9%).
+ * <p>The {@link AtomicReferenceArray} has a fixed number of slots. A tile may sit in one of two slots
+ * given by the two halves of the hash of its coordinates. A new tile goes into a free one of them, and when both
+ * are taken, into the one chosen by a hash bit. Two slots almost eliminate two tiles evicting each other
+ * from the same slot (with 400 tiles in 4096 slots and one slot per tile, about 9% were evicted).
  *
- * <p>Wartość kafla jest czystą funkcją jego współrzędnych, więc wynik nie zależy od stanu pamięci. Dwa wątki
- * mogą policzyć ten sam kafel naraz; zapisuje się wtedy jeden z nich, a drugi zwraca własną, równą kopię.
- * Zapis i odczyt przez {@link AtomicReferenceArray} publikują kafel bezpiecznie, a pola wpisu są finalne.
+ * <p>The value of a tile is a pure function of its coordinates, so the result does not depend on the cache state. Two threads
+ * may compute the same tile at once; then one of them is stored and the other returns its own, equal copy.
+ * Writes and reads through {@link AtomicReferenceArray} publish the tile safely, and the entry fields are final.
  *
- * @param <T> niezmienny kafel
+ * @param <T> immutable tile
  */
 final class DirectCache<T> {
-	/** Liczy kafel o współrzędnych (tx, tz). Musi być czystą funkcją współrzędnych. */
+	/** Computes the tile at coordinates (tx, tz). Must be a pure function of the coordinates. */
 	@FunctionalInterface
 	interface Builder<T> {
 		T build(long tx, long tz);
@@ -32,19 +32,19 @@ final class DirectCache<T> {
 	private final Builder<T> builder;
 
 	/**
-	 * @param size    liczba miejsc, potęga dwójki
-	 * @param builder funkcja licząca kafel
+	 * @param size    number of slots, a power of two
+	 * @param builder function computing a tile
 	 */
 	DirectCache(int size, Builder<T> builder) {
 		if (size <= 0 || Integer.bitCount(size) != 1) {
-			throw new IllegalArgumentException("rozmiar pamięci musi być potęgą dwójki: " + size);
+			throw new IllegalArgumentException("cache size must be a power of two: " + size);
 		}
 		this.slots = new AtomicReferenceArray<>(size);
 		this.mask = size - 1;
 		this.builder = builder;
 	}
 
-	/** Kafel (tx, tz): z pamięci albo policzony i zapisany. */
+	/** Tile (tx, tz): from the cache, or computed and stored. */
 	T get(long tx, long tz) {
 		long h = Noise.mix(tx * 0x9E3779B97F4A7C15L + tz);
 		int i1 = (int) h & mask;
@@ -63,7 +63,7 @@ final class DirectCache<T> {
 		return value;
 	}
 
-	/** Kafel (tx, tz), jeśli jest w pamięci, inaczej null (bez liczenia). */
+	/** Tile (tx, tz) if it is in the cache, otherwise null (without computing it). */
 	T peek(long tx, long tz) {
 		long h = Noise.mix(tx * 0x9E3779B97F4A7C15L + tz);
 		Entry<T> e1 = slots.get((int) h & mask);
@@ -77,7 +77,7 @@ final class DirectCache<T> {
 		return null;
 	}
 
-	/** Liczba miejsc. */
+	/** Number of slots. */
 	int size() {
 		return mask + 1;
 	}

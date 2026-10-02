@@ -17,7 +17,7 @@ import pl.polishforests.PolishForests;
 import pl.polishforests.worldgen.chunk.PolandChunkGenerator;
 import pl.polishforests.worldgen.chunk.PolandSettings;
 
-/** Edytor presetów "Polska": przycisk "Dostosuj" w menu tworzenia świata. */
+/** Preset editor for "Poland": the "Customize" button in the world creation menu. */
 public final class PolandPresetEditor implements PresetEditor {
 	public static final ResourceKey<WorldPreset> PRESET = ResourceKey.create(Registries.WORLD_PRESET,
 			PolishForests.id("poland"));
@@ -36,7 +36,7 @@ public final class PolandPresetEditor implements PresetEditor {
 		BiomeSource biomes = overworld.getBiomeSource();
 		return new PolandWorldOptionsScreen(parent, current, settings -> parent.getUiState().updateDimensions(
 				(registries, dimensions) -> {
-					// Skala wyznacza typ wymiaru: świat rozgrywki jest niższy, co odciąża renderowanie.
+					// The scale determines the dimension type: the gameplay world is lower, which eases rendering.
 					Holder<DimensionType> type = registries.lookupOrThrow(Registries.DIMENSION_TYPE)
 							.getOrThrow(settings.scale().dimensionType());
 					return new WorldDimensions(WorldDimensions.withOverworld(dimensions.dimensions(), type,

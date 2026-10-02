@@ -1,18 +1,18 @@
 package pl.polishforests.worldgen.landscape;
 
 /**
- * Meandry rzeki jako krzywa Kinoshity (krzywa generowana sinusem, Langbein i Leopold 1966;
- * składowe skośności i spłaszczenia wg Parkera 1983): kierunek koryta zmienia się wzdłuż jego
- * długości jak {@code θ(s) = θ0 sin(2πs) + θ0³ (Js cos 6πs − Jf sin 6πs)}. W odróżnieniu od
- * przesunięcia bocznego osi taka krzywa tworzy prawdziwe pętle z zaokrąglonymi łukami.
+ * River meanders as a Kinoshita curve (sine-generated curve, Langbein and Leopold 1966;
+ * skewness and flattening terms after Parker 1983): the channel direction changes along its
+ * length as {@code θ(s) = θ0 sin(2πs) + θ0³ (Js cos 6πs − Jf sin 6πs)}. Unlike a lateral
+ * offset of the axis, such a curve forms real loops with rounded bends.
  * <p>
- * Krzywa jest okresowa, więc dla kilkunastu wartości {@code θ0} liczona jest raz tablica odległości
- * od krzywej w układzie jednego okresu: {@code u} (wzdłuż doliny, w długościach fali, mod 1) i
- * {@code v} (w poprzek, w długościach fali). Zapytanie to interpolacja z tablicy, a blisko koryta
- * dokładna odległość od łamanej krzywej.
+ * The curve is periodic, so for a dozen or so values of {@code θ0} a table of distances
+ * from the curve is computed once in the frame of one period: {@code u} (along the valley, in wavelengths, mod 1) and
+ * {@code v} (across, in wavelengths). A query is an interpolation from the table, and close to the channel
+ * the exact distance from the polyline of the curve.
  */
 final class MeanderField {
-	/** Największy kąt odchylenia koryta od osi doliny (rad), krętość ok. 2,6. */
+	/** Largest deflection angle of the channel from the valley axis (rad), sinuosity about 2.6. */
 	static final double THETA_MAX = 1.9;
 	private static final int LEVELS = 12;
 	private static final int NU = 64;
@@ -28,12 +28,12 @@ final class MeanderField {
 	private MeanderField() {
 	}
 
-	/** Jedna wartość θ0: punkty krzywej (jeden okres, znormalizowany) i tablica odległości. */
+	/** One value of θ0: curve points (one period, normalised) and the distance table. */
 	private static final class Level {
 		final double theta;
 		final float[] x;
 		final float[] y;
-		/** Indeksy punktów w kubełkach po {@code x} (z kopiami sąsiednich okresów). */
+		/** Point indices in buckets by {@code x} (with copies from the neighbouring periods). */
 		final int[][] buckets;
 		final float[] dist;
 		final double amplitude;
@@ -56,7 +56,7 @@ final class MeanderField {
 				px += Math.cos(th) * ds;
 				py += Math.sin(th) * ds;
 			}
-			// Normalizacja: jeden okres przesuwa się o 1 wzdłuż osi, średnie przesunięcie boczne 0.
+			// Normalisation: one period advances by 1 along the axis, mean lateral offset 0.
 			double period = xs[POINTS];
 			double mean = 0;
 			for (int i = 0; i < POINTS; i++) {
@@ -76,15 +76,15 @@ final class MeanderField {
 				for (int j = 0; j < NV; j++) {
 					double v = -VMAX + j * (2 * VMAX / (NV - 1));
 					double e = exact((double) i / NU, v, 0.45);
-					// Daleko od krzywej dokładność nie jest potrzebna (liczy się tylko przy korycie).
+					// Far from the curve accuracy is not needed (it matters only near the channel).
 					dist[i * NV + j] = (float) (e == Double.MAX_VALUE ? Math.max(0.45, Math.abs(v) - amp) : e);
 				}
 			}
 		}
 
 		private int[][] buildBuckets() {
-			// Odcinek k łamanej (punkty k, k+1) trafia do kubełków obejmujących jego zakres x,
-			// także przesunięty o okres w lewo i w prawo.
+			// Polyline segment k (points k, k+1) goes into the buckets covering its x range,
+			// also shifted by one period to the left and to the right.
 			java.util.List<java.util.List<Integer>> lists = new java.util.ArrayList<>();
 			for (int b = 0; b < BUCKETS; b++) {
 				lists.add(new java.util.ArrayList<>());
@@ -107,12 +107,12 @@ final class MeanderField {
 			return out;
 		}
 
-		/** Dokładna odległość od krzywej; {@code u} w [0, 1). Szuka w kubełkach do odległości {@code limit}. */
+		/** Exact distance from the curve; {@code u} in [0, 1). Searches the buckets up to distance {@code limit}. */
 		double exact(double u, double v, double limit) {
 			double best = Double.MAX_VALUE;
 			int center = (int) Math.floor(u * BUCKETS);
 			for (int r = 0; r < BUCKETS; r++) {
-				// Kubełki w odległości r od środka są co najmniej (r - 1) / BUCKETS dalej wzdłuż osi.
+				// Buckets at distance r from the centre are at least (r - 1) / BUCKETS further along the axis.
 				double gap = (r - 1.0) / BUCKETS;
 				if (gap > 0 && gap * gap >= best) {
 					break;
@@ -139,11 +139,11 @@ final class MeanderField {
 		}
 
 		/**
-		 * Dwie dokładne odległości w jednym przejściu: {@code out[o]} jak {@link #exact} (ta sama wartość,
-		 * łącznie z {@code Double.MAX_VALUE}) i {@code out[o + 1]} z kubełkami za granicą okresu (indeks poza
-		 * [0, BUCKETS)) branymi modulo, z łamaną przesuniętą o okres. {@link #exact} ich nie przeszukuje, więc
-		 * przy u blisko 0 i 1 pomija łamaną po drugiej stronie granicy i ma tam skok. Zostaje w terenie
-		 * i tablicy (M1), a pole d i brzeg wypukły używają drugiej wartości.
+		 * Two exact distances in one pass: {@code out[o]} like {@link #exact} (the same value,
+		 * including {@code Double.MAX_VALUE}) and {@code out[o + 1]} with buckets beyond the period boundary (index outside
+		 * [0, BUCKETS)) taken modulo, with the polyline shifted by one period. {@link #exact} does not search them, so
+		 * with u close to 0 and 1 it misses the polyline on the other side of the boundary and has a jump there. It stays in the terrain
+		 * and the table (M1), while the d field and the convex bank use the second value.
 		 */
 		void exactPair(double u, double v, double limit, double[] out, int o) {
 			double bestIn = Double.MAX_VALUE;
@@ -151,7 +151,7 @@ final class MeanderField {
 			int center = (int) Math.floor(u * BUCKETS);
 			for (int r = 0; r < BUCKETS; r++) {
 				double gap = (r - 1.0) / BUCKETS;
-				// bestAll ≤ bestIn, więc warunek z exact kończy też szukanie bestAll.
+				// bestAll ≤ bestIn, so the stop condition from exact also ends the search for bestAll.
 				if (gap > 0 && gap * gap >= bestIn) {
 					break;
 				}
@@ -181,8 +181,8 @@ final class MeanderField {
 		}
 
 		/**
-		 * Czy punkt leży po wewnętrznej stronie łuku krzywej w jej najbliższym punkcie (szukanym jak
-		 * w {@link #exactPair}, z kubełkami za granicą okresu): znak krzywizny {@code dθ/ds} odcinka łamanej razy strona punktu względem niego.
+		 * Whether the point lies on the inner side of the curve's bend at its nearest point (searched as
+		 * in {@link #exactPair}, with buckets beyond the period boundary): the sign of the curvature {@code dθ/ds} of the polyline segment times the side of the point relative to it.
 		 */
 		boolean inner(double u, double v, double limit) {
 			double best = Double.MAX_VALUE;
@@ -221,7 +221,7 @@ final class MeanderField {
 			double ax = x[bestK] + bestShift;
 			double ay = y[bestK];
 			double side = (x[bestK + 1] + bestShift - ax) * (v - ay) - (y[bestK + 1] - ay) * (u - ax);
-			// Odcinek k ma kierunek θ(s) w s = (k + 0,5) / POINTS (jak przy budowie krzywej).
+			// Segment k has direction θ(s) at s = (k + 0.5) / POINTS (as when building the curve).
 			double s = (bestK + 0.5) / POINTS;
 			double curvature = theta * 2 * Math.PI * Math.cos(2 * Math.PI * s) - theta * theta * theta * 6 * Math.PI
 					* (JS * Math.sin(6 * Math.PI * s) + JF * Math.cos(6 * Math.PI * s));
@@ -250,7 +250,7 @@ final class MeanderField {
 				return table(u, Math.copySign(VMAX, v)) + Math.abs(v) - VMAX;
 			}
 			double d = table(u, v);
-			// Przy korycie tablica jest zbyt zgrubna: dokładna odległość od łamanej.
+			// Near the channel the table is too coarse: exact distance from the polyline.
 			if (d < 0.15) {
 				double e = exact(u, v, 0.3);
 				return e == Double.MAX_VALUE ? d : e;
@@ -259,10 +259,10 @@ final class MeanderField {
 		}
 
 		/**
-		 * {@link #distance} (do {@code out[o]}) i jej wersja ciągła (do {@code out[o + 1]}): zamiast
-		 * przełączenia tablica → dokładna odległość przy 0,15 płynne przejście w przedziale
-		 * [{@link #SMOOTH_LO}, {@link #SMOOTH_HI}], a dokładna odległość bez skoku przy zawinięciu u
-		 * ({@link #exactPair}). Pierwsza wartość jest identyczna z {@link #distance}.
+		 * {@link #distance} (into {@code out[o]}) and its continuous version (into {@code out[o + 1]}): instead of
+		 * switching table → exact distance at 0.15, a smooth transition over the interval
+		 * [{@link #SMOOTH_LO}, {@link #SMOOTH_HI}], and the exact distance without a jump where u wraps
+		 * ({@link #exactPair}). The first value is identical to {@link #distance}.
 		 */
 		void distances(double u, double v, double[] out, int o) {
 			if (theta == 0) {
@@ -278,7 +278,7 @@ final class MeanderField {
 				out[o] = out[o + 1] = d;
 				return;
 			}
-			// Teren: wersja z M1 (exact tylko poniżej 0,15). Pole d: bez skoku przy zawinięciu u.
+			// Terrain: the M1 version (exact only below 0.15). The d field: no jump where u wraps.
 			exactPair(u, v, 0.3, out, o);
 			double e = out[o + 1] == Double.MAX_VALUE ? d : out[o + 1];
 			out[o] = d < 0.15 && out[o] != Double.MAX_VALUE ? out[o] : d;
@@ -286,7 +286,7 @@ final class MeanderField {
 		}
 	}
 
-	/** Przedział wartości z tablicy, w którym {@link Level#distances} przechodzi płynnie na dokładną odległość. */
+	/** Range of table values over which {@link Level#distances} blends smoothly into the exact distance. */
 	private static final double SMOOTH_LO = 0.12;
 	private static final double SMOOTH_HI = 0.20;
 
@@ -315,11 +315,11 @@ final class MeanderField {
 	}
 
 	/**
-	 * Odległość od koryta w długościach fali.
+	 * Distance from the channel in wavelengths.
 	 *
-	 * @param u     położenie wzdłuż doliny w długościach fali (dowolne, okresowe)
-	 * @param v     położenie w poprzek doliny w długościach fali
-	 * @param theta kąt {@code θ0} (rad), od 0 (prosto) do {@link #THETA_MAX}
+	 * @param u     position along the valley in wavelengths (any value, periodic)
+	 * @param v     position across the valley in wavelengths
+	 * @param theta angle {@code θ0} (rad), from 0 (straight) to {@link #THETA_MAX}
 	 */
 	static double distance(double u, double v, double theta) {
 		double f = Math.clamp(theta / THETA_MAX, 0.0, 1.0) * (LEVELS - 1);
@@ -334,12 +334,12 @@ final class MeanderField {
 	}
 
 	/**
-	 * Odległość jak w {@link #distance} (do {@code out[0]}, ta sama wartość) i odległość ciągła (do
-	 * {@code out[1]}). {@link #distance} przełącza się z tablicy na dokładną odległość od łamanej, gdy
-	 * wartość z tablicy spadnie poniżej 0,15 długości fali, i ma tam skok do ok. 0,015 λ; dokładna
-	 * odległość z M1 ma też skok przy zawinięciu u (patrz {@link Level#exactPair}). Dla brzegu i koryta
-	 * to bez znaczenia, ale pole d (odległość od koryta, {@link ColumnSample.Waters#channelDist}) musi być
-	 * ciągłe. {@code out} ma co najmniej 4 miejsca (dwa ostatnie to bufor).
+	 * Distance as in {@link #distance} (into {@code out[0]}, the same value) and the continuous distance (into
+	 * {@code out[1]}). {@link #distance} switches from the table to the exact distance from the polyline when
+	 * the table value drops below 0.15 wavelengths, and has a jump of up to about 0.015 λ there; the exact
+	 * M1 distance also has a jump where u wraps (see {@link Level#exactPair}). For the bank and the channel
+	 * this does not matter, but the d field (distance from the channel, {@link ColumnSample.Waters#channelDist}) must be
+	 * continuous. {@code out} has at least 4 slots (the last two are a buffer).
 	 */
 	static void distances(double u, double v, double theta, double[] out) {
 		double f = Math.clamp(theta / THETA_MAX, 0.0, 1.0) * (LEVELS - 1);
@@ -356,8 +356,8 @@ final class MeanderField {
 	}
 
 	/**
-	 * Czy punkt leży po wewnętrznej (wypukłej) stronie łuku meandra, w układzie jak w
-	 * {@link #distance}. Liczone na najbliższym poziomie tablicy θ0 (k ≥ 1, czyli θ ≥ ok. 0,09); bez meandrów false.
+	 * Whether the point lies on the inner (convex) side of a meander bend, in the same frame as
+	 * {@link #distance}. Computed on the nearest θ0 table level (k ≥ 1, i.e. θ ≥ about 0.09); false without meanders.
 	 */
 	static boolean innerSide(double u, double v, double theta) {
 		int k = (int) Math.round(Math.clamp(theta / THETA_MAX, 0.0, 1.0) * (LEVELS - 1));
@@ -367,7 +367,7 @@ final class MeanderField {
 		return level(k).inner(u - Math.floor(u), v, 0.5);
 	}
 
-	/** Największe odchylenie koryta od osi doliny w długościach fali. */
+	/** Largest deviation of the channel from the valley axis in wavelengths. */
 	static double amplitude(double theta) {
 		double f = Math.clamp(theta / THETA_MAX, 0.0, 1.0) * (LEVELS - 1);
 		int k = Math.min(LEVELS - 2, (int) Math.floor(f));
@@ -375,10 +375,10 @@ final class MeanderField {
 		return level(k).amplitude + (level(k + 1).amplitude - level(k).amplitude) * w;
 	}
 
-	/** Kąt θ0 dający krętość (długość koryta / długość doliny) w przybliżeniu {@code 1 / J0(θ0)}. */
+	/** Angle θ0 giving a sinuosity (channel length / valley length) of approximately {@code 1 / J0(θ0)}. */
 	static double thetaForSinuosity(double sinuosity) {
 		double target = 1.0 / Math.max(1.0, sinuosity);
-		// J0 maleje monotonicznie na [0, 2,4]; bisekcja.
+		// J0 decreases monotonically on [0, 2.4]; bisection.
 		double lo = 0;
 		double hi = THETA_MAX;
 		for (int i = 0; i < 40; i++) {

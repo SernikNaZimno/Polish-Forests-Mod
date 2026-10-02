@@ -11,8 +11,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import pl.polishforests.client.screen.PolandPresetEditor;
 
 /**
- * Wanilia trzyma edytory presetów w niezmiennej mapie. Dla presetu "Polska" zwracamy własny
- * edytor, dzięki czemu w menu tworzenia świata działa przycisk "Dostosuj".
+ * Vanilla keeps preset editors in an immutable map. For the "Poland" presets we return our own
+ * editor, so the "Customize" button works in the world creation menu.
  */
 @Mixin(WorldCreationUiState.class)
 abstract class WorldCreationUiStateMixin {

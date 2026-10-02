@@ -1,11 +1,11 @@
 package pl.polishforests.worldgen.habitat;
 
-/** Fizjonomia kolumny: las, zarośla, teren otwarty albo woda (2 bity kodu siedliska). */
+/** Physiognomy of a column: forest, scrub, open land or water (2 bits of the habitat code). */
 public enum LandCover {
 	FOREST,
-	/** Zarośla krzewiaste: wikliny, kosodrzewina. */
+	/** Shrub scrub: willow scrub, dwarf pine. */
 	SCRUB,
-	/** Teren otwarty: łąki, torfowiska, szuwar, wydmy, plaża, pole, hala. */
+	/** Open land: meadows, mires, reedbeds, dunes, beach, arable land, alpine grassland. */
 	OPEN,
 	WATER;
 
@@ -15,7 +15,7 @@ public enum LandCover {
 		return VALUES[ordinal];
 	}
 
-	/** Pokrycie biomu. */
+	/** Land cover of a biome. */
 	public static LandCover forBiome(HabitatBiome b) {
 		return switch (b) {
 			case WILLOW_SCRUB, DWARF_PINE_SCRUB -> SCRUB;

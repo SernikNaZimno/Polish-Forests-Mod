@@ -1,12 +1,12 @@
 package pl.polishforests.worldgen.habitat;
 
 /**
- * Siedliskowy typ lasu (STL, nomenklatura Lasów Państwowych). W siedliskach nieleśnych trybu N pole ma
- * wartość {@link #NONE}; w trybie D niezalesione siedlisko zachowuje STL potencjalny. Najwyżej 32 pozycje.
+ * Forest site type (STL, Polish State Forests nomenclature). On non-forest sites in the NATURAL mode the field is
+ * {@link #NONE}; in the PRESENT_DAY mode an unforested site keeps its potential STL. At most 32 entries.
  */
 public enum ForestSiteType {
 	NONE("-"),
-	/** Bór suchy. */
+	/** Dry coniferous forest. */
 	DRY_CONIFEROUS("Bs"),
 	FRESH_CONIFEROUS("Bśw"),
 	MOIST_CONIFEROUS("Bw"),
@@ -19,26 +19,26 @@ public enum ForestSiteType {
 	BOGGY_MIXED_BROADLEAVED("LMb"),
 	FRESH_BROADLEAVED("Lśw"),
 	MOIST_BROADLEAVED("Lw"),
-	/** Ols. */
+	/** Alder swamp forest. */
 	ALDER_SWAMP("Ol"),
-	/** Ols jesionowy (łęg jesionowo-olszowy). */
+	/** Ash-alder swamp forest (ash-alder riparian forest). */
 	ASH_ALDER_SWAMP("OlJ"),
-	/** Las łęgowy (łęgi nadrzeczne). */
+	/** Riparian forest (riverside floodplain forests). */
 	RIPARIAN("Lł"),
 	UPLAND_MIXED_CONIFEROUS("BMwyż"),
 	UPLAND_MIXED_BROADLEAVED("LMwyż"),
 	UPLAND_BROADLEAVED("Lwyż"),
-	/** Las górski (buczyna). */
+	/** Mountain broadleaved forest (beech forest). */
 	MOUNTAIN_BROADLEAVED("LG"),
 	MOUNTAIN_MIXED_BROADLEAVED("LMG"),
 	MOUNTAIN_MIXED_CONIFEROUS("BMG"),
 	HIGH_MOUNTAIN_CONIFEROUS("BWG"),
-	/** Bór górski (świerczyna). */
+	/** Mountain coniferous forest (spruce forest). */
 	MOUNTAIN_CONIFEROUS("BG"),
-	/** Las łęgowy górski (olszyna). */
+	/** Mountain riparian forest (gray alder forest). */
 	MOUNTAIN_RIPARIAN("LłG"),
 	MOUNTAIN_ASH_ALDER_SWAMP("OlJG"),
-	/** Piętro subalpejskie. */
+	/** Subalpine belt. */
 	SUBALPINE_SCRUB("subalp");
 
 	private static final ForestSiteType[] VALUES = values();
@@ -49,7 +49,7 @@ public enum ForestSiteType {
 		this.code = code;
 	}
 
-	/** Skrót LP (z polskimi znakami). */
+	/** State Forests (LP) abbreviation, with Polish diacritics. */
 	public String code() {
 		return code;
 	}
@@ -58,7 +58,7 @@ public enum ForestSiteType {
 		return VALUES[ordinal];
 	}
 
-	/** STL strefowy z trofii i wilgotności (siedliska niżowe, §3.3). */
+	/** Zonal STL from fertility and moisture (lowland sites, §3.3). */
 	public static ForestSiteType zonal(Fertility t, Moisture w) {
 		return switch (t) {
 			case OLIGOTROPHIC -> switch (w) {
@@ -86,8 +86,8 @@ public enum ForestSiteType {
 	}
 
 	/**
-	 * STL lasu w biomie leśnym. Biomy strefowe dostają {@link #zonal}, pozostałe typ wynikający z biomu
-	 * (z odmianą według trofii i wilgotności tam, gdzie biom obejmuje kilka typów).
+	 * STL of the forest in a forest biome. Zonal biomes get {@link #zonal}, the others the type implied by the biome
+	 * (varied by fertility and moisture where the biome covers several types).
 	 */
 	public static ForestSiteType forBiome(HabitatBiome b, Fertility t, Moisture w) {
 		boolean wet = w == Moisture.MOIST || w == Moisture.BOGGY;

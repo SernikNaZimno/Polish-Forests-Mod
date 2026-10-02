@@ -7,8 +7,8 @@ import pl.polishforests.worldgen.landscape.Substrate;
 import pl.polishforests.worldgen.landscape.WaterKind;
 
 /**
- * Budowniczy syntetycznych próbek kolumny do testów klasyfikatora: domyślnie wnętrze wysoczyzny morenowej
- * na 120 m, bez wód, 100 km od morza, O 0,5, P 0,1. Pola jak w {@link ColumnSample}.
+ * Builder of synthetic column samples for classifier tests: by default the interior of a moraine plateau
+ * at 120 m, no water, 100 km from the sea, O 0.5, P 0.1. Fields as in {@link ColumnSample}.
  */
 final class SyntheticSample {
 	double surface = 120;
@@ -31,7 +31,7 @@ final class SyntheticSample {
 	double massif;
 	double summit;
 	double cliffHeight;
-	/** Niski brzeg morski (0 = wysoki brzeg z klifem albo poza pasem) i granica gołego piasku. */
+	/** Low sea shore (0 = high cliffed shore or outside the belt) and the limit of bare sand. */
 	double lowShore;
 	double bareSandWidth = Double.NaN;
 	double sandiness = 0.5;
@@ -106,7 +106,7 @@ final class SyntheticSample {
 		return this;
 	}
 
-	/** Woda w kolumnie: lustro i dno. */
+	/** Water in the column: surface and bottom. */
 	SyntheticSample water(WaterKind k, int level, double bottom) {
 		waterKind = k;
 		waterLevel = level;
@@ -114,7 +114,7 @@ final class SyntheticSample {
 		return this;
 	}
 
-	/** Ciek w pobliżu: rząd, szerokość koryta, odległość od brzegu, lustro (domyślnie dno − 1,7 m). */
+	/** Nearby watercourse: order, channel width, distance from the bank, water surface (default: bed − 1.7 m). */
 	SyntheticSample stream(int r, double width, double d, double gradientPermille) {
 		streamOrder = r;
 		channelWidth = width;

@@ -48,9 +48,9 @@ import pl.polishforests.worldgen.landscape.Noise;
 import pl.polishforests.worldgen.landscape.Substrate;
 
 /**
- * Generator świata "Polska": teren 2,5D z proceduralnego modelu krajobrazu w skali 1:1
- * (docs/01-architektura.md, sekcja 3.1). Wypełnia kolumny blokami bez liczenia gęstości 3D,
- * co przy wysokości 3056 bloków jest wielokrotnie tańsze niż generator wanilijny.
+ * Generator of the "Poland" world: 2.5D terrain from a procedural 1:1 scale landscape model
+ * (docs/01-architektura.md, section 3.1). It fills columns with blocks without computing 3D density,
+ * which at a height of 3056 blocks is many times cheaper than the vanilla generator.
  */
 public final class PolandChunkGenerator extends ChunkGenerator {
 	public static final MapCodec<PolandChunkGenerator> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
@@ -74,7 +74,7 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 	private static final BlockState CLAY = Blocks.CLAY.defaultBlockState();
 	private static final BlockState MUD = Blocks.MUD.defaultBlockState();
 
-	/** Szum drobnych plam materiału (np. żwir na dnie koryta); niezależny od ziarna świata. */
+	/** Noise for small material patches (e.g. gravel on the channel bed); independent of the world seed. */
 	private static final Noise DETAIL = new Noise(0x5EED_DE7A_11L);
 
 	private final PolandSettings settings;
@@ -96,7 +96,7 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 		return settings;
 	}
 
-	/** Model krajobrazu dla ziarna świata; tworzony raz i podpinany do źródła biomów. */
+	/** Landscape model for the world seed; created once and bound to the biome source. */
 	public LandscapeModel model(long seed) {
 		LandscapeModel m = model;
 		if (m != null && modelSeed == seed) {
@@ -125,8 +125,8 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 	public ChunkGeneratorStructureState createState(HolderLookup<StructureSet> structureSets, RandomState randomState,
 			long legacyLevelSeed) {
 		model(randomState.seed());
-		// Profil klimatu (temperatura z metrów) musi być przypięty przed generacją, bo śnieg
-		// i lód stawia już freeze_top_layer.
+		// The climate profile (temperature from meters) must be attached before generation, because
+		// freeze_top_layer already places snow and ice.
 		ClimateBinding.attach(biomeSource.possibleBiomes(), vertical);
 		return super.createState(structureSets, randomState, legacyLevelSeed);
 	}
@@ -149,7 +149,7 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 		}, Util.backgroundExecutor().forName("polishforests_buildTerrain"));
 	}
 
-	/** Liczniki diagnostyczne: czas próbkowania modelu i wypełniania bloków (ns), liczba chunków. */
+	/** Diagnostic counters: time spent sampling the model and filling blocks (ns), number of chunks. */
 	public static final java.util.concurrent.atomic.LongAdder SAMPLE_NANOS = new java.util.concurrent.atomic.LongAdder();
 	public static final java.util.concurrent.atomic.LongAdder FILL_NANOS = new java.util.concurrent.atomic.LongAdder();
 	public static final java.util.concurrent.atomic.LongAdder CHUNKS = new java.util.concurrent.atomic.LongAdder();
@@ -198,8 +198,8 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 		try {
 			for (int idx = bottomSection; idx <= topSection; idx++) {
 				int y0 = chunk.getSectionYFromSectionIndex(idx) << 4;
-				// Najpierw liczymy stany całej sekcji; sekcja jednolita dostaje paletę jednowartościową,
-				// co jest wielokrotnie tańsze niż 4096 osobnych zapisów do palety.
+				// First compute the states of the whole section; a uniform section gets a single-value palette,
+				// which is many times cheaper than 4096 separate palette writes.
 				BlockState first = null;
 				boolean uniform = true;
 				for (int i = 0; i < 256; i++) {
@@ -212,7 +212,7 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 						int y = y0 + dy;
 						BlockState state = y <= top ? strata(s, y, top, waterTop, bedrockTops[i], wx, wz)
 								: y <= waterTop ? WATER : AIR;
-						// Kolejność indeksów jak w palecie sekcji: y, potem z, potem x.
+						// Index order as in the section palette: y, then z, then x.
 						buffer[(dy << 8) | ((i & 15) << 4) | (i >> 4)] = state;
 						if (first == null) {
 							first = state;
@@ -262,9 +262,9 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 	}
 
 	/**
-	 * Buduje kontener palety z gotowych stanów sekcji (kolejność y, z, x). Dla najwyżej 16 różnych
-	 * stanów format czterobitowy jest taki sam w pamięci i w danych, więc nie ma przepakowywania.
-	 * Zwraca null, gdy stanów jest więcej i trzeba użyć zwykłego zapisu.
+	 * Builds a palette container from precomputed section states (order y, z, x). For at most 16 distinct
+	 * states the 4-bit format is the same in memory and in the data, so there is no repacking.
+	 * Returns null when there are more states and regular writes must be used.
 	 */
 	private static @Nullable PalettedContainer<BlockState> pack(BlockState[] buffer, int[] ids) {
 		List<BlockState> palette = new ArrayList<>(8);
@@ -299,8 +299,8 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 	}
 
 	/**
-	 * Blok w kolumnie na wysokości {@code y} (od dołu: skała podłoża, utwory powierzchniowe,
-	 * gleba). Wersja M1 używa bloków wanilijnych; własne gleby i skały dochodzą w M2.
+	 * Block in the column at height {@code y} (from the bottom: bedrock, surface deposits,
+	 * soil). The M1 version uses vanilla blocks; the mod's own soils and rocks come in M2.
 	 */
 	private static BlockState strata(ColumnSample s, int y, int top, int waterTop, int bedrockTop, int wx, int wz) {
 		if (y <= bedrockTop) {
@@ -331,7 +331,7 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 			return DEEPSLATE;
 		}
 		if (sub == Substrate.FLYSCH) {
-			// Warstwowanie fliszu: ławice piaskowca i łupków, lekko nachylone.
+			// Flysch layering: beds of sandstone and shale, slightly tilted.
 			int band = Math.floorMod(y + (wx >> 5) - (wz >> 6), 9);
 			return band < 3 ? ANDESITE : STONE;
 		}

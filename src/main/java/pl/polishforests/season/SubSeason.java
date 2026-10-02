@@ -3,8 +3,8 @@ package pl.polishforests.season;
 import java.time.Month;
 
 /**
- * Dwanaście podsezonów roku. Kolejność i liczba odpowiadają Serene Seasons,
- * a każdy podsezon ma przypisany miesiąc kalendarza polskiego (decyzja B3).
+ * The twelve sub-seasons of the year. Their order and number match Serene Seasons,
+ * and each sub-season is assigned a month of the Polish calendar (decision B3).
  */
 public enum SubSeason {
 	EARLY_SPRING(Month.MARCH),

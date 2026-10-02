@@ -1,11 +1,11 @@
 package pl.polishforests.worldgen.habitat;
 
 /**
- * Siedlisko kolumny, pakowane do jednego {@code int} (§3.4 planu M2):
- * biom 6 b | strefa 5 b | STL 5 b | zespół 5 b | pokrycie 2 b | flagi BUK/JODŁA/ŚWIERK/GRAB 4 b | gleba 5 b,
- * od najmłodszych bitów. Rekord służy komendom, testom i podglądowi; generacja trzyma sam kod.
+ * Habitat of a column, packed into a single {@code int} (§3.4 of the M2 plan):
+ * biome 6 b | zone 5 b | site type 5 b | association 5 b | cover 2 b | BEECH/FIR/SPRUCE/HORNBEAM flags 4 b | soil 5 b,
+ * from the least significant bits. The record serves commands, tests and the preview; generation keeps only the code.
  *
- * @param flags maska {@link Species#flag()} gatunków w zasięgu
+ * @param flags mask of {@link Species#flag()} for species within their range
  */
 public record Habitat(HabitatBiome biome, Zone zone, ForestSiteType siteType, Association association, LandCover cover, int flags, Soil soil) {
 	private static final int B_BIOME = 0;
@@ -17,7 +17,7 @@ public record Habitat(HabitatBiome biome, Zone zone, ForestSiteType siteType, As
 	private static final int B_SOIL = 27;
 
 	static {
-		// Pola muszą mieścić się w swoich bitach (enumy tylko dopisujemy, więc to pilnuje granic).
+		// The fields must fit in their bits (enums are only appended to, so this guards the limits).
 		check(HabitatBiome.values().length, 6);
 		check(Zone.values().length, 5);
 		check(ForestSiteType.values().length, 5);
@@ -28,11 +28,11 @@ public record Habitat(HabitatBiome biome, Zone zone, ForestSiteType siteType, As
 
 	private static void check(int n, int bits) {
 		if (n > 1 << bits) {
-			throw new IllegalStateException("enum nie mieści się w " + bits + " bitach: " + n);
+			throw new IllegalStateException("enum does not fit in " + bits + " bits: " + n);
 		}
 	}
 
-	/** Kod siedliska. */
+	/** Habitat code. */
 	public static int pack(HabitatBiome biome, Zone zone, ForestSiteType siteType, Association association, LandCover cover, int flags, Soil soil) {
 		return biome.ordinal() << B_BIOME | zone.ordinal() << B_ZONE | siteType.ordinal() << B_SITE_TYPE
 				| association.ordinal() << B_ASSOCIATION | cover.ordinal() << B_COVER | (flags & 15) << B_FLAGS
@@ -75,7 +75,7 @@ public record Habitat(HabitatBiome biome, Zone zone, ForestSiteType siteType, As
 		return Soil.of(code >>> B_SOIL & 31);
 	}
 
-	/** Czy gatunek z flagą jest w zasięgu (tylko buk, jodła, świerk i grab). */
+	/** Whether a flagged species is within its range (beech, fir, spruce and hornbeam only). */
 	public static boolean has(int code, Species g) {
 		return (flags(code) & g.flag()) != 0;
 	}

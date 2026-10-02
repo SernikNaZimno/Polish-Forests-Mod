@@ -1,9 +1,9 @@
 package pl.polishforests.worldgen.habitat;
 
 /**
- * Gatunki drzew i krzewów: identyfikatory placed features {@code polskielasy:drzewo/<id>} i
- * {@code polskielasy:krzew/<id>} (§8.4) oraz reguły zasięgu ({@link SpeciesRanges}). Cztery gatunki mają flagę
- * w kodzie siedliska (4 bity): buk, jodła, świerk naturalny i grab.
+ * Tree and shrub species: placed feature identifiers {@code polishforests:tree/<id>} and
+ * {@code polishforests:shrub/<id>} (§8.4) and range rules ({@link SpeciesRanges}). Four species have a flag
+ * in the habitat code (4 bits): beech, fir, native spruce and hornbeam.
  */
 public enum Species {
 	SCOTS_PINE("scots_pine", false, -1),
@@ -23,7 +23,7 @@ public enum Species {
 	WHITE_WILLOW("white_willow", false, -1),
 	POPLAR("poplar", false, -1),
 	ROWAN("rowan", false, -1),
-	/** Dąb bezszypułkowy (zasięg osobny od szypułkowego; użycie od M3). */
+	/** Sessile oak (range separate from pedunculate oak; used from M3). */
 	SESSILE_OAK("sessile_oak", false, -1),
 	LARCH("larch", false, -1),
 	YEW("yew", false, -1),
@@ -33,7 +33,7 @@ public enum Species {
 	JUNIPER("juniper", true, -1),
 	IVY("ivy", true, -1);
 
-	/** Flagi gatunków w kodzie siedliska: bit 0 buk, 1 jodła, 2 świerk naturalny, 3 grab. */
+	/** Species flags in the habitat code: bit 0 beech, 1 fir, 2 native spruce, 3 hornbeam. */
 	public static final int FLAG_BEECH = 1;
 	public static final int FLAG_FIR = 1 << 1;
 	public static final int FLAG_SPRUCE = 1 << 2;
@@ -53,12 +53,12 @@ public enum Species {
 		return id;
 	}
 
-	/** Ścieżka placed feature'a: {@code drzewo/<id>} albo {@code krzew/<id>}. */
+	/** Placed feature path: {@code tree/<id>} or {@code shrub/<id>}. */
 	public String path() {
 		return (shrub ? "shrub/" : "tree/") + id;
 	}
 
-	/** Maska flagi w kodzie siedliska albo 0, gdy gatunek nie ma flagi. */
+	/** Flag mask in the habitat code, or 0 when the species has no flag. */
 	public int flag() {
 		return flagBit < 0 ? 0 : 1 << flagBit;
 	}

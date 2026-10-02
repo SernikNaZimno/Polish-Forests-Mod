@@ -6,38 +6,38 @@ import java.util.concurrent.ConcurrentHashMap;
 import pl.polishforests.worldgen.habitat.AltitudinalBelts;
 
 /**
- * Proceduralny model krajobrazu Polski w skali 1:1 (1 jednostka = 1 metr).
+ * Procedural landscape model of Poland at 1:1 scale (1 unit = 1 metre).
  *
- * <p>Warstwy (docs/01-architektura.md, sekcja 3.2):
+ * <p>Layers (docs/01-architektura.md, section 3.2):
  * <ul>
- * <li>L0 – pola stref: pasma górskie, zasięg zlodowacenia, poziom bazowy nizin;</li>
- * <li>L1 – makroregiony: komórki Voronoi o zawirowanych granicach, z typem krajobrazu,
- * regułami sąsiedztwa i własnym układem współrzędnych wzdłuż pasma górskiego;</li>
- * <li>L2 – rzeźba typu krajobrazu, mieszana gładkimi wagami softmax na granicach komórek;</li>
- * <li>L3 – wody: rynny z łańcuchami jezior, oczka, doliny wielkich rzek, każde z własnym lustrem.</li>
+ * <li>L0 – zone fields: mountain ranges, extent of glaciation, lowland base level;</li>
+ * <li>L1 – macroregions: Voronoi cells with warped boundaries, with a landscape type,
+ * adjacency rules and their own coordinate frame along the mountain range;</li>
+ * <li>L2 – relief of the landscape type, blended with smooth softmax weights at cell boundaries;</li>
+ * <li>L3 – waters: tunnel valleys with chains of lakes, kettle ponds, valleys of large rivers, each with its own water level.</li>
  * </ul>
  *
- * <p>Każdy punkt jest liczony lokalnie i deterministycznie z ziarna, więc świat jest nieskończony,
- * a generacja może działać na wielu wątkach. Klasa nie zależy od Minecrafta.
+ * <p>Every point is computed locally and deterministically from the seed, so the world is infinite
+ * and generation can run on many threads. The class does not depend on Minecraft.
  */
 public final class LandscapeModel {
-	/** Średni rozmiar makroregionu przy suwaku 1,0; w Polsce 59 makroregionów na 312 700 km². */
+	/** Mean macroregion size with the slider at 1.0; Poland has 59 macroregions on 312,700 km². */
 	public static final double BASE_REGION_SIZE = 64_000.0;
-	/** Szerokość pasa przejścia między makroregionami (ok. 80% zmiany wagi). */
+	/** Width of the transition belt between macroregions (about 80% of the weight change). */
 	private static final double BLEND_WIDTH = 5_000.0;
 	private static final double KETTLE_BANK = 45.0;
-	/** Średnia profilu żlebów {@code p[2]} z {@link #flyschParts} (zmierzona na szumie); od niej liczymy wypukłość fliszu. */
+	/** Mean of the gully profile {@code p[2]} from {@link #flyschParts} (measured on the noise); flysch convexity is measured from it. */
 	private static final double GULLY_MEAN = 0.52;
-	/** Liczba przedziałów tablicy dystrybuanty szumu (kwantyle piaszczystości). */
+	/** Number of bins of the noise CDF table (sandiness quantiles). */
 	private static final int CDF_BINS = 512;
-	/** Dystrybuanta wartości {@link Noise#sample} na [-1, 1], liczona raz ze stałego ziarna. */
+	/** CDF of the values of {@link Noise#sample} on [-1, 1], computed once from a fixed seed. */
 	private static final double[] NOISE_CDF = noiseCdf();
 
 	private final LandscapeScale scale;
 	private final double regionScale;
 	private final double regionSize;
 	private final double tau;
-	/** Mnożniki skali: strefy, formy średnie, lokalne, rozstaw gór, szerokość koryt. */
+	/** Scale multipliers: zones, medium landforms, local landforms, mountain spacing, channel width. */
 	private final double zs;
 	private final double meso;
 	private final double local;
@@ -62,42 +62,42 @@ public final class LandscapeModel {
 	private final Noise mountain;
 	private final Noise zoneSea;
 	private final Noise coast;
-	/** Piaszczystość utworu (M2, siedliska). */
+	/** Sandiness of the deposit (M2, habitats). */
 	private final Noise habitatSandiness;
 	private final RiverNetwork rivers;
-	/** Siatki z pamięcią (M2, S3): wygładzony teren z nachyleniem i ekspozycją oraz pola regionalne O, P. */
+	/** Cached grids (M2, S3): smoothed terrain with slope and aspect, and the regional fields O, P. */
 	private final CoarseTerrainField coarse;
-	/** Najwyższy teren w promieniu 3 km·mspace (duży masyw w piętrach, E12). */
+	/** Highest terrain within 3 km·mspace (a large massif in the altitudinal belts, E12). */
 	private final PeakField peaks;
 	private final RegionalField regional;
 
 	private final ConcurrentHashMap<Long, Cell> cells = new ConcurrentHashMap<>();
 	private final ConcurrentHashMap<Long, Integer> lakeLevels = new ConcurrentHashMap<>();
-	/** Stan oczka: {@link #KETTLE_NONE}, {@link #KETTLE_MINEROTROPHIC} albo {@link #KETTLE_OMBROTROPHIC}. */
+	/** Kettle state: {@link #KETTLE_NONE}, {@link #KETTLE_MINEROTROPHIC} or {@link #KETTLE_OMBROTROPHIC}. */
 	private final ConcurrentHashMap<Long, Byte> kettleExistence = new ConcurrentHashMap<>();
 	private static final byte KETTLE_NONE = 0;
 	private static final byte KETTLE_MINEROTROPHIC = 1;
 	private static final byte KETTLE_OMBROTROPHIC = 2;
 
 	/**
-	 * Komórka makroregionu. {@code cos}/{@code sin} opisują kierunek w poprzek pasma górskiego;
-	 * rzeźba gór jest wydłużona prostopadle do niego, czyli wzdłuż pasma.
+	 * Macroregion cell. {@code cos}/{@code sin} describe the direction across the mountain range;
+	 * mountain relief is elongated perpendicular to it, i.e. along the range.
 	 */
 	public record Cell(long cx, long cz, LandscapeType type, double centerX, double centerZ, double cos, double sin) {
 	}
 
-	/** Model w skali rzeczywistej. */
+	/** Model at realistic scale. */
 	public LandscapeModel(long seed, double regionScale) {
 		this(seed, LandscapeScale.REALISTIC, regionScale);
 	}
 
 	/**
-	 * @param scale       skala pozioma krajobrazu
-	 * @param regionScale mnożnik rozmiaru regionów z suwaka w opcjach świata
+	 * @param scale       horizontal landscape scale
+	 * @param regionScale region size multiplier from the slider in the world options
 	 */
 	public LandscapeModel(long seed, LandscapeScale scale, double regionScale) {
 		if (!(regionScale > 0.01 && regionScale <= 4.0)) {
-			throw new IllegalArgumentException("regionScale poza zakresem (0.01, 4]: " + regionScale);
+			throw new IllegalArgumentException("regionScale out of range (0.01, 4]: " + regionScale);
 		}
 		this.scale = scale;
 		this.regionScale = regionScale;
@@ -127,7 +127,7 @@ public final class LandscapeModel {
 		this.mountain = root.derive("mountain");
 		this.zoneSea = root.derive("zone.sea");
 		this.coast = root.derive("coast");
-		// Nowe szumy M2 tylko przez „habitat.*”: pochodne ziarna są niezależne, więc teren się nie zmienia.
+		// New M2 noises only via "habitat.*": derived seeds are independent, so the terrain does not change.
 		this.habitatSandiness = root.derive("habitat.piask");
 		this.rivers = new RiverNetwork(this, root.derive("rivers"), scale);
 		this.coarse = new CoarseTerrainField(this, 32.0 * local);
@@ -143,24 +143,24 @@ public final class LandscapeModel {
 		return scale;
 	}
 
-	/** Średni rozmiar makroregionu w metrach. */
+	/** Mean macroregion size in metres. */
 	public double regionSize() {
 		return regionSize;
 	}
 
-	/** Siatka wygładzonego terenu (testy). */
+	/** Smoothed terrain grid (tests). */
 	CoarseTerrainField coarseTerrain() {
 		return coarse;
 	}
 
-	/** Siatka pól regionalnych (testy). */
+	/** Regional field grid (tests). */
 	RegionalField regional() {
 		return regional;
 	}
 
-	// ------------------------------------------------------------------ L0: strefy
+	// ------------------------------------------------------------------ L0: zones
 
-	/** Szum pasm górskich: linia zerowa to oś pasma (bez masek; testy zasięgu P w {@link RegionalField}). */
+	/** Mountain range noise: the zero line is the range axis (without masks; P reach tests in {@link RegionalField}). */
 	double mountainRaw(double x, double z) {
 		double s = zs;
 		double wx = x + 60_000 * s * warp.at(x, z, 250_000 * s);
@@ -169,21 +169,21 @@ public final class LandscapeModel {
 	}
 
 	/**
-	 * Pole pasm górskich w [0, 1]: 1 na osi pasma. Pasma to linie zerowe szumu o bardzo
-	 * długiej fali, pocięte maską na skończone łańcuchy.
+	 * Mountain range field in [0, 1]: 1 on the range axis. Ranges are the zero lines of a noise with a very
+	 * long wavelength, cut by a mask into finite chains.
 	 */
 	public double mountainField(double x, double z) {
 		double ridge = 1.0 - Math.abs(mountainRaw(x, z));
 		ridge = ridge * ridge * ridge;
 		double mask = Noise.smoothstep(-0.25, 0.25, zoneMountainMask.at(x, z, 900_000 * zs));
-		// Góry trzymają się z dala od morza (w Polsce ok. 500 km od wybrzeża).
+		// Mountains keep away from the sea (in Poland about 500 km from the coast).
 		double inland = Noise.smoothstep(0.10, 0.32, seaField(x, z));
 		return ridge * mask * inland;
 	}
 
 	/**
-	 * Liniowe pole pasm w [0, 1]: jak {@link #mountainField}, ale bez sześcianu, więc opada wolniej i sięga
-	 * dalej od osi pasma. Podstawa podgórskości P w {@link RegionalField}.
+	 * Linear range field in [0, 1]: like {@link #mountainField}, but without the cube, so it falls off more slowly and reaches
+	 * further from the range axis. The basis of mountain influence P in {@link RegionalField}.
 	 */
 	double mountainLinear(double x, double z) {
 		double ridge = 1.0 - Math.abs(mountainRaw(x, z));
@@ -192,19 +192,19 @@ public final class LandscapeModel {
 		return ridge * mask * inland;
 	}
 
-	/** Próg pola ląd–morze; poniżej jest morze (ok. 25% powierzchni świata). */
+	/** Threshold of the land-sea field; below it is sea (about 25% of the world area). */
 	private static final double SEA_THRESHOLD = -0.22;
 
-	/** Pole ląd–morze: wartości ujemne to morze. Bardzo długa fala daje gładkie, rozległe wybrzeża. */
+	/** Land-sea field: negative values are sea. A very long wavelength gives smooth, extensive coasts. */
 	public double seaField(double x, double z) {
-		// Wielkie zatoki i półwyspy z fBm, a na nich łagodne łuki brzegu co kilkadziesiąt km i drobne
-		// zafalowania co kilka km (przesunięcie linii brzegowej rzędu 3 km i 0,7 km).
+		// Large bays and peninsulas from fBm, with gentle shoreline arcs every few tens of km and small
+		// undulations every few km on top (shoreline offsets of about 3 km and 0.7 km).
 		return zoneSea.fbm(x, z, 900_000 * zs, 3, 0.45) - SEA_THRESHOLD
 				+ 0.006 * zoneSea.at(x + 7_777, z - 3_333, 45_000 * zs)
 				+ 0.0015 * zoneSea.at(x - 1_234, z + 5_678, 9_000 * zs);
 	}
 
-	/** Przybliżona odległość od linii brzegu w metrach: dodatnia na lądzie, ujemna na morzu. */
+	/** Approximate distance from the shoreline in metres: positive on land, negative at sea. */
 	public double coastDistance(double x, double z) {
 		double c = seaField(x, z);
 		double e = Math.max(20.0, 400.0 * zs);
@@ -214,17 +214,17 @@ public final class LandscapeModel {
 		return c / Math.max(g, 1e-12);
 	}
 
-	/** Szerokość plaży w metrach. */
+	/** Beach width in metres. */
 	private double beachWidth() {
 		return 60.0 * local;
 	}
 
 	/**
-	 * Kształt wybrzeża: dno morza, plaża, wydma przednia i wydmy nadmorskie na niskim brzegu, klif tam,
-	 * gdzie wysoczyzna dochodzi do morza, i miejscami zalew (jezioro przybrzeżne) za mierzeją.
+	 * Coast shape: sea floor, beach, foredune and coastal dunes on a low shore, a cliff where
+	 * a plateau reaches the sea, and in places a lagoon (coastal lake) behind a spit.
 	 *
-	 * @param h wysokość terenu z typów krajobrazu
-	 * @param d odległość od linii brzegu (dodatnia na lądzie)
+	 * @param h terrain height from the landscape types
+	 * @param d distance from the shoreline (positive on land)
 	 */
 	private double shapeCoast(double h, double d, double x, double z) {
 		double band = 25_000 * meso;
@@ -234,13 +234,13 @@ public final class LandscapeModel {
 		if (d < 0) {
 			return -seaDepth(-d);
 		}
-		// Teren obniża się ku morzu, ale część rzeźby zostaje, żeby mogły powstać klify.
+		// The terrain drops towards the sea, but part of the relief remains so that cliffs can form.
 		double hl = h * (0.12 + 0.88 * Noise.smoothstep(0, band, d));
 		double beach = beachWidth();
 		double shore = 2.0 * Noise.smoothstep(0, beach, d);
 		double cliffLimit = shore + 2.5 * Math.max(0, d - beach);
 		double result = Math.max(Math.min(hl, cliffLimit), shore);
-		// Niski brzeg: wydma przednia i wydmy za nią. Wysoki brzeg (klif) jest bez wydm.
+		// Low shore: foredune and dunes behind it. A high shore (cliff) has no dunes.
 		double low = 1 - Noise.smoothstep(6, 20, hl);
 		if (low > 0) {
 			double duneWidth = 220 * local;
@@ -250,12 +250,12 @@ public final class LandscapeModel {
 				double height = 6 + 14 * (0.5 + 0.5 * coast.at(x, z, 3_000 * meso));
 				result = Math.max(result, shore + height * bump * low);
 			}
-			// Zalew za mierzeją: płytkie jezioro na poziomie morza, oddzielone wydmą.
+			// Lagoon behind a spit: a shallow lake at sea level, separated by a dune.
 			double lagoon = Noise.smoothstep(0.25, 0.5, coast.at(x + 999, z, 60_000 * meso)) * low;
 			if (lagoon > 0) {
 				double start = beach + duneWidth + 80 * local;
-				// Szerokość i głębokość maleją razem z polem zalewu, więc zalew zwęża się ku końcom
-				// zamiast urywać się prostą linią; brzeg od lądu jest nieregularny (zatoki, półwyspy).
+				// Width and depth decrease together with the lagoon field, so the lagoon narrows towards its ends
+				// instead of ending in a straight line; the landward shore is irregular (bays, peninsulas).
 				double width = (1_500 + 1_500 * (0.5 + 0.5 * coast.at(x, z, 20_000 * meso))) * meso * lagoon;
 				double ragged = 0.18 * width * coast.fbm(x - 555, z + 777, 2_500 * meso, 2, 0.5);
 				double v = (d - start + ragged) / Math.max(1e-6, width);
@@ -269,30 +269,30 @@ public final class LandscapeModel {
 		return result;
 	}
 
-	/** Głębokość morza w metrach w odległości {@code off} od brzegu (Bałtyk: płytki szelf). */
+	/** Sea depth in metres at distance {@code off} from the shore (Baltic: shallow shelf). */
 	private double seaDepth(double off) {
 		double s = meso;
 		double depth = 22 * (1 - Math.exp(-off / (2_500 * s))) + 45 * Noise.smoothstep(12_000 * s, 70_000 * s, off);
-		// Rewy: podwodne wały piaszczyste przy brzegu.
+		// Bars: underwater sand ridges near the shore.
 		double bars = off < 600 * s ? 0.8 * Math.sin(off / (90 * s) * Math.PI) * (1 - off / (600 * s)) : 0;
 		return Math.max(0.2, depth - bars);
 	}
 
-	/** Pole zlodowacenia: wartości dodatnie to strefa młodoglacjalna. Góry wypychają ją na zewnątrz. */
+	/** Glaciation field: positive values are the young-glacial zone. Mountains push it outwards. */
 	public double glacialField(double x, double z) {
-		// Przy morzu przeważa rzeźba młodoglacjalna, jak na Pomorzu i Mazurach.
+		// Near the sea young-glacial relief prevails, as in Pomerania and Masuria.
 		double nearSea = 1 - Noise.smoothstep(0.0, 0.35, seaField(x, z));
 		return zoneGlacial.fbm(x, z, 500_000 * zs, 2, 0.5) - 1.4 * mountainField(x, z) + 0.05 + 0.8 * nearSea;
 	}
 
-	/** Regionalny poziom bazowy nizin w metrach n.p.m. (ok. 70–190 m), zmienny bardzo łagodnie. */
+	/** Regional lowland base level in metres a.s.l. (about 70–190 m), varying very gently. */
 	public double lowlandBaseline(double x, double z) {
 		return 130.0 + 55.0 * lowlandBase.fbm(x, z, 140_000 * meso, 2, 0.5);
 	}
 
-	// ------------------------------------------------------------------ L1: makroregiony
+	// ------------------------------------------------------------------ L1: macroregions
 
-	/** Typ krajobrazu komórki makroregionu (po zastosowaniu reguł sąsiedztwa). */
+	/** Landscape type of a macroregion cell (after applying the adjacency rules). */
 	public LandscapeType regionType(long cx, long cz) {
 		return cell(cx, cz).type();
 	}
@@ -305,7 +305,7 @@ public final class LandscapeModel {
 		}
 		LandscapeType type = rawRegionType(cx, cz);
 		if (type == LandscapeType.BESKIDS) {
-			// Reguła: Beskidy nigdy nie graniczą bezpośrednio z niziną; pośredniczy pogórze.
+			// Rule: the Beskids never border a lowland directly; foothills lie in between.
 			outer:
 			for (int dx = -1; dx <= 1; dx++) {
 				for (int dz = -1; dz <= 1; dz++) {
@@ -318,7 +318,7 @@ public final class LandscapeModel {
 		}
 		double px = regionCenterX(cx, cz);
 		double pz = regionCenterZ(cx, cz);
-		// Kierunek w poprzek pasma: gradient surowego pola gór (nie zmienia znaku na osi pasma).
+		// Direction across the range: gradient of the raw mountain field (does not change sign on the range axis).
 		double e = Math.max(50.0, 2_000 * zs);
 		double gx = mountainRaw(px + e, pz) - mountainRaw(px - e, pz);
 		double gz = mountainRaw(px, pz + e) - mountainRaw(px, pz - e);
@@ -349,7 +349,7 @@ public final class LandscapeModel {
 		return regionJitter.unit(cx, cz, 4) < 0.12 ? LandscapeType.OUTWASH_PLAIN : LandscapeType.OLD_GLACIAL_PLAIN;
 	}
 
-	/** Środek komórki w przestrzeni wyszukiwania (zawirowanej). */
+	/** Cell centre in the (warped) lookup space. */
 	double regionCenterX(long cx, long cz) {
 		return (cx + 0.15 + 0.7 * regionJitter.unit(cx, cz, 1)) * regionSize;
 	}
@@ -358,10 +358,10 @@ public final class LandscapeModel {
 		return (cz + 0.15 + 0.7 * regionJitter.unit(cx, cz, 2)) * regionSize;
 	}
 
-	/** {@link LandscapeType#values()} raz (values() kopiuje tablicę przy każdym wywołaniu). */
+	/** {@link LandscapeType#values()} once (values() copies the array on every call). */
 	private static final LandscapeType[] TYPES = LandscapeType.values();
 
-	/** Komórki wpływające na punkt i ich wagi (suma = 1). */
+	/** Cells influencing a point and their weights (sum = 1). */
 	public record Blend(Cell[] cells, double[] weights, int count, double[] typeWeights) {
 		public LandscapeType dominant() {
 			int best = 0;
@@ -379,8 +379,8 @@ public final class LandscapeModel {
 	}
 
 	/**
-	 * Wagi komórek w punkcie. Granice są zawirowane szumem, a wagi to softmax odległości,
-	 * więc powierzchnia nie ma załamań wzdłuż dwusiecznych Voronoi.
+	 * Cell weights at a point. The boundaries are warped by noise and the weights are a softmax of distances,
+	 * so the surface has no creases along the Voronoi bisectors.
 	 */
 	public Blend blend(double x, double z) {
 		double a = 0.22 * regionSize;
@@ -388,9 +388,9 @@ public final class LandscapeModel {
 		double lz = z + a * regionWarp.fbm(x + 12_345, z - 6_789, 0.7 * regionSize, 2, 0.5);
 		long gx = (long) Math.floor(lx / regionSize);
 		long gz = (long) Math.floor(lz / regionSize);
-		// Najpierw wszystkie 9 komórek i ich odległości (w tablicach wyniku), potem w tych samych tablicach
-		// zostają tylko komórki o istotnej wadze, w tej samej kolejności (n ≤ i, więc nadpisujemy tylko
-		// przeczytane miejsca).
+		// First all 9 cells and their distances (in the result arrays), then only the cells with a significant weight
+		// remain in the same arrays, in the same order (n ≤ i, so we overwrite only slots that have
+		// already been read).
 		Cell[] used = new Cell[9];
 		double[] w = new double[9];
 		double min = Double.MAX_VALUE;
@@ -429,31 +429,31 @@ public final class LandscapeModel {
 		return new Blend(used, w, n, tw);
 	}
 
-	/** Wagi typów krajobrazu w punkcie (suma = 1). */
+	/** Landscape type weights at a point (sum = 1). */
 	public double[] typeWeights(double x, double z) {
 		return blend(x, z).typeWeights();
 	}
 
-	// ------------------------------------------------------------------ L2: rzeźba
+	// ------------------------------------------------------------------ L2: relief
 
-	/** Wysokość gruntu komórki bez wód, w metrach n.p.m. */
+	/** Ground height of a cell without waters, in metres a.s.l. */
 	double cellElevation(Cell c, double x, double z) {
 		return cellElevation(c, x, z, null, 0);
 	}
 
 	/**
-	 * Składowe rzeźby zapisywane przy liczeniu wysokości w {@link #sample} (kontekst wyjściowy
-	 * {@link #cellElevation}). Nie wpływają na wysokość; obiekt jest lokalny dla jednej próbki.
+	 * Relief components recorded while computing the height in {@link #sample} (output context of
+	 * {@link #cellElevation}). They do not affect the height; the object is local to one sample.
 	 */
 	private static final class ReliefParts {
-		/** Suma składowych krótkofalowych ważonych wagami komórek. */
+		/** Sum of the short-wave components weighted by the cell weights. */
 		double convexity;
-		/** Wysokość wydmy (z komórki sandru) i wału moreny (z komórki wysoczyzny). */
+		/** Dune height (from the outwash plain cell) and moraine ridge height (from the plateau cell). */
 		double duneHeight;
 		double moraineRidgeHeight;
-		/** Siła masywu (z komórki Beskidów). */
+		/** Massif strength (from the Beskids cell). */
 		double massif;
-		/** Profil dolin podłużnych p[0] komórki pogórza i Beskidów o największej wadze (jak w {@link #describe}). */
+		/** Longitudinal valley profile p[0] of the foothills and Beskids cell with the largest weight (as in {@link #describe}). */
 		double foothillsWeight = -1;
 		double foothillsProfile = Double.NaN;
 		double beskidsWeight = -1;
@@ -473,8 +473,8 @@ public final class LandscapeModel {
 	}
 
 	/**
-	 * Jak {@link #cellElevation(Cell, double, double)}; gdy {@code o} nie jest null, dopisuje do niego
-	 * składowe rzeźby komórki o wadze {@code w}. Wysokość jest identyczna w obu wariantach.
+	 * Like {@link #cellElevation(Cell, double, double)}; when {@code o} is not null, adds to it
+	 * the relief components of the cell with weight {@code w}. The height is identical in both variants.
 	 */
 	private double cellElevation(Cell c, double x, double z, ReliefParts o, double w) {
 		return switch (c.type()) {
@@ -487,7 +487,7 @@ public final class LandscapeModel {
 		};
 	}
 
-	/** Równina staroglacjalna: płaska, z łagodnym falowaniem. */
+	/** Old glacial plain: flat, with gentle undulation. */
 	private double plainElevation(double x, double z, ReliefParts o, double w) {
 		double fine = 2.0 * relief.fbm(x, z, 500 * local, 2, 0.5);
 		if (o != null) {
@@ -496,7 +496,7 @@ public final class LandscapeModel {
 		return lowlandBaseline(x, z) - 8.0 + 6.0 * relief.fbm(x, z, 3_000 * local, 3, 0.5) + fine;
 	}
 
-	/** Sandr: łagodne nachylenie z wielkoskalowego szumu, drobne falowanie i pola wydm. */
+	/** Outwash plain: a gentle tilt from large-scale noise, fine undulation and dune fields. */
 	private double outwashPlainRelief(double x, double z, ReliefParts o, double w) {
 		double tilt = 12.0 * relief.at(x, z, 25_000 * meso);
 		double ripple = 1.5 * relief.fbm(x + 311, z - 97, 400 * local, 2, 0.5);
@@ -508,18 +508,18 @@ public final class LandscapeModel {
 		return tilt + ripple + dune;
 	}
 
-	/** Wysokość wydmy nad powierzchnią sandru (0 poza polami wydmowymi). */
+	/** Dune height above the outwash plain surface (0 outside dune fields). */
 	private double duneHeight(double x, double z) {
 		double field = Noise.smoothstep(0.15, 0.45, dunes.at(x, z, 18_000 * meso));
 		if (field <= 0) {
 			return 0.0;
 		}
-		// Wydmy wydłużone z zachodu na wschód (przeważające wiatry zachodnie).
+		// Dunes elongated from west to east (prevailing westerly winds).
 		double d = dunes.ridged(x / 3.0, z, 700 * local, 2, 0.45);
 		return field * 22.0 * Noise.smoothstep(0.45, 0.95, d);
 	}
 
-	/** Wysoczyzna morenowa: pagórki o fali 300–1500 m oraz pasy wałów moren czołowych. */
+	/** Moraine plateau: hummocks with a 300–1500 m wavelength and belts of end moraine ridges. */
 	private double moraineRelief(double x, double z, ReliefParts o, double w) {
 		double hills = 11.0 * relief.fbm(x, z, 1_100 * local, 4, 0.55);
 		double ridge = moraineRidge(x, z);
@@ -530,7 +530,7 @@ public final class LandscapeModel {
 		return hills + ridge;
 	}
 
-	/** Wysokość wałów moren czołowych (0 poza pasami moren). */
+	/** Height of the end moraine ridges (0 outside the moraine belts). */
 	private double moraineRidge(double x, double z) {
 		double belt = Noise.smoothstep(0.10, 0.40, moraine.at(x, z, 35_000 * meso));
 		if (belt <= 0) {
@@ -542,9 +542,9 @@ public final class LandscapeModel {
 	}
 
 	/**
-	 * Współrzędna w poprzek pasma (u) i wzdłuż pasma (v), liczona od globalnego początku układu.
-	 * Nie liczymy jej od środka komórki: przy małych komórkach (skala rozgrywki) każda komórka
-	 * próbkowałaby wtedy ten sam wycinek szumu i góry byłyby systematycznie zaniżone.
+	 * Coordinate across the range (u) and along the range (v), measured from the global origin.
+	 * It is not measured from the cell centre: with small cells (gameplay scale) every cell
+	 * would then sample the same patch of noise and the mountains would be systematically too low.
 	 */
 	private static double across(Cell c, double x, double z) {
 		return x * c.cos() + z * c.sin();
@@ -555,34 +555,34 @@ public final class LandscapeModel {
 	}
 
 	/**
-	 * Profil doliny: 0 na osi doliny (przekrój V), 1 na grzbiecie (zaokrąglony wierzchołek).
-	 * {@code n} to wartość szumu, którego izolinia zerowa wyznacza oś doliny.
+	 * Valley profile: 0 on the valley axis (V cross-section), 1 on the ridge (rounded top).
+	 * {@code n} is the value of the noise whose zero contour defines the valley axis.
 	 */
 	private static double valleyProfile(double n, double width) {
 		return Math.tanh(1.3 * Math.abs(n) / width) / 0.96;
 	}
 
 	/**
-	 * Rzeźba fliszowa: doliny podłużne wzdłuż pasma, doliny poprzeczne dzielące grzbiety na
-	 * szczyty i przełęcze, modulacja kopuł i drobna szorstkość.
+	 * Flysch relief: longitudinal valleys along the range, transverse valleys dividing the ridges into
+	 * summits and passes, dome modulation and fine roughness.
 	 *
-	 * @param p składowe z {@link #flyschParts}
+	 * @param p components from {@link #flyschParts}
 	 */
 	private static double flyschRelief(double[] p) {
 		return p[0] * (0.45 + 0.55 * p[1]) * (0.8 + 0.2 * p[2]) * p[3];
 	}
 
 	/**
-	 * Wypukłość fliszu (m): wkład żlebów do rzeźby względem ich średniej i drobna szorstkość. Grzbiety
-	 * i doliny podłużne (fala kilku km) nie wchodzą, bo opisuje je profil p[0].
+	 * Flysch convexity (m): the gullies' contribution to the relief relative to their mean, plus fine roughness. Ridges
+	 * and longitudinal valleys (wavelength of a few km) are not included, because the profile p[0] describes them.
 	 */
 	private static double flyschConvexity(double relief, double[] p, double rough) {
 		return relief * p[0] * (0.45 + 0.55 * p[1]) * 0.2 * (p[2] - GULLY_MEAN) * p[3] + rough;
 	}
 
 	/**
-	 * Składowe rzeźby fliszowej: {profil dolin podłużnych, profil dolin poprzecznych, żleby, kopuły}.
-	 * Profile mają wartość 0 na osi doliny i ok. 1 na grzbiecie.
+	 * Components of the flysch relief: {longitudinal valley profile, transverse valley profile, gullies, domes}.
+	 * The profiles are 0 on the valley axis and about 1 on the ridge.
 	 */
 	private double[] flyschParts(Cell c, double x, double z, double spacing) {
 		double u = across(c, x, z);
@@ -591,7 +591,7 @@ public final class LandscapeModel {
 		double wv = v + 0.35 * spacing * mountain.fbm(x, z + 999, 1.6 * spacing, 2, 0.5);
 		double main = valleyProfile(mountain.sample(wu / spacing + 0.5, wv / (3.0 * spacing)), 0.55);
 		double cross = valleyProfile(mountain.sample(wu / (1.2 * spacing) - 7.3, wv / (0.45 * spacing)), 0.6);
-		// Żleby i dolinki na stokach: gęsta, zawirowana sieć o rozstawie ok. 0,2 rozstawu dolin.
+		// Gullies and small valleys on the slopes: a dense, warped network with a spacing of about 0.2 of the valley spacing.
 		double g = 0.2 * spacing;
 		double gx = x + 0.5 * g * mountain.at(x + 111, z - 222, 0.8 * g);
 		double gz = z + 0.5 * g * mountain.at(x - 333, z + 444, 0.8 * g);
@@ -604,7 +604,7 @@ public final class LandscapeModel {
 		return (type == LandscapeType.BESKIDS ? 5_200 : 3_200) * mspace;
 	}
 
-	/** Pogórze: garby wydłużone wzdłuż pasma, 300–600 m n.p.m., deniwelacje 100–250 m. */
+	/** Foothills: rounded hills elongated along the range, 300–600 m a.s.l., relief 100–250 m. */
 	private double foothillElevation(Cell c, double x, double z, ReliefParts o, double w) {
 		double m = mountainField(x, z);
 		double floor = 270.0 + 90.0 * Noise.smoothstep(0.45, 0.85, m);
@@ -618,13 +618,13 @@ public final class LandscapeModel {
 		return floor + relief * flyschRelief(p) + rough;
 	}
 
-	/** Beskidy: 500–1725 m n.p.m., deniwelacje 400–900 m, stoki 15–30°. */
+	/** Beskids: 500–1725 m a.s.l., relief 400–900 m, slopes 15–30°. */
 	private double mountainElevation(Cell c, double x, double z, ReliefParts o, double w) {
 		double m = mountainField(x, z);
 		double axis = Noise.smoothstep(0.82, 1.0, m);
 		double floor = 480.0 + 180.0 * axis;
 		double relief = 520.0 + 380.0 * axis;
-		// Pojedyncze wyższe masywy typu Babiej Góry lub Pilska.
+		// Isolated higher massifs like Babia Gora or Pilsko.
 		double massif = Noise.smoothstep(0.35, 0.8, mountain.at(x - 55_555, z + 22_222, 30_000 * meso));
 		relief += 350.0 * massif;
 		double rough = 25.0 * relief(x, z, 900 * local);
@@ -635,7 +635,7 @@ public final class LandscapeModel {
 			o.massif = massif;
 		}
 		double h = floor + relief * flyschRelief(p) + rough;
-		// Łagodne nasycenie powyżej 1500 m: najwyższe szczyty Beskidów to ok. 1725 m (Babia Góra).
+		// Soft saturation above 1500 m: the highest Beskid summits are about 1725 m (Babia Gora).
 		if (h > 1_500) {
 			h = 1_500 + 250 * Math.tanh((h - 1_500) / 250);
 		}
@@ -646,7 +646,7 @@ public final class LandscapeModel {
 		return relief.fbm(x, z, wavelength, 3, 0.5);
 	}
 
-	// ------------------------------------------------------------------ próbkowanie
+	// ------------------------------------------------------------------ sampling
 
 	private double elevation(Blend b, double x, double z) {
 		double h = 0;
@@ -656,7 +656,7 @@ public final class LandscapeModel {
 		return h;
 	}
 
-	/** Jak {@link #elevation(Blend, double, double)}, z zapisem składowych rzeźby do {@code o}. */
+	/** Like {@link #elevation(Blend, double, double)}, recording the relief components into {@code o}. */
 	private double elevation(Blend b, double x, double z, ReliefParts o) {
 		double h = 0;
 		for (int i = 0; i < b.count(); i++) {
@@ -665,17 +665,17 @@ public final class LandscapeModel {
 		return h;
 	}
 
-	/** Pola regionalne O i P w punkcie, bez pełnej próbki (podgląd map regionalnych i testy). */
+	/** Regional fields O and P at a point, without a full sample (regional map preview and tests). */
 	ColumnSample.Region region(double x, double z) {
 		return regional.sample(x, z);
 	}
 
-	/** Wysokość gruntu po zmieszaniu komórek i ukształtowaniu wybrzeża, jeszcze bez rzek i jezior. */
+	/** Ground height after blending the cells and shaping the coast, still without rivers and lakes. */
 	public double landElevation(double x, double z) {
 		return shapeCoast(elevation(blend(x, z), x, z), coastDistance(x, z), x, z);
 	}
 
-	/** Pełna próbka kolumny: rzeźba, wody, podłoże. */
+	/** Full column sample: relief, waters, substrate. */
 	public ColumnSample sample(double x, double z) {
 		Blend b = blend(x, z);
 		ReliefParts parts = new ReliefParts();
@@ -694,7 +694,7 @@ public final class LandscapeModel {
 		int water = ColumnSample.NO_WATER;
 		WaterKind kind = WaterKind.NONE;
 
-		// Morze i zalewy (na poziomie morza).
+		// Sea and lagoons (at sea level).
 		if (coastD < 0 || surface < 0) {
 			LandscapeType t = coastD < 0 ? LandscapeType.SEA : LandscapeType.COASTLAND;
 			Substrate sub = coastD < 0 && -coastD > 3_000 * meso ? Substrate.LAKE_MUD : Substrate.SAND;
@@ -705,27 +705,27 @@ public final class LandscapeModel {
 		double bare = Double.NaN;
 		if (coastD < beachWidth() + 400 * local) {
 			dominant = LandscapeType.COASTLAND;
-			// Plaża i biała wydma bez darni; dalej od morza wydma szara, porośnięta.
+			// Beach and white dune without turf; further from the sea the vegetated gray dune.
 			bare = beachWidth() + 220 * local * (0.6 + 0.4 * coast.at(x, z, 400 * local));
 			substrate = surface > 8 ? Substrate.GLACIAL_TILL : coastD < bare ? Substrate.BEACH_SAND : Substrate.SAND;
 		}
 
-		// Doliny i koryta sieci rzecznej oraz jeziora bezodpływowe.
+		// Valleys and channels of the river network, and sink lakes.
 		double valley = 0;
 		RiverNetwork.RiverHit r = rivers.query(x, z, surface, lowland + b.weight(LandscapeType.COASTLAND), foothills,
 				mountains);
 		surface = r.terrain();
 		boolean inSinkLake = r.lakeLevel() != ColumnSample.NO_WATER && r.lakeShore() < 0;
-		// Najbliższa woda stojąca (pola siedlisk): jezioro bezodpływowe, starorzecze, jezioro rynnowe, oczko.
-		// Zmienne lokalne zamiast obiektu, bo sample woła się dla każdej kolumny (koszt, §3.1 planu M2);
-		// kolejne źródła zastępują wcześniejsze tylko przy bliższym brzegu.
+		// Nearest standing water (habitat fields): sink lake, oxbow lake, tunnel valley lake, kettle pond.
+		// Local variables instead of an object, because sample is called for every column (cost, M2 plan §3.1);
+		// later sources replace earlier ones only when their shore is closer.
 		double standingShore = Double.POSITIVE_INFINITY;
 		int standingLevel = ColumnSample.NO_WATER;
 		ColumnSample.StandingWaterKind standingKind = ColumnSample.StandingWaterKind.NONE;
 		boolean standingOmbrotrophic = false;
 		long standingId = 0;
 		double standingRadius = Double.NaN;
-		// Jezioro bezodpływowe w pierścieniu do 150 m·k (ols, §4.4 planu M2); teren zmienia tylko do KETTLE_BANK.
+		// Sink lake in a ring up to 150 m·k (alder carr, M2 plan §4.4); it changes the terrain only up to KETTLE_BANK.
 		if (r.ringLevel() != ColumnSample.NO_WATER && r.ringShore() < standingShore) {
 			standingShore = r.ringShore();
 			standingLevel = r.ringLevel();
@@ -775,8 +775,8 @@ public final class LandscapeModel {
 			valley = Math.max(valley, 1 - Noise.smoothstep(0, 200 * local, r.lakeShore()));
 		}
 
-		// Rynny polodowcowe z łańcuchami jezior (tylko strefa młodoglacjalna, poza dolinami rzek).
-		// Obecność rynny wygasa płynnie w dolinach rzek, więc jeziora nie są ucinane na krawędzi doliny.
+		// Glacial tunnel valleys with chains of lakes (young-glacial zone only, outside river valleys).
+		// Tunnel valley presence fades out smoothly in river valleys, so lakes are not cut off at the valley edge.
 		double tunnelPresence = young * (1 - Noise.smoothstep(0.1, 0.45, valley)) * Noise.smoothstep(0, 1_500 * meso, coastD);
 		if (tunnelPresence > 0.05 && kind == WaterKind.NONE) {
 			LakeHit lake = tunnelLakeAt(x, z, tunnelPresence);
@@ -789,11 +789,11 @@ public final class LandscapeModel {
 					standingId = lake.id;
 					standingRadius = lake.radius;
 				}
-				// Za zasięgiem niecki (pierścień siedlisk do 150 m·k) jezioro nie zmienia terenu.
+				// Beyond the basin (habitat ring up to 150 m·k) the lake does not change the terrain.
 				if (lake.shoreDistance <= lake.bank) {
 					surface = applyLake(surface, lake);
 				}
-				// Woda tylko wewnątrz linii brzegu; poza nią pas 15 m ma zawsze wał na poziomie lustra + 1 m.
+				// Water only inside the shoreline; outside it a 15 m strip always has a bank at water level + 1 m.
 				if (lake.shoreDistance < 0 && surface < lake.level) {
 					water = lake.level;
 					kind = WaterKind.LAKE;
@@ -802,8 +802,8 @@ public final class LandscapeModel {
 			}
 		}
 
-		// Oczka wytopiskowe na wysoczyźnie morenowej i sandrze. O istnieniu oczka decydują warunki
-		// w jego środku, dlatego sprawdzamy je w każdej kolumnie bez wody.
+		// Kettle ponds on the moraine plateau and outwash plain. Whether a kettle exists is decided by the conditions
+		// at its centre, so we check them in every column without water.
 		if (kind == WaterKind.NONE) {
 			LakeHit k = kettleAt(x, z);
 			if (k != null) {
@@ -840,7 +840,7 @@ public final class LandscapeModel {
 						r.inFloor(), r.floorU(), r.floorHalf(), r.slope(), r.convexBank(), standingShore, standingLevel, standingKind,
 						standingOmbrotrophic, standingId, standingRadius);
 		int landformBits = forms(r, parts, dominant, surface, rawSurface, coastD, water);
-		// Duży masyw (E12): najwyższy teren w promieniu 3 km·mspace, tylko tam, gdzie piętra go potrzebują.
+		// Large massif (E12): highest terrain within 3 km·mspace, only where the altitudinal belts need it.
 		double summit = mountains > 0 && surface >= AltitudinalBelts.SUMMIT_FROM ? peaks.sample(x, z) : 0;
 		return new ColumnSample(surface, water, kind, dominant, substrate, cover,
 				terrain(b, parts, dominant, raw, rawSurface, coastD, landformBits, sandiness(x, z), bare, summit, x, z), waters,
@@ -848,8 +848,8 @@ public final class LandscapeModel {
 	}
 
 	/**
-	 * Formy terenu z warunków {@link #describe} przeniesione do próbki, bez dodatkowych próbek: bity
-	 * {@link Landform#bit()} form z {@link Landform#FROM_SAMPLE}. Osobna metoda, żeby {@link #sample} nie rósł.
+	 * Landforms from the conditions of {@link #describe} moved into the sample, without extra samples: the
+	 * {@link Landform#bit()} bits of the landforms in {@link Landform#FROM_SAMPLE}. A separate method so that {@link #sample} does not grow.
 	 */
 	private int forms(RiverNetwork.RiverHit r, ReliefParts parts, LandscapeType dominant, double surface, double rawSurface,
 			double coastD, int water) {
@@ -859,8 +859,8 @@ public final class LandscapeModel {
 		}
 		boolean wet = water != ColumnSample.NO_WATER && water > (int) Math.floor(surface);
 		if (dominant == LandscapeType.COASTLAND && coastD >= 0 && !wet) {
-			// Formy brzegu morskiego tylko w pasie, w którym powstają (plaża, wydma przednia, ściana
-			// klifu), a nie np. na brzegu zalewu kilka kilometrów od morza.
+			// Sea shore landforms only in the belt where they form (beach, foredune, cliff
+			// face), and not e.g. on the shore of a lagoon several kilometres from the sea.
 			double beach = beachWidth();
 			if (surface > 8 && rawSurface > 8 && coastD < beach + rawSurface / 2.5 + 20 * local) {
 				landformBits |= Landform.CLIFF.bit();
@@ -889,21 +889,21 @@ public final class LandscapeModel {
 	}
 
 	/**
-	 * Rekord rzeźby z wag makroregionów, składowych zapisanych w {@code rz} i siatki wygładzonego terenu
-	 * w punkcie (x, z).
+	 * Relief record from the macroregion weights, the components recorded in {@code parts} and the smoothed terrain grid
+	 * at point (x, z).
 	 */
 	private ColumnSample.Terrain terrain(Blend b, ReliefParts parts, LandscapeType dominant, double raw, double rawSurface,
 			double coastD, int landformBits, double sandiness, double bare, double summit, double x, double z) {
-		// Krawędź klifu: teren przed wcięciem dolin w pasie formy KLIF.
+		// Cliff edge: terrain before cutting valleys, in the CLIFF landform belt.
 		double cliffHeight = (landformBits & Landform.CLIFF.bit()) != 0 ? rawSurface : 0;
-		// Pas wybrzeża: 1 tam, gdzie próbka dostaje typ POBRZEZE, 0 na skraju pasa B + D + 2000k (§3.4 planu M2).
+		// Coastal belt: 1 where the sample gets the COASTLAND type, 0 at the edge of the belt B + D + 2000k (M2 plan §3.4).
 		double coastBand = 1 - Noise.smoothstep(beachWidth() + 400 * local, beachWidth() + 2_220 * local, coastD);
-		// Profil fliszu tej komórki, której używa opis form; poza górami komórka fliszu o największej wadze.
-		// Przy morzu shapeCoast ściska całą rzeźbę (h · (0,12 + 0,88 smoothstep(0, 25 km·meso, cD))), więc
-		// wypukłość i wysokość wydmy skalujemy tak samo; bit WYDMY w formach liczony jest bez skalowania (jak w M1).
+		// Flysch profile of the cell used by the landform description; outside the mountains the flysch cell with the largest weight.
+		// Near the sea shapeCoast compresses the whole relief (h · (0.12 + 0.88 smoothstep(0, 25 km·meso, cD))), so
+		// convexity and dune height are scaled the same way; the INLAND_DUNES bit in the landforms is computed without scaling (as in M1).
 		double band = 25_000 * meso;
 		double coastScale = coastD >= band ? 1.0 : 0.12 + 0.88 * Noise.smoothstep(0, band, coastD);
-		// Niski brzeg z wydmami albo wysoki z klifem: to samo „low” co w shapeCoast, z wysokości przed wybrzeżem.
+		// Low shore with dunes or high shore with a cliff: the same "low" as in shapeCoast, from the height before the coast shaping.
 		double low = coastD >= 0 && coastD < band ? 1 - Noise.smoothstep(6, 20, raw * coastScale) : 0;
 		CoarseTerrainField.CoarseSample g = coarse.sample(x, z);
 		double ridgeProfile = switch (dominant) {
@@ -918,12 +918,12 @@ public final class LandscapeModel {
 				ridgeProfile, parts.massif, summit, cliffHeight, low, bare, sandiness, g.sBar(), g.slope(), g.aspect());
 	}
 
-	/** Piaszczystość utworu 0–1: kwantyl szumu o fali 2 km·k, więc udział piasków to prosty próg. */
+	/** Sandiness of the deposit 0–1: quantile of a noise with a 2 km·k wavelength, so the share of sands is a simple threshold. */
 	private double sandiness(double x, double z) {
 		return noiseQuantile(habitatSandiness.at(x, z, 2_000 * local));
 	}
 
-	/** Kwantyl wartości szumu {@link Noise#sample} (dystrybuanta z {@link #noiseCdf}): rozkład jednostajny na [0, 1]. */
+	/** Quantile of a {@link Noise#sample} value (CDF from {@link #noiseCdf}): uniformly distributed on [0, 1]. */
 	public static double noiseQuantile(double v) {
 		double f = Math.clamp((v + 1) * 0.5 * CDF_BINS, 0.0, CDF_BINS);
 		int k = Math.min(CDF_BINS - 1, (int) f);
@@ -931,8 +931,8 @@ public final class LandscapeModel {
 	}
 
 	/**
-	 * Dystrybuanta wartości szumu z siatki 512 × 512 punktów (ok. 90 × 75 oczek szumu) dla stałego ziarna.
-	 * Rozkład szumu nie zależy od ziarna świata, a tablica jest zawsze taka sama.
+	 * CDF of the noise values from a grid of 512 × 512 points (about 90 × 75 noise cells) for a fixed seed.
+	 * The noise distribution does not depend on the world seed, and the table is always the same.
 	 */
 	private static double[] noiseCdf() {
 		Noise n = new Noise(0x5A4D_1E5AL);
@@ -955,16 +955,16 @@ public final class LandscapeModel {
 		return cdf;
 	}
 
-	// ------------------------------------------------------------------ opis form terenu
+	// ------------------------------------------------------------------ landform description
 
-	/** Próbka kolumny i formy terenu rozpoznane w punkcie. */
+	/** Column sample and the landforms recognised at a point. */
 	public record Description(ColumnSample sample, Set<Landform> forms) {
 	}
 
 	/**
-	 * Opis terenu w punkcie: próbka kolumny i rozpoznane formy. Formy z {@link ColumnSample.Terrain#landformBits()}
-	 * bierze z próbki; szczyt, przełęcz i rynna wymagają dodatkowych próbek, więc opis kosztuje więcej
-	 * niż {@link #sample} i służy komendom i narzędziom, a nie generacji.
+	 * Terrain description at a point: the column sample and the recognised landforms. Landforms from {@link ColumnSample.Terrain#landformBits()}
+	 * are taken from the sample; summit, pass and tunnel valley need extra samples, so the description costs more
+	 * than {@link #sample} and serves commands and tools, not generation.
 	 */
 	public Description describe(double x, double z) {
 		ColumnSample s = sample(x, z);
@@ -992,7 +992,7 @@ public final class LandscapeModel {
 			default -> {
 			}
 		}
-		// Źródło, formy brzegu morskiego, wydmy, wały morenowe, grzbiety i doliny górskie rozpoznaje już sample.
+		// Headwaters, sea shore landforms, dunes, moraine ridges, ridges and mountain valleys are already recognised by sample.
 		t.addLandforms(f);
 		if (s.substrate() == Substrate.PEAT) {
 			f.add(Landform.KETTLE_BOG);
@@ -1031,14 +1031,14 @@ public final class LandscapeModel {
 				f.add(Landform.SUMMIT);
 			}
 			if (type == LandscapeType.BESKIDS) {
-				// Nominalna granica pięter (bez korekty ekspozycji i szumu), jedna z habitat/Pietra.
+				// Nominal belt boundary (without the aspect and noise correction), the same one as in habitat/AltitudinalBelts.
 				f.add(AltitudinalBelts.isUpperMontane(s.surface()) ? Landform.UPPER_MONTANE : Landform.LOWER_MONTANE);
 			}
 		}
 		return new Description(s, f);
 	}
 
-	/** Czy punkt jest najwyższy wśród 16 punktów na okręgu o promieniu r i 8 na okręgu r/2. */
+	/** Whether the point is higher than 16 points on a circle of radius r and 8 on a circle of radius r/2. */
 	private boolean isLocalMaximum(double x, double z, double h, double r) {
 		for (int ring = 1; ring <= 2; ring++) {
 			double rr = r * ring / 2.0;
@@ -1053,7 +1053,7 @@ public final class LandscapeModel {
 		return true;
 	}
 
-	/** Geometria rynny w punkcie: {bramka, odległość od osi, połowa szerokości} albo null. */
+	/** Tunnel valley geometry at a point: {gate, distance from the axis, half-width} or null. */
 	private double[] tunnelChannel(double x, double z, double presence) {
 		double gate = Noise.smoothstep(0.10, 0.35, tunnel.at(x, z, 50_000 * meso))
 				* Noise.smoothstep(0.2, 0.7, presence);
@@ -1072,35 +1072,35 @@ public final class LandscapeModel {
 		return new double[] {gate, dist, half};
 	}
 
-	// ------------------------------------------------------------------ L3: wody
+	// ------------------------------------------------------------------ L3: waters
 
 	/**
-	 * @param shoreDistance odległość od linii brzegu w metrach, ujemna w jeziorze
-	 * @param slope         nachylenie stoku niecki nad lustrem (tangens)
-	 * @param bank          zasięg wpływu niecki poza brzegiem
-	 * @param kind          rodzaj zbiornika (pola siedlisk)
-	 * @param id            skrót zbiornika, stały w całym zbiorniku
-	 * @param radius        promień oczka lub półszerokość jeziora w tym miejscu
-	 * @param ombrotrophic         oczko torfowe ombrotroficzne
+	 * @param shoreDistance distance from the shoreline in metres, negative in the lake
+	 * @param slope         slope of the basin flank above the water level (tangent)
+	 * @param bank          reach of the basin's influence beyond the shore
+	 * @param kind          kind of water body (habitat fields)
+	 * @param id            hash of the water body, constant across the whole body
+	 * @param radius        kettle radius or lake half-width at this place
+	 * @param ombrotrophic  ombrotrophic peat kettle
 	 */
 	private record LakeHit(int level, double depthBelowLevel, double shoreDistance, boolean peat, double slope,
 			double bank, ColumnSample.StandingWaterKind kind, long id, double radius, boolean ombrotrophic) {
 	}
 
-	/** Pole rynien: rzadkie, wydłużone z północy na południe izolinie zawirowanego szumu. */
+	/** Tunnel valley field: sparse contours of a warped noise, elongated from north to south. */
 	private double tunnelField(double x, double z) {
 		double wx = x + 1_500 * meso * tunnel.at(x, z, 6_000 * meso);
 		return tunnel.sample(wx / (22_000 * meso), z / (60_000 * meso));
 	}
 
-	/** Granica między jeziorami numer k w łańcuchu, nieregularna i zależna od położenia w poprzek. */
+	/** Boundary number k between the lakes of a chain, irregular and dependent on the cross-valley position. */
 	private double tunnelBoundary(long k, double x) {
 		return k * tunnelCell + 0.3 * tunnelCell * tunnel.sample(x / (15_000 * meso), k * 0.618_034);
 	}
 
 	/**
-	 * Rynna polodowcowa z łańcuchem jezior soczewkowatych. Jezioro ma stały poziom lustra; między
-	 * jeziorami zostają przesmyki. Część odcinków rynny jest sucha.
+	 * Glacial tunnel valley with a chain of lens-shaped lakes. A lake has a constant water level; isthmuses
+	 * remain between the lakes. Some sections of the tunnel valley are dry.
 	 */
 	private LakeHit tunnelLakeAt(double x, double z, double presence) {
 		double gate = Noise.smoothstep(0.10, 0.35, tunnel.at(x, z, 50_000 * meso))
@@ -1118,7 +1118,7 @@ public final class LandscapeModel {
 		}
 		double dist = Math.abs(n) / grad;
 		double half = gate * local * (200 + 500 * (0.5 + 0.5 * tunnel.at(x, z, 9_000 * meso)));
-		// Zasięg zapytania: niecka (tunnelBank) albo pierścień siedlisk 150 m·k, jeśli szerszy.
+		// Query reach: the basin (tunnelBank) or the 150 m·k habitat ring, whichever is wider.
 		double reach = Math.max(tunnelBank, 150 * local);
 		if (half < 25 * local || dist > half + reach) {
 			return null;
@@ -1137,8 +1137,8 @@ public final class LandscapeModel {
 		if (shore > reach) {
 			return null;
 		}
-		// Jezioro identyfikujemy punktem, w którym oś rynny przecina środek jego odcinka.
-		// Punkt stały iteracji jest ten sam dla wszystkich kolumn jeziora.
+		// A lake is identified by the point where the tunnel valley axis crosses the middle of its section.
+		// The fixed point of the iteration is the same for all columns of the lake.
 		double ax = x;
 		double az = 0.5 * (b0 + b1);
 		for (int outer = 0; outer < 3; outer++) {
@@ -1167,13 +1167,13 @@ public final class LandscapeModel {
 				key, half * lens, false);
 	}
 
-	/** Największa szansa na oczko w komórce (czysta wysoczyzna morenowa). */
+	/** Highest chance of a kettle in a cell (pure moraine plateau). */
 	private static final double KETTLE_MAX_CHANCE = 0.45;
 
 	/**
-	 * Oczko wytopiskowe: w komórce 700 m (w skali rozgrywki 350 m) najwyżej jedno zagłębienie
-	 * o promieniu 20–150 m. Istnienie oczka zależy od warunków w jego środku, więc oczko jest
-	 * zawsze w całości albo wcale, a cała strefa jego brzegu mieści się w komórce.
+	 * Kettle pond: in a 700 m cell (350 m at gameplay scale) at most one depression
+	 * with a radius of 20–150 m. Whether the kettle exists depends on the conditions at its centre, so a kettle is
+	 * always either whole or absent, and its whole shore zone fits inside the cell.
 	 */
 	private LakeHit kettleAt(double x, double z) {
 		double cell = 700 * local;
@@ -1190,7 +1190,7 @@ public final class LandscapeModel {
 		double dx = x - kx;
 		double dz = z - kz;
 		double d = Math.sqrt(dx * dx + dz * dz);
-		// Lekko nieregularny brzeg.
+		// Slightly irregular shore.
 		double shore = d - r * (1 + 0.25 * kettle.at(x, z, Math.max(30, r)));
 		if (shore > KETTLE_BANK) {
 			return null;
@@ -1209,9 +1209,9 @@ public final class LandscapeModel {
 	}
 
 	/**
-	 * Czy oczko istnieje: szansa z wag regionu i brak doliny rzeki w jego środku. Wynik jest
-	 * buforowany na oczko, bo te same warunki sprawdza każda kolumna w jego strefie. Istniejące oczko
-	 * jest ombrotroficzne ({@link #KETTLE_OMBROTROPHIC}), gdy jego brzeg leży dalej niż 300 m·k od koryta.
+	 * Whether the kettle exists: chance from the region weights and no river valley at its centre. The result is
+	 * cached per kettle, because every column in its zone checks the same conditions. An existing kettle
+	 * is ombrotrophic ({@link #KETTLE_OMBROTROPHIC}) when its shore lies further than 300 m·k from a channel.
 	 */
 	private byte kettleState(long key, double roll, double kx, double kz, double r) {
 		Byte cached = kettleExistence.get(key);
@@ -1229,7 +1229,7 @@ public final class LandscapeModel {
 			RiverNetwork.RiverHit river = rivers.query(kx, kz, landElevation(kx, kz), lowland,
 					cb.weight(LandscapeType.FOOTHILLS), cb.weight(LandscapeType.BESKIDS));
 			exists = river.valleyWeight() < 0.3 && coastDistance(kx, kz) > 500 * local;
-			// Torf ombrotroficzny: misa zasilana tylko opadem, z dala od cieków (raport ekologii, §0.1).
+			// Ombrotrophic peat: a basin fed only by precipitation, away from watercourses (ecology report, §0.1).
 			ombrotrophic = river.channelDist() - 1.3 * r > 300 * local;
 		}
 		byte state = !exists ? KETTLE_NONE : ombrotrophic ? KETTLE_OMBROTROPHIC : KETTLE_MINEROTROPHIC;
@@ -1241,8 +1241,8 @@ public final class LandscapeModel {
 	}
 
 	/**
-	 * Poziom lustra jeziora: najniższy punkt gruntu na okręgu wokół niecki minus 1 m, liczony raz
-	 * na jezioro i buforowany.
+	 * Lake water level: the lowest ground point on a circle around the basin minus 1 m, computed once
+	 * per lake and cached.
 	 */
 	private int lakeLevel(long key, double cx, double cz, double radius) {
 		Integer cached = lakeLevels.get(key);
@@ -1263,9 +1263,9 @@ public final class LandscapeModel {
 	}
 
 	/**
-	 * Rzeźbi nieckę jeziora: dno pod lustrem, stok nad lustrem wygaszany do granicy wpływu
-	 * i wał brzegowy na poziomie lustro + 1 m tam, gdzie grunt leżałby niżej. Dzięki temu woda
-	 * jest zawsze otoczona lądem, a funkcja pozostaje ciągła.
+	 * Carves the lake basin: the bottom below the water level, a flank above the water level fading out to the limit of influence,
+	 * and a shore bank at water level + 1 m where the ground would lie lower. Thanks to this the water
+	 * is always surrounded by land and the function stays continuous.
 	 */
 	private static double applyLake(double surface, LakeHit lake) {
 		double s = lake.shoreDistance;

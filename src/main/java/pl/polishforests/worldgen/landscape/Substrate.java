@@ -1,21 +1,21 @@
 package pl.polishforests.worldgen.landscape;
 
-/** Utwór powierzchniowy (skała macierzysta gleby) w danym miejscu. */
+/** Surface deposit (soil parent material) at a given place. */
 public enum Substrate {
-	/** Piaski sandrowe i wydmowe. */
+	/** Outwash and dune sands. */
 	SAND,
-	/** Piasek plaży i wydmy przedniej: luźny, bez darni (biała wydma). */
+	/** Sand of the beach and the foredune: loose, without turf (white dune). */
 	BEACH_SAND,
-	/** Glina zwałowa z głazami. */
+	/** Glacial till with boulders. */
 	GLACIAL_TILL,
-	/** Mady rzeczne. */
+	/** River alluvium. */
 	ALLUVIUM,
-	/** Piasek i żwir korytowy. */
+	/** Channel sand and gravel. */
 	RIVERBED,
-	/** Muł i gytia jeziorna. */
+	/** Lake mud and gyttja. */
 	LAKE_MUD,
-	/** Torf niski. */
+	/** Fen peat. */
 	PEAT,
-	/** Flisz karpacki: piaskowce i łupki. */
+	/** Carpathian flysch: sandstones and shales. */
 	FLYSCH
 }

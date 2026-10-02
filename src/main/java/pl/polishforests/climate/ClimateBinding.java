@@ -16,22 +16,22 @@ import pl.polishforests.worldgen.chunk.PolandScale;
 import pl.polishforests.worldgen.chunk.VerticalScale;
 
 /**
- * Przypina profile klimatu ({@link BiomeClimate}) do biomów z tagu {@code #polskielasy:klimat_polski}.
+ * Attaches climate profiles ({@link BiomeClimate}) to the biomes in the {@code #polishforests:polish_climate} tag.
  *
- * <p>Profil wymaga skali pionowej świata, a tagi wczytują się wcześniej niż poziomy, dlatego:
+ * <p>A profile needs the vertical scale of the world, and tags load before levels, so:
  * <ul>
- * <li>serwer przypina profile w {@link PolandChunkGenerator#createState} (przed generacją) i ponownie
- * w {@code ServerLevelEvents.LOAD} dla overworldu z generatorem "Polska";</li>
- * <li>klient połączony z serwerem zdalnym przypina je w {@code ClientLevelEvents.AFTER_CLIENT_LEVEL_CHANGE}
- * (klasa KlimatKlienta), bez zdejmowania profili innym biomom;</li>
- * <li>{@code CommonLifecycleEvents.TAGS_LOADED} (obie strony, także /reload) wylicza profile od nowa
- * według nowej zawartości tagu, ze skalą wziętą z już przypiętych profili.</li>
+ * <li>the server attaches profiles in {@link PolandChunkGenerator#createState} (before generation) and again
+ * in {@code ServerLevelEvents.LOAD} for an overworld with the "Poland" generator;</li>
+ * <li>a client connected to a remote server attaches them in {@code ClientLevelEvents.AFTER_CLIENT_LEVEL_CHANGE}
+ * (class ClientClimate), without removing profiles from other biomes;</li>
+ * <li>{@code CommonLifecycleEvents.TAGS_LOADED} (both sides, including /reload) recomputes the profiles
+ * from the new tag contents, with the scale taken from the profiles already attached.</li>
  * </ul>
- * Klasa nie ma stanu statycznego: wszystko siedzi w obiektach {@code Biome}, które każdy świat
- * tworzy od nowa. W grze jednoosobowej klient dzieli obiekty biomów z serwerem zintegrowanym
- * ({@code ClientConfigurationPacketListenerImpl.handleConfigurationFinished}), więc przy zmianie
- * wymiaru nic nie przypina: profile są już przypięte przez serwer. Profile zdejmuje tylko
- * przeliczenie po {@code TAGS_LOADED}, według zawartości tagu, która po obu stronach jest ta sama.
+ * The class has no static state: everything lives in the {@code Biome} objects, which every world
+ * creates anew. In single player the client shares biome objects with the integrated server
+ * ({@code ClientConfigurationPacketListenerImpl.handleConfigurationFinished}), so it attaches nothing
+ * on a dimension change: the profiles are already attached by the server. Profiles are removed only by
+ * the recomputation after {@code TAGS_LOADED}, according to the tag contents, which are the same on both sides.
  */
 public final class ClimateBinding {
 	public static final TagKey<Biome> POLISH_CLIMATE = TagKey.create(Registries.BIOME, PolishForests.id("polish_climate"));
@@ -50,8 +50,8 @@ public final class ClimateBinding {
 	}
 
 	/**
-	 * Przypina profile do biomów źródła biomów, które należą do tagu. Wołane z
-	 * {@code createState}, gdzie nie ma jeszcze dostępu do rejestrów, ale tagi są już związane.
+	 * Attaches profiles to the biome source's biomes that belong to the tag. Called from
+	 * {@code createState}, where the registries are not accessible yet but the tags are already bound.
 	 */
 	public static int attach(Iterable<Holder<Biome>> biomes, VerticalScale scale) {
 		int n = 0;
@@ -64,7 +64,7 @@ public final class ClimateBinding {
 		return n;
 	}
 
-	/** Wylicza profile wszystkich biomów rejestru: biomy z tagu dostają profil, pozostałe go tracą. */
+	/** Computes the profiles of all biomes in the registry: biomes in the tag get a profile, the others lose it. */
 	public static int attach(RegistryAccess registries, VerticalScale scale) {
 		int n = 0;
 		for (Holder.Reference<Biome> holder : registries.lookupOrThrow(Registries.BIOME).listElements().toList()) {
@@ -75,20 +75,20 @@ public final class ClimateBinding {
 				BiomeClimateAccess.set(holder.value(), null);
 			}
 		}
-		PolishForests.LOG.debug("Klimat: profil w {} biomach (skala {})", n, scaleName(scale));
+		PolishForests.LOG.debug("Climate: profile in {} biomes (scale {})", n, scaleName(scale));
 		return n;
 	}
 
 	/**
-	 * Przypina profile biomom rejestru z tagu i nie zdejmuje ich pozostałym biomom. Dla klienta
-	 * połączonego z serwerem zdalnym przy zmianie wymiaru.
+	 * Attaches profiles to the registry's biomes in the tag without removing them from the other biomes.
+	 * For a client connected to a remote server, on a dimension change.
 	 */
 	public static int attachWithoutDetaching(RegistryAccess registries, VerticalScale scale) {
 		return attach(registries.lookupOrThrow(Registries.BIOME).listElements().<Holder<Biome>>map(h -> h).toList(),
 				scale);
 	}
 
-	/** Po wczytaniu tagów: jeśli świat ma już profile, wylicza je od nowa z tą samą skalą. */
+	/** After tags load: if the world already has profiles, recomputes them with the same scale. */
 	private static void onTagsLoaded(RegistryAccess registries) {
 		VerticalScale scale = null;
 		for (Holder.Reference<Biome> holder : registries.lookupOrThrow(Registries.BIOME).listElements().toList()) {
@@ -108,7 +108,7 @@ public final class ClimateBinding {
 		return BiomeClimate.placeholder(id, scale);
 	}
 
-	/** Nazwa skali do logów. */
+	/** Scale name for logs. */
 	public static String scaleName(@Nullable VerticalScale scale) {
 		for (PolandScale s : PolandScale.values()) {
 			if (s.vertical() == scale) {

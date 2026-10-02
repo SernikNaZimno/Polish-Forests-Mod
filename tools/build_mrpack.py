@@ -1,11 +1,11 @@
-"""Buduje zalecaną paczkę modów (.mrpack, format Modrinth) dla moda "Polish Forests".
+"""Builds the recommended modpack (.mrpack, Modrinth format) for the "Polish Forests" mod.
 
-Użycie (w katalogu projektu, po ./gradlew build):
+Usage (in the project directory, after ./gradlew build):
     python tools/build_mrpack.py
 
-Wersje modów są przypięte identyfikatorami wersji z Modrinth. Skrypt pobiera z API Modrinth
-adresy, rozmiary i sumy kontrolne plików, a nasz mod dołącza z build/libs jako plik "overrides".
-Wynik trafia do build/distributions/.
+Mod versions are pinned by Modrinth version ids. The script fetches file URLs, sizes and hashes
+from the Modrinth API and adds our mod from build/libs as an "overrides" file.
+Output goes to build/distributions/.
 """
 import glob
 import hashlib
@@ -20,46 +20,46 @@ MINECRAFT = "26.3"
 FABRIC_LOADER = "0.19.5"
 PACK_NAME = "Polish Forests"
 
-# (slug, id wersji, strona: "both" / "client" / "server", wymagany?, opis)
+# (slug, version id, side: "both" / "client" / "server", required?, description)
 MODS = [
-    ("fabric-api", "bNnaTiuM", "both", True, "Fabric API, biblioteka wymagana przez mod"),
-    ("geckolib", "kSxHvs99", "both", True, "GeckoLib, modele i animacje zwierząt"),
-    ("smartbrainlib", "i5vOn6hO", "both", True, "SmartBrainLib, zachowania zwierząt"),
-    ("serene-seasons", "V9PxJPuw", "both", True, "Serene Seasons, pory roku"),
-    ("glitchcore", "aaUghyGp", "both", True, "GlitchCore, biblioteka Serene Seasons"),
-    ("sodium", "bAZQdGpg", "client", True, "Sodium, szybki renderer (kluczowy przy wysokim świecie)"),
-    ("lithium", "WXHRsMRl", "both", True, "Lithium, optymalizacja logiki gry i serwera"),
-    ("ferrite-core", "d5ddUdiB", "both", True, "FerriteCore, mniejsze zużycie pamięci"),
-    ("c2me-fabric", "sSoXjAqP", "both", True, "C2ME, wielowątkowa generacja i zapis chunków"),
-    ("scalablelux", "g4eqNSKd", "both", True, "ScalableLux, szybsze obliczanie światła"),
-    ("immediatelyfast", "3MP9UR23", "client", True, "ImmediatelyFast, szybsze rysowanie interfejsu i encji"),
-    ("entityculling", "F4loCvYt", "client", True, "EntityCulling, pomija niewidoczne encje (ważne przy wielu zwierzętach)"),
-    ("moreculling", "zL2UEFXS", "client", True, "MoreCulling, pomija niewidoczne ściany bloków, np. liści"),
-    ("cloth-config", "fg2uyxOW", "client", True, "Cloth Config, wymagany przez MoreCulling"),
-    ("badoptimizations", "Sp0ctspw", "client", True, "BadOptimizations, drobne optymalizacje klienta"),
-    ("dynamic-fps", "Jwq069rR", "client", True, "Dynamic FPS, mniej klatek w tle"),
-    ("modmenu", "kyy7dbrZ", "client", True, "Mod Menu, lista modów i ich ustawień"),
-    ("placeholder-api", "lXytLqWj", "client", True, "Placeholder API, wymagany przez Mod Menu"),
-    ("sodium-extra", "te2y9qZn", "client", True, "Sodium Extra, dodatkowe ustawienia wydajności grafiki"),
-    ("better-block-entities", "9VvhfLcA", "client", True, "Better Block Entities, szybsze skrzynie, tabliczki i inne bloki z encją"),
-    ("asyncparticles", "iDHkUsnf", "client", True, "AsyncParticles, cząsteczki liczone poza głównym wątkiem"),
-    ("rrls", "CAVJGGfj", "client", True, "RRLS, przeładowanie zasobów w tle"),
-    ("fastquit", "ZZ5dfboC", "client", True, "FastQuit, zapis świata w tle po wyjściu do menu"),
-    ("forcecloseworldloadingscreen", "6XQXbIMc", "client", True, "Force Close Loading Screen, krótszy ekran wczytywania świata"),
-    ("modernfix-mvus", "pa9cAfYg", "both", True, "ModernFix, szybsze uruchamianie i mniej pamięci"),
-    ("debugify", "FMaS2nZn", "both", True, "Debugify, poprawki błędów gry wpływających na wydajność"),
-    ("packet-fixer", "dTKbGYbb", "both", True, "Packet Fixer, większe limity pakietów (wysokie chunki świata Polska)"),
-    ("chunky", "4Eotm6ov", "both", True, "Chunky, pregeneracja świata z wyprzedzeniem"),
-    ("ksyxis", "9CU8nnVG", "both", True, "Ksyxis, szybsze wczytywanie świata bez stałych chunków spawnu"),
-    ("structure-layout-optimizer", "crWm7jXS", "both", True, "Structure Layout Optimizer, szybsza generacja wiosek i innych struktur"),
-    ("resourceful-config", "IFB0XCI9", "both", True, "Resourceful Config, wymagany przez Structure Layout Optimizer"),
-    ("zfastnoise", "BWKn67tN", "both", True, "zFastNoise, szybsza generacja Netheru i Endu"),
-    ("zconfig", "tsgt79sG", "both", True, "zConfig, wymagany przez zFastNoise"),
-    ("alternate-current", "nSBWPz6x", "both", True, "Alternate Current, wydajniejszy redstone"),
-    ("asynclogger", "Ert0LmWj", "both", True, "AsyncLogger, zapis logów w tle"),
-    ("clumps", "J4I1wxJZ", "both", True, "Clumps, łączenie kul doświadczenia"),
-    ("nvidium", "8mVK1zbk", "client", False, "Nvidium (opcjonalny, tylko karty NVIDIA), szybsze renderowanie dużego zasięgu"),
-    ("distanthorizons", "gfi11b05", "client", False, "Distant Horizons (opcjonalny), daleki widok gór"),
+    ("fabric-api", "bNnaTiuM", "both", True, "Fabric API, library required by the mod"),
+    ("geckolib", "kSxHvs99", "both", True, "GeckoLib, animal models and animations"),
+    ("smartbrainlib", "i5vOn6hO", "both", True, "SmartBrainLib, animal behavior"),
+    ("serene-seasons", "V9PxJPuw", "both", True, "Serene Seasons, seasons"),
+    ("glitchcore", "aaUghyGp", "both", True, "GlitchCore, library required by Serene Seasons"),
+    ("sodium", "bAZQdGpg", "client", True, "Sodium, fast renderer (essential for the tall world)"),
+    ("lithium", "WXHRsMRl", "both", True, "Lithium, game logic and server optimizations"),
+    ("ferrite-core", "d5ddUdiB", "both", True, "FerriteCore, lower memory usage"),
+    ("c2me-fabric", "sSoXjAqP", "both", True, "C2ME, multithreaded chunk generation and saving"),
+    ("scalablelux", "g4eqNSKd", "both", True, "ScalableLux, faster lighting calculations"),
+    ("immediatelyfast", "3MP9UR23", "client", True, "ImmediatelyFast, faster UI and entity rendering"),
+    ("entityculling", "F4loCvYt", "client", True, "EntityCulling, skips hidden entities (important with many animals)"),
+    ("moreculling", "zL2UEFXS", "client", True, "MoreCulling, skips hidden block faces, e.g. leaves"),
+    ("cloth-config", "fg2uyxOW", "client", True, "Cloth Config, required by MoreCulling"),
+    ("badoptimizations", "Sp0ctspw", "client", True, "BadOptimizations, small client optimizations"),
+    ("dynamic-fps", "Jwq069rR", "client", True, "Dynamic FPS, lower frame rate in the background"),
+    ("modmenu", "kyy7dbrZ", "client", True, "Mod Menu, list of mods and their settings"),
+    ("placeholder-api", "lXytLqWj", "client", True, "Placeholder API, required by Mod Menu"),
+    ("sodium-extra", "te2y9qZn", "client", True, "Sodium Extra, extra graphics performance settings"),
+    ("better-block-entities", "9VvhfLcA", "client", True, "Better Block Entities, faster chests, signs and other block entities"),
+    ("asyncparticles", "iDHkUsnf", "client", True, "AsyncParticles, particles computed off the main thread"),
+    ("rrls", "CAVJGGfj", "client", True, "RRLS, resource reloading in the background"),
+    ("fastquit", "ZZ5dfboC", "client", True, "FastQuit, saves the world in the background after quitting to the menu"),
+    ("forcecloseworldloadingscreen", "6XQXbIMc", "client", True, "Force Close Loading Screen, shorter world loading screen"),
+    ("modernfix-mvus", "pa9cAfYg", "both", True, "ModernFix, faster startup and lower memory usage"),
+    ("debugify", "FMaS2nZn", "both", True, "Debugify, fixes for game bugs that hurt performance"),
+    ("packet-fixer", "dTKbGYbb", "both", True, "Packet Fixer, higher packet limits (tall chunks of the Poland world)"),
+    ("chunky", "4Eotm6ov", "both", True, "Chunky, pre-generates the world in advance"),
+    ("ksyxis", "9CU8nnVG", "both", True, "Ksyxis, faster world loading without permanently loaded spawn chunks"),
+    ("structure-layout-optimizer", "crWm7jXS", "both", True, "Structure Layout Optimizer, faster generation of villages and other structures"),
+    ("resourceful-config", "IFB0XCI9", "both", True, "Resourceful Config, required by Structure Layout Optimizer"),
+    ("zfastnoise", "BWKn67tN", "both", True, "zFastNoise, faster Nether and End generation"),
+    ("zconfig", "tsgt79sG", "both", True, "zConfig, required by zFastNoise"),
+    ("alternate-current", "nSBWPz6x", "both", True, "Alternate Current, more efficient redstone"),
+    ("asynclogger", "Ert0LmWj", "both", True, "AsyncLogger, writes logs in the background"),
+    ("clumps", "J4I1wxJZ", "both", True, "Clumps, merges experience orbs"),
+    ("nvidium", "8mVK1zbk", "client", False, "Nvidium (optional, NVIDIA GPUs only), faster long-distance rendering"),
+    ("distanthorizons", "gfi11b05", "client", False, "Distant Horizons (optional), distant mountain views"),
 ]
 
 API = "https://api.modrinth.com/v2"
@@ -78,7 +78,7 @@ def resolve(slug, version_id):
         f'{API}/project/{slug}/version?game_versions=["{MINECRAFT}"]&loaders=["fabric"]'.replace('"', "%22")
         .replace("[", "%5B").replace("]", "%5D"))
     if not versions:
-        raise SystemExit(f"Brak wersji {slug} dla {MINECRAFT}")
+        raise SystemExit(f"No {slug} version for Minecraft {MINECRAFT}")
     return versions[0]
 
 
@@ -114,7 +114,7 @@ def main():
         "game": "minecraft",
         "versionId": mod_version,
         "name": PACK_NAME,
-        "summary": "Proceduralne krajobrazy Polski w skali 1:1 z zalecanymi modami optymalizacyjnymi.",
+        "summary": "Procedural 1:1 landscapes of Poland, bundled with recommended performance mods.",
         "files": files,
         "dependencies": {"minecraft": MINECRAFT, "fabric-loader": FABRIC_LOADER},
     }
@@ -125,12 +125,13 @@ def main():
         z.writestr("modrinth.index.json", json.dumps(index, indent=2, ensure_ascii=False))
         z.write(jar, f"overrides/mods/{os.path.basename(jar)}")
     sha = hashlib.sha1(open(out, "rb").read()).hexdigest()
-    print(f"Zapisano {out} ({os.path.getsize(out) // 1024} KB, sha1 {sha})")
+    print(f"Wrote {out} ({os.path.getsize(out) // 1024} KB, sha1 {sha})")
 
     table = os.path.join(out_dir, "pack-contents.md")
     with io.open(table, "w", encoding="utf-8") as t:
-        t.write("| Mod | Wersja | Strona | Wymagany |\n|---|---|---|---|\n" + "\n".join(lines) + "\n")
-    print(f"Zapisano {table}")
+        t.write(f"# {PACK_NAME} {mod_version}: pack contents\n\n"
+                "| Mod | Version | Side | Required |\n|---|---|---|---|\n" + "\n".join(lines) + "\n")
+    print(f"Wrote {table}")
 
 
 if __name__ == "__main__":

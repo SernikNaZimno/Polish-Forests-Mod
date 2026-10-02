@@ -10,7 +10,7 @@ import pl.polishforests.worldgen.landscape.LandscapeModel;
 import pl.polishforests.worldgen.landscape.LandscapeScale;
 import pl.polishforests.worldgen.landscape.Landform;
 
-/** Każdy cel komendy {@code /polskielasy znajdz} daje się znaleźć, a znalezione miejsce spełnia warunek. */
+/** Every target of the {@code /polishforests find} command can be found, and the place found meets its condition. */
 class PolishForestsCommandsTest {
 	@Test
 	void everyTargetIsFoundInGameplayScale() {
@@ -40,6 +40,6 @@ class PolishForestsCommandsTest {
 			System.out.printf("%s: %s (%.0f ms)%n", t.id(),
 					p == null ? "none" : Math.round(Math.hypot(p[0], p[1])) + " m", ms);
 		});
-		assertTrue(missing.isEmpty(), "nie znaleziono: " + missing);
+		assertTrue(missing.isEmpty(), "not found: " + missing);
 	}
 }

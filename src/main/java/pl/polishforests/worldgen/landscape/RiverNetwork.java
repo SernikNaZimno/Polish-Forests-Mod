@@ -5,23 +5,23 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Sieć rzeczna świata "Polska" (etap "Rzeki, doliny i morze").
+ * River network of the "Poland" world (stage "Rivers, valleys and sea").
  *
- * <p>Trzy rzędy cieków, każdy na własnej siatce węzłów z przesunięciami: 1 – potoki (głównie w górach
- * i na pogórzu), 2 – rzeki, 3 – wielkie rzeki. Z każdego węzła woda spływa do najniższego z ośmiu
- * sąsiadów (według wygładzonej wysokości terenu). Gdy żaden sąsiad nie jest niżej, szukamy niższego
- * węzła w promieniu kilku oczek (przełom); dopiero gdy go nie ma, powstaje jezioro bezodpływowe.
- * Cieki kończą się w morzu, w jeziorze albo w cieku wyższego rzędu.
+ * <p>Three watercourse orders, each on its own offset node grid: 1 – streams (mainly in the mountains
+ * and foothills), 2 – rivers, 3 – large rivers. From every node water flows to the lowest of its eight
+ * neighbours (by smoothed terrain height). When no neighbour is lower, we look for a lower
+ * node within a few cells (a gorge); only when there is none does a sink lake form.
+ * Watercourses end in the sea, in a lake or in a watercourse of a higher order.
  *
- * <p>Wszystko jest liczone lokalnie i deterministycznie, z buforowaniem wyników na węzeł:
+ * <p>Everything is computed locally and deterministically, with results cached per node:
  * <ul>
- * <li>poziom lustra wody liczony od ujścia w górę, zawsze malejący z biegiem cieku, z limitem
- * spadku zależnym od rzędu (kaskady w górach, spokojne lustro na nizinach);</li>
- * <li>szerokość koryta rośnie z pierwiastkiem liczby węzłów zlewni;</li>
- * <li>przebieg to krzywa Hermite'a przez węzły z łagodnym zakolem i nieregularnymi meandrami z szumu,
- * których amplituda zależy od spadku;</li>
- * <li>dolina to płynne przejście od dna do oryginalnej rzeźby, ze zboczami o ograniczonym nachyleniu;
- * przy źródle dolina narasta stopniowo, więc nie powstaje klif.</li>
+ * <li>the water level is computed upstream from the mouth, always decreasing downstream, with a gradient
+ * limit depending on the order (cascades in the mountains, a calm water surface in the lowlands);</li>
+ * <li>channel width grows with the square root of the number of catchment nodes;</li>
+ * <li>the course is a Hermite curve through the nodes with a gentle bend and irregular meanders from noise,
+ * whose amplitude depends on the gradient;</li>
+ * <li>the valley is a smooth transition from the floor to the original relief, with slopes of limited steepness;
+ * near the source the valley deepens gradually, so no cliff forms.</li>
  * </ul>
  */
 final class RiverNetwork {
@@ -32,12 +32,12 @@ final class RiverNetwork {
 
 	private final LandscapeModel model;
 	private final Noise noise;
-	/** Rozstaw węzłów dla rzędów 1–3 (indeks = rząd). */
+	/** Node spacing for orders 1–3 (index = order). */
 	private final double[] spacing = new double[4];
 	private static final double[] BASE_SPACING = {1, 1_250, 5_000, 20_000};
-	/** Najmniejszy kąt meandrowania odcinka, przy którym liczymy brzeg wypukły (krętość ok. 1,03). */
+	/** Smallest meander angle of a segment at which the convex bank is computed (sinuosity about 1.03). */
 	static final double CONVEX_MIN_THETA = 0.35;
-	/** Szerokość pasa (m·k) za brzegiem jeziora bezodpływowego, w którym zapytanie zwraca jego brzeg (pierścień olsu). */
+	/** Width of the belt (m·k) beyond the shore of a sink lake in which a query returns its shore (alder carr ring). */
 	static final double LAKE_RING = 150.0;
 	private final double chan;
 	private final double wallScale;
@@ -53,20 +53,20 @@ final class RiverNetwork {
 	private final ConcurrentHashMap<Long, SinkLake> sinkLakes = new ConcurrentHashMap<>();
 	private final ThreadLocal<TileCache> tileCache = ThreadLocal.withInitial(TileCache::new);
 
-	/** Węzeł siatki: położenie, wysokość wygładzona do spływu, wysokość gruntu, udziały pasów. */
+	/** Grid node: position, height smoothed for routing, ground height, belt shares. */
 	record Node(int order, long i, long j, double x, double z, double route, double land, boolean sea,
 			double mountains, double foothills) {
 	}
 
-	/** Dokąd spływa węzeł. Dla {@code CAPTURE} cel to punkt na cieku wyższego rzędu. */
+	/** Where a node drains to. For {@code CAPTURE} the target is a point on a watercourse of a higher order. */
 	record Link(int kind, long di, long dj, double tx, double tz, Segment target, double targetT) {
 	}
 
-	/** Jezioro w obniżeniu bezodpływowym. */
+	/** Lake in an endorheic depression. */
 	record SinkLake(double x, double z, double radius, int level, double depth, long seed) {
 	}
 
-	/** Odcinek cieku. */
+	/** Watercourse segment. */
 	static final class Segment {
 		final int order;
 		final double x0;
@@ -84,9 +84,9 @@ final class RiverNetwork {
 		final double width1;
 		final double wander1;
 		final double wander2;
-		/** Największe odchylenie koryta od osi doliny (m). */
+		/** Largest deviation of the channel from the valley axis (m). */
 		final double amp;
-		/** Kąt meandrowania θ0 (rad) krzywej Kinoshity. */
+		/** Meander angle θ0 (rad) of the Kinoshita curve. */
 		final double theta;
 		final double lambda;
 		final double envelope;
@@ -98,7 +98,7 @@ final class RiverNetwork {
 		double maxX;
 		double minZ;
 		double maxZ;
-		/** Największe odchylenie krzywej od cięciwy i zasięg wpływu (do szybkiego odrzucania). */
+		/** Largest deviation of the curve from the chord, and the reach of influence (for fast rejection). */
 		double chordDeviation;
 		double reach;
 
@@ -161,7 +161,7 @@ final class RiverNetwork {
 			return (12 * t - 6) * z0 + (6 * t - 4) * mz0 + (-12 * t + 6) * z1 + (6 * t - 2) * mz1;
 		}
 
-		/** Kąt meandrowania w miejscu t: zmienny co kilka zakoli, wygaszany na końcach odcinka. */
+		/** Meander angle at t: varying every few bends, faded out at the ends of the segment. */
 		double thetaAt(double t) {
 			if (theta <= 0) {
 				return 0;
@@ -172,21 +172,21 @@ final class RiverNetwork {
 			return Math.clamp(theta * env * f, 0.0, MeanderField.THETA_MAX);
 		}
 
-		/** Położenie wzdłuż doliny w długościach fali meandrów (z powoli zmienną fazą). */
+		/** Position along the valley in meander wavelengths (with a slowly varying phase). */
 		double meanderU(double t) {
 			double u = t * len / lambda;
 			return u + phase + 0.6 * noise.sample(u / 5.0 + phase * 0.61, phase * 0.53 - 7.1);
 		}
 
-		/** Odległość (m) od koryta punktu w odległości {@code lat} (ze znakiem) od krzywej w miejscu t. */
+		/** Distance (m) from the channel of a point at signed distance {@code lat} from the curve at t. */
 		double meanderDistance(double t, double lat) {
 			double v = (lat - wanderAt(t)) / lambda;
 			return MeanderField.distance(meanderU(t), v, thetaAt(t)) * lambda;
 		}
 
 		/**
-		 * {@link #meanderDistance} (do {@code out[0]}, ta sama wartość) i odległość ciągła do pola d
-		 * (do {@code out[1]}), z {@link MeanderField#distances}; {@code out} ma co najmniej 4 miejsca.
+		 * {@link #meanderDistance} (into {@code out[0]}, the same value) and the continuous distance for the d field
+		 * (into {@code out[1]}), from {@link MeanderField#distances}; {@code out} has at least 4 slots.
 		 */
 		void meanderDistances(double t, double lat, double[] out) {
 			double v = (lat - wanderAt(t)) / lambda;
@@ -195,7 +195,7 @@ final class RiverNetwork {
 			out[1] *= lambda;
 		}
 
-		/** Przesunięcie boczne (m) punktu koryta najbliższego osi doliny w miejscu t. */
+		/** Lateral offset (m) of the channel point nearest to the valley axis at t. */
 		double channelOffset(double t) {
 			double a = MeanderField.amplitude(thetaAt(t)) * lambda + 1;
 			double best = Double.MAX_VALUE;
@@ -215,14 +215,14 @@ final class RiverNetwork {
 			return level0 + (level1 - level0) * t;
 		}
 
-		/** Zakola doliny bez meandrów koryta: łagodny łuk i kilka zakoli w skali 1/5 długości odcinka. */
+		/** Valley bends without channel meanders: a gentle arc and a few bends at the scale of 1/5 of the segment length. */
 		double wanderAt(double t) {
 			double s = wander1 * Math.sin(Math.PI * t) + wander2 * Math.sin(2 * Math.PI * t);
 			double env = Noise.smoothstep(0, 0.2, t) * Noise.smoothstep(0, 0.2, 1 - t);
 			return s + 0.07 * len * env * noise.sample(t * 5 + phase * 0.13, phase * 0.71 - 3.3);
 		}
 
-		/** Odległość punktu od cięciwy odcinka (dolne ograniczenie odległości od krzywej po odjęciu odchylenia). */
+		/** Distance of a point from the segment chord (a lower bound of the distance from the curve after subtracting the deviation). */
 		double chordDistance(double x, double z) {
 			double vx = x1 - x0;
 			double vz = z1 - z0;
@@ -236,10 +236,10 @@ final class RiverNetwork {
 		}
 
 		/**
-		 * Czy punkt w odległości {@code lat} (ze znakiem) od krzywej w miejscu t leży po wewnętrznej,
-		 * wypukłej stronie łuku meandra (strona łach). Bez wyraźnych meandrów (θ0 odcinka poniżej
-		 * {@link #CONVEX_MIN_THETA}, krętość poniżej ok. 1,03, czyli potoki górskie) false, chyba że koryto
-		 * jest szerokie ({@code wide}: Wr ≥ 6 m, kamieńce rzek górskich na łagodnych łukach).
+		 * Whether a point at signed distance {@code lat} from the curve at t lies on the inner,
+		 * convex side of a meander bend (the point bar side). Without pronounced meanders (segment θ0 below
+		 * {@link #CONVEX_MIN_THETA}, sinuosity below about 1.03, i.e. mountain streams) false, unless the channel
+		 * is wide ({@code wide}: Wr ≥ 6 m, gravel bars of mountain rivers on gentle bends).
 		 */
 		boolean convexBank(double t, double lat, boolean wide) {
 			if (theta < CONVEX_MIN_THETA && !wide) {
@@ -258,39 +258,39 @@ final class RiverNetwork {
 	}
 
 	/**
-	 * Wynik zapytania w kolumnie.
+	 * Query result in a column.
 	 *
-	 * @param order         rząd cieku, którego dolina dominuje w kolumnie (0 = brak)
-	 * @param terrain       teren po wcięciu dolin (nie wyżej niż teren wejściowy)
-	 * @param valleyWeight  1 w dnie doliny, maleje na zboczach (do tłumienia jezior i podłoża)
-	 * @param inFloor       kolumna w dnie doliny
-	 * @param waterLevel    poziom lustra, gdy kolumna leży w korycie; inaczej {@link ColumnSample#NO_WATER}
-	 * @param channelBottom dno koryta (gdy w korycie)
-	 * @param bankLevel     minimalna wysokość brzegu wymagana przez koryta w pobliżu (lustro + 1 m)
-	 * @param source        dominujący ciek ma tu swoją strefę źródłową
-	 * @param oxbowLevel    lustro starorzecza (gdy kolumna w starorzeczu)
-	 * @param oxbowDepth    głębokość starorzecza
-	 * @param lakeLevel     lustro jeziora bezodpływowego w pobliżu
-	 * @param lakeShore     odległość od brzegu tego jeziora (ujemna w jeziorze)
-	 * @param lakeDepth     głębokość tego jeziora
-	 * @param lakeId        skrót tego jeziora (0 bez jeziora)
-	 * @param lakeRadius    promień tego jeziora (NaN bez jeziora)
-	 * @param channelDist   d: odległość od brzegu najbliższego koryta, ciągła (≤ 0 w korycie, +∞ bez cieku w zasięgu)
-	 * @param channelWidth  szerokość tego koryta (NaN bez cieku)
-	 * @param channelLevel  lustro tego koryta, bez zaokrąglenia (NaN bez cieku)
-	 * @param floorU        położenie w dnie doliny dominującego cieku, 0 przy korycie, 1 na skraju (NaN poza dnem)
-	 * @param floorHalf     półszerokość dna tej doliny (NaN bez cieku)
-	 * @param slope         spadek dominującego cieku w ‰, w skali 1:1 (NaN bez cieku)
-	 * @param convexBank    kolumna po wewnętrznej stronie łuku meandra najbliższego koryta
-	 * @param oxbowShore    odległość od brzegu starorzecza, ujemna w nim (+∞ poza pierścieniem 40 m·k)
-	 * @param oxbowMirror   lustro tego starorzecza, także w pierścieniu wokół niego
-	 * @param oxbowId       skrót tego starorzecza (0 bez starorzecza)
-	 * @param oxbowWidth    półszerokość tego starorzecza (NaN bez starorzecza)
-	 * @param ringShore     odległość od brzegu najbliższego jeziora bezodpływowego w szerszym pasie siedlisk
-	 *                      (do {@link #LAKE_RING} m·k za brzegiem; +∞ dalej); teren używa {@code lakeShore}
-	 * @param ringLevel     lustro tego jeziora
-	 * @param ringId        skrót tego jeziora (0 bez jeziora)
-	 * @param ringRadius    promień tego jeziora (NaN bez jeziora)
+	 * @param order         order of the watercourse whose valley dominates in the column (0 = none)
+	 * @param terrain       terrain after cutting the valleys (not higher than the input terrain)
+	 * @param valleyWeight  1 on the valley floor, decreasing on the slopes (to suppress lakes and substrate)
+	 * @param inFloor       the column is on the valley floor
+	 * @param waterLevel    water level when the column lies in the channel; otherwise {@link ColumnSample#NO_WATER}
+	 * @param channelBottom channel bottom (when in the channel)
+	 * @param bankLevel     minimum bank height required by nearby channels (water level + 1 m)
+	 * @param source        the dominant watercourse has its headwater zone here
+	 * @param oxbowLevel    water level of the oxbow lake (when the column is in the oxbow lake)
+	 * @param oxbowDepth    depth of the oxbow lake
+	 * @param lakeLevel     water level of a nearby sink lake
+	 * @param lakeShore     distance from the shore of that lake (negative in the lake)
+	 * @param lakeDepth     depth of that lake
+	 * @param lakeId        hash of that lake (0 without a lake)
+	 * @param lakeRadius    radius of that lake (NaN without a lake)
+	 * @param channelDist   d: distance from the bank of the nearest channel, continuous (≤ 0 in the channel, +∞ without a watercourse in range)
+	 * @param channelWidth  width of that channel (NaN without a watercourse)
+	 * @param channelLevel  water level of that channel, not rounded (NaN without a watercourse)
+	 * @param floorU        position on the valley floor of the dominant watercourse, 0 at the channel, 1 at the edge (NaN off the floor)
+	 * @param floorHalf     half-width of the floor of that valley (NaN without a watercourse)
+	 * @param slope         gradient of the dominant watercourse in ‰, at 1:1 scale (NaN without a watercourse)
+	 * @param convexBank    the column is on the inner side of a meander bend of the nearest channel
+	 * @param oxbowShore    distance from the shore of the oxbow lake, negative inside it (+∞ outside the 40 m·k ring)
+	 * @param oxbowMirror   water level of that oxbow lake, also in the ring around it
+	 * @param oxbowId       hash of that oxbow lake (0 without an oxbow lake)
+	 * @param oxbowWidth    half-width of that oxbow lake (NaN without an oxbow lake)
+	 * @param ringShore     distance from the shore of the nearest sink lake in the wider habitat belt
+	 *                      (up to {@link #LAKE_RING} m·k beyond the shore; +∞ further); the terrain uses {@code lakeShore}
+	 * @param ringLevel     water level of that lake
+	 * @param ringId        hash of that lake (0 without a lake)
+	 * @param ringRadius    radius of that lake (NaN without a lake)
 	 */
 	record RiverHit(int order, double terrain, double valleyWeight, boolean inFloor, int waterLevel,
 			double channelBottom, double bankLevel, boolean source, int oxbowLevel, double oxbowDepth, int lakeLevel,
@@ -316,7 +316,7 @@ final class RiverNetwork {
 		this.tileSize = 64;
 	}
 
-	// ------------------------------------------------------------------ węzły i spływ
+	// ------------------------------------------------------------------ nodes and drainage
 
 	private static long key(int order, long i, long j) {
 		return Noise.key(i, j, 100 + order);
@@ -354,7 +354,7 @@ final class RiverNetwork {
 		return n;
 	}
 
-	/** Dokąd spływa węzeł. */
+	/** Where a node drains to. */
 	Link link(Node n) {
 		long k = key(n.order, n.i, n.j);
 		Link cached = links.get(k);
@@ -367,7 +367,7 @@ final class RiverNetwork {
 		} else {
 			Node best = lowestNeighbor(n, 1);
 			if (best == null) {
-				// Przełom: niższy węzeł w dalszym pierścieniu.
+				// Gorge: a lower node in a farther ring.
 				for (int ring = 2; ring <= 4 && best == null; ring++) {
 					best = lowestNeighbor(n, ring);
 				}
@@ -390,7 +390,7 @@ final class RiverNetwork {
 		return result;
 	}
 
-	/** Najniższy węzeł niższy od {@code n} na pierścieniu o promieniu {@code ring} (w oczkach siatki). */
+	/** Lowest node lower than {@code n} on the ring of radius {@code ring} (in grid cells). */
 	private Node lowestNeighbor(Node n, int ring) {
 		Node best = null;
 		for (int di = -ring; di <= ring; di++) {
@@ -407,7 +407,7 @@ final class RiverNetwork {
 		return best;
 	}
 
-	/** Szuka cieku wyższego rzędu na drodze z węzła do celu; zwraca połączenie z jego osią albo null. */
+	/** Looks for a higher-order watercourse on the way from the node to the target; returns a link to its axis or null. */
 	private Link capture(Node n, double tx, double tz) {
 		Segment bestSeg = null;
 		double bestT = 0;
@@ -443,7 +443,7 @@ final class RiverNetwork {
 							if (score < bestScore) {
 								bestScore = score;
 								bestSeg = s;
-								// Ujście tam, gdzie koryto przecina oś doliny.
+								// The confluence is where the channel crosses the valley axis.
 								bestT = axisCrossing(s, pr[0]);
 								bestPx = channelX(s, bestT);
 								bestPz = channelZ(s, bestT);
@@ -456,7 +456,7 @@ final class RiverNetwork {
 		return bestSeg == null ? null : new Link(CAPTURE, 0, 0, bestPx, bestPz, bestSeg, bestT);
 	}
 
-	/** Czy w węźle bije źródło: potoki głównie w górach i na pogórzu, rzeki i wielkie rzeki wszędzie. */
+	/** Whether a spring rises at the node: streams mainly in the mountains and foothills, rivers and large rivers everywhere. */
 	private boolean isSpring(Node n) {
 		if (n.sea) {
 			return false;
@@ -468,7 +468,7 @@ final class RiverNetwork {
 		return noise.unit(n.i, n.j, 31) < chance;
 	}
 
-	/** Liczba źródeł w zlewni tego samego rzędu spływających przez węzeł (bez przełomów). */
+	/** Number of springs in the catchment of the same order draining through the node (without gorges). */
 	int area(Node n) {
 		long k = key(n.order, n.i, n.j);
 		Integer cached = areas.get(k);
@@ -492,7 +492,7 @@ final class RiverNetwork {
 		return a;
 	}
 
-	/** Jezioro bezodpływowe węzła (albo null, jeśli węzeł ma odpływ). */
+	/** Sink lake of the node (or null if the node has an outflow). */
 	SinkLake sinkLake(Node n) {
 		if (link(n).kind != SINK) {
 			return null;
@@ -516,7 +516,7 @@ final class RiverNetwork {
 		return lake;
 	}
 
-	/** Poziom lustra w węźle, liczony od ujścia w górę. */
+	/** Water level at the node, computed upstream from the mouth. */
 	double level(Node n) {
 		long k = key(n.order, n.i, n.j);
 		Double cached = levels.get(k);
@@ -549,7 +549,7 @@ final class RiverNetwork {
 				down = level(node(n.order, l.di, l.dj));
 			}
 			double len = Math.hypot(l.tx - n.x, l.tz - n.z);
-			// Najniższy teren na drodze do celu: ciek nie może płynąć ponad obniżeniem (np. zalewem).
+			// Lowest terrain on the way to the target: a watercourse cannot flow above a depression (e.g. a lagoon).
 			double pathLand = n.land;
 			for (int q = 1; q <= 7; q++) {
 				double f = q / 8.0;
@@ -570,7 +570,7 @@ final class RiverNetwork {
 		return Math.clamp(base * Math.sqrt(Math.max(1, area(n))) * chan, 1.5, 400.0);
 	}
 
-	/** Czy {@code m} jest głównym (o największej zlewni) dopływem węzła {@code d}. */
+	/** Whether {@code m} is the main tributary (with the largest catchment) of node {@code d}. */
 	private boolean isMainUpstream(Node m, Node d) {
 		int best = -1;
 		long bi = 0;
@@ -595,7 +595,7 @@ final class RiverNetwork {
 		return best >= 0 && bi == m.i && bj == m.j;
 	}
 
-	/** Kierunek wypływu z węzła, wygładzony kierunkiem napływu z głównego dopływu. */
+	/** Outflow direction from the node, smoothed with the inflow direction of the main tributary. */
 	private double[] tangent(Node n) {
 		Link l = link(n);
 		double ox = l.tx - n.x;
@@ -639,12 +639,12 @@ final class RiverNetwork {
 		return new double[] {ox, oz};
 	}
 
-	// ------------------------------------------------------------------ odcinki
+	// ------------------------------------------------------------------ segments
 
 	private static final Segment EMPTY = new Segment(0, 0, 0, 1, 0, new double[] {1, 0}, new double[] {1, 0}, 0, 0,
 			0, 0, 0, 0, 0, 1, 0, 0, false, null);
 
-	/** Odcinek wypływający z węzła albo null (węzeł morski, bezodpływowy lub bez źródeł w zlewni). */
+	/** Segment flowing out of the node, or null (sea node, sink node or no springs in the catchment). */
 	Segment segment(int order, long i, long j) {
 		long k = key(order, i, j);
 		Segment cached = segments.get(k);
@@ -673,8 +673,8 @@ final class RiverNetwork {
 		double level1;
 		double width1;
 		if (l.kind == NODE && !isMainUpstream(n, node(n.order, l.di, l.dj))) {
-			// Dopływ boczny uchodzi do koryta poniżej węzła, w miejscu zależnym od węzła, zamiast
-			// wpadać w sam węzeł (bez "gwiazd" zbiegających się rzek).
+			// A side tributary joins the channel below the node, at a place depending on the node, instead of
+			// flowing into the node itself (no "stars" of converging rivers).
 			Node d = node(n.order, l.di, l.dj);
 			Segment down = segment(n.order, d.i, d.j);
 			if (down != null) {
@@ -707,24 +707,24 @@ final class RiverNetwork {
 		double r2 = noise.unit(n.i, n.j, 51 + n.order) * 2 - 1;
 		double wander1 = 0.12 * len * r1;
 		double wander2 = 0.05 * len * r2;
-		// Meandry: długość fali ok. 11 szerokości koryta; amplituda duża, gdy spadek mały.
+		// Meanders: wavelength about 11 channel widths; large amplitude when the gradient is small.
 		double w = 0.5 * (width0 + width1);
 		double slope = Math.max(0, level0 - level1) / len;
-		// Spadek przeliczony na skalę rzeczywistą: w skali rozgrywki odległości są skrócone, wysokości nie.
+		// Gradient converted to realistic scale: at gameplay scale distances are shortened, heights are not.
 		double sEff = slope * spacing[n.order] / BASE_SPACING[n.order];
-		// Krętość: rzeki nizinne o spadku poniżej ok. 0,5 ‰ ok. 1,8–2,2, potoki górskie ok. 1,02.
+		// Sinuosity: lowland rivers with a gradient below about 0.5 ‰ about 1.8–2.2, mountain streams about 1.02.
 		double sinuosity = 1.02 + 1.0 * (1 - Noise.smoothstep(0.0002, 0.003, sEff))
 				* (0.8 + 0.4 * noise.unit(n.i, n.j, 61 + n.order));
 		double theta = MeanderField.thetaForSinuosity(sinuosity);
-		// Długość fali meandrów ok. 11 szerokości koryta.
+		// Meander wavelength about 11 channel widths.
 		double lambda = 11 * Math.max(w, 2.0);
 		double phase = noise.unit(n.i, n.j, 71 + n.order) * 1_000;
 		boolean source = area(n) == 1 && isSpring(n);
-		// Długość (m), na której koryto przy źródle narasta od zera do pełnej szerokości.
+		// Length (m) over which the channel near the source grows from zero to full width.
 		double headFade = source ? 400 * valleyScale : 0.0;
 		Segment s = new Segment(n.order, n.x, n.z, x1, z1, t0, t1, level0, level1, width0, width1, wander1, wander2,
 				theta, lambda, phase, headFade, source, noise);
-		// Ramka wpływu z rzeczywistej krzywej, powiększona o meandry, dno doliny i zbocza.
+		// Bounding box of influence from the actual curve, enlarged by the meanders, valley floor and slopes.
 		double minX = Double.MAX_VALUE;
 		double maxX = -Double.MAX_VALUE;
 		double minZ = Double.MAX_VALUE;
@@ -754,14 +754,14 @@ final class RiverNetwork {
 		return w / 2 + 5 * w + 40 * valleyScale;
 	}
 
-	/** Największa szerokość zbocza doliny. */
+	/** Largest width of a valley side. */
 	private double maxWall() {
 		return 1_200 * valleyScale;
 	}
 
-	// ------------------------------------------------------------------ geometria
+	// ------------------------------------------------------------------ geometry
 
-	/** Rzutowanie punktu na krzywą odcinka: {t, odległość boczna ze znakiem}. */
+	/** Projection of a point onto the segment curve: {t, signed lateral distance}. */
 	static double[] project(Segment s, double px, double pz) {
 		double bestT = 0;
 		double bestD = Double.MAX_VALUE;
@@ -795,7 +795,7 @@ final class RiverNetwork {
 		double ez = pz - s.pz(t);
 		double along = tl < 1e-12 ? 0 : (ex * tx + ez * tz) / tl;
 		double lateral = tl < 1e-12 ? Math.hypot(ex, ez) : (tx * ez - tz * ex) / tl;
-		// Poza końcami odcinka odległość rośnie także wzdłuż osi.
+		// Beyond the ends of the segment the distance also grows along the axis.
 		if ((t <= 0 && along < 0) || (t >= 1 && along > 0)) {
 			lateral = Math.copySign(Math.hypot(lateral, along), lateral == 0 ? 1 : lateral);
 		}
@@ -803,16 +803,16 @@ final class RiverNetwork {
 	}
 
 	/**
-	 * Położenie punktu względem cieku, zapisywane do {@code out} (8 miejsc): {t, odległość od koryta
-	 * (z meandrami), odległość od osi doliny (z zakolami, bez meandrów), t najbliższego ramienia, odległość
-	 * boczna od krzywej na nim, ciągła odległość od koryta (pole d, {@link MeanderField#distances}), t
-	 * i odległość boczna ramienia, które ją daje}. Tablice robocze są z {@code sc} (bufor wątku), więc
-	 * zapytanie w kolumnie nie alokuje ich dla każdego odcinka.
+	 * Position of a point relative to the watercourse, written to {@code out} (8 slots): {t, distance from the channel
+	 * (with meanders), distance from the valley axis (with bends, without meanders), t of the nearest arm, lateral
+	 * distance from the curve on it, continuous distance from the channel (the d field, {@link MeanderField#distances}), t
+	 * and lateral distance of the arm that gives it}. The work arrays come from {@code sc} (thread buffer), so
+	 * a column query does not allocate them for every segment.
 	 * <p>
-	 * Najbliższy punkt krzywej przeskakuje między ramionami zakola, gdy punkt leży po wewnętrznej
-	 * stronie łuku. Dlatego sprawdzane są wszystkie lokalne minima odległości, a położenie wzdłuż
-	 * cieku (od którego zależą poziom wody, szerokość i narastanie doliny) jest ich miękką średnią
-	 * – ciągłą także w miejscu przeskoku. Odległości są minimum po ramionach, więc też są ciągłe.
+	 * The nearest point of the curve jumps between the arms of a bend when the point lies on the inner
+	 * side of the bend. Therefore all local distance minima are checked, and the position along the
+	 * watercourse (on which water level, width and valley growth depend) is their soft average
+	 * – continuous also where the jump happens. The distances are the minimum over the arms, so they are continuous as well.
 	 */
 	private static void projectChannel(Segment s, double px, double pz, Scratch sc, double[] out) {
 		final int n = 16;
@@ -835,7 +835,7 @@ final class RiverNetwork {
 		double[] bt = sc.bt;
 		double[] bd = sc.bd;
 		double[] bf = sc.bf;
-		// Jak przy świeżej tablicy: bez żadnego minimum (np. NaN) t = 0.
+		// As with a fresh array: without any minimum (e.g. NaN) t = 0.
 		bt[0] = 0;
 		int branches = 0;
 		for (int q = 0; q <= n; q++) {
@@ -855,14 +855,14 @@ final class RiverNetwork {
 			double ch;
 			double chs;
 			double va;
-			// Wyrazistość minimum: 1 dla prostego odcinka, 0 tam, gdzie minimum znika (środek krzywizny).
+			// Distinctness of the minimum: 1 for a straight segment, 0 where the minimum vanishes (centre of curvature).
 			double fold = 1;
 			if (t > 0 && t < 1) {
 				double g = 1 - (ex * s.ddx(t) + ez * s.ddz(t)) / (tl * tl);
 				fold = Noise.smoothstep(0, 0.5, g);
 			}
 			if ((t <= 0 && along < 0) || (t >= 1 && along > 0)) {
-				// Za końcem odcinka (meandry tu wygaszone): odległość od końca osi.
+				// Beyond the end of the segment (meanders are faded out here): distance from the end of the axis.
 				skel = Math.hypot(lat, along);
 				va = Math.hypot(lat - s.wanderAt(t), along);
 				ch = va;
@@ -916,8 +916,8 @@ final class RiverNetwork {
 	}
 
 	/**
-	 * Tablice robocze {@link #projectChannel} i {@link #query} (bufor wątku w {@link TileCache}). Każde
-	 * miejsce jest zapisywane przed odczytem, więc stare wartości nie wpływają na wynik.
+	 * Work arrays of {@link #projectChannel} and {@link #query} (thread buffer in {@link TileCache}). Every
+	 * slot is written before it is read, so stale values do not affect the result.
 	 */
 	private static final class Scratch {
 		final double[] ds = new double[17];
@@ -933,7 +933,7 @@ final class RiverNetwork {
 		final double[] chOwn = new double[8];
 	}
 
-	/** Newton na odległości od krzywej, w przedziale [lo, hi]. */
+	/** Newton iteration on the distance from the curve, within [lo, hi]. */
 	private static double refine(Segment s, double px, double pz, double t, double lo, double hi) {
 		for (int it = 0; it < 5; it++) {
 			double ex = s.px(t) - px;
@@ -950,7 +950,7 @@ final class RiverNetwork {
 		return t;
 	}
 
-	/** Punkt osi doliny w miejscu t (koryto przecina tu oś, gdy t pochodzi z {@link #axisCrossing}). */
+	/** Valley axis point at t (the channel crosses the axis here when t comes from {@link #axisCrossing}). */
 	private static double channelX(Segment s, double t) {
 		double tl = Math.max(1e-12, Math.hypot(s.dx(t), s.dz(t)));
 		return s.px(t) - s.dz(t) / tl * s.wanderAt(t);
@@ -961,7 +961,7 @@ final class RiverNetwork {
 		return s.pz(t) + s.dx(t) / tl * s.wanderAt(t);
 	}
 
-	/** Miejsce blisko t, w którym koryto przecina oś doliny (tam uchodzi dopływ). */
+	/** Place near t where the channel crosses the valley axis (a tributary joins there). */
 	private static double axisCrossing(Segment s, double t) {
 		if (s.theta <= 0) {
 			return t;
@@ -980,9 +980,9 @@ final class RiverNetwork {
 		return bestT;
 	}
 
-	// ------------------------------------------------------------------ zapytanie w kolumnie
+	// ------------------------------------------------------------------ column query
 
-	/** Kandydaci (odcinki i jeziora) dla kafla 64 × 64 m, buforowani na wątek. */
+	/** Candidates (segments and lakes) for a 64 × 64 m tile, cached per thread. */
 	private static final class TileCache {
 		long key = Long.MIN_VALUE;
 		RiverNetwork owner;
@@ -1011,7 +1011,7 @@ final class RiverNetwork {
 			double a = spacing[order];
 			long gi = (long) Math.floor((lx + tileSize / 2) / a);
 			long gj = (long) Math.floor((lz + tileSize / 2) / a);
-			// Promień obejmuje najdłuższe odcinki (przełom do 4 oczek) i pełny zasięg doliny.
+			// The radius covers the longest segments (a gorge of up to 4 cells) and the full reach of the valley.
 			int r = Math.min(7, (int) Math.ceil((4.5 * a + maxWall() + 600 * valleyScale) / a) + 1);
 			for (long i = gi - r; i <= gi + r; i++) {
 				for (long j = gj - r; j <= gj + r; j++) {
@@ -1020,8 +1020,8 @@ final class RiverNetwork {
 						c.segments.add(s);
 					}
 					SinkLake lake = sinkLake(node(order, i, j));
-					// Filtr M1 (lake.radius * 1,6 + kafel) poszerzony o pierścień siedlisk; teren liczy tylko
-					// jeziora z filtra M1 (nearTile).
+					// The M1 filter (lake.radius * 1.6 + tile) widened by the habitat ring; the terrain uses only
+					// the lakes from the M1 filter (nearTile).
 					double ring = LAKE_RING * valleyScale;
 					if (lake != null && Math.abs(lake.x - (lx + tileSize / 2)) < lake.radius * 1.6 + ring + tileSize
 							&& Math.abs(lake.z - (lz + tileSize / 2)) < lake.radius * 1.6 + ring + tileSize) {
@@ -1034,18 +1034,18 @@ final class RiverNetwork {
 	}
 
 	/**
-	 * Wpływ cieków na kolumnę.
+	 * Influence of the watercourses on a column.
 	 *
-	 * @param terrain   wysokość terenu przed wcięciem dolin
-	 * @param lowland   udział nizin w punkcie
-	 * @param foothills udział pogórza
-	 * @param mountains udział gór
+	 * @param terrain   terrain height before cutting the valleys
+	 * @param lowland   share of lowland at the point
+	 * @param foothills share of foothills
+	 * @param mountains share of mountains
 	 */
 	RiverHit query(double x, double z, double terrain, double lowland, double foothills, double mountains) {
 		TileCache c = candidates(x, z);
 		double fpFactor = 5.0 * lowland + 1.5 * foothills + 0.3 * mountains;
 		double fpBase = (40.0 * lowland + 10.0 * foothills + 2.0 * mountains) * valleyScale;
-		// Największe nachylenie zboczy dolin (tangens), zanim teren wróci do oryginalnej rzeźby.
+		// Largest steepness of the valley sides (tangent) before the terrain returns to the original relief.
 		double maxSlope = (0.12 * lowland + 0.35 * foothills + 0.7 * mountains) * wallScale;
 		maxSlope = Math.max(maxSlope, 0.05);
 
@@ -1060,7 +1060,7 @@ final class RiverNetwork {
 		double bestFade = 1;
 		int water = ColumnSample.NO_WATER;
 		double channelBottom = 0;
-		// Koryta w pobliżu: {połowa szerokości, odległość, poziom, głębokość}; oceniane po wcięciu dolin.
+		// Nearby channels: {half-width, distance, level, depth}; evaluated after cutting the valleys.
 		int channelCount = 0;
 		Scratch sc = c.scratch;
 		double[] chHalf = sc.chHalf;
@@ -1069,7 +1069,7 @@ final class RiverNetwork {
 		double[] chDepth = sc.chDepth;
 		double[] chOwn = sc.chOwn;
 		double[] pr = sc.pr;
-		// Najbliższe koryto spośród wszystkich odcinków w zasięgu (pola siedlisk, nie wpływają na teren).
+		// Nearest channel among all segments in range (habitat fields, they do not affect the terrain).
 		double nearDist = Double.POSITIVE_INFINITY;
 		Segment nearSeg = null;
 		double nearWidth = Double.NaN;
@@ -1087,7 +1087,7 @@ final class RiverNetwork {
 			double d = pr[1];
 			double w = s.widthAt(t);
 			double level = s.levelAt(t);
-			// Pole d z odległości ciągłej (pr[5]); teren dalej z pr[1], jak w M1.
+			// The d field from the continuous distance (pr[5]); the terrain still from pr[1], as in M1.
 			if (pr[5] - 0.5 * w < nearDist) {
 				nearDist = pr[5] - 0.5 * w;
 				nearSeg = s;
@@ -1097,18 +1097,18 @@ final class RiverNetwork {
 				nearLat = pr[7];
 			}
 			double floorHalf = w / 2 + fpFactor * w + fpBase;
-			// Dno doliny liczone od osi doliny (bez meandrów), więc zawsze obejmuje koryto; na nizinach
-			// obejmuje cały pas meandrów po obu stronach.
+			// The valley floor is measured from the valley axis (without meanders), so it always contains the channel; in the lowlands
+			// it covers the whole meander belt on both sides.
 			double floorDist = Math.max(0, pr[2] - w / 2 - s.amp * (1 + (lowland > 0.3 ? 1.4 * lowland : 0)));
 			double fromSource = t * s.len;
 			double fade = s.headFade > 0 ? Noise.smoothstep(0, s.headFade, fromSource) : 1.0;
-			// Dno doliny ciągłe (bez stopni lustra), zawsze co najmniej 1,2 m nad wodą.
+			// Continuous valley floor (without water level steps), always at least 1.2 m above the water.
 			double floor = level + 1.2 + 1.0 * (0.5 + 0.5 * noise.at(x, z, 90 * valleyScale));
-			// Dolina: dno, a za nim zbocze o ograniczonym nachyleniu, łączące się płynnie z rzeźbą.
+			// Valley: the floor, and beyond it a side of limited steepness that blends smoothly into the relief.
 			double wall = Math.clamp((terrain - floor) / maxSlope, 20 * valleyScale, maxWall());
 			if (s.source) {
-				// Głowica doliny: od źródła dno wznosi się ku górze najwyżej z połową nachylenia zboczy,
-				// więc dolina zamyka się zaokrąglonym lejem, a nie urwiskiem – niezależnie od długości odcinka.
+				// Valley head: from the source the floor rises upstream at most at half the steepness of the sides,
+				// so the valley closes with a rounded funnel rather than a scarp – regardless of the segment length.
 				floor = Math.max(floor, terrain - 0.5 * maxSlope * fromSource);
 			}
 			double mask = 1 - Noise.smoothstep(floorHalf, floorHalf + wall, floorDist);
@@ -1124,7 +1124,7 @@ final class RiverNetwork {
 				bestLat = pr[4];
 				bestFade = fade;
 			}
-			// Koryto (oceniane po pętli, gdy znany jest teren po wcięciu wszystkich dolin).
+			// Channel (evaluated after the loop, when the terrain after cutting all valleys is known).
 			double half = 0.5 * w * fade;
 			if (half > 0.3 && d < half + 12 && channelCount < chHalf.length) {
 				chHalf[channelCount] = half;
@@ -1135,24 +1135,24 @@ final class RiverNetwork {
 				channelCount++;
 			}
 		}
-		// Gdy ciek wchodzi w głębszą dolinę innego cieku, jego lustro schodzi razem z jej zboczem
-		// (bystrze), zamiast wisieć nad jej dnem między sztucznie podniesionymi brzegami.
+		// When a watercourse enters the deeper valley of another watercourse, its water level descends along that valley's side
+		// (rapids), instead of hanging above its floor between artificially raised banks.
 		for (int q = 0; q < channelCount; q++) {
 			double level = chLevel[q];
-			// Teren (po wcięciu wszystkich dolin) nie wystaje tu bezpiecznie nad lustro tego cieku.
+			// The terrain (after cutting all valleys) does not rise safely above this watercourse's water level here.
 			boolean cascade = result < level + 1.0 && result < chOwn[q] - 0.5;
 			if (cascade) {
-				// Kaskada wcięta głębiej niż zwykłe koryto, bo zbocze obcej doliny bywa strome.
+				// A cascade is cut deeper than an ordinary channel, because the side of the other valley can be steep.
 				level = Math.min(level, Math.max(result - 2.5, 0));
 			}
 			int lvl = (int) Math.floor(level);
-			// Koryto tylko tam, gdzie dolina zeszła już blisko lustra. Wyżej (głowica doliny przy
-			// źródle) zostaje sucha dolina, a woda wypływa tam, gdzie dno doliny osiąga poziom lustra.
+			// A channel only where the valley has already come down close to the water level. Higher up (the valley head near
+			// the source) a dry valley remains, and the water emerges where the valley floor reaches the water level.
 			if (!cascade && result - lvl > 3.0) {
 				continue;
 			}
 			if (chDist[q] < chHalf[q]) {
-				// Dno liczone od zaokrąglonego lustra, więc każda kolumna koryta ma wodę.
+				// The bottom is measured from the rounded water level, so every channel column has water.
 				double bottom = lvl - 0.3 - chDepth[q] * Math.sqrt(1 - chDist[q] / chHalf[q]);
 				if (water == ColumnSample.NO_WATER || lvl < water) {
 					water = lvl;
@@ -1163,7 +1163,7 @@ final class RiverNetwork {
 			}
 		}
 
-		// Jeziora bezodpływowe: teren z jezior filtra M1, pierścień siedlisk ze wszystkich kandydatów.
+		// Sink lakes: terrain from the lakes of the M1 filter, the habitat ring from all candidates.
 		int lakeLevel = ColumnSample.NO_WATER;
 		double lakeShore = Double.POSITIVE_INFINITY;
 		double lakeDepth = 0;
@@ -1179,8 +1179,8 @@ final class RiverNetwork {
 		for (SinkLake lake : c.lakes) {
 			boolean terrainLake = nearTile(lake, tcx, tcz);
 			if (!terrainLake) {
-				// Jezioro tylko z pierścienia siedlisk. Brzeg leży najdalej 1,2 R od środka (|szum| ≤ 1; tu
-				// z zapasem 1,3 R), więc dalej niż pierścień od niego nie zmieni wyniku: pomijamy szum.
+				// A lake from the habitat ring only. The shore lies at most 1.2 R from the centre (|noise| ≤ 1; here
+				// with a margin, 1.3 R), so a column farther than the ring width from it cannot change the result: skip the noise.
 				double ex = x - lake.x;
 				double ez = z - lake.z;
 				double reach = ringMax + 1.3 * lake.radius;
@@ -1222,8 +1222,8 @@ final class RiverNetwork {
 				* bestFade;
 		int oxbowLevel = ColumnSample.NO_WATER;
 		double oxbowDepth = 0;
-		// Starorzecza tylko na płaskich nizinach i z dala od każdego koryta.
-		// Spadek w skali rzeczywistej; starorzecza mają rzeki nizinne o spadku do ok. 1,5 ‰.
+		// Oxbow lakes only on flat lowlands and away from every channel.
+		// Gradient at realistic scale; oxbow lakes occur on lowland rivers with gradients up to about 1.5 ‰.
 		double bestSlope = Math.max(0, best.level0 - best.level1) / best.len * spacing[best.order]
 				/ BASE_SPACING[best.order];
 		double oxbowShore = Double.POSITIVE_INFINITY;
@@ -1244,8 +1244,8 @@ final class RiverNetwork {
 				oxbowWidth = ox.width();
 			}
 		}
-		// Brzeg wypukły tylko przy korycie, w pasie łach i wiklin: d ≤ max(W; 15 m·k), jak zasięg wikliny
-		// na brzegu wypukłym w raporcie ekologii (koszt kilku szumów).
+		// Convex bank only near the channel, in the belt of point bars and willow scrub: d ≤ max(W, 15 m·k), like the reach of willow scrub
+		// on the convex bank in the ecology report (costs a few noise samples).
 		boolean convex = nearDist <= Math.max(nearWidth, 15 * valleyScale)
 				&& nearSeg.convexBank(nearT, nearLat, nearWidth >= 6 * chan);
 		return new RiverHit(best.order, result, valleyWeight, inFloor, water, channelBottom, bank,
@@ -1255,25 +1255,25 @@ final class RiverNetwork {
 				ringLevel, ringId, ringRadius);
 	}
 
-	/** Czy jezioro przechodzi filtr kandydatów z M1 dla kafla o środku (cx, cz); tylko takie zmieniają teren. */
+	/** Whether the lake passes the M1 candidate filter for the tile centred at (cx, cz); only such lakes change the terrain. */
 	private boolean nearTile(SinkLake lake, double cx, double cz) {
 		return Math.abs(lake.x - cx) < lake.radius * 1.6 + tileSize && Math.abs(lake.z - cz) < lake.radius * 1.6 + tileSize;
 	}
 
 	/**
-	 * Starorzecze w kolumnie lub w pierścieniu 40 m·k wokół niego.
+	 * Oxbow lake in the column or in the 40 m·k ring around it.
 	 *
-	 * @param inside czy kolumna leży w starorzeczu (wtedy {@code depth} i {@code level} rzeźbią teren)
-	 * @param shore  odległość od brzegu starorzecza, ujemna w nim
-	 * @param width  półszerokość starorzecza
+	 * @param inside whether the column lies in the oxbow lake (then {@code depth} and {@code level} carve the terrain)
+	 * @param shore  distance from the shore of the oxbow lake, negative inside it
+	 * @param width  half-width of the oxbow lake
 	 */
 	private record Oxbow(boolean inside, double depth, int level, double shore, long id, double width) {
 	}
 
 	/**
-	 * Starorzecze: odcięta pętla meandra – półksiężyc za łukiem obecnego koryta, po jego zewnętrznej
-	 * stronie. Zwraca starorzecze w kolumnie albo w pierścieniu 40 m·k wokół niego, inaczej null.
-	 * Lustro jest stałe dla całego starorzecza.
+	 * Oxbow lake: a cut-off meander loop – a crescent behind a bend of the present channel, on its outer
+	 * side. Returns the oxbow lake in the column or in the 40 m·k ring around it, otherwise null.
+	 * The water level is constant for the whole oxbow lake.
 	 */
 	private Oxbow oxbow(Segment s, double t, double lat) {
 		double theta = s.thetaAt(t);
@@ -1285,7 +1285,7 @@ final class RiverNetwork {
 		double u = s.meanderU(t);
 		double v = (lat - s.wanderAt(t)) / lambda;
 		double amp = MeanderField.amplitude(theta);
-		// Pół okresu = jeden łuk; łuki leżą na przemian po obu stronach osi doliny.
+		// Half a period = one bend; the bends alternate on both sides of the valley axis.
 		long m = (long) Math.floor(u * 2 + 0.5);
 		double side = (m & 1) == 1 ? 1 : -1;
 		long seed = Noise.key((long) (s.x0 * 7), (long) (s.z0 * 7), 70);
@@ -1304,8 +1304,8 @@ final class RiverNetwork {
 		}
 		boolean inside = d <= ow;
 		double depth = inside ? (1.0 + 2.0 * noise.unit(seed, m, 73)) * (1 - d / ow) : 0;
-		// Lustro metr poniżej rzeki przy łuku, więc dno doliny wokół jest zawsze wyżej. Liczone tylko
-		// z numeru łuku, więc stałe w całym starorzeczu.
+		// Water level one metre below the river at the bend, so the valley floor around it is always higher. Computed only
+		// from the bend number, so it is constant across the whole oxbow lake.
 		double tc = Math.clamp((m * 0.5 - s.phase) * lambda / s.len, 0.0, 1.0);
 		return new Oxbow(inside, depth, (int) (Math.floor(s.levelAt(tc)) - 1), d - ow, Noise.key(seed, m, 74), ow);
 	}

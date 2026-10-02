@@ -3,23 +3,23 @@ package pl.polishforests.worldgen.landscape;
 import java.util.Set;
 
 /**
- * Wynik próbkowania modelu krajobrazu w jednej kolumnie.
+ * Result of sampling the landscape model in one column.
  *
- * <p>Sześć pierwszych pól to teren z M1 (złoty test liczy skrót tylko z nich). Rekordy {@link Terrain},
- * {@link Waters} i {@link Region} niosą wielkości dla siedlisk (M2, docs/03-m2-biomy.md §3.1). Mają tylko
- * typy proste i enumy, bez tablic, więc {@code equals} porównuje je po wartościach. Wartość
- * {@link Double#NaN} znaczy „nie dotyczy” (np. {@code u} poza dnem doliny), a
- * {@link Double#POSITIVE_INFINITY} w odległościach znaczy „poza zasięgiem”.
+ * <p>The first six fields are the M1 terrain (the golden test hashes only them). The records {@link Terrain},
+ * {@link Waters} and {@link Region} carry quantities for habitats (M2, docs/03-m2-biomy.md §3.1). They hold only
+ * primitive types and enums, no arrays, so {@code equals} compares them by value. The value
+ * {@link Double#NaN} means "not applicable" (e.g. {@code u} outside the valley floor), and
+ * {@link Double#POSITIVE_INFINITY} in distances means "out of range".
  *
- * @param surface     wysokość powierzchni gruntu w metrach n.p.m. (także dna pod wodą)
- * @param waterLevel  poziom lustra wody w pełnych metrach n.p.m.; {@link Integer#MIN_VALUE}, gdy brak wody
- * @param waterKind   rodzaj wody
- * @param type        dominujący typ krajobrazu
- * @param substrate   utwór powierzchniowy
- * @param coverDepth  miąższość utworów czwartorzędowych lub zwietrzeliny nad skałą litą, w metrach
- * @param terrain       rzeźba i formy terenu
- * @param waters        cieki, dna dolin i wody stojące w pobliżu
- * @param region      pola regionalne
+ * @param surface     ground surface height in metres a.s.l. (also the bottom under water)
+ * @param waterLevel  water surface level in whole metres a.s.l.; {@link Integer#MIN_VALUE} when there is no water
+ * @param waterKind   kind of water
+ * @param type        dominant landscape type
+ * @param substrate   surface deposit
+ * @param coverDepth  thickness of Quaternary deposits or regolith above solid bedrock, in metres
+ * @param terrain     relief and landforms
+ * @param waters      watercourses, valley floors and standing water nearby
+ * @param region      regional fields
  */
 public record ColumnSample(double surface, int waterLevel, WaterKind waterKind, LandscapeType type,
 		Substrate substrate, double coverDepth, Terrain terrain, Waters waters, Region region) {
@@ -29,63 +29,63 @@ public record ColumnSample(double surface, int waterLevel, WaterKind waterKind, 
 		return waterLevel != NO_WATER && waterLevel > surfaceMeters();
 	}
 
-	/** Wysokość górnej ściany najwyższego bloku gruntu, w pełnych metrach. */
+	/** Height of the top face of the highest ground block, in whole metres. */
 	public int surfaceMeters() {
 		return (int) Math.floor(surface);
 	}
 
 	/**
-	 * Rzeźba w kolumnie.
+	 * Relief in a column.
 	 *
-	 * @param rawSurface   teren przed wcięciem dolin i jezior, po ukształtowaniu wybrzeża (m n.p.m.)
-	 * @param coastD       odległość od linii brzegu morza (m), dodatnia na lądzie
-	 * @param wOutwashPlain       waga typu SANDR z mieszania makroregionów; pięć wag typów regionów sumuje się do 1
-	 * @param wMorainePlateau  waga typu WYSOCZYZNA_MORENOWA
-	 * @param wOldGlacialPlain     waga typu ROWNINA_STAROGLACJALNA
-	 * @param wFoothills     waga typu POGORZE
-	 * @param wBeskids     waga typu BESKIDY
-	 * @param wCoastland    udział pasa nadmorskiego 0–1: 1 tam, gdzie próbka dostaje typ POBRZEZE, i maleje
-	 *                     do 0 na skraju pasa wybrzeża (B + D + 2000k); typy regionów miesza się z wagą
-	 *                     1 − wPobrzeze (makroregiony nie mają typu POBRZEZE, więc to pole nie pochodzi z Blend)
-	 * @param landformBits        bity {@link Landform#bit()} form rozpoznawanych już w {@code sample}: WYDMY,
-	 *                     WAL_MORENOWY, GRZBIET, DOLINA_GORSKA, PLAZA, WYDMY_NADMORSKIE, KLIF, ZRODLO
-	 * @param convexity          lokalna wypukłość (m): składowe krótkofalowe rzeźby (falowanie i wydmy sandru,
-	 *                     pagórki i wały wysoczyzny, drobna rzeźba równiny, żleby i szorstkość fliszu)
-	 *                     ważone wagami makroregionów; dodatnia na garbach, ujemna w zagłębieniach
-	 * @param duneHeight        wysokość wydmy nad sandrem (m), 0 poza polami wydm i bez komórki sandru w mieszaniu
-	 * @param ridgeProfile      profil dolin podłużnych fliszu: 0 na osi doliny, ok. 1 na grzbiecie; NaN bez fliszu
-	 * @param massif        siła wyższego masywu Beskidów 0–1 (typ Babiej Góry), 0 poza Beskidami
-	 * @param summit       najwyższy teren bez dolin ({@code landElevation}) w promieniu 3 km·mspace (m n.p.m.,
-	 *                     siatka {@code PeakField}; duży masyw w piętrach, E12); liczony tylko w Beskidach
-	 *                     (waga typu > 0) od wysokości {@code Pietra.SZCZYT_OD}, niżej i poza Beskidami 0
-	 * @param cliffHeight         wysokość krawędzi klifu (m) w pasie formy KLIF, poza nim 0
-	 * @param lowShore   niski brzeg morski 0–1 ({@code low} z kształtu wybrzeża: 1 − smoothstep(6, 20, hl)):
-	 *                     1 na brzegu z wydmami, 0 na wysokim brzegu z klifem; 0 poza pasem 25 km·meso od morza.
-	 *                     Glina, którą model daje każdej kolumnie pasa nadmorskiego wyższej niż 8 m, i forma
-	 *                     KLIF przy wysokiej wydmie przedniej nie oznaczają klifu, gdy brzeg jest niski
-	 * @param bareSandWidth   granica gołego piasku plaży i wydmy białej (odległość od brzegu, m), jak w podłożu
-	 *                     pasa nadmorskiego (BEACH_SAND bliżej, SAND dalej); NaN poza pasem nadmorskim
-	 * @param sandiness        piaszczystość utworu 0–1 (kwantyl szumu o fali 2 km·k, więc rozkład jednostajny);
-	 *                     NaN w morzu i zalewie
-	 * @param sBar         wygładzony teren bez dolin i jezior (m n.p.m.): średnia 3 × 3 węzłów siatki co 32 m·k
-	 *                     z {@code landElevation} (okno ok. 96 m·k), interpolowana dwuliniowo
-	 * @param slope         nachylenie terenu bez dolin z tej siatki (°), z różnic centralnych węzłów, w układzie
-	 *                     modelu: w skali rozgrywki (odległości poziome ściśnięte, wysokości w metrach podobne)
-	 *                     znacznie większe niż nachylenie w blokach; progi w stopniach porównywać z
-	 *                     tan(nach) · d(bloki)/d(metry) z {@code VerticalScale} (docs/03-m2-biomy.md, stan po S3)
-	 * @param aspect         ekspozycja (°): kierunek spadku stoku od północy (−Z) zgodnie z ruchem wskazówek
-	 *                     zegara (90 wschód +X, 180 południe +Z, 270 zachód −X); NaN na terenie płaskim
+	 * @param rawSurface       terrain before cutting valleys and lakes, after shaping the coast (m a.s.l.)
+	 * @param coastD           distance from the sea shoreline (m), positive on land
+	 * @param wOutwashPlain    weight of the OUTWASH_PLAIN type from macroregion blending; the five region type weights sum to 1
+	 * @param wMorainePlateau  weight of the MORAINE_PLATEAU type
+	 * @param wOldGlacialPlain weight of the OLD_GLACIAL_PLAIN type
+	 * @param wFoothills       weight of the FOOTHILLS type
+	 * @param wBeskids         weight of the BESKIDS type
+	 * @param wCoastland       share of the coastal belt 0–1: 1 where the sample gets the COASTLAND type, decreasing
+	 *                         to 0 at the edge of the coastal belt (B + D + 2000k); region types are blended with weight
+	 *                         1 − wCoastland (macroregions have no COASTLAND type, so this field does not come from Blend)
+	 * @param landformBits     {@link Landform#bit()} bits of the landforms already recognised in {@code sample}: INLAND_DUNES,
+	 *                         END_MORAINE, RIDGE, MOUNTAIN_VALLEY, BEACH, COASTAL_DUNES, CLIFF, HEADWATERS
+	 * @param convexity        local convexity (m): short-wave relief components (undulation and dunes of the outwash plain,
+	 *                         hummocks and ridges of the plateau, fine relief of the plain, gullies and roughness of the flysch)
+	 *                         weighted by the macroregion weights; positive on knolls, negative in hollows
+	 * @param duneHeight       dune height above the outwash plain (m), 0 outside dune fields and without an outwash plain cell in the blend
+	 * @param ridgeProfile     profile of the longitudinal flysch valleys: 0 on the valley axis, about 1 on the ridge; NaN without flysch
+	 * @param massif           strength of a higher Beskid massif 0–1 (Babia Gora type), 0 outside the Beskids
+	 * @param summit           highest valley-free terrain ({@code landElevation}) within 3 km·mspace (m a.s.l.,
+	 *                         {@code PeakField} grid; a large massif in the altitudinal belts, E12); computed only in the Beskids
+	 *                         (type weight > 0) from height {@code AltitudinalBelts.SUMMIT_FROM}, 0 lower down and outside the Beskids
+	 * @param cliffHeight      height of the cliff edge (m) in the CLIFF landform belt, 0 outside it
+	 * @param lowShore         low sea shore 0–1 ({@code low} from the coast shape: 1 − smoothstep(6, 20, hl)):
+	 *                         1 on a shore with dunes, 0 on a high shore with a cliff; 0 outside the belt 25 km·meso from the sea.
+	 *                         The till that the model gives every column of the coastal belt higher than 8 m, and the
+	 *                         CLIFF landform at a high foredune, do not mean a cliff when the shore is low
+	 * @param bareSandWidth    boundary of the bare sand of the beach and white dune (distance from the shore, m), as in the
+	 *                         substrate of the coastal belt (BEACH_SAND closer, SAND further); NaN outside the coastal belt
+	 * @param sandiness        sandiness of the deposit 0–1 (quantile of a noise with a 2 km·k wavelength, so uniformly distributed);
+	 *                         NaN in the sea and lagoon
+	 * @param sBar             smoothed terrain without valleys and lakes (m a.s.l.): mean of 3 × 3 nodes of a 32 m·k grid
+	 *                         of {@code landElevation} (window of about 96 m·k), interpolated bilinearly
+	 * @param slope            slope of the valley-free terrain from this grid (°), from central differences of the nodes, in model
+	 *                         space: at gameplay scale (horizontal distances compressed, heights in metres similar)
+	 *                         much larger than the slope in blocks; compare thresholds in degrees with
+	 *                         tan(slope) · d(blocks)/d(metres) from {@code VerticalScale} (docs/03-m2-biomy.md, state after S3)
+	 * @param aspect           aspect (°): downslope direction from north (−Z) clockwise
+	 *                         (90 east +X, 180 south +Z, 270 west −X); NaN on flat terrain
 	 */
 	public record Terrain(double rawSurface, double coastD, double wOutwashPlain, double wMorainePlateau, double wOldGlacialPlain,
 			double wFoothills, double wBeskids, double wCoastland, int landformBits, double convexity, double duneHeight, double ridgeProfile,
 			double massif, double summit, double cliffHeight, double lowShore, double bareSandWidth, double sandiness, double sBar,
 			double slope, double aspect) {
-		/** Czy {@code sample} rozpoznał formę (tylko formy z opisu pola {@code formy}). */
+		/** Whether {@code sample} recognised the landform (only the landforms listed for {@code landformBits}). */
 		public boolean has(Landform landform) {
 			return (landformBits & landform.bit()) != 0;
 		}
 
-		/** Dopisuje do zbioru formy rozpoznane w {@code sample}. */
+		/** Adds the landforms recognised in {@code sample} to the set. */
 		public void addLandforms(Set<Landform> into) {
 			for (Landform f : Landform.FROM_SAMPLE) {
 				if (has(f)) {
@@ -96,67 +96,67 @@ public record ColumnSample(double surface, int waterLevel, WaterKind waterKind, 
 	}
 
 	/**
-	 * Wody w pobliżu kolumny. Pola cieku pochodzą z {@code RiverNetwork.query}: odległość, szerokość
-	 * i lustro dotyczą najbliższego koryta, a dno doliny, rząd i spadek cieku, którego dolina dominuje.
+	 * Waters near the column. The watercourse fields come from {@code RiverNetwork.query}: distance, width
+	 * and water level refer to the nearest channel, while valley floor, order and gradient refer to the watercourse whose valley dominates.
 	 *
-	 * @param streamOrder            rząd cieku, którego dolina dominuje (0 = brak cieku w zasięgu)
-	 * @param headwaters          strefa źródłowa tego cieku
-	 * @param channelDist       d: odległość (m) od brzegu najbliższego koryta, ≤ 0 w korycie, +∞ poza zasięgiem;
-	 *                        ciągła, mierzona w układzie doliny (u wzdłuż, v w poprzek), w którym rysowane jest
-	 *                        koryto, więc przy silnie wygiętej dolinie odbiega od odległości euklidesowej
-	 *                        (Odstępstwo S2 w docs/03-m2-biomy.md). d ≤ 0 nie oznacza wody: przy źródle koryto
-	 *                        jest węższe od W, a w suchej głowicy doliny go nie ma; strefę koryta wybiera się
-	 *                        z {@code waterKind() == RIVER}
-	 * @param channelWidth      W: szerokość tego koryta (m); NaN bez cieku
-	 * @param channelLevel    lustro tego koryta (m n.p.m., bez zaokrąglenia do bloku); NaN bez cieku
-	 * @param inFloor           kolumna w dnie doliny
-	 * @param u               położenie w dnie doliny: 0 przy korycie, 1 na skraju dna; NaN poza dnem
-	 * @param floorHalfWidth      półszerokość dna doliny (m); NaN bez cieku
-	 * @param channelGradient          spadek cieku w ‰, przeliczony na skalę 1:1; NaN bez cieku
-	 * @param convexBank    kolumna po wewnętrznej (wypukłej) stronie łuku meandra najbliższego koryta;
-	 *                        liczone do d ≤ max(W; 15 m·k), przy wyraźnych meandrach (krętość odcinka
-	 *                        od ok. 1,03) albo szerokim korycie (W / chan ≥ 6 m); wąskie potoki mają false
-	 * @param s               odległość (m) od brzegu najbliższej wody stojącej: dodatnia na lądzie, ujemna
-	 *                        w wodzie lub torfie oczka; +∞ poza pasem: jezioro bezodpływowe 150 m·k,
-	 *                        jezioro rynnowe max(150 m·k; 70 m), oczko 45 m,
-	 *                        starorzecze 40 m·k
-	 * @param shoreLevel    lustro tej wody (m n.p.m.); {@link ColumnSample#NO_WATER} bez wody stojącej
-	 * @param standingWaterKind  rodzaj tej wody
-	 * @param ombrotrophicPeat       oczko torfowe ombrotroficzne (brzeg misy dalej niż 300 m·k od koryta)
-	 * @param lakeId       skrót identyfikujący zbiornik (stały w całym zbiorniku), 0 bez wody stojącej
-	 * @param standingWaterRadius promień oczka lub jeziora bezodpływowego, półszerokość jeziora rynnowego
-	 *                        lub starorzecza w tym miejscu (m); NaN bez wody stojącej
+	 * @param streamOrder         order of the watercourse whose valley dominates (0 = no watercourse in range)
+	 * @param headwaters          headwater zone of that watercourse
+	 * @param channelDist         d: distance (m) from the bank of the nearest channel, ≤ 0 in the channel, +∞ out of range;
+	 *                            continuous, measured in the valley frame (u along, v across) in which the channel
+	 *                            is drawn, so in a strongly curved valley it departs from the Euclidean distance
+	 *                            (Deviation S2 in docs/03-m2-biomy.md). d ≤ 0 does not mean water: near the source the channel
+	 *                            is narrower than W, and in a dry valley head there is none; the channel zone is chosen
+	 *                            with {@code waterKind() == RIVER}
+	 * @param channelWidth        W: width of that channel (m); NaN without a watercourse
+	 * @param channelLevel        water level of that channel (m a.s.l., not rounded to a block); NaN without a watercourse
+	 * @param inFloor             the column is on the valley floor
+	 * @param u                   position on the valley floor: 0 at the channel, 1 at the edge of the floor; NaN off the floor
+	 * @param floorHalfWidth      half-width of the valley floor (m); NaN without a watercourse
+	 * @param channelGradient     watercourse gradient in ‰, converted to 1:1 scale; NaN without a watercourse
+	 * @param convexBank          the column is on the inner (convex) side of a meander bend of the nearest channel;
+	 *                            computed up to d ≤ max(W, 15 m·k), with pronounced meanders (reach sinuosity
+	 *                            from about 1.03) or a wide channel (W / chan ≥ 6 m); narrow streams have false
+	 * @param s                   distance (m) from the shore of the nearest standing water: positive on land, negative
+	 *                            in the water or the peat of a kettle; +∞ outside the belt: sink lake 150 m·k,
+	 *                            tunnel valley lake max(150 m·k, 70 m), kettle pond 45 m,
+	 *                            oxbow lake 40 m·k
+	 * @param shoreLevel          water level of that water (m a.s.l.); {@link ColumnSample#NO_WATER} without standing water
+	 * @param standingWaterKind   kind of that water
+	 * @param ombrotrophicPeat    ombrotrophic peat kettle (basin edge further than 300 m·k from a channel)
+	 * @param lakeId              hash identifying the water body (constant across the whole body), 0 without standing water
+	 * @param standingWaterRadius radius of a kettle pond or sink lake, half-width of a tunnel valley lake
+	 *                            or oxbow lake at this place (m); NaN without standing water
 	 */
 	public record Waters(int streamOrder, boolean headwaters, double channelDist, double channelWidth, double channelLevel,
 			boolean inFloor, double u, double floorHalfWidth, double channelGradient, boolean convexBank, double s,
 			int shoreLevel, StandingWaterKind standingWaterKind, boolean ombrotrophicPeat, long lakeId,
 			double standingWaterRadius) {
-		/** Brak cieków i wód stojących (morze i miejsca poza zasięgiem). */
+		/** No watercourses and no standing water (sea and places out of range). */
 		public static final Waters NONE = new Waters(0, false, Double.POSITIVE_INFINITY, Double.NaN, Double.NaN, false,
 				Double.NaN, Double.NaN, Double.NaN, false, Double.POSITIVE_INFINITY, NO_WATER, StandingWaterKind.NONE,
 				false, 0L, Double.NaN);
 	}
 
-	/** Rodzaj wody stojącej najbliższej kolumnie. */
+	/** Kind of the standing water nearest to the column. */
 	public enum StandingWaterKind {
 		NONE,
-		/** Jezioro w rynnie polodowcowej. */
+		/** Lake in a glacial tunnel valley. */
 		TUNNEL_VALLEY_LAKE,
-		/** Jezioro w obniżeniu bezodpływowym sieci rzecznej. */
+		/** Lake in an endorheic depression of the river network. */
 		SINK_LAKE,
-		/** Oczko wytopiskowe z wodą. */
+		/** Water-filled kettle pond. */
 		KETTLE_POND,
-		/** Oczko wytopiskowe wypełnione torfem (bez wody). */
+		/** Peat-filled kettle (without water). */
 		KETTLE_BOG,
-		/** Starorzecze w dnie doliny. */
+		/** Oxbow lake on the valley floor. */
 		OXBOW_LAKE
 	}
 
 	/**
-	 * Pola regionalne z siatki {@code RegionalField} (węzły co 16 km·zs, interpolacja dwuliniowa), także w morzu.
+	 * Regional fields from the {@code RegionalField} grid (nodes every 16 km·zs, bilinear interpolation), also at sea.
 	 *
-	 * @param oceanicity O: oceaniczność klimatu 0–1 (zachód i bliskość morza podnoszą)
-	 * @param mountainInfluence  P: podgórskość 0–1 (1 przy osi pasma górskiego, P ≥ 0,5 do ok. 150–250 km·zs od niej)
+	 * @param oceanicity        O: climate oceanicity 0–1 (raised by the west and by proximity to the sea)
+	 * @param mountainInfluence P: mountain influence 0–1 (1 at the mountain range axis, P ≥ 0.5 up to about 150–250 km·zs from it)
 	 */
 	public record Region(double oceanicity, double mountainInfluence) {
 	}

@@ -12,22 +12,22 @@ import org.junit.jupiter.api.Test;
 import org.spongepowered.asm.mixin.injection.Inject;
 
 /**
- * Cele mixinów klimatu istnieją w {@link Biome} tej wersji gry. Testy jednostkowe działają bez
- * mixinów, więc bez tego zmiana sygnatury po aktualizacji Minecrafta wyszłaby dopiero przy starcie gry.
+ * The climate mixin targets exist in {@link Biome} of this game version. Unit tests run without
+ * mixins, so without this check a signature change after a Minecraft update would only show up at game start.
  */
 class MixinTargetsTest {
 	@Test
 	void injectTargetsExistInBiome() {
 		int found = 0;
 		for (Class<?> mixin : List.of(BiomeTemperatureMixin.class, BiomeFreezeMixin.class)) {
-			// @Mixin nie jest widoczne w czasie działania (retencja CLASS), @Inject jest.
+			// @Mixin is not visible at runtime (CLASS retention), @Inject is.
 			for (Method handler : mixin.getDeclaredMethods()) {
 				Inject inject = handler.getAnnotation(Inject.class);
 				if (inject == null) {
 					continue;
 				}
 				for (String target : inject.method()) {
-					assertTrue(hasMethod(target), "Brak celu " + target + " w Biome (" + mixin.getSimpleName() + ")");
+					assertTrue(hasMethod(target), "Missing target " + target + " in Biome (" + mixin.getSimpleName() + ")");
 					found++;
 				}
 			}
@@ -35,10 +35,10 @@ class MixinTargetsTest {
 		assertEquals(2, found);
 	}
 
-	/** Czy {@link Biome} deklaruje metodę o nazwie i deskryptorze z {@code nazwa(deskryptor)}. */
+	/** Whether {@link Biome} declares a method with the name and descriptor from {@code name(descriptor)}. */
 	private static boolean hasMethod(String target) {
 		int paren = target.indexOf('(');
-		assertTrue(paren > 0, "Cel bez deskryptora: " + target);
+		assertTrue(paren > 0, "Target without a descriptor: " + target);
 		String name = target.substring(0, paren);
 		String descriptor = target.substring(paren);
 		List<String> candidates = new ArrayList<>();

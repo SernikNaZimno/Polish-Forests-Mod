@@ -13,9 +13,9 @@ import pl.polishforests.climate.PolandClimate;
 import pl.polishforests.season.Seasons;
 
 /**
- * Zamarzanie wody w biomach z profilem: morze nigdy, rzeki dopiero przy T < 0,05 (z korektą pory
- * roku z Serene Seasons). Pozostałe przypadki przechodzą do wanilii, więc {@code @Redirect} SS
- * wewnątrz {@code shouldFreeze} działa dalej bez zmian.
+ * Water freezing in biomes with a profile: the sea never freezes, rivers only at T < 0.05 (with the
+ * seasonal adjustment from Serene Seasons). All other cases fall through to vanilla, so the SS
+ * {@code @Redirect} inside {@code shouldFreeze} keeps working unchanged.
  */
 @Mixin(Biome.class)
 abstract class BiomeFreezeMixin {
@@ -27,7 +27,7 @@ abstract class BiomeFreezeMixin {
 		if (climate == null) {
 			return;
 		}
-		// Bez switcha po enumie: javac dodałby syntetyczną klasę w pakiecie mixinów.
+		// No switch on the enum: javac would add a synthetic class to the mixin package.
 		BiomeClimate.FreezeMode mode = climate.freezeMode();
 		if (mode == BiomeClimate.FreezeMode.NEVER) {
 			cir.setReturnValue(false);

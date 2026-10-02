@@ -15,20 +15,20 @@ import pl.polishforests.worldgen.landscape.LandscapeScale;
 import pl.polishforests.worldgen.landscape.Noise;
 
 /**
- * Wybrzeże na przekrojach brzegu (docs/03-m2-biomy.md §5.2, poprawka po S4): przekrój zaczyna się na linii
- * brzegu i idzie w głąb lądu wzdłuż normalnej do brzegu (gradient odległości od morza) do B + D + 400k.
- * Na brzegu wydmowym ({@code niskiBrzeg} ≥ 0,5) w pasie wydm B ≤ cD &lt; B + D nie ma stref klifu, a wydmy
- * i bór bażynowy zajmują większość kolumn lądu poza dnami dolin i brzegami wód stojących. Na brzegu wysokim
- * jest ściana klifu.
+ * The coast on shore cross-sections (docs/03-m2-biomy.md §5.2, correction after S4): a cross-section starts at the
+ * shoreline and runs inland along the shore normal (gradient of the distance from the sea) up to B + D + 400k.
+ * On a dune shore ({@code lowShore} ≥ 0.5) there are no cliff zones in the dune belt B ≤ cD &lt; B + D, and dunes
+ * and the coastal crowberry pine forest take up most land columns outside valley floors and standing water banks.
+ * A high shore has a cliff face.
  */
 class CoastTest {
 	static final long SEED = 20260927L;
-	/** Przekroje brzegu wydmowego i wysokiego (każdego rodzaju najwyżej tyle). */
+	/** Cross-sections of dune and high shores (at most this many of each kind). */
 	static final int PER_KIND = 40;
 
 	/**
-	 * Przekrój: brzeg wydmowy (w środku pasa wydm), kody kolumn, odległości od morza, kolumny liczone
-	 * (ląd poza dnami i brzegami wód stojących) i kolumny brzegu wydmowego.
+	 * Cross-section: dune shore (in the middle of the dune belt), column codes, distances from the sea, counted
+	 * columns (land outside valley floors and standing water banks) and dune shore columns.
 	 */
 	record Section(boolean duneShore, int[] codes, double[] cD, boolean[] counted, boolean[] low, double x, double z) {
 	}
@@ -47,7 +47,7 @@ class CoastTest {
 				candidates.add(new long[] {Noise.mix(SEED + q), q});
 			}
 		});
-		// Wybór niezależny od kolejności wątków: według skrótu.
+		// Selection independent of thread order: by hash.
 		List<long[]> l = new ArrayList<>(candidates);
 		l.sort((a, b) -> Long.compare(a[0], b[0]));
 		List<Section> out = new ArrayList<>();
@@ -105,7 +105,7 @@ class CoastTest {
 		double[] cD = new double[steps];
 		boolean[] counted = new boolean[steps];
 		boolean[] low = new boolean[steps];
-		// Brzeg wydmowy według pola w środku pasa wydm.
+		// Dune shore according to the field in the middle of the dune belt.
 		ColumnSample middle = m.sample(x + g[0] * (b + dw / 2), z + g[1] * (b + dw / 2));
 		boolean duneShore = middle.terrain().lowShore() >= Calibration.LOW_SHORE;
 		for (int i = 0; i < steps; i++) {
@@ -172,15 +172,15 @@ class CoastTest {
 		}
 		double share = band == 0 ? Double.NaN : (double) dunes / band;
 		System.out.printf(Locale.ROOT,
-				"%s: przekroje %d (wydmowe %d, wysokie %d, w tym z klifem %d); pas wydm %d kolumn: wydmy i bór bażynowy %.1f%% "
-						+ "(biała %.1f%%, szara %.1f%%), klif %d%n",
+				"%s: cross-sections %d (dune %d, high %d, of which with a cliff %d); dune belt %d columns: dunes and crowberry pine forest %.1f%% "
+						+ "(white %.1f%%, gray %.1f%%), cliff %d%n",
 				sc.id(), list.size(), duneShores, highShores, highShoresWithCliff, band, 100 * share, 100.0 * white / Math.max(1, band),
 				100.0 * gray / Math.max(1, band), cliffs);
-		assertTrue(duneShores >= 20, sc.id() + ": za mało brzegów wydmowych: " + duneShores);
-		assertEquals(0, cliffs, sc.id() + ": klif na brzegu wydmowym: " + cliffExamples);
-		assertTrue(share >= 0.9, sc.id() + ": wydmy i bór bażynowy w pasie wydm: " + share);
-		assertTrue(white > 0 && gray > 0, sc.id() + ": brak wydmy białej albo szarej");
-		assertTrue(highShores == 0 || highShoresWithCliff > 0, sc.id() + ": brak klifu na wysokim brzegu");
+		assertTrue(duneShores >= 20, sc.id() + ": too few dune shores: " + duneShores);
+		assertEquals(0, cliffs, sc.id() + ": cliff on a dune shore: " + cliffExamples);
+		assertTrue(share >= 0.9, sc.id() + ": dunes and crowberry pine forest in the dune belt: " + share);
+		assertTrue(white > 0 && gray > 0, sc.id() + ": no white or gray dune");
+		assertTrue(highShores == 0 || highShoresWithCliff > 0, sc.id() + ": no cliff on a high shore");
 	}
 
 	@Test

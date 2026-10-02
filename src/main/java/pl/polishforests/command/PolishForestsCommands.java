@@ -36,28 +36,29 @@ import pl.polishforests.worldgen.landscape.Substrate;
 import pl.polishforests.worldgen.landscape.WaterKind;
 
 /**
- * Komendy diagnostyczne świata "Polska":
+ * Diagnostic commands of the "Poland" world:
  * <ul>
- * <li>{@code /polskielasy znajdz <cel>} – najbliższy typ krajobrazu lub forma terenu;</li>
- * <li>{@code /polskielasy wysokosc <od> <do>} – najbliższy teren o wysokości w podanym przedziale (m n.p.m.);</li>
- * <li>{@code /polskielasy najwyzszy [promien_km]} – najwyższy punkt w okolicy;</li>
- * <li>{@code /polskielasy lista} – dostępne cele;</li>
- * <li>{@code /polskielasy tutaj} – opis terenu w miejscu gracza.</li>
+ * <li>{@code /polishforests find <target>} – the nearest landscape type or landform;</li>
+ * <li>{@code /polishforests elevation <from> <to>} – the nearest terrain with an elevation in the given range (m a.s.l.);</li>
+ * <li>{@code /polishforests highest [radius_km]} – the highest point in the area;</li>
+ * <li>{@code /polishforests list} – available targets;</li>
+ * <li>{@code /polishforests here} – description of the terrain at the player's position.</li>
  * </ul>
  */
 public final class PolishForestsCommands {
 	private PolishForestsCommands() {
 	}
 
-	/** Rodzaj celu: typ krajobrazu, piętro, woda albo forma terenu. */
+	/** Target kind: landscape type, belt, water, coast or landform. */
 	private enum Kind {
 		LANDSCAPE, BELT, WATER, COAST, LANDFORM
 	}
 
 	/**
-	 * Cele wyszukiwania. {@code fine} oznacza obiekty małe (szukane gęściej, na mniejszym obszarze),
-	 * {@code forms} – potrzebę pełnego opisu terenu zamiast samej próbki kolumny, a {@code coastal} –
-	 * obiekty w wąskim pasie wybrzeża, szukane najpierw zgrubnie po odległości od linii brzegowej.
+	 * Search targets. {@code fine} marks small objects (searched more densely, over a smaller area),
+	 * {@code forms} – the need for a full terrain description instead of just the column sample, and
+	 * {@code coastal} – objects in a narrow coastal strip, first searched coarsely by distance from the
+	 * coastline.
 	 */
 	public enum Target {
 		OUTWASH_PLAIN(Kind.LANDSCAPE, false, false, d -> d.sample().type() == LandscapeType.OUTWASH_PLAIN),
@@ -67,7 +68,7 @@ public final class PolishForestsCommands {
 		BESKIDS(Kind.LANDSCAPE, false, false, d -> d.sample().type() == LandscapeType.BESKIDS),
 		SEA(Kind.LANDSCAPE, false, false, true, d -> d.sample().type() == LandscapeType.SEA),
 		COASTLAND(Kind.LANDSCAPE, true, false, true, d -> d.sample().type() == LandscapeType.COASTLAND),
-		// Piętra według nominalnej granicy z habitat/Pietra (bez korekty ekspozycji, jak opis terenu).
+		// Belts by the nominal boundary from habitat/AltitudinalBelts (no aspect correction, like the terrain description).
 		LOWER_MONTANE(Kind.BELT, false, false,
 				d -> d.sample().type() == LandscapeType.BESKIDS && !AltitudinalBelts.isUpperMontane(d.sample().surface())),
 		UPPER_MONTANE(Kind.BELT, false, false,
@@ -165,7 +166,7 @@ public final class PolishForestsCommands {
 		return model;
 	}
 
-	// ------------------------------------------------------------------ lista i tutaj
+	// ------------------------------------------------------------------ list and here
 
 	private static int list(CommandContext<CommandSourceStack> ctx) {
 		CommandSourceStack source = ctx.getSource();
@@ -208,7 +209,7 @@ public final class PolishForestsCommands {
 		return 1;
 	}
 
-	// ------------------------------------------------------------------ szukanie
+	// ------------------------------------------------------------------ search
 
 	private static int find(CommandContext<CommandSourceStack> ctx) {
 		CommandSourceStack source = ctx.getSource();
@@ -232,21 +233,21 @@ public final class PolishForestsCommands {
 		return 1;
 	}
 
-	/** Najbliższe miejsce celu od punktu {@code (ox, oz)}: {x, z} lub null. */
+	/** The nearest location of the target from point {@code (ox, oz)}: {x, z} or null. */
 	public static double[] locate(LandscapeModel model, Target target, double ox, double oz) {
 		Predicate<double[]> test = p -> target.test.test(target.forms ? model.describe(p[0], p[1])
 				: new LandscapeModel.Description(model.sample(p[0], p[1]), EnumSet.noneOf(Landform.class)));
 		return target.coastal ? searchCoastal(model, test, ox, oz) : search(phases(model, target.fine), test, ox, oz);
 	}
 
-	/** Zasięg wyszukiwania linii brzegowej w metrach. */
+	/** Coastline search range in meters. */
 	private static double coastalRadius(LandscapeModel model) {
 		return model.scale() == LandscapeScale.REALISTIC ? 2_000_000 : 300_000;
 	}
 
 	/**
-	 * Obiekty wybrzeża: najpierw kolejne odcinki linii brzegowej coraz dalej od gracza (zgrubnie, po
-	 * analitycznej odległości od brzegu), a przy każdym z nich gęste przeszukanie okolicy.
+	 * Coastal objects: first successive stretches of the coastline farther and farther from the player
+	 * (coarsely, by the analytic distance from the shore), then a dense search around each of them.
 	 */
 	static double[] searchCoastal(LandscapeModel model, Predicate<double[]> test, double ox, double oz) {
 		boolean realistic = model.scale() == LandscapeScale.REALISTIC;
@@ -268,7 +269,7 @@ public final class PolishForestsCommands {
 					if (found != null) {
 						return found;
 					}
-					// Następna próba dalej: ten odcinek wybrzeża już sprawdzono.
+					// Next attempt farther out: this stretch of the coast has already been checked.
 					r += local[local.length - 1][1];
 					break;
 				}
@@ -299,7 +300,7 @@ public final class PolishForestsCommands {
 		return 1;
 	}
 
-	/** Fazy przeszukiwania {odstęp, promień} w metrach, dopasowane do skali świata. */
+	/** Search phases {spacing, radius} in meters, matched to the world scale. */
 	private static double[][] phases(LandscapeModel model, boolean fine) {
 		boolean gameplay = model.scale() != LandscapeScale.REALISTIC;
 		if (gameplay) {
@@ -325,7 +326,7 @@ public final class PolishForestsCommands {
 				}));
 	}
 
-	/** Szukanie po pierścieniach od gracza; zwraca {x, z} lub null. */
+	/** Search in rings around the player; returns {x, z} or null. */
 	static double[] search(double[][] phases, Predicate<double[]> test, double ox, double oz) {
 		double r = 0;
 		double[] p = new double[2];
@@ -348,7 +349,7 @@ public final class PolishForestsCommands {
 		return null;
 	}
 
-	// ------------------------------------------------------------------ najwyższy punkt
+	// ------------------------------------------------------------------ highest point
 
 	private static int highest(CommandContext<CommandSourceStack> ctx, int radiusKm) {
 		CommandSourceStack source = ctx.getSource();
@@ -371,7 +372,7 @@ public final class PolishForestsCommands {
 		return 1;
 	}
 
-	/** Siatka ok. 200 × 200 punktów, potem wspinaczka do lokalnego maksimum. Zwraca {x, z, wysokość}. */
+	/** A grid of about 200 × 200 points, then hill climbing to the local maximum. Returns {x, z, elevation}. */
 	static double[] highestPoint(LandscapeModel model, double ox, double oz, double radius) {
 		double step = radius / 100.0;
 		double bx = ox;
@@ -411,7 +412,7 @@ public final class PolishForestsCommands {
 		return new double[] {bx, bz, bh};
 	}
 
-	// ------------------------------------------------------------------ wynik
+	// ------------------------------------------------------------------ result
 
 	private static void report(CommandSourceStack source, ServerLevel level, Vec3 origin, double[] found, String key,
 			Component name) {

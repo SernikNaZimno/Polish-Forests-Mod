@@ -24,8 +24,8 @@ class PolandDimensionTest {
 	@Test
 	void rysyFitUnderBuildLimitWithHeadroom() {
 		int rysy = PolandDimension.topBlockY(2_499);
-		assertTrue(rysy >= 1_990 && rysy <= 2_001, "Rysy na Y " + rysy);
-		assertTrue(PolandDimension.maxY() - rysy >= 25, "za mało miejsca nad Rysami");
+		assertTrue(rysy >= 1_990 && rysy <= 2_001, "Rysy at Y " + rysy);
+		assertTrue(PolandDimension.maxY() - rysy >= 25, "not enough headroom above Rysy");
 		assertEquals(2_031, PolandDimension.maxY());
 	}
 
@@ -34,8 +34,8 @@ class PolandDimensionTest {
 		double prev = PolandDimension.blocksForMeters(0);
 		for (double m = 0.05; m <= 2_700; m += 0.05) {
 			double b = PolandDimension.blocksForMeters(m);
-			assertTrue(b > prev, "nie rośnie przy " + m);
-			assertTrue(b - prev < 0.051, "skok przy " + m);
+			assertTrue(b > prev, "not increasing at " + m);
+			assertTrue(b - prev < 0.051, "jump at " + m);
 			prev = b;
 		}
 	}
@@ -52,13 +52,13 @@ class PolandDimensionTest {
 	void gameplayScaleFitsItsDimensionAndIsMonotonic() {
 		VerticalScale v = VerticalScale.GAMEPLAY;
 		int rysy = v.topBlockY(2_499);
-		assertTrue(rysy > 600 && rysy < v.maxY() - 40, "Rysy na Y " + rysy);
-		assertTrue(v.topBlockY(1_725) > 480 && v.topBlockY(1_725) < 560, "Babia Góra na Y " + v.topBlockY(1_725));
-		assertTrue(v.topBlockY(130) > 120 && v.topBlockY(130) < 145, "nizina na Y " + v.topBlockY(130));
+		assertTrue(rysy > 600 && rysy < v.maxY() - 40, "Rysy at Y " + rysy);
+		assertTrue(v.topBlockY(1_725) > 480 && v.topBlockY(1_725) < 560, "Babia Gora at Y " + v.topBlockY(1_725));
+		assertTrue(v.topBlockY(130) > 120 && v.topBlockY(130) < 145, "lowland at Y " + v.topBlockY(130));
 		double prev = v.blocksForMeters(-50);
 		for (double m = -49.95; m <= 2_700; m += 0.05) {
 			double b = v.blocksForMeters(m);
-			assertTrue(b > prev, "nie rośnie przy " + m);
+			assertTrue(b > prev, "not increasing at " + m);
 			prev = b;
 		}
 		for (double m = -40; m <= 2_600; m += 3.7) {
@@ -75,7 +75,7 @@ class PolandDimensionTest {
 		assertTrue(PolandDimension.isPoland(gameplay));
 		assertSame(VerticalScale.REAL, PolandDimension.scaleOf(real));
 		assertSame(VerticalScale.GAMEPLAY, PolandDimension.scaleOf(gameplay));
-		// Wanilijny overworld, Nether i End.
+		// Vanilla overworld, Nether and End.
 		assertFalse(PolandDimension.isPoland(LevelHeightAccessor.create(-64, 384)));
 		assertFalse(PolandDimension.isPoland(LevelHeightAccessor.create(0, 256)));
 		assertNull(PolandDimension.scaleOf(LevelHeightAccessor.create(0, 832)));

@@ -18,8 +18,8 @@ class NoiseTest {
 			assertEquals(n.sample(x, z), v, 1e-12);
 			double fx = (n.sample(x + h, z) - n.sample(x - h, z)) / (2 * h);
 			double fz = (n.sample(x, z + h) - n.sample(x, z - h)) / (2 * h);
-			assertEquals(fx, d[0], 1e-5, "d/dx w " + x + "," + z);
-			assertEquals(fz, d[1], 1e-5, "d/dz w " + x + "," + z);
+			assertEquals(fx, d[0], 1e-5, "d/dx at " + x + "," + z);
+			assertEquals(fz, d[1], 1e-5, "d/dz at " + x + "," + z);
 		}
 	}
 

@@ -5,24 +5,24 @@ import net.minecraft.core.BlockPos;
 import pl.polishforests.worldgen.chunk.VerticalScale;
 
 /**
- * Profil klimatu biomu w świecie "Polska", przypinany do obiektu {@code Biome} przez
- * {@link BiomeClimateAccess}. Biom bez profilu (Nether, End, światy wanilijne) liczy temperaturę po
- * wanilijnemu.
+ * Climate profile of a biome in the "Poland" world, attached to the {@code Biome} object through
+ * {@link BiomeClimateAccess}. A biome without a profile (Nether, End, vanilla worlds) computes its
+ * temperature the vanilla way.
  *
- * @param scale       odwzorowanie pionowe świata (metry n.p.m. dla Y)
- * @param baseTemperature     temperatura na poziomie morza, najwyżej {@link PolandClimate#MAX_BASE_TEMPERATURE}
- * @param freezeMode  zachowanie wody w biomie
+ * @param scale       vertical mapping of the world (meters a.s.l. for Y)
+ * @param baseTemperature     temperature at sea level, at most {@link PolandClimate#MAX_BASE_TEMPERATURE}
+ * @param freezeMode  behavior of water in the biome
  */
 public record BiomeClimate(VerticalScale scale, float baseTemperature, FreezeMode freezeMode) {
-	/** Temperatura bazowa nizin, gór i wód śródlądowych (ok. 10 °C). */
+	/** Base temperature of lowlands, mountains and inland waters (about 10 °C). */
 	public static final float T_LOWLAND = 0.70F;
-	/** Temperatura bazowa morza i wybrzeża (łagodniejszy klimat nadmorski). */
+	/** Base temperature of the sea and the coast (milder maritime climate). */
 	public static final float T_SEA = 0.72F;
 
 	/**
-	 * Biomy zastępcze z presetów świata (data/polskielasy/worldgen/world_preset), objęte tagiem
-	 * {@code #polskielasy:klimat_polski} do czasu biomów moda (krok S5). Preset ma 12 pól, ale
-	 * "forest" i "river" występują w nich dwa razy.
+	 * Placeholder biomes from the world presets (data/polishforests/worldgen/world_preset), covered by
+	 * the {@code #polishforests:polish_climate} tag until the mod's own biomes arrive (step S5). The
+	 * preset has 12 slots, but "forest" and "river" appear in them twice.
 	 */
 	public static final List<String> PLACEHOLDERS = List.of(
 			"minecraft:old_growth_pine_taiga",
@@ -36,25 +36,25 @@ public record BiomeClimate(VerticalScale scale, float baseTemperature, FreezeMod
 			"minecraft:ocean",
 			"minecraft:beach");
 
-	/** Zachowanie wody w biomie z profilem. */
+	/** Behavior of water in a biome with a profile. */
 	public enum FreezeMode {
-		/** Jak w wanilii: woda zamarza przy T < 0,15. */
+		/** As in vanilla: water freezes at T < 0.15. */
 		VANILLA,
-		/** Rzeki i potoki: zamarzają dopiero przy T < {@link PolandClimate#RIVER_FREEZE_THRESHOLD}. */
+		/** Rivers and streams: freeze only at T < {@link PolandClimate#RIVER_FREEZE_THRESHOLD}. */
 		RIVER,
-		/** Morze (Bałtyk, decyzja M2-6) nigdy nie zamarza. */
+		/** The sea (Baltic, decision M2-6) never freezes. */
 		NEVER
 	}
 
-	/** Temperatura w danym bloku (bez korekty pory roku, którą dodaje Serene Seasons). */
+	/** Temperature at the given block (without the seasonal adjustment added by Serene Seasons). */
 	public float temperature(BlockPos pos) {
 		return PolandClimate.temperature(baseTemperature, scale, pos.getX(), pos.getY(), pos.getZ());
 	}
 
 	/**
-	 * Profil biomu z tagu {@code #polskielasy:klimat_polski} według identyfikatora. W krokach S1–S4
-	 * są to biomy zastępcze: morze ma 0,72 i nie zamarza, rzeka zamarza jak rzeka, reszta ma 0,70.
-	 * Biom dopisany do tagu przez paczkę danych dostaje profil nizinny.
+	 * Profile of a biome from the {@code #polishforests:polish_climate} tag by identifier. In steps
+	 * S1–S4 these are placeholder biomes: the sea has 0.72 and does not freeze, the river freezes like
+	 * a river, the rest have 0.70. A biome added to the tag by a data pack gets the lowland profile.
 	 */
 	public static BiomeClimate placeholder(String id, VerticalScale scale) {
 		return switch (id) {

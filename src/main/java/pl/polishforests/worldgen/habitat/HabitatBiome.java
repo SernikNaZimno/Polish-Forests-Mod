@@ -3,12 +3,12 @@ package pl.polishforests.worldgen.habitat;
 import java.util.List;
 
 /**
- * Biomy świata „Polska”: 36 grup siedliskowych (decyzja M2-A, docs/03-m2-biomy.md §2). Identyfikatory
- * {@code polskielasy:<id>} są zamrożone od M2, bo chunki zapisują biomy po nazwie. Kolejność enuma jest
- * stała (kod siedliska zapisuje {@link #ordinal()}); nowe biomy dopisujemy tylko na końcu.
+ * Biomes of the "Poland" world: 36 habitat groups (decision M2-A, docs/03-m2-biomy.md §2). The identifiers
+ * {@code polishforests:<id>} are frozen from M2, because chunks store biomes by name. The enum order is
+ * fixed (the habitat code stores {@link #ordinal()}); new biomes are appended at the end only.
  */
 public enum HabitatBiome {
-	// Leśne (18)
+	// Forest (18)
 	DRY_PINE_FOREST("dry_pine_forest", Group.FOREST, "Bór suchy", "Dry Pine Forest"),
 	FRESH_PINE_FOREST("fresh_pine_forest", Group.FOREST, "Bór świeży", "Fresh Pine Forest"),
 	COASTAL_PINE_FOREST("coastal_pine_forest", Group.FOREST, "Nadmorski bór bażynowy", "Coastal Crowberry Pine Forest"),
@@ -27,7 +27,7 @@ public enum HabitatBiome {
 	MONTANE_SPRUCE_FOREST("montane_spruce_forest", Group.FOREST, "Świerczyna górska", "Montane Spruce Forest"),
 	GRAY_ALDER_FOREST("gray_alder_forest", Group.FOREST, "Olszyna górska", "Gray Alder Forest"),
 	DWARF_PINE_SCRUB("dwarf_pine_scrub", Group.FOREST, "Kosodrzewina", "Dwarf Pine Scrub"),
-	// Nieleśne lądowe (12)
+	// Non-forest terrestrial (12)
 	RAISED_BOG("raised_bog", Group.NON_FOREST, "Torfowisko wysokie", "Raised Bog"),
 	FEN("fen", Group.NON_FOREST, "Torfowisko niskie i przejściowe", "Fen and Transition Mire"),
 	REEDBED("reedbed", Group.NON_FOREST, "Szuwar", "Reedbed"),
@@ -40,7 +40,7 @@ public enum HabitatBiome {
 	WHITE_DUNE("white_dune", Group.NON_FOREST, "Wydma biała", "White Dune"),
 	GRAY_DUNE("gray_dune", Group.NON_FOREST, "Wydma szara", "Gray Dune"),
 	ALPINE_GRASSLAND("alpine_grassland", Group.NON_FOREST, "Piętro alpejskie", "Alpine Grassland"),
-	// Wodne (6)
+	// Water (6)
 	SEA("sea", Group.WATER, "Morze", "Baltic Sea"),
 	LAGOON("lagoon", Group.WATER, "Zalew", "Coastal Lagoon"),
 	RIVER("river", Group.WATER, "Rzeka", "River"),
@@ -48,16 +48,16 @@ public enum HabitatBiome {
 	LAKE("lake", Group.WATER, "Jezioro", "Lake"),
 	DYSTROPHIC_LAKE("dystrophic_lake", Group.WATER, "Jezioro dystroficzne", "Dystrophic Lake");
 
-	/** Grupa biomu: leśny, nieleśny lądowy, wodny. */
+	/** Biome group: forest, non-forest terrestrial, water. */
 	public enum Group {
 		FOREST, NON_FOREST, WATER
 	}
 
 	private static final HabitatBiome[] VALUES = values();
-	/** Bory (siedliska borowe), także bór bażynowy; do udziałów i palet. */
+	/** Pine forests (coniferous sites), including the crowberry pine forest; for shares and palettes. */
 	public static final List<HabitatBiome> PINE_FORESTS = List.of(DRY_PINE_FOREST, FRESH_PINE_FOREST, COASTAL_PINE_FOREST, MOIST_PINE_FOREST, BOG_WOODLAND,
 			MIXED_PINE_FOREST);
-	/** Łęgi (do testu „brak łęgu poza dnem”). */
+	/** Floodplain forests (for the "no floodplain forest off the valley floor" test). */
 	public static final List<HabitatBiome> FLOODPLAIN_FORESTS = List.of(ASH_ALDER_FOREST, WILLOW_POPLAR_FOREST, ELM_ASH_FOREST);
 
 	private final String id;
@@ -72,7 +72,7 @@ public enum HabitatBiome {
 		this.englishName = englishName;
 	}
 
-	/** Identyfikator bez przestrzeni nazw (zamrożony). */
+	/** Identifier without a namespace (frozen). */
 	public String id() {
 		return id;
 	}
@@ -81,7 +81,7 @@ public enum HabitatBiome {
 		return group;
 	}
 
-	/** Nazwa polska (wstępna, lang przychodzi z datagenu w S5). */
+	/** Polish name (preliminary; lang comes from datagen in S5). */
 	public String polishName() {
 		return polishName;
 	}
@@ -102,7 +102,7 @@ public enum HabitatBiome {
 		return PINE_FORESTS.contains(this);
 	}
 
-	/** Biom o numerze {@link #ordinal()}. */
+	/** Biome with the given {@link #ordinal()}. */
 	public static HabitatBiome of(int ordinal) {
 		return VALUES[ordinal];
 	}

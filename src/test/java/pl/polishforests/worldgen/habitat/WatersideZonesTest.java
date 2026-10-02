@@ -15,18 +15,19 @@ import pl.polishforests.worldgen.landscape.LandscapeModel;
 import pl.polishforests.worldgen.landscape.LandscapeScale;
 
 /**
- * Strefy nadwodne na przekrojach rzek (docs/03-m2-biomy.md §4, §12.1): do 150 przekrojów na klasę A, B i C
- * w każdej skali, wybranych równomiernie z siatki 240 × 240 punktów (losowo według skrótu położenia, a nie
- * według współrzędnych). Przekrój zaczyna się na brzegu koryta i idzie prosto wzdłuż normalnej
- * do koryta (gradient d na brzegu), aż d zacznie maleć (bliżej jest inne koryto albo zakole). Kolejność stref: koryto → wiklina → okrajek → łęg wierzbowy → topolowy →
- * wiązowy → zbocze (A), koryto → ziołorośla → OlJ → strefowe (B), koryto → kamieniec/wiklina → olszyna →
- * strefowe (C). Minima w blokach (E11): wiklina 3, OlJ 6, ols 10.
+ * Waterside zones on river cross-sections (docs/03-m2-biomy.md §4, §12.1): up to 150 cross-sections per class A, B
+ * and C at each scale, chosen evenly from a 240 × 240 point grid (randomly by a hash of the position, not by the
+ * coordinates). A cross-section starts at the channel bank and runs straight along the normal to the
+ * channel (gradient of d at the bank) until d starts to decrease (another channel or a bend is closer). Zone order:
+ * channel → willow scrub → herb fringe → white willow forest → poplar forest → elm-ash forest → slope (A),
+ * channel → tall herbs → OlJ → zonal (B), channel → gravel bar/willow scrub → gray alder forest → zonal (C).
+ * Minimum widths in blocks (E11): willow scrub 3, OlJ 6, alder carr 10.
  */
 class WatersideZonesTest {
 	static final long SEED = 20260927L;
 	static final int PER_CLASS = 150;
 
-	/** Przekrój: klasa cieku, kody kolumn co {@code krok} m od brzegu. */
+	/** Cross-section: watercourse class, column codes every {@code step} m from the bank. */
 	record Section(WatersideZones.StreamClass streamClass, int[] codes, boolean[] onValleyFloor, boolean[] standingWater, double step, double x,
 			double z) {
 	}
@@ -45,7 +46,7 @@ class WatersideZonesTest {
 				result.add(p);
 			}
 		});
-		// Kolejność niezależna od wątków i od położenia: według skrótu punktu startowego; po NA_KLASE na klasę.
+		// Order independent of threads and of the position: by the hash of the starting point; PER_CLASS per class.
 		List<Section> l = new ArrayList<>(result);
 		l.sort((a, b) -> Long.compare(hash(a), hash(b)));
 		Map<WatersideZones.StreamClass, Integer> count = new EnumMap<>(WatersideZones.StreamClass.class);
@@ -64,14 +65,14 @@ class WatersideZonesTest {
 		return pl.polishforests.worldgen.landscape.Noise.mix(Double.doubleToLongBits(p.x()) * 31 + Double.doubleToLongBits(p.z()));
 	}
 
-	/** Przekrój od brzegu koryta najbliższego punktowi (x0, z0), albo null, gdy punkt jest za daleko od cieku. */
+	/** Cross-section from the bank of the channel nearest to the point (x0, z0), or null when the point is too far from a watercourse. */
 	static Section section(LandscapeModel m, HabitatClassifier k, double x0, double z0) {
 		ColumnSample s = m.sample(x0, z0);
 		ColumnSample.Waters w = s.waters();
 		if (s.hasWater() || w.streamOrder() == 0 || !(w.channelDist() > 0 && w.channelDist() < 150 * m.scale().local())) {
 			return null;
 		}
-		// Do brzegu: w dół gradientu d.
+		// To the bank: down the gradient of d.
 		double x = x0;
 		double z = z0;
 		for (int i = 0; i < 400; i++) {
@@ -91,7 +92,7 @@ class WatersideZonesTest {
 		if (!(Math.abs(bank.waters().channelDist()) < 1.0) || bank.waters().streamOrder() == 0) {
 			return null;
 		}
-		// Koryto musi mieć wodę po drugiej stronie brzegu (bez suchych głowic dolin).
+		// The channel must have water on the other side of the bank (no dry valley heads).
 		double[] g0 = gradient(m, x, z);
 		if (g0 == null || !m.sample(x - g0[0] * 1.5, z - g0[1] * 1.5).hasWater()) {
 			return null;
@@ -110,8 +111,8 @@ class WatersideZonesTest {
 		int[] codes = new int[steps];
 		boolean[] onValleyFloor = new boolean[steps];
 		boolean[] standingWater = new boolean[steps];
-		// Linia prosta wzdłuż normalnej do koryta na brzegu (gradient d). Gradient dalej od koryta kręci się
-		// razem z układem doliny (meandry), więc przekrój po gradiencie zakosami wracałby przez te same pasy.
+		// Straight line along the normal to the channel at the bank (gradient of d). Further from the channel the gradient
+		// turns with the valley layout (meanders), so a cross-section following it would zigzag back through the same belts.
 		double[] g = g0;
 		double dPrev = -1;
 		for (int i = 0; i < steps; i++) {
@@ -120,7 +121,7 @@ class WatersideZonesTest {
 			ColumnSample t = m.sample(x, z);
 			double d = t.waters().channelDist();
 			if (!(d >= dPrev - 2.0) || t.waters().streamOrder() == 0 || t.hasWater()) {
-				// Za grzbietem pola d (inny ciek bliżej): koniec przekroju.
+				// Beyond the ridge of the d field (another watercourse is closer): end of the cross-section.
 				return i * step >= 0.5 * length
 						? new Section(streamClass, java.util.Arrays.copyOf(codes, i), java.util.Arrays.copyOf(onValleyFloor, i),
 								java.util.Arrays.copyOf(standingWater, i), step, x0, z0)
@@ -134,7 +135,7 @@ class WatersideZonesTest {
 		return new Section(streamClass, codes, onValleyFloor, standingWater, step, x0, z0);
 	}
 
-	/** Kierunek wzrostu d (jednostkowy) z różnic ±1 m albo null. */
+	/** Direction of increasing d (unit vector) from ±1 m differences, or null. */
 	static double[] gradient(LandscapeModel m, double x, double z) {
 		double gx = m.sample(x + 1, z).waters().channelDist() - m.sample(x - 1, z).waters().channelDist();
 		double gz = m.sample(x, z + 1).waters().channelDist() - m.sample(x, z - 1).waters().channelDist();
@@ -143,8 +144,8 @@ class WatersideZonesTest {
 	}
 
 	/**
-	 * Ranga strefy w kolejności od koryta albo −1, gdy kolumna nie wchodzi do porządku: źródliska, młaki,
-	 * starorzecza z pierścieniami, wody stojące i łęg jesionowo-olszowy z wysięku u podnóża zbocza (poza dnem).
+	 * Rank of the zone in the order from the channel, or −1 when the column is not part of the order: spring areas,
+	 * spring fens, oxbow lakes with rings, standing water and ash-alder forest from seepage at the slope foot (outside the floor).
 	 */
 	static int rank(WatersideZones.StreamClass streamClass, int code, boolean onValleyFloor, int soFar) {
 		HabitatBiome b = Habitat.biome(code);
@@ -189,8 +190,8 @@ class WatersideZonesTest {
 	}
 
 	/**
-	 * Czy rangi wzdłuż przekroju nie maleją. Kolumny z rangą −1 pomijamy, a cofnięcie o najwyżej 1 m (dwie
-	 * kolumny) traktujemy jak migotanie progu na drobnej rzeźbie skraju dna, nie jak zmianę kolejności.
+	 * Whether the ranks along the cross-section do not decrease. Columns with rank −1 are skipped, and a step back of at
+	 * most 1 m (two columns) is treated as threshold flicker on the fine relief of the floor edge, not as a change of order.
 	 */
 	static boolean isOrdered(Section p) {
 		int max = 0;
@@ -212,7 +213,7 @@ class WatersideZonesTest {
 		return true;
 	}
 
-	/** Długości (m) zakończonych ciągów kolumn spełniających warunek (bez ciągów przy końcach przekroju). */
+	/** Lengths (m) of completed runs of columns meeting the condition (without runs at the ends of the cross-section). */
 	static List<Double> runs(Section p, java.util.function.IntPredicate condition, boolean includeShore) {
 		List<Double> l = new ArrayList<>();
 		int start = -1;
@@ -247,33 +248,33 @@ class WatersideZonesTest {
 				System.out.println("  " + p.streamClass() + ": " + rle(p));
 			}
 			if (p.streamClass() != WatersideZones.StreamClass.B) {
-				// Pas krzewów przy brzegu: wiklina razem z łachą i kamieńcem przed nią.
+				// Shrub belt at the bank: willow scrub together with the point bar and gravel bar in front of it.
 				willowScrub.addAll(runs(p, i -> Habitat.zone(p.codes()[i]) == Zone.WILLOW_SCRUB
 						|| Habitat.zone(p.codes()[i]) == Zone.POINT_BAR || Habitat.zone(p.codes()[i]) == Zone.GRAVEL_BAR, true));
 			}
 			if (p.streamClass() == WatersideZones.StreamClass.B) {
 				ashAlder.addAll(runs(p, i -> Habitat.biome(p.codes()[i]) == HabitatBiome.ASH_ALDER_FOREST, true));
 			}
-			// Ols nadrzeczny (zastoiska, szerokie dna małych rzek); pierścienie wód stojących przecina przekrój
-			// rzeki ukośnie, więc ich szerokości tu nie mierzymy.
+			// Riverine alder carr (backswamps, wide floors of small rivers); the river cross-section cuts the rings of
+			// standing water obliquely, so their widths are not measured here.
 			alderCarr.addAll(runs(p, i -> Habitat.biome(p.codes()[i]) == HabitatBiome.ALDER_CARR && !p.standingWater()[i], false));
 		}
-		System.out.printf(Locale.ROOT, "%s: przekroje %s; pasy wikliny %d (min %.1f m, co najmniej 3 bloki %.1f%%), "
-				+ "OlJ %d (min %.1f m, co najmniej 6 bloków %.1f%%), ols %d (min %.1f m, co najmniej 10 bloków %.1f%%)%n",
+		System.out.printf(Locale.ROOT, "%s: cross-sections %s; willow scrub belts %d (min %.1f m, at least 3 blocks %.1f%%), "
+				+ "OlJ %d (min %.1f m, at least 6 blocks %.1f%%), alder carr %d (min %.1f m, at least 10 blocks %.1f%%)%n",
 				sc.id(), description(result), willowScrub.size(), min(willowScrub), 100 * share(willowScrub, Calibration.MIN_WILLOW_SCRUB), ashAlder.size(),
 				min(ashAlder), 100 * share(ashAlder, Calibration.MIN_ASH_ALDER), alderCarr.size(), min(alderCarr), 100 * share(alderCarr, Calibration.MIN_ALDER_CARR));
-		System.out.println("  nieuporządkowane (przykłady): " + unordered);
+		System.out.println("  unordered (examples): " + unordered);
 		for (WatersideZones.StreamClass cls : WatersideZones.StreamClass.values()) {
 			int[] w = result.get(cls);
-			assertTrue(w != null && w[0] >= 20, sc.id() + ": za mało przekrojów klasy " + cls + ": " + description(result));
-			assertTrue(w[1] >= 0.9 * w[0], sc.id() + ": klasa " + cls + " uporządkowana w " + w[1] + " z " + w[0]);
+			assertTrue(w != null && w[0] >= 20, sc.id() + ": too few cross-sections of class " + cls + ": " + description(result));
+			assertTrue(w[1] >= 0.9 * w[0], sc.id() + ": class " + cls + " ordered in " + w[1] + " of " + w[0]);
 		}
-		assertTrue(share(willowScrub, Calibration.MIN_WILLOW_SCRUB) >= 0.95, sc.id() + ": wiklina węższa niż 3 bloki: " + willowScrub);
-		assertTrue(share(ashAlder, Calibration.MIN_ASH_ALDER) >= 0.95, sc.id() + ": OlJ węższy niż 6 bloków: " + ashAlder);
-		// Płaty olsu przecina przekrój pod różnymi kątami i przy brzegach płatów cięciwy są krótkie, więc
-		// wymagamy, by co najmniej połowa cięciw miała ≥ 10 bloków (przy kole cięciwa krótsza niż 2/3 średnicy
-		// zdarza się w ok. 25% przecięć).
-		assertTrue(alderCarr.isEmpty() || share(alderCarr, Calibration.MIN_ALDER_CARR) >= 0.5, sc.id() + ": ols węższy niż 10 bloków: " + alderCarr);
+		assertTrue(share(willowScrub, Calibration.MIN_WILLOW_SCRUB) >= 0.95, sc.id() + ": willow scrub narrower than 3 blocks: " + willowScrub);
+		assertTrue(share(ashAlder, Calibration.MIN_ASH_ALDER) >= 0.95, sc.id() + ": OlJ narrower than 6 blocks: " + ashAlder);
+		// The cross-section cuts alder carr patches at various angles and the chords near patch edges are short, so
+		// at least half of the chords must be ≥ 10 blocks (for a circle, a chord shorter than 2/3 of the diameter
+		// occurs in about 25% of crossings).
+		assertTrue(alderCarr.isEmpty() || share(alderCarr, Calibration.MIN_ALDER_CARR) >= 0.5, sc.id() + ": alder carr narrower than 10 blocks: " + alderCarr);
 	}
 
 	static String rle(Section p) {
@@ -304,7 +305,7 @@ class WatersideZonesTest {
 		return l.stream().mapToDouble(Double::doubleValue).min().orElse(Double.NaN);
 	}
 
-	/** Udział pasów nie węższych niż minimum (z tolerancją kroku przekroju 0,5 m). */
+	/** Share of belts not narrower than the minimum (with a tolerance of the 0.5 m cross-section step). */
 	private static double share(List<Double> l, double minimum) {
 		if (l.isEmpty()) {
 			return 1;

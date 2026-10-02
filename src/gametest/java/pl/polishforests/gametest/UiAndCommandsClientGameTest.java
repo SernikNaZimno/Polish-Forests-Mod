@@ -18,8 +18,8 @@ import pl.polishforests.worldgen.chunk.PolandChunkGenerator;
 import pl.polishforests.worldgen.chunk.PolandScale;
 
 /**
- * Ekran opcji generowania i komendy. Uruchamiany, gdy {@code -Dpolskielasy.gametest} to
- * {@code ui} lub {@code wszystko}.
+ * World generation options screen and commands. Runs when {@code -Dpolishforests.gametest} is
+ * {@code ui} or {@code all}.
  */
 public final class UiAndCommandsClientGameTest implements FabricClientGameTest {
 	private static final ResourceKey<WorldPreset> POLAND = ResourceKey.create(Registries.WORLD_PRESET,
@@ -47,11 +47,11 @@ public final class UiAndCommandsClientGameTest implements FabricClientGameTest {
 			WorldCreationUiState ui = screen.getUiState();
 			WorldCreationUiState.WorldTypeEntry entry = ui.getNormalPresetList().stream()
 					.filter(e -> e.preset().is(preset)).findFirst()
-					.orElseThrow(() -> new AssertionError("Brak typu świata " + preset.identifier()));
+					.orElseThrow(() -> new AssertionError("Missing world type " + preset.identifier()));
 			ui.setWorldType(entry);
 			PresetEditor editor = ui.getPresetEditor();
 			if (editor == null) {
-				throw new AssertionError("Typ świata " + preset.identifier() + " nie ma edytora opcji");
+				throw new AssertionError("World type " + preset.identifier() + " has no options editor");
 			}
 			mc.gui.setScreen(editor.createEditScreen(screen, ui.getSettings()));
 		});
@@ -63,24 +63,24 @@ public final class UiAndCommandsClientGameTest implements FabricClientGameTest {
 		String result = context.computeOnClient(mc -> {
 			WorldDimensions dims = ((CreateWorldScreen) mc.gui.screen()).getUiState().getSettings().selectedDimensions();
 			if (!(dims.overworld() instanceof PolandChunkGenerator gen)) {
-				return "generator nie jest generatorem Polska";
+				return "generator is not the Poland generator";
 			}
 			if (gen.settings().scale() != expected) {
-				return "skala " + gen.settings().scale() + " zamiast " + expected;
+				return "scale " + gen.settings().scale() + " instead of " + expected;
 			}
 			LevelStem stem = dims.dimensions().get(LevelStem.OVERWORLD);
 			if (!stem.type().is(expected.dimensionType())) {
-				return "typ wymiaru " + stem.type().unwrapKey() + " zamiast " + expected.dimensionType();
+				return "dimension type " + stem.type().unwrapKey() + " instead of " + expected.dimensionType();
 			}
 			if (stem.type().value().height() != expected.vertical().height()) {
-				return "wysokość wymiaru " + stem.type().value().height();
+				return "dimension height " + stem.type().value().height();
 			}
 			return null;
 		});
 		if (result != null) {
 			throw new AssertionError(preset.identifier() + ": " + result);
 		}
-		PolishForests.LOG.info("[ui] {}: ekran opcji działa, skala {}, wymiar o wysokości {}", preset.identifier(),
+		PolishForests.LOG.info("[ui] {}: options screen works, scale {}, dimension height {}", preset.identifier(),
 				expected.getSerializedName(), expected.vertical().height());
 		context.setScreen(() -> null);
 	}

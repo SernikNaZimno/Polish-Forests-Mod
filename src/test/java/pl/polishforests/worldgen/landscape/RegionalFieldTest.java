@@ -12,12 +12,12 @@ import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 
 /**
- * Pola regionalne O i P (M2, krok S3; docs/03-m2-biomy.md §3.2, §9, §12.1): zakres [0, 1], gładkość, pas bez
- * buka i świerka na 10–20% lądu i zasięg P ≥ 0,5 wokół pasm górskich.
+ * Regional fields O and P (M2, step S3; docs/03-m2-biomy.md §3.2, §9, §12.1): range [0, 1], smoothness, a belt
+ * without beech and spruce on 10–20% of the land and the reach of P ≥ 0.5 around mountain ranges.
  */
 class RegionalFieldTest {
 	private static final long[] SEEDS = {20260927L, 1L, 2L};
-	/** Połowa boku obszaru pomiaru udziałów przy zs = 1 (ok. 6–7 fal szumu prowincji na bok). */
+	/** Half-side of the share measurement area at zs = 1 (about 6–7 province noise waves per side). */
 	private static final double HALF = 3_000_000;
 	private static final LandscapeScale[] SCALES = {LandscapeScale.REALISTIC, LandscapeScale.GAMEPLAY};
 
@@ -25,7 +25,7 @@ class RegionalFieldTest {
 		return m.regionSize() / LandscapeModel.BASE_REGION_SIZE;
 	}
 
-	/** O i P są skończone i leżą w [0, 1] na lądzie i morzu; próbka modelu niesie wartości siatki. */
+	/** O and P are finite and lie in [0, 1] on land and at sea; the model sample carries the grid values. */
 	@Test
 	void valuesAreInUnitRange() {
 		for (LandscapeScale scale : SCALES) {
@@ -39,24 +39,24 @@ class RegionalFieldTest {
 					double x = (-HALF + i * 30_000.0 + 0.37) * zs;
 					double z = (-HALF + j * 30_000.0 + 0.61) * zs;
 					ColumnSample.Region r = rf.sample(x, z);
-					assertTrue(r.oceanicity() >= 0 && r.oceanicity() <= 1, "O poza [0, 1] w " + x + "," + z + ": " + r);
-					assertTrue(r.mountainInfluence() >= 0 && r.mountainInfluence() <= 1, "P poza [0, 1] w " + x + "," + z + ": " + r);
+					assertTrue(r.oceanicity() >= 0 && r.oceanicity() <= 1, "O outside [0, 1] at " + x + "," + z + ": " + r);
+					assertTrue(r.mountainInfluence() >= 0 && r.mountainInfluence() <= 1, "P outside [0, 1] at " + x + "," + z + ": " + r);
 					min = Math.min(min, r.oceanicity());
 					max = Math.max(max, r.oceanicity());
 				}
 			}
-			System.out.println(String.format(Locale.ROOT, "[pola regionalne] %s: O od %.3f do %.3f", scale.id(), min, max));
+			System.out.println(String.format(Locale.ROOT, "[regional fields] %s: O from %.3f to %.3f", scale.id(), min, max));
 			for (int i = 0; i < 300; i++) {
 				double x = (i * 7_919.0 - 1_000_000) * zs;
 				double z = (i * -3_571.0 + 500_000) * zs;
-				assertEquals(rf.sample(x, z), m.sample(x, z).region(), "pola próbki w " + x + "," + z);
+				assertEquals(rf.sample(x, z), m.sample(x, z).region(), "sample fields at " + x + "," + z);
 			}
 		}
 	}
 
 	/**
-	 * W węźle siatki O jest wartością węzła, a P średnią 5 × 5 węzłów przed uśrednieniem (zapis w float),
-	 * między węzłami wartość leży między wartościami narożników oczka.
+	 * At a grid node O is the node value and P the mean of the 5 × 5 node values before averaging (stored as float);
+	 * between nodes the value lies between the values at the cell corners.
 	 */
 	@Test
 	void nodesHoldExactValues() {
@@ -68,14 +68,14 @@ class RegionalFieldTest {
 				long ix = i * 37L - 1_000;
 				long iz = i * -23L + 400;
 				ColumnSample.Region r = rf.sample(ix * g, iz * g);
-				assertEquals(rf.oceanicity(ix * g, iz * g), r.oceanicity(), 1e-6, "O w węźle " + ix + "," + iz);
+				assertEquals(rf.oceanicity(ix * g, iz * g), r.oceanicity(), 1e-6, "O at node " + ix + "," + iz);
 				double sum = 0;
 				for (int a = -2; a <= 2; a++) {
 					for (int b = -2; b <= 2; b++) {
 						sum += rf.mountainInfluence((ix + a) * g, (iz + b) * g);
 					}
 				}
-				assertEquals(sum / 25, r.mountainInfluence(), 1e-6, "P w węźle " + ix + "," + iz);
+				assertEquals(sum / 25, r.mountainInfluence(), 1e-6, "P at node " + ix + "," + iz);
 				ColumnSample.Region mid = rf.sample((ix + 0.3) * g, (iz + 0.6) * g);
 				double lo = 1;
 				double hi = 0;
@@ -86,12 +86,12 @@ class RegionalFieldTest {
 						hi = Math.max(hi, o);
 					}
 				}
-				assertTrue(mid.oceanicity() >= lo - 1e-9 && mid.oceanicity() <= hi + 1e-9, "O między węzłami");
+				assertTrue(mid.oceanicity() >= lo - 1e-9 && mid.oceanicity() <= hi + 1e-9, "O between nodes");
 			}
 		}
 	}
 
-	/** Gładkość: na liniach wzdłuż X, Z i po przekątnej zmiana O i P na 1 km·zs nie przekracza 0,02. */
+	/** Smoothness: on lines along X, Z and the diagonal, the change of O and P per 1 km·zs does not exceed 0.02. */
 	@Test
 	void fieldsAreSmooth() {
 		for (LandscapeScale scale : SCALES) {
@@ -118,36 +118,36 @@ class RegionalFieldTest {
 					}
 				}
 				System.out.println(String.format(Locale.ROOT,
-						"[pola regionalne] %s, ziarno %d: największa zmiana na km·zs: O %.4f, P %.4f", scale.id(), seed, maxO,
+						"[regional fields] %s, seed %d: largest change per km·zs: O %.4f, P %.4f", scale.id(), seed, maxO,
 						maxP));
-				assertTrue(maxO <= 0.02, "O zmienia się o " + maxO + " na km·zs");
-				assertTrue(maxP <= 0.02, "P zmienia się o " + maxP + " na km·zs");
+				assertTrue(maxO <= 0.02, "O changes by " + maxO + " per km·zs");
+				assertTrue(maxP <= 0.02, "P changes by " + maxP + " per km·zs");
 			}
 		}
 	}
 
 	/**
-	 * Między zasięgiem buka (O ≥ 0,40 lub P ≥ 0,40) a zasięgiem naturalnego świerka (O &lt; 0,30 lub P ≥ 0,50)
-	 * leży pas bez obu gatunków, jak na Mazowszu (§9). Zajmuje 10–20% lądu na każdym z trzech ziaren.
+	 * Between the beech range (O ≥ 0.40 or P ≥ 0.40) and the natural spruce range (O &lt; 0.30 or P ≥ 0.50)
+	 * lies a belt without either species, as in Mazovia (§9). It covers 10–20% of the land for each of the three seeds.
 	 */
 	@Test
 	void bandWithoutBeechAndSpruceCoversTenToTwentyPercentOfLand() {
 		for (long seed : SEEDS) {
 			double[] share = shares(new LandscapeModel(seed, LandscapeScale.REALISTIC, 1.0));
 			System.out.println(String.format(Locale.ROOT,
-					"[pola regionalne] realistyczna, ziarno %d: pas bez buka i świerka %.3f lądu; buk %.3f, świerk %.3f,"
-							+ " jodła (P ≥ 0,5) %.3f, O ≥ 0,75 %.3f",
+					"[regional fields] realistic, seed %d: belt without beech and spruce %.3f of land; beech %.3f, spruce %.3f,"
+							+ " fir (P ≥ 0.5) %.3f, O ≥ 0.75 %.3f",
 					seed, share[0], share[1], share[2], share[3], share[4]));
-			assertTrue(share[0] >= 0.10 && share[0] <= 0.20, "pas bez buka i świerka: " + share[0]);
+			assertTrue(share[0] >= 0.10 && share[0] <= 0.20, "belt without beech and spruce: " + share[0]);
 		}
-		// Skala rozgrywki to te same pola w skali zs (bez osobnej kalibracji).
+		// The gameplay scale uses the same fields scaled by zs (no separate calibration).
 		double[] share = shares(new LandscapeModel(SEEDS[0], LandscapeScale.GAMEPLAY, 1.0));
-		System.out.println(String.format(Locale.ROOT, "[pola regionalne] rozgrywka, ziarno %d: pas %.3f lądu", SEEDS[0],
+		System.out.println(String.format(Locale.ROOT, "[regional fields] gameplay, seed %d: belt %.3f of land", SEEDS[0],
 				share[0]));
-		assertTrue(share[0] >= 0.10 && share[0] <= 0.20, "pas bez buka i świerka (rozgrywka): " + share[0]);
+		assertTrue(share[0] >= 0.10 && share[0] <= 0.20, "belt without beech and spruce (gameplay): " + share[0]);
 	}
 
-	/** Udziały lądu: {pas, buk, świerk, P ≥ 0,5, O ≥ 0,75} na siatce co 20 km·zs. */
+	/** Land shares: {belt, beech, spruce, P ≥ 0.5, O ≥ 0.75} on a grid every 20 km·zs. */
 	private static double[] shares(LandscapeModel m) {
 		RegionalField rf = m.regional();
 		double zs = zs(m);
@@ -181,11 +181,11 @@ class RegionalFieldTest {
 	}
 
 	/**
-	 * P ≥ 0,5 sięga ok. 150–250 km·zs od osi pasma (§3.2): mediana odległości granicy P = 0,5 od osi pasma
-	 * (linia zerowa {@code mountainRaw}, tam gdzie maski pasma i odsunięcia od morza ≥ 0,5). Liczymy tylko granicę
-	 * wzdłuż pasma, gdzie maski są prawie pełne (≥ 0,9), a nie przy końcach łańcuchów. Punkty granicy zbieramy
-	 * z {@link #RANGE_SEEDS} ziaren razem: na pojedynczym ziarnie bywa ich kilkadziesiąt, a mediany ziaren
-	 * rozchodzą się bardziej niż przedział planu (wypisujemy je informacyjnie).
+	 * P ≥ 0.5 reaches about 150–250 km·zs from the range axis (§3.2): the median distance of the P = 0.5 boundary from
+	 * the range axis (zero line of {@code mountainRaw}, where the range mask and the sea offset are ≥ 0.5). Only the
+	 * boundary along a range, where the masks are almost full (≥ 0.9), is counted, not at the ends of the chains. Boundary
+	 * points are collected from {@link #RANGE_SEEDS} seeds together: a single seed sometimes has only a few dozen, and the
+	 * per-seed medians spread more than the plan interval (they are printed for information).
 	 */
 	@Test
 	void mountainInfluenceReachesAroundRanges() {
@@ -195,27 +195,27 @@ class RegionalFieldTest {
 			List<Double> dist = rangeBoundaryDistances(new LandscapeModel(seed, LandscapeScale.REALISTIC, 1.0));
 			all.addAll(dist);
 			dist.sort(null);
-			perSeed.append(dist.isEmpty() ? String.format(Locale.ROOT, " %d: brak;", seed)
+			perSeed.append(dist.isEmpty() ? String.format(Locale.ROOT, " %d: none;", seed)
 					: String.format(Locale.ROOT, " %d: %.0f km (%d);", seed, dist.get(dist.size() / 2) / 1e3, dist.size()));
 		}
 		all.sort(null);
-		assertTrue(all.size() >= 1_000, "za mało punktów granicy P = 0,5 przy pasmach: " + all.size());
+		assertTrue(all.size() >= 1_000, "too few P = 0.5 boundary points near ranges: " + all.size());
 		double median = all.get(all.size() / 2) / 1e3;
 		System.out.println(String.format(Locale.ROOT,
-				"[pola regionalne] granica P = 0,5 od osi pasma, %d ziaren razem (%d punktów): kwartyle %.0f / %.0f / %.0f km;"
-						+ " mediany ziaren:%s",
+				"[regional fields] P = 0.5 boundary from the range axis, %d seeds together (%d points): quartiles %.0f / %.0f / %.0f km;"
+						+ " per-seed medians:%s",
 				RANGE_SEEDS.length, all.size(), all.get(all.size() / 4) / 1e3, median, all.get(3 * all.size() / 4) / 1e3,
 				perSeed));
-		assertTrue(median >= 150 && median <= 250, "mediana zasięgu P ≥ 0,5: " + median + " km");
+		assertTrue(median >= 150 && median <= 250, "median reach of P ≥ 0.5: " + median + " km");
 	}
 
-	/** Ziarna pomiaru zasięgu P (te z {@link #SEEDS} i siedem kolejnych). */
+	/** Seeds for measuring the reach of P (those from {@link #SEEDS} and the next seven). */
 	private static final long[] RANGE_SEEDS = {20260927L, 1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L};
 
 	/**
-	 * Odległości punktów granicy P = 0,5 (zmiana wzdłuż X na siatce co 4 km w kwadracie ±1500 km, maski ≥ 0,9)
-	 * od najbliższego punktu osi pasma (zmiana znaku {@code mountainRaw} między sąsiednimi punktami siatki,
-	 * maski ≥ 0,5), do 450 km.
+	 * Distances of P = 0.5 boundary points (a change along X on a 4 km grid in a ±1500 km square, masks ≥ 0.9)
+	 * from the nearest point of a range axis (a sign change of {@code mountainRaw} between neighboring grid points,
+	 * masks ≥ 0.5), up to 450 km.
 	 */
 	private static List<Double> rangeBoundaryDistances(LandscapeModel m) {
 		RegionalField rf = m.regional();
@@ -277,7 +277,7 @@ class RegionalFieldTest {
 		return dist;
 	}
 
-	/** Maska pasma razy odsunięcie od morza: mountainLinear / (1 − |mountainRaw|). */
+	/** Range mask times the sea offset: mountainLinear / (1 − |mountainRaw|). */
 	private static double masks(LandscapeModel m, double x, double z) {
 		double ridge = 1 - Math.abs(m.mountainRaw(x, z));
 		return ridge > 0 ? m.mountainLinear(x, z) / ridge : 0;
@@ -287,7 +287,7 @@ class RegionalFieldTest {
 		return Math.floorDiv((long) x, (long) bin) * 1_000_003L + Math.floorDiv((long) z, (long) bin);
 	}
 
-	/** Bliskość morza podnosi O: średnie O w pasie 50 km·zs od brzegu jest wyższe niż ponad 300 km·zs od niego. */
+	/** Proximity of the sea raises O: the mean O in a 50 km·zs belt from the shore is higher than over 300 km·zs from it. */
 	@Test
 	void coastIsMoreOceanicThanInterior() {
 		LandscapeModel m = new LandscapeModel(SEEDS[0], LandscapeScale.REALISTIC, 1.0);
@@ -309,16 +309,16 @@ class RegionalFieldTest {
 		}
 		coast /= nc;
 		inland /= ni;
-		System.out.println(String.format(Locale.ROOT, "[pola regionalne] średnie O: przy brzegu %.3f (%d), w głębi lądu %.3f (%d)",
+		System.out.println(String.format(Locale.ROOT, "[regional fields] mean O: near the shore %.3f (%d), inland %.3f (%d)",
 				coast, nc, inland, ni));
-		assertTrue(coast > inland + 0.05, "O przy brzegu " + coast + ", w głębi " + inland);
+		assertTrue(coast > inland + 0.05, "O near the shore " + coast + ", inland " + inland);
 	}
 
 	/**
-	 * Człon Wz patrzy na zachód (−X, decyzja M2-3): na lądzie 50–150 km·zs od brzegu morza leżącego na zachodzie
-	 * O jest średnio wyższe (o ok. 0,06) niż w takim samym pasie przy morzu leżącym na wschodzie; przy odwróconym
-	 * kierunku członu różnica miałaby przeciwny znak. Stronę morza wyznacza
-	 * gradient {@code seaField} (rośnie w głąb lądu), tylko przy brzegu biegnącym prawie z północy na południe.
+	 * The Wz term looks west (−X, decision M2-3): on land 50–150 km·zs from the shore of a sea lying to the west,
+	 * O is higher on average (by about 0.06) than in the same belt next to a sea lying to the east; with the term
+	 * direction reversed the difference would have the opposite sign. The side of the sea is given by the
+	 * gradient of {@code seaField} (increasing inland), only at shores running almost north–south.
 	 */
 	@Test
 	void westernSeaRaisesOceanicity() {
@@ -354,15 +354,15 @@ class RegionalFieldTest {
 		west /= nw;
 		east /= ne;
 		System.out.println(String.format(Locale.ROOT,
-				"[pola regionalne] średnie O 50–150 km od brzegu: morze na zachodzie %.3f (%d), na wschodzie %.3f (%d)", west,
+				"[regional fields] mean O 50–150 km from the shore: sea to the west %.3f (%d), to the east %.3f (%d)", west,
 				nw, east, ne));
-		assertTrue(nw >= 500 && ne >= 500, "za mało punktów: " + nw + ", " + ne);
-		assertTrue(west > east + 0.03, "O przy morzu na zachodzie " + west + ", na wschodzie " + east);
+		assertTrue(nw >= 500 && ne >= 500, "too few points: " + nw + ", " + ne);
+		assertTrue(west > east + 0.03, "O with the sea to the west " + west + ", to the east " + east);
 	}
 
 	/**
-	 * Wynik nie zależy od stanu pamięci ani od wątków: pola z 4 miejscami w pamięci (ciągłe wypychanie kafli)
-	 * pytane równolegle w odwrotnej kolejności dają te same wartości co pola domyślne pytane po kolei.
+	 * The result depends neither on the cache state nor on threads: fields with 4 cache slots (constant tile eviction)
+	 * queried in parallel in reverse order give the same values as the default fields queried sequentially.
 	 */
 	@Test
 	void resultsDoNotDependOnCacheOrThreads() {
@@ -390,7 +390,7 @@ class RegionalFieldTest {
 				par[i] = tiny.sample(pts[i][0], pts[i][1]);
 			});
 			for (int i = 0; i < pts.length; i++) {
-				assertEquals(ref[i], par[i], "punkt " + pts[i][0] + "," + pts[i][1] + " (" + scale.id() + ")");
+				assertEquals(ref[i], par[i], "point " + pts[i][0] + "," + pts[i][1] + " (" + scale.id() + ")");
 			}
 		}
 	}

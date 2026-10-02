@@ -24,66 +24,66 @@ import pl.polishforests.worldgen.habitat.Fertility;
 import pl.polishforests.worldgen.habitat.SpeciesRanges;
 
 /**
- * Podgląd siedlisk M2 (docs/03-m2-biomy.md §12.2): mapy biomów z legendą, stref, DGW, trofii, pól
- * regionalnych O i P oraz zasięgów, kadry z planu, przekroje dolin i plik CSV z udziałami biomów.
- * Wołany z {@link LandscapePreview}.
+ * M2 habitat preview (docs/03-m2-biomy.md §12.2): maps of biomes with a legend, zones, DGW, fertility, the
+ * regional fields O and P and species ranges, frames from the plan, valley cross-sections and a CSV file with biome
+ * shares. Called from {@link LandscapePreview}.
  */
 final class HabitatPreview {
 	private HabitatPreview() {
 	}
 
-	/** Warstwa mapy. */
+	/** Map layer. */
 	enum Layer {
 		BIOMES, ZONES, DGW, FERTILITY
 	}
 
 	private static final int LEGEND = 300;
 
-	/** Kolory biomów (kolejność enuma). */
+	/** Biome colors (enum order). */
 	static final int[] BIOME_COLOR = {
-			0xD9D27A, // bor_suchy
-			0xA9B95A, // bor_swiezy
-			0xC4C98A, // bor_bazynowy
-			0x7FA05E, // bor_wilgotny
-			0x6E7F5A, // bor_bagienny
-			0x8DAF4F, // bor_mieszany
-			0x5E9A45, // las_mieszany
-			0x3F8A3A, // grad
-			0x2E6B2F, // buczyna_nizinna
-			0x3E6E6A, // ols
-			0x2F8C7A, // leg_jesionowo_olszowy
-			0x6FC6A0, // leg_wierzbowo_topolowy
-			0x4BA77A, // leg_wiazowo_jesionowy
-			0x2C5A46, // jedlina_wyzynna
-			0x1F5A2A, // buczyna_gorska
-			0x1B3D33, // swierczyna_gorska
-			0x5BA0A0, // olszyna_gorska
-			0x6E7D48, // kosodrzewina
-			0xB07A6A, // torfowisko_wysokie
-			0x9A8A5A, // torfowisko_niskie
-			0xB8C46A, // szuwar
-			0xA3D36F, // wikliny
-			0xC08AB0, // wrzosowisko
-			0xA8D0A0, // laka_wilgotna
-			0xC8E08A, // laka_swieza
-			0xE0C878, // pole
-			0xF2E6B8, // plaza
-			0xFAF5DC, // wydma_biala
-			0xD8D0B0, // wydma_szara
-			0xC8C8B8, // hala
-			0x1E4A7A, // morze
-			0x4A7AA0, // zalew
-			0x3A78C0, // rzeka
-			0x56A0D8, // potok
-			0x24508F, // jezioro
-			0x5A4A2E, // jezioro_dystroficzne
+			0xD9D27A, // dry_pine_forest
+			0xA9B95A, // fresh_pine_forest
+			0xC4C98A, // coastal_pine_forest
+			0x7FA05E, // moist_pine_forest
+			0x6E7F5A, // bog_woodland
+			0x8DAF4F, // mixed_pine_forest
+			0x5E9A45, // mixed_forest
+			0x3F8A3A, // oak_hornbeam_forest
+			0x2E6B2F, // lowland_beech_forest
+			0x3E6E6A, // alder_carr
+			0x2F8C7A, // ash_alder_forest
+			0x6FC6A0, // willow_poplar_forest
+			0x4BA77A, // elm_ash_forest
+			0x2C5A46, // upland_fir_forest
+			0x1F5A2A, // montane_beech_forest
+			0x1B3D33, // montane_spruce_forest
+			0x5BA0A0, // gray_alder_forest
+			0x6E7D48, // dwarf_pine_scrub
+			0xB07A6A, // raised_bog
+			0x9A8A5A, // fen
+			0xB8C46A, // reedbed
+			0xA3D36F, // willow_scrub
+			0xC08AB0, // heath
+			0xA8D0A0, // wet_meadow
+			0xC8E08A, // hay_meadow
+			0xE0C878, // arable_land
+			0xF2E6B8, // beach
+			0xFAF5DC, // white_dune
+			0xD8D0B0, // gray_dune
+			0xC8C8B8, // alpine_grassland
+			0x1E4A7A, // sea
+			0x4A7AA0, // lagoon
+			0x3A78C0, // river
+			0x56A0D8, // stream
+			0x24508F, // lake
+			0x5A4A2E, // dystrophic_lake
 	};
 
 	static final Map<Zone, Integer> ZONE_COLOR = new EnumMap<>(Zone.class);
 
 	static {
 		if (BIOME_COLOR.length != HabitatBiome.values().length) {
-			throw new IllegalStateException("brak kolorów biomów");
+			throw new IllegalStateException("missing biome colors");
 		}
 		int[] k = {0, 0x3A78C0, 0x2A9AB0, 0x2FD0C0, 0xC0D040, 0xE0E040, 0xF0E0A0, 0x90E040, 0xFF8040, 0xFF40A0,
 				0x40FF80, 0xA040FF, 0xB0B0B0, 0xFFB0FF, 0x00FFFF, 0x804020, 0x206040, 0xFFFFFF, 0xFFF080, 0xC06030,
@@ -93,7 +93,7 @@ final class HabitatPreview {
 		}
 	}
 
-	/** Kadr: środek, bok w metrach i rozdzielczość. */
+	/** Frame: center, side length in meters and resolution. */
 	record Frame(String name, LandscapeModel model, double cx, double cz, double sideLength) {
 	}
 
@@ -145,7 +145,7 @@ final class HabitatPreview {
 				save(frame, s, code, classifier, Layer.FERTILITY, out.resolve("m2_" + frame.name() + "_fertility.png"));
 			}
 		}
-		// Maska lasu w trybie D (S8 kalibruje P_las; tu tylko podgląd mechanizmu).
+		// Forest mask in PRESENT_DAY mode (S8 calibrates P_forest; this is only a preview of the mechanism).
 		HabitatClassifier presentDayClassifier = new HabitatClassifier(seed, LandscapeScale.REALISTIC, HabitatClassifier.Mode.PRESENT_DAY);
 		p = LandscapePreview.find(real, LandscapeType.OUTWASH_PLAIN, false);
 		if (p != null) {
@@ -161,22 +161,22 @@ final class HabitatPreview {
 
 	private static void add(List<Frame> frames, String name, LandscapeModel m, double[] p, double sideLength) {
 		if (p == null) {
-			System.out.println("Podgląd siedlisk: nie znaleziono kadru " + name);
+			System.out.println("Habitat preview: frame not found: " + name);
 			return;
 		}
 		frames.add(new Frame(name, m, p[0], p[1], sideLength));
 	}
 
-	// ------------------------------------------------------------------ wyszukiwanie kadrów
+	// ------------------------------------------------------------------ frame search
 
-	/** Rzeka klasy A (duża nizinna): koryto rzędu 3 na nizinie, szerokie. */
+	/** Class A river (large lowland river): a wide order 3 channel in the lowland. */
 	static double[] findClassSite(LandscapeModel m, HabitatClassifier k, boolean large, double step) {
 		double minW = m.scale().channel() * 60;
 		return RiverNetworkTest.find(m, c -> c.waterKind() == WaterKind.RIVER && c.type().isLowland()
 				&& c.waters().streamOrder() == 3 && c.waters().channelWidth() >= minW && c.waters().channelGradient() <= 3, step);
 	}
 
-	/** Mała rzeka nizinna (klasa B): koryto 3–15 m (1:1) z dnem doliny. */
+	/** Small lowland river (class B): a 3–15 m channel (1:1) with a valley floor. */
 	static double[] findSmallRiver(LandscapeModel m, double step) {
 		double ch = m.scale().channel();
 		return RiverNetworkTest.find(m, c -> c.waterKind() == WaterKind.RIVER && c.type() == LandscapeType.MORAINE_PLATEAU
@@ -184,7 +184,7 @@ final class HabitatPreview {
 				&& c.waters().floorHalfWidth() > 60, step);
 	}
 
-	/** Brzeg jeziora rynnowego na glinie (pierścienie olsu i łozowiska), z dala od dolin rzek. */
+	/** Shore of a tunnel valley lake on till (alder carr and willow carr rings), away from river valleys. */
 	static double[] findLake(LandscapeModel m, double step) {
 		for (int r = 0; r < 800; r++) {
 			int n = Math.max(12, r * 2);
@@ -211,7 +211,7 @@ final class HabitatPreview {
 		return null;
 	}
 
-	/** Najwyższe Beskidy w promieniu 1500 km (piętra górne). */
+	/** The highest Beskids within a radius of 1500 km (upper belts). */
 	static double[] findHighest(LandscapeModel m) {
 		double best = 0;
 		double[] bp = null;
@@ -228,7 +228,7 @@ final class HabitatPreview {
 				}
 			}
 		}
-		// Doprecyzowanie: najwyższy punkt w kwadracie 10 km wokół.
+		// Refinement: the highest point in a 10 km square around it.
 		double[] c = bp;
 		for (int j = -50; j <= 50 && c != null; j++) {
 			for (int i = -50; i <= 50; i++) {
@@ -241,11 +241,11 @@ final class HabitatPreview {
 				}
 			}
 		}
-		System.out.printf(Locale.ROOT, "Najwyższe Beskidy: x=%.0f z=%.0f (%.0f m)%n", bp[0], bp[1], best);
+		System.out.printf(Locale.ROOT, "Highest Beskids: x=%.0f z=%.0f (%.0f m)%n", bp[0], bp[1], best);
 		return bp;
 	}
 
-	// ------------------------------------------------------------------ mapy
+	// ------------------------------------------------------------------ maps
 
 	static ColumnSample[][] samples(Frame frame, HabitatClassifier classifier, int[][] code) {
 		int n = code.length;
@@ -351,7 +351,7 @@ final class HabitatPreview {
 					y = entry(g, n, y, ZONE_COLOR.get(Zone.of(st)), String.format(Locale.ROOT, "%s %.2f%%",
 							Zone.of(st).id(), 100.0 * countZones[st] / all));
 				}
-				y = entry(g, n, y + 6, 0xA0A0A0, "bez strefy: kolor biomu (rozjaśniony)");
+				y = entry(g, n, y + 6, 0xA0A0A0, "no zone: biome color (lightened)");
 			}
 			case DGW -> {
 				double[] thresholds = {0, 0.3, 0.5, 0.8, 2, 4, 8, 12};
@@ -362,7 +362,7 @@ final class HabitatPreview {
 			case FERTILITY -> {
 				long land = countFertility[0] + countFertility[1] + countFertility[2] + countFertility[3];
 				for (Fertility t : Fertility.values()) {
-					y = entry(g, n, y, FERTILITY_COLOR[t.ordinal()], String.format(Locale.ROOT, "%s %.1f%% lądu", t.name(),
+					y = entry(g, n, y, FERTILITY_COLOR[t.ordinal()], String.format(Locale.ROOT, "%s %.1f%% of land", t.name(),
 							100.0 * countFertility[t.ordinal()] / Math.max(1, land)));
 				}
 			}
@@ -371,7 +371,7 @@ final class HabitatPreview {
 		}
 		g.dispose();
 		ImageIO.write(img, "png", file.toFile());
-		System.out.println("Zapisano " + file.getFileName());
+		System.out.println("Saved " + file.getFileName());
 	}
 
 	private static int entry(Graphics2D g, int n, int y, int rgb, String text) {
@@ -401,7 +401,7 @@ final class HabitatPreview {
 		return 0xB06A30;
 	}
 
-	/** Cieniowanie rzeźby (słabe, żeby kolory zostały czytelne). */
+	/** Relief shading (weak, so that the colors stay readable). */
 	private static double shade(ColumnSample[][] s, int i, int j, double mpp) {
 		int n = s.length;
 		double dzdx = (s[j][Math.min(i + 1, n - 1)].surface() - s[j][Math.max(i - 1, 0)].surface()) / (2 * mpp);
@@ -413,9 +413,9 @@ final class HabitatPreview {
 		return Math.clamp(0.55 + 0.6 * lambert, 0.7, 1.12);
 	}
 
-	// ------------------------------------------------------------------ pola regionalne
+	// ------------------------------------------------------------------ regional fields
 
-	/** Mapy O, P i zasięgów (buk, jodła, świerk) 2000 × 2000 km, 2,5 km na piksel. */
+	/** Maps of O, P and species ranges (beech, fir, spruce), 2000 × 2000 km, 2.5 km per pixel. */
 	static void regionalMaps(LandscapeModel m, Path out) throws IOException {
 		int n = 800;
 		double sideLength = 2_000_000;
@@ -423,7 +423,7 @@ final class HabitatPreview {
 		double[][] o = new double[n][n];
 		double[][] p = new double[n][n];
 		boolean[][] sea = new boolean[n][n];
-		// Bez pełnych próbek: w rozrzuconych punktach budowałyby kafle sieci rzecznej (minuty zamiast sekund).
+		// No full samples: at scattered points they would build river network tiles (minutes instead of seconds).
 		IntStream.range(0, n).parallel().forEach(j -> {
 			for (int i = 0; i < n; i++) {
 				double x = -sideLength / 2 + (i + 0.5) * mpp;
@@ -460,10 +460,10 @@ final class HabitatPreview {
 			g.fillRect(n, 0, LEGEND, n);
 			g.setColor(Color.WHITE);
 			g.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 13));
-			String[] title = {"O: oceaniczność", "P: podgórskość", "zasięgi gatunków"};
+			String[] title = {"O: oceanicity", "P: mountain influence", "species ranges"};
 			g.drawString(title[layer] + " 2000 km (REAL)", n + 8, 18);
 			g.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 12));
-			g.drawString("zachód = −X (lewo), północ = −Z (góra)", n + 8, 34);
+			g.drawString("west = −X (left), north = −Z (up)", n + 8, 34);
 			int y = 54;
 			if (layer < 2) {
 				for (double v = 0; v <= 1.0001; v += 0.1) {
@@ -472,25 +472,25 @@ final class HabitatPreview {
 					y = entry(g, n, y, rgb, String.format(Locale.ROOT, "%.1f", v));
 				}
 			} else {
-				y = entry(g, n, y, 0x205040, "jodła (P ≥ 0,5), też buk i świerk");
-				y = entry(g, n, y, 0x5A8A4A, "buk i świerk");
-				y = entry(g, n, y, 0x3FA040, "buk (O ≥ 0,4 lub P ≥ 0,4)");
-				y = entry(g, n, y, 0x2A6AA0, "świerk (O < 0,3)");
-				y = entry(g, n, y, 0xD8C890, "pas bez buka i świerka");
+				y = entry(g, n, y, 0x205040, "fir (P ≥ 0.5), also beech and spruce");
+				y = entry(g, n, y, 0x5A8A4A, "beech and spruce");
+				y = entry(g, n, y, 0x3FA040, "beech (O ≥ 0.4 or P ≥ 0.4)");
+				y = entry(g, n, y, 0x2A6AA0, "spruce (O < 0.3)");
+				y = entry(g, n, y, 0xD8C890, "belt without beech and spruce");
 			}
 			y = entry(g, n, y + 6, 0x1E3A5A, "sea");
 			g.dispose();
 			String[] file = {"m2_map_O_2000km.png", "m2_map_P_2000km.png", "m2_map_species_ranges_2000km.png"};
 			ImageIO.write(img, "png", out.resolve(file[layer]).toFile());
-			System.out.println("Zapisano " + file[layer]);
+			System.out.println("Saved " + file[layer]);
 		}
 	}
 
-	// ------------------------------------------------------------------ udziały
+	// ------------------------------------------------------------------ shares
 
 	/**
-	 * Udziały biomów i stref w trybie N (jak {@code BiomeSharesTest}: 200 tys. kolumn na skalę, 3 ziarna)
-	 * do plików CSV: m2_udzialy_biomow.csv i m2_udzialy_stref.csv (procent wszystkich kolumn, z wodą).
+	 * Biome and zone shares in NATURAL mode (as in {@code BiomeSharesTest}: 200k columns per scale, 3 seeds)
+	 * written to CSV files: m2_biome_shares.csv and m2_zone_shares.csv (percent of all columns, water included).
 	 */
 	static void sharesCsv(Path out) throws IOException {
 		BiomeSharesTest.Shares r = new BiomeSharesTest.Shares();
@@ -505,21 +505,21 @@ final class HabitatPreview {
 			rs += r.biomeOutwashPlain[i];
 			gs += g.biomeOutwashPlain[i];
 		}
-		StringBuilder sb = new StringBuilder("id,nazwa,grupa,real_proc,real_sandr_proc,rozgrywka_proc,rozgrywka_sandr_proc\n");
+		StringBuilder sb = new StringBuilder("id,name,group,real_pct,real_outwash_plain_pct,gameplay_pct,gameplay_outwash_plain_pct\n");
 		for (HabitatBiome b : HabitatBiome.values()) {
 			int i = b.ordinal();
 			sb.append(String.format(Locale.ROOT, "%s,%s,%s,%.3f,%.3f,%.3f,%.3f\n", b.id(), b.name(),
 					b.group().name().toLowerCase(Locale.ROOT), 100.0 * r.biome[i] / r.columns, 100.0 * r.biomeOutwashPlain[i] / Math.max(1, rs),
 					100.0 * g.biome[i] / g.columns, 100.0 * g.biomeOutwashPlain[i] / Math.max(1, gs)));
 		}
-		sb.append(String.format(Locale.ROOT, "lesistosc_ladu,,,%.2f,%.2f,%.2f,%.2f\n", 100 * r.forestCover(),
+		sb.append(String.format(Locale.ROOT, "land_forest_cover,,,%.2f,%.2f,%.2f,%.2f\n", 100 * r.forestCover(),
 				100 * r.forestCoverOutwashPlain(), 100 * g.forestCover(), 100 * g.forestCoverOutwashPlain()));
-		sb.append(String.format(Locale.ROOT, "bory_w_lesie_wnetrza_sandru,,,,%.2f,,%.2f\n", 100 * r.pineShareOutwashPlain(),
+		sb.append(String.format(Locale.ROOT, "pine_share_outwash_plain_interior_forest,,,,%.2f,,%.2f\n", 100 * r.pineShareOutwashPlain(),
 				100 * g.pineShareOutwashPlain()));
-		sb.append(String.format(Locale.ROOT, "bory_w_lesie_calego_sandru,,,,%.2f,,%.2f\n", 100 * r.pineShareOutwashPlainAll(),
+		sb.append(String.format(Locale.ROOT, "pine_share_whole_outwash_plain_forest,,,,%.2f,,%.2f\n", 100 * r.pineShareOutwashPlainAll(),
 				100 * g.pineShareOutwashPlainAll()));
 		Files.writeString(out.resolve("m2_biome_shares.csv"), sb.toString());
-		StringBuilder st = new StringBuilder("strefa,real_proc,rozgrywka_proc\n");
+		StringBuilder st = new StringBuilder("zone,real_pct,gameplay_pct\n");
 		for (Zone s : Zone.values()) {
 			st.append(String.format(Locale.ROOT, "%s,%.3f,%.3f\n", s.id(), 100.0 * r.zone[s.ordinal()] / r.columns,
 					100.0 * g.zone[s.ordinal()] / g.columns));
@@ -528,14 +528,14 @@ final class HabitatPreview {
 		System.out.println("Saved m2_biome_shares.csv, m2_zone_shares.csv");
 	}
 
-	// ------------------------------------------------------------------ przekroje dolin
+	// ------------------------------------------------------------------ valley cross-sections
 
 	/**
-	 * Przekroje dolin klas A, B i C: pas kolorów biomu (góra) i strefy (dół) w funkcji odległości od
-	 * koryta wzdłuż osi X, z profilem terenu.
+	 * Valley cross-sections of classes A, B and C: a band of biome colors (top) and zone colors (bottom) as a function
+	 * of the distance from the channel along the X axis, with the terrain profile.
 	 */
 	static void sections(LandscapeModel m, HabitatClassifier classifier, double[][] sites, Path file) throws IOException {
-		String[] names = {"A: duża rzeka (1500 m od koryta)", "B: mała rzeka (150 m)", "C: potok górski (150 m)"};
+		String[] names = {"A: large river (1500 m from the channel)", "B: small river (150 m)", "C: mountain stream (150 m)"};
 		double[] range = {1_500, 150, 150};
 		int w = 1_000;
 		int row = 140;
@@ -549,8 +549,8 @@ final class HabitatPreview {
 			if (p == null) {
 				continue;
 			}
-			// Przekrój w poprzek koryta: od brzegu w stronę rosnącego d (gradient d z różnic ±1 m), więc
-			// pas idzie prostopadle do koryta i nie przecina go drugi raz w zakolu.
+			// Cross-section across the channel: from the bank towards increasing d (gradient of d from ±1 m differences),
+			// so the band runs perpendicular to the channel and does not cross it a second time in a bend.
 			double x = p[0];
 			double z = p[1];
 			double[] direction = {1, 0};
@@ -590,11 +590,11 @@ final class HabitatPreview {
 				g.drawLine(i - 1, r * row + 134 - (int) (t0 * 38), i, r * row + 134 - (int) (t1 * 38));
 			}
 			g.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 12));
-			g.drawString(String.format(Locale.ROOT, "%s; teren %.1f–%.1f m (biała linia); góra biom, dół strefa", names[r],
+			g.drawString(String.format(Locale.ROOT, "%s; terrain %.1f–%.1f m (white line); top biome, bottom zone", names[r],
 					hmin, hmax), 6, r * row + 14);
 		}
 		g.dispose();
 		ImageIO.write(img, "png", file.toFile());
-		System.out.println("Zapisano " + file.getFileName());
+		System.out.println("Saved " + file.getFileName());
 	}
 }

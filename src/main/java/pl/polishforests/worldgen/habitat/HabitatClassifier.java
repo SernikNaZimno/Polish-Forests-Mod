@@ -9,39 +9,39 @@ import pl.polishforests.worldgen.landscape.Noise;
 import pl.polishforests.worldgen.landscape.Substrate;
 
 /**
- * Klasyfikator siedlisk (Z1, docs/03-m2-biomy.md §3.4): czysta funkcja próbki kolumny i jej położenia,
- * zwracająca kod {@link Habitat}. Woła ją źródło biomów, {@code fill()}, dyspozytory roślinności,
- * komendy, podgląd PNG i testy, więc biom, gleba i roślinność nie mogą się rozjechać.
+ * Habitat classifier (Z1, docs/03-m2-biomy.md §3.4): a pure function of a column sample and its position,
+ * returning a {@link Habitat} code. It is called by the biome source, {@code fill()}, the vegetation dispatchers,
+ * the commands, the PNG preview and the tests, so biome, soil and vegetation cannot diverge.
  *
- * <p>Kolejność oznacza priorytet: woda ({@link OpenWater}), wybrzeże ({@link Coast}), strefy nadwodne
- * ({@link WatersideZones}), piętra górskie ({@link AltitudinalBelts}), siedliska strefowe, a w trybie D maska
- * lasu ({@link ForestCover}). Strefę może ustawić wcześniejszy krok bez wyboru biomu (np. KLIF_SCIANA
- * w biomie wysoczyzny albo ZIOLOROSLA_GORSKIE w lesie strefowym); biom wybiera wtedy dalszy krok.
+ * <p>The order is the priority: water ({@link OpenWater}), coast ({@link Coast}), waterside zones
+ * ({@link WatersideZones}), mountain belts ({@link AltitudinalBelts}), zonal sites, and in the PRESENT_DAY mode the
+ * forest mask ({@link ForestCover}). An earlier step may set a zone without choosing a biome (e.g. CLIFF_FACE
+ * in the plateau biome or MONTANE_TALL_HERBS in a zonal forest); a later step then chooses the biome.
  *
- * <p>Położenie (x, z) służy tylko szumom drgań granic stref, płatów i wariantów, liczonym z ziarna
- * świata przez {@code habitat.*}, więc wynik zależy wyłącznie od ziarna, skali, trybu, próbki i położenia.
- * Instancja jest niezmienna i bezpieczna wątkowo.
+ * <p>The position (x, z) is used only by the noises for zone boundary jitter, patches and variants, derived from the
+ * world seed via {@code habitat.*}, so the result depends only on the seed, scale, mode, sample and position.
+ * An instance is immutable and thread-safe.
  */
 public final class HabitatClassifier {
-	/** Tryb roślinności: N „roślinność naturalna” (domyślny do M8, decyzja M2-B), D „dzisiejsza Polska”. */
+	/** Vegetation mode: NATURAL "natural vegetation" (the default until M8, decision M2-B), PRESENT_DAY "present-day Poland". */
 	public enum Mode {
 		NATURAL, PRESENT_DAY
 	}
 
 	final LandscapeScale scale;
 	final Mode mode;
-	/** {@code local} skali: mnożnik odległości „·k”. */
+	/** The scale's {@code local}: the "·k" distance multiplier. */
 	final double k;
-	/** Mnożnik szerokości koryt skali: W / chan to szerokość w skali 1:1. */
+	/** The scale's channel width multiplier: W / chan is the width at 1:1 scale. */
 	final double chan;
 	final boolean gameplay;
-	/** Drgania granic stref (fala 30–60 m·k). */
+	/** Zone boundary jitter (wavelength 30–60 m·k). */
 	final Noise borders;
-	/** Płaty: nymfeidy, szuwar w płatach, luki w łęgu, zastoiska. */
+	/** Patches: floating-leaved plants, reedbed in patches, gaps in riparian forest, backswamps. */
 	final Noise patches;
-	/** Przejścia pięter górskich (fala 150 m·k). */
+	/** Mountain belt transitions (wavelength 150 m·k). */
 	final Noise belts;
-	/** Warianty w obrębie siedlisk (buczyna niżowa, prześwity wrzosowisk), fala 1,5 km·k. */
+	/** Variants within sites (lowland beech forest, heath openings), wavelength 1.5 km·k. */
 	final Noise variants;
 	final ForestCover forestCover;
 
@@ -67,7 +67,7 @@ public final class HabitatClassifier {
 		return scale;
 	}
 
-	/** Kod siedliska kolumny w punkcie (x, z) z jej próbką {@code s}. */
+	/** Habitat code of the column at point (x, z) with its sample {@code s}. */
 	public int classify(ColumnSample s, double x, double z) {
 		Column c = new Column(this, s, x, z);
 		int w = OpenWater.classify(c);
@@ -97,24 +97,24 @@ public final class HabitatClassifier {
 		return Habitat.pack(biome, zone, siteType, association, LandCover.forBiome(biome), flags, Soil.forBiome(biome, zone));
 	}
 
-	/** Siedlisko kolumny jako rekord (komendy, podgląd, testy). */
+	/** Habitat of the column as a record (commands, preview, tests). */
 	public Habitat habitat(ColumnSample s, double x, double z) {
 		return Habitat.of(classify(s, x, z));
 	}
 
-	/** Głębokość wody gruntowej w kolumnie (m), jak w klasyfikacji (§3.3). */
+	/** Depth to groundwater in the column (m), as in the classification (§3.3). */
 	public double dgw(ColumnSample s, double x, double z) {
 		return new Column(this, s, x, z).dgw();
 	}
 
-	/** Trofia kolumny, jak w klasyfikacji (§3.3). */
+	/** Fertility of the column, as in the classification (§3.3). */
 	public Fertility fertility(ColumnSample s, double x, double z) {
 		return new Column(this, s, x, z).fertility();
 	}
 
-	// ------------------------------------------------------------------ siedliska strefowe (§2.1, krok 5)
+	// ------------------------------------------------------------------ zonal sites (§2.1, step 5)
 
-	/** Biom strefowy z trofii, wilgotności i form (§2.1) z regułami zasięgu (§9). */
+	/** Zonal biome from fertility, moisture and landforms (§2.1) with the range rules (§9). */
 	static int zonal(Column c) {
 		Fertility t = c.fertility();
 		Moisture w = c.moisture();
@@ -122,7 +122,7 @@ public final class HabitatClassifier {
 		HabitatBiome b;
 		Association z = Association.TYPICAL;
 		if (w == Moisture.BOGGY) {
-			// Bór bagienny do 400 m, ols do 500 m; wyżej siedliska wilgotne.
+			// Bog woodland up to 400 m, alder carr up to 500 m; above that, moist sites.
 			if (t == Fertility.OLIGOTROPHIC || t == Fertility.OLIGO_MESOTROPHIC) {
 				b = h < Calibration.H_BOG_WOODLAND ? HabitatBiome.BOG_WOODLAND : HabitatBiome.MOIST_PINE_FOREST;
 			} else {
@@ -136,7 +136,7 @@ public final class HabitatClassifier {
 			};
 			if (b == HabitatBiome.DRY_PINE_FOREST && c.classifier.mode == Mode.NATURAL
 					&& c.patchQ(8, Calibration.HEATH_OPENING_WAVELENGTH) > 1 - Calibration.HEATH_SHARE_NATURAL) {
-				// Prześwity na wydmach (tryb N, ≤ 5% sandru).
+				// Openings on dunes (NATURAL mode, ≤ 5% of the outwash plain).
 				b = HabitatBiome.HEATH;
 			}
 		} else if (t == Fertility.OLIGO_MESOTROPHIC) {
@@ -146,7 +146,7 @@ public final class HabitatClassifier {
 				b = firForest(c, t) ? HabitatBiome.UPLAND_FIR_FOREST : HabitatBiome.MIXED_PINE_FOREST;
 			}
 		} else {
-			// LM i L: las mieszany albo grąd, buczyna niżowa w zasięgu buka, jedlina przy P ≥ 0,5.
+			// LM and L: mixed forest or oak-hornbeam forest, lowland beech forest within the beech range, fir forest at P ≥ 0.5.
 			if (firForest(c, t)) {
 				b = HabitatBiome.UPLAND_FIR_FOREST;
 			} else if (beechForest(c, w)) {
@@ -163,8 +163,8 @@ public final class HabitatClassifier {
 	}
 
 	/**
-	 * Jedlina wyżynna (§2.1 nr 14): P ≥ 0,5, jodła w zasięgu, trofia BM, LM lub L (L tylko na stokach N),
-	 * 250–650 m, poza dnami dolin.
+	 * Upland fir forest (§2.1 no. 14): P ≥ 0.5, fir within range, fertility BM, LM or L (L only on N slopes),
+	 * 250–650 m, off valley floors.
 	 */
 	static boolean firForest(Column c, Fertility t) {
 		if (c.P < Calibration.P_FIR_FOREST || c.H < Calibration.H_FIR_FOREST_FROM || c.H > Calibration.H_FIR_FOREST_TO
@@ -174,7 +174,7 @@ public final class HabitatClassifier {
 		return t != Fertility.EUTROPHIC || c.aspectN();
 	}
 
-	/** Buczyna niżowa: buk w zasięgu, świeże i zdrenowane, H &lt; 350 m; udział rośnie z O. */
+	/** Lowland beech forest: beech within range, fresh and drained, H &lt; 350 m; the share grows with O. */
 	static boolean beechForest(Column c, Moisture w) {
 		if (w != Moisture.FRESH && w != Moisture.DRY || c.H >= Calibration.H_LOWLAND_BEECH
 				|| !SpeciesRanges.beech(c.O, c.P)) {
@@ -188,11 +188,11 @@ public final class HabitatClassifier {
 		return c.variant(1) < share;
 	}
 
-	// ------------------------------------------------------------------ wynik częściowy kroków
+	// ------------------------------------------------------------------ partial result of the steps
 
 	/**
-	 * Wynik częściowy kroku klasyfikacji w jednym {@code int}: biom + 1 (0 = brak, czyli „dalej”), strefa
-	 * i zespół. Bez obiektów, bo klasyfikacja idzie dla każdej kolumny.
+	 * Partial result of a classification step in a single {@code int}: biome + 1 (0 = none, i.e. "continue"), zone
+	 * and association. No objects, because the classification runs for every column.
 	 */
 	static final class Result {
 		static final int NONE = 0;
@@ -222,8 +222,8 @@ public final class HabitatClassifier {
 		}
 
 		/**
-		 * Łączy wynik wcześniejszych kroków z wynikiem kolejnego: strefa i zespół wcześniejszego kroku
-		 * mają pierwszeństwo, biom bierze się z kolejnego.
+		 * Combines the result of the earlier steps with the result of the next one: the zone and association of the
+		 * earlier step take precedence, the biome comes from the next one.
 		 */
 		static int further(int earlier, int next) {
 			Zone s = zone(earlier) != Zone.NONE ? zone(earlier) : zone(next);
@@ -232,10 +232,10 @@ public final class HabitatClassifier {
 		}
 	}
 
-	// ------------------------------------------------------------------ wielkości pochodne kolumny
+	// ------------------------------------------------------------------ derived quantities of a column
 
 	/**
-	 * Wielkości pochodne jednej kolumny (§3.3), liczone raz i leniwie. Obiekt lokalny dla jednego wywołania.
+	 * Derived quantities of a single column (§3.3), computed once and lazily. An object local to a single call.
 	 */
 	static final class Column {
 		final HabitatClassifier classifier;
@@ -244,29 +244,29 @@ public final class HabitatClassifier {
 		final ColumnSample.Waters w;
 		final double x;
 		final double z;
-		/** Wysokość gruntu (m n.p.m.). */
+		/** Ground elevation (m a.s.l.). */
 		final double H;
 		final double k;
-		/** Wagi typów z pasem nadmorskim (suma 1). */
+		/** Type weights including the coastal belt (sum 1). */
 		final double wOutwashPlain;
 		final double wMorainePlateau;
 		final double wOldGlacialPlain;
 		final double wFoothills;
 		final double wBeskids;
 		final double wCoastland;
-		/** Waga nizin i waga gór (POGÓRZE + BESKIDY). */
+		/** Lowland weight and mountain weight (FOOTHILLS + BESKIDS). */
 		final double wLowland;
 		final double wMountains;
 		final double O;
 		final double P;
-		/** Nachylenie w stopniach do porównań z progami: w GAMEPLAY przeliczone na bloki (§3.2). */
+		/** Slope in degrees for comparisons with thresholds: in GAMEPLAY converted to blocks (§3.2). */
 		final double slope;
-		/** Podłoże dla siedlisk ({@link #substrate()}). */
+		/** Substrate for habitats ({@link #substrate()}). */
 		final Substrate substrate;
 		private Fertility fertility;
 		private double dgw = Double.NaN;
 		private Moisture moisture;
-		/** Dno doliny według terenu (0 nie, 1 tak, −1 nie liczone). */
+		/** Valley floor by terrain (0 no, 1 yes, −1 not computed). */
 		private int onValleyFloor = -1;
 		private double jitter = Double.NaN;
 		private double uJitter = Double.NaN;
@@ -302,10 +302,10 @@ public final class HabitatClassifier {
 		}
 
 		/**
-		 * Podłoże dla siedlisk: utwór z próbki, z wyjątkiem pasa nadmorskiego na niskim brzegu. Model daje
-		 * glinę każdej kolumnie tego pasa wyższej niż 8 m, także wysokiej wydmie przedniej i wydmom za nią,
-		 * więc na brzegu wydmowym ({@code niskiBrzeg} ≥ {@link Calibration#LOW_SHORE}) taka glina to piasek
-		 * plaży i wydmy białej albo piasek wydmy szarej, jak przy niższej wydmie (granica z {@code golyPiasek}).
+		 * Substrate for habitats: the deposit from the sample, except for the coastal belt on a low shore. The model
+		 * gives till to every column of this belt higher than 8 m, including a high foredune and the dunes behind it,
+		 * so on a dune shore ({@code lowShore} ≥ {@link Calibration#LOW_SHORE}) such till is the sand of the beach and
+		 * white dune or the sand of the gray dune, as with a lower dune (boundary from {@code bareSandWidth}).
 		 */
 		private static Substrate substrate(ColumnSample s, ColumnSample.Terrain t) {
 			Substrate sub = s.substrate();
@@ -316,7 +316,7 @@ public final class HabitatClassifier {
 			return sub;
 		}
 
-		/** Brzeg morski z wydmami (niski), a nie z klifem. */
+		/** A sea shore with dunes (low), not with a cliff. */
 		boolean isDuneShore() {
 			return t.lowShore() >= Calibration.LOW_SHORE;
 		}
@@ -342,7 +342,7 @@ public final class HabitatClassifier {
 			return moisture;
 		}
 
-		/** Mnożnik szerokości stref 1 ± 0,2 (szum o fali 45 m·k). */
+		/** Zone width multiplier 1 ± 0.2 (noise with a wavelength of 45 m·k). */
 		double jitter() {
 			if (Double.isNaN(jitter)) {
 				jitter = 1 + Calibration.WIDTH_JITTER * classifier.borders.at(x, z, Calibration.BORDER_WAVELENGTH * k);
@@ -351,11 +351,11 @@ public final class HabitatClassifier {
 		}
 
 		/**
-		 * Dno doliny według terenu: grunt najwyżej {@link Calibration#FLOOR_H} nad lustrem najbliższego koryta, a do
-		 * tego flaga {@code wDnie} modelu albo odległość od koryta w półszerokości dna. Flaga modelu pochodzi
-		 * z doliny dominującej, więc bywa ucięta prostą linią i obejmuje grunt wysoko nad innym, bliższym
-		 * korytem. Gdy grunt leży mniej niż 1,2 m nad lustrem najbliższego koryta (dopływ schodzący bystrzem
-		 * do dna większej doliny), rozstrzyga sama flaga.
+		 * Valley floor by terrain: ground at most {@link Calibration#FLOOR_H} above the water level of the nearest
+		 * channel, and in addition the model's {@code inFloor} flag or a distance from the channel within the floor
+		 * half-width. The model flag comes from the dominant valley, so it is sometimes cut off by a straight line and
+		 * covers ground high above another, closer channel. When the ground lies less than 1.2 m above the water level
+		 * of the nearest channel (a tributary descending in a rapid to the floor of a larger valley), the flag alone decides.
 		 */
 		boolean onValleyFloor() {
 			if (onValleyFloor < 0) {
@@ -372,7 +372,7 @@ public final class HabitatClassifier {
 			return onValleyFloor == 1;
 		}
 
-		/** Położenie w dnie 0–1: z modelu, a w dnie według terenu poza flagą {@code wDnie} z d / półszerokość. */
+		/** Position on the floor 0–1: from the model, and on the terrain-based floor outside the {@code inFloor} flag from d / half-width. */
 		double u() {
 			if (w.inFloor() && !Double.isNaN(w.u())) {
 				return w.u();
@@ -384,7 +384,7 @@ public final class HabitatClassifier {
 			return Double.isNaN(half) || half <= 0 ? 0 : Math.clamp(Math.max(0, w.channelDist()) / half, 0.0, 1.0);
 		}
 
-		/** Położenie w dnie z drganiem ±0,05. */
+		/** Position on the floor with ±0.05 jitter. */
 		double uJittered() {
 			if (Double.isNaN(uJitter)) {
 				uJitter = u() + Calibration.U_JITTER * classifier.borders.at(x + 7_777, z - 3_333, Calibration.BORDER_WAVELENGTH * k);
@@ -392,28 +392,28 @@ public final class HabitatClassifier {
 			return uJitter;
 		}
 
-		/** Kwantyl szumu płatów o zadanej fali (m·k), w [0, 1]. */
+		/** Quantile of the patch noise at the given wavelength (m·k), in [0, 1]. */
 		double patchQ(int layer, double wavelength) {
 			return LandscapeModel.noiseQuantile(classifier.patches.at(x + 1_013.0 * layer, z - 517.0 * layer, wavelength * k));
 		}
 
-		/** Szum płatów w [−1, 1] (fala 35 m·k); {@code warstwa} rozdziela niezależne decyzje. */
+		/** Patch noise in [−1, 1] (wavelength 35 m·k); {@code layer} separates independent decisions. */
 		double patch(int layer) {
 			return classifier.patches.at(x + 1_013.0 * layer, z - 517.0 * layer, Calibration.PATCH_WAVELENGTH * k);
 		}
 
-		/** Kwantyl płatów w [0, 1] (rozkład jednostajny). */
+		/** Patch quantile in [0, 1] (uniform distribution). */
 		double patchQ(int layer) {
 			return LandscapeModel.noiseQuantile(patch(layer));
 		}
 
-		/** Kwantyl szumu wariantów w [0, 1] (fala 1,5 km·k). */
+		/** Quantile of the variant noise in [0, 1] (wavelength 1.5 km·k). */
 		double variant(int layer) {
 			return LandscapeModel.noiseQuantile(
 					classifier.variants.at(x + 2_029.0 * layer, z + 911.0 * layer, Calibration.VARIANT_WAVELENGTH * k));
 		}
 
-		/** cos(ekspozycja − 180°): 1 stok S, −1 stok N; 0 na płaskim i poniżej 5°. */
+		/** cos(aspect − 180°): 1 on an S slope, −1 on an N slope; 0 on flat ground and below 5°. */
 		double aspect() {
 			double e = t.aspect();
 			if (Double.isNaN(e) || slope < AltitudinalBelts.ASPECT_MIN_SLOPE) {
@@ -427,25 +427,27 @@ public final class HabitatClassifier {
 		}
 
 		/**
-		 * Wypukłość terenu w skali ok. 100 m·k: teren przed wcięciem dolin minus teren wygładzony (m). Zastępuje
-		 * {@code teren.wyp} w regułach biomów, bo {@code wyp} ma składowe krótkofalowe (falowanie sandru, Z9).
+		 * Terrain convexity at a scale of about 100 m·k: terrain before valley incision minus the smoothed terrain (m).
+		 * Replaces {@code terrain.convexity} in the biome rules, because {@code convexity} has short-wave components
+		 * (outwash plain undulation, Z9).
 		 */
 		double concavity() {
 			return t.rawSurface() - t.sBar();
 		}
 
-		/** Zbocze doliny: w zasięgu cieku, poza dnem, teren wcięty poniżej terenu przed doliną. */
+		/** Valley side: within reach of a watercourse, off the floor, terrain incised below the pre-valley terrain. */
 		boolean valleySlope() {
 			return w.streamOrder() > 0 && !onValleyFloor() && !s.hasWater() && H < t.rawSurface() - 2;
 		}
 
 		/**
-		 * Wysięk u podnóża zbocza doliny: siedlisko bagienne (DGW ≤ 0,5, w pasie 0,5–0,8 według szumu) przy
-		 * żyznym podłożu (LM, L) poniżej 600 m, poza dnem, ale w dolinie i nisko nad ciekiem: teren wcięty co
-		 * najmniej {@link Calibration#INCISION_FROM} poniżej terenu przed doliną i najwyżej {@link Calibration#SEEP_HL}
-		 * nad lustrem najbliższego koryta. Bez warunku odległości: granicę wysięku wyznacza wtedy granica siedliska
-		 * bagiennego albo poziomica, a nie linia równoległa do koryta, przy której zostawały strzępy łęgu węższe
-		 * niż 6 bloków. Bez warunku zbocza (wcięcie ≥ 2 m), bo wtedy skraj dna dostawał wąski pas olsu strefowego.
+		 * Seep at the foot of a valley side: a boggy site (DGW ≤ 0.5, in the 0.5–0.8 band by noise) on fertile
+		 * ground (LM, L) below 600 m, off the floor but in the valley and low above the watercourse: terrain incised at
+		 * least {@link Calibration#INCISION_FROM} below the pre-valley terrain and at most {@link Calibration#SEEP_HL}
+		 * above the water level of the nearest channel. No distance condition: the seep boundary is then set by the
+		 * boggy site boundary or a contour line, not by a line parallel to the channel, along which shreds of riparian
+		 * forest narrower than 6 blocks were left. No valley side condition (incision ≥ 2 m), because then the floor
+		 * margin got a narrow strip of zonal alder carr.
 		 */
 		boolean isSeep() {
 			if (w.streamOrder() <= 0 || onValleyFloor() || s.hasWater() || H >= Calibration.H_ASH_ALDER_RIPARIAN || Double.isNaN(w.channelLevel())
@@ -456,15 +458,16 @@ public final class HabitatClassifier {
 			return (fert == Fertility.MESOTROPHIC || fert == Fertility.EUTROPHIC) && moisture() == Moisture.BOGGY;
 		}
 
-		/** Szerokość koryta w skali 1:1 (m). */
+		/** Channel width at 1:1 scale (m). */
 		double wr() {
 			return w.channelWidth() / classifier.chan;
 		}
 
 		/**
-		 * Wysokość nad lustrem najbliższego koryta minus 1 m (h, §3.3). NaN bez cieku i wtedy, gdy grunt leży
-		 * niżej niż 1,2 m nad tym lustrem: dno modelu leży co najmniej 1,2 m nad lustrem własnego koryta, więc
-		 * najbliższe koryto jest wtedy inne (dopływ schodzący bystrzem do dna większej doliny).
+		 * Height above the water level of the nearest channel minus 1 m (h, §3.3). NaN without a watercourse and when
+		 * the ground lies lower than 1.2 m above that water level: the model floor lies at least 1.2 m above the water
+		 * level of its own channel, so the nearest channel is then a different one (a tributary descending in a rapid
+		 * to the floor of a larger valley).
 		 */
 		double heightAboveChannel() {
 			double hl = H - w.channelLevel();
@@ -472,10 +475,11 @@ public final class HabitatClassifier {
 		}
 
 		/**
-		 * Źródlisko: forma ZRODLO, pas od koryta o szerokości 0–40 m·k zmiennej z szumem płatów (średnio
-		 * {@link Calibration#SPRING_AREA_SHARE} pasa). Pas zaczyna się przy korycie, więc łęg źródliska łączy się
-		 * z łęgiem dna i nie rozpada się na strzępy węższe niż 6 bloków. Szum wybiera biom, więc ma falę
-		 * {@link Calibration#SPRING_AREA_WAVELENGTH} m bez mnożnika k (Z9: biom tylko z wejść o fali ≥ 64 m).
+		 * Spring area: the HEADWATERS landform, a belt from the channel with a width of 0–40 m·k varying with the patch
+		 * noise (on average {@link Calibration#SPRING_AREA_SHARE} of the belt). The belt starts at the channel, so the
+		 * spring-area riparian forest joins the floor's riparian forest and does not break into shreds narrower than
+		 * 6 blocks. The noise selects the biome, so it has a wavelength of {@link Calibration#SPRING_AREA_WAVELENGTH} m
+		 * without the k multiplier (Z9: a biome only from inputs with a wavelength ≥ 64 m).
 		 */
 		boolean isSpringArea() {
 			if (!t.has(Landform.HEADWATERS)) {

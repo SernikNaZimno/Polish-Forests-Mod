@@ -12,11 +12,12 @@ import pl.polishforests.worldgen.chunk.PolandScale;
 import pl.polishforests.worldgen.chunk.VerticalScale;
 
 /**
- * Klimat po stronie klienta: klient sam liczy opad (deszcz albo śnieg) z temperatury biomu, więc
- * musi znać skalę pionową świata. Rozpoznaje ją po typie wymiaru, a awaryjnie po zakresie
- * wysokości overworldu, i przypina profile klimatu do biomów z tagu. W grze jednoosobowej nic nie
- * przypina: klient dzieli obiekty biomów z serwerem zintegrowanym, który przypiął je sam, a rozpoznanie
- * po wysokości mogłoby wtedy zmienić temperatury serwera w świecie bez generatora "Polska".
+ * Client-side climate: the client computes precipitation (rain or snow) from the biome temperature
+ * on its own, so it has to know the vertical scale of the world. It detects the scale from the
+ * dimension type, falling back to the overworld height range, and attaches climate profiles to the
+ * biomes in the tag. In singleplayer it attaches nothing: the client shares biome objects with the
+ * integrated server, which has already attached them itself, and height-based detection could then
+ * change the server's temperatures in a world without the "Poland" generator.
  */
 public final class ClientClimate {
 	private ClientClimate() {
@@ -33,13 +34,14 @@ public final class ClientClimate {
 		VerticalScale scale = scale(level);
 		if (scale != null) {
 			int n = ClimateBinding.attachWithoutDetaching(level.registryAccess(), scale);
-			PolishForests.LOG.info("Klimat klienta: skala {}, profil w {} biomach", ClimateBinding.scaleName(scale), n);
+			PolishForests.LOG.info("Client climate: scale {}, profile attached to {} biomes",
+					ClimateBinding.scaleName(scale), n);
 		}
 	}
 
 	/**
-	 * Skala pionowa świata "Polska" dla poziomu klienta albo null dla innych wymiarów. Przy zmianie
-	 * wymiaru profili nie zdejmujemy: biomy innych wymiarów nie należą do tagu.
+	 * Vertical scale of the "Poland" world for the client level, or null for other dimensions.
+	 * Profiles are not detached on a dimension change: biomes of other dimensions are not in the tag.
 	 */
 	public static @Nullable VerticalScale scale(Level level) {
 		PolandScale scale = level.dimensionTypeRegistration().unwrapKey().map(PolandScale::byDimensionType)
@@ -52,7 +54,7 @@ public final class ClientClimate {
 		}
 		VerticalScale fallback = PolandDimension.scaleOf(level);
 		if (fallback != null) {
-			PolishForests.LOG.warn("Klimat klienta: nieznany typ wymiaru {}, skala {} rozpoznana po wysokości świata",
+			PolishForests.LOG.warn("Client climate: unknown dimension type {}, scale {} detected from the world height",
 					level.dimensionTypeRegistration().getRegisteredName(), ClimateBinding.scaleName(fallback));
 		}
 		return fallback;

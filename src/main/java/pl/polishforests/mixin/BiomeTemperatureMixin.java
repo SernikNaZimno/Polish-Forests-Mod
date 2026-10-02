@@ -10,12 +10,12 @@ import pl.polishforests.climate.BiomeClimateAccess;
 import pl.polishforests.climate.BiomeClimate;
 
 /**
- * Temperatura z metrów n.p.m. zamiast wanilijnego spadku od Y 80 (docs/03-m2-biomy.md, sekcja 6.2).
+ * Temperature from meters a.s.l. instead of the vanilla drop above Y 80 (docs/03-m2-biomy.md, section 6.2).
  *
- * <p>Podmieniamy prywatne {@code getHeightAdjustedTemperature}, więc wynik trafia do wanilijnego
- * bufora w {@code getTemperature}, a stamtąd do opadu, zamarzania, {@code freeze_top_layer} i do
- * Serene Seasons (które woła {@code getTemperature} i dopiero potem dodaje korektę pory roku).
- * Biomy bez profilu (Nether, End, światy wanilijne) liczą po wanilijnemu.
+ * <p>We replace the private {@code getHeightAdjustedTemperature}, so the result goes into the vanilla
+ * cache in {@code getTemperature} and from there to precipitation, freezing, {@code freeze_top_layer} and
+ * Serene Seasons (which calls {@code getTemperature} and only then adds the seasonal adjustment).
+ * Biomes without a profile (Nether, End, vanilla worlds) compute it the vanilla way.
  */
 @Mixin(Biome.class)
 abstract class BiomeTemperatureMixin {

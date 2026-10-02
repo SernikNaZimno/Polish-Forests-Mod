@@ -4,23 +4,23 @@ import pl.polishforests.worldgen.landscape.Landform;
 import pl.polishforests.worldgen.landscape.Substrate;
 
 /**
- * Żyzność siedliska (§3.3): B bory, BM bory mieszane, LM lasy mieszane, L lasy. Bogactwo r = 1 − piask
- * (kwantyl, rozkład jednostajny) tniemy progami skumulowanymi udziałów zmieszanych wagami typów, więc
- * semantyka jest ta sama we wszystkich typach: mniej piasku to żyźniej, a udziały w każdym typie
- * wynoszą tyle, ile podaje {@link Calibration}.
+ * Site fertility (§3.3): B coniferous, BM mixed coniferous, LM mixed broadleaved, L broadleaved. Richness
+ * r = 1 − sandiness (a quantile, uniformly distributed) is cut by cumulative thresholds of the shares blended
+ * with the type weights, so the semantics are the same in every type: less sand means more fertile, and the
+ * shares in each type are exactly as given in {@link Calibration}.
  */
 public enum Fertility {
 	OLIGOTROPHIC, OLIGO_MESOTROPHIC, MESOTROPHIC, EUTROPHIC;
 
 	static Fertility compute(HabitatClassifier.Column c) {
 		Substrate sub = c.substrate;
-		// Wydmy śródlądowe i nadmorskie (na piasku): bory. Dalej pas nadmorski działa przez udziały POBRZEŻA
-		// (70% B) ważone wPobrzeze, więc granica nie jest prostą linią wzdłuż brzegu.
+		// Inland and coastal dunes (on sand): coniferous. Beyond them the coastal belt works through the COASTLAND
+		// shares (70% B) weighted by wCoastland, so the boundary is not a straight line along the shore.
 		boolean sandSubstrate = sub == Substrate.SAND || sub == Substrate.BEACH_SAND;
 		if (c.t.has(Landform.INLAND_DUNES) || c.t.has(Landform.COASTAL_DUNES) && sandSubstrate || sub == Substrate.BEACH_SAND) {
 			return OLIGOTROPHIC;
 		}
-		// Mady w dnach dolin: L, poza dolinami w krainach piasków (tam dno ma trofię regionu).
+		// Alluvium on valley floors: L, except for valleys in sandy regions (there the floor gets the region's fertility).
 		if (sub == Substrate.ALLUVIUM && c.wOutwashPlain + c.wCoastland < Calibration.ALLUVIUM_ON_SAND) {
 			return EUTROPHIC;
 		}
@@ -37,8 +37,9 @@ public enum Fertility {
 	}
 
 	/**
-	 * Udział klasy {@code i} (0 B … 3 L) w %, zmieszany wagami typów. Pas nadmorski na glinie (wysoki brzeg
-	 * z klifem; na brzegu wydmowym podłoże siedliska to piasek) ma udziały wysoczyzny, a nie piasków pobrzeża.
+	 * Share of class {@code i} (0 B … 3 L) in %, blended with the type weights. The coastal belt on till (a high
+	 * shore with a cliff; on a dune shore the habitat substrate is sand) gets the moraine plateau shares, not the
+	 * coastland sand shares.
 	 */
 	private static double share(HabitatClassifier.Column c, int i) {
 		double[] coastland = c.substrate == Substrate.GLACIAL_TILL ? Calibration.FERTILITY_MORAINE_PLATEAU : Calibration.FERTILITY_COASTLAND;

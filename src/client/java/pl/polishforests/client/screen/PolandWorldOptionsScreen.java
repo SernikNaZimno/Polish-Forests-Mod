@@ -16,7 +16,7 @@ import net.minecraft.network.chat.Component;
 import pl.polishforests.worldgen.chunk.PolandSettings;
 import pl.polishforests.worldgen.chunk.PolandScale;
 
-/** Ekran opcji generowania świata "Polska". */
+/** World generation options screen for "Poland". */
 public final class PolandWorldOptionsScreen extends Screen {
 	private static final int WIDGET_WIDTH = 310;
 
@@ -103,7 +103,7 @@ public final class PolandWorldOptionsScreen extends Screen {
 		return String.format(Locale.ROOT, "%.0f", v * 100);
 	}
 
-	/** Suwak z wartością w zadanym zakresie. */
+	/** Slider with a value in a given range. */
 	private static final class ValueSlider extends AbstractSliderButton {
 		private final double min;
 		private final double max;

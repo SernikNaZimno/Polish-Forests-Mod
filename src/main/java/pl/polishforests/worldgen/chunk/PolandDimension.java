@@ -4,37 +4,37 @@ import net.minecraft.world.level.LevelHeightAccessor;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Pionowa rama świata "Polska" (decyzja A4, zmieniona 2026-09-27).
+ * Vertical frame of the "Poland" world (decision A4, changed 2026-09-27).
  *
- * <p>Poziom morza jest na wanilijnym Y 63, a dół świata na Y -64, więc wanilijne struktury
- * podziemne i rudy leżą pod terenem jak w zwykłym świecie. Silnik nie pozwala na bloki powyżej
- * Y 2031, dlatego wysokość jest odwzorowana 1:1 do ok. 900 m n.p.m., a powyżej płynnie ściskana
- * (ok. 1,76 razy powyżej 1200 m). Rysy (2499 m) wypadają na Y 2000. Model krajobrazu i piętra
- * roślinności liczą zawsze w prawdziwych metrach.
+ * <p>Sea level is at the vanilla Y 63 and the world bottom at Y -64, so vanilla underground
+ * structures and ores lie beneath the terrain as in a normal world. The engine does not allow blocks above
+ * Y 2031, so elevation is mapped 1:1 up to about 900 m a.s.l. and smoothly compressed above that
+ * (about 1.76 times above 1200 m). Rysy (2499 m) lands at Y 2000. The landscape model and the vegetation
+ * belts always work in real meters.
  *
- * <p>Wartości muszą zgadzać się z data/polskielasy/dimension_type/polska.json.
+ * <p>The values must match data/polishforests/dimension_type/poland.json.
  */
 public final class PolandDimension {
 	public static final int MIN_Y = -64;
-	/** Y od -64 do 2031, czyli maksimum silnika. */
+	/** Y from -64 to 2031, the engine maximum. */
 	public static final int HEIGHT = 2096;
-	/** Y górnej ściany wody morskiej, czyli 0 m n.p.m. */
+	/** Y of the top face of sea water, i.e. 0 m a.s.l. */
 	public static final int SEA_LEVEL_Y = 63;
-	/** Poniżej tej wysokości skała przechodzi w łupek głębinowy, jak w wanilii. */
+	/** Below this height stone turns into deepslate, as in vanilla. */
 	public static final int DEEP_ROCK_Y = 0;
 
-	/** Wysokość, od której działa ściskanie gór (środek płynnego przejścia). */
+	/** Elevation at which mountain compression starts (middle of the smooth transition). */
 	public static final double KNEE_METERS = 1_200.0;
-	/** Szerokość płynnego przejścia w metrach. */
+	/** Width of the smooth transition in meters. */
 	private static final double KNEE_SOFTNESS = 80.0;
-	/** Współczynnik ściskania powyżej kolana, dobrany tak, aby Rysy wypadły na Y 2000. */
+	/** Compression factor above the knee, chosen so that Rysy lands at Y 2000. */
 	public static final double COMPRESSION = 1.7626;
-	/** Poniżej tej wysokości odwzorowanie jest dokładną tożsamością. */
+	/** Below this elevation the mapping is an exact identity. */
 	private static final double IDENTITY_BELOW = KNEE_METERS - 4 * KNEE_SOFTNESS;
 	private static final double SOFTPLUS_AT_IDENTITY_END = softplus(-4.0);
 	private static final double SQUEEZE = 1.0 - 1.0 / COMPRESSION;
 
-	/** Tablica odwrotna: wysokość n.p.m. górnej ściany bloku dla każdego Y świata. */
+	/** Inverse table: elevation a.s.l. of the top face of the block for every world Y. */
 	private static final double[] METERS_BY_Y = new double[HEIGHT + 1];
 
 	static {
@@ -47,17 +47,17 @@ public final class PolandDimension {
 	}
 
 	/**
-	 * Czy dany poziom ma pionową ramę świata "Polska" w którejkolwiek skali (rozpoznawaną po
-	 * zakresie wysokości). Wcześniej rozpoznawała tylko skalę rzeczywistą.
+	 * Whether the given level has the vertical frame of the "Poland" world in any scale (recognized by
+	 * its height range). It used to recognize only the real scale.
 	 */
 	public static boolean isPoland(LevelHeightAccessor level) {
 		return scaleOf(level) != null;
 	}
 
 	/**
-	 * Skala pionowa rozpoznana po zakresie wysokości poziomu: 2096 bloków to skala rzeczywista,
-	 * 832 to skala rozgrywki; null dla innych ram. To rozpoznanie awaryjne, pewniejszy jest typ
-	 * wymiaru ({@link PolandScale#byDimensionType}).
+	 * Vertical scale recognized by the level's height range: 2096 blocks is the real scale,
+	 * 832 is the gameplay scale; null for other frames. This is a fallback; the dimension type
+	 * ({@link PolandScale#byDimensionType}) is more reliable.
 	 */
 	public static @Nullable VerticalScale scaleOf(LevelHeightAccessor level) {
 		for (PolandScale scale : PolandScale.values()) {
@@ -73,7 +73,7 @@ public final class PolandDimension {
 		return MIN_Y + HEIGHT - 1;
 	}
 
-	/** Liczba bloków nad poziomem morza odpowiadająca wysokości {@code meters} n.p.m. */
+	/** Number of blocks above sea level corresponding to an elevation of {@code meters} a.s.l. */
 	public static double blocksForMeters(double meters) {
 		if (meters <= IDENTITY_BELOW) {
 			return meters;
@@ -82,7 +82,7 @@ public final class PolandDimension {
 		return meters - SQUEEZE * KNEE_SOFTNESS * (softplus(x) - SOFTPLUS_AT_IDENTITY_END);
 	}
 
-	/** Odwrotność {@link #blocksForMeters}: wysokość n.p.m. dla liczby bloków nad morzem. */
+	/** Inverse of {@link #blocksForMeters}: elevation a.s.l. for a number of blocks above the sea. */
 	public static double metersForBlocks(double blocks) {
 		if (blocks <= IDENTITY_BELOW) {
 			return blocks;
@@ -100,12 +100,12 @@ public final class PolandDimension {
 		return 0.5 * (lo + hi);
 	}
 
-	/** Y najwyższego bloku gruntu dla powierzchni o wysokości {@code meters} n.p.m. */
+	/** Y of the topmost ground block for a surface at an elevation of {@code meters} a.s.l. */
 	public static int topBlockY(double meters) {
 		return (int) Math.floor(SEA_LEVEL_Y + blocksForMeters(meters)) - 1;
 	}
 
-	/** Wysokość n.p.m. górnej ściany bloku leżącego na {@code y}. */
+	/** Elevation a.s.l. of the top face of the block at {@code y}. */
 	public static double metersAboveSea(int y) {
 		int i = y + 1 - MIN_Y;
 		if (i >= 0 && i < METERS_BY_Y.length) {

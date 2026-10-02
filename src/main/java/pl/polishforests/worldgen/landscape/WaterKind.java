@@ -3,13 +3,13 @@ package pl.polishforests.worldgen.landscape;
 public enum WaterKind {
 	NONE,
 	RIVER,
-	/** Jezioro rynnowe. */
+	/** Tunnel valley lake. */
 	LAKE,
-	/** Oczko wytopiskowe z wodą. */
+	/** Water-filled kettle pond. */
 	KETTLE,
-	/** Starorzecze w dnie doliny. */
+	/** Oxbow lake on the valley floor. */
 	OXBOW,
-	/** Morze i zalewy na poziomie morza. */
+	/** Sea and lagoons at sea level. */
 	SEA;
 
 	public boolean isLake() {

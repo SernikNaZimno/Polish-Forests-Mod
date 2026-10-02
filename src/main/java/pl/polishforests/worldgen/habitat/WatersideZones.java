@@ -5,29 +5,29 @@ import pl.polishforests.worldgen.landscape.Landform;
 import pl.polishforests.worldgen.landscape.Substrate;
 
 /**
- * Krok 3 klasyfikatora: strefy nadwodne (§4, raport ekologii §2). Najpierw pierścienie wód stojących
- * (jeziora, oczka, starorzecza, oczka torfowe), potem cieki według klasy A, B albo C. Strefy wyznaczamy
- * z d, u, W, rzędu i spadku (η nie używamy, bo dno doliny jest płaskie). Granice drgają o ±20% szerokości
- * i ±0,05 u. Minima w blokach (E11): szuwar 2, wiklina 3, OlJ 6, ols 10. Łęgi tylko w dnie doliny,
- * w źródliskach i w wysiękach u podnóża zbocza.
+ * Classifier step 3: waterside zones (§4, ecology report §2). First the rings of standing water
+ * (lakes, kettle ponds, oxbow lakes, kettle bogs), then watercourses by class A, B or C. Zones are derived
+ * from d, u, W, the order and the gradient (η is not used, because the valley floor is flat). Boundaries jitter
+ * by ±20% of the width and ±0.05 u. Minimums in blocks (E11): reedbed 2, willow scrub 3, OlJ 6, alder carr 10.
+ * Riparian forests only on the valley floor, in spring areas and in seeps at the foot of the valley side.
  */
 final class WatersideZones {
 	private WatersideZones() {
 	}
 
-	/** Klasa cieku (§4): A duża rzeka nizinna, B mała rzeka nizinna, C potok górski. */
+	/** Watercourse class (§4): A large lowland river, B small lowland river, C mountain stream. */
 	enum StreamClass {
 		A, B, C
 	}
 
-	/** Klasa najbliższego cieku: C w górach lub przy spadku > 3‰, A przy rzędzie 3 lub W ≥ 30 m (1:1). */
+	/** Class of the nearest watercourse: C in the mountains or at a gradient > 3‰, A at order 3 or W ≥ 30 m (1:1). */
 	static StreamClass streamClass(HabitatClassifier.Column c) {
 		ColumnSample.Waters w = c.w;
 		if (c.wMountains > 0.5 || w.channelGradient() > Calibration.CLASS_GRADIENT) {
 			return StreamClass.C;
 		}
-		// Rząd i spadek pochodzą z doliny dominującej, a W z najbliższego koryta: mały dopływ w dnie dużej
-		// doliny ma rząd 3, więc rząd 3 daje klasę A dopiero przy szerszym korycie.
+		// The order and gradient come from the dominant valley, and W from the nearest channel: a small tributary on the
+		// floor of a large valley has order 3, so order 3 gives class A only with a wider channel.
 		double wr = c.wr();
 		if (c.wLowland >= Calibration.CLASS_LOWLAND_WEIGHT
 				&& (wr >= Calibration.CLASS_A_WR || w.streamOrder() == 3 && wr >= Calibration.CLASS_A_WR_ORDER3)) {
@@ -53,7 +53,7 @@ final class WatersideZones {
 		return r;
 	}
 
-	// ------------------------------------------------------------------ cieki
+	// ------------------------------------------------------------------ watercourses
 
 	private static int stream(HabitatClassifier.Column c) {
 		double d = Math.max(0, c.w.channelDist());
@@ -68,17 +68,17 @@ final class WatersideZones {
 		};
 	}
 
-	/** Szerokość pasa z drganiem {@code f}, nie mniejsza niż minimum w blokach (E11). */
+	/** Belt width with jitter {@code f}, not less than the minimum in blocks (E11). */
 	private static double width(double minimum, double base, double f) {
 		return Math.max(minimum, base * f);
 	}
 
-	/** Biom pasa przy brzegu albo null, gdy pas jest węższy niż biom (wtedy tylko strefa). */
+	/** Biome of the belt by the bank, or null when the belt is narrower than a biome (then only a zone). */
 	private static HabitatBiome band(double width, HabitatBiome biome) {
 		return width >= Calibration.BIOME_BAND ? biome : null;
 	}
 
-	/** Klasa A (§4.1): łacha, wiklina, okrajek, łęg wierzbowy, topolowy, zastoiska, łęg wiązowo-jesionowy. */
+	/** Class A (§4.1): point bar, willow scrub, herb fringe, willow and poplar riparian forest, backswamps, elm-ash floodplain forest. */
 	private static int classA(HabitatClassifier.Column c, double d, double channelWidth) {
 		ColumnSample.Waters w = c.w;
 		double k = c.k;
@@ -112,7 +112,7 @@ final class WatersideZones {
 			return onSlope(c, zone);
 		}
 		if (zone == Zone.NONE && c.patch(4) < Calibration.A_GAPS) {
-			// Luki w łęgu: ziołorośla okrajka.
+			// Gaps in the riparian forest: tall herbs of the herb fringe.
 			zone = Zone.HERB_FRINGE;
 		}
 		double dWhiteWillow = Math.clamp(Calibration.A_D_WHITE_WILLOW_W * channelWidth, Calibration.A_D_WHITE_WILLOW_MIN * k, Calibration.A_D_WHITE_WILLOW_MAX * k) * f;
@@ -121,16 +121,16 @@ final class WatersideZones {
 		if (d <= dWhiteWillow && softwood) {
 			return HabitatClassifier.Result.of(HabitatBiome.WILLOW_POPLAR_FOREST, zone, Association.SALICETUM_ALBAE);
 		}
-		// Łęg topolowy według d (Odstępstwo S4: bez warunku u < 0,35, bo u pochodzi z doliny dominującej
-		// i skacze prostą linią przy jej zmianie, i bez preferencji garbów, która przeplatała go z łęgiem
-		// wiązowym w pasie D_top–1,15 D_top; wały brzegowe przyjdą z rzeźbą dna w M5).
+		// Poplar riparian forest by d (deviation S4: no u < 0.35 condition, because u comes from the dominant valley
+		// and jumps in a straight line where it changes, and no preference for humps, which interleaved it with the elm
+		// floodplain forest in the D_top–1.15 D_top band; natural levees will come with the floor relief in M5).
 		if (d <= dPoplar && softwood) {
 			return HabitatClassifier.Result.of(HabitatBiome.WILLOW_POPLAR_FOREST, zone, Association.POPULETUM_ALBAE);
 		}
 		return restOfFloor(c, d, channelWidth, zone);
 	}
 
-	/** Reszta dna dużej doliny: zastoiska (ols, torfowisko niskie) albo łęg wiązowo-jesionowy. */
+	/** Rest of the floor of a large valley: backswamps (alder carr, fen) or elm-ash floodplain forest. */
 	private static int restOfFloor(HabitatClassifier.Column c, double d, double channelWidth, Zone zone) {
 		ColumnSample.Waters w = c.w;
 		double k = c.k;
@@ -146,7 +146,7 @@ final class WatersideZones {
 		return HabitatClassifier.Result.of(HabitatBiome.ELM_ASH_FOREST, zone, Association.TYPICAL);
 	}
 
-	/** Klasa B (§4.2): ziołorośla brzegu, wierzby, łęg jesionowo-olszowy, ols w szerokich dnach, źródliska. */
+	/** Class B (§4.2): bank tall herbs, willows, ash-alder riparian forest, alder carr on wide floors, spring areas. */
 	private static int classB(HabitatClassifier.Column c, double d, double channelWidth) {
 		ColumnSample.Waters w = c.w;
 		double k = c.k;
@@ -166,7 +166,7 @@ final class WatersideZones {
 					Association.SPRING_FED);
 		}
 		if (!c.onValleyFloor()) {
-			// Wąskie dno (albo jego brak): łęg przy brzegu w pasie co najmniej 6 bloków (E11), nisko nad ciekiem.
+			// Narrow floor (or none): riparian forest by the bank in a belt of at least 6 blocks (E11), low above the watercourse.
 			if (d <= Calibration.MIN_ASH_ALDER && c.H < Calibration.H_ASH_ALDER_RIPARIAN && !Double.isNaN(c.w.channelLevel())
 					&& c.H - c.w.channelLevel() <= Calibration.SEEP_HL) {
 				return HabitatClassifier.Result.of(HabitatBiome.ASH_ALDER_FOREST, zone, Association.TYPICAL);
@@ -182,7 +182,7 @@ final class WatersideZones {
 			return HabitatClassifier.Result.of(HabitatBiome.ASH_ALDER_FOREST, zone, Association.TYPICAL);
 		}
 		double fromAlderCarr = Math.max(Calibration.B_ALDER_CARR_D_K * k, Calibration.B_ALDER_CARR_D_W * channelWidth) * f;
-		// Ols tylko w dnie z miejscem na płaty szersze niż 10 bloków za łęgiem (E11): pas co najmniej 2 × 10.
+		// Alder carr only on a floor with room for patches wider than 10 blocks beyond the riparian forest (E11): a belt of at least 2 × 10.
 		if (w.floorHalfWidth() > Calibration.B_ALDER_CARR_HALF_WIDTH_K * k && w.floorHalfWidth() - fromAlderCarr >= 2 * Calibration.MIN_ALDER_CARR && d > fromAlderCarr
 				&& c.H < Calibration.H_ALDER_CARR
 				&& (c.substrate == Substrate.PEAT || (c.heightAboveChannel() < Calibration.B_ALDER_CARR_H
@@ -190,16 +190,16 @@ final class WatersideZones {
 			Zone s = zone == Zone.NONE && d < fromAlderCarr + Calibration.B_WILLOW_CARR_K * k ? Zone.WILLOW_CARR : zone;
 			return HabitatClassifier.Result.of(HabitatBiome.ALDER_CARR, s, Association.TYPICAL);
 		}
-		// Mały ciek w szerokim dnie dużej doliny: dalej reszta jej dna.
+		// Small watercourse on the wide floor of a large valley: beyond it, the rest of that floor.
 		if (w.floorHalfWidth() > Calibration.WIDE_FLOOR_K * k && c.wLowland >= Calibration.CLASS_LOWLAND_WEIGHT
 				&& w.streamOrder() >= Calibration.WIDE_FLOOR_ORDER) {
 			return restOfFloor(c, d, channelWidth, zone);
 		}
-		// Skraj dna: siedlisko strefowe (glina: grąd niski, LMw; piasek: bór wilgotny, dalej świeży).
+		// Floor margin: zonal site (till: low oak-hornbeam forest, LMw; sand: moist pine forest, then fresh).
 		return HabitatClassifier.Result.zone(zone);
 	}
 
-	/** Klasa C (§4.3): kamieniec, wiklina górska, olszyna górska, ziołorośla nadpotokowe, młaki. */
+	/** Class C (§4.3): gravel bar, montane willow scrub, gray alder forest, streamside tall herbs, spring fens. */
 	private static int classC(HabitatClassifier.Column c, double d, double channelWidth) {
 		ColumnSample.Waters w = c.w;
 		double k = c.k;
@@ -238,7 +238,7 @@ final class WatersideZones {
 		}
 		double halfWidth = w.floorHalfWidth();
 		if (h > Calibration.C_GRAY_ALDER_H || halfWidth < Calibration.C_NARROW_FLOOR_K * k) {
-			// Wysoko i w wąskich dolinach V: las strefowy do brzegu, przy wodzie ziołorośla.
+			// High up and in narrow V-shaped valleys: zonal forest down to the bank, tall herbs by the water.
 			if (zone == Zone.NONE && d <= width(Calibration.C_HERBS_MIN, Calibration.C_HERBS_W * channelWidth, f)) {
 				zone = Zone.MONTANE_TALL_HERBS;
 			}
@@ -257,7 +257,7 @@ final class WatersideZones {
 		return HabitatClassifier.Result.zone(zone);
 	}
 
-	/** Poza dnem: wysięki u podnóża zbocza (DGW ≤ 0,5) to łęg jesionowo-olszowy, dalej strefowe. */
+	/** Off the floor: seeps at the foot of the valley side (DGW ≤ 0.5) are ash-alder riparian forest, otherwise zonal. */
 	private static int onSlope(HabitatClassifier.Column c, Zone zone) {
 		if (c.isSeep()) {
 			return HabitatClassifier.Result.of(HabitatBiome.ASH_ALDER_FOREST, zone, Association.TYPICAL);
@@ -265,7 +265,7 @@ final class WatersideZones {
 		return HabitatClassifier.Result.zone(zone);
 	}
 
-	// ------------------------------------------------------------------ wody stojące (§4.4)
+	// ------------------------------------------------------------------ standing water (§4.4)
 
 	private static int lakes(HabitatClassifier.Column c) {
 		ColumnSample.Waters w = c.w;
@@ -283,7 +283,7 @@ final class WatersideZones {
 					return HabitatClassifier.Result.of(large ? HabitatBiome.RAISED_BOG : HabitatBiome.BOG_WOODLAND, Zone.NONE,
 							Association.TYPICAL);
 				}
-				// Torf minerotroficzny: duże oczko na glinie to torfowisko niskie, inne ols.
+				// Minerotrophic peat: a large kettle on till is a fen, others are alder carr.
 				boolean till = c.wMorainePlateau + c.wOldGlacialPlain > 0.5;
 				return HabitatClassifier.Result.of(large && till ? HabitatBiome.FEN : HabitatBiome.ALDER_CARR, Zone.NONE, Association.TYPICAL);
 			}
@@ -322,7 +322,7 @@ final class WatersideZones {
 			return HabitatClassifier.Result.NONE;
 		}
 		if (trophic == OpenWater.TrophicState.OLIGOTROPHIC) {
-			// Jezioro lobeliowe: bór dochodzi do wody z wąskim pasem olszy lub brzozy.
+			// Lobelia lake: the pine forest reaches the water with a narrow belt of alder or birch.
 			if (s <= Math.max(1, Calibration.LAKE_SHORE_ALDER_K * k) * f) {
 				return HabitatClassifier.Result.zone(Zone.SHORE_ALDERS);
 			}

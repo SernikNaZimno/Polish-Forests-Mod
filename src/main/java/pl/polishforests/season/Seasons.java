@@ -4,8 +4,8 @@ import net.fabricmc.loader.api.FabricLoader;
 import pl.polishforests.PolishForests;
 
 /**
- * Wybiera dostawcę pory roku przy starcie. Klasa mostu do Serene Seasons jest ładowana
- * wyłącznie, gdy mod jest obecny, dzięki czemu brak SS nie powoduje NoClassDefFoundError.
+ * Picks the season provider at startup. The Serene Seasons bridge class is loaded only
+ * when that mod is present, so a missing SS does not cause a NoClassDefFoundError.
  */
 public final class Seasons {
 	public static final int DEFAULT_DAYS_PER_SUB_SEASON = 12;
@@ -21,7 +21,7 @@ public final class Seasons {
 				provider = (SeasonProvider) Class.forName("pl.polishforests.season.compat.SereneSeasonsProvider")
 						.getDeclaredConstructor().newInstance();
 			} catch (ReflectiveOperationException | LinkageError e) {
-				PolishForests.LOG.error("Nie udało się podłączyć Serene Seasons, używam własnego kalendarza", e);
+				PolishForests.LOG.error("Could not hook into Serene Seasons, using the built-in calendar", e);
 			}
 		}
 	}

@@ -42,11 +42,11 @@ import pl.polishforests.worldgen.landscape.LandscapeType;
 import pl.polishforests.worldgen.landscape.WaterKind;
 
 /**
- * Test w prawdziwym kliencie: tworzy świat "Polska", mierzy szybkość generacji pełnych chunków
- * i robi zrzuty ekranu w charakterystycznych miejscach wskazanych przez model krajobrazu
- * (tryb {@code widoki}). Tryb {@code klimat} sprawdza temperaturę z metrów w obu skalach świata:
- * brak letniego śniegu na sandrze i w Beskidach, z Serene Seasons zimowy śnieg na nizinie, zgodność
- * opadu klienta z serwerem i tryby zamarzania wody.
+ * Test in a real client: creates a "Poland" world, measures the generation speed of full chunks
+ * and takes screenshots at characteristic places picked by the landscape model
+ * ({@code views} mode). The {@code climate} mode checks temperature from meters in both world scales:
+ * no summer snow on the outwash plain and in the Beskids, winter snow on the lowland with Serene Seasons,
+ * client precipitation matching the server, and water freeze modes.
  */
 public final class PolandWorldClientGameTest implements FabricClientGameTest {
 	private static final String SEED = "20260927";
@@ -54,11 +54,11 @@ public final class PolandWorldClientGameTest implements FabricClientGameTest {
 			PolishForests.id("poland"));
 	private static final ResourceKey<WorldPreset> PRESET_GAMEPLAY = ResourceKey.create(Registries.WORLD_PRESET,
 			PolishForests.id("poland_gameplay"));
-	/** Czarna lista Serene Seasons (rzeka, plaża, oceany): bez korekty pory roku. */
+	/** Serene Seasons blacklist (river, beach, oceans): no seasonal correction. */
 	private static final TagKey<Biome> SS_BLACKLIST = TagKey.create(Registries.BIOME,
 			Identifier.fromNamespaceAndPath("sereneseasons", "blacklisted_biomes"));
 
-	/** Miejsce do obejrzenia: współrzędne, wysokość kamery nad gruntem, kierunek i nachylenie. */
+	/** Place to look at: coordinates, camera height above ground, yaw and pitch. */
 	private record Site(String name, int x, int z, int cameraAboveGround, float yaw, float pitch) {
 	}
 
@@ -80,14 +80,14 @@ public final class PolandWorldClientGameTest implements FabricClientGameTest {
 			if (views) {
 				views(context, sp);
 			}
-			// Klimat po pomiarze i zrzutach: teleport do Beskidów zostawia w tle generację chunków,
-			// która zawyżyłaby pomiar ms/chunk.
+			// Climate after the benchmark and screenshots: the teleport to the Beskids leaves chunk generation
+			// running in the background, which would inflate the ms/chunk measurement.
 			if (climate) {
 				checkClimate(context, sp);
 			}
 		}
 		if (climate) {
-			// Druga skala: typ wymiaru polska_rozgrywka, nieliniowe metry n.p.m. i rozpoznanie skali u klienta.
+			// Second scale: dimension type poland_gameplay, non-linear m a.s.l. and scale detection on the client.
 			try (TestSingleplayerContext sp = context.worldBuilder()
 					.adjustSettings(ui -> selectPoland(ui, PRESET_GAMEPLAY))
 					.create()) {
@@ -97,7 +97,7 @@ public final class PolandWorldClientGameTest implements FabricClientGameTest {
 		}
 	}
 
-	/** Stały czas i pogoda, gracz w trybie obserwatora; sprawdza generator i jego skalę. */
+	/** Fixed time and weather, player in spectator mode; checks the generator and its scale. */
 	private static void prepare(TestSingleplayerContext sp, PolandScale scale) {
 		sp.getServer().runCommand("gamerule advance_time false");
 		sp.getServer().runCommand("gamerule advance_weather false");
@@ -109,11 +109,11 @@ public final class PolandWorldClientGameTest implements FabricClientGameTest {
 				s -> s.overworld().getChunkSource().getGenerator() instanceof PolandChunkGenerator gen
 						&& gen.vertical() == scale.vertical());
 		if (!isPoland) {
-			throw new AssertionError("Świat testowy nie używa generatora Polska w skali " + scale.getSerializedName());
+			throw new AssertionError("Test world does not use the Poland generator at scale " + scale.getSerializedName());
 		}
 	}
 
-	/** Pomiar generacji i zrzuty ekranu w charakterystycznych miejscach. */
+	/** Generation benchmark and screenshots at characteristic places. */
 	private static void views(ClientGameTestContext context, TestSingleplayerContext sp) {
 		benchmark(sp);
 
@@ -126,7 +126,7 @@ public final class PolandWorldClientGameTest implements FabricClientGameTest {
 		for (Site site : sites) {
 			int groundY = sp.getServer().computeOnServer(s -> surfaceY(s, site.x(), site.z()));
 			int camY = groundY + site.cameraAboveGround();
-			PolishForests.LOG.info("[test] {}: x={} z={} grunt Y={} ({} m n.p.m.)", site.name(), site.x(), site.z(),
+			PolishForests.LOG.info("[test] {}: x={} z={} ground Y={} ({} m a.s.l.)", site.name(), site.x(), site.z(),
 					groundY, PolandDimension.metersAboveSea(groundY - 1));
 			sp.getServer().runCommand(String.format(java.util.Locale.ROOT, "tp @a %d %d %d %.1f %.1f", site.x(), camY, site.z(),
 					site.yaw(), site.pitch()));
@@ -134,27 +134,27 @@ public final class PolandWorldClientGameTest implements FabricClientGameTest {
 				context.waitTicks(20 * 20);
 				int loaded = sp.getServer().computeOnServer(s -> s.overworld().getChunkSource().getLoadedChunksCount());
 				String client = context.computeOnClient(mc -> mc.level.getChunkSource().gatherStats() + ", fps " + mc.getFps());
-				PolishForests.LOG.info("[test] {} po {} s: serwer {} chunków; klient: {}", site.name(), (step + 1) * 20,
+				PolishForests.LOG.info("[test] {} after {} s: server {} chunks; client: {}", site.name(), (step + 1) * 20,
 						loaded, client);
 			}
 			context.takeScreenshot("poland_" + site.name());
 		}
 	}
 
-	/** Wysokość, poniżej której latem nie może leżeć śnieg (docs/03-m2-biomy.md, sekcja 12.3). */
+	/** Elevation below which no snow may lie in summer (docs/03-m2-biomy.md, section 12.3). */
 	private static final double NO_SUMMER_SNOW_BELOW = 1_900;
 
 	/**
-	 * Temperatura z metrów: latem nie ma śniegu na sandrze ani w Beskidach poniżej 1900 m (także
-	 * z korektą pory roku Serene Seasons), z SS zimą pada śnieg na nizinie, biomy Netheru i Endu nie
-	 * mają profilu, klient liczy opad tak samo jak serwer (20 punktów wokół gracza), a tryby
-	 * zamarzania działają jak w profilu.
+	 * Temperature from meters: in summer there is no snow on the outwash plain or in the Beskids below 1900 m
+	 * (also with the Serene Seasons seasonal correction), with SS it snows on the lowland in winter, Nether and
+	 * End biomes have no profile, the client computes precipitation the same way as the server (20 points
+	 * around the player), and the freeze modes behave as set in the profile.
 	 */
 	private static void checkClimate(ClientGameTestContext context, TestSingleplayerContext sp) {
 		boolean ss = FabricLoader.getInstance().isModLoaded("sereneseasons");
 		if (ss) {
 			if (!Seasons.provider().name().equals("Serene Seasons")) {
-				throw new AssertionError("Serene Seasons wczytany, ale dostawcą pory roku jest " + Seasons.provider().name());
+				throw new AssertionError("Serene Seasons is loaded, but the season provider is " + Seasons.provider().name());
 			}
 			sp.getServer().runCommand("season set mid_summer");
 		}
@@ -163,7 +163,7 @@ public final class PolandWorldClientGameTest implements FabricClientGameTest {
 			return highestBeskids(gen.model(s.overworld().getSeed()));
 		});
 		String summer = sp.getServer().computeOnServer(s -> checkSummer(s, p));
-		PolishForests.LOG.info("[test] klimat latem: {}", summer);
+		PolishForests.LOG.info("[test] climate in summer: {}", summer);
 
 		int groundY = sp.getServer().computeOnServer(s -> surfaceY(s, p[0], p[1]));
 		sp.getServer().runCommand(String.format(Locale.ROOT, "tp @a %d %d %d", p[0], groundY + 30, p[1]));
@@ -193,40 +193,40 @@ public final class PolandWorldClientGameTest implements FabricClientGameTest {
 				s -> ((PolandChunkGenerator) s.overworld().getChunkSource().getGenerator()).vertical());
 		List<String> client = context.computeOnClient(mc -> {
 			if (ClientClimate.scale(mc.level) != serverScale) {
-				throw new AssertionError("Klient rozpoznał inną skalę pionową niż serwer");
+				throw new AssertionError("Client detected a different vertical scale than the server");
 			}
 			List<String> out = new ArrayList<>();
 			for (BlockPos pos : points) {
 				if (!mc.level.getChunkSource().hasChunk(pos.getX() >> 4, pos.getZ() >> 4)) {
-					throw new AssertionError("Klient nie ma chunka w punkcie " + pos.toShortString());
+					throw new AssertionError("Client has no chunk at point " + pos.toShortString());
 				}
 				Biome biome = mc.level.getBiome(pos).value();
 				if (BiomeClimateAccess.climate(biome) == null) {
-					throw new AssertionError("Biom klienta bez profilu klimatu w " + pos.toShortString());
+					throw new AssertionError("Client biome without a climate profile at " + pos.toShortString());
 				}
 				out.add(biome.getPrecipitationAt(pos, mc.level.getSeaLevel()).name());
 			}
 			return out;
 		});
 		if (!server.equals(client)) {
-			throw new AssertionError("Opad klienta " + client + " różni się od serwera " + server);
+			throw new AssertionError("Client precipitation " + client + " differs from the server " + server);
 		}
-		PolishForests.LOG.info("[test] klimat: opad klienta zgodny z serwerem w {} punktach: {}", points.size(), client);
+		PolishForests.LOG.info("[test] climate: client precipitation matches the server at {} points: {}", points.size(), client);
 
 		if (ss) {
 			sp.getServer().runCommand("season set mid_winter");
 			String winter = sp.getServer().computeOnServer(PolandWorldClientGameTest::checkWinter);
-			PolishForests.LOG.info("[test] klimat zimą (Serene Seasons): {}", winter);
+			PolishForests.LOG.info("[test] climate in winter (Serene Seasons): {}", winter);
 			sp.getServer().runCommand("season set mid_summer");
 		}
-		// Na końcu: test zamarzania na chwilę podmienia profil biomu wody.
+		// Last: the freeze test temporarily swaps the climate profile of the water biome.
 		String freeze = sp.getServer().computeOnServer(PolandWorldClientGameTest::checkFreezeModes);
-		PolishForests.LOG.info("[test] klimat, zamarzanie: {}", freeze);
+		PolishForests.LOG.info("[test] climate, freezing: {}", freeze);
 	}
 
 	/**
-	 * Latem po stronie serwera: brak profili w Netherze i Endzie, brak śniegu na sandrze i w Beskidach
-	 * wokół najwyższego miejsca {@code szczyt} oraz w powietrzu na 1500 i 1850 m n.p.m. nad Beskidami.
+	 * Summer, server side: no profiles in the Nether and the End, no snow on the outwash plain and in the Beskids
+	 * around the highest place {@code summit}, nor in the air at 1500 and 1850 m a.s.l. above the Beskids.
 	 */
 	private static String checkSummer(MinecraftServer server, int[] summit) {
 		ServerLevel level = server.overworld();
@@ -236,11 +236,11 @@ public final class PolandWorldClientGameTest implements FabricClientGameTest {
 		for (ResourceKey<Level> dimension : List.of(Level.NETHER, Level.END)) {
 			ServerLevel other = server.getLevel(dimension);
 			if (other == null) {
-				throw new AssertionError("Brak wymiaru " + dimension.identifier());
+				throw new AssertionError("Missing dimension " + dimension.identifier());
 			}
 			for (Holder<Biome> biome : other.getChunkSource().getGenerator().getBiomeSource().possibleBiomes()) {
 				if (BiomeClimateAccess.climate(biome.value()) != null) {
-					throw new AssertionError("Biom wymiaru " + dimension.identifier() + " z profilem klimatu: "
+					throw new AssertionError("Biome of dimension " + dimension.identifier() + " has a climate profile: "
 							+ biome.getRegisteredName());
 				}
 			}
@@ -248,48 +248,48 @@ public final class PolandWorldClientGameTest implements FabricClientGameTest {
 		StringBuilder report = new StringBuilder();
 		int[] outwashPlain = spiral(m, s -> s.type() == LandscapeType.OUTWASH_PLAIN);
 		if (outwashPlain == null) {
-			throw new AssertionError("Brak sandru");
+			throw new AssertionError("No outwash plain found");
 		}
 		checkSummerSnow(level, m, v, LandscapeType.OUTWASH_PLAIN, outwashPlain, "outwash_plain", report);
 		double highest = checkSummerSnow(level, m, v, LandscapeType.BESKIDS, summit, "beskids", report);
-		// Ziarno testu: najwyżej ok. 1311 m (REAL) i 1125 m (GAMEPLAY), bo w skali rozgrywki Beskidy
-		// prawie nie przekraczają 1150 m (docs/03-m2-biomy.md, S0). Wyższe partie sprawdzamy w powietrzu.
+		// Test seed: at most about 1311 m (REAL) and 1125 m (GAMEPLAY), because at gameplay scale the Beskids
+		// barely exceed 1150 m (docs/03-m2-biomy.md, S0). Higher elevations are checked in the air.
 		double minimum = v == PolandScale.REALISTIC.vertical() ? 1_200 : 1_000;
 		if (highest < minimum) {
 			throw new AssertionError(String.format(Locale.ROOT,
-					"Beskidy sprawdzone tylko do %.0f m n.p.m. (wymagane co najmniej %.0f m)", highest, minimum));
+					"Beskids checked only up to %.0f m a.s.l. (at least %.0f m required)", highest, minimum));
 		}
 		int checked = 0;
 		for (int k = 0; k < 25; k++) {
 			for (double meters : new double[] {1_500, 1_850}) {
 				BlockPos pos = new BlockPos(summit[0] + (k % 5 - 2) * 200, v.topBlockY(meters) + 1, summit[1] + (k / 5 - 2) * 200);
 				if (v.metersAboveSea(pos.getY()) >= NO_SUMMER_SNOW_BELOW) {
-					throw new AssertionError("Wysokość testowa ponad 1900 m: " + pos.toShortString());
+					throw new AssertionError("Test elevation above 1900 m: " + pos.toShortString());
 				}
 				Biome biome = level.getBiome(pos).value();
 				BiomeClimate climate = BiomeClimateAccess.climate(biome);
 				if (climate == null) {
-					throw new AssertionError("Biom bez profilu klimatu w " + pos.toShortString());
+					throw new AssertionError("Biome without a climate profile at " + pos.toShortString());
 				}
 				float t = Seasons.provider().temperatureInSeason(level, biome, pos, climate.temperature(pos));
 				if (biome.coldEnoughToSnow(pos, level.getSeaLevel()) || t < PolandClimate.SNOW_THRESHOLD) {
-					throw new AssertionError(String.format(Locale.ROOT, "Latem śnieg na %.0f m n.p.m. (T z porą roku %.3f, %s)",
+					throw new AssertionError(String.format(Locale.ROOT, "Snow in summer at %.0f m a.s.l. (seasonal T %.3f, %s)",
 							meters, t, pos.toShortString()));
 				}
 				checked++;
 			}
 		}
-		report.append(String.format(Locale.ROOT, "powietrze nad Beskidami: %d punktów na 1500 i 1850 m bez śniegu; ",
+		report.append(String.format(Locale.ROOT, "air above the Beskids: %d points at 1500 and 1850 m without snow; ",
 				checked));
 		checkSnowBlocks(level, v, summit, false, "beskids", report);
 		return report.toString();
 	}
 
 	/**
-	 * Kolumny typu {@code type} w siatce 48 × 48 co 40 m wokół {@code p}, poniżej 1900 m: brak śniegu
-	 * w wanilijnej ścieżce (bufor i mixin temperatury) i w temperaturze z porą roku (hak SS, gdy jest).
+	 * Columns of type {@code type} on a 48 × 48 grid with 40 m spacing around {@code p}, below 1900 m: no snow
+	 * on the vanilla path (cache and temperature mixin) or in the seasonal temperature (SS hook, if present).
 	 *
-	 * @return najwyższa sprawdzona kolumna w metrach n.p.m.
+	 * @return the highest checked column in meters above sea level
 	 */
 	private static double checkSummerSnow(ServerLevel level, LandscapeModel m, VerticalScale v, LandscapeType type,
 			int[] p, String name, StringBuilder report) {
@@ -308,16 +308,16 @@ public final class PolandWorldClientGameTest implements FabricClientGameTest {
 				Biome biome = level.getBiome(pos).value();
 				BiomeClimate climate = BiomeClimateAccess.climate(biome);
 				if (climate == null) {
-					throw new AssertionError("Biom bez profilu klimatu w " + pos.toShortString());
+					throw new AssertionError("Biome without a climate profile at " + pos.toShortString());
 				}
 				if (biome.coldEnoughToSnow(pos, level.getSeaLevel())) {
-					throw new AssertionError(String.format(Locale.ROOT, "Latem śnieg w %s na %.0f m n.p.m. (%s)", name,
+					throw new AssertionError(String.format(Locale.ROOT, "Snow in summer in %s at %.0f m a.s.l. (%s)", name,
 							s.surface(), pos.toShortString()));
 				}
 				float t = Seasons.provider().temperatureInSeason(level, biome, pos, climate.temperature(pos));
 				if (t < PolandClimate.SNOW_THRESHOLD) {
 					throw new AssertionError(String.format(Locale.ROOT,
-							"Latem (z porą roku) T %.3f, czyli śnieg, w %s na %.0f m n.p.m. (%s)", t, name, s.surface(),
+							"Summer (with season) T %.3f, i.e. snow, in %s at %.0f m a.s.l. (%s)", t, name, s.surface(),
 							pos.toShortString()));
 				}
 				coldest = Math.min(coldest, t);
@@ -326,14 +326,14 @@ public final class PolandWorldClientGameTest implements FabricClientGameTest {
 			}
 		}
 		if (checked < 100) {
-			throw new AssertionError("Za mało kolumn typu " + name + ": " + checked);
+			throw new AssertionError("Too few columns of type " + name + ": " + checked);
 		}
-		report.append(String.format(Locale.ROOT, "%s: %d kolumn bez śniegu, najwyżej %.0f m, najniższa T %.3f; ", name,
+		report.append(String.format(Locale.ROOT, "%s: %d columns without snow, highest %.0f m, lowest T %.3f; ", name,
 				checked, highest, coldest));
 		return highest;
 	}
 
-	/** Zimą z Serene Seasons: na sandrze i wysoczyźnie morenowej pada śnieg (biomy spoza czarnej listy SS). */
+	/** Winter with Serene Seasons: it snows on the outwash plain and the moraine plateau (biomes not on the SS blacklist). */
 	private static String checkWinter(MinecraftServer server) {
 		ServerLevel level = server.overworld();
 		PolandChunkGenerator gen = (PolandChunkGenerator) level.getChunkSource().getGenerator();
@@ -344,7 +344,7 @@ public final class PolandWorldClientGameTest implements FabricClientGameTest {
 		for (LandscapeType type : List.of(LandscapeType.OUTWASH_PLAIN, LandscapeType.MORAINE_PLATEAU)) {
 			int[] p = spiral(m, s -> s.type() == type);
 			if (p == null) {
-				throw new AssertionError("Brak miejsca typu " + type);
+				throw new AssertionError("No place of type " + type);
 			}
 			if (outwashPlain == null) {
 				outwashPlain = p;
@@ -364,7 +364,7 @@ public final class PolandWorldClientGameTest implements FabricClientGameTest {
 					Holder<Biome> holder = level.getBiome(pos);
 					BiomeClimate climate = BiomeClimateAccess.climate(holder.value());
 					if (climate == null) {
-						throw new AssertionError("Biom bez profilu klimatu w " + pos.toShortString());
+						throw new AssertionError("Biome without a climate profile at " + pos.toShortString());
 					}
 					if (holder.is(SS_BLACKLIST)) {
 						skipped++;
@@ -373,7 +373,7 @@ public final class PolandWorldClientGameTest implements FabricClientGameTest {
 					float t = Seasons.provider().temperatureInSeason(level, holder.value(), pos, climate.temperature(pos));
 					if (t >= PolandClimate.SNOW_THRESHOLD) {
 						throw new AssertionError(String.format(Locale.ROOT,
-								"Zimą z SS deszcz (T %.3f) na nizinie %s, %.0f m n.p.m. (%s, %s)", t, type, s.surface(),
+								"Rain in winter with SS (T %.3f) on lowland %s, %.0f m a.s.l. (%s, %s)", t, type, s.surface(),
 								pos.toShortString(), holder.getRegisteredName()));
 					}
 					warmest = Math.max(warmest, t);
@@ -381,21 +381,21 @@ public final class PolandWorldClientGameTest implements FabricClientGameTest {
 				}
 			}
 			if (checked < 100) {
-				throw new AssertionError("Za mało kolumn typu " + type + " poza czarną listą SS: " + checked);
+				throw new AssertionError("Too few columns of type " + type + " outside the SS blacklist: " + checked);
 			}
-			report.append(String.format(Locale.ROOT, "%s: %d kolumn ze śniegiem (pominięte z czarnej listy SS: %d), "
-					+ "najwyższa T %.3f; ", type, checked, skipped, warmest));
+			report.append(String.format(Locale.ROOT, "%s: %d columns with snow (skipped on the SS blacklist: %d), "
+					+ "highest T %.3f; ", type, checked, skipped, warmest));
 		}
 		checkSnowBlocks(level, v, outwashPlain, true, "outwash_plain", report);
 		return report.toString();
 	}
 
 	/**
-	 * Opad śniegu na prawdziwych blokach: w obszarze 64 × 64 bloków wokół {@code p} (chunki ładowane
-	 * synchronicznie) dla każdej kolumny, w której śnieg mógłby leżeć (powietrze nad podłożem
-	 * utrzymującym warstwę śniegu, jak w {@code ServerLevel.tickPrecipitation}), {@code Biome.shouldSnow}
-	 * (z hakiem SS na początku metody) musi dać {@code expectSnow}. Latem pod 1900 m nie może też leżeć
-	 * śnieg z generacji ({@code freeze_top_layer} bez pory roku).
+	 * Snowfall on real blocks: in a 64 × 64 block area around {@code p} (chunks loaded synchronously),
+	 * for every column where snow could settle (air above a block that supports a snow layer, as in
+	 * {@code ServerLevel.tickPrecipitation}), {@code Biome.shouldSnow} (with the SS hook at the start of the
+	 * method) must return {@code expectSnow}. In summer, below 1900 m there may also be no snow from
+	 * generation ({@code freeze_top_layer} without seasons).
 	 */
 	private static void checkSnowBlocks(ServerLevel level, VerticalScale v, int[] p, boolean expectSnow, String name,
 			StringBuilder report) {
@@ -412,7 +412,7 @@ public final class PolandWorldClientGameTest implements FabricClientGameTest {
 				}
 				BlockState state = level.getBlockState(pos);
 				if (!expectSnow && (state.is(Blocks.SNOW) || level.getBlockState(pos.below()).is(Blocks.SNOW))) {
-					throw new AssertionError(String.format(Locale.ROOT, "Latem śnieg z generacji w %s na %.0f m n.p.m. (%s)",
+					throw new AssertionError(String.format(Locale.ROOT, "Snow from generation in summer in %s at %.0f m a.s.l. (%s)",
 							name, v.metersAboveSea(pos.getY()), pos.toShortString()));
 				}
 				if (!state.isAir() || level.getBrightness(LightLayer.BLOCK, pos) >= 10
@@ -420,25 +420,25 @@ public final class PolandWorldClientGameTest implements FabricClientGameTest {
 					continue;
 				}
 				if (holder.value().shouldSnow(level, pos) != expectSnow) {
-					throw new AssertionError(String.format(Locale.ROOT, "%s: shouldSnow = %b w %s na %.0f m n.p.m. (%s)",
-							expectSnow ? "Zimą" : "Latem", !expectSnow, name, v.metersAboveSea(pos.getY()),
+					throw new AssertionError(String.format(Locale.ROOT, "%s: shouldSnow = %b in %s at %.0f m a.s.l. (%s)",
+							expectSnow ? "Winter" : "Summer", !expectSnow, name, v.metersAboveSea(pos.getY()),
 							pos.toShortString()));
 				}
 				checked++;
 			}
 		}
 		if (checked < 8) {
-			throw new AssertionError("Za mało kolumn do sprawdzenia opadu na blokach w " + name + ": " + checked);
+			throw new AssertionError("Too few columns to check precipitation on blocks in " + name + ": " + checked);
 		}
-		report.append(String.format(Locale.ROOT, "%s: shouldSnow = %b w %d kolumnach; ", name, expectSnow, checked));
+		report.append(String.format(Locale.ROOT, "%s: shouldSnow = %b in %d columns; ", name, expectSnow, checked));
 	}
 
 	/**
-	 * Tryby zamarzania ({@code BiomeFreezeMixin}): na wodzie morza na chwilę podmienia profil biomu
-	 * na testowy i sprawdza {@code shouldFreeze} bez sąsiadów. Przy T ok. 0,10 (z porą roku) NIGDY
-	 * i RZEKA nie zamarzają, a WANILIA tak; przy T ok. -1 zamarzają RZEKA i WANILIA. Na końcu
-	 * przywraca profil. Wanilijny bufor temperatury (na wątek, 1024 pozycje) zapełniamy innymi
-	 * pozycjami przed każdym pomiarem i po nim, bo inaczej zwracałby temperaturę poprzedniego profilu.
+	 * Freeze modes ({@code BiomeFreezeMixin}): on sea water, temporarily swaps the biome profile for a test
+	 * one and checks {@code shouldFreeze} without neighbors. At T of about 0.10 (with season) NEVER and RIVER
+	 * do not freeze, while VANILLA does; at T of about -1 RIVER and VANILLA freeze. Restores the profile at the
+	 * end. The vanilla temperature cache (per thread, 1024 positions) is filled with other positions before
+	 * and after each measurement, because otherwise it would return the temperature of the previous profile.
 	 */
 	private static String checkFreezeModes(MinecraftServer server) {
 		ServerLevel level = server.overworld();
@@ -447,7 +447,7 @@ public final class PolandWorldClientGameTest implements FabricClientGameTest {
 		VerticalScale v = gen.vertical();
 		int[] p = spiral(m, s -> s.type() == LandscapeType.SEA && s.waterKind() == WaterKind.SEA);
 		if (p == null) {
-			throw new AssertionError("Brak morza do testu zamarzania");
+			throw new AssertionError("No sea found for the freeze test");
 		}
 		BlockPos water = null;
 		for (int k = 0; k < 16 && water == null; k++) {
@@ -460,16 +460,16 @@ public final class PolandWorldClientGameTest implements FabricClientGameTest {
 			}
 		}
 		if (water == null) {
-			throw new AssertionError("Brak powierzchni wody morza w okolicy " + p[0] + ", " + p[1]);
+			throw new AssertionError("No sea water surface near " + p[0] + ", " + p[1]);
 		}
 		Biome biome = level.getBiome(water).value();
 		BiomeClimate original = BiomeClimateAccess.climate(biome);
 		if (original == null || original.freezeMode() != BiomeClimate.FreezeMode.NEVER) {
-			throw new AssertionError("Biom morza bez profilu NIGDY w " + water.toShortString() + ": " + original);
+			throw new AssertionError("Sea biome without a NEVER profile at " + water.toShortString() + ": " + original);
 		}
 		StringBuilder report = new StringBuilder();
 		try {
-			// T z porą roku ok. 0,10: między progiem rzek (0,05) a progiem wanilii (0,15).
+			// Seasonal T of about 0.10: between the river threshold (0.05) and the vanilla threshold (0.15).
 			float correction = 0.10F - seasonalTemperature(level, biome, water,
 					new BiomeClimate(v, 0.10F, BiomeClimate.FreezeMode.VANILLA));
 			checkFreeze(level, biome, water, v, 0.10F + correction, false, false, true, report);
@@ -477,13 +477,13 @@ public final class PolandWorldClientGameTest implements FabricClientGameTest {
 			BiomeClimateAccess.set(biome, original);
 			flushTemperatureCache(biome, level.getSeaLevel());
 			if (biome.shouldFreeze(level, water, false)) {
-				throw new AssertionError("Morze z przywróconym profilem zamarza w " + water.toShortString());
+				throw new AssertionError("Sea with the restored profile freezes at " + water.toShortString());
 			}
 		} finally {
 			BiomeClimateAccess.set(biome, original);
 			flushTemperatureCache(biome, level.getSeaLevel());
 		}
-		report.append("woda ").append(water.toShortString());
+		report.append("water ").append(water.toShortString());
 		return report.toString();
 	}
 
@@ -497,25 +497,25 @@ public final class PolandWorldClientGameTest implements FabricClientGameTest {
 		for (BiomeClimate.FreezeMode mode : modes) {
 			BiomeClimate test = new BiomeClimate(v, base, mode);
 			float t = seasonalTemperature(level, biome, water, test);
-			// Strażnik: oczekiwania zakładają T po tej samej stronie progów co temperatura bazowa.
+			// Guard: the expectations assume T is on the same side of the thresholds as the base temperature.
 			boolean cold = base < 0;
 			if (cold ? t >= PolandClimate.RIVER_FREEZE_THRESHOLD
 					: t < PolandClimate.RIVER_FREEZE_THRESHOLD + 0.01F || t >= PolandClimate.SNOW_THRESHOLD - 0.01F) {
-				throw new AssertionError(String.format(Locale.ROOT, "Test zamarzania: T %.3f poza zakresem dla bazy %.3f",
+				throw new AssertionError(String.format(Locale.ROOT, "Freeze test: T %.3f out of range for base %.3f",
 						t, base));
 			}
 			BiomeClimateAccess.set(biome, test);
 			flushTemperatureCache(biome, level.getSeaLevel());
 			boolean frozen = biome.shouldFreeze(level, water, false);
 			if (frozen != expected[mode.ordinal()]) {
-				throw new AssertionError(String.format(Locale.ROOT, "Zamarzanie %s przy T %.3f: %b, oczekiwano %b (%s)",
+				throw new AssertionError(String.format(Locale.ROOT, "Freezing %s at T %.3f: %b, expected %b (%s)",
 						mode, t, frozen, expected[mode.ordinal()], water.toShortString()));
 			}
-			report.append(String.format(Locale.ROOT, "%s przy T %.3f: %b; ", mode, t, frozen));
+			report.append(String.format(Locale.ROOT, "%s at T %.3f: %b; ", mode, t, frozen));
 		}
 	}
 
-	/** Temperatura z porą roku dla profilu {@code test} (podpina go na czas pomiaru). */
+	/** Seasonal temperature for the {@code test} profile (attaches it for the duration of the measurement). */
 	private static float seasonalTemperature(ServerLevel level, Biome biome, BlockPos pos, BiomeClimate test) {
 		BiomeClimate before = BiomeClimateAccess.climate(biome);
 		BiomeClimateAccess.set(biome, test);
@@ -528,7 +528,7 @@ public final class PolandWorldClientGameTest implements FabricClientGameTest {
 		}
 	}
 
-	/** Wypycha z wanilijnego bufora temperatury biomu (bieżący wątek) wszystkie wcześniejsze pozycje. */
+	/** Evicts all earlier positions from the vanilla biome temperature cache (current thread). */
 	private static void flushTemperatureCache(Biome biome, int seaLevel) {
 		for (int i = 0; i < 1_100; i++) {
 			biome.coldEnoughToSnow(new BlockPos(-29_000_000 + i, 0, -29_000_000), seaLevel);
@@ -536,14 +536,15 @@ public final class PolandWorldClientGameTest implements FabricClientGameTest {
 	}
 
 	/**
-	 * Najwyższa kolumna Beskidów poniżej 1900 m wokół pierwszego miejsca Beskidów na spirali: siatka
-	 * ±60 km co 1,5 km, potem ±2 km co 250 m i ±300 m co 50 m wokół najlepszej. Spirala z warunkiem
-	 * wysokości byłaby za droga (w REAL pierwsze miejsce powyżej 1150 m leży ok. 1000 km od środka).
+	 * Highest Beskids column below 1900 m around the first Beskids place on the spiral: a grid of
+	 * ±60 km every 1.5 km, then ±2 km every 250 m and ±300 m every 50 m around the best one. A spiral with an
+	 * elevation condition would be too expensive (in REAL the first place above 1150 m lies about 1000 km
+	 * from the center).
 	 */
 	private static int[] highestBeskids(LandscapeModel m) {
 		int[] p = spiral(m, s -> s.type() == LandscapeType.BESKIDS);
 		if (p == null) {
-			throw new AssertionError("Brak Beskidów");
+			throw new AssertionError("No Beskids found");
 		}
 		int[] best = p;
 		double bestMeters = -1;
@@ -575,7 +576,7 @@ public final class PolandWorldClientGameTest implements FabricClientGameTest {
 				return;
 			}
 		}
-		throw new AssertionError("Brak presetu świata " + preset.identifier() + " na liście typów świata");
+		throw new AssertionError("World preset " + preset.identifier() + " is missing from the world type list");
 	}
 
 	private static int surfaceY(MinecraftServer server, int x, int z) {
@@ -584,7 +585,7 @@ public final class PolandWorldClientGameTest implements FabricClientGameTest {
 				level.getChunkSource().randomState());
 	}
 
-	/** Generuje synchronicznie obszar 8 × 8 chunków do stanu pełnego i zapisuje czas w logu. */
+	/** Synchronously generates an 8 × 8 chunk area to the full status and logs the time. */
 	private static void benchmark(TestSingleplayerContext sp) {
 		sp.getServer().runOnServer(server -> {
 			ServerLevel level = server.overworld();
@@ -609,14 +610,14 @@ public final class PolandWorldClientGameTest implements FabricClientGameTest {
 				}
 			}
 			double modelMs = (System.nanoTime() - t1) / 1e6;
-			PolishForests.LOG.info("[test] Model krajobrazu: {} ms na 64 chunki (16 384 kolumny), suma kontrolna {}",
+			PolishForests.LOG.info("[test] Landscape model: {} ms per 64 chunks (16,384 columns), checksum {}",
 					Math.round(modelMs), Math.round(sink));
-			PolishForests.LOG.info("[test] Generacja {} pełnych chunków: {} ms ({} ms/chunk)", n, Math.round(ms),
+			PolishForests.LOG.info("[test] Generation of {} full chunks: {} ms ({} ms/chunk)", n, Math.round(ms),
 					Math.round(ms / n));
 		});
 	}
 
-	/** Wybiera miejsca do zrzutów ekranu, przeszukując model krajobrazu na spirali. */
+	/** Picks places for screenshots by searching the landscape model along a spiral. */
 	private static List<Site> findSites(MinecraftServer server) {
 		ServerLevel level = server.overworld();
 		PolandChunkGenerator gen = (PolandChunkGenerator) level.getChunkSource().getGenerator();
@@ -642,7 +643,7 @@ public final class PolandWorldClientGameTest implements FabricClientGameTest {
 		if (p != null) {
 			sites.add(new Site("foothills", p[0], p[1], 40, 60f, 15f));
 		}
-		// Rzeki, doliny i morze.
+		// Rivers, valleys and the sea.
 		p = spiral(m, s -> s.waterKind() == WaterKind.RIVER && s.type().isLowland() && s.surface() - s.waterLevel() < -2.5);
 		if (p != null) {
 			sites.add(new Site("meanders", p[0], p[1], 70, 20f, 50f));
@@ -665,21 +666,21 @@ public final class PolandWorldClientGameTest implements FabricClientGameTest {
 		}
 	}
 
-	/** Miejsce na wybrzeżu oglądane z morza, ok. 80 m od brzegu, w stronę lądu. */
+	/** Coastal place viewed from the sea, about 80 m offshore, facing land. */
 	private static void addCoast(List<Site> sites, LandscapeModel m, PolishForestsCommands.Target target, String name,
 			int above) {
 		double[] p = PolishForestsCommands.locate(m, target, 0, 0);
 		if (p == null) {
 			return;
 		}
-		// Kierunek ku morzu: spadek odległości od linii brzegowej.
+		// Seaward direction: where the distance from the coastline decreases.
 		double e = 50;
 		double gx = m.coastDistance(p[0] + e, p[1]) - m.coastDistance(p[0] - e, p[1]);
 		double gz = m.coastDistance(p[0], p[1] + e) - m.coastDistance(p[0], p[1] - e);
 		double l = Math.max(1e-9, Math.hypot(gx, gz));
 		double sx = -gx / l;
 		double sz = -gz / l;
-		// Yaw w Minecrafcie: 0 = +Z, 90 = -X; kamera patrzy przeciwnie do kierunku ku morzu.
+		// Minecraft yaw: 0 = +Z, 90 = -X; the camera looks opposite to the seaward direction.
 		float yaw = (float) Math.toDegrees(Math.atan2(sx, -sz));
 		sites.add(new Site(name, (int) (p[0] + sx * 80), (int) (p[1] + sz * 80), above, yaw, 12f));
 	}

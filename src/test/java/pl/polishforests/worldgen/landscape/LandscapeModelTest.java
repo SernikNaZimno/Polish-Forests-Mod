@@ -27,7 +27,7 @@ class LandscapeModelTest {
 		}
 	}
 
-	/** Ziarno, skala i punkt nie zależą od kolejności zapytań: nowe pola też (porównanie rekordów przez equals). */
+	/** For a given seed, scale and point the result does not depend on the query order, the new fields included (records compared with equals). */
 	@Test
 	void habitatFieldsDoNotDependOnQueryOrder() {
 		for (LandscapeScale scale : new LandscapeScale[] {LandscapeScale.REALISTIC, LandscapeScale.GAMEPLAY}) {
@@ -38,7 +38,7 @@ class LandscapeModelTest {
 			for (int i = 0; i < first.length; i++) {
 				first[i] = a.sample(i * step - 100 * step, (i % 20) * step * 7);
 			}
-			// Odwrotna kolejność na drugim modelu: inne stany pamięci podręcznych.
+			// Reverse order on the second model: different cache states.
 			for (int i = first.length - 1; i >= 0; i--) {
 				assertEquals(first[i], b.sample(i * step - 100 * step, (i % 20) * step * 7));
 			}
@@ -46,8 +46,8 @@ class LandscapeModelTest {
 	}
 
 	/**
-	 * Nowe pola próbki (M2, S2 i S3) są skończone tam, gdzie mają sens, i mieszczą się w zakresach. NaN tylko
-	 * jako „nie dotyczy”, +∞ tylko jako „poza zasięgiem”.
+	 * The new sample fields (M2, S2 and S3) are finite where they make sense and lie within their ranges. NaN only
+	 * as "not applicable", +∞ only as "out of range".
 	 */
 	@Test
 	void habitatFieldsAreFiniteAndInRange() {
@@ -63,8 +63,8 @@ class LandscapeModelTest {
 			for (int i = 0; i < 6_000; i++) {
 				points.add(new double[] {(i % 77) * 7_919.0 * unit - 300_000 * unit, (i / 77) * 7_877.0 * unit - 300_000 * unit});
 			}
-			// Gęste łaty przy wodach (dna dolin, koryta, jeziora i oczka) i w Beskidach (łata „beskidy”
-			// ze złotego testu dla tego ziarna).
+			// Dense patches near water (valley floors, channels, lakes and kettle ponds) and in the Beskids (the "beskids"
+			// patch from the golden test for this seed).
 			double[] beskids = scale == LandscapeScale.REALISTIC ? new double[] {154_834, 1_058_738}
 					: new double[] {27_609, 3_254};
 			for (double[] site : new double[][] {LandscapePreview.findRiver(m),
@@ -77,22 +77,22 @@ class LandscapeModelTest {
 				ColumnSample c = m.sample(p[0], p[1]);
 				ColumnSample.Terrain t = c.terrain();
 				ColumnSample.Waters w = c.waters();
-				String at = " w " + p[0] + "," + p[1] + ": " + c;
+				String at = " at " + p[0] + "," + p[1] + ": " + c;
 				assertTrue(Double.isFinite(t.rawSurface()) && Double.isFinite(t.coastD()) && Double.isFinite(t.convexity()), "terrain" + at);
 				double sum = t.wOutwashPlain() + t.wMorainePlateau() + t.wOldGlacialPlain() + t.wFoothills() + t.wBeskids();
-				assertEquals(1.0, sum, 1e-9, "wagi typów" + at);
+				assertEquals(1.0, sum, 1e-9, "type weights" + at);
 				assertTrue(t.wCoastland() >= 0 && t.wCoastland() <= 1, "wCoastland" + at);
 				assertTrue(c.waterKind() == WaterKind.SEA ? Double.isNaN(t.sandiness()) : t.sandiness() >= 0 && t.sandiness() <= 1,
 						"sandiness" + at);
 				assertTrue(t.duneHeight() >= 0 && t.duneHeight() <= 23, "duneHeight" + at);
 				assertTrue(t.massif() >= 0 && t.massif() <= 1, "massif" + at);
 				assertTrue(t.cliffHeight() >= 0 && (t.cliffHeight() > 0) == t.has(Landform.CLIFF), "cliffHeight" + at);
-				// Duży masyw (E12): najwyższy teren w promieniu 3 km·mspace, tylko w Beskidach od Pietra.SZCZYT_OD.
-				assertTrue(Double.isFinite(t.summit()), "szczyt" + at);
+				// Large massif (E12): highest terrain within 3 km·mspace, only in the Beskids from AltitudinalBelts.SUMMIT_FROM.
+				assertTrue(Double.isFinite(t.summit()), "summit" + at);
 				if (t.wBeskids() > 0 && c.surface() >= AltitudinalBelts.SUMMIT_FROM) {
-					assertTrue(t.summit() >= c.surface() - 60 && t.summit() <= 1_760, "szczyt w Beskidach" + at);
+					assertTrue(t.summit() >= c.surface() - 60 && t.summit() <= 1_760, "summit in the Beskids" + at);
 				} else {
-					assertEquals(0.0, t.summit(), "szczyt poza Beskidami lub nisko" + at);
+					assertEquals(0.0, t.summit(), "summit outside the Beskids or low" + at);
 				}
 				assertTrue(t.lowShore() >= 0 && t.lowShore() <= 1, "lowShore" + at);
 				boolean coastalLand = c.type() == LandscapeType.COASTLAND && c.waterKind() != WaterKind.SEA;
@@ -101,11 +101,11 @@ class LandscapeModelTest {
 					flysch++;
 					assertTrue(t.ridgeProfile() >= 0 && t.ridgeProfile() <= 1.05, "ridgeProfile" + at);
 				} else {
-					assertTrue(Double.isNaN(t.ridgeProfile()), "grzbiet poza fliszem" + at);
+					assertTrue(Double.isNaN(t.ridgeProfile()), "ridge outside flysch" + at);
 				}
 				for (Landform f : Landform.values()) {
 					if (t.has(f)) {
-						assertTrue(Landform.FROM_SAMPLE.contains(f), "forma spoza próbki" + at);
+						assertTrue(Landform.FROM_SAMPLE.contains(f), "landform not from the sample" + at);
 						seen.add(f);
 					}
 				}
@@ -120,44 +120,44 @@ class LandscapeModelTest {
 						floors++;
 						assertTrue(w.u() >= 0 && w.u() <= 1, "u" + at);
 					} else {
-						assertTrue(Double.isNaN(w.u()), "u poza dnem" + at);
+						assertTrue(Double.isNaN(w.u()), "u outside the floor" + at);
 					}
 				} else {
 					assertTrue(w.channelDist() == Double.POSITIVE_INFINITY && !w.inFloor() && !w.headwaters()
-							&& !w.convexBank() && Double.isNaN(w.channelWidth()), "brak cieku" + at);
+							&& !w.convexBank() && Double.isNaN(w.channelWidth()), "no watercourse" + at);
 				}
 				if (w.standingWaterKind() != ColumnSample.StandingWaterKind.NONE) {
 					standing++;
 					assertTrue(Double.isFinite(w.s()) && w.shoreLevel() != ColumnSample.NO_WATER
 							&& w.standingWaterRadius() >= 0 && Double.isFinite(w.standingWaterRadius()) && w.lakeId() != 0,
-							"woda stojąca" + at);
+							"standing water" + at);
 					assertTrue(!w.ombrotrophicPeat() || w.standingWaterKind() == ColumnSample.StandingWaterKind.KETTLE_BOG,
-							"torf ombro poza oczkiem torfowym" + at);
-					assertTrue(w.s() <= ringOf(w.standingWaterKind(), scale) + 1e-9, "s poza pasem wody stojącej" + at);
+							"ombrotrophic peat outside a kettle bog" + at);
+					assertTrue(w.s() <= ringOf(w.standingWaterKind(), scale) + 1e-9, "s outside the standing water belt" + at);
 				} else {
 					assertTrue(w.s() == Double.POSITIVE_INFINITY && w.shoreLevel() == ColumnSample.NO_WATER,
-							"brak wody stojącej" + at);
+							"no standing water" + at);
 				}
 				if (c.waterKind().isLake()) {
-					assertTrue(w.s() <= 0, "jezioro bez ujemnej odległości od brzegu" + at);
+					assertTrue(w.s() <= 0, "lake without a negative distance from the shore" + at);
 				}
 				if (c.waterKind() == WaterKind.RIVER) {
-					assertTrue(w.channelDist() <= 0, "d > 0 w korycie" + at);
+					assertTrue(w.channelDist() <= 0, "d > 0 in the channel" + at);
 				}
 				ColumnSample.Region reg = c.region();
 				assertTrue(reg.oceanicity() >= 0 && reg.oceanicity() <= 1 && reg.mountainInfluence() >= 0
-						&& reg.mountainInfluence() <= 1, "pola regionalne" + at);
+						&& reg.mountainInfluence() <= 1, "regional fields" + at);
 				assertTrue(Double.isFinite(t.sBar()) && t.slope() >= 0 && t.slope() < 90
-						&& (Double.isNaN(t.aspect()) || t.aspect() >= 0 && t.aspect() < 360), "siatka terenu" + at);
+						&& (Double.isNaN(t.aspect()) || t.aspect() >= 0 && t.aspect() < 360), "terrain grid" + at);
 			}
 			System.out.println(String.format(Locale.ROOT,
-					"[pola siedlisk] %s: %d kolumn, przy ciekach %d, w dnie %d, przy wodzie stojącej %d, z fliszem %d, formy %s",
+					"[habitat fields] %s: %d columns, near watercourses %d, on the floor %d, near standing water %d, with flysch %d, landforms %s",
 					scale.id(), points.size(), rivers, floors, standing, flysch, seen));
-			assertTrue(rivers > 1_000 && floors > 500 && standing > 200 && flysch > 100, "za mało kolumn przy wodach lub w górach");
+			assertTrue(rivers > 1_000 && floors > 500 && standing > 200 && flysch > 100, "too few columns near water or in the mountains");
 		}
 	}
 
-	/** Pas wody stojącej (m), w którym {@link ColumnSample.Waters#s()} jest skończone (javadoc pola). */
+	/** Standing water belt (m) in which {@link ColumnSample.Waters#s()} is finite (see the field javadoc). */
 	private static double ringOf(ColumnSample.StandingWaterKind kind, LandscapeScale scale) {
 		double k = scale.local();
 		return switch (kind) {
@@ -169,8 +169,8 @@ class LandscapeModelTest {
 	}
 
 	/**
-	 * Pierścień wokół jeziora bezodpływowego i jeziora rynnowego sięga 150 m·k za brzeg (strefa olsu,
-	 * §4.4 planu M2): idąc od jeziora na zewnątrz, s rośnie aż do pasa, a dalej jest +∞.
+	 * The ring around a sink lake and a tunnel valley lake reaches 150 m·k beyond the shore (alder carr zone,
+	 * §4.4 of the M2 plan): going outwards from the lake, s grows up to the belt and is +∞ beyond it.
 	 */
 	@Test
 	void lakeRingsReachAlderCarrBand() {
@@ -181,7 +181,7 @@ class LandscapeModelTest {
 					ColumnSample.StandingWaterKind.SINK_LAKE, ColumnSample.StandingWaterKind.TUNNEL_VALLEY_LAKE}) {
 				double[] site = RiverNetworkTest.find(m, c -> c.waterKind() == WaterKind.LAKE
 						&& c.waters().standingWaterKind() == kind, real ? 900 : 60);
-				assertTrue(site != null, "brak jeziora " + kind + " w skali " + scale.id());
+				assertTrue(site != null, "no lake " + kind + " at scale " + scale.id());
 				double ring = ringOf(kind, scale);
 				double best = 0;
 				for (int a = 0; a < 16; a++) {
@@ -197,14 +197,14 @@ class LandscapeModelTest {
 					}
 					best = Math.max(best, far);
 				}
-				System.out.println(String.format(Locale.ROOT, "[pierścień jeziora] %s %s: największe s %.1f m (pas %.0f m)",
+				System.out.println(String.format(Locale.ROOT, "[lake ring] %s %s: largest s %.1f m (belt %.0f m)",
 						scale.id(), kind, best, ring));
-				assertTrue(best > ring - 3 && best <= ring + 1e-9, "pierścień " + kind + ": największe s " + best);
+				assertTrue(best > ring - 3 && best <= ring + 1e-9, "ring " + kind + ": largest s " + best);
 			}
 		}
 	}
 
-	/** Piaszczystość to kwantyl szumu: rozkład bliski jednostajnemu na [0, 1]. */
+	/** Sandiness is a noise quantile: its distribution is close to uniform on [0, 1]. */
 	@Test
 	void sandinessIsUniform() {
 		LandscapeModel m = new LandscapeModel(SEED, 1.0);
@@ -216,11 +216,11 @@ class LandscapeModelTest {
 				v[n++] = c.terrain().sandiness();
 			}
 		}
-		assertTrue(n > 5_000, "za mało lądu: " + n);
+		assertTrue(n > 5_000, "too little land: " + n);
 		v = Arrays.copyOf(v, n);
 		Arrays.sort(v);
 		for (int q = 1; q < 10; q++) {
-			assertEquals(q / 10.0, v[q * v.length / 10], 0.05, "kwantyl " + q + "/10 piaszczystości");
+			assertEquals(q / 10.0, v[q * v.length / 10], 0.05, "sandiness quantile " + q + "/10");
 		}
 	}
 
@@ -237,12 +237,12 @@ class LandscapeModelTest {
 				for (int dx = -1; dx <= 1; dx++) {
 					for (int dz = -1; dz <= 1; dz++) {
 						assertFalse(m.regionType(cx + dx, cz + dz).isLowland(),
-								"Beskidy w komórce " + cx + "," + cz + " graniczą z niziną " + m.regionType(cx + dx, cz + dz) + " w " + (cx + dx) + "," + (cz + dz));
+								"Beskids in cell " + cx + "," + cz + " border the lowland " + m.regionType(cx + dx, cz + dz) + " at " + (cx + dx) + "," + (cz + dz));
 					}
 				}
 			}
 		}
-		assertTrue(beskids > 0, "brak Beskidów w obszarze testowym ok. 5000 × 5000 km");
+		assertTrue(beskids > 0, "no Beskids in the test area of about 5000 × 5000 km");
 	}
 
 	@Test
@@ -258,10 +258,10 @@ class LandscapeModelTest {
 		for (LandscapeType t : LandscapeType.values()) {
 			sb.append(t).append('=').append(count[t.ordinal()]).append(' ');
 		}
-		System.out.println("Rozkład makroregionów: " + sb);
+		System.out.println("Macroregion distribution: " + sb);
 		for (LandscapeType t : LandscapeType.values()) {
 			if (t.isRegionType()) {
-				assertTrue(count[t.ordinal()] > 0, "nie wystąpił typ " + t);
+				assertTrue(count[t.ordinal()] > 0, "missing type " + t);
 			}
 		}
 	}
@@ -275,13 +275,13 @@ class LandscapeModelTest {
 			ColumnSample s = m.sample(x, z);
 			double max = s.type().isLowland() ? 420 : 1_800;
 			assertTrue(s.surface() > -120 && s.surface() < max,
-					"wysokość poza zakresem: " + s + " w " + x + "," + z);
+					"elevation out of range: " + s + " at " + x + "," + z);
 		}
 	}
 
 	/**
-	 * Woda stojąca musi być otoczona lądem wyższym od lustra albo wodą o tym samym poziomie.
-	 * Dla rzek dopuszczamy stopień 1 m (znane uproszczenie modelu M1).
+	 * Standing water must be surrounded by land higher than its surface or by water at the same level.
+	 * For rivers a 1 m step is allowed (a known simplification of the M1 model).
 	 */
 	@Test
 	void waterIsAlwaysContained() {
@@ -314,10 +314,10 @@ class LandscapeModelTest {
 		for (LandscapeType t : LandscapeType.values()) {
 			sb.append(t).append('=').append(count[t.ordinal()]).append(' ');
 			if (t.isRegionType()) {
-				assertTrue(count[t.ordinal()] > 0, "w promieniu ok. 85 km brak typu " + t);
+				assertTrue(count[t.ordinal()] > 0, "within a radius of about 85 km, missing type " + t);
 			}
 		}
-		System.out.println("Rozkład (skala rozgrywki, 170 x 170 km): " + sb);
+		System.out.println("Distribution (gameplay scale, 170 x 170 km): " + sb);
 	}
 
 	private static void assertWaterContained(LandscapeModel m) {
@@ -354,17 +354,17 @@ class LandscapeModelTest {
 						ColumnSample o = g[j + d[1]][i + d[0]];
 						boolean ok;
 						if (o.hasWater()) {
-							// Między kolumnami koryta dozwolone bystrza i kaskady (woda spada do wody).
+							// Rapids and cascades are allowed between channel columns (water falls into water).
 							ok = o.waterLevel() == c.waterLevel()
 									|| c.waterKind() == WaterKind.RIVER && o.waterKind() == WaterKind.RIVER;
 						} else {
 							ok = o.surfaceMeters() >= c.waterLevel();
 						}
-						assertTrue(ok, "woda bez brzegu w " + (x0 + i) + "," + (z0 + j) + ": " + c + " obok " + o);
+						assertTrue(ok, "water without a bank at " + (x0 + i) + "," + (z0 + j) + ": " + c + " next to " + o);
 					}
 				}
 			}
 		}
-		assertTrue(waterColumns > 100, "za mało wody w obszarach testowych: " + waterColumns);
+		assertTrue(waterColumns > 100, "too little water in the test areas: " + waterColumns);
 	}
 }

@@ -3,56 +3,56 @@ package pl.polishforests.worldgen.landscape;
 import java.util.List;
 
 /**
- * Formy terenu rozpoznawane przez {@link LandscapeModel#describe(double, double)}. Część z nich
- * ({@link #FROM_SAMPLE}) rozpoznaje już tania {@link LandscapeModel#sample} i zapisuje jako bity w
+ * Landforms recognised by {@link LandscapeModel#describe(double, double)}. Some of them
+ * ({@link #FROM_SAMPLE}) are already recognised by the cheap {@link LandscapeModel#sample} and stored as bits in
  * {@link ColumnSample.Terrain#landformBits()}.
  */
 public enum Landform {
-	/** Wydmy na sandrze, co najmniej ok. 4 m wysokości. */
+	/** Dunes on an outwash plain, at least about 4 m high. */
 	INLAND_DUNES,
-	/** Wał moreny czołowej, co najmniej ok. 25 m nad wysoczyzną. */
+	/** End moraine ridge, at least about 25 m above the plateau. */
 	END_MORAINE,
-	/** Rynna polodowcowa, także jej suche odcinki. */
+	/** Glacial tunnel valley, including its dry sections. */
 	TUNNEL_VALLEY,
 	TUNNEL_VALLEY_LAKE,
 	KETTLE_POND,
 	KETTLE_BOG,
 	RIVER,
-	/** Dno doliny rzecznej (taras zalewowy z madami). */
+	/** River valley floor (floodplain terrace with alluvial soils). */
 	VALLEY_FLOOR,
-	/** Zbocze doliny wielkiej rzeki. */
+	/** Valley side of a large river. */
 	VALLEY_SLOPE,
-	/** Grzbiet górski lub pogórza. */
+	/** Mountain or foothill ridge. */
 	RIDGE,
-	/** Szczyt: lokalne maksimum wysokości w górach lub na pogórzu. */
+	/** Summit: a local height maximum in the mountains or foothills. */
 	SUMMIT,
-	/** Przełęcz: obniżenie grzbietu w miejscu doliny poprzecznej. */
+	/** Mountain pass: a dip in the ridge where a transverse valley crosses it. */
 	MOUNTAIN_PASS,
-	/** Dno doliny górskiej. */
+	/** Mountain valley floor. */
 	MOUNTAIN_VALLEY,
-	/** Regiel dolny Beskidów, poniżej nominalnej granicy z {@code habitat.Pietra}. */
+	/** Lower montane belt of the Beskids, below the nominal boundary from {@code habitat.AltitudinalBelts}. */
 	LOWER_MONTANE,
-	/** Regiel górny Beskidów, od nominalnej granicy z {@code habitat.Pietra}. */
+	/** Upper montane belt of the Beskids, from the nominal boundary from {@code habitat.AltitudinalBelts}. */
 	UPPER_MONTANE,
-	/** Potok (ciek najniższego rzędu). */
+	/** Stream (lowest-order watercourse). */
 	STREAM,
-	/** Strefa źródłowa cieku. */
+	/** Headwater zone of a watercourse. */
 	HEADWATERS,
-	/** Starorzecze. */
+	/** Oxbow lake. */
 	OXBOW_LAKE,
-	/** Ujście rzeki do morza. */
+	/** River mouth at the sea. */
 	RIVER_MOUTH,
 	BEACH,
 	CLIFF,
 	COASTAL_DUNES,
-	/** Zalew lub jezioro przybrzeżne za mierzeją. */
+	/** Coastal lagoon or coastal lake behind a spit. */
 	LAGOON;
 
-	/** Formy rozpoznawane w {@link LandscapeModel#sample} (bez dodatkowych próbek), w stałej kolejności. */
+	/** Landforms recognised in {@link LandscapeModel#sample} (without extra samples), in a fixed order. */
 	public static final List<Landform> FROM_SAMPLE = List.of(INLAND_DUNES, END_MORAINE, RIDGE, MOUNTAIN_VALLEY, BEACH,
 			COASTAL_DUNES, CLIFF, HEADWATERS);
 
-	/** Bit formy w {@link ColumnSample.Terrain#landformBits()} (form jest mniej niż 32). */
+	/** Bit of the landform in {@link ColumnSample.Terrain#landformBits()} (there are fewer than 32 landforms). */
 	public int bit() {
 		return 1 << ordinal();
 	}

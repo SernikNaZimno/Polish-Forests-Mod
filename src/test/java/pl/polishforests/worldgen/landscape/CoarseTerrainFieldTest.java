@@ -10,8 +10,8 @@ import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 
 /**
- * Zgrubna siatka terenu (M2, krok S3; docs/03-m2-biomy.md §3.2): sBar, nachylenie i ekspozycja z węzłów
- * {@code landElevation} co 32 m·k, kafle w {@link DirectCache}.
+ * Coarse terrain grid (M2, step S3; docs/03-m2-biomy.md §3.2): sBar, slope and aspect from {@code landElevation}
+ * nodes every 32 m·k, tiles in {@link DirectCache}.
  */
 class CoarseTerrainFieldTest {
 	private static final long SEED = 20260927L;
@@ -19,7 +19,7 @@ class CoarseTerrainFieldTest {
 	private static final LandscapeType[] TYPES = {LandscapeType.OUTWASH_PLAIN, LandscapeType.MORAINE_PLATEAU,
 			LandscapeType.OLD_GLACIAL_PLAIN, LandscapeType.FOOTHILLS, LandscapeType.BESKIDS};
 
-	/** Środek obszaru danego typu (Beskidy: łata „beskidy” ze złotego testu dla tego ziarna). */
+	/** Center of an area of the given type (Beskids: the "beskids" patch from the golden test for this seed). */
 	private static double[] site(LandscapeModel m, LandscapeType type) {
 		if (type == LandscapeType.BESKIDS) {
 			return m.scale() == LandscapeScale.REALISTIC ? new double[] {154_834, 1_058_738} : new double[] {27_609, 3_254};
@@ -27,7 +27,7 @@ class CoarseTerrainFieldTest {
 		return LandscapePreview.find(m, type, false);
 	}
 
-	/** Deterministyczne punkty w kwadracie o boku 4 km wokół miejsca, poza węzłami siatki. */
+	/** Deterministic points in a square with a side of 4 km around the site, off the grid nodes. */
 	private static double[][] points(double[] site, int n, long salt) {
 		double[][] out = new double[n][];
 		long h = salt;
@@ -41,14 +41,14 @@ class CoarseTerrainFieldTest {
 		return out;
 	}
 
-	/** Model wysokości dla siatki: {@code sample().teren().rawSurface()} to dokładnie {@code landElevation}. */
+	/** Elevation model of the grid: {@code sample().terrain().rawSurface()} is exactly {@code landElevation}. */
 	@Test
 	void nodeValuesComeFromLandElevation() {
 		for (LandscapeScale scale : SCALES) {
 			LandscapeModel m = new LandscapeModel(SEED, scale, 1.0);
 			CoarseTerrainField c = m.coarseTerrain();
 			double g = c.spacing();
-			assertEquals(32.0 * scale.local(), g, 0.0, "odstęp węzłów");
+			assertEquals(32.0 * scale.local(), g, 0.0, "node spacing");
 			double[] site = site(m, LandscapeType.FOOTHILLS);
 			for (int i = 0; i < 200; i++) {
 				long ix = Math.round(site[0] / g) + i * 7 - 700;
@@ -64,7 +64,7 @@ class CoarseTerrainFieldTest {
 				double gx = (m.landElevation(x + g, z) - m.landElevation(x - g, z)) / (2 * g);
 				double gz = (m.landElevation(x, z + g) - m.landElevation(x, z - g)) / (2 * g);
 				CoarseTerrainField.CoarseSample r = c.sample(x, z);
-				String at = " w węźle " + ix + "," + iz + " (" + scale.id() + ")";
+				String at = " at node " + ix + "," + iz + " (" + scale.id() + ")";
 				assertEquals(sum / 9, r.sBar(), 1e-3, "sBar" + at);
 				assertEquals(Math.toDegrees(Math.atan(Math.hypot(gx, gz))), r.slope(), 1e-3, "slope" + at);
 				if (Math.hypot(gx, gz) > 1e-3) {
@@ -76,10 +76,10 @@ class CoarseTerrainFieldTest {
 	}
 
 	/**
-	 * Nachylenie w dowolnym punkcie zgadza się z różnicami centralnymi {@code landElevation} o kroku równym
-	 * odstępowi węzłów z dokładnością ±10%: w każdym typie krajobrazu i obu skalach co najmniej 85% punktów
-	 * o nachyleniu ≥ 1° mieści się w ±10%, a mediana i średnia stosunku w ±5%. Ekspozycja odbiega od kierunku
-	 * spadku z tych różnic o najwyżej 10° w 90% punktów.
+	 * The slope at any point agrees with central differences of {@code landElevation} with a step equal to the
+	 * node spacing to within ±10%: in every landscape type and in both scales at least 85% of the points with a
+	 * slope ≥ 1° are within ±10%, and the median and mean of the ratio within ±5%. The aspect deviates from the
+	 * downhill direction given by these differences by at most 10° at 90% of the points.
 	 */
 	@Test
 	void slopeMatchesFiniteDifferences() {
@@ -110,7 +110,7 @@ class CoarseTerrainFieldTest {
 				}
 				int n = ratio.size();
 				if (n < 300) {
-					System.out.println(String.format(Locale.ROOT, "[siatka terenu] %s %s: tylko %d punktów ≥ 1°, pomijam",
+					System.out.println(String.format(Locale.ROOT, "[terrain grid] %s %s: only %d points ≥ 1°, skipping",
 							scale.id(), type, n));
 					continue;
 				}
@@ -122,21 +122,21 @@ class CoarseTerrainFieldTest {
 				double median = ratio.get(n / 2);
 				double asp90 = dAsp.get(9 * n / 10);
 				System.out.println(String.format(Locale.ROOT,
-						"[siatka terenu] %s %s: %d punktów ≥ 1°, w ±10%%: %.3f, stosunek mediana %.3f, średnia %.3f,"
-								+ " 5–95%%: %.3f–%.3f; błąd ekspozycji 50/90%%: %.1f° / %.1f°",
+						"[terrain grid] %s %s: %d points ≥ 1°, within ±10%%: %.3f, ratio median %.3f, mean %.3f,"
+								+ " 5–95%%: %.3f–%.3f; aspect error 50/90%%: %.1f° / %.1f°",
 						scale.id(), type, n, within, median, mean, ratio.get(n / 20), ratio.get(19 * n / 20),
 						dAsp.get(n / 2), asp90));
 				String at = " (" + scale.id() + ", " + type + ")";
-				assertTrue(within >= 0.85, "w ±10% tylko " + within + at);
+				assertTrue(within >= 0.85, "within ±10% only " + within + at);
 				assertTrue(Math.abs(median - 1) <= 0.05 && Math.abs(mean - 1) <= 0.05,
-						"stosunek nachyleń: mediana " + median + ", średnia " + mean + at);
-				assertTrue(asp90 <= 10, "błąd ekspozycji 90%: " + asp90 + at);
+						"slope ratio: median " + median + ", mean " + mean + at);
+				assertTrue(asp90 <= 10, "aspect error 90%: " + asp90 + at);
 			}
-			assertTrue(typesChecked >= 3, "za mało typów z nachyleniami ≥ 1° w skali " + scale.id());
+			assertTrue(typesChecked >= 3, "too few types with slopes ≥ 1° at scale " + scale.id());
 		}
 	}
 
-	/** Ekspozycja to kierunek spadku: krok o odstęp węzłów w jej stronę schodzi w dół (azymut od −Z ku +X). */
+	/** The aspect is the downhill direction: a step of one node spacing towards it goes down (azimuth from −Z towards +X). */
 	@Test
 	void aspectPointsDownhill() {
 		for (LandscapeScale scale : SCALES) {
@@ -153,19 +153,19 @@ class CoarseTerrainFieldTest {
 					}
 					double a = Math.toRadians(r.aspect());
 					n++;
-					// Wschód = +X, północ = −Z.
+					// East = +X, north = −Z.
 					if (m.landElevation(p[0] + g * Math.sin(a), p[1] - g * Math.cos(a)) < m.landElevation(p[0], p[1])) {
 						down++;
 					}
 				}
 			}
-			System.out.println(String.format(Locale.ROOT, "[siatka terenu] %s: krok w stronę ekspozycji w dół w %d z %d",
+			System.out.println(String.format(Locale.ROOT, "[terrain grid] %s: a step towards the aspect goes down in %d of %d",
 					scale.id(), down, n));
-			assertTrue(n > 500 && down >= 0.95 * n, "ekspozycja nie wskazuje spadku: " + down + " z " + n);
+			assertTrue(n > 500 && down >= 0.95 * n, "aspect does not point downhill: " + down + " of " + n);
 		}
 	}
 
-	/** Szybki atan2 zgadza się z {@link Math#atan2} (azymut i nachylenie). */
+	/** The fast atan2 agrees with {@link Math#atan2} (azimuth and slope). */
 	@Test
 	void fastAtanMatchesMath() {
 		long h = 1;
@@ -178,7 +178,7 @@ class CoarseTerrainFieldTest {
 			double ref = Math.toDegrees(Math.atan2(e, nn));
 			ref = ref < 0 ? ref + 360 : ref;
 			double az = CoarseTerrainField.azimuth(e, nn);
-			assertTrue(az >= 0 && az < 360, "azymut poza [0, 360): " + az);
+			assertTrue(az >= 0 && az < 360, "azimuth outside [0, 360): " + az);
 			worst = Math.max(worst, angle(ref, az));
 			double t = Math.abs(e);
 			worst = Math.max(worst, Math.abs(Math.toDegrees(Math.atan(Math.min(t, 1)))
@@ -186,20 +186,20 @@ class CoarseTerrainFieldTest {
 		}
 		for (double[] v : new double[][] {{0, 1}, {1, 0}, {0, -1}, {-1, 0}, {1, 1}, {-1, -1}}) {
 			double ref = (Math.toDegrees(Math.atan2(v[0], v[1])) + 360) % 360;
-			assertEquals(ref, CoarseTerrainField.azimuth(v[0], v[1]), 1e-5, "azymut " + v[0] + "," + v[1]);
+			assertEquals(ref, CoarseTerrainField.azimuth(v[0], v[1]), 1e-5, "azimuth " + v[0] + "," + v[1]);
 		}
-		// Kierunek tuż na zachód od północy: 360 − (prawie 0) zaokrągla się do 360, a zakres to [0, 360).
+		// A direction just west of north: 360 − (almost 0) rounds to 360, while the range is [0, 360).
 		for (double[] v : new double[][] {{-1e-17, 1}, {-Double.MIN_VALUE, 1}, {-1e-300, 1e-290}, {-0.0, 1}}) {
 			double az = CoarseTerrainField.azimuth(v[0], v[1]);
-			assertTrue(az >= 0 && az < 360, "azymut poza [0, 360) dla " + v[0] + "," + v[1] + ": " + az);
-			assertEquals(0, angle(0, az), 1e-6, "azymut " + v[0] + "," + v[1]);
+			assertTrue(az >= 0 && az < 360, "azimuth outside [0, 360) for " + v[0] + "," + v[1] + ": " + az);
+			assertEquals(0, angle(0, az), 1e-6, "azimuth " + v[0] + "," + v[1]);
 		}
-		assertTrue(worst < 1e-5, "błąd szybkiego atan: " + worst + "°");
+		assertTrue(worst < 1e-5, "fast atan error: " + worst + "°");
 	}
 
 	/**
-	 * Wynik nie zależy od stanu pamięci ani od wątków: siatka z 4 miejscami (ciągłe wypychanie kafli) pytana
-	 * równolegle w innej kolejności daje te same wartości co siatka domyślna pytana po kolei.
+	 * The result depends neither on the cache state nor on threads: a grid with 4 slots (constant tile eviction)
+	 * queried in parallel in a different order gives the same values as the default grid queried sequentially.
 	 */
 	@Test
 	void resultsDoNotDependOnCacheOrThreads() {
@@ -219,14 +219,14 @@ class CoarseTerrainFieldTest {
 				par[i] = tiny.sample(pts[i][0], pts[i][1]);
 			});
 			for (int i = 0; i < pts.length; i++) {
-				assertEquals(ref[i], par[i], "punkt " + pts[i][0] + "," + pts[i][1]);
+				assertEquals(ref[i], par[i], "point " + pts[i][0] + "," + pts[i][1]);
 			}
 		}
 	}
 
 	/**
-	 * Pierwsze zapytanie w kaflu spoza pamięci liczy samo oczko (4 × 4 węzły surowe), drugie cały kafel; oba
-	 * dają ten sam wynik co do bitu. Punkty są w osobnych kaflach, więc każdy pierwszy odczyt idzie drogą oczka.
+	 * The first query in a tile that is not cached computes only its cell (4 × 4 raw nodes), the second the whole
+	 * tile; both give a bit-identical result. The points lie in separate tiles, so every first read takes the cell path.
 	 */
 	@Test
 	void sparseCellMatchesTile() {
@@ -240,19 +240,19 @@ class CoarseTerrainFieldTest {
 					continue;
 				}
 				for (int i = 0; i < 40; i++) {
-					// Co trzeci kafel w rzędzie, w różnych miejscach oczka (także na węźle i krawędzi oczka).
+					// Every third tile in a row, at various places in the cell (also on a node and on the cell edge).
 					double x = site[0] + (3 * i - 60) * tile + (i % 4) * 0.25 * c.spacing() + (i % 3 == 0 ? 0 : 0.37);
 					double z = site[1] + (i % 5) * 0.2 * c.spacing() + 0.11 * i;
 					CoarseTerrainField.CoarseSample sparse = c.sample(x, z);
 					CoarseTerrainField.CoarseSample tiled = c.sample(x, z);
-					assertEquals(sparse, tiled, "oczko a kafel w " + x + "," + z + " (" + scale.id() + ", " + type + ")");
-					assertEquals(tiled, m.coarseTerrain().sample(x, z), "inna siatka w " + x + "," + z);
+					assertEquals(sparse, tiled, "cell vs tile at " + x + "," + z + " (" + scale.id() + ", " + type + ")");
+					assertEquals(tiled, m.coarseTerrain().sample(x, z), "different grid at " + x + "," + z);
 				}
 			}
 		}
 	}
 
-	/** Pamięć kafli: kafel wraca z pamięci, a wypchnięty liczy się od nowa z tą samą wartością. */
+	/** Tile cache: a tile comes back from the cache, and an evicted one is recomputed with the same value. */
 	@Test
 	void directCacheReturnsSameTiles() {
 		int[] builds = new int[1];
@@ -261,7 +261,7 @@ class CoarseTerrainFieldTest {
 			return new long[] {tx, tz};
 		});
 		long[] a = cache.get(3, -7);
-		assertTrue(a == cache.get(3, -7), "kafel nie wrócił z pamięci");
+		assertTrue(a == cache.get(3, -7), "tile did not come back from the cache");
 		assertEquals(1, builds[0]);
 		for (long i = 0; i < 1_000; i++) {
 			long[] t = cache.get(i, -i);
@@ -271,19 +271,19 @@ class CoarseTerrainFieldTest {
 		long[] b = cache.get(3, -7);
 		assertEquals(3, b[0]);
 		assertEquals(-7, b[1]);
-		assertTrue(b == cache.peek(3, -7), "peek nie zwraca kafla z pamięci");
+		assertTrue(b == cache.peek(3, -7), "peek does not return the cached tile");
 		int before = builds[0];
-		assertEquals(null, cache.peek(123_456, 789), "peek kafla spoza pamięci");
-		assertEquals(before, builds[0], "peek liczy kafel");
+		assertEquals(null, cache.peek(123_456, 789), "peek of a tile that is not cached");
+		assertEquals(before, builds[0], "peek computes the tile");
 	}
 
-	/** Azymut kierunku spadku (−gradient) od północy (−Z) zgodnie z ruchem wskazówek zegara, w stopniach. */
+	/** Azimuth of the downhill direction (−gradient) from north (−Z), clockwise, in degrees. */
 	private static double azimuthOf(double gx, double gz) {
 		double a = Math.toDegrees(Math.atan2(-gx, gz));
 		return a < 0 ? a + 360 : a;
 	}
 
-	/** Różnica kątów w stopniach, [0, 180]. */
+	/** Difference of angles in degrees, [0, 180]. */
 	private static double angle(double a, double b) {
 		double d = Math.abs(a - b) % 360;
 		return Math.min(d, 360 - d);

@@ -9,11 +9,11 @@ import org.jspecify.annotations.Nullable;
 import pl.polishforests.PolishForests;
 import pl.polishforests.worldgen.landscape.LandscapeScale;
 
-/** Skala świata "Polska": pozioma, pionowa i odpowiadający jej typ wymiaru. */
+/** Scale of the "Poland" world: horizontal, vertical and the matching dimension type. */
 public enum PolandScale implements StringRepresentable {
-	/** Rzeczywiste rozmiary i wysokości (decyzje A3 i A4). */
+	/** Real sizes and heights (decisions A3 and A4). */
 	REALISTIC("realistic", LandscapeScale.REALISTIC, VerticalScale.REAL, "poland"),
-	/** Krajobrazy ok. 2 razy większe od biomów wanilijnych, wysokości obniżone proporcjonalnie. */
+	/** Landscapes about 2 times larger than vanilla biomes, heights reduced proportionally. */
 	GAMEPLAY("gameplay", LandscapeScale.GAMEPLAY, VerticalScale.GAMEPLAY, "poland_gameplay");
 
 	public static final Codec<PolandScale> CODEC = StringRepresentable.fromEnum(PolandScale::values);
@@ -47,7 +47,7 @@ public enum PolandScale implements StringRepresentable {
 		return dimensionType;
 	}
 
-	/** Skala, której typem wymiaru jest {@code type}, albo null dla innych typów wymiaru. */
+	/** The scale whose dimension type is {@code type}, or null for other dimension types. */
 	public static @Nullable PolandScale byDimensionType(ResourceKey<DimensionType> type) {
 		for (PolandScale scale : values()) {
 			if (scale.dimensionType.equals(type)) {

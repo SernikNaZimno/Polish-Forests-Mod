@@ -4,16 +4,16 @@ import net.minecraft.world.level.biome.Biome;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Interfejs doklejany do {@link Biome} przez {@code BiomeKlimatMixin}: pole z profilem klimatu
- * świata "Polska". Obiekty {@code Biome} powstają od nowa przy każdym wczytaniu świata, więc profil
- * nie przechodzi do innych światów.
+ * Interface mixed into {@link Biome} by {@code BiomeClimateMixin}: a field holding the climate profile
+ * of the "Poland" world. {@code Biome} objects are created anew every time a world is loaded, so the
+ * profile does not carry over to other worlds.
  */
 public interface BiomeClimateAccess {
 	@Nullable BiomeClimate polishforests$climate();
 
 	void polishforests$setClimate(@Nullable BiomeClimate climate);
 
-	/** Profil klimatu biomu albo null, gdy biom liczy temperaturę po wanilijnemu. */
+	/** Climate profile of the biome, or null when the biome computes its temperature the vanilla way. */
 	static @Nullable BiomeClimate climate(Biome biome) {
 		return ((BiomeClimateAccess) (Object) biome).polishforests$climate();
 	}

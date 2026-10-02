@@ -4,13 +4,13 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
 /**
- * Ustawienia świata "Polska" zapisywane w danych wymiaru.
+ * Settings of the "Poland" world, stored in the dimension data.
  *
- * @param scale              skala świata: realistyczna albo przyjazna rozgrywce
- * @param regionScale        mnożnik rozmiaru makroregionów (1,0 = rozmiar domyślny dla skali, decyzja A8)
- * @param agriculture        tryb "dzisiejsza Polska" z polami; false = roślinność naturalna (decyzja A5)
- * @param managedForestShare udział lasów gospodarczych, domyślnie 0,85 (decyzja D9)
- * @param alienSpecies       gatunki obce i inwazyjne w realistycznych proporcjach (decyzje C4 i D10)
+ * @param scale              world scale: realistic or gameplay-friendly
+ * @param regionScale        size multiplier for macroregions (1.0 = default size for the scale, decision A8)
+ * @param agriculture        "present-day Poland" mode with fields; false = natural vegetation (decision A5)
+ * @param managedForestShare share of managed forests, 0.85 by default (decision D9)
+ * @param alienSpecies       alien and invasive species in realistic proportions (decisions C4 and D10)
  */
 public record PolandSettings(PolandScale scale, double regionScale, boolean agriculture, double managedForestShare,
 		boolean alienSpecies) {

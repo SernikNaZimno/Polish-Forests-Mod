@@ -8,9 +8,9 @@ import pl.polishforests.climate.BiomeClimateAccess;
 import pl.polishforests.climate.BiomeClimate;
 
 /**
- * Dokleja do {@link Biome} pole z profilem klimatu świata "Polska" ({@link BiomeClimateAccess}).
- * Pole jest ulotne, bo profil przypina wątek serwera albo klienta, a czytają go wątki generacji
- * i renderu.
+ * Adds to {@link Biome} a field holding the climate profile of the "Poland" world ({@link BiomeClimateAccess}).
+ * The field is volatile, because the profile is attached by the server or client thread and read by the
+ * generation and render threads.
  */
 @Mixin(Biome.class)
 abstract class BiomeClimateMixin implements BiomeClimateAccess {

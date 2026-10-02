@@ -1,48 +1,48 @@
 package pl.polishforests.worldgen.landscape;
 
 /**
- * Pola regionalne: oceaniczność O i podgórskość P, wariant V3 z raportu ekologii (docs/03-m2-biomy.md §3.2, §9).
+ * Regional fields: oceanicity O and mountain influence P, variant V3 from the ecology report (docs/03-m2-biomy.md §3.2, §9).
  *
- * <p>O = clamp(0,15 + 0,45·N + 0,25·Wz + 0,15·S; 0; 1), gdzie
+ * <p>O = clamp(0.15 + 0.45·N + 0.25·Wz + 0.15·S, 0, 1), where
  * <ul>
- * <li>N – prowincje klimatyczne: smoothstep kwantyla szumu o fali 900 km·zs (kwantyl ma rozkład jednostajny
- * na [0, 1], smoothstep zagęszcza wartości przy 0 i 1);</li>
- * <li>Wz – udział morza w 8 punktach na zachód (−X, strona zachodu słońca) co 60 km·zs, z wagami 1/k
- * (wiatry zachodnie); morze to {@link LandscapeModel#seaField} &lt; 0 z miękką granicą ±0,02;</li>
- * <li>S = 1 − smoothstep(0; 150 km·zs; {@link LandscapeModel#coastDistance}) – bliskość morza.</li>
+ * <li>N – climate provinces: smoothstep of the quantile of a noise with a 900 km·zs wavelength (the quantile is uniformly
+ * distributed on [0, 1], smoothstep concentrates the values near 0 and 1);</li>
+ * <li>Wz – share of sea at 8 points to the west (−X, the sunset side) every 60 km·zs, with weights 1/k
+ * (westerly winds); sea is {@link LandscapeModel#seaField} &lt; 0 with a soft boundary of ±0.02;</li>
+ * <li>S = 1 − smoothstep(0, 150 km·zs, {@link LandscapeModel#coastDistance}) – proximity of the sea.</li>
  * </ul>
- * P to średnia z okna 5 × 5 węzłów (ok. 80 km·zs) wartości smoothstep(0,465; 0,915; liniowe pole pasm), gdzie
- * liniowe pole to {@link LandscapeModel#mountainLinear}: pole pasm górskich bez sześcianu z
- * {@link LandscapeModel#mountainField}, więc sięga dalej od osi pasma niż góry i pogórza. Progi dają granicę
- * P = 0,5 w medianie ok. 220 km·zs od osi pasma (linia zerowa {@link LandscapeModel#mountainRaw}; 10 ziaren
- * razem, mediany ziaren 180–280 km·zs; plan: 150–250 km·zs). Uśrednianie ogranicza spadek P do
- * 1/80 na km·zs: bez niego maski pasm (koniec łańcucha, odsunięcie od morza) dawały do 0,05 na km·zs.
+ * P is the mean over a window of 5 × 5 nodes (about 80 km·zs) of smoothstep(0.465, 0.915, linear range field), where
+ * the linear field is {@link LandscapeModel#mountainLinear}: the mountain range field without the cube from
+ * {@link LandscapeModel#mountainField}, so it reaches further from the range axis than the mountains and foothills. The thresholds put
+ * the P = 0.5 boundary at a median of about 220 km·zs from the range axis (zero line of {@link LandscapeModel#mountainRaw}; 10 seeds
+ * together, per-seed medians 180–280 km·zs; plan: 150–250 km·zs). Averaging limits the drop of P to
+ * 1/80 per km·zs: without it the range masks (end of the chain, offset from the sea) gave up to 0.05 per km·zs.
  *
- * <p>Węzły leżą co 16 km·zs (w skali rozgrywki ok. 350 m), wartość w kolumnie to interpolacja dwuliniowa.
- * Kafel ma 8 × 8 oczek (9 × 9 węzłów) i jest niezmienny; węzeł kosztuje kilka µs, a kafel w skali rzeczywistej
- * obejmuje 128 km. Wynik nie zależy od kolejności zapytań ani od stanu pamięci.
+ * <p>Nodes lie every 16 km·zs (about 350 m at gameplay scale); the value in a column is a bilinear interpolation.
+ * A tile has 8 × 8 cells (9 × 9 nodes) and is immutable; a node costs a few µs, and a tile at realistic scale
+ * covers 128 km. The result depends neither on query order nor on the cache state.
  */
 final class RegionalField {
-	/** Oczka na bok kafla. */
+	/** Cells per tile side. */
 	static final int TILE = 8;
 	private static final int N = TILE + 1;
-	/** Liczba miejsc w pamięci kafli. */
+	/** Number of slots in the tile cache. */
 	static final int CACHE_SLOTS = 1024;
-	/** Odstęp węzłów przy zs = 1 (m). */
+	/** Node spacing at zs = 1 (m). */
 	static final double SPACING = 16_000;
-	/** Fala szumu prowincji klimatycznych przy zs = 1 (m). */
+	/** Wavelength of the climate province noise at zs = 1 (m). */
 	private static final double PROVINCE_WAVELENGTH = 900_000;
-	/** Krok punktów zachodnich przy zs = 1 (m) i ich liczba. */
+	/** Step of the western points at zs = 1 (m) and their number. */
 	private static final double WEST_STEP = 60_000;
 	private static final int WEST_POINTS = 8;
-	/** Suma wag 1/k punktów zachodnich. */
+	/** Sum of the 1/k weights of the western points. */
 	private static final double WEST_WEIGHT_SUM;
-	/** Zasięg członu bliskości morza przy zs = 1 (m). */
+	/** Reach of the sea proximity term at zs = 1 (m). */
 	private static final double SEA_REACH = 150_000;
-	/** Progi P na liniowym polu pasm. */
+	/** P thresholds on the linear range field. */
 	static final double P0 = 0.465;
 	static final double P1 = 0.915;
-	/** Promień uśredniania P w węzłach (okno 5 × 5 węzłów, ok. 80 km·zs). */
+	/** P averaging radius in nodes (window of 5 × 5 nodes, about 80 km·zs). */
 	private static final int P_RADIUS = 2;
 
 	static {
@@ -61,8 +61,8 @@ final class RegionalField {
 	private final DirectCache<float[]> tiles;
 
 	/**
-	 * @param provinces szum prowincji klimatycznych ({@code habitat.*}, więc teren się nie zmienia)
-	 * @param zs        mnożnik skali stref (rozmiar regionu / 64 km)
+	 * @param provinces climate province noise ({@code habitat.*}, so the terrain does not change)
+	 * @param zs        zone scale multiplier (region size / 64 km)
 	 */
 	RegionalField(LandscapeModel model, Noise provinces, double zs) {
 		this(model, provinces, zs, CACHE_SLOTS);
@@ -77,17 +77,17 @@ final class RegionalField {
 		this.tiles = new DirectCache<>(slots, this::build);
 	}
 
-	/** Te same pola z inną liczbą miejsc w pamięci kafli (testy wypychania). */
+	/** The same fields with a different number of tile cache slots (eviction tests). */
 	RegionalField withSlots(int slots) {
 		return new RegionalField(model, provinces, zs, slots);
 	}
 
-	/** Odstęp węzłów (m). */
+	/** Node spacing (m). */
 	double spacing() {
 		return spacing;
 	}
 
-	/** O i P w punkcie (interpolacja dwuliniowa z węzłów). */
+	/** O and P at a point (bilinear interpolation from the nodes). */
 	ColumnSample.Region sample(double x, double z) {
 		double gx = x * inv;
 		double gz = z * inv;
@@ -108,14 +108,14 @@ final class RegionalField {
 		double w11 = fx * fz;
 		double o = w00 * t[i00] + w10 * t[i10] + w01 * t[i01] + w11 * t[i11];
 		double p = w00 * t[i00 + 1] + w10 * t[i10 + 1] + w01 * t[i01 + 1] + w11 * t[i11 + 1];
-		// Wagi sumują się do 1 z dokładnością do zaokrągleń; clamp trzyma zakres [0, 1] dokładnie.
+		// The weights sum to 1 up to rounding; clamp keeps the range [0, 1] exact.
 		return new ColumnSample.Region(Math.clamp(o, 0.0, 1.0), Math.clamp(p, 0.0, 1.0));
 	}
 
-	/** Oceaniczność w węźle (bez interpolacji). */
+	/** Oceanicity at a node (without interpolation). */
 	double oceanicity(double x, double z) {
-		// Kwantyl daje rozkład jednostajny; smoothstep rozsuwa prowincje ku biegunom (oceaniczny, kontynentalny),
-		// co zwęża pas bez buka i świerka do ok. 14% lądu (przy samym kwantylu ok. 18–21%).
+		// The quantile gives a uniform distribution; smoothstep pushes the provinces towards the poles (oceanic, continental),
+		// which narrows the belt without beech and spruce to about 14% of land (about 18–21% with the quantile alone).
 		double n = Noise.smoothstep(0, 1, LandscapeModel.noiseQuantile(provinces.at(x, z, PROVINCE_WAVELENGTH * zs)));
 		double wz = 0;
 		for (int k = 1; k <= WEST_POINTS; k++) {
@@ -127,12 +127,12 @@ final class RegionalField {
 		return Math.clamp(0.15 + 0.45 * n + 0.25 * wz + 0.15 * s, 0.0, 1.0);
 	}
 
-	/** Podgórskość w punkcie przed uśrednieniem w oknie węzłów (bez interpolacji). */
+	/** Mountain influence at a point before averaging over the node window (without interpolation). */
 	double mountainInfluence(double x, double z) {
 		return Noise.smoothstep(P0, P1, model.mountainLinear(x, z));
 	}
 
-	/** Kafel (tx, tz): O i P w 9 × 9 węzłach; P uśrednione w oknie 5 × 5 węzłów. */
+	/** Tile (tx, tz): O and P at 9 × 9 nodes; P averaged over a window of 5 × 5 nodes. */
 	private float[] build(long tx, long tz) {
 		long ix0 = tx * TILE;
 		long iz0 = tz * TILE;

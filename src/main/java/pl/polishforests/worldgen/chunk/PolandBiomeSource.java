@@ -17,10 +17,10 @@ import pl.polishforests.worldgen.landscape.Substrate;
 import pl.polishforests.worldgen.landscape.WaterKind;
 
 /**
- * Źródło biomów świata "Polska". W wersji M1 mapuje typy krajobrazu na biomy zastępcze
- * (wanilijne, podane w presecie świata); w M2 zastąpią je biomy siedliskowe moda.
+ * Biome source of the "Poland" world. In M1 it maps landscape types to placeholder biomes
+ * (vanilla ones, given in the world preset); in M2 the mod's habitat biomes will replace them.
  *
- * <p>Model krajobrazu jest podpinany przez {@link PolandChunkGenerator} po poznaniu ziarna świata.
+ * <p>The landscape model is bound by {@link PolandChunkGenerator} once the world seed is known.
  */
 public final class PolandBiomeSource extends BiomeSource {
 	public static final MapCodec<PolandBiomeSource> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
@@ -88,7 +88,7 @@ public final class PolandBiomeSource extends BiomeSource {
 				.distinct();
 	}
 
-	/** Biom dla kolumny i wysokości bloku. */
+	/** Biome for a column and a block height. */
 	public Holder<Biome> biomeFor(ColumnSample s, int blockY) {
 		if (s.type() == LandscapeType.SEA) {
 			return sea;
@@ -130,8 +130,8 @@ public final class PolandBiomeSource extends BiomeSource {
 	}
 
 	/**
-	 * Resolver dla jednego chunka: próbka modelu liczona raz na kolumnę kwartów, a nie
-	 * dla każdego z ok. 760 poziomów kwartów w pionie.
+	 * Resolver for a single chunk: the model sample is computed once per quart column, not
+	 * for each of the roughly 760 vertical quart levels.
 	 */
 	@Override
 	public BiomeResolver createResolverForChunk(Climate.Sampler sampler, int minQuartX, int minQuartY, int minQuartZ,

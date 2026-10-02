@@ -5,14 +5,14 @@ import pl.polishforests.worldgen.landscape.Landform;
 import pl.polishforests.worldgen.landscape.Substrate;
 
 /**
- * Krok 2 klasyfikatora: pas wybrzeża cD &lt; B + D + 2000k (§5.2, raport ekologii §4). Plaża, wydmy,
- * bór bażynowy, klif i zaplecze zalewu; długości mnożone przez k. Dna dolin i brzegi wód stojących
- * zostawiamy strefom nadwodnym (poza plażą i wydmami).
+ * Classifier step 2: the coastal belt cD &lt; B + D + 2000k (§5.2, ecology report §4). Beach, dunes,
+ * crowberry pine forest, cliff and lagoon hinterland; lengths are multiplied by k. Valley floors and the shores
+ * of standing water are left to the waterside zones (except for the beach and dunes).
  *
- * <p>Brzeg wydmowy i klifowy rozróżnia pole {@code teren.niskiBrzeg}, a nie podłoże: model daje glinę
- * i formę KLIF każdej kolumnie pasa nadmorskiego wyższej niż 8 m, także wysokiej wydmie przedniej. Na brzegu
- * wydmowym podłoże siedliska to piasek ({@link HabitatClassifier.Column#substrate}), a klif i jego zaplecze
- * są tylko na brzegu wysokim.
+ * <p>Dune and cliff shores are told apart by the {@code terrain.lowShore} field, not by the substrate: the model
+ * gives till and the CLIFF landform to every column of the coastal belt higher than 8 m, including a high foredune.
+ * On a dune shore the habitat substrate is sand ({@link HabitatClassifier.Column#substrate}), and the cliff and its
+ * hinterland exist only on a high shore.
  */
 final class Coast {
 	private Coast() {
@@ -24,15 +24,15 @@ final class Coast {
 		double cD = t.coastD();
 		double b = Calibration.BEACH_B * k;
 		double d = Calibration.DUNES_D * k;
-		// Granica boru bażynowego (2000 m·k) drga z szumem wariantów, żeby nie była linią równoległą do brzegu;
-		// pas kończy się za jej najdalszym położeniem.
+		// The crowberry pine forest boundary (2000 m·k) jitters with the variant noise so that it is not a line
+		// parallel to the shore; the belt ends beyond its farthest position.
 		double isPineForest = Calibration.COASTAL_PINE_K * k;
 		if (cD < 0 || cD >= Math.max(b + d + isPineForest, isPineForest * (1 + Calibration.COASTAL_PINE_JITTER))) {
 			return HabitatClassifier.Result.NONE;
 		}
 		Substrate sub = c.substrate;
 		boolean duneShore = c.isDuneShore();
-		// Klif (tylko brzeg wysoki): ściana z gołą gliną i korona z zaroślami w biomie wysoczyzny; dalej las wiatrowy.
+		// Cliff (high shore only): a face of bare till and a top with scrub in the plateau biome; beyond it windswept forest.
 		double raw = t.rawSurface();
 		if (!duneShore && t.has(Landform.CLIFF)) {
 			return HabitatClassifier.Result.zone(Zone.CLIFF_FACE);
@@ -56,15 +56,15 @@ final class Coast {
 			Zone s = cD < b + Calibration.EMBRYO_DUNE_K * k ? Zone.EMBRYO_DUNE : Zone.NONE;
 			return HabitatClassifier.Result.of(HabitatBiome.WHITE_DUNE, s, Association.TYPICAL);
 		}
-		// Dna dolin i brzegi wód stojących przy morzu: strefy nadwodne.
+		// Valley floors and shores of standing water near the sea: waterside zones.
 		if (c.onValleyFloor() || c.w.s() < Calibration.LAKE_ALDER_CARR_K * k) {
 			return HabitatClassifier.Result.NONE;
 		}
 		if (sub != Substrate.SAND) {
 			return HabitatClassifier.Result.NONE;
 		}
-		// Zaplecze zalewu: niski brzeg za wydmami (lustro morza 0 m, h = H − 1); zalew i mierzeja powstają
-		// tylko na brzegu wydmowym.
+		// Lagoon hinterland: a low shore behind the dunes (sea level 0 m, h = H − 1); the lagoon and the spit form
+		// only on a dune shore.
 		double h = c.H - 1;
 		if (duneShore && cD >= b + d) {
 			if (h <= Calibration.LAGOON_PEAT_H) {

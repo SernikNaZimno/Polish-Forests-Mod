@@ -13,15 +13,15 @@ import pl.polishforests.worldgen.landscape.LandscapeScale;
 import pl.polishforests.worldgen.landscape.LandscapeType;
 
 /**
- * Piętra Beskidów (docs/03-m2-biomy.md §5.1, §12.1): w reglu dolnym (600–1100 m) buczyna, jedlina
- * i olszyna ≥ 70%, w 1200–1350 m świerczyna ≥ 80%, kosodrzewina tylko przy dużym masywie (szczyt w promieniu
- * 3 km·mspace ponad 1470 m, sprawdzany niezależnie od pola modelu), a granica buczyny i świerczyny w wyniku
- * klasyfikacji leży na stokach S o 80–120 m wyżej niż na N.
+ * Altitudinal belts of the Beskids (docs/03-m2-biomy.md §5.1, §12.1): in the lower montane belt (600–1100 m) beech,
+ * fir and gray alder forests ≥ 70%, at 1200–1350 m spruce forest ≥ 80%, dwarf pine only on a large massif (a summit
+ * above 1470 m within 3 km·mspace, checked independently of the model field), and the beech/spruce forest limit
+ * resulting from the classification lies 80–120 m higher on S slopes than on N slopes.
  */
 class AltitudinalBeltsTest {
 	static final long SEED = 20260927L;
 
-	/** Punkt wnętrza Beskidów (waga typu > 0,98 w 9 punktach wokół), jak w podglądzie krajobrazu. */
+	/** A point in the interior of the Beskids (type weight > 0.98 at 9 points around it), as in the landscape preview. */
 	static double[] beskidsInterior(LandscapeModel m) {
 		double unit = m.scale() == LandscapeScale.REALISTIC ? 5_000 : 200;
 		for (int r = 0; r < 800; r++) {
@@ -38,17 +38,17 @@ class AltitudinalBeltsTest {
 				}
 			}
 		}
-		throw new AssertionError("brak wnętrza Beskidów");
+		throw new AssertionError("no Beskids interior found");
 	}
 
-	/** Najwyższy punkt terenu w kwadracie 3000 × 3000 km (siatka 5 km, potem doprecyzowanie co 100 m). */
+	/** Highest terrain point in a 3000 × 3000 km square (5 km grid, then refined every 100 m). */
 	static double[] highestMassif(LandscapeModel m) {
 		return summits(m, 3_000_000, 600, 1).get(0);
 	}
 
 	/**
-	 * Szczyty w kwadracie o boku {@code bok} wokół (0, 0): najwyższy punkt siatki {@code n} × {@code n}
-	 * w każdym wierszu, doprecyzowany co 1/50 oczka; najwyżej {@code ile} najwyższych, malejąco.
+	 * Summits in a square with a side of {@code sideLength} around (0, 0): the highest point of an {@code n} × {@code n}
+	 * grid in each row, refined every 1/50 of a cell; at most the {@code topCount} highest, in descending order.
 	 */
 	static java.util.List<double[]> summits(LandscapeModel m, double sideLength, int n, int topCount) {
 		double[][] results = new double[n][];
@@ -87,8 +87,8 @@ class AltitudinalBeltsTest {
 	}
 
 	/**
-	 * Najwyższy teren w kole o promieniu {@code r} wokół (x, z) z siatki {@code teren} o oczku {@code krok},
-	 * zaczepionej w (x0, z0), o {@code n} węzłach na bok. Niezależne od pola {@code teren.szczyt} modelu.
+	 * Highest terrain in a circle of radius {@code r} around (x, z) from the {@code terrain} grid with a cell size of
+	 * {@code step}, anchored at (x0, z0), with {@code n} nodes per side. Independent of the model's {@code terrain.summit} field.
 	 */
 	static double maxInCircle(float[] terrain, int n, double x0, double z0, double step, double x, double z, double r) {
 		int ci = (int) Math.round((x - x0) / step);
@@ -107,7 +107,7 @@ class AltitudinalBeltsTest {
 		return max;
 	}
 
-	/** Udział biomów (liczniki według ordinal) w kolumnach Beskidów o wysokości [od, do), poza dnami i wodą. */
+	/** Biome shares (counters by ordinal) in Beskids columns with a height in [fromH, toH), outside valley floors and water. */
 	static AtomicLongArray shares(LandscapeModel m, HabitatClassifier k, double[] c, double sideLength, int n, double fromH, double toH) {
 		AtomicLongArray count = new AtomicLongArray(HabitatBiome.values().length);
 		IntStream.range(0, n).parallel().forEach(j -> {
@@ -157,12 +157,12 @@ class AltitudinalBeltsTest {
 			double sideLength = sc == LandscapeScale.REALISTIC ? 30_000 : 3_000;
 			AtomicLongArray l = shares(m, k, c, sideLength, 500, 600, 1_100);
 			double u = share(l, HabitatBiome.MONTANE_BEECH_FOREST, HabitatBiome.UPLAND_FIR_FOREST, HabitatBiome.GRAY_ALDER_FOREST);
-			System.out.printf(Locale.ROOT, "%s: 600–1100 m, %d kolumn: buczyna %.1f%%, jedlina %.1f%%, olszyna %.1f%%, "
-					+ "świerczyna %.1f%% (razem buczyna+jedlina+olszyna %.1f%%)%n", sc.id(), sum(l),
+			System.out.printf(Locale.ROOT, "%s: 600–1100 m, %d columns: beech forest %.1f%%, fir forest %.1f%%, gray alder forest %.1f%%, "
+					+ "spruce forest %.1f%% (beech+fir+gray alder together %.1f%%)%n", sc.id(), sum(l),
 					100 * share(l, HabitatBiome.MONTANE_BEECH_FOREST), 100 * share(l, HabitatBiome.UPLAND_FIR_FOREST),
 					100 * share(l, HabitatBiome.GRAY_ALDER_FOREST), 100 * share(l, HabitatBiome.MONTANE_SPRUCE_FOREST), 100 * u);
-			assertTrue(sum(l) > 10_000, "za mało kolumn regla dolnego: " + sum(l));
-			assertTrue(u >= 0.70, sc.id() + ": buczyna, jedlina i olszyna " + u);
+			assertTrue(sum(l) > 10_000, "too few lower montane columns: " + sum(l));
+			assertTrue(u >= 0.70, sc.id() + ": beech, fir and gray alder forests " + u);
 		}
 	}
 
@@ -171,22 +171,22 @@ class AltitudinalBeltsTest {
 		LandscapeModel m = new LandscapeModel(SEED, 1.0);
 		HabitatClassifier k = new HabitatClassifier(SEED, LandscapeScale.REALISTIC, HabitatClassifier.Mode.NATURAL);
 		double[] summit = highestMassif(m);
-		System.out.printf(Locale.ROOT, "Najwyższy masyw: (%.0f, %.0f), %.0f m%n", summit[0], summit[1], summit[2]);
+		System.out.printf(Locale.ROOT, "Highest massif: (%.0f, %.0f), %.0f m%n", summit[0], summit[1], summit[2]);
 		AtomicLongArray l = shares(m, k, summit, 12_000, 600, 1_200, 1_350);
 		double sw = share(l, HabitatBiome.MONTANE_SPRUCE_FOREST);
-		System.out.printf(Locale.ROOT, "1200–1350 m: %d kolumn, świerczyna %.1f%%, buczyna %.1f%%, kosodrzewina %.1f%%%n", sum(l),
+		System.out.printf(Locale.ROOT, "1200–1350 m: %d columns, spruce forest %.1f%%, beech forest %.1f%%, dwarf pine %.1f%%%n", sum(l),
 				100 * sw, 100 * share(l, HabitatBiome.MONTANE_BEECH_FOREST), 100 * share(l, HabitatBiome.DWARF_PINE_SCRUB));
-		assertTrue(sum(l) > 1_000, "za mało kolumn 1200–1350 m: " + sum(l));
-		assertTrue(sw >= 0.80, "świerczyna w 1200–1350 m: " + sw);
+		assertTrue(sum(l) > 1_000, "too few columns at 1200–1350 m: " + sum(l));
+		assertTrue(sw >= 0.80, "spruce forest at 1200–1350 m: " + sw);
 	}
 
 	/**
-	 * Kosodrzewina i hala (E12) w świecie: wokół szczytów ponad 1400 m (siatka 2 km w kwadracie 3000 km w REAL,
-	 * 60 m w kwadracie 70 km w GAMEPLAY) każda kolumna kosodrzewiny lub hali (co czwarta, siatka 25 m·k) ma w
-	 * promieniu 3 km·mspace teren wyższy niż 1470 m, liczony wprost z {@code landElevation} na siatce 25 m·mspace,
-	 * a nie z pola modelu. Ziarno 4 ma w REAL masyw 1645 m i musi mieć kosodrzewinę. Ziarno domyślne ma w REAL
-	 * najwyżej ok. 1445 m, a GAMEPLAY ok. 1310 m, więc tam kosodrzewiny nie ma (decyzja M2-8: wyższe masywy
-	 * przyjdą z poprawką geometrii terenu).
+	 * Dwarf pine and alpine grassland (E12) in the world: around summits above 1400 m (2 km grid in a 3000 km square in
+	 * REAL, 60 m in a 70 km square in GAMEPLAY) every dwarf pine or alpine grassland column (every fourth, 25 m·k grid)
+	 * has terrain higher than 1470 m within 3 km·mspace, computed directly from {@code landElevation} on a 25 m·mspace
+	 * grid rather than from the model field. Seed 4 has a 1645 m massif in REAL and must have dwarf pine. The default
+	 * seed reaches at most about 1445 m in REAL and about 1310 m in GAMEPLAY, so there is no dwarf pine there
+	 * (decision M2-8: higher massifs will come with the terrain geometry fix).
 	 */
 	@Test
 	void dwarfPineOnlyOnLargeMassif() {
@@ -213,12 +213,12 @@ class AltitudinalBeltsTest {
 				if (s[2] < 1_400) {
 					break;
 				}
-				// Okna kolejnych szczytów nie zachodzą na siebie (szczyty z sąsiednich wierszy siatki to ten sam masyw).
+				// Windows of successive summits do not overlap (summits from neighboring grid rows are the same massif).
 				if (done.stream().anyMatch(q -> Math.max(Math.abs(q[0] - s[0]), Math.abs(q[1] - s[1])) < 2 * r)) {
 					continue;
 				}
 				done.add(s);
-				// Teren bez dolin na siatce wokół szczytu: okno kolumn (promień r) i koło r wokół każdej z nich.
+				// Terrain without valleys on a grid around the summit: the column window (radius r) and a circle r around each column.
 				int n = (int) Math.ceil(4 * r / terrainStep) + 1;
 				double x0 = s[0] - 2 * r;
 				double z0 = s[1] - 2 * r;
@@ -245,10 +245,10 @@ class AltitudinalBeltsTest {
 							continue;
 						}
 						tally.incrementAndGet(1);
-						// Tolerancja 1 m na dyskretyzację siatki terenu.
+						// 1 m tolerance for the terrain grid discretization.
 						if (maxInCircle(terrain, n, x0, z0, terrainStep, x, z, r) <= AltitudinalBelts.LARGE_MASSIF - 1) {
 							tally.incrementAndGet(2);
-							badColumns.add(String.format(Locale.ROOT, " (%.0f, %.0f) H %.0f pole %.0f;", x, z, c.surface(),
+							badColumns.add(String.format(Locale.ROOT, " (%.0f, %.0f) H %.0f field %.0f;", x, z, c.surface(),
 									c.terrain().summit()));
 						}
 					}
@@ -261,14 +261,14 @@ class AltitudinalBeltsTest {
 					examples.append(q);
 				}
 			}
-			System.out.printf(Locale.ROOT, "%s, ziarno %d: najwyższy szczyt %.0f m, kolumny kosodrzewiny i hali %d (sprawdzone %d, "
-					+ "bez szczytu > 1470 m w promieniu %.0f m: %d)%n", sc.id(), p.seed(), highest, dwarfPine, checked, r, bad);
-			assertEquals(0, bad, sc.id() + ", ziarno " + p.seed() + ": kosodrzewina bez dużego masywu:" + examples);
+			System.out.printf(Locale.ROOT, "%s, seed %d: highest summit %.0f m, dwarf pine and alpine grassland columns %d (checked %d, "
+					+ "without a summit > 1470 m within %.0f m: %d)%n", sc.id(), p.seed(), highest, dwarfPine, checked, r, bad);
+			assertEquals(0, bad, sc.id() + ", seed " + p.seed() + ": dwarf pine without a large massif:" + examples);
 			if (highest <= AltitudinalBelts.LARGE_MASSIF) {
-				assertEquals(0, dwarfPine, sc.id() + ", ziarno " + p.seed() + ": kosodrzewina przy szczycie " + highest + " m");
+				assertEquals(0, dwarfPine, sc.id() + ", seed " + p.seed() + ": dwarf pine with a highest summit of " + highest + " m");
 			}
 			if (real && p.seed() == 4L) {
-				assertTrue(highest > 1_600 && dwarfPine > 1_000, "ziarno 4: masyw " + highest + " m, kosodrzewina " + dwarfPine);
+				assertTrue(highest > 1_600 && dwarfPine > 1_000, "seed 4: massif " + highest + " m, dwarf pine " + dwarfPine);
 			}
 		}
 	}
@@ -276,7 +276,7 @@ class AltitudinalBeltsTest {
 	@Test
 	void largeMassifInSyntheticCase() {
 		HabitatClassifier k = new HabitatClassifier(SEED, LandscapeScale.REALISTIC, HabitatClassifier.Mode.NATURAL);
-		// Ten sam stok z dużym masywem i bez.
+		// The same slope with and without a large massif.
 		SyntheticSample without = SyntheticSample.beskids(1_480);
 		without.summit = AltitudinalBelts.LARGE_MASSIF - 1;
 		SyntheticSample z = SyntheticSample.beskids(1_480);
@@ -288,14 +288,14 @@ class AltitudinalBeltsTest {
 			withCount += Habitat.biome(k.classify(z.build(), i * 97.0, 0)) == HabitatBiome.DWARF_PINE_SCRUB ? 1 : 0;
 		}
 		assertEquals(0, withoutCount);
-		assertTrue(withCount > 150, "kosodrzewina na dużym masywie: " + withCount);
+		assertTrue(withCount > 150, "dwarf pine on a large massif: " + withCount);
 	}
 
 	/**
-	 * Granica regla górnego z wyniku klasyfikacji: wysokość, na której świerczyna typowa (bez Abieti-Piceetum,
-	 * które na stokach N zastępuje buczynę od 900 m) obejmuje połowę kolumn regla (buczyna i świerczyna),
-	 * osobno na stokach S (eksp. 135–225°) i N (315–45°), nachylenie ≥ 5°, poza dnami, w kwadracie 30 km
-	 * wokół najwyższego masywu (koszyki co 10 m, interpolacja przejścia przez 50%).
+	 * Upper montane limit from the classification result: the height at which typical spruce forest (without
+	 * Abieti-Piceetum, which replaces beech forest on N slopes from 900 m) covers half of the montane columns (beech and
+	 * spruce forest), separately on S slopes (aspect 135–225°) and N slopes (315–45°), slope ≥ 5°, outside valley floors,
+	 * in a 30 km square around the highest massif (10 m bins, interpolation of the 50% crossing).
 	 */
 	@Test
 	void beltLimitIsHigherOnSouthernSlopes() {
@@ -304,7 +304,7 @@ class AltitudinalBeltsTest {
 		double[] c = highestMassif(m);
 		int bins = 40;
 		double fromH = 1_000;
-		// [stok][koszyk][0 typowa, 1 razem]
+		// [slope side][bin][0 typical, 1 total]
 		AtomicLongArray count = new AtomicLongArray(2 * bins * 2);
 		int n = 600;
 		double sideLength = 30_000;
@@ -356,9 +356,9 @@ class AltitudinalBeltsTest {
 				}
 			}
 		}
-		System.out.printf(Locale.ROOT, "Granica świerczyny typowej (wynik klasyfikacji): stoki S %.0f m, stoki N %.0f m, różnica %.0f m;%s%n",
+		System.out.printf(Locale.ROOT, "Typical spruce forest limit (classification result): S slopes %.0f m, N slopes %.0f m, difference %.0f m;%s%n",
 				limit[0], limit[1], limit[0] - limit[1], sb);
 		double difference = limit[0] - limit[1];
-		assertTrue(difference >= 80 && difference <= 120, "różnica S–N: " + difference);
+		assertTrue(difference >= 80 && difference <= 120, "S–N difference: " + difference);
 	}
 }

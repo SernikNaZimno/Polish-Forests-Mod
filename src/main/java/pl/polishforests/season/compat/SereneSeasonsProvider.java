@@ -14,11 +14,11 @@ import sereneseasons.api.season.SeasonHelper;
 import sereneseasons.season.SeasonHooks;
 
 /**
- * Most do Serene Seasons. Ładowany refleksyjnie przez {@link pl.polishforests.season.Seasons}
- * wyłącznie wtedy, gdy mod "sereneseasons" jest obecny.
+ * Bridge to Serene Seasons. Loaded reflectively by {@link pl.polishforests.season.Seasons}
+ * only when the "sereneseasons" mod is present.
  */
 public final class SereneSeasonsProvider implements SeasonProvider {
-	/** Wyłączane, gdy wewnętrzny hak SS zniknie w innej wersji moda. */
+	/** Turned off when the internal SS hook disappears in another version of that mod. */
 	private volatile boolean temperatureHook = true;
 
 	@Override
@@ -39,9 +39,10 @@ public final class SereneSeasonsProvider implements SeasonProvider {
 	}
 
 	/**
-	 * Temperatura sezonowa z haka SS ({@code SeasonHooks.getBiomeTemperature}), tego samego, którego SS
-	 * używa w opadzie i zamarzaniu: bramka 0,8, czarna lista, biała lista wymiarów i korekta podsezonu.
-	 * Hak nie należy do API SS, więc przy błędzie łączenia wracamy do temperatury bez pory roku.
+	 * Seasonal temperature from the SS hook ({@code SeasonHooks.getBiomeTemperature}), the same one SS
+	 * uses for precipitation and freezing: the 0.8 gate, the blacklist, the dimension whitelist and the
+	 * sub-season adjustment. The hook is not part of the SS API, so on a linkage error we fall back to the
+	 * temperature without the season.
 	 */
 	@Override
 	public float temperatureInSeason(LevelReader level, Biome biome, BlockPos pos, float temperature) {
@@ -53,7 +54,7 @@ public final class SereneSeasonsProvider implements SeasonProvider {
 			return SeasonHooks.getBiomeTemperature(level, holder, pos, level.getSeaLevel());
 		} catch (LinkageError e) {
 			temperatureHook = false;
-			PolishForests.LOG.warn("Serene Seasons: brak haka temperatury, zamarzanie rzek bez pory roku", e);
+			PolishForests.LOG.warn("Serene Seasons: temperature hook missing, river freezing ignores the season", e);
 			return temperature;
 		}
 	}

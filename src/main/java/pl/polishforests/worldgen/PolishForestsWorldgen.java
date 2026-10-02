@@ -6,7 +6,7 @@ import pl.polishforests.PolishForests;
 import pl.polishforests.worldgen.chunk.PolandBiomeSource;
 import pl.polishforests.worldgen.chunk.PolandChunkGenerator;
 
-/** Rejestracja typów generacji świata. */
+/** Registers the world generation types. */
 public final class PolishForestsWorldgen {
 	private PolishForestsWorldgen() {
 	}

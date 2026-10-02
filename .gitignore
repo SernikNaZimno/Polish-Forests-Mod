@@ -32,9 +32,9 @@ replay_*.log
 *.hprof
 *.jfr
 
-# narzędzia pomocnicze (Python)
+# helper tools (Python)
 __pycache__/
 tools/**/.venv/
 
-# logi uruchomień z katalogu projektu
+# run logs from the project directory
 logs/

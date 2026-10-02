@@ -1,8 +1,8 @@
 package pl.polishforests.worldgen.habitat;
 
 /**
- * Gleba kolumny (docs/03-m2-biomy.md §7.4). Bloki powierzchni dobiera {@code GlebaBloki} w S6; tu tylko
- * typ, wybierany ze strefy, a gdy strefa nie ma własnej gleby, z biomu. Najwyżej 32 pozycje.
+ * Soil of a column (docs/03-m2-biomy.md §7.4). Surface blocks are chosen by {@code SoilBlocks} in S6; here only
+ * the type, picked from the zone, or from the biome when the zone has no soil of its own. At most 32 entries.
  */
 public enum Soil {
 	INITIAL_PODZOL,
@@ -23,7 +23,7 @@ public enum Soil {
 	RANKER,
 	DUNE_SAND,
 	BEACH_SAND,
-	/** Goła glina ściany klifu. */
+	/** Bare till of a cliff face. */
 	TILL,
 	CHANNEL_BED,
 	STREAM_BED,
@@ -38,7 +38,7 @@ public enum Soil {
 		return VALUES[ordinal];
 	}
 
-	/** Gleba dla biomu i strefy. */
+	/** Soil for a biome and zone. */
 	public static Soil forBiome(HabitatBiome b, Zone s) {
 		switch (s) {
 			case POINT_BAR, WILLOW_SCRUB -> {

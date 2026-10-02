@@ -1,8 +1,8 @@
 package pl.polishforests.worldgen.landscape;
 
 /**
- * Deterministyczny szum gradientowy 2D (ulepszony szum Perlina) i funkcje skrótu.
- * Klasa nie zależy od Minecrafta. Instancje są niezmienne i bezpieczne wątkowo.
+ * Deterministic 2D gradient noise (improved Perlin noise) and hash functions.
+ * The class does not depend on Minecraft. Instances are immutable and thread-safe.
  */
 public final class Noise {
 	private static final double[] GRAD_X = new double[16];
@@ -22,7 +22,7 @@ public final class Noise {
 		this.seed = mix(seed);
 	}
 
-	/** Pochodna instancja o niezależnym ziarnie, np. dla kolejnej warstwy. */
+	/** Derived instance with an independent seed, e.g. for another layer. */
 	public Noise derive(String salt) {
 		return new Noise(seed ^ mix(salt.hashCode() * 0x9E3779B97F4A7C15L));
 	}
@@ -31,7 +31,7 @@ public final class Noise {
 		return seed;
 	}
 
-	/** SplitMix64: dobre rozproszenie bitów dla skrótów współrzędnych. */
+	/** SplitMix64: good bit dispersion for coordinate hashes. */
 	public static long mix(long z) {
 		z = (z ^ (z >>> 30)) * 0xBF58476D1CE4E5B9L;
 		z = (z ^ (z >>> 27)) * 0x94D049BB133111EBL;
@@ -39,9 +39,9 @@ public final class Noise {
 	}
 
 	/**
-	 * Klucz pamięci podręcznej dla pary liczb całkowitych. Mnożenie przez liczbę nieparzystą
-	 * i dodawanie jest różnowartościowe dla rozsądnych zakresów, a {@link #mix} jest bijekcją,
-	 * więc różne pary nie kolidują (w przeciwieństwie do łączenia przez XOR).
+	 * Cache key for a pair of integers. Multiplying by an odd number
+	 * and adding is injective for reasonable ranges, and {@link #mix} is a bijection,
+	 * so different pairs do not collide (unlike combining with XOR).
 	 */
 	public static long key(long a, long b, long salt) {
 		return mix(mix(a * 0x9E3779B97F4A7C15L + b) + salt);
@@ -55,12 +55,12 @@ public final class Noise {
 		return mix(hash(x, z) ^ mix(salt));
 	}
 
-	/** Liczba z przedziału [0, 1) wyznaczona skrótem komórki. */
+	/** Number in [0, 1) determined by the cell hash. */
 	public double unit(long x, long z, long salt) {
 		return (hash(x, z, salt) >>> 11) * 0x1.0p-53;
 	}
 
-	/** Szum w przybliżeniu z przedziału [-1, 1]; okres to 1 jednostka wejścia. */
+	/** Noise roughly in [-1, 1]; the period is 1 input unit. */
 	public double sample(double x, double z) {
 		long x0 = (long) Math.floor(x);
 		long z0 = (long) Math.floor(z);
@@ -78,8 +78,8 @@ public final class Noise {
 	}
 
 	/**
-	 * Szum z pochodnymi analitycznymi. Zwraca wartość, a do {@code d[0]} i {@code d[1]} zapisuje
-	 * pochodne cząstkowe względem x i z (w jednostkach wejścia).
+	 * Noise with analytic derivatives. Returns the value and writes the partial derivatives with respect to
+	 * x and z (in input units) to {@code d[0]} and {@code d[1]}.
 	 */
 	public double sampleD(double x, double z, double[] d) {
 		long x0 = (long) Math.floor(x);
@@ -114,16 +114,16 @@ public final class Noise {
 	}
 
 	/**
-	 * fBm z tłumieniem przez nachylenie (tzw. szum erozyjny): wyższe oktawy słabną na stokach,
-	 * co daje gładkie grzbiety i rozgałęzione doliny. Wynik w przybliżeniu [-1, 1].
+	 * fBm damped by slope (so-called erosion noise): higher octaves fade on slopes,
+	 * which gives smooth ridges and branching valleys. Result roughly in [-1, 1].
 	 */
 	public double eroded(double x, double z, double wavelength, int octaves, double persistence) {
 		return eroded(x, z, wavelength, octaves, persistence, 1.0);
 	}
 
 	/**
-	 * Jak {@link #eroded(double, double, double, int, double)}, z parametrem {@code sharpness}
-	 * wzmacniającym tłumienie przez nachylenie (większa wartość = wyraźniejsze grzbiety i doliny).
+	 * Like {@link #eroded(double, double, double, int, double)}, with a {@code sharpness} parameter
+	 * that strengthens the slope damping (larger value = more pronounced ridges and valleys).
 	 */
 	public double eroded(double x, double z, double wavelength, int octaves, double persistence, double sharpness) {
 		double[] d = new double[2];
@@ -141,7 +141,7 @@ public final class Noise {
 			sum += amp * n / (1 + sharpness * (sx * sx + sz * sz));
 			norm += amp;
 			amp *= persistence;
-			// Obrót o ok. 37° między oktawami usuwa artefakty siatki.
+			// Rotating by about 37° between octaves removes grid artefacts.
 			double nx = 1.6 * px - 1.2 * pz + 13.1;
 			double nz = 1.2 * px + 1.6 * pz - 7.7;
 			px = nx;
@@ -150,12 +150,12 @@ public final class Noise {
 		return sum / norm;
 	}
 
-	/** Szum o zadanej długości fali w metrach. */
+	/** Noise with the given wavelength in metres. */
 	public double at(double x, double z, double wavelength) {
 		return sample(x / wavelength, z / wavelength);
 	}
 
-	/** Suma oktaw (fBm), wynik w przybliżeniu [-1, 1]. */
+	/** Sum of octaves (fBm), result roughly in [-1, 1]. */
 	public double fbm(double x, double z, double wavelength, int octaves, double persistence) {
 		double sum = 0;
 		double amp = 1;
@@ -170,7 +170,7 @@ public final class Noise {
 		return sum / norm;
 	}
 
-	/** Szum grzbietowy w przedziale [0, 1]: 1 na grzbietach, 0 w dolinach. */
+	/** Ridged noise in [0, 1]: 1 on ridges, 0 in valleys. */
 	public double ridged(double x, double z, double wavelength, int octaves, double persistence) {
 		double sum = 0;
 		double amp = 1;

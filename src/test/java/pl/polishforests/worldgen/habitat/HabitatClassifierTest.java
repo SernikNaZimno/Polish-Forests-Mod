@@ -22,9 +22,9 @@ import pl.polishforests.worldgen.landscape.Substrate;
 import pl.polishforests.worldgen.landscape.WaterKind;
 
 /**
- * Klasyfikator siedlisk (docs/03-m2-biomy.md §3.4, §12.1): determinizm, pakowanie kodu, przypadki
- * syntetyczne, osiągalność każdego biomu i każdej strefy, brak łęgu poza dnem doliny na 10⁶ próbkach
- * i koszt klasyfikacji ≤ 0,5 µs.
+ * Habitat classifier (docs/03-m2-biomy.md §3.4, §12.1): determinism, code packing, synthetic cases,
+ * reachability of every biome and every zone, no riparian forest outside the valley floor over 10⁶ samples
+ * and a classification cost ≤ 0.5 µs.
  */
 class HabitatClassifierTest {
 	static final long SEED = 20260927L;
@@ -90,7 +90,7 @@ class HabitatClassifierTest {
 				parallelCodes[i] = b.classify(m2.sample(x, z), x, z);
 			});
 			for (int i = 0; i < n * n; i++) {
-				assertEquals(serialCodes[i], parallelCodes[i], "kolumna " + i + " w skali " + sc.id());
+				assertEquals(serialCodes[i], parallelCodes[i], "column " + i + " at scale " + sc.id());
 			}
 		}
 	}
@@ -103,11 +103,11 @@ class HabitatClassifierTest {
 		}
 	}
 
-	// ------------------------------------------------------------------ przypadki syntetyczne
+	// ------------------------------------------------------------------ synthetic cases
 
 	/**
-	 * Przypadek: próbka i oczekiwany biom (null: dowolny) i strefa (null: dowolna). Zależne od szumu (płaty,
-	 * warianty) przesuwamy po punktach, aż wynik się pojawi; pozostałe muszą wyjść w pierwszym punkcie.
+	 * Case: a sample with the expected biome (null: any) and zone (null: any). Cases that depend on noise (patches,
+	 * variants) are moved over points until the result appears; the others must come out at the first point.
 	 */
 	record Case(String description, ColumnSample sample, HabitatClassifier.Mode mode, HabitatBiome biome, Zone zone, boolean search) {
 	}
@@ -116,184 +116,184 @@ class HabitatClassifierTest {
 		List<Case> l = new ArrayList<>();
 		HabitatClassifier.Mode n = HabitatClassifier.Mode.NATURAL;
 		HabitatClassifier.Mode d = HabitatClassifier.Mode.PRESENT_DAY;
-		// Wody.
-		l.add(new Case("morze", SyntheticSample.coast(-500, 0, Substrate.SAND).water(WaterKind.SEA, 0, -12).build(), n,
+		// Waters.
+		l.add(new Case("sea", SyntheticSample.coast(-500, 0, Substrate.SAND).water(WaterKind.SEA, 0, -12).build(), n,
 				HabitatBiome.SEA, Zone.NONE, false));
 		SyntheticSample lagoon = SyntheticSample.coast(800, 0, Substrate.LAKE_MUD).water(WaterKind.SEA, 0, -3);
-		l.add(new Case("zalew", lagoon.build(), n, HabitatBiome.LAGOON, Zone.SUBMERGED_PLANTS, false));
-		l.add(new Case("szuwar zalewu", SyntheticSample.coast(800, 0, Substrate.LAKE_MUD).water(WaterKind.SEA, 0, -1).build(),
+		l.add(new Case("lagoon", lagoon.build(), n, HabitatBiome.LAGOON, Zone.SUBMERGED_PLANTS, false));
+		l.add(new Case("lagoon reedbed", SyntheticSample.coast(800, 0, Substrate.LAKE_MUD).water(WaterKind.SEA, 0, -1).build(),
 				n, HabitatBiome.REEDBED, Zone.REEDBED, false));
-		l.add(new Case("rzeka", SyntheticSample.morainePlateau().h(95).stream(3, 150, -20, 0.3).water(WaterKind.RIVER, 98, 95).build(),
+		l.add(new Case("river", SyntheticSample.morainePlateau().h(95).stream(3, 150, -20, 0.3).water(WaterKind.RIVER, 98, 95).build(),
 				n, HabitatBiome.RIVER, Zone.CHANNEL, false));
-		l.add(new Case("potok", SyntheticSample.beskids(600).stream(1, 6, -1, 20).water(WaterKind.RIVER, 600, 599.5).build(), n,
+		l.add(new Case("stream", SyntheticSample.beskids(600).stream(1, 6, -1, 20).water(WaterKind.RIVER, 600, 599.5).build(), n,
 				HabitatBiome.STREAM, Zone.CHANNEL, false));
-		l.add(new Case("jezioro (głębia)", SyntheticSample.morainePlateau().standingWater(ColumnSample.StandingWaterKind.TUNNEL_VALLEY_LAKE, -80,
+		l.add(new Case("lake (deep water)", SyntheticSample.morainePlateau().standingWater(ColumnSample.StandingWaterKind.TUNNEL_VALLEY_LAKE, -80,
 				110, 400, 5).water(WaterKind.LAKE, 110, 100).build(), n, HabitatBiome.LAKE, Zone.NONE, false));
-		l.add(new Case("elodeidy", SyntheticSample.morainePlateau().standingWater(ColumnSample.StandingWaterKind.TUNNEL_VALLEY_LAKE, -40, 110, 400,
+		l.add(new Case("submerged plants (elodeids)", SyntheticSample.morainePlateau().standingWater(ColumnSample.StandingWaterKind.TUNNEL_VALLEY_LAKE, -40, 110, 400,
 				5).water(WaterKind.LAKE, 110, 106).build(), n, HabitatBiome.LAKE, Zone.SUBMERGED_PLANTS, false));
-		l.add(new Case("nymfeidy starorzecza", SyntheticSample.morainePlateau().standingWater(ColumnSample.StandingWaterKind.OXBOW_LAKE, -30,
+		l.add(new Case("oxbow lake nymphaeids", SyntheticSample.morainePlateau().standingWater(ColumnSample.StandingWaterKind.OXBOW_LAKE, -30,
 				110, 60, 5).water(WaterKind.OXBOW, 110, 108).build(), n, HabitatBiome.LAKE, Zone.FLOATING_LEAVED_PLANTS, true));
-		l.add(new Case("szuwar jeziora (biom)", SyntheticSample.morainePlateau().standingWater(ColumnSample.StandingWaterKind.TUNNEL_VALLEY_LAKE,
+		l.add(new Case("lake reedbed (biome)", SyntheticSample.morainePlateau().standingWater(ColumnSample.StandingWaterKind.TUNNEL_VALLEY_LAKE,
 				-20, 110, 400, 5).water(WaterKind.LAKE, 110, 109).build(), n, HabitatBiome.REEDBED, Zone.REEDBED, false));
-		l.add(new Case("szuwar oczka (strefa)", SyntheticSample.morainePlateau().standingWater(ColumnSample.StandingWaterKind.KETTLE_POND, -3, 110,
+		l.add(new Case("kettle pond reedbed (zone)", SyntheticSample.morainePlateau().standingWater(ColumnSample.StandingWaterKind.KETTLE_POND, -3, 110,
 				25, 5).water(WaterKind.KETTLE, 110, 109.5).build(), n, HabitatBiome.LAKE, Zone.REEDBED, false));
 		for (long id = 1; id < 200; id++) {
-			// Pierwszy zbiornik o skrócie dystroficznym na sandrze: pło przy brzegu.
+			// First water body with a dystrophic hash on the outwash plain: floating mat at the shore.
 			ColumnSample c = SyntheticSample.outwashPlain().standingWater(ColumnSample.StandingWaterKind.KETTLE_POND, -2, 140, 60, id)
 					.water(WaterKind.KETTLE, 140, 139).build();
 			if (Habitat.biome(real(n).classify(c, 0, 0)) == HabitatBiome.DYSTROPHIC_LAKE) {
-				l.add(new Case("jezioro dystroficzne, pło", c, n, HabitatBiome.DYSTROPHIC_LAKE, Zone.FLOATING_MAT, false));
+				l.add(new Case("dystrophic lake, floating mat", c, n, HabitatBiome.DYSTROPHIC_LAKE, Zone.FLOATING_MAT, false));
 				break;
 			}
 		}
 		for (long id = 1; id < 400; id++) {
-			// Jezioro lobeliowe: pas olszy przy brzegu.
+			// Lobelia lake: belt of alders at the shore.
 			ColumnSample water = SyntheticSample.outwashPlain().standingWater(ColumnSample.StandingWaterKind.TUNNEL_VALLEY_LAKE, -30, 140, 300, id)
 					.water(WaterKind.LAKE, 140, 134).build();
 			if (Habitat.association(real(n).classify(water, 0, 0)) == Association.LOBELIA_LAKE) {
 				ColumnSample land = SyntheticSample.outwashPlain().h(141.5).standingWater(ColumnSample.StandingWaterKind.TUNNEL_VALLEY_LAKE, 2, 140, 300, id)
 						.build();
-				l.add(new Case("jezioro lobeliowe, olsza przy brzegu", land, n, null, Zone.SHORE_ALDERS, false));
+				l.add(new Case("lobelia lake, alders at the shore", land, n, null, Zone.SHORE_ALDERS, false));
 				break;
 			}
 		}
-		// Wybrzeże.
-		l.add(new Case("plaża mokra", SyntheticSample.coast(10, 1, Substrate.BEACH_SAND).build(), n, HabitatBiome.BEACH, Zone.NONE,
+		// Coast.
+		l.add(new Case("wet beach", SyntheticSample.coast(10, 1, Substrate.BEACH_SAND).build(), n, HabitatBiome.BEACH, Zone.NONE,
 				false));
-		l.add(new Case("kidzina", SyntheticSample.coast(40, 1.5, Substrate.BEACH_SAND).build(), n, HabitatBiome.BEACH, Zone.STRANDLINE,
+		l.add(new Case("strandline", SyntheticSample.coast(40, 1.5, Substrate.BEACH_SAND).build(), n, HabitatBiome.BEACH, Zone.STRANDLINE,
 				false));
-		l.add(new Case("wydma inicjalna", SyntheticSample.coast(70, 5, Substrate.BEACH_SAND).build(), n, HabitatBiome.WHITE_DUNE,
+		l.add(new Case("embryo dune", SyntheticSample.coast(70, 5, Substrate.BEACH_SAND).build(), n, HabitatBiome.WHITE_DUNE,
 				Zone.EMBRYO_DUNE, false));
-		l.add(new Case("wydma szara", SyntheticSample.coast(320, 6, Substrate.SAND).build(), n, HabitatBiome.GRAY_DUNE, Zone.NONE,
+		l.add(new Case("gray dune", SyntheticSample.coast(320, 6, Substrate.SAND).build(), n, HabitatBiome.GRAY_DUNE, Zone.NONE,
 				false));
-		l.add(new Case("bór bażynowy", SyntheticSample.coast(1_000, 10, Substrate.SAND).build(), n, HabitatBiome.COASTAL_PINE_FOREST,
+		l.add(new Case("coastal crowberry pine forest", SyntheticSample.coast(1_000, 10, Substrate.SAND).build(), n, HabitatBiome.COASTAL_PINE_FOREST,
 				Zone.NONE, false));
-		l.add(new Case("ściana klifu", SyntheticSample.coast(75, 20, Substrate.GLACIAL_TILL).landform(Landform.CLIFF).build(), n,
+		l.add(new Case("cliff face", SyntheticSample.coast(75, 20, Substrate.GLACIAL_TILL).landform(Landform.CLIFF).build(), n,
 				null, Zone.CLIFF_FACE, false));
-		l.add(new Case("korona klifu", SyntheticSample.coast(100, 20, Substrate.GLACIAL_TILL).build(), n, null,
+		l.add(new Case("cliff top", SyntheticSample.coast(100, 20, Substrate.GLACIAL_TILL).build(), n, null,
 				Zone.CLIFF_TOP, false));
 		SyntheticSample hinterland = SyntheticSample.coast(400, 1.2, Substrate.SAND);
 		hinterland.lowShore = 1;
-		l.add(new Case("torfowisko niskie za mierzeją", hinterland.build(), n, HabitatBiome.FEN, Zone.NONE, false));
-		// Siedliska strefowe.
+		l.add(new Case("fen behind the spit", hinterland.build(), n, HabitatBiome.FEN, Zone.NONE, false));
+		// Zonal habitats.
 		SyntheticSample dryPine = SyntheticSample.outwashPlain().landform(Landform.INLAND_DUNES);
 		dryPine.sandiness = 0.95;
 		dryPine.sBar = 133;
-		l.add(new Case("bór suchy na wydmie", dryPine.build(), n, HabitatBiome.DRY_PINE_FOREST, Zone.NONE, true));
-		l.add(new Case("prześwit wrzosowiska na wydmie", dryPine.build(), n, HabitatBiome.HEATH, Zone.NONE, true));
+		l.add(new Case("dry pine forest on a dune", dryPine.build(), n, HabitatBiome.DRY_PINE_FOREST, Zone.NONE, true));
+		l.add(new Case("heath clearing on a dune", dryPine.build(), n, HabitatBiome.HEATH, Zone.NONE, true));
 		SyntheticSample freshPine = SyntheticSample.outwashPlain();
 		freshPine.sandiness = 0.95;
-		l.add(new Case("bór świeży", freshPine.build(), n, HabitatBiome.FRESH_PINE_FOREST, Zone.NONE, false));
+		l.add(new Case("fresh pine forest", freshPine.build(), n, HabitatBiome.FRESH_PINE_FOREST, Zone.NONE, false));
 		SyntheticSample moistPine = SyntheticSample.outwashPlain();
 		moistPine.sandiness = 0.95;
 		moistPine.sBar = 141.0;
-		l.add(new Case("bór wilgotny", moistPine.build(), n, HabitatBiome.MOIST_PINE_FOREST, Zone.NONE, false));
+		l.add(new Case("moist pine forest", moistPine.build(), n, HabitatBiome.MOIST_PINE_FOREST, Zone.NONE, false));
 		SyntheticSample bogWoodland = SyntheticSample.outwashPlain();
 		bogWoodland.sandiness = 0.95;
 		bogWoodland.sBar = 142.3;
-		l.add(new Case("bór bagienny", bogWoodland.build(), n, HabitatBiome.BOG_WOODLAND, Zone.NONE, false));
+		l.add(new Case("bog woodland", bogWoodland.build(), n, HabitatBiome.BOG_WOODLAND, Zone.NONE, false));
 		SyntheticSample mixedPine = SyntheticSample.outwashPlain();
 		mixedPine.sandiness = 0.2;
-		l.add(new Case("bór mieszany", mixedPine.build(), n, HabitatBiome.MIXED_PINE_FOREST, Zone.NONE, false));
+		l.add(new Case("mixed pine forest", mixedPine.build(), n, HabitatBiome.MIXED_PINE_FOREST, Zone.NONE, false));
 		SyntheticSample mixedForest = SyntheticSample.morainePlateau();
 		mixedForest.sandiness = 0.75;
 		mixedForest.o = 0.35;
-		l.add(new Case("las mieszany", mixedForest.build(), n, HabitatBiome.MIXED_FOREST, Zone.NONE, false));
+		l.add(new Case("mixed forest", mixedForest.build(), n, HabitatBiome.MIXED_FOREST, Zone.NONE, false));
 		SyntheticSample oakHornbeam = SyntheticSample.morainePlateau();
 		oakHornbeam.sandiness = 0.1;
 		oakHornbeam.o = 0.35;
-		l.add(new Case("grąd", oakHornbeam.build(), n, HabitatBiome.OAK_HORNBEAM_FOREST, Zone.NONE, false));
+		l.add(new Case("oak-hornbeam forest", oakHornbeam.build(), n, HabitatBiome.OAK_HORNBEAM_FOREST, Zone.NONE, false));
 		SyntheticSample lowlandBeech = SyntheticSample.morainePlateau();
 		lowlandBeech.sandiness = 0.1;
 		lowlandBeech.o = 0.95;
 		lowlandBeech.convexity = 1;
-		l.add(new Case("buczyna niżowa", lowlandBeech.build(), n, HabitatBiome.LOWLAND_BEECH_FOREST, Zone.NONE, true));
+		l.add(new Case("lowland beech forest", lowlandBeech.build(), n, HabitatBiome.LOWLAND_BEECH_FOREST, Zone.NONE, true));
 		SyntheticSample alderCarr = SyntheticSample.morainePlateau();
 		alderCarr.sandiness = 0.1;
 		alderCarr.sBar = 124.2;
-		l.add(new Case("ols strefowy", alderCarr.build(), n, HabitatBiome.ALDER_CARR, Zone.NONE, false));
+		l.add(new Case("zonal alder carr", alderCarr.build(), n, HabitatBiome.ALDER_CARR, Zone.NONE, false));
 		SyntheticSample firForest = SyntheticSample.morainePlateau().h(400);
 		firForest.sandiness = 0.95;
 		firForest.p = 0.7;
-		l.add(new Case("jedlina wyżynna", firForest.build(), n, HabitatBiome.UPLAND_FIR_FOREST, Zone.NONE, false));
-		// Cieki (§4).
+		l.add(new Case("upland fir forest", firForest.build(), n, HabitatBiome.UPLAND_FIR_FOREST, Zone.NONE, false));
+		// Watercourses (§4).
 		SyntheticSample willowScrub = SyntheticSample.morainePlateau().h(91.7).stream(3, 150, 20, 0.3).onValleyFloor(0, 900);
-		l.add(new Case("wikliny przy dużej rzece", willowScrub.build(), n, HabitatBiome.WILLOW_SCRUB, Zone.WILLOW_SCRUB, false));
+		l.add(new Case("willow scrub at a large river", willowScrub.build(), n, HabitatBiome.WILLOW_SCRUB, Zone.WILLOW_SCRUB, false));
 		SyntheticSample pointBar = SyntheticSample.morainePlateau().h(91.7).stream(3, 150, 30, 0.3).onValleyFloor(0, 900);
 		pointBar.convexBank = true;
-		l.add(new Case("łacha", pointBar.build(), n, HabitatBiome.WILLOW_SCRUB, Zone.POINT_BAR, true));
+		l.add(new Case("point bar", pointBar.build(), n, HabitatBiome.WILLOW_SCRUB, Zone.POINT_BAR, true));
 		SyntheticSample fringe = SyntheticSample.morainePlateau().h(91.7).stream(3, 150, 50, 0.3).onValleyFloor(0, 900);
-		l.add(new Case("okrajek za wikliną", fringe.build(), n, HabitatBiome.WILLOW_POPLAR_FOREST, Zone.HERB_FRINGE, true));
+		l.add(new Case("herb fringe behind the willow scrub", fringe.build(), n, HabitatBiome.WILLOW_POPLAR_FOREST, Zone.HERB_FRINGE, true));
 		SyntheticSample whiteWillow = SyntheticSample.morainePlateau().h(91.7).stream(3, 150, 150, 0.3).onValleyFloor(0.1, 900);
-		l.add(new Case("łęg wierzbowy", whiteWillow.build(), n, HabitatBiome.WILLOW_POPLAR_FOREST, Zone.NONE, true));
+		l.add(new Case("white willow forest", whiteWillow.build(), n, HabitatBiome.WILLOW_POPLAR_FOREST, Zone.NONE, true));
 		SyntheticSample elmAsh = SyntheticSample.morainePlateau().h(91.7).stream(3, 150, 800, 0.3).onValleyFloor(0.5, 900);
 		elmAsh.convexity = 0.5;
-		l.add(new Case("łęg wiązowo-jesionowy", elmAsh.build(), n, HabitatBiome.ELM_ASH_FOREST, Zone.NONE, true));
+		l.add(new Case("elm-ash forest", elmAsh.build(), n, HabitatBiome.ELM_ASH_FOREST, Zone.NONE, true));
 		SyntheticSample backswamp = SyntheticSample.morainePlateau().h(91.7);
 		backswamp.channelLevel = 90.4;
 		backswamp.stream(3, 150, 800, 0.2).onValleyFloor(0.85, 900);
 		backswamp.convexity = -1;
-		l.add(new Case("zastoisko: torfowisko niskie", backswamp.build(), n, HabitatBiome.FEN, Zone.NONE, true));
-		l.add(new Case("zastoisko: ols", backswamp.build(), n, HabitatBiome.ALDER_CARR, Zone.NONE, true));
+		l.add(new Case("backswamp: fen", backswamp.build(), n, HabitatBiome.FEN, Zone.NONE, true));
+		l.add(new Case("backswamp: alder carr", backswamp.build(), n, HabitatBiome.ALDER_CARR, Zone.NONE, true));
 		SyntheticSample ashAlder = SyntheticSample.morainePlateau().stream(1, 5, 8, 1).onValleyFloor(0.1, 70);
-		l.add(new Case("łęg jesionowo-olszowy", ashAlder.build(), n, HabitatBiome.ASH_ALDER_FOREST, Zone.NONE, true));
+		l.add(new Case("ash-alder forest", ashAlder.build(), n, HabitatBiome.ASH_ALDER_FOREST, Zone.NONE, true));
 		SyntheticSample herbs = SyntheticSample.morainePlateau().stream(1, 5, 1, 1).onValleyFloor(0, 70);
-		l.add(new Case("ziołorośla małej rzeki", herbs.build(), n, HabitatBiome.ASH_ALDER_FOREST, Zone.TALL_HERBS, false));
+		l.add(new Case("tall herbs of a small river", herbs.build(), n, HabitatBiome.ASH_ALDER_FOREST, Zone.TALL_HERBS, false));
 		SyntheticSample willows = SyntheticSample.outwashPlain().stream(2, 20, 15, 1).onValleyFloor(0, 100);
 		willows.sandiness = 0.95;
-		l.add(new Case("wierzby małej rzeki na piasku", willows.build(), n, null, Zone.RIVERSIDE_WILLOWS, true));
+		l.add(new Case("willows of a small river on sand", willows.build(), n, null, Zone.RIVERSIDE_WILLOWS, true));
 		SyntheticSample headwaters = SyntheticSample.morainePlateau().stream(1, 3, 10, 1).onValleyFloor(0, 40).landform(Landform.HEADWATERS);
-		l.add(new Case("źródlisko", headwaters.build(), n, HabitatBiome.ASH_ALDER_FOREST, Zone.SPRING_AREA, true));
+		l.add(new Case("spring area", headwaters.build(), n, HabitatBiome.ASH_ALDER_FOREST, Zone.SPRING_AREA, true));
 		SyntheticSample treeRow = SyntheticSample.morainePlateau().h(126).stream(1, 5, 6, 1);
 		treeRow.rawSurface = 126;
-		l.add(new Case("szpaler olszy (tryb D)", treeRow.build(), d, null, Zone.TREE_ROW, true));
+		l.add(new Case("alder tree row (PRESENT_DAY mode)", treeRow.build(), d, null, Zone.TREE_ROW, true));
 		SyntheticSample gravelBar = SyntheticSample.beskids(500).stream(2, 8, 4, 8).onValleyFloor(0, 40);
 		gravelBar.convexBank = true;
-		l.add(new Case("kamieniec", gravelBar.build(), n, null, Zone.GRAVEL_BAR, false));
+		l.add(new Case("gravel bar", gravelBar.build(), n, null, Zone.GRAVEL_BAR, false));
 		SyntheticSample mountainWillowScrub = SyntheticSample.beskids(500).stream(2, 8, 5, 8).onValleyFloor(0.1, 40);
-		l.add(new Case("wiklina górska", mountainWillowScrub.build(), n, null, Zone.WILLOW_SCRUB, false));
+		l.add(new Case("mountain willow scrub", mountainWillowScrub.build(), n, null, Zone.WILLOW_SCRUB, false));
 		SyntheticSample grayAlderBand = SyntheticSample.beskids(600).stream(2, 8, 12, 8).onValleyFloor(0.2, 40);
-		l.add(new Case("olszyna górska", grayAlderBand.build(), n, HabitatBiome.GRAY_ALDER_FOREST, Zone.NONE, true));
+		l.add(new Case("gray alder forest", grayAlderBand.build(), n, HabitatBiome.GRAY_ALDER_FOREST, Zone.NONE, true));
 		SyntheticSample mountainHerbs = SyntheticSample.beskids(1_050).stream(1, 3, 0.5, 30).onValleyFloor(0, 20);
-		l.add(new Case("ziołorośla nadpotokowe", mountainHerbs.build(), n, null, Zone.MONTANE_TALL_HERBS, false));
-		// Wody stojące na lądzie.
+		l.add(new Case("streamside tall herbs", mountainHerbs.build(), n, null, Zone.MONTANE_TALL_HERBS, false));
+		// Standing water on land.
 		SyntheticSample willowCarr = SyntheticSample.morainePlateau().h(111.5).standingWater(ColumnSample.StandingWaterKind.TUNNEL_VALLEY_LAKE, 20, 110, 400, 5);
 		willowCarr.slope = 1;
-		l.add(new Case("łozowisko przy jeziorze", willowCarr.build(), n, HabitatBiome.ALDER_CARR, Zone.WILLOW_CARR, true));
+		l.add(new Case("willow carr by a lake", willowCarr.build(), n, HabitatBiome.ALDER_CARR, Zone.WILLOW_CARR, true));
 		SyntheticSample shoreReedbed = SyntheticSample.morainePlateau().h(111.2).standingWater(ColumnSample.StandingWaterKind.TUNNEL_VALLEY_LAKE, 3, 110, 400, 5);
-		l.add(new Case("szuwar lądowy", shoreReedbed.build(), n, null, Zone.SHORE_REEDBED, false));
+		l.add(new Case("shore reedbed", shoreReedbed.build(), n, null, Zone.SHORE_REEDBED, false));
 		SyntheticSample raisedBog = SyntheticSample.outwashPlain().h(139.5).standingWater(ColumnSample.StandingWaterKind.KETTLE_BOG, -30, 140, 120, 9);
 		raisedBog.substrate = Substrate.PEAT;
 		raisedBog.ombrotrophicPeat = true;
-		l.add(new Case("torfowisko wysokie", raisedBog.build(), n, HabitatBiome.RAISED_BOG, Zone.NONE, false));
-		// Góry (§5.1).
+		l.add(new Case("raised bog", raisedBog.build(), n, HabitatBiome.RAISED_BOG, Zone.NONE, false));
+		// Mountains (§5.1).
 		SyntheticSample beech = SyntheticSample.beskids(800);
 		beech.sandiness = 0.1;
 		beech.slope = 20;
 		beech.aspect = 180;
-		l.add(new Case("buczyna karpacka", beech.build(), n, HabitatBiome.MONTANE_BEECH_FOREST, Zone.NONE, false));
-		l.add(new Case("świerczyna górska", SyntheticSample.beskids(1_260).build(), n, HabitatBiome.MONTANE_SPRUCE_FOREST, Zone.NONE, false));
+		l.add(new Case("Carpathian beech forest", beech.build(), n, HabitatBiome.MONTANE_BEECH_FOREST, Zone.NONE, false));
+		l.add(new Case("montane spruce forest", SyntheticSample.beskids(1_260).build(), n, HabitatBiome.MONTANE_SPRUCE_FOREST, Zone.NONE, false));
 		SyntheticSample dwarfPine = SyntheticSample.beskids(1_500);
 		dwarfPine.summit = 1_700;
-		l.add(new Case("kosodrzewina", dwarfPine.build(), n, HabitatBiome.DWARF_PINE_SCRUB, Zone.NONE, false));
+		l.add(new Case("dwarf pine scrub", dwarfPine.build(), n, HabitatBiome.DWARF_PINE_SCRUB, Zone.NONE, false));
 		SyntheticSample alpine = SyntheticSample.beskids(1_720);
 		alpine.summit = 1_720;
-		l.add(new Case("hala", alpine.build(), n, HabitatBiome.ALPINE_GRASSLAND, Zone.NONE, false));
+		l.add(new Case("alpine grassland", alpine.build(), n, HabitatBiome.ALPINE_GRASSLAND, Zone.NONE, false));
 		SyntheticSample timberline = SyntheticSample.beskids(1_355);
 		timberline.summit = 1_700;
-		l.add(new Case("granica lasu", timberline.build(), n, HabitatBiome.MONTANE_SPRUCE_FOREST, Zone.TIMBERLINE, true));
-		// Tryb D: biomy nieleśne z maski lasu.
+		l.add(new Case("timberline", timberline.build(), n, HabitatBiome.MONTANE_SPRUCE_FOREST, Zone.TIMBERLINE, true));
+		// PRESENT_DAY mode: non-forest biomes from the forest mask.
 		SyntheticSample arable = SyntheticSample.morainePlateau();
 		arable.sandiness = 0.1;
 		arable.o = 0.35;
-		l.add(new Case("pole (tryb D)", arable.build(), d, HabitatBiome.ARABLE_LAND, Zone.NONE, true));
-		l.add(new Case("łąka świeża (tryb D)", arable.build(), d, HabitatBiome.HAY_MEADOW, Zone.NONE, true));
+		l.add(new Case("arable land (PRESENT_DAY mode)", arable.build(), d, HabitatBiome.ARABLE_LAND, Zone.NONE, true));
+		l.add(new Case("hay meadow (PRESENT_DAY mode)", arable.build(), d, HabitatBiome.HAY_MEADOW, Zone.NONE, true));
 		SyntheticSample meadow = SyntheticSample.morainePlateau().stream(1, 5, 8, 1).onValleyFloor(0.1, 70);
-		l.add(new Case("łąka wilgotna (tryb D)", meadow.build(), d, HabitatBiome.WET_MEADOW, null, true));
+		l.add(new Case("wet meadow (PRESENT_DAY mode)", meadow.build(), d, HabitatBiome.WET_MEADOW, null, true));
 		return l;
 	}
 
-	/** Pierwszy punkt (z 4000 na spirali), w którym przypadek daje oczekiwany wynik; null, gdy żaden. */
+	/** First point (out of 4000 on a spiral) where the case gives the expected result; null if there is none. */
 	static double[] findPoint(Case p) {
 		HabitatClassifier k = real(p.mode());
 		int attempts = p.search() ? 4_000 : 1;
@@ -315,16 +315,16 @@ class HabitatClassifierTest {
 		for (Case p : cases()) {
 			if (findPoint(p) == null) {
 				int code = new HabitatClassifier(SEED, LandscapeScale.REALISTIC, p.mode()).classify(p.sample(), 0, -7_000);
-				errors.add(p.description() + ": oczekiwano " + p.biome() + "/" + p.zone() + ", jest " + Habitat.of(code));
+				errors.add(p.description() + ": expected " + p.biome() + "/" + p.zone() + ", got " + Habitat.of(code));
 			}
 		}
 		assertTrue(errors.isEmpty(), String.join("\n", errors));
 		assertTrue(k.mode() == HabitatClassifier.Mode.NATURAL);
 	}
 
-	// ------------------------------------------------------------------ świat: osiągalność i łęgi tylko w dnie
+	// ------------------------------------------------------------------ world: reachability and riparian forests only on floors
 
-	/** Skupiska 125 × 125 kolumn co 2 m·k w 64 punktach (ok. 10⁶ próbek na skalę). */
+	/** Clusters of 125 × 125 columns every 2 m·k at 64 points (about 10⁶ samples per scale). */
 	static void scan(LandscapeScale sc, HabitatClassifier.Mode mode, Predicate<int[]> action, Observer o) {
 		LandscapeModel m = new LandscapeModel(SEED, sc, 1.0);
 		HabitatClassifier k = new HabitatClassifier(SEED, sc, mode);
@@ -360,13 +360,13 @@ class HabitatClassifierTest {
 				biomesInScale.add(Habitat.biome(code));
 				zonesInScale.add(Habitat.zone(code));
 			});
-			// Osobno dla każdej skali: biomy i strefy, których nie ma w 64 skupiskach tej skali.
+			// Separately for each scale: biomes and zones missing from the 64 clusters of that scale.
 			Set<HabitatBiome> missingBiomes = EnumSet.allOf(HabitatBiome.class);
 			missingBiomes.removeAll(biomesInScale);
 			Set<Zone> missingZones = EnumSet.allOf(Zone.class);
 			missingZones.removeAll(zonesInScale);
-			System.out.println(sc.id() + ": biomy w świecie " + biomesInScale.size() + ", brak w skupiskach: " + missingBiomes);
-			System.out.println(sc.id() + ": strefy brak w skupiskach: " + missingZones);
+			System.out.println(sc.id() + ": biomes in the world " + biomesInScale.size() + ", missing from the clusters: " + missingBiomes);
+			System.out.println(sc.id() + ": zones missing from the clusters: " + missingZones);
 			biomes.addAll(biomesInScale);
 			zones.addAll(zonesInScale);
 		}
@@ -386,26 +386,26 @@ class HabitatClassifierTest {
 		onlySynthBiomes.removeAll(biomes);
 		Set<Zone> onlySynthZones = EnumSet.allOf(Zone.class);
 		onlySynthZones.removeAll(zones);
-		System.out.println("Biomy tylko z próbek syntetycznych (rzadkie albo tryb D): " + onlySynthBiomes);
-		System.out.println("Strefy tylko z próbek syntetycznych: " + onlySynthZones);
+		System.out.println("Biomes only from synthetic samples (rare or PRESENT_DAY mode): " + onlySynthBiomes);
+		System.out.println("Zones only from synthetic samples: " + onlySynthZones);
 		Set<HabitatBiome> missingBiomes = EnumSet.copyOf(onlySynthBiomes);
 		missingBiomes.removeAll(synthBiomes);
 		Set<Zone> missingZones = EnumSet.copyOf(onlySynthZones);
 		missingZones.removeAll(synthZones);
-		assertTrue(missingBiomes.isEmpty(), "nieosiągalne biomy: " + missingBiomes);
-		assertTrue(missingZones.isEmpty(), "nieosiągalne strefy: " + missingZones);
-		// W 64 skupiskach w świecie (bez próbek syntetycznych) musi być większość biomów; rzadkie to piętra
-		// wysokie, tryb D i biomy wąskich pasów (zalew, wydma szara, zastoiska wielkich den).
-		assertTrue(biomes.size() >= 25, "biomy w świecie: " + biomes.size() + " " + biomes);
+		assertTrue(missingBiomes.isEmpty(), "unreachable biomes: " + missingBiomes);
+		assertTrue(missingZones.isEmpty(), "unreachable zones: " + missingZones);
+		// The 64 clusters in the world (without synthetic samples) must contain most biomes; the rare ones are the high
+		// belts, PRESENT_DAY mode and biomes of narrow belts (lagoon, gray dune, backswamps of large valley floors).
+		assertTrue(biomes.size() >= 25, "biomes in the world: " + biomes.size() + " " + biomes);
 	}
 
 	/**
-	 * Łęgi tylko przy wodzie płynącej, z kryteriów geometrycznych liczonych wprost z pól próbki (bez predykatów
-	 * klasyfikatora {@code dno()} i {@code wysiek()}): ciek w zasięgu, grunt w dnie modelu albo najwyżej
-	 * {@link Calibration#SEEP_HL} nad lustrem najbliższego koryta i w dolinie (grunt najwyżej
-	 * {@link Calibration#FLOOR_H} nad lustrem, teren wcięty co najmniej {@link Calibration#INCISION_FROM} poniżej terenu
-	 * przed doliną albo pas 6 bloków przy brzegu). Źródliska: forma ZRODLO do 40 m·k (+20% drgania) od koryta.
-	 * Raportuje też skalę wysięków (łęg poza flagą dna modelu).
+	 * Riparian forests only at flowing water, by geometric criteria computed directly from the sample fields (without the
+	 * classifier predicates {@code onValleyFloor()} and {@code isSeep()}): a watercourse in range, ground on the model floor or at most
+	 * {@link Calibration#SEEP_HL} above the water surface of the nearest channel and in the valley (ground at most
+	 * {@link Calibration#FLOOR_H} above the water surface, terrain incised at least {@link Calibration#INCISION_FROM} below the terrain
+	 * before the valley, or the 6-block belt at the bank). Spring areas: the HEADWATERS landform up to 40 m·k (+20% jitter) from the channel.
+	 * Also reports the extent of seeps (riparian forest outside the model's floor flag).
 	 */
 	@Test
 	void riparianOnlyOnFloorsSpringsAndSeeps() {
@@ -446,19 +446,19 @@ class HabitatClassifierTest {
 				if (!(nearWater || isSpringArea)) {
 					outside.incrementAndGet();
 					if (examples.size() < 5) {
-						examples.add(String.format(Locale.ROOT, "%s (%.0f, %.0f) %s: hl %.1f, za dnem %.0f, %s", sc.id(), x, z, b, hl,
+						examples.add(String.format(Locale.ROOT, "%s (%.0f, %.0f) %s: hl %.1f, beyond floor %.0f, %s", sc.id(), x, z, b, hl,
 								beyondFloor, s));
 					}
 				}
 			});
 		}
-		System.out.printf(Locale.ROOT, "Łęgi: %d z %d próbek, poza kryteriami %d; poza flagą dna modelu %d (%.1f%% łęgów), "
-				+ "z nich wyżej niż 3 m nad lustrem %d; najwyżej %.1f m nad lustrem, najdalej %.0f m·k za skrajem dna%n", riparian.get(),
+		System.out.printf(Locale.ROOT, "Riparian forests: %d of %d samples, outside the criteria %d; outside the model's floor flag %d (%.1f%% of riparian), "
+				+ "of which more than 3 m above the water surface %d; at most %.1f m above the water surface, at most %.0f m·k beyond the floor edge%n", riparian.get(),
 				all.get(), outside.get(), outsideFlag.get(), 100.0 * outsideFlag.get() / Math.max(1, riparian.get()),
 				highAboveWater.get(), maxHl.get(), maxBeyondFloor.get());
-		assertTrue(all.get() >= 1_900_000, "za mało próbek");
-		assertTrue(riparian.get() > 1_000, "za mało łęgów: " + riparian.get());
-		assertEquals(0, outside.get(), "łęg z dala od wody płynącej: " + examples);
+		assertTrue(all.get() >= 1_900_000, "too few samples");
+		assertTrue(riparian.get() > 1_000, "too few riparian forest columns: " + riparian.get());
+		assertEquals(0, outside.get(), "riparian forest far from flowing water: " + examples);
 	}
 
 	@Test
@@ -470,7 +470,7 @@ class HabitatClassifierTest {
 			ColumnSample[] s = new ColumnSample[n];
 			double[] xs = new double[n];
 			double[] zs = new double[n];
-			// Pięć obszarów po 20 tys. kolumn (gęsto, jak w chunku): nizina, dolina, Beskidy, wybrzeże, środek.
+			// Five areas of 20k columns each (dense, as in a chunk): lowland, valley, Beskids, coast, center.
 			double[][] centers = {{0, 0}, {-49_879, -3_478}, {154_834, 1_058_738}, {-357_357, -380_500}, {66_000, 21_000}};
 			double scale = sc.local();
 			for (int i = 0; i < n; i++) {
@@ -493,8 +493,8 @@ class HabitatClassifierTest {
 				}
 			}
 			double us = best / 1e3 / n;
-			System.out.printf(Locale.ROOT, "Klasyfikacja (%s): %.3f µs na kolumnę (suma %d)%n", sc.id(), us, sum);
-			assertTrue(us <= 0.5, "klasyfikacja " + us + " µs");
+			System.out.printf(Locale.ROOT, "Classification (%s): %.3f µs per column (sum %d)%n", sc.id(), us, sum);
+			assertTrue(us <= 0.5, "classification " + us + " µs");
 		}
 	}
 

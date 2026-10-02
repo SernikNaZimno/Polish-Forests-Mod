@@ -17,16 +17,16 @@ import org.junit.jupiter.api.Test;
 import pl.polishforests.worldgen.chunk.PolandScale;
 import pl.polishforests.worldgen.chunk.VerticalScale;
 
-/** Temperatura z metrów (docs/03-m2-biomy.md, sekcja 6.1) w obu skalach świata. */
+/** Temperature from meters (docs/03-m2-biomy.md, section 6.1) in both world scales. */
 class PolandClimateTest {
-	/** Korekta Serene Seasons w marcu i listopadzie. */
+	/** Serene Seasons correction in March and November. */
 	private static final double MARCH_NOVEMBER_CORRECTION = -0.25;
 
 	@Test
 	void temperatureAtSeaLevelIsBaseTemperature() {
 		for (PolandScale scale : PolandScale.values()) {
 			VerticalScale v = scale.vertical();
-			// Y 62: górna ściana bloku na poziomie morza (0 m n.p.m.).
+			// Y 62: top face of the block at sea level (0 m a.s.l.).
 			int y = v.seaLevelY() - 1;
 			assertEquals(0.0, v.metersAboveSea(y), 1e-9);
 			double sum = 0;
@@ -37,13 +37,13 @@ class PolandClimateTest {
 					double expected = BiomeClimate.T_LOWLAND + PolandClimate.NOISE_AMPLITUDE * PolandClimate.noise(x, z);
 					assertEquals(expected, t, 1e-6);
 					assertTrue(Math.abs(t - BiomeClimate.T_LOWLAND) <= PolandClimate.NOISE_AMPLITUDE + 1e-6);
-					// Pod poziomem morza (dna jezior, morze) temperatura nie rośnie.
+					// Below sea level (lake beds, sea) the temperature does not rise.
 					assertEquals(t, PolandClimate.temperature(BiomeClimate.T_LOWLAND, v, x, y - 40, z), 0.0F);
 					sum += t;
 					n++;
 				}
 			}
-			assertEquals(BiomeClimate.T_LOWLAND, sum / n, 0.0015, "średnia T(0 m) w skali " + scale.getSerializedName());
+			assertEquals(BiomeClimate.T_LOWLAND, sum / n, 0.0015, "mean T(0 m) at scale " + scale.getSerializedName());
 		}
 	}
 
@@ -56,11 +56,11 @@ class PolandClimateTest {
 				double s = PolandClimate.noise(x, z);
 				min = Math.min(min, s);
 				max = Math.max(max, s);
-				assertTrue(Math.abs(PolandClimate.noise(x + 1, z) - s) < 0.05, "skok szumu przy " + x + ", " + z);
+				assertTrue(Math.abs(PolandClimate.noise(x + 1, z) - s) < 0.05, "noise jump at " + x + ", " + z);
 			}
 		}
 		assertTrue(min >= -1 && max <= 1);
-		assertTrue(min < -0.5 && max > 0.5, String.format(Locale.ROOT, "szum za płaski: %.3f..%.3f", min, max));
+		assertTrue(min < -0.5 && max > 0.5, String.format(Locale.ROOT, "noise too flat: %.3f..%.3f", min, max));
 	}
 
 	@Test
@@ -68,16 +68,16 @@ class PolandClimateTest {
 		for (PolandScale scale : PolandScale.values()) {
 			for (float baseTemperature : new float[] {BiomeClimate.T_LOWLAND, BiomeClimate.T_SEA}) {
 				double[] range = snowLine(scale.vertical(), baseTemperature, 0.0);
-				System.out.printf(Locale.ROOT, "%s, T %.2f: latem śnieg od %.0f..%.0f m%n", scale.getSerializedName(),
+				System.out.printf(Locale.ROOT, "%s, T %.2f: summer snow from %.0f..%.0f m%n", scale.getSerializedName(),
 						baseTemperature, range[0], range[1]);
 				assertTrue(range[0] >= 1_950, String.format(Locale.ROOT,
-						"%s, T %.2f: latem śnieg już od %.0f m", scale.getSerializedName(), baseTemperature, range[0]));
+						"%s, T %.2f: summer snow already from %.0f m", scale.getSerializedName(), baseTemperature, range[0]));
 			}
-			// Kontrola z planu: szczyt Babiej Góry (1725 m) ma T ok. 0,226 bez szumu.
+			// Check from the plan: the summit of Babia Gora (1725 m) has T of about 0.226 without noise.
 			VerticalScale v = scale.vertical();
 			int y = v.topBlockY(1_725);
 			double withoutNoise = BiomeClimate.T_LOWLAND - PolandClimate.GRADIENT * v.metersAboveSea(y);
-			assertEquals(0.226, withoutNoise, 0.004, "Babia Góra w skali " + scale.getSerializedName());
+			assertEquals(0.226, withoutNoise, 0.004, "Babia Gora at scale " + scale.getSerializedName());
 		}
 	}
 
@@ -85,7 +85,7 @@ class PolandClimateTest {
 	void marchAndNovemberSnowLineIsAround1100m() {
 		for (PolandScale scale : PolandScale.values()) {
 			double[] range = snowLine(scale.vertical(), BiomeClimate.T_LOWLAND, MARCH_NOVEMBER_CORRECTION);
-			String description = String.format(Locale.ROOT, "%s: próg śniegu przy -0,25 w %.0f..%.0f m",
+			String description = String.format(Locale.ROOT, "%s: snow threshold with -0.25 at %.0f..%.0f m",
 					scale.getSerializedName(), range[0], range[1]);
 			System.out.println(description);
 			assertTrue(range[0] >= 1_050 && range[1] <= 1_150, description);
@@ -98,7 +98,7 @@ class PolandClimateTest {
 			VerticalScale v = scale.vertical();
 			for (int x = -5_000; x <= 5_000; x += 1_013) {
 				float t = PolandClimate.temperature(BiomeClimate.T_SEA, v, x, v.seaLevelY(), x * 3);
-				assertTrue(t - 0.8 < PolandClimate.SNOW_THRESHOLD, "zimą (-0,8) bez śniegu nad morzem");
+				assertTrue(t - 0.8 < PolandClimate.SNOW_THRESHOLD, "no snow above the sea in winter (-0.8)");
 			}
 		}
 	}
@@ -110,7 +110,7 @@ class PolandClimateTest {
 			float prev = Float.MAX_VALUE;
 			for (int y = v.seaLevelY() - 1; y <= v.maxY(); y++) {
 				float t = PolandClimate.temperature(BiomeClimate.T_LOWLAND, v, 1234, y, -5678);
-				assertTrue(t <= prev, "temperatura rośnie przy Y " + y);
+				assertTrue(t <= prev, "temperature rises at Y " + y);
 				prev = t;
 			}
 		}
@@ -121,7 +121,7 @@ class PolandClimateTest {
 		VerticalScale v = VerticalScale.REAL;
 		for (String id : BiomeClimate.PLACEHOLDERS) {
 			BiomeClimate k = BiomeClimate.placeholder(id, v);
-			assertTrue(k.baseTemperature() <= PolandClimate.MAX_BASE_TEMPERATURE, id + ": T_bazowa ponad bramką Serene Seasons");
+			assertTrue(k.baseTemperature() <= PolandClimate.MAX_BASE_TEMPERATURE, id + ": base temperature above the Serene Seasons gate");
 			assertTrue(k.baseTemperature() >= 0.6F, id);
 			assertTrue(k.scale() == v);
 		}
@@ -132,7 +132,7 @@ class PolandClimateTest {
 		assertEquals(BiomeClimate.T_LOWLAND, BiomeClimate.placeholder("minecraft:forest", v).baseTemperature());
 	}
 
-	/** Tag klimatu obejmuje dokładnie biomy zastępcze z obu presetów świata. */
+	/** The climate tag covers exactly the placeholder biomes from both world presets. */
 	@Test
 	void tagCoversPresetBiomes() throws Exception {
 		Set<String> tag = new TreeSet<>();
@@ -155,7 +155,7 @@ class PolandClimateTest {
 		}
 	}
 
-	/** Najniższa wysokość ze śniegiem (T + korekta < 0,15) w wielu kolumnach: [min, max] w metrach. */
+	/** Lowest height with snow (T + correction < 0.15) over many columns: [min, max] in meters. */
 	private static double[] snowLine(VerticalScale v, float baseTemperature, double correction) {
 		List<Double> thresholds = new ArrayList<>();
 		for (int x = -30_000; x <= 30_000; x += 487) {
@@ -169,7 +169,7 @@ class PolandClimateTest {
 				}
 			}
 		}
-		assertTrue(thresholds.size() > 1_000, "brak śniegu w całej wysokości świata");
+		assertTrue(thresholds.size() > 1_000, "no snow anywhere in the world height");
 		double min = thresholds.stream().mapToDouble(Double::doubleValue).min().orElseThrow();
 		double max = thresholds.stream().mapToDouble(Double::doubleValue).max().orElseThrow();
 		return new double[] {min, max};
@@ -177,7 +177,7 @@ class PolandClimateTest {
 
 	private static JsonElement json(String path) throws Exception {
 		try (InputStream in = PolandClimateTest.class.getResourceAsStream(path)) {
-			assertTrue(in != null, "brak zasobu " + path);
+			assertTrue(in != null, "missing resource " + path);
 			return JsonParser.parseReader(new InputStreamReader(in, StandardCharsets.UTF_8));
 		}
 	}
