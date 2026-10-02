@@ -1,0 +1,53 @@
+{
+  "dimensions": {
+    "minecraft:overworld": {
+      "type": "polishforests:poland",
+      "generator": {
+        "type": "polishforests:poland",
+        "biome_source": {
+          "type": "polishforests:poland",
+          "outwash_plain": "minecraft:old_growth_pine_taiga",
+          "moraine": "minecraft:forest",
+          "plain": "minecraft:plains",
+          "floodplain": "minecraft:meadow",
+          "river": "minecraft:river",
+          "lake": "minecraft:river",
+          "peat": "minecraft:swamp",
+          "foothills": "minecraft:forest",
+          "mountains": "minecraft:taiga",
+          "mountains_high": "minecraft:old_growth_spruce_taiga",
+          "sea": "minecraft:ocean",
+          "beach": "minecraft:beach"
+        },
+        "settings": {
+          "region_scale": 1.0,
+          "agriculture": true,
+          "managed_forest_share": 0.85,
+          "alien_species": true,
+          "scale": "realistic"
+        }
+      }
+    },
+    "minecraft:the_end": {
+      "type": "minecraft:the_end",
+      "generator": {
+        "type": "minecraft:noise",
+        "biome_source": {
+          "type": "minecraft:the_end"
+        },
+        "settings": "minecraft:end"
+      }
+    },
+    "minecraft:the_nether": {
+      "type": "minecraft:the_nether",
+      "generator": {
+        "type": "minecraft:noise",
+        "biome_source": {
+          "type": "minecraft:multi_noise",
+          "preset": "minecraft:nether"
+        },
+        "settings": "minecraft:nether"
+      }
+    }
+  }
+}

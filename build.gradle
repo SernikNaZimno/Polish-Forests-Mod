@@ -27,7 +27,7 @@ loom {
 	splitEnvironmentSourceSets()
 
 	mods {
-		'polskielasy' {
+		'polishforests' {
 			sourceSet sourceSets.main
 			sourceSet sourceSets.client
 		}
@@ -42,7 +42,7 @@ fabricApi {
 	// Testy serwerowe są wyłączone, więc nie jest potrzebna akceptacja EULA.
 	configureTests {
 		createSourceSet = true
-		modId = 'polskielasy-gametest'
+		modId = 'polishforests-gametest'
 		enableGameTests = false
 		enableClientGameTests = true
 	}
@@ -63,7 +63,7 @@ dependencies {
 	localRuntime "maven.modrinth:glitchcore:${project.glitchcore_version}"
 
 	// Mody optymalizacyjne z zalecanej paczki; w środowisku dev tylko z flagą -Poptymalizacja.
-	if (project.hasProperty('optymalizacja')) {
+	if (project.hasProperty('optimization')) {
 		[
 			'sodium:bAZQdGpg',            // Sodium 0.9.2 (stabilne; wymagane przez Nvidium)
 			'lithium:WXHRsMRl',           // Lithium 0.26.1
@@ -127,14 +127,14 @@ java {
 
 // Podgląd modelu krajobrazu do PNG, bez uruchamiania gry.
 tasks.register('landscapePreview', JavaExec) {
-	group = 'polskielasy'
-	description = 'Renderuje model krajobrazu do build/preview/*.png'
+	group = 'polishforests'
+	description = 'Renders the landscape model to build/preview/*.png'
 	classpath = sourceSets.test.runtimeClasspath
-	mainClass = 'pl.polskielasy.worldgen.landscape.LandscapePreview'
+	mainClass = 'pl.polishforests.worldgen.landscape.LandscapePreview'
 	args = [layout.buildDirectory.dir('preview').get().asFile.absolutePath]
 	// -PtylkoSiedliska: tylko podgląd siedlisk M2 (kadry, mapy O i P, przekroje dolin, CSV udziałów).
-	if (project.hasProperty('tylkoSiedliska')) {
-		args += ['20260927', 'siedliska']
+	if (project.hasProperty('habitatsOnly')) {
+		args += ['20260927', 'habitats']
 	}
 	jvmArgs = ['-Xmx3G', '-Djava.awt.headless=true']
 }
@@ -146,22 +146,22 @@ test {
 		exceptionFormat = 'full'
 	}
 	// Złoty test terenu (GoldenTerrainTest): z -PzlotyZapisz zapisuje nowy plik wzorcowy zamiast porównywać.
-	if (project.hasProperty('zlotyZapisz')) {
-		systemProperty 'polskielasy.zloty.zapisz', 'true'
-		systemProperty 'polskielasy.zloty.plik', file('src/test/resources/zloty_teren_m1.txt').absolutePath
+	if (project.hasProperty('writeGolden')) {
+		systemProperty 'polishforests.golden.write', 'true'
+		systemProperty 'polishforests.golden.file', file('src/test/resources/golden_terrain_m1.txt').absolutePath
 	}
 	// SampleKosztTest: liczba przebiegów (domyślnie 7), np. -PkosztPrzebiegi=15 przy rozstrzyganiu budżetu.
-	if (project.hasProperty('kosztPrzebiegi')) {
-		systemProperty 'polskielasy.koszt.przebiegi', project.property('kosztPrzebiegi')
+	if (project.hasProperty('costRuns')) {
+		systemProperty 'polishforests.cost.runs', project.property('costRuns')
 	}
 }
 
 // Wybór testów w grze: ./gradlew runClientGameTest -Pgametest=wydajnosc|etapy|widoki|klimat|ui|wszystko
 // Tylko wybrane widoki: -Pmiejsca=plaza,klif (nazwy z PolskaWorldClientGameTest).
 tasks.named('runClientGameTest') {
-	jvmArgs "-Dpolskielasy.gametest=${project.findProperty('gametest') ?: 'wszystko'}"
-	jvmArgs "-Dpolskielasy.miejsca=${project.findProperty('miejsca') ?: ''}"
-	if (project.hasProperty('profil')) {
-		jvmArgs "-XX:StartFlightRecording=filename=${layout.buildDirectory.file('profil.jfr').get().asFile.absolutePath},settings=profile"
+	jvmArgs "-Dpolishforests.gametest=${project.findProperty('gametest') ?: 'all'}"
+	jvmArgs "-Dpolishforests.sites=${project.findProperty('sites') ?: ''}"
+	if (project.hasProperty('profile')) {
+		jvmArgs "-XX:StartFlightRecording=filename=${layout.buildDirectory.file('profile.jfr').get().asFile.absolutePath},settings=profile"
 	}
 }

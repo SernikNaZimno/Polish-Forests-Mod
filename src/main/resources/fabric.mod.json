@@ -1,9 +1,9 @@
 {
 	"schemaVersion": 1,
-	"id": "polskielasy",
+	"id": "polishforests",
 	"version": "${version}",
-	"name": "Przyrodniczo zgodne lasy",
-	"description": "Proceduralne krajobrazy Polski w skali 1:1 z przyrodniczo wiernymi lasami, florą i fauną oraz integracją z porami roku Serene Seasons.",
+	"name": "Polish Forests",
+	"description": "Procedurally generated landscapes of Poland at true 1:1 scale, with ecologically accurate forests, flora and fauna, and Serene Seasons integration.",
 	"authors": [
 		"henke"
 	],
@@ -12,19 +12,19 @@
 	"environment": "*",
 	"entrypoints": {
 		"main": [
-			"pl.polskielasy.PolskieLasy"
+			"pl.polishforests.PolishForests"
 		],
 		"client": [
-			"pl.polskielasy.client.PolskieLasyClient"
+			"pl.polishforests.client.PolishForestsClient"
 		],
 		"fabric-datagen": [
-			"pl.polskielasy.client.datagen.PolskieLasyDataGenerator"
+			"pl.polishforests.client.datagen.PolishForestsDataGenerator"
 		]
 	},
 	"mixins": [
-		"polskielasy.mixins.json",
+		"polishforests.mixins.json",
 		{
-			"config": "polskielasy.client.mixins.json",
+			"config": "polishforests.client.mixins.json",
 			"environment": "client"
 		}
 	],

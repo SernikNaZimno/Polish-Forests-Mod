@@ -1,0 +1,13 @@
+{
+	"required": true,
+	"package": "pl.polishforests.mixin",
+	"compatibilityLevel": "JAVA_25",
+	"mixins": [
+		"BiomeClimateMixin",
+		"BiomeTemperatureMixin",
+		"BiomeFreezeMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}

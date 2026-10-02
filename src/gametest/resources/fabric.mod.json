@@ -1,17 +1,17 @@
 {
 	"schemaVersion": 1,
-	"id": "polskielasy-gametest",
+	"id": "polishforests-gametest",
 	"version": "0.0.0",
-	"name": "Przyrodniczo zgodne lasy: testy w grze",
+	"name": "Polish Forests Game Tests",
 	"environment": "*",
 	"entrypoints": {
 		"fabric-client-gametest": [
-			"pl.polskielasy.gametest.UiAndCommandsClientGameTest",
-			"pl.polskielasy.gametest.PerformanceClientGameTest",
-			"pl.polskielasy.gametest.PolskaWorldClientGameTest"
+			"pl.polishforests.gametest.UiAndCommandsClientGameTest",
+			"pl.polishforests.gametest.PerformanceClientGameTest",
+			"pl.polishforests.gametest.PolandWorldClientGameTest"
 		]
 	},
 	"depends": {
-		"polskielasy": "*"
+		"polishforests": "*"
 	}
 }

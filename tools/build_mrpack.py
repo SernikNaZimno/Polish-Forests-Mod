@@ -1,4 +1,4 @@
-"""Buduje zalecaną paczkę modów (.mrpack, format Modrinth) dla moda "Przyrodniczo zgodne lasy".
+"""Buduje zalecaną paczkę modów (.mrpack, format Modrinth) dla moda "Polish Forests".
 
 Użycie (w katalogu projektu, po ./gradlew build):
     python tools/build_mrpack.py
@@ -18,7 +18,7 @@ import zipfile
 
 MINECRAFT = "26.3"
 FABRIC_LOADER = "0.19.5"
-PACK_NAME = "Przyrodniczo zgodne lasy"
+PACK_NAME = "Polish Forests"
 
 # (slug, id wersji, strona: "both" / "client" / "server", wymagany?, opis)
 MODS = [
@@ -66,7 +66,7 @@ API = "https://api.modrinth.com/v2"
 
 
 def get_json(url):
-    req = urllib.request.Request(url, headers={"User-Agent": "polskielasy-mrpack-builder/1.0"})
+    req = urllib.request.Request(url, headers={"User-Agent": "polishforests-mrpack-builder/1.0"})
     with urllib.request.urlopen(req, timeout=30) as r:
         return json.load(r)
 
@@ -84,12 +84,12 @@ def resolve(slug, version_id):
 
 def main():
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    jars = [j for j in glob.glob(os.path.join(root, "build", "libs", "polskielasy-*.jar"))
+    jars = [j for j in glob.glob(os.path.join(root, "build", "libs", "polishforests-*.jar"))
             if not j.endswith("-sources.jar")]
     if not jars:
-        raise SystemExit("Brak build/libs/polskielasy-*.jar. Najpierw uruchom ./gradlew build")
+        raise SystemExit("build/libs/polishforests-*.jar not found. Run ./gradlew build first")
     jar = max(jars, key=os.path.getmtime)
-    mod_version = os.path.basename(jar)[len("polskielasy-"):-len(".jar")]
+    mod_version = os.path.basename(jar)[len("polishforests-"):-len(".jar")]
 
     files = []
     lines = []
@@ -106,7 +106,7 @@ def main():
             "downloads": [f["url"]],
             "fileSize": f["size"],
         })
-        lines.append(f"| {desc} | {v['version_number']} | {side} | {'tak' if required else 'nie'} |")
+        lines.append(f"| {desc} | {v['version_number']} | {side} | {'yes' if required else 'no'} |")
         print(f"{slug:18s} {v['version_number']}")
 
     index = {
@@ -120,14 +120,14 @@ def main():
     }
     out_dir = os.path.join(root, "build", "distributions")
     os.makedirs(out_dir, exist_ok=True)
-    out = os.path.join(out_dir, f"Przyrodniczo-zgodne-lasy-{mod_version}.mrpack")
+    out = os.path.join(out_dir, f"Polish-Forests-{mod_version}.mrpack")
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
         z.writestr("modrinth.index.json", json.dumps(index, indent=2, ensure_ascii=False))
         z.write(jar, f"overrides/mods/{os.path.basename(jar)}")
     sha = hashlib.sha1(open(out, "rb").read()).hexdigest()
     print(f"Zapisano {out} ({os.path.getsize(out) // 1024} KB, sha1 {sha})")
 
-    table = os.path.join(out_dir, "zawartosc-paczki.md")
+    table = os.path.join(out_dir, "pack-contents.md")
     with io.open(table, "w", encoding="utf-8") as t:
         t.write("| Mod | Wersja | Strona | Wymagany |\n|---|---|---|---|\n" + "\n".join(lines) + "\n")
     print(f"Zapisano {table}")
