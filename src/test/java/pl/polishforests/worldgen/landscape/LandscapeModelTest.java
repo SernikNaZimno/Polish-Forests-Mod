@@ -10,6 +10,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import pl.polishforests.worldgen.habitat.AltitudinalBelts;
 
@@ -319,6 +320,184 @@ class LandscapeModelTest {
 		}
 		System.out.println("Distribution (gameplay scale, 170 x 170 km): " + sb);
 	}
+
+	/**
+	 * Large Beskid massifs (M2-8, design §3.2): in the windows of {@link GreatMassifSurvey} at least 6 massifs at
+	 * realistic scale and 15 at gameplay scale, every realized summit at least the target − 40 m and at most 1750 m, at
+	 * least one summit of 1700 m or more at each scale. The massif centers are at least GM_SEPARATION · Ra apart, so
+	 * the reaches (less than 1.2 Ra) never overlap. Outside the reach of the massifs the terrain before valleys and
+	 * lakes is the M1 terrain (the frozen copy {@code landscape.m1}): 10,000 random Beskids points in each window.
+	 * The nearest massif from {@link LandscapeModel#nearestGreatMassif} is the nearest one of the window.
+	 */
+	@Test
+	void greatMassifsReachTarget() {
+		for (LandscapeScale sc : new LandscapeScale[] {LandscapeScale.REALISTIC, LandscapeScale.GAMEPLAY}) {
+			GreatMassifSurvey.Window w = GreatMassifSurvey.window(sc);
+			List<GreatMassifSurvey.Massif> list = GreatMassifSurvey.survey(sc);
+			double ra = GreatMassifSurvey.ra(sc);
+			StringBuilder sb = new StringBuilder();
+			double highest = 0;
+			for (GreatMassifSurvey.Massif s : list) {
+				LandscapeModel.GreatMassif g = s.massif();
+				sb.append(String.format(Locale.ROOT, "%n  (%.0f, %.0f) target %.0f m, summit %.0f m (%+.0f)", g.x(), g.z(),
+						g.targetSummit(), s.summit(), s.summit() - g.targetSummit()));
+				highest = Math.max(highest, s.summit());
+				assertTrue(s.summit() >= g.targetSummit() - 40 && s.summit() <= 1_750, sc.id() + ": massif (" + g.x() + ", "
+						+ g.z() + ") target " + g.targetSummit() + " m, summit " + s.summit() + " m");
+				for (GreatMassifSurvey.Massif o : list) {
+					if (o != s) {
+						assertTrue(Math.hypot(o.massif().x() - g.x(), o.massif().z() - g.z()) >= LandscapeModel.GM_SEPARATION * ra,
+								sc.id() + ": massifs closer than the separation: " + g + ", " + o.massif());
+					}
+				}
+			}
+			System.out.printf(Locale.ROOT, "%s: %d large massifs in the window %.0f km, highest summit %.0f m:%s%n", sc.id(),
+					list.size(), w.side() / 1_000, highest, sb);
+			assertTrue(list.size() >= w.minCount(), sc.id() + ": " + list.size() + " massifs, expected at least " + w.minCount());
+			assertTrue(highest >= 1_700, sc.id() + ": highest massif " + highest + " m");
+
+			LandscapeModel m = new LandscapeModel(SEED, sc, 1.0);
+			LandscapeModel.GreatMassif nearest = m.nearestGreatMassif(0, 0);
+			assertTrue(nearest != null, sc.id() + ": no large massif");
+			if (Math.abs(nearest.x()) < w.side() / 2 - Math.abs(w.cx()) && Math.abs(nearest.z()) < w.side() / 2 - Math.abs(w.cz())) {
+				double d = Math.hypot(nearest.x(), nearest.z());
+				for (GreatMassifSurvey.Massif s : list) {
+					assertTrue(Math.hypot(s.massif().x(), s.massif().z()) >= d, sc.id() + ": nearestGreatMassif is not the nearest");
+				}
+				assertTrue(list.stream().anyMatch(s -> s.massif().equals(nearest)), sc.id() + ": nearest massif not in the window");
+			}
+
+			// Outside the reach of the massifs the terrain before valleys and lakes is the M1 terrain.
+			pl.polishforests.worldgen.landscape.m1.LandscapeModel old = new pl.polishforests.worldgen.landscape.m1.LandscapeModel(SEED,
+					sc == LandscapeScale.REALISTIC ? pl.polishforests.worldgen.landscape.m1.LandscapeScale.REALISTIC
+							: pl.polishforests.worldgen.landscape.m1.LandscapeScale.GAMEPLAY, 1.0);
+			java.util.Random rnd = new java.util.Random(5);
+			int compared = 0;
+			int inReach = 0;
+			for (int t = 0; t < 4_000_000 && compared < 10_000; t++) {
+				double x = w.minX() + rnd.nextDouble() * w.side();
+				double z = w.minZ() + rnd.nextDouble() * w.side();
+				if (m.typeWeights(x, z)[LandscapeType.BESKIDS.ordinal()] <= 0.5) {
+					continue;
+				}
+				if (m.greatMassifStrength(x, z) > 0) {
+					inReach++;
+					continue;
+				}
+				compared++;
+				double h = m.landElevation(x, z);
+				double h1 = old.landElevation(x, z);
+				assertEquals(h1, h, 1e-6, sc.id() + ": terrain outside the massifs changed at (" + x + ", " + z + ")");
+			}
+			System.out.printf(Locale.ROOT, "%s: %d Beskids points outside the massifs equal to M1 (%d in reach skipped)%n",
+					sc.id(), compared, inReach);
+			assertTrue(compared >= 10_000, sc.id() + ": only " + compared + " points compared");
+		}
+	}
+
+	/**
+	 * The top of a large massif is a dome and not a plateau (review of the design, soft ceiling in step K2): on every
+	 * massif of {@link GreatMassifSurvey} the area at or above 1650 m (alpine grassland) is at most 0.35 of the belt
+	 * 1390–1650 m (dwarf pine) and at most 2.5 km² at realistic scale and 0.25 km² at gameplay scale. On Babia Gora
+	 * the alpine belt is a narrow summit dome, several times smaller than the dwarf pine belt.
+	 */
+	@Test
+	void greatMassifSummitIsNotPlateau() {
+		for (LandscapeScale sc : new LandscapeScale[] {LandscapeScale.REALISTIC, LandscapeScale.GAMEPLAY}) {
+			double limit = sc == LandscapeScale.REALISTIC ? 2.5 : 0.25;
+			StringBuilder sb = new StringBuilder();
+			List<String> bad = new ArrayList<>();
+			for (GreatMassifSurvey.Massif s : GreatMassifSurvey.survey(sc)) {
+				LandscapeModel.GreatMassif g = s.massif();
+				double ratio = s.area1650() / Math.max(1e-9, s.belt());
+				String line = String.format(Locale.ROOT, "(%.0f, %.0f) summit %.0f m: >= 1390 m %.2f km², >= 1650 m %.3f km², "
+						+ "ratio %.2f", g.x(), g.z(), s.summit(), s.area1390(), s.area1650(), ratio);
+				sb.append(System.lineSeparator()).append("  ").append(line);
+				if (ratio > 0.35 || s.area1650() > limit) {
+					bad.add(line);
+				}
+			}
+			System.out.printf(Locale.ROOT, "%s: summit domes (limits: ratio <= 0.35, >= 1650 m <= %.2f km²):%s%n", sc.id(),
+					limit, sb);
+			assertTrue(bad.isEmpty(), sc.id() + ": plateau on " + bad);
+		}
+	}
+
+	/**
+	 * The dome of a large massif is a field over the region cells and not a property of the Beskids cell (review of step
+	 * K2). At gameplay scale the Beskids band is only one or two region cells wide, so the reach of 17 of the 25
+	 * massifs of {@link GreatMassifSurvey} crosses into foothills cells, also in the core. The first version of K2 lifted
+	 * only the Beskids cells, and the dome ended at the cell boundary in a wall of up to 1100 m over the 280 m blending
+	 * belt. In the columns of the reach where both the Beskids and the foothills cell weigh at least 0.05, the height of
+	 * the two cells ({@code cellElevation}) differs by at most {@link #DOME_GAP} m in the core (G &gt; 0.3) and by at
+	 * most {@link #DOME_GAP_SUMMIT} m at G &gt; 0.6 (first version of K2: 1115 and 1353 m at gameplay scale, 867 and
+	 * 1072 m at realistic scale). The rest is the different flysch relief of the two cell types (A6, M5).
+	 */
+	@Test
+	void greatMassifDomeSpansRegionTypes() {
+		for (LandscapeScale sc : new LandscapeScale[] {LandscapeScale.REALISTIC, LandscapeScale.GAMEPLAY}) {
+			int k = sc == LandscapeScale.REALISTIC ? 0 : 1;
+			LandscapeModel m = GreatMassifSurvey.model(sc);
+			double ra = GreatMassifSurvey.ra(sc);
+			double step = sc == LandscapeScale.REALISTIC ? 100 : 20;
+			int n = (int) Math.ceil(2.6 * ra / step);
+			double core = 0;
+			double summit = 0;
+			int mixed = 0;
+			String where = "-";
+			for (GreatMassifSurvey.Massif s : GreatMassifSurvey.survey(sc)) {
+				LandscapeModel.GreatMassif g = s.massif();
+				// {G, |h(Beskids cell) - h(foothills cell)|, x, z} of the mixed columns in the reach.
+				double[][] gaps = IntStream.range(0, n * n).parallel().mapToObj(q -> {
+					double x = g.x() - n * step / 2 + (q % n) * step;
+					double z = g.z() - n * step / 2 + (q / n) * step;
+					double strength = m.greatMassifStrength(x, z);
+					LandscapeModel.Blend b = strength > 0 ? m.blend(x, z) : null;
+					if (b == null || b.weight(LandscapeType.BESKIDS) < 0.05 || b.weight(LandscapeType.FOOTHILLS) < 0.05) {
+						return null;
+					}
+					double hb = Double.NaN;
+					double hf = Double.NaN;
+					double wb = 0;
+					double wf = 0;
+					for (int i = 0; i < b.count(); i++) {
+						LandscapeModel.Cell c = b.cells()[i];
+						double w = b.weights()[i];
+						if (c.type() == LandscapeType.BESKIDS && w > wb) {
+							wb = w;
+							hb = m.cellElevation(c, x, z);
+						} else if (c.type() == LandscapeType.FOOTHILLS && w > wf) {
+							wf = w;
+							hf = m.cellElevation(c, x, z);
+						}
+					}
+					return new double[] {strength, Math.abs(hb - hf), x, z};
+				}).filter(v -> v != null).toArray(double[][]::new);
+				mixed += gaps.length;
+				for (double[] v : gaps) {
+					if (v[0] > LandscapeModel.GM_CORE && v[1] > core) {
+						core = v[1];
+						where = String.format(Locale.ROOT, "(%.0f, %.0f) G %.2f", v[2], v[3], v[0]);
+					}
+					if (v[0] > 0.6) {
+						summit = Math.max(summit, v[1]);
+					}
+				}
+			}
+			System.out.printf(Locale.ROOT, "%s: %d mixed Beskids and foothills columns in the massif reaches; largest height "
+					+ "difference of the two cells in the core %.0f m at %s (limit %.0f m), at G > 0.6 %.0f m (limit %.0f m)%n",
+					sc.id(), mixed, core, where, DOME_GAP[k], summit, DOME_GAP_SUMMIT[k]);
+			assertTrue(core <= DOME_GAP[k], sc.id() + ": dome cut by a region cell boundary, " + core + " m at " + where);
+			assertTrue(summit <= DOME_GAP_SUMMIT[k], sc.id() + ": dome cut by a region cell boundary at G > 0.6, " + summit + " m");
+		}
+	}
+
+	/**
+	 * Limits of {@link #greatMassifDomeSpansRegionTypes} in m, realistic and gameplay scale, measured after the review
+	 * of K2 (core 502 and 759 m, G &gt; 0.6 359 and 594 m).
+	 */
+	static final double[] DOME_GAP = {503, 760};
+	static final double[] DOME_GAP_SUMMIT = {360, 595};
 
 	private static void assertWaterContained(LandscapeModel m) {
 		List<double[]> sites = new ArrayList<>();

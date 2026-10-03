@@ -19,7 +19,8 @@ import org.junit.jupiter.api.Test;
  * {@value #DEFAULT_ROUNDS} rounds (more: {@code -PcostRuns=15}); we report the median
  * and the minimum. The first round hits cold regional caches (cells, river network), the following ones
  * measure the in-game state. Separately, 400 chunks in the Beskids interior (the most expensive terrain: a dense
- * stream network), at the location of the "beskids" patch from the golden test. The whole area at realistic scale
+ * stream network), at the location of the "beskids" patch from the golden test, and 400 chunks on a large Beskid
+ * massif (step K2 of the terrain geometry fix; the M1 copy has no massif there). The whole area at realistic scale
  * (±320 km around 0, 0) does not include mountains.
  */
 class SampleCostTest {
@@ -30,6 +31,12 @@ class SampleCostTest {
 	/** Beskids interior for the seed {@link #SEED} (the "beskids" patch in {@code golden_terrain_m1.txt}). */
 	private static final long[] BESKIDS_REAL = {154_834, 1_058_738};
 	private static final long[] BESKIDS_GAMEPLAY = {27_609, 3_254};
+	/**
+	 * Large Beskid massifs (M2-8, step K2): the 1723 m massif at realistic scale and the massif nearest to the spawn at
+	 * gameplay scale. The M1 copy has no massif there, so the ratio is the cost of the massif with its PeakField area.
+	 */
+	private static final long[] MASSIF_REAL = {147_582, -1_525_292};
+	private static final long[] MASSIF_GAMEPLAY = {6_854, -33_757};
 
 	/** Prevents the JIT from removing the calls. */
 	private static volatile double sink;
@@ -52,6 +59,9 @@ class SampleCostTest {
 			long[] b = scale == LandscapeScale.REALISTIC ? BESKIDS_REAL : BESKIDS_GAMEPLAY;
 			long bHalf = (long) (m.regionSize() * 0.15);
 			report(scale.id() + " (Beskids)", m, old, chunks(b[0], b[1], bHalf, 0x5EED_0003L));
+			long[] g = scale == LandscapeScale.REALISTIC ? MASSIF_REAL : MASSIF_GAMEPLAY;
+			report(scale.id() + " (large massif)", m, old, chunks(g[0], g[1], (long) m.greatMassifRa(),
+					0x5EED_0004L));
 		}
 	}
 

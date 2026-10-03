@@ -8,6 +8,7 @@ import java.util.concurrent.atomic.AtomicLongArray;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import pl.polishforests.worldgen.landscape.ColumnSample;
+import pl.polishforests.worldgen.landscape.GreatMassifSurvey;
 import pl.polishforests.worldgen.landscape.LandscapeModel;
 import pl.polishforests.worldgen.landscape.LandscapeScale;
 import pl.polishforests.worldgen.landscape.LandscapeType;
@@ -182,11 +183,11 @@ class AltitudinalBeltsTest {
 
 	/**
 	 * Dwarf pine and alpine grassland (E12) in the world: around summits above 1400 m (2 km grid in a 3000 km square in
-	 * REAL, 60 m in a 70 km square in GAMEPLAY) every dwarf pine or alpine grassland column (every fourth, 25 m·k grid)
+	 * REAL, 60 m in a 100 km square in GAMEPLAY) every dwarf pine or alpine grassland column (every fourth, 25 m·k grid)
 	 * has terrain higher than 1470 m within 3 km·mspace, computed directly from {@code landElevation} on a 25 m·mspace
-	 * grid rather than from the model field. Seed 4 has a 1645 m massif in REAL and must have dwarf pine. The default
-	 * seed reaches at most about 1445 m in REAL and about 1310 m in GAMEPLAY, so there is no dwarf pine there
-	 * (decision M2-8: higher massifs will come with the terrain geometry fix).
+	 * grid rather than from the model field. Since the large massifs (M2-8, step K2 of the terrain geometry fix) the
+	 * default seed has dwarf pine at both scales (the massif nearest to the spawn at gameplay scale lies at (6854,
+	 * −33757), hence 100 km instead of 70 km), and seed 4 at realistic scale has a massif above 1600 m with dwarf pine.
 	 */
 	@Test
 	void dwarfPineOnlyOnLargeMassif() {
@@ -199,7 +200,7 @@ class AltitudinalBeltsTest {
 			boolean real = sc == LandscapeScale.REALISTIC;
 			LandscapeModel m = new LandscapeModel(p.seed(), sc, 1.0);
 			HabitatClassifier k = new HabitatClassifier(p.seed(), sc, HabitatClassifier.Mode.NATURAL);
-			java.util.List<double[]> list = summits(m, real ? 3_000_000 : 70_000, real ? 1_500 : 1_166, 40);
+			java.util.List<double[]> list = summits(m, real ? 3_000_000 : 100_000, real ? 1_500 : 1_666, 40);
 			double r = 3_000 * sc.mountainSpacing();
 			double terrainStep = 25 * sc.mountainSpacing();
 			double columnStep = 25 * sc.local();
@@ -267,10 +268,78 @@ class AltitudinalBeltsTest {
 			if (highest <= AltitudinalBelts.LARGE_MASSIF) {
 				assertEquals(0, dwarfPine, sc.id() + ", seed " + p.seed() + ": dwarf pine with a highest summit of " + highest + " m");
 			}
+			if (p.seed() == SEED) {
+				assertTrue(highest > 1_600 && dwarfPine > 0, sc.id() + ": large massif " + highest + " m, dwarf pine " + dwarfPine);
+			}
 			if (real && p.seed() == 4L) {
 				assertTrue(highest > 1_600 && dwarfPine > 1_000, "seed 4: massif " + highest + " m, dwarf pine " + dwarfPine);
 			}
 		}
+	}
+
+	/**
+	 * Dwarf pine and alpine grassland on the large massifs of the real terrain (M2-8, step K2; design §5.2), seed
+	 * 20260927, classification of every column on a grid (40 m at realistic scale, 10 m at gameplay scale):
+	 * <ul>
+	 * <li>the massif nearest to (0, 0) ({@link LandscapeModel#nearestGreatMassif}), a square of 16 km (realistic) or
+	 * 5 km (gameplay): dwarf pine at least 3 km² (0.3 km²) and the upper montane spruce forest present;</li>
+	 * <li>the highest massif of the test window ({@link GreatMassifSurvey}, at least 1700 m; the nearest one need not be
+	 * that high, at gameplay scale it has 1634 m): alpine grassland 0.5–2.5 km² and less than half of the dwarf pine at
+	 * realistic scale (a summit dome, not a plateau), at least 0.05 km² at gameplay scale.</li>
+	 * </ul>
+	 * This closes deviation S4 of §5.1 of the plan (dwarf pine only for seed 4 at realistic scale).
+	 */
+	@Test
+	void greatMassifHasDwarfPineAndAlpine() {
+		for (LandscapeScale sc : new LandscapeScale[] {LandscapeScale.REALISTIC, LandscapeScale.GAMEPLAY}) {
+			boolean real = sc == LandscapeScale.REALISTIC;
+			LandscapeModel m = new LandscapeModel(SEED, sc, 1.0);
+			HabitatClassifier k = new HabitatClassifier(SEED, sc, HabitatClassifier.Mode.NATURAL);
+			double side = real ? 16_000 : 5_000;
+			double step = real ? 40 : 10;
+			LandscapeModel.GreatMassif nearest = m.nearestGreatMassif(0, 0);
+			assertTrue(nearest != null, sc.id() + ": no large massif");
+			double[] near = biomeAreas(m, k, nearest.x(), nearest.z(), side, step);
+			GreatMassifSurvey.Massif top = GreatMassifSurvey.highest(sc);
+			double[] high = biomeAreas(m, k, top.massif().x(), top.massif().z(), side, step);
+			System.out.printf(Locale.ROOT, "%s: nearest massif (%.0f, %.0f), target %.0f m: dwarf pine %.2f km², alpine "
+					+ "grassland %.3f km², spruce forest %.2f km²; highest massif (%.0f, %.0f), summit %.0f m: dwarf pine %.2f km², "
+					+ "alpine grassland %.3f km², spruce forest %.2f km²%n", sc.id(), nearest.x(), nearest.z(),
+					nearest.targetSummit(), near[0], near[1], near[2], top.massif().x(), top.massif().z(), top.summit(), high[0],
+					high[1], high[2]);
+			assertTrue(near[0] >= (real ? 3 : 0.3), sc.id() + ": dwarf pine on the nearest massif " + near[0] + " km²");
+			assertTrue(near[2] > 0 && high[2] > 0, sc.id() + ": no upper montane spruce forest");
+			assertTrue(top.summit() >= 1_700, sc.id() + ": highest massif " + top.summit() + " m");
+			if (real) {
+				assertTrue(high[1] >= 0.5 && high[1] <= 2.5, "alpine grassland on the highest massif " + high[1] + " km²");
+				assertTrue(high[1] < 0.5 * high[0], "alpine grassland " + high[1] + " km² not below half of the dwarf pine "
+						+ high[0] + " km²");
+			} else {
+				assertTrue(high[1] >= 0.05, "gameplay: alpine grassland on the highest massif " + high[1] + " km²");
+			}
+		}
+	}
+
+	/** Areas in km² of {dwarf pine, alpine grassland, upper montane spruce forest} in a square around (cx, cz). */
+	static double[] biomeAreas(LandscapeModel m, HabitatClassifier k, double cx, double cz, double side, double step) {
+		int n = (int) Math.round(side / step);
+		AtomicLongArray count = new AtomicLongArray(3);
+		IntStream.range(0, n).parallel().forEach(j -> {
+			for (int i = 0; i < n; i++) {
+				double x = cx - side / 2 + (i + 0.5) * step;
+				double z = cz - side / 2 + (j + 0.5) * step;
+				HabitatBiome b = Habitat.biome(k.classify(m.sample(x, z), x, z));
+				if (b == HabitatBiome.DWARF_PINE_SCRUB) {
+					count.incrementAndGet(0);
+				} else if (b == HabitatBiome.ALPINE_GRASSLAND) {
+					count.incrementAndGet(1);
+				} else if (b == HabitatBiome.MONTANE_SPRUCE_FOREST) {
+					count.incrementAndGet(2);
+				}
+			}
+		});
+		double cell = step * step / 1e6;
+		return new double[] {count.get(0) * cell, count.get(1) * cell, count.get(2) * cell};
 	}
 
 	@Test

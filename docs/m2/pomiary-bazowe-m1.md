@@ -26,6 +26,8 @@ Nowy plik wzorcowy (tylko przy zamierzonej zmianie terenu, opisanej w dokumentac
 ./gradlew test --tests '*GoldenTerrainTest*' -PwriteGolden
 ```
 
+**Od poprawki geometrii terenu (krok K0, `docs/m2/poprawka-geometrii.md`)** ten plik M1 zostaje bez zmian na zawsze i czyta go tylko `frozenM1CopyMatchesGolden`. Bieżący model porównuje `terrainMatchesGolden` z `golden_terrain_m2.txt` (łaty M1 i łaty kontrolne wnętrz), a `-PwriteGolden` pisze tylko plik M2.
+
 Środki łat szuka się tylko przy zapisie (ok. 2 min). Przy porównaniu są brane z pliku, więc zmiana wyszukiwarek w innych testach nie zmienia zestawu kolumn.
 
 ## Koszt `LandscapeModel.sample` (`SampleCostTest`)

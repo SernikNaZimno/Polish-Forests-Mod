@@ -1,6 +1,7 @@
 package pl.polishforests.worldgen.landscape;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -94,6 +95,11 @@ final class RiverNetwork {
 		final double headFade;
 		final boolean source;
 		final Noise noise;
+		/**
+		 * Whether the reach of a large massif can touch the box of influence of the segment (M2-8, review of step K2): the
+		 * projection then measures an unconverged distance minimum with its full distance ({@link #projectChannel}).
+		 */
+		boolean nearMassif;
 		double minX;
 		double maxX;
 		double minZ;
@@ -291,13 +297,20 @@ final class RiverNetwork {
 	 * @param ringLevel     water level of that lake
 	 * @param ringId        hash of that lake (0 without a lake)
 	 * @param ringRadius    radius of that lake (NaN without a lake)
+	 * @param floorChannelDist  distance from the bank of the channel of the dominant valley (habitat zones on its floor,
+	 *                          F2): the nearest channel among the segments in range of the same order as the dominant
+	 *                          watercourse and at least half as wide; the same watercourse also across a node. Measured
+	 *                          like {@code channelDist}; +∞ without a watercourse
+	 * @param floorChannelWidth width of that channel (NaN without a watercourse)
+	 * @param floorChannelLevel water level of that channel, not rounded (NaN without a watercourse)
 	 */
 	record RiverHit(int order, double terrain, double valleyWeight, boolean inFloor, int waterLevel,
 			double channelBottom, double bankLevel, boolean source, int oxbowLevel, double oxbowDepth, int lakeLevel,
 			double lakeShore, double lakeDepth, long lakeId, double lakeRadius, double channelDist,
 			double channelWidth, double channelLevel, double floorU, double floorHalf, double slope,
 			boolean convexBank, double oxbowShore, int oxbowMirror, long oxbowId, double oxbowWidth, double ringShore,
-			int ringLevel, long ringId, double ringRadius) {
+			int ringLevel, long ringId, double ringRadius, double floorChannelDist, double floorChannelWidth,
+			double floorChannelLevel) {
 		boolean inChannel() {
 			return waterLevel != ColumnSample.NO_WATER;
 		}
@@ -365,12 +378,20 @@ final class RiverNetwork {
 		if (n.sea) {
 			result = new Link(SEA, n.i, n.j, n.x, n.z, null, 0);
 		} else {
-			Node best = lowestNeighbor(n, 1);
+			// Large massifs (M2-8): a node outside the core of a large massif does not drain straight across it
+			// (otherwise a river cuts a canyon up to 1000 m deep through the dome). When no lower node can be reached
+			// around the core, the node drains to the lower node whose path crosses the core least, so no new sink
+			// lakes appear (the old rule there could cross the summit).
+			boolean strict = !model.greatMassifCore(n.x, n.z);
+			Node best = lowestNeighbor(n, 1, strict);
 			if (best == null) {
 				// Gorge: a lower node in a farther ring.
 				for (int ring = 2; ring <= 4 && best == null; ring++) {
-					best = lowestNeighbor(n, ring);
+					best = lowestNeighbor(n, ring, strict);
 				}
+			}
+			if (best == null && strict) {
+				best = leastCrossingNeighbor(n);
 			}
 			result = null;
 			if (n.order < 3) {
@@ -390,8 +411,11 @@ final class RiverNetwork {
 		return result;
 	}
 
-	/** Lowest node lower than {@code n} on the ring of radius {@code ring} (in grid cells). */
-	private Node lowestNeighbor(Node n, int ring) {
+	/**
+	 * Lowest node lower than {@code n} on the ring of radius {@code ring} (in grid cells); with {@code strict} only
+	 * nodes whose straight path does not cross the core of a large massif.
+	 */
+	private Node lowestNeighbor(Node n, int ring, boolean strict) {
 		Node best = null;
 		for (int di = -ring; di <= ring; di++) {
 			for (int dj = -ring; dj <= ring; dj++) {
@@ -399,12 +423,77 @@ final class RiverNetwork {
 					continue;
 				}
 				Node m = node(n.order, n.i + di, n.j + dj);
-				if (m.route < n.route - 1e-6 && (best == null || m.route < best.route)) {
+				if (m.route < n.route - 1e-6 && (best == null || m.route < best.route)
+						&& !(strict && crossesMassifCore(n.x, n.z, m.x, m.z))) {
 					best = m;
 				}
 			}
 		}
 		return best;
+	}
+
+	/**
+	 * Lower node in the rings 1–4 whose straight path has the smallest largest strength of a large massif (inner points
+	 * as in {@link #crossesMassifCore}), the lower one on a tie; null when there is no lower node. Used only when every
+	 * lower node lies across the core (seed 20260927: one node of order 1 by the massif (258824, −1539366), which the old
+	 * rule sent across the summit, G 0.79, instead of along the edge of the core, G 0.37).
+	 */
+	private Node leastCrossingNeighbor(Node n) {
+		Node best = null;
+		double bestG = Double.MAX_VALUE;
+		for (int ring = 1; ring <= 4; ring++) {
+			for (int di = -ring; di <= ring; di++) {
+				for (int dj = -ring; dj <= ring; dj++) {
+					if (Math.max(Math.abs(di), Math.abs(dj)) != ring) {
+						continue;
+					}
+					Node m = node(n.order, n.i + di, n.j + dj);
+					if (m.route >= n.route - 1e-6) {
+						continue;
+					}
+					double g = 0;
+					int parts = massifPathParts(n.x, n.z, m.x, m.z);
+					for (int q = 1; q < parts; q++) {
+						double f = (double) q / parts;
+						g = Math.max(g, model.greatMassifStrength(n.x + (m.x - n.x) * f, n.z + (m.z - n.z) * f));
+					}
+					if (best == null || g < bestG || g == bestG && m.route < best.route) {
+						best = m;
+						bestG = g;
+					}
+				}
+			}
+		}
+		return best;
+	}
+
+	/**
+	 * Whether the straight path between two nodes crosses the core of a large massif. The inner points are at most a
+	 * quarter of the short semi-axis Rc apart ({@link #massifPathParts}), so a long path (order 3: up to 80 km at
+	 * realistic scale) cannot step over the core, which is only about 1.2 Rc wide across the range.
+	 */
+	private boolean crossesMassifCore(double x0, double z0, double x1, double z1) {
+		if (!model.greatMassifNear(Math.min(x0, x1), Math.min(z0, z1), Math.max(x0, x1), Math.max(z0, z1))) {
+			return false;
+		}
+		int parts = massifPathParts(x0, z0, x1, z1);
+		for (int q = 1; q < parts; q++) {
+			double f = (double) q / parts;
+			if (model.greatMassifCore(x0 + (x1 - x0) * f, z0 + (z1 - z0) * f)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/** Number of parts of a path checked against the massif cores: at least 8, each at most 0.25 Rc long. */
+	private int massifPathParts(double x0, double z0, double x1, double z1) {
+		return Math.max(8, (int) Math.ceil(Math.hypot(x1 - x0, z1 - z0) / (0.25 * model.greatMassifRc())));
+	}
+
+	/** Grid spacing of the nodes of the given order 1–3 (m). */
+	double spacing(int order) {
+		return spacing[order];
 	}
 
 	/** Looks for a higher-order watercourse on the way from the node to the target; returns a link to its axis or null. */
@@ -457,8 +546,13 @@ final class RiverNetwork {
 	}
 
 	/** Whether a spring rises at the node: streams mainly in the mountains and foothills, rivers and large rivers everywhere. */
-	private boolean isSpring(Node n) {
+	boolean isSpring(Node n) {
 		if (n.sea) {
+			return false;
+		}
+		// No springs on the core of a large massif (M2-8): a stream rising there would start hundreds of meters below
+		// the dome (the level of a node is limited by the slope from the node downstream) and cut the summit.
+		if (model.greatMassifCore(n.x, n.z)) {
 			return false;
 		}
 		if (n.order > 1) {
@@ -666,8 +760,17 @@ final class RiverNetwork {
 		double z1 = l.tz;
 		double len = Math.max(1.0, Math.hypot(x1 - n.x, z1 - n.z));
 		double[] t0 = tangent(n);
-		double[] t1 = l.kind == NODE ? tangent(node(n.order, l.di, l.dj))
-				: new double[] {(x1 - n.x) / len, (z1 - n.z) / len};
+		Node down0 = l.kind == NODE ? node(n.order, l.di, l.dj) : null;
+		// A segment ending in a sink lake near a large massif (M2-8) arrives along its chord. The tangent of a sink node
+		// is the default {1, 0} (no outflow), so a segment flowing west into it bent back east near its end, and the
+		// projection of points up to 2 km away fell onto the bend with a lateral distance of a few meters: straight
+		// valley wedges ending in cliffs up to 1 km high around the sink lakes of the massifs (review of step K2). Only
+		// near the massifs, so the M1 terrain elsewhere stays bit for bit until the golden file is regenerated; step K4
+		// extends it to every sink lake (docs/m2/poprawka-geometrii.md, K2).
+		boolean sinkEnd = down0 != null && link(down0).kind == SINK && model.greatMassifNear(
+				Math.min(n.x, down0.x) - spacing[n.order], Math.min(n.z, down0.z) - spacing[n.order],
+				Math.max(n.x, down0.x) + spacing[n.order], Math.max(n.z, down0.z) + spacing[n.order]);
+		double[] t1 = down0 != null && !sinkEnd ? tangent(down0) : new double[] {(x1 - n.x) / len, (z1 - n.z) / len};
 		double level0 = level(n);
 		double width0 = width(n);
 		double level1;
@@ -747,6 +850,7 @@ final class RiverNetwork {
 		s.maxX = maxX + reach;
 		s.minZ = minZ - reach;
 		s.maxZ = maxZ + reach;
+		s.nearMassif = model.greatMassifNear(s.minX, s.minZ, s.maxX, s.maxZ);
 		return s;
 	}
 
@@ -873,6 +977,20 @@ final class RiverNetwork {
 				s.meanderDistances(t, lat, md);
 				ch = md[0];
 				chs = md[1];
+				if (s.nearMassif && Math.abs(along) > 1e-3) {
+					// The refinement did not reach the foot of the perpendicular (a short, strongly bent segment: the
+					// Gauss-Newton step overshoots and stops at the edge of its bracket), so the lateral distance alone
+					// underestimates the distance, down to a few meters for a point 2 km away. The steep massif flanks
+					// turned such points into valley floors with cliffs (review of K2). The along component is added; at
+					// a converged minimum it is below a millimeter and skipped. Only near the massifs, so the M1 terrain
+					// elsewhere stays bit for bit until the golden file is regenerated; the projection fix of step K4b
+					// (decision D4) takes this over for every segment.
+					double a2 = along * along;
+					skel = Math.sqrt(skel * skel + a2);
+					va = Math.sqrt(va * va + a2);
+					ch = Math.sqrt(ch * ch + a2);
+					chs = Math.sqrt(chs * chs + a2);
+				}
 			}
 			if (ch < dChannel) {
 				dChannel = ch;
@@ -931,7 +1049,46 @@ final class RiverNetwork {
 		final double[] chLevel = new double[8];
 		final double[] chDepth = new double[8];
 		final double[] chOwn = new double[8];
+		/**
+		 * Candidates for the channel of the dominant valley (F2): every segment that passes the culling frame of
+		 * {@link #query}, in the order of the tile list, packed by {@value #FLOOR_STRIDE} values: {@code pr[5] − W/2},
+		 * W, the water level and the order. Primitive values only (no object references: no GC write barrier per
+		 * segment and no stale segments kept by the thread buffer). The buffer grows when a column has more
+		 * candidates than it holds (once per thread and model, since every {@link RiverNetwork} has its own thread
+		 * buffers), so no candidate is ever dropped: a fixed limit would skip the later ones in list order and could
+		 * make the zone fields jump.
+		 */
+		double[] floor = new double[FLOOR_CANDIDATES * FLOOR_STRIDE];
+		/** End of the used part of {@link #floor} (number of candidates × {@value #FLOOR_STRIDE}). */
+		int floorEnd;
+
+		void addFloorCandidate(double d, double w, double level, int order) {
+			int q = floorEnd;
+			double[] f = floor;
+			if (q == f.length) {
+				f = growFloor();
+			}
+			f[q] = d;
+			f[q + 1] = w;
+			f[q + 2] = level;
+			f[q + 3] = order;
+			floorEnd = q + FLOOR_STRIDE;
+		}
+
+		/** Doubles the candidate buffer (rare path, kept out of {@link #addFloorCandidate} so that it stays small). */
+		private double[] growFloor() {
+			floor = Arrays.copyOf(floor, 2 * floor.length);
+			return floor;
+		}
 	}
+
+	/**
+	 * Initial capacity of the F2 candidate buffer ({@link Scratch#floor}, in candidates); WatersideZonesTest checks
+	 * that columns do not exceed it, so the buffer does not have to grow in practice.
+	 */
+	static final int FLOOR_CANDIDATES = 64;
+	/** Values per candidate in {@link Scratch#floor}: distance from the bank, width, water level, order. */
+	static final int FLOOR_STRIDE = 4;
 
 	/** Newton iteration on the distance from the curve, within [lo, hi]. */
 	private static double refine(Segment s, double px, double pz, double t, double lo, double hi) {
@@ -991,6 +1148,13 @@ final class RiverNetwork {
 		final Scratch scratch = new Scratch();
 	}
 
+	/**
+	 * Candidates of the tile containing (x, z). The segment list is built in a fixed order (order 3 to 1, then the
+	 * grid indices i and j), and a column only uses the segments that pass its own culling frame, so every column
+	 * gets the same candidates in the same order whichever tile, thread or sampling order produced the list. Ties in
+	 * {@link #query} (the dominant valley, the channel of the dominant valley) are resolved by this order, so it
+	 * must not change (e.g. to a hash set or to an order depending on which thread built a segment first).
+	 */
 	private TileCache candidates(double x, double z) {
 		long tx = (long) Math.floor(x / tileSize);
 		long tz = (long) Math.floor(z / tileSize);
@@ -1031,6 +1195,59 @@ final class RiverNetwork {
 			}
 		}
 		return c;
+	}
+
+	/** Culling frame of {@link #query}: whether the segment can influence the column (x, z). */
+	private static boolean inFrame(Segment s, double x, double z) {
+		return !(x < s.minX || x > s.maxX || z < s.minZ || z > s.maxZ
+				|| s.chordDistance(x, z) - s.chordDeviation > s.reach);
+	}
+
+	/**
+	 * Number of segments that pass the culling frame of {@link #query} at (x, z), i.e. the F2 candidates of the
+	 * column (tests: the candidate buffer must not have to grow, {@link #FLOOR_CANDIDATES}).
+	 */
+	int frameCandidates(double x, double z) {
+		int n = 0;
+		for (Segment s : candidates(x, z).segments) {
+			if (inFrame(s, x, z)) {
+				n++;
+			}
+		}
+		return n;
+	}
+
+	/**
+	 * Geometry of every segment of the given order that passes the culling frame at (x, z), measured as in
+	 * {@link #query} but without choosing a dominant valley (tests: the F2 measurement defines the river from its own
+	 * segments, independently of {@code best} and of the F2 fields). Per segment, in the order of the tile list:
+	 * {distance from the bank {@code pr[5] − W/2}, W, water level, distance from the floor edge {@code floorDist},
+	 * floor half-width {@code floorHalf}, head fade, gradient in ‰ at realistic scale}. Allocates; test code only.
+	 *
+	 * @param lowland   share of lowland as passed to {@link #query} (with the coastland)
+	 * @param foothills share of foothills
+	 * @param mountains share of mountains
+	 */
+	List<double[]> segmentsAt(int order, double x, double z, double lowland, double foothills, double mountains) {
+		double fpFactor = 5.0 * lowland + 1.5 * foothills + 0.3 * mountains;
+		double fpBase = (40.0 * lowland + 10.0 * foothills + 2.0 * mountains) * valleyScale;
+		Scratch sc = new Scratch();
+		double[] pr = new double[8];
+		List<double[]> out = new ArrayList<>();
+		for (Segment s : candidates(x, z).segments) {
+			if (s.order != order || !inFrame(s, x, z)) {
+				continue;
+			}
+			projectChannel(s, x, z, sc, pr);
+			double t = pr[0];
+			double w = s.widthAt(t);
+			double floorHalf = w / 2 + fpFactor * w + fpBase;
+			double floorDist = Math.max(0, pr[2] - w / 2 - s.amp * (1 + (lowland > 0.3 ? 1.4 * lowland : 0)));
+			double fade = s.headFade > 0 ? Noise.smoothstep(0, s.headFade, t * s.len) : 1.0;
+			double slope = Math.max(0, s.level0 - s.level1) / s.len * spacing[s.order] / BASE_SPACING[s.order];
+			out.add(new double[] {pr[5] - 0.5 * w, w, s.levelAt(t), floorDist, floorHalf, fade, slope * 1_000});
+		}
+		return out;
 	}
 
 	/**
@@ -1076,10 +1293,10 @@ final class RiverNetwork {
 		double nearLevel = Double.NaN;
 		double nearT = 0;
 		double nearLat = 0;
+		sc.floorEnd = 0;
 
 		for (Segment s : c.segments) {
-			if (x < s.minX || x > s.maxX || z < s.minZ || z > s.maxZ
-					|| s.chordDistance(x, z) - s.chordDeviation > s.reach) {
+			if (!inFrame(s, x, z)) {
 				continue;
 			}
 			projectChannel(s, x, z, sc, pr);
@@ -1087,6 +1304,7 @@ final class RiverNetwork {
 			double d = pr[1];
 			double w = s.widthAt(t);
 			double level = s.levelAt(t);
+			sc.addFloorCandidate(pr[5] - 0.5 * w, w, level, s.order);
 			// The d field from the continuous distance (pr[5]); the terrain still from pr[1], as in M1.
 			if (pr[5] - 0.5 * w < nearDist) {
 				nearDist = pr[5] - 0.5 * w;
@@ -1215,7 +1433,8 @@ final class RiverNetwork {
 			return new RiverHit(0, result, 0, false, ColumnSample.NO_WATER, 0, bank, false, ColumnSample.NO_WATER, 0,
 					lakeLevel, lakeShore, lakeDepth, lakeId, lakeRadius, Double.POSITIVE_INFINITY, Double.NaN,
 					Double.NaN, Double.NaN, Double.NaN, Double.NaN, false, Double.POSITIVE_INFINITY,
-					ColumnSample.NO_WATER, 0, Double.NaN, ringShore, ringLevel, ringId, ringRadius);
+					ColumnSample.NO_WATER, 0, Double.NaN, ringShore, ringLevel, ringId, ringRadius,
+					Double.POSITIVE_INFINITY, Double.NaN, Double.NaN);
 		}
 		boolean inFloor = bestFloorDist < bestFloorHalf && bestFade > 0.5;
 		double valleyWeight = (1 - Noise.smoothstep(bestFloorHalf, bestFloorHalf + 200 * valleyScale, bestFloorDist))
@@ -1248,11 +1467,26 @@ final class RiverNetwork {
 		// on the convex bank in the ecology report (costs a few noise samples).
 		boolean convex = nearDist <= Math.max(nearWidth, 15 * valleyScale)
 				&& nearSeg.convexBank(nearT, nearLat, nearWidth >= 6 * chan);
+		// Channel of the dominant valley (F2, habitat zones on its floor): the nearest channel among the segments of the
+		// same order that are at least half as wide as the dominant watercourse here, so also the same watercourse
+		// across a node. Ties go to the earlier segment of the tile list (fixed order, see candidates).
+		double floorChannelDist = Double.POSITIVE_INFINITY;
+		double floorChannelWidth = Double.NaN;
+		double floorChannelLevel = Double.NaN;
+		double minWidth = 0.5 * best.widthAt(bestT);
+		double[] f = sc.floor;
+		for (int q = 0, end = sc.floorEnd; q < end; q += FLOOR_STRIDE) {
+			if (f[q + 3] == best.order && f[q + 1] >= minWidth && f[q] < floorChannelDist) {
+				floorChannelDist = f[q];
+				floorChannelWidth = f[q + 1];
+				floorChannelLevel = f[q + 2];
+			}
+		}
 		return new RiverHit(best.order, result, valleyWeight, inFloor, water, channelBottom, bank,
 				best.source && bestT < 0.5, oxbowLevel, oxbowDepth, lakeLevel, lakeShore, lakeDepth, lakeId,
 				lakeRadius, nearDist, nearWidth, nearLevel, inFloor ? bestFloorDist / bestFloorHalf : Double.NaN,
 				bestFloorHalf, bestSlope * 1_000, convex, oxbowShore, oxbowMirror, oxbowId, oxbowWidth, ringShore,
-				ringLevel, ringId, ringRadius);
+				ringLevel, ringId, ringRadius, floorChannelDist, floorChannelWidth, floorChannelLevel);
 	}
 
 	/** Whether the lake passes the M1 candidate filter for the tile centred at (cx, cz); only such lakes change the terrain. */

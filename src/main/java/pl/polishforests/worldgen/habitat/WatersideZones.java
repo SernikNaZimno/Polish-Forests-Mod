@@ -20,15 +20,25 @@ final class WatersideZones {
 		A, B, C
 	}
 
+	/**
+	 * F2: the channel of the dominant valley takes over the zones of the floor only when it is wider than the nearest
+	 * channel by more than this factor (otherwise the nearest channel is that channel, or one like it).
+	 */
+	private static final double FLOOR_CHANNEL_WIDER = 1.05;
+
 	/** Class of the nearest watercourse: C in the mountains or at a gradient > 3‰, A at order 3 or W ≥ 30 m (1:1). */
 	static StreamClass streamClass(HabitatClassifier.Column c) {
+		return streamClass(c, c.wr());
+	}
+
+	/** Class of a watercourse with a channel {@code wr} m wide at 1:1 scale (F2: the channel of the dominant valley). */
+	static StreamClass streamClass(HabitatClassifier.Column c, double wr) {
 		ColumnSample.Waters w = c.w;
 		if (c.wMountains > 0.5 || w.channelGradient() > Calibration.CLASS_GRADIENT) {
 			return StreamClass.C;
 		}
-		// The order and gradient come from the dominant valley, and W from the nearest channel: a small tributary on the
+		// The order and gradient come from the dominant valley, and W from the channel: a small tributary on the
 		// floor of a large valley has order 3, so order 3 gives class A only with a wider channel.
-		double wr = c.wr();
 		if (c.wLowland >= Calibration.CLASS_LOWLAND_WEIGHT
 				&& (wr >= Calibration.CLASS_A_WR || w.streamOrder() == 3 && wr >= Calibration.CLASS_A_WR_ORDER3)) {
 			return StreamClass.A;
@@ -55,14 +65,42 @@ final class WatersideZones {
 
 	// ------------------------------------------------------------------ watercourses
 
+	/**
+	 * Zones of a watercourse (F2). On the floor of a large river (class A) the zones follow the channel of the dominant
+	 * valley ({@code floorChannelDist}), and a smaller, closer watercourse keeps only its own belt of ash-alder
+	 * riparian forest (as in class B, at least 6 blocks). Before, every zone came from the nearest channel, so at a
+	 * confluence the zones of the river were cut by the straight bisector between the two channels (wedges of the poplar
+	 * riparian forest). Elsewhere (off that floor, two small watercourses, no wider channel) the nearest channel decides.
+	 * The prototype built a second sample and column for the dominant channel; here its fields are passed as arguments.
+	 */
 	private static int stream(HabitatClassifier.Column c) {
+		ColumnSample.Waters w = c.w;
+		if (w.inFloor() && !Double.isNaN(w.floorChannelWidth()) && !Double.isNaN(w.channelWidth())
+				&& w.floorChannelWidth() > FLOOR_CHANNEL_WIDER * w.channelWidth() && Double.isFinite(w.floorChannelDist())) {
+			double k = c.k;
+			// Belt of the smaller watercourse: its ash-alder riparian forest belt from classB.
+			double ashAlder = Math.min(Calibration.B_ASH_ALDER_MAX_K * k, Math.max(Calibration.B_ASH_ALDER_MIN_K * k, Calibration.B_ASH_ALDER_W * w.channelWidth()));
+			if (c.wOutwashPlain > 0.5) {
+				ashAlder = Math.clamp(ashAlder, Calibration.B_ASH_ALDER_OUTWASH_PLAIN_MIN_K * k, Calibration.B_ASH_ALDER_OUTWASH_PLAIN_MAX_K * k);
+			}
+			if (Math.max(0, w.channelDist()) > width(Calibration.MIN_ASH_ALDER, ashAlder, c.jitter())
+					&& c.onValleyFloor(w.floorChannelDist(), w.floorChannelLevel())
+					&& streamClass(c, c.wr(w.floorChannelWidth())) == StreamClass.A) {
+				return classA(c, Math.max(0, w.floorChannelDist()), w.floorChannelWidth(), true);
+			}
+		}
+		return nearestStream(c);
+	}
+
+	/** Zones of the nearest watercourse. */
+	private static int nearestStream(HabitatClassifier.Column c) {
 		double d = Math.max(0, c.w.channelDist());
 		double channelWidth = c.w.channelWidth();
 		if (Double.isNaN(channelWidth)) {
 			return HabitatClassifier.Result.NONE;
 		}
 		return switch (streamClass(c)) {
-			case A -> classA(c, d, channelWidth);
+			case A -> classA(c, d, channelWidth, false);
 			case B -> classB(c, d, channelWidth);
 			case C -> classC(c, d, channelWidth);
 		};
@@ -78,12 +116,19 @@ final class WatersideZones {
 		return width >= Calibration.BIOME_BAND ? biome : null;
 	}
 
-	/** Class A (§4.1): point bar, willow scrub, herb fringe, willow and poplar riparian forest, backswamps, elm-ash floodplain forest. */
-	private static int classA(HabitatClassifier.Column c, double d, double channelWidth) {
+	/**
+	 * Class A (§4.1): point bar, willow scrub, herb fringe, willow and poplar riparian forest, backswamps, elm-ash
+	 * floodplain forest.
+	 *
+	 * @param floorChannel the channel is the channel of the dominant valley (F2), not the nearest one: no convex bank
+	 *                     (that field belongs to the nearest channel), the column is on its floor ({@link #stream}
+	 *                     checks it), and the height and floor position are measured from it
+	 */
+	private static int classA(HabitatClassifier.Column c, double d, double channelWidth, boolean floorChannel) {
 		ColumnSample.Waters w = c.w;
 		double k = c.k;
 		double f = c.jitter();
-		boolean convex = w.convexBank();
+		boolean convex = !floorChannel && w.convexBank();
 		double willowBand = Math.max(Calibration.A_WILLOW_SCRUB_K * k, Calibration.A_WILLOW_SCRUB_W * channelWidth);
 		if (convex) {
 			willowBand = Math.max(willowBand, Math.max(Calibration.A_CONVEX_WILLOW_SCRUB_K * k, Calibration.A_CONVEX_WILLOW_SCRUB_W * channelWidth));
@@ -108,7 +153,7 @@ final class WatersideZones {
 				zone = Zone.HERB_FRINGE;
 			}
 		}
-		if (!c.onValleyFloor()) {
+		if (!floorChannel && !c.onValleyFloor()) {
 			return onSlope(c, zone);
 		}
 		if (zone == Zone.NONE && c.patch(4) < Calibration.A_GAPS) {
@@ -127,15 +172,21 @@ final class WatersideZones {
 		if (d <= dPoplar && softwood) {
 			return HabitatClassifier.Result.of(HabitatBiome.WILLOW_POPLAR_FOREST, zone, Association.POPULETUM_ALBAE);
 		}
-		return restOfFloor(c, d, channelWidth, zone);
+		return restOfFloor(c, d, channelWidth, zone, floorChannel);
 	}
 
-	/** Rest of the floor of a large valley: backswamps (alder carr, fen) or elm-ash floodplain forest. */
-	private static int restOfFloor(HabitatClassifier.Column c, double d, double channelWidth, Zone zone) {
+	/**
+	 * Rest of the floor of a large valley: backswamps (alder carr, fen) or elm-ash floodplain forest.
+	 *
+	 * @param floorChannel distances and heights from the channel of the dominant valley (F2), see {@link #classA}
+	 */
+	private static int restOfFloor(HabitatClassifier.Column c, double d, double channelWidth, Zone zone, boolean floorChannel) {
 		ColumnSample.Waters w = c.w;
 		double k = c.k;
 		double fromBackswamp = Math.max(Calibration.A_BACKSWAMP_D_K * k, Calibration.A_BACKSWAMP_D_W * channelWidth);
-		if (c.uJittered() > Calibration.A_BACKSWAMP_U && c.heightAboveChannel() < Calibration.A_BACKSWAMP_H && d > fromBackswamp
+		if ((floorChannel ? c.uJittered(w.floorChannelDist(), true) : c.uJittered()) > Calibration.A_BACKSWAMP_U
+				&& (floorChannel ? c.heightAboveChannel(w.floorChannelLevel()) : c.heightAboveChannel()) < Calibration.A_BACKSWAMP_H
+				&& d > fromBackswamp
 				&& (1 - Calibration.A_BACKSWAMP_U) * w.floorHalfWidth() >= 2 * Calibration.MIN_ALDER_CARR
 				&& c.patchQ(10, Calibration.BACKSWAMP_WAVELENGTH / k) < Calibration.BACKSWAMP_SHARE) {
 			boolean peat = w.floorHalfWidth() > Calibration.A_PEAT_HALF_WIDTH_K * k && w.channelGradient() < Calibration.A_PEAT_GRADIENT
@@ -193,7 +244,7 @@ final class WatersideZones {
 		// Small watercourse on the wide floor of a large valley: beyond it, the rest of that floor.
 		if (w.floorHalfWidth() > Calibration.WIDE_FLOOR_K * k && c.wLowland >= Calibration.CLASS_LOWLAND_WEIGHT
 				&& w.streamOrder() >= Calibration.WIDE_FLOOR_ORDER) {
-			return restOfFloor(c, d, channelWidth, zone);
+			return restOfFloor(c, d, channelWidth, zone, false);
 		}
 		// Floor margin: zonal site (till: low oak-hornbeam forest, LMw; sand: moist pine forest, then fresh).
 		return HabitatClassifier.Result.zone(zone);

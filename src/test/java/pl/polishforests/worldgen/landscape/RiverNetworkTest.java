@@ -115,6 +115,275 @@ class RiverNetworkTest {
 	}
 
 	/**
+	 * River rules of the large massifs (M2-8, step K2) on every massif of {@link GreatMassifSurvey}: no node of order
+	 * 1–3 in the core (G &gt; {@link LandscapeModel#GM_CORE}) is a spring and no segment starts its source there. The
+	 * cores are then measured on a grid ({@link #coreCut}: every 25 m at realistic scale, 10 m at gameplay scale) and
+	 * their valleys are held to the state after the review of K2:
+	 * <ul>
+	 * <li>summit area (G &gt; 0.9), i.e. no canyon in the dome: no water, cut ({@code landElevation} − surface) at most
+	 * {@link #SUMMIT_CUT} m (20 m realistic, 51 m gameplay);</li>
+	 * <li>the 1 km deep slot canyon of the first version of K2 at (260024, −1538766), realistic scale (G 0.87 on the
+	 * massif (258824, −1539366)): cut by at most 50 m (now 0);</li>
+	 * <li>whole core: at most {@link #CORE_FLOOR} columns on a valley floor or in water and none of them deeper in the
+	 * core than G = {@link #CORE_FLOOR_G}, cut at most {@link #CORE_CUT} m.</li>
+	 * </ul>
+	 *
+	 * <p>The design asked for a cut below 50 m on the whole core. The cut there is the massif flank above the rivers that
+	 * flow around the massif (742 m at G 0.41 above an order 3 river at realistic scale, 856 m at G 0.30 at gameplay
+	 * scale): the lifted dome rises from their valley at the side steepness, as Babia Gora rises 1000 m above the
+	 * valleys at its foot. It is not a canyon in the dome, so it is only held at the measured state. The valley floors
+	 * on the core edge come from the segment curves: the rule of {@code RiverNetwork.link} checks the straight path
+	 * between nodes, while the curve (tangents, wander) of a long segment bulges up to G 0.50 (an order 2 source segment
+	 * at (142063, −1477272) on the massif (143663, −1476297)); step K4 changes the segment geometry and must measure
+	 * this again (docs/m2/poprawka-geometrii.md, K2).
+	 */
+	@Test
+	void noSpringsOnMassifCore() {
+		for (LandscapeScale sc : new LandscapeScale[] {LandscapeScale.REALISTIC, LandscapeScale.GAMEPLAY}) {
+			LandscapeModel m = new LandscapeModel(SEED, sc, 1.0);
+			RiverNetwork net = networkOf(m);
+			double ra = GreatMassifSurvey.ra(sc);
+			int coreNodes = 0;
+			for (GreatMassifSurvey.Massif s : GreatMassifSurvey.survey(sc)) {
+				LandscapeModel.GreatMassif g = s.massif();
+				for (int order = 1; order <= 3; order++) {
+					double spacing = net.spacing(order);
+					long i0 = (long) Math.floor((g.x() - 1.3 * ra) / spacing);
+					long i1 = (long) Math.floor((g.x() + 1.3 * ra) / spacing);
+					long j0 = (long) Math.floor((g.z() - 1.3 * ra) / spacing);
+					long j1 = (long) Math.floor((g.z() + 1.3 * ra) / spacing);
+					for (long i = i0; i <= i1; i++) {
+						for (long j = j0; j <= j1; j++) {
+							RiverNetwork.Node n = net.node(order, i, j);
+							if (m.greatMassifCore(n.x(), n.z())) {
+								coreNodes++;
+								assertFalse(net.isSpring(n), sc.id() + ": spring on the core of " + g + " at " + n);
+							}
+							RiverNetwork.Segment seg = net.segment(order, i, j);
+							assertFalse(seg != null && seg.source && m.greatMassifCore(seg.px(0), seg.pz(0)),
+									sc.id() + ": a source on the core of " + g + " at node " + n);
+						}
+					}
+				}
+			}
+			assertTrue(coreNodes > 0, sc.id() + ": no nodes on the cores");
+			CoreCut c = coreCut(m);
+			int k = sc == LandscapeScale.REALISTIC ? 0 : 1;
+			System.out.printf(Locale.ROOT, "%s: %d massifs, %d nodes on the cores (no springs); cores %d columns: largest cut "
+					+ "%.1f m at %s (limit %.0f m, goal 50 m), valley floor or water %d columns (limit %d), the deepest at %s "
+					+ "(limit G %.2f); summit areas %d columns: largest cut %.1f m at %s (limit %.0f m), water %d%s%n", sc.id(),
+					GreatMassifSurvey.survey(sc).size(), coreNodes, c.columns(), c.maxCut(), c.maxCutAt(), CORE_CUT[k],
+					c.floorColumns(), CORE_FLOOR[k], c.floorAt(), CORE_FLOOR_G[k], c.summitColumns(), c.maxSummitCut(),
+					c.summitAt(), SUMMIT_CUT[k], c.summitWater(), Double.isNaN(c.slotCut()) ? ""
+							: String.format(Locale.ROOT, "; slot (260024, -1538766) cut %.1f m", c.slotCut()));
+			assertTrue(c.summitColumns() > 0, sc.id() + ": no summit areas");
+			assertTrue(c.summitWater() == 0, sc.id() + ": water in the summit area of a massif");
+			assertTrue(c.maxSummitCut() <= SUMMIT_CUT[k], sc.id() + ": summit area cut by " + c.maxSummitCut() + " m at "
+					+ c.summitAt());
+			assertTrue(c.maxCut() <= CORE_CUT[k], sc.id() + ": core cut by " + c.maxCut() + " m at " + c.maxCutAt());
+			assertTrue(c.floorColumns() <= CORE_FLOOR[k], sc.id() + ": " + c.floorColumns()
+					+ " columns of a valley floor or water on the cores, the deepest at " + c.floorAt());
+			assertTrue(c.maxFloorG() <= CORE_FLOOR_G[k], sc.id() + ": a valley floor or water deep in a core at " + c.floorAt());
+			assertTrue(Double.isNaN(c.slotCut()) || c.slotCut() <= 50, sc.id()
+					+ ": the slot canyon at (260024, -1538766) is back, cut " + c.slotCut() + " m");
+		}
+	}
+
+	/**
+	 * Limits of {@link #noSpringsOnMassifCore}, realistic and gameplay scale, measured after the review of K2 (summit
+	 * cut 19.6 and 50.6 m, core cut 741.3 and 855.6 m, 1598 and 326 floor columns, the deepest at G 0.502 and 0.355).
+	 * Largest cut of the summit area (G &gt; 0.9) in m.
+	 */
+	static final double[] SUMMIT_CUT = {20, 51};
+	/** Largest cut of the core (G &gt; 0.3) in m. */
+	static final double[] CORE_CUT = {742, 856};
+	/** Largest number of core columns on a valley floor or in water. */
+	static final int[] CORE_FLOOR = {1_598, 326};
+	/** Largest massif strength G of a core column on a valley floor or in water. */
+	static final double[] CORE_FLOOR_G = {0.51, 0.36};
+
+	/**
+	 * Valleys on the cores of the massifs of {@link GreatMassifSurvey}: columns with G &gt; 0.3 on a grid every 25 m
+	 * (realistic) or 10 m (gameplay) in a square of 1.5 Ra around each massif center.
+	 *
+	 * @param columns       core columns
+	 * @param maxCut        largest {@code landElevation} − surface on the cores
+	 * @param floorColumns  core columns on a valley floor ({@code inFloor}) or in water
+	 * @param maxFloorG     largest G of such a column ({@code floorAt}), 0 without them
+	 * @param summitColumns columns with G &gt; 0.9
+	 * @param slotCut       cut at (260024, −1538766) at realistic scale (the slot canyon of the first version of K2), else NaN
+	 */
+	record CoreCut(int columns, double maxCut, String maxCutAt, int floorColumns, double maxFloorG, String floorAt,
+			int summitColumns, double maxSummitCut, String summitAt, int summitWater, double slotCut) {
+	}
+
+	static CoreCut coreCut(LandscapeModel m) {
+		LandscapeScale sc = m.scale();
+		double ra = GreatMassifSurvey.ra(sc);
+		double step = sc == LandscapeScale.REALISTIC ? 25 : 10;
+		int k = (int) Math.ceil(0.75 * ra / step);
+		int side = 2 * k + 1;
+		int columns = 0;
+		int floor = 0;
+		int summit = 0;
+		int summitWater = 0;
+		double maxCut = 0;
+		double maxFloorG = 0;
+		double maxSummitCut = 0;
+		String maxCutAt = "-";
+		String floorAt = "-";
+		String summitAt = "-";
+		for (GreatMassifSurvey.Massif s : GreatMassifSurvey.survey(sc)) {
+			LandscapeModel.GreatMassif g = s.massif();
+			// {G, cut, valley floor or water, water, x, z} of the core columns, in the order of the grid.
+			double[][] core = IntStream.range(0, side * side).parallel().mapToObj(q -> {
+				double x = g.x() + (q % side - k) * step;
+				double z = g.z() + (q / side - k) * step;
+				double strength = m.greatMassifStrength(x, z);
+				if (strength <= LandscapeModel.GM_CORE) {
+					return null;
+				}
+				ColumnSample c = m.sample(x, z);
+				return new double[] {strength, m.landElevation(x, z) - c.surface(),
+						c.hasWater() || c.waters().inFloor() ? 1 : 0, c.hasWater() ? 1 : 0, x, z};
+			}).filter(v -> v != null).toArray(double[][]::new);
+			for (double[] c : core) {
+				String at = String.format(Locale.ROOT, "(%.0f, %.0f) G %.2f on %s", c[4], c[5], c[0], g);
+				columns++;
+				if (c[1] > maxCut) {
+					maxCut = c[1];
+					maxCutAt = at;
+				}
+				if (c[2] > 0) {
+					floor++;
+					if (c[0] > maxFloorG) {
+						maxFloorG = c[0];
+						floorAt = at;
+					}
+				}
+				if (c[0] > 0.9) {
+					summit++;
+					summitWater += (int) c[3];
+					if (c[1] > maxSummitCut) {
+						maxSummitCut = c[1];
+						summitAt = at;
+					}
+				}
+			}
+		}
+		double slot = Double.NaN;
+		if (sc == LandscapeScale.REALISTIC) {
+			slot = m.landElevation(260_024, -1_538_766) - m.sample(260_024, -1_538_766).surface();
+		}
+		return new CoreCut(columns, maxCut, maxCutAt, floor, maxFloorG, floorAt, summit, maxSummitCut, summitAt, summitWater, slot);
+	}
+
+	/**
+	 * Sources of streams on the flanks of the large massifs (review of step K2). Like
+	 * {@link #mountainStreamSourcesHaveNoCliffs}, but for the order 1 sources in the reach of the massifs of
+	 * {@link GreatMassifSurvey} (G &gt; 0 at the source, at most {@value #MASSIF_SOURCES} per massif in the order of the node
+	 * grid), in both scales, and also behind the source: transects across the valley at t from −0.5 (on the extension
+	 * of the valley axis behind the source) to 0.5, ±60 m·k wide. The first version of K2 had straight valley wedges
+	 * with head walls of 100–380 m behind such sources. The limits {@link #MASSIF_SOURCE_STEP} are the state after the
+	 * review of K2; the goal of decision D4 (step K4b) is the 3 m per 1 m of {@link #mountainStreamSourcesHaveNoCliffs}.
+	 */
+	@Test
+	void massifStreamSourcesHaveNoCliffs() {
+		for (LandscapeScale sc : new LandscapeScale[] {LandscapeScale.REALISTIC, LandscapeScale.GAMEPLAY}) {
+			LandscapeModel m = new LandscapeModel(SEED, sc, 1.0);
+			SourceCliffs r = massifSourceCliffs(m);
+			int k = sc == LandscapeScale.REALISTIC ? 0 : 1;
+			System.out.printf(Locale.ROOT, "%s: %d sources on the massif flanks, largest step %.2f m per 1 m at %s (limit "
+					+ "%.2f m, goal 3 m)%n", sc.id(), r.sources(), r.worst(), r.where(), MASSIF_SOURCE_STEP[k]);
+			assertTrue(r.sources() >= 20, sc.id() + ": only " + r.sources() + " sources on the massif flanks");
+			assertTrue(r.worst() <= MASSIF_SOURCE_STEP[k], sc.id() + ": cliff at a source on a massif flank: " + r.worst()
+					+ " m per 1 m at " + r.where());
+		}
+	}
+
+	static final int MASSIF_SOURCES = 12;
+	/**
+	 * Largest step per 1 m at the sources on the massif flanks, realistic and gameplay scale, measured after the review of
+	 * K2: 1.46 m (108 sources) and 25.87 m (300 sources; at (4989.7, −33301.9) on the massif by the spawn, a jump of the
+	 * projection of a short order 1 segment, A2, step K4b).
+	 */
+	static final double[] MASSIF_SOURCE_STEP = {1.5, 25.9};
+
+	/** Sources checked by {@link #massifStreamSourcesHaveNoCliffs} and the largest step per 1 m found at them. */
+	record SourceCliffs(int sources, double worst, String where) {
+	}
+
+	static SourceCliffs massifSourceCliffs(LandscapeModel m) {
+		LandscapeScale sc = m.scale();
+		RiverNetwork net = networkOf(m);
+		double ra = GreatMassifSurvey.ra(sc);
+		double spacing = net.spacing(1);
+		double half = 60 * sc.local();
+		double lateralStep = 3 * sc.local();
+		List<RiverNetwork.Segment> sources = new ArrayList<>();
+		for (GreatMassifSurvey.Massif s : GreatMassifSurvey.survey(sc)) {
+			LandscapeModel.GreatMassif g = s.massif();
+			long i0 = (long) Math.floor((g.x() - 1.3 * ra) / spacing);
+			long i1 = (long) Math.floor((g.x() + 1.3 * ra) / spacing);
+			long j0 = (long) Math.floor((g.z() - 1.3 * ra) / spacing);
+			long j1 = (long) Math.floor((g.z() + 1.3 * ra) / spacing);
+			int taken = 0;
+			for (long i = i0; i <= i1 && taken < MASSIF_SOURCES; i++) {
+				for (long j = j0; j <= j1 && taken < MASSIF_SOURCES; j++) {
+					RiverNetwork.Segment seg = net.segment(1, i, j);
+					if (seg != null && seg.source && m.greatMassifStrength(seg.px(0), seg.pz(0)) > 0) {
+						sources.add(seg);
+						taken++;
+					}
+				}
+			}
+		}
+		// {largest step, x, z} per source.
+		double[][] worst = sources.parallelStream().map(seg -> {
+			double best = 0;
+			double bx = 0;
+			double bz = 0;
+			double l0 = Math.hypot(seg.dx(0), seg.dz(0));
+			for (int q = -10; q <= 10; q++) {
+				double t = q * 0.05;
+				double tx = t >= 0 ? seg.dx(t) : seg.dx(0);
+				double tz = t >= 0 ? seg.dz(t) : seg.dz(0);
+				double tl = t >= 0 ? Math.hypot(tx, tz) : l0;
+				double cx = t >= 0 ? seg.px(t) : seg.px(0) + tx / tl * t * seg.len;
+				double cz = t >= 0 ? seg.pz(t) : seg.pz(0) + tz / tl * t * seg.len;
+				for (double k = -half; k <= half + 1e-9; k += lateralStep) {
+					double x = cx - tz / tl * k;
+					double z = cz + tx / tl * k;
+					// Dry terrain only: the channel bank above the water may be steep.
+					ColumnSample c0 = m.sample(x, z);
+					ColumnSample c1 = m.sample(x + 1, z);
+					ColumnSample c2 = m.sample(x, z + 1);
+					if (c0.hasWater() || c1.hasWater() || c2.hasWater()) {
+						continue;
+					}
+					double h0 = c0.surface();
+					double step = Math.max(Math.abs(c1.surface() - h0), Math.abs(c2.surface() - h0));
+					if (step > best) {
+						best = step;
+						bx = x;
+						bz = z;
+					}
+				}
+			}
+			return new double[] {best, bx, bz};
+		}).toArray(double[][]::new);
+		double w = 0;
+		String where = "-";
+		for (double[] v : worst) {
+			if (v[0] > w) {
+				w = v[0];
+				where = String.format(Locale.ROOT, "(%.1f, %.1f)", v[1], v[2]);
+			}
+		}
+		return new SourceCliffs(sources.size(), w, where);
+	}
+
+	/**
 	 * d (distance from the channel bank) is continuous and has a bounded gradient. In the channel d ≤ 0, and on the
 	 * valley floor u ∈ [0, 1]. Sites: a lowland river, an order 3 river (strong meanders, valley far from the segment
 	 * axis), an order 2 river in the lowland and a stream in the Beskids.

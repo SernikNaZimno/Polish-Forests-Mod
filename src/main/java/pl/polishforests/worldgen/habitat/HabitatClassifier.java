@@ -359,17 +359,25 @@ public final class HabitatClassifier {
 		 */
 		boolean onValleyFloor() {
 			if (onValleyFloor < 0) {
-				boolean d = w.inFloor();
-				if (w.streamOrder() > 0 && !s.hasWater() && !Double.isNaN(w.channelLevel())) {
-					double hl = H - w.channelLevel();
-					if (hl >= Calibration.OTHER_CHANNEL_H) {
-						double range = Math.max(Calibration.FLOOR_MIN_K * k, Double.isNaN(w.floorHalfWidth()) ? 0 : w.floorHalfWidth());
-						d = hl <= Calibration.FLOOR_H && (d || w.channelDist() <= range);
-					}
-				}
-				onValleyFloor = d ? 1 : 0;
+				onValleyFloor = onValleyFloor(w.channelDist(), w.channelLevel()) ? 1 : 0;
 			}
 			return onValleyFloor == 1;
+		}
+
+		/**
+		 * {@link #onValleyFloor()} measured from the given channel instead of the nearest one (F2: the channel of the
+		 * dominant valley, {@code floorChannelDist} and {@code floorChannelLevel}); not cached.
+		 */
+		boolean onValleyFloor(double channelDist, double channelLevel) {
+			boolean d = w.inFloor();
+			if (w.streamOrder() > 0 && !s.hasWater() && !Double.isNaN(channelLevel)) {
+				double hl = H - channelLevel;
+				if (hl >= Calibration.OTHER_CHANNEL_H) {
+					double range = Math.max(Calibration.FLOOR_MIN_K * k, Double.isNaN(w.floorHalfWidth()) ? 0 : w.floorHalfWidth());
+					d = hl <= Calibration.FLOOR_H && (d || channelDist <= range);
+				}
+			}
+			return d;
 		}
 
 		/** Position on the floor 0–1: from the model, and on the terrain-based floor outside the {@code inFloor} flag from d / half-width. */
@@ -377,11 +385,19 @@ public final class HabitatClassifier {
 			if (w.inFloor() && !Double.isNaN(w.u())) {
 				return w.u();
 			}
-			if (!onValleyFloor()) {
+			return u(w.channelDist(), onValleyFloor());
+		}
+
+		/** {@link #u()} measured from the given channel, with {@code onFloor} = {@link #onValleyFloor(double, double)} for it. */
+		private double u(double channelDist, boolean onFloor) {
+			if (w.inFloor() && !Double.isNaN(w.u())) {
+				return w.u();
+			}
+			if (!onFloor) {
 				return Double.NaN;
 			}
 			double half = w.floorHalfWidth();
-			return Double.isNaN(half) || half <= 0 ? 0 : Math.clamp(Math.max(0, w.channelDist()) / half, 0.0, 1.0);
+			return Double.isNaN(half) || half <= 0 ? 0 : Math.clamp(Math.max(0, channelDist) / half, 0.0, 1.0);
 		}
 
 		/** Position on the floor with ±0.05 jitter. */
@@ -390,6 +406,11 @@ public final class HabitatClassifier {
 				uJitter = u() + Calibration.U_JITTER * classifier.borders.at(x + 7_777, z - 3_333, Calibration.BORDER_WAVELENGTH * k);
 			}
 			return uJitter;
+		}
+
+		/** {@link #uJittered()} measured from the given channel (F2); not cached. */
+		double uJittered(double channelDist, boolean onFloor) {
+			return u(channelDist, onFloor) + Calibration.U_JITTER * classifier.borders.at(x + 7_777, z - 3_333, Calibration.BORDER_WAVELENGTH * k);
 		}
 
 		/** Quantile of the patch noise at the given wavelength (m·k), in [0, 1]. */
@@ -460,7 +481,12 @@ public final class HabitatClassifier {
 
 		/** Channel width at 1:1 scale (m). */
 		double wr() {
-			return w.channelWidth() / classifier.chan;
+			return wr(w.channelWidth());
+		}
+
+		/** Width of the given channel at 1:1 scale (m). */
+		double wr(double channelWidth) {
+			return channelWidth / classifier.chan;
 		}
 
 		/**
@@ -470,7 +496,12 @@ public final class HabitatClassifier {
 		 * to the floor of a larger valley).
 		 */
 		double heightAboveChannel() {
-			double hl = H - w.channelLevel();
+			return heightAboveChannel(w.channelLevel());
+		}
+
+		/** {@link #heightAboveChannel()} above the water level of the given channel (F2). */
+		double heightAboveChannel(double channelLevel) {
+			double hl = H - channelLevel;
 			return hl < Calibration.OTHER_CHANNEL_H ? Double.NaN : hl - 1;
 		}
 

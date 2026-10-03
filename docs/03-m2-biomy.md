@@ -928,7 +928,8 @@ Każdą strukturę sprawdza gametest (`/locate structure`), a jej położenie na
 
 | Test | Co sprawdza |
 |---|---|
-| `GoldenTerrainTest` | hash (surface, waterLevel, waterKind, type, substrate, coverDepth) dla 4096 punktów × 2 skale × 2 ziarna jest identyczny z M1 |
+| `GoldenTerrainTest` | hash (surface, waterLevel, waterKind, type, substrate, coverDepth) dla 4096 punktów × 2 skale × 2 ziarna jest identyczny z M1. Od poprawki geometrii terenu (`docs/m2/poprawka-geometrii.md`): `terrainMatchesGolden` porównuje z `golden_terrain_m2.txt`, a `frozenM1CopyMatchesGolden` kopię M1 z `golden_terrain_m1.txt` |
+| `SurfaceContinuityTest`, `TerrainLocalityTest`, `TerrainDeterminismTest` | poprawka geometrii terenu: izolowane skoki powierzchni na transektach (progi „nie gorzej” i cele kroków); teren poza dolinami i wodami identyczny z kopią M1; kolumna nie zależy od kolejności próbkowania (znany wyjątek do K5.2: poziom jezior rynnowych) |
 | `LandscapeModelTest`, `RiverNetworkTest` (rozszerzenia) | nowe pola są deterministyczne i skończone; d jest ciągłe (\|Δ\| ≤ 1,5 m na 1 m poza przełączeniem koryta) i ≤ 0 w korycie; u ∈ [0, 1] w dnie; ok. 50% brzegów w zakolach jest wypukłych |
 | `RegionalFieldTest` | zakres [0, 1]; gładkość; pas bez buka i świerka zajmuje 10–20% lądu na 3 ziarnach; zasięg P ≥ 0,5 od osi pasma (10 ziaren razem); Wz patrzy na zachód; niezależność od pamięci i wątków |
 | `HabitatClassifierTest` | determinizm; tabelaryczne przypadki syntetyczne; każdy z 36 biomów i każda strefa osiągalne; brak łęgu poza dnem i źródliskami na 10⁶ próbek |

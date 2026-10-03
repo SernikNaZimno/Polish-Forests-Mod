@@ -322,6 +322,53 @@ class HabitatClassifierTest {
 		assertTrue(k.mode() == HabitatClassifier.Mode.NATURAL);
 	}
 
+	/**
+	 * F2 (docs/m2/poprawka-geometrii.md, step K1): on the floor of a large river the zones follow the channel of the
+	 * dominant valley, and a smaller, closer watercourse keeps only its own belt of ash-alder riparian forest. A column
+	 * 60 m from a tributary 8 m wide (beyond its belt of at most 1.2 · max(15 m, 4 W) = 38.4 m) and 150 m from the bank
+	 * of a river 150 m wide lies in the white willow forest of the river (D_wb ≥ 0.8 · 255 m); before F2 its zones came
+	 * from the tributary (class B). Checked at 200 points (jitter of the belts).
+	 */
+	@Test
+	void floorZonesFollowTheChannelOfTheDominantValley() {
+		HabitatClassifier k = real(HabitatClassifier.Mode.NATURAL);
+		ColumnSample river = SyntheticSample.morainePlateau().h(91.7).stream(3, 8, 60, 0.3).onValleyFloor(0.1, 900)
+				.floorChannel(150, 150, 90).build();
+		ColumnSample nearestOnly = SyntheticSample.morainePlateau().h(91.7).stream(3, 8, 60, 0.3).onValleyFloor(0.1, 900).build();
+		ColumnSample tributaryBelt = SyntheticSample.morainePlateau().h(91.7).stream(3, 8, 10, 0.3).onValleyFloor(0.1, 900)
+				.floorChannel(150, 150, 90).build();
+		// The floor of the river lies more than FLOOR_H above its water: not its floor, so the tributary decides.
+		ColumnSample offRiverFloor = SyntheticSample.morainePlateau().h(91.7).stream(3, 8, 60, 0.3).onValleyFloor(0.1, 900)
+				.floorChannel(150, 150, 85).build();
+		// Not wider than 1.05 W of the nearest channel: the nearest channel is (like) the channel of the dominant valley.
+		ColumnSample sameWidth = SyntheticSample.morainePlateau().h(91.7).stream(3, 8, 60, 0.3).onValleyFloor(0.1, 900)
+				.floorChannel(150, 8.4, 90).build();
+		// Channel of the dominant valley of class B (order 2, W < 30 m): the nearest channel decides.
+		ColumnSample classB = SyntheticSample.morainePlateau().h(91.7).stream(2, 8, 60, 0.3).onValleyFloor(0.1, 900)
+				.floorChannel(150, 20, 90).build();
+		// Off the model's floor (inFloor false): the nearest channel decides.
+		SyntheticSample offFlag = SyntheticSample.morainePlateau().h(91.7).stream(3, 8, 60, 0.3).floorChannel(150, 150, 90);
+		offFlag.floorHalfWidth = 900;
+		ColumnSample notInFloor = offFlag.build();
+		for (int i = 0; i < 200; i++) {
+			double x = i * 37.3;
+			double z = i * 53.9 - 7_000;
+			int code = k.classify(river, x, z);
+			assertEquals(HabitatBiome.WILLOW_POPLAR_FOREST, Habitat.biome(code), "river zones at (" + x + ", " + z + "): " + Habitat.of(code));
+			assertEquals(Association.SALICETUM_ALBAE, Habitat.association(code), "white willow forest at (" + x + ", " + z + ")");
+			assertEquals(k.classify(nearestOnly, x, z), k.classify(offRiverFloor, x, z), "off the river floor");
+			assertEquals(k.classify(nearestOnly, x, z), k.classify(sameWidth, x, z), "channel not wider");
+			assertTrue(Habitat.biome(k.classify(nearestOnly, x, z)) != HabitatBiome.WILLOW_POPLAR_FOREST,
+					"without the channel of the dominant valley the zones come from the tributary");
+			assertEquals(HabitatBiome.ASH_ALDER_FOREST, Habitat.biome(k.classify(tributaryBelt, x, z)), "belt of the tributary");
+			SyntheticSample b = SyntheticSample.morainePlateau().h(91.7).stream(2, 8, 60, 0.3).onValleyFloor(0.1, 900);
+			assertEquals(k.classify(b.build(), x, z), k.classify(classB, x, z), "class B channel of the dominant valley");
+			SyntheticSample o = SyntheticSample.morainePlateau().h(91.7).stream(3, 8, 60, 0.3);
+			o.floorHalfWidth = 900;
+			assertEquals(k.classify(o.build(), x, z), k.classify(notInFloor, x, z), "off the floor flag");
+		}
+	}
+
 	// ------------------------------------------------------------------ world: reachability and riparian forests only on floors
 
 	/** Clusters of 125 × 125 columns every 2 m·k at 64 points (about 10⁶ samples per scale). */

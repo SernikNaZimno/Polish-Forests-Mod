@@ -145,10 +145,31 @@ test {
 		showStandardStreams = true
 		exceptionFormat = 'full'
 	}
-	// Golden terrain test (GoldenTerrainTest): with -PwriteGolden it writes a new reference file instead of comparing.
+	// Golden terrain test (GoldenTerrainTest, docs/m2/poprawka-geometrii.md):
+	// -PwriteGolden writes a new reference file instead of comparing (only the M2 file; golden_terrain_m1.txt stays),
+	//   to -PgoldenFile=<file> or by default to src/test/resources/golden_terrain_m2.txt;
+	// -PgoldenKeepCenters (with -PwriteGolden) keeps the patch centers of the current file and searches anew only
+	//   for patches that lost their target and for new sites;
+	// -PgoldenAllow=<file> lists allowed changes ('<set> / <patch>' lines, e.g. src/test/golden-allow/K3.txt);
+	// -PgoldenReport=<file> writes the changed patches and fields to a file.
 	if (project.hasProperty('writeGolden')) {
 		systemProperty 'polishforests.golden.write', 'true'
-		systemProperty 'polishforests.golden.file', file('src/test/resources/golden_terrain_m1.txt').absolutePath
+		systemProperty 'polishforests.golden.file', project.hasProperty('goldenFile')
+				? file(project.property('goldenFile')).absolutePath
+				: file('src/test/resources/golden_terrain_m2.txt').absolutePath
+		outputs.upToDateWhen { false }
+	}
+	if (project.hasProperty('goldenKeepCenters')) {
+		systemProperty 'polishforests.golden.keepCenters', 'true'
+	}
+	if (project.hasProperty('goldenAllow')) {
+		def allowFile = file(project.property('goldenAllow'))
+		systemProperty 'polishforests.golden.allow', allowFile.absolutePath
+		inputs.file(allowFile)
+	}
+	if (project.hasProperty('goldenReport')) {
+		systemProperty 'polishforests.golden.report', file(project.property('goldenReport')).absolutePath
+		outputs.upToDateWhen { false }
 	}
 	// SampleCostTest: number of runs (default 7), e.g. -PcostRuns=15 when settling the budget.
 	if (project.hasProperty('costRuns')) {

@@ -1,6 +1,8 @@
 package pl.polishforests.worldgen.landscape;
 
+import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import pl.polishforests.worldgen.habitat.AltitudinalBelts;
@@ -80,6 +82,56 @@ public final class LandscapeModel {
 	private static final byte KETTLE_OMBROTROPHIC = 2;
 
 	/**
+	 * Large Beskid massifs (Babia Gora type, M2-8; docs/m2/poprawka-geometrii.md, step K2): rare points on a grid with
+	 * the side {@link #greatMassifSpacing}, one candidate per grid cell. Noise "mountain.great" (a new seed, never to be
+	 * changed; its salts {@code unit(i, j, 1..4)} belong to the world).
+	 */
+	private final Noise greatMassif;
+	private final double greatMassifSpacing;
+	/** Semi-axes of the massif ellipse along and across the range (m). */
+	private final double greatMassifRa;
+	private final double greatMassifRc;
+	/** Reach of a massif: G = 0 farther than sqrt(GM_REACH2) · Ra from the center. */
+	private final double greatMassifReach;
+	/** Rings of grid cells checked by the thinning: ceil(GM_SEPARATION · Ra / spacing). */
+	private final int greatMassifRings;
+	/** Accepted candidate of a grid cell after thinning ({@link #greatMassifCell}); a pure function of the cell. */
+	private final ConcurrentHashMap<Long, double[]> greatMassifCells = new ConcurrentHashMap<>();
+	/** Candidate of a grid cell before thinning ({@link #greatMassifEligible}); a pure function of the cell. */
+	private final ConcurrentHashMap<Long, Boolean> greatMassifEligibleCache = new ConcurrentHashMap<>();
+	private static final double[] GM_NONE = new double[0];
+	/** A candidate is drawn with this probability and accepted only deep in the range (mountain field, Beskids weight). */
+	static final double GM_P = 0.45;
+	static final double GM_MIN_FIELD = 0.90;
+	static final double GM_MIN_WEIGHT = 0.98;
+	/** Thinning: a candidate closer than GM_SEPARATION · Ra to an eligible candidate with a smaller draw is dropped. */
+	static final double GM_SEPARATION = 2.5;
+	/** Range of the target summit (m a.s.l.), measured; 1550 (Pilsko type) is the tuning option S2. */
+	static final double GM_SUMMIT_LO = 1_625;
+	static final double GM_SUMMIT_HI = 1_735;
+	/** Share of the lift that goes to the floor of the flysch relief (the rest raises the relief). */
+	static final double GM_FLOOR_SHARE = 0.35;
+	/** Massif core (G &gt; GM_CORE): no springs and no flow across it (river rules in {@code RiverNetwork}). */
+	static final double GM_CORE = 0.3;
+	/** The flysch valleys are filled near the center: smoothstep(GM_FILL0, GM_FILL1, G). */
+	static final double GM_FILL0 = 0.3;
+	static final double GM_FILL1 = 0.9;
+	/**
+	 * Soft ceiling of the summit dome (review of the design): within GM_CAP m below the target summit the height
+	 * saturates towards the target instead of the global tanh saturation from 1500 m, which flattened the top into a
+	 * plateau. Full from G ≥ GM_CAP_G. The envelope target is T = target + GM_CAP. 35 m instead of the 40 m of the
+	 * design (S3 tuning in step K2): with 40 m one gameplay massif had 0.37 of its belt 1390–1650 m above 1650 m.
+	 */
+	static final double GM_CAP = 35;
+	static final double GM_CAP_G = 0.3;
+	/** Massif strength G = 0 for d² ≥ 1 after the outline noise d² · (1 + 0.3 · fbm) with fbm ≥ −1. */
+	private static final double GM_REACH2 = 1.0 / 0.7;
+
+	/** Large Beskid massif: center and target summit (m a.s.l.). */
+	public record GreatMassif(double x, double z, double targetSummit) {
+	}
+
+	/**
 	 * Macroregion cell. {@code cos}/{@code sin} describe the direction across the mountain range;
 	 * mountain relief is elongated perpendicular to it, i.e. along the range.
 	 */
@@ -127,6 +179,13 @@ public final class LandscapeModel {
 		this.mountain = root.derive("mountain");
 		this.zoneSea = root.derive("zone.sea");
 		this.coast = root.derive("coast");
+		// Large massifs (M2-8): a new seed, so the rest of the terrain does not change.
+		this.greatMassif = root.derive("mountain.great");
+		this.greatMassifSpacing = scale == LandscapeScale.REALISTIC ? 60_000 : 4_000;
+		this.greatMassifRa = 8_000 * mspace;
+		this.greatMassifRc = 4_000 * mspace;
+		this.greatMassifRings = (int) Math.ceil(GM_SEPARATION * greatMassifRa / greatMassifSpacing);
+		this.greatMassifReach = Math.sqrt(GM_REACH2) * greatMassifRa;
 		// New M2 noises only via "habitat.*": derived seeds are independent, so the terrain does not change.
 		this.habitatSandiness = root.derive("habitat.piask");
 		this.rivers = new RiverNetwork(this, root.derive("rivers"), scale);
@@ -438,7 +497,25 @@ public final class LandscapeModel {
 
 	/** Ground height of a cell without waters, in metres a.s.l. */
 	double cellElevation(Cell c, double x, double z) {
-		return cellElevation(c, x, z, null, 0);
+		return cellElevation(c, x, z, null, 0, flysch(c.type()) ? greatMassifAt(x, z) : null);
+	}
+
+	/** Whether the type has the flysch relief that a large massif lifts (FOOTHILLS, BESKIDS). */
+	private static boolean flysch(LandscapeType t) {
+		return t == LandscapeType.FOOTHILLS || t == LandscapeType.BESKIDS;
+	}
+
+	/**
+	 * {@link #greatMassifAt} at the point when the blend has a flysch cell, else null: computed once per column for all
+	 * its cells (it depends only on the point).
+	 */
+	private double[] greatMassifFor(Blend b, double x, double z) {
+		for (int i = 0; i < b.count(); i++) {
+			if (flysch(b.cells()[i].type())) {
+				return greatMassifAt(x, z);
+			}
+		}
+		return null;
 	}
 
 	/**
@@ -474,15 +551,17 @@ public final class LandscapeModel {
 
 	/**
 	 * Like {@link #cellElevation(Cell, double, double)}; when {@code o} is not null, adds to it
-	 * the relief components of the cell with weight {@code w}. The height is identical in both variants.
+	 * the relief components of the cell with weight {@code w}. The height is identical in both variants. {@code gm} is
+	 * the large massif at the point ({@link #greatMassifAt}, null outside the reach of every massif), used by the flysch
+	 * types only.
 	 */
-	private double cellElevation(Cell c, double x, double z, ReliefParts o, double w) {
+	private double cellElevation(Cell c, double x, double z, ReliefParts o, double w, double[] gm) {
 		return switch (c.type()) {
 			case OUTWASH_PLAIN -> lowlandBaseline(x, z) + outwashPlainRelief(x, z, o, w);
 			case MORAINE_PLATEAU -> lowlandBaseline(x, z) + 22.0 + moraineRelief(x, z, o, w);
 			case OLD_GLACIAL_PLAIN -> plainElevation(x, z, o, w);
-			case FOOTHILLS -> foothillElevation(c, x, z, o, w);
-			case BESKIDS -> mountainElevation(c, x, z, o, w);
+			case FOOTHILLS -> foothillElevation(c, x, z, o, w, gm);
+			case BESKIDS -> mountainElevation(c, x, z, o, w, gm);
 			case COASTLAND, SEA -> lowlandBaseline(x, z);
 		};
 	}
@@ -605,21 +684,30 @@ public final class LandscapeModel {
 	}
 
 	/** Foothills: rounded hills elongated along the range, 300–600 m a.s.l., relief 100–250 m. */
-	private double foothillElevation(Cell c, double x, double z, ReliefParts o, double w) {
+	private double foothillElevation(Cell c, double x, double z, ReliefParts o, double w, double[] gm) {
 		double m = mountainField(x, z);
 		double floor = 270.0 + 90.0 * Noise.smoothstep(0.45, 0.85, m);
 		double relief = 170.0 + 90.0 * Noise.smoothstep(0.5, 0.85, m);
 		double rough = 12.0 * relief(x, z, 700 * local);
 		double[] p = flyschParts(c, x, z, 3_200 * mspace);
+		// A large massif lifts the foothills cells in its reach as well (at gameplay scale the Beskids band is only one
+		// or two region cells wide, so the dome often reaches over the type boundary). Outside the reach nothing changes.
+		if (gm != null) {
+			double lift = greatMassifLift(gm, floor + relief);
+			floor += GM_FLOOR_SHARE * lift;
+			relief += (1 - GM_FLOOR_SHARE) * lift;
+			greatMassifFill(gm[0], p);
+		}
 		if (o != null) {
 			o.convexity += w * flyschConvexity(relief, p, rough);
 			o.flysch(LandscapeType.FOOTHILLS, w, p[0]);
 		}
-		return floor + relief * flyschRelief(p) + rough;
+		double h = floor + relief * flyschRelief(p) + rough;
+		return gm == null ? h : greatMassifCeiling(gm, h);
 	}
 
 	/** Beskids: 500–1725 m a.s.l., relief 400–900 m, slopes 15–30°. */
-	private double mountainElevation(Cell c, double x, double z, ReliefParts o, double w) {
+	private double mountainElevation(Cell c, double x, double z, ReliefParts o, double w, double[] gm) {
 		double m = mountainField(x, z);
 		double axis = Noise.smoothstep(0.82, 1.0, m);
 		double floor = 480.0 + 180.0 * axis;
@@ -629,17 +717,296 @@ public final class LandscapeModel {
 		relief += 350.0 * massif;
 		double rough = 25.0 * relief(x, z, 900 * local);
 		double[] p = flyschParts(c, x, z, 5_200 * mspace);
+		// Large massif (M2-8): brings the envelope of the ridges to the target summit, fills the flysch valleys near the
+		// center and rounds the domes. Outside the reach of every massif nothing changes.
+		if (gm != null) {
+			double lift = greatMassifLift(gm, floor + relief);
+			floor += GM_FLOOR_SHARE * lift;
+			relief += (1 - GM_FLOOR_SHARE) * lift;
+			greatMassifFill(gm[0], p);
+		}
 		if (o != null) {
 			o.convexity += w * flyschConvexity(relief, p, rough);
 			o.flysch(LandscapeType.BESKIDS, w, p[0]);
-			o.massif = massif;
+			o.massif = gm == null ? massif : Math.max(massif, gm[0]);
 		}
 		double h = floor + relief * flyschRelief(p) + rough;
-		// Soft saturation above 1500 m: the highest Beskid summits are about 1725 m (Babia Gora).
-		if (h > 1_500) {
-			h = 1_500 + 250 * Math.tanh((h - 1_500) / 250);
+		return gm == null ? saturate(h) : greatMassifCeiling(gm, h);
+	}
+
+	/** Soft saturation above 1500 m: the highest Beskid summits are about 1725 m (Babia Gora). */
+	private static double saturate(double h) {
+		return h > 1_500 ? 1_500 + 250 * Math.tanh((h - 1_500) / 250) : h;
+	}
+
+	/**
+	 * Lift of the envelope of the flysch ridges (floor + relief) by the large massif {@code gm} = {G, target}: towards
+	 * the envelope target T = target + GM_CAP with the weight G. Where the envelope is already above T it is lowered
+	 * only as far as the flysch valleys are filled (S3 tuning in step K2): a lowering of the whole reach shifted the
+	 * river network around a massif on a high envelope (a new sink lake and a 1 km deep slot in the dome), while a
+	 * lift only upwards (design) left a plateau of 5.5 km² above 1650 m on the filled valleys of such a massif.
+	 */
+	private static double greatMassifLift(double[] gm, double envelope) {
+		double strength = gm[0];
+		double lift = gm[1] + GM_CAP - envelope;
+		return strength * (lift >= 0 ? lift : lift * Noise.smoothstep(GM_FILL0, GM_FILL1, strength));
+	}
+
+	/** Near the massif center the flysch valleys are filled and the domes rounded (profiles {@code p} changed in place). */
+	private static void greatMassifFill(double strength, double[] p) {
+		double fill = Noise.smoothstep(GM_FILL0, GM_FILL1, strength);
+		p[0] += fill * (1 - p[0]);
+		p[1] += fill * (1 - p[1]);
+		p[3] += strength * (1 - p[3]);
+	}
+
+	/**
+	 * Top of a large massif: the saturation from 1500 m, which in the dome (weight smoothstep(0, GM_CAP_G, G)) gives way
+	 * to a soft ceiling just below the target, so the top is a dome and not a plateau (review of the design). Below the
+	 * knee nothing changes.
+	 */
+	private static double greatMassifCeiling(double[] gm, double h) {
+		double saturated = saturate(h);
+		double capWeight = Noise.smoothstep(0, GM_CAP_G, gm[0]);
+		if (capWeight > 0) {
+			double knee = gm[1] - GM_CAP;
+			double capped = h <= knee ? h : knee + GM_CAP * Math.tanh((h - knee) / GM_CAP);
+			saturated += capWeight * (capped - saturated);
 		}
-		return h;
+		return saturated;
+	}
+
+	// ------------------------------------------------------------------ large massifs (M2-8)
+
+	/**
+	 * Large massif at a point: {G, target summit}, or null outside the reach of every massif. G = (1 − d²)³ on an
+	 * ellipse elongated along the range (semi-axes Ra × Rc, outline warped by noise, d² · (1 + 0.3 · fbm)).
+	 *
+	 * <p>The reaches of two massifs never overlap: G &gt; 0 needs d² &lt; 1 / 0.7 before the outline noise, i.e. less than
+	 * 1.2 Ra from the center, and the thinning in {@link #greatMassifCell} keeps the centers at least
+	 * GM_SEPARATION · Ra = 2.5 Ra apart. So at most one massif counts at any point and the lift is continuous (the
+	 * review asked for a maximum over the massifs, which was needed only with the incomplete thinning of the
+	 * prototype). The strongest one is taken in any case.
+	 */
+	double[] greatMassifAt(double x, double z) {
+		long gi = (long) Math.floor(x / greatMassifSpacing);
+		long gj = (long) Math.floor(z / greatMassifSpacing);
+		// Only the cells whose candidates (at 0.2–0.8 of the cell) can be within the reach: at realistic scale the
+		// reach (9.6 km) is shorter than 0.2 of the cell (12 km), so only the own cell; the result is the same.
+		double margin = greatMassifReach - 0.2 * greatMassifSpacing;
+		double fx = x - gi * greatMassifSpacing;
+		double fz = z - gj * greatMassifSpacing;
+		long i0 = fx < margin ? gi - 1 : gi;
+		long i1 = greatMassifSpacing - fx < margin ? gi + 1 : gi;
+		long j0 = fz < margin ? gj - 1 : gj;
+		long j1 = greatMassifSpacing - fz < margin ? gj + 1 : gj;
+		double outline = Double.NaN;
+		double[] best = null;
+		for (long i = i0; i <= i1; i++) {
+			for (long j = j0; j <= j1; j++) {
+				double[] c = greatMassifCell(i, j);
+				if (c.length == 0) {
+					continue;
+				}
+				double d2 = greatMassifD2(c, x, z);
+				if (d2 >= GM_REACH2) {
+					continue;
+				}
+				if (Double.isNaN(outline)) {
+					outline = 1 + 0.3 * greatMassif.fbm(x, z, 0.6 * greatMassifRa, 2, 0.5);
+				}
+				d2 *= outline;
+				if (d2 >= 1) {
+					continue;
+				}
+				double t = 1 - d2;
+				double g = t * t * t;
+				if (best == null || g > best[0]) {
+					best = new double[] {g, c[4]};
+				}
+			}
+		}
+		return best;
+	}
+
+	/** Squared elliptic distance of the point from the massif center (1 on the outline, without the outline noise). */
+	private double greatMassifD2(double[] c, double x, double z) {
+		double dx = x - c[0];
+		double dz = z - c[1];
+		double across = dx * c[2] + dz * c[3];
+		double along = -dx * c[3] + dz * c[2];
+		return along * along / (greatMassifRa * greatMassifRa) + across * across / (greatMassifRc * greatMassifRc);
+	}
+
+	/** Semi-axis Ra of a large massif along the range (m). */
+	double greatMassifRa() {
+		return greatMassifRa;
+	}
+
+	/** Semi-axis Rc of a large massif across the range (m). */
+	double greatMassifRc() {
+		return greatMassifRc;
+	}
+
+	/** Strength G of the large massif at a point (0 outside the reach of every massif). */
+	double greatMassifStrength(double x, double z) {
+		double[] g = greatMassifAt(x, z);
+		return g == null ? 0 : g[0];
+	}
+
+	/** Whether the point lies in the core of a large massif (G &gt; GM_CORE): no springs and no flow across it. */
+	boolean greatMassifCore(double x, double z) {
+		return greatMassifStrength(x, z) > GM_CORE;
+	}
+
+	/**
+	 * Whether the reach of any large massif can intersect the box: a quick test before {@link #greatMassifCore} on
+	 * many points (river rules).
+	 */
+	boolean greatMassifNear(double minX, double minZ, double maxX, double maxZ) {
+		double reach = greatMassifReach;
+		long i0 = (long) Math.floor((minX - reach) / greatMassifSpacing);
+		long i1 = (long) Math.floor((maxX + reach) / greatMassifSpacing);
+		long j0 = (long) Math.floor((minZ - reach) / greatMassifSpacing);
+		long j1 = (long) Math.floor((maxZ + reach) / greatMassifSpacing);
+		for (long i = i0; i <= i1; i++) {
+			for (long j = j0; j <= j1; j++) {
+				double[] c = greatMassifCell(i, j);
+				if (c.length > 0 && c[0] > minX - reach && c[0] < maxX + reach && c[1] > minZ - reach
+						&& c[1] < maxZ + reach) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Accepted candidate of the grid cell (i, j): {x, z, cos, sin, target summit} of the massif center, or an empty
+	 * array. The candidate lies at (i + 0.2 + 0.6 · u2, j + 0.2 + 0.6 · u3) · spacing and is dropped when an eligible
+	 * candidate with a smaller draw u1 lies closer than GM_SEPARATION · Ra, checked in {@link #greatMassifRings}
+	 * rings of cells (so the thinning is complete also when the separation exceeds the cell, at gameplay scale).
+	 * The direction across the range is the gradient of {@link #mountainRaw}, as in {@link #cell}. Cached with
+	 * get/put and not computeIfAbsent, because the computation reads the neighboring cells.
+	 */
+	double[] greatMassifCell(long i, long j) {
+		if (greatMassif.unit(i, j, 1) >= GM_P) {
+			return GM_NONE;
+		}
+		long key = Noise.key(i, j, 7);
+		double[] cached = greatMassifCells.get(key);
+		if (cached != null) {
+			return cached;
+		}
+		double[] r = GM_NONE;
+		if (greatMassifEligible(i, j)) {
+			double px = greatMassifX(i, j);
+			double pz = greatMassifZ(i, j);
+			double u = greatMassif.unit(i, j, 1);
+			double separation = GM_SEPARATION * greatMassifRa;
+			boolean ok = true;
+			for (long di = -greatMassifRings; di <= greatMassifRings && ok; di++) {
+				for (long dj = -greatMassifRings; dj <= greatMassifRings && ok; dj++) {
+					if ((di != 0 || dj != 0) && greatMassif.unit(i + di, j + dj, 1) < u && greatMassifEligible(i + di, j + dj)) {
+						ok = Math.hypot(greatMassifX(i + di, j + dj) - px, greatMassifZ(i + di, j + dj) - pz) >= separation;
+					}
+				}
+			}
+			if (ok) {
+				double e = Math.max(50.0, 2_000 * zs);
+				double gx = mountainRaw(px + e, pz) - mountainRaw(px - e, pz);
+				double gz = mountainRaw(px, pz + e) - mountainRaw(px, pz - e);
+				double len = Math.sqrt(gx * gx + gz * gz);
+				double cos = len > 1e-12 ? gx / len : 1;
+				double sin = len > 1e-12 ? gz / len : 0;
+				double target = GM_SUMMIT_LO + (GM_SUMMIT_HI - GM_SUMMIT_LO) * greatMassif.unit(i, j, 4);
+				r = new double[] {px, pz, cos, sin, target};
+			}
+		}
+		if (greatMassifCells.size() > 100_000) {
+			greatMassifCells.clear();
+		}
+		greatMassifCells.put(key, r);
+		return r;
+	}
+
+	private double greatMassifX(long i, long j) {
+		return (i + 0.2 + 0.6 * greatMassif.unit(i, j, 2)) * greatMassifSpacing;
+	}
+
+	private double greatMassifZ(long i, long j) {
+		return (j + 0.2 + 0.6 * greatMassif.unit(i, j, 3)) * greatMassifSpacing;
+	}
+
+	/** Candidate before thinning: draw u1 &lt; GM_P and the center deep in the range (cached with get/put). */
+	private boolean greatMassifEligible(long i, long j) {
+		if (greatMassif.unit(i, j, 1) >= GM_P) {
+			return false;
+		}
+		long key = Noise.key(i, j, 8);
+		Boolean cached = greatMassifEligibleCache.get(key);
+		if (cached != null) {
+			return cached;
+		}
+		double px = greatMassifX(i, j);
+		double pz = greatMassifZ(i, j);
+		boolean ok = mountainField(px, pz) >= GM_MIN_FIELD && blend(px, pz).weight(LandscapeType.BESKIDS) >= GM_MIN_WEIGHT;
+		if (greatMassifEligibleCache.size() > 100_000) {
+			greatMassifEligibleCache.clear();
+		}
+		greatMassifEligibleCache.put(key, ok);
+		return ok;
+	}
+
+	/** Large massifs with the center in the box, in the order of grid cells (i, then j). */
+	public List<GreatMassif> greatMassifs(double minX, double minZ, double maxX, double maxZ) {
+		List<GreatMassif> out = new ArrayList<>();
+		long i0 = (long) Math.floor(minX / greatMassifSpacing);
+		long i1 = (long) Math.floor(maxX / greatMassifSpacing);
+		long j0 = (long) Math.floor(minZ / greatMassifSpacing);
+		long j1 = (long) Math.floor(maxZ / greatMassifSpacing);
+		for (long i = i0; i <= i1; i++) {
+			for (long j = j0; j <= j1; j++) {
+				double[] c = greatMassifCell(i, j);
+				if (c.length > 0 && c[0] >= minX && c[0] <= maxX && c[1] >= minZ && c[1] <= maxZ) {
+					out.add(new GreatMassif(c[0], c[1], c[4]));
+				}
+			}
+		}
+		return out;
+	}
+
+	/**
+	 * Large massif whose center is nearest to the point (tests, preview frames, the golden patch great_massif), or
+	 * null when there is none within 200 grid cells.
+	 */
+	public GreatMassif nearestGreatMassif(double x, double z) {
+		long gi = (long) Math.floor(x / greatMassifSpacing);
+		long gj = (long) Math.floor(z / greatMassifSpacing);
+		double[] best = null;
+		double bestD = Double.MAX_VALUE;
+		for (int ring = 0; ring <= 200; ring++) {
+			for (long i = gi - ring; i <= gi + ring; i++) {
+				for (long j = gj - ring; j <= gj + ring; j++) {
+					if (Math.max(Math.abs(i - gi), Math.abs(j - gj)) != ring) {
+						continue;
+					}
+					double[] c = greatMassifCell(i, j);
+					if (c.length > 0) {
+						double d = Math.hypot(c[0] - x, c[1] - z);
+						if (d < bestD) {
+							bestD = d;
+							best = c;
+						}
+					}
+				}
+			}
+			// Every cell of the next ring lies at least ring · spacing from the point.
+			if (best != null && ring * greatMassifSpacing >= bestD) {
+				break;
+			}
+		}
+		return best == null ? null : new GreatMassif(best[0], best[1], best[4]);
 	}
 
 	private double relief(double x, double z, double wavelength) {
@@ -649,18 +1016,20 @@ public final class LandscapeModel {
 	// ------------------------------------------------------------------ sampling
 
 	private double elevation(Blend b, double x, double z) {
+		double[] gm = greatMassifFor(b, x, z);
 		double h = 0;
 		for (int i = 0; i < b.count(); i++) {
-			h += b.weights()[i] * cellElevation(b.cells()[i], x, z);
+			h += b.weights()[i] * cellElevation(b.cells()[i], x, z, null, 0, gm);
 		}
 		return h;
 	}
 
 	/** Like {@link #elevation(Blend, double, double)}, recording the relief components into {@code o}. */
 	private double elevation(Blend b, double x, double z, ReliefParts o) {
+		double[] gm = greatMassifFor(b, x, z);
 		double h = 0;
 		for (int i = 0; i < b.count(); i++) {
-			h += b.weights()[i] * cellElevation(b.cells()[i], x, z, o, b.weights()[i]);
+			h += b.weights()[i] * cellElevation(b.cells()[i], x, z, o, b.weights()[i], gm);
 		}
 		return h;
 	}
@@ -838,7 +1207,8 @@ public final class LandscapeModel {
 		ColumnSample.Waters waters = r.order() == 0 && standingKind == ColumnSample.StandingWaterKind.NONE ? ColumnSample.Waters.NONE
 				: new ColumnSample.Waters(r.order(), r.source(), r.channelDist(), r.channelWidth(), r.channelLevel(),
 						r.inFloor(), r.floorU(), r.floorHalf(), r.slope(), r.convexBank(), standingShore, standingLevel, standingKind,
-						standingOmbrotrophic, standingId, standingRadius);
+						standingOmbrotrophic, standingId, standingRadius, r.floorChannelDist(), r.floorChannelWidth(),
+						r.floorChannelLevel());
 		int landformBits = forms(r, parts, dominant, surface, rawSurface, coastD, water);
 		// Large massif (E12): highest terrain within 3 km·mspace, only where the altitudinal belts need it.
 		double summit = mountains > 0 && surface >= AltitudinalBelts.SUMMIT_FROM ? peaks.sample(x, z) : 0;
@@ -1024,6 +1394,12 @@ public final class LandscapeModel {
 			}
 			double spacing = flyschSpacing(type);
 			double[] p = flyschParts(cell, x, z, spacing);
+			// On a large massif the flysch valleys are filled as in the terrain (M2-8): the dome is a ridge and its summit
+			// a SUMMIT, not a pass.
+			double[] gm = greatMassifAt(x, z);
+			if (gm != null) {
+				greatMassifFill(gm[0], p);
+			}
 			if (p[0] > 0.8 && p[1] < 0.3) {
 				f.add(Landform.MOUNTAIN_PASS);
 			}

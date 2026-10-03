@@ -54,7 +54,9 @@ public record ColumnSample(double surface, int waterLevel, WaterKind waterKind, 
 	 *                         weighted by the macroregion weights; positive on knolls, negative in hollows
 	 * @param duneHeight       dune height above the outwash plain (m), 0 outside dune fields and without an outwash plain cell in the blend
 	 * @param ridgeProfile     profile of the longitudinal flysch valleys: 0 on the valley axis, about 1 on the ridge; NaN without flysch
-	 * @param massif           strength of a higher Beskid massif 0–1 (Babia Gora type), 0 outside the Beskids
+	 * @param massif           strength of a higher Beskid massif 0–1: the larger of the broad massif field and the strength G
+	 *                         of a large massif (Babia Gora type, M2-8, {@code LandscapeModel.greatMassifStrength}); 0 outside
+	 *                         the Beskids
 	 * @param summit           highest valley-free terrain ({@code landElevation}) within 3 km·mspace (m a.s.l.,
 	 *                         {@code PeakField} grid; a large massif in the altitudinal belts, E12); computed only in the Beskids
 	 *                         (type weight > 0) from height {@code AltitudinalBelts.SUMMIT_FROM}, 0 lower down and outside the Beskids
@@ -126,15 +128,23 @@ public record ColumnSample(double surface, int waterLevel, WaterKind waterKind, 
 	 * @param lakeId              hash identifying the water body (constant across the whole body), 0 without standing water
 	 * @param standingWaterRadius radius of a kettle pond or sink lake, half-width of a tunnel valley lake
 	 *                            or oxbow lake at this place (m); NaN without standing water
+	 * @param floorChannelDist    distance (m) from the bank of the channel of the dominant valley, measured like
+	 *                            {@code channelDist}: the nearest channel of the same order as the dominant watercourse
+	 *                            and at least half as wide (the same watercourse also across a node). On the floor of a
+	 *                            large river the zones of the riparian forest follow this channel, and a smaller, closer
+	 *                            watercourse keeps only its own belt (F2, docs/m2/poprawka-geometrii.md). +∞ without a
+	 *                            watercourse
+	 * @param floorChannelWidth   width of that channel (m); NaN without a watercourse
+	 * @param floorChannelLevel   water level of that channel (m a.s.l., not rounded); NaN without a watercourse
 	 */
 	public record Waters(int streamOrder, boolean headwaters, double channelDist, double channelWidth, double channelLevel,
 			boolean inFloor, double u, double floorHalfWidth, double channelGradient, boolean convexBank, double s,
 			int shoreLevel, StandingWaterKind standingWaterKind, boolean ombrotrophicPeat, long lakeId,
-			double standingWaterRadius) {
+			double standingWaterRadius, double floorChannelDist, double floorChannelWidth, double floorChannelLevel) {
 		/** No watercourses and no standing water (sea and places out of range). */
 		public static final Waters NONE = new Waters(0, false, Double.POSITIVE_INFINITY, Double.NaN, Double.NaN, false,
 				Double.NaN, Double.NaN, Double.NaN, false, Double.POSITIVE_INFINITY, NO_WATER, StandingWaterKind.NONE,
-				false, 0L, Double.NaN);
+				false, 0L, Double.NaN, Double.POSITIVE_INFINITY, Double.NaN, Double.NaN);
 	}
 
 	/** Kind of the standing water nearest to the column. */

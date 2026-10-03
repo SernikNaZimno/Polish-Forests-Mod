@@ -128,6 +128,17 @@ final class HabitatPreview {
 		add(frames, "beskids_10km", real, p, 10_000);
 		double[] highSpot = findHighest(real);
 		add(frames, "high_beskids_10km", real, highSpot, 10_000);
+		// Large Beskid massifs (M2-8, step K2): spruce forest, timberline, dwarf pine and alpine grassland.
+		LandscapeModel.GreatMassif gmReal = real.nearestGreatMassif(0, 0);
+		add(frames, "great_massif_16km", real, gmReal == null ? null : new double[] {gmReal.x(), gmReal.z()}, 16_000);
+		LandscapeModel.GreatMassif gmGame = gameplayModel.nearestGreatMassif(0, 0);
+		add(frames, "gameplay_great_massif_5km", gameplayModel, gmGame == null ? null : new double[] {gmGame.x(), gmGame.z()},
+				5_000);
+		// The highest large massif of the survey window (high_beskids_10km keeps its coarse search, which misses the
+		// narrow domes: it lands on a 1637 m massif, the highest one has 1722 m).
+		GreatMassifSurvey.Massif top = seed == GreatMassifSurvey.SEED ? GreatMassifSurvey.highest(LandscapeScale.REALISTIC) : null;
+		add(frames, "highest_great_massif_16km", real, top == null ? null : new double[] {top.massif().x(), top.massif().z()},
+				16_000);
 		p = LandscapePreview.findInterior(real, LandscapeType.OUTWASH_PLAIN);
 		add(frames, "outwash_plain_20km", real, p, 20_000);
 		p = LandscapePreview.findInterior(real, LandscapeType.MORAINE_PLATEAU);

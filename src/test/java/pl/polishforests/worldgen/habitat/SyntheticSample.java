@@ -54,6 +54,10 @@ final class SyntheticSample {
 	boolean ombrotrophicPeat;
 	long lakeId;
 	double radius = Double.NaN;
+	/** Channel of the dominant valley (F2); by default none. */
+	double floorChannelDist = Double.POSITIVE_INFINITY;
+	double floorChannelWidth = Double.NaN;
+	double floorChannelLevel = Double.NaN;
 	double o = 0.5;
 	double p = 0.1;
 
@@ -126,6 +130,14 @@ final class SyntheticSample {
 		return this;
 	}
 
+	/** Channel of the dominant valley (F2): distance from its bank, width and water level. */
+	SyntheticSample floorChannel(double d, double width, double level) {
+		floorChannelDist = d;
+		floorChannelWidth = width;
+		floorChannelLevel = level;
+		return this;
+	}
+
 	SyntheticSample onValleyFloor(double uFloor, double halfWidth) {
 		inFloor = true;
 		u = uFloor;
@@ -148,7 +160,8 @@ final class SyntheticSample {
 		ColumnSample.Terrain t = new ColumnSample.Terrain(raw, coastD, wOutwashPlain, wMorainePlateau, wOldGlacialPlain, wFoothills, wBeskids,
 				wCoastland, landformBits, convexity, duneHeight, ridgeProfile, massif, summit, cliffHeight, lowShore, bareSandWidth, sandiness, sb, slope, aspect);
 		ColumnSample.Waters w = new ColumnSample.Waters(streamOrder, headwaters, channelDist, channelWidth, channelLevel, inFloor, u,
-				floorHalfWidth, channelGradient, convexBank, s, shoreLevel, kind, ombrotrophicPeat, lakeId, radius);
+				floorHalfWidth, channelGradient, convexBank, s, shoreLevel, kind, ombrotrophicPeat, lakeId, radius,
+				floorChannelDist, floorChannelWidth, floorChannelLevel);
 		return new ColumnSample(surface, waterLevel, waterKind, type, substrate, 5, t, w,
 				new ColumnSample.Region(o, p));
 	}

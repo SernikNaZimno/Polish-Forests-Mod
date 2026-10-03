@@ -8,11 +8,14 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import pl.polishforests.worldgen.landscape.ColumnSample;
 import pl.polishforests.worldgen.landscape.LandscapeModel;
 import pl.polishforests.worldgen.landscape.LandscapeScale;
+import pl.polishforests.worldgen.landscape.RiverNetworkProbe;
 
 /**
  * Waterside zones on river cross-sections (docs/03-m2-biomy.md §4, §12.1): up to 150 cross-sections per class A, B
@@ -26,34 +29,39 @@ import pl.polishforests.worldgen.landscape.LandscapeScale;
 class WatersideZonesTest {
 	static final long SEED = 20260927L;
 	static final int PER_CLASS = 150;
+	/**
+	 * Cross-sections per class for the alder carr chords (terrain geometry fix, docs/m2/poprawka-geometrii.md, step
+	 * K0): with {@link #PER_CLASS} the gameplay scale has only a few alder carr chords, so the share of chords of at least
+	 * 10 blocks was decided by 1–2 chords. The first {@link #PER_CLASS} sections of each class are the same as before,
+	 * so the other checks do not change.
+	 */
+	static final int ALDER_CARR_PER_CLASS = 600;
 
 	/** Cross-section: watercourse class, column codes every {@code step} m from the bank. */
 	record Section(WatersideZones.StreamClass streamClass, int[] codes, boolean[] onValleyFloor, boolean[] standingWater, double step, double x,
 			double z) {
 	}
 
-	static List<Section> sections(LandscapeScale sc) {
+	static List<Section> sections(LandscapeScale sc, int perClass) {
 		LandscapeModel m = new LandscapeModel(SEED, sc, 1.0);
 		HabitatClassifier k = new HabitatClassifier(SEED, sc, HabitatClassifier.Mode.NATURAL);
-		double grid = sc == LandscapeScale.REALISTIC ? 2_500 : 120;
 		int n = 240;
 		List<Section> result = Collections.synchronizedList(new ArrayList<>());
 		IntStream.range(0, n * n).parallel().forEach(q -> {
-			double x0 = ((q % n) - n / 2) * grid + 0.37 * grid * ((q / n) % 3);
-			double z0 = ((q / n) - n / 2) * grid;
-			Section p = section(m, k, x0, z0);
+			double[] g = gridPoint(sc, q);
+			Section p = section(m, k, g[0], g[1]);
 			if (p != null) {
 				result.add(p);
 			}
 		});
-		// Order independent of threads and of the position: by the hash of the starting point; PER_CLASS per class.
+		// Order independent of threads and of the position: by the hash of the starting point; perClass per class.
 		List<Section> l = new ArrayList<>(result);
 		l.sort((a, b) -> Long.compare(hash(a), hash(b)));
 		Map<WatersideZones.StreamClass, Integer> count = new EnumMap<>(WatersideZones.StreamClass.class);
 		List<Section> out = new ArrayList<>();
 		for (Section p : l) {
 			int c = count.getOrDefault(p.streamClass(), 0);
-			if (c < PER_CLASS) {
+			if (c < perClass) {
 				out.add(p);
 				count.put(p.streamClass(), c + 1);
 			}
@@ -232,11 +240,20 @@ class WatersideZonesTest {
 	}
 
 	static void check(LandscapeScale sc) {
-		List<Section> list = sections(sc);
+		List<Section> all = sections(sc, ALDER_CARR_PER_CLASS);
+		// The first PER_CLASS sections of each class in the same (hash) order: the set checked before step K0.
+		List<Section> list = new ArrayList<>();
+		Map<WatersideZones.StreamClass, Integer> taken = new EnumMap<>(WatersideZones.StreamClass.class);
+		for (Section p : all) {
+			if (taken.merge(p.streamClass(), 1, Integer::sum) <= PER_CLASS) {
+				list.add(p);
+			}
+		}
 		Map<WatersideZones.StreamClass, int[]> result = new EnumMap<>(WatersideZones.StreamClass.class);
 		List<Double> willowScrub = new ArrayList<>();
 		List<Double> ashAlder = new ArrayList<>();
 		List<Double> alderCarr = new ArrayList<>();
+		List<Double> alderCarrBase = new ArrayList<>();
 		List<String> unordered = new ArrayList<>();
 		for (Section p : list) {
 			int[] w = result.computeIfAbsent(p.streamClass(), q -> new int[2]);
@@ -257,12 +274,19 @@ class WatersideZonesTest {
 			}
 			// Riverine alder carr (backswamps, wide floors of small rivers); the river cross-section cuts the rings of
 			// standing water obliquely, so their widths are not measured here.
-			alderCarr.addAll(runs(p, i -> Habitat.biome(p.codes()[i]) == HabitatBiome.ALDER_CARR && !p.standingWater()[i], false));
+			alderCarrBase.addAll(alderCarrRuns(p));
+		}
+		for (Section p : all) {
+			alderCarr.addAll(alderCarrRuns(p));
 		}
 		System.out.printf(Locale.ROOT, "%s: cross-sections %s; willow scrub belts %d (min %.1f m, at least 3 blocks %.1f%%), "
 				+ "OlJ %d (min %.1f m, at least 6 blocks %.1f%%), alder carr %d (min %.1f m, at least 10 blocks %.1f%%)%n",
 				sc.id(), description(result), willowScrub.size(), min(willowScrub), 100 * share(willowScrub, Calibration.MIN_WILLOW_SCRUB), ashAlder.size(),
 				min(ashAlder), 100 * share(ashAlder, Calibration.MIN_ASH_ALDER), alderCarr.size(), min(alderCarr), 100 * share(alderCarr, Calibration.MIN_ALDER_CARR));
+		System.out.printf(Locale.ROOT, "%s: alder carr chords: %d from %d cross-sections per class (at least 10 blocks %.1f%%), "
+				+ "%d from %d per class (at least 10 blocks %.1f%%)%n", sc.id(), alderCarrBase.size(), PER_CLASS,
+				100 * share(alderCarrBase, Calibration.MIN_ALDER_CARR), alderCarr.size(), ALDER_CARR_PER_CLASS,
+				100 * share(alderCarr, Calibration.MIN_ALDER_CARR));
 		System.out.println("  unordered (examples): " + unordered);
 		for (WatersideZones.StreamClass cls : WatersideZones.StreamClass.values()) {
 			int[] w = result.get(cls);
@@ -275,6 +299,10 @@ class WatersideZonesTest {
 		// at least half of the chords must be ≥ 10 blocks (for a circle, a chord shorter than 2/3 of the diameter
 		// occurs in about 25% of crossings).
 		assertTrue(alderCarr.isEmpty() || share(alderCarr, Calibration.MIN_ALDER_CARR) >= 0.5, sc.id() + ": alder carr narrower than 10 blocks: " + alderCarr);
+	}
+
+	private static List<Double> alderCarrRuns(Section p) {
+		return runs(p, i -> Habitat.biome(p.codes()[i]) == HabitatBiome.ALDER_CARR && !p.standingWater()[i], false);
 	}
 
 	static String rle(Section p) {
@@ -311,6 +339,265 @@ class WatersideZonesTest {
 			return 1;
 		}
 		return (double) l.stream().filter(v -> v >= minimum - 0.5).count() / l.size();
+	}
+
+	/** Starting point of the cross-section grid (240 × 240 points), shared with {@link #floorZonesFollowDominantRiver}. */
+	static double[] gridPoint(LandscapeScale sc, int q) {
+		double grid = sc == LandscapeScale.REALISTIC ? 2_500 : 120;
+		int n = 240;
+		return new double[] {((q % n) - n / 2) * grid + 0.37 * grid * ((q / n) % 3), ((q / n) - n / 2) * grid};
+	}
+
+	/**
+	 * Whether {@link #floorZonesFollowDominantRiver} requires the share of river zones (≥ 95%). False in K1, where the
+	 * dominant valley is still chosen by the old rule (P2); step K3 (F1) sets it to true.
+	 */
+	static final boolean F2_SHARE_ENFORCED = false;
+
+	/**
+	 * F2 (docs/m2/poprawka-geometrii.md, step K1): zones on the floor of a large river follow its channel, and a
+	 * smaller tributary keeps only its own belt. Measured on square windows (1.5 km·k, every 10 m·k) around the first
+	 * 20 confluences of a tributary of order 2 or 1 with an order-3 valley on a lowland floor
+	 * ({@link RiverNetworkProbe#confluences}, windows do not overlap), at both scales.
+	 *
+	 * <p>The columns are chosen geometrically, independently of the dominant valley of the model and of the F2 fields:
+	 * the river is the nearest order-3 channel measured from its own segments ({@link RiverNetworkProbe#river}). A
+	 * column counts when it is dry, lies on the floor of an order-3 segment (as {@code inFloor}) at most
+	 * {@link Calibration#FLOOR_H} above the river (as {@code onValleyFloor}), the nearest channel of the model is
+	 * narrower than the river (a tributary or another small watercourse) and the column lies beyond the widest belt of
+	 * ash-alder riparian forest of that channel (+20% jitter), the river is of class A by its own width and gradient,
+	 * and the column is within its poplar riparian forest (D_top −20% jitter) below
+	 * {@link Calibration#H_WILLOW_RIPARIAN}. Such a column should get the willow scrub or willow-poplar riparian forest
+	 * of the river; anything else is a wedge. Failures are split by cause: the dominant valley is the smaller
+	 * watercourse (P2: the channel of the dominant valley is not wider than the nearest channel), F2 picked another
+	 * channel, or other. Confluences without counted columns report the first filter that removed every column.
+	 *
+	 * <p>The same filters without the D_top and height limits give the whole floor of the river beyond the belt of the
+	 * smaller channel. There the zones come from the river only when F2 found the river as the channel of the dominant
+	 * valley; the share of P2 columns (the smaller channel's valley dominant) measures the remaining wedges of the rest
+	 * of the floor (elm-ash forest, backswamps), which lie beyond the reach of the poplar riparian forest.
+	 *
+	 * <p>Required now: the river zones in at least 95% of the counted columns where the model found the river as the
+	 * channel of the dominant valley (a check of the F2 zones, not of the choice of the valley), and enough columns
+	 * for the measurement. From step K3 ({@link #F2_SHARE_ENFORCED}): the river zones in at least 95% of all counted
+	 * columns and the river found in at least 95% of the whole floor. Reported for comparison: the share with the F2
+	 * fields removed (zones of the nearest channel, as before K1).
+	 *
+	 * <p>Also counts the columns of the cross-section grid (both scales) with more segments in the culling frame than
+	 * the initial capacity of the F2 candidate buffer: expected 0 (the buffer grows, so results stay correct, but every
+	 * thread would reallocate it).
+	 */
+	@Test
+	void floorZonesFollowDominantRiver() {
+		LandscapeModel real = new LandscapeModel(SEED, LandscapeScale.REALISTIC, 1.0);
+		LandscapeModel gameplay = new LandscapeModel(SEED, LandscapeScale.GAMEPLAY, 1.0);
+		F2Result r = measureF2(real, 6);
+		F2Result g = measureF2(gameplay, 12);
+		// Candidates of the F2 buffer on the cross-section grid of both scales.
+		int capacity = RiverNetworkProbe.floorCandidateCapacity();
+		StringBuilder buffer = new StringBuilder();
+		int over = 0;
+		for (LandscapeModel gm : new LandscapeModel[] {real, gameplay}) {
+			AtomicInteger max = new AtomicInteger();
+			AtomicInteger overflows = new AtomicInteger();
+			IntStream.range(0, 240 * 240).parallel().forEach(q -> {
+				double[] p = gridPoint(gm.scale(), q);
+				int c = RiverNetworkProbe.frameCandidates(gm, p[0], p[1]);
+				max.accumulateAndGet(c, Math::max);
+				if (c > capacity) {
+					overflows.incrementAndGet();
+				}
+			});
+			over += overflows.get();
+			buffer.append(String.format(Locale.ROOT, " %s: max %d, over capacity %d of %d;", gm.scale().id(), max.get(),
+					overflows.get(), 240 * 240));
+		}
+		System.out.println("  F2 candidate buffer (capacity " + capacity + "):" + buffer);
+		for (F2Result x : new F2Result[] {r, g}) {
+			assertTrue(x.confluences() == 20, x.scale() + ": too few confluences: " + x.confluences());
+			assertTrue(x.foundRiverZones() >= 0.95 * x.foundRiver(), x.scale() + ": river zones where F2 found the river: "
+					+ x.foundRiverZones() + " of " + x.foundRiver());
+			if (F2_SHARE_ENFORCED) {
+				assertTrue(x.riverZones() >= 0.95 * x.counted(), x.scale() + ": river zones " + x.riverZones() + " of "
+						+ x.counted());
+				assertTrue(x.floorFound() >= 0.95 * x.floor(), x.scale() + ": whole floor, river found in " + x.floorFound()
+						+ " of " + x.floor() + " columns (P2 " + x.floorP2() + ")");
+			}
+		}
+		assertTrue(r.counted() >= MIN_F2_COLUMNS && r.withColumns() >= 5, "REAL: too few columns for the F2 measurement: "
+				+ r.counted() + " at " + r.withColumns() + " confluences");
+		assertTrue(g.counted() >= MIN_F2_COLUMNS / 2 && g.withColumns() >= 4, "GAMEPLAY: too few columns for the F2 measurement: "
+				+ g.counted() + " at " + g.withColumns() + " confluences");
+		assertTrue(over == 0, "columns with more F2 candidates than the buffer capacity:" + buffer);
+	}
+
+	/** Smallest number of counted columns of the F2 measurement at each scale (sanity floor of the sample). */
+	static final int MIN_F2_COLUMNS = 300;
+
+	/** Result of the F2 measurement at one scale ({@link #floorZonesFollowDominantRiver}). */
+	record F2Result(String scale, int confluences, int withColumns, long counted, long riverZones, long riverZonesBefore,
+			long p2, long otherChannel, long other, long foundRiver, long foundRiverZones, long floor, long floorFound,
+			long floorP2) {
+	}
+
+	/** Filters of the F2 measurement in order; a confluence without counted columns reports the first one that removed all. */
+	private static final String[] F2_STAGES = {"no dry river floor", "no smaller channel with the column beyond its belt",
+			"river not class A", "beyond D_top or above 300 m"};
+	/**
+	 * Counters after the stages. Counted columns: river zones, river zones before K1, P2 failures, other-channel
+	 * failures, F2 found the river, river zones there. Columns of the whole floor (stages 1–3 passed, without the D_top
+	 * and height limits): F2 found the river, P2.
+	 */
+	private static final int F2_COUNTERS = 8;
+
+	static F2Result measureF2(LandscapeModel m, int gridRadius) {
+		LandscapeScale sc = m.scale();
+		HabitatClassifier k = new HabitatClassifier(SEED, sc, HabitatClassifier.Mode.NATURAL);
+		double kk = sc.local();
+		double side = 1_500 * kk;
+		double step = 10 * kk;
+		int n = (int) Math.round(side / step);
+		List<double[]> confluences = RiverNetworkProbe.confluences(m, gridRadius, 20, side);
+		int stages = F2_STAGES.length;
+		long[] total = new long[F2_COUNTERS + 2];
+		int withColumns = 0;
+		StringBuilder perConfluence = new StringBuilder();
+		for (double[] p : confluences) {
+			AtomicLong[] a = new AtomicLong[stages + F2_COUNTERS];
+			for (int i = 0; i < a.length; i++) {
+				a[i] = new AtomicLong();
+			}
+			IntStream.range(0, n * n).parallel().forEach(q -> {
+				double x = p[0] - side / 2 + (q % n + 0.5) * step;
+				double z = p[1] - side / 2 + (q / n + 0.5) * step;
+				int stage = f2Stage(m, k, x, z, a);
+				for (int i = 0; i < stage; i++) {
+					a[i].incrementAndGet();
+				}
+			});
+			long counted = a[stages - 1].get();
+			total[F2_COUNTERS] += counted;
+			total[F2_COUNTERS + 1] += a[stages - 2].get();
+			for (int i = 0; i < F2_COUNTERS; i++) {
+				total[i] += a[stages + i].get();
+			}
+			String reason = "";
+			if (counted > 0) {
+				withColumns++;
+			} else {
+				for (int i = 0; i < stages; i++) {
+					if (a[i].get() == 0) {
+						reason = " (" + F2_STAGES[i] + ")";
+						break;
+					}
+				}
+			}
+			perConfluence.append(String.format(Locale.ROOT, " (%.0f, %.0f) %d%s: %.1f%% / %.1f%%, P2 %d, floor %d: river %.1f%%, P2 %d;",
+					p[0], p[1], counted, reason, 100.0 * a[stages].get() / Math.max(1, counted),
+					100.0 * a[stages + 1].get() / Math.max(1, counted), a[stages + 2].get(), a[stages - 2].get(),
+					100.0 * a[stages + 6].get() / Math.max(1, a[stages - 2].get()), a[stages + 7].get()));
+		}
+		long counted = total[F2_COUNTERS];
+		long other = counted - total[0] - total[2] - total[3];
+		F2Result r = new F2Result(sc.id(), confluences.size(), withColumns, counted, total[0], total[1], total[2], total[3],
+				other, total[4], total[5], total[F2_COUNTERS + 1], total[6], total[7]);
+		System.out.printf(Locale.ROOT, "F2 %s at %d confluences (%d with counted columns): %d columns on the floor of a class A "
+				+ "river beyond the belt of a smaller channel, in the reach of its poplar riparian forest; river zones %.1f%% "
+				+ "(zones of the nearest channel, before K1: %.1f%%); not river zones: P2 (dominant valley of the smaller "
+				+ "channel) %d, F2 picked another channel %d, other %d; where F2 found the river: %d of %d (%.1f%%)%n", sc.id(),
+				r.confluences(), r.withColumns(), counted, 100.0 * r.riverZones() / Math.max(1, counted),
+				100.0 * r.riverZonesBefore() / Math.max(1, counted), r.p2(), r.otherChannel(), r.other(), r.foundRiverZones(),
+				r.foundRiver(), 100.0 * r.foundRiverZones() / Math.max(1, r.foundRiver()));
+		System.out.printf(Locale.ROOT, "  whole floor of class A rivers beyond the belt of a smaller channel (no D_top limit): %d columns, "
+				+ "F2 found the river in %.1f%%, P2 (the smaller channel's valley dominant: its zones, wedges) %d (%.1f%%)%n",
+				r.floor(), 100.0 * r.floorFound() / Math.max(1, r.floor()), r.floorP2(), 100.0 * r.floorP2() / Math.max(1, r.floor()));
+		System.out.println("  per confluence (columns: now / before K1, P2 failures; whole floor):" + perConfluence);
+		return r;
+	}
+
+	/**
+	 * Number of filters of {@link #measureF2} the column (x, z) passes ({@link #F2_STAGES}); for a counted column also
+	 * adds its result to the counters {@code a} after the stages ({@link #F2_COUNTERS}).
+	 */
+	private static int f2Stage(LandscapeModel m, HabitatClassifier k, double x, double z, AtomicLong[] a) {
+		ColumnSample s = m.sample(x, z);
+		ColumnSample.Waters w = s.waters();
+		if (s.hasWater() || w.standingWaterKind() != ColumnSample.StandingWaterKind.NONE || w.streamOrder() == 0) {
+			return 0;
+		}
+		double[] river = RiverNetworkProbe.river(m, x, z);
+		if (river == null || river[4] == 0) {
+			return 0;
+		}
+		double dRiver = river[0];
+		double wRiver = river[1];
+		HabitatClassifier.Column c = new HabitatClassifier.Column(k, s, x, z);
+		double hl = c.H - river[2];
+		if (hl >= Calibration.OTHER_CHANNEL_H && hl > Calibration.FLOOR_H) {
+			return 0;
+		}
+		double kk = m.scale().local();
+		double ashAlder = Math.min(Calibration.B_ASH_ALDER_MAX_K * kk,
+				Math.max(Calibration.B_ASH_ALDER_MIN_K * kk, Calibration.B_ASH_ALDER_W * w.channelWidth()));
+		if (c.wOutwashPlain > 0.5) {
+			ashAlder = Math.clamp(ashAlder, Calibration.B_ASH_ALDER_OUTWASH_PLAIN_MIN_K * kk,
+					Calibration.B_ASH_ALDER_OUTWASH_PLAIN_MAX_K * kk);
+		}
+		if (!(wRiver > 1.05 * w.channelWidth())
+				|| w.channelDist() <= Math.max(Calibration.MIN_ASH_ALDER, ashAlder * (1 + Calibration.WIDTH_JITTER))) {
+			return 1;
+		}
+		if (c.wMountains > 0.5 || river[3] > Calibration.CLASS_GRADIENT || c.wLowland < Calibration.CLASS_LOWLAND_WEIGHT
+				|| c.wr(wRiver) < Math.min(Calibration.CLASS_A_WR, Calibration.CLASS_A_WR_ORDER3)) {
+			return 2;
+		}
+		int base = F2_STAGES.length;
+		// F2 found the river: the channel of the dominant valley is this river's channel (same distance and width).
+		boolean found = Math.abs(w.floorChannelDist() - dRiver) <= 0.01 && Math.abs(w.floorChannelWidth() - wRiver) <= 0.01;
+		boolean p2 = !(w.floorChannelWidth() > 1.05 * w.channelWidth());
+		if (found) {
+			a[base + 6].incrementAndGet();
+		} else if (p2) {
+			a[base + 7].incrementAndGet();
+		}
+		double dPoplar = Math.clamp(Calibration.A_D_POPLAR_W * wRiver, Calibration.A_D_POPLAR_MIN * kk,
+				Calibration.A_D_POPLAR_MAX * kk) * (1 - Calibration.WIDTH_JITTER);
+		if (dRiver > dPoplar || c.H >= Calibration.H_WILLOW_RIPARIAN) {
+			return 3;
+		}
+		boolean now = riverZone(k.classify(s, x, z));
+		if (now) {
+			a[base].incrementAndGet();
+		}
+		ColumnSample.Waters nearest = new ColumnSample.Waters(w.streamOrder(), w.headwaters(), w.channelDist(),
+				w.channelWidth(), w.channelLevel(), w.inFloor(), w.u(), w.floorHalfWidth(), w.channelGradient(),
+				w.convexBank(), w.s(), w.shoreLevel(), w.standingWaterKind(), w.ombrotrophicPeat(), w.lakeId(),
+				w.standingWaterRadius(), Double.POSITIVE_INFINITY, Double.NaN, Double.NaN);
+		ColumnSample before = new ColumnSample(s.surface(), s.waterLevel(), s.waterKind(), s.type(), s.substrate(),
+				s.coverDepth(), s.terrain(), nearest, s.region());
+		if (riverZone(k.classify(before, x, z))) {
+			a[base + 1].incrementAndGet();
+		}
+		if (found) {
+			a[base + 4].incrementAndGet();
+			if (now) {
+				a[base + 5].incrementAndGet();
+			}
+		}
+		if (!now) {
+			if (p2) {
+				a[base + 2].incrementAndGet();
+			} else if (!found) {
+				a[base + 3].incrementAndGet();
+			}
+		}
+		return F2_STAGES.length;
+	}
+
+	/** Zones of a large river by its channel: willow scrub, white willow and poplar riparian forest. */
+	private static boolean riverZone(int code) {
+		HabitatBiome b = Habitat.biome(code);
+		return b == HabitatBiome.WILLOW_POPLAR_FOREST || b == HabitatBiome.WILLOW_SCRUB;
 	}
 
 	@Test
