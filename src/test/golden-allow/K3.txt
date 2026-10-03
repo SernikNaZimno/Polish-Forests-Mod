@@ -1,0 +1,4 @@
+# Allowed golden changes after step K3 (F1 + TE: continuous fields of the dominant valley, no scarp at lowland 0.3).
+# Design §4: F1 and TE change only the grid patch (measured on the prototype: F1 2 patches, TE 4 patches, all grid).
+# Lists are cumulative: K4.txt starts from this one. Removed in K7 together with the directory.
+* / grid

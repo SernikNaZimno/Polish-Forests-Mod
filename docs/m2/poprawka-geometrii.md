@@ -490,3 +490,360 @@ Pomiar A/B (`SampleCostTest`, 7 rund; drzewo pierwszej wersji K2 i drzewo po rec
 - Reszta A6 na masywach GAMEPLAY (różnica rzeźby fliszu obu typów, do 594 m przy G > 0,6): M5.
 - Komenda `find` dla kosodrzewiny i hali w GAMEPLAY (§5.3 projektu) i dokumentacja w `docs/01-architektura.md` §13 oraz `docs/03-m2-biomy.md` (odstępstwo S4, §5.1): K7.
 - Pole ≥ 1650 m masywu GAMEPLAY (−177226, 30624) ma stosunek 0,34 przy progu 0,35. `landElevation` zmieni jeszcze tylko K6 (A16, szwy regionów), więc K6 musi ten test uruchomić.
+
+## K3. Ciągłe pola doliny dominującej (F1), pas meandrów bez progu nizin (TE)
+
+Stan przed krokiem: commit `2546ec3` (K0–K2), czyste drzewo robocze, pusta lista `git stash`.
+
+**Problemy.**
+
+- **P2–P4.** Dolinę dominującą w kolumnie wybierał najmniejszy iloraz `floorDist / floorHalf`. W pasie meandrów iloraz jest 0 dla każdej doliny, więc remis rozstrzygała kolejność listy odcinków (dopływ wygrywał w pasie w poprzek dna dużej rzeki), a poza pasem granica przełączenia była parą prostych przez punkt przecięcia brzegów den. Na tych prostych skakały `streamOrder`, `channelGradient`, `floorHalfWidth`, `u` i `valleyWeight`, a z `valleyWeight` także wygaszanie rynien i istnienie oczek.
+- **P7.** Szerokość pasa meandrów w dnie włączała się skokiem przy udziale nizin 0,3 (`lowland > 0.3 ? 1.4·lowland : 0`). Izolinia udziału nizin biegnie równolegle do prostej granicy komórek, więc w dolinach powstawały proste uskoki terenu.
+
+### Co weszło
+
+Logika z prototypu `PW/src3` (`-Ddno.fix=F1,TE`), bez przełączników, w `RiverNetwork.query`:
+
+- **TE:** `meanderBeltFactor(lowland) = 1 + 1,4·lowland·smoothstep(0,2; 0,4; lowland)`, liczone raz na kolumnę. Ten sam wzór ma `segmentsAt` (pomiar F2 w testach).
+- **F1:** klucz `floorHalf − floorDist` (metry w głąb dna). Suchy koniec źródłowy (wygaszenie ≤ 0,5) ma klucz obcięty poniżej zera (`RiverNetwork.f1Key`, po recenzji K3; pierwsza wersja odejmowała 1e5 m jak projekt), więc nigdy nie wygrywa z dnem. Dolina dominująca to największy klucz; remis rozstrzyga szersze dno, potem kolejność listy kafla.
+- `valleyWeight` to maksimum po odcinkach, `u` minimum po dnach zawierających kolumnę, a `floorHalfWidth` i `channelGradient` to miękkie maksimum z wagami exp((klucz − maksimum)/τ), τ = 15 m·k. Sumy obejmują tylko odcinki w pasie 8τ od najgłębszej doliny; przy nowym maksimum sumy są przeskalowane albo (gdy nowe maksimum jest wyżej o więcej niż 8τ) wyzerowane, jak w prototypie. `streamOrder` zostaje dyskretny (z doliny dominującej).
+- Starorzecza, pole `source` i F2 (koryto doliny dominującej) liczą się od nowej doliny dominującej. Warunek spadku starorzeczy bierze, jak w prototypie, spadek odcinka doliny dominującej, a nie miękkie maksimum.
+- Optymalizacja z K4.11, bez zmiany wyniku: maksimum `valleyWeight` i minimum `u` tylko przy `floorDist < floorHalf + 200 m·k` (dalej waga odcinka jest 0), spadek odcinka tylko w pasie 8τ.
+- Stałe `F1_TAU`, `F1_SOFT_BAND`, `F1_HEAD_GAP` (po recenzji; wcześniej `F1_HEAD_PENALTY`). Javadoc `RiverHit`, `ColumnSample.Waters` i `candidates`: kolejność listy kafla rozstrzyga też obcięcie miękkiego maksimum, więc nie wolno jej zmieniać.
+
+### Złoty test
+
+`./gradlew test --tests '*GoldenTerrainTest*' -PgoldenReport=build/golden_K3.txt`: zmieniła się tylko łata `grid` w zestawach REAL B, GAMEPLAY A, GAMEPLAY B i REAL A 0,5 (REAL A bez zmian), żadna łata nie straciła celu. Wobec kopii M1: max|Δsurface| 0,0031 / 0,045 / 0,695 / 0,0005 m, różne kolumny: podłoże 1 / 1 / 0 / 0, bloki 0 / 1 / 1 / 0, poziom i rodzaj wody 0. Zgadza się to z pomiarem prototypu (`dna-dolin` §6.2: F1 zmienia 2 łaty, TE 4, wszystkie `grid`). Łaty kontrolne, `great_massif` i wszystkie łaty „=” bez zmian.
+
+Lista `src/test/golden-allow/K3.txt`: `* / grid`. Z nią `terrainMatchesGolden` przechodzi (2 z 2).
+
+### Testy
+
+**Nowy `RiverNetworkTest.noStepAtLowlandThreshold`** (projekt §3.2). REAL ±60 km co 150 m wzdłuż x, a od recenzji K3 także GAMEPLAY ±10 km co 25 m: każde przejście udziału nizin (z pobrzeżem, jak w `query`) przez 0,3 jest bisekcją zawężone do pary kolumn kilka µm od siebie; para sucha nie może różnić się o więcej niż 0,5 m. Przejścia, w których skacze sam udział nizin (o więcej niż 10⁻⁴ między kolumnami pary: szew okna 3 × 3, A16, K6), nie są przejściami progu i są tylko liczone. Ta sama siatka na zamrożonej kopii M1 pokazuje, że test widzi stare uskoki.
+
+| | Przejścia (suche) | Uskoki > 0,5 m | Największy | Szwy mieszania |
+|---|---|---|---|---|
+| REAL, kopia M1 | 988 (986) | 158 | 56,8 m w (686,5; 29400) | 0 |
+| REAL, K3 | 988 (986) | **0** | — | 0 |
+| GAMEPLAY, kopia M1 | 848 (843) | 200 | 7,85 m w (4990,4; −375) | 1 |
+| GAMEPLAY, K3 | 848 (843) | **0** | — | 1 |
+
+Szew GAMEPLAY w (5727,8; 2725): udział nizin skacze tam z 0,2904 na 0,3000, co daje 0,56 m różnicy powierzchni. Pierwszy próg szwu (0,01) go nie łapał, więc test zgłaszał go jako uskok TE; próg 10⁻⁴ (przy odstępie µm ciągły udział zmienia się o ok. 10⁻⁹) liczy go jako szew.
+
+Analiza den dolin podawała „15 uskoków (5–20 m)”, bo narzędzie `DnoProg` zatrzymywało się po 15 znaleziskach.
+
+**`TerrainLocalityTest`:** 0 zmienionych kolumn poza dolinami, wodą i zasięgiem masywów na wszystkich siatkach. Siatka `gameplay_outwash_plain` ma teraz 2333 kolumny (5,8%) różne od kopii M1, wszystkie wcięte albo z wodą (doliny obok łaty kontrolnej, poza nią).
+
+**`TerrainDeterminismTest`:** 0 różnic w polach F2 i poza jeziorami rynnowymi; znany wyjątek jezior rynnowych bez zmian (2531 i 12143 kolumn, do K5.2).
+
+**`SurfaceContinuityTest`** (progi zaostrzone do stanu K3):
+
+| Okno | K2 | K3 |
+|---|---|---|
+| `gameplay_beskids` | 43, 36,4 m | 41, 36,4 m |
+| `gameplay_center` | 21 (14 przy wodzie) | 19 (14) |
+| `gameplay_stream` | 43, 13,6 m | 37, 13,6 m |
+| `gameplay_moraine` | 20 (16) | 19 (16) |
+| `gameplay_massif_1660` | 93, 69,5 m | 87, 69,5 m |
+| pozostałe okna | | bez zmian |
+
+Największe skoki się nie zmieniły: to skoki rzutu krótkich odcinków rzędu 1 (A2, K4b) i wody stojące (K5).
+
+**Ciągłość pól doliny** (narzędzie `FieldSeams` w katalogu roboczym sesji, `k3ab`): siatka 800 × 800 na sześciu kadrach, pary sąsiednich suchych kolumn w dolinie. Para z różnicą > 1% (`floorHalfWidth`, `channelGradient`) albo > 0,02 (`u`) jest zawężana bisekcją 24 razy; nieciągłość to różnica, która zostaje przy odstępie 0,1–0,2 µm.
+
+| Kadr | K2: `floorHalf` / spadek / `u` / rząd | K3 (kara 1e5) | K3 po recenzji (`f1Key`) |
+|---|---|---|---|
+| REAL zbieg (−18844, 11206), 1,5 km | 593 / 593 / 0 / 593 | 0 / 0 / 0 / 294 | 0 / 0 / 0 / 294 |
+| GAMEPLAY dolina dużej rzeki (−10323, −33338), 1 km | 4991 / 5018 / 0 / 2060 | 282 / 703 / 0 / 1603 | 18 / 279 / 0 / 1470 |
+| REAL dolina dużej rzeki (−5203, 93856), 2 km | 5 / 0 / 0 / 5 | 0 / 0 / 0 / 0 | 0 / 0 / 0 / 0 |
+| REAL zbieg (−23749, −21820), 1,5 km | 1202 / 1202 / 0 / 447 | 0 / 243 / 0 / 138 | 0 / 243 / 0 / 138 |
+| GAMEPLAY zbieg (−3268, −5357), 800 m | 4151 / 4153 / 0 / 2143 | 432 / 3093 / 0 / 2246 | 2 / 3388 / 0 / 2091 |
+| REAL próg nizin (0, 29400), 3 km | 3473 / 3473 / 120 / 2851 | 815 / 2147 / 0 / 2097 | 31 / 1603 / 0 / 2259 |
+
+Rząd zostaje dyskretny z założenia. W pierwszej wersji K3 (kara 1e5 m jak w projekcie) wszystkie pozostałe nieciągłości `floorHalfWidth` i część nieciągłości spadku leżały na linii wygaszenia źródłowego 0,5. **To nie było „jak w M1”**: w M1 skakały tam tylko `inFloor` i `u`, a kara oddawała całą suchą głowicę (i obszar za źródłem) dowolnej niesuchej dolinie w zasięgu, nawet odległej, więc rząd, `headwaters`, szerokość dna i spadek skakały na prostej linii wygaszenia w poprzek każdej głowicy. Wykryła to recenzja K3; poprawka jest niżej („Poprawki po recenzji K3”). Po niej na linii wygaszenia zostaje kilkadziesiąt nieciągłości tam, gdzie głowica nachodzi na dno innej doliny (start dna, A5 w K4). Reszta nieciągłości spadku („inne” w `FieldSeams`) to obcięcie miękkiego maksimum na skraju pasa 8τ: odcinek o spadku kilkadziesiąt razy większym wchodzi z wagą e^−8 ≈ 3·10^−4, co daje skok o kilka procent względnie, ale rzędu 0,01‰ bezwzględnie, czyli bez znaczenia dla progów klas cieków. Po poprawce takich miejsc jest w części kadrów więcej (suche głowice wchodzą teraz do miękkiego maksimum z kluczem tuż poniżej zera), ale to te same znikome skoki.
+
+**F2 (`WatersideZonesTest.floorZonesFollowDominantRiver`), progi od K3** (`F2_SHARE_ENFORCED = true`):
+
+| | REAL K1 | REAL K3 | GAMEPLAY K1 | GAMEPLAY K3 |
+|---|---|---|---|---|
+| Kolumny w zasięgu łęgu topolowego | 736 | 736 | 288 | 285 |
+| W nich strefy rzeki (próg 95%) | 100,0% | 100,0% | 99,7% | 95,8% → **99,6%** po recenzji |
+| Całe dno: rzeka znaleziona | 98,0% | **99,1%** | 88,6% | **92,9%** |
+| Całe dno: P2 | 764 (2,0%) | 330 (0,9%) | 533 (11,4%) | 337 (7,1%) |
+
+W pierwszej wersji K3 12 kolumn GAMEPLAY w zasięgu łęgu topolowego było „innych” (koryto doliny dominującej to rzeka, ale strefa inna niż wiklina i łęg wierzbowo-topolowy), a nie P2. Diagnoza po recenzji (klasa `F2Other` w katalogu roboczym sesji, `k3rev/fix`): 11 z nich to kolumny u ujścia dopływu, w których miękkie maksimum `channelGradient` miesza stromy dopływ (3,07–5,04‰ przy spadku rzeki 0,6‰), więc reguła F2 `streamClass(…) == A` dawała rzece klasę C i kolumna wracała do stref najbliższego koryta. Poprawka: F2 klasyfikuje koryto doliny dominującej jego własnym spadkiem (`floorChannelGradient`, niżej). Została 1 kolumna: plaża przy ujściu do morza (−5161,6; −7402,4), słusznie. Pozostałe wiersze tabeli po recenzji bez zmian. Bufor kandydatów F2: najwyżej 25 / 28, 0 przepełnień.
+
+**Dlaczego całe dno GAMEPLAY nie osiąga 95%** (warunek z K1: „opisać przyczynę, a nie tylko obniżyć próg”). Diagnostyka (tymczasowa klasa testowa `K3F2Diag`, usunięta po pomiarze; kadry kolumn całego dna w katalogu roboczym sesji, `k3diag`): pozostałe kolumny P2 to trójkąty u ujść dopływów, które F1 zostawia z założenia (projekt: „przełączenie zostaje tylko w małym trójkącie u ujścia dopływu, o rozmiarze około półszerokości jego dna”). Na skraju dna rzeki kolumna leży głębiej w dnie dopływu niż w dnie rzeki: klucz dopływu `floorHalf_d − floorDist_d` (w jego pasie meandrów po prostu `floorHalf_d`) przewyższa klucz rzeki `floorHalf_r − floorDist_r` w pasie o szerokości ok. `floorHalf_d` przy skraju dna rzeki. Rozkład względnej głębokości w dnie rzeki `(floorHalf_r − floorDist_r)/floorHalf_r`:
+
+| Głębokość w dnie rzeki | 0–0,1 | 0,1–0,2 | 0,2–0,3 | 0,3–0,4 | 0,4–0,5 | 0,5–0,6 | 0,6–0,7 | 0,7–0,8 | ≥ 0,8 |
+|---|---|---|---|---|---|---|---|---|---|
+| REAL: P2 / rzeka | 125 / 1100 | 85 / 1175 | 45 / 1264 | 20 / 1303 | 18 / 1352 | 16 / 1378 | 13 / 1350 | 8 / 1397 | 0 / 27 285 |
+| GAMEPLAY: P2 / rzeka | 96 / 324 | 77 / 334 | 61 / 320 | 46 / 330 | 26 / 327 | 17 / 318 | 10 / 318 | 4 / 298 | 0 / 1823 |
+
+W GAMEPLAY dno dopływu rzędu 1–2 jest szerokie względem dna rzeki (przy wąskich korytach przeważa podstawa `fpBase`), więc trójkąty sięgają głębiej, a mierzony pas (kolumny bliżej dopływu niż rzeki, za pasem OlJ dopływu) jest wąski. Dominującą doliną kolumn P2 jest dopływ rzędu 2 (REAL 330 z 330, GAMEPLAY 303 z 337) albo 1 (GAMEPLAY 34). Próg całego dna: REAL 95% (bez zmian), GAMEPLAY 92% (zmierzone 92,9%). Usunięcie trójkątów wymagałoby zmiany F2 (koryto największej doliny, w której dnie leży kolumna, zamiast rzędu doliny dominującej), czyli nowej kalibracji stref; to M5 razem z N4.
+
+Trójkąty ujść nie są jedynym źródłem klinów w dnie GAMEPLAY (recenzja K3). W zbiegu (−3268, −5357) w dnie rzeki klasy A leżą kliny boru wilgotnego o prostych krawędziach, ok. 100–150 m, niezmienione od K2: F2 wybiera tam jako koryto doliny dominującej wąskie równoległe koryto rzędu 3 (W 3,0 m), np. (−3317,4; −5446,7): rząd 3, `inFloor`, u 0,71, koryto F2 W 3,0 m w odległości 63 m, więc obowiązują strefy małego cieku daleko od kolumny. Równoległe koryta rzędu 3 w jednym dnie (A9/N3) to drugie źródło prostych klinów, do M5.
+
+Próg 92% ma margines 0,9 p.p. **K4 musi ten udział zmierzyć ponownie** (G3 poszerza ujścia dopływów, G4 zmienia skraj dna) i wyjaśnić każdą zmianę, a nie obniżać progu dalej.
+
+**Kadry recenzji K1** (`viz_K1`: te same 14 kadrów, `render.sh`, mapy F2 `VizF2 fields`, skrypt `newedges_k3.py`; nowe granice biomów wobec stanu sprzed K1 na granicy gałęzi F2):
+
+- REAL `R_conf_18844_11206_1500m`: klin olsu wzdłuż dopływu z dwiema prostymi krawędziami 431 m i 304 m zniknął. Zostały krótkie odcinki 189 m i 77 m przy wejściu doliny dopływu w dno rzeki (trójkąt ujścia i prosty skraj dna rzeki, P9). Razem 750 → 281 m.
+- GAMEPLAY `gameplay_large_river_valley_1km`: pas boru wilgotnego i boru bagiennego o prostych, równoległych krawędziach wzdłuż wąskiego koryta rzędu 3 (W 2,4 m) zniknął; F2 bierze teraz koryto rzeki po obu stronach wąskiego koryta. Krótki klin przy dopływie SE też zniknął. Nowe granice na granicy F2: 2468 → 1572 m; reszta leży na skraju dna rzeki (strefy rzeki kończą się na skraju dna, który jest prosty do G4 w K4).
+- Pozostałe kadry: nowe granice na granicy F2 tam, gdzie F1 przeniosło dno pod rzekę główną. Najdłuższe (`R_conf_23749_21820_1500m`, 2089 i 1740 m) to falisty skraj pasa meandrów równoległego cieku w dnie rzeki; nie są proste (biegną wzdłuż pasa), ale wydłużają sumę (`R_overview_12km`: 2220 → 3735 m). Kryterium K1 „długość nowych granic na granicy F2 prawie zero” jest więc spełnione tylko w dwóch wskazanych miejscach; reszta to skraje den (P9, K4) i trójkąty ujść (wyżej).
+
+**`WatersideZonesTest`, próba olsu:** REAL 155 cięciw, 80,0% ≥ 10 bloków (K1: 157, 80,3%); GAMEPLAY 179 cięciw, 59,2% (K1: 189, 58,7%). Liczba cięciw GAMEPLAY spadła o 9% wobec K0 (196), daleko od progu „o połowę”.
+
+### Koszt
+
+Pomiar A/B jak w K1 i K2: `SampleCostTest` z drzewa K2 (`HEAD` = `2546ec3`) i K3, osobne JVM na zmianę, 3 powtórzenia po 7 rund (katalog roboczy sesji, `k3ab/ab_run1.log`). Mediany z trzech median, µs na kolumnę (stosunek do kopii M1 w tej samej JVM):
+
+| Obszar | K2 | K3 |
+|---|---|---|
+| REAL cały obszar | 4,03 (1,040) | 4,05 (1,035) |
+| REAL Beskidy | 6,53 (1,008) | 6,61 (1,017) |
+| REAL wielki masyw | 6,07 (0,902) | 6,11 (0,916) |
+| GAMEPLAY cały obszar | 5,63 (1,031) | 5,64 (1,040) |
+| GAMEPLAY Beskidy | 9,57 (0,983) | 9,65 (0,998) |
+| GAMEPLAY wielki masyw | 9,99 (0,923) | 10,00 (0,922) |
+
+K3 kosztuje 0–1,5%, mniej niż „sam F1” w analizie den dolin (do +3,5 p.p.), bo `exp` liczy się tylko w pasie 8τ, a maksimum i minimum pomijają odcinki daleko od dna. Wszystko w budżecie D1 (+20%; 6,5 / 12 / 8,5 / 16 µs). W pełnym `./gradlew test` (jedna JVM po innych klasach, rozrzut kilku punktów, K1) `SampleCostTest` dał 1,090 / 1,005 / 0,910 / 1,058 / 1,032 / 0,911 (4,41 / 6,46 / 6,16 / 5,94 / 10,06 / 10,17 µs) w kolejności tabeli.
+
+**Pełny `./gradlew test`:** 127 testów, 1 porażka zamierzona: `terrainMatchesGolden` bez `-PgoldenAllow` (cztery łaty `grid`, jak wyżej). Z `-PgoldenAllow=src/test/golden-allow/K3.txt` złoty test przechodzi 2 z 2.
+
+### Poprawki po recenzji K3
+
+**Sucha głowica doliny (F1).** Kara 1e5 m z projektu sprawiała, że sucha głowica (pierwsze 200 m·k od źródła i obszar za t = 0) przegrywała z każdą niesuchą doliną w ramce, nie tylko z dnem, choćby ta dolina była daleko. Rząd, `headwaters`, szerokość dna i spadek brały się wtedy z obcej doliny i wracały skokiem na prostej linii wygaszenia 0,5 w poprzek każdej głowicy. Przykład GAMEPLAY (−3237,4; −5647,0), 0,6 m od koryta dopływu: K2 rząd 2, dno 28,3 m, spadek 6,0‰; pierwsza wersja K3 rząd 3, 47,2 m, 0,016‰ z rzeki 265 m dalej, strefa wiklina → ziołorośla na pasie ok. 100 m. Teraz klucz suchej głowicy jest obcięty poniżej zera (`RiverNetwork.f1Key`): `kh − δ` poza jej dnem i `−δ²/(δ + kh)` w nim, δ = `F1_HEAD_GAP` = 1 m·k, `kh = floorHalf − floorDist`. Jest ciągły i rosnący w `kh`, zawsze ujemny, więc głowica nadal nigdy nie wygrywa z dnem (klucz dna > 0, zostaje równoważność `inFloor` ⇔ `uMin`), ale zachowuje swoją głowicę i obszar za źródłem wobec dolin, których dno jest dalej, jak w M1.
+
+- Teren bez zmian: `best` wpływa na teren tylko przez starorzecza, które wymagają `inFloor`, a w dnie dolina dominująca jest ta sama co przy karze 1e5 (suche głowice mają klucz < 0 < klucz dna). Złoty test: te same cztery skróty łat `grid` co przed recenzją.
+- GAMEPLAY (956, 725) ±1 km co 4 m (sonda `HeadProbe`, `k3rev/fix`): rząd różny od K2 w 41 534 kolumnach w pierwszej wersji K3, teraz w 2297 (zmiany F1 przy dnach); klasa spadku (próg 3‰) różna od K2 w 17 068 → 4051 kolumnach; kolumny `headwaters` K2 163 636, K3 122 165, teraz 163 000; `inFloor` identyczne z pierwszą wersją K3.
+- Przykład z recenzji (420..456; 1293) GAMEPLAY: znowu rząd 1 i 45‰ (pierwsza wersja K3: rząd 3, 0,6‰), jak w K2.
+- `FieldSeams`: nieciągłości na linii wygaszenia `floorHalf` 282 → 18, 432 → 2, 815 → 31 (tabela wyżej).
+
+**Klasa koryta F2 jego własnym spadkiem.** Nowe pole `floorChannelGradient` (`RiverHit`, `ColumnSample.Waters`; bufor kandydatów F2 ma teraz 5 wartości na odcinek, `FLOOR_STRIDE`): spadek odcinka koryta doliny dominującej, a nie miękkie maksimum. Reguła F2 w `WatersideZones.stream` klasyfikuje nim koryto (`streamClass(c, wr, gradient)`). Kolumny „inne” F2 w GAMEPLAY: 12 → 1 (plaża), strefy rzeki w zasięgu łęgu topolowego 95,8% → 99,6%. `HabitatClassifierTest.floorZonesFollowTheChannelOfTheDominantValley` sprawdza oba kierunki (miękkie maksimum 5‰ przy rzece 0,3‰ daje strefy rzeki; strome koryto doliny dominującej oddaje strefy najbliższemu korytu).
+
+**`noStepAtLowlandThreshold` w obu skalach** (tabela wyżej) i próg szwu mieszania 10⁻⁴.
+
+**Okno `gameplay_tunnel_lake_3519`** w `SurfaceContinuityTest` (GAMEPLAY (3519, −4356), r 300 m): wiszące jezioro rynnowe. Lustro 121 m trzyma wał szerokości 1–2 px nad dnem doliny rzeki na 32–37 m, suchy uskok ok. 86 m. Wada z M1 (K2: 89 m), którą K3 przesunął: `valleyWeight` = maksimum obniża tam `tunnelPresence`, jezioro traci 8132 px wody, a nowy brzeg SW to prosta ściana ok. 170 m. Pomiar: 23 skoki, wszystkie przy wodzie stojącej, największy 85,83 m; progi 25 / 88 m / 25 z zapasem na zależny od kolejności poziom jezior rynnowych. K5.2 (`floorGap`, jezioro kończy się przed doliną) ma je usunąć; cel okna: 0.
+
+**Koszt po recenzji.** A/B jak wyżej (`k3ab/ab2.py`, `ab2_run.log`): pierwsza wersja K3 i K3 po recenzji, 3 powtórzenia po 7 rund, mediany z trzech median w µs na kolumnę (stosunek do kopii M1). REAL cały obszar 4,09 (1,038) → 4,07 (1,028), Beskidy 6,57 (1,018) → 6,61 (1,026), wielki masyw 6,08 (0,909) → 6,11 (0,913); GAMEPLAY cały obszar 5,61 (1,028) → 5,66 (1,034), Beskidy 9,61 (0,993) → 9,70 (1,003), wielki masyw 9,96 (0,926) → 10,12 (0,932). Różnice 0–1,6%, w granicach rozrzutu, w budżecie D1. Pełne `./gradlew test` po recenzji: `SampleCostTest` 1,022 / 0,936 / 0,848 / 0,987 / 0,949 / 0,879 i 1,045 / 0,936 / 0,845 / 1,002 / 0,940 / 0,872.
+
+**Pełny `./gradlew test` po recenzji:** 128 testów (nowe okno ciągłości), 1 porażka zamierzona: `terrainMatchesGolden` bez `-PgoldenAllow`, te same cztery łaty `grid` z tymi samymi skrótami co przed recenzją. Z `-PgoldenAllow=src/test/golden-allow/K3.txt` złoty test przechodzi.
+
+
+### Odstępstwa od projektu w K3
+
+1. **Próg F2 całego dna w GAMEPLAY 92% zamiast 95%.** Próg 95% całego dna nie pochodzi z projektu, tylko z K1 (odstępstwo 4 K1). Przyczyna i rozkład wyżej: trójkąty ujść, które F1 zostawia z założenia. Próg z projektu (strefy rzeki w zasięgu łęgu topolowego ≥ 95%) obowiązuje w obu skalach i jest spełniony.
+2. **Test `noStepAtLowlandThreshold` skanuje wszystkie przejścia progu** (`DnoProg` zatrzymywał się po 15), liczy osobno szwy mieszania regionów i sprawdza na kopii M1, że widzi stare uskoki (158). Projekt liczył uskoki tylko w dolinie (`streamOrder > 0`); test liczy każdą suchą parę, bo przy odstępie 5 µm każdy taki uskok jest nieciągłością.
+3. **Optymalizacje F1 z K4.11 weszły już w K3** (maksimum i minimum tylko blisko dna, spadek tylko w pasie 8τ), bo nie zmieniają wyniku. Po recenzji spadek odcinka liczy się dla każdego odcinka w ramce, bo potrzebuje go bufor F2.
+4. **Klucz suchej głowicy obcięty poniżej zera zamiast kary 1e5 m** (projekt i prototyp: `key − 1e5`). Kara oddawała całą suchą głowicę obcej dolinie i dawała nowe proste nieciągłości na linii wygaszenia (wyżej). Obcięcie zachowuje cel projektu (głowica nigdy nie wygrywa z dnem) i nie zmienia terenu.
+5. **Nowe pole `floorChannelGradient`** (poza projektem): F2 klasyfikuje koryto doliny dominującej jego własnym spadkiem, bo miękkie maksimum spadku miesza u ujść strome dopływy.
+
+### Co zostaje
+
+- Trójkąty ujść (P2 przy skraju dna rzeki, wyżej), równoległe koryta rzędu 3 w jednym dnie (A9/N3, kliny boru wilgotnego w zbiegu (−3268, −5357)) i dwusieczne poza dnami klasy A (N4): M5.
+- Poza dnami F1 zamienia zakrzywione (i nieciągłe) granice dominacji z K2 na proste: klucz `floorHalf − floorDist` jest liniowy w odległości, więc rząd i spadek poza dnem zmieniają się na długich prostych (np. GAMEPLAY Beskidy (27609, 3254), REAL pogórze (2331, 904)). Pikseli nieciągłości jest mniej (np. 5250 → 2909, 11162 → 4118), a kody siedlisk zmieniły się w 0,00–0,10% kolumn tych kadrów. Zdanie projektu „pola zmieniają się tam, gdzie zmienia się dominacja, nie na dwusiecznej” jest więc prawdziwe tylko formalnie. Uproszczenie klasyfikatora w M5 (N4) nie może używać rzędu i spadku poza dnem bez wygładzenia (Javadoc `ColumnSample.Waters`).
+- Nieciągłości pól na linii wygaszenia źródłowego 0,5 tam, gdzie głowica nachodzi na dno innej doliny (po recenzji kilkadziesiąt na kadr; `inFloor` i `u` jak w M1): A5 w K4 zmienia głowice i razem z nimi rozstrzyga, czy start dna ma być ciągły.
+- F2 GAMEPLAY całe dno 92,9% przy progu 92%: K4 mierzy ponownie i wyjaśnia każdą zmianę.
+- Starorzecza idą za nowym `best`: część zmalała albo ma proste cięcia, np. REAL (−13447, −22163): podkowa staje się sierpem ok. 40 × 10 m z prostą krawędzią, bo w obu pasach meandrów klucz = `floorHalf` i wygrywa szersze dno sąsiedniej doliny rzędu 2 (koryto W 8,9 m, 198 m dalej); GAMEPLAY (−3200, −5360): +1395 / −412 px wody. Zgodne z projektem, złote łaty `oxbow_lake` tego nie łapią. K5.1 przebudowuje starorzecza (nadal `oxbow(best, …)`) i musi sprawdzić, że sierpy nie są cięte linią dominacji F1 między nachodzącymi pasami meandrów.
+- Wiszące jezioro rynnowe GAMEPLAY (3519, −4356): okno `gameplay_tunnel_lake_3519`, K5.2.
+- TE wydłuża istniejące proste grzbiety między równoległymi dolinami (`TE_C_2km`, `TE_A_2km`): P9/G5, K4.
+- Skoki A2 w oknach GAMEPLAY i masywów: K4b.
+
+## K4. Geometria dolin (G1B, G2–G5, A5, K4.9) i K4b: dokładne minima odległości i cięcie przeciągnięte (D4)
+
+Stan przed krokiem: commit `2546ec3` (K0–K2) z niezacommitowanym K3 w drzewie roboczym (migawka różnic w katalogu roboczym sesji, `k4base/pre_k4_worktree.diff`), pusta lista `git stash`.
+
+**Problemy.** P5: oś doliny łamała się w węzłach o 15–72°. P6: w węźle skakała szerokość pasa meandrów w dnie. P8: ujście dopływu wcinało się w zbocze większej doliny ostrą, prostą ostrogą. P9: brzegi den biegły równolegle na kilometrach. A5: głowice dolin rzędu 2–3 były prostokątami pełnej szerokości dna, uciętymi prostą przy źródle. A2 (D4): urwiska na stokach gór GAMEPLAY, do kilkudziesięciu metrów na masywach.
+
+### Co weszło
+
+Logika z prototypu `PW/src3` (`-Ddno.fix=G1B,G2,G3,G4,G5,A5`), bez przełączników, w `RiverNetwork`:
+
+- **G1B:** `wanderAt` odejmuje nachylenie łuków w końcowych ćwiartkach odcinka (`G1B_TAU` = 0,25), więc oś doliny jest gładka (C1) w węzłach, a środek odcinka zostaje na miejscu. Stałe nachylenia (`wanderSlope0`, `wanderSlope1`) liczy konstruktor `Segment` (K4.11). `maxLateral` uwzględnia poprawkę (1,12 |w1| + 1,24 |w2|) i `max(amp, ampEnd)`.
+- **G2:** odcinek, który przechodzi w węźle w ten sam ciek (główny dopływ następnego węzła), dostaje `ampEnd` = `amp` odcinka w dół rzeki i przejście `ampAt(t)` na ostatnich `ampBlend` długości (kilka długości fali i trzykrotna różnica amplitud, najwyżej pół odcinka). Pas meandrów w `floorDist` liczy się z `ampAt(t)`.
+- **G3:** ujście dopływu bocznego i przechwycenia (`mouth`: nie główny dopływ następnego węzła i nie do morza) poszerza dno lejkiem: + (0,6 · margines + 30 m·k) na ostatnich 4 (margines + 40 m·k) odcinka. Lejek mają też boczne dopływy węzła, który spływa do jeziora bezodpływowego (kończą się w tym węźle), a główny dopływ nie, jak przy każdym węźle (pierwsza wersja opisu mówiła „bez jezior bezodpływowych”, a warunek `SINK` w kodzie był martwy; recenzja). **Tylko w terenie** (odstępstwo 3).
+- **G4:** nieregularny skraj dna: dwie fale szumu (500 i 1700 m·k, wagi 0,65 i 0,35) liczone raz na kolumnę, przy pierwszym odcinku w ramce; margines dna i pas meandrów razy 1 + 0,3 · szum. Szum z tego samego `Noise` sieci rzecznej z przesunięciami współrzędnych jak w prototypie (bez nowej soli).
+- **G5:** gładkie minimum zboczy dwóch dolin (`smoothMin`, promień 4 m), 0 w dnach obu dolin i poza nimi, nie niżej niż lustro + 0,3 m i nie poniżej 0 m.
+- **A5:** dno odcinka źródłowego narasta od 0,15 marginesu przy źródle do pełnego na 3 (margines + 40 m·k) (`floorMargin`, `headFactor`); po recenzji także pas meandrów dna (`floorBelt`), a meandry przy źródle narastają na długości wzrostu koryta (`envelopeStart`), opis niżej („A5 po recenzji”).
+- **K4.9:** `reach` odcinka + 2,2 · max(amp, ampEnd), `floorHalfMax` z zapasem na G4 (× 1,36) i lejek G3.
+- **K4b (D4):** rzut na odcinek (`projectChannel`) od nowa na dokładnych minimach odległości, a po recenzji cięcie przeciągnięte (`sweepCut`), opis niżej. Zastępuje R1 (dokręcanie rzutu pełnym Newtonem): dokładne minima nie potrzebują dokręcania, więc metod `refine` i `converged` nie ma.
+- **Wyciek pamięci w testach:** bufor kafla (`TileCache`, wartość `ThreadLocal` sieci) trzymał referencję do swojej sieci (`owner`), więc wartość utrzymywała przy życiu własny `ThreadLocal`, a każda sieć użyta na wątkach puli zostawała w pamięci z pamięciami podręcznymi. W grze sieci są dwie–trzy, ale JVM testów (3 GB) przekroczyła limit po nowych testach K4. Pole `owner` jest zbędne (`ThreadLocal` należy do jednej sieci), więc usunięte; kopia M1 ma je nadal (zamrożona).
+- **K4.11 (koszt):** `Math.sqrt` zamiast `Math.hypot` w ramce (`chordDistance`, liczona dla każdego odcinka z listy kafla w każdej kolumnie), w rzucie i w odległości od jezior; `StrictMath.hypot` był w profilu JFR największą pojedynczą pozycją `sample` (17% próbek razem z kopią M1). Spadek odcinka (`gradient`) liczony raz przy budowie odcinka; `wanderAt` raz na ramię rzutu (`meanderDistances` z podanym łukiem).
+
+### K4b: rzut ciągły z konstrukcji i cięcie przeciągnięte (D4)
+
+**Przyczyna urwisk (pomiar, `K4Probe` w katalogu roboczym sesji).** Rzut M1 szukał minimów odległości od krzywej odcinka przez porównanie 17 próbek i dokręcał każde 5 krokami Gaussa-Newtona w przedziale ±1/16. Trzy mechanizmy dawały skoki:
+
+1. słabe minimum (para minimum–maksimum między dwiema próbkami) pojawiało się i znikało skokowo z wagą daleką od zera;
+2. minimum na końcu odcinka włączało się porównaniem dwóch próbek;
+3. dokręcanie zatrzymywało się na brzegu przedziału daleko od spodka prostopadłej. Przykład GAMEPLAY (68585, −31807): t 0,036 → 0,127 i odległość od osi doliny 240 → 274 m na 0,25 m, urwisko 63 m.
+
+Po wejściu G1B…A5 (bez K4b) skoków > 3 m na suchym lądzie poza wodami stojącymi było w oknach testu ciągłości 70 (K3: 157), w tym 27 w oknie masywu 1660 m do 62 m: zgodnie z pomiarem recenzji projektu.
+
+**Część 1: dokładne minima odległości (`projectChannel`, `distanceMinima`).**
+
+- **Dokładne minima.** Kwadrat odległości od krzywej Hermite'a to wielomian stopnia 6, a jego pochodna to wielomian stopnia 5: f(t) = (P(t) − X) · P'(t). Współczynniki f niezależne od punktu liczy konstruktor odcinka. Pierwiastki izolujemy bez próbkowania: pierwiastki f''' (równanie kwadratowe), potem f'', f' i f, każde między pierwiastkami pochodnej, gdzie wielomian jest monotoniczny, metodą Newtona z przedziałem. Minima to pierwiastki, gdzie f zmienia znak z − na +, oraz końce, gdy punkt leży za nimi. Ramię rodzi się lub ginie tylko w fałdzie (razem z maksimum), a minimum na końcu przechodzi w ciągłe minimum wewnętrzne.
+- **Wagi ramion.** Wyrazistość g = ½ D''(t) / |P'|² (1 dla prostej, 0 w fałdzie), waga smoothstep(0, `ARM_FOLD` = 1, g); koniec odcinka dostaje dodatkowo pełną wagę `END_BLEND` = 40 m za końcem. Waga nowo narodzonego ramienia jest więc 0.
+- **Uśrednianie także odległości.** t, odległość od osi doliny, odległość od koryta i ciągła odległość od koryta są średnimi po ramionach z wagami exp(−(odległość − najmniejsza) / σ) · waga ramienia, każda ze swoją odległością. M1 brał minimum odległości po ramionach: przy narodzinach ramienia o innym łuku niż sąsiednie (np. koniec odcinka, gdzie łuk = 0, obok ramienia z łukiem 43 m) minimum skakało o kilkadziesiąt metrów, choć t było już ciągłe.
+- **σ** = 10 + 0,3 · max(0, odległość od krzywej − `maxBend`), czyli od dolnego ograniczenia odległości od osi doliny, a nie od krzywej jak w M1. Oś długiego odcinka bywa kilometry od krzywej (łuki do 0,24 długości): punkt przy korycie 7,6 km od krzywej mieszał ramię oddalone o 2 km (odległość od koryta 864 m zamiast −14 m).
+
+Same dokładne minima zostawiały resztę (pierwsza wersja K4, odstępstwo 1 przed recenzją): t i odległość są ciągłe, ale tam, gdzie odległość od krzywej jest prawie stała na części krzywej (punkt blisko środka krzywizny końca krótkiego, wygiętego odcinka, 100–380 m od koryta), oba ramiona mają małe wagi, które zmieniają się na centymetrach, a ramiona różnią się poziomem dna o kilkanaście metrów (0,1 długości stromego odcinka). **Recenzja K4** policzyła to właściwą miarą (zmiana wysokości na 1 m, a nie izolowane skoki): w oknach masywów zostawały ściany 10–50 m o nachyleniu 14–24 m na 1 m, często wzdłuż prostych, a w Beskidach GAMEPLAY pasy 3,6–4,3 m na 1 m długie na kilkaset metrów. Mój pomiar (`Cliffs`, 600 transektów po 1 km w oknie, krok 0,5 m, krok doliny = |Δpowierzchni| − |Δterenu przed dolinami| na 1 m): 99 skupisk powyżej 3 m na 1 m, najwięcej 22,1 m na 1 m (masyw 1718 m), 18,0 (Beskidy), 20,3 (masyw 1660 m), 19,0 (masyw przy spawnie), 13,8 (potok). Wszystkie zbadane przypadki (`K4Probe`, 10 miejsc) miały ten sam układ: ramię na końcu odcinka (g < 0, waga tylko z rampy `END_BLEND`, ok. 0,01–0,09) i ramię wewnętrzne przy t 0,06–0,1 tuż przed fałdem.
+
+**Część 2 (po recenzji): cięcie przeciągnięte (`sweepCut`).** Wagi ramion nie dają się uwarunkować tanio (sprawdzone i odrzucone warianty niżej), więc teren nie zależy już od nich tam, gdzie są źle uwarunkowane. Cięcie doliny każdego odcinka jest co najmniej jego cięciem przeciągniętym minus `SWEEP_TOLERANCE` = 0,05 m:
+
+- **Przekroje.** Oś doliny A(t) = P(t) + łuk(t) · normalna jako łamana przez 17 węzłów t_k = k/16 (`SWEEP_NODES` = 16), zapisana w odcinku przy budowie (`sweepNodes`: punkt krzywej, styczna krzywej, punkt osi; 6 liczb float na węzeł). Przekrój doliny (dno, ściana, A5, G3, G4, głowica źródła) liczony jest w każdym węźle od punktu osi oraz na każdej krawędzi łamanej od najbliższego punktu krawędzi. t przekroju to t węzła przesunięte wzdłuż stycznej krzywej o along / prędkość (największa prędkość krzywej w dół i najmniejsza w górę, więc dno nie wychodzi niżej, niż daje spodek prostopadłej w pierwszym przybliżeniu); na krawędzi t obu węzłów mieszane położeniem na krawędzi.
+- **Ciągłość z konstrukcji.** Każdy przekrój jest ciągłą funkcją (x, z) o ograniczonym gradiencie (stromość ściany, spadek potoku, nachylenie terenu), a cięcie przeciągnięte to ich maksimum. Jest ciągłe bez względu na to, co robią ramiona rzutu, i zmienia się najwyżej ze stromością ściany. Gdzie ramiona są dobrze uwarunkowane, cięcie przeciągnięte jest równe cięciu rzutu z dokładnością do milimetrów albo mniejsze, więc teren zostaje jak po części 1 (`SWEEP_TOLERANCE` chroni łaty nizinne przed zmianami poniżej milimetra).
+- **Gdzie cięcie przeciągnięte wygrywa.** (a) W prawie-remisach ramion: bierze najgłębszy z równoodległych przekrojów, więc zamiast przełączenia ramion na centymetrach jest gładkie zbocze. (b) Tam, gdzie łuki osi zmieniają się szybko: rzut mierzy odległość od osi w spodku prostopadłej do krzywej, a oś przechodzi bliżej (do kilkudziesięciu metrów w GAMEPLAY), więc ściana jest głębsza. To poprawka geometrii (prawdziwa odległość od osi), ale zmienia ściany stromych dolin GAMEPLAY o kilka–kilkadziesiąt metrów (kadry niżej).
+- **Woda.** Dno nie schodzi niżej niż dno rzutu (t ograniczone od dołu, tolerancja), a nasyp (dno ponad terenem, ujemne cięcie) obniża się tylko o nadwyżkę cięcia przeciągniętego nad zerem, więc kaskady, brzegi koryt i wały zostają jak w części 1 (testy szczelności przechodzą).
+- **Koszt.** Pętla po węzłach tylko wtedy, gdy granice z całego odcinka (najniższe dno, najszersze dno i ściana, odległość od krzywej minus największy łuk i strzałka krawędzi) dopuszczają cięcie większe od cięcia rzutu; dalej przekrój po przekroju z tym samym ograniczeniem. Tablica węzłów: 102 liczby float na odcinek.
+
+Sprawdzone i odrzucone warianty (pomiary w katalogu roboczym sesji, `k4` i `k4fix`):
+
+- **Wagi z bariery** (różnicy odległości ramienia i sąsiedniego maksimum): Lipschitz z konstrukcji, ale przy narodzinach ramienia bariera sąsiada spada skokowo z nieskończoności, a w płaskim dołku obie wagi są bliskie zera i ich iloraz jest źle uwarunkowany (4 skoki > 3 m, 31 par w `blades`).
+- **Inne `ARM_FOLD` i `END_BLEND`** (0,5–2 i 5–100 m): krótsze `END_BLEND` usuwa jeden skok, ale wydłuża i zaostrza narodziny końca; dłuższe pogarsza okna.
+- **Średnia Gibbsa po krzywej wszędzie**: 7–10 skoków do 53 m w REAL Beskidach (punkt przy korycie odcinka o dużych łukach dostawał średnią łuku z szerokiego okna).
+- **Średnia Gibbsa tylko tam, gdzie ramiona są źle uwarunkowane** (wskaźnik z wag ramion, płynne przejście): na granicy przejścia średnia różni się od ramion o 0,2 t i 20 m odległości, więc przejście samo tworzy urwiska (90–220 skupisk zamiast 99). Tak samo cięcie przeciągnięte włączane tym wskaźnikiem (62–92 skupiska).
+- **Cięcie przeciągnięte z przekrojami tylko w węzłach** (pierwsza wersja poprawki): 0 skupisk, wszystkie testy, ale każdy węzeł działa jak stożek, więc tam, gdzie wygrywa poprawka (b), ściany stromych dolin GAMEPLAY miały załamania co 1/16 odcinka („grzebień”, `k4fix/viz/png_k4`). Gęstsze węzły (32) osłabiały je, ale kosztowały +6–12 p.p.
+- **Same krawędzie łamanej** (bez węzłów): czystsze, ale zostawały pojedyncze skoki 0,3–0,7 m tam, gdzie mieszanina ramion jest głębsza od każdego przekroju; węzły z przesunięciem t wzdłuż stycznej je pokrywają.
+- **Bez przesunięcia t** (t węzła albo t z położenia na łamanej): „reguła V” obniżała dna stromych potoków poniżej poziomu wody, a wały brzegów podnosiły je z powrotem (skoki po 1,0 m); z ekstrapolacją w jedną stronę z ograniczeniem do pół oczka (wariant B) to samo przy ujściach.
+
+**Wynik w oknach `SurfaceContinuityTest`** (150 transektów, skoki > 0,3 m na 0,5 m; liczba / największy; „krok doliny” = największa |Δpowierzchni| − |Δterenu przed dolinami| na 1 m na suchym lądzie poza wodą stojącą, kryterium D4 ≤ 3 m):
+
+| Okno | K3 | K4 dokładne minima | K4 po recenzji | krok doliny po recenzji |
+|---|---|---|---|---|
+| `gameplay_beskids` | 41 / 36,4 m | 1 / 3,18 m | 1 / 0,68 m | 2,19 m |
+| `gameplay_center` | 19 / 20,3 m | 16 (14 przy wodzie) | 14 (wszystkie przy wodzie) | 1,65 m |
+| `gameplay_stream` | 37 / 13,6 m | 6 / 3,02 m | 6 / 2,85 m (szew A16, K6) | 1,78 m |
+| `gameplay_moraine` | 19 / 67,3 m | 13 (przy wodzie) | 14 (13 przy wodzie, 0,37 m na zboczu) | 0,96 m |
+| `realistic_beskids` | 1 / 1,06 m | 0 | 0 | 1,26 m |
+| `realistic_lowland` | 2 / 1,50 m | 2 / 1,50 m | 2 / 1,50 m (torf oczka, K5.4) | 0,60 m |
+| `realistic_moraine` | 15–16 / 4,80 m | 14–15 | 14 (przy wodzie) | 0,21 m |
+| `realistic_stream` | 0 | 0 | 0 | 1,13 m |
+| `gameplay_tunnel_lake_3519` | 23 / 85,8 m | 25 | 25 / 87,1 m (K5.2) | 0,48 m |
+| `gameplay_massif_spawn` | 42 / 22,0 m | 2 / 4,29 m | 1 / 0,35 m | 2,50 m |
+| `gameplay_massif_1660` | 87 / 69,5 m | 1 / 0,33 m | 1 / 0,33 m | 2,17 m |
+| `gameplay_massif_1718` | 41 / 58,0 m | 0 | 0 | 2,12 m |
+| `gameplay_massif_1710` | 15 / 15,7 m | 1 / 0,47 m | 1 / 0,47 m | 2,18 m |
+| `realistic_massif_1723` | 0 | 0 | 0 | 1,16 m |
+
+Skoki, które zostały na zboczach (0,33–0,68 m), to pasy ok. 0,4 m szerokie o nachyleniu 1,5–2 m na 1 m (profil co 5 cm, `JumpProf`): tam mieszanina ramion jest odrobinę głębsza od cięcia przeciągniętego, poniżej bloku. W liczbach z pierwszej wersji K4 były dwa błędy (recenzja): `realistic_lowland` miał 2 skoki do 1,50 m, a nie 3 do 10,4 m (ściany jeziora w (96844, 14706) w tym oknie nie ma), a `gameplay_center` 16 (14 przy wodzie), a nie 18 (16).
+
+**Szerszy pomiar kroku doliny** (`Cliffs`, 600 transektów w każdym oknie z recenzji; `CliffsBroad`, losowe transekty po 1 km w losowych miejscach typu, ziarno świata 20260927; suchy ląd poza wodami stojącymi):
+
+| Pomiar | K4 dokładne minima | K4 po recenzji |
+|---|---|---|
+| 10 okien recenzji (600 transektów): skupiska kroku doliny > 3 m na 1 m | 99, najwięcej 22,1 m | 0 |
+| Beskidy GAMEPLAY, 3000 transektów: skupiska > 3 m / izolowane skoki (0,3–1 / 1–3 / 3–10 / > 10 m) | 86 (do 19,9 m) / 18 / 9 / 3 / 0 | 0 / 16 / 5 / 0 / 0 |
+| Pogórze GAMEPLAY, 3000 transektów | 33 (do 18,2 m) / 14 / 7 / 2 / 0 | 0 / 12 / 1 / 0 / 0 |
+| Wysoczyzna morenowa GAMEPLAY, 2000 transektów | 1 (7,3 m; w (−271577, −223878) 4,2 m na 0,25 m) / 10 / 0 / 1 / 0 | 0 / 11 / 0 / 0 / 0 |
+| Beskidy i pogórze REAL, po 1500 transektów | 0 / 0 | 0 / 0 |
+
+Zwykła zmiana wysokości na 1 m (bez odjęcia terenu przed dolinami) w oknach masywów GAMEPLAY dalej przekracza 3 m: 4,6–5,0 m na 1 m (`largest 1 m step` w teście), w 4000–8000 miejscach na okno, tak samo przed K4 i po nim. To kopuły masywów z K2, nie doliny: np. x = 6956, z od ok. −34400 do −34230, 684 → 1516 m na ok. 170 m przy wadze doliny 0 i terenie równym terenowi przed dolinami (recenzja). Kryterium D4 „żaden krok > 3 m na 1 m w oknach masywów” jest więc nieosiągalne bez zmiany kopuł; test mierzy krok doliny (≤ 3 m wymuszone we wszystkich oknach), a zwykły krok wypisuje. Stromość kopuł to sprawa K2/S3 (zgłoszone głównemu agentowi).
+
+**Miejsca urwisk na masywach (`massifSpotsHaveNoCliffs`, pary > 25 m):** `gameplay_blades_1707` 320 / 83,1 m (K2) → 10 / 31,4 m (dokładne minima) → 0 / 5,9 m, `gameplay_fan_1673` 535 / 83,1 m → 0 / 10,6 m; miejsca REAL bez zmian (ściany jezior: K5.4). **Źródła na stokach masywów (`massifStreamSourcesHaveNoCliffs`):** GAMEPLAY zwykły krok 25,87 (K2) → 6,13 → 4,06 m na 1 m, w tym krok doliny 2,54 m (D4 ≤ 3 m wymuszone): w (−186812,8; −274959,9) sam teren przed dolinami spada 2,7 m na 1 m; REAL 1,46 → 1,31 m (krok doliny 1,18 m). `mountainStreamSourcesHaveNoCliffs` (REAL Beskidy) < 3 m jak dotąd.
+
+**Kadry** (`k4fix/viz`, narzędzie `VizK4` recenzji; „przed” = pierwsza wersja K4, „po” = po recenzji): ściany z recenzji zniknęły bez śladu (`C_besk_28492_872_300m`, `C_m1660_…`, `C_m1718_…`, `C_stream_4113_3644_300m`, `Z_besk_wall_500m`, `Z_spawn_wedge_400m`: 900–25 000 par > 3 m na 1 m → 0). Ściany stromych dolin GAMEPLAY są tam, gdzie wygrywa poprawka (b), głębsze o kilka–kilkadziesiąt metrów (`G_beskidy_3km`: 316 tys. z 640 tys. pikseli zmienionych, największa różnica −82 m w miejscu dawnej ściany; `Z_rays_new_400m`: do −24 m, zbocza gładkie, bez nowych załamań).
+
+### A5 po recenzji: głowice nizinne
+
+Recenzja: na niżu głowica została prostokątem (`R_morena_3km`, głowica (−67330, 21470): dno ok. 230 m szerokie przy źródle, prosta ściana w poprzek osi), bo A5 zwężało tylko margines dna, a na niżu dno to głównie pas meandrów odejmowany w odległości od dna (ok. 2,4 amplitudy). Test głowic nie mógł tego wykryć: `inFloor` wymaga wygaszenia > 0,5, czyli nie działa w pierwszych 200 m·k od źródła.
+
+- **Pas meandrów zwęża się razem z marginesem** (`floorBelt`): na odcinku źródłowym pas = amplituda · beltK · G4 · max(`headFactor`, amplituda meandrów w tym miejscu / amplituda), więc nie węższy niż kanał rzeczywiście meandruje i koryto zostaje w dnie.
+- **Meandry przy źródle narastają dłużej** (`envelopeStart`): na odcinku źródłowym na długości co najmniej `headFade` (400 m·k, na której rośnie samo koryto), a nie 1,5 długości fali. Bez tego meandry miały pełną amplitudę po 130 m od źródła i pas meandrów trzymał pełną szerokość dna; teraz dno głowicy zwęża się w klin o długości ok. 400 m·k (`k4fix/viz/png/R_head_-67330_21470_800m_terrain.png`).
+- **Nowy test** `valleyHeadsAreRounded` mierzy szerokość dna terenu (kolumny, gdzie odległość od dna ≤ półszerokość dna terenu, `floorGeometry`; dla samego odcinka źródłowego) na przekroju 0,25 F od źródła wobec 4 F dalej. Wymaga mediany ≤ 0,4 i co najmniej 80% głowic poniżej 0,6. Teraz: mediana 0,22 (REAL, 672 głowice, wszystkie < 0,6) i 0,21 (GAMEPLAY, 457 z 459). Bez A5 (stan K3) mediana 1,00, z samym marginesem (pierwsza wersja K4) 0,61, głowice nizinne 0,58: test pada w obu (sprawdzone na kopii z przełącznikiem trybu A5). Sprawdzenie „za głowicą teren nie jest wcięty” zostaje (0 kolumn).
+
+### Złoty test
+
+`-PgoldenReport=build/golden_K4.txt` (przebieg w katalogu roboczym sesji, ten sam kod): zmienione łaty w zestawach (łaty z „cel” tracą cel):
+
+| Zestaw | Zmienione łaty |
+|---|---|
+| REAL A | grid, foothills_river, mountain_stream, beskids, foothills; numerycznie: lowland_river (=), large_river, oxbow_lake |
+| REAL B | grid, coast, river_mouth (cel), large_river (cel), foothills_river, outwash_plain_lake, mountain_stream (cel), beskids, summit, foothills |
+| GAMEPLAY A | grid, river_mouth, lowland_river, foothills_river, tunnel_valley_lake, outwash_plain_lake, kettle_pond, peatland, mountain_stream, beskids, summit (cel), foothills |
+| GAMEPLAY B | grid, coast, beach, large_river (cel), foothills_river, kettle_pond, mountain_stream (cel), beskids, summit, foothills; numerycznie: lowland_river |
+| REAL A 0,5 | grid, lowland_river, oxbow_lake (cel), mountain_stream, beskids, summit, foothills; numerycznie: large_river (=), foothills_river (=) |
+
+- Zbiór łat zmienionych i łat, które tracą cel, jest zgodny z tabelą `dna-dolin/RAPORT.md` §6.2 dla zestawu G1B…G5 (z A5 i K4b w łatach gór), poza łatami „numerycznie” i dwiema łatami GAMEPLAY A z cięcia przeciągniętego (niżej).
+- **Cięcie przeciągnięte (odstępstwo 10):** GAMEPLAY A `kettle_pond` (zbocze niecki do 1,1 m niżej, 10 kolumn z innym blokiem, bez zmian wody i podłoża) i GAMEPLAY A `summit` traci cel: ściana doliny źródłowej, której oś leży 406 m od szczytu (rzut mierzył 444 m), obniża wierzchołek o do 2,3 m (88 z 256 kolumn z innym blokiem), więc forma SUMMIT nie jest już lokalnym maksimum powyżej 900 m w łacie. Obie łaty są w tabeli końcowej §4 „zmiana”; `summit` w GAMEPLAY A zostanie w K7 wyszukana od nowa (nie było jej na liście „zmiana, cel”).
+- **Numerycznie** to różnice max |Δsurface| od 0,07 µm do 0,12 mm, bez żadnej kolumny z innym blokiem, wodą, typem czy podłożem: t dokładnego minimum zamiast 5 kroków Gaussa-Newtona (M1 kończył ok. 10⁻⁶ t od minimum) i `Math.sqrt` zamiast `Math.hypot`. To prawdziwe zmiany powierzchni poniżej milimetra; tylko w REAL A `lowland_river` (0,07 µm) zmiana jest mniejsza od 1 µm, czyli zaokrąglenie skrótu trafiło na granicę. **Trzy z nich są w tabeli końcowej §4 „=”**: REAL A `lowland_river` (0,07 µm), REAL A 0,5 `large_river` (0,12 mm) i REAL A 0,5 `foothills_river` (0,03 mm; w pierwszej wersji opisu pominięte, recenzja). Lista dozwolonych zmian oznacza je przyrostkiem `numeric`: `GoldenTerrainTest` dopuszcza wtedy tylko zmianę stanu M1 poniżej 1 mm wobec zamrożonej kopii M1, bez żadnej kolumny z innym blokiem, poziomem i rodzajem wody, typem czy podłożem (`NUMERIC_SURFACE`; sprawdza to sam test, a nie opis). **Poprawka protokołu K7 (warunek 1 sprawdzenia przed zapisem):** łata „=” może być na liście zmian tylko jako zmiana numeryczna w tym sensie, potwierdzona raportem (`-> numerical change of the M1 state only` albo `-> numerical difference only`); każda inna zmiana łaty „=” zatrzymuje zapis.
+- `lagoon`, `cliff`, łaty kontrolne `outwash_plain_interior`, `moraine_plateau_interior` i `great_massif` bez zmian.
+- Lista `src/test/golden-allow/K4.txt` (lista K3 + powyższe, z komentarzami). Z nią `terrainMatchesGolden` przechodzi (2 z 2).
+
+### Testy
+
+**Nowe i zmienione testy (`RiverNetworkTest`, `SurfaceContinuityTest`):**
+
+- `valleyAxisIsSmoothAtNodes`: kąt osi doliny w węzłach, gdzie ciek przechodzi w następny odcinek (różnica skończona 10⁻⁴ odcinka). REAL 1634 węzły: mediana 0,021°, p90 0,052°, maksimum 0,098°; GAMEPLAY 862 węzły: 0,023°, 0,053°, 0,107° (progi 1° i 3°; M1 15–72°).
+- `valleyHeadsAreRounded`: od nowa po recenzji (wyżej, „A5 po recenzji”).
+- `segmentCullingIsInvisible`: `query` z ramką i `querySegments` po wszystkich odcinkach promienia kafla (`tileRadiusSegments`, promień ze wspólnej metody `tileRadius`, tej samej co `candidates`) na 10 000 punktów na skalę (projekt: 20 000 w obu; po usunięciu wycieku pamięci zestaw jest pełny), w tym po 400 w każdym oknie testu ciągłości: 0 różnic (REAL 10 000 punktów, GAMEPLAY 8004 na lądzie).
+- `SurfaceContinuityTest`: krok doliny (|Δpowierzchni| − |Δterenu przed dolinami| na 1 m) ≤ 3 m wymuszony we wszystkich oknach (D4); zwykły krok na 1 m wypisywany. Limity skoków do stanu po recenzji (tabela wyżej); `realistic_lowland` 2 / 1,51 m, `gameplay_center` 14 / 14 przy wodzie.
+- `massifStreamSourcesHaveNoCliffs`: zwykły krok GAMEPLAY ≤ 4,1 m na 1 m (stan, teren przed dolinami do 2,7 m na 1 m), krok doliny ≤ 3 m (D4) w obu skalach.
+- `massifSpotsHaveNoCliffs`: `blades` 0 / 6,0 m, `fan` 0 / 10,7 m.
+- `noSpringsOnMassifCore`: obszar szczytowy wcięty najwyżej 20,5 m (REAL) i 58,0 m (GAMEPLAY), dno lub woda na wierzchowinie 1604 i 151 kolumn, najgłębiej G 0,50 i 0,34 (odstępstwo 11).
+
+**Pozostałe wyniki** (przebieg klas `landscape` i `habitat`, 109 z 109):
+
+- `TerrainLocalityTest`: 0 zmienionych kolumn poza dolinami, wodą i zasięgiem masywów na wszystkich siatkach.
+- `TerrainDeterminismTest`: 0 różnic poza znanym wyjątkiem jezior rynnowych (2542 i 12143 kolumn, do K5.2).
+- `WatersideZonesTest.floorZonesFollowDominantRiver`: REAL strefy rzeki 100%, całe dno 99,1%; GAMEPLAY 99,0% i całe dno 93,0% (próg 92%). Próba olsu: REAL 168 cięciw, 79,8% ≥ 10 bloków; GAMEPLAY 201 cięciw, 57,7%.
+- `channelDistanceIsContinuousAndNonPositiveInChannel`: 0 skoków pola d. W REAL największy gradient w pasie stref 7,58 m na 1 m (K3: 4,33), 133 kroki > 1,5 m na 1 m z 84 949 (0,16%, próg 1%): pole d przy dużej rzece (W 41,6 m) liczone jako średnia ramion (drobna uwaga recenzji, „Co zostaje”).
+- `noStepAtLowlandThreshold`: 0 uskoków w obu skalach.
+
+**Pełny `./gradlew test`:** 131 testów, 1 porażka zamierzona: `terrainMatchesGolden` bez `-PgoldenAllow` (57 zmian łat i celów z listy wyżej). `./gradlew test --tests '*GoldenTerrainTest*' -PgoldenAllow=src/test/golden-allow/K4.txt -PgoldenReport=build/golden_K4.txt`: BUILD SUCCESSFUL, ta sama lista co przebieg w katalogu roboczym. `SampleCostTest` w pełnym przebiegu (maszyna obciążona innymi testami): 1,123 / 1,068 / 0,947 / 1,176 / 1,079 / 1,049 w kolejności tabeli kosztu.
+
+### Koszt
+
+Pomiar A/B: `SampleCostTest` (7 rund) z pierwszej wersji K4 i po recenzji, osobne JVM na zmianę, 2 powtórzenia. Średnie z median, µs na kolumnę (stosunek do kopii M1 w tej samej JVM):
+
+| Obszar | K4, pierwsza wersja | K4 po recenzji |
+|---|---|---|
+| REAL cały obszar | 4,19 (1,024) | 4,45 (1,090) |
+| REAL Beskidy | 6,56 (0,975) | 7,26 (1,035) |
+| REAL wielki masyw | 6,21 (0,878) | 6,64 (0,936) |
+| GAMEPLAY cały obszar | 5,57 (0,977) | 6,31 (1,107) |
+| GAMEPLAY Beskidy | 9,63 (0,958) | 10,84 (1,069) |
+| GAMEPLAY wielki masyw | 9,85 (0,873) | 11,62 (1,021) |
+
+Pomiar z 2026-10-03 wieczorem, 2 powtórzenia (maszyna obciążona: kopia M1 o 5–15% wolniejsza niż w pomiarze pierwszej wersji, więc µs nie są porównywalne z tabelą K3; stosunki są).
+
+- Cięcie przeciągnięte kosztuje 6–15 p.p. (najwięcej GAMEPLAY wielki masyw i cały obszar); budżet D1 (+20% wobec M1; 6,5 / 12 / 8,5 / 16 µs) jest dotrzymany z zapasem na K5 i K6 (A16: +2–6%).
+- Optymalizacje cięcia przeciągniętego (bez zmiany wyniku, sprawdzone tym samym raportem złotego testu i liczbą kroków w `Cliffs`): granice z całego odcinka (najniższe dno, najszersze dno i ściana, prostokąt węzłów osi), bloki po 4 krawędzie odrzucane razem (strzałka bloku), granica przekroju bez t przed granicą z t, a przede wszystkim pominięcie cięcia, które nie zejdzie poniżej wyniku z poprzednich odcinków + promień G5 (G5 bierze wtedy zwykłe minimum, a wynik dalszymi odcinkami tylko maleje). Bez tego ostatniego GAMEPLAY cały obszar kosztował 1,16–1,20. Wersja z 32 węzłami kosztowała GAMEPLAY 1,16–1,17, więc zostało 16.
+- Izolacja pierwiastków (`solve`, `rootsBetween`, `distanceMinima`) to ok. 13% próbek profilu JFR przed optymalizacjami (profil obejmuje też kopię M1).
+
+### Odstępstwa od projektu w K4
+
+1. **D4 (K4b) inaczej niż w projekcie, kryterium zmierzone krokiem doliny.** Projekt przewidywał „rzut ciągły z konstrukcji” (np. pole odległości od łamanej osi). Weszły dokładne minima odległości i cięcie przeciągnięte (maksimum przekrojów doliny wzdłuż łamanej osi), opis wyżej. Kryterium „żaden skok > 3 m na 1 m” mierzę jako krok doliny (zmiana wysokości na 1 m ponad zmianę terenu przed dolinami): po recenzji ≤ 2,5 m na 1 m we wszystkich oknach testu, 0 skupisk > 3 m w 600 transektach okien recenzji i w szerokich pomiarach. Zwykła zmiana na 1 m w oknach masywów GAMEPLAY przekracza 3 m na samych kopułach K2 (do 5 m na 1 m, bez dolin), czego D4 bez zmiany kopuł nie spełni (zgłoszone jako sprawa K2/S3). Zostają izolowane skoki 0,33–0,68 m na zboczach (pasy ok. 0,4 m szerokie, poniżej bloku).
+2. **R1 zastąpione dokładnymi minimami (K4b).** Izolacja pierwiastków wielomianu daje dokładne minima wszędzie, więc R1 (pełny Newton tam, gdzie Gauss-Newton nie zbiegł) nie jest potrzebne.
+3. **Lejek G3 tylko w terenie.** Pola doliny (klucz F1, `inFloor`, u, półszerokość dna, waga doliny) liczą się z dna bez lejka. Z lejkiem w polach dopływ dominował w trójkątach dna rzeki przy zbiegu i dostawał tam swoje strefy (F2 GAMEPLAY w zasięgu łęgu topolowego 72,7% przy progu 95%, całe dno 89,4% przy progu 92%). **Skutek w siedliskach (poprawione po recenzji; wcześniej opisane jako „pas zbocza”):** w lejku teren jest płaskim dnem kilka metrów nad potokiem, ale pola mówią „poza dnem” (`inFloor` = 0, u = NaN), więc klasyfikator maluje tam łaty o prostych krawędziach: przy zbiegu GAMEPLAY ok. (27990, 3660) lejek obniża teren do 33 m, a ols rośnie z 0,1% do 1,6% kadru, łęg z olszą szarą z 0 do 0,5%, łęg jesionowo-olszowy z 0,1 do 0,3% (łaty ok. x 27998–28019, z 3611–3671 i x 27975–27998, z 3694–3729; `viz_K4/png/Z_besk_conf_300m_*`). Ols nie pasuje do beskidzkiego potoku na 480 m. Do K7 (niżej, „Co zostaje”).
+4. **Styczna cięciwy na końcu odcinka w jeziorze bezodpływowym zostaje tylko przy masywach** (zapowiedź z K2: „K4 rozciąga ją na każde jezioro”). Dla wszystkich jezior przesuwała rzeki daleko od jezior: ujście dopływu na odcinku kończącym się w jeziorze przesunęło się o 3 km, a z nim odcinek rzędu 3 długości 85 km o ok. 1 km. Dokładny rzut K4b usuwa zaś mechanizm urwisk przy masywach, dla którego K2 wprowadził tę regułę: bez reguły (próba) miejsca `realistic_box_canyon_1698` i `realistic_slot_1700` oraz okno `realistic_massif_1723` dalej mają 0 urwisk. Reguła K2 zostaje, żeby nie zmieniać terenu masywów; uogólnienie do M5.
+5. **Pełna odległość nieodnalezionego minimum** (K2, tylko przy masywach) jest zbędna: dokładne minima mają składową wzdłuż równą 0. Pole `Segment.nearMassif` usunięte.
+6. **`valleyHeadsAreRounded`** mierzy dolinę samego odcinka źródłowego (`querySegments`, `floorGeometry`), bo za źródłem często leży inna dolina, i porównuje szerokość dna terenu przy źródle z szerokością dalej (projekt: „0,5 · półszerokości dna za źródłem teren nie jest wcięty”; to sprawdzenie też zostaje).
+7. **σ wag ramion od dolnego ograniczenia odległości od osi doliny** (`maxBend`) zamiast od odległości od krzywej (M1), i średnie także odległości zamiast minimum (K4b, wyżej).
+8. **K4.11 częściowo inaczej niż w projekcie:** sprawdzanie zbieżności R1 odpada razem z R1; zapis kandydatów F2 tylko w zasięgu stref nie wszedł (K1 i K3: bufor bez limitu, test przepełnień), a zamiast tego doszło usunięcie `Math.hypot` (największy zysk).
+9. **Wody stojące: limity bez poprawy wobec celów §3.3.** `realistic_lowland` 2 skoki do 1,50 m (torf oczka w (−92914, 80060), K5.4; cel 0), `gameplay_center` 14 skoków, wszystkie przy wodzie (oczka, torf, rynna; cel ≤ 3 po A3), `gameplay_moraine` 13 przy wodzie, `realistic_moraine` 14 przy wodzie, `gameplay_tunnel_lake_3519` 25 (wiszące jezioro rynnowe, K5.2). K5.4 (A3) i K5.2 mają sprowadzić te okna do celów §3.3 i zaostrzyć limity. (W pierwszej wersji tego opisu `realistic_lowland` miał „3 skoki do 10,4 m” przy ścianie jeziora bezodpływowego w (96844, 14706): ten skok nie występuje, recenzja.)
+10. **Cięcie przeciągnięte zmienia teren poza prawie-remisami ramion** (poprawka (b): odległość od osi samej, a nie od spodka prostopadłej do krzywej): ściany stromych dolin GAMEPLAY głębsze o kilka–kilkadziesiąt metrów, łaty GAMEPLAY A `kettle_pond` i `summit` (cel) spoza listy pierwszej wersji K4, obie „zmiana” w tabeli końcowej.
+11. **Wcięcie obszaru szczytowego masywu w GAMEPLAY 58,0 m** przy kryterium projektu < 50 m (`noSpringsOnMassifCore`; po K2 50,6 m, w pierwszej wersji K4 51,5 m): w (109362, 285955) to górna krawędź ściany doliny potoku rzędu 1 na stoku, 1470 m głębokiej, 531 m od jej osi (rzut mierzył 548 m); ściana w GAMEPLAY ma do 600 m szerokości i jest tu stromsza niż 3 m na 1 m. To nie jest kanion w kopule (brak dna i wody na obszarach szczytowych). Do K2/S3 razem ze stromością kopuł.
+12. **Pole `TileCache.owner` usunięte** (poza projektem): utrzymywało przy życiu `ThreadLocal` każdej sieci, przez co JVM testów (3 GB) kończyła się brakiem pamięci.
+
+### Poprawki po recenzji K4
+
+- **Blokujące (D4):** cięcie przeciągnięte (wyżej). Kryterium jest spełnione dla kroków dolin we wszystkich oknach i w szerokich pomiarach; nie jest spełnione dla kopuł K2 (osobna sprawa) i dla izolowanych skoków poniżej 0,7 m.
+- **Łaty „=” zmienione numerycznie:** wszystkie trzy nazwane, przyczyna opisana jako prawdziwe zmiany poniżej milimetra (poza 0,07 µm w REAL A `lowland_river`), przyrostek `numeric` sprawdzany przez test i poprawka warunku K7 (wyżej, „Złoty test”).
+- **Ściany niewidoczne dla testu ciągłości:** test mierzy krok doliny na 1 m (≤ 3 m wymuszone) i wypisuje zwykły krok; liczby z pierwszej wersji („0 / 0,33 m” w oknach masywów) poprawione w tabeli.
+- **A5 na niżu:** pas meandrów i meandry przy źródle (wyżej); test od nowa.
+- **Drobne:** `mouth` bez martwego warunku `SINK` i z opisem zgodnym z działaniem (lejek mają też boczne dopływy węzła spływającego do jeziora bezodpływowego, główny dopływ nie; teren bez zmian); G3 w siedliskach opisany (odstępstwo 3) i zostawiony do K7; limity okien z wodą stojącą zaostrzone i przypisane K5.4/K5.2 (odstępstwo 9); `SUMMIT_CUT` opisane jako odstępstwo (11); `segmentCullingIsInvisible` 10 000 punktów na skalę i wspólny promień kafla; „centre” → „center”; liczby `realistic_lowland` i `gameplay_center` poprawione; brak kontroli kadrów R_potok_3km i G_rzeka_1km dopisany do „Co zostaje”; pole d (drobna uwaga) bez zmian, do pomiaru w K7.
+
+### Co zostaje
+
+- Izolowane skoki 0,33–0,68 m na zboczach (pasy ok. 0,4 m, gdzie mieszanina ramion jest głębsza od cięcia przeciągniętego): M5 razem z rzutem na samą oś doliny.
+- Stromość kopuł masywów GAMEPLAY (do 5 m na 1 m bez dolin) i ściany dolin głębszych niż `maxWall` · stromość (np. 1470 m przy obszarze szczytowym, odstępstwo 11): K2/S3.
+- Szew mieszania regionów w `gameplay_stream` (5540, 2725), skoki 2,7–2,9 m: K6 (A16).
+- Ściany jezior bezodpływowych (miejsca `realistic_sink_lake_*`), torf oczek, wiszące jezioro rynnowe (3519, −4356): K5.4 i K5.2. W K5.2 `floorGap` liczyć z półszerokości dna terenu (z lejkiem G3), żeby końce jezior rynnowych nie sięgały w lejek.
+- Lejek G3 w siedliskach (odstępstwo 3): przed K7 sprawdzić kilka kadrów zbiegów GAMEPLAY i zdecydować, czy lejek ma dostać strefę dna doliny przyjmującej, czy klasyfikator ma go traktować jak stok (np. `heightAboveChannel` wobec doliny dominującej).
+- Pole d (strefy nadwodne) przy dużych rzekach: gradient do 7,58 m na 1 m (0,16% kroków > 1,5): przed K7 zmierzyć pasy stref na kadrach `HabitatPreview` przy dużych rzekach.
+- Kontrole kadrów §3.4, które nie są spełnione: `R_potok_3km`: wachlarz przy (570, 100) px nie znika, głowica kończy się ostrym klinem w kształcie V (w pierwszej wersji K4 z izolowanym skokiem przy czubku ok. (72788, 1008372)); `G_rzeka_1km`: „równoległobok” przy (445–610, 125–350) px dalej jest, z prostymi załamaniami między ścianami (G5 o promieniu 4 m ma na ścianach 1,4 m na 1 m ok. 3 m szerokości, w GAMEPLAY prawie niewidoczny). Do A8/G5 (promień) i S8 (strojenie).
+- Uogólnienie stycznej cięciwy w jeziorach bezodpływowych (odstępstwo 4): M5.
+- F2 GAMEPLAY całe dno 93,0% przy progu 92%: trójkąty ujść (K3) bez zmian.
+- Nieciągłości pól na linii wygaszenia źródłowego (K3, „Co zostaje”) nie mierzyłem ponownie narzędziem `FieldSeams`; A5 zmienia tam szerokość dna.

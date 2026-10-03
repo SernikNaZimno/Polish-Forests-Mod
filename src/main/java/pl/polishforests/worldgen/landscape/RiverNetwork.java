@@ -87,19 +87,64 @@ final class RiverNetwork {
 		final double wander2;
 		/** Largest deviation of the channel from the valley axis (m). */
 		final double amp;
+		/**
+		 * G2: {@link #amp} of the segment downstream on the same watercourse (main tributary of the next node), so the
+		 * meander belt of the valley floor has a continuous width across the node; {@link #amp} elsewhere. Set by
+		 * {@link RiverNetwork#build} before the segment is published.
+		 */
+		double ampEnd;
+		/** G2: share of the segment length before the node over which {@link #amp} turns into {@link #ampEnd}. */
+		double ampBlend = 0.5;
+		/**
+		 * G3: the segment joins another valley or a sink lake as a side tributary or a capture (not the main tributary of
+		 * the next node and not at the sea), so its valley floor widens into a funnel before the mouth. A side tributary
+		 * of a node that drains to a sink lake ends at that node (the node has no segment to join), so it has the funnel
+		 * there, while the main tributary of the node has none, as at any node.
+		 */
+		boolean mouth;
+		/**
+		 * G1B: slopes of the bends {@link #wander1}, {@link #wander2} at t = 0 and t = 1 (d wander / dt), subtracted in the
+		 * end quarters so that the valley axis is C1 at the nodes.
+		 */
+		private final double wanderSlope0;
+		private final double wanderSlope1;
+		/**
+		 * Gradient of the segment at realistic scale ((level0 − level1) / len, at gameplay scale converted by the node
+		 * spacing), computed once in {@link RiverNetwork#build} (K4.11).
+		 */
+		double gradient;
 		/** Meander angle θ0 (rad) of the Kinoshita curve. */
 		final double theta;
 		final double lambda;
 		final double envelope;
+		/**
+		 * Share of the segment from its start over which the meanders fade in: {@link #envelope}, but at a source (A5)
+		 * at least the length {@link #headFade} over which the channel itself grows, so that the meander belt, and with
+		 * it the valley floor, widens from the source together with the floor margin (review of step K4: in the
+		 * lowlands the meanders reached their full amplitude 1.5 wavelengths from the source and the head of the floor
+		 * stayed a rectangle).
+		 */
+		final double envelopeStart;
 		final double phase;
 		final double headFade;
 		final boolean source;
 		final Noise noise;
 		/**
-		 * Whether the reach of a large massif can touch the box of influence of the segment (M2-8, review of step K2): the
-		 * projection then measures an unconverged distance minimum with its full distance ({@link #projectChannel}).
+		 * K4b: the curve as a cubic in t relative to its start, x(t) = x0 + cx1 t + cx2 t² + cx3 t³ (the same for z), and
+		 * the parts of the quintic f(t) = (P(t) − X) · P'(t) = ½ d|P(t) − X|²/dt that do not depend on the point X
+		 * ({@link RiverNetwork#projectChannel}).
 		 */
-		boolean nearMassif;
+		private final double cx1;
+		private final double cx2;
+		private final double cx3;
+		private final double cz1;
+		private final double cz2;
+		private final double cz3;
+		private final double f5;
+		private final double f4;
+		private final double f3;
+		private final double f2;
+		private final double f1;
 		double minX;
 		double maxX;
 		double minZ;
@@ -107,6 +152,32 @@ final class RiverNetwork {
 		/** Largest deviation of the curve from the chord, and the reach of influence (for fast rejection). */
 		double chordDeviation;
 		double reach;
+		/**
+		 * K4b sweep cut ({@link RiverNetwork#sweepCut}): per node t = k / SWEEP_NODES, k = 0..SWEEP_NODES,
+		 * {@link RiverNetwork#SWEEP_STRIDE} values: the curve point relative to (x0, z0) and the unit tangent of the curve
+		 * (for t), and the point of the valley axis relative to (x0, z0) (for the distance from the axis); set by
+		 * {@link RiverNetwork#build} before the segment is published.
+		 */
+		float[] sweepNodes;
+		/**
+		 * K4b sweep cut: the largest |{@link #wanderAt}| on the nodes and inside the edges, and the largest sagitta of the
+		 * axis over an edge of its polyline (with a margin), for the bounds of {@link RiverNetwork#sweepCut}.
+		 */
+		double sweepWanderMax;
+		double sweepSagMax;
+		/**
+		 * K4b sweep cut: per block of {@link RiverNetwork#SWEEP_BLOCK} edges of the axis polyline, the largest distance of
+		 * its nodes from the chord of the block (with a margin), for the culling of whole blocks.
+		 */
+		float[] sweepBlockSag;
+		/** K4b sweep cut: bounding box of the nodes of the axis polyline, relative to (x0, z0). */
+		double sweepMinX;
+		double sweepMaxX;
+		double sweepMinZ;
+		double sweepMaxZ;
+		/** K4b sweep cut: bounds of the speed |P'(t)| of the curve on [0, 1] (3% margin), for the along-valley extrapolation. */
+		final double speedMin;
+		final double speedMax;
 
 		Segment(int order, double x0, double z0, double x1, double z1, double[] t0, double[] t1, double level0,
 				double level1, double width0, double width1, double wander1, double wander2, double theta, double lambda,
@@ -129,8 +200,45 @@ final class RiverNetwork {
 			this.wander2 = wander2;
 			this.theta = theta;
 			this.amp = theta > 0 ? MeanderField.amplitude(Math.min(MeanderField.THETA_MAX, theta * 1.25)) * lambda : 0;
+			this.ampEnd = this.amp;
+			this.wanderSlope0 = Math.PI * wander1 + 2 * Math.PI * wander2;
+			this.wanderSlope1 = -Math.PI * wander1 + 2 * Math.PI * wander2;
+			this.maxBend = 1.12 * Math.abs(wander1) + 1.24 * Math.abs(wander2) + 0.07 * this.len;
+			// Hermite basis in powers of t, from the chord (x1 − x0) so that large world coordinates do not cancel.
+			double vx = x1 - x0;
+			double vz = z1 - z0;
+			this.cx1 = mx0;
+			this.cz1 = mz0;
+			this.cx2 = 3 * vx - 2 * mx0 - mx1;
+			this.cz2 = 3 * vz - 2 * mz0 - mz1;
+			this.cx3 = -2 * vx + mx0 + mx1;
+			this.cz3 = -2 * vz + mz0 + mz1;
+			double a33 = cx3 * cx3 + cz3 * cz3;
+			double a32 = cx3 * cx2 + cz3 * cz2;
+			double a31 = cx3 * cx1 + cz3 * cz1;
+			double a22 = cx2 * cx2 + cz2 * cz2;
+			double a21 = cx2 * cx1 + cz2 * cz1;
+			double a11 = cx1 * cx1 + cz1 * cz1;
+			this.f5 = 3 * a33;
+			this.f4 = 5 * a32;
+			this.f3 = 4 * a31 + 2 * a22;
+			this.f2 = 3 * a21;
+			this.f1 = a11;
+			double vMin = Double.MAX_VALUE;
+			double vMax = 0;
+			for (int q = 0; q <= 64; q++) {
+				double t = q / 64.0;
+				double vx1 = cx1 + t * (2 * cx2 + 3 * t * cx3);
+				double vz1 = cz1 + t * (2 * cz2 + 3 * t * cz3);
+				double v = Math.sqrt(vx1 * vx1 + vz1 * vz1);
+				vMin = Math.min(vMin, v);
+				vMax = Math.max(vMax, v);
+			}
+			this.speedMin = Math.max(1e-9, 0.97 * vMin);
+			this.speedMax = Math.max(1e-9, 1.03 * vMax);
 			this.lambda = lambda;
 			this.envelope = Math.min(0.5, 1.5 * lambda / len);
+			this.envelopeStart = source ? Math.min(0.5, Math.max(1.5 * lambda, headFade) / len) : envelope;
 			this.phase = phase;
 			this.headFade = headFade;
 			this.source = source;
@@ -172,7 +280,7 @@ final class RiverNetwork {
 			if (theta <= 0) {
 				return 0;
 			}
-			double env = Noise.smoothstep(0, envelope, t) * Noise.smoothstep(0, envelope, 1 - t);
+			double env = Noise.smoothstep(0, envelopeStart, t) * Noise.smoothstep(0, envelope, 1 - t);
 			double u = t * len / lambda;
 			double f = 0.75 + 0.5 * noise.sample(u / 3.7 + phase, phase * 0.37 + 11.3);
 			return Math.clamp(theta * env * f, 0.0, MeanderField.THETA_MAX);
@@ -195,7 +303,12 @@ final class RiverNetwork {
 		 * (into {@code out[1]}), from {@link MeanderField#distances}; {@code out} has at least 4 slots.
 		 */
 		void meanderDistances(double t, double lat, double[] out) {
-			double v = (lat - wanderAt(t)) / lambda;
+			meanderDistances(t, lat, wanderAt(t), out);
+		}
+
+		/** {@link #meanderDistances(double, double, double[])} with the bend {@code wander} = {@link #wanderAt}(t) known. */
+		void meanderDistances(double t, double lat, double wander, double[] out) {
+			double v = (lat - wander) / lambda;
 			MeanderField.distances(meanderU(t), v, thetaAt(t), out);
 			out[0] *= lambda;
 			out[1] *= lambda;
@@ -221,9 +334,21 @@ final class RiverNetwork {
 			return level0 + (level1 - level0) * t;
 		}
 
-		/** Valley bends without channel meanders: a gentle arc and a few bends at the scale of 1/5 of the segment length. */
+		/**
+		 * Valley bends without channel meanders: a gentle arc and a few bends at the scale of 1/5 of the segment length.
+		 * G1B: in the end quarters the slope of the arc at the node is subtracted (s − s'(end)·(t − end)·q², q falling
+		 * from 1 at the node to 0 at a quarter of the segment), so the valley axis has no kink at the nodes (M1: 15–72°),
+		 * while the middle half of the segment, and the river in it, stays where it was.
+		 */
 		double wanderAt(double t) {
 			double s = wander1 * Math.sin(Math.PI * t) + wander2 * Math.sin(2 * Math.PI * t);
+			if (t < G1B_TAU) {
+				double q = 1 - t / G1B_TAU;
+				s -= wanderSlope0 * t * q * q;
+			} else if (t > 1 - G1B_TAU) {
+				double q = 1 - (1 - t) / G1B_TAU;
+				s -= wanderSlope1 * (t - 1) * q * q;
+			}
 			double env = Noise.smoothstep(0, 0.2, t) * Noise.smoothstep(0, 0.2, 1 - t);
 			return s + 0.07 * len * env * noise.sample(t * 5 + phase * 0.13, phase * 0.71 - 3.3);
 		}
@@ -234,7 +359,9 @@ final class RiverNetwork {
 			double vz = z1 - z0;
 			double l2 = vx * vx + vz * vz;
 			double t = l2 < 1e-9 ? 0 : Math.clamp(((x - x0) * vx + (z - z0) * vz) / l2, 0.0, 1.0);
-			return Math.hypot(x - (x0 + vx * t), z - (z0 + vz * t));
+			double dx = x - (x0 + vx * t);
+			double dz = z - (z0 + vz * t);
+			return Math.sqrt(dx * dx + dz * dz);
 		}
 
 		double widthAt(double t) {
@@ -258,17 +385,296 @@ final class RiverNetwork {
 			return MeanderField.innerSide(meanderU(t), (lat - wanderAt(t)) / lambda, th);
 		}
 
+		/**
+		 * Bound of the bends of the valley axis, |{@link #wanderAt}| ≤ maxBend: the arc and the bends with the G1B end
+		 * correction (at most 0.12 |wander1| + 0.24 |wander2|) and the noise of the bends.
+		 */
+		final double maxBend;
+
+		/**
+		 * Bound of the lateral offset of the valley axis and the channel from the curve: the bends (with the G1B end
+		 * correction), the noise of the bends and the meanders.
+		 */
 		double maxLateral() {
-			return Math.abs(wander1) + Math.abs(wander2) + 0.1 * len + 1.1 * amp;
+			return 1.12 * Math.abs(wander1) + 1.24 * Math.abs(wander2) + 0.1 * len + 1.1 * Math.max(amp, ampEnd);
 		}
+
+		/** G2: deviation of the meander belt for the valley floor at t, continuous across the node with the next segment. */
+		double ampAt(double t) {
+			return ampEnd == amp ? amp : amp + (ampEnd - amp) * Noise.smoothstep(1 - ampBlend, 1.0, t);
+		}
+	}
+
+	/** G1B: share of the segment at each end over which the slope of the valley bends is removed. */
+	static final double G1B_TAU = 0.25;
+	/** G4: relative amplitude of the irregular edge of the valley floor (margin and meander belt × (1 + a · noise)). */
+	static final double EDGE_AMPLITUDE = 0.3;
+	/** G4: wavelengths (m·k) and weights of the two noise waves of the floor edge. */
+	static final double EDGE_WAVE_1 = 500;
+	static final double EDGE_WAVE_2 = 1_700;
+	static final double EDGE_WEIGHT_1 = 0.65;
+	static final double EDGE_WEIGHT_2 = 0.35;
+	/** G3: the mouth funnel widens the margin by this share of it plus {@link #FUNNEL_BASE} m·k. */
+	static final double FUNNEL_SHARE = 0.6;
+	static final double FUNNEL_BASE = 30;
+	/** G5: height radius (m) of the smooth minimum where the sides of two valleys meet. */
+	static final double SMOOTH_MIN_RADIUS = 4;
+	/** A5: floor margin right at the source, as a share of the full margin. */
+	static final double HEAD_MIN = 0.15;
+	/** A5: the floor margin grows to full over this many (margin + 40 m·k) from the source. */
+	static final double HEAD_GROWTH = 3;
+
+	/** G4: noise of the irregular floor edge at (x, z), two waves, roughly in [−1, 1] (computed once per column). */
+	private double edgeNoise(double x, double z) {
+		return EDGE_WEIGHT_1 * noise.at(x + 731_000, z - 113_000, EDGE_WAVE_1 * valleyScale)
+				+ EDGE_WEIGHT_2 * noise.at(x - 310_000, z + 977_000, EDGE_WAVE_2 * valleyScale);
+	}
+
+	/**
+	 * Margin of the valley floor beyond the channel half-width at t (floorHalf = w / 2 + margin), from the floodplain
+	 * margin {@code base} = (fpFactor · w + fpBase) · edge, where edge = 1 + {@link #EDGE_AMPLITUDE} · edge noise (G4:
+	 * the floor edges are not parallel lines for kilometers). A5: the floor of a source segment grows from
+	 * {@link #HEAD_MIN} of the margin at the source over {@link #HEAD_GROWTH} (margin + 40 m·k), so the valley head is an
+	 * arc instead of a full-width rectangle (the projection behind t = 0 is clamped to the start of the curve); the
+	 * meander belt of the floor narrows with it ({@link #floorBelt}).
+	 */
+	private double floorMargin(Segment s, double t, double base) {
+		return s.source ? base * headFactor(s, t, base) : base;
+	}
+
+	/** A5: share of the floor margin of a source segment at t (see {@link #floorMargin}). */
+	private double headFactor(Segment s, double t, double base) {
+		double grow = Noise.smoothstep(0, HEAD_GROWTH * (base + 40 * valleyScale), t * s.len);
+		return HEAD_MIN + (1 - HEAD_MIN) * grow;
+	}
+
+	/**
+	 * Meander belt of the valley floor at t, subtracted from the distance from the valley axis in floorDist: the largest
+	 * deviation of the channel from the axis ({@link Segment#ampAt}) times the lowland factor {@code beltK} and the G4
+	 * edge factor {@code edge}. A5: at a source segment it narrows with the floor margin ({@link #headFactor}), but never
+	 * below the meander amplitude the channel has there ({@link Segment#thetaAt} fades the meanders in over
+	 * {@link Segment#envelopeStart} of the segment from the source), so the channel stays on the floor. In the lowlands the
+	 * belt (up to about 2.4 amplitudes) is most of the floor, so with the margin alone the head stayed a rectangle of full
+	 * width cut off at the source (review of step K4).
+	 *
+	 * @param base floodplain margin as in {@link #floorMargin}
+	 */
+	private double floorBelt(Segment s, double t, double beltK, double edge, double base) {
+		double belt = s.ampAt(t) * beltK * edge;
+		if (!s.source || s.amp <= 0) {
+			return belt;
+		}
+		double head = headFactor(s, t, base);
+		if (head >= 1) {
+			return belt;
+		}
+		// Upper bound of the meander amplitude at t near the source: thetaAt ≤ 1.25 θ0 · (fade-in from the source).
+		double fadeIn = Noise.smoothstep(0, s.envelopeStart, t);
+		double local = MeanderField.amplitude(Math.min(MeanderField.THETA_MAX, 1.25 * s.theta * fadeIn)) * s.lambda;
+		return belt * Math.max(head, Math.min(1.0, local / s.amp));
+	}
+
+	/**
+	 * G3: widening of the floor at the mouth of a side tributary or a capture (a funnel over the last 4 (margin + 40 m·k)
+	 * of the segment) instead of a sharp straight spur where it cuts into the side of the larger valley, from the
+	 * floodplain margin {@code base} as in {@link #floorMargin} (with the A5 narrowing of a source segment). Added to
+	 * the floor of the terrain only: the floor of the fields (dominant valley F1, inFloor, u, floor half-width) stays
+	 * without it, because the funnel of a tributary reaching into the floor of a large river made the tributary dominant
+	 * in triangles of the river floor and gave it its waterside zones there (F2 at gameplay scale: 99.6% of the river
+	 * zones in the reach of the poplar riparian forest after K3, 72.7% with the funnel in the fields).
+	 */
+	private double funnelWidening(Segment s, double t, double base) {
+		if (!s.mouth) {
+			return 0;
+		}
+		double lf = 4 * (base + 40 * valleyScale);
+		double extra = (FUNNEL_SHARE * base + FUNNEL_BASE * valleyScale) * Noise.smoothstep(lf, 0.25 * lf, (1 - t) * s.len);
+		return s.source ? extra * headFactor(s, t, base) : extra;
+	}
+
+	/** K4b sweep cut: number of edges of the polyline of the valley axis of a segment (nodes at t = k / SWEEP_NODES). */
+	static final int SWEEP_NODES = 16;
+	/**
+	 * K4b sweep cut: the cut of a valley is deepened to its sweep cut only where that is deeper by more than this (m), so
+	 * that the terrain stays as the projection gives it wherever the projection is well conditioned (the sweep cut of
+	 * a straight or gently bent valley is within millimeters of it, or below it between the nodes).
+	 */
+	static final double SWEEP_TOLERANCE = 0.05;
+	/** Values per node of {@link Segment#sweepNodes} (curve point, curve tangent, axis point). */
+	static final int SWEEP_STRIDE = 6;
+	/** K4b sweep cut: edges of the axis polyline per block culled together ({@link Segment#sweepBlockSag}). */
+	static final int SWEEP_BLOCK = 4;
+
+	/**
+	 * K4b sweep cut of the valley of s at (x, z), decision D4 (the rest of A2 near the ends of short, bent segments):
+	 * the largest cut mask · (terrain − floor) over the cross-sections of the valley along the edges of the polyline of
+	 * its axis A(t) = P(t) + wander(t) · normal through the nodes t_k = k / {@link #SWEEP_NODES}. On each edge the
+	 * cross-section is measured from the nearest point of the edge (so about the distance from the axis itself; beyond
+	 * the ends of the segment the nearest point is the end of the axis, as for the projection), at a t extrapolated from
+	 * both nodes of the edge along their curve tangents by
+	 * along / speed (the largest speed of the curve downstream of the node and the smallest upstream, so that the floor is
+	 * not taken lower than the foot of the perpendicular gives to first order) and blended by the position on the edge.
+	 * Everything else (floor level and width, A5, G3, G4, the source head) is the cross-section of {@link #query} at that
+	 * t. Each edge gives a continuous function of (x, z) with a bounded gradient (the wall steepness, the stream gradient
+	 * and the terrain slope), and the sweep cut is their maximum, so it is continuous by construction, whatever the arms
+	 * of {@link #projectChannel} do: where the distance from the curve is nearly the same along a part of it, the soft t
+	 * of the projection moves fast between arms with very different floor levels (up to 0.1 of a steep segment, tens of
+	 * meters of floor), while the sweep cut takes the deepest of these cross-sections and changes at the wall steepness.
+	 * It also measures the side from the axis itself: the projection measures it at the perpendicular foot on the curve,
+	 * which is too far where the bends of the axis change fast (the axis passes nearer, by up to tens of meters at
+	 * gameplay scale), so there the sweep cut is deeper. A first version with point cross-sections at the nodes (distance
+	 * from the node axis point) left a crease at every node where that happens (review of K4, docs).
+	 *
+	 * <p>Only a cut deeper than {@code limit} matters (see {@link #query}), so the method returns 0 when no cross-section
+	 * can exceed it, skipping work by bounds: over the whole segment (the lowest floor, the widest floor and wall, the
+	 * distance from the curve minus the largest wander and sagitta, the box of the axis nodes), then block by block of
+	 * {@link #SWEEP_BLOCK} edges (the sagitta of the block), then cross-section by cross-section. The bounds only skip
+	 * cross-sections that cannot exceed the best one so far, so the result is the same as without them.
+	 *
+	 * @param floorOffset floor height above the water level at (x, z) ({@code floor − level} in {@link #query})
+	 * @param skel        distance from the curve, {@code out[8]} of {@link #projectChannel}
+	 * @return the sweep cut when it exceeds {@code limit}, otherwise 0
+	 */
+	private double sweepCut(Segment s, double x, double z, double terrain, double floorOffset, double fpFactor,
+			double fpBase, double edge, double beltK, double maxSlope, double skel, double limit) {
+		double minFloor = Math.min(s.level0, s.level1) + floorOffset;
+		double depthMax = terrain - minFloor;
+		if (depthMax <= limit) {
+			return 0;
+		}
+		double minWall = 20 * valleyScale;
+		double maxWall = maxWall();
+		double wallMax = Math.clamp(depthMax / maxSlope, minWall, maxWall);
+		double wMax = Math.max(s.width0, s.width1);
+		double beltMax = Math.max(s.amp, s.ampEnd) * beltK * edge;
+		// Upper bound of the half-width of the terrain floor (the G3 and A5 factors are at most 1).
+		double halfMax = wMax / 2 + (fpFactor * wMax + fpBase) * edge * (1 + FUNNEL_SHARE) + FUNNEL_BASE * valleyScale;
+		// Every point of the axis is at least skel − (largest wander) away and the polyline at most the largest sagitta
+		// nearer (1 m to spare for the wander sampled between the nodes), so no cross-section can cut more than this.
+		double reachMax = halfMax + wallMax;
+		double bx = x - s.x0;
+		double bz = z - s.z0;
+		// The polyline lies in the box of its nodes, so it is at least the distance from that box away.
+		double ox = Math.max(0, Math.max(s.sweepMinX - bx, bx - s.sweepMaxX));
+		double oz = Math.max(0, Math.max(s.sweepMinZ - bz, bz - s.sweepMaxZ));
+		double fdMin = Math.max(skel - s.sweepWanderMax - s.sweepSagMax - 1, Math.sqrt(ox * ox + oz * oz))
+				- wMax / 2 - beltMax;
+		if (fdMin >= reachMax || (1 - Noise.smoothstep(halfMax, reachMax, fdMin)) * depthMax <= limit) {
+			return 0;
+		}
+		int n = SWEEP_NODES;
+		float[] nd = s.sweepNodes;
+		float[] blockSag = s.sweepBlockSag;
+		double best = limit;
+		for (int c = 0; c < blockSag.length; c++) {
+			// Blocks of SWEEP_BLOCK edges: the nodes and edges of a block lie within its sagitta of the chord of the block,
+			// so a block that cannot cut deeper than best even from that distance is skipped as a whole.
+			int k0 = c * SWEEP_BLOCK;
+			int k1 = k0 + SWEEP_BLOCK;
+			int c0 = SWEEP_STRIDE * k0;
+			int c1 = SWEEP_STRIDE * k1;
+			double cx = nd[c1 + 4] - nd[c0 + 4];
+			double cz = nd[c1 + 5] - nd[c0 + 5];
+			double cpx = bx - nd[c0 + 4];
+			double cpz = bz - nd[c0 + 5];
+			double cl2 = cx * cx + cz * cz;
+			double cu = cl2 > 1e-12 ? Math.clamp((cpx * cx + cpz * cz) / cl2, 0.0, 1.0) : 0;
+			double cdx = cpx - cu * cx;
+			double cdz = cpz - cu * cz;
+			double blockFd = Math.sqrt(cdx * cdx + cdz * cdz) - blockSag[c] - wMax / 2 - beltMax;
+			if (blockFd >= reachMax || (1 - Noise.smoothstep(halfMax, reachMax, blockFd)) * depthMax <= best) {
+				continue;
+			}
+			double tPrev = 0;
+			for (int k = k0; k <= k1; k++) {
+				int i = SWEEP_STRIDE * k;
+				// t extrapolated from the node along its curve tangent (the largest speed downstream and the smallest
+				// upstream, so never further than the foot of the perpendicular gives to first order).
+				double along = (bx - nd[i]) * nd[i + 2] + (bz - nd[i + 1]) * nd[i + 3];
+				double tk = (double) k / n + along / (along >= 0 ? s.speedMax : s.speedMin);
+				if (k < k1 || k == n) {
+					// The cross-section at the node, from its axis point (the last node of a block belongs to the next).
+					double qx = bx - nd[i + 4];
+					double qz = bz - nd[i + 5];
+					best = sectionCut(s, Math.sqrt(qx * qx + qz * qz), tk, terrain, floorOffset, fpFactor, fpBase, edge, beltK,
+							maxSlope, wMax, beltMax, halfMax, reachMax, depthMax, best);
+				}
+				if (k > k0) {
+					// The cross-section along the edge from the previous node: from the nearest point of the edge, at the t
+					// of the two nodes blended by the position on the edge.
+					int h = i - SWEEP_STRIDE;
+					double ex = nd[i + 4] - nd[h + 4];
+					double ez = nd[i + 5] - nd[h + 5];
+					double px = bx - nd[h + 4];
+					double pz = bz - nd[h + 5];
+					double l2 = ex * ex + ez * ez;
+					double u = l2 > 1e-12 ? Math.clamp((px * ex + pz * ez) / l2, 0.0, 1.0) : 0;
+					if (u > 0 && u < 1) {
+						double dx = px - u * ex;
+						double dz = pz - u * ez;
+						best = sectionCut(s, Math.sqrt(dx * dx + dz * dz), tPrev + u * (tk - tPrev), terrain, floorOffset,
+								fpFactor, fpBase, edge, beltK, maxSlope, wMax, beltMax, halfMax, reachMax, depthMax, best);
+					}
+				}
+				tPrev = tk;
+			}
+		}
+		return best > limit ? best : 0;
+	}
+
+	/**
+	 * K4b sweep cut: the larger of {@code best} and the cut of the cross-section of s at distance {@code va} from the
+	 * valley axis and at t (clamped to [0, 1]), as in {@link #query}; the bounds over the segment ({@code halfMax},
+	 * {@code reachMax} = halfMax + the widest wall, {@code depthMax} from the lowest floor) skip it early.
+	 */
+	private double sectionCut(Segment s, double va, double tRaw, double terrain, double floorOffset, double fpFactor,
+			double fpBase, double edge, double beltK, double maxSlope, double wMax, double beltMax, double halfMax,
+			double reachMax, double depthMax, double best) {
+		double fdMin = va - wMax / 2 - beltMax;
+		// Bounds over the segment first (no t needed): beyond the reach, or not deeper than best even with the widest
+		// floor and wall and the lowest floor.
+		if (fdMin >= reachMax || (1 - Noise.smoothstep(halfMax, reachMax, fdMin)) * depthMax <= best) {
+			return best;
+		}
+		double t = Math.clamp(tRaw, 0.0, 1.0);
+		double w = s.widthAt(t);
+		double floor = s.levelAt(t) + floorOffset;
+		double wall = Math.clamp((terrain - floor) / maxSlope, 20 * valleyScale, maxWall());
+		if (s.source) {
+			floor = Math.max(floor, terrain - 0.5 * maxSlope * t * s.len);
+		}
+		double depth = terrain - floor;
+		// Bound of this cross-section (widest floor and meander belt of the segment) before the exact one.
+		if (depth <= best || (1 - Noise.smoothstep(halfMax, halfMax + wall, va - w / 2 - beltMax)) * depth <= best) {
+			return best;
+		}
+		double base = (fpFactor * w + fpBase) * edge;
+		double half = w / 2 + floorMargin(s, t, base) + funnelWidening(s, t, base);
+		double fd = Math.max(0, va - w / 2 - floorBelt(s, t, beltK, edge, base));
+		if (fd < half + wall) {
+			return Math.max(best, (1 - Noise.smoothstep(half, half + wall, fd)) * depth);
+		}
+		return best;
+	}
+
+	/** G5: polynomial smooth minimum of a and b with radius k (k ≤ 0: the ordinary minimum); lowers by at most k / 4. */
+	static double smoothMin(double a, double b, double k) {
+		if (!(k > 0)) {
+			return Math.min(a, b);
+		}
+		double h = Math.max(k - Math.abs(a - b), 0) / k;
+		return Math.min(a, b) - h * h * k * 0.25;
 	}
 
 	/**
 	 * Query result in a column.
 	 *
-	 * @param order         order of the watercourse whose valley dominates in the column (0 = none)
+	 * @param order         order of the watercourse whose valley dominates in the column (0 = none): the valley whose
+	 *                      floor the column lies deepest in (F1, key floorHalf − floorDist; a dry head never wins
+	 *                      against a floor, {@link #f1Key})
 	 * @param terrain       terrain after cutting the valleys (not higher than the input terrain)
-	 * @param valleyWeight  1 on the valley floor, decreasing on the slopes (to suppress lakes and substrate)
+	 * @param valleyWeight  1 on the valley floor, decreasing on the slopes (to suppress lakes and substrate);
+	 *                      maximum over the segments in range, so continuous where valleys meet
 	 * @param inFloor       the column is on the valley floor
 	 * @param waterLevel    water level when the column lies in the channel; otherwise {@link ColumnSample#NO_WATER}
 	 * @param channelBottom channel bottom (when in the channel)
@@ -284,9 +690,12 @@ final class RiverNetwork {
 	 * @param channelDist   d: distance from the bank of the nearest channel, continuous (≤ 0 in the channel, +∞ without a watercourse in range)
 	 * @param channelWidth  width of that channel (NaN without a watercourse)
 	 * @param channelLevel  water level of that channel, not rounded (NaN without a watercourse)
-	 * @param floorU        position on the valley floor of the dominant watercourse, 0 at the channel, 1 at the edge (NaN off the floor)
-	 * @param floorHalf     half-width of the floor of that valley (NaN without a watercourse)
-	 * @param slope         gradient of the dominant watercourse in ‰, at 1:1 scale (NaN without a watercourse)
+	 * @param floorU        position on the valley floor, 0 at the channel, 1 at the edge (NaN off the floor); minimum over
+	 *                      the floors containing the column
+	 * @param floorHalf     half-width of the valley floor (NaN without a watercourse); soft maximum over the segments
+	 *                      weighted by exp(key / τ), τ = {@link #F1_TAU} m·k, so continuous where floors overlap
+	 * @param slope         gradient of the dominant watercourse in ‰, at 1:1 scale (NaN without a watercourse); the same
+	 *                      soft maximum as {@code floorHalf}
 	 * @param convexBank    the column is on the inner side of a meander bend of the nearest channel
 	 * @param oxbowShore    distance from the shore of the oxbow lake, negative inside it (+∞ outside the 40 m·k ring)
 	 * @param oxbowMirror   water level of that oxbow lake, also in the ring around it
@@ -303,6 +712,8 @@ final class RiverNetwork {
 	 *                          like {@code channelDist}; +∞ without a watercourse
 	 * @param floorChannelWidth width of that channel (NaN without a watercourse)
 	 * @param floorChannelLevel water level of that channel, not rounded (NaN without a watercourse)
+	 * @param floorChannelGradient gradient of the segment of that channel in ‰, at 1:1 scale (NaN without a
+	 *                          watercourse); its own, not the soft maximum {@code slope}
 	 */
 	record RiverHit(int order, double terrain, double valleyWeight, boolean inFloor, int waterLevel,
 			double channelBottom, double bankLevel, boolean source, int oxbowLevel, double oxbowDepth, int lakeLevel,
@@ -310,7 +721,7 @@ final class RiverNetwork {
 			double channelWidth, double channelLevel, double floorU, double floorHalf, double slope,
 			boolean convexBank, double oxbowShore, int oxbowMirror, long oxbowId, double oxbowWidth, double ringShore,
 			int ringLevel, long ringId, double ringRadius, double floorChannelDist, double floorChannelWidth,
-			double floorChannelLevel) {
+			double floorChannelLevel, double floorChannelGradient) {
 		boolean inChannel() {
 			return waterLevel != ColumnSample.NO_WATER;
 		}
@@ -765,8 +1176,10 @@ final class RiverNetwork {
 		// is the default {1, 0} (no outflow), so a segment flowing west into it bent back east near its end, and the
 		// projection of points up to 2 km away fell onto the bend with a lateral distance of a few meters: straight
 		// valley wedges ending in cliffs up to 1 km high around the sink lakes of the massifs (review of step K2). Only
-		// near the massifs, so the M1 terrain elsewhere stays bit for bit until the golden file is regenerated; step K4
-		// extends it to every sink lake (docs/m2/poprawka-geometrii.md, K2).
+		// near the massifs: for every sink lake (planned in K2 for step K4) it moved large rivers far from the lakes (the
+		// mouth of a tributary on a segment ending in a sink lake moved by 3 km, and with it an order 3 segment of 85 km
+		// by up to 1 km), and the exact projection of step K4b no longer turns the bend into cliffs
+		// (docs/m2/poprawka-geometrii.md, K4).
 		boolean sinkEnd = down0 != null && link(down0).kind == SINK && model.greatMassifNear(
 				Math.min(n.x, down0.x) - spacing[n.order], Math.min(n.z, down0.z) - spacing[n.order],
 				Math.max(n.x, down0.x) + spacing[n.order], Math.max(n.z, down0.z) + spacing[n.order]);
@@ -827,6 +1240,22 @@ final class RiverNetwork {
 		double headFade = source ? 400 * valleyScale : 0.0;
 		Segment s = new Segment(n.order, n.x, n.z, x1, z1, t0, t1, level0, level1, width0, width1, wander1, wander2,
 				theta, lambda, phase, headFade, source, noise);
+		s.gradient = Math.max(0, level0 - level1) / s.len * spacing[n.order] / BASE_SPACING[n.order];
+		boolean mainDown = l.kind == NODE && isMainUpstream(n, node(n.order, l.di, l.dj));
+		if (mainDown) {
+			// G2: the meander belt (and with it the valley floor) passes into the belt of the next segment of the same
+			// watercourse over a few wavelengths and three times the difference of the amplitudes before the node, at
+			// most over the last half of the segment. Downstream only, so no cycles.
+			Segment down = segment(n.order, l.di, l.dj);
+			if (down != null) {
+				s.ampEnd = down.amp;
+				s.ampBlend = Math.min(0.5, (3 * Math.abs(down.amp - s.amp) + 2 * s.lambda) / s.len);
+			}
+		}
+		// G3: funnel only at the mouths of side tributaries and captures; at the sea it lowered the floor below 0 m next to
+		// the sea. (A segment whose own link is SINK is never built, segment(); a side tributary of a node draining to a
+		// sink lake keeps the funnel, see the field.)
+		s.mouth = !mainDown && l.kind != SEA;
 		// Bounding box of influence from the actual curve, enlarged by the meanders, valley floor and slopes.
 		double minX = Double.MAX_VALUE;
 		double maxX = -Double.MAX_VALUE;
@@ -843,19 +1272,100 @@ final class RiverNetwork {
 		for (int q = 0; q <= 24; q++) {
 			dev = Math.max(dev, s.chordDistance(s.px(q / 24.0), s.pz(q / 24.0)));
 		}
-		double reach = s.maxLateral() + floorHalfMax(Math.max(width0, width1)) + maxWall() + Math.max(width0, width1);
+		// K4.9: the floor distance subtracts the meander belt, up to ampAt · beltK · (1 + EDGE_AMPLITUDE · edge noise),
+		// i.e. about 3.1 amplitudes, while maxLateral holds only 1.1; 2.2 more keep the frame from relying on the slack
+		// of maxWall (segmentCullingIsInvisible).
+		double reach = s.maxLateral() + 2.2 * Math.max(s.amp, s.ampEnd) + floorHalfMax(Math.max(width0, width1))
+				+ maxWall() + Math.max(width0, width1);
 		s.chordDeviation = dev;
 		s.reach = reach;
+		// K4b sweep cut: per node the curve point and tangent (for t) and the axis point; the largest sagitta of the axis
+		// over an edge (measured at the middle of each edge) and the largest wander, for the bounds.
+		float[] nodes = new float[SWEEP_STRIDE * (SWEEP_NODES + 1)];
+		double wanderMax = 0;
+		double[] a = new double[2];
+		for (int k = 0; k <= SWEEP_NODES; k++) {
+			double t = (double) k / SWEEP_NODES;
+			double tx = s.dx(t);
+			double tz = s.dz(t);
+			double tl = Math.max(1e-9, Math.sqrt(tx * tx + tz * tz));
+			int i = SWEEP_STRIDE * k;
+			nodes[i] = (float) (s.px(t) - s.x0);
+			nodes[i + 1] = (float) (s.pz(t) - s.z0);
+			nodes[i + 2] = (float) (tx / tl);
+			nodes[i + 3] = (float) (tz / tl);
+			wanderMax = Math.max(wanderMax, axisPoint(s, t, a));
+			nodes[i + 4] = (float) (a[0] - s.x0);
+			nodes[i + 5] = (float) (a[1] - s.z0);
+		}
+		for (int k = 0; k < SWEEP_NODES; k++) {
+			int i = SWEEP_STRIDE * k;
+			double ax0 = nodes[i + 4] + s.x0;
+			double az0 = nodes[i + 5] + s.z0;
+			double ex = nodes[i + SWEEP_STRIDE + 4] - nodes[i + 4];
+			double ez = nodes[i + SWEEP_STRIDE + 5] - nodes[i + 5];
+			double el = Math.max(1e-9, Math.sqrt(ex * ex + ez * ez));
+			// The sagitta at the middle of the edge, doubled for the rest of the edge (it only loosens the bounds).
+			wanderMax = Math.max(wanderMax, axisPoint(s, (k + 0.5) / SWEEP_NODES, a));
+			double sag = Math.abs((a[0] - ax0) * ez - (a[1] - az0) * ex) / el;
+			s.sweepSagMax = Math.max(s.sweepSagMax, 2 * sag + 0.01);
+		}
+		s.sweepNodes = nodes;
+		s.sweepWanderMax = wanderMax;
+		float[] blockSag = new float[SWEEP_NODES / SWEEP_BLOCK];
+		for (int c = 0; c < blockSag.length; c++) {
+			int i0 = SWEEP_STRIDE * c * SWEEP_BLOCK;
+			int i1 = SWEEP_STRIDE * (c + 1) * SWEEP_BLOCK;
+			double ex = nodes[i1 + 4] - nodes[i0 + 4];
+			double ez = nodes[i1 + 5] - nodes[i0 + 5];
+			double l2 = Math.max(1e-12, ex * ex + ez * ez);
+			double sag = 0;
+			for (int k = c * SWEEP_BLOCK + 1; k < (c + 1) * SWEEP_BLOCK; k++) {
+				double px = nodes[SWEEP_STRIDE * k + 4] - nodes[i0 + 4];
+				double pz = nodes[SWEEP_STRIDE * k + 5] - nodes[i0 + 5];
+				double u = Math.clamp((px * ex + pz * ez) / l2, 0.0, 1.0);
+				double dx = px - u * ex;
+				double dz = pz - u * ez;
+				sag = Math.max(sag, Math.sqrt(dx * dx + dz * dz));
+			}
+			blockSag[c] = (float) (sag + 0.01);
+		}
+		s.sweepBlockSag = blockSag;
+		s.sweepMinX = Double.MAX_VALUE;
+		s.sweepMaxX = -Double.MAX_VALUE;
+		s.sweepMinZ = Double.MAX_VALUE;
+		s.sweepMaxZ = -Double.MAX_VALUE;
+		for (int k = 0; k <= SWEEP_NODES; k++) {
+			s.sweepMinX = Math.min(s.sweepMinX, nodes[SWEEP_STRIDE * k + 4]);
+			s.sweepMaxX = Math.max(s.sweepMaxX, nodes[SWEEP_STRIDE * k + 4]);
+			s.sweepMinZ = Math.min(s.sweepMinZ, nodes[SWEEP_STRIDE * k + 5]);
+			s.sweepMaxZ = Math.max(s.sweepMaxZ, nodes[SWEEP_STRIDE * k + 5]);
+		}
 		s.minX = minX - reach;
 		s.maxX = maxX + reach;
 		s.minZ = minZ - reach;
 		s.maxZ = maxZ + reach;
-		s.nearMassif = model.greatMassifNear(s.minX, s.minZ, s.maxX, s.maxZ);
 		return s;
 	}
 
+	/**
+	 * Bound of the floor half-width of a channel of width w: the widest floor (lowland: 5 w + 40 m·k) with the largest
+	 * irregular edge (G4, 1 + {@link #EDGE_AMPLITUDE} · 1.2) and the mouth funnel (G3, 0.6 of the margin + 30 m·k).
+	 */
 	private double floorHalfMax(double w) {
-		return w / 2 + 5 * w + 40 * valleyScale;
+		double f = (5 * w + 40 * valleyScale) * (1 + EDGE_AMPLITUDE * 1.2);
+		return w / 2 + f + 0.6 * f + 30 * valleyScale;
+	}
+
+	/** Point of the valley axis of s at t into {@code out}; returns |wander| there. */
+	private static double axisPoint(Segment s, double t, double[] out) {
+		double tx = s.dx(t);
+		double tz = s.dz(t);
+		double tl = Math.max(1e-9, Math.sqrt(tx * tx + tz * tz));
+		double w = s.wanderAt(t);
+		out[0] = s.px(t) - tz / tl * w;
+		out[1] = s.pz(t) + tx / tl * w;
+		return Math.abs(w);
 	}
 
 	/** Largest width of a valley side. */
@@ -907,29 +1417,37 @@ final class RiverNetwork {
 	}
 
 	/**
-	 * Position of a point relative to the watercourse, written to {@code out} (8 slots): {t, distance from the channel
+	 * Position of a point relative to the watercourse, written to {@code out} (9 slots): {t, distance from the channel
 	 * (with meanders), distance from the valley axis (with bends, without meanders), t of the nearest arm, lateral
 	 * distance from the curve on it, continuous distance from the channel (the d field, {@link MeanderField#distances}), t
-	 * and lateral distance of the arm that gives it}. The work arrays come from {@code sc} (thread buffer), so
+	 * and lateral distance of the arm that gives it, distance from the curve (the smallest over the arms)}. The work arrays come from {@code sc} (thread buffer), so
 	 * a column query does not allocate them for every segment.
 	 * <p>
-	 * The nearest point of the curve jumps between the arms of a bend when the point lies on the inner
-	 * side of the bend. Therefore all local distance minima are checked, and the position along the
-	 * watercourse (on which water level, width and valley growth depend) is their soft average
-	 * – continuous also where the jump happens. The distances are the minimum over the arms, so they are continuous as well.
+	 * The nearest point of the curve jumps between the arms of a bend when the point lies on the inner side of the bend.
+	 * Therefore all local distance minima (arms) are used: the position along the watercourse (on which water level,
+	 * width and valley growth depend) and the distances from the valley axis and from the channel are soft averages over
+	 * the arms, weighted by exp(−(distance − the smallest) / σ) times the distinctness of the arm (M1: the distances were
+	 * the minimum over the arms, which jumped where an arm was born next to an arm with another bend, e.g. at an end of
+	 * the segment, where the bends are 0).
+	 * <p>
+	 * K4b (decision D4): the arms are the exact local minima of the squared distance on [0, 1], found as the roots of the
+	 * quintic f(t) = (P(t) − X) · P'(t) ({@link #distanceMinima}). M1 found them by comparing 17 samples of the curve and
+	 * refining each with at most 5 Gauss-Newton steps inside its bracket. A weak minimum (a minimum-maximum pair between
+	 * two samples) then appeared and vanished in steps with a weight far from zero, a minimum at the end of the segment
+	 * was switched on and off by comparing two samples, and the refinement stopped at the edge of its bracket far from
+	 * the foot of the perpendicular (a lateral distance of a few meters for a point 2 km away). The soft t of a short,
+	 * steep order 1 stream then jumped by 0.1–0.2 of its length, and its valley level by tens of meters: the cliffs of
+	 * A2 on the slopes of the gameplay mountains. With exact minima an arm is born or dies only at a fold, where its
+	 * distinctness (fold) is 0, so its weight starts at 0, and an arm at an end of the segment turns continuously into an
+	 * interior one; t and the distances are therefore continuous by construction. They are steep only where the distance
+	 * is nearly the same along a part of the curve (the point near the center of curvature of an end of a short, bent
+	 * segment): the arms there have small weights that change fast, by up to tens of meters of valley floor over a few
+	 * centimeters. The terrain does not follow them there: {@link #query} deepens the cut of every valley to its sweep
+	 * cut ({@link #sweepCut}), which is continuous by construction (docs/m2/poprawka-geometrii.md, K4b).
 	 */
 	private static void projectChannel(Segment s, double px, double pz, Scratch sc, double[] out) {
-		final int n = 16;
-		double[] ds = sc.ds;
-		for (int q = 0; q <= n; q++) {
-			double t = (double) q / n;
-			double ex = s.px(t) - px;
-			double ez = s.pz(t) - pz;
-			ds[q] = ex * ex + ez * ez;
-		}
 		double bestSkel = Double.MAX_VALUE;
 		double dChannel = Double.MAX_VALUE;
-		double dValley = Double.MAX_VALUE;
 		double tNear = 0;
 		double latNear = 0;
 		double dSmooth = Double.MAX_VALUE;
@@ -937,60 +1455,45 @@ final class RiverNetwork {
 		double latSmooth = 0;
 		double[] md = sc.md;
 		double[] bt = sc.bt;
-		double[] bd = sc.bd;
 		double[] bf = sc.bf;
-		// As with a fresh array: without any minimum (e.g. NaN) t = 0.
-		bt[0] = 0;
-		int branches = 0;
-		for (int q = 0; q <= n; q++) {
-			boolean min = (q == 0 || ds[q] <= ds[q - 1]) && (q == n || ds[q] < ds[q + 1]);
-			if (!min) {
-				continue;
-			}
-			double t = refine(s, px, pz, (double) q / n, Math.max(0, q - 1.0) / n, Math.min(n, q + 1.0) / n);
+		double[] bva = sc.bva;
+		double[] bch = sc.bch;
+		double[] bchs = sc.bchs;
+		int branches = distanceMinima(s, px, pz, sc);
+		for (int b = 0; b < branches; b++) {
+			double t = bt[b];
 			double tx = s.dx(t);
 			double tz = s.dz(t);
-			double tl = Math.max(1e-12, Math.hypot(tx, tz));
+			double tl = Math.max(1e-12, Math.sqrt(tx * tx + tz * tz));
 			double ex = px - s.px(t);
 			double ez = pz - s.pz(t);
 			double along = (ex * tx + ez * tz) / tl;
 			double lat = (tx * ez - tz * ex) / tl;
+			double wander = s.wanderAt(t);
 			double skel;
 			double ch;
 			double chs;
 			double va;
-			// Distinctness of the minimum: 1 for a straight segment, 0 where the minimum vanishes (centre of curvature).
-			double fold = 1;
-			if (t > 0 && t < 1) {
-				double g = 1 - (ex * s.ddx(t) + ez * s.ddz(t)) / (tl * tl);
-				fold = Noise.smoothstep(0, 0.5, g);
-			}
+			// Weight of the arm: its distinctness, from g = ½ D''(t) / |P'|² (1 for a straight segment and at a point on the
+			// curve, 0 where the minimum is born or dies at a fold, i.e. at the center of curvature).
+			double g = 1 - (ex * s.ddx(t) + ez * s.ddz(t)) / (tl * tl);
+			double fold = Noise.smoothstep(0, ARM_FOLD, g);
 			if ((t <= 0 && along < 0) || (t >= 1 && along > 0)) {
-				// Beyond the end of the segment (meanders are faded out here): distance from the end of the axis.
-				skel = Math.hypot(lat, along);
-				va = Math.hypot(lat - s.wanderAt(t), along);
+				// Beyond the end of the segment (meanders are faded out here): distance from the end of the axis. The end is
+				// a minimum while the point lies behind it; it turns into an interior arm when the point comes level with
+				// it (along = 0, the weight is then the distinctness of that arm) and is a full arm END_BLEND behind it.
+				skel = Math.sqrt(lat * lat + along * along);
+				double lw = lat - wander;
+				va = Math.sqrt(lw * lw + along * along);
 				ch = va;
 				chs = va;
+				fold += (1 - fold) * Noise.smoothstep(0, END_BLEND, Math.abs(along));
 			} else {
 				skel = Math.abs(lat);
-				va = Math.abs(lat - s.wanderAt(t));
-				s.meanderDistances(t, lat, md);
+				va = Math.abs(lat - wander);
+				s.meanderDistances(t, lat, wander, md);
 				ch = md[0];
 				chs = md[1];
-				if (s.nearMassif && Math.abs(along) > 1e-3) {
-					// The refinement did not reach the foot of the perpendicular (a short, strongly bent segment: the
-					// Gauss-Newton step overshoots and stops at the edge of its bracket), so the lateral distance alone
-					// underestimates the distance, down to a few meters for a point 2 km away. The steep massif flanks
-					// turned such points into valley floors with cliffs (review of K2). The along component is added; at
-					// a converged minimum it is below a millimeter and skipped. Only near the massifs, so the M1 terrain
-					// elsewhere stays bit for bit until the golden file is regenerated; the projection fix of step K4b
-					// (decision D4) takes this over for every segment.
-					double a2 = along * along;
-					skel = Math.sqrt(skel * skel + a2);
-					va = Math.sqrt(va * va + a2);
-					ch = Math.sqrt(ch * ch + a2);
-					chs = Math.sqrt(chs * chs + a2);
-				}
 			}
 			if (ch < dChannel) {
 				dChannel = ch;
@@ -1002,26 +1505,69 @@ final class RiverNetwork {
 				tSmooth = t;
 				latSmooth = lat;
 			}
-			dValley = Math.min(dValley, va);
 			bestSkel = Math.min(bestSkel, skel);
-			if (branches < bt.length) {
-				bt[branches] = t;
-				bd[branches] = skel;
-				bf[branches] = fold;
-				branches++;
-			}
+			bf[b] = fold;
+			bva[b] = va;
+			bch[b] = ch;
+			bchs[b] = chs;
 		}
-		double tSoft = bt[0];
+		double tSoft = branches > 0 ? bt[0] : 0;
+		double dValley = branches > 0 ? bva[0] : Double.MAX_VALUE;
 		if (branches > 1) {
-			double sigma = 10 + 0.3 * bestSkel;
-			double sw = 0;
-			double st = 0;
+			// The position along the watercourse and the distances from the valley axis and from the channel are soft
+			// averages over the arms, each weighted by exp(−(its distance − the smallest) / σ) times the distinctness of
+			// the arm, which starts at 0 for a newborn arm. (The minimum over the arms jumped where an arm was born next to
+			// an arm with another bend, e.g. at an end of the segment, where the bends are 0: cliffs of 35 m on the
+			// gameplay massifs.) σ grows with a lower bound of the distance from the valley axis, not with the distance
+			// from the curve as in M1: the axis of a long segment can lie kilometers from the curve (bends up to 0.24 of
+			// the length), and a point by its channel 7.6 km from the curve then mixed in an arm 2 km away.
+			double sigma = 10 + 0.3 * Math.max(0, bestSkel - s.maxBend);
+			double vaMin = Double.MAX_VALUE;
+			double chMin = Double.MAX_VALUE;
+			double chsMin = Double.MAX_VALUE;
 			for (int b = 0; b < branches; b++) {
-				double wgt = Math.exp(-(bd[b] - bestSkel) / sigma) * (bf[b] + 1e-3);
-				sw += wgt;
-				st += wgt * bt[b];
+				vaMin = Math.min(vaMin, bva[b]);
+				chMin = Math.min(chMin, bch[b]);
+				chsMin = Math.min(chsMin, bchs[b]);
 			}
-			tSoft = st / sw;
+			double swv = 0;
+			double st = 0;
+			double sva = 0;
+			double swc = 0;
+			double sch = 0;
+			double sws = 0;
+			double schs = 0;
+			for (int b = 0; b < branches; b++) {
+				double f = bf[b];
+				double wv = Math.exp(-(bva[b] - vaMin) / sigma) * f;
+				double wc = Math.exp(-(bch[b] - chMin) / sigma) * f;
+				double ws = Math.exp(-(bchs[b] - chsMin) / sigma) * f;
+				swv += wv;
+				st += wv * bt[b];
+				sva += wv * bva[b];
+				swc += wc;
+				sch += wc * bch[b];
+				sws += ws;
+				schs += ws * bchs[b];
+			}
+			if (swv > 1e-300 && swc > 1e-300 && sws > 1e-300) {
+				tSoft = st / swv;
+				dValley = sva / swv;
+				dChannel = sch / swc;
+				dSmooth = schs / sws;
+			} else {
+				// Every arm at a fold (a point at a cusp of the evolute; measure zero): the arm nearest to the axis.
+				int nearest = 0;
+				for (int b = 1; b < branches; b++) {
+					if (bva[b] < bva[nearest]) {
+						nearest = b;
+					}
+				}
+				tSoft = bt[nearest];
+				dValley = bva[nearest];
+				dChannel = bch[nearest];
+				dSmooth = bchs[nearest];
+			}
 		}
 		out[0] = tSoft;
 		out[1] = dChannel;
@@ -1031,6 +1577,179 @@ final class RiverNetwork {
 		out[5] = dSmooth;
 		out[6] = tSmooth;
 		out[7] = latSmooth;
+		out[8] = bestSkel;
+	}
+
+	/**
+	 * K4b: distinctness g = ½ D''(t) / |P'|² at which an arm of the projection has its full weight; the weight is
+	 * smoothstep(0, ARM_FOLD, g), so it is 0 where the arm is born or dies at a fold (g = 0).
+	 */
+	static final double ARM_FOLD = 1.0;
+	/**
+	 * K4b: distance behind an end of the segment (m) over which the end, a constrained minimum, gains the full weight in
+	 * the soft t of {@link #projectChannel}; level with the end its weight is the distinctness of the interior arm it
+	 * turns into.
+	 */
+	static final double END_BLEND = 40;
+
+	/**
+	 * Exact local minima of the squared distance between (px, pz) and the segment curve on [0, 1], written in increasing
+	 * order of t to {@code sc.bt}; returns their number (at most 4). Interior minima are the roots of the quintic
+	 * f(t) = (P(t) − X) · P'(t) where f changes sign from − to +; t = 0 is a minimum when f(0) &gt; 0 and t = 1 when
+	 * f(1) &lt; 0 (the point lies behind that end). The roots are isolated without sampling: the roots of the derivatives
+	 * f''' (a quadratic, solved directly), f'' and f' split [0, 1] into intervals on which the next polynomial is
+	 * monotone, so each interval holds at most one of its roots, found by a safeguarded Newton iteration. No root can be
+	 * missed between samples, and the result is a continuous function of the point except where a pair of roots is born
+	 * or dies (a fold of the distance, where the weight of the arm is 0).
+	 */
+	static int distanceMinima(Segment s, double px, double pz, Scratch sc) {
+		double bx = s.x0 - px;
+		double bz = s.z0 - pz;
+		double[] p5 = sc.p5;
+		double[] p4 = sc.p4;
+		double[] p3 = sc.p3;
+		p5[0] = bx * s.cx1 + bz * s.cz1;
+		p5[1] = s.f1 + 2 * (bx * s.cx2 + bz * s.cz2);
+		p5[2] = s.f2 + 3 * (bx * s.cx3 + bz * s.cz3);
+		p5[3] = s.f3;
+		p5[4] = s.f4;
+		p5[5] = s.f5;
+		for (int i = 0; i < 5; i++) {
+			p4[i] = (i + 1) * p5[i + 1];
+		}
+		for (int i = 0; i < 4; i++) {
+			p3[i] = (i + 1) * p4[i + 1];
+		}
+		// f''' = p3[1] + 2 p3[2] t + 3 p3[3] t², then the roots of f'', f' and f, each between the roots of its derivative.
+		double[] r2 = sc.r2;
+		int n2 = quadraticRoots(p3[1], 2 * p3[2], 3 * p3[3], r2);
+		double[] r3 = sc.r3;
+		int n3 = rootsBetween(p3, 3, r2, n2, r3);
+		double[] r4 = sc.r4;
+		int n4 = rootsBetween(p4, 4, r3, n3, r4);
+		// Roots of f itself in order: minima of the distance where f rises, maxima where it falls. Every maximum lies
+		// between two minima (an end is a minimum when the point lies behind it). The barrier of a minimum is how much
+		// higher the distance rises at the neighboring maxima (+∞ on a side without one): 0 where the minimum is born or
+		// dies together with a maximum (a fold), or where an end becomes a minimum as a maximum enters through it.
+		double[] bt = sc.bt;
+		int n = 0;
+		double lo = 0;
+		double flo = p5[0];
+		if (flo > 0) {
+			bt[n++] = 0;
+		}
+		for (int k = 0; k <= n4; k++) {
+			double hi = k < n4 ? r4[k] : 1;
+			double fhi = eval(p5, 5, hi);
+			if (flo < 0 && fhi > 0) {
+				bt[n++] = solve(p5, 5, lo, hi, flo);
+			}
+			lo = hi;
+			flo = fhi;
+		}
+		if (flo < 0) {
+			bt[n++] = 1;
+		}
+		if (n == 0) {
+			// Only when f is exactly 0 at an end or at a double root (measure zero): the nearer end.
+			double ex1 = s.px(1) - px;
+			double ez1 = s.pz(1) - pz;
+			bt[n++] = bx * bx + bz * bz <= ex1 * ex1 + ez1 * ez1 ? 0 : 1;
+		}
+		return n;
+	}
+
+	/** Value of the polynomial c[0] + c[1] t + … + c[deg] t^deg (Horner). */
+	private static double eval(double[] c, int deg, double t) {
+		double v = c[deg];
+		for (int i = deg - 1; i >= 0; i--) {
+			v = v * t + c[i];
+		}
+		return v;
+	}
+
+	/**
+	 * Roots in (0, 1) of the polynomial c (degree deg) whose derivative has the roots {@code crit[0..nc)} in (0, 1), in
+	 * increasing order: c is monotone between them, so each interval holds at most one root. Returns their number.
+	 */
+	private static int rootsBetween(double[] c, int deg, double[] crit, int nc, double[] out) {
+		int n = 0;
+		double lo = 0;
+		double flo = c[0];
+		for (int k = 0; k <= nc; k++) {
+			double hi = k < nc ? crit[k] : 1;
+			double fhi = eval(c, deg, hi);
+			if (flo < 0 && fhi > 0 || flo > 0 && fhi < 0) {
+				out[n++] = solve(c, deg, lo, hi, flo);
+			}
+			lo = hi;
+			flo = fhi;
+		}
+		return n;
+	}
+
+	/**
+	 * Root of the polynomial c (degree deg) in (lo, hi), where it is monotone and changes sign (c(lo) = flo): Newton
+	 * steps kept inside the shrinking bracket, bisection when a step leaves it.
+	 */
+	private static double solve(double[] c, int deg, double lo, double hi, double flo) {
+		boolean neg = flo < 0;
+		double t = 0.5 * (lo + hi);
+		for (int it = 0; it < 60; it++) {
+			double v = c[deg];
+			double d = 0;
+			for (int i = deg - 1; i >= 0; i--) {
+				d = d * t + v;
+				v = v * t + c[i];
+			}
+			if (v == 0) {
+				return t;
+			}
+			if ((v < 0) == neg) {
+				lo = t;
+			} else {
+				hi = t;
+			}
+			double nt = t - v / d;
+			if (!(nt > lo && nt < hi)) {
+				nt = 0.5 * (lo + hi);
+			}
+			if (Math.abs(nt - t) <= 1e-12 || hi - lo <= 1e-12) {
+				return nt;
+			}
+			t = nt;
+		}
+		return t;
+	}
+
+	/** Roots in (0, 1) of a0 + a1 t + a2 t², in increasing order, written to out; returns their number. */
+	private static int quadraticRoots(double a0, double a1, double a2, double[] out) {
+		int n = 0;
+		if (Math.abs(a2) <= 1e-12 * (Math.abs(a1) + Math.abs(a0))) {
+			if (a1 != 0) {
+				double r = -a0 / a1;
+				if (r > 0 && r < 1) {
+					out[n++] = r;
+				}
+			}
+			return n;
+		}
+		double disc = a1 * a1 - 4 * a2 * a0;
+		if (disc <= 0) {
+			return 0;
+		}
+		double q = -0.5 * (a1 + Math.copySign(Math.sqrt(disc), a1));
+		double ra = q / a2;
+		double rb = q != 0 ? a0 / q : ra;
+		double lo = Math.min(ra, rb);
+		double hi = Math.max(ra, rb);
+		if (lo > 0 && lo < 1) {
+			out[n++] = lo;
+		}
+		if (hi > 0 && hi < 1 && hi != lo) {
+			out[n++] = hi;
+		}
+		return n;
 	}
 
 	/**
@@ -1038,12 +1757,24 @@ final class RiverNetwork {
 	 * slot is written before it is read, so stale values do not affect the result.
 	 */
 	private static final class Scratch {
-		final double[] ds = new double[17];
 		final double[] md = new double[4];
-		final double[] bt = new double[4];
-		final double[] bd = new double[4];
-		final double[] bf = new double[4];
-		final double[] pr = new double[8];
+		/**
+		 * Arms of the projection ({@link #distanceMinima}, at most 4 minima): t, distinctness, distance from the valley
+		 * axis, from the channel and the continuous distance from the channel.
+		 */
+		final double[] bt = new double[6];
+		final double[] bf = new double[6];
+		final double[] bva = new double[6];
+		final double[] bch = new double[6];
+		final double[] bchs = new double[6];
+		/** {@link #distanceMinima}: the quintic f and its derivatives f', f'' (coefficients), and their roots. */
+		final double[] p5 = new double[6];
+		final double[] p4 = new double[5];
+		final double[] p3 = new double[4];
+		final double[] r2 = new double[2];
+		final double[] r3 = new double[3];
+		final double[] r4 = new double[4];
+		final double[] pr = new double[9];
 		final double[] chHalf = new double[8];
 		final double[] chDist = new double[8];
 		final double[] chLevel = new double[8];
@@ -1052,7 +1783,7 @@ final class RiverNetwork {
 		/**
 		 * Candidates for the channel of the dominant valley (F2): every segment that passes the culling frame of
 		 * {@link #query}, in the order of the tile list, packed by {@value #FLOOR_STRIDE} values: {@code pr[5] − W/2},
-		 * W, the water level and the order. Primitive values only (no object references: no GC write barrier per
+		 * W, the water level, the order and the gradient of the segment (‰ at 1:1 scale). Primitive values only (no object references: no GC write barrier per
 		 * segment and no stale segments kept by the thread buffer). The buffer grows when a column has more
 		 * candidates than it holds (once per thread and model, since every {@link RiverNetwork} has its own thread
 		 * buffers), so no candidate is ever dropped: a fixed limit would skip the later ones in list order and could
@@ -1062,7 +1793,7 @@ final class RiverNetwork {
 		/** End of the used part of {@link #floor} (number of candidates × {@value #FLOOR_STRIDE}). */
 		int floorEnd;
 
-		void addFloorCandidate(double d, double w, double level, int order) {
+		void addFloorCandidate(double d, double w, double level, int order, double gradient) {
 			int q = floorEnd;
 			double[] f = floor;
 			if (q == f.length) {
@@ -1072,6 +1803,7 @@ final class RiverNetwork {
 			f[q + 1] = w;
 			f[q + 2] = level;
 			f[q + 3] = order;
+			f[q + 4] = gradient;
 			floorEnd = q + FLOOR_STRIDE;
 		}
 
@@ -1087,24 +1819,43 @@ final class RiverNetwork {
 	 * that columns do not exceed it, so the buffer does not have to grow in practice.
 	 */
 	static final int FLOOR_CANDIDATES = 64;
-	/** Values per candidate in {@link Scratch#floor}: distance from the bank, width, water level, order. */
-	static final int FLOOR_STRIDE = 4;
+	/** Values per candidate in {@link Scratch#floor}: distance from the bank, width, water level, order, gradient. */
+	static final int FLOOR_STRIDE = 5;
 
-	/** Newton iteration on the distance from the curve, within [lo, hi]. */
-	private static double refine(Segment s, double px, double pz, double t, double lo, double hi) {
-		for (int it = 0; it < 5; it++) {
-			double ex = s.px(t) - px;
-			double ez = s.pz(t) - pz;
-			double tx = s.dx(t);
-			double tz = s.dz(t);
-			double g = ex * tx + ez * tz;
-			double h = tx * tx + tz * tz;
-			if (h < 1e-12) {
-				break;
-			}
-			t = Math.clamp(t - g / h, lo, hi);
+	/** F1: temperature of the soft maximum of the floor half-width and the gradient, in m·k of depth in the floor. */
+	static final double F1_TAU = 15.0;
+	/** F1: the soft maximum only sums segments within this many τ of the deepest valley (weights below e^−8). */
+	static final double F1_SOFT_BAND = 8.0;
+	/**
+	 * F1: gap below zero for the key of a dry valley head (head fade ≤ 0.5), in m·k; see {@link #f1Key}.
+	 */
+	static final double F1_HEAD_GAP = 1.0;
+
+	/**
+	 * F1 key of a segment: the depth of the column in its valley floor, {@code kh = floorHalf − floorDist} (m, negative
+	 * off the floor). A dry valley head (head fade ≤ 0.5) has no floor, so its key is capped below zero: kh − δ off
+	 * its floor and −δ² / (δ + kh) on it (δ = {@link #F1_HEAD_GAP} m·k), continuous and increasing in kh and always
+	 * negative. A dry head therefore never dominates a valley floor (key > 0), so the column is in the floor of some
+	 * valley exactly when it is in the floor of the dominant one, but it keeps its own head and the area behind its
+	 * source against valleys whose floors are farther away, as in M1 (the review of K3: a fixed penalty handed the
+	 * whole dry head to an unrelated valley and made order and gradient jump on the straight fade-0.5 line).
+	 */
+	static double f1Key(double floorHalf, double floorDist, double fade, double valleyScale) {
+		double kh = floorHalf - floorDist;
+		if (fade > 0.5) {
+			return kh;
 		}
-		return t;
+		double gap = F1_HEAD_GAP * valleyScale;
+		return kh > 0 ? -gap * gap / (gap + kh) : kh - gap;
+	}
+
+	/**
+	 * Share of the meander belt in the valley floor, as a multiple of the meander amplitude (TE). It grows with the
+	 * lowland share smoothly between 0.2 and 0.4; M1 switched it on at lowland 0.3 with a jump of 1.4 · 0.3 amplitudes,
+	 * which made scarps of 5–20 m along the straight contours of the lowland share.
+	 */
+	static double meanderBeltFactor(double lowland) {
+		return 1 + 1.4 * lowland * Noise.smoothstep(0.2, 0.4, lowland);
 	}
 
 	/** Valley axis point at t (the channel crosses the axis here when t comes from {@link #axisCrossing}). */
@@ -1139,10 +1890,14 @@ final class RiverNetwork {
 
 	// ------------------------------------------------------------------ column query
 
-	/** Candidates (segments and lakes) for a 64 × 64 m tile, cached per thread. */
+	/**
+	 * Candidates (segments and lakes) for a 64 × 64 m tile, cached per thread. The thread local belongs to one network,
+	 * so the cache holds no reference back to it: with such a reference (M1, the field {@code owner}) the value kept its
+	 * own thread local reachable, and every network used on the threads of a pool stayed in memory with its caches
+	 * (the test JVM ran out of 3 GB after the K4 tests that build many segments).
+	 */
 	private static final class TileCache {
 		long key = Long.MIN_VALUE;
-		RiverNetwork owner;
 		final List<Segment> segments = new ArrayList<>();
 		final List<SinkLake> lakes = new ArrayList<>();
 		final Scratch scratch = new Scratch();
@@ -1152,19 +1907,19 @@ final class RiverNetwork {
 	 * Candidates of the tile containing (x, z). The segment list is built in a fixed order (order 3 to 1, then the
 	 * grid indices i and j), and a column only uses the segments that pass its own culling frame, so every column
 	 * gets the same candidates in the same order whichever tile, thread or sampling order produced the list. Ties in
-	 * {@link #query} (the dominant valley, the channel of the dominant valley) are resolved by this order, so it
-	 * must not change (e.g. to a hash set or to an order depending on which thread built a segment first).
+	 * {@link #query} (the dominant valley, the channel of the dominant valley) and the cut-off of the F1 soft maximum
+	 * ({@link #F1_SOFT_BAND}) depend on this order, so it must not change (e.g. to a hash set or to an order
+	 * depending on which thread built a segment first).
 	 */
 	private TileCache candidates(double x, double z) {
 		long tx = (long) Math.floor(x / tileSize);
 		long tz = (long) Math.floor(z / tileSize);
 		long k = Noise.key(tx, tz, 7);
 		TileCache c = tileCache.get();
-		if (c.key == k && c.owner == this) {
+		if (c.key == k) {
 			return c;
 		}
 		c.key = k;
-		c.owner = this;
 		c.segments.clear();
 		c.lakes.clear();
 		double lx = tx * tileSize;
@@ -1175,8 +1930,7 @@ final class RiverNetwork {
 			double a = spacing[order];
 			long gi = (long) Math.floor((lx + tileSize / 2) / a);
 			long gj = (long) Math.floor((lz + tileSize / 2) / a);
-			// The radius covers the longest segments (a gorge of up to 4 cells) and the full reach of the valley.
-			int r = Math.min(7, (int) Math.ceil((4.5 * a + maxWall() + 600 * valleyScale) / a) + 1);
+			int r = tileRadius(order);
 			for (long i = gi - r; i <= gi + r; i++) {
 				for (long j = gj - r; j <= gj + r; j++) {
 					Segment s = segment(order, i, j);
@@ -1195,6 +1949,16 @@ final class RiverNetwork {
 			}
 		}
 		return c;
+	}
+
+	/**
+	 * Radius (in grid cells of the order) around the tile center within which {@link #candidates} looks for segments: it
+	 * covers the longest segments (a gorge of up to 4 cells) and the full reach of the valley. Shared with
+	 * {@link #tileRadiusSegments}, so the test of the culling sees the same segments.
+	 */
+	private int tileRadius(int order) {
+		double a = spacing[order];
+		return Math.min(7, (int) Math.ceil((4.5 * a + maxWall() + 600 * valleyScale) / a) + 1);
 	}
 
 	/** Culling frame of {@link #query}: whether the segment can influence the column (x, z). */
@@ -1218,6 +1982,25 @@ final class RiverNetwork {
 	}
 
 	/**
+	 * Floor of the valley of one segment at (x, z), measured as in {@link #query} (test code only,
+	 * {@code valleyHeadsAreRounded}): {floorDist, floorHalf of the fields, terrainHalf with the mouth funnel}; the terrain
+	 * of the segment is its floor exactly where floorDist ≤ terrainHalf. Allocates.
+	 */
+	double[] floorGeometry(Segment s, double x, double z, double lowland, double foothills, double mountains) {
+		double fpFactor = 5.0 * lowland + 1.5 * foothills + 0.3 * mountains;
+		double fpBase = (40.0 * lowland + 10.0 * foothills + 2.0 * mountains) * valleyScale;
+		double edge = 1 + EDGE_AMPLITUDE * edgeNoise(x, z);
+		double[] pr = new double[9];
+		projectChannel(s, x, z, new Scratch(), pr);
+		double t = pr[0];
+		double w = s.widthAt(t);
+		double base = (fpFactor * w + fpBase) * edge;
+		double floorHalf = w / 2 + floorMargin(s, t, base);
+		double floorDist = Math.max(0, pr[2] - w / 2 - floorBelt(s, t, meanderBeltFactor(lowland), edge, base));
+		return new double[] {floorDist, floorHalf, floorHalf + funnelWidening(s, t, base)};
+	}
+
+	/**
 	 * Geometry of every segment of the given order that passes the culling frame at (x, z), measured as in
 	 * {@link #query} but without choosing a dominant valley (tests: the F2 measurement defines the river from its own
 	 * segments, independently of {@code best} and of the F2 fields). Per segment, in the order of the tile list:
@@ -1232,8 +2015,9 @@ final class RiverNetwork {
 		double fpFactor = 5.0 * lowland + 1.5 * foothills + 0.3 * mountains;
 		double fpBase = (40.0 * lowland + 10.0 * foothills + 2.0 * mountains) * valleyScale;
 		Scratch sc = new Scratch();
-		double[] pr = new double[8];
+		double[] pr = new double[9];
 		List<double[]> out = new ArrayList<>();
+		double edge = 1 + EDGE_AMPLITUDE * edgeNoise(x, z);
 		for (Segment s : candidates(x, z).segments) {
 			if (s.order != order || !inFrame(s, x, z)) {
 				continue;
@@ -1241,10 +2025,11 @@ final class RiverNetwork {
 			projectChannel(s, x, z, sc, pr);
 			double t = pr[0];
 			double w = s.widthAt(t);
-			double floorHalf = w / 2 + fpFactor * w + fpBase;
-			double floorDist = Math.max(0, pr[2] - w / 2 - s.amp * (1 + (lowland > 0.3 ? 1.4 * lowland : 0)));
+			double base = (fpFactor * w + fpBase) * edge;
+			double floorHalf = w / 2 + floorMargin(s, t, base);
+			double floorDist = Math.max(0, pr[2] - w / 2 - floorBelt(s, t, meanderBeltFactor(lowland), edge, base));
 			double fade = s.headFade > 0 ? Noise.smoothstep(0, s.headFade, t * s.len) : 1.0;
-			double slope = Math.max(0, s.level0 - s.level1) / s.len * spacing[s.order] / BASE_SPACING[s.order];
+			double slope = s.gradient;
 			out.add(new double[] {pr[5] - 0.5 * w, w, s.levelAt(t), floorDist, floorHalf, fade, slope * 1_000});
 		}
 		return out;
@@ -1260,6 +2045,46 @@ final class RiverNetwork {
 	 */
 	RiverHit query(double x, double z, double terrain, double lowland, double foothills, double mountains) {
 		TileCache c = candidates(x, z);
+		return query(x, z, terrain, lowland, foothills, mountains, c, c.segments, true);
+	}
+
+	/**
+	 * Every segment of the tile radius of {@link #candidates} at (x, z), without the box of influence (test code only,
+	 * {@code segmentCullingIsInvisible}).
+	 */
+	List<Segment> tileRadiusSegments(double x, double z) {
+		List<Segment> all = new ArrayList<>();
+		double lx = Math.floor(x / tileSize) * tileSize;
+		double lz = Math.floor(z / tileSize) * tileSize;
+		for (int order = 3; order >= 1; order--) {
+			double a = spacing[order];
+			long gi = (long) Math.floor((lx + tileSize / 2) / a);
+			long gj = (long) Math.floor((lz + tileSize / 2) / a);
+			int r = tileRadius(order);
+			for (long i = gi - r; i <= gi + r; i++) {
+				for (long j = gj - r; j <= gj + r; j++) {
+					Segment s = segment(order, i, j);
+					if (s != null) {
+						all.add(s);
+					}
+				}
+			}
+		}
+		return all;
+	}
+
+	/**
+	 * {@link #query} over the given segments only, without culling them (K4.9, tests): {@code segmentCullingIsInvisible}
+	 * passes {@link #tileRadiusSegments}, {@code valleyHeadsAreRounded} a single segment. The sink lakes are those of the
+	 * tile, as in {@link #query}. Test code only.
+	 */
+	RiverHit querySegments(double x, double z, double terrain, double lowland, double foothills, double mountains,
+			List<Segment> segments) {
+		return query(x, z, terrain, lowland, foothills, mountains, candidates(x, z), segments, false);
+	}
+
+	private RiverHit query(double x, double z, double terrain, double lowland, double foothills, double mountains,
+			TileCache c, List<Segment> segments, boolean cull) {
 		double fpFactor = 5.0 * lowland + 1.5 * foothills + 0.3 * mountains;
 		double fpBase = (40.0 * lowland + 10.0 * foothills + 2.0 * mountains) * valleyScale;
 		// Largest steepness of the valley sides (tangent) before the terrain returns to the original relief.
@@ -1268,8 +2093,19 @@ final class RiverNetwork {
 
 		double result = terrain;
 		double bank = Double.NEGATIVE_INFINITY;
+		double beltK = meanderBeltFactor(lowland);
+		// Dominant valley (F1): the valley whose floor the column lies deepest in, key = floorHalf − floorDist (m).
+		// The fields of the valley floor are continuous across overlapping floors: valleyWeight is the maximum and u
+		// the minimum over the segments, floorHalf and the gradient a soft maximum by the key (τ = F1_TAU m·k).
 		Segment best = null;
-		double bestScore = Double.MAX_VALUE;
+		double bestKey = Double.NEGATIVE_INFINITY;
+		double vwMax = 0;
+		double uMin = Double.POSITIVE_INFINITY;
+		double tau = F1_TAU * valleyScale;
+		double softBand = F1_SOFT_BAND * tau;
+		double sumW = 0;
+		double sumFh = 0;
+		double sumSl = 0;
 		double bestFloorHalf = 0;
 		double bestFloorDist = 0;
 		double bestT = 0;
@@ -1294,17 +2130,25 @@ final class RiverNetwork {
 		double nearT = 0;
 		double nearLat = 0;
 		sc.floorEnd = 0;
+		// G4: 1 + EDGE_AMPLITUDE · edge noise, computed lazily at the first segment in range (NaN until then).
+		double edge = Double.NaN;
+		// G5: largest floor mask of the segments so far.
+		double maskAcc = 0;
 
-		for (Segment s : c.segments) {
-			if (!inFrame(s, x, z)) {
+		for (Segment s : segments) {
+			if (cull && !inFrame(s, x, z)) {
 				continue;
+			}
+			if (edge != edge) {
+				edge = 1 + EDGE_AMPLITUDE * edgeNoise(x, z);
 			}
 			projectChannel(s, x, z, sc, pr);
 			double t = pr[0];
 			double d = pr[1];
 			double w = s.widthAt(t);
 			double level = s.levelAt(t);
-			sc.addFloorCandidate(pr[5] - 0.5 * w, w, level, s.order);
+			double sl = s.gradient;
+			sc.addFloorCandidate(pr[5] - 0.5 * w, w, level, s.order, sl);
 			// The d field from the continuous distance (pr[5]); the terrain still from pr[1], as in M1.
 			if (pr[5] - 0.5 * w < nearDist) {
 				nearDist = pr[5] - 0.5 * w;
@@ -1314,14 +2158,19 @@ final class RiverNetwork {
 				nearT = pr[6];
 				nearLat = pr[7];
 			}
-			double floorHalf = w / 2 + fpFactor * w + fpBase;
+			double base = (fpFactor * w + fpBase) * edge;
+			double floorHalf = w / 2 + floorMargin(s, t, base);
+			// G3: the floor of the terrain with the mouth funnel (the fields use floorHalf without it, funnelWidening).
+			double terrainHalf = floorHalf + funnelWidening(s, t, base);
 			// The valley floor is measured from the valley axis (without meanders), so it always contains the channel; in the lowlands
-			// it covers the whole meander belt on both sides.
-			double floorDist = Math.max(0, pr[2] - w / 2 - s.amp * (1 + (lowland > 0.3 ? 1.4 * lowland : 0)));
+			// it covers the whole meander belt on both sides (G2: continuous across the node; G4: with the irregular edge;
+			// A5: narrowed at the head, floorBelt).
+			double floorDist = Math.max(0, pr[2] - w / 2 - floorBelt(s, t, beltK, edge, base));
 			double fromSource = t * s.len;
 			double fade = s.headFade > 0 ? Noise.smoothstep(0, s.headFade, fromSource) : 1.0;
 			// Continuous valley floor (without water level steps), always at least 1.2 m above the water.
-			double floor = level + 1.2 + 1.0 * (0.5 + 0.5 * noise.at(x, z, 90 * valleyScale));
+			double floorOffset = 1.2 + 1.0 * (0.5 + 0.5 * noise.at(x, z, 90 * valleyScale));
+			double floor = level + floorOffset;
 			// Valley: the floor, and beyond it a side of limited steepness that blends smoothly into the relief.
 			double wall = Math.clamp((terrain - floor) / maxSlope, 20 * valleyScale, maxWall());
 			if (s.source) {
@@ -1329,12 +2178,59 @@ final class RiverNetwork {
 				// so the valley closes with a rounded funnel rather than a scarp – regardless of the segment length.
 				floor = Math.max(floor, terrain - 0.5 * maxSlope * fromSource);
 			}
-			double mask = 1 - Noise.smoothstep(floorHalf, floorHalf + wall, floorDist);
+			double mask = 1 - Noise.smoothstep(terrainHalf, terrainHalf + wall, floorDist);
 			double own = mask > 0 ? Noise.lerp(mask, terrain, floor) : terrain;
-			result = Math.min(result, own);
-			double score = floorDist / Math.max(1.0, floorHalf);
-			if (score < bestScore) {
-				bestScore = score;
+			// K4b (D4): the cut is at least the sweep cut minus SWEEP_TOLERANCE (continuous by construction; deeper than
+			// the cut of the projection only where the projection is ill-conditioned). A fill (floor above the terrain,
+			// cut < 0) is lowered only by what the sweep cut exceeds 0, so the deepening is continuous there too.
+			// The sweep cut matters only when it brings own below result + SMOOTH_MIN_RADIUS (G5 below takes the plain
+			// minimum otherwise, and the result only falls with further segments), so a smaller one is skipped (the
+			// terrain, and the cascade test of the channels, are the same either way).
+			double armsCut = Math.max(0, terrain - own);
+			double limit = Math.max(armsCut, terrain - result - SMOOTH_MIN_RADIUS) + SWEEP_TOLERANCE;
+			double deeper = sweepCut(s, x, z, terrain, floorOffset, fpFactor, fpBase, edge, beltK, maxSlope, pr[8], limit)
+					- SWEEP_TOLERANCE - armsCut;
+			if (deeper > 0) {
+				own -= deeper;
+			}
+			// G5: rounded junctions of the sides of two valleys (spurs, mouths) instead of a sharp crease; the ordinary
+			// minimum on the floors of both valleys and outside them (radius 0 where either mask is 0 or both are 1), so
+			// a segment present only in part of the tile lists cannot change the result. It lowers by at most a quarter of
+			// the radius: never below 0.3 m above this channel's water level and above the sea (at the coast the floor
+			// went below 0 m next to sea water).
+			double ka = SMOOTH_MIN_RADIUS * Math.min(1.0, 2 * Math.min(mask, maskAcc) * (1 - mask * maskAcc));
+			if (ka > 0) {
+				ka = Math.min(ka, 4 * Math.max(0, Math.min(result, own) - (Math.max(level, 0) + 0.3)));
+			}
+			result = smoothMin(result, own, ka);
+			maskAcc = Math.max(maskAcc, mask);
+			// F1. A dry valley head (fade ≤ 0.5) never wins against a floor (f1Key). Beyond floorHalf + 200 m·k the
+			// valley weight of the segment is 0, so the maximum and the minimum skip it (the same result, cheaper).
+			double key = f1Key(floorHalf, floorDist, fade, valleyScale);
+			if (floorDist < floorHalf + 200 * valleyScale) {
+				vwMax = Math.max(vwMax,
+						(1 - Noise.smoothstep(floorHalf, floorHalf + 200 * valleyScale, floorDist)) * fade);
+				if (floorDist < floorHalf && fade > 0.5) {
+					uMin = Math.min(uMin, floorDist / floorHalf);
+				}
+			}
+			// Soft maximum only within softBand of the deepest valley so far (further weights < 3.4e-4). When a new
+			// maximum appears, the sums are rescaled to it (or dropped when it is more than softBand higher).
+			if (key > bestKey - softBand) {
+				if (key > bestKey) {
+					double r = sumW > 0 && key < bestKey + softBand ? Math.exp((bestKey - key) / tau) : 0;
+					sumW *= r;
+					sumFh *= r;
+					sumSl *= r;
+				}
+				double wgt = key >= bestKey ? 1.0 : Math.exp((key - bestKey) / tau);
+				sumW += wgt;
+				sumFh += wgt * floorHalf;
+				sumSl += wgt * sl;
+			}
+			// Ties: the wider floor, then the earlier segment of the tile list (fixed order, see candidates).
+			if (key > bestKey || key == bestKey && floorHalf > bestFloorHalf) {
+				bestKey = key;
 				best = s;
 				bestFloorHalf = floorHalf;
 				bestFloorDist = floorDist;
@@ -1397,7 +2293,7 @@ final class RiverNetwork {
 		for (SinkLake lake : c.lakes) {
 			boolean terrainLake = nearTile(lake, tcx, tcz);
 			if (!terrainLake) {
-				// A lake from the habitat ring only. The shore lies at most 1.2 R from the centre (|noise| ≤ 1; here
+				// A lake from the habitat ring only. The shore lies at most 1.2 R from the center (|noise| ≤ 1; here
 				// with a margin, 1.3 R), so a column farther than the ring width from it cannot change the result: skip the noise.
 				double ex = x - lake.x;
 				double ez = z - lake.z;
@@ -1406,7 +2302,9 @@ final class RiverNetwork {
 					continue;
 				}
 			}
-			double dist = Math.hypot(x - lake.x, z - lake.z);
+			double ldx = x - lake.x;
+			double ldz = z - lake.z;
+			double dist = Math.sqrt(ldx * ldx + ldz * ldz);
 			double shore = dist - lake.radius * (1 + 0.2 * noise.at(x, z, Math.max(40, lake.radius * 0.6)));
 			if (shore < ringShore) {
 				ringShore = shore;
@@ -1434,17 +2332,16 @@ final class RiverNetwork {
 					lakeLevel, lakeShore, lakeDepth, lakeId, lakeRadius, Double.POSITIVE_INFINITY, Double.NaN,
 					Double.NaN, Double.NaN, Double.NaN, Double.NaN, false, Double.POSITIVE_INFINITY,
 					ColumnSample.NO_WATER, 0, Double.NaN, ringShore, ringLevel, ringId, ringRadius,
-					Double.POSITIVE_INFINITY, Double.NaN, Double.NaN);
+					Double.POSITIVE_INFINITY, Double.NaN, Double.NaN, Double.NaN);
 		}
+		// In the floor of some valley exactly when in the floor of the dominant one (its key is the largest, so positive).
 		boolean inFloor = bestFloorDist < bestFloorHalf && bestFade > 0.5;
-		double valleyWeight = (1 - Noise.smoothstep(bestFloorHalf, bestFloorHalf + 200 * valleyScale, bestFloorDist))
-				* bestFade;
+		double valleyWeight = vwMax;
 		int oxbowLevel = ColumnSample.NO_WATER;
 		double oxbowDepth = 0;
 		// Oxbow lakes only on flat lowlands and away from every channel.
 		// Gradient at realistic scale; oxbow lakes occur on lowland rivers with gradients up to about 1.5 ‰.
-		double bestSlope = Math.max(0, best.level0 - best.level1) / best.len * spacing[best.order]
-				/ BASE_SPACING[best.order];
+		double bestSlope = best.gradient;
 		double oxbowShore = Double.POSITIVE_INFINITY;
 		int oxbowMirror = ColumnSample.NO_WATER;
 		long oxbowId = 0;
@@ -1473,6 +2370,7 @@ final class RiverNetwork {
 		double floorChannelDist = Double.POSITIVE_INFINITY;
 		double floorChannelWidth = Double.NaN;
 		double floorChannelLevel = Double.NaN;
+		double floorChannelGradient = Double.NaN;
 		double minWidth = 0.5 * best.widthAt(bestT);
 		double[] f = sc.floor;
 		for (int q = 0, end = sc.floorEnd; q < end; q += FLOOR_STRIDE) {
@@ -1480,16 +2378,18 @@ final class RiverNetwork {
 				floorChannelDist = f[q];
 				floorChannelWidth = f[q + 1];
 				floorChannelLevel = f[q + 2];
+				floorChannelGradient = f[q + 4] * 1_000;
 			}
 		}
 		return new RiverHit(best.order, result, valleyWeight, inFloor, water, channelBottom, bank,
 				best.source && bestT < 0.5, oxbowLevel, oxbowDepth, lakeLevel, lakeShore, lakeDepth, lakeId,
-				lakeRadius, nearDist, nearWidth, nearLevel, inFloor ? bestFloorDist / bestFloorHalf : Double.NaN,
-				bestFloorHalf, bestSlope * 1_000, convex, oxbowShore, oxbowMirror, oxbowId, oxbowWidth, ringShore,
-				ringLevel, ringId, ringRadius, floorChannelDist, floorChannelWidth, floorChannelLevel);
+				lakeRadius, nearDist, nearWidth, nearLevel, inFloor ? uMin : Double.NaN,
+				sumFh / sumW, sumSl / sumW * 1_000, convex, oxbowShore, oxbowMirror, oxbowId, oxbowWidth, ringShore,
+				ringLevel, ringId, ringRadius, floorChannelDist, floorChannelWidth, floorChannelLevel,
+				floorChannelGradient);
 	}
 
-	/** Whether the lake passes the M1 candidate filter for the tile centred at (cx, cz); only such lakes change the terrain. */
+	/** Whether the lake passes the M1 candidate filter for the tile centered at (cx, cz); only such lakes change the terrain. */
 	private boolean nearTile(SinkLake lake, double cx, double cz) {
 		return Math.abs(lake.x - cx) < lake.radius * 1.6 + tileSize && Math.abs(lake.z - cz) < lake.radius * 1.6 + tileSize;
 	}

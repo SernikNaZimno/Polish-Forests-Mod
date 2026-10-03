@@ -58,6 +58,8 @@ final class SyntheticSample {
 	double floorChannelDist = Double.POSITIVE_INFINITY;
 	double floorChannelWidth = Double.NaN;
 	double floorChannelLevel = Double.NaN;
+	/** Gradient of the channel of the dominant valley; NaN = the same as {@link #channelGradient}. */
+	double floorChannelGradient = Double.NaN;
 	double o = 0.5;
 	double p = 0.1;
 
@@ -138,6 +140,13 @@ final class SyntheticSample {
 		return this;
 	}
 
+	/** Channel of the dominant valley (F2) with its own gradient (‰), when it differs from the soft maximum. */
+	SyntheticSample floorChannel(double d, double width, double level, double gradientPermille) {
+		floorChannel(d, width, level);
+		floorChannelGradient = gradientPermille;
+		return this;
+	}
+
 	SyntheticSample onValleyFloor(double uFloor, double halfWidth) {
 		inFloor = true;
 		u = uFloor;
@@ -161,7 +170,8 @@ final class SyntheticSample {
 				wCoastland, landformBits, convexity, duneHeight, ridgeProfile, massif, summit, cliffHeight, lowShore, bareSandWidth, sandiness, sb, slope, aspect);
 		ColumnSample.Waters w = new ColumnSample.Waters(streamOrder, headwaters, channelDist, channelWidth, channelLevel, inFloor, u,
 				floorHalfWidth, channelGradient, convexBank, s, shoreLevel, kind, ombrotrophicPeat, lakeId, radius,
-				floorChannelDist, floorChannelWidth, floorChannelLevel);
+				floorChannelDist, floorChannelWidth, floorChannelLevel,
+				Double.isNaN(floorChannelGradient) ? channelGradient : floorChannelGradient);
 		return new ColumnSample(surface, waterLevel, waterKind, type, substrate, 5, t, w,
 				new ColumnSample.Region(o, p));
 	}

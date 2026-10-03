@@ -115,13 +115,132 @@ class RiverNetworkTest {
 	}
 
 	/**
+	 * TE (step K3, docs/m2/poprawka-geometrii.md): the meander belt share of the valley floor grows smoothly with the
+	 * lowland share ({@link RiverNetwork#meanderBeltFactor}). In M1 it was switched on at lowland 0.3, which made
+	 * scarps of 5–20 m in the valleys along the straight contours of the lowland share. Realistic scale ±60 km every
+	 * 150 m along x, gameplay scale ±10 km every 25 m (1400 m region cells, many more crossings): every crossing of
+	 * lowland (with the coastland, as passed to the river network) through 0.3 is bisected to a pair of columns a few
+	 * µm apart, and a dry pair must not differ by more than 0.5 m. Crossings where the lowland share itself jumps (by
+	 * more than 10⁻⁴ between the two columns: a seam of the 3 × 3 region blend, A16, step K6; e.g. gameplay
+	 * (5727.8, 2725) jumps from 0.2904 to 0.3000) are not threshold crossings and are only counted. The frozen M1
+	 * copy is scanned the same way to show that the scan finds the old scarps.
+	 */
+	@Test
+	void noStepAtLowlandThreshold() {
+		lowlandThreshold(LandscapeScale.REALISTIC, pl.polishforests.worldgen.landscape.m1.LandscapeScale.REALISTIC, 60_000,
+				150, 500);
+		lowlandThreshold(LandscapeScale.GAMEPLAY, pl.polishforests.worldgen.landscape.m1.LandscapeScale.GAMEPLAY, 10_000, 25,
+				500);
+	}
+
+	private static void lowlandThreshold(LandscapeScale scale, pl.polishforests.worldgen.landscape.m1.LandscapeScale m1Scale,
+			double half, double step, int minCrossings) {
+		LandscapeModel m = new LandscapeModel(SEED, scale, 1.0);
+		ThresholdScan now = scanLowlandThreshold((x, z) -> {
+			LandscapeModel.Blend b = m.blend(x, z);
+			return b.weight(LandscapeType.OUTWASH_PLAIN) + b.weight(LandscapeType.MORAINE_PLATEAU)
+					+ b.weight(LandscapeType.OLD_GLACIAL_PLAIN) + b.weight(LandscapeType.COASTLAND);
+		}, (x, z) -> {
+			ColumnSample c = m.sample(x, z);
+			return c.hasWater() ? Double.NaN : c.surface();
+		}, half, step);
+		pl.polishforests.worldgen.landscape.m1.LandscapeModel old = new pl.polishforests.worldgen.landscape.m1.LandscapeModel(
+				SEED, m1Scale, 1.0);
+		ThresholdScan m1 = scanLowlandThreshold((x, z) -> {
+			pl.polishforests.worldgen.landscape.m1.LandscapeModel.Blend b = old.blend(x, z);
+			return b.weight(pl.polishforests.worldgen.landscape.m1.LandscapeType.SANDR)
+					+ b.weight(pl.polishforests.worldgen.landscape.m1.LandscapeType.WYSOCZYZNA_MORENOWA)
+					+ b.weight(pl.polishforests.worldgen.landscape.m1.LandscapeType.ROWNINA_STAROGLACJALNA)
+					+ b.weight(pl.polishforests.worldgen.landscape.m1.LandscapeType.POBRZEZE);
+		}, (x, z) -> {
+			pl.polishforests.worldgen.landscape.m1.ColumnSample c = old.sample(x, z);
+			return c.hasWater() ? Double.NaN : c.surface();
+		}, half, step);
+		System.out.println("Lowland threshold 0.3, " + scale.id() + ": now " + now + "; frozen M1 copy " + m1);
+		assertTrue(now.crossings() > minCrossings, scale.id() + ": too few threshold crossings: " + now.crossings());
+		assertTrue(m1.steps() > 0, scale.id() + ": the scan does not find the M1 scarps, so it proves nothing: " + m1);
+		assertTrue(now.steps() == 0, scale.id() + ": scarps at the lowland threshold: " + now);
+	}
+
+	private interface Field {
+		double at(double x, double z);
+	}
+
+	/**
+	 * Result of {@link #scanLowlandThreshold}: crossings of 0.3 with a continuous lowland share, dry pairs among them,
+	 * pairs differing by more than 0.5 m (the largest and its place), and crossings at a jump of the lowland share.
+	 */
+	private record ThresholdScan(int crossings, int dry, int steps, double worst, String where, int seams) {
+		@Override
+		public String toString() {
+			return String.format(Locale.ROOT, "%d crossings (%d dry), %d steps > 0.5 m (largest %.2f m at %s), %d blend seams",
+					crossings, dry, steps, worst, where, seams);
+		}
+	}
+
+	private static ThresholdScan scanLowlandThreshold(Field lowland, Field drySurface, double half, double step) {
+		int n = (int) Math.round(2 * half / step);
+		int crossings = 0;
+		int dry = 0;
+		int steps = 0;
+		int seams = 0;
+		double worst = 0;
+		String where = "-";
+		for (int iz = 0; iz <= n; iz++) {
+			double z = -half + iz * step;
+			double l0 = lowland.at(-half, z) - 0.3;
+			for (int ix = 0; ix < n; ix++) {
+				double xa = -half + ix * step;
+				double xb = xa + step;
+				double l1 = lowland.at(xb, z) - 0.3;
+				boolean crossing = l0 * l1 < 0;
+				double la = l0;
+				l0 = l1;
+				if (!crossing) {
+					continue;
+				}
+				for (int it = 0; it < 25; it++) {
+					double xm = 0.5 * (xa + xb);
+					double lm = lowland.at(xm, z) - 0.3;
+					if (la * lm <= 0) {
+						xb = xm;
+					} else {
+						xa = xm;
+						la = lm;
+					}
+				}
+				if (Math.abs(lowland.at(xa, z) - lowland.at(xb, z)) > 1e-4) {
+					seams++;
+					continue;
+				}
+				crossings++;
+				double ha = drySurface.at(xa, z);
+				double hb = drySurface.at(xb, z);
+				if (Double.isNaN(ha) || Double.isNaN(hb)) {
+					continue;
+				}
+				dry++;
+				double dh = Math.abs(ha - hb);
+				if (dh > 0.5) {
+					steps++;
+					if (dh > worst) {
+						worst = dh;
+						where = String.format(Locale.ROOT, "(%.1f, %.1f)", xa, z);
+					}
+				}
+			}
+		}
+		return new ThresholdScan(crossings, dry, steps, worst, where, seams);
+	}
+
+	/**
 	 * River rules of the large massifs (M2-8, step K2) on every massif of {@link GreatMassifSurvey}: no node of order
 	 * 1–3 in the core (G &gt; {@link LandscapeModel#GM_CORE}) is a spring and no segment starts its source there. The
 	 * cores are then measured on a grid ({@link #coreCut}: every 25 m at realistic scale, 10 m at gameplay scale) and
 	 * their valleys are held to the state after the review of K2:
 	 * <ul>
 	 * <li>summit area (G &gt; 0.9), i.e. no canyon in the dome: no water, cut ({@code landElevation} − surface) at most
-	 * {@link #SUMMIT_CUT} m (20 m realistic, 51 m gameplay);</li>
+	 * {@link #SUMMIT_CUT} m (21 m realistic, 59 m gameplay; the design asked for less than 50 m, see the limits);</li>
 	 * <li>the 1 km deep slot canyon of the first version of K2 at (260024, −1538766), realistic scale (G 0.87 on the
 	 * massif (258824, −1539366)): cut by at most 50 m (now 0);</li>
 	 * <li>whole core: at most {@link #CORE_FLOOR} columns on a valley floor or in water and none of them deeper in the
@@ -134,8 +253,8 @@ class RiverNetworkTest {
 	 * valleys at its foot. It is not a canyon in the dome, so it is only held at the measured state. The valley floors
 	 * on the core edge come from the segment curves: the rule of {@code RiverNetwork.link} checks the straight path
 	 * between nodes, while the curve (tangents, wander) of a long segment bulges up to G 0.50 (an order 2 source segment
-	 * at (142063, −1477272) on the massif (143663, −1476297)); step K4 changes the segment geometry and must measure
-	 * this again (docs/m2/poprawka-geometrii.md, K2).
+	 * at (142063, −1477272) on the massif (143663, −1476297)); step K4 changed the segment geometry and measured this
+	 * again (the same deepest place, docs/m2/poprawka-geometrii.md, K4).
 	 */
 	@Test
 	void noSpringsOnMassifCore() {
@@ -190,17 +309,26 @@ class RiverNetworkTest {
 	}
 
 	/**
-	 * Limits of {@link #noSpringsOnMassifCore}, realistic and gameplay scale, measured after the review of K2 (summit
-	 * cut 19.6 and 50.6 m, core cut 741.3 and 855.6 m, 1598 and 326 floor columns, the deepest at G 0.502 and 0.355).
-	 * Largest cut of the summit area (G &gt; 0.9) in m.
+	 * Limits of {@link #noSpringsOnMassifCore}, realistic and gameplay scale, measured after step K4 (the valley geometry:
+	 * irregular floor edge G4, the node continuity G1B, the projection on exact minima and the sweep cut K4b, the
+	 * narrowed meander belt at the heads A5): summit cut 20.5 and 58.0 m (after the review of K2: 19.6 and 50.6 m), core
+	 * cut 737.3 and 855.8 m (741.3, 855.6), 1604 and 151 floor columns (1598, 326), the deepest at G 0.502 and 0.345
+	 * (0.502, 0.355). Largest cut of the summit area (G &gt; 0.9) in m.
+	 *
+	 * <p>Deviation from the design (criterion: cut of the summit area below 50 m; docs/m2/poprawka-geometrii.md, K4): at
+	 * gameplay scale the deepest cut, 58.0 m at (109362, 285955) on the massif (109062, 285995), is the upper edge of the
+	 * side of a 1470 m deep valley of an order 1 stream on the flank, 531 m from its valley axis, where the side (up to
+	 * 600 m wide at gameplay scale) is steeper than 3 m per 1 m. Before the sweep cut the projection measured 548 m from
+	 * the axis (the perpendicular foot on the curve; the axis bulges 17 m closer at t ≈ 0.4) and the cut was 36 m there,
+	 * 51.5 m elsewhere. It is not a canyon in the dome (no floor and no water in the summit areas).
 	 */
-	static final double[] SUMMIT_CUT = {20, 51};
+	static final double[] SUMMIT_CUT = {21, 59};
 	/** Largest cut of the core (G &gt; 0.3) in m. */
 	static final double[] CORE_CUT = {742, 856};
 	/** Largest number of core columns on a valley floor or in water. */
-	static final int[] CORE_FLOOR = {1_598, 326};
+	static final int[] CORE_FLOOR = {1_604, 151};
 	/** Largest massif strength G of a core column on a valley floor or in water. */
-	static final double[] CORE_FLOOR_G = {0.51, 0.36};
+	static final double[] CORE_FLOOR_G = {0.51, 0.35};
 
 	/**
 	 * Valleys on the cores of the massifs of {@link GreatMassifSurvey}: columns with G &gt; 0.3 on a grid every 25 m
@@ -284,8 +412,12 @@ class RiverNetworkTest {
 	 * {@link GreatMassifSurvey} (G &gt; 0 at the source, at most {@value #MASSIF_SOURCES} per massif in the order of the node
 	 * grid), in both scales, and also behind the source: transects across the valley at t from −0.5 (on the extension
 	 * of the valley axis behind the source) to 0.5, ±60 m·k wide. The first version of K2 had straight valley wedges
-	 * with head walls of 100–380 m behind such sources. The limits {@link #MASSIF_SOURCE_STEP} are the state after the
-	 * review of K2; the goal of decision D4 (step K4b) is the 3 m per 1 m of {@link #mountainStreamSourcesHaveNoCliffs}.
+	 * with head walls of 100–380 m behind such sources. Two measures per 1 m (in x and in z, dry columns): the plain
+	 * step, held at the measured state {@link #MASSIF_SOURCE_STEP}, and the valley-made step, the plain step beyond the
+	 * step of the terrain before valleys ({@code rawSurface}), which decision D4 (step K4b) holds to the 3 m per 1 m of
+	 * {@link #mountainStreamSourcesHaveNoCliffs}. The plain step cannot meet that goal at gameplay scale: the domes of the
+	 * massifs (step K2) are steeper than 3 m per 1 m over 100–170 m without any valley (review of K4), and a valley side
+	 * cut into such a flank adds its own steepness.
 	 */
 	@Test
 	void massifStreamSourcesHaveNoCliffs() {
@@ -294,23 +426,33 @@ class RiverNetworkTest {
 			SourceCliffs r = massifSourceCliffs(m);
 			int k = sc == LandscapeScale.REALISTIC ? 0 : 1;
 			System.out.printf(Locale.ROOT, "%s: %d sources on the massif flanks, largest step %.2f m per 1 m at %s (limit "
-					+ "%.2f m, goal 3 m)%n", sc.id(), r.sources(), r.worst(), r.where(), MASSIF_SOURCE_STEP[k]);
+					+ "%.2f m); largest valley-made step %.2f m per 1 m at %s (D4 limit %.1f m)%n", sc.id(), r.sources(), r.worst(),
+					r.where(), MASSIF_SOURCE_STEP[k], r.worstExcess(), r.whereExcess(), MASSIF_SOURCE_EXCESS);
 			assertTrue(r.sources() >= 20, sc.id() + ": only " + r.sources() + " sources on the massif flanks");
 			assertTrue(r.worst() <= MASSIF_SOURCE_STEP[k], sc.id() + ": cliff at a source on a massif flank: " + r.worst()
 					+ " m per 1 m at " + r.where());
+			assertTrue(r.worstExcess() <= MASSIF_SOURCE_EXCESS, sc.id() + ": valley-made cliff at a source on a massif flank: "
+					+ r.worstExcess() + " m per 1 m at " + r.whereExcess());
 		}
 	}
 
 	static final int MASSIF_SOURCES = 12;
 	/**
-	 * Largest step per 1 m at the sources on the massif flanks, realistic and gameplay scale, measured after the review of
-	 * K2: 1.46 m (108 sources) and 25.87 m (300 sources; at (4989.7, −33301.9) on the massif by the spawn, a jump of the
-	 * projection of a short order 1 segment, A2, step K4b).
+	 * Largest step per 1 m at the sources on the massif flanks, realistic and gameplay scale. After the review of K2: 1.46
+	 * m (108 sources) and 25.87 m (300 sources; at (4989.7, −33301.9) on the massif by the spawn, a jump of the projection
+	 * of a short order 1 segment, A2). After step K4 with K4b (exact distance minima and the sweep cut,
+	 * docs/m2/poprawka-geometrii.md, K4b): 1.46 m and 4.06 m at (−186812.8, −274959.9), where the terrain before valleys
+	 * already falls 2.7 m per 1 m (the valley-made part is 1.3 m).
 	 */
-	static final double[] MASSIF_SOURCE_STEP = {1.5, 25.9};
+	static final double[] MASSIF_SOURCE_STEP = {1.5, 4.1};
+	/** Decision D4: largest valley-made step per 1 m (beyond the step of {@code rawSurface}) at those sources. */
+	static final double MASSIF_SOURCE_EXCESS = 3.0;
 
-	/** Sources checked by {@link #massifStreamSourcesHaveNoCliffs} and the largest step per 1 m found at them. */
-	record SourceCliffs(int sources, double worst, String where) {
+	/**
+	 * Sources checked by {@link #massifStreamSourcesHaveNoCliffs}, the largest step per 1 m found at them and the largest
+	 * valley-made step (the step beyond the step of the terrain before valleys).
+	 */
+	record SourceCliffs(int sources, double worst, String where, double worstExcess, String whereExcess) {
 	}
 
 	static SourceCliffs massifSourceCliffs(LandscapeModel m) {
@@ -338,11 +480,14 @@ class RiverNetworkTest {
 				}
 			}
 		}
-		// {largest step, x, z} per source.
+		// {largest step, x, z, largest valley-made step, x, z} per source.
 		double[][] worst = sources.parallelStream().map(seg -> {
 			double best = 0;
 			double bx = 0;
 			double bz = 0;
+			double bestExcess = 0;
+			double ex = 0;
+			double ez = 0;
 			double l0 = Math.hypot(seg.dx(0), seg.dz(0));
 			for (int q = -10; q <= 10; q++) {
 				double t = q * 0.05;
@@ -368,19 +513,33 @@ class RiverNetworkTest {
 						bx = x;
 						bz = z;
 					}
+					double r0 = c0.terrain().rawSurface();
+					double excess = Math.max(Math.abs(c1.surface() - h0) - Math.abs(c1.terrain().rawSurface() - r0),
+							Math.abs(c2.surface() - h0) - Math.abs(c2.terrain().rawSurface() - r0));
+					if (excess > bestExcess) {
+						bestExcess = excess;
+						ex = x;
+						ez = z;
+					}
 				}
 			}
-			return new double[] {best, bx, bz};
+			return new double[] {best, bx, bz, bestExcess, ex, ez};
 		}).toArray(double[][]::new);
 		double w = 0;
 		String where = "-";
+		double we = 0;
+		String whereExcess = "-";
 		for (double[] v : worst) {
 			if (v[0] > w) {
 				w = v[0];
 				where = String.format(Locale.ROOT, "(%.1f, %.1f)", v[1], v[2]);
 			}
+			if (v[3] > we) {
+				we = v[3];
+				whereExcess = String.format(Locale.ROOT, "(%.1f, %.1f)", v[4], v[5]);
+			}
 		}
-		return new SourceCliffs(sources.size(), w, where);
+		return new SourceCliffs(sources.size(), w, where, we, whereExcess);
 	}
 
 	/**
@@ -665,6 +824,318 @@ class RiverNetworkTest {
 			assertTrue(MeanderField.innerSide(u, v0 - 0.03, theta) != leftInner, "side -v at u = " + u);
 		}
 		assertFalse(MeanderField.innerSide(0.0, 0.03, 0.0), "without meanders no bank is convex");
+	}
+
+	/**
+	 * K4.9 (docs/m2/poprawka-geometrii.md): the culling of segments in {@code RiverNetwork.query} (the box of influence
+	 * of the tile list and the chord frame) changes nothing visible. On random points of both scales (uniform in a large
+	 * square and in the windows of {@link SurfaceContinuityTest}) the query with culling and without it (every segment
+	 * of the tile radius) must give identical terrain, water level, bank, valley weight and floor flag; where the column
+	 * is in reach of a valley (valley weight &gt; 0 or on a floor) also the dominant valley and its fields (order, u, floor
+	 * half-width, gradient, source), and the channel of the dominant valley (F2) and the nearest channel when nearer
+	 * than the reach of the waterside zones (300 m·k).
+	 */
+	@Test
+	void segmentCullingIsInvisible() {
+		for (LandscapeScale sc : new LandscapeScale[] {LandscapeScale.REALISTIC, LandscapeScale.GAMEPLAY}) {
+			LandscapeModel m = new LandscapeModel(SEED, sc, 1.0);
+			RiverNetwork net = networkOf(m);
+			java.util.Random rnd = new java.util.Random(409);
+			List<double[]> points = new ArrayList<>();
+			// 10 000 points per scale (the design: 20 000 in both), 400 in each window and the rest in a moderate square:
+			// every point builds the segments of the whole tile radius (hundreds), so points spread over a much larger area
+			// would fill the segment caches.
+			List<SurfaceContinuityTest.Window> windows = SurfaceContinuityTest.windows().filter(w -> w.scale() == sc).toList();
+			double area = sc == LandscapeScale.REALISTIC ? 60_000 : 12_000;
+			for (int k = 0; k < CULLING_POINTS - 400 * windows.size(); k++) {
+				points.add(new double[] {(rnd.nextDouble() * 2 - 1) * area, (rnd.nextDouble() * 2 - 1) * area});
+			}
+			for (SurfaceContinuityTest.Window w : windows) {
+				for (int k = 0; k < 400; k++) {
+					points.add(new double[] {w.cx() + (rnd.nextDouble() * 2 - 1) * w.radius(),
+							w.cz() + (rnd.nextDouble() * 2 - 1) * w.radius()});
+				}
+			}
+			double zones = 300 * sc.local();
+			// {compared, in reach of a valley, differences}
+			long[] cnt = new long[3];
+			String[] first = {null};
+			points.parallelStream().forEach(p -> {
+				double x = p[0];
+				double z = p[1];
+				if (m.coastDistance(x, z) < 0) {
+					return;
+				}
+				LandscapeModel.Blend b = m.blend(x, z);
+				double lowland = b.weight(LandscapeType.OUTWASH_PLAIN) + b.weight(LandscapeType.MORAINE_PLATEAU)
+						+ b.weight(LandscapeType.OLD_GLACIAL_PLAIN) + b.weight(LandscapeType.COASTLAND);
+				double foothills = b.weight(LandscapeType.FOOTHILLS);
+				double mountains = b.weight(LandscapeType.BESKIDS);
+				double terrain = m.landElevation(x, z);
+				RiverNetwork.RiverHit a = net.query(x, z, terrain, lowland, foothills, mountains);
+				RiverNetwork.RiverHit u = net.querySegments(x, z, terrain, lowland, foothills, mountains,
+						net.tileRadiusSegments(x, z));
+				List<String> diff = new ArrayList<>();
+				same(diff, "terrain", a.terrain(), u.terrain());
+				same(diff, "valleyWeight", a.valleyWeight(), u.valleyWeight());
+				same(diff, "bankLevel", a.bankLevel(), u.bankLevel());
+				same(diff, "waterLevel", a.waterLevel(), u.waterLevel());
+				same(diff, "channelBottom", a.channelBottom(), u.channelBottom());
+				same(diff, "inFloor", a.inFloor() ? 1 : 0, u.inFloor() ? 1 : 0);
+				boolean reach = a.valleyWeight() > 0 || a.inFloor();
+				if (reach) {
+					same(diff, "order", a.order(), u.order());
+					same(diff, "floorU", a.floorU(), u.floorU());
+					same(diff, "floorHalf", a.floorHalf(), u.floorHalf());
+					same(diff, "slope", a.slope(), u.slope());
+					same(diff, "source", a.source() ? 1 : 0, u.source() ? 1 : 0);
+					if (Math.min(a.floorChannelDist(), u.floorChannelDist()) < zones) {
+						same(diff, "floorChannelDist", a.floorChannelDist(), u.floorChannelDist());
+						same(diff, "floorChannelWidth", a.floorChannelWidth(), u.floorChannelWidth());
+						same(diff, "floorChannelLevel", a.floorChannelLevel(), u.floorChannelLevel());
+						same(diff, "floorChannelGradient", a.floorChannelGradient(), u.floorChannelGradient());
+					}
+				}
+				if (Math.min(a.channelDist(), u.channelDist()) < zones) {
+					same(diff, "channelDist", a.channelDist(), u.channelDist());
+					same(diff, "channelWidth", a.channelWidth(), u.channelWidth());
+					same(diff, "channelLevel", a.channelLevel(), u.channelLevel());
+				}
+				synchronized (cnt) {
+					cnt[0]++;
+					cnt[1] += reach ? 1 : 0;
+					if (!diff.isEmpty()) {
+						cnt[2]++;
+						if (first[0] == null) {
+							first[0] = String.format(Locale.ROOT, "(%.2f, %.2f): %s", x, z, diff);
+						}
+					}
+				}
+			});
+			System.out.printf(Locale.ROOT, "[culling] %s: %d points (%d in reach of a valley), %d differ%s%n", sc.id(), cnt[0],
+					cnt[1], cnt[2], first[0] == null ? "" : ", e.g. " + first[0]);
+			assertTrue(cnt[1] > 1_000, sc.id() + ": too few points in reach of a valley: " + cnt[1]);
+			assertTrue(cnt[2] == 0, sc.id() + ": the culling of segments is visible in " + cnt[2] + " points, e.g. " + first[0]);
+		}
+	}
+
+	/** Points per scale of {@link #segmentCullingIsInvisible}. */
+	static final int CULLING_POINTS = 10_000;
+
+	private static void same(List<String> diff, String name, double a, double b) {
+		if (Double.compare(a, b) != 0) {
+			diff.add(name + " " + a + " vs " + b);
+		}
+	}
+
+	/**
+	 * G1B (step K4): the valley axis (the curve shifted by the bends, {@code wanderAt}) has no kink at the nodes where a
+	 * watercourse continues into the next segment of the same order (the main tributary). Before K4 the axis broke there
+	 * by 15–72° (median 15–22°), because the bends had a nonzero slope at the ends. Measured on all segments of the given
+	 * grid ranges of both scales, from the axis directions 10⁻⁴ of the segment before and after the node: 90th percentile
+	 * at most 1°, maximum at most 3°.
+	 */
+	@Test
+	void valleyAxisIsSmoothAtNodes() {
+		for (LandscapeScale sc : new LandscapeScale[] {LandscapeScale.REALISTIC, LandscapeScale.GAMEPLAY}) {
+			LandscapeModel m = new LandscapeModel(SEED, sc, 1.0);
+			RiverNetwork net = networkOf(m);
+			List<Double> kinks = new ArrayList<>();
+			for (int order = 3; order >= 1; order--) {
+				int r = order == 3 ? 10 : order == 2 ? 24 : 40;
+				java.util.Map<Long, RiverNetwork.Segment> byStart = new java.util.HashMap<>();
+				List<RiverNetwork.Segment> all = new ArrayList<>();
+				for (long i = -r; i <= r; i++) {
+					for (long j = -r; j <= r; j++) {
+						RiverNetwork.Segment s = net.segment(order, i, j);
+						if (s != null) {
+							byStart.put(Double.doubleToLongBits(s.x0) * 31 + Double.doubleToLongBits(s.z0), s);
+							all.add(s);
+						}
+					}
+				}
+				for (RiverNetwork.Segment s : all) {
+					RiverNetwork.Segment next = byStart.get(Double.doubleToLongBits(s.x1) * 31 + Double.doubleToLongBits(s.z1));
+					if (next != null && next.x0 == s.x1 && next.z0 == s.z1) {
+						double[] a = axisDirection(s, 1 - 1e-4, 1);
+						double[] b = axisDirection(next, 0, 1e-4);
+						kinks.add(Math.toDegrees(Math.acos(Math.clamp(a[0] * b[0] + a[1] * b[1], -1.0, 1.0))));
+					}
+				}
+			}
+			kinks.sort(null);
+			int n = kinks.size();
+			double p90 = kinks.get((int) (0.9 * (n - 1)));
+			double max = kinks.get(n - 1);
+			System.out.printf(Locale.ROOT, "[axis kinks] %s: %d nodes, median %.3f deg, p90 %.3f deg, max %.3f deg (limits 1 and 3 deg)%n", sc.id(),
+					n, kinks.get(n / 2), p90, max);
+			assertTrue(n > 500, sc.id() + ": too few nodes: " + n);
+			assertTrue(p90 <= 1.0 && max <= 3.0, sc.id() + ": the valley axis breaks at the nodes: p90 " + p90 + " deg, max " + max + " deg");
+		}
+	}
+
+	/** Unit direction of the valley axis between t0 and t1 of the segment. */
+	private static double[] axisDirection(RiverNetwork.Segment s, double t0, double t1) {
+		double[] a = axisPoint(s, t0);
+		double[] b = axisPoint(s, t1);
+		double l = Math.hypot(b[0] - a[0], b[1] - a[1]);
+		return new double[] {(b[0] - a[0]) / l, (b[1] - a[1]) / l};
+	}
+
+	private static double[] axisPoint(RiverNetwork.Segment s, double t) {
+		double tl = Math.hypot(s.dx(t), s.dz(t));
+		double w = s.wanderAt(t);
+		return new double[] {s.px(t) - s.dz(t) / tl * w, s.pz(t) + s.dx(t) / tl * w};
+	}
+
+	/**
+	 * A5 (step K4): the valley of a river of order 2–3 starts with a rounded head instead of a floor of full width cut off
+	 * by a straight line perpendicular to the axis at the source (M1: e.g. 260 m wide; every node of order 2–3 is a
+	 * source, so medium and large rivers started that way). For the sources of order 2 and 3 in a grid range of both
+	 * scales, with F the full half-width of the floor at the source (w/2 + fpFactor·w + fpBase from the landscape shares
+	 * at the source, without the narrowing and the irregular edge), the valley of the source segment alone
+	 * ({@code RiverNetwork.querySegments}, so other valleys do not count):
+	 * <ul>
+	 * <li>behind the source, on the extension of the axis 0.5 F away, does not cut the terrain by more than 0.5 m (the
+	 * end of the segment there has t = 0 and its floor at the terrain; K4b blends the soft t of the arms, so this guards
+	 * against a trough behind the head);</li>
+	 * <li>the floor of its terrain (the columns where the segment's floor distance is at most its terrain half-width,
+	 * {@code RiverNetwork.floorGeometry}, i.e. where its terrain is the flat floor; on a transect across the valley axis,
+	 * ±(2 F + 60 m·k) every 1 m·k) is narrow at the source: its width 0.25 F from the source is at most
+	 * {@value #HEAD_RATIO_MEDIAN} of its width 4 F further down in the median over the heads, and below
+	 * {@value #HEAD_RATIO_HIGH} in at least {@value #HEAD_SHARE_PERCENT} percent of them (heads whose segment is shorter
+	 * than 5 F or whose transects reach the sea are skipped).</li>
+	 * </ul>
+	 * Measured after the review of K4 (the meander belt of the floor narrows with the margin, and at a source the meanders
+	 * fade in over the length over which the channel grows): median 0.22 (realistic, 672 heads, all below 0.6) and 0.21
+	 * (gameplay, 457 of 459 below 0.6). Without A5 (the K3 state, a floor of full width up to the source) the median is
+	 * 1.00; with the narrowed margin alone (the first version of K4) 0.61, the lowland heads 0.58, because there the
+	 * meander belt is most of the floor (review of K4; docs/m2/poprawka-geometrii.md, K4).
+	 */
+	@Test
+	void valleyHeadsAreRounded() {
+		for (LandscapeScale sc : new LandscapeScale[] {LandscapeScale.REALISTIC, LandscapeScale.GAMEPLAY}) {
+			LandscapeModel m = new LandscapeModel(SEED, sc, 1.0);
+			RiverNetwork net = networkOf(m);
+			List<RiverNetwork.Segment> heads = new ArrayList<>();
+			for (int order = 2; order <= 3; order++) {
+				int r = order == 3 ? 6 : 14;
+				for (long i = -r; i <= r; i++) {
+					for (long j = -r; j <= r; j++) {
+						RiverNetwork.Segment s = net.segment(order, i, j);
+						if (s != null && s.source && m.coastDistance(s.x0, s.z0) > 0) {
+							heads.add(s);
+						}
+					}
+				}
+			}
+			double k = sc.local();
+			// {behind checked, behind cut}; the worst cut behind and its place; the ratios of the floor widths
+			long[] cnt = new long[2];
+			double[] worst = {0};
+			String[] worstAt = {"-"};
+			List<double[]> ratios = new ArrayList<>();
+			heads.parallelStream().forEach(s -> {
+				LandscapeModel.Blend b = m.blend(s.x0, s.z0);
+				double low = b.weight(LandscapeType.OUTWASH_PLAIN) + b.weight(LandscapeType.MORAINE_PLATEAU)
+						+ b.weight(LandscapeType.OLD_GLACIAL_PLAIN) + b.weight(LandscapeType.COASTLAND);
+				double foothills = b.weight(LandscapeType.FOOTHILLS);
+				double mountains = b.weight(LandscapeType.BESKIDS);
+				double w = s.width0;
+				double full = w / 2 + (5.0 * low + 1.5 * foothills + 0.3 * mountains) * w
+						+ (40.0 * low + 10.0 * foothills + 2.0 * mountains) * k;
+				double tl = Math.hypot(s.dx(0), s.dz(0));
+				double bx = s.x0 - s.dx(0) / tl * 0.5 * full;
+				double bz = s.z0 - s.dz(0) / tl * 0.5 * full;
+				RiverNetwork.RiverHit behind = alone(m, net, s, bx, bz);
+				double near = headFloorWidth(m, net, s, 0.25 * full, full, k);
+				double far = s.len > 5 * full ? headFloorWidth(m, net, s, 4 * full, full, k) : Double.NaN;
+				synchronized (cnt) {
+					if (behind != null) {
+						cnt[0]++;
+						double cut = m.landElevation(bx, bz) - behind.terrain();
+						if (cut > 0.5) {
+							cnt[1]++;
+						}
+						if (cut > worst[0]) {
+							worst[0] = cut;
+							worstAt[0] = String.format(Locale.ROOT, "(%.1f, %.1f) order %d", bx, bz, s.order);
+						}
+					}
+					if (!Double.isNaN(near) && !Double.isNaN(far) && far > 0) {
+						ratios.add(new double[] {near / far, low});
+					}
+				}
+			});
+			double[] all = ratios.stream().mapToDouble(v -> v[0]).sorted().toArray();
+			double[] lowland = ratios.stream().filter(v -> v[1] > 0.6).mapToDouble(v -> v[0]).sorted().toArray();
+			int n = all.length;
+			double median = n > 0 ? all[n / 2] : Double.NaN;
+			long below = java.util.Arrays.stream(all).filter(v -> v < HEAD_RATIO_HIGH).count();
+			System.out.printf(Locale.ROOT, "[valley heads] %s: %d sources of order 2-3; behind the head %d columns, cut > 0.5 m in %d "
+					+ "(largest %.2f m at %s); floor width 0.25 F / 4 F from the source in %d heads: median %.2f, p75 %.2f, "
+					+ "below %.2f in %d (%.0f percent); lowland heads (%d): median %.2f%n", sc.id(), heads.size(), cnt[0], cnt[1],
+					worst[0], worstAt[0], n, median, n > 0 ? all[3 * n / 4] : Double.NaN, HEAD_RATIO_HIGH, below,
+					100.0 * below / Math.max(1, n), lowland.length, lowland.length > 0 ? lowland[lowland.length / 2] : Double.NaN);
+			assertTrue(cnt[0] > 50 && n > 50, sc.id() + ": too few valley heads checked (" + cnt[0] + ", " + n + ")");
+			assertTrue(cnt[1] == 0, sc.id() + ": the terrain is cut behind " + cnt[1] + " valley heads, the deepest by "
+					+ worst[0] + " m at " + worstAt[0]);
+			assertTrue(median <= HEAD_RATIO_MEDIAN, sc.id() + ": the valley floor is not narrower at the source: median ratio "
+					+ median);
+			assertTrue(below * 100 >= (long) HEAD_SHARE_PERCENT * n, sc.id() + ": the valley floor is not narrower at the source in "
+					+ (n - below) + " of " + n + " heads");
+		}
+	}
+
+	/** Largest median ratio of the floor widths 0.25 F and 4 F from the source ({@link #valleyHeadsAreRounded}). */
+	static final double HEAD_RATIO_MEDIAN = 0.4;
+	/** Ratio below which a head counts as narrowed, and the share of heads (percent) that must be below it. */
+	static final double HEAD_RATIO_HIGH = 0.6;
+	static final int HEAD_SHARE_PERCENT = 80;
+
+	/**
+	 * Width (m) of the floor of the valley of s on a transect across its axis at the distance {@code along} from the
+	 * source (t = along / len), ±(2 full + 60 m·k) every 1 m·k: the columns where floorDist ≤ terrainHalf
+	 * ({@code RiverNetwork.floorGeometry}). NaN when part of the transect is at sea.
+	 */
+	private static double headFloorWidth(LandscapeModel m, RiverNetwork net, RiverNetwork.Segment s, double along,
+			double full, double k) {
+		double t = Math.min(1.0, along / s.len);
+		double tx = s.dx(t);
+		double tz = s.dz(t);
+		double tl = Math.hypot(tx, tz);
+		double wa = s.wanderAt(t);
+		double ax = s.px(t) - tz / tl * wa;
+		double az = s.pz(t) + tx / tl * wa;
+		double half = 2 * full + 60 * k;
+		int steps = (int) Math.ceil(2 * half / k);
+		int c = 0;
+		for (int i = 0; i <= steps; i++) {
+			double o = -half + i * k;
+			double x = ax - tz / tl * o;
+			double z = az + tx / tl * o;
+			if (m.coastDistance(x, z) < 0) {
+				return Double.NaN;
+			}
+			LandscapeModel.Blend b = m.blend(x, z);
+			double lowland = b.weight(LandscapeType.OUTWASH_PLAIN) + b.weight(LandscapeType.MORAINE_PLATEAU)
+					+ b.weight(LandscapeType.OLD_GLACIAL_PLAIN) + b.weight(LandscapeType.COASTLAND);
+			double[] f = net.floorGeometry(s, x, z, lowland, b.weight(LandscapeType.FOOTHILLS), b.weight(LandscapeType.BESKIDS));
+			c += f[0] <= f[2] ? 1 : 0;
+		}
+		return c * k;
+	}
+
+	/** Query of the segment alone at (x, z) on land, as {@code LandscapeModel.sample} passes it; null at sea. */
+	private static RiverNetwork.RiverHit alone(LandscapeModel m, RiverNetwork net, RiverNetwork.Segment s, double x, double z) {
+		if (m.coastDistance(x, z) < 0) {
+			return null;
+		}
+		LandscapeModel.Blend b = m.blend(x, z);
+		double lowland = b.weight(LandscapeType.OUTWASH_PLAIN) + b.weight(LandscapeType.MORAINE_PLATEAU)
+				+ b.weight(LandscapeType.OLD_GLACIAL_PLAIN) + b.weight(LandscapeType.COASTLAND);
+		return net.querySegments(x, z, m.landElevation(x, z), lowland, b.weight(LandscapeType.FOOTHILLS),
+				b.weight(LandscapeType.BESKIDS), List.of(s));
 	}
 
 	static RiverNetwork networkOf(LandscapeModel m) {

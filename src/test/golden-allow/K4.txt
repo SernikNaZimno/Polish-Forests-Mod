@@ -1,0 +1,73 @@
+# Allowed golden changes after step K4 (valley geometry: G1B, G2, G3, G4, G5, A5, K4.9; K4b: projection on the exact
+# distance minima and the sweep cut, decision D4). Cumulative: K3.txt (* / grid) plus the patches measured after K4
+# (-PgoldenReport=build/golden_K4.txt, 2026-10-03), checked against the design (§4): the table of dna-dolin §6.2 for
+# the set G1B…G5, the list of A5 (grid, foothills in REAL A, beskids and summit in GAMEPLAY A, GAMEPLAY B and REAL A
+# 0.5) and the patches of K4b (beskids, summit, mountain_stream, foothills, grid). Lost targets: the six of dna-dolin
+# §6.2 (REAL B river_mouth, large_river, mountain_stream; GAMEPLAY B large_river, mountain_stream; REAL A 0.5
+# oxbow_lake) and GAMEPLAY A summit (sweep cut, below). Removed in K7 together with the directory.
+* / grid
+
+# dna-dolin §6.2 and A5 (with K4b in the mountain patches)
+REAL A / foothills_river
+REAL A / mountain_stream
+REAL A / beskids
+REAL A / foothills
+REAL B / coast
+REAL B / river_mouth target
+REAL B / large_river target
+REAL B / foothills_river
+REAL B / outwash_plain_lake
+REAL B / mountain_stream target
+REAL B / beskids
+REAL B / summit
+REAL B / foothills
+GAMEPLAY A / river_mouth
+GAMEPLAY A / lowland_river
+GAMEPLAY A / foothills_river
+GAMEPLAY A / tunnel_valley_lake
+GAMEPLAY A / outwash_plain_lake
+GAMEPLAY A / peatland
+GAMEPLAY A / mountain_stream
+GAMEPLAY A / beskids
+GAMEPLAY A / foothills
+GAMEPLAY B / coast
+GAMEPLAY B / beach
+GAMEPLAY B / large_river target
+GAMEPLAY B / foothills_river
+GAMEPLAY B / kettle_pond
+GAMEPLAY B / mountain_stream target
+GAMEPLAY B / beskids
+GAMEPLAY B / summit
+GAMEPLAY B / foothills
+REAL A 0.5 / lowland_river
+REAL A 0.5 / oxbow_lake target
+REAL A 0.5 / mountain_stream
+REAL A 0.5 / beskids
+REAL A 0.5 / summit
+REAL A 0.5 / foothills
+
+# K4b sweep cut (review of K4): the side of a valley is measured from the nearest point of its axis (polyline, Euclidean),
+# while the projection measured it at the perpendicular foot on the curve, so where the axis bulges closer than the foot
+# says the side cuts a little deeper (in the final table of §4 both patches are "zmiana"; recorded in
+# docs/m2/poprawka-geometrii.md, K4). GAMEPLAY A summit: the side of a source valley 406 m away (the projection: 444
+# m) lowers the summit by up to 2.3 m (88 of 256 columns with other blocks), so the SUMMIT landform of the patch is no longer a local
+# maximum above 900 m in the patch; the patch is searched anew in K7. GAMEPLAY A kettle_pond: up to 1.1 m on the side
+# of the kettle basin (10 columns with other blocks; no water level or substrate changes).
+GAMEPLAY A / summit target
+GAMEPLAY A / kettle_pond
+
+# Numerical differences only: no column with another block, water level or kind, type or substrate. Causes: t of the
+# exact distance minima (K4b) instead of 5 Gauss-Newton steps (M1 stopped about 1e-6 of t from the minimum) and
+# Math.sqrt instead of Math.hypot in the projection (K4.11); real changes of the surface below 1 mm, except REAL A
+# lowland_river (0.07 µm, where the 1 µm rounding of the hash hit a boundary). In the final table of §4 these three
+# patches are "=", so they are allowed only as numerical changes ("numeric": below 1 mm against the frozen M1 copy, the
+# same blocks, water, type and substrate in every column, checked by the test): REAL A lowland_river 0.07 µm, REAL A
+# 0.5 large_river 0.12 mm, REAL A 0.5 foothills_river 0.03 mm.
+REAL A / lowland_river numeric
+REAL A 0.5 / large_river numeric
+REAL A 0.5 / foothills_river numeric
+# The same numerical cause in patches that the final table allows to change anyway: REAL A large_river 11 µm, REAL A
+# oxbow_lake 2.9 µm, GAMEPLAY B lowland_river 0.85 µm.
+REAL A / large_river
+REAL A / oxbow_lake
+GAMEPLAY B / lowland_river

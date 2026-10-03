@@ -327,7 +327,8 @@ class HabitatClassifierTest {
 	 * dominant valley, and a smaller, closer watercourse keeps only its own belt of ash-alder riparian forest. A column
 	 * 60 m from a tributary 8 m wide (beyond its belt of at most 1.2 · max(15 m, 4 W) = 38.4 m) and 150 m from the bank
 	 * of a river 150 m wide lies in the white willow forest of the river (D_wb ≥ 0.8 · 255 m); before F2 its zones came
-	 * from the tributary (class B). Checked at 200 points (jitter of the belts).
+	 * from the tributary (class B). The class of the river comes from its own gradient ({@code floorChannelGradient}),
+	 * not from the soft maximum {@code channelGradient}. Checked at 200 points (jitter of the belts).
 	 */
 	@Test
 	void floorZonesFollowTheChannelOfTheDominantValley() {
@@ -347,6 +348,12 @@ class HabitatClassifierTest {
 		ColumnSample classB = SyntheticSample.morainePlateau().h(91.7).stream(2, 8, 60, 0.3).onValleyFloor(0.1, 900)
 				.floorChannel(150, 20, 90).build();
 		// Off the model's floor (inFloor false): the nearest channel decides.
+		// Near a tributary mouth the soft maximum of the gradient (5‰) mixes in the steep tributary; the river is
+		// classified by its own gradient (0.3‰), so it keeps class A (review of K3).
+		ColumnSample steepMix = SyntheticSample.morainePlateau().h(91.7).stream(3, 8, 60, 5.0).onValleyFloor(0.1, 900)
+				.floorChannel(150, 150, 90, 0.3).build();
+		ColumnSample steepRiver = SyntheticSample.morainePlateau().h(91.7).stream(3, 8, 60, 0.3).onValleyFloor(0.1, 900)
+				.floorChannel(150, 150, 90, 5.0).build();
 		SyntheticSample offFlag = SyntheticSample.morainePlateau().h(91.7).stream(3, 8, 60, 0.3).floorChannel(150, 150, 90);
 		offFlag.floorHalfWidth = 900;
 		ColumnSample notInFloor = offFlag.build();
@@ -366,6 +373,9 @@ class HabitatClassifierTest {
 			SyntheticSample o = SyntheticSample.morainePlateau().h(91.7).stream(3, 8, 60, 0.3);
 			o.floorHalfWidth = 900;
 			assertEquals(k.classify(o.build(), x, z), k.classify(notInFloor, x, z), "off the floor flag");
+			assertEquals(HabitatBiome.WILLOW_POPLAR_FOREST, Habitat.biome(k.classify(steepMix, x, z)),
+					"river classified by its own gradient, not by the soft maximum");
+			assertEquals(k.classify(nearestOnly, x, z), k.classify(steepRiver, x, z), "steep channel of the dominant valley");
 		}
 	}
 

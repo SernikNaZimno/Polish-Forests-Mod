@@ -99,7 +99,14 @@ public record ColumnSample(double surface, int waterLevel, WaterKind waterKind, 
 
 	/**
 	 * Waters near the column. The watercourse fields come from {@code RiverNetwork.query}: distance, width
-	 * and water level refer to the nearest channel, while valley floor, order and gradient refer to the watercourse whose valley dominates.
+	 * and water level refer to the nearest channel, while valley floor, order and gradient refer to the watercourse whose valley dominates:
+	 * the valley whose floor the column lies deepest in (F1). Where floors overlap, {@code u} is the minimum over the
+	 * floors, and floor half-width and gradient are a soft maximum by the depth in the floor, so these fields do not
+	 * jump on straight bisectors between valleys; only the order stays discrete. Exceptions: the floor of a valley
+	 * starts where its head fade reaches 0.5 ({@code inFloor} and {@code u} jump there, as in M1; a dry valley head
+	 * keeps its own order and gradient, see {@code RiverNetwork.f1Key}), and off the floors the dominance (order,
+	 * gradient) changes on straight lines, because the key is linear in the distance from the floor edge, so new
+	 * habitat rules (M5, N4) should not rely on these fields off the floor without smoothing.
 	 *
 	 * @param streamOrder         order of the watercourse whose valley dominates (0 = no watercourse in range)
 	 * @param headwaters          headwater zone of that watercourse
@@ -136,15 +143,19 @@ public record ColumnSample(double surface, int waterLevel, WaterKind waterKind, 
 	 *                            watercourse
 	 * @param floorChannelWidth   width of that channel (m); NaN without a watercourse
 	 * @param floorChannelLevel   water level of that channel (m a.s.l., not rounded); NaN without a watercourse
+	 * @param floorChannelGradient gradient of that channel's own segment in ‰, converted to 1:1 scale (the class of
+	 *                            the channel in F2; {@code channelGradient} is the soft maximum over the valleys and
+	 *                            near a tributary mouth mixes in the tributary); NaN without a watercourse
 	 */
 	public record Waters(int streamOrder, boolean headwaters, double channelDist, double channelWidth, double channelLevel,
 			boolean inFloor, double u, double floorHalfWidth, double channelGradient, boolean convexBank, double s,
 			int shoreLevel, StandingWaterKind standingWaterKind, boolean ombrotrophicPeat, long lakeId,
-			double standingWaterRadius, double floorChannelDist, double floorChannelWidth, double floorChannelLevel) {
+			double standingWaterRadius, double floorChannelDist, double floorChannelWidth, double floorChannelLevel,
+			double floorChannelGradient) {
 		/** No watercourses and no standing water (sea and places out of range). */
 		public static final Waters NONE = new Waters(0, false, Double.POSITIVE_INFINITY, Double.NaN, Double.NaN, false,
 				Double.NaN, Double.NaN, Double.NaN, false, Double.POSITIVE_INFINITY, NO_WATER, StandingWaterKind.NONE,
-				false, 0L, Double.NaN, Double.POSITIVE_INFINITY, Double.NaN, Double.NaN);
+				false, 0L, Double.NaN, Double.POSITIVE_INFINITY, Double.NaN, Double.NaN, Double.NaN);
 	}
 
 	/** Kind of the standing water nearest to the column. */

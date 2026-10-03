@@ -212,7 +212,7 @@ class GoldenTerrainTest {
 			List<ColumnSample[]> samples = samples(m, expected.patches());
 			List<Column[]> cols = columns(samples);
 			Map<String, String> actual = hashes(expected.patches(), cols);
-			Set<String> changed = new LinkedHashSet<>();
+			Map<String, String> changed = new java.util.LinkedHashMap<>();
 			List<String> changedFields = new ArrayList<>();
 			for (Map.Entry<String, String> e : expected.hashes().entrySet()) {
 				String got = actual.get(e.getKey());
@@ -222,9 +222,8 @@ class GoldenTerrainTest {
 				String line = k.label() + " / " + e.getKey() + ": expected " + e.getValue() + ", got " + got;
 				if (e.getKey().startsWith("patch ")) {
 					String name = e.getKey().substring("patch ".length());
-					changed.add(name);
+					changed.put(name, line);
 					report.add(k.label() + " / " + name);
-					(allow.patch(k, name) ? allowed : errors).add(line);
 				} else {
 					changedFields.add(e.getKey());
 					report.add("# " + k.label() + " / " + e.getKey());
@@ -235,10 +234,22 @@ class GoldenTerrainTest {
 				errors.add(k.label() + ": field hashes " + changedFields + " differ while all patch hashes match "
 						+ "(an edited golden file?)");
 			}
+			Set<String> numericOnly = new LinkedHashSet<>();
 			if (!changed.isEmpty()) {
-				for (String d : diagnose(k, expected, cols, changed)) {
+				for (String d : diagnose(k, expected, cols, changed.keySet(), numericOnly)) {
 					notes.add(d);
 					report.add("# " + d);
+				}
+			}
+			for (Map.Entry<String, String> e : changed.entrySet()) {
+				String name = e.getKey();
+				if (!allow.patch(k, name)) {
+					errors.add(e.getValue());
+				} else if (allow.numeric(k, name) && !numericOnly.contains(name)) {
+					errors.add(e.getValue() + " (allowed only as a numerical change of the M1 state: below "
+							+ NUMERIC_SURFACE + " m, no other block, water, type or substrate)");
+				} else {
+					allowed.add(e.getValue());
 				}
 			}
 			// Patch targets and coverage after the hashes, so that a large terrain change shows the changed patches first.
@@ -291,8 +302,8 @@ class GoldenTerrainTest {
 	 * the M1 golden file (patches with the same name, size, center and step), never with the current golden file:
 	 * after an intended terrain change the current file differs from M1, which says nothing about the JVM.
 	 */
-	private static List<String> diagnose(SetKey k, GoldenSet expected, List<Column[]> actual, Set<String> changed)
-			throws IOException {
+	private static List<String> diagnose(SetKey k, GoldenSet expected, List<Column[]> actual, Set<String> changed,
+			Set<String> numericOnly) throws IOException {
 		List<String> out = new ArrayList<>();
 		List<Column[]> ref = samplesM1(k.modelM1(), expected.patches());
 		Map<String, String> refHashes = hashes(expected.patches(), ref);
@@ -333,7 +344,13 @@ class GoldenTerrainTest {
 			// different terrain, and the M1 copy says nothing about rounding.
 			boolean expectsM1 = m1 != null && m1.patches().contains(p)
 					&& m1.hashes().get("patch " + p.name()).equals(expected.hashes().get("patch " + p.name()));
-			String verdict = !asM1 ? ""
+			boolean numeric = expectsM1 && dSurface < NUMERIC_SURFACE && dCover < NUMERIC_SURFACE
+					&& java.util.Arrays.stream(diff).sum() == 0;
+			if (numeric) {
+				numericOnly.add(p.name());
+			}
+			String verdict = !asM1
+					? numeric ? " -> numerical change of the M1 state only (< " + NUMERIC_SURFACE + " m, the same blocks)" : ""
 					: expectsM1 ? " -> numerical difference only (< 1e-6 m), the hash rounding hit a boundary"
 					: " -> identical to the frozen M1 copy (to 1e-6 m), but the current golden file expects a different hash";
 			out.add(String.format(Locale.ROOT, "%s / %s versus the M1 copy: max|Δsurface| = %.3g m, max|ΔcoverDepth| = %.3g m,"
@@ -342,6 +359,12 @@ class GoldenTerrainTest {
 		}
 		return out;
 	}
+
+	/**
+	 * Largest |Δsurface| and |ΔcoverDepth| (m) against the frozen M1 copy of a change allowed as numerical only
+	 * ({@code numeric} in the allow list), with no column of another water level, water kind, type, substrate or block.
+	 */
+	static final double NUMERIC_SURFACE = 1e-3;
 
 	/** A patch that does not meet its target, or ({@link #COVERAGE}) a set without some water kind, type or substrate. */
 	record TargetIssue(String patch, String message) {
@@ -563,17 +586,21 @@ class GoldenTerrainTest {
 
 	/**
 	 * List of allowed changes ({@code -PgoldenAllow}). Lines {@code <set> / <patch>} allow a changed patch hash,
-	 * {@code <set> / <patch> target} also a lost target, {@code <set> / coverage} a set without some water kind, type or
-	 * substrate. {@code <set>} is a {@link SetKey#label()}, a {@link SetKey#key()} or {@code *}. Text after {@code #}
-	 * is a comment, so a {@code -PgoldenReport} file can serve as an allow list. Unknown sets or patches fail the
-	 * test, so that a typo does not silently allow nothing.
+	 * {@code <set> / <patch> target} also a lost target, {@code <set> / <patch> numeric} only a numerical change of a
+	 * patch the golden file holds at its M1 hash (below {@link #NUMERIC_SURFACE} m against the frozen M1 copy, the same
+	 * blocks, water, type and substrate in every column; for the patches that the design keeps unchanged, marked = in
+	 * its table of patches), {@code <set> / coverage} a set without some water kind, type or substrate. {@code <set>} is
+	 * a {@link SetKey#label()}, a {@link SetKey#key()} or {@code *}. Text after {@code #} is a comment, so a
+	 * {@code -PgoldenReport} file can serve as an allow list. Unknown sets or patches fail the test, so that a typo does
+	 * not silently allow nothing.
 	 */
-	record Allow(String source, Set<String> patches, Set<String> targets) {
+	record Allow(String source, Set<String> patches, Set<String> targets, Set<String> numerics) {
 		static Allow load(String file) throws IOException {
 			Set<String> patches = new LinkedHashSet<>();
 			Set<String> targets = new LinkedHashSet<>();
+			Set<String> numerics = new LinkedHashSet<>();
 			if (file == null || file.isBlank()) {
-				return new Allow("(none)", patches, targets);
+				return new Allow("(none)", patches, targets, numerics);
 			}
 			Path path = Path.of(file);
 			assertTrue(Files.isRegularFile(path), "missing allow list " + path);
@@ -589,7 +616,9 @@ class GoldenTerrainTest {
 				String[] rest = line.substring(slash + 3).strip().split("\\s+");
 				String patch = rest[0];
 				boolean target = rest.length > 1 && rest[1].equals("target");
-				assertTrue(rest.length == 1 || target && rest.length == 2, "allow list " + path + ": unknown suffix in: " + raw);
+				boolean numeric = rest.length > 1 && rest[1].equals("numeric");
+				assertTrue(rest.length == 1 || (target || numeric) && rest.length == 2, "allow list " + path
+						+ ": unknown suffix in: " + raw);
 				assertTrue(patch.equals("grid") || patch.equals(TargetIssue.COVERAGE) || site(patch) != null,
 						"allow list " + path + ": unknown patch in: " + raw);
 				List<String> labels = new ArrayList<>();
@@ -604,9 +633,16 @@ class GoldenTerrainTest {
 					if (target || patch.equals(TargetIssue.COVERAGE)) {
 						targets.add(l + " / " + patch);
 					}
+					if (numeric) {
+						numerics.add(l + " / " + patch);
+					}
 				}
 			}
-			return new Allow(path.toString(), patches, targets);
+			return new Allow(path.toString(), patches, targets, numerics);
+		}
+
+		boolean numeric(SetKey k, String name) {
+			return numerics.contains(k.label() + " / " + name);
 		}
 
 		boolean patch(SetKey k, String name) {

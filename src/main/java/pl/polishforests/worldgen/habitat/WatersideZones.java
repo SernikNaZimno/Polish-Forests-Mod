@@ -28,13 +28,17 @@ final class WatersideZones {
 
 	/** Class of the nearest watercourse: C in the mountains or at a gradient > 3‰, A at order 3 or W ≥ 30 m (1:1). */
 	static StreamClass streamClass(HabitatClassifier.Column c) {
-		return streamClass(c, c.wr());
+		return streamClass(c, c.wr(), c.w.channelGradient());
 	}
 
-	/** Class of a watercourse with a channel {@code wr} m wide at 1:1 scale (F2: the channel of the dominant valley). */
-	static StreamClass streamClass(HabitatClassifier.Column c, double wr) {
+	/**
+	 * Class of a watercourse with a channel {@code wr} m wide at 1:1 scale and the given gradient in ‰ (F2: the
+	 * channel of the dominant valley with its own gradient, {@code floorChannelGradient}; the soft maximum
+	 * {@code channelGradient} mixes in a steep tributary near its mouth and would make the river class C there).
+	 */
+	static StreamClass streamClass(HabitatClassifier.Column c, double wr, double gradient) {
 		ColumnSample.Waters w = c.w;
-		if (c.wMountains > 0.5 || w.channelGradient() > Calibration.CLASS_GRADIENT) {
+		if (c.wMountains > 0.5 || gradient > Calibration.CLASS_GRADIENT) {
 			return StreamClass.C;
 		}
 		// The order and gradient come from the dominant valley, and W from the channel: a small tributary on the
@@ -85,7 +89,7 @@ final class WatersideZones {
 			}
 			if (Math.max(0, w.channelDist()) > width(Calibration.MIN_ASH_ALDER, ashAlder, c.jitter())
 					&& c.onValleyFloor(w.floorChannelDist(), w.floorChannelLevel())
-					&& streamClass(c, c.wr(w.floorChannelWidth())) == StreamClass.A) {
+					&& streamClass(c, c.wr(w.floorChannelWidth()), w.floorChannelGradient()) == StreamClass.A) {
 				return classA(c, Math.max(0, w.floorChannelDist()), w.floorChannelWidth(), true);
 			}
 		}
