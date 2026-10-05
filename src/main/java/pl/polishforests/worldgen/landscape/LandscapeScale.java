@@ -1,10 +1,10 @@
 package pl.polishforests.worldgen.landscape;
 
 /**
- * Horizontal scale of the landscape. The model always computes in metres; this class says how large
+ * Horizontal scale of the landscape. The model always computes in meters; this class says how large
  * the individual orders of landforms are.
  *
- * @param regionSize      mean macroregion size in metres (with the slider at 100%)
+ * @param regionSize      mean macroregion size in meters (with the slider at 100%)
  * @param meso            multiplier of medium landforms: river valleys, tunnel valleys, moraine belts, dune fields, base level
  * @param local           multiplier of local landforms: hummocks, kettle ponds, ridges, tunnel valley lakes
  * @param mountainSpacing multiplier of ridge and valley spacing in the mountains

@@ -10,7 +10,7 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * <p>Three watercourse orders, each on its own offset node grid: 1 – streams (mainly in the mountains
  * and foothills), 2 – rivers, 3 – large rivers. From every node water flows to the lowest of its eight
- * neighbours (by smoothed terrain height). When no neighbour is lower, we look for a lower
+ * neighbors (by smoothed terrain height). When no neighbor is lower, we look for a lower
  * node within a few cells (a gorge); only when there is none does a sink lake form.
  * Watercourses end in the sea, in a lake or in a watercourse of a higher order.
  *
@@ -153,31 +153,23 @@ final class RiverNetwork {
 		double chordDeviation;
 		double reach;
 		/**
-		 * K4b sweep cut ({@link RiverNetwork#sweepCut}): per node t = k / SWEEP_NODES, k = 0..SWEEP_NODES,
-		 * {@link RiverNetwork#SWEEP_STRIDE} values: the curve point relative to (x0, z0) and the unit tangent of the curve
-		 * (for t), and the point of the valley axis relative to (x0, z0) (for the distance from the axis); set by
-		 * {@link RiverNetwork#build} before the segment is published.
+		 * K4c sweep cut ({@link RiverNetwork#sweepCut}): per node t = k / SWEEP_NODES, k = 0..SWEEP_NODES,
+		 * {@link RiverNetwork#SWEEP_STRIDE} values: the curve point relative to (x0, z0), the unit tangent and the speed
+		 * |P'(t)| of the curve; set by {@link RiverNetwork#build} before the segment is published.
 		 */
 		float[] sweepNodes;
-		/**
-		 * K4b sweep cut: the largest |{@link #wanderAt}| on the nodes and inside the edges, and the largest sagitta of the
-		 * axis over an edge of its polyline (with a margin), for the bounds of {@link RiverNetwork#sweepCut}.
-		 */
+		/** K4c sweep cut: the largest |{@link #wanderAt}| over the segment (dense samples, with a margin). */
 		double sweepWanderMax;
-		double sweepSagMax;
 		/**
-		 * K4b sweep cut: per block of {@link RiverNetwork#SWEEP_BLOCK} edges of the axis polyline, the largest distance of
-		 * its nodes from the chord of the block (with a margin), for the culling of whole blocks.
+		 * K4c sweep cut: per interval of t (k / {@link RiverNetwork#SWEEP_WANDER_BINS}), the lowest and the highest
+		 * {@link #wanderAt} (dense samples, with a margin).
+		 */
+		float[] sweepWanderRange;
+		/**
+		 * K4c sweep cut: per block of {@link RiverNetwork#SWEEP_BLOCK} edges of the curve polyline, the largest distance of
+		 * the curve from the chord of the block (dense samples, with a margin), for the culling of whole blocks.
 		 */
 		float[] sweepBlockSag;
-		/** K4b sweep cut: bounding box of the nodes of the axis polyline, relative to (x0, z0). */
-		double sweepMinX;
-		double sweepMaxX;
-		double sweepMinZ;
-		double sweepMaxZ;
-		/** K4b sweep cut: bounds of the speed |P'(t)| of the curve on [0, 1] (3% margin), for the along-valley extrapolation. */
-		final double speedMin;
-		final double speedMax;
 
 		Segment(int order, double x0, double z0, double x1, double z1, double[] t0, double[] t1, double level0,
 				double level1, double width0, double width1, double wander1, double wander2, double theta, double lambda,
@@ -224,18 +216,6 @@ final class RiverNetwork {
 			this.f3 = 4 * a31 + 2 * a22;
 			this.f2 = 3 * a21;
 			this.f1 = a11;
-			double vMin = Double.MAX_VALUE;
-			double vMax = 0;
-			for (int q = 0; q <= 64; q++) {
-				double t = q / 64.0;
-				double vx1 = cx1 + t * (2 * cx2 + 3 * t * cx3);
-				double vz1 = cz1 + t * (2 * cz2 + 3 * t * cz3);
-				double v = Math.sqrt(vx1 * vx1 + vz1 * vz1);
-				vMin = Math.min(vMin, v);
-				vMax = Math.max(vMax, v);
-			}
-			this.speedMin = Math.max(1e-9, 0.97 * vMin);
-			this.speedMax = Math.max(1e-9, 1.03 * vMax);
 			this.lambda = lambda;
 			this.envelope = Math.min(0.5, 1.5 * lambda / len);
 			this.envelopeStart = source ? Math.min(0.5, Math.max(1.5 * lambda, headFade) / len) : envelope;
@@ -442,6 +422,32 @@ final class RiverNetwork {
 		return s.source ? base * headFactor(s, t, base) : base;
 	}
 
+	/**
+	 * A5 (step K4c): how far downstream of the source the rise of the floor of a source valley starts at the distance
+	 * {@code va} from the valley axis, r (1 − exp(−va² / (2 r²))) with r the full floor half-width (w / 2 + margin): 0 on
+	 * the axis, about va² / (2 r) near it (a parabola, i.e. an arc around the head) and at most r far from it, with a slope
+	 * of at most 0.61. The floor of a source segment rises upstream at half the steepness of the sides; measured from this
+	 * arc instead of from the line across the axis through the source, the contours of the head are arcs (review of K4: the
+	 * head was a wedge of the narrowing floor whose contours ended on straight lines, frame R_head). A circular arc
+	 * (r − √(r² − va²)) was tried first: its vertical tangent at va = r made a step along the sides of the head.
+	 */
+	static double headArc(double va, double r) {
+		return r * (1 - Math.exp(-va * va / (2 * r * r)));
+	}
+
+	/**
+	 * A5: distance from the source of a source segment at t over which its floor has risen, at the distance {@code va}
+	 * from the valley axis: t · len minus the arc {@link #headArc}(va, r), which fades out between r and 3 r from the
+	 * source (round 1 of the review of K4c: without the fade the arc lifted the floor and the sides of the whole rise zone
+	 * by up to 0.5 · maxSlope · r, hundreds of meters from the head at gameplay scale, 11.7% of the dry land by more than
+	 * 1 m, and left a narrow trench 1.3–3 m deep along the axis). Nondecreasing in t (the fade only adds), so the floor
+	 * still rises monotonically upstream.
+	 */
+	static double headRise(Segment s, double t, double va, double r) {
+		double fromSource = t * s.len;
+		return Math.max(0, fromSource - headArc(va, r) * (1 - Noise.smoothstep(r, 3 * r, fromSource)));
+	}
+
 	/** A5: share of the floor margin of a source segment at t (see {@link #floorMargin}). */
 	private double headFactor(Segment s, double t, double base) {
 		double grow = Noise.smoothstep(0, HEAD_GROWTH * (base + 40 * valleyScale), t * s.len);
@@ -492,169 +498,472 @@ final class RiverNetwork {
 		return s.source ? extra * headFactor(s, t, base) : extra;
 	}
 
-	/** K4b sweep cut: number of edges of the polyline of the valley axis of a segment (nodes at t = k / SWEEP_NODES). */
+	/** K4b/K4c sweep cut: number of edges of the polyline of the curve of a segment (nodes at t = k / SWEEP_NODES). */
 	static final int SWEEP_NODES = 16;
 	/**
 	 * K4b sweep cut: the cut of a valley is deepened to its sweep cut only where that is deeper by more than this (m), so
-	 * that the terrain stays as the projection gives it wherever the projection is well conditioned (the sweep cut of
-	 * a straight or gently bent valley is within millimeters of it, or below it between the nodes).
+	 * that the terrain stays as the projection gives it wherever the projection is well conditioned.
 	 */
 	static final double SWEEP_TOLERANCE = 0.05;
-	/** Values per node of {@link Segment#sweepNodes} (curve point, curve tangent, axis point). */
-	static final int SWEEP_STRIDE = 6;
-	/** K4b sweep cut: edges of the axis polyline per block culled together ({@link Segment#sweepBlockSag}). */
+	/** Values per node of {@link Segment#sweepNodes}: curve point relative to (x0, z0), unit tangent, speed |P'(t)|. */
+	static final int SWEEP_STRIDE = 5;
+	/** K4b sweep cut: edges of the polyline per block culled together ({@link Segment#sweepBlockSag}). */
 	static final int SWEEP_BLOCK = 4;
+	/** K4c sweep cut: samples per edge for the bounds of a block (deviation of the curve from the chord, largest bend). */
+	static final int SWEEP_BOUND_SAMPLES = 8;
+	/**
+	 * K4c sweep cut: intervals of t with the range of the bend of the valley axis ({@link Segment#sweepWanderRange}), so a
+	 * cross-section is bounded by the bend near its own estimate of the foot before the bend (noise) is evaluated.
+	 */
+	static final int SWEEP_WANDER_BINS = 128;
+	/**
+	 * K4c sweep cut: a cross-section at t that is not the foot of the perpendicular adds this times |along| (the offset of
+	 * the point along the tangent of the curve at t) to its distance from the valley axis, so that on a bent curve it does
+	 * not measure the point nearer than the projection does at the foot (the lateral distance from the tangent at t
+	 * differs from the one at the foot by about κ s² / 2, while |along| ≈ g s).
+	 */
+	static final double SWEEP_PENALTY = 1.0;
+	/**
+	 * K4c sweep cut: the penalty is SWEEP_PENALTY · |along| smoothed near along = 0 over this many m·k (Huber: along² /
+	 * (2 c) below c), so that a cross-section that wins at a tie has no crease along the normal of its node (with the
+	 * plain |along| such a section left V-shaped pits up to 2.7 m deep and 2 m wide, measured as isolated jumps).
+	 */
+	static final double SWEEP_PENALTY_SOFT = 5.0;
+	/**
+	 * K4c sweep cut: lower bound of the distinctness g in the Newton estimate of the foot of the perpendicular (round 1 of
+	 * the review: 1, was 0.5). The estimate t + along / (speed * g) moves with the point by 1 / (speed * g) per meter along
+	 * the curve, and with it the bend of the axis and the floor taken at the estimate: with g down to 0.5 a cross-section far
+	 * from its foot fell by up to 7 m per 1 m (2.4 blocks per block on the gameplay massifs), with 1 by at most 4.6 m. Where g
+	 * is between 0.5 and 1 the step falls short of the foot by at most half, which {@link #SWEEP_FLOOR_MARGIN} covers.
+	 */
+	static final double SWEEP_MIN_DISTINCTNESS = 1.0;
+	/**
+	 * K4c sweep cut (round 1 of the review): lower bound of the speed |P'(t)| in the Newton estimate of the foot, as a share
+	 * of the segment length. Near a cusp of the cubic curve the speed falls to a twentieth of the length, the estimate then
+	 * moved by up to 1 / 60 of t per meter, and with it the bend of the axis taken there (45 m over 3 m of the curve): the
+	 * cross-section fell by 27 m within 0.5 m (realistic scale (152745, 1054317)).
+	 */
+	static final double SWEEP_MIN_SPEED = 0.4;
+	/**
+	 * K4c sweep cut: the floor (and everything that grows downstream) of a cross-section is taken at t + (1 + this) times
+	 * the Newton step towards the foot when the foot lies upstream, so it is never lower than the floor at the foot
+	 * where the projection is well conditioned.
+	 */
+	static final double SWEEP_FLOOR_MARGIN = 1.0;
+	/**
+	 * K4c sweep cut (round 2 of the review): an extremum of f = (P − X) · P' (a root of f') enters the maximum with the
+	 * weight smoothstep(0, SWEEP_TWIN · k, ξ), ξ = f''² / (2 |f'''| |P''|) at its t. Roots of f' are born in pairs where
+	 * f' = f'' = 0; near such a birth f' ≈ a + b (t − t0)², so a = −f''² / (2 f''') at either root, and the column moves
+	 * a by |P''| per meter: ξ estimates the distance (m) of the column from the place where the pair is born. A newborn
+	 * pair thus enters with the weight 0 instead of stepping into the maximum with its full value (0.58 m at gameplay
+	 * scale (−216251, 246905), 12.8 m at realistic scale (156980.5, 1059412) under a lake).
+	 */
+	static final double SWEEP_TWIN = 10;
+	/**
+	 * K4c sweep cut (round 2 of the review): an interior arm of the projection enters the maximum with the weight
+	 * 1 − (1 − w) (1 − smoothstep(0, SWEEP_ARM_BIRTH, g)), w the weight of {@link #SWEEP_TWIN} at its t and g its
+	 * distinctness. An arm is born out of an extremum of f (g = 0 there), and then has the weight of that extremum, so it
+	 * enters with the value the extremum already had; from g = SWEEP_ARM_BIRTH on it has the full weight.
+	 */
+	static final double SWEEP_ARM_BIRTH = 0.05;
 
 	/**
-	 * K4b sweep cut of the valley of s at (x, z), decision D4 (the rest of A2 near the ends of short, bent segments):
-	 * the largest cut mask · (terrain − floor) over the cross-sections of the valley along the edges of the polyline of
-	 * its axis A(t) = P(t) + wander(t) · normal through the nodes t_k = k / {@link #SWEEP_NODES}. On each edge the
-	 * cross-section is measured from the nearest point of the edge (so about the distance from the axis itself; beyond
-	 * the ends of the segment the nearest point is the end of the axis, as for the projection), at a t extrapolated from
-	 * both nodes of the edge along their curve tangents by
-	 * along / speed (the largest speed of the curve downstream of the node and the smallest upstream, so that the floor is
-	 * not taken lower than the foot of the perpendicular gives to first order) and blended by the position on the edge.
-	 * Everything else (floor level and width, A5, G3, G4, the source head) is the cross-section of {@link #query} at that
-	 * t. Each edge gives a continuous function of (x, z) with a bounded gradient (the wall steepness, the stream gradient
-	 * and the terrain slope), and the sweep cut is their maximum, so it is continuous by construction, whatever the arms
-	 * of {@link #projectChannel} do: where the distance from the curve is nearly the same along a part of it, the soft t
-	 * of the projection moves fast between arms with very different floor levels (up to 0.1 of a steep segment, tens of
-	 * meters of floor), while the sweep cut takes the deepest of these cross-sections and changes at the wall steepness.
-	 * It also measures the side from the axis itself: the projection measures it at the perpendicular foot on the curve,
-	 * which is too far where the bends of the axis change fast (the axis passes nearer, by up to tens of meters at
-	 * gameplay scale), so there the sweep cut is deeper. A first version with point cross-sections at the nodes (distance
-	 * from the node axis point) left a crease at every node where that happens (review of K4, docs).
+	 * K4c sweep cut of the valley of s at (x, z), decisions D4 and D4a: the largest cut of the cross-sections of the valley
+	 * along its curve. Each cross-section is measured in the metric of the projection itself ({@link #projectChannel}):
+	 * the distance from the valley axis is |lat - wander(t_f)| along the normal of the curve at t, with the bend wander
+	 * taken at the Newton estimate t_f of the foot of the perpendicular, plus {@link #SWEEP_PENALTY} * |along| (smoothed near
+	 * 0 over {@link #SWEEP_PENALTY_SOFT}); the floor level, the width, the margins (A5, G3) and the source head are taken
+	 * upstream of the foot (t + (1 + {@link #SWEEP_FLOOR_MARGIN}) * (t_f - t) when the foot lies upstream, t otherwise) and
+	 * the meander belt (which can shrink downstream, G2) is the smaller of both ends of that interval. Every cross-section
+	 * is a continuous function of t and (x, z). At the foot of an arm (along = 0) the cross-section is the arm itself, with
+	 * a kink maximum over t; next to it the cross-sections do not cut deeper. Where the distance from the curve is nearly
+	 * the same along a part of it (ties), the projection switches between arms with very different floor levels within
+	 * centimeters, and the sweep cut takes the deepest cross-section.
+	 *
+	 * <p>The cross-sections taken (round 1 of the review of K4c): the nodes t_k = k / {@link #SWEEP_NODES}, the interior
+	 * arms of the projection (their kink maxima) and the extrema of f = (P - X) * P' (the would-be arms, where the
+	 * distance is nearly stationary). The first K4c family (the nodes and the point of each edge of the curve polyline
+	 * nearest to the column) missed the kink maxima at the arms between the nodes, so at ties the node cross-sections won
+	 * in turn and left a field of straight ribs (one facet per node, profiles across them 401-416 m every 4 m, up to 2.5
+	 * blocks per block).
+	 *
+	 * <p>The maximum is continuous when every member is a continuous function of (x, z) while it exists and enters or
+	 * leaves the family with a value not above the maximum of the others (round 2 of the review of K4c; round 1 claimed
+	 * this for the arms only). Hence: (1) an arm pair is born where an extremum of f reaches 0, at the extremum, and the
+	 * arm carries the weight of the extremum there ({@link #SWEEP_ARM_BIRTH}); (2) a pair of extrema of f is born where
+	 * f'' = 0 and enters with the weight 0 ({@link #SWEEP_TWIN}; with the full weight it stepped into the maximum, up to
+	 * 12.8 m); (3) an extremum leaving through an end of the segment has there at most the value of the end node, because
+	 * near the ends the distance of an interior cross-section passes into that of the end arm ({@link Section#fromFoot},
+	 * with one exception at the far end of very short source segments; before, the interior formula with the Huber
+	 * penalty gave up to 2.1 m more cut than the end arm, a vertical step of 2.0 m on dry land); (4) an arm leaves through
+	 * an end with along = 0, where both formulas agree.
+	 *
+	 * <p>The first version (K4b) measured the cross-sections by the Euclidean distance from a 16-edge polyline of the valley
+	 * axis. Its chords passed up to 561 m nearer than the axis (order 3 at realistic scale), and the Euclidean distance
+	 * from an axis inclined against the curve is shorter than the projection's distance along the normal, so it deepened
+	 * valley sides far from any tie (4.75% of the dry land at realistic scale and 16.9% at gameplay scale by more than 1 m,
+	 * up to 136 m; review of K4, docs/m2/poprawka-geometrii.md, K4c).
 	 *
 	 * <p>Only a cut deeper than {@code limit} matters (see {@link #query}), so the method returns 0 when no cross-section
-	 * can exceed it, skipping work by bounds: over the whole segment (the lowest floor, the widest floor and wall, the
-	 * distance from the curve minus the largest wander and sagitta, the box of the axis nodes), then block by block of
-	 * {@link #SWEEP_BLOCK} edges (the sagitta of the block), then cross-section by cross-section. The bounds only skip
-	 * cross-sections that cannot exceed the best one so far, so the result is the same as without them.
+	 * can exceed it, skipping work by bounds over the whole segment, block by block of {@link #SWEEP_BLOCK} edges (the
+	 * bounds hold for every t of a block) and cross-section by cross-section. With a single arm of the projection, a
+	 * cross-section whose interval [tLo, tHi] contains the arm and whose floor distance bound is not below that of the arm
+	 * is provably not deeper than the arm, i.e. than the projection ({@code Section.notDeeperThanArm}), so it is skipped
+	 * before the bend (noise) is evaluated; the first K4c skipped the whole sweep cut at a "clear" arm instead, which was
+	 * not safe (vertical scarps up to 20 m along the edge of the skipped region, round 1 of the review).
 	 *
-	 * @param floorOffset floor height above the water level at (x, z) ({@code floor − level} in {@link #query})
+	 * @param floorOffset floor height above the water level at (x, z) ({@code floor - level} in {@link #query})
 	 * @param skel        distance from the curve, {@code out[8]} of {@link #projectChannel}
+	 * @param armFd       with a single arm of the projection, on a segment whose floor falls and whose channel widens
+	 *                    downstream: the floor distance of the arm (va − w / 2 − belt, before the clamp at 0, as in
+	 *                    {@link #query}); otherwise NaN
+	 * @param armRise     the rise of the head of a source segment at the arm ({@link #headRise}; +∞ for other segments)
+	 * @param sc          thread buffer with the arms of the projection of s at (x, z) ({@link Scratch#bt},
+	 *                    {@link Scratch#arms}) and the roots of f' ({@link Scratch#r4}, {@link Scratch#criticals})
 	 * @return the sweep cut when it exceeds {@code limit}, otherwise 0
 	 */
 	private double sweepCut(Segment s, double x, double z, double terrain, double floorOffset, double fpFactor,
-			double fpBase, double edge, double beltK, double maxSlope, double skel, double limit) {
+			double fpBase, double edge, double beltK, double maxSlope, double skel, double armFd, double armRise, double limit,
+			Scratch sc) {
 		double minFloor = Math.min(s.level0, s.level1) + floorOffset;
 		double depthMax = terrain - minFloor;
 		if (depthMax <= limit) {
 			return 0;
 		}
-		double minWall = 20 * valleyScale;
-		double maxWall = maxWall();
-		double wallMax = Math.clamp(depthMax / maxSlope, minWall, maxWall);
+		double wallMax = Math.clamp(depthMax / maxSlope, 20 * valleyScale, maxWall());
 		double wMax = Math.max(s.width0, s.width1);
 		double beltMax = Math.max(s.amp, s.ampEnd) * beltK * edge;
 		// Upper bound of the half-width of the terrain floor (the G3 and A5 factors are at most 1).
 		double halfMax = wMax / 2 + (fpFactor * wMax + fpBase) * edge * (1 + FUNNEL_SHARE) + FUNNEL_BASE * valleyScale;
-		// Every point of the axis is at least skel − (largest wander) away and the polyline at most the largest sagitta
-		// nearer (1 m to spare for the wander sampled between the nodes), so no cross-section can cut more than this.
 		double reachMax = halfMax + wallMax;
-		double bx = x - s.x0;
-		double bz = z - s.z0;
-		// The polyline lies in the box of its nodes, so it is at least the distance from that box away.
-		double ox = Math.max(0, Math.max(s.sweepMinX - bx, bx - s.sweepMaxX));
-		double oz = Math.max(0, Math.max(s.sweepMinZ - bz, bz - s.sweepMaxZ));
-		double fdMin = Math.max(skel - s.sweepWanderMax - s.sweepSagMax - 1, Math.sqrt(ox * ox + oz * oz))
-				- wMax / 2 - beltMax;
-		if (fdMin >= reachMax || (1 - Noise.smoothstep(halfMax, reachMax, fdMin)) * depthMax <= limit) {
+		// Every cross-section has d ≥ |lat| + |along| − c / 2 − |wander| ≥ |X − P(t)| − c / 2 − (largest wander), with c
+		// the smoothing of the penalty (Huber: along² / (2c) ≥ |along| − c / 2).
+		double slack = s.sweepWanderMax + SWEEP_PENALTY_SOFT * valleyScale / 2 + wMax / 2 + beltMax;
+		if (cannotCut(skel - slack, halfMax, reachMax, depthMax, limit)) {
 			return 0;
 		}
 		int n = SWEEP_NODES;
 		float[] nd = s.sweepNodes;
 		float[] blockSag = s.sweepBlockSag;
-		double best = limit;
+		double bx = x - s.x0;
+		double bz = z - s.z0;
+		// Blocks of SWEEP_BLOCK edges: the curve of a block lies within its sagitta of the chord of the block, and every
+		// cross-section of the block takes its floor at or upstream of the end of the block (tLo ≤ t), so a block that
+		// cannot cut deeper than limit even from that distance and with that floor is skipped as a whole (all t of it).
+		int live = 0;
 		for (int c = 0; c < blockSag.length; c++) {
-			// Blocks of SWEEP_BLOCK edges: the nodes and edges of a block lie within its sagitta of the chord of the block,
-			// so a block that cannot cut deeper than best even from that distance is skipped as a whole.
-			int k0 = c * SWEEP_BLOCK;
-			int k1 = k0 + SWEEP_BLOCK;
-			int c0 = SWEEP_STRIDE * k0;
-			int c1 = SWEEP_STRIDE * k1;
-			double cx = nd[c1 + 4] - nd[c0 + 4];
-			double cz = nd[c1 + 5] - nd[c0 + 5];
-			double cpx = bx - nd[c0 + 4];
-			double cpz = bz - nd[c0 + 5];
+			double depth = terrain - Math.min(s.level0, s.levelAt((double) (c + 1) * SWEEP_BLOCK / n)) - floorOffset;
+			if (depth <= limit) {
+				continue;
+			}
+			int c0 = SWEEP_STRIDE * c * SWEEP_BLOCK;
+			int c1 = SWEEP_STRIDE * (c + 1) * SWEEP_BLOCK;
+			double cx = nd[c1] - nd[c0];
+			double cz = nd[c1 + 1] - nd[c0 + 1];
+			double cpx = bx - nd[c0];
+			double cpz = bz - nd[c0 + 1];
 			double cl2 = cx * cx + cz * cz;
 			double cu = cl2 > 1e-12 ? Math.clamp((cpx * cx + cpz * cz) / cl2, 0.0, 1.0) : 0;
 			double cdx = cpx - cu * cx;
 			double cdz = cpz - cu * cz;
-			double blockFd = Math.sqrt(cdx * cdx + cdz * cdz) - blockSag[c] - wMax / 2 - beltMax;
-			if (blockFd >= reachMax || (1 - Noise.smoothstep(halfMax, reachMax, blockFd)) * depthMax <= best) {
+			double wall = Math.clamp(depth / maxSlope, 20 * valleyScale, maxWall());
+			if (!cannotCut(Math.sqrt(cdx * cdx + cdz * cdz) - blockSag[c] - slack, halfMax, halfMax + wall, depth, limit)) {
+				live |= 1 << c;
+			}
+		}
+		if (live == 0) {
+			return 0;
+		}
+		Section q = new Section(s, bx, bz, terrain, floorOffset, fpFactor, fpBase, edge, beltK, maxSlope, wMax, beltMax,
+				halfMax, reachMax, depthMax);
+		if (armFd == armFd) {
+			q.armT = sc.bt[0];
+			q.armFd = armFd;
+			q.armRise = armRise;
+		}
+		// The interior arms of the projection (the feet, where a cross-section has its kink maximum) and the extrema of
+		// f = (P − X) · P' (the would-be arms: where the distance is nearly stationary, an arm pair is born when the
+		// extremum of f reaches 0, and the new arm starts at the extremum). Each enters with a weight (round 2 of the
+		// review of K4c): an extremum with the weight of SWEEP_TWIN, 0 where it is born together with its twin; an arm
+		// with the weight of SWEEP_ARM_BIRTH, equal to that of the extremum it is born out of, so it enters the maximum
+		// with the value the extremum already had. A single arm is the projection itself (its cross-section is the cut of
+		// the projection, not deeper than limit), so it is not evaluated. These go first: they are the likely maxima, so
+		// the bounds then skip more nodes.
+		int lastBlock = blockSag.length - 1;
+		double best = limit;
+		int arms = sc.arms > 1 ? sc.arms : 0;
+		double[] f2 = sc.p3;
+		for (int j = 0; j < arms + sc.criticals; j++) {
+			double t = j < arms ? sc.bt[j] : sc.r4[j - arms];
+			if (t > 0 && t < 1 && (live >> Math.min(lastBlock, (int) (t * n) / SWEEP_BLOCK) & 1) != 0) {
+				// ξ = f''² / (2 |f'''| |P''|), f'' from the coefficients sc.p3 of distanceMinima (f' in sc.p4).
+				double ff = eval(f2, 3, t);
+				double fff = f2[1] + t * (2 * f2[2] + 3 * t * f2[3]);
+				double ax = 2 * s.cx2 + 6 * t * s.cx3;
+				double az = 2 * s.cz2 + 6 * t * s.cz3;
+				double xi = ff * ff / (2 * Math.max(1e-300, Math.abs(fff) * Math.sqrt(ax * ax + az * az)));
+				double weight = Noise.smoothstep(0, SWEEP_TWIN * valleyScale, xi);
+				if (j < arms) {
+					double vx = s.cx1 + t * (2 * s.cx2 + 3 * t * s.cx3);
+					double vz = s.cz1 + t * (2 * s.cz2 + 3 * t * s.cz3);
+					double g = eval(sc.p4, 4, t) / Math.max(1e-300, vx * vx + vz * vz);
+					weight = 1 - (1 - weight) * (1 - Noise.smoothstep(0, SWEEP_ARM_BIRTH, g));
+				}
+				if (weight > 0) {
+					best = Math.max(best, weight * q.at(t, best / weight));
+				}
+			}
+		}
+		// The nodes: the ends in full (their cross-section can be the end arm), the interior nodes with the bounds of
+		// Section.cut before the bend inline (most nodes end there).
+		if ((live & 1) != 0) {
+			best = Math.max(best, q.cut(0, bx - nd[0], bz - nd[1], nd[2], nd[3], nd[4], true, best));
+		}
+		if ((live >> lastBlock & 1) != 0) {
+			int e = SWEEP_STRIDE * n;
+			best = Math.max(best, q.cut(1, bx - nd[e], bz - nd[e + 1], nd[e + 2], nd[e + 3], nd[e + 4], true, best));
+		}
+		// fdMin of Section.cut: |lat| − |wander| + SWEEP_PENALTY · (|along| − c / 2) − w / 2 − belt.
+		double fdSlack = slack + (SWEEP_PENALTY - 1) * SWEEP_PENALTY_SOFT * valleyScale / 2;
+		double minWall = 20 * valleyScale;
+		double maxWall = maxWall();
+		double invSlope = 1 / maxSlope;
+		for (int k = 1; k < n; k++) {
+			if ((live >> Math.min(lastBlock, k / SWEEP_BLOCK) & 1) == 0) {
 				continue;
 			}
-			double tPrev = 0;
-			for (int k = k0; k <= k1; k++) {
-				int i = SWEEP_STRIDE * k;
-				// t extrapolated from the node along its curve tangent (the largest speed downstream and the smallest
-				// upstream, so never further than the foot of the perpendicular gives to first order).
-				double along = (bx - nd[i]) * nd[i + 2] + (bz - nd[i + 1]) * nd[i + 3];
-				double tk = (double) k / n + along / (along >= 0 ? s.speedMax : s.speedMin);
-				if (k < k1 || k == n) {
-					// The cross-section at the node, from its axis point (the last node of a block belongs to the next).
-					double qx = bx - nd[i + 4];
-					double qz = bz - nd[i + 5];
-					best = sectionCut(s, Math.sqrt(qx * qx + qz * qz), tk, terrain, floorOffset, fpFactor, fpBase, edge, beltK,
-							maxSlope, wMax, beltMax, halfMax, reachMax, depthMax, best);
-				}
-				if (k > k0) {
-					// The cross-section along the edge from the previous node: from the nearest point of the edge, at the t
-					// of the two nodes blended by the position on the edge.
-					int h = i - SWEEP_STRIDE;
-					double ex = nd[i + 4] - nd[h + 4];
-					double ez = nd[i + 5] - nd[h + 5];
-					double px = bx - nd[h + 4];
-					double pz = bz - nd[h + 5];
-					double l2 = ex * ex + ez * ez;
-					double u = l2 > 1e-12 ? Math.clamp((px * ex + pz * ez) / l2, 0.0, 1.0) : 0;
-					if (u > 0 && u < 1) {
-						double dx = px - u * ex;
-						double dz = pz - u * ez;
-						best = sectionCut(s, Math.sqrt(dx * dx + dz * dz), tPrev + u * (tk - tPrev), terrain, floorOffset,
-								fpFactor, fpBase, edge, beltK, maxSlope, wMax, beltMax, halfMax, reachMax, depthMax, best);
-					}
-				}
-				tPrev = tk;
+			int i = SWEEP_STRIDE * k;
+			double ex = bx - nd[i];
+			double ez = bz - nd[i + 1];
+			double tx = nd[i + 2];
+			double tz = nd[i + 3];
+			double along = ex * tx + ez * tz;
+			double lat = tx * ez - tz * ex;
+			double aa = Math.abs(along);
+			double fdMin = Math.abs(lat) + SWEEP_PENALTY * aa - fdSlack;
+			if (fdMin >= reachMax) {
+				continue;
 			}
+			double t = (double) k / n;
+			double depthT = terrain - Math.min(s.level0, s.levelAt(t)) - floorOffset;
+			if (depthT <= best
+					|| cannotCut(fdMin, halfMax, halfMax + Math.clamp(depthT * invSlope, minWall, maxWall), depthT, best)) {
+				continue;
+			}
+			best = Math.max(best, q.fromFoot(t, ex, ez, nd[i + 4], along, lat, best));
 		}
 		return best > limit ? best : 0;
 	}
 
 	/**
-	 * K4b sweep cut: the larger of {@code best} and the cut of the cross-section of s at distance {@code va} from the
-	 * valley axis and at t (clamped to [0, 1]), as in {@link #query}; the bounds over the segment ({@code halfMax},
-	 * {@code reachMax} = halfMax + the widest wall, {@code depthMax} from the lowest floor) skip it early.
+	 * Whether no cross-section with the floor distance at least {@code fdMin} (distance from the valley axis minus the
+	 * widest half channel and meander belt) can cut deeper than {@code best}: beyond the widest floor and wall, or not
+	 * deeper even with the lowest floor ({@code depthMax}).
 	 */
-	private double sectionCut(Segment s, double va, double tRaw, double terrain, double floorOffset, double fpFactor,
-			double fpBase, double edge, double beltK, double maxSlope, double wMax, double beltMax, double halfMax,
-			double reachMax, double depthMax, double best) {
-		double fdMin = va - wMax / 2 - beltMax;
-		// Bounds over the segment first (no t needed): beyond the reach, or not deeper than best even with the widest
-		// floor and wall and the lowest floor.
-		if (fdMin >= reachMax || (1 - Noise.smoothstep(halfMax, reachMax, fdMin)) * depthMax <= best) {
-			return best;
+	private static boolean cannotCut(double fdMin, double halfMax, double reachMax, double depthMax, double best) {
+		return fdMin >= reachMax || (1 - Noise.smoothstep(halfMax, reachMax, fdMin)) * depthMax <= best;
+	}
+
+	/**
+	 * K4c sweep cut: the cross-sections of one segment at one column (the bounds over the segment and the inputs of
+	 * {@link #query} that do not depend on t).
+	 */
+	private final class Section {
+		final Segment s;
+		/** The column relative to the start of the segment. */
+		final double bx;
+		final double bz;
+		final double terrain;
+		final double floorOffset;
+		final double fpFactor;
+		final double fpBase;
+		final double edge;
+		final double beltK;
+		final double maxSlope;
+		final double wMax;
+		final double beltMax;
+		final double halfMax;
+		final double reachMax;
+		final double depthMax;
+		final double invSlope;
+		final double minWall;
+		final double maxWall;
+		/** The single arm of the projection, its t and floor distance (NaN: none; see {@code armFd} of sweepCut). */
+		double armT = Double.NaN;
+		double armFd;
+		double armRise;
+
+		Section(Segment s, double bx, double bz, double terrain, double floorOffset, double fpFactor, double fpBase,
+				double edge, double beltK, double maxSlope, double wMax, double beltMax, double halfMax, double reachMax,
+				double depthMax) {
+			this.s = s;
+			this.bx = bx;
+			this.bz = bz;
+			this.terrain = terrain;
+			this.floorOffset = floorOffset;
+			this.fpFactor = fpFactor;
+			this.fpBase = fpBase;
+			this.edge = edge;
+			this.beltK = beltK;
+			this.maxSlope = maxSlope;
+			this.wMax = wMax;
+			this.beltMax = beltMax;
+			this.halfMax = halfMax;
+			this.reachMax = reachMax;
+			this.depthMax = depthMax;
+			this.invSlope = 1 / maxSlope;
+			this.minWall = 20 * valleyScale;
+			this.maxWall = maxWall();
 		}
-		double t = Math.clamp(tRaw, 0.0, 1.0);
-		double w = s.widthAt(t);
-		double floor = s.levelAt(t) + floorOffset;
-		double wall = Math.clamp((terrain - floor) / maxSlope, 20 * valleyScale, maxWall());
-		if (s.source) {
-			floor = Math.max(floor, terrain - 0.5 * maxSlope * t * s.len);
+
+		/**
+		 * Whether the cross-section with the floor and the margins at tLo, the meander belt the smaller of tLo and tHi, and
+		 * a floor distance at least {@code fdMin} provably cuts no deeper than the single arm of the projection, which is
+		 * the cut of the projection itself (round 1 of the review of K4c). The cut of a cross-section falls with its
+		 * floor distance and rises with its floor depth, floor half-width and wall; with the floor falling and the channel
+		 * widening downstream, tLo ≤ t* gives a floor not lower and a half-width and wall not wider than at the arm t*, and
+		 * t* ≤ tHi a meander belt not wider (the smaller of the ends of an interval around t*, by the bound of the belt
+		 * within it, the largest of the segment, compared with the exact belt at the arm). A source head raises the floor
+		 * of the cross-section by no less than at the arm when tLo · len is at most the rise of the head at the arm (the
+		 * rise of the cross-section is at most tLo · len, {@link #headRise}).
+		 */
+		private boolean notDeeperThanArm(double tLo, double tHi, double fdMin) {
+			return tLo <= armT && armT <= tHi && fdMin >= armFd && tLo * s.len <= armRise;
 		}
-		double depth = terrain - floor;
-		// Bound of this cross-section (widest floor and meander belt of the segment) before the exact one.
-		if (depth <= best || (1 - Noise.smoothstep(halfMax, halfMax + wall, va - w / 2 - beltMax)) * depth <= best) {
-			return best;
+
+		/** {@link #cut} at any t, with the curve point, tangent and speed computed exactly. */
+		double at(double t, double best) {
+			double vx = s.cx1 + t * (2 * s.cx2 + 3 * t * s.cx3);
+			double vz = s.cz1 + t * (2 * s.cz2 + 3 * t * s.cz3);
+			double speed = Math.max(1e-9, Math.sqrt(vx * vx + vz * vz));
+			return cut(t, bx - t * (s.cx1 + t * (s.cx2 + t * s.cx3)), bz - t * (s.cz1 + t * (s.cz2 + t * s.cz3)), vx / speed,
+					vz / speed, speed, t <= 0 || t >= 1, best);
 		}
-		double base = (fpFactor * w + fpBase) * edge;
-		double half = w / 2 + floorMargin(s, t, base) + funnelWidening(s, t, base);
-		double fd = Math.max(0, va - w / 2 - floorBelt(s, t, beltK, edge, base));
-		if (fd < half + wall) {
-			return Math.max(best, (1 - Noise.smoothstep(half, half + wall, fd)) * depth);
+
+		/**
+		 * The cut of the cross-section at t, for the point (ex, ez) relative to the curve point P(t), with the unit
+		 * tangent (tx, tz) and the speed |P'(t)| there, or {@code −∞} when a bound shows that it is not deeper than
+		 * {@code best}. At an end of the segment with the point behind it ({@code end}), the cross-section is the end
+		 * arm of the projection (the distance from the end of the axis, the floor at the end).
+		 */
+		double cut(double t, double ex, double ez, double tx, double tz, double speed, boolean end, double best) {
+			double along = ex * tx + ez * tz;
+			double lat = tx * ez - tz * ex;
+			if (end && (t <= 0 ? along < 0 : along > 0)) {
+				double lw = lat - s.wanderAt(t);
+				return sectionCut(s, t, t, Math.sqrt(lw * lw + along * along), best);
+			}
+			// Bounds before the bend (noise): d ≥ |lat| − |wander| + SWEEP_PENALTY · (|along| − c / 2), first beyond the
+			// widest wall of the segment, then with the floor at or upstream of t (tLo ≤ t).
+			double soft = SWEEP_PENALTY_SOFT * valleyScale;
+			double aa = Math.abs(along);
+			double fdMin = Math.abs(lat) - s.sweepWanderMax + SWEEP_PENALTY * (aa - soft / 2) - wMax / 2 - beltMax;
+			if (fdMin >= reachMax) {
+				return Double.NEGATIVE_INFINITY;
+			}
+			double depthT = terrain - Math.min(s.level0, s.levelAt(t)) - floorOffset;
+			if (depthT <= best || cannotCut(fdMin, halfMax, halfMax + Math.clamp(depthT * invSlope, minWall, maxWall),
+					depthT, best)) {
+				return Double.NEGATIVE_INFINITY;
+			}
+			return fromFoot(t, ex, ez, speed, along, lat, best);
 		}
-		return best;
+
+		/**
+		 * The rest of {@link #cut} for an interior cross-section that passed the bounds before the bend: the estimate of
+		 * the foot, the bound with the range of the bend near it, the single arm, then the exact cut. Within 1 /
+		 * {@link #SWEEP_NODES} of an end the distance passes into that of the end arm (round 2 of the review of K4c); it
+		 * only grows, so every bound before it holds.
+		 */
+		double fromFoot(double t, double ex, double ez, double speed, double along, double lat, double best) {
+			double soft = SWEEP_PENALTY_SOFT * valleyScale;
+			double aa = Math.abs(along);
+			double pen = SWEEP_PENALTY * (aa < soft ? aa * aa / (2 * soft) : aa - soft / 2);
+			// Newton estimate of the foot of the perpendicular: t + along / (speed * g), g = 1 - (X - P) * P'' / |P'|^2 (at
+			// least SWEEP_MIN_DISTINCTNESS). One step: iterated steps run away from a nearly stationary point of the
+			// distance (an end of a short segment level with the point) within centimeters, so the floor taken at the
+			// estimate fell by 17 m within 0.4 m.
+			double ax = 2 * s.cx2 + 6 * t * s.cx3;
+			double az = 2 * s.cz2 + 6 * t * s.cz3;
+			double g = Math.max(SWEEP_MIN_DISTINCTNESS, 1 - (ex * ax + ez * az) / (speed * speed));
+			double tf = Math.clamp(t + along / (Math.max(speed, SWEEP_MIN_SPEED * s.len) * g), 0.0, 1.0);
+			double reach = (1 + SWEEP_FLOOR_MARGIN) * (tf - t);
+			double tLo = Math.clamp(t + Math.min(0, reach), 0.0, 1.0);
+			double tHi = Math.clamp(t + Math.max(0, reach), 0.0, 1.0);
+			// Bound with the range of the bend near the estimated foot, the width and the floor at tLo (the source head only
+			// raises the floor), before the bend itself (noise) is evaluated.
+			double depth = terrain - s.levelAt(tLo) - floorOffset;
+			if (depth <= best) {
+				return Double.NEGATIVE_INFINITY;
+			}
+			int bin = Math.min(SWEEP_WANDER_BINS - 1, (int) (tf * SWEEP_WANDER_BINS));
+			double wLo = s.sweepWanderRange[2 * bin];
+			double wHi = s.sweepWanderRange[2 * bin + 1];
+			double off = lat < wLo ? wLo - lat : lat > wHi ? lat - wHi : 0;
+			double w = s.widthAt(tLo);
+			double fdMin2 = off + pen - w / 2 - beltMax;
+			if (armT == armT && notDeeperThanArm(tLo, tHi, fdMin2)) {
+				return Double.NEGATIVE_INFINITY;
+			}
+			double wall = Math.clamp(depth * invSlope, minWall, maxWall);
+			if (fdMin2 >= halfMax + wall) {
+				return Double.NEGATIVE_INFINITY;
+			}
+			// The half-width of the floor at tLo, bounded without the smoothsteps of the head and the funnel (A5, G3).
+			double base = (fpFactor * w + fpBase) * edge;
+			double half = w / 2 + base + (s.mouth ? FUNNEL_SHARE * base + FUNNEL_BASE * valleyScale : 0);
+			if (fdMin2 >= half + wall || (1 - Noise.smoothstep(half, half + wall, fdMin2)) * depth <= best) {
+				return Double.NEGATIVE_INFINITY;
+			}
+			double lw = lat - s.wanderAt(tf);
+			double d = Math.abs(lw) + pen;
+			// Round 2 of the review of K4c: within 1 / SWEEP_NODES of an end, with the column beyond the normal at t on the
+			// side of that end, the distance passes into that of the end arm, sqrt(lw² + along²), where that is larger (by
+			// at most c / 2 of the Huber penalty), so an extremum of f leaving the segment through the end has there at most
+			// the value of the end node (the end arm) instead of stepping out of the maximum (2.0 m at realistic scale
+			// (132704, 1042536.5)). Exception: at the far end of a source segment shorter than 3 r (r of headRise) a larger
+			// distance lowers the floor of the head arc, by at most 0.5 · maxSlope · 0.61 per meter of distance. The interior
+			// nodes are unchanged (the blend is 0 at t = k / SWEEP_NODES, 0 < k < SWEEP_NODES).
+			double blend = along > 0 ? Noise.smoothstep(1 - 1.0 / SWEEP_NODES, 1, t)
+					: along < 0 ? 1 - Noise.smoothstep(0, 1.0 / SWEEP_NODES, t) : 0;
+			if (blend > 0) {
+				double dEnd = Math.sqrt(lw * lw + along * along);
+				if (dEnd > d) {
+					d += blend * (dEnd - d);
+				}
+			}
+			return sectionCut(s, tLo, tHi, d, best);
+		}
+
+		/**
+		 * The cut of the cross-section of s at distance d from the valley axis, as in {@link #query}, with the floor
+		 * level, the width and the margins at tLo (they grow downstream) and the meander belt the smaller of tLo and tHi;
+		 * {@code −∞} when a bound shows that it is not deeper than {@code best}, 0 beyond its wall.
+		 */
+		private double sectionCut(Segment s, double tLo, double tHi, double d, double best) {
+			if (cannotCut(d - wMax / 2 - beltMax, halfMax, reachMax, depthMax, best)) {
+				return Double.NEGATIVE_INFINITY;
+			}
+			double w = s.widthAt(tLo);
+			double base = (fpFactor * w + fpBase) * edge;
+			double floor = s.levelAt(tLo) + floorOffset;
+			double wall = Math.clamp((terrain - floor) * invSlope, minWall, maxWall);
+			if (s.source) {
+				floor = Math.max(floor, terrain - 0.5 * maxSlope * headRise(s, tLo, d, w / 2 + base));
+			}
+			double depth = terrain - floor;
+			// Bound of this cross-section (widest floor and meander belt of the segment) before the exact one.
+			if (depth <= best || (1 - Noise.smoothstep(halfMax, halfMax + wall, d - w / 2 - beltMax)) * depth <= best) {
+				return Double.NEGATIVE_INFINITY;
+			}
+			double half = w / 2 + floorMargin(s, tLo, base) + funnelWidening(s, tLo, base);
+			double belt = floorBelt(s, tLo, beltK, edge, base);
+			if (tHi > tLo) {
+				belt = Math.min(belt, floorBelt(s, tHi, beltK, edge, base));
+			}
+			double fd = Math.max(0, d - w / 2 - belt);
+			return fd < half + wall ? (1 - Noise.smoothstep(half, half + wall, fd)) * depth : 0;
+		}
 	}
 
 	/** G5: polynomial smooth minimum of a and b with radius k (k ≤ 0: the ordinary minimum); lowers by at most k / 4. */
@@ -1279,11 +1588,8 @@ final class RiverNetwork {
 				+ maxWall() + Math.max(width0, width1);
 		s.chordDeviation = dev;
 		s.reach = reach;
-		// K4b sweep cut: per node the curve point and tangent (for t) and the axis point; the largest sagitta of the axis
-		// over an edge (measured at the middle of each edge) and the largest wander, for the bounds.
+		// K4c sweep cut: per node the curve point, tangent and speed; per block the bounds from dense samples.
 		float[] nodes = new float[SWEEP_STRIDE * (SWEEP_NODES + 1)];
-		double wanderMax = 0;
-		double[] a = new double[2];
 		for (int k = 0; k <= SWEEP_NODES; k++) {
 			double t = (double) k / SWEEP_NODES;
 			double tx = s.dx(t);
@@ -1294,53 +1600,61 @@ final class RiverNetwork {
 			nodes[i + 1] = (float) (s.pz(t) - s.z0);
 			nodes[i + 2] = (float) (tx / tl);
 			nodes[i + 3] = (float) (tz / tl);
-			wanderMax = Math.max(wanderMax, axisPoint(s, t, a));
-			nodes[i + 4] = (float) (a[0] - s.x0);
-			nodes[i + 5] = (float) (a[1] - s.z0);
+			nodes[i + 4] = (float) tl;
 		}
-		for (int k = 0; k < SWEEP_NODES; k++) {
-			int i = SWEEP_STRIDE * k;
-			double ax0 = nodes[i + 4] + s.x0;
-			double az0 = nodes[i + 5] + s.z0;
-			double ex = nodes[i + SWEEP_STRIDE + 4] - nodes[i + 4];
-			double ez = nodes[i + SWEEP_STRIDE + 5] - nodes[i + 5];
-			double el = Math.max(1e-9, Math.sqrt(ex * ex + ez * ez));
-			// The sagitta at the middle of the edge, doubled for the rest of the edge (it only loosens the bounds).
-			wanderMax = Math.max(wanderMax, axisPoint(s, (k + 0.5) / SWEEP_NODES, a));
-			double sag = Math.abs((a[0] - ax0) * ez - (a[1] - az0) * ex) / el;
-			s.sweepSagMax = Math.max(s.sweepSagMax, 2 * sag + 0.01);
+		// The bend at the dense samples t = j / (SWEEP_NODES · SWEEP_BOUND_SAMPLES), shared by the bounds below.
+		int dense = SWEEP_NODES * SWEEP_BOUND_SAMPLES;
+		double[] wanders = new double[dense + 1];
+		for (int j = 0; j <= dense; j++) {
+			wanders[j] = s.wanderAt((double) j / dense);
 		}
-		s.sweepNodes = nodes;
-		s.sweepWanderMax = wanderMax;
-		float[] blockSag = new float[SWEEP_NODES / SWEEP_BLOCK];
-		for (int c = 0; c < blockSag.length; c++) {
+		int blocks = SWEEP_NODES / SWEEP_BLOCK;
+		float[] blockSag = new float[blocks];
+		double wanderMax = 0;
+		for (int c = 0; c < blocks; c++) {
 			int i0 = SWEEP_STRIDE * c * SWEEP_BLOCK;
 			int i1 = SWEEP_STRIDE * (c + 1) * SWEEP_BLOCK;
-			double ex = nodes[i1 + 4] - nodes[i0 + 4];
-			double ez = nodes[i1 + 5] - nodes[i0 + 5];
+			double ex = nodes[i1] - nodes[i0];
+			double ez = nodes[i1 + 1] - nodes[i0 + 1];
 			double l2 = Math.max(1e-12, ex * ex + ez * ez);
 			double sag = 0;
-			for (int k = c * SWEEP_BLOCK + 1; k < (c + 1) * SWEEP_BLOCK; k++) {
-				double px = nodes[SWEEP_STRIDE * k + 4] - nodes[i0 + 4];
-				double pz = nodes[SWEEP_STRIDE * k + 5] - nodes[i0 + 5];
+			double wm = 0;
+			int samples = SWEEP_BLOCK * SWEEP_BOUND_SAMPLES;
+			for (int q = 0; q <= samples; q++) {
+				double t = (c * SWEEP_BLOCK + (double) q / SWEEP_BOUND_SAMPLES) / SWEEP_NODES;
+				double px = s.px(t) - s.x0 - nodes[i0];
+				double pz = s.pz(t) - s.z0 - nodes[i0 + 1];
 				double u = Math.clamp((px * ex + pz * ez) / l2, 0.0, 1.0);
 				double dx = px - u * ex;
 				double dz = pz - u * ez;
 				sag = Math.max(sag, Math.sqrt(dx * dx + dz * dz));
+				wm = Math.max(wm, Math.abs(wanders[c * samples + q]));
 			}
-			blockSag[c] = (float) (sag + 0.01);
+			// Margins for the curve and the bend between the samples (1/128 of the segment apart).
+			double spacing = s.len / (SWEEP_NODES * SWEEP_BOUND_SAMPLES);
+			blockSag[c] = (float) (1.02 * sag + 0.05 * spacing + 0.01);
+			wanderMax = Math.max(wanderMax, 1.05 * wm + 0.05 * spacing + 1);
 		}
+		// K4c: range of the bend per interval of t (dense samples, with the same margin), for the bounds of a cross-section.
+		float[] wanderRange = new float[2 * SWEEP_WANDER_BINS];
+		int perBin = dense / SWEEP_WANDER_BINS;
+		double binMargin = 0.05 * s.len / dense + 1;
+		for (int c = 0; c < SWEEP_WANDER_BINS; c++) {
+			double lo = Double.MAX_VALUE;
+			double hi = -Double.MAX_VALUE;
+			for (int q = 0; q <= perBin; q++) {
+				double wa = wanders[c * perBin + q];
+				lo = Math.min(lo, wa);
+				hi = Math.max(hi, wa);
+			}
+			double grow = 0.05 * (hi - lo) + binMargin;
+			wanderRange[2 * c] = (float) (lo - grow);
+			wanderRange[2 * c + 1] = (float) (hi + grow);
+		}
+		s.sweepNodes = nodes;
 		s.sweepBlockSag = blockSag;
-		s.sweepMinX = Double.MAX_VALUE;
-		s.sweepMaxX = -Double.MAX_VALUE;
-		s.sweepMinZ = Double.MAX_VALUE;
-		s.sweepMaxZ = -Double.MAX_VALUE;
-		for (int k = 0; k <= SWEEP_NODES; k++) {
-			s.sweepMinX = Math.min(s.sweepMinX, nodes[SWEEP_STRIDE * k + 4]);
-			s.sweepMaxX = Math.max(s.sweepMaxX, nodes[SWEEP_STRIDE * k + 4]);
-			s.sweepMinZ = Math.min(s.sweepMinZ, nodes[SWEEP_STRIDE * k + 5]);
-			s.sweepMaxZ = Math.max(s.sweepMaxZ, nodes[SWEEP_STRIDE * k + 5]);
-		}
+		s.sweepWanderMax = wanderMax;
+		s.sweepWanderRange = wanderRange;
 		s.minX = minX - reach;
 		s.maxX = maxX + reach;
 		s.minZ = minZ - reach;
@@ -1355,17 +1669,6 @@ final class RiverNetwork {
 	private double floorHalfMax(double w) {
 		double f = (5 * w + 40 * valleyScale) * (1 + EDGE_AMPLITUDE * 1.2);
 		return w / 2 + f + 0.6 * f + 30 * valleyScale;
-	}
-
-	/** Point of the valley axis of s at t into {@code out}; returns |wander| there. */
-	private static double axisPoint(Segment s, double t, double[] out) {
-		double tx = s.dx(t);
-		double tz = s.dz(t);
-		double tl = Math.max(1e-9, Math.sqrt(tx * tx + tz * tz));
-		double w = s.wanderAt(t);
-		out[0] = s.px(t) - tz / tl * w;
-		out[1] = s.pz(t) + tx / tl * w;
-		return Math.abs(w);
 	}
 
 	/** Largest width of a valley side. */
@@ -1417,11 +1720,13 @@ final class RiverNetwork {
 	}
 
 	/**
-	 * Position of a point relative to the watercourse, written to {@code out} (9 slots): {t, distance from the channel
-	 * (with meanders), distance from the valley axis (with bends, without meanders), t of the nearest arm, lateral
+	 * Position of a point relative to the watercourse, written to {@code out} (at least 9 slots): {t, distance from the
+	 * channel (with meanders), distance from the valley axis (with bends, without meanders), t of the nearest arm, lateral
 	 * distance from the curve on it, continuous distance from the channel (the d field, {@link MeanderField#distances}), t
-	 * and lateral distance of the arm that gives it, distance from the curve (the smallest over the arms)}. The work arrays come from {@code sc} (thread buffer), so
-	 * a column query does not allocate them for every segment.
+	 * and lateral distance of the arm that gives it, distance from the curve (the smallest over the arms)}; the number of
+	 * arms goes to {@link Scratch#arms}, their t to {@link Scratch#bt} and the roots of f' to {@link Scratch#r4} (the sweep
+	 * cut, {@link #sweepCut}). The work arrays come from {@code sc} (thread buffer), so a column query does not allocate
+	 * them for every segment.
 	 * <p>
 	 * The nearest point of the curve jumps between the arms of a bend when the point lies on the inner side of the bend.
 	 * Therefore all local distance minima (arms) are used: the position along the watercourse (on which water level,
@@ -1460,6 +1765,7 @@ final class RiverNetwork {
 		double[] bch = sc.bch;
 		double[] bchs = sc.bchs;
 		int branches = distanceMinima(s, px, pz, sc);
+		sc.arms = branches;
 		for (int b = 0; b < branches; b++) {
 			double t = bt[b];
 			double tx = s.dx(t);
@@ -1627,6 +1933,7 @@ final class RiverNetwork {
 		int n3 = rootsBetween(p3, 3, r2, n2, r3);
 		double[] r4 = sc.r4;
 		int n4 = rootsBetween(p4, 4, r3, n3, r4);
+		sc.criticals = n4;
 		// Roots of f itself in order: minima of the distance where f rises, maxima where it falls. Every maximum lies
 		// between two minima (an end is a minimum when the point lies behind it). The barrier of a minimum is how much
 		// higher the distance rises at the neighboring maxima (+∞ on a side without one): 0 where the minimum is born or
@@ -1774,7 +2081,11 @@ final class RiverNetwork {
 		final double[] r2 = new double[2];
 		final double[] r3 = new double[3];
 		final double[] r4 = new double[4];
-		final double[] pr = new double[9];
+		final double[] pr = new double[10];
+		/** Number of arms of the last {@link #projectChannel} (their t in {@link #bt}). */
+		int arms;
+		/** Number of roots of f' of the last {@link #distanceMinima} (in {@link #r4}). */
+		int criticals;
 		final double[] chHalf = new double[8];
 		final double[] chDist = new double[8];
 		final double[] chLevel = new double[8];
@@ -1926,6 +2237,35 @@ final class RiverNetwork {
 		double lz = tz * tileSize;
 		double hx = lx + tileSize;
 		double hz = lz + tileSize;
+		double ring = LAKE_RING * valleyScale;
+		tileRadiusNodes(lx, lz, (order, i, j) -> {
+			Segment s = segment(order, i, j);
+			if (s != null && !(hx < s.minX || lx > s.maxX || hz < s.minZ || lz > s.maxZ)) {
+				c.segments.add(s);
+			}
+			SinkLake lake = sinkLake(node(order, i, j));
+			// The M1 filter (lake.radius * 1.6 + tile) widened by the habitat ring; the terrain uses only the lakes from the
+			// M1 filter (nearTile).
+			if (lake != null && Math.abs(lake.x - (lx + tileSize / 2)) < lake.radius * 1.6 + ring + tileSize
+					&& Math.abs(lake.z - (lz + tileSize / 2)) < lake.radius * 1.6 + ring + tileSize) {
+				c.lakes.add(lake);
+			}
+		});
+		return c;
+	}
+
+	/** Grid node of one order (see {@link #tileRadiusNodes}). */
+	@FunctionalInterface
+	private interface NodeVisitor {
+		void visit(int order, long i, long j);
+	}
+
+	/**
+	 * Visits the grid nodes within {@link #tileRadius} of the tile with the corner (lx, lz), in the fixed order of the
+	 * tile list (order 3 to 1, then i and j). Shared by {@link #candidates} and {@link #tileRadiusSegments}, so the test of
+	 * the culling sees the same segments as the query (review of K4: one helper instead of two copies of the loop).
+	 */
+	private void tileRadiusNodes(double lx, double lz, NodeVisitor v) {
 		for (int order = 3; order >= 1; order--) {
 			double a = spacing[order];
 			long gi = (long) Math.floor((lx + tileSize / 2) / a);
@@ -1933,28 +2273,15 @@ final class RiverNetwork {
 			int r = tileRadius(order);
 			for (long i = gi - r; i <= gi + r; i++) {
 				for (long j = gj - r; j <= gj + r; j++) {
-					Segment s = segment(order, i, j);
-					if (s != null && !(hx < s.minX || lx > s.maxX || hz < s.minZ || lz > s.maxZ)) {
-						c.segments.add(s);
-					}
-					SinkLake lake = sinkLake(node(order, i, j));
-					// The M1 filter (lake.radius * 1.6 + tile) widened by the habitat ring; the terrain uses only
-					// the lakes from the M1 filter (nearTile).
-					double ring = LAKE_RING * valleyScale;
-					if (lake != null && Math.abs(lake.x - (lx + tileSize / 2)) < lake.radius * 1.6 + ring + tileSize
-							&& Math.abs(lake.z - (lz + tileSize / 2)) < lake.radius * 1.6 + ring + tileSize) {
-						c.lakes.add(lake);
-					}
+					v.visit(order, i, j);
 				}
 			}
 		}
-		return c;
 	}
 
 	/**
 	 * Radius (in grid cells of the order) around the tile center within which {@link #candidates} looks for segments: it
-	 * covers the longest segments (a gorge of up to 4 cells) and the full reach of the valley. Shared with
-	 * {@link #tileRadiusSegments}, so the test of the culling sees the same segments.
+	 * covers the longest segments (a gorge of up to 4 cells) and the full reach of the valley ({@link #tileRadiusNodes}).
 	 */
 	private int tileRadius(int order) {
 		double a = spacing[order];
@@ -1990,7 +2317,7 @@ final class RiverNetwork {
 		double fpFactor = 5.0 * lowland + 1.5 * foothills + 0.3 * mountains;
 		double fpBase = (40.0 * lowland + 10.0 * foothills + 2.0 * mountains) * valleyScale;
 		double edge = 1 + EDGE_AMPLITUDE * edgeNoise(x, z);
-		double[] pr = new double[9];
+		double[] pr = new double[10];
 		projectChannel(s, x, z, new Scratch(), pr);
 		double t = pr[0];
 		double w = s.widthAt(t);
@@ -2015,7 +2342,7 @@ final class RiverNetwork {
 		double fpFactor = 5.0 * lowland + 1.5 * foothills + 0.3 * mountains;
 		double fpBase = (40.0 * lowland + 10.0 * foothills + 2.0 * mountains) * valleyScale;
 		Scratch sc = new Scratch();
-		double[] pr = new double[9];
+		double[] pr = new double[10];
 		List<double[]> out = new ArrayList<>();
 		double edge = 1 + EDGE_AMPLITUDE * edgeNoise(x, z);
 		for (Segment s : candidates(x, z).segments) {
@@ -2045,7 +2372,76 @@ final class RiverNetwork {
 	 */
 	RiverHit query(double x, double z, double terrain, double lowland, double foothills, double mountains) {
 		TileCache c = candidates(x, z);
-		return query(x, z, terrain, lowland, foothills, mountains, c, c.segments, true);
+		return query(x, z, terrain, lowland, foothills, mountains, c, c.segments, true, true, true);
+	}
+
+	/**
+	 * {@link #query} without the sweep cut, i.e. the terrain of the projection alone (test code only:
+	 * {@code sweepCutKeepsWellConditionedTerrain}, decision D4a).
+	 */
+	RiverHit queryWithoutSweep(double x, double z, double terrain, double lowland, double foothills, double mountains) {
+		TileCache c = candidates(x, z);
+		return query(x, z, terrain, lowland, foothills, mountains, c, c.segments, true, false, false);
+	}
+
+	/**
+	 * {@link #query} with the sweep cut but without the prune of the cross-sections that are provably not deeper than the
+	 * single arm of the projection ({@code Section.notDeeperThanArm}); test code only ({@code sweepCutPruneIsExact},
+	 * round 1 of the review of K4c): the terrain must be the same as with the prune.
+	 */
+	RiverHit queryWithoutPrune(double x, double z, double terrain, double lowland, double foothills, double mountains) {
+		TileCache c = candidates(x, z);
+		return query(x, z, terrain, lowland, foothills, mountains, c, c.segments, true, true, false);
+	}
+
+	/** Segments that pass the culling frame of {@link #query} at (x, z), in the order of the tile list (test code only). */
+	List<Segment> frameSegments(double x, double z) {
+		List<Segment> out = new ArrayList<>();
+		for (Segment s : candidates(x, z).segments) {
+			if (inFrame(s, x, z)) {
+				out.add(s);
+			}
+		}
+		return out;
+	}
+
+	/**
+	 * Conditioning of the projection of (x, z) on s (test code only, decision D4a): {number of arms, distinctness g of the
+	 * dominant arm (the largest weight in the soft averages of {@link #projectChannel}), its share of the weights, 1 when
+	 * it is an end of the segment with the point behind it (else 0), the distance of the point behind that end along the
+	 * tangent (else 0), its t, the distance of the point from the curve}. Allocates.
+	 */
+	double[] armInfo(Segment s, double x, double z) {
+		Scratch sc = new Scratch();
+		double[] pr = new double[10];
+		projectChannel(s, x, z, sc, pr);
+		int n = distanceMinima(s, x, z, sc);
+		double sigma = 10 + 0.3 * Math.max(0, pr[8] - s.maxBend);
+		double vaMin = Double.MAX_VALUE;
+		for (int b = 0; b < n; b++) {
+			vaMin = Math.min(vaMin, sc.bva[b]);
+		}
+		double sum = 0;
+		double top = -1;
+		int dom = 0;
+		for (int b = 0; b < n; b++) {
+			double wv = Math.exp(-(sc.bva[b] - vaMin) / sigma) * sc.bf[b];
+			sum += wv;
+			if (wv > top) {
+				top = wv;
+				dom = b;
+			}
+		}
+		double t = sc.bt[dom];
+		double tx = s.dx(t);
+		double tz = s.dz(t);
+		double tl = Math.max(1e-12, Math.sqrt(tx * tx + tz * tz));
+		double ex = x - s.px(t);
+		double ez = z - s.pz(t);
+		double g = 1 - (ex * s.ddx(t) + ez * s.ddz(t)) / (tl * tl);
+		double along = (ex * tx + ez * tz) / tl;
+		boolean end = t <= 0 && along < 0 || t >= 1 && along > 0;
+		return new double[] {n, g, sum > 0 ? top / sum : 0, end ? 1 : 0, end ? Math.abs(along) : 0, t, pr[8]};
 	}
 
 	/**
@@ -2054,22 +2450,12 @@ final class RiverNetwork {
 	 */
 	List<Segment> tileRadiusSegments(double x, double z) {
 		List<Segment> all = new ArrayList<>();
-		double lx = Math.floor(x / tileSize) * tileSize;
-		double lz = Math.floor(z / tileSize) * tileSize;
-		for (int order = 3; order >= 1; order--) {
-			double a = spacing[order];
-			long gi = (long) Math.floor((lx + tileSize / 2) / a);
-			long gj = (long) Math.floor((lz + tileSize / 2) / a);
-			int r = tileRadius(order);
-			for (long i = gi - r; i <= gi + r; i++) {
-				for (long j = gj - r; j <= gj + r; j++) {
-					Segment s = segment(order, i, j);
-					if (s != null) {
-						all.add(s);
-					}
-				}
+		tileRadiusNodes(Math.floor(x / tileSize) * tileSize, Math.floor(z / tileSize) * tileSize, (order, i, j) -> {
+			Segment s = segment(order, i, j);
+			if (s != null) {
+				all.add(s);
 			}
-		}
+		});
 		return all;
 	}
 
@@ -2080,11 +2466,17 @@ final class RiverNetwork {
 	 */
 	RiverHit querySegments(double x, double z, double terrain, double lowland, double foothills, double mountains,
 			List<Segment> segments) {
-		return query(x, z, terrain, lowland, foothills, mountains, candidates(x, z), segments, false);
+		return querySegments(x, z, terrain, lowland, foothills, mountains, segments, true);
+	}
+
+	/** {@link #querySegments} with or without the sweep cut (test code only). */
+	RiverHit querySegments(double x, double z, double terrain, double lowland, double foothills, double mountains,
+			List<Segment> segments, boolean sweep) {
+		return query(x, z, terrain, lowland, foothills, mountains, candidates(x, z), segments, false, sweep, true);
 	}
 
 	private RiverHit query(double x, double z, double terrain, double lowland, double foothills, double mountains,
-			TileCache c, List<Segment> segments, boolean cull) {
+			TileCache c, List<Segment> segments, boolean cull, boolean sweep, boolean prune) {
 		double fpFactor = 5.0 * lowland + 1.5 * foothills + 0.3 * mountains;
 		double fpBase = (40.0 * lowland + 10.0 * foothills + 2.0 * mountains) * valleyScale;
 		// Largest steepness of the valley sides (tangent) before the terrain returns to the original relief.
@@ -2101,6 +2493,8 @@ final class RiverNetwork {
 		double bestKey = Double.NEGATIVE_INFINITY;
 		double vwMax = 0;
 		double uMin = Double.POSITIVE_INFINITY;
+		// G3: the column lies in the mouth funnel of some segment (on its terrain floor, beyond its floor without the funnel).
+		boolean inFunnel = false;
 		double tau = F1_TAU * valleyScale;
 		double softBand = F1_SOFT_BAND * tau;
 		double sumW = 0;
@@ -2165,7 +2559,8 @@ final class RiverNetwork {
 			// The valley floor is measured from the valley axis (without meanders), so it always contains the channel; in the lowlands
 			// it covers the whole meander belt on both sides (G2: continuous across the node; G4: with the irregular edge;
 			// A5: narrowed at the head, floorBelt).
-			double floorDist = Math.max(0, pr[2] - w / 2 - floorBelt(s, t, beltK, edge, base));
+			double armFd = pr[2] - w / 2 - floorBelt(s, t, beltK, edge, base);
+			double floorDist = Math.max(0, armFd);
 			double fromSource = t * s.len;
 			double fade = s.headFade > 0 ? Noise.smoothstep(0, s.headFade, fromSource) : 1.0;
 			// Continuous valley floor (without water level steps), always at least 1.2 m above the water.
@@ -2173,23 +2568,29 @@ final class RiverNetwork {
 			double floor = level + floorOffset;
 			// Valley: the floor, and beyond it a side of limited steepness that blends smoothly into the relief.
 			double wall = Math.clamp((terrain - floor) / maxSlope, 20 * valleyScale, maxWall());
+			double rise = Double.POSITIVE_INFINITY;
 			if (s.source) {
 				// Valley head: from the source the floor rises upstream at most at half the steepness of the sides,
-				// so the valley closes with a rounded funnel rather than a scarp – regardless of the segment length.
-				floor = Math.max(floor, terrain - 0.5 * maxSlope * fromSource);
+				// so the valley closes with a rounded funnel rather than a scarp – regardless of the segment length. A5
+				// (step K4c): near the head the rise starts on an arc around it (headRise), so the head is an amphitheater,
+				// not a floor of full width ending on a straight line across the axis.
+				rise = headRise(s, t, pr[2], w / 2 + base);
+				floor = Math.max(floor, terrain - 0.5 * maxSlope * rise);
 			}
 			double mask = 1 - Noise.smoothstep(terrainHalf, terrainHalf + wall, floorDist);
 			double own = mask > 0 ? Noise.lerp(mask, terrain, floor) : terrain;
-			// K4b (D4): the cut is at least the sweep cut minus SWEEP_TOLERANCE (continuous by construction; deeper than
-			// the cut of the projection only where the projection is ill-conditioned). A fill (floor above the terrain,
+			// K4b/K4c (D4, D4a): the cut is at least the sweep cut minus SWEEP_TOLERANCE (deeper than the cut of the
+			// projection only near ties of its arms, where the projection is ill-conditioned). A fill (floor above the terrain,
 			// cut < 0) is lowered only by what the sweep cut exceeds 0, so the deepening is continuous there too.
 			// The sweep cut matters only when it brings own below result + SMOOTH_MIN_RADIUS (G5 below takes the plain
 			// minimum otherwise, and the result only falls with further segments), so a smaller one is skipped (the
 			// terrain, and the cascade test of the channels, are the same either way).
 			double armsCut = Math.max(0, terrain - own);
 			double limit = Math.max(armsCut, terrain - result - SMOOTH_MIN_RADIUS) + SWEEP_TOLERANCE;
-			double deeper = sweepCut(s, x, z, terrain, floorOffset, fpFactor, fpBase, edge, beltK, maxSlope, pr[8], limit)
-					- SWEEP_TOLERANCE - armsCut;
+			// The sweep cut provably not deeper than a single arm next to it (see sweepCut, armFd).
+			boolean single = prune && sc.arms == 1 && s.level1 <= s.level0 && s.width1 >= s.width0;
+			double deeper = sweep ? sweepCut(s, x, z, terrain, floorOffset, fpFactor, fpBase, edge, beltK, maxSlope, pr[8],
+					single ? armFd : Double.NaN, rise, limit, sc) - SWEEP_TOLERANCE - armsCut : 0;
 			if (deeper > 0) {
 				own -= deeper;
 			}
@@ -2207,11 +2608,20 @@ final class RiverNetwork {
 			// F1. A dry valley head (fade ≤ 0.5) never wins against a floor (f1Key). Beyond floorHalf + 200 m·k the
 			// valley weight of the segment is 0, so the maximum and the minimum skip it (the same result, cheaper).
 			double key = f1Key(floorHalf, floorDist, fade, valleyScale);
-			if (floorDist < floorHalf + 200 * valleyScale) {
-				vwMax = Math.max(vwMax,
-						(1 - Noise.smoothstep(floorHalf, floorHalf + 200 * valleyScale, floorDist)) * fade);
-				if (floorDist < floorHalf && fade > 0.5) {
-					uMin = Math.min(uMin, floorDist / floorHalf);
+			// G3 (step K4c): u and the floor flag are measured on the floor of the terrain, with the mouth funnel, so the
+			// funnel is valley floor for the habitat fields too (it is flat terrain a few meters above the streams); the key
+			// of the dominant valley stays without the funnel, so the funnel of a tributary never takes the floor of the
+			// valley it joins (inFloor below). The valley weight stays without the funnel (round 1 of the review of K4c):
+			// it decides terrain (kettle ponds and tunnel valley lakes only away from valleys, LandscapeModel), and with
+			// the funnel it removed 11 kettles at realistic scale and 25 at gameplay scale.
+			if (floorDist < terrainHalf + 200 * valleyScale) {
+				if (floorDist < floorHalf + 200 * valleyScale) {
+					vwMax = Math.max(vwMax,
+							(1 - Noise.smoothstep(floorHalf, floorHalf + 200 * valleyScale, floorDist)) * fade);
+				}
+				if (floorDist < terrainHalf && fade > 0.5) {
+					uMin = Math.min(uMin, floorDist / terrainHalf);
+					inFunnel |= floorDist >= floorHalf;
 				}
 			}
 			// Soft maximum only within softBand of the deepest valley so far (further weights < 3.4e-4). When a new
@@ -2225,7 +2635,7 @@ final class RiverNetwork {
 				}
 				double wgt = key >= bestKey ? 1.0 : Math.exp((key - bestKey) / tau);
 				sumW += wgt;
-				sumFh += wgt * floorHalf;
+				sumFh += wgt * terrainHalf;
 				sumSl += wgt * sl;
 			}
 			// Ties: the wider floor, then the earlier segment of the tile list (fixed order, see candidates).
@@ -2334,8 +2744,11 @@ final class RiverNetwork {
 					ColumnSample.NO_WATER, 0, Double.NaN, ringShore, ringLevel, ringId, ringRadius,
 					Double.POSITIVE_INFINITY, Double.NaN, Double.NaN, Double.NaN);
 		}
-		// In the floor of some valley exactly when in the floor of the dominant one (its key is the largest, so positive).
-		boolean inFloor = bestFloorDist < bestFloorHalf && bestFade > 0.5;
+		// In the floor of some valley exactly when in the floor of the dominant one (its key is the largest, so positive),
+		// or in a mouth funnel (G3, step K4c): the funnel belongs to the floor of the valley it opens into, whose channel
+		// gives the waterside zones there (floorChannelDist), not to an unclassified slope between two floors (review of
+		// K4: polygonal patches of alder carr at the confluences of Beskid streams).
+		boolean inFloor = bestFloorDist < bestFloorHalf && bestFade > 0.5 || inFunnel;
 		double valleyWeight = vwMax;
 		int oxbowLevel = ColumnSample.NO_WATER;
 		double oxbowDepth = 0;
@@ -2438,7 +2851,7 @@ final class RiverNetwork {
 		}
 		boolean inside = d <= ow;
 		double depth = inside ? (1.0 + 2.0 * noise.unit(seed, m, 73)) * (1 - d / ow) : 0;
-		// Water level one metre below the river at the bend, so the valley floor around it is always higher. Computed only
+		// Water level one meter below the river at the bend, so the valley floor around it is always higher. Computed only
 		// from the bend number, so it is constant across the whole oxbow lake.
 		double tc = Math.clamp((m * 0.5 - s.phase) * lambda / s.len, 0.0, 1.0);
 		return new Oxbow(inside, depth, (int) (Math.floor(s.levelAt(tc)) - 1), d - ow, Noise.key(seed, m, 74), ow);

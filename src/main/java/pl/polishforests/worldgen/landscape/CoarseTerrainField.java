@@ -5,7 +5,7 @@ import java.util.concurrent.atomic.AtomicLongArray;
 /**
  * Coarse terrain grid: smoothed terrain {@code sBar}, slope and aspect (docs/03-m2-biomy.md §3.2).
  *
- * <p>Nodes lie every {@code spacing} metres (32 m·k: 32 m at realistic scale, 16 m at gameplay scale), and the value
+ * <p>Nodes lie every {@code spacing} meters (32 m·k: 32 m at realistic scale, 16 m at gameplay scale), and the value
  * at a node is {@link LandscapeModel#landElevation}, i.e. the terrain without river valleys and lakes. This is the only call to
  * {@code landElevation} added in M2 to the {@link LandscapeModel#sample} path (rule Z6); the M1 code still calls it
  * for kettle ponds, lake levels and river network nodes (with its own cache). At a node we compute the mean of 3 × 3 nodes
@@ -13,13 +13,13 @@ import java.util.concurrent.atomic.AtomicLongArray;
  * interpolated bilinearly from the four nodes of the cell, so they are continuous, and at a node the gradient is exactly the
  * central difference.
  *
- * <p>Slope is computed in model space (horizontal and vertical metres of this scale). At gameplay scale
- * horizontal distances are compressed (k = 0.5, ranges 0.3) with similar heights in metres, so in the model
+ * <p>Slope is computed in model space (horizontal and vertical meters of this scale). At gameplay scale
+ * horizontal distances are compressed (k = 0.5, ranges 0.3) with similar heights in meters, so in the model
  * slopes are much steeper than at realistic scale; in the world this is evened out by the vertical mapping
  * ({@code VerticalScale}). The classifier (S4) compares the thresholds in degrees from the plan (§2, §4, §5.1) with the slope
- * in blocks: tan(slope) · d(blocks)/d(metres) at height {@code sBar} (docs/03-m2-biomy.md, state after S3).
+ * in blocks: tan(slope) · d(blocks)/d(meters) at height {@code sBar} (docs/03-m2-biomy.md, state after S3).
  *
- * <p>A tile has 8 × 8 cells: derivatives at 9 × 9 nodes (sharing a node with the neighbouring tile) from 11 × 11 raw
+ * <p>A tile has 8 × 8 cells: derivatives at 9 × 9 nodes (sharing a node with the neighboring tile) from 11 × 11 raw
  * nodes (margin 1). Tiles are immutable and live in a {@link DirectCache}; 4096 tiles take about 4 MB.
  * At realistic scale a tile covers 256 chunks (about 0.5 nodes per chunk), at gameplay scale 64 chunks
  * (about 2 nodes per chunk).

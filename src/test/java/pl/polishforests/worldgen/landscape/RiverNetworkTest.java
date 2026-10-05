@@ -65,54 +65,86 @@ class RiverNetworkTest {
 	}
 
 	/**
-	 * At the sources of mountain streams the height difference between neighboring dry columns must not
-	 * exceed a steep slope; the old river model produced a vertical cliff here.
+	 * At the sources of mountain streams the height difference between neighboring dry columns must not exceed a steep
+	 * slope; the old river model produced a vertical cliff here. Up to 12 order 1 sources in the Beskids of both scales,
+	 * transects across the valley at t from 0 to 0.5, ±60 m·k wide, steps of 1 m in x and in z between dry columns. Realistic
+	 * scale: the plain step below 3 m per 1 m. Both scales (decision D4b, step K4c): the valley-made step (the plain step
+	 * beyond the step of the terrain before valleys, {@code rawSurface}) at most {@value #SOURCE_VALLEY_STEP} m per 1 m and
+	 * the plain step at most {@value #SOURCE_BLOCKS} blocks per block in the vertical scale of the world.
 	 */
 	@Test
 	void mountainStreamSourcesHaveNoCliffs() {
-		LandscapeModel m = new LandscapeModel(SEED, 1.0);
-		RiverNetwork net = networkOf(m);
-		double[] site = find(m, s -> s.type() == LandscapeType.BESKIDS, 5_000);
-		assertTrue(site != null, "no Beskids in the test area");
-		int sources = 0;
-		double worst = 0;
-		String where = "";
-		long gi = (long) Math.floor(site[0] / 1_250);
-		long gj = (long) Math.floor(site[1] / 1_250);
-		for (long i = gi - 10; i <= gi + 10 && sources < 12; i++) {
-			for (long j = gj - 10; j <= gj + 10 && sources < 12; j++) {
-				RiverNetwork.Segment s = net.segment(1, i, j);
-				if (s == null || !s.source) {
-					continue;
-				}
-				sources++;
-				for (double t = 0; t <= 0.5; t += 0.05) {
-					double cx = s.px(t);
-					double cz = s.pz(t);
-					for (int k = -60; k <= 60; k += 3) {
-						double tl = Math.hypot(s.dx(t), s.dz(t));
-						double x = cx - s.dz(t) / tl * k;
-						double z = cz + s.dx(t) / tl * k;
-						// Dry terrain only: the channel bank above the water may be steep.
-						ColumnSample c0 = m.sample(x, z);
-						ColumnSample c1 = m.sample(x + 1, z);
-						ColumnSample c2 = m.sample(x, z + 1);
-						if (c0.hasWater() || c1.hasWater() || c2.hasWater()) {
-							continue;
-						}
-						double h0 = c0.surface();
-						double step = Math.max(Math.abs(c1.surface() - h0), Math.abs(c2.surface() - h0));
-						if (step > worst) {
-							worst = step;
-							where = Math.round(x) + "," + Math.round(z);
+		for (LandscapeScale sc : new LandscapeScale[] {LandscapeScale.REALISTIC, LandscapeScale.GAMEPLAY}) {
+			LandscapeModel m = new LandscapeModel(SEED, sc, 1.0);
+			RiverNetwork net = networkOf(m);
+			pl.polishforests.worldgen.chunk.VerticalScale vs = sc == LandscapeScale.GAMEPLAY
+					? pl.polishforests.worldgen.chunk.VerticalScale.GAMEPLAY : pl.polishforests.worldgen.chunk.VerticalScale.REAL;
+			double[] site = sc == LandscapeScale.REALISTIC ? find(m, s -> s.type() == LandscapeType.BESKIDS, 5_000)
+					: BESKIDS_GAMEPLAY;
+			assertTrue(site != null, "no Beskids in the test area");
+			double spacing = net.spacing(1);
+			int sources = 0;
+			// {plain step, valley-made step, blocks per block}, with the places.
+			double[] worst = new double[3];
+			String[] where = {"-", "-", "-"};
+			long gi = (long) Math.floor(site[0] / spacing);
+			long gj = (long) Math.floor(site[1] / spacing);
+			for (long i = gi - 10; i <= gi + 10 && sources < 12; i++) {
+				for (long j = gj - 10; j <= gj + 10 && sources < 12; j++) {
+					RiverNetwork.Segment s = net.segment(1, i, j);
+					if (s == null || !s.source) {
+						continue;
+					}
+					sources++;
+					for (double t = 0; t <= 0.5; t += 0.05) {
+						double cx = s.px(t);
+						double cz = s.pz(t);
+						for (int k = -60; k <= 60; k += 3) {
+							double tl = Math.hypot(s.dx(t), s.dz(t));
+							double x = cx - s.dz(t) / tl * k * sc.local();
+							double z = cz + s.dx(t) / tl * k * sc.local();
+							// Dry terrain only: the channel bank above the water may be steep.
+							ColumnSample c0 = m.sample(x, z);
+							ColumnSample c1 = m.sample(x + 1, z);
+							ColumnSample c2 = m.sample(x, z + 1);
+							if (c0.hasWater() || c1.hasWater() || c2.hasWater()) {
+								continue;
+							}
+							double h0 = c0.surface();
+							double r0 = c0.terrain().rawSurface();
+							double b0 = vs.blocksForMeters(h0);
+							double[] v = {
+									Math.max(Math.abs(c1.surface() - h0), Math.abs(c2.surface() - h0)),
+									Math.max(Math.abs(c1.surface() - h0) - Math.abs(c1.terrain().rawSurface() - r0),
+											Math.abs(c2.surface() - h0) - Math.abs(c2.terrain().rawSurface() - r0)),
+									Math.max(Math.abs(vs.blocksForMeters(c1.surface()) - b0),
+											Math.abs(vs.blocksForMeters(c2.surface()) - b0))};
+							for (int q = 0; q < 3; q++) {
+								if (v[q] > worst[q]) {
+									worst[q] = v[q];
+									where[q] = Math.round(x) + "," + Math.round(z);
+								}
+							}
 						}
 					}
 				}
 			}
+			System.out.printf(Locale.ROOT, "[sources] %s: %d mountain stream sources; largest step %.2f m per 1 m at %s, "
+					+ "valley-made %.2f m per 1 m at %s (limit %.1f), %.2f blocks per block at %s (limit %.1f)%n", sc.id(), sources,
+					worst[0], where[0], worst[1], where[1], SOURCE_VALLEY_STEP, worst[2], where[2], SOURCE_BLOCKS);
+			assertTrue(sources > 0, sc.id() + ": no mountain stream sources");
+			assertTrue(sc != LandscapeScale.REALISTIC || worst[0] < 3.0, "cliff at a source: difference " + worst[0]
+					+ " m per 1 m at " + where[0]);
+			assertTrue(worst[1] <= SOURCE_VALLEY_STEP, sc.id() + ": valley-made cliff at a source: " + worst[1]
+					+ " m per 1 m at " + where[1]);
+			assertTrue(worst[2] <= SOURCE_BLOCKS, sc.id() + ": cliff at a source: " + worst[2] + " blocks per block at "
+					+ where[2]);
 		}
-		assertTrue(sources > 0, "no mountain stream sources");
-		assertTrue(worst < 3.0, "cliff at a source: difference " + worst + " m per 1 m at " + where);
 	}
+
+	/** Decisions D4 and D4b: largest valley-made step (m per 1 m) and plain step in blocks per block at sources. */
+	static final double SOURCE_VALLEY_STEP = 3.0;
+	static final double SOURCE_BLOCKS = 2.0;
 
 	/**
 	 * TE (step K3, docs/m2/poprawka-geometrii.md): the meander belt share of the valley floor grows smoothly with the
@@ -309,24 +341,27 @@ class RiverNetworkTest {
 	}
 
 	/**
-	 * Limits of {@link #noSpringsOnMassifCore}, realistic and gameplay scale, measured after step K4 (the valley geometry:
-	 * irregular floor edge G4, the node continuity G1B, the projection on exact minima and the sweep cut K4b, the
-	 * narrowed meander belt at the heads A5): summit cut 20.5 and 58.0 m (after the review of K2: 19.6 and 50.6 m), core
-	 * cut 737.3 and 855.8 m (741.3, 855.6), 1604 and 151 floor columns (1598, 326), the deepest at G 0.502 and 0.345
-	 * (0.502, 0.355). Largest cut of the summit area (G &gt; 0.9) in m.
+	 * Limits of {@link #noSpringsOnMassifCore}, realistic and gameplay scale, measured after step K4c (the valley geometry
+	 * of K4: irregular floor edge G4, the node continuity G1B, the projection on exact minima, the narrowed meander belt at
+	 * the heads A5; K4c: the sweep cut only near ties, the arc of the head, the mouth funnel as valley floor for the
+	 * habitat fields): summit cut 20.4 and 51.5 m (K4 with the first sweep cut K4b: 20.5 and 58.0 m; after the review of K2:
+	 * 19.6 and 50.6 m), core cut 737.3 and 855.8 m (K4b: 737.3, 855.8), 1620 and 151 floor columns (K4b: 1604, 151; the
+	 * funnels of G3 count as floor now), the deepest at G 0.502 and 0.345. Largest cut of the summit area (G &gt; 0.9) in m.
 	 *
-	 * <p>Deviation from the design (criterion: cut of the summit area below 50 m; docs/m2/poprawka-geometrii.md, K4): at
-	 * gameplay scale the deepest cut, 58.0 m at (109362, 285955) on the massif (109062, 285995), is the upper edge of the
-	 * side of a 1470 m deep valley of an order 1 stream on the flank, 531 m from its valley axis, where the side (up to
-	 * 600 m wide at gameplay scale) is steeper than 3 m per 1 m. Before the sweep cut the projection measured 548 m from
-	 * the axis (the perpendicular foot on the curve; the axis bulges 17 m closer at t ≈ 0.4) and the cut was 36 m there,
-	 * 51.5 m elsewhere. It is not a canyon in the dome (no floor and no water in the summit areas).
+	 * <p>Deviation from the design (criterion: cut of the summit area below 50 m; docs/m2/poprawka-geometrii.md, K4 and
+	 * K4c): at gameplay scale the deepest cut, 51.5 m at (109332, 286015) on the massif (109062, 285995), is the upper edge of
+	 * the side of a 1470 m deep valley of an order 1 stream on the flank, about 530 m from its valley axis, where the side
+	 * (up to 600 m wide at gameplay scale) is steeper than 3 m per 1 m. With the first sweep cut (K4b) it was 58.0 m (the
+	 * Euclidean distance from the axis polyline is shorter than the distance of the projection); without the irregular floor
+	 * edge G4 on the cores it would be 51.9 m, so the widening of the floor edge is not the cause (step K4c). It is not a
+	 * canyon in the dome (no floor and no water in the summit areas); the depth of such valleys on the domes is a matter of
+	 * K2/S3.
 	 */
-	static final double[] SUMMIT_CUT = {21, 59};
+	static final double[] SUMMIT_CUT = {21, 52};
 	/** Largest cut of the core (G &gt; 0.3) in m. */
 	static final double[] CORE_CUT = {742, 856};
 	/** Largest number of core columns on a valley floor or in water. */
-	static final int[] CORE_FLOOR = {1_604, 151};
+	static final int[] CORE_FLOOR = {1_620, 151};
 	/** Largest massif strength G of a core column on a valley floor or in water. */
 	static final double[] CORE_FLOOR_G = {0.51, 0.35};
 
@@ -426,13 +461,16 @@ class RiverNetworkTest {
 			SourceCliffs r = massifSourceCliffs(m);
 			int k = sc == LandscapeScale.REALISTIC ? 0 : 1;
 			System.out.printf(Locale.ROOT, "%s: %d sources on the massif flanks, largest step %.2f m per 1 m at %s (limit "
-					+ "%.2f m); largest valley-made step %.2f m per 1 m at %s (D4 limit %.1f m)%n", sc.id(), r.sources(), r.worst(),
-					r.where(), MASSIF_SOURCE_STEP[k], r.worstExcess(), r.whereExcess(), MASSIF_SOURCE_EXCESS);
+					+ "%.2f m); largest valley-made step %.2f m per 1 m at %s (limit %.1f m); largest step %.2f blocks per block at "
+					+ "%s (D4b limit %.1f)%n", sc.id(), r.sources(), r.worst(), r.where(), MASSIF_SOURCE_STEP[k], r.worstExcess(),
+					r.whereExcess(), MASSIF_SOURCE_EXCESS[k], r.worstBlocks(), r.whereBlocks(), SOURCE_BLOCKS);
 			assertTrue(r.sources() >= 20, sc.id() + ": only " + r.sources() + " sources on the massif flanks");
 			assertTrue(r.worst() <= MASSIF_SOURCE_STEP[k], sc.id() + ": cliff at a source on a massif flank: " + r.worst()
 					+ " m per 1 m at " + r.where());
-			assertTrue(r.worstExcess() <= MASSIF_SOURCE_EXCESS, sc.id() + ": valley-made cliff at a source on a massif flank: "
-					+ r.worstExcess() + " m per 1 m at " + r.whereExcess());
+			assertTrue(r.worstExcess() <= MASSIF_SOURCE_EXCESS[k], sc.id() + ": valley-made cliff at a source on a massif "
+					+ "flank: " + r.worstExcess() + " m per 1 m at " + r.whereExcess());
+			assertTrue(r.worstBlocks() <= SOURCE_BLOCKS, sc.id() + ": cliff at a source on a massif flank: " + r.worstBlocks()
+					+ " blocks per block at " + r.whereBlocks());
 		}
 	}
 
@@ -442,22 +480,32 @@ class RiverNetworkTest {
 	 * m (108 sources) and 25.87 m (300 sources; at (4989.7, −33301.9) on the massif by the spawn, a jump of the projection
 	 * of a short order 1 segment, A2). After step K4 with K4b (exact distance minima and the sweep cut,
 	 * docs/m2/poprawka-geometrii.md, K4b): 1.46 m and 4.06 m at (−186812.8, −274959.9), where the terrain before valleys
-	 * already falls 2.7 m per 1 m (the valley-made part is 1.3 m).
+	 * already falls 2.7 m per 1 m (the valley-made part is 1.3 m). After step K4c (the sweep cut only near ties, decision
+	 * D4a): 1.46 m and 6.01 m at (247697.4, −287790.7), a tie of two arms of a short order 1 segment on the flank of the
+	 * massif (249214, −287025), 1.4 blocks per block. After round 1 of the review of K4c (the sweep cut everywhere, its
+	 * maximum also at the arms): 1.46 m and 4.74 m at (−186815.1, −274954.4), 1.18 blocks per block.
 	 */
-	static final double[] MASSIF_SOURCE_STEP = {1.5, 4.1};
-	/** Decision D4: largest valley-made step per 1 m (beyond the step of {@code rawSurface}) at those sources. */
-	static final double MASSIF_SOURCE_EXCESS = 3.0;
+	static final double[] MASSIF_SOURCE_STEP = {1.5, 4.8};
+	/**
+	 * Decision D4: largest valley-made step per 1 m (beyond the step of {@code rawSurface}) at those sources, realistic and
+	 * gameplay scale: 3 m, at gameplay scale the measured state after K4c (5.40 m at (247697.4, −287790.7), the tie of
+	 * decision D4a above; K4b: 2.54 m); after round 1 of the review of K4c 3.27 m at (201512.9, 121054.9).
+	 */
+	static final double[] MASSIF_SOURCE_EXCESS = {3.0, 3.3};
 
 	/**
 	 * Sources checked by {@link #massifStreamSourcesHaveNoCliffs}, the largest step per 1 m found at them and the largest
 	 * valley-made step (the step beyond the step of the terrain before valleys).
 	 */
-	record SourceCliffs(int sources, double worst, String where, double worstExcess, String whereExcess) {
+	record SourceCliffs(int sources, double worst, String where, double worstExcess, String whereExcess,
+			double worstBlocks, String whereBlocks) {
 	}
 
 	static SourceCliffs massifSourceCliffs(LandscapeModel m) {
 		LandscapeScale sc = m.scale();
 		RiverNetwork net = networkOf(m);
+		pl.polishforests.worldgen.chunk.VerticalScale vs = sc == LandscapeScale.GAMEPLAY
+				? pl.polishforests.worldgen.chunk.VerticalScale.GAMEPLAY : pl.polishforests.worldgen.chunk.VerticalScale.REAL;
 		double ra = GreatMassifSurvey.ra(sc);
 		double spacing = net.spacing(1);
 		double half = 60 * sc.local();
@@ -480,7 +528,7 @@ class RiverNetworkTest {
 				}
 			}
 		}
-		// {largest step, x, z, largest valley-made step, x, z} per source.
+		// {largest step, x, z, largest valley-made step, x, z, largest step in blocks, x, z} per source.
 		double[][] worst = sources.parallelStream().map(seg -> {
 			double best = 0;
 			double bx = 0;
@@ -488,6 +536,9 @@ class RiverNetworkTest {
 			double bestExcess = 0;
 			double ex = 0;
 			double ez = 0;
+			double bestBlocks = 0;
+			double kx = 0;
+			double kz = 0;
 			double l0 = Math.hypot(seg.dx(0), seg.dz(0));
 			for (int q = -10; q <= 10; q++) {
 				double t = q * 0.05;
@@ -521,15 +572,29 @@ class RiverNetworkTest {
 						ex = x;
 						ez = z;
 					}
+					double b0 = vs.blocksForMeters(h0);
+					double blocks = Math.max(Math.abs(vs.blocksForMeters(c1.surface()) - b0),
+							Math.abs(vs.blocksForMeters(c2.surface()) - b0));
+					if (blocks > bestBlocks) {
+						bestBlocks = blocks;
+						kx = x;
+						kz = z;
+					}
 				}
 			}
-			return new double[] {best, bx, bz, bestExcess, ex, ez};
+			return new double[] {best, bx, bz, bestExcess, ex, ez, bestBlocks, kx, kz};
 		}).toArray(double[][]::new);
 		double w = 0;
 		String where = "-";
 		double we = 0;
 		String whereExcess = "-";
+		double wb = 0;
+		String whereBlocks = "-";
 		for (double[] v : worst) {
+			if (v[6] > wb) {
+				wb = v[6];
+				whereBlocks = String.format(Locale.ROOT, "(%.1f, %.1f)", v[7], v[8]);
+			}
 			if (v[0] > w) {
 				w = v[0];
 				where = String.format(Locale.ROOT, "(%.1f, %.1f)", v[1], v[2]);
@@ -539,7 +604,7 @@ class RiverNetworkTest {
 				whereExcess = String.format(Locale.ROOT, "(%.1f, %.1f)", v[4], v[5]);
 			}
 		}
-		return new SourceCliffs(sources.size(), w, where, we, whereExcess);
+		return new SourceCliffs(sources.size(), w, where, we, whereExcess, wb, whereBlocks);
 	}
 
 	/**
@@ -827,6 +892,403 @@ class RiverNetworkTest {
 	}
 
 	/**
+	 * Decision D4a (step K4c, round 1 of the review, docs/m2/poprawka-geometrii.md): the sweep cut changes the terrain of
+	 * the projection only near ties. On random land points of both scales ({@value #SWEEP_POINTS} uniform in a large
+	 * square and {@value #SWEEP_WINDOW_POINTS} in each window of {@link SurfaceContinuityTest}), the river terrain with
+	 * the sweep cut ({@code query}, which evaluates every cross-section; there is no skip any more) is compared with the
+	 * terrain of the projection alone ({@code queryWithoutSweep}). A point is <em>clear</em> when every segment that cuts
+	 * there, with or without the sweep cut, has one dominant arm (distinctness g ≥ {@value #CLEAR_DISTINCTNESS}, share of
+	 * the weights of the soft averages ≥ {@value #CLEAR_SHARE}, an end of the segment only when the point lies at least
+	 * {@code END_BLEND} behind it) <em>and</em> no other part of its curve is nearly as close: at every sample t = j / 256
+	 * outside the neighborhood of the arm (|t − t*| ≥ 1/64 or farther from the foot than 0.5 · D* + 10 m·k, D* the
+	 * distance from the curve), the point is not nearly level with the curve, |along| ≥ {@value #CLEAR_ALONG} · |X − P(t)|.
+	 * The first version of this test used the arm alone and compared the terrain with a version of the sweep cut that
+	 * skipped exactly those points, so it could not fail (review of K4c); a point level with the end of a short segment 3 m
+	 * farther than the arm, or next to a near cusp of the curve, is a tie, where the sweep cut is meant to act. At every
+	 * clear point the two terrains differ by at most {@code SWEEP_TOLERANCE}; elsewhere the sweep cut may deepen the
+	 * terrain, but by more than 1 m on at most {@value #SWEEP_CHANGED_LIMIT} of the land (the first version of K4b: 4.75%
+	 * at realistic and 16.9% at gameplay scale, up to 136 m, far from any tie).
+	 */
+	@Test
+	void sweepCutKeepsWellConditionedTerrain() {
+		for (LandscapeScale sc : new LandscapeScale[] {LandscapeScale.REALISTIC, LandscapeScale.GAMEPLAY}) {
+			LandscapeModel m = new LandscapeModel(SEED, sc, 1.0);
+			RiverNetwork net = networkOf(m);
+			java.util.Random rnd = new java.util.Random(77);
+			List<double[]> points = new ArrayList<>();
+			double area = sc == LandscapeScale.REALISTIC ? 60_000 : 12_000;
+			for (int k = 0; k < SWEEP_POINTS; k++) {
+				points.add(new double[] {(rnd.nextDouble() * 2 - 1) * area, (rnd.nextDouble() * 2 - 1) * area});
+			}
+			for (SurfaceContinuityTest.Window w : SurfaceContinuityTest.windows().filter(w -> w.scale() == sc).toList()) {
+				for (int k = 0; k < SWEEP_WINDOW_POINTS; k++) {
+					points.add(new double[] {w.cx() + (rnd.nextDouble() * 2 - 1) * w.radius(),
+							w.cz() + (rnd.nextDouble() * 2 - 1) * w.radius()});
+				}
+			}
+			double k = sc.local();
+			// Per land point: {x, z, terrain with the sweep cut − without it, clear (1/0), segments that cut there}.
+			double[][] res = points.parallelStream().map(p -> {
+				double x = p[0];
+				double z = p[1];
+				if (m.coastDistance(x, z) < 0) {
+					return null;
+				}
+				LandscapeModel.Blend b = m.blend(x, z);
+				double lowland = b.weight(LandscapeType.OUTWASH_PLAIN) + b.weight(LandscapeType.MORAINE_PLATEAU)
+						+ b.weight(LandscapeType.OLD_GLACIAL_PLAIN) + b.weight(LandscapeType.COASTLAND);
+				double foothills = b.weight(LandscapeType.FOOTHILLS);
+				double mountains = b.weight(LandscapeType.BESKIDS);
+				double terrain = m.landElevation(x, z);
+				double d = net.query(x, z, terrain, lowland, foothills, mountains).terrain()
+						- net.queryWithoutSweep(x, z, terrain, lowland, foothills, mountains).terrain();
+				int cutting = 0;
+				boolean clear = true;
+				for (RiverNetwork.Segment s : net.frameSegments(x, z)) {
+					List<RiverNetwork.Segment> one = List.of(s);
+					if (net.querySegments(x, z, terrain, lowland, foothills, mountains, one, true).terrain() >= terrain
+							&& net.querySegments(x, z, terrain, lowland, foothills, mountains, one, false).terrain() >= terrain) {
+						continue;
+					}
+					cutting++;
+					double[] a = net.armInfo(s, x, z);
+					clear &= a[1] >= CLEAR_DISTINCTNESS && a[2] >= CLEAR_SHARE && (a[3] == 0 || a[4] >= RiverNetwork.END_BLEND)
+							&& !nearlyLevelElsewhere(s, x, z, a[5], a[6], k);
+				}
+				return new double[] {x, z, d, clear && cutting > 0 ? 1 : 0, cutting};
+			}).filter(v -> v != null).toArray(double[][]::new);
+			long land = res.length;
+			long clear = 0;
+			long cutting = 0;
+			long changed = 0;
+			long changed1 = 0;
+			double worstClear = 0;
+			String worstAt = "-";
+			double max = 0;
+			for (double[] r : res) {
+				double ad = Math.abs(r[2]);
+				cutting += r[4] > 0 ? 1 : 0;
+				changed += ad > RiverNetwork.SWEEP_TOLERANCE ? 1 : 0;
+				changed1 += ad > 1 ? 1 : 0;
+				max = Math.max(max, ad);
+				if (r[3] > 0) {
+					clear++;
+					if (ad > worstClear) {
+						worstClear = ad;
+						worstAt = String.format(Locale.ROOT, "(%.2f, %.2f)", r[0], r[1]);
+					}
+				}
+			}
+			System.out.printf(Locale.ROOT, "[sweep] %s: %d land points, %d cut by a valley, %d clear; largest change at a clear "
+					+ "point %.4f m at %s (limit %.2f m); changed by > %.2f m: %d, by > 1 m: %d (%.2f%% of the land, limit "
+					+ "%.1f%%), largest %.2f m%n", sc.id(), land, cutting, clear, worstClear, worstAt, RiverNetwork.SWEEP_TOLERANCE,
+					RiverNetwork.SWEEP_TOLERANCE, changed, changed1, 100.0 * changed1 / land, 100 * SWEEP_CHANGED_LIMIT, max);
+			assertTrue(clear > 1_000, sc.id() + ": too few clear points: " + clear);
+			assertTrue(worstClear <= RiverNetwork.SWEEP_TOLERANCE, sc.id() + ": the sweep cut changes a clear point by "
+					+ worstClear + " m at " + worstAt);
+			assertTrue(changed1 <= SWEEP_CHANGED_LIMIT * land, sc.id() + ": the sweep cut changes " + changed1 + " of " + land
+					+ " land points by more than 1 m");
+		}
+	}
+
+	/**
+	 * Whether another part of the curve of s is nearly as close to (x, z) as the arm at tArm (distance dArm from the
+	 * curve): {@link #sweepCutKeepsWellConditionedTerrain}. {@code k} is the local scale (m·k).
+	 */
+	static boolean nearlyLevelElsewhere(RiverNetwork.Segment s, double x, double z, double tArm, double dArm, double k) {
+		double ax = s.px(tArm);
+		double az = s.pz(tArm);
+		for (int j = 0; j <= 256; j++) {
+			double t = j / 256.0;
+			double px = s.px(t);
+			double pz = s.pz(t);
+			if (Math.abs(t - tArm) < 1.0 / 64 && Math.hypot(px - ax, pz - az) < 0.5 * dArm + 10 * k) {
+				continue;
+			}
+			double vx = s.dx(t);
+			double vz = s.dz(t);
+			double ex = x - px;
+			double ez = z - pz;
+			double along = Math.abs(ex * vx + ez * vz) / Math.max(1e-12, Math.hypot(vx, vz));
+			if (along < CLEAR_ALONG * Math.hypot(ex, ez)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/** Points of {@link #sweepCutKeepsWellConditionedTerrain} per scale in the large square and in each window. */
+	static final int SWEEP_POINTS = 6_000;
+	static final int SWEEP_WINDOW_POINTS = 300;
+	/** A clear arm of {@link #sweepCutKeepsWellConditionedTerrain}: distinctness and share of the weights. */
+	static final double CLEAR_DISTINCTNESS = 0.5;
+	static final double CLEAR_SHARE = 0.999;
+	/** {@link #nearlyLevelElsewhere}: the least |along| / |X − P(t)| of the rest of the curve. */
+	static final double CLEAR_ALONG = 0.2;
+	/** Largest share of the land changed by the sweep cut by more than 1 m. */
+	static final double SWEEP_CHANGED_LIMIT = 0.005;
+
+	/**
+	 * Round 1 of the review of K4c: the places of the reviewed scarps and ribs of the sweep cut, each on a dense grid
+	 * ({@value #SCARP_STEP} m over a square of {@value #SCARP_SIDE} m). The first K4c skipped the sweep cut where the
+	 * projection had one clear arm, and left vertical scarps along the edge of the skipped region (16.5 m at (27656,
+	 * 2596), 11.6 m at (26647, 1308), 20.5 m at (70804, −31979), 20.1 m at (5409, −33312), 3.6 m at (−1400, 2542) at
+	 * gameplay scale, 18.3 m at (152761, 1054313) and 2.9 m at (126918, 1032080) at realistic scale); its maximum over a
+	 * fixed family of node cross-sections left fields of straight ribs at ties ((27130, 2156), (70385, −31570), (28492,
+	 * 872), the massifs at (−216920, 247938), (−217788, 244544), (70403, −32435)); the random transects of
+	 * {@link SurfaceContinuityTest} missed both. On dry land outside standing water: no step between neighbors larger
+	 * than {@value #SCARP_JUMP} m (the scarps: 3–20 m between columns 0.25 m apart) and at most
+	 * {@code SurfaceContinuityTest.D4B_BLOCKS} blocks per block over 1 m (decision D4b).
+	 */
+	@Test
+	void sweepCutIsContinuousAtTheReviewedScarps() {
+		double[][] gameplay = {{27_656.4, 2_595.9}, {26_646.5, 1_308.4}, {70_803.6, -31_978.6}, {5_409.2, -33_311.8},
+				{-1_400.1, 2_541.6}, {27_130, 2_156}, {70_385, -31_570}, {28_492, 872}, {-216_920.2, 247_937.8},
+				{-217_787.8, 244_544.2}, {70_403, -32_435}};
+		double[][] realistic = {{152_760.95, 1_054_313}, {126_918, 1_032_080}};
+		for (LandscapeScale sc : new LandscapeScale[] {LandscapeScale.GAMEPLAY, LandscapeScale.REALISTIC}) {
+			LandscapeModel m = new LandscapeModel(SEED, sc, 1.0);
+			pl.polishforests.worldgen.chunk.VerticalScale vs = sc == LandscapeScale.GAMEPLAY
+					? pl.polishforests.worldgen.chunk.VerticalScale.GAMEPLAY : pl.polishforests.worldgen.chunk.VerticalScale.REAL;
+			int n = (int) Math.round(SCARP_SIDE / SCARP_STEP) + 1;
+			int per = (int) Math.round(1 / SCARP_STEP);
+			for (double[] c : sc == LandscapeScale.GAMEPLAY ? gameplay : realistic) {
+				// Rows of {surface, raw surface, dry land (1/0)}.
+				double[][][] rows = IntStream.range(0, n).parallel().mapToObj(j -> {
+					double[][] row = new double[3][n];
+					for (int i = 0; i < n; i++) {
+						ColumnSample s = m.sample(c[0] - SCARP_SIDE / 2 + i * SCARP_STEP, c[1] - SCARP_SIDE / 2 + j * SCARP_STEP);
+						row[0][i] = s.surface();
+						row[1][i] = s.terrain().rawSurface();
+						row[2][i] = SurfaceContinuityTest.dryLand(s) ? 1 : 0;
+					}
+					return row;
+				}).toArray(double[][][]::new);
+				double jump = 0;
+				double blocks = 0;
+				double valley = 0;
+				String jumpAt = "-";
+				String blocksAt = "-";
+				for (int j = 0; j < n; j++) {
+					for (int i = 0; i < n; i++) {
+						if (rows[j][2][i] == 0) {
+							continue;
+						}
+						for (int dir = 0; dir < 2; dir++) {
+							int i1 = dir == 0 ? i + 1 : i;
+							int j1 = dir == 0 ? j : j + 1;
+							int i2 = dir == 0 ? i + per : i;
+							int j2 = dir == 0 ? j : j + per;
+							double x = c[0] - SCARP_SIDE / 2 + i * SCARP_STEP;
+							double z = c[1] - SCARP_SIDE / 2 + j * SCARP_STEP;
+							if (i1 < n && j1 < n && rows[j1][2][i1] > 0) {
+								double d = Math.abs(rows[j1][0][i1] - rows[j][0][i]);
+								if (d > jump) {
+									jump = d;
+									jumpAt = String.format(Locale.ROOT, "(%.2f, %.2f)", x, z);
+								}
+							}
+							if (i2 < n && j2 < n && rows[j2][2][i2] > 0) {
+								double bl = Math.abs(vs.blocksForMeters(rows[j2][0][i2]) - vs.blocksForMeters(rows[j][0][i]));
+								if (bl > blocks) {
+									blocks = bl;
+									blocksAt = String.format(Locale.ROOT, "(%.2f, %.2f)", x, z);
+								}
+								valley = Math.max(valley, Math.abs(rows[j2][0][i2] - rows[j][0][i])
+										- Math.abs(rows[j2][1][i2] - rows[j][1][i]));
+							}
+						}
+					}
+				}
+				System.out.printf(Locale.ROOT, "[scarps] %s (%.1f, %.1f): largest step between neighbors %.3f m per %.2f m at %s, "
+						+ "%.2f blocks per block at %s, valley-made step %.2f m per 1 m%n", sc.id(), c[0], c[1], jump, SCARP_STEP,
+						jumpAt, blocks, blocksAt, valley);
+				assertTrue(jump <= SCARP_JUMP, String.format(Locale.ROOT, "%s (%.1f, %.1f): step of %.2f m per %.2f m at %s",
+						sc.id(), c[0], c[1], jump, SCARP_STEP, jumpAt));
+				assertTrue(blocks <= SurfaceContinuityTest.D4B_BLOCKS, String.format(Locale.ROOT,
+						"%s (%.1f, %.1f): %.2f blocks per block at %s (decision D4b)", sc.id(), c[0], c[1], blocks, blocksAt));
+			}
+		}
+	}
+
+	/**
+	 * Round 1 of the review of K4c: the prune of the sweep cut ({@code Section.notDeeperThanArm}, which replaced the unsafe
+	 * skip of the whole sweep cut at a "clear" arm) changes nothing. It drops only cross-sections provably not deeper than
+	 * the single arm of the projection, i.e. not deeper than the cut of the projection, below which the sweep cut does not
+	 * act, so the river terrain with the prune ({@code query}) and without it ({@code queryWithoutPrune}) must be
+	 * identical (not merely within {@code SWEEP_TOLERANCE}). Dense grids: every mountain window of
+	 * {@link SurfaceContinuityTest} at gameplay scale and the Beskids and the massif window at realistic scale
+	 * ({@value #PRUNE_GRID} × {@value #PRUNE_GRID} columns each), and the places of the reviewed scarps of
+	 * {@link #sweepCutIsContinuousAtTheReviewedScarps} ({@value #SCARP_STEP} m over {@value #SCARP_SIDE} m), where the
+	 * removed skip made scarps of 3–20 m.
+	 */
+	@Test
+	void sweepCutPruneIsExact() {
+		double[][] gameplay = {{27_656.4, 2_595.9}, {26_646.5, 1_308.4}, {70_803.6, -31_978.6}, {5_409.2, -33_311.8},
+				{-1_400.1, 2_541.6}, {27_130, 2_156}, {70_385, -31_570}, {28_492, 872}};
+		double[][] realistic = {{152_760.95, 1_054_313}, {126_918, 1_032_080}};
+		for (LandscapeScale sc : new LandscapeScale[] {LandscapeScale.GAMEPLAY, LandscapeScale.REALISTIC}) {
+			LandscapeModel m = new LandscapeModel(SEED, sc, 1.0);
+			RiverNetwork net = networkOf(m);
+			// Grids: {center x, center z, half side, step}.
+			List<double[]> grids = new ArrayList<>();
+			SurfaceContinuityTest.windows().filter(w -> w.scale() == sc
+					&& (w.name().contains("beskids") || w.name().contains("massif")))
+					.forEach(w -> grids.add(new double[] {w.cx(), w.cz(), w.radius(), 2 * w.radius() / (PRUNE_GRID - 1)}));
+			for (double[] c : sc == LandscapeScale.GAMEPLAY ? gameplay : realistic) {
+				grids.add(new double[] {c[0], c[1], SCARP_SIDE / 2, SCARP_STEP});
+			}
+			long columns = 0;
+			long cut = 0;
+			long differ = 0;
+			double max = 0;
+			String at = "-";
+			for (double[] g : grids) {
+				int n = (int) Math.round(2 * g[2] / g[3]) + 1;
+				// Per column: {x, z, |difference|, cut by a valley (1/0)}.
+				double[][] res = IntStream.range(0, n * n).parallel().mapToObj(k -> {
+					double x = g[0] - g[2] + (k % n) * g[3];
+					double z = g[1] - g[2] + (k / n) * g[3];
+					if (m.coastDistance(x, z) < 0) {
+						return null;
+					}
+					LandscapeModel.Blend b = m.blend(x, z);
+					double lowland = b.weight(LandscapeType.OUTWASH_PLAIN) + b.weight(LandscapeType.MORAINE_PLATEAU)
+							+ b.weight(LandscapeType.OLD_GLACIAL_PLAIN) + b.weight(LandscapeType.COASTLAND);
+					double foothills = b.weight(LandscapeType.FOOTHILLS);
+					double mountains = b.weight(LandscapeType.BESKIDS);
+					double terrain = m.landElevation(x, z);
+					double with = net.query(x, z, terrain, lowland, foothills, mountains).terrain();
+					double without = net.queryWithoutPrune(x, z, terrain, lowland, foothills, mountains).terrain();
+					return new double[] {x, z, Math.abs(with - without), with < terrain ? 1 : 0};
+				}).filter(v -> v != null).toArray(double[][]::new);
+				for (double[] r : res) {
+					columns++;
+					cut += (long) r[3];
+					if (r[2] > 0) {
+						differ++;
+					}
+					if (r[2] > max) {
+						max = r[2];
+						at = String.format(Locale.ROOT, "(%.2f, %.2f)", r[0], r[1]);
+					}
+				}
+			}
+			System.out.printf(Locale.ROOT, "[prune] %s: %d grids, %d land columns, %d cut by a valley; differ with and without "
+					+ "the prune: %d, largest %.6f m at %s%n", sc.id(), grids.size(), columns, cut, differ, max, at);
+			assertTrue(cut > 100_000, sc.id() + ": too few columns cut by a valley: " + cut);
+			assertTrue(differ == 0, String.format(Locale.ROOT, "%s: the prune of the sweep cut changes %d columns, by up to "
+					+ "%.4f m at %s", sc.id(), differ, max, at));
+		}
+	}
+
+	/** {@link #sweepCutPruneIsExact}: columns per side of the grid of a window. */
+	static final int PRUNE_GRID = 401;
+
+	/**
+	 * Round 2 of the review of K4c: the maximum of the sweep cut stays continuous where its family of cross-sections
+	 * changes. The extrema of f = (P − X) · P' (the roots of f') are members of the family; a member that appeared with
+	 * its full value made a step: (a) a pair of roots of f' born where f'' = 0 (0.58 m at gameplay scale (−216251,
+	 * 246905), 12.8 m at realistic scale (156980.5, 1059412) under a lake), (b) a root of f' leaving through an end of
+	 * the segment, where the node at the end is measured as the end arm (2.0 m at realistic scale (132704, 1042536.5),
+	 * 0.5 m at (131841.4, 1086475)). The river terrain of {@code query} on a grid of {@value #FAMILY_STEP} m over
+	 * {@value #FAMILY_SIDE} m around each place: every pair of neighbors that differs by more than
+	 * {@value #FAMILY_PAIR} m and whose midpoint does not split the difference is bisected
+	 * ({@value #FAMILY_BISECTIONS} halvings, 1e-11 m); the remaining step must be at most {@value #FAMILY_JUMP} m (a
+	 * continuous surface leaves at most its slope times 1e-11 m; the threshold of 3 m per 0.5 m of
+	 * {@link #sweepCutIsContinuousAtTheReviewedScarps} does not see steps of 0.5–2 m).
+	 */
+	@Test
+	void sweepCutIsContinuousWhereItsFamilyChanges() {
+		double[][] gameplay = {{-216_251.0, 246_904.75}};
+		double[][] realistic = {{132_704.0, 1_042_536.5}, {131_841.4, 1_086_475}, {156_980.5, 1_059_412}};
+		for (LandscapeScale sc : new LandscapeScale[] {LandscapeScale.GAMEPLAY, LandscapeScale.REALISTIC}) {
+			LandscapeModel m = new LandscapeModel(SEED, sc, 1.0);
+			RiverNetwork net = networkOf(m);
+			int n = (int) Math.round(FAMILY_SIDE / FAMILY_STEP) + 1;
+			for (double[] c : sc == LandscapeScale.GAMEPLAY ? gameplay : realistic) {
+				double x0 = c[0] - FAMILY_SIDE / 2;
+				double z0 = c[1] - FAMILY_SIDE / 2;
+				double[] h = new double[n * n];
+				IntStream.range(0, n * n).parallel().forEach(k -> h[k] = riverTerrain(m, net, x0 + (k % n) * FAMILY_STEP,
+						z0 + (k / n) * FAMILY_STEP));
+				// Per pair: {step after bisection, x, z}.
+				double[][] steps = IntStream.range(0, 2 * n * n).parallel().mapToObj(q -> {
+					int k = q >> 1;
+					int i = k % n;
+					int j = k / n;
+					int i1 = (q & 1) == 0 ? i + 1 : i;
+					int j1 = (q & 1) == 0 ? j : j + 1;
+					if (i1 >= n || j1 >= n) {
+						return null;
+					}
+					double ha = h[k];
+					double hb = h[j1 * n + i1];
+					if (Math.abs(hb - ha) <= FAMILY_PAIR) {
+						return null;
+					}
+					double xa = x0 + i * FAMILY_STEP;
+					double za = z0 + j * FAMILY_STEP;
+					double xb = x0 + i1 * FAMILY_STEP;
+					double zb = z0 + j1 * FAMILY_STEP;
+					double hm = riverTerrain(m, net, 0.5 * (xa + xb), 0.5 * (za + zb));
+					if (Math.max(Math.abs(hm - ha), Math.abs(hb - hm)) <= 0.7 * Math.abs(hb - ha)) {
+						return null;
+					}
+					for (int it = 0; it < FAMILY_BISECTIONS; it++) {
+						double xm = 0.5 * (xa + xb);
+						double zm = 0.5 * (za + zb);
+						double v = riverTerrain(m, net, xm, zm);
+						if (Math.abs(v - ha) >= Math.abs(hb - v)) {
+							xb = xm;
+							zb = zm;
+							hb = v;
+						} else {
+							xa = xm;
+							za = zm;
+							ha = v;
+						}
+					}
+					return new double[] {Math.abs(hb - ha), 0.5 * (xa + xb), 0.5 * (za + zb)};
+				}).filter(v -> v != null).toArray(double[][]::new);
+				double worst = 0;
+				String at = "-";
+				for (double[] s : steps) {
+					if (s[0] > worst) {
+						worst = s[0];
+						at = String.format(Locale.ROOT, "(%.4f, %.4f)", s[1], s[2]);
+					}
+				}
+				System.out.printf(Locale.ROOT, "[family] %s (%.1f, %.1f): %d pairs bisected, largest remaining step %.6f m at %s%n",
+						sc.id(), c[0], c[1], steps.length, worst, at);
+				assertTrue(worst <= FAMILY_JUMP, String.format(Locale.ROOT, "%s (%.1f, %.1f): the river terrain steps by %.3f m at %s",
+						sc.id(), c[0], c[1], worst, at));
+			}
+		}
+	}
+
+	/** River terrain of {@code RiverNetwork.query} at (x, z), with the landscape shares of the model there. */
+	private static double riverTerrain(LandscapeModel m, RiverNetwork net, double x, double z) {
+		LandscapeModel.Blend b = m.blend(x, z);
+		double lowland = b.weight(LandscapeType.OUTWASH_PLAIN) + b.weight(LandscapeType.MORAINE_PLATEAU)
+				+ b.weight(LandscapeType.OLD_GLACIAL_PLAIN) + b.weight(LandscapeType.COASTLAND);
+		return net.query(x, z, m.landElevation(x, z), lowland, b.weight(LandscapeType.FOOTHILLS),
+				b.weight(LandscapeType.BESKIDS)).terrain();
+	}
+
+	/** {@link #sweepCutIsContinuousWhereItsFamilyChanges}: grid side and step (m), the pairs bisected and the limit. */
+	static final double FAMILY_SIDE = 24;
+	static final double FAMILY_STEP = 0.5;
+	static final double FAMILY_PAIR = 0.02;
+	static final int FAMILY_BISECTIONS = 36;
+	static final double FAMILY_JUMP = 0.01;
+
+	/** {@link #sweepCutIsContinuousAtTheReviewedScarps}: grid step and side (m), largest step between neighbors (m). */
+	static final double SCARP_STEP = 0.5;
+	static final double SCARP_SIDE = 80;
+	static final double SCARP_JUMP = 3.0;
+
+	/**
 	 * K4.9 (docs/m2/poprawka-geometrii.md): the culling of segments in {@code RiverNetwork.query} (the box of influence
 	 * of the tile list and the chord frame) changes nothing visible. On random points of both scales (uniform in a large
 	 * square and in the windows of {@link SurfaceContinuityTest}) the query with culling and without it (every segment
@@ -842,9 +1304,9 @@ class RiverNetworkTest {
 			RiverNetwork net = networkOf(m);
 			java.util.Random rnd = new java.util.Random(409);
 			List<double[]> points = new ArrayList<>();
-			// 10 000 points per scale (the design: 20 000 in both), 400 in each window and the rest in a moderate square:
-			// every point builds the segments of the whole tile radius (hundreds), so points spread over a much larger area
-			// would fill the segment caches.
+			// 20 000 points per scale, as in the design (step K4c; K4: 10 000 while the leak of TileCache.owner kept the
+			// networks in memory), 400 in each window and the rest in a moderate square: every point builds the segments of
+			// the whole tile radius (hundreds), so points spread over a much larger area would fill the segment caches.
 			List<SurfaceContinuityTest.Window> windows = SurfaceContinuityTest.windows().filter(w -> w.scale() == sc).toList();
 			double area = sc == LandscapeScale.REALISTIC ? 60_000 : 12_000;
 			for (int k = 0; k < CULLING_POINTS - 400 * windows.size(); k++) {
@@ -920,7 +1382,7 @@ class RiverNetworkTest {
 	}
 
 	/** Points per scale of {@link #segmentCullingIsInvisible}. */
-	static final int CULLING_POINTS = 10_000;
+	static final int CULLING_POINTS = 20_000;
 
 	private static void same(List<String> diff, String name, double a, double b) {
 		if (Double.compare(a, b) != 0) {

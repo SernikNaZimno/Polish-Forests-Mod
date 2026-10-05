@@ -8,7 +8,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import pl.polishforests.worldgen.habitat.AltitudinalBelts;
 
 /**
- * Procedural landscape model of Poland at 1:1 scale (1 unit = 1 metre).
+ * Procedural landscape model of Poland at 1:1 scale (1 unit = 1 meter).
  *
  * <p>Layers (docs/01-architektura.md, section 3.2):
  * <ul>
@@ -202,7 +202,7 @@ public final class LandscapeModel {
 		return scale;
 	}
 
-	/** Mean macroregion size in metres. */
+	/** Mean macroregion size in meters. */
 	public double regionSize() {
 		return regionSize;
 	}
@@ -263,7 +263,7 @@ public final class LandscapeModel {
 				+ 0.0015 * zoneSea.at(x - 1_234, z + 5_678, 9_000 * zs);
 	}
 
-	/** Approximate distance from the shoreline in metres: positive on land, negative at sea. */
+	/** Approximate distance from the shoreline in meters: positive on land, negative at sea. */
 	public double coastDistance(double x, double z) {
 		double c = seaField(x, z);
 		double e = Math.max(20.0, 400.0 * zs);
@@ -273,7 +273,7 @@ public final class LandscapeModel {
 		return c / Math.max(g, 1e-12);
 	}
 
-	/** Beach width in metres. */
+	/** Beach width in meters. */
 	private double beachWidth() {
 		return 60.0 * local;
 	}
@@ -328,7 +328,7 @@ public final class LandscapeModel {
 		return result;
 	}
 
-	/** Sea depth in metres at distance {@code off} from the shore (Baltic: shallow shelf). */
+	/** Sea depth in meters at distance {@code off} from the shore (Baltic: shallow shelf). */
 	private double seaDepth(double off) {
 		double s = meso;
 		double depth = 22 * (1 - Math.exp(-off / (2_500 * s))) + 45 * Noise.smoothstep(12_000 * s, 70_000 * s, off);
@@ -344,7 +344,7 @@ public final class LandscapeModel {
 		return zoneGlacial.fbm(x, z, 500_000 * zs, 2, 0.5) - 1.4 * mountainField(x, z) + 0.05 + 0.8 * nearSea;
 	}
 
-	/** Regional lowland base level in metres a.s.l. (about 70–190 m), varying very gently. */
+	/** Regional lowland base level in meters a.s.l. (about 70–190 m), varying very gently. */
 	public double lowlandBaseline(double x, double z) {
 		return 130.0 + 55.0 * lowlandBase.fbm(x, z, 140_000 * meso, 2, 0.5);
 	}
@@ -408,7 +408,7 @@ public final class LandscapeModel {
 		return regionJitter.unit(cx, cz, 4) < 0.12 ? LandscapeType.OUTWASH_PLAIN : LandscapeType.OLD_GLACIAL_PLAIN;
 	}
 
-	/** Cell centre in the (warped) lookup space. */
+	/** Cell center in the (warped) lookup space. */
 	double regionCenterX(long cx, long cz) {
 		return (cx + 0.15 + 0.7 * regionJitter.unit(cx, cz, 1)) * regionSize;
 	}
@@ -495,7 +495,7 @@ public final class LandscapeModel {
 
 	// ------------------------------------------------------------------ L2: relief
 
-	/** Ground height of a cell without waters, in metres a.s.l. */
+	/** Ground height of a cell without waters, in meters a.s.l. */
 	double cellElevation(Cell c, double x, double z) {
 		return cellElevation(c, x, z, null, 0, flysch(c.type()) ? greatMassifAt(x, z) : null);
 	}
@@ -622,7 +622,7 @@ public final class LandscapeModel {
 
 	/**
 	 * Coordinate across the range (u) and along the range (v), measured from the global origin.
-	 * It is not measured from the cell centre: with small cells (gameplay scale) every cell
+	 * It is not measured from the cell center: with small cells (gameplay scale) every cell
 	 * would then sample the same patch of noise and the mountains would be systematically too low.
 	 */
 	private static double across(Cell c, double x, double z) {
@@ -1172,7 +1172,7 @@ public final class LandscapeModel {
 		}
 
 		// Kettle ponds on the moraine plateau and outwash plain. Whether a kettle exists is decided by the conditions
-		// at its centre, so we check them in every column without water.
+		// at its center, so we check them in every column without water.
 		if (kind == WaterKind.NONE) {
 			LakeHit k = kettleAt(x, z);
 			if (k != null) {
@@ -1230,7 +1230,7 @@ public final class LandscapeModel {
 		boolean wet = water != ColumnSample.NO_WATER && water > (int) Math.floor(surface);
 		if (dominant == LandscapeType.COASTLAND && coastD >= 0 && !wet) {
 			// Sea shore landforms only in the belt where they form (beach, foredune, cliff
-			// face), and not e.g. on the shore of a lagoon several kilometres from the sea.
+			// face), and not e.g. on the shore of a lagoon several kilometers from the sea.
 			double beach = beachWidth();
 			if (surface > 8 && rawSurface > 8 && coastD < beach + rawSurface / 2.5 + 20 * local) {
 				landformBits |= Landform.CLIFF.bit();
@@ -1451,7 +1451,7 @@ public final class LandscapeModel {
 	// ------------------------------------------------------------------ L3: waters
 
 	/**
-	 * @param shoreDistance distance from the shoreline in metres, negative in the lake
+	 * @param shoreDistance distance from the shoreline in meters, negative in the lake
 	 * @param slope         slope of the basin flank above the water level (tangent)
 	 * @param bank          reach of the basin's influence beyond the shore
 	 * @param kind          kind of water body (habitat fields)
@@ -1548,7 +1548,7 @@ public final class LandscapeModel {
 
 	/**
 	 * Kettle pond: in a 700 m cell (350 m at gameplay scale) at most one depression
-	 * with a radius of 20–150 m. Whether the kettle exists depends on the conditions at its centre, so a kettle is
+	 * with a radius of 20–150 m. Whether the kettle exists depends on the conditions at its center, so a kettle is
 	 * always either whole or absent, and its whole shore zone fits inside the cell.
 	 */
 	private LakeHit kettleAt(double x, double z) {
@@ -1585,7 +1585,7 @@ public final class LandscapeModel {
 	}
 
 	/**
-	 * Whether the kettle exists: chance from the region weights and no river valley at its centre. The result is
+	 * Whether the kettle exists: chance from the region weights and no river valley at its center. The result is
 	 * cached per kettle, because every column in its zone checks the same conditions. An existing kettle
 	 * is ombrotrophic ({@link #KETTLE_OMBROTROPHIC}) when its shore lies further than 300 m·k from a channel.
 	 */

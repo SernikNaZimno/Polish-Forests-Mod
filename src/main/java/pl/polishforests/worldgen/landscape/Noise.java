@@ -150,7 +150,7 @@ public final class Noise {
 		return sum / norm;
 	}
 
-	/** Noise with the given wavelength in metres. */
+	/** Noise with the given wavelength in meters. */
 	public double at(double x, double z, double wavelength) {
 		return sample(x / wavelength, z / wavelength);
 	}

@@ -11,12 +11,12 @@ import java.util.Set;
  * {@link Double#NaN} means "not applicable" (e.g. {@code u} outside the valley floor), and
  * {@link Double#POSITIVE_INFINITY} in distances means "out of range".
  *
- * @param surface     ground surface height in metres a.s.l. (also the bottom under water)
- * @param waterLevel  water surface level in whole metres a.s.l.; {@link Integer#MIN_VALUE} when there is no water
+ * @param surface     ground surface height in meters a.s.l. (also the bottom under water)
+ * @param waterLevel  water surface level in whole meters a.s.l.; {@link Integer#MIN_VALUE} when there is no water
  * @param waterKind   kind of water
  * @param type        dominant landscape type
  * @param substrate   surface deposit
- * @param coverDepth  thickness of Quaternary deposits or regolith above solid bedrock, in metres
+ * @param coverDepth  thickness of Quaternary deposits or regolith above solid bedrock, in meters
  * @param terrain     relief and landforms
  * @param waters      watercourses, valley floors and standing water nearby
  * @param region      regional fields
@@ -29,7 +29,7 @@ public record ColumnSample(double surface, int waterLevel, WaterKind waterKind, 
 		return waterLevel != NO_WATER && waterLevel > surfaceMeters();
 	}
 
-	/** Height of the top face of the highest ground block, in whole metres. */
+	/** Height of the top face of the highest ground block, in whole meters. */
 	public int surfaceMeters() {
 		return (int) Math.floor(surface);
 	}
@@ -72,9 +72,9 @@ public record ColumnSample(double surface, int waterLevel, WaterKind waterKind, 
 	 * @param sBar             smoothed terrain without valleys and lakes (m a.s.l.): mean of 3 × 3 nodes of a 32 m·k grid
 	 *                         of {@code landElevation} (window of about 96 m·k), interpolated bilinearly
 	 * @param slope            slope of the valley-free terrain from this grid (°), from central differences of the nodes, in model
-	 *                         space: at gameplay scale (horizontal distances compressed, heights in metres similar)
+	 *                         space: at gameplay scale (horizontal distances compressed, heights in meters similar)
 	 *                         much larger than the slope in blocks; compare thresholds in degrees with
-	 *                         tan(slope) · d(blocks)/d(metres) from {@code VerticalScale} (docs/03-m2-biomy.md, state after S3)
+	 *                         tan(slope) · d(blocks)/d(meters) from {@code VerticalScale} (docs/03-m2-biomy.md, state after S3)
 	 * @param aspect           aspect (°): downslope direction from north (−Z) clockwise
 	 *                         (90 east +X, 180 south +Z, 270 west −X); NaN on flat terrain
 	 */

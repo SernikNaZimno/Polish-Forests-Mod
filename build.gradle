@@ -162,8 +162,21 @@ test {
 	if (project.hasProperty('goldenKeepCenters')) {
 		systemProperty 'polishforests.golden.keepCenters', 'true'
 	}
-	if (project.hasProperty('goldenAllow')) {
-		def allowFile = file(project.property('goldenAllow'))
+	// Without -PgoldenAllow the allow list of the latest step (the last src/test/golden-allow/K*.txt by name) is used, so
+	// that a plain './gradlew test' passes between the steps of the geometry fix; the directory is removed in K7 together
+	// with the regenerated golden file, and then nothing is allowed. -PgoldenStrict compares without any allow list.
+	def goldenAllowPath = project.findProperty('goldenAllow')
+	if (goldenAllowPath == null && !project.hasProperty('goldenStrict')) {
+		def allowDir = file('src/test/golden-allow')
+		def lists = allowDir.isDirectory()
+				? (allowDir.listFiles({ f -> f.name ==~ /K.*\.txt/ } as FileFilter) as List).sort { it.name }
+				: []
+		if (!lists.isEmpty()) {
+			goldenAllowPath = lists.last().path
+		}
+	}
+	if (goldenAllowPath != null) {
+		def allowFile = file(goldenAllowPath)
 		systemProperty 'polishforests.golden.allow', allowFile.absolutePath
 		inputs.file(allowFile)
 	}

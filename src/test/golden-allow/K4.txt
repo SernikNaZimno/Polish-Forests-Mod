@@ -1,10 +1,11 @@
 # Allowed golden changes after step K4 (valley geometry: G1B, G2, G3, G4, G5, A5, K4.9; K4b: projection on the exact
-# distance minima and the sweep cut, decision D4). Cumulative: K3.txt (* / grid) plus the patches measured after K4
-# (-PgoldenReport=build/golden_K4.txt, 2026-10-03), checked against the design (§4): the table of dna-dolin §6.2 for
-# the set G1B…G5, the list of A5 (grid, foothills in REAL A, beskids and summit in GAMEPLAY A, GAMEPLAY B and REAL A
-# 0.5) and the patches of K4b (beskids, summit, mountain_stream, foothills, grid). Lost targets: the six of dna-dolin
-# §6.2 (REAL B river_mouth, large_river, mountain_stream; GAMEPLAY B large_river, mountain_stream; REAL A 0.5
-# oxbow_lake) and GAMEPLAY A summit (sweep cut, below). Removed in K7 together with the directory.
+# distance minima and the sweep cut, decision D4; K4c: the sweep cut only near ties of the arms, decision D4a, the arc
+# of the valley head, A5, and the mouth funnel as valley floor for the habitat fields, G3). Cumulative: K3.txt (* / grid)
+# plus the patches measured after K4c (-PgoldenReport=build/golden_K4c.txt, 2026-10-03), checked against the design (§4):
+# the table of dna-dolin §6.2 for the set G1B…G5, the list of A5 (grid, foothills in REAL A, beskids and summit in
+# GAMEPLAY A, GAMEPLAY B and REAL A 0.5) and the patches of K4b (beskids, summit, mountain_stream, foothills, grid). Lost
+# targets: the six of dna-dolin §6.2 (REAL B river_mouth, large_river, mountain_stream; GAMEPLAY B large_river,
+# mountain_stream; REAL A 0.5 oxbow_lake). Removed in K7 together with the directory.
 * / grid
 
 # dna-dolin §6.2 and A5 (with K4b in the mountain patches)
@@ -46,15 +47,12 @@ REAL A 0.5 / beskids
 REAL A 0.5 / summit
 REAL A 0.5 / foothills
 
-# K4b sweep cut (review of K4): the side of a valley is measured from the nearest point of its axis (polyline, Euclidean),
-# while the projection measured it at the perpendicular foot on the curve, so where the axis bulges closer than the foot
-# says the side cuts a little deeper (in the final table of §4 both patches are "zmiana"; recorded in
-# docs/m2/poprawka-geometrii.md, K4). GAMEPLAY A summit: the side of a source valley 406 m away (the projection: 444
-# m) lowers the summit by up to 2.3 m (88 of 256 columns with other blocks), so the SUMMIT landform of the patch is no longer a local
-# maximum above 900 m in the patch; the patch is searched anew in K7. GAMEPLAY A kettle_pond: up to 1.1 m on the side
-# of the kettle basin (10 columns with other blocks; no water level or substrate changes).
-GAMEPLAY A / summit target
-GAMEPLAY A / kettle_pond
+# K4b/K4c sweep cut: the first sweep cut (K4b) measured valley sides from a polyline of the valley axis and changed two
+# patches outside the list above, GAMEPLAY A kettle_pond (up to 1.1 m) and GAMEPLAY A summit (lost its target). K4c
+# restricts the sweep cut to the ties of the arms of the projection (decision D4a): kettle_pond is unchanged again and
+# summit keeps its target (changed by up to 1.61 m, 205 columns with other blocks: A5 and the valleys of K4; in the final
+# table of §4 the patch is "zmiana").
+GAMEPLAY A / summit
 
 # Numerical differences only: no column with another block, water level or kind, type or substrate. Causes: t of the
 # exact distance minima (K4b) instead of 5 Gauss-Newton steps (M1 stopped about 1e-6 of t from the minimum) and

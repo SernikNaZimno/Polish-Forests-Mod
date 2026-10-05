@@ -10,7 +10,7 @@ Dokument wdrożenia poprawki geometrii terenu. Opisuje kroki K0–K7, narzędzia
 | K1 | Strefy dna od koryta doliny dominującej (F2) | bez zmian |
 | K2 | Wielkie masywy Beskidów (M2-8), miękki pułap wierzchołka, reguły rzek przy masywach | tylko masywy |
 | K3 | Ciągłe pola doliny dominującej (F1), bez uskoku przy progu nizin 0,3 (TE) | doliny |
-| K4 | Geometria dolin (G1B, R1, G2–G5, A5) i optymalizacje; K4b: urwiska na stokach gór GAMEPLAY (D4) | doliny i zbocza |
+| K4 | Geometria dolin (G1B, R1, G2–G5, A5) i optymalizacje; K4b: urwiska na stokach gór GAMEPLAY (D4); K4c: cięcie omiatające tylko przy remisach (D4a), kryteria w blokach (D4b), łuk głowicy (A5), lejek w polach siedlisk (G3) | doliny i zbocza |
 | K5 | Wody stojące: starorzecza, jeziora rynnowe (z poziomem niezależnym od kolejności próbkowania), oczka, niecki, brzeg jezior bezodpływowych; K5b: wybrzeże wydmowe (D5) | wody stojące, wybrzeże |
 | K6 | Okno mieszania regionów 5 × 5 (A16) | szwy regionów |
 | K7 | Jedno przegenerowanie `golden_terrain_m2.txt`, dokumentacja | — |
@@ -68,7 +68,7 @@ To samo (bez wagi typu) sprawdzamy w 108 punktach: 3 okręgi (1/3, 2/3 i 3/3 z 3
 
 - `-PwriteGolden` pisze tylko plik M2: do `-PgoldenFile=<plik>`, domyślnie `src/test/resources/golden_terrain_m2.txt`. Plik M1 nie jest już nigdy nadpisywany.
 - `-PgoldenKeepCenters` (z `-PwriteGolden`): środki łat z bieżącego pliku wzorcowego. Od nowa szukane są tylko łaty, których cel w starym środku nie jest spełniony (sprawdza świeży model), i łaty nowe (miejsca bez wpisu w pliku). Kolejność łat w pliku: siatka, potem kolejność `SITES`.
-- `-PgoldenAllow=<plik>`: lista dozwolonych zmian. `terrainMatchesGolden` pada tylko przy zmianie łaty spoza listy albo przy utracie celu spoza listy. Dozwolone zmiany wypisuje jako informację.
+- `-PgoldenAllow=<plik>`: lista dozwolonych zmian. `terrainMatchesGolden` pada tylko przy zmianie łaty spoza listy albo przy utracie celu spoza listy. Dozwolone zmiany wypisuje jako informację. Od K4c bez tej właściwości używana jest lista najnowszego kroku (ostatni według nazwy `src/test/golden-allow/K*.txt`), a `-PgoldenStrict` porównuje bez żadnej listy (K4c, „Złoty test”).
 - `-PgoldenReport=<plik>`: lista zmienionych łat w składni listy dozwolonych zmian, a zmienione pola, porównanie z kopią M1 i opisy utraconych celów jako komentarze. Raport powstaje także wtedy, gdy test przechodzi (`# no changes`).
 
 **Składnia listy dozwolonych zmian** (`#` zaczyna komentarz, więc raport może służyć za listę):
@@ -847,3 +847,399 @@ Pomiar z 2026-10-03 wieczorem, 2 powtórzenia (maszyna obciążona: kopia M1 o 5
 - Uogólnienie stycznej cięciwy w jeziorach bezodpływowych (odstępstwo 4): M5.
 - F2 GAMEPLAY całe dno 93,0% przy progu 92%: trójkąty ujść (K3) bez zmian.
 - Nieciągłości pól na linii wygaszenia źródłowego (K3, „Co zostaje”) nie mierzyłem ponownie narzędziem `FieldSeams`; A5 zmienia tam szerokość dna.
+
+## K4c. Domknięcie K4: cięcie omiatające tylko przy remisach (D4a), kryteria D4b, łuk głowicy (A5), lejek w polach siedlisk (G3) i drobne
+
+Stan przed krokiem: commit `006e2d5` (K3 + K4 w toku), drzewo robocze czyste. Rozstrzygnięcia: „Rozstrzygnięcia po K4” w decyzjach wdrożenia (D4a, D4b, A5, G3, drobne).
+
+### D4a: cięcie omiatające tylko przy remisach ramion
+
+**Problem (ponowna recenzja K4).** Cięcie omiatające z K4b mierzyło przekroje odległością euklidesową od 16-krawędziowej łamanej osi doliny. Cięciwy łamanej przechodziły do 561 m bliżej niż oś (rząd 3 REAL), a odległość euklidesowa od osi nachylonej względem krzywej jest krótsza niż odległość mierzona przez rzut wzdłuż normalnej krzywej w spodku prostopadłej. Cięcie wygrywało więc daleko od remisów. Pomiar narzędziem `SweepAB` (losowe punkty lądu: 6000 w dużym kwadracie i po 300 w każdym oknie testu ciągłości, teren rzeczny z cięciem i bez): REAL 6,8% lądu zmienione o > 1 m (do 118 m), GAMEPLAY 22,7% (do 87 m). W punktach z jednym wyraźnym ramieniem (definicja niżej) zmienione o > 0,05 m: REAL 693 z 1968, GAMEPLAY 1853 z 4058.
+
+**Co weszło (`RiverNetwork.sweepCut`, klasa `Section`).** Przekroje liczone są w metryce samego rzutu, bez łamanej osi:
+
+- Rodzina przekrojów: węzły krzywej t_k = k/16 i na każdej krawędzi łamanej *krzywej* punkt najbliższy kolumnie (rzut na cięciwę krawędzi, potem dokładny punkt krzywej, pochodna i prędkość z wielomianu odcinka). Każdy przekrój jest ciągłą funkcją (x, z), cięcie omiatające jest ich maksimum.
+- Odległość od osi doliny: |lat − wander(t_f)| wzdłuż normalnej krzywej w t (tak jak rzut mierzy ją w spodku), z ugięciem osi `wanderAt` w oszacowaniu Newtona spodka t_f = t + along / (prędkość · g), g ≥ 0,5 (`SWEEP_MIN_DISTINCTNESS`), plus kara `SWEEP_PENALTY` · |along| (1,0), wygładzona przy 0 na 5 m·k (`SWEEP_PENALTY_SOFT`, Huber), bo z samym |along| przekrój wygrywający w remisie zostawiał wzdłuż normalnej swojego węzła doły w kształcie V do 2,7 m głębokie i 2 m szerokie (izolowane skoki w testach ciągłości).
+- Dno, szerokość, margines (A5, G3) i głowica źródła brane są w górę rzeki od spodka: t + 2 · krok Newtona, gdy spodek leży w górę rzeki (`SWEEP_FLOOR_MARGIN` = 1; z marginesem 0,25 oszacowanie z węzła odległego o pół krawędzi bywało za krótkie o połowę, np. GAMEPLAY (27408,6, 2952,3): dno o 0,23 m za nisko), pas meandrów jako mniejszy z obu końców przedziału (G2 może go zwężać w dół rzeki).
+- Koniec odcinka z punktem za nim: przekrój ramienia końcowego rzutu (odległość od końca osi, dno na końcu).
+- ~~Pominięcie cięcia przy wyraźnym rzucie~~ (**usunięte w rundzie 1 poprawek, niżej**). Pierwsza wersja K4c w ogóle nie liczyła cięcia omiatającego tam, gdzie rzut był „wyraźny” (jedno ramię, g ≥ 0,7; `SWEEP_SKIP_DISTINCTNESS`, flaga `out[9]`). Założenie, że przy jednym wyraźnym ramieniu żaden przekrój nie tnie głębiej niż ramię, okazało się fałszywe. Na granicy pomijanego obszaru powstawały pionowe uskoki do 20 m. Test regresji porównywał teren z tą samą wersją z pominięciem, więc w pomijanym obszarze różnica była z konstrukcji zerowa: obszar ten nigdy nie był sprawdzany.
+
+Dlaczego to (w zasadzie) nie zmienia terenu przy jednym wyraźnym ramieniu (uwaga po rundzie 1: rozumowanie nie obejmuje prawie-remisów z końcem krótkiego odcinka i bliskiego ostrza krzywej, zob. runda 1): przekrój w samym spodku daje dokładnie cięcie tego ramienia, przekroje obok niego mierzą odległość nie mniejszą (kara |along| pokrywa krzywiznę, ugięcie osi brane jest w szacowanym spodku) przy dnie nie niższym (t w górę rzeki od spodka). W remisach (punkt blisko środka krzywizny, gdzie odległość od krzywej jest prawie stała na części krzywej, czyli along ≈ 0) przekroje nie są karane i cięcie bierze najgłębszy z nich zamiast szybkiego przełączenia miękkiego t rzutu.
+
+**Sprawdzone i odrzucone warianty** (narzędzia `SweepAB`, `Cliffs` na 10 oknach recenzji po 200 transektów, `Windows` na oknach testu ciągłości; katalog roboczy sesji `k4c`):
+
+| Wariant | Skupiska kroku doliny > 3 m na 1 m (200 transektów) | Zmiany w punktach wyraźnych |
+|---|---|---|
+| bez cięcia omiatającego (tylko rzut) | 38, do 19,1 m | — |
+| K4b (łamana osi, euklidesowo) | 0 | REAL 693, GAMEPLAY 1853 (> 0,05 m) |
+| przekroje rzutu, kara 4 · |along|, dno ze stałym g0 = 0,25 | 404–647, do 67 m (kara 5× ostrzejsza od ściany) | 0 |
+| jak wyżej z bramką według uwarunkowania ramion (κ) | 48–55, do 25 m (rampy na brzegu bramki) | 0 |
+| kara 1 · |along|, g0 = 1, bez bramki | 8, do 4,2 m | REAL 5, GAMEPLAY 36 (do 7,4 m: nachylenie osi |dw/ds| do 1,2) |
+| to samo z bramką według udziału ramion lub z obcięciem | 27–33, do 18–38 m | REAL 3, GAMEPLAY 9 |
+| przekroje przesuwane krokami Newtona do ramion | 148, do 17,7 m | do 40 m (dalekie ramię głębsze) |
+| kara (1 + |dw/ds| / g) · |along| (zachowawcza) | 99, do 9,2 m | 0 |
+| maksimum po ramionach rzutu i ramionach „rodzących się” (pierwiastki f') | 29, do 19 m (cięcie ramienia przy fałdzie zmienia się z w'·dt/dX → ∞) | 0 |
+| **weszło (przed rundą 1): ugięcie w szacowanym spodku, kara 1 · |along|, dno 2 kroki w górę, Huber 5 m·k, pominięcie przy wyraźnym rzucie** | okna testu (150 transektów): krok doliny ≤ 5,1 m na 1 m, ≤ 1,54 bloku na blok; na gęstej siatce uskoki pominięcia do 20 m i pola żeber (runda 1) | 0 (tautologia, runda 1) |
+
+Bramki (cięcie włączane tylko tam, gdzie rzut jest źle uwarunkowany) zawodzą zawsze z tego samego powodu: na brzegu bramki cięcie omiatające leży o kilkadziesiąt metrów pod rzutem (np. 30 m na końcu krótkiego wygiętego odcinka 17 m za jego początkiem), więc bramka robi z tej różnicy rampę.
+
+**Wynik przed rundą 1 (test `RiverNetworkTest.sweepCutKeepsWellConditionedTerrain`, nowy; w tej wersji tautologiczny, stan aktualny w rundzie 1).** Punkt jest *wyraźny*, gdy każdy odcinek, który tnie w nim teren, ma jedno dominujące ramię: wyrazistość g ≥ 0,5, udział w wagach średnich miękkich ≥ 0,999, koniec odcinka tylko gdy punkt jest co najmniej `END_BLEND` za nim. REAL: 7500 punktów lądu, 1935 w zasięgu dolin, 1884 wyraźne, największa zmiana w punkcie wyraźnym 0 m (limit 0,05 m), żadnej zmiany > 0,05 m w ogóle. GAMEPLAY: 6784 / 4892 / 4007, w punktach wyraźnych 0 m; zmienione o > 0,05 m 16 punktów, o > 1 m 14 (0,21% lądu, limit testu 0,5%), największa zmiana 59 m (remis dwóch ramion krótkiego odcinka rzędu 1 na masywie).
+
+**Uzupełnienie po rundzie 2 (drobna uwaga recenzji nr 2).** Opis wyżej podawał stan sprawdzony za mocno. Obszar pomijany *nie* leżał wewnątrz sprawdzanego, a okno `gameplay_beskids` nie miało „0 skoków i kroku doliny 4,89”. Na siatce 1 m recenzja znalazła tam 3855 par 1 m z krokiem doliny > 3 m, w tym uskok pominięcia 17,7 m (bez niego największy krok 5,5 m). Brakowało też trzech rzeczy:
+- szerokiego wpływu łuku A5 w GAMEPLAY: 11,7% lądu zmienione o > 1 m, wygaszone w rundzie 1 do 0,41%;
+- usuwania oczek przez lejek G3: 11 w REAL i 25 w GAMEPLAY, cofnięte w rundzie 1;
+- pomiaru A/B samego cięcia.
+
+Pomiar A/B cięcia omiatającego wobec samego rzutu po rundzie 2 (narzędzie `swab`, 40 000 losowych punktów na skalę, REAL ±150 km, GAMEPLAY ±40 km, ziarno 7):
+- REAL: 0,00% lądu zmienione o > 0,05 m;
+- GAMEPLAY: 0,08% o > 0,05 m, 0,07% o > 1 m, 0,03% o > 5 m, największa zmiana 50,9 m (remis ramion na masywie, (9164, −33733)).
+
+Wynik jest taki sam przed rundą 2 i po niej. Pomiar recenzji na jej 40 tys. punktów: REAL 0,00% / 0,00% (> 1 m / > 5 m), K4b 4,75% / 1,94%; GAMEPLAY 0,01% / 0,00%, najwięcej 4,35 m, K4b 16,85% / 5,62%.
+
+**Okna testu ciągłości przed rundą 1** (150 transektów; gęsty skan rundy 1 pokazał, że limity z transektów nie ograniczały terenu; krok doliny = |Δpowierzchni| − |Δterenu przed dolinami| na 1 m, bloki = zwykły krok w blokach przez `VerticalScale`):
+
+| Okno | skoki (liczba / największy) K4b → K4c | krok doliny K4b → K4c | bloki na blok K4c |
+|---|---|---|---|
+| `gameplay_beskids` | 1 / 0,68 → 0 | 2,19 → 4,89 | 1,39 |
+| `gameplay_center` | 14 (przy wodzie) → 14 | 1,65 → 1,70 | 0,64 (pas brzegowy 2,45) |
+| `gameplay_stream` | 6 / 2,85 → 6 / 3,02 (szew A16, K6) | 1,78 → 2,35 | 1,26 |
+| `gameplay_moraine` | 14 → 13 (przy wodzie) | 0,96 → 1,08 | 0,62 (pas brzegowy 2,08) |
+| `gameplay_tunnel_lake_3519` | 25 → 25 (K5.2) | 0,48 → 0,53 | 0,22 |
+| `gameplay_massif_spawn` | 1 / 0,35 → 0 | 2,50 → 5,10 | 1,49 |
+| `gameplay_massif_1660` | 1 / 0,33 → 3 / 0,58 | 2,17 → 4,78 | 1,54 |
+| `gameplay_massif_1718` | 0 → 0 | 2,12 → 4,71 | 1,49 |
+| `gameplay_massif_1710` | 1 / 0,47 → 1 / 0,47 | 2,18 → 2,52 | 1,11 |
+| okna REAL | bez zmian | ≤ 1,31 | ≤ 1,34 |
+
+Na 600 transektach (narzędzie `Windows`, ziarno 11): krok doliny do 6,8 m na 1 m (`gameplay_massif_1660`), w blokach do 1,97 bloku na blok (`gameplay_massif_spawn`), żadnego kroku > 2 bloków poza pasem brzegowym. Bez cięcia omiatającego w tych samych oknach: do 22,5 m na 1 m i do 7,5 bloku na blok (40 kroków > 2 bloków w `gameplay_massif_1660`).
+
+**Odstępstwo (D4a, wariant zapasowy).** Obu celów naraz nie udało się spełnić (dziewięć wariantów wyżej): przy cięciu, które nie zmienia terenu w punktach wyraźnych, zostają remisy, w których cięcie wygrywa i ma zbocza ściany doliny: w czterech oknach GAMEPLAY krok doliny 4,7–5,1 m na 1 m (K4b: < 2,5 m, ale z przebudową zboczy daleko od remisów). Zgodnie z D4a wybrałem teren bez szerokich zmian. Zostające remisy to: (1) dwa dobrze uwarunkowane ramiona krótkiego odcinka rzędu 1 widziane z kilkuset metrów (udział ramion ok. 0,5–0,65, g ≈ 3), gdzie średnia miękka miesza dna różniące się o kilkaset metrów (np. dolina 690 m głęboka na masywie przy (27108, 2147): cięcie najgłębszego ramienia 210 m wobec 141 m z rzutu); (2) końce krótkich wygiętych odcinków (ramię końcowe z wagą tylko z rampy `END_BLEND` i ramię wewnętrzne przy fałdzie). Opis „najwyżej 2 bloki na blok” był nieprawdziwy: na gęstej siatce pola żeber i uskoki pominięcia miały do 6,75 bloku na blok (runda 1). Limity okien przed rundą 1: krok doliny 3 m wszędzie poza tymi czterema oknami (4,9 / 5,2 / 4,9 / 4,8 m, stan zmierzony), bloki ≤ 2 wszędzie poza pasem brzegowym.
+
+**Miejsca na masywach i źródła:** `gameplay_blades_1707` 0 par > 25 m, największa para 13,4 m na 2,5 m (K4b 5,9 m; zbocze doliny rzędu 1, 5,4 m na 1 m, do 1,6 bloku na blok), `gameplay_fan_1673` bez zmian (10,6 m). Źródła na stokach masywów (`massifStreamSourcesHaveNoCliffs`): GAMEPLAY zwykły krok 6,01 m na 1 m (K4b 4,06), krok doliny 5,40 m (K4b 2,54) w (247697,4, −287790,7) (remis ramion krótkiego odcinka), 1,63 bloku na blok; REAL bez zmian (1,46 / 1,29 / 1,46 bloku).
+
+### D4b: kryterium „bez urwisk” w testach
+
+- `SurfaceContinuityTest`: w każdym oknie krok doliny ≤ 3 m na 1 m (wyjątki D4a wyżej, stan zmierzony) **oraz** zwykły krok ≤ 2 bloki na blok (`D4B_BLOCKS`, przeliczenie przez `VerticalScale` skali okna) na suchym lądzie poza wodą stojącą i poza pasem brzegowym (3 km·meso od linii brzegu). Pas brzegowy jest wypisywany osobno: ściana od strony morza płaskiego pasa nadmorskiego leży kilka metrów nad morzem, gdzie GAMEPLAY przelicza 1 m na do 1,9 bloku, więc jej 2,2 m na 1 m daje 2,45 bloku na blok (`gameplay_center`) i 2,08 (`gameplay_moraine`); to wybrzeże przebudowuje K5b (D5). Okna REAL: 1:1 do 900 m, czyli ≤ 2 m na 1 m (największy 1,34 na 150 transektach; gęsty skan rundy 2 znalazł do 2,75 bloku na blok, odstępstwo R5).
+- `mountainStreamSourcesHaveNoCliffs`: obie skale (wcześniej tylko REAL), krok doliny ≤ 3 m na 1 m i ≤ 2 bloki na blok; REAL dodatkowo zwykły krok < 3 m. Teraz: REAL 1,35 / 1,30 m / 1,35 bloku, GAMEPLAY 2,24 / 1,34 m / 0,63 bloku.
+- `massifStreamSourcesHaveNoCliffs`: dodane ≤ 2 bloki na blok w obu skalach; limity kroku GAMEPLAY do stanu K4c (zwykły 6,1 m, krok doliny 5,5 m, odstępstwo D4a).
+- Strome kopuły masywów GAMEPLAY (do ok. 5 m na 1 m, ok. 1,1–1,5 bloku na blok) przechodzą kryterium bloków bez wyjątków.
+
+### A5: głowica doliny łukiem
+
+- **Weszło:** podnoszenie dna od źródła (`floor ≥ terrain − 0,5 · maxSlope · odległość od źródła`) liczone od łuku wokół głowicy, a nie od prostej w poprzek osi: odległość od źródła minus `headArc(va, r)` = r · (1 − exp(−va² / (2 r²))), gdzie va to odległość od osi doliny, a r pełna półszerokość dna (w/2 + margines). Na osi 0, przy niej ok. va² / (2r) (parabola), daleko najwyżej r, nachylenie najwyżej 0,61. Poziomice głowicy są łukami (amfiteatr), a nie prostymi w poprzek osi. Przekroje cięcia omiatającego używają tego samego łuku (ze swoją odległością d ≥ va, więc zachowawczo).
+- **Kadr `R_head_-67330_21470_800m`:** w K4 głowica była klinem zwężającego się dna, a poziomice kończyły się prostymi; po K4c poziomice głowicy są współśrodkowymi łukami, bez skoków i fałd (`k4c/viz/png/R_head_-67330_21470_800m_terrain.png`, 0 skoków, 0 pikseli > 3 m na 1 m).
+- **Sprawdzone i odrzucone:** (1) szerokość dna rosnąca jak √odległości (profil √x · (3 − x)/2, gładki na końcu): głowica tępa, prawie prostokątna z zaokrąglonymi narożami, a `valleyHeadsAreRounded` pada (mediana 0,47–0,48 przy limicie 0,4); (2) łuk okręgu r − √(r² − va²): pionowa styczna przy va = r robiła stopień wzdłuż boków głowicy (5–7 skoków na kadrze).
+- `valleyHeadsAreRounded` bez zmian w kodzie i bez zmian wyników (szerokość dna z marginesu A5 jak w K4): mediana 0,22 (REAL, 672 głowice) i 0,21 (GAMEPLAY, 457 z 459 poniżej 0,6), 0 kolumn wciętych za głowicą.
+
+### G3: lejek ujścia jako dno doliny odbiorczej w polach siedlisk
+
+- **Weszło:** (waga doliny tylko do rundy 1; od rundy 1 waga doliny jest znów bez lejka, bo usuwała oczka) u i flaga dna liczą się z dna terenu z lejkiem (`terrainHalf`), a miękkie maksimum półszerokości dna (`floorHalf` w `RiverHit`) z półszerokości terenu. Klucz doliny dominującej (F1) zostaje bez lejka, więc lejek dopływu nie przejmuje dna rzeki, do której uchodzi; kolumna w lejku jest na dnie (`inFloor`), a strefy daje jej koryto doliny dominującej (`floorChannelDist`).
+- **Pierwsza próba (tylko `inFloor` i u):** ols na kadrze `Z_besk_conf_300m` wzrósł z 1,57% do 1,97%. Przyczyna: półszerokość dna potoku (2 m) zostawała wąska, więc klasa C traktowała dno jak wąską dolinę V („las strefowy do brzegu”), a strefowy las na płaskim, mokrym dnie poniżej 500 m to ols (BOGGY). Z półszerokością dna z lejkiem klasa C daje łęg z olszą szarą i łęg jesionowo-olszowy.
+- **Kadr `Z_besk_conf_300m` (27990, 3660):** ols 1,57% → 0,28%, łęg z olszą szarą 0,52% → 3,10%, łęg jesionowo-olszowy 0,31% → 1,53% (`k4c/viz/png/Z_besk_conf_300m_biomes_pair.png`). Wieloboczne płaty olsu przy zbiegu zniknęły; zostały pasy łęgów wzdłuż obu potoków (zarys lejka jest nadal widoczny jako granica łęgu). Kadr `G_besk_conf2_600m` bez zmian (0,54% łęgu z olszą szarą, 0 olsu).
+- **F2** bez zmian: REAL strefy rzeki 100%, całe dno 99,1%; GAMEPLAY 99,0%, całe dno 93,0% (próg 92%). `noSpringsOnMassifCore`: kolumn dna lub wody na rdzeniach REAL 1604 → 1620 (lejki liczą się teraz jako dno; najgłębsza nadal przy G 0,50), limit 1620.
+- Odstępstwo 3 z K4 („lejek tylko w terenie”) jest tym zamknięte dla pól siedlisk; klucz F1 nadal bez lejka (świadomie).
+
+### Drobne z recenzji K4
+
+- **Pole d przy dużych rzekach:** zmierzone, bez zmian w kodzie. REAL: największy gradient w pasie stref 7,58 m na 1 m, 133 kroki > 1,5 m na 1 m z 84 949 (0,16%, próg 1%); GAMEPLAY 7,08 m, 3 kroki. Kadr stref dużej rzeki `R_duza_rzeka_2km` (−2849, 8918, W ≈ 42 m): pasy łozin, ziołorośli i łach idą równo z korytem, bez prostych szwów (strome miejsca d leżą w szyjach meandrów, gdzie oba ramiona są blisko). Wariant „minimum po ramionach z narodzinami ważonymi wyrazistością” odłożony (M5, razem z rzutem na samą oś), bo na kadrach nie ma artefaktu, który by uzasadniał zmianę pola stref.
+- **`noSpringsOnMassifCore`:** wcięcie obszaru szczytowego GAMEPLAY 58,0 → 51,5 m (bez szerokiego cięcia omiatającego; K2 50,6 m, pierwsza wersja K4 51,5 m), w (109332, 286015): górna krawędź ściany doliny potoku rzędu 1, 1470 m głębokiej. Próba bez nieregularnej krawędzi dna G4 (wszędzie) dała 51,9 m, więc poszerzanie krawędzi dna nie jest przyczyną; zostaje udokumentowane (odstępstwo 11 z K4, głębokość takich dolin na kopułach to sprawa K2/S3). Limit 52 m (było 59).
+- **`segmentCullingIsInvisible`:** 20 000 punktów na skalę (było 10 000, projekt: 20 000).
+- **Wspólny pomocnik promienia kafli:** `tileRadiusNodes` (węzły w stałej kolejności listy kafla) używany przez `candidates` i `tileRadiusSegments`.
+- **Pisownia amerykańska** w kodzie: „centre” → „center”, „metre(s)” → „meter(s)”, „neighbour…” → „neighbor…”, „kilometres” → „kilometers” (komentarze w `landscape`).
+
+### Złoty test
+
+Lista `src/test/golden-allow/K4.txt` uzupełniona o K4c: zbiór zmienionych łat jest ten sam co w K4 z wyjątkiem dwóch łat cięcia K4b: GAMEPLAY A `kettle_pond` znów bez zmian (wypada z listy), GAMEPLAY A `summit` zmieniona (do 1,61 m, A5 i doliny K4), ale nie traci już celu (`summit` zamiast `summit target`). `terrainMatchesGolden` z `-PgoldenAllow=src/test/golden-allow/K4.txt` przechodzi; zmiany numeryczne bez zmian. Raport `-PgoldenReport=build/golden_K4c.txt` daje dokładnie ten zbiór (łaty z utraconym celem są w nim także jako zmienione, co lista K4 obejmuje wpisem `target`).
+
+**Domyślna lista dozwolonych zmian (nowe w K4c).** Bez `-PgoldenAllow` `build.gradle` bierze teraz listę najnowszego kroku: ostatni według nazwy plik `src/test/golden-allow/K*.txt` (teraz `K4.txt`). Dzięki temu zwykłe `./gradlew test` przechodzi między krokami poprawki, a nie kończy się zamierzoną porażką `terrainMatchesGolden` jak od K3. W K7 katalog znika razem z przegenerowaniem pliku wzorcowego i wtedy domyślnie nic nie jest dozwolone. Porównanie bez żadnej listy: `-PgoldenStrict`. Uwaga: nowa lista kroku (np. `K5.txt`) musi mieć nazwę sortującą się po poprzednich; po jej dodaniu warto wymusić ponowną konfigurację (`--no-configuration-cache` przy pierwszym uruchomieniu), bo wybór pliku zapada w fazie konfiguracji.
+
+### Koszt
+
+Pomiar A/B `SampleCostTest` (7 rund) K4b (`006e2d5`) i K4c, osobne JVM na zmianę, 2 powtórzenia; maszyna obciążona (kopia M1 o kilka–kilkanaście procent wolniejsza niż w pomiarach K3), więc porównywać stosunki. Stosunek do kopii M1 (mediana):
+
+| Obszar | K4b | K4c |
+|---|---|---|
+| REAL cały obszar | 1,076 / 1,068 | 1,083 / 1,091 |
+| REAL Beskidy | 1,007 / 0,984 | 1,061 / 1,036 |
+| REAL wielki masyw | 0,969 / 0,949 | 0,967 / 0,993 |
+| GAMEPLAY cały obszar | 1,098 / 1,089 | 1,103 / 1,063 |
+| GAMEPLAY Beskidy | 1,091 / 1,080 | 1,049 / 1,055 |
+| GAMEPLAY wielki masyw | 1,050 / 1,036 | 0,974 / 0,974 |
+
+µs na kolumnę w K4c (drugie powtórzenie): 5,14 / 9,18 / 8,63 / 6,76 / 12,11 / 13,49; budżet D1 (≤ 1,20 × M1; 6,5 / 12 / 8,5 / 16 µs) dotrzymany. Cięcie omiatające liczy się teraz tylko przy niewyraźnym rzucie: 0,21 (GAMEPLAY) i 0,12 (REAL) wejść na kolumnę, 0,75 i 0,18 wywołań `wanderAt` na kolumnę (wersja bez pominięcia: 2,9 i 1,9 wejść, 11,1 i 4,8 wywołań; GAMEPLAY cały obszar 1,21–1,23 × M1, ponad budżet). Łuk głowicy (jedno `exp` na odcinek źródłowy w zasięgu) i G3 nie zmieniają kosztu mierzalnie.
+
+### Testy
+
+**Nowe i zmienione:** `sweepCutKeepsWellConditionedTerrain` (nowy, wyżej); `SurfaceContinuityTest` (bloki na blok, limit kroku doliny na okno, limity skoków do stanu K4c, `gameplay_blades_1707` 13,5 m); `mountainStreamSourcesHaveNoCliffs` (obie skale, krok doliny i bloki); `massifStreamSourcesHaveNoCliffs` (bloki, limity GAMEPLAY); `noSpringsOnMassifCore` (limity 52 m i 1620 kolumn); `segmentCullingIsInvisible` (20 000 punktów).
+
+**Pełny `./gradlew test`** (bez flag, czyli z domyślną listą `K4.txt`): BUILD SUCCESSFUL w 15 min 40 s, 132 testy, 0 porażek, 0 pominiętych. `terrainMatchesGolden` przechodzi z listą (zmiany łat jak w „Złoty test” wyżej). `sweepCutKeepsWellConditionedTerrain`: w punktach wyraźnych 0 m w obu skalach. `SampleCostTest` w pełnym przebiegu (maszyna obciążona innymi testami): 1,200 / 1,187 / 0,977 / 1,133 / 1,114 / 1,029 × M1 w kolejności tabeli kosztu, µs na kolumnę 5,81 / 9,55 / 7,49 / 13,02 (limity bezwzględne D1 6,5 / 12 / 8,5 / 16 µs dotrzymane); osobny przebieg samego `SampleCostTest` zaraz potem: 1,094 / 1,023 / 0,919 / 1,045 / 1,049 / 0,961 × M1, µs 6,23 / 9,46 / 7,19 / 13,06.
+
+### Odstępstwa od projektu w K4c
+
+1. **D4a, wariant zapasowy:** teren bez cięcia w punktach wyraźnych (0 m) zamiast kroku doliny ≤ 3 m wszędzie. Stan po rundzie 1: w czterech oknach GAMEPLAY remisy ramion z krokiem doliny do 4,47 m na 1 m na gęstej siatce 2 m, wszędzie ≤ 1,56 bloku na blok (odstępstwo R1 niżej).
+2. ~~Pominięcie cięcia omiatającego przy wyraźnym rzucie~~: **usunięte w rundzie 1** (robiło uskoki do 20 m). Zamiast niego dowiedzione przycinanie przekrojów, test `sweepCutPruneIsExact`.
+3. **Kryterium bloków poza pasem brzegowym:** ściana brzegowa pasa nadmorskiego (2,45 bloku na blok) czeka na K5b.
+4. **A5 łukiem podnoszenia dna, nie szerokością dna:** szerokość dna (margines A5) zostaje jak w K4, łuk daje kształt poziomic; profil √odległości dla szerokości odrzucony (głowica tępa, test głowic pada).
+5. **G3: półszerokość dna w polach z lejkiem** (poza `inFloor`/u z decyzji): bez niej ols na zbiegach rósł.
+6. **Pole d bez zmian** (zmierzone, bez artefaktów na kadrze dużej rzeki).
+7. **Wcięcie obszaru szczytowego GAMEPLAY 51,5 m** (> 50 m): udokumentowane, sprawa K2/S3.
+8. **Domyślna lista dozwolonych zmian w `build.gradle`** (poza projektem, §4 zakładał jawne `-PgoldenAllow`): zwykłe `./gradlew test` używa listy najnowszego kroku; ścisłe porównanie przez `-PgoldenStrict`.
+
+### Co zostaje
+
+- Remisy ramion z D4a (po rundzie 1: krok doliny do 4,47 m na 1 m w czterech oknach GAMEPLAY na gęstej siatce, ≤ 1,56 bloku na blok): M5, razem z rzutem na samą oś doliny (wtedy średnia miękka nie będzie mieszać den odległych ramion).
+- Izolowane skoki na zboczach dolin rzędu 1 w `gameplay_massif_1660` (po rundzie 1: 2 skoki, 0,33 i 1,14 m, zagięcia między dwoma przekrojami bez uskoku) i `gameplay_massif_1710` (1, 0,47 m): wąskie pasy, gdzie stromy jest sam rzut.
+- Szew A16 w `gameplay_stream` (skoki do 3,02 m): K6.
+- Ściana brzegowa pasa nadmorskiego (2,45 bloku na blok w pasie brzegowym): K5b.
+- Zarys lejka G3 widoczny jako granica pasa łęgów na zbiegach potoków (bez olsu): etap poprawek klasyfikatora siedlisk (commit 3; runda 2).
+
+### Runda 1 poprawek po recenzji K4c
+
+Stan przed rundą: K4c w drzewie roboczym na `006e2d5`, niezacommitowany.
+
+Recenzja K4c znalazła pionowe uskoki na granicy pominięcia cięcia omiatającego, tautologiczny test regresji, pola żeber (tarkę) przy remisach, szerokie podniesienie zboczy przez łuk głowicy A5 w GAMEPLAY i usuwanie oczek przez lejek G3. Poniżej co z każdą uwagą zrobiłem. Opisy wyżej w rozdziale K4c (punkt o pominięciu przy wyraźnym rzucie, akapit „Dlaczego to nie zmienia terenu…”, wynik testu regresji i tabela okien) opisują stan przed tą rundą; tam, gdzie były nieprawdziwe, są poprawione niżej.
+
+**Pominięcie przy „wyraźnym” rzucie było błędne i zostało usunięte.** Teza „przy jednym wyraźnym ramieniu żaden przekrój nie przekroczy ramienia” jest fałszywa. Sprawdziłem trzy punkty z recenzji narzędziem `Probe`/`Scan` (przekroje S(t) na 64–128 punktach):
+
+- GAMEPLAY (27656,4; 2595,9): ramię odcinka rzędu 1 (194 m) w t = 0,67 ma g = 1,08, ale koniec t = 1 leży tylko 3 m dalej (376,9 wobec 373,9 m) i jest prawie stacjonarny (along = −0,01 m). Dno na końcu jest o 9,6 m niżej, więc przekrój końca tnie 16,6 m głębiej. To prawie-remis z nienarodzonym jeszcze ramieniem końcowym; kryterium ramion go nie widzi.
+- GAMEPLAY (26646,5; 1308,4): dwa ramiona, g = 0,706 tuż przy progu 0,7 — szew progu.
+- REAL (152760,95; 1054313): punkt leży prawie na krzywej przy jej bliskim ostrzu (prędkość parametryzacji |P'| spada do ok. 60 przy długości odcinka 1265 m), a ugięcie osi zmienia się tam o 45 m na 3 m krzywej. Rzut mierzy od osi 70 m, przekroje obok ostrza 28–35 m.
+
+Wszystkie trzy to prawie-remisy, w których cięcie omiatające ma działać; pominięcie zamieniało je w uskok na granicy obszaru pomijanego. Teraz `query` liczy cięcie omiatające zawsze (bez flagi `out[9]` i bez okna wokół ramienia; okno w jednej z prób też dawało różnice do 37 m przy ostrzu, więc je odrzuciłem).
+
+**Ciągły wybór przekroju zamiast stałej rodziny węzłów (żebra).** `Scan` pokazał, że przy remisach S(t) ma wąskie maksima między węzłami (np. 313 m przy t ≈ 0,98 wobec 298 m w najbliższym węźle), więc maksimum po 16 węzłach przeskakiwało z węzła na węzeł i każdy węzeł dawał płaską fasetę (kara |along| w metryce L1). Maksima S(t) leżą w spodkach ramion (załamanie dna tLo) i w prawie stacjonarnych punktach odległości. Cięcie bierze teraz maksimum po węzłach, po **dokładnych ramionach rzutu** (pierwiastki f) i po **ekstremach f** (pierwiastki f', ramiona „w zarodku”). Ramię rodzi się tam, gdzie ekstremum f dochodzi do 0, więc wchodzi do maksimum z wartością, którą ekstremum już miało; zbiór próbek zmienia się bez skoku maksimum. (Runda 2: to zdanie było prawdziwe tylko dla ramion. Same ekstrema f rodzą się parami tam, gdzie f'' = 0, i wychodzą przez końce odcinka, a w obu miejscach maksimum skakało; poprawka niżej.) Pojedynczego ramienia nie liczę (to sam rzut, nie głębszy niż limit). Sprawdzone i odrzucone: złoty podział między węzłami (skoki do 27 m, gdy kandydat do doprecyzowania zmieniał się z kolumną), 8 i 4 węzły (żebra wracają: do 16,8 m na 1 m), iterowany Newton (3 kroki uciekają od punktu prawie stacjonarnego: 17 m na 0,4 m).
+
+**Strome przekroje: g ≥ 1 i dolna granica prędkości.** Oszacowanie spodka t + along/(|P'|·g) przesuwa się z punktem o 1/(|P'|·g) na metr, a z nim ugięcie osi i dno brane w tym miejscu. Przy g do 0,5 przekroje dalekie od spodka opadały do 7 m na 1 m (2,4 bloku na blok na masywach), więc `SWEEP_MIN_DISTINCTNESS` = 1 (dla 0,5 ≤ g < 1 krok jest za krótki najwyżej o połowę, co pokrywa `SWEEP_FLOOR_MARGIN`). Przy ostrzu krzywej prędkość spada do 1/20 długości i przekrój opadał o 27 m na 0,5 m (REAL (152745, 1054317)), więc w kroku Newtona prędkość jest co najmniej 0,4 długości odcinka (`SWEEP_MIN_SPEED`).
+
+**Koszt bez pominięcia.** Bez pominięcia cięcie kosztowało w GAMEPLAY 0,2–0,3 × M1. Zamiast niezabezpieczonego pominięcia jest dowiedzione przycinanie przekrojów (`Section.notDeeperThanArm`): przy jednym ramieniu, na odcinku o dnie opadającym i korycie rozszerzającym się w dół, przekrój, którego przedział [tLo, tHi] zawiera ramię t*, którego dolne ograniczenie odległości dna (zakres ugięcia osi w przedziale t, 128 przedziałów na odcinek, największy pas meandrów odcinka) nie jest mniejsze niż odległość dna ramienia, i którego tLo · len nie przekracza podniesienia głowicy w ramieniu, nie tnie głębiej niż ramię (cięcie maleje z odległością dna, rośnie z głębokością dna, półszerokością i ścianą; tLo ≤ t* daje dno nie niższe i półszerokość nie większą). Pozostałe przekroje mają tańsze ograniczenia przed szumem ugięcia: głębokość z dna w t i w tLo, ugięcie z zakresu przedziału, półszerokość bez smoothstepów; wartości ugięcia do granic liczone raz przy budowie odcinka. Wywołań `wanderAt` w przekrojach: masyw GAMEPLAY 12,6 → 0,39 na kolumnę, cały obszar GAMEPLAY 0,30, REAL 0,02.
+
+**Test regresji (D4a) nie jest już tautologią.** `sweepCutKeepsWellConditionedTerrain` porównuje `query` (pełne cięcie, bez pominięcia) z `queryWithoutSweep`. Punkt wyraźny: każdy tnący odcinek ma jedno dominujące ramię (g ≥ 0,5, udział ≥ 0,999, koniec tylko `END_BLEND` za punktem) **i** żadna inna część krzywej nie jest prawie równie blisko (próbki t = j/256 poza otoczeniem ramienia: |along| ≥ 0,2 · |X − P(t)|). Wynik: REAL 7500 punktów lądu, 1249 wyraźnych, zmiana w wyraźnych 0 m, żadnej zmiany > 0,05 m; GAMEPLAY 6784 / 1343 wyraźnych, w wyraźnych 0 m, > 1 m 16 punktów (0,24% lądu, limit 0,5%), największa zmiana 59 m (remis na masywie). Punkty recenzji (27656, 2596) GAMEPLAY i (152761, 1054313) REAL nowa definicja zalicza do prawie-remisów (koniec odcinka 3 m dalej niż ramię, bliskie ostrze krzywej); ich ciągłość sprawdza test niżej.
+
+**Nowy test `sweepCutIsContinuousAtTheReviewedScarps`.** Siatka 0,5 m na kwadratach 80 m wokół 13 miejsc z recenzji (siedem uskoków pominięcia, żebra T_tie, F_tie, C_besk i trzy miejsca na masywach). Kryteria: krok między sąsiadami ≤ 3 m na 0,5 m (uskoki pominięcia miały 3–20 m na 0,25 m) i ≤ 2 bloki na blok na 1 m. Stan: największy krok 2,35 m na 0,5 m (zbocze doliny w (70381,5; −32437)), najwięcej 1,80 bloku na blok (REAL przy ostrzu), w GAMEPLAY do 1,36 bloku na blok.
+
+**Gęsty skan okien górskich (`SurfaceContinuityTest.denseGridHasNoCliffs`, nowy).** Siatka 2 m w oknach `gameplay_beskids` (6 km) i czterech oknach masywów (4 km), łącznie ok. 25 mln kolumn, ok. 70 s: w tych oknach GAMEPLAY wszędzie ≤ 1,56 bloku na blok, żadnej pary > 2 bloków (okien REAL ten test nie obejmował; runda 2: odstępstwo R5); krok doliny do 4,26 / 4,47 / 4,09 / 3,50 / 2,97 m na 1 m (limity okien: stan zmierzony, `DENSE_VALLEY`). Limity transektów ustawione na stan zmierzony: krok doliny `gameplay_beskids` 4,89 → 2,40 m (z powrotem limit 3 m), `gameplay_massif_spawn` 5,10 → 3,84, `gameplay_massif_1660` 4,78 → 3,14, `gameplay_massif_1718` 4,71 → 2,96 (limit 3 m). W `gameplay_massif_1660` dwa skoki transektów (0,33 i 1,14 m) to zagięcia, gdzie remisują dwa przekroje (spadek 1,5 → 3,7 m na 1 m bez uskoku, profil co 0,25 m: (69755, −29217)); limit 1,15 m. Źródła na masywach GAMEPLAY: zwykły krok 6,01 → 4,74 m na 1 m, krok doliny 5,40 → 3,27 m (limity 4,8 i 3,3).
+
+**Przycinanie jest dokładne (nowy test `RiverNetworkTest.sweepCutPruneIsExact`).** Recenzja żądała gęstego porównania wariantu produkcyjnego z pełnym cięciem, które nie przechodzi przy żadnej różnicy. Pominięcia już nie ma, a jego następca, `notDeeperThanArm`, odrzuca tylko przekroje nie głębsze od ramienia. Ramię nie przekracza progu `limit`, od którego cięcie omiatające w ogóle działa, więc teren z przycinaniem i bez niego musi być identyczny co do bitu. Pakietowy wariant `queryWithoutPrune` (tylko dla testów, parametr `prune` w wewnętrznym `query`) liczy cięcie bez przycinania. Test porównuje obie wersje bez żadnej tolerancji:
+- siatki 401 × 401 we wszystkich oknach górskich (`gameplay_beskids`, cztery okna masywów GAMEPLAY, `realistic_beskids`, `realistic_massif_1723`);
+- siatki 0,5 m na kwadratach 80 m w miejscach uskoków i żeber z recenzji.
+
+Wynik: GAMEPLAY 1 011 373 kolumny lądu, w tym 944 418 w dolinach; REAL 373 444 i 148 696; różnic 0.
+
+Na kopii z przełącznikiem (narzędzie `PruneAB`) porównałem całą powierzchnię `sample` na gęstszych siatkach: Beskidy GAMEPLAY co 3 m, masywy co 2 m, centrum co 10 m, Beskidy REAL co 30 m, masyw REAL co 8 m, miejsca z recenzji co 0,25–0,5 m. Różnica wszędzie 0 m.
+
+Przycinanie naprawdę działa (narzędzie `PruneCount`):
+
+| Obszar | Przekroje odrzucone przed szumem ugięcia (na kolumnę) | Dokładne przekroje (na kolumnę) |
+|---|---|---|
+| masyw 1660, GAMEPLAY | 17,8 | 0,41 |
+| Beskidy, GAMEPLAY | 17,7 | 0,36 |
+| Beskidy, REAL | 3,0 | 0,05 |
+
+**Ząbki w oknie `gameplay_massif_1660` (uwaga główna nr 3).** Sprawdziłem siatkę 1 m na dwóch prostokątach z recenzji i siatkę 2 m na całym oknie (narzędzie `Teeth`), porównując teren rzeczny z cięciem i sam rzut.
+
+Wiersz z = −30236 ma teraz gładkie nachylenia: 5,2 → 7,8 → 7,0 m na 10 m, a potem 15,7 m, tak jak w samym rzucie, który daje tam 12,0–15,6. Przed rundą były to ząbki 8,5 / 9,2 / 6,1 / 9,8 / 8,6 / 5,7 / … m.
+
+Piksele z załamaniem > 0,4 m/m na piksel, wśród pikseli zmienionych przez cięcie omiatające:
+
+| Obszar | Z cięciem omiatającym | Sam rzut |
+|---|---|---|
+| prostokąt (69230–69500, −30270…−30230) | 46 | 60 |
+| prostokąt (69630–69790, −29470…−29320) | 0 | 25 |
+| całe okno | 4889 | 5852 |
+
+Cięcie omiatające nie dokłada już faset, tylko je wygładza. Największe nachylenie w oknie spada z 17,06 m na 1 m w samym rzucie do 4,85.
+
+**Kadry (narzędzie `VizK4c` recenzenta, 0,25–0,5 m/px, `jumpstat.py`):**
+
+| Kadr | K4b | K4c przed rundą | teraz |
+|---|---|---|---|
+| `F_seam_27652_2592` | 2,61 m / 0,72 bl. | uskok 17,95 m na 1 m, 4,72 bl. | 3,20 m / 0,90 bl., bez skoków |
+| `F_seam_70803_-31977` | 2,28 / 0,74 | 21,58 m, 6,75 bl. | 3,83 / 1,19, bez skoków |
+| `Cspawn_400m` | — | 20,07 m, 5,51 bl. | 2,82 / 0,87 (13 px skoku jak w K4b) |
+| `R_seam_126919_1032083` | 0,55 m | 3,04 m, 1026 px skoku | 1,10 m, bez skoków |
+| `S_skip_-1415_2545` | 0,43 / 0,19 | 3,63 / 1,49 | 0,87 / 0,40 |
+| `T_tie_27108_2147` | 2,44 / 0,75 | 5,78 / 1,59, 71 px skoku | 2,47 / 0,75, bez żeber (jedno zagięcie między dolinami) |
+| `F_tie_70420_-31550` | 3,37 / 0,92 | 9,56 / 2,53, pole żeber | 4,85 / 1,33, bez żeber (zostaje stromy pas rzutu) |
+| `C_besk_28492_872` | 1,66 / 0,53 | 5,07 / 1,59 | 2,97 / 0,95 |
+| `C_m1660_71512_-31618` | 2,91 / 0,93 | 5,72 / 1,79 | 4,60 / 1,33 |
+| `C_m1718_-216918_247939` | 2,57 / 0,82 | 6,44 / 2,11 | 4,33 / 1,54 |
+| `C_m1718_-217767_244581` | 2,28 / 0,69 | 6,86 / 2,12 | 4,61 / 1,45 |
+| `C_spawn_5404_-33220` | 2,79 / 0,82 | 20,64 / 5,66 | 3,17 / 0,97 |
+
+(największy zwykły krok na 1 m / bloki na blok; „px skoku” to piksele detektora skoków).
+
+**A5: łuk głowicy wygaszony od źródła.** `headRise` = odległość od źródła − `headArc(va, r)` · (1 − smoothstep(r, 3r, odległość od źródła)); nadal niemalejące w t, więc dno dalej rośnie monotonnie w górę. A/B łuk / bez łuku na 40 tys. punktów recenzji: GAMEPLAY zmienione o > 1 m 11,66% → 0,41% lądu (do +3,2 m), REAL 0,60% → 0,02% (do +2,5 m); rynna wzdłuż suchej głowicy znika razem z szerokim podniesieniem. `valleyHeadsAreRounded` bez zmian (mediana 0,22 / 0,21). Uwaga drobna recenzji (najbliższa dnu poziomica głowicy nizinnej prosta na ok. 70 m przy dużym r) zostaje: mniejsze r przy wygaszeniu ograniczyłoby łuk do kilkudziesięciu metrów od źródła; do oceny na kadrach K7.
+
+**G3: waga doliny bez lejka.** `valleyWeight` decyduje tylko o terenie (istnienie oczek i obecność rynien jeziornych w `LandscapeModel`), nie o siedliskach, więc liczy się znowu z `floorHalf` bez lejka; lejek zostaje w `inFloor`, u i półszerokości dna pól siedlisk. Wyliczenie wszystkich komórek oczek (narzędzie `kettles` recenzji): REAL ±150 km 18 710 (jak K4b; K4c przed rundą 18 699), GAMEPLAY ±40 km 6227 (jak K4b; było 6202). Wieloboczne płaty łęgów przy zbiegach (uwaga główna nr 6) **nie są poprawione**: proste krawędzie biorą się z prostych potoków i sumy den (dno potoku ∪ lejek ∪ dno doliny odbiorczej), a ostre narożniki z przecięć tych zarysów; usunięcie wymaga zmiany klasyfikatora siedlisk — odkładam do etapu poprawek klasyfikatora siedlisk (commit 3 w decyzjach wdrożenia), a nie do K7 (poprawione w rundzie 2; tam też sprawdzenie, że pola dna z `RiverNetwork` są gładkie).
+
+**Drobne.** Ograniczenia całego odcinka i bloku odejmują teraz c/2 kary Hubera (było niezachowawcze o 2,5 m·k). Nagłówek `K4.txt` wskazuje raport `build/golden_K4c.txt`.
+
+**Pomiary A/B całości wobec K4c sprzed rundy (40 tys. punktów recenzji):** GAMEPLAY zmienione o > 1 m 11,2% lądu (prawie całe z wygaszenia łuku A5, najwyżej −9,4 m), REAL 0,58% (do −6,3 m); wobec wariantu recenzji bez łuku: GAMEPLAY 0,42%, REAL 0,02%. Cięcie omiatające wobec samego rzutu (punkty testu regresji): REAL 0,00% lądu > 1 m, GAMEPLAY 0,24%.
+
+**Koszt po rundzie 1** (`SampleCostTest`, stosunek do kopii M1, mediana):
+
+| Przebieg | REAL cały | REAL Beskidy | REAL masyw | GAMEPLAY cały | GAMEPLAY Beskidy | GAMEPLAY masyw |
+|---|---|---|---|---|---|---|
+| sam test, przebieg 1 | 1,175 | 1,094 | 0,997 | 1,154 | 1,144 | 1,115 |
+| sam test, przebieg 2 | 1,167 | 1,106 | 0,985 | 1,165 | 1,145 | 1,101 |
+| pełny przebieg obciążony innymi testami | 1,197 | 1,211 | 1,007 | 1,179 | 1,188 | 1,135 |
+
+W przebiegach osobnych µs na kolumnę wynoszą 4,60–4,76 (REAL cały), 7,14–7,20 (REAL Beskidy), 6,25–6,30 (GAMEPLAY cały) i 11,04–11,24 (GAMEPLAY Beskidy).
+
+Budżet D1 (≤ 1,20 × M1) jest dotrzymany w przebiegach osobnych, a limity bezwzględne (6,5 / 12 / 8,5 / 16 µs) we wszystkich. W pełnym przebiegu REAL Beskidy wyszły 1,211, ale tylko przez szum maszyny: ze średnich minimów rund wychodzi 1,125. Wzrost wobec K4c sprzed rundy (osobno 1,09 / 1,02 / 0,92 / 1,05 / 1,05 / 0,96) to cena liczenia cięcia omiatającego wszędzie.
+
+**Złoty test.** Raport `-PgoldenReport` po rundzie (`k4c1/rep_new.txt`) zawiera ten sam zbiór zmienionych łat co przed rundą, więc treść listy `K4.txt` się nie zmieniła; zmienił się tylko nagłówek (nazwa raportu). Domyślne `./gradlew test` (z listą `K4.txt`) przechodzi.
+
+**Testy.** Nowe testy:
+- `RiverNetworkTest.sweepCutIsContinuousAtTheReviewedScarps`;
+- `RiverNetworkTest.sweepCutPruneIsExact`;
+- `SurfaceContinuityTest.denseGridHasNoCliffs` (5 okien).
+
+Zmienione:
+- `sweepCutKeepsWellConditionedTerrain`: bez tautologii, ostrzejsza definicja punktu wyraźnego;
+- limity okien `SurfaceContinuityTest` ustawione na stan zmierzony;
+- `massifStreamSourcesHaveNoCliffs`: limity GAMEPLAY 4,8 i 3,3 m.
+
+Pełny `./gradlew test` (bez flag, czyli z domyślną listą `K4.txt`, plus `-PgoldenReport=build/golden_K4c_r1.txt`): BUILD SUCCESSFUL w 12 min 46 s, 139 testów, 0 porażek, 0 błędów, 0 pominiętych. Szczegóły:
+- `sweepCutPruneIsExact`: 0 różnic;
+- `denseGridHasNoCliffs`: 1,38 / 1,40 / 1,25 / 1,56 / 1,28 bloku na blok, krok doliny 4,26 / 4,47 / 4,09 / 3,50 / 2,97 m na 1 m;
+- raport złotego testu: ten sam zbiór łat co przed rundą;
+- `SampleCostTest` w tym przebiegu: 1,186 / 1,115 / 1,015 / 1,149 / 1,134 / 1,081 × M1, µs 4,58 / 7,21 / 6,35 / 11,02.
+
+**Odstępstwa rundy 1:**
+
+1. **R1, D4a nadal w wariancie zapasowym.** Krok doliny ≤ 3 m na 1 m nie jest spełniony wszędzie. Na gęstej siatce 2 m:
+
+   | Okno | Krok doliny (m na 1 m) |
+   |---|---|
+   | `gameplay_beskids` | 4,26 |
+   | `gameplay_massif_spawn` | 4,47 |
+   | `gameplay_massif_1660` | 4,09 |
+   | `gameplay_massif_1718` | 3,50 |
+
+   Limity `DENSE_VALLEY` są ustawione na stan zmierzony. Kryterium D4b (≤ 2 bloki na blok) jest spełnione w oknach GAMEPLAY gęstej siatki: najwięcej 1,56. To zbocza stromych przekrojów przy remisach ramion, bez uskoków i bez żeber. (Runda 2: w REAL D4b nie jest spełnione, do 2,75 bloku na blok; odstępstwo R5.)
+2. **R2, G3: wieloboczne płaty łęgów przy zbiegach zostają** (uwaga główna nr 6 i drobna nr 4). Proste krawędzie i narożniki płatów to zarys sumy den (dno potoku ∪ lejek ∪ dno doliny odbiorczej). Klasyfikator siedlisk bierze go z twardej flagi `inFloor` (`HabitatClassifier.onValleyFloor`, `u()`). Usunięcie wymaga zmiany klasyfikatora i oceny na kadrach biomów, więc odkładam to do etapu poprawek klasyfikatora siedlisk (commit 3 w decyzjach wdrożenia; w rundzie 2 poprawione z „K7”, bo K7 tylko przegenerowuje plik wzorcowy). Ilościowo cel G3 jest spełniony: olsu na kadrze `Z_besk_conf_300m` jest 0,28%, a było 1,57%.
+3. **R3, A5 na nizinach.** Najbliższa dnu poziomica głowicy nizinnej biegnie prosto na ok. 70 m (drobna nr 3, duże r = w/2 + margines). Zmniejszenie r skróciłoby łuk do kilkudziesięciu metrów od źródła. Do strojenia (§6 projektu) po obejrzeniu świata (w rundzie 2 poprawione z „K7”: K7 nie zmienia terenu).
+4. **R4, nowe wejście testowe `queryWithoutPrune`** (parametr `prune` w wewnętrznym `query`). Kod produkcyjny zawsze przycina; wariant bez przycinania jest tylko dla testów.
+
+**Co zostaje po rundzie 1:**
+- remisy ramion D4a (krok doliny do 4,47 m na 1 m): M5, razem z rzutem na samą oś;
+- wieloboczne płaty łęgów G3: etap poprawek klasyfikatora siedlisk (commit 3); prosta poziomica nizinnej głowicy A5: strojenie po obejrzeniu świata (runda 2);
+- koszt REAL w obciążonym pełnym przebiegu blisko granicy budżetu: pilnować w K5–K6;
+- szew A16: K6;
+- ściana brzegowa: K5b.
+
+### Runda 2 poprawek po recenzji K4c
+
+Stan przed rundą: K4c i runda 1 w drzewie roboczym na `006e2d5`, niezacommitowane. Narzędzia rundy (katalog roboczy sesji `k4c3`):
+- `K3D jumps`: skaner recenzji. Bierze kafle 32 m z aktywnym cięciem omiatającym, wykrytym na siatce 2 m (GAMEPLAY) lub 16 m (REAL). Te kafle skanuje siatką 0,5 m (GAMEPLAY) albo 1 m (REAL). Pary sąsiadów, których punkt środkowy nie dzieli różnicy, bada bisekcją w 34 krokach.
+- `K3D swab`: A/B cięcia na losowych punktach.
+- `K3Dbg`: wypis członków rodziny przekrojów i pól odcinka w punkcie.
+- `VizK4`: kadry biomów.
+
+**1. Nieciągłości maksimum cięcia omiatającego (uwaga blokująca): prawdziwe, naprawione.**
+
+Odtworzyłem wszystkie cztery miejsca z recenzji (`K3D jumps`, bisekcja):
+
+| Miejsce | Skok | Mechanizm |
+|---|---|---|
+| REAL (132704; 1042536,5) | 1,97 m | (b) |
+| REAL (131841,4; 1086475) | 0,49 m | (b) |
+| GAMEPLAY (−216251; 246904,75) | 0,58 m | (a) |
+| REAL (156980,5; 1059412) | 12,8 m terenu rzecznego, pod jeziorem | (a) |
+
+Wypis członków rodziny potwierdza przyczynę. W (156978,5; 1059408,85) para ekstremów f w t = 0,8940 i 0,8952 daje cięcie 10,4 i 11,5 m. 2,5 cm dalej tej pary już nie ma, a węzły dają najwyżej 0,6 m.
+
+Zdanie z rundy 1 „zbiór próbek zmienia się bez skoku maksimum” było prawdziwe tylko dla ramion. Maksimum rodziny jest ciągłe wtedy, gdy każdy człon jest ciągłą funkcją (x, z), dopóki istnieje, i wchodzi do rodziny albo z niej wychodzi z wartością nie większą niż maksimum pozostałych. Ekstrema f łamały ten warunek na dwa sposoby:
+- (a) para pierwiastków f' rodzi się tam, gdzie f'' = 0, i od razu wchodziła z pełną wartością;
+- (b) pierwiastek f' wychodzi przez koniec odcinka. Przy samym końcu przekrój liczył się wzorem wnętrza (|lat − w| + kara Hubera), a węzeł końcowy wzorem ramienia końcowego (√(lw² + along²)). Wzór wnętrza może być mniejszy o najwyżej c/2 = 2,5 m·k odległości.
+
+Co weszło (`RiverNetwork.sweepCut`, `Section.fromFoot`):
+- **(a) Waga ekstremum f.** Waga to smoothstep(0, `SWEEP_TWIN` · k, ξ), gdzie ξ = f''² / (2 |f'''| |P''|), a `SWEEP_TWIN` = 10 m·k. Przy narodzinach pary f' ≈ a + b (t − t0)², więc a = −f''² / (2 f''') w każdym z pierwiastków, a kolumna zmienia a o |P''| na metr. ξ szacuje więc odległość kolumny (w metrach) od miejsca narodzin pary: jest 0 przy narodzinach i rośnie liniowo z odległością. Nowa para wchodzi z wagą 0.
+- **(a) Waga ramienia.** Ramię ma wagę 1 − (1 − w)(1 − smoothstep(0, `SWEEP_ARM_BIRTH`, g)), gdzie w to waga z ξ w jego t, a `SWEEP_ARM_BIRTH` = 0,05. Ramię rodzi się z ekstremum f przy g = 0, ma wtedy jego wagę i wchodzi z wartością, którą ekstremum już miało. Od g = 0,05 ma pełną wagę.
+- **(b) Koniec odcinka.** W ostatniej i w pierwszej 1/16 odcinka, gdy kolumna leży za normalną po stronie końca, odległość przekroju przechodzi w odległość ramienia końcowego √(lw² + along²), jeśli ta jest większa. W samym końcu ekstremum ma więc najwyżej wartość węzła końcowego. Wyjątek: daleki koniec odcinka źródłowego krótszego niż 3 r łuku głowicy (A5), gdzie większa odległość obniża dno łuku o najwyżej 0,5 · maxSlope · 0,61 na metr odległości (rzadkie: krótkie odcinki źródłowe na nizinach). Węzły wewnętrzne się nie zmieniają (mieszanie jest 0 w t = k/16), ramiona też nie (along = 0). Odległość tylko rośnie, więc wszystkie ograniczenia i przycinanie zostają ważne.
+- Javadoc `sweepCut` i `fromFoot` mówi teraz ten warunek wprost i opisuje cztery przypadki zmian rodziny.
+
+Sprawdzone i odrzucone:
+- **waga z |f''| / |P'|² (czyli |g'|):** przy ostrzu krzywej prędkość |P'| jest mała. Para w t ≈ 0,894, odległa o 0,0012 w t, miała wagę 1 i skok 10,9 m zostawał;
+- **waga z |f''| / len²:** ta sama para dostawała 0,19, czyli zostawał skok ok. 1,6 m. Miara ξ w metrach daje tej parze 0,0000;
+- **trwałość (persistence) ekstremów albo „bariera” do sąsiednich ekstremów lub końców:** gdy obok rodzi się inna para, zmienia się sąsiad, więc waga skacze. Odrzucone bez wdrażania;
+- **max(wzór końca, wzór wnętrza) w węźle końcowym:** pogłębiałoby teren za końcem każdego odcinka o do 2,5 m·k odległości, także przy dobrze uwarunkowanym rzucie (np. przy głowicach źródeł). To byłoby wbrew D4a.
+
+Wyniki:
+- **Nowy test `RiverNetworkTest.sweepCutIsContinuousWhereItsFamilyChanges`** obejmuje cztery miejsca z recenzji: siatka 0,5 m na kwadratach 24 m, teren rzeczny `query`. Każdą parę sąsiadów, która różni się o > 0,02 m i której punkt środkowy nie dzieli różnicy, test bada bisekcją w 36 krokach. Limit to 0,01 m. Przed poprawką test pada (0,576 m w GAMEPLAY), teraz największy krok po bisekcji wynosi 0,000000 m we wszystkich czterech miejscach.
+- **Skan okien `K3D jumps`** (powierzchnia na suchym lądzie). Nieciągłości zrobione przez cięcie, czyli skok z cięciem większy od skoku bez cięcia o > 0,02 m:
+  - `realistic_beskids` (60 km): 15 według recenzji (6 przy moim wykrywaniu co 16 m) → 0;
+  - `gameplay_massif_1718`: 3 → 0;
+  - `gameplay_massif_1660`: 1 → 1. Ten jeden to 0,04 m przy (70414,75; −31444,5): sam rzut skacze tam o 0,039 m (profil co 0,1 mm), więc to skok rzutu. Skaner liczy go jako zrobiony przez cięcie, bo bisekcja bez cięcia zbiega gdzie indziej;
+  - pozostałe okna GAMEPLAY i REAL: 0.
+
+  Największe kroki w blokach się nie zmieniły: GAMEPLAY 1,54 / 1,37 / 1,73 / 1,81 / 0,93 / 0,97 / 1,08; REAL 2,75 / 0,85 / 2,17 (odstępstwo R5 niżej).
+- **Czwarte miejsce (pod jeziorem)** nie ma już skoku. Zostaje jednak bardzo strome zbocze samego rzutu przy ostrzu krzywej, do 14,9 m na 1 m terenu rzecznego: zakrywała je para ekstremów, która rodzi się tuż obok i ma teraz wagę bliską 0. Leży pod lustrem jeziora (powierzchnia 491,88 m), więc jest niewidoczne. Na suchym lądzie skan okien nie znalazł takiego miejsca: największe kroki w blokach są bez zmian.
+- **Pozostałe testy cięcia** dają to samo co po rundzie 1:
+  - `sweepCutKeepsWellConditionedTerrain`: REAL 0 zmian; GAMEPLAY 16 punktów > 1 m (0,24%), najwięcej 59 m;
+  - `sweepCutIsContinuousAtTheReviewedScarps`: 2,35 m na 0,5 m, 1,80 bloku na blok;
+  - `denseGridHasNoCliffs`: 1,38 / 1,40 / 1,25 / 1,56 / 1,28 bloku na blok, krok doliny 4,26 / 4,47 / 4,09 / 3,50 / 2,97 m na 1 m.
+- **A/B cięcia wobec samego rzutu** (`swab`, wynik w rozdziale K4c wyżej) jest taki sam przed rundą 2 i po niej.
+- **Złoty test:** raport `-PgoldenReport` jest identyczny jak po rundzie 1, więc lista `K4.txt` się nie zmienia.
+- **Koszt** (`SampleCostTest`, stosunek do M1, mediana; na maszynie działał równolegle skan okien, więc liczby są zaszumione): po rundzie 2 dwa przebiegi dały REAL cały 1,148 / 1,176, REAL Beskidy 1,119 / 1,112, REAL masyw 1,009 / 0,997, GAMEPLAY cały 1,161 / 1,173, GAMEPLAY Beskidy 1,148 / 1,138, GAMEPLAY masyw 1,108 / 1,092. Stan sprzed rundy w tym samym czasie: 1,150 / 1,118 / 1,001 / 1,147 / 1,143 / 1,097. Wagi to kilka mnożeń na ramię lub ekstremum, które przeszły odrzucanie blokami, więc różnica mieści się w szumie. Budżet D1 jest dotrzymany.
+
+**2. D4b w REAL (uwaga główna): prawdziwe; odstępstwo R5 i nowy gęsty test.**
+
+Sprawdziłem wszystkie miejsca z recenzji oraz jedno nowe w `realistic_massif_1723`, które znalazł mój skan okna 16 km (2,17 bloku na blok, 940 par > 2). Wypis pól odcinka (`K3Dbg`) daje dwie przyczyny:
+
+- **Ściany samego rzutu, których cięcie omiatające nie dotyka (D4a).** Miejsca: (125919; 1050642), (174776; 1050993), (150330; −1530776), a także (151575; 1071336) i pozostałe miejsca recenzji. Rzut ma tam jedno ramię z wyrazistością g = 0,62 / 0,51 / 0,62, a oś doliny jest mocno nachylona względem krzywej odcinka: dw/ds = 1,23 / −0,98 / 1,00. Odległość od osi |lat − wander(t)| rośnie wtedy o √(1 + (dw/ds / g)²) = 2,2 / 2,2 / 1,9 m na 1 m. Ściana zaprojektowana na 1,5 · maxSlope ≈ 1,05 m na 1 m ma więc 2,3–2,6 m na 1 m przy niemal płaskim terenie surowym (0,1–0,16 m na 1 m). W K4b miejsca te leżały na dnie, bo euklidesowe cięcie K4b poszerzało tam dno. Właśnie tę szeroką zmianę usunęła decyzja D4a.
+- **Remis ramion przy (142364; 1040652)** (g = 0,37): sam rzut ma tam do 16,8 m na 1 m, a cięcie omiatające łagodzi go do 2,73.
+
+Dlaczego nie poprawiam tego w tej rundzie:
+- Poprawka musiałaby zmienić ścianę rzutu (szerokość ściany razy |∇d|, z pochodną ugięcia osi), czyli policzyć dodatkowy szum na kolumnę w ścianie. Zmieniłaby teren wszystkich dolin REAL z osią nachyloną względem krzywej, a koszt REAL i tak jest blisko budżetu D1.
+- Przekroje cięcia omiatającego potrzebowałyby tej samej poprawki, bo inaczej remisy zostaną strome.
+- Tę samą przyczynę (rzut mierzy odległość wzdłuż normalnej krzywej zamiast od samej osi doliny) mają remisy D4a odłożone do M5 („rzut na samą oś doliny”). Tam zniknie też |∇d| > 1.
+
+Recenzja dopuszczała opisane odstępstwo z liczbami. Wybrałem je.
+
+Nowy test `SurfaceContinuityTest.realisticPatchesHaveNoCliffs`:
+- obejmuje okna `realistic_beskids` i `realistic_massif_1723`, za duże na pełną siatkę;
+- w każdym oknie bierze 120 losowych łat 200 m (ziarno 23) oraz miejsca z recenzji i to nowe (`REAL_SPOTS`), wszystko co 1 m;
+- liczy suchy ląd poza wodą stojącą i pasem brzegowym;
+- trwa ok. 20 s na okno.
+
+Stan:
+- `realistic_beskids`: 2,75 bloku na blok, 5910 par > 2 w 7 z 128 łat;
+- `realistic_massif_1723`: 2,17 bloku na blok, 915 par w 1 z 121 łat.
+
+Wszystkie pary > 2 leżą w miejscach recenzji, w losowych łatach nie ma żadnej. Limity to stan zmierzony: 2,8 / 6000 i 2,2 / 950. Skan okna `realistic_beskids` po kaflach z aktywnym cięciem pokazuje te same miejsca: 27 kafli, 5757 par, najwięcej 2,75. Poprawiłem zdania „D4b spełnione wszędzie” w rozdziale rundy 1 i w opisie D4b.
+
+**3. G3: wieloboczne płaty łęgów (uwaga główna): prawdziwe, ale ich źródło nie leży w `RiverNetwork`; odłożone do etapu poprawek klasyfikatora siedlisk (commit 3).**
+
+Wyrenderowałem kadr `Z_besk_conf_300m` (`VizK4`, 800 px) razem z polami, które `RiverNetwork` daje siedliskom (`k4c3/viz/base/pair.png`, `pair2.png`). Pola `inFloor`, u, waga doliny i `floorChannelDist` są gładkie: zarys dna z lejkiem to łuki, bez prostych krawędzi i narożników. Proste krawędzie płatów i prostokątna dziura grądu pojawiają się dopiero w biomach. Powstają więc w klasyfikatorze (progi stref nadwodnych, wysokość nad korytem kanału doliny dominującej itd.), a nie w zarysie dna. Wygładzanie `terrainHalf` albo u w lejku, które proponowała recenzja, nie zmieni tych krawędzi.
+
+Według decyzji wdrożenia poprawki klasyfikatora to osobny commit 3, a K7 tylko przegenerowuje plik wzorcowy. Przeniosłem więc odstępstwo R2 z „K7” do tego etapu (poprawione w R2, w „Co zostaje” i w opisie G3). Ilościowo cel G3 jest spełniony: ols 1,57% → 0,28%.
+
+**Drobne uwagi:**
+1. **Ograniczenia całego odcinka i bloku bez c/2 kary Hubera:** fałszywy alarm wobec obecnego kodu. Poprawiłem to w rundzie 1: `slack` w `sweepCut` zawiera `SWEEP_PENALTY_SOFT · k / 2` i służy obu ograniczeniom. Numery linii w recenzji wskazują wersję sprzed rundy 1.
+2. **Dokumentacja K4c podawała stan za mocno:** poprawione. Dopisałem uzupełnienie w rozdziale K4c: liczby recenzji, A/B cięcia `swab`, wpływ łuku A5 w GAMEPLAY i usuwanie oczek przez G3. Tabele i wyniki sprzed rundy 1 były już tak oznaczone.
+3. **A5 przy głowicy nizinnej** (prosta poziomica na ok. 70 m): zostaje odstępstwo R3. Przeniosłem je z „K7” do strojenia (§6) po obejrzeniu świata, bo K7 nie zmienia terenu. Mniejsze r albo zwężanie dna przy źródle zmienia wszystkie głowice, więc wymaga oceny na kadrach `R_head` i `R_morena_3km` oraz testu `valleyHeadsAreRounded`. Tego nie robię w rundzie poprawek.
+4. **Wieloboczne płaty G3:** jak uwaga 3.
+5. **Nagłówek `K4.txt`:** fałszywy alarm wobec obecnego pliku. Od rundy 1 wskazuje `build/golden_K4c.txt`.
+
+**Pełny `./gradlew test`** (bez flag, czyli z domyślną listą `K4.txt`, plus `-PgoldenReport=build/golden_K4c_r2.txt`): BUILD SUCCESSFUL w 13 min 31 s, 142 testy, 0 porażek, 0 błędów, 0 pominiętych. Szczegóły:
+- `sweepCutIsContinuousWhereItsFamilyChanges`: 0,000000 m w czterech miejscach;
+- `sweepCutPruneIsExact`: 0 różnic (GAMEPLAY 1 011 373 kolumny lądu, REAL 373 444);
+- `realisticPatchesHaveNoCliffs`: 2,75 / 5910 i 2,17 / 915, jak wyżej;
+- raport złotego testu identyczny z raportem rundy 1;
+- `SampleCostTest` w pełnym przebiegu (obciążonym innymi testami): 1,230 / 1,204 / 1,058 / 1,198 / 1,241 / 1,182 × M1, µs 6,07 / 10,79 / 8,21 / 14,43 (limity bezwzględne 6,5 / 12 / 8,5 / 16 µs dotrzymane). Zaraz potem osobny przebieg samego testu: 1,194 / 1,113 / 0,991 / 1,183 / 1,146 / 1,096 × M1, µs 4,79 / 7,25 / 6,24 / 10,87, czyli budżet D1 dotrzymany. REAL cały obszar jest nadal blisko granicy (przed rundą 1,17–1,19).
+
+**Odstępstwa rundy 2:**
+
+5. **R5: D4b nie jest spełnione w REAL.** Ściany samego rzutu przy osi doliny nachylonej względem krzywej mają do 2,62 bloku na blok, a remis przy (142364; 1040652) 2,75. Liczby: 5910 + 915 par > 2 bloków w 8 miejscach, w losowych łatach żadnej. Poprawka w M5 razem z rzutem na samą oś doliny. Do tego czasu limity `realisticPatchesHaveNoCliffs` są ustawione na stan zmierzony.
+6. **R6: wagi członków rodziny.** Ekstrema f blisko narodzin pary (do ok. 10 m·k od miejsca narodzin) i ramiona tuż po narodzinach (g < 0,05) tną słabiej niż przed rundą. Tam, gdzie para ekstremów zakrywała strome zbocze samego rzutu przy ostrzu krzywej, to zbocze wraca bez skoku (pod jeziorem w (156980; 1059412), do 14,9 m na 1 m terenu rzecznego). Skan okien nie znalazł takiego miejsca na suchym lądzie.
+
+**Co zostaje po rundzie 2:**
+- remisy ramion D4a (krok doliny do 4,47 m na 1 m) i R5 (ściany rzutu w REAL do 2,75 bloku na blok): M5, razem z rzutem na samą oś doliny;
+- wieloboczne płaty łęgów G3: etap poprawek klasyfikatora siedlisk (commit 3);
+- prosta poziomica nizinnej głowicy A5: strojenie po obejrzeniu świata;
+- skok samego rzutu 0,04 m w `gameplay_massif_1660` (70414,75; −31444,5) oraz izolowane skoki rzutu w tym oknie i w `gameplay_massif_1710`: M5;
+- koszt REAL blisko granicy budżetu: pilnować w K5–K6;
+- szew A16: K6;
+- ściana brzegowa: K5b.

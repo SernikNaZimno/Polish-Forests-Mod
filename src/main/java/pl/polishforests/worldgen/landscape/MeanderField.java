@@ -33,7 +33,7 @@ final class MeanderField {
 		final double theta;
 		final float[] x;
 		final float[] y;
-		/** Point indices in buckets by {@code x} (with copies from the neighbouring periods). */
+		/** Point indices in buckets by {@code x} (with copies from the neighboring periods). */
 		final int[][] buckets;
 		final float[] dist;
 		final double amplitude;
@@ -112,7 +112,7 @@ final class MeanderField {
 			double best = Double.MAX_VALUE;
 			int center = (int) Math.floor(u * BUCKETS);
 			for (int r = 0; r < BUCKETS; r++) {
-				// Buckets at distance r from the centre are at least (r - 1) / BUCKETS further along the axis.
+				// Buckets at distance r from the center are at least (r - 1) / BUCKETS further along the axis.
 				double gap = (r - 1.0) / BUCKETS;
 				if (gap > 0 && gap * gap >= best) {
 					break;
