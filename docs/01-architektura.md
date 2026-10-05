@@ -126,6 +126,8 @@ Zrobione w kamieniu milowym M0: interfejs `SeasonProvider`, własny kalendarz i 
 | M8 | Tryby świata i dynamika | tryb rolniczy, infrastruktura leśna, gatunki obce, dynamika lasu |
 | M9 | Dopracowanie | wydajność, zgodność z Sodium, Lithium i Distant Horizons, balans |
 
+**Pionowy wycinek po M2 (decyzja P2, 2026-10-05).** Po zamknięciu M2, zanim M3–M7 poszerzą zakres na całą Polskę, powstaje jeden kompletny las, np. grąd i bór świeży: drzewa, runo, martwe drewno i kilka zwierząt. Wycinek bierze po kawałku z M3, M4 i M6 i sprawdza w grze, czy warstwy do siebie pasują; pozostałe siedliska i gatunki dochodzą potem w kolejnych kamieniach.
+
 ## 9. Struktura kodu
 
 ```

@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+# Runs a Gradle task and records the result against a hash of the whole working tree, so that a later run of the
+# same task with the same arguments on an identical tree can be skipped (docs/BRIEF.md, "Komendy").
+#
+# Usage: tools/dev/run-tests [--reuse] [--] <task> [gradle arguments...]
+#   tools/dev/run-tests test
+#   tools/dev/run-tests --reuse fastTest
+#   tools/dev/run-tests test --tests '*GoldenTerrainTest*' -PgoldenReport=build/golden.txt
+#
+# The tree hash covers tracked and untracked files (everything that .gitignore does not exclude), staged or not:
+# it is the tree object that 'git add -A' would produce, computed in a temporary index, so the real index is untouched.
+# Outputs (build/ is ignored by git):
+#   build/test-logs/<tree>-<task>-<args>.log   the full Gradle output (<tree> and <args> are short hashes)
+#   build/test-logs/index                      one tab-separated line per run:
+#                                              time, tree, task, args hash, PASS/FAIL, seconds, log, arguments
+# --reuse: if the index has a PASS line for the same tree, task and arguments, print its log path and exit 0
+#          without running Gradle. A FAIL is never reused.
+# Exit status: Gradle's exit status (0 when reused).
+set -u
+
+reuse=0
+while [ $# -gt 0 ]; do
+	case "$1" in
+		--reuse) reuse=1; shift ;;
+		--) shift; break ;;
+		-h|--help) sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+		*) break ;;
+	esac
+done
+if [ $# -lt 1 ]; then
+	echo "usage: tools/dev/run-tests [--reuse] <task> [gradle arguments...]" >&2
+	exit 2
+fi
+task="$1"
+shift
+
+root="$(cd "$(dirname "$0")/../.." && pwd)"
+cd "$root" || exit 2
+logdir="build/test-logs"
+mkdir -p "$logdir"
+
+# Tree hash: copy the real index (keeps the stat cache, so 'add -A' only hashes changed files), add everything, write.
+real_index="$(git rev-parse --git-path index)"
+tmp_index="$(mktemp "$logdir/index.tmp.XXXXXX")"
+trap 'rm -f "$tmp_index"' EXIT
+if [ -f "$real_index" ]; then
+	cp "$real_index" "$tmp_index"
+else
+	rm -f "$tmp_index"
+fi
+tree="$(GIT_INDEX_FILE="$tmp_index" git add -A 2>/dev/null && GIT_INDEX_FILE="$tmp_index" git write-tree)" || {
+	echo "run-tests: could not compute the tree hash" >&2
+	exit 2
+}
+rm -f "$tmp_index"
+tree_short="${tree:0:12}"
+
+# Argument hash: the task and every argument, NUL-separated (so 'a b' differs from 'a' 'b').
+args_hash="$( { printf '%s\0' "$task"; [ $# -gt 0 ] && printf '%s\0' "$@"; } | git hash-object --stdin)"
+args_short="${args_hash:0:10}"
+safe_task="$(printf '%s' "$task" | tr -c 'A-Za-z0-9_.-' '_')"
+log="$logdir/$tree_short-$safe_task-$args_short.log"
+index="$logdir/index"
+args_text="$*"
+
+if [ "$reuse" -eq 1 ] && [ -f "$index" ]; then
+	hit="$(awk -F '\t' -v t="$tree" -v k="$task" -v a="$args_hash" \
+		'$2 == t && $3 == k && $4 == a && $5 == "PASS" { line = $0 } END { print line }' "$index")"
+	if [ -n "$hit" ]; then
+		hit_log="$(printf '%s' "$hit" | cut -f7)"
+		echo "run-tests: reused PASS for tree $tree_short, task $task, arguments [$args_text]"
+		echo "run-tests: log $hit_log"
+		exit 0
+	fi
+fi
+
+echo "run-tests: tree $tree_short, task $task, arguments [$args_text]"
+echo "run-tests: log $log"
+start=$(date +%s)
+./gradlew --console=plain "$task" "$@" 2>&1 | tee "$log"
+status=${PIPESTATUS[0]}
+end=$(date +%s)
+seconds=$((end - start))
+if [ "$status" -eq 0 ]; then result=PASS; else result=FAIL; fi
+printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')" "$tree" "$task" "$args_hash" "$result" \
+	"$seconds" "$log" "$args_text" >> "$index"
+echo "run-tests: $result in ${seconds} s (tree $tree_short, task $task); log $log"
+exit "$status"

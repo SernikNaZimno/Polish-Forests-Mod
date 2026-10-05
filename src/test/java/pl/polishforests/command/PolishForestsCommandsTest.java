@@ -5,12 +5,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import pl.polishforests.worldgen.landscape.LandscapeModel;
 import pl.polishforests.worldgen.landscape.LandscapeScale;
 import pl.polishforests.worldgen.landscape.Landform;
 
 /** Every target of the {@code /polishforests find} command can be found, and the place found meets its condition. */
+@Tag("slow")
 class PolishForestsCommandsTest {
 	@Test
 	void everyTargetIsFoundInGameplayScale() {

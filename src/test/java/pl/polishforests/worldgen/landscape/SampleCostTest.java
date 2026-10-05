@@ -4,6 +4,7 @@ import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Set;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -22,7 +23,11 @@ import org.junit.jupiter.api.Test;
  * stream network), at the location of the "beskids" patch from the golden test, and 400 chunks on a large Beskid
  * massif (step K2 of the terrain geometry fix; the M1 copy has no massif there). The whole area at realistic scale
  * (±320 km around 0, 0) does not include mountains.
+ *
+ * <p>Tagged {@code cost}: it runs only through {@code ./gradlew costTest} (a single JVM, alone, always rerun),
+ * never in {@code test} or {@code fastTest}, whose parallel forks would disturb the timing.
  */
+@Tag("cost")
 class SampleCostTest {
 	private static final long SEED = 20260927L;
 	private static final int CHUNKS = 400;

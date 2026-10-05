@@ -60,7 +60,7 @@ Wcześniejsze pomiary z S0, przed dodaniem kopii M1 (osobne uruchomienia samego 
 
 Te liczby różnią się między uruchomieniami o ±10–20%, stąd pomiar na przemian z kopią M1. W tamtej wersji testu pomiar w Beskidach GAMEPLAY losował chunki z powtórzeniami (322 różne z 400). Teraz test bierze 400 różnych chunków.
 
-Uruchomienie: `./gradlew test --tests '*SampleCostTest*'`. Wynik jest na standardowym wyjściu, w wierszach `[sample cost]`. Przy powtórzeniu bez zmian w kodzie Gradle pomija test jako aktualny, więc trzeba dodać `--rerun`.
+Uruchomienie (od 2026-10-05): `./gradlew costTest` (tag `cost`: osobne zadanie, jedna JVM, zawsze uruchamiane od nowa, poza `test` i `fastTest`, żeby równoległe procesy testów nie zakłócały pomiaru). Wynik jest na standardowym wyjściu, w wierszach `[sample cost]`. Wcześniej: `./gradlew test --tests '*SampleCostTest*'` z `--rerun`; pomiary „w pełnym `./gradlew test`” poniżej pochodzą z tamtego układu (test biegł w jednej JVM po innych klasach).
 
 ### Po S2 (eksport pól do `ColumnSample`)
 

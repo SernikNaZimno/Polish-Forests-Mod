@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.Locale;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
@@ -27,6 +28,7 @@ import org.junit.jupiter.params.provider.MethodSource;
  * {@code floorChannelLevel}, step K1, F2) must be identical in every column, also at tunnel valley lakes: they come
  * from the river network only, and their candidates depend on the order of the tile list.
  */
+@Tag("slow")
 class TerrainDeterminismTest {
 	static final long SEED = 20260927L;
 	/** Known order dependence of the tunnel valley lake level (see the class comment); false after K5.2. */

@@ -10,6 +10,7 @@ import java.util.Random;
 import java.util.TreeMap;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import pl.polishforests.worldgen.chunk.VerticalScale;
@@ -30,7 +31,7 @@ import pl.polishforests.worldgen.chunk.VerticalScale;
  * walls of 10–50 m at 14–24 m per 1 m on the massif flanks), and the plain 1 m step |Δsurface| cannot tell them from
  * the steep domes of the gameplay massifs (step K2: 3.5 m per 1 m over 125–170 m with no valley). Decision D4: no
  * valley-made step above {@value #D4_STEP} m per 1 m in any window, as in
- * {@code RiverNetworkTest.mountainStreamSourcesHaveNoCliffs}. The largest plain 1 m step is printed.</li>
+ * {@code MountainStreamSourcesTest.mountainStreamSourcesHaveNoCliffs}. The largest plain 1 m step is printed.</li>
  * <li>A step in blocks (decision D4b, step K4c): the plain change of the surface over 1 m converted to blocks by the
  * vertical scale of the window ({@link VerticalScale}), at most {@value #D4B_BLOCKS} blocks per block on dry land
  * outside standing water and outside the coastal belt (within 3 km·meso of the shoreline). The steep domes of the
@@ -57,6 +58,7 @@ import pl.polishforests.worldgen.chunk.VerticalScale;
  * margin of more than the possible 1–2 m level change until K5.2. The other windows gave the same result in repeated
  * runs.
  */
+@Tag("slow")
 class SurfaceContinuityTest {
 	static final long SEED = 20260927L;
 	static final int TRANSECTS = 150;

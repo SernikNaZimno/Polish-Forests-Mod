@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.IntStream;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import pl.polishforests.worldgen.chunk.VerticalScale;
 import pl.polishforests.worldgen.habitat.AltitudinalBelts;
@@ -70,6 +71,7 @@ import pl.polishforests.worldgen.habitat.AltitudinalBelts;
  * <li>{@code -PgoldenReport=<file>}: writes the changed patches and fields to a file in the same syntax.</li>
  * </ul>
  */
+@Tag("slow")
 class GoldenTerrainTest {
 	/** Golden file of the frozen M1 copy ({@link #frozenM1CopyMatchesGolden}); never overwritten. */
 	static final String RESOURCE_M1 = "/golden_terrain_m1.txt";

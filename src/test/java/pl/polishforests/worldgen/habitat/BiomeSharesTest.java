@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Locale;
 import java.util.stream.IntStream;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import pl.polishforests.worldgen.landscape.ColumnSample;
 import pl.polishforests.worldgen.landscape.LandscapeModel;
@@ -20,6 +21,7 @@ import pl.polishforests.worldgen.landscape.Noise;
  * The clusters reuse the river network and terrain grid tiles, so the test is several times faster than
  * with fully scattered points, while the shares over the area stay unbiased.
  */
+@Tag("slow")
 public class BiomeSharesTest {
 	static final long[] SEEDS = {20260927L, 1L, 2L};
 	/** OUTWASH_PLAIN type weight from which a column counts as the interior of the outwash plain. */

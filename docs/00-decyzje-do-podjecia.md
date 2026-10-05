@@ -89,3 +89,12 @@ Plan: `docs/03-m2-biomy.md`.
 | M2-7 | Światy z M1 | **PODJĘTA 2026-10-02 (projekt)**: bez migracji (szwy na styku starych i nowych chunków) |
 | M2-8 | Wysokość najwyższych masywów Beskidów | **PODJĘTA 2026-10-02: rzadkie masywy do ok. 1725 m (Babia Góra, Pilsko) w obu skalach**; razem z poprawką geometrii terenu, przed fazą 2 M2. Daje kosodrzewinę i halę, a w skali rozgrywki także regiel górny |
 | M2-9 | Nazwa i język moda | **PODJĘTA 2026-10-02: „Polish Forests”**, id `polishforests`; wszystko, co widzi gracz, i kod po angielsku, polski jako tłumaczenie; dokumentacja po polsku |
+
+## F. Sposób pracy
+
+Skrót zasad dla agentów: `docs/BRIEF.md`.
+
+| # | Decyzja | Status |
+|---|---|---|
+| P1 | Optymalizacje pracy agentów (koszt dwóch pierwszych tygodni to głównie powtarzane pełne przebiegi testów, jednakowo głębokie recenzje i długie przebiegi pracy przerywane końcem sesji) | **PODJĘTA 2026-10-05: A1–A5 i B1–B3 przyjęte, B4 odrzucona.** A1: podział testów na szybkie i wolne (`@Tag("slow")`, zadania `fastTest`, `test`, osobne `costTest`) i 3 równoległe procesy testów; w trakcie kroku `fastTest` i wybrane klasy, pełny zestaw raz na krok. A2: ponowne użycie wyniku pełnego zestawu przy niezmienionym skrócie drzewa (`tools/dev/run-tests --reuse`). A3: krótkie przebiegi pracy z commitem i pushem po każdym kroku. A4: zwięzły brief projektu (`docs/BRIEF.md`) zamiast czytania całych planów. A5: agenci równolegli w osobnych git worktree, gdy pliki się nie pokrywają. B1: recenzja według ryzyka (geometria terenu, mixiny, rejestracja biomów i datagen: 2 recenzentów i do 2 rund poprawek; dokumentacja, komendy, lang, tabele danych: 1 recenzent i 1 runda). B2: tańszy model do prac mechanicznych (commity, dokumentacja, inwentaryzacje, tłumaczenia, zwykłe przebiegi testów). B3: problem blokujący po 2 rundach poprawek → stop i 2–3 warianty z kosztami do decyzji użytkownika. B4 (recenzenci oglądają tylko część kadrów podglądu) odrzucona: recenzenci nadal oglądają pełne zestawy kadrów. |
+| P2 | Kolejność po M2 | **PODJĘTA 2026-10-05: pionowy wycinek po M2.** Jeden kompletny las (np. grąd i bór świeży: drzewa, runo, martwe drewno, kilka zwierząt), zanim zakres poszerzy się na całą Polskę (`docs/01-architektura.md`, §8) |

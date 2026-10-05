@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicLongArray;
 import java.util.stream.IntStream;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import pl.polishforests.worldgen.landscape.ColumnSample;
 import pl.polishforests.worldgen.landscape.GreatMassifSurvey;
@@ -19,6 +20,7 @@ import pl.polishforests.worldgen.landscape.LandscapeType;
  * above 1470 m within 3 km·mspace, checked independently of the model field), and the beech/spruce forest limit
  * resulting from the classification lies 80–120 m higher on S slopes than on N slopes.
  */
+@Tag("slow")
 class AltitudinalBeltsTest {
 	static final long SEED = 20260927L;
 

@@ -33,6 +33,14 @@ Wszystkie polecenia uruchamia się w katalogu projektu. Gradle sam używa JDK ws
 Kompiluje mod i uruchamia testy jednostkowe modelu krajobrazu. Gotowy plik jest w `build/libs`.
 
 ```bash
+./gradlew fastTest    # szybkie testy (bez klas oznaczonych @Tag("slow")), ok. 1 min
+./gradlew test        # wszystkie testy oprócz pomiaru kosztu, w 3 równoległych procesach
+./gradlew costTest    # pomiar kosztu SampleCostTest, sam w jednej JVM
+```
+
+Zasady pracy, testy i skrypt `tools/dev/run-tests` (ponowne użycie wyników przy niezmienionym drzewie) opisuje `docs/BRIEF.md`.
+
+```bash
 ./gradlew landscapePreview
 ```
 

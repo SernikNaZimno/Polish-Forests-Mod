@@ -11,9 +11,11 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.stream.IntStream;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import pl.polishforests.worldgen.habitat.AltitudinalBelts;
 
+@Tag("slow")
 class LandscapeModelTest {
 	private static final long SEED = 20260927L;
 
