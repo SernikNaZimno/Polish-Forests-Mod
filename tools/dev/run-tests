@@ -14,7 +14,8 @@
 #   build/test-logs/index                      one tab-separated line per run:
 #                                              time, tree, task, args hash, PASS/FAIL, seconds, log, arguments
 # --reuse: if the index has a PASS line for the same tree, task and arguments, print its log path and exit 0
-#          without running Gradle. A FAIL is never reused.
+#          without running Gradle. A FAIL is never reused. PASS means exit status 0 and 'BUILD SUCCESSFUL' in the log
+#          (Gradle may report the task UP-TO-DATE when its inputs did not change, which is also a pass).
 # Exit status: Gradle's exit status (0 when reused).
 set -u
 
@@ -77,11 +78,16 @@ fi
 echo "run-tests: tree $tree_short, task $task, arguments [$args_text]"
 echo "run-tests: log $log"
 start=$(date +%s)
-./gradlew --console=plain "$task" "$@" 2>&1 | tee "$log"
+# If our stdout is closed early (e.g. piped into 'head'), keep running and keep writing the full log: ignore SIGPIPE
+# here and let tee skip the broken pipe (-p) instead of killing Gradle half-way.
+trap '' PIPE
+./gradlew --console=plain "$task" "$@" 2>&1 | tee -p "$log"
 status=${PIPESTATUS[0]}
 end=$(date +%s)
 seconds=$((end - start))
-if [ "$status" -eq 0 ]; then result=PASS; else result=FAIL; fi
+# PASS needs both a zero exit status and Gradle's own success line in the log, so that a run cut short is never reused.
+if [ "$status" -eq 0 ] && grep -q '^BUILD SUCCESSFUL' "$log"; then result=PASS; else result=FAIL; fi
+if [ "$result" = FAIL ] && [ "$status" -eq 0 ]; then status=1; fi
 printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')" "$tree" "$task" "$args_hash" "$result" \
 	"$seconds" "$log" "$args_text" >> "$index"
 echo "run-tests: $result in ${seconds} s (tree $tree_short, task $task); log $log"
