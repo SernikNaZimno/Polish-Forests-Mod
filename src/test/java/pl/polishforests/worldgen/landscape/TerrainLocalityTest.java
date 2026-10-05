@@ -7,7 +7,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
-import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
@@ -34,7 +33,6 @@ import org.junit.jupiter.params.provider.MethodSource;
  * the large massif windows of {@code SurfaceContinuityTest} (no massif before K2; from K2 they check that the
  * massif stays within its reach) and on the lagoon patches (for D2 and D5). Seed 20260927, region slider 1.0.
  */
-@Tag("slow")
 class TerrainLocalityTest {
 	static final long SEED = 20260927L;
 	static final int N = 200;

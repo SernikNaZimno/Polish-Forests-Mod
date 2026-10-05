@@ -58,7 +58,8 @@ tools/dev/run-tests [--reuse] <zadanie> [argumenty]   # np. tools/dev/run-tests 
 ```
 
 - `-PtestForks=<n>` zmienia liczbę procesów `test`/`fastTest` (1 = szeregowo). Każdy proces ma 3 GB sterty. Testy używają równoległych strumieni, więc procesy dzielą rdzenie.
-- `tools/dev/run-tests` liczy skrót całego drzewa roboczego (pliki śledzone i nieśledzone poza `.gitignore`, przez tymczasowy indeks), uruchamia zadanie Gradle i zapisuje log w `build/test-logs/<drzewo>-<zadanie>-<argumenty>.log` oraz wiersz w `build/test-logs/index` (czas, drzewo, zadanie, skrót argumentów, PASS/FAIL, sekundy, log, argumenty). Z `--reuse` przy wpisie PASS dla tego samego drzewa, zadania i argumentów tylko wypisuje ścieżkę logu. Pełny zestaw uruchamiaj przez nie raz na krok, a recenzent z `--reuse`.
+- `tools/dev/run-tests` liczy skrót całego drzewa roboczego (pliki śledzone i nieśledzone poza `.gitignore`, przez tymczasowy indeks), uruchamia zadanie Gradle i zapisuje log w `build/test-logs/<drzewo>-<zadanie>-<argumenty>.log` oraz wiersz w `build/test-logs/index` (czas, drzewo, zadanie, skrót argumentów, PASS/FAIL, sekundy, log, argumenty). Z `--reuse`, gdy ostatni wpis dla tego samego drzewa, zadania i argumentów to PASS, tylko wypisuje ścieżkę logu. Pełny zestaw uruchamiaj przez nie raz na krok, a recenzent z `--reuse`. Każda zmiana w drzewie, także tylko w `docs/`, daje nowy skrót. Przy zmianie samej dokumentacji Gradle zgłosi `test` jako UP-TO-DATE w kilka sekund, chyba że w międzyczasie biegło `test --tests …`: inny filtr unieważnia aktualność i pełny zestaw idzie od nowa.
+- `costTest` mierzy czas zegarowy: uruchamiaj go, gdy nie działa nic ciężkiego (inne testy, gra, agent w innym worktree); rozstrzyga stosunek obecny/M1 z jednego uruchomienia (`docs/m2/pomiary-bazowe-m1.md`).
 - Gametesty zapisują zrzuty w `build/run/clientGameTest/screenshots`.
 
 ## Zasady pracy agentów (decyzje użytkownika z 2026-10-05, `docs/00-decyzje-do-podjecia.md` F)
