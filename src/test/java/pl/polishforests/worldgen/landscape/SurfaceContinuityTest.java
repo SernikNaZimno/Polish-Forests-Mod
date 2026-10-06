@@ -148,6 +148,9 @@ class SurfaceContinuityTest {
 	 * gameplay_tunnel_lake_3519 25 -> 0) and their limits are 0. The other windows are unchanged. In the coastal belt the
 	 * seaward wall of a cliff (D5: about a fifth of the coast) keeps 2.5 m per 1 m, up to 2.40 blocks per block at gameplay
 	 * scale (gameplay_center), a cliff, not a flat strip with a wall along the whole coast as before.
+	 *
+	 * <p>Step K6 (A16, the 5 × 5 window of the region blend): the seam of the 3 × 3 window at (5540, 2725) is gone, so
+	 * gameplay_stream 6 / 3.03 m -> 0 (goal of the design: at most 5). The other windows unchanged.
 	 */
 	static Stream<Window> windows() {
 		LandscapeScale g = LandscapeScale.GAMEPLAY;
@@ -160,7 +163,7 @@ class SurfaceContinuityTest {
 				// Standing water: 14 jumps at kettle bogs and ponds and tunnel valley lakes until K4c, 0 since K5 (goal met).
 				new Window("gameplay_center", g, 0, 0, 10_000, 0, 0, 0, v,
 						"<= 1 after A3c, 0 at water; without A3c <= 3, at water only (5761, -4758)" + d4),
-				new Window("gameplay_stream", g, 3_890, 1_959, 2_000, 6, 3.03, 0, v, "<= 5 (the rest: A16 seam, K6)" + d4),
+				new Window("gameplay_stream", g, 3_890, 1_959, 2_000, 0, 0, 0, v, "<= 5 (K6: 0, the A16 seam is gone)" + d4),
 				new Window("gameplay_moraine", g, -1_074, -2_368, 3_000, 0, 0, 0, v, "<= 1, 0 at water" + d4),
 				new Window("realistic_beskids", r, 154_834, 1_058_738, 30_000, 0, 0, 0, v, "<= 1, <= 1.1 m" + d4),
 				// The kettle bog at (-92914, 80060) until K4c; 0 since K5.4 (A3, basins without a wall).

@@ -328,7 +328,9 @@ class LandscapeModelTest {
 	 * realistic scale and 15 at gameplay scale, every realized summit at least the target − 40 m and at most 1750 m, at
 	 * least one summit of 1700 m or more at each scale. The massif centers are at least GM_SEPARATION · Ra apart, so
 	 * the reaches (less than 1.2 Ra) never overlap. Outside the reach of the massifs the terrain before valleys and
-	 * lakes is the M1 terrain (the frozen copy {@code landscape.m1}): 10,000 random Beskids points in each window.
+	 * lakes is the M1 terrain (the frozen copy {@code landscape.m1}): 10,000 random Beskids points in each window,
+	 * without the points where a cell of the second ring of the 5 × 5 blend window has weight (A16, step K6; M1 blends
+	 * 3 × 3 cells).
 	 * The nearest massif from {@link LandscapeModel#nearestGreatMassif} is the nearest one of the window.
 	 */
 	@Test
@@ -376,6 +378,7 @@ class LandscapeModelTest {
 			java.util.Random rnd = new java.util.Random(5);
 			int compared = 0;
 			int inReach = 0;
+			int secondRing = 0;
 			for (int t = 0; t < 4_000_000 && compared < 10_000; t++) {
 				double x = w.minX() + rnd.nextDouble() * w.side();
 				double z = w.minZ() + rnd.nextDouble() * w.side();
@@ -386,13 +389,18 @@ class LandscapeModelTest {
 					inReach++;
 					continue;
 				}
+				// K6 (A16): where a cell of the second ring of the 5 × 5 blend window has weight, M1 (3 × 3) differs.
+				if (m.secondRingWeight(x, z) > 0) {
+					secondRing++;
+					continue;
+				}
 				compared++;
 				double h = m.landElevation(x, z);
 				double h1 = old.landElevation(x, z);
 				assertEquals(h1, h, 1e-6, sc.id() + ": terrain outside the massifs changed at (" + x + ", " + z + ")");
 			}
-			System.out.printf(Locale.ROOT, "%s: %d Beskids points outside the massifs equal to M1 (%d in reach skipped)%n",
-					sc.id(), compared, inReach);
+			System.out.printf(Locale.ROOT, "%s: %d Beskids points outside the massifs equal to M1 (%d in reach and %d with "
+					+ "weight in the second ring of the blend window skipped)%n", sc.id(), compared, inReach, secondRing);
 			assertTrue(compared >= 10_000, sc.id() + ": only " + compared + " points compared");
 		}
 	}

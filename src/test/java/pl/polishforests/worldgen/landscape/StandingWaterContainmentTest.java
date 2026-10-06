@@ -76,8 +76,27 @@ class StandingWaterContainmentTest {
 	 * the valleys and lakes (m): the bank of the lake raises the ground to the water level + 1 m only where it lies lower.
 	 */
 	static final double DAM_MAX = 3;
-	/** Most pairs of dry neighbors (1 m) at a tunnel valley basin differing by more than 2 blocks (gameplay ±20 km). */
-	static final long WALLS_MAX = 6;
+	/**
+	 * Most pairs of dry neighbors (1 m) at a tunnel valley basin differing by more than 2 blocks (gameplay ±20 km every
+	 * 20 m), with the outer basin (step K6).
+	 */
+	static final long WALLS_MAX = 5;
+	/**
+	 * Step K6: the clusters of walls at tunnel valley basins left as an exception to decision D4b until M5 (the walls of
+	 * tunnel valley basins from the review of K5, docs/m2/poprawka-geometrii.md, K6), on 1 m grids: {x, z, side, most
+	 * walls, most blocks per block}.
+	 * Four are lake ends at a river valley on steep ground, where the gap beyond the valley cut ({@code floorGap}, which
+	 * includes half the valley wall, and the wall grows with the height of the terrain above the floor) changes by 4–6 m
+	 * per meter; one is the edge of the young-glacial region, where the half-width follows the type weight (the last one
+	 * has both). The first five are the clusters within ±20 km; round 1 of the review of K6 added the other clusters of a
+	 * scan of ±40 km every 20 m (16 clusters, 32 pairs made by the model), so the exception has a regression guard there
+	 * too.
+	 */
+	static final double[][] WALL_CLUSTERS = {
+			{-20500, 10900, 500, 3400, 8}, {28660, 32560, 300, 1550, 6}, {-19990, 14380, 300, 1260, 4},
+			{10350, 11915, 300, 390, 5}, {-16170, 7800, 300, 240, 3}, {-20420, 10500, 400, 3190, 6},
+			{-20100, 12200, 300, 970, 4}, {-20700, 11200, 300, 940, 4}, {28680, 33540, 300, 600, 4},
+			{-26460, 9800, 300, 210, 3}, {-23080, 39240, 300, 250, 5}, {36400, -19940, 300, 270, 4}};
 
 	/**
 	 * Round 2 of the review of K5: the water level of a tunnel valley lake comes from the ground along the lake itself, so
@@ -85,29 +104,45 @@ class StandingWaterContainmentTest {
 	 * {@value #DAM_MAX} m above the terrain before the valleys and lakes (first round of the review: up to 53 m, 2300 columns
 	 * every 10 m at gameplay scale ±20 km). The basin passes into the terrain without walls: of the pairs of dry neighbors
 	 * 1 m apart at every point of a grid (gameplay ±20 km every 20 m), at most {@value #WALLS_MAX} where one of them lies
-	 * at a tunnel valley lake differ by more than 2 blocks (first round of the review: about 80 every 10 m; what remains is
-	 * the half-width of a lake following the young-glacial weight at the edge of its region, docs/m2/poprawka-geometrii.md,
-	 * K5). Realistic scale: the young-glacial plateau of the tunnel valley lakes ±20 km every 40 m, no dams and no walls.
+	 * in the basin of a tunnel valley lake differ by more than 2 blocks. Realistic scale: the young-glacial plateau of the
+	 * tunnel valley lakes ±20 km every 40 m, no dams and no walls.
+	 *
+	 * <p>Step K6 (review of K5): a pair counts when either column lies in the basin ({@link LandscapeModel#tunnelBasinMargin}
+	 * at most 0), not only in the habitat ring of {@code standingWaterKind} (max(tunnelBank, 150 m·k)), which is narrower
+	 * than the basin of a deep cut (up to {@code tunnelBankMax}: 112.5 m at gameplay scale): the ring alone missed 29–38% of
+	 * the walls. The known clusters ({@link #WALL_CLUSTERS}) are checked on 1 m grids with their measured limits.
 	 */
 	@Test
 	void tunnelValleyBasinsHaveNoDamsOrWalls() {
-		long[] g = basins(new LandscapeModel(SEED, LandscapeScale.GAMEPLAY, 1.0), VerticalScale.GAMEPLAY, 0, 0, 20_000, 20);
+		LandscapeModel gm = new LandscapeModel(SEED, LandscapeScale.GAMEPLAY, 1.0);
+		long[] g = basins(gm, VerticalScale.GAMEPLAY, 0, 0, 20_000, 20);
 		long[] r = basins(new LandscapeModel(SEED, 1.0), VerticalScale.REAL, -66_495, 21_873, 20_000, 40);
 		assertTrue(g[2] > 1_000 && r[2] > 1_000, "too few columns at tunnel valley lakes: " + g[2] + ", " + r[2]);
 		assertEquals(0, g[0], "gameplay: dry columns of a tunnel valley basin above the terrain by more than " + DAM_MAX + " m");
 		assertEquals(0, r[0], "realistic: dry columns of a tunnel valley basin above the terrain by more than " + DAM_MAX + " m");
 		assertTrue(g[1] <= WALLS_MAX, "gameplay: walls at tunnel valley basins: " + g[1]);
 		assertEquals(0, r[1], "realistic: walls at tunnel valley basins");
+		for (double[] c : WALL_CLUSTERS) {
+			long[] w = basins(gm, VerticalScale.GAMEPLAY, c[0], c[1], c[2] / 2, 1);
+			assertTrue(w[1] <= c[3] && w[3] <= c[4], String.format(Locale.ROOT,
+					"gameplay (%.0f, %.0f): %d walls up to %d blocks per block at a tunnel valley basin, limit %.0f and %.0f",
+					c[0], c[1], w[1], w[3], c[3], c[4]));
+		}
 	}
 
-	/** {dams, walls, columns at tunnel valley lakes} on the grid ({@link #tunnelValleyBasinsHaveNoDamsOrWalls}). */
+	/**
+	 * {dams, walls, columns at tunnel valley lakes, largest wall in blocks} on the grid
+	 * ({@link #tunnelValleyBasinsHaveNoDamsOrWalls}).
+	 */
 	private static long[] basins(LandscapeModel m, VerticalScale v, double cx, double cz, double half, double step) {
 		int n = (int) Math.round(2 * half / step) + 1;
 		AtomicLong dams = new AtomicLong();
 		AtomicLong walls = new AtomicLong();
 		AtomicLong columns = new AtomicLong();
+		AtomicLong ringOnly = new AtomicLong();
 		List<String> first = Collections.synchronizedList(new ArrayList<>());
 		double[] worstDam = {0};
+		long[] worstBlocks = {0};
 		IntStream.range(0, n).parallel().forEach(j -> {
 			for (int i = 0; i < n; i++) {
 				double x = cx - half + i * step;
@@ -127,23 +162,38 @@ class StandingWaterContainmentTest {
 						}
 					}
 				}
-				for (ColumnSample o : new ColumnSample[] {m.sample(x + 1, z), m.sample(x, z + 1)}) {
-					if (c.hasWater() || o.hasWater() || !at && !tunnel(o)) {
+				double[][] dirs = {{1, 0}, {0, 1}};
+				for (double[] d : dirs) {
+					ColumnSample o = m.sample(x + d[0], z + d[1]);
+					if (c.hasWater() || o.hasWater()) {
 						continue;
 					}
-					double blocks = Math.abs(Math.floor(v.blocksForMeters(c.surface())) - Math.floor(v.blocksForMeters(o.surface())));
-					if (blocks > 2) {
-						walls.incrementAndGet();
-						if (first.size() < 5) {
-							first.add(String.format(Locale.ROOT, "wall (%.0f, %.0f) %.2f -> %.2f m", x, z, c.surface(), o.surface()));
-						}
+					long blocks = (long) Math.abs(Math.floor(v.blocksForMeters(c.surface())) - Math.floor(v.blocksForMeters(o.surface())));
+					if (blocks <= 2) {
+						continue;
+					}
+					boolean ring = at || tunnel(o);
+					if (!ring && m.tunnelBasinMargin(x, z) > 0 && m.tunnelBasinMargin(x + d[0], z + d[1]) > 0) {
+						continue;
+					}
+					walls.incrementAndGet();
+					if (ring) {
+						ringOnly.incrementAndGet();
+					}
+					synchronized (worstBlocks) {
+						worstBlocks[0] = Math.max(worstBlocks[0], blocks);
+					}
+					if (first.size() < 5) {
+						first.add(String.format(Locale.ROOT, "wall (%.0f, %.0f) %.2f -> %.2f m", x, z, c.surface(), o.surface()));
 					}
 				}
 			}
 		});
-		System.out.printf(Locale.ROOT, "[tunnel basins] %s: %d columns at tunnel valley lakes, %d dams (largest %.1f m), %d walls %s%n",
-				m.scale().id(), columns.get(), dams.get(), worstDam[0], walls.get(), first);
-		return new long[] {dams.get(), walls.get(), columns.get()};
+		System.out.printf(Locale.ROOT, "[tunnel basins] %s (%.0f, %.0f) half %.0f m every %.0f m: %d columns at tunnel valley lakes, "
+				+ "%d dams (largest %.1f m), %d walls (%d in the habitat ring, %d in the outer basin), largest %d blocks per "
+				+ "block %s%n", m.scale().id(), cx, cz, half, step, columns.get(), dams.get(), worstDam[0], walls.get(),
+				ringOnly.get(), walls.get() - ringOnly.get(), worstBlocks[0], first);
+		return new long[] {dams.get(), walls.get(), columns.get(), worstBlocks[0]};
 	}
 
 	private static boolean tunnel(ColumnSample s) {

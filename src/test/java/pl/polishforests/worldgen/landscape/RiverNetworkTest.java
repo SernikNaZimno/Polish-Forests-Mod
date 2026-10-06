@@ -67,9 +67,10 @@ class RiverNetworkTest {
 	 * 150 m along x, gameplay scale ±10 km every 25 m (1400 m region cells, many more crossings): every crossing of
 	 * lowland (with the coastland, as passed to the river network) through 0.3 is bisected to a pair of columns a few
 	 * µm apart, and a dry pair must not differ by more than 0.5 m. Crossings where the lowland share itself jumps (by
-	 * more than 10⁻⁴ between the two columns: a seam of the 3 × 3 region blend, A16, step K6; e.g. gameplay
-	 * (5727.8, 2725) jumps from 0.2904 to 0.3000) are not threshold crossings and are only counted. The frozen M1
-	 * copy is scanned the same way to show that the scan finds the old scarps.
+	 * more than 10⁻⁴ between the two columns: a seam of the 3 × 3 region blend; e.g. gameplay (5727.8, 2725) jumped
+	 * from 0.2904 to 0.3000) are not threshold crossings and are only counted. The frozen M1 copy is scanned the same
+	 * way to show that the scan finds the old scarps. Step K6 (A16, the 5 × 5 window): no such seam is left at either
+	 * scale (the M1 copy has 1 at gameplay scale), and the test requires none.
 	 */
 	@Test
 	void noStepAtLowlandThreshold() {
@@ -106,6 +107,7 @@ class RiverNetworkTest {
 		assertTrue(now.crossings() > minCrossings, scale.id() + ": too few threshold crossings: " + now.crossings());
 		assertTrue(m1.steps() > 0, scale.id() + ": the scan does not find the M1 scarps, so it proves nothing: " + m1);
 		assertTrue(now.steps() == 0, scale.id() + ": scarps at the lowland threshold: " + now);
+		assertTrue(now.seams() == 0, scale.id() + ": seams of the region blend at the lowland threshold (A16): " + now);
 	}
 
 	private interface Field {
@@ -1184,8 +1186,8 @@ class RiverNetworkTest {
 	 * towards the larger half of the difference, less the step of the terrain before the valleys
 	 * ({@code landElevation}) over the same final interval, {step, x, z}; null when the terrain differs by at most
 	 * {@value #FAMILY_PAIR} m or the midpoint splits the difference (no more than 0.7 of it on either side). A seam of
-	 * the terrain itself (the 3 × 3 window of the region blend, A16, step K6: 2 cm at gameplay scale (28464, 887.52)) is
-	 * not a step of the valleys.
+	 * the terrain itself (until step K6 the 3 × 3 window of the region blend, A16: 2 cm at gameplay scale (28464,
+	 * 887.52)) is not a step of the valleys.
 	 */
 	private static double[] bisectedStep(LandscapeModel m, RiverNetwork net, double xa, double za, double xb, double zb) {
 		double ha = riverTerrain(m, net, xa, za);

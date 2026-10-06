@@ -1,6 +1,7 @@
 package pl.polishforests.worldgen.landscape;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
@@ -27,6 +28,10 @@ public final class LandscapeModel {
 	public static final double BASE_REGION_SIZE = 64_000.0;
 	/** Width of the transition belt between macroregions (about 80% of the weight change). */
 	private static final double BLEND_WIDTH = 5_000.0;
+	/** Offsets of the 3 × 3 blend window in the order of {@link #blend}, coded as (dx + 2) · 5 + dz + 2. */
+	private static final byte[] OFFSETS_3X3 = {6, 7, 8, 11, 12, 13, 16, 17, 18};
+	/** Cutoff of the blend weights: a cell farther than the nearest one by this many τ gets no weight (e⁻⁹). */
+	private static final double BLEND_CUTOFF = 9.0;
 	private static final double KETTLE_BANK = 45.0;
 	/** Mean of the gully profile {@code p[2]} from {@link #flyschParts} (measured on the noise); flysch convexity is measured from it. */
 	private static final double GULLY_MEAN = 0.52;
@@ -73,7 +78,11 @@ public final class LandscapeModel {
 	private final PeakField peaks;
 	private final RegionalField regional;
 
-	private final ConcurrentHashMap<Long, Cell> cells = new ConcurrentHashMap<>();
+	/**
+	 * Macroregion cells (round 1 of the review of K6: a lock-free {@link DirectCache} instead of a
+	 * {@code ConcurrentHashMap<Long, Cell>}, whose boxed keys cost about 2% of {@code sample} at gameplay scale).
+	 */
+	private final DirectCache<Cell> cells = new DirectCache<>(16_384, this::buildCell);
 	private final ConcurrentHashMap<Long, Integer> lakeLevels = new ConcurrentHashMap<>();
 	/** Round 2 of the review of K5: water level and basin reach of the tunnel valley lakes per traced contour. */
 	private final ConcurrentHashMap<Long, TunnelLake> tunnelLakes = new ConcurrentHashMap<>();
@@ -435,11 +444,11 @@ public final class LandscapeModel {
 	}
 
 	public Cell cell(long cx, long cz) {
-		long key = Noise.key(cx, cz, 1);
-		Cell cached = cells.get(key);
-		if (cached != null) {
-			return cached;
-		}
+		return cells.get(cx, cz);
+	}
+
+	/** A macroregion cell, computed (a pure function of its coordinates, cached by {@link #cell}). */
+	private Cell buildCell(long cx, long cz) {
 		LandscapeType type = rawRegionType(cx, cz);
 		if (type == LandscapeType.BESKIDS) {
 			// Rule: the Beskids never border a lowland directly; foothills lie in between.
@@ -462,12 +471,7 @@ public final class LandscapeModel {
 		double len = Math.sqrt(gx * gx + gz * gz);
 		double cos = len > 1e-12 ? gx / len : 1;
 		double sin = len > 1e-12 ? gz / len : 0;
-		Cell c = new Cell(cx, cz, type, px, pz, cos, sin);
-		if (cells.size() > 200_000) {
-			cells.clear();
-		}
-		cells.put(key, c);
-		return c;
+		return new Cell(cx, cz, type, px, pz, cos, sin);
 	}
 
 	private LandscapeType rawRegionType(long cx, long cz) {
@@ -517,45 +521,83 @@ public final class LandscapeModel {
 
 	/**
 	 * Cell weights at a point. The boundaries are warped by noise and the weights are a softmax of distances,
-	 * so the surface has no creases along the Voronoi bisectors.
+	 * so the surface has no creases along the Voronoi bisectors. The window is 5 × 5 cells (A16, step K6): with the
+	 * 3 × 3 window of M1 a cell of the second ring with a small weight (at gameplay scale τ = 127 m against 1400 m
+	 * cells) dropped out where the window moved, a seam of up to 4.5 m in {@link #landElevation} near the Beskids. The
+	 * second ring is read only where one of its cells can be within the cutoff (exact, see below).
 	 */
 	public Blend blend(double x, double z) {
-		double a = 0.22 * regionSize;
-		double lx = x + a * regionWarp.fbm(x, z, 0.7 * regionSize, 2, 0.5);
-		double lz = z + a * regionWarp.fbm(x + 12_345, z - 6_789, 0.7 * regionSize, 2, 0.5);
+		double lx = warpX(x, z);
+		double lz = warpZ(x, z);
 		long gx = (long) Math.floor(lx / regionSize);
 		long gz = (long) Math.floor(lz / regionSize);
-		// First all 9 cells and their distances (in the result arrays), then only the cells with a significant weight
-		// remain in the same arrays, in the same order (n ≤ i, so we overwrite only slots that have
-		// already been read).
+		// First the distances to the cell centers (in the result array w), then only the cells with a significant weight
+		// remain in the same arrays, in the same order (n ≤ i, so we overwrite only slots that have already been read).
+		// Round 1 of the review of K6: a cell is looked up in the cache (its type) only when it gets a weight; the
+		// distance needs only its center, a hash of its coordinates (regionCenterX/Z, the same as Cell.centerX/Z). At
+		// realistic scale most cells of the 3 × 3 window lie past the cutoff.
 		Cell[] used = new Cell[9];
 		double[] w = new double[9];
+		byte[] offsets = OFFSETS_3X3;
 		double min = Double.MAX_VALUE;
 		int i = 0;
 		for (int dx = -1; dx <= 1; dx++) {
 			for (int dz = -1; dz <= 1; dz++, i++) {
-				Cell c = cell(gx + dx, gz + dz);
-				used[i] = c;
-				double ddx = lx - c.centerX();
-				double ddz = lz - c.centerZ();
+				double ddx = lx - regionCenterX(gx + dx, gz + dz);
+				double ddz = lz - regionCenterZ(gx + dx, gz + dz);
 				w[i] = Math.sqrt(ddx * ddx + ddz * ddz);
 				min = Math.min(min, w[i]);
 			}
 		}
+		// A16 (step K6): the second ring of the 5 × 5 window. A cell center lies at 0.15–0.85 of its cell along each
+		// axis, which bounds the distance to every cell from below (ringBound). A cell whose bound is past the cutoff of
+		// the weights (min + 9τ) would get no weight, so it is not looked up: the result is exactly the 5 × 5 one, and
+		// the bound, though it changes from point to point, makes no seam (a skipped cell is weightless anyway). A
+		// lower min found in the ring only makes the skip safer. A third ring never counts: its bound is at least 2.15
+		// cells, the nearest center at most 0.85·√2 ≈ 1.2 cells away and 9τ at most 0.82 cells (τ ≤ 0.2 cells / 2.2).
+		double fx = lx / regionSize - gx;
+		double fz = lz / regionSize - gz;
+		double reach = BLEND_CUTOFF * tau * (1 + 1e-9);
+		if (regionSize * Math.min(Math.min(1.15 + fx, 2.15 - fx), Math.min(1.15 + fz, 2.15 - fz)) - min <= reach) {
+			for (int dx = -2; dx <= 2; dx++) {
+				double bx = ringBound(dx, fx);
+				for (int dz = -2; dz <= 2; dz++) {
+					if (Math.abs(dx) < 2 && Math.abs(dz) < 2) {
+						continue;
+					}
+					double bz = ringBound(dz, fz);
+					if (regionSize * Math.sqrt(bx * bx + bz * bz) - min > reach) {
+						continue;
+					}
+					if (i == used.length) {
+						used = new Cell[25];
+						w = Arrays.copyOf(w, 25);
+						offsets = Arrays.copyOf(OFFSETS_3X3, 25);
+					}
+					double ddx = lx - regionCenterX(gx + dx, gz + dz);
+					double ddz = lz - regionCenterZ(gx + dx, gz + dz);
+					w[i] = Math.sqrt(ddx * ddx + ddz * ddz);
+					offsets[i] = (byte) ((dx + 2) * 5 + dz + 2);
+					min = Math.min(min, w[i]);
+					i++;
+				}
+			}
+		}
+		int read = i;
 		double[] tw = new double[TYPES.length];
 		int n = 0;
 		double total = 0;
-		for (i = 0; i < 9; i++) {
+		for (i = 0; i < read; i++) {
 			double d = (w[i] - min) / tau;
-			if (d < 9.0) {
+			if (d < BLEND_CUTOFF) {
 				double wi = Math.exp(-d);
-				used[n] = used[i];
+				used[n] = cell(gx + offsets[i] / 5 - 2, gz + offsets[i] % 5 - 2);
 				w[n] = wi;
 				total += wi;
 				n++;
 			}
 		}
-		for (i = n; i < 9; i++) {
+		for (i = n; i < read; i++) {
 			used[i] = null;
 			w[i] = 0;
 		}
@@ -564,6 +606,42 @@ public final class LandscapeModel {
 			tw[used[i].type().ordinal()] += w[i];
 		}
 		return new Blend(used, w, n, tw);
+	}
+
+	/** Warped x of the region grid at a point ({@link #blend}, {@link #secondRingWeight}). */
+	private double warpX(double x, double z) {
+		return x + 0.22 * regionSize * regionWarp.fbm(x, z, 0.7 * regionSize, 2, 0.5);
+	}
+
+	/** Warped z of the region grid at a point ({@link #blend}, {@link #secondRingWeight}). */
+	private double warpZ(double x, double z) {
+		return z + 0.22 * regionSize * regionWarp.fbm(x + 12_345, z - 6_789, 0.7 * regionSize, 2, 0.5);
+	}
+
+	/**
+	 * Lower bound, in cells, of the distance along one axis from a point at {@code f} (0 ≤ f &lt; 1) of its cell to the
+	 * center of the cell {@code d} cells away (centers lie at 0.15–0.85 of their cell).
+	 */
+	private static double ringBound(int d, double f) {
+		return d < 0 ? Math.max(0, f - d - 0.85) : d > 0 ? Math.max(0, d + 0.15 - f) : Math.max(0, Math.max(f - 0.85, 0.15 - f));
+	}
+
+	/**
+	 * Total blend weight of the cells of the second ring of the 5 × 5 window at a point (A16, step K6): where it is
+	 * positive, the 3 × 3 window of M1 gave a different height (for tests).
+	 */
+	double secondRingWeight(double x, double z) {
+		long gx = (long) Math.floor(warpX(x, z) / regionSize);
+		long gz = (long) Math.floor(warpZ(x, z) / regionSize);
+		Blend b = blend(x, z);
+		double sum = 0;
+		for (int i = 0; i < b.count(); i++) {
+			Cell c = b.cells()[i];
+			if (Math.abs(c.cx() - gx) == 2 || Math.abs(c.cz() - gz) == 2) {
+				sum += b.weights()[i];
+			}
+		}
+		return sum;
 	}
 
 	/** Landscape type weights at a point (sum = 1). */
@@ -2012,6 +2090,12 @@ public final class LandscapeModel {
 	 * other nodes end the lake like the end of the trace, and its half-width grows from there by at most 1 m per meter
 	 * ({@link TunnelContour#runs}). K5 scaled the half-width by smoothstep(0.75, 0.92, cos), which on a curving contour
 	 * changed a half-width of 240 m by 2 m per meter, a wall of 5 blocks per block in the basin (GAMEPLAY).
+	 *
+	 * <p>Step K6 tried 0.6 (about 53°): +13% water of tunnel valley lakes at gameplay scale, but the lakes of the oblique
+	 * stretches mostly end at a river valley, where the end of the lens follows the gap beyond the valley cut in the
+	 * column itself ({@code RiverHit.floorGap}). Where that gap stays near the end of the lens over a whole stretch, the
+	 * shore distance stays small without water and the basin left new dry closed pits with straight creases (review of
+	 * K6: 7 new or larger in both scales, up to 16 m deep, against 2 removed), so the threshold stays at 0.78.
 	 */
 	static final double TUNNEL_COS = 0.78;
 
@@ -2316,6 +2400,30 @@ public final class LandscapeModel {
 			}
 		}
 		return surface;
+	}
+
+	/**
+	 * For tests (step K6, review of K5): the shore distance of the tunnel valley lake at (x, z) less the reach of its
+	 * basin, so at most 0 where {@link #sample} carves the basin of a tunnel valley lake (the habitat ring of
+	 * {@code standingWaterKind} is narrower than the basin of a deep cut), and +∞ without a lake.
+	 */
+	double tunnelBasinMargin(double x, double z) {
+		Blend b = blend(x, z);
+		double coastD = coastDistance(x, z);
+		double surface = shapeCoast(elevation(b, x, z), coastD, x, z, cliffShore(x, z, b));
+		if (coastD < 0 || surface < 0) {
+			return Double.POSITIVE_INFINITY;
+		}
+		double young = b.weight(LandscapeType.OUTWASH_PLAIN) + b.weight(LandscapeType.MORAINE_PLATEAU);
+		double lowland = young + b.weight(LandscapeType.OLD_GLACIAL_PLAIN);
+		double presence = tunnelPresence(young, coastD);
+		if (presence <= 0.05) {
+			return Double.POSITIVE_INFINITY;
+		}
+		RiverNetwork.RiverHit r = rivers.query(x, z, surface, lowland + b.weight(LandscapeType.COASTLAND),
+				b.weight(LandscapeType.FOOTHILLS), b.weight(LandscapeType.BESKIDS));
+		LakeHit lake = tunnelLakeAt(x, z, presence, r.floorGap(), r.lakeGap());
+		return lake == null ? Double.POSITIVE_INFINITY : lake.shoreDistance - lake.bank;
 	}
 
 	/** The sink lake of a query result as a basin for {@link #applyLake}. */
