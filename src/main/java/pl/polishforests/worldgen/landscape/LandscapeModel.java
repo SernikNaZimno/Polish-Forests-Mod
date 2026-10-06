@@ -305,7 +305,7 @@ public final class LandscapeModel {
 	 * nodes by the lowest terrain on their path: the low hinterland (and the lagoons) lower the levels of the rivers that
 	 * flow to a low shore, and the change reaches far upstream and moves some rivers (step K5: about 20% of the land of
 	 * GAMEPLAY more than 6 km·meso from the sea changed by more than 5 cm, up to 175 m; in REAL about 2% near the lagoons).
-	 * Whether to keep this is an open decision of the user (docs/m2/poprawka-geometrii.md, K5).
+	 * Kept by the user's decision D5a (2026-10-06, docs/m2/poprawka-geometrii.md, K5).
 	 *
 	 * <p>D2 (step K5): the lagoon only behind a low shore: its strength fades out where the hinterland rises from 3 to 6 m,
 	 * its width does not depend on the shore type, and towards the ends of the lagoon along the shore its strength fades to

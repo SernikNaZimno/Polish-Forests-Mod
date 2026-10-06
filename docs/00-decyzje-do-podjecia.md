@@ -87,7 +87,7 @@ Plan: `docs/03-m2-biomy.md`.
 | M2-5 | Chmury | **PODJĘTA 2026-10-02 (projekt)**: podniesione nad niziny (REAL ok. Y 1060, rozgrywka ok. Y 380) |
 | M2-6 | Bałtyk | **PODJĘTA 2026-10-02 (projekt)**: nie zamarza; rzeki zamarzają tylko w mrozy |
 | M2-7 | Światy z M1 | **PODJĘTA 2026-10-02 (projekt)**: bez migracji (szwy na styku starych i nowych chunków) |
-| M2-8 | Wysokość najwyższych masywów Beskidów | **PODJĘTA 2026-10-02: rzadkie masywy do ok. 1725 m (Babia Góra, Pilsko) w obu skalach**; razem z poprawką geometrii terenu, przed fazą 2 M2. Daje kosodrzewinę i halę, a w skali rozgrywki także regiel górny |
+| M2-8 | Wysokość najwyższych masywów Beskidów | **PODJĘTA 2026-10-02: rzadkie masywy do ok. 1725 m (Babia Góra, Pilsko) w obu skalach**; razem z poprawką geometrii terenu, przed fazą 2 M2. Daje kosodrzewinę i halę, a w skali rozgrywki także regiel górny. **Wdrożona** w kroku K2 poprawki geometrii (2026-10-03; szczyty 1632–1723 m REAL, 1618–1719 m GAMEPLAY); poprawka zamknięta w K7 (`docs/m2/poprawka-geometrii.md`) |
 | M2-9 | Nazwa i język moda | **PODJĘTA 2026-10-02: „Polish Forests”**, id `polishforests`; wszystko, co widzi gracz, i kod po angielsku, polski jako tłumaczenie; dokumentacja po polsku |
 
 ## F. Sposób pracy

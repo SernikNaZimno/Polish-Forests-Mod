@@ -663,7 +663,11 @@ class SurfaceContinuityTest {
 	 * around it, and the flank of the basin, 27 m wide, climbs that at up to 6 m per 1 m; the reach of a sink lake basin
 	 * is bound to the tile filter of the river network, M5). Blades 11.9 m. Round 1 after the review of K5: the third
 	 * harmonic of the sink lake shore (K5.5) moves the shore of the 1659 m lake along the steep flank: 50 / 30.2 m -> 62 /
-	 * 31.7 m, the same wall of the basin (M5). Goal: no pair above {@value #CLIFF} m in any spot.
+	 * 31.7 m, the same wall of the basin (M5). Review of K7: three more sink lakes at the foot of large massifs with
+	 * walls, added with limits at the measured state as a regression guard (no model change in K7; M5): the lake below the
+	 * 1719 m massif (level 663, rivers crossing its shore belt on raised strips), the lake at the 1698 m massif (level 642,
+	 * its rim about 30 m from the floor of an order 3 valley at 387–390 m, up to 15 m per 1 m) and the lake at
+	 * (213514, -1519439) (level 665). Goal: no pair above {@value #CLIFF} m in any spot.
 	 */
 	static Stream<Spot> spots() {
 		LandscapeScale g = LandscapeScale.GAMEPLAY;
@@ -686,7 +690,11 @@ class SurfaceContinuityTest {
 						"K0 0, 12.9 m; K2 321, 83.1 m; K2 review 320, 83.1 m; K4 exact minima 10, 31.4 m; K4b 0, 5.9 m"),
 				// Fan on the north-west flank of the gameplay massif (129584, 76912).
 				new Spot("gameplay_fan_1673", g, 128_900, 76_850, 500, 2.5, 0, 10.7,
-						"K0 4, 27.8 m; K2 861, 89.8 m; K2 review 535, 83.1 m; K4 exact minima 0, 10.6 m; K4b 0, 10.6 m"));
+						"K0 4, 27.8 m; K2 861, 89.8 m; K2 review 535, 83.1 m; K4 exact minima 0, 10.6 m; K4b 0, 10.6 m"),
+				// Review of K7: walls of sink lakes at the foot of large massifs (measured state after K7, M5).
+				new Spot("realistic_sink_lake_1719", r, 263_300, -1_536_950, 1_000, 5, 598, 38.3, "K7 598, 38.2 m"),
+				new Spot("realistic_sink_lake_1698", r, 146_743, -1_473_317, 800, 5, 548, 75.7, "K7 548, 75.6 m"),
+				new Spot("realistic_sink_lake_213514", r, 213_514, -1_519_439, 800, 5, 20, 28.0, "K7 20, 27.9 m"));
 	}
 
 	/** {pairs above {@link #CLIFF}, largest |Δh|, x, z of the largest} of the dry neighbor pairs (x and z) in the spot. */

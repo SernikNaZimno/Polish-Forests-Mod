@@ -162,7 +162,7 @@ tasks.withType(Test).configureEach {
 	//   to -PgoldenFile=<file> or by default to src/test/resources/golden_terrain_m2.txt;
 	// -PgoldenKeepCenters (with -PwriteGolden) keeps the patch centers of the current file and searches anew only
 	//   for patches that lost their target and for new sites;
-	// -PgoldenAllow=<file> lists allowed changes ('<set> / <patch>' lines, e.g. src/test/golden-allow/K3.txt);
+	// -PgoldenAllow=<file> lists allowed changes ('<set> / <patch>' lines, e.g. a -PgoldenReport file);
 	// -PgoldenReport=<file> writes the changed patches and fields to a file.
 	if (project.hasProperty('writeGolden')) {
 		systemProperty 'polishforests.golden.write', 'true'
@@ -175,8 +175,9 @@ tasks.withType(Test).configureEach {
 		systemProperty 'polishforests.golden.keepCenters', 'true'
 	}
 	// Without -PgoldenAllow the allow list of the latest step (the last src/test/golden-allow/K*.txt by name) is used, so
-	// that a plain './gradlew test' passes between the steps of the geometry fix; the directory is removed in K7 together
-	// with the regenerated golden file, and then nothing is allowed. -PgoldenStrict compares without any allow list.
+	// that a plain './gradlew test' passes between the steps of a multi-step terrain change (the geometry fix used it in
+	// K3-K6). Step K7 regenerated the golden file and removed the directory, so now nothing is allowed by default.
+	// -PgoldenStrict compares without any allow list even when the directory exists.
 	def goldenAllowPath = project.findProperty('goldenAllow')
 	if (goldenAllowPath == null && !project.hasProperty('goldenStrict')) {
 		def allowDir = file('src/test/golden-allow')

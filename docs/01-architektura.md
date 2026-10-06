@@ -220,6 +220,8 @@ Formy terenu rozpoznaje metoda `LandscapeModel.describe`: wydmy, wały morenowe,
 
 Etap wprowadzony po uwagach z gry: rzeki były zbyt proste, źródła urywały się klifem, a w świecie nie było morza.
 
+Geometrię dolin, wód stojących i wybrzeża z tej sekcji przebudowała później poprawka geometrii terenu (M2-8, §15): opisy niżej to stan z 2026-09-30, a obecne elementy terenu są w §15.
+
 ### Sieć rzeczna (`RiverNetwork`)
 
 - **Trzy rzędy cieków** na siatkach z przesunięciem węzłów: rzeki (rozstaw 20 km), rzeki średnie (5 km) i potoki (1,25 km); w skali rozgrywki odpowiednio mniej.
@@ -307,3 +309,47 @@ Dawne nazwy, które mogą się pojawić w starszych notatkach, logach i w migawc
 | id biomów po polsku (np. `grad`, `ols`, `kosodrzewina`) | `oak_hornbeam_forest`, `alder_carr`, `dwarf_pine_scrub` (tabela w `docs/03-m2-biomy.md`, §2) |
 
 Obrazy w `docs/m1`, `docs/m2`, `docs/rzeki-i-morze` i `docs/skala-rozgrywki` mają nazwy plików sprzed M2-9. Sole szumów w `derive("…")`, także polskie (`habitat.*`), zostały bez zmian, bo inna sól to inny świat.
+
+## 15. Poprawka geometrii terenu (M2-8, 2026-10-03 – 2026-10-06)
+
+Etap wprowadzony po uwagach z gry: proste krawędzie den dolin, starorzeczy i jezior, urwiska na stokach gór, szwy między makroregionami, wybrzeże bez wydm i za niskie Beskidy. Kroki K0–K7, decyzje, odstępstwa i pomiary przed i po są w `docs/m2/poprawka-geometrii.md` (podsumowanie na końcu). Model nadal liczy w metrach i jest czystą funkcją (ziarno, współrzędne, ustawienia).
+
+**Mieszanie makroregionów (`LandscapeModel.blend`, A16).** Okno komórek ma 5 × 5 zamiast 3 × 3. Drugi pierścień jest czytany tylko tam, gdzie jakaś jego komórka może dostać wagę (dokładne dolne ograniczenie odległości), więc wynik jest dokładnie taki jak dla pełnego okna, a szwy `landElevation` na granicy okna znikają. Pamięć komórek to `DirectCache`.
+
+**Wielkie masywy Beskidów (M2-8, K2).** Rzadkie masywy typu Babiej Góry: siatka kandydatów 60 km (REAL) i 4 km (GAMEPLAY), sól `mountain.great`, przerzedzenie (rozłączne zasięgi), eliptyczna kopuła wzdłuż pasma z wypełnianiem dolin fliszu i miękkim pułapem. Szczyty mają ok. 1620–1725 m w obu skalach (REAL: 9 masywów w oknie 1000 km, GAMEPLAY: 25 w oknie 600 km). Pole `Terrain.massif` jest maksimum z polem masywu (G). API: `greatMassifs(box)`, `nearestGreatMassif(x, z)`. Sieć rzeczna nie ma źródeł na wierzchowinie (G > 0,3) i omija ją przy wyborze odpływu. Kosodrzewina i hala (E12) są w obu skalach.
+
+**Sieć rzeczna i doliny (`RiverNetwork`, K1, K3, K4).**
+- **Dolina dominująca** (F1) to największy klucz „metry w głąb dna”. `floorHalfWidth` i `channelGradient` to miękkie maksimum po dolinach, `valleyWeight` maksimum po odcinkach, a `u` minimum po dnach zawierających kolumnę, więc nie skaczą na prostych przełączenia doliny. Koryto doliny dominującej (F2, pola `floorChannel*` w `ColumnSample.Waters`) służy strefom dna.
+- **Pas meandrów** rośnie płynnie z udziałem nizin (TE).
+- **Oś doliny** jest gładka w węzłach (G1B). Amplituda przechodzi przez węzeł płynnie (G2). Ujścia dopływów mają lejek (G3, w terenie i w polach siedlisk), skraj dna jest nieregularny (G4), a zbocza dwóch dolin łączy gładkie minimum (G5). Głowica doliny kończy się łukiem (A5).
+- **Rzut na odcinek** liczy dokładne minima odległości od krzywej Hermite'a (pierwiastki wielomianu stopnia 5, bez próbkowania) i uśrednia ramiona z wagami wyrazistości. **Cięcie omiatające** (`sweepCut`, maksimum przekrojów doliny wzdłuż łamanej osi) wygrywa tylko przy remisach ramion (D4a), więc na stokach nie ma urwisk.
+- **`RiverHit.floorGap` i `lakeGap`** to odległości od skraju doliny i od jeziora bezodpływowego, z których korzystają jeziora rynnowe.
+
+**Wody stojące (K5).**
+- Starorzecza to półksiężyce na łuku dawnej pętli Kinoshity, z zatkanymi końcami i jednym lustrem.
+- Jeziora rynnowe kończą się przed doliną i przed jeziorem bezodpływowym, a poziom lustra liczy się z punktu kanonicznego. Teren nie zależy więc od kolejności generowania chunków (`TerrainDeterminismTest` jest ścisły).
+- Oczka i jeziora bezodpływowe mają płatowe brzegi. Niecki przechodzą w teren bez ściany (A3), poza jeziorami bezodpływowymi u stóp wielkich masywów REAL (niżej, „Odłożone do M5”). Lustro oczka pochodzi z terenu po dolinach (A3c), a torf nigdy nie leży wyżej niż grunt wokół.
+
+**Wybrzeże (K5b, D2, D5; `LandscapeModel.shapeCoast`).**
+- Ok. 4/5 brzegu jest niskie: plaża 60 m·k, wydma przednia 6–15 m, wydmy szare, zaplecze 1,5 m nad morzem do 6 km·meso od brzegu.
+- Klif (ok. 1/5 brzegu) jest tylko tam, gdzie wysoczyzna morenowa dochodzi do morza.
+- Zalew leży tylko za niskim brzegiem i nie ma rowu.
+- Pole `Terrain.lowShore` to udział brzegu niskiego (1 − udział klifu).
+- Niski brzeg jest w `landElevation`, więc obniża poziomy rzek spływających do morza (decyzja D5a; w GAMEPLAY zmienia doliny na ok. 20% lądu).
+
+**Testy terenu.**
+- `GoldenTerrainTest`: plik `golden_terrain_m1.txt` pilnuje zamrożonej kopii M1, a `golden_terrain_m2.txt` obecnego modelu. Plik M2 przegenerowano raz, w K7. Zmiana terenu wymaga przegenerowania z `-PgoldenKeepCenters` i sprawdzenia `diff`; łaty kontrolne wnętrz nie mogą się zmienić.
+- `SurfaceContinuityTest`: skoki, krok doliny ≤ 3 m na 1 m (D4) i ≤ 2 bloki na blok (D4b) w oknach obu skal, z gęstą siatką gór GAMEPLAY, poza wyjątkami z limitami stanu zmierzonego (remisy D4a w GAMEPLAY: krok doliny do 5,8 m na 1 m w gęstej siatce i do 3,84 m na transektach `gameplay_massif_spawn`; R5 w REAL do 2,75 bloku na blok); pas brzegowy 3 km·meso test tylko wypisuje (ściana klifu do ok. 2,4 bloku na blok).
+- `TerrainLocalityTest`: teren poza dolinami i wodami jest równy kopii M1, poza zasięgiem masywów, drugim pierścieniem okna i pasem niskiego brzegu.
+- `TerrainDeterminismTest`: wynik nie zależy od kolejności próbkowania.
+- Testy wód stojących: `StandingWaterTest`, `StandingWaterContainmentTest`, `MassifSinkLakeContainmentTest` (rzeki przy jeziorach bezodpływowych masywów REAL, limity stanu zmierzonego).
+
+**Koszt.** `sample` kosztuje 1,16–1,20 × kopia M1 (budżet D1: 1,20; REAL ok. 4,5 µs, GAMEPLAY ok. 6,4 µs na kolumnę w całym obszarze).
+
+**Odłożone do M5.**
+- Ściany rzutu w REAL do 2,75 bloku na blok w kilku miejscach (R5) i remisy D4a.
+- Wały moren W–E (D3).
+- Ściany niecek jezior rynnowych GAMEPLAY i ich woda: do decyzji użytkownika (B3), do tego czasu wyjątek z limitami w teście.
+- Końce wydm przy dnach dolin i końce zalewów.
+- Jeziora bezodpływowe u stóp wielkich masywów REAL (recenzja K7): ściany niecek (siatka 5 m: masyw 1719 m 598 par > 25 m, do 38,2 m; 1698 m 548 par, do 75,6 m; 1659 m 62 pary, do 31,7 m) i rzeki na wałach nad suchym gruntem, które spadają do jeziora (do 24 m nad gruntem i 25 m spadku); limity stanu zmierzonego w `SurfaceContinuityTest` i `MassifSinkLakeContainmentTest`, szczegóły w `docs/m2/poprawka-geometrii.md`, „Co zostaje”.
+- Proste załamania stoku na kopule masywu GAMEPLAY 1718 m (twarde maksimum kopuły i pola bazowego), starorzecze ścięte przy dopływie (K5.1) i proste załamania w kadrach `R_potok_3km` i `G_rzeka_1km` (A8/G5, S8); żadne nie jest urwiskiem.

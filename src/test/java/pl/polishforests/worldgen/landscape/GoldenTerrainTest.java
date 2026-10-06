@@ -43,7 +43,10 @@ import pl.polishforests.worldgen.habitat.AltitudinalBelts;
  * <li>{@code golden_terrain_m2.txt}: the current model, read by {@link #terrainMatchesGolden} (with the M1 file as a
  * fallback when it is missing). It has the M1 patches plus control patches (step K0 of the geometry fix:
  * {@code outwash_plain_interior}, {@code moraine_plateau_interior}) and the summit of a large Beskid massif (step K2:
- * {@code great_massif}).</li>
+ * {@code great_massif}). Until step K6 the M1 patches kept their M1 hashes and the terrain changes of the steps were
+ * allowed by lists ({@code src/test/golden-allow/K*.txt}); step K7 regenerated the file once for the fixed terrain
+ * (centers kept, patches that lost their target searched anew) and removed the lists, so a plain {@code test} compares
+ * with no allow list.</li>
  * </ul>
  *
  * <p>Sets: 2 scales × 2 seeds at region slider 1.0 and one set at slider 0.5. Each has a 32 × 32 grid
@@ -84,7 +87,18 @@ class GoldenTerrainTest {
 			"    the prototype of the whole fix); terrain identical to M1",
 			"K2 (2026-10-03): large Beskid massifs (M2-8); every earlier patch unchanged (same centers and hashes), new",
 			"    patch great_massif at the summit of the massif nearest to (0, 0); after the review of K2 (dome also over",
-			"    foothills cells, river geometry near the massifs) only the great_massif rows changed, REAL B searched anew");
+			"    foothills cells, river geometry near the massifs) only the great_massif rows changed, REAL B searched anew",
+			"K3 (2026-10-03): continuous fields of the dominant valley (F1), no step at the lowland threshold (TE)",
+			"K4 (2026-10-03..05): valley geometry (G1B, R1, G2-G5, A5, K4.9); K4b: projection on the exact distance minima and",
+			"    the sweep cut (D4); K4c: the sweep cut only near ties of the arms (D4a), rounded valley heads, mouth funnels",
+			"K5 (2026-10-05..06): standing waters (oxbow crescents, tunnel valley lakes ending before valleys with a canonical",
+			"    level, kettle shores, basins without walls, lobed sink lake shores); K5b: low dune coast (D5) and the lagoon",
+			"    only behind a low shore (D2)",
+			"K6 (2026-10-06): 5 x 5 window of the region blend (A16); D3 (west-east moraine ridges) deferred to M5",
+			"K7 (2026-10-06): regenerated once for K3-K6 with -PgoldenKeepCenters: every changed patch is on the union of the",
+			"    step allow lists K3-K6 (src/test/golden-allow, removed), the control patches unchanged, great_massif changed",
+			"    only in GAMEPLAY A (A16, one column by 2.4 cm), only the patches that lost their target searched anew",
+			"    (docs/m2/poprawka-geometrii.md, K7)");
 	static final long SEED_A = 20260927L;
 	static final long SEED_B = -7_316_550_294_015_845_337L;
 	/** Column sets: 2 scales × 2 seeds at slider 1.0 and one at region slider 0.5. */
