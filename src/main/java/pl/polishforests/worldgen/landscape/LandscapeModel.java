@@ -75,8 +75,12 @@ public final class LandscapeModel {
 
 	private final ConcurrentHashMap<Long, Cell> cells = new ConcurrentHashMap<>();
 	private final ConcurrentHashMap<Long, Integer> lakeLevels = new ConcurrentHashMap<>();
+	/** Round 2 of the review of K5: water level and basin reach of the tunnel valley lakes per traced contour. */
+	private final ConcurrentHashMap<Long, TunnelLake> tunnelLakes = new ConcurrentHashMap<>();
 	/** Kettle state: {@link #KETTLE_NONE}, {@link #KETTLE_MINEROTROPHIC} or {@link #KETTLE_OMBROTROPHIC}. */
 	private final ConcurrentHashMap<Long, Byte> kettleExistence = new ConcurrentHashMap<>();
+	/** Review of K5: traced contours of the tunnel valleys per section and block of x ({@link #buildTunnelBlock}). */
+	private final DirectCache<TunnelBlock> tunnelBlocks = new DirectCache<>(256, this::buildTunnelBlock);
 	private static final byte KETTLE_NONE = 0;
 	private static final byte KETTLE_MINEROTROPHIC = 1;
 	private static final byte KETTLE_OMBROTROPHIC = 2;
@@ -282,10 +286,29 @@ public final class LandscapeModel {
 	 * Coast shape: sea floor, beach, foredune and coastal dunes on a low shore, a cliff where
 	 * a plateau reaches the sea, and in places a lagoon (coastal lake) behind a spit.
 	 *
-	 * @param h terrain height from the landscape types
-	 * @param d distance from the shoreline (positive on land)
+	 * <p>D5 (step K5b): most of the coast is a low shore: a beach of 60 m·k, a white foredune 6–15 m high, a belt of gray
+	 * dunes (hummocks of 2–8 m) and a hinterland low above the sea that rises to the compressed relief only several
+	 * km·meso inland ({@link #COAST_LOW_END}). A cliff (the compressed relief with a seaward wall of 2.5 : 1) only where a
+	 * moraine plateau reaches the sea, on part of it ({@link #cliffShore}: about 20% of the coast, as on the Polish coast).
+	 * M1 gave every shore whose compressed relief was above 6–20 m (nearly all) a flat strip 13–24 m above the sea with a
+	 * 2.5 : 1 wall, and dunes on 13–16% of the coast. The shape itself changes only within the belt of 25 km·meso, but
+	 * it is part of {@link #landElevation}, from which {@link RiverNetwork} routes the rivers and limits the levels of its
+	 * nodes by the lowest terrain on their path: the low hinterland (and the lagoons) lower the levels of the rivers that
+	 * flow to a low shore, and the change reaches far upstream and moves some rivers (step K5: about 20% of the land of
+	 * GAMEPLAY more than 6 km·meso from the sea changed by more than 5 cm, up to 175 m; in REAL about 2% near the lagoons).
+	 * Whether to keep this is an open decision of the user (docs/m2/poprawka-geometrii.md, K5).
+	 *
+	 * <p>D2 (step K5): the lagoon only behind a low shore: its strength fades out where the hinterland rises from 3 to 6 m,
+	 * its width does not depend on the shore type, and towards the ends of the lagoon along the shore its strength fades to
+	 * zero while its basin keeps half its width, so the water narrows to a tip (M1: the width and the depth fell together
+	 * with the shore type, and a minimum depth of 1 m cut a trench 130 m wide with walls into a shore 17 m high). The
+	 * whole basin fades with its strength, so the terrain returns continuously to the shore around it.
+	 *
+	 * @param h     terrain height from the landscape types
+	 * @param d     distance from the shoreline (positive on land)
+	 * @param cliff share of a high shore with a cliff 0–1 ({@link #cliffShore})
 	 */
-	private double shapeCoast(double h, double d, double x, double z) {
+	private double shapeCoast(double h, double d, double x, double z, double cliff) {
 		double band = 25_000 * meso;
 		if (d >= band) {
 			return h;
@@ -297,36 +320,91 @@ public final class LandscapeModel {
 		double hl = h * (0.12 + 0.88 * Noise.smoothstep(0, band, d));
 		double beach = beachWidth();
 		double shore = 2.0 * Noise.smoothstep(0, beach, d);
+		double low = 1 - cliff;
+		// Low hinterland: COAST_LOW_BASE m above the sea behind the dunes, rising to the compressed relief.
+		double lowLand = Math.min(hl, COAST_LOW_BASE + (hl - COAST_LOW_BASE)
+				* Noise.smoothstep(beach + COAST_GRAY_END * local, COAST_LOW_END * meso, d));
+		double base = Noise.lerp(cliff, lowLand, hl);
 		double cliffLimit = shore + 2.5 * Math.max(0, d - beach);
-		double result = Math.max(Math.min(hl, cliffLimit), shore);
-		// Low shore: foredune and dunes behind it. A high shore (cliff) has no dunes.
-		double low = 1 - Noise.smoothstep(6, 20, hl);
-		if (low > 0) {
-			double duneWidth = 220 * local;
-			double u = (d - beach) / duneWidth;
-			if (u > 0 && u < 1) {
-				double bump = Math.sin(Math.PI * u);
-				double height = 6 + 14 * (0.5 + 0.5 * coast.at(x, z, 3_000 * meso));
-				result = Math.max(result, shore + height * bump * low);
-			}
-			// Lagoon behind a spit: a shallow lake at sea level, separated by a dune.
-			double lagoon = Noise.smoothstep(0.25, 0.5, coast.at(x + 999, z, 60_000 * meso)) * low;
-			if (lagoon > 0) {
-				double start = beach + duneWidth + 80 * local;
-				// Width and depth decrease together with the lagoon field, so the lagoon narrows towards its ends
-				// instead of ending in a straight line; the landward shore is irregular (bays, peninsulas).
-				double width = (1_500 + 1_500 * (0.5 + 0.5 * coast.at(x, z, 20_000 * meso))) * meso * lagoon;
-				double ragged = 0.18 * width * coast.fbm(x - 555, z + 777, 2_500 * meso, 2, 0.5);
-				double v = (d - start + ragged) / Math.max(1e-6, width);
-				if (v > 0 && v < 1) {
-					double bowl = Noise.smoothstep(0, 0.15, v) * (1 - Noise.smoothstep(0.7, 1, v));
-					double depth = (1 + 5 * lagoon) * bowl;
-					result = Math.min(result, Noise.lerp(bowl, result, -depth));
-				}
+		double result = Math.max(Math.min(base, cliffLimit), shore);
+		if (low <= 0) {
+			return result;
+		}
+		// White foredune right behind the beach, 6–15 m high along the coast.
+		double u = (d - beach) / (COAST_FOREDUNE * local);
+		if (u > 0 && u < 1) {
+			double height = 6 + 9 * (0.5 + 0.5 * coast.at(x, z, 3_000 * meso));
+			double bump = Math.sin(Math.PI * u);
+			// A smooth maximum (rounding of up to 1 m · bump) instead of max(): where a foredune grows out of the lowered
+			// top of a partial cliff it left a sharp crease (review of K5).
+			double dune = shore + low * height * bump * bump;
+			double round = 2 * bump;
+			result = 0.5 * (result + dune + Math.sqrt((result - dune) * (result - dune) + round * round));
+		}
+		// Gray dunes: hummocks of 2–8 m behind the foredune.
+		double g0 = beach + 0.6 * COAST_FOREDUNE * local;
+		double g1 = beach + COAST_GRAY_END * local;
+		if (d > g0 && d < g1) {
+			double env = Noise.smoothstep(g0, g0 + 60 * local, d) * (1 - Noise.smoothstep(g1 - 120 * local, g1, d));
+			double hummock = Math.max(0, coast.at(x + 3_331, z - 1_777, 140 * local));
+			double height = (2 + 6 * (0.5 + 0.5 * coast.at(x - 2_222, z + 4_444, 2_000 * meso))) * hummock;
+			result = Math.max(result, lowLand + low * env * height);
+		}
+		// Lagoon behind a spit: a shallow lake at sea level, behind the dunes, only where the hinterland is low.
+		double lagoon = Noise.smoothstep(COAST_LAGOON_0, COAST_LAGOON_1, coast.at(x + 999, z, 60_000 * meso));
+		if (lagoon > 0) {
+			double start = beach + COAST_LAGOON_START * local;
+			// The width does not depend on the shore type; towards the ends of the lagoon it falls to half while the
+			// depth falls to zero, so the water ends in a rounded tip; the landward shore is irregular (bays, peninsulas).
+			double width = (1_500 + 1_500 * (0.5 + 0.5 * coast.at(x, z, 20_000 * meso))) * meso * (0.5 + 0.5 * lagoon);
+			double ragged = 0.18 * width * coast.fbm(x - 555, z + 777, 2_500 * meso, 2, 0.5);
+			double v = (d - start + ragged) / Math.max(1e-6, width);
+			if (v > 0 && v < 1) {
+				// The whole basin fades out with its strength f (not only its depth): at f → 0 the terrain returns to the
+				// result itself, so the end of a lagoon along the shore and its edge towards a higher hinterland are
+				// continuous (review of K5: lerp(bowl, result, −depth) left (1 − bowl) · result at depth → 0 and a step back
+				// to the result where the depth or the lagoon noise reached zero).
+				double bowl = Math.sin(Math.PI * v);
+				double f = lagoon * low * (1 - Noise.smoothstep(3, 6, base));
+				result = Math.min(result, result - bowl * f * (Math.max(0, result) + COAST_LAGOON_DEPTH));
 			}
 		}
 		return result;
 	}
+
+	/**
+	 * D5: share of a high shore with a cliff (0–1) at (x, z): only on a moraine plateau (its weight from 0.3 to 0.7) and
+	 * where a coastal noise with a wavelength of 30 km·meso lies in its upper quantiles ({@link #COAST_CLIFF_Q0} to
+	 * {@link #COAST_CLIFF_Q1}); the young-glacial plateau reaches the sea on about 3/4 of the coast, so about a fifth of
+	 * the coast gets a cliff. A function of the position only (the same in the terrain and in {@link ColumnSample.Terrain#lowShore}).
+	 */
+	private double cliffShore(double x, double z, Blend b) {
+		double plateau = Noise.smoothstep(0.3, 0.7, b.weight(LandscapeType.MORAINE_PLATEAU));
+		if (plateau <= 0) {
+			return 0;
+		}
+		double q = noiseQuantile(coast.at(x - 4_321, z + 1_234, 30_000 * meso));
+		return plateau * Noise.smoothstep(COAST_CLIFF_Q0, COAST_CLIFF_Q1, q);
+	}
+
+	/** D5: quantiles of the coastal noise over which a moraine plateau shore turns into a cliff ({@link #cliffShore}). */
+	static final double COAST_CLIFF_Q0 = 0.62;
+	static final double COAST_CLIFF_Q1 = 0.78;
+	/** D5: hinterland of a low shore behind the dunes (m above the sea). */
+	static final double COAST_LOW_BASE = 1.5;
+	/** D5: the low hinterland reaches the compressed relief at this distance from the sea (m·meso). */
+	public static final double COAST_LOW_END = 6_000;
+	/** D5: width of the white foredune (m·k) behind the beach. */
+	static final double COAST_FOREDUNE = 130;
+	/** D5: end of the gray dunes behind the beach (m·k). */
+	static final double COAST_GRAY_END = 420;
+	/** D2: start of the lagoon behind the beach (m·k). */
+	static final double COAST_LAGOON_START = 300;
+	/** D2: values of the lagoon noise (wavelength 60 km·meso) over which a lagoon fades in along the shore. */
+	static final double COAST_LAGOON_0 = 0.25;
+	static final double COAST_LAGOON_1 = 0.5;
+	/** D2: greatest depth of a lagoon below the sea level (m). */
+	static final double COAST_LAGOON_DEPTH = 6;
 
 	/** Sea depth in meters at distance {@code off} from the shore (Baltic: shallow shelf). */
 	private double seaDepth(double off) {
@@ -1041,7 +1119,8 @@ public final class LandscapeModel {
 
 	/** Ground height after blending the cells and shaping the coast, still without rivers and lakes. */
 	public double landElevation(double x, double z) {
-		return shapeCoast(elevation(blend(x, z), x, z), coastDistance(x, z), x, z);
+		Blend b = blend(x, z);
+		return shapeCoast(elevation(b, x, z), coastDistance(x, z), x, z, cliffShore(x, z, b));
 	}
 
 	/** Full column sample: relief, waters, substrate. */
@@ -1050,7 +1129,8 @@ public final class LandscapeModel {
 		ReliefParts parts = new ReliefParts();
 		double raw = elevation(b, x, z, parts);
 		double coastD = coastDistance(x, z);
-		double surface = shapeCoast(raw, coastD, x, z);
+		double cliff = coastD < 25_000 * meso ? cliffShore(x, z, b) : 0;
+		double surface = shapeCoast(raw, coastD, x, z, cliff);
 		double rawSurface = surface;
 		LandscapeType dominant = b.dominant();
 		double lowland = b.weight(LandscapeType.OUTWASH_PLAIN) + b.weight(LandscapeType.MORAINE_PLATEAU)
@@ -1068,7 +1148,7 @@ public final class LandscapeModel {
 			LandscapeType t = coastD < 0 ? LandscapeType.SEA : LandscapeType.COASTLAND;
 			Substrate sub = coastD < 0 && -coastD > 3_000 * meso ? Substrate.LAKE_MUD : Substrate.SAND;
 			return new ColumnSample(surface, 0, WaterKind.SEA, t, coastD < 0 ? sub : Substrate.LAKE_MUD, 30.0,
-					terrain(b, parts, t, raw, rawSurface, coastD, 0, Double.NaN, Double.NaN, 0, x, z), ColumnSample.Waters.NONE,
+					terrain(b, parts, t, raw, rawSurface, coastD, cliff, 0, Double.NaN, Double.NaN, 0, x, z), ColumnSample.Waters.NONE,
 					regional.sample(x, z));
 		}
 		double bare = Double.NaN;
@@ -1076,11 +1156,11 @@ public final class LandscapeModel {
 			dominant = LandscapeType.COASTLAND;
 			// Beach and white dune without turf; further from the sea the vegetated gray dune.
 			bare = beachWidth() + 220 * local * (0.6 + 0.4 * coast.at(x, z, 400 * local));
-			substrate = surface > 8 ? Substrate.GLACIAL_TILL : coastD < bare ? Substrate.BEACH_SAND : Substrate.SAND;
+			// D5: till only on a high shore (a cliff); the dunes of a low shore are sand also above 8 m.
+			substrate = surface > 8 && cliff >= 0.5 ? Substrate.GLACIAL_TILL : coastD < bare ? Substrate.BEACH_SAND : Substrate.SAND;
 		}
 
 		// Valleys and channels of the river network, and sink lakes.
-		double valley = 0;
 		RiverNetwork.RiverHit r = rivers.query(x, z, surface, lowland + b.weight(LandscapeType.COASTLAND), foothills,
 				mountains);
 		surface = r.terrain();
@@ -1111,7 +1191,6 @@ public final class LandscapeModel {
 			standingRadius = r.oxbowWidth();
 		}
 		if (r.order() > 0 && !inSinkLake) {
-			valley = r.valleyWeight();
 			if (r.inFloor()) {
 				substrate = lowland > 0.5 ? Substrate.ALLUVIUM : Substrate.RIVERBED;
 			}
@@ -1133,24 +1212,24 @@ public final class LandscapeModel {
 			}
 		}
 		if (kind == WaterKind.NONE && r.lakeLevel() != ColumnSample.NO_WATER && r.lakeShore() < KETTLE_BANK) {
-			LakeHit sinkLake = new LakeHit(r.lakeLevel(), r.lakeDepth(), r.lakeShore(), false, 0.25, KETTLE_BANK,
-					ColumnSample.StandingWaterKind.SINK_LAKE, r.lakeId(), r.lakeRadius(), false);
-			surface = applyLake(surface, sinkLake);
+			surface = applyLake(surface, sinkLakeHit(r));
 			if (r.lakeShore() < 0 && surface < r.lakeLevel()) {
 				water = r.lakeLevel();
 				kind = WaterKind.LAKE;
 				substrate = Substrate.LAKE_MUD;
 			}
-			valley = Math.max(valley, 1 - Noise.smoothstep(0, 200 * local, r.lakeShore()));
 		}
 
-		// Glacial tunnel valleys with chains of lakes (young-glacial zone only, outside river valleys).
-		// Tunnel valley presence fades out smoothly in river valleys, so lakes are not cut off at the valley edge.
-		double tunnelPresence = young * (1 - Noise.smoothstep(0.1, 0.45, valley)) * Noise.smoothstep(0, 1_500 * meso, coastD);
+		// Glacial tunnel valleys with chains of lakes (young-glacial zone only). K5.2: next to a river valley or a sink
+		// lake a lake ends in a rounded shore (its width fades out with the distance from the edge of the valley cut or from
+		// the shore of the sink lake, tunnelLakeAt), not in a straight line; the presence no longer fades with the valley
+		// weight (M1), which cut the lakes straight along the contours of the weight and left perched lakes above valleys.
+		double tunnelPresence = tunnelPresence(young, coastD);
 		if (tunnelPresence > 0.05 && kind == WaterKind.NONE) {
-			LakeHit lake = tunnelLakeAt(x, z, tunnelPresence);
+			LakeHit lake = tunnelLakeAt(x, z, tunnelPresence, r.floorGap(), r.lakeGap());
 			if (lake != null) {
-				if (lake.shoreDistance < standingShore) {
+				// The habitat ring keeps its width (max(tunnelBank, 150 m·k)) when the basin reaches further (round 2).
+				if (lake.shoreDistance < standingShore && lake.shoreDistance <= Math.max(tunnelBank, 150 * local)) {
 					standingShore = lake.shoreDistance;
 					standingLevel = lake.level;
 					standingKind = lake.kind;
@@ -1184,10 +1263,14 @@ public final class LandscapeModel {
 					standingId = k.id;
 					standingRadius = k.radius;
 				}
+				double before = surface;
 				surface = applyLake(surface, k);
 				if (k.shoreDistance < 0 && surface < k.level) {
 					if (k.peat) {
-						surface = k.level - 0.5;
+						// K5.4: the peat lies at the level − 0.5 m, but never above the ground before the basin, so a bog
+						// whose shore runs through a hollow lower than its level (missed by the points of the level) has no
+						// step there; the peat follows the hollow.
+						surface = Math.min(k.level - 0.5, before);
 						substrate = Substrate.PEAT;
 					} else {
 						water = k.level;
@@ -1213,7 +1296,8 @@ public final class LandscapeModel {
 		// Large massif (E12): highest terrain within 3 km·mspace, only where the altitudinal belts need it.
 		double summit = mountains > 0 && surface >= AltitudinalBelts.SUMMIT_FROM ? peaks.sample(x, z) : 0;
 		return new ColumnSample(surface, water, kind, dominant, substrate, cover,
-				terrain(b, parts, dominant, raw, rawSurface, coastD, landformBits, sandiness(x, z), bare, summit, x, z), waters,
+				terrain(b, parts, dominant, raw, rawSurface, coastD, cliff, landformBits, sandiness(x, z), bare, summit, x, z),
+				waters,
 				regional.sample(x, z));
 	}
 
@@ -1263,7 +1347,7 @@ public final class LandscapeModel {
 	 * at point (x, z).
 	 */
 	private ColumnSample.Terrain terrain(Blend b, ReliefParts parts, LandscapeType dominant, double raw, double rawSurface,
-			double coastD, int landformBits, double sandiness, double bare, double summit, double x, double z) {
+			double coastD, double cliff, int landformBits, double sandiness, double bare, double summit, double x, double z) {
 		// Cliff edge: terrain before cutting valleys, in the CLIFF landform belt.
 		double cliffHeight = (landformBits & Landform.CLIFF.bit()) != 0 ? rawSurface : 0;
 		// Coastal belt: 1 where the sample gets the COASTLAND type, 0 at the edge of the belt B + D + 2000k (M2 plan §3.4).
@@ -1273,8 +1357,8 @@ public final class LandscapeModel {
 		// convexity and dune height are scaled the same way; the INLAND_DUNES bit in the landforms is computed without scaling (as in M1).
 		double band = 25_000 * meso;
 		double coastScale = coastD >= band ? 1.0 : 0.12 + 0.88 * Noise.smoothstep(0, band, coastD);
-		// Low shore with dunes or high shore with a cliff: the same "low" as in shapeCoast, from the height before the coast shaping.
-		double low = coastD >= 0 && coastD < band ? 1 - Noise.smoothstep(6, 20, raw * coastScale) : 0;
+		// Low shore with dunes or high shore with a cliff: the same share as in shapeCoast (D5, cliffShore).
+		double low = coastD >= 0 && coastD < band ? 1 - cliff : 0;
 		CoarseTerrainField.CoarseSample g = coarse.sample(x, z);
 		double ridgeProfile = switch (dominant) {
 			case FOOTHILLS -> parts.foothillsProfile;
@@ -1474,29 +1558,83 @@ public final class LandscapeModel {
 		return k * tunnelCell + 0.3 * tunnelCell * tunnel.sample(x / (15_000 * meso), k * 0.618_034);
 	}
 
+	/** Presence of the tunnel valleys: the young-glacial zone away from the coast (K5.2: without the valley weight). */
+	private double tunnelPresence(double young, double coastD) {
+		return young * Noise.smoothstep(0, 1_500 * meso, coastD);
+	}
+
 	/**
 	 * Glacial tunnel valley with a chain of lens-shaped lakes. A lake has a constant water level; isthmuses
 	 * remain between the lakes. Some sections of the tunnel valley are dry.
+	 *
+	 * <p>K5.2: every fade is smooth (0..1) instead of a cut: the ends of the lens at the boundaries between the lakes of a
+	 * chain and at the edge of the cut of a river valley or at the shore of a sink lake ({@link #ellipticEnd}: rounded ends),
+	 * tunnel valleys oblique to the north-south axis and too narrow lakes (M1: null below 25 m·k). The water level is
+	 * computed from a canonical point of the lake, a function of its key only (M1: the level depended on the order of
+	 * sampling by up to 2 m).
+	 *
+	 * <p>Review of K5: a lake belongs to a contour of the tunnel field traced through its section once per section and
+	 * block of x ({@link TunnelBlock}); the column takes the nearest traced contour. M1 and the first version of K5 found
+	 * the lake by Newton steps in x at the middle of the section started from the column's own x, so where the contour
+	 * curved between the column and the middle of the section the columns of one lake converged to different roots, which
+	 * made stripes north to south with different keys and water levels (A1; in GAMEPLAY up to 68 m apart, with leaks).
+	 * Where two traced contours are about equally near, or where a trace ends, the lake fades out, so water bodies with
+	 * different keys are always separated by land. The basin fades with the lake as a shore distance that grows smoothly
+	 * (slope about 1) instead of a bank of {@code tunnelBank} added over a few meters, which left walls of up to 36 m at
+	 * the ends of the lakes; beyond an end of the lens (the boundary of the section, a valley, a sink lake) the shore
+	 * distance grows like the distance from the rounded tip of the water.
+	 *
+	 * <p>Round 2 of the review of K5: the water level comes from the ground along the lake itself and the reach of the
+	 * basin grows with its cut ({@link #tunnelLake}); a lake with the level below 1 m does not exist; near another contour,
+	 * an end of the trace or an oblique stretch of the contour ({@link #TUNNEL_COS}) the half-width is limited by the
+	 * distance itself (it changes by at most about 1 m per meter), and a lake with a wider basin ends that much further
+	 * from a river valley.
+	 *
+	 * @param valleyGap distance beyond the edge of the cut of the nearest river valley ({@code RiverHit.floorGap})
+	 * @param lakeGap   distance from the shore of the nearest sink lake, capped ({@code RiverHit.lakeGap})
 	 */
-	private LakeHit tunnelLakeAt(double x, double z, double presence) {
-		double gate = Noise.smoothstep(0.10, 0.35, tunnel.at(x, z, 50_000 * meso))
-				* Noise.smoothstep(0.2, 0.7, presence);
+	private LakeHit tunnelLakeAt(double x, double z, double presence, double valleyGap, double lakeGap) {
+		// Query reach: the basin (at most tunnelBankMax) or the 150 m·k habitat ring, whichever is wider; then the reach of
+		// this lake's own basin.
+		TunnelShape t = tunnelShape(x, z, presence, valleyGap, lakeGap, Math.max(tunnelBankMax(), 150 * local));
+		if (t == null || t.shore > Math.max(t.lake.bank, 150 * local)) {
+			return null;
+		}
+		double depth = t.lens * t.gate * (18 + 45 * tunnel.unit(t.anchor, t.k, 7));
+		// Near a sink lake the reach of the basin falls back to tunnelBank (by 1 m per meter of the gap, which is capped at
+		// LAKE_GAP_MAX), so a wider basin never reaches further towards the sink lake than in K5 (at a river valley the lake
+		// ends further away instead, tunnelShape).
+		double bank = Math.clamp(t.lake.bank + lakeGap - TUNNEL_END_GAP * local, tunnelBank, t.lake.bank);
+		return new LakeHit(t.lake.level, depth, t.shore, false, 0.35, bank,
+				ColumnSample.StandingWaterKind.TUNNEL_VALLEY_LAKE, t.key, t.half * t.lens, false);
+	}
+
+	/** Geometry of a tunnel valley lake at a column ({@link #tunnelShape}). */
+	private record TunnelShape(double shore, double half, double lens, double gate, long k, long anchor, long key,
+			TunnelLake lake) {
+	}
+
+	/**
+	 * Round 2 of the review of K5: the water level of a tunnel valley lake and the reach of its basin
+	 * ({@link #tunnelLake}).
+	 */
+	private record TunnelLake(int level, double bank) {
+	}
+
+	/**
+	 * Shape of the tunnel valley lake at (x, z): its shore distance, half-width, lens and key, or null when the shore
+	 * distance is larger than {@code limit} (also when there is no traced contour near). Pure geometry, without the
+	 * water level, so the kettle ponds can test it cheaply ({@link #kettleTouchesTunnelLake}). The shore distance never
+	 * falls with a larger presence or larger gaps, so (1, +∞, +∞) gives a lower bound of it.
+	 */
+	private TunnelShape tunnelShape(double x, double z, double presence, double valleyGap, double lakeGap, double limit) {
+		// Beyond an end of the lens (a valley, a sink lake): the shore distance is at least the distance beyond the end.
+		double beyond = Math.max(TUNNEL_END_GAP * local - valleyGap, TUNNEL_END_GAP * local - lakeGap);
+		if (beyond > limit) {
+			return null;
+		}
+		double gate = Noise.smoothstep(0.10, 0.35, tunnel.at(x, z, 50_000 * meso)) * Noise.smoothstep(0.2, 0.7, presence);
 		if (gate <= 0) {
-			return null;
-		}
-		double n = tunnelField(x, z);
-		double e = 40;
-		double gx = (tunnelField(x + e, z) - tunnelField(x - e, z)) / (2 * e);
-		double gz = (tunnelField(x, z + e) - tunnelField(x, z - e)) / (2 * e);
-		double grad = Math.sqrt(gx * gx + gz * gz);
-		if (grad < 1e-12) {
-			return null;
-		}
-		double dist = Math.abs(n) / grad;
-		double half = gate * local * (200 + 500 * (0.5 + 0.5 * tunnel.at(x, z, 9_000 * meso)));
-		// Query reach: the basin (tunnelBank) or the 150 m·k habitat ring, whichever is wider.
-		double reach = Math.max(tunnelBank, 150 * local);
-		if (half < 25 * local || dist > half + reach) {
 			return null;
 		}
 		long k = (long) Math.floor(z / tunnelCell);
@@ -1505,18 +1643,352 @@ public final class LandscapeModel {
 		} else if (z >= tunnelBoundary(k + 1, x)) {
 			k++;
 		}
+		TunnelBlock block = tunnelBlocks.get(k, Math.floorDiv((long) Math.floor(x), (long) tunnelBlockWidth()));
+		// The nearest traced contour (a lake) and the distance to the second nearest one, both measured along x
+		// (a trace beyond its end counts as its end point, so the nearest contour changes continuously).
+		double e1 = Double.POSITIVE_INFINITY;
+		double e2 = Double.POSITIVE_INFINITY;
+		TunnelContour c1 = null;
+		TunnelContour c2 = null;
+		for (TunnelContour c : block.contours) {
+			double e = c.distance(x, z);
+			if (e < e1) {
+				e2 = e1;
+				c2 = c1;
+				e1 = e;
+				c1 = c;
+			} else if (e < e2) {
+				e2 = e;
+				c2 = c;
+			}
+		}
+		if (c1 == null || !c1.lake || e1 > tunnelRelevant()) {
+			return null;
+		}
+		// Round 2 of the review of K5: no lake at or below the sea level. Its ring then reaches a lagoon or the low
+		// hinterland of a low shore, and its water stood next to the lagoon at another level, or next to dry ground below
+		// the sea (GAMEPLAY beyond ±20 km, leaks of up to 17 m). The level is one per lake, so the lake is whole or absent.
+		TunnelLake lake = tunnelLake(c1, k);
+		if (lake.level < 1) {
+			return null;
+		}
+		double bank = lake.bank;
+		// The lake ends so far from a river valley that its basin does not reach into the cut of the valley (the shore
+		// distance there is at least the reach of the basin). K5 let the basin reach up to tunnelBank − TUNNEL_END_GAP into
+		// the cut; with the level from the lowest ground along the lake (round 2) it lowered the floor next to the channel
+		// there (a river 17 m above the ground beside it, GAMEPLAY).
+		double valleyEnd = TUNNEL_END_GAP * local + bank - 0.5 * tunnelBank;
+		beyond = Math.max(beyond, valleyEnd - valleyGap);
+		double u = (z - c1.z0) / c1.dz;
+		if (u < c1.lo || u > c1.hi) {
+			return null;
+		}
+		double slope = c1.slope(u);
+		double cosA = 1 / Math.sqrt(1 + slope * slope);
+		double dist = e1 * cosA;
+		double half = gate * local * (200 + 500 * (0.5 + 0.5 * tunnel.at(x, z, 9_000 * meso)));
+		if (dist - half + beyond > limit) {
+			return null;
+		}
 		double b0 = tunnelBoundary(k, x);
 		double b1 = tunnelBoundary(k + 1, x);
 		double edge = Math.min(z - b0, b1 - z);
-		double lens = Math.sqrt(Noise.smoothstep(tunnelSill, tunnelSill + 0.35 * (b1 - b0), edge));
-		double shore = dist - half * lens;
-		if (shore > reach) {
+		beyond = Math.max(beyond, tunnelSill - edge);
+		// Length of the end at a valley: 1.5 half-widths (a semicircle at one half-width), at most TUNNEL_END_MAX m·k, so
+		// the end is complete within the frame of the segments of the river network (RiverHit.floorGap is at least about
+		// 0.5 maxWall beyond it); at a sink lake at most LAKE_GAP_MAX − TUNNEL_END_GAP m·k (the gap is capped there).
+		double endLength = Math.clamp(1.5 * half, 150 * local, TUNNEL_END_MAX * local - (bank - 0.5 * tunnelBank));
+		double lakeEnd = Math.min(Math.clamp(1.5 * half, 150 * local, TUNNEL_END_MAX * local),
+				(RiverNetwork.LAKE_GAP_MAX - TUNNEL_END_GAP) * local);
+		double lensEnd = ellipticEnd((edge - tunnelSill) / (0.35 * (b1 - b0)))
+				* ellipticEnd((valleyGap - valleyEnd) / endLength)
+				* ellipticEnd((lakeGap - TUNNEL_END_GAP * local) / lakeEnd);
+		// The other fades: oblique tunnel valleys, too narrow lakes, another traced contour about as near, the end of the
+		// trace. Each grows the shore distance by up to the reach of the basin over at least about 1.5 times that reach, so
+		// the basin fades out with the lake without a wall (and without a trench along the axis of a dry tunnel valley).
+		double tunnelFade = c1.run(u);
+		// The free gap to the second contour across the contours (each distance along x times the cosine of its own
+		// contour, clamped at the ends of its trace): it changes by at most about 2 m per meter in any direction, while the
+		// difference along x changed by up to 2 · TUNNEL_TRACE_SLOPE per meter along z (round 2 of the review of K5).
+		double gap = c2 == null ? Double.POSITIVE_INFINITY : e2 * c2.cosine(z) - dist;
+		double gapFade = Noise.smoothstep(TUNNEL_SPLIT, TUNNEL_SPLIT + 3 * bank, gap);
+		double traceFade = Noise.smoothstep(0, 1.5 * bank, tunnelFade);
+		double shapeFade = Noise.smoothstep(25 * local, 60 * local, half);
+		double lensFade = shapeFade * gapFade * traceFade;
+		// Round 2 of the review of K5: near another contour and near the end of the trace the half-width is limited by the
+		// distance itself (half the free gap beyond TUNNEL_SPLIT, the distance from the end of the trace) instead of being
+		// scaled by the fades, so it changes by at most about 1 m per meter. Scaled by the fades, a half-width of up to
+		// 350 m (GAMEPLAY) fell to zero over 3 or 1.5 tunnelBank, the shore distance changed by 5–8 m per meter, and the
+		// ramp of the basin (0.4–1.0 of its reach) became a wall of up to 5 blocks per block on a smooth terrain.
+		double h = Math.min(half * shapeFade, Math.min(0.5 * Math.max(0, gap - TUNNEL_SPLIT), tunnelFade));
+		// Elliptic shore distance: the water is dist < h · lensEnd (a rounded end, ellipticEnd); towards the tip the
+		// distance grows with slope at most about 1 also along the axis. Beyond an end it keeps growing with the distance.
+		double tau2 = 1 - lensEnd * lensEnd;
+		double shore = beyond > 0 ? Math.sqrt(dist * dist + h * h) - h + beyond
+				: Math.sqrt(dist * dist + h * h * tau2) - h;
+		shore += (1 - lensFade) * bank;
+		if (shore > limit) {
 			return null;
 		}
-		// A lake is identified by the point where the tunnel valley axis crosses the middle of its section.
-		// The fixed point of the iteration is the same for all columns of the lake.
-		double ax = x;
-		double az = 0.5 * (b0 + b1);
+		long anchor = c1.anchor;
+		return new TunnelShape(shore, half, lensEnd * Math.min(lensFade, h / half), gate, k, anchor, c1.key, lake);
+	}
+
+	/**
+	 * Review of K5: whether the influence of a kettle pond (center, reach) meets the bank of a tunnel valley lake (shore
+	 * distance below {@link #TUNNEL_KEEP}, where {@link #applyLake} raises the ground towards the water level + 1 m): a
+	 * grid over the disk of the kettle tests a lower bound of the shore distance (presence 1 and no valley or sink lake).
+	 * Such a kettle does not exist ({@link #kettleState}), so a kettle never cuts the bank of a tunnel valley lake and
+	 * never has its water or peat next to the water of the lake (review of K5: leaks of up to 57 m). A kettle may still lie
+	 * on the outer flank of the basin; its level then comes from the surface after the basin ({@link #surfaceBeforeKettle}).
+	 * Computed once per kettle.
+	 */
+	private boolean kettleTouchesTunnelLake(double kx, double kz, double reach) {
+		double step = 10 * local;
+		// The shore distance grows by at most about 3 per meter (the distance from the contour, the limits of the
+		// half-width and the fade of the basin by 1 each, round 2 of the review of K5), so a center far enough is enough.
+		if (tunnelShape(kx, kz, 1, Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY,
+				TUNNEL_KEEP + 3 * (reach + step)) == null) {
+			return false;
+		}
+		double limit = TUNNEL_KEEP + 2.2 * step;
+		int n = (int) Math.ceil((reach + step) / step);
+		for (int j = -n; j <= n; j++) {
+			for (int i = -n; i <= n; i++) {
+				double dx = i * step;
+				double dz = j * step;
+				if (dx * dx + dz * dz <= (reach + step) * (reach + step)
+						&& tunnelShape(kx + dx, kz + dz, 1, Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY, limit) != null) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	/** Review of K5: the bank of a tunnel valley lake that no kettle pond may touch: the reach of its raise (m). */
+	private static final double TUNNEL_KEEP = 40;
+
+	/** Review of K5: water bodies of two traced contours are separated by land at least this wide (m). */
+	private static final double TUNNEL_SPLIT = 40;
+
+	/**
+	 * Round 2 of the review of K5: the largest reach of the basin of a tunnel valley lake ({@link #tunnelLake}): at most
+	 * TUNNEL_BANK_MAX tunnelBank and below the sill between the lakes of a chain, where the shore distance is at least
+	 * tunnelSill, so the basins of two lakes with different levels never meet at the boundary of their sections.
+	 */
+	private double tunnelBankMax() {
+		return Math.min(TUNNEL_BANK_MAX * tunnelBank, 0.9 * tunnelSill);
+	}
+
+	/** Round 2 of the review of K5: the reach of a tunnel valley basin is at most this many tunnelBank. */
+	private static final double TUNNEL_BANK_MAX = 3;
+	/** Round 2 of the review of K5: the reach of a tunnel valley basin per meter of its cut (m/m). */
+	private static final double TUNNEL_BANK_PER_CUT = 1.2;
+
+	/** Width of a block of traced contours (m): two sections. */
+	private double tunnelBlockWidth() {
+		return 2 * tunnelCell;
+	}
+
+	/** Farthest traced contour (along x) that can still matter for a column (m). */
+	private double tunnelRelevant() {
+		// The second contour matters up to TUNNEL_SPLIT + 3 tunnelBank beyond the first (the fade of the basin) and up
+		// to TUNNEL_SPLIT + 2 · 700 m·k (the limit of the half-width by the free gap, round 2 of the review of K5).
+		// The gap is measured across the contours, so along x a contour can be up to sqrt(1 + TUNNEL_TRACE_SLOPE²) times
+		// farther away than across.
+		double across = 700 * local + Math.max(tunnelBankMax(), 150 * local) + TUNNEL_SPLIT
+				+ Math.max(3 * tunnelBankMax(), 1_400 * local) + 50 * local;
+		return across * Math.sqrt(1 + TUNNEL_TRACE_SLOPE * TUNNEL_TRACE_SLOPE);
+	}
+
+	/**
+	 * Review of K5: a contour of the tunnel field (field = 0) traced through a section: it crosses the middle of the
+	 * section z = (k + 0.5) · tunnelCell at {@code root}; x and the slope dx/dz at the nodes z0 + i · dz for i in [lo, hi].
+	 * Beyond that range (the contour turned east-west or drifted too far) the trace ends.
+	 */
+	private static final class TunnelContour {
+		final double z0;
+		final double dz;
+		final double[] xs;
+		final double[] slopes;
+		final int lo;
+		final int hi;
+		final long anchor;
+		final long key;
+		final boolean lake;
+		/** Key of the water level of this contour's lake: from its root, the same in every block that traces it. */
+		final long levelKey;
+		/**
+		 * Round 2 of the review of K5: at the nodes, the distance along z (m) to the nearest end of the trace or the nearest
+		 * node where the contour runs more than about 39° from north ({@link #TUNNEL_COS}); 0 there.
+		 */
+		final double[] runs;
+
+		TunnelContour(double z0, double dz, double[] xs, double[] slopes, int lo, int hi, long anchor, long key, boolean lake,
+				long levelKey) {
+			this.levelKey = levelKey;
+			this.runs = new double[xs.length];
+			double last = lo;
+			for (int q = lo; q <= hi; q++) {
+				if (q == lo || 1 / Math.sqrt(1 + slopes[q] * slopes[q]) < TUNNEL_COS) {
+					last = q;
+				}
+				runs[q] = (q - last) * dz;
+			}
+			last = hi;
+			for (int q = hi; q >= lo; q--) {
+				if (q == hi || 1 / Math.sqrt(1 + slopes[q] * slopes[q]) < TUNNEL_COS) {
+					last = q;
+				}
+				runs[q] = Math.min(runs[q], (last - q) * dz);
+			}
+			this.z0 = z0;
+			this.dz = dz;
+			this.xs = xs;
+			this.slopes = slopes;
+			this.lo = lo;
+			this.hi = hi;
+			this.anchor = anchor;
+			this.key = key;
+			this.lake = lake;
+		}
+
+		/** Distance along x from the trace at z; beyond the ends the distance from the end point. */
+		double distance(double x, double z) {
+			double u = (z - z0) / dz;
+			if (u <= lo) {
+				return Math.hypot(x - xs[lo], (lo - u) * dz);
+			}
+			if (u >= hi) {
+				return Math.hypot(x - xs[hi], (u - hi) * dz);
+			}
+			int i = (int) Math.floor(u);
+			double f = u - i;
+			return Math.abs(x - (xs[i] + f * (xs[i + 1] - xs[i])));
+		}
+
+		/** {@link #runs} at u in [lo, hi], interpolated: it changes by at most 1 m per meter along z. */
+		double run(double u) {
+			int i = Math.min((int) Math.floor(u), hi - 1);
+			if (i < lo) {
+				return runs[lo];
+			}
+			double f = u - i;
+			return runs[i] + f * (runs[i + 1] - runs[i]);
+		}
+
+		/** Cosine of the angle between the contour and the z axis at z, clamped to the ends of the trace. */
+		double cosine(double z) {
+			double s = slope(Math.clamp((z - z0) / dz, lo, hi));
+			return 1 / Math.sqrt(1 + s * s);
+		}
+
+		/** Slope dx/dz at u in [lo, hi]. */
+		double slope(double u) {
+			int i = Math.min((int) Math.floor(u), hi - 1);
+			if (i < lo) {
+				return slopes[lo];
+			}
+			double f = u - i;
+			return slopes[i] + f * (slopes[i + 1] - slopes[i]);
+		}
+	}
+
+	/** Review of K5: the traced contours of one section and one block of x ({@link #buildTunnelBlock}). */
+	private record TunnelBlock(TunnelContour[] contours) {
+	}
+
+	/**
+	 * Traces the contours of the tunnel field that cross the middle of section k within the block bx (x from
+	 * bx · tunnelBlockWidth) widened by the farthest relevant contour and the largest drift: the roots on the middle line
+	 * from a fixed global grid of x (bisection), then Newton steps in x at every node in z (step 20 m·k) towards both
+	 * ends of the section. A trace ends where the contour turns too far from north-south, where Newton does not
+	 * converge or jumps, or where it drifts more than one section length from its root. A pure function of (k, bx): the
+	 * same root and trace in every block that finds it, so neighboring blocks agree.
+	 */
+	private TunnelBlock buildTunnelBlock(long k, long bx) {
+		double zc = (k + 0.5) * tunnelCell;
+		double drift = tunnelCell;
+		double margin = tunnelRelevant() + drift;
+		double w = tunnelBlockWidth();
+		double grid = 20 * local;
+		long i0 = (long) Math.floor((bx * w - margin) / grid);
+		long i1 = (long) Math.ceil(((bx + 1) * w + margin) / grid);
+		double dz = 20 * local;
+		int nHalf = (int) Math.ceil(0.8 * tunnelCell / dz);
+		int n = 2 * nHalf + 1;
+		double z0 = zc - nHalf * dz;
+		List<TunnelContour> out = new ArrayList<>();
+		double fPrev = tunnelField(i0 * grid, zc);
+		for (long i = i0 + 1; i <= i1; i++) {
+			double f = tunnelField(i * grid, zc);
+			if ((f < 0) != (fPrev < 0)) {
+				double lo = (i - 1) * grid;
+				double hi = i * grid;
+				boolean loNeg = fPrev < 0;
+				for (int it = 0; it < 40; it++) {
+					double mid = 0.5 * (lo + hi);
+					if ((tunnelField(mid, zc) < 0) == loNeg) {
+						lo = mid;
+					} else {
+						hi = mid;
+					}
+				}
+				double root = 0.5 * (lo + hi);
+				double[] xs = new double[n];
+				double[] slopes = new double[n];
+				xs[nHalf] = root;
+				slopes[nHalf] = contourSlope(root, zc);
+				int a = nHalf;
+				int b = nHalf;
+				if (Math.abs(slopes[nHalf]) <= TUNNEL_TRACE_SLOPE) {
+					for (int dir = -1; dir <= 1; dir += 2) {
+						double x = root;
+						double s = slopes[nHalf];
+						for (int q = nHalf + dir; q >= 0 && q < n; q += dir) {
+							double z = z0 + q * dz;
+							double xn = contourRoot(x + s * dz * dir, z);
+							if (Double.isNaN(xn) || Math.abs(xn - x) > TUNNEL_TRACE_SLOPE * dz || Math.abs(xn - root) > drift) {
+								break;
+							}
+							double sn = contourSlope(xn, z);
+							if (Math.abs(sn) > TUNNEL_TRACE_SLOPE) {
+								break;
+							}
+							x = xn;
+							s = sn;
+							xs[q] = x;
+							slopes[q] = s;
+							if (dir < 0) {
+								a = q;
+							} else {
+								b = q;
+							}
+						}
+					}
+				}
+				// The anchor as in K5: where the axis iteration from the root meets the middle of the section between
+				// its irregular boundaries (the same lake and key as before wherever K5 found it consistently).
+				long anchor = Math.round(tunnelAxis(root, k)[0] / (200.0 * local));
+				boolean lake = a < b && tunnel.unit(anchor, k, 8) >= 0.3;
+				out.add(new TunnelContour(z0, dz, xs, slopes, a, b, anchor, Noise.key(anchor, k, 2), lake,
+						Noise.key(Double.doubleToLongBits(root), k, 12)));
+			}
+			fPrev = f;
+		}
+		return new TunnelBlock(out.toArray(new TunnelContour[0]));
+	}
+
+	/**
+	 * The point where the axis of the tunnel valley crosses the middle of the section k: Newton steps in x started from
+	 * x0, with 3 outer steps that move the middle of the section with x. It does not always converge, so it only names
+	 * the lake of a traced contour (from its root; round 2: the level comes from the trace, {@link #tunnelLake}).
+	 */
+	private double[] tunnelAxis(double x0, long k) {
+		double e = 40;
+		double ax = x0;
+		double az = 0.5 * (tunnelBoundary(k, ax) + tunnelBoundary(k + 1, ax));
 		for (int outer = 0; outer < 3; outer++) {
 			for (int it = 0; it < 12; it++) {
 				double f = tunnelField(ax, az);
@@ -1532,16 +2004,75 @@ public final class LandscapeModel {
 			}
 			az = 0.5 * (tunnelBoundary(k, ax) + tunnelBoundary(k + 1, ax));
 		}
-		long anchor = Math.round(ax / (200.0 * local));
-		if (tunnel.unit(anchor, k, 8) < 0.3) {
-			return null;
-		}
-		long key = Noise.key(anchor, k, 2);
-		double depth = lens * gate * (18 + 45 * tunnel.unit(anchor, k, 7));
-		int level = lakeLevel(key, ax, az, 450 * local);
-		return new LakeHit(level, depth, shore, false, 0.35, tunnelBank, ColumnSample.StandingWaterKind.TUNNEL_VALLEY_LAKE,
-				key, half * lens, false);
+		return new double[] {ax, az};
 	}
+
+	/**
+	 * Round 2 of the review of K5: a lake lies only where its contour runs within about 39° of north-south (this cosine);
+	 * other nodes end the lake like the end of the trace, and its half-width grows from there by at most 1 m per meter
+	 * ({@link TunnelContour#runs}). K5 scaled the half-width by smoothstep(0.75, 0.92, cos), which on a curving contour
+	 * changed a half-width of 240 m by 2 m per meter, a wall of 5 blocks per block in the basin (GAMEPLAY).
+	 */
+	static final double TUNNEL_COS = 0.78;
+
+	/** Review of K5: a trace of a tunnel valley contour ends where it runs steeper than this (dx/dz, about 68° from north). */
+	private static final double TUNNEL_TRACE_SLOPE = 2.5;
+
+	/** Root of the tunnel field along x at z by Newton steps from x0, or NaN when they do not converge. */
+	private double contourRoot(double x0, double z) {
+		double e = local;
+		double x = x0;
+		for (int it = 0; it < 12; it++) {
+			double f = tunnelField(x, z);
+			double d = (tunnelField(x + e, z) - tunnelField(x - e, z)) / (2 * e);
+			if (Math.abs(d) < 1e-15) {
+				return Double.NaN;
+			}
+			double step = Math.clamp(f / d, -500.0 * local, 500.0 * local);
+			x -= step;
+			if (Math.abs(step) < 1e-3) {
+				return x;
+			}
+		}
+		return Double.NaN;
+	}
+
+	/** Slope dx/dz of the contour of the tunnel field through (x, z) (implicit derivative). */
+	private double contourSlope(double x, double z) {
+		double e = local;
+		double fx = (tunnelField(x + e, z) - tunnelField(x - e, z)) / (2 * e);
+		double fz = (tunnelField(x, z + e) - tunnelField(x, z - e)) / (2 * e);
+		if (Math.abs(fx) < 1e-15) {
+			return Double.POSITIVE_INFINITY;
+		}
+		return -fz / fx;
+	}
+
+	/** K5.2: a tunnel valley lake ends this far (m·k) beyond the edge of a valley cut or the shore of a sink lake. */
+	static final double TUNNEL_END_GAP = 30;
+	/**
+	 * K5.2 (K4.9 of the design): longest end of a tunnel valley lake at a valley (m·k), 0.5 maxWall − TUNNEL_END_GAP, so
+	 * that the end lies within the frame of the segment ({@code RiverHit.floorGap}).
+	 */
+	static final double TUNNEL_END_MAX = 570;
+
+	/**
+	 * K5.2: profile of the end of a lake: 0 for t ≤ 0, 1 for t ≥ 1, in between a quarter of an ellipse sqrt(1 − (1 − t)²).
+	 * The width grows from the end like sqrt(t), so the end is rounded (a semicircle when its length equals the
+	 * half-width), not pointed as with sqrt(smoothstep) nor cut straight.
+	 */
+	static double ellipticEnd(double t) {
+		double c = Math.clamp(t, 0.0, 1.0);
+		return Math.sqrt(c * (2 - c));
+	}
+
+	/**
+	 * Round 2 of the review of K5: margin (m) between a river channel and the influence of a kettle, or between the
+	 * water of the channel and the flank of the kettle basin above it ({@link #kettleState}).
+	 */
+	private static final double KETTLE_CHANNEL_GAP = 2;
+	/** Slope of the flank of a kettle basin above its level ({@link #applyLake}). */
+	private static final double KETTLE_SLOPE = 0.25;
 
 	/** Highest chance of a kettle in a cell (pure moraine plateau). */
 	private static final double KETTLE_MAX_CHANCE = 0.45;
@@ -1566,8 +2097,18 @@ public final class LandscapeModel {
 		double dx = x - kx;
 		double dz = z - kz;
 		double d = Math.sqrt(dx * dx + dz * dz);
-		// Slightly irregular shore.
-		double shore = d - r * (1 + 0.25 * kettle.at(x, z, Math.max(30, r)));
+		if (d - 1.25 * r > KETTLE_BANK) {
+			return null;
+		}
+		// K5.3: slightly irregular shore from a noise sampled along a circle in noise space (a function of the angle, 3–5
+		// lobes) instead of a planar noise with the wavelength r, which made straight stretches over the diameter of about
+		// 2 grid cells of the noise. The amplitude falls to 0 at the center, so the bottom stays continuous.
+		double ca = d > 1e-9 ? dx / d : 1;
+		double sa = d > 1e-9 ? dz / d : 0;
+		double off = 1_000 * kettle.unit(cx, cz, 7);
+		double lobes = 0.75 * kettle.sample(off + 1.1 * ca, 1.1 * sa - off)
+				+ 0.35 * kettle.sample(2.3 * ca - off, off + 2.3 * sa);
+		double shore = d - r * (1 + 0.25 * Math.clamp(lobes, -1.0, 1.0) * Noise.smoothstep(0, 0.5 * r, d));
 		if (shore > KETTLE_BANK) {
 			return null;
 		}
@@ -1576,10 +2117,15 @@ public final class LandscapeModel {
 		if (state == KETTLE_NONE) {
 			return null;
 		}
-		int level = lakeLevel(key, kx, kz, r * 1.3 + 25);
+		int level = kettleLevel(key, kx, kz, r * 1.3 + 25);
+		// Review of K5: no kettle at the sea level (the low hinterland of a low shore, the shore of a lagoon): its peat
+		// would lie below the sea and its water next to the lagoon.
+		if (level < 1) {
+			return null;
+		}
 		double depth = 2 + 8 * kettle.unit(cx, cz, 5);
 		boolean peat = kettle.unit(cx, cz, 6) < 0.4;
-		return new LakeHit(level, depth, shore, peat, 0.25, KETTLE_BANK,
+		return new LakeHit(level, depth, shore, peat, KETTLE_SLOPE, KETTLE_BANK,
 				peat ? ColumnSample.StandingWaterKind.KETTLE_BOG : ColumnSample.StandingWaterKind.KETTLE_POND, key, r,
 				peat && state == KETTLE_OMBROTROPHIC);
 	}
@@ -1604,7 +2150,25 @@ public final class LandscapeModel {
 					+ cb.weight(LandscapeType.OLD_GLACIAL_PLAIN);
 			RiverNetwork.RiverHit river = rivers.query(kx, kz, landElevation(kx, kz), lowland,
 					cb.weight(LandscapeType.FOOTHILLS), cb.weight(LandscapeType.BESKIDS));
-			exists = river.valleyWeight() < 0.3 && coastDistance(kx, kz) > 500 * local;
+			// Review of K5: nor where its influence (shore distance up to KETTLE_BANK) would meet the influence of a sink
+			// lake or the basin of a tunnel valley lake: there it cut their banks and took its level from their bottom, so
+			// their water stood next to lower ground (leaks of up to 57 m). The kettle is whole or absent.
+			double reach = 1.25 * r + KETTLE_BANK + 1;
+			exists = river.valleyWeight() < 0.3 && coastDistance(kx, kz) > 500 * local
+					&& rivers.sinkLakeClearance(kx, kz) > reach + KETTLE_BANK && !kettleTouchesTunnelLake(kx, kz, reach);
+			// Round 2 of the review of K5: where its influence meets a river channel (channelDist, the distance from the
+			// bank of the nearest channel, grows by at most 1 m per meter), only when the flank of its basin stays above the
+			// water of the channel there: the flank rises from the level + 1 m by the slope of the kettle basin from 5 m
+			// beyond its shore (applyLake), and the bank of the channel lies at least channelDist − 1.25 r beyond the shore.
+			// The channel keeps its bed and water while the kettle lowers the ground beside it, so with a channel above the
+			// flank a stream stood on a narrow causeway next to a bog up to 30 m lower (GAMEPLAY, 2 of 1605 kettles). The
+			// level is computed here (once per kettle, cached) only for the kettles near a channel.
+			if (exists && river.channelDist() <= reach + KETTLE_CHANNEL_GAP) {
+				int level = kettleLevel(key, kx, kz, r * 1.3 + 25);
+				double bankShore = river.channelDist() - 1.25 * r - KETTLE_CHANNEL_GAP;
+				exists = bankShore > 5 && Math.floor(river.channelLevel()) + KETTLE_CHANNEL_GAP
+						<= level + KETTLE_SLOPE * (bankShore - 5);
+			}
 			// Ombrotrophic peat: a basin fed only by precipitation, away from watercourses (ecology report, §0.1).
 			ombrotrophic = river.channelDist() - 1.3 * r > 300 * local;
 		}
@@ -1617,20 +2181,106 @@ public final class LandscapeModel {
 	}
 
 	/**
-	 * Lake water level: the lowest ground point on a circle around the basin minus 1 m, computed once
-	 * per lake and cached.
+	 * Water level and reach of the basin of the lake of a traced tunnel valley contour, computed once per contour and
+	 * cached. Round 2 of the review of K5:
+	 * <ul>
+	 * <li>the level is the lowest ground point (terrain before the valleys and lakes, {@link #landElevation}) along the lake
+	 * itself, minus 1 m: at every node of the trace within the lens of the section (and up to TUNNEL_KEEP beyond its
+	 * ends), on the axis and across it at 15 and 35 m, at a quarter, half, three quarters and the whole half-width and 15
+	 * and 35 m beyond it (the strip where {@link #applyLake} raises the ground to the water level + 1 m), with the
+	 * half-width of presence and gate at the node and without the other fades (an upper bound; the fades narrow the lake
+	 * anywhere within it). K5 took the lowest point on a circle of 450 m·k around one canonical
+	 * point of the lake; where the lake ran along a slope its bank became a dam of up to 53 m above the terrain (GAMEPLAY),
+	 * and next to a lagoon the circle could miss the lagoon;</li>
+	 * <li>the reach of the basin grows with the cut, TUNNEL_BANK_PER_CUT times the largest height of the ground above the
+	 * bank (water level + 1 m) at those points and 1.5 tunnelBank beyond the half-width, from tunnelBank up to
+	 * {@link #tunnelBankMax}: the flank of the basin passes into the terrain over 0.4–1.0 of its reach, so with a fixed
+	 * reach of 70 m a cut of 60–130 m (GAMEPLAY moraine plateau) became a wall of up to 5 blocks per block.</li>
+	 * </ul>
+	 * A pure function of the trace, which is the same in every block that finds it ({@link #buildTunnelBlock}).
 	 */
-	private int lakeLevel(long key, double cx, double cz, double radius) {
+	private TunnelLake tunnelLake(TunnelContour c, long k) {
+		TunnelLake cached = tunnelLakes.get(c.levelKey);
+		if (cached != null) {
+			return cached;
+		}
+		double min = Double.POSITIVE_INFINITY;
+		double max = Double.NEGATIVE_INFINITY;
+		double[] offsets = new double[8];
+		for (int q = c.lo; q <= c.hi; q++) {
+			double x = c.xs[q];
+			double z = c.z0 + q * c.dz;
+			double b0 = tunnelBoundary(k, x);
+			double b1 = tunnelBoundary(k + 1, x);
+			double edge = Math.min(z - b0, b1 - z);
+			if (edge < tunnelSill - TUNNEL_KEEP) {
+				continue;
+			}
+			Blend b = blend(x, z);
+			double young = b.weight(LandscapeType.OUTWASH_PLAIN) + b.weight(LandscapeType.MORAINE_PLATEAU);
+			double gate = Noise.smoothstep(0.10, 0.35, tunnel.at(x, z, 50_000 * meso))
+					* Noise.smoothstep(0.2, 0.7, tunnelPresence(young, coastDistance(x, z)));
+			// Without the end of the lens: towards a rounded end the strip of the bank (shore distance below 40 m) stays
+			// almost as wide as the lake while the water narrows to its tip.
+			double half = gate * local * (200 + 500 * (0.5 + 0.5 * tunnel.at(x, z, 9_000 * meso)));
+			// Offsets across the contour measured along x (the distance from the shore is measured across the contour).
+			double across = Math.sqrt(1 + c.slopes[q] * c.slopes[q]);
+			min = Math.min(min, landElevation(x, z));
+			// The actual half-width lies anywhere between 0 and this bound (the other fades), so the whole band.
+			offsets[0] = 15;
+			offsets[1] = 35;
+			offsets[2] = 0.25 * half;
+			offsets[3] = 0.5 * half;
+			offsets[4] = 0.75 * half;
+			offsets[5] = half;
+			offsets[6] = half + 15;
+			offsets[7] = half + 35;
+			for (double off : offsets) {
+				min = Math.min(min, landElevation(x - off * across, z));
+				min = Math.min(min, landElevation(x + off * across, z));
+			}
+			double far = (half + 1.5 * tunnelBank) * across;
+			max = Math.max(max, Math.max(landElevation(x - far, z), landElevation(x + far, z)));
+		}
+		if (min == Double.POSITIVE_INFINITY) {
+			int mid = (c.lo + c.hi) / 2;
+			min = landElevation(c.xs[mid], c.z0 + mid * c.dz);
+		}
+		int level = (int) Math.floor(min) - 1;
+		double bank = Math.clamp(TUNNEL_BANK_PER_CUT * (Math.max(max, min) - (level + 1)), tunnelBank, tunnelBankMax());
+		TunnelLake lake = new TunnelLake(level, bank);
+		if (tunnelLakes.size() > 100_000) {
+			tunnelLakes.clear();
+		}
+		tunnelLakes.put(c.levelKey, lake);
+		return lake;
+	}
+
+	/**
+	 * K5.4 (A3, A3c): water level of a kettle: the lowest point of the surface before the kettles
+	 * ({@link #surfaceBeforeKettle}: after the valleys) on a circle around the basin and at its center, minus 1 m, computed
+	 * once per kettle and cached. A kettle never meets a sink lake or the bank of a tunnel valley lake
+	 * ({@link #kettleState}), so the circle never crosses their water (review of K5: a circle crossing the bottom of a
+	 * tunnel valley lake gave a level up to 57 m below its water, and the kettle cut its bank). M1 took the terrain before the valleys, so
+	 * a kettle on the side of a valley or of the basin of a tunnel valley lake had its level up to 30 m above the
+	 * valley floor, and its peat filled a bowl open towards the valley as a shelf (steps of 15–17 m). The nested queries
+	 * of the river network run here, inside {@link #sample}, only after its own query has finished (its result is a
+	 * record); the level is computed once per kettle (get and put, not computeIfAbsent, which must not recurse).
+	 */
+	private int kettleLevel(long key, double cx, double cz, double radius) {
 		Integer cached = lakeLevels.get(key);
 		if (cached != null) {
 			return cached;
 		}
-		double min = landElevation(cx, cz);
+		double min = surfaceBeforeKettle(cx, cz);
 		for (int i = 0; i < 12; i++) {
 			double a = i * (Math.PI * 2 / 12);
-			min = Math.min(min, landElevation(cx + radius * Math.cos(a), cz + radius * Math.sin(a)));
+			min = Math.min(min, surfaceBeforeKettle(cx + radius * Math.cos(a), cz + radius * Math.sin(a)));
 		}
-		int level = (int) Math.floor(min) - 1;
+		return putLakeLevel(key, (int) Math.floor(min) - 1);
+	}
+
+	private int putLakeLevel(long key, int level) {
 		if (lakeLevels.size() > 500_000) {
 			lakeLevels.clear();
 		}
@@ -1639,9 +2289,50 @@ public final class LandscapeModel {
 	}
 
 	/**
-	 * Carves the lake basin: the bottom below the water level, a flank above the water level fading out to the limit of influence,
-	 * and a shore bank at water level + 1 m where the ground would lie lower. Thanks to this the water
-	 * is always surrounded by land and the function stays continuous.
+	 * A3c: the surface at (x, z) before the kettle ponds, as {@link #sample} computes it: the terrain after the valleys of
+	 * the river network. Without the channels, banks and oxbow lakes of the valley floors, which only matter within the
+	 * floors (a kettle exists only away from valleys, {@link #kettleState}, and its circle reaches at most the sides), and
+	 * without the sink lakes: a kettle exists only where its influence does not meet theirs (review of K5), and its level
+	 * circle lies within its influence. With the outer flank of the basin of a tunnel valley lake, which a kettle may reach
+	 * (but not its bank, {@link #kettleTouchesTunnelLake}).
+	 */
+	private double surfaceBeforeKettle(double x, double z) {
+		Blend b = blend(x, z);
+		double coastD = coastDistance(x, z);
+		double surface = shapeCoast(elevation(b, x, z), coastD, x, z, cliffShore(x, z, b));
+		if (coastD < 0 || surface < 0) {
+			return surface;
+		}
+		double young = b.weight(LandscapeType.OUTWASH_PLAIN) + b.weight(LandscapeType.MORAINE_PLATEAU);
+		double lowland = young + b.weight(LandscapeType.OLD_GLACIAL_PLAIN);
+		RiverNetwork.RiverHit r = rivers.query(x, z, surface, lowland + b.weight(LandscapeType.COASTLAND),
+				b.weight(LandscapeType.FOOTHILLS), b.weight(LandscapeType.BESKIDS));
+		surface = r.terrain();
+		double presence = tunnelPresence(young, coastD);
+		if (presence > 0.05) {
+			LakeHit lake = tunnelLakeAt(x, z, presence, r.floorGap(), r.lakeGap());
+			if (lake != null && lake.shoreDistance <= lake.bank) {
+				surface = applyLake(surface, lake);
+			}
+		}
+		return surface;
+	}
+
+	/** The sink lake of a query result as a basin for {@link #applyLake}. */
+	private static LakeHit sinkLakeHit(RiverNetwork.RiverHit r) {
+		return new LakeHit(r.lakeLevel(), r.lakeDepth(), r.lakeShore(), false, 0.25, KETTLE_BANK,
+				ColumnSample.StandingWaterKind.SINK_LAKE, r.lakeId(), r.lakeRadius(), false);
+	}
+
+	/**
+	 * Carves the lake basin: the bottom below the water level, a flank above the water level that passes into the
+	 * terrain, and a shore bank at water level + 1 m where the ground would lie lower. Thanks to this the water is always
+	 * surrounded by land and the function stays continuous.
+	 *
+	 * <p>K5.4 (A3): the flank blends into the terrain over 0.4–1.0 of the reach of the basin (a lerp), instead of rising
+	 * along a wall of 5000 m · smoothstep at the limit of influence, which left walls of up to 15 m on slopes (and up to
+	 * 100 m around the sink lakes at the foot of the large massifs); a peat bog has no bank and no step of 1.5 m at its
+	 * shore (there is no water to hold): its flank starts at its surface, water level − 0.5 m.
 	 */
 	private static double applyLake(double surface, LakeHit lake) {
 		double s = lake.shoreDistance;
@@ -1650,10 +2341,10 @@ public final class LandscapeModel {
 			double bottom = lake.level - 0.5 - lake.depthBelowLevel * inner;
 			return Math.min(surface, bottom);
 		}
-		double flank = lake.level + 1.0 + lake.slope * Math.max(0, s - 5)
-				+ 5_000.0 * Noise.smoothstep(0.7 * lake.bank, lake.bank, s);
-		double result = Math.min(surface, flank);
-		double raise = 1.0 - Noise.smoothstep(15, 40, s);
+		double base = lake.peat ? lake.level - 0.5 : lake.level + 1.0;
+		double flank = base + lake.slope * Math.max(0, s - 5);
+		double result = Noise.lerp(Noise.smoothstep(0.4 * lake.bank, lake.bank, s), Math.min(surface, flank), surface);
+		double raise = lake.peat ? 0 : 1.0 - Noise.smoothstep(15, 40, s);
 		if (result < lake.level + 1 && raise > 0) {
 			result = Math.max(result, Noise.lerp(raise, result, lake.level + 1.0));
 		}

@@ -25,7 +25,8 @@ import org.junit.jupiter.params.provider.MethodSource;
  * <p>Exceptions, added by the steps that change the terrain on purpose outside valleys and water
  * ({@link #exempt}): the reach of a large Beskid massif (G &gt; 0, from K2), the seam of the 5 × 5 region blending
  * window (weight of a cell outside the 3 × 3 window &gt; 0, from K6), the moraine plateaus (D3), the lagoon and
- * the coastal belt (D2, D5: within the {@code shapeCoast} belt, 25 km·meso from the shoreline). In K0 and K1 there
+ * the coastal belt (D2, D5, step K5: the low coast reaches {@code COAST_LOW_END} = 6 km·meso from the shoreline, within
+ * the {@code shapeCoast} belt of 25 km·meso). In K0 and K1 there
  * were none, and the terrain was identical to M1; K2 exempts the reach of the large massifs.
  *
  * <p>Grids: around (0, 0) at both scales (every 97 m at realistic scale, every 23 m at gameplay scale), one grid
@@ -76,7 +77,9 @@ class TerrainLocalityTest {
 	 */
 	static boolean exempt(LandscapeModel m, double x, double z, ColumnSample s) {
 		// K2: within the reach of a large Beskid massif (G > 0) the massif changes landElevation on purpose.
-		return m.greatMassifStrength(x, z) > 0;
+		// D2, D5 (step K5): the low coast, its dunes and lagoons reach COAST_LOW_END m·meso from the shoreline (the rest of
+		// the belt of shapeCoast, up to 25 km·meso, is unchanged and still compared).
+		return m.greatMassifStrength(x, z) > 0 || m.coastDistance(x, z) < LandscapeModel.COAST_LOW_END * m.scale().meso();
 	}
 
 	@ParameterizedTest(name = "{0}")

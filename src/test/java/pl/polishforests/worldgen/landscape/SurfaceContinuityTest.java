@@ -36,9 +36,9 @@ import pl.polishforests.worldgen.chunk.VerticalScale;
  * vertical scale of the window ({@link VerticalScale}), at most {@value #D4B_BLOCKS} blocks per block on dry land
  * outside standing water and outside the coastal belt (within 3 km·meso of the shoreline). The steep domes of the
  * gameplay massifs (about 5 m per 1 m, about 1.2 blocks per block) are not cliffs in the game; a step above 2 blocks per
- * block is. The coastal belt is printed separately: the seaward wall of the flat coastal strip lies a few meters above
- * the sea, where the gameplay scale maps 1 m to up to 1.9 blocks, so its 2.2 m per 1 m make 2.5 blocks per block (step
- * K5b, decision D5, rebuilds that coast).</li>
+ * block is. The coastal belt is printed separately: the seaward wall of a cliff lies a few meters above the sea, where
+ * the gameplay scale maps 1 m to up to 1.9 blocks, so its 2.5 m per 1 m make up to 2.4 blocks per block (until step K5b
+ * the whole coast was a flat strip 13–24 m high with such a wall; since D5 only the cliffs, about a fifth of it).</li>
  * </ul>
  *
  * <p>The test prints every jump with its surroundings (valley floor or slope of order n, kind of standing water,
@@ -51,12 +51,9 @@ import pl.polishforests.worldgen.chunk.VerticalScale;
  * massifs (review of the design), which have a massif since step K2, and a perched tunnel valley lake (review of
  * K3, a check for step K5.2). Seed 20260927, region slider 1.0.
  *
- * <p>Transects are computed in parallel, each sampled in order. The scan itself is deterministic, but the model is not
- * yet: the water level of a tunnel valley lake depends on the order in which columns are sampled (known issue
- * inherited from M1, {@link TerrainDeterminismTest}, fixed in step K5.2). In {@code realistic_moraine} the lake at
- * (−82818, 10254) then gives 15 or 16 jumps (−2.51 m, or −2.18 m and +1.82 m) from run to run, and its limits keep a
- * margin of more than the possible 1–2 m level change until K5.2. The other windows gave the same result in repeated
- * runs.
+ * <p>Transects are computed in parallel, each sampled in order. The scan and the model are deterministic: until step
+ * K5.2 the water level of a tunnel valley lake depended on the order in which columns are sampled (an issue inherited
+ * from M1, {@link TerrainDeterminismTest}), and {@code realistic_moraine} gave 15 or 16 jumps from run to run.
  */
 @Tag("slow")
 class SurfaceContinuityTest {
@@ -142,6 +139,15 @@ class SurfaceContinuityTest {
 	 * cross-sections tie, slope 1.5 -> 3.7 m per 1 m without a step: (69755, -29217) and (70079, -27910)),
 	 * gameplay_massif_1718 4.71 -> 2.96 (back to D4_STEP); the other windows unchanged. Largest step in blocks 1.55
 	 * (gameplay_massif_spawn). The dense grids of {@link #denseGridHasNoCliffs} check the mountain windows in full.
+	 *
+	 * <p>Step K5 (standing waters: oxbow crescents K5.1, tunnel valley lakes ending before valleys and with a canonical
+	 * level K5.2, kettle shores K5.3, basins without a wall and the kettle level after the valleys K5.4 with A3c, lobed
+	 * sink lake shores K5.5; K5b: the low dune coast D5 and the lagoon D2): no jump at standing water in any window, so the
+	 * goals of the design §3.3 for the windows with standing water are met (gameplay_center 14 -> 0, also without the
+	 * kettle bog at (5761, −4758); gameplay_moraine 13 -> 0; realistic_lowland 2 -> 0; realistic_moraine 15–16 -> 0;
+	 * gameplay_tunnel_lake_3519 25 -> 0) and their limits are 0. The other windows are unchanged. In the coastal belt the
+	 * seaward wall of a cliff (D5: about a fifth of the coast) keeps 2.5 m per 1 m, up to 2.40 blocks per block at gameplay
+	 * scale (gameplay_center), a cliff, not a flat strip with a wall along the whole coast as before.
 	 */
 	static Stream<Window> windows() {
 		LandscapeScale g = LandscapeScale.GAMEPLAY;
@@ -151,23 +157,22 @@ class SurfaceContinuityTest {
 		double v = D4_STEP;
 		return Stream.of(
 				new Window("gameplay_beskids", g, 27_609, 3_254, 3_000, 0, 0, 0, v, "<= 8, none at water" + d4),
-				// Standing water (kettle bogs and ponds, tunnel valley lakes): K5.4 (A3) and K5.2 must bring it to the goal.
-				new Window("gameplay_center", g, 0, 0, 10_000, 14, 20.31, 14, v,
+				// Standing water: 14 jumps at kettle bogs and ponds and tunnel valley lakes until K4c, 0 since K5 (goal met).
+				new Window("gameplay_center", g, 0, 0, 10_000, 0, 0, 0, v,
 						"<= 1 after A3c, 0 at water; without A3c <= 3, at water only (5761, -4758)" + d4),
 				new Window("gameplay_stream", g, 3_890, 1_959, 2_000, 6, 3.03, 0, v, "<= 5 (the rest: A16 seam, K6)" + d4),
-				new Window("gameplay_moraine", g, -1_074, -2_368, 3_000, 13, 67.16, 13, v, "<= 1, 0 at water" + d4),
+				new Window("gameplay_moraine", g, -1_074, -2_368, 3_000, 0, 0, 0, v, "<= 1, 0 at water" + d4),
 				new Window("realistic_beskids", r, 154_834, 1_058_738, 30_000, 0, 0, 0, v, "<= 1, <= 1.1 m" + d4),
-				// The kettle bog at (-92914, 80060): K5.4 (A3, basins without a wall).
-				new Window("realistic_lowland", r, 0, 0, 100_000, 2, 1.51, 2, v, "0" + d4),
-				// 15 or 16 jumps (tunnel valley lake level, see the class comment): the limits cover both until K5.2.
-				new Window("realistic_moraine", r, -66_495, 21_873, 20_000, 16, 6.9, 16, v, "0" + d4),
+				// The kettle bog at (-92914, 80060) until K4c; 0 since K5.4 (A3, basins without a wall).
+				new Window("realistic_lowland", r, 0, 0, 100_000, 0, 0, 0, v, "0" + d4),
+				// 15 or 16 jumps at tunnel valley lakes and kettles until K4c (14 after K4); 0 since K5.
+				new Window("realistic_moraine", r, -66_495, 21_873, 20_000, 0, 0, 0, v, "0" + d4),
 				new Window("realistic_stream", r, 72_208, 1_009_510, 10_000, 0, 0, 0, v, "0" + d4),
 				// Perched tunnel valley lake (review of K3): level 121 m held by a bank 1-2 px wide above a river valley
 				// floor at 32-37 m (dry step about 86 m, a straight SW shore about 170 m long). Inherited from M1, moved by
 				// K3 (valleyWeight = max lowers tunnelPresence). Measured after K3: 23 jumps, after K4 25, all at standing
-				// water, largest 85.83 / 85.81 m; limits with a margin for the order-dependent lake level (K5.2). K5.2
-				// (floorGap) must remove it.
-				new Window("gameplay_tunnel_lake_3519", g, 3_519, -4_356, 300, 27, 88.0, 27, v,
+				// water, largest 85.83 / 85.81 m. K5.2 (the lake ends before the valley, floorGap) removed it: 0 jumps.
+				new Window("gameplay_tunnel_lake_3519", g, 3_519, -4_356, 300, 0, 0, 0, v,
 						"0 (K5.2: the tunnel lake ends before the valley)" + d4),
 				// Windows on large Beskid massifs (review of the design). K0 without the massifs: 46 / 22.32 m, 54 / 68.13
 				// m, 59 / 28.48 m, 51 / 39.28 m, 0; after the review of K2: 42 / 22.02, 93 / 69.50, 41 / 58.01, 16 / 15.69
@@ -178,7 +183,14 @@ class SurfaceContinuityTest {
 						"<= 54 (K0, without the massif)" + d4),
 				new Window("gameplay_massif_1718", g, -217_490, 246_246, 2_000, 0, 0, 0, v, "max <= 28.48 m (K0)" + d4),
 				new Window("gameplay_massif_1710", g, -41_536, 183_081, 2_000, 1, 0.48, 0, v, "0" + d4),
-				new Window("realistic_massif_1723", r, 147_582, -1_525_292, 8_000, 0, 0, 0, v, "0" + d4));
+				new Window("realistic_massif_1723", r, 147_582, -1_525_292, 8_000, 0, 0, 0, v, "0" + d4),
+				// Review of K5 (D2): lagoons behind a low shore, with their ends along the shore. The first version of D2
+				// left the basin at (1 − bowl) · terrain where its depth reached zero, a step back to the terrain of up to
+				// 6 m on 1 m (5–7 blocks per block) along the edge and at the ends of a lagoon. After round 1: no jump at the
+				// lagoons; the jumps left (2 / 0.99 m and 7 / 0.93 m) are the banks of river mouths raised to 1 m next to a
+				// beach at the sea level (M1).
+				new Window("realistic_lagoon", r, -220_000, -155_000, 6_000, 2, 1.0, 0, v, "0 at the lagoon (D2)" + d4),
+				new Window("gameplay_lagoon", g, 450, 11_000, 1_500, 7, 0.94, 0, v, "0 at the lagoon (D2)" + d4));
 	}
 
 	static boolean dry(ColumnSample s) {
@@ -344,7 +356,8 @@ class SurfaceContinuityTest {
 	 * fields of straight ribs up to 2.5 blocks per block, in windows where the transects showed neither. Between grid
 	 * neighbors in both directions, on dry land outside standing water and outside the coastal belt: at most
 	 * {@link #D4B_BLOCKS} blocks per block (decision D4b) and at most the valley-made step limit of the window per 1 m
-	 * (decision D4, with the ties of D4a: the measured state of the dense scan, {@link #DENSE_VALLEY}).
+	 * (decision D4, with the ties of D4a: the measured state of the dense scan, {@link #DENSE_VALLEY}), both over 1 m:
+	 * a pair whose mean step over 2 m is large is resampled at its midpoint ({@link #pair}, re-review of K4c).
 	 */
 	@ParameterizedTest(name = "{0}")
 	@MethodSource("denseWindows")
@@ -356,11 +369,12 @@ class SurfaceContinuityTest {
 		double x0 = win.cx() - win.radius();
 		double z0 = win.cz() - win.radius();
 		long t0 = System.nanoTime();
+		double valleyLimit = DENSE_VALLEY.getOrDefault(win.name(), D4_STEP);
 		// Bands of rows, each with the row before it: {largest blocks per block, x, z, largest valley-made step per 1 m, x, z,
-		// pairs above D4B_BLOCKS}.
+		// steps above D4B_BLOCKS, pairs refined at the midpoint}.
 		int band = 16;
 		double[][] per = IntStream.range(0, (n + band - 1) / band).parallel().mapToObj(b -> {
-			double[] best = new double[7];
+			double[] best = new double[8];
 			double[] surf = new double[n];
 			double[] raw = new double[n];
 			boolean[] ok = new boolean[n];
@@ -382,11 +396,13 @@ class SurfaceContinuityTest {
 					if (!ok[i]) {
 						continue;
 					}
+					double x = x0 + i * DENSE_STEP;
 					if (own && i > 0 && ok[i - 1]) {
-						pair(best, vs, surf[i], surf[i - 1], raw[i], raw[i - 1], x0 + (i - 0.5) * DENSE_STEP, z);
+						pair(m, best, vs, surf[i], surf[i - 1], raw[i], raw[i - 1], x, z, x - DENSE_STEP, z, valleyLimit,
+								coastBelt);
 					}
 					if (j > jStart && pOk[i]) {
-						pair(best, vs, surf[i], pSurf[i], raw[i], pRaw[i], x0 + i * DENSE_STEP, z - 0.5 * DENSE_STEP);
+						pair(m, best, vs, surf[i], pSurf[i], raw[i], pRaw[i], x, z, x, z - DENSE_STEP, valleyLimit, coastBelt);
 					}
 				}
 				double[] t = pSurf;
@@ -401,7 +417,7 @@ class SurfaceContinuityTest {
 			}
 			return best;
 		}).toArray(double[][]::new);
-		double[] best = new double[7];
+		double[] best = new double[8];
 		for (double[] p : per) {
 			for (int q = 0; q < 6; q += 3) {
 				if (p[q] > best[q]) {
@@ -409,21 +425,53 @@ class SurfaceContinuityTest {
 				}
 			}
 			best[6] += p[6];
+			best[7] += p[7];
 		}
-		double valleyLimit = DENSE_VALLEY.getOrDefault(win.name(), D4_STEP);
-		System.out.printf(Locale.ROOT, "[dense] %s: %d x %d samples every %.1f m: largest step %.2f blocks per block at (%.1f, "
-				+ "%.1f), steps above %.1f: %d; largest valley-made step %.2f m per 1 m at (%.1f, %.1f) (limit %.2f) (%.1f s)%n",
-				win.name(), n, n, DENSE_STEP, best[0], best[1], best[2], D4B_BLOCKS, (long) best[6], best[3], best[4], best[5],
-				valleyLimit, (System.nanoTime() - t0) / 1e9);
+		System.out.printf(Locale.ROOT, "[dense] %s: %d x %d samples every %.1f m, %d pairs refined at the midpoint: largest 1 m "
+				+ "step %.2f blocks per block at (%.1f, %.1f), steps above %.1f: %d; largest valley-made step %.2f m per 1 m at "
+				+ "(%.1f, %.1f) (limit %.2f) (%.1f s)%n", win.name(), n, n, DENSE_STEP, (long) best[7], best[0], best[1], best[2],
+				D4B_BLOCKS, (long) best[6], best[3], best[4], best[5], valleyLimit, (System.nanoTime() - t0) / 1e9);
 		assertTrue(best[0] <= D4B_BLOCKS, String.format(Locale.ROOT, "%s: step of %.2f blocks per block at (%.1f, %.1f), "
 				+ "limit %.1f (decision D4b)", win.name(), best[0], best[1], best[2], D4B_BLOCKS));
 		assertTrue(best[3] <= valleyLimit, String.format(Locale.ROOT, "%s: valley-made step of %.2f m per 1 m at (%.1f, %.1f), "
 				+ "limit %.2f (decisions D4, D4a)", win.name(), best[3], best[4], best[5], valleyLimit));
 	}
 
-	/** One pair of grid neighbors of {@link #denseGridHasNoCliffs}: steps per 1 m (block) into {@code best}. */
-	private static void pair(double[] best, VerticalScale vs, double h, double hp, double r, double rp, double x, double z) {
-		double bl = Math.abs(vs.blocksForMeters(h) - vs.blocksForMeters(hp)) / DENSE_STEP;
+	/**
+	 * One pair of grid neighbors (x, z) and (xp, zp) of {@link #denseGridHasNoCliffs}, {@value #DENSE_STEP} m apart: the
+	 * steps over 1 m (one block) into {@code best} (re-review of K4c: the mean over 2 m understated a 1 m step by up to
+	 * half). A pair whose mean step over 2 m exceeds {@value #DENSE_REFINE} of a limit is sampled at its midpoint and
+	 * measured as two 1 m steps (a 1 m step above a limit with the mean below that share would need the other half to
+	 * fall back by more than the rest, i.e. a crest or a notch narrower than 2 m); the other pairs count their mean.
+	 */
+	private static void pair(LandscapeModel m, double[] best, VerticalScale vs, double h, double hp, double r, double rp,
+			double x, double z, double xp, double zp, double valleyLimit, double coastBelt) {
+		double b = vs.blocksForMeters(h);
+		double bp = vs.blocksForMeters(hp);
+		double bl = Math.abs(b - bp) / DENSE_STEP;
+		double e = (Math.abs(h - hp) - Math.abs(r - rp)) / DENSE_STEP;
+		double mx = 0.5 * (x + xp);
+		double mz = 0.5 * (z + zp);
+		if (bl > DENSE_REFINE * D4B_BLOCKS || e > DENSE_REFINE * valleyLimit) {
+			ColumnSample s = m.sample(mx, mz);
+			best[7]++;
+			if (dryLand(s) && s.terrain().coastD() >= coastBelt) {
+				double hm = s.surface();
+				double rm = s.terrain().rawSurface();
+				double bm = vs.blocksForMeters(hm);
+				double half = DENSE_STEP / 2;
+				step(best, Math.abs(b - bm) / half, (Math.abs(h - hm) - Math.abs(r - rm)) / half, 0.5 * (x + mx),
+						0.5 * (z + mz));
+				step(best, Math.abs(bm - bp) / half, (Math.abs(hm - hp) - Math.abs(rm - rp)) / half, 0.5 * (mx + xp),
+						0.5 * (mz + zp));
+				return;
+			}
+		}
+		step(best, bl, e, mx, mz);
+	}
+
+	/** One step of {@link #pair}: blocks per block and the valley-made step per 1 m at (x, z) into {@code best}. */
+	private static void step(double[] best, double bl, double e, double x, double z) {
 		if (bl > best[0]) {
 			best[0] = bl;
 			best[1] = x;
@@ -432,13 +480,15 @@ class SurfaceContinuityTest {
 		if (bl > D4B_BLOCKS) {
 			best[6]++;
 		}
-		double e = (Math.abs(h - hp) - Math.abs(r - rp)) / DENSE_STEP;
 		if (e > best[3]) {
 			best[3] = e;
 			best[4] = x;
 			best[5] = z;
 		}
 	}
+
+	/** {@link #pair}: share of a limit above which the mean step over 2 m is refined at the midpoint. */
+	static final double DENSE_REFINE = 0.4;
 
 	/**
 	 * Dense scan of decision D4b at realistic scale (round 2 of the review of K4c): the windows realistic_beskids and
@@ -454,7 +504,12 @@ class SurfaceContinuityTest {
 	 * D4a), and at one tie ((142364, 1040652)) the sweep cut softens a scarp of the projection (up to 16.8 m per 1 m) to
 	 * 2.7 m per 1 m. The fix (the projection on the valley axis itself, together with the ties of D4a) is in M5; until
 	 * then the limits are the measured state ({@link #REAL_DENSE_BLOCKS}, {@link #REAL_DENSE_PAIRS}), so the walls do not
-	 * get worse.
+	 * get worse. Step K5 tried once more to widen the wall of the projection by that factor where the distinctness g is
+	 * small (prototype R5, docs/m2/poprawka-geometrii.md): the factor changes at the rate of t of the arm, 1 / (|P'| g)
+	 * per meter, so the wall width jumped by hundreds of meters within a meter near the folds (up to 101.8 blocks per
+	 * block in realistic_massif_1723, 13.1 with a gate on g), and R5 stays an exception until M5. A full scan of
+	 * realistic_beskids every 4 m with the steps above 0.5 blocks per block resampled every 1 m finds the same six places
+	 * of {@link #REAL_SPOTS} (2.67 blocks per block, 1508 steps above 2) and no other.
 	 */
 	@ParameterizedTest(name = "{0}")
 	@MethodSource("realisticDenseWindows")
@@ -561,11 +616,13 @@ class SurfaceContinuityTest {
 	static final double DENSE_STEP = 2.0;
 	/**
 	 * Limits of the valley-made step (m per 1 m) on the dense grid where ties of the arms are left (decision D4a), the
-	 * measured state after round 1 of the review of K4c (4.26, 4.47, 4.09, 3.50 m per 1 m; gameplay_massif_1710 2.97);
-	 * elsewhere {@link #D4_STEP}. Steps in blocks: at most 1.56 blocks per block, none above 2.
+	 * measured state; elsewhere {@link #D4_STEP}. After round 1 of the review of K4c, as the mean over 2 m: 4.26, 4.47,
+	 * 4.09, 3.50 m per 1 m (gameplay_massif_1710 2.97), at most 1.56 blocks per block. Since step K5 (re-review of K4c)
+	 * the steps are measured over 1 m ({@link #pair}): 5.78, 5.51, 4.57, 3.53 m per 1 m (gameplay_massif_1710 2.99), at
+	 * most 1.71 blocks per block, none above 2; the terrain is the same.
 	 */
-	static final Map<String, Double> DENSE_VALLEY = Map.of("gameplay_beskids", 4.3, "gameplay_massif_spawn", 4.5,
-			"gameplay_massif_1660", 4.1, "gameplay_massif_1718", 3.55);
+	static final Map<String, Double> DENSE_VALLEY = Map.of("gameplay_beskids", 5.8, "gameplay_massif_spawn", 5.55,
+			"gameplay_massif_1660", 4.6, "gameplay_massif_1718", 3.55);
 
 	/**
 	 * Place of a cliff on the flank of a large massif found in the review of step K2 (grid scan, the transects of
@@ -596,8 +653,14 @@ class SurfaceContinuityTest {
 	 * (91743, 169601) -> (91295, 169780), whose first part is bent around the points of the spot, and the sweep cut
 	 * removed them, docs/m2/poprawka-geometrii.md, K4b): 0 pairs, largest 5.9 m and 10.6 m (steep valley sides on the
 	 * dome, 2.5 m apart). Step K4c (the sweep cut only near ties, decision D4a): blades 0 pairs, largest 13.4 m over 2.5 m
-	 * at (91689.5, 169759.5) (a side of an order 1 valley, 5.4 m per 1 m, at most 1.6 blocks per block), fan unchanged. The bank walls of the new sink lakes at the foot of the massifs remain ({@code applyLake}, step
-	 * K5.4, A3: basins without a wall). Goal: no pair above {@value #CLIFF} m in any spot.
+	 * at (91689.5, 169759.5) (a side of an order 1 valley, 5.4 m per 1 m, at most 1.6 blocks per block), fan unchanged.
+	 * Step K5 (K5.4, A3: the flank of a basin passes into the terrain over 0.4–1.0 of its reach instead of a wall of
+	 * 5000 m · smoothstep): the sink lake east of the 1723 m massif 230 / 46.0 m -> 0 / 13.3 m, the sink lake south-east of
+	 * the 1659 m massif 148 / 97.4 m -> 50 / 30.2 m (its level lies about 100 m below the steep flank of the massif
+	 * around it, and the flank of the basin, 27 m wide, climbs that at up to 6 m per 1 m; the reach of a sink lake basin
+	 * is bound to the tile filter of the river network, M5). Blades 11.9 m. Round 1 after the review of K5: the third
+	 * harmonic of the sink lake shore (K5.5) moves the shore of the 1659 m lake along the steep flank: 50 / 30.2 m -> 62 /
+	 * 31.7 m, the same wall of the basin (M5). Goal: no pair above {@value #CLIFF} m in any spot.
 	 */
 	static Stream<Spot> spots() {
 		LandscapeScale g = LandscapeScale.GAMEPLAY;
@@ -607,16 +670,16 @@ class SurfaceContinuityTest {
 				new Spot("realistic_box_canyon_1698", r, 144_478, -1_474_422, 1_000, 5, 0, 5.7,
 						"K0 0, 6.9 m; K2 334, 377.9 m; K2 review 0, 5.6 m"),
 				// 151 m behind the source of (150591, -1525742), at the new sink lake east of the 1723 m massif.
-				new Spot("realistic_sink_lake_1723", r, 150_900, -1_525_100, 1_100, 5, 230, 46.0,
-						"K0 0, 7.8 m; K2 313, 151.1 m; K2 review 231, 45.9 m"),
+				new Spot("realistic_sink_lake_1723", r, 150_900, -1_525_100, 1_100, 5, 0, 13.4,
+						"K0 0, 7.8 m; K2 313, 151.1 m; K2 review 231, 45.9 m; K4c 230, 46.0 m"),
 				// 100 m wall and a star of wedges around the sink lake south-east of the massif (515882, -1401302).
-				new Spot("realistic_sink_lake_1659", r, 518_000, -1_404_342, 1_000, 5, 148, 97.4,
-						"K0 0, 6.3 m; K2 161, 100.6 m; K2 review 148, 97.3 m"),
+				new Spot("realistic_sink_lake_1659", r, 518_000, -1_404_342, 1_000, 5, 62, 31.8,
+						"K0 0, 6.3 m; K2 161, 100.6 m; K2 review 148, 97.3 m; K4c 148, 97.4 m; K5 50, 30.2 m"),
 				// The 1 km deep slot canyon in the dome of the massif (258824, -1539366).
 				new Spot("realistic_slot_1700", r, 260_024, -1_538_100, 1_000, 5, 0, 10.3,
 						"K0 0, 6.2 m; K2 1915, 1021.6 m; K2 review 0, 10.2 m"),
 				// Blades of 84 m on the flank of the gameplay massif (90847, 171052).
-				new Spot("gameplay_blades_1707", g, 91_727, 169_377, 500, 2.5, 0, 13.5,
+				new Spot("gameplay_blades_1707", g, 91_727, 169_377, 500, 2.5, 0, 12.0,
 						"K0 0, 12.9 m; K2 321, 83.1 m; K2 review 320, 83.1 m; K4 exact minima 10, 31.4 m; K4b 0, 5.9 m"),
 				// Fan on the north-west flank of the gameplay massif (129584, 76912).
 				new Spot("gameplay_fan_1673", g, 128_900, 76_850, 500, 2.5, 0, 10.7,
@@ -679,7 +742,7 @@ class SurfaceContinuityTest {
 		LandscapeModel m = new LandscapeModel(SEED, spot.scale(), 1.0);
 		double[] r = spotScan(m, spot);
 		System.out.printf(Locale.ROOT, "[cliffs] %s (%s, (%.0f, %.0f), half-side %.0f m, every %.1f m): %d pairs > %.0f m, largest "
-				+ "%.1f m at (%.1f, %.1f); limits %d / %.1f m; earlier: %s; goal: none (lake banks: K5.4)%n", spot.name(), spot.scale().id(),
+				+ "%.1f m at (%.1f, %.1f); limits %d / %.1f m; earlier: %s; goal: none%n", spot.name(), spot.scale().id(),
 				spot.cx(), spot.cz(), spot.half(), spot.step(), (long) r[0], CLIFF, r[1], r[2], r[3], spot.maxPairs(),
 				spot.maxHeight(), spot.before());
 		assertTrue(r[0] <= spot.maxPairs(), spot.name() + ": " + (long) r[0] + " cliff pairs, limit " + spot.maxPairs());

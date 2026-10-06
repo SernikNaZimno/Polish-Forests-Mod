@@ -260,7 +260,9 @@ class RiverNetworkTest {
 	 * the heads A5; K4c: the sweep cut only near ties, the arc of the head, the mouth funnel as valley floor for the
 	 * habitat fields): summit cut 20.4 and 51.5 m (K4 with the first sweep cut K4b: 20.5 and 58.0 m; after the review of K2:
 	 * 19.6 and 50.6 m), core cut 737.3 and 855.8 m (K4b: 737.3, 855.8), 1620 and 151 floor columns (K4b: 1604, 151; the
-	 * funnels of G3 count as floor now), the deepest at G 0.502 and 0.345. Largest cut of the summit area (G &gt; 0.9) in m.
+	 * funnels of G3 count as floor now), the deepest at G 0.502 and 0.345. Step K5: 1621 floor or water columns at
+	 * realistic scale (the lobed shores of the sink lakes, K5.5, which are the only water of the cores). Largest cut of the
+	 * summit area (G &gt; 0.9) in m.
 	 *
 	 * <p>Deviation from the design (criterion: cut of the summit area below 50 m; docs/m2/poprawka-geometrii.md, K4 and
 	 * K4c): at gameplay scale the deepest cut, 51.5 m at (109332, 286015) on the massif (109062, 285995), is the upper edge of
@@ -275,7 +277,7 @@ class RiverNetworkTest {
 	/** Largest cut of the core (G &gt; 0.3) in m. */
 	static final double[] CORE_CUT = {742, 856};
 	/** Largest number of core columns on a valley floor or in water. */
-	static final int[] CORE_FLOOR = {1_620, 151};
+	static final int[] CORE_FLOOR = {1_625, 151};
 	/** Largest massif strength G of a core column on a valley floor or in water. */
 	static final double[] CORE_FLOOR_G = {0.51, 0.35};
 
@@ -950,9 +952,12 @@ class RiverNetworkTest {
 	 * gameplay scale, 18.3 m at (152761, 1054313) and 2.9 m at (126918, 1032080) at realistic scale); its maximum over a
 	 * fixed family of node cross-sections left fields of straight ribs at ties ((27130, 2156), (70385, −31570), (28492,
 	 * 872), the massifs at (−216920, 247938), (−217788, 244544), (70403, −32435)); the random transects of
-	 * {@link SurfaceContinuityTest} missed both. On dry land outside standing water: no step between neighbors larger
-	 * than {@value #SCARP_JUMP} m (the scarps: 3–20 m between columns 0.25 m apart) and at most
-	 * {@code SurfaceContinuityTest.D4B_BLOCKS} blocks per block over 1 m (decision D4b).
+	 * {@link SurfaceContinuityTest} missed both. On dry land outside standing water: no discontinuity of the river
+	 * terrain (every pair of neighbors that differs by more than {@value #FAMILY_PAIR} m and whose midpoint does not
+	 * split the difference is bisected as in {@link #sweepCutIsContinuousWhereItsFamilyChanges}, at most
+	 * {@value #FAMILY_JUMP} m left; the scarps were 3–20 m between columns 0.25 m apart, and the first threshold of 3 m per
+	 * 0.5 m did not see steps of 0.5–2 m, re-review of K4c) and at most {@code SurfaceContinuityTest.D4B_BLOCKS} blocks per
+	 * block over 1 m (decision D4b).
 	 */
 	@Test
 	void sweepCutIsContinuousAtTheReviewedScarps() {
@@ -978,10 +983,35 @@ class RiverNetworkTest {
 					}
 					return row;
 				}).toArray(double[][][]::new);
+				double x0 = c[0] - SCARP_SIDE / 2;
+				double z0 = c[1] - SCARP_SIDE / 2;
+				RiverNetwork net = networkOf(m);
+				// Re-review of K4c: every pair of dry neighbors that differs by more than FAMILY_PAIR and whose midpoint
+				// does not split the difference is bisected on the river terrain (a threshold of 3 m per 0.5 m did not see
+				// steps of 0.5–2 m); per pair {step after bisection, x, z}.
+				double[][] steps = IntStream.range(0, 2 * n * n).parallel().mapToObj(q -> {
+					int k = q >> 1;
+					int i = k % n;
+					int j = k / n;
+					int i1 = (q & 1) == 0 ? i + 1 : i;
+					int j1 = (q & 1) == 0 ? j : j + 1;
+					if (i1 >= n || j1 >= n || rows[j][2][i] == 0 || rows[j1][2][i1] == 0
+							|| Math.abs(rows[j1][0][i1] - rows[j][0][i]) <= FAMILY_PAIR) {
+						return null;
+					}
+					return bisectedStep(m, net, x0 + i * SCARP_STEP, z0 + j * SCARP_STEP, x0 + i1 * SCARP_STEP,
+							z0 + j1 * SCARP_STEP);
+				}).filter(v -> v != null).toArray(double[][]::new);
 				double jump = 0;
+				String jumpAt = "-";
+				for (double[] s : steps) {
+					if (s[0] > jump) {
+						jump = s[0];
+						jumpAt = String.format(Locale.ROOT, "(%.4f, %.4f)", s[1], s[2]);
+					}
+				}
 				double blocks = 0;
 				double valley = 0;
-				String jumpAt = "-";
 				String blocksAt = "-";
 				for (int j = 0; j < n; j++) {
 					for (int i = 0; i < n; i++) {
@@ -989,19 +1019,10 @@ class RiverNetworkTest {
 							continue;
 						}
 						for (int dir = 0; dir < 2; dir++) {
-							int i1 = dir == 0 ? i + 1 : i;
-							int j1 = dir == 0 ? j : j + 1;
 							int i2 = dir == 0 ? i + per : i;
 							int j2 = dir == 0 ? j : j + per;
-							double x = c[0] - SCARP_SIDE / 2 + i * SCARP_STEP;
-							double z = c[1] - SCARP_SIDE / 2 + j * SCARP_STEP;
-							if (i1 < n && j1 < n && rows[j1][2][i1] > 0) {
-								double d = Math.abs(rows[j1][0][i1] - rows[j][0][i]);
-								if (d > jump) {
-									jump = d;
-									jumpAt = String.format(Locale.ROOT, "(%.2f, %.2f)", x, z);
-								}
-							}
+							double x = x0 + i * SCARP_STEP;
+							double z = z0 + j * SCARP_STEP;
 							if (i2 < n && j2 < n && rows[j2][2][i2] > 0) {
 								double bl = Math.abs(vs.blocksForMeters(rows[j2][0][i2]) - vs.blocksForMeters(rows[j][0][i]));
 								if (bl > blocks) {
@@ -1014,11 +1035,11 @@ class RiverNetworkTest {
 						}
 					}
 				}
-				System.out.printf(Locale.ROOT, "[scarps] %s (%.1f, %.1f): largest step between neighbors %.3f m per %.2f m at %s, "
-						+ "%.2f blocks per block at %s, valley-made step %.2f m per 1 m%n", sc.id(), c[0], c[1], jump, SCARP_STEP,
-						jumpAt, blocks, blocksAt, valley);
-				assertTrue(jump <= SCARP_JUMP, String.format(Locale.ROOT, "%s (%.1f, %.1f): step of %.2f m per %.2f m at %s",
-						sc.id(), c[0], c[1], jump, SCARP_STEP, jumpAt));
+				System.out.printf(Locale.ROOT, "[scarps] %s (%.1f, %.1f): %d pairs bisected, largest remaining step of the river "
+						+ "terrain %.6f m at %s, %.2f blocks per block at %s, valley-made step %.2f m per 1 m%n", sc.id(), c[0], c[1],
+						steps.length, jump, jumpAt, blocks, blocksAt, valley);
+				assertTrue(jump <= FAMILY_JUMP, String.format(Locale.ROOT, "%s (%.1f, %.1f): the river terrain steps by %.3f m at %s",
+						sc.id(), c[0], c[1], jump, jumpAt));
 				assertTrue(blocks <= SurfaceContinuityTest.D4B_BLOCKS, String.format(Locale.ROOT,
 						"%s (%.1f, %.1f): %.2f blocks per block at %s (decision D4b)", sc.id(), c[0], c[1], blocks, blocksAt));
 			}
@@ -1136,34 +1157,11 @@ class RiverNetworkTest {
 					if (i1 >= n || j1 >= n) {
 						return null;
 					}
-					double ha = h[k];
-					double hb = h[j1 * n + i1];
-					if (Math.abs(hb - ha) <= FAMILY_PAIR) {
+					if (Math.abs(h[j1 * n + i1] - h[k]) <= FAMILY_PAIR) {
 						return null;
 					}
-					double xa = x0 + i * FAMILY_STEP;
-					double za = z0 + j * FAMILY_STEP;
-					double xb = x0 + i1 * FAMILY_STEP;
-					double zb = z0 + j1 * FAMILY_STEP;
-					double hm = riverTerrain(m, net, 0.5 * (xa + xb), 0.5 * (za + zb));
-					if (Math.max(Math.abs(hm - ha), Math.abs(hb - hm)) <= 0.7 * Math.abs(hb - ha)) {
-						return null;
-					}
-					for (int it = 0; it < FAMILY_BISECTIONS; it++) {
-						double xm = 0.5 * (xa + xb);
-						double zm = 0.5 * (za + zb);
-						double v = riverTerrain(m, net, xm, zm);
-						if (Math.abs(v - ha) >= Math.abs(hb - v)) {
-							xb = xm;
-							zb = zm;
-							hb = v;
-						} else {
-							xa = xm;
-							za = zm;
-							ha = v;
-						}
-					}
-					return new double[] {Math.abs(hb - ha), 0.5 * (xa + xb), 0.5 * (za + zb)};
+					return bisectedStep(m, net, x0 + i * FAMILY_STEP, z0 + j * FAMILY_STEP, x0 + i1 * FAMILY_STEP,
+							z0 + j1 * FAMILY_STEP);
 				}).filter(v -> v != null).toArray(double[][]::new);
 				double worst = 0;
 				String at = "-";
@@ -1179,6 +1177,42 @@ class RiverNetworkTest {
 						sc.id(), c[0], c[1], worst, at));
 			}
 		}
+	}
+
+	/**
+	 * The step of the river terrain between (xa, za) and (xb, zb) that is left after {@value #FAMILY_BISECTIONS} halvings
+	 * towards the larger half of the difference, less the step of the terrain before the valleys
+	 * ({@code landElevation}) over the same final interval, {step, x, z}; null when the terrain differs by at most
+	 * {@value #FAMILY_PAIR} m or the midpoint splits the difference (no more than 0.7 of it on either side). A seam of
+	 * the terrain itself (the 3 × 3 window of the region blend, A16, step K6: 2 cm at gameplay scale (28464, 887.52)) is
+	 * not a step of the valleys.
+	 */
+	private static double[] bisectedStep(LandscapeModel m, RiverNetwork net, double xa, double za, double xb, double zb) {
+		double ha = riverTerrain(m, net, xa, za);
+		double hb = riverTerrain(m, net, xb, zb);
+		if (Math.abs(hb - ha) <= FAMILY_PAIR) {
+			return null;
+		}
+		double hm = riverTerrain(m, net, 0.5 * (xa + xb), 0.5 * (za + zb));
+		if (Math.max(Math.abs(hm - ha), Math.abs(hb - hm)) <= 0.7 * Math.abs(hb - ha)) {
+			return null;
+		}
+		for (int it = 0; it < FAMILY_BISECTIONS; it++) {
+			double xm = 0.5 * (xa + xb);
+			double zm = 0.5 * (za + zb);
+			double v = riverTerrain(m, net, xm, zm);
+			if (Math.abs(v - ha) >= Math.abs(hb - v)) {
+				xb = xm;
+				zb = zm;
+				hb = v;
+			} else {
+				xa = xm;
+				za = zm;
+				ha = v;
+			}
+		}
+		double raw = Math.abs(m.landElevation(xb, zb) - m.landElevation(xa, za));
+		return new double[] {Math.abs(hb - ha) - raw, 0.5 * (xa + xb), 0.5 * (za + zb)};
 	}
 
 	/** River terrain of {@code RiverNetwork.query} at (x, z), with the landscape shares of the model there. */
@@ -1197,10 +1231,9 @@ class RiverNetworkTest {
 	static final int FAMILY_BISECTIONS = 36;
 	static final double FAMILY_JUMP = 0.01;
 
-	/** {@link #sweepCutIsContinuousAtTheReviewedScarps}: grid step and side (m), largest step between neighbors (m). */
+	/** {@link #sweepCutIsContinuousAtTheReviewedScarps}: grid step and side (m). */
 	static final double SCARP_STEP = 0.5;
 	static final double SCARP_SIDE = 80;
-	static final double SCARP_JUMP = 3.0;
 
 	/**
 	 * K4.9 (docs/m2/poprawka-geometrii.md): the culling of segments in {@code RiverNetwork.query} (the box of influence
@@ -1209,7 +1242,8 @@ class RiverNetworkTest {
 	 * of the tile radius) must give identical terrain, water level, bank, valley weight and floor flag; where the column
 	 * is in reach of a valley (valley weight &gt; 0 or on a floor) also the dominant valley and its fields (order, u, floor
 	 * half-width, gradient, source), and the channel of the dominant valley (F2) and the nearest channel when nearer
-	 * than the reach of the waterside zones (300 m·k).
+	 * than the reach of the waterside zones (300 m·k). Review of K5: also the fields of the standing waters (the gap to a
+	 * valley up to the longest end of a tunnel valley lake, the gap to a sink lake, the oxbow lake and its ring).
 	 */
 	@Test
 	void segmentCullingIsInvisible() {
@@ -1258,6 +1292,17 @@ class RiverNetworkTest {
 				same(diff, "waterLevel", a.waterLevel(), u.waterLevel());
 				same(diff, "channelBottom", a.channelBottom(), u.channelBottom());
 				same(diff, "inFloor", a.inFloor() ? 1 : 0, u.inFloor() ? 1 : 0);
+				// K5 (review): the fields of the standing waters. The gap to a valley matters to the tunnel valley lakes
+				// only up to the end of their lens (TUNNEL_END_GAP + TUNNEL_END_MAX m·k), the oxbow lake in its ring.
+				double gapCap = (LandscapeModel.TUNNEL_END_GAP + LandscapeModel.TUNNEL_END_MAX) * sc.local();
+				same(diff, "floorGap", Math.min(a.floorGap(), gapCap), Math.min(u.floorGap(), gapCap));
+				same(diff, "lakeGap", a.lakeGap(), u.lakeGap());
+				same(diff, "oxbowLevel", a.oxbowLevel(), u.oxbowLevel());
+				same(diff, "oxbowDepth", a.oxbowDepth(), u.oxbowDepth());
+				same(diff, "oxbowMirror", a.oxbowMirror(), u.oxbowMirror());
+				if (Double.isFinite(a.oxbowShore()) || Double.isFinite(u.oxbowShore())) {
+					same(diff, "oxbowShore", a.oxbowShore(), u.oxbowShore());
+				}
 				boolean reach = a.valleyWeight() > 0 || a.inFloor();
 				if (reach) {
 					same(diff, "order", a.order(), u.order());

@@ -61,10 +61,10 @@ public record ColumnSample(double surface, int waterLevel, WaterKind waterKind, 
 	 *                         {@code PeakField} grid; a large massif in the altitudinal belts, E12); computed only in the Beskids
 	 *                         (type weight > 0) from height {@code AltitudinalBelts.SUMMIT_FROM}, 0 lower down and outside the Beskids
 	 * @param cliffHeight      height of the cliff edge (m) in the CLIFF landform belt, 0 outside it
-	 * @param lowShore         low sea shore 0–1 ({@code low} from the coast shape: 1 − smoothstep(6, 20, hl)):
-	 *                         1 on a shore with dunes, 0 on a high shore with a cliff; 0 outside the belt 25 km·meso from the sea.
-	 *                         The till that the model gives every column of the coastal belt higher than 8 m, and the
-	 *                         CLIFF landform at a high foredune, do not mean a cliff when the shore is low
+	 * @param lowShore         low sea shore 0–1 (D5, step K5b: 1 − the share of a high shore with a cliff from the coast
+	 *                         shape, a moraine plateau reaching the sea on part of the coast): 1 on a shore with a beach and
+	 *                         dunes, 0 on a high shore with a cliff; 0 outside the belt 25 km·meso from the sea. The CLIFF
+	 *                         landform at a high foredune does not mean a cliff when the shore is low
 	 * @param bareSandWidth    boundary of the bare sand of the beach and white dune (distance from the shore, m), as in the
 	 *                         substrate of the coastal belt (BEACH_SAND closer, SAND further); NaN outside the coastal belt
 	 * @param sandiness        sandiness of the deposit 0–1 (quantile of a noise with a 2 km·k wavelength, so uniformly distributed);

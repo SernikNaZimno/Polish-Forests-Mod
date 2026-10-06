@@ -15,7 +15,7 @@ Dokument wdrożenia poprawki geometrii terenu. Opisuje kroki K0–K7, narzędzia
 | K6 | Okno mieszania regionów 5 × 5 (A16) | szwy regionów |
 | K7 | Jedno przegenerowanie `golden_terrain_m2.txt`, dokumentacja | — |
 
-Zalew bez rowu (D2) i wały moren W–E (D3) wchodzą razem z krokami terenu, jeśli przejdą prototyp.
+Zalew bez rowu (D2) wszedł w K5 razem z wybrzeżem wydmowym (D5, K5b). Wały moren W–E (D3) wchodzą razem z krokami terenu, jeśli przejdą prototyp.
 
 ## K0. Narzędzia (teren bez zmian)
 
@@ -1157,7 +1157,7 @@ Zdanie z rundy 1 „zbiór próbek zmienia się bez skoku maksimum” było praw
 Co weszło (`RiverNetwork.sweepCut`, `Section.fromFoot`):
 - **(a) Waga ekstremum f.** Waga to smoothstep(0, `SWEEP_TWIN` · k, ξ), gdzie ξ = f''² / (2 |f'''| |P''|), a `SWEEP_TWIN` = 10 m·k. Przy narodzinach pary f' ≈ a + b (t − t0)², więc a = −f''² / (2 f''') w każdym z pierwiastków, a kolumna zmienia a o |P''| na metr. ξ szacuje więc odległość kolumny (w metrach) od miejsca narodzin pary: jest 0 przy narodzinach i rośnie liniowo z odległością. Nowa para wchodzi z wagą 0.
 - **(a) Waga ramienia.** Ramię ma wagę 1 − (1 − w)(1 − smoothstep(0, `SWEEP_ARM_BIRTH`, g)), gdzie w to waga z ξ w jego t, a `SWEEP_ARM_BIRTH` = 0,05. Ramię rodzi się z ekstremum f przy g = 0, ma wtedy jego wagę i wchodzi z wartością, którą ekstremum już miało. Od g = 0,05 ma pełną wagę.
-- **(b) Koniec odcinka.** W ostatniej i w pierwszej 1/16 odcinka, gdy kolumna leży za normalną po stronie końca, odległość przekroju przechodzi w odległość ramienia końcowego √(lw² + along²), jeśli ta jest większa. W samym końcu ekstremum ma więc najwyżej wartość węzła końcowego. Wyjątek: daleki koniec odcinka źródłowego krótszego niż 3 r łuku głowicy (A5), gdzie większa odległość obniża dno łuku o najwyżej 0,5 · maxSlope · 0,61 na metr odległości (rzadkie: krótkie odcinki źródłowe na nizinach). Węzły wewnętrzne się nie zmieniają (mieszanie jest 0 w t = k/16), ramiona też nie (along = 0). Odległość tylko rośnie, więc wszystkie ograniczenia i przycinanie zostają ważne.
+- **(b) Koniec odcinka.** W ostatniej i w pierwszej 1/16 odcinka, gdy kolumna leży za normalną po stronie końca, odległość przekroju przechodzi w odległość ramienia końcowego √(lw² + along²), jeśli ta jest większa. W samym końcu ekstremum ma więc najwyżej wartość węzła końcowego. ~~Wyjątek: daleki koniec odcinka źródłowego krótszego niż 3 r łuku głowicy (A5)~~ (K5: wyjątku nie ma; łuk głowicy `headArc` rośnie z odległością od osi, więc większa odległość podnosi dno łuku, a cięcie jest nierosnące w odległości bez wyjątku). Węzły wewnętrzne się nie zmieniają (mieszanie jest 0 w t = k/16), ramiona też nie (along = 0). Odległość tylko rośnie, więc wszystkie ograniczenia i przycinanie zostają ważne.
 - Javadoc `sweepCut` i `fromFoot` mówi teraz ten warunek wprost i opisuje cztery przypadki zmian rodziny.
 
 Sprawdzone i odrzucone:
@@ -1243,3 +1243,363 @@ Według decyzji wdrożenia poprawki klasyfikatora to osobny commit 3, a K7 tylko
 - koszt REAL blisko granicy budżetu: pilnować w K5–K6;
 - szew A16: K6;
 - ściana brzegowa: K5b.
+
+## K5. Wody stojące (K5.1–K5.5, A3, A3c), zalew (D2) i wybrzeże wydmowe (K5b, D5); domknięcie K4c i próba R5
+
+Stan przed krokiem: commit `08cea01` (K4c po dwóch rundach poprawek i narzędzia pracy), drzewo robocze czyste. Rozstrzygnięcia: „Rozstrzygnięcia po K4c” w decyzjach wdrożenia (drobne poprawki, R5), K5 z projektu, D2 i D5. Narzędzia kroku (katalog roboczy sesji `k5`): `Census` (liczba kolumn każdego rodzaju wody na siatce), `CoastSurvey` (przekroje brzegu), `R5Scan` (skan okna co 4 m z doczytaniem 1 m), `RiverDump` (teren rzeczny w losowych punktach, A/B), `Png` (kadry cieniowane z wodami), `Bench` (koszt `sample` na fragmentach testu kosztu, A/B w osobnych JVM).
+
+### Drobne z ponownej recenzji K4c
+
+- **Fałszywy „wyjątek” dalekiego końca krótkiego odcinka źródłowego** usunięty z javadocu `sweepCut`, z komentarza `Section.fromFoot` i z opisu rundy 2 (wyżej): łuk głowicy `headArc` rośnie z odległością od osi, więc większa odległość podnosi dno łuku, a cięcie jest nierosnące w odległości bez wyjątku.
+- **Javadoc `SWEEP_TWIN`:** ciągłość nie obejmuje izolowanych punktów ostrza fałdy (f''' = 0), które leżą poza zasięgiem dolin.
+- **`denseGridHasNoCliffs` mierzy kroki na 1 m.** Para sąsiadów siatki 2 m, której średni krok przekracza 0,4 limitu (bloków albo kroku doliny), dostaje próbkę w środku i liczy się jako dwa kroki po 1 m (krok 1 m powyżej limitu przy średniej poniżej 0,4 limitu wymagałby grzbietu albo wcięcia węższego niż 2 m). Teren bez zmian, liczby rosną: krok doliny `gameplay_beskids` 4,26 → 5,78 m na 1 m, `gameplay_massif_spawn` 4,47 → 5,51, `gameplay_massif_1660` 4,09 → 4,57, `gameplay_massif_1718` 3,50 → 3,53, `gameplay_massif_1710` 2,97 → 2,99 (limity `DENSE_VALLEY` 5,8 / 5,55 / 4,6 / 3,55); najwięcej 1,71 bloku na blok (`gameplay_massif_spawn`), żadnego kroku > 2. (Recenzja podawała do 1,81 bloku na blok z siatki 0,5 m kafli z aktywnym cięciem.) Czas testu bez zmian (ok. 100 s na pięć okien, doczytanych 0,1–0,4 mln par na okno).
+- **`sweepCutIsContinuousAtTheReviewedScarps` z bisekcją** zamiast progu 3 m na 0,5 m: każda para suchych sąsiadów różniąca się o > 0,02 m, której punkt środkowy nie dzieli różnicy, idzie do bisekcji (wspólny pomocnik `bisectedStep` z `sweepCutIsContinuousWhereItsFamilyChanges`), limit 0,01 m. Bisekcja znalazła skok 0,015 m terenu rzecznego w (28464; 887,52) GAMEPLAY: to szew samego `landElevation` (0,022 m; komórka [19, 1] BESKIDS z wagą 1,2·10⁻⁴ wchodzi do okna 3 × 3, A16, K6). Pomocnik odejmuje więc krok `landElevation` na końcowym przedziale. Wynik: 0,000000 m we wszystkich 13 miejscach.
+- **Do „Co zostaje” (M5):** szczelina samego rzutu ok. 40 m × 0,1 m, do 2,5 m głębokości w (74489,5; 89655,02) REAL (prawie-ostrze odcinka rzędu 1). Nie dopisałem jej do próbnika regresji.
+
+### R5: szersza ściana rzutu w REAL — prototyp nie przeszedł, R5 zostaje wyjątkiem do M5
+
+Prototyp na kopii (`k5/r5`, łatka `r5_patch.py`): w `projectChannel` każde ramię dostaje czynnik ściany k = √(1 + (w'/(|P'| · g))²), gdzie w' = d wander/dt z tabeli liczonej raz na odcinek (różnice centralne 129 próbek gęstych ugięcia, interpolacja liniowa), g to wyrazistość ramienia. Czynnik jest średnią miękką po ramionach z ich wagami rzutu, na końcu odcinka 1, wygaszony dla g od 0,7 do 1 (`1 − smoothstep`), najwyżej 3. W `query` ściana `wall = min(maxWall, wall · k)`, więc ramka odrzucania odcinków się nie zmienia.
+
+Kryteria decyzji i wynik (`R5Scan`: siatka 4 m, pary ze średnim krokiem > 0,5 bloku na blok doczytane co 1 m):
+
+| Wariant | `realistic_massif_1723` (16 km) | Kroki > 2 bl./bl. |
+|---|---|---|
+| stan K4c | 2,17 bloku na blok w (150330,5; −1530776) | 231 |
+| R5: czynnik dokładny, bramka g 0,7–1, najwyżej 3 | **101,8** w (144008,5; −1521924) | 2893 |
+| R5: bramka rosnąca g 0,3–0,45 i malejąca 0,75–1, najwyżej 2,5 | **13,1** w (144002,5; −1521944), miejsce wyjściowe 4,2 | 1783 |
+
+Przyczyna (wypis ramion, `R5Dbg`): czynnik zmienia się z t ramienia, a t przesuwa się o 1/(|P'| · g) na metr. Przy małym g jedyne ramię odcinka (144045; −1522099) → (143441; −1521856) leży w t = 0,037 (g ≈ 0,02, k = 3), a 0,5 m dalej już na końcu odcinka (k = 1). Ściana zmienia szerokość o setki metrów na metrze, a cięcie o 100 m. Każda wersja, która poszerza ścianę tam, gdzie g jest małe, ma ten sam problem: szerokość ściany musiałaby zmieniać się wolniej niż ok. 0,5 m na metr, czyli na dystansie rzędu kilometra, a wtedy przestaje być lokalna. Kryteria (1) i (4) padają, więc (2) koszt i (3) złoty test nie były mierzone.
+
+**Decyzja (zgodnie z rozstrzygnięciem): R5 zostaje świadomym wyjątkiem od D4a/D4b do M5** (rzut na samą oś doliny). Pełny skan okna `realistic_beskids` (60 km, co 4 m z doczytaniem 1 m, 775 s) potwierdza obraz testu: 2,67 bloku na blok, 1508 kroków 1 m > 2 w sześciu miejscach, wszystkie z `REAL_SPOTS`; żadnego innego. GAMEPLAY spełnia D4b. Limity `realisticPatchesHaveNoCliffs` (2,8 / 6000 i 2,2 / 950) bez zmian.
+
+### K5.1: starorzecza jako półksiężyce
+
+- **Weszło (`RiverNetwork.oxbow`, `MeanderField.arcDistance`, `arcBounds`):** starorzecze leży na łuku dawnej, bardziej rozwiniętej pętli Kinoshity (θ0 + 0,5…1,0, od przegięcia do przegięcia, przycięty do części 2/3–całość łuku, niesymetrycznie), po zewnętrznej stronie łuku obecnego koryta, odsunięte o pas brzegu 12 m i półszerokość. Półszerokość rośnie od 0 na rogach (√sin(π a)) do 0,5 W + 3 m·k w środku. Szerokość maleje płynnie do zera przy korycie (zatkane końce), przy skraju dna, przy granicy nizin i na niskim terenie przy wybrzeżu. Wszystkie parametry zależą tylko od numeru łuku (lustro, kształt, id); sprawdzane są trzy łuki. Szansa łuku 0,22, brak starorzecza przy lustrze < 1 m.
+- **Poza projektem (po pomiarze testem nowym):** dwa twarde progi zostawiały proste ucięcia. (1) Starorzecze należy do meandrów doliny dominującej (F1), więc tam, gdzie dno przejmuje inna dolina, znikało wzdłuż linii przełączenia. Teraz szerokość wygasza się z marginesem klucza F1 doliny dominującej nad najbliższym rywalem, który nie jest jej przedłużeniem przez węzeł (`continues`); w (7100, −5600) GAMEPLAY woda kończyła się 2 m w głębi brzegu. (2) Próg spadku `best.gradient < 1,5 ‰` skakał na węzłach; teraz liczy się spadek miękkiego maksimum (ciągły przez węzły, F1) z wygaszeniem od 1,2 do 1,5 ‰ (`OXBOW_MAX_SLOPE`).
+- **Bezpieczeństwo zapytań:** `oxbow` liczy się po pętli odcinków `query` (bez zagnieżdżonego zapytania); granice łuku `ArcBounds` są rekordem (pola final), więc publikacja między wątkami jest bezpieczna.
+- **Liczby:** starorzecza w teście (siatka REAL ±60 km co 60 m, GAMEPLAY ±8 km co 10 m): 2017 → 2589 i 518 → 644. Woda OXBOW (`Census`): GAMEPLAY ±8 km 648 → 1028 kolumn, REAL wysoczyzna ±40 km 2992 → 4444 (całe pętle mają większą powierzchnię niż dawne wycinki pierścienia).
+- **Nowy test `StandingWaterTest.oxbowLakesAreCrescents`** (osobna klasa, żeby nie wydłużać `RiverNetworkTest`): 25 pierwszych starorzeczy (według id) na skalę, każde wypełnione na siatce 1/5 półszerokości; jedno lustro; woda kończy się tylko na linii brzegu (każda komórka wody przy komórce bez tej wody najwyżej 2 komórki w głąb brzegu); mediana udziału szerokości w rogach (10% długości geodezyjnej od każdego końca) ≤ 0,6 i ≤ 0,7 w ≥ 75% starorzeczy; mediana długości ≥ 6 półszerokości. Wynik: REAL mediana 0,53, 22 z 25 ≤ 0,7; GAMEPLAY 0,46, 20 z 25; ucięć 0. Na stanie K4c (starorzecze M1) test pada: wszystkie 25 starorzeczy REAL kończą się 4,4–5,0 komórki w głębi brzegu (proste cięcia), choć udziały rogów same ich nie odróżniają (mediana 0,60).
+
+### K5.2: jeziora rynnowe kończą się przed doliną, poziom niezależny od kolejności
+
+- **`RiverHit.floorGap`** = min po odcinkach (floorDist − terrainHalf − 0,5 · wall), liczone z półszerokością dna terenu z lejkiem G3 (rozstrzygnięcie po K4) i nieregularnym skrajem G4. **`RiverHit.lakeGap`**: odległość od brzegu najbliższego jeziora bezodpływowego, obcięta do 150 m·k (`LAKE_GAP_MAX`). Do tej odległości jest dokładna, bo lista kafla zawiera każde jezioro w pierścieniu 150 m·k. Projekt brał `lakeShore`, który przeskakuje na granicach kafli (filtr M1 `nearTile`).
+- **`tunnelLakeAt`:** obecność rynny nie zależy od wagi doliny; soczewka = `ellipticEnd` przy granicy jezior × `ellipticEnd` przy dolinie (30 m·k, długość 1,5 półszerokości, 150…570 m·k, limit K4.9) × `ellipticEnd` przy jeziorze bezodpływowym (długość najwyżej 120 m·k) × bramka orientacji N–S × `smoothstep(25k, 60k, half)`; niecka gaśnie z jeziorem. Wczesny powrót, gdy któraś odległość < 30 m·k.
+- **Determinizm:** poziom lustra liczony z punktu kanonicznego, czyli z iteracji osi rynny startującej od kotwicy jeziora (`tunnelAxis(anchor · 200 m·k, k)`), więc zależy tylko od klucza. `TerrainDeterminismTest` jest teraz ścisły (stała `TUNNEL_LAKE_LEVEL_ORDER_DEPENDENT` usunięta): 0 różnych kolumn we wszystkich 8 kadrach, także w kadrach pasów A1 (w K0: 2531 i 12143 kolumny).
+- **Liczby:** woda jezior rynnowych GAMEPLAY ±8 km 15799 → 10629 kolumn (−33%; projekt: −37%), REAL wysoczyzna ±40 km 15946 → 12005 (−25%).
+- **Nowy test `LandscapeModelTest.tunnelLakesEndBeforeValleys`:** kolumny wody jezior rynnowych (REAL ±40 km co 40 m, GAMEPLAY ±8 km co 10 m) mają `floorGap` i `lakeGap` ≥ 30 m·k, jedno id = jedno lustro. Wynik: REAL 15 jezior, najmniejszy odstęp od doliny 36,4 m; GAMEPLAY 8 jezior, 17,4 m (limit 15 m).
+
+### K5.3 i K5.5: brzegi oczek i jezior bezodpływowych bez prostych odcinków
+
+- **Oczka (`kettleAt`):** brzeg r · (1 + 0,25 · płaty), płaty z szumu próbkowanego po okręgu w przestrzeni szumu (1,1 i 2,3, `clamp` do [−1, 1]), amplituda 0 przy środku; szybkie odrzucenie, gdy d − 1,25 r > `KETTLE_BANK`.
+- **Jeziora bezodpływowe (`RiverNetwork.sinkLakeShore`):** ten sam wzór, amplituda ±0,2 R, jedna funkcja dla terenu i pierścienia siedlisk; brzeg mieści się w 0,8–1,2 R, więc filtr kafla dalej obowiązuje.
+- **Złoty test:** K5.5 nie zmienił żadnej łaty „=” (lista K5 niżej). `noSpringsOnMassifCore`: kolumn dna lub wody na rdzeniach masywów REAL 1620 → 1621 (jedyna woda rdzeni to jeziora bezodpływowe), limit 1625.
+
+### K5.4: niecki bez ściany (A3) i poziom oczek z terenu po dolinach (A3c)
+
+- **`applyLake` (A3):** stok niecki przechodzi w teren w paśmie 0,4–1,0 zasięgu niecki (`lerp`), bez ściany 5000 m · smoothstep; torfowisko bez wału i bez stopnia 1,5 m (stok zaczyna się na poziomie torfu, lustro − 0,5 m). Wał lustro + 1 m w pasie 15–40 m przy wodzie zostaje (szczelność).
+- **A3c (`kettleLevel`, `surfaceBeforeKettle`):** lustro oczka z najniższego punktu powierzchni sprzed oczek (teren po dolinach sieci rzecznej, nieckach jezior bezodpływowych i rynnowych) na okręgu r · 1,3 + 25 (12 punktów) i w środku, liczone raz na oczko (`get`/`put`). Zagnieżdżone zapytania sieci rzecznej działają w `sample` dopiero po jego własnym zapytaniu (wynik jest rekordem), tak jak w `kettleState`. `surfaceBeforeKettle` pomija koryta, wały i starorzecza den dolin: oczko istnieje tylko z dala od dolin (waga doliny w środku < 0,3), więc jego okrąg sięga najwyżej zboczy.
+- **Poza projektem:** torf leży na poziomie lustro − 0,5 m, ale nigdy wyżej niż grunt sprzed niecki (`min`). Bez tego oczko, którego brzeg przecinał zagłębienie pominięte przez 12 punktów poziomu, leżało 1,07 m nad nim ((−2941, −938,5) GAMEPLAY): mały stopień na brzegu.
+- **Liczby:** woda oczek GAMEPLAY ±8 km co 10 m 6202 → 6064 (−2,2%), torf 3896 → 3840 (−1,4%); REAL wysoczyzna ±40 km: 16398 → 16478, torf 11019 → 11012. Miejsca ścian jezior bezodpływowych przy masywach: `realistic_sink_lake_1723` 230 par > 25 m / 46,0 m → 0 / 13,3 m; `realistic_sink_lake_1659` 148 / 97,4 m → 50 / 30,2 m. Lustro tego jeziora leży ok. 100 m pod stromym zboczem masywu, a stok niecki (27 m) wspina się na nie z nachyleniem do 6 m na 1 m; zasięg niecki jeziora bezodpływowego jest związany z filtrem kafla sieci rzecznej (M5).
+- **Nowy test `LandscapeModelTest.kettleBogsNeverAboveSurroundings`:** 72 promienie od każdego z 104 oczek torfowych GAMEPLAY ±8 km. Stopień od ostatniej kolumny torfu do pierwszej za brzegiem: 0,008 m (limit 0,3). Spadek do gruntu 2–2,5 m za brzegiem: 0,85 m (limit 1,1; torf może leżeć w zagłębieniu stoku). Liczba kolumn oczek ±10% wobec stanu sprzed K5.
+
+### D2: zalew bez rowu i K5b (D5): wybrzeże wydmowe
+
+**Prototyp na kopii (`k5/d5`, łatka `d5_patch.py` z parametrami jako właściwościami JVM), potem projekt bez zmian parametrów.**
+
+**Co weszło (`LandscapeModel.shapeCoast`, `cliffShore`, stałe `COAST_*`):**
+
+- **Brzeg wysoki (klif)** tylko na wysoczyźnie morenowej (waga 0,3–0,7) i tylko tam, gdzie szum wybrzeża o fali 30 km·meso leży w górnych kwantylach (0,62–0,78, `noiseQuantile`). Teren to dotychczasowy ściśnięty relief ze ścianą 2,5 : 1 od strony morza. Młodoglacjalna wysoczyzna dochodzi do morza na ok. 3/4 brzegu (73% punktów brzegu ma wagę moreny > 0,3), więc klif wychodzi na ok. 1/5 brzegu.
+- **Brzeg niski** (reszta, płynne przejście z tym samym udziałem):
+  - plaża 60 m·k;
+  - wydma przednia (biała), garb sin² na 130 m·k, wysokość 6–15 m wzdłuż brzegu;
+  - wydmy szare: pagórki 2–8 m na zapleczu do 420 m·k za plażą;
+  - zaplecze 1,5 m nad morzem, które dochodzi do ściśniętego reliefu dopiero 6 km·meso od brzegu (`COAST_LOW_END`; GAMEPLAY 900 m).
+- **Zalew (D2)** tylko za brzegiem niskim. Głębokość gaśnie, gdy zaplecze rośnie od 3 do 6 m. Szerokość nie zależy od typu brzegu. Ku końcom zalewu wzdłuż brzegu głębokość spada do zera, a misa zachowuje połowę szerokości. Profil misy sin(π v). Początek 300 m·k za plażą, czyli mierzeja ma plażę, wydmę przednią i część wydm szarych. (Recenzja K5: woda nie kończyła się „zaokrąglonym czubkiem”, tylko igłą lub klinem, a sama misa nie gasła z głębokością i zostawiała uskoki do 6 m; poprawione w rundzie 1, niżej.)
+- **Pole `lowShore`** = 1 − udział klifu (wcześniej 1 − smoothstep(6, 20, hl)); `Calibration.LOW_SHORE` 0,25 → 0,5. Podłoże: glina (till) tylko na brzegu wysokim; wydmy brzegu niskiego to piasek także powyżej 8 m.
+- Sam kształt brzegu zmienia się tylko w pasie 25 km·meso, a teren poza dolinami tylko do 6 km·meso od brzegu (`TerrainLocalityTest` dostał wyjątek pasa `COAST_LOW_END`; siatki zalewów nadal porównują 2920 i 2453 kolumn, 0 zmian poza dolinami i wodą). Łaty kontrolne wnętrz bez zmian. **Ale** kształt brzegu jest częścią `landElevation`, z którego sieć rzeczna liczy trasy i poziomy węzłów, więc doliny zmieniają się daleko od brzegu (niżej, „Wpływ na rzeki”).
+
+**Pomiar `CoastSurvey`** (przekroje wzdłuż normalnej brzegu, siatka jak w `CoastTest`, `landElevation`):
+
+| | REAL przed | REAL po | GAMEPLAY przed | GAMEPLAY po |
+|---|---|---|---|---|
+| przekroje | 279 | 279 | 2658 | 2658 |
+| klif (ściana > 1 m na 1 m i > 8 m) | 100% | 22,2% | 99,7% | 21,0% |
+| brzeg niski | 0% | 77,8% | 0,3% | 79,0% |
+| `lowShore` ≥ 0,25 (dawny próg wydm) | 12,9% | 81,7% | 16,5% | 82,0% |
+| wydma przednia (p10 / p50 / p90) | — | 10,7 / 12,5 / 13,9 m | — | 10,6 / 12,5 / 14,4 m |
+| zaplecze B + 600…1000 m·k (p50) | — (pas 15–22 m) | 2,0 m | — | 5,8 m |
+
+`CoastTest` (próg `LOW_SHORE` 0,5): REAL 40 przekrojów brzegu wydmowego i 40 wysokiego (33 z klifem), w pasie wydm 100% wydm i boru bażynowego (biała 58,6%, szara 41,4%), 0 klifów; GAMEPLAY 40 i 40 (24 z klifem), 100% (61,8 / 38,2%). Kadry kontrolne (`Png`): zalew REAL (−223761, −151100) 12 km: przed rów szerokości ok. 130 m wzdłuż brzegu, po zalew 1,5–2 km za mierzeją z wydmami, koniec południowy zwęża się na ok. 3 km; zalew GAMEPLAY (345, 10394) 3 km: jezioro przybrzeżne ok. 300 m szerokie z zaokrąglonym końcem; przegląd brzegu 40 km w obu skalach. Pas brzegowy testu ciągłości: `gameplay_moraine` 2,08 → 0,51 bloku na blok (brzeg niski), `gameplay_center` 2,40 (ściana klifu).
+
+**Udziały wybrzeża w podglądzie siedlisk** (`./gradlew landscapePreview -PhabitatsOnly`, `m2_biome_shares.csv` i `m2_zone_shares.csv`, procent wszystkich kolumn kadrów REAL / GAMEPLAY; przed: plik z 2026-10-03, stan K4): biała wydma 0,000 / 0,087 → 0,016 / 0,328, szara wydma 0,000 / 0,072 → 0,014 / 0,348, zalew 0,004 / 0,023 → 0,047 / 0,187, bór bażynowy 0,054 / 1,725 → 0,043 / 1,432, plaża bez zmian (0,010 / 0,277); strefy: ściana klifu 0,003 / 0,071 → 0,000 / 0,024, wierzchowina klifu 0,003 / 0,053 → 0,000 / 0,020, wydma inicjalna 0,000 / 0,024 → 0,002 / 0,049. Kadr `coast_lagoon_3km`: zalew za mierzeją z plażą, wydmami białymi i szarymi, pasy szuwaru i torfowiska niskiego na brzegu zalewu.
+
+**Wpływ na rzeki (D2: zalew i brzeg są w `landElevation`).** Sieć rzeczna liczy z `landElevation` trasę węzłów i poziom (poziom węzła ograniczony najniższym terenem na drodze do celu). Niższy brzeg obniża poziomy rzek przy ujściach. Obniżenie idzie w górę rzeki wszędzie tam, gdzie poziom ogranicza spadek, a nie teren, czyli na nizinach. Pomiar A/B terenu rzecznego (`RiverDump`, 20 000 losowych punktów):
+
+| Obszar | punkty lądu dalej niż 6 km·meso od brzegu | zmienione o > 0,05 m | o > 1 m | najwięcej |
+|---|---|---|---|---|
+| GAMEPLAY ±40 km | 15938 | 3252 (20%) | 2525 (16%) | 174,7 m |
+| REAL ±150 km wokół zalewu (−223761, −151100) | 9447 | 186 (2,0%) | 128 | 36,1 m |
+| REAL ±150 km wokół (0, 0) | 20000 | 0 | 0 | — |
+
+W GAMEPLAY morza są małe i rozsiane po świecie, a rzeki nizinne mają poziom ograniczony spadkiem, więc zmiana sięga dużej części dolin. Wariant z trasą węzłów liczoną z dawnego kształtu brzegu (poziom nadal z nowego terenu) zmienia nadal 2833 punkty (2210 o > 1 m, najwięcej 34,9 m), więc trasa nie jest główną przyczyną. Poziom z dawnego terenu postawiłby rzeki nad nowym, niskim zapleczem (koryta na wałach). Zostawiam to tak; to świadoma zmiana do oceny w recenzji (otwarte, niżej). Testy rzek i szczelności wody przechodzą (`waterIsContained*`, `WaterContainmentTest`, `networkIsAcyclicAndLevelsNeverRiseDownstream`).
+
+**`WatersideZonesTest.floorZonesFollowDominantRiver`.** D5 przesunął dwa zbiegi GAMEPLAY na niski brzeg (20 i 237 m od morza). Ich płaskie zaplecze leży na poziomie den, więc dna rzeki i dopływów zlewają się w jedną równinę przybrzeżną, a całe dno z rzeką spadło z 93,0% (K4c) do 90,6% (próg 92%). Pomiar pomija teraz równinę przybrzeżną (`COAST_FLAT` = 1,5 km·meso od brzegu): REAL 99,1%, GAMEPLAY 93,1% (4146 kolumn, 7 zbiegów z kolumnami liczonymi). Cięciwy olsu (test bazowy K0): REAL 160 z 600 przekrojów na klasę (78,1% ≥ 10 bloków; K0: 157, 80,3%), GAMEPLAY 204 (57,8%; K0: 196, 61,2%), czyli bez spadku o połowę.
+
+### Złoty test: lista `K5.txt`
+
+`src/test/golden-allow/K5.txt` = lista K4 + łaty zmierzone po K5 (`-PgoldenReport=build/golden_K5.txt`). Nowe w K5:
+
+- wody stojące:
+  - `tunnel_valley_lake`, `outwash_plain_lake`, `kettle_pond`, `peatland` w REAL A;
+  - `oxbow_lake`, `kettle_pond` w REAL B;
+  - `oxbow_lake target`, `outwash_plain_lake target`, `kettle_pond` w GAMEPLAY A;
+  - `oxbow_lake`, `tunnel_valley_lake`, `outwash_plain_lake`, `peatland` w GAMEPLAY B;
+  - `outwash_plain_lake`, `kettle_pond`, `peatland` w REAL A 0,5;
+- `river_mouth` w REAL A, GAMEPLAY B i REAL A 0,5 (kolumny starorzeczy);
+- `coverage` w GAMEPLAY A (brak wody OXBOW, jak w projekcie) i w REAL A 0,5 (jedyne starorzecze zestawu było w łacie `oxbow_lake`, która traci cel; obie łaty są szukane od nowa w K7);
+- wybrzeże (D2, D5):
+  - `lagoon` we wszystkich zestawach (z utratą celu poza REAL A);
+  - `cliff` we wszystkich zestawach (z utratą celu poza REAL B: dawny klif jest teraz brzegiem niskim);
+  - `coast` w GAMEPLAY A (w REAL B i GAMEPLAY B `coast` i `beach` były już dozwolone; tam zmienia się tylko podłoże wydm, piasek zamiast gliny);
+- `GAMEPLAY A / summit target`: D5 obniża poziomy rzek zlewni niskiego brzegu, dolina obok jedynej kolumny SUMMIT łaty jest 8 cm głębsza, więc kolumna nie jest już wyższa od swojego okręgu.
+
+Wszystkie łaty z tabeli końcowej §4 oznaczone „=” (poza wybrzeżem, którego tabela nie obejmowała, bo D2 i D5 nie miały prototypu) pozostają bez zmian. Trzy łaty „numeric” z K4 pozostają tylko numeryczne. Łaty kontrolne wnętrz bez zmian. `terrainMatchesGolden` z domyślną listą (`K5.txt`) przechodzi.
+
+### Koszt
+
+`SampleCostTest` (osobno, `costTest`, dwa uruchomienia), stosunek do kopii M1 (mediana):
+
+| Obszar | po rundzie 2 K4c (osobno) | K5 przebieg 1 | K5 przebieg 2 |
+|---|---|---|---|
+| REAL cały obszar | 1,194 | 1,215 | 1,217 |
+| REAL Beskidy | 1,113 | 1,108 | 1,133 |
+| REAL wielki masyw | 0,991 | 1,014 | 0,948 |
+| GAMEPLAY cały obszar | 1,183 | 1,169 | 1,284 (z minimów 1,185) |
+| GAMEPLAY Beskidy | 1,146 | 1,125 | 1,183 |
+| GAMEPLAY wielki masyw | 1,096 | 1,108 | 1,172 |
+
+µs na kolumnę (przebieg 1): 5,07 / 7,40 / 6,46 / 11,22 (limity bezwzględne D1 6,5 / 12 / 8,5 / 16 µs dotrzymane). Pomiar A/B tego samego zestawu fragmentów w osobnych JVM na zmianę (`Bench`, minima 9 rund, trzy pary): REAL cały obszar 4,40–4,51 µs przed K5 i 4,47–4,52 po; GAMEPLAY 6,22–6,33 i 6,29–6,49. K5 dokłada więc ok. 1% w REAL i 1–2% w GAMEPLAY (profil JFR: `tunnelLakeAt` 0,5% próbek, starorzecza poniżej progu wypisu). **REAL cały obszar jest teraz o 1–2% ponad budżetem D1 (1,20).** Nie znalazłem w K5 oszczędności tej wielkości (koszt to głównie budowa sieci rzecznej przy pierwszym przejściu i rzut). K6 (A16) doda koszt `blend`, więc szukanie oszczędności zostaje na K6 (otwarte).
+
+### Testy
+
+**Nowe:**
+- `StandingWaterTest.oxbowLakesAreCrescents`;
+- `LandscapeModelTest.tunnelLakesEndBeforeValleys`;
+- `LandscapeModelTest.kettleBogsNeverAboveSurroundings`.
+
+**Zmienione:**
+- `TerrainDeterminismTest`: ścisły, bez wyjątku jezior rynnowych;
+- `SurfaceContinuityTest`:
+  - limity okien z wodą stojącą 0 (cele §3.3 spełnione: `gameplay_center` 14 → 0, także bez oczka (5761, −4758); `gameplay_moraine` 13 → 0; `realistic_lowland` 2 → 0; `realistic_moraine` 15–16 → 0; `gameplay_tunnel_lake_3519` 25 → 0);
+  - gęsta siatka na 1 m;
+  - limity ścian jezior bezodpływowych przy masywach (0 / 13,4 m i 50 / 30,3 m) i ostrzy (12,0 m);
+- `RiverNetworkTest`: bisekcja w `sweepCutIsContinuousAtTheReviewedScarps` i `noSpringsOnMassifCore` (1625);
+- `TerrainLocalityTest`: wyjątek pasa niskiego brzegu;
+- `WatersideZonesTest`: pomiar F2 bez równiny przybrzeżnej.
+
+**Pełny `test`** (`tools/dev/run-tests test`, bez flag, czyli z domyślną listą `K5.txt`): BUILD SUCCESSFUL w 8 min 47 s, 144 testy, 0 porażek, 0 błędów, 0 pominiętych (wpis PASS w `build/test-logs/index` dla drzewa z tą dokumentacją). Szczegóły: gęsta siatka 1,68 / 1,71 / 1,48 / 1,57 / 1,28 bloku na blok i krok doliny 5,78 / 5,50 / 4,57 / 3,53 / 2,99 m na 1 m; starorzecza jak wyżej; jeziora rynnowe REAL 15 jezior (36,4 m), GAMEPLAY 8 (17,4 m); oczka torfowe 0,008 / 0,846 m; F2 99,1% / 93,1%; determinizm 0 różnic.
+
+### Odstępstwa od projektu w K5
+
+1. **R5 nie wszedł** (prototyp zrobił skoki do 101,8 bloku na blok); wyjątek do M5, limity bez zmian.
+2. **Starorzecza:** dodatkowe wygaszanie przy zmianie doliny dominującej (margines klucza F1) i spadek miękkiego maksimum zamiast spadku odcinka. Bez nich zostawały proste ucięcia, które znalazł nowy test.
+3. **`lakeGap` zamiast `lakeShore`** jako odległość od jeziora bezodpływowego dla końca jeziora rynnowego (ciągła na granicach kafli), z końcem najwyżej 120 m·k.
+4. **Torf nigdy wyżej niż grunt sprzed niecki** (poza A3/A3c).
+5. **Test starorzeczy** z kryteriami rozkładu (mediana i udział) oraz kryterium „woda kończy się na brzegu”, bo próg projektu (0,3 szerokości w 10% łuku dla każdego starorzecza) jest sprzeczny z profilem √sin(π a) samego K5.1 (0,56). Test jest w osobnej klasie.
+6. **Test oczek torfowych:** kryterium stopnia na brzegu (0,3 m) i spadku na 2 m (1,1 m) zamiast „nigdy wyżej niż teren 2 m za brzegiem”, bo zbocze zagłębienia samo opada o 0,85 m na 2 m.
+7. **D5 (nie było w projekcie):** wybór klifu z wysoczyzny morenowej i kwantyli szumu, zaplecze 1,5 m dochodzące do reliefu 6 km·meso od brzegu, `LOW_SHORE` 0,5, piasek na wydmach powyżej 8 m. **D2:** profil misy sin(π v), połowa szerokości na końcach zalewu, początek 300 m·k za plażą.
+8. **`WatersideZonesTest`** pomija równinę przybrzeżną 1,5 km·meso (wyżej).
+9. **Wpływ D5 na rzeki** (20% punktów lądu GAMEPLAY, 2% przy brzegu REAL) większy niż zakładała recenzja projektu dla D2 („łaty spoza pasa wybrzeża zmienić się nie mogą”). Łaty spoza pasa wybrzeża, które i tak nie są na liście, się nie zmieniły. Zmieniła się `GAMEPLAY A / summit`, która już była na liście K4, i straciła cel.
+
+### Runda 1 poprawek po recenzji K5
+
+Recenzja znalazła 4 problemy blokujące i 4 poważne. Zanim cokolwiek zmieniłem, sprawdziłem wszystkie na stanie K5 narzędziami recenzentów: `K5RevProbe frame` i `VizK5Scan` (skan 1 m: przecieki, szwy lustra, pary suchych sąsiadów > 2 bloków na blok). Wszystkie się potwierdziły.
+
+**1. Oczka przecinały wały jezior rynnowych i zalewu (A3c, blokujące, dwa zgłoszenia).** Okrąg poziomu oczka trafiał w dno niecki sąsiedniego jeziora rynnowego albo w dno zalewu. Lustro oczka spadało wtedy do 57 m pod lustro jeziora, a stok oczka ścinał wał jeziora. Stan K5 (skan 1 m, pary przecieku):
+- GAMEPLAY: (5761, −4758) 213, (−1274, −6223) 291, (6130, −6600) 423, (3032, −7216) 147, (10730, 12420) 285, (17600, −1290) 260;
+- REAL: (−77955, 8162) 690;
+- torf poniżej morza przy zalewie: REAL (−221658, −151118) 186, GAMEPLAY (−14940, −1537) 64.
+
+Poprawka (wariant 1 recenzji, `kettleState`). Oczko nie istnieje, gdy:
+- jego zasięg (brzeg + `KETTLE_BANK`) spotyka wał jeziora rynnowego, czyli pas do 40 m od brzegu, w którym `applyLake` podnosi grunt do lustra + 1 m. Sprawdza to `kettleTouchesTunnelLake`: siatka co 10 m·k na tarczy oczka, dolne ograniczenie odległości od brzegu (obecność 1, bez dolin i jezior bezodpływowych), z szybkim odrzuceniem w środku. Liczone raz na oczko, więc oczko jest całe albo go nie ma;
+- jego zasięg spotyka zasięg jeziora bezodpływowego (`RiverNetwork.sinkLakeClearance`: |p − środek| − 1,2 R po węzłach kafla);
+- jego lustro jest niższe niż 1 m (niskie zaplecze D5, brzeg zalewu).
+
+`surfaceBeforeKettle` liczy teren po dolinach i po niecce jeziora rynnowego, bez jezior bezodpływowych: oczko może leżeć na zewnętrznym stoku niecki, ale nie na wale.
+
+Oczek ubywa:
+- GAMEPLAY ±8 km: 17 z 223 (13 przy jeziorach rynnowych, 4 na poziomie morza). Woda oczek 6064 → 5607 kolumn, torf 3840 → 3490. Granica testu `kettleBogsNeverAboveSurroundings` zmieniona z ±10% na ±15% wobec stanu sprzed K5;
+- REAL wysoczyzna ±40 km: −0,5%.
+
+Wynik: wszystkie powyższe kadry mają 0 przecieków (`StandingWaterContainmentTest`).
+
+**2. Zalew (D2, blokujące).** Przy głębokości → 0 `lerp(bowl, result, −depth)` dawało (1 − bowl) · teren, a bramki `depth > 0` i `lagoon > 0` wracały skokiem do terenu. Zostawały uskoki do 6 m na 1 m, a na końcach zalewu proste uskoki długości ok. 1,3 km. Teraz cała misa gaśnie z siłą zalewu f = lagoon · low · (1 − smoothstep(3, 6, base)): teren = min(t, t − bowl · f · (t + 6)), bez twardych bramek. Przy f = 1 wynik jest ten sam co w K5, a przy f → 0 teren wraca płynnie.
+
+Skan 1 m, pary > 2 bloki na blok (K5 → runda 1):
+- G_zalew_3km: 671 → 0;
+- R_zalew_3km: 1929 → 0;
+- R_zalew_6km: 6589 → 0 (do tego 186 przecieków → 0);
+- G (620, 11600): 531 → 0;
+- R (−218700, −156510): 715 → 0 (także 2 pary „koryta na wale” → 0).
+
+Wody zalewu ubyło (GAMEPLAY ±20 km co 25 m: 10146 → 7348 kolumn), bo przy f < 1 misa jest płytsza na całej szerokości. Koniec wody zwęża się jak √(odległość wzdłuż brzegu). Szum zalewu ma falę 60 km·meso i wygasza zalew na długim odcinku, więc koniec nadal jest długim, wąskim klinem.
+
+Nowe okna `SurfaceContinuityTest`: `realistic_lagoon` i `gameplay_lagoon`. Przy samym zalewie nie ma skoków. Zostają 2 i 7 skoków do 0,99 m: wały ujść rzek podniesione do 1 m obok plaży na poziomie morza (M1).
+
+**3. Pasy jezior rynnowych w GAMEPLAY (A1, blokujące).** Kotwica jeziora zależała od punktu startu iteracji Newtona, czyli od x kolumny. W GAMEPLAY sekcja jest długa względem skali pola (2,25 km wobec 9 km; w REAL 4,5 km wobec 60 km), więc kolumny jednego jeziora zbiegały do różnych pierwiastków. Powstawały pasy N–S z lustrami różnymi do 68 m. Skan 1 m w K5:
+- G (−16500, −8820) 1 km: 14649 par przecieku i 5726 par szwów (do 44 m);
+- G (2180, 17650) 1 km: 54509 par szwów (do 68 m).
+
+Poprawka (`tunnelShape`, `buildTunnelBlock`, `TunnelContour`, bloki w `DirectCache`):
+- **Śledzenie konturów.** Kontury pola rynny są śledzone raz na sekcję i blok x (blok = 2 sekcje). Pierwiastki na linii środka sekcji pochodzą ze stałej globalnej siatki x (bisekcja). Od nich idą kroki Newtona w x co 20 m·k w z, do obu końców sekcji. Ślad kończy się, gdy kontur skręca bardziej niż dx/dz = 2,5, gdy Newton nie zbiega albo skacze, albo gdy kontur odpływa o więcej niż długość sekcji. Blok jest czystą funkcją (k, bx) z marginesem na najdalszy istotny kontur i największy dryf, więc sąsiednie bloki się zgadzają.
+- **Wybór konturu.** Kolumna bierze najbliższy (wzdłuż x) śledzony kontur. Ślad poza swoim końcem liczy się jak punkt końca, więc wybór zmienia się w sposób ciągły. Jezioro gaśnie, gdy drugi kontur jest prawie tak samo blisko (`TUNNEL_SPLIT` 40 m + 3 · zasięg niecki), i przy końcu śladu. Dzięki temu wody o różnych kluczach zawsze dzieli ląd.
+- **Kotwica i lustro jak w K5.** `tunnelAxis` liczy kotwicę od pierwiastka i punkt kanoniczny lustra od kotwicy. Jeziora REAL, które K5 liczył spójnie, mają ten sam klucz i lustro.
+- **Eliptyczna odległość od brzegu.** Woda jest tam, gdzie dist < h · lensEnd, czyli koniec jest tak samo zaokrąglony. Poza wodą odległość rośnie z nachyleniem ok. 1, także wzdłuż osi. Za końcem soczewki (granica sekcji, dolina, jezioro bezodpływowe) rośnie dalej z odległością od końca. Pozostałe wygaszania (ukośna rynna, za wąskie jezioro, drugi kontur, koniec śladu) dodają do odległości `tunnelBank` · (1 − wygaszenie), rozłożone na co najmniej 1,5 zasięgu niecki. K5 dodawał cały `tunnelBank` na kilku metrach (`1 − smoothstep(0; 0,2; lens)`), stąd ściany 36 m na 4 m na końcach jezior (problem poważny 6).
+
+Wynik:
+- oba kadry pasów: 0 przecieków i 0 szwów (`StandingWaterContainmentTest`);
+- nowy test `StandingWaterTest.tunnelLakesHaveOneLevel`: jedno id = jedno lustro i żaden sąsiad 1 m w innym jeziorze rynnowym z innym lustrem. GAMEPLAY ±20 km co 25 m: 9241 kolumn, 45 jezior; REAL ±60 km wokół okna moreny co 75 m: 5682 kolumny, 25 jezior; 0 błędów;
+- `tunnelLakesEndBeforeValleys`: REAL 14 jezior (najmniejszy odstęp od doliny 30,2 m), GAMEPLAY 9 (15,3 m);
+- woda jezior rynnowych: GAMEPLAY ±8 km 10511 → 9979 kolumn, ±20 km 10060 → 8953 (−11%: znikły pasy i jeziora na konturach, które nie przecinają środka sekcji); REAL wysoczyzna ±40 km ok. −5%.
+
+Jezioro przy (17600, −1290) GAMEPLAY było artefaktem kotwicy z iteracji od kolumny. Kontur, który teraz przez nie przechodzi, ma inne losowanie i nie ma jeziora. Koszt: kolumna przy rynnie nie liczy już iteracji Newtona, tylko czyta blok, więc `tunnelLakeAt` jest tańszy.
+
+**4. Starorzecza nad dnem innej doliny i w „studniach” (poważne, dwa zgłoszenia).** W K5 lustro starorzecza (z doliny dominującej F1) leżało czasem nad niższym dnem innej doliny albo w rowie na stoku, wysoko nad dnem. Pomiar w K5 (teren po dolinach minus lustro, w kolumnach wody starorzeczy):
+- REAL: 2,5–4,1 m we wszystkich;
+- GAMEPLAY: p10–p90 2,7–4,1 m, ale 5% kolumn ma > 40 m (do 117 m), a 18 starorzeczy ma minimum < 1 m.
+
+Poprawka (`oxbow`, nowy parametr `floor` = teren po wszystkich dolinach w kolumnie): szerokość mnożona przez smoothstep(lustro + 1,5; lustro + 2,5; floor) · (1 − smoothstep(lustro + 4,2; lustro + 5,5; floor)) (`OXBOW_FLOOR_MIN`, `OXBOW_FLOOR_MAX`), czyli w sposób ciągły.
+
+Wynik na siatce testu starorzeczy. Dla każdej kolumny wody: 8 sąsiadów 1 m nie może mieć suchego gruntu poniżej lustra, a 8 punktów 3 m nie może mieć suchego gruntu > 10 m nad lustrem.
+- GAMEPLAY: K5 62 z 644 starorzeczy z błędem (11 przecieków, 309 „studni”) → 0 z 564;
+- REAL: 0 → 0 (2589 → 2583 starorzeczy);
+- kadry: (−642, 2156) 156 par przecieku → 0, (7040, −5640) 74 → 0, (−4519, 2968) 372 → 0; półksiężyce na stoku przy (1516, −4408) zniknęły;
+- woda OXBOW GAMEPLAY ±8 km: 940 → 828 kolumn (−12%).
+
+To kryterium weszło do `StandingWaterTest.oxbowLakesAreCrescents`.
+
+**5. Wpływ D5 na rzeki (poważne): decyzja użytkownika, teren bez zmian.** Javadoc `shapeCoast` twierdził, że teren poza pasem 25 km·meso się nie zmienia. Teraz opisuje wpływ na sieć rzeczną. Opis D5 w tym dokumencie (wyżej) też poprawiłem. Sprawa jest w „Co zostaje” jako decyzja do podjęcia przed commitem K5.
+
+**6. Ściany niecek jezior rynnowych (poważne).** Poprawka jest w punkcie 3 (eliptyczna odległość od brzegu i wygaszanie bez skoku `tunnelBank`). Skan 1 m, pary suchych sąsiadów > 2 bloki na blok przy wodzie stojącej (K4c → K5 → runda 1):
+- R_pasy 6 km: 30562 → 3029 → 0;
+- R_jrA 6 km: 5024 → 1257 → 0;
+- G_morena 3 km: 6521 → 416 → 0;
+- G_jr6326 2 km: 7617 → 1186 → 0;
+- G_jr6134 2 km: 436 → 46 → 0;
+- G (−16500, −8820) 1 km: 9900 (K5) → 0;
+- G (2180, 17650) 1 km: 15447 (K5) → 6 (3 bloki, 4,6 m, w pierścieniu siedliskowym oczka, na zboczu, nie przy wodzie).
+
+**Drobne:**
+- **Udział klifu w oknach 40 km REAL** (pomiar recenzji): średnio 18,3%, ale na okno 0–58%, mediana 12%. 11 z 30 okien nie ma klifu, 7 ma > 35% (fala szumu klifu 30 km·meso). W GAMEPLAY 12 okien: 13,6–24,7%, mediana 19,7%. Klify w skupiskach są wiarygodne dla polskiego wybrzeża. Jeśli D5 ma znaczyć ok. 20% na każde 40 km, trzeba skrócić falę szumu (do decyzji, „Co zostaje”).
+- **`WatersideZonesTest.floorZonesFollowDominantRiver`:** równina przybrzeżna jest liczona osobno i wypisywana. GAMEPLAY: 683 z 4834 kolumn dna (14,1%), F2 znajduje tam rzekę w 75,7%, całe dno z równiną 90,6%. Nowe asercje (obie skale): udział równiny ≤ 16% i całe dno z równiną ≥ 90%. Spadek należy do decyzji o D5.
+- **`segmentCullingIsInvisible`** porównuje też `floorGap` (do końca soczewki jeziora rynnowego, (30 + 570) m·k), `lakeGap` i pola starorzecza (lustro, głębokość, lustro pierścienia, odległość od brzegu).
+- **Dokumentacja:** klasa `Coast` (glina tylko przy udziale klifu ≥ 0,5) i javadoc testu `kettleBogsNeverAboveSurroundings` (przeniesiony nad metodę).
+- **Przejście klif → brzeg niski:** wydma przednia rośnie z obniżonej wierzchowiny klifu przez gładkie maksimum (zaokrąglenie do 1 m · garb) zamiast `max()`. Proste cięcie końców wydm przez dna dolin (`min` z doliną) zostaje, bo dolina wcina się w teren po kształcie brzegu (M5, „Co zostaje”).
+- **Brzeg jezior bezodpływowych (K5.5):** trzecia harmoniczna szumu po okręgu (4,6, amplituda 0,2), żeby boki między płatami nie były proste. Miejsce `realistic_sink_lake_1659` (ta sama ściana niecki pod zboczem masywu, M5) się przesunęło: 50 / 30,2 m → 62 / 31,7 m. Limit testu zaktualizowany.
+- **Kadr „starorzecza B”** REAL (19500, 70400) nie ma już starorzecza: w K7 trzeba wybrać nowy kadr kontrolny.
+
+**Złoty test.** Lista `K5.txt` dostała `REAL B / tunnel_valley_lake` i `REAL A 0.5 / tunnel_valley_lake` (niecki jezior rynnowych bez ścian). Wszystkie inne zmiany rundy są w łatach, które już są na liście (wybrzeże, wody stojące). `terrainMatchesGolden` przechodzi.
+
+**Koszt** (`costTest`, osobno, dwa uruchomienia, stosunek do kopii M1, mediana / z minimów): REAL cały obszar 1,131 / 1,131 i 1,164 / 1,152 (K5: 1,215–1,217, czyli teraz w budżecie D1 1,20: kolumna przy jeziorze rynnowym nie liczy już iteracji Newtona); REAL Beskidy 1,223 / 1,115 i 1,097 / 1,113; REAL wielki masyw 1,059 i 1,000; GAMEPLAY cały obszar 1,100 i 1,155; GAMEPLAY Beskidy 1,223 / 1,183 i 1,205 / 1,139; GAMEPLAY wielki masyw 1,184 / 1,118 i 1,084 / 1,096. Runda nie zmienia nic w górach, więc rozrzut median Beskidów (1,10–1,22 między uruchomieniami) to szum pomiaru; z minimów oba uruchomienia ≤ 1,18. µs na kolumnę (mediana): 4,71–4,78 / 7,14–8,38 / 6,65–7,31 / 6,22–6,58 / 11,58–12,56 / 11,80–12,94, w limitach bezwzględnych D1.
+
+**Pełny `test`** (`tools/dev/run-tests test`): BUILD SUCCESSFUL w 8 min 53 s, 149 testów, 0 porażek, 0 błędów, 0 pominiętych (drzewo `5d45cddb7352`, ostatni kod rundy; po zmianie samej dokumentacji ponowny przebieg `run-tests test` jest UP-TO-DATE).
+
+**Nowe testy:**
+- `StandingWaterContainmentTest`: szczelność na siatce 1 m w 12 kadrach GAMEPLAY i 2 REAL z recenzji oraz przy pierwszym znalezionym oczku i jeziorze rynnowym w każdej skali, z regułą jak w `assertSitesContained`;
+- `StandingWaterTest.tunnelLakesHaveOneLevel`;
+- szczelność i „studnie” w `oxbowLakesAreCrescents`;
+- okna zalewów w `SurfaceContinuityTest`.
+
+### Runda 2 poprawek po recenzji K5
+
+Recenzja rundy 1 zgłosiła 2 problemy blokujące, 3 poważne i 8 drobnych. Wszystkie blokujące i poważne odtworzyłem na stanie rundy 1 narzędziami recenzenta (`RevR1 win/pairs/tw/kr`, `RevDam`, `RevKT`, `RevLow`; skan 1 m: przecieki, szwy lustra, pary suchych sąsiadów > 2 bloków na blok). Wszystkie się potwierdziły. Drobne 1–5 i 7 były już zrobione w rundzie 1 (to lista z recenzji K5), 6 i 8 zostają w „Co zostaje”.
+
+**1. Oczka przy korytach (A3c, blokujące).** Oczko stosuje się tylko w kolumnach bez wody, a jego lustro pochodzi z terenu po dolinach. Gdy potok płynął wyżej niż lustro oczka, koryto zostawało na swojej wysokości, a niecka obniżała grunt obok: potok na grobli nad torfowiskiem. Kadry GAMEPLAY (skan 1 m): (3755, 11000) 202 pary przecieku do 29,5 m, (430, −10310) 275 par do 19,3 m.
+
+Poprawka (`kettleState`). Gdy zasięg oczka (1,25 r + `KETTLE_BANK`) spotyka koryto (`channelDist` w środku ≤ zasięg + 2 m), oczko istnieje tylko wtedy, gdy:
+- brzeg koryta leży poza wodą oczka (co najmniej 5 m za jego brzegiem),
+- stok niecki nad korytem jest wyżej niż woda koryta: ⌊poziom koryta⌋ + 2 ≤ lustro + 0,25 · (odległość brzegu koryta od brzegu oczka − 5).
+
+Stok niecki jest wtedy wyżej niż woda koryta, więc niecka nie obniża gruntu przy wodzie poniżej jej poziomu. Lustro oczka liczy się tu tylko dla oczek przy korycie (raz na oczko). Pierwsza wersja (oczko nie istnieje przy każdym korycie w zasięgu) usuwała 71 z 1671 oczek w GAMEPLAY ±20 km i 11% wody oczek ±8 km. Teraz:
+- kadry: 0 przecieków;
+- skan „oczko przy korycie” (okna 80 m przy każdym oczku, którego niecka sięga koryta): GAMEPLAY ±20 km 40 oczek, REAL wysoczyzna ±40 km 4 oczka, 0 przecieków;
+- przegląd oczek przy innej wodzie (`RevKT`, okna 1 m przy oczkach do 150 m od innej wody): GAMEPLAY ±20 km 1579 oczek, 907 przy wodzie, 0 przecieków i szwów;
+- woda oczek GAMEPLAY ±8 km: 5607 → 5376 kolumn, torf 3490 → 3442 (wobec stanu sprzed K5 −13% i −12%, granica testu ±15% bez zmian).
+
+**2. Jeziora rynnowe przy zalewie (blokujące).** Lustro jeziora rynnowego leżało poniżej morza, gdy jego okrąg trafiał w zalew albo w niskie zaplecze D5. Skutek: szwy lustra między zalewem (0 m) a jeziorem i woda zalewu obok suchego gruntu poniżej morza. Kadry GAMEPLAY (skan 1 m): (−32039, −24520) 167 szwów do 18 m i 298 przecieków do 17 m, (−6400, 32900) 290 i 288, (−30100, 10080) 256 i 55.
+
+Poprawka: jezioro rynnowe z lustrem < 1 m nie istnieje. Lustro jest jedno na jezioro, więc jezioro jest całe albo go nie ma. Lustro liczy się teraz z gruntu wzdłuż samego jeziora (punkt 4), więc jezioro, którego pas brzegu sięga zalewu, ma lustro ≤ 0. Wynik:
+- trzy kadry: 0 szwów i 0 przecieków;
+- GAMEPLAY ±40 km co 20 m: przecieki zalewu 4 → 0 i szwy zalew–jezioro 3 → 0;
+- `RevLow`: jezior rynnowych z lustrem < 1 m nie ma w GAMEPLAY ±40 km ani w REAL (w rundzie 1 w REAL ±250 km były 2).
+
+**3. Ściany niecek jezior rynnowych (poważne).** Zgłoszenie się potwierdziło: odległość od brzegu zmieniała się o 3–8 m na metr, a rampa niecki (0,4–1,0 zasięgu) mieściła się w kilku metrach. Znalazłem cztery przyczyny:
+- **Drugi kontur.** Wygaszenie przy drugim konturze liczyło odstęp e2 − e1 wzdłuż x. Wzdłuż z zmienia się on do 2 · 2,5 m na metr (nachylenia konturów). Teraz odstęp liczy się w poprzek konturów: e · cos własnego konturu, z cos przyciętym na końcach śladu. Zmienia się o najwyżej ok. 2 m na metr.
+- **Skalowanie połowy szerokości.** Połowa szerokości h była mnożona przez wygaszenia: przy drugim konturze na 3 · `tunnelBank`, przy końcu śladu na 1,5 · `tunnelBank`, przy ukośnym konturze przez smoothstep(0,75; 0,92; cos). Przy h do 350 m dawało to 2–8 m na metr. Teraz h jest ograniczona samą odległością: h ≤ (odstęp − `TUNNEL_SPLIT`)/2 i h ≤ `runs`. `runs` to odległość wzdłuż z od końca śladu albo od węzła, w którym kontur odchodzi od N–S o więcej niż ok. 39° (`TUNNEL_COS` 0,78). Liczy się ją raz na ślad i interpoluje, więc zmienia się o najwyżej 1 m na metr. Wygaszenie zasięgu niecki ((1 − f) · zasięg) zostaje, rozłożone na 3 i 1,5 zasięgu.
+- **Głębokie wcięcie przy stałym zasięgu.** Na wysoczyźnie GAMEPLAY niecka wcina się na 50–180 m. Przy zasięgu 70 m rampa ma wtedy nachylenie 2–4 m na metr nawet przy odległości zmieniającej się o 1 m na metr. Teraz zasięg niecki jest osobny dla każdego jeziora: 1,2 × największa wysokość gruntu nad lustrem + 1 m (próbki śladu przy połowie szerokości + 1,5 `tunnelBank`), od `tunnelBank` do min(3 `tunnelBank`; 0,9 `tunnelSill`) (`tunnelLake`, `tunnelBankMax`). Druga granica wynika z progu między jeziorami łańcucha: tam odległość od brzegu wynosi co najmniej `tunnelSill`. Gdyby zasięg ją przekraczał, niecki dwóch jezior z różnymi lustrami spotykałyby się na granicy sekcji (pierwsza wersja: skok 12 m).
+- **Doliny.** Wcięcie sięga też niżej (punkt 4), więc niecka przy końcu jeziora obniżała dno sąsiedniej doliny poniżej wody rzeki. Najpierw ograniczałem zasięg przy dolinie, ale to ściskało rampę: ścian było 100. Teraz jezioro kończy się dalej od doliny: `TUNNEL_END_GAP` + zasięg − 0,5 `tunnelBank`. Niecka sięga w wycięcie doliny najwyżej na 0,5 `tunnelBank` − `TUNNEL_END_GAP` (K5: `tunnelBank` − `TUNNEL_END_GAP`). Przy jeziorze bezodpływowym zasięg wraca do `tunnelBank` o 1 m na metr luki. `tunnelLakesEndBeforeValleys` ma teraz granicę `TUNNEL_END_GAP` + 0,5 `tunnelBank`; zmierzone: REAL 103 m, GAMEPLAY 50,9 m.
+
+Pierścień siedliskowy (s skończone) zostaje bez zmian: max(`tunnelBank`, 150 m·k), także gdy niecka sięga dalej. Ślady i kontury są te same co w rundzie 1, tylko margines bloku jest szerszy (`tunnelRelevant` × √(1 + 2,5²) i większy zasięg).
+
+Wynik, pary suchych sąsiadów > 2 bloki na blok przy jeziorze rynnowym (runda 1 → runda 2):
+- GAMEPLAY ±20 km co 10 m: 81 (do 4 bloków) → 16 (do 5);
+- GAMEPLAY ±40 km co 20 m: 59 (do 17) → 14 (do 8);
+- REAL wybrzeże ±25 km co 15 m: 28 (do 5) → 13 (do 3);
+- REAL wysoczyzna ±20 km co 10 m: 0 → 0;
+- kadry recenzji: (17600, −1290) 186 → 0, (10730, 12420) 73 → 59.
+
+Zostają dwa rodzaje miejsc. Pierwsze to krawędź obszaru młodoglacjalnego w GAMEPLAY, np. (10350, 11920) i (10730, 12420): połowa szerokości idzie za wagą typu (obecność, gate), a ta w GAMEPLAY zmienia się z 0 do 1 na ok. 300 m. Drugie to strome zbocza samego terenu (krok surowego terenu 1,4–3 m na metr) przy głębokim wcięciu. Do „Co zostaje”.
+
+**4. Jeziora na groblach (poważne).** Lustro pochodziło z okręgu 450 m·k wokół jednego punktu kanonicznego. Gdy jezioro biegło wzdłuż zbocza, jego wał (lustro + 1 m przy s < 15–40 m) stawał się groblą. Teraz lustro to najniższy grunt przed dolinami (`landElevation`) wzdłuż samego jeziora minus 1 m (`tunnelLake`). Próbki leżą w każdym węźle śladu w obrębie soczewki sekcji (i do 40 m za jej końcami): na osi i w poprzek na 15 m, 35 m, ¼, ½, ¾ i całej połowie szerokości oraz 15 i 35 m za nią. Połowa szerokości to ta z obecności i gate w węźle, bez pozostałych wygaszeń, czyli górne ograniczenie. Brzeg zaokrąglonego końca leży w pasie wału prawie na całej szerokości jeziora, choć woda zwęża się do czubka, dlatego próbki w poprzek nie zwężają się na końcach. Klucz pamięci podręcznej to pierwiastek śladu (ten sam w każdym bloku). Id jeziora się nie zmienia. Koszt to ok. 6 tys. wywołań `landElevation` raz na jezioro.
+
+Wynik, suche kolumny ponad terenem surowym przy jeziorze rynnowym:
+- > 8 m: GAMEPLAY ±20 km co 10 m 2287 → 0, ±40 km 7334 → 0;
+- > 3 m: GAMEPLAY ±20 km 0 (nowy test).
+
+Dla porównania: oczka mają do 11 m (13 kolumn, stan K5.4, nie zmieniałem).
+
+Ceną jest głębsze wcięcie. Wcięcie przy brzegu GAMEPLAY ±20 km: mediana 51 → 69 m, najwięcej 126 → 181 m; jezior z groblą > 3 m 23 → 0. REAL: mediana 8 m, najwięcej 36 m.
+
+**5. D5 a rzeki (poważne): decyzja użytkownika.** Bez zmian w terenie. BRIEF przenosi K5 do „W trakcie” do czasu decyzji (warianty a/b/c w „Co zostaje”).
+
+**Wody jezior rynnowych** (stan rundy 1 → runda 2):
+- GAMEPLAY ±20 km co 20 m: 14495 → 9703 kolumn (−33%). Przyczyny: koniec dalej od dolin (największa część), próg ukośnego konturu, brak jezior przy zalewie;
+- REAL ±60 km wokół wysoczyzny co 75 m: 5682 → 5852 (+3%);
+- `tunnelLakesHaveOneLevel`: GAMEPLAY 45 → 35 jezior, REAL 25 → 26, 0 błędów.
+
+**Złoty test.** Te same łaty co w rundzie 1, wszystkie na liście `K5.txt` (REAL B `tunnel_valley_lake` z lustrem o 1 m niżej, łaty `grid`, `kettle_pond`, `outwash_plain_lake`). `terrainMatchesGolden` przechodzi bez zmian listy.
+
+**Nowe testy:**
+- `StandingWaterContainmentTest`: kadry rundy 2 (oczka przy korytach, zalewy, niecka przy dolinie (17620, −1819), (24520, 16080));
+- `StandingWaterContainmentTest.tunnelValleyBasinsHaveNoDamsOrWalls`: GAMEPLAY ±20 km co 20 m i REAL ±20 km co 40 m. Brak suchych kolumn > 3 m ponad terenem surowym; ścian > 2 bloków najwyżej 6 w GAMEPLAY (zmierzone 3) i 0 w REAL.
+
+**Koszt** (`costTest`, osobno, dwa uruchomienia, stosunek do kopii M1, mediana): REAL cały obszar 1,164 i 1,168 (z minimów 1,181), czyli w budżecie D1 1,20; REAL Beskidy 1,104 i 1,122; REAL wielki masyw 1,009 i 1,001; GAMEPLAY cały obszar 1,166 i 1,165; GAMEPLAY Beskidy 1,164 i 1,150; GAMEPLAY wielki masyw 1,121 i 1,114. µs na kolumnę (mediana): 4,47–4,69 / 7,14–7,15 / 6,53–6,55 / 6,16–6,18 / 10,86–10,90 / 11,80–11,87. Lustro i zasięg liczą się raz na jezioro, a szersze bloki konturów raz na blok, więc koszt kolumny się nie zmienia (w granicach rozrzutu rundy 1).
+
+**Pełny `test`** (`tools/dev/run-tests test`): BUILD SUCCESSFUL w 8 min 52 s, 150 testów, 0 porażek, 0 błędów, 0 pominiętych (drzewo `ff0d3101701e`).
+
+### Co zostaje
+
+- **Decyzja użytkownika przed commitem K5: wpływ D5 na poziomy rzek GAMEPLAY** (20% lądu dalej niż 6 km·meso od brzegu zmienione o > 5 cm, 16% o > 1 m, do 175 m, przełożone ujścia; REAL ok. 2% przy zalewach; `GAMEPLAY A / summit` traci cel; F2 całego dna GAMEPLAY z równiną przybrzeżną 90,6%). Możliwości: (a) zostawić (przebieg wygląda wiarygodnie, recenzja nie widzi artefaktów); (b) rozdzielić poziomy sieci przy brzegu od terenu D5 (np. dolny limit poziomu z dawnego kształtu tylko w pasie niskiego brzegu; ryzyko koryt na wałach); (c) obniżać zaplecze mniej albo tylko tam, gdzie szum jest wysoki. Każda z nich wymaga nowego pomiaru łat.
+- **Do decyzji (drobne): rozrzut klifu na 40 km** REAL 0–58% na okno (mediana 12%) przy średniej 18–22%; krótsza fala szumu klifu dałaby ok. 20% na każde 40 km.
+- **Koszt:** po rundzie 2 REAL cały obszar 1,16–1,17 × M1 (z minimów 1,18; budżet D1 1,20), GAMEPLAY 1,11–1,17. K6 (A16) doda koszt `blend`, więc pomiar trzeba powtórzyć po K6; zapas do budżetu jest mały.
+- **Jeziora rynnowe GAMEPLAY (runda 2):** wody ubyło o ok. 1/3 (±20 km), bo jezioro kończy się dalej od dolin, a ukośne odcinki konturu (> ok. 39° od N–S) nie mają jeziora. Wcięcie niecek jest głębsze (mediana 69 m, do 181 m na wysoczyźnie GAMEPLAY), bo lustro to najniższy grunt wzdłuż jeziora. Zostały ściany > 2 bloków w dwóch rodzajach miejsc: na krawędzi obszaru młodoglacjalnego, gdzie połowa szerokości idzie za wagą typu (GAMEPLAY (10350, 11920), (10730, 12420): do 5 bloków), i na stromym terenie surowym przy głębokim wcięciu (np. (−20500, 10940): 8 bloków, teren surowy 2,9 m na 1 m). Pierwsze usunęłaby obecność liczona na osi jeziora (funkcja z), ale wtedy wczesne odrzucenie kolumn spoza strefy młodoglacjalnej nie byłoby pewne i trzeba by budować bloki konturów wszędzie (koszt).
+- **Oczka:** grobla do 11 m ponad terenem surowym przy 3 oczkach GAMEPLAY ±20 km (13 kolumn co 10 m; lustro z okręgu po dolinach, K5.4). Recenzja jej nie zgłaszała; do M5 albo K7.
+- **Test końca jeziora rynnowego przy jeziorze bezodpływowym:** w obszarach `tunnelLakesEndBeforeValleys` żadne jezioro rynnowe nie leży przy jeziorze bezodpływowym (luka zostaje na limicie), więc ta droga nie ma pokrycia testem (drobne z recenzji K5).
+- **Końce wydm przy dnach dolin** (proste cięcie `min` z doliną, REAL (−220637, −157487), GAMEPLAY (−699, 8025)) i obwiednia wydm szarych równoległa do brzegu: M5.
+- **Koniec zalewu wzdłuż brzegu** zwęża się jak √(odległość), ale przy długim wygaszaniu szumu zalewu (fala 60 km·meso) to wąski klin długości ok. 1–2 km; zaokrąglony koniec wymagałby wygaszania wzdłuż brzegu na długości porównywalnej z szerokością zalewu (M5 albo strojenie).
+- **R5** (ściany rzutu w REAL do 2,75 bloku na blok) i remisy D4a: M5.
+- **Szczelina rzutu** 40 m × 0,1 m w (74489,5; 89655,02) REAL: M5.
+- **Ściana niecki jeziora bezodpływowego** pod stromym zboczem masywu (`realistic_sink_lake_1659`: 62 pary > 25 m na 5 m, do 31,7 m): M5, razem z zasięgiem niecki niezależnym od filtra kafla.
+- **Ściana klifu** (2,5 m na 1 m) w pasie brzegowym GAMEPLAY do 2,40 bloku na blok: to klif, poza kryterium D4b.
+- **K7:** łaty `lagoon` i `cliff` (utrata celu), `oxbow_lake` w GAMEPLAY A i REAL A 0,5 (pokrycie OXBOW) i `summit` w GAMEPLAY A są szukane od nowa; trzeba sprawdzić, że pokrycie OXBOW wraca.
+- **Klasyfikator siedlisk (etap H):** ocena udziałów biomów wybrzeża (CSV podglądu, wyżej przy D5) i kadru `coast_lagoon_3km` po nowej geometrii.
+
+### Decyzje po K5
+
+- **D5a (użytkownik, 2026-10-06): zostawić wpływ niskiego brzegu D5 na poziomy rzek** (wariant a). Liczby z „Co zostaje”: GAMEPLAY ok. 20% lądu dalej niż 6 km·meso od brzegu zmienione o > 5 cm, 16% o > 1 m, lokalnie do 175 m przez zmianę biegu; REAL ok. 2%. Uzasadnienie: realistyczne (polskie rzeki dochodzą do morza prawie na poziomie zera), świat nie jest wydany. Wymóg dla recenzji: sprawdzić na kilku kadrach miejsca o największej zmianie, że nie powstały artefakty (kaniony na nizinie, wiszące doliny, koryta na wałach, rozlana woda); Javadoc `shapeCoast` i docs opisują ten wpływ zgodnie z prawdą.
+- **Rozrzut klifu w oknach 40 km: zaakceptowany.** Globalnie klif 21–22% brzegu, w oknach 40 km REAL 0–58% (mediana 12%). Skupiska zgodne z polskim wybrzeżem (Wolin, Trzęsacz, Rozewie, Orłowo; długie odcinki bez klifu na mierzejach). Bez zmian w kodzie.
+- **R5:** wynik opisany wyżej („R5: szersza ściana rzutu w REAL”): wyjątek od D4a/D4b do M5.
+- **Znane ograniczenia K5 przenoszone do K6:**
+  - Problem 3 (ściany niecek jezior rynnowych) nadal nie jest naprawiony. Kryterium D4b (≤ 2 bl/bl) jest złamane w kilku skupiskach GAMEPLAY i problem przetrwał 2 rundy. Przyczyna: lustro to najniższy grunt wzdłuż całego jeziora, więc jezioro przecina wzgórza moreny na 100–185 m; zasięg niecki jest ograniczony (szczegóły i miejsca w „Co zostaje”, punkt o jeziorach rynnowych GAMEPLAY).
+  - Nowy test `tunnelValleyBasinsHaveNoDamsOrWalls` i metryka „tw” z raportu widzą tylko pierścień siedliskowy, a nie całą nieckę. Oba liczą pary, w których jedna kolumna ma `standingWaterKind == TUNNEL_VALLEY_LAKE`; pierścień ma max(`tunnelBank`; 150 m·k): 75 m GAMEPLAY, 150 m REAL. Ściany głębiej w niecce nie są objęte kryterium.
+  - Woda jezior rynnowych w GAMEPLAY spadła wobec K4c dwa razy bardziej, niż zakładał projekt: projekt (PROJEKT_POPRAWKI, K5.2) przewidywał −37%, a jest −67% (wobec rundy 1 raport i docs podają tylko −33%, bez odniesienia do K4c i projektu). Pomiar `RevLow` na kolumnach jezior rynnowych (GAMEPLAY ±20 km co 20 m) do powtórzenia w K6 z odniesieniem do K4c.

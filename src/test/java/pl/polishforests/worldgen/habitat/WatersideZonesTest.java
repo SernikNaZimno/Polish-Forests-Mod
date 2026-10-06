@@ -361,10 +361,27 @@ class WatersideZonesTest {
 	 * measured strip at gameplay scale, where the floor of an order 1–2 valley is wide compared with the floor of the
 	 * river (docs/m2/poprawka-geometrii.md, K3). The margin is 0.9 percentage points: step K4 (G3 widens the tributary
 	 * mouths, G4 changes the floor edge) must measure this share again and explain any change instead of lowering the
-	 * threshold further.
+	 * threshold further. Measured after K4c: 99.1% and 93.0%. Step K5 (D5) moved two confluences of the gameplay scale
+	 * onto the low coast (20 and 237 m from the sea), whose flat hinterland lies at the level of the valley floors (90.6%
+	 * with them); the coastal flat ({@link #COAST_FLAT}) is left out of the measurement: 99.1% and 93.1%.
 	 */
 	static final double FLOOR_FOUND_REALISTIC = 0.95;
+	/**
+	 * Width of the coastal flat of the low coast left out of {@link #measureF2} (m·meso from the shoreline): a quarter of
+	 * the rise of its hinterland to the compressed relief ({@code LandscapeModel.COAST_LOW_END}, D5, step K5b).
+	 */
+	static final double COAST_FLAT = 0.25 * LandscapeModel.COAST_LOW_END;
 	static final double FLOOR_FOUND_GAMEPLAY = 0.92;
+	/**
+	 * Review of K5: the coastal flat left out of {@link #measureF2} is measured on its own, so the exclusion does not hide
+	 * the change. At gameplay scale it is 683 of 4834 floor columns (14.1%), where F2 finds the river in 75.7%; the whole
+	 * floor with it 90.6%. Bounds: the share of the coastal flat at most {@value}, and the whole floor with it at least
+	 * {@link #FLOOR_FOUND_WITH_COAST}. The drop belongs to the open decision on the low coast of D5
+	 * (docs/m2/poprawka-geometrii.md, K5).
+	 */
+	static final double COAST_FLAT_SHARE = 0.16;
+	/** Review of K5: least share of the whole floor with the coastal flat where F2 finds the river (both scales). */
+	static final double FLOOR_FOUND_WITH_COAST = 0.9;
 
 	/**
 	 * F2 (docs/m2/poprawka-geometrii.md, step K1): zones on the floor of a large river follow its channel, and a
@@ -436,6 +453,13 @@ class WatersideZonesTest {
 				double floorMin = x == r ? FLOOR_FOUND_REALISTIC : FLOOR_FOUND_GAMEPLAY;
 				assertTrue(x.floorFound() >= floorMin * x.floor(), x.scale() + ": whole floor, river found in "
 						+ x.floorFound() + " of " + x.floor() + " columns (P2 " + x.floorP2() + "), required " + floorMin);
+				// The coastal flat left out above stays a small part of the floor, and the whole floor with it is measured
+				// too (review of K5).
+				assertTrue(x.coastFloor() <= COAST_FLAT_SHARE * (x.floor() + x.coastFloor()), x.scale() + ": coastal flat "
+						+ x.coastFloor() + " of " + (x.floor() + x.coastFloor()) + " floor columns");
+				assertTrue(x.floorFound() + x.coastFound() >= FLOOR_FOUND_WITH_COAST * (x.floor() + x.coastFloor()), x.scale()
+						+ ": whole floor with the coastal flat, river found in " + (x.floorFound() + x.coastFound()) + " of "
+						+ (x.floor() + x.coastFloor()));
 			}
 		}
 		assertTrue(r.counted() >= MIN_F2_COLUMNS && r.withColumns() >= 5, "REAL: too few columns for the F2 measurement: "
@@ -451,7 +475,7 @@ class WatersideZonesTest {
 	/** Result of the F2 measurement at one scale ({@link #floorZonesFollowDominantRiver}). */
 	record F2Result(String scale, int confluences, int withColumns, long counted, long riverZones, long riverZonesBefore,
 			long p2, long otherChannel, long other, long foundRiver, long foundRiverZones, long floor, long floorFound,
-			long floorP2) {
+			long floorP2, long coastFloor, long coastFound) {
 	}
 
 	/** Filters of the F2 measurement in order; a confluence without counted columns reports the first one that removed all. */
@@ -460,9 +484,10 @@ class WatersideZonesTest {
 	/**
 	 * Counters after the stages. Counted columns: river zones, river zones before K1, P2 failures, other-channel
 	 * failures, F2 found the river, river zones there. Columns of the whole floor (stages 1–3 passed, without the D_top
-	 * and height limits): F2 found the river, P2.
+	 * and height limits): F2 found the river, P2. Columns of the whole floor on the coastal flat ({@link #COAST_FLAT},
+	 * not counted otherwise): all, F2 found the river.
 	 */
-	private static final int F2_COUNTERS = 8;
+	private static final int F2_COUNTERS = 10;
 
 	static F2Result measureF2(LandscapeModel m, int gridRadius) {
 		LandscapeScale sc = m.scale();
@@ -514,7 +539,7 @@ class WatersideZonesTest {
 		long counted = total[F2_COUNTERS];
 		long other = counted - total[0] - total[2] - total[3];
 		F2Result r = new F2Result(sc.id(), confluences.size(), withColumns, counted, total[0], total[1], total[2], total[3],
-				other, total[4], total[5], total[F2_COUNTERS + 1], total[6], total[7]);
+				other, total[4], total[5], total[F2_COUNTERS + 1], total[6], total[7], total[8], total[9]);
 		System.out.printf(Locale.ROOT, "F2 %s at %d confluences (%d with counted columns): %d columns on the floor of a class A "
 				+ "river beyond the belt of a smaller channel, in the reach of its poplar riparian forest; river zones %.1f%% "
 				+ "(zones of the nearest channel, before K1: %.1f%%); not river zones: P2 (dominant valley of the smaller "
@@ -525,6 +550,9 @@ class WatersideZonesTest {
 		System.out.printf(Locale.ROOT, "  whole floor of class A rivers beyond the belt of a smaller channel (no D_top limit): %d columns, "
 				+ "F2 found the river in %.1f%%, P2 (the smaller channel's valley dominant: its zones, wedges) %d (%.1f%%)%n",
 				r.floor(), 100.0 * r.floorFound() / Math.max(1, r.floor()), r.floorP2(), 100.0 * r.floorP2() / Math.max(1, r.floor()));
+		System.out.printf(Locale.ROOT, "  whole floor on the coastal flat (left out above): %d columns, F2 found the river in %.1f%%; "
+				+ "whole floor with it: river found in %.1f%%%n", r.coastFloor(), 100.0 * r.coastFound() / Math.max(1, r.coastFloor()),
+				100.0 * (r.floorFound() + r.coastFound()) / Math.max(1, r.floor() + r.coastFloor()));
 		System.out.println("  per confluence (columns: now / before K1, P2 failures; whole floor):" + perConfluence);
 		return r;
 	}
@@ -539,6 +567,12 @@ class WatersideZonesTest {
 		if (s.hasWater() || w.standingWaterKind() != ColumnSample.StandingWaterKind.NONE || w.streamOrder() == 0) {
 			return 0;
 		}
+		// The low coast of D5 (step K5b): near the sea the hinterland lies 1.5–2 m above it, at the level of the valley
+		// floors, so the floors of the river and of its tributaries merge into one coastal flat there, and which floor
+		// dominates (F1) says nothing about the valley floors this test measures; two of the confluences of the gameplay
+		// scale lie at river mouths 20 and 237 m from the sea (whole floor with them: 90.6%). Their whole floor is
+		// counted separately (review of K5), so the exclusion cannot hide a larger drop.
+		boolean coastFlat = s.terrain().coastD() < COAST_FLAT * m.scale().meso();
 		double[] river = RiverNetworkProbe.river(m, x, z);
 		if (river == null || river[4] == 0) {
 			return 0;
@@ -569,6 +603,13 @@ class WatersideZonesTest {
 		// F2 found the river: the channel of the dominant valley is this river's channel (same distance and width).
 		boolean found = Math.abs(w.floorChannelDist() - dRiver) <= 0.01 && Math.abs(w.floorChannelWidth() - wRiver) <= 0.01;
 		boolean p2 = !(w.floorChannelWidth() > 1.05 * w.channelWidth());
+		if (coastFlat) {
+			a[base + 8].incrementAndGet();
+			if (found) {
+				a[base + 9].incrementAndGet();
+			}
+			return 0;
+		}
 		if (found) {
 			a[base + 6].incrementAndGet();
 		} else if (p2) {

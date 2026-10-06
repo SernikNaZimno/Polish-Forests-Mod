@@ -367,6 +367,96 @@ final class MeanderField {
 		return level(k).inner(u - Math.floor(u), v, 0.5);
 	}
 
+	/** Number of edges of the polyline of the arc of an oxbow lake (half a period of the curve, every second point). */
+	private static final int ARC_SEGMENTS = (POINTS / 2) / 2;
+
+	/**
+	 * K5.1: distance from the arc of a former loop, half a period of the Kinoshita curve of the level nearest to
+	 * {@code theta}, from inflection point to inflection point ({@code s ∈ [0.25, 0.75]}), in the frame of the arc: {@code du}
+	 * along the valley from the apex of the arc, {@code dv} across it, positive outwards (in wavelengths). The arc is
+	 * trimmed to the parameter {@code a ∈ [a0, a1]} (0 and 1 are the inflection points). Result: {@code out[0]} the
+	 * distance, {@code out[1]} the parameter a of the nearest point of the arc.
+	 */
+	static void arcDistance(double du, double dv, double theta, double a0, double a1, double[] out) {
+		Level l = level(arcLevel(theta));
+		int i0 = POINTS / 4;
+		double best = Double.MAX_VALUE;
+		double bestA = 0;
+		int first = (int) Math.floor(a0 * ARC_SEGMENTS);
+		int last = Math.min(ARC_SEGMENTS - 1, (int) Math.ceil(a1 * ARC_SEGMENTS) - 1);
+		for (int q = first; q <= last; q++) {
+			// Edge q of the arc: the points i0 + 2q and i0 + 2q + 2, trimmed to [a0, a1].
+			double qa = Math.max(a0, (double) q / ARC_SEGMENTS);
+			double qb = Math.min(a1, (q + 1.0) / ARC_SEGMENTS);
+			double ax = arcX(l, i0, qa) - 0.5;
+			double ay = arcY(l, i0, qa);
+			double bx = arcX(l, i0, qb) - 0.5;
+			double by = arcY(l, i0, qb);
+			double vx = bx - ax;
+			double vy = by - ay;
+			double l2 = vx * vx + vy * vy;
+			double t = l2 < 1e-18 ? 0 : Math.clamp(((du - ax) * vx + (dv - ay) * vy) / l2, 0.0, 1.0);
+			double ex = du - (ax + vx * t);
+			double ey = dv - (ay + vy * t);
+			double d2 = ex * ex + ey * ey;
+			if (d2 < best) {
+				best = d2;
+				bestA = qa + (qb - qa) * t;
+			}
+		}
+		out[0] = Math.sqrt(best);
+		out[1] = bestA;
+	}
+
+	/** K5.1: table level of the arc of {@link #arcDistance} (the nearest level, at least 1). */
+	private static int arcLevel(double theta) {
+		return Math.max(1, (int) Math.round(Math.clamp(theta / THETA_MAX, 0.0, 1.0) * (LEVELS - 1)));
+	}
+
+	/** Position of the point of the arc with the parameter a (linear interpolation between the points of the curve). */
+	private static double arcX(Level l, int i0, double a) {
+		double f = i0 + a * (POINTS / 2.0);
+		int i = Math.min(POINTS - 1, (int) Math.floor(f));
+		return l.x[i] + (l.x[i + 1] - l.x[i]) * (f - i);
+	}
+
+	private static double arcY(Level l, int i0, double a) {
+		double f = i0 + a * (POINTS / 2.0);
+		int i = Math.min(POINTS - 1, (int) Math.floor(f));
+		return l.y[i] + (l.y[i + 1] - l.y[i]) * (f - i);
+	}
+
+	/**
+	 * K5.1: extent of the arc of a former loop in the frame of {@link #arcDistance} (wavelengths): along the valley from
+	 * {@code lo} to {@code hi}, across up to {@code top}. A record (final fields), so a bound computed by one thread is
+	 * seen whole by the others.
+	 */
+	record ArcBounds(double lo, double hi, double top) {
+	}
+
+	/** K5.1: {@link ArcBounds} of the arc of the level nearest to {@code theta}, computed once per level. */
+	static ArcBounds arcBounds(double theta) {
+		int k = arcLevel(theta);
+		ArcBounds b = ARC_BOUNDS[k];
+		if (b == null) {
+			// A pure function of the level: a thread that computes it again stores the same values.
+			Level l = level(k);
+			double lo = Double.MAX_VALUE;
+			double hi = -Double.MAX_VALUE;
+			double top = -Double.MAX_VALUE;
+			for (int i = POINTS / 4; i <= 3 * POINTS / 4; i++) {
+				lo = Math.min(lo, l.x[i] - 0.5);
+				hi = Math.max(hi, l.x[i] - 0.5);
+				top = Math.max(top, l.y[i]);
+			}
+			b = new ArcBounds(lo, hi, top);
+			ARC_BOUNDS[k] = b;
+		}
+		return b;
+	}
+
+	private static final ArcBounds[] ARC_BOUNDS = new ArcBounds[LEVELS];
+
 	/** Largest deviation of the channel from the valley axis in wavelengths. */
 	static double amplitude(double theta) {
 		double f = Math.clamp(theta / THETA_MAX, 0.0, 1.0) * (LEVELS - 1);

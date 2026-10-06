@@ -40,6 +40,12 @@ final class RiverNetwork {
 	static final double CONVEX_MIN_THETA = 0.35;
 	/** Width of the belt (m·k) beyond the shore of a sink lake in which a query returns its shore (alder carr ring). */
 	static final double LAKE_RING = 150.0;
+	/**
+	 * K5.2: largest sink lake gap ({@link RiverHit#lakeGap}) in m·k. The tile list holds every lake within the habitat
+	 * ring ({@link #LAKE_RING}) of the tile, so the gap is exact up to that distance and capped there; a tunnel valley lake
+	 * ends before a sink lake over at most {@code LAKE_GAP_MAX − 30} m·k (LandscapeModel.tunnelLakeAt).
+	 */
+	static final double LAKE_GAP_MAX = 150.0;
 	private final double chan;
 	private final double wallScale;
 	private final double valleyScale;
@@ -556,7 +562,9 @@ final class RiverNetwork {
 	 * f' = f'' = 0; near such a birth f' ≈ a + b (t − t0)², so a = −f''² / (2 f''') at either root, and the column moves
 	 * a by |P''| per meter: ξ estimates the distance (m) of the column from the place where the pair is born. A newborn
 	 * pair thus enters with the weight 0 instead of stepping into the maximum with its full value (0.58 m at gameplay
-	 * scale (−216251, 246905), 12.8 m at realistic scale (156980.5, 1059412) under a lake).
+	 * scale (−216251, 246905), 12.8 m at realistic scale (156980.5, 1059412) under a lake). The continuity does not cover
+	 * the isolated points of a cusp of the fold (f''' = 0, where ξ is undefined and a pair is born and dies at once);
+	 * they lie outside the reach of the valleys (re-review of K4c).
 	 */
 	static final double SWEEP_TWIN = 10;
 	/**
@@ -593,8 +601,9 @@ final class RiverNetwork {
 	 * arm carries the weight of the extremum there ({@link #SWEEP_ARM_BIRTH}); (2) a pair of extrema of f is born where
 	 * f'' = 0 and enters with the weight 0 ({@link #SWEEP_TWIN}; with the full weight it stepped into the maximum, up to
 	 * 12.8 m); (3) an extremum leaving through an end of the segment has there at most the value of the end node, because
-	 * near the ends the distance of an interior cross-section passes into that of the end arm ({@link Section#fromFoot},
-	 * with one exception at the far end of very short source segments; before, the interior formula with the Huber
+	 * near the ends the distance of an interior cross-section passes into that of the end arm ({@link Section#fromFoot};
+	 * the cut is nonincreasing in the distance without exception, also at the head arc of a source segment, because
+	 * {@link #headArc} grows with the distance and so raises the floor; before, the interior formula with the Huber
 	 * penalty gave up to 2.1 m more cut than the end arm, a vertical step of 2.0 m on dry land); (4) an arm leaves through
 	 * an end with along = 0, where both formulas agree.
 	 *
@@ -921,9 +930,9 @@ final class RiverNetwork {
 			// side of that end, the distance passes into that of the end arm, sqrt(lw² + along²), where that is larger (by
 			// at most c / 2 of the Huber penalty), so an extremum of f leaving the segment through the end has there at most
 			// the value of the end node (the end arm) instead of stepping out of the maximum (2.0 m at realistic scale
-			// (132704, 1042536.5)). Exception: at the far end of a source segment shorter than 3 r (r of headRise) a larger
-			// distance lowers the floor of the head arc, by at most 0.5 · maxSlope · 0.61 per meter of distance. The interior
-			// nodes are unchanged (the blend is 0 at t = k / SWEEP_NODES, 0 < k < SWEEP_NODES).
+			// (132704, 1042536.5)). The cut is nonincreasing in the distance without exception: at a source segment the head
+			// arc (headArc) grows with the distance, so a larger distance lowers the rise of the head and raises the floor.
+			// The interior nodes are unchanged (the blend is 0 at t = k / SWEEP_NODES, 0 < k < SWEEP_NODES).
 			double blend = along > 0 ? Noise.smoothstep(1 - 1.0 / SWEEP_NODES, 1, t)
 					: along < 0 ? 1 - Noise.smoothstep(0, 1.0 / SWEEP_NODES, t) : 0;
 			if (blend > 0) {
@@ -1023,6 +1032,13 @@ final class RiverNetwork {
 	 * @param floorChannelLevel water level of that channel, not rounded (NaN without a watercourse)
 	 * @param floorChannelGradient gradient of the segment of that channel in ‰, at 1:1 scale (NaN without a
 	 *                          watercourse); its own, not the soft maximum {@code slope}
+	 * @param floorGap      K5.2: distance beyond the edge of the cut of the nearest valley, min over the segments of
+	 *                      floorDist − terrainHalf − 0.5 wall (the floor of the terrain with the mouth funnel, G3, and half
+	 *                      its wall); continuous, negative in the valley, +∞ without a segment in range (beyond the frame
+	 *                      of a segment it is at least about 0.5 maxWall); tunnel valley lakes end before it
+	 * @param lakeGap       K5.2: distance from the shore of the nearest sink lake, at most {@link #LAKE_GAP_MAX} m·k
+	 *                      (exact up to there: every candidate lake of the tile within it is in the tile list);
+	 *                      tunnel valley lakes end before it
 	 */
 	record RiverHit(int order, double terrain, double valleyWeight, boolean inFloor, int waterLevel,
 			double channelBottom, double bankLevel, boolean source, int oxbowLevel, double oxbowDepth, int lakeLevel,
@@ -1030,7 +1046,7 @@ final class RiverNetwork {
 			double channelWidth, double channelLevel, double floorU, double floorHalf, double slope,
 			boolean convexBank, double oxbowShore, int oxbowMirror, long oxbowId, double oxbowWidth, double ringShore,
 			int ringLevel, long ringId, double ringRadius, double floorChannelDist, double floorChannelWidth,
-			double floorChannelLevel, double floorChannelGradient) {
+			double floorChannelLevel, double floorChannelGradient, double floorGap, double lakeGap) {
 		boolean inChannel() {
 			return waterLevel != ColumnSample.NO_WATER;
 		}
@@ -2082,6 +2098,8 @@ final class RiverNetwork {
 		final double[] r3 = new double[3];
 		final double[] r4 = new double[4];
 		final double[] pr = new double[10];
+		/** K5.1: buffer of {@link MeanderField#arcDistance} for the oxbow lakes. */
+		final double[] arc = new double[2];
 		/** Number of arms of the last {@link #projectChannel} (their t in {@link #bt}). */
 		int arms;
 		/** Number of roots of f' of the last {@link #distanceMinima} (in {@link #r4}). */
@@ -2505,6 +2523,11 @@ final class RiverNetwork {
 		double bestT = 0;
 		double bestLat = 0;
 		double bestFade = 1;
+		// K5.1: the next two keys below the dominant valley (its rivals), for the fade of the oxbow lakes where the
+		// dominant valley changes.
+		double key2 = Double.NEGATIVE_INFINITY;
+		Segment seg2 = null;
+		double key3 = Double.NEGATIVE_INFINITY;
 		int water = ColumnSample.NO_WATER;
 		double channelBottom = 0;
 		// Nearby channels: {half-width, distance, level, depth}; evaluated after cutting the valleys.
@@ -2528,6 +2551,8 @@ final class RiverNetwork {
 		double edge = Double.NaN;
 		// G5: largest floor mask of the segments so far.
 		double maskAcc = 0;
+		// K5.2: distance beyond the edge of the cut of the nearest valley (tunnel valley lakes end before it).
+		double floorGap = Double.POSITIVE_INFINITY;
 
 		for (Segment s : segments) {
 			if (cull && !inFrame(s, x, z)) {
@@ -2578,6 +2603,7 @@ final class RiverNetwork {
 				floor = Math.max(floor, terrain - 0.5 * maxSlope * rise);
 			}
 			double mask = 1 - Noise.smoothstep(terrainHalf, terrainHalf + wall, floorDist);
+			floorGap = Math.min(floorGap, floorDist - terrainHalf - 0.5 * wall);
 			double own = mask > 0 ? Noise.lerp(mask, terrain, floor) : terrain;
 			// K4b/K4c (D4, D4a): the cut is at least the sweep cut minus SWEEP_TOLERANCE (deeper than the cut of the
 			// projection only near ties of its arms, where the projection is ill-conditioned). A fill (floor above the terrain,
@@ -2640,6 +2666,9 @@ final class RiverNetwork {
 			}
 			// Ties: the wider floor, then the earlier segment of the tile list (fixed order, see candidates).
 			if (key > bestKey || key == bestKey && floorHalf > bestFloorHalf) {
+				key3 = key2;
+				key2 = bestKey;
+				seg2 = best;
 				bestKey = key;
 				best = s;
 				bestFloorHalf = floorHalf;
@@ -2647,6 +2676,12 @@ final class RiverNetwork {
 				bestT = pr[3];
 				bestLat = pr[4];
 				bestFade = fade;
+			} else if (key > key2) {
+				key3 = key2;
+				key2 = key;
+				seg2 = s;
+			} else if (key > key3) {
+				key3 = key;
 			}
 			// Channel (evaluated after the loop, when the terrain after cutting all valleys is known).
 			double half = 0.5 * w * fade;
@@ -2700,22 +2735,23 @@ final class RiverNetwork {
 		double tcx = (Math.floor(x / tileSize) + 0.5) * tileSize;
 		double tcz = (Math.floor(z / tileSize) + 0.5) * tileSize;
 		double ringMax = LAKE_RING * valleyScale;
+		double lakeGapMax = LAKE_GAP_MAX * valleyScale;
+		double lakeGap = lakeGapMax;
 		for (SinkLake lake : c.lakes) {
 			boolean terrainLake = nearTile(lake, tcx, tcz);
 			if (!terrainLake) {
-				// A lake from the habitat ring only. The shore lies at most 1.2 R from the center (|noise| ≤ 1; here
-				// with a margin, 1.3 R), so a column farther than the ring width from it cannot change the result: skip the noise.
+				// A lake from the habitat ring only. The shore lies at most 1.2 R from the center (|lobes| ≤ 1; here
+				// with a margin, 1.3 R), so a column farther than the ring width (and the lake gap) from it cannot change
+				// the result: skip the noise.
 				double ex = x - lake.x;
 				double ez = z - lake.z;
-				double reach = ringMax + 1.3 * lake.radius;
+				double reach = Math.max(ringMax, lakeGapMax) + 1.3 * lake.radius;
 				if (ex * ex + ez * ez > 1.000001 * reach * reach) {
 					continue;
 				}
 			}
-			double ldx = x - lake.x;
-			double ldz = z - lake.z;
-			double dist = Math.sqrt(ldx * ldx + ldz * ldz);
-			double shore = dist - lake.radius * (1 + 0.2 * noise.at(x, z, Math.max(40, lake.radius * 0.6)));
+			double shore = sinkLakeShore(lake, x - lake.x, z - lake.z);
+			lakeGap = Math.min(lakeGap, shore);
 			if (shore < ringShore) {
 				ringShore = shore;
 				ringLevel = lake.level;
@@ -2742,7 +2778,7 @@ final class RiverNetwork {
 					lakeLevel, lakeShore, lakeDepth, lakeId, lakeRadius, Double.POSITIVE_INFINITY, Double.NaN,
 					Double.NaN, Double.NaN, Double.NaN, Double.NaN, false, Double.POSITIVE_INFINITY,
 					ColumnSample.NO_WATER, 0, Double.NaN, ringShore, ringLevel, ringId, ringRadius,
-					Double.POSITIVE_INFINITY, Double.NaN, Double.NaN, Double.NaN);
+					Double.POSITIVE_INFINITY, Double.NaN, Double.NaN, Double.NaN, floorGap, lakeGap);
 		}
 		// In the floor of some valley exactly when in the floor of the dominant one (its key is the largest, so positive),
 		// or in a mouth funnel (G3, step K4c): the funnel belongs to the floor of the valley it opens into, whose channel
@@ -2754,14 +2790,21 @@ final class RiverNetwork {
 		double oxbowDepth = 0;
 		// Oxbow lakes only on flat lowlands and away from every channel.
 		// Gradient at realistic scale; oxbow lakes occur on lowland rivers with gradients up to about 1.5 ‰.
-		double bestSlope = best.gradient;
 		double oxbowShore = Double.POSITIVE_INFINITY;
 		int oxbowMirror = ColumnSample.NO_WATER;
 		long oxbowId = 0;
 		double oxbowWidth = Double.NaN;
+		// K5.1: the gradient of the soft maximum (continuous across the nodes, F1) instead of the gradient of the dominant
+		// segment, which steps at its nodes; the oxbow lakes fade out towards OXBOW_MAX_SLOPE (oxbow).
+		double softSlope = sumSl / sumW;
 		if (inFloor && water == ColumnSample.NO_WATER && bank == Double.NEGATIVE_INFINITY && lowland > 0.6
-				&& bestSlope < 0.0015) {
-			Oxbow ox = oxbow(best, bestT, bestLat);
+				&& softSlope < OXBOW_MAX_SLOPE) {
+			// The margin of the dominant valley over its nearest rival that is not its own continuation across a node: an
+			// oxbow lake belongs to the meanders of the dominant valley, so it fades out where another valley takes the
+			// floor (F1), instead of ending in a straight line there.
+			double rival = seg2 != null && continues(best, seg2) ? key3 : key2;
+			Oxbow ox = oxbow(best, bestT, bestLat, nearDist, bestFloorHalf - bestFloorDist, lowland, terrain, result,
+					bestKey - rival, softSlope, sc.arc);
 			if (ox != null) {
 				if (ox.inside()) {
 					oxbowDepth = ox.depth();
@@ -2799,7 +2842,46 @@ final class RiverNetwork {
 				lakeRadius, nearDist, nearWidth, nearLevel, inFloor ? uMin : Double.NaN,
 				sumFh / sumW, sumSl / sumW * 1_000, convex, oxbowShore, oxbowMirror, oxbowId, oxbowWidth, ringShore,
 				ringLevel, ringId, ringRadius, floorChannelDist, floorChannelWidth, floorChannelLevel,
-				floorChannelGradient);
+				floorChannelGradient, floorGap, lakeGap);
+	}
+
+	/**
+	 * K5.5: distance from the shore of a sink lake at the offset (dx, dz) from its center, negative inside. The shore is
+	 * R · (1 + 0.2 · lobes), with lobes a noise sampled along a circle in noise space (a function of the angle: lobe
+	 * scales 1.1, 2.3 and, after the review of K5, 4.6, clamped to [−1, 1]); M1 sampled a planar noise with the wavelength
+	 * 0.6 R, which made a rosette with nearly straight sides about 1 km long. The amplitude falls to 0 at the center, so
+	 * the shore distance stays continuous there. The same function serves the terrain and the habitat ring; the shore
+	 * lies within 0.8 R … 1.2 R.
+	 */
+	private double sinkLakeShore(SinkLake lake, double dx, double dz) {
+		double d = Math.sqrt(dx * dx + dz * dz);
+		double r = lake.radius;
+		double ca = d > 1e-9 ? dx / d : 1;
+		double sa = d > 1e-9 ? dz / d : 0;
+		double off = 1_000 * noise.unit(lake.seed, 0, 92);
+		// Review of K5: a third, smaller harmonic (4.6) bends the sides between the lobes, which stayed nearly straight
+		// over up to 1.5 km with two harmonics alone.
+		double lobes = 0.75 * noise.sample(off + 1.1 * ca, 1.1 * sa - off) + 0.35 * noise.sample(2.3 * ca - off, off + 2.3 * sa)
+				+ 0.2 * noise.sample(4.6 * ca + off, off - 4.6 * sa);
+		return d - r * (1 + 0.2 * Math.clamp(lobes, -1.0, 1.0) * Noise.smoothstep(0, 0.5 * r, d));
+	}
+
+	/**
+	 * Review of K5: the smallest of |p − center| − 1.2 R over the sink lakes of the nodes around the tile of (x, z), a
+	 * lower bound of the distance from (x, z) to the water of every sink lake near (its shore lies within 1.2 R of its
+	 * center, {@link #sinkLakeShore}). A kettle pond closer than its reach does not exist (LandscapeModel.kettleState).
+	 */
+	double sinkLakeClearance(double x, double z) {
+		double lx = Math.floor(x / tileSize) * tileSize;
+		double lz = Math.floor(z / tileSize) * tileSize;
+		double[] min = {Double.POSITIVE_INFINITY};
+		tileRadiusNodes(lx, lz, (order, i, j) -> {
+			SinkLake lake = sinkLake(node(order, i, j));
+			if (lake != null) {
+				min[0] = Math.min(min[0], Math.hypot(x - lake.x, z - lake.z) - 1.2 * lake.radius);
+			}
+		});
+		return min[0];
 	}
 
 	/** Whether the lake passes the M1 candidate filter for the tile centered at (cx, cz); only such lakes change the terrain. */
@@ -2818,42 +2900,112 @@ final class RiverNetwork {
 	}
 
 	/**
-	 * Oxbow lake: a cut-off meander loop – a crescent behind a bend of the present channel, on its outer
-	 * side. Returns the oxbow lake in the column or in the 40 m·k ring around it, otherwise null.
-	 * The water level is constant for the whole oxbow lake.
+	 * K5.1: oxbow lake, a cut-off meander loop. Its axis is the arc of a former, more developed loop (a Kinoshita curve
+	 * with a larger θ0, from inflection point to inflection point) behind a bend of the present channel; its half-width
+	 * grows from zero at the horns to {@code 0.5 W + 3 m·k} in the middle (a crescent), and falls smoothly to zero at the
+	 * present channel, at the edge of the valley floor, at the boundary of the lowlands and on low terrain (plugged ends
+	 * instead of straight cuts; M1 cut a band of constant width by |u − m/2| &gt; 0.3, vOld · side &lt; 0.35 amp and
+	 * θ &lt; 0.8). Every parameter depends only on the number of the bend, so the shape and the water level are constant
+	 * across the oxbow lake. The neighboring bends are checked too, because a developed loop reaches beyond half a
+	 * period. Returns the oxbow lake in the column or in the 40 m·k ring around it, otherwise null. Called after the loop
+	 * over the segments of {@link #query} (no nested query).
+	 *
+	 * @param nearDist  distance from the bank of the nearest channel (the d field)
+	 * @param floorRoom depth of the column in the floor of the dominant valley, floorHalf − floorDist (m)
+	 * @param terrain   terrain before the valleys
+	 * @param floor     terrain after the valleys at the column (the floor the oxbow lake lies in)
+	 * @param margin    F1 key of the dominant valley minus that of its nearest rival (not its continuation across a node)
+	 * @param slope     gradient of the soft maximum of the floor (fraction)
+	 * @param arc       work buffer of {@link MeanderField#arcDistance} (2 slots)
 	 */
-	private Oxbow oxbow(Segment s, double t, double lat) {
-		double theta = s.thetaAt(t);
-		if (theta < 0.8) {
+	private Oxbow oxbow(Segment s, double t, double lat, double nearDist, double floorRoom, double lowland, double terrain,
+			double floor, double margin, double slope, double[] arc) {
+		if (s.theta * 1.25 < OXBOW_MIN_THETA) {
 			return null;
 		}
-		double w = s.widthAt(t);
 		double lambda = s.lambda;
 		double u = s.meanderU(t);
 		double v = (lat - s.wanderAt(t)) / lambda;
-		double amp = MeanderField.amplitude(theta);
-		// Half a period = one bend; the bends alternate on both sides of the valley axis.
-		long m = (long) Math.floor(u * 2 + 0.5);
-		double side = (m & 1) == 1 ? 1 : -1;
 		long seed = Noise.key((long) (s.x0 * 7), (long) (s.z0 * 7), 70);
-		if (noise.unit(seed, m, 71) > 0.3 || Math.abs(u - m * 0.5) > 0.3) {
-			return null;
+		long m0 = (long) Math.floor(u * 2 + 0.5);
+		double ring = 40 * valleyScale;
+		double lowFade = Noise.smoothstep(0.6, 0.75, lowland) * (1 - Noise.smoothstep(0.8 * OXBOW_MAX_SLOPE, OXBOW_MAX_SLOPE, slope));
+		Oxbow best = null;
+		for (long m = m0 - 1; m <= m0 + 1; m++) {
+			// Whole loops have about twice the area of the former ring sectors, hence 0.22 instead of 0.3.
+			if (noise.unit(seed, m, 71) > OXBOW_CHANCE) {
+				continue;
+			}
+			// Everything from the number of the bend: the place on the segment, the angle, the width, the water level.
+			double tc = Math.clamp((m * 0.5 - s.phase) * lambda / s.len, 0.0, 1.0);
+			double thC = s.thetaAt(tc);
+			if (thC < OXBOW_MIN_THETA) {
+				continue;
+			}
+			// Water level one meter below the river at the bend, so the valley floor around it is always higher. At a mouth
+			// (level below 1 m) there is no oxbow lake: it would touch the lagoon with another level.
+			int level = (int) (Math.floor(s.levelAt(tc)) - 1);
+			if (level < 1) {
+				continue;
+			}
+			double thOld = Math.min(MeanderField.THETA_MAX, thC + 0.5 + 0.5 * noise.unit(seed, m, 75));
+			double side = (m & 1) == 1 ? 1 : -1;
+			// The loop shifted slightly down or up the valley (migration of the bends).
+			double du = u - m * 0.5 - 0.08 * (noise.unit(seed, m, 76) - 0.5);
+			double w = s.widthAt(tc);
+			double owMax = 0.5 * w + 3 * valleyScale;
+			// Moved outwards by the bank belt of the channel (12 m) and the half-width, so small rivers (λ = 11 W) also
+			// fit an oxbow lake outside the bank belt.
+			double dv = side * v - (12 + owMax) / lambda;
+			double pad = (owMax + ring) / lambda;
+			MeanderField.ArcBounds bb = MeanderField.arcBounds(thOld);
+			if (du < bb.lo() - pad || du > bb.hi() + pad || dv < -pad || dv > bb.top() + pad) {
+				continue;
+			}
+			// A part of the former loop (from 2/3 to the whole), asymmetric.
+			double a0 = 0.03 + 0.17 * noise.unit(seed, m, 77);
+			double a1 = 0.97 - 0.17 * noise.unit(seed, m, 78);
+			MeanderField.arcDistance(du, dv, thOld, a0, a1, arc);
+			double d = arc[0] * lambda;
+			double a = Math.clamp((arc[1] - a0) / (a1 - a0), 0.0, 1.0);
+			double horn = Math.sqrt(Math.sin(Math.PI * a));
+			// Plugged ends: at the present channel (the bank belt of 12 m and a little more), at the edge of the floor and
+			// of the lowlands.
+			double plug = 12.5 + 0.2 * w;
+			double ow = owMax * horn * Noise.smoothstep(plug, plug + owMax + 5, nearDist)
+					* Noise.smoothstep(0, 0.5 * owMax + 10 * valleyScale, Math.min(floorRoom, margin)) * lowFade
+					// Terrain before the valleys low above the water level (coast): the oxbow lake narrows to zero.
+					* Noise.smoothstep(level + 1.5, level + 3.5, terrain)
+					// Review of K5: the floor at the column must lie about 2.5–4 m above the water level, as on the floor of
+					// the dominant valley at its bend (measured: 2.5–4.1 m in REAL). Where the column lies on the lower floor
+					// of another valley the water would stand above the ground around it, and on a slope above the floor it
+					// would fill a narrow shaft with walls of up to 110 m (GAMEPLAY); the oxbow lake narrows to zero there.
+					* Noise.smoothstep(level + OXBOW_FLOOR_MIN, level + OXBOW_FLOOR_MIN + 1, floor)
+					* (1 - Noise.smoothstep(level + OXBOW_FLOOR_MAX, level + OXBOW_FLOOR_MAX + 1.3, floor));
+			double shore = d - ow;
+			if (shore > ring || best != null && shore >= best.shore()) {
+				continue;
+			}
+			boolean inside = shore <= 0 && ow > 0;
+			double depth = inside ? (1.0 + 2.0 * noise.unit(seed, m, 73)) * horn * (1 - d / ow) : 0;
+			best = new Oxbow(inside, depth, level, shore, Noise.key(seed, m, 74), owMax);
 		}
-		double shift = 0.9 * amp + 1.5 * w / lambda + 0.05;
-		double vOld = v - side * shift;
-		if (vOld * side < 0.35 * amp) {
-			return null;
-		}
-		double d = MeanderField.distance(u, vOld, theta) * lambda;
-		double ow = 0.45 * w + 3;
-		if (d > ow + 40 * valleyScale) {
-			return null;
-		}
-		boolean inside = d <= ow;
-		double depth = inside ? (1.0 + 2.0 * noise.unit(seed, m, 73)) * (1 - d / ow) : 0;
-		// Water level one meter below the river at the bend, so the valley floor around it is always higher. Computed only
-		// from the bend number, so it is constant across the whole oxbow lake.
-		double tc = Math.clamp((m * 0.5 - s.phase) * lambda / s.len, 0.0, 1.0);
-		return new Oxbow(inside, depth, (int) (Math.floor(s.levelAt(tc)) - 1), d - ow, Noise.key(seed, m, 74), ow);
+		return best;
+	}
+
+	/** K5.1: smallest meander angle θ0 at the bend for an oxbow lake (rad); the former loop has θ0 + 0.5…1.0. */
+	static final double OXBOW_MIN_THETA = 0.8;
+	/** Review of K5: the floor at an oxbow lake lies at least this far above its water level (m), with a fade of 1 m. */
+	static final double OXBOW_FLOOR_MIN = 1.5;
+	/** Review of K5: the floor at an oxbow lake lies at most this far above its water level (m), with a fade of 1.3 m. */
+	static final double OXBOW_FLOOR_MAX = 4.2;
+	/** K5.1: chance that a bend has an oxbow lake. */
+	static final double OXBOW_CHANCE = 0.22;
+	/** Steepest gradient (fraction, at 1:1 scale) with oxbow lakes, about 1.5 ‰ on lowland rivers; they fade in below it. */
+	static final double OXBOW_MAX_SLOPE = 0.0015;
+
+	/** K5.1: whether b is the continuation of a across a node (the same order, an end of one is the start of the other). */
+	private static boolean continues(Segment a, Segment b) {
+		return a.order == b.order && (a.x1 == b.x0 && a.z1 == b.z0 || b.x1 == a.x0 && b.z1 == a.z0);
 	}
 }

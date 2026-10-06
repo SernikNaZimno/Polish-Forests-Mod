@@ -9,8 +9,9 @@ import pl.polishforests.worldgen.landscape.Substrate;
  * crowberry pine forest, cliff and lagoon hinterland; lengths are multiplied by k. Valley floors and the shores
  * of standing water are left to the waterside zones (except for the beach and dunes).
  *
- * <p>Dune and cliff shores are told apart by the {@code terrain.lowShore} field, not by the substrate: the model
- * gives till and the CLIFF landform to every column of the coastal belt higher than 8 m, including a high foredune.
+ * <p>Dune and cliff shores are told apart by the {@code terrain.lowShore} field, not by the landform: the model gives
+ * the CLIFF landform to every column of the coastal belt higher than 8 m near the sea, including a high foredune, and
+ * till only where the cliff share of the shore is at least 0.5 (D5, step K5b; a dune is sand also above 8 m).
  * On a dune shore the habitat substrate is sand ({@link HabitatClassifier.Column#substrate}), and the cliff and its
  * hinterland exist only on a high shore.
  */

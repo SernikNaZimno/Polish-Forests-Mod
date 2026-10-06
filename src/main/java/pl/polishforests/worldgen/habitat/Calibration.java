@@ -263,12 +263,13 @@ public final class Calibration {
 	/** Jitter of the crowberry pine forest boundary: ±15% (variant noise). */
 	public static final double COASTAL_PINE_JITTER = 0.15;
 	/**
-	 * Dune shore: the {@code lowShore} field (1 − smoothstep(6, 20, hl) from the coast shape) at least this much,
-	 * i.e. terrain by the sea lower than about 15 m. There: dunes, spit and lagoon; higher up: a cliff. The model's
-	 * dune hump (6–20 m · low) hides below the belt terrain (hl) at low &lt; 0.5, so a low shore is recognized by hl,
-	 * not by the dune shape (docs/03-m2-biomy.md, deviation S4, coast fix).
+	 * Dune shore: the {@code lowShore} field (1 − the share of a high shore with a cliff from the coast shape, D5 in
+	 * step K5b) at least this much. There: beach, foredune, gray dunes, spit and lagoon; below it: a cliff. Before K5b
+	 * the field was 1 − smoothstep(6, 20, hl) of the compressed relief, and a dune shore needed only 0.25 (the dune
+	 * hump hid below the belt terrain at low &lt; 0.5); now the terrain of the shore is the blend of a low shore and a
+	 * cliff by the same share, so the midpoint separates them (docs/m2/poprawka-geometrii.md, K5b).
 	 */
-	public static final double LOW_SHORE = 0.25;
+	public static final double LOW_SHORE = 0.5;
 	public static final double CLIFF_H = 8, CLIFF_TOP_K = 20, CLIFF_WINDSWEPT_FOREST_K = 150;
 	/** Shingle beach below a cliff: terrain before incision higher than this (m). */
 	public static final double SHINGLE_BEACH_RAW = 8;

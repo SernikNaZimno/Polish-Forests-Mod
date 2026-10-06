@@ -548,4 +548,187 @@ class LandscapeModelTest {
 		}
 		assertTrue(waterColumns > 100, "too little water in the test areas: " + waterColumns);
 	}
+
+	/**
+	 * K5.2 (docs/m2/poprawka-geometrii.md): a tunnel valley lake ends before a river valley and a sink lake. Every water
+	 * column of a tunnel valley lake lies at least {@code TUNNEL_END_GAP} m·k beyond the edge of the cut of every valley
+	 * ({@code RiverHit.floorGap}, with the mouth funnel; round 2 of the review of K5: plus at least half of tunnelBank, the
+	 * basin does not reach into the cut) and beyond the shore of every sink lake ({@code lakeGap}; the test areas have
+	 * no tunnel valley lake near a sink lake, so that end is not reached here: the gaps stay at their cap); M1 cut
+	 * the lakes straight along the valley weight and left a lake perched 86 m above a valley floor at gameplay scale
+	 * (3519, −4356). One lake id has one water level. Grids: the moraine at realistic scale (±40 km every 40 m) and the
+	 * center at gameplay scale (±8 km every 10 m).
+	 */
+	@Test
+	void tunnelLakesEndBeforeValleys() {
+		record Area(LandscapeScale scale, double cx, double cz, double half, double step) {
+		}
+		record Col(long id, int level, double valleyGap, double lakeGap) {
+		}
+		for (Area a : new Area[] {new Area(LandscapeScale.REALISTIC, -66_495, 21_873, 40_000, 40),
+				new Area(LandscapeScale.GAMEPLAY, 0, 0, 8_000, 10)}) {
+			LandscapeModel m = new LandscapeModel(SEED, a.scale(), 1.0);
+			RiverNetwork net = RiverNetworkTest.networkOf(m);
+			double k = a.scale().local();
+			int n = (int) Math.round(2 * a.half() / a.step()) + 1;
+			List<Col> cols = IntStream.range(0, n).parallel().mapToObj(j -> {
+				List<Col> out = new ArrayList<>();
+				for (int i = 0; i < n; i++) {
+					double x = a.cx() - a.half() + i * a.step();
+					double z = a.cz() - a.half() + j * a.step();
+					ColumnSample s = m.sample(x, z);
+					if (s.waterKind() != WaterKind.LAKE
+							|| s.waters().standingWaterKind() != ColumnSample.StandingWaterKind.TUNNEL_VALLEY_LAKE
+							|| s.waters().s() >= 0) {
+						continue;
+					}
+					LandscapeModel.Blend b = m.blend(x, z);
+					double lowland = b.weight(LandscapeType.OUTWASH_PLAIN) + b.weight(LandscapeType.MORAINE_PLATEAU)
+							+ b.weight(LandscapeType.OLD_GLACIAL_PLAIN) + b.weight(LandscapeType.COASTLAND);
+					RiverNetwork.RiverHit r = net.query(x, z, m.landElevation(x, z), lowland, b.weight(LandscapeType.FOOTHILLS),
+							b.weight(LandscapeType.BESKIDS));
+					out.add(new Col(s.waters().lakeId(), s.waterLevel(), r.floorGap(), r.lakeGap()));
+				}
+				return out;
+			}).flatMap(List::stream).toList();
+			java.util.Map<Long, Integer> levels = new java.util.HashMap<>();
+			double minValley = Double.POSITIVE_INFINITY;
+			double minLake = Double.POSITIVE_INFINITY;
+			int levelMismatch = 0;
+			for (Col c : cols) {
+				minValley = Math.min(minValley, c.valleyGap());
+				minLake = Math.min(minLake, c.lakeGap());
+				Integer prev = levels.putIfAbsent(c.id(), c.level());
+				levelMismatch += prev != null && prev != c.level() ? 1 : 0;
+			}
+			// Round 2 of the review of K5: at a valley the lake ends a further half tunnelBank (at least) away.
+			double valleyLimit = LandscapeModel.TUNNEL_END_GAP * k + 0.5 * Math.max(70, 140 * k);
+			System.out.printf(Locale.ROOT, "[tunnel lakes] %s: %d water columns of %d lakes, smallest valley gap %.1f m (limit %.1f m), "
+					+ "smallest sink lake gap %.1f m (limit %.1f m), level mismatches %d%n", a.scale().id(), cols.size(), levels.size(),
+					minValley, valleyLimit, minLake, LandscapeModel.TUNNEL_END_GAP * k, levelMismatch);
+			assertTrue(levels.size() >= 5, a.scale().id() + ": too few tunnel valley lakes: " + levels.size());
+			assertTrue(minValley >= valleyLimit, a.scale().id() + ": tunnel valley lake water "
+					+ minValley + " m beyond the edge of a valley cut");
+			assertTrue(minLake >= LandscapeModel.TUNNEL_END_GAP * k, a.scale().id() + ": tunnel valley lake water " + minLake
+					+ " m from a sink lake");
+			assertEquals(0, levelMismatch, a.scale().id() + ": a tunnel valley lake with more than one water level");
+		}
+	}
+
+	/** {@link #kettleBogsNeverAboveSurroundings}: largest step from the peat down to the first column beyond the shore (m). */
+	static final double BOG_STEP = 0.3;
+	/**
+	 * {@link #kettleBogsNeverAboveSurroundings}: the ground 2 m beyond the shore lies at most this much below the peat (m;
+	 * a slope of 0.5 over 2.25 m: the peat may lie in a hollow of a slope).
+	 */
+	static final double BOG_DROP = 1.1;
+
+	/**
+	 * K5.4 (A3, A3c): the peat of a kettle bog never lies above the ground around it. The level of a kettle comes from
+	 * the surface after the valleys and the other lakes (A3c), a bog has no bank and no step at its shore, and the peat
+	 * never lies above the ground before the basin. On 72 rays (every 0.25 m) from every bog of the gameplay center
+	 * (±8 km): the step from the last peat column down to the first column beyond the shore at most {@value #BOG_STEP} m,
+	 * and the ground 2–2.5 m beyond the shore at most {@value #BOG_DROP} m below the peat (M1: peat up to 30 m above a
+	 * valley floor, a shelf with a step of 15–17 m; with the flat peat of A3 alone a bog whose shore crossed a hollow
+	 * missed by the points of its level lay 1.07 m above it at (−2941, −938.5)). The number of kettle columns (pond water
+	 * and peat, grid every 10 m) stays within ±15% of the state before K5 (6202 and 3896). The review of K5 removed the
+	 * kettles whose reach meets the bank of a tunnel valley lake (they cut it and leaked) and the kettles at the sea level
+	 * (17 of the 223 kettles of this square): about −10% of both counts; the bound was ±10%.
+	 */
+	@Test
+	void kettleBogsNeverAboveSurroundings() {
+		LandscapeModel m = new LandscapeModel(SEED, LandscapeScale.GAMEPLAY, 1.0);
+		double half = 8_000;
+		double step = 10;
+		int n = (int) Math.round(2 * half / step) + 1;
+		// Per bog: {x, z, level, radius} of one peat column; counts of pond water and peat.
+		java.util.concurrent.ConcurrentHashMap<Long, double[]> bogs = new java.util.concurrent.ConcurrentHashMap<>();
+		long[] counts = IntStream.range(0, n).parallel().mapToObj(j -> {
+			long[] c = new long[2];
+			for (int i = 0; i < n; i++) {
+				double x = -half + i * step;
+				double z = -half + j * step;
+				ColumnSample s = m.sample(x, z);
+				c[0] += s.waterKind() == WaterKind.KETTLE ? 1 : 0;
+				if (s.substrate() == Substrate.PEAT) {
+					c[1]++;
+					ColumnSample.Waters w = s.waters();
+					if (w.standingWaterKind() == ColumnSample.StandingWaterKind.KETTLE_BOG) {
+						bogs.putIfAbsent(w.lakeId(), new double[] {x, z, w.shoreLevel(), w.standingWaterRadius()});
+					}
+				}
+			}
+			return c;
+		}).reduce(new long[2], (p, q) -> new long[] {p[0] + q[0], p[1] + q[1]});
+		// On 72 rays from a peat column outwards (every 0.25 m): the step from the last peat column of that bog to the first
+		// column beyond its shore, and the drop to the first column 2–2.5 m beyond it; {largest step, x, z, largest drop, x,
+		// z, rays}.
+		double[] worst = bogs.entrySet().parallelStream().map(e -> {
+			double[] b = e.getValue();
+			double[] w = {Double.NEGATIVE_INFINITY, 0, 0, Double.NEGATIVE_INFINITY, 0, 0, 0};
+			for (int r = 0; r < 72; r++) {
+				double ca = Math.cos(r * Math.PI / 36);
+				double sa = Math.sin(r * Math.PI / 36);
+				double peat = Double.NaN;
+				boolean stepped = false;
+				for (double d = 0; d < 4 * b[3] + 60; d += 0.25) {
+					double x = b[0] + ca * d;
+					double z = b[1] + sa * d;
+					ColumnSample s = m.sample(x, z);
+					ColumnSample.Waters ws = s.waters();
+					if (ws.lakeId() != e.getKey()) {
+						if (ws.standingWaterKind() != ColumnSample.StandingWaterKind.NONE) {
+							break;
+						}
+						continue;
+					}
+					if (ws.s() < 0) {
+						if (s.substrate() == Substrate.PEAT) {
+							peat = s.surface();
+						}
+						continue;
+					}
+					if (peat != peat || s.hasWater()) {
+						break;
+					}
+					if (!stepped) {
+						stepped = true;
+						if (peat - s.surface() > w[0]) {
+							w[0] = peat - s.surface();
+							w[1] = x;
+							w[2] = z;
+						}
+					}
+					if (ws.s() >= 2) {
+						if (peat - s.surface() > w[3]) {
+							w[3] = peat - s.surface();
+							w[4] = x;
+							w[5] = z;
+						}
+						w[6]++;
+						break;
+					}
+				}
+			}
+			return w;
+		}).reduce(new double[] {Double.NEGATIVE_INFINITY, 0, 0, Double.NEGATIVE_INFINITY, 0, 0, 0}, (p, q) -> {
+			double[] o = new double[7];
+			System.arraycopy(p[0] >= q[0] ? p : q, 0, o, 0, 3);
+			System.arraycopy(p[3] >= q[3] ? p : q, 3, o, 3, 3);
+			o[6] = p[6] + q[6];
+			return o;
+		});
+		System.out.printf(Locale.ROOT, "[kettle bogs] gameplay: %d bogs, %d rays reached 2 m beyond the shore; largest step from "
+				+ "the peat down to the first column beyond the shore %.3f m at (%.1f, %.1f) (limit %.2f), largest drop to 2 m "
+				+ "beyond the shore %.3f m at (%.1f, %.1f) (limit %.2f); kettle water %d, peat %d (before K5: 6202, 3896)%n",
+				bogs.size(), (long) worst[6], worst[0], worst[1], worst[2], BOG_STEP, worst[3], worst[4], worst[5], BOG_DROP,
+				counts[0], counts[1]);
+		assertTrue(bogs.size() >= 20, "too few kettle bogs: " + bogs.size());
+		assertTrue(worst[0] <= BOG_STEP, String.format(Locale.ROOT, "peat %.2f m above the ground at the shore at (%.1f, %.1f)",
+				worst[0], worst[1], worst[2]));
+		assertTrue(worst[3] <= BOG_DROP, String.format(Locale.ROOT, "peat %.2f m above the ground 2 m beyond the shore at "
+				+ "(%.1f, %.1f)", worst[3], worst[4], worst[5]));
+		assertTrue(Math.abs(counts[0] / 6202.0 - 1) <= 0.15, "kettle water columns " + counts[0] + " (before K5: 6202)");
+		assertTrue(Math.abs(counts[1] / 3896.0 - 1) <= 0.15, "peat columns " + counts[1] + " (before K5: 3896)");
+	}
 }

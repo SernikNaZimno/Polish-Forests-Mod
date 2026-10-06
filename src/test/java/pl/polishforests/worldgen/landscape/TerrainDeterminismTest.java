@@ -15,14 +15,13 @@ import org.junit.jupiter.params.provider.MethodSource;
  * frame is sampled by two fresh models: rows in parallel from the top, and one thread from the bottom-right corner
  * backwards. Every M1 field of {@link ColumnSample} must be identical.
  *
- * <p>Known issue, inherited from M1 (the frozen copy behaves the same): the water level of a tunnel valley lake is
- * cached per lake key, but computed from the point where the iteration that finds the lake axis ends, and that point
- * depends on the column that asks first. Where the iteration does not converge (tunnel valleys running W–E, the
- * N–S bands A1) the level, and with it the basin, depends on the sampling order (up to 2 m). Fixing it changes the
- * terrain, so it waits for step K5.2, which rebuilds {@code tunnelLakeAt} anyway: the level is then computed from a
- * canonical point that depends only on the lake key. Until then, {@link #TUNNEL_LAKE_LEVEL_ORDER_DEPENDENT} allows
- * differences in columns at a tunnel valley lake (standing water kind TUNNEL_VALLEY_LAKE in either sample) and fails
- * on any other difference. K5.2 sets it to {@code false}.
+ * <p>Issue inherited from M1 (the frozen copy behaves the same), fixed in step K5.2: the water level of a tunnel
+ * valley lake was cached per lake key, but computed from the point where the iteration that finds the lake axis ends,
+ * and that point depended on the column that asked first. Where the iteration does not converge (tunnel valleys
+ * running W–E, the N–S bands A1) the level, and with it the basin, depended on the sampling order (up to 2 m; in K0
+ * 2531 of 160000 columns of the frame of the bands and 12143 of 90000 of the close-up). Since K5.2 the level is
+ * computed from a canonical point that depends only on the lake key (the iteration started at its anchor), so every
+ * column must be identical, also at tunnel valley lakes.
  *
  * <p>The fields of the channel of the dominant valley ({@code floorChannelDist}, {@code floorChannelWidth},
  * {@code floorChannelLevel}, step K1, F2) must be identical in every column, also at tunnel valley lakes: they come
@@ -31,9 +30,6 @@ import org.junit.jupiter.params.provider.MethodSource;
 @Tag("slow")
 class TerrainDeterminismTest {
 	static final long SEED = 20260927L;
-	/** Known order dependence of the tunnel valley lake level (see the class comment); false after K5.2. */
-	static final boolean TUNNEL_LAKE_LEVEL_ORDER_DEPENDENT = true;
-
 	/** Square frame of {@code size} × {@code size} columns, {@code mpp} m apart, centered on (cx, cz). */
 	record Frame(String name, LandscapeScale scale, double cx, double cz, int size, double mpp) {
 		@Override
@@ -98,7 +94,6 @@ class TerrainDeterminismTest {
 		}
 		int tunnel = 0;
 		int other = 0;
-		double maxTunnel = 0;
 		String firstOther = "";
 		int floorChannel = 0;
 		for (int q = 0; q < n * n; q++) {
@@ -110,28 +105,21 @@ class TerrainDeterminismTest {
 			if (same(a, b)) {
 				continue;
 			}
-			if (TUNNEL_LAKE_LEVEL_ORDER_DEPENDENT && (atTunnelLake(a) || atTunnelLake(b))) {
+			if (atTunnelLake(a) || atTunnelLake(b)) {
 				tunnel++;
-				maxTunnel = Math.max(maxTunnel, Math.abs(a.surface() - b.surface()));
-			} else {
-				if (other == 0) {
-					firstOther = String.format(Locale.ROOT, " first at (%.2f, %.2f): surface %.4f / %.4f, water %d / %d, "
-							+ "%s / %s, standing water %s / %s", x0 + (q % n) * f.mpp(), z0 + (q / n) * f.mpp(), a.surface(),
-							b.surface(), a.waterLevel(), b.waterLevel(), a.waterKind(), b.waterKind(),
-							a.waters().standingWaterKind(), b.waters().standingWaterKind());
-				}
-				other++;
 			}
+			if (other == 0) {
+				firstOther = String.format(Locale.ROOT, " first at (%.2f, %.2f): surface %.4f / %.4f, water %d / %d, "
+						+ "%s / %s, standing water %s / %s", x0 + (q % n) * f.mpp(), z0 + (q / n) * f.mpp(), a.surface(),
+						b.surface(), a.waterLevel(), b.waterLevel(), a.waterKind(), b.waterKind(),
+						a.waters().standingWaterKind(), b.waters().standingWaterKind());
+			}
+			other++;
 		}
-		System.out.printf(Locale.ROOT, "[determinism] %s (%s, (%.0f, %.0f), %d x %d every %.1f m): differing columns at a "
-				+ "tunnel valley lake %d (max |Δsurface| %.3f m, known issue until K5.2), other %d%s; channel of the dominant "
-				+ "valley (F2) differing in %d (%.1f s)%n", f.name(),
-				f.scale().id(), f.cx(), f.cz(), n, n, f.mpp(), tunnel, maxTunnel, other, firstOther, floorChannel,
+		System.out.printf(Locale.ROOT, "[determinism] %s (%s, (%.0f, %.0f), %d x %d every %.1f m): differing columns %d (at a "
+				+ "tunnel valley lake %d)%s; channel of the dominant valley (F2) differing in %d (%.1f s)%n", f.name(),
+				f.scale().id(), f.cx(), f.cz(), n, n, f.mpp(), other, tunnel, firstOther, floorChannel,
 				(System.nanoTime() - t0) / 1e9);
-		if (TUNNEL_LAKE_LEVEL_ORDER_DEPENDENT && tunnel == 0 && f.name().startsWith("realistic_tunnel_lake")) {
-			System.out.println("[determinism] " + f.name() + ": the known tunnel valley lake issue did not show up; if it is "
-					+ "fixed, set TUNNEL_LAKE_LEVEL_ORDER_DEPENDENT to false");
-		}
 		assertTrue(other == 0, f.name() + ": " + other + " columns depend on the sampling order" + firstOther);
 		assertTrue(floorChannel == 0, f.name() + ": the channel of the dominant valley (F2) depends on the sampling order in "
 				+ floorChannel + " columns");
