@@ -14,7 +14,7 @@ Dokument wdrożenia poprawki geometrii terenu. Opisuje kroki K0–K7 (oraz krót
 | K5 | Wody stojące: starorzecza, jeziora rynnowe (z poziomem niezależnym od kolejności próbkowania), oczka, niecki, brzeg jezior bezodpływowych; K5b: wybrzeże wydmowe (D5) | wody stojące, wybrzeże |
 | K6 | Okno mieszania regionów 5 × 5 (A16); test ścian z całą niecką; D3 (wały moren W–E) odłożone do M5; `TUNNEL_COS` 0,6 sprawdzony i cofnięty (runda 1) | szwy regionów, jeziora rynnowe |
 | K7 | Jedno przegenerowanie `golden_terrain_m2.txt` (protokół §4), usunięcie list dozwolonych zmian, podsumowanie poprawki i dokumentacja | — (plik wzorcowy) |
-| K8 | Krótka poprawka po teście w grze (decyzja użytkownika 2026-10-07): K8a jeziora rynnowe GAMEPLAY (wariant d z K6), K8b wybrzeże, K8c starorzecza, K8z przegenerowanie pliku wzorcowego | jeziora rynnowe (K8a) |
+| K8 | Krótka poprawka po teście w grze (decyzja użytkownika 2026-10-07): K8a jeziora rynnowe GAMEPLAY (wariant d z K6), K8b wybrzeże, K8c starorzecza, K8z przegenerowanie pliku wzorcowego | jeziora rynnowe (K8a), brzeg zalewu (K8b1) |
 
 Zalew bez rowu (D2) wszedł w K5 razem z wybrzeżem wydmowym (D5, K5b). Wały moren W–E (D3) nie przeszły prototypu w K6 (łamią testy sieci rzecznej) i są odłożone do M5.
 
@@ -2049,7 +2049,7 @@ Zrzutów `meanders` (sam brzeg szerokiej rzeki i łąka z małym owalnym zagłę
 
 ## K8. Krótka poprawka po teście w grze (2026-10-07)
 
-Decyzja użytkownika z 2026-10-07 („krótka poprawka teraz”, przed fazą 2 M2): K8a — jeziora rynnowe GAMEPLAY (wariant d z K6), K8b — wybrzeże (wewnętrzny brzeg zalewu, wydma przednia, `find cliff`), K8c — starorzecza (prosty brzeg z wałem przy końcu półksiężyca), K8z — jedno przegenerowanie `golden_terrain_m2.txt`. Zmiany terenu w K8a–K8c idą przez narastające listy `src/test/golden-allow/K8a.txt`, `K8b.txt`, `K8c.txt` (domyślnie ostatnia według nazwy, `build.gradle`).
+Decyzja użytkownika z 2026-10-07 („krótka poprawka teraz”, przed fazą 2 M2): K8a — jeziora rynnowe GAMEPLAY (wariant d z K6), K8b — wybrzeże (wewnętrzny brzeg zalewu, wydma przednia, `find cliff`), K8c — starorzecza (prosty brzeg z wałem przy końcu półksiężyca), K8z — jedno przegenerowanie `golden_terrain_m2.txt`. Zmiany terenu w K8a–K8c idą przez narastające listy `src/test/golden-allow/K8a.txt`, `K8b1.txt`, `K8b2.txt`, `K8c.txt` (domyślnie ostatnia według nazwy, `build.gradle`; K8b podzielony na K8b1 — brzeg zalewu i K8b2 — wydma przednia, plaża i `find cliff`).
 
 ### K8a. Jeziora rynnowe GAMEPLAY: wariant d (koniec przy dolinie od gładkiej szczeliny)
 
@@ -2239,3 +2239,70 @@ Commity pośrednie: `184c48f` (B-splajn, obwiednie euklidesowe, gładkie maksimu
 3. Promień gładkiego maksimum to 30 m·k. Próba z 80 m·k dawała okrąglejsze kształty, ale zabierała do 25% wody w kadrach REAL i pogłębiała zagłębienie (−15980, 5660) do 9,7 m.
 
 **Co zostaje** (poza listą K8a): ukośny koniec soczewki (wyżej), suche rowy wzdłuż bocznych dolin i grunt podniesiony brzegiem na zboczu doliny; wszystko do oceny na kadrach w K8z.
+
+### K8b1. Brzeg zalewu bez prostych linii: zatoki, cyple, delty i zaokrąglone końce
+
+Baza: `47140e0` (drzewo czyste). Prototyp na kopii modelu w katalogu roboczym poza repozytorium (narzędzia: przekroje wzdłuż normalnej brzegu z położeniem wewnętrznego i zewnętrznego brzegu zalewu, mapy `landElevation` i `sample`, liczniki kolumn zalewu, skan ujść rzek do zalewu, skan par 1 m wokół delt), potem kod w projekcie.
+
+**Fakty z natury** (2026-10-07; „rozwinięcie” = długość linii brzegowej przez obwód koła o tej samej powierzchni):
+
+| Zbiornik | Powierzchnia | Długość × szerokość | Głębokość śr. / maks. | Linia brzegowa | Rozwinięcie | Kształt brzegu |
+|---|---|---|---|---|---|---|
+| Zalew Wiślany | 838 km² | 90,7 km × 13 km maks. (śr. ok. 9 km) | 2,7 / 5,2 m | ok. 270 km | 2,6 | płytka Zatoka Elbląska (1–1,5 m) na południu, delta Wisły (Nogat, Szkarpawa) od strony Żuław, mierzeja prosta |
+| Zalew Szczeciński | 687 km² | 55 km × 22 km | 3,8 / 8,5 m | — | — | zatoki Nowowarpieńska, Skoszewska, Roztoka Odrzańska (z zatokami Gąsierzyńską, Stepnicką, Wódzką), Zatoka na Palach, Krzecki Zalew; delta wsteczna Świny, wyspy, mielizny |
+| Łebsko | 71,4 km² | 16,4 km × 7,6 km | 1,6 / 6,3 m | 55,4 km | 1,85 | pas szuwarów miejscami > 100 m, od północy Mierzeja Łebska |
+| Gardno | 24,7 km² | 6,85 km × 4,73 km | 1,3 / 2,6 m | 23,4 km | 1,33 | owal z wysuniętym narożnikiem, przepływa przez nie Łupawa, piaszczysta mierzeja |
+
+Źródła: [Vistula Lagoon (Wikipedia)](https://en.wikipedia.org/wiki/Vistula_Lagoon), [Zalew Szczeciński (Wikipedia)](https://pl.wikipedia.org/wiki/Zalew_Szczeciński), [Szczecin Lagoon (Wikipedia)](https://en.wikipedia.org/wiki/Szczecin_Lagoon), [Łebsko (Wikipedia)](https://pl.wikipedia.org/wiki/Łebsko), [Gardno (Wikipedia)](https://pl.wikipedia.org/wiki/Gardno). Wniosek dla modelu: brzeg od lądu jest wyraźnie dłuższy niż gładki obrys (Łebsko: 55,4 km wobec 2 × 16,4 km długości, czyli 1,7 raza; Zalew Wiślany: 270 km wobec 2 × 90,7 km, 1,5 raza), z zatokami i cyplami rzędu ułamka szerokości (Zatoka Elbląska), a rzeki budują delty w głąb zalewu; brzeg od strony mierzei jest prosty. Zalew w modelu jest węższy niż Wiślany (REAL ok. 1,2–1,3 km wody), czego K8b1 nie zmienia.
+
+**Przyczyna (potwierdzona na prototypie).** Szum `ragged` (0,18 szerokości, fala 2,5 km·meso) przesuwał cały profil misy, ale wewnętrzny brzeg nie leżał na krawędzi misy, tylko tam, gdzie gaśnie siła zalewu: f maleje, gdy zaplecze `lowLand` rośnie od 3 do 6 m, a `lowLand` zależy tylko od odległości od brzegu morza. Wewnętrzny brzeg był więc poziomicą odległości od brzegu, równoległą do brzegu morskiego. Pomiar REAL (−223000, −152000), 40 km brzegu co 20 m: odchylenie wewnętrznego brzegu od prostej w oknach 1,2 km mediana 7,2 m (zrzut w grze: ok. 5 m), droga brzegu / długość 1,013. Końce zalewu: siła rosła na odcinku wartości szumu 0,25–0,5 (fala 60 km·meso), czyli na ok. 3 km, więc woda zwężała się z ok. 1 km do 0 na ok. 3 km (klin).
+
+**Zmiana (`LandscapeModel.shapeCoast`, `lagoonDelta`, `sample`).**
+- **Wewnętrzny brzeg:** zaplecze i misa zalewu liczą odległość od brzegu przesuniętą o szum `coast.lagoon.shore` (nowa sól; 5 oktaw od 2 km·k do ok. 120 m·k, trwałość 0,5) o amplitudzie 0,7 szerokości zalewu (`LAGOON_SHORE_AMP`), razy siła zalewu. Przesunięcie rośnie od początku misy do jednej szerokości za nim (mierzeja, plaża i wydmy się nie zmieniają), gaśnie między 1,5 a 3 szerokościami (`LAGOON_SHORE_FADE`, `_END`) i przed końcem niskiego zaplecza `COAST_LOW_END` (teren dalej bez zmian, `TerrainLocalityTest`). Przesuwa się poziomica zaplecza razem z brzegiem, więc zatoka jest wcięta w niskie zaplecze, a cypel to język zaplecza; poziomice zaplecza za zalewem falują razem z brzegiem.
+- **Końce zalewu:** progi szumu siły zalewu 0,25–0,5 → 0,32–0,40 (`COAST_LAGOON_0`, `_1`): siła rośnie na odcinku porównywalnym z szerokością, a koniec wody jest zaokrąglony. Powierzchnia zalewu (w `landElevation`) prawie bez zmian (niżej).
+- **Delty (`lagoonDelta`, tylko w `sample`):** kolumna zalewu przy korycie rzeki dostaje eliptyczny płat lądu do 0,8 m nad morzem (`DELTA_TOP`). Połowa szerokości płata to 2,5 połowy szerokości dna doliny (`DELTA_HALF`, od brzegu koryta), zasięg w głąb zalewu 3 połowy szerokości dna (`DELTA_REACH`), ale najwyżej 0,2 szerokości zalewu; oba mają szum płatów 300 i 600 m·k. Wielkość płata idzie za połową szerokości dna (miękkie maksimum po odcinkach, ciągłe), a nie za rzędem cieku ani szerokością najbliższego koryta: te zmieniają się skokiem tam, gdzie bliżej jest inna rzeka (pierwsza wersja z rzędem dawała ścianę 6 m). Odległość od brzegu to długość wody na promieniu wzdłuż normalnej brzegu w głąb lądu (6 próbek `landElevation`, liniowo między nimi, więc ciągła), z kierunkiem z gradientu pola morza (gradient samej `coastDistance` skręca skokiem tam, gdzie odległość jest płaska: druga ściana 5,4 m). Mielizna w zalewie ani strona mierzei nie są więc brzegiem (wersja z gradientem głębokości dawała pierścieniowe wyspy, wersja z 8 promieniami — gwiazdy). Za płatem stok do dna zalewu na odcinku 1/4 wielkości płata + 4 m na metr głębokości (`DELTA_FRONT_SHARE`, `DELTA_FRONT_RUN`), z boku tak samo jak z przodu. Delta nie wchodzi do `landElevation`, więc sieć rzeczna jej nie widzi (jak dolin) i rzeki się przez nią nie zmieniają; koryto rzeki przecina deltę zwykłym zapytaniem sieci (kolumna delty idzie dalej ścieżką lądu). Odrzucony wariant: płat tylko tam, gdzie rzeka odchodzi od brzegu pod kątem (z gradientu odległości od koryta) — kierunek skakał na meandrach i dawał kolce.
+
+**Pomiary przed (baza) i po.** Przekroje wzdłuż normalnej brzegu (`landElevation`, bez delt), odchylenie wewnętrznego brzegu od prostej dopasowanej w oknie (REAL 1,2 km, GAMEPLAY 300 m), „sd/szer.” = odchylenie standardowe położenia brzegu przez średnią szerokość wody:
+
+| Odcinek | Szerokość wody | Odchylenie w oknie: mediana / p90 / maks. | sd/szer. | Droga brzegu / długość |
+|---|---|---|---|---|
+| REAL (−223000, −152000), 40 km | 1315 → 1291 m | 7,2 / 42,8 / 97 → **119 / 321 / 563 m** | 0,14 → 0,20 | 1,013 → **1,257** |
+| REAL (−198000, −184000), 30 km | 1240 → 1250 m | 9,3 / 21,6 / 26,5 → **112 / 424 / 544 m** | 0,19 → 0,17 | 1,009 → **1,250** |
+| GAMEPLAY (11600, −9600), 8 km | 134 → 170 m | 27 / 54 / 97 → 26 / 59 / 119 m | 0,35 → 0,34 | 1,138 → 1,158 |
+| GAMEPLAY (5000, −14000), 8 km | 171 → 177 m | 25 / 68 / 113 → 26 / 54 / 137 m | 0,21 → 0,30 | 1,148 → 1,321 |
+| GAMEPLAY (345, 10394), 8 km | 249 → 257 m | 111 / 177 / 223 → 146 / 187 / 248 m | 0,40 → 0,35 | 2,61 → 2,35 |
+
+W REAL wewnętrzny brzeg ma teraz zatoki i cypelki o amplitudzie ok. 10–30% szerokości (mediana odchylenia w oknie 1,2 km ok. 0,09 szerokości, p90 ok. 0,3, pojedyncze zatoki do ok. 0,45), a jego droga jest o 25% dłuższa niż długość odcinka (w naturze 1,5–1,7 raza obu brzegów razem, przy dokładniejszej mapie). W GAMEPLAY zalewy są wąskie (85–260 m wody) i już wcześniej miały nieregularny brzeg (ok. 15–40% szerokości w oknach 300 m: zaplecze GAMEPLAY rośnie szybko, a brzeg wyznacza też relief), więc zmiana jest mała. Przekroje z więcej niż jednym odcinkiem wody (wysepki i odcięte zatoczki) w REAL: 5 → 27 z 1601 i 0 → 29 z 893.
+
+Końce zalewu (szerokość wody wzdłuż brzegu, REAL): od ok. 1 km do 0 na 3,1 km (oba końce odcinka (−223000, −152000) i (−198000, −184000)) → na 1,2–1,3 km, czyli mniej więcej na jednej szerokości; na mapach koniec jest zaokrąglony zamiast klina.
+
+Powierzchnia zalewu w `landElevation` (kolumny): REAL ±60 km wokół (−215000, −160000) co 100 m 7400 → 7120 (−3,8%), GAMEPLAY ±40 km co 20 m 25985 → 27047 (+4,1%). Delty: REAL ±30 km co 20 m 6116 kolumn lądu delt na 177841 kolumn zalewu (3,4%), GAMEPLAY ±20 km co 10 m 5155 na 47160 (10,9%); woda zalewu po deltach wobec bazy −7,1% (REAL) i −8,6% (GAMEPLAY). Wokół każdej kolumny delty (okno 7 × 7 m, pary 1 m): przecieki (woda obok niższego suchego gruntu) 0 w obu skalach, suche pary > 1 m: REAL 0, GAMEPLAY 4 (do 1,03 m: wał ujścia rzeki podniesiony do 1 m, mechanizm M1).
+
+**Złoty test.** Raport `-PgoldenReport=build/golden_K8b1.txt`: wobec K8a dochodzą łaty `lagoon` we wszystkich zestawach (REAL A, REAL B, GAMEPLAY A, GAMEPLAY B, REAL A 0,5) i `grid` w REAL A i REAL A 0,5 (zalew jest w `landElevation`, z którego sieć rzeczna liczy trasy). `GAMEPLAY A / lagoon` traci cel (koniec zalewu przesunął się), do wyszukania od nowa w K8z. Łaty kontrolne `*_interior`, `beach`, `coast` i `cliff` bez zmian. Lista `src/test/golden-allow/K8b1.txt` (narastająca z K8a, domyślna).
+
+**Testy.** Zmienione: `SurfaceContinuityTest`, okno `gameplay_lagoon`: limit 7 → 9 skoków i 0,94 → 0,96 m (9 skoków do 0,955 m, wszystkie „coast”: pierścień 12 m przy korycie podniesiony do poziomu + 1 m obok niższego gruntu, mechanizm M1; brzeg zalewu i ujścia rzek przesunęły się, więc takich miejsc jest w GAMEPLAY więcej; największy stopień w pasie brzegowym 1,84 bloku na blok, D4b dotrzymane); `realistic_lagoon` 1 skok 0,56 m (limit 2). `TerrainLocalityTest`: 0 kolumn zmienionych poza dolinami i wodą (pierwsza wersja przesuwała zaplecze także za `COAST_LOW_END`: 71 kolumn w REAL i 1 w GAMEPLAY, do 0,5 m; teraz przesunięcie gaśnie przed końcem niskiego zaplecza). Commit pośredni `6377102` po kompilacji, `fastTest` i klasach `GoldenTerrainTest` (lista K8b1), `SurfaceContinuityTest`, `StandingWaterContainmentTest`, `WaterContainmentTest`, `TerrainDeterminismTest`, `LandscapeModelTest`, `CoastTest`. Pierwsze wersje delt (wielkość z rzędu cieku, normalna z gradientu `coastDistance`, płat bez przejścia do starego brzegu) zostawiały ściany do 6 m i skoki 0,8 m na starym brzegu; poprawione przed commitem (wyżej).
+
+**Siedliska** (`./gradlew landscapePreview -PhabitatsOnly`, wobec CSV w `docs/m2` z etapu H, w którym nie ma jeszcze K8a): zalew REAL / GAMEPLAY 0,045 / 0,138 → 0,036 / 0,139%, torfowisko niskie 0,020 / 0,099 → 0,020 / 0,077%, ols 2,419 / 1,940 → 2,424 / 1,981%, szuwar 0,206 / 0,209 → 0,202 / 0,186%, plaża i wydmy bez zmian. Kadr `coast_lagoon_3km`: nieregularny brzeg z cyplem i deltą przy ujściu rzeki, pasy szuwaru, torfowiska i olsu idą za nowym brzegiem; mierzeja z plażą i wydmami bez zmian. Plików podglądu w `docs/m2` nie odświeżam (K8z).
+
+**Pełny `test`** (`tools/dev/run-tests test`): PASS (697 s; drzewo `849f41a7a14a`, potem tylko ten wpis w dokumentacji).
+
+**Koszt.** `costTest -PcostRuns=15`, A/B w jednej sesji (K8b1, baza `47140e0`, znów K8b1), stosunek do kopii M1 mediana / z minimów, µs na kolumnę w nawiasie:
+
+| Obszar | K8b1, przebieg 1 | Baza | K8b1, przebieg 2 |
+|---|---|---|---|
+| REAL cały obszar | 1,096 / 1,115 (4,21) | 1,110 / 1,104 (4,26) | 1,104 / 1,111 (4,21) |
+| REAL Beskidy | 1,104 / 1,111 (6,94) | 1,104 / 1,101 (7,00) | 1,113 / 1,114 (6,96) |
+| REAL wielki masyw | 0,994 / 0,992 (6,49) | 0,981 / 0,983 (6,47) | 0,975 / 0,999 (6,43) |
+| GAMEPLAY cały obszar | 1,199 / 1,203 (6,37) | 1,193 / 1,190 (6,37) | 1,204 / 1,204 (6,37) |
+| GAMEPLAY Beskidy | 1,175 / 1,180 (11,05) | 1,156 / 1,152 (11,01) | 1,177 / 1,179 (10,95) |
+| GAMEPLAY wielki masyw | 1,142 / 1,141 (12,10) | 1,124 / 1,123 (11,99) | 1,130 / 1,134 (11,94) |
+
+Czas kolumny jest taki sam jak w bazie (GAMEPLAY cały obszar 6,37 µs we wszystkich trzech przebiegach, REAL 4,21 wobec 4,26), limity bezwzględne D1 dotrzymane. Stosunek skacze razem z pomiarem kopii M1 (GAMEPLAY 5,28–5,35 µs): GAMEPLAY cały obszar 1,19–1,20, w drugim przebiegu K8b1 1,204 (jak w rundzie 1 K8a: budżet na granicy). Nowy szum brzegu liczy się tylko w pasie misy zalewu, a zapytanie sieci rzecznej dla delty tylko w kolumnach zalewu (ok. 0,04% kolumn REAL i 0,14% GAMEPLAY w podglądzie).
+
+**Odstępstwa od zadania K8b1:**
+1. Delta to płat lądu przy każdej rzece, której koryto przechodzi przez zalew przy brzegu od lądu, bez rozróżnienia kierunku rzeki. Rzeka płynąca w zalewie wzdłuż brzegu (w GAMEPLAY sieć rzeczna prowadzi czasem koryto przez płytki skraj zalewu) dostaje pas lądu wzdłuż koryta (zalew węższy na odcinku do kilkuset metrów). Wariant z kątem rzeki względem brzegu odrzucony (wyżej).
+2. Koryto rzeki kończy się na delcie tak jak wcześniej na brzegu zalewu (mechanizm ujść M1: brzegi koryta podniesione do 1 m przy poziomie morza); odnóg delty nie ma.
+3. W GAMEPLAY zmiana wewnętrznego brzegu jest mała (wyżej), bo brzeg wyznacza tam głównie relief zaplecza.
+4. Progi siły zalewu (`COAST_LAGOON_0`, `_1`) zmienione, a nie tylko kształt końca: koniec przesuwa się wzdłuż brzegu o setki metrów, a powierzchnia zalewu zmienia się o −4…+4%.
+
+**Co zostaje:** odnogi delt i koryto do czoła delty (M5), przegląd delt i końców zalewów na zrzutach w grze w K8z.
