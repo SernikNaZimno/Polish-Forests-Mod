@@ -1,6 +1,6 @@
 # Poprawka geometrii terenu (proste krawędzie den dolin, starorzeczy i jezior; M2-8)
 
-Dokument wdrożenia poprawki geometrii terenu. Opisuje kroki K0–K7, narzędzia kontrolne i odstępstwa od projektu. Projekt i analizy (dna dolin, starorzecza i jeziora, szczyty, przegląd artefaktów) powstały poza repozytorium; tu zapisujemy to, co weszło do kodu, i wyniki pomiarów.
+Dokument wdrożenia poprawki geometrii terenu. Opisuje kroki K0–K7 (oraz krótką poprawkę K8), narzędzia kontrolne i odstępstwa od projektu. Projekt i analizy (dna dolin, starorzecza i jeziora, szczyty, przegląd artefaktów) powstały poza repozytorium; tu zapisujemy to, co weszło do kodu, i wyniki pomiarów.
 
 ## Kroki
 
@@ -14,6 +14,7 @@ Dokument wdrożenia poprawki geometrii terenu. Opisuje kroki K0–K7, narzędzia
 | K5 | Wody stojące: starorzecza, jeziora rynnowe (z poziomem niezależnym od kolejności próbkowania), oczka, niecki, brzeg jezior bezodpływowych; K5b: wybrzeże wydmowe (D5) | wody stojące, wybrzeże |
 | K6 | Okno mieszania regionów 5 × 5 (A16); test ścian z całą niecką; D3 (wały moren W–E) odłożone do M5; `TUNNEL_COS` 0,6 sprawdzony i cofnięty (runda 1) | szwy regionów, jeziora rynnowe |
 | K7 | Jedno przegenerowanie `golden_terrain_m2.txt` (protokół §4), usunięcie list dozwolonych zmian, podsumowanie poprawki i dokumentacja | — (plik wzorcowy) |
+| K8 | Krótka poprawka po teście w grze (decyzja użytkownika 2026-10-07): K8a jeziora rynnowe GAMEPLAY (wariant d z K6), K8b wybrzeże, K8c starorzecza, K8z przegenerowanie pliku wzorcowego | jeziora rynnowe (K8a) |
 
 Zalew bez rowu (D2) wszedł w K5 razem z wybrzeżem wydmowym (D5, K5b). Wały moren W–E (D3) nie przeszły prototypu w K6 (łamią testy sieci rzecznej) i są odłożone do M5.
 
@@ -2044,3 +2045,89 @@ Zrzutów `meanders` (sam brzeg szerokiej rzeki i łąka z małym owalnym zagłę
 - kopuła wielkiego masywu jest bardzo płaska (w promieniu 180 m od szczytu tylko 5–7 m, czyli ok. 4 bloki niżej), więc z boku wygląda jak płaskowyż; to skutek miękkiego sufitu K2 (`greatMassifCeiling`: wszystko powyżej celu − `GM_CAP`, tu 1624 m, ściśnięte w ostatnie 35 m), do oceny razem z biomami piętra halnego;
 - wewnętrzny brzeg zalewu (ok. 1,76 km od analitycznej linii brzegu) jest prawie prosty: w modelu na 1,2 km odchyla się od prostej o ok. 5 m; do oceny razem ze znanymi „końcami zalewów” (M5);
 - prawie prosty odcinek brzegu starorzecza z wałem 1 m; czy to wygaszanie szerokości F1 przy dolinie dopływu (K5.1, „starorzecze przy dopływie”, M5), niesprawdzone.
+
+
+## K8. Krótka poprawka po teście w grze (2026-10-07)
+
+Decyzja użytkownika z 2026-10-07 („krótka poprawka teraz”, przed fazą 2 M2): K8a — jeziora rynnowe GAMEPLAY (wariant d z K6), K8b — wybrzeże (wewnętrzny brzeg zalewu, wydma przednia, `find cliff`), K8c — starorzecza (prosty brzeg z wałem przy końcu półksiężyca), K8z — jedno przegenerowanie `golden_terrain_m2.txt`. Zmiany terenu w K8a–K8c idą przez narastające listy `src/test/golden-allow/K8a.txt`, `K8b.txt`, `K8c.txt` (domyślnie ostatnia według nazwy, `build.gradle`).
+
+### K8a. Jeziora rynnowe GAMEPLAY: wariant d (koniec przy dolinie od gładkiej szczeliny)
+
+Baza: `0da46a3` (drzewo czyste). Prototyp na kopii modelu w katalogu roboczym poza repozytorium (narzędzia: skan ścian zrobionych przez model, okna 1 m `WALL_CLUSTERS`, skan suchych zamkniętych zagłębień, liczniki wody i oczek), potem kod w projekcie.
+
+**Przyczyny (potwierdzone na prototypie).**
+- **Koniec jeziora przy dolinie na stromym gruncie** (4 z 5 skupisk ścian K6): szczelina za wycięciem doliny w samej kolumnie (`RiverHit.floorGap` = floorDist − terrainHalf − 0,5 · ściana, ściana = (teren − dno)/`maxSlope`) zmienia się o 4–6 m na metr, bo ściana rośnie z wysokością terenu nad dnem. Przykład (−20545, 10800…11060): teren surowy 80 → 155 m na 40 m, `floorGap` 162 → −10 m na 40 m. Gładkie pole `CoarseTerrainField` (`sBar`, okno 3 × 3 węzły po 16 m w GAMEPLAY) nie pomaga: `sBar` idzie tu za terenem surowym (11 m na 10 m wobec 15 m na 10 m), więc połowa ściany „z wysokości gładkiego pola” zmienia się prawie tak samo.
+- **Soczewka liczona w kolumnie przy dolinie z boku:** koniec soczewki (`ellipticEnd`) szedł za szczeliną w kolumnie także w poprzek jeziora. Przy dolinie biegnącej wzdłuż jeziora woda kurczyła się od strony doliny, a po drugiej stronie odległość od brzegu miała minimum > 0 z dala od osi: niecka bez wody, czyli suche zamknięte zagłębienie (np. (16960, −690): 60 m głębokości, (−16240, 6890): 65 m). Tak samo przy nakładaniu się końca śladu i końca przy dolinie.
+- **Skraj obszaru młodoglacjalnego** ((10351, 11900)): połowa szerokości z obecności w kolumnie (waga typu, w GAMEPLAY 0 → 1 na ok. 300 m), a wygaszenie wąskiego jeziora (`shapeFade`, 25–60 m·k) dodawało cały zasięg niecki na kilkunastu metrach.
+
+**Zmiana (`LandscapeModel.tunnelShape`, `tunnelGaps`, `tunnelLake`; `RiverNetwork`).**
+- **Siatka szczelin konturu (`TunnelGaps`, raz na kontur, w pamięci podręcznej):** w każdym węźle śladu (co 20 m·k wzdłuż z) i co 20 m·k w poprzek konturu (do 1,2 połowy szerokości jeziora w węźle + zasięg niecki) zapytanie sieci rzecznej na gruncie sprzed dolin, jak w `sample`: `floorGap`, nowe pole `RiverHit.floorEdgeGap` (szczelina za brzegiem dna, bez ściany: zmienia się o ok. 1 m na metr) i to, czy próbka leży w strefie młodoglacjalnej w szerokim sensie (waga typów młodoglacjalnych > 0, szum rynien > 0, ląd). Z tego:
+  - **gładka szczelina:** połowa drogi między dolną a górną obwiednią o nachyleniu 1 (metryka L1: z wzdłuż śladu + odległość w poprzek) szczeliny przyciętej do [koniec przy dolinie − zasięg − 10 m·k; koniec przy dolinie + `TUNNEL_END_MAX`]; tam, gdzie szczelina zmienia się najwyżej o 1 m na metr, równa samej szczelinie (`TUNNEL_GAP_LOW`, `TUNNEL_GAP_MIX` 0,5);
+  - **koniec soczewki przy dolinie** z największej gładkiej szczeliny w przekroju jeziora (1,2 połowy szerokości węzła), więc jezioro przy dolinie z boku zachowuje wodę po drugiej stronie, a koniec na osi pozostaje zaokrąglony (`ellipticEnd`);
+  - **ograniczenie od doliny z boku i od skraju strefy:** odległość od brzegu ≥ max(koniec przy dolinie − gładka szczelina; zasięg − odległość od próbek spoza strefy), oba człony zmieniają się najwyżej o ok. 1 m na metr;
+  - **wypełnienie zagłębień:** odległość od brzegu w każdej próbce (kształt z `tunnelShape` w węźle z powyższymi ograniczeniami) wypełniona zalewaniem z priorytetem od próbek z wodą; zamknięte zagłębienie odległości od brzegu (sucha niecka między doliną a zboczem, za końcem wody, między jeziorami) podnosi się do swojego progu, a jezioro bez wody nie ma niecki. Kolumna dostaje to podniesienie (interpolacja dwuliniowa). Pierwsza wersja wypełniała tylko wzdłuż osi (najmniejsza odległość przekroju) i zostawiała zagłębienie po drugiej stronie doliny biegnącej osią jeziora ((7240, 11460), 14,5 m).
+- **Strażnik dna doliny** (kolumna): odległość od brzegu ≥ zasięg niecki − `floorEdgeGap`, więc niecka nigdy nie sięga dna doliny (ograniczenie z rundy 2 K5: niecka nie obniża dna poniżej wody rzeki). Zastępuje dawny warunek „koniec jeziora pół ściany za wycięciem”, który w kolumnie był stromy.
+- **Połowa szerokości z osi jeziora** (`TunnelLake`: połowa szerokości, bramka i odległość wzdłuż osi do najbliższego wąskiego węzła, interpolowane między węzłami): obecność liczona na osi, nie w kolumnie. Wąskie końce (połowa szerokości < `TUNNEL_NARROW` 40 m·k) działają jak koniec śladu: połowa szerokości ograniczona odległością od wąskiego węzła, wygaszenie na 1,5 zasięgu niecki (zamiast `shapeFade` w kolumnie). `sample` liczy jezioro w kolumnach z wagą typów młodoglacjalnych > 0 (dawniej obecność > 0,05); próbki spoza strefy w siatce dają odległość od brzegu ≥ zasięg + 20 m·k, więc odcięcie kolumn spoza strefy nie robi skoku (w GAMEPLAY waga typu spada z 0,2 do 0 na co najmniej ok. 470 m, w REAL na ok. 20 km).
+- **`TUNNEL_COS` 0,78 → 0,6** (ok. 53° od N–S), jak w pierwszej wersji K6: suche zagłębienia, przez które K6 cofnął próg, nie wracają (pomiary niżej).
+- Dno jeziora (głębokość) idzie za bramką osi, nie kolumny. `RiverHit.floorEdgeGap`: nowe pole, liczone w tej samej pętli co `floorGap` (bez kosztu).
+
+**Pomiary przed (baza `0da46a3`) i po (K8a).** Narzędzia jak w K6 (pary suchych sąsiadów 1 m > 2 bloków na blok zrobione przez model, czyli przy parze terenu surowego ≤ 2 bloki, w pierścieniu albo w niecce).
+
+| Pomiar | Przed | Po |
+|---|---|---|
+| Ściany niecek, skan GAMEPLAY ±40 km co 20 m | 32 pary w 16 skupiskach, do 8 bloków na blok | **0** |
+| Ściany, test GAMEPLAY ±20 km co 20 m (`WALLS_MAX`) | 5 par, do 3 bloków | **0** (limit 0) |
+| Ściany, 12 okien 1 m `WALL_CLUSTERS` | 3397 / 1541 / 1250 / 386 / 232 / 3183 / 961 / 930 / 597 / 201 / 247 / 267 par, do 8 bloków | **0 we wszystkich** (limity 0) |
+| Ściany REAL: skan ±40 km co 20 m wokół wysoczyzny, test ±20 km co 40 m | 0 | 0 |
+| Suche zamknięte zagłębienia przy nieckach > 3 m ponad zagłębienie terenu surowego, GAMEPLAY ±20 km co 10 m | 20, do 60 m (największe: (16960, −690) 60 m, (−16240, 6890) 50 m, (−16210, 6560) 38 m, (18440, 1990) 34 m) | 3 (patrz niżej) |
+| To samo, REAL ±30 km co 20 m wokół wysoczyzny | 1 ((−60055, 50053), 5,2 m) | 0 |
+
+Trzy miejsca na siatce 10 m po K8a: (−18450, 14540), 12 m — zagłębienie terenu po dolinach (dno bocznej doliny), niecka go nie obniża (powierzchnia ta sama co przed K8a; przed K8a niecka innego jeziora otwierała mu odpływ); (18020, −5560), 6 m — złudzenie siatki 10 m (bruzda w załamaniu ograniczenia od doliny, na siatce 2 m odpływa); (−16300, −9520), 3,3 m — przy brzegu jeziora wał (lustro + 1 m) zamyka zagłębienie zbocza doliny. Test `StandingWaterContainmentTest.tunnelValleyBasinsHaveNoClosedPits` (okna 500 m co 2,5 m wokół wszystkich 28 miejsc sprzed K8a i prototypów, zagłębienie liczone tylko tam, gdzie niecka obniża grunt o > 0,5 m): jedno zagłębienie 3,7 m w (−15998, 5693) (ten sam mechanizm co (−16300, −9520)); limit testu `PIT_MAX` 4 m. Cel „0 zagłębień > 3 m” nie jest więc spełniony w pełni (odstępstwo 4).
+
+Woda jezior rynnowych (kolumny wody; K4c i K6 z tabeli K6, K7 = K6):
+
+| Obszar | K4c | K6/K7 | K8a z `TUNNEL_COS` 0,78 | K8a (0,6) | K8a wobec K7 | K8a wobec K4c |
+|---|---|---|---|---|---|---|
+| GAMEPLAY ±20 km co 20 m | 29338 | 9703 | 11240 | 12600 | +30% | −57% |
+| GAMEPLAY ±40 km co 25 m | 58890 | 19825 | 23662 | 26943 | +36% | −54% |
+| REAL ±60 km wokół wysoczyzny co 75 m | 7550 | 5852 | 6349 | 6817 | +16% | −10% |
+
+Ubytek wobec K4c zmalał z −67% do −57% (GAMEPLAY), ale celu „w stronę −37%” nie osiągnął: największa część ubytku pochodzi z K5.2 i rundy 1 K5 (koniec przed doliną, kontury śledzone przez środek sekcji, próg ukośnego konturu), których K8a nie zmienia. Z wariantem 0,78 wody było mniej, a ścian i zagłębień tyle samo (0 ścian, 6 zagłębień > 3 m na siatce 10 m wobec 3 z 0,6), więc próg wrócił do 0,6.
+
+Oczka (`kettleTouchesTunnelLake` idzie teraz za połową szerokości z osi jeziora): GAMEPLAY ±8 km co 10 m woda 5376 → 5376 kolumn, torf 3442 → 3376, 203 → 202 oczka; ±20 km co 10 m woda 39069 → 38728 (−0,9%), torf 26621 → 26244, 1567 → 1558 oczek; REAL ±40 km co 40 m woda 16256 → 16214, 2349 → 2346 oczek. Szczelność: `StandingWaterContainmentTest` (wszystkie okna GAMEPLAY i REAL, w tym oczka przy jeziorach rynnowych i niecka przy dolinie (17620, −1819)): 0 przecieków; `tunnelLakesHaveOneLevel`: 0 błędów (GAMEPLAY 33 jeziora, REAL 26).
+
+`LandscapeModelTest.tunnelLakesEndBeforeValleys`: najmniejsza szczelina za brzegiem dna przy wodzie REAL 140,0 m (limit `tunnelBank` 140 m), GAMEPLAY 70,1 m (limit 70 m); najmniejsza szczelina za wycięciem (`floorGap`) REAL 27,4 m, GAMEPLAY 27,1 m (w K5 103 i 50,9 m przy limicie TUNNEL_END_GAP + 0,5 `tunnelBank`, teraz limit 0: woda za środkiem ściany, odstępstwo 2).
+
+**Koszt.** `costTest -PcostRuns=15`, A/B w jednej sesji (baza przez `git stash` kodu i testów), stosunek do kopii M1, mediana / z minimów:
+
+| Obszar | Baza | K8a przebieg 1 | K8a przebieg 2 |
+|---|---|---|---|
+| REAL cały obszar | 1,061 / 1,061 | 1,087 / 1,091 | 1,074 / 1,102 |
+| REAL Beskidy | 1,080 / 1,080 | 1,105 / 1,094 | 1,060 / 1,071 |
+| REAL wielki masyw | 0,974 / 0,980 | 0,974 / 0,977 | 0,966 / 0,961 |
+| GAMEPLAY cały obszar | 1,165 / 1,172 | 1,195 / 1,178 | 1,174 / 1,199 |
+| GAMEPLAY Beskidy | 1,136 / 1,167 | 1,157 / 1,162 | 1,164 / 1,157 |
+| GAMEPLAY wielki masyw | 1,124 / 1,123 | 1,130 / 1,136 | 1,122 / 1,122 |
+
+µs na kolumnę (mediana): REAL 4,41–4,42 / 7,17–7,39 / 6,65–6,66, GAMEPLAY 6,54–6,69 / 11,36–11,38 / 12,73–12,82 (limity bezwzględne D1 dotrzymane). Budżet D1 (1,20) jest dotrzymany, ale bez zapasu w GAMEPLAY (ok. +1–2% wobec bazy: kolumny z wagą typów młodoglacjalnych > 0 sprawdzają kontur, kolumny jezior czytają siatkę). Ciepły koszt kolumny w pomiarze własnym (jeden wątek, okno 4 km z jeziorami) bez zmian w granicach rozrzutu (6,29–6,38 wobec 6,27–6,36 µs). Jednorazowo na kontur: siatka szczelin ok. 0,26 s na jednym wątku w GAMEPLAY (ok. 36 tys. zapytań; 6 konturów w oknie 4 × 4 km: 1,56 s), w REAL podobnie; pierwsza runda `costTest` REAL ma 72,9 µs na kolumnę (M1: 28,2), dalsze rundy jak wyżej. W grze to jednorazowy koszt przy pierwszym chunku przy jeziorze (siatki w pamięci podręcznej, 256 konturów, ok. 0,3 MB każda). Kolumna, której odległość od brzegu bez członów siatki (one ją tylko podnoszą) już przekracza zasięg pierścienia, nie buduje siatki (`tunnelShape`): rozproszone zapytania, np. wyszukiwanie komend, nie liczą siatki dla każdego mijanego jeziora; wynik bez zmian.
+
+**Złoty test.** Raport `-PgoldenReport=build/golden_K8a.txt`: zmienione łaty REAL B `grid`, `tunnel_valley_lake` (dno jeziora: głębokość idzie za bramką osi; poziom liczony jak dotąd), `outwash_plain_lake` (sięga tam niecka jeziora rynnowego), GAMEPLAY A `grid`, GAMEPLAY B `grid`; żadna łata kontrolna `*_interior` ani cel się nie zmieniają. Lista `src/test/golden-allow/K8a.txt` (domyślna, więc zwykły `test` przechodzi; `build.gradle` opisuje listy K8a–K8c), narastająca do K8c, przegenerowanie w K8z.
+
+**Testy (nowe i zmienione):**
+- `StandingWaterContainmentTest`: `WALLS_MAX` 5 → 0, `WALL_CLUSTERS` z limitami 0 (strażnik powrotu ścian); nowy `tunnelValleyBasinsHaveNoClosedPits` (`PIT_SITES`, `PIT_MAX` 4 m, `PIT_CUT` 0,5 m);
+- `LandscapeModelTest.tunnelLakesEndBeforeValleys`: woda za środkiem ściany (`floorGap` ≥ 0) i co najmniej `tunnelBank` za brzegiem dna (`floorEdgeGap`) zamiast `floorGap` ≥ TUNNEL_END_GAP + 0,5 `tunnelBank`.
+
+**Pełny `test`** (`tools/dev/run-tests test`): FULLTEST.
+
+**Odstępstwa od zadania K8a:**
+1. Gładka szczelina nie z `CoarseTerrainField`, tylko z siatki szczelin liczonej na konturze (obwiednie o nachyleniu 1): `sBar` idzie za stromym terenem i nie daje nachylenia ≤ 1 (pomiar wyżej). Siatka łączy oba warianty z zadania („połowa ściany z gładkiego pola” i „szczelina na osi jeziora”).
+2. Warunek z rundy 2 K5 („woda co najmniej TUNNEL_END_GAP + 0,5 `tunnelBank` za środkiem ściany w kolumnie”) zastąpiony strażnikiem dna: niecka nie sięga dna doliny (`floorEdgeGap` ≥ zasięg niecki), woda za środkiem ściany. Na stromym gruncie woda podchodzi bliżej doliny niż w K5–K7 (najmniej 27 m za środkiem ściany wobec 51–103 m); szczelność bez zmian (0 przecieków).
+3. Obecność na osi jeziora weszła (koszt mieści się w D1, ale bez zapasu w GAMEPLAY); wczesne odrzucenie kolumn w `sample` jest szersze (waga typów młodoglacjalnych > 0 zamiast obecności > 0,05), a skraj strefy ogranicza jezioro członem odległości od próbek spoza strefy.
+4. Suche zagłębienia: zostało jedno 3,7 m (okno 2,5 m) i jedno 3,3 m (siatka 2 m) przy wale brzegu przy zboczu doliny; limit testu 4 m zamiast 3 m.
+5. Woda: −57% (GAMEPLAY ±20 km) wobec K4c zamiast „w stronę −37%” (+30% wobec K7).
+6. Pamięć jezior rynnowych `tunnelLakes` czyszczona przy 4096 wpisach (dawniej 100 000), bo wpis ma teraz tablice węzłów.
+
+**Co zostaje:**
+- Ubytek wody jezior rynnowych wobec K4c (−54…−57% w GAMEPLAY) pochodzi z K5.2 i rundy 1 K5 (koniec przed doliną, kontury przez środek sekcji); dalsze odzyskanie wymagałoby np. przesunięcia `valleyEnd` bliżej doliny (dziś zasięg niecki − 0,5 `tunnelBank` + TUNNEL_END_GAP) przy strażniku dna — do oceny razem z kadrami w K8z albo M5.
+- Dwa płytkie zagłębienia (3,3–3,7 m) przy wale brzegu na zboczu doliny; zagłębienie (−18450, 14540) 12 m w dnie bocznej doliny (teren po dolinach, nie niecka) — do przeglądu sieci rzecznej w M5.
+- Koszt: GAMEPLAY cały obszar 1,17–1,20 × M1 — kolejne kroki zwiększające koszt `sample` muszą najpierw szukać oszczędności (np. `RiverNetwork.link` bez pudełkowanych kluczy, ok. 2,4%). Jednorazowy koszt siatki szczelin (ok. 0,26 s na kontur) można zmniejszyć rzadszymi próbkami w REAL.

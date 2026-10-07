@@ -1,0 +1,13 @@
+# Allowed golden changes after step K8a (tunnel valley lakes, variant d of K6: the end of a lake at a river valley from
+# the smoothed gap of its contour, a valley beside the lake and the edge of the young-glacial zone from the gap grid, the
+# floor guard, the closed pits of the basin filled, the half-width and the narrow ends from the axis of the lake,
+# TUNNEL_COS 0.6). Measured with -PgoldenReport=build/golden_K8a.txt (2026-10-07) against golden_terrain_m2.txt of K7.
+# Only patches with tunnel valley lakes or their basins change: REAL B tunnel_valley_lake (the lake bottom: its depth
+# follows the gate at the axis instead of the column; the water level is computed as before), REAL B
+# outwash_plain_lake (a tunnel valley basin reaches the patch), and the grid patches with tunnel valley lakes (REAL B,
+# GAMEPLAY A, GAMEPLAY B). No control patch (*_interior) and no target changes. Cumulative through K8a-K8c; the file is regenerated once in K8z.
+REAL B / grid
+REAL B / tunnel_valley_lake
+REAL B / outwash_plain_lake
+GAMEPLAY A / grid
+GAMEPLAY B / grid

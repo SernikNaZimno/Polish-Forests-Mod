@@ -1050,6 +1050,10 @@ final class RiverNetwork {
 	 *                      floorDist − terrainHalf − 0.5 wall (the floor of the terrain with the mouth funnel, G3, and half
 	 *                      its wall); continuous, negative in the valley, +∞ without a segment in range (beyond the frame
 	 *                      of a segment it is at least about 0.5 maxWall); tunnel valley lakes end before it
+	 * @param floorEdgeGap  K8a: distance beyond the edge of the floor of the nearest valley, min over the segments of
+	 *                      floorDist − terrainHalf (without the wall, so it changes by about 1 m per meter, while
+	 *                      {@code floorGap} changes by up to 4–6 m per meter on steep ground); +∞ without a segment in
+	 *                      range; the basins of tunnel valley lakes never reach the floor
 	 * @param lakeGap       K5.2: distance from the shore of the nearest sink lake, at most {@link #LAKE_GAP_MAX} m·k
 	 *                      (exact up to there: every candidate lake of the tile within it is in the tile list);
 	 *                      tunnel valley lakes end before it
@@ -1068,7 +1072,7 @@ final class RiverNetwork {
 			double channelWidth, double channelLevel, double floorU, double floorHalf, double slope,
 			boolean convexBank, double oxbowShore, int oxbowMirror, long oxbowId, double oxbowWidth, double ringShore,
 			int ringLevel, long ringId, double ringRadius, double floorChannelDist, double floorChannelWidth,
-			double floorChannelLevel, double floorChannelGradient, double floorGap, double lakeGap,
+			double floorChannelLevel, double floorChannelGradient, double floorGap, double floorEdgeGap, double lakeGap,
 			double softChannelLevel) {
 		boolean inChannel() {
 			return waterLevel != ColumnSample.NO_WATER;
@@ -2608,6 +2612,8 @@ final class RiverNetwork {
 		double maskAcc = 0;
 		// K5.2: distance beyond the edge of the cut of the nearest valley (tunnel valley lakes end before it).
 		double floorGap = Double.POSITIVE_INFINITY;
+		// K8a: distance beyond the edge of the floor of the nearest valley (without the wall).
+		double floorEdgeGap = Double.POSITIVE_INFINITY;
 
 		for (Segment s : segments) {
 			if (cull && !inFrame(s, x, z)) {
@@ -2659,6 +2665,7 @@ final class RiverNetwork {
 			}
 			double mask = 1 - Noise.smoothstep(terrainHalf, terrainHalf + wall, floorDist);
 			floorGap = Math.min(floorGap, floorDist - terrainHalf - 0.5 * wall);
+			floorEdgeGap = Math.min(floorEdgeGap, floorDist - terrainHalf);
 			double own = mask > 0 ? Noise.lerp(mask, terrain, floor) : terrain;
 			// K4b/K4c (D4, D4a): the cut is at least the sweep cut minus SWEEP_TOLERANCE (deeper than the cut of the
 			// projection only near ties of its arms, where the projection is ill-conditioned). A fill (floor above the terrain,
@@ -2833,7 +2840,7 @@ final class RiverNetwork {
 					lakeLevel, lakeShore, lakeDepth, lakeId, lakeRadius, Double.POSITIVE_INFINITY, Double.NaN,
 					Double.NaN, Double.NaN, Double.NaN, Double.NaN, false, Double.POSITIVE_INFINITY,
 					ColumnSample.NO_WATER, 0, Double.NaN, ringShore, ringLevel, ringId, ringRadius,
-					Double.POSITIVE_INFINITY, Double.NaN, Double.NaN, Double.NaN, floorGap, lakeGap, Double.NaN);
+					Double.POSITIVE_INFINITY, Double.NaN, Double.NaN, Double.NaN, floorGap, floorEdgeGap, lakeGap, Double.NaN);
 		}
 		// In the floor of some valley exactly when in the floor of the dominant one (its key is the largest, so positive),
 		// or in a mouth funnel (G3, step K4c): the funnel belongs to the floor of the valley it opens into, whose channel
@@ -2914,7 +2921,7 @@ final class RiverNetwork {
 				lakeRadius, nearDist, nearWidth, nearLevel, inFloor ? uMin : Double.NaN,
 				sumFh / sumW, sumSl / sumW * 1_000, convex, oxbowShore, oxbowMirror, oxbowId, oxbowWidth, ringShore,
 				ringLevel, ringId, ringRadius, floorChannelDist, floorChannelWidth, floorChannelLevel,
-				floorChannelGradient, floorGap, lakeGap, softChannelLevel);
+				floorChannelGradient, floorGap, floorEdgeGap, lakeGap, softChannelLevel);
 	}
 
 	/**
