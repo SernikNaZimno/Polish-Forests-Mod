@@ -174,18 +174,41 @@ public final class HabitatClassifier {
 		return t != Fertility.EUTROPHIC || c.aspectN();
 	}
 
-	/** Lowland beech forest: beech within range, fresh and drained, H &lt; 350 m; the share grows with O. */
+	/**
+	 * Lowland beech forest: beech within range, fresh and drained, H &lt; 350 m; the share grows with O. The fresh/moist
+	 * boundary jitters by ±{@link Calibration#BEECH_DGW_JITTER} m of DGW (step H, round 1 of the review).
+	 */
 	static boolean beechForest(Column c, Moisture w) {
-		if (w != Moisture.FRESH && w != Moisture.DRY || c.H >= Calibration.H_LOWLAND_BEECH
+		if (w != Moisture.FRESH && w != Moisture.DRY && w != Moisture.MOIST || c.H >= Calibration.H_LOWLAND_BEECH
 				|| !SpeciesRanges.beech(c.O, c.P)) {
 			return false;
 		}
-		if (!(c.concavity() >= 0 || c.slope > Calibration.SLOPE_BEECH)) {
+		if (w != Moisture.DRY) {
+			// On flat ground DGW follows the slowly changing type weights, so its isoline DGW_FRESH is a straight line.
+			double d = c.dgw();
+			boolean fresh = w == Moisture.FRESH;
+			if (Math.abs(d - Calibration.DGW_FRESH) < Calibration.BEECH_DGW_JITTER) {
+				fresh = d + Calibration.BEECH_DGW_JITTER * c.jitterNoise(19, Calibration.FERTILITY_JITTER_WAVELENGTH)
+						> Calibration.DGW_FRESH;
+			}
+			if (!fresh) {
+				return false;
+			}
+		}
+		if (!(c.concavity() >= -Calibration.BEECH_CONCAVITY || c.slope > Calibration.SLOPE_BEECH)) {
 			return false;
 		}
 		double share = Calibration.BEECH_MAX
 				* Noise.smoothstep(Calibration.O_BEECH_FROM, Calibration.O_BEECH_TO, Math.max(c.O, c.P));
-		return c.variant(1) < share;
+		// Step H (Z9): the variant noise has a 1.5 km·k wavelength, so its isolines are long arcs at the scale of a few
+		// hundred meters; the threshold jitters like the fertility thresholds, by at most half of the shares on both
+		// sides (a share of 0 stays 0, so no beech islets appear at the edge of its range).
+		double q = c.variant(1);
+		double a = Math.min(Calibration.FERTILITY_JITTER, 0.5 * Math.min(share, 1 - share));
+		if (a > 0 && Math.abs(q - share) < a) {
+			q += a * c.jitterNoise(15, Calibration.FERTILITY_JITTER_WAVELENGTH);
+		}
+		return q < share;
 	}
 
 	// ------------------------------------------------------------------ partial result of the steps
@@ -305,15 +328,54 @@ public final class HabitatClassifier {
 		 * Substrate for habitats: the deposit from the sample, except for the coastal belt on a low shore. The model
 		 * gives till to every column of this belt higher than 8 m, including a high foredune and the dunes behind it,
 		 * so on a dune shore ({@code lowShore} ≥ {@link Calibration#LOW_SHORE}) such till is the sand of the beach and
-		 * white dune or the sand of the gray dune, as with a lower dune (boundary from {@code bareSandWidth}).
+		 * white dune or the sand of the gray dune, as with a lower dune (boundary from {@code bareSandWidth}). The same
+		 * holds for the alluvium of a valley floor in the dune belt outside the river mouth ({@link #duneOverFloor}).
 		 */
-		private static Substrate substrate(ColumnSample s, ColumnSample.Terrain t) {
+		private Substrate substrate(ColumnSample s, ColumnSample.Terrain t) {
 			Substrate sub = s.substrate();
 			if (sub == Substrate.GLACIAL_TILL && s.type() == LandscapeType.COASTLAND && t.lowShore() >= Calibration.LOW_SHORE
 					&& !Double.isNaN(t.bareSandWidth())) {
 				return t.coastD() < t.bareSandWidth() ? Substrate.BEACH_SAND : Substrate.SAND;
 			}
+			if (sub == Substrate.ALLUVIUM && duneOverFloor()) {
+				return t.coastD() < t.bareSandWidth() ? Substrate.BEACH_SAND : Substrate.SAND;
+			}
 			return sub;
+		}
+
+		/**
+		 * Step H (D5): a column of the dune belt of a dune shore (beach, white and gray dunes: cD &lt; {@link #duneBeltEnd})
+		 * outside the river mouth, i.e. farther than max({@link Calibration#MOUTH_K}·k, {@link Calibration#MOUTH_W}·W) from
+		 * the nearest channel (±20%). There the dunes run across the valley floor: the flat hinterland of D5 lies at the
+		 * level of the floors, so the floodplain forest of a river reached the beach. Behind the dune belt the floor keeps
+		 * the waterside zones (round 1 of the review: a hinterland rule up to the crowberry pine forest drew straight
+		 * cuts across the floors at its gate and at the height thresholds of the lagoon hinterland).
+		 */
+		boolean duneOverFloor() {
+			// lowShore is NaN only without a sample of the coast; the belt end bounds cD, so the gate is the dune belt itself.
+			if (!(t.lowShore() >= Calibration.LOW_SHORE)) {
+				return false;
+			}
+			double cD = t.coastD();
+			if (!(cD >= 0 && cD < (Calibration.BEACH_B + Calibration.DUNES_D + Calibration.GRAY_DUNE_K * (1 + Calibration.GRAY_DUNE_JITTER)) * k)
+					|| cD >= duneBeltEnd()) {
+				return false;
+			}
+			if (w.streamOrder() <= 0 || !Double.isFinite(w.channelDist())) {
+				return true;
+			}
+			double mouth = Math.max(Calibration.MOUTH_K * k, Calibration.MOUTH_W * (Double.isNaN(w.channelWidth()) ? 0 : w.channelWidth()));
+			return w.channelDist() > mouth * (1 + Calibration.WIDTH_JITTER * jitterNoise(17, Calibration.FERTILITY_JITTER_WAVELENGTH));
+		}
+
+		/**
+		 * Landward end of the dune belt (beach, white and gray dunes): B + D + {@link Calibration#GRAY_DUNE_K}·k, the gray
+		 * dune belt jittered by ±{@link Calibration#GRAY_DUNE_JITTER} with a noise of {@link Calibration#GRAY_DUNE_JITTER_WAVELENGTH} m·k
+		 * (step H, round 1 of the review).
+		 */
+		double duneBeltEnd() {
+			double gray = Calibration.GRAY_DUNE_K * (1 + Calibration.GRAY_DUNE_JITTER * jitterNoise(18, Calibration.GRAY_DUNE_JITTER_WAVELENGTH));
+			return (Calibration.BEACH_B + Calibration.DUNES_D + gray) * k;
 		}
 
 		/** A sea shore with dunes (low), not with a cliff. */
@@ -351,15 +413,19 @@ public final class HabitatClassifier {
 		}
 
 		/**
-		 * Valley floor by terrain: ground at most {@link Calibration#FLOOR_H} above the water level of the nearest
-		 * channel, and in addition the model's {@code inFloor} flag or a distance from the channel within the floor
-		 * half-width. The model flag comes from the dominant valley, so it is sometimes cut off by a straight line and
-		 * covers ground high above another, closer channel. When the ground lies less than 1.2 m above the water level
-		 * of the nearest channel (a tributary descending in a rapid to the floor of a larger valley), the flag alone decides.
+		 * Valley floor by terrain: the model's {@code inFloor} flag with the ground at most {@link Calibration#BANK_H}
+		 * above the water, or off the flag the floor margin: ground at most {@link Calibration#FLOOR_H} above the water
+		 * and within the floor half-width from the channel. The water level is the soft level of the nearby channels
+		 * ({@code softChannelLevel}, step H, G3): the level of the nearest channel steps on the straight bisectors between
+		 * the channels of a confluence, and the floor ended there in polygonal patches. On the flag the limit is
+		 * BANK_H, because the floor of a mouth funnel lies on the level of the receiving valley, a little higher than the
+		 * tributary (the S4 limit FLOOR_H cut it with spikes); above BANK_H the flag lies along a channel stretch without
+		 * water ({@link #byWater}). When the ground lies less than 1.2 m above the water level (a tributary descending in
+		 * a rapid to the floor of a larger valley), the flag alone decides.
 		 */
 		boolean onValleyFloor() {
 			if (onValleyFloor < 0) {
-				onValleyFloor = onValleyFloor(w.channelDist(), w.channelLevel()) ? 1 : 0;
+				onValleyFloor = onValleyFloor(w.channelDist(), w.softChannelLevel()) ? 1 : 0;
 			}
 			return onValleyFloor == 1;
 		}
@@ -374,10 +440,22 @@ public final class HabitatClassifier {
 				double hl = H - channelLevel;
 				if (hl >= Calibration.OTHER_CHANNEL_H) {
 					double range = Math.max(Calibration.FLOOR_MIN_K * k, Double.isNaN(w.floorHalfWidth()) ? 0 : w.floorHalfWidth());
-					d = hl <= Calibration.FLOOR_H && (d || channelDist <= range);
+					// Step H (G3): on the model floor up to BANK_H above the water (the floor of a mouth funnel lies on the
+					// level of the receiving valley, a little higher than the tributary), off it the floor margin up to FLOOR_H.
+					d = d ? hl <= Calibration.BANK_H : hl <= Calibration.FLOOR_H && channelDist <= range;
 				}
 			}
 			return d;
+		}
+
+		/**
+		 * By real water (step H): the ground lies at most {@link Calibration#BANK_H} above the soft water level of the
+		 * nearby channels ({@code softChannelLevel}). False along a channel stretch that the valley does not cut, where
+		 * the model has a channel without water far below the ground.
+		 */
+		boolean byWater() {
+			double level = w.softChannelLevel();
+			return s.hasWater() || Double.isNaN(level) || H - level <= Calibration.BANK_H;
 		}
 
 		/** Position on the floor 0–1: from the model, and on the terrain-based floor outside the {@code inFloor} flag from d / half-width. */
@@ -421,6 +499,11 @@ public final class HabitatClassifier {
 		/** Patch noise in [−1, 1] (wavelength 35 m·k); {@code layer} separates independent decisions. */
 		double patch(int layer) {
 			return classifier.patches.at(x + 1_013.0 * layer, z - 517.0 * layer, Calibration.PATCH_WAVELENGTH * k);
+		}
+
+		/** Patch noise in [−1, 1] at the given wavelength (m·k); {@code layer} separates independent decisions. */
+		double jitterNoise(int layer, double wavelength) {
+			return classifier.patches.at(x + 1_013.0 * layer, z - 517.0 * layer, wavelength * k);
 		}
 
 		/** Patch quantile in [0, 1] (uniform distribution). */
@@ -471,8 +554,8 @@ public final class HabitatClassifier {
 		 * margin got a narrow strip of zonal alder carr.
 		 */
 		boolean isSeep() {
-			if (w.streamOrder() <= 0 || onValleyFloor() || s.hasWater() || H >= Calibration.H_ASH_ALDER_RIPARIAN || Double.isNaN(w.channelLevel())
-					|| t.rawSurface() - H < Calibration.INCISION_FROM || H - w.channelLevel() > Calibration.SEEP_HL) {
+			if (w.streamOrder() <= 0 || onValleyFloor() || s.hasWater() || H >= Calibration.H_ASH_ALDER_RIPARIAN || Double.isNaN(w.softChannelLevel())
+					|| t.rawSurface() - H < Calibration.INCISION_FROM || H - w.softChannelLevel() > Calibration.SEEP_HL) {
 				return false;
 			}
 			Fertility fert = fertility();
@@ -496,7 +579,7 @@ public final class HabitatClassifier {
 		 * to the floor of a larger valley).
 		 */
 		double heightAboveChannel() {
-			return heightAboveChannel(w.channelLevel());
+			return heightAboveChannel(w.softChannelLevel());
 		}
 
 		/** {@link #heightAboveChannel()} above the water level of the given channel (F2). */

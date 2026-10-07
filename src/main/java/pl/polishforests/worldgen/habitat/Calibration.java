@@ -82,6 +82,16 @@ public final class Calibration {
 	static final double[] FERTILITY_FOOTHILLS = {0, 10, 30, 60};
 	static final double[] FERTILITY_BESKIDS = {0, 15, 30, 55};
 	/**
+	 * Step H (Z9): jitter of the cumulative fertility thresholds, at most this much of the richness quantile and at most
+	 * half of the shares on both sides of the threshold (so a share of 0 stays 0, the thresholds stay ordered and the
+	 * shares are kept on average). The richness comes from a noise with a 2 km·k wavelength, so without the jitter
+	 * the boundaries of the zonal biomes were its isolines: parallel bands that look straight within a few hundred meters.
+	 * 0.05 moves a boundary by about ±50 m·k.
+	 */
+	public static final double FERTILITY_JITTER = 0.05;
+	/** Wavelength of the fertility threshold jitter (m·k; 75 m at gameplay scale, Z9: ≥ 64 m). */
+	public static final double FERTILITY_JITTER_WAVELENGTH = 150;
+	/**
 	 * Valley floor by terrain: ground at most this many meters above the water level of the nearest channel (the
 	 * model floor lies 1.2–2.2 m above the water level) and no farther from the channel than the floor half-width
 	 * (at least {@link #FLOOR_MIN_K}·k). The model's {@code inFloor} flag comes from the dominant valley and is
@@ -89,6 +99,14 @@ public final class Calibration {
 	 */
 	public static final double FLOOR_H = 2.3;
 	public static final double FLOOR_MIN_K = 80;
+	/**
+	 * Step H (open S4 problem 1): the zones and riparian forests of a watercourse only by real water, i.e. on ground at
+	 * most this many meters above the (soft) water level of the channels. A channel stretch that the valley does not
+	 * cut (dry, the water level lies 10 m and more below the ground, e.g. short headwater segments on massif domes)
+	 * otherwise drew belts of willows and tall herbs along a line without water. The banks of real channels lie
+	 * 1.2–2.3 m above the water (the model floor), dry uncut stretches mostly more than 10 m.
+	 */
+	public static final double BANK_H = 4.0;
 	/**
 	 * Ground lower than this many meters above the water level of the nearest channel lies by a different channel
 	 * than the one whose floor it is on (a tributary descending in a rapid to the floor of a larger valley): the
@@ -99,6 +117,13 @@ public final class Calibration {
 	public static final double FLOOR_ABOVE_WATER_LEVEL = 1.2;
 	/** Share of outwash plain and coastland sands above which alluvium on valley floors gets the region's fertility instead of L. */
 	public static final double ALLUVIUM_ON_SAND = 0.5;
+	/**
+	 * Step H, round 1 of the review: the {@link #ALLUVIUM_ON_SAND} threshold jitters by ±this much of the weight with a
+	 * noise of {@link #FERTILITY_JITTER_WAVELENGTH} m·k. The type weights change slowly (the coastal belt over
+	 * 2000 m·k), so the floor of every valley crossing the 0.5 isoline switched from floodplain forest to pine forest
+	 * along a straight line across the whole floor (e.g. parallel to the coast in {@code coast_lagoon_3km}).
+	 */
+	public static final double ALLUVIUM_ON_SAND_JITTER = 0.15;
 
 	// ------------------------------------------------------------------ zonal biomes (§2.1)
 
@@ -113,13 +138,31 @@ public final class Calibration {
 	public static final double H_FIR_FOREST_FROM = 250;
 	public static final double H_FIR_FOREST_TO = 650;
 	public static final double P_FIR_FOREST = 0.5;
-	/** Lowland beech forest: drainage at a slope above (°) or a convexity ≥ 0. */
+	/** Lowland beech forest: drainage at a slope above (°) or a convexity ≥ −{@link #BEECH_CONCAVITY}. */
 	public static final double SLOPE_BEECH = 3.0;
+	/**
+	 * Step H: lowland beech forest is excluded only from real hollows, terrain at least this many meters below the
+	 * smoothed terrain (rawSurface − sBar). With the S4 limit 0 the boundary followed the sign of a field that on flat
+	 * ground is a few decimeters of bilinear texture of the coarse terrain grid (CoarseTerrainField) and of the
+	 * smoothing around kettles (circular arcs). Perched water starts at −1.5 m ({@link #PERCHED_1}).
+	 */
+	public static final double BEECH_CONCAVITY = 0.75;
+	/**
+	 * Step H (round 1 of the review): the fresh/moist boundary of lowland beech forest (DGW = {@link #DGW_FRESH})
+	 * jitters by ±this many meters of DGW with a noise of {@link #FERTILITY_JITTER_WAVELENGTH} m·k. On flat ground, e.g.
+	 * the coastal hinterland at the terrain clamp of the shore, DGW follows the slowly changing type weights, so its
+	 * isoline was a ruler-straight edge of the beech forest parallel to the shore.
+	 */
+	public static final double BEECH_DGW_JITTER = 0.3;
 	/** The share of lowland beech forest within the beech range grows with O from this threshold to the full value. */
 	public static final double O_BEECH_FROM = 0.40;
 	public static final double O_BEECH_TO = 0.85;
-	/** Highest share of beech forest among the sites that allow it. */
-	public static final double BEECH_MAX = 0.85;
+	/**
+	 * Highest share of beech forest among the sites that allow it. Step H: 0.85 → 0.5 together with
+	 * {@link #BEECH_CONCAVITY}: flat ground now counts as drained, which doubled the lowland beech forest (REAL 3.7% → 7.2%
+	 * of all columns, GAMEPLAY 4.9% → 6.9%); 0.5 brings it back to about the S4 shares.
+	 */
+	public static final double BEECH_MAX = 0.5;
 	/** NATURAL mode: heath openings on dunes (part of the dry pine forest, ≤ 5% of the outwash plain), patches with a wavelength of 150 m·k. */
 	public static final double HEATH_SHARE_NATURAL = 0.25;
 	public static final double HEATH_OPENING_WAVELENGTH = 150.0;
@@ -208,10 +251,13 @@ public final class Calibration {
 	/** Seep at the foot of a valley side (ash-alder riparian forest): DGW at most this. */
 	public static final double SEEP_DGW = 0.5;
 	/**
-	 * Seep only low above the watercourse: at most this many meters above the water level of the nearest channel
+	 * Seep only low above the watercourse: at most this many meters above the (soft) water level of the nearby channels
 	 * (the floor lies 1.2–2.3 m above it), in terrain incised into the valley (rawSurface − H ≥ {@link #INCISION_FROM}).
+	 * The same limit holds for the bank belt of ash-alder riparian forest on a narrow floor (E11). Step H: equal to
+	 * {@link #BANK_H} (S4: 5 m), because the zones of a watercourse exist only up to BANK_H above the water
+	 * ({@code Column.byWater}); a higher limit would be dead.
 	 */
-	public static final double SEEP_HL = 5;
+	public static final double SEEP_HL = BANK_H;
 	/**
 	 * Spring areas in patches with a wavelength of this many meters without the k multiplier (patches select the
 	 * biome, Z9; with a wavelength of 35 m·k, GAMEPLAY produced islets and shreds of riparian forest narrower than
@@ -258,6 +304,15 @@ public final class Calibration {
 	public static final double STRANDLINE_B = 0.35;
 	public static final double EMBRYO_DUNE_K = 20;
 	public static final double GRAY_DUNE_K = 170;
+	/**
+	 * Step H (round 1 of the review): the landward end of the gray dune belt (B + D + GRAY_DUNE_K·k) jitters by
+	 * ±this share of GRAY_DUNE_K (at most ±100 m·k, typically a few tens of meters) with a noise of
+	 * {@link #GRAY_DUNE_JITTER_WAVELENGTH} m·k, so neither the gray dunes nor the dunes running across a valley floor
+	 * ({@code Column.duneOverFloor}) end on a line parallel to the shore (±0.3 at 150 m·k still looked straight
+	 * across the 800 m wide floors of REAL rivers).
+	 */
+	public static final double GRAY_DUNE_JITTER = 0.6;
+	public static final double GRAY_DUNE_JITTER_WAVELENGTH = 300;
 	public static final double WINDSWEPT_PINE_K = 420;
 	public static final double COASTAL_PINE_K = 2_000, COASTAL_PINE_H = 40;
 	/** Jitter of the crowberry pine forest boundary: ±15% (variant noise). */
@@ -270,6 +325,16 @@ public final class Calibration {
 	 * cliff by the same share, so the midpoint separates them (docs/m2/poprawka-geometrii.md, K5b).
 	 */
 	public static final double LOW_SHORE = 0.5;
+	/**
+	 * Step H (D5): on a dune shore the beach, white and gray dunes run across the valley floors of the rivers that reach
+	 * the sea, up to the jittered end of the gray dune belt ({@link #GRAY_DUNE_JITTER}), and only the river mouth
+	 * itself, at most max(MOUTH_K·k, MOUTH_W·W) from the channel (±20%, noise of 150 m·k), keeps the waterside zones.
+	 * The low hinterland of D5 lies at the level of the river floors, so before this rule the floodplain forests reached
+	 * the beach on 15% of the dune shores (floors up to 800 m wide). Behind the dune belt the floors keep the waterside
+	 * zones: the floor surface there is the terrain clamp of the shore (2.000 m), so the height thresholds of the
+	 * lagoon hinterland would cut it along straight lines.
+	 */
+	public static final double MOUTH_K = 30, MOUTH_W = 1.5;
 	public static final double CLIFF_H = 8, CLIFF_TOP_K = 20, CLIFF_WINDSWEPT_FOREST_K = 150;
 	/** Shingle beach below a cliff: terrain before incision higher than this (m). */
 	public static final double SHINGLE_BEACH_RAW = 8;

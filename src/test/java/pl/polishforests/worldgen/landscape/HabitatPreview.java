@@ -124,6 +124,13 @@ final class HabitatPreview {
 		p = RiverNetworkTest.find(real, c -> c.waterKind() == WaterKind.SEA && c.terrain().coastD() >= 0
 				&& c.waterLevel() - c.surface() > 2, 1_000);
 		add(frames, "coast_lagoon_3km", real, p, 3_000);
+		// Step H: the coast after D5 (dune shore on about 4/5 of the coast, cliff only on the high shore), 40 km around the
+		// lagoon frame, and the same frames at gameplay scale.
+		add(frames, "coast_40km", real, p, 40_000);
+		p = RiverNetworkTest.find(gameplayModel, c -> c.waterKind() == WaterKind.SEA && c.terrain().coastD() >= 0
+				&& c.waterLevel() - c.surface() > 2, 100);
+		add(frames, "gameplay_coast_lagoon_3km", gameplayModel, p, 3_000);
+		add(frames, "gameplay_coast_40km", gameplayModel, p, 40_000);
 		p = LandscapePreview.findInterior(real, LandscapeType.BESKIDS);
 		add(frames, "beskids_10km", real, p, 10_000);
 		double[] highSpot = findHighest(real);
@@ -139,6 +146,13 @@ final class HabitatPreview {
 		GreatMassifSurvey.Massif top = seed == GreatMassifSurvey.SEED ? GreatMassifSurvey.highest(LandscapeScale.REALISTIC) : null;
 		add(frames, "highest_great_massif_16km", real, top == null ? null : new double[] {top.massif().x(), top.massif().z()},
 				16_000);
+		// Step H: the highest gameplay massif (1719 m), the one with alpine grassland at gameplay scale.
+		GreatMassifSurvey.Massif gameTop = seed == GreatMassifSurvey.SEED ? GreatMassifSurvey.highest(LandscapeScale.GAMEPLAY) : null;
+		add(frames, "gameplay_highest_great_massif_5km", gameplayModel,
+				gameTop == null ? null : new double[] {gameTop.massif().x(), gameTop.massif().z()}, 5_000);
+		// Step H (G3): a confluence of Beskid streams at gameplay scale (the mouth funnel of the terrain floor), the frame
+		// Z_besk_conf_300m of the terrain geometry fix (docs/m2/poprawka-geometrii.md, K4c).
+		add(frames, "gameplay_beskids_confluence_300m", gameplayModel, seed == GreatMassifSurvey.SEED ? new double[] {27_990, 3_660} : null, 300);
 		p = LandscapePreview.findInterior(real, LandscapeType.OUTWASH_PLAIN);
 		add(frames, "outwash_plain_20km", real, p, 20_000);
 		p = LandscapePreview.findInterior(real, LandscapeType.MORAINE_PLATEAU);

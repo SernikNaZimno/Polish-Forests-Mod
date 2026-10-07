@@ -1,35 +1,47 @@
-# Podgląd siedlisk M2 (krok S4, punkt kontrolny 1)
+# Podgląd siedlisk M2 (punkt kontrolny 1, przeliczony w etapie H)
 
-Data: 2026-10-02 (przeliczone po poprawkach z recenzji S4). Ziarno 20260927, tryb N („roślinność naturalna”), chyba że zaznaczono inaczej. Pliki powstały poleceniem `./gradlew landscapePreview -PhabitatsOnly` (bez tej flagi zadanie liczy też dawne podglądy terenu). Klasy podglądu to `LandscapePreview` i `HabitatPreview` w źródłach testów, plan w `docs/03-m2-biomy.md` (§12.2, stan po S4).
+Data: 2026-10-07 (etap H, poprawki klasyfikatora siedlisk po poprawce geometrii terenu; pierwsza wersja 2026-10-02, krok S4). Ziarno 20260927, tryb N („roślinność naturalna”), chyba że zaznaczono inaczej. Pliki powstały poleceniem `./gradlew landscapePreview -PhabitatsOnly` (bez tej flagi zadanie liczy też dawne podglądy terenu) i są skopiowane z `build/preview` do `docs/m2`. Klasy podglądu to `LandscapePreview` i `HabitatPreview` w źródłach testów, plan w `docs/03-m2-biomy.md` (§12.2; zmiany etapu H w §3.4, „Stan po poprawce geometrii”).
 
 Każdy kadr ma 800 × 800 pikseli i legendę z prawej. W warstwie biomów legenda podaje udział każdego biomu w kadrze. Warstwa stref pokazuje strefy jaskrawymi kolorami, a kolumny bez strefy rozjaśnionym kolorem biomu. Cieniowanie rzeźby jest słabe, żeby kolory zostały czytelne.
 
-Pliki w `docs/m2` mają nazwy sprzed M2-9. Nowy przebieg zapisuje je pod nazwami z drugiej kolumny, z przyrostkami `_biomes`, `_zones`, `_dgw` i `_fertility` zamiast `_biomy`, `_strefy`, `_dgw` i `_trofia`.
+Pliki mają nazwy `m2_<kadr>_<warstwa>.png`, warstwy `biomes`, `zones`, `dgw` i `fertility` (trofia). Pliki sprzed zmiany nazwy (M2-9, polskie nazwy `_biomy`, `_strefy`, `_trofia`) usunęliśmy w etapie H.
 
-| Plik `m2_…` w `docs/m2` | Nazwa od M2-9 | Kadr | Warstwy |
-|---|---|---|---|
-| `dolina_duzej_rzeki_2km` | `large_river_valley_2km` | dolina rzeki rzędu 3 (W ≥ 60 m) na nizinie, REAL | biomy, strefy, DGW, trofia |
-| `rozgrywka_dolina_duzej_rzeki_1km` | `gameplay_large_river_valley_1km` | to samo w skali rozgrywki | biomy, strefy |
-| `mala_rzeka_500m` | `small_river_500m` | mała rzeka na wysoczyźnie (koryto 4–15 m) | biomy, strefy |
-| `potok_gorski_1km` | `mountain_stream_1km` | potok w Beskidach | biomy, strefy |
-| `jezioro_rynnowe_1km` | `tunnel_valley_lake_1km` | brzeg jeziora rynnowego na glinie, z dala od dolin | biomy, strefy, DGW, trofia |
-| `oczko_sandr_500m` | `kettle_outwash_plain_500m` | oczko wytopiskowe na sandrze | biomy, strefy |
-| `wybrzeze_zalew_3km` | `coast_lagoon_3km` | zalew za mierzeją, plaża, wydmy, bór bażynowy; brzeg wydmowy (teren przy morzu niższy niż ok. 15 m) bez klifu, klif tylko na brzegu wysokim | biomy, strefy |
-| `beskidy_10km` | `beskids_10km` | wnętrze Beskidów (regiel dolny) | biomy, strefy, DGW, trofia |
-| `beskidy_wysokie_10km` | `high_beskids_10km` | najwyższy masyw w promieniu 1500 km (1445 m): regiel górny | biomy, strefy |
-| `sandr_20km`, `wysoczyzna_20km` | `outwash_plain_20km`, `moraine_plateau_20km` | wnętrza typów krajobrazu | biomy, strefy, DGW, trofia |
-| `rozgrywka_20km` | `gameplay_20km` | środek świata w skali rozgrywki | biomy, strefy |
-| `maska_lasu_D_50km_biomy` | `forest_mask_present_day_50km_biomes` | tryb D „dzisiejsza Polska” na sandrze; P_las startowe, kalibracja w S8 | biomy |
-| `mapa_O_2000km`, `mapa_P_2000km`, `mapa_zasiegow_2000km` | `map_O_2000km`, `map_P_2000km`, `map_species_ranges_2000km` | pola regionalne i zasięgi buka, jodły i świerka (zachód = −X) | – |
-| `przekroje_dolin` | `valley_cross_sections` | przekroje klas A, B, C w poprzek koryta: biom (góra), strefa (dół), teren (linia) | – |
+| Kadr (`m2_…`) | Opis | Warstwy |
+|---|---|---|
+| `large_river_valley_2km` | dolina rzeki rzędu 3 (W ≥ 60 m) na nizinie, REAL; starorzecza jako półksiężyce | biomy, strefy, DGW, trofia |
+| `gameplay_large_river_valley_1km` | to samo w skali rozgrywki | biomy, strefy |
+| `small_river_500m` | mała rzeka na wysoczyźnie (koryto 4–15 m) | biomy, strefy |
+| `mountain_stream_1km` | potok w Beskidach; pasy łęgu z olszą szarą zwężają się klinem wzdłuż potoku (etap H) | biomy, strefy |
+| `gameplay_beskids_confluence_300m` | zbieg potoków w Beskidach GAMEPLAY (27990, 3660), lejek ujścia G3; nowy w etapie H (dawny kadr kontrolny `Z_besk_conf_300m`) | biomy, strefy |
+| `tunnel_valley_lake_1km` | brzeg jeziora rynnowego na glinie, z dala od dolin | biomy, strefy, DGW, trofia |
+| `kettle_outwash_plain_500m` | oczko wytopiskowe na sandrze | biomy, strefy |
+| `coast_lagoon_3km` | zalew za mierzeją, plaża, wydmy, bór bażynowy, REAL | biomy, strefy |
+| `coast_40km` | przegląd wybrzeża 40 km wokół kadru zalewu, REAL; nowy w etapie H | biomy, strefy |
+| `gameplay_coast_lagoon_3km`, `gameplay_coast_40km` | zalew i przegląd brzegu w skali rozgrywki (środek (605, 10983)); nowe w etapie H | biomy, strefy |
+| `beskids_10km` | wnętrze Beskidów (regiel dolny) | biomy, strefy, DGW, trofia |
+| `high_beskids_10km` | najwyższy teren w promieniu 1500 km (zgrubne wyszukiwanie): wielki masyw 1668 m z reglem górnym, kosodrzewiną i halą | biomy, strefy |
+| `great_massif_16km`, `gameplay_great_massif_5km` | wielki masyw najbliższy (0, 0) w obu skalach (REAL 1659 m, GAMEPLAY 1637 m) | biomy, strefy |
+| `highest_great_massif_16km` | najwyższy wielki masyw okna testu REAL (1723 m) | biomy, strefy |
+| `gameplay_highest_great_massif_5km` | najwyższy wielki masyw GAMEPLAY (1719 m, (−217490, 246246)): kosodrzewina i hala w skali rozgrywki; nowy w etapie H | biomy, strefy |
+| `outwash_plain_20km`, `moraine_plateau_20km` | wnętrza typów krajobrazu | biomy, strefy, DGW, trofia |
+| `gameplay_20km` | środek świata w skali rozgrywki | biomy, strefy |
+| `forest_mask_present_day_50km` | tryb D „dzisiejsza Polska” na sandrze; P_las startowe, kalibracja w S8 | biomy |
+| `map_O_2000km`, `map_P_2000km`, `map_species_ranges_2000km` | pola regionalne i zasięgi buka, jodły i świerka (zachód = −X) | – |
+| `valley_cross_sections` | przekroje klas A, B, C w poprzek koryta: biom (góra), strefa (dół), teren (linia) | – |
 
 Pliki CSV:
-- `m2_udzialy_biomow.csv` (od M2-9 `m2_biome_shares.csv`): udział każdego biomu we wszystkich kolumnach (z wodą) i na sandrze, REAL i GAMEPLAY, 200 tys. kolumn na skalę z 3 ziaren (jak `BiomeSharesTest`). Na końcu lesistość lądu i udział borów w lesie wnętrza sandru (waga typu ≥ 0,9) i całego typu `OUTWASH_PLAIN` (z pasami mieszania; w GAMEPLAY poniżej 85%, do decyzji).
-- `m2_udzialy_stref.csv` (od M2-9 `m2_zone_shares.csv`): udział każdej strefy.
-- Pliki CSV w `docs/m2` mają nagłówki i id biomów sprzed M2-9 (po polsku).
+- `m2_biome_shares.csv`: udział każdego biomu we wszystkich kolumnach (z wodą) i na sandrze, REAL i GAMEPLAY, 200 tys. kolumn na skalę z 3 ziaren (jak `BiomeSharesTest`). Na końcu lesistość lądu i udział borów w lesie wnętrza sandru (waga typu ≥ 0,9) i całego typu `OUTWASH_PLAIN` (z pasami mieszania; w GAMEPLAY poniżej 85%, do decyzji).
+- `m2_zone_shares.csv`: udział każdej strefy.
+- Zmiany udziałów w etapie H (po rundzie 1 recenzji; REAL / GAMEPLAY, procent wszystkich kolumn): buczyna niżowa 3,71 / 4,93 → 4,17 / 3,88; las mieszany 11,67 / 10,75 → 11,48 / 11,12; grąd 23,91 / 22,50 → 23,62 / 23,07; biała wydma 0,016 / 0,326 → 0,016 / 0,411, szara 0,014 / 0,352 → 0,014 / 0,516; ols w GAMEPLAY 1,91 → 1,94; strefy GAMEPLAY: wiklina 0,663 → 0,471, źródliska 0,360 → 0,218 (bez stref wzdłuż suchych odcinków koryt). Bory we wnętrzu sandru 88,5% (REAL) i 86,6% (GAMEPLAY).
+
+Co widać po etapie H:
+- **Zbiegi potoków** (`gameplay_beskids_confluence_300m`, `mountain_stream_1km`): dno lejka ujścia ma zaokrąglone płaty łęgu z olszą szarą zamiast wieloboków o prostych krawędziach i ostrych narożnikach (wysokość nad wodą od miękkiego poziomu koryt); olsu prawie nie ma (0,10% kadru zbiegu).
+- **Granice biomów strefowych** (`moraine_plateau_20km`, `tunnel_valley_lake_1km`): progi żyzności i wariantu buczyny drgają szumem o fali 150 m·k, więc granice nie są równoległymi izoliniami ani łukami kół; płaty buczyny niżowej są zwarte (bez koronkowej tekstury siatki terenu i bez wysepek przy granicy zasięgu buka), a na płaskim zapleczu wybrzeża krawędź buczyny nie jest już prostą równoległą do brzegu (drganie granicy DGW 2 m).
+- **Suche odcinki koryt** (Beskidy, kadry masywów): bez pasów wikliny, ziołorośli i łęgów wzdłuż koryt, których dolina nie wcina.
+- **Wybrzeże** (`coast_lagoon_3km`, `coast_40km`, `gameplay_coast_*`): brzeg niski z plażą, białą i szarą wydmą na ok. 4/5 długości, także w poprzek den dolin poza samym ujściem, do falistego końca pasa wydm (za nim dno ma strefy cieku); klif tylko na brzegu wysokim; za mierzeją zalew, pas trzciny, torfowisko niskie i ols zaplecza (poza dnami dolin).
+- **Masywy**: świerczyna → strefa granicy lasu → kosodrzewina → hala w obu skalach (w kadrze `gameplay_highest_great_massif_5km` kosodrzewina 3,1%, hala 0,6%).
 
 Znane ograniczenia widoczne na obrazach:
-- Proste krawędzie den dolin, wycinki pierścieni starorzeczy i proste odcinki brzegów niektórych jezior pochodzą z geometrii modelu krajobrazu M1/S2 (np. dno doliny dominującej, starorzecze jako wycinek pierścienia). Klasyfikator ich nie tworzy, ale ich nie ukryje. *Stan po poprawce geometrii terenu (K3–K5, 2026-10-03 – 2026-10-06):* ciągłe pola doliny dominującej, gładkie skraje den, starorzecza jako półksiężyce i płatowe brzegi jezior usunęły większość tych krawędzi, a plik wzorcowy złotego testu przegenerowano w K7. Opis dotyczy kadrów sprzed poprawki; kadry przeliczy etap H (poprawki klasyfikatora) i punkt kontrolny 2 (`docs/m2/poprawka-geometrii.md`).
-- Kosodrzewiny i hali nie ma w żadnym kadrze: najwyższy szczyt ziarna 20260927 ma ok. 1445 m (REAL) i ok. 1130 m (GAMEPLAY), a duży masyw wymaga szczytu ponad 1470 m w promieniu 3 km·mspace (E12). W REAL ma je np. ziarno 4 (masyw 1645 m); w obu skalach przyjdą z poprawką masywów (decyzja M2-8). *Stan po poprawce geometrii terenu (K2, 2026-10-03):* wielkie masywy (1632–1723 m w REAL, 1618–1719 m w GAMEPLAY) dają kosodrzewinę i halę w obu skalach także dla ziarna 20260927. Kadry tego opisu są sprzed poprawki i nie zostały przeliczone (przeliczenie przy poprawkach klasyfikatora i punkcie kontrolnym 2; `docs/m2/poprawka-geometrii.md`).
-- Brzeg wydmowy rozpoznaje wysokość terenu przy morzu (pole `lowShore`), bo garb wydmy modelu zwykle chowa się pod płaskim pasem 13–24 m. Wydmy na kadrze to więc płaski wał tej wysokości, a nie garby. *Stan po poprawce geometrii terenu (K5b, D5):* brzeg jest niski z plażą i wydmami na ok. 4/5 długości, a klif tylko na wysoczyźnie (ok. 1/5); `lowShore` = 1 − udział klifu, próg `LOW_SHORE` 0,5, więc sprawa progu 15 m jest zamknięta. Opis dotyczy kadrów sprzed poprawki; kadry przeliczy etap H i punkt kontrolny 2.
-- Strefy węższe niż piksel kadru (np. szuwar lądowy 2–10 m na kadrze 20 km) widać tylko w kadrach 500 m–2 km.
+- Proste krawędzie płatów tam, gdzie prosty jest sam teren lub podłoże modelu: głowica doliny potoku na sandrze jako czworokąt mady (`gameplay_large_river_valley_1km`, płat grądu przy źródle), granice pięter i ekspozycji na prostych zboczach dolin Beskidów (`beskids_10km`), dna dolin na zacisku terenu brzegu 2,000 m (bór wilgotny zamiast łęgu do linii, gdzie dno wychodzi ponad zacisk; `coast_lagoon_3km`), wewnętrzna krawędź pasa olsu zaplecza zalewu i granice boru bażynowego na zmianie typu próbki (piasek / glina). Wszystkie były już w bazie przed etapem H (`docs/03-m2-biomy.md` §3.4, „Zostaje”); końce wydm przy dnach dolin w samym terenie to M5 (`docs/m2/poprawka-geometrii.md`, „Co zostaje”).
+- W kadrach 20 i 40 km „morze” GAMEPLAY to zamknięte baseny (makroregion 1,4 km), a pas brzegu (plaża, wydmy) ma szerokość kilku pikseli.
+- Strefy węższe niż piksel kadru (np. szuwar lądowy 2–10 m na kadrze 20 km) widać tylko w kadrach 300 m–2 km.

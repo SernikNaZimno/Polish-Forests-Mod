@@ -2,6 +2,7 @@ package pl.polishforests.worldgen.habitat;
 
 import pl.polishforests.worldgen.landscape.ColumnSample;
 import pl.polishforests.worldgen.landscape.Landform;
+import pl.polishforests.worldgen.landscape.Noise;
 import pl.polishforests.worldgen.landscape.Substrate;
 
 /**
@@ -74,11 +75,14 @@ final class WatersideZones {
 	 * valley ({@code floorChannelDist}), and a smaller, closer watercourse keeps only its own belt of ash-alder
 	 * riparian forest (as in class B, at least 6 blocks). Before, every zone came from the nearest channel, so at a
 	 * confluence the zones of the river were cut by the straight bisector between the two channels (wedges of the poplar
-	 * riparian forest). Elsewhere (off that floor, two small watercourses, no wider channel) the nearest channel decides.
-	 * The prototype built a second sample and column for the dominant channel; here its fields are passed as arguments.
+	 * riparian forest). Elsewhere (off that floor, two small watercourses, no wider channel) the nearest channel decides,
+	 * and only by real water ({@link HabitatClassifier.Column#byWater}, step H): a dry channel stretch that the valley
+	 * does not cut gets no zones. The prototype built a second sample and column for the dominant channel; here its
+	 * fields are passed as arguments.
 	 */
 	private static int stream(HabitatClassifier.Column c) {
 		ColumnSample.Waters w = c.w;
+		boolean wet = c.byWater();
 		if (w.inFloor() && !Double.isNaN(w.floorChannelWidth()) && !Double.isNaN(w.channelWidth())
 				&& w.floorChannelWidth() > FLOOR_CHANNEL_WIDER * w.channelWidth() && Double.isFinite(w.floorChannelDist())) {
 			double k = c.k;
@@ -87,13 +91,14 @@ final class WatersideZones {
 			if (c.wOutwashPlain > 0.5) {
 				ashAlder = Math.clamp(ashAlder, Calibration.B_ASH_ALDER_OUTWASH_PLAIN_MIN_K * k, Calibration.B_ASH_ALDER_OUTWASH_PLAIN_MAX_K * k);
 			}
-			if (Math.max(0, w.channelDist()) > width(Calibration.MIN_ASH_ALDER, ashAlder, c.jitter())
+			if ((!wet || Math.max(0, w.channelDist()) > width(Calibration.MIN_ASH_ALDER, ashAlder, c.jitter()))
 					&& c.onValleyFloor(w.floorChannelDist(), w.floorChannelLevel())
 					&& streamClass(c, c.wr(w.floorChannelWidth()), w.floorChannelGradient()) == StreamClass.A) {
 				return classA(c, Math.max(0, w.floorChannelDist()), w.floorChannelWidth(), true);
 			}
 		}
-		return nearestStream(c);
+		// Step H: no zones along a channel stretch without water (not cut by the valley, far below the ground).
+		return wet ? nearestStream(c) : HabitatClassifier.Result.NONE;
 	}
 
 	/** Zones of the nearest watercourse. */
@@ -222,8 +227,8 @@ final class WatersideZones {
 		}
 		if (!c.onValleyFloor()) {
 			// Narrow floor (or none): riparian forest by the bank in a belt of at least 6 blocks (E11), low above the watercourse.
-			if (d <= Calibration.MIN_ASH_ALDER && c.H < Calibration.H_ASH_ALDER_RIPARIAN && !Double.isNaN(c.w.channelLevel())
-					&& c.H - c.w.channelLevel() <= Calibration.SEEP_HL) {
+			if (d <= Calibration.MIN_ASH_ALDER && c.H < Calibration.H_ASH_ALDER_RIPARIAN && !Double.isNaN(c.w.softChannelLevel())
+					&& c.H - c.w.softChannelLevel() <= Calibration.SEEP_HL) {
 				return HabitatClassifier.Result.of(HabitatBiome.ASH_ALDER_FOREST, zone, Association.TYPICAL);
 			}
 			return onSlope(c, zone);
@@ -291,8 +296,12 @@ final class WatersideZones {
 		if (!c.onValleyFloor()) {
 			return onSlope(c, zone);
 		}
-		double halfWidth = w.floorHalfWidth();
-		if (h > Calibration.C_GRAY_ALDER_H || halfWidth < Calibration.C_NARROW_FLOOR_K * k) {
+		// Step H (Z9): the floor half-width changes slowly along the stream, so its thresholds crossed the floor in straight
+		// lines; it jitters by ±20% with a noise of 150 m·k, and the riparian belt tapers instead of ending.
+		double halfWidth = w.floorHalfWidth() * (1 + Calibration.WIDTH_JITTER * c.jitterNoise(16, Calibration.FERTILITY_JITTER_WAVELENGTH));
+		double narrow = Calibration.C_NARROW_FLOOR_K * k;
+		double wholeFloor = Calibration.C_WHOLE_FLOOR_K * k;
+		if (h > Calibration.C_GRAY_ALDER_H || halfWidth < 0.75 * narrow) {
 			// High up and in narrow V-shaped valleys: zonal forest down to the bank, tall herbs by the water.
 			if (zone == Zone.NONE && d <= width(Calibration.C_HERBS_MIN, Calibration.C_HERBS_W * channelWidth, f)) {
 				zone = Zone.MONTANE_TALL_HERBS;
@@ -301,10 +310,17 @@ final class WatersideZones {
 		}
 		double grayAlderBand = Math.min(Calibration.C_GRAY_ALDER_MAX_K * k, Math.max(Calibration.C_GRAY_ALDER_MIN_K * k,
 				Calibration.C_GRAY_ALDER_W * channelWidth)) * f;
+		// The whole floor on narrow floors (up to C_WHOLE_FLOOR_K·k, fading out up to 1.25 times that), the belt by the channel
+		// on wider ones; around the narrow floor limit (0.75–1 of it) the belt grows from 0, so a riparian forest tapers out
+		// along the stream instead of ending in a straight line across the floor.
+		double whole = 1 - Noise.smoothstep(wholeFloor, 1.25 * wholeFloor, halfWidth);
+		// The whole floor reaches as far as the floor margin (onValleyFloor) or a mouth funnel of the terrain floor.
+		double floorReach = Math.max(Calibration.FLOOR_MIN_K * k, 2 * halfWidth);
+		double band = (grayAlderBand + Math.max(0, floorReach - grayAlderBand) * whole) * Noise.smoothstep(0.75 * narrow, narrow, halfWidth);
 		double hMax = c.aspectN() ? Calibration.C_GRAY_ALDER_H_N : Calibration.C_GRAY_ALDER_H;
-		if ((d <= grayAlderBand || halfWidth < Calibration.C_WHOLE_FLOOR_K * k) && h <= hMax) {
+		if (d <= band && h <= hMax) {
 			if (w.streamOrder() == 1 && h < Calibration.C_CARICI_H && c.P >= Calibration.C_CARICI_P
-					&& halfWidth < Calibration.C_WHOLE_FLOOR_K * k && c.dgw() <= Calibration.SEEP_DGW) {
+					&& halfWidth < wholeFloor && c.dgw() <= Calibration.SEEP_DGW) {
 				return HabitatClassifier.Result.of(HabitatBiome.ASH_ALDER_FOREST, zone, Association.CARICI_REMOTAE_FRAXINETUM);
 			}
 			return HabitatClassifier.Result.of(alder ? HabitatBiome.GRAY_ALDER_FOREST : HabitatBiome.ASH_ALDER_FOREST, zone, Association.TYPICAL);

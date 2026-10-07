@@ -58,6 +58,8 @@ final class SyntheticSample {
 	double floorChannelDist = Double.POSITIVE_INFINITY;
 	double floorChannelWidth = Double.NaN;
 	double floorChannelLevel = Double.NaN;
+	/** Soft channel level (step H); NaN: the level of the nearest channel. */
+	double softChannelLevel = Double.NaN;
 	/** Gradient of the channel of the dominant valley; NaN = the same as {@link #channelGradient}. */
 	double floorChannelGradient = Double.NaN;
 	double o = 0.5;
@@ -171,7 +173,8 @@ final class SyntheticSample {
 		ColumnSample.Waters w = new ColumnSample.Waters(streamOrder, headwaters, channelDist, channelWidth, channelLevel, inFloor, u,
 				floorHalfWidth, channelGradient, convexBank, s, shoreLevel, kind, ombrotrophicPeat, lakeId, radius,
 				floorChannelDist, floorChannelWidth, floorChannelLevel,
-				Double.isNaN(floorChannelGradient) ? channelGradient : floorChannelGradient);
+				Double.isNaN(floorChannelGradient) ? channelGradient : floorChannelGradient,
+				Double.isNaN(softChannelLevel) ? channelLevel : softChannelLevel);
 		return new ColumnSample(surface, waterLevel, waterKind, type, substrate, 5, t, w,
 				new ColumnSample.Region(o, p));
 	}

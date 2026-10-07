@@ -627,7 +627,7 @@ class WatersideZonesTest {
 		ColumnSample.Waters nearest = new ColumnSample.Waters(w.streamOrder(), w.headwaters(), w.channelDist(),
 				w.channelWidth(), w.channelLevel(), w.inFloor(), w.u(), w.floorHalfWidth(), w.channelGradient(),
 				w.convexBank(), w.s(), w.shoreLevel(), w.standingWaterKind(), w.ombrotrophicPeat(), w.lakeId(),
-				w.standingWaterRadius(), Double.POSITIVE_INFINITY, Double.NaN, Double.NaN, Double.NaN);
+				w.standingWaterRadius(), Double.POSITIVE_INFINITY, Double.NaN, Double.NaN, Double.NaN, w.softChannelLevel());
 		ColumnSample before = new ColumnSample(s.surface(), s.waterLevel(), s.waterKind(), s.type(), s.substrate(),
 				s.coverDepth(), s.terrain(), nearest, s.region());
 		if (riverZone(k.classify(before, x, z))) {
@@ -653,6 +653,182 @@ class WatersideZonesTest {
 	private static boolean riverZone(int code) {
 		HabitatBiome b = Habitat.biome(code);
 		return b == HabitatBiome.WILLOW_POPLAR_FOREST || b == HabitatBiome.WILLOW_SCRUB;
+	}
+
+	/** Zones that only a watercourse gives (§4.1–4.3). */
+	static final java.util.Set<Zone> WATERCOURSE_ZONES = java.util.EnumSet.of(Zone.POINT_BAR, Zone.WILLOW_SCRUB, Zone.HERB_FRINGE,
+			Zone.TALL_HERBS, Zone.RIVERSIDE_WILLOWS, Zone.GRAVEL_BAR, Zone.MONTANE_TALL_HERBS, Zone.SPRING_AREA, Zone.TREE_ROW);
+	/** Biomes that only a watercourse gives (riparian forests and willow scrub). */
+	static final java.util.Set<HabitatBiome> WATERCOURSE_BIOMES = java.util.EnumSet.of(HabitatBiome.ASH_ALDER_FOREST,
+			HabitatBiome.WILLOW_POPLAR_FOREST, HabitatBiome.ELM_ASH_FOREST, HabitatBiome.GRAY_ALDER_FOREST, HabitatBiome.WILLOW_SCRUB);
+
+	/**
+	 * Step H (open S4 problem 1): zones and riparian forests of a watercourse only by real water. A channel stretch
+	 * that the valley does not cut has its water level far below the ground (short headwater segments on the slopes
+	 * of the gameplay mountains); the bank columns there (d ≤ 15 m·k, dry) lie more than {@link Calibration#BANK_H}
+	 * above the soft water level and above the level of the channel of the dominant valley, and must get neither a
+	 * watercourse zone nor a riparian biome (away from standing water and the coast). Random columns in the Beskids and
+	 * in the lowland of both scales; the gameplay Beskids must contain such stretches (otherwise the test is empty).
+	 */
+	@Test
+	void noWatercourseZonesAlongDryChannels() {
+		Object[][] areas = {{LandscapeScale.GAMEPLAY, 27_609.0, 3_254.0, 6_000.0}, {LandscapeScale.GAMEPLAY, 0.0, 0.0, 20_000.0},
+				{LandscapeScale.REALISTIC, 154_834.0, 1_058_738.0, 40_000.0}, {LandscapeScale.REALISTIC, 0.0, 0.0, 100_000.0}};
+		long dryInGameplayBeskids = 0;
+		for (Object[] a : areas) {
+			LandscapeScale sc = (LandscapeScale) a[0];
+			double cx = (double) a[1];
+			double cz = (double) a[2];
+			double side = (double) a[3];
+			LandscapeModel m = new LandscapeModel(SEED, sc, 1.0);
+			HabitatClassifier k = new HabitatClassifier(SEED, sc, HabitatClassifier.Mode.NATURAL);
+			double kk = sc.local();
+			AtomicLong dry = new AtomicLong();
+			AtomicLong wrong = new AtomicLong();
+			List<String> examples = Collections.synchronizedList(new ArrayList<>());
+			IntStream.range(0, 64).parallel().forEach(b -> {
+				java.util.SplittableRandom r = new java.util.SplittableRandom(SEED + b);
+				for (int i = 0; i < 4_000; i++) {
+					double x = cx + (r.nextDouble() - 0.5) * side;
+					double z = cz + (r.nextDouble() - 0.5) * side;
+					ColumnSample s = m.sample(x, z);
+					ColumnSample.Waters w = s.waters();
+					if (s.hasWater() || w.streamOrder() <= 0 || !(w.channelDist() <= 15 * kk) || Double.isFinite(w.s())
+							|| s.terrain().coastD() < 3_000 * kk || !(s.surface() - w.softChannelLevel() > Calibration.BANK_H)
+							|| s.surface() - w.floorChannelLevel() <= Calibration.BANK_H) {
+						continue;
+					}
+					dry.incrementAndGet();
+					int code = k.classify(s, x, z);
+					if (WATERCOURSE_ZONES.contains(Habitat.zone(code)) || WATERCOURSE_BIOMES.contains(Habitat.biome(code))) {
+						wrong.incrementAndGet();
+						if (examples.size() < 5) {
+							examples.add(String.format(Locale.ROOT, "(%.1f, %.1f) %s", x, z, Habitat.of(code)));
+						}
+					}
+				}
+			});
+			System.out.printf(Locale.ROOT, "%s (%.0f, %.0f) %.0f m: bank columns of dry channel stretches %d, with watercourse zones %d%n",
+					sc.id(), cx, cz, side, dry.get(), wrong.get());
+			if (sc == LandscapeScale.GAMEPLAY && cx != 0) {
+				dryInGameplayBeskids = dry.get();
+			}
+			assertTrue(wrong.get() == 0, sc.id() + ": watercourse zones along a dry channel: " + examples);
+		}
+		assertTrue(dryInGameplayBeskids >= 100, "no dry channel stretches in the gameplay Beskids: " + dryInGameplayBeskids);
+	}
+
+	/**
+	 * Step H, round 1 of the review: the converse of {@link #noWatercourseZonesAlongDryChannels}. The bank of a real
+	 * channel (d ≤ 3 m·k, at most 2.5 m above the water level of the nearest channel) must stay by water
+	 * ({@code Column.byWater}): a dry channel stretch far below the ground next to it must not pull the soft water
+	 * level down. At most 0.1% of such columns per area may fail (before the weighting of dry candidates: 1 of 4531
+	 * in the gameplay Beskids, with the 4 m boundary close to the straight bisector between the channels).
+	 */
+	@Test
+	void realChannelBanksStayByWater() {
+		Object[][] areas = {{LandscapeScale.GAMEPLAY, 27_609.0, 3_254.0, 6_000.0}, {LandscapeScale.GAMEPLAY, 0.0, 0.0, 20_000.0},
+				{LandscapeScale.REALISTIC, 154_834.0, 1_058_738.0, 40_000.0}, {LandscapeScale.REALISTIC, 0.0, 0.0, 100_000.0}};
+		for (Object[] a : areas) {
+			LandscapeScale sc = (LandscapeScale) a[0];
+			double cx = (double) a[1];
+			double cz = (double) a[2];
+			double side = (double) a[3];
+			LandscapeModel m = new LandscapeModel(SEED, sc, 1.0);
+			HabitatClassifier k = new HabitatClassifier(SEED, sc, HabitatClassifier.Mode.NATURAL);
+			double kk = sc.local();
+			AtomicLong banks = new AtomicLong();
+			AtomicLong lost = new AtomicLong();
+			List<String> examples = Collections.synchronizedList(new ArrayList<>());
+			IntStream.range(0, 64).parallel().forEach(b -> {
+				java.util.SplittableRandom r = new java.util.SplittableRandom(SEED + 1_000 + b);
+				for (int i = 0; i < 20_000; i++) {
+					double x = cx + (r.nextDouble() - 0.5) * side;
+					double z = cz + (r.nextDouble() - 0.5) * side;
+					ColumnSample s = m.sample(x, z);
+					ColumnSample.Waters w = s.waters();
+					if (s.hasWater() || w.streamOrder() <= 0 || !(w.channelDist() <= 3 * kk)
+							|| !(s.surface() - w.channelLevel() <= 2.5)) {
+						continue;
+					}
+					banks.incrementAndGet();
+					if (!new HabitatClassifier.Column(k, s, x, z).byWater()) {
+						lost.incrementAndGet();
+						if (examples.size() < 5) {
+							examples.add(String.format(Locale.ROOT, "(%.1f, %.1f) H %.2f, channel level %.2f, soft level %.2f", x, z,
+									s.surface(), w.channelLevel(), w.softChannelLevel()));
+						}
+					}
+				}
+			});
+			System.out.printf(Locale.ROOT, "%s (%.0f, %.0f) %.0f m: bank columns of real channels %d, not by water %d %s%n",
+					sc.id(), cx, cz, side, banks.get(), lost.get(), examples);
+			assertTrue(banks.get() >= 500, sc.id() + ": too few bank columns: " + banks.get());
+			assertTrue(lost.get() <= banks.get() / 1_000, sc.id() + ": real channel banks without water: " + examples);
+		}
+	}
+
+	/**
+	 * Step H (G3, decision after K4c): the soft water level of the channels ({@code softChannelLevel}), from which the
+	 * classifier measures the height above the watercourse, has no steps at confluences, while the level of the
+	 * nearest channel steps on the straight bisectors between the channels (the polygonal patches of riparian forest
+	 * at the confluences of mountain streams). Rows through the confluence frame of the review ({@code Z_besk_conf_300m},
+	 * gameplay) and the mountain stream frame ({@code R_potok_3km}, realistic), 0.1 m steps, columns within 60 m·k of a
+	 * channel: every step of the soft level larger than 5 cm is refined to 1 mm and must shrink with it (no jump),
+	 * and the steepest soft level is reported. The soft level is steep, but continuous, where a dry channel stretch far
+	 * below the ground passes close to a real channel (up to about 40 m per 1 m on the gameplay Beskid slopes).
+	 */
+	@Test
+	void softChannelLevelIsContinuousAtConfluences() {
+		Object[][] frames = {{LandscapeScale.GAMEPLAY, 27_990.0, 3_660.0, 300.0, 2.0}, {LandscapeScale.REALISTIC, 72_208.0, 1_009_510.0, 3_000.0, 20.0}};
+		for (Object[] f : frames) {
+			LandscapeScale sc = (LandscapeScale) f[0];
+			LandscapeModel m = new LandscapeModel(SEED, sc, 1.0);
+			double cx = (double) f[1];
+			double cz = (double) f[2];
+			double side = (double) f[3];
+			double rowStep = (double) f[4];
+			double step = 0.1;
+			int rows = (int) (side / rowStep);
+			int cols = (int) (side / step);
+			double near = 60 * sc.local();
+			java.util.concurrent.atomic.DoubleAccumulator maxSoft = new java.util.concurrent.atomic.DoubleAccumulator(Math::max, 0);
+			java.util.concurrent.atomic.DoubleAccumulator maxRefined = new java.util.concurrent.atomic.DoubleAccumulator(Math::max, 0);
+			AtomicLong nearSteps = new AtomicLong();
+			IntStream.range(0, rows).parallel().forEach(r -> {
+				double z = cz - side / 2 + r * rowStep;
+				double previousSoft = Double.NaN;
+				double previousNear = Double.NaN;
+				for (int i = 0; i < cols; i++) {
+					double x = cx - side / 2 + i * step;
+					ColumnSample.Waters w = m.sample(x, z).waters();
+					double soft = w.softChannelLevel();
+					if (w.channelDist() < near && !Double.isNaN(previousSoft) && !Double.isNaN(soft)) {
+						double ds = Math.abs(soft - previousSoft);
+						maxSoft.accumulate(ds / step);
+						if (Math.abs(w.channelLevel() - previousNear) > 0.5) {
+							nearSteps.incrementAndGet();
+						}
+						if (ds > 0.05) {
+							// Refine to 1 mm: a continuous field steps by at most a hundredth of it (with a margin of 3).
+							double prev = previousSoft;
+							for (int q = 1; q <= 100; q++) {
+								double v = m.sample(x - step + q * step / 100, z).waters().softChannelLevel();
+								maxRefined.accumulate(Math.abs(v - prev) / ds);
+								prev = v;
+							}
+						}
+					}
+					previousSoft = soft;
+					previousNear = w.channelLevel();
+				}
+			});
+			System.out.printf(Locale.ROOT, "%s (%.0f, %.0f) %.0f m: soft level at most %.2f m per 1 m, largest 1 mm part of a refined step "
+					+ "%.3f of it; steps of the nearest channel level > 0.5 m: %d%n", sc.id(), cx, cz, side, maxSoft.get(), maxRefined.get(),
+					nearSteps.get());
+			assertTrue(nearSteps.get() > 0, sc.id() + ": the frame has no steps of the nearest channel level (no confluence)");
+			assertTrue(maxRefined.get() <= 0.03, sc.id() + ": the soft channel level jumps (largest 1 mm part " + maxRefined.get() + ")");
+		}
 	}
 
 	@Test

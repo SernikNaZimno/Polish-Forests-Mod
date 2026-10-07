@@ -19,7 +19,7 @@ import pl.polishforests.worldgen.landscape.Noise;
  * shoreline and runs inland along the shore normal (gradient of the distance from the sea) up to B + D + 400k.
  * On a dune shore ({@code lowShore} ≥ 0.5) there are no cliff zones in the dune belt B ≤ cD &lt; B + D, and dunes
  * and the coastal crowberry pine forest take up most land columns outside valley floors and standing water banks.
- * A high shore has a cliff face.
+ * A high shore has a cliff face. The dune shore takes 75–85% of the shore points (D5, {@link #duneShoreShare}).
  */
 class CoastTest {
 	static final long SEED = 20260927L;
@@ -181,6 +181,62 @@ class CoastTest {
 		assertTrue(share >= 0.9, sc.id() + ": dunes and crowberry pine forest in the dune belt: " + share);
 		assertTrue(white > 0 && gray > 0, sc.id() + ": no white or gray dune");
 		assertTrue(highShores == 0 || highShoresWithCliff > 0, sc.id() + ": no cliff on a high shore");
+	}
+
+	/**
+	 * Step H (decision D5): the dune shore takes about 75–85% of the coast length. On every shore point of the
+	 * cross-section grid (not only the first 40 of each kind) the classification of the dune belt B ≤ cD &lt; B + D:
+	 * a dune shore has white dune and no cliff zone, a high shore a cliff face or top. Shore points by a valley floor
+	 * (river mouths, where the waterside zones take the belt) count as neither. Also the field: {@code lowShore} ≥
+	 * {@link Calibration#LOW_SHORE} in the middle of the dune belt.
+	 */
+	static void duneShoreShare(LandscapeScale sc) {
+		LandscapeModel m = new LandscapeModel(SEED, sc, 1.0);
+		HabitatClassifier k = new HabitatClassifier(SEED, sc, HabitatClassifier.Mode.NATURAL);
+		double kk = sc.local();
+		double b = Calibration.BEACH_B * kk;
+		double dw = Calibration.DUNES_D * kk;
+		double grid = sc == LandscapeScale.REALISTIC ? 12_000 : 600;
+		int n = sc == LandscapeScale.REALISTIC ? 250 : 150;
+		java.util.concurrent.atomic.AtomicIntegerArray count = new java.util.concurrent.atomic.AtomicIntegerArray(4);
+		IntStream.range(0, n * n).parallel().forEach(q -> {
+			double x = ((q % n) - n / 2) * grid;
+			double z = ((q / n) - n / 2) * grid;
+			double d = m.coastDistance(x, z);
+			if (!(d > 0 && d < 3_000 * kk)) {
+				return;
+			}
+			Section p = section(m, k, x, z);
+			if (p == null) {
+				return;
+			}
+			boolean cliff = false;
+			boolean white = false;
+			for (int i = 0; i < p.codes().length && p.cD()[i] < b + dw; i++) {
+				Zone zone = Habitat.zone(p.codes()[i]);
+				cliff |= zone == Zone.CLIFF_FACE || zone == Zone.CLIFF_TOP;
+				white |= Habitat.biome(p.codes()[i]) == HabitatBiome.WHITE_DUNE;
+			}
+			count.incrementAndGet(0);
+			count.addAndGet(1, white && !cliff ? 1 : 0);
+			count.addAndGet(2, cliff ? 1 : 0);
+			count.addAndGet(3, p.duneShore() ? 1 : 0);
+		});
+		int all = count.get(0);
+		double dune = (double) count.get(1) / all;
+		double field = (double) count.get(3) / all;
+		System.out.printf(Locale.ROOT, "%s: %d shore points: dune shore (white dune, no cliff) %.1f%%, high shore (cliff zone) %.1f%%, "
+				+ "neither (valley floors at river mouths) %.1f%%; lowShore >= %.2f: %.1f%%%n", sc.id(), all, 100 * dune,
+				100.0 * count.get(2) / all, 100.0 * (all - count.get(1) - count.get(2)) / all, Calibration.LOW_SHORE, 100 * field);
+		assertTrue(all >= 200, sc.id() + ": too few shore points: " + all);
+		assertTrue(dune >= 0.75 && dune <= 0.85, sc.id() + ": dune shore share " + dune);
+		assertTrue(field >= 0.75 && field <= 0.85, sc.id() + ": lowShore share " + field);
+	}
+
+	@Test
+	void duneShoreShareAtBothScales() {
+		duneShoreShare(LandscapeScale.REALISTIC);
+		duneShoreShare(LandscapeScale.GAMEPLAY);
 	}
 
 	@Test

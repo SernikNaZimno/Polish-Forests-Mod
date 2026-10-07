@@ -146,16 +146,22 @@ public record ColumnSample(double surface, int waterLevel, WaterKind waterKind, 
 	 * @param floorChannelGradient gradient of that channel's own segment in ‰, converted to 1:1 scale (the class of
 	 *                            the channel in F2; {@code channelGradient} is the soft maximum over the valleys and
 	 *                            near a tributary mouth mixes in the tributary); NaN without a watercourse
+	 * @param softChannelLevel    water level of the channels near the column blended by their distance (step H of the
+	 *                            terrain fix, G3): equal to {@code channelLevel} next to a single channel, and continuous
+	 *                            across the bisector between two channels, where {@code channelLevel} steps from one
+	 *                            channel to the other. The habitat classifier measures the height above the watercourse
+	 *                            from it, so the floor and its zones do not end on straight bisectors at confluences
+	 *                            (RiverNetwork.SOFT_LEVEL_*); NaN without a watercourse
 	 */
 	public record Waters(int streamOrder, boolean headwaters, double channelDist, double channelWidth, double channelLevel,
 			boolean inFloor, double u, double floorHalfWidth, double channelGradient, boolean convexBank, double s,
 			int shoreLevel, StandingWaterKind standingWaterKind, boolean ombrotrophicPeat, long lakeId,
 			double standingWaterRadius, double floorChannelDist, double floorChannelWidth, double floorChannelLevel,
-			double floorChannelGradient) {
+			double floorChannelGradient, double softChannelLevel) {
 		/** No watercourses and no standing water (sea and places out of range). */
 		public static final Waters NONE = new Waters(0, false, Double.POSITIVE_INFINITY, Double.NaN, Double.NaN, false,
 				Double.NaN, Double.NaN, Double.NaN, false, Double.POSITIVE_INFINITY, NO_WATER, StandingWaterKind.NONE,
-				false, 0L, Double.NaN, Double.POSITIVE_INFINITY, Double.NaN, Double.NaN, Double.NaN);
+				false, 0L, Double.NaN, Double.POSITIVE_INFINITY, Double.NaN, Double.NaN, Double.NaN, Double.NaN);
 	}
 
 	/** Kind of the standing water nearest to the column. */

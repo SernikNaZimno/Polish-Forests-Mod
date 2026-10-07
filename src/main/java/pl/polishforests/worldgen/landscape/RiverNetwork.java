@@ -59,6 +59,20 @@ final class RiverNetwork {
 	private final ConcurrentHashMap<Long, Segment> segments = new ConcurrentHashMap<>();
 	private final ConcurrentHashMap<Long, SinkLake> sinkLakes = new ConcurrentHashMap<>();
 	private final ThreadLocal<TileCache> tileCache = ThreadLocal.withInitial(TileCache::new);
+	/**
+	 * Step H (cost, decision D1): the outflow segment and the sink lake of a grid node in one lock-free entry, keyed by
+	 * (i, 4·j + order). Building the candidate list of a tile visits up to 3 × 15 × 15 nodes, and each visit took three or
+	 * four lookups with boxed {@code Long} keys in the maps above ({@code segments}, {@code nodes}, {@code links},
+	 * {@code sinkLakes}); a hit here is one unboxed lookup. The entry is a pure function of the node, so the cache does
+	 * not change any result. 2^18 slots (1 MB of references, entries of about 56 B only for the visited nodes): 16 384
+	 * slots were thrashed by the 400 scattered chunks of {@code SampleCostTest} at realistic scale (about 500 nodes per
+	 * tile), which made the REAL whole area about 1% slower instead of faster.
+	 */
+	private final DirectCache<NodeCandidates> nodeCandidates = new DirectCache<>(1 << 18, this::buildNodeCandidates);
+
+	/** Outflow segment (or null) and sink lake (or null) of a grid node ({@link #nodeCandidates}). */
+	private record NodeCandidates(Segment segment, SinkLake lake) {
+	}
 
 	/** Grid node: position, height smoothed for routing, ground height, belt shares. */
 	record Node(int order, long i, long j, double x, double z, double route, double land, boolean sea,
@@ -1039,6 +1053,14 @@ final class RiverNetwork {
 	 * @param lakeGap       K5.2: distance from the shore of the nearest sink lake, at most {@link #LAKE_GAP_MAX} m·k
 	 *                      (exact up to there: every candidate lake of the tile within it is in the tile list);
 	 *                      tunnel valley lakes end before it
+	 * @param softChannelLevel water level of the channels near the column blended by their distance (step H, G3): the
+	 *                      levels of the candidate channels weighted by (1 − δ / r)², δ = d − d_min, r =
+	 *                      {@link #SOFT_LEVEL_RATIO} · d_min + {@link #SOFT_LEVEL_BASE} m·k (at most
+	 *                      {@link #SOFT_LEVEL_MAX} m·k), and by a factor that drops to {@link #SOFT_LEVEL_DRY_WEIGHT}
+	 *                      for a channel far below the column terrain (a dry, uncut stretch); equal to
+	 *                      {@code channelLevel} next to a single channel and continuous across the bisector between two
+	 *                      channels, where {@code channelLevel} steps. Only for the habitat fields (NaN without a
+	 *                      watercourse)
 	 */
 	record RiverHit(int order, double terrain, double valleyWeight, boolean inFloor, int waterLevel,
 			double channelBottom, double bankLevel, boolean source, int oxbowLevel, double oxbowDepth, int lakeLevel,
@@ -1046,7 +1068,8 @@ final class RiverNetwork {
 			double channelWidth, double channelLevel, double floorU, double floorHalf, double slope,
 			boolean convexBank, double oxbowShore, int oxbowMirror, long oxbowId, double oxbowWidth, double ringShore,
 			int ringLevel, long ringId, double ringRadius, double floorChannelDist, double floorChannelWidth,
-			double floorChannelLevel, double floorChannelGradient, double floorGap, double lakeGap) {
+			double floorChannelLevel, double floorChannelGradient, double floorGap, double lakeGap,
+			double softChannelLevel) {
 		boolean inChannel() {
 			return waterLevel != ColumnSample.NO_WATER;
 		}
@@ -2151,6 +2174,30 @@ final class RiverNetwork {
 	/** Values per candidate in {@link Scratch#floor}: distance from the bank, width, water level, order, gradient. */
 	static final int FLOOR_STRIDE = 5;
 
+	/**
+	 * Step H (G3): range of the soft channel level ({@link RiverHit#softChannelLevel}) in the excess distance δ over
+	 * the nearest channel: r = SOFT_LEVEL_RATIO · d_min + SOFT_LEVEL_BASE m·k, at most SOFT_LEVEL_MAX m·k. Growing with
+	 * the distance, the blend zone around the bisector between two channels widens like a cone from the confluence
+	 * instead of being a fixed band. The field is continuous where every candidate within the range passes the culling
+	 * frame of {@link #query}, i.e. near the channels (the habitat zones, up to several hundred m·k); far from them
+	 * (d_min of roughly 700 m·k and more, review of step H) the candidate set itself changes on straight culling lines,
+	 * and {@code channelLevel} steps there too.
+	 */
+	static final double SOFT_LEVEL_RATIO = 1.0;
+	static final double SOFT_LEVEL_BASE = 5.0;
+	static final double SOFT_LEVEL_MAX = 80.0;
+	/**
+	 * Step H, round 1 of the review: a candidate whose water level lies more than SOFT_LEVEL_DRY_FROM m below the
+	 * column terrain (up to SOFT_LEVEL_DRY_TO m, smoothstep) loses its weight in the soft level down to
+	 * SOFT_LEVEL_DRY_WEIGHT of it. A dry channel stretch that the valley does not cut (level tens of meters below the
+	 * ground) otherwise pulled the soft level of the bank of a nearby real channel far below its water, and the bank
+	 * lost its zones. The factor is continuous in the terrain and the levels, so the field stays continuous, and with
+	 * a single candidate (or only dry ones) it cancels out.
+	 */
+	static final double SOFT_LEVEL_DRY_FROM = 4.0;
+	static final double SOFT_LEVEL_DRY_TO = 12.0;
+	static final double SOFT_LEVEL_DRY_WEIGHT = 0.01;
+
 	/** F1: temperature of the soft maximum of the floor half-width and the gradient, in m·k of depth in the floor. */
 	static final double F1_TAU = 15.0;
 	/** F1: the soft maximum only sums segments within this many τ of the deepest valley (weights below e^−8). */
@@ -2257,11 +2304,12 @@ final class RiverNetwork {
 		double hz = lz + tileSize;
 		double ring = LAKE_RING * valleyScale;
 		tileRadiusNodes(lx, lz, (order, i, j) -> {
-			Segment s = segment(order, i, j);
+			NodeCandidates nc = nodeCandidates.get(i, 4 * j + order);
+			Segment s = nc.segment;
 			if (s != null && !(hx < s.minX || lx > s.maxX || hz < s.minZ || lz > s.maxZ)) {
 				c.segments.add(s);
 			}
-			SinkLake lake = sinkLake(node(order, i, j));
+			SinkLake lake = nc.lake;
 			// The M1 filter (lake.radius * 1.6 + tile) widened by the habitat ring; the terrain uses only the lakes from the
 			// M1 filter (nearTile).
 			if (lake != null && Math.abs(lake.x - (lx + tileSize / 2)) < lake.radius * 1.6 + ring + tileSize
@@ -2270,6 +2318,13 @@ final class RiverNetwork {
 			}
 		});
 		return c;
+	}
+
+	/** Entry of {@link #nodeCandidates} for the key (i, 4·j + order). */
+	private NodeCandidates buildNodeCandidates(long i, long key) {
+		int order = (int) Math.floorMod(key, 4L);
+		long j = Math.floorDiv(key, 4L);
+		return new NodeCandidates(segment(order, i, j), sinkLake(node(order, i, j)));
 	}
 
 	/** Grid node of one order (see {@link #tileRadiusNodes}). */
@@ -2778,7 +2833,7 @@ final class RiverNetwork {
 					lakeLevel, lakeShore, lakeDepth, lakeId, lakeRadius, Double.POSITIVE_INFINITY, Double.NaN,
 					Double.NaN, Double.NaN, Double.NaN, Double.NaN, false, Double.POSITIVE_INFINITY,
 					ColumnSample.NO_WATER, 0, Double.NaN, ringShore, ringLevel, ringId, ringRadius,
-					Double.POSITIVE_INFINITY, Double.NaN, Double.NaN, Double.NaN, floorGap, lakeGap);
+					Double.POSITIVE_INFINITY, Double.NaN, Double.NaN, Double.NaN, floorGap, lakeGap, Double.NaN);
 		}
 		// In the floor of some valley exactly when in the floor of the dominant one (its key is the largest, so positive),
 		// or in a mouth funnel (G3, step K4c): the funnel belongs to the floor of the valley it opens into, whose channel
@@ -2829,6 +2884,13 @@ final class RiverNetwork {
 		double floorChannelGradient = Double.NaN;
 		double minWidth = 0.5 * best.widthAt(bestT);
 		double[] f = sc.floor;
+		// Step H (G3): the soft channel level, the levels of the candidates near the nearest one weighted by distance.
+		double softRange = Math.min(SOFT_LEVEL_RATIO * Math.max(0, nearDist) + SOFT_LEVEL_BASE * valleyScale,
+				SOFT_LEVEL_MAX * valleyScale);
+		double softEnd = nearDist + softRange;
+		double softInv = 1 / softRange;
+		double softSum = 0;
+		double softWeight = 0;
 		for (int q = 0, end = sc.floorEnd; q < end; q += FLOOR_STRIDE) {
 			if (f[q + 3] == best.order && f[q + 1] >= minWidth && f[q] < floorChannelDist) {
 				floorChannelDist = f[q];
@@ -2836,13 +2898,23 @@ final class RiverNetwork {
 				floorChannelLevel = f[q + 2];
 				floorChannelGradient = f[q + 4] * 1_000;
 			}
+			if (f[q] < softEnd) {
+				double a = (softEnd - f[q]) * softInv;
+				double above = result - f[q + 2];
+				double wet = above <= SOFT_LEVEL_DRY_FROM ? 1
+						: SOFT_LEVEL_DRY_WEIGHT + (1 - SOFT_LEVEL_DRY_WEIGHT) * (1 - Noise.smoothstep(SOFT_LEVEL_DRY_FROM, SOFT_LEVEL_DRY_TO, above));
+				double weight = a * a * wet;
+				softSum += weight * f[q + 2];
+				softWeight += weight;
+			}
 		}
+		double softChannelLevel = softWeight > 0 ? softSum / softWeight : nearLevel;
 		return new RiverHit(best.order, result, valleyWeight, inFloor, water, channelBottom, bank,
 				best.source && bestT < 0.5, oxbowLevel, oxbowDepth, lakeLevel, lakeShore, lakeDepth, lakeId,
 				lakeRadius, nearDist, nearWidth, nearLevel, inFloor ? uMin : Double.NaN,
 				sumFh / sumW, sumSl / sumW * 1_000, convex, oxbowShore, oxbowMirror, oxbowId, oxbowWidth, ringShore,
 				ringLevel, ringId, ringRadius, floorChannelDist, floorChannelWidth, floorChannelLevel,
-				floorChannelGradient, floorGap, lakeGap);
+				floorChannelGradient, floorGap, lakeGap, softChannelLevel);
 	}
 
 	/**

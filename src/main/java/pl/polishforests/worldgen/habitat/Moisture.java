@@ -35,10 +35,10 @@ public enum Moisture {
 		double penalty = c.onValleyFloor() ? 0
 				: Calibration.OUTSIDE_VALLEY_PENALTY * (1 - Noise.smoothstep(Calibration.INCISION_FROM, Calibration.INCISION_TO,
 						t.rawSurface() - c.H));
-		if (w.streamOrder() > 0 && Double.isFinite(w.channelDist()) && !Double.isNaN(w.channelLevel())) {
+		if (w.streamOrder() > 0 && Double.isFinite(w.channelDist()) && !Double.isNaN(w.softChannelLevel())) {
 			// The level of the nearest channel is sometimes higher than the floor the column lies on (a tributary
 			// descending in a rapid to the floor of a larger valley); the model floor lies at least 1.2 m above its channel's water level.
-			double waterLevel = Math.min(w.channelLevel(), c.H - Calibration.FLOOR_ABOVE_WATER_LEVEL);
+			double waterLevel = Math.min(w.softChannelLevel(), c.H - Calibration.FLOOR_ABOVE_WATER_LEVEL);
 			gw = Math.min(gw, waterLevel + Calibration.WATER_LEVEL_OFFSET + i * Math.max(0, w.channelDist()) / c.k + penalty);
 		}
 		// Oxbow lakes are skipped: they lie on the floor, where the river sets the water table, and their rings (ring

@@ -57,17 +57,20 @@ final class Coast {
 			Zone s = cD < b + Calibration.EMBRYO_DUNE_K * k ? Zone.EMBRYO_DUNE : Zone.NONE;
 			return HabitatClassifier.Result.of(HabitatBiome.WHITE_DUNE, s, Association.TYPICAL);
 		}
-		// Valley floors and shores of standing water near the sea: waterside zones.
-		if (c.onValleyFloor() || c.w.s() < Calibration.LAKE_ALDER_CARR_K * k) {
+		// Valley floors and shores of standing water near the sea: waterside zones; on a dune shore the dunes run across
+		// the valley floors except at the river mouth (step H, D5).
+		boolean floor = c.onValleyFloor();
+		if (floor && !c.duneOverFloor() || c.w.s() < Calibration.LAKE_ALDER_CARR_K * k) {
 			return HabitatClassifier.Result.NONE;
 		}
 		if (sub != Substrate.SAND) {
 			return HabitatClassifier.Result.NONE;
 		}
 		// Lagoon hinterland: a low shore behind the dunes (sea level 0 m, h = H − 1); the lagoon and the spit form
-		// only on a dune shore.
+		// only on a dune shore. Not on a valley floor under the dunes: its surface is the terrain clamp of the shore
+		// (2.000 m, h = 1.0 = LAGOON_ALDER_CARR_H), so the thresholds cut it along straight lines (step H, review round 1).
 		double h = c.H - 1;
-		if (duneShore && cD >= b + d) {
+		if (duneShore && cD >= b + d && !floor) {
 			if (h <= Calibration.LAGOON_PEAT_H) {
 				return HabitatClassifier.Result.of(HabitatBiome.FEN, Zone.NONE, Association.TYPICAL);
 			}
@@ -75,7 +78,7 @@ final class Coast {
 				return HabitatClassifier.Result.of(HabitatBiome.ALDER_CARR, Zone.NONE, Association.SPIT);
 			}
 		}
-		if (cD < b + d + Calibration.GRAY_DUNE_K * k) {
+		if (cD < c.duneBeltEnd()) {
 			return HabitatClassifier.Result.of(HabitatBiome.GRAY_DUNE, Zone.NONE, Association.TYPICAL);
 		}
 		double range = isPineForest * (1 + Calibration.COASTAL_PINE_JITTER * (2 * c.variant(4) - 1));
