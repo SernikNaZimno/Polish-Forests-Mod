@@ -58,8 +58,17 @@ public final class PolandWorldClientGameTest implements FabricClientGameTest {
 	private static final TagKey<Biome> SS_BLACKLIST = TagKey.create(Registries.BIOME,
 			Identifier.fromNamespaceAndPath("sereneseasons", "blacklisted_biomes"));
 
-	/** Place to look at: coordinates, camera height above ground, yaw and pitch. */
-	private record Site(String name, int x, int z, int cameraAboveGround, float yaw, float pitch) {
+	/** Render distance in chunks for the views; a site may ask for a longer one. */
+	private static final int RENDER_DISTANCE = 10;
+
+	/**
+	 * Place to look at: coordinates, camera height above ground, yaw, pitch and render distance in chunks
+	 * (0: {@link #RENDER_DISTANCE}).
+	 */
+	private record Site(String name, int x, int z, int cameraAboveGround, float yaw, float pitch, int renderDistance) {
+		Site(String name, int x, int z, int cameraAboveGround, float yaw, float pitch) {
+			this(name, x, z, cameraAboveGround, yaw, pitch, 0);
+		}
 	}
 
 	@Override
@@ -71,7 +80,7 @@ public final class PolandWorldClientGameTest implements FabricClientGameTest {
 			return;
 		}
 		context.runOnClient(mc -> {
-			mc.options.renderDistance().set(10);
+			mc.options.renderDistance().set(RENDER_DISTANCE);
 		});
 		try (TestSingleplayerContext sp = context.worldBuilder()
 				.adjustSettings(ui -> selectPoland(ui, PRESET))
@@ -128,8 +137,15 @@ public final class PolandWorldClientGameTest implements FabricClientGameTest {
 			int camY = groundY + site.cameraAboveGround();
 			PolishForests.LOG.info("[test] {}: x={} z={} ground Y={} ({} m a.s.l.)", site.name(), site.x(), site.z(),
 					groundY, PolandDimension.metersAboveSea(groundY - 1));
+			int renderDistance = site.renderDistance() > 0 ? site.renderDistance() : RENDER_DISTANCE;
+			if (renderDistance != RENDER_DISTANCE) {
+				setRenderDistance(context, renderDistance);
+			}
 			sp.getServer().runCommand(String.format(java.util.Locale.ROOT, "tp @a %d %d %d %.1f %.1f", site.x(), camY, site.z(),
 					site.yaw(), site.pitch()));
+			if (renderDistance != RENDER_DISTANCE) {
+				waitForChunks(context, site.name(), renderDistance);
+			}
 			for (int step = 0; step < 2; step++) {
 				context.waitTicks(20 * 20);
 				int loaded = sp.getServer().computeOnServer(s -> s.overworld().getChunkSource().getLoadedChunksCount());
@@ -138,7 +154,41 @@ public final class PolandWorldClientGameTest implements FabricClientGameTest {
 						loaded, client);
 			}
 			context.takeScreenshot("poland_" + site.name());
+			if (renderDistance != RENDER_DISTANCE) {
+				setRenderDistance(context, RENDER_DISTANCE);
+			}
 		}
+	}
+
+	/**
+	 * Changes the render distance during the game. The server limits the player's view to the distance the client
+	 * requested in its client information, so the options are sent to the server again (as the options screen does).
+	 */
+	private static void setRenderDistance(ClientGameTestContext context, int chunks) {
+		context.runOnClient(mc -> {
+			mc.options.renderDistance().set(chunks);
+			mc.options.broadcastOptions();
+		});
+	}
+
+	/**
+	 * Longer render distance: waits until the client holds 80% of the chunks of the circular view area or the count
+	 * stops growing for 15 s (at most 4 minutes); the usual 40 s wait before the screenshot follows.
+	 */
+	private static void waitForChunks(ClientGameTestContext context, String name, int renderDistance) {
+		int target = (int) (0.8 * Math.PI * renderDistance * renderDistance);
+		long t0 = System.nanoTime();
+		int loaded = 0;
+		int previous = -1;
+		int still = 0;
+		for (int i = 0; i < 240 && loaded < target && still < 15; i++) {
+			context.waitTicks(20);
+			loaded = context.computeOnClient(mc -> mc.level.getChunkSource().getLoadedChunksCount());
+			still = loaded == previous ? still + 1 : 0;
+			previous = loaded;
+		}
+		PolishForests.LOG.info("[test] {}: render distance {}, client has {} chunks (target {}) after {} s", name,
+				renderDistance, loaded, target, String.format(Locale.ROOT, "%.1f", (System.nanoTime() - t0) / 1e9));
 	}
 
 	/** Elevation below which no snow may lie in summer (docs/03-m2-biomy.md, section 12.3). */
@@ -643,6 +693,7 @@ public final class PolandWorldClientGameTest implements FabricClientGameTest {
 		if (p != null) {
 			sites.add(new Site("foothills", p[0], p[1], 40, 60f, 15f));
 		}
+		addGreatMassif(sites, m, gen.vertical());
 		// Rivers, valleys and the sea.
 		p = spiral(m, s -> s.waterKind() == WaterKind.RIVER && s.type().isLowland() && s.surface() - s.waterLevel() < -2.5);
 		if (p != null) {
@@ -666,7 +717,84 @@ public final class PolandWorldClientGameTest implements FabricClientGameTest {
 		}
 	}
 
-	/** Coastal place viewed from the sea, about 80 m offshore, facing land. */
+	/** Distance of the great massif camera from the summit, in blocks (= m horizontally). */
+	private static final int MASSIF_VIEW_DISTANCE = 360;
+	/** Render distance for the great massif view: the summit stays in front of the fog (from about 400 blocks). */
+	private static final int MASSIF_RENDER_DISTANCE = 28;
+
+	/**
+	 * Side view of the summit of the large Beskid massif nearest to (0, 0) ({@link LandscapeModel#nearestGreatMassif};
+	 * dwarf pine and alpine grassland in the habitat model): the summit is searched on grids of 100, 20 and 4 m
+	 * around the massif center, the camera stands {@link #MASSIF_VIEW_DISTANCE} m away on the steepest of 16 flanks
+	 * (largest drop between 180 m and the camera). The camera hangs 12 blocks above the summit level (at least 40 blocks
+	 * above the ground, over the spruce crowns) and looks 6° below the summit: from lower on the flank the convex
+	 * shoulder of the dome hides the summit. In the game the whole belt above 1150 m still has the stand-in spruce
+	 * biome: dwarf pine and alpine grassland come with the biomes of phase 2.
+	 */
+	private static void addGreatMassif(List<Site> sites, LandscapeModel m, VerticalScale v) {
+		LandscapeModel.GreatMassif g = m.nearestGreatMassif(0, 0);
+		if (g == null) {
+			return;
+		}
+		double bx = g.x();
+		double bz = g.z();
+		double best = -Double.MAX_VALUE;
+		for (int[] pass : new int[][] {{100, 40}, {20, 10}, {4, 10}}) {
+			double cx = bx;
+			double cz = bz;
+			for (int i = -pass[1]; i <= pass[1]; i++) {
+				for (int j = -pass[1]; j <= pass[1]; j++) {
+					double x = cx + i * pass[0];
+					double z = cz + j * pass[0];
+					double s = m.sample(x, z).surface();
+					if (s > best) {
+						best = s;
+						bx = x;
+						bz = z;
+					}
+				}
+			}
+		}
+		double dx = 1;
+		double dz = 0;
+		double drop = -Double.MAX_VALUE;
+		double ground = 0;
+		for (int k = 0; k < 16; k++) {
+			double a = k * Math.PI / 8;
+			double ex = Math.cos(a);
+			double ez = Math.sin(a);
+			double far = m.sample(bx + ex * MASSIF_VIEW_DISTANCE, bz + ez * MASSIF_VIEW_DISTANCE).surface();
+			double d = m.sample(bx + ex * 180, bz + ez * 180).surface() - far;
+			if (d > drop) {
+				drop = d;
+				dx = ex;
+				dz = ez;
+				ground = far;
+			}
+		}
+		int summitY = v.topBlockY(best);
+		int groundY = v.topBlockY(ground);
+		int above = Math.max(40, summitY + 12 - groundY);
+		int rise = summitY - groundY - above;
+		// Camera looks at the summit (opposite to the flank direction); yaw 0 = +Z, 90 = -X.
+		float yaw = (float) Math.toDegrees(Math.atan2(dx, -dz));
+		float pitch = (float) (6 - Math.toDegrees(Math.atan2(rise, MASSIF_VIEW_DISTANCE)));
+		PolishForests.LOG.info(String.format(Locale.ROOT,
+				"[test] great_massif: center (%.0f, %.0f), target %.0f m, summit (%.0f, %.0f) %.0f m, flank drop %.0f m",
+				g.x(), g.z(), g.targetSummit(), bx, bz, best, drop));
+		sites.add(new Site("great_massif", (int) Math.round(bx + dx * MASSIF_VIEW_DISTANCE),
+				(int) Math.round(bz + dz * MASSIF_VIEW_DISTANCE), above, yaw, pitch, MASSIF_RENDER_DISTANCE));
+	}
+
+	/** Distance of the coastal cameras beyond the coastline, in meters. */
+	private static final int COAST_OFFSHORE = 40;
+
+	/**
+	 * Coastal place viewed from the sea, {@link #COAST_OFFSHORE} m beyond the coastline, facing land. The target may
+	 * lie well inland (the foredune of a dune coast stands about 150 m behind the waterline), so the camera steps back
+	 * by the target's distance from the coastline, and the render distance grows to keep the target 80 blocks in front
+	 * of the fog.
+	 */
 	private static void addCoast(List<Site> sites, LandscapeModel m, PolishForestsCommands.Target target, String name,
 			int above) {
 		double[] p = PolishForestsCommands.locate(m, target, 0, 0);
@@ -682,7 +810,9 @@ public final class PolandWorldClientGameTest implements FabricClientGameTest {
 		double sz = -gz / l;
 		// Minecraft yaw: 0 = +Z, 90 = -X; the camera looks opposite to the seaward direction.
 		float yaw = (float) Math.toDegrees(Math.atan2(sx, -sz));
-		sites.add(new Site(name, (int) (p[0] + sx * 80), (int) (p[1] + sz * 80), above, yaw, 12f));
+		double back = Math.max(0, m.coastDistance(p[0], p[1])) + COAST_OFFSHORE;
+		int renderDistance = Math.max(RENDER_DISTANCE, (int) Math.ceil((back + 80) / 16));
+		sites.add(new Site(name, (int) (p[0] + sx * back), (int) (p[1] + sz * back), above, yaw, 12f, renderDistance));
 	}
 
 	private static int[] spiral(LandscapeModel m, java.util.function.Predicate<ColumnSample> test) {
