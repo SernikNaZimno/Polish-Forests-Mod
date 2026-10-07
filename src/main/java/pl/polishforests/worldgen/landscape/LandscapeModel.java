@@ -1704,17 +1704,54 @@ public final class LandscapeModel {
 	 * the tunnel noise at the axis) and the distance along z to the nearest narrow node ({@link #TUNNEL_NARROW}).
 	 */
 	private record TunnelLake(int level, double bank, int lo, float[] half, float[] gate, float[] narrow) {
-		/** A node array at u (nodes of the trace), interpolated linearly. */
+		/**
+		 * A node array at u (nodes of the trace), a quadratic B-spline ({@link #spline}). Round 1 of the review of K8a:
+		 * the linear interpolation had a kink at every node (every 20 m·k), which made straight east-west creases in the
+		 * basins.
+		 */
 		double at(float[] a, double u) {
-			double t = u - lo;
-			int i = Math.min(Math.max(0, (int) Math.floor(t)), a.length - 2);
-			if (i < 0) {
-				return a[0];
-			}
-			double f = Math.clamp(t - i, 0.0, 1.0);
-			return a[i] + f * (a[i + 1] - a[i]);
+			return spline(a, u - lo);
 		}
 	}
+
+	/**
+	 * Round 1 of the review of K8a: a node array at t (in nodes, clamped to the ends) as a uniform quadratic B-spline
+	 * with the nodes as control points: continuous slope (no crease at the nodes), and the slope is a weighted mean of
+	 * the differences between neighboring nodes, so it never exceeds the largest of them (a 1-Lipschitz array stays
+	 * 1-Lipschitz) and the value never leaves the range of the three nearest nodes. It reproduces linear arrays exactly
+	 * and smooths a kink over about two nodes.
+	 */
+	static double spline(float[] a, double t) {
+		int n = a.length;
+		if (n == 1) {
+			return a[0];
+		}
+		double c = Math.clamp(t, 0.0, n - 1.0);
+		int i = (int) Math.floor(c + 0.5);
+		double f = c - i;
+		double w0 = 0.5 * (0.5 - f) * (0.5 - f);
+		double w2 = 0.5 * (0.5 + f) * (0.5 + f);
+		return w0 * a[Math.max(0, i - 1)] + (1 - w0 - w2) * a[i] + w2 * a[Math.min(n - 1, i + 1)];
+	}
+
+	/**
+	 * Round 1 of the review of K8a: a smooth maximum of a and b, at least max(a, b) and more by up to r / 4 where they
+	 * are within r of each other (a quadratic blend). Its slope is a weighted mean of the slopes of a and b, so it is not
+	 * steeper than the steeper of them, and the corner where the two meet is rounded over about r.
+	 */
+	static double smoothMax(double a, double b, double r) {
+		double m = Math.max(a, b);
+		double d = Math.abs(a - b);
+		return d < r ? m + (r - d) * (r - d) / (4 * r) : m;
+	}
+
+	/**
+	 * Round 1 of the review of K8a: the terms of the shore distance of a tunnel valley lake (the lens, the limit from a
+	 * valley beside it and from the edge of the zone, the floor guard) join by {@link #smoothMax} with this radius (m·k):
+	 * a plain maximum made a corner wherever the shore met the straight limit of a valley (lakes cut straight with sharp
+	 * corners, review of K8a).
+	 */
+	private static final double TUNNEL_ROUND = 30;
 
 	/**
 	 * K8a: a node of the trace is narrow where the half-width of the lake there is below this (m·k); the half-width is
@@ -1738,7 +1775,11 @@ public final class LandscapeModel {
 		final double step;
 		/**
 		 * Lower bound of the shore distance: max(valley end − smoothed gap beyond the valley cuts, out reach − distance
-		 * from the samples outside the zone); both change by at most 1 m per meter in z and across (L1).
+		 * from the samples outside the zone); both change by at most about 1 m per meter of the horizontal distance
+		 * between the samples (round 1 of the review of K8a: the envelopes in the Euclidean distance between the samples;
+		 * K8a took the L1 metric of the grid, z along the trace plus the offset across the contour, which made straight
+		 * shores with sharp corners and, across an oblique contour, let a term change by up to 1 + sin of its angle per
+		 * meter).
 		 */
 		final float[] bound;
 		/** How much the shore distance rises to fill its closed pits (0 outside them). */
@@ -1757,13 +1798,7 @@ public final class LandscapeModel {
 		}
 
 		double end(double u) {
-			if (nq == 1) {
-				return end[0];
-			}
-			double t = u - lo;
-			int i = Math.min(Math.max(0, (int) Math.floor(t)), nq - 2);
-			double f = Math.clamp(t - i, 0.0, 1.0);
-			return end[i] + f * (end[i + 1] - end[i]);
+			return spline(end, u - lo);
 		}
 
 		/** {@link #bound} at u and the offset o across the contour; beyond the sampled band it falls by the distance. */
@@ -1776,11 +1811,14 @@ public final class LandscapeModel {
 			return grid(pit, u, o, 0);
 		}
 
+		/**
+		 * Round 1 of the review of K8a: a tensor quadratic B-spline of the grid ({@link #spline}) instead of the bilinear
+		 * interpolation, whose kinks at the rows and columns of the grid made straight creases, boxes and flat faces in
+		 * the dry basins at gameplay scale (every 10 m along z).
+		 */
 		private double grid(float[] a, double u, double o, double slope) {
 			int w = 2 * no + 1;
-			double t = u - lo;
-			int i = nq == 1 ? 0 : Math.min(Math.max(0, (int) Math.floor(t)), nq - 2);
-			double f = nq == 1 ? 0 : Math.clamp(t - i, 0.0, 1.0);
+			double t = Math.clamp(u - lo, 0.0, nq - 1.0);
 			double jo = o / step + no;
 			double extra = 0;
 			if (jo < 0) {
@@ -1790,13 +1828,23 @@ public final class LandscapeModel {
 				extra = (jo - 2 * no) * step;
 				jo = 2 * no;
 			}
-			int j = Math.min((int) Math.floor(jo), 2 * no - 1);
+			int i = (int) Math.floor(t + 0.5);
+			double f = t - i;
+			double fi0 = 0.5 * (0.5 - f) * (0.5 - f);
+			double fi2 = 0.5 * (0.5 + f) * (0.5 + f);
+			int j = (int) Math.floor(jo + 0.5);
 			double g = jo - j;
-			int r0 = i * w;
-			int r1 = nq == 1 ? r0 : (i + 1) * w;
-			double p = a[r0 + j] + g * (a[r0 + j + 1] - a[r0 + j]);
-			double q = a[r1 + j] + g * (a[r1 + j + 1] - a[r1 + j]);
-			return p + f * (q - p) + slope * extra;
+			double gj0 = 0.5 * (0.5 - g) * (0.5 - g);
+			double gj2 = 0.5 * (0.5 + g) * (0.5 + g);
+			int j0 = Math.max(0, j - 1);
+			int j2 = Math.min(w - 1, j + 1);
+			double sum = 0;
+			for (int d = -1; d <= 1; d++) {
+				int r = Math.clamp(i + d, 0, nq - 1) * w;
+				double row = gj0 * a[r + j0] + (1 - gj0 - gj2) * a[r + j] + gj2 * a[r + j2];
+				sum += (d < 0 ? fi0 : d > 0 ? fi2 : 1 - fi0 - fi2) * row;
+			}
+			return sum + slope * extra;
 		}
 	}
 
@@ -1859,6 +1907,8 @@ public final class LandscapeModel {
 		float[] high = new float[nq * w];
 		float[] floor = new float[nq * w];
 		float[] inside = new float[nq * w];
+		// Round 1 of the review of K8a: x of every sample (for the Euclidean distances of the envelopes).
+		double[] xw = new double[nq * w];
 		double[] lakeGap = new double[nq];
 		double lowest = valleyEnd - bank - TUNNEL_GAP_LOW * local;
 		double highest = valleyEnd + TUNNEL_END_MAX * local;
@@ -1872,6 +1922,7 @@ public final class LandscapeModel {
 			int span = (int) Math.min(no, Math.ceil((1.2 * widest + tunnelOutReach() + step) / step));
 			for (int j = 0; j < w; j++) {
 				int i = q * w + j;
+				xw[i] = c.xs[n] + (j - no) * step * across;
 				if (Math.abs(j - no) > span) {
 					low[i] = Float.POSITIVE_INFINITY;
 					high[i] = Float.NEGATIVE_INFINITY;
@@ -1906,9 +1957,9 @@ public final class LandscapeModel {
 				}
 			}
 		}
-		envelope(low, nq, w, step, c.dz, true);
-		envelope(high, nq, w, step, c.dz, false);
-		envelope(inside, nq, w, step, c.dz, true);
+		envelope(low, nq, w, xw, c.dz, true);
+		envelope(high, nq, w, xw, c.dz, false);
+		envelope(inside, nq, w, xw, c.dz, true);
 		for (int i = 0; i < inside.length; i++) {
 			inside[i] = Math.min(inside[i], (float) TUNNEL_GRID_MAX);
 		}
@@ -1925,9 +1976,18 @@ public final class LandscapeModel {
 			}
 			end[q] = best;
 		}
+		// Round 1 of the review of K8a: the largest gap of a cross-section jumps where the cross-section widens with the
+		// half-width; its lower envelope of slope 1 along the trace (it only shortens the lake) does not.
+		for (int q = 1; q < nq; q++) {
+			end[q] = (float) Math.min(end[q], end[q - 1] + c.dz);
+		}
+		for (int q = nq - 2; q >= 0; q--) {
+			end[q] = (float) Math.min(end[q], end[q + 1] + c.dz);
+		}
 		// The shore distance at every sample: tunnelShape at the node (half-width and gate of the node, without another
 		// contour, with the sink lake gap of the node), with the lower bound and the floor guard of the sample.
 		double outReach = tunnelOutReach();
+		double round = TUNNEL_ROUND * local;
 		float[] bound = new float[nq * w];
 		float[] shore = new float[nq * w];
 		for (int q = 0; q < nq; q++) {
@@ -1953,7 +2013,7 @@ public final class LandscapeModel {
 				bound[i] = (float) Math.max(valleyEnd - gap[i], outReach - inside[i]);
 				double s = beyond > 0 ? Math.sqrt(o * o + h * h) - h + beyond : Math.sqrt(o * o + h * h * tau2) - h;
 				s += (1 - fade) * bank;
-				shore[i] = (float) Math.max(Math.max(s, bound[i]), bank - floor[i]);
+				shore[i] = (float) smoothMax(smoothMax(s, bound[i], round), bank - floor[i], round);
 			}
 		}
 		// Priority flood of the shore distance from the samples with water (the outlets): a closed pit of the shore
@@ -2006,27 +2066,40 @@ public final class LandscapeModel {
 	private static final int TUNNEL_GAP_CACHE = 256;
 
 	/**
-	 * K8a: in place, the lower (or upper) envelope of slope 1 in the L1 metric of the grid (step across, dz along):
-	 * min (max) over the samples of the value plus (minus) the distance. Separable, two passes in each direction.
+	 * Round 1 of the review of K8a: the half of the 5 × 5 chamfer mask scanned before a sample ({dq, dj}: rows of the
+	 * trace, columns across it); the other half is its mirror.
 	 */
-	private static void envelope(float[] a, int nq, int w, double step, double dz, boolean lower) {
-		for (int q = 0; q < nq; q++) {
-			int r = q * w;
-			for (int j = 1; j < w; j++) {
-				a[r + j] = lower ? Math.min(a[r + j], (float) (a[r + j - 1] + step)) : Math.max(a[r + j], (float) (a[r + j - 1] - step));
-			}
-			for (int j = w - 2; j >= 0; j--) {
-				a[r + j] = lower ? Math.min(a[r + j], (float) (a[r + j + 1] + step)) : Math.max(a[r + j], (float) (a[r + j + 1] - step));
-			}
-		}
-		for (int j = 0; j < w; j++) {
-			for (int q = 1; q < nq; q++) {
-				int i = q * w + j;
-				a[i] = lower ? Math.min(a[i], (float) (a[i - w] + dz)) : Math.max(a[i], (float) (a[i - w] - dz));
-			}
-			for (int q = nq - 2; q >= 0; q--) {
-				int i = q * w + j;
-				a[i] = lower ? Math.min(a[i], (float) (a[i + w] + dz)) : Math.max(a[i], (float) (a[i + w] - dz));
+	private static final int[][] CHAMFER = {{0, -1}, {-1, -2}, {-1, -1}, {-1, 0}, {-1, 1}, {-1, 2}, {-2, -1}, {-2, 1}};
+
+	/**
+	 * K8a: in place, the lower (or upper) envelope of slope 1: min (max) over the samples of the value plus (minus) the
+	 * distance. Round 1 of the review of K8a: a chamfer transform with the 5 × 5 mask (16 directions, two raster passes)
+	 * and the horizontal distance between the samples (x of each sample in {@code xw}, rows dz apart along z), so its
+	 * level lines are about round (within about 3%) and follow the actual distance also across an oblique contour. K8a
+	 * took the separable L1 metric of the grid, whose diamond level lines made straight shores with sharp corners and,
+	 * mixed with the opposite envelope, boxes along the rows and columns of the grid.
+	 */
+	private static void envelope(float[] a, int nq, int w, double[] xw, double dz, boolean lower) {
+		for (int pass = 0; pass < 2; pass++) {
+			int sign = pass == 0 ? 1 : -1;
+			for (int s = 0; s < nq * w; s++) {
+				int i = pass == 0 ? s : nq * w - 1 - s;
+				int q = i / w;
+				int j = i % w;
+				float v = a[i];
+				for (int[] m : CHAMFER) {
+					int qq = q + sign * m[0];
+					int jj = j + sign * m[1];
+					if (qq < 0 || qq >= nq || jj < 0 || jj >= w) {
+						continue;
+					}
+					int o = qq * w + jj;
+					double dx = xw[o] - xw[i];
+					double dzz = m[0] * dz;
+					float d = (float) Math.sqrt(dx * dx + dzz * dzz);
+					v = lower ? Math.min(v, a[o] + d) : Math.max(v, a[o] - d);
+				}
+				a[i] = v;
 			}
 		}
 	}
@@ -2208,8 +2281,10 @@ public final class LandscapeModel {
 			// K8a: a river valley beside the lake and the edge of the young-glacial zone (from the grid, across the axis),
 			// the floor of a valley (the gap beyond the floor edge in the column, which changes by about 1 m per meter) and
 			// the rise that fills the closed pits of the shore distance.
+			// Round 1 of the review of K8a: joined by a smooth maximum (rounded corners, TUNNEL_ROUND).
 			double o = (x - c1.x(u)) * cosA;
-			shore = Math.max(Math.max(shore, grid.bound(u, o)), bank - edgeGap) + grid.pit(u, o);
+			double round = TUNNEL_ROUND * local;
+			shore = smoothMax(smoothMax(shore, grid.bound(u, o), round), bank - edgeGap, round) + grid.pit(u, o);
 		}
 		if (shore > limit) {
 			return null;
@@ -2797,6 +2872,15 @@ public final class LandscapeModel {
 				last = q;
 			}
 			narrow[q] = (float) Math.min(narrow[q], (last - q) * c.dz);
+		}
+		// Round 1 of the review of K8a: the half-width changes by at most 1 m per meter along the trace (its lower envelope
+		// of slope 1; it only narrows the lake, within the band where the level was sampled). The gate of a node could
+		// change it by more (in GAMEPLAY 205 → 116 m over 40 m, the shore distance by up to 2.3 m per meter).
+		for (int q = 1; q < nq; q++) {
+			halves[q] = (float) Math.min(halves[q], halves[q - 1] + c.dz);
+		}
+		for (int q = nq - 2; q >= 0; q--) {
+			halves[q] = (float) Math.min(halves[q], halves[q + 1] + c.dz);
 		}
 		TunnelLake lake = new TunnelLake(level, bank, c.lo, halves, gates, narrow);
 		if (tunnelLakes.size() > TUNNEL_LAKE_CACHE) {
