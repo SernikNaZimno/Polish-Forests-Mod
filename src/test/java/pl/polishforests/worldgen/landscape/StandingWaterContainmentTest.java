@@ -89,7 +89,11 @@ class StandingWaterContainmentTest {
 	 * half the valley wall, and the wall grows with the height of the terrain above the floor) changes by 4–6 m per meter;
 	 * one the edge of the young-glacial region, where the half-width followed the type weight (the last one has both). K6
 	 * left them as an exception to decision D4b with the measured limits (up to 3397 pairs and 8 blocks per block); step
-	 * K8a (variant d) removed them, so the windows guard against their return: no pair above 2 blocks per block.
+	 * K8a (variant d) removed them, so the windows guard against their return: no pair above 2 blocks per block. Two
+	 * windows guard nothing any more (review of K8a): (−23080, 39240) has no column at a tunnel valley lake since K8a and
+	 * (−20700, 11200) about 60 (in K6 250 and 940 pairs of walls), because their lakes and basins are gone; the
+	 * remaining ten have 20 000–170 000 columns each. The windows are also searched for closed pits
+	 * ({@link #tunnelValleyBasinsHaveNoClosedPits}).
 	 */
 	static final double[][] WALL_CLUSTERS = {
 			{-20500, 10900, 500, 0, 0}, {28660, 32560, 300, 0, 0}, {-19990, 14380, 300, 0, 0},
@@ -209,12 +213,17 @@ class StandingWaterContainmentTest {
 			{6320, -19720}, {7430, 11400}, {18810, -7720}, {10460, 14400}, {-16020, 5680}, {-18510, 5450}, {-19610, 17460},
 			{-18500, 6460}, {6330, -19160}, {-16170, 6720}, {-16660, 9880}, {-16210, 6700}, {-17920, 15290}, {10130, 11160},
 			{7210, 10920}, {7240, 11460}, {-18450, 14540}, {18480, -7110}, {16580, -680}, {-19970, 13880}, {-16300, -9520},
-			{18020, -5560}, {17359, -808}};
+			{18020, -5560}, {17359, -808},
+			// Round 1 of the review of K8a: a pit of 4.5 m in the window of the walls (−26460, 9800) after K8a, and the
+			// pits of K8a found by the scan of ±40 km every 10 m (11 deeper than 3 m, up to 8.8 m at (16080, 34390)).
+			{-26381, 10061}, {16080, 34390}, {-26630, 9340}, {39760, -19560}, {23740, 17620}};
 	/**
 	 * Step K8a: a dry closed pit carved by a tunnel valley basin may be at most this much deeper than the pit of the
-	 * terrain before the valleys and lakes (m). The goal of K8a was 3 m; one place is left at 3.7 m (−15998, 5693), where
+	 * terrain before the valleys and lakes (m). The goal of K8a was 3 m; one place was left at 3.7 m (−15998, 5693), where
 	 * the lateral valley limit of the shore distance meets the ellipse of the lake in a crease and the bank of the lake
-	 * (water level + 1 m) closes a hollow of the valley wall.
+	 * (water level + 1 m) closes a hollow of the valley wall. Round 1 of the review of K8a: largest 3.5 m, (17990, −5670)
+	 * in a dry arm of a basin along a lateral valley, where the shore distance has no closed pit but the blend of the
+	 * flank and the ground after the valleys does; (−15980, 5660) 3.0 m (the same hollow of the valley wall).
 	 */
 	static final double PIT_MAX = 4;
 	/** Step K8a: a pit counts when the basin lowers the ground at its deepest cell by more than this (m). */
@@ -222,7 +231,7 @@ class StandingWaterContainmentTest {
 
 	/**
 	 * Step K8a (variant d of K6): the basin of a tunnel valley lake has no dry closed pit. In windows of 500 m every
-	 * 2.5 m around {@link #PIT_SITES}: the depth of every dry cell below its spill level (a priority flood from the border
+	 * 2.5 m around {@link #PIT_SITES} and (round 1 of the review of K8a) {@link #WALL_CLUSTERS}: the depth of every dry cell below its spill level (a priority flood from the border
 	 * of the window and from the water), and of the terrain before the valleys and lakes at the same cell; a connected
 	 * dry pit whose deepest cell lies in a tunnel valley basin ({@link LandscapeModel#tunnelBasinMargin} at most 0) and is
 	 * lowered there by the basin (the ground after the valleys, {@code RiverHit.terrain}, less the surface, more than
@@ -236,12 +245,15 @@ class StandingWaterContainmentTest {
 		LandscapeModel m = new LandscapeModel(SEED, LandscapeScale.GAMEPLAY, 1.0);
 		List<String> bad = new ArrayList<>();
 		double worst = 0;
-		for (double[] site : PIT_SITES) {
+		// Round 1 of the review of K8a: also the windows of the walls.
+		List<double[]> sites = new ArrayList<>(List.of(PIT_SITES));
+		sites.addAll(List.of(WALL_CLUSTERS));
+		for (double[] site : sites) {
 			double[] w = pits(m, site[0], site[1], 250, 2.5, bad);
 			worst = Math.max(worst, w[0]);
 		}
 		System.out.printf(Locale.ROOT, "[tunnel pits] %d sites: %d pits deeper than the raw terrain's by more than %.0f m, "
-				+ "largest excess %.1f m %s%n", PIT_SITES.length, bad.size(), PIT_MAX, worst, bad);
+				+ "largest excess %.1f m %s%n", sites.size(), bad.size(), PIT_MAX, worst, bad);
 		assertEquals(0, bad.size(), "dry closed pits at tunnel valley basins: " + bad);
 	}
 
@@ -306,6 +318,74 @@ class StandingWaterContainmentTest {
 			}
 		}
 		return new double[] {worst};
+	}
+
+	/**
+	 * Round 1 of the review of K8a: 1 m windows {x, z, side} of dry tunnel valley basins at gameplay scale where step K8a
+	 * made straight east-west creases along the rows of the gap grid (the nodes of the trace, every 20 m·k = 10 m; the
+	 * sections are 4500 m·k long and centered at (k + 0.5) · 4500 m·k with 180 nodes on each side, so the nodes lie at
+	 * z ≡ 5 mod 10): w1 south, p4, w5, p7 and two lakes of the center (L03, L02 of the review).
+	 */
+	static final double[][] CREASE_WINDOWS = {{-20350, 10900, 400}, {-15998, 5693, 400}, {-16170, 7800, 600},
+			{7290, 11300, 400}, {6388, -8598, 300}, {3088, -5798, 300}};
+	/** Round 1 of the review of K8a: a kink along z counts when |h(z − 1) + h(z + 1) − 2 h(z)| exceeds this (m). */
+	static final double CREASE_KINK = 0.2;
+
+	/**
+	 * Round 1 of the review of K8a: the dry basins of the tunnel valley lakes have no creases along the rows of the gap
+	 * grid. In {@link #CREASE_WINDOWS}, of the dry columns in a basin ({@link LandscapeModel#tunnelBasinMargin} at most 0)
+	 * with dry neighbors along z, the kinks along z larger than {@value #CREASE_KINK} m at the rows of the nodes
+	 * (z ≡ 5 mod 10) are at most 1.5 times the mean of the phases away from the rows (z mod 10 not 4, 5 or 6) plus 10. K8a
+	 * interpolated the grid bilinearly: 881 and 916 kinks at the rows against about 80 at the other phases in w1 south,
+	 * 620 and 656 against about 30 in p4, 203 and 220 against about 15 in L03 (the review counted at the pixel centers,
+	 * so the rows fell on two phases).
+	 */
+	@Test
+	void tunnelValleyBasinsHaveNoGridCreases() {
+		LandscapeModel m = new LandscapeModel(SEED, LandscapeScale.GAMEPLAY, 1.0);
+		List<String> bad = new ArrayList<>();
+		for (double[] w : CREASE_WINDOWS) {
+			long[] phases = creases(m, w[0], w[1], (int) w[2]);
+			double other = 0;
+			for (int p = 0; p < 10; p++) {
+				other += p < 4 || p > 6 ? phases[p] / 7.0 : 0;
+			}
+			String line = String.format(Locale.ROOT, "(%.0f, %.0f): kinks by z mod 10 %s, at the rows %d, elsewhere %.1f",
+					w[0], w[1], java.util.Arrays.toString(phases), phases[5], other);
+			System.out.println("[tunnel creases] " + line);
+			if (phases[5] > 1.5 * other + 10) {
+				bad.add(line);
+			}
+		}
+		assertEquals(0, bad.size(), "creases along the rows of the gap grid in tunnel valley basins: " + bad);
+	}
+
+	/** Kinks along z above {@link #CREASE_KINK} in the dry tunnel valley basin of the 1 m window, by z mod 10. */
+	private static long[] creases(LandscapeModel m, double cx, double cz, int n) {
+		int x0 = (int) Math.floor(cx - n / 2.0);
+		int z0 = (int) Math.floor(cz - n / 2.0);
+		double[] h = new double[n * n];
+		boolean[] dry = new boolean[n * n];
+		boolean[] basin = new boolean[n * n];
+		IntStream.range(0, n).parallel().forEach(j -> {
+			for (int i = 0; i < n; i++) {
+				ColumnSample s = m.sample(x0 + i, z0 + j);
+				h[j * n + i] = s.surface();
+				dry[j * n + i] = !s.hasWater();
+				basin[j * n + i] = !s.hasWater() && m.tunnelBasinMargin(x0 + i, z0 + j) <= 0;
+			}
+		});
+		long[] phases = new long[10];
+		for (int j = 1; j < n - 1; j++) {
+			int p = Math.floorMod(z0 + j, 10);
+			for (int i = 0; i < n; i++) {
+				int q = j * n + i;
+				if (basin[q] && dry[q - n] && dry[q + n] && Math.abs(h[q - n] + h[q + n] - 2 * h[q]) > CREASE_KINK) {
+					phases[p]++;
+				}
+			}
+		}
+		return phases;
 	}
 
 	/** How much the lakes lower the ground of a dry column: the terrain after the valleys less the surface (m). */

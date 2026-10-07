@@ -1701,9 +1701,12 @@ public final class LandscapeModel {
 	/**
 	 * Round 2 of the review of K5: the water level of a tunnel valley lake and the reach of its basin
 	 * ({@link #tunnelLake}). K8a: at the nodes of the trace (index − lo) the half-width with its gate (the presence and
-	 * the tunnel noise at the axis) and the distance along z to the nearest narrow node ({@link #TUNNEL_NARROW}).
+	 * the tunnel noise at the axis) and the distance along z to the nearest narrow node ({@link #TUNNEL_NARROW}). Round 1
+	 * of the review of K8a: {@code tip}, the distance along z to the nearest end of the water (a narrow node, a node of an
+	 * oblique stretch, {@link #TUNNEL_COS}, or an end of the trace), rounded where the two ends are near
+	 * ({@link #tunnelTipHalf}).
 	 */
-	private record TunnelLake(int level, double bank, int lo, float[] half, float[] gate, float[] narrow) {
+	private record TunnelLake(int level, double bank, int lo, float[] half, float[] gate, float[] narrow, float[] tip) {
 		/**
 		 * A node array at u (nodes of the trace), a quadratic B-spline ({@link #spline}). Round 1 of the review of K8a:
 		 * the linear interpolation had a kink at every node (every 20 m·k), which made straight east-west creases in the
@@ -1752,6 +1755,8 @@ public final class LandscapeModel {
 	 * corners, review of K8a).
 	 */
 	private static final double TUNNEL_ROUND = 30;
+	/** Round 1 of the review of K8a: the filled shore distance of the gap grid limits that of a column less this (m). */
+	private static final double TUNNEL_FILL_SLACK = 0.5;
 
 	/**
 	 * K8a: a node of the trace is narrow where the half-width of the lake there is below this (m·k); the half-width is
@@ -1782,18 +1787,21 @@ public final class LandscapeModel {
 		 * meter).
 		 */
 		final float[] bound;
-		/** How much the shore distance rises to fill its closed pits (0 outside them). */
-		final float[] pit;
+		/**
+		 * The shore distance of the samples with its closed pits filled (round 1 of the review of K8a; K8a kept only the
+		 * rise, added to the shore distance of the column, which left closed pits between the samples).
+		 */
+		final float[] fill;
 		/** At a node: the largest smoothed gap over the cross-section of the lake (the end of the lens at a valley). */
 		final float[] end;
 
-		TunnelGaps(int lo, int nq, int no, double step, float[] bound, float[] pit, float[] end) {
+		TunnelGaps(int lo, int nq, int no, double step, float[] bound, float[] fill, float[] end) {
 			this.lo = lo;
 			this.nq = nq;
 			this.no = no;
 			this.step = step;
 			this.bound = bound;
-			this.pit = pit;
+			this.fill = fill;
 			this.end = end;
 		}
 
@@ -1806,9 +1814,9 @@ public final class LandscapeModel {
 			return grid(bound, u, o, -1);
 		}
 
-		/** {@link #pit} at u and the offset o across the contour; beyond the sampled band the value at its edge. */
-		double pit(double u, double o) {
-			return grid(pit, u, o, 0);
+		/** {@link #fill} at u and the offset o across the contour; beyond the sampled band the value at its edge. */
+		double fill(double u, double o) {
+			return grid(fill, u, o, 0);
 		}
 
 		/**
@@ -1878,24 +1886,33 @@ public final class LandscapeModel {
 	 * <li>at each node the largest smoothed gap over the cross-section of the lake (1.2 half-widths): the end of the lens
 	 * at a valley, so a lake beside a valley keeps its water on the far side;</li>
 	 * <li>at every sample the shore distance of {@link #tunnelShape} at the node (without another contour) with these
-	 * limits and the floor guard, and how much it rises when its closed pits are filled (a priority flood from the
-	 * samples with water): a dry basin between a valley and the slope, beyond the end of the water or between two lakes
-	 * rises to its spill, and a lake without any water has no basin at all (rise {@link #TUNNEL_GRID_MAX}).</li>
+	 * limits and the floor guard, with its closed pits filled (a priority flood from the samples with water): a dry
+	 * basin between a valley and the slope, beyond the end of the water or between two lakes rises to its spill, and a
+	 * lake without any water has no basin at all (rise {@link #TUNNEL_GRID_MAX}).</li>
 	 * </ul>
 	 * A pure function of the trace and its lake (the same in every block that traces it); at a node about
 	 * 2 · (1.2 half-widths + out reach) / step queries (only inside the zone), about 0.15–0.25 s per contour on one thread
 	 * at gameplay scale.
+	 *
+	 * <p>Round 1 of the review of K8a: the grids are kept only in {@link #tunnelGapGrids} (at most
+	 * {@link #TUNNEL_GAP_CACHE}, about 0.3 MB each), built once per contour (computeIfAbsent: threads asking for the same
+	 * grid wait for one build; the build does not touch the map). K8a also kept the grid in every traced contour object
+	 * of the 256 cached blocks, so the limit of the map did not bound the memory, and the threads built the same grid in
+	 * parallel.
 	 */
 	private TunnelGaps tunnelGaps(TunnelContour c, long k, TunnelLake lake) {
-		TunnelGaps cached = c.gaps;
+		TunnelGaps cached = tunnelGapGrids.get(c.levelKey);
 		if (cached != null) {
 			return cached;
 		}
-		cached = tunnelGapGrids.get(c.levelKey);
-		if (cached != null) {
-			c.gaps = cached;
-			return cached;
+		if (tunnelGapGrids.size() >= TUNNEL_GAP_CACHE) {
+			tunnelGapGrids.clear();
 		}
+		return tunnelGapGrids.computeIfAbsent(c.levelKey, key -> buildTunnelGaps(c, k, lake));
+	}
+
+	/** K8a: builds the gap grid of a contour ({@link #tunnelGaps}). */
+	private TunnelGaps buildTunnelGaps(TunnelContour c, long k, TunnelLake lake) {
 		double bank = lake.bank;
 		double valleyEnd = TUNNEL_END_GAP * local + bank - 0.5 * tunnelBank;
 		double step = TUNNEL_GAP_STEP * local;
@@ -1909,7 +1926,8 @@ public final class LandscapeModel {
 		float[] inside = new float[nq * w];
 		// Round 1 of the review of K8a: x of every sample (for the Euclidean distances of the envelopes).
 		double[] xw = new double[nq * w];
-		double[] lakeGap = new double[nq];
+		// Round 1 of the review of K8a: the sink lake gap of every sample (+∞ without a query).
+		float[] sinkGap = new float[nq * w];
 		double lowest = valleyEnd - bank - TUNNEL_GAP_LOW * local;
 		double highest = valleyEnd + TUNNEL_END_MAX * local;
 		for (int q = 0; q < nq; q++) {
@@ -1928,6 +1946,7 @@ public final class LandscapeModel {
 					high[i] = Float.NEGATIVE_INFINITY;
 					inside[i] = Float.POSITIVE_INFINITY;
 					floor[i] = Float.POSITIVE_INFINITY;
+					sinkGap[i] = Float.POSITIVE_INFINITY;
 					continue;
 				}
 				double x = c.xs[n] + (j - no) * step * across;
@@ -1948,13 +1967,11 @@ public final class LandscapeModel {
 					e = r.floorEdgeGap();
 					lg = r.lakeGap();
 				}
+				sinkGap[i] = (float) lg;
 				// Outside the zone no sample (the edge of the zone limits the lake there).
 				low[i] = in ? (float) Math.clamp(g, lowest, highest) : Float.POSITIVE_INFINITY;
 				high[i] = in ? low[i] : Float.NEGATIVE_INFINITY;
 				floor[i] = (float) e;
-				if (j == no) {
-					lakeGap[q] = lg;
-				}
 			}
 		}
 		envelope(low, nq, w, xw, c.dz, true);
@@ -1984,42 +2001,50 @@ public final class LandscapeModel {
 		for (int q = nq - 2; q >= 0; q--) {
 			end[q] = (float) Math.min(end[q], end[q + 1] + c.dz);
 		}
-		// The shore distance at every sample: tunnelShape at the node (half-width and gate of the node, without another
-		// contour, with the sink lake gap of the node), with the lower bound and the floor guard of the sample.
+		// The shore distance at every sample: tunnelShape at the sample (without another contour), with the lower bound
+		// and the floor guard of the sample. Round 1 of the review of K8a: with the values that tunnelShape reads at the
+		// sample (the node arrays and the bound through the B-spline, the section boundaries at the x of the sample and
+		// its own sink lake gap; K8a took them at the node of the axis), so that the filled shore distance of the samples
+		// agrees with the shore distance of the columns outside the closed pits.
 		double outReach = tunnelOutReach();
 		double round = TUNNEL_ROUND * local;
 		float[] bound = new float[nq * w];
+		for (int i = 0; i < bound.length; i++) {
+			bound[i] = (float) Math.max(valleyEnd - gap[i], outReach - inside[i]);
+		}
+		TunnelGaps g = new TunnelGaps(c.lo, nq, no, step, bound, null, end);
 		float[] shore = new float[nq * w];
 		for (int q = 0; q < nq; q++) {
 			int n = c.lo + q;
 			double z = c.z0 + n * c.dz;
-			double half = lake.half[q];
-			double b0 = tunnelBoundary(k, c.xs[n]);
-			double b1 = tunnelBoundary(k + 1, c.xs[n]);
-			double edge = Math.min(z - b0, b1 - z);
-			double valleyBeyond = valleyEnd - end[q];
-			double beyond = Math.max(Math.max(valleyBeyond, tunnelSill - edge), TUNNEL_END_GAP * local - lakeGap[q]);
+			double half = lake.at(lake.half, n);
+			double tipE = lake.at(lake.tip, n);
+			double h = tunnelTipHalf(half, tipE);
+			double valleyBeyond = valleyEnd - g.end(n);
+			double endLength = tunnelEndLength(half, bank);
 			double lakeEnd = Math.min(Math.clamp(1.5 * half, 150 * local, TUNNEL_END_MAX * local),
 					(RiverNetwork.LAKE_GAP_MAX - TUNNEL_END_GAP) * local);
-			double lensEnd = ellipticEnd((edge - tunnelSill) / (0.35 * (b1 - b0)))
-					* ellipticEnd(-valleyBeyond / tunnelEndLength(half, bank))
-					* ellipticEnd((lakeGap[q] - TUNNEL_END_GAP * local) / lakeEnd);
-			double fade = Noise.smoothstep(0, 1.5 * bank, c.runs[n]) * Noise.smoothstep(0, 1.5 * bank, lake.narrow[q]);
-			double h = Math.min(half, Math.min(c.runs[n], lake.narrow[q]));
-			double tau2 = 1 - lensEnd * lensEnd;
+			double fade = Noise.smoothstep(0, 1.5 * bank, c.run(n)) * Noise.smoothstep(0, 1.5 * bank, lake.at(lake.narrow, n));
+			double lensNode = ellipticEnd(-valleyBeyond / endLength) * tunnelTipLens(h, tipE);
 			for (int j = 0; j < w; j++) {
 				double o = (j - no) * step;
 				int i = q * w + j;
-				bound[i] = (float) Math.max(valleyEnd - gap[i], outReach - inside[i]);
-				double s = beyond > 0 ? Math.sqrt(o * o + h * h) - h + beyond : Math.sqrt(o * o + h * h * tau2) - h;
+				double b0 = tunnelBoundary(k, xw[i]);
+				double b1 = tunnelBoundary(k + 1, xw[i]);
+				double edge = Math.min(z - b0, b1 - z);
+				double lg = sinkGap[i];
+				double beyond = Math.max(Math.max(valleyBeyond, tunnelSill - edge), TUNNEL_END_GAP * local - lg);
+				double lensEnd = lensNode * ellipticEnd((edge - tunnelSill) / (0.35 * (b1 - b0)))
+						* ellipticEnd((lg - TUNNEL_END_GAP * local) / lakeEnd);
+				double s = beyond > 0 ? Math.sqrt(o * o + h * h) - h + beyond
+						: Math.sqrt(o * o + h * h * (1 - lensEnd * lensEnd)) - h;
 				s += (1 - fade) * bank;
-				shore[i] = (float) smoothMax(smoothMax(s, bound[i], round), bank - floor[i], round);
+				shore[i] = (float) smoothMax(smoothMax(s, g.bound(n, o), round), bank - floor[i], round);
 			}
 		}
 		// Priority flood of the shore distance from the samples with water (the outlets): a closed pit of the shore
 		// distance (a dry basin between a valley and the slope, or beyond the end of the water) rises to its spill;
 		// without water the rise is TUNNEL_GRID_MAX (no basin).
-		float[] pit = new float[nq * w];
 		float[] level = new float[nq * w];
 		Arrays.fill(level, Float.POSITIVE_INFINITY);
 		int[] heap = new int[nq * w];
@@ -2048,16 +2073,10 @@ public final class LandscapeModel {
 				}
 			}
 		}
-		for (int i = 0; i < pit.length; i++) {
-			pit[i] = (float) Math.min(level[i] - shore[i], TUNNEL_GRID_MAX);
+		for (int i = 0; i < level.length; i++) {
+			level[i] = (float) (shore[i] + Math.min(level[i] - shore[i], TUNNEL_GRID_MAX));
 		}
-		TunnelGaps g = new TunnelGaps(c.lo, nq, no, step, bound, pit, end);
-		if (tunnelGapGrids.size() > TUNNEL_GAP_CACHE) {
-			tunnelGapGrids.clear();
-		}
-		tunnelGapGrids.put(c.levelKey, g);
-		c.gaps = g;
-		return g;
+		return new TunnelGaps(c.lo, nq, no, step, bound, level, end);
 	}
 
 	/** K8a: most lakes kept in the cache (with their node arrays, a few kB each). */
@@ -2251,8 +2270,11 @@ public final class LandscapeModel {
 		// scaled by the fades, so it changes by at most about 1 m per meter. Scaled by the fades, a half-width of up to
 		// 350 m (GAMEPLAY) fell to zero over 3 or 1.5 tunnelBank, the shore distance changed by 5–8 m per meter, and the
 		// ramp of the basin (0.4–1.0 of its reach) became a wall of up to 5 blocks per block on a smooth terrain. K8a: the
-		// same at a narrow end of the lake (TUNNEL_NARROW).
-		double h = Math.min(half, Math.min(0.5 * Math.max(0, gap - TUNNEL_SPLIT), Math.min(tunnelFade, narrow)));
+		// same at a narrow end of the lake (TUNNEL_NARROW). Round 1 of the review of K8a: towards an end of the water the
+		// half-width falls to TUNNEL_TIP instead of 0 and the lens closes the water (tunnelTipHalf, tunnelTipLens), so the
+		// end is rounded instead of a straight-sided wedge.
+		double tipE = lake.at(lake.tip, u);
+		double h = Math.min(tunnelTipHalf(half, tipE), 0.5 * Math.max(0, gap - TUNNEL_SPLIT));
 		// K8a: the terms of the gap grid only raise the shore distance, so without them it is at least this; a column that
 		// is too far even then needs no grid (a grid costs a few tenths of a second per contour, and scattered queries,
 		// e.g. the search of the commands, would build one for every lake they pass).
@@ -2270,7 +2292,7 @@ public final class LandscapeModel {
 				(RiverNetwork.LAKE_GAP_MAX - TUNNEL_END_GAP) * local);
 		double lensEnd = ellipticEnd((edge - tunnelSill) / (0.35 * (b1 - b0)))
 				* ellipticEnd(-valleyBeyond / endLength)
-				* ellipticEnd((lakeGap - TUNNEL_END_GAP * local) / lakeEnd);
+				* ellipticEnd((lakeGap - TUNNEL_END_GAP * local) / lakeEnd) * tunnelTipLens(h, tipE);
 		// Elliptic shore distance: the water is dist < h · lensEnd (a rounded end, ellipticEnd); towards the tip the
 		// distance grows with slope at most about 1 also along the axis. Beyond an end it keeps growing with the distance.
 		double tau2 = 1 - lensEnd * lensEnd;
@@ -2280,11 +2302,16 @@ public final class LandscapeModel {
 		if (grid != null) {
 			// K8a: a river valley beside the lake and the edge of the young-glacial zone (from the grid, across the axis),
 			// the floor of a valley (the gap beyond the floor edge in the column, which changes by about 1 m per meter) and
-			// the rise that fills the closed pits of the shore distance.
-			// Round 1 of the review of K8a: joined by a smooth maximum (rounded corners, TUNNEL_ROUND).
+			// the filled shore distance of the samples.
+			// Round 1 of the review of K8a: the terms join by a smooth maximum (rounded corners, TUNNEL_ROUND), and the
+			// shore distance is at least the filled one of the samples (B-spline) less TUNNEL_FILL_SLACK. K8a added the
+			// rise of the samples, but the shore distance of the column dips between the samples (other interpolation,
+			// the smooth maximum), which left closed pits of up to about 1 m in the shore distance and up to 3.5 m in the
+			// ground of a dry basin. The slack keeps the column's own shore distance where it agrees with the samples.
 			double o = (x - c1.x(u)) * cosA;
 			double round = TUNNEL_ROUND * local;
-			shore = smoothMax(smoothMax(shore, grid.bound(u, o), round), bank - edgeGap, round) + grid.pit(u, o);
+			shore = Math.max(smoothMax(smoothMax(shore, grid.bound(u, o), round), bank - edgeGap, round),
+					grid.fill(u, o) - TUNNEL_FILL_SLACK);
 		}
 		if (shore > limit) {
 			return null;
@@ -2292,6 +2319,48 @@ public final class LandscapeModel {
 		long anchor = c1.anchor;
 		return new TunnelShape(shore, half, half > 0 ? lensEnd * Math.min(lensFade, h / half) : 0, lake.at(lake.gate, u), k,
 				anchor, c1.key, lake);
+	}
+
+	/**
+	 * Round 1 of the review of K8a: the half-width of a lake at the distance e along z from the nearest end of its water
+	 * ({@link TunnelLake#tip}): at most e + {@link #TUNNEL_TIP} m·k, joined to the half-width by a smooth minimum. It changes
+	 * by at most 1 m per meter, and {@link #tunnelTipLens} closes the water towards the end. K5–K8a limited the half-width
+	 * by e itself, so the water ended in a wedge with straight sides at 45° to the axis (two of them made the kite-shaped
+	 * lakes of the review of K8a).
+	 */
+	private double tunnelTipHalf(double half, double e) {
+		double tip = TUNNEL_TIP * local;
+		return Math.max(0, smoothMin(half, e + tip, tip));
+	}
+
+	/**
+	 * Round 1 of the review of K8a: the lens of the end of the water at the distance e from the nearest end of the water,
+	 * with the half-width h ({@link #tunnelTipHalf}): a quarter ellipse over 1.5 h (as at a valley, {@link #ellipticEnd}),
+	 * so the shore distance changes by at most about 1 m per meter also here and the end is rounded.
+	 */
+	private static double tunnelTipLens(double h, double e) {
+		return h > 0 ? ellipticEnd(e / (1.5 * h)) : 1;
+	}
+
+	/** Round 1 of the review of K8a: a node of the trace where the water ends ({@link TunnelLake#tip}). */
+	private boolean tunnelTipNode(TunnelContour c, int q, double half) {
+		int n = c.lo + q;
+		return half < TUNNEL_NARROW * local || 1 / Math.sqrt(1 + c.slopes[n] * c.slopes[n]) < TUNNEL_COS;
+	}
+
+	/** Round 1 of the review of K8a: half-width of a lake at an end of its water (m·k, {@link #tunnelTipHalf}). */
+	private static final double TUNNEL_TIP = 60;
+	/**
+	 * Round 1 of the review of K8a: the distances to the two ends of the water join by a smooth minimum with the radius
+	 * of this many {@link #TUNNEL_TIP} ({@link TunnelLake#tip}).
+	 */
+	private static final double TUNNEL_APEX = 4;
+
+	/** Round 1 of the review of K8a: a smooth minimum, at most min(a, b) and less by up to r / 4 ({@link #smoothMax}). */
+	static double smoothMin(double a, double b, double r) {
+		double m = Math.min(a, b);
+		double d = Math.abs(a - b);
+		return d < r ? m - (r - d) * (r - d) / (4 * r) : m;
 	}
 
 	/** K8a: length of the end of a lake at a valley ({@link #tunnelShape}). */
@@ -2400,9 +2469,8 @@ public final class LandscapeModel {
 		 * node where the contour runs more than about 39° from north ({@link #TUNNEL_COS}); 0 there.
 		 */
 		final double[] runs;
-		/** K8a: the lake data and the gap grid of this contour, once computed ({@link #tunnelLake}, {@link #tunnelGaps}). */
+		/** K8a: the lake data of this contour, once computed ({@link #tunnelLake}). */
 		volatile TunnelLake lakeData;
-		volatile TunnelGaps gaps;
 
 		TunnelContour(double z0, double dz, double[] xs, double[] slopes, int lo, int hi, long anchor, long key, boolean lake,
 				long levelKey) {
@@ -2857,6 +2925,7 @@ public final class LandscapeModel {
 		}
 		int level = (int) Math.floor(min) - 1;
 		double bank = Math.clamp(TUNNEL_BANK_PER_CUT * (Math.max(max, min) - (level + 1)), tunnelBank, tunnelBankMax());
+		float[] halves0 = halves.clone();
 		// K8a: distance along z to the nearest narrow node (none: the length of the trace).
 		float[] narrow = new float[nq];
 		double last = Double.NEGATIVE_INFINITY;
@@ -2882,7 +2951,26 @@ public final class LandscapeModel {
 		for (int q = nq - 2; q >= 0; q--) {
 			halves[q] = (float) Math.min(halves[q], halves[q + 1] + c.dz);
 		}
-		TunnelLake lake = new TunnelLake(level, bank, c.lo, halves, gates, narrow);
+		// Round 1 of the review of K8a: the distance to the nearest end of the water before and after each node (an end of
+		// the trace, a narrow node, a node of an oblique stretch), joined by a smooth minimum so that the half-width of a
+		// short lake has a rounded top instead of a peak (a kite-shaped lake).
+		float[] tip = new float[nq];
+		double lastLo = Double.NEGATIVE_INFINITY;
+		for (int q = 0; q < nq; q++) {
+			if (q == 0 || tunnelTipNode(c, q, halves0[q])) {
+				lastLo = q;
+			}
+			tip[q] = (float) ((q - lastLo) * c.dz);
+		}
+		double lastHi = Double.POSITIVE_INFINITY;
+		double apex = TUNNEL_APEX * TUNNEL_TIP * local;
+		for (int q = nq - 1; q >= 0; q--) {
+			if (q == nq - 1 || tunnelTipNode(c, q, halves0[q])) {
+				lastHi = q;
+			}
+			tip[q] = (float) Math.max(0, smoothMin(tip[q], (lastHi - q) * c.dz, apex));
+		}
+		TunnelLake lake = new TunnelLake(level, bank, c.lo, halves, gates, narrow, tip);
 		if (tunnelLakes.size() > TUNNEL_LAKE_CACHE) {
 			tunnelLakes.clear();
 		}

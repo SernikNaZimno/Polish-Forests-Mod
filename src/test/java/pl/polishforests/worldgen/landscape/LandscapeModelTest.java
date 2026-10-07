@@ -571,13 +571,17 @@ class LandscapeModelTest {
 	 * changes by 4–6 m per meter on steep ground), so on steep ground the water may come closer to the middle of the wall
 	 * (measured: 27 m at realistic scale, 27 m at gameplay scale, against 103 and 51 m in K5); the floor guard keeps the
 	 * basin out of the valley floor instead: every water column lies at least tunnelBank (the least reach of a basin)
-	 * beyond the edge of the floor of every valley ({@code RiverHit.floorEdgeGap}).
+	 * beyond the edge of the floor of every valley ({@code RiverHit.floorEdgeGap}). So the limit beyond the middle of the
+	 * wall is 0 (the floor guard is the actual limit, and its limit equals the guard). Round 1 of the review of K8a (the
+	 * smoothed gap grid): 56.6 m at realistic scale, 4.9 m at gameplay scale at (3290, −5690), where the water lies in
+	 * the deep basin of a lake 205 m beyond the edge of the floor and the ground after the valleys there is 61 m above
+	 * the water (a wide wall below high ground, not a lake on the valley side).
 	 */
 	@Test
 	void tunnelLakesEndBeforeValleys() {
 		record Area(LandscapeScale scale, double cx, double cz, double half, double step) {
 		}
-		record Col(long id, int level, double valleyGap, double floorGap, double lakeGap) {
+		record Col(long id, int level, double cutGap, double floorEdgeGap, double lakeGap) {
 		}
 		for (Area a : new Area[] {new Area(LandscapeScale.REALISTIC, -66_495, 21_873, 40_000, 40),
 				new Area(LandscapeScale.GAMEPLAY, 0, 0, 8_000, 10)}) {
@@ -606,27 +610,27 @@ class LandscapeModelTest {
 				return out;
 			}).flatMap(List::stream).toList();
 			java.util.Map<Long, Integer> levels = new java.util.HashMap<>();
-			double minValley = Double.POSITIVE_INFINITY;
+			double minCut = Double.POSITIVE_INFINITY;
 			double minFloor = Double.POSITIVE_INFINITY;
 			double minLake = Double.POSITIVE_INFINITY;
 			int levelMismatch = 0;
 			for (Col c : cols) {
-				minValley = Math.min(minValley, c.valleyGap());
-				minFloor = Math.min(minFloor, c.floorGap());
+				minCut = Math.min(minCut, c.cutGap());
+				minFloor = Math.min(minFloor, c.floorEdgeGap());
 				minLake = Math.min(minLake, c.lakeGap());
 				Integer prev = levels.putIfAbsent(c.id(), c.level());
 				levelMismatch += prev != null && prev != c.level() ? 1 : 0;
 			}
 			// Step K8a: beyond the edge of the cut (the middle of the wall), beyond the floor by tunnelBank.
-			double valleyLimit = 0;
+			double cutLimit = 0;
 			double floorLimit = Math.max(70, 140 * k);
-			System.out.printf(Locale.ROOT, "[tunnel lakes] %s: %d water columns of %d lakes, smallest valley gap %.1f m (limit %.1f m), "
+			System.out.printf(Locale.ROOT, "[tunnel lakes] %s: %d water columns of %d lakes, smallest gap beyond the valley cut %.1f m (limit %.1f m), "
 					+ "smallest gap beyond the floor %.1f m (limit %.1f m), smallest sink lake gap %.1f m (limit %.1f m), level "
-					+ "mismatches %d%n", a.scale().id(), cols.size(), levels.size(), minValley, valleyLimit, minFloor, floorLimit,
+					+ "mismatches %d%n", a.scale().id(), cols.size(), levels.size(), minCut, cutLimit, minFloor, floorLimit,
 					minLake, LandscapeModel.TUNNEL_END_GAP * k, levelMismatch);
 			assertTrue(levels.size() >= 5, a.scale().id() + ": too few tunnel valley lakes: " + levels.size());
-			assertTrue(minValley >= valleyLimit, a.scale().id() + ": tunnel valley lake water "
-					+ minValley + " m beyond the edge of a valley cut");
+			assertTrue(minCut >= cutLimit, a.scale().id() + ": tunnel valley lake water "
+					+ minCut + " m beyond the edge of a valley cut");
 			assertTrue(minFloor >= floorLimit, a.scale().id() + ": tunnel valley lake water " + minFloor
 					+ " m beyond the edge of a valley floor");
 			assertTrue(minLake >= LandscapeModel.TUNNEL_END_GAP * k, a.scale().id() + ": tunnel valley lake water " + minLake
