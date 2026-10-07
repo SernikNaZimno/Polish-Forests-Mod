@@ -69,6 +69,8 @@ public final class LandscapeModel {
 	private final Noise mountain;
 	private final Noise zoneSea;
 	private final Noise coast;
+	/** K8b1: landward shore of a lagoon (bays, peninsulas) and its river deltas; a new seed, so the rest does not change. */
+	private final Noise lagoonShore;
 	/** Sandiness of the deposit (M2, habitats). */
 	private final Noise habitatSandiness;
 	private final RiverNetwork rivers;
@@ -194,6 +196,7 @@ public final class LandscapeModel {
 		this.mountain = root.derive("mountain");
 		this.zoneSea = root.derive("zone.sea");
 		this.coast = root.derive("coast");
+		this.lagoonShore = root.derive("coast.lagoon.shore");
 		// Large massifs (M2-8): a new seed, so the rest of the terrain does not change.
 		this.greatMassif = root.derive("mountain.great");
 		this.greatMassifSpacing = scale == LandscapeScale.REALISTIC ? 60_000 : 4_000;
@@ -315,11 +318,30 @@ public final class LandscapeModel {
 	 * with the shore type, and a minimum depth of 1 m cut a trench 130 m wide with walls into a shore 17 m high). The
 	 * whole basin fades with its strength, so the terrain returns continuously to the shore around it.
 	 *
+	 * <p>K8b1: the landward shore of a lagoon is not a line parallel to the coast. In K5 it lay where the low hinterland
+	 * rose to 3–6 m, i.e. on a contour of the coast distance (in REAL about 5 m off a straight line over 1.2 km). Now the
+	 * distance used by the hinterland and by the lagoon is displaced by a noise of five octaves (wavelengths from
+	 * {@link #LAGOON_SHORE_WAVE} m·k down to about 120 m·k) with an amplitude of {@link #LAGOON_SHORE_AMP} of the lagoon
+	 * width, only behind the seaward part of the basin (the spit and the dunes keep their place) and fading back to the
+	 * coast distance between 1.5 and 3 widths behind its start: bays, peninsulas and small islands, as on the Vistula and
+	 * Szczecin lagoons and on Łebsko and Gardno (docs/m2/poprawka-geometrii.md, K8b1). The displacement grows with the
+	 * strength of the lagoon, so it disappears with it. The strength rises along the coast over a shorter stretch
+	 * ({@link #COAST_LAGOON_0}, {@link #COAST_LAGOON_1}), so the ends of a lagoon are rounded instead of wedges 2–3 km
+	 * long. River deltas are added in {@link #sample} only ({@link #lagoonDelta}).
+	 *
 	 * @param h     terrain height from the landscape types
 	 * @param d     distance from the shoreline (positive on land)
 	 * @param cliff share of a high shore with a cliff 0–1 ({@link #cliffShore})
 	 */
 	private double shapeCoast(double h, double d, double x, double z, double cliff) {
+		return shapeCoast(h, d, x, z, cliff, null);
+	}
+
+	/**
+	 * {@link #shapeCoast(double, double, double, double, double)}; in a lagoon basin it also stores the lagoon width (m)
+	 * in {@code lagoonWidth[0]} (left unchanged elsewhere).
+	 */
+	private double shapeCoast(double h, double d, double x, double z, double cliff, double[] lagoonWidth) {
 		double band = 25_000 * meso;
 		if (d >= band) {
 			return h;
@@ -332,9 +354,34 @@ public final class LandscapeModel {
 		double beach = beachWidth();
 		double shore = 2.0 * Noise.smoothstep(0, beach, d);
 		double low = 1 - cliff;
+		// Lagoon behind a spit (D2): its strength along the coast and its width. K8b1: behind the seaward part of the basin
+		// the hinterland and the lagoon use a coast distance displaced by the lagoon shore noise (bays and peninsulas).
+		double lagoon = 0;
+		double start = 0;
+		double width = 0;
+		double dl = d;
+		if (low > 0) {
+			lagoon = Noise.smoothstep(COAST_LAGOON_0, COAST_LAGOON_1, coast.at(x + 999, z, 60_000 * meso));
+			if (lagoon > 0) {
+				start = beach + COAST_LAGOON_START * local;
+				// The width does not depend on the shore type; towards the ends of the lagoon it falls to half while the
+				// depth falls to zero, so the water ends in a rounded tip.
+				width = (1_500 + 1_500 * (0.5 + 0.5 * coast.at(x, z, 20_000 * meso))) * meso * (0.5 + 0.5 * lagoon);
+				double end = COAST_LOW_END * meso;
+				if (d > start && d < start + LAGOON_SHORE_FADE_END * width && d < end) {
+					// Back to the coast distance also before the end of the low hinterland, so the terrain beyond it
+					// does not change (TerrainLocalityTest).
+					double window = Noise.smoothstep(start, start + width, d)
+							* (1 - Noise.smoothstep(start + LAGOON_SHORE_FADE * width, start + LAGOON_SHORE_FADE_END * width, d))
+							* (1 - Noise.smoothstep(end - width, end, d));
+					dl = d - lagoon * window * width * LAGOON_SHORE_AMP
+							* lagoonShore.fbm(x, z, LAGOON_SHORE_WAVE * local, LAGOON_SHORE_OCTAVES, 0.5);
+				}
+			}
+		}
 		// Low hinterland: COAST_LOW_BASE m above the sea behind the dunes, rising to the compressed relief.
 		double lowLand = Math.min(hl, COAST_LOW_BASE + (hl - COAST_LOW_BASE)
-				* Noise.smoothstep(beach + COAST_GRAY_END * local, COAST_LOW_END * meso, d));
+				* Noise.smoothstep(beach + COAST_GRAY_END * local, COAST_LOW_END * meso, dl));
 		double base = Noise.lerp(cliff, lowLand, hl);
 		double cliffLimit = shore + 2.5 * Math.max(0, d - beach);
 		double result = Math.max(Math.min(base, cliffLimit), shore);
@@ -362,15 +409,13 @@ public final class LandscapeModel {
 			result = Math.max(result, lowLand + low * env * height);
 		}
 		// Lagoon behind a spit: a shallow lake at sea level, behind the dunes, only where the hinterland is low.
-		double lagoon = Noise.smoothstep(COAST_LAGOON_0, COAST_LAGOON_1, coast.at(x + 999, z, 60_000 * meso));
 		if (lagoon > 0) {
-			double start = beach + COAST_LAGOON_START * local;
-			// The width does not depend on the shore type; towards the ends of the lagoon it falls to half while the
-			// depth falls to zero, so the water ends in a rounded tip; the landward shore is irregular (bays, peninsulas).
-			double width = (1_500 + 1_500 * (0.5 + 0.5 * coast.at(x, z, 20_000 * meso))) * meso * (0.5 + 0.5 * lagoon);
 			double ragged = 0.18 * width * coast.fbm(x - 555, z + 777, 2_500 * meso, 2, 0.5);
-			double v = (d - start + ragged) / Math.max(1e-6, width);
+			double v = (dl - start + ragged) / Math.max(1e-6, width);
 			if (v > 0 && v < 1) {
+				if (lagoonWidth != null) {
+					lagoonWidth[0] = width;
+				}
 				// The whole basin fades out with its strength f (not only its depth): at f → 0 the terrain returns to the
 				// result itself, so the end of a lagoon along the shore and its edge towards a higher hinterland are
 				// continuous (review of K5: lerp(bowl, result, −depth) left (1 − bowl) · result at depth → 0 and a step back
@@ -381,6 +426,85 @@ public final class LandscapeModel {
 			}
 		}
 		return result;
+	}
+
+	/**
+	 * K8b1: delta of a river entering a lagoon: an elliptic lobe of land at most {@link #DELTA_TOP} m above the sea around
+	 * the channel, from the landward shore into the lagoon (at the old shore 0 m high, so it meets the land behind it). Its half-width (from the bank of the channel) is
+	 * {@link #DELTA_HALF} and its reach {@link #DELTA_REACH} half-widths of the valley floor (at most
+	 * {@link #DELTA_WIDTH_SHARE} of the lagoon width), both with a lobe noise. The size comes from the half-width of the
+	 * valley floor, a soft maximum over the segments, because the order and the width of the nearest channel change
+	 * abruptly where another river is nearer. The distance from the shore is the water length of a ray along the inland
+	 * normal of the coast (linear between {@link #DELTA_SAMPLES} samples of {@link #landElevation}), so it is continuous and
+	 * neither the spit side of the lagoon nor a shoal counts as a shore. Beyond the lobe a front returns to the lagoon floor
+	 * over a distance (in meters outside the ellipse) of a quarter of the lobe plus {@link #DELTA_FRONT_RUN} m per meter of
+	 * depth, at the side of the lobe as at its tip. Only in {@link #sample}: the river network routes on
+	 * {@link #landElevation}, which therefore has no deltas (as it has no valleys), so the deltas do not change the rivers.
+	 * Costs one river query per lagoon column and a few terrain samples near the channels.
+	 *
+	 * @param surface the terrain of the lagoon column (below 0)
+	 * @return the terrain with the delta (at least 0 on its land)
+	 */
+	private double lagoonDelta(double x, double z, double raw, double coastD, double cliff, double surface, double lowland,
+			double foothills, double mountains) {
+		RiverNetwork.RiverHit r = rivers.query(x, z, surface, lowland, foothills, mountains);
+		double floor = r.floorHalf();
+		if (!(floor > 0) || !(r.channelDist() < Double.POSITIVE_INFINITY)) {
+			return surface;
+		}
+		double side = Math.max(0, r.channelDist());
+		double half = DELTA_HALF * floor * (1 + 0.25 * lagoonShore.at(x + 7_919, z - 3_571, DELTA_LOBES * local));
+		double depth = -surface;
+		double[] lagoonWidth = {0};
+		shapeCoast(raw, coastD, x, z, cliff, lagoonWidth);
+		double reach = Math.min(DELTA_REACH * floor, DELTA_WIDTH_SHARE * lagoonWidth[0])
+				* (1 + 0.3 * lagoonShore.at(x - 4_271, z + 6_101, 2 * DELTA_LOBES * local));
+		if (!(reach > 0)) {
+			return surface;
+		}
+		double size = Math.min(half, reach);
+		double front = DELTA_FRONT_SHARE * size + DELTA_FRONT_RUN * depth;
+		// Beyond the front at the side whatever the distance from the shore (the outside distance below is at least
+		// (side / half − 1) · size).
+		if (side >= half * (1 + front / size)) {
+			return surface;
+		}
+		// Inland normal of the coast from the gradient of the sea field, as in coastDistance (the gradient of the coast
+		// distance itself turns abruptly where the distance is flat).
+		double en = Math.max(20.0, 400.0 * zs);
+		double nx = seaField(x + en, z) - seaField(x - en, z);
+		double nz = seaField(x, z + en) - seaField(x, z - en);
+		double nn = Math.sqrt(nx * nx + nz * nz);
+		if (!(nn > 0)) {
+			return surface;
+		}
+		nx /= nn;
+		nz /= nn;
+		// Water length of the ray up to the end of the front (a ray entirely in water gives the outer edge of the front).
+		double step = reach * (1 + front / size) / DELTA_SAMPLES;
+		double dist = 0;
+		double prev = surface;
+		for (int j = 1; j <= DELTA_SAMPLES; j++) {
+			double next = landElevation(x + j * step * nx, z + j * step * nz);
+			if (prev < 0 && next < 0) {
+				dist += step;
+			} else if (prev < 0 || next < 0) {
+				dist += step * -Math.min(prev, next) / (Math.abs(next - prev) + 1e-12);
+			}
+			prev = next;
+		}
+		// Distance outside the elliptic lobe (m, negative inside).
+		double sq = side / half;
+		double dq = dist / reach;
+		double g = (Math.sqrt(sq * sq + dq * dq) - 1) * size;
+		if (g >= front) {
+			return surface;
+		}
+		// The land of the delta meets the old lagoon shore at its height (0 m), so it rises to DELTA_TOP only where the
+		// lagoon was DELTA_SHORE_DEPTH deep (the land behind the old shore is not raised).
+		double top = DELTA_TOP * Math.min(1, -g / (0.5 * size)) * Math.min(1, depth / DELTA_SHORE_DEPTH);
+		double w = 1 - Noise.smoothstep(0, front, g);
+		return Math.max(surface, surface + w * (top - surface));
 	}
 
 	/**
@@ -411,11 +535,42 @@ public final class LandscapeModel {
 	static final double COAST_GRAY_END = 420;
 	/** D2: start of the lagoon behind the beach (m·k). */
 	static final double COAST_LAGOON_START = 300;
-	/** D2: values of the lagoon noise (wavelength 60 km·meso) over which a lagoon fades in along the shore. */
-	static final double COAST_LAGOON_0 = 0.25;
-	static final double COAST_LAGOON_1 = 0.5;
+	/**
+	 * D2: values of the lagoon noise (wavelength 60 km·meso) over which a lagoon fades in along the shore. K8b1: 0.25–0.5
+	 * → 0.32–0.40, so the strength rises over about a lagoon width and the end of the water is rounded (K5: a wedge of
+	 * 2–3 km); the lagoon area stays about the same.
+	 */
+	static final double COAST_LAGOON_0 = 0.32;
+	static final double COAST_LAGOON_1 = 0.40;
 	/** D2: greatest depth of a lagoon below the sea level (m). */
 	static final double COAST_LAGOON_DEPTH = 6;
+	/** K8b1: amplitude of the displacement of the landward lagoon shore, as a share of the lagoon width. */
+	static final double LAGOON_SHORE_AMP = 0.7;
+	/** K8b1: longest wavelength of the lagoon shore noise (m·k); five octaves, the shortest about 120 m·k. */
+	static final double LAGOON_SHORE_WAVE = 2_000;
+	static final int LAGOON_SHORE_OCTAVES = 5;
+	/** K8b1: the displacement fades back to the coast distance between these distances behind the lagoon start (widths). */
+	static final double LAGOON_SHORE_FADE = 1.5;
+	static final double LAGOON_SHORE_FADE_END = 3;
+	/**
+	 * K8b1: half-width of a delta at the shore (from the bank of the channel), as a multiple of the half-width of the
+	 * valley floor (REAL: floors of about 95–115 m at the lagoon mouths, GAMEPLAY about 30 m).
+	 */
+	static final double DELTA_HALF = 2.5;
+	/** K8b1: reach of a delta into the lagoon, as a multiple of the half-width of the valley floor, at most this share of the lagoon width. */
+	static final double DELTA_REACH = 3;
+	static final double DELTA_WIDTH_SHARE = 0.2;
+	/** K8b1: the delta front (from land down to the lagoon floor) is this share of the lobe size plus DELTA_FRONT_RUN m per m of depth. */
+	static final double DELTA_FRONT_SHARE = 0.25;
+	static final double DELTA_FRONT_RUN = 4;
+	/** K8b1: height of a delta above the sea inside its lobe (m; it falls to 0 over the outer half of the lobe size). */
+	static final double DELTA_TOP = 0.8;
+	/** K8b1: depth of the lagoon (m) at which the delta reaches its full height (at the old shore it is 0 m high). */
+	static final double DELTA_SHORE_DEPTH = 1;
+	/** K8b1: wavelength of the lobes of a delta (m·k). */
+	static final double DELTA_LOBES = 300;
+	/** K8b1: samples of the ray towards the landward shore of the lagoon. */
+	static final int DELTA_SAMPLES = 6;
 
 	/** Sea depth in meters at distance {@code off} from the shore (Baltic: shallow shelf). */
 	private double seaDepth(double off) {
@@ -1223,7 +1378,12 @@ public final class LandscapeModel {
 		int water = ColumnSample.NO_WATER;
 		WaterKind kind = WaterKind.NONE;
 
-		// Sea and lagoons (at sea level).
+		// Sea and lagoons (at sea level); K8b1: river deltas in a lagoon.
+		if (coastD >= 0 && surface < 0) {
+			surface = lagoonDelta(x, z, raw, coastD, cliff, surface, lowland + b.weight(LandscapeType.COASTLAND), foothills,
+					mountains);
+			rawSurface = surface;
+		}
 		if (coastD < 0 || surface < 0) {
 			LandscapeType t = coastD < 0 ? LandscapeType.SEA : LandscapeType.COASTLAND;
 			Substrate sub = coastD < 0 && -coastD > 3_000 * meso ? Substrate.LAKE_MUD : Substrate.SAND;

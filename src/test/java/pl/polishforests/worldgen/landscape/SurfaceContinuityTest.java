@@ -191,9 +191,11 @@ class SurfaceContinuityTest {
 				// left the basin at (1 − bowl) · terrain where its depth reached zero, a step back to the terrain of up to
 				// 6 m on 1 m (5–7 blocks per block) along the edge and at the ends of a lagoon. After round 1: no jump at the
 				// lagoons; the jumps left (2 / 0.99 m and 7 / 0.93 m) are the banks of river mouths raised to 1 m next to a
-				// beach at the sea level (M1).
+				// beach at the sea level (M1). K8b1 (bays, peninsulas and deltas of the landward lagoon shore): 1 / 0.56 m
+				// and 9 / 0.955 m, the same mechanism (the 12 m ring of a channel raised to its level + 1 m next to ground
+				// lower than that); the lagoon shore and the river mouths moved, so there are more such places in GAMEPLAY.
 				new Window("realistic_lagoon", r, -220_000, -155_000, 6_000, 2, 1.0, 0, v, "0 at the lagoon (D2)" + d4),
-				new Window("gameplay_lagoon", g, 450, 11_000, 1_500, 7, 0.94, 0, v, "0 at the lagoon (D2)" + d4));
+				new Window("gameplay_lagoon", g, 450, 11_000, 1_500, 9, 0.96, 0, v, "0 at the lagoon (D2)" + d4));
 	}
 
 	static boolean dry(ColumnSample s) {
