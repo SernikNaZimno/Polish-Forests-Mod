@@ -2131,3 +2131,111 @@ Oczka (`kettleTouchesTunnelLake` idzie teraz za połową szerokości z osi jezio
 - Ubytek wody jezior rynnowych wobec K4c (−54…−57% w GAMEPLAY) pochodzi z K5.2 i rundy 1 K5 (koniec przed doliną, kontury przez środek sekcji); dalsze odzyskanie wymagałoby np. przesunięcia `valleyEnd` bliżej doliny (dziś zasięg niecki − 0,5 `tunnelBank` + TUNNEL_END_GAP) przy strażniku dna — do oceny razem z kadrami w K8z albo M5.
 - Dwa płytkie zagłębienia (3,3–3,7 m) przy wale brzegu na zboczu doliny; zagłębienie (−18450, 14540) 12 m w dnie bocznej doliny (teren po dolinach, nie niecka) — do przeglądu sieci rzecznej w M5.
 - Koszt: GAMEPLAY cały obszar 1,17–1,20 × M1 — kolejne kroki zwiększające koszt `sample` muszą najpierw szukać oszczędności (np. `RiverNetwork.link` bez pudełkowanych kluczy, ok. 2,4%). Jednorazowy koszt siatki szczelin (ok. 0,26 s na kontur) można zmniejszyć rzadszymi próbkami w REAL.
+
+### Runda 1 poprawek po recenzji K8a
+
+Recenzja K8a (2026-10-07): jeden problem blokujący, dwa poważne i dziewięć drobnych. Narzędzia jak w K8a (skany ścian i zagłębień, liczniki wody i oczek) oraz kadry recenzenta 1 m (załamania według fazy z mod 10, porównanie z `af65015`), uruchamiane na kopii drzewa roboczego poza repozytorium. Liczby „po” dotyczą kodu z repozytorium, nie prototypu.
+
+**Problem blokujący: proste krawędzie wzdłuż wierszy siatki szczelin (potwierdzony).** Interpolacja dwuliniowa siatki (`bound`, wypełnienie zagłębień, `end`) i tablic węzłów jeziora (połowa szerokości, bramka) miała załamanie w każdym wierszu węzłów (co 20 m·k, w GAMEPLAY przy z ≡ 5 mod 10) i w każdej kolumnie siatki. Obwiednie w metryce L1 dawały na przecięciach prostokątne „pudełka”. Zmiany w `LandscapeModel`:
+- siatkę i tablice węzłów czyta kwadratowy B-splajn (`spline`, `TunnelGaps.grid`). Nachylenie jest ciągłe i nie większe niż największa różnica sąsiednich węzłów, więc warunek „najwyżej 1 m na metr” zostaje. Wartość mieści się w zakresie trzech najbliższych węzłów;
+- obwiednie o nachyleniu 1 liczy transformata fazowa (chamfer) z maską 5 × 5 (16 kierunków) w poziomej odległości między próbkami (x każdej próbki, wiersze co dz). Zastępuje rozdzielną metrykę L1 siatki. Poziomice są prawie okrągłe (błąd ok. 3%) i także przy ukośnym konturze idą za rzeczywistą odległością;
+- człony odległości od brzegu (soczewka, ograniczenie od doliny i od skraju strefy, strażnik dna) łączy gładkie maksimum `smoothMax` o promieniu `TUNNEL_ROUND` 30 m·k. Narożniki są zaokrąglone; tam, gdzie człony są równe, odległość rośnie najwyżej o 7,5 m·k;
+- wypełnienie zagłębień: kolumna bierze max(własna odległość od brzegu, wypełniona odległość próbek przez B-splajn − `TUNNEL_FILL_SLACK` 0,5 m). K8a dodawał do odległości kolumny podniesienie próbek, co zostawiało zamknięte zagłębienia między próbkami. Próbki siatki liczą teraz odległość od brzegu tak jak kolumna: tablice węzłów i `bound` przez B-splajn, granice sekcji w x próbki, własna szczelina jeziora bezodpływowego próbki. Dzięki temu wypełnienie nie zmienia kolumn poza zagłębieniami. Pierwsza próba z wartościami z osi zabierała do 25% wody w końcach jezior przy granicy sekcji.
+
+Pomiar narzędziem recenzenta `phase.py`: załamania > 0,2 m na metr w suchej niecce według fazy z mod 10 (próbki w środkach pikseli, więc wiersze węzłów wypadają w fazach 4 i 5):
+
+| Kadr 1 m | `af65015` fazy 4 / 5 | `af65015` pozostałe | runda 1 fazy 4 / 5 | runda 1 pozostałe |
+|---|---|---|---|---|
+| M_w1S (−20350, 10900) | 881 / 916 | 62–127 | 51 / 47 | 43–64 |
+| M_p4 (−15998, 5693) | 620 / 656 | 26–66 | 12 / 9 | 6–14 |
+| M_w5 (−16170, 7800) | 160 / 87 (faza 3: 90) | 11–20 | 2 / 3 | 0–3 |
+| M_p7 (7290, 11300) | 100 / 103 | 1–44 | 0 / 0 | 0 |
+| L03 (6388, −8598) | 203 / 220 | 10–81 | 5 / 6 | 3–7 |
+| L02 (3088, −5798) | 70 / 64 | 17–30 | 13 / 14 | 8–16 |
+
+Kadry Z_w1_S, Z_w1_NE, ZG_w2_N, G_w10, G_p8, ZG_p1_SW, G_p4 i L03 nie mają już prostych linii W–E, prostokątnych pudełek ani płaskich ścian. W ZG_p1_SW zostaje słaby ślad załamania przy końcu suchej niecki, poniżej progu 0,2 m na metr. Nowy test `StandingWaterContainmentTest.tunnelValleyBasinsHaveNoGridCreases` sprawdza okna 1 m `CREASE_WINDOWS` (w1 południe, p4, w5, p7, L03, L02): załamań w wierszach węzłów (z ≡ 5 mod 10, próbki w całych metrach) może być najwyżej 1,5 × średnia faz z dala od wierszy + 10.
+
+**Problem poważny: wieloboczne kontury jezior (potwierdzony).** Przyczyny:
+1. obwiednie L1 dawały proste brzegi i narożniki wzdłuż przekątnych siatki;
+2. przy wąskim węźle, węźle ukośnego odcinka i końcu śladu woda kończyła się klinem o prostych bokach (połowę szerokości ograniczała sama odległość od takiego węzła, nachylenie 1). Dwa kliny krótkiego jeziora tworzyły „latawiec” (w4);
+3. twardy max członów robił narożnik tam, gdzie brzeg soczewki spotyka prostą granicę od doliny;
+4. największa szczelina przekroju skakała, gdy przekrój się poszerzał.
+
+Zmiany: obwiednie euklidesowe i gładkie maksimum (wyżej) oraz koniec wody jako soczewka. Przy końcu połowa szerokości spada do `TUNNEL_TIP` 60 m·k (gładkie minimum z połową szerokości, `tunnelTipHalf`), a wodę zamyka ćwiartka elipsy na 1,5 połowy szerokości (`tunnelTipLens`, jak koniec przy dolinie). Odległość do końca wody to `TunnelLake.tip`: oba kierunki łączy gładkie minimum o promieniu 4 `TUNNEL_TIP`, więc krótkie jezioro ma zaokrąglony środek zamiast szczytu. Wartości `end` (największa szczelina przekroju) i połowa szerokości z osi zmieniają się najwyżej o 1 m na metr wzdłuż śladu (dolne obwiednie). Obie tylko skracają lub zwężają jezioro; połowa szerokości mieści się w paśmie, w którym liczono poziom wody.
+
+Na kadrach:
+- w4 (G_w4, M_w4): zaokrąglone jajo zamiast latawca. Zostaje łagodny zachodni narożnik na styku granicy od doliny z bokiem jeziora;
+- w5: bez ostrego końca i wcięcia V;
+- REAL B (ZR_B_tip): koniec przy dolinie to proste odcięcie wzdłuż doliny z zaokrąglonymi narożnikami (promień ok. 30 m) zamiast dwóch ostrych narożników;
+- REAL A (ZR_C): bez bruzdy wzdłuż osi za ogonem jeziora, ogon jest krótszy;
+- jezioro w klinie REAL (−60055, 50053) (ZR_pit) znikło razem z niecką, bo po wygładzeniu nie zostaje w nim woda. Zagłębienie, które K8a tam usunął, nie wróciło (skan REAL niżej).
+
+Zostaje prosty brzeg N–S przy x ≈ −57493 w REAL A. To ukośnie ścięty koniec soczewki przy granicy sekcji: soczewka jest elipsą we współrzędnych (odległość w poprzek, z), więc przy ukośnej osi jeden bok końca jest prawie prosty. Kształt jest sprzed K8a i widać go dopiero przy szerszym jeziorze z osi. Poprawka wymaga liczenia końca w punkcie osi najbliższym kolumnie i zmienia wszystkie jeziora ukośne, więc przechodzi do K8z albo M5.
+
+**Problem poważny: nowe suche zagłębienie poza `PIT_SITES` (potwierdzony).** W (−26381, 10061) GAMEPLAY zagłębienie było 4,9 m głębsze od zagłębienia terenu surowego w oknie testu (siatka 2,5 m) na `af65015`; po rundzie 1 jest to 0,5 m. Skan GAMEPLAY ±40 km co 10 m (kryterium recenzji: margines ≤ 0 albo pierścień, obniżenie > 0,5 m, nadwyżka > 3 m) znalazł na `af65015` 11 takich zagłębień, do 8,8 m w (16080, 34390). Po rundzie 1 zostało jedno: (−15980, 5660), 3,7 m, które już było w `PIT_SITES`. Test `tunnelValleyBasinsHaveNoClosedPits` sprawdza teraz także 12 okien `WALL_CLUSTERS`, to miejsce i cztery najgłębsze miejsca ze skanu ±40 km na `af65015`, razem 45 okien.
+
+| Zagłębienia w nieckach (nadwyżka ponad zagłębienie terenu surowego) | `af65015` | runda 1 |
+|---|---|---|
+| Okna testu (2,5 m): największa | 6,0 m (16085, 34325) | 3,45 m (17990, −5670) |
+| (−15980, 5660) / (17990, −5670) / (−26310, 9570) | 3,7 / 1,7 / 3,1 m | 3,0 / 3,45 / 3,0 m |
+| Skan GAMEPLAY ±20 km co 10 m, > 3 m | 2 | 1 ((−15980, 5660), 3,7 m) |
+| Skan GAMEPLAY ±40 km co 10 m, > 3 m | 11 (do 8,8 m) | 1 ((−15980, 5660), 3,7 m) |
+| Skan REAL ±30 km co 20 m, > 3 m | 0 | 0 |
+
+(17990, −5670) to sucha odnoga niecki wzdłuż bocznej doliny. Odległość od brzegu nie ma tam zamkniętego zagłębienia, ale ma je mieszanie zbocza niecki z terenem po dolinach (`applyLake`). Poprawka wymagałaby wypełniania zagłębień w terenie, a nie w odległości od brzegu, więc limit `PIT_MAX` 4 m zostaje. Na kadrach 1 m G_w10 zagłębienie w rowie (−26310, 9572) ma 7 m, ale jego najgłębsza komórka nie jest obniżona przez nieckę (to teren po dolinach), więc test go nie liczy.
+
+**Drobne:**
+1. *Pomiary K8a z prototypu n7 (potwierdzone).* Liczby wody i oczek w rozdziale K8a pochodzą z prototypu bez ograniczenia `span`. Różnica jest rzędu 0,02%: woda GAMEPLAY ±20 km to 12600 w n7 i 12598 na `af65015`. Tabela niżej podaje pomiary kodu z repozytorium.
+2. *Nachylenie członów w świecie (potwierdzone).* Obwiednie liczą teraz poziomą odległość próbek (wyżej), a połowa szerokości z osi ma dolną obwiednię o nachyleniu 1 wzdłuż śladu (wcześniej do 2,3 m na metr w (35819, −2805)). Javadoc `TunnelGaps.bound` poprawiony.
+3. *Limit pamięci siatek (potwierdzone).* Siatka siedziała też w polu każdego obiektu konturu w 256 blokach `DirectCache`, więc limit mapy nie ograniczał pamięci, a wątki liczyły tę samą siatkę równolegle. Teraz siatki są tylko w mapie `tunnelGapGrids`: najwyżej `TUNNEL_GAP_CACHE` (256) siatek po ok. 0,3 MB, czyli ok. 77 MB. Każdą liczy raz `computeIfAbsent`; inne wątki czekają na tę samą siatkę, a budowa nie dotyka mapy. Opis pamięci w akapicie „Koszt” K8a („256 konturów”) był więc nieścisły.
+4. *Dwa okna `WALL_CLUSTERS` bez niecki (potwierdzone).* (−23080, 39240) ma 0 kolumn, (−20700, 11200) ma 57; opis jest w javadoc. Nowych okien przy końcach jezior blisko dolin nie dodałem, bo najmniejsza szczelina za wycięciem doliny (punkt 6) leży w głębokiej niecce daleko od dna.
+5. *Trzy zagłębienia > 3 m po K8a są nowe (potwierdzone).* (−18450, 14540), (18020, −5560) i (−16300, −9520) nie należały do 20 sprzed K8a. Po rundzie 1 żadne z nich nie przekracza 3 m w skanie ±20 km. (−18450, 14540) (12 m w terenie po dolinach; strażnik dna nie pozwala niecce otworzyć mu odpływu) trzeba obejrzeć na kadrach w K8z; to punkt do M5.
+6. *Limit szczeliny za wycięciem doliny (potwierdzone).* Opis commita `b8ee80c` pominął poluzowanie limitu do 0 (wyjaśnione w odstępstwie 2 K8a i w javadoc testu). Pola rekordu w `LandscapeModelTest.tunnelLakesEndBeforeValleys` nazywają się teraz `cutGap` i `floorEdgeGap`. Po rundzie 1 najmniejsza szczelina za wycięciem to 56,6 m w REAL i 4,9 m w GAMEPLAY w (3290, −5690). Tam woda leży w głębokiej niecce jeziora L02, 205 m za brzegiem dna, a teren po dolinach jest 61 m nad lustrem: to szeroka ściana pod wysokim terenem, nie jezioro na zboczu doliny. Za brzegiem dna: REAL 140,4 m, GAMEPLAY 70,1 m (limity 140 i 70).
+7. *Grunt podniesiony brzegiem ponad teren po dolinach (potwierdzone, kod bez zmian).* Sonda (GAMEPLAY ±20 km co 20 m, suche kolumny niecki poza dnem): `af65015` 299 kolumn > 3 m, 169 > 10 m, maks. 31,7 m w (9820, −17360); po rundzie 1 285, 172, maks. 32,6 m w (3400, −4700). Do obejrzenia na kadrach w K8z, np. (9820, −17360), (−1400, −6240), (3420, −4700).
+8. *Głębokie suche rowy wzdłuż bocznych dolin z końcami V (potwierdzone, częściowo poprawione).* Zygzak profilu dna rowu na liniach siatki znikł (B-splajn), a końce V są zaokrąglone. Same rowy (sucha część niecki wzdłuż doliny, w G_w1 do ok. 140 m obniżenia) zostają do oceny wyglądu w K8z.
+9. *Piła ±0,3–0,5 m co ok. 6 m na ścianie rowu (ZG_p5_SW).* Po rundzie 1 kadr ZG_p5_SW nie ma załamań > 0,2 m na metr. Okres 6 m nie pasuje do siatki (10 m), więc przyczyna była inna (prawdopodobnie przecięcie członów pod kątem); znikła razem z wygładzeniem.
+
+**Pomiary po rundzie 1 (kod z repozytorium).**
+
+| Pomiar | `af65015` | runda 1 |
+|---|---|---|
+| Ściany niecek GAMEPLAY ±40 km co 20 m / REAL ±40 km co 20 m | 0 / 0 | 0 / 0 |
+| Ściany, test ±20 km (`WALLS_MAX`) i 12 okien 1 m | 0 | 0 |
+| Groble (`DAM_MAX`) GAMEPLAY ±20 km / REAL | 0 / 0 | 0 / 0 |
+| Woda jezior rynnowych GAMEPLAY ±20 km co 20 m | 12598 | 12515 (−0,7%) |
+| Woda GAMEPLAY ±40 km co 25 m | — (n7: 26943) | 26721 |
+| Woda REAL ±60 km co 75 m | — (n7: 6817) | 6810 |
+| Jeziora z wodą GAMEPLAY ±20 km co 10 m | 34 | 32 |
+| Oczka GAMEPLAY ±8 / ±20 km, REAL ±40 km (woda, torf, liczba) | 5376, 3376, 202 / 38728, 26244, 1558 / 16214, 10956, 2346 | bez zmian |
+| `tunnelLakesEndBeforeValleys`: za wycięciem REAL / GAMEPLAY | 27,4 / 27,1 m | 56,6 / 4,9 m |
+
+Woda wobec K4c w GAMEPLAY ±20 km: −57%, bez zmian; cel „w stronę −37%” nadal nie jest osiągnięty. Dwa jeziora mniej w ±20 km to małe jeziora, w których po wygładzeniu nie zostaje woda (jak w ZR_pit).
+
+**Koszt.** `costTest -PcostRuns=15`, A/B w jednej sesji (baza `af65015`: sam `LandscapeModel.java` z commita K8a), stosunek do kopii M1, mediana / z minimów, µs na kolumnę w nawiasie:
+
+| Obszar | Baza, przebieg 1 | Baza, przebieg 2 | Runda 1, przebieg 1 | Runda 1, przebieg 2 | Runda 1, przebieg 3 |
+|---|---|---|---|---|---|
+| REAL cały obszar | 1,085 / 1,112 (4,23) | 1,085 / 1,096 (4,23) | 1,101 / 1,108 (4,23) | 1,089 / 1,093 (4,23) | 1,105 / 1,120 (4,22) |
+| REAL Beskidy | 1,109 / 1,118 (6,94) | 1,089 / 1,105 (6,99) | 1,119 / 1,116 (6,99) | 1,098 / 1,101 (6,96) | 1,126 / 1,122 (6,99) |
+| REAL wielki masyw | 0,983 / 0,985 (6,45) | 0,982 / 0,984 (6,47) | 0,987 / 0,988 (6,49) | 0,980 / 0,982 (6,48) | 1,001 / 0,984 (6,53) |
+| GAMEPLAY cały obszar | 1,186 / 1,192 (6,37) | 1,183 / 1,181 (6,33) | **1,218 / 1,219** (6,44) | 1,178 / 1,184 (6,37) | **1,212 / 1,205** (6,39) |
+| GAMEPLAY Beskidy | 1,170 / 1,166 (11,04) | 1,156 / 1,156 (11,03) | 1,193 / 1,186 (11,24) | 1,157 / 1,149 (11,14) | 1,183 / 1,187 (11,11) |
+| GAMEPLAY wielki masyw | 1,134 / 1,134 (12,05) | 1,124 / 1,119 (11,93) | 1,150 / 1,146 (12,15) | 1,123 / 1,126 (12,09) | 1,145 / 1,145 (12,04) |
+
+Czas kolumny rundy 1 jest w granicach rozrzutu taki sam jak bazy (GAMEPLAY cały obszar 6,37–6,44 wobec 6,33–6,37 µs, do +1%; limity bezwzględne D1 dotrzymane). Stosunek skacze razem z pomiarem kopii M1 (5,27–5,39 µs w tych samych przebiegach): w dwóch z trzech przebiegów rundy 1 GAMEPLAY cały obszar przekracza 1,20 (1,21–1,22), w jednym nie (1,18); baza w tej sesji 1,18–1,19. Pomiar jednowątkowy tym samym zestawem chunków (narzędzie `K8Cost`, 15 rund, na przemian): `af65015` 6,520–6,527 µs, runda 1 6,502–6,515 µs, czyli bez różnicy. Profil (JFR): `tunnelShape` bez budowy siatki to ok. 1,2% czasu `sample`, budowa siatek (jednorazowa) 4,5% całego przebiegu z rozgrzewką. Budżet D1 w GAMEPLAY jest więc na granicy jak po K8a; kolejne kroki muszą najpierw znaleźć oszczędność (najwięcej kosztuje `RiverNetwork.query`, ok. 71% czasu).
+
+**Złoty test.** Raport `-PgoldenReport`: zmienione te same łaty co w K8a (REAL B `grid`, `tunnel_valley_lake`, `outwash_plain_lake`, GAMEPLAY A `grid`, GAMEPLAY B `grid`), więc lista `src/test/golden-allow/K8a.txt` bez zmian; łaty kontrolne `*_interior` i cele bez zmian.
+
+**Testy.** Nowe i zmienione:
+- `StandingWaterContainmentTest.tunnelValleyBasinsHaveNoGridCreases` (nowy, okna `CREASE_WINDOWS`; wynik: w wierszach węzłów 52 / 11 / 2 / 0 / 4 / 12 załamań wobec średnio 56,3 / 12,3 / 0,7 / 0 / 5,7 / 12,0 w fazach z dala od wierszy);
+- `tunnelValleyBasinsHaveNoClosedPits`: 45 okien (`PIT_SITES` z (−26381, 10061) i czterema miejscami skanu ±40 km oraz `WALL_CLUSTERS`), największa nadwyżka 3,45 m (limit 4 m); javadoc `WALL_CLUSTERS` i `PIT_MAX` uzupełnione;
+- `LandscapeModelTest.tunnelLakesEndBeforeValleys`: pola `cutGap`, `floorEdgeGap`, javadoc z wynikami rundy 1.
+
+Commity pośrednie: `184c48f` (B-splajn, obwiednie euklidesowe, gładkie maksimum), `cd91218` (zaokrąglone końce wody, wypełniona odległość od brzegu, siatki tylko w mapie, testy); przed każdym kompilacja, `fastTest`, `LandscapeModelTest`, `StandingWaterContainmentTest`, `GoldenTerrainTest` (lista K8a), przed drugim także `TerrainDeterminismTest`. Pełny `test` (`tools/dev/run-tests test`): PASS w 694 s (drzewo `af37def1e1a9`; potem zmieniał się tylko ten wpis w dokumentacji).
+
+**Odstępstwa w rundzie 1:**
+1. Ukośnie ścięty koniec soczewki przy ukośnej osi (REAL A, ZR_C) i proste odcięcie wzdłuż doliny (z zaokrąglonymi narożnikami) zostają; zob. wyżej.
+2. Zagłębienia: limit `PIT_MAX` 4 m bez zmian (największe 3,45 m). Zagłębienie w suchej odnodze niecki pochodzi z mieszania zbocza niecki z terenem, a nie z odległości od brzegu.
+3. Promień gładkiego maksimum to 30 m·k. Próba z 80 m·k dawała okrąglejsze kształty, ale zabierała do 25% wody w kadrach REAL i pogłębiała zagłębienie (−15980, 5660) do 9,7 m.
+
+**Co zostaje** (poza listą K8a): ukośny koniec soczewki (wyżej), suche rowy wzdłuż bocznych dolin i grunt podniesiony brzegiem na zboczu doliny; wszystko do oceny na kadrach w K8z.
