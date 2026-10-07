@@ -2117,7 +2117,7 @@ Oczka (`kettleTouchesTunnelLake` idzie teraz za połową szerokości z osi jezio
 - `StandingWaterContainmentTest`: `WALLS_MAX` 5 → 0, `WALL_CLUSTERS` z limitami 0 (strażnik powrotu ścian); nowy `tunnelValleyBasinsHaveNoClosedPits` (`PIT_SITES`, `PIT_MAX` 4 m, `PIT_CUT` 0,5 m);
 - `LandscapeModelTest.tunnelLakesEndBeforeValleys`: woda za środkiem ściany (`floorGap` ≥ 0) i co najmniej `tunnelBank` za brzegiem dna (`floorEdgeGap`) zamiast `floorGap` ≥ TUNNEL_END_GAP + 0,5 `tunnelBank`.
 
-**Pełny `test`** (`tools/dev/run-tests test`): FULLTEST.
+**Pełny `test`** (`tools/dev/run-tests test`): PASS (860 s; drzewo `4c0920730c0e`, potem tylko ten wpis w dokumentacji).
 
 **Odstępstwa od zadania K8a:**
 1. Gładka szczelina nie z `CoarseTerrainField`, tylko z siatki szczelin liczonej na konturze (obwiednie o nachyleniu 1): `sBar` idzie za stromym terenem i nie daje nachylenia ≤ 1 (pomiar wyżej). Siatka łączy oba warianty z zadania („połowa ściany z gładkiego pola” i „szczelina na osi jeziora”).
