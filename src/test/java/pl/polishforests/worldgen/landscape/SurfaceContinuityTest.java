@@ -196,8 +196,10 @@ class SurfaceContinuityTest {
 				// lower than that); the lagoon shore and the river mouths moved, so there are more such places in GAMEPLAY.
 				// Round 1 of the review of K8b1 (deltas from the mouths, shore noise in m·meso): 1 / 0.56 m and 9 / 0.93 m, the
 				// same mechanism (where a channel crosses a delta to its front, the 1 m ring meets the low edge of the delta).
+				// K8b2 (dunes varying along the coast, lagoon basin fading out on a hinterland of 3–9 m): 9 / 0.962 m, the
+				// same 9 places and mechanism.
 				new Window("realistic_lagoon", r, -220_000, -155_000, 6_000, 2, 1.0, 0, v, "0 at the lagoon (D2)" + d4),
-				new Window("gameplay_lagoon", g, 450, 11_000, 1_500, 9, 0.96, 0, v, "0 at the lagoon (D2)" + d4));
+				new Window("gameplay_lagoon", g, 450, 11_000, 1_500, 9, 0.97, 0, v, "0 at the lagoon (D2)" + d4));
 	}
 
 	static boolean dry(ColumnSample s) {

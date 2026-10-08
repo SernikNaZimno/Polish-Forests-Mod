@@ -30,6 +30,8 @@ import pl.polishforests.worldgen.chunk.VerticalScale;
  * {@code landElevation}) ends near the land of its lobe ({@link #deltaFrontsEndNearTheirLobes}). With the distance
  * outside a lobe as (q − 1) · min(half, reach), an elongated GAMEPLAY lobe (half-width 3.2 times its reach) raised the
  * floor up to 110 m from its land, with a trough between that ridge and the shore.
+ * Step K8b2 (carried over from the review of round 2): the lagoon basin is not cut into a hinterland slope of 7–15 m
+ * where only the displaced point of {@code lagoonCutHinterland} is low ({@link #lagoonShoresHaveNoWalls}).
  */
 class LagoonDeltaTest {
 	static final long SEED_A = 20260927L;
@@ -249,6 +251,102 @@ class LagoonDeltaTest {
 		System.out.println(report);
 		assertTrue(lobes > 0, report + ": no delta in the window");
 		assertTrue(far == 0, report);
+	}
+
+	record BankWindow(String name, long seed, double cx, double cz, int side, double maxLand, int maxSteep) {
+		@Override
+		public String toString() {
+			return name;
+		}
+	}
+
+	/**
+	 * GAMEPLAY windows of the review of round 2 of K8b1 where the basin was cut into the hinterland slope (with the
+	 * strength taken only from the relief at the displaced point): 18 dry pairs of 3 blocks per block, 739 pairs above
+	 * 1 m per meter and land up to 15.0 m within 15 m of the water at (-430, 14000), land up to 17.6 m by the water at
+	 * (5754, -15786). Limits: no dry pair above {@value #DRY_BLOCKS} blocks per block, no leak, at most {@code maxSteep}
+	 * dry pairs above 1 m per meter, land within 15 m of lagoon water at most {@code maxLand} m (K8b2: 6 pairs and
+	 * 10.5 m, 0 pairs and 9.0 m; r1 of K8b1 and earlier at most 8.8 m by the lagoons).
+	 */
+	static Stream<BankWindow> bankWindows() {
+		return Stream.of(new BankWindow("gameplay_a_bank", SEED_A, -430, 14_000, 400, 11, 20),
+				new BankWindow("gameplay_a_end", SEED_A, 5_700, -15_750, 400, 10, 20));
+	}
+
+	@ParameterizedTest(name = "{0}")
+	@MethodSource("bankWindows")
+	void lagoonShoresHaveNoWalls(BankWindow win) {
+		LandscapeModel m = new LandscapeModel(win.seed(), LandscapeScale.GAMEPLAY, 1.0);
+		VerticalScale vs = VerticalScale.GAMEPLAY;
+		int n = win.side();
+		int x0 = (int) Math.floor(win.cx() - n / 2.0);
+		int z0 = (int) Math.floor(win.cz() - n / 2.0);
+		ColumnSample[] g = new ColumnSample[n * n];
+		IntStream.range(0, n).parallel().forEach(j -> {
+			for (int i = 0; i < n; i++) {
+				g[j * n + i] = m.sample(x0 + i, z0 + j);
+			}
+		});
+		long dryBad = 0;
+		long steep = 0;
+		long leaks = 0;
+		double land = 0;
+		int landAt = -1;
+		List<String> examples = new ArrayList<>();
+		for (int j = 0; j < n; j++) {
+			for (int i = 0; i < n; i++) {
+				ColumnSample c = g[j * n + i];
+				for (int[] d : new int[][] {{1, 0}, {0, 1}}) {
+					int ii = i + d[0];
+					int jj = j + d[1];
+					if (ii >= n || jj >= n) {
+						continue;
+					}
+					ColumnSample o = g[jj * n + ii];
+					if (!c.hasWater() && !o.hasWater()) {
+						double db = Math.abs(Math.floor(vs.blocksForMeters(c.surface())) - Math.floor(vs.blocksForMeters(o.surface())));
+						if (db > DRY_BLOCKS) {
+							dryBad++;
+							note(examples, "dry step %.0f blocks at (%d, %d)", db, x0 + i, z0 + j);
+						}
+						steep += Math.abs(c.surface() - o.surface()) > 1 ? 1 : 0;
+					}
+					ColumnSample w = c.hasWater() ? c : o;
+					ColumnSample dry = c.hasWater() ? o : c;
+					if (w.hasWater() && !dry.hasWater() && dry.surface() < w.waterLevel()) {
+						leaks++;
+						note(examples, "water next to lower dry ground at (%d, %d)", x0 + i, z0 + j);
+					}
+				}
+				if (!lagoon(c)) {
+					continue;
+				}
+				for (int dj = -15; dj <= 15; dj++) {
+					for (int di = -15; di <= 15; di++) {
+						int ii = i + di;
+						int jj = j + dj;
+						if (di * di + dj * dj > 225 || ii < 0 || jj < 0 || ii >= n || jj >= n) {
+							continue;
+						}
+						ColumnSample o = g[jj * n + ii];
+						if (!o.hasWater() && o.surface() > land) {
+							land = o.surface();
+							landAt = jj * n + ii;
+						}
+					}
+				}
+			}
+		}
+		String report = String.format(Locale.ROOT,
+				"%s (gameplay, (%.0f, %.0f), %d m): dry steps > %d blocks %d, dry pairs > 1 m %d (limit %d), leaks %d,"
+						+ " land within 15 m of lagoon water up to %.1f m at (%d, %d) (limit %.0f m)",
+				win.name(), win.cx(), win.cz(), n, DRY_BLOCKS, dryBad, steep, win.maxSteep(), leaks, land,
+				landAt < 0 ? 0 : x0 + landAt % n, landAt < 0 ? 0 : z0 + landAt / n, win.maxLand());
+		System.out.println(report);
+		examples.forEach(e -> System.out.println("  " + e));
+		assertTrue(landAt >= 0, report + ": no lagoon in the window");
+		assertTrue(dryBad == 0 && leaks == 0 && steep <= win.maxSteep() && land <= win.maxLand(),
+				report + "\n  " + String.join("\n  ", examples));
 	}
 
 	static boolean lagoon(ColumnSample c) {

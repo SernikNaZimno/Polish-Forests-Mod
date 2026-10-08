@@ -20,6 +20,8 @@ import pl.polishforests.worldgen.landscape.Noise;
  * On a dune shore ({@code lowShore} ≥ 0.5) there are no cliff zones in the dune belt B ≤ cD &lt; B + D, and dunes
  * and the coastal crowberry pine forest take up most land columns outside valley floors and standing water banks.
  * A high shore has a cliff face. The dune shore takes 75–85% of the shore points (D5, {@link #duneShoreShare}).
+ * Step K8b2: the beach width B varies along a low shore, so the belts are measured from the beach width of each column
+ * ({@code terrain.beachWidth}).
  */
 class CoastTest {
 	static final long SEED = 20260927L;
@@ -30,7 +32,8 @@ class CoastTest {
 	 * Cross-section: dune shore (in the middle of the dune belt), column codes, distances from the sea, counted
 	 * columns (land outside valley floors and standing water banks) and dune shore columns.
 	 */
-	record Section(boolean duneShore, int[] codes, double[] cD, boolean[] counted, boolean[] low, double x, double z) {
+	record Section(boolean duneShore, int[] codes, double[] cD, double[] beach, boolean[] counted, boolean[] low, double x,
+			double z) {
 	}
 
 	static List<Section> sections(LandscapeModel m, HabitatClassifier k) {
@@ -103,6 +106,7 @@ class CoastTest {
 		int steps = (int) (length / step);
 		int[] codes = new int[steps];
 		double[] cD = new double[steps];
+		double[] beach = new double[steps];
 		boolean[] counted = new boolean[steps];
 		boolean[] low = new boolean[steps];
 		// Dune shore according to the field in the middle of the dune belt.
@@ -114,11 +118,12 @@ class CoastTest {
 			ColumnSample s = m.sample(px, pz);
 			codes[i] = k.classify(s, px, pz);
 			cD[i] = s.terrain().coastD();
+			beach[i] = Double.isNaN(s.terrain().beachWidth()) ? b : s.terrain().beachWidth();
 			HabitatClassifier.Column c = new HabitatClassifier.Column(k, s, px, pz);
 			counted[i] = !s.hasWater() && !c.onValleyFloor() && !(c.w.s() < Calibration.LAKE_ALDER_CARR_K * kk);
 			low[i] = s.terrain().lowShore() >= Calibration.LOW_SHORE;
 		}
-		return new Section(duneShore, codes, cD, counted, low, x, z);
+		return new Section(duneShore, codes, cD, beach, counted, low, x, z);
 	}
 
 	static void check(LandscapeScale sc) {
@@ -126,7 +131,6 @@ class CoastTest {
 		HabitatClassifier k = new HabitatClassifier(SEED, sc, HabitatClassifier.Mode.NATURAL);
 		List<Section> list = sections(m, k);
 		double kk = sc.local();
-		double b = Calibration.BEACH_B * kk;
 		double dw = Calibration.DUNES_D * kk;
 		int duneShores = 0;
 		int highShores = 0;
@@ -149,7 +153,7 @@ class CoastTest {
 			}
 			duneShores++;
 			for (int i = 0; i < p.codes().length; i++) {
-				if (p.cD()[i] < b || p.cD()[i] >= b + dw || !p.counted()[i] || !p.low()[i]) {
+				if (p.cD()[i] < p.beach()[i] || p.cD()[i] >= p.beach()[i] + dw || !p.counted()[i] || !p.low()[i]) {
 					continue;
 				}
 				int code = p.codes()[i];
@@ -194,7 +198,6 @@ class CoastTest {
 		LandscapeModel m = new LandscapeModel(SEED, sc, 1.0);
 		HabitatClassifier k = new HabitatClassifier(SEED, sc, HabitatClassifier.Mode.NATURAL);
 		double kk = sc.local();
-		double b = Calibration.BEACH_B * kk;
 		double dw = Calibration.DUNES_D * kk;
 		double grid = sc == LandscapeScale.REALISTIC ? 12_000 : 600;
 		int n = sc == LandscapeScale.REALISTIC ? 250 : 150;
@@ -212,7 +215,7 @@ class CoastTest {
 			}
 			boolean cliff = false;
 			boolean white = false;
-			for (int i = 0; i < p.codes().length && p.cD()[i] < b + dw; i++) {
+			for (int i = 0; i < p.codes().length && p.cD()[i] < p.beach()[i] + dw; i++) {
 				Zone zone = Habitat.zone(p.codes()[i]);
 				cliff |= zone == Zone.CLIFF_FACE || zone == Zone.CLIFF_TOP;
 				white |= Habitat.biome(p.codes()[i]) == HabitatBiome.WHITE_DUNE;

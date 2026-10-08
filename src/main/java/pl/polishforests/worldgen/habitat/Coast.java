@@ -23,7 +23,8 @@ final class Coast {
 		ColumnSample.Terrain t = c.t;
 		double k = c.k;
 		double cD = t.coastD();
-		double b = Calibration.BEACH_B * k;
+		// K8b2: the beach width of the column (it varies along a low shore); B·k without a coast sample.
+		double b = c.beachWidth();
 		double d = Calibration.DUNES_D * k;
 		// The crowberry pine forest boundary (2000 m·k) jitters with the variant noise so that it is not a line
 		// parallel to the shore; the belt ends beyond its farthest position.

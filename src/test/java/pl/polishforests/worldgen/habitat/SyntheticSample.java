@@ -169,7 +169,8 @@ final class SyntheticSample {
 		double raw = Double.isNaN(rawSurface) ? surface : rawSurface;
 		double sb = Double.isNaN(sBar) ? surface : sBar;
 		ColumnSample.Terrain t = new ColumnSample.Terrain(raw, coastD, wOutwashPlain, wMorainePlateau, wOldGlacialPlain, wFoothills, wBeskids,
-				wCoastland, landformBits, convexity, duneHeight, ridgeProfile, massif, summit, cliffHeight, lowShore, bareSandWidth, sandiness, sb, slope, aspect);
+				wCoastland, landformBits, convexity, duneHeight, ridgeProfile, massif, summit, cliffHeight, lowShore, bareSandWidth, sandiness, sb, slope, aspect,
+				Double.NaN);
 		ColumnSample.Waters w = new ColumnSample.Waters(streamOrder, headwaters, channelDist, channelWidth, channelLevel, inFloor, u,
 				floorHalfWidth, channelGradient, convexBank, s, shoreLevel, kind, ombrotrophicPeat, lakeId, radius,
 				floorChannelDist, floorChannelWidth, floorChannelLevel,

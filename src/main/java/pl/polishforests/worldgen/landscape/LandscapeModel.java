@@ -71,6 +71,8 @@ public final class LandscapeModel {
 	private final Noise coast;
 	/** K8b1: landward shore of a lagoon (bays, peninsulas) and its river deltas; a new seed, so the rest does not change. */
 	private final Noise lagoonShore;
+	/** K8b2: foredune crest, saddles, beach width and gray dune hummocks (new seed). */
+	private final Noise coastDunes;
 	/** K8b1: octaves of the lagoon shore noise at this scale ({@link #LAGOON_SHORE_MIN_WAVE}). */
 	private final int lagoonShoreOctaves;
 	/** Sandiness of the deposit (M2, habitats). */
@@ -199,6 +201,7 @@ public final class LandscapeModel {
 		this.zoneSea = root.derive("zone.sea");
 		this.coast = root.derive("coast");
 		this.lagoonShore = root.derive("coast.lagoon.shore");
+		this.coastDunes = root.derive("coast.dunes");
 		int octaves = 1;
 		for (double wave = LAGOON_SHORE_WAVE * meso / 2.03; wave >= LAGOON_SHORE_MIN_WAVE * local; wave /= 2.03) {
 			octaves++;
@@ -359,8 +362,12 @@ public final class LandscapeModel {
 		// The terrain drops towards the sea, but part of the relief remains so that cliffs can form.
 		double hl = h * (0.12 + 0.88 * Noise.smoothstep(0, band, d));
 		double beach = beachWidth();
-		double shore = 2.0 * Noise.smoothstep(0, beach, d);
 		double low = 1 - cliff;
+		// K8b2: the beach width varies along the coast on a low shore.
+		double sandBeach = sandBeach(x, z, d, cliff);
+		// The beach rises to 2 m over its width, but not over less than 60 m·k: where the coast distance changes faster
+		// than 1 m per meter (near its saddles, docs/m2/poprawka-geometrii.md, K8b2) a narrower beach would be steeper.
+		double shore = 2.0 * Noise.smoothstep(0, Math.max(beach, sandBeach), d);
 		// Lagoon behind a spit (D2): its strength along the coast and its width. K8b1: behind the seaward part of the basin
 		// the hinterland and the lagoon use a coast distance displaced by the lagoon shore noise (bays and peninsulas).
 		double lagoon = 0;
@@ -400,25 +407,52 @@ public final class LandscapeModel {
 		if (low <= 0) {
 			return result;
 		}
-		// White foredune right behind the beach, 6–15 m high along the coast.
-		double u = (d - beach) / (COAST_FOREDUNE * local);
-		if (u > 0 && u < 1) {
-			double height = 6 + 9 * (0.5 + 0.5 * coast.at(x, z, 3_000 * meso));
-			double bump = Math.sin(Math.PI * u);
-			// A smooth maximum (rounding of up to 1 m · bump) instead of max(): where a foredune grows out of the lowered
-			// top of a partial cliff it left a sharp crease (review of K5).
-			double dune = shore + low * height * bump * bump;
-			double round = 2 * bump;
-			result = 0.5 * (result + dune + Math.sqrt((result - dune) * (result - dune) + round * round));
-		}
-		// Gray dunes: hummocks of 2–8 m behind the foredune.
-		double g0 = beach + 0.6 * COAST_FOREDUNE * local;
-		double g1 = beach + COAST_GRAY_END * local;
-		if (d > g0 && d < g1) {
-			double env = Noise.smoothstep(g0, g0 + 60 * local, d) * (1 - Noise.smoothstep(g1 - 120 * local, g1, d));
-			double hummock = Math.max(0, coast.at(x + 3_331, z - 1_777, 140 * local));
-			double height = (2 + 6 * (0.5 + 0.5 * coast.at(x - 2_222, z + 4_444, 2_000 * meso))) * hummock;
-			result = Math.max(result, lowLand + low * env * height);
+		if (d < DUNE_BAND * local) {
+			// K8b2: the variations along the coast only on a nearly full low shore (a partial cliff keeps the K5 dunes).
+			double vary = Noise.smoothstep(DUNE_VARY_0, DUNE_VARY_1, low);
+			double saddle = vary <= 0 ? 0 : vary * Noise.smoothstep(SADDLE_0, SADDLE_1,
+					coastDunes.at(x + 5_501, z - 6_607, SADDLE_WAVE * local));
+			// White foredune behind the beach: crest height, width and crest position vary along the coast.
+			double w = COAST_FOREDUNE * local;
+			if (vary > 0) {
+				// Only wider than in K5 (as the beach, not steeper where the coast distance is compressed).
+				w *= 1 + vary * FOREDUNE_WIDTH_VAR * (0.5 + 0.5 * coastDunes.fbm(x + 3_917, z - 1_123, FOREDUNE_WIDTH_WAVE * local, 2, 0.5));
+			}
+			double u = (d - sandBeach) / w;
+			if (u > 0 && u < 1) {
+				double old = 6 + 9 * (0.5 + 0.5 * coast.at(x, z, 3_000 * meso));
+				double amp = old;
+				double v = u;
+				if (vary > 0) {
+					double uc = 0.5 + vary * (FOREDUNE_CREST - 0.5
+							+ FOREDUNE_CREST_VAR * coastDunes.at(x - 7_771, z + 2_029, FOREDUNE_CREST_WAVE * local));
+					v = u < uc ? 0.5 * u / uc : 0.5 + 0.5 * (u - uc) / (1 - uc);
+					double t = Math.clamp(0.5 + coastDunes.fbm(x + 1_357, z + 9_431, FOREDUNE_HEIGHT_WAVE * local, 3, 0.5), 0.0, 1.0);
+					double crest = (6 + 9 * t * t * (3 - 2 * t)) * (1 - SADDLE_DEPTH * saddle);
+					amp = Noise.lerp(vary, old, crest - 2);
+				}
+				double bump = Math.sin(Math.PI * v);
+				double dune = shore + low * amp * bump * bump;
+				double round = 2 * bump;
+				result = 0.5 * (result + dune + Math.sqrt((result - dune) * (result - dune) + round * round));
+			}
+			// Gray dunes: a belt of hummocks (2D noise) behind the foredune, flattened behind a saddle (deflation hollow).
+			double g0 = sandBeach + 0.6 * w;
+			double g1 = sandBeach + COAST_GRAY_END * local;
+			if (vary > 0) {
+				g1 += vary * COAST_GRAY_END * local * GRAY_END_VAR * coastDunes.at(x + 8_123, z + 4_567, GRAY_END_WAVE * local);
+			}
+			if (d > g0 && d < g1) {
+				double env = Noise.smoothstep(g0, g0 + 60 * local, d) * (1 - Noise.smoothstep(g1 - 120 * local, g1, d));
+				double hummock = Math.max(0, coast.at(x + 3_331, z - 1_777, 140 * local));
+				if (vary > 0) {
+					double hn = coastDunes.fbm(x + 3_331, z - 1_777, GRAY_HUMMOCK_WAVE * local, 2, 0.5);
+					double hill = Noise.smoothstep(GRAY_HUMMOCK_0, GRAY_HUMMOCK_1, hn) * Math.clamp(GRAY_HUMMOCK_BASE + hn, 0.0, 1.0);
+					hummock = Noise.lerp(vary, hummock, hill * (1 - saddle));
+				}
+				double height = (2 + 6 * (0.5 + 0.5 * coast.at(x - 2_222, z + 4_444, 2_000 * meso))) * hummock;
+				result = Math.max(result, lowLand + low * env * height);
+			}
 		}
 		// Lagoon behind a spit: a shallow lake at sea level, behind the dunes, only where the hinterland is low.
 		if (lagoon > 0) {
@@ -435,11 +469,26 @@ public final class LandscapeModel {
 				// shore is not the straight foot of the hill.
 				// (The share of a low shore at the column itself only fades it out next to a full cliff, where the lagoon
 				// ends: lagoonStrength is not computed there.)
-				double f = lagoon * Noise.smoothstep(0, 0.3, low) * lagoonCutHinterland(x, z, d, dl, width);
+				double f = lagoon * Noise.smoothstep(0, 0.3, low) * lagoonCutHinterland(x, z, d, dl, width)
+						* (1 - Noise.smoothstep(LAGOON_CUT_COLUMN_0, LAGOON_CUT_COLUMN_1, base));
 				result = Math.min(result, result - bowl * f * (Math.max(0, result) + COAST_LAGOON_DEPTH));
 			}
 		}
 		return result;
+	}
+
+	/**
+	 * K8b2: width of the sandy beach (m) at (x, z), {@code d} from the shoreline, with the cliff share {@code cliff}: on a
+	 * nearly full low shore ({@link #DUNE_VARY_0}–{@link #DUNE_VARY_1} of {@code 1 − cliff}) the 60 m·k of D5 varies by
+	 * ±{@link #BEACH_VAR} times a noise of two octaves from {@link #BEACH_WAVE} m·k (typically 35–85 m·k); on a cliff and
+	 * beyond the dune belt it is 60 m·k.
+	 */
+	private double sandBeach(double x, double z, double d, double cliff) {
+		double vary = Noise.smoothstep(DUNE_VARY_0, DUNE_VARY_1, 1 - cliff);
+		if (vary <= 0 || d < 0 || d >= DUNE_BAND * local) {
+			return beachWidth();
+		}
+		return beachWidth() * (1 + vary * BEACH_VAR * coastDunes.fbm(x - 9_001, z + 3_003, BEACH_WAVE * local, 2, 0.5));
 	}
 
 	/**
@@ -665,6 +714,60 @@ public final class LandscapeModel {
 	static final double COAST_GRAY_END = 420;
 	/** D2: start of the lagoon behind the beach (m·k). */
 	static final double COAST_LAGOON_START = 300;
+	/** K8b2: the dune belt in which the beach, foredune and gray dunes vary along the coast ends here (m·k). */
+	static final double DUNE_BAND = 800;
+	/**
+	 * K8b2: share of a low shore ({@code 1 − cliff}) over which the variations along the coast set in, so a partial cliff
+	 * (its 2.5 : 1 wall and the dune on its lowered top) keeps the K5 profile.
+	 */
+	static final double DUNE_VARY_0 = 0.7;
+	static final double DUNE_VARY_1 = 0.95;
+	/** K8b2: relative variation of the beach width and the longest wavelength of its noise (m·k, two octaves). */
+	static final double BEACH_VAR = 0.8;
+	static final double BEACH_WAVE = 700;
+	/**
+	 * K8b2: largest relative widening of the foredune ({@link #COAST_FOREDUNE}; typically 1.1–1.3 times) and the wavelength
+	 * of its noise (m·k, two octaves).
+	 */
+	static final double FOREDUNE_WIDTH_VAR = 0.4;
+	static final double FOREDUNE_WIDTH_WAVE = 500;
+	/**
+	 * K8b2: position of the foredune crest across the dune as a share of its width (seaward foot 0, landward foot 1), its
+	 * variation and wavelength (m·k): the crest moves across the dune by about ±10% of its width.
+	 */
+	static final double FOREDUNE_CREST = 0.49;
+	static final double FOREDUNE_CREST_VAR = 0.1;
+	static final double FOREDUNE_CREST_WAVE = 400;
+	/** K8b2: longest wavelength (m·k) of the foredune crest height, 6–15 m above the sea (three octaves: 600, 300, 150). */
+	static final double FOREDUNE_HEIGHT_WAVE = 600;
+	/**
+	 * K8b2: saddles of the foredune (blowouts) with deflation hollows behind them: where a noise of {@link #SADDLE_WAVE}
+	 * m·k rises from {@link #SADDLE_0} to {@link #SADDLE_1}, the crest falls by up to {@link #SADDLE_DEPTH} of its height
+	 * and the gray dune hummocks behind it flatten to the hinterland (every 300–600 m·k along the coast).
+	 */
+	static final double SADDLE_WAVE = 220;
+	static final double SADDLE_0 = 0.05;
+	static final double SADDLE_1 = 0.3;
+	static final double SADDLE_DEPTH = 0.75;
+	/** K8b2: variation of the end of the gray dunes ({@link #COAST_GRAY_END}) and its wavelength (m·k). */
+	static final double GRAY_END_VAR = 0.25;
+	static final double GRAY_END_WAVE = 700;
+	/**
+	 * K8b2: gray dune hummocks: a noise of two octaves from {@link #GRAY_HUMMOCK_WAVE} m·k, hummocks where it rises from
+	 * {@link #GRAY_HUMMOCK_0} to {@link #GRAY_HUMMOCK_1}, rounded tops following the noise (plus {@link #GRAY_HUMMOCK_BASE}).
+	 */
+	static final double GRAY_HUMMOCK_WAVE = 160;
+	static final double GRAY_HUMMOCK_0 = -0.35;
+	static final double GRAY_HUMMOCK_1 = 0.25;
+	static final double GRAY_HUMMOCK_BASE = 0.45;
+	/**
+	 * K8b2 (carried over from the review of round 2 of K8b1): the lagoon basin also fades out where the hinterland of the
+	 * column itself rises from {@link #LAGOON_CUT_COLUMN_0} to {@link #LAGOON_CUT_COLUMN_1} m, so a hinterland that is
+	 * low only at the displaced point of {@link #lagoonCutHinterland} does not get a full basin cut into a slope of
+	 * 7–15 m (walls of 3 blocks per block in GAMEPLAY).
+	 */
+	static final double LAGOON_CUT_COLUMN_0 = 3;
+	static final double LAGOON_CUT_COLUMN_1 = 9;
 	/** D2: value of the lagoon noise (wavelength 60 km·meso) below which there is no lagoon. */
 	static final double COAST_LAGOON_0 = 0.32;
 	/**
@@ -1542,6 +1645,8 @@ public final class LandscapeModel {
 		double cliff = coastD < 25_000 * meso ? cliffShore(x, z, b) : 0;
 		double surface = shapeCoast(raw, coastD, x, z, cliff);
 		double rawSurface = surface;
+		// K8b2: width of the sandy beach of the column (it varies along a low shore), for the landforms and habitats.
+		double sandBeach = coastD >= 0 && coastD < 25_000 * meso ? sandBeach(x, z, coastD, cliff) : Double.NaN;
 		LandscapeType dominant = b.dominant();
 		double lowland = b.weight(LandscapeType.OUTWASH_PLAIN) + b.weight(LandscapeType.MORAINE_PLATEAU)
 				+ b.weight(LandscapeType.OLD_GLACIAL_PLAIN);
@@ -1562,14 +1667,14 @@ public final class LandscapeModel {
 			LandscapeType t = coastD < 0 ? LandscapeType.SEA : LandscapeType.COASTLAND;
 			Substrate sub = coastD < 0 && -coastD > 3_000 * meso ? Substrate.LAKE_MUD : Substrate.SAND;
 			return new ColumnSample(surface, 0, WaterKind.SEA, t, coastD < 0 ? sub : Substrate.LAKE_MUD, 30.0,
-					terrain(b, parts, t, raw, rawSurface, coastD, cliff, 0, Double.NaN, Double.NaN, 0, x, z), ColumnSample.Waters.NONE,
+					terrain(b, parts, t, raw, rawSurface, coastD, cliff, 0, Double.NaN, Double.NaN, 0, sandBeach, x, z), ColumnSample.Waters.NONE,
 					regional.sample(x, z));
 		}
 		double bare = Double.NaN;
-		if (coastD < beachWidth() + 400 * local) {
+		if (coastD < sandBeach + 400 * local) {
 			dominant = LandscapeType.COASTLAND;
 			// Beach and white dune without turf; further from the sea the vegetated gray dune.
-			bare = beachWidth() + 220 * local * (0.6 + 0.4 * coast.at(x, z, 400 * local));
+			bare = sandBeach + 220 * local * (0.6 + 0.4 * coast.at(x, z, 400 * local));
 			// D5: till only on a high shore (a cliff); the dunes of a low shore are sand also above 8 m.
 			substrate = surface > 8 && cliff >= 0.5 ? Substrate.GLACIAL_TILL : coastD < bare ? Substrate.BEACH_SAND : Substrate.SAND;
 		}
@@ -1706,11 +1811,11 @@ public final class LandscapeModel {
 						r.inFloor(), r.floorU(), r.floorHalf(), r.slope(), r.convexBank(), standingShore, standingLevel, standingKind,
 						standingOmbrotrophic, standingId, standingRadius, r.floorChannelDist(), r.floorChannelWidth(),
 						r.floorChannelLevel(), r.floorChannelGradient(), r.softChannelLevel());
-		int landformBits = forms(r, parts, dominant, surface, rawSurface, coastD, water);
+		int landformBits = forms(r, parts, dominant, surface, rawSurface, coastD, sandBeach, water);
 		// Large massif (E12): highest terrain within 3 km·mspace, only where the altitudinal belts need it.
 		double summit = mountains > 0 && surface >= AltitudinalBelts.SUMMIT_FROM ? peaks.sample(x, z) : 0;
 		return new ColumnSample(surface, water, kind, dominant, substrate, cover,
-				terrain(b, parts, dominant, raw, rawSurface, coastD, cliff, landformBits, sandiness(x, z), bare, summit, x, z),
+				terrain(b, parts, dominant, raw, rawSurface, coastD, cliff, landformBits, sandiness(x, z), bare, summit, sandBeach, x, z),
 				waters,
 				regional.sample(x, z));
 	}
@@ -1720,7 +1825,7 @@ public final class LandscapeModel {
 	 * {@link Landform#bit()} bits of the landforms in {@link Landform#FROM_SAMPLE}. A separate method so that {@link #sample} does not grow.
 	 */
 	private int forms(RiverNetwork.RiverHit r, ReliefParts parts, LandscapeType dominant, double surface, double rawSurface,
-			double coastD, int water) {
+			double coastD, double sandBeach, int water) {
 		int landformBits = 0;
 		if (r.order() > 0 && r.source() && (r.inChannel() || r.inFloor())) {
 			landformBits |= Landform.HEADWATERS.bit();
@@ -1732,9 +1837,9 @@ public final class LandscapeModel {
 			double beach = beachWidth();
 			if (surface > 8 && rawSurface > 8 && coastD < beach + rawSurface / 2.5 + 20 * local) {
 				landformBits |= Landform.CLIFF.bit();
-			} else if (surface < 3 && coastD < 1.3 * beach) {
+			} else if (surface < 3 && coastD < 1.3 * sandBeach) {
 				landformBits |= Landform.BEACH.bit();
-			} else if (surface >= 3 && coastD >= 0.8 * beach && coastD < beach + 220 * local) {
+			} else if (surface >= 3 && coastD >= 0.8 * sandBeach && coastD < sandBeach + 220 * local) {
 				landformBits |= Landform.COASTAL_DUNES.bit();
 			}
 		}
@@ -1761,7 +1866,8 @@ public final class LandscapeModel {
 	 * at point (x, z).
 	 */
 	private ColumnSample.Terrain terrain(Blend b, ReliefParts parts, LandscapeType dominant, double raw, double rawSurface,
-			double coastD, double cliff, int landformBits, double sandiness, double bare, double summit, double x, double z) {
+			double coastD, double cliff, int landformBits, double sandiness, double bare, double summit, double sandBeach, double x,
+			double z) {
 		// Cliff edge: terrain before cutting valleys, in the CLIFF landform belt.
 		double cliffHeight = (landformBits & Landform.CLIFF.bit()) != 0 ? rawSurface : 0;
 		// Coastal belt: 1 where the sample gets the COASTLAND type, 0 at the edge of the belt B + D + 2000k (M2 plan §3.4).
@@ -1783,7 +1889,7 @@ public final class LandscapeModel {
 				b.weight(LandscapeType.MORAINE_PLATEAU), b.weight(LandscapeType.OLD_GLACIAL_PLAIN),
 				b.weight(LandscapeType.FOOTHILLS), b.weight(LandscapeType.BESKIDS), coastBand, landformBits, parts.convexity * coastScale,
 				parts.duneHeight * coastScale,
-				ridgeProfile, parts.massif, summit, cliffHeight, low, bare, sandiness, g.sBar(), g.slope(), g.aspect());
+				ridgeProfile, parts.massif, summit, cliffHeight, low, bare, sandiness, g.sBar(), g.slope(), g.aspect(), sandBeach);
 	}
 
 	/** Sandiness of the deposit 0–1: quantile of a noise with a 2 km·k wavelength, so the share of sands is a simple threshold. */

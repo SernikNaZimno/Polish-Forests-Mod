@@ -77,11 +77,13 @@ public record ColumnSample(double surface, int waterLevel, WaterKind waterKind, 
 	 *                         tan(slope) · d(blocks)/d(meters) from {@code VerticalScale} (docs/03-m2-biomy.md, state after S3)
 	 * @param aspect           aspect (°): downslope direction from north (−Z) clockwise
 	 *                         (90 east +X, 180 south +Z, 270 west −X); NaN on flat terrain
+	 * @param beachWidth       width of the sandy beach (m from the shoreline) at this place of the coast (step K8b2: it varies
+	 *                         along a low shore, 60 m·k on a cliff); NaN outside the belt 25 km·meso from the sea
 	 */
 	public record Terrain(double rawSurface, double coastD, double wOutwashPlain, double wMorainePlateau, double wOldGlacialPlain,
 			double wFoothills, double wBeskids, double wCoastland, int landformBits, double convexity, double duneHeight, double ridgeProfile,
 			double massif, double summit, double cliffHeight, double lowShore, double bareSandWidth, double sandiness, double sBar,
-			double slope, double aspect) {
+			double slope, double aspect, double beachWidth) {
 		/** Whether {@code sample} recognised the landform (only the landforms listed for {@code landformBits}). */
 		public boolean has(Landform landform) {
 			return (landformBits & landform.bit()) != 0;

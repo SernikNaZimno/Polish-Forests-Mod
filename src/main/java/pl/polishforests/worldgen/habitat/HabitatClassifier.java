@@ -357,7 +357,7 @@ public final class HabitatClassifier {
 				return false;
 			}
 			double cD = t.coastD();
-			if (!(cD >= 0 && cD < (Calibration.BEACH_B + Calibration.DUNES_D + Calibration.GRAY_DUNE_K * (1 + Calibration.GRAY_DUNE_JITTER)) * k)
+			if (!(cD >= 0 && cD < beachWidth() + (Calibration.DUNES_D + Calibration.GRAY_DUNE_K * (1 + Calibration.GRAY_DUNE_JITTER)) * k)
 					|| cD >= duneBeltEnd()) {
 				return false;
 			}
@@ -369,13 +369,23 @@ public final class HabitatClassifier {
 		}
 
 		/**
-		 * Landward end of the dune belt (beach, white and gray dunes): B + D + {@link Calibration#GRAY_DUNE_K}·k, the gray
+		 * Landward end of the dune belt (beach, white and gray dunes): B + D + {@link Calibration#GRAY_DUNE_K}·k (B the
+		 * {@link #beachWidth} of the column), the gray
 		 * dune belt jittered by ±{@link Calibration#GRAY_DUNE_JITTER} with a noise of {@link Calibration#GRAY_DUNE_JITTER_WAVELENGTH} m·k
 		 * (step H, round 1 of the review).
 		 */
 		double duneBeltEnd() {
 			double gray = Calibration.GRAY_DUNE_K * (1 + Calibration.GRAY_DUNE_JITTER * jitterNoise(18, Calibration.GRAY_DUNE_JITTER_WAVELENGTH));
-			return (Calibration.BEACH_B + Calibration.DUNES_D + gray) * k;
+			return beachWidth() + (Calibration.DUNES_D + gray) * k;
+		}
+
+		/**
+		 * Width of the sandy beach (m): from the sample ({@code terrain.beachWidth}, step K8b2: it varies along a low shore),
+		 * {@link Calibration#BEACH_B}·k without it.
+		 */
+		double beachWidth() {
+			double b = t.beachWidth();
+			return Double.isNaN(b) ? Calibration.BEACH_B * k : b;
 		}
 
 		/** A sea shore with dunes (low), not with a cliff. */
