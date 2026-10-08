@@ -49,6 +49,8 @@ final class RiverNetwork {
 	private final double chan;
 	private final double wallScale;
 	private final double valleyScale;
+	/** K8c: weight of the finer octave of the floor micro-relief, {@link #FLOOR_FINE_WEIGHT} at realistic scale, else 0. */
+	private final double floorFine;
 	private final double meso;
 	private final double tileSize;
 
@@ -435,6 +437,31 @@ final class RiverNetwork {
 		return EDGE_WEIGHT_1 * noise.at(x + 731_000, z - 113_000, EDGE_WAVE_1 * valleyScale)
 				+ EDGE_WEIGHT_2 * noise.at(x - 310_000, z + 977_000, EDGE_WAVE_2 * valleyScale);
 	}
+
+	/**
+	 * Height of a valley floor above the water level of its channel at (x, z), 1.2–2.2 m: the micro-relief of the floors,
+	 * a noise of 90 m·k. Step K8c: at realistic scale, on the lowlands (weight smoothstep(0.3, 0.6, lowland)), a second
+	 * octave of 35 m (weight up to 0.5, its frame rotated by 36.87° against the lattice of the first) is added. With the
+	 * 90 m noise alone the 1-block contours on the nearly flat floors ran straight for 40–50 m where its gradient was
+	 * nearly uniform (a straight step next to the oxbow lake in oxbow_lake.png of the game test); the finer octave bends
+	 * them. The sum is divided by its weights, so the range stays 1.2–2.2 m. The gameplay floors (k = 0.5, the 90 m·k
+	 * noise has 45 m there) and the mountain floors do not change: a second octave on the gameplay floors (17.5 m or 35 m)
+	 * cut the alder carr there into patches (WatersideZonesTest: 44% of the chords at least 10 blocks, limit 50%), and
+	 * on the mountain floors it changed the rivers at the sink lakes of the great massifs (MassifSinkLakeContainmentTest).
+	 */
+	private double floorOffset(double x, double z, double lowland) {
+		double n = noise.at(x, z, 90 * valleyScale);
+		double fine = floorFine * Noise.smoothstep(0.3, 0.6, lowland);
+		if (fine > 0) {
+			n = (n + fine * noise.at(0.8 * x - 0.6 * z + 417_000, 0.6 * x + 0.8 * z - 263_000, FLOOR_FINE_WAVE)) / (1 + fine);
+		}
+		return 1.2 + 1.0 * (0.5 + 0.5 * n);
+	}
+
+	/** K8c: largest weight of the finer octave of the floor micro-relief at realistic scale ({@link #floorOffset}). */
+	static final double FLOOR_FINE_WEIGHT = 0.5;
+	/** K8c: wavelength of the finer octave of the floor micro-relief (m; {@link #floorOffset}). */
+	static final double FLOOR_FINE_WAVE = 35.0;
 
 	/**
 	 * Margin of the valley floor beyond the channel half-width at t (floorHalf = w / 2 + margin), from the floodplain
@@ -1253,6 +1280,8 @@ final class RiverNetwork {
 		this.chan = scale.channel();
 		this.wallScale = scale == LandscapeScale.REALISTIC ? 1.0 : 1.0 / scale.local();
 		this.valleyScale = scale.local();
+		// K8c: the finer octave of the floor micro-relief only at realistic scale (floorOffset).
+		this.floorFine = valleyScale >= 1 ? FLOOR_FINE_WEIGHT : 0;
 		this.tileSize = 64;
 	}
 
@@ -2781,6 +2810,8 @@ final class RiverNetwork {
 		double edge = Double.NaN;
 		// G5: largest floor mask of the segments so far.
 		double maskAcc = 0;
+		// Height of the valley floors above the water (the same for every segment), computed lazily (NaN until then).
+		double floorOffset = Double.NaN;
 		// K5.2: distance beyond the edge of the cut of the nearest valley (tunnel valley lakes end before it).
 		double floorGap = Double.POSITIVE_INFINITY;
 		// K8a: distance beyond the edge of the floor of the nearest valley (without the wall).
@@ -2822,8 +2853,10 @@ final class RiverNetwork {
 			double floorDist = Math.max(0, armFd);
 			double fromSource = t * s.len;
 			double fade = s.headFade > 0 ? Noise.smoothstep(0, s.headFade, fromSource) : 1.0;
-			// Continuous valley floor (without water level steps), always at least 1.2 m above the water.
-			double floorOffset = 1.2 + 1.0 * (0.5 + 0.5 * noise.at(x, z, 90 * valleyScale));
+			// Continuous valley floor (without water level steps), always at least 1.2 m above the water (floorOffset).
+			if (floorOffset != floorOffset) {
+				floorOffset = floorOffset(x, z, lowland);
+			}
 			double floor = level + floorOffset;
 			// Valley: the floor, and beyond it a side of limited steepness that blends smoothly into the relief.
 			double wall = Math.clamp((terrain - floor) / maxSlope, 20 * valleyScale, maxWall());
