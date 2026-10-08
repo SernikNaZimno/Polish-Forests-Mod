@@ -33,6 +33,11 @@ public final class TreeStandFeature implements Feature {
 	public static final MapCodec<TreeStandFeature> CODEC = TreePalette.Rule.CODEC.listOf().fieldOf("rules")
 			.xmap(rules -> new TreeStandFeature(new TreePalette(rules)), f -> f.palette.rules());
 
+	/** Time spent in the tree stand (ns), number of chunks and of trees placed (§12.3: time of each dispatcher layer). */
+	public static final java.util.concurrent.atomic.LongAdder NANOS = new java.util.concurrent.atomic.LongAdder();
+	public static final java.util.concurrent.atomic.LongAdder CHUNKS = new java.util.concurrent.atomic.LongAdder();
+	public static final java.util.concurrent.atomic.LongAdder TREES = new java.util.concurrent.atomic.LongAdder();
+
 	private final TreePalette palette;
 	private final List<Holder<PlacedFeature>> trees;
 	private final TreeStandPlan.Palette plan;
@@ -79,6 +84,16 @@ public final class TreeStandFeature implements Feature {
 
 	@Override
 	public boolean place(WorldGenLevel level, ChunkGenerator generator, RandomSource random, BlockPos origin) {
+		long t0 = System.nanoTime();
+		try {
+			return plant(level, generator, origin);
+		} finally {
+			NANOS.add(System.nanoTime() - t0);
+			CHUNKS.increment();
+		}
+	}
+
+	private boolean plant(WorldGenLevel level, ChunkGenerator generator, BlockPos origin) {
 		ChunkAccess chunk = level.getChunk(origin.getX() >> 4, origin.getZ() >> 4);
 		ChunkHabitats habitats = ModFeatures.habitats(chunk, generator, level.getSeed());
 		if (habitats == null) {
@@ -97,7 +112,10 @@ public final class TreeStandFeature implements Feature {
 			int column = p >>> 16;
 			BlockPos at = new BlockPos(pos.getMinBlockX() + (column >> 4), habitats.top()[column] + 1,
 					pos.getMinBlockZ() + (column & 15));
-			placed |= trees.get(p & 0xFFFF).value().place(level, generator, treeRandom, at);
+			if (trees.get(p & 0xFFFF).value().place(level, generator, treeRandom, at)) {
+				placed = true;
+				TREES.increment();
+			}
 		}
 		return placed;
 	}

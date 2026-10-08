@@ -30,6 +30,7 @@ import pl.polishforests.PolishForests;
 import pl.polishforests.climate.BiomeClimateAccess;
 import pl.polishforests.worldgen.chunk.PolandChunkGenerator;
 import pl.polishforests.worldgen.chunk.PolandScale;
+import pl.polishforests.worldgen.feature.ModFeatures;
 import pl.polishforests.worldgen.habitat.Habitat;
 import pl.polishforests.worldgen.habitat.HabitatBiome;
 import pl.polishforests.worldgen.habitat.HabitatClassifier;
@@ -79,6 +80,7 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 				PolishForests.LOG.info("[habitats] {}: {}", name, sp.getServer().computeOnServer(
 						s -> locateTime(s, "locate biome polishforests:dwarf_pine_scrub")));
 				PolishForests.LOG.info("[habitats] {}: {}", name, sp.getServer().computeOnServer(HabitatsClientGameTest::biomesPerChunk));
+				PolishForests.LOG.info("[habitats] {}: {}", name, sp.getServer().computeOnServer(HabitatsClientGameTest::habitatMisses));
 			}
 		}
 	}
@@ -147,6 +149,37 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 			throw new AssertionError(String.format(Locale.ROOT, "BIOMES %.3f ms per chunk (budget %.1f ms)", ms, BIOMES_LIMIT_MS));
 		}
 		return String.format(Locale.ROOT, "BIOMES %.3f ms per chunk (%d chunks, budget %.1f ms)", ms, chunks, BIOMES_LIMIT_MS);
+	}
+
+	/**
+	 * Chunk habitats ({@code ChunkHabitats}, §8.3): 36 new chunks generated to the full status in one area; the tree
+	 * stand must find the attachment written in {@code fill()} in at least 99.5% of the chunks ({@code HABITAT_MISS},
+	 * budget §3.6), and no chunk keeps the attachment after its last stage.
+	 */
+	private static String habitatMisses(MinecraftServer server) {
+		ServerLevel level = server.overworld();
+		long miss0 = ModFeatures.HABITAT_MISS.sum();
+		long chunks0 = PolandChunkGenerator.CHUNKS.sum();
+		int ox = 60_000 >> 4;
+		int oz = -40_000 >> 4;
+		int kept = 0;
+		for (int cx = 0; cx < 6; cx++) {
+			for (int cz = 0; cz < 6; cz++) {
+				if (level.getChunk(ox + cx, oz + cz).hasAttached(ModFeatures.CHUNK_HABITATS)) {
+					kept++;
+				}
+			}
+		}
+		long misses = ModFeatures.HABITAT_MISS.sum() - miss0;
+		long chunks = PolandChunkGenerator.CHUNKS.sum() - chunks0;
+		if (chunks < 36 || misses > 0.005 * chunks) {
+			throw new AssertionError("Chunk habitats missing in " + misses + " of " + chunks + " chunks");
+		}
+		if (kept > 0) {
+			throw new AssertionError(kept + " full chunks still hold the chunk habitats");
+		}
+		return String.format(Locale.ROOT, "chunk habitats missing in %d of %d chunks with terrain, none kept in full chunks",
+				misses, chunks);
 	}
 
 	/**

@@ -178,8 +178,8 @@ public final class PolandBiomeSource extends BiomeSource {
 
 	/**
 	 * {@code /locate biome}: one sample per column instead of one per sampled Y level (about 33 for the vanilla
-	 * 64-block resolution), since the biome does not depend on Y. The spiral and the order are as in vanilla, the Y of the
-	 * result is the origin's.
+	 * 64-block resolution), since the biome does not depend on Y, classified in parallel batches. The spiral and the
+	 * order are as in vanilla, the Y of the result is the origin's.
 	 */
 	@Override
 	public @Nullable Pair<BlockPos, Holder<Biome>> findClosestBiome3d(BlockPos origin, int searchRadius,
@@ -191,14 +191,42 @@ public final class PolandBiomeSource extends BiomeSource {
 			return b == null ? super.findClosestBiome3d(origin, searchRadius, sampleResolutionHorizontal,
 					sampleResolutionVertical, allowed, randomState, level) : null;
 		}
+		boolean[] wanted = new boolean[biomes.size()];
+		for (int i = 0; i < wanted.length; i++) {
+			wanted[i] = candidates.contains(biomes.get(i));
+		}
+		// The columns of the vanilla spiral in batches; a batch is classified in parallel (the model and the classifier
+		// are thread-safe), and the first hit in spiral order wins, so the result is the same as a sequential search.
 		int sampleRadius = Math.floorDiv(searchRadius, sampleResolutionHorizontal);
+		int[] xs = new int[LOCATE_BATCH];
+		int[] zs = new int[LOCATE_BATCH];
+		int n = 0;
 		for (BlockPos.MutableBlockPos column : BlockPos.spiralAround(BlockPos.ZERO, sampleRadius, Direction.EAST,
 				Direction.SOUTH)) {
-			int blockX = origin.getX() + column.getX() * sampleResolutionHorizontal;
-			int blockZ = origin.getZ() + column.getZ() * sampleResolutionHorizontal;
-			Holder<Biome> biome = holder(classify(b, QuartPos.fromBlock(blockX), QuartPos.fromBlock(blockZ)));
-			if (candidates.contains(biome)) {
-				return Pair.of(new BlockPos(blockX, origin.getY(), blockZ), biome);
+			xs[n] = origin.getX() + column.getX() * sampleResolutionHorizontal;
+			zs[n] = origin.getZ() + column.getZ() * sampleResolutionHorizontal;
+			if (++n == LOCATE_BATCH) {
+				Pair<BlockPos, Holder<Biome>> hit = firstHit(b, xs, zs, n, wanted, origin.getY());
+				if (hit != null) {
+					return hit;
+				}
+				n = 0;
+			}
+		}
+		return n > 0 ? firstHit(b, xs, zs, n, wanted, origin.getY()) : null;
+	}
+
+	/** Number of spiral columns classified together in {@link #findClosestBiome3d}. */
+	private static final int LOCATE_BATCH = 2_048;
+
+	/** First column of the batch (in order) whose biome is wanted, or null. */
+	private @Nullable Pair<BlockPos, Holder<Biome>> firstHit(Binding b, int[] xs, int[] zs, int n, boolean[] wanted, int y) {
+		int[] found = new int[n];
+		java.util.stream.IntStream.range(0, n).parallel().forEach(i ->
+				found[i] = classify(b, QuartPos.fromBlock(xs[i]), QuartPos.fromBlock(zs[i])).ordinal());
+		for (int i = 0; i < n; i++) {
+			if (wanted[found[i]]) {
+				return Pair.of(new BlockPos(xs[i], y, zs[i]), biomes.get(found[i]));
 			}
 		}
 		return null;

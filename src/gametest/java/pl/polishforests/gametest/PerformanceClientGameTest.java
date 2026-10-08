@@ -14,6 +14,8 @@ import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.presets.WorldPreset;
 import pl.polishforests.PolishForests;
 import pl.polishforests.worldgen.chunk.PolandChunkGenerator;
+import pl.polishforests.worldgen.feature.ModFeatures;
+import pl.polishforests.worldgen.feature.TreeStandFeature;
 
 /**
  * Performance comparison: average FPS and new-terrain load time in a vanilla world and in a "Poland"
@@ -140,6 +142,13 @@ public final class PerformanceClientGameTest implements FabricClientGameTest {
 		long sample0 = PolandChunkGenerator.SAMPLE_NANOS.sum();
 		long fill0 = PolandChunkGenerator.FILL_NANOS.sum();
 		long chunks0 = PolandChunkGenerator.CHUNKS.sum();
+		long biome0 = PolandChunkGenerator.BIOME_NANOS.sum();
+		long biomeChunks0 = PolandChunkGenerator.BIOME_CHUNKS.sum();
+		long classify0 = PolandChunkGenerator.CLASSIFY_NANOS.sum();
+		long tree0 = TreeStandFeature.NANOS.sum();
+		long treeChunks0 = TreeStandFeature.CHUNKS.sum();
+		long trees0 = TreeStandFeature.TREES.sum();
+		long miss0 = ModFeatures.HABITAT_MISS.sum();
 		StringBuilder sb = new StringBuilder();
 		for (ChunkStatus stage : stages) {
 			long t0 = System.nanoTime();
@@ -157,6 +166,14 @@ public final class PerformanceClientGameTest implements FabricClientGameTest {
 					name, n,
 					String.format(Locale.ROOT, "%.2f", (PolandChunkGenerator.SAMPLE_NANOS.sum() - sample0) / 1e6 / n),
 					String.format(Locale.ROOT, "%.2f", (PolandChunkGenerator.FILL_NANOS.sum() - fill0) / 1e6 / n));
+			long biomeChunks = Math.max(1, PolandChunkGenerator.BIOME_CHUNKS.sum() - biomeChunks0);
+			long treeChunks = Math.max(1, TreeStandFeature.CHUNKS.sum() - treeChunks0);
+			PolishForests.LOG.info(String.format(Locale.ROOT, "[performance] %s: BIOMES %.3f ms/chunk (%d chunks), classification in "
+					+ "fill %.3f ms/chunk, tree stand %.2f ms/chunk (%d chunks, %.1f trees/chunk), habitats missing in %d chunks", name,
+					(PolandChunkGenerator.BIOME_NANOS.sum() - biome0) / 1e6 / biomeChunks, biomeChunks,
+					(PolandChunkGenerator.CLASSIFY_NANOS.sum() - classify0) / 1e6 / n,
+					(TreeStandFeature.NANOS.sum() - tree0) / 1e6 / treeChunks, treeChunks,
+					(double) (TreeStandFeature.TREES.sum() - trees0) / treeChunks, ModFeatures.HABITAT_MISS.sum() - miss0));
 		} else if (name.startsWith("poland")) {
 			PolishForests.LOG.warn("[performance] {}: area was already generated, measurement invalid", name);
 		}
