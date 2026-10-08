@@ -2289,8 +2289,10 @@ final class RiverNetwork {
 		final double[] r3 = new double[3];
 		final double[] r4 = new double[4];
 		final double[] pr = new double[10];
-		/** K5.1: buffer of {@link MeanderField#arcDistance} for the oxbow lakes. */
-		final double[] arc = new double[2];
+		/** K5.1: buffer of {@link MeanderField#arcDistance} for the oxbow lakes (K8c: with the foot point). */
+		final double[] arc = new double[4];
+		/** K8c: projection of the foot of an oxbow column on its arc ({@link #projectChannel}). */
+		final double[] foot = new double[10];
 		/** Number of arms of the last {@link #projectChannel} (their t in {@link #bt}). */
 		int arms;
 		/** Number of roots of f' of the last {@link #distanceMinima} (in {@link #r4}). */
@@ -2303,7 +2305,8 @@ final class RiverNetwork {
 		/**
 		 * Candidates for the channel of the dominant valley (F2): every segment that passes the culling frame of
 		 * {@link #query}, in the order of the tile list, packed by {@value #FLOOR_STRIDE} values: {@code pr[5] − W/2},
-		 * W, the water level, the order and the gradient of the segment (‰ at 1:1 scale). Primitive values only (no object references: no GC write barrier per
+		 * W, the water level, the order, the gradient of the segment (‰ at 1:1 scale) and (step K8c) the index of the segment in
+		 * the segment list of the query. Primitive values only (no object references: no GC write barrier per
 		 * segment and no stale segments kept by the thread buffer). The buffer grows when a column has more
 		 * candidates than it holds (once per thread and model, since every {@link RiverNetwork} has its own thread
 		 * buffers), so no candidate is ever dropped: a fixed limit would skip the later ones in list order and could
@@ -2313,7 +2316,7 @@ final class RiverNetwork {
 		/** End of the used part of {@link #floor} (number of candidates × {@value #FLOOR_STRIDE}). */
 		int floorEnd;
 
-		void addFloorCandidate(double d, double w, double level, int order, double gradient) {
+		void addFloorCandidate(double d, double w, double level, int order, double gradient, int index) {
 			int q = floorEnd;
 			double[] f = floor;
 			if (q == f.length) {
@@ -2324,6 +2327,7 @@ final class RiverNetwork {
 			f[q + 2] = level;
 			f[q + 3] = order;
 			f[q + 4] = gradient;
+			f[q + 5] = index;
 			floorEnd = q + FLOOR_STRIDE;
 		}
 
@@ -2339,8 +2343,11 @@ final class RiverNetwork {
 	 * that columns do not exceed it, so the buffer does not have to grow in practice.
 	 */
 	static final int FLOOR_CANDIDATES = 64;
-	/** Values per candidate in {@link Scratch#floor}: distance from the bank, width, water level, order, gradient. */
-	static final int FLOOR_STRIDE = 5;
+	/**
+	 * Values per candidate in {@link Scratch#floor}: distance from the bank, width, water level, order, gradient, index of
+	 * the segment in the segment list of the query (step K8c).
+	 */
+	static final int FLOOR_STRIDE = 6;
 
 	/**
 	 * Step H (G3): range of the soft channel level ({@link RiverHit#softChannelLevel}) in the excess distance δ over
@@ -2779,7 +2786,9 @@ final class RiverNetwork {
 		// K8a: distance beyond the edge of the floor of the nearest valley (without the wall).
 		double floorEdgeGap = Double.POSITIVE_INFINITY;
 
+		int index = -1;
 		for (Segment s : segments) {
+			index++;
 			if (cull && !inFrame(s, x, z)) {
 				continue;
 			}
@@ -2792,7 +2801,7 @@ final class RiverNetwork {
 			double w = s.widthAt(t);
 			double level = s.levelAt(t);
 			double sl = s.gradient;
-			sc.addFloorCandidate(pr[5] - 0.5 * w, w, level, s.order, sl);
+			sc.addFloorCandidate(pr[5] - 0.5 * w, w, level, s.order, sl, index);
 			// The d field from the continuous distance (pr[5]); the terrain still from pr[1], as in M1.
 			if (pr[5] - 0.5 * w < nearDist) {
 				nearDist = pr[5] - 0.5 * w;
@@ -3029,8 +3038,8 @@ final class RiverNetwork {
 			// oxbow lake belongs to the meanders of the dominant valley, so it fades out where another valley takes the
 			// floor (F1), instead of ending in a straight line there.
 			double rival = seg2 != null && continues(best, seg2) ? key3 : key2;
-			Oxbow ox = oxbow(best, bestT, bestLat, nearDist, bestFloorHalf - bestFloorDist, lowland, terrain, result,
-					bestKey - rival, softSlope, sc.arc);
+			Oxbow ox = oxbow(best, bestT, bestLat, x, z, bestFloorHalf - bestFloorDist, lowland, terrain, result,
+					bestKey - rival, softSlope, segments, sc);
 			if (ox != null) {
 				if (ox.inside()) {
 					oxbowDepth = ox.depth();
@@ -3153,16 +3162,24 @@ final class RiverNetwork {
 	 * period. Returns the oxbow lake in the column or in the 40 m·k ring around it, otherwise null. Called after the loop
 	 * over the segments of {@link #query} (no nested query).
 	 *
-	 * @param nearDist  distance from the bank of the nearest channel (the d field)
+	 * <p>Step K8c: only the own channel (the dominant segment and its continuations across a node) narrows the oxbow lake at
+	 * the column, so its horns end at the present channel, whose bank runs along the arc. Any other channel (a tributary,
+	 * another river) narrows it at the foot of the column on the arc ({@link #otherChannelFade}): the water then ends in a
+	 * rounded tip along the arc. Before K8c the nearest channel of any segment narrowed it at the column, so near a
+	 * tributary the water ended in a blunt front along a line parallel to that channel (oxbow_lake.png of the game test).
+	 *
+	 * @param x         column x
+	 * @param z         column z
 	 * @param floorRoom depth of the column in the floor of the dominant valley, floorHalf − floorDist (m)
 	 * @param terrain   terrain before the valleys
 	 * @param floor     terrain after the valleys at the column (the floor the oxbow lake lies in)
 	 * @param margin    F1 key of the dominant valley minus that of its nearest rival (not its continuation across a node)
 	 * @param slope     gradient of the soft maximum of the floor (fraction)
-	 * @param arc       work buffer of {@link MeanderField#arcDistance} (2 slots)
+	 * @param segments  the segment list of the query (the indices of {@link Scratch#floor})
+	 * @param sc        the scratch of the query, with the floor candidates of the column
 	 */
-	private Oxbow oxbow(Segment s, double t, double lat, double nearDist, double floorRoom, double lowland, double terrain,
-			double floor, double margin, double slope, double[] arc) {
+	private Oxbow oxbow(Segment s, double t, double lat, double x, double z, double floorRoom, double lowland,
+			double terrain, double floor, double margin, double slope, List<Segment> segments, Scratch sc) {
 		if (s.theta * 1.25 < OXBOW_MIN_THETA) {
 			return null;
 		}
@@ -3173,6 +3190,11 @@ final class RiverNetwork {
 		long m0 = (long) Math.floor(u * 2 + 0.5);
 		double ring = 40 * valleyScale;
 		double lowFade = Noise.smoothstep(0.6, 0.75, lowland) * (1 - Noise.smoothstep(0.8 * OXBOW_MAX_SLOPE, OXBOW_MAX_SLOPE, slope));
+		double[] arc = sc.arc;
+		// K8c: the distance from the bank of the own channel and of the nearest other channel at the column (computed at the
+		// first bend in range).
+		double ownDist = Double.NaN;
+		double otherDist = Double.POSITIVE_INFINITY;
 		Oxbow best = null;
 		for (long m = m0 - 1; m <= m0 + 1; m++) {
 			// Whole loops have about twice the area of the former ring sectors, hence 0.22 instead of 0.3.
@@ -3212,10 +3234,27 @@ final class RiverNetwork {
 			double d = arc[0] * lambda;
 			double a = Math.clamp((arc[1] - a0) / (a1 - a0), 0.0, 1.0);
 			double horn = Math.sqrt(Math.sin(Math.PI * a));
+			if (d - owMax * horn > ring || best != null && d - owMax * horn >= best.shore()) {
+				// The shore is at least d − owMax · horn: this bend cannot give the result (the same as below, cheaper).
+				continue;
+			}
+			if (ownDist != ownDist) {
+				ownDist = Double.POSITIVE_INFINITY;
+				double[] f = sc.floor;
+				for (int q = 0, end = sc.floorEnd; q < end; q += FLOOR_STRIDE) {
+					Segment o = segments.get((int) f[q + 5]);
+					if (o == s || continues(s, o)) {
+						ownDist = Math.min(ownDist, f[q]);
+					} else {
+						otherDist = Math.min(otherDist, f[q]);
+					}
+				}
+			}
 			// Plugged ends: at the present channel (the bank belt of 12 m and a little more), at the edge of the floor and
-			// of the lowlands.
+			// of the lowlands; at other channels a rounded tip along the arc (K8c).
 			double plug = 12.5 + 0.2 * w;
-			double ow = owMax * horn * Noise.smoothstep(plug, plug + owMax + 5, nearDist)
+			double ow = owMax * horn * Noise.smoothstep(plug, plug + owMax + 5, ownDist)
+					* otherChannelFade(s, t, lat, x, z, du - arc[2], side * (dv - arc[3]), plug, owMax, otherDist, segments, sc)
 					* Noise.smoothstep(0, 0.5 * owMax + 10 * valleyScale, Math.min(floorRoom, margin)) * lowFade
 					// Terrain before the valleys low above the water level (coast): the oxbow lake narrows to zero.
 					* Noise.smoothstep(level + 1.5, level + 3.5, terrain)
@@ -3235,6 +3274,64 @@ final class RiverNetwork {
 		}
 		return best;
 	}
+
+	/**
+	 * K8c: narrowing of an oxbow lake by the channels other than its own, at the foot of the column on the arc. The foot is
+	 * the column moved by (−eu, −ev) in the frame of the meanders of s (eu along the valley, ev across it, both in
+	 * wavelengths: the offset of the column from its nearest point of the arc, ev already with the sign of the side),
+	 * linearized at the column: along the curve of s by eu / (du/dt), across it by ev · λ plus the change of the wander.
+	 * With D the distance of the foot from the bank of the nearest other channel and r = (D − plug) / (OXBOW_TIP · owMax),
+	 * the fade is r (2 − r): the half-width is the same across the oxbow lake, so where such a channel crosses the arc the
+	 * water ends in a tip along the arc, OXBOW_TIP half-widths long and half as wide 1.8 half-widths from its end (the
+	 * horns of K5.1: 1.2 in the median). The profile is nearly linear, so both shores keep the bend of the arc (a rounded
+	 * profile, e.g. a half ellipse 4 half-widths long, straightened the inner shore to 0.3 m off a chord over 50 m on a
+	 * bend of radius 136 m), and its slope is at most 2 / OXBOW_TIP &lt; 1, so the water never comes closer to that channel
+	 * than plug. 1 where no other channel is in reach (exactly: D ≥ otherDist − |foot − column| by the triangle
+	 * inequality).
+	 *
+	 * @param otherDist distance of the column from the bank of the nearest other channel
+	 */
+	private double otherChannelFade(Segment s, double t, double lat, double x, double z, double eu, double ev, double plug,
+			double owMax, double otherDist, List<Segment> segments, Scratch sc) {
+		double len = OXBOW_TIP * owMax;
+		if (otherDist == Double.POSITIVE_INFINITY) {
+			return 1;
+		}
+		double h = 1e-4;
+		double dudt = (s.meanderU(t + h) - s.meanderU(t - h)) / (2 * h);
+		double dt = -eu / dudt;
+		double tx = s.dx(t);
+		double tz = s.dz(t);
+		double tl = Math.max(1e-9, Math.sqrt(tx * tx + tz * tz));
+		double dLat = -ev * s.lambda + (s.wanderAt(t + h) - s.wanderAt(t - h)) / (2 * h) * dt;
+		double ox = dt * tx - dLat * tz / tl;
+		double oz = dt * tz + dLat * tx / tl;
+		double shift = Math.sqrt(ox * ox + oz * oz);
+		if (otherDist - shift >= plug + len) {
+			return 1;
+		}
+		double fx = x + ox;
+		double fz = z + oz;
+		double dist = plug + len;
+		double[] f = sc.floor;
+		double[] pf = sc.foot;
+		for (int q = 0, end = sc.floorEnd; q < end; q += FLOOR_STRIDE) {
+			if (f[q] - shift >= dist) {
+				continue;
+			}
+			Segment o = segments.get((int) f[q + 5]);
+			if (o == s || continues(s, o)) {
+				continue;
+			}
+			projectChannel(o, fx, fz, sc, pf);
+			dist = Math.min(dist, pf[5] - 0.5 * o.widthAt(pf[0]));
+		}
+		double r = Math.clamp((dist - plug) / len, 0.0, 1.0);
+		return r * (2 - r);
+	}
+
+	/** K8c: length of the tip of an oxbow lake at another channel, in its half-widths (otherChannelFade). */
+	static final double OXBOW_TIP = 6.0;
 
 	/** K5.1: smallest meander angle θ0 at the bend for an oxbow lake (rad); the former loop has θ0 + 0.5…1.0. */
 	static final double OXBOW_MIN_THETA = 0.8;

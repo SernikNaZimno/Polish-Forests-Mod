@@ -375,13 +375,16 @@ final class MeanderField {
 	 * {@code theta}, from inflection point to inflection point ({@code s ∈ [0.25, 0.75]}), in the frame of the arc: {@code du}
 	 * along the valley from the apex of the arc, {@code dv} across it, positive outwards (in wavelengths). The arc is
 	 * trimmed to the parameter {@code a ∈ [a0, a1]} (0 and 1 are the inflection points). Result: {@code out[0]} the
-	 * distance, {@code out[1]} the parameter a of the nearest point of the arc.
+	 * distance, {@code out[1]} the parameter a of the nearest point of the arc, {@code out[2]} and {@code out[3]} (step K8c)
+	 * its du and dv.
 	 */
 	static void arcDistance(double du, double dv, double theta, double a0, double a1, double[] out) {
 		Level l = level(arcLevel(theta));
 		int i0 = POINTS / 4;
 		double best = Double.MAX_VALUE;
 		double bestA = 0;
+		double bestU = 0;
+		double bestV = 0;
 		int first = (int) Math.floor(a0 * ARC_SEGMENTS);
 		int last = Math.min(ARC_SEGMENTS - 1, (int) Math.ceil(a1 * ARC_SEGMENTS) - 1);
 		for (int q = first; q <= last; q++) {
@@ -402,10 +405,14 @@ final class MeanderField {
 			if (d2 < best) {
 				best = d2;
 				bestA = qa + (qb - qa) * t;
+				bestU = ax + vx * t;
+				bestV = ay + vy * t;
 			}
 		}
 		out[0] = Math.sqrt(best);
 		out[1] = bestA;
+		out[2] = bestU;
+		out[3] = bestV;
 	}
 
 	/** K5.1: table level of the arc of {@link #arcDistance} (the nearest level, at least 1). */
