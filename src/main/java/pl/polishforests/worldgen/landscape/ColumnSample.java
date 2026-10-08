@@ -154,16 +154,20 @@ public record ColumnSample(double surface, int waterLevel, WaterKind waterKind, 
 	 *                            channel to the other. The habitat classifier measures the height above the watercourse
 	 *                            from it, so the floor and its zones do not end on straight bisectors at confluences
 	 *                            (RiverNetwork.SOFT_LEVEL_*); NaN without a watercourse
+	 * @param floorFine           step K8c (review round 1): the part of {@code surface} due to the finer octave of the
+	 *                            micro-relief of the lowland valley floors (35 m·k, at most about ±0.35 m; 0 elsewhere).
+	 *                            The habitat classifier subtracts it from the surface (Z9: a biome only from inputs with
+	 *                            a wavelength of at least 64 m)
 	 */
 	public record Waters(int streamOrder, boolean headwaters, double channelDist, double channelWidth, double channelLevel,
 			boolean inFloor, double u, double floorHalfWidth, double channelGradient, boolean convexBank, double s,
 			int shoreLevel, StandingWaterKind standingWaterKind, boolean ombrotrophicPeat, long lakeId,
 			double standingWaterRadius, double floorChannelDist, double floorChannelWidth, double floorChannelLevel,
-			double floorChannelGradient, double softChannelLevel) {
+			double floorChannelGradient, double softChannelLevel, double floorFine) {
 		/** No watercourses and no standing water (sea and places out of range). */
 		public static final Waters NONE = new Waters(0, false, Double.POSITIVE_INFINITY, Double.NaN, Double.NaN, false,
 				Double.NaN, Double.NaN, Double.NaN, false, Double.POSITIVE_INFINITY, NO_WATER, StandingWaterKind.NONE,
-				false, 0L, Double.NaN, Double.POSITIVE_INFINITY, Double.NaN, Double.NaN, Double.NaN, Double.NaN);
+				false, 0L, Double.NaN, Double.POSITIVE_INFINITY, Double.NaN, Double.NaN, Double.NaN, Double.NaN, 0);
 	}
 
 	/** Kind of the standing water nearest to the column. */

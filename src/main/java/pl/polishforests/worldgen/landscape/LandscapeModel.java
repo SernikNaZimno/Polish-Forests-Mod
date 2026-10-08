@@ -1810,7 +1810,7 @@ public final class LandscapeModel {
 				: new ColumnSample.Waters(r.order(), r.source(), r.channelDist(), r.channelWidth(), r.channelLevel(),
 						r.inFloor(), r.floorU(), r.floorHalf(), r.slope(), r.convexBank(), standingShore, standingLevel, standingKind,
 						standingOmbrotrophic, standingId, standingRadius, r.floorChannelDist(), r.floorChannelWidth(),
-						r.floorChannelLevel(), r.floorChannelGradient(), r.softChannelLevel());
+						r.floorChannelLevel(), r.floorChannelGradient(), r.softChannelLevel(), r.floorFine());
 		int landformBits = forms(r, parts, dominant, surface, rawSurface, coastD, sandBeach, water);
 		// Large massif (E12): highest terrain within 3 km·mspace, only where the altitudinal belts need it.
 		double summit = mountains > 0 && surface >= AltitudinalBelts.SUMMIT_FROM ? peaks.sample(x, z) : 0;

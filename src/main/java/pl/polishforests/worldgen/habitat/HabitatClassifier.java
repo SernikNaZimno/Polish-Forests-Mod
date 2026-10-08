@@ -267,7 +267,11 @@ public final class HabitatClassifier {
 		final ColumnSample.Waters w;
 		final double x;
 		final double z;
-		/** Ground elevation (m a.s.l.). */
+		/**
+		 * Ground elevation (m a.s.l.) without the finer octave of the floor micro-relief ({@code Waters.floorFine}, step
+		 * K8c, review round 1): every height above the water (h, DGW, the bank and seep belts) then follows the 90 m·k
+		 * floor noise only (Z9: a biome only from inputs with a wavelength of at least 64 m).
+		 */
 		final double H;
 		final double k;
 		/** Type weights including the coastal belt (sum 1). */
@@ -301,7 +305,7 @@ public final class HabitatClassifier {
 			this.w = s.waters();
 			this.x = x;
 			this.z = z;
-			this.H = s.surface();
+			this.H = s.surface() - w.floorFine();
 			this.k = classifier.k;
 			double coastland = Math.clamp(t.wCoastland(), 0.0, 1.0);
 			double f = 1 - coastland;

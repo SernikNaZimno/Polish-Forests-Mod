@@ -627,7 +627,8 @@ class WatersideZonesTest {
 		ColumnSample.Waters nearest = new ColumnSample.Waters(w.streamOrder(), w.headwaters(), w.channelDist(),
 				w.channelWidth(), w.channelLevel(), w.inFloor(), w.u(), w.floorHalfWidth(), w.channelGradient(),
 				w.convexBank(), w.s(), w.shoreLevel(), w.standingWaterKind(), w.ombrotrophicPeat(), w.lakeId(),
-				w.standingWaterRadius(), Double.POSITIVE_INFINITY, Double.NaN, Double.NaN, Double.NaN, w.softChannelLevel());
+				w.standingWaterRadius(), Double.POSITIVE_INFINITY, Double.NaN, Double.NaN, Double.NaN, w.softChannelLevel(),
+				w.floorFine());
 		ColumnSample before = new ColumnSample(s.surface(), s.waterLevel(), s.waterKind(), s.type(), s.substrate(),
 				s.coverDepth(), s.terrain(), nearest, s.region());
 		if (riverZone(k.classify(before, x, z))) {
@@ -694,8 +695,8 @@ class WatersideZonesTest {
 					ColumnSample s = m.sample(x, z);
 					ColumnSample.Waters w = s.waters();
 					if (s.hasWater() || w.streamOrder() <= 0 || !(w.channelDist() <= 15 * kk) || Double.isFinite(w.s())
-							|| s.terrain().coastD() < 3_000 * kk || !(s.surface() - w.softChannelLevel() > Calibration.BANK_H)
-							|| s.surface() - w.floorChannelLevel() <= Calibration.BANK_H) {
+							|| s.terrain().coastD() < 3_000 * kk || !(s.surface() - w.floorFine() - w.softChannelLevel() > Calibration.BANK_H)
+							|| s.surface() - w.floorFine() - w.floorChannelLevel() <= Calibration.BANK_H) {
 						continue;
 					}
 					dry.incrementAndGet();

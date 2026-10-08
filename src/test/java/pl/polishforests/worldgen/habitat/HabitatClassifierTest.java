@@ -485,8 +485,10 @@ class HabitatClassifierTest {
 				}
 				riparian.incrementAndGet();
 				ColumnSample.Waters w = s.waters();
-				// The lower of the heights above the nearest channel and above the soft level of the nearby channels.
-				double hl = Math.min(s.surface() - w.channelLevel(), s.surface() - w.softChannelLevel());
+				// The lower of the heights above the nearest channel and above the soft level of the nearby channels, from the
+				// ground without the finer octave of the floor micro-relief, like the classifier (Waters.floorFine, Z9).
+				double ground = s.surface() - w.floorFine();
+				double hl = Math.min(ground - w.channelLevel(), ground - w.softChannelLevel());
 				double halfWidth = Double.isNaN(w.floorHalfWidth()) ? 0 : w.floorHalfWidth();
 				double beyondFloor = w.channelDist() - halfWidth;
 				boolean isSpringArea = s.terrain().has(Landform.HEADWATERS)

@@ -199,7 +199,8 @@ public final class Calibration {
 	/**
 	 * Backswamps in the lower parts of the floor: h = H − water level − 1 below the threshold (m). The model floor
 	 * lies flat 1.2–2.2 m above the water level with noise of wavelength 90 m·k, so h of 0.2–1.2 m describes the
-	 * higher and lower parts of the floor (as a stand-in for η, §4). The plan used {@code convexity}, but it has
+	 * higher and lower parts of the floor (as a stand-in for η, §4). Step K8c added a finer octave of 35 m·k on the
+	 * lowland floors; the classifier takes it out of H (Waters.floorFine), so h still has the 90 m·k noise only. The plan used {@code convexity}, but it has
 	 * short-wave components (outwash plain undulation) and gave stripes every few meters on the floor (Z9: a biome
 	 * only from inputs with a wavelength ≥ 64 m).
 	 */

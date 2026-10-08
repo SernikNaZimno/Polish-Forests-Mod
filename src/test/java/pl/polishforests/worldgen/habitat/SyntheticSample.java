@@ -175,7 +175,7 @@ final class SyntheticSample {
 				floorHalfWidth, channelGradient, convexBank, s, shoreLevel, kind, ombrotrophicPeat, lakeId, radius,
 				floorChannelDist, floorChannelWidth, floorChannelLevel,
 				Double.isNaN(floorChannelGradient) ? channelGradient : floorChannelGradient,
-				Double.isNaN(softChannelLevel) ? channelLevel : softChannelLevel);
+				Double.isNaN(softChannelLevel) ? channelLevel : softChannelLevel, 0);
 		return new ColumnSample(surface, waterLevel, waterKind, type, substrate, 5, t, w,
 				new ColumnSample.Region(o, p));
 	}

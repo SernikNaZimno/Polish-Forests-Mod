@@ -29,6 +29,12 @@
 # the large_river, lowland_river, oxbow_lake and river_mouth patches of REAL A and REAL A 0.5, REAL B / lowland_river
 # and REAL B / oxbow_lake. The gameplay and mountain floors do not change; no target or coverage is lost and no
 # control patch (*_interior) changes. The file is regenerated once in K8z.
+# Review of K8c, round 1 (2026-10-08, -PgoldenReport=build/golden_K8cr1_a.txt): the second octave of the floor
+# micro-relief also on the gameplay lowland floors (35 m*k = 17.5 m, weight 0.5); the habitat classifier takes it out of
+# the height above the water (Z9). New: the large_river, lowland_river, oxbow_lake, tunnel_valley_lake and
+# outwash_plain_lake patches of GAMEPLAY A and the cliff, kettle_pond, large_river, lowland_river and oxbow_lake
+# patches of GAMEPLAY B (lowland valley floors in the patches). No target or coverage is lost and no control patch
+# (*_interior) changes. The file is regenerated once in K8z.
 REAL B / grid
 REAL B / coast
 REAL B / tunnel_valley_lake
@@ -62,3 +68,13 @@ REAL A 0.5 / river_mouth
 REAL A 0.5 / lowland_river
 REAL A 0.5 / large_river
 REAL A 0.5 / oxbow_lake
+GAMEPLAY A / large_river
+GAMEPLAY A / lowland_river
+GAMEPLAY A / oxbow_lake
+GAMEPLAY A / tunnel_valley_lake
+GAMEPLAY A / outwash_plain_lake
+GAMEPLAY B / cliff
+GAMEPLAY B / kettle_pond
+GAMEPLAY B / large_river
+GAMEPLAY B / lowland_river
+GAMEPLAY B / oxbow_lake

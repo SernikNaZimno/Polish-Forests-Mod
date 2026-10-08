@@ -49,8 +49,6 @@ final class RiverNetwork {
 	private final double chan;
 	private final double wallScale;
 	private final double valleyScale;
-	/** K8c: weight of the finer octave of the floor micro-relief, {@link #FLOOR_FINE_WEIGHT} at realistic scale, else 0. */
-	private final double floorFine;
 	private final double meso;
 	private final double tileSize;
 
@@ -440,27 +438,34 @@ final class RiverNetwork {
 
 	/**
 	 * Height of a valley floor above the water level of its channel at (x, z), 1.2–2.2 m: the micro-relief of the floors,
-	 * a noise of 90 m·k. Step K8c: at realistic scale, on the lowlands (weight smoothstep(0.3, 0.6, lowland)), a second
-	 * octave of 35 m (weight up to 0.5, its frame rotated by 36.87° against the lattice of the first) is added. With the
-	 * 90 m noise alone the 1-block contours on the nearly flat floors ran straight for 40–50 m where its gradient was
-	 * nearly uniform (a straight step next to the oxbow lake in oxbow_lake.png of the game test); the finer octave bends
-	 * them. The sum is divided by its weights, so the range stays 1.2–2.2 m. The gameplay floors (k = 0.5, the 90 m·k
-	 * noise has 45 m there) and the mountain floors do not change: a second octave on the gameplay floors (17.5 m or 35 m)
-	 * cut the alder carr there into patches (WatersideZonesTest: 44% of the chords at least 10 blocks, limit 50%), and
-	 * on the mountain floors it changed the rivers at the sink lakes of the great massifs (MassifSinkLakeContainmentTest).
+	 * a noise of 90 m·k. Step K8c: on the lowlands (weight smoothstep(0.3, 0.6, lowland)) a second octave of
+	 * {@link #FLOOR_FINE_WAVE} m·k (weight up to {@link #FLOOR_FINE_WEIGHT}, its frame rotated by 36.87° against the lattice
+	 * of the first) is added. With the 90 m·k noise alone the 1-block contours on the nearly flat floors ran straight for
+	 * 40–50 m·k where its gradient was nearly uniform (a straight step next to the oxbow lake in oxbow_lake.png of the game
+	 * test); the finer octave bends them. The sum is divided by its weights, so the range stays 1.2–2.2 m. The mountain
+	 * floors do not change (there it changed the rivers at the sink lakes of the great massifs,
+	 * MassifSinkLakeContainmentTest). The part of the offset due to the finer octave is left in {@link Scratch#floorFine}
+	 * (0 without it): the habitat classifier takes it out of the height above the water (Z9: a biome only from inputs with
+	 * a wavelength of at least 64 m; review of K8c, round 1), so the alder carr on the floors is not cut into patches by it.
 	 */
-	private double floorOffset(double x, double z, double lowland) {
+	private double floorOffset(double x, double z, double lowland, Scratch sc) {
 		double n = noise.at(x, z, 90 * valleyScale);
-		double fine = floorFine * Noise.smoothstep(0.3, 0.6, lowland);
+		double offset = 1.2 + 1.0 * (0.5 + 0.5 * n);
+		double fine = FLOOR_FINE_WEIGHT * Noise.smoothstep(0.3, 0.6, lowland);
+		sc.floorFine = 0;
 		if (fine > 0) {
-			n = (n + fine * noise.at(0.8 * x - 0.6 * z + 417_000, 0.6 * x + 0.8 * z - 263_000, FLOOR_FINE_WAVE)) / (1 + fine);
+			double nf = (n + fine * noise.at(0.8 * x - 0.6 * z + 417_000, 0.6 * x + 0.8 * z - 263_000,
+					FLOOR_FINE_WAVE * valleyScale)) / (1 + fine);
+			double withFine = 1.2 + 1.0 * (0.5 + 0.5 * nf);
+			sc.floorFine = withFine - offset;
+			offset = withFine;
 		}
-		return 1.2 + 1.0 * (0.5 + 0.5 * n);
+		return offset;
 	}
 
-	/** K8c: largest weight of the finer octave of the floor micro-relief at realistic scale ({@link #floorOffset}). */
+	/** K8c: largest weight of the finer octave of the floor micro-relief ({@link #floorOffset}). */
 	static final double FLOOR_FINE_WEIGHT = 0.5;
-	/** K8c: wavelength of the finer octave of the floor micro-relief (m; {@link #floorOffset}). */
+	/** K8c: wavelength of the finer octave of the floor micro-relief (m·k; {@link #floorOffset}). */
 	static final double FLOOR_FINE_WAVE = 35.0;
 
 	/**
@@ -1098,6 +1103,9 @@ final class RiverNetwork {
 	 *                      {@code channelLevel} next to a single channel and continuous across the bisector between two
 	 *                      channels, where {@code channelLevel} steps. Only for the habitat fields (NaN without a
 	 *                      watercourse)
+	 * @param floorFine     K8c (review round 1): the part of the terrain due to the finer octave of the floor micro-relief
+	 *                      ({@link #floorOffset}), times the largest floor mask of the segments (m; 0 off the lowland
+	 *                      floors); the habitat classifier subtracts it from the surface (Z9)
 	 */
 	record RiverHit(int order, double terrain, double valleyWeight, boolean inFloor, int waterLevel,
 			double channelBottom, double bankLevel, boolean source, int oxbowLevel, double oxbowDepth, int lakeLevel,
@@ -1106,7 +1114,7 @@ final class RiverNetwork {
 			boolean convexBank, double oxbowShore, int oxbowMirror, long oxbowId, double oxbowWidth, double ringShore,
 			int ringLevel, long ringId, double ringRadius, double floorChannelDist, double floorChannelWidth,
 			double floorChannelLevel, double floorChannelGradient, double floorGap, double floorEdgeGap, double lakeGap,
-			double softChannelLevel) {
+			double softChannelLevel, double floorFine) {
 		boolean inChannel() {
 			return waterLevel != ColumnSample.NO_WATER;
 		}
@@ -1280,8 +1288,6 @@ final class RiverNetwork {
 		this.chan = scale.channel();
 		this.wallScale = scale == LandscapeScale.REALISTIC ? 1.0 : 1.0 / scale.local();
 		this.valleyScale = scale.local();
-		// K8c: the finer octave of the floor micro-relief only at realistic scale (floorOffset).
-		this.floorFine = valleyScale >= 1 ? FLOOR_FINE_WEIGHT : 0;
 		this.tileSize = 64;
 	}
 
@@ -2322,6 +2328,8 @@ final class RiverNetwork {
 		final double[] arc = new double[4];
 		/** K8c: projection of the foot of an oxbow column on its arc ({@link #projectChannel}). */
 		final double[] foot = new double[10];
+		/** K8c: the part of the last {@link #floorOffset} due to its finer octave (m). */
+		double floorFine;
 		/** Number of arms of the last {@link #projectChannel} (their t in {@link #bt}). */
 		int arms;
 		/** Number of roots of f' of the last {@link #distanceMinima} (in {@link #r4}). */
@@ -2810,8 +2818,10 @@ final class RiverNetwork {
 		double edge = Double.NaN;
 		// G5: largest floor mask of the segments so far.
 		double maskAcc = 0;
-		// Height of the valley floors above the water (the same for every segment), computed lazily (NaN until then).
+		// Height of the valley floors above the water (the same for every segment), computed lazily (NaN until then), and
+		// the part of it due to the finer octave (K8c).
 		double floorOffset = Double.NaN;
+		double floorFine = 0;
 		// K5.2: distance beyond the edge of the cut of the nearest valley (tunnel valley lakes end before it).
 		double floorGap = Double.POSITIVE_INFINITY;
 		// K8a: distance beyond the edge of the floor of the nearest valley (without the wall).
@@ -2855,7 +2865,8 @@ final class RiverNetwork {
 			double fade = s.headFade > 0 ? Noise.smoothstep(0, s.headFade, fromSource) : 1.0;
 			// Continuous valley floor (without water level steps), always at least 1.2 m above the water (floorOffset).
 			if (floorOffset != floorOffset) {
-				floorOffset = floorOffset(x, z, lowland);
+				floorOffset = floorOffset(x, z, lowland, sc);
+				floorFine = sc.floorFine;
 			}
 			double floor = level + floorOffset;
 			// Valley: the floor, and beyond it a side of limited steepness that blends smoothly into the relief.
@@ -3046,7 +3057,7 @@ final class RiverNetwork {
 					lakeLevel, lakeShore, lakeDepth, lakeId, lakeRadius, Double.POSITIVE_INFINITY, Double.NaN,
 					Double.NaN, Double.NaN, Double.NaN, Double.NaN, false, Double.POSITIVE_INFINITY,
 					ColumnSample.NO_WATER, 0, Double.NaN, ringShore, ringLevel, ringId, ringRadius,
-					Double.POSITIVE_INFINITY, Double.NaN, Double.NaN, Double.NaN, floorGap, floorEdgeGap, lakeGap, Double.NaN);
+					Double.POSITIVE_INFINITY, Double.NaN, Double.NaN, Double.NaN, floorGap, floorEdgeGap, lakeGap, Double.NaN, 0);
 		}
 		// In the floor of some valley exactly when in the floor of the dominant one (its key is the largest, so positive),
 		// or in a mouth funnel (G3, step K4c): the funnel belongs to the floor of the valley it opens into, whose channel
@@ -3127,7 +3138,7 @@ final class RiverNetwork {
 				lakeRadius, nearDist, nearWidth, nearLevel, inFloor ? uMin : Double.NaN,
 				sumFh / sumW, sumSl / sumW * 1_000, convex, oxbowShore, oxbowMirror, oxbowId, oxbowWidth, ringShore,
 				ringLevel, ringId, ringRadius, floorChannelDist, floorChannelWidth, floorChannelLevel,
-				floorChannelGradient, floorGap, floorEdgeGap, lakeGap, softChannelLevel);
+				floorChannelGradient, floorGap, floorEdgeGap, lakeGap, softChannelLevel, floorFine * maskAcc);
 	}
 
 	/**
