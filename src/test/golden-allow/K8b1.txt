@@ -11,6 +11,9 @@
 # mouths. New: REAL B / coast (the lagoon of REAL B is part of landElevation; the river network routes differently and
 # a valley floor now crosses this beach patch: 78 of its columns at the river bank level of 1 m, alluvium; D5a). Still
 # no control patch changes.
+# Round 2 of the review (2026-10-08, -PgoldenReport=build/golden_K8b1r2.txt): the contour of the lagoon strength and the
+# hinterland that ends a lagoon displaced by the shore noise, delta fronts measured in meters. The same patches as in
+# round 1; no new patch, no control patch changes.
 REAL B / grid
 REAL B / coast
 REAL B / tunnel_valley_lake

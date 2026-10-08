@@ -337,6 +337,13 @@ public final class LandscapeModel {
 	 * along the coast over a fixed distance ({@link #lagoonStrength}), so the ends of a lagoon are rounded instead of wedges
 	 * 2–3 km long. River deltas are added in {@link #sample} only ({@link #lagoonDelta}).
 	 *
+	 * <p>Round 2 of the review of K8b1: two more places where the inner shore was a smooth line. Where the contour of the
+	 * lagoon noise across which the strength rises runs along the coast, the shore followed it (straight for hundreds of
+	 * meters in GAMEPLAY and over 1.4 km at a REAL end); the contour is now displaced by the shore noise
+	 * ({@link #COAST_LAGOON_END_AMP}). Where a hill foot or a partial cliff ends the lagoon (GAMEPLAY ends with strength 1),
+	 * the shore followed that foot; the hinterland that ends the lagoon is now taken at a displaced point
+	 * ({@link #lagoonCutHinterland}).
+	 *
 	 * @param h     terrain height from the landscape types
 	 * @param d     distance from the shoreline (positive on land)
 	 * @param cliff share of a high shore with a cliff 0–1 ({@link #cliffShore})
@@ -563,7 +570,8 @@ public final class LandscapeModel {
 	 * {@link #DELTA_NOISE} (three octaves from {@link #DELTA_LOBE_WAVE} lobe sizes), so it is lobed, not an ellipse. Inside
 	 * the lobe the land rises to {@link #DELTA_TOP} m (from 0 m at its edge over half the lobe size), and
 	 * beyond its edge an underwater front returns to the lagoon floor over a quarter of the lobe size plus
-	 * {@link #DELTA_FRONT_RUN} m per meter of depth. On dry ground the lobe only raises ground lower than its top, so the
+	 * {@link #DELTA_FRONT_RUN} m per meter of depth (both distances in meters along the ray from the mouth, round 2 of the
+	 * review; the half-width is at most {@link #DELTA_ASPECT} times the reach). On dry ground the lobe only raises ground lower than its top, so the
 	 * delta meets the land behind the old shore without a trough. Overlapping lobes take the maximum.
 	 *
 	 * <p>The first version (K8b1) measured the lobe from the whole channel line (the distance from the channel and the water

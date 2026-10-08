@@ -2391,3 +2391,85 @@ W sesji 2 (stan końcowy) czas kolumny GAMEPLAY jest o ok. 1% niższy niż w K8b
 5. Złoty test: nowa łata `REAL B / coast` (trasa rzeki, D5a).
 
 **Co zostaje:** końce zalewów GAMEPLAY wyznaczane przez relief zaplecza (np. (5474, −15965): klin ok. 2 szerokości), budżet D1 bez zapasu (oszczędności w `RiverNetwork` lub `coastDistance`, najlepiej razem z K8z), odnogi delt (M5), przegląd delt i końców na zrzutach w grze w K8z.
+
+### Runda 2 poprawek po recenzji K8b1
+
+Baza: `a274919` (runda 1). Narzędzia: kadry recenzji rundy 1 (mapy `sample`/`landElevation` 800 × 800 px i te same miary: odchylenie brzegu od cięciwy w oknach wzdłuż brzegu, prosta dopasowana PCA do odcinka brzegu, szerokości wody w wierszach wzdłuż końca, uniesienie dna zalewu nad `landElevation` i jego odległość od lądu płata), przekroje wzdłuż normalnej brzegu jak w rundzie 1, liczniki kolumn zalewu i delt, liczba części zalewu w kadrach 16 km, okna 1 m `blocks`.
+
+**Weryfikacja zarzutów.**
+1. *(poważny) Prosty wewnętrzny brzeg wzdłuż poziomicy siły zalewu — potwierdzone.* Tam, gdzie poziomica 0,345 szumu zalewu (fala 60 km·meso) biegnie wzdłuż brzegu, siła rośnie od 0 do 1 na ok. 130 m w poprzek brzegu, a woda kończy się przy sile ok. 0,26–0,34; przesunięcie `coast.lagoon.shore` tego nie zmienia. Kadr Gthread (GAMEPLAY A, (11850, −7950)): w oknach 230 m mediana odchylenia 3,2 m, 43% okien poniżej 1% okna. Koniec NE w REAL A ((−196300, −186100)): proste cięcie przez zalew, 27% okien 600 m poniżej 1%.
+2. *(poważny) Końce GAMEPLAY wyznaczane przez zaplecze — potwierdzone, z inną przyczyną niż w opisie.* Kolec przy (5700, −15750) i prosty brzeg (648, 11534)–(486, 11696) nie leżą na poziomicy `lowLand`, tylko u podnóża skarpy. Wschodni brzeg kolca to stopa częściowego klifu (udział klifu > 0 na skraju wysoczyzny), a siła misy gaśnie przez `low` = 1 − udział klifu i przez `base` rosnące na skarpie. Sam próg 3–6 m przesunięty szumem niewiele by dał: stromą skarpę przesuwa o kilka metrów, a łagodne zaplecze REAL o setki metrów. Dlatego przesunięcie jest poziome (niżej).
+3. *(poważny) Czoło wydłużonego płata delty sięga za daleko — potwierdzone.* Odległość poza płatem `(q − 1) · min(half, reach)` była w kierunku dłuższej osi zaniżona o czynnik half/reach (w GAMEPLAY 1,1–3,2). Gfront (13600, −6000): dno uniesione o > 0,3 m dalej niż 40 m od lądu płata na 4423 m² (do 4,8 m), dalej niż 100 m na 267 m², z podwodnym wałem i rynną −4,6 m przy brzegu.
+4. *(drobny) Cień wysp na promieniu — fałszywy alarm dla obecnego kodu.* To zarzut z recenzji K8b1, naprawiony w rundzie 1: promienia już nie ma, delta liczy się od ujścia. Kadry przy (−509, 13700) i (13044, −6271): brak prostej granicy przy wyspie i brak płata delty na cyplu bez ujścia rzeki.
+5. *(drobny) Koszt — częściowo.* Podwójne `shapeCoast` i drugie zapytanie sieci w `lagoonDelta` to fałszywy alarm dla obecnego kodu (usunięte w rundzie 1). Budżet D1 na granicy jest prawdziwy i bez zmian (niżej).
+6. *(drobny) Klinowe końce REAL — poprawione w rundzie 1.* Resztę (prosty koniec NE) obejmuje p. 1.
+7. *(drobny) Rów za deltą w GAMEPLAY — fałszywy alarm dla obecnego kodu* (naprawione w rundzie 1). Profil x = 13635, z −5995…−5965: grunt rośnie od wody bez dołka (bloki −1, 1, 3, 4, 5, 6). Okno 1 m 200 m wokół (13600, −5980): 0 suchych par > 2 bloki na blok, 0 przecieków.
+8. *(drobny) Pas lądu wzdłuż koryta — poprawione w rundzie 1.* Resztę (pas 340–390 m z wydłużonego płata) obejmuje p. 3.
+9. *(drobny) Klinowe końce GAMEPLAY i podział zalewu na części przez progi 0,32–0,40 — progi usunięte w rundzie 1.* Resztę obejmują p. 1 i 2.
+
+**Zmiany (`LandscapeModel`, `RiverNetwork`).**
+- **Poziomica siły zalewu (`lagoonStrength`):** odległość od poziomicy 0,345 jest przesunięta szumem brzegu o `COAST_LAGOON_END_AMP` = 1 rampy, czyli do ±900 m·meso (zwykle ±0,3–0,5 rampy). To ten sam szum co brzeg, z innym przesunięciem współrzędnych, tą samą falą i oktawami. Szum liczy się tylko blisko rampy (|t| < 1,5 rampy), więc koszt dotyczy tylko końców zalewów. Wariant z 0,6 rampy dawał prawie to samo, ale więcej okien prawie prostych w Gtail (67% zamiast 25% okien < 4%).
+- **Zaplecze, które kończy zalew (`lagoonCutHinterland`):** relief i udział klifu, od których gaśnie siła misy, są brane w punkcie przesuniętym o dwa szumy brzegu (dwie oktawy, do `LAGOON_RELIEF_SHIFT` = 0,3 szerokości zalewu). Sam teren (`result`) się nie przesuwa, przesuwa się tylko miejsce, gdzie misa gaśnie. Przy skarpie powstają więc zatoki w jej podnóżu i języki lądu przed nią. Tam, gdzie brzeg wyznacza rosnące niskie zaplecze (REAL i większość GAMEPLAY), relief zmienia się na tej odległości mało i brzeg zostaje prawie w miejscu. Udział niskiego brzegu w samej kolumnie wygasza zalew tylko przy pełnym klifie (`smoothstep(0, 0,3, low)`), bo tam `lagoonStrength` nie jest liczone. Wariant z 0,5 szerokości dawał przy kolcu (5700, −15750) suche pary 3 bloki na blok, więc zostaje 0,3.
+- **Delty:** odległość poza płatem i wysokość wewnątrz są w metrach wzdłuż promienia od ujścia: `g = (q − 1) · promień płata w tym kierunku`. Zasięg wpływu to promień płata plus czoło (`deltaExtent`; `deltaScaleToFit` jest dalej liniowe w skali). Połowa szerokości płata wynosi najwyżej 1,5 zasięgu (`DELTA_ASPECT`).
+
+**Pomiary (baza `47140e0` → runda 1 `a274919` → runda 2).** Wewnętrzny brzeg w kadrach (`landElevation`): odchylenie od cięciwy w oknach wzdłuż brzegu, mediana i udział okien prawie prostych:
+
+| Kadr / miejsce | Okno | Mediana odchylenia | Okna < 1% / < 4% okna |
+|---|---|---|---|
+| Gthread, GAMEPLAY A (11850, −7950) | 230 m | 21,3 → 3,2 → **19,9 m** | 0 / 15% → 43 / 86% → **0 / 0%** |
+| Gtail, GAMEPLAY A (11620, −8550) | 230 m | 10,0 → 5,4 → **11,4 m** | 0 / 23% → 15 / 92% → **0 / 25%** |
+| R_NEcut, REAL A (−196300, −186100) | 600 m | 8,8 → 14,8 → **55,7 m** | 27 / 100% → 27 / 55% → **0 / 0%** |
+| R_NEcut | 1200 m | 24 → 53 → **114 m** | 0 / 100% → 0 / 50% → **0 / 0%** |
+
+Prosty odcinek (648, 11534)–(486, 11696) (GAMEPLAY A, prosta PCA brzegu w promieniu 115 m wokół (567, 11615)): odchylenie standardowe / maks. 1,1 / 2,0 → 2,1 / 6,5 → **5,7 / 12,6 m**. Na mapie brzeg ma tam łuk w kształcie S zamiast prostej.
+
+Kolec przy (5700, −15750), szerokość wody w wierszach co 25 m od czubka:
+- baza: 22, 34, 39, 43, 44, 46, 50, 57, 72, 98 m;
+- runda 1: 23, 34, 41, 46, 49, 52, 57, 61, 65, 76 m;
+- **runda 2: 12, 50, 68, 80, 92, 100, 105, 104, 102, 98 m** (wschodni brzeg x = 5716 → 5754 → 5726, łuk).
+
+Koniec jest zaokrąglony: woda dochodzi do 0,8 szerokości na ok. 75 m zamiast klina 250 m. Zatoka jest wcięta w podnóże częściowego klifu, więc w oknie 1 m 400 m wokół (5700, −15700) przybywa suchych par > 1 m (0 → 1770, do 1,47 m na 1 m, na skarpie 9–11 m). W blokach jest najwięcej 2 bloki na blok, jak w rundzie 1 (D4b dotrzymane), przecieków 0.
+
+Przekroje wzdłuż normalnej brzegu (jak w rundzie 1; runda 1 → runda 2):
+- REAL (−223000, −152000): odchylenie w oknach 1,2 km 191 / 457 / 645 → 192 / 463 / 643 m, droga / długość 1,535 → 1,526, koniec SW 0,54 → 0,56 szerokości;
+- REAL (−198000, −184000): 200 / 728 / 864 → 209 / 727 / 859 m, koniec NE 0,65 → 0,59 szerokości (720 m);
+- GAMEPLAY, mediana w oknach 300 m: (11803, −9572) 34 → 45 m, (5000, −14000) 35 → 35, (4767, −14070) 33 → 33, (13463, −8600) 61 → 66, (588, 11150) 111 → 120, (−11850, 11975) 51 → 51 m.
+
+Środek zalewów prawie się nie zmienia; zmiana jest na końcach i przy skarpach.
+
+Części zalewu: w zalewie (11803, −9572) wąska nić wody (50–80 m) wzdłuż poziomicy siły dzieli się w jednym miejscu, (11985, −8415), na dwa zalewy 95 i 51 ha (przekroje: 1 → 2 odcinki wody, przerwa 240 m), jak łańcuch jezior przybrzeżnych (Łebsko, Sarbsko). W czterech kadrach GAMEPLAY 16 × 16 km (10 m/px) części ≥ 1 ha: 12 + 3 + 4 + 1 → 13 + 3 + 4 + 1, powierzchnia wody bez zmian (±1%). Powierzchnia zalewu w `landElevation`: REAL ±60 km co 100 m 6948 → 6967 kolumn, GAMEPLAY ±40 km co 20 m 28336 → 28402. Ląd delt: REAL 2,8% → 2,8% (4861 / 173953), GAMEPLAY 7,3% → 6,8% (3626 / 53030).
+
+Delty: dno uniesione o > 0,3 m nad `landElevation` dalej niż podana odległość od lądu płata (m²), runda 1 → runda 2:
+- G_strip (13268, −6087): > 60 m 2462 → **0**, > 100 m 400 → **0**;
+- Gfront (13600, −6000): > 40 m 4423 → **0**;
+- G1m_lag6: > 40 m 548 → 35 (do 0,82 m); G_shoalA: > 40 m 555 → 0;
+- REAL R_delta1: > 80 m 3602 → 1557 (do 0,92 m), > 100 m 261 → 0; R_shoal: > 100 m 196 → 0. Czoło REAL ma z założenia do ok. 90 m (1/4 wielkości płata + 24 m).
+
+Płat przy ujściu (13430, −5979) nie robi już pasa lądu 340–390 m wzdłuż brzegu.
+
+**Złoty test.** Raport `-PgoldenReport=build/golden_K8b1r2.txt`: te same łaty co w rundzie 1, żadnej nowej. Łaty kontrolne `*_interior` bez zmian, `GAMEPLAY A / lagoon` nadal traci cel (K8z). Lista `K8b1.txt` bez nowych wpisów (dopisany komentarz).
+
+**Testy.** `LagoonDeltaTest` ma nowy test `deltaFrontsEndNearTheirLobes`: okna GAMEPLAY A (13600, −6000) i (−12351, 11586) po 300 m oraz REAL A (−220500, −155150) 800 m. Dno uniesione o > 0,3 m może leżeć najwyżej 60 m (GAMEPLAY) / 120 m (REAL) od lądu płata; teraz najdalej 34, 46 i 79 m, w rundzie 1 w pierwszym oknie do ok. 110 m. `SurfaceContinuityTest`: `gameplay_lagoon` 9 skoków, maks. 0,934 m (bez zmian), `realistic_lagoon` 1 / 0,56 m. `TerrainLocalityTest`: 0 kolumn zmienionych poza dolinami i wodą. Commit pośredni `71b7782` po kompilacji, `fastTest` i klasach `GoldenTerrainTest` (lista K8b1), `LagoonDeltaTest`, `SurfaceContinuityTest`, `StandingWaterContainmentTest`, `WaterContainmentTest`, `TerrainDeterminismTest`, `TerrainLocalityTest`, `LandscapeModelTest`, `CoastTest`.
+
+**Pełny `test`** (`tools/dev/run-tests test`): PASS (728 s; drzewo `f74945a08b9d`, potem tylko ten wpis w dokumentacji).
+
+**Siedliska** (`landscapePreview -PhabitatsOnly`; runda 1 → runda 2): zalew REAL / GAMEPLAY 0,035 / 0,158 → 0,035 / 0,160%, torfowisko niskie 0,019 / 0,068 → 0,019 / 0,068%, ols 2,422 / 1,987 → 2,422 / 1,988%, szuwar 0,202 / 0,178 → 0,203 / 0,176%. W kadrze `gameplay_coast_lagoon_3km` pasy szuwaru i olsu idą za brzegiem. Plików podglądu w `docs/m2` nie odświeżam (K8z).
+
+**Koszt.** `costTest`, A/B w jednej sesji (runda 2 `71b7782`, runda 1 `a274919`, runda 2), µs na kolumnę (stosunek do M1: mediana / z minimów):
+
+| Obszar | Runda 2, przebieg 1 | Runda 1 | Runda 2, przebieg 2 |
+|---|---|---|---|
+| GAMEPLAY cały obszar | 6,28 (1,195 / 1,178) | 6,39 (1,208 / 1,212) | 6,41 (1,215 / 1,209) |
+| GAMEPLAY Beskidy | 11,06 (1,158 / 1,154) | 11,04 (1,181 / 1,177) | 11,18 (1,185 / 1,187) |
+| GAMEPLAY wielki masyw | 11,85 (1,116 / 1,114) | 12,00 (1,146 / 1,143) | 12,17 (1,157 / 1,144) |
+| REAL cały obszar | 4,22 (1,106 / 1,096) | 4,22 (1,086 / 1,116) | 4,34 (1,128 / 1,113) |
+
+Czas kolumny rundy 2 mieści się w rozrzucie przebiegów (GAMEPLAY 6,28–6,41 wobec 6,39 µs dla rundy 1). Nowy szum i drugi punkt reliefu liczą się tylko przy końcach zalewów i w misie, a w obszarze pomiaru wybrzeże zajmuje 1 chunk. Limity bezwzględne D1 dotrzymane (`costTest` przechodzi). Stosunek do M1 w GAMEPLAY to 1,18–1,22 w obu wariantach, czyli budżet nadal na granicy, jak po K8a i K8b1. Oszczędności w `RiverNetwork` lub `coastDistance` zostają na K8z, bo zmiana terenu o ok. 1e-6 m w pasie brzegu wymaga przegenerowania pliku wzorcowego.
+
+**Odstępstwa od wskazówek recenzji:**
+1. Końce wyznaczane przez skarpę: nie przesuwam progu 3–6 m ani odległości (przy stromej skarpie nie działa, a przy łagodnym zapleczu REAL przesuwa brzeg o setki metrów), tylko punkt, w którym liczę relief i udział klifu dla siły misy.
+2. Zalew (11803, −9572) dzieli się na dwa jeziora w miejscu wąskiej nici wody (wyżej).
+3. Zatoki w podnóżu częściowego klifu mają strome ściany (do 1,47 m na 1 m, w blokach najwyżej 2 na blok).
+4. Budżet D1 bez zmian (na granicy), bez nowych oszczędności w tej rundzie.
+
+**Co zostaje:** budżet D1 bez zapasu (oszczędności najlepiej razem z K8z), odnogi delt (M5), przegląd delt i końców zalewów na zrzutach w grze w K8z.
