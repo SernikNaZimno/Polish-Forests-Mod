@@ -33,7 +33,6 @@ import pl.polishforests.climate.PolandClimate;
 import pl.polishforests.command.PolishForestsCommands;
 import pl.polishforests.season.Seasons;
 import pl.polishforests.worldgen.chunk.PolandChunkGenerator;
-import pl.polishforests.worldgen.chunk.PolandDimension;
 import pl.polishforests.worldgen.chunk.PolandScale;
 import pl.polishforests.worldgen.chunk.VerticalScale;
 import pl.polishforests.worldgen.landscape.ColumnSample;
@@ -44,7 +43,8 @@ import pl.polishforests.worldgen.landscape.WaterKind;
 /**
  * Test in a real client: creates a "Poland" world, measures the generation speed of full chunks
  * and takes screenshots at characteristic places picked by the landscape model
- * ({@code views} mode). The {@code climate} mode checks temperature from meters in both world scales:
+ * ({@code views} mode; the places of {@link #GAMEPLAY_SITES} in a second world at gameplay scale). The
+ * {@code climate} mode checks temperature from meters in both world scales:
  * no summer snow on the outwash plain and in the Beskids, winter snow on the lowland with Serene Seasons,
  * client precipitation matching the server, and water freeze modes.
  */
@@ -71,6 +71,9 @@ public final class PolandWorldClientGameTest implements FabricClientGameTest {
 		}
 	}
 
+	/** Names of the places viewed in the world at gameplay scale ({@link #findGameplaySites}); all others are realistic. */
+	private static final List<String> GAMEPLAY_SITES = List.of("tunnel_lake");
+
 	@Override
 	public void runTest(ClientGameTestContext context) {
 		String mode = System.getProperty("polishforests.gametest", "all");
@@ -79,6 +82,8 @@ public final class PolandWorldClientGameTest implements FabricClientGameTest {
 		if (!views && !climate) {
 			return;
 		}
+		List<String> only = selectedSites();
+		boolean gameplayViews = views && GAMEPLAY_SITES.stream().anyMatch(name -> only.isEmpty() || only.contains(name));
 		context.runOnClient(mc -> {
 			mc.options.renderDistance().set(RENDER_DISTANCE);
 		});
@@ -87,7 +92,8 @@ public final class PolandWorldClientGameTest implements FabricClientGameTest {
 				.create()) {
 			prepare(sp, PolandScale.REALISTIC);
 			if (views) {
-				views(context, sp);
+				benchmark(sp);
+				screenshots(context, sp, sp.getServer().computeOnServer(PolandWorldClientGameTest::findSites), "poland_");
 			}
 			// Climate after the benchmark and screenshots: the teleport to the Beskids leaves chunk generation
 			// running in the background, which would inflate the ms/chunk measurement.
@@ -95,15 +101,27 @@ public final class PolandWorldClientGameTest implements FabricClientGameTest {
 				checkClimate(context, sp);
 			}
 		}
-		if (climate) {
+		if (climate || gameplayViews) {
 			// Second scale: dimension type poland_gameplay, non-linear m a.s.l. and scale detection on the client.
 			try (TestSingleplayerContext sp = context.worldBuilder()
 					.adjustSettings(ui -> selectPoland(ui, PRESET_GAMEPLAY))
 					.create()) {
 				prepare(sp, PolandScale.GAMEPLAY);
-				checkClimate(context, sp);
+				if (gameplayViews) {
+					screenshots(context, sp, sp.getServer().computeOnServer(PolandWorldClientGameTest::findGameplaySites),
+							"poland_gameplay_");
+				}
+				if (climate) {
+					checkClimate(context, sp);
+				}
 			}
 		}
+	}
+
+	/** Places chosen with {@code -Psites} (empty: all places). */
+	private static List<String> selectedSites() {
+		String only = System.getProperty("polishforests.sites", "");
+		return only.isBlank() ? List.of() : List.of(only.split(","));
 	}
 
 	/** Fixed time and weather, player in spectator mode; checks the generator and its scale. */
@@ -122,21 +140,23 @@ public final class PolandWorldClientGameTest implements FabricClientGameTest {
 		}
 	}
 
-	/** Generation benchmark and screenshots at characteristic places. */
-	private static void views(ClientGameTestContext context, TestSingleplayerContext sp) {
-		benchmark(sp);
-
-		List<Site> sites = sp.getServer().computeOnServer(PolandWorldClientGameTest::findSites);
-		String only = System.getProperty("polishforests.sites", "");
-		if (!only.isBlank()) {
-			List<String> names = List.of(only.split(","));
-			sites = sites.stream().filter(site -> names.contains(site.name())).toList();
+	/**
+	 * Screenshots at characteristic places (only the places chosen with {@code -Psites}), saved as {@code prefix} + the
+	 * name of the place.
+	 */
+	private static void screenshots(ClientGameTestContext context, TestSingleplayerContext sp, List<Site> sites,
+			String prefix) {
+		List<String> only = selectedSites();
+		if (!only.isEmpty()) {
+			sites = sites.stream().filter(site -> only.contains(site.name())).toList();
 		}
 		for (Site site : sites) {
 			int groundY = sp.getServer().computeOnServer(s -> surfaceY(s, site.x(), site.z()));
 			int camY = groundY + site.cameraAboveGround();
+			double groundMeters = sp.getServer().computeOnServer(s -> ((PolandChunkGenerator) s.overworld().getChunkSource()
+					.getGenerator()).vertical().metersAboveSea(groundY - 1));
 			PolishForests.LOG.info("[test] {}: x={} z={} ground Y={} ({} m a.s.l.)", site.name(), site.x(), site.z(),
-					groundY, PolandDimension.metersAboveSea(groundY - 1));
+					groundY, String.format(Locale.ROOT, "%.1f", groundMeters));
 			int renderDistance = site.renderDistance() > 0 ? site.renderDistance() : RENDER_DISTANCE;
 			if (renderDistance != RENDER_DISTANCE) {
 				setRenderDistance(context, renderDistance);
@@ -153,7 +173,7 @@ public final class PolandWorldClientGameTest implements FabricClientGameTest {
 				PolishForests.LOG.info("[test] {} after {} s: server {} chunks; client: {}", site.name(), (step + 1) * 20,
 						loaded, client);
 			}
-			context.takeScreenshot("poland_" + site.name());
+			context.takeScreenshot(prefix + site.name());
 			if (renderDistance != RENDER_DISTANCE) {
 				setRenderDistance(context, RENDER_DISTANCE);
 			}
@@ -707,6 +727,34 @@ public final class PolandWorldClientGameTest implements FabricClientGameTest {
 		addTarget(sites, m, PolishForestsCommands.Target.LAGOON, "lagoon", 40, 25f);
 		addTarget(sites, m, PolishForestsCommands.Target.RIVER_MOUTH, "river_mouth", 60, 35f);
 		return sites;
+	}
+
+	/** Camera of the {@code tunnel_lake} view (gameplay scale, seed {@link #SEED}): over the lake near its north end. */
+	private static final int TUNNEL_LAKE_X = -20_280;
+	private static final int TUNNEL_LAKE_Z = 10_620;
+	/** Render distance for the tunnel lake view: the river valley lies about 500 blocks north of the camera. */
+	private static final int TUNNEL_LAKE_RENDER_DISTANCE = 32;
+
+	/**
+	 * Places viewed in the world at gameplay scale ({@link #GAMEPLAY_SITES}). {@code tunnel_lake}: the north end of the
+	 * tunnel valley lake at (−20500, 10900) by a river valley, one of the former clusters of basin walls (step K6 of the
+	 * terrain fix, windows (−20420, 10500) and (−20500, 10900) of {@code StandingWaterContainmentTest.WALL_CLUSTERS}; step
+	 * K8a removed the walls). The camera hangs 100 blocks above the water by the northeast corner of the lake and looks
+	 * north-northeast, 28° down: the north shore of the lake, the dry end of the basin with a small water lens, the sill
+	 * (up to about 33 blocks above sea level) and the river valley beyond it (floor about 3 blocks above sea level). The
+	 * position is fixed for the test seed;
+	 * if the camera column is no longer on a tunnel valley lake, the log says so.
+	 */
+	private static List<Site> findGameplaySites(MinecraftServer server) {
+		ServerLevel level = server.overworld();
+		PolandChunkGenerator gen = (PolandChunkGenerator) level.getChunkSource().getGenerator();
+		LandscapeModel m = gen.model(level.getSeed());
+		ColumnSample s = m.sample(TUNNEL_LAKE_X, TUNNEL_LAKE_Z);
+		if (!s.hasWater() || s.waterKind() != WaterKind.LAKE) {
+			PolishForests.LOG.warn("[test] tunnel_lake: the camera column ({}, {}) is not on a tunnel valley lake ({})",
+					TUNNEL_LAKE_X, TUNNEL_LAKE_Z, s.waterKind());
+		}
+		return List.of(new Site("tunnel_lake", TUNNEL_LAKE_X, TUNNEL_LAKE_Z, 100, -169f, 28f, TUNNEL_LAKE_RENDER_DISTANCE));
 	}
 
 	private static void addTarget(List<Site> sites, LandscapeModel m, PolishForestsCommands.Target target, String name,
