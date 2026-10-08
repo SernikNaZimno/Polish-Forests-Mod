@@ -27,6 +27,7 @@ import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
 import pl.polishforests.worldgen.chunk.PolandChunkGenerator;
 import pl.polishforests.worldgen.habitat.AltitudinalBelts;
+import pl.polishforests.worldgen.habitat.Calibration;
 import pl.polishforests.worldgen.landscape.ColumnSample;
 import pl.polishforests.worldgen.landscape.LandscapeModel;
 import pl.polishforests.worldgen.landscape.LandscapeScale;
@@ -86,7 +87,11 @@ public final class PolishForestsCommands {
 		RIVER_MOUTH(Kind.WATER, true, true, true, d -> d.forms().contains(Landform.RIVER_MOUTH)),
 		BEACH(Kind.COAST, true, true, true, d -> d.forms().contains(Landform.BEACH)),
 		COASTAL_DUNES(Kind.COAST, true, true, true, d -> d.forms().contains(Landform.COASTAL_DUNES)),
-		CLIFF(Kind.COAST, true, true, true, d -> d.forms().contains(Landform.CLIFF)),
+		// Step K8b2: a cliff of a high shore (not the high foredune of a low shore, which also gets the CLIFF landform), at
+		// least CLIFF_MIN_HEIGHT high; the seaward wall is checked in matches (it needs the model).
+		CLIFF(Kind.COAST, true, true, true, d -> d.forms().contains(Landform.CLIFF)
+				&& d.sample().terrain().lowShore() < Calibration.LOW_SHORE
+				&& d.sample().terrain().cliffHeight() >= CLIFF_MIN_HEIGHT),
 		RIVER_VALLEY(Kind.LANDFORM, true, false,
 				d -> d.sample().substrate() == Substrate.ALLUVIUM || d.sample().waterKind() == WaterKind.RIVER),
 		VALLEY_SLOPE(Kind.LANDFORM, true, true, d -> d.forms().contains(Landform.VALLEY_SLOPE)),
@@ -235,15 +240,53 @@ public final class PolishForestsCommands {
 
 	/** The nearest location of the target from point {@code (ox, oz)}: {x, z} or null. */
 	public static double[] locate(LandscapeModel model, Target target, double ox, double oz) {
-		Predicate<double[]> test = p -> target.test.test(target.forms ? model.describe(p[0], p[1])
-				: new LandscapeModel.Description(model.sample(p[0], p[1]), EnumSet.noneOf(Landform.class)));
+		Predicate<double[]> test = p -> matches(model, target, p);
 		return target.coastal ? searchCoastal(model, test, ox, oz) : search(phases(model, target.fine), test, ox, oz);
+	}
+
+	/**
+	 * Whether the place {@code p} = {x, z} is the target: its test on the sample or the terrain description, and for a
+	 * {@link Target#CLIFF} also a seaward wall ({@link #hasSeawardWall}).
+	 */
+	public static boolean matches(LandscapeModel model, Target target, double[] p) {
+		boolean found = target.test.test(target.forms ? model.describe(p[0], p[1])
+				: new LandscapeModel.Description(model.sample(p[0], p[1]), EnumSet.noneOf(Landform.class)));
+		return found && (target != Target.CLIFF || hasSeawardWall(model, p[0], p[1]));
+	}
+
+	/** Step K8b2: least height of a cliff found by {@code find cliff} (m). */
+	static final double CLIFF_MIN_HEIGHT = 12;
+	/** Step K8b2: the ground {@value #CLIFF_RUN} m seaward of a cliff lies at least {@value #CLIFF_MIN_DROP} m lower. */
+	static final double CLIFF_RUN = 4;
+	static final double CLIFF_MIN_DROP = 6;
+
+	/**
+	 * Step K8b2: a steep seaward wall at (x, z): the valley-free terrain {@link #CLIFF_RUN} m towards the sea (along the
+	 * gradient of the coast distance) lies at least {@link #CLIFF_MIN_DROP} m lower (the cliff wall of the model is
+	 * 2.5 : 1; a foredune rises at most about 1 m per meter).
+	 */
+	static boolean hasSeawardWall(LandscapeModel model, double x, double z) {
+		double gx = model.coastDistance(x + 2, z) - model.coastDistance(x - 2, z);
+		double gz = model.coastDistance(x, z + 2) - model.coastDistance(x, z - 2);
+		double len = Math.hypot(gx, gz);
+		if (!(len > 1e-9)) {
+			return false;
+		}
+		double sx = x - CLIFF_RUN * gx / len;
+		double sz = z - CLIFF_RUN * gz / len;
+		return model.landElevation(x, z) - model.landElevation(sx, sz) >= CLIFF_MIN_DROP;
 	}
 
 	/** Coastline search range in meters. */
 	private static double coastalRadius(LandscapeModel model) {
 		return model.scale() == LandscapeScale.REALISTIC ? 2_000_000 : 300_000;
 	}
+
+	/**
+	 * Stretches of the coast searched densely before giving up (step K8b2: 12 → 24, so that {@code find cliff} reaches
+	 * a full cliff of the realistic scale; targets found within 12 stretches are found at the same place).
+	 */
+	static final int COASTAL_TRIES = 24;
 
 	/**
 	 * Coastal objects: first successive stretches of the coastline farther and farther from the player
@@ -257,9 +300,9 @@ public final class PolishForestsCommands {
 		double max = coastalRadius(model);
 		double[] p = new double[2];
 		int tries = 0;
-		for (double r = 0; r <= max && tries < 12; r += coarse) {
+		for (double r = 0; r <= max && tries < COASTAL_TRIES; r += coarse) {
 			int n = Math.max(8, (int) Math.ceil(2 * Math.PI * r / coarse));
-			for (int k = 0; k < n && tries < 12; k++) {
+			for (int k = 0; k < n && tries < COASTAL_TRIES; k++) {
 				double a = r * 0.618 + k * (2 * Math.PI / n);
 				p[0] = ox + r * Math.cos(a);
 				p[1] = oz + r * Math.sin(a);
