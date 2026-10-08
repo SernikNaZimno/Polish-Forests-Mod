@@ -190,6 +190,12 @@ final class RiverNetwork {
 		 * the curve from the chord of the block (dense samples, with a margin), for the culling of whole blocks.
 		 */
 		float[] sweepBlockSag;
+		/**
+		 * K8b1 (round 1 of the review): where the channel of the segment enters a lagoon from the land
+		 * ({@link RiverNetwork#lagoonMouth}), computed on the first request; {@link RiverNetwork#NO_MOUTH} when it does
+		 * not. A pure function of the segment, so a race between threads only computes the same value twice.
+		 */
+		volatile LagoonMouth lagoonMouth;
 
 		Segment(int order, double x0, double z0, double x1, double z1, double[] t0, double[] t1, double level0,
 				double level1, double width0, double width1, double wander1, double wander2, double theta, double lambda,
@@ -1077,6 +1083,158 @@ final class RiverNetwork {
 		boolean inChannel() {
 			return waterLevel != ColumnSample.NO_WATER;
 		}
+	}
+
+	/**
+	 * K8b1 (round 1 of the review): the mouth of a river in a lagoon, the center of its delta
+	 * ({@code LandscapeModel.lagoonDelta}): the channel point (x, z) where the channel of a segment, followed downstream
+	 * from its start on land, first reaches lagoon water of {@link LandscapeModel#landElevation}; the unit direction of
+	 * the delta into the lagoon (the mean of the valley tangent and the seaward normal of the coast); the half-width of
+	 * the lobe across that direction and its reach along it (m); and the distance from the mouth beyond which the delta
+	 * changes nothing (m).
+	 */
+	record LagoonMouth(double x, double z, double dirX, double dirZ, double half, double reach, double extent) {
+	}
+
+	/** K8b1: a segment without a mouth in a lagoon. */
+	static final LagoonMouth NO_MOUTH = new LagoonMouth(0, 0, 0, 0, 0, 0, 0);
+	/** K8b1: spacing of the samples of the channel when looking for the mouth (m·meso). */
+	static final double MOUTH_STEP = 20;
+
+	/** K8b1: the segments whose influence reaches the tile of (x, z) (the candidates of {@link #query}). */
+	List<Segment> segmentsNear(double x, double z) {
+		return candidates(x, z).segments;
+	}
+
+	/** K8b1: the mouth of segment {@code s} in a lagoon ({@link #NO_MOUTH} if its channel does not enter one from land). */
+	LagoonMouth lagoonMouth(Segment s) {
+		LagoonMouth m = s.lagoonMouth;
+		if (m == null) {
+			m = findLagoonMouth(s);
+			s.lagoonMouth = m;
+		}
+		return m;
+	}
+
+	/** K8b1: lateral offset bound of the channel from the curve of segment {@code s} (bends and meanders, m). */
+	private static double channelLateralBound(Segment s) {
+		return 1.12 * Math.abs(s.wander1) + 1.24 * Math.abs(s.wander2) + 1.1 * Math.max(s.amp, s.ampEnd) + 2;
+	}
+
+	/** K8b1: the channel point of segment {@code s} at t, into {@code out} ({x, z}). */
+	private static void channelPoint(Segment s, double t, double[] out) {
+		double tx = s.dx(t);
+		double tz = s.dz(t);
+		double tl = Math.max(1e-9, Math.sqrt(tx * tx + tz * tz));
+		double off = s.channelOffset(t);
+		out[0] = s.px(t) - tz / tl * off;
+		out[1] = s.pz(t) + tx / tl * off;
+	}
+
+	/** K8b1: whether (x, z) is lagoon water of {@link LandscapeModel#landElevation} (land side of the coast, below 0 m). */
+	private boolean lagoonWater(double x, double z) {
+		return model.lagoonStrength(x, z) > 0 && model.coastDistance(x, z) >= 0 && model.landElevation(x, z) < 0;
+	}
+
+	/**
+	 * K8b1: {@link #lagoonMouth} computed: the channel is sampled every {@link #MOUTH_STEP} m·meso from the start of the
+	 * segment; a sample is tested only where the valley curve is within reach of a lagoon (the lagoon noise and the coast
+	 * distance at the curve, with the lateral bound of the channel), and the first lagoon sample after land is refined by
+	 * bisection. The size comes from the half-width of a lowland valley floor at the mouth (5 w + 40 m·k beyond the
+	 * channel, as in {@link #query} without the edge noise): REAL about 70–260 m, GAMEPLAY about 25–45 m. The influence is
+	 * kept inside the bounding box of the segment, so every column the delta reaches has the segment in its tile list.
+	 */
+	private LagoonMouth findLagoonMouth(Segment s) {
+		int n = (int) Math.max(8, Math.ceil(s.len / (MOUTH_STEP * meso)));
+		double lat = channelLateralBound(s);
+		double band = model.lagoonBand() + lat;
+		double[] p = new double[2];
+		double prevT = 0;
+		for (int i = 0; i <= n; i++) {
+			double t = (double) i / n;
+			double ax = s.px(t);
+			double az = s.pz(t);
+			if (!model.lagoonPossible(ax, az, lat)) {
+				prevT = t;
+				continue;
+			}
+			double ad = model.coastDistance(ax, az);
+			if (ad > band || ad < -lat) {
+				if (ad < -lat) {
+					// The channel reached the sea before any lagoon.
+					return NO_MOUTH;
+				}
+				prevT = t;
+				continue;
+			}
+			channelPoint(s, t, p);
+			if (model.coastDistance(p[0], p[1]) < 0) {
+				return NO_MOUTH;
+			}
+			if (lagoonWater(p[0], p[1])) {
+				if (i == 0) {
+					// The segment starts in the lagoon: its mouth (if any) belongs to the segment upstream.
+					return NO_MOUTH;
+				}
+				double lo = prevT;
+				double hi = t;
+				for (int it = 0; it < 14; it++) {
+					double mid = 0.5 * (lo + hi);
+					channelPoint(s, mid, p);
+					if (lagoonWater(p[0], p[1])) {
+						hi = mid;
+					} else {
+						lo = mid;
+					}
+				}
+				return mouthAt(s, hi, lat);
+			}
+			prevT = t;
+		}
+		return NO_MOUTH;
+	}
+
+	private LagoonMouth mouthAt(Segment s, double t, double lat) {
+		double[] p = new double[2];
+		channelPoint(s, t, p);
+		double tx = s.dx(t);
+		double tz = s.dz(t);
+		double tl = Math.max(1e-9, Math.sqrt(tx * tx + tz * tz));
+		// Seaward normal of the coast (the coast distance falls towards the sea).
+		double e = Math.max(5, 20 * meso);
+		double nx = model.coastDistance(p[0] - e, p[1]) - model.coastDistance(p[0] + e, p[1]);
+		double nz = model.coastDistance(p[0], p[1] - e) - model.coastDistance(p[0], p[1] + e);
+		double nl = Math.sqrt(nx * nx + nz * nz);
+		double dx = tx / tl + (nl > 0 ? nx / nl : 0);
+		double dz = tz / tl + (nl > 0 ? nz / nl : 0);
+		double dl = Math.sqrt(dx * dx + dz * dz);
+		if (!(dl > 1e-6)) {
+			dx = tx / tl;
+			dz = tz / tl;
+			dl = 1;
+		}
+		double w = s.widthAt(t);
+		double floorHalf = w / 2 + 5 * w + 40 * valleyScale;
+		double half = LandscapeModel.DELTA_HALF * floorHalf;
+		double reach = Math.min(LandscapeModel.DELTA_REACH * floorHalf,
+				LandscapeModel.DELTA_WIDTH_SHARE * model.lagoonWidthAt(p[0], p[1]));
+		if (!(reach > 0)) {
+			return NO_MOUTH;
+		}
+		// Keep the influence within the bounding box of the segment (s.reach beyond the curve, the mouth within lat of it)
+		// and within the belt where the columns look for deltas.
+		double room = Math.min(s.reach - lat - 1, model.deltaExtentMax());
+		double extent = LandscapeModel.deltaExtent(half, reach);
+		for (int it = 0; it < 4 && extent > room; it++) {
+			double k = room / extent;
+			half *= k;
+			reach *= k;
+			extent = LandscapeModel.deltaExtent(half, reach);
+		}
+		if (!(extent <= room)) {
+			return NO_MOUTH;
+		}
+		return new LagoonMouth(p[0], p[1], dx / dl, dz / dl, half, reach, extent);
 	}
 
 	RiverNetwork(LandscapeModel model, Noise noise, LandscapeScale scale) {
