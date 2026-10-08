@@ -1,0 +1,8 @@
+{
+  "feature": "polishforests:aquatic_plants",
+  "placement": [
+    {
+      "type": "minecraft:biome"
+    }
+  ]
+}

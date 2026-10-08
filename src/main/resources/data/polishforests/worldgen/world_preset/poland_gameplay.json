@@ -5,26 +5,15 @@
       "generator": {
         "type": "polishforests:poland",
         "biome_source": {
-          "type": "polishforests:poland",
-          "outwash_plain": "minecraft:old_growth_pine_taiga",
-          "moraine": "minecraft:forest",
-          "plain": "minecraft:plains",
-          "floodplain": "minecraft:meadow",
-          "river": "minecraft:river",
-          "lake": "minecraft:river",
-          "peat": "minecraft:swamp",
-          "foothills": "minecraft:forest",
-          "mountains": "minecraft:taiga",
-          "mountains_high": "minecraft:old_growth_spruce_taiga",
-          "sea": "minecraft:ocean",
-          "beach": "minecraft:beach"
+          "type": "polishforests:poland"
         },
         "settings": {
+          "version": 2,
+          "scale": "gameplay",
           "region_scale": 1.0,
-          "agriculture": true,
+          "agriculture": false,
           "managed_forest_share": 0.85,
-          "alien_species": true,
-          "scale": "gameplay"
+          "alien_species": true
         }
       }
     },

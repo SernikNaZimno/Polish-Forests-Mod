@@ -1,3 +1,5 @@
+import java.security.MessageDigest
+
 plugins {
 	id 'net.fabricmc.fabric-loom' version "${loom_version}"
 }
@@ -237,7 +239,80 @@ tasks.register('costTest', Test) {
 	mustRunAfter tasks.named('test'), tasks.named('fastTest')
 }
 
-// Choosing in-game tests: ./gradlew runClientGameTest -Pgametest=performance|stages|views|climate|ui|all
+// Datagen output check (step S5, docs/03-m2-biomy.md section 11): the output of runDatagen is kept in src/main/generated in
+// the repository; './gradlew checkDatagen' hashes the directory, runs runDatagen and fails when any file was added, removed
+// or changed (the datagen cache in .cache is ignored). Independent of git, so it also works on uncommitted changes.
+abstract class DatagenSnapshot extends DefaultTask {
+	@Internal
+	abstract DirectoryProperty getGenerated()
+
+	@Internal
+	abstract RegularFileProperty getSnapshot()
+
+	static Map<String, String> hashes(File root) {
+		def out = new TreeMap<String, String>()
+		if (!root.isDirectory()) {
+			return out
+		}
+		root.eachFileRecurse(groovy.io.FileType.FILES) { f ->
+			def rel = root.toPath().relativize(f.toPath()).toString().replace('\\', '/')
+			if (!rel.startsWith('.cache/')) {
+				out[rel] = MessageDigest.getInstance('SHA-256').digest(f.bytes).encodeHex().toString()
+			}
+		}
+		return out
+	}
+
+	@TaskAction
+	void write() {
+		def file = snapshot.get().asFile
+		file.parentFile.mkdirs()
+		file.text = hashes(generated.get().asFile).collect { k, v -> "${k} ${v}" }.join('\n')
+	}
+}
+
+abstract class CheckDatagen extends DefaultTask {
+	@Internal
+	abstract DirectoryProperty getGenerated()
+
+	@Internal
+	abstract RegularFileProperty getSnapshot()
+
+	@TaskAction
+	void check() {
+		def before = new TreeMap<String, String>()
+		snapshot.get().asFile.readLines().findAll { !it.isBlank() }.each { line ->
+			def i = line.lastIndexOf(' ')
+			before[line.substring(0, i)] = line.substring(i + 1)
+		}
+		def after = DatagenSnapshot.hashes(generated.get().asFile)
+		def changed = ((before.keySet() + after.keySet()) as TreeSet).findAll { before[it] != after[it] }
+		if (!changed.isEmpty()) {
+			throw new GradleException("runDatagen changed ${changed.size()} files in src/main/generated: ${changed.take(20)}")
+		}
+		logger.lifecycle("checkDatagen: runDatagen left all ${after.size()} files in src/main/generated unchanged")
+	}
+}
+
+def datagenSnapshotFile = layout.buildDirectory.file('datagen-before.txt')
+tasks.register('datagenSnapshot', DatagenSnapshot) {
+	generated = layout.projectDirectory.dir('src/main/generated')
+	snapshot = datagenSnapshotFile
+	outputs.upToDateWhen { false }
+}
+tasks.named('runDatagen') {
+	mustRunAfter 'datagenSnapshot'
+}
+tasks.register('checkDatagen', CheckDatagen) {
+	group = 'verification'
+	description = 'Runs runDatagen and fails when it changes the files in src/main/generated.'
+	dependsOn 'datagenSnapshot', 'runDatagen'
+	generated = layout.projectDirectory.dir('src/main/generated')
+	snapshot = datagenSnapshotFile
+	outputs.upToDateWhen { false }
+}
+
+// Choosing in-game tests: ./gradlew runClientGameTest -Pgametest=performance|stages|views|climate|ui|habitats|all
 // Only selected views: -Psites=beach,cliff (names from PolandWorldClientGameTest).
 tasks.named('runClientGameTest') {
 	jvmArgs "-Dpolishforests.gametest=${project.findProperty('gametest') ?: 'all'}"

@@ -1,0 +1,8 @@
+{
+  "feature": "polishforests:deadwood",
+  "placement": [
+    {
+      "type": "minecraft:biome"
+    }
+  ]
+}

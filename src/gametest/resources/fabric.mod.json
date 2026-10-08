@@ -8,7 +8,8 @@
 		"fabric-client-gametest": [
 			"pl.polishforests.gametest.UiAndCommandsClientGameTest",
 			"pl.polishforests.gametest.PerformanceClientGameTest",
-			"pl.polishforests.gametest.PolandWorldClientGameTest"
+			"pl.polishforests.gametest.PolandWorldClientGameTest",
+			"pl.polishforests.gametest.HabitatsClientGameTest"
 		]
 	},
 	"depends": {

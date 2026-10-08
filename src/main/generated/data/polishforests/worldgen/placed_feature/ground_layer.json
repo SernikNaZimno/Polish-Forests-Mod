@@ -1,0 +1,8 @@
+{
+  "feature": "polishforests:ground_layer",
+  "placement": [
+    {
+      "type": "minecraft:biome"
+    }
+  ]
+}

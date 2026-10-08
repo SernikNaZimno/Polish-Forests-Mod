@@ -8,12 +8,12 @@ import net.minecraft.client.gui.screens.worldselection.WorldCreationContext;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.world.level.biome.BiomeSource;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.dimension.DimensionType;
 import net.minecraft.world.level.levelgen.WorldDimensions;
 import net.minecraft.world.level.levelgen.presets.WorldPreset;
 import pl.polishforests.PolishForests;
+import pl.polishforests.worldgen.chunk.PolandBiomeSource;
 import pl.polishforests.worldgen.chunk.PolandChunkGenerator;
 import pl.polishforests.worldgen.chunk.PolandSettings;
 
@@ -33,12 +33,13 @@ public final class PolandPresetEditor implements PresetEditor {
 	public Screen createEditScreen(CreateWorldScreen parent, WorldCreationContext context) {
 		ChunkGenerator overworld = context.selectedDimensions().overworld();
 		PolandSettings current = overworld instanceof PolandChunkGenerator g ? g.settings() : PolandSettings.DEFAULT;
-		BiomeSource biomes = overworld.getBiomeSource();
 		return new PolandWorldOptionsScreen(parent, current, settings -> parent.getUiState().updateDimensions(
 				(registries, dimensions) -> {
 					// The scale determines the dimension type: the gameplay world is lower, which eases rendering.
 					Holder<DimensionType> type = registries.lookupOrThrow(Registries.DIMENSION_TYPE)
 							.getOrThrow(settings.scale().dimensionType());
+					// A new biome source for the new generator: the source is bound to one generator's model and classifier.
+					PolandBiomeSource biomes = PolandBiomeSource.create(registries.lookupOrThrow(Registries.BIOME));
 					return new WorldDimensions(WorldDimensions.withOverworld(dimensions.dimensions(), type,
 							new PolandChunkGenerator(biomes, settings)));
 				}));

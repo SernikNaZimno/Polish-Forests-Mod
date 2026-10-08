@@ -1,0 +1,526 @@
+{
+  "type": "polishforests:tree_stand",
+  "rules": [
+    {
+      "biomes": [
+        "dry_pine_forest"
+      ],
+      "trees": [
+        {
+          "species": "scots_pine",
+          "tree": "polishforests:tree/scots_pine",
+          "weight": 95
+        },
+        {
+          "species": "birch",
+          "tree": "polishforests:tree/birch",
+          "weight": 5
+        }
+      ],
+      "trees_per_chunk": 7.0
+    },
+    {
+      "biomes": [
+        "fresh_pine_forest"
+      ],
+      "trees": [
+        {
+          "species": "scots_pine",
+          "tree": "polishforests:tree/scots_pine",
+          "weight": 85
+        },
+        {
+          "species": "spruce",
+          "tree": "polishforests:tree/spruce",
+          "weight": 5
+        },
+        {
+          "species": "birch",
+          "tree": "polishforests:tree/birch",
+          "weight": 10
+        }
+      ],
+      "trees_per_chunk": 11.0
+    },
+    {
+      "biomes": [
+        "coastal_pine_forest"
+      ],
+      "trees": [
+        {
+          "species": "scots_pine",
+          "tree": "polishforests:tree/scots_pine",
+          "weight": 90
+        },
+        {
+          "species": "birch",
+          "tree": "polishforests:tree/birch",
+          "weight": 10
+        }
+      ],
+      "trees_per_chunk": 9.0
+    },
+    {
+      "biomes": [
+        "moist_pine_forest"
+      ],
+      "trees": [
+        {
+          "species": "scots_pine",
+          "tree": "polishforests:tree/scots_pine",
+          "weight": 65
+        },
+        {
+          "species": "spruce",
+          "tree": "polishforests:tree/spruce",
+          "weight": 10
+        },
+        {
+          "species": "birch",
+          "tree": "polishforests:tree/birch",
+          "weight": 25
+        }
+      ],
+      "trees_per_chunk": 10.0
+    },
+    {
+      "biomes": [
+        "bog_woodland"
+      ],
+      "trees": [
+        {
+          "species": "scots_pine",
+          "tree": "polishforests:tree/scots_pine",
+          "weight": 70
+        },
+        {
+          "species": "birch",
+          "tree": "polishforests:tree/birch",
+          "weight": 30
+        }
+      ],
+      "trees_per_chunk": 6.0
+    },
+    {
+      "biomes": [
+        "mixed_pine_forest"
+      ],
+      "trees": [
+        {
+          "species": "scots_pine",
+          "tree": "polishforests:tree/scots_pine",
+          "weight": 55
+        },
+        {
+          "species": "spruce",
+          "tree": "polishforests:tree/spruce",
+          "weight": 5
+        },
+        {
+          "species": "birch",
+          "tree": "polishforests:tree/birch",
+          "weight": 10
+        },
+        {
+          "species": "oak",
+          "tree": "polishforests:tree/oak",
+          "weight": 25
+        },
+        {
+          "species": "beech",
+          "tree": "polishforests:tree/beech",
+          "weight": 5
+        }
+      ],
+      "trees_per_chunk": 10.0
+    },
+    {
+      "biomes": [
+        "mixed_forest"
+      ],
+      "trees": [
+        {
+          "species": "scots_pine",
+          "tree": "polishforests:tree/scots_pine",
+          "weight": 30
+        },
+        {
+          "species": "spruce",
+          "tree": "polishforests:tree/spruce",
+          "weight": 7
+        },
+        {
+          "species": "oak",
+          "tree": "polishforests:tree/oak",
+          "weight": 45
+        },
+        {
+          "species": "beech",
+          "tree": "polishforests:tree/beech",
+          "weight": 8
+        },
+        {
+          "species": "hornbeam",
+          "tree": "polishforests:tree/hornbeam",
+          "weight": 10
+        }
+      ],
+      "trees_per_chunk": 9.0
+    },
+    {
+      "biomes": [
+        "oak_hornbeam_forest"
+      ],
+      "trees": [
+        {
+          "species": "spruce",
+          "tree": "polishforests:tree/spruce",
+          "weight": 5
+        },
+        {
+          "species": "oak",
+          "tree": "polishforests:tree/oak",
+          "weight": 35
+        },
+        {
+          "species": "beech",
+          "tree": "polishforests:tree/beech",
+          "weight": 10
+        },
+        {
+          "species": "hornbeam",
+          "tree": "polishforests:tree/hornbeam",
+          "weight": 30
+        },
+        {
+          "species": "linden",
+          "tree": "polishforests:tree/linden",
+          "weight": 15
+        },
+        {
+          "species": "ash",
+          "tree": "polishforests:tree/ash",
+          "weight": 3
+        },
+        {
+          "species": "norway_maple",
+          "tree": "polishforests:tree/norway_maple",
+          "weight": 2
+        }
+      ],
+      "trees_per_chunk": 9.0
+    },
+    {
+      "biomes": [
+        "lowland_beech_forest"
+      ],
+      "trees": [
+        {
+          "species": "oak",
+          "tree": "polishforests:tree/oak",
+          "weight": 10
+        },
+        {
+          "species": "beech",
+          "tree": "polishforests:tree/beech",
+          "weight": 85
+        },
+        {
+          "species": "sycamore_maple",
+          "tree": "polishforests:tree/sycamore_maple",
+          "weight": 5
+        }
+      ],
+      "trees_per_chunk": 7.0
+    },
+    {
+      "biomes": [
+        "alder_carr"
+      ],
+      "trees": [
+        {
+          "species": "birch",
+          "tree": "polishforests:tree/birch",
+          "weight": 10
+        },
+        {
+          "species": "ash",
+          "tree": "polishforests:tree/ash",
+          "weight": 5
+        },
+        {
+          "species": "black_alder",
+          "tree": "polishforests:tree/black_alder",
+          "weight": 85
+        }
+      ],
+      "trees_per_chunk": 9.0
+    },
+    {
+      "biomes": [
+        "ash_alder_forest"
+      ],
+      "trees": [
+        {
+          "species": "birch",
+          "tree": "polishforests:tree/birch",
+          "weight": 5
+        },
+        {
+          "species": "ash",
+          "tree": "polishforests:tree/ash",
+          "weight": 30
+        },
+        {
+          "species": "elm",
+          "tree": "polishforests:tree/elm",
+          "weight": 10
+        },
+        {
+          "species": "black_alder",
+          "tree": "polishforests:tree/black_alder",
+          "weight": 55
+        }
+      ],
+      "trees_per_chunk": 9.0
+    },
+    {
+      "biomes": [
+        "willow_poplar_forest"
+      ],
+      "trees": [
+        {
+          "species": "white_willow",
+          "tree": "polishforests:tree/white_willow",
+          "weight": 70
+        },
+        {
+          "species": "poplar",
+          "tree": "polishforests:tree/poplar",
+          "weight": 30
+        }
+      ],
+      "trees_per_chunk": 7.0
+    },
+    {
+      "biomes": [
+        "elm_ash_forest"
+      ],
+      "trees": [
+        {
+          "species": "oak",
+          "tree": "polishforests:tree/oak",
+          "weight": 35
+        },
+        {
+          "species": "linden",
+          "tree": "polishforests:tree/linden",
+          "weight": 5
+        },
+        {
+          "species": "ash",
+          "tree": "polishforests:tree/ash",
+          "weight": 30
+        },
+        {
+          "species": "elm",
+          "tree": "polishforests:tree/elm",
+          "weight": 25
+        },
+        {
+          "species": "norway_maple",
+          "tree": "polishforests:tree/norway_maple",
+          "weight": 5
+        }
+      ],
+      "trees_per_chunk": 8.0
+    },
+    {
+      "biomes": [
+        "upland_fir_forest"
+      ],
+      "trees": [
+        {
+          "species": "scots_pine",
+          "tree": "polishforests:tree/scots_pine",
+          "weight": 10
+        },
+        {
+          "species": "fir",
+          "tree": "polishforests:tree/fir",
+          "weight": 50
+        },
+        {
+          "species": "oak",
+          "tree": "polishforests:tree/oak",
+          "weight": 15
+        },
+        {
+          "species": "beech",
+          "tree": "polishforests:tree/beech",
+          "weight": 25
+        }
+      ],
+      "trees_per_chunk": 10.0
+    },
+    {
+      "biomes": [
+        "montane_beech_forest"
+      ],
+      "trees": [
+        {
+          "species": "spruce",
+          "tree": "polishforests:tree/spruce",
+          "weight": 5
+        },
+        {
+          "species": "fir",
+          "tree": "polishforests:tree/fir",
+          "weight": 20
+        },
+        {
+          "species": "beech",
+          "tree": "polishforests:tree/beech",
+          "weight": 70
+        },
+        {
+          "species": "sycamore_maple",
+          "tree": "polishforests:tree/sycamore_maple",
+          "weight": 5
+        }
+      ],
+      "trees_per_chunk": 8.0
+    },
+    {
+      "biomes": [
+        "montane_spruce_forest"
+      ],
+      "trees": [
+        {
+          "species": "spruce",
+          "tree": "polishforests:tree/spruce",
+          "weight": 90
+        },
+        {
+          "species": "rowan",
+          "tree": "polishforests:tree/rowan",
+          "weight": 10
+        }
+      ],
+      "trees_per_chunk": 12.0
+    },
+    {
+      "biomes": [
+        "gray_alder_forest"
+      ],
+      "trees": [
+        {
+          "species": "spruce",
+          "tree": "polishforests:tree/spruce",
+          "weight": 10
+        },
+        {
+          "species": "ash",
+          "tree": "polishforests:tree/ash",
+          "weight": 15
+        },
+        {
+          "species": "gray_alder",
+          "tree": "polishforests:tree/gray_alder",
+          "weight": 70
+        },
+        {
+          "species": "white_willow",
+          "tree": "polishforests:tree/white_willow",
+          "weight": 5
+        }
+      ],
+      "trees_per_chunk": 8.0
+    },
+    {
+      "biomes": [
+        "raised_bog"
+      ],
+      "trees": [
+        {
+          "species": "scots_pine",
+          "tree": "polishforests:tree/scots_pine",
+          "weight": 1
+        }
+      ],
+      "trees_per_chunk": 0.3
+    },
+    {
+      "biomes": [
+        "heath"
+      ],
+      "trees": [
+        {
+          "species": "scots_pine",
+          "tree": "polishforests:tree/scots_pine",
+          "weight": 60
+        },
+        {
+          "species": "birch",
+          "tree": "polishforests:tree/birch",
+          "weight": 40
+        }
+      ],
+      "trees_per_chunk": 0.5
+    },
+    {
+      "biomes": [
+        "wet_meadow"
+      ],
+      "trees": [
+        {
+          "species": "black_alder",
+          "tree": "polishforests:tree/black_alder",
+          "weight": 60
+        },
+        {
+          "species": "white_willow",
+          "tree": "polishforests:tree/white_willow",
+          "weight": 40
+        }
+      ],
+      "trees_per_chunk": 0.1
+    },
+    {
+      "biomes": [
+        "hay_meadow"
+      ],
+      "trees": [
+        {
+          "species": "birch",
+          "tree": "polishforests:tree/birch",
+          "weight": 30
+        },
+        {
+          "species": "oak",
+          "tree": "polishforests:tree/oak",
+          "weight": 50
+        },
+        {
+          "species": "linden",
+          "tree": "polishforests:tree/linden",
+          "weight": 20
+        }
+      ],
+      "trees_per_chunk": 0.1
+    },
+    {
+      "biomes": [
+        "gray_dune"
+      ],
+      "trees": [
+        {
+          "species": "scots_pine",
+          "tree": "polishforests:tree/scots_pine",
+          "weight": 1
+        }
+      ],
+      "trees_per_chunk": 0.125
+    }
+  ]
+}

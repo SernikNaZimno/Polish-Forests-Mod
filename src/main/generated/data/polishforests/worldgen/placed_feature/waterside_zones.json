@@ -1,0 +1,8 @@
+{
+  "feature": "polishforests:waterside_zones",
+  "placement": [
+    {
+      "type": "minecraft:biome"
+    }
+  ]
+}

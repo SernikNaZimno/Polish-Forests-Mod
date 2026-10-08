@@ -16,6 +16,7 @@ import java.util.TreeSet;
 import org.junit.jupiter.api.Test;
 import pl.polishforests.worldgen.chunk.PolandScale;
 import pl.polishforests.worldgen.chunk.VerticalScale;
+import pl.polishforests.worldgen.habitat.HabitatBiome;
 
 /** Temperature from meters (docs/03-m2-biomy.md, section 6.1) in both world scales. */
 class PolandClimateTest {
@@ -116,42 +117,52 @@ class PolandClimateTest {
 		}
 	}
 
+	/** Profiles of the mod's biomes (step S5): base temperatures from docs/03-m2-biomy.md §6.1 and freeze modes. */
 	@Test
-	void profilesOfPlaceholderBiomes() {
+	void profilesOfModBiomes() {
 		VerticalScale v = VerticalScale.REAL;
-		for (String id : BiomeClimate.PLACEHOLDERS) {
-			BiomeClimate k = BiomeClimate.placeholder(id, v);
+		for (HabitatBiome b : HabitatBiome.values()) {
+			String id = "polishforests:" + b.id();
+			BiomeClimate k = BiomeClimate.profile(id, v);
 			assertTrue(k.baseTemperature() <= PolandClimate.MAX_BASE_TEMPERATURE, id + ": base temperature above the Serene Seasons gate");
 			assertTrue(k.baseTemperature() >= 0.6F, id);
+			assertEquals(b.temperature(), k.baseTemperature(), id);
 			assertTrue(k.scale() == v);
 		}
-		assertEquals(BiomeClimate.FreezeMode.NEVER, BiomeClimate.placeholder("minecraft:ocean", v).freezeMode());
-		assertEquals(BiomeClimate.T_SEA, BiomeClimate.placeholder("minecraft:ocean", v).baseTemperature());
-		assertEquals(BiomeClimate.FreezeMode.RIVER, BiomeClimate.placeholder("minecraft:river", v).freezeMode());
-		assertEquals(BiomeClimate.FreezeMode.VANILLA, BiomeClimate.placeholder("minecraft:forest", v).freezeMode());
-		assertEquals(BiomeClimate.T_LOWLAND, BiomeClimate.placeholder("minecraft:forest", v).baseTemperature());
+		assertEquals(BiomeClimate.FreezeMode.NEVER, BiomeClimate.profile("polishforests:sea", v).freezeMode());
+		assertEquals(BiomeClimate.T_SEA, BiomeClimate.profile("polishforests:sea", v).baseTemperature());
+		assertEquals(BiomeClimate.FreezeMode.RIVER, BiomeClimate.profile("polishforests:river", v).freezeMode());
+		assertEquals(BiomeClimate.FreezeMode.RIVER, BiomeClimate.profile("polishforests:stream", v).freezeMode());
+		assertEquals(BiomeClimate.FreezeMode.VANILLA, BiomeClimate.profile("polishforests:lake", v).freezeMode());
+		assertEquals(BiomeClimate.T_LOWLAND, BiomeClimate.profile("polishforests:oak_hornbeam_forest", v).baseTemperature());
+		assertEquals(0.65F, BiomeClimate.profile("polishforests:raised_bog", v).baseTemperature());
+		// A biome added to the tag by a data pack: the lowland profile.
+		assertEquals(BiomeClimate.T_LOWLAND, BiomeClimate.profile("minecraft:forest", v).baseTemperature());
+		assertEquals(BiomeClimate.FreezeMode.VANILLA, BiomeClimate.profile("minecraft:forest", v).freezeMode());
 	}
 
-	/** The climate tag covers exactly the placeholder biomes from both world presets. */
+	/**
+	 * The climate tag (datagen, src/main/generated) covers exactly the 36 biomes of the mod, and the world presets
+	 * name no biomes: the biome source takes them from the registry (docs/03-m2-biomy.md §3.5).
+	 */
 	@Test
-	void tagCoversPresetBiomes() throws Exception {
+	void tagCoversModBiomes() throws Exception {
 		Set<String> tag = new TreeSet<>();
 		for (JsonElement e : json("/data/polishforests/tags/worldgen/biome/polish_climate.json").getAsJsonObject()
 				.getAsJsonArray("values")) {
 			tag.add(e.getAsString());
 		}
-		assertEquals(new TreeSet<>(BiomeClimate.PLACEHOLDERS), tag);
+		Set<String> expected = new TreeSet<>();
+		for (HabitatBiome b : HabitatBiome.values()) {
+			expected.add("polishforests:" + b.id());
+		}
+		assertEquals(expected, tag);
 		for (String preset : List.of("poland", "poland_gameplay")) {
-			Set<String> biomes = new TreeSet<>();
-			json("/data/polishforests/worldgen/world_preset/" + preset + ".json").getAsJsonObject()
+			var source = json("/data/polishforests/worldgen/world_preset/" + preset + ".json").getAsJsonObject()
 					.getAsJsonObject("dimensions").getAsJsonObject("minecraft:overworld")
-					.getAsJsonObject("generator").getAsJsonObject("biome_source").entrySet()
-					.forEach(en -> {
-						if (!en.getKey().equals("type")) {
-							biomes.add(en.getValue().getAsString());
-						}
-					});
-			assertEquals(tag, biomes, "preset " + preset);
+					.getAsJsonObject("generator").getAsJsonObject("biome_source");
+			assertEquals(Set.of("type"), source.keySet(), "preset " + preset);
+			assertEquals("polishforests:poland", source.get("type").getAsString(), "preset " + preset);
 		}
 	}
 

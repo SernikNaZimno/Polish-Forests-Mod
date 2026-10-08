@@ -11,6 +11,7 @@ import java.util.concurrent.CompletableFuture;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.core.QuartPos;
 import net.minecraft.server.level.WorldGenRegion;
 import net.minecraft.util.Mth;
 import net.minecraft.util.SimpleBitStorage;
@@ -22,6 +23,7 @@ import net.minecraft.world.level.NoiseColumn;
 import net.minecraft.world.level.StructureManager;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeManager;
+import net.minecraft.world.level.biome.BiomeResolver;
 import net.minecraft.world.level.biome.BiomeSource;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -42,6 +44,8 @@ import net.minecraft.world.level.levelgen.densityfunction.SamplerContext;
 import net.minecraft.world.level.levelgen.structure.StructureSet;
 import org.jspecify.annotations.Nullable;
 import pl.polishforests.climate.ClimateBinding;
+import pl.polishforests.worldgen.feature.ModFeatures;
+import pl.polishforests.worldgen.habitat.HabitatClassifier;
 import pl.polishforests.worldgen.landscape.ColumnSample;
 import pl.polishforests.worldgen.landscape.LandscapeModel;
 import pl.polishforests.worldgen.landscape.Noise;
@@ -80,6 +84,7 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 	private final PolandSettings settings;
 	private final VerticalScale vertical;
 	private volatile @Nullable LandscapeModel model;
+	private volatile @Nullable HabitatClassifier classifier;
 	private volatile long modelSeed;
 
 	public PolandChunkGenerator(BiomeSource biomeSource, PolandSettings settings) {
@@ -96,7 +101,10 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 		return settings;
 	}
 
-	/** Landscape model for the world seed; created once and bound to the biome source. */
+	/**
+	 * Landscape model for the world seed; created once, together with the habitat classifier (mode from the settings),
+	 * and bound to the biome source.
+	 */
 	public LandscapeModel model(long seed) {
 		LandscapeModel m = model;
 		if (m != null && modelSeed == seed) {
@@ -106,13 +114,23 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 			m = model;
 			if (m == null || modelSeed != seed) {
 				m = new LandscapeModel(seed, settings.scale().landscape(), settings.regionScale());
+				HabitatClassifier k = new HabitatClassifier(seed, settings.scale().landscape(), settings.mode());
+				classifier = k;
 				modelSeed = seed;
 				model = m;
 				if (biomeSource instanceof PolandBiomeSource source) {
-					source.bind(m, vertical);
+					source.bind(seed, m, k, vertical);
 				}
 			}
 			return m;
+		}
+	}
+
+	/** Habitat classifier for the world seed (the same instance the biome source uses). */
+	public HabitatClassifier classifier(long seed) {
+		model(seed);
+		synchronized (this) {
+			return classifier;
 		}
 	}
 
@@ -131,11 +149,47 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 		return super.createState(structureSets, randomState, legacyLevelSeed);
 	}
 
+	/**
+	 * Biomes of the chunk. With the mod's biome source the biome does not depend on Y (Z2), so the 16 columns are
+	 * classified once ({@code createResolverForChunk}), written into one section's biome container, and every section
+	 * gets a copy of it, instead of the vanilla 64 writes per section (about 8400 in the realistic scale). The time is
+	 * counted in {@link #BIOME_NANOS}, the classification alone in {@link #BIOME_CLASSIFY_NANOS} (budget §3.6: at most
+	 * 0.2 ms per chunk).
+	 */
 	@Override
 	public CompletableFuture<ChunkAccess> createBiomes(RandomState randomState, Blender blender,
 			StructureManager structureManager, ChunkAccess protoChunk) {
 		model(randomState.seed());
-		return super.createBiomes(randomState, blender, structureManager, protoChunk);
+		if (!(biomeSource instanceof PolandBiomeSource source)) {
+			return super.createBiomes(randomState, blender, structureManager, protoChunk);
+		}
+		return CompletableFuture.supplyAsync(() -> {
+			long t0 = System.nanoTime();
+			ChunkPos pos = protoChunk.getPos();
+			int quartX = QuartPos.fromBlock(pos.getMinBlockX());
+			int quartZ = QuartPos.fromBlock(pos.getMinBlockZ());
+			BiomeResolver resolver = source.createResolverForChunk(null, quartX, QuartPos.fromBlock(protoChunk.getMinY()),
+					quartZ, 4, QuartPos.fromBlock(protoChunk.getHeight()), 4);
+			long t1 = System.nanoTime();
+			LevelChunkSection[] sections = protoChunk.getSections();
+			PalettedContainer<Holder<Biome>> column = sections[0].getBiomes().recreate();
+			for (int x = 0; x < 4; x++) {
+				for (int z = 0; z < 4; z++) {
+					Holder<Biome> biome = resolver.getNoiseBiome(quartX + x, 0, quartZ + z);
+					for (int y = 0; y < 4; y++) {
+						column.getAndSetUnchecked(x, y, z, biome);
+					}
+				}
+			}
+			for (int i = 0; i < sections.length; i++) {
+				sections[i] = new LevelChunkSection(sections[i].getStates(), column.copy());
+			}
+			long t2 = System.nanoTime();
+			BIOME_CLASSIFY_NANOS.add(t1 - t0);
+			BIOME_NANOS.add(t2 - t0);
+			BIOME_CHUNKS.increment();
+			return protoChunk;
+		}, Util.backgroundExecutor().forName("polishforests_createBiomes"));
 	}
 
 	@Override
@@ -143,8 +197,9 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 			StructureManager structureManager, BiomeManager biomeManager, @Nullable WorldGenRegion carverBiomeRegion,
 			Set<Holder<Biome>> possibleBiomes) {
 		LandscapeModel m = model(randomState.seed());
+		HabitatClassifier k = classifier(randomState.seed());
 		return CompletableFuture.supplyAsync(() -> {
-			fill(chunk, m);
+			fill(chunk, m, k);
 			return chunk;
 		}, Util.backgroundExecutor().forName("polishforests_buildTerrain"));
 	}
@@ -153,8 +208,15 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 	public static final java.util.concurrent.atomic.LongAdder SAMPLE_NANOS = new java.util.concurrent.atomic.LongAdder();
 	public static final java.util.concurrent.atomic.LongAdder FILL_NANOS = new java.util.concurrent.atomic.LongAdder();
 	public static final java.util.concurrent.atomic.LongAdder CHUNKS = new java.util.concurrent.atomic.LongAdder();
+	/** Time of the BIOMES stage with the mod's biome source (ns) and the number of chunks (budget §3.6). */
+	public static final java.util.concurrent.atomic.LongAdder BIOME_NANOS = new java.util.concurrent.atomic.LongAdder();
+	public static final java.util.concurrent.atomic.LongAdder BIOME_CHUNKS = new java.util.concurrent.atomic.LongAdder();
+	/** Part of {@link #BIOME_NANOS} spent sampling and classifying the 16 quart columns. */
+	public static final java.util.concurrent.atomic.LongAdder BIOME_CLASSIFY_NANOS = new java.util.concurrent.atomic.LongAdder();
+	/** Time of the habitat classification in {@code fill()} (ns, included in {@link #SAMPLE_NANOS}). */
+	public static final java.util.concurrent.atomic.LongAdder CLASSIFY_NANOS = new java.util.concurrent.atomic.LongAdder();
 
-	private void fill(ChunkAccess chunk, LandscapeModel m) {
+	private void fill(ChunkAccess chunk, LandscapeModel m, HabitatClassifier classifier) {
 		long t0 = System.nanoTime();
 		ChunkPos pos = chunk.getPos();
 		int minX = pos.getMinBlockX();
@@ -170,7 +232,10 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 				highest = Math.max(highest, Math.max(topY(s, minY, maxY), waterTopY(s, maxY)));
 			}
 		}
+		long tc = System.nanoTime();
+		chunk.setAttached(ModFeatures.CHUNK_HABITATS, habitats(columns, classifier, minX, minZ, minY, maxY));
 		long t1 = System.nanoTime();
+		CLASSIFY_NANOS.add(t1 - tc);
 		SAMPLE_NANOS.add(t1 - t0);
 		int bottomSection = chunk.getSectionIndex(minY);
 		int topSection = chunk.getSectionIndex(highest);
@@ -259,6 +324,41 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 		}
 		FILL_NANOS.add(System.nanoTime() - t1);
 		CHUNKS.increment();
+	}
+
+	/**
+	 * Habitats of a chunk from its 256 column samples (index {@code x * 16 + z}): the habitat code of each column at
+	 * the block coordinates of the column (the same point at which the biome source classifies a quart column through
+	 * its center), the top ground block and the water surface, and O and P at the chunk center.
+	 */
+	private ChunkHabitats habitats(ColumnSample[] columns, HabitatClassifier k, int minX, int minZ, int minY, int maxY) {
+		int[] codes = new int[256];
+		short[] tops = new short[256];
+		short[] water = new short[256];
+		for (int i = 0; i < 256; i++) {
+			ColumnSample s = columns[i];
+			codes[i] = k.classify(s, minX + (i >> 4), minZ + (i & 15));
+			tops[i] = (short) topY(s, minY, maxY);
+			int w = waterTopY(s, maxY);
+			water[i] = w == Integer.MIN_VALUE ? ChunkHabitats.NO_WATER : (short) w;
+		}
+		ColumnSample center = columns[8 * 16 + 8];
+		return new ChunkHabitats(codes, tops, water, (float) center.region().oceanicity(),
+				(float) center.region().mountainInfluence());
+	}
+
+	/**
+	 * Habitats of a chunk computed again from the model, for a chunk that lost its attachment (proto-chunk saved
+	 * between TERRAIN and FEATURES; counted by {@code ModFeatures.HABITAT_MISS}).
+	 */
+	public ChunkHabitats computeHabitats(ChunkPos pos, int minY, int maxY, long seed) {
+		LandscapeModel m = model(seed);
+		HabitatClassifier k = classifier(seed);
+		ColumnSample[] columns = new ColumnSample[256];
+		for (int i = 0; i < 256; i++) {
+			columns[i] = m.sample(pos.getMinBlockX() + (i >> 4), pos.getMinBlockZ() + (i & 15));
+		}
+		return habitats(columns, k, pos.getMinBlockX(), pos.getMinBlockZ(), minY, maxY);
 	}
 
 	/**
@@ -367,7 +467,7 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 	public void addDebugScreenInfo(List<String> result, RandomState randomState, BlockPos feetPos,
 			SamplerContext samplerContext) {
 		ColumnSample s = model(randomState.seed()).sample(feetPos.getX(), feetPos.getZ());
-		result.add(String.format("Poland: %s, ground %.1f m a.s.l., substrate %s, water %s",
+		result.add(String.format(java.util.Locale.ROOT, "Poland: %s, ground %.1f m a.s.l., substrate %s, water %s",
 				s.type(), s.surface(), s.substrate(), s.hasWater() ? s.waterKind() + " " + s.waterLevel() + " m" : "none"));
 		result.add(String.format(java.util.Locale.ROOT, "Feet elevation: %.0f m a.s.l.", vertical.metersAboveSea(feetPos.getY() - 1)));
 	}
@@ -375,6 +475,8 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 	@Override
 	public void spawnOriginalMobs(WorldGenRegion worldGenRegion) {
 		ChunkPos center = worldGenRegion.getCenter();
+		// The last generation stage: the chunk habitats are no longer needed (§8.3).
+		worldGenRegion.getChunk(center.x(), center.z()).removeAttached(ModFeatures.CHUNK_HABITATS);
 		BlockPos sourcePos = center.getWorldPosition().atY(worldGenRegion.getMaxY());
 		WorldgenRandom random = new WorldgenRandom(new LegacyRandomSource(RandomSupport.generateUniqueSeed()));
 		random.setDecorationSeed(worldGenRegion.getSeed(), center.getMinBlockX(), center.getMinBlockZ());

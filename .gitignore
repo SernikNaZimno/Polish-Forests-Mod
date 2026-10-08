@@ -38,3 +38,6 @@ tools/**/.venv/
 
 # run logs from the project directory
 logs/
+
+# datagen cache (the generated files themselves are in the repository)
+src/main/generated/.cache/

@@ -105,7 +105,7 @@ public final class ClimateBinding {
 
 	private static BiomeClimate profile(Holder<Biome> holder, VerticalScale scale) {
 		String id = holder.unwrapKey().map(ResourceKey::identifier).map(Object::toString).orElse("");
-		return BiomeClimate.placeholder(id, scale);
+		return BiomeClimate.profile(id, scale);
 	}
 
 	/** Scale name for logs. */

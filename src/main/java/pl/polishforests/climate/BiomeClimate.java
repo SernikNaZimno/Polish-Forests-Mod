@@ -1,7 +1,8 @@
 package pl.polishforests.climate;
 
-import java.util.List;
 import net.minecraft.core.BlockPos;
+import pl.polishforests.PolishForests;
+import pl.polishforests.worldgen.habitat.HabitatBiome;
 import pl.polishforests.worldgen.chunk.VerticalScale;
 
 /**
@@ -19,23 +20,6 @@ public record BiomeClimate(VerticalScale scale, float baseTemperature, FreezeMod
 	/** Base temperature of the sea and the coast (milder maritime climate). */
 	public static final float T_SEA = 0.72F;
 
-	/**
-	 * Placeholder biomes from the world presets (data/polishforests/worldgen/world_preset), covered by
-	 * the {@code #polishforests:polish_climate} tag until the mod's own biomes arrive (step S5). The
-	 * preset has 12 slots, but "forest" and "river" appear in them twice.
-	 */
-	public static final List<String> PLACEHOLDERS = List.of(
-			"minecraft:old_growth_pine_taiga",
-			"minecraft:forest",
-			"minecraft:plains",
-			"minecraft:meadow",
-			"minecraft:river",
-			"minecraft:swamp",
-			"minecraft:taiga",
-			"minecraft:old_growth_spruce_taiga",
-			"minecraft:ocean",
-			"minecraft:beach");
-
 	/** Behavior of water in a biome with a profile. */
 	public enum FreezeMode {
 		/** As in vanilla: water freezes at T < 0.15. */
@@ -52,15 +36,22 @@ public record BiomeClimate(VerticalScale scale, float baseTemperature, FreezeMod
 	}
 
 	/**
-	 * Profile of a biome from the {@code #polishforests:polish_climate} tag by identifier. In steps
-	 * S1–S4 these are placeholder biomes: the sea has 0.72 and does not freeze, the river freezes like
-	 * a river, the rest have 0.70. A biome added to the tag by a data pack gets the lowland profile.
+	 * Profile of a biome from the {@code #polishforests:polish_climate} tag by identifier. The mod's biomes
+	 * ({@code polishforests:*}, step S5) take the base temperature from {@link HabitatBiome#temperature()}
+	 * (docs/03-m2-biomy.md §6.1): the sea never freezes (decision M2-6), the river and the stream freeze like rivers,
+	 * the rest as in vanilla. A biome added to the tag by a data pack gets the lowland profile.
 	 */
-	public static BiomeClimate placeholder(String id, VerticalScale scale) {
-		return switch (id) {
-			case "minecraft:ocean" -> new BiomeClimate(scale, T_SEA, FreezeMode.NEVER);
-			case "minecraft:river" -> new BiomeClimate(scale, T_LOWLAND, FreezeMode.RIVER);
-			default -> new BiomeClimate(scale, T_LOWLAND, FreezeMode.VANILLA);
+	public static BiomeClimate profile(String id, VerticalScale scale) {
+		String prefix = PolishForests.MOD_ID + ":";
+		HabitatBiome biome = id.startsWith(prefix) ? HabitatBiome.byId(id.substring(prefix.length())) : null;
+		if (biome == null) {
+			return new BiomeClimate(scale, T_LOWLAND, FreezeMode.VANILLA);
+		}
+		FreezeMode mode = switch (biome) {
+			case SEA -> FreezeMode.NEVER;
+			case RIVER, STREAM -> FreezeMode.RIVER;
+			default -> FreezeMode.VANILLA;
 		};
+		return new BiomeClimate(scale, biome.temperature(), mode);
 	}
 }

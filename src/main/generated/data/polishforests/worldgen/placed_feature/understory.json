@@ -1,0 +1,8 @@
+{
+  "feature": "polishforests:understory",
+  "placement": [
+    {
+      "type": "minecraft:biome"
+    }
+  ]
+}

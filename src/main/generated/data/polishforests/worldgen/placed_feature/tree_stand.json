@@ -1,0 +1,8 @@
+{
+  "feature": "polishforests:tree_stand",
+  "placement": [
+    {
+      "type": "minecraft:biome"
+    }
+  ]
+}
