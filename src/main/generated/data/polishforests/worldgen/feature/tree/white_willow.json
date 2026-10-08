@@ -21,7 +21,7 @@
       "waterlogged": "false"
     }
   },
-  "ignore_vines": false,
+  "ignore_vines": true,
   "minimum_size": {
     "type": "minecraft:two_layers_feature_size"
   },

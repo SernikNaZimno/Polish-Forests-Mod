@@ -63,6 +63,9 @@ public final class PerformanceClientGameTest implements FabricClientGameTest {
 			sp.getServer().runCommand("weather clear");
 			sp.getServer().runCommand("gamemode spectator @a");
 
+			if (stagesOnly) {
+				waitForIdleGeneration(context, name);
+			}
 			profileStages(sp, name, stagesOnly);
 			if (stagesOnly) {
 				return;
@@ -134,6 +137,25 @@ public final class PerformanceClientGameTest implements FabricClientGameTest {
 			String label = i == 0 ? name : name + " / " + SPOT_NAMES[i];
 			sp.getServer().runOnServer(server -> profileSpot(server.overworld(), label, spot[0] >> 4, spot[1] >> 4));
 		}
+	}
+
+	/**
+	 * Waits until the world start has finished generating the chunks around the spawn (no new terrain for 3 s, at most
+	 * 3 minutes), so the first area is not measured together with them (S5 review: the lowland area competed with about
+	 * 1070 world-start chunks).
+	 */
+	private static void waitForIdleGeneration(ClientGameTestContext context, String name) {
+		long start = System.nanoTime();
+		long before = PolandChunkGenerator.CHUNKS.sum();
+		for (int i = 0; i < 60; i++) {
+			long last = PolandChunkGenerator.CHUNKS.sum();
+			context.waitTicks(60);
+			if (PolandChunkGenerator.CHUNKS.sum() == last) {
+				break;
+			}
+		}
+		PolishForests.LOG.info("[performance] {}: world start generated {} more chunks with terrain, waited {} s before the measurement", name,
+				PolandChunkGenerator.CHUNKS.sum() - before, String.format(Locale.ROOT, "%.0f", (System.nanoTime() - start) / 1e9));
 	}
 
 	private static void profileSpot(ServerLevel level, String name, int ox, int oz) {

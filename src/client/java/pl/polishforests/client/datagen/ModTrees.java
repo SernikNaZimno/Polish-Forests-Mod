@@ -78,10 +78,11 @@ final class ModTrees {
 			case BLACK_ALDER -> blob(Blocks.DARK_OAK_LOG, Blocks.DARK_OAK_LEAVES, 8, 3, 0, 2, soil);
 			// Gray alder: straight 6+3, blob of radius 2, gray bark.
 			case GRAY_ALDER -> blob(Blocks.PALE_OAK_LOG, Blocks.OAK_LEAVES, 6, 3, 0, 2, soil);
-			// White willow: the vanilla swamp oak (vines as hops).
+			// White willow: the vanilla swamp oak (vines as hops). Vines of a neighboring willow must not block the trunk
+			// (without ignoreVines about 40% of the willows in a stand of 7 trees per chunk failed).
 			case WHITE_WILLOW -> builder(Blocks.OAK_LOG, new StraightTrunkPlacer(5, 3, 0), Blocks.OAK_LEAVES,
 					new BlobFoliagePlacer(ConstantInt.of(3), ConstantInt.of(0), 3), 1, soil)
-					.decorators(List.of(new LeaveVineDecorator(0.25F))).build();
+					.decorators(List.of(new LeaveVineDecorator(0.25F))).ignoreVines().build();
 			case POPLAR -> poplar(soil);
 			case ROWAN -> blob(Blocks.OAK_LOG, Blocks.OAK_LEAVES, 4, 1, 0, 2, soil);
 			default -> throw new IllegalArgumentException("not a tree: " + species);

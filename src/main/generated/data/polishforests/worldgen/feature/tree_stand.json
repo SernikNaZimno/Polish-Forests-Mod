@@ -112,11 +112,6 @@
           "weight": 55
         },
         {
-          "species": "spruce",
-          "tree": "polishforests:tree/spruce",
-          "weight": 5
-        },
-        {
           "species": "birch",
           "tree": "polishforests:tree/birch",
           "weight": 10
@@ -127,9 +122,13 @@
           "weight": 25
         },
         {
+          "alternative": {
+            "species": "spruce",
+            "tree": "polishforests:tree/spruce"
+          },
           "species": "beech",
           "tree": "polishforests:tree/beech",
-          "weight": 5
+          "weight": 10
         }
       ],
       "trees_per_chunk": 10.0
@@ -145,19 +144,18 @@
           "weight": 30
         },
         {
-          "species": "spruce",
-          "tree": "polishforests:tree/spruce",
-          "weight": 7
-        },
-        {
           "species": "oak",
           "tree": "polishforests:tree/oak",
           "weight": 45
         },
         {
+          "alternative": {
+            "species": "spruce",
+            "tree": "polishforests:tree/spruce"
+          },
           "species": "beech",
           "tree": "polishforests:tree/beech",
-          "weight": 8
+          "weight": 15
         },
         {
           "species": "hornbeam",

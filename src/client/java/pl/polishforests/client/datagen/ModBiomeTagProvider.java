@@ -61,7 +61,9 @@ final class ModBiomeTagProvider extends FabricTagsProvider<Biome> {
 		STRUCTURES.put("abandoned_camp_old_growth_spruce_taiga", List.of(MONTANE_SPRUCE_FOREST));
 		STRUCTURES.put("abandoned_camp_taiga", List.of(UPLAND_FIR_FOREST));
 		STRUCTURES.put("abandoned_camp_dappled_forest", List.of(WILLOW_POPLAR_FOREST));
-		STRUCTURES.put("abandoned_camp_meadow", List.of(HAY_MEADOW));
+		// In the natural-vegetation mode (default, M2-B) there are no hay meadows: the camp also stands on heath and on the
+		// alpine grassland (a mountain meadow, like the vanilla meadow biome).
+		STRUCTURES.put("abandoned_camp_meadow", List.of(HAY_MEADOW, HEATH, ALPINE_GRASSLAND));
 		STRUCTURES.put("abandoned_camp_swamp", List.of(ALDER_CARR));
 	}
 

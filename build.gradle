@@ -110,6 +110,8 @@ processResources {
 	filesMatching('fabric.mod.json') {
 		expand 'version': version
 	}
+	// src/main/generated is a resource directory; its datagen cache must not go into the mod jar.
+	exclude '.cache/**'
 }
 
 tasks.withType(JavaCompile).configureEach {

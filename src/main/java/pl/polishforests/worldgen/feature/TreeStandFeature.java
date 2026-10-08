@@ -50,6 +50,8 @@ public final class TreeStandFeature implements Feature {
 		int[][] index = new int[n][];
 		int[][] weights = new int[n][];
 		int[][] flags = new int[n][];
+		int[][] alternatives = new int[n][];
+		int[][] alternativeFlags = new int[n][];
 		for (HabitatBiome b : HabitatBiome.values()) {
 			TreePalette.Rule rule = palette.rules().stream().filter(r -> r.biomes().contains(b)).findFirst().orElse(null);
 			List<TreePalette.Entry> entries = rule == null ? List.of() : rule.trees();
@@ -58,19 +60,28 @@ public final class TreeStandFeature implements Feature {
 			index[k] = new int[entries.size()];
 			weights[k] = new int[entries.size()];
 			flags[k] = new int[entries.size()];
+			alternatives[k] = new int[entries.size()];
+			alternativeFlags[k] = new int[entries.size()];
 			for (int i = 0; i < entries.size(); i++) {
 				TreePalette.Entry e = entries.get(i);
-				int t = trees.indexOf(e.tree());
-				if (t < 0) {
-					trees.add(e.tree());
-					t = trees.size() - 1;
-				}
-				index[k][i] = t;
+				index[k][i] = treeIndex(e.tree());
 				weights[k][i] = e.weight();
 				flags[k][i] = e.species().flag();
+				alternatives[k][i] = e.alternative().map(a -> treeIndex(a.tree())).orElse(-1);
+				alternativeFlags[k][i] = e.alternative().map(a -> a.species().flag()).orElse(0);
 			}
 		}
-		this.plan = new TreeStandPlan.Palette(perChunk, index, weights, flags);
+		this.plan = new TreeStandPlan.Palette(perChunk, index, weights, flags, alternatives, alternativeFlags);
+	}
+
+	/** Index of a tree in {@link #trees}, added on first use. */
+	private int treeIndex(Holder<PlacedFeature> tree) {
+		int t = trees.indexOf(tree);
+		if (t < 0) {
+			trees.add(tree);
+			t = trees.size() - 1;
+		}
+		return t;
 	}
 
 	public TreePalette palette() {
@@ -105,7 +116,7 @@ public final class TreeStandFeature implements Feature {
 			water[i] = habitats.hasWater(i);
 		}
 		long seed = TreeStandPlan.seed(level.getSeed(), pos.x(), pos.z(), TreeStandPlan.SALT);
-		int[] planned = TreeStandPlan.of(habitats.codes(), water, plan, seed);
+		int[] planned = TreeStandPlan.of(habitats.codes(), water, plan, level.getSeed(), pos.x(), pos.z());
 		WorldgenRandom treeRandom = new WorldgenRandom(new XoroshiroRandomSource(seed));
 		boolean placed = false;
 		for (int p : planned) {

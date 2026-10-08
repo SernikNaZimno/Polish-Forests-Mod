@@ -899,7 +899,7 @@ Tagi biomów (datagen):
   - `increased_fire_burnout`: olsy, łęgi, torfowiska, szuwar;
   - `dystrophic_lake`: `water_fog_color` #3B2A1A.
   - stan po S5: atrybuty i spawny są w datagenie (`ModWorldgen`, profile `HabitatBiome.music()`, `spawns()`, `increasedFireBurnout()`), §3.5.1.
-- **Kolory wody:** rzeka #4A6E5E, potok #4F8FB8, jezioro #3D6E70, dystroficzne #5A4A2E, morze #3A6A7A, zalew #5B7A5A. Kolory trawy i liści są wartościami startowymi z colormapy, kalibrowanymi na zrzutach w czterech porach roku z SS.
+- **Kolory wody:** rzeka #4A6E5E, potok #4F8FB8, jezioro #3D6E70, dystroficzne #3A3326 (po rundzie 1 recenzji S5; było #5A4A2E, z góry wyglądało jak błotnista równina), morze #3A6A7A, zalew #5B7A5A. Kolory trawy i liści są wartościami startowymi z colormapy, kalibrowanymi na zrzutach w czterech porach roku z SS.
 - **Chmury:** `visual/cloud_height` w obu typach wymiaru wynosi dziś 192,33. W REAL to poziom nizin. Podnosimy do REAL Y ≈ 1060 (ok. 1000 m n.p.m.) i GAMEPLAY Y ≈ 380.
 
 ### 10.1 Struktury (decyzja M2-C: wszystkie, które da się sensownie umieścić)
@@ -1111,7 +1111,7 @@ Każdą strukturę sprawdza gametest (`/locate structure`), a jej położenie na
 2. Tag to **`minecraft:supports_big_dripleaf`** (nie `big_dripleaf_placeable`). Nie zawiera żwiru ani piasku, więc lepiężnik na kamieńcu stawiamy na łatach `coarse_dirt`/`rooted_dirt`.
 3. `small_dripleaf` wymaga `#supports_small_dripleaf` (glina, `moss_block`) albo wody źródłowej nad blokiem z `#supports_vegetation`. Dno z piasku lub żwiru nie działa, stąd pas `mud` przy brzegu.
 4. `has_structure/trial_chambers` to jawna lista biomów wanilii. Bez dopisania naszych biomów komnaty prób znikną.
-5. `#minecraft:is_mountain` włącza `pillager_outpost`, `ruined_portal_mountain` i kopalnie. Nie dodajemy do niego naszych biomów.
+5. `#minecraft:is_mountain` włącza `pillager_outpost`, `ruined_portal_mountain` i kopalnie. ~~Nie dodajemy do niego naszych biomów.~~ Zastąpione decyzją M2-C (§10): tag dostają cztery biomy górskie (`montane_beech_forest`, `montane_spruce_forest`, `dwarf_pine_scrub`, `alpine_grassland`), bo posterunki, portale górskie i kopalnie w górach są pożądane.
 6. W 26.3 nie ma placed featura `minecraft:no_op`, jest tylko typ.
 7. `spring_lava` ma `valid_blocks` z `minecraft:dirt` i zakres do `below_top 8` (w REAL Y 2023). Lawa może wypływać na stokach, więc usuwamy.
 8. Brzeg w modelu leży na lustrze + 1 m (`RN:1044`), więc bez półki trzcina i świetliki przy rzekach w REAL się nie postawią. W GAMEPLAY zaokrąglenie często daje ten sam blok co lustro.

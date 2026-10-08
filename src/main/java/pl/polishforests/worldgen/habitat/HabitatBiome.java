@@ -18,7 +18,7 @@ public enum HabitatBiome {
 	MOIST_PINE_FOREST("moist_pine_forest", Group.FOREST, "Bór wilgotny", "Moist Pine Forest",
 			0.7F, 0.7F, 0x3D6E70, 0x7FBF5C, 0x60AE33, 0xA36F46),
 	BOG_WOODLAND("bog_woodland", Group.FOREST, "Bór bagienny", "Bog Woodland",
-			0.67F, 0.9F, 0x5A4A2E, 0x76C05B, 0x53AF32, 0xA36D46),
+			0.67F, 0.9F, 0x3A3326, 0x76C05B, 0x53AF32, 0xA36D46),
 	MIXED_PINE_FOREST("mixed_pine_forest", Group.FOREST, "Bór mieszany", "Mixed Pine-Oak Forest",
 			0.7F, 0.7F, 0x3D6E70, 0x7FBF5C, 0x60AE33, 0xA36F46),
 	MIXED_FOREST("mixed_forest", Group.FOREST, "Las mieszany", "Mixed Forest",
@@ -47,7 +47,7 @@ public enum HabitatBiome {
 			0.7F, 0.8F, 0x4F8FB8, 0x79C05A, 0x59AE30, 0xA36D46),
 	// Non-forest terrestrial (12)
 	RAISED_BOG("raised_bog", Group.NON_FOREST, "Torfowisko wysokie", "Raised Bog",
-			0.65F, 0.9F, 0x5A4A2E, 0x76BF5D, 0x55AE35, 0xA36D46),
+			0.65F, 0.9F, 0x3A3326, 0x76BF5D, 0x55AE35, 0xA36D46),
 	FEN("fen", Group.NON_FOREST, "Torfowisko niskie i przejściowe", "Fen and Transition Mire",
 			0.67F, 0.9F, 0x4A6E5E, 0x76C05B, 0x53AF32, 0xA36D46),
 	REEDBED("reedbed", Group.NON_FOREST, "Szuwar", "Reedbed",
@@ -82,7 +82,7 @@ public enum HabitatBiome {
 	LAKE("lake", Group.WATER, "Jezioro", "Lake",
 			0.7F, 0.8F, 0x3D6E70, 0x79C05A, 0x59AE30, 0xA36D46),
 	DYSTROPHIC_LAKE("dystrophic_lake", Group.WATER, "Jezioro dystroficzne", "Dystrophic Lake",
-			0.7F, 0.9F, 0x5A4A2E, 0x73C158, 0x50B02F, 0xA36D46);
+			0.7F, 0.9F, 0x3A3326, 0x73C158, 0x50B02F, 0xA36D46);
 
 	/** Biome group: forest, non-forest terrestrial, water. */
 	public enum Group {

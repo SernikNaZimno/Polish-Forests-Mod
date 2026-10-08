@@ -78,7 +78,8 @@ final class ModWorldgen {
 
 	/**
 	 * Tree palette (§8.5): trees per chunk and composition in percent. A species with a range flag (beech, fir, spruce,
-	 * hornbeam) grows only within its range; "beech or spruce" splits the weight between both. Basic version of S5:
+	 * hornbeam) grows only within its range; "beech or spruce" is beech with spruce as the alternative species, so the
+	 * full weight goes to whichever of the two is within range (in the lowlands they rarely overlap). Basic version of S5:
 	 * one rule per biome, without zones (the timberline, the wind belt and the stunted pine come in step S7).
 	 */
 	private static TreePalette treePalette(HolderGetter<PlacedFeature> placed) {
@@ -89,9 +90,9 @@ final class ModWorldgen {
 		rule(rules, placed, HabitatBiome.MOIST_PINE_FOREST, 10, Map.of(Species.SCOTS_PINE, 65, Species.BIRCH, 25, Species.SPRUCE, 10));
 		rule(rules, placed, HabitatBiome.BOG_WOODLAND, 6, Map.of(Species.SCOTS_PINE, 70, Species.BIRCH, 30));
 		rule(rules, placed, HabitatBiome.MIXED_PINE_FOREST, 10, Map.of(Species.SCOTS_PINE, 55, Species.OAK, 25, Species.BIRCH, 10,
-				Species.BEECH, 5, Species.SPRUCE, 5));
-		rule(rules, placed, HabitatBiome.MIXED_FOREST, 9, Map.of(Species.OAK, 45, Species.SCOTS_PINE, 30, Species.BEECH, 8,
-				Species.SPRUCE, 7, Species.HORNBEAM, 10));
+				Species.BEECH, 10), Map.of(Species.BEECH, Species.SPRUCE));
+		rule(rules, placed, HabitatBiome.MIXED_FOREST, 9, Map.of(Species.OAK, 45, Species.SCOTS_PINE, 30, Species.BEECH, 15,
+				Species.HORNBEAM, 10), Map.of(Species.BEECH, Species.SPRUCE));
 		rule(rules, placed, HabitatBiome.OAK_HORNBEAM_FOREST, 9, Map.of(Species.OAK, 35, Species.HORNBEAM, 30, Species.LINDEN, 15,
 				Species.ASH, 3, Species.NORWAY_MAPLE, 2, Species.BEECH, 10, Species.SPRUCE, 5));
 		rule(rules, placed, HabitatBiome.LOWLAND_BEECH_FOREST, 7, Map.of(Species.BEECH, 85, Species.OAK, 10, Species.SYCAMORE_MAPLE, 5));
@@ -119,11 +120,19 @@ final class ModWorldgen {
 	/** A rule with the species in the order of {@link Species} (stable JSON). */
 	private static void rule(List<TreePalette.Rule> rules, HolderGetter<PlacedFeature> placed, HabitatBiome biome,
 			float treesPerChunk, Map<Species, Integer> composition) {
+		rule(rules, placed, biome, treesPerChunk, composition, Map.of());
+	}
+
+	/** A rule whose species may have an alternative species that takes their weight out of their range. */
+	private static void rule(List<TreePalette.Rule> rules, HolderGetter<PlacedFeature> placed, HabitatBiome biome,
+			float treesPerChunk, Map<Species, Integer> composition, Map<Species, Species> alternatives) {
 		List<TreePalette.Entry> entries = new ArrayList<>();
 		for (Species s : Species.values()) {
 			Integer weight = composition.get(s);
 			if (weight != null) {
-				entries.add(new TreePalette.Entry(s, placed.getOrThrow(placed(s.path())), weight));
+				Species alt = alternatives.get(s);
+				entries.add(new TreePalette.Entry(s, placed.getOrThrow(placed(s.path())), weight, java.util.Optional.ofNullable(alt)
+						.map(a -> new TreePalette.Alternative(a, placed.getOrThrow(placed(a.path()))))));
 			}
 		}
 		rules.add(new TreePalette.Rule(List.of(biome), treesPerChunk, entries));

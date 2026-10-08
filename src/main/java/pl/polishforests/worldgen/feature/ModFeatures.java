@@ -18,11 +18,12 @@ import pl.polishforests.worldgen.chunk.PolandChunkGenerator;
  */
 public final class ModFeatures {
 	/**
-	 * Habitats of a chunk between {@code fill()} and the last generation stage: a non-persistent attachment, so it is
-	 * neither saved nor sent to clients. A proto-chunk saved between TERRAIN and FEATURES loses it (see {@link #habitats}).
+	 * Habitats of a chunk between {@code fill()} and the last generation stage: a persistent attachment (not sent to
+	 * clients), so a proto-chunk saved between TERRAIN and FEATURES keeps it; removed in {@code spawnOriginalMobs}, so
+	 * full chunks are saved without it. Missing only in a proto-chunk saved by an older version (see {@link #habitats}).
 	 */
 	public static final AttachmentType<ChunkHabitats> CHUNK_HABITATS = AttachmentRegistry.create(
-			PolishForests.id("chunk_habitats"));
+			PolishForests.id("chunk_habitats"), builder -> builder.persistent(ChunkHabitats.CODEC));
 
 	/** Number of chunks whose habitats were missing in a dispatcher and were computed again from the model (§3.6: < 0.5%). */
 	public static final LongAdder HABITAT_MISS = new LongAdder();
@@ -39,8 +40,8 @@ public final class ModFeatures {
 
 	/**
 	 * Habitats of the chunk: the attachment written in {@code fill()}, or, when it is missing (a proto-chunk saved
-	 * between TERRAIN and FEATURES, e.g. on server shutdown or with C2ME), computed again from the model and counted
-	 * in {@link #HABITAT_MISS}. Null for a generator other than the "Poland" one.
+	 * between TERRAIN and FEATURES by a version with a non-persistent attachment, or a generation path that skips
+	 * {@code fill()}), computed again from the model and counted in {@link #HABITAT_MISS}. Null for a generator other than the "Poland" one.
 	 */
 	public static @Nullable ChunkHabitats habitats(ChunkAccess chunk, ChunkGenerator generator, long seed) {
 		ChunkHabitats habitats = chunk.getAttached(CHUNK_HABITATS);

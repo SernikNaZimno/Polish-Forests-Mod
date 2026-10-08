@@ -45,7 +45,11 @@ import net.minecraft.world.level.levelgen.structure.StructureSet;
 import org.jspecify.annotations.Nullable;
 import pl.polishforests.climate.ClimateBinding;
 import pl.polishforests.worldgen.feature.ModFeatures;
+import pl.polishforests.worldgen.habitat.Habitat;
+import pl.polishforests.worldgen.habitat.HabitatBiome;
 import pl.polishforests.worldgen.habitat.HabitatClassifier;
+import pl.polishforests.worldgen.habitat.Soil;
+import pl.polishforests.worldgen.habitat.Zone;
 import pl.polishforests.worldgen.landscape.ColumnSample;
 import pl.polishforests.worldgen.landscape.LandscapeModel;
 import pl.polishforests.worldgen.landscape.Noise;
@@ -57,9 +61,10 @@ import pl.polishforests.worldgen.landscape.Substrate;
  * which at a height of 3056 blocks is many times cheaper than the vanilla generator.
  */
 public final class PolandChunkGenerator extends ChunkGenerator {
+	/** The settings are always written; a world without them is an M1 world ({@link PolandSettings#GENERATOR_FIELD}). */
 	public static final MapCodec<PolandChunkGenerator> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
 			BiomeSource.CODEC.fieldOf("biome_source").forGetter(ChunkGenerator::getBiomeSource),
-			PolandSettings.CODEC.optionalFieldOf("settings", PolandSettings.DEFAULT).forGetter(g -> g.settings)
+			PolandSettings.GENERATOR_FIELD.forGetter(g -> g.settings)
 	).apply(i, i.stable(PolandChunkGenerator::new)));
 
 	private static final BlockState AIR = Blocks.AIR.defaultBlockState();
@@ -233,7 +238,8 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 			}
 		}
 		long tc = System.nanoTime();
-		chunk.setAttached(ModFeatures.CHUNK_HABITATS, habitats(columns, classifier, minX, minZ, minY, maxY));
+		ChunkHabitats chunkHabitats = habitats(columns, classifier, minX, minZ, minY, maxY);
+		chunk.setAttached(ModFeatures.CHUNK_HABITATS, chunkHabitats);
 		long t1 = System.nanoTime();
 		CLASSIFY_NANOS.add(t1 - tc);
 		SAMPLE_NANOS.add(t1 - t0);
@@ -249,10 +255,12 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 		int[] tops = new int[256];
 		int[] waterTops = new int[256];
 		int[] bedrockTops = new int[256];
+		BlockState[] surfaces = new BlockState[256];
 		for (int i = 0; i < 256; i++) {
 			ColumnSample s = columns[i];
 			int wx = minX + (i >> 4);
 			int wz = minZ + (i & 15);
+			surfaces[i] = surfaceBlock(s.substrate(), chunkHabitats.codes()[i]);
 			tops[i] = topY(s, minY, maxY);
 			waterTops[i] = waterTopY(s, maxY);
 			bedrockTops[i] = minY + (int) (Noise.mix(wx * 341873128712L + wz * 132897987541L) >>> 62);
@@ -275,7 +283,7 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 					int waterTop = waterTops[i];
 					for (int dy = 0; dy < 16; dy++) {
 						int y = y0 + dy;
-						BlockState state = y <= top ? strata(s, y, top, waterTop, bedrockTops[i], wx, wz)
+						BlockState state = y <= top ? strata(s, y, top, waterTop, bedrockTops[i], wx, wz, surfaces[i])
 								: y <= waterTop ? WATER : AIR;
 						// Index order as in the section palette: y, then z, then x.
 						buffer[(dy << 8) | ((i & 15) << 4) | (i >> 4)] = state;
@@ -399,10 +407,38 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 	}
 
 	/**
+	 * Top block of a dry column from the substrate and the habitat. Interim rule of step S5 until the soil blocks of
+	 * step S6 (docs/03-m2-biomy.md §7): a dry channel bed (RIVERBED) stays bare sand only on bars and in water, beach and
+	 * white dune habitats; under a riparian forest, scrub or meadow on the valley floor it gets the ground of the alluvium
+	 * (grass, mud on peat soils), so trees can grow there. Beach and white dune habitats have sand even where the
+	 * substrate is not beach sand.
+	 */
+	static BlockState surfaceBlock(Substrate sub, int code) {
+		HabitatBiome biome = Habitat.biome(code);
+		boolean sandHabitat = biome == HabitatBiome.BEACH || biome == HabitatBiome.WHITE_DUNE;
+		return switch (sub) {
+			case PEAT, LAKE_MUD -> MUD;
+			case BEACH_SAND -> SAND;
+			case RIVERBED -> {
+				Zone zone = Habitat.zone(code);
+				if (sandHabitat || biome.isWater() || zone == Zone.POINT_BAR || zone == Zone.GRAVEL_BAR) {
+					yield SAND;
+				}
+				Soil soil = Habitat.soil(code);
+				yield soil == Soil.BOG_PEAT || soil == Soil.FEN_PEAT ? MUD : GRASS;
+			}
+			default -> sandHabitat ? SAND : GRASS;
+		};
+	}
+
+	/**
 	 * Block in the column at height {@code y} (from the bottom: bedrock, surface deposits,
 	 * soil). The M1 version uses vanilla blocks; the mod's own soils and rocks come in M2.
+	 *
+	 * @param surface top block of the column when it is dry ({@link #surfaceBlock})
 	 */
-	private static BlockState strata(ColumnSample s, int y, int top, int waterTop, int bedrockTop, int wx, int wz) {
+	private static BlockState strata(ColumnSample s, int y, int top, int waterTop, int bedrockTop, int wx, int wz,
+			BlockState surface) {
 		if (y <= bedrockTop) {
 			return BEDROCK;
 		}
@@ -411,11 +447,7 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 		Substrate sub = s.substrate();
 		if (depth < s.coverDepth()) {
 			if (depth == 0 && !underwater) {
-				return switch (sub) {
-					case PEAT, LAKE_MUD -> MUD;
-					case RIVERBED, BEACH_SAND -> SAND;
-					default -> GRASS;
-				};
+				return surface;
 			}
 			return switch (sub) {
 				case SAND, BEACH_SAND -> SAND;
