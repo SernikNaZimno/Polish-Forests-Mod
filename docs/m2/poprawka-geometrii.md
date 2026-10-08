@@ -2637,3 +2637,53 @@ K8c jest o 1–4% szybszy od bazy, bo szum wysokości dna liczy się raz na kolu
 4. Rogi przy własnym korycie (K5.1), przy marginesie F1, granicy nizin i warunku dna nadal liczą się w kolumnie. Razem z rogami krótkich łuków zostaje 23 czół > 0,5 półszerokości w REAL i 7 w GAMEPLAY, najwyżej 0,9–1,1 półszerokości.
 
 **Co zostaje:** zrzut `oxbow_lake` w grze w K8z (kamera bierze najbliższe starorzecze od (0, 0), więc może trafić w inne miejsce), proste stopnie zboczy prostych odcinków dolin (M5), dna GAMEPLAY z jedną oktawą.
+
+### Runda 1 poprawek po recenzji K8c
+
+Baza: `65f416c` (K8c). Recenzja zgłosiła jeden problem poważny (proste stopnie przy starorzeczach usunięte tylko w REAL) i dziewięć drobnych. Narzędzia: kadry recenzji (19 kadrów REAL i 7 GAMEPLAY, 0,25–1 m na piksel), skany starorzeczy (REAL ±40 km co 10 m, GAMEPLAY ±15 km co 5 m, porównanie każdego starorzecza z ≥ 20 komórkami), sonda końców starorzecza (miara końca jak w nowym teście, niżej) i `costTest` A/B. Przeglądu wszystkich starorzeczy z K8c (siatki ±60 / ±20 km) nie powtarzałem: narzędzia autora K8c nie ma już w katalogu roboczym, więc liczby w metrach niżej dotyczą kadrów, a nie całych siatek.
+
+**1. Proste stopnie w GAMEPLAY i Z9 (problem poważny i drobny 1).** Druga oktawa dna nie wchodzi już do klasyfikatora. `RiverNetwork.floorOffset` zapisuje jej udział w wysokości dna, `RiverHit`/`ColumnSample.Waters.floorFine` podaje go razy największą maskę dna (0 poza dnami nizinnymi, najwyżej ok. ±0,35 m), a `HabitatClassifier.Column.H` to powierzchnia minus `floorFine`. Wysokość nad wodą (h, DGW, pasy brzegu) liczy się więc znów tylko od szumu 90 m·k (Z9; opis w `docs/03-m2-biomy.md` §3.4, „Mikrorzeźba den a Z9”; javadoc `Calibration.A_BACKSWAMP_H` poprawiony). Ols GAMEPLAY psuła sama oktawa w h, więc przy tym rozwiązaniu lżejsze warianty z tabeli K8c nie są potrzebne: druga oktawa (35 m·k, czyli 17,5 m w GAMEPLAY, waga 0,5) działa teraz na dnach nizinnych obu skal. REAL jest bez zmian bit w bit, dna górskie bez zmian.
+- `WatersideZonesTest`: ols GAMEPLAY 52,2% cięciw ≥ 10 bloków (jak w bazie; z oktawą w h było 43,8%), REAL 74,4% (K8c 73,7%). `MassifSinkLakeContainmentTest` i `SurfaceContinuityTest` przechodzą. Kolumny lądu z innym biomem niż w bazie K8c (`3ad5667`) w kadrach REAL 1–2 km: `R_game1k` 1,62% (K8c) → 1,29%, `H_s10` 0,41 → 0,15%, `H_game` 0,67 → 0,34% (reszta to zmiany kształtu starorzeczy).
+- Proste stopnie (miara z K8c) w 7 kadrach GAMEPLAY 400 m: 641 → 544 m. Przy samych starorzeczach na dnie znikają (`G_s2` 43,5 → 0 m, `G_s6` 26 → 0 m, w `G_s3` znika stopień przy starorzeczu, 164,5 → 136,5 m). Zostają poziomice zboczy prostych odcinków dolin i prosta krawędź W–E u stóp zbocza przy ujściu doliny (`G_o`, cel `find oxbow_lake` (1643, −452) GAMEPLAY: 339,5 → 338,5 m), obie do M5.
+- Małe zamknięte poziomice (pagórki i zagłębienia < 300 m²) na dnach GAMEPLAY: suma po 7 kadrach 92 → 263 na km². Zmiana suchego gruntu najwyżej 0,30 m (ok. 0,1 bloku), 0 przecieków, 0 par > 2 bloki. Do oceny na zrzutach w grze w K8z (jak w REAL: przy wrażeniu „pryszczy” waga 0,35).
+
+**2. Starorzecza wzdłuż obcego koryta jako „igły” (drobny 5).** W `otherChannelFade` długość rogu (6 półszerokości) mnoży się przez g, czyli szybkość zmiany odległości D stopy od obcego koryta wzdłuż łuku. Liczę ją jako większe z nachyleń jednostronnych do punktów łuku ok. 2 półszerokości przed stopą i za nią (`MeanderField.arcPoint`) i obcinam do [2/3, 1]. Przy korycie przecinającym łuk g ≈ sinus kąta, więc róg ma nadal nachylenie ≤ 1/3 (szpic ok. 18°). Przy korycie biegnącym obok łuku g jest małe i zasięg zwężania krótszy: dopływ równoległy 2 półszerokości za `plug` zostawia 75% szerokości zamiast 56%. Dolna granica 2/3 trzyma bliższy brzeg z dala od linii równoległej do koryta, bo półszerokość zmienia się najwyżej o połowę zmiany D. Ograniczenie od `plug` zostaje (fade ≤ (D − plug) / (2 owMax)). Warianty (suma 14 kadrów REAL recenzji bez powtórzeń; woda starorzeczy / proste odcinki brzegu):
+- K8c: 88 446 m² / 593 m;
+- różnica centralna na 0,01 parametru łuku, granica 1/3: brzeg z płatami tam, gdzie dopływ meandruje (g skacze); odrzucone;
+- nachylenia jednostronne na 2 półszerokościach, granica 1/3: 105 323 m² / 664 m, ale bliższy brzeg biegnie wzdłuż prostego dopływu (`R_s10`: 110 m prostego brzegu);
+- granica 1/2: 102 611 m² / 682 m;
+- **granica 2/3 (wybrana, z cięciem z p. 3): 99 200 m² / 640 m**;
+- iloczyn z wygaszaniem w kolumnie (jak przed K8c) i granicą 0,1: bez zysku przy „igłach”; odrzucone.
+
+Skan REAL ±40 km co 10 m: 642 starorzecza. Wobec K8c żadne nie traci ≥ 30%, 4 zyskują ≥ 30% (do +62%), woda +0,1%. Wobec bazy `3ad5667` tracących ≥ 30% jest 14 → 9, ≥ 50% 6 → 3, największa strata 72 → 60%, woda −1,4 → −1,3%. Starorzecze w `R_s6` (−4585, 19174): 1168 → 1583 m² (baza 4236 m²). Jest nadal wąskie: dopływ meandruje 25–40 m od łuku, więc D wzdłuż łuku drga i g ≈ 1; taki przypadek zostaje (M5). Miejsca poprawione w K8c zostają poprawione: miejsce z gry (−4407, 2171) ma miarę końca 0,28 (niżej; K8c 0,25, baza 0,59), (−5440, 93770) 0,41 (K8c 0,32, baza 0,78). Przecieki 0. Najbliższy brzeg koryta przy wodzie starorzecza w kadrach: 21,1 m (K8c 20,4 m).
+
+**3. Woda „włosowa” (drobny 6).** Woda starorzecza kończy się, gdy półszerokość spada poniżej `OXBOW_MIN_HALF` = 0,6 m·k (pasmo 0,2 m·k, brzeg ciągły; `RiverNetwork.oxbow`). Składowe ≤ 3 bloków w kadrach REAL 1 m: 41 → 2, składowe 4–10 bloków 1 → 2. W GAMEPLAY 0,6 m·k to 0,3 m. Cięcie 1,0 m i 0,6 m (bez k) zabierało 5,5% i 2,1% wody GAMEPLAY i podnosiło medianę udziału rogów w `oxbowLakesAreCrescents` do 0,62 (limit 0,60), bo starorzecza GAMEPLAY mają 3–7 m szerokości. Teraz mediana REAL 0,53 → 0,55 (20 z 25 ≤ 0,7, było 22), GAMEPLAY 0,45 → 0,50 (19 z 25), 0 kolumn nieszczelnych i poza dnem. Woda starorzeczy GAMEPLAY (skan ±15 km co 5 m): −0,5% wobec K8c (−1,1% wobec bazy).
+
+**4. Suche tamy w korytach (drobny 8, stary problem).** Kanał pomija się tylko wtedy, gdy teren jest > 3 m nad zaokrąglonym lustrem **i** > `FLOOR_OFFSET_MAX` + 0,05 m (2,25 m) nad lustrem niezaokrąglonym. Zwykłe dno (1,2–2,2 m nad lustrem) nigdy więc nie przegradza rzeki, a głowice dolin prawie się nie zmieniają. Skan REAL ±40 km: suche kolumny koryta 3172 → 3113, kolumn rzeki +70. `R_lost` (−2820, 21350): suche komórki koryta 23 → 0, `R_gain2` 212 → 0. Kadry `R_plug1`/`R_plug2` (suche głowice dolin bez wody) bez zmian. Złoty test: żadna nowa łata.
+
+**5. Pozostałe drobne.** Javadoc: koniec starorzecza przy obcym korycie to szpic (klin ok. 18°), a nie „zaokrąglony koniec”; ograniczenie z nierówności trójkąta jest dokładne tylko z dokładnością do stałej Lipschitza pola odległości i zmiany szerokości koryta (drobny 3). Nowy test regresji `StandingWaterTest.oxbowLakesTaperAtOtherChannels` (drobny 2) wypełnia na siatce 1 m·k starorzecza przy miejscu z gry i miejscu K5 (REAL). Na obu końcach średnicy geodezyjnej mierzy największą półszerokość w zasięgu 0,5 największej półszerokości od końca i dzieli ją przez ten zasięg (czoło cięte w poprzek łuku: ok. 1, róg K5.1 ok. 0,45, szpic K8c 0,3–0,45). Limit 0,52, teraz 0,46 / 0,29 i 0,46 / 0,41 (sonda na bazie: 0,59 i 0,78). Przy obu i przy starorzeczu GAMEPLAY (13652, −4786) woda leży co najmniej 12,5 m od brzegu każdego koryta (teraz 22,7 / 31,1 / 21,2 m). Wiadomości opublikowanych commitów K8c zostają (bez `amend`): tytuł `65f416c` przesadza („bez prostych stopni”: w REAL zostało 12,3 km, −71%, głównie na zboczach), a w `ee5e2f4` REAL B dostaje tylko `lowland_river` i `oxbow_lake` (dokładna lista w K8c wyżej). Drobne 7 i 9 (GAMEPLAY i „pryszcze”): p. 1.
+
+**Złoty test.** `src/test/golden-allow/K8c.txt` dokłada łaty GAMEPLAY z dnami nizinnymi (`build/golden_K8cr1_a.txt`): w GAMEPLAY A `large_river`, `lowland_river`, `oxbow_lake`, `tunnel_valley_lake` i `outwash_plain_lake`, w GAMEPLAY B `cliff`, `kettle_pond`, `large_river`, `lowland_river` i `oxbow_lake`. Zmiany 2–4 nie dokładają łat (`build/golden_K8cr1_c.txt`). Żadna łata kontrolna `*_interior`, cel ani pokrycie się nie zmieniają. Przegenerowanie w K8z.
+
+**Koszt.** `costTest -PcostRuns=15`, A/B w jednej sesji (runda 1, K8c `65f416c` w osobnym drzewie roboczym, znów runda 1), stosunek do M1 (mediana):
+
+| Obszar | runda 1, przebieg 1 | K8c | runda 1, przebieg 2 |
+|---|---|---|---|
+| REAL cały obszar | 1,130 | 1,119 | 1,103 |
+| REAL Beskidy | 1,143 | 1,073 | 1,058 |
+| REAL wielki masyw | 1,015 | 0,963 | 0,952 |
+| GAMEPLAY cały obszar | 1,160 (6,23 µs) | 1,170 (6,12 µs) | 1,170 (6,19 µs) |
+| GAMEPLAY Beskidy | 1,131 | 1,126 | 1,127 |
+| GAMEPLAY wielki masyw | 1,107 | 1,098 | 1,112 |
+
+Przebieg 1 był rozgrzewaniem maszyny (wszystkie obszary REAL wolniejsze o 5–7%, także M1 w części rund). Druga oktawa na dnach GAMEPLAY i nowe pole kosztują najwyżej ok. 1%. Budżet D1 (1,20) ma nadal ok. 3% zapasu, `costTest` przechodzi.
+
+**Testy.** Commit pośredni `be7020c` (zmiana 1) po `fastTest`, `GoldenTerrainTest` (lista K8c), `WatersideZonesTest`, `MassifSinkLakeContainmentTest`, `SurfaceContinuityTest`, `StandingWaterTest`, `TerrainDeterminismTest` i `WaterContainmentTest`. Commit `223cc7c` (zmiany 2–5) po `fastTest`, `GoldenTerrainTest`, `StandingWaterTest`, `StandingWaterContainmentTest`, `RiverNetworkTest`, `WaterContainmentTest`, `TerrainDeterminismTest` i `MountainStreamSourcesTest`. `HabitatClassifierTest.riparianOnlyOnFloorsSpringsAndSeeps` i filtr `WatersideZonesTest.realChannelBanksStayByWater` liczą wysokość nad wodą bez `floorFine`, jak klasyfikator.
+
+**Pełny `test`** (`tools/dev/run-tests test`): PASS (894 s; drzewo `56c3c71c0159`, potem tylko ten wpis w dokumentacji).
+
+**Odstępstwa i co zostaje:**
+1. Proste stopnie GAMEPLAY zmierzyłem tylko w 7 kadrach (641 → 544 m), nie na całej siatce K8c. Na dnach przy starorzeczach znikają. Zostają poziomice zboczy prostych odcinków dolin i krawędź u ujścia doliny (1643, −452) GAMEPLAY (M5).
+2. Starorzecza wzdłuż meandrującego dopływu zostają wąskie (`R_s6`: 37% wody bazy). Przy szerokości stałej w poprzek starorzecza nie da się zachować dalszej połowy szerokości jak przed K8c (wtedy brzeg był powycinany łukami dopływu).
+3. Cięcie wody włosowej podnosi miarę rogów w `oxbowLakesAreCrescents` (REAL 0,55, GAMEPLAY 0,50 przy limicie 0,60).
+4. Proste odcinki brzegu w kadrach REAL: 593 → 640 m (szersze starorzecza wzdłuż prostego dopływu).
