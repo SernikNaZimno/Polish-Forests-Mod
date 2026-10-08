@@ -328,8 +328,9 @@ public final class LandscapeModel {
 	 * <p>K8b1: the landward shore of a lagoon is not a line parallel to the coast. In K5 it lay where the low hinterland
 	 * rose to 3–6 m, i.e. on a contour of the coast distance (in REAL about 5 m off a straight line over 1.2 km). Now the
 	 * distance used by the hinterland and by the lagoon is displaced by a noise of a few octaves (wavelengths from
-	 * {@link #LAGOON_SHORE_WAVE} m·meso down to {@link #LAGOON_SHORE_MIN_WAVE} m·k) with an amplitude of {@link #LAGOON_SHORE_AMP} of the lagoon
-	 * width, only behind the seaward part of the basin (the spit and the dunes keep their place) and fading back to the
+	 * {@link #LAGOON_SHORE_WAVE} m·meso down to {@link #LAGOON_SHORE_MIN_WAVE} m·k) with an amplitude of
+	 * {@link #LAGOON_SHORE_AMP} of the lagoon width, rising over {@link #LAGOON_SHORE_IN} of the width behind the start of
+	 * the basin (the spit and the dunes keep their place) and fading back to the
 	 * coast distance between 1.5 and 3 widths behind its start: bays, peninsulas and small islands, as on the Vistula and
 	 * Szczecin lagoons and on Łebsko and Gardno (docs/m2/poprawka-geometrii.md, K8b1). The displacement grows with the
 	 * strength of the lagoon (to its full value at {@link #LAGOON_SHORE_RISE}), so it disappears with it. The strength rises
@@ -521,11 +522,12 @@ public final class LandscapeModel {
 	/**
 	 * K8b1, reworked in round 1 of the review: deltas of the rivers that enter a lagoon. Each mouth
 	 * ({@link RiverNetwork#lagoonMouth}: where the channel of a segment, followed downstream from land, first reaches lagoon
-	 * water of {@link #landElevation}) carries an elliptic lobe centered on the mouth, with a half-width {@link #DELTA_HALF}
-	 * and a reach {@link #DELTA_REACH} (at most {@link #DELTA_WIDTH_SHARE} of the lagoon width) half-widths of a lowland
-	 * valley floor at the mouth, oriented along the mean of the valley and the seaward normal; its radius varies with the
-	 * angle around the mouth (harmonics 2–4, {@link #DELTA_LOBE_2}, with phases of the mouth) and with an edge noise of
-	 * {@link #DELTA_NOISE} (three octaves from {@link #DELTA_LOBE_WAVE} lobe sizes), so it is lobed, not an ellipse. Inside the lobe the land rises to {@link #DELTA_TOP} m (from 0 m at its edge over half the lobe size), and
+	 * water of {@link #landElevation}) carries a lobe centered on the mouth, with a half-width {@link #DELTA_HALF} and a
+	 * reach {@link #DELTA_REACH} (at most {@link #DELTA_WIDTH_SHARE} of the lagoon width) half-widths of a lowland valley
+	 * floor at the mouth, oriented along the mean of the valley and the seaward normal; its radius varies with the angle
+	 * around the mouth (harmonics 2–4, {@link #DELTA_LOBE_2}, with phases of the mouth) and with an edge noise of
+	 * {@link #DELTA_NOISE} (three octaves from {@link #DELTA_LOBE_WAVE} lobe sizes), so it is lobed, not an ellipse. Inside
+	 * the lobe the land rises to {@link #DELTA_TOP} m (from 0 m at its edge over half the lobe size), and
 	 * beyond its edge an underwater front returns to the lagoon floor over a quarter of the lobe size plus
 	 * {@link #DELTA_FRONT_RUN} m per meter of depth. On dry ground the lobe only raises ground lower than its top, so the
 	 * delta meets the land behind the old shore without a trough. Overlapping lobes take the maximum.
