@@ -310,9 +310,9 @@ Dawne nazwy, które mogą się pojawić w starszych notatkach, logach i w migawc
 
 Obrazy w `docs/m1`, `docs/m2`, `docs/rzeki-i-morze` i `docs/skala-rozgrywki` mają nazwy plików sprzed M2-9. Sole szumów w `derive("…")`, także polskie (`habitat.*`), zostały bez zmian, bo inna sól to inny świat.
 
-## 15. Poprawka geometrii terenu (M2-8, 2026-10-03 – 2026-10-06)
+## 15. Poprawka geometrii terenu (M2-8, 2026-10-03 – 2026-10-08)
 
-Etap wprowadzony po uwagach z gry: proste krawędzie den dolin, starorzeczy i jezior, urwiska na stokach gór, szwy między makroregionami, wybrzeże bez wydm i za niskie Beskidy. Kroki K0–K7, decyzje, odstępstwa i pomiary przed i po są w `docs/m2/poprawka-geometrii.md` (podsumowanie na końcu). Model nadal liczy w metrach i jest czystą funkcją (ziarno, współrzędne, ustawienia).
+Etap wprowadzony po uwagach z gry: proste krawędzie den dolin, starorzeczy i jezior, urwiska na stokach gór, szwy między makroregionami, wybrzeże bez wydm i za niskie Beskidy. Kroki K0–K7, decyzje, odstępstwa i pomiary przed i po są w `docs/m2/poprawka-geometrii.md` (podsumowanie po K7); krótka poprawka K8 po teście w grze (jeziora rynnowe GAMEPLAY, brzeg zalewu z deltami, zmienna wydma przednia i plaża, starorzecza ze szpicem przy obcym korycie, druga oktawa den nizinnych, przegenerowanie pliku wzorcowego w K8z) ma tam osobne podsumowanie na końcu. Model nadal liczy w metrach i jest czystą funkcją (ziarno, współrzędne, ustawienia).
 
 **Mieszanie makroregionów (`LandscapeModel.blend`, A16).** Okno komórek ma 5 × 5 zamiast 3 × 3. Drugi pierścień jest czytany tylko tam, gdzie jakaś jego komórka może dostać wagę (dokładne dolne ograniczenie odległości), więc wynik jest dokładnie taki jak dla pełnego okna, a szwy `landElevation` na granicy okna znikają. Pamięć komórek to `DirectCache`.
 
@@ -331,25 +331,26 @@ Etap wprowadzony po uwagach z gry: proste krawędzie den dolin, starorzeczy i je
 - Oczka i jeziora bezodpływowe mają płatowe brzegi. Niecki przechodzą w teren bez ściany (A3), poza jeziorami bezodpływowymi u stóp wielkich masywów REAL (niżej, „Odłożone do M5”). Lustro oczka pochodzi z terenu po dolinach (A3c), a torf nigdy nie leży wyżej niż grunt wokół.
 
 **Wybrzeże (K5b, D2, D5; `LandscapeModel.shapeCoast`).**
-- Ok. 4/5 brzegu jest niskie: plaża 60 m·k, wydma przednia 6–15 m, wydmy szare, zaplecze 1,5 m nad morzem do 6 km·meso od brzegu.
+- Ok. 4/5 brzegu jest niskie: plaża zwykle 35–85 m·k (pole `Terrain.beachWidth`, K8b2), wydma przednia 6–15 m o grzbiecie zmiennym wzdłuż brzegu z siodłami, wydmy szare jako pagórki, zaplecze 1,5 m nad morzem do 6 km·meso od brzegu.
 - Klif (ok. 1/5 brzegu) jest tylko tam, gdzie wysoczyzna morenowa dochodzi do morza.
-- Zalew leży tylko za niskim brzegiem i nie ma rowu.
+- Zalew leży tylko za niskim brzegiem i nie ma rowu; jego wewnętrzny brzeg ma zatoki i cyple (szum `coast.lagoon.shore`), końce są zaokrąglone, a przy ujściach rzek leżą delty (`RiverNetwork.lagoonMouth`, `lagoonDelta`, tylko w `sample`; K8b1).
 - Pole `Terrain.lowShore` to udział brzegu niskiego (1 − udział klifu).
 - Niski brzeg jest w `landElevation`, więc obniża poziomy rzek spływających do morza (decyzja D5a; w GAMEPLAY zmienia doliny na ok. 20% lądu).
 
 **Testy terenu.**
-- `GoldenTerrainTest`: plik `golden_terrain_m1.txt` pilnuje zamrożonej kopii M1, a `golden_terrain_m2.txt` obecnego modelu. Plik M2 przegenerowano raz, w K7. Zmiana terenu wymaga przegenerowania z `-PgoldenKeepCenters` i sprawdzenia `diff`; łaty kontrolne wnętrz nie mogą się zmienić.
+- `GoldenTerrainTest`: plik `golden_terrain_m1.txt` pilnuje zamrożonej kopii M1, a `golden_terrain_m2.txt` obecnego modelu. Plik M2 przegenerowano w K7 i w K8z. Zmiana terenu wymaga przegenerowania z `-PgoldenKeepCenters` i sprawdzenia `diff`; łaty kontrolne wnętrz nie mogą się zmienić.
 - `SurfaceContinuityTest`: skoki, krok doliny ≤ 3 m na 1 m (D4) i ≤ 2 bloki na blok (D4b) w oknach obu skal, z gęstą siatką gór GAMEPLAY, poza wyjątkami z limitami stanu zmierzonego (remisy D4a w GAMEPLAY: krok doliny do 5,8 m na 1 m w gęstej siatce i do 3,84 m na transektach `gameplay_massif_spawn`; R5 w REAL do 2,75 bloku na blok); pas brzegowy 3 km·meso test tylko wypisuje (ściana klifu do ok. 2,4 bloku na blok).
 - `TerrainLocalityTest`: teren poza dolinami i wodami jest równy kopii M1, poza zasięgiem masywów, drugim pierścieniem okna i pasem niskiego brzegu.
 - `TerrainDeterminismTest`: wynik nie zależy od kolejności próbkowania.
 - Testy wód stojących: `StandingWaterTest`, `StandingWaterContainmentTest`, `MassifSinkLakeContainmentTest` (rzeki przy jeziorach bezodpływowych masywów REAL, limity stanu zmierzonego).
 
-**Koszt.** `sample` kosztuje 1,16–1,20 × kopia M1 (budżet D1: 1,20; REAL ok. 4,5 µs, GAMEPLAY ok. 6,4 µs na kolumnę w całym obszarze).
+**Koszt.** `sample` kosztuje 1,09–1,18 × kopia M1 po K8 (budżet D1: 1,20; REAL ok. 4,2 µs, GAMEPLAY ok. 6,1–6,3 µs na kolumnę w całym obszarze).
 
 **Odłożone do M5.**
 - Ściany rzutu w REAL do 2,75 bloku na blok w kilku miejscach (R5) i remisy D4a.
 - Wały moren W–E (D3).
-- Ściany niecek jezior rynnowych GAMEPLAY i ich woda: do decyzji użytkownika (B3), do tego czasu wyjątek z limitami w teście.
+- Jeziora rynnowe GAMEPLAY: ściany niecek usunięte w K8a (wariant d), zostaje dalsze odzyskanie wody (−57% wobec K4c), suche rowy wzdłuż bocznych dolin i dwa płytkie zagłębienia 3,3–3,7 m.
+- Wybrzeże po K8b: odnogi delt, wydmy paraboliczne, osobliwości `coastDistance` przy siodłach pola morza, stopnie plaży równoległe do brzegu na krótkich odcinkach.
 - Końce wydm przy dnach dolin i końce zalewów.
 - Jeziora bezodpływowe u stóp wielkich masywów REAL (recenzja K7): ściany niecek (siatka 5 m: masyw 1719 m 598 par > 25 m, do 38,2 m; 1698 m 548 par, do 75,6 m; 1659 m 62 pary, do 31,7 m) i rzeki na wałach nad suchym gruntem, które spadają do jeziora (do 24 m nad gruntem i 25 m spadku); limity stanu zmierzonego w `SurfaceContinuityTest` i `MassifSinkLakeContainmentTest`, szczegóły w `docs/m2/poprawka-geometrii.md`, „Co zostaje”.
 - Proste załamania stoku na kopule masywu GAMEPLAY 1718 m (twarde maksimum kopuły i pola bazowego) i proste załamania w kadrach `R_potok_3km` i `G_rzeka_1km` (A8/G5, S8); żadne nie jest urwiskiem.
