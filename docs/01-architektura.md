@@ -75,6 +75,7 @@ Pobrzeża: plaża z wydmą białą i szarą, klif morenowy, mierzeja z zalewem, 
 - **Wariant = zespół roślinny i stan lasu**, wybierany regionem i szumem, nie osobnym biomem. Przykład: Leucobryo-Pinetum na zachodzie, Peucedano-Pinetum na wschodzie.
 - **Własny `BiomeSource`** korzysta z modelu krajobrazu; biomy 3D dają piętra górskie według wysokości z progami per masyw (Tatry, Babia Góra, Karkonosze, Bieszczady).
   *Stan od M2 (krok S5, 2026-10-08):* biomy są kolumnowe (2,5D, decyzja M2-1): `PolandBiomeSource` bierze 36 biomów `polishforests:*` z rejestru i wybiera biom kolumny klasyfikatorem siedlisk (`worldgen/habitat/HabitatClassifier`, czysta funkcja próbki modelu i położenia); piętra górskie wynikają z wysokości gruntu w metrach. Ten sam klasyfikator liczy w `fill()` siedliska całego chunka (`ChunkHabitats`, trwały załącznik chunka usuwany po ostatnim etapie generacji, więc zapisany proto-chunk go zachowuje), z których korzystają dyspozytory roślinności kroku 9 (`worldgen/feature`). Biomy, featury, tagi i lang generuje datagen z enumów pakietu `habitat` do `src/main/generated` (repozytorium; `./gradlew checkDatagen`). Ustawienia świata (`PolandSettings`, pole `version`) zapisują się zawsze w całości, a brak ustawień w zapisie oznacza świat M1. Drzewostan losuje pnie z jednego wzoru kandydatów dla całego świata, niezależnego od granic chunków. Szczegóły: `docs/03-m2-biomy.md` §3.5.1.
+  *Stan od kroku S6 (2026-10-08):* bloki chunka pochodzą z planu powierzchni (`worldgen/surface/SurfaceBuilder` → `ChunkSurface`, czysta Java). Plan powstaje raz na chunk w `fill()` z próbek i kodów siedlisk. Zawiera glebę kolumny (tabela §7.4 z blokami wanilii do M4), półkę brzegową na poziomie wody, dno przybrzeżne, kałuże i kępy oraz pokrywę luźnych osadów w blokach (pole świata `cover_in_blocks`). Generator zamienia materiały planu na stany bloków leniwie (`MaterialStates`) i pakuje sekcje w palety 4–8 bitów. `ChunkHabitats` i heightmapy biorą wierzch z planu. Woda nie może wypłynąć przez nową krawędź: kolumna półki przy wodzie schodzi dokładnie do lustra sąsiadów, także spoza chunka. Szczegóły: `docs/03-m2-biomy.md` §7.6.
 - **Granice zasięgów jako twarde reguły**: buk nie na północnym wschodzie, jodła tylko na południu, naturalny świerk tylko na północnym wschodzie i w górach, limba tylko w Tatrach.
 - **Temperatura biomów 0,2–0,8**, aby Serene Seasons sezonował je poprawnie (raporty 01 i 08).
 - **Podłoża**: ściółka iglasta, mieszana i bukowa, bielica, gleba rdzawa i brunatna, mada, torf niski i wysoki, less, glina zwałowa, rędzina, wapień, gips, flisz, granit.
@@ -139,7 +140,7 @@ pl.polishforests
 │   ├── landscape/              model krajobrazu L0–L5 (czysta Java, bez klas gry)
 │   ├── habitat/                siedliska: 36 biomów, strefy, gleby, klasyfikator (czysta Java)
 │   ├── chunk/                  ChunkGenerator, BiomeSource, ChunkHabitats, rejestracja
-│   ├── surface/                podłoże i gleby
+│   ├── surface/                plan powierzchni chunka: gleby, półka brzegowa, mikrorelief (czysta Java)
 │   ├── tree/                   generator drzew, mapa drzewostanów
 │   └── feature/                dyspozytory kroku 9 (drzewostan, runo, martwe drewno…), plany, palety
 ├── block/                      pnie, liście, runo, grzyby, gleby

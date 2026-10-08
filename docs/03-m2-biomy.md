@@ -776,6 +776,95 @@ Każdy blok dostaje blockstate, model, teksturę 16×16, loot i lang PL/EN. Teks
 
 **Tryb diagnostyczny:** flaga `-Dpolishforests.debug.habitats=true` maluje wierzch betonem w kolorze strefy lub biomu. Wąskie pasy da się wtedy sprawdzić w grze jednym spojrzeniem.
 
+### 7.6 Stan po S6 (2026-10-08)
+
+**Co zrobiono.** Nowy pakiet `worldgen/surface` (czysta Java, bez klas gry):
+- `ChunkSurface` to plan powierzchni chunka. Dla 256 kolumn trzyma ostateczny wierzch gruntu, lustro wody, profil gleby (wierzch, warstwa 1 i 2 z głębokościami), początek skały i flagi (`SHELF`, `SHORE`, `PUDDLE`, `PUDDLE_MUD`, `HUMMOCK`, `SHORE_BED`).
+- `SurfaceBuilder.build` liczy plan raz na chunk z próbek i kodów siedlisk, które `fill()` już ma. `ChunkSurface.material(i, y)` tylko czyta tablice, więc pętla sekcji nie próbkuje i nie liczy szumów.
+- `SoilBlocks` to tabela §7.4 z zastępstwami wanilii (decyzja M2-D): torf i mursz to `mud`, torfowiec to `moss_block`. Szumy łat gleby mają nowe sole `surface.soil` i `surface.microrelief` (fala 7 i 5 bloków, kwantyle równomierne). Stary szum łat żwiru w korycie (`DETAIL`) przeniesiono bez zmian.
+- `Material` to enum bloków wanilii. `chunk/MaterialStates` pobiera `BlockState` leniwie z rejestru (`Suppliers.memoize`) i rzuca wyjątek przy nieznanym id.
+- Tymczasowa reguła S5 `PolandChunkGenerator.surfaceBlock` i stara metoda `strata` zniknęły.
+
+**Półka brzegowa (`BankShelf`).** Półkę dostają:
+- strefy `POINT_BAR`, `TALL_HERBS` i `SHORE_REEDBED` w całości;
+- strefa `WILLOW_SCRUB` w pierwszych 2 blokach od koryta;
+- pierwsze 2 bloki brzegu jezior, oczek i starorzeczy.
+
+Kolumna półki przy wodzie (rząd 1, flaga `SHORE`) schodzi dokładnie do najwyższego lustra wśród 4 sąsiadów. Sąsiadów spoza chunka generator próbkuje na żądanie: średnio 0,0–0,1 próbki na chunk na nizinie i w górach, 2,3 (GAMEPLAY) i 8,3 (REAL) przy dużej rzece, 1,8–2,3 w całych sesjach testu. Dalsze kolumny półki schodzą do zaokrąglonego poziomu swojego koryta lub jeziora z modelu i nie mają wody obok. Kolumna obniża się najwyżej o `MAX_DROP` = 3 bloki. Przy 2 blokach 17% kolumn brzegowych w REAL i 23% w GAMEPLAY zostawało bez wody obok, bo w obu skalach część brzegów leży 3 bloki nad lustrem.
+
+**Dno przybrzeżne:** woda w odległości do 2 bloków (Chebyshev) od suchej kolumny chunka ma dno z `mud`, w potokach z `gravel`. Przy krawędzi chunka decyduje odległość od brzegu z modelu (−d, −s). Pozostałe dna: rzeka `sand`/`gravel`, potok `gravel`/`cobblestone`, jezioro `mud`/`clay`, jezioro dystroficzne, zalew i kałuże `mud`, morze `sand`, a przy głębokości > 20 m `mud`.
+
+**Mikrorelief (`Microrelief`):** udziały z §7.3, szum o fali 4,5 bloku w obu skalach. Niskie kwantyle dają kałuże, wysokie kępy (`rooted_dirt` w olsie, `moss_block` w torfowisku wysokim i borze bagiennym). Kałuża trzyma wodę tylko wtedy, gdy 4 sąsiedzi leżą w chunku, są suche i mają wierzch co najmniej na poziomie jej wody. W przeciwnym razie, także na krawędzi chunka, miejsce dostaje błoto. Dwie sąsiednie kałuże mają więc wspólny poziom albo wyższa nie powstaje. Półka i kolumny brzegowe nie dostają mikroreliefu.
+
+**Reszta `fill()`:**
+- `ChunkHabitats` i heightmapy `OCEAN_FLOOR_WG` i `WORLD_SURFACE_WG` biorą wierzch i wodę z planu, czyli po półce, kępach i kałużach. Drzewa stoją na kępach, a w kałużach nie rosną.
+- `computeHabitats` (brak załącznika) liczy ten sam plan. Nowa metoda `PolandChunkGenerator.surface(...)` zwraca plan dla testów.
+- `pack()` buduje paletę liniową 4 bity dla ≤ 16 stanów i paletę mieszającą 5–8 bitów dla 17–256 stanów. Liczniki: `PACKED_SECTIONS`, `PACK_FALLBACKS` i `SURFACE_NANOS` (część `FILL_NANOS`).
+- Tryb diagnostyczny: `-Dpolishforests.debug.habitats=true`, w gametestach `-PdebugHabitats`. Strefy dostają beton w kolorze (porządek strefy − 1) mod 16, a kolumny bez strefy terakotę w kolorze (porządek biomu) mod 16. Zrzuty `docs/m2/gra/s6_debug_river_realistic.png` (łacha w kolorze limonki na poziomie wody, wiklina różowa) i `s6_debug_lake_reedbed_realistic.png` (szuwar lądowy żółty, łozowisko fioletowe z kałużami).
+
+**Pokrywa w blokach.** Nowe pole ustawień świata `cover_in_blocks`. Presety i `PolandSettings.DEFAULT` mają `true`. Brak pola w zapisie (światy sprzed S6, także M1) to `false`, czyli stara reguła: pokrywa ⌈`coverDepth`⌉ bloków, więc nowe chunki starego świata pasują do starych. Z przełącznikiem skała zaczyna się na `topBlockY(surface − coverDepth)`. Na nizinie REAL daje to 1,00 bloku na metr, a w GAMEPLAY 0,72, bo ok. 60 m pokrywy sięga poniżej poziomu morza, gdzie odwzorowanie jest bardziej strome. Wcześniej w obu skalach był 1 blok na metr. `PolandSettingsTest` sprawdza zapis i odczyt.
+
+**Odstępstwa:**
+- **Wierzch suchej kolumny to zawsze gleba (co najmniej 1 blok).** Dotyczy też kolumn bez pokrywy w modelu. Wcześniej 7% suchych kolumn leśnych w obszarach `SoilTest` (cienka zwietrzelina grzbietów Beskidów) miało goły kamień, na którym drzewa nie rosną. Teraz w planie 0 z 49 651. Gołoborza i wychodnie skał przyjdą z dekoracją (S7, M5).
+- Bez `mossy_cobblestone` (5%) na bielicy górskiej, bo nie należy do `#supports_vegetation` (zasada sadzonek). Kamienie przyjdą z dekoracją.
+- Wyjątki zasady sadzonek w `SoilTest`: łacha, kamieniec oraz strefy plaży i wydmy (`STRANDLINE`, `EMBRYO_DUNE`). Klasyfikator nie daje ich w biomach leśnych, ale test sprawdza wszystkie pary biom × strefa.
+- `MAX_DROP` = 3 bloki zamiast „1–2 bloków” półki (pomiar wyżej). Szerokość półki w wiklinie i przy jeziorach to 2 bloki.
+- Własnych bloków, tekstur, lootu i ich rejestracji nie ma (decyzja M2-D, M4). Pliki `block/ModBlocks`, `tools/textures/soils.py` i datagen modeli zostają na M4.
+- `getBaseHeight` i `getBaseColumn` dalej liczą wierzch z modelu, bez półki i kęp (±1–3 bloki). Używają ich struktury i `/locate`. Heightmapy chunków są dokładne.
+- Do testu w grze trafiły zmiany: miejsca gleb szuka się w planie, a nie w `PolandWorldClientGameTest`; test rozlewów planuje tick wody przy każdym lustrze planu; dyski wanilii (`disk_sand`, `disk_clay`, `disk_gravel` z kroku 6) zamieniają pojedyncze bloki brzegu na piasek, glinę lub żwir, więc test liczy je osobno (opis niżej).
+
+**Testy JUnit:**
+- `SoilTest`:
+  - wierzch gleb leśnych w `#supports_vegetation` (tag rozwiązany z jaru gry; 18 biomów × strefy × siatka kwantyli);
+  - piasek na plaży i wydmie białej, wydma szara w `#supports_dry_vegetation`;
+  - `coverBlocks` w obu skalach i stara reguła bez przełącznika;
+  - w 587 sekcjach przy powierzchni (nizina, Beskidy, duża rzeka, wybrzeże, w GAMEPLAY także jezioro rynnowe) najwyżej 9 stanów, limit 32;
+  - na suchych kolumnach leśnych 0 kamiennych wierzchów.
+- `BankShelfTest`: siatki 6 × 6 chunków w 8 obszarach na skalę (duża rzeka, ziołorośla, łacha, wiklina, jezioro, szuwar lądowy, ols, bór bagienny). Wyniki:
+  - plan nie ma żadnej otwartej krawędzi wody (woda z powietrzem obok na tym samym Y), której nie miałby model, także przez granice chunków. Model ma ich 46 (REAL) i 4 (GAMEPLAY): to stopnie poziomu rzeki;
+  - wodę obok wierzchu ma 100% kolumn brzegowych: 1046 w REAL i 1368 w GAMEPLAY;
+  - obniżonych kolumn półki jest 9528 w REAL i 4462 w GAMEPLAY;
+  - dno przybrzeżne ma 2607 i 2305 kolumn, wszystkie z błota lub żwiru;
+  - udziały mikroreliefu (wynik / plan, w %):
+
+    | Obszar | Kałuże REAL | Kępy REAL | Kałuże GAMEPLAY | Kępy GAMEPLAY |
+    |---|---|---|---|---|
+    | ols | 19,5 / 20 | 23,2 / 25 | 18,9 / 20 | 25,1 / 25 |
+    | bór bagienny | 7,0 / 8 | 20,3 / 20 | 8,2 / 8 | 20,4 / 20 |
+
+    Wodę trzyma 74–75% miejsc kałuż w olsie i 32–68% w borze bagiennym (na zboczach misy więcej błota);
+  - plan jest deterministyczny.
+
+**Test w grze** (`HabitatsClientGameTest`, `-Pgametest=habitats`, obie skale, ziarno 20260927):
+- **Blok gruntu = `SoilBlocks` w 11 miejscach §12.3:** łęg A, łęg B, ols, szuwar jeziorny, wiklina, bór suchy, buczyna, regiel górny, kosodrzewina, plaża z wydmami, torfowisko wysokie. Kosodrzewina i świerczyna leżą przy wielkim masywie najbliższym (0, 0). Sprawdzana jest każda sucha kolumna biomu miejsca w jego chunku bez pnia na sobie. REAL: 2349 z 2350 kolumn zgodnych, 1 pod dyskiem piasku wanilii. GAMEPLAY: 1694 z 1736, 42 pod dyskami. Miejsce „wiklina” w GAMEPLAY to strefa wikliny w grądzie przy masywie, a „szuwar jeziorny” to strefa szuwaru w olsie.
+- **Półka:** woda obok wierzchu przy 100% z 261 (REAL) i 590 (GAMEPLAY) kolumn brzegowych w czterech obszarach (duża rzeka, szuwar jeziorny, ols, łęg A). Kryterium wynosi ≥ 90%.
+- **Rozlewy:** test planuje tick wody na każdym lustrze planu: 6023 bloki w REAL i 2071 w GAMEPLAY, w tym kałuże. Po 200 tickach nie zostaje żaden zaplanowany tick i nie ma wody poza planem dalej niż 8 bloków od otwartej krawędzi modelu. Plan nie ma też nowych krawędzi. Woda poza planem przy stopniach poziomu rzeki w modelu: 56 bloków (REAL, duża rzeka) i 4 (REAL, ols) — to stan modelu sprzed S6.
+- `PACK_FALLBACKS`: 0 z 24 642 (REAL) i 0 z 41 307 (GAMEPLAY) spakowanych sekcji.
+- Spis drzew i `revisit` bez zmian wobec S5. Spis liczy teraz pnie na wierzchu planu.
+- Zrzuty: `docs/m2/gra/s6_shelf_river_realistic.png` (łacha na poziomie wody) i `s6_shelf_alder_carr_realistic.png` (ols z kępami i kałużami).
+
+**Budżet TERRAIN (`-Pgametest=stages`, A/B w jednej sesji, spokojna maszyna).** Porównanie trzech wersji: kod S6, baza S5 (`35f2aee`) i M1 z migawki `migawki/m1-z-narzedziami-S0.tar` (SHA-256 zgodny, tryb `etapy`). Dwa przebiegi na wersję. Wartości to czas ściany 64 chunków (ms), a w nawiasie próbkowanie + wypełnianie w ms na chunk.
+
+| Obszar | M1 (S0) | S5 | S6 | S6 / M1 |
+|---|---|---|---|---|
+| REAL nizina | – (pomiar M1 ze startem świata, 836–978) | 166–170 (1,40–1,46) | 162–166 (1,31–1,40) | – |
+| REAL Beskidy | 330–335 (3,93–3,95) | 358–430 (4,10–4,83) | 354–383 (4,05–4,52) | 1,06–1,16 (CPU 1,03–1,15) |
+| REAL duża rzeka | 182–187 (1,55–1,57) | 243–245 (2,43–2,47) | 239–242 (2,35–2,50) | 1,28–1,33 (CPU 1,50–1,60) |
+| GAMEPLAY nizina | – (ze startem świata, 1188–1352) | 163–170 (1,35–1,38) | 160 (1,38–1,43) | – |
+| GAMEPLAY Beskidy | 333–334 (3,62–3,74) | 332 (3,83) | 332 (3,72–3,79) | 1,00 (CPU 1,01–1,05) |
+| GAMEPLAY duża rzeka | 216–232 (2,16–2,20) | 226–242 (2,32–2,43) | 225–233 (2,32–2,39) | 0,97–1,08 (CPU 1,05–1,10) |
+
+- **S6 nie wydłuża TERRAIN wobec S5** w żadnym obszarze. Plan powierzchni kosztuje 0,02–0,05 ms na chunk, przy dużej rzece REAL 0,14 ms (z 8,3 próbkami sąsiadów).
+- **Budżet ≤ 1,10 × M1** jest dotrzymany w GAMEPLAY i na granicy w Beskidach REAL (1,06–1,16 ściany, 1,03–1,15 CPU). **Przy dużej rzece REAL nie jest dotrzymany** (1,28–1,33). Przyczyną jest koszt próbki modelu z poprawki geometrii (1,73–1,93 wobec 1,11–1,12 ms na chunk; ten sam w S5), a nie S6. Budżet D1 (`sample` do 1,20 × M1) liczono na całym obszarze, a ten obszar to sama dolina dużej rzeki.
+- **Nizina:** migawka M1 nie czeka na koniec startu świata, więc jej pomiar niziny jest nieważny. Tu porównanie dotyczy tylko S5 i S6 (bez zmian).
+- **Do decyzji użytkownika:**
+  1. przyjąć budżet TERRAIN wobec M1 jak D1, czyli liczony z kosztu próbki na całym obszarze, a dla doliny dużej rzeki REAL zapisać odstępstwo;
+  2. przyspieszyć `RiverNetwork` w dolinach REAL (profil `sample` przy rzece, wynik niepewny, 1–2 dni).
+
+  Rekomendacja: wariant 1. Cały chunk (≤ 48 ms) rozstrzyga S10.
+
+**Co zostaje:** rośliny półki (trzcina, świetliki, pałka) i dyski wanilii na glebach moda przychodzą w S7, a własne bloki torfu, murszu i torfowca w M4. Do oceny w grze zostają proste, schodkowe krawędzie łachy na poziomie wody (granica strefy z drganiem ±20%) i widoczne łaty `coarse_dirt`, `mud` i `podzol` przed pokryciem runem.
+
 ---
 
 ## 8. Dekoracja
