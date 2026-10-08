@@ -423,11 +423,38 @@ public final class LandscapeModel {
 				// continuous (review of K5: lerp(bowl, result, −depth) left (1 − bowl) · result at depth → 0 and a step back
 				// to the result where the depth or the lagoon noise reached zero).
 				double bowl = Math.sin(Math.PI * v);
-				double f = lagoon * low * (1 - Noise.smoothstep(3, 6, base));
+				// Round 2 of the review of K8b1: the hinterland that ends the water is taken at a point displaced by the
+				// lagoon shore noise, so where the relief (a hill foot) and not the coast distance bounds the lagoon its
+				// shore is not the straight foot of the hill.
+				// (The share of a low shore at the column itself only fades it out next to a full cliff, where the lagoon
+				// ends: lagoonStrength is not computed there.)
+				double f = lagoon * Noise.smoothstep(0, 0.3, low) * lagoonCutHinterland(x, z, d, dl, width);
 				result = Math.min(result, result - bowl * f * (Math.max(0, result) + COAST_LAGOON_DEPTH));
 			}
 		}
 		return result;
+	}
+
+	/**
+	 * Round 2 of the review of K8b1: the hinterland height ({@code base} of {@link #shapeCoast}) at which the lagoon
+	 * fades out, with the relief taken at (x, z) displaced by the lagoon shore noise (two octaves, other offsets) by up to
+	 * {@link #LAGOON_RELIEF_SHIFT} of the lagoon width. Where the coast distance bounds the lagoon (the low hinterland
+	 * rising inland, REAL and most of GAMEPLAY) the relief changes little over that distance and the shore stays where it
+	 * was; where a hill foot bounds it (the ends of GAMEPLAY lagoons with strength 1) the shore follows a displaced foot,
+	 * with bays and capes of a fraction of the width instead of the straight foot. Only for the strength of the basin,
+	 * not for the terrain itself.
+	 */
+	private double lagoonCutHinterland(double x, double z, double d, double dl, double width) {
+		double a = LAGOON_RELIEF_SHIFT * width;
+		double wave = LAGOON_SHORE_WAVE * meso;
+		double px = x + a * lagoonShore.fbm(x + 4_243, z - 8_111, wave, 2, 0.5);
+		double pz = z + a * lagoonShore.fbm(x - 5_309, z + 6_007, wave, 2, 0.5);
+		Blend b = blend(px, pz);
+		double cliff = cliffShore(px, pz, b);
+		double hl = elevation(b, px, pz) * (0.12 + 0.88 * Noise.smoothstep(0, 25_000 * meso, d));
+		double lowLand = Math.min(hl, COAST_LOW_BASE + (hl - COAST_LOW_BASE)
+				* Noise.smoothstep(beachWidth() + COAST_GRAY_END * local, COAST_LOW_END * meso, dl));
+		return (1 - cliff) * (1 - Noise.smoothstep(3, 6, Noise.lerp(cliff, lowLand, hl)));
 	}
 
 	/**
@@ -452,8 +479,15 @@ public final class LandscapeModel {
 		}
 		double slope = Math.max(Math.sqrt(g[0] * g[0] + g[1] * g[1]), COAST_LAGOON_MIN_SLOPE) / wave;
 		double ramp = COAST_LAGOON_RAMP * meso;
-		return Noise.smoothstep(-0.5 * ramp, 0.5 * ramp, (n - COAST_LAGOON_MID) / slope)
-				* Noise.smoothstep(COAST_LAGOON_0, COAST_LAGOON_0 + 0.01, n);
+		double t = (n - COAST_LAGOON_MID) / slope;
+		// Round 2 of the review of K8b1: the contour is displaced by the lagoon shore noise (other offsets), so where it
+		// runs along the coast the inner shore is not a straight line over hundreds of meters (GAMEPLAY) or kilometers
+		// (REAL), and an end has bays instead of a straight cut. Only near the ramp (|noise| <= 1).
+		double amp = COAST_LAGOON_END_AMP * ramp;
+		if (Math.abs(t) < 0.5 * ramp + amp) {
+			t += amp * lagoonShore.fbm(x - 6_113, z + 2_417, LAGOON_SHORE_WAVE * meso, lagoonShoreOctaves, 0.5);
+		}
+		return Noise.smoothstep(-0.5 * ramp, 0.5 * ramp, t) * Noise.smoothstep(COAST_LAGOON_0, COAST_LAGOON_0 + 0.01, n);
 	}
 
 	/**
@@ -494,15 +528,16 @@ public final class LandscapeModel {
 	 * nothing: the lobe with the largest noise and lobes and its front at the greatest lagoon depth ({@link #lagoonDelta}).
 	 */
 	static double deltaExtent(double half, double reach) {
+		// Round 2: the distance outside the lobe is measured in meters along the ray from the mouth, so the front ends
+		// at most its length beyond the largest radius of the lobe.
 		double size = Math.min(half, reach);
-		double front = DELTA_FRONT_SHARE * size + DELTA_FRONT_RUN * COAST_LAGOON_DEPTH;
-		return Math.max(half, reach) * (1 + front / size) * deltaShapeBound() + 1;
+		return Math.max(half, reach) * deltaShapeBound() + DELTA_FRONT_SHARE * size + DELTA_FRONT_RUN * COAST_LAGOON_DEPTH + 1;
 	}
 
 	/**
 	 * K8b1 round 1: the factor k (at most 1) by which the half-width and the reach of a lobe are scaled so that its
 	 * {@link #deltaExtent} is at most {@code room}; not above 0 if even a vanishing lobe does not fit (its front at the
-	 * greatest depth does not scale). The extent is linear in k: c · max · ((1 + share) · k + run · depth / size) + 1.
+	 * greatest depth does not scale). The extent is linear in k: k · (c · max + share · size) + run · depth + 1.
 	 */
 	static double deltaScaleToFit(double half, double reach, double room) {
 		if (deltaExtent(half, reach) <= room) {
@@ -510,8 +545,7 @@ public final class LandscapeModel {
 		}
 		double size = Math.min(half, reach);
 		double max = Math.max(half, reach);
-		double fixed = max * DELTA_FRONT_RUN * COAST_LAGOON_DEPTH / size;
-		return ((room - 1) / deltaShapeBound() - fixed) / ((1 + DELTA_FRONT_SHARE) * max);
+		return (room - 1 - DELTA_FRONT_RUN * COAST_LAGOON_DEPTH) / (deltaShapeBound() * max + DELTA_FRONT_SHARE * size);
 	}
 
 	/** K8b1 round 1: the largest relative radius of a lobe (edge noise and angular lobes). */
@@ -572,9 +606,13 @@ public final class LandscapeModel {
 			double theta = Math.atan2(uc, ua);
 			double lobes = 1 + DELTA_LOBE_2 * Math.cos(2 * theta + m.phase2()) + DELTA_LOBE_3 * Math.cos(3 * theta + m.phase3())
 					+ DELTA_LOBE_4 * Math.cos(4 * theta + m.phase4());
-			double q = r / (lobes * (1 + DELTA_NOISE * lagoonShore.fbm(x + 7_919, z - 3_571, DELTA_LOBE_WAVE * size, 3, 0.5)));
-			// Distance outside the lobe (m, negative inside).
-			double g = (q - 1) * size;
+			double edge = lobes * (1 + DELTA_NOISE * lagoonShore.fbm(x + 7_919, z - 3_571, DELTA_LOBE_WAVE * size, 3, 0.5));
+			double q = r / edge;
+			// Distance outside the lobe (m, negative inside) along the ray from the mouth: (q − 1) times the radius of the
+			// lobe in this direction (round 2 of the review: (q − 1) · size made it too short along the longer axis, and
+			// the front of an elongated lobe reached 2–3 times further along the shore).
+			double rho = Math.sqrt(along * along + across * across);
+			double g = r > 1e-9 ? (q - 1) * edge * rho / r : -edge * size;
 			double top = DELTA_TOP * Math.clamp(-g / (0.5 * size), 0.0, 1.0);
 			double v;
 			if (surface >= 0) {
@@ -630,6 +668,16 @@ public final class LandscapeModel {
 	static final double COAST_LAGOON_MID = 0.345;
 	static final double COAST_LAGOON_RAMP = 900;
 	static final double COAST_LAGOON_MIN_SLOPE = 0.3;
+	/**
+	 * Round 2 of the review of K8b1: amplitude of the displacement of that contour by the lagoon shore noise, in ramps
+	 * ({@link #lagoonStrength}).
+	 */
+	static final double COAST_LAGOON_END_AMP = 1.0;
+	/**
+	 * Round 2 of the review of K8b1: the largest displacement of the point at which the hinterland relief ends the lagoon,
+	 * as a share of the lagoon width ({@link #lagoonCutHinterland}).
+	 */
+	static final double LAGOON_RELIEF_SHIFT = 0.3;
 	/** D2: greatest depth of a lagoon below the sea level (m). */
 	static final double COAST_LAGOON_DEPTH = 6;
 	/** K8b1: amplitude of the displacement of the landward lagoon shore, as a share of the lagoon width. */
@@ -665,6 +713,8 @@ public final class LandscapeModel {
 	/** K8b1: reach of a delta lobe from the mouth, in the same half-widths, at most this share of the lagoon width. */
 	static final double DELTA_REACH = 3;
 	static final double DELTA_WIDTH_SHARE = 0.2;
+	/** Round 2 of the review of K8b1: the largest ratio of the half-width of a lobe to its reach. */
+	static final double DELTA_ASPECT = 1.5;
 	/** K8b1: the delta front (from land down to the lagoon floor) is this share of the lobe size plus DELTA_FRONT_RUN m per m of depth. */
 	static final double DELTA_FRONT_SHARE = 0.25;
 	static final double DELTA_FRONT_RUN = 4;

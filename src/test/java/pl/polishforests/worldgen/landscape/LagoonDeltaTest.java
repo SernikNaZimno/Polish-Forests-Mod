@@ -3,6 +3,7 @@ package pl.polishforests.worldgen.landscape;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.stream.IntStream;
@@ -25,6 +26,10 @@ import pl.polishforests.worldgen.chunk.VerticalScale;
  * <li>on dry land at most {@value #DRY_BLOCKS} blocks per block between neighboring columns (D4b), and no water next to
  * lower dry ground.</li>
  * </ul>
+ * Round 2 of the review: the underwater front of a delta (lagoon floor raised by more than {@value #LIFT} m above
+ * {@code landElevation}) ends near the land of its lobe ({@link #deltaFrontsEndNearTheirLobes}). With the distance
+ * outside a lobe as (q − 1) · min(half, reach), an elongated GAMEPLAY lobe (half-width 3.2 times its reach) raised the
+ * floor up to 110 m from its land, with a trough between that ridge and the shore.
  */
 class LagoonDeltaTest {
 	static final long SEED_A = 20260927L;
@@ -33,6 +38,8 @@ class LagoonDeltaTest {
 	static final int FLOOR_STEP_LIMIT = 3;
 	/** D4b: largest step on dry land in blocks per block. */
 	static final int DRY_BLOCKS = 2;
+	/** Least rise of the lagoon floor above {@code landElevation} (m) counted as the front of a delta. */
+	static final double LIFT = 0.3;
 
 	record Window(String name, LandscapeScale scale, long seed, double cx, double cz, int side, boolean delta) {
 		@Override
@@ -135,6 +142,113 @@ class LagoonDeltaTest {
 		examples.forEach(e -> System.out.println("  " + e));
 		assertTrue(lagoon > 0 && (delta > 0 || !win.delta()), report + ": no lagoon or no delta in the window");
 		assertTrue(floorBad == 0 && dryBad == 0 && leaks == 0, report + "\n  " + String.join("\n  ", examples));
+	}
+
+	record FrontWindow(String name, LandscapeScale scale, long seed, double cx, double cz, int side, double limit) {
+		@Override
+		public String toString() {
+			return name;
+		}
+	}
+
+	/**
+	 * Windows with deltas and the largest distance (m) of a raised floor from the land of its lobe: about the longest
+	 * front of the lobes there (a quarter of the lobe size plus 4 m per meter of the 6 m depth; GAMEPLAY 35-50 m, REAL
+	 * about 80 m) with a margin. In round 1 the first window had raised floor up to 110 m from the lobe land.
+	 */
+	static Stream<FrontWindow> frontWindows() {
+		return Stream.of(
+				// GAMEPLAY A: the elongated lobe of the mouth (13430, -5979) whose front reached 110 m along the shore.
+				new FrontWindow("gameplay_a_front", LandscapeScale.GAMEPLAY, SEED_A, 13_600, -6_000, 300, 60),
+				new FrontWindow("gameplay_a_merged", LandscapeScale.GAMEPLAY, SEED_A, -12_351, 11_586, 300, 60),
+				new FrontWindow("realistic_a_delta", LandscapeScale.REALISTIC, SEED_A, -220_500, -155_150, 800, 120));
+	}
+
+	@ParameterizedTest(name = "{0}")
+	@MethodSource("frontWindows")
+	void deltaFrontsEndNearTheirLobes(FrontWindow win) {
+		LandscapeModel m = new LandscapeModel(win.seed(), win.scale(), 1.0);
+		int n = win.side();
+		int x0 = (int) Math.floor(win.cx() - n / 2.0);
+		int z0 = (int) Math.floor(win.cz() - n / 2.0);
+		boolean[] lobe = new boolean[n * n];
+		boolean[] raised = new boolean[n * n];
+		IntStream.range(0, n).parallel().forEach(j -> {
+			for (int i = 0; i < n; i++) {
+				double x = x0 + i;
+				double z = z0 + j;
+				ColumnSample c = m.sample(x, z);
+				if (c.terrain().coastD() < 0) {
+					continue;
+				}
+				double land = m.landElevation(x, z);
+				double raw = c.terrain().rawSurface();
+				lobe[j * n + i] = !c.hasWater() && (land < 0 || raw - land > 0.01);
+				raised[j * n + i] = lagoon(c) && raw - land > LIFT;
+			}
+		});
+		// Distance to the nearest lobe column: chamfer 3-4 transform (in meters, within about 8%).
+		double[] dist = new double[n * n];
+		Arrays.fill(dist, Double.POSITIVE_INFINITY);
+		for (int k = 0; k < n * n; k++) {
+			if (lobe[k]) {
+				dist[k] = 0;
+			}
+		}
+		for (int pass = 0; pass < 2; pass++) {
+			int s = pass == 0 ? 1 : -1;
+			for (int jj = 0; jj < n; jj++) {
+				int j = pass == 0 ? jj : n - 1 - jj;
+				for (int ii = 0; ii < n; ii++) {
+					int i = pass == 0 ? ii : n - 1 - ii;
+					double d = dist[j * n + i];
+					int jp = j - s;
+					int ip = i - s;
+					if (ip >= 0 && ip < n) {
+						d = Math.min(d, dist[j * n + ip] + 1);
+					}
+					if (jp >= 0 && jp < n) {
+						d = Math.min(d, dist[jp * n + i] + 1);
+						if (ip >= 0 && ip < n) {
+							d = Math.min(d, dist[jp * n + ip] + 4 / 3.0);
+						}
+						int iq = i + s;
+						if (iq >= 0 && iq < n) {
+							d = Math.min(d, dist[jp * n + iq] + 4 / 3.0);
+						}
+					}
+					dist[j * n + i] = d;
+				}
+			}
+		}
+		long lobes = 0;
+		long lifted = 0;
+		long far = 0;
+		double worst = 0;
+		int worstAt = -1;
+		for (int k = 0; k < n * n; k++) {
+			if (lobe[k]) {
+				lobes++;
+			}
+			if (raised[k]) {
+				lifted++;
+				if (dist[k] > win.limit()) {
+					far++;
+				}
+				if (dist[k] > worst) {
+					worst = dist[k];
+					worstAt = k;
+				}
+			}
+		}
+		String report = String.format(Locale.ROOT,
+				"%s (%s, (%.0f, %.0f), %d m): lobe land %d, floor raised > %.1f m %d columns, farther than %.0f m from lobe land %d,"
+						+ " farthest %.0f m at (%d, %d)",
+				win.name(), win.scale().id(), win.cx(), win.cz(), n, lobes, LIFT, lifted, win.limit(), far, worst,
+				worstAt < 0 ? 0 : x0 + worstAt % n, worstAt < 0 ? 0 : z0 + worstAt / n);
+		System.out.println(report);
+		assertTrue(lobes > 0, report + ": no delta in the window");
+		assertTrue(far == 0, report);
 	}
 
 	static boolean lagoon(ColumnSample c) {

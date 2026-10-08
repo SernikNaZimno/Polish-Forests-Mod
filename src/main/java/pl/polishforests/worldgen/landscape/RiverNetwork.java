@@ -1222,6 +1222,9 @@ final class RiverNetwork {
 		if (!(reach > 0)) {
 			return NO_MOUTH;
 		}
+		// Round 2 of the review of K8b1: the lobe at most DELTA_ASPECT times as wide as it is long (with the reach cut
+		// to a share of a narrow GAMEPLAY lagoon, up to 3.2: a strip of delta land 340-390 m along the shore).
+		half = Math.min(half, LandscapeModel.DELTA_ASPECT * reach);
 		// Keep the influence within the bounding box of the segment (s.reach beyond the curve, the mouth within lat of it)
 		// and within the belt where the columns look for deltas.
 		double room = Math.min(s.reach - lat - 1, model.deltaExtentMax());
