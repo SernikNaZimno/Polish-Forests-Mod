@@ -13,7 +13,8 @@
           "region_scale": 1.0,
           "agriculture": false,
           "managed_forest_share": 0.85,
-          "alien_species": true
+          "alien_species": true,
+          "cover_in_blocks": true
         }
       }
     },

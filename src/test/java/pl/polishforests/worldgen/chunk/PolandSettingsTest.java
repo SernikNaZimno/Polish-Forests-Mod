@@ -27,11 +27,12 @@ class PolandSettingsTest {
 	void defaultIsWrittenInFull() {
 		JsonObject json = encode(PolandSettings.DEFAULT);
 		for (String field : new String[] {"scale", "region_scale", "agriculture", "managed_forest_share", "alien_species",
-				"version"}) {
+				"version", "cover_in_blocks"}) {
 			assertTrue(json.has(field), "missing " + field + " in " + json);
 		}
 		assertEquals(PolandSettings.CURRENT_VERSION, json.get("version").getAsInt());
 		assertFalse(json.get("agriculture").getAsBoolean());
+		assertTrue(json.get("cover_in_blocks").getAsBoolean());
 		assertEquals(PolandSettings.DEFAULT, decode(json.toString()));
 		PolandSettings gameplay = PolandSettings.DEFAULT.withScale(PolandScale.GAMEPLAY);
 		assertEquals(gameplay, decode(encode(gameplay).toString()));
@@ -52,6 +53,10 @@ class PolandSettingsTest {
 		assertFalse(v2.agriculture());
 		assertEquals(HabitatClassifier.Mode.NATURAL, v2.mode());
 		assertEquals(2, v2.version());
+		// A world from before S6 has no "cover_in_blocks" and keeps the old cover (meters compared with blocks).
+		assertFalse(v2.coverInBlocks());
+		assertFalse(m1.coverInBlocks());
+		assertTrue(decode("{\"version\": 2, \"cover_in_blocks\": true}").coverInBlocks());
 	}
 
 	@Test
@@ -59,7 +64,7 @@ class PolandSettingsTest {
 		var field = PolandSettings.GENERATOR_FIELD.codec();
 		JsonObject json = field.encodeStart(JsonOps.INSTANCE, PolandSettings.DEFAULT).getOrThrow().getAsJsonObject();
 		assertTrue(json.has("settings"), "the default settings are left out: " + json);
-		assertEquals(6, json.getAsJsonObject("settings").size());
+		assertEquals(7, json.getAsJsonObject("settings").size());
 		assertEquals(PolandSettings.DEFAULT, field.parse(JsonOps.INSTANCE, json).getOrThrow());
 		assertEquals(PolandSettings.LEGACY_M1, field.parse(JsonOps.INSTANCE, new JsonObject()).getOrThrow());
 	}

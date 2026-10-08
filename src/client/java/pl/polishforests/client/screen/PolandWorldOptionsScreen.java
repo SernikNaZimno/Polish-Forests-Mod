@@ -31,6 +31,7 @@ public final class PolandWorldOptionsScreen extends Screen {
 	private double managedShare;
 	private boolean alienSpecies;
 	private final int version;
+	private final boolean coverInBlocks;
 
 	public PolandWorldOptionsScreen(Screen parent, PolandSettings current, Consumer<PolandSettings> apply) {
 		super(Component.translatable("polishforests.options.title"));
@@ -42,6 +43,7 @@ public final class PolandWorldOptionsScreen extends Screen {
 		this.managedShare = current.managedForestShare();
 		this.alienSpecies = current.alienSpecies();
 		this.version = current.version();
+		this.coverInBlocks = current.coverInBlocks();
 	}
 
 	@Override
@@ -83,7 +85,8 @@ public final class PolandWorldOptionsScreen extends Screen {
 
 		LinearLayout footer = layout.addToFooter(LinearLayout.horizontal().spacing(8));
 		footer.addChild(Button.builder(CommonComponents.GUI_DONE, b -> {
-			apply.accept(new PolandSettings(scale, regionScale, agriculture, managedShare, alienSpecies, version));
+			apply.accept(new PolandSettings(scale, regionScale, agriculture, managedShare, alienSpecies, version,
+					coverInBlocks));
 			onClose();
 		}).build());
 		footer.addChild(Button.builder(CommonComponents.GUI_CANCEL, b -> onClose()).build());

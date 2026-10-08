@@ -45,15 +45,12 @@ import net.minecraft.world.level.levelgen.structure.StructureSet;
 import org.jspecify.annotations.Nullable;
 import pl.polishforests.climate.ClimateBinding;
 import pl.polishforests.worldgen.feature.ModFeatures;
-import pl.polishforests.worldgen.habitat.Habitat;
-import pl.polishforests.worldgen.habitat.HabitatBiome;
 import pl.polishforests.worldgen.habitat.HabitatClassifier;
-import pl.polishforests.worldgen.habitat.Soil;
-import pl.polishforests.worldgen.habitat.Zone;
 import pl.polishforests.worldgen.landscape.ColumnSample;
 import pl.polishforests.worldgen.landscape.LandscapeModel;
-import pl.polishforests.worldgen.landscape.Noise;
-import pl.polishforests.worldgen.landscape.Substrate;
+import pl.polishforests.worldgen.surface.ChunkSurface;
+import pl.polishforests.worldgen.surface.Material;
+import pl.polishforests.worldgen.surface.SurfaceBuilder;
 
 /**
  * Generator of the "Poland" world: 2.5D terrain from a procedural 1:1 scale landscape model
@@ -71,25 +68,13 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 	private static final Strategy<BlockState> BLOCK_STRATEGY = Strategy.createForBlockStates(
 			net.minecraft.world.level.block.Block.BLOCK_STATE_REGISTRY);
 	private static final BlockState WATER = Blocks.WATER.defaultBlockState();
-	private static final BlockState BEDROCK = Blocks.BEDROCK.defaultBlockState();
 	private static final BlockState STONE = Blocks.STONE.defaultBlockState();
-	private static final BlockState DEEPSLATE = Blocks.DEEPSLATE.defaultBlockState();
-	private static final BlockState ANDESITE = Blocks.ANDESITE.defaultBlockState();
-	private static final BlockState GRASS = Blocks.GRASS_BLOCK.defaultBlockState();
-	private static final BlockState DIRT = Blocks.DIRT.defaultBlockState();
-	private static final BlockState COARSE_DIRT = Blocks.COARSE_DIRT.defaultBlockState();
-	private static final BlockState SAND = Blocks.SAND.defaultBlockState();
-	private static final BlockState GRAVEL = Blocks.GRAVEL.defaultBlockState();
-	private static final BlockState CLAY = Blocks.CLAY.defaultBlockState();
-	private static final BlockState MUD = Blocks.MUD.defaultBlockState();
-
-	/** Noise for small material patches (e.g. gravel on the channel bed); independent of the world seed. */
-	private static final Noise DETAIL = new Noise(0x5EED_DE7A_11L);
 
 	private final PolandSettings settings;
 	private final VerticalScale vertical;
 	private volatile @Nullable LandscapeModel model;
 	private volatile @Nullable HabitatClassifier classifier;
+	private volatile @Nullable SurfaceBuilder surfaceBuilder;
 	private volatile long modelSeed;
 
 	public PolandChunkGenerator(BiomeSource biomeSource, PolandSettings settings) {
@@ -121,6 +106,8 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 				m = new LandscapeModel(seed, settings.scale().landscape(), settings.regionScale());
 				HabitatClassifier k = new HabitatClassifier(seed, settings.scale().landscape(), settings.mode());
 				classifier = k;
+				surfaceBuilder = new SurfaceBuilder(seed, vertical, settings.coverInBlocks(),
+						SurfaceBuilder.debugFromSystem());
 				modelSeed = seed;
 				model = m;
 				if (biomeSource instanceof PolandBiomeSource source) {
@@ -220,6 +207,18 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 	public static final java.util.concurrent.atomic.LongAdder BIOME_CLASSIFY_NANOS = new java.util.concurrent.atomic.LongAdder();
 	/** Time of the habitat classification in {@code fill()} (ns, included in {@link #SAMPLE_NANOS}). */
 	public static final java.util.concurrent.atomic.LongAdder CLASSIFY_NANOS = new java.util.concurrent.atomic.LongAdder();
+	/** Time of the surface plan (soil, shelf, micro-relief) in {@code fill()} (ns, included in {@link #FILL_NANOS}). */
+	public static final java.util.concurrent.atomic.LongAdder SURFACE_NANOS = new java.util.concurrent.atomic.LongAdder();
+	/**
+	 * Sections with more than one block state written by {@link #pack} ({@link #PACKED_SECTIONS}), and those that did not
+	 * fit in a palette of at most 256 states and were written block by block ({@link #PACK_FALLBACKS}; budget §3.6: below
+	 * 1% of the sections).
+	 */
+	public static final java.util.concurrent.atomic.LongAdder PACKED_SECTIONS = new java.util.concurrent.atomic.LongAdder();
+	public static final java.util.concurrent.atomic.LongAdder PACK_FALLBACKS = new java.util.concurrent.atomic.LongAdder();
+
+	private static final int MATERIALS = Material.values().length;
+	private static final int AIR_ID = Material.AIR.ordinal();
 
 	private void fill(ChunkAccess chunk, LandscapeModel m, HabitatClassifier classifier) {
 		long t0 = System.nanoTime();
@@ -229,20 +228,21 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 		int minY = chunk.getMinY();
 		int maxY = chunk.getMaxY();
 		ColumnSample[] columns = new ColumnSample[256];
-		int highest = minY;
 		for (int x = 0; x < 16; x++) {
 			for (int z = 0; z < 16; z++) {
-				ColumnSample s = m.sample(minX + x, minZ + z);
-				columns[x * 16 + z] = s;
-				highest = Math.max(highest, Math.max(topY(s, minY, maxY), waterTopY(s, maxY)));
+				columns[x * 16 + z] = m.sample(minX + x, minZ + z);
 			}
 		}
 		long tc = System.nanoTime();
-		ChunkHabitats chunkHabitats = habitats(columns, classifier, minX, minZ, minY, maxY);
-		chunk.setAttached(ModFeatures.CHUNK_HABITATS, chunkHabitats);
+		int[] codes = classify(columns, classifier, minX, minZ);
 		long t1 = System.nanoTime();
 		CLASSIFY_NANOS.add(t1 - tc);
 		SAMPLE_NANOS.add(t1 - t0);
+		ChunkSurface surface = surfaceBuilder().build(columns, codes, minX, minZ, minY, maxY, PolandDimension.DEEP_ROCK_Y,
+				m::sample);
+		chunk.setAttached(ModFeatures.CHUNK_HABITATS, habitats(columns, codes, surface));
+		SURFACE_NANOS.add(System.nanoTime() - t1);
+		int highest = Math.max(minY, surface.highest());
 		int bottomSection = chunk.getSectionIndex(minY);
 		int topSection = chunk.getSectionIndex(highest);
 		LevelChunkSection[] sections = new LevelChunkSection[topSection - bottomSection + 1];
@@ -252,77 +252,62 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 		}
 		Heightmap oceanFloor = chunk.getOrCreateHeightmapUnprimed(Heightmap.Types.OCEAN_FLOOR_WG);
 		Heightmap worldSurface = chunk.getOrCreateHeightmapUnprimed(Heightmap.Types.WORLD_SURFACE_WG);
-		int[] tops = new int[256];
-		int[] waterTops = new int[256];
-		int[] bedrockTops = new int[256];
-		BlockState[] surfaces = new BlockState[256];
-		for (int i = 0; i < 256; i++) {
-			ColumnSample s = columns[i];
-			int wx = minX + (i >> 4);
-			int wz = minZ + (i & 15);
-			surfaces[i] = surfaceBlock(s.substrate(), chunkHabitats.codes()[i]);
-			tops[i] = topY(s, minY, maxY);
-			waterTops[i] = waterTopY(s, maxY);
-			bedrockTops[i] = minY + (int) (Noise.mix(wx * 341873128712L + wz * 132897987541L) >>> 62);
-		}
+		BlockState[] states = MaterialStates.all();
 		LevelChunkSection[] chunkSections = chunk.getSections();
-		BlockState[] buffer = new BlockState[4096];
+		int[] buffer = new int[4096];
 		int[] ids = new int[4096];
+		int[] slots = new int[MATERIALS];
 		try {
 			for (int idx = bottomSection; idx <= topSection; idx++) {
 				int y0 = chunk.getSectionYFromSectionIndex(idx) << 4;
-				// First compute the states of the whole section; a uniform section gets a single-value palette,
+				// First compute the materials of the whole section; a uniform section gets a single-value palette,
 				// which is many times cheaper than 4096 separate palette writes.
-				BlockState first = null;
+				int first = -1;
 				boolean uniform = true;
 				for (int i = 0; i < 256; i++) {
-					ColumnSample s = columns[i];
-					int wx = minX + (i >> 4);
-					int wz = minZ + (i & 15);
-					int top = tops[i];
-					int waterTop = waterTops[i];
+					// Index order as in the section palette: y, then z, then x.
+					int column = ((i & 15) << 4) | (i >> 4);
 					for (int dy = 0; dy < 16; dy++) {
-						int y = y0 + dy;
-						BlockState state = y <= top ? strata(s, y, top, waterTop, bedrockTops[i], wx, wz, surfaces[i])
-								: y <= waterTop ? WATER : AIR;
-						// Index order as in the section palette: y, then z, then x.
-						buffer[(dy << 8) | ((i & 15) << 4) | (i >> 4)] = state;
-						if (first == null) {
-							first = state;
-						} else if (uniform && state != first) {
+						int material = surface.material(i, y0 + dy).ordinal();
+						buffer[(dy << 8) | column] = material;
+						if (first < 0) {
+							first = material;
+						} else if (uniform && material != first) {
 							uniform = false;
 						}
 					}
 				}
 				LevelChunkSection section = sections[idx - bottomSection];
 				if (uniform) {
-					if (first != AIR) {
-						chunkSections[idx] = new LevelChunkSection(new PalettedContainer<>(first, BLOCK_STRATEGY),
+					if (first != AIR_ID) {
+						chunkSections[idx] = new LevelChunkSection(new PalettedContainer<>(states[first], BLOCK_STRATEGY),
 								section.getBiomes());
 					}
 					continue;
 				}
-				PalettedContainer<BlockState> packed = pack(buffer, ids);
+				PACKED_SECTIONS.increment();
+				PalettedContainer<BlockState> packed = pack(buffer, ids, slots, states);
 				if (packed != null) {
 					chunkSections[idx] = new LevelChunkSection(packed, section.getBiomes());
 					continue;
 				}
+				PACK_FALLBACKS.increment();
 				for (int k = 0; k < 4096; k++) {
-					BlockState state = buffer[k];
-					if (state != AIR) {
-						section.setBlockState(k & 15, k >> 8, (k >> 4) & 15, state, false);
+					if (buffer[k] != AIR_ID) {
+						section.setBlockState(k & 15, k >> 8, (k >> 4) & 15, states[buffer[k]], false);
 					}
 				}
 			}
+			// Heightmaps after the shelf, the hummocks and the puddles (§7.1).
 			for (int i = 0; i < 256; i++) {
 				int x = i >> 4;
 				int z = i & 15;
-				int top = tops[i];
+				int top = surface.top(i);
 				BlockState topState = chunkSections[chunk.getSectionIndex(top)].getBlockState(x, top & 15, z);
 				oceanFloor.update(x, top, z, topState);
 				worldSurface.update(x, top, z, topState);
-				if (waterTops[i] > top) {
-					worldSurface.update(x, waterTops[i], z, WATER);
+				if (surface.wet(i)) {
+					worldSurface.update(x, surface.waterTop(i), z, WATER);
 				}
 			}
 		} finally {
@@ -334,25 +319,56 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 		CHUNKS.increment();
 	}
 
+	/** Surface builder of the bound world seed (created together with the model). */
+	private SurfaceBuilder surfaceBuilder() {
+		return surfaceBuilder;
+	}
+
 	/**
-	 * Habitats of a chunk from its 256 column samples (index {@code x * 16 + z}): the habitat code of each column at
-	 * the block coordinates of the column (the same point at which the biome source classifies a quart column through
-	 * its center), the top ground block and the water surface, and O and P at the chunk center.
+	 * Habitat codes of the 256 columns of a chunk (index {@code x * 16 + z}), at the block coordinates of each column (the
+	 * same point at which the biome source classifies a quart column through its center).
 	 */
-	private ChunkHabitats habitats(ColumnSample[] columns, HabitatClassifier k, int minX, int minZ, int minY, int maxY) {
+	private static int[] classify(ColumnSample[] columns, HabitatClassifier k, int minX, int minZ) {
 		int[] codes = new int[256];
+		for (int i = 0; i < 256; i++) {
+			codes[i] = k.classify(columns[i], minX + (i >> 4), minZ + (i & 15));
+		}
+		return codes;
+	}
+
+	/**
+	 * Habitats of a chunk: the codes, the top ground block and the water surface of the surface plan (after the shelf and
+	 * the micro-relief, so trees stand on hummocks and not in puddles), and O and P at the chunk center.
+	 */
+	private static ChunkHabitats habitats(ColumnSample[] columns, int[] codes, ChunkSurface surface) {
 		short[] tops = new short[256];
 		short[] water = new short[256];
 		for (int i = 0; i < 256; i++) {
-			ColumnSample s = columns[i];
-			codes[i] = k.classify(s, minX + (i >> 4), minZ + (i & 15));
-			tops[i] = (short) topY(s, minY, maxY);
-			int w = waterTopY(s, maxY);
-			water[i] = w == Integer.MIN_VALUE ? ChunkHabitats.NO_WATER : (short) w;
+			tops[i] = (short) surface.top(i);
+			water[i] = surface.wet(i) ? (short) surface.waterTop(i) : ChunkHabitats.NO_WATER;
 		}
 		ColumnSample center = columns[8 * 16 + 8];
 		return new ChunkHabitats(codes, tops, water, (float) center.region().oceanicity(),
 				(float) center.region().mountainInfluence());
+	}
+
+	/**
+	 * Surface plan of a chunk computed again from the model, exactly as {@code fill()} computes it (for game tests).
+	 *
+	 * @param codes receives the habitat codes of the columns when not null
+	 */
+	public ChunkSurface surface(ChunkPos pos, int minY, int maxY, long seed, int @Nullable [] codes) {
+		LandscapeModel m = model(seed);
+		ColumnSample[] columns = new ColumnSample[256];
+		for (int i = 0; i < 256; i++) {
+			columns[i] = m.sample(pos.getMinBlockX() + (i >> 4), pos.getMinBlockZ() + (i & 15));
+		}
+		int[] c = classify(columns, classifier(seed), pos.getMinBlockX(), pos.getMinBlockZ());
+		if (codes != null) {
+			System.arraycopy(c, 0, codes, 0, 256);
+		}
+		return surfaceBuilder().build(columns, c, pos.getMinBlockX(), pos.getMinBlockZ(), minY, maxY,
+				PolandDimension.DEEP_ROCK_Y, m::sample);
 	}
 
 	/**
@@ -361,41 +377,42 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 	 */
 	public ChunkHabitats computeHabitats(ChunkPos pos, int minY, int maxY, long seed) {
 		LandscapeModel m = model(seed);
-		HabitatClassifier k = classifier(seed);
 		ColumnSample[] columns = new ColumnSample[256];
 		for (int i = 0; i < 256; i++) {
 			columns[i] = m.sample(pos.getMinBlockX() + (i >> 4), pos.getMinBlockZ() + (i & 15));
 		}
-		return habitats(columns, k, pos.getMinBlockX(), pos.getMinBlockZ(), minY, maxY);
+		int[] codes = classify(columns, classifier(seed), pos.getMinBlockX(), pos.getMinBlockZ());
+		ChunkSurface surface = surfaceBuilder().build(columns, codes, pos.getMinBlockX(), pos.getMinBlockZ(), minY, maxY,
+				PolandDimension.DEEP_ROCK_Y, m::sample);
+		return habitats(columns, codes, surface);
 	}
 
 	/**
-	 * Builds a palette container from precomputed section states (order y, z, x). For at most 16 distinct
-	 * states the 4-bit format is the same in memory and in the data, so there is no repacking.
-	 * Returns null when there are more states and regular writes must be used.
+	 * Builds a palette container from precomputed section materials (order y, z, x): a linear palette for at most 16
+	 * states (4 bits), a hash map palette for 17–256 states (5–8 bits, §7.1). The data is written in the format the
+	 * container keeps in memory, so there is no repacking. Returns null when there are more states and regular writes
+	 * must be used ({@link #PACK_FALLBACKS}).
 	 */
-	private static @Nullable PalettedContainer<BlockState> pack(BlockState[] buffer, int[] ids) {
-		List<BlockState> palette = new ArrayList<>(8);
-		BlockState last = null;
-		int lastId = -1;
+	private static @Nullable PalettedContainer<BlockState> pack(int[] buffer, int[] ids, int[] slots, BlockState[] states) {
+		java.util.Arrays.fill(slots, -1);
+		List<BlockState> palette = new ArrayList<>(16);
 		for (int k = 0; k < 4096; k++) {
-			BlockState state = buffer[k];
-			if (state != last) {
-				lastId = palette.indexOf(state);
-				if (lastId < 0) {
-					if (palette.size() == 16) {
-						return null;
-					}
-					palette.add(state);
-					lastId = palette.size() - 1;
+			int material = buffer[k];
+			int id = slots[material];
+			if (id < 0) {
+				if (palette.size() == 256) {
+					return null;
 				}
-				last = state;
+				id = palette.size();
+				slots[material] = id;
+				palette.add(states[material]);
 			}
-			ids[k] = lastId;
+			ids[k] = id;
 		}
-		long[] raw = new SimpleBitStorage(4, 4096, ids).getRaw();
+		int bits = Math.max(4, Mth.ceillog2(palette.size()));
+		long[] raw = new SimpleBitStorage(bits, 4096, ids).getRaw();
 		return PalettedContainer.unpack(BLOCK_STRATEGY,
-				new PalettedContainerRO.PackedData<>(palette, Optional.of(LongStream.of(raw)), 4)).getOrThrow();
+				new PalettedContainerRO.PackedData<>(palette, Optional.of(LongStream.of(raw)), bits)).getOrThrow();
 	}
 
 	private int topY(ColumnSample s, int minY, int maxY) {
@@ -404,70 +421,6 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 
 	private int waterTopY(ColumnSample s, int maxY) {
 		return s.hasWater() ? Math.min(vertical.topBlockY(s.waterLevel()), maxY) : Integer.MIN_VALUE;
-	}
-
-	/**
-	 * Top block of a dry column from the substrate and the habitat. Interim rule of step S5 until the soil blocks of
-	 * step S6 (docs/03-m2-biomy.md §7): a dry channel bed (RIVERBED) stays bare sand only on bars and in water, beach and
-	 * white dune habitats; under a riparian forest, scrub or meadow on the valley floor it gets the ground of the alluvium
-	 * (grass, mud on peat soils), so trees can grow there. Beach and white dune habitats have sand even where the
-	 * substrate is not beach sand.
-	 */
-	static BlockState surfaceBlock(Substrate sub, int code) {
-		HabitatBiome biome = Habitat.biome(code);
-		boolean sandHabitat = biome == HabitatBiome.BEACH || biome == HabitatBiome.WHITE_DUNE;
-		return switch (sub) {
-			case PEAT, LAKE_MUD -> MUD;
-			case BEACH_SAND -> SAND;
-			case RIVERBED -> {
-				Zone zone = Habitat.zone(code);
-				if (sandHabitat || biome.isWater() || zone == Zone.POINT_BAR || zone == Zone.GRAVEL_BAR) {
-					yield SAND;
-				}
-				Soil soil = Habitat.soil(code);
-				yield soil == Soil.BOG_PEAT || soil == Soil.FEN_PEAT ? MUD : GRASS;
-			}
-			default -> sandHabitat ? SAND : GRASS;
-		};
-	}
-
-	/**
-	 * Block in the column at height {@code y} (from the bottom: bedrock, surface deposits,
-	 * soil). The M1 version uses vanilla blocks; the mod's own soils and rocks come in M2.
-	 *
-	 * @param surface top block of the column when it is dry ({@link #surfaceBlock})
-	 */
-	private static BlockState strata(ColumnSample s, int y, int top, int waterTop, int bedrockTop, int wx, int wz,
-			BlockState surface) {
-		if (y <= bedrockTop) {
-			return BEDROCK;
-		}
-		int depth = top - y;
-		boolean underwater = waterTop > top;
-		Substrate sub = s.substrate();
-		if (depth < s.coverDepth()) {
-			if (depth == 0 && !underwater) {
-				return surface;
-			}
-			return switch (sub) {
-				case SAND, BEACH_SAND -> SAND;
-				case RIVERBED -> depth < 3 && DETAIL.at(wx, wz, 7) > 0.15 ? GRAVEL : SAND;
-				case LAKE_MUD -> depth < 2 ? MUD : CLAY;
-				case PEAT -> depth < 3 ? MUD : CLAY;
-				case ALLUVIUM -> depth < 4 ? DIRT : SAND;
-				case GLACIAL_TILL -> depth < 3 ? DIRT : CLAY;
-				case FLYSCH -> depth < 2 ? DIRT : COARSE_DIRT;
-			};
-		}
-		if (y < PolandDimension.DEEP_ROCK_Y + ((wx * 31 + wz * 17) & 7)) {
-			return DEEPSLATE;
-		}
-		if (sub == Substrate.FLYSCH) {
-			// Flysch layering: beds of sandstone and shale, slightly tilted.
-			int band = Math.floorMod(y + (wx >> 5) - (wz >> 6), 9);
-			return band < 3 ? ANDESITE : STONE;
-		}
-		return STONE;
 	}
 
 	@Override

@@ -23,23 +23,26 @@ import pl.polishforests.worldgen.habitat.HabitatClassifier;
  * @param alienSpecies       alien and invasive species in realistic proportions (decisions C4 and D10)
  * @param version            version of the world generation: 1 = M1 (missing in the settings of worlds from M1), 2 = M2
  *                           with the mod's biomes (docs/03-m2-biomy.md §11; worlds are not migrated, decision M2-7)
+ * @param coverInBlocks      the loose cover above the rock is {@code coverDepth} meters converted to blocks (step S6,
+ *                           docs/03-m2-biomy.md §7.1); missing in worlds from before S6, which compare meters with blocks
+ *                           (in the gameplay scale a cover 2.5–4 times too thick), so their new chunks keep that cover
  */
 public record PolandSettings(PolandScale scale, double regionScale, boolean agriculture, double managedForestShare,
-		boolean alienSpecies, int version) {
+		boolean alienSpecies, int version, boolean coverInBlocks) {
 	/** Version of the presets and of new worlds: M2 (habitat biomes). */
 	public static final int CURRENT_VERSION = 2;
 	/** Version of worlds created before the field existed (M1). */
 	public static final int LEGACY_VERSION = 1;
 
 	public static final PolandSettings DEFAULT = new PolandSettings(PolandScale.REALISTIC, 1.0, false, 0.85, true,
-			CURRENT_VERSION);
+			CURRENT_VERSION, true);
 
 	/**
 	 * Settings of an M1 world saved without a {@code settings} object: in M1 the codec left out settings equal to the M1
 	 * default (realistic scale, "present-day Poland" mode).
 	 */
 	public static final PolandSettings LEGACY_M1 = new PolandSettings(PolandScale.REALISTIC, 1.0, true, 0.85, true,
-			LEGACY_VERSION);
+			LEGACY_VERSION, false);
 
 	public static final Codec<PolandSettings> CODEC = RecordCodecBuilder.create(i -> i.group(
 			PolandScale.CODEC.optionalFieldOf("scale").forGetter(s -> Optional.of(s.scale())),
@@ -48,7 +51,8 @@ public record PolandSettings(PolandScale scale, double regionScale, boolean agri
 			Codec.doubleRange(0.0, 1.0).optionalFieldOf("managed_forest_share")
 					.forGetter(s -> Optional.of(s.managedForestShare())),
 			Codec.BOOL.optionalFieldOf("alien_species").forGetter(s -> Optional.of(s.alienSpecies())),
-			Codec.intRange(1, 1_000).optionalFieldOf("version").forGetter(s -> Optional.of(s.version()))
+			Codec.intRange(1, 1_000).optionalFieldOf("version").forGetter(s -> Optional.of(s.version())),
+			Codec.BOOL.optionalFieldOf("cover_in_blocks").forGetter(s -> Optional.of(s.coverInBlocks()))
 	).apply(i, PolandSettings::decode));
 
 	/**
@@ -61,14 +65,16 @@ public record PolandSettings(PolandScale scale, double regionScale, boolean agri
 
 	private static PolandSettings decode(Optional<PolandScale> scale, Optional<Double> regionScale,
 			Optional<Boolean> agriculture, Optional<Double> managedForestShare, Optional<Boolean> alienSpecies,
-			Optional<Integer> version) {
+			Optional<Integer> version, Optional<Boolean> coverInBlocks) {
 		int v = version.orElse(LEGACY_VERSION);
 		return new PolandSettings(scale.orElse(PolandScale.REALISTIC), regionScale.orElse(1.0),
-				agriculture.orElse(v < CURRENT_VERSION), managedForestShare.orElse(0.85), alienSpecies.orElse(true), v);
+				agriculture.orElse(v < 2), managedForestShare.orElse(0.85), alienSpecies.orElse(true), v,
+				coverInBlocks.orElse(false));
 	}
 
 	public PolandSettings withScale(PolandScale newScale) {
-		return new PolandSettings(newScale, regionScale, agriculture, managedForestShare, alienSpecies, version);
+		return new PolandSettings(newScale, regionScale, agriculture, managedForestShare, alienSpecies, version,
+				coverInBlocks);
 	}
 
 	/** Vegetation mode of the habitat classifier: "present-day Poland" or natural vegetation. */
