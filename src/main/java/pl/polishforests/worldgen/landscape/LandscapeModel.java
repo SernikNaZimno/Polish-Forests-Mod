@@ -440,6 +440,10 @@ public final class LandscapeModel {
 	 */
 	double lagoonStrength(double x, double z) {
 		double wave = 60_000 * meso;
+		// The plain noise first (cost): the gradient only where a lagoon can lie.
+		if (coast.at(x + 999, z, wave) <= COAST_LAGOON_0) {
+			return 0;
+		}
 		double[] g = new double[2];
 		double n = coast.sampleD((x + 999) / wave, z / wave, g);
 		if (n <= COAST_LAGOON_0) {
@@ -479,19 +483,39 @@ public final class LandscapeModel {
 		return beachWidth() + COAST_LAGOON_START * local + 2 * 3_000 * meso;
 	}
 
-	/**
-	 * K8b1: the distance from a mouth beyond which a delta lobe of half-width {@code half} and reach {@code reach} changes
-	 * nothing: the lobe with the largest noise and its front at the greatest lagoon depth ({@link #lagoonDelta}).
-	 */
 	/** K8b1: the largest extent of a delta from its mouth (m), {@link #DELTA_EXTENT_MAX}. */
 	double deltaExtentMax() {
 		return DELTA_EXTENT_MAX * meso;
 	}
 
+	/**
+	 * K8b1: the distance from a mouth beyond which a delta lobe of half-width {@code half} and reach {@code reach} changes
+	 * nothing: the lobe with the largest noise and lobes and its front at the greatest lagoon depth ({@link #lagoonDelta}).
+	 */
 	static double deltaExtent(double half, double reach) {
 		double size = Math.min(half, reach);
 		double front = DELTA_FRONT_SHARE * size + DELTA_FRONT_RUN * COAST_LAGOON_DEPTH;
-		return Math.max(half, reach) * (1 + front / size) * (1 + DELTA_NOISE) + 1;
+		return Math.max(half, reach) * (1 + front / size) * deltaShapeBound() + 1;
+	}
+
+	/**
+	 * K8b1 round 1: the factor k (at most 1) by which the half-width and the reach of a lobe are scaled so that its
+	 * {@link #deltaExtent} is at most {@code room}; not above 0 if even a vanishing lobe does not fit (its front at the
+	 * greatest depth does not scale). The extent is linear in k: c · max · ((1 + share) · k + run · depth / size) + 1.
+	 */
+	static double deltaScaleToFit(double half, double reach, double room) {
+		if (deltaExtent(half, reach) <= room) {
+			return 1;
+		}
+		double size = Math.min(half, reach);
+		double max = Math.max(half, reach);
+		double fixed = max * DELTA_FRONT_RUN * COAST_LAGOON_DEPTH / size;
+		return ((room - 1) / deltaShapeBound() - fixed) / ((1 + DELTA_FRONT_SHARE) * max);
+	}
+
+	/** K8b1 round 1: the largest relative radius of a lobe (edge noise and angular lobes). */
+	private static double deltaShapeBound() {
+		return (1 + DELTA_NOISE) * (1 + DELTA_LOBE_2 + DELTA_LOBE_3 + DELTA_LOBE_4);
 	}
 
 	/**
@@ -499,9 +523,9 @@ public final class LandscapeModel {
 	 * ({@link RiverNetwork#lagoonMouth}: where the channel of a segment, followed downstream from land, first reaches lagoon
 	 * water of {@link #landElevation}) carries an elliptic lobe centered on the mouth, with a half-width {@link #DELTA_HALF}
 	 * and a reach {@link #DELTA_REACH} (at most {@link #DELTA_WIDTH_SHARE} of the lagoon width) half-widths of a lowland
-	 * valley floor at the mouth, oriented along the mean of the valley and the seaward normal, and with an edge moved by a
-	 * noise of {@link #DELTA_NOISE} of the radius (three octaves from {@link #DELTA_LOBE_WAVE} lobe sizes) (lobes, not an
-	 * ellipse). Inside the lobe the land rises to {@link #DELTA_TOP} m (from 0 m at its edge over half the lobe size), and
+	 * valley floor at the mouth, oriented along the mean of the valley and the seaward normal; its radius varies with the
+	 * angle around the mouth (harmonics 2–4, {@link #DELTA_LOBE_2}, with phases of the mouth) and with an edge noise of
+	 * {@link #DELTA_NOISE} (three octaves from {@link #DELTA_LOBE_WAVE} lobe sizes), so it is lobed, not an ellipse. Inside the lobe the land rises to {@link #DELTA_TOP} m (from 0 m at its edge over half the lobe size), and
 	 * beyond its edge an underwater front returns to the lagoon floor over a quarter of the lobe size plus
 	 * {@link #DELTA_FRONT_RUN} m per meter of depth. On dry ground the lobe only raises ground lower than its top, so the
 	 * delta meets the land behind the old shore without a trough. Overlapping lobes take the maximum.
@@ -541,8 +565,12 @@ public final class LandscapeModel {
 			double size = Math.min(half, reach);
 			double ua = along / reach;
 			double uc = across / half;
-			double q = Math.sqrt(ua * ua + uc * uc)
-					/ (1 + DELTA_NOISE * lagoonShore.fbm(x + 7_919, z - 3_571, DELTA_LOBE_WAVE * size, 3, 0.5));
+			double r = Math.sqrt(ua * ua + uc * uc);
+			// Lobes around the mouth (three angular harmonics with the phases of the mouth) and a noise of the edge.
+			double theta = Math.atan2(uc, ua);
+			double lobes = 1 + DELTA_LOBE_2 * Math.cos(2 * theta + m.phase2()) + DELTA_LOBE_3 * Math.cos(3 * theta + m.phase3())
+					+ DELTA_LOBE_4 * Math.cos(4 * theta + m.phase4());
+			double q = r / (lobes * (1 + DELTA_NOISE * lagoonShore.fbm(x + 7_919, z - 3_571, DELTA_LOBE_WAVE * size, 3, 0.5)));
 			// Distance outside the lobe (m, negative inside).
 			double g = (q - 1) * size;
 			double top = DELTA_TOP * Math.clamp(-g / (0.5 * size), 0.0, 1.0);
@@ -640,14 +668,24 @@ public final class LandscapeModel {
 	static final double DELTA_FRONT_RUN = 4;
 	/** K8b1: height of a delta above the sea inside its lobe (m; it falls to 0 over the outer half of the lobe size). */
 	static final double DELTA_TOP = 0.8;
-	/** K8b1 round 1: relative change of the lobe radius by the lobe noise (three octaves), and its longest wavelength in lobe sizes. */
-	static final double DELTA_NOISE = 0.45;
-	static final double DELTA_LOBE_WAVE = 1.5;
+	/**
+	 * K8b1 round 1: relative change of the lobe radius by the edge noise (three octaves), and its longest wavelength in
+	 * lobe sizes.
+	 */
+	static final double DELTA_NOISE = 0.25;
+	static final double DELTA_LOBE_WAVE = 0.75;
+	/**
+	 * K8b1 round 1: amplitudes of the angular harmonics 2, 3 and 4 of the lobe radius around the mouth (lobes of a delta;
+	 * with the edge noise alone, a large REAL lobe kept smooth arcs and straight stretches of 150–300 m).
+	 */
+	static final double DELTA_LOBE_2 = 0.10;
+	static final double DELTA_LOBE_3 = 0.08;
+	static final double DELTA_LOBE_4 = 0.06;
 	/**
 	 * K8b1 round 1: largest reach of a delta from its mouth (m·meso; larger lobes are scaled down,
 	 * {@link RiverNetwork#lagoonMouth}), so the columns look for delta lobes only within twice this of the lagoon belt.
 	 */
-	static final double DELTA_EXTENT_MAX = 1_500;
+	static final double DELTA_EXTENT_MAX = 3_000;
 
 	/** Sea depth in meters at distance {@code off} from the shore (Baltic: shallow shelf). */
 	private double seaDepth(double off) {

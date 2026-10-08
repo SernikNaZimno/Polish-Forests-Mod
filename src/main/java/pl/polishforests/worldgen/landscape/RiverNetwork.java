@@ -1090,14 +1090,15 @@ final class RiverNetwork {
 	 * ({@code LandscapeModel.lagoonDelta}): the channel point (x, z) where the channel of a segment, followed downstream
 	 * from its start on land, first reaches lagoon water of {@link LandscapeModel#landElevation}; the unit direction of
 	 * the delta into the lagoon (the mean of the valley tangent and the seaward normal of the coast); the half-width of
-	 * the lobe across that direction and its reach along it (m); and the distance from the mouth beyond which the delta
-	 * changes nothing (m).
+	 * the lobe across that direction and its reach along it (m); the distance from the mouth beyond which the delta
+	 * changes nothing (m); and the phases of the angular lobes (rad).
 	 */
-	record LagoonMouth(double x, double z, double dirX, double dirZ, double half, double reach, double extent) {
+	record LagoonMouth(double x, double z, double dirX, double dirZ, double half, double reach, double extent, double phase2,
+			double phase3, double phase4) {
 	}
 
 	/** K8b1: a segment without a mouth in a lagoon. */
-	static final LagoonMouth NO_MOUTH = new LagoonMouth(0, 0, 0, 0, 0, 0, 0);
+	static final LagoonMouth NO_MOUTH = new LagoonMouth(0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 	/** K8b1: spacing of the samples of the channel when looking for the mouth (m·meso). */
 	static final double MOUTH_STEP = 20;
 
@@ -1224,17 +1225,19 @@ final class RiverNetwork {
 		// Keep the influence within the bounding box of the segment (s.reach beyond the curve, the mouth within lat of it)
 		// and within the belt where the columns look for deltas.
 		double room = Math.min(s.reach - lat - 1, model.deltaExtentMax());
-		double extent = LandscapeModel.deltaExtent(half, reach);
-		for (int it = 0; it < 4 && extent > room; it++) {
-			double k = room / extent;
-			half *= k;
-			reach *= k;
-			extent = LandscapeModel.deltaExtent(half, reach);
-		}
-		if (!(extent <= room)) {
+		double k = LandscapeModel.deltaScaleToFit(half, reach, room);
+		if (!(k > 0.25)) {
 			return NO_MOUTH;
 		}
-		return new LagoonMouth(p[0], p[1], dx / dl, dz / dl, half, reach, extent);
+		half *= k;
+		reach *= k;
+		double extent = Math.min(room, LandscapeModel.deltaExtent(half, reach));
+		// Phases of the lobes from the start of the segment (fixed per segment).
+		long i = (long) Math.floor(s.x0);
+		long j = (long) Math.floor(s.z0);
+		double tau = 2 * Math.PI;
+		return new LagoonMouth(p[0], p[1], dx / dl, dz / dl, half, reach, extent, tau * noise.unit(i, j, 811),
+				tau * noise.unit(i, j, 812), tau * noise.unit(i, j, 813));
 	}
 
 	RiverNetwork(LandscapeModel model, Noise noise, LandscapeScale scale) {
