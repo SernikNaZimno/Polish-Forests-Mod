@@ -415,6 +415,24 @@ final class MeanderField {
 		out[3] = bestV;
 	}
 
+	/**
+	 * K8c (review round 1): the point of the arc of {@link #arcDistance} with the parameter {@code a} (clamped to [0, 1]) on
+	 * the same polyline, in the same frame: {@code out[0]} its du, {@code out[1]} its dv (wavelengths).
+	 */
+	static void arcPoint(double theta, double a, double[] out) {
+		Level l = level(arcLevel(theta));
+		int i0 = POINTS / 4;
+		double c = Math.clamp(a, 0.0, 1.0) * ARC_SEGMENTS;
+		int q = Math.min(ARC_SEGMENTS - 1, (int) Math.floor(c));
+		double qa = (double) q / ARC_SEGMENTS;
+		double qb = (q + 1.0) / ARC_SEGMENTS;
+		double f = c - q;
+		double ax = arcX(l, i0, qa);
+		double ay = arcY(l, i0, qa);
+		out[0] = ax + (arcX(l, i0, qb) - ax) * f - 0.5;
+		out[1] = ay + (arcY(l, i0, qb) - ay) * f;
+	}
+
 	/** K5.1: table level of the arc of {@link #arcDistance} (the nearest level, at least 1). */
 	private static int arcLevel(double theta) {
 		return Math.max(1, (int) Math.round(Math.clamp(theta / THETA_MAX, 0.0, 1.0) * (LEVELS - 1)));

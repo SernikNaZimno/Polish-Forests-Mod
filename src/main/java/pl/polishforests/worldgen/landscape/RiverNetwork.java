@@ -463,6 +463,8 @@ final class RiverNetwork {
 		return offset;
 	}
 
+	/** Highest valley floor above the water level of its channel ({@link #floorOffset}: 1.2 + 1.0, m). */
+	static final double FLOOR_OFFSET_MAX = 2.2;
 	/** K8c: largest weight of the finer octave of the floor micro-relief ({@link #floorOffset}). */
 	static final double FLOOR_FINE_WEIGHT = 0.5;
 	/** K8c: wavelength of the finer octave of the floor micro-relief (m·k; {@link #floorOffset}). */
@@ -2328,6 +2330,9 @@ final class RiverNetwork {
 		final double[] arc = new double[4];
 		/** K8c: projection of the foot of an oxbow column on its arc ({@link #projectChannel}). */
 		final double[] foot = new double[10];
+		/** K8c: offset of a point of the arc from the column ({@link #footOffset}) and a point of the arc (du, dv). */
+		final double[] offset = new double[2];
+		final double[] arcPoint = new double[2];
 		/** K8c: the part of the last {@link #floorOffset} due to its finer octave (m). */
 		double floorFine;
 		/** Number of arms of the last {@link #projectChannel} (their t in {@link #bt}). */
@@ -2985,8 +2990,10 @@ final class RiverNetwork {
 			}
 			int lvl = (int) Math.floor(level);
 			// A channel only where the valley has already come down close to the water level. Higher up (the valley head near
-			// the source) a dry valley remains, and the water emerges where the valley floor reaches the water level.
-			if (!cascade && result - lvl > 3.0) {
+			// the source) a dry valley remains, and the water emerges where the valley floor reaches the water level. Review of
+			// K8c, round 1: never on an ordinary valley floor, which lies at most FLOOR_OFFSET_MAX above the unrounded level
+			// (floorOffset); with frac(level) > 0.8 it reached lvl + 3.0–3.2 and cut the river with a dry dam.
+			if (!cascade && result - lvl > 3.0 && result - level > FLOOR_OFFSET_MAX + 0.05) {
 				continue;
 			}
 			if (chDist[q] < chHalf[q]) {
@@ -3209,7 +3216,7 @@ final class RiverNetwork {
 	 * <p>Step K8c: only the own channel (the dominant segment and its continuations across a node) narrows the oxbow lake at
 	 * the column, so its horns end at the present channel, whose bank runs along the arc. Any other channel (a tributary,
 	 * another river) narrows it at the foot of the column on the arc ({@link #otherChannelFade}): the water then ends in a
-	 * rounded tip along the arc. Before K8c the nearest channel of any segment narrowed it at the column, so near a
+	 * pointed tip along the arc. Before K8c the nearest channel of any segment narrowed it at the column, so near a
 	 * tributary the water ended in a blunt front along a line parallel to that channel (oxbow_lake.png of the game test).
 	 *
 	 * @param x         column x
@@ -3295,10 +3302,10 @@ final class RiverNetwork {
 				}
 			}
 			// Plugged ends: at the present channel (the bank belt of 12 m and a little more), at the edge of the floor and
-			// of the lowlands; at other channels a rounded tip along the arc (K8c).
+			// of the lowlands; at other channels a pointed tip along the arc (K8c).
 			double plug = 12.5 + 0.2 * w;
 			double ow = owMax * horn * Noise.smoothstep(plug, plug + owMax + 5, ownDist)
-					* otherChannelFade(s, t, lat, x, z, du - arc[2], side * (dv - arc[3]), plug, owMax, otherDist, segments, sc)
+					* otherChannelFade(s, t, x, z, du, dv, side, thOld, a0, a1, plug, owMax, otherDist, segments, sc)
 					* Noise.smoothstep(0, 0.5 * owMax + 10 * valleyScale, Math.min(floorRoom, margin)) * lowFade
 					// Terrain before the valleys low above the water level (coast): the oxbow lake narrows to zero.
 					* Noise.smoothstep(level + 1.5, level + 3.5, terrain)
@@ -3308,6 +3315,11 @@ final class RiverNetwork {
 					// would fill a narrow shaft with walls of up to 110 m (GAMEPLAY); the oxbow lake narrows to zero there.
 					* Noise.smoothstep(level + OXBOW_FLOOR_MIN, level + OXBOW_FLOOR_MIN + 1, floor)
 					* (1 - Noise.smoothstep(level + OXBOW_FLOOR_MAX, level + OXBOW_FLOOR_MAX + 1.3, floor));
+			// Review of K8c, round 1: no hairline water. Where the factors leave a half-width below OXBOW_MIN_HALF (the end
+			// of a tip, the tail of a horn at the own channel, an oxbow lake narrowed along a stretch) the water became a
+			// chain of single blocks touching at their corners; it now ends there, within a band of 0.2 m·k of the
+			// half-width (continuous shore).
+			ow *= Noise.smoothstep((OXBOW_MIN_HALF - 0.1) * valleyScale, (OXBOW_MIN_HALF + 0.1) * valleyScale, ow);
 			double shore = d - ow;
 			if (shore > ring || best != null && shore >= best.shore()) {
 				continue;
@@ -3320,27 +3332,81 @@ final class RiverNetwork {
 	}
 
 	/**
-	 * K8c: narrowing of an oxbow lake by the channels other than its own, at the foot of the column on the arc. The foot is
-	 * the column moved by (−eu, −ev) in the frame of the meanders of s (eu along the valley, ev across it, both in
-	 * wavelengths: the offset of the column from its nearest point of the arc, ev already with the sign of the side),
-	 * linearized at the column: along the curve of s by eu / (du/dt), across it by ev · λ plus the change of the wander.
-	 * With D the distance of the foot from the bank of the nearest other channel and r = (D − plug) / (OXBOW_TIP · owMax),
-	 * the fade is r (2 − r): the half-width is the same across the oxbow lake, so where such a channel crosses the arc the
-	 * water ends in a tip along the arc, OXBOW_TIP half-widths long and half as wide 1.8 half-widths from its end (the
-	 * horns of K5.1: 1.2 in the median). The profile is nearly linear, so both shores keep the bend of the arc (a rounded
-	 * profile, e.g. a half ellipse 4 half-widths long, straightened the inner shore to 0.3 m off a chord over 50 m on a
-	 * bend of radius 136 m), and its slope is at most 2 / OXBOW_TIP &lt; 1, so the water never comes closer to that channel
-	 * than plug. 1 where no other channel is in reach (exactly: D ≥ otherDist − |foot − column| by the triangle
-	 * inequality).
+	 * K8c: narrowing of an oxbow lake by the channels other than its own, at the foot of the column on the arc (its nearest
+	 * point of the arc, {@code arc[2]}, {@code arc[3]} of {@link Scratch#arc}). With D the distance of the foot from the
+	 * bank of the nearest other channel, g the rate at which D changes along the arc there (|dD/ds|, clamped to
+	 * [{@link #OXBOW_TIP_MIN_RATE}, 1]) and r = (D − plug) / (OXBOW_TIP · owMax · g), the fade is r (2 − r). The half-width
+	 * is the same across the oxbow lake, so where such a channel crosses the arc the water ends in a pointed tip along the
+	 * arc (a wedge with a half-angle of about 18°: the half-width grows by at most 2 / OXBOW_TIP = 1/3 per meter along the
+	 * arc for any crossing angle with g ≥ OXBOW_TIP_MIN_RATE, since D grows by g per meter), OXBOW_TIP · g half-widths
+	 * long. The profile is nearly linear, so both shores keep the bend of the arc (a rounded profile, e.g. a half ellipse
+	 * 4 half-widths long, straightened the inner shore to 0.3 m off a chord over 50 m on a bend of radius 136 m). Review of
+	 * K8c, round 1: g shortens the reach of a channel running alongside the arc (before, g = 1 everywhere, and a tributary
+	 * parallel to the arc 2 half-widths beyond plug left 56% of the width along the whole oxbow lake, a thin needle; now
+	 * 75%). Its floor of 2/3 keeps the near shore off a line parallel to that channel: the half-width changes by at most
+	 * half of the change of D (with 1/3 the shore ran along a straight tributary at a fixed distance). The fade is at most
+	 * 2 r ≤ (D − plug) / (2 owMax), so the water never comes closer to that channel than plug (up to the Lipschitz
+	 * constant of the distance field and the change of the channel width along it). 1 where no other channel is in reach.
 	 *
+	 * @param du        offset of the column along the valley from the apex of the arc (wavelengths, frame of arcDistance)
+	 * @param dv        offset of the column across it, positive outwards (wavelengths)
 	 * @param otherDist distance of the column from the bank of the nearest other channel
 	 */
-	private double otherChannelFade(Segment s, double t, double lat, double x, double z, double eu, double ev, double plug,
-			double owMax, double otherDist, List<Segment> segments, Scratch sc) {
-		double len = OXBOW_TIP * owMax;
+	private double otherChannelFade(Segment s, double t, double x, double z, double du, double dv, double side,
+			double thOld, double a0, double a1, double plug, double owMax, double otherDist, List<Segment> segments,
+			Scratch sc) {
 		if (otherDist == Double.POSITIVE_INFINITY) {
 			return 1;
 		}
+		double len = OXBOW_TIP * owMax;
+		double[] arc = sc.arc;
+		double[] o = sc.offset;
+		footOffset(s, t, du - arc[2], side * (dv - arc[3]), o);
+		double fx = o[0];
+		double fz = o[1];
+		double shift = Math.sqrt(fx * fx + fz * fz);
+		// Up to the Lipschitz constant of the distance field: D ≥ otherDist − |foot − column| (triangle inequality).
+		if (otherDist - shift >= plug + len) {
+			return 1;
+		}
+		double dist = otherChannelDistance(s, x + fx, z + fz, shift, plug + len, segments, sc);
+		if (dist >= plug + len) {
+			return 1;
+		}
+		// The rate of change of D along the arc: the larger of the one-sided slopes to the points of the arc about
+		// OXBOW_TIP_SPAN half-widths before and after the foot (continuous: D is continuous, also across the bisectors of
+		// two channels). Over that span the bends of a meandering channel next to the arc average out, and at the point of
+		// the arc nearest to a crossing channel (D has a minimum there) the slope of either side is still that of the
+		// crossing.
+		double aFoot = arc[1];
+		double[] ap = sc.arcPoint;
+		MeanderField.arcPoint(thOld, aFoot + 0.01, ap);
+		double perStep = Math.hypot(ap[0] - arc[2], ap[1] - arc[3]) * s.lambda;
+		double da = Math.min(0.25, 0.01 * OXBOW_TIP_SPAN * owMax / Math.max(1e-9, perStep));
+		double g = 0;
+		for (int side2 = -1; side2 <= 1; side2 += 2) {
+			MeanderField.arcPoint(thOld, Math.clamp(aFoot + side2 * da, a0, a1), ap);
+			footOffset(s, t, du - ap[0], side * (dv - ap[1]), o);
+			double qx = o[0];
+			double qz = o[1];
+			double gap = Math.hypot(qx - fx, qz - fz);
+			if (gap > 1e-6) {
+				// D changes by at most the distance between the points, so the cap is never reached (no clipped difference).
+				double dq = otherChannelDistance(s, x + qx, z + qz, Math.hypot(qx, qz), dist + gap + 1, segments, sc);
+				g = Math.max(g, Math.abs(dq - dist) / gap);
+			}
+		}
+		g = Math.clamp(g, OXBOW_TIP_MIN_RATE, 1.0);
+		double r = Math.clamp((dist - plug) / (len * g), 0.0, 1.0);
+		return r * (2 - r);
+	}
+
+	/**
+	 * K8c: offset (out[0], out[1]) in x and z from the column to the point that is (−eu, −ev) away from it in the frame
+	 * of the meanders of s (eu along the valley, ev across it, both in wavelengths, ev with the sign of the side),
+	 * linearized at the column: along the curve of s by eu / (du/dt), across it by ev · λ plus the change of the wander.
+	 */
+	private static void footOffset(Segment s, double t, double eu, double ev, double[] out) {
 		double h = 1e-4;
 		double dudt = (s.meanderU(t + h) - s.meanderU(t - h)) / (2 * h);
 		double dt = -eu / dudt;
@@ -3348,15 +3414,18 @@ final class RiverNetwork {
 		double tz = s.dz(t);
 		double tl = Math.max(1e-9, Math.sqrt(tx * tx + tz * tz));
 		double dLat = -ev * s.lambda + (s.wanderAt(t + h) - s.wanderAt(t - h)) / (2 * h) * dt;
-		double ox = dt * tx - dLat * tz / tl;
-		double oz = dt * tz + dLat * tx / tl;
-		double shift = Math.sqrt(ox * ox + oz * oz);
-		if (otherDist - shift >= plug + len) {
-			return 1;
-		}
-		double fx = x + ox;
-		double fz = z + oz;
-		double dist = plug + len;
+		out[0] = dt * tx - dLat * tz / tl;
+		out[1] = dt * tz + dLat * tx / tl;
+	}
+
+	/**
+	 * K8c: distance of the point (px, pz), {@code shift} away from the column, from the bank of the nearest channel other
+	 * than the own one of s (not s and not its continuations across a node), at most {@code cap}; the candidates of the
+	 * column ({@link Scratch#floor}) that are provably at least {@code cap} away (triangle inequality) are skipped.
+	 */
+	private double otherChannelDistance(Segment s, double px, double pz, double shift, double cap, List<Segment> segments,
+			Scratch sc) {
+		double dist = cap;
 		double[] f = sc.floor;
 		double[] pf = sc.foot;
 		for (int q = 0, end = sc.floorEnd; q < end; q += FLOOR_STRIDE) {
@@ -3367,15 +3436,24 @@ final class RiverNetwork {
 			if (o == s || continues(s, o)) {
 				continue;
 			}
-			projectChannel(o, fx, fz, sc, pf);
+			projectChannel(o, px, pz, sc, pf);
 			dist = Math.min(dist, pf[5] - 0.5 * o.widthAt(pf[0]));
 		}
-		double r = Math.clamp((dist - plug) / len, 0.0, 1.0);
-		return r * (2 - r);
+		return dist;
 	}
 
-	/** K8c: length of the tip of an oxbow lake at another channel, in its half-widths (otherChannelFade). */
+	/** K8c: length of the tip of an oxbow lake at a channel crossing its arc, in its half-widths (otherChannelFade). */
 	static final double OXBOW_TIP = 6.0;
+	/** K8c (review round 1): span along the arc on either side of the foot for the rate of change of D, in half-widths (otherChannelFade). */
+	static final double OXBOW_TIP_SPAN = 2.0;
+	/** K8c (review round 1): smallest rate of change of D in otherChannelFade (a channel alongside the arc). */
+	static final double OXBOW_TIP_MIN_RATE = 2.0 / 3;
+
+	/**
+	 * K8c (review round 1): smallest half-width of oxbow water (m·k: 0.6 m at realistic scale, 0.3 m at gameplay scale,
+	 * where the oxbow lakes are 3–7 m wide and a larger cut made their horns blunt in StandingWaterTest; oxbow).
+	 */
+	static final double OXBOW_MIN_HALF = 0.6;
 
 	/** K5.1: smallest meander angle θ0 at the bend for an oxbow lake (rad); the former loop has θ0 + 0.5…1.0. */
 	static final double OXBOW_MIN_THETA = 0.8;

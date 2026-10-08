@@ -157,6 +157,143 @@ class StandingWaterTest {
 	 * column and its neighbors 1 m east and south: one level per lake id, and no neighbor in another tunnel valley lake
 	 * with another level.
 	 */
+	/**
+	 * Review of K8c, round 1: regression test for the end of an oxbow lake at another channel (a tributary). Before K8c
+	 * the nearest channel of any segment narrowed the oxbow lake at the column, so where a tributary crossed the arc the
+	 * water ended in a blunt front parallel to it (oxbow_lake.png of the game test, (−4407, 2171), and the K5 site
+	 * (−5440, 93770), both at realistic scale). Each oxbow lake nearest to a site is filled on a 1 m·k grid and measured at
+	 * both ends of its geodesic diameter: the tip ratio is the largest half-width (distance from the nearest cell without
+	 * its water) within {@value #TIP_REACH} of its largest half-width (geodesic) of the end, over that distance. A front
+	 * cut across the arc gives about 1 (the half-width grows like the distance from the front), a horn of K5.1 about
+	 * 0.45, the tip of K8c at another channel 0.3–0.45. Measured with the same probe: base of K8c 0.59 and 0.78 at
+	 * these ends, K8c 0.25 and 0.32, round 1 0.28–0.46. Also at every site, and at an oxbow lake by a tributary at
+	 * gameplay scale: no oxbow water column within {@value #TIP_CHANNEL} m of the bank of any channel (the plug of the
+	 * bank belt, 12.5 m + 0.2 W; measured at least 14.4 m).
+	 */
+	@Test
+	void oxbowLakesTaperAtOtherChannels() {
+		record Site(LandscapeScale scale, double x, double z, boolean tip) {
+		}
+		Site[] sites = {new Site(LandscapeScale.REALISTIC, -4407, 2171, true), new Site(LandscapeScale.REALISTIC, -5440, 93770, true),
+				new Site(LandscapeScale.GAMEPLAY, 13652, -4786, false)};
+		LandscapeModel real = new LandscapeModel(SEED, LandscapeScale.REALISTIC, 1.0);
+		LandscapeModel gameplay = new LandscapeModel(SEED, LandscapeScale.GAMEPLAY, 1.0);
+		List<String> bad = new ArrayList<>();
+		for (Site site : sites) {
+			LandscapeModel m = site.scale() == LandscapeScale.REALISTIC ? real : gameplay;
+			double k = site.scale().local();
+			double[] r = oxbowTip(m, k, site.x(), site.z());
+			String line = String.format(Locale.ROOT, "%s (%.0f, %.0f): oxbow lake %.0f m², half-width %.1f m, tip ratios %.2f %.2f, "
+					+ "nearest channel bank %.1f m", site.scale().id(), site.x(), site.z(), r[0], r[1], r[2], r[3], r[4]);
+			System.out.println(line);
+			if (site.tip() && Math.max(r[2], r[3]) > TIP_RATIO || r[4] < TIP_CHANNEL) {
+				bad.add(line);
+			}
+		}
+		assertTrue(bad.isEmpty(), "oxbow lake ends with a blunt front or water at a channel: " + bad);
+	}
+
+	/** Reach of the tip ratio from the end, in the largest half-widths of the oxbow lake. */
+	static final double TIP_REACH = 0.5;
+	/** Largest tip ratio at the sites ({@link #oxbowLakesTaperAtOtherChannels}). */
+	static final double TIP_RATIO = 0.52;
+	/** Least distance of oxbow water from the bank of a channel (m). */
+	static final double TIP_CHANNEL = 12.5;
+
+	/**
+	 * The oxbow lake nearest to (x0, z0) (searched every 2 m·k within 200 m·k), filled on a 1 m·k grid in a box of
+	 * ±400 m·k: {area (m²), its largest half-width (m), the tip ratios at both ends, the least channel distance}.
+	 */
+	private static double[] oxbowTip(LandscapeModel m, double k, double x0, double z0) {
+		double best = Double.MAX_VALUE;
+		long id = 0;
+		double sx = 0;
+		double sz = 0;
+		double step = 2 * k;
+		double search = 200 * k;
+		int ns = (int) (2 * search / step) + 1;
+		for (int j = 0; j < ns; j++) {
+			for (int i = 0; i < ns; i++) {
+				double x = x0 - search + i * step;
+				double z = z0 - search + j * step;
+				double d = (x - x0) * (x - x0) + (z - z0) * (z - z0);
+				if (d < best) {
+					ColumnSample s = m.sample(x, z);
+					if (s.waterKind() == WaterKind.OXBOW) {
+						best = d;
+						id = s.waters().lakeId();
+						sx = x;
+						sz = z;
+					}
+				}
+			}
+		}
+		assertTrue(best < Double.MAX_VALUE, "no oxbow lake near (" + x0 + ", " + z0 + ")");
+		int half = 400;
+		int n = 2 * half + 1;
+		boolean[] water = new boolean[n * n];
+		double[] channel = new double[n * n];
+		double[] width = new double[n];
+		long lake = id;
+		double cx = sx;
+		double cz = sz;
+		IntStream.range(0, n).parallel().forEach(j -> {
+			for (int i = 0; i < n; i++) {
+				ColumnSample s = m.sample(cx + (i - half) * k, cz + (j - half) * k);
+				if (s.waterKind() == WaterKind.OXBOW && s.waters().lakeId() == lake) {
+					water[j * n + i] = true;
+					channel[j * n + i] = s.waters().channelDist();
+					width[j] = Math.max(width[j], s.waters().standingWaterRadius());
+				}
+			}
+		});
+		double owMax = Arrays.stream(width).max().orElse(0);
+		// The water body of the start cell (8 neighbors).
+		boolean[] body = new boolean[n * n];
+		List<Integer> cells = new ArrayList<>();
+		ArrayDeque<Integer> queue = new ArrayDeque<>();
+		int start = half * n + half;
+		body[start] = true;
+		queue.add(start);
+		double nearest = Double.POSITIVE_INFINITY;
+		while (!queue.isEmpty()) {
+			int c = queue.poll();
+			cells.add(c);
+			nearest = Math.min(nearest, channel[c]);
+			for (int dj = -1; dj <= 1; dj++) {
+				for (int di = -1; di <= 1; di++) {
+					int ii = c % n + di;
+					int jj = c / n + dj;
+					if (ii >= 0 && jj >= 0 && ii < n && jj < n && water[jj * n + ii] && !body[jj * n + ii]) {
+						body[jj * n + ii] = true;
+						queue.add(jj * n + ii);
+					}
+				}
+			}
+		}
+		double[] dt = new double[n * n];
+		for (int c = 0; c < n * n; c++) {
+			dt[c] = body[c] ? Double.POSITIVE_INFINITY : 0;
+		}
+		chamfer(dt, n);
+		int end1 = argmax(geodesic(body, n, start), cells);
+		double[] g1 = geodesic(body, n, end1);
+		int end2 = argmax(g1, cells);
+		double[] g2 = geodesic(body, n, end2);
+		double reach = TIP_REACH * owMax / k;
+		double tip1 = 0;
+		double tip2 = 0;
+		for (int c : cells) {
+			if (g1[c] <= reach) {
+				tip1 = Math.max(tip1, dt[c] / reach);
+			}
+			if (g2[c] <= reach) {
+				tip2 = Math.max(tip2, dt[c] / reach);
+			}
+		}
+		return new double[] {cells.size() * k * k, owMax, tip1, tip2, nearest};
+	}
+
 	@Test
 	void tunnelLakesHaveOneLevel() {
 		record Area(LandscapeScale scale, double cx, double cz, double half, double step) {

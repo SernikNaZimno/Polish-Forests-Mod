@@ -35,6 +35,9 @@
 # outwash_plain_lake patches of GAMEPLAY A and the cliff, kettle_pond, large_river, lowland_river and oxbow_lake
 # patches of GAMEPLAY B (lowland valley floors in the patches). No target or coverage is lost and no control patch
 # (*_interior) changes. The file is regenerated once in K8z.
+# Round 1, part 2 (-PgoldenReport=build/golden_K8cr1_c.txt): oxbow lakes by a channel alongside the arc less narrow,
+# no hairline oxbow water, no dry dam of a river on an ordinary valley floor. The same patches as part 1; no new patch,
+# no control patch changes.
 REAL B / grid
 REAL B / coast
 REAL B / tunnel_valley_lake
