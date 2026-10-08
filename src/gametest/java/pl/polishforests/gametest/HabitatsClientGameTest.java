@@ -679,19 +679,28 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 	private static final int SHELF_RADIUS = 2;
 
 	/**
-	 * Bank shelf in the world (§7.2, §12.3) in four areas of the scale: the large river of the stage measurement, the
-	 * lake reedbed, the alder carr (puddles) and the willow-poplar forest place. In 5 × 5 full chunks around each area the
-	 * shore columns of the surface plan (dry shelf zone or lake shore columns next to water) must have water beside their top
-	 * block in at least 90% of cases. Then every water block of the plan's surface (also of the puddles) gets a scheduled
-	 * fluid tick, as if a neighbor had changed. The plan must have no open water edge (water with air beside it at the same Y)
-	 * that the model does not already have, and after {@value #SPILL_TICKS} ticks no water may stand outside the plan's water
-	 * farther than {@value #FLOW_REACH} blocks from an open edge of the model (the steps of the river level in the model,
-	 * only reported). Screenshot {@code s6_shelf_<area>_<scale>}.
+	 * Bank shelf in the world (§7.2, §12.3) in the areas of the scale: the large river of the stage measurement, the
+	 * lake reedbed, the alder carr (puddles), the willow-poplar forest place and the places of the review of S6 (oxbow
+	 * lake; stream, bog woodland by a stream). In 5 × 5 full chunks around each area the shore columns of the surface plan
+	 * (dry shelf zone or lake shore columns next to water) must have water beside their top block in at least 90% of cases,
+	 * and the shelf must make no step of 2 or more blocks where the model is flat. Then every water block of the plan's
+	 * surface (also of the puddles) gets a scheduled fluid tick, as if a neighbor had changed. The plan must have no open
+	 * water edge (water with air beside it at the same Y) that the model does not already have, and after
+	 * {@value #SPILL_TICKS} ticks no water may stand outside the plan's water in ground that the model had (at or below the
+	 * model top) or farther than {@value #FLOW_REACH} blocks from an open edge of the model; water above the model ground
+	 * near such an edge (the steps of the river level in the model) is only reported. Screenshot
+	 * {@code s6_shelf_<area>_<scale>}.
 	 */
 	private static String shelf(ClientGameTestContext context, TestSingleplayerContext sp, boolean real, String scale) {
 		int[][] soil = real ? SOIL_REAL : SOIL_GAMEPLAY;
-		int[][] areas = {real ? new int[] {-19_484, 11_253} : new int[] {-1_851, 6_022}, soil[3], soil[2], soil[0]};
-		String[] names = {"river", "lake_reedbed", "alder_carr", "willow_poplar_forest"};
+		// The four areas of S6 and the places of the review of S6, round 1: the oxbow lake (realistic scale), a stream and the
+		// bog woodland by a stream (gameplay scale), where the first shelf made walls and let the water of the model's open
+		// edges spread over removed ground.
+		int[][] areas = real
+				? new int[][] {{-19_484, 11_253}, soil[3], soil[2], soil[0], {-4_389, 2_169}}
+				: new int[][] {{-1_851, 6_022}, soil[3], soil[2], soil[0], {-134, -52}, {210, 54}};
+		String[] names = real ? new String[] {"river", "lake_reedbed", "alder_carr", "willow_poplar_forest", "oxbow_lake"}
+				: new String[] {"river", "lake_reedbed", "alder_carr", "willow_poplar_forest", "stream", "bog_woodland_stream"};
 		StringBuilder report = new StringBuilder("bank shelf:");
 		long shoreAll = 0;
 		long wetAll = 0;
@@ -708,16 +717,18 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 			context.waitTicks(SPILL_TICKS);
 			long[] after = sp.getServer().computeOnServer(s -> shelfArea(s, c, false));
 			context.takeScreenshot(prefix + name + "_" + scale);
-			// counts: shore, wet shore, scheduled; after: S6 spills, model spills, ticks still scheduled, new open edges
+			// counts: shore, wet shore, scheduled, shelf steps; after: S6 spills, model spills, ticks still scheduled, new
+			// open edges
 			shoreAll += counts[0];
 			wetAll += counts[1];
-			report.append(String.format(Locale.ROOT, " %s: shore columns %d, water beside the top %d, %d water ticks scheduled, "
-					+ "open water edges not in the model %d, after %d ticks water outside the plan %d away from the open edges "
-					+ "of the model, %d from them (steps of the river level), ticks left %d;", name, counts[0], counts[1],
+			report.append(String.format(Locale.ROOT, " %s: shore columns %d, water beside the top %d, steps of 2 or more by the "
+					+ "shelf on flat model ground %d, %d water ticks scheduled, open water edges not in the model %d, after %d "
+					+ "ticks water outside the plan in removed ground or away from the open edges of the model %d, above the "
+					+ "model ground near them %d (steps of the river level), ticks left %d;", name, counts[0], counts[1], counts[3],
 					counts[2], after[3], SPILL_TICKS, after[0], after[1], after[2]));
-			if (after[0] > 0 || after[3] > 0) {
-				failures.add(name + ": " + after[0] + " water blocks outside the plan away from the model edges, " + after[3]
-						+ " new open edges");
+			if (after[0] > 0 || after[3] > 0 || counts[3] > 0) {
+				failures.add(name + ": " + after[0] + " water blocks outside the plan in removed ground or away from the model "
+						+ "edges, " + after[3] + " new open edges, " + counts[3] + " shelf steps");
 			}
 			if (after[2] > 0.1 * Math.max(1, counts[2])) {
 				failures.add(name + ": the chunks did not tick (" + after[2] + " of " + counts[2] + " ticks left)");
@@ -789,6 +800,31 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 			}
 		}
 		if (schedule) {
+			// Steps of 2 or more blocks between neighboring dry columns, one of them lowered by the shelf, where the model
+			// is flat (review of S6, round 1: walls of 2–3 blocks at the inner edge of the first shelf). The micro-relief
+			// (puddles −1, hummocks +1) is taken out.
+			for (int x = x0; x < x0 + size - 1; x++) {
+				for (int z = z0; z < z0 + size - 1; z++) {
+					ChunkSurface plan = plans[(x - x0) >> 4][(z - z0) >> 4];
+					int i = ChunkHabitats.index(x & 15, z & 15);
+					if (plan.wet(i)) {
+						continue;
+					}
+					for (int[] d : new int[][] {{1, 0}, {0, 1}}) {
+						ChunkSurface np = plans[(x + d[0] - x0) >> 4][(z + d[1] - z0) >> 4];
+						int j = ChunkHabitats.index((x + d[0]) & 15, (z + d[1]) & 15);
+						if (np.wet(j)) {
+							continue;
+						}
+						int a = shelfTop(plan, i);
+						int b = shelfTop(np, j);
+						boolean lowered = a < plan.modelTop(i) || b < np.modelTop(j);
+						if (lowered && Math.abs(a - b) >= 2 && plan.modelTop(i) == np.modelTop(j)) {
+							out[3]++;
+						}
+					}
+				}
+			}
 			return out;
 		}
 		// Open water edges (a water block with air beside it at the same Y) of the plan and of the model: water can leave
@@ -832,13 +868,17 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 					if (!level.getFluidState(new BlockPos(x, y, z)).is(net.minecraft.tags.FluidTags.WATER)) {
 						continue;
 					}
-					// Water outside the plan: from an open edge of the model (a step of the river level) when one lies
-					// within the reach of flowing water, otherwise caused by S6.
-					boolean model = false;
-					for (int[] e : modelEdges) {
-						if (Math.abs(e[0] - x) + Math.abs(e[1] - z) <= FLOW_REACH) {
-							model = true;
-							break;
+					// Water outside the plan: caused by S6 when it stands in ground that the model had (y at or below
+					// the model top: removed by the shelf or the micro-relief), or away from the reach of the water
+					// flowing from an open edge of the model (a step of the river level); otherwise the model's own.
+					boolean model = y > plan.modelTop(i);
+					if (model) {
+						model = false;
+						for (int[] e : modelEdges) {
+							if (Math.abs(e[0] - x) + Math.abs(e[1] - z) <= FLOW_REACH) {
+								model = true;
+								break;
+							}
 						}
 					}
 					out[model ? 1 : 0]++;
@@ -846,6 +886,12 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 			}
 		}
 		return out;
+	}
+
+	/** Top of a plan column after the shelf, without the micro-relief (puddles −1, hummocks +1). */
+	private static int shelfTop(ChunkSurface plan, int i) {
+		int flags = plan.flags(i);
+		return plan.top(i) + ((flags & ChunkSurface.PUDDLE) != 0 ? 1 : 0) - ((flags & ChunkSurface.HUMMOCK) != 0 ? 1 : 0);
 	}
 
 	/** Horizontal reach of water flowing from a source block (blocks). */
@@ -856,8 +902,9 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 		long packed = PolandChunkGenerator.PACKED_SECTIONS.sum();
 		long fallbacks = PolandChunkGenerator.PACK_FALLBACKS.sum();
 		String report = String.format(Locale.ROOT, "PACK_FALLBACKS %d of %d packed sections (%.3f%%), %d neighbor samples "
-				+ "outside the chunk for the shelf in %d chunks", fallbacks, packed, 100.0 * fallbacks / Math.max(1, packed),
-				SurfaceBuilder.OUTSIDE_SAMPLES.sum(), PolandChunkGenerator.CHUNKS.sum());
+				+ "outside the chunk for the shelf (%d from the cache, %d samples reused) in %d chunks", fallbacks, packed,
+				100.0 * fallbacks / Math.max(1, packed), SurfaceBuilder.OUTSIDE_SAMPLES.sum(), SurfaceBuilder.OUTSIDE_HITS.sum(),
+				SurfaceBuilder.REUSED_SAMPLES.sum(), PolandChunkGenerator.CHUNKS.sum());
 		if (packed == 0 || fallbacks > 0.01 * packed) {
 			throw new AssertionError(report);
 		}

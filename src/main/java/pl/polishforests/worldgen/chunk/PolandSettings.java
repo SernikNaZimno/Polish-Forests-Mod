@@ -26,6 +26,9 @@ import pl.polishforests.worldgen.habitat.HabitatClassifier;
  * @param coverInBlocks      the loose cover above the rock is {@code coverDepth} meters converted to blocks (step S6,
  *                           docs/03-m2-biomy.md §7.1); missing in worlds from before S6, which compare meters with blocks
  *                           (in the gameplay scale a cover 2.5–4 times too thick), so their new chunks keep that cover
+ *                           thickness. The other surface changes of S6 (bank shelf, soils, micro-relief, a soil or bed
+ *                           top on every column) also apply to the new chunks of old worlds, so these do not match the
+ *                           chunks generated before (no migration, decision M2-7)
  */
 public record PolandSettings(PolandScale scale, double regionScale, boolean agriculture, double managedForestShare,
 		boolean alienSpecies, int version, boolean coverInBlocks) {

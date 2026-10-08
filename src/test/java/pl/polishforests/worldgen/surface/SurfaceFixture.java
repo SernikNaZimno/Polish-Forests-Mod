@@ -39,6 +39,11 @@ final class SurfaceFixture {
 		this.builder = new SurfaceBuilder(SEED, vertical, coverInBlocks, false);
 	}
 
+	/** Number of chunk plans built so far. */
+	int chunks() {
+		return chunks.size();
+	}
+
 	int minY() {
 		return vertical.minY();
 	}

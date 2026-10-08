@@ -3,6 +3,7 @@ package pl.polishforests.worldgen.surface;
 import pl.polishforests.worldgen.chunk.VerticalScale;
 import pl.polishforests.worldgen.habitat.Habitat;
 import pl.polishforests.worldgen.habitat.HabitatBiome;
+import pl.polishforests.worldgen.habitat.Soil;
 import pl.polishforests.worldgen.habitat.Zone;
 import pl.polishforests.worldgen.landscape.ColumnSample;
 import pl.polishforests.worldgen.landscape.LandscapeModel;
@@ -15,16 +16,18 @@ import pl.polishforests.worldgen.landscape.WaterKind;
  * habitat codes that {@code fill()} already has: soil profile once per column ({@link SoilBlocks}), the bank shelf and
  * the shore belt of the bed ({@link BankShelf}), the micro-relief ({@link Microrelief}) and the loose cover above the
  * rock. Pure Java and deterministic: a pure function of the world seed, the settings and the samples; the only samples it
- * takes itself are the neighbors outside the chunk of the shelf columns at the chunk edge.
+ * takes itself are columns outside the chunk within the shelf's reach of the border, read from a cache shared by the
+ * chunks of the seed ({@link ColumnCache}: each plan publishes its border columns, and the generator reuses the samples
+ * that a neighbor's plan took, so each column is sampled about once).
  *
  * <p><b>Cover in blocks (§7.1).</b> The cover of loose deposits is {@code coverDepth} meters thick. Before S6 the generator
  * compared it with the depth in blocks, so in the gameplay scale (about 0.4 block per meter in the lowland) the cover was
  * 2.5–4 times too thick. With {@code coverInBlocks} the rock starts at {@code vertical.topBlockY(surface − coverDepth)}
  * (world setting {@code cover_in_blocks}; missing in older worlds, which keep the old cover).
  *
- * <p><b>Diagnostic mode.</b> With {@code -D}{@value #DEBUG_PROPERTY}{@code =true} the top block of every column is concrete
- * in the color of its zone, or terracotta in the color of its biome when it has no zone, so narrow belts can be checked
- * in the game at a glance.
+ * <p><b>Diagnostic mode.</b> With {@code -D}{@value #DEBUG_PROPERTY}{@code =true} the top block of every column shows
+ * its zone, or its biome when it has no zone, so narrow belts can be checked in the game at a glance; every zone and
+ * every biome has its own block ({@link Material#zoneColor}, {@link Material#biomeColor}).
  */
 public final class SurfaceBuilder {
 	/** System property of the diagnostic mode. */
@@ -38,8 +41,12 @@ public final class SurfaceBuilder {
 	/** Least loose cover of a dry column in blocks: its soil top block. */
 	static final int MIN_SOIL = 1;
 
-	/** Number of neighbor columns outside the chunk sampled for the shelf (diagnostics). */
-	public static final java.util.concurrent.atomic.LongAdder OUTSIDE_SAMPLES = new java.util.concurrent.atomic.LongAdder();
+	/** Number of neighbor columns outside the chunk sampled from the model for the shelf (diagnostics). */
+	public static final java.util.concurrent.atomic.LongAdder OUTSIDE_SAMPLES = ColumnCache.MISSES;
+	/** Number of neighbor columns outside the chunk read from the shared cache instead (diagnostics). */
+	public static final java.util.concurrent.atomic.LongAdder OUTSIDE_HITS = ColumnCache.HITS;
+	/** Number of columns whose sample the generator took from the cache instead of sampling them again (diagnostics). */
+	public static final java.util.concurrent.atomic.LongAdder REUSED_SAMPLES = ColumnCache.REUSED;
 
 	/** Samples a column of the landscape model (for neighbors outside the chunk). */
 	@FunctionalInterface
@@ -48,6 +55,8 @@ public final class SurfaceBuilder {
 	}
 
 	private final VerticalScale vertical;
+	/** Summaries of the columns near chunk borders, shared by the chunks of the world seed (review of S6, round 1). */
+	private final ColumnCache cache = new ColumnCache(1 << 17);
 	private final boolean coverInBlocks;
 	private final boolean debug;
 	private final Noise soil;
@@ -87,6 +96,45 @@ public final class SurfaceBuilder {
 	}
 
 	/**
+	 * Packed summary of a column for the plans of its neighbors: model top and water top (blocks, +64), water kind and
+	 * whether its own fields put water near ({@link BankShelf#waterMayBeNear}).
+	 */
+	int summary(ColumnSample s, int minY, int maxY) {
+		int top = topY(s, minY, maxY);
+		int water = waterTopY(s, maxY);
+		int w = water > top ? water + Y_OFFSET : NO_WATER_CODE;
+		return (top + Y_OFFSET) | w << 12 | s.waterKind().ordinal() << 24 | (BankShelf.waterMayBeNear(s) ? 1 << 27 : 0);
+	}
+
+	private static final int Y_OFFSET = 64;
+	private static final int NO_WATER_CODE = 0xFFF;
+
+	static int summaryTop(int summary) {
+		return (summary & 0xFFF) - Y_OFFSET;
+	}
+
+	static int summaryWater(int summary) {
+		int w = summary >>> 12 & 0xFFF;
+		return w == NO_WATER_CODE ? ChunkSurface.NO_WATER : w - Y_OFFSET;
+	}
+
+	static WaterKind summaryKind(int summary) {
+		return KINDS[summary >>> 24 & 7];
+	}
+
+	static boolean summaryNear(int summary) {
+		return (summary & 1 << 27) != 0;
+	}
+
+	/**
+	 * Sample of a column that the plan of a neighboring chunk already took from the model (and kept), or null; the
+	 * generator uses it instead of sampling the column again.
+	 */
+	public ColumnSample reuse(int x, int z) {
+		return cache.takeSample(x, z);
+	}
+
+	/**
 	 * Surface plan of a chunk.
 	 *
 	 * @param columns   samples of the 256 columns, index {@code x * 16 + z}
@@ -118,11 +166,10 @@ public final class SurfaceBuilder {
 		BankShelf.apply(w, out);
 		Microrelief.apply(w, out, micro, minX, minZ, maxY);
 		for (int i = 0; i < 256; i++) {
-			if (!out.wet(i)) {
-				// A dry column always has its soil top, also where the model has no loose cover (thin regolith on the
-				// ridges of the Beskids): before S6 such a column had bare stone, so trees could not grow there.
-				out.rockTop[i] = Math.min(out.rockTop[i], out.top[i] - MIN_SOIL);
-			}
+			// Every column always has its soil or bed top, also where the model has no loose cover (thin regolith on the
+			// ridges of the Beskids, mountain stream beds in the gameplay scale): before S6 such a dry column had bare
+			// stone, so trees could not grow there, and with the cover in blocks (S6) a stream bed could be stone.
+			out.rockTop[i] = Math.min(out.rockTop[i], out.top[i] - MIN_SOIL);
 		}
 		for (int i = 0; i < 256; i++) {
 			ColumnSample s = columns[i];
@@ -142,8 +189,12 @@ public final class SurfaceBuilder {
 				profile = SoilBlocks.bed(bed(s, code), belt, q2, s.waterLevel() - s.surface());
 			} else {
 				double q1 = LandscapeModel.noiseQuantile(soil.at(wx, wz, SOIL_WAVELENGTH));
-				profile = SoilBlocks.dry(Habitat.soil(code), Habitat.zone(code), Habitat.biome(code), q1, q2,
-						s.terrain().lowShore());
+				Soil soilType = Habitat.soil(code);
+				profile = SoilBlocks.dry(soilType, Habitat.zone(code), Habitat.biome(code), q1, q2, s.terrain().lowShore());
+				if (soilType == Soil.BOG_PEAT || soilType == Soil.FEN_PEAT) {
+					// The whole peat profile lies on the loose cover, also where the model cover is thin.
+					out.rockTop[i] = Math.min(out.rockTop[i], out.top[i] - SoilBlocks.depth(profile));
+				}
 				if ((flags & ChunkSurface.HUMMOCK) != 0) {
 					// The hummock on top, the former top block under it.
 					profile = SoilBlocks.profile(Microrelief.hummock(Habitat.biome(code)), SoilBlocks.top(profile), 1,
@@ -152,13 +203,22 @@ public final class SurfaceBuilder {
 			}
 			if (debug) {
 				Zone zone = Habitat.zone(code);
-				Material paint = zone != Zone.NONE ? Material.concrete(zone.ordinal() - 1)
-						: Material.terracotta(Habitat.biome(code).ordinal());
+				Material paint = zone != Zone.NONE ? Material.zoneColor(zone.ordinal() - 1)
+						: Material.biomeColor(Habitat.biome(code).ordinal());
 				profile = SoilBlocks.profile(paint, SoilBlocks.layer1(profile), SoilBlocks.layer1Depth(profile),
 						SoilBlocks.layer2(profile), SoilBlocks.layer2Depth(profile));
 				out.rockTop[i] = Math.min(out.rockTop[i], out.top[i] - 1);
 			}
 			out.profile[i] = profile;
+		}
+		// The columns that the plans of the neighboring chunks may look up (within the ramp's reach of the border).
+		int r = BankShelf.RAMP;
+		for (int i = 0; i < 256; i++) {
+			int x = i >> 4;
+			int z = i & 15;
+			if (x < r || x > 15 - r || z < r || z > 15 - r) {
+				cache.publish(minX + x, minZ + z, summary(columns[i], minY, maxY));
+			}
 		}
 		return out;
 	}
@@ -186,10 +246,10 @@ public final class SurfaceBuilder {
 		final int[] modelTop = new int[256];
 		final int[] modelWater = new int[256];
 		final double[] microQ = new double[256];
-		/** Water top and kind of the neighbors outside the chunk: side (0: x − 1, 1: x + 16, 2: z − 1, 3: z + 16) × 16. */
-		private final int[] outsideWater = new int[64];
-		private final byte[] outsideKind = new byte[64];
-		private final boolean[] outsideDone = new boolean[64];
+		/** Result of {@link #nearestWater}: Chebyshev distance and highest water top at that distance, and the ramp top. */
+		int nearestDist;
+		int nearestLevel;
+		int rampTop;
 
 		Work(SurfaceBuilder builder, ColumnSample[] columns, int[] codes, int minX, int minZ, int minY, int maxY,
 				Sampler outside) {
@@ -222,9 +282,7 @@ public final class SurfaceBuilder {
 			if (n >= 0) {
 				return modelWater[n];
 			}
-			int slot = outsideSlot(i, dir);
-			sampleOutside(i, dir, slot);
-			return outsideWater[slot];
+			return summaryWater(outsideSummary(i, dir));
 		}
 
 		WaterKind neighborKind(int i, int dir) {
@@ -232,9 +290,188 @@ public final class SurfaceBuilder {
 			if (n >= 0) {
 				return columns[n].waterKind();
 			}
-			int slot = outsideSlot(i, dir);
-			sampleOutside(i, dir, slot);
-			return KINDS[outsideKind[slot]];
+			return summaryKind(outsideSummary(i, dir));
+		}
+
+		/**
+		 * Final top of the neighbor of column {@code i} in direction {@code dir} outside the chunk when it is dry and
+		 * surely not lowered by the shelf: no water within the ramp's reach in the chunk and none near by its own fields;
+		 * otherwise {@link Integer#MIN_VALUE}. Its micro-relief can only keep or raise the wall (a puddle there holds
+		 * water only at its model top, a hummock is higher). For the puddles at the chunk edge ({@link Microrelief}).
+		 */
+		int outsideSafeTop(int i, int dir) {
+			int summary = outsideSummary(i, dir);
+			if (summaryWater(summary) != ChunkSurface.NO_WATER || summaryNear(summary)) {
+				return Integer.MIN_VALUE;
+			}
+			int x = (i >> 4) + (dir == 0 ? -1 : dir == 1 ? 1 : 0);
+			int z = (i & 15) + (dir == 2 ? -1 : dir == 3 ? 1 : 0);
+			int r = BankShelf.RAMP;
+			for (int nx = Math.max(0, x - r); nx <= Math.min(15, x + r); nx++) {
+				for (int nz = Math.max(0, z - r); nz <= Math.min(15, z + r); nz++) {
+					if (freshWater(nx << 4 | nz) != ChunkSurface.NO_WATER) {
+						return Integer.MIN_VALUE;
+					}
+				}
+			}
+			return summaryTop(summary);
+		}
+
+		/** Model water top of an in-chunk column when it is not sea water, else {@link ChunkSurface#NO_WATER}. */
+		int freshWater(int n) {
+			return modelWater[n] != ChunkSurface.NO_WATER && columns[n].waterKind() != WaterKind.SEA ? modelWater[n]
+					: ChunkSurface.NO_WATER;
+		}
+
+		/**
+		 * Looks for fresh (not sea) model water within Chebyshev {@link BankShelf#RAMP} of a column: sets
+		 * {@link #nearestDist} and {@link #nearestLevel} (the distance of the nearest water and the highest water top at
+		 * that distance) and {@link #rampTop}, the lowest {@code W + k − 1} over the water columns within reach (water top
+		 * {@code W}, distance {@code k}: a ramp of one block per column from every water, 1-Lipschitz also where the water
+		 * level steps), and returns true, or returns false without water. Columns outside the chunk are sampled when the
+		 * window reaches beyond the chunk and the column's own fields put water near ({@link BankShelf#waterMayBeNear}), so
+		 * the result is the same whichever chunk computes it.
+		 */
+		boolean nearestWater(int i) {
+			int x = i >> 4;
+			int z = i & 15;
+			// The rings up to the chunk border lie in the chunk; when water lies in one of them, the nearest distance is
+			// known and the outside is not sampled (a lower water across the border could lower the ramp by a block).
+			int border = Math.min(Math.min(x, 15 - x), Math.min(z, 15 - z));
+			boolean outsideToo = border < BankShelf.RAMP && !waterInside(x, z, border)
+					&& BankShelf.waterMayBeNear(columns[i]);
+			nearestDist = 0;
+			nearestLevel = ChunkSurface.NO_WATER;
+			rampTop = Integer.MAX_VALUE;
+			for (int k = 1; k <= BankShelf.RAMP; k++) {
+				int best = ChunkSurface.NO_WATER;
+				int lowest = Integer.MAX_VALUE;
+				for (int dx = -k; dx <= k; dx++) {
+					int step = Math.abs(dx) == k ? 1 : 2 * k;
+					for (int dz = -k; dz <= k; dz += step) {
+						int nx = x + dx;
+						int nz = z + dz;
+						int water;
+						if (nx >= 0 && nx < 16 && nz >= 0 && nz < 16) {
+							water = freshWater(nx << 4 | nz);
+						} else if (outsideToo) {
+							water = farFreshWater(minX + nx, minZ + nz);
+						} else {
+							continue;
+						}
+						if (water != ChunkSurface.NO_WATER) {
+							best = Math.max(best, water);
+							lowest = Math.min(lowest, water);
+						}
+					}
+				}
+				if (best == ChunkSurface.NO_WATER) {
+					continue;
+				}
+				if (nearestDist == 0) {
+					nearestDist = k;
+					nearestLevel = best;
+				}
+				rampTop = Math.min(rampTop, lowest + k - 1);
+			}
+			return nearestDist > 0;
+		}
+
+		/** Whether fresh model water lies within Chebyshev {@code r} of the in-chunk column (x, z) (all in the chunk). */
+		private boolean waterInside(int x, int z, int r) {
+			for (int nx = x - r; nx <= x + r; nx++) {
+				for (int nz = z - r; nz <= z + r; nz++) {
+					if (freshWater(nx << 4 | nz) != ChunkSurface.NO_WATER) {
+						return true;
+					}
+				}
+			}
+			return false;
+		}
+
+		/**
+		 * Highest fresh model water top within Chebyshev {@code r} of a column, also outside the chunk (sampled as in
+		 * {@link #nearestWater}), or {@link ChunkSurface#NO_WATER}.
+		 */
+		int waterNear(int i, int r) {
+			int x = i >> 4;
+			int z = i & 15;
+			boolean outsideToo = BankShelf.waterMayBeNear(columns[i]);
+			int best = ChunkSurface.NO_WATER;
+			for (int nx = x - r; nx <= x + r; nx++) {
+				for (int nz = z - r; nz <= z + r; nz++) {
+					if (nx >= 0 && nx < 16 && nz >= 0 && nz < 16) {
+						best = Math.max(best, freshWater(nx << 4 | nz));
+					} else if (outsideToo) {
+						best = Math.max(best, farFreshWater(minX + nx, minZ + nz));
+					}
+				}
+			}
+			return best;
+		}
+
+		/** Model water top of a column outside the chunk when it is not sea water, else {@link ChunkSurface#NO_WATER}. */
+		private int farFreshWater(int x, int z) {
+			int summary = builder.cache.summary(x, z, builder, outside, minY, maxY);
+			return summaryKind(summary) != WaterKind.SEA ? summaryWater(summary) : ChunkSurface.NO_WATER;
+		}
+
+		/** Summary of the neighbor of column {@code i} outside the chunk in direction {@code dir}. */
+		private int outsideSummary(int i, int dir) {
+			int x = minX + (i >> 4) + (dir == 0 ? -1 : dir == 1 ? 1 : 0);
+			int z = minZ + (i & 15) + (dir == 2 ? -1 : dir == 3 ? 1 : 0);
+			return builder.cache.summary(x, z, builder, outside, minY, maxY);
+		}
+
+		/**
+		 * For each column the highest water top of an open edge of the model within Chebyshev {@code radius} in the
+		 * chunk, or {@link ChunkSurface#NO_WATER}: a water column with a neighbor in the chunk that has neither ground nor
+		 * water at its water's Y (a step of the river level, the mouth of a tributary), from which water flows.
+		 */
+		int[] openEdgesWithin(int radius) {
+			int[] src = new int[256];
+			boolean any = false;
+			for (int i = 0; i < 256; i++) {
+				int water = modelWater[i];
+				if (water != ChunkSurface.NO_WATER) {
+					boolean open = false;
+					for (int dir = 0; dir < 4 && !open; dir++) {
+						int n = neighbor(i, dir);
+						open = n >= 0 && modelTop[n] < water
+								&& (modelWater[n] == ChunkSurface.NO_WATER || modelWater[n] < water);
+					}
+					if (!open) {
+						water = ChunkSurface.NO_WATER;
+					}
+				}
+				src[i] = water;
+				any |= water != ChunkSurface.NO_WATER;
+			}
+			if (!any) {
+				return src;
+			}
+			// Separable maximum filter: along z, then along x.
+			int[] tmp = new int[256];
+			for (int x = 0; x < 16; x++) {
+				for (int z = 0; z < 16; z++) {
+					int m = ChunkSurface.NO_WATER;
+					for (int k = Math.max(0, z - radius); k <= Math.min(15, z + radius); k++) {
+						m = Math.max(m, src[x << 4 | k]);
+					}
+					tmp[x << 4 | z] = m;
+				}
+			}
+			int[] out = new int[256];
+			for (int x = 0; x < 16; x++) {
+				for (int z = 0; z < 16; z++) {
+					int m = ChunkSurface.NO_WATER;
+					for (int k = Math.max(0, x - radius); k <= Math.min(15, x + radius); k++) {
+						m = Math.max(m, tmp[k << 4 | z]);
+					}
+					out[x << 4 | z] = m;
+				}
+			}
+			return out;
 		}
 
 		/** Whether an in-chunk neighbor is a water column of a lake, kettle pond or oxbow lake. */
@@ -248,28 +485,7 @@ public final class SurfaceBuilder {
 			return false;
 		}
 
-		/**
-		 * Y of the top water block of the water the column belongs to by the model: the standing water (lake shores and
-		 * the shore reedbed of a lake or oxbow lake) or the nearest channel, at the rounded level as in the model.
-		 */
-		int levelBlock(int i, boolean lake) {
-			ColumnSample s = columns[i];
-			ColumnSample.Waters w = s.waters();
-			boolean standing = (lake || Habitat.zone(codes[i]) == Zone.SHORE_REEDBED)
-					&& w.standingWaterKind() != ColumnSample.StandingWaterKind.NONE
-					&& w.standingWaterKind() != ColumnSample.StandingWaterKind.KETTLE_BOG
-					&& w.shoreLevel() != ColumnSample.NO_WATER;
-			if (standing) {
-				return Math.min(builder.vertical.topBlockY(w.shoreLevel()), maxY);
-			}
-			double level = w.channelLevel();
-			if (Double.isNaN(level)) {
-				return ChunkSurface.NO_WATER;
-			}
-			return Math.min(builder.vertical.topBlockY(Math.floor(level)), maxY);
-		}
-
-		private static int neighbor(int i, int dir) {
+		static int neighbor(int i, int dir) {
 			int x = i >> 4;
 			int z = i & 15;
 			return switch (dir) {
@@ -278,25 +494,6 @@ public final class SurfaceBuilder {
 				case 2 -> z > 0 ? i - 1 : -1;
 				default -> z < 15 ? i + 1 : -1;
 			};
-		}
-
-		private static int outsideSlot(int i, int dir) {
-			return dir << 4 | (dir < 2 ? i & 15 : i >> 4);
-		}
-
-		private void sampleOutside(int i, int dir, int slot) {
-			if (outsideDone[slot]) {
-				return;
-			}
-			int x = minX + (i >> 4) + (dir == 0 ? -1 : dir == 1 ? 1 : 0);
-			int z = minZ + (i & 15) + (dir == 2 ? -1 : dir == 3 ? 1 : 0);
-			ColumnSample s = outside.sample(x, z);
-			OUTSIDE_SAMPLES.increment();
-			int top = builder.topY(s, minY, maxY);
-			int water = builder.waterTopY(s, maxY);
-			outsideWater[slot] = water > top ? water : ChunkSurface.NO_WATER;
-			outsideKind[slot] = (byte) s.waterKind().ordinal();
-			outsideDone[slot] = true;
 		}
 	}
 }

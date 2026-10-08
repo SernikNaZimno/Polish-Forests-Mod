@@ -22,10 +22,14 @@ import pl.polishforests.worldgen.landscape.Noise;
  * <tr><td>willow_poplar_forest</td><td>5%</td><td>–</td></tr>
  * </table>
  *
- * <p>A puddle holds water only when the four neighboring columns lie in the chunk, are dry and have their top at least as
- * high as the puddle's water; elsewhere (the chunk edge, a lower or wet neighbor) the place gets mud instead. Any two
- * puddles side by side then either share the water level or the higher one fails, so no water can flow. The model's
- * {@code hasWater} does not change; the chunk habitats get the puddle water, so no trees stand in puddles.
+ * <p>A puddle holds water only when the four neighboring columns are dry and have their top at least as high as the
+ * puddle's water; elsewhere (a lower or wet neighbor) the place gets mud instead. Any two puddles side by side in the
+ * chunk then either share the water level or the higher one fails, so no water can flow. A neighbor outside the chunk
+ * (review of S6, round 1: before, every puddle on the chunk edge was mud, which drew the chunk grid in wet habitats) is
+ * sampled: it must be dry in the model, surely not lowered by the shelf (no water within the ramp's reach) and its model
+ * top must reach the puddle's water. Its own micro-relief cannot break the wall: a puddle there holds water only at its
+ * model top, which then equals this puddle's water, and a hummock is higher. The model's {@code hasWater} does not
+ * change; the chunk habitats get the puddle water, so no trees stand in puddles.
  */
 final class Microrelief {
 	private Microrelief() {
@@ -106,7 +110,7 @@ final class Microrelief {
 				if (q[i] < 0) {
 					continue;
 				}
-				out.flags[i] |= canHold(w, out, i) ? ChunkSurface.PUDDLE : ChunkSurface.PUDDLE_MUD;
+				out.flags[i] |= canHold(w, out, noise, minX, minZ, i) ? ChunkSurface.PUDDLE : ChunkSurface.PUDDLE_MUD;
 			}
 			for (int i = 0; i < 256; i++) {
 				if ((out.flags[i] & ChunkSurface.PUDDLE) != 0) {
@@ -122,14 +126,23 @@ final class Microrelief {
 		}
 	}
 
-	private static boolean canHold(SurfaceBuilder.Work w, ChunkSurface out, int i) {
-		int x = i >> 4;
-		int z = i & 15;
-		if (x == 0 || x == 15 || z == 0 || z == 15) {
-			return false;
-		}
+	private static boolean canHold(SurfaceBuilder.Work w, ChunkSurface out, Noise noise, int minX, int minZ, int i) {
 		int t = out.top[i];
-		return holds(w, out, i - 16, t) && holds(w, out, i + 16, t) && holds(w, out, i - 1, t) && holds(w, out, i + 1, t);
+		for (int dir = 0; dir < 4; dir++) {
+			int n = SurfaceBuilder.Work.neighbor(i, dir);
+			if (n >= 0) {
+				if (!holds(w, out, n, t)) {
+					return false;
+				}
+				continue;
+			}
+			int nx = minX + (i >> 4) + (dir == 0 ? -1 : dir == 1 ? 1 : 0);
+			int nz = minZ + (i & 15) + (dir == 2 ? -1 : dir == 3 ? 1 : 0);
+			if (w.outsideSafeTop(i, dir) < t) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	/** The neighbor {@code n} is a wall for water at height {@code t}: dry, with its top at {@code t} or higher. */

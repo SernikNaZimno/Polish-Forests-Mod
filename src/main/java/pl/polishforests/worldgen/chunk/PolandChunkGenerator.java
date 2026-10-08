@@ -227,12 +227,7 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 		int minZ = pos.getMinBlockZ();
 		int minY = chunk.getMinY();
 		int maxY = chunk.getMaxY();
-		ColumnSample[] columns = new ColumnSample[256];
-		for (int x = 0; x < 16; x++) {
-			for (int z = 0; z < 16; z++) {
-				columns[x * 16 + z] = m.sample(minX + x, minZ + z);
-			}
-		}
+		ColumnSample[] columns = sampleColumns(m, minX, minZ);
 		long tc = System.nanoTime();
 		int[] codes = classify(columns, classifier, minX, minZ);
 		long t1 = System.nanoTime();
@@ -317,6 +312,22 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 		}
 		FILL_NANOS.add(System.nanoTime() - t1);
 		CHUNKS.increment();
+	}
+
+	/**
+	 * Samples of the 256 columns of a chunk (index {@code x * 16 + z}): the samples that the surface plans of neighboring
+	 * chunks already took for the bank shelf come from their shared cache, the rest from the model.
+	 */
+	private ColumnSample[] sampleColumns(LandscapeModel m, int minX, int minZ) {
+		SurfaceBuilder b = surfaceBuilder();
+		ColumnSample[] columns = new ColumnSample[256];
+		for (int x = 0; x < 16; x++) {
+			for (int z = 0; z < 16; z++) {
+				ColumnSample s = b.reuse(minX + x, minZ + z);
+				columns[x * 16 + z] = s != null ? s : m.sample(minX + x, minZ + z);
+			}
+		}
+		return columns;
 	}
 
 	/** Surface builder of the bound world seed (created together with the model). */

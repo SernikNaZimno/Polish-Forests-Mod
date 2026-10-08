@@ -29,8 +29,18 @@ public final class SoilBlocks {
 
 	// ------------------------------------------------------------------ packed profile
 
+	/** Bits of a material in a packed profile (up to 128 materials). */
+	private static final int M = 7;
+	private static final int M_MASK = (1 << M) - 1;
+
+	static {
+		if (Material.values().length > 1 << M) {
+			throw new IllegalStateException("Too many materials for a packed profile");
+		}
+	}
+
 	static int profile(Material top, Material l1, int l1Depth, Material l2, int l2Depth) {
-		return top.ordinal() | l1.ordinal() << 6 | l1Depth << 12 | l2.ordinal() << 16 | l2Depth << 22;
+		return top.ordinal() | l1.ordinal() << M | l1Depth << 2 * M | l2.ordinal() << 2 * M + 4 | l2Depth << 3 * M + 4;
 	}
 
 	static int profile(Material top, Material l1, int l1Depth) {
@@ -42,23 +52,28 @@ public final class SoilBlocks {
 	}
 
 	public static Material top(int profile) {
-		return Material.of(profile & 63);
+		return Material.of(profile & M_MASK);
 	}
 
 	static Material layer1(int profile) {
-		return Material.of(profile >>> 6 & 63);
+		return Material.of(profile >>> M & M_MASK);
 	}
 
 	static int layer1Depth(int profile) {
-		return profile >>> 12 & 15;
+		return profile >>> 2 * M & 15;
 	}
 
 	static Material layer2(int profile) {
-		return Material.of(profile >>> 16 & 63);
+		return Material.of(profile >>> 2 * M + 4 & M_MASK);
 	}
 
 	static int layer2Depth(int profile) {
-		return profile >>> 22 & 15;
+		return profile >>> 3 * M + 4 & 15;
+	}
+
+	/** Blocks of the soil profile: the top block and both layers. */
+	static int depth(int profile) {
+		return 1 + layer1Depth(profile) + layer2Depth(profile);
 	}
 
 	// ------------------------------------------------------------------ dry columns
@@ -76,13 +91,17 @@ public final class SoilBlocks {
 			case PODZOL -> profile(Material.PODZOL, Material.COARSE_DIRT, 1);
 			case RUSTY_SOIL -> profile(q1 < 0.5 ? Material.PODZOL : Material.GRASS_BLOCK, Material.DIRT, 1);
 			case SANDY_GLEYSOL -> profile(q2 < 0.15 ? Material.MUD : Material.PODZOL, Material.SAND, 1, Material.CLAY, 2);
-			// Raised bog peat 2–5 blocks under the sphagnum carpet.
-			case BOG_PEAT -> profile(Material.MOSS_BLOCK, Material.MUD, 2 + (int) (q2 * 3.999));
-			case FEN_PEAT -> profile(Material.MUD, Material.MUD, 2);
+			// Raised bog peat 3–6 blocks under the sphagnum carpet (the peat of Polish raised bogs is mostly 3–8 m thick),
+			// sand under the peat (§7.4).
+			case BOG_PEAT -> profile(Material.MOSS_BLOCK, Material.MUD, 3 + (int) (q2 * 3.999), Material.SAND, 2);
+			// Muck on peat 2 blocks, mud under it (§7.4).
+			case FEN_PEAT -> profile(Material.MUD, Material.MUD, 2, Material.MUD, 1);
 			case ACID_BROWN_SOIL -> profile(q1 < 0.6 ? Material.GRASS_BLOCK : Material.PODZOL, Material.DIRT, 2);
 			case BROWN_SOIL -> profile(Material.GRASS_BLOCK, Material.ROOTED_DIRT, 1, Material.DIRT, 2);
-			// Beech forest: bare litter, the grass does not spread.
-			case BEECH_BROWN_SOIL -> profile(q1 < 0.6 ? Material.DIRT : Material.COARSE_DIRT, Material.DIRT, 2);
+			// Beech forest: bare litter without grass. Not plain dirt: in 26.3 a grass block within 3 × 5 × 3 turns lit dirt
+			// into grass (SpreadingSnowyBlock.randomTick), coarse dirt, podzol and rooted dirt stay (review of S6, round 1).
+			case BEECH_BROWN_SOIL -> profile(q1 < 0.45 ? Material.PODZOL : q1 < 0.8 ? Material.COARSE_DIRT : Material.ROOTED_DIRT,
+					Material.DIRT, 2);
 			// Muck 40% (mud), rooted dirt 40%, mud 20%.
 			case MUCK -> profile(q1 < 0.4 ? Material.ROOTED_DIRT : Material.MUD, Material.DIRT, 1, Material.MUD, 1);
 			case LIGHT_ALLUVIAL_SOIL -> zone == Zone.POINT_BAR
