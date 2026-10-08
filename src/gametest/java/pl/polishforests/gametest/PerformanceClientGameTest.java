@@ -171,6 +171,10 @@ public final class PerformanceClientGameTest implements FabricClientGameTest {
 		long treeChunks0 = TreeStandFeature.CHUNKS.sum();
 		long trees0 = TreeStandFeature.TREES.sum();
 		long miss0 = ModFeatures.HABITAT_MISS.sum();
+		long surface0 = PolandChunkGenerator.SURFACE_NANOS.sum();
+		long packed0 = PolandChunkGenerator.PACKED_SECTIONS.sum();
+		long fallbacks0 = PolandChunkGenerator.PACK_FALLBACKS.sum();
+		long outside0 = pl.polishforests.worldgen.surface.SurfaceBuilder.OUTSIDE_SAMPLES.sum();
 		StringBuilder sb = new StringBuilder();
 		for (ChunkStatus stage : stages) {
 			long t0 = System.nanoTime();
@@ -196,6 +200,11 @@ public final class PerformanceClientGameTest implements FabricClientGameTest {
 					(PolandChunkGenerator.CLASSIFY_NANOS.sum() - classify0) / 1e6 / n,
 					(TreeStandFeature.NANOS.sum() - tree0) / 1e6 / treeChunks, treeChunks,
 					(double) (TreeStandFeature.TREES.sum() - trees0) / treeChunks, ModFeatures.HABITAT_MISS.sum() - miss0));
+			PolishForests.LOG.info(String.format(Locale.ROOT, "[performance] %s: surface plan in fill %.3f ms/chunk (soil, shelf, "
+					+ "micro-relief; %.1f neighbor samples/chunk), PACK_FALLBACKS %d of %d packed sections", name,
+					(PolandChunkGenerator.SURFACE_NANOS.sum() - surface0) / 1e6 / n,
+					(double) (pl.polishforests.worldgen.surface.SurfaceBuilder.OUTSIDE_SAMPLES.sum() - outside0) / n,
+					PolandChunkGenerator.PACK_FALLBACKS.sum() - fallbacks0, PolandChunkGenerator.PACKED_SECTIONS.sum() - packed0));
 		} else if (name.startsWith("poland")) {
 			PolishForests.LOG.warn("[performance] {}: area was already generated, measurement invalid", name);
 		}

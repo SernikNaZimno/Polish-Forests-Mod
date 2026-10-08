@@ -28,6 +28,7 @@ public final class ChunkSurface {
 	final int[] top = new int[256];
 	final int[] waterTop = new int[256];
 	final int[] modelTop = new int[256];
+	final int[] modelWater = new int[256];
 	final int[] rockTop = new int[256];
 	final int[] bedrockTop = new int[256];
 	final int[] deepRockY = new int[256];
@@ -60,6 +61,11 @@ public final class ChunkSurface {
 	/** Y of the top ground block from the landscape model, before the shelf and the micro-relief. */
 	public int modelTop(int i) {
 		return modelTop[i];
+	}
+
+	/** Y of the top water block from the landscape model when it lies above the model top, else {@link #NO_WATER}. */
+	public int modelWater(int i) {
+		return modelWater[i];
 	}
 
 	/** Flags of the column ({@link #SHELF}, {@link #SHORE}, {@link #PUDDLE}, ...). */

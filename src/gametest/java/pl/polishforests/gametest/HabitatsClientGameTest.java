@@ -31,9 +31,11 @@ import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.storage.RegionStorageInfo;
 import net.minecraft.world.level.chunk.storage.SerializableChunkData;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.level.material.Fluids;
 import pl.polishforests.PolishForests;
 import pl.polishforests.climate.BiomeClimateAccess;
 import pl.polishforests.worldgen.chunk.ChunkHabitats;
+import pl.polishforests.worldgen.chunk.MaterialStates;
 import pl.polishforests.worldgen.chunk.PolandChunkGenerator;
 import pl.polishforests.worldgen.chunk.PolandScale;
 import pl.polishforests.worldgen.feature.ModFeatures;
@@ -43,6 +45,8 @@ import pl.polishforests.worldgen.habitat.HabitatBiome;
 import pl.polishforests.worldgen.habitat.HabitatClassifier;
 import pl.polishforests.worldgen.landscape.ColumnSample;
 import pl.polishforests.worldgen.landscape.LandscapeModel;
+import pl.polishforests.worldgen.surface.ChunkSurface;
+import pl.polishforests.worldgen.surface.SurfaceBuilder;
 
 /**
  * Habitat biomes in the game (step S5, docs/03-m2-biomy.md §3.5, §10, §12.3), in both world scales: the world starts
@@ -51,7 +55,10 @@ import pl.polishforests.worldgen.landscape.LandscapeModel;
  * {@code habitats_f3_<scale>}), {@code /locate structure} finds a stronghold, a mineshaft and trial chambers,
  * {@code /locate biome polishforests:oak_hornbeam_forest} takes less than 2 s, the BIOMES stage takes at most 0.2 ms per
  * chunk in the lowland (measured also in the Beskids and at a large river), the tree stand census matches the palette
- * within ±20%, and revisited areas keep their chunk habitats. Runs when {@code -Dpolishforests.gametest} is {@code habitats} or {@code all}.
+ * within ±20%, and revisited areas keep their chunk habitats. Step S6 (§7, §12.3): the ground block equals the soil of
+ * the surface plan at 11 places, at least 90% of the shore columns have water beside their top block, no water flows
+ * out of the shelf and the puddles in 200 ticks, and fewer than 1% of the packed sections fall back to block writes.
+ * Runs when {@code -Dpolishforests.gametest} is {@code habitats} or {@code all}.
  */
 public final class HabitatsClientGameTest implements FabricClientGameTest {
 	private static final String SEED = "20260927";
@@ -77,6 +84,12 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 				sp.getServer().runCommand("weather clear");
 				sp.getServer().runCommand("gamemode spectator @a");
 				String name = scale.getSerializedName();
+				if (SurfaceBuilder.debugFromSystem()) {
+					// Diagnostic mode (-PdebugHabitats): the painted tops break the soil and tree checks, so only the
+					// views of the shelf areas with the zones and biomes painted (screenshots s6_debug_*).
+					PolishForests.LOG.info("[habitats] {}: diagnostic mode, {}", name, shelf(context, sp, scale == PolandScale.REALISTIC, name));
+					continue;
+				}
 				PolishForests.LOG.info("[habitats] {}: {}", name, sp.getServer().computeOnServer(HabitatsClientGameTest::registry));
 				List<int[]> places = sp.getServer().computeOnServer(HabitatsClientGameTest::findPlaces);
 				PolishForests.LOG.info("[habitats] {}: {}", name, sp.getServer().computeOnServer(s -> checkPlaces(s, places)));
@@ -92,7 +105,10 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 				PolishForests.LOG.info("[habitats] {}: {}", name, sp.getServer().computeOnServer(s -> biomesPerChunk(s, real)));
 				PolishForests.LOG.info("[habitats] {}: {}", name, sp.getServer().computeOnServer(HabitatsClientGameTest::habitatMisses));
 				PolishForests.LOG.info("[habitats] {}: {}", name, sp.getServer().computeOnServer(s -> census(s, real, places)));
+				PolishForests.LOG.info("[habitats] {}: {}", name, sp.getServer().computeOnServer(s -> soilPlaces(s, real)));
+				PolishForests.LOG.info("[habitats] {}: {}", name, shelf(context, sp, real, name));
 				PolishForests.LOG.info("[habitats] {}: {}", name, revisit(context, sp, real));
+				PolishForests.LOG.info("[habitats] {}: {}", name, packing());
 			}
 		}
 	}
@@ -214,8 +230,6 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 		ServerLevel level = server.overworld();
 		PolandChunkGenerator gen = generator(server);
 		long seed = level.getSeed();
-		LandscapeModel m = gen.model(seed);
-		HabitatClassifier k = gen.classifier(seed);
 		TreeStandFeature stand = (TreeStandFeature) server.registryAccess().lookupOrThrow(Registries.FEATURE)
 				.getValueOrThrow(ResourceKey.create(Registries.FEATURE, PolishForests.id("tree_stand")));
 		int n = HabitatBiome.values().length;
@@ -235,14 +249,24 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 					level.getChunk(cx, cz);
 				}
 			}
+			ChunkSurface[][] plans = new ChunkSurface[5][5];
+			int[][][] planCodes = new int[5][5][256];
+			for (int cx = 0; cx < 5; cx++) {
+				for (int cz = 0; cz < 5; cz++) {
+					plans[cx][cz] = gen.surface(new net.minecraft.world.level.ChunkPos(cx0 + cx, cz0 + cz), level.getMinY(),
+							level.getMaxY(), seed, planCodes[cx][cz]);
+				}
+			}
 			for (int x = cx0 * 16; x < (cx0 + 5) * 16; x++) {
 				for (int z = cz0 * 16; z < (cz0 + 5) * 16; z++) {
-					ColumnSample s = m.sample(x, z);
-					int top = gen.vertical().topBlockY(s.surface());
-					if (s.hasWater() && gen.vertical().topBlockY(s.waterLevel()) > top) {
+					// The top of the surface plan (after the shelf and the micro-relief, step S6).
+					ChunkSurface plan = plans[(x >> 4) - cx0][(z >> 4) - cz0];
+					int column = ChunkHabitats.index(x & 15, z & 15);
+					int top = plan.top(column);
+					if (plan.wet(column)) {
 						continue;
 					}
-					HabitatBiome b = Habitat.biome(k.classify(s, x, z));
+					HabitatBiome b = Habitat.biome(planCodes[(x >> 4) - cx0][(z >> 4) - cz0][column]);
 					expected[b.ordinal()] += treesPerChunk(stand, b) / 256.0;
 					if (level.getBlockState(new BlockPos(x, top + 1, z)).is(BlockTags.LOGS)) {
 						trunks[b.ordinal()]++;
@@ -540,5 +564,303 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 					LOCATE_BIOME_LIMIT_MS));
 		}
 		return String.format(Locale.ROOT, "/%s: %s (%.0f ms)", command, result.getString(), ms);
+	}
+
+	// ------------------------------------------------------------------ step S6: soils, shelf, micro-relief
+
+	/**
+	 * The 11 soil places of §12.3 (łęg A, łęg B, ols, lake reedbed, willow scrub, dry pine forest, beech forest, upper
+	 * montane spruce forest, dwarf pine, beach with dunes, raised bog): center in blocks, found with seed {@value #SEED}
+	 * on surface plans (the dwarf pine, the spruce forest and in the gameplay scale the willow scrub at the large massif
+	 * nearest to the origin).
+	 */
+	private static final String[] SOIL_NAMES = {"willow_poplar_forest", "ash_alder_forest", "alder_carr", "lake_reedbed",
+			"willow_scrub", "dry_pine_forest", "beech_forest", "montane_spruce_forest", "dwarf_pine_scrub", "beach",
+			"raised_bog"};
+	private static final int[][] SOIL_REAL = {{-3_904, 3_904}, {-16, 16}, {656, -672}, {-4_160, 4_096}, {-3_904, 4_032},
+			{-231_054, -134_098}, {-1_200, -1_424}, {99_105, 1_034_173}, {98_289, 1_033_389}, {-233_358, -136_402},
+			{-230_158, -137_746}};
+	private static final int[][] SOIL_GAMEPLAY = {{-640, 3_200}, {112, 64}, {96, 32}, {-1_232, 240}, {7_702, -34_380},
+			{-1_072, -288}, {-32, -416}, {27_257, 3_622}, {6_854, -33_756}, {-4_160, -4_160}, {-2_944, -896}};
+	/** Least number of checked columns per soil place. */
+	private static final int SOIL_MIN_COLUMNS = 8;
+
+	/**
+	 * The ground block of the world equals the soil of the surface plan ({@code SoilBlocks}, §7.4) at the 11 soil places:
+	 * for each place every dry column of the place's habitat in its chunk (full status) that has no tree trunk on it
+	 * (a trunk turns the grass under it into dirt) must have the block of the plan at the plan's top Y, and air or a
+	 * plant above it.
+	 */
+	private static String soilPlaces(MinecraftServer server, boolean real) {
+		ServerLevel level = server.overworld();
+		PolandChunkGenerator gen = generator(server);
+		long seed = level.getSeed();
+		int[][] places = real ? SOIL_REAL : SOIL_GAMEPLAY;
+		StringBuilder report = new StringBuilder("ground block = SoilBlocks at");
+		List<String> failures = new ArrayList<>();
+		for (int p = 0; p < places.length; p++) {
+			int x0 = places[p][0];
+			int z0 = places[p][1];
+			net.minecraft.world.level.ChunkPos pos = new net.minecraft.world.level.ChunkPos(x0 >> 4, z0 >> 4);
+			level.getChunk(pos.x(), pos.z());
+			int[] codes = new int[256];
+			ChunkSurface plan = gen.surface(pos, level.getMinY(), level.getMaxY(), seed, codes);
+			int center = ChunkHabitats.index(x0 & 15, z0 & 15);
+			HabitatBiome biome = Habitat.biome(codes[center]);
+			int checked = 0;
+			int mismatched = 0;
+			int disks = 0;
+			Map<String, Integer> blocks = new java.util.TreeMap<>();
+			for (int i = 0; i < 256; i++) {
+				if (Habitat.biome(codes[i]) != biome || plan.wet(i)) {
+					continue;
+				}
+				BlockPos ground = new BlockPos(pos.getMinBlockX() + (i >> 4), plan.top(i), pos.getMinBlockZ() + (i & 15));
+				net.minecraft.world.level.block.state.BlockState above = level.getBlockState(ground.above());
+				if (above.is(BlockTags.LOGS)) {
+					continue;
+				}
+				checked++;
+				net.minecraft.world.level.block.Block expected = MaterialStates.of(plan.topMaterial(i)).getBlock();
+				net.minecraft.world.level.block.state.BlockState actual = level.getBlockState(ground);
+				boolean solidAbove = above.isSolidRender() && !above.is(BlockTags.LEAVES);
+				if (!actual.is(expected) && !solidAbove && disk(level, ground, actual)) {
+					// The vanilla disks of step 6 (sand, clay, gravel) reach the bank from the water (decoration of S7).
+					disks++;
+					continue;
+				}
+				if (!actual.is(expected) || solidAbove) {
+					mismatched++;
+					if (failures.size() < 12) {
+						failures.add(String.format(Locale.ROOT, "%s (%d, %d, %d): %s instead of %s, above %s", SOIL_NAMES[p],
+								ground.getX(), ground.getY(), ground.getZ(), actual, expected, above));
+					}
+				}
+				blocks.merge(plan.topMaterial(i).id().substring("minecraft:".length()), 1, Integer::sum);
+			}
+			if (checked < SOIL_MIN_COLUMNS) {
+				failures.add(SOIL_NAMES[p] + ": only " + checked + " columns of " + biome.id());
+			}
+			report.append(String.format(Locale.ROOT, " %s (%d, %d) %s: %d/%d %s%s;", SOIL_NAMES[p], x0, z0, biome.id(),
+					checked - mismatched - disks, checked, blocks, disks > 0 ? ", " + disks + " under a disk" : ""));
+		}
+		if (!failures.isEmpty()) {
+			throw new AssertionError("Ground blocks differ from the surface plan: " + failures + "; " + report);
+		}
+		return report.toString();
+	}
+
+	/** Radius of the vanilla disks of sand, clay and gravel (up to 6 blocks from a water block). */
+	private static final int DISK_RADIUS = 7;
+
+	/** The block is sand, clay or gravel of a vanilla disk: water within {@value #DISK_RADIUS} blocks at about that height. */
+	private static boolean disk(ServerLevel level, BlockPos ground, net.minecraft.world.level.block.state.BlockState actual) {
+		if (!actual.is(net.minecraft.world.level.block.Blocks.SAND) && !actual.is(net.minecraft.world.level.block.Blocks.CLAY)
+				&& !actual.is(net.minecraft.world.level.block.Blocks.GRAVEL)) {
+			return false;
+		}
+		for (int dx = -DISK_RADIUS; dx <= DISK_RADIUS; dx++) {
+			for (int dz = -DISK_RADIUS; dz <= DISK_RADIUS; dz++) {
+				for (int dy = -2; dy <= 1; dy++) {
+					if (level.getFluidState(ground.offset(dx, dy, dz)).is(net.minecraft.tags.FluidTags.WATER)) {
+						return true;
+					}
+				}
+			}
+		}
+		return false;
+	}
+
+	/** Least share of the shore columns with water beside their top block (§12.3). */
+	private static final double SHORE_MIN_SHARE = 0.90;
+	/** Ticks the water gets to flow after its ticks are scheduled (§12.3). */
+	private static final int SPILL_TICKS = 200;
+	/** Radius of a shelf area in chunks around its center chunk. */
+	private static final int SHELF_RADIUS = 2;
+
+	/**
+	 * Bank shelf in the world (§7.2, §12.3) in four areas of the scale: the large river of the stage measurement, the
+	 * lake reedbed, the alder carr (puddles) and the willow-poplar forest place. In 5 × 5 full chunks around each area the
+	 * shore columns of the surface plan (dry shelf zone or lake shore columns next to water) must have water beside their top
+	 * block in at least 90% of cases. Then every water block of the plan's surface (also of the puddles) gets a scheduled
+	 * fluid tick, as if a neighbor had changed. The plan must have no open water edge (water with air beside it at the same Y)
+	 * that the model does not already have, and after {@value #SPILL_TICKS} ticks no water may stand outside the plan's water
+	 * farther than {@value #FLOW_REACH} blocks from an open edge of the model (the steps of the river level in the model,
+	 * only reported). Screenshot {@code s6_shelf_<area>_<scale>}.
+	 */
+	private static String shelf(ClientGameTestContext context, TestSingleplayerContext sp, boolean real, String scale) {
+		int[][] soil = real ? SOIL_REAL : SOIL_GAMEPLAY;
+		int[][] areas = {real ? new int[] {-19_484, 11_253} : new int[] {-1_851, 6_022}, soil[3], soil[2], soil[0]};
+		String[] names = {"river", "lake_reedbed", "alder_carr", "willow_poplar_forest"};
+		StringBuilder report = new StringBuilder("bank shelf:");
+		long shoreAll = 0;
+		long wetAll = 0;
+		List<String> failures = new ArrayList<>();
+		String prefix = SurfaceBuilder.debugFromSystem() ? "s6_debug_" : "s6_shelf_";
+		for (int a = 0; a < areas.length; a++) {
+			int[] c = areas[a];
+			int ground = sp.getServer().computeOnServer(s -> s.overworld().getChunkSource().getGenerator().getBaseHeight(c[0],
+					c[1], Heightmap.Types.WORLD_SURFACE_WG, s.overworld(), s.overworld().getChunkSource().randomState()));
+			sp.getServer().runCommand(String.format(Locale.ROOT, "tp @a %d %d %d 0.0 60.0", c[0], ground + 24, c[1]));
+			context.waitTicks(20 * 12);
+			String name = names[a];
+			long[] counts = sp.getServer().computeOnServer(s -> shelfArea(s, c, true));
+			context.waitTicks(SPILL_TICKS);
+			long[] after = sp.getServer().computeOnServer(s -> shelfArea(s, c, false));
+			context.takeScreenshot(prefix + name + "_" + scale);
+			// counts: shore, wet shore, scheduled; after: S6 spills, model spills, ticks still scheduled, new open edges
+			shoreAll += counts[0];
+			wetAll += counts[1];
+			report.append(String.format(Locale.ROOT, " %s: shore columns %d, water beside the top %d, %d water ticks scheduled, "
+					+ "open water edges not in the model %d, after %d ticks water outside the plan %d away from the open edges "
+					+ "of the model, %d from them (steps of the river level), ticks left %d;", name, counts[0], counts[1],
+					counts[2], after[3], SPILL_TICKS, after[0], after[1], after[2]));
+			if (after[0] > 0 || after[3] > 0) {
+				failures.add(name + ": " + after[0] + " water blocks outside the plan away from the model edges, " + after[3]
+						+ " new open edges");
+			}
+			if (after[2] > 0.1 * Math.max(1, counts[2])) {
+				failures.add(name + ": the chunks did not tick (" + after[2] + " of " + counts[2] + " ticks left)");
+			}
+		}
+		double share = (double) wetAll / Math.max(1, shoreAll);
+		report.append(String.format(Locale.ROOT, " all areas: %.1f%% of %d shore columns", 100 * share, shoreAll));
+		if (shoreAll < 100 || share < SHORE_MIN_SHARE) {
+			failures.add(String.format(Locale.ROOT, "shore columns with water beside the top %.1f%% of %d", 100 * share, shoreAll));
+		}
+		if (!failures.isEmpty()) {
+			throw new AssertionError("Bank shelf: " + failures + "; " + report);
+		}
+		return report.toString();
+	}
+
+	/**
+	 * One shelf area: before the wait ({@code schedule}) counts the shore columns and those with water beside the top
+	 * block and schedules a fluid tick on every water surface block of the plan; after the wait counts the water blocks
+	 * outside the plan's water (away from the open edges of the model, near them), the fluid ticks still scheduled and the
+	 * open water edges of the plan that the model does not have.
+	 */
+	private static long[] shelfArea(MinecraftServer server, int[] center, boolean schedule) {
+		ServerLevel level = server.overworld();
+		PolandChunkGenerator gen = generator(server);
+		long seed = level.getSeed();
+		int ccx = center[0] >> 4;
+		int ccz = center[1] >> 4;
+		int n = 2 * SHELF_RADIUS + 1;
+		ChunkSurface[][] plans = new ChunkSurface[n][n];
+		for (int dx = 0; dx < n; dx++) {
+			for (int dz = 0; dz < n; dz++) {
+				level.getChunk(ccx - SHELF_RADIUS + dx, ccz - SHELF_RADIUS + dz);
+				plans[dx][dz] = gen.surface(new net.minecraft.world.level.ChunkPos(ccx - SHELF_RADIUS + dx, ccz - SHELF_RADIUS + dz),
+						level.getMinY(), level.getMaxY(), seed, null);
+			}
+		}
+		int x0 = (ccx - SHELF_RADIUS) << 4;
+		int z0 = (ccz - SHELF_RADIUS) << 4;
+		int size = n << 4;
+		long[] out = new long[4];
+		for (int x = x0; x < x0 + size; x++) {
+			for (int z = z0; z < z0 + size; z++) {
+				ChunkSurface plan = plans[(x - x0) >> 4][(z - z0) >> 4];
+				int i = ChunkHabitats.index(x & 15, z & 15);
+				int top = plan.top(i);
+				if (schedule) {
+					if ((plan.flags(i) & ChunkSurface.SHORE) != 0) {
+						out[0]++;
+						for (int[] d : new int[][] {{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
+							if (level.getFluidState(new BlockPos(x + d[0], top, z + d[1])).is(net.minecraft.tags.FluidTags.WATER)) {
+								out[1]++;
+								break;
+							}
+						}
+					}
+					if (plan.wet(i)) {
+						BlockPos pos = new BlockPos(x, plan.waterTop(i), z);
+						if (level.getFluidState(pos).is(net.minecraft.tags.FluidTags.WATER)) {
+							level.scheduleTick(pos, Fluids.WATER, Fluids.WATER.getTickDelay(level));
+							out[2]++;
+						}
+					}
+					continue;
+				}
+				if (plan.wet(i) && level.getFluidTicks().hasScheduledTick(new BlockPos(x, plan.waterTop(i), z), Fluids.WATER)) {
+					out[2]++;
+				}
+			}
+		}
+		if (schedule) {
+			return out;
+		}
+		// Open water edges (a water block with air beside it at the same Y) of the plan and of the model: water can leave
+		// the plan only through them. The plan must have no edge that the model does not have.
+		List<int[]> modelEdges = new ArrayList<>();
+		for (int x = x0; x < x0 + size; x++) {
+			for (int z = z0; z < z0 + size; z++) {
+				ChunkSurface plan = plans[(x - x0) >> 4][(z - z0) >> 4];
+				int i = ChunkHabitats.index(x & 15, z & 15);
+				for (int[] d : new int[][] {{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
+					int nx = x + d[0] - x0;
+					int nz = z + d[1] - z0;
+					if (nx < 0 || nz < 0 || nx >= size || nz >= size) {
+						continue;
+					}
+					ChunkSurface np = plans[nx >> 4][nz >> 4];
+					int j = ChunkHabitats.index(nx & 15, nz & 15);
+					int w = plan.wet(i) ? plan.waterTop(i) : ChunkSurface.NO_WATER;
+					boolean open = w != ChunkSurface.NO_WATER && np.top(j) < w && (np.wet(j) ? np.waterTop(j) : ChunkSurface.NO_WATER) < w;
+					int mw = plan.modelWater(i);
+					boolean modelOpen = mw != ChunkSurface.NO_WATER && np.modelTop(j) < mw && np.modelWater(j) < mw;
+					if (modelOpen) {
+						modelEdges.add(new int[] {x + d[0], z + d[1]});
+					}
+					if (open && !(modelOpen && mw == w)) {
+						out[3]++;
+					}
+				}
+			}
+		}
+		for (int x = x0; x < x0 + size; x++) {
+			for (int z = z0; z < z0 + size; z++) {
+				ChunkSurface plan = plans[(x - x0) >> 4][(z - z0) >> 4];
+				int i = ChunkHabitats.index(x & 15, z & 15);
+				int top = plan.top(i);
+				int high = plan.wet(i) ? plan.waterTop(i) : top;
+				for (int y = top + 1; y <= high + 2; y++) {
+					if (plan.wet(i) && y <= plan.waterTop(i)) {
+						continue;
+					}
+					if (!level.getFluidState(new BlockPos(x, y, z)).is(net.minecraft.tags.FluidTags.WATER)) {
+						continue;
+					}
+					// Water outside the plan: from an open edge of the model (a step of the river level) when one lies
+					// within the reach of flowing water, otherwise caused by S6.
+					boolean model = false;
+					for (int[] e : modelEdges) {
+						if (Math.abs(e[0] - x) + Math.abs(e[1] - z) <= FLOW_REACH) {
+							model = true;
+							break;
+						}
+					}
+					out[model ? 1 : 0]++;
+				}
+			}
+		}
+		return out;
+	}
+
+	/** Horizontal reach of water flowing from a source block (blocks). */
+	private static final int FLOW_REACH = 8;
+
+	/** Sections written block by block because their states did not fit in a palette (budget §3.6: below 1%). */
+	private static String packing() {
+		long packed = PolandChunkGenerator.PACKED_SECTIONS.sum();
+		long fallbacks = PolandChunkGenerator.PACK_FALLBACKS.sum();
+		String report = String.format(Locale.ROOT, "PACK_FALLBACKS %d of %d packed sections (%.3f%%), %d neighbor samples "
+				+ "outside the chunk for the shelf in %d chunks", fallbacks, packed, 100.0 * fallbacks / Math.max(1, packed),
+				SurfaceBuilder.OUTSIDE_SAMPLES.sum(), PolandChunkGenerator.CHUNKS.sum());
+		if (packed == 0 || fallbacks > 0.01 * packed) {
+			throw new AssertionError(report);
+		}
+		return report;
 	}
 }

@@ -105,6 +105,7 @@ public final class SurfaceBuilder {
 			int top = w.modelTop[i];
 			out.top[i] = top;
 			out.modelTop[i] = top;
+			out.modelWater[i] = w.modelWater[i];
 			out.waterTop[i] = w.modelWater[i];
 			out.rockTop[i] = coverInBlocks ? Math.min(top, vertical.topBlockY(s.surface() - s.coverDepth()))
 					: top - (int) Math.ceil(s.coverDepth());
