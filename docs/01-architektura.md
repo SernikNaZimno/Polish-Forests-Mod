@@ -352,4 +352,4 @@ Etap wprowadzony po uwagach z gry: proste krawędzie den dolin, starorzeczy i je
 - Ściany niecek jezior rynnowych GAMEPLAY i ich woda: do decyzji użytkownika (B3), do tego czasu wyjątek z limitami w teście.
 - Końce wydm przy dnach dolin i końce zalewów.
 - Jeziora bezodpływowe u stóp wielkich masywów REAL (recenzja K7): ściany niecek (siatka 5 m: masyw 1719 m 598 par > 25 m, do 38,2 m; 1698 m 548 par, do 75,6 m; 1659 m 62 pary, do 31,7 m) i rzeki na wałach nad suchym gruntem, które spadają do jeziora (do 24 m nad gruntem i 25 m spadku); limity stanu zmierzonego w `SurfaceContinuityTest` i `MassifSinkLakeContainmentTest`, szczegóły w `docs/m2/poprawka-geometrii.md`, „Co zostaje”.
-- Proste załamania stoku na kopule masywu GAMEPLAY 1718 m (twarde maksimum kopuły i pola bazowego), starorzecze ścięte przy dopływie (K5.1) i proste załamania w kadrach `R_potok_3km` i `G_rzeka_1km` (A8/G5, S8); żadne nie jest urwiskiem.
+- Proste załamania stoku na kopule masywu GAMEPLAY 1718 m (twarde maksimum kopuły i pola bazowego) i proste załamania w kadrach `R_potok_3km` i `G_rzeka_1km` (A8/G5, S8); żadne nie jest urwiskiem.
