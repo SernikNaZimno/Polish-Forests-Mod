@@ -176,8 +176,8 @@ tasks.withType(Test).configureEach {
 	}
 	// Without -PgoldenAllow the allow list of the latest step (the last src/test/golden-allow/K*.txt by name) is used, so
 	// that a plain './gradlew test' passes between the steps of a multi-step terrain change (the geometry fix used it in
-	// K3-K6). Step K7 regenerated the golden file and removed the directory; steps K8a-K8c use it again (K8a.txt, ...)
-	// until K8z regenerates the file.
+	// K3-K6 and K8a-K8c). Steps K7 and K8z regenerated the golden file and removed the directory, so without it a plain
+	// 'test' compares with no allow list.
 	// -PgoldenStrict compares without any allow list even when the directory exists.
 	def goldenAllowPath = project.findProperty('goldenAllow')
 	if (goldenAllowPath == null && !project.hasProperty('goldenStrict')) {
