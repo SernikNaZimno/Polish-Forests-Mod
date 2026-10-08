@@ -2744,7 +2744,7 @@ Od nowa szukana jest tylko łata, która w starym środku nie spełnia celu: `GA
 | GAMEPLAY Beskidy | 10,68 (1,142 / 1,140) | 11,02 (1,160 / 1,165) | 10,57 (1,136 / 1,133) |
 | GAMEPLAY wielki masyw | 11,70 (1,109 / 1,111) | 12,04 (1,132 / 1,127) | 11,49 (1,099 / 1,097) |
 
-Czas kolumny K8 jest o 2–4% krótszy niż w K7 (szum wysokości dna liczony raz na kolumnę, K8c), mimo siatek szczelin jezior rynnowych (K8a) i szumów brzegu (K8b). Budżet D1 (1,20) ma w GAMEPLAY ok. 2–3% zapasu, limity bezwzględne są dotrzymane (`costTest` przechodzi).
+Czas kolumny K8 jest o 2–4% krótszy niż w K7 (szum wysokości dna liczony raz na kolumnę, K8c), mimo siatek szczelin jezior rynnowych (K8a) i szumów brzegu (K8b). Budżet D1 (1,20) ma w GAMEPLAY 1,4–2,7% zapasu (stosunek 1,168–1,183, czyli 1,7–3,2 punktu), limity bezwzględne są dotrzymane (`costTest` przechodzi).
 
 **Siedliska** (`./gradlew landscapePreview -PhabitatsOnly`, 5 min 44 s; kadry i CSV skopiowane do `docs/m2`). Porównanie z plikami etapu H, czyli z terenem K7, w procentach wszystkich kolumn REAL / GAMEPLAY:
 - wybrzeże: plaża 0,010 / 0,277 → 0,010 / 0,272, wydma biała 0,016 / 0,411 → 0,017 / 0,412, szara 0,014 / 0,516 → 0,015 / 0,564, bór bażynowy 0,044 / 1,456 → 0,043 / 1,479, zalew 0,045 / 0,138 → 0,034 / 0,155, szuwar 0,206 / 0,209 → 0,202 / 0,176, torfowisko niskie 0,020 / 0,099 → 0,019 / 0,066;
@@ -2764,15 +2764,53 @@ Zostają proste granice biomów, które pochodzą z klasyfikatora, a nie z teren
 - `k8z_cliff_high_shore.png`: `find cliff` trafia w klif brzegu wysokiego (−36153, 357832): plaża, ściana klifu i wysoczyzna nad nią; klif biegnie wzdłuż wyrównanego brzegu morskiego (decyzja K8b: zewnętrzny brzeg zostaje wyrównany);
 - `k8z_coastal_dunes_from_sea.png`: grzbiet wydmy przedniej zmienia wysokość i położenie, poziomice wydm za nim są kręte; najbliższe stopnie plaży nadal biegną prawie równolegle do brzegu;
 - `k8z_beach_from_sea.png`: plaża (−234075, −135785) wznosi się stopniami po bloku prawie równoległymi do brzegu, bo szerokość plaży zmienia się na fali 700 m·k, czyli na odcinku kadru prawie wcale (odstępstwo 3);
-- `k8z_lagoon.png`: cel `find lagoon` leży teraz przy (−65010, 314584) (zalewy przesunęły się w K8b1); brzeg zalewu jest łukowaty, z plamami piasku, bez prostej linii do mgły. Na lądzie po lewej widać długą prostą linię stopnia; nie sprawdzałem jej modelem (poziomica zaplecza albo brzeg koryta małego cieku, „Co zostaje” w podsumowaniu K8).
+- `k8z_lagoon.png`: cel `find lagoon` leży teraz przy (−65010, 314584) (zalewy przesunęły się w K8b1); brzeg zalewu jest łukowaty, z plamami piasku, bez prostej linii do mgły. Na lądzie po lewej widać długą prostą linię stopnia: to skraj dna doliny rzeki na NE od zalewu (dno ok. 2 m, za skrajem 3–7 m), łuk ok. 600 m od ok. (−64920, 314614) do (−64450, 314374); znana pozycja M5 „proste stopnie zboczy prostych odcinków dolin” (sprawdzone w rundzie 1 poprawek, niżej).
 
 Zrzutów `outwash_plain_lake` i `river_mouth` (mały ciek z piaszczystym płatem w dolince, bez morza w kadrze) nie kopiowałem. Gametest `views` działa w świecie REAL, więc jezior rynnowych GAMEPLAY (K8a) nie pokazuje; sprawdzają je kadry 1 m i testy K8a.
 
 **Odstępstwa od protokołu w K8z:**
-1. Wybrzeże łamie warunek 2 §4 (`lagoon`, `beach`, `coast` w kilku zestawach i `GAMEPLAY B / cliff`), jak w K7 (D2, D5), tym razem przez zamierzone zmiany K8b1 i K8b2 oraz drugą oktawę den (K8c).
+1. Wybrzeże łamie warunek 2 §4 (`lagoon`, `beach`, `coast` w kilku zestawach i `GAMEPLAY B / cliff`) i część warunku 3 (SEA znika lub się pojawia w łatach `lagoon` i zmienia się w 1 kolumnie `REAL A 0,5 / grid`, K8b1; `waterKind` zmienia się też w `grid` i w `REAL B / coast`: trasa rzeki z K8b1, D5a), jak w K7 (D2, D5), tym razem przez zamierzone zmiany K8b1 i K8b2 oraz drugą oktawę den (K8c).
 2. Kolumny porównałem z terenem K7 (kopia `0da46a3`), a nie z kopią M1: od K7 plik wzorcowy opisuje obecny model, a kopia M1 nie oddziela zmian K8 od zmian K3–K7.
 3. Stopnie plaży najbliższe brzegu nadal biegną równolegle do brzegu na odcinkach rzędu 100 m (zmienność plaży ma falę 700 m·k). K8z nie zmienia modelu, więc zostaje to do oceny (M5).
 4. Narzędzie kolumna po kolumnie (`K8zProbe`) działało tylko w kopiach drzewa, nie w repozytorium.
+5. Oceny odłożone do K8z (dna GAMEPLAY i waga 0,35 z rundy 1 K8c, grunt podniesiony brzegiem, suche rowy i zagłębienie z K8a, delty i końce zalewów z K8b1) nie zostały zrobione w K8z, bo gametest `views` działa tylko w świecie REAL. Zrobiłem je w rundzie 1 poprawek (niżej) na kadrach 1 m, nie w grze.
+
+### Runda 1 poprawek po recenzji K8z
+
+Baza: `5d468aa` (K8z). Recenzja zgłosiła jeden problem poważny (oceny odłożone do K8z przez K8a, K8b1 i rundę 1 K8c nie zostały zrobione ani zapisane jako odstępstwo) i pięć drobnych. Kod modelu i plik wzorcowy się nie zmieniają; zmienia się tylko dokumentacja i doszły trzy kadry przeglądu w `docs/m2/gra/` (`k8z_r1_*.png`). Narzędzia: kadry 1 m (1 blok na piksel) z cieniowaniem i poziomicami co 1 blok, liczone `sample` na skompilowanych klasach `5d468aa` w kopii drzewa poza repozytorium (ziarno 20260927, REAL B: ziarno B złotego testu), warianty wagi drugiej oktawy dna (`FLOOR_FINE_WEIGHT` 0 / 0,35 / 0,5) tylko w tych kopiach, przekroje `sample`.
+
+**Problem poważny: oceny odłożone do K8z.** Gametest `views` działa tylko w świecie REAL, więc w K8z nie objął den i jezior rynnowych GAMEPLAY, a zrzut zalewu nie pokazuje delty. Oceny zrobiłem teraz na kadrach 1 m, nie w grze (świata `poland_gameplay` w grze nie oglądałem):
+1. **„Pryszcze” na dnach GAMEPLAY (runda 1 K8c, decyzja o wadze 0,35).** Te same 7 kadrów GAMEPLAY co w rundzie 1 K8c (400 m, tu 1 blok na piksel, dna 0,80 km²), trzy wagi drugiej oktawy. Miara: płaskie płaty jednej wysokości bloku na suchym dnie, mniejsze niż 300 bloków, całe na dnie, nie przy wodzie i nie przy brzegu kadru, wyższe albo niższe od całego otoczenia (pagórek lub dołek 1 bloku):
+
+   | Waga | Płaty < 300 bloków | ≤ 16 bloków | ≤ 4 bloki |
+   |---|---|---|---|
+   | 0 (dno jak w GAMEPLAY przed rundą 1 K8c) | 13 (16 na km²) | 0 | 0 |
+   | 0,35 | 27 (34 na km²) | 6 (7 na km²) | 1 |
+   | **0,5 (obecna)** | 38 (47 na km²) | 10 (12 na km²) | 1 |
+
+   Każdy płat ma wysokość 1 bloku, najmniejsze (poza jednym) mają 10–16 bloków, a na kadrze poziomice dna są bardziej poszarpane niż przy wadze 0 (`k8z_r1_floor_octave_weights.png`, kadr `G_s3` (14500, 700): od lewej waga 0, 0,35, 0,5). Pojedynczych bloków sterczących z dna nie ma. **Werdykt: wrażenia „pryszczy” nie ma, waga 0,5 zostaje.** Waga 0,35 zmniejsza liczbę płatów o ok. 30%, ale zmieniłaby wszystkie łaty GAMEPLAY z dnami nizinnymi, czyli wymagałaby kolejnego przegenerowania pliku wzorcowego, a jej wpływu na proste stopnie GAMEPLAY nie mierzyłem. Drobne płaty 1 bloku na dnach GAMEPLAY zostają do oceny w grze (M5).
+2. **Jeziora rynnowe GAMEPLAY (K8a i runda 1: grunt podniesiony brzegiem, suche rowy, zagłębienie).** Kadry 400 m wokół (9820, −17360), (−1400, −6240), (3420, −4700) i (−18450, 14540) oraz 1600 m i 800 m wokół (−20500, 10900) i (−26460, 9800) (kadry `G_w1` i `G_w10` z K8a). W kadrach 1 m (wszystkie poza `G_w1`, który ma 2 m na piksel) największa różnica sąsiednich suchych bloków to 1–2 bloki; przecieków 0 we wszystkich. Wygląd (`k8z_r1_tunnel_lakes.png`, od lewej (−1400, −6240), (3420, −4700), (−18450, 14540)):
+   - grunt podniesiony brzegiem jest widoczny: wokół wody biegnie płaska półka brzegu (ok. 15–25 m), a za nią stromy stok o nachyleniu ok. 1 bloku na blok. W (3420, −4700) półka z jeziorem leży na zboczu doliny na 123 m, a od strony doliny opada prawie prosta skarpa ok. 250 m długości z 81 do 123 m (18 bloków na ok. 18 m). W (−1400, −6240) jezioro ma obrys zaokrąglonego kwadratu, a w dwóch narożnikach półki są płaskie kliny o prostych krawędziach. W (9820, −17360) za półką stoi wąski zakrzywiony języczek stromego gruntu;
+   - zagłębienie (−18450, 14540) to wydłużony W–E suchy dołek w dnie bocznej doliny: dno 64,3 m (41 bloków), brzeg ok. 77 m (47 bloków), ok. 150 m długości;
+   - suche rowy wzdłuż bocznych dolin są wyraźne w `G_w1` (kręte głębokie rynny między niecką a doliną) i w `G_w10` (sucha część niecki ciągnie się za wodą wzdłuż doliny).
+
+   **Werdykt:** żadna z tych form nie łamie D4a/D4b ani szczelności, ale skarpa w (3420, −4700), kliny w (−1400, −6240), dołek (−18450, 14540) i suche rowy wyglądają sztucznie. Zostają do M5 (lista w „Podsumowanie K8” uzupełniona o te miejsca).
+3. **Delty i końce zalewów (K8b1 i rundy).** Przeglądu na zrzutach w grze nie było (`k8z_lagoon.png` nie pokazuje delty). Przegląd na kadrach (`k8z_r1_deltas_lagoon_ends.png`, od lewej GAMEPLAY (−12351, 11586) 600 m, koniec zalewu GAMEPLAY (5474, −15965) 1200 m, REAL B (−12104, −85135) 1200 m) i na kadrach (13600, −6000) i (11803, −9572) GAMEPLAY, (−198000, −184000) REAL 4 km:
+   - delty to zaokrąglone płaty lądu przy ujściach (REAL B: płaty po obu stronach ujścia, bez prostych boków), bez odnóg i koryta do czoła (znane, M5); w GAMEPLAY przy (13600, −6000) płat przy ujściu jest mały, a brzeg zalewu obok biegnie prawie prosto na ok. 350 m;
+   - koniec zalewu GAMEPLAY (5474, −15965) to wąski klin między mierzeją a zboczem zaplecza (znana pozycja M5: końce wyznaczane przez relief zaplecza);
+   - na mierzejach GAMEPLAY (5474, −15965) i (11803, −9572) wydmy tworzą wydłużone wały równoległe do brzegu o prostych bokach na ok. 150–300 m (nowa obserwacja, M5).
+
+   Przecieków 0, sąsiednie suche bloki w kadrach 1 m różnią się najwyżej o 2 bloki.
+
+**Drobne.**
+1. *Odstępstwa od warunku 3 §4 (potwierdzone).* Warunek 3 zabrania pojawiania się i znikania SEA w każdej łacie i dopuszcza zmianę `waterKind` tylko w łatach rzecznych i wód stojących. W K8z SEA zmienia się w łatach `lagoon` i w `REAL A 0,5 / grid`, a `waterKind` także w `grid` i w `REAL B / coast`. Odstępstwo 1 K8z i odstępstwa K8z w podsumowaniu są uzupełnione.
+2. *Prosta linia na `k8z_lagoon.png` (potwierdzone).* Kadr 1 m REAL wokół (−64700, 314500) i przekrój `sample` przez (−64620, 314415): to skraj dna doliny rzeki na NE od zalewu (dno `inFloor` ok. 2 m, za skrajem teren 3–7 m, przejście na ok. 25 m). Ciasne poziomice zbocza biegną gładkim, prawie prostym łukiem ok. 600 m od brzegu zalewu przy (−64920, 314614) do ok. (−64450, 314374). To znana pozycja M5 „proste stopnie zboczy prostych odcinków dolin”, a nie artefakt zalewu z K8b. Opis zrzutu i lista M5 poprawione.
+3. *Zapas budżetu D1 (potwierdzone).* Z 1,183 i 1,168 wychodzi 1,20 / 1,183 = 1,4% i 1,20 / 1,168 = 2,7% zapasu (1,7 i 3,2 punktu stosunku), a nie „2–3%”. Poprawione tu, w podsumowaniu i w `docs/BRIEF.md`.
+4. *Wstęp `docs/03-m2-biomy.md` (potwierdzone).* Daty i kroki poprawki geometrii (K0–K8, do 2026-10-08) i przegenerowanie w K7 i K8z poprawione.
+5. *„Decyzje B3 … zamknięte w K8a” (potwierdzone).* Zdanie na końcu podsumowania mówi teraz, co jest usunięte, a co zostaje odstępstwem do akceptacji.
+
+**Testy.** Zmienia się tylko dokumentacja i trzy pliki PNG w `docs/m2/gra/`. Pełny `test` (`tools/dev/run-tests test`): PASS (wynik w commicie rundy).
+
 
 ### Podsumowanie K8 (2026-10-07 – 2026-10-08)
 
@@ -2793,7 +2831,7 @@ Decyzja użytkownika z 2026-10-07: „krótka poprawka teraz”, przed fazą 2 M
 - K8b1: delta przy każdej rzece wchodzącej do zalewu od lądu (bez odnóg); progi siły zalewu zmienione (powierzchnia zalewu REAL −6%, GAMEPLAY +9%); zalew GAMEPLAY dzieli się w jednym miejscu na dwa jeziora.
 - K8b2: plaża i wydma tylko szersze albo tak samo strome jak w K5; zmiany tylko na prawie pełnym brzegu niskim (częściowy klif ma profil K5); siodła obniżają grzbiet poniżej 6 m z D5; wydm parabolicznych i ruchomych nie ma.
 - K8c: starorzecza przy obcym korycie tracą długość (woda −1,3% REAL, −1,1% GAMEPLAY wobec bazy K8c); proste stopnie zboczy prostych odcinków dolin zostają; starorzecza wzdłuż meandrującego dopływu są wąskie.
-- K8z: wybrzeże łamie warunek 2 §4 przez zamierzone zmiany K8b; plaża przy samym brzegu nadal ma stopnie równoległe do brzegu na odcinkach rzędu 100 m.
+- K8z: wybrzeże łamie warunek 2 §4 i część warunku 3 (SEA w łatach `lagoon` i w `REAL A 0,5 / grid`, `waterKind` w `grid` i `REAL B / coast`) przez zamierzone zmiany K8b; plaża przy samym brzegu nadal ma stopnie równoległe do brzegu na odcinkach rzędu 100 m; oceny odłożone do K8z zrobione dopiero w rundzie 1 poprawek i tylko na kadrach 1 m, nie w grze (dna i jeziora rynnowe GAMEPLAY, delty).
 
 **Pomiary przed (K7) i po (K8).**
 
@@ -2820,11 +2858,11 @@ Decyzja użytkownika z 2026-10-07: „krótka poprawka teraz”, przed fazą 2 M
 Złoty test: 42 ze 105 łat zmienione, 1 łata wyszukana od nowa, łaty kontrolne bez zmian (K8z). Kryteria D4a/D4b, szczelność wody, determinizm i ciągłość (`SurfaceContinuityTest`, `TerrainDeterminismTest`, `TerrainLocalityTest`, testy wód stojących i delt) przechodzą w pełnym zestawie w obu skalach.
 
 **Co zostaje do M5** (poza listą z podsumowania K0–K7):
-- jeziora rynnowe: dalsze odzyskanie wody (przesunięcie `valleyEnd` bliżej doliny przy strażniku dna), suche rowy wzdłuż bocznych dolin i grunt podniesiony brzegiem na zboczu doliny (do ok. 32 m nad terenem po dolinach), ukośny koniec soczewki, zagłębienie (−18450, 14540) w dnie bocznej doliny;
-- wybrzeże: odnogi delt i koryto do czoła delty, wydmy paraboliczne i ruchome (Mierzeja Łebska), osobliwości `coastDistance` przy siodłach pola morza (GAMEPLAY A (−32790, −17513), (−32535, 39613)), końce zalewów GAMEPLAY wyznaczane przez relief zaplecza, stopnie plaży równoległe do brzegu na krótkich odcinkach, prosta linia stopnia na lądzie przy zalewie z `k8z_lagoon.png` (do sprawdzenia modelem);
-- starorzecza i dna: proste stopnie zboczy prostych odcinków dolin w obu skalach, prosta krawędź W–E u ujścia doliny przy (1643, −452) GAMEPLAY, wąskie starorzecza wzdłuż meandrującego dopływu;
+- jeziora rynnowe: dalsze odzyskanie wody (przesunięcie `valleyEnd` bliżej doliny przy strażniku dna; −57% wobec K4c), suche zagłębienie 3,7 m przy wale brzegu (limit testu 4 m zamiast celu 3 m), suche rowy wzdłuż bocznych dolin (`G_w1`, `G_w10`) i grunt podniesiony brzegiem na zboczu doliny (do ok. 32 m nad terenem po dolinach; prosta skarpa 18 bloków na ok. 250 m w (3420, −4700), płaskie kliny w narożnikach półki brzegu w (−1400, −6240)), ukośny koniec soczewki, zagłębienie (−18450, 14540) w dnie bocznej doliny (ok. 13 m, 6 bloków);
+- wybrzeże: odnogi delt i koryto do czoła delty, wydmy paraboliczne i ruchome (Mierzeja Łebska), osobliwości `coastDistance` przy siodłach pola morza (GAMEPLAY A (−32790, −17513), (−32535, 39613)), końce zalewów GAMEPLAY wyznaczane przez relief zaplecza, stopnie plaży równoległe do brzegu na krótkich odcinkach, wały wydm na mierzejach GAMEPLAY o prostych bokach na 150–300 m (np. (5474, −15965), (11803, −9572)), prawie prosty brzeg zalewu obok małej delty w (13600, −6000) GAMEPLAY;
+- starorzecza i dna: proste stopnie zboczy prostych odcinków dolin w obu skalach (także skraj dna przy zalewie z `k8z_lagoon.png`, łuk ok. 600 m od (−64920, 314614) do (−64450, 314374) REAL), drobne płaty 1 bloku na dnach GAMEPLAY od drugiej oktawy (47 na km², waga 0,5 zostaje, runda 1 K8z; do oceny w grze), prosta krawędź W–E u ujścia doliny przy (1643, −452) GAMEPLAY, wąskie starorzecza wzdłuż meandrującego dopływu;
 - dawne pozycje bez zmian: R5 i remisy D4a, wały moren W–E (D3), jeziora bezodpływowe u stóp wielkich masywów REAL, proste załamania na kopule GAMEPLAY 1718 m, grobla oczek;
 - kopuła wielkiego masywu (płaska przez miękki sufit K2) do oceny przy biomach piętra halnego (faza 2 M2);
-- koszt: budżet D1 ma w GAMEPLAY ok. 2–3% zapasu; kolejne kroki zwiększające koszt `sample` najpierw szukają oszczędności (`RiverNetwork`, `coastDistance`).
+- koszt: budżet D1 ma w GAMEPLAY 1,4–2,7% zapasu (stosunek 1,17–1,18); kolejne kroki zwiększające koszt `sample` najpierw szukają oszczędności (`RiverNetwork`, `coastDistance`).
 
-Decyzje B3 (ściany niecek i woda jezior rynnowych GAMEPLAY) i otwarta sprawa `find cliff` z podsumowania K0–K7 są zamknięte w K8a i K8b2.
+Z decyzji B3 (ściany niecek i woda jezior rynnowych GAMEPLAY) K8a usunął ściany niecek (0 par > 2 bloki), ale cele wody i zagłębień nie są w pełni osiągnięte: woda jest na −57% wobec K4c przy celu „w stronę −37%”, a zostaje 1 suche zagłębienie 3,7 m przy celu 0 > 3 m (limit testu 4 m). Te dwa odstępstwa czekają na akceptację użytkownika i są na liście M5. Otwarta sprawa `find cliff` z podsumowania K0–K7 jest zamknięta w K8b2 (klif 17,7 m).
