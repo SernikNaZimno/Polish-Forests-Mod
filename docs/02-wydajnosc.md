@@ -34,6 +34,10 @@ Wnioski:
 | Decyzja o istnieniu oczka liczona raz na oczko i buforowana | mniej obliczeń w strefach oczek |
 | Komendy szukające terenu działają w tle | serwer nie zacina się podczas wyszukiwania |
 
+### Znane problemy
+
+- **`/locate structure` dla struktury nieobecnej w pobliżu** (od S5, biomy moda) blokuje wątek serwera na 5–30 s. Pomiar recenzji S5: igloo 30,2 s w skali rozgrywki bez wyniku i 5,4 s w skali rzeczywistej, obóz w świerczynie 12,3 s (wynik 27,9 km), oceaniczny zrujnowany portal 12,5 s. W skali rozgrywki to głównie budowanie zimnych kafli siatek modelu w promieniu ok. 51 km. Wanilia wypisuje wtedy „0 bloków” dla wyników dalszych niż ok. 46 km (przepełnienie liczby całkowitej). Które struktury są rzadkie w trybie roślinności naturalnej: `docs/03-m2-biomy.md` §10.1. `/locate biome` ma własne szybkie wyszukiwanie (ok. 0,6–2 s w najgorszym przypadku).
+
 ## Zalecana paczka modów
 
 Plik `.mrpack` buduje skrypt:
