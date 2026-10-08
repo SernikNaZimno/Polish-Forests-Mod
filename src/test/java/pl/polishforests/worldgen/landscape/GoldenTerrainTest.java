@@ -46,7 +46,8 @@ import pl.polishforests.worldgen.habitat.AltitudinalBelts;
  * {@code great_massif}). Until step K6 the M1 patches kept their M1 hashes and the terrain changes of the steps were
  * allowed by lists ({@code src/test/golden-allow/K*.txt}); step K7 regenerated the file once for the fixed terrain
  * (centers kept, patches that lost their target searched anew) and removed the lists, so a plain {@code test} compares
- * with no allow list.</li>
+ * with no allow list. Steps K8a–K8c used cumulative lists again ({@code K8a.txt} … {@code K8c.txt}); step K8z
+ * regenerated the file the same way and removed them.</li>
  * </ul>
  *
  * <p>Sets: 2 scales × 2 seeds at region slider 1.0 and one set at slider 0.5. Each has a 32 × 32 grid
@@ -98,7 +99,13 @@ class GoldenTerrainTest {
 			"K7 (2026-10-06): regenerated once for K3-K6 with -PgoldenKeepCenters: every changed patch is on the union of the",
 			"    step allow lists K3-K6 (src/test/golden-allow, removed), the control patches unchanged, great_massif changed",
 			"    only in GAMEPLAY A (A16, one column by 2.4 cm), only the patches that lost their target searched anew",
-			"    (docs/m2/poprawka-geometrii.md, K7)");
+			"    (docs/m2/poprawka-geometrii.md, K7)",
+			"K8 (2026-10-07..08): K8a tunnel valley lakes ending at a smoothed gap of their contour; K8b1 lagoon shores with",
+			"    bays, peninsulas, deltas and rounded ends; K8b2 a varying foredune crest, beach width and gray dune hummocks;",
+			"    K8c oxbow lakes tapering along the arc at other channels and a second octave of the lowland floor relief",
+			"K8z (2026-10-08): regenerated once for K8a-K8c with -PgoldenKeepCenters: the changed patches equal the step allow",
+			"    list K8c (cumulative K8a-K8c, src/test/golden-allow, removed), the control patches, great_massif and summit",
+			"    unchanged, only GAMEPLAY A lagoon (lost target) searched anew (docs/m2/poprawka-geometrii.md, K8z)");
 	static final long SEED_A = 20260927L;
 	static final long SEED_B = -7_316_550_294_015_845_337L;
 	/** Column sets: 2 scales × 2 seeds at slider 1.0 and one at region slider 0.5. */
