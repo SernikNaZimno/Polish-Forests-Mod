@@ -14,7 +14,7 @@ Dokument wdrożenia poprawki geometrii terenu. Opisuje kroki K0–K7 (oraz krót
 | K5 | Wody stojące: starorzecza, jeziora rynnowe (z poziomem niezależnym od kolejności próbkowania), oczka, niecki, brzeg jezior bezodpływowych; K5b: wybrzeże wydmowe (D5) | wody stojące, wybrzeże |
 | K6 | Okno mieszania regionów 5 × 5 (A16); test ścian z całą niecką; D3 (wały moren W–E) odłożone do M5; `TUNNEL_COS` 0,6 sprawdzony i cofnięty (runda 1) | szwy regionów, jeziora rynnowe |
 | K7 | Jedno przegenerowanie `golden_terrain_m2.txt` (protokół §4), usunięcie list dozwolonych zmian, podsumowanie poprawki i dokumentacja | — (plik wzorcowy) |
-| K8 | Krótka poprawka po teście w grze (decyzja użytkownika 2026-10-07): K8a jeziora rynnowe GAMEPLAY (wariant d z K6), K8b wybrzeże, K8c starorzecza, K8z przegenerowanie pliku wzorcowego | jeziora rynnowe (K8a), brzeg zalewu (K8b1) |
+| K8 | Krótka poprawka po teście w grze (decyzja użytkownika 2026-10-07): K8a jeziora rynnowe GAMEPLAY (wariant d z K6), K8b wybrzeże, K8c starorzecza, K8z przegenerowanie pliku wzorcowego | jeziora rynnowe (K8a), brzeg zalewu (K8b1), wydmy i plaża (K8b2) |
 
 Zalew bez rowu (D2) wszedł w K5 razem z wybrzeżem wydmowym (D5, K5b). Wały moren W–E (D3) nie przeszły prototypu w K6 (łamią testy sieci rzecznej) i są odłożone do M5.
 
@@ -2428,7 +2428,7 @@ Kolec przy (5700, −15750), szerokość wody w wierszach co 25 m od czubka:
 - runda 1: 23, 34, 41, 46, 49, 52, 57, 61, 65, 76 m;
 - **runda 2: 12, 50, 68, 80, 92, 100, 105, 104, 102, 98 m** (wschodni brzeg x = 5716 → 5754 → 5726, łuk).
 
-Koniec jest zaokrąglony: woda dochodzi do 0,8 szerokości na ok. 75 m zamiast klina 250 m. Zatoka jest wcięta w podnóże częściowego klifu, więc w oknie 1 m 400 m wokół (5700, −15700) przybywa suchych par > 1 m (0 → 1770, do 1,47 m na 1 m, na skarpie 9–11 m). W blokach jest najwięcej 2 bloki na blok, jak w rundzie 1 (D4b dotrzymane), przecieków 0.
+Koniec jest zaokrąglony: woda dochodzi do 0,8 szerokości na ok. 75 m zamiast klina 250 m. Zatoka jest wcięta w podnóże częściowego klifu, więc w oknie 1 m 400 m wokół (5700, −15700) przybywa suchych par > 1 m (0 → 1770, do 1,47 m na 1 m, na skarpie 9–11 m). W tym oknie w blokach jest najwięcej 2 bloki na blok, jak w rundzie 1, przecieków 0. (Poprawka z K8b2: D4b sprawdziłem tylko w oknie kolca. W oknie 400 m wokół (−430, 14000) runda 2 miała 18 suchych par po 3 bloki na blok, a ląd w 15 m od wody zalewu do 15,0 m, bo misa wycinała wodę w zbocze 7–15 m; naprawione w K8b2.)
 
 Przekroje wzdłuż normalnej brzegu (jak w rundzie 1; runda 1 → runda 2):
 - REAL (−223000, −152000): odchylenie w oknach 1,2 km 191 / 457 / 645 → 192 / 463 / 643 m, droga / długość 1,535 → 1,526, koniec SW 0,54 → 0,56 szerokości;
@@ -2469,7 +2469,92 @@ Czas kolumny rundy 2 mieści się w rozrzucie przebiegów (GAMEPLAY 6,28–6,41 
 **Odstępstwa od wskazówek recenzji:**
 1. Końce wyznaczane przez skarpę: nie przesuwam progu 3–6 m ani odległości (przy stromej skarpie nie działa, a przy łagodnym zapleczu REAL przesuwa brzeg o setki metrów), tylko punkt, w którym liczę relief i udział klifu dla siły misy.
 2. Zalew (11803, −9572) dzieli się na dwa jeziora w miejscu wąskiej nici wody (wyżej).
-3. Zatoki w podnóżu częściowego klifu mają strome ściany (do 1,47 m na 1 m, w blokach najwyżej 2 na blok).
+3. Zatoki w podnóżu częściowego klifu mają strome ściany (do 1,47 m na 1 m; w oknie kolca w blokach najwyżej 2 na blok, ale przy (−430, 14000) 18 par po 3 bloki na blok, naprawione w K8b2).
 4. Budżet D1 bez zmian (na granicy), bez nowych oszczędności w tej rundzie.
 
 **Co zostaje:** budżet D1 bez zapasu (oszczędności najlepiej razem z K8z), odnogi delt (M5), przegląd delt i końców zalewów na zrzutach w grze w K8z.
+
+### K8b2. Wydma przednia o zmiennym grzbiecie, plaża zmiennej szerokości, wydmy szare jako pas pagórków i `find cliff` w prawdziwy klif
+
+Baza: `e63f691` (K8b1 po rundzie 2, drzewo czyste). Prototyp na kopii modelu w katalogu roboczym poza repozytorium (parametry jako właściwości JVM; narzędzia: przejście wzdłuż linii brzegu z przekrojem co 5 m REAL / 2,5 m GAMEPLAY — wysokość i położenie grzbietu, szerokość plaży, średnia i rozrzut pasa wydm szarych; przekroje siatki `CoastTest`; okna 1 m na pasie wydm za każdym punktem brzegu siatki `CoastTest`; okna 1 m przy brzegach zalewów ±40 km; mapy cieniowane z poziomicami co blok), potem kod w projekcie bez zmiany parametrów.
+
+**Fakty z natury** (2026-10-08):
+- wydmy przednie polskiego wybrzeża mają zwykle 3–8 m (rzadko 10–12 m); na Mierzei Łebskiej do czterech wałów wydm przednich 4–15 m, na wschodzie Helu do 20 m, na Mierzei Wiślanej białe wydmy przednie do 4 m, na Bramie Świny białe do 8 m i żółte 6–10 m;
+- plaże: na wąskich mierzejach zwykle 20–30 m (Łeba 20–30 m), w Świnoujściu ponad 100 m, miejscami ok. 200 m;
+- niecki deflacyjne leżą między wałami wydm (z roślinnością słonolubną); liczb o ich rozstawie wzdłuż brzegu w źródłach nie znalazłem;
+- wydmy ruchome Słowińskiego PN (Mierzeja Łebska, 34 km): ok. 500 ha ruchomych piasków, wydmy paraboliczne (63%) i barchany (32%), wysokość 30–50 m (Łącka Góra 42 m n.p.m., Czołpino 56,5 m), przesuw średnio ok. 4–10 m na rok; na reszcie wybrzeża wydmy są utrwalone borem.
+
+Źródła: [Sand dune – Country Report, Poland (Coastal Wiki)](https://coastalwiki.org/wiki/Sand_dune_-_Country_Report,_Poland), [Tylkowski 2017, Baltica 30(2)](https://gamtostyrimai.lt/wp-content/uploads/2022/06/Baltica-2017-30-2-4-Tylkowski.pdf), [Pobrzeża (ZPE)](https://zpe.gov.pl/a/pobrzeza/DraeAbt59), [Wydma Łącka (National Geographic)](https://www.national-geographic.pl/traveler/kierunki/polska-tez-ma-swoja-pustynie-wydma-lacka-to-kraina-wedrujacego-piasku/), [Łeba (Beach Atlas)](https://www.beachatlas.com/pl/w-ebie). Wniosek dla modelu: zakres D5 (6–15 m) zostaje, ale mediana grzbietu może być niższa niż 12,5 m z K5; plaża 60 m·k w średniej jest rozsądna, z rozrzutem ok. 35–110 m·k; wydmy ruchome i paraboliczne to wyjątek jednej mierzei (poza K8b2, „Co zostaje”).
+
+**Przyczyna.** Profil plaży i wydm w `shapeCoast` zależał tylko od odległości od brzegu: plaża 0–2 m na stałych 60 m·k, garb sin² wydmy przedniej na stałych 130 m·k z wysokością z szumu o fali 3 km·meso (w oknie gry prawie stała), wydmy szare w pasie o prostych krawędziach. Poziomice (stopnie po bloku) biegły więc równolegle do brzegu prostymi liniami (zrzuty `coastal_dunes_from_sea.png`, `cliff_target_low_shore.png`). Przejście 10 km wzdłuż brzegu REAL przy (−233729, −135730): położenie grzbietu 125 m we wszystkich przekrojach, szerokość plaży (do 2,5 m) 68–70 m, długość korelacji wysokości grzbietu 1055 m.
+
+**Zmiana (`LandscapeModel.shapeCoast`, `sandBeach`, `sample`, `forms`; nowy szum `coast.dunes` z nową solą).** Tylko na prawie pełnym brzegu niskim: zmiany włączają się, gdy udział brzegu niskiego rośnie od 0,7 do 0,95 (`DUNE_VARY_0`, `_1`), więc częściowy klif (ściana 2,5 : 1 i wydma na jego obniżonym wierzchu) ma profil z K5. Wszystko w pasie 800 m·k od brzegu (`DUNE_BAND`).
+- **Plaża:** szerokość 60 m·k × (1 ± 0,8 × szum dwóch oktaw od 700 m·k) (`BEACH_VAR`, `BEACH_WAVE`), zwykle 35–85 m·k, skrajnie ok. 25–110 m·k. Plaża wznosi się do 2 m na swojej szerokości, ale nie na krótszym odcinku niż 60 m·k: przy siodłach pola `coastDistance` (odległość zmienia się tam o 10–20 m na metr, np. GAMEPLAY A (−32535, 39613)) węższa plaża byłaby bardziej stroma.
+- **Wydma przednia:** stopa przy końcu plaży, szerokość 130 m·k poszerzana do 1,4 raza (zwykle 1,1–1,3, `FOREDUNE_WIDTH_VAR`; tylko szersza niż w K5 z tego samego powodu), grzbiet przesunięty w poprzek o ok. ±10% szerokości (`FOREDUNE_CREST`, fala 400 m·k), wysokość grzbietu 6–15 m nad morzem z szumu trzech oktaw o falach 600, 300, 150 m·k (`FOREDUNE_HEIGHT_WAVE`). Siodła (przewiewy): gdzie szum o fali 220 m·k rośnie od 0,05 do 0,3 (`SADDLE_*`), grzbiet obniża się do 25% wysokości, a pagórki wydm szarych za nim znikają — za siodłem zostaje płaska niecka deflacyjna na poziomie zaplecza (ok. 2 m), otoczona pagórkami.
+- **Wydmy szare:** pas pagórków z szumu 2D dwóch oktaw od 160 m·k, z zaokrąglonymi wierzchołkami (`GRAY_HUMMOCK_*`, wcześniej `max(0, szum)` jednej oktawy 140 m·k), koniec pasa przesunięty o ±25% szumem 700 m·k (`GRAY_END_*`); wysokość 2–8 m jak w K5.
+- **Siedliska i formy:** `ColumnSample.Terrain` ma nowe pole `beachWidth` (szerokość plaży kolumny, NaN dalej niż 25 km·meso od morza). Od niego liczą się formy `BEACH` i `COASTAL_DUNES` w `sample`, granica nagiego piasku (`bareSandWidth`), w klasyfikatorze plaża (`Coast`) i koniec pasa wydm (`HabitatClassifier.Column.duneBeltEnd`, `duneOverFloor`). Bez próbki (testy syntetyczne) zostaje `Calibration.BEACH_B`·k.
+
+**Pomiary przed (baza) i po.** Przekroje wzdłuż normalnej brzegu, `landElevation` (siatka punktów brzegu jak w `CoastTest`, tylko przekroje brzegu niskiego; p10 / p50 / p90):
+
+| | REAL przed | REAL po | GAMEPLAY przed | GAMEPLAY po |
+|---|---|---|---|---|
+| przekroje brzegu niskiego | 221 | 221 | 2126 | 2126 |
+| grzbiet wydmy przedniej (m n.p.m.) | 10,8 / 12,6 / 14,0 | 4,5 / 9,4 / 13,0 | 10,7 / 12,5 / 14,4 | 4,3 / 9,2 / 13,2 |
+| położenie grzbietu od brzegu (m) | 124 / 125 / 126 | 113 / 135 / 169 | 57 / 63 / 69 | 56 / 69 / 99 |
+| plaża (pierwszy punkt ≥ 2,5 m, m) | 68 / 69 / 69 | 60 / 73 / 87 | 33 / 35 / 37 | 30 / 37 / 46 |
+| rozrzut wysokości pasa wydm szarych (m, odchylenie std. w przekroju) | 0,0 / 0,3 / 0,9 | 0,1 / 0,6 / 1,4 | 0,0 / 0,5 / 1,5 | 0,1 / 0,9 / 1,9 |
+| przekroje z grzbietem < 5 m (siodła) | 0% | 10,4% | 0% | 10,7% |
+
+Przejście wzdłuż brzegu (REAL (−233729, −135730) 10 km co 5 m; GAMEPLAY (−4970, −3028) 4 km co 2,5 m), przed → po: grzbiet p10 / p50 / p90 10,5 / 11,7 / 14,6 → 4,2 / 9,3 / 13,6 m (GAMEPLAY 10,1 / 12,1 / 14,1 → 4,7 / 9,9 / 13,4 m), długość korelacji wysokości grzbietu (przesunięcie, przy którym korelacja spada poniżej 0,5) 1055 → 85 m (GAMEPLAY 178 → 55 m, czyli 110 m·k), siodła z grzbietem < 5 m 0 → 1,3 na km (GAMEPLAY 0 → 2,5 na km, co ok. 800 m·k), położenie grzbietu 125 → 112–181 m (GAMEPLAY 56–68 → 56–90 m), plaża 68–70 → 58–89 m (GAMEPLAY 33–36 → 28–47 m). Poza siodłami grzbiet ma 6–15 m (D5); mediana 9,3–9,9 m jest bliżej typowych polskich wydm przednich niż 12 m z K5. Na mapach z poziomicami co blok (REAL 1,4 km, GAMEPLAY 600 m) wydma przednia to ciąg odcinków o różnej wysokości przedzielonych siodłami, a za nią pagórki i niecki zamiast prostych pasów.
+
+**Bez urwisk (D4b) i szwów.** Okna 1 m na pasie wydm za każdym punktem brzegu siatki `CoastTest` (GAMEPLAY 240 m ze środkiem 150 m od brzegu, REAL 480 m ze środkiem 300 m; okna sąsiednich punktów się nakładają), suche pary > 2 bloki na blok przy obu kolumnach z udziałem brzegu niskiego ≥ 0,5 i surowym terenem też > 2 (przed → po): GAMEPLAY A 1682 → 1688, GAMEPLAY B 17083 → 16912, REAL A 895 → 893; przecieki 0 → 0. Takie pary (przed i po) to ściana 2,5 : 1 częściowego klifu (udział brzegu niskiego 0,5–0,85, D5) albo siodła `coastDistance`, a nie wydmy. Różnice ±1–7 par w pojedynczych oknach GAMEPLAY A (13 okien z przyrostem, 8 z ubytkiem) to przesunięcie tej ściany o ułamek metra (plaża na brzegu o udziale 0,7–0,95) i brzeg zalewu na siodle `coastDistance` (−32535, 39613), niżej. Znane miejsce siodła `coastDistance` GAMEPLAY A (−32790, −17513), okno 600 m: 760 → 669 par > 2 bloki na blok (bez nowych szwów; skupisko wokół osobliwości pola odległości zostaje). Okno 1 m 800 m przy (−4970, −3028) GAMEPLAY i 1 km przy (−233729, −135730) REAL: 0 par > 2 bloki na blok, 0 par > 1 m na 1 m.
+
+**`CoastTest`** (pas wydm liczony od szerokości plaży kolumny): REAL brzeg wydmowy 77,8% → 77,8%, GAMEPLAY 79,7% → 79,5% (0,2 pkt przechodzi do „ani jedno, ani drugie” = dna dolin przy ujściach), `lowShore` ≥ 0,5 bez zmian (79,2 / 80,0%); w pasie wydm 100% wydm i boru bażynowego (REAL biała 58,9 → 58,5%, szara 41,1 → 41,5%; GAMEPLAY 61,6 → 61,8%, 38,4 → 38,2%), 0 klifów. Z dawną stałą plażą 60 m·k w teście udział spadał do 97,6–98,1%, bo szersza plaża wchodziła w pas wydm.
+
+**Przeniesione z recenzji rundy 2 K8b1 (poważne): misa zalewu wycięta w zbocze — naprawione.** `lagoonCutHinterland` liczy siłę misy z reliefu w punkcie przesuniętym, więc misa wycinała pełne −6 m wody w zbocze, które w samej kolumnie ma 7–15 m. Teraz siła gaśnie też, gdy zaplecze samej kolumny rośnie od 3 do 9 m (`LAGOON_CUT_COLUMN_0`, `_1`). Warianty (GAMEPLAY A, okna 1 m po 400 m przy (−430, 14000) / (5700, −15750)):
+
+| Wariant | suche pary > 2 bl/bl | pary > 1 m | ląd ≤ 15 m od wody zalewu (maks.) | ubyło kolumn wody zalewu GAMEPLAY ±40 km |
+|---|---|---|---|---|
+| runda 2 K8b1 | 18 / 0 | 739 / 1770 | 15,0 / 17,6 m | — (113407 kolumn) |
+| bez progu, same wydmy K8b2 | 18 / 0 | 739 / 1770 | 15,0 / 17,6 m | 1274 |
+| kolumna 6–9 m | 26 / 4 | 726 / 1343 | 12,0 / 10,8 m | 1344 |
+| kolumna 5–7 m | 60 / 19 | 680 / 1076 | 10,5 / 9,2 m | 1388 |
+| kolumna 4–8 m | 0 / 0 | 372 / 0 | 10,5 / 9,1 m | 1889 |
+| kolumna 3–12 m | 0 / 0 | 124 / 0 | 11,8 / 9,1 m | 2330 |
+| ograniczenie głębokości cięcia (cięty jest najwyżej 3 m terenu nad morzem), bez progu | 0 / 0 | 385 / 0 | 13,1 / 8,4 m | 3579 |
+| **kolumna 3–9 m (wybrany)** | **0 / 0** | **6 / 0** | **10,5 / 9,0 m** | **3438** |
+
+Woda zalewu: siatka co 10 m, `landElevation`, wobec rundy 2 K8b1; we wszystkich wariantach przybyło też 363 kolumny. Same wydmy (pagórki wydm szarych na wewnętrznej stronie mierzei, szersza plaża) dają 1274 kolumny ubytku, więc wybrany próg zmniejsza wodę o ok. 1,9%, a cały K8b2 o 2,7% (netto). Warianty 6–9, 5–7, 4–8 i 3–9 mierzyłem jeszcze na wcześniejszej wersji prototypu wydm (plaża i wydma mogły być węższe niż w K5), pozostałe i liczby testu na wersji końcowej; okna leżą poza pasem wydm. Wąska rampa (5–7 m) robi własną ścianę: siła misy i jej mnożnik (wysokość + 6 m) rosną w tę samą stronę. Brzegi zalewów GAMEPLAY A ±40 km (komórki brzegu na siatce 10 m, okna 1 m): suche pary > 2 bloki na blok 82 → 46, ląd > 8 m w 10 m od wody 104 → 0; GAMEPLAY B 3169 → 2975 i 3730 → 3426 (w B to głównie ściany częściowych klifów przy zalewach). Kształt wewnętrznego brzegu prawie bez zmian (mapy kadrów Gthread (11850, −7950) i (−430, 14000): zatoki i cyple zostają, gęste poziomice przy zboczu rozchodzą się). Wyjątek: brzeg zalewu na siodle `coastDistance` przy (−32535, 39613) (odległość rośnie o 10–20 m na metr, a teren za dnem doliny 2,1 m wznosi się do 37 m na 45 m): w oknie 240 m 9 → 16 par po 3 bloki na blok (stopień 0,3 → 2,1 m na 1 m przy brzegu wody; każdy próg w zaplecze daje tam stromy brzeg, wariant 4–10 m: 13 par). Zdanie z rundy 2 K8b1 „w blokach jest najwięcej 2 bloki na blok (D4b dotrzymane)” było sprawdzone tylko w oknie kolca; w oknie (−430, 14000) runda 2 miała 18 par po 3 bloki na blok (poprawione tutaj).
+
+**`find cliff` (`PolishForestsCommands.Target.CLIFF`).** Cel trafiał w wysoką wydmę przednią niskiego brzegu, bo forma `CLIFF` w `sample` oznacza każdą kolumnę pasa brzegowego wyższą niż 8 m blisko morza. Teraz cel to forma `CLIFF` z udziałem brzegu niskiego < `Calibration.LOW_SHORE` (brzeg wysoki w siedliskach), krawędzią ≥ 12 m (`CLIFF_MIN_HEIGHT`) i ścianą: teren `landElevation` 4 m dalej w stronę morza leży co najmniej 6 m niżej (`hasSeawardWall`; ściana klifu w modelu ma 2,5 : 1, wydma rośnie najwyżej ok. 1 m na metr). Wyszukiwanie wzdłuż brzegu sprawdza do 24 odcinków zamiast 12 (`COASTAL_TRIES`; cele znajdowane w pierwszych 12 odcinkach nie zmieniają miejsca), bo w REAL najbliższe pełne klify leżą dalej. Wynik od (0, 0), ziarno 20260927: REAL wydma (−280548, 47230) (8,0 m, brzeg niski 0,56) → klif (−36057, 357786), 17,7 m, brzeg niski 0,00; GAMEPLAY (−1432, 6903), klif 14,6 m, brzeg niski 0,00 (ziarno B: (497, −1532), 15,8 m, 0,19). Sam warunek `lowShore` < 0,5 bez wysokości i ściany trafiał w REAL w częściowy klif 8,8 m o udziale brzegu niskiego 0,49 (−280451, 46602). Nowy test `PolishForestsCommandsTest.cliffIsAHighShore` (obie skale); `matches` sprawdza też miejsca znalezione w `everyTargetIsFoundInGameplayScale` i `coastAndWatersAreFoundInRealisticScale`. Gametest `views` (miejsce `cliff`) bierze cel z tej samej komendy, więc w K8z pokaże klif.
+
+**Złoty test.** Raport `-PgoldenReport=build/golden_K8b2.txt`: wobec listy K8b1 dochodzą łaty `beach` i `coast` w REAL A i GAMEPLAY A, `GAMEPLAY B / coast` oraz `river_mouth` w REAL B, GAMEPLAY A i GAMEPLAY B (wydmy przy ujściach). Łaty `cliff` i kontrolne `*_interior` bez zmian. Rzeki: sieć liczy trasy z `landElevation`, ale wydmy i plaża zmieniają tylko pas 800 m·k od brzegu, a próg misy zalewu tylko zalewy; A/B `sample` w 20 000 losowych punktach dalej niż 6 km·meso od morza: REAL ±150 km 0 zmian, GAMEPLAY ±40 km 5 punktów zmienionych o > 5 cm (3 o > 1 m, najwięcej 1,5 m). Lista `src/test/golden-allow/K8b2.txt` (narastająca z K8a i K8b1, domyślna).
+
+**Testy.** Zmienione lub nowe: `CoastTest` (pas wydm od szerokości plaży kolumny), `LagoonDeltaTest.lagoonShoresHaveNoWalls` (okna GAMEPLAY A (−430, 14000) i (5700, −15750) po 400 m: 0 suchych par > 2 bloki na blok, 0 przecieków, najwyżej 20 par > 1 m na 1 m, ląd w 15 m od wody zalewu najwyżej 11 / 10 m; teraz 6 / 0 par i 10,5 / 9,0 m, na stanie rundy 2 K8b1 18 / 0 par po 3 bloki, 739 / 1770 par > 1 m, 15,0 / 17,6 m), `PolishForestsCommandsTest.cliffIsAHighShore`, `SurfaceContinuityTest` okno `gameplay_lagoon`: limit 0,96 → 0,97 m (9 skoków do 0,962 m, te same miejsca i mechanizm co w K8b1: pierścień koryta podniesiony do poziomu + 1 m przy ujściu). Commity pośrednie: `ab2de13` (wydmy, plaża, próg misy zalewu; po kompilacji, `fastTest` i klasach `GoldenTerrainTest` z listą K8b2, `CoastTest`, `LagoonDeltaTest`, `HabitatClassifierTest`, `LandscapeModelTest`, `SurfaceContinuityTest`, `WaterContainmentTest`, `TerrainDeterminismTest`, `BiomeSharesTest`) i `9ea7c9f` (`find cliff`; po `fastTest` i `PolishForestsCommandsTest`).
+
+**Pełny `test`** (`tools/dev/run-tests test`): PASS (723 s; drzewo `2676502ca749`, potem tylko ten wpis w dokumentacji).
+
+**Siedliska** (`landscapePreview -PhabitatsOnly`, baza `e63f691` → K8b2, procent kolumn kadrów REAL / GAMEPLAY): plaża 0,010 / 0,277 → 0,010 / 0,272%, wydma biała 0,016 / 0,411 → 0,017 / 0,412%, wydma szara 0,014 / 0,516 → 0,015 / 0,563%, bór bażynowy 0,044 / 1,467 → 0,043 / 1,476%, zalew 0,035 / 0,160 → 0,034 / 0,155%, ols 2,422 / 1,988 → 2,421 / 1,948%, torfowisko niskie 0,019 / 0,068 → 0,019 / 0,066%; strefy: linia przyboju 0,006 / 0,187 → 0,007 / 0,183%, wydma inicjalna 0,002 / 0,062 → 0,002 / 0,068%, ściana i korona klifu bez zmian (0,000 / 0,024 i 0,000 / 0,020%). Kadr `gameplay_coast_lagoon_3km`: plaża zmiennej szerokości, wydmy białe i szare idą za nowym grzbietem. Plików podglądu w `docs/m2` nie odświeżam (K8z).
+
+**Koszt.** `costTest -PcostRuns=15`, A/B w jednej sesji (K8b2, baza `e63f691` w osobnym drzewie roboczym, znów K8b2), µs na kolumnę (stosunek do M1: mediana / z minimów):
+
+| Obszar | K8b2, przebieg 1 | Baza | K8b2, przebieg 2 |
+|---|---|---|---|
+| REAL cały obszar | 4,30 (1,124 / 1,134) | 4,29 (1,146 / 1,135) | 4,24 (1,125 / 1,134) |
+| REAL Beskidy | 6,92 (1,117 / 1,115) | 6,99 (1,112 / 1,115) | 6,97 (1,114 / 1,118) |
+| REAL wielki masyw | 6,45 (0,987 / 0,991) | 6,45 (0,991 / 0,992) | 6,47 (0,998 / 0,987) |
+| GAMEPLAY cały obszar | 6,40 (1,210 / 1,210) | 6,38 (1,205 / 1,200) | 6,34 (1,203 / 1,195) |
+| GAMEPLAY Beskidy | 11,10 (1,186 / 1,189) | 11,03 (1,180 / 1,178) | 11,04 (1,176 / 1,172) |
+| GAMEPLAY wielki masyw | 12,07 (1,156 / 1,143) | 12,04 (1,143 / 1,139) | 12,04 (1,140 / 1,136) |
+
+Czas kolumny jak w bazie (GAMEPLAY cały obszar 6,34–6,40 wobec 6,38 µs): nowe szumy liczą się tylko w pasie 800 m·k od brzegu. Limity bezwzględne D1 dotrzymane (`costTest` przechodzi). Stosunek do M1 w GAMEPLAY 1,20–1,21, tak samo w bazie (1,205): budżet nadal bez zapasu, jak po K8b1.
+
+**Odstępstwa od zadania K8b2:**
+1. Plaża i wydma przednia są tylko szersze albo tak samo strome jak w K5 (plaża wznosi się na co najmniej 60 m·k, wydma ma co najmniej 130 m·k szerokości), bo przy siodłach pola `coastDistance` węższy profil byłby bardziej stromy; plaża węższa niż 60 m·k (zwykle do ok. 35 m·k) zaczyna się więc wydmą na jeszcze wznoszącej się plaży.
+2. Zmiany wzdłuż brzegu tylko przy udziale brzegu niskiego ≥ 0,7 (pełne od 0,95); częściowy klif zostaje z prostym profilem K5, żeby nie zwiększać liczby par na jego ścianie 2,5 : 1 (z progiem 0,6–0,9 GAMEPLAY A miał 612 → 617 takich par, z 0,7–0,95 615 w oknach 120 m).
+3. Niecka deflacyjna leży na poziomie zaplecza (ok. 2 m), a nie niżej: niższa zmieniałaby poziomy rzek przy ujściach (`landElevation`, D5a) i dawała suche zagłębienia przy wodzie.
+4. Wydmy paraboliczne i ruchome (Mierzeja Łebska, 30–50 m) nie weszły (wyjątek jednej mierzei, „Co zostaje”).
+5. Siodła obniżają grzbiet do ok. 3–4 m, więc p10 grzbietu (4,2–4,7 m) leży poniżej 6 m z D5; poza siodłami 6–15 m.
+6. Próg misy zalewu w kolumnie zmniejsza wodę zalewu GAMEPLAY ±40 km o ok. 1,9% (razem z wydmami −2,7%); na siodle `coastDistance` (−32535, 39613) przy brzegu zalewu przybywa 7 par po 3 bloki na blok (wyżej).
+
+**Co zostaje:** wydmy paraboliczne i ruchome jako osobna forma (M5), osobliwości `coastDistance` przy siodłach pola morza (skupiska (−32790, −17513), (−32535, 39613) GAMEPLAY A, znane od K5; wymagałyby innego pola odległości), budżet D1 bez zapasu, zrzuty w grze `coastal_dunes`, `beach` i `cliff` w K8z.
