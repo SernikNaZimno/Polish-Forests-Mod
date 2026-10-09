@@ -56,7 +56,7 @@ public final class SurfaceBuilder {
 
 	private final VerticalScale vertical;
 	/** Summaries of the columns near chunk borders, shared by the chunks of the world seed (review of S6, round 1). */
-	private final ColumnCache cache = new ColumnCache(1 << 17);
+	private final ColumnCache cache = new ColumnCache(1 << 18);
 	private final boolean coverInBlocks;
 	private final boolean debug;
 	private final Noise soil;
@@ -211,12 +211,14 @@ public final class SurfaceBuilder {
 			}
 			out.profile[i] = profile;
 		}
-		// The columns that the plans of the neighboring chunks may look up (within the ramp's reach of the border).
+		// The columns that the plans of the neighboring chunks may look up: within the ramp's reach of the border, and
+		// near water also farther, within the guard's reach (BankShelf.GUARD_REACH covers the whole chunk).
 		int r = BankShelf.RAMP;
 		for (int i = 0; i < 256; i++) {
 			int x = i >> 4;
 			int z = i & 15;
-			if (x < r || x > 15 - r || z < r || z > 15 - r) {
+			if (x < r || x > 15 - r || z < r || z > 15 - r
+					|| BankShelf.waterMayBeWithin(columns[i], 2 * BankShelf.GUARD_REACH)) {
 				cache.publish(minX + x, minZ + z, summary(columns[i], minY, maxY));
 			}
 		}
@@ -246,10 +248,13 @@ public final class SurfaceBuilder {
 		final int[] modelTop = new int[256];
 		final int[] modelWater = new int[256];
 		final double[] microQ = new double[256];
-		/** Result of {@link #nearestWater}: Chebyshev distance and highest water top at that distance, and the ramp top. */
+		/**
+		 * Result of {@link #nearestWater}: Chebyshev distance of the nearest water, the ramp top and the fade term
+		 * ({@link BankShelf#drop}).
+		 */
 		int nearestDist;
-		int nearestLevel;
 		int rampTop;
+		int fadeTerm;
 
 		Work(SurfaceBuilder builder, ColumnSample[] columns, int[] codes, int minX, int minZ, int minY, int maxY,
 				Sampler outside) {
@@ -325,12 +330,12 @@ public final class SurfaceBuilder {
 
 		/**
 		 * Looks for fresh (not sea) model water within Chebyshev {@link BankShelf#RAMP} of a column: sets
-		 * {@link #nearestDist} and {@link #nearestLevel} (the distance of the nearest water and the highest water top at
-		 * that distance) and {@link #rampTop}, the lowest {@code W + k − 1} over the water columns within reach (water top
-		 * {@code W}, distance {@code k}: a ramp of one block per column from every water, 1-Lipschitz also where the water
-		 * level steps), and returns true, or returns false without water. Columns outside the chunk are sampled when the
-		 * window reaches beyond the chunk and the column's own fields put water near ({@link BankShelf#waterMayBeNear}), so
-		 * the result is the same whichever chunk computes it.
+		 * {@link #nearestDist} (the distance of the nearest water), {@link #rampTop}, the lowest {@code W + k − 1} over the
+		 * water columns within reach (water top {@code W}, distance {@code k}: a ramp of one block per column from every
+		 * water, 1-Lipschitz also where the water level steps) and {@link #fadeTerm}, the lowest {@code k − W} (the fade of
+		 * high banks, {@link BankShelf#drop}), and returns true, or returns false without water. Columns outside the chunk
+		 * are sampled when the window reaches beyond the chunk and the column's own fields put water near
+		 * ({@link BankShelf#waterMayBeNear}), so the result is the same whichever chunk computes it.
 		 */
 		boolean nearestWater(int i) {
 			int x = i >> 4;
@@ -341,8 +346,8 @@ public final class SurfaceBuilder {
 			boolean outsideToo = border < BankShelf.RAMP && !waterInside(x, z, border)
 					&& BankShelf.waterMayBeNear(columns[i]);
 			nearestDist = 0;
-			nearestLevel = ChunkSurface.NO_WATER;
 			rampTop = Integer.MAX_VALUE;
+			fadeTerm = Integer.MAX_VALUE;
 			for (int k = 1; k <= BankShelf.RAMP; k++) {
 				int best = ChunkSurface.NO_WATER;
 				int lowest = Integer.MAX_VALUE;
@@ -370,9 +375,9 @@ public final class SurfaceBuilder {
 				}
 				if (nearestDist == 0) {
 					nearestDist = k;
-					nearestLevel = best;
 				}
 				rampTop = Math.min(rampTop, lowest + k - 1);
+				fadeTerm = Math.min(fadeTerm, k - best);
 			}
 			return nearestDist > 0;
 		}
@@ -424,52 +429,89 @@ public final class SurfaceBuilder {
 		}
 
 		/**
-		 * For each column the highest water top of an open edge of the model within Chebyshev {@code radius} in the
-		 * chunk, or {@link ChunkSurface#NO_WATER}: a water column with a neighbor in the chunk that has neither ground nor
-		 * water at its water's Y (a step of the river level, the mouth of a tributary), from which water flows.
+		 * Guard of the shelf ({@link BankShelf}, review of S6, round 2) for the columns of the chunk marked in
+		 * {@code candidates}: the largest {@code min(W, a) − max(0, m − GUARD_FULL)} over the fresh (not sea) model water
+		 * within Manhattan distance {@code m ≤ GUARD_REACH} of the column, also outside the chunk (water top {@code W},
+		 * model top {@code a} of the column), or {@link ChunkSurface#NO_WATER}. Within {@code GUARD_FULL} blocks of water
+		 * the shelf thus never goes below it (water flowing from an open edge of the model spreads at most 7 blocks), and
+		 * beyond it the guard fades by one block per block. Every term changes by at most one block between two neighbors
+		 * on flat model ground, and the terms cut off at {@code GUARD_REACH} are at most {@code a − MAX_DROP}, so the guard
+		 * never makes a step there, also where the nearest channel switches (confluences, braided channels, seams between
+		 * streams), and it is the same whichever chunk computes it. A column outside the chunk is sampled only when it lies
+		 * within reach of a candidate and the nearest column of the chunk puts water near it by its own fields
+		 * ({@link BankShelf#waterMayBeWithin}).
 		 */
-		int[] openEdgesWithin(int radius) {
-			int[] src = new int[256];
-			boolean any = false;
+		int[] guardField(boolean[] candidates) {
+			final int reach = BankShelf.GUARD_REACH;
+			final int full = BankShelf.GUARD_FULL;
+			final int e = 16 + 2 * reach;
+			// Columns outside the chunk within reach of a candidate near the border.
+			boolean[] needed = new boolean[e * e];
 			for (int i = 0; i < 256; i++) {
-				int water = modelWater[i];
-				if (water != ChunkSurface.NO_WATER) {
-					boolean open = false;
-					for (int dir = 0; dir < 4 && !open; dir++) {
-						int n = neighbor(i, dir);
-						open = n >= 0 && modelTop[n] < water
-								&& (modelWater[n] == ChunkSurface.NO_WATER || modelWater[n] < water);
-					}
-					if (!open) {
-						water = ChunkSurface.NO_WATER;
+				if (!candidates[i]) {
+					continue;
+				}
+				int x = i >> 4;
+				int z = i & 15;
+				if (Math.min(Math.min(x, 15 - x), Math.min(z, 15 - z)) >= reach) {
+					continue;
+				}
+				for (int dx = -reach; dx <= reach; dx++) {
+					int nx = x + dx;
+					int rz = reach - Math.abs(dx);
+					for (int dz = -rz; dz <= rz; dz++) {
+						int nz = z + dz;
+						if (nx < 0 || nx > 15 || nz < 0 || nz > 15) {
+							needed[(nx + reach) * e + nz + reach] = true;
+						}
 					}
 				}
-				src[i] = water;
-				any |= water != ChunkSurface.NO_WATER;
 			}
-			if (!any) {
-				return src;
-			}
-			// Separable maximum filter: along z, then along x.
-			int[] tmp = new int[256];
-			for (int x = 0; x < 16; x++) {
-				for (int z = 0; z < 16; z++) {
-					int m = ChunkSurface.NO_WATER;
-					for (int k = Math.max(0, z - radius); k <= Math.min(15, z + radius); k++) {
-						m = Math.max(m, src[x << 4 | k]);
+			int[] f = new int[e * e];
+			for (int ex = 0; ex < e; ex++) {
+				int x = ex - reach;
+				for (int ez = 0; ez < e; ez++) {
+					int z = ez - reach;
+					int water = ChunkSurface.NO_WATER;
+					if (x >= 0 && x < 16 && z >= 0 && z < 16) {
+						water = freshWater(x << 4 | z);
+					} else if (needed[ex * e + ez]) {
+						int nx = Math.clamp(x, 0, 15);
+						int nz = Math.clamp(z, 0, 15);
+						if (BankShelf.waterMayBeWithin(columns[nx << 4 | nz], Math.hypot(x - nx, z - nz))) {
+							water = farFreshWater(minX + x, minZ + z);
+						}
 					}
-					tmp[x << 4 | z] = m;
+					f[ex * e + ez] = water;
+				}
+			}
+			// Maximum within Manhattan distance k: k cross dilations, the valid region shrinking by one per dilation.
+			int[][] m = new int[reach - full + 1][];
+			int[] g = f;
+			for (int k = 1; k <= reach; k++) {
+				int[] next = new int[e * e];
+				for (int ex = k; ex < e - k; ex++) {
+					for (int ez = k; ez < e - k; ez++) {
+						int c = ex * e + ez;
+						next[c] = Math.max(Math.max(g[c], Math.max(g[c - e], g[c + e])), Math.max(g[c - 1], g[c + 1]));
+					}
+				}
+				g = next;
+				if (k >= full) {
+					m[k - full] = g;
 				}
 			}
 			int[] out = new int[256];
-			for (int x = 0; x < 16; x++) {
-				for (int z = 0; z < 16; z++) {
-					int m = ChunkSurface.NO_WATER;
-					for (int k = Math.max(0, x - radius); k <= Math.min(15, x + radius); k++) {
-						m = Math.max(m, tmp[k << 4 | z]);
+			for (int i = 0; i < 256; i++) {
+				int c = ((i >> 4) + reach) * e + (i & 15) + reach;
+				int best = ChunkSurface.NO_WATER;
+				for (int k = 0; k < m.length; k++) {
+					int water = m[k][c];
+					if (water != ChunkSurface.NO_WATER) {
+						best = Math.max(best, Math.min(water, modelTop[i]) - k);
 					}
-					out[x << 4 | z] = m;
 				}
+				out[i] = best;
 			}
 			return out;
 		}

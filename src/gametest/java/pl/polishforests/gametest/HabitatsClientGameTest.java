@@ -700,9 +700,11 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 
 	/**
 	 * Bank shelf in the world (§7.2, §12.3) in the areas of the scale: the large river of the stage measurement, the
-	 * lake reedbed, the alder carr (puddles), the willow-poplar forest place and the places of the review of S6 (oxbow
-	 * lake; stream, bog woodland by a stream). In 5 × 5 full chunks around each area the shore columns of the surface plan
-	 * (dry shelf zone or lake shore columns next to water) must have water beside their top block in at least 90% of cases,
+	 * lake reedbed, the alder carr (puddles), the willow-poplar forest place and the places of the review of S6 (round 1:
+	 * oxbow lake; stream, bog woodland by a stream; round 2: stepped mountain stream, seam between channels; confluence,
+	 * oxbow lake near a channel). In 5 × 5 full chunks around each area the shore columns of the surface plan (dry shelf
+	 * zone or lake shore columns next to water; without the stepped mountain stream) must have water beside their top
+	 * block in at least 90% of cases,
 	 * and the shelf must make no step of 2 or more blocks where the model is flat. Then every water block of the plan's
 	 * surface (also of the puddles) gets a scheduled fluid tick, as if a neighbor had changed. The plan must have no open
 	 * water edge (water with air beside it at the same Y) that the model does not already have, and after
@@ -716,11 +718,17 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 		// The four areas of S6 and the places of the review of S6, round 1: the oxbow lake (realistic scale), a stream and the
 		// bog woodland by a stream (gameplay scale), where the first shelf made walls and let the water of the model's open
 		// edges spread over removed ground.
+		// Round 2: a stepped mountain stream with open edges across chunk borders and a seam between channels (realistic
+		// scale), a confluence and oxbow lake banks near a channel (gameplay scale), where the guard of round 1 made walls
+		// and pillars and let water spill into removed ground.
 		int[][] areas = real
-				? new int[][] {{-19_484, 11_253}, soil[3], soil[2], soil[0], {-4_389, 2_169}}
-				: new int[][] {{-1_851, 6_022}, soil[3], soil[2], soil[0], {-134, -52}, {210, 54}};
-		String[] names = real ? new String[] {"river", "lake_reedbed", "alder_carr", "willow_poplar_forest", "oxbow_lake"}
-				: new String[] {"river", "lake_reedbed", "alder_carr", "willow_poplar_forest", "stream", "bog_woodland_stream"};
+				? new int[][] {{-19_484, 11_253}, soil[3], soil[2], soil[0], {-4_389, 2_169}, {59_458, 136_152}, {87_433, -42_036}}
+				: new int[][] {{-1_851, 6_022}, soil[3], soil[2], soil[0], {-134, -52}, {210, 54}, {17_086, 16_598},
+						{-14_271, 22_791}};
+		String[] names = real ? new String[] {"river", "lake_reedbed", "alder_carr", "willow_poplar_forest", "oxbow_lake",
+				"cascade", "channel_seam"}
+				: new String[] {"river", "lake_reedbed", "alder_carr", "willow_poplar_forest", "stream", "bog_woodland_stream",
+						"confluence", "oxbow_near_channel"};
 		StringBuilder report = new StringBuilder("bank shelf:");
 		long shoreAll = 0;
 		long wetAll = 0;
@@ -739,8 +747,11 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 			context.takeScreenshot(prefix + name + "_" + scale);
 			// counts: shore, wet shore, scheduled, shelf steps; after: S6 spills, model spills, ticks still scheduled, new
 			// open edges
-			shoreAll += counts[0];
-			wetAll += counts[1];
+			if (!name.equals("cascade")) {
+				// On the stepped mountain stream the guard keeps the banks at the upper water level on purpose.
+				shoreAll += counts[0];
+				wetAll += counts[1];
+			}
 			report.append(String.format(Locale.ROOT, " %s: shore columns %d, water beside the top %d, steps of 2 or more by the "
 					+ "shelf on flat model ground %d, %d water ticks scheduled, open water edges not in the model %d, after %d "
 					+ "ticks water outside the plan in removed ground or away from the open edges of the model %d, above the "

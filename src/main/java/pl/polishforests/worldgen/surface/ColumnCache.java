@@ -6,9 +6,10 @@ import pl.polishforests.worldgen.landscape.ColumnSample;
 import pl.polishforests.worldgen.landscape.Noise;
 
 /**
- * Lock-free cache of the column summaries that the surface plan of a chunk needs from its neighbors (the bank shelf
- * looks up to {@link BankShelf#RAMP} blocks beyond the chunk, review of S6, round 1), shared by all chunks of a world
- * seed. Every plan publishes the summaries of the columns within {@code RAMP} blocks of its border, so a later neighbor
+ * Lock-free cache of the column summaries that the surface plan of a chunk needs from its neighbors (the ramp of the bank
+ * shelf looks up to {@link BankShelf#RAMP} blocks beyond the chunk, review of S6, round 1, and its guard near water up
+ * to {@link BankShelf#GUARD_REACH}, round 2), shared by all chunks of a world seed. Every plan publishes the summaries
+ * of the columns within {@code RAMP} blocks of its border and of the columns near water, so a later neighbor
  * reads them instead of sampling the model; a column that a plan has to sample outside its chunk is kept with its full
  * sample, which the generator takes when it fills that column's own chunk ({@link #takeSample}). Each column is then
  * sampled about once, whichever chunk comes first.

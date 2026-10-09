@@ -57,12 +57,20 @@ class BankShelfTest {
 			out.put("oxbow_lake", new int[] {-4_389, 2_169});
 			out.put("lake_reedbed", new int[] {-4_160, 4_096});
 			out.put("tunnel_lake", new int[] {4_301, -23_367});
+			// Review of S6, round 2: a stepped mountain stream (levels 202-212 every 10-15 blocks, open edges across chunk
+			// borders) and a seam between channels.
+			out.put("cascade", new int[] {59_458, 136_152});
+			out.put("channel_seam", new int[] {87_432, -42_036});
 		} else {
 			out.put("oxbow_lake", new int[] {1_643, -452});
 			out.put("tunnel_lake", new int[] {-20_280, 10_620});
 			out.put("willow_poplar", new int[] {-640, 3_200});
 			out.put("stream", new int[] {-134, -52});
 			out.put("bog_woodland_stream", new int[] {210, 54});
+			// Review of S6, round 2: a confluence with 3-block pillars, oxbow lake banks near a channel, a stepped stream.
+			out.put("confluence", new int[] {17_085, 16_600});
+			out.put("oxbow_near_channel", new int[] {-14_271, 22_788});
+			out.put("stepped_stream", new int[] {20_028, -8_612});
 		}
 		put(out, f, "tall_herbs", 0, 0, p -> Habitat.zone(f.code(p[0], p[1])) == Zone.TALL_HERBS);
 		put(out, f, "point_bar", 0, 0, p -> Habitat.zone(f.code(p[0], p[1])) == Zone.POINT_BAR);
@@ -71,6 +79,9 @@ class BankShelfTest {
 		put(out, f, "shore_reedbed", 0, 0, p -> Habitat.zone(f.code(p[0], p[1])) == Zone.SHORE_REEDBED);
 		put(out, f, "alder_carr", 0, 0, p -> patch(f, p, HabitatBiome.ALDER_CARR));
 		put(out, f, "bog_woodland", 0, 0, p -> patch(f, p, HabitatBiome.BOG_WOODLAND));
+		// Review of S6, round 2: puddles on the chunk edge of raised bogs (rare in the realistic scale: start at a known one).
+		int[] bog = real ? new int[] {-230_158, -137_746} : new int[] {0, 0};
+		put(out, f, "raised_bog", bog[0], bog[1], p -> patch(f, p, HabitatBiome.RAISED_BOG));
 		// A mountain stream in the Beskids of the stage measurement (review of S6: bare rock in the gameplay-scale beds).
 		int[] beskids = real ? new int[] {154_834, 1_058_738} : new int[] {27_609, 3_254};
 		put(out, f, "mountain_stream", beskids[0], beskids[1], p -> Habitat.biome(f.code(p[0], p[1])) == HabitatBiome.STREAM);
@@ -79,7 +90,7 @@ class BankShelfTest {
 
 	private static void put(Map<String, int[]> out, SurfaceFixture f, String name, int x0, int z0, Predicate<int[]> test) {
 		// Narrow zones on a fine spiral, biomes (raised bogs are rare in the realistic scale) on a coarse one.
-		int step = name.equals("alder_carr") || name.equals("bog_woodland") ? 160 : name.equals("mountain_stream") ? 16 : 40;
+		int step = name.equals("alder_carr") || name.equals("bog_woodland") || name.equals("raised_bog") ? 160 : name.equals("mountain_stream") ? 16 : 40;
 		int[] p = f.find(x0, z0, step, 60_000, test);
 		assertNotNull(p, f.scale + ": no " + name + " found");
 		out.put(name, p);
@@ -169,17 +180,26 @@ class BankShelfTest {
 			SurfaceFixture f = new SurfaceFixture(scale, true);
 			long samples0 = SurfaceBuilder.OUTSIDE_SAMPLES.sum();
 			long[] total = new long[15];
+			// Shore share and grown model steps without the stepped mountain stream, where the guard keeps the banks at
+			// the upper water level on purpose (review of S6, round 2): [shore, with water, lowered, grown].
+			long[] shares = new long[4];
 			for (Map.Entry<String, int[]> area : areas(f).entrySet()) {
 				Grid g = new Grid(f, area.getValue());
 				long[] n = area(g, area.getKey(), failures, dry);
 				for (int k = 0; k < n.length; k++) {
 					total[k] += n[k];
 				}
+				if (!area.getKey().equals("cascade")) {
+					shares[0] += n[0];
+					shares[1] += n[1];
+					shares[2] += n[2];
+					shares[3] += n[5];
+				}
 				perArea.put(scale + " " + area.getKey(), String.format(Locale.ROOT, "shore %d/%d, lowered %d, walls %d/%d/%d, "
 						+ "flow into removed ground %d, ditch %d, below water %d, stream bed %d/%d", n[1], n[0], n[2], n[4], n[5],
 						n[6], n[7], n[8], n[9], n[12], n[11]));
 			}
-			double share = (double) total[1] / Math.max(1, total[0]);
+			double share = (double) shares[1] / Math.max(1, shares[0]);
 			report.append(String.format(Locale.ROOT, "%s: %.1f neighbor samples outside the chunk per chunk in %d chunks; ", scale,
 					(double) (SurfaceBuilder.OUTSIDE_SAMPLES.sum() - samples0) / Math.max(1, f.chunks()), f.chunks()));
 			report.append(String.format(Locale.ROOT, "%s: shore columns %d, with water beside the top block %d (%.1f%%), lowered "
@@ -187,10 +207,13 @@ class BankShelfTest {
 					+ "to >= 2 %d, model step >= 2 grown by more than 1 %d; water from the model's open edges flowing over removed "
 					+ "ground %d columns; lowered columns without water within 4 blocks %d; dry ground below water within 2 blocks "
 					+ "%d; shore bed %d (%d mud or gravel); mountain stream bed %d (%d gravel or cobblestone); ",
-					scale, total[0], total[1], 100 * share, total[2], total[3], total[4], total[5], total[6], total[7], total[8],
+					scale, total[0], total[1], 100.0 * total[1] / Math.max(1, total[0]), total[2], total[3], total[4], total[5], total[6], total[7], total[8],
 					total[9], total[13], total[14], total[11], total[12]));
-			if (total[0] < 200 || share < 0.9) {
-				failures.add(scale + ": shore share " + share + " of " + total[0]);
+			report.append(String.format(Locale.ROOT, "%s without the stepped mountain stream: shore columns %d, with water beside the "
+					+ "top block %.1f%%, model step 1 grown to >= 2 %d at %d lowered columns; ", scale, shares[0], 100 * share,
+					shares[3], shares[2]));
+			if (shares[0] < 200 || share < 0.9) {
+				failures.add(scale + ": shore share " + share + " of " + shares[0]);
 			}
 			if (total[2] == 0) {
 				failures.add(scale + ": no column was lowered");
@@ -200,9 +223,10 @@ class BankShelfTest {
 						+ ", grown model steps " + total[6] + ", flow over removed ground " + total[7] + ", ditches " + total[8]
 						+ ", ground below water " + total[9]);
 			}
-			// A model step of 1 block may grow to 2 only where the shelf meets a bank higher than MAX_DROP (rare).
-			if (total[5] > 0.01 * total[2]) {
-				failures.add(scale + ": model steps of 1 grown to 2 or more: " + total[5] + " at " + total[2] + " lowered columns");
+			// A model step of 1 block may grow to 2 where the ramp goes down a bank rising away from the water (rare but on the
+			// steep banks of the stepped mountain stream).
+			if (shares[3] > 0.01 * shares[2]) {
+				failures.add(scale + ": model steps of 1 grown to 2 or more: " + shares[3] + " at " + shares[2] + " lowered columns");
 			}
 			if (total[13] < 100 || total[14] != total[13]) {
 				failures.add(scale + ": shore bed " + total[14] + " of " + total[13]);
@@ -214,6 +238,63 @@ class BankShelfTest {
 		System.out.println(report);
 		System.out.println("per area: " + perArea);
 		System.out.println("shore columns without water beside the top: " + dry);
+		assertTrue(failures.isEmpty(), failures + "; " + report);
+	}
+
+	/** Number of random water areas per scale of {@link #shelfOverRandomWaterAreas}. */
+	private static final int RANDOM_AREAS = 120;
+
+	/**
+	 * Random areas of rivers and lakes (review of S6, round 2: confluences, braided channels, seams between two streams,
+	 * oxbow lakes near a channel and stepped mountain streams, which the named areas lack): no step of 2 or more on flat
+	 * model ground, no water flowing from an open edge of the model over removed ground, no new open water edges, no
+	 * ditch and no dry ground below nearby water.
+	 */
+	@Test
+	void shelfOverRandomWaterAreas() {
+		List<String> failures = new ArrayList<>();
+		StringBuilder report = new StringBuilder();
+		for (PolandScale scale : PolandScale.values()) {
+			SurfaceFixture f = new SurfaceFixture(scale, true);
+			long samples0 = SurfaceBuilder.OUTSIDE_SAMPLES.sum();
+			boolean real = scale == PolandScale.REALISTIC;
+			int range = real ? 150_000 : 25_000;
+			long[] total = new long[15];
+			List<String> worst = new ArrayList<>();
+			int areas = 0;
+			for (int k = 0; areas < RANDOM_AREAS && k < 50_000; k++) {
+				long h = pl.polishforests.worldgen.landscape.Noise.mix(k * 0x9E3779B97F4A7C15L + (real ? 1007 : 1013));
+				int x = (int) Math.floorMod(h, 2L * range) - range;
+				int z = (int) Math.floorMod(h >>> 32, 2L * range) - range;
+				pl.polishforests.worldgen.landscape.ColumnSample s = f.model.sample(x, z);
+				if (!s.hasWater() || !(s.waterKind() == pl.polishforests.worldgen.landscape.WaterKind.RIVER
+						|| s.waterKind().isLake())) {
+					continue;
+				}
+				areas++;
+				List<String> local = new ArrayList<>();
+				long[] n = area(new Grid(f, new int[] {x, z}), "a" + areas + "@" + x + "," + z, local, new TreeMap<>());
+				for (int j = 0; j < n.length; j++) {
+					total[j] += n[j];
+				}
+				if (n[3] + n[4] + n[6] + n[7] + n[8] + n[9] > 0) {
+					worst.add(String.format(Locale.ROOT, "(%d, %d): open %d, walls %d, grown %d, flow %d, ditch %d, below %d; %s",
+							x, z, n[3], n[4], n[6], n[7], n[8], n[9], local.subList(0, Math.min(3, local.size()))));
+				}
+			}
+			double share = (double) total[1] / Math.max(1, total[0]);
+			report.append(String.format(Locale.ROOT, "%s: %d areas, %d chunks, %.1f neighbor samples outside the chunk per chunk, "
+					+ "shore columns %d (%.1f%% with water beside the top), lowered %d, new open edges %d, steps >= 2 on flat model "
+					+ "ground %d, model step 1 grown to >= 2 %d, grown by more than 1 %d, flow over removed ground %d, ditches %d, "
+					+ "ground below water %d; ", scale, areas, f.chunks(),
+					(double) (SurfaceBuilder.OUTSIDE_SAMPLES.sum() - samples0) / Math.max(1, f.chunks()), total[0], 100 * share,
+					total[2], total[3], total[4], total[5], total[6], total[7], total[8], total[9]));
+			if (areas < RANDOM_AREAS || total[3] + total[4] + total[6] + total[7] + total[8] + total[9] > 0
+					|| total[5] > 0.01 * total[2] || share < 0.9) {
+				failures.add(scale + ": " + worst.subList(0, Math.min(10, worst.size())));
+			}
+		}
+		System.out.println(report);
 		assertTrue(failures.isEmpty(), failures + "; " + report);
 	}
 
@@ -408,8 +489,12 @@ class BankShelfTest {
 		for (PolandScale scale : PolandScale.values()) {
 			SurfaceFixture f = new SurfaceFixture(scale, true);
 			Map<String, int[]> a = areas(f);
-			for (String name : List.of("alder_carr", "bog_woodland")) {
-				HabitatBiome biome = name.equals("alder_carr") ? HabitatBiome.ALDER_CARR : HabitatBiome.BOG_WOODLAND;
+			for (String name : List.of("alder_carr", "bog_woodland", "raised_bog")) {
+				HabitatBiome biome = switch (name) {
+					case "alder_carr" -> HabitatBiome.ALDER_CARR;
+					case "bog_woodland" -> HabitatBiome.BOG_WOODLAND;
+					default -> HabitatBiome.RAISED_BOG;
+				};
 				int cx0 = (a.get(name)[0] >> 4) - GRID / 2;
 				int cz0 = (a.get(name)[1] >> 4) - GRID / 2;
 				long n = 0;
