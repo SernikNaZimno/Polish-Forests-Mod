@@ -716,7 +716,7 @@ Reguły:
 - W strefach ŁACHA, WIKLINA (pierwsze 1–2 bloki od wody), ZIOLOROSLA, SZUWAR_LADOWY i przy brzegach jezior `fill()` obniża wierzch gruntu tak, by górny blok gruntu leżał na tym samym Y co górny blok wody.
 - Woda się nie rozleje: stały blok na tym samym Y jest dla niej ścianą, a nad półką jest powietrze.
 - W GAMEPLAY (ok. 0,4 bloku na metr) lustro + 1 m często daje ten sam blok co lustro. Wtedy półka nic nie zmienia. Test sprawdza bloki, nie metry. *Pomiar S6:* w obu skalach część brzegów i den dolin leży 2–3 bloki nad lustrem (przy dużej rzece GAMEPLAY półka S6 obniżyła 661 kolumn), więc półka działa także w GAMEPLAY.
-- *Od rundy 1 recenzji S6 (§7.6):* zamiast obniżania całych stref do lustra rampa 1 bloku na kolumnę od najbliższej wody modelu, najwyżej 3 bloki od wody, bez progów na granicach stref i chunków.
+- *Od rundy 1 recenzji S6 (§7.6):* zamiast obniżania całych stref do lustra rampa 1 bloku na kolumnę od najbliższej wody modelu, najwyżej 3 bloki od wody, bez progów na granicach stref i chunków. *Od rundy 2:* rampa nie schodzi poniżej lustra żadnej wody modelu w odległości Manhattan do 9 bloków, także za granicą chunka, więc przy schodkowej wodzie brzeg zostaje na wyższym lustrze.
 - **Dno przybrzeżne:** pas 1–2 bloków wody przy brzegu koryt i jezior ma dno z `mud` (w potokach z `gravel`). `small_dripleaf` i własna pałka wymagają dna z `#supports_vegetation` albo z gliny lub mchu. Piasek i żwir tego warunku nie spełniają.
 
 ### 7.3 Mikrorelief (szum o fali 3–6 m, deterministyczny)
@@ -960,6 +960,73 @@ Wnioski:
 - S7: rośliny półki; dyski wanilii (`disk_sand`, `disk_clay`, `disk_gravel`) przy kałużach i na brzegach (w GAMEPLAY w łęgu 17 ze 185 kolumn pod dyskiem) — ograniczyć je do koryt i jezior albo zastąpić własnymi;
 - do oceny w grze: schodkowe tarasy rampy (1 blok na kolumnę, linie równoległe do wody) i drobne łaty „moro” na madzie lekkiej i łasze (`coarse_dirt` ok. 25–30%, `mud` 10–25%, fala 5–7 bloków; recenzja proponuje mniej `coarse_dirt`, dłuższą falę albo błoto zamiast `coarse_dirt`; do decyzji użytkownika lub oceny po S7);
 - M4: własne bloki torfu, murszu i torfowca.
+
+#### Runda 2 poprawek S6 (2026-10-09)
+
+**Weryfikacja zgłoszeń.** Oba zgłoszenia główne są prawdziwe. Recenzent przeszukał 120 losowych obszarów rzek i jezior na skalę (6 × 6 chunków) i znalazł przypadki, których nie było w obszarach testu: zbiegi, koryta roztokowe, szwy między dwoma ciekami, brzegi starorzeczy blisko koryta i schodkowe potoki górskie. Drobne zgłoszenia sprawdziłem na kodzie po rundzie 1 (`7d0a091`):
+
+| Zgłoszenie | Stan na `7d0a091` | Po rundzie 2 |
+|---|---|---|
+| ściany i słupy od strażnika `levelStep` (spadek liczony z różnicy `channelLevel` do sąsiadów skacze przy zmianie najbliższego koryta; strażnik działał też przy starorzeczach i jeziorach 17–20 bloków od koryta) | przegląd recenzenta: 36 (REAL) i 46 (GAMEPLAY) schodków ≥ 2 przy płaskim modelu w 5 z 240 obszarów; w grze słupy do 3 bloków | 0 / 0 w 240 obszarach losowych i we wszystkich obszarach testu; w grze 0 |
+| rozlewy z otwartych krawędzi w sąsiednim chunku (`openEdgesWithin` widział tylko własny chunk) | przegląd: 471 kolumn usuniętego gruntu w zasięgu wody z otwartych krawędzi (REAL, schodkowy potok przy (59458, 136152)); w grze 32 bloki wody w usuniętym gruncie | 0 / 0 w przeglądzie; w grze 0 we wszystkich 15 obszarach |
+| kałuże na skraju chunka zawsze błotem | ols i bór bagienny naprawione w rundzie 1, ale **torfowisko wysokie nadal miało 0% kałuż z wodą na skraju** (wewnątrz 100%): pole `s` torfowiska w niecce bez wody dawało „woda blisko” | 100% na skraju i wewnątrz (REAL i GAMEPLAY) |
+| buczyna z `dirt`, `SHORE_BED` na morzu, javadoc `PolandSettings` i §7.6 o starych światach, kolory diagnostyczne, profil torfowiska, sucha półka poniżej lustra, javadoc `BankShelf` o GAMEPLAY | naprawione w rundzie 1 (tabela wyżej) | bez zmian (zgłoszenia nieaktualne) |
+| sformułowanie commita `1b87dfa` o rozlewach | sprostowane w rundzie 1 („Sprostowania”); opublikowanych commitów nie zmieniamy | bez zmian |
+| dyski wanilii przy kałużach | wpisane do S7 w rundzie 1 | bez zmian |
+| wzór „moro” na madzie lekkiej i łasze | do decyzji użytkownika lub oceny po S7 | bez zmian |
+
+**Strażnik ciągły (`BankShelf`, `SurfaceBuilder.Work.guardField`).** Trzech strażników rundy 1 (woda obok i w promieniu 2, otwarte krawędzie w promieniu 8 w chunku, poziom koryta 8 bloków w górę biegu) zastąpił jeden:
+- Kolumna nigdy nie schodzi poniżej lustra żadnej wody modelu (bez morza) w odległości Manhattan do 9 bloków, także za granicą chunka. 7 bloków to zasięg wody płynącej ze źródła. 2 bloki to zapas na wyższą wodę, która na ukośnym stopniu lustra zamienia się w źródła nad niższą wodą (`FlowingFluid.getNewLiquid`: dwa źródła obok i źródło pod spodem) i rozlewa się po niej. Przy promieniu 7 w grze zostało 6 bloków takiego rozlewu przy szwie koryt REAL (87470, −42069).
+- Dalej strażnik słabnie o 1 blok na blok, a każdy składnik jest ograniczony z góry wierzchem modelu kolumny: `min(W, a) − max(0, m − 9)`. Każdy składnik zmienia się więc między sąsiadami o najwyżej 1 blok. Składniki odcięte za zasięgiem (11 bloków) są ≤ `a − 3`, więc nigdy nie działają. Strażnik nie robi schodków także tam, gdzie zmienia się najbliższe koryto.
+- Wygaszanie wysokich brzegów (`FADE`) liczę od każdej wody w zasięgu rampy (najmniejsze `k − W`), a nie od `r − c + 1`. Przy schodkowej wodzie tamto dawało schodki 2 bloków na wysokich brzegach potoku (46 par w obszarze schodkowego potoku REAL).
+
+Skutek: przy schodkowej wodzie (potoki górskie, zbiegi, szwy) brzeg zostaje na poziomie wyższego lustra, więc część kolumn brzegowych nie ma wody obok wierzchu (schodkowy potok REAL w grze: 48 ze 176). Na zwykłych rzekach i jeziorach nic się nie zmienia.
+
+**Próbki spoza chunka.** Strażnik czyta wodę do 11 bloków za granicą chunka. Kolumnę spoza chunka próbkuję tylko w zasięgu kandydata do obniżenia i tylko wtedy, gdy najbliższa kolumna chunka dopuszcza tam wodę według swoich pól (`waterMayBeWithin`: odległość od koryta albo od jeziora z wodą ≤ d + 2). Plany publikują w `ColumnCache` także kolumny w pobliżu wody, nie tylko przygraniczne. Pamięć ma teraz 2¹⁸ miejsc.
+
+**Testy JUnit (`BankShelfTest`).**
+- Nowy test `shelfOverRandomWaterAreas`: 120 losowych obszarów rzek i jezior na skalę, wybranych jak w przeglądzie recenzenta. REAL / GAMEPLAY: schodki ≥ 2 przy płaskim modelu 0 / 0, nowe otwarte krawędzie 0 / 0, woda z otwartych krawędzi na usuniętym gruncie 0 / 0, rowy 0 / 0, sucha kolumna poniżej lustra 0 / 0, stopnie modelu 1 → 2: 141 z 27 119 i 27 z 20 613 obniżonych kolumn (próg 1%), kolumny brzegowe z wodą obok wierzchu 98,3% i 98,1%.
+- Nowe obszary nazwane: REAL schodkowy potok (59458, 136152) i szew koryt (87432, −42036), GAMEPLAY zbieg (17085, 16600), starorzecze przy korycie (−14271, 22788) i schodkowy potok (20028, −8612), w obu skalach torfowisko wysokie (mikrorelief).
+- Udział kolumn brzegowych z wodą obok wierzchu i próg stopni modelu 1 → 2 liczę bez obszarów rundy 2: 97,2% z 1412 (REAL) i 99,3% z 2148 (GAMEPLAY). Obszary rundy 2 sprawdzają schodki i rozlewy, a przy schodkowej wodzie brzeg zostaje wyżej celowo. Razem z nimi udział w REAL wynosi 86,5%, a w schodkowym potoku REAL 135 stopni modelu 1 rośnie do 2 (rampa schodzi po stromym brzegu).
+- Kałuże na skraju chunka wobec środka: torfowisko wysokie 100 / 100% w obu skalach (przed rundą 0 / 100%).
+- Próbki spoza chunka na chunk w przeglądzie: 41,8 (REAL) i 43,5 (GAMEPLAY), na kodzie rundy 1 17,9 i 30,4. Siatki 6 × 6 chunków mają dużo kolumn za brzegiem siatki, których nikt potem nie wypełnia, więc liczby są wyższe niż w grze.
+
+**Test w grze** (`-Pgametest=habitats`, obie skale, BUILD SUCCESSFUL; nowe obszary półki: REAL schodkowy potok i szew koryt, GAMEPLAY zbieg i starorzecze przy korycie). Nowa opcja `-Pscales=realistic|gameplay` uruchamia tylko jedną skalę, a komunikat błędu podaje pierwsze rozlewy S6.
+- Schodki ≥ 2 przy płaskim modelu: 0 we wszystkich 15 obszarach.
+- Po 200 tickach woda poza planem w usuniętym gruncie lub z dala od otwartych krawędzi modelu: 0 we wszystkich obszarach. Na kodzie rundy 1 recenzent zmierzył 32 bloki w schodkowym potoku REAL.
+- Woda nad gruntem modelu przy jego otwartych krawędziach (stan modelu, tylko raport): duża rzeka REAL 56, ols REAL 4, schodkowy potok REAL 487, szew koryt REAL 239, potok GAMEPLAY 23, bór bagienny 25, zbieg 6, starorzecze przy korycie 64. To głównie wyższa woda rozlana po niższej na ukośnych stopniach lustra modelu. Woda zachowuje się tak także w modelu bez S6, a brzegi modelu ją zatrzymują, więc nie jest to rozlew S6.
+- Kolumny brzegowe z wodą obok wierzchu (bez obszarów rundy 2): 96,9% z 423 (REAL) i 99,7% z 714 (GAMEPLAY). Obszary rundy 2: schodkowy potok REAL 48 ze 176, szew koryt 275 z 342, zbieg 379 z 418, starorzecze przy korycie 211 z 211.
+- Gleby: 2261 z 2262 (REAL, 1 pod dyskiem wanilii) i 1680 z 1722 (GAMEPLAY, 42 pod dyskami). `PACK_FALLBACKS` 0 z 35 473 i 0 z 57 839 sekcji. Brak `ChunkHabitats` 0. BIOMES na nizinie 0,142 / 0,096 ms (REAL) i 0,139 / 0,141 ms (GAMEPLAY).
+- Próbki spoza chunka w całej sesji: 28,1 (REAL) i 25,9 (GAMEPLAY) na chunk, z czego 47% i 45% generator użył potem ponownie (runda 1: 12,5 i 12,8).
+
+**Budżet TERRAIN po rundzie 2 (`-Pgametest=stages`, po 3 przebiegi na przemian w jednej sesji, spokojna maszyna).** Porównanie trzech wersji: M1 (migawka z dopisanym na czas pomiaru czekaniem na koniec startu świata, jak w rundzie 1; potem przywrócona), kod rundy 1 (`7d0a091`, osobny worktree poza repozytorium, usunięty po pomiarze) i kod po rundzie 2. Wartości to czas ściany 64 chunków (ms, mediana i zakres), w nawiasie plan powierzchni (ms na chunk) i próbki spoza chunka na chunk.
+
+| Obszar | M1 | runda 1 | runda 2 | runda 2 / M1 | runda 1 / M1 | runda 2 / runda 1 |
+|---|---|---|---|---|---|---|
+| REAL nizina | 166 (157–172) | 173 (172–180; 0,06; 0) | 174 (170–184; 0,07; 0) | 1,05 | 1,04 | 1,01 |
+| REAL Beskidy | 329 (327–349) | 377 (371–379; 0,34; 22) | 395 (376–396; 0,64; 45) | 1,20 | 1,15 | 1,05 |
+| REAL duża rzeka | 178 (172–180) | 263 (252–349; 0,39; 27) | 263 (258–276; 0,64; 59) | 1,48 | 1,48 | 1,00 |
+| GAMEPLAY nizina | 154 (149–166) | 179 (173–180; 0,11; 2) | 168 (167–168; 0,11; 2) | 1,09 | 1,16 | 0,94 |
+| GAMEPLAY Beskidy | 334 (330–351) | 364 (363–369; 0,23; 12) | 362 (347–365; 0,23; 12) | 1,08 | 1,09 | 0,99 |
+| GAMEPLAY duża rzeka | 215 (209–224) | 244 (244–247; 0,34; 25) | 253 (247–255; 0,60; 49) | 1,18 | 1,13 | 1,04 |
+
+Wnioski:
+- **Udział rundy 2:** runda 2 / runda 1 wynosi 0,94–1,05. Plan powierzchni przy wodzie kosztuje teraz 0,60–0,64 ms na chunk (runda 1: 0,34–0,39), bo strażnik czyta 2 razy więcej kolumn spoza chunka (45–59 na chunk w tych obszarach). Na nizinie i w Beskidach GAMEPLAY plan się nie zmienił.
+- **Wobec M1 budżet TERRAIN ≤ 1,10 nadal nie jest dotrzymany** w Beskidach REAL (1,20), przy dużej rzece REAL (1,48) i przy rzece GAMEPLAY (1,18). Spełniają go niziny (1,05 i 1,09) i Beskidy GAMEPLAY (1,08). M1 był w tej sesji szybszy niż w rundzie 1 (duża rzeka REAL 178 wobec 248 ms), a kod rundy 1 nie, więc stosunki do M1 różnią się od rundy 1 o kilkanaście punktów. To rozrzut sesji, nie zmiana kodu (runda 1 / M1 przy dużej rzece REAL: 1,18 wtedy, 1,48 teraz).
+- Decyzja o budżecie TERRAIN zostaje u użytkownika z wariantami z rundy 1. Rekomendacja bez zmian: liczyć budżet jak D1 i optymalizować plan powierzchni przy S10 (np. kolumny spoza chunka tylko dla strażnika tam, gdzie lustra w zasięgu się różnią).
+
+**Odstępstwa po rundzie 2.**
+- Przy schodkowej wodzie (stopnie lustra w promieniu 9 bloków) brzeg nie schodzi do niższego lustra, więc kolumny brzegowe nie mają tam wody obok wierzchu. Kryterium 90% liczę bez obszarów rundy 2.
+- Zapas 2 bloków na rozlew wyższej wody po niższej to heurystyka. Na długim odcinku poniżej ukośnego stopnia wyższa woda może się rozlać dalej niż 9 bloków i dojść do obniżonego brzegu (pierwszy rząd przy niższej wodzie). W obszarach testów i w przeglądzie takiego przypadku już nie ma. Pewne rozwiązanie wymaga zmiany samych stopni lustra w modelu albo w planie (warianty niżej).
+
+**Do decyzji użytkownika** (B3: zgłoszenie rozlewów przetrwało 2 rundy, zostaje tylko rozlew przy ukośnych stopniach lustra):
+1. przyjąć obecny stan: strażnik do 9 bloków, a rozlew wyższej wody po niższej przy ukośnych stopniach traktować jako zachowanie modelu. Bez kosztu; rekomendacja.
+2. Strażnik według połączonej wody: kolumna nie schodzi poniżej najwyższego lustra wody połączonej z najbliższą wodą w promieniu ok. 16 bloków. Ok. 0,5–1 dnia, ok. 2 razy więcej próbek spoza chunka przy wodzie, mniej kolumn brzegowych z wodą obok wierzchu przy stopniach, nadal bez pewności dla bardzo długich odcinków.
+3. Usunąć przyczynę: stabilne stopnie lustra, np. próg z kamieni lub żwiru na wysokości wyższego lustra w poprzek koryta przy każdym stopniu (w planie powierzchni), albo stopnie tylko na prostych odcinkach (w modelu). Ok. 1–2 dni. Zmienia wygląd koryt (progi widoczne w potokach, rzadkie na nizinie), a wariant w modelu wymaga przegenerowania złotego pliku.
+
+**Pełny zestaw testów:** `tools/dev/run-tests test` PASS (drzewo `e6f459303398` przed wpisaniem tej linii, 990 s), złoty test bez zmian i bez listy dozwolonych zmian; `BankShelfTest` trwa teraz ok. 1 min (przegląd 240 obszarów).
+
+**Co zostaje po rundzie 2:** jak po rundzie 1 (S7: rośliny półki i dyski wanilii; ocena w grze tarasów rampy i wzoru „moro”; M4: własne bloki torfu, murszu i torfowca), a do tego decyzje o budżecie TERRAIN i o rozlewie przy ukośnych stopniach lustra.
 
 ---
 
