@@ -60,8 +60,10 @@ public enum HabitatBiome {
 			0.7F, 0.85F, 0x4A6E5E, 0x76C159, 0x54AF2F, 0xA36D46),
 	HAY_MEADOW("hay_meadow", Group.NON_FOREST, "Łąka świeża i polana", "Hay Meadow",
 			0.7F, 0.7F, 0x3D6E70, 0x7FBF5C, 0x60AE33, 0xA36F46),
+	// Step S8: the grass of the fallow field (stubble and dry grass in summer) yellower than the meadows, so the mosaic
+	// of fields, meadows and forest of the PRESENT_DAY mode can be read in the game.
 	ARABLE_LAND("arable_land", Group.NON_FOREST, "Pole", "Arable Land",
-			0.7F, 0.6F, 0x3D6E70, 0x85BD5E, 0x67AC36, 0xA37346),
+			0.7F, 0.6F, 0x3D6E70, 0xAFB85E, 0x67AC36, 0xA37346),
 	BEACH("beach", Group.NON_FOREST, "Plaża", "Beach",
 			0.72F, 0.4F, 0x3A6A7A, 0x92BB5F, 0x77A938, 0xA37546),
 	WHITE_DUNE("white_dune", Group.NON_FOREST, "Wydma biała", "White Dune",

@@ -353,20 +353,24 @@
       "biomes": [
         "arable_land"
       ],
-      "coverage": 0.3,
+      "coverage": 0.45,
       "patch": 2,
       "plants": [
         {
+          "block": "minecraft:short_dry_grass",
+          "weight": 24
+        },
+        {
           "block": "minecraft:short_grass",
-          "weight": 30
+          "weight": 12
         },
         {
           "block": "minecraft:poppy",
-          "weight": 5
+          "weight": 4
         },
         {
           "block": "minecraft:cornflower",
-          "weight": 5
+          "weight": 4
         }
       ]
     },

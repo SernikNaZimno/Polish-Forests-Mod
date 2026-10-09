@@ -16,9 +16,11 @@ import pl.polishforests.client.screen.PolandWorldOptionsScreen;
 import pl.polishforests.command.PolishForestsCommands;
 import pl.polishforests.worldgen.chunk.PolandChunkGenerator;
 import pl.polishforests.worldgen.chunk.PolandScale;
+import pl.polishforests.worldgen.habitat.HabitatClassifier;
 
 /**
- * World generation options screen and commands. Runs when {@code -Dpolishforests.gametest} is
+ * World generation options screen (scale, dimension type, and from step S8 the landscape switch to the "present-day
+ * Poland" mode) and commands. Runs when {@code -Dpolishforests.gametest} is
  * {@code ui} or {@code all}.
  */
 public final class UiAndCommandsClientGameTest implements FabricClientGameTest {
@@ -58,6 +60,10 @@ public final class UiAndCommandsClientGameTest implements FabricClientGameTest {
 		context.waitForScreen(PolandWorldOptionsScreen.class);
 		context.waitTicks(10);
 		context.takeScreenshot(screenshot);
+		// Step S8: the landscape switch turns the "present-day Poland" mode on (the presets start in the natural mode).
+		context.clickScreenButton("polishforests.options.landscape");
+		context.waitTicks(2);
+		context.takeScreenshot(screenshot + "_present_day");
 		context.clickScreenButton("gui.done");
 		context.waitForScreen(CreateWorldScreen.class);
 		String result = context.computeOnClient(mc -> {
@@ -67,6 +73,9 @@ public final class UiAndCommandsClientGameTest implements FabricClientGameTest {
 			}
 			if (gen.settings().scale() != expected) {
 				return "scale " + gen.settings().scale() + " instead of " + expected;
+			}
+			if (!gen.settings().agriculture() || gen.settings().mode() != HabitatClassifier.Mode.PRESENT_DAY) {
+				return "the landscape switch did not select the present-day mode: " + gen.settings();
 			}
 			LevelStem stem = dims.dimensions().get(LevelStem.OVERWORLD);
 			if (!stem.type().is(expected.dimensionType())) {
@@ -80,8 +89,8 @@ public final class UiAndCommandsClientGameTest implements FabricClientGameTest {
 		if (result != null) {
 			throw new AssertionError(preset.identifier() + ": " + result);
 		}
-		PolishForests.LOG.info("[ui] {}: options screen works, scale {}, dimension height {}", preset.identifier(),
-				expected.getSerializedName(), expected.vertical().height());
+		PolishForests.LOG.info("[ui] {}: options screen works, scale {}, dimension height {}, landscape switch selects the "
+				+ "present-day mode", preset.identifier(), expected.getSerializedName(), expected.vertical().height());
 		context.setScreen(() -> null);
 	}
 

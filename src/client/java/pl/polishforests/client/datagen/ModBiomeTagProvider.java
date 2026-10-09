@@ -40,12 +40,21 @@ final class ModBiomeTagProvider extends FabricTagsProvider<Biome> {
 
 	static {
 		List<HabitatBiome> nonForestLand = biomes(b -> b.group() == Group.NON_FOREST);
-		List<HabitatBiome> openLand = List.of(HAY_MEADOW, ARABLE_LAND, HEATH);
+		// Decision M2-12 (S8): villages and pillager outposts also in forests, as in vanilla (taiga villages in the taiga),
+		// in both vegetation modes; the village type follows the trees and houses of the biome: plains villages on the open
+		// land and in the broadleaved and mixed forests, taiga villages in the pine forests, the upland fir forest and the
+		// Carpathian beech forest (wooden villages of the Beskids). Not on wetlands, floodplains, dunes, beaches, in the
+		// upper montane belt (spruce, dwarf pine, alpine grassland: above the highest villages of Poland) or on water.
+		List<HabitatBiome> plainsVillages = List.of(HAY_MEADOW, ARABLE_LAND, HEATH, MIXED_FOREST, OAK_HORNBEAM_FOREST,
+				LOWLAND_BEECH_FOREST);
+		List<HabitatBiome> taigaVillages = List.of(DRY_PINE_FOREST, FRESH_PINE_FOREST, COASTAL_PINE_FOREST, MOIST_PINE_FOREST,
+				MIXED_PINE_FOREST, UPLAND_FIR_FOREST, MONTANE_BEECH_FOREST);
 		STRUCTURES.put("mineshaft", concat(nonForestLand, List.of(LAGOON, LAKE, DYSTROPHIC_LAKE)));
 		STRUCTURES.put("trial_chambers", List.of(HabitatBiome.values()));
-		STRUCTURES.put("village_plains", openLand);
-		STRUCTURES.put("village_taiga", List.of(FRESH_PINE_FOREST, MIXED_PINE_FOREST));
-		STRUCTURES.put("pillager_outpost", openLand);
+		STRUCTURES.put("village_plains", plainsVillages);
+		STRUCTURES.put("village_taiga", taigaVillages);
+		// Outposts: the village biomes (the mountain biomes come through #is_mountain).
+		STRUCTURES.put("pillager_outpost", concat(plainsVillages, taigaVillages.stream().filter(b -> !b.isMountain()).toList()));
 		STRUCTURES.put("swamp_hut", List.of(ALDER_CARR, FEN));
 		STRUCTURES.put("igloo", List.of(ALPINE_GRASSLAND));
 		STRUCTURES.put("woodland_mansion", List.of(OAK_HORNBEAM_FOREST, LOWLAND_BEECH_FOREST, MONTANE_BEECH_FOREST));

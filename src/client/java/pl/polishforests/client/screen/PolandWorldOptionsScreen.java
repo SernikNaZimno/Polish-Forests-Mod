@@ -8,6 +8,7 @@ import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.CycleButton;
 import net.minecraft.client.gui.components.MultiLineTextWidget;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.layouts.HeaderAndFooterLayout;
 import net.minecraft.client.gui.layouts.LinearLayout;
 import net.minecraft.client.gui.screens.Screen;
@@ -68,6 +69,8 @@ public final class PolandWorldOptionsScreen extends Screen {
 
 		column.addChild(CycleButton.booleanBuilder(Component.translatable("polishforests.options.landscape.today"),
 				Component.translatable("polishforests.options.landscape.natural"), agriculture)
+				.withTooltip(v -> Tooltip.create(Component.translatable(v ? "polishforests.options.landscape.today.tooltip"
+						: "polishforests.options.landscape.natural.tooltip")))
 				.create(0, 0, WIDGET_WIDTH, 20, Component.translatable("polishforests.options.landscape"),
 						(button, value) -> agriculture = value));
 

@@ -528,7 +528,9 @@ final class ModVegetation {
 				b(Blocks.OXEYE_DAISY, 4), b(Blocks.DANDELION, 3));
 		l.land(biomes(HAY_MEADOW), 0.85F, 3, grass.withWeight(50), tallGrass.withWeight(10), b(Blocks.DANDELION, 6),
 				b(Blocks.POPPY, 4), b(Blocks.OXEYE_DAISY, 6), b(Blocks.CORNFLOWER, 4), b(Blocks.AZURE_BLUET, 3));
-		l.land(biomes(ARABLE_LAND), 0.3F, 2, grass.withWeight(30), b(Blocks.POPPY, 5), b(Blocks.CORNFLOWER, 5));
+		// Fallow field (M2, fields with crops in M8): stubble as short dry grass, some grass, poppy and cornflower.
+		l.land(biomes(ARABLE_LAND), 0.45F, 2, dryGrass.withWeight(24), grass.withWeight(12), b(Blocks.POPPY, 4),
+				b(Blocks.CORNFLOWER, 4));
 		l.land(biomes(HEATH), 0.75F, 4, cat(bed(Blocks.PINK_PETALS, 40), lichen.withWeight(12), grass.withWeight(15),
 				dryGrass.withWeight(8), bush.withWeight(5)));
 		l.land(biomes(RAISED_BOG), 0.5F, 3, cat(bush.withWeight(31), grass.withWeight(10),

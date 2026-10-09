@@ -314,11 +314,11 @@ tasks.register('checkDatagen', CheckDatagen) {
 	outputs.upToDateWhen { false }
 }
 
-// Choosing in-game tests: ./gradlew runClientGameTest -Pgametest=performance|stages|views|climate|ui|habitats|vegetation|all
+// Choosing in-game tests: ./gradlew runClientGameTest -Pgametest=performance|stages|views|climate|ui|habitats|vegetation|present_day|all
 // Only selected views: -Psites=beach,cliff (names from PolandWorldClientGameTest; for vegetation the soil places of
 // HabitatsClientGameTest, or none for no screenshots).
 // -PdebugHabitats: diagnostic mode, zones and biomes painted on the top block (docs/03-m2-biomy.md §7.5).
-// -Pscales=realistic or -Pscales=gameplay: HabitatsClientGameTest and VegetationClientGameTest in one scale only.
+// -Pscales=realistic or -Pscales=gameplay: HabitatsClientGameTest, VegetationClientGameTest and PresentDayClientGameTest in one scale only.
 tasks.named('runClientGameTest') {
 	jvmArgs "-Dpolishforests.gametest=${project.findProperty('gametest') ?: 'all'}"
 	jvmArgs "-Dpolishforests.sites=${project.findProperty('sites') ?: ''}"

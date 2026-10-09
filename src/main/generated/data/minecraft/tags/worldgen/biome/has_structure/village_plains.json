@@ -2,6 +2,9 @@
   "values": [
     "polishforests:hay_meadow",
     "polishforests:arable_land",
-    "polishforests:heath"
+    "polishforests:heath",
+    "polishforests:mixed_forest",
+    "polishforests:oak_hornbeam_forest",
+    "polishforests:lowland_beech_forest"
   ]
 }

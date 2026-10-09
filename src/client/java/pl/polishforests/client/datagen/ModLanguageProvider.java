@@ -104,6 +104,10 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 				+ "landscapes about 1.4 km across, lower mountains and a shorter world, which is much easier on your computer. "
 				+ "The landscape mode already chooses the biomes; managed forests and alien species will take effect in future "
 				+ "versions of the mod.");
+		b.add("polishforests.options.landscape.natural.tooltip", "The forest that would grow without people, on almost the "
+				+ "whole land.");
+		b.add("polishforests.options.landscape.today.tooltip", "About 30% forest, mostly pine forests on sand, with meadows "
+				+ "and fallow fields; the river banks stay overgrown.");
 		b.add("polishforests.command.searching", "Searching for %s…");
 		b.add("polishforests.command.found", "Found %s %s m away: %s");
 		b.add("polishforests.command.not_found", "No %s found within %s km");
@@ -136,6 +140,9 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		b.add("polishforests.options.note", "Skala rzeczywista: krajobrazy w prawdziwych rozmiarach i wysokościach. Skala "
 				+ "rozgrywki: krajobrazy ok. 1,4 km, niższe góry i niższy świat, co wyraźnie odciąża komputer. Tryb krajobrazu "
 				+ "wybiera już biomy; lasy gospodarcze i gatunki obce zaczną działać w kolejnych wersjach moda.");
+		b.add("polishforests.options.landscape.natural.tooltip", "Las, który rósłby bez ludzi, prawie na całym lądzie.");
+		b.add("polishforests.options.landscape.today.tooltip", "Ok. 30% lasów, głównie bory na piaskach, łąki i pola "
+				+ "odłogowane; brzegi rzek zostają zarośnięte.");
 		b.add("polishforests.command.searching", "Szukam: %s…");
 		b.add("polishforests.command.found", "Znaleziono: %s, odległość %s m: %s");
 		b.add("polishforests.command.not_found", "Nie znaleziono: %s w promieniu %s km");

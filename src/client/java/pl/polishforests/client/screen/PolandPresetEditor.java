@@ -33,15 +33,21 @@ public final class PolandPresetEditor implements PresetEditor {
 	public Screen createEditScreen(CreateWorldScreen parent, WorldCreationContext context) {
 		ChunkGenerator overworld = context.selectedDimensions().overworld();
 		PolandSettings current = overworld instanceof PolandChunkGenerator g ? g.settings() : PolandSettings.DEFAULT;
-		return new PolandWorldOptionsScreen(parent, current, settings -> parent.getUiState().updateDimensions(
-				(registries, dimensions) -> {
-					// The scale determines the dimension type: the gameplay world is lower, which eases rendering.
-					Holder<DimensionType> type = registries.lookupOrThrow(Registries.DIMENSION_TYPE)
-							.getOrThrow(settings.scale().dimensionType());
-					// A new biome source for the new generator: the source is bound to one generator's model and classifier.
-					PolandBiomeSource biomes = PolandBiomeSource.create(registries.lookupOrThrow(Registries.BIOME));
-					return new WorldDimensions(WorldDimensions.withOverworld(dimensions.dimensions(), type,
-							new PolandChunkGenerator(biomes, settings)));
-				}));
+		return new PolandWorldOptionsScreen(parent, current, settings -> parent.getUiState().updateDimensions(apply(settings)));
+	}
+
+	/**
+	 * Dimensions update that gives the overworld a "Poland" generator with the given settings: the "Done" button of the
+	 * options screen (also used by the game tests to create a world in a chosen mode).
+	 */
+	public static WorldCreationContext.DimensionsUpdater apply(PolandSettings settings) {
+		return (registries, dimensions) -> {
+			// The scale determines the dimension type: the gameplay world is lower, which eases rendering.
+			Holder<DimensionType> type = registries.lookupOrThrow(Registries.DIMENSION_TYPE).getOrThrow(settings.scale().dimensionType());
+			// A new biome source for the new generator: the source is bound to one generator's model and classifier.
+			PolandBiomeSource biomes = PolandBiomeSource.create(registries.lookupOrThrow(Registries.BIOME));
+			return new WorldDimensions(WorldDimensions.withOverworld(dimensions.dimensions(), type,
+					new PolandChunkGenerator(biomes, settings)));
+		};
 	}
 }

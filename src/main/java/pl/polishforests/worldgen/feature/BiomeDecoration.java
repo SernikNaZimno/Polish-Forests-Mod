@@ -25,16 +25,21 @@ public final class BiomeDecoration {
 	/** Lava lakes only below Y 0 (decision M2-4). */
 	public static final String DEEP_LAVA_LAKE = PolishForests.id("deep_lava_lake").toString();
 
-	/** Ores and disks of step 6 in the vanilla order, without {@code underwater_magma}. */
-	public static final List<String> ORES_AND_DISKS = List.of(
+	/**
+	 * Ores of step 6 in the vanilla order, without {@code underwater_magma} and (from step S8) without the vanilla disks
+	 * {@code disk_sand}, {@code disk_clay} and {@code disk_gravel}: from the water they turned the dirt and grass of the
+	 * banks into sand, clay or gravel up to 6 blocks away, bare ground under the tall herbs of the waterside zones
+	 * (§4.6; in the PRESENT_DAY mode about 40% of the bank tall herbs of a small river). The beds already have their
+	 * gravel and clay patches (§7.4, {@code SoilBlocks.bed}).
+	 */
+	public static final List<String> ORES = List.of(
 			"minecraft:ore_dirt", "minecraft:ore_gravel", "minecraft:ore_granite_upper", "minecraft:ore_granite_lower",
 			"minecraft:ore_diorite_upper", "minecraft:ore_diorite_lower", "minecraft:ore_andesite_upper",
 			"minecraft:ore_andesite_lower", "minecraft:ore_tuff", "minecraft:ore_coal_upper", "minecraft:ore_coal_lower",
 			"minecraft:ore_iron_upper", "minecraft:ore_iron_middle", "minecraft:ore_iron_small", "minecraft:ore_gold",
 			"minecraft:ore_gold_lower", "minecraft:ore_redstone", "minecraft:ore_redstone_lower", "minecraft:ore_diamond",
 			"minecraft:ore_diamond_medium", "minecraft:ore_diamond_large", "minecraft:ore_diamond_buried",
-			"minecraft:ore_lapis", "minecraft:ore_lapis_buried", "minecraft:ore_copper",
-			"minecraft:disk_sand", "minecraft:disk_clay", "minecraft:disk_gravel");
+			"minecraft:ore_lapis", "minecraft:ore_lapis_buried", "minecraft:ore_copper");
 
 	/**
 	 * Vegetation dispatchers of step 9 in their final order (§8.2): the tree stand ({@code TreeStandFeature}) and the
@@ -70,7 +75,7 @@ public final class BiomeDecoration {
 		steps.get(1).add(DEEP_LAVA_LAKE);
 		steps.get(2).addAll(List.of("minecraft:amethyst_geode", GLACIAL_ERRATICS));
 		steps.get(3).addAll(List.of("minecraft:monster_room", "minecraft:monster_room_deep"));
-		steps.get(6).addAll(ORES_AND_DISKS);
+		steps.get(6).addAll(ORES);
 		for (Dispatcher d : Dispatcher.values()) {
 			steps.get(VEGETATION_STEP).add(d.id());
 		}

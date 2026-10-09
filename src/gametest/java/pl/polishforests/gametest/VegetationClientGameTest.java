@@ -250,7 +250,7 @@ public final class VegetationClientGameTest implements FabricClientGameTest {
 	 * The three transects of the scale: in the full chunks around each crossing, the land columns of the dense zones and
 	 * biomes are sorted by what stands on their top ground block ({@link #cover}); each transect must meet §4.6.
 	 */
-	private static String transects(MinecraftServer server, boolean real) {
+	static String transects(MinecraftServer server, boolean real) {
 		ServerLevel level = server.overworld();
 		PolandChunkGenerator gen = generator(server);
 		long seed = level.getSeed();
@@ -272,6 +272,7 @@ public final class VegetationClientGameTest implements FabricClientGameTest {
 			long zoneLand = 0;
 			long river = 0;
 			java.util.Map<String, Integer> byZone = new java.util.TreeMap<>();
+			java.util.Map<String, Integer> bareTops = new java.util.TreeMap<>();
 			for (int cx = ccx - TRANSECT_RADIUS_CHUNKS; cx <= ccx + TRANSECT_RADIUS_CHUNKS; cx++) {
 				for (int cz = ccz - TRANSECT_RADIUS_CHUNKS; cz <= ccz + TRANSECT_RADIUS_CHUNKS; cz++) {
 					level.getChunk(cx, cz);
@@ -304,6 +305,10 @@ public final class VegetationClientGameTest implements FabricClientGameTest {
 						if (!BARS.contains(zone)) {
 							bareCounted++;
 							bare += cover == Cover.BARE ? 1 : 0;
+							if (cover == Cover.BARE) {
+								bareTops.merge(level.getBlockState(new BlockPos(x, plan.top(i), z)).getBlock().getDescriptionId()
+										.replace("block.minecraft.", "") + (plan.flags(i) != 0 ? "/flags" + plan.flags(i) : ""), 1, Integer::sum);
+							}
 						}
 					}
 				}
@@ -314,12 +319,12 @@ public final class VegetationClientGameTest implements FabricClientGameTest {
 			double bareShare = (double) bare / Math.max(1, bareCounted);
 			report.append(String.format(Locale.ROOT, " %s at (%d, %d): %d land columns (%d of the waterside zones) %s, %d "
 					+ "columns of river water, trees %.1f%%, shrubs %.1f%%, tall plants %.1f%% (together %.1f%%), dwarf shrubs "
-					+ "%.1f%%, short grass and small flowers %.1f%%, other %.1f%%, bare %.1f%% (without bars); cattail on %d of %d "
+					+ "%.1f%%, short grass and small flowers %.1f%%, other %.1f%%, bare %.1f%% (without bars, tops %s); cattail on %d of %d "
 					+ "columns in water 1 block deep;", names[t], c[0], c[1], land, zoneLand, byZone, river,
 					100.0 * counts[Cover.TREE.ordinal()] / Math.max(1, land), 100.0 * counts[Cover.SHRUB.ordinal()] / Math.max(1, land),
 					100.0 * counts[Cover.TALL.ordinal()] / Math.max(1, land), 100 * tall,
 					100.0 * counts[Cover.DWARF.ordinal()] / Math.max(1, land), 100 * small,
-					100.0 * counts[Cover.OTHER.ordinal()] / Math.max(1, land), 100 * bareShare, cattails, shallow));
+					100.0 * counts[Cover.OTHER.ordinal()] / Math.max(1, land), 100 * bareShare, bareTops, cattails, shallow));
 			if (land < TRANSECT_MIN_COLUMNS) {
 				failures.add(names[t] + ": only " + land + " land columns of the dense habitats");
 			} else if (zoneLand < TRANSECT_MIN_ZONE_COLUMNS || river < TRANSECT_MIN_WATER_COLUMNS) {
@@ -673,13 +678,13 @@ public final class VegetationClientGameTest implements FabricClientGameTest {
 		return n;
 	}
 
-	private static boolean free(ServerLevel level, int x, int y, int z) {
+	static boolean free(ServerLevel level, int x, int y, int z) {
 		BlockState s = level.getBlockState(new BlockPos(x, y, z));
 		return !s.is(BlockTags.LEAVES) && !s.is(BlockTags.LOGS) && !s.isSolidRender() && s.getFluidState().isEmpty();
 	}
 
 	/** Top ground block of the surface plan at (x, z). */
-	private static int groundY(MinecraftServer server, int x, int z) {
+	static int groundY(MinecraftServer server, int x, int z) {
 		ServerLevel level = server.overworld();
 		level.getChunk(x >> 4, z >> 4);
 		ChunkSurface plan = generator(server).surface(new ChunkPos(x >> 4, z >> 4), level.getMinY(), level.getMaxY(),

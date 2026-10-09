@@ -170,14 +170,24 @@ final class HabitatPreview {
 				save(frame, s, code, classifier, Layer.FERTILITY, out.resolve("m2_" + frame.name() + "_fertility.png"));
 			}
 		}
-		// Forest mask in PRESENT_DAY mode (S8 calibrates P_forest; this is only a preview of the mechanism).
+		// Forest mask of the PRESENT_DAY mode (calibrated in S8): 50 km and 5 km of the realistic scale on the edge of an
+		// outwash plain, 20 km and 5 km of the gameplay scale around the origin, the same places in the NATURAL mode in the
+		// other frames (outwash_plain_20km, gameplay_20km).
 		HabitatClassifier presentDayClassifier = new HabitatClassifier(seed, LandscapeScale.REALISTIC, HabitatClassifier.Mode.PRESENT_DAY);
+		HabitatClassifier presentDayGameplay = new HabitatClassifier(seed, LandscapeScale.GAMEPLAY, HabitatClassifier.Mode.PRESENT_DAY);
 		p = LandscapePreview.find(real, LandscapeType.OUTWASH_PLAIN, false);
+		List<Frame> presentDay = new ArrayList<>();
 		if (p != null) {
-			Frame frame = new Frame("forest_mask_present_day_50km", real, p[0], p[1], 50_000);
+			presentDay.add(new Frame("forest_mask_present_day_50km", real, p[0], p[1], 50_000));
+			presentDay.add(new Frame("forest_mask_present_day_5km", real, p[0], p[1], 5_000));
+		}
+		presentDay.add(new Frame("gameplay_forest_mask_present_day_20km", gameplayModel, 0, 0, 20_000));
+		presentDay.add(new Frame("gameplay_forest_mask_present_day_5km", gameplayModel, 0, 0, 5_000));
+		for (Frame frame : presentDay) {
+			HabitatClassifier classifier = frame.model() == real ? presentDayClassifier : presentDayGameplay;
 			int[][] code = new int[800][800];
-			ColumnSample[][] s = samples(frame, presentDayClassifier, code);
-			save(frame, s, code, presentDayClassifier, Layer.BIOMES, out.resolve("m2_forest_mask_present_day_50km_biomes.png"));
+			ColumnSample[][] s = samples(frame, classifier, code);
+			save(frame, s, code, classifier, Layer.BIOMES, out.resolve("m2_" + frame.name() + "_biomes.png"));
 		}
 		regionalMaps(real, out);
 		sharesCsv(out);
@@ -551,6 +561,38 @@ final class HabitatPreview {
 		}
 		Files.writeString(out.resolve("m2_zone_shares.csv"), st.toString());
 		System.out.println("Saved m2_biome_shares.csv, m2_zone_shares.csv");
+		presentDayCsv(out);
+	}
+
+	/**
+	 * Biome shares and the checks of the PRESENT_DAY mode (step S8, as in {@code BiomeSharesTest}) written to
+	 * m2_biome_shares_present_day.csv: percent of all columns per biome, then the forest cover of the land and of the
+	 * interiors of the landscape types and the shares of pine forests, fresh site types and wet forests in the forest.
+	 */
+	static void presentDayCsv(Path out) throws IOException {
+		BiomeSharesTest.Shares r = new BiomeSharesTest.Shares();
+		BiomeSharesTest.Shares g = new BiomeSharesTest.Shares();
+		for (long seed : new long[] {20260927L, 1L, 2L}) {
+			r.add(BiomeSharesTest.computeShares(seed, LandscapeScale.REALISTIC, HabitatClassifier.Mode.PRESENT_DAY, 1_000_000, 1_042));
+			g.add(BiomeSharesTest.computeShares(seed, LandscapeScale.GAMEPLAY, HabitatClassifier.Mode.PRESENT_DAY, 30_000, 1_042));
+		}
+		StringBuilder sb = new StringBuilder("id,name,group,real_pct,gameplay_pct\n");
+		for (HabitatBiome b : HabitatBiome.values()) {
+			int i = b.ordinal();
+			sb.append(String.format(Locale.ROOT, "%s,%s,%s,%.3f,%.3f\n", b.id(), b.name(), b.group().name().toLowerCase(Locale.ROOT),
+					100.0 * r.biome[i] / r.columns, 100.0 * g.biome[i] / g.columns));
+		}
+		sb.append(String.format(Locale.ROOT, "land_forest_cover,,,%.2f,%.2f\n", 100 * r.forestCover(), 100 * g.forestCover()));
+		for (int t = 0; t < BiomeSharesTest.LAND_TYPES.length; t++) {
+			sb.append(String.format(Locale.ROOT, "forest_cover_%s_interior,,,%.2f,%.2f\n",
+					BiomeSharesTest.LAND_TYPES[t].name().toLowerCase(Locale.ROOT), 100 * r.forestCover(t), 100 * g.forestCover(t)));
+		}
+		sb.append(String.format(Locale.ROOT, "pine_forests_in_forest,,,%.2f,%.2f\n", 100 * r.pineShare(), 100 * g.pineShare()));
+		sb.append(String.format(Locale.ROOT, "fresh_site_types_in_forest,,,%.2f,%.2f\n", 100 * r.freshShare(), 100 * g.freshShare()));
+		sb.append(String.format(Locale.ROOT, "alder_carrs_and_riparian_forests_in_forest,,,%.2f,%.2f\n", 100 * r.wetForestShare(),
+				100 * g.wetForestShare()));
+		Files.writeString(out.resolve("m2_biome_shares_present_day.csv"), sb.toString());
+		System.out.println("Saved m2_biome_shares_present_day.csv");
 	}
 
 	// ------------------------------------------------------------------ valley cross-sections

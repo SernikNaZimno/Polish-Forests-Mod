@@ -80,6 +80,11 @@ public record PolandSettings(PolandScale scale, double regionScale, boolean agri
 				coverInBlocks);
 	}
 
+	/** The same settings in the "present-day Poland" mode ({@code true}) or the natural-vegetation mode. */
+	public PolandSettings withAgriculture(boolean presentDay) {
+		return new PolandSettings(scale, regionScale, presentDay, managedForestShare, alienSpecies, version, coverInBlocks);
+	}
+
 	/** Vegetation mode of the habitat classifier: "present-day Poland" or natural vegetation. */
 	public HabitatClassifier.Mode mode() {
 		return agriculture ? HabitatClassifier.Mode.PRESENT_DAY : HabitatClassifier.Mode.NATURAL;

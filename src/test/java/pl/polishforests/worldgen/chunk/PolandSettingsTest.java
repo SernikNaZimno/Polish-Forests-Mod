@@ -36,6 +36,15 @@ class PolandSettingsTest {
 		assertEquals(PolandSettings.DEFAULT, decode(json.toString()));
 		PolandSettings gameplay = PolandSettings.DEFAULT.withScale(PolandScale.GAMEPLAY);
 		assertEquals(gameplay, decode(encode(gameplay).toString()));
+		// Step S8: the "present-day Poland" switch is saved and read back in both scales.
+		for (PolandSettings today : new PolandSettings[] {PolandSettings.DEFAULT.withAgriculture(true), gameplay.withAgriculture(true)}) {
+			JsonObject saved = encode(today);
+			assertTrue(saved.get("agriculture").getAsBoolean());
+			PolandSettings read = decode(saved.toString());
+			assertEquals(today, read);
+			assertEquals(HabitatClassifier.Mode.PRESENT_DAY, read.mode());
+		}
+		assertEquals(PolandSettings.DEFAULT, PolandSettings.DEFAULT.withAgriculture(true).withAgriculture(false));
 	}
 
 	@Test

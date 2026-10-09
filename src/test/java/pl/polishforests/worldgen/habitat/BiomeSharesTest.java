@@ -36,7 +36,7 @@ public class BiomeSharesTest {
 	/** OUTWASH_PLAIN type weight from which a column counts as the interior of the outwash plain. */
 	static final double OUTWASH_PLAIN_INTERIOR = TYPE_INTERIOR;
 	/** Land types (without the sea). */
-	static final LandscapeType[] LAND_TYPES = {LandscapeType.OUTWASH_PLAIN, LandscapeType.MORAINE_PLATEAU,
+	public static final LandscapeType[] LAND_TYPES = {LandscapeType.OUTWASH_PLAIN, LandscapeType.MORAINE_PLATEAU,
 			LandscapeType.OLD_GLACIAL_PLAIN, LandscapeType.FOOTHILLS, LandscapeType.BESKIDS, LandscapeType.COASTLAND};
 	/**
 	 * Forest cover of the interior of each land type in the PRESENT_DAY mode, {min, max} (docs/03-m2-biomy.md §3.4.1,
