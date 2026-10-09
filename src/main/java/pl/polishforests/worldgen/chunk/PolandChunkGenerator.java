@@ -210,9 +210,29 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 	public void applyBiomeDecoration(net.minecraft.world.level.WorldGenLevel level, net.minecraft.world.level.chunk.ChunkAccess chunk,
 			StructureManager structureManager) {
 		long t0 = System.nanoTime();
-		super.applyBiomeDecoration(level, chunk, structureManager);
+		boolean columnBiomes = biomeSource instanceof PolandBiomeSource;
+		COLUMN_BIOMES.set(columnBiomes);
+		try {
+			super.applyBiomeDecoration(level, chunk, structureManager);
+		} finally {
+			if (columnBiomes) {
+				COLUMN_BIOMES.set(false);
+			}
+		}
 		DECORATION_NANOS.add(System.nanoTime() - t0);
 		DECORATION_CHUNKS.increment();
+	}
+
+	/**
+	 * Whether the decoration running on this thread is of a chunk whose sections all hold the same column biomes
+	 * ({@link PolandBiomeSource}: {@link #createBiomes} copies them into every section), so the decoration reads the
+	 * biomes of one section ({@code ChunkGeneratorDecorationMixin}, R11).
+	 */
+	private static final ThreadLocal<Boolean> COLUMN_BIOMES = ThreadLocal.withInitial(() -> false);
+
+	/** See {@link #COLUMN_BIOMES}. */
+	public static boolean decoratingColumnBiomes() {
+		return COLUMN_BIOMES.get();
 	}
 
 	public static final java.util.concurrent.atomic.LongAdder CHUNKS = new java.util.concurrent.atomic.LongAdder();

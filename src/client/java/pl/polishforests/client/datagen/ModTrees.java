@@ -156,9 +156,10 @@ final class ModTrees {
 					.add(placed.getOrThrow(ModWorldgen.placed(OAK_FANCY)), 60)
 					.add(placed.getOrThrow(ModWorldgen.placed(OAK_SMALL)), 40).build());
 			// Beech: a tall straight trunk 9+4 with gray bark and a broad crown of radius 3, 4 layers deep (§8.4 had a fancy
-			// oak with gray bark, which costs about twice as much in FEATURES; the own shapes come in M3).
+			// oak with gray bark, which costs about twice as much in FEATURES; the own shapes come in M3). Foliage height 3:
+			// with 4 a fifth layer of radius 4 had corner leaves 7 steps from the trunk, which decay (S7 review).
 			case BEECH -> builder(Blocks.PALE_OAK_LOG, new StraightTrunkPlacer(9, 4, 0), Blocks.OAK_LEAVES,
-					new BlobFoliagePlacer(ConstantInt.of(3), ConstantInt.of(0), 4), 1, soil).ignoreVines().build();
+					new BlobFoliagePlacer(ConstantInt.of(3), ConstantInt.of(0), 3), 1, soil).ignoreVines().build();
 			// Hornbeam: straight 6+2, blob of radius 2-3, gray bark.
 			case HORNBEAM -> builder(Blocks.PALE_OAK_LOG, new StraightTrunkPlacer(6, 2, 0), Blocks.OAK_LEAVES,
 					new BlobFoliagePlacer(UniformInt.of(2, 3), ConstantInt.of(0), 3), 1, soil).ignoreVines().build();
@@ -194,8 +195,9 @@ final class ModTrees {
 			// Hazel: a crown of radius 2 on one log.
 			case HAZEL -> bush(Blocks.OAK_LOG, new StraightTrunkPlacer(1, 0, 0), Blocks.OAK_LEAVES,
 					new BushFoliagePlacer(ConstantInt.of(2), ConstantInt.of(1), 2), soil);
-			// Juniper: a narrow column 2-3 blocks high (spruce foliage of radius 1).
-			case JUNIPER -> bush(Blocks.SPRUCE_LOG, new StraightTrunkPlacer(2, 1, 0), Blocks.SPRUCE_LEAVES,
+			// Juniper: a narrow column 2-3 blocks high (spruce foliage of radius 1) on 1-2 logs, so the tree census, which
+			// counts three vertical logs as a trunk, does not count it as a tree.
+			case JUNIPER -> bush(Blocks.SPRUCE_LOG, new StraightTrunkPlacer(1, 1, 0), Blocks.SPRUCE_LEAVES,
 					new SpruceFoliagePlacer(ConstantInt.of(1), ConstantInt.of(0), ConstantInt.of(2)), soil);
 			default -> throw new IllegalArgumentException("not a shrub: " + species);
 		};

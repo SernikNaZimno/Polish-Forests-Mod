@@ -170,8 +170,7 @@
     },
     {
       "biomes": [
-        "ash_alder_forest",
-        "gray_alder_forest"
+        "ash_alder_forest"
       ],
       "coverage": 0.001171875,
       "plants": [
@@ -182,6 +181,22 @@
         {
           "feature": "polishforests:deadwood/oak",
           "weight": 3
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "gray_alder_forest"
+      ],
+      "coverage": 0.001171875,
+      "plants": [
+        {
+          "feature": "polishforests:deadwood/gray_alder",
+          "weight": 8
+        },
+        {
+          "feature": "polishforests:deadwood/spruce",
+          "weight": 2
         }
       ]
     },

@@ -115,7 +115,8 @@ final class ModWorldgen {
 		context.register(placed("glacial_erratics"), new PlacedFeature(features.getOrThrow(ModTrees.key("glacial_erratics")),
 				List.of(RarityFilter.onAverageOnceEvery(6), InSquarePlacement.spread(),
 						net.minecraft.world.level.levelgen.placement.HeightmapPlacement.onHeightmap(Heightmap.Types.OCEAN_FLOOR_WG),
-						new HabitatFilter(new HabitatCondition(List.of(), List.of(), List.of(), List.of(), ModVegetation.ERRATIC_SOILS)),
+						new HabitatFilter(new HabitatCondition(List.of(), List.of(), List.of(), List.of(), ModVegetation.ERRATIC_SOILS),
+								ModVegetation.ERRATIC_MAX_MOUNTAIN_INFLUENCE),
 						BiomeFilter.biome())));
 		for (BiomeDecoration.Dispatcher d : BiomeDecoration.Dispatcher.values()) {
 			context.register(placed(d.path()), new PlacedFeature(features.getOrThrow(feature(d.path())), List.of(BiomeFilter.biome())));

@@ -14,6 +14,7 @@
     },
     {
       "type": "polishforests:habitat",
+      "max_mountain_influence": 0.3,
       "soils": [
         "brown_soil",
         "acid_brown_soil",

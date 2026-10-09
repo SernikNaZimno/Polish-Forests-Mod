@@ -6,15 +6,18 @@ import net.minecraft.world.level.chunk.LevelChunkSection;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
-import pl.polishforests.worldgen.feature.ModFeatures;
+import pl.polishforests.worldgen.chunk.PolandChunkGenerator;
 
 /**
  * Decoration of a "Poland" chunk reads the biomes of one section per chunk (docs/03-m2-biomy.md §13 R11, step S7):
  * {@code ChunkGenerator.applyBiomeDecoration} collects the biomes of every section of the 3 × 3 chunks around the
  * decorated one (1179 sections in the realistic scale, about 5% of the decoration step), but the "Poland" generator gives
  * every section a copy of the same column biomes ({@code PolandChunkGenerator.createBiomes}, biomes do not depend on Y),
- * so the first section holds all of them. A chunk of the "Poland" world is recognized by its {@code ChunkHabitats}
- * attachment, which it keeps from {@code fill()} to the last generation stage; other chunks keep the vanilla loop.
+ * so the first section holds all of them. The shortcut applies only while the "Poland" generator decorates with its own
+ * biome source ({@code PolandChunkGenerator.decoratingColumnBiomes()}, a flag of the decorating thread): with another
+ * biome source, e.g. from a datapack, the generator takes the vanilla biomes, which may depend on Y, and the vanilla loop
+ * stays (S7 review: the earlier test of the {@code ChunkHabitats} attachment, which {@code fill()} writes with any
+ * biome source, would have skipped the biomes of the upper sections there).
  */
 @Mixin(ChunkGenerator.class)
 abstract class ChunkGeneratorDecorationMixin {
@@ -22,7 +25,7 @@ abstract class ChunkGeneratorDecorationMixin {
 			target = "Lnet/minecraft/world/level/chunk/ChunkAccess;getSections()[Lnet/minecraft/world/level/chunk/LevelChunkSection;"))
 	private static LevelChunkSection[] polishforests$oneSectionOfColumnBiomes(ChunkAccess chunk) {
 		LevelChunkSection[] sections = chunk.getSections();
-		if (sections.length > 1 && chunk.hasAttached(ModFeatures.CHUNK_HABITATS)) {
+		if (sections.length > 1 && PolandChunkGenerator.decoratingColumnBiomes()) {
 			return new LevelChunkSection[] {sections[0]};
 		}
 		return sections;

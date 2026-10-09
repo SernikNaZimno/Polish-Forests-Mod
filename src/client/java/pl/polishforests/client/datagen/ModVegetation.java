@@ -71,7 +71,7 @@ final class ModVegetation {
 
 	/** Species of the fallen trees, {@code polishforests:deadwood/<species>}. */
 	static final List<Species> DEADWOOD = List.of(Species.SCOTS_PINE, Species.SPRUCE, Species.FIR, Species.BIRCH, Species.OAK,
-			Species.BEECH, Species.HORNBEAM, Species.BLACK_ALDER, Species.POPLAR, Species.WHITE_WILLOW);
+			Species.BEECH, Species.HORNBEAM, Species.BLACK_ALDER, Species.POPLAR, Species.WHITE_WILLOW, Species.GRAY_ALDER);
 
 	static String deadwood(Species s) {
 		return "deadwood/" + s.id();
@@ -146,7 +146,7 @@ final class ModVegetation {
 	private static FallenTreeFeature fallen(Species s) {
 		Block log = switch (s) {
 			case SCOTS_PINE, SPRUCE -> Blocks.SPRUCE_LOG;
-			case FIR, BEECH, HORNBEAM -> Blocks.PALE_OAK_LOG;
+			case FIR, BEECH, HORNBEAM, GRAY_ALDER -> Blocks.PALE_OAK_LOG;
 			case BIRCH -> Blocks.BIRCH_LOG;
 			case BLACK_ALDER -> Blocks.DARK_OAK_LOG;
 			case POPLAR -> Blocks.POPLAR_LOG;
@@ -208,7 +208,9 @@ final class ModVegetation {
 		t.rule(HabitatCondition.biomes(OAK_HORNBEAM_FOREST), 9).add(Species.OAK, 350).add(Species.HORNBEAM, 300)
 				.add(Species.LINDEN, 150).add(Species.ASH, 30).add(Species.NORWAY_MAPLE, 20).add(Species.BEECH, 100)
 				.add(Species.SPRUCE, 50);
-		t.rule(HabitatCondition.biomes(LOWLAND_BEECH_FOREST), 7).add(Species.BEECH, 850).add(Species.OAK, 100)
+		// Beech forests: the biome already lies within the beech range (O, P), so beech keeps its full weight there (with
+		// the ramp a beech forest at the range edge had 40% oak, S7 review).
+		t.rule(HabitatCondition.biomes(LOWLAND_BEECH_FOREST), 7).full(Species.BEECH, 850).add(Species.OAK, 100)
 				.add(Species.SYCAMORE_MAPLE, 50);
 		t.rule(HabitatCondition.biomes(ALDER_CARR), 9).add(Species.BLACK_ALDER, 850, 1).add(Species.BIRCH, 100)
 				.add(Species.ASH, 50);
@@ -219,7 +221,7 @@ final class ModVegetation {
 				.add(Species.NORWAY_MAPLE, 50).add(Species.LINDEN, 50);
 		t.rule(HabitatCondition.biomes(UPLAND_FIR_FOREST), 10).add(Species.FIR, 500).add(Species.BEECH, 250)
 				.add(Species.OAK, 150).add(Species.SCOTS_PINE, 100);
-		t.rule(HabitatCondition.biomes(MONTANE_BEECH_FOREST), 8).add(Species.BEECH, 700).add(Species.FIR, 200)
+		t.rule(HabitatCondition.biomes(MONTANE_BEECH_FOREST), 8).full(Species.BEECH, 700).add(Species.FIR, 200)
 				.add(Species.SPRUCE, 50).add(Species.SYCAMORE_MAPLE, 50);
 		// Mountains: 3% of the spruces are mega spruces (§8.4).
 		t.rule(HabitatCondition.biomes(MONTANE_SPRUCE_FOREST), 12).add(Species.SPRUCE, 873).add(Species.SPRUCE, ModTrees.SPRUCE_MEGA, 27)
@@ -276,6 +278,12 @@ final class ModVegetation {
 		Trees alt(Species s, int weight, Species alternative) {
 			entries.add(new TreePalette.Entry(s, tree(s.path()), weight,
 					Optional.of(new TreePalette.Alternative(alternative, tree(alternative.path()))), 0));
+			return this;
+		}
+
+		/** A species with its full weight, without the range ramp (a biome that already lies within its range). */
+		Trees full(Species s, int weight) {
+			entries.add(new TreePalette.Entry(s, tree(s.path()), weight, Optional.empty(), 0, false));
 			return this;
 		}
 
@@ -386,8 +394,11 @@ final class ModVegetation {
 		l.land(biomes(MONTANE_SPRUCE_FOREST), perChunk(0.5), 1, l.feature(deadwood(Species.SPRUCE), 1));
 		l.land(biomes(ALDER_CARR), perChunk(0.35), 1, l.feature(deadwood(Species.BLACK_ALDER), 8),
 				l.feature(deadwood(Species.BIRCH), 2));
-		l.land(biomes(ASH_ALDER_FOREST, GRAY_ALDER_FOREST), perChunk(0.3), 1, l.feature(deadwood(Species.BLACK_ALDER), 7),
+		l.land(biomes(ASH_ALDER_FOREST), perChunk(0.3), 1, l.feature(deadwood(Species.BLACK_ALDER), 7),
 				l.feature(deadwood(Species.OAK), 3));
+		// Gray alder forest: the gray bark of its gray alders (pale oak, §8.4), some spruce.
+		l.land(biomes(GRAY_ALDER_FOREST), perChunk(0.3), 1, l.feature(deadwood(Species.GRAY_ALDER), 8),
+				l.feature(deadwood(Species.SPRUCE), 2));
 		l.land(biomes(WILLOW_POPLAR_FOREST), perChunk(0.35), 1, l.feature(deadwood(Species.POPLAR), 5),
 				l.feature(deadwood(Species.WHITE_WILLOW), 5));
 		l.land(biomes(ELM_ASH_FOREST), perChunk(0.3), 1, l.feature(deadwood(Species.OAK), 1));
@@ -410,7 +421,9 @@ final class ModVegetation {
 		l.land(biomes(MIXED_PINE_FOREST, MIXED_FOREST), perChunk(1.5), 1, l.feature(Species.HAZEL.path(), 2),
 				l.feature(Species.JUNIPER.path(), 1));
 		l.land(biomes(OAK_HORNBEAM_FOREST, ELM_ASH_FOREST), perChunk(3), 1, l.feature(Species.HAZEL.path(), 1));
-		l.land(biomes(ASH_ALDER_FOREST, ALDER_CARR, UPLAND_FIR_FOREST), perChunk(1), 1, l.feature(Species.HAZEL.path(), 1));
+		l.land(biomes(ASH_ALDER_FOREST, UPLAND_FIR_FOREST), perChunk(1), 1, l.feature(Species.HAZEL.path(), 1));
+		// Alder carr: no hazel on waterlogged peat; gray willow (Salix cinerea) as an osier.
+		l.land(biomes(ALDER_CARR), perChunk(1.5), 1, l.feature(Species.OSIER.path(), 1));
 		// Gray dune: creeping willow as an osier.
 		l.land(biomes(GRAY_DUNE), 0.01F, 3, l.feature(Species.OSIER.path(), 1));
 		return l.palette();
@@ -418,10 +431,14 @@ final class ModVegetation {
 
 	/**
 	 * Waterside zones (§4, §8.2): cattail (small dripleaf) in water one block deep on mud, reed (sugar cane) on the bank
-	 * shelf, osier in the willow scrub and willow carr, also seedlings on point bars and gravel bars, butterbur (big
-	 * dripleaf) on coarse dirt, rooted dirt and peat (mud) of the gravel bars and the montane tall herbs, herb fringes,
-	 * shore reedbeds, beach wrack on the strandline, marram grass on the embryo dunes, moss on the floating mat and scrub
-	 * on the cliff top.
+	 * shelf of the lowland waters (not by mountain streams: Phragmites has no place in the Carpathian stream vegetation;
+	 * by the waters of pine and beech forests and heaths only in the shore reedbed patches the classifier marks, §4.4),
+	 * sparsely by puddles of the micro-relief (sedges as the tall grass and large fern of the ground layer), osier in the
+	 * willow scrub and willow carr, also seedlings on point bars and gravel bars, butterbur (big dripleaf, 1-2 blocks:
+	 * Petasites is 0.3-1.2 m tall) on coarse dirt and rooted dirt of the gravel bars and on coarse dirt, rooted dirt and
+	 * peat (mud) of the montane tall herbs and the gray alder and ash-alder forests, beach wrack in a line at the seaward
+	 * edge of the strandline and sparse dry grass behind it, marram grass on the embryo dunes, moss on the floating mat
+	 * and scrub on the cliff top.
 	 */
 	static PlantPalette watersideZones(HolderGetter<PlacedFeature> placed) {
 		Layer l = new Layer(placed);
@@ -432,26 +449,39 @@ final class ModVegetation {
 		l.rule(HabitatCondition.zones(Zone.REEDBED, Zone.SHORE_REEDBED), Medium.WATER_BOTTOM, 1, 1, List.of(Ground.MUD), 0.6F, 3,
 				cattail);
 		l.rule(biomes(lowlandWater), Medium.WATER_BOTTOM, 1, 1, List.of(Ground.MUD), 0.3F, 3, cattail);
-		HabitatBiome[] reedBanks = {RIVER, LAKE, LAGOON, REEDBED, FEN, WET_MEADOW, WILLOW_SCRUB, HAY_MEADOW, ARABLE_LAND, HEATH,
-				ALDER_CARR, ASH_ALDER_FOREST, WILLOW_POPLAR_FOREST, ELM_ASH_FOREST, OAK_HORNBEAM_FOREST, MIXED_FOREST,
-				MIXED_PINE_FOREST, MOIST_PINE_FOREST, FRESH_PINE_FOREST, LOWLAND_BEECH_FOREST, DRY_PINE_FOREST};
+		// Eutrophic lowland waters: no pine forests, beech forests and heaths (oligotrophic lobelia lakes, §4.4).
+		HabitatBiome[] reedBanks = {RIVER, LAKE, LAGOON, REEDBED, FEN, WET_MEADOW, WILLOW_SCRUB, HAY_MEADOW, ARABLE_LAND,
+				ALDER_CARR, ASH_ALDER_FOREST, WILLOW_POPLAR_FOREST, ELM_ASH_FOREST, OAK_HORNBEAM_FOREST, MIXED_FOREST};
+		// Lowland biomes for the reed of the waterside zones (the mountain biomes left out: Salicetum purpureae,
+		// Petasitetum and Alnetum incanae of the mountain streams have no reed).
+		HabitatBiome[] lowland = Arrays.stream(HabitatBiome.values()).filter(b -> !b.isWater() && !b.isMountain()
+				&& b != GRAY_ALDER_FOREST && b != UPLAND_FIR_FOREST).toArray(HabitatBiome[]::new);
 		l.rule(biomes(REEDBED).withZones(), Medium.SHORE, 1, 64, List.of(), 0.75F, 3, reed);
-		l.rule(HabitatCondition.zones(Zone.SHORE_REEDBED, Zone.WILLOW_SCRUB, Zone.HERB_FRINGE, Zone.TALL_HERBS, Zone.WILLOW_CARR),
-				Medium.SHORE, 1, 64, List.of(), 0.7F, 3, reed);
+		l.rule(HabitatCondition.zones(Zone.SHORE_REEDBED, Zone.WILLOW_SCRUB, Zone.HERB_FRINGE, Zone.TALL_HERBS, Zone.WILLOW_CARR)
+				.withBiomes(lowland), Medium.SHORE, 1, 64, List.of(), 0.7F, 3, reed);
 		l.rule(biomes(reedBanks), Medium.SHORE, 1, 64, List.of(), 0.5F, 3, reed);
+		// Puddles of the micro-relief: reed only here and there (the herb layer of an alder carr is mostly sedges, ferns
+		// and iris: the ground layer's tall grass and large fern), more in the reedbed biome.
+		l.rule(biomes(REEDBED), Medium.PUDDLE_SHORE, 1, 64, List.of(), 0.4F, 3, reed);
+		l.rule(biomes(FEN, WET_MEADOW), Medium.PUDDLE_SHORE, 1, 64, List.of(), 0.15F, 3, reed);
+		l.rule(biomes(reedBanks), Medium.PUDDLE_SHORE, 1, 64, List.of(), 0.1F, 3, reed);
 		Plant osier = l.feature(Species.OSIER.path(), 9);
 		Plant firefly = b(Blocks.FIREFLY_BUSH, 1);
 		l.land(HabitatCondition.zones(Zone.WILLOW_SCRUB), 0.11F, 2, osier, firefly);
 		l.land(biomes(WILLOW_SCRUB).withZones(Zone.NONE), 0.11F, 2, osier, firefly);
 		l.land(HabitatCondition.zones(Zone.WILLOW_CARR), 0.08F, 2, osier, firefly);
 		l.land(HabitatCondition.zones(Zone.POINT_BAR), 0.02F, 1, osier);
-		Plant butterbur = b(Blocks.BIG_DRIPLEAF, 1);
+		Plant butterbur = Plant.column(Blocks.BIG_DRIPLEAF.defaultBlockState(), 1, 2, 1);
 		l.land(HabitatCondition.zones(Zone.GRAVEL_BAR), List.of(Ground.DIRT), 0.5F, 1, butterbur);
 		l.land(HabitatCondition.zones(Zone.GRAVEL_BAR), 0.05F, 1, osier);
 		l.land(HabitatCondition.zones(Zone.MONTANE_TALL_HERBS), List.of(Ground.DIRT, Ground.MUD), 0.3F, 3, butterbur);
 		l.land(biomes(GRAY_ALDER_FOREST), List.of(Ground.DIRT, Ground.MUD), 0.12F, 3, butterbur);
 		l.land(biomes(ASH_ALDER_FOREST), List.of(Ground.DIRT, Ground.MUD), 0.04F, 3, butterbur);
-		l.land(HabitatCondition.zones(Zone.STRANDLINE), 0.3F, 4, cat(litter(7), b(Blocks.SHORT_DRY_GRASS, 3)));
+		// Beach wrack in a line at the seaward edge of the strandline (2 blocks), sea rocket and sea sandwort as sparse
+		// dry grass behind it.
+		l.rule(HabitatCondition.zones(Zone.STRANDLINE), Medium.SEAWARD_EDGE, 1, 64, List.of(), 0.5F, 2,
+				cat(litter(7), b(Blocks.SHORT_DRY_GRASS, 3)));
+		l.land(HabitatCondition.zones(Zone.STRANDLINE), 0.08F, 3, b(Blocks.SHORT_DRY_GRASS, 3), b(Blocks.TALL_DRY_GRASS, 1));
 		l.land(HabitatCondition.zones(Zone.EMBRYO_DUNE), 0.15F, 3, b(Blocks.SHORT_DRY_GRASS, 6), b(Blocks.TALL_DRY_GRASS, 4));
 		l.land(HabitatCondition.zones(Zone.FLOATING_MAT), 0.6F, 3, b(Blocks.MOSS_CARPET, 7), b(Blocks.BUSH, 1));
 		l.land(HabitatCondition.zones(Zone.CLIFF_TOP), 0.4F, 3, b(Blocks.BUSH, 4), b(Blocks.SWEET_BERRY_BUSH, 2),
@@ -557,6 +587,11 @@ final class ModVegetation {
 	/** Soils of the glacial erratics: the young glacial till and sands of the lowland (§8.1). */
 	static final List<Soil> ERRATIC_SOILS = List.of(Soil.BROWN_SOIL, Soil.ACID_BROWN_SOIL, Soil.RUSTY_SOIL, Soil.PODZOL,
 			Soil.INITIAL_PODZOL, Soil.BEECH_BROWN_SOIL);
+	/**
+	 * Greatest mountain influence P of the chunk of a glacial erratic: the Scandinavian ice sheet reached the foreland of
+	 * the Carpathians but not the Beskids, whose brown soils match the soil list too (S7 review).
+	 */
+	static final float ERRATIC_MAX_MOUNTAIN_INFLUENCE = 0.3F;
 
 	static ResourceKey<Feature> key(String path) {
 		return ModTrees.key(path);

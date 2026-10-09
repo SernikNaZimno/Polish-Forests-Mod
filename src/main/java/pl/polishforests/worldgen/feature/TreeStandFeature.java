@@ -69,7 +69,7 @@ public final class TreeStandFeature implements Feature {
 				TreePalette.Entry e = r.trees().get(i);
 				index[i] = treeIndex(e.tree());
 				weights[i] = e.weight();
-				flags[i] = e.species().flag();
+				flags[i] = e.rangeRamp() ? e.species().flag() : 0;
 				alternatives[i] = e.alternative().map(a -> treeIndex(a.tree())).orElse(-1);
 				alternativeFlags[i] = e.alternative().map(a -> a.species().flag()).orElse(0);
 				depth[i] = e.maxWaterDepth();

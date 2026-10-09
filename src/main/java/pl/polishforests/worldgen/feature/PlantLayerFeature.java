@@ -14,6 +14,7 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.BigDripleafBlock;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.DoublePlantBlock;
 import net.minecraft.world.level.block.TallSeagrassBlock;
 import net.minecraft.world.level.block.state.BlockState;
@@ -37,9 +38,12 @@ import pl.polishforests.worldgen.feature.plan.TreeStandPlan;
  * ({@link ChunkHabitats}, the levels taken from them) and the column data read from the world; this class only carries
  * it out. A block plant is set with flag 2 only where its place is free (air on land and above water, a water source on
  * the bottom) and it can survive: double plants get both halves ({@code DoublePlantBlock.placeAt}, waterlogged in water,
- * e.g. small dripleaf as cattail in water one block deep on mud), big dripleaf (butterbur) grows to a random height,
- * a block with a height above 1 is a column (sugar cane as reed). A feature plant (shrubs, fallen trees) is a placed
- * feature with its own filters, placed with the layer's random source from (world seed, chunk, layer salt).
+ * e.g. small dripleaf as cattail in water one block deep on mud), big dripleaf (butterbur) is a leaf on a stem of the
+ * plant's height range (1: the leaf on the ground; not the vanilla random height of 2–5), a block with a height above 1
+ * is a column (sugar cane as reed). Both halves of a double plant out of water are marked for the post-processing of the
+ * chunk, which removes a half whose other half or ground a later feature of a neighbor replaced (a fallen tree, a crown,
+ * a sand disk). A feature plant (shrubs, fallen trees) is a placed feature with its own filters, placed with the layer's
+ * random source from (world seed, chunk, layer salt).
  */
 public final class PlantLayerFeature implements Feature {
 	private static final Map<BiomeDecoration.Dispatcher, MapCodec<PlantLayerFeature>> CODECS = new EnumMap<>(
@@ -64,6 +68,7 @@ public final class PlantLayerFeature implements Feature {
 	private final List<PlantPalette.Plant> plants = new ArrayList<>();
 	private final ColumnPlan.Palette plan;
 	private final boolean shore;
+	private final boolean seaward;
 	private final long salt;
 
 	public PlantLayerFeature(BiomeDecoration.Dispatcher dispatcher, PlantPalette palette) {
@@ -72,6 +77,7 @@ public final class PlantLayerFeature implements Feature {
 		this.salt = TreeStandPlan.SALT * 31 + dispatcher.ordinal() * 0x6A09_E667L;
 		List<ColumnPlan.Rule> rules = new ArrayList<>();
 		boolean anyShore = false;
+		boolean anySeaward = false;
 		for (PlantPalette.Rule r : palette.rules()) {
 			int[] index = new int[r.plants().size()];
 			int[] weights = new int[r.plants().size()];
@@ -90,12 +96,14 @@ public final class PlantLayerFeature implements Feature {
 			for (ColumnPlan.Ground g : r.grounds()) {
 				grounds |= 1 << g.ordinal();
 			}
-			anyShore |= r.medium() == ColumnPlan.Medium.SHORE;
+			anyShore |= r.medium() == ColumnPlan.Medium.SHORE || r.medium() == ColumnPlan.Medium.PUDDLE_SHORE;
+			anySeaward |= r.medium() == ColumnPlan.Medium.SEAWARD_EDGE;
 			rules.add(new ColumnPlan.Rule(r.condition().match(), r.medium(), r.minDepth(), r.maxDepth(), grounds, r.coverage(),
 					r.patch(), index, weights));
 		}
 		this.plan = new ColumnPlan.Palette(rules);
 		this.shore = anyShore;
+		this.seaward = anySeaward;
 	}
 
 	public BiomeDecoration.Dispatcher dispatcher() {
@@ -139,7 +147,7 @@ public final class PlantLayerFeature implements Feature {
 			return 0;
 		}
 		ChunkPos pos = chunk.getPos();
-		ColumnPlan.Columns columns = VegetationColumns.of(level, chunk, habitats, shore);
+		ColumnPlan.Columns columns = VegetationColumns.of(level, chunk, habitats, shore, seaward);
 		int[] planned = ColumnPlan.of(columns, plan, level.getSeed(), pos.x(), pos.z(), salt);
 		if (planned.length == 0) {
 			return 0;
@@ -182,7 +190,20 @@ public final class PlantLayerFeature implements Feature {
 			if (!state.canSurvive(level, pos)) {
 				return false;
 			}
-			BigDripleafBlock.placeWithRandomHeight(level, random, pos, state.getValue(BlockStateProperties.HORIZONTAL_FACING));
+			int height = height(plant, random);
+			Direction facing = state.getValue(BlockStateProperties.HORIZONTAL_FACING);
+			BlockPos.MutableBlockPos up = pos.mutable();
+			int stems = 0;
+			while (stems < height - 1 && level.getBlockState(up.move(Direction.UP)).isAir()) {
+				stems++;
+			}
+			up.set(pos);
+			for (int k = 0; k < stems; k++) {
+				level.setBlock(up, Blocks.BIG_DRIPLEAF_STEM.defaultBlockState().setValue(BlockStateProperties.HORIZONTAL_FACING, facing),
+						Block.UPDATE_CLIENTS);
+				up.move(Direction.UP);
+			}
+			level.setBlock(up, state, Block.UPDATE_CLIENTS);
 			return true;
 		}
 		if (block instanceof DoublePlantBlock) {
@@ -196,6 +217,15 @@ public final class PlantLayerFeature implements Feature {
 				return false;
 			}
 			DoublePlantBlock.placeAt(level, state, pos, Block.UPDATE_CLIENTS);
+			ChunkAccess chunk = level.getChunk(pos);
+			// Lower half first: the post-processing of a section goes in this order and removes the upper half after the
+			// lower one; a waterlogged half is left alone (its fluid would be ticked).
+			if (level.getFluidState(pos).isEmpty()) {
+				chunk.markPosForPostProcessing(pos);
+			}
+			if (level.getFluidState(above).isEmpty()) {
+				chunk.markPosForPostProcessing(above);
+			}
 			return true;
 		}
 		if (underwater && state.hasProperty(BlockStateProperties.WATERLOGGED)) {
@@ -204,8 +234,7 @@ public final class PlantLayerFeature implements Feature {
 		if (!state.canSurvive(level, pos)) {
 			return false;
 		}
-		int height = plant.minHeight() + (plant.maxHeight() > plant.minHeight()
-				? random.nextInt(plant.maxHeight() - plant.minHeight() + 1) : 0);
+		int height = height(plant, random);
 		level.setBlock(pos, state, Block.UPDATE_CLIENTS);
 		BlockPos.MutableBlockPos up = pos.mutable();
 		for (int k = 1; k < height; k++) {
@@ -218,8 +247,14 @@ public final class PlantLayerFeature implements Feature {
 		return true;
 	}
 
+	/** Height of a block plant: uniform in the plant's range. */
+	private static int height(PlantPalette.Plant plant, RandomSource random) {
+		return plant.minHeight() + (plant.maxHeight() > plant.minHeight()
+				? random.nextInt(plant.maxHeight() - plant.minHeight() + 1) : 0);
+	}
+
 	private static boolean isWaterSource(BlockState state, FluidState fluid) {
-		return fluid.is(Fluids.WATER) && fluid.isSource() && state.is(net.minecraft.world.level.block.Blocks.WATER);
+		return fluid.is(Fluids.WATER) && fluid.isSource() && state.is(Blocks.WATER);
 	}
 
 	@Override

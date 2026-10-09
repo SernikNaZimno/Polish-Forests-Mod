@@ -65,6 +65,32 @@
       ]
     },
     {
+      "biomes": [
+        "dry_pine_forest",
+        "fresh_pine_forest",
+        "coastal_pine_forest",
+        "moist_pine_forest",
+        "bog_woodland",
+        "mixed_pine_forest",
+        "mixed_forest",
+        "oak_hornbeam_forest",
+        "lowland_beech_forest",
+        "alder_carr",
+        "ash_alder_forest",
+        "willow_poplar_forest",
+        "elm_ash_forest",
+        "raised_bog",
+        "fen",
+        "reedbed",
+        "willow_scrub",
+        "heath",
+        "wet_meadow",
+        "hay_meadow",
+        "arable_land",
+        "beach",
+        "white_dune",
+        "gray_dune"
+      ],
       "coverage": 0.7,
       "medium": "shore",
       "patch": 3,
@@ -95,21 +121,78 @@
         "willow_scrub",
         "hay_meadow",
         "arable_land",
-        "heath",
         "alder_carr",
         "ash_alder_forest",
         "willow_poplar_forest",
         "elm_ash_forest",
         "oak_hornbeam_forest",
-        "mixed_forest",
-        "mixed_pine_forest",
-        "moist_pine_forest",
-        "fresh_pine_forest",
-        "lowland_beech_forest",
-        "dry_pine_forest"
+        "mixed_forest"
       ],
       "coverage": 0.5,
       "medium": "shore",
+      "patch": 3,
+      "plants": [
+        {
+          "block": "minecraft:sugar_cane",
+          "max_height": 4,
+          "min_height": 2,
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "reedbed"
+      ],
+      "coverage": 0.4,
+      "medium": "puddle_shore",
+      "patch": 3,
+      "plants": [
+        {
+          "block": "minecraft:sugar_cane",
+          "max_height": 4,
+          "min_height": 2,
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "fen",
+        "wet_meadow"
+      ],
+      "coverage": 0.15,
+      "medium": "puddle_shore",
+      "patch": 3,
+      "plants": [
+        {
+          "block": "minecraft:sugar_cane",
+          "max_height": 4,
+          "min_height": 2,
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "river",
+        "lake",
+        "lagoon",
+        "reedbed",
+        "fen",
+        "wet_meadow",
+        "willow_scrub",
+        "hay_meadow",
+        "arable_land",
+        "alder_carr",
+        "ash_alder_forest",
+        "willow_poplar_forest",
+        "elm_ash_forest",
+        "oak_hornbeam_forest",
+        "mixed_forest"
+      ],
+      "coverage": 0.1,
+      "medium": "puddle_shore",
       "patch": 3,
       "plants": [
         {
@@ -194,6 +277,7 @@
       "plants": [
         {
           "block": "minecraft:big_dripleaf",
+          "max_height": 2,
           "weight": 1
         }
       ],
@@ -223,6 +307,7 @@
       "plants": [
         {
           "block": "minecraft:big_dripleaf",
+          "max_height": 2,
           "weight": 1
         }
       ],
@@ -243,6 +328,7 @@
       "plants": [
         {
           "block": "minecraft:big_dripleaf",
+          "max_height": 2,
           "weight": 1
         }
       ]
@@ -260,13 +346,15 @@
       "plants": [
         {
           "block": "minecraft:big_dripleaf",
+          "max_height": 2,
           "weight": 1
         }
       ]
     },
     {
-      "coverage": 0.3,
-      "patch": 4,
+      "coverage": 0.5,
+      "medium": "seaward_edge",
+      "patch": 2,
       "plants": [
         {
           "block": {
@@ -301,6 +389,23 @@
         {
           "block": "minecraft:short_dry_grass",
           "weight": 3
+        }
+      ],
+      "zones": [
+        "strandline"
+      ]
+    },
+    {
+      "coverage": 0.08,
+      "patch": 3,
+      "plants": [
+        {
+          "block": "minecraft:short_dry_grass",
+          "weight": 3
+        },
+        {
+          "block": "minecraft:tall_dry_grass",
+          "weight": 1
         }
       ],
       "zones": [

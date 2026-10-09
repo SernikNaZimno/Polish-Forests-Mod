@@ -72,8 +72,8 @@ class GroundLayerPlanTest {
 		Arrays.fill(d, depth);
 		int[] g = new int[256];
 		Arrays.fill(g, ground.ordinal());
-		boolean[] s = new boolean[256];
-		Arrays.fill(s, shore);
+		byte[] s = new byte[256];
+		Arrays.fill(s, (byte) (shore ? ColumnPlan.SIDE_WATER : 0));
 		return new ColumnPlan.Columns(codes, d, g, s);
 	}
 
@@ -126,17 +126,56 @@ class GroundLayerPlanTest {
 		int fringe = code(HabitatBiome.OAK_HORNBEAM_FOREST, Zone.HERB_FRINGE);
 		int mud = ColumnPlan.Ground.MUD.ordinal();
 		int grass = ColumnPlan.Ground.GRASS.ordinal();
-		assertEquals(0, p.ruleFor(forest, 1, mud, false), "cattail in water 1 deep on mud");
-		assertEquals(-1, p.ruleFor(forest, 2, mud, false), "no cattail in water 2 deep");
-		assertEquals(-1, p.ruleFor(forest, 1, ColumnPlan.Ground.SAND.ordinal(), false), "no cattail on sand");
-		assertEquals(1, p.ruleFor(fringe, 0, grass, true), "reed on the shore before the herb fringe");
-		assertEquals(2, p.ruleFor(fringe, 0, grass, false), "herb fringe before its biome");
-		assertEquals(3, p.ruleFor(forest, 0, grass, false));
-		assertEquals(4, p.ruleFor(forest, 0, ColumnPlan.Ground.PODZOL.ordinal(), false), "ground filter");
-		assertEquals(-1, p.ruleFor(code(HabitatBiome.ARABLE_LAND, Zone.NONE), 0, grass, false), "no rule");
+		assertEquals(0, p.ruleFor(forest, 1, mud, 0), "cattail in water 1 deep on mud");
+		assertEquals(-1, p.ruleFor(forest, 2, mud, 0), "no cattail in water 2 deep");
+		assertEquals(-1, p.ruleFor(forest, 1, ColumnPlan.Ground.SAND.ordinal(), 0), "no cattail on sand");
+		assertEquals(1, p.ruleFor(fringe, 0, grass, ColumnPlan.SIDE_WATER), "reed on the shore before the herb fringe");
+		assertEquals(1, p.ruleFor(fringe, 0, grass, ColumnPlan.SIDE_WATER | ColumnPlan.SIDE_PUDDLE),
+				"model water and a puddle beside: the shore");
+		assertEquals(2, p.ruleFor(fringe, 0, grass, ColumnPlan.SIDE_PUDDLE), "a puddle only is not the shore");
+		assertEquals(2, p.ruleFor(fringe, 0, grass, 0), "herb fringe before its biome");
+		assertEquals(3, p.ruleFor(forest, 0, grass, 0));
+		assertEquals(4, p.ruleFor(forest, 0, ColumnPlan.Ground.PODZOL.ordinal(), 0), "ground filter");
+		assertEquals(-1, p.ruleFor(code(HabitatBiome.ARABLE_LAND, Zone.NONE), 0, grass, 0), "no rule");
 		for (int q : ColumnPlan.of(uniform(forest, 1, ColumnPlan.Ground.MUD, false), p, SEED, 0, 0, SALT)) {
 			assertEquals(ColumnPlan.Medium.WATER_BOTTOM, ColumnPlan.medium(q));
 			assertEquals(0, ColumnPlan.plant(q));
+		}
+	}
+
+	/**
+	 * The media of the dry columns beside water and at the beach (S7 review): the bank shelf of the model's water, the
+	 * edge of a puddle only, the seaward edge of the strandline; each also counts as dry land.
+	 */
+	@Test
+	void puddleShoreAndSeawardEdge() {
+		ColumnPlan.Palette p = new ColumnPlan.Palette(List.of(
+				new ColumnPlan.Rule(HabitatMatch.ANY, ColumnPlan.Medium.SHORE, 1, 64, 0, 0.5, 1, new int[] {0}, new int[] {1}),
+				new ColumnPlan.Rule(HabitatMatch.ANY, ColumnPlan.Medium.PUDDLE_SHORE, 1, 64, 0, 0.1, 1, new int[] {1}, new int[] {1}),
+				new ColumnPlan.Rule(HabitatMatch.ANY, ColumnPlan.Medium.SEAWARD_EDGE, 1, 64, 0, 0.5, 1, new int[] {2}, new int[] {1}),
+				new ColumnPlan.Rule(HabitatMatch.ANY, ColumnPlan.Medium.LAND, 1, 64, 0, 0.8, 1, new int[] {3}, new int[] {1})));
+		int code = code(HabitatBiome.BEACH, Zone.STRANDLINE);
+		int sand = ColumnPlan.Ground.SAND.ordinal();
+		assertEquals(0, p.ruleFor(code, 0, sand, ColumnPlan.SIDE_WATER));
+		assertEquals(1, p.ruleFor(code, 0, sand, ColumnPlan.SIDE_PUDDLE));
+		assertEquals(2, p.ruleFor(code, 0, sand, ColumnPlan.SIDE_SEAWARD));
+		assertEquals(3, p.ruleFor(code, 0, sand, 0));
+		assertEquals(-1, p.ruleFor(code, 1, sand, ColumnPlan.SIDE_SEAWARD), "not in water");
+		int[] codes = new int[256];
+		Arrays.fill(codes, code);
+		byte[] side = new byte[256];
+		for (int i = 0; i < 256; i++) {
+			side[i] = (byte) (i % 4 == 0 ? ColumnPlan.SIDE_PUDDLE : i % 4 == 1 ? ColumnPlan.SIDE_SEAWARD : 0);
+		}
+		int[] ground = new int[256];
+		Arrays.fill(ground, sand);
+		int[] placed = ColumnPlan.of(new ColumnPlan.Columns(codes, new int[256], ground, side), p, SEED, 3, -2, SALT);
+		for (int q : placed) {
+			int i = ColumnPlan.column(q);
+			ColumnPlan.Medium expected = i % 4 == 0 ? ColumnPlan.Medium.PUDDLE_SHORE
+					: i % 4 == 1 ? ColumnPlan.Medium.SEAWARD_EDGE : ColumnPlan.Medium.LAND;
+			assertEquals(expected, ColumnPlan.medium(q), "medium of the packed placement");
+			assertEquals(expected.ordinal() == 4 ? 1 : expected.ordinal() == 5 ? 2 : 3, ColumnPlan.plant(q));
 		}
 	}
 
@@ -194,9 +233,9 @@ class GroundLayerPlanTest {
 
 	// ------------------------------------------------------------------ generated palettes (§4.6)
 
-	private static final Set<String> TALL = Set.of("minecraft:tall_grass", "minecraft:large_fern", "minecraft:bush",
-			"minecraft:firefly_bush", "minecraft:sweet_berry_bush", "minecraft:sugar_cane", "minecraft:big_dripleaf",
-			"minecraft:small_dripleaf");
+	/** Tall plants of §4.6; since the S7 review the one-block shrubs (bush, firefly bush, sweet berry bush) are dwarf shrubs, not tall. */
+	private static final Set<String> TALL = Set.of("minecraft:tall_grass", "minecraft:large_fern", "minecraft:sugar_cane",
+			"minecraft:big_dripleaf", "minecraft:small_dripleaf");
 	private static final Set<String> SMALL = Set.of("minecraft:short_grass", "minecraft:dandelion", "minecraft:poppy",
 			"minecraft:oxeye_daisy", "minecraft:cornflower", "minecraft:azure_bluet", "minecraft:allium",
 			"minecraft:lily_of_the_valley", "minecraft:wildflowers", "minecraft:pink_petals");

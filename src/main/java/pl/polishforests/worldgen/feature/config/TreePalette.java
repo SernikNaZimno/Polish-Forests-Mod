@@ -34,19 +34,27 @@ public record TreePalette(List<Rule> rules) {
 	 * @param alternative   species that takes the weight where {@code species} is out of its range ("beech or spruce",
 	 *                      §8.5); without it the weight is shared among the other species
 	 * @param maxWaterDepth deepest water (blocks) the tree may stand in: 0 for dry columns only, 1–2 for willows and alders
+	 * @param rangeRamp     whether the species' range flag and ramp apply (false: full weight, for a biome that lies
+	 *                      within the species' range by definition, such as beech in the beech forests)
 	 */
 	public record Entry(Species species, Holder<PlacedFeature> tree, int weight, Optional<Alternative> alternative,
-			int maxWaterDepth) {
+			int maxWaterDepth, boolean rangeRamp) {
 		public static final Codec<Entry> CODEC = RecordCodecBuilder.create(i -> i.group(
 				SPECIES_CODEC.fieldOf("species").forGetter(Entry::species),
 				PlacedFeature.CODEC.fieldOf("tree").forGetter(Entry::tree),
 				Codec.intRange(1, 10_000).fieldOf("weight").forGetter(Entry::weight),
 				Alternative.CODEC.optionalFieldOf("alternative").forGetter(Entry::alternative),
-				Codec.intRange(0, 2).optionalFieldOf("max_water_depth", 0).forGetter(Entry::maxWaterDepth)
+				Codec.intRange(0, 2).optionalFieldOf("max_water_depth", 0).forGetter(Entry::maxWaterDepth),
+				Codec.BOOL.optionalFieldOf("range_ramp", true).forGetter(Entry::rangeRamp)
 		).apply(i, Entry::new));
 
 		public Entry(Species species, Holder<PlacedFeature> tree, int weight) {
-			this(species, tree, weight, Optional.empty(), 0);
+			this(species, tree, weight, Optional.empty(), 0, true);
+		}
+
+		public Entry(Species species, Holder<PlacedFeature> tree, int weight, Optional<Alternative> alternative,
+				int maxWaterDepth) {
+			this(species, tree, weight, alternative, maxWaterDepth, true);
 		}
 	}
 

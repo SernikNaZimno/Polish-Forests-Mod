@@ -7,8 +7,9 @@ import pl.polishforests.worldgen.landscape.Noise;
 /**
  * Column plan of a vegetation layer (docs/03-m2-biomy.md §8.2): deadwood, understory, waterside zones, ground layer and
  * aquatic plants walk the 256 columns of a chunk, and each column takes the first palette rule that matches its habitat
- * code ({@link HabitatMatch}), its medium (dry land, dry land with water beside it, the bottom or the surface of water
- * of a given depth) and its top ground block. The rule covers a share of its columns ({@code coverage}) with plants
+ * code ({@link HabitatMatch}), its medium (dry land, dry land with the model's water beside it, dry land with only a
+ * puddle beside it, dry land at the seaward edge of its zone, the bottom or the surface of water of a given depth) and
+ * its top ground block. The rule covers a share of its columns ({@code coverage}) with plants
  * chosen by weight. A pure function of the column data, the palette, the world seed and the layer salt, testable
  * without the game.
  *
@@ -19,17 +20,36 @@ import pl.polishforests.worldgen.landscape.Noise;
  * plants grow in clumps and the ground layer has bare patches, as in a real forest floor.
  */
 public final class ColumnPlan {
-	/** Where a plant stands. */
+	/** Where a plant stands (new constants only at the end: the order is part of the packed placements). */
 	public enum Medium {
 		/** On a dry column (no water above the top ground block). */
 		LAND,
-		/** On a dry column with water beside its top block (the bank shelf, §7.2). */
+		/**
+		 * On a dry column with water of the landscape model beside its top block (the bank shelf of rivers, lakes and the
+		 * sea, §7.2; since the S7 review not a puddle of the micro-relief).
+		 */
 		SHORE,
 		/** On the bottom of water of a depth within the rule's range. */
 		WATER_BOTTOM,
 		/** On the surface of water of a depth within the rule's range. */
-		WATER_SURFACE
+		WATER_SURFACE,
+		/** On a dry column with only puddles of the micro-relief beside its top block (§7.3). */
+		PUDDLE_SHORE,
+		/**
+		 * On a dry column within 2 blocks of the wet beach or the sea: the seaward edge of the strandline, the line of the
+		 * beach wrack (§5.2).
+		 */
+		SEAWARD_EDGE;
+
+		private static final Medium[] VALUES = values();
 	}
+
+	/** Bits of {@link Columns#side}: the model's water beside the top block. */
+	public static final int SIDE_WATER = 1;
+	/** Bits of {@link Columns#side}: a puddle of the micro-relief beside the top block. */
+	public static final int SIDE_PUDDLE = 2;
+	/** Bits of {@link Columns#side}: the wet beach or the sea within 2 blocks. */
+	public static final int SIDE_SEAWARD = 4;
 
 	/** Kind of the top ground block, as far as plants are concerned. */
 	public enum Ground {
@@ -60,10 +80,12 @@ public final class ColumnPlan {
 			}
 		}
 
-		boolean applies(int code, int depth, int ground, boolean shore) {
+		boolean applies(int code, int depth, int ground, int side) {
 			boolean medium = switch (this.medium) {
 				case LAND -> depth == 0;
-				case SHORE -> depth == 0 && shore;
+				case SHORE -> depth == 0 && (side & SIDE_WATER) != 0;
+				case PUDDLE_SHORE -> depth == 0 && (side & (SIDE_WATER | SIDE_PUDDLE)) == SIDE_PUDDLE;
+				case SEAWARD_EDGE -> depth == 0 && (side & SIDE_SEAWARD) != 0;
 				case WATER_BOTTOM, WATER_SURFACE -> depth >= minDepth && depth <= maxDepth && depth > 0;
 			};
 			return medium && (grounds == 0 || (grounds >>> ground & 1) != 0) && match.matches(code);
@@ -77,9 +99,9 @@ public final class ColumnPlan {
 		}
 
 		/** Index of the first rule that applies, or -1. */
-		public int ruleFor(int code, int depth, int ground, boolean shore) {
+		public int ruleFor(int code, int depth, int ground, int side) {
 			for (int r = 0; r < rules.size(); r++) {
-				if (rules.get(r).applies(code, depth, ground, shore)) {
+				if (rules.get(r).applies(code, depth, ground, side)) {
 					return r;
 				}
 			}
@@ -93,9 +115,9 @@ public final class ColumnPlan {
 	 * @param codes      habitat codes
 	 * @param waterDepth water depth in blocks (0: dry)
 	 * @param ground     {@link Ground} ordinal of the top ground block
-	 * @param shore      whether a dry column has water beside its top block
+	 * @param side       what is beside a dry column ({@link #SIDE_WATER}, {@link #SIDE_PUDDLE}, {@link #SIDE_SEAWARD})
 	 */
-	public record Columns(int[] codes, int[] waterDepth, int[] ground, boolean[] shore) {
+	public record Columns(int[] codes, int[] waterDepth, int[] ground, byte[] side) {
 	}
 
 	private ColumnPlan() {
@@ -103,7 +125,7 @@ public final class ColumnPlan {
 
 	/** Medium of a packed placement. */
 	public static Medium medium(int placement) {
-		return Medium.values()[placement >>> 14 & 3];
+		return Medium.VALUES[placement >>> 13 & 7];
 	}
 
 	/** Column ({@code x * 16 + z}) of a packed placement. */
@@ -113,11 +135,11 @@ public final class ColumnPlan {
 
 	/** Plant index of a packed placement. */
 	public static int plant(int placement) {
-		return placement & 0x3FFF;
+		return placement & 0x1FFF;
 	}
 
 	/**
-	 * Placements of the chunk, each packed as {@code column << 16 | medium << 14 | plant}, in column order.
+	 * Placements of the chunk, each packed as {@code column << 16 | medium << 13 | plant}, in column order.
 	 *
 	 * @param salt salt of the layer (each layer draws independent values)
 	 */
@@ -128,7 +150,7 @@ public final class ColumnPlan {
 		int x0 = chunkX << 4;
 		int z0 = chunkZ << 4;
 		for (int i = 0; i < 256; i++) {
-			int r = palette.ruleFor(columns.codes()[i], columns.waterDepth()[i], columns.ground()[i], columns.shore()[i]);
+			int r = palette.ruleFor(columns.codes()[i], columns.waterDepth()[i], columns.ground()[i], columns.side()[i]);
 			if (r < 0) {
 				continue;
 			}
@@ -140,7 +162,7 @@ public final class ColumnPlan {
 			}
 			int plant = pick(rule, value(seed, x, z, 0x9E11L, rule.patch()));
 			if (plant >= 0) {
-				out[n++] = i << 16 | rule.medium().ordinal() << 14 | plant;
+				out[n++] = i << 16 | rule.medium().ordinal() << 13 | plant;
 			}
 		}
 		return Arrays.copyOf(out, n);

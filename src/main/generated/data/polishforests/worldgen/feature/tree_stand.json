@@ -460,6 +460,7 @@
       ],
       "trees": [
         {
+          "range_ramp": false,
           "species": "beech",
           "tree": "polishforests:tree/beech",
           "weight": 850
@@ -616,6 +617,7 @@
       ],
       "trees": [
         {
+          "range_ramp": false,
           "species": "beech",
           "tree": "polishforests:tree/beech",
           "weight": 700

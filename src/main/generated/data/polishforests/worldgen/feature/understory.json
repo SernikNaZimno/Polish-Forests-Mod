@@ -95,13 +95,24 @@
     {
       "biomes": [
         "ash_alder_forest",
-        "alder_carr",
         "upland_fir_forest"
       ],
       "coverage": 0.00390625,
       "plants": [
         {
           "feature": "polishforests:shrub/hazel",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "alder_carr"
+      ],
+      "coverage": 0.005859375,
+      "plants": [
+        {
+          "feature": "polishforests:shrub/osier",
           "weight": 1
         }
       ]

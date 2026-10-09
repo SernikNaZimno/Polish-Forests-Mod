@@ -57,6 +57,10 @@ public record HabitatCondition(List<HabitatBiome> biomes, List<Zone> zones, List
 		return new HabitatCondition(List.of(), List.of(zones), List.of(), List.of(), List.of());
 	}
 
+	public HabitatCondition withBiomes(HabitatBiome... biomes) {
+		return new HabitatCondition(List.of(biomes), zones, siteTypes, associations, soils);
+	}
+
 	public HabitatCondition withZones(Zone... zones) {
 		return new HabitatCondition(biomes, List.of(zones), siteTypes, associations, soils);
 	}

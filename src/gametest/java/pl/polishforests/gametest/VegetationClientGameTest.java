@@ -23,6 +23,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.DoublePlantBlock;
 import net.minecraft.world.level.block.FlowerBedBlock;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.levelgen.presets.WorldPreset;
 import pl.polishforests.PolishForests;
 import pl.polishforests.worldgen.chunk.ChunkHabitats;
@@ -40,14 +41,19 @@ import pl.polishforests.worldgen.surface.ChunkSurface;
 /**
  * Vegetation in the game (step S7, docs/03-m2-biomy.md §8, §4.6, §12.3), in both world scales in the natural-vegetation
  * mode: {@code generator.validate()} (feature order) passes; transects of three rivers per scale (a large lowland river,
- * a small lowland river, a mountain stream; {@value #TRANSECT_RADIUS_CHUNKS} chunks around each crossing) meet the
- * density rule of §4.6 in the waterside zones, the floodplain forests and the alder carr: short grass and small flowers at
- * most 10% of the land columns, tall plants, shrubs, reed, cattail and trees at least 60%, bare ground at most 25% (point
- * bars and gravel bars left out); {@code HABITAT_MISS} below 0.5% of the chunks with terrain. Checkpoint 2: a screenshot
- * {@code vegetation_<place>_<scale>} at each of the 11 places of §12.3 (the soil places of {@code HabitatsClientGameTest}),
- * without the HUD, at noon in clear weather. Runs when {@code -Dpolishforests.gametest} is {@code vegetation} or
- * {@code all}; {@code -Pscales} picks one scale, {@code -Psites} some places (names of
- * {@link HabitatsClientGameTest#SOIL_NAMES}, {@code none} for no screenshots).
+ * a small lowland river, a mountain stream; {@value #TRANSECT_RADIUS_CHUNKS} chunks around each crossing, each with at
+ * least {@value #TRANSECT_MIN_ZONE_COLUMNS} land columns of the waterside zones and {@value #TRANSECT_MIN_WATER_COLUMNS}
+ * columns of the river's water) meet the density rule of §4.6 in the waterside zones, the floodplain forests and the
+ * alder carr: short grass and small flowers at most 10% of the land columns, tall plants, shrubs, reed, cattail and
+ * trees at least 60% (the one-block bush, firefly bush and sweet berry bush count as dwarf shrubs, not as tall), bare
+ * ground at most 25% (point bars and gravel bars left out); the crown cover of the willow scrub and the dwarf pine scrub
+ * is reported; trees leave no decaying leaves (below {@value #DECAYING_MAX} of the leaves in the transects and at the
+ * places of the screenshots); {@code HABITAT_MISS} below 0.5% of the chunks with terrain. Checkpoint 2: a screenshot
+ * {@code vegetation_<place>_<scale>} at each of the 11 places of §12.3 (the soil places of {@code HabitatsClientGameTest};
+ * the willow scrub of the gameplay scale on the large river, where the zone is wide) and at the common forests
+ * ({@link #EXTRA_NAMES}), without the HUD, at noon in clear weather. Runs when {@code -Dpolishforests.gametest} is
+ * {@code vegetation} or {@code all}; {@code -Pscales} picks one scale, {@code -Psites} some places (names of
+ * {@link HabitatsClientGameTest#SOIL_NAMES} and {@link #EXTRA_NAMES}, {@code none} for no screenshots).
  */
 public final class VegetationClientGameTest implements FabricClientGameTest {
 	private static final String SEED = "20260927";
@@ -56,6 +62,12 @@ public final class VegetationClientGameTest implements FabricClientGameTest {
 	private static final int TRANSECT_RADIUS_CHUNKS = 2;
 	/** Least number of land columns of the dense habitats in a transect. */
 	private static final int TRANSECT_MIN_COLUMNS = 150;
+	/** Least number of land columns of the waterside zones in a transect (the crossing is a real river bank). */
+	private static final int TRANSECT_MIN_ZONE_COLUMNS = 40;
+	/** Least number of columns of the river's water (river or stream biome) in a transect. */
+	private static final int TRANSECT_MIN_WATER_COLUMNS = 20;
+	/** Greatest share of decaying leaves (distance 7, not persistent) among the leaves of the scanned areas. */
+	private static final double DECAYING_MAX = 0.001;
 	private static final double SMALL_MAX = 0.10;
 	private static final double TALL_MIN = 0.60;
 	private static final double BARE_MAX = 0.25;
@@ -72,8 +84,21 @@ public final class VegetationClientGameTest implements FabricClientGameTest {
 
 	/** Kind of cover of a land column, from the block above its top ground block. */
 	enum Cover {
-		TREE, SHRUB, TALL, SMALL, OTHER, BARE
+		TREE, SHRUB, TALL, SMALL, OTHER, BARE, DWARF
 	}
+
+	/**
+	 * Extra places of checkpoint 2 (S7 review): the common forests of Poland without a soil place. Centers checked in the
+	 * classifier; {@code null} where the scale has no such place near the test areas.
+	 */
+	static final String[] EXTRA_NAMES = {"oak_hornbeam_forest", "fresh_pine_forest", "mixed_forest", "montane_beech_forest",
+			"upland_fir_forest", "elm_ash_forest", "gray_alder_forest"};
+	private static final int[][] EXTRA_REAL = {{-144, 32}, {-231_006, -134_146}, {16, 0}, {99_409, 1_034_685}, null,
+			{-19_612, 11_205}, {155_490, 1_059_162}};
+	private static final int[][] EXTRA_GAMEPLAY = {{-32, 32}, {-1_280, -496}, {0, 0}, {27_273, 3_606}, {27_305, 3_718},
+			{-1_787, 6_086}, {27_825, 3_374}};
+	/** Start of the search for the willow scrub of the gameplay scale: the large river of the transect. */
+	private static final int[] WILLOW_SCRUB_GAMEPLAY = {-1_851, 6_022};
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
@@ -101,8 +126,10 @@ public final class VegetationClientGameTest implements FabricClientGameTest {
 				long miss0 = ModFeatures.HABITAT_MISS.sum();
 				long chunks0 = PolandChunkGenerator.CHUNKS.sum();
 				PolishForests.LOG.info("[vegetation] {}: {}", name, sp.getServer().computeOnServer(VegetationClientGameTest::validate));
-				PolishForests.LOG.info("[vegetation] {}: {}", name, sp.getServer().computeOnServer(s -> transects(s, real)));
-				screenshots(context, sp, real, name);
+					PolishForests.LOG.info("[vegetation] {}: {}", name, sp.getServer().computeOnServer(s -> transects(s, real)));
+				PolishForests.LOG.info("[vegetation] {}: {}", name, sp.getServer().computeOnServer(s -> crownCover(s, real)));
+				List<int[]> shot = screenshots(context, sp, real, name);
+				PolishForests.LOG.info("[vegetation] {}: {}", name, sp.getServer().computeOnServer(s -> decaying(s, real, shot)));
 				PolishForests.LOG.info("[vegetation] {}: {}", name, layers());
 				long misses = ModFeatures.HABITAT_MISS.sum() - miss0;
 				long chunks = PolandChunkGenerator.CHUNKS.sum() - chunks0;
@@ -156,20 +183,25 @@ public final class VegetationClientGameTest implements FabricClientGameTest {
 
 	/**
 	 * Crossings of the three rivers of a scale (block coordinates): the large river of the stage measurement (class A),
-	 * the place of the ash-alder riparian forest of the soil test by a small lowland river (class B) and a mountain stream
-	 * with a gray alder forest found near the Beskids area of the stage measurement (class C).
+	 * a small lowland river (class B: the nearest column of its tall herbs or riverside willows, the zones of class B,
+	 * to the place of the ash-alder riparian forest of the soil test; S7 review: that place itself has no river in the
+	 * gameplay scale) and a mountain stream with a gray alder forest found near the Beskids area of the stage measurement
+	 * (class C).
 	 */
 	private static List<int[]> crossings(MinecraftServer server, boolean real) {
 		int[][] soil = real ? HabitatsClientGameTest.SOIL_REAL : HabitatsClientGameTest.SOIL_GAMEPLAY;
 		List<int[]> out = new ArrayList<>();
 		out.add(real ? new int[] {-19_484, 11_253} : new int[] {-1_851, 6_022});
-		out.add(soil[1]);
-		out.add(stream(server, real ? new int[] {154_834, 1_058_738} : new int[] {27_609, 3_254}));
+		out.add(find(server, soil[1], code -> Habitat.zone(code) == Zone.TALL_HERBS || Habitat.zone(code) == Zone.RIVERSIDE_WILLOWS,
+				"small lowland river"));
+		out.add(find(server, real ? new int[] {154_834, 1_058_738} : new int[] {27_609, 3_254},
+				code -> Habitat.biome(code) == HabitatBiome.GRAY_ALDER_FOREST || Habitat.zone(code) == Zone.GRAVEL_BAR,
+				"mountain stream with a gray alder forest"));
 		return out;
 	}
 
-	/** The nearest column with a gray alder forest or a gravel bar on a spiral (step 8 blocks) around the start. */
-	private static int[] stream(MinecraftServer server, int[] start) {
+	/** The nearest column whose habitat code passes the test, on a spiral (step 8 blocks) around the start. */
+	private static int[] find(MinecraftServer server, int[] start, java.util.function.IntPredicate test, String what) {
 		PolandChunkGenerator gen = generator(server);
 		long seed = server.overworld().getSeed();
 		LandscapeModel m = gen.model(seed);
@@ -185,7 +217,7 @@ public final class VegetationClientGameTest implements FabricClientGameTest {
 			int bx = start[0] + x * 8;
 			int bz = start[1] + z * 8;
 			int code = k.classify(m.sample(bx, bz), bx, bz);
-			if (Habitat.biome(code) == HabitatBiome.GRAY_ALDER_FOREST || Habitat.zone(code) == Zone.GRAVEL_BAR) {
+			if (test.test(code)) {
 				return new int[] {bx, bz};
 			}
 			x += dx;
@@ -200,7 +232,7 @@ public final class VegetationClientGameTest implements FabricClientGameTest {
 				}
 			}
 		}
-		throw new AssertionError("No mountain stream with a gray alder forest near " + start[0] + ", " + start[1]);
+		throw new AssertionError("No " + what + " near " + start[0] + ", " + start[1]);
 	}
 
 	/**
@@ -226,6 +258,8 @@ public final class VegetationClientGameTest implements FabricClientGameTest {
 			long bare = 0;
 			long cattails = 0;
 			long shallow = 0;
+			long zoneLand = 0;
+			long river = 0;
 			java.util.Map<String, Integer> byZone = new java.util.TreeMap<>();
 			for (int cx = ccx - TRANSECT_RADIUS_CHUNKS; cx <= ccx + TRANSECT_RADIUS_CHUNKS; cx++) {
 				for (int cz = ccz - TRANSECT_RADIUS_CHUNKS; cz <= ccz + TRANSECT_RADIUS_CHUNKS; cz++) {
@@ -236,6 +270,9 @@ public final class VegetationClientGameTest implements FabricClientGameTest {
 						int code = codes[i];
 						Zone zone = Habitat.zone(code);
 						HabitatBiome biome = Habitat.biome(code);
+						if (plan.wet(i) && (biome == HabitatBiome.RIVER || biome == HabitatBiome.STREAM)) {
+							river++;
+						}
 						if (!DENSE_ZONES.contains(zone) && !DENSE_BIOMES.contains(biome)) {
 							continue;
 						}
@@ -251,6 +288,7 @@ public final class VegetationClientGameTest implements FabricClientGameTest {
 						Cover cover = cover(level, x, plan.top(i), z);
 						counts[cover.ordinal()]++;
 						land++;
+						zoneLand += DENSE_ZONES.contains(zone) ? 1 : 0;
 						byZone.merge(zone == Zone.NONE ? biome.id() : zone.id(), 1, Integer::sum);
 						if (!BARS.contains(zone)) {
 							bareCounted++;
@@ -263,14 +301,19 @@ public final class VegetationClientGameTest implements FabricClientGameTest {
 			double tall = (double) (counts[Cover.TREE.ordinal()] + counts[Cover.SHRUB.ordinal()] + counts[Cover.TALL.ordinal()])
 					/ Math.max(1, land);
 			double bareShare = (double) bare / Math.max(1, bareCounted);
-			report.append(String.format(Locale.ROOT, " %s at (%d, %d): %d land columns %s, trees %.1f%%, shrubs %.1f%%, tall "
-					+ "plants %.1f%% (together %.1f%%), short grass and small flowers %.1f%%, other %.1f%%, bare %.1f%% (without "
-					+ "bars); cattail on %d of %d columns in water 1 block deep;", names[t], c[0], c[1], land, byZone,
+			report.append(String.format(Locale.ROOT, " %s at (%d, %d): %d land columns (%d of the waterside zones) %s, %d "
+					+ "columns of river water, trees %.1f%%, shrubs %.1f%%, tall plants %.1f%% (together %.1f%%), dwarf shrubs "
+					+ "%.1f%%, short grass and small flowers %.1f%%, other %.1f%%, bare %.1f%% (without bars); cattail on %d of %d "
+					+ "columns in water 1 block deep;", names[t], c[0], c[1], land, zoneLand, byZone, river,
 					100.0 * counts[Cover.TREE.ordinal()] / Math.max(1, land), 100.0 * counts[Cover.SHRUB.ordinal()] / Math.max(1, land),
-					100.0 * counts[Cover.TALL.ordinal()] / Math.max(1, land), 100 * tall, 100 * small,
+					100.0 * counts[Cover.TALL.ordinal()] / Math.max(1, land), 100 * tall,
+					100.0 * counts[Cover.DWARF.ordinal()] / Math.max(1, land), 100 * small,
 					100.0 * counts[Cover.OTHER.ordinal()] / Math.max(1, land), 100 * bareShare, cattails, shallow));
 			if (land < TRANSECT_MIN_COLUMNS) {
 				failures.add(names[t] + ": only " + land + " land columns of the dense habitats");
+			} else if (zoneLand < TRANSECT_MIN_ZONE_COLUMNS || river < TRANSECT_MIN_WATER_COLUMNS) {
+				failures.add(names[t] + ": not a river bank (" + zoneLand + " land columns of the waterside zones, " + river
+						+ " columns of river water)");
 			} else if (small > SMALL_MAX || tall < TALL_MIN || bareShare > BARE_MAX) {
 				failures.add(String.format(Locale.ROOT, "%s: small %.1f%%, tall %.1f%%, bare %.1f%%", names[t], 100 * small,
 						100 * tall, 100 * bareShare));
@@ -293,9 +336,11 @@ public final class VegetationClientGameTest implements FabricClientGameTest {
 		}
 		Block block = above.getBlock();
 		if (block instanceof DoublePlantBlock || block instanceof BigDripleafBlock || block instanceof BigDripleafStemBlock
-				|| above.is(Blocks.SUGAR_CANE) || above.is(Blocks.BUSH) || above.is(Blocks.FIREFLY_BUSH)
-				|| above.is(Blocks.SWEET_BERRY_BUSH)) {
+				|| above.is(Blocks.SUGAR_CANE)) {
 			return Cover.TALL;
+		}
+		if (above.is(Blocks.BUSH) || above.is(Blocks.FIREFLY_BUSH) || above.is(Blocks.SWEET_BERRY_BUSH)) {
+			return Cover.DWARF;
 		}
 		if (above.is(Blocks.SHORT_GRASS) || above.is(BlockTags.SMALL_FLOWERS) || block instanceof FlowerBedBlock) {
 			return Cover.SMALL;
@@ -307,44 +352,183 @@ public final class VegetationClientGameTest implements FabricClientGameTest {
 		return Cover.OTHER;
 	}
 
+	/** Whether leaves or a log stand 1–4 blocks above the top ground block (the crown cover of shrubs and low trees). */
+	private static boolean crown(ServerLevel level, int x, int top, int z) {
+		BlockPos.MutableBlockPos at = new BlockPos.MutableBlockPos();
+		for (int dy = 1; dy <= 4; dy++) {
+			BlockState s = level.getBlockState(at.set(x, top + dy, z));
+			if (s.is(BlockTags.LEAVES) || s.is(BlockTags.LOGS)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Crown cover of the shrub habitats (S7 review; §4.1 and §8.5: the willow scrub 80–100%, the dwarf pine scrub about
+	 * 70%): the share of the land columns with leaves or a log 1–4 blocks above the ground, in the willow scrub zone and
+	 * biome of the large river transect and of the willow scrub place, and in the dwarf pine scrub biome around its soil
+	 * place ({@value #TRANSECT_RADIUS_CHUNKS} chunks around each). Reported, not asserted.
+	 */
+	private static String crownCover(MinecraftServer server, boolean real) {
+		ServerLevel level = server.overworld();
+		PolandChunkGenerator gen = generator(server);
+		long seed = level.getSeed();
+		int[][] soil = real ? HabitatsClientGameTest.SOIL_REAL : HabitatsClientGameTest.SOIL_GAMEPLAY;
+		int[] large = real ? new int[] {-19_484, 11_253} : new int[] {-1_851, 6_022};
+		int[] scrub = willowScrubPlace(server, real);
+		StringBuilder report = new StringBuilder("crown cover (leaves or a log 1-4 blocks above the ground):");
+		Object[][] areas = {{"willow scrub at the large river", large, true}, {"willow scrub at its place", scrub, true},
+				{"dwarf pine scrub at its place", soil[8], false}};
+		for (Object[] a : areas) {
+			int[] c = (int[]) a[1];
+			boolean willow = (Boolean) a[2];
+			long columns = 0;
+			long covered = 0;
+			for (int cx = (c[0] >> 4) - TRANSECT_RADIUS_CHUNKS; cx <= (c[0] >> 4) + TRANSECT_RADIUS_CHUNKS; cx++) {
+				for (int cz = (c[1] >> 4) - TRANSECT_RADIUS_CHUNKS; cz <= (c[1] >> 4) + TRANSECT_RADIUS_CHUNKS; cz++) {
+					level.getChunk(cx, cz);
+					int[] codes = new int[256];
+					ChunkSurface plan = gen.surface(new ChunkPos(cx, cz), level.getMinY(), level.getMaxY(), seed, codes);
+					for (int i = 0; i < 256; i++) {
+						boolean in = willow ? Habitat.zone(codes[i]) == Zone.WILLOW_SCRUB
+								|| Habitat.biome(codes[i]) == HabitatBiome.WILLOW_SCRUB && Habitat.zone(codes[i]) == Zone.NONE
+								: Habitat.biome(codes[i]) == HabitatBiome.DWARF_PINE_SCRUB;
+						if (!in || plan.wet(i)) {
+							continue;
+						}
+						columns++;
+						covered += crown(level, (cx << 4) + (i >> 4), plan.top(i), (cz << 4) + (i & 15)) ? 1 : 0;
+					}
+				}
+			}
+			report.append(String.format(Locale.ROOT, " %s (%d, %d): %.1f%% of %d land columns;", a[0], c[0], c[1],
+					100.0 * covered / Math.max(1, columns), columns));
+		}
+		return report.toString();
+	}
+
+	/**
+	 * Decaying leaves (distance 7, not persistent: they drop off with the first random ticks) in the transects and at the
+	 * places of the screenshots, {@value #TRANSECT_RADIUS_CHUNKS} chunks around each (full chunks, so every neighbor's
+	 * trees stand), up to 48 blocks above the ground: below {@value #DECAYING_MAX} of the leaves (S7 review: 1% before the
+	 * repair of the leaf distances in {@code FastTreeFeature}).
+	 */
+	private static String decaying(MinecraftServer server, boolean real, List<int[]> places) {
+		ServerLevel level = server.overworld();
+		PolandChunkGenerator gen = generator(server);
+		long seed = level.getSeed();
+		List<int[]> areas = new ArrayList<>(crossings(server, real));
+		areas.addAll(places);
+		java.util.Set<Long> done = new java.util.HashSet<>();
+		long leaves = 0;
+		long decaying = 0;
+		StringBuilder report = new StringBuilder();
+		BlockPos.MutableBlockPos at = new BlockPos.MutableBlockPos();
+		for (int[] c : areas) {
+			long l0 = leaves;
+			long d0 = decaying;
+			for (int cx = (c[0] >> 4) - TRANSECT_RADIUS_CHUNKS; cx <= (c[0] >> 4) + TRANSECT_RADIUS_CHUNKS; cx++) {
+				for (int cz = (c[1] >> 4) - TRANSECT_RADIUS_CHUNKS; cz <= (c[1] >> 4) + TRANSECT_RADIUS_CHUNKS; cz++) {
+					if (!done.add(ChunkPos.pack(cx, cz))) {
+						continue;
+					}
+					level.getChunk(cx, cz);
+					ChunkSurface plan = gen.surface(new ChunkPos(cx, cz), level.getMinY(), level.getMaxY(), seed, null);
+					for (int i = 0; i < 256; i++) {
+						int x = (cx << 4) + (i >> 4);
+						int z = (cz << 4) + (i & 15);
+						int from = plan.wet(i) ? plan.waterTop(i) : plan.top(i);
+						for (int y = from; y <= from + 48; y++) {
+							BlockState s = level.getBlockState(at.set(x, y, z));
+							if (s.is(BlockTags.LEAVES)) {
+								leaves++;
+								if (s.hasProperty(BlockStateProperties.DISTANCE) && s.getValue(BlockStateProperties.DISTANCE) == 7
+										&& !s.getValue(BlockStateProperties.PERSISTENT)) {
+									decaying++;
+								}
+							}
+						}
+					}
+				}
+			}
+			report.append(String.format(Locale.ROOT, " (%d, %d) %d of %d;", c[0], c[1], decaying - d0, leaves - l0));
+		}
+		String out = String.format(Locale.ROOT, "decaying leaves %d of %d (%.3f%%):%s", decaying, leaves,
+				100.0 * decaying / Math.max(1, leaves), report);
+		if (leaves == 0 || decaying > DECAYING_MAX * leaves) {
+			throw new AssertionError(out);
+		}
+		return out;
+	}
+
+	/** The willow scrub place of the scale: the soil place (realistic), the large river's scrub (gameplay). */
+	private static int[] willowScrubPlace(MinecraftServer server, boolean real) {
+		if (real) {
+			return HabitatsClientGameTest.SOIL_REAL[4];
+		}
+		return find(server, WILLOW_SCRUB_GAMEPLAY, code -> Habitat.biome(code) == HabitatBiome.WILLOW_SCRUB,
+				"willow scrub at the large river");
+	}
+
 	// ------------------------------------------------------------------ checkpoint 2 (§12.3)
 
 	/**
-	 * Places seen from above (the camera 10 blocks over the ground): reedbed, willow scrub, beach, bogs, dwarf pine and
-	 * the upper montane spruce forest (low dense crowns); the willow scrub from 14 blocks, farther back.
+	 * Places seen from above: reedbed, willow scrub, beach, bogs, dwarf pine and the upper montane spruce forest (low
+	 * dense crowns), with the camera {@value #OPEN_ABOVE} blocks over the ground (the willow scrub and the montane spruce
+	 * forest {@value #CROWN_ABOVE}, above the crowns).
 	 */
 	private static final Set<String> OPEN = Set.of("lake_reedbed", "willow_scrub", "beach", "raised_bog", "dwarf_pine_scrub",
 			"montane_spruce_forest");
+	private static final int OPEN_ABOVE = 10;
+	private static final int CROWN_ABOVE = 16;
 
 	/**
-	 * A screenshot at each of the 11 places of §12.3, looking north-east at the place's center with the HUD hidden: in
-	 * forests from 3 blocks above the ground about 12 blocks away, below most crowns (the floor, the trunks and the
-	 * understory), in open habitats and the upper montane spruce forest from 10 blocks above the ground, the willow scrub
-	 * from 14 blocks; the camera spot is the one with the clearest line of sight ({@link #camera}).
+	 * A screenshot at each of the 11 places of §12.3 and at the extra forests ({@link #EXTRA_NAMES}), looking at the
+	 * place's center with the HUD hidden: in forests from 3 blocks above the ground 10–16 blocks away, below most crowns
+	 * (the floor, the trunks and the understory), in open habitats from {@value #OPEN_ABOVE} blocks above the ground, the
+	 * willow scrub and the montane spruce forest from {@value #CROWN_ABOVE}; the camera spot is the one with the clearest
+	 * line of sight in 8 directions ({@link #camera}).
+	 *
+	 * @return the centers of the places taken
 	 */
-	private static void screenshots(ClientGameTestContext context, TestSingleplayerContext sp, boolean real, String scale) {
+	private static List<int[]> screenshots(ClientGameTestContext context, TestSingleplayerContext sp, boolean real,
+			String scale) {
+		List<int[]> taken = new ArrayList<>();
 		String only = System.getProperty("polishforests.sites", "");
 		if (only.equals("none")) {
-			return;
+			return taken;
 		}
-		int[][] places = real ? HabitatsClientGameTest.SOIL_REAL : HabitatsClientGameTest.SOIL_GAMEPLAY;
+		int[][] soil = real ? HabitatsClientGameTest.SOIL_REAL : HabitatsClientGameTest.SOIL_GAMEPLAY;
+		int[][] extra = real ? EXTRA_REAL : EXTRA_GAMEPLAY;
+		List<String> names = new ArrayList<>(List.of(HabitatsClientGameTest.SOIL_NAMES));
+		names.addAll(List.of(EXTRA_NAMES));
 		context.runOnClient(mc -> {
 			if (!mc.gui.hud.isHidden()) {
 				mc.gui.hud.toggle();
 			}
 		});
-		for (int p = 0; p < places.length; p++) {
-			String name = HabitatsClientGameTest.SOIL_NAMES[p];
+		for (int p = 0; p < names.size(); p++) {
+			String name = names.get(p);
 			if (!only.isBlank() && !List.of(only.split(",")).contains(name)) {
 				continue;
 			}
-			int[] c = places[p];
+			int[] c = p < soil.length ? soil[p] : extra[p - soil.length];
+			if (c == null) {
+				continue;
+			}
+			if (name.equals("willow_scrub")) {
+				c = sp.getServer().computeOnServer(s -> willowScrubPlace(s, real));
+			}
+			int[] center = c;
+			taken.add(center);
 			boolean open = OPEN.contains(name);
-			int centerY = sp.getServer().computeOnServer(s -> groundY(s, c[0], c[1]));
-			int above = name.equals("willow_scrub") ? 14 : open ? 10 : 3;
-			int[] camera = sp.getServer().computeOnServer(s -> camera(s, c[0], c[1], centerY, above));
-			double dx = c[0] - camera[0];
-			double dz = c[1] - camera[2];
+			int centerY = sp.getServer().computeOnServer(s -> groundY(s, center[0], center[1]));
+			String biome = sp.getServer().computeOnServer(s -> centerBiome(s, center[0], center[1]));
+			int above = name.equals("willow_scrub") || name.equals("montane_spruce_forest") ? CROWN_ABOVE : open ? OPEN_ABOVE : 3;
+			int[] camera = sp.getServer().computeOnServer(s -> camera(s, center[0], center[1], centerY, above));
+			double dx = center[0] - camera[0];
+			double dz = center[1] - camera[2];
 			// Yaw: 0 looks to +z, -90 to +x; the pitch aims at the ground of the center (the eyes are 1.62 above the feet).
 			double yaw = Math.toDegrees(Math.atan2(-dx, dz));
 			double pitch = Math.toDegrees(Math.atan2(camera[1] + 1.62 - (centerY + 1), Math.hypot(dx, dz))) + (open ? 4 : 0);
@@ -352,9 +536,10 @@ public final class VegetationClientGameTest implements FabricClientGameTest {
 					pitch));
 			context.waitTicks(20 * 25);
 			String client = context.computeOnClient(mc -> mc.level.getChunkSource().gatherStats());
-			PolishForests.LOG.info("[vegetation] {} {}: center ({}, {}) ground Y {}, camera ({}, {}, {}) yaw {} pitch {}; client {}",
-					scale, name, c[0], c[1], centerY, camera[0], camera[1], camera[2], String.format(Locale.ROOT, "%.1f", yaw),
-					String.format(Locale.ROOT, "%.1f", pitch), client);
+			PolishForests.LOG.info("[vegetation] {} {}: center ({}, {}) {} ground Y {}, camera ({}, {}, {}) yaw {} pitch {}, "
+					+ "{} blocked of the line of sight; client {}", scale, name, center[0], center[1], biome, centerY, camera[0],
+					camera[1], camera[2], String.format(Locale.ROOT, "%.1f", yaw), String.format(Locale.ROOT, "%.1f", pitch),
+					camera[3], client);
 			context.waitTicks(20 * 15);
 			context.takeScreenshot("vegetation_" + name + "_" + scale);
 		}
@@ -363,30 +548,43 @@ public final class VegetationClientGameTest implements FabricClientGameTest {
 				mc.gui.hud.toggle();
 			}
 		});
+		return taken;
+	}
+
+	/** Biome of the habitat code at the column (x, z) (the log shows that a place is what its name says). */
+	private static String centerBiome(MinecraftServer server, int x, int z) {
+		PolandChunkGenerator gen = generator(server);
+		long seed = server.overworld().getSeed();
+		int code = gen.classifier(seed).classify(gen.model(seed).sample(x, z), x, z);
+		return Habitat.biome(code).id() + "/" + Habitat.zone(code).id();
 	}
 
 	/**
-	 * Camera feet position south-west of the center (cx, cz): {@code above} blocks over the ground (or water), with free
-	 * feet and head blocks (air or a plant, no leaves or logs), 8–14 blocks back along the diagonal and up to 4 blocks to
-	 * the side; of these the one whose line of sight to the center's ground has the fewest leaves, logs and solid blocks
-	 * in its first 10 blocks.
+	 * Camera feet position around the center (cx, cz): {@code above} blocks over the ground (or water), with the feet,
+	 * the head and the block above the head free (air or a plant, no leaves or logs), 10, 13 or 16 blocks away in one of
+	 * 8 directions; of these the one whose line of sight to the center's ground has the fewest leaves, logs and solid
+	 * blocks in its first 30 blocks (ties: the south-west first).
+	 *
+	 * @return the feet position and the number of blocked steps
 	 */
 	private static int[] camera(MinecraftServer server, int cx, int cz, int centerY, int above) {
 		ServerLevel level = server.overworld();
 		int[] best = null;
 		int bestBlocked = Integer.MAX_VALUE;
-		for (int back : above > 10 ? new int[] {18, 16, 20} : new int[] {12, 10, 14, 8}) {
-			for (int side : new int[] {0, 2, -2, 4, -4}) {
-				int x = cx - back + side;
-				int z = cz - back - side;
+		for (int back : new int[] {13, 10, 16}) {
+			for (int a = 0; a < 8; a++) {
+				// a = 0: south-west of the center (looking north-east), then around.
+				double angle = Math.PI * 1.25 + a * Math.PI / 4;
+				int x = cx + (int) Math.round(back * Math.cos(angle));
+				int z = cz + (int) Math.round(back * Math.sin(angle));
 				int y = groundY(server, x, z) + 1 + above;
-				if (!free(level, x, y, z) || !free(level, x, y + 1, z)) {
+				if (!free(level, x, y, z) || !free(level, x, y + 1, z) || !free(level, x, y + 2, z)) {
 					continue;
 				}
 				int blocked = blocked(level, x + 0.5, y + 1.62, z + 0.5, cx + 0.5, centerY + 1.0, cz + 0.5);
 				if (blocked < bestBlocked) {
 					bestBlocked = blocked;
-					best = new int[] {x, y, z};
+					best = new int[] {x, y, z, blocked};
 				}
 			}
 		}
@@ -396,18 +594,18 @@ public final class VegetationClientGameTest implements FabricClientGameTest {
 		int x = cx - 12;
 		int z = cz - 12;
 		int y = groundY(server, x, z) + 1 + above;
-		while (!free(level, x, y, z) || !free(level, x, y + 1, z)) {
+		while (!free(level, x, y, z) || !free(level, x, y + 1, z) || !free(level, x, y + 2, z)) {
 			y++;
 		}
-		return new int[] {x, y, z};
+		return new int[] {x, y, z, -1};
 	}
 
-	/** Leaves, logs and solid blocks on the first 10 blocks of the line from the eye to the target (steps of 0.5). */
+	/** Leaves, logs and solid blocks on the first 30 blocks of the line from the eye to the target (steps of 0.5). */
 	private static int blocked(ServerLevel level, double x0, double y0, double z0, double x1, double y1, double z1) {
 		double length = Math.sqrt((x1 - x0) * (x1 - x0) + (y1 - y0) * (y1 - y0) + (z1 - z0) * (z1 - z0));
 		int n = 0;
 		BlockPos last = null;
-		for (double t = 0.5; t <= Math.min(10, length - 1); t += 0.5) {
+		for (double t = 0.5; t <= Math.min(30, length - 1); t += 0.5) {
 			BlockPos pos = BlockPos.containing(x0 + (x1 - x0) * t / length, y0 + (y1 - y0) * t / length, z0 + (z1 - z0) * t / length);
 			if (pos.equals(last)) {
 				continue;
