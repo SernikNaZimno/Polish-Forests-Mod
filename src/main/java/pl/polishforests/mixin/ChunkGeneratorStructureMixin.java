@@ -20,6 +20,9 @@ import pl.polishforests.worldgen.chunk.PolandChunkGenerator;
  * {@code #minecraft:village} in a "Poland" world of that mode, the biome check of the start
  * ({@code Structure.GenerationContext.isValidBiome}) also rejects the biomes of the tag {@code polishforests:forests};
  * the vanilla loop over the structures of the set then tries the next village type, as for any other invalid biome.
+ * The cheap check of {@code /locate} and explorer maps gets the same rule from {@code StructureCheckMixin}, and the
+ * search skips village types that cannot start at all ({@code PolandChunkGenerator.findNearestMapStructure}; round 2 of
+ * the S8 review).
  */
 @Mixin(ChunkGenerator.class)
 abstract class ChunkGeneratorStructureMixin {

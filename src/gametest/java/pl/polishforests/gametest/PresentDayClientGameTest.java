@@ -26,6 +26,7 @@ import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.presets.WorldPreset;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
+import net.minecraft.world.level.levelgen.structure.BuiltinStructures;
 import net.minecraft.world.level.levelgen.structure.PoolElementStructurePiece;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructurePiece;
@@ -49,7 +50,8 @@ import pl.polishforests.worldgen.landscape.LandscapeModel;
  * rivers meet the density rule of §4.6 ({@link VegetationClientGameTest#transects}); {@code /locate structure
  * #minecraft:village} finds villages from {@link #STARTS} (time, distance and the biome at the center of the start piece,
  * where vanilla checks it, are reported; the search must succeed from each start in less than {@value #LOCATE_LIMIT_MS}
- * ms; no village starts in a forest biome, M2-17); every village found passes the village checks ({@link #villageCheck}:
+ * ms; no village starts in a forest biome, M2-17; since round 2 of the S8 review the searches for a taiga village, which
+ * cannot start in that mode, end at once, {@link #taigaVillages}); every village found passes the village checks ({@link #villageCheck}:
  * no trunk on a street, no leaves and no plants under the roofs, no floor column of a building hanging 2 or more blocks
  * above the ground); screenshots of a mosaic of forest, meadows and fields ({@code present_day_mosaic_<scale>}) and of a
  * village from above, from its street at eye level and from the downhill side ({@code present_day_village_<scale>},
@@ -66,6 +68,8 @@ public final class PresentDayClientGameTest implements FabricClientGameTest {
 	static final int[][] STARTS = {{0, 0}, {4_000, -4_000}, {-4_000, 4_000}, {8_000, 8_000}, {-8_000, -8_000}};
 	/** Upper limit of one village search (ms): the vanilla search of a common structure. */
 	private static final double LOCATE_LIMIT_MS = 5_000;
+	/** Upper limit of a search for a structure that cannot start in the world (ms, round 2 of the S8 review). */
+	private static final double IMPOSSIBLE_LIMIT_MS = 2_000;
 	/** Side of the mosaic window (blocks) and the step of its samples. */
 	private static final int MOSAIC = 192;
 	private static final int MOSAIC_STEP = 8;
@@ -94,6 +98,7 @@ public final class PresentDayClientGameTest implements FabricClientGameTest {
 				PolishForests.LOG.info("[present_day] {}: {}", name, sp.getServer().computeOnServer(s -> VegetationClientGameTest.transects(s, real)));
 				List<int[]> villages = new ArrayList<>();
 				PolishForests.LOG.info("[present_day] {}: {}", name, sp.getServer().computeOnServer(s -> villages(s, villages)));
+				PolishForests.LOG.info("[present_day] {}: {}", name, sp.getServer().computeOnServer(s -> taigaVillages(s, true)));
 				int[] mosaic = sp.getServer().computeOnServer(s -> mosaic(s, real));
 				PolishForests.LOG.info("[present_day] {}: mosaic at ({}, {}): {}", name, mosaic[0], mosaic[1],
 						sp.getServer().computeOnServer(s -> shares(s, mosaic[0], mosaic[1])));
@@ -113,6 +118,7 @@ public final class PresentDayClientGameTest implements FabricClientGameTest {
 				PolishForests.LOG.info("[present_day] {} natural: {}", name, sp.getServer().computeOnServer(s -> validate(s, false)));
 				List<int[]> villages = new ArrayList<>();
 				PolishForests.LOG.info("[present_day] {} natural: {}", name, sp.getServer().computeOnServer(s -> villages(s, villages)));
+				PolishForests.LOG.info("[present_day] {} natural: {}", name, sp.getServer().computeOnServer(s -> taigaVillages(s, false)));
 				int[] village = sp.getServer().computeOnServer(s -> forestVillage(s, villages));
 				PolishForests.LOG.info("[present_day] {} natural: forest village at ({}, {}), {}; {}", name, village[0], village[1],
 						sp.getServer().computeOnServer(s -> shares(s, village[0], village[1])),
@@ -207,6 +213,43 @@ public final class PresentDayClientGameTest implements FabricClientGameTest {
 		}
 		sb.append(String.format(Locale.ROOT, " mean %.0f blocks, %.0f ms", sumDistance / STARTS.length, sumMs / STARTS.length));
 		return sb.toString();
+	}
+
+	/**
+	 * Searches that cannot succeed in the PRESENT_DAY mode end at once (round 2 of the S8 review): every biome of
+	 * {@code has_structure/village_taiga} is a forest, so with M2-17 there are no taiga villages. {@code /locate structure
+	 * minecraft:village_taiga} (radius 100) and the search of a cartographer's "Taiga Village Map" trade
+	 * ({@code #minecraft:on_taiga_village_maps}, radius 100, skipping known structures) must return nothing in less than
+	 * {@value #IMPOSSIBLE_LIMIT_MS} ms each, instead of loading thousands of candidate chunks. In the natural mode
+	 * ({@code presentDay} false) the same {@code /locate} finds a taiga village.
+	 */
+	private static String taigaVillages(MinecraftServer server, boolean presentDay) {
+		ServerLevel level = server.overworld();
+		HolderSet<Structure> taiga = HolderSet.direct(level.registryAccess().lookupOrThrow(Registries.STRUCTURE)
+				.getOrThrow(BuiltinStructures.VILLAGE_TAIGA));
+		BlockPos origin = new BlockPos(STARTS[1][0], 100, STARTS[1][1]);
+		long t0 = System.nanoTime();
+		Pair<BlockPos, Holder<Structure>> nearest = level.getChunkSource().getGenerator().findNearestMapStructure(level, taiga, origin, 100, false);
+		double locateMs = (System.nanoTime() - t0) / 1e6;
+		if (!presentDay) {
+			if (nearest == null) {
+				throw new AssertionError("No taiga village found in the natural mode from " + origin.toShortString());
+			}
+			return String.format(Locale.ROOT, "/locate structure minecraft:village_taiga: (%d, %d), %.0f blocks, %.0f ms", nearest.getFirst().getX(),
+					nearest.getFirst().getZ(), Math.hypot(nearest.getFirst().getX() - origin.getX(), nearest.getFirst().getZ() - origin.getZ()), locateMs);
+		}
+		long t1 = System.nanoTime();
+		BlockPos map = level.findNearestMapStructure(StructureTags.ON_TAIGA_VILLAGE_MAPS, origin, 100, true);
+		double mapMs = (System.nanoTime() - t1) / 1e6;
+		if (nearest != null || map != null) {
+			throw new AssertionError("A taiga village was found in the present-day mode: " + (nearest != null ? nearest.getFirst() : map));
+		}
+		if (locateMs > IMPOSSIBLE_LIMIT_MS || mapMs > IMPOSSIBLE_LIMIT_MS) {
+			throw new AssertionError(String.format(Locale.ROOT, "impossible taiga village searches took %.0f ms (/locate) and %.0f ms (map)",
+					locateMs, mapMs));
+		}
+		return String.format(Locale.ROOT, "no taiga village (M2-17): /locate structure minecraft:village_taiga %.1f ms, taiga village map %.1f ms",
+				locateMs, mapMs);
 	}
 
 	/**

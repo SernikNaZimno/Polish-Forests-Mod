@@ -235,19 +235,19 @@ final class ForestCover {
 		return Noise.lerp(Noise.smoothstep(Calibration.P_CARR_DGW_FROM - wide, Calibration.P_CARR_DGW_TO + wide, d), Calibration.P_ALDER_CARR, moist);
 	}
 
-	/** P_forest of a zonal site type in the lowland (BiomeSharesTest, step S8). */
+	/** P_forest of a dry, fresh or moist zonal site type (BiomeSharesTest, step S8, recalibrated in round 2 of the review). */
 	private static double table(ForestSiteType siteType) {
 		return switch (siteType) {
 			case DRY_CONIFEROUS -> Calibration.P_DRY_CONIFEROUS;
 			case FRESH_CONIFEROUS -> Calibration.P_FRESH_CONIFEROUS;
 			case MOIST_CONIFEROUS, MOIST_MIXED_CONIFEROUS -> Calibration.P_MOIST_CONIFEROUS;
-			case BOGGY_CONIFEROUS, BOGGY_MIXED_CONIFEROUS -> Calibration.P_BOGGY_CONIFEROUS;
 			case FRESH_MIXED_CONIFEROUS -> Calibration.P_FRESH_MIXED_CONIFEROUS;
 			case FRESH_MIXED_BROADLEAVED -> Calibration.P_FRESH_MIXED_BROADLEAVED;
-			case MOIST_MIXED_BROADLEAVED, BOGGY_MIXED_BROADLEAVED -> Calibration.P_MOIST_MIXED_BROADLEAVED;
+			case MOIST_MIXED_BROADLEAVED -> Calibration.P_MOIST_MIXED_BROADLEAVED;
 			case FRESH_BROADLEAVED -> Calibration.P_FRESH_BROADLEAVED;
 			case MOIST_BROADLEAVED -> Calibration.P_MOIST_BROADLEAVED;
-			default -> Calibration.P_OTHER;
+			// Only dry, fresh and moist zonal types reach the table (round 2: P_forest does not read upland or mountain types).
+			default -> throw new IllegalArgumentException("not a zonal dry, fresh or moist site type: " + siteType);
 		};
 	}
 

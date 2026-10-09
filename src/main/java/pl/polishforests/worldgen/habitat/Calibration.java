@@ -357,13 +357,17 @@ public final class Calibration {
 	public static final double P_DGW_BAND = 0.7, P_DGW_JITTER = 0.4;
 	/** Blend of P_forest from the alder carr to the moist fertile site over the jittered DGW (m), round 1 of the S8 review. */
 	public static final double P_CARR_DGW_FROM = 0.3, P_CARR_DGW_TO = 1.3;
-	/** P_forest of the lowland site types (BiomeSharesTest, step S8). */
+	/**
+	 * P_forest of the dry, fresh and moist zonal site types (BiomeSharesTest, step S8; recalibrated in round 2 of the S8
+	 * review, when P_forest of dry land became one function of the fertility and DGW blends for every zonal and mountain
+	 * forest). Boggy sites take the moist value (poor) or blend down to the alder carr (fertile).
+	 */
 	public static final double P_DRY_CONIFEROUS = 0.9, P_FRESH_CONIFEROUS = 0.85, P_MOIST_CONIFEROUS = 0.8,
-			P_BOGGY_CONIFEROUS = 0.8, P_FRESH_MIXED_CONIFEROUS = 0.3, P_FRESH_MIXED_BROADLEAVED = 0.3,
-			P_MOIST_MIXED_BROADLEAVED = 0.5, P_FRESH_BROADLEAVED = 0.12, P_MOIST_BROADLEAVED = 0.35, P_OTHER = 0.5;
+			P_FRESH_MIXED_CONIFEROUS = 0.3, P_FRESH_MIXED_BROADLEAVED = 0.3,
+			P_MOIST_MIXED_BROADLEAVED = 0.5, P_FRESH_BROADLEAVED = 0.12, P_MOIST_BROADLEAVED = 0.35;
 	/** P_forest of the floodplain forests, alder carr, coast and mountain forests. */
 	public static final double P_WILLOW_POPLAR = 0.1, P_ELM_ASH = 0.08, P_ASH_ALDER = 0.09, P_ALDER_CARR = 0.1,
-			P_COASTAL_PINE = 0.9, P_MONTANE_SPRUCE = 0.9, P_MONTANE_BEECH = 0.8, P_UPLAND_FIR = 0.6, P_MOUNTAIN_FLOOR = 0.15,
+			P_COASTAL_PINE = 0.9, P_MONTANE_SPRUCE = 0.9, P_MONTANE_BEECH = 0.8, P_MOUNTAIN_FLOOR = 0.15,
 			P_GRAY_ALDER = 0.09;
 	/** Factor of P_forest of the poor sites (B, BM) outside the outwash plain (by its type weight). */
 	public static final double P_SAND_OUTSIDE_OUTWASH = 0.75;

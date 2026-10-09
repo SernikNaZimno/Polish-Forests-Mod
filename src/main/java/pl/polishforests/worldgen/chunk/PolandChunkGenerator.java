@@ -1,5 +1,6 @@
 package pl.polishforests.worldgen.chunk;
 
+import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import java.util.ArrayList;
@@ -12,7 +13,9 @@ import java.util.function.Predicate;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.core.HolderSet;
 import net.minecraft.core.QuartPos;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.WorldGenRegion;
 import net.minecraft.util.Mth;
 import net.minecraft.util.SimpleBitStorage;
@@ -136,16 +139,71 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 		}
 	}
 
+	/** Whether the world is in the "present-day Poland" mode (PRESENT_DAY). */
+	public boolean presentDay() {
+		return settings.mode() == HabitatClassifier.Mode.PRESENT_DAY;
+	}
+
 	/**
-	 * Biome check of a structure start ({@code ChunkGeneratorStructureMixin}, round 1 of the S8 review, decision M2-17):
-	 * in the PRESENT_DAY mode a village ({@code #minecraft:village}) does not start in a forest biome
-	 * ({@link ModBiomeKeys#FORESTS}); other structures and the natural mode keep the biome tags of the structure.
+	 * Biome check of a structure start (round 1 of the S8 review, decision M2-17): in the PRESENT_DAY mode a village
+	 * ({@code #minecraft:village}) does not start in a forest biome ({@link ModBiomeKeys#FORESTS}); other structures and
+	 * the natural mode keep the biome tags of the structure. Used by {@code ChunkGeneratorStructureMixin} (generation) and,
+	 * since round 2, by {@code StructureCheckMixin} (the cheap check of {@code /locate} and explorer maps), so both paths
+	 * apply the same rule. Returns {@code biomes} itself when nothing changes.
 	 */
 	public Predicate<Holder<Biome>> structureBiomes(Holder<Structure> structure, Predicate<Holder<Biome>> biomes) {
-		if (settings.mode() != HabitatClassifier.Mode.PRESENT_DAY || !structure.is(StructureTags.VILLAGE)) {
+		if (!presentDay() || !structure.is(StructureTags.VILLAGE)) {
 			return biomes;
 		}
 		return biome -> biomes.test(biome) && !biome.is(ModBiomeKeys.FORESTS);
+	}
+
+	/**
+	 * Whether the structure can start anywhere in this world under {@link #structureBiomes}: in the PRESENT_DAY mode a
+	 * village whose biomes outside the forests are not among the biomes of the source cannot (all biomes of
+	 * {@code has_structure/village_taiga} are forests, so there are no taiga villages; round 2 of the S8 review).
+	 */
+	boolean canStart(Holder<Structure> structure) {
+		if (!presentDay() || !structure.is(StructureTags.VILLAGE)) {
+			return true;
+		}
+		Set<Holder<Biome>> possible = biomeSource.possibleBiomes();
+		for (Holder<Biome> biome : structure.value().biomes()) {
+			if (!biome.is(ModBiomeKeys.FORESTS) && possible.contains(biome)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Search for the nearest structure ({@code /locate}, explorer maps, eyes of ender) without the structures that cannot
+	 * start in this world ({@link #canStart}; round 2 of the S8 review). The vanilla search only drops structures whose
+	 * biome tags miss the biome source, so a taiga village in the present-day mode passed and a search with the radius
+	 * 100 of a cartographer's map scanned about 40,000 grid cells with no possible start. If no wanted structure can start,
+	 * the result is {@code null} at once.
+	 */
+	@Override
+	public @Nullable Pair<BlockPos, Holder<Structure>> findNearestMapStructure(ServerLevel level, HolderSet<Structure> wantedStructures,
+			BlockPos pos, int maxSearchRadius, boolean createReference) {
+		if (presentDay()) {
+			List<Holder<Structure>> kept = new ArrayList<>();
+			boolean dropped = false;
+			for (Holder<Structure> structure : wantedStructures) {
+				if (canStart(structure)) {
+					kept.add(structure);
+				} else {
+					dropped = true;
+				}
+			}
+			if (kept.isEmpty()) {
+				return null;
+			}
+			if (dropped) {
+				wantedStructures = HolderSet.direct(kept);
+			}
+		}
+		return super.findNearestMapStructure(level, wantedStructures, pos, maxSearchRadius, createReference);
 	}
 
 	@Override
