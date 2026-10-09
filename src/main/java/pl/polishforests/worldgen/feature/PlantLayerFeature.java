@@ -188,8 +188,10 @@ public final class PlantLayerFeature implements Feature {
 		if (block instanceof DoublePlantBlock) {
 			BlockPos above = pos.above();
 			BlockState upper = level.getBlockState(above);
-			boolean free = upper.isAir() || (block instanceof TallSeagrassBlock || state.hasProperty(BlockStateProperties.WATERLOGGED))
-					&& isWaterSource(upper, level.getFluidState(above));
+			// Tall seagrass holds water in both halves, so its upper half needs water too (in air it would be a new water
+			// source above the surface, which spills); a waterloggable plant may stand with its upper half in air or water.
+			boolean free = block instanceof TallSeagrassBlock ? isWaterSource(upper, level.getFluidState(above))
+					: upper.isAir() || state.hasProperty(BlockStateProperties.WATERLOGGED) && isWaterSource(upper, level.getFluidState(above));
 			if (!free || !state.canSurvive(level, pos)) {
 				return false;
 			}

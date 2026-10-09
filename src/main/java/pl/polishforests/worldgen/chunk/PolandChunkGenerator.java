@@ -199,6 +199,22 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 	/** Diagnostic counters: time spent sampling the model and filling blocks (ns), number of chunks. */
 	public static final java.util.concurrent.atomic.LongAdder SAMPLE_NANOS = new java.util.concurrent.atomic.LongAdder();
 	public static final java.util.concurrent.atomic.LongAdder FILL_NANOS = new java.util.concurrent.atomic.LongAdder();
+	/**
+	 * Time of the decoration step ({@code applyBiomeDecoration}, the FEATURES stage of one chunk without the generation
+	 * of its neighbors) and the number of decorated chunks; the budget FEATURES of §3.6 (S7) compares them with the base.
+	 */
+	public static final java.util.concurrent.atomic.LongAdder DECORATION_NANOS = new java.util.concurrent.atomic.LongAdder();
+	public static final java.util.concurrent.atomic.LongAdder DECORATION_CHUNKS = new java.util.concurrent.atomic.LongAdder();
+
+	@Override
+	public void applyBiomeDecoration(net.minecraft.world.level.WorldGenLevel level, net.minecraft.world.level.chunk.ChunkAccess chunk,
+			StructureManager structureManager) {
+		long t0 = System.nanoTime();
+		super.applyBiomeDecoration(level, chunk, structureManager);
+		DECORATION_NANOS.add(System.nanoTime() - t0);
+		DECORATION_CHUNKS.increment();
+	}
+
 	public static final java.util.concurrent.atomic.LongAdder CHUNKS = new java.util.concurrent.atomic.LongAdder();
 	/** Time of the BIOMES stage with the mod's biome source (ns) and the number of chunks (budget §3.6). */
 	public static final java.util.concurrent.atomic.LongAdder BIOME_NANOS = new java.util.concurrent.atomic.LongAdder();

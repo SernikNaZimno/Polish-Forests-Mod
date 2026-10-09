@@ -246,7 +246,7 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 
 	/**
 	 * Census of the tree stand: 5 × 5 full chunks around each census site and the first three places of the biome
-	 * comparison; for each biome the trunks (a log on the top ground block) against the palette's trees per chunk times
+	 * comparison; for each biome the trunks ({@link #trunk}) against the palette's trees per chunk times
 	 * the number of the biome's dry columns / 256. Each biome with at least {@value #CENSUS_MIN_EXPECTED} expected trees
 	 * must be within ±20%. Dry beach and white dune columns must have a sand top, and dry forest columns are reported
 	 * when their top is bare sand.
@@ -294,7 +294,7 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 					int code = planCodes[(x >> 4) - cx0][(z >> 4) - cz0][column];
 					HabitatBiome b = Habitat.biome(code);
 					expected[b.ordinal()] += stand.treesPerChunk(code) / 256.0;
-					if (level.getBlockState(new BlockPos(x, top + 1, z)).is(BlockTags.LOGS)) {
+					if (trunk(level, x, top, z)) {
 						trunks[b.ordinal()]++;
 					}
 					net.minecraft.world.level.block.state.BlockState ground = level.getBlockState(new BlockPos(x, top, z));
@@ -330,6 +330,21 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 			throw new AssertionError("Tree census off the palette by more than 20%: " + failures + "; " + report);
 		}
 		return report.toString();
+	}
+
+	/**
+	 * A tree trunk on the top ground block: vertical logs on the three blocks above it. Since S7 the shrubs (one to three
+	 * logs) and the fallen trees (a stump of one log, the log lying on the ground) are not counted.
+	 */
+	private static boolean trunk(ServerLevel level, int x, int top, int z) {
+		for (int dy = 1; dy <= 3; dy++) {
+			net.minecraft.world.level.block.state.BlockState s = level.getBlockState(new BlockPos(x, top + dy, z));
+			if (!s.is(BlockTags.LOGS) || s.hasProperty(net.minecraft.world.level.block.RotatedPillarBlock.AXIS)
+					&& s.getValue(net.minecraft.world.level.block.RotatedPillarBlock.AXIS) != net.minecraft.core.Direction.Axis.Y) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	/**
@@ -595,13 +610,13 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 	 * on surface plans (the dwarf pine, the spruce forest and in the gameplay scale the willow scrub at the large massif
 	 * nearest to the origin).
 	 */
-	private static final String[] SOIL_NAMES = {"willow_poplar_forest", "ash_alder_forest", "alder_carr", "lake_reedbed",
+	static final String[] SOIL_NAMES = {"willow_poplar_forest", "ash_alder_forest", "alder_carr", "lake_reedbed",
 			"willow_scrub", "dry_pine_forest", "beech_forest", "montane_spruce_forest", "dwarf_pine_scrub", "beach",
 			"raised_bog"};
-	private static final int[][] SOIL_REAL = {{-3_904, 3_904}, {-16, 16}, {656, -672}, {-4_160, 4_096}, {-3_904, 4_032},
+	static final int[][] SOIL_REAL = {{-3_904, 3_904}, {-16, 16}, {656, -672}, {-4_160, 4_096}, {-3_904, 4_032},
 			{-231_054, -134_098}, {-1_200, -1_424}, {99_105, 1_034_173}, {98_289, 1_033_389}, {-233_358, -136_402},
 			{-230_158, -137_746}};
-	private static final int[][] SOIL_GAMEPLAY = {{-640, 3_200}, {112, 64}, {96, 32}, {-1_232, 240}, {7_702, -34_380},
+	static final int[][] SOIL_GAMEPLAY = {{-640, 3_200}, {112, 64}, {96, 32}, {-1_232, 240}, {7_702, -34_380},
 			{-1_072, -288}, {-32, -416}, {27_257, 3_622}, {6_854, -33_756}, {-4_160, -4_160}, {-2_944, -896}};
 	/** Least number of checked columns per soil place. */
 	private static final int SOIL_MIN_COLUMNS = 8;
@@ -631,6 +646,7 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 			int checked = 0;
 			int mismatched = 0;
 			int disks = 0;
+			int erratics = 0;
 			Map<String, Integer> blocks = new java.util.TreeMap<>();
 			for (int i = 0; i < 256; i++) {
 				if (Habitat.biome(codes[i]) != biome || plan.wet(i)) {
@@ -644,6 +660,11 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 				checked++;
 				net.minecraft.world.level.block.Block expected = MaterialStates.of(plan.topMaterial(i)).getBlock();
 				net.minecraft.world.level.block.state.BlockState actual = level.getBlockState(ground);
+				if (erratic(actual) || erratic(above)) {
+					// A glacial erratic of step 2 (S7) lies on the ground.
+					erratics++;
+					continue;
+				}
 				boolean solidAbove = above.isSolidRender() && !above.is(BlockTags.LEAVES);
 				if (!actual.is(expected) && !solidAbove && disk(level, ground, actual)) {
 					// The vanilla disks of step 6 (sand, clay, gravel) reach the bank from the water (decoration of S7).
@@ -662,13 +683,20 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 			if (checked < SOIL_MIN_COLUMNS) {
 				failures.add(SOIL_NAMES[p] + ": only " + checked + " columns of " + biome.id());
 			}
-			report.append(String.format(Locale.ROOT, " %s (%d, %d) %s: %d/%d %s%s;", SOIL_NAMES[p], x0, z0, biome.id(),
-					checked - mismatched - disks, checked, blocks, disks > 0 ? ", " + disks + " under a disk" : ""));
+			report.append(String.format(Locale.ROOT, " %s (%d, %d) %s: %d/%d %s%s%s;", SOIL_NAMES[p], x0, z0, biome.id(),
+					checked - mismatched - disks - erratics, checked, blocks, disks > 0 ? ", " + disks + " under a disk" : "",
+					erratics > 0 ? ", " + erratics + " under an erratic" : ""));
 		}
 		if (!failures.isEmpty()) {
 			throw new AssertionError("Ground blocks differ from the surface plan: " + failures + "; " + report);
 		}
 		return report.toString();
+	}
+
+	/** A block of a glacial erratic (§8.1). */
+	private static boolean erratic(net.minecraft.world.level.block.state.BlockState state) {
+		return state.is(net.minecraft.world.level.block.Blocks.GRANITE) || state.is(net.minecraft.world.level.block.Blocks.DIORITE)
+				|| state.is(net.minecraft.world.level.block.Blocks.MOSSY_COBBLESTONE);
 	}
 
 	/** Radius of the vanilla disks of sand, clay and gravel (up to 6 blocks from a water block). */

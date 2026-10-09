@@ -1,5 +1,5 @@
 {
-  "type": "minecraft:tree",
+  "type": "polishforests:tree",
   "below_trunk_provider": "minecraft:soil_beneath_tree",
   "decorators": [],
   "foliage_placer": {

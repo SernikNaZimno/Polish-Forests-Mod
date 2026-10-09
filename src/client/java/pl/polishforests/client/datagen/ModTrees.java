@@ -42,6 +42,7 @@ import net.minecraft.world.level.levelgen.feature.trunkplacers.TrunkPlacer;
 import net.minecraft.world.level.levelgen.placement.PlacedFeature;
 import net.minecraft.world.level.levelgen.placement.PlacementModifier;
 import pl.polishforests.PolishForests;
+import pl.polishforests.worldgen.feature.FastTreeFeature;
 import pl.polishforests.worldgen.habitat.Species;
 
 /**
@@ -54,6 +55,8 @@ import pl.polishforests.worldgen.habitat.Species;
  * vanilla shapes inside their own feature (fancy oak 60% and small oak 40%; birch 80% and tall birch with rare bee nests
  * 20%), through the placed features {@code tree/oak_fancy}, {@code tree/oak_small}, {@code tree/birch_small} and
  * {@code tree/birch_tall}, which have no filter (the selector is placed through {@code tree/oak} and {@code tree/birch}).
+ * All tree configurations are of the type {@code polishforests:tree} ({@link FastTreeFeature}), the vanilla tree with a
+ * cheaper leaf update.
  */
 final class ModTrees {
 	/** Species with a tree feature: all trees of {@link Species}. */
@@ -91,28 +94,36 @@ final class ModTrees {
 				.getOrThrow(BlockStateProviders.PODZOL_BENEATH_TREE);
 		HolderGetter<PlacedFeature> placed = context.lookup(Registries.PLACED_FEATURE);
 		for (Species s : TREES) {
-			context.register(key(s), tree(s, soil, placed));
+			register(context, key(s), tree(s, soil, placed));
 		}
 		for (Species s : SHRUBS) {
-			context.register(key(s), shrub(s, soil));
+			register(context, key(s), shrub(s, soil));
 		}
 		// Stunted Scots pine (bog woodland, raised bog, the low share of the dry pine forest and the wind belt): 3+2.
-		context.register(key(SCOTS_PINE_LOW), builder(Blocks.SPRUCE_LOG, new StraightTrunkPlacer(3, 2, 0), Blocks.SPRUCE_LEAVES,
+		register(context, key(SCOTS_PINE_LOW), builder(Blocks.SPRUCE_LOG, new StraightTrunkPlacer(3, 2, 0), Blocks.SPRUCE_LEAVES,
 				new PineFoliagePlacer(ConstantInt.of(1), ConstantInt.of(1), UniformInt.of(2, 3)), 1, soil).ignoreVines().build());
 		// Stunted spruce of the timberline and of the dwarf pine belt: 3+2 with a narrow crown.
-		context.register(key(SPRUCE_STUNTED), builder(Blocks.SPRUCE_LOG, new StraightTrunkPlacer(3, 2, 0), Blocks.SPRUCE_LEAVES,
+		register(context, key(SPRUCE_STUNTED), builder(Blocks.SPRUCE_LOG, new StraightTrunkPlacer(3, 2, 0), Blocks.SPRUCE_LEAVES,
 				new SpruceFoliagePlacer(UniformInt.of(1, 2), UniformInt.of(0, 1), UniformInt.of(1, 2)), 1, soil).ignoreVines().build());
 		// The vanilla mega spruce (3% of the spruces in the mountains, §8.4).
-		context.register(key(SPRUCE_MEGA), new TreeFeature.Builder(BlockStateProvider.of(Blocks.SPRUCE_LOG),
+		register(context, key(SPRUCE_MEGA), new TreeFeature.Builder(BlockStateProvider.of(Blocks.SPRUCE_LOG),
 				new GiantTrunkPlacer(13, 2, 14), BlockStateProvider.of(Blocks.SPRUCE_LEAVES),
 				new MegaPineFoliagePlacer(ConstantInt.of(0), ConstantInt.of(0), UniformInt.of(13, 17)),
 				new TwoLayersFeatureSize(1, 1, 2), soil).decorators(List.of(new AlterGroundDecorator(podzol))).build());
-		context.register(key(OAK_FANCY), fancy(Blocks.OAK_LOG, soil));
-		context.register(key(OAK_SMALL), blob(Blocks.OAK_LOG, Blocks.OAK_LEAVES, 4, 2, 0, 2, soil));
-		context.register(key(BIRCH_SMALL), blob(Blocks.BIRCH_LOG, Blocks.BIRCH_LEAVES, 5, 2, 0, 2, soil));
-		context.register(key(BIRCH_TALL), builder(Blocks.BIRCH_LOG, new StraightTrunkPlacer(5, 2, 6), Blocks.BIRCH_LEAVES,
+		register(context, key(OAK_FANCY), fancy(Blocks.OAK_LOG, soil));
+		register(context, key(OAK_SMALL), blob(Blocks.OAK_LOG, Blocks.OAK_LEAVES, 4, 2, 0, 2, soil));
+		register(context, key(BIRCH_SMALL), blob(Blocks.BIRCH_LOG, Blocks.BIRCH_LEAVES, 5, 2, 0, 2, soil));
+		register(context, key(BIRCH_TALL), builder(Blocks.BIRCH_LOG, new StraightTrunkPlacer(5, 2, 6), Blocks.BIRCH_LEAVES,
 				new BlobFoliagePlacer(ConstantInt.of(2), ConstantInt.of(0), 3), 1, soil)
 				.decorators(List.of(new BeehiveDecorator(0.002F))).ignoreVines().build());
+	}
+
+	/**
+	 * Registers a tree feature: a vanilla tree configuration becomes {@code polishforests:tree} ({@link FastTreeFeature}:
+	 * the same shape, a cheaper leaf update), other features (the oak and birch selectors) stay as they are.
+	 */
+	private static void register(BootstrapContext<Feature> context, ResourceKey<Feature> key, Feature feature) {
+		context.register(key, feature instanceof TreeFeature tree ? new FastTreeFeature(tree) : feature);
 	}
 
 	/** Placement of a tree or shrub: only where a sapling would survive (§8.4); no biome filter (a palette entry). */
@@ -144,12 +155,18 @@ final class ModTrees {
 			case OAK -> new WeightedRandomSelectorFeature(WeightedList.<Holder<PlacedFeature>>builder()
 					.add(placed.getOrThrow(ModWorldgen.placed(OAK_FANCY)), 60)
 					.add(placed.getOrThrow(ModWorldgen.placed(OAK_SMALL)), 40).build());
-			// Beech: a fancy oak with gray bark.
-			case BEECH -> fancy(Blocks.PALE_OAK_LOG, soil);
+			// Beech: a tall straight trunk 9+4 with gray bark and a broad crown of radius 3, 4 layers deep (§8.4 had a fancy
+			// oak with gray bark, which costs about twice as much in FEATURES; the own shapes come in M3).
+			case BEECH -> builder(Blocks.PALE_OAK_LOG, new StraightTrunkPlacer(9, 4, 0), Blocks.OAK_LEAVES,
+					new BlobFoliagePlacer(ConstantInt.of(3), ConstantInt.of(0), 4), 1, soil).ignoreVines().build();
 			// Hornbeam: straight 6+2, blob of radius 2-3, gray bark.
 			case HORNBEAM -> builder(Blocks.PALE_OAK_LOG, new StraightTrunkPlacer(6, 2, 0), Blocks.OAK_LEAVES,
 					new BlobFoliagePlacer(UniformInt.of(2, 3), ConstantInt.of(0), 3), 1, soil).ignoreVines().build();
-			case SESSILE_OAK, LINDEN, ASH, ELM, NORWAY_MAPLE, SYCAMORE_MAPLE -> fancy(Blocks.OAK_LOG, soil);
+			// Linden, ash, elm, maples and sessile oak: a straight trunk 6+2 with a round crown of radius 3 (the fancy oak of
+			// §8.4 costs about twice as much in FEATURES; the own shapes come in M3).
+			case SESSILE_OAK, LINDEN, ASH, ELM, NORWAY_MAPLE, SYCAMORE_MAPLE -> builder(Blocks.OAK_LOG,
+					new StraightTrunkPlacer(6, 2, 0), Blocks.OAK_LEAVES, new BlobFoliagePlacer(ConstantInt.of(3), ConstantInt.of(0), 3),
+					1, soil).ignoreVines().build();
 			// Black alder: straight 8+3, blob of radius 2, dark bark and leaves.
 			case BLACK_ALDER -> blob(Blocks.DARK_OAK_LOG, Blocks.DARK_OAK_LEAVES, 8, 3, 0, 2, soil);
 			// Gray alder: straight 6+3, blob of radius 2, gray bark.
@@ -208,7 +225,8 @@ final class ModTrees {
 	}
 
 	private static TreeFeature fancy(Block log, Holder<BlockStateProvider> soil) {
-		return new TreeFeature.Builder(BlockStateProvider.of(log), new FancyTrunkPlacer(3, 11, 0),
+		// Heights 4–12 instead of the vanilla 3–14: fewer branches and leaf clusters, a smaller box for the leaf update.
+		return new TreeFeature.Builder(BlockStateProvider.of(log), new FancyTrunkPlacer(4, 8, 0),
 				BlockStateProvider.of(Blocks.OAK_LEAVES), new FancyFoliagePlacer(ConstantInt.of(2), ConstantInt.of(4), 4),
 				new TwoLayersFeatureSize(0, 0, 0, OptionalInt.of(4)), soil).ignoreVines().build();
 	}

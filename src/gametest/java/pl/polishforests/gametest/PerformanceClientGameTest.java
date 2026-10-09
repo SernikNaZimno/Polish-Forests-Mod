@@ -164,6 +164,8 @@ public final class PerformanceClientGameTest implements FabricClientGameTest {
 		long sample0 = PolandChunkGenerator.SAMPLE_NANOS.sum();
 		long fill0 = PolandChunkGenerator.FILL_NANOS.sum();
 		long chunks0 = PolandChunkGenerator.CHUNKS.sum();
+		long decoration0 = PolandChunkGenerator.DECORATION_NANOS.sum();
+		long decorated0 = PolandChunkGenerator.DECORATION_CHUNKS.sum();
 		long biome0 = PolandChunkGenerator.BIOME_NANOS.sum();
 		long biomeChunks0 = PolandChunkGenerator.BIOME_CHUNKS.sum();
 		long classify0 = PolandChunkGenerator.CLASSIFY_NANOS.sum();
@@ -171,6 +173,13 @@ public final class PerformanceClientGameTest implements FabricClientGameTest {
 		long treeChunks0 = TreeStandFeature.CHUNKS.sum();
 		long trees0 = TreeStandFeature.TREES.sum();
 		long miss0 = ModFeatures.HABITAT_MISS.sum();
+		long[] layer0 = new long[pl.polishforests.worldgen.feature.BiomeDecoration.Dispatcher.values().length * 3];
+		for (var d : pl.polishforests.worldgen.feature.BiomeDecoration.Dispatcher.values()) {
+			ModFeatures.LayerStats st = ModFeatures.STATS.get(d);
+			layer0[d.ordinal() * 3] = st.nanos.sum();
+			layer0[d.ordinal() * 3 + 1] = st.chunks.sum();
+			layer0[d.ordinal() * 3 + 2] = st.placed.sum();
+		}
 		long surface0 = PolandChunkGenerator.SURFACE_NANOS.sum();
 		long packed0 = PolandChunkGenerator.PACKED_SECTIONS.sum();
 		long fallbacks0 = PolandChunkGenerator.PACK_FALLBACKS.sum();
@@ -188,6 +197,9 @@ public final class PerformanceClientGameTest implements FabricClientGameTest {
 			sb.append(stage.getName()).append('=').append(Math.round((System.nanoTime() - t0) / 1e6)).append(" ms ");
 		}
 		PolishForests.LOG.info("[performance] {}: stages for 64 chunks (incremental): {}", name, sb);
+		long decorated = Math.max(1, PolandChunkGenerator.DECORATION_CHUNKS.sum() - decorated0);
+		PolishForests.LOG.info(String.format(java.util.Locale.ROOT, "[performance] %s: decoration (applyBiomeDecoration) %.3f ms/chunk "
+				+ "over %d chunks", name, (PolandChunkGenerator.DECORATION_NANOS.sum() - decoration0) / 1e6 / decorated, decorated));
 		long n = PolandChunkGenerator.CHUNKS.sum() - chunks0;
 		if (n > 0) {
 			PolishForests.LOG.info("[performance] {}: terrain of {} chunks during the measurement, sampling {} ms/chunk (model {}, "
@@ -205,6 +217,14 @@ public final class PerformanceClientGameTest implements FabricClientGameTest {
 					(PolandChunkGenerator.CLASSIFY_NANOS.sum() - classify0) / 1e6 / n,
 					(TreeStandFeature.NANOS.sum() - tree0) / 1e6 / treeChunks, treeChunks,
 					(double) (TreeStandFeature.TREES.sum() - trees0) / treeChunks, ModFeatures.HABITAT_MISS.sum() - miss0));
+			StringBuilder layers = new StringBuilder();
+			for (var d : pl.polishforests.worldgen.feature.BiomeDecoration.Dispatcher.values()) {
+				ModFeatures.LayerStats st = ModFeatures.STATS.get(d);
+				long c = Math.max(1, st.chunks.sum() - layer0[d.ordinal() * 3 + 1]);
+				layers.append(String.format(Locale.ROOT, " %s %.3f ms/chunk (%.1f placed/chunk);", d.path(),
+						(st.nanos.sum() - layer0[d.ordinal() * 3]) / 1e6 / c, (double) (st.placed.sum() - layer0[d.ordinal() * 3 + 2]) / c));
+			}
+			PolishForests.LOG.info("[performance] {}: dispatcher layers:{}", name, layers);
 			PolishForests.LOG.info(String.format(Locale.ROOT, "[performance] %s: surface plan in fill %.3f ms/chunk (soil, shelf, "
 					+ "micro-relief; %.1f neighbor samples/chunk, %.1f neighbor summaries from the cache/chunk, %.1f samples "
 					+ "reused/chunk), PACK_FALLBACKS %d of %d packed sections", name,

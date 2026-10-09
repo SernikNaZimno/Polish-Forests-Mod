@@ -9,7 +9,8 @@
 			"pl.polishforests.gametest.UiAndCommandsClientGameTest",
 			"pl.polishforests.gametest.PerformanceClientGameTest",
 			"pl.polishforests.gametest.PolandWorldClientGameTest",
-			"pl.polishforests.gametest.HabitatsClientGameTest"
+			"pl.polishforests.gametest.HabitatsClientGameTest",
+			"pl.polishforests.gametest.VegetationClientGameTest"
 		]
 	},
 	"depends": {
