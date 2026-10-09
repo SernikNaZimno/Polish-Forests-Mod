@@ -433,8 +433,9 @@ public final class SurfaceBuilder {
 		 * {@code candidates}: the largest {@code min(W, a) − max(0, m − GUARD_FULL)} over the fresh (not sea) model water
 		 * within Manhattan distance {@code m ≤ GUARD_REACH} of the column, also outside the chunk (water top {@code W},
 		 * model top {@code a} of the column), or {@link ChunkSurface#NO_WATER}. Within {@code GUARD_FULL} blocks of water
-		 * the shelf thus never goes below it (water flowing from an open edge of the model spreads at most 7 blocks), and
-		 * beyond it the guard fades by one block per block. Every term changes by at most one block between two neighbors
+		 * the shelf thus never goes below it (water flowing from an open edge of the model spreads 7 blocks, plus a margin
+		 * of 2 for higher water spreading over lower water at diagonal level steps), and beyond it the guard fades by one
+		 * block per block. Every term changes by at most one block between two neighbors
 		 * on flat model ground, and the terms cut off at {@code GUARD_REACH} are at most {@code a − MAX_DROP}, so the guard
 		 * never makes a step there, also where the nearest channel switches (confluences, braided channels, seams between
 		 * streams), and it is the same whichever chunk computes it. A column outside the chunk is sampled only when it lies

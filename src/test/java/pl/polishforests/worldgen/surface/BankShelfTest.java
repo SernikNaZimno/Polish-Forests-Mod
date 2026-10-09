@@ -180,8 +180,8 @@ class BankShelfTest {
 			SurfaceFixture f = new SurfaceFixture(scale, true);
 			long samples0 = SurfaceBuilder.OUTSIDE_SAMPLES.sum();
 			long[] total = new long[15];
-			// Shore share and grown model steps without the stepped mountain stream, where the guard keeps the banks at
-			// the upper water level on purpose (review of S6, round 2): [shore, with water, lowered, grown].
+			// Shore share and grown model steps without the areas of round 2 (stepped water, where the guard keeps the
+			// banks at the upper water level on purpose): [shore, with water, lowered, grown].
 			long[] shares = new long[4];
 			for (Map.Entry<String, int[]> area : areas(f).entrySet()) {
 				Grid g = new Grid(f, area.getValue());
@@ -189,7 +189,7 @@ class BankShelfTest {
 				for (int k = 0; k < n.length; k++) {
 					total[k] += n[k];
 				}
-				if (!area.getKey().equals("cascade")) {
+				if (!ROUND2_AREAS.contains(area.getKey())) {
 					shares[0] += n[0];
 					shares[1] += n[1];
 					shares[2] += n[2];
@@ -209,7 +209,7 @@ class BankShelfTest {
 					+ "%d; shore bed %d (%d mud or gravel); mountain stream bed %d (%d gravel or cobblestone); ",
 					scale, total[0], total[1], 100.0 * total[1] / Math.max(1, total[0]), total[2], total[3], total[4], total[5], total[6], total[7], total[8],
 					total[9], total[13], total[14], total[11], total[12]));
-			report.append(String.format(Locale.ROOT, "%s without the stepped mountain stream: shore columns %d, with water beside the "
+			report.append(String.format(Locale.ROOT, "%s without the areas of round 2: shore columns %d, with water beside the "
 					+ "top block %.1f%%, model step 1 grown to >= 2 %d at %d lowered columns; ", scale, shares[0], 100 * share,
 					shares[3], shares[2]));
 			if (shares[0] < 200 || share < 0.9) {
@@ -240,6 +240,10 @@ class BankShelfTest {
 		System.out.println("shore columns without water beside the top: " + dry);
 		assertTrue(failures.isEmpty(), failures + "; " + report);
 	}
+
+	/** Areas of the review of S6, round 2 (stepped water, a seam, a confluence), left out of the shore share. */
+	private static final java.util.Set<String> ROUND2_AREAS = java.util.Set.of("cascade", "channel_seam", "confluence",
+			"oxbow_near_channel", "stepped_stream");
 
 	/** Number of random water areas per scale of {@link #shelfOverRandomWaterAreas}. */
 	private static final int RANDOM_AREAS = 120;

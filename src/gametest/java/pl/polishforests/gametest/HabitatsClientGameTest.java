@@ -74,7 +74,12 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 		if (!mode.equals("habitats") && !mode.equals("all")) {
 			return;
 		}
+		// -Pscales=realistic|gameplay runs one scale only (both by default).
+		String scales = System.getProperty("polishforests.scales", "");
 		for (PolandScale scale : PolandScale.values()) {
+			if (!scales.isBlank() && !scales.contains(scale.getSerializedName())) {
+				continue;
+			}
 			ResourceKey<WorldPreset> preset = ResourceKey.create(Registries.WORLD_PRESET,
 					PolishForests.id(scale == PolandScale.REALISTIC ? "poland" : "poland_gameplay"));
 			try (TestSingleplayerContext sp = context.worldBuilder().adjustSettings(ui -> select(ui, preset)).create()) {
@@ -703,7 +708,7 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 	 * lake reedbed, the alder carr (puddles), the willow-poplar forest place and the places of the review of S6 (round 1:
 	 * oxbow lake; stream, bog woodland by a stream; round 2: stepped mountain stream, seam between channels; confluence,
 	 * oxbow lake near a channel). In 5 × 5 full chunks around each area the shore columns of the surface plan (dry shelf
-	 * zone or lake shore columns next to water; without the stepped mountain stream) must have water beside their top
+	 * zone or lake shore columns next to water; without the areas of round 2) must have water beside their top
 	 * block in at least 90% of cases,
 	 * and the shelf must make no step of 2 or more blocks where the model is flat. Then every water block of the plan's
 	 * surface (also of the puddles) gets a scheduled fluid tick, as if a neighbor had changed. The plan must have no open
@@ -747,8 +752,9 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 			context.takeScreenshot(prefix + name + "_" + scale);
 			// counts: shore, wet shore, scheduled, shelf steps; after: S6 spills, model spills, ticks still scheduled, new
 			// open edges
-			if (!name.equals("cascade")) {
-				// On the stepped mountain stream the guard keeps the banks at the upper water level on purpose.
+			if (!ROUND2_AREAS.contains(name)) {
+				// The areas of round 2 check walls and spills at stepped water, where the guard keeps the banks at the
+				// upper water level on purpose; their shore share is only reported.
 				shoreAll += counts[0];
 				wetAll += counts[1];
 			}
@@ -759,7 +765,7 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 					counts[2], after[3], SPILL_TICKS, after[0], after[1], after[2]));
 			if (after[0] > 0 || after[3] > 0 || counts[3] > 0) {
 				failures.add(name + ": " + after[0] + " water blocks outside the plan in removed ground or away from the model "
-						+ "edges, " + after[3] + " new open edges, " + counts[3] + " shelf steps");
+						+ "edges, " + after[3] + " new open edges, " + counts[3] + " shelf steps, e.g. " + SPILLS);
 			}
 			if (after[2] > 0.1 * Math.max(1, counts[2])) {
 				failures.add(name + ": the chunks did not tick (" + after[2] + " of " + counts[2] + " ticks left)");
@@ -801,6 +807,7 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 		int z0 = (ccz - SHELF_RADIUS) << 4;
 		int size = n << 4;
 		long[] out = new long[4];
+		SPILLS.clear();
 		for (int x = x0; x < x0 + size; x++) {
 			for (int z = z0; z < z0 + size; z++) {
 				ChunkSurface plan = plans[(x - x0) >> 4][(z - z0) >> 4];
@@ -913,11 +920,22 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 						}
 					}
 					out[model ? 1 : 0]++;
+					if (!model && SPILLS.size() < 8) {
+						SPILLS.add(String.format(Locale.ROOT, "(%d, %d, %d) %s, plan top %d, model top %d", x, y, z,
+								y <= plan.modelTop(i) ? "removed ground" : "away from the model edges", top, plan.modelTop(i)));
+					}
 				}
 			}
 		}
 		return out;
 	}
+
+	/** Shelf areas of the review of S6, round 2 (stepped water), left out of the shore share. */
+	private static final java.util.Set<String> ROUND2_AREAS = java.util.Set.of("cascade", "channel_seam", "confluence",
+			"oxbow_near_channel");
+
+	/** First water blocks counted as S6 spills in the last area (for the failure message). */
+	private static final List<String> SPILLS = new ArrayList<>();
 
 	/** Top of a plan column after the shelf, without the micro-relief (puddles −1, hummocks +1). */
 	private static int shelfTop(ChunkSurface plan, int i) {

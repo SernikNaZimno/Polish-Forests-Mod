@@ -317,9 +317,11 @@ tasks.register('checkDatagen', CheckDatagen) {
 // Choosing in-game tests: ./gradlew runClientGameTest -Pgametest=performance|stages|views|climate|ui|habitats|all
 // Only selected views: -Psites=beach,cliff (names from PolandWorldClientGameTest).
 // -PdebugHabitats: diagnostic mode, zones and biomes painted on the top block (docs/03-m2-biomy.md §7.5).
+// -Pscales=realistic or -Pscales=gameplay: HabitatsClientGameTest in one scale only.
 tasks.named('runClientGameTest') {
 	jvmArgs "-Dpolishforests.gametest=${project.findProperty('gametest') ?: 'all'}"
 	jvmArgs "-Dpolishforests.sites=${project.findProperty('sites') ?: ''}"
+	jvmArgs "-Dpolishforests.scales=${project.findProperty('scales') ?: ''}"
 	// Diagnostic mode of step S6: the top block painted with the color of the zone or biome (-PdebugHabitats).
 	if (project.hasProperty('debugHabitats')) {
 		jvmArgs '-Dpolishforests.debug.habitats=true'

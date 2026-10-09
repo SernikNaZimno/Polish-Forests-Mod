@@ -24,7 +24,8 @@ import pl.polishforests.worldgen.landscape.WaterKind;
  * shelf zones went down to the water and their inner edge was a wall of 2–3 blocks.
  *
  * <p><b>Water cannot spill (review of S6, round 2).</b> The ramp never goes below the top of any fresh model water within
- * Manhattan distance {@link #GUARD_FULL} (the reach of water flowing from a source block), also outside the chunk
+ * Manhattan distance {@link #GUARD_FULL} (the reach of water flowing from a source block and a margin for the higher
+ * water spreading over the lower one at diagonal steps of the water level), also outside the chunk
  * ({@link SurfaceBuilder.Work#guardField}): near a step of the water level, a confluence or an open edge of the model the
  * water of the higher level would otherwise flow onto the lowered bank (in round 1 the guards saw only the open edges in
  * the chunk and estimated the upstream level from the change of {@code channelLevel} to the neighbors, which jumps where
@@ -49,9 +50,11 @@ final class BankShelf {
 	static final int SHORE_BED_WIDTH = 2;
 	/**
 	 * The ramp does not go below any fresh water of the model within this Manhattan distance (blocks), also outside the
-	 * chunk ({@link SurfaceBuilder.Work#guardField}): water flowing from a source block reaches 7 blocks.
+	 * chunk ({@link SurfaceBuilder.Work#guardField}): water flowing from a source block reaches 7 blocks, and 2 more cover
+	 * the higher water that spreads over the lower one at a diagonal step of the water level (two source neighbors turn
+	 * the water above the lower water into a source: {@code FlowingFluid.getNewLiquid}).
 	 */
-	static final int GUARD_FULL = 7;
+	static final int GUARD_FULL = 9;
 	/**
 	 * Beyond {@link #GUARD_FULL} the guard fades by one block per block, up to this radius: a term {@code MAX_DROP} blocks
 	 * beyond it would be at most {@code a − MAX_DROP}, which the shelf never goes below anyway.
