@@ -1256,7 +1256,7 @@ Pojedyncze przebiegi różnią się do ok. 25% (np. dekoracja REAL Beskidy: baza
 | buczyna karpacka (`montane_beech_forest`) | `montane_beech_forest_realistic.png`: szare pnie buków na stoku, ściółka i paprocie. | `montane_beech_forest_gameplay.png`: buczyna na stoku, ściółka i trawy. |
 | jedlina (`upland_fir_forest`) | – (brak w pobliżu obszarów testu REAL) | `upland_fir_forest_gameplay.png`: ciemna jedlina, szare pnie jodeł po bokach, gęsty podszyt. |
 | łęg wiązowo-jesionowy (`elm_ash_forest`) | `elm_ash_forest_realistic.png`: gęsty łęg; leszczyna i korony zasłaniają część kadru, runo z wysokich traw. | `elm_ash_forest_gameplay.png`: skraj łęgu z wysoką trawą na polanie. |
-| olszyna górska (`gray_alder_forest`) | `gray_alder_forest_realistic.png`: szare pnie olszy szarej, runo z traw i ściółki. | `gray_alder_forest_gameplay.png`: olszyna z kwiatami i trawą w runie. |
+| olszyna górska (`gray_alder_forest`) | `gray_alder_forest_realistic.png`: szare pnie olszy szarej, runo z traw i ściółki. | `gray_alder_forest_gameplay.png` (od rundy 2, miejsce (28 072, 3880)): z góry na stoku smukłe ciemne pnie olszy, gęste runo z wysokiej trawy i paproci, liście lepiężnika i płaty ściółki. |
 
 Uwagi do oceny: drzewa są zastępstwami wanilii (§8.4, kształty własne w M3), a trawa wysoka, trzcina i lepiężnik to bloki wanilii (M2-D). Trzcina wanilii nie rośnie w wodzie, więc pas szuwaru w wodzie jeziora to woda z pałką (`small_dripleaf`) i grzybieniami (ograniczenie M2-D). W gęstych lasach (bór świeży REAL, jedlina GAMEPLAY, łęg wiązowo-jesionowy REAL) pnie lub podszyt nadal zajmują brzeg kadru.
 
@@ -1298,6 +1298,27 @@ Naprawa w `FastTreeFeature`: kłody z rozmieszczacza korony są źródłami; li�
 - **Borówka jako `sweet_berry_bush`** (7–10% kolumn borów i boru bagiennego spowalnia gracza i po wzroście rani): do decyzji użytkownika (warianty: mniejszy udział, np. 2–3%, albo `bush` zamiast borówki do M4).
 
 **Sprawdzenie po poprawkach sondą recenzenta** (te same miejsca i liczenie co w recenzji, obszary 3 × 3 i 5 × 5 chunków): liście do opadnięcia 0 w 10 obszarach (przed poprawką 0,4–4,0% liści tych obszarów), po 300 tickach z `random_tick_speed` 1000 w buczynach REAL i GAMEPLAY 0 opadłych liści i 0 przedmiotów (było 37 i 87 liści); lepiężnik ma 1 lub 2 bloki (było 2–5, 75% ≥ 3); podstawy trzciny przy kałużach: łęg wierzbowy REAL (−3904, 3904) 54 (było 259), miejsce szuwaru REAL (−4160, 4096) w olsie 49 (było 330) i w biomie szuwaru 144 (było 278), przy wodzie jeziora 65 (bez zmian), łęg wiązowy REAL (−19 612, 11 205) 25 (było 185); przy potoku górskim REAL (155 490, 1 059 162) 0 (było 70), GAMEPLAY (27 825, 3374) 6 przy wodzie potoku w kolumnach grądu (było 7; grąd jest biomem nizinnym, więc reguła brzegów wód eutroficznych go obejmuje); głazy w Beskidach GAMEPLAY 0 (było 21 i 17 kolumn), na nizinie bez zmian.
+
+
+### Runda 2 poprawek S7 (2026-10-09)
+
+**Kadr olszyny górskiej GAMEPLAY (poważne).** Potwierdzone sondą klasyfikatora (ziarno 20260927): w kole o promieniu 16 bloków wokół dawnego środka (27 825, 3374) olszyna górska zajmuje 9% kolumn (w 5 × 5 chunkach recenzent: 66 z 6400), reszta to grąd, więc kadr pokazywał grąd. Nowy środek (28 072, 3880) leży w największym płacie olszyny w pobliżu wskazanym przez recenzenta (sonda w siatce 8 bloków wokół (28 120, 3880)): olszyna górska ma 100% kolumn w promieniu 16 bloków i 24 bloków, 73% w promieniu 40. Nowy kadr `gray_alder_forest_gameplay.png` (opis w tabeli wyżej). Żeby błąd się nie powtórzył, `VegetationClientGameTest` liczy dla każdego miejsca, którego nazwa jest identyfikatorem biomu, udział tego biomu w kole 16 bloków (co 2 bloki, klasyfikator), wypisuje go w logu i przerywa test, gdy dodatkowe miejsce (`EXTRA_NAMES`) ma mniej niż 30%. Udziały pozostałych dodatkowych miejsc (sonda): REAL 100% (grąd, bór świeży, las mieszany, buczyna karpacka), 100% (łęg wiązowo-jesionowy, 99% w promieniu 24), olszyna górska 39% (wąski pas przy potoku; recenzent: 1546 z 6400 kolumn w 5 × 5 chunkach); GAMEPLAY 100% we wszystkich sześciu pozostałych. Test `-Pgametest=vegetation -Pscales=gameplay -Psites=gray_alder_forest` przechodzi (transekty, pokrycie koronami, liście do opadnięcia 0 z 67 529, `HABITAT_MISS` 0).
+
+**Drobne zgłoszenia rundy 2:** wszystkie poza zrzutem olszyny powtarzają zgłoszenia rundy 1, naprawione już w commitach rundy 1 (`1874af7`, `e7b28b3`, `90006f5`); sprawdzone ponownie w kodzie:
+- LIGHT: wiersze baza / baza leśna / S7 są w „Budżety (§3.6)” (od rundy 1).
+- Mixin R11: warunek to flaga wątku `PolandChunkGenerator.decoratingColumnBiomes()`, ustawiana tylko przy `PolandBiomeSource`, a nie załącznik `ChunkHabitats`.
+- Klasyfikacja transektu: `bush`, `firefly_bush` i `sweet_berry_bush` to krzewinki (osobna kolumna), pokrycie koronami wiklin i kosodrzewiny jest mierzone w grze (`crown cover`: GAMEPLAY wiklina 72,1%, kosodrzewina 71,0%). Kolumna z powietrzem i liśćmi lub kłodą 2 bloki nad gruntem zostaje liczona jako krzew: to rzut korony krzewu (wiklina, leszczyna, kosodrzewina) na grunt, jak w mierze pokrycia koronami.
+- Trzcina w borach, buczynie i na wrzosowisku: `reedBanks` ich nie zawiera (od rundy 1), trzcina przy jeziorach lobeliowych tylko w płatach szuwaru brzegowego.
+- Leszczyna w olsie: usunięta (w olsie wiklina jako wierzba szara); kłody olszyny górskiej: `deadwood/gray_alder` z korą `pale_oak`.
+- Świerczyna przy granicy lasu: skok 12 → 4 opisany w odstępstwach (kod siedliska nie niesie odległości od granicy lasu).
+- Spis drzew: jałowiec ma 1–2 kłody, więc nie spełnia warunku trzech kłód; próg testu ±20%, zmierzone odchylenia do ±10% (opis poprawiony w rundzie 1); zdanie o lepiężniku na kamieńcu mówi tylko o `coarse_dirt`/`rooted_dirt`. Tytułu opublikowanego commita `b85020e` nie zmieniamy (bez zmiany opublikowanych commitów).
+- Trzcina przy kałużach: środowisko `PUDDLE_SHORE`, w lasach 10% (było 50%); pas szuwaru w wodzie bez trzciny to ograniczenie M2-D do akceptacji.
+- Kidzina: tylko pas 2 bloków od strony mokrej plaży (`SEAWARD_EDGE`).
+- Głazy w Karpatach: filtr z `max_mountain_influence` 0,3.
+- Rośliny bez podparcia: rośliny podwójne i pnącza zaznaczone do post-processingu chunka (`PlantLayerFeature`, `FastTreeFeature`).
+- Buk na skraju zasięgu: w buczynach buk bez rampy (`range_ramp`).
+- Determinizm: zapis w §12.3 (do S10).
+- Borówka jako `sweet_berry_bush`: nadal do decyzji użytkownika.
 
 ---
 
