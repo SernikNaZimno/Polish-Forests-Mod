@@ -102,6 +102,7 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 				PolishForests.LOG.info("[habitats] {}: {}", name, sp.getServer().computeOnServer(
 						s -> locateTime(s, "locate biome polishforests:dwarf_pine_scrub")));
 				boolean real = scale == PolandScale.REALISTIC;
+				waitForIdleGeneration(context, name);
 				PolishForests.LOG.info("[habitats] {}: {}", name, sp.getServer().computeOnServer(s -> biomesPerChunk(s, real)));
 				PolishForests.LOG.info("[habitats] {}: {}", name, sp.getServer().computeOnServer(HabitatsClientGameTest::habitatMisses));
 				PolishForests.LOG.info("[habitats] {}: {}", name, sp.getServer().computeOnServer(s -> census(s, real, places)));
@@ -111,6 +112,25 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 				PolishForests.LOG.info("[habitats] {}: {}", name, packing());
 			}
 		}
+	}
+
+	/**
+	 * Waits until the chunks loaded around the player after the teleports have finished generating (no new terrain for
+	 * 3 s, at most 3 minutes), so the one-thread BIOMES measurement does not compete with them (review of S6, round 1:
+	 * 0.21–0.29 ms on the lowland with the generation of the F3 place still running).
+	 */
+	private static void waitForIdleGeneration(ClientGameTestContext context, String name) {
+		long start = System.nanoTime();
+		long before = PolandChunkGenerator.CHUNKS.sum();
+		for (int i = 0; i < 60; i++) {
+			long last = PolandChunkGenerator.CHUNKS.sum();
+			context.waitTicks(60);
+			if (PolandChunkGenerator.CHUNKS.sum() == last) {
+				break;
+			}
+		}
+		PolishForests.LOG.info("[habitats] {}: {} more chunks with terrain generated in the background, waited {} s before BIOMES",
+				name, PolandChunkGenerator.CHUNKS.sum() - before, String.format(Locale.ROOT, "%.0f", (System.nanoTime() - start) / 1e9));
 	}
 
 	private static void select(WorldCreationUiState ui, ResourceKey<WorldPreset> preset) {

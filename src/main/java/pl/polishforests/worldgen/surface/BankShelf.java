@@ -11,23 +11,22 @@ import pl.polishforests.worldgen.landscape.WaterKind;
  * ground lies one or more blocks above the water and reeds or firefly bushes, which need water next to the block they
  * stand on, cannot grow.
  *
- * <p><b>Ramp (review of S6, round 1).</b> A dry column near a channel or a lake is lowered by a ramp of one block per
- * column from the water: the column at distance {@code c} (blocks, from the model's {@code channelDist} or {@code s},
- * at least 1) goes down to {@code level + c − 1}, at most {@link #MAX_DROP} blocks, and the allowed drop shrinks by one
- * block per column ({@code MAX_DROP + 1 − c}), so the ramp meets the model top within four columns. The lowering is a
- * function of the column's own sample (its height above the water level of its channel or lake and its distance from
- * it), not of the habitat zone, so it is the same whichever chunk computes it and leaves no step at a zone or chunk
- * border: next to a model step of {@code k} blocks the plan has a step of at most {@code max(k + 1, 1)} (in flat model
- * ground at most 1). Before the round the whole shelf zones were lowered to the water and their inner edge was a wall of
- * 2–3 blocks. Along a channel the drop also fades out with the height of the ground above the water
- * ({@link #RIVER_FADE}), so a channel stretch without water (the valley floor several meters above the level) gets no
- * ditch.
+ * <p><b>Ramp (review of S6, round 1).</b> A dry column within {@link #RAMP} blocks (Chebyshev) of fresh model water
+ * (channel, lake, oxbow lake; not the sea) goes down a ramp of one block per column from the water: at most to
+ * {@code W + k − 1} for every water column within reach (water top {@code W}, distance {@code k}), at most
+ * {@code MAX_DROP + 1 − c} blocks at distance {@code c} from the nearest water, so the ramp meets the model top within
+ * four columns, and less on banks higher than {@link #MAX_DROP} blocks ({@link #FADE}). The ramp follows the real water
+ * of the model, also beyond the chunk border (sampled, {@link ColumnCache}), not the habitat zone or the model's
+ * distance fields: it is the same whichever chunk computes it, a channel stretch without water gets no ditch, and the
+ * shelf leaves no step at a zone or chunk border. Next to a model step of {@code k} blocks the plan has a step of at
+ * most {@code k + 1}, on flat model ground at most 1. Before the round the whole shelf zones went down to the water and
+ * their inner edge was a wall of 2–3 blocks.
  *
  * <p><b>Water cannot spill.</b> The ramp never goes below a water surface of the model next to the column (the
- * neighbors outside the chunk are sampled), below any water within {@link #NEAR_WATER} blocks in the chunk, or below the
- * water of an open edge of the model (a step of the river level, the end of a channel stretch) within
- * {@link #FLOW_GUARD} blocks in the chunk, where flowing water would otherwise spread over the lowered ground. A solid
- * block at the Y of the water is a wall for it.
+ * neighbors outside the chunk are sampled) or within {@link #NEAR_WATER} blocks, below the water of an open edge of the
+ * model within {@link #FLOW_GUARD} blocks in the chunk, or below the channel level {@link #FLOW_GUARD} blocks upstream
+ * ({@link #levelStep}): near a step of the river level water flows from the upper water over the lower one and would
+ * spread over a bank lowered below it. A solid block at the Y of the water is a wall for it.
  *
  * <p>Columns next to sea water are not lowered (beach rules). The flag {@link ChunkSurface#SHORE} marks the dry columns
  * next to water in the zones {@link Zone#POINT_BAR}, {@link Zone#TALL_HERBS}, {@link Zone#SHORE_REEDBED},
