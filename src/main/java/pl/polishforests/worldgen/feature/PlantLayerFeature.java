@@ -26,10 +26,14 @@ import net.minecraft.world.level.levelgen.XoroshiroRandomSource;
 import net.minecraft.world.level.levelgen.feature.Feature;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.material.Fluids;
+import org.jspecify.annotations.Nullable;
 import pl.polishforests.worldgen.chunk.ChunkHabitats;
+import pl.polishforests.worldgen.chunk.PolandChunkGenerator;
 import pl.polishforests.worldgen.feature.config.PlantPalette;
 import pl.polishforests.worldgen.feature.plan.ColumnPlan;
+import pl.polishforests.worldgen.feature.plan.Ecotone;
 import pl.polishforests.worldgen.feature.plan.TreeStandPlan;
+import pl.polishforests.worldgen.landscape.Noise;
 
 /**
  * A column layer of step 9 (docs/03-m2-biomy.md §8.2): {@code polishforests:deadwood}, {@code understory},
@@ -75,7 +79,17 @@ public final class PlantLayerFeature implements Feature {
 	private final ColumnPlan.Palette plan;
 	private final boolean shore;
 	private final boolean seaward;
+	/** Whether a rule of the palette asks for a forest edge class (the mantle and fringe of step S8b). */
+	private final boolean edges;
 	private final long salt;
+	private volatile @Nullable Noises noises;
+
+	/** Noise of the forest edge widths of a world seed ({@link Ecotone#edges}). */
+	private record Noises(long seed, Noise edges) {
+	}
+
+	/** Salt of the noise of the forest edge widths (a new field, a new salt; step S8b). */
+	private static final String EDGE_SALT = "feature.ecotone.edges";
 
 	public PlantLayerFeature(BiomeDecoration.Dispatcher dispatcher, PlantPalette palette) {
 		this.dispatcher = dispatcher;
@@ -84,6 +98,7 @@ public final class PlantLayerFeature implements Feature {
 		List<ColumnPlan.Rule> rules = new ArrayList<>();
 		boolean anyShore = false;
 		boolean anySeaward = false;
+		boolean anyEdge = false;
 		for (PlantPalette.Rule r : palette.rules()) {
 			int[] index = new int[r.plants().size()];
 			int[] weights = new int[r.plants().size()];
@@ -104,12 +119,18 @@ public final class PlantLayerFeature implements Feature {
 			}
 			anyShore |= r.medium() == ColumnPlan.Medium.SHORE || r.medium() == ColumnPlan.Medium.PUDDLE_SHORE;
 			anySeaward |= r.medium() == ColumnPlan.Medium.SEAWARD_EDGE;
+			int edgeMask = 0;
+			for (Ecotone.Edge e : r.edges()) {
+				edgeMask |= 1 << e.ordinal();
+			}
+			anyEdge |= edgeMask != 0;
 			rules.add(new ColumnPlan.Rule(r.condition().match(), r.medium(), r.minDepth(), r.maxDepth(), grounds, r.coverage(),
-					r.patch(), index, weights));
+					r.patch(), index, weights, edgeMask));
 		}
 		this.plan = new ColumnPlan.Palette(rules);
 		this.shore = anyShore;
 		this.seaward = anySeaward;
+		this.edges = anyEdge;
 	}
 
 	public BiomeDecoration.Dispatcher dispatcher() {
@@ -154,6 +175,16 @@ public final class PlantLayerFeature implements Feature {
 		}
 		ChunkPos pos = chunk.getPos();
 		ColumnPlan.Columns columns = VegetationColumns.of(level, chunk, habitats, shore, seaward);
+		int patch = ecotonePatch(dispatcher);
+		if (patch > 0) {
+			// Ecotones (rule Z10, step S8b): the palette of each column from the code of a column across the border within
+			// the belt of the pair, and the mantle and fringe of the forest edges.
+			double k = generator instanceof PolandChunkGenerator poland ? poland.settings().scale().landscape().local() : 1;
+			Ecotone.Region region = VegetationColumns.region(level, chunk, habitats, k);
+			int[] codes = Ecotone.effective(region, Ecotone.Layer.PLANTS, level.getSeed(), salt, patch);
+			byte[] edge = edges ? Ecotone.edges(region, noises(level.getSeed()).edges(), codes) : null;
+			columns = columns.with(codes, edge);
+		}
 		int[] planned = ColumnPlan.of(columns, plan, level.getSeed(), pos.x(), pos.z(), salt);
 		if (planned.length == 0) {
 			return 0;
@@ -180,6 +211,27 @@ public final class PlantLayerFeature implements Feature {
 			}
 		}
 		return placed;
+	}
+
+	/**
+	 * Patch size of the ecotone vectors of a layer ({@link Ecotone#effective}), 0 for a layer without ecotones: the
+	 * waterside zones and the aquatic plants follow the water, whose borders are sharp.
+	 */
+	static int ecotonePatch(BiomeDecoration.Dispatcher dispatcher) {
+		return switch (dispatcher) {
+			case DEADWOOD, UNDERSTORY -> 1;
+			case GROUND_LAYER -> 3;
+			default -> 0;
+		};
+	}
+
+	private Noises noises(long seed) {
+		Noises n = noises;
+		if (n == null || n.seed() != seed) {
+			n = new Noises(seed, new Noise(seed).derive(EDGE_SALT));
+			noises = n;
+		}
+		return n;
 	}
 
 	/** Places one plant at its position; false when the place is taken or the plant cannot survive there. */

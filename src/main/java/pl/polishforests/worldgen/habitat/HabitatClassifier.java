@@ -43,6 +43,8 @@ public final class HabitatClassifier {
 	final Noise belts;
 	/** Variants within sites (lowland beech forest, heath openings), wavelength 1.5 km·k. */
 	final Noise variants;
+	/** Patches of the stunted spruces in the timberline ramp (step S8b, rule Z10). */
+	final Noise timberline;
 	final ForestCover forestCover;
 
 	public HabitatClassifier(long seed, LandscapeScale scale, Mode mode) {
@@ -56,6 +58,8 @@ public final class HabitatClassifier {
 		this.patches = root.derive("habitat.platy");
 		this.belts = root.derive("habitat.pietra");
 		this.variants = root.derive("habitat.warianty");
+		// Step S8b: a new noise field with a new salt.
+		this.timberline = root.derive("habitat.timberline.patches");
 		// Step S8: the second octave of F is a new noise field with its own salt; round 1 of the S8 review: the woodlot
 		// octave and the context noise, new fields with new salts.
 		this.forestCover = new ForestCover(root.derive("habitat.lesistosc"), root.derive("habitat.forest_cover.fine"),

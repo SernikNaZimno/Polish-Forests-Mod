@@ -11,6 +11,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import pl.polishforests.worldgen.chunk.ChunkHabitats;
 import pl.polishforests.worldgen.feature.plan.ColumnPlan;
+import pl.polishforests.worldgen.feature.plan.Ecotone;
 import pl.polishforests.worldgen.habitat.Habitat;
 import pl.polishforests.worldgen.habitat.HabitatBiome;
 import pl.polishforests.worldgen.habitat.Zone;
@@ -123,6 +124,24 @@ final class VegetationColumns {
 			side[i] = (byte) bits;
 		}
 		return new ColumnPlan.Columns(habitats.codes(), depth, ground, side);
+	}
+
+	/**
+	 * Habitat codes of the chunk and of its 8 neighbors for the ecotones ({@link Ecotone}, rule Z10): the neighbors'
+	 * {@link ChunkHabitats} (past {@code fill()} when the chunk is decorated), {@link Ecotone#UNKNOWN} where a neighbor has
+	 * none (outside the "Poland" generation path).
+	 */
+	static Ecotone.Region region(WorldGenLevel level, ChunkAccess chunk, ChunkHabitats habitats, double k) {
+		ChunkPos pos = chunk.getPos();
+		int[][] codes = new int[9][];
+		for (int dx = -1; dx <= 1; dx++) {
+			for (int dz = -1; dz <= 1; dz++) {
+				ChunkHabitats h = dx == 0 && dz == 0 ? habitats
+						: level.getChunk(pos.x() + dx, pos.z() + dz).getAttached(ModFeatures.CHUNK_HABITATS);
+				codes[(dx + 1) * 3 + dz + 1] = h == null ? null : h.codes();
+			}
+		}
+		return Ecotone.Region.of(pos.x(), pos.z(), codes, k);
 	}
 
 	/** Habitats of the chunk and of its 8 neighbors, by local coordinates relative to the chunk (−16…31). */

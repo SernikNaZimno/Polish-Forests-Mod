@@ -46,15 +46,23 @@ public final class AltitudinalBelts {
 	public static final double NOISE_WAVELENGTH = 150;
 	/** Lowering of the timberline on wind-exposed ridges (m) at slopes below 15°. */
 	public static final double WINDY_RIDGE = 60;
-	/** Belt of stunted spruces below the timberline (m). */
+	/** Belt of stunted spruces below the timberline (m): its mean depth, the area of the ramp below. */
 	public static final double BORDER_BAND = 60;
+	/**
+	 * Ramp of the stunted spruces below the timberline (m, step S8b, rule Z10): their patches cover a share of the
+	 * columns that grows from 0 at this depth below the timberline to 1 at it (before S8b a belt of
+	 * {@link #BORDER_BAND} with a sharp lower border, where the stand fell from 12 to 4 trees per chunk).
+	 */
+	public static final double TIMBERLINE_RAMP = 2 * BORDER_BAND;
+	/** Wavelength of the noise of the stunted spruce patches (m·k). */
+	static final double TIMBERLINE_PATCHES = 12;
 	/** Largest possible lowering of a threshold (aspect and noise), used to skip the noise low down. */
 	public static final double MAX_LOWERING = ASPECT + TEMPERATURE_NOISE;
 	/**
 	 * Lowest elevation at which a large massif changes anything (the timberline band on a ridge at the largest
 	 * lowering). The model computes the {@code terrain.summit} field only from this elevation.
 	 */
-	public static final double SUMMIT_FROM = TIMBERLINE - MAX_LOWERING - WINDY_RIDGE - BORDER_BAND;
+	public static final double SUMMIT_FROM = TIMBERLINE - MAX_LOWERING - WINDY_RIDGE - TIMBERLINE_RAMP;
 	/** Wind-exposed ridge: slope below (°). */
 	static final double WINDY_RIDGE_SLOPE = 15;
 	/** Above this elevation in the lower montane belt, N slopes have Abieti-Piceetum (m). */
@@ -113,7 +121,8 @@ public final class AltitudinalBelts {
 			return HabitatClassifier.Result.of(HabitatBiome.DWARF_PINE_SCRUB, Zone.NONE, Association.TYPICAL);
 		}
 		if (h >= UPPER_MONTANE + corr) {
-			Zone s = large && h >= limit - BORDER_BAND ? Zone.TIMBERLINE : Zone.NONE;
+			Zone s = large && h >= limit - TIMBERLINE_RAMP && timberlinePatch(c) > (limit - h) / TIMBERLINE_RAMP
+					? Zone.TIMBERLINE : Zone.NONE;
 			double p0 = c.t.ridgeProfile();
 			Association z = !Double.isNaN(p0) && p0 < GULLY_RIDGE ? Association.GULLY_TALL_HERBS : Association.TYPICAL;
 			return HabitatClassifier.Result.of(HabitatBiome.MONTANE_SPRUCE_FOREST, s, z);
@@ -139,6 +148,15 @@ public final class AltitudinalBelts {
 			return HabitatClassifier.Result.of(HabitatBiome.UPLAND_FIR_FOREST, Zone.NONE, Association.TYPICAL);
 		}
 		return HabitatClassifier.Result.NONE;
+	}
+
+	/**
+	 * Uniform value 0–1 of the patch noise of the stunted spruces at the column: a column of the timberline ramp at depth d
+	 * below the timberline is in a patch when the value exceeds d / {@link #TIMBERLINE_RAMP} (step S8b).
+	 */
+	static double timberlinePatch(HabitatClassifier.Column c) {
+		return pl.polishforests.worldgen.landscape.LandscapeModel.noiseQuantile(
+				c.classifier.timberline.at(c.x, c.z, TIMBERLINE_PATCHES * c.k));
 	}
 
 	/** Sycamore ravine forest on steep N–E slopes in the lower part of the slope, acidophilous form on poor sites. */

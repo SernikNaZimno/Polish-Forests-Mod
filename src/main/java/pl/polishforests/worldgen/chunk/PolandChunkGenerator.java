@@ -62,6 +62,7 @@ import pl.polishforests.worldgen.landscape.ColumnSample;
 import pl.polishforests.worldgen.landscape.LandscapeModel;
 import pl.polishforests.worldgen.surface.ChunkSurface;
 import pl.polishforests.worldgen.surface.Material;
+import pl.polishforests.worldgen.surface.SoilBlend;
 import pl.polishforests.worldgen.surface.StructureGround;
 import pl.polishforests.worldgen.surface.SurfaceBuilder;
 
@@ -293,6 +294,9 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 		boolean columnBiomes = biomeSource instanceof PolandBiomeSource;
 		COLUMN_BIOMES.set(columnBiomes);
 		try {
+			if (columnBiomes) {
+				blendSoil(level, chunk);
+			}
 			super.applyBiomeDecoration(level, chunk, structureManager);
 		} finally {
 			if (columnBiomes) {
@@ -302,6 +306,41 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 		DECORATION_NANOS.add(System.nanoTime() - t0);
 		DECORATION_CHUNKS.increment();
 	}
+
+	/**
+	 * Soil ecotones (rule Z10, step S8b, {@link SoilBlend}): before the decoration of the chunk, the top block of each dry
+	 * column outside structure pieces takes the soil of a column across a habitat border within the belt of the pair, where
+	 * the world still holds the top of the column's own soil. Not in the diagnostic mode (its top shows the zones).
+	 */
+	private void blendSoil(net.minecraft.world.level.WorldGenLevel level, net.minecraft.world.level.chunk.ChunkAccess chunk) {
+		SurfaceBuilder builder = surfaceBuilder;
+		ChunkHabitats habitats = chunk.getAttached(pl.polishforests.worldgen.feature.ModFeatures.CHUNK_HABITATS);
+		if (builder == null || builder.debug() || habitats == null) {
+			return;
+		}
+		boolean[] skip = new boolean[256];
+		for (int i = 0; i < 256; i++) {
+			skip[i] = habitats.hasWater(i) || habitats.pieceDistance(i) <= 1;
+		}
+		int[] tops = SoilBlend.tops(pl.polishforests.worldgen.feature.ModFeatures.ecotoneRegion(level, chunk, habitats,
+				settings.scale().landscape().local()), level.getSeed(), builder, skip);
+		ChunkPos pos = chunk.getPos();
+		BlockPos.MutableBlockPos at = new BlockPos.MutableBlockPos();
+		Material[] materials = Material.values();
+		for (int i = 0; i < 256; i++) {
+			if (tops[i] == SoilBlend.KEEP) {
+				continue;
+			}
+			at.set(pos.getMinBlockX() + (i >> 4), habitats.top()[i], pos.getMinBlockZ() + (i & 15));
+			if (chunk.getBlockState(at) == MaterialStates.of(materials[tops[i] >> 8])) {
+				chunk.setBlockState(at, MaterialStates.of(materials[tops[i] & 0xFF]), 0);
+				SOIL_BLENDED.increment();
+			}
+		}
+	}
+
+	/** Number of top blocks the soil ecotones changed (diagnostics). */
+	public static final java.util.concurrent.atomic.LongAdder SOIL_BLENDED = new java.util.concurrent.atomic.LongAdder();
 
 	/**
 	 * Whether the decoration running on this thread is of a chunk whose sections all hold the same column biomes

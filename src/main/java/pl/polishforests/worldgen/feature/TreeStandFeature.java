@@ -19,6 +19,7 @@ import org.jspecify.annotations.Nullable;
 import pl.polishforests.worldgen.chunk.ChunkHabitats;
 import pl.polishforests.worldgen.chunk.PolandChunkGenerator;
 import pl.polishforests.worldgen.feature.config.TreePalette;
+import pl.polishforests.worldgen.feature.plan.Ecotone;
 import pl.polishforests.worldgen.feature.plan.SpeciesRamp;
 import pl.polishforests.worldgen.feature.plan.TreeStandPlan;
 import pl.polishforests.worldgen.landscape.Noise;
@@ -146,7 +147,11 @@ public final class TreeStandFeature implements Feature {
 		float[] ramp = SpeciesRamp.factors(habitats.oceanicity(), habitats.mountainInfluence(), n.ramp(),
 				pos.getMiddleBlockX(), pos.getMiddleBlockZ(), k);
 		long seed = TreeStandPlan.seed(level.getSeed(), pos.x(), pos.z(), TreeStandPlan.SALT);
-		int[] planned = TreeStandPlan.of(habitats.codes(), VegetationColumns.waterDepth(habitats), plan, level.getSeed(),
+		// Ecotones (rule Z10, step S8b): each candidate takes the rule of a column across the border within the belt of the
+		// pair, so composition and density change in a ramp.
+		int[] codes = Ecotone.effective(VegetationColumns.region(level, chunk, habitats, k), Ecotone.Layer.TREES,
+				level.getSeed(), TreeStandPlan.SALT, 1);
+		int[] planned = TreeStandPlan.of(codes, VegetationColumns.waterDepth(habitats), plan, level.getSeed(),
 				pos.x(), pos.z(), new TreeStandPlan.Stand(ramp, n.gaps(), k));
 		WorldgenRandom treeRandom = new WorldgenRandom(new XoroshiroRandomSource(seed));
 		int placed = 0;

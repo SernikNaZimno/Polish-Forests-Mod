@@ -81,6 +81,22 @@ public final class SurfaceBuilder {
 		return Boolean.getBoolean(DEBUG_PROPERTY);
 	}
 
+	/** Whether this builder paints zones and biomes on the top (diagnostic mode). */
+	public boolean debug() {
+		return debug;
+	}
+
+	/**
+	 * Top block of the soil profile of a dry column at world (x, z) for the habitat code {@code code}, with the same patch
+	 * noises as {@link #build} (without the micro-relief; beaches as not stony): the soil ecotones ({@link SoilBlend})
+	 * compare the top of a column's own code with the top of the code it takes across a border.
+	 */
+	public Material soilTop(int code, int x, int z) {
+		double q1 = LandscapeModel.noiseQuantile(soil.at(x, z, SOIL_WAVELENGTH));
+		double q2 = LandscapeModel.noiseQuantile(soil.at(x + 1_013.0, z - 517.0, SOIL_MINOR_WAVELENGTH));
+		return SoilBlocks.top(SoilBlocks.dry(Habitat.soil(code), Habitat.zone(code), Habitat.biome(code), q1, q2, 1));
+	}
+
 	public VerticalScale vertical() {
 		return vertical;
 	}

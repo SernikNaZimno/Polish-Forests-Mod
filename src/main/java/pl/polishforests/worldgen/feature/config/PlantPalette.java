@@ -9,6 +9,7 @@ import net.minecraft.core.Holder;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.placement.PlacedFeature;
 import pl.polishforests.worldgen.feature.plan.ColumnPlan;
+import pl.polishforests.worldgen.feature.plan.Ecotone;
 
 /**
  * Palette of a column layer (deadwood, understory, waterside zones, ground layer, aquatic plants; JSON from datagen,
@@ -24,6 +25,7 @@ public record PlantPalette(List<Rule> rules) {
 			ColumnPlan.Medium.values());
 	public static final Codec<ColumnPlan.Ground> GROUND = HabitatCondition.enumCodec(ColumnPlan.Ground.class,
 			ColumnPlan.Ground.values());
+	public static final Codec<Ecotone.Edge> EDGE = HabitatCondition.enumCodec(Ecotone.Edge.class, Ecotone.Edge.values());
 
 	/**
 	 * A plant of a rule: a block state (a double plant gets both halves, a block with a height above 1 is a column such
@@ -76,9 +78,10 @@ public record PlantPalette(List<Rule> rules) {
 	 * @param coverage  share of the matching columns that get a plant
 	 * @param patch     patch size in blocks (1: none)
 	 * @param plants    plants and their weights
+	 * @param edges     forest edge classes of the columns (empty: any; step S8b, {@link Ecotone#edges})
 	 */
 	public record Rule(HabitatCondition condition, ColumnPlan.Medium medium, int minDepth, int maxDepth,
-			List<ColumnPlan.Ground> grounds, float coverage, int patch, List<Plant> plants) {
+			List<ColumnPlan.Ground> grounds, float coverage, int patch, List<Plant> plants, List<Ecotone.Edge> edges) {
 		public static final Codec<Rule> CODEC = RecordCodecBuilder.create(i -> i.group(
 				HabitatCondition.MAP_CODEC.forGetter(Rule::condition),
 				MEDIUM.optionalFieldOf("medium", ColumnPlan.Medium.LAND).forGetter(Rule::medium),
@@ -87,12 +90,20 @@ public record PlantPalette(List<Rule> rules) {
 				GROUND.listOf().optionalFieldOf("grounds", List.of()).forGetter(Rule::grounds),
 				Codec.floatRange(0.0F, 1.0F).fieldOf("coverage").forGetter(Rule::coverage),
 				Codec.intRange(1, 16).optionalFieldOf("patch", 1).forGetter(Rule::patch),
-				Plant.CODEC.listOf().fieldOf("plants").forGetter(Rule::plants)
+				Plant.CODEC.listOf().fieldOf("plants").forGetter(Rule::plants),
+				EDGE.listOf().optionalFieldOf("edges", List.of()).forGetter(Rule::edges)
 		).apply(i, Rule::new));
 
 		public Rule {
 			grounds = List.copyOf(grounds);
 			plants = List.copyOf(plants);
+			edges = List.copyOf(edges);
+		}
+
+		/** A rule for any forest edge class. */
+		public Rule(HabitatCondition condition, ColumnPlan.Medium medium, int minDepth, int maxDepth,
+				List<ColumnPlan.Ground> grounds, float coverage, int patch, List<Plant> plants) {
+			this(condition, medium, minDepth, maxDepth, grounds, coverage, patch, plants, List.of());
 		}
 	}
 }

@@ -18,7 +18,7 @@ public enum HabitatBiome {
 	MOIST_PINE_FOREST("moist_pine_forest", Group.FOREST, "Bór wilgotny", "Moist Pine Forest",
 			0.7F, 0.7F, 0x3D6E70, 0x7FBF5C, 0x60AE33, 0xA36F46),
 	BOG_WOODLAND("bog_woodland", Group.FOREST, "Bór bagienny", "Bog Woodland",
-			0.67F, 0.9F, 0x3A3326, 0x76C05B, 0x53AF32, 0xA36D46),
+			0.67F, 0.9F, 0x3C5652, 0x76C05B, 0x53AF32, 0xA36D46),
 	MIXED_PINE_FOREST("mixed_pine_forest", Group.FOREST, "Bór mieszany", "Mixed Pine-Oak Forest",
 			0.7F, 0.7F, 0x3D6E70, 0x7FBF5C, 0x60AE33, 0xA36F46),
 	MIXED_FOREST("mixed_forest", Group.FOREST, "Las mieszany", "Mixed Forest",
@@ -38,16 +38,16 @@ public enum HabitatBiome {
 	UPLAND_FIR_FOREST("upland_fir_forest", Group.FOREST, "Wyżynna jedlina i buczyna", "Upland Fir and Beech Forest",
 			0.7F, 0.8F, 0x3D6E70, 0x79C05A, 0x59AE30, 0xA36D46),
 	MONTANE_BEECH_FOREST("montane_beech_forest", Group.FOREST, "Buczyna karpacka", "Carpathian Beech Forest",
-			0.7F, 0.8F, 0x4F8FB8, 0x79C05A, 0x59AE30, 0xA36D46),
+			0.7F, 0.8F, 0x4D8090, 0x79C05A, 0x59AE30, 0xA36D46),
 	MONTANE_SPRUCE_FOREST("montane_spruce_forest", Group.FOREST, "Świerczyna górska", "Montane Spruce Forest",
-			0.7F, 0.8F, 0x4F8FB8, 0x79C05A, 0x59AE30, 0xA36D46),
+			0.7F, 0.8F, 0x4D8090, 0x79C05A, 0x59AE30, 0xA36D46),
 	GRAY_ALDER_FOREST("gray_alder_forest", Group.FOREST, "Olszyna górska", "Gray Alder Forest",
-			0.685F, 0.85F, 0x4F8FB8, 0x77C05B, 0x55AF31, 0xA36D46),
+			0.685F, 0.85F, 0x4C7879, 0x77C05B, 0x55AF31, 0xA36D46),
 	DWARF_PINE_SCRUB("dwarf_pine_scrub", Group.FOREST, "Kosodrzewina", "Dwarf Pine Scrub",
-			0.7F, 0.8F, 0x4F8FB8, 0x79C05A, 0x59AE30, 0xA36D46),
+			0.7F, 0.8F, 0x4D8090, 0x79C05A, 0x59AE30, 0xA36D46),
 	// Non-forest terrestrial (12)
 	RAISED_BOG("raised_bog", Group.NON_FOREST, "Torfowisko wysokie", "Raised Bog",
-			0.65F, 0.9F, 0x3A3326, 0x76BF5D, 0x55AE35, 0xA36D46),
+			0.65F, 0.9F, 0x3C5652, 0x76BF5D, 0x55AE35, 0xA36D46),
 	FEN("fen", Group.NON_FOREST, "Torfowisko niskie i przejściowe", "Fen and Transition Mire",
 			0.67F, 0.9F, 0x4A6E5E, 0x76C05B, 0x53AF32, 0xA36D46),
 	REEDBED("reedbed", Group.NON_FOREST, "Szuwar", "Reedbed",
@@ -61,9 +61,10 @@ public enum HabitatBiome {
 	HAY_MEADOW("hay_meadow", Group.NON_FOREST, "Łąka świeża i polana", "Hay Meadow",
 			0.7F, 0.7F, 0x3D6E70, 0x7FBF5C, 0x60AE33, 0xA36F46),
 	// Step S8: the grass of the fallow field (stubble and dry grass in summer) yellower than the meadows, so the mosaic
-	// of fields, meadows and forest of the PRESENT_DAY mode can be read in the game.
+	// of fields, meadows and forest of the PRESENT_DAY mode can be read in the game; step S8b (rule Z10): half as yellow
+	// (ΔE 10 to the hay meadow instead of 22), so the 5-block color blend of the client is a soft transition.
 	ARABLE_LAND("arable_land", Group.NON_FOREST, "Pole", "Arable Land",
-			0.7F, 0.6F, 0x3D6E70, 0xAFB85E, 0x67AC36, 0xA37346),
+			0.7F, 0.6F, 0x3D6E70, 0x97BC5D, 0x67AC36, 0xA37346),
 	BEACH("beach", Group.NON_FOREST, "Plaża", "Beach",
 			0.72F, 0.4F, 0x3A6A7A, 0x92BB5F, 0x77A938, 0xA37546),
 	WHITE_DUNE("white_dune", Group.NON_FOREST, "Wydma biała", "White Dune",
@@ -71,7 +72,7 @@ public enum HabitatBiome {
 	GRAY_DUNE("gray_dune", Group.NON_FOREST, "Wydma szara", "Gray Dune",
 			0.72F, 0.4F, 0x3A6A7A, 0x92BB5F, 0x77A938, 0xA37546),
 	ALPINE_GRASSLAND("alpine_grassland", Group.NON_FOREST, "Piętro alpejskie", "Alpine Grassland",
-			0.7F, 0.8F, 0x4F8FB8, 0x79C05A, 0x59AE30, 0xA36D46),
+			0.7F, 0.8F, 0x4D8090, 0x79C05A, 0x59AE30, 0xA36D46),
 	// Water (6)
 	SEA("sea", Group.WATER, "Morze", "Baltic Sea",
 			0.72F, 0.6F, 0x3A6A7A, 0x85BE5C, 0x67AC33, 0xA37246),
@@ -80,7 +81,7 @@ public enum HabitatBiome {
 	RIVER("river", Group.WATER, "Rzeka", "River",
 			0.7F, 0.8F, 0x4A6E5E, 0x79C05A, 0x59AE30, 0xA36D46),
 	STREAM("stream", Group.WATER, "Potok", "Mountain Stream",
-			0.7F, 0.8F, 0x4F8FB8, 0x79C05A, 0x59AE30, 0xA36D46),
+			0.7F, 0.8F, 0x4C7879, 0x79C05A, 0x59AE30, 0xA36D46),
 	LAKE("lake", Group.WATER, "Jezioro", "Lake",
 			0.7F, 0.8F, 0x3D6E70, 0x79C05A, 0x59AE30, 0xA36D46),
 	DYSTROPHIC_LAKE("dystrophic_lake", Group.WATER, "Jezioro dystroficzne", "Dystrophic Lake",
@@ -112,7 +113,10 @@ public enum HabitatBiome {
 	/**
 	 * @param temperature     base temperature at sea level (docs/03-m2-biomy.md §6.1; at most 0.8 for the Serene Seasons gate)
 	 * @param downfall        downfall; in the "Poland" world it only affects the colors (§6.3)
-	 * @param waterColor      water color (§10)
+	 * @param waterColor      water color (§10); step S8b (rule Z10): neighbors at most about ΔE 12 apart (CIELAB), so the
+	 *                        5-block color blend of the client is soft: the mountain water a step bluer than the lowland
+	 *                        water (streams and gray alder forests between them), the bog water a step browner (the
+	 *                        dystrophic lake keeps its dark brown)
 	 * @param grassColor      explicit grass color: starting value from the vanilla colormap at (temperature, downfall)
 	 * @param foliageColor    explicit foliage color, from the colormap as above
 	 * @param dryFoliageColor explicit dry foliage color (leaf litter), from the colormap as above

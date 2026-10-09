@@ -12,7 +12,7 @@ package pl.polishforests.worldgen.landscape;
  * does not exceed the largest of the four nodes, and each of them lies at most one cell diagonal from the column).
  * The 62.5 m·mspace grid underestimates the peak by at most a few meters, which is also on the safe side.
  *
- * <p>The model computes this field only in the Beskids above {@code AltitudinalBelts.SUMMIT_FROM} (about 1180 m), so tiles
+ * <p>The model computes this field only in the Beskids above {@code AltitudinalBelts.SUMMIT_FROM} (about 1120 m since step S8b), so tiles
  * are created only around the highest ridges. The values are a pure function of the coordinates, so the result
  * depends neither on the cache state nor on thread order.
  */

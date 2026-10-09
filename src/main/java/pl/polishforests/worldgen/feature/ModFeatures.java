@@ -13,6 +13,7 @@ import org.jspecify.annotations.Nullable;
 import pl.polishforests.PolishForests;
 import pl.polishforests.worldgen.chunk.ChunkHabitats;
 import pl.polishforests.worldgen.chunk.PolandChunkGenerator;
+import pl.polishforests.worldgen.feature.plan.Ecotone;
 
 /**
  * Registration of the vegetation dispatcher types ({@code BuiltInRegistries.FEATURE_TYPE}, docs/03-m2-biomy.md §8.2),
@@ -63,6 +64,15 @@ public final class ModFeatures {
 		}
 		Registry.register(BuiltInRegistries.FEATURE_TYPE, PolishForests.id("tree"), FastTreeFeature.CODEC);
 		Registry.register(BuiltInRegistries.PLACEMENT_MODIFIER_TYPE, PolishForests.id("habitat"), HabitatFilter.CODEC);
+	}
+
+	/**
+	 * Habitat codes of a chunk and its 8 neighbors for the ecotones (rule Z10, step S8b; {@link Ecotone}), from the
+	 * neighbors' attachments ({@link Ecotone#UNKNOWN} where a neighbor has none).
+	 */
+	public static Ecotone.Region ecotoneRegion(net.minecraft.world.level.WorldGenLevel level, ChunkAccess chunk,
+			ChunkHabitats habitats, double k) {
+		return VegetationColumns.region(level, chunk, habitats, k);
 	}
 
 	/**

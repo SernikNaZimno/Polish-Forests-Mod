@@ -26,6 +26,73 @@
     },
     {
       "biomes": [
+        "oak_hornbeam_forest",
+        "elm_ash_forest",
+        "mixed_forest",
+        "lowland_beech_forest",
+        "upland_fir_forest",
+        "montane_beech_forest"
+      ],
+      "coverage": 0.06,
+      "edges": [
+        "mantle"
+      ],
+      "plants": [
+        {
+          "feature": "polishforests:shrub/hazel",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "dry_pine_forest",
+        "fresh_pine_forest",
+        "coastal_pine_forest",
+        "moist_pine_forest",
+        "mixed_pine_forest",
+        "montane_spruce_forest"
+      ],
+      "coverage": 0.05,
+      "edges": [
+        "mantle"
+      ],
+      "plants": [
+        {
+          "feature": "polishforests:shrub/juniper",
+          "weight": 3
+        },
+        {
+          "feature": "polishforests:shrub/hazel",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "alder_carr",
+        "ash_alder_forest",
+        "willow_poplar_forest",
+        "bog_woodland",
+        "gray_alder_forest"
+      ],
+      "coverage": 0.06,
+      "edges": [
+        "mantle"
+      ],
+      "plants": [
+        {
+          "feature": "polishforests:shrub/osier",
+          "weight": 3
+        },
+        {
+          "feature": "polishforests:shrub/hazel",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "biomes": [
         "dwarf_pine_scrub"
       ],
       "coverage": 0.05,

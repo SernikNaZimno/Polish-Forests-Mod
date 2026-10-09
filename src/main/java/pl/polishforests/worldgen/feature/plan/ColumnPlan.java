@@ -71,16 +71,26 @@ public final class ColumnPlan {
 	 * @param patch    patch size in blocks (1: no patches)
 	 * @param plants   indices of the plants in the layer's plant list
 	 * @param weights  weights of the plants
+	 * @param edges    mask of {@link Ecotone.Edge} ordinals the column must have (0: any; step S8b)
 	 */
 	public record Rule(HabitatMatch match, Medium medium, int minDepth, int maxDepth, int grounds, double coverage, int patch,
-			int[] plants, int[] weights) {
+			int[] plants, int[] weights, int edges) {
 		public Rule {
 			if (plants.length != weights.length) {
 				throw new IllegalArgumentException("plants and weights differ in length");
 			}
 		}
 
-		boolean applies(int code, int depth, int ground, int side) {
+		/** A rule for any forest edge class. */
+		public Rule(HabitatMatch match, Medium medium, int minDepth, int maxDepth, int grounds, double coverage, int patch,
+				int[] plants, int[] weights) {
+			this(match, medium, minDepth, maxDepth, grounds, coverage, patch, plants, weights, 0);
+		}
+
+		boolean applies(int code, int depth, int ground, int side, int edge) {
+			if (edges != 0 && (edges >>> edge & 1) == 0) {
+				return false;
+			}
 			boolean medium = switch (this.medium) {
 				case LAND -> depth == 0;
 				case SHORE -> depth == 0 && (side & SIDE_WATER) != 0;
@@ -98,10 +108,15 @@ public final class ColumnPlan {
 			rules = List.copyOf(rules);
 		}
 
-		/** Index of the first rule that applies, or -1. */
+		/** Index of the first rule that applies to a column without a forest edge, or -1. */
 		public int ruleFor(int code, int depth, int ground, int side) {
+			return ruleFor(code, depth, ground, side, 0);
+		}
+
+		/** Index of the first rule that applies, or -1. */
+		public int ruleFor(int code, int depth, int ground, int side, int edge) {
 			for (int r = 0; r < rules.size(); r++) {
-				if (rules.get(r).applies(code, depth, ground, side)) {
+				if (rules.get(r).applies(code, depth, ground, side, edge)) {
 					return r;
 				}
 			}
@@ -116,8 +131,18 @@ public final class ColumnPlan {
 	 * @param waterDepth water depth in blocks (0: dry)
 	 * @param ground     {@link Ground} ordinal of the top ground block
 	 * @param side       what is beside a dry column ({@link #SIDE_WATER}, {@link #SIDE_PUDDLE}, {@link #SIDE_SEAWARD})
+	 * @param edge       forest edge class of each column ({@link Ecotone.Edge} ordinals), or null for none (step S8b)
 	 */
-	public record Columns(int[] codes, int[] waterDepth, int[] ground, byte[] side) {
+	public record Columns(int[] codes, int[] waterDepth, int[] ground, byte[] side, byte[] edge) {
+		/** Columns without forest edges. */
+		public Columns(int[] codes, int[] waterDepth, int[] ground, byte[] side) {
+			this(codes, waterDepth, ground, side, null);
+		}
+
+		/** The same columns with other habitat codes and forest edge classes (the ecotones of a layer). */
+		public Columns with(int[] codes, byte[] edge) {
+			return new Columns(codes, waterDepth, ground, side, edge);
+		}
 	}
 
 	private ColumnPlan() {
@@ -150,7 +175,8 @@ public final class ColumnPlan {
 		int x0 = chunkX << 4;
 		int z0 = chunkZ << 4;
 		for (int i = 0; i < 256; i++) {
-			int r = palette.ruleFor(columns.codes()[i], columns.waterDepth()[i], columns.ground()[i], columns.side()[i]);
+			int r = palette.ruleFor(columns.codes()[i], columns.waterDepth()[i], columns.ground()[i], columns.side()[i],
+					columns.edge() == null ? 0 : columns.edge()[i]);
 			if (r < 0) {
 				continue;
 			}
