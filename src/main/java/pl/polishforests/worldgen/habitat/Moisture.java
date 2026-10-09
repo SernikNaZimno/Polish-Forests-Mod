@@ -20,6 +20,20 @@ public enum Moisture {
 	 * on till: a terrain concavity in front of the valleys (rawSurface − sBar) ≤ −1.5 m gives DGW ≤ 1.0, and ≤ −3 m gives ≤ 0.3.
 	 */
 	static double dgw(HabitatClassifier.Column c) {
+		return dgw(c, false);
+	}
+
+	/**
+	 * DGW for the P_forest blends of the PRESENT_DAY mask (round 2 of the S8 review): as {@link #dgw(HabitatClassifier.Column)},
+	 * but the perched water caps grow continuously with the concavity (from no cap at −1 m to 1.0 at −2 m and 0.3 at
+	 * −3.5 m) instead of stepping at −1.5 and −3 m, so P_forest does not step where the classifier's DGW does. The
+	 * classifier itself keeps the steps (the site types do not change).
+	 */
+	static double dgwForBlend(HabitatClassifier.Column c) {
+		return dgw(c, true);
+	}
+
+	private static double dgw(HabitatClassifier.Column c, boolean softPerched) {
 		ColumnSample.Terrain t = c.t;
 		ColumnSample.Waters w = c.w;
 		Substrate sub = c.substrate;
@@ -55,6 +69,12 @@ public enum Moisture {
 		}
 		if (sub == Substrate.GLACIAL_TILL && !c.onValleyFloor()) {
 			double concavity = t.rawSurface() - t.sBar();
+			if (softPerched) {
+				double cap = concavity >= -1 ? Calibration.DGW_MAX
+						: concavity >= -2 ? Noise.lerp(-1 - concavity, Calibration.DGW_MAX, Calibration.PERCHED_1_DGW)
+						: Noise.lerp(Math.clamp((-2 - concavity) / 1.5, 0.0, 1.0), Calibration.PERCHED_1_DGW, Calibration.PERCHED_2_DGW);
+				return Math.min(d, cap);
+			}
 			if (concavity <= Calibration.PERCHED_2) {
 				d = Math.min(d, Calibration.PERCHED_2_DGW);
 			} else if (concavity <= Calibration.PERCHED_1) {

@@ -358,17 +358,17 @@ public final class Calibration {
 	/** Blend of P_forest from the alder carr to the moist fertile site over the jittered DGW (m), round 1 of the S8 review. */
 	public static final double P_CARR_DGW_FROM = 0.3, P_CARR_DGW_TO = 1.3;
 	/** P_forest of the lowland site types (BiomeSharesTest, step S8). */
-	public static final double P_DRY_CONIFEROUS = 0.8, P_FRESH_CONIFEROUS = 0.76, P_MOIST_CONIFEROUS = 0.7,
-			P_BOGGY_CONIFEROUS = 0.75, P_FRESH_MIXED_CONIFEROUS = 0.3, P_FRESH_MIXED_BROADLEAVED = 0.25,
-			P_MOIST_MIXED_BROADLEAVED = 0.5, P_FRESH_BROADLEAVED = 0.1, P_MOIST_BROADLEAVED = 0.35, P_OTHER = 0.5;
+	public static final double P_DRY_CONIFEROUS = 0.9, P_FRESH_CONIFEROUS = 0.85, P_MOIST_CONIFEROUS = 0.8,
+			P_BOGGY_CONIFEROUS = 0.8, P_FRESH_MIXED_CONIFEROUS = 0.3, P_FRESH_MIXED_BROADLEAVED = 0.3,
+			P_MOIST_MIXED_BROADLEAVED = 0.5, P_FRESH_BROADLEAVED = 0.12, P_MOIST_BROADLEAVED = 0.35, P_OTHER = 0.5;
 	/** P_forest of the floodplain forests, alder carr, coast and mountain forests. */
-	public static final double P_WILLOW_POPLAR = 0.15, P_ELM_ASH = 0.06, P_ASH_ALDER = 0.09, P_ALDER_CARR = 0.1,
+	public static final double P_WILLOW_POPLAR = 0.1, P_ELM_ASH = 0.08, P_ASH_ALDER = 0.09, P_ALDER_CARR = 0.1,
 			P_COASTAL_PINE = 0.9, P_MONTANE_SPRUCE = 0.9, P_MONTANE_BEECH = 0.8, P_UPLAND_FIR = 0.6, P_MOUNTAIN_FLOOR = 0.15,
-			P_GRAY_ALDER = 0.6;
+			P_GRAY_ALDER = 0.09;
 	/** Factor of P_forest of the poor sites (B, BM) outside the outwash plain (by its type weight). */
 	public static final double P_SAND_OUTSIDE_OUTWASH = 0.75;
 	/** Foothills: P_forest of a gentle slope (the steep ones by the context). */
-	public static final double P_FOOTHILLS = 0.15;
+	public static final double P_FOOTHILLS = 0.23;
 	/**
 	 * Context: P_forest moves towards P_STEEP by the steepness, a smoothstep of the slope (° in blocks) from P_SLOPE_FROM
 	 * to P_SLOPE_TO; at least P_MORAINE_DUNE on end moraines and inland dunes and P_VALLEY_SIDE on valley sides.
@@ -383,6 +383,37 @@ public final class Calibration {
 	 */
 	public static final double P_VALLEY_INCISION_FROM = 1, P_VALLEY_INCISION_TO = 6, P_VALLEY_INCISION_JITTER = 1;
 	public static final double P_VALLEY_SIDE_BREAK_WAVELENGTH = 700, P_VALLEY_SIDE_STRETCHES = 0.6, P_VALLEY_SIDE_BREAK_BLEND = 0.3;
+	/**
+	 * Round 2 of the S8 review: horizontal scale of the P_forest transitions. Each blend is widened by the rise of the
+	 * ground over P_EDGE_WIDTH_K m and moved by up to the rise over P_EDGE_SHIFT_K m (m, i.e. blocks, in both scales)
+	 * with a context noise of P_EDGE_SHIFT_WAVELENGTH m·k; on a valley side the gradient is the height above the floor
+	 * margin over the distance beyond the floor edge (at least P_SIDE_MIN_RUN_K m·k), at most P_SIDE_MAX_GRADIENT.
+	 */
+	public static final double P_EDGE_WIDTH_K = 30, P_EDGE_SHIFT_K = 40, P_EDGE_SHIFT_WAVELENGTH = 150, P_SIDE_MIN_RUN_K = 5,
+			P_SIDE_MAX_GRADIENT = 0.6;
+	/** Round 2 of the S8 review: half-width of the P_forest blend across the fertility thresholds, in richness r. */
+	public static final double P_FERTILITY_BAND = 0.05;
+	/** Round 2 of the S8 review: the inland dune context grows with the dune height from P_DUNE_FROM to P_DUNE_TO m. */
+	public static final double P_DUNE_FROM = 2, P_DUNE_TO = 6;
+	/**
+	 * Round 2 of the S8 review: P_forest in the mountains by altitude, blended in by the mountain weight from W_FROM to
+	 * W_TO; P_FOOTHILLS below H_FROM m, P_MONTANE_BEECH at H_TO m, P_MONTANE_SPRUCE above the upper montane belt, the
+	 * altitude jittered by ±H_JITTER m.
+	 */
+	public static final double P_MOUNTAIN_W_FROM = 0.35, P_MOUNTAIN_W_TO = 0.65, P_MOUNTAIN_H_FROM = 350, P_MOUNTAIN_H_TO = 700,
+			P_MOUNTAIN_H_JITTER = 60;
+	/**
+	 * Round 2 of the S8 review: floor margin. Dry land P_forest rises from P_FLOOR_MARGIN (fertile sites; poor ones
+	 * P_FLOOR_MARGIN_POOR) over P_FLOOR_MARGIN_H m plus the
+	 * rise over P_FLOOR_MARGIN_WIDTH_K m above FLOOR_H over the water level, the start moved up the side by up to
+	 * P_FLOOR_MARGIN_JITTER m plus the rise over P_FLOOR_MARGIN_SHIFT_K m;
+	 * only in a valley, by the incision from P_FLOOR_MARGIN_INCISION_FROM to _TO m.
+	 */
+	public static final double P_FLOOR_MARGIN = 0.1, P_FLOOR_MARGIN_POOR = 0.3, P_FLOOR_MARGIN_H = 0.5, P_FLOOR_MARGIN_JITTER = 0.5,
+			P_FLOOR_MARGIN_INCISION_FROM = 0.5, P_FLOOR_MARGIN_INCISION_TO = 2.5, P_FLOOR_MARGIN_WIDTH_K = 20,
+			P_FLOOR_MARGIN_SHIFT_K = 20;
+	/** Round 2 of the S8 review: gray alder forest, P_forest falls from the strip over this many strip widths. */
+	public static final double D_GRAY_ALDER_RAMP = 0.75;
 	/**
 	 * Gray alder forest (§4.5): the strip by the stream that always stays (clamp(W·2, 5k, 20k) with the zone jitter), and
 	 * meadows beyond it on floors wider than D_STREAM_MEADOW_FLOOR_K·k below D_STREAM_MEADOW_H m.

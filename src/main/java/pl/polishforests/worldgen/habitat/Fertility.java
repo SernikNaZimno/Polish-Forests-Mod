@@ -1,6 +1,7 @@
 package pl.polishforests.worldgen.habitat;
 
 import pl.polishforests.worldgen.landscape.Landform;
+import pl.polishforests.worldgen.landscape.Noise;
 import pl.polishforests.worldgen.landscape.Substrate;
 
 /**
@@ -53,6 +54,48 @@ public enum Fertility {
 			share = next;
 		}
 		return EUTROPHIC;
+	}
+
+	/**
+	 * For the P_forest blends of the PRESENT_DAY mask (round 2 of the S8 review): the class across the nearest jittered
+	 * richness threshold within ±{@code band} of r, with its weight (0.5 at the threshold, 0 at the band edge), so
+	 * P_forest is continuous across the fertility boundaries. The threshold is the one {@link #compute} uses (the same
+	 * jitter noise; sampled within the jitter range plus the band, so the weight is continuous), and the class on the
+	 * column's side is the one {@link #compute} returns. Dunes, beach sand and fertile alluvium have no blend (their
+	 * class does not come from r).
+	 *
+	 * @return the weight of the other class, or 0; the other class is written into {@code other[0]}
+	 */
+	static double blend(HabitatClassifier.Column c, double band, Fertility[] other) {
+		Substrate sub = c.substrate;
+		boolean sandSubstrate = sub == Substrate.SAND || sub == Substrate.BEACH_SAND;
+		if (c.t.has(Landform.INLAND_DUNES) || c.t.has(Landform.COASTAL_DUNES) && sandSubstrate || sub == Substrate.BEACH_SAND) {
+			return 0;
+		}
+		if (sub == Substrate.ALLUVIUM && c.fertility() == EUTROPHIC) {
+			return 0;
+		}
+		double sandiness = c.t.sandiness();
+		double r = Double.isNaN(sandiness) ? 0.5 : 1 - sandiness;
+		double cum = 0;
+		double share = share(c, 0) / 100.0;
+		double best = 0;
+		for (int i = 0; i < 3; i++) {
+			cum += share;
+			double next = share(c, i + 1) / 100.0;
+			double a = Math.min(Calibration.FERTILITY_JITTER, 0.5 * Math.min(share, next));
+			if (share > 0 && next > 0 && Math.abs(r - cum) < a + band) {
+				double limit = a > 0 ? cum + a * c.jitterNoise(12 + i, Calibration.FERTILITY_JITTER_WAVELENGTH) : cum;
+				double d = r - limit;
+				double w = 0.5 * (1 - Noise.smoothstep(0, band, Math.abs(d)));
+				if (w > best) {
+					best = w;
+					other[0] = values()[d < 0 ? i + 1 : i];
+				}
+			}
+			share = next;
+		}
+		return best;
 	}
 
 	/**
