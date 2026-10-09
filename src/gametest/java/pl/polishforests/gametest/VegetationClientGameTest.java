@@ -277,7 +277,8 @@ public final class VegetationClientGameTest implements FabricClientGameTest {
 				for (int cz = ccz - TRANSECT_RADIUS_CHUNKS; cz <= ccz + TRANSECT_RADIUS_CHUNKS; cz++) {
 					level.getChunk(cx, cz);
 					int[] codes = new int[256];
-					ChunkSurface plan = gen.surface(new ChunkPos(cx, cz), level.getMinY(), level.getMaxY(), seed, codes);
+					ChunkSurface plan = gen.surface(new ChunkPos(cx, cz), level.getMinY(), level.getMaxY(), seed, codes,
+							level.structureManager());
 					for (int i = 0; i < 256; i++) {
 						int code = codes[i];
 						Zone zone = Habitat.zone(code);
@@ -405,7 +406,8 @@ public final class VegetationClientGameTest implements FabricClientGameTest {
 				for (int cz = (c[1] >> 4) - TRANSECT_RADIUS_CHUNKS; cz <= (c[1] >> 4) + TRANSECT_RADIUS_CHUNKS; cz++) {
 					level.getChunk(cx, cz);
 					int[] codes = new int[256];
-					ChunkSurface plan = gen.surface(new ChunkPos(cx, cz), level.getMinY(), level.getMaxY(), seed, codes);
+					ChunkSurface plan = gen.surface(new ChunkPos(cx, cz), level.getMinY(), level.getMaxY(), seed, codes,
+							level.structureManager());
 					for (int i = 0; i < 256; i++) {
 						boolean in = willow ? Habitat.zone(codes[i]) == Zone.WILLOW_SCRUB
 								|| Habitat.biome(codes[i]) == HabitatBiome.WILLOW_SCRUB && Habitat.zone(codes[i]) == Zone.NONE
@@ -450,7 +452,8 @@ public final class VegetationClientGameTest implements FabricClientGameTest {
 						continue;
 					}
 					level.getChunk(cx, cz);
-					ChunkSurface plan = gen.surface(new ChunkPos(cx, cz), level.getMinY(), level.getMaxY(), seed, null);
+					ChunkSurface plan = gen.surface(new ChunkPos(cx, cz), level.getMinY(), level.getMaxY(), seed, null,
+							level.structureManager());
 					for (int i = 0; i < 256; i++) {
 						int x = (cx << 4) + (i >> 4);
 						int z = (cz << 4) + (i & 15);
@@ -688,7 +691,7 @@ public final class VegetationClientGameTest implements FabricClientGameTest {
 		ServerLevel level = server.overworld();
 		level.getChunk(x >> 4, z >> 4);
 		ChunkSurface plan = generator(server).surface(new ChunkPos(x >> 4, z >> 4), level.getMinY(), level.getMaxY(),
-				level.getSeed(), null);
+				level.getSeed(), null, level.structureManager());
 		int i = ChunkHabitats.index(x & 15, z & 15);
 		return plan.wet(i) ? plan.waterTop(i) : plan.top(i);
 	}

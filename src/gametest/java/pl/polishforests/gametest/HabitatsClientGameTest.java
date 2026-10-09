@@ -287,7 +287,7 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 			for (int cx = 0; cx < 5; cx++) {
 				for (int cz = 0; cz < 5; cz++) {
 					plans[cx][cz] = gen.surface(new net.minecraft.world.level.ChunkPos(cx0 + cx, cz0 + cz), level.getMinY(),
-							level.getMaxY(), seed, planCodes[cx][cz]);
+							level.getMaxY(), seed, planCodes[cx][cz], level.structureManager());
 				}
 			}
 			for (int x = cx0 * 16; x < (cx0 + 5) * 16; x++) {
@@ -648,12 +648,11 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 			net.minecraft.world.level.ChunkPos pos = new net.minecraft.world.level.ChunkPos(x0 >> 4, z0 >> 4);
 			level.getChunk(pos.x(), pos.z());
 			int[] codes = new int[256];
-			ChunkSurface plan = gen.surface(pos, level.getMinY(), level.getMaxY(), seed, codes);
+			ChunkSurface plan = gen.surface(pos, level.getMinY(), level.getMaxY(), seed, codes, level.structureManager());
 			int center = ChunkHabitats.index(x0 & 15, z0 & 15);
 			HabitatBiome biome = Habitat.biome(codes[center]);
 			int checked = 0;
 			int mismatched = 0;
-			int disks = 0;
 			int erratics = 0;
 			Map<String, Integer> blocks = new java.util.TreeMap<>();
 			for (int i = 0; i < 256; i++) {
@@ -674,11 +673,7 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 					continue;
 				}
 				boolean solidAbove = above.isSolidRender() && !above.is(BlockTags.LEAVES);
-				if (!actual.is(expected) && !solidAbove && disk(level, ground, actual)) {
-					// The vanilla disks of step 6 (sand, clay, gravel) reach the bank from the water (decoration of S7).
-					disks++;
-					continue;
-				}
+				// No exemption for the vanilla disks of sand, clay and gravel: S8 removed them from step 6.
 				if (!actual.is(expected) || solidAbove) {
 					mismatched++;
 					if (failures.size() < 12) {
@@ -691,9 +686,8 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 			if (checked < SOIL_MIN_COLUMNS) {
 				failures.add(SOIL_NAMES[p] + ": only " + checked + " columns of " + biome.id());
 			}
-			report.append(String.format(Locale.ROOT, " %s (%d, %d) %s: %d/%d %s%s%s;", SOIL_NAMES[p], x0, z0, biome.id(),
-					checked - mismatched - disks - erratics, checked, blocks, disks > 0 ? ", " + disks + " under a disk" : "",
-					erratics > 0 ? ", " + erratics + " under an erratic" : ""));
+			report.append(String.format(Locale.ROOT, " %s (%d, %d) %s: %d/%d %s%s;", SOIL_NAMES[p], x0, z0, biome.id(),
+					checked - mismatched - erratics, checked, blocks, erratics > 0 ? ", " + erratics + " under an erratic" : ""));
 		}
 		if (!failures.isEmpty()) {
 			throw new AssertionError("Ground blocks differ from the surface plan: " + failures + "; " + report);
@@ -705,27 +699,6 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 	private static boolean erratic(net.minecraft.world.level.block.state.BlockState state) {
 		return state.is(net.minecraft.world.level.block.Blocks.GRANITE) || state.is(net.minecraft.world.level.block.Blocks.DIORITE)
 				|| state.is(net.minecraft.world.level.block.Blocks.MOSSY_COBBLESTONE);
-	}
-
-	/** Radius of the vanilla disks of sand, clay and gravel (up to 6 blocks from a water block). */
-	private static final int DISK_RADIUS = 7;
-
-	/** The block is sand, clay or gravel of a vanilla disk: water within {@value #DISK_RADIUS} blocks at about that height. */
-	private static boolean disk(ServerLevel level, BlockPos ground, net.minecraft.world.level.block.state.BlockState actual) {
-		if (!actual.is(net.minecraft.world.level.block.Blocks.SAND) && !actual.is(net.minecraft.world.level.block.Blocks.CLAY)
-				&& !actual.is(net.minecraft.world.level.block.Blocks.GRAVEL)) {
-			return false;
-		}
-		for (int dx = -DISK_RADIUS; dx <= DISK_RADIUS; dx++) {
-			for (int dz = -DISK_RADIUS; dz <= DISK_RADIUS; dz++) {
-				for (int dy = -2; dy <= 1; dy++) {
-					if (level.getFluidState(ground.offset(dx, dy, dz)).is(net.minecraft.tags.FluidTags.WATER)) {
-						return true;
-					}
-				}
-			}
-		}
-		return false;
 	}
 
 	/** Least share of the shore columns with water beside their top block (§12.3). */
@@ -835,7 +808,7 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 			for (int dz = 0; dz < n; dz++) {
 				level.getChunk(ccx - SHELF_RADIUS + dx, ccz - SHELF_RADIUS + dz);
 				plans[dx][dz] = gen.surface(new net.minecraft.world.level.ChunkPos(ccx - SHELF_RADIUS + dx, ccz - SHELF_RADIUS + dz),
-						level.getMinY(), level.getMaxY(), seed, null);
+						level.getMinY(), level.getMaxY(), seed, null, level.structureManager());
 			}
 		}
 		int x0 = (ccx - SHELF_RADIUS) << 4;

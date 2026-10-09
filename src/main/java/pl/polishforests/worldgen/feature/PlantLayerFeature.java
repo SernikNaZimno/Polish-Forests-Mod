@@ -63,6 +63,12 @@ public final class PlantLayerFeature implements Feature {
 		return CODECS.get(dispatcher);
 	}
 
+	/**
+	 * Least distance (blocks) of a feature plant (shrub, fallen tree) from a structure piece; block plants only stay off
+	 * the footprints themselves (ChunkHabitats mask, {@code StructureGround}).
+	 */
+	public static final int FEATURE_GAP = 3;
+
 	private final BiomeDecoration.Dispatcher dispatcher;
 	private final PlantPalette palette;
 	private final List<PlantPalette.Plant> plants = new ArrayList<>();
@@ -158,11 +164,18 @@ public final class PlantLayerFeature implements Feature {
 		BlockPos.MutableBlockPos at = new BlockPos.MutableBlockPos();
 		for (int p : planned) {
 			int column = ColumnPlan.column(p);
+			PlantPalette.Plant plant = plants.get(ColumnPlan.plant(p));
+			int piece = habitats.pieceDistance(column);
+			if (piece == 0 || piece <= FEATURE_GAP && plant.feature().isPresent()) {
+				// Round 1 of the S8 review: nothing on the footprint of a structure piece (moss carpet on the floor
+				// planks of a house), no shrub or fallen tree reaching into it.
+				continue;
+			}
 			ColumnPlan.Medium medium = ColumnPlan.medium(p);
 			int top = habitats.top()[column];
 			int y = medium == ColumnPlan.Medium.WATER_SURFACE ? habitats.water()[column] + 1 : top + 1;
 			at.set(pos.getMinBlockX() + (column >> 4), y, pos.getMinBlockZ() + (column & 15));
-			if (place(level, generator, random, plants.get(ColumnPlan.plant(p)), medium, at)) {
+			if (place(level, generator, random, plant, medium, at)) {
 				placed++;
 			}
 		}

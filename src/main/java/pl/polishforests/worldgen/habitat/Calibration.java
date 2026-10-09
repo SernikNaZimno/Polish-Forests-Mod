@@ -344,12 +344,25 @@ public final class Calibration {
 
 	/** Noise F of the forest mask: long and short octave (m·k), weight of the short one, edge noise (m·k) and its weight. */
 	public static final double F_WAVELENGTH = 6_000, F_FINE_WAVELENGTH = 2_000, F_FINE = 0.5, F_EDGE_WAVELENGTH = 300, F_EDGE = 0.08;
+	/**
+	 * Woodlot octave of F (round 1 of the S8 review, new salt {@code habitat.forest_cover.woodlots}): wavelength (m·k) and
+	 * weight. Small woods between the fields, and enough variation of F within a few hundred meters that the forest edges
+	 * follow F and not the site boundaries.
+	 */
+	public static final double F_WOODLOT_WAVELENGTH = 600, F_WOODLOT = 0.35;
+	/**
+	 * Blends of P_forest across the moisture thresholds (round 1 of the S8 review): half-width of the DGW band (m) and the
+	 * jitter of DGW (m) by the context noise (new salt {@code habitat.forest_cover.context}).
+	 */
+	public static final double P_DGW_BAND = 0.7, P_DGW_JITTER = 0.4;
+	/** Blend of P_forest from the alder carr to the moist fertile site over the jittered DGW (m), round 1 of the S8 review. */
+	public static final double P_CARR_DGW_FROM = 0.3, P_CARR_DGW_TO = 1.3;
 	/** P_forest of the lowland site types (BiomeSharesTest, step S8). */
 	public static final double P_DRY_CONIFEROUS = 0.8, P_FRESH_CONIFEROUS = 0.76, P_MOIST_CONIFEROUS = 0.7,
 			P_BOGGY_CONIFEROUS = 0.75, P_FRESH_MIXED_CONIFEROUS = 0.3, P_FRESH_MIXED_BROADLEAVED = 0.25,
 			P_MOIST_MIXED_BROADLEAVED = 0.5, P_FRESH_BROADLEAVED = 0.1, P_MOIST_BROADLEAVED = 0.35, P_OTHER = 0.5;
 	/** P_forest of the floodplain forests, alder carr, coast and mountain forests. */
-	public static final double P_WILLOW_POPLAR = 0.15, P_ELM_ASH = 0.06, P_ASH_ALDER = 0.13, P_ALDER_CARR = 0.15,
+	public static final double P_WILLOW_POPLAR = 0.15, P_ELM_ASH = 0.06, P_ASH_ALDER = 0.09, P_ALDER_CARR = 0.1,
 			P_COASTAL_PINE = 0.9, P_MONTANE_SPRUCE = 0.9, P_MONTANE_BEECH = 0.8, P_UPLAND_FIR = 0.6, P_MOUNTAIN_FLOOR = 0.15,
 			P_GRAY_ALDER = 0.6;
 	/** Factor of P_forest of the poor sites (B, BM) outside the outwash plain (by its type weight). */
@@ -364,6 +377,13 @@ public final class Calibration {
 	public static final double P_STEEP = 0.8, P_SLOPE_FROM = 8, P_SLOPE_TO = 25, P_MORAINE_DUNE = 0.5, P_VALLEY_SIDE = 0.3,
 			P_VALLEY_SIDE_GAMEPLAY = 0.1;
 	/**
+	 * Valley side context (round 1 of the S8 review): it grows with the incision below the pre-valley terrain from FROM to
+	 * TO m, the incision jittered by ±JITTER m; it acts on about STRETCHES of the valley sides, chosen by the context noise
+	 * of BREAK_WAVELENGTH m·k with a blend of ±BREAK_BLEND in its quantile.
+	 */
+	public static final double P_VALLEY_INCISION_FROM = 1, P_VALLEY_INCISION_TO = 4, P_VALLEY_INCISION_JITTER = 1;
+	public static final double P_VALLEY_SIDE_BREAK_WAVELENGTH = 700, P_VALLEY_SIDE_STRETCHES = 0.6, P_VALLEY_SIDE_BREAK_BLEND = 0.1;
+	/**
 	 * Gray alder forest (§4.5): the strip by the stream that always stays (clamp(W·2, 5k, 20k) with the zone jitter), and
 	 * meadows beyond it on floors wider than D_STREAM_MEADOW_FLOOR_K·k below D_STREAM_MEADOW_H m.
 	 */
@@ -373,13 +393,27 @@ public final class Calibration {
 	// ------------------------------------------------------------------ PRESENT_DAY mode (§2.2, column D): non-forest biome
 
 	/** Variant quantile below the threshold: riparian forest → wet meadow (otherwise arable land), alder carr → wet meadow (otherwise fen). */
-	public static final double D_RIPARIAN_MEADOW = 0.8;
+	public static final double D_RIPARIAN_MEADOW = 0.5;
 	public static final double D_ALDER_CARR_MEADOW = 0.7;
 	/** Fresh and moist pine forests: arable land (fresh) or wet meadow (moist) below the threshold, otherwise heath or arable land. */
 	public static final double D_PINE_ARABLE = 0.6;
-	/** Other sites on flat ground (slope below {@link #D_ARABLE_SLOPE}°): arable land below the threshold, otherwise hay meadow. */
-	public static final double D_ARABLE = 0.85;
-	public static final double D_ARABLE_SLOPE = 5;
+	/**
+	 * Moist broadleaved and mixed broadleaved sites (Lw, LMw, LMb, Ol): wet meadow below the threshold, otherwise drained
+	 * arable land (round 1 of the S8 review: with all of them meadows, the meadows took about a fifth of the land).
+	 */
+	public static final double D_MOIST_MEADOW = 0.5;
+	/**
+	 * Other sites: arable land where the parcel quantile lies below the threshold, otherwise hay meadow; on flat ground
+	 * (slope below {@link #D_ARABLE_SLOPE}°, in GAMEPLAY {@link #D_ARABLE_SLOPE_GAMEPLAY}° in blocks, as the slope context)
+	 * {@link #D_ARABLE}, on slopes {@link #D_ARABLE_STEEP} (round 1 of the S8 review: before it all slopes were meadows).
+	 */
+	public static final double D_ARABLE = 0.94, D_ARABLE_STEEP = 0.4;
+	public static final double D_ARABLE_SLOPE = 5, D_ARABLE_SLOPE_GAMEPLAY = 8;
+	/**
+	 * Round 1 of the S8 review: wavelength of the parcel noise of the arable land / hay meadow choice (m·k), and the jitter
+	 * of the slope threshold (°) with its wavelength (m·k).
+	 */
+	public static final double D_PARCEL_WAVELENGTH = 400, D_ARABLE_SLOPE_JITTER = 2, D_ARABLE_SLOPE_JITTER_WAVELENGTH = 200;
 
 	// ------------------------------------------------------------------ ranges (§9)
 

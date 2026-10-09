@@ -6,7 +6,8 @@
 		"BiomeClimateMixin",
 		"BiomeTemperatureMixin",
 		"BiomeFreezeMixin",
-		"ChunkGeneratorDecorationMixin"
+		"ChunkGeneratorDecorationMixin",
+		"ChunkGeneratorStructureMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

@@ -45,6 +45,12 @@ public class BiomeSharesTest {
 	 */
 	static final double[][] TYPE_COVER = {{0.55, 0.75}, {0.15, 0.30}, {0.18, 0.35}, {0.25, 0.45}, {0.50, 0.80},
 			{0.10, 0.40}};
+	/**
+	 * Hay and wet meadows in the land of the PRESENT_DAY mode, {min, max} (round 1 of the S8 review: permanent grassland is
+	 * about 10% of the area of Poland and about 13% of its land outside forests and built-up areas; the model has no
+	 * built-up areas and more valley floors per area, hence the upper bound).
+	 */
+	static final double[] MEADOWS = {0.08, 0.18};
 	/** Least number of interior land columns of a type for its forest cover to be checked. */
 	static final long TYPE_MIN_COLUMNS = 2_000;
 	/**
@@ -170,6 +176,13 @@ public class BiomeSharesTest {
 			return land == 0 ? Double.NaN : (double) forest / land;
 		}
 
+		/** Share of the hay and wet meadows in the land (round 1 of the S8 review). */
+		public double meadowShare() {
+			long land = land();
+			return land == 0 ? Double.NaN
+					: (double) (biome[HabitatBiome.HAY_MEADOW.ordinal()] + biome[HabitatBiome.WET_MEADOW.ordinal()]) / land;
+		}
+
 		public long land() {
 			long land = 0;
 			for (HabitatBiome b : HabitatBiome.values()) {
@@ -280,9 +293,9 @@ public class BiomeSharesTest {
 	static void print(String label, Shares u) {
 		System.out.printf(Locale.ROOT, "%s: %d columns, land %d; forest cover %.1f%%, on the outwash plain %.1f%%, pine forests in the outwash plain interior forest "
 				+ "%.1f%% (whole OUTWASH_PLAIN type %.1f%%); in the whole forest pine forests %.1f%%, fresh site types %.1f%%, alder carrs and "
-				+ "riparian forests %.1f%%%n", label, u.columns, u.land(), 100 * u.forestCover(), 100 * u.forestCoverOutwashPlain(),
-				100 * u.pineShareOutwashPlain(), 100 * u.pineShareOutwashPlainAll(), 100 * u.pineShare(), 100 * u.freshShare(),
-				100 * u.wetForestShare());
+				+ "riparian forests %.1f%%; meadows %.1f%% of the land%n", label, u.columns, u.land(), 100 * u.forestCover(),
+				100 * u.forestCoverOutwashPlain(), 100 * u.pineShareOutwashPlain(), 100 * u.pineShareOutwashPlainAll(), 100 * u.pineShare(),
+				100 * u.freshShare(), 100 * u.wetForestShare(), 100 * u.meadowShare());
 		StringBuilder types = new StringBuilder("  forest cover of the type interiors:");
 		for (int t = 0; t < LAND_TYPES.length; t++) {
 			types.append(String.format(Locale.ROOT, " %s %.1f%% (%d columns, pine forests %.0f%% of its forest);", LAND_TYPES[t],
@@ -332,6 +345,7 @@ public class BiomeSharesTest {
 		check(f, "pine forests in the forest", u.pineShare(), 0.45, 0.58);
 		check(f, "fresh site types in the forest", u.freshShare(), 0.50, 0.70);
 		check(f, "alder carrs and riparian forests in the forest", u.wetForestShare(), 0.03, 0.06);
+		check(f, "meadows in the land", u.meadowShare(), MEADOWS[0], MEADOWS[1]);
 		for (int t = 0; t < LAND_TYPES.length; t++) {
 			if (u.typeLand[t] >= TYPE_MIN_COLUMNS) {
 				check(f, "forest cover of " + LAND_TYPES[t], u.forestCover(t), TYPE_COVER[t][0], TYPE_COVER[t][1]);

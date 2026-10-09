@@ -134,6 +134,19 @@ public final class ChunkSurface {
 		};
 	}
 
+	/**
+	 * Moves the top ground block of the column to {@code newTop} (the beard of {@link StructureGround}): a raised column
+	 * gets a thicker loose cover with the same soil profile on top, a lowered one keeps its cover thickness (the rock moves
+	 * down with the top). Water of the column stays at its level, so a column raised above it becomes dry.
+	 */
+	void adjustTop(int i, int newTop) {
+		int t = top[i];
+		if (newTop < t) {
+			rockTop[i] = Math.max(bedrockTop[i], rockTop[i] - (t - newTop));
+		}
+		top[i] = newTop;
+	}
+
 	/** Number of blocks of loose cover (soil and deposits) above the rock in the column. */
 	public int coverBlocks(int i) {
 		return Math.max(0, top[i] - rockTop[i]);

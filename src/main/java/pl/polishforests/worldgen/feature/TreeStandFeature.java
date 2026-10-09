@@ -41,6 +41,14 @@ public final class TreeStandFeature implements Feature {
 	public static final java.util.concurrent.atomic.LongAdder CHUNKS = ModFeatures.STATS.get(BiomeDecoration.Dispatcher.TREE_STAND).chunks;
 	public static final java.util.concurrent.atomic.LongAdder TREES = ModFeatures.STATS.get(BiomeDecoration.Dispatcher.TREE_STAND).placed;
 
+	/**
+	 * Least distance (blocks) of a trunk from the footprint of a building piece of a structure: more than the crown
+	 * radius of the largest trees (3–4 blocks, branches of the fancy oak), so no crown grows into a house.
+	 */
+	public static final int BUILDING_GAP = 5;
+	/** Least distance of a trunk from any structure piece, also a street (ChunkHabitats mask, {@code StructureGround}). */
+	public static final int PIECE_GAP = 2;
+
 	/** Salts of the noises of the tree stand (new fields, new salts). */
 	private static final String RAMP_SALT = "feature.tree_stand.range_ramp";
 	private static final String GAP_SALT = "feature.tree_stand.gaps";
@@ -144,6 +152,10 @@ public final class TreeStandFeature implements Feature {
 		int placed = 0;
 		for (int p : planned) {
 			int column = p >>> 16;
+			if (habitats.buildingDistance(column) <= BUILDING_GAP || habitats.pieceDistance(column) <= PIECE_GAP) {
+				// A structure nearby (round 1 of the S8 review): no trunk on a street, no crown in a house.
+				continue;
+			}
 			BlockPos at = new BlockPos(pos.getMinBlockX() + (column >> 4), habitats.top()[column] + 1,
 					pos.getMinBlockZ() + (column & 15));
 			if (trees.get(p & 0xFFFF).value().place(level, generator, treeRandom, at)) {

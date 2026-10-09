@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Arrays;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.biome.Biome;
 import pl.polishforests.PolishForests;
 import pl.polishforests.worldgen.habitat.HabitatBiome;
@@ -16,6 +17,9 @@ import pl.polishforests.worldgen.habitat.HabitatBiome;
 public final class ModBiomeKeys {
 	private static final List<ResourceKey<Biome>> KEYS = Arrays.stream(HabitatBiome.values())
 			.map(b -> ResourceKey.create(Registries.BIOME, PolishForests.id(b.id()))).toList();
+
+	/** The mod's tag of the forest biomes ({@code polishforests:forests}, datagen {@code ModBiomeTagProvider}). */
+	public static final TagKey<Biome> FORESTS = TagKey.create(Registries.BIOME, PolishForests.id("forests"));
 
 	private ModBiomeKeys() {
 	}

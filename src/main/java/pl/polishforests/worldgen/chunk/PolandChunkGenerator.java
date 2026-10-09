@@ -8,6 +8,7 @@ import java.util.Optional;
 import java.util.stream.LongStream;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Predicate;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderLookup;
@@ -20,6 +21,7 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.NaturalSpawner;
 import net.minecraft.world.level.NoiseColumn;
+import net.minecraft.tags.StructureTags;
 import net.minecraft.world.level.StructureManager;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeManager;
@@ -41,7 +43,14 @@ import net.minecraft.world.level.levelgen.RandomSupport;
 import net.minecraft.world.level.levelgen.WorldgenRandom;
 import net.minecraft.world.level.levelgen.blending.Blender;
 import net.minecraft.world.level.levelgen.densityfunction.SamplerContext;
+import net.minecraft.world.level.levelgen.structure.BoundingBox;
+import net.minecraft.world.level.levelgen.structure.PoolElementStructurePiece;
+import net.minecraft.world.level.levelgen.structure.StructurePiece;
+import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureSet;
+import net.minecraft.world.level.levelgen.structure.StructureStart;
+import net.minecraft.world.level.levelgen.structure.TerrainAdjustment;
+import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
 import org.jspecify.annotations.Nullable;
 import pl.polishforests.climate.ClimateBinding;
 import pl.polishforests.worldgen.feature.ModFeatures;
@@ -50,6 +59,7 @@ import pl.polishforests.worldgen.landscape.ColumnSample;
 import pl.polishforests.worldgen.landscape.LandscapeModel;
 import pl.polishforests.worldgen.surface.ChunkSurface;
 import pl.polishforests.worldgen.surface.Material;
+import pl.polishforests.worldgen.surface.StructureGround;
 import pl.polishforests.worldgen.surface.SurfaceBuilder;
 
 /**
@@ -126,6 +136,18 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 		}
 	}
 
+	/**
+	 * Biome check of a structure start ({@code ChunkGeneratorStructureMixin}, round 1 of the S8 review, decision M2-17):
+	 * in the PRESENT_DAY mode a village ({@code #minecraft:village}) does not start in a forest biome
+	 * ({@link ModBiomeKeys#FORESTS}); other structures and the natural mode keep the biome tags of the structure.
+	 */
+	public Predicate<Holder<Biome>> structureBiomes(Holder<Structure> structure, Predicate<Holder<Biome>> biomes) {
+		if (settings.mode() != HabitatClassifier.Mode.PRESENT_DAY || !structure.is(StructureTags.VILLAGE)) {
+			return biomes;
+		}
+		return biome -> biomes.test(biome) && !biome.is(ModBiomeKeys.FORESTS);
+	}
+
 	@Override
 	protected MapCodec<? extends ChunkGenerator> codec() {
 		return CODEC;
@@ -191,7 +213,7 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 		LandscapeModel m = model(randomState.seed());
 		HabitatClassifier k = classifier(randomState.seed());
 		return CompletableFuture.supplyAsync(() -> {
-			fill(chunk, m, k);
+			fill(chunk, m, k, structureManager);
 			return chunk;
 		}, Util.backgroundExecutor().forName("polishforests_buildTerrain"));
 	}
@@ -256,7 +278,7 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 	private static final int MATERIALS = Material.values().length;
 	private static final int AIR_ID = Material.AIR.ordinal();
 
-	private void fill(ChunkAccess chunk, LandscapeModel m, HabitatClassifier classifier) {
+	private void fill(ChunkAccess chunk, LandscapeModel m, HabitatClassifier classifier, StructureManager structureManager) {
 		long t0 = System.nanoTime();
 		ChunkPos pos = chunk.getPos();
 		int minX = pos.getMinBlockX();
@@ -271,7 +293,9 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 		SAMPLE_NANOS.add(t1 - t0);
 		ChunkSurface surface = surfaceBuilder().build(columns, codes, minX, minZ, minY, maxY, PolandDimension.DEEP_ROCK_Y,
 				m::sample);
-		chunk.setAttached(ModFeatures.CHUNK_HABITATS, habitats(columns, codes, surface));
+		byte[] structures = StructureGround.apply(surface, structurePieces(structureManager, pos), minX, minZ);
+		chunk.setAttached(ModFeatures.CHUNK_HABITATS, habitats(columns, codes, surface,
+				structures != null ? structures : ChunkHabitats.NO_STRUCTURES));
 		SURFACE_NANOS.add(System.nanoTime() - t1);
 		int highest = Math.max(minY, surface.highest());
 		int bottomSection = chunk.getSectionIndex(minY);
@@ -351,6 +375,42 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 	}
 
 	/**
+	 * Structure pieces near the chunk (within the vanilla beard reach, as {@code Beardifier.forStructuresInChunk}) for
+	 * {@link StructureGround}: the starts of every structure that references the chunk. Rigid pool elements and pieces
+	 * that are not pool elements are buildings; the beard adapts the ground under them when the structure's terrain
+	 * adaptation is {@code beard_thin} or {@code beard_box} (the terrain-matching streets follow the ground anyway).
+	 */
+	private static List<StructureGround.Piece> structurePieces(StructureManager structureManager, ChunkPos pos) {
+		List<StructureStart> starts = structureManager.startsForStructure(pos.x(), pos.z(), s -> true);
+		if (starts.isEmpty()) {
+			return List.of();
+		}
+		List<StructureGround.Piece> pieces = new ArrayList<>();
+		for (StructureStart start : starts) {
+			if (!start.isValid()) {
+				continue;
+			}
+			TerrainAdjustment adaptation = start.getStructure().terrainAdaptation();
+			boolean beard = adaptation == TerrainAdjustment.BEARD_THIN || adaptation == TerrainAdjustment.BEARD_BOX;
+			for (StructurePiece piece : start.getPieces()) {
+				if (!piece.isCloseToChunk(pos, StructureGround.BEARD_RADIUS)) {
+					continue;
+				}
+				BoundingBox b = piece.getBoundingBox();
+				boolean building = true;
+				int ground = b.minY();
+				if (piece instanceof PoolElementStructurePiece pool) {
+					building = pool.getElement().getProjection() == StructureTemplatePool.Projection.RIGID;
+					ground += pool.getGroundLevelDelta();
+				}
+				pieces.add(new StructureGround.Piece(b.minX(), b.minY(), b.minZ(), b.maxX(), b.maxY(), b.maxZ(), ground,
+						beard && building, building));
+			}
+		}
+		return pieces;
+	}
+
+	/**
 	 * Samples of the 256 columns of a chunk (index {@code x * 16 + z}): the samples that the surface plans of neighboring
 	 * chunks already took for the bank shelf come from their shared cache, the rest from the model.
 	 */
@@ -387,7 +447,7 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 	 * Habitats of a chunk: the codes, the top ground block and the water surface of the surface plan (after the shelf and
 	 * the micro-relief, so trees stand on hummocks and not in puddles), and O and P at the chunk center.
 	 */
-	private static ChunkHabitats habitats(ColumnSample[] columns, int[] codes, ChunkSurface surface) {
+	private static ChunkHabitats habitats(ColumnSample[] columns, int[] codes, ChunkSurface surface, byte[] structures) {
 		short[] tops = new short[256];
 		short[] water = new short[256];
 		for (int i = 0; i < 256; i++) {
@@ -396,15 +456,17 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 		}
 		ColumnSample center = columns[8 * 16 + 8];
 		return new ChunkHabitats(codes, tops, water, (float) center.region().oceanicity(),
-				(float) center.region().mountainInfluence());
+				(float) center.region().mountainInfluence(), structures);
 	}
 
 	/**
-	 * Surface plan of a chunk computed again from the model, exactly as {@code fill()} computes it (for game tests).
+	 * Surface plan of a chunk computed again from the model, exactly as {@code fill()} computes it (for game tests), with
+	 * the ground of the structure pieces ({@link StructureGround}) from the structure manager of the level.
 	 *
 	 * @param codes receives the habitat codes of the columns when not null
 	 */
-	public ChunkSurface surface(ChunkPos pos, int minY, int maxY, long seed, int @Nullable [] codes) {
+	public ChunkSurface surface(ChunkPos pos, int minY, int maxY, long seed, int @Nullable [] codes,
+			StructureManager structureManager) {
 		LandscapeModel m = model(seed);
 		ColumnSample[] columns = new ColumnSample[256];
 		for (int i = 0; i < 256; i++) {
@@ -414,13 +476,16 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 		if (codes != null) {
 			System.arraycopy(c, 0, codes, 0, 256);
 		}
-		return surfaceBuilder().build(columns, c, pos.getMinBlockX(), pos.getMinBlockZ(), minY, maxY,
+		ChunkSurface surface = surfaceBuilder().build(columns, c, pos.getMinBlockX(), pos.getMinBlockZ(), minY, maxY,
 				PolandDimension.DEEP_ROCK_Y, m::sample);
+		StructureGround.apply(surface, structurePieces(structureManager, pos), pos.getMinBlockX(), pos.getMinBlockZ());
+		return surface;
 	}
 
 	/**
 	 * Habitats of a chunk computed again from the model, for a chunk that lost its attachment (proto-chunk saved
-	 * between TERRAIN and FEATURES; counted by {@code ModFeatures.HABITAT_MISS}).
+	 * between TERRAIN and FEATURES; counted by {@code ModFeatures.HABITAT_MISS}). Without the structure pieces: no beard
+	 * and no vegetation mask ({@link ChunkHabitats#NO_STRUCTURES}).
 	 */
 	public ChunkHabitats computeHabitats(ChunkPos pos, int minY, int maxY, long seed) {
 		LandscapeModel m = model(seed);
@@ -431,7 +496,7 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 		int[] codes = classify(columns, classifier(seed), pos.getMinBlockX(), pos.getMinBlockZ());
 		ChunkSurface surface = surfaceBuilder().build(columns, codes, pos.getMinBlockX(), pos.getMinBlockZ(), minY, maxY,
 				PolandDimension.DEEP_ROCK_Y, m::sample);
-		return habitats(columns, codes, surface);
+		return habitats(columns, codes, surface, ChunkHabitats.NO_STRUCTURES);
 	}
 
 	/**
