@@ -632,8 +632,9 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 	/**
 	 * The ground block of the world equals the soil of the surface plan ({@code SoilBlocks}, §7.4) at the 11 soil places:
 	 * for each place every dry column of the place's habitat in its chunk (full status) that has no tree trunk on it
-	 * (a trunk turns the grass under it into dirt) must have the block of the plan at the plan's top Y, and air or a
-	 * plant above it.
+	 * (a trunk turns the grass under it into dirt) must have the block of the plan at the plan's top Y, or the block of
+	 * the soil it takes across a habitat border (soil ecotones, step S8b: {@code PolandChunkGenerator.soilBlend}), and air
+	 * or a plant above it.
 	 */
 	private static String soilPlaces(MinecraftServer server, boolean real) {
 		ServerLevel level = server.overworld();
@@ -649,7 +650,20 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 			level.getChunk(pos.x(), pos.z());
 			int[] codes = new int[256];
 			ChunkSurface plan = gen.surface(pos, level.getMinY(), level.getMaxY(), seed, codes, level.structureManager());
+			int[][] around = new int[9][];
+			for (int dx = -1; dx <= 1; dx++) {
+				for (int dz = -1; dz <= 1; dz++) {
+					int[] c = dx == 0 && dz == 0 ? codes : new int[256];
+					if (c != codes) {
+						gen.surface(new net.minecraft.world.level.ChunkPos(pos.x() + dx, pos.z() + dz), level.getMinY(),
+								level.getMaxY(), seed, c, level.structureManager());
+					}
+					around[(dx + 1) * 3 + dz + 1] = c;
+				}
+			}
+			int[] blend = gen.soilBlend(pos, around, seed);
 			int center = ChunkHabitats.index(x0 & 15, z0 & 15);
+			int blended = 0;
 			HabitatBiome biome = Habitat.biome(codes[center]);
 			int checked = 0;
 			int mismatched = 0;
@@ -667,6 +681,12 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 				checked++;
 				net.minecraft.world.level.block.Block expected = MaterialStates.of(plan.topMaterial(i)).getBlock();
 				net.minecraft.world.level.block.state.BlockState actual = level.getBlockState(ground);
+				if (blend[i] != pl.polishforests.worldgen.surface.SoilBlend.KEEP && !actual.is(expected)
+						&& actual.is(MaterialStates.of(pl.polishforests.worldgen.surface.Material.values()[blend[i] & 0xFF]).getBlock())) {
+					// The soil of a habitat across a border (soil ecotone, step S8b).
+					expected = actual.getBlock();
+					blended++;
+				}
 				if (erratic(actual) || erratic(above)) {
 					// A glacial erratic of step 2 (S7) lies on the ground.
 					erratics++;
@@ -686,8 +706,9 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 			if (checked < SOIL_MIN_COLUMNS) {
 				failures.add(SOIL_NAMES[p] + ": only " + checked + " columns of " + biome.id());
 			}
-			report.append(String.format(Locale.ROOT, " %s (%d, %d) %s: %d/%d %s%s;", SOIL_NAMES[p], x0, z0, biome.id(),
-					checked - mismatched - erratics, checked, blocks, erratics > 0 ? ", " + erratics + " under an erratic" : ""));
+			report.append(String.format(Locale.ROOT, " %s (%d, %d) %s: %d/%d %s%s%s;", SOIL_NAMES[p], x0, z0, biome.id(),
+					checked - mismatched - erratics, checked, blocks, erratics > 0 ? ", " + erratics + " under an erratic" : "",
+					blended > 0 ? ", " + blended + " of a soil across a border" : ""));
 		}
 		if (!failures.isEmpty()) {
 			throw new AssertionError("Ground blocks differ from the surface plan: " + failures + "; " + report);

@@ -314,7 +314,8 @@ tasks.register('checkDatagen', CheckDatagen) {
 	outputs.upToDateWhen { false }
 }
 
-// Choosing in-game tests: ./gradlew runClientGameTest -Pgametest=performance|stages|views|climate|ui|habitats|vegetation|present_day|all
+// Choosing in-game tests: ./gradlew runClientGameTest -Pgametest=performance|stages|views|climate|ui|habitats|vegetation|present_day|ecotones|all
+// (ecotones: only by name, not in all; screenshots of biome borders, step S8b)
 // Only selected views: -Psites=beach,cliff (names from PolandWorldClientGameTest; for vegetation the soil places of
 // HabitatsClientGameTest, or none for no screenshots).
 // -PdebugHabitats: diagnostic mode, zones and biomes painted on the top block (docs/03-m2-biomy.md §7.5).

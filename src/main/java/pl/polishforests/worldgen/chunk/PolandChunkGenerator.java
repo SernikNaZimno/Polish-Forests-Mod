@@ -339,6 +339,16 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 		}
 	}
 
+	/**
+	 * Soil ecotones of a chunk ({@link SoilBlend#tops}) from the habitat codes of the chunk and its 8 neighbors
+	 * ({@code codes[(dx + 1) * 3 + dz + 1]}), for the game tests, which compare the ground of full chunks with the plan.
+	 */
+	public int[] soilBlend(ChunkPos pos, int[][] codes, long seed) {
+		model(seed);
+		return SoilBlend.tops(pl.polishforests.worldgen.feature.plan.Ecotone.Region.of(pos.x(), pos.z(), codes,
+				settings.scale().landscape().local()), seed, surfaceBuilder, null);
+	}
+
 	/** Number of top blocks the soil ecotones changed (diagnostics). */
 	public static final java.util.concurrent.atomic.LongAdder SOIL_BLENDED = new java.util.concurrent.atomic.LongAdder();
 

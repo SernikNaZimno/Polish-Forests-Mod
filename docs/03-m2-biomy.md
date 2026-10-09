@@ -61,6 +61,7 @@ Poza M2:
 | Z7 | Progi zawsze w metrach modelu. Odległości mnożymy przez `k = local` (REAL 1, GAMEPLAY 0,5) albo skalujemy szerokością koryta `W` (w GAMEPLAY już ×0,2). Minima stref podajemy w blokach. | Działa w obu skalach świata. |
 | Z8 | Jedno źródło prawdy: enumy `HabitatBiome`, `Zone`, `ForestSiteType`, `Association`, `Soil`, `Species`. Z nich datagen robi biomy, featury, tagi i lang, a komendy biorą z nich cele. | Brak dublowania. Testy pilnują spójności. |
 | Z9 | Biom wybierają tylko wejścia o fali ≥ 64 m. Drgania granic stref o fali 30–60 m zmieniają tylko strefę, zespół i glebę. | Biomy nie tworzą jednokwartowych wysepek. |
+| Z10 | **Płynne przejścia** (prośba użytkownika, 2026-10-09; od S8b, §8.8): na granicach biomów i siedlisk skład i gęstość drzewostanu, podszyt, runo, gleby i bloki wierzchu oraz kolory trawy, liści i wody zmieniają się w pasie przejściowym (ekotonie), nie na linii. Szerokość pasa zależy od pary siedlisk i skaluje się przez k (Z7): szeroko między podobnymi lasami, wąsko tam, gdzie granica w naturze jest wyraźna (brzeg wody, skraj torfowiska), nigdy prosta linia ani szachownica. Skraj lasu przy łące, polu, wrzosowisku, wydmie szarej i torfowisku ma płaszcz z krzewów i okrajek z ziół. Górna granica lasu: coraz rzadsze i niższe drzewa, potem kosodrzewina. Biomy (Z9) zostają, zmienia się tylko sposób przejścia. | Las nie zmienia się „jak nożem uciął” na konturze progu klasyfikatora. |
 
 ---
 
@@ -445,7 +446,7 @@ Okna 1 km recenzenta:
 - (46139, 49833) REAL (pogórze z potokami): kontur F 54 → 47%. Zostają pas olszy szarej (23%) i krawędź den (21%), a proste odcinki krawędzi idą za prostymi odcinkami dolin (teren, M5).
 - (3072, 3072) GAMEPLAY: piętra 85 → 4%, kontur F 6 → 71%, pas olszy 21%.
 
-W GAMEPLAY reszta skoków to głównie strome rampy: te same zmiany P przypadają tam na mniej bloków.
+W GAMEPLAY reszta skoków to głównie strome rampy: te same zmiany P przypadają tam na mniej bloków. *Korekta (S8b, po zgłoszeniu recenzji rundy 2):* strome rampy zostają także w REAL, na stokach szerokich dolin (niżej, „Co zostaje”).
 
 **Wioski w trybie D: tani test struktur i wyszukiwanie (decyzja M2-17).** Reguła rundy 1 działała tylko w `ChunkGenerator.tryGenerateStructure`. `StructureCheck.canCreateStructure` (tani test `/locate`, map odkrywców i `getStructureGeneratingAt`) budował kontekst z samym tagiem biomów, więc każdy kandydat w lesie przechodził, a wyszukiwanie ładowało chunk do STRUCTURE_STARTS i nie znajdowało startu. Wioska tajgowa w trybie D nie może powstać wcale (wszystkie biomy `has_structure/village_taiga` to lasy), a kartograf równinny ma w 26.3 handel „mapa wioski tajgowej” z promieniem 100 (ok. 40 tys. komórek siatki). Teraz:
 - mixin `StructureCheckMixin` (`@WrapOperation` na `findValidGenerationPoint` w `canCreateStructure`) daje temu testowi kontekst z predykatem `PolandChunkGenerator.structureBiomes`, tym samym co `ChunkGeneratorStructureMixin`;
@@ -469,17 +470,21 @@ W GAMEPLAY reszta skoków to głównie strome rampy: te same zmiany P przypadaj�
 
 Uwaga „(poza dyskami wanilii)” w opisie S6 w BRIEF opisuje stan S6; ma teraz dopisek, że od S8 dysków nie ma.
 
-**Co zostaje (do decyzji użytkownika, M2-20 w `docs/00` E; problem przetrwał 2 rundy, zasada B3).** Krawędzie lasu nadal leżą na skokach P w ok. 31% (REAL) i 40% (GAMEPLAY) przypadków:
-- pas olszy szarej przy potokach (P_las 1 z §4.5), 12–15% wszystkich krawędzi;
-- krawędź dna na siedliskach ubogich (bór 0,3 nad łęgiem 0,09), a w GAMEPLAY strome rampy;
-- skoki DGW klasyfikatora między sąsiednimi kolumnami (ok. 1% krawędzi), proste odcięcia głowy dna doliny (dno zaczyna się skokiem przy połowie wygaszenia głowy) i proste odcinki dolin.
+**Co zostaje (do decyzji użytkownika, M2-20 w `docs/00` E; problem przetrwał 2 rundy, zasada B3).** Krawędzie lasu nadal leżą na skokach P w ok. 31% (REAL) i 40% (GAMEPLAY) przypadków (400 wierszy, miara recenzenta):
+- pas olszy szarej przy potokach (P_las 1 z §4.5), 15,3% (REAL) i 12,8% (GAMEPLAY) wszystkich krawędzi;
+- **strome rampy wilgotności i olsu na stokach szerokich dolin, w obu skalach** (korekta S8b; wcześniej opis wymieniał strome rampy tylko w GAMEPLAY, a skokom DGW przypisywał ok. 1% krawędzi): 8,5% krawędzi REAL i 13,4% GAMEPLAY, druga co do wielkości grupa. Przyczyna: `rise()` szacuje spadek stoku jako (H − miękki poziom koryt − FLOOR_H) / (odległość od koryta − połowa szerokości dna); na stoku szerokiej doliny odległość od koryta to ok. 986 m przy połowie dna ok. 258 m, więc szacunek wynosi ok. 0,011 (wzniesienie na 30 m = 0,34 m), a prawdziwy spadek ok. 0,22 m na blok (nachylenie z siatki zgrubnej 0,3°). Poszerzenie i przesunięcie pasm DGW prawie nie działa: DGW zmienia się o ok. 0,2 m na blok, rampa P ma ok. 10 m i leży na konturze DGW. Sonda spadków recenzenta (`GradProbe`, rev_s8r2): spośród 160 krawędzi wilgotności i olsu REAL 119 (74%) ma lokalny |dH| na blok ponad 3 razy większy od szacunku, 65 ponad 10 razy; GAMEPLAY 118 z 371 (3 razy) i 28 (10 razy). Przykład recenzenta: wiersz REAL z = 4225, x od −5092 do −5079 — przed rundą 2 P 0,26 → 0,50 → 0,10, po niej 0,31 → 0,45 → 0,12 na 13 m przy DGW 2,72 → 0,05 i F 0,244 → 0,241; krawędź przesunęła się tylko o 1 blok (z DGW 0,84/0,64 na 0,64/0,44). W oknie 288 m wokół (−5120, 4096) REAL krawędzie na skokach P spadły tylko z 53,6 do 46,4%, głównie pary biomu olsu (`ALDER_CARR`) i lasu mieszanego bagiennego (STL LMb, `BOGGY_MIXED_BROADLEAVED`) o P 0,30 i 0,23;
+- **rampy przy krawędzi dna na siedliskach żyznych** (korekta S8b): krawędź dna to 5,2% krawędzi REAL i 8,3% GAMEPLAY; na siedliskach ubogich bór 0,3 nad łęgiem 0,09, a na żyznych rampa od 0,1 też bywa za stroma, np. łęg jesionowo-olszowy poza dnem przy (−5126, 3953) REAL: P 0,10–0,19 o ok. 0,03 na blok, spadek 0,11 przy szacunku 0,003 (27 z 99 krawędzi dna REAL ma spadek ponad 3 razy większy od szacunku);
+- skoki DGW klasyfikatora między sąsiednimi kolumnami, proste odcięcia głowy dna doliny (dno zaczyna się skokiem przy połowie wygaszenia głowy) i proste odcinki dolin.
+
+Ekotony S8b (zasada Z10, §8.8) nie zmieniają maski: łagodzą wygląd każdej krawędzi (drzewa mieszają się w pasie 8 m·k, płaszcz krzewów i okrajek ziół, gleby w pasie 4 m·k), ale krawędź dalej leży tam, gdzie wypada skok P.
 
 Warianty:
-- (a) przyjąć: wzór „las na stokach i sandrach, łąki w dnach, olsza wzdłuż potoków” jest zgodny z dzisiejszą Polską, a rampy są szerokie i przesunięte (koszt zerowy);
+- (a) przyjąć: wzór „las na stokach i sandrach, łąki w dnach, olsza wzdłuż potoków” jest zgodny z dzisiejszą Polską; na stokach szerokich dolin krawędzie zostają jednak strome i idą za konturem DGW (koszt zerowy);
 - (b) usunąć zasadę „pas olszy szarej zawsze las” i dać pasowi P_las z rampą: krawędzie pasa poszłyby za F, ale potoki górskie w polach straciłyby olszyny (mała zmiana);
-- (c) wygładzić skoki DGW i głowy dolin w klasyfikatorze: zmienia siedliska potencjalne i tryb N, więc do M5 razem z terenem (duży koszt).
+- (c) wygładzić skoki DGW i głowy dolin w klasyfikatorze: zmienia siedliska potencjalne i tryb N, więc do M5 razem z terenem (duży koszt);
+- (d) **lokalny spadek dla `rise()`** (nowy wariant, S8b): zamiast szacunku z odległości od koryta prawdziwy spadek H. Dwie drogi: (d1) różnica centralna H z 1–2 dodatkowych próbek modelu na kolumnę lasu w trybie D — dokładna, ale próbka kosztuje 12–17 µs, więc TERRAIN i BIOMES trybu D wzrosłyby o kilkadziesiąt procent (poza budżetami M2-10/M2-11); (d2) wygładzone pole H − miękki poziom koryt na siatce zgrubnej (64 m·k lub rzadziej, z pamięcią jak `CoarseTerrainField`) i spadek z jego gradientu — ok. 0,06 próbki na chunk REAL i 0,25 w GAMEPLAY, koszt pomijalny, ale wąskie doliny GAMEPLAY dostaną za mały spadek. Zmienia tylko tryb D; potem pomiar miarą |dP| na blok i sondą `GradProbe`. Koszt pracy: średni (nowe pole z pamięcią, testy determinizmu, kalibracja udziałów trybu D od nowa).
 
-Rekomendacja: (a), a (c) w M5.
+Rekomendacja: (d2) jako osobny krok przed S10 albo (a), jeśli wygląd krawędzi po ekotonach S8b wystarczy; (c) w M5.
 
 ### 3.5 `PolandBiomeSource` (przepisany)
 
@@ -1749,6 +1754,9 @@ Każdą strukturę sprawdza gametest (`/locate structure`), a jej położenie na
 | `SoilTest` | `coverBlocks` w obu skalach; wierzch gleb leśnych należy do `#supports_vegetation`; liczba stanów w sekcji przy powierzchni ≤ 32 |
 | `PolishForestsCommandsTest` | nowe cele `biome` i `zone` dają się znaleźć |
 | `SampleCostTest` | raport (bez asercji): µs na `sample` i `classify` dla 100 tys. kolumn wobec M1 |
+| `EcotoneTest` | (S8b, Z10) przy prostej granicy udział kodu drugiej strony to rampa liniowa (1 − d/H)/2 dla par podobnych lasów, lasów suchych i wilgotnych, lasu i łąki (drzewa i gleby, obie skale); woda, wąskie strefy i plaże bez mieszania; łęgi i olsy zachowują swoje rośliny; nieznani sąsiedzi; płaszcz i okrajek o nominalnych szerokościach i nieprostej granicy |
+| `EcotoneSharpnessTest` | (S8b) w 70 losowych obszarach 5 × 5 chunków z granicą biomów na skalę i tryb: udział par sąsiednich kolumn na granicy, gdzie reguła drzew, reguła runa i gleba zmieniają się naraz, spada co najmniej o połowę i poniżej 40%; przejście drzew i gleb w poprzek granicy ma ≥ 4 bloki (REAL) i ≥ 2 (GAMEPLAY) |
+| `TimberlineRampTest` | (S8b) na najwyższym masywie obu skal średnia liczba drzew na chunk w pasach 10 m wysokości względem granicy lasu zmienia się między sąsiednimi pasami o ≤ 2,5 |
 
 ### 12.2 Podgląd PNG (`./gradlew landscapePreview`)
 
@@ -1776,6 +1784,7 @@ Każdą strukturę sprawdza gametest (`/locate structure`), a jej położenie na
 | `PerformanceClientGameTest.profileStages` | BIOMES, TERRAIN, FEATURES i LIGHT oraz liczniki `CLASSIFY_NANOS`, `HABITAT_MISS`, `PACK_FALLBACKS` i czas każdej warstwy dyspozytorów, przed M2 i po każdym kroku |
 | determinizm | dwa światy z tym samym ziarnem, z paczką optymalizacyjną (C2ME) i bez; skrót bloków 64 chunków identyczny. Od S7 (runda 1 recenzji): featury przez granice chunków (korony, kłody, rośliny przy granicy) zależą od kolejności, w jakiej chunk i jego sąsiedzi przechodzą dekorację, jak w wanilii (w recenzji S7 dwa przebiegi z tym samym ziarnem różniły się o 0,1–1,9% liści w obszarach 5 × 5 chunków), więc test w S10 porównuje skrót terenu (stan przed FEATURES) dokładnie, a bloki po dekoracji z tolerancją różnic przy granicach chunków albo przy wymuszonej jednej kolejności generacji |
 | `UiAndCommandsClientGameTest` | wszystkie cele; `here` zawiera biom, siedlisko, strefę, glebę i T; od S8 przełącznik „Krajobraz” daje tryb D |
+| `EcotoneClientGameTest` | (S8b, `-Pgametest=ecotones`, tylko z nazwy) zrzuty 7 granic biomów w obu skalach (5 w trybie N, 2 w trybie D) do `docs/m2/przejscia/`; ta sama klasa robi zrzuty „przed” na drzewie bez ekotonów |
 | `PresentDayClientGameTest` | (S8, `-Pgametest=present_day`) świat w trybie D w obu skalach: `validate()`, transekty §4.6, `/locate structure #minecraft:village` z 5 punktów w obu trybach (od rundy 1 poprawek biom w środku elementu startowego, w trybie D żadna wioska w lesie, każda wioska bez pni na ulicach, liści pod dachami, roślin na podłogach i wiszących podłóg; od rundy 2 w trybie D `/locate structure minecraft:village_taiga` i mapa wioski tajgowej nic nie znajdują w < 2 s, w trybie N `/locate` znajduje wioskę tajgową), zrzuty mozaiki i wioski (z góry, z ulicy, od strony spadku), tryb po ponownym otwarciu zapisu |
 
 ### 12.4 Definicja ukończenia M2

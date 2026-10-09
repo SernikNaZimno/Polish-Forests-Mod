@@ -54,6 +54,11 @@ public final class AltitudinalBelts {
 	 * {@link #BORDER_BAND} with a sharp lower border, where the stand fell from 12 to 4 trees per chunk).
 	 */
 	public static final double TIMBERLINE_RAMP = 2 * BORDER_BAND;
+	/**
+	 * Single stunted spruces above the timberline (m, step S8b): in the dwarf pine scrub the patches of the stunted
+	 * spruces cover half of the columns at the timberline and none at this height above it.
+	 */
+	public static final double TIMBERLINE_ABOVE = 40;
 	/** Wavelength of the noise of the stunted spruce patches (m·k). */
 	static final double TIMBERLINE_PATCHES = 12;
 	/** Largest possible lowering of a threshold (aspect and noise), used to skip the noise low down. */
@@ -118,7 +123,9 @@ public final class AltitudinalBelts {
 		}
 		double limit = TIMBERLINE + corr - (onRidge && c.slope < WINDY_RIDGE_SLOPE ? WINDY_RIDGE : 0);
 		if (large && h >= limit) {
-			return HabitatClassifier.Result.of(HabitatBiome.DWARF_PINE_SCRUB, Zone.NONE, Association.TYPICAL);
+			Zone s = h < limit + TIMBERLINE_ABOVE && timberlinePatch(c) > 0.5 + 0.5 * (h - limit) / TIMBERLINE_ABOVE
+					? Zone.TIMBERLINE : Zone.NONE;
+			return HabitatClassifier.Result.of(HabitatBiome.DWARF_PINE_SCRUB, s, Association.TYPICAL);
 		}
 		if (h >= UPPER_MONTANE + corr) {
 			Zone s = large && h >= limit - TIMBERLINE_RAMP && timberlinePatch(c) > (limit - h) / TIMBERLINE_RAMP
