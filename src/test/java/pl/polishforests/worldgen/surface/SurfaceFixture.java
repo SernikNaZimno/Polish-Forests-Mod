@@ -30,12 +30,16 @@ final class SurfaceFixture {
 	private final Map<Long, Chunk> chunks = new HashMap<>();
 
 	SurfaceFixture(PolandScale scale, boolean coverInBlocks) {
+		this(scale, coverInBlocks, HabitatClassifier.Mode.NATURAL);
+	}
+
+	SurfaceFixture(PolandScale scale, boolean coverInBlocks, HabitatClassifier.Mode mode) {
 		this.scale = scale;
 		this.vertical = scale.vertical();
 		synchronized (MODELS) {
 			this.model = MODELS.computeIfAbsent(scale, s -> new LandscapeModel(SEED, s.landscape(), 1.0));
 		}
-		this.classifier = new HabitatClassifier(SEED, scale.landscape(), HabitatClassifier.Mode.NATURAL);
+		this.classifier = new HabitatClassifier(SEED, scale.landscape(), mode);
 		this.builder = new SurfaceBuilder(SEED, vertical, coverInBlocks, false);
 	}
 

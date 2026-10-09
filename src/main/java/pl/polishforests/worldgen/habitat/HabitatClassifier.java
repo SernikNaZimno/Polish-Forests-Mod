@@ -56,7 +56,8 @@ public final class HabitatClassifier {
 		this.patches = root.derive("habitat.platy");
 		this.belts = root.derive("habitat.pietra");
 		this.variants = root.derive("habitat.warianty");
-		this.forestCover = new ForestCover(root.derive("habitat.lesistosc"), k);
+		// Step S8: the second octave of F is a new noise field with its own salt.
+		this.forestCover = new ForestCover(root.derive("habitat.lesistosc"), root.derive("habitat.forest_cover.fine"), k);
 	}
 
 	public Mode mode() {

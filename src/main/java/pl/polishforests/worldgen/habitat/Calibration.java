@@ -340,6 +340,36 @@ public final class Calibration {
 	/** Shingle beach below a cliff: terrain before incision higher than this (m). */
 	public static final double SHINGLE_BEACH_RAW = 8;
 
+	// ------------------------------------------------------------------ PRESENT_DAY mode (§2.2, column D, §4.5): forest mask (S8)
+
+	/** Noise F of the forest mask: long and short octave (m·k), weight of the short one, edge noise (m·k) and its weight. */
+	public static final double F_WAVELENGTH = 6_000, F_FINE_WAVELENGTH = 2_000, F_FINE = 0.5, F_EDGE_WAVELENGTH = 300, F_EDGE = 0.08;
+	/** P_forest of the lowland site types (BiomeSharesTest, step S8). */
+	public static final double P_DRY_CONIFEROUS = 0.8, P_FRESH_CONIFEROUS = 0.76, P_MOIST_CONIFEROUS = 0.7,
+			P_BOGGY_CONIFEROUS = 0.75, P_FRESH_MIXED_CONIFEROUS = 0.3, P_FRESH_MIXED_BROADLEAVED = 0.25,
+			P_MOIST_MIXED_BROADLEAVED = 0.5, P_FRESH_BROADLEAVED = 0.1, P_MOIST_BROADLEAVED = 0.35, P_OTHER = 0.5;
+	/** P_forest of the floodplain forests, alder carr, coast and mountain forests. */
+	public static final double P_WILLOW_POPLAR = 0.15, P_ELM_ASH = 0.06, P_ASH_ALDER = 0.13, P_ALDER_CARR = 0.15,
+			P_COASTAL_PINE = 0.9, P_MONTANE_SPRUCE = 0.9, P_MONTANE_BEECH = 0.8, P_UPLAND_FIR = 0.6, P_MOUNTAIN_FLOOR = 0.15,
+			P_GRAY_ALDER = 0.6;
+	/** Factor of P_forest of the poor sites (B, BM) outside the outwash plain (by its type weight). */
+	public static final double P_SAND_OUTSIDE_OUTWASH = 0.75;
+	/** Foothills: P_forest of a gentle slope (the steep ones by the context). */
+	public static final double P_FOOTHILLS = 0.15;
+	/**
+	 * Context: P_forest moves towards P_STEEP by the steepness, a smoothstep of the slope (° in blocks) from P_SLOPE_FROM
+	 * to P_SLOPE_TO; at least P_MORAINE_DUNE on end moraines and inland dunes and P_VALLEY_SIDE on valley sides.
+	 */
+	public static final double P_SLOPE_FROM_GAMEPLAY = 12, P_SLOPE_TO_GAMEPLAY = 35;
+	public static final double P_STEEP = 0.8, P_SLOPE_FROM = 8, P_SLOPE_TO = 25, P_MORAINE_DUNE = 0.5, P_VALLEY_SIDE = 0.3,
+			P_VALLEY_SIDE_GAMEPLAY = 0.1;
+	/**
+	 * Gray alder forest (§4.5): the strip by the stream that always stays (clamp(W·2, 5k, 20k) with the zone jitter), and
+	 * meadows beyond it on floors wider than D_STREAM_MEADOW_FLOOR_K·k below D_STREAM_MEADOW_H m.
+	 */
+	public static final double D_GRAY_ALDER_STRIP_W = 2, D_GRAY_ALDER_STRIP_MIN_K = 5, D_GRAY_ALDER_STRIP_MAX_K = 20;
+	public static final double D_STREAM_MEADOW_FLOOR_K = 80, D_STREAM_MEADOW_H = 900;
+
 	// ------------------------------------------------------------------ PRESENT_DAY mode (§2.2, column D): non-forest biome
 
 	/** Variant quantile below the threshold: riparian forest → wet meadow (otherwise arable land), alder carr → wet meadow (otherwise fen). */

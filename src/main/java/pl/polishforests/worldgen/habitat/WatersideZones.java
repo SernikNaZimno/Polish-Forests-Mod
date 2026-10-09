@@ -222,8 +222,9 @@ final class WatersideZones {
 			zone = Zone.TREE_ROW;
 		}
 		if (c.isSpringArea() && c.H < Calibration.H_ASH_ALDER_RIPARIAN) {
-			return HabitatClassifier.Result.of(HabitatBiome.ASH_ALDER_FOREST, zone == Zone.NONE ? Zone.SPRING_AREA : zone,
-					Association.SPRING_FED);
+			// The spring area keeps its zone in both modes (S8: the tree row does not replace it).
+			return HabitatClassifier.Result.of(HabitatBiome.ASH_ALDER_FOREST, zone == Zone.NONE || zone == Zone.TREE_ROW
+					? Zone.SPRING_AREA : zone, Association.SPRING_FED);
 		}
 		if (!c.onValleyFloor()) {
 			// Narrow floor (or none): riparian forest by the bank in a belt of at least 6 blocks (E11), low above the watercourse.
