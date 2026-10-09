@@ -66,6 +66,11 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 	/** Spiral step of the place search in blocks. */
 	private static final int SEARCH_STEP = 52;
 	private static final double LOCATE_BIOME_LIMIT_MS = 2_000;
+	/**
+	 * With {@code -PtimingsReportOnly} the time limits (BIOMES, {@code /locate biome}) are only reported, for runs on a
+	 * machine that is not quiet (another heavy program running); the budgets of §3.6 are checked on a quiet machine.
+	 */
+	private static final boolean TIMINGS_REPORT_ONLY = Boolean.getBoolean("polishforests.timings.reportOnly");
 	/** Budget of the BIOMES stage in the lowland and at rivers (docs/03-m2-biomy.md §3.6). */
 	private static final double BIOMES_LIMIT_MS = 0.2;
 	/**
@@ -225,7 +230,9 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 			report.append(String.format(Locale.ROOT, " %s %.3f / %.3f ms (sampling and classifying %.3f / %.3f ms);",
 					BIOMES_AREAS[a], ms[0], ms[1], classifyMs[0], classifyMs[1]));
 			double limit = a == 1 ? BIOMES_MOUNTAIN_LIMIT_MS : BIOMES_LIMIT_MS;
-			if (Math.max(ms[0], ms[1]) > limit) {
+			if (Math.max(ms[0], ms[1]) > limit && TIMINGS_REPORT_ONLY) {
+				report.append(String.format(Locale.ROOT, " OVER THE LIMIT %.1f ms (timings only reported);", limit));
+			} else if (Math.max(ms[0], ms[1]) > limit) {
 				throw new AssertionError(String.format(Locale.ROOT, "BIOMES in %s %.3f / %.3f ms per chunk (limit %.1f ms)",
 						BIOMES_AREAS[a], ms[0], ms[1], limit));
 			}
@@ -596,7 +603,7 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 		if (key == null || !key.startsWith("commands.locate.") || !key.endsWith(".success")) {
 			throw new AssertionError("/" + command + " failed: " + (result == null ? "no message" : result.getString()));
 		}
-		if (command.startsWith("locate biome") && ms > LOCATE_BIOME_LIMIT_MS) {
+		if (command.startsWith("locate biome") && ms > LOCATE_BIOME_LIMIT_MS && !TIMINGS_REPORT_ONLY) {
 			throw new AssertionError(String.format(Locale.ROOT, "/%s took %.0f ms (limit %.0f ms)", command, ms,
 					LOCATE_BIOME_LIMIT_MS));
 		}
@@ -751,14 +758,17 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 		// Round 2: a stepped mountain stream with open edges across chunk borders and a seam between channels (realistic
 		// scale), a confluence and oxbow lake banks near a channel (gameplay scale), where the guard of round 1 made walls
 		// and pillars and let water spill into removed ground.
+		// Step S6b: stepped water where the fade of the ramp made walls of 2 blocks, and an oxbow lake beyond a chunk border
+		// that only one of two neighbors saw.
 		int[][] areas = real
-				? new int[][] {{-19_484, 11_253}, soil[3], soil[2], soil[0], {-4_389, 2_169}, {59_458, 136_152}, {87_433, -42_036}}
+				? new int[][] {{-19_484, 11_253}, soil[3], soil[2], soil[0], {-4_389, 2_169}, {59_458, 136_152}, {87_433, -42_036},
+						{74_601, -33_251}, {-27_778, -138_754}}
 				: new int[][] {{-1_851, 6_022}, soil[3], soil[2], soil[0], {-134, -52}, {210, 54}, {17_086, 16_598},
-						{-14_271, 22_791}};
+						{-14_271, 22_791}, {7_350, -19_466}, {-16_353, -19_489}};
 		String[] names = real ? new String[] {"river", "lake_reedbed", "alder_carr", "willow_poplar_forest", "oxbow_lake",
-				"cascade", "channel_seam"}
+				"cascade", "channel_seam", "fade_step", "oxbow_border"}
 				: new String[] {"river", "lake_reedbed", "alder_carr", "willow_poplar_forest", "stream", "bog_woodland_stream",
-						"confluence", "oxbow_near_channel"};
+						"confluence", "oxbow_near_channel", "fade_step", "oxbow_border"};
 		StringBuilder report = new StringBuilder("bank shelf:");
 		long shoreAll = 0;
 		long wetAll = 0;
@@ -957,7 +967,7 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 
 	/** Shelf areas of the review of S6, round 2 (stepped water), left out of the shore share. */
 	private static final java.util.Set<String> ROUND2_AREAS = java.util.Set.of("cascade", "channel_seam", "confluence",
-			"oxbow_near_channel");
+			"oxbow_near_channel", "fade_step");
 
 	/** First water blocks counted as S6 spills in the last area (for the failure message). */
 	private static final List<String> SPILLS = new ArrayList<>();

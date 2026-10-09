@@ -417,7 +417,7 @@ BIOMES i TERRAIN nie wydłużyły się (klasyfikacja w `fill()` kosztuje 0,04–
 | Beskidy (obszar `beskids` trybu `stages`) | 0,238–0,287 / 0,210–0,223 | 0,244–0,259 / 0,228–0,248 |
 | duża rzeka (obszar `river`) | 0,167–0,175 / 0,170–0,173 | 0,180–0,196 / 0,161–0,171 |
 
-Budżet 0,2 ms jest dotrzymany na nizinie i przy rzece, **w Beskidach nie**: do 1,44 × budżetu na zimno i 1,05–1,24 × na ciepło. Prawie cały czas to 16 próbek modelu z klasyfikacją, 12–17 µs na kolumnę w Beskidach w grze. W `costTest` sama próbka Beskidów to 7,2 µs (REAL) i 11,1 µs (GAMEPLAY); w grze dochodzą zimne pamięci i JIT. Budżet z §3.6 zakładał próbkę 5–10 µs z M1, a przy budżecie próbki D1 (12 µs REAL, 16 µs GAMEPLAY w Beskidach) już 16 × 16 µs = 0,256 ms. Test pilnuje 0,2 ms na nizinie i 0,5 ms (ochrona przed regresją) w Beskidach i przy rzece.
+Budżet 0,2 ms jest dotrzymany na nizinie i przy rzece, **w Beskidach nie**: do 1,44 × budżetu na zimno i 1,05–1,24 × na ciepło. Prawie cały czas to 16 próbek modelu z klasyfikacją, 12–17 µs na kolumnę w Beskidach w grze. W `costTest` sama próbka Beskidów to 7,2 µs (REAL) i 11,1 µs (GAMEPLAY); w grze dochodzą zimne pamięci i JIT. Budżet z §3.6 zakładał próbkę 5–10 µs z M1, a przy budżecie próbki D1 (12 µs REAL, 16 µs GAMEPLAY w Beskidach) już 16 × 16 µs = 0,256 ms. Test pilnuje 0,2 ms na nizinie i 0,5 ms (ochrona przed regresją) w Beskidach i przy rzece (od S6b według decyzji M2-10: 0,2 ms na nizinie i przy rzece, 0,3 ms w Beskidach; §3.6).
 
 **Do decyzji użytkownika:**
 1. Przyjąć budżet BIOMES w górach jako 16 × budżet próbki D1 (ok. 0,3 ms), a 0,2 ms zostawić dla niziny. Koszt zerowy; cały chunk i tak mierzy S10 (≤ 48 ms, BIOMES to < 1% z tego).
@@ -1018,20 +1018,69 @@ Skutek: przy schodkowej wodzie (potoki górskie, zbiegi, szwy) brzeg zostaje na 
 Wnioski:
 - **Udział rundy 2:** runda 2 / runda 1 wynosi 0,94–1,05. Plan powierzchni przy wodzie kosztuje teraz 0,60–0,64 ms na chunk (runda 1: 0,34–0,39), bo strażnik czyta 2 razy więcej kolumn spoza chunka (45–59 na chunk w tych obszarach). Na nizinie i w Beskidach GAMEPLAY plan się nie zmienił.
 - **Wobec M1 budżet TERRAIN ≤ 1,10 nadal nie jest dotrzymany** w Beskidach REAL (1,20), przy dużej rzece REAL (1,48) i przy rzece GAMEPLAY (1,18). Spełniają go niziny (1,05 i 1,09) i Beskidy GAMEPLAY (1,08). M1 był w tej sesji szybszy niż w rundzie 1 (duża rzeka REAL 178 wobec 248 ms), a kod rundy 1 nie, więc stosunki do M1 różnią się od rundy 1 o kilkanaście punktów. To rozrzut sesji, nie zmiana kodu (runda 1 / M1 przy dużej rzece REAL: 1,18 wtedy, 1,48 teraz).
-- Decyzja o budżecie TERRAIN zostaje u użytkownika z wariantami z rundy 1. Rekomendacja bez zmian: liczyć budżet jak D1 i optymalizować plan powierzchni przy S10 (np. kolumny spoza chunka tylko dla strażnika tam, gdzie lustra w zasięgu się różnią).
+- Decyzja o budżecie TERRAIN zostaje u użytkownika z wariantami z rundy 1. Rekomendacja bez zmian: liczyć budżet jak D1 i optymalizować plan powierzchni przy S10 (np. kolumny spoza chunka tylko dla strażnika tam, gdzie lustra w zasięgu się różnią). **Rozstrzygnięte decyzją M2-11 (2026-10-09): budżet TERRAIN liczony dla całego obszaru jak D1, dolina dużej rzeki REAL akceptowana (§3.6).**
 
 **Odstępstwa po rundzie 2.**
 - Przy schodkowej wodzie (stopnie lustra w promieniu 9 bloków) brzeg nie schodzi do niższego lustra, więc kolumny brzegowe nie mają tam wody obok wierzchu. Kryterium 90% liczę bez obszarów rundy 2.
 - Zapas 2 bloków na rozlew wyższej wody po niższej to heurystyka. Na długim odcinku poniżej ukośnego stopnia wyższa woda może się rozlać dalej niż 9 bloków i dojść do obniżonego brzegu (pierwszy rząd przy niższej wodzie). W obszarach testów i w przeglądzie takiego przypadku już nie ma. Pewne rozwiązanie wymaga zmiany samych stopni lustra w modelu albo w planie (warianty niżej).
 
 **Do decyzji użytkownika** (B3: zgłoszenie rozlewów przetrwało 2 rundy, zostaje tylko rozlew przy ukośnych stopniach lustra):
-1. przyjąć obecny stan: strażnik do 9 bloków, a rozlew wyższej wody po niższej przy ukośnych stopniach traktować jako zachowanie modelu. Bez kosztu; rekomendacja.
+1. przyjąć obecny stan: strażnik do 9 bloków, a rozlew wyższej wody po niższej przy ukośnych stopniach traktować jako zachowanie modelu. Bez kosztu; rekomendacja. **Przyjęty (decyzja M2-15, 2026-10-09, domyślna, do potwierdzenia; „Stan po S6b”).**
 2. Strażnik według połączonej wody: kolumna nie schodzi poniżej najwyższego lustra wody połączonej z najbliższą wodą w promieniu ok. 16 bloków. Ok. 0,5–1 dnia, ok. 2 razy więcej próbek spoza chunka przy wodzie, mniej kolumn brzegowych z wodą obok wierzchu przy stopniach, nadal bez pewności dla bardzo długich odcinków.
 3. Usunąć przyczynę: stabilne stopnie lustra, np. próg z kamieni lub żwiru na wysokości wyższego lustra w poprzek koryta przy każdym stopniu (w planie powierzchni), albo stopnie tylko na prostych odcinkach (w modelu). Ok. 1–2 dni. Zmienia wygląd koryt (progi widoczne w potokach, rzadkie na nizinie), a wariant w modelu wymaga przegenerowania złotego pliku.
 
 **Pełny zestaw testów:** `tools/dev/run-tests test` PASS (drzewo `e6f459303398` przed wpisaniem tej linii, 990 s), złoty test bez zmian i bez listy dozwolonych zmian; `BankShelfTest` trwa teraz ok. 1 min (przegląd 240 obszarów).
 
 **Co zostaje po rundzie 2:** jak po rundzie 1 (S7: rośliny półki i dyski wanilii; ocena w grze tarasów rampy i wzoru „moro”; M4: własne bloki torfu, murszu i torfowca), a do tego decyzje o budżecie TERRAIN i o rozlewie przy ukośnych stopniach lustra.
+
+#### Stan po S6b (2026-10-09)
+
+Krok S6b domyka S6 i S7: naprawia ściany 2 bloków przeniesione z rundy 2 recenzji S6 (§8.7, „Przeniesione z S6”), wdraża borówkę jako `bush` (M2-13, §8.7) i zapisuje decyzje M2-10 … M2-15 (`docs/00-decyzje-do-podjecia.md` E, §3.6, §10.1, §12.4). Teren modelu się nie zmienia: złoty test (`golden_terrain_m1.txt` i `golden_terrain_m2.txt`) przechodzi bez zmian i bez listy dozwolonych zmian; klasyfikator siedlisk też bez zmian.
+
+**Przyczyny ścian (sprawdzone na miejscach recenzenta).** Przegląd recenzenta rundy 2 (losowe obszary rzek i jezior oraz obszary przy schodkowej wodzie: lustro innej wody 6–14 bloków dalej) dawał na `623ab45` schodki ≥ 2 bloków przy płaskim modelu: w trybie schodkowym (ziarno przeglądu 4242, 150 obszarów na skalę) 7 w REAL i 46 w GAMEPLAY, w trybie losowym (7001, 200 obszarów) 6 i 1. Dwie przyczyny:
+1. **Wygaszanie wysokich brzegów.** Spadek kolumny był minimum trzech ograniczeń: rampy od najniższej wody (`W + k − 1`), `MAX_DROP + 1 − c` od najbliższej wody i wygaszania liczonego od wody najkorzystniejszej (największe `FADE + 1 − h − k`). Rampa i wygaszanie pochodziły więc od różnych wód. Woda wyższego lustra wchodząca w okno rampy (Czebyszew 3) podnosiła ograniczenie wygaszania sąsiada o 3 bloki naraz. Przykład GAMEPLAY (7349, −19466): niższy potok (lustro 63) 2 bloki dalej i wyższy (65) w odległości 3 dawały spadek 2, a kolumna obok, dla której wyższy potok leżał w odległości 4, spadek 0.
+2. **Próbkowanie spoza chunka.** Kolumna przy granicy chunka próbkowała kolumny sąsiedniego chunka tylko wtedy, gdy jej własne pola (`channelDist`, `s`) dopuszczały wodę w promieniu 10 bloków, i tylko gdy w jej chunku nie było wody bliżej niż granica. Pola starorzecza kończą się 2–5 bloków od jego brzegu (`s` = ∞ dalej; w GAMEPLAY już 2–3 bloki od brzegu), więc z dwóch sąsiadów w tym samym chunku jeden widział starorzecze za granicą i schodził o 2 bloki, a drugi nie. Przykład REAL (−27777 / −27778, −138754): starorzecze 2 i 3 bloki dalej, w sąsiednim chunku.
+
+**Poprawka (`BankShelf.waterDrop`, `SurfaceBuilder.Work.rampDrop`, `rampBand`).**
+- Każda woda w zasięgu rampy (Czebyszew ≤ 3; lustro `W`, odległość `k`, kolumna `h = a − W` bloków nad nim) dopuszcza spadek `min(h, MAX_DROP, FADE − h) + 1 − k`, czyli rampę i wygaszanie liczone od tej samej wody. Kolumna bierze największy spadek po wodach w zasięgu (co najmniej 0). Przy jednym lustrze to dokładnie spadek rund 1 i 2; przy wodzie schodkowej spadek jest równy albo mniejszy niż dawniej (maksimum minimów zamiast minimum maksimów), więc nie ma nowych obniżeń. Każdy składnik zmienia się między sąsiadami o najwyżej 1 blok i na brzegu okna wynosi ≤ 0, więc wejście wody w okno nie robi stopnia.
+- Kolumny spoza chunka dla rampy wybiera jedna decyzja na kolumnę spoza chunka, wspólna dla całego planu: kolumnę z pasa 3 bloków za granicą próbkujemy (albo bierzemy z `ColumnCache`), gdy pola którejś kolumny chunka w odległości do 3 bloków od niej dopuszczają wodę w tej odległości (`BankShelf.waterReach`, zapas 2 bloków jak dotąd). Wszystkie kolumny chunka widzą więc tę samą wodę za granicą. Zniknęło też odcięcie „woda w chunku bliżej niż granica”, które zmieniało wynik zależnie od chunka.
+- Strażnik rundy 2 (`guardField`) i reszta planu bez zmian.
+
+**Wyniki przeglądu (te same obszary i ziarna co recenzent; schodki ≥ 2 przy płaskim modelu, REAL / GAMEPLAY, przed → po).**
+
+| Przegląd | Schodki ≥ 2 | Kolumny brzegowe z wodą obok wierzchu | Próbki spoza chunka na chunk |
+|---|---|---|---|
+| schodkowy, ziarno 4242, 150 obszarów | 7 → 0 / 46 → 0 | 86,4% / 85,8% (bez zmian) | 96,2 → 90,4 / 86,5 → 76,2 |
+| losowy, ziarno 7001, 200 obszarów | 6 → 0 / 1 → 0 | 99,2% / 98,7% (bez zmian) | 45,0 → 43,2 / 50,0 → 47,4 |
+| schodkowy, nowe ziarno 777, 150 obszarów | 3 → 0 (REAL) / 0 | 82,4% / 87,6% | 97,3 → 91,1 (REAL) / 82,3 |
+| losowy, nowe ziarno 9001, 300 obszarów | 0 / 0 (przed: 0 / 0) | 98,2% / 98,7% | 43,1 / 44,8 |
+
+We wszystkich przeglądach po poprawce: 0 nowych otwartych krawędzi wody, 0 przepływów z otwartych krawędzi modelu na usunięty grunt, 0 rowów, 0 suchych kolumn poniżej pobliskiego lustra, 0 stopni modelu urosłych o więcej niż 1. Stopnie modelu 1 → 2 (rampa na stromym brzegu) bez istotnej zmiany: schodkowy 4242 566 → 574 (REAL) i 313 → 308 (GAMEPLAY), czyli 0,4–0,6% obniżonych kolumn (próg testów 1%). „Kolumny brzegowe z wodą obok wierzchu” w przeglądzie schodkowym są niższe celowo: przy schodkowej wodzie strażnik zostawia brzeg na wyższym lustrze (runda 2).
+
+**Testy JUnit.**
+- `BankShelfTest`: nowe obszary nazwane REAL `fade_step` (74 601, −33 251) i `oxbow_border` (−27 778, −138 754), GAMEPLAY `fade_step` (7350, −19 466), `fade_step_b` (13 574, −5053) i `oxbow_border` (−16 353, −19 489). Na `623ab45` `shelfHoldsTheWater` nie przechodzi (schodki 2 w `fade_step` i `oxbow_border`), po poprawce: schodki 0 / 0, kolumny brzegowe z wodą obok wierzchu bez obszarów schodkowych (rund 2 i S6b) 97,7% z 1896 (REAL) i 99,4% z 2466 (GAMEPLAY) (runda 2: 97,2% z 1412 i 99,3% z 2148; teraz z obszarem `oxbow_border`), `shelfOverRandomWaterAreas` bez zmian (98,3% / 98,1%, 0 schodków).
+- Nowa klasa `SteppedWaterShelfTest` (`@Tag("slow")`, 102 s w pełnym zestawie): 40 losowych obszarów przy schodkowej wodzie na skalę, wybranych jak w przeglądzie recenzenta (ziarno 4242), z kryteriami `shelfOverRandomWaterAreas` bez progu udziału kolumn brzegowych (tylko raport). Na `623ab45` nie przechodzi (REAL: ściany w obszarach a29 i a30, GAMEPLAY w a1, a6, a23 i a25), po poprawce 0 schodków, 0 rozlewów i rowów; stopnie modelu 1 → 2: 259 z 31 580 (0,8%) i 161 z 17 331 (0,93%) obniżonych kolumn, blisko progu 1% (na `623ab45` podobnie: 0,8% w REAL przy 60 obszarach).
+- `GroundLayerPlanTest.noSweetBerryBushes` (M2-13, §8.7).
+
+**Test w grze** (`-Pgametest=habitats`, obie skale, nowe obszary półki `fade_step` i `oxbow_border` w obu skalach, BUILD SUCCESSFUL z `-PtimingsReportOnly`, niżej).
+- Schodki ≥ 2 przy płaskim modelu: 0 we wszystkich 9 (REAL) i 10 (GAMEPLAY) obszarach. Po 200 tickach woda poza planem w usuniętym gruncie lub z dala od otwartych krawędzi modelu: 0 wszędzie, nowe otwarte krawędzie 0. Woda nad gruntem modelu przy jego otwartych krawędziach (stan modelu, tylko raport): jak w rundzie 2 (duża rzeka REAL 56, schodkowy potok REAL 486, szew koryt 239, …) i nowe `fade_step` 30 (REAL) i 24 (GAMEPLAY).
+- Kolumny brzegowe z wodą obok wierzchu (bez obszarów schodkowych): 97,8% z 769 (REAL) i 99,3% z 973 (GAMEPLAY) (runda 2: 96,9% z 423 i 99,7% z 714); `oxbow_border` 342 z 346 i 254 z 259, `fade_step` GAMEPLAY 50 ze 152 (brzeg na wyższym lustrze).
+- Gleby 2252 z 2253 (REAL, 1 pod dyskiem wanilii) i 1645 z 1689 (GAMEPLAY, 39 pod dyskami, 5 pod głazami narzutowymi), `PACK_FALLBACKS` 0 z 44 587 i 0 z 69 859 sekcji, brak `ChunkHabitats` 0, `revisit` bez braków.
+- Próbki spoza chunka w całej sesji: 28,6 (REAL) i 25,1 (GAMEPLAY) na chunk, z czego 48% i 46% generator użył potem ponownie (runda 2: 28,1 i 25,9; 47% i 45%).
+- `VegetationClientGameTest` (`-Pgametest=vegetation -Psites=none`): transekty §4.6 bez zmian (wysokie 74,7–76,7% REAL, 69,7–87,1% GAMEPLAY, trawa i małe kwiaty 0–2,4%, goły grunt 5,3–12,2%), pokrycie koronami wiklin 81,2–85,4% / 72,1%, kosodrzewiny 69,9% / 70,5%, liście do opadnięcia 0, `HABITAT_MISS` 0.
+
+**Pomiary czasu: niezrobione (maszyna nie była spokojna).** W czasie kroku na komputerze działała inna ciężka aplikacja (gra zajmująca stale ok. 2,7 z 12 wątków), więc według zasady pomiarów (spokojna maszyna, A/B w jednej sesji) nie mierzyłem TERRAIN ani `costTest`. W tych warunkach BIOMES w `HabitatsClientGameTest` wyszło ponad progi: nizina 0,16–0,26 ms, Beskidy 0,27–0,46 ms, rzeka 0,22–0,26 ms na chunk (na spokojnej maszynie w S5: 0,10–0,16, 0,21–0,29 i 0,16–0,20 ms); BIOMES nie zależy od planu powierzchni, więc to obciążenie maszyny, nie S6b. Dlatego test ma nowy przełącznik `-PtimingsReportOnly` (progi czasu BIOMES i `/locate biome` tylko w raporcie; domyślnie progi działają) i z nim przeszedł. Koszt planu powierzchni: pętla rampy przegląda tyle samo kolumn co dotąd (okno 7 × 7), decyzja o pasie za granicą to ok. 5 tys. tanich porównań na chunk, a próbek spoza chunka jest w przeglądach o 4–12% mniej (w grze 28,6 / 25,1 na chunk wobec 28,1 / 25,9 w rundzie 2), więc TERRAIN nie powinien wzrosnąć; pomiar `-Pgametest=stages` i BIOMES z progami M2-10 na spokojnej maszynie zostaje do S10 (albo do najbliższego kroku na spokojnej maszynie).
+
+**Decyzje użytkownika wpisane w S6b.**
+- **M2-11 (TERRAIN):** budżet 1,10 × M1 liczymy dla całego obszaru jak D1; dolina dużej rzeki REAL (1,28–1,48 × M1 w pomiarach S6) jest akceptowana (§3.6). Warianty z rund 1 i 2 nie są już potrzebne; optymalizacja planu powierzchni zostaje przy S10.
+- **M2-15 (rozlew przy ukośnych stopniach lustra, domyślne, do potwierdzenia):** przyjęty wariant 1 z rundy 2: strażnik do 9 bloków, a rozlew wyższej wody po niższej przy ukośnych stopniach lustra modelu to zachowanie modelu (rzadkie rozlewisko), bez strażnika 16 bloków i bez progów w korytach.
+- **M2-10 (BIOMES w górach):** próg testu w Beskidach 0,3 ms (wcześniej 0,5 ms ochrony przed regresją), nizina i rzeka 0,2 ms (rzeka wcześniej 0,5 ms) (§3.6).
+
+**Pełny zestaw testów:** `tools/dev/run-tests test` PASS (drzewo `858efb0df5f3` przed wpisaniem tej linii, 1144 s), złoty test bez zmian i bez listy dozwolonych zmian.
+
+**Zostaje (nie zmieniane w S6b).**
+- Strażnik rundy 2 nadal decyduje o próbkowaniu spoza chunka z pól najbliższej kolumny chunka. W przeglądzie z nowym ziarnem (777, REAL) recenzencki sprawdzian strażnika znalazł 3 kolumny przy szwie dwóch potoków (88 404–88 405, 61 657–61 658) 1 blok poniżej lustra wody (434) w odległości Manhattan 9 za granicą chunka: `channelDist` kolumny chunka mierzy tam odległość do innego koryta i myli się o 2,04 bloku (zapas 2). Tak samo na `623ab45` (te same 3 kolumny), więc to stan sprzed S6b. Rozlewu nie ma: grunt między wodami leży na 435, ponad oboma lustrami (0 przepływów z otwartych krawędzi i 0 rozlewów w grze). Do S10: zapas 3 bloków albo decyzja strażnika jak w `rampBand` (z kilku kolumn chunka), z pomiarem kosztu.
+- Bez zmian z rund 1–2: tarasy rampy i wzór „moro” do oceny w grze, własne bloki torfu, murszu i torfowca w M4, drobne płaty dysków wanilii przy kałużach.
 
 ---
 
@@ -1146,7 +1195,7 @@ Liczby to drzewa na chunk. Gatunki objęte regułami zasięgu (§9) mają wagę 
 
 | Grupa | Skład |
 |---|---|
-| bory | `moss_carpet` 30–70% (świeży), `pale_moss_carpet` 50–80% jako chrobotki (suchy), `bush` jako krzewinki 20–40%, `sweet_berry_bush` jako borówka na podzolu i mchu, `fern`/`large_fern` jako orlica 5–15% (BM) |
+| bory | `moss_carpet` 30–70% (świeży), `pale_moss_carpet` 50–80% jako chrobotki (suchy), `bush` jako krzewinki 20–40% (od S6b także borówka, decyzja M2-13: bez `sweet_berry_bush`, własna borówka w M4), `fern`/`large_fern` jako orlica 5–15% (BM) |
 | grąd | `leaf_litter` 30–60%, `wildflowers` jako geofity 10–30%, `lily_of_the_valley` 3%, `fern` 5%, trawa ≤ 10% |
 | buczyna | `leaf_litter` 70–90%, poza tym prawie nic |
 | ols, łęgi | `tall_grass` i `large_fern` 60–90%, `bush`, `firefly_bush` przy wodzie, lepiężnik w OlJ |
@@ -1233,12 +1282,12 @@ Pojedyncze przebiegi różnią się do ok. 25% (np. dekoracja REAL Beskidy: baza
 - **Test w grze**: transekty i zrzuty są w nowym `VegetationClientGameTest`, nie w `HabitatsClientGameTest` (krok w `m2_steps.json`: `SiedliskaClientGameTest`); transekty w trybie N, tryb D w S8. Transekt to obszar 5 × 5 chunków wokół przecięcia rzeki, nie linia.
 - **Od rundy 1:** świerczyna ma 12 drzew na chunk aż do strefy granicy lasu (`TIMBERLINE`), a w niej 4 (skok na granicy strefy zamiast spadku „12 → 4” z §8.5; kod siedliska nie niesie odległości od granicy lasu, rampa może przyjść z M3/M4); wikliny GAMEPLAY pokrywają koronami 72% strefy (§8.5: 80–100%; wąska strefa, korony nad wodą i na łachach), REAL 81–85%; liście, które nie mają kłody w 6 krokach (opadłyby w grze), `FastTreeFeature` usuwa od razu (wanilia zostawia je do opadnięcia); jałowiec ma 1–2 kłody (wysokość z koroną nadal 2–3 bloki, §8.4); rośliny podwójne i pnącza zaznaczone do post-processingu kosztują przy przejściu chunka w stan pełny po jednym sprawdzeniu kształtu na zaznaczoną pozycję (2 na roślinę podwójną, w łęgach do ok. 250 na chunk) na wątku serwera; tego kosztu nie mierzyliśmy osobno.
 
-**Do decyzji użytkownika (B3):** budżet FEATURES ≤ 1,0 × S0 (§3.6: baza „biomy zastępcze”). Przy tym samym pokryciu lasem (baza leśna, pomiar z rundy 1) dekoracja ma 0,72–1,00, a etap FEATURES 0,83–1,09 (REAL Beskidy w granicach szumu); wobec bazy z zastępczymi biomami bez drzew budżet jest przekroczony na nizinie REAL (1,18 / etap 1,09) i przy rzekach (REAL 1,14 / 1,13, GAMEPLAY 1,31 / 1,19). Warianty:
+**Do decyzji użytkownika (B3; od S6b rozstrzygnięte domyślnie decyzją M2-14, wariant 1, do potwierdzenia):** budżet FEATURES ≤ 1,0 × S0 (§3.6: baza „biomy zastępcze”). Przy tym samym pokryciu lasem (baza leśna, pomiar z rundy 1) dekoracja ma 0,72–1,00, a etap FEATURES 0,83–1,09 (REAL Beskidy w granicach szumu); wobec bazy z zastępczymi biomami bez drzew budżet jest przekroczony na nizinie REAL (1,18 / etap 1,09) i przy rzekach (REAL 1,14 / 1,13, GAMEPLAY 1,31 / 1,19). Warianty:
 1. liczyć budżet wobec bazy przy tym samym pokryciu (baza leśna; koszt zerowy; rekomendacja: tryb naturalny, decyzja M2-B, z definicji ma więcej drzew niż zastępcze `plains` i `meadow`, a przy tym samym pokryciu S7 jest tańszy od wanilii);
 2. rzadsze krzewy i drzewa przy rzekach i na nizinie (np. wikliny 16% → 9%, drzewostan −20%), żeby zmieścić się wobec bazy zastępczej; poniżej palet §8.5 i pokrycia wiklin z §8.5, kosztem §4.6 przy rzekach;
 3. dalsza optymalizacja (własne kłody i krzewy bez `TreeFeature`, tańsze rudy w wysokim świecie REAL) przy S10.
 
-**Przeniesione z S6 (nienaprawione, poza zakresem S7):** dwa zgłoszenia rundy 2 recenzji S6 dotyczą planu powierzchni, nie roślinności, więc S7 ich nie zmienia: (1) ściany 2 bloków przy schodkowej wodzie i przy starorzeczach (nieciągły człon wygaszania w `nearestWater` dla wody w pierścieniu Czebyszewa 4 i decyzja o próbkowaniu spoza chunka z pól kolumny; recenzent: REAL 7 schodków w 4 obszarach, GAMEPLAY 46 w 13 obszarach w próbie przy zmianie lustra; podpowiedź naprawy w zgłoszeniu: okno wygaszania do Czebyszewa 7 z pola strażnika i decyzja o próbkowaniu na pas brzegowy chunka); (2) TERRAIN ≤ 1,10 × S0 niedotrzymany (REAL Beskidy 1,20, duża rzeka 1,48, GAMEPLAY rzeka 1,18), czeka na decyzję użytkownika z S6.
+**Przeniesione z S6 (nienaprawione, poza zakresem S7; od S6b: (1) naprawione, §7.6 „Stan po S6b”, (2) rozstrzygnięte decyzją M2-11):** dwa zgłoszenia rundy 2 recenzji S6 dotyczą planu powierzchni, nie roślinności, więc S7 ich nie zmienia: (1) ściany 2 bloków przy schodkowej wodzie i przy starorzeczach (nieciągły człon wygaszania w `nearestWater` dla wody w pierścieniu Czebyszewa 4 i decyzja o próbkowaniu spoza chunka z pól kolumny; recenzent: REAL 7 schodków w 4 obszarach, GAMEPLAY 46 w 13 obszarach w próbie przy zmianie lustra; podpowiedź naprawy w zgłoszeniu: okno wygaszania do Czebyszewa 7 z pola strażnika i decyzja o próbkowaniu na pas brzegowy chunka); (2) TERRAIN ≤ 1,10 × S0 niedotrzymany (REAL Beskidy 1,20, duża rzeka 1,48, GAMEPLAY rzeka 1,18), czeka na decyzję użytkownika z S6.
 
 **Punkt kontrolny 2** (`docs/m2/punkt-kontrolny-2/`, `-Pgametest=vegetation`, ziarno 20260927, południe, bez HUD; zrzuty z rundy 1 poprawek: kamera w jednym z 16 kierunków 8–16 bloków od środka miejsca z najczystszym widokiem (linia do środka i do brzegów kadru), w lasach 2–4 bloki nad gruntem, w miejscach otwartych 10, wikliny 16; miejsca jak w teście gleb, §12.3, poza wiklinami GAMEPLAY przy dużej rzece; do tego 7 częstych lasów bez miejsca gleb). Do akceptacji użytkownika:
 
@@ -1324,6 +1373,8 @@ Naprawa w `FastTreeFeature`: kłody z rozmieszczacza korony są źródłami; li�
 - Buk na skraju zasięgu: w buczynach buk bez rampy (`range_ramp`).
 - Determinizm: zapis w §12.3 (do S10).
 - Borówka jako `sweet_berry_bush`: nadal do decyzji użytkownika.
+
+**Po S6b (2026-10-09).** Borówka to wanilijny `bush` (decyzja M2-13, domyślna, do potwierdzenia): waga `sweet_berry_bush` przeszła na `bush` w regułach runa borów (suchy, świeży, nadmorski, wilgotny, mieszany), boru bagiennego, torfowiska wysokiego, lasu mieszanego i świerczyny oraz korony klifu, więc pokrycie i udział krzewinek się nie zmieniły (np. bór świeży: krzewinki 31,9% kolumn, wcześniej 24,1% `bush` i 7,7% `sweet_berry_bush`). Żadna paleta z datagenu nie ma już `sweet_berry_bush` (`GroundLayerPlanTest.noSweetBerryBushes`; krzewinki borów świeżego, wilgotnego i bagiennego 25–35%, w zakresie §8.6). Budżet FEATURES liczymy przy tym samym pokryciu lasem (decyzja M2-14, domyślna, do potwierdzenia; §3.6), więc wariant 1 z listy wyżej. Zgłoszenia z rundy 2 S6 przeniesione do S7 (ściany 2 bloków przy schodkowej wodzie i starorzeczach) naprawił S6b (§7.6, „Stan po S6b”); budżet TERRAIN rozstrzyga decyzja M2-11 (§3.6).
 
 ---
 
@@ -1450,7 +1501,7 @@ Każdą strukturę sprawdza gametest (`/locate structure`), a jej położenie na
 
 **Struktury w trybie roślinności naturalnej (domyślnym, decyzja M2-B; runda 1 recenzji S5).** W tym trybie nie ma `hay_meadow`, `arable_land` ani `wet_meadow` (recenzent nie znalazł ich w promieniu 60 km w żadnej skali). Skutki:
 - `abandoned_camp_meadow` stoi teraz także na `heath` i `alpine_grassland` (hala jak wanilijna łąka górska), wcześniej nie mogło powstać wcale;
-- `village_plains` i posterunki nizinne zostają tylko na wrzosowisku (≤ 5% sandru): w REAL recenzent nie znalazł wioski równinnej w promieniu ok. 54 km (wyszukiwanie 5,4 s), w GAMEPLAY najbliższa była 5,4 km od środka. Wioski wanilijne to rozwiązanie do M8 (potem polskie wsie, które w trybie „dzisiejsza Polska” mają łąki i pola); czy w trybie naturalnym dodać wioski np. do borów lub łąk, zostaje do decyzji użytkownika;
+- `village_plains` i posterunki nizinne zostają tylko na wrzosowisku (≤ 5% sandru): w REAL recenzent nie znalazł wioski równinnej w promieniu ok. 54 km (wyszukiwanie 5,4 s), w GAMEPLAY najbliższa była 5,4 km od środka. Wioski wanilijne to rozwiązanie do M8 (potem polskie wsie, które w trybie „dzisiejsza Polska” mają łąki i pola). **Decyzja M2-12 (2026-10-09):** wioski i posterunki rozbójników także w lasach, jak w wanilii (`has_structure/village_*` i `pillager_outpost` w odpowiednich biomach leśnych i nieleśnych, typ wioski dobrany do biomu, np. `village_plains` na łąkach, wrzosowisku i w lasach liściastych, `village_taiga` w borach i świerczynach; dokładny przydział w S8), nie tylko na wrzosowisku. Wdrożenie i nowa tabela w tej sekcji w S8 (albo osobnym małym krokiem po S7); do tego czasu obowiązuje tabela wyżej;
 - igloo tylko na hali w Beskidach.
 
 `/locate structure` dla struktury nieobecnej w pobliżu blokuje wątek serwera na długo (zmierzone przez recenzenta: igloo 30,2 s GAMEPLAY bez wyniku i 5,4 s REAL, `abandoned_camp_meadow` 19,4 s GAMEPLAY przed zmianą tagu, `abandoned_camp_old_growth_spruce_taiga` 12,3 s GAMEPLAY, wynik 27,9 km, `ruined_portal_ocean` 12,5 s REAL). W GAMEPLAY to głównie budowanie zimnych kafli siatek w promieniu ok. 51 km. Wanilia wypisuje „0 bloków” dla wyników dalszych niż ok. 46 km (przepełnienie int w `dist2d`), np. `pillager_outpost` w (40512, 32304) REAL. Opis też w `docs/02-wydajnosc.md` (znane problemy).
@@ -1572,7 +1623,7 @@ Każdą strukturę sprawdza gametest (`/locate structure`), a jej położenie na
 4. Śnieg i pory roku jak w §6.1, z SS i bez.
 5. Działają twierdze, kopalnie i komnaty prób. Każdy biom i każda strefa dają się znaleźć komendą.
 6. Budżety z §3.6 są dotrzymane.
-7. Użytkownik zaakceptował PNG siedlisk (punkt kontrolny 1) i zrzuty roślinności (punkt kontrolny 2).
+7. Użytkownik zaakceptował PNG siedlisk (punkt kontrolny 1) i zrzuty roślinności (punkt kontrolny 2). *Stan 2026-10-09:* zrzuty punktu kontrolnego 2 (`docs/m2/punkt-kontrolny-2/`, strona https://claude.ai/artifact/FKKFrZZMn2FZmmevt9nAVz) **czekają na akceptację użytkownika**; punkt 7 jest otwarty, dopóki ich nie zaakceptuje.
 8. Dokumentacja i decyzje są zaktualizowane (§15).
 
 ---

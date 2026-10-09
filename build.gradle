@@ -327,6 +327,10 @@ tasks.named('runClientGameTest') {
 	if (project.hasProperty('debugHabitats')) {
 		jvmArgs '-Dpolishforests.debug.habitats=true'
 	}
+	// Time limits of HabitatsClientGameTest only reported (-PtimingsReportOnly), for runs on a machine that is not quiet.
+	if (project.hasProperty('timingsReportOnly')) {
+		jvmArgs '-Dpolishforests.timings.reportOnly=true'
+	}
 	if (project.hasProperty('profile')) {
 		jvmArgs "-XX:StartFlightRecording=filename=${layout.buildDirectory.file('profile.jfr').get().asFile.absolutePath},settings=profile"
 	}
