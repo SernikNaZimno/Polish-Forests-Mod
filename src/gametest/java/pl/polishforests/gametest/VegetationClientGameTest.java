@@ -99,7 +99,15 @@ public final class VegetationClientGameTest implements FabricClientGameTest {
 	private static final int[][] EXTRA_REAL = {{-144, 32}, {-231_006, -134_146}, {16, 0}, {99_409, 1_034_685}, null,
 			{-19_612, 11_205}, {155_490, 1_059_162}};
 	private static final int[][] EXTRA_GAMEPLAY = {{-32, 32}, {-1_280, -496}, {0, 0}, {27_273, 3_606}, {27_305, 3_718},
-			{-1_787, 6_086}, {27_825, 3_374}};
+			{-1_787, 6_086}, {28_072, 3_880}};
+	/** Radius (blocks) of the disk around the center of an extra place in which its biome must dominate. */
+	private static final int EXTRA_SHARE_RADIUS = 16;
+	/**
+	 * Least share of the named biome in that disk (S7 review round 2: the gameplay gray alder forest at (27825, 3374)
+	 * was a single column of it inside an oak-hornbeam forest, 9% of the disk). The narrow belt of the realistic gray alder
+	 * forest along its stream fills 39%.
+	 */
+	private static final double EXTRA_MIN_SHARE = 0.30;
 	/** Start of the search for the willow scrub of the gameplay scale: the large river of the transect. */
 	private static final int[] WILLOW_SCRUB_GAMEPLAY = {-1_851, 6_022};
 
@@ -524,6 +532,13 @@ public final class VegetationClientGameTest implements FabricClientGameTest {
 			}
 			int[] center = c;
 			taken.add(center);
+			HabitatBiome named = HabitatBiome.byId(name);
+			double share = named == null ? Double.NaN
+					: sp.getServer().computeOnServer(s -> biomeShare(s, center[0], center[1], named));
+			if (p >= soil.length && !(share >= EXTRA_MIN_SHARE)) {
+				throw new AssertionError(String.format(Locale.ROOT, "%s %s: center (%d, %d) holds only %.1f%% of %s within %d blocks",
+						scale, name, center[0], center[1], 100 * share, name, EXTRA_SHARE_RADIUS));
+			}
 			boolean open = OPEN.contains(name);
 			int centerY = sp.getServer().computeOnServer(s -> groundY(s, center[0], center[1]));
 			String biome = sp.getServer().computeOnServer(s -> centerBiome(s, center[0], center[1]));
@@ -538,10 +553,11 @@ public final class VegetationClientGameTest implements FabricClientGameTest {
 					pitch));
 			context.waitTicks(20 * 25);
 			String client = context.computeOnClient(mc -> mc.level.getChunkSource().gatherStats());
-			PolishForests.LOG.info("[vegetation] {} {}: center ({}, {}) {} ground Y {}, camera ({}, {}, {}) yaw {} pitch {}, "
-					+ "view score {} (blocked steps); client {}", scale, name, center[0], center[1], biome, centerY, camera[0],
-					camera[1], camera[2], String.format(Locale.ROOT, "%.1f", yaw), String.format(Locale.ROOT, "%.1f", pitch),
-					camera[3], client);
+			PolishForests.LOG.info("[vegetation] {} {}: center ({}, {}) {} ({} of the biome within {} blocks) ground Y {}, "
+					+ "camera ({}, {}, {}) yaw {} pitch {}, view score {} (blocked steps); client {}", scale, name, center[0],
+					center[1], biome, Double.isNaN(share) ? "-" : String.format(Locale.ROOT, "%.0f%%", 100 * share),
+					EXTRA_SHARE_RADIUS, centerY, camera[0], camera[1], camera[2], String.format(Locale.ROOT, "%.1f", yaw),
+					String.format(Locale.ROOT, "%.1f", pitch), camera[3], client);
 			context.waitTicks(20 * 15);
 			context.takeScreenshot("vegetation_" + name + "_" + scale);
 		}
@@ -554,6 +570,28 @@ public final class VegetationClientGameTest implements FabricClientGameTest {
 	}
 
 	/** Biome of the habitat code at the column (x, z) (the log shows that a place is what its name says). */
+	/** Share of the columns (every 2 blocks) of the disk of {@link #EXTRA_SHARE_RADIUS} around (x, z) in the biome. */
+	private static double biomeShare(MinecraftServer server, int x, int z, HabitatBiome biome) {
+		PolandChunkGenerator gen = generator(server);
+		long seed = server.overworld().getSeed();
+		LandscapeModel m = gen.model(seed);
+		HabitatClassifier k = gen.classifier(seed);
+		int r = EXTRA_SHARE_RADIUS;
+		int all = 0;
+		int hits = 0;
+		for (int dx = -r; dx <= r; dx += 2) {
+			for (int dz = -r; dz <= r; dz += 2) {
+				if (dx * dx + dz * dz <= r * r) {
+					all++;
+					if (Habitat.biome(k.classify(m.sample(x + dx, z + dz), x + dx, z + dz)) == biome) {
+						hits++;
+					}
+				}
+			}
+		}
+		return (double) hits / all;
+	}
+
 	private static String centerBiome(MinecraftServer server, int x, int z) {
 		PolandChunkGenerator gen = generator(server);
 		long seed = server.overworld().getSeed();
