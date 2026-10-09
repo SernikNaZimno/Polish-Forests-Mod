@@ -52,7 +52,8 @@ import pl.polishforests.worldgen.habitat.Zone;
  * carriers ({@code polishforests:flowers/<group>}, in the tag {@code minecraft:can_spawn_from_bone_meal}) and the
  * glacial erratics of step 2 ({@code polishforests:glacial_erratics}). Only vanilla blocks (decision M2-D): reed is
  * sugar cane, cattail small dripleaf, butterbur big dripleaf, dwarf shrubs (heather, bilberry, crowberry) the
- * {@code bush} block, bilberry also sweet berry bushes, lichens pale moss carpet, heather on the heath pink petals,
+ * {@code bush} block (bilberry too, decision M2-13: no sweet berry bushes, which slow and hurt the player; an own
+ * bilberry comes in M4), lichens pale moss carpet, heather on the heath pink petals,
  * spring geophytes wildflowers, marram grass the dry grasses, and beach wrack leaf litter.
  *
  * <p>The densities follow §8.5 (trees per chunk and composition), §8.6 (ground layer cover) and the hard rule of §4.6:
@@ -486,8 +487,7 @@ final class ModVegetation {
 		l.land(HabitatCondition.zones(Zone.STRANDLINE), 0.08F, 3, b(Blocks.SHORT_DRY_GRASS, 3), b(Blocks.TALL_DRY_GRASS, 1));
 		l.land(HabitatCondition.zones(Zone.EMBRYO_DUNE), 0.15F, 3, b(Blocks.SHORT_DRY_GRASS, 6), b(Blocks.TALL_DRY_GRASS, 4));
 		l.land(HabitatCondition.zones(Zone.FLOATING_MAT), 0.6F, 3, b(Blocks.MOSS_CARPET, 7), b(Blocks.BUSH, 1));
-		l.land(HabitatCondition.zones(Zone.CLIFF_TOP), 0.4F, 3, b(Blocks.BUSH, 4), b(Blocks.SWEET_BERRY_BUSH, 2),
-				b(Blocks.SHORT_GRASS, 4));
+		l.land(HabitatCondition.zones(Zone.CLIFF_TOP), 0.4F, 3, b(Blocks.BUSH, 6), b(Blocks.SHORT_GRASS, 4));
 		return l.palette();
 	}
 
@@ -508,7 +508,6 @@ final class ModVegetation {
 		Plant bush = b(Blocks.BUSH, 1);
 		Plant moss = b(Blocks.MOSS_CARPET, 1);
 		Plant lichen = b(Blocks.PALE_MOSS_CARPET, 1);
-		Plant berry = b(Blocks.SWEET_BERRY_BUSH, 1);
 		Plant dryGrass = b(Blocks.SHORT_DRY_GRASS, 1);
 		l.land(HabitatCondition.zones(Zone.HERB_FRINGE, Zone.TALL_HERBS, Zone.MONTANE_TALL_HERBS, Zone.WILLOW_SCRUB,
 				Zone.WILLOW_CARR, Zone.SPRING_AREA, Zone.SHORE_REEDBED, Zone.RIVERSIDE_WILLOWS, Zone.GRAVEL_BAR, Zone.POINT_BAR),
@@ -532,21 +531,18 @@ final class ModVegetation {
 		l.land(biomes(ARABLE_LAND), 0.3F, 2, grass.withWeight(30), b(Blocks.POPPY, 5), b(Blocks.CORNFLOWER, 5));
 		l.land(biomes(HEATH), 0.75F, 4, cat(bed(Blocks.PINK_PETALS, 40), lichen.withWeight(12), grass.withWeight(15),
 				dryGrass.withWeight(8), bush.withWeight(5)));
-		l.land(biomes(RAISED_BOG), 0.5F, 3, cat(bush.withWeight(25), berry.withWeight(6), grass.withWeight(10),
+		l.land(biomes(RAISED_BOG), 0.5F, 3, cat(bush.withWeight(31), grass.withWeight(10),
 				bed(Blocks.PINK_PETALS, 10)));
-		l.land(biomes(BOG_WOODLAND), 0.85F, 4, moss.withWeight(45), bush.withWeight(25), berry.withWeight(10), fern.withWeight(5));
-		l.land(biomes(DRY_PINE_FOREST), 0.75F, 4, lichen.withWeight(55), bush.withWeight(15), dryGrass.withWeight(8),
-				berry.withWeight(2));
-		l.land(biomes(FRESH_PINE_FOREST), 0.85F, 4, moss.withWeight(50), bush.withWeight(25), berry.withWeight(8),
-				fern.withWeight(5));
-		l.land(biomes(COASTAL_PINE_FOREST), 0.8F, 4, moss.withWeight(35), bush.withWeight(30), lichen.withWeight(10),
-				berry.withWeight(5));
-		l.land(biomes(MOIST_PINE_FOREST), 0.9F, 4, moss.withWeight(50), bush.withWeight(15), berry.withWeight(10),
-				fern.withWeight(12), largeFern.withWeight(3));
-		l.land(biomes(MIXED_PINE_FOREST), 0.85F, 4, cat(moss.withWeight(30), bush.withWeight(20), fern.withWeight(12),
-				largeFern.withWeight(3), berry.withWeight(6), litter(15)));
+		l.land(biomes(BOG_WOODLAND), 0.85F, 4, moss.withWeight(45), bush.withWeight(35), fern.withWeight(5));
+		l.land(biomes(DRY_PINE_FOREST), 0.75F, 4, lichen.withWeight(55), bush.withWeight(17), dryGrass.withWeight(8));
+		l.land(biomes(FRESH_PINE_FOREST), 0.85F, 4, moss.withWeight(50), bush.withWeight(33), fern.withWeight(5));
+		l.land(biomes(COASTAL_PINE_FOREST), 0.8F, 4, moss.withWeight(35), bush.withWeight(35), lichen.withWeight(10));
+		l.land(biomes(MOIST_PINE_FOREST), 0.9F, 4, moss.withWeight(50), bush.withWeight(25), fern.withWeight(12),
+				largeFern.withWeight(3));
+		l.land(biomes(MIXED_PINE_FOREST), 0.85F, 4, cat(moss.withWeight(30), bush.withWeight(26), fern.withWeight(12),
+				largeFern.withWeight(3), litter(15)));
 		l.land(biomes(MIXED_FOREST), 0.8F, 4, cat(litter(40), moss.withWeight(12), fern.withWeight(8),
-				bed(Blocks.WILDFLOWERS, 8), grass.withWeight(5), berry.withWeight(3)));
+				bed(Blocks.WILDFLOWERS, 8), grass.withWeight(5), bush.withWeight(3)));
 		l.land(biomes(OAK_HORNBEAM_FOREST), 0.85F, 4, cat(litter(45), bed(Blocks.WILDFLOWERS, 20),
 				b(Blocks.LILY_OF_THE_VALLEY, 4), fern.withWeight(6), grass.withWeight(6)));
 		l.land(biomes(LOWLAND_BEECH_FOREST), 0.85F, 4, cat(litter(85), fern.withWeight(2)));
@@ -555,8 +551,8 @@ final class ModVegetation {
 				bed(Blocks.WILDFLOWERS, 4)));
 		l.land(biomes(MONTANE_SPRUCE_FOREST).withAssociations(Association.GULLY_TALL_HERBS), 0.8F, 3,
 				tallGrass.withWeight(50), largeFern.withWeight(30));
-		l.land(biomes(MONTANE_SPRUCE_FOREST), 0.85F, 4, moss.withWeight(45), fern.withWeight(15), bush.withWeight(15),
-				berry.withWeight(5), largeFern.withWeight(5));
+		l.land(biomes(MONTANE_SPRUCE_FOREST), 0.85F, 4, moss.withWeight(45), fern.withWeight(15), bush.withWeight(20),
+				largeFern.withWeight(5));
 		l.land(biomes(DWARF_PINE_SCRUB), 0.6F, 3, moss.withWeight(25), bush.withWeight(20), fern.withWeight(8),
 				grass.withWeight(10));
 		l.land(biomes(ALPINE_GRASSLAND), 0.8F, 3, grass.withWeight(60), bush.withWeight(12), b(Blocks.AZURE_BLUET, 3),

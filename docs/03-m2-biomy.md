@@ -450,11 +450,16 @@ Rekomendacja: wariant 1.
 |---|---|---|
 | `sample` | 5–10 µs | +≤ 5% |
 | klasyfikacja | – | ≤ 0,5 µs |
-| etap BIOMES | 16 próbek i ok. 8400 wywołań `biomeFor` | ≤ 0,2 ms na chunk |
-| TERRAIN | 1,3–2,6 ms model + 1,5–3 ms wypełnianie | ≤ 1,10 × M1 (z półką i mikroreliefem) |
-| FEATURES | biomy zastępcze | ≤ 1,0 × M1 (cel −20%) |
+| etap BIOMES | 16 próbek i ok. 8400 wywołań `biomeFor` | ≤ 0,2 ms na chunk na nizinie i przy rzekach, ≤ 0,3 ms w górach (M2-10) |
+| TERRAIN | 1,3–2,6 ms model + 1,5–3 ms wypełnianie | ≤ 1,10 × M1 (z półką i mikroreliefem), średnia całego obszaru jak D1 (M2-11) |
+| FEATURES | biomy zastępcze | ≤ 1,0 × M1 (cel −20%) przy tym samym pokryciu lasem (M2-14) |
 | cały chunk | 44 ms | ≤ 48 ms |
 | `PACK_FALLBACKS` / `HABITAT_MISS` | – | < 1% sekcji / < 0,5% chunków |
+
+**Decyzje użytkownika o budżetach (2026-10-09, wpisane w S6b; `docs/00-decyzje-do-podjecia.md` E).**
+- **M2-10, BIOMES w górach:** w Beskidach i innych obszarach górskich budżet wynosi ok. 0,3 ms na chunk (16 × budżet próbki D1: 16 próbek po 12–17 µs, S5 zmierzył 0,21–0,29 ms), na nizinie i przy rzekach zostaje 0,2 ms. `HabitatsClientGameTest` sprawdza nizinę i dużą rzekę z progiem 0,2 ms, a Beskidy z progiem 0,3 ms (wcześniej Beskidy tylko w raporcie).
+- **M2-11, TERRAIN:** budżet 1,10 × M1 liczymy dla całego obszaru, jak D1 (średni koszt próbki i wypełniania na obszarze), a nie w najdroższym miejscu. Przy dużej rzece w skali REAL 1,28–1,33 × M1 (pomiar S6; w sesjach z szybszym M1 do 1,48, §7.6) jest akceptowane. Pomiar całego obszaru i całego chunka (≤ 48 ms) robi S10; TERRAIN nie ma progu w teście (pomiar `-Pgametest=stages` tylko na spokojnej maszynie, A/B w jednej sesji).
+- **M2-14, FEATURES (domyślne, do potwierdzenia):** budżet 1,0 × M1 liczymy przy tym samym pokryciu lasem (las do lasu: baza `2cfc53b` z `forest` zamiast zastępczych `plains` i `meadow`), nie wobec bezleśnych biomów zastępczych sprzed M2. Pomiar S7 przy tym samym pokryciu: dekoracja 0,72–1,00, etap 0,83–1,09 (REAL Beskidy, w granicach szumu; §8.7). Próg w teście nie istnieje (pomiar `stages`).
 
 **Wynik budżetu `sample` po poprawce geometrii terenu (decyzja D1 z wdrożenia poprawki, 2026-10-03).** Cel +≤ 5% zastąpiła decyzja D1: do 1,20 × kopia M1 (bezwzględnie REAL cały obszar ≤ 6,5 µs, REAL Beskidy ≤ 12 µs, GAMEPLAY cały obszar ≤ 8,5 µs, GAMEPLAY Beskidy ≤ 16 µs). Stan po K6 (`costTest -PcostRuns=15`, spokojna maszyna, mediana): REAL cały obszar 1,16 (4,5 µs), REAL Beskidy 1,13–1,14 (7,2 µs), GAMEPLAY cały obszar 1,19 (6,4 µs), GAMEPLAY Beskidy 1,16–1,17 (11,1 µs); budżet dotrzymany bez zapasu (`docs/m2/poprawka-geometrii.md`, K6 i podsumowanie).
 

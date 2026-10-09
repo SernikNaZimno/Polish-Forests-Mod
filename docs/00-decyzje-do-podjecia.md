@@ -89,6 +89,14 @@ Plan: `docs/03-m2-biomy.md`.
 | M2-7 | Światy z M1 | **PODJĘTA 2026-10-02 (projekt)**: bez migracji (szwy na styku starych i nowych chunków) |
 | M2-8 | Wysokość najwyższych masywów Beskidów | **PODJĘTA 2026-10-02: rzadkie masywy do ok. 1725 m (Babia Góra, Pilsko) w obu skalach**; razem z poprawką geometrii terenu, przed fazą 2 M2. Daje kosodrzewinę i halę, a w skali rozgrywki także regiel górny. **Wdrożona** w kroku K2 poprawki geometrii (2026-10-03; szczyty 1632–1723 m REAL, 1618–1719 m GAMEPLAY); poprawka zamknięta w K7 (`docs/m2/poprawka-geometrii.md`) |
 | M2-9 | Nazwa i język moda | **PODJĘTA 2026-10-02: „Polish Forests”**, id `polishforests`; wszystko, co widzi gracz, i kod po angielsku, polski jako tłumaczenie; dokumentacja po polsku |
+| M2-10 | Budżet BIOMES w górach | **PODJĘTA 2026-10-09: w Beskidach (i innych obszarach górskich) ok. 0,3 ms na chunk** (16 × budżet próbki D1), na nizinie i przy rzekach zostaje 0,2 ms. Test w grze (`HabitatsClientGameTest`): nizina i rzeka 0,2 ms, Beskidy 0,3 ms (`docs/03-m2-biomy.md` §3.6, wpisane w S6b) |
+| M2-11 | Budżet TERRAIN wobec M1 | **PODJĘTA 2026-10-09: liczony dla całego obszaru (jak D1), nie w najdroższym miejscu.** Budżet 1,10 × M1 dotyczy średniej obszaru; przy dużej rzece w skali REAL 1,28–1,33 × M1 (i więcej w sesjach z szybszym M1) jest akceptowane (§3.6, §7.6) |
+| M2-12 | Wioski w trybie roślinności naturalnej | **PODJĘTA 2026-10-09: wioski i posterunki rozbójników także w lasach**, jak w wanilii (`has_structure/village_*` i `pillager_outpost` w odpowiednich biomach leśnych i nieleśnych, typ wioski dobrany do biomu: plains, taiga, …), nie tylko na wrzosowiskach. Wdrożenie w S8 (albo osobnym małym krokiem po S7) z tabelą §10.1 |
+| M2-13 | Borówka | **Domyślne, do potwierdzenia (2026-10-09):** zamiast `sweet_berry_bush` wanilijny `bush` (bez owoców i kolców) do M4, własna borówka w M4. **Wdrożone** w S6b (palety runa i korony klifu) |
+| M2-14 | Budżet FEATURES | **Domyślne, do potwierdzenia (2026-10-09):** liczony przy tym samym pokryciu lasem (las do lasu, baza `2cfc53b` z `forest` zamiast zastępczych `plains` i `meadow`), nie wobec bezleśnych biomów zastępczych sprzed M2 (§3.6, §8.7) |
+| M2-15 | Zalewanie przy ukośnych stopniach poziomu wody | **Domyślne, do potwierdzenia (2026-10-09):** przyjęte jako zachowanie modelu (rzadkie rozlewisko wyższej wody po niższej), bez strażnika 16 bloków i bez progów w korytach (wariant 1 z §7.6, „Runda 2 poprawek S6”) |
+
+Punkt kontrolny 2 (zrzuty roślinności S7, strona https://claude.ai/artifact/FKKFrZZMn2FZmmevt9nAVz i `docs/m2/punkt-kontrolny-2/`) **czeka na akceptację użytkownika** (stan 2026-10-09); do tego czasu punkt 7 definicji ukończenia M2 (`docs/03-m2-biomy.md` §12.4) jest otwarty.
 
 ## F. Sposób pracy
 

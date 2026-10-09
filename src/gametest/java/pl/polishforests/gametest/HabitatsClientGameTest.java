@@ -54,7 +54,7 @@ import pl.polishforests.worldgen.surface.SurfaceBuilder;
  * classifier at 8 places with different biomes, F3 shows {@code polishforests:*} and the habitat line (screenshot
  * {@code habitats_f3_<scale>}), {@code /locate structure} finds a stronghold, a mineshaft and trial chambers,
  * {@code /locate biome polishforests:oak_hornbeam_forest} takes less than 2 s, the BIOMES stage takes at most 0.2 ms per
- * chunk in the lowland (measured also in the Beskids and at a large river), the tree stand census matches the palette
+ * chunk in the lowland and at a large river and 0.3 ms in the Beskids (decision M2-10), the tree stand census matches the palette
  * within ±20%, and revisited areas keep their chunk habitats. Step S6 (§7, §12.3): the ground block equals the soil of
  * the surface plan at 11 places, at least 90% of the shore columns have water beside their top block, no water flows
  * out of the shelf and the puddles in 200 ticks, and fewer than 1% of the packed sections fall back to block writes.
@@ -66,7 +66,13 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 	/** Spiral step of the place search in blocks. */
 	private static final int SEARCH_STEP = 52;
 	private static final double LOCATE_BIOME_LIMIT_MS = 2_000;
+	/** Budget of the BIOMES stage in the lowland and at rivers (docs/03-m2-biomy.md §3.6). */
 	private static final double BIOMES_LIMIT_MS = 0.2;
+	/**
+	 * Budget of the BIOMES stage in the mountains (decision M2-10, 2026-10-09): 16 samples at the D1 budget of a sample in
+	 * the Beskids (12 µs REAL, 16 µs GAMEPLAY) exceed the 0.2 ms of the lowland, so the mountains get about 0.3 ms.
+	 */
+	private static final double BIOMES_MOUNTAIN_LIMIT_MS = 0.3;
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
@@ -184,18 +190,12 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 	private static final int[][] BIOMES_REAL = {{-50_000, 30_000}, {154_834 - 64, 1_058_738 - 64}, {-19_484 - 64, 11_253 - 64}};
 	private static final int[][] BIOMES_GAMEPLAY = {{-50_000, 30_000}, {27_609 - 64, 3_254 - 64}, {-1_851 - 64, 6_022 - 64}};
 	private static final String[] BIOMES_AREAS = {"lowland", "beskids", "river"};
-	/**
-	 * Regression limit of BIOMES outside the lowland: in the Beskids one sample may cost up to the D1 budget (12 µs REAL,
-	 * 16 µs GAMEPLAY), so 16 samples alone can exceed the 0.2 ms of §3.6 (deviation of S5 for the user's decision,
-	 * docs/03-m2-biomy.md §3.5.1); the test only guards against a further regression.
-	 */
-	private static final double BIOMES_REGRESSION_MS = 0.5;
 
 	/**
 	 * BIOMES stage on one thread (the server thread asks one chunk after another): for each area 64 new chunks (8 × 8,
 	 * cold grid caches of the area) and then the next 64 chunks to the east (warmer caches); mean time per chunk. The
-	 * lowland must meet the budget of §3.6 (0.2 ms); the Beskids and the river are reported and guarded by
-	 * {@link #BIOMES_REGRESSION_MS}.
+	 * lowland and the river must meet the budget of §3.6 ({@link #BIOMES_LIMIT_MS}), the Beskids the mountain budget
+	 * ({@link #BIOMES_MOUNTAIN_LIMIT_MS}, decision M2-10).
 	 */
 	private static String biomesPerChunk(MinecraftServer server, boolean real) {
 		ServerLevel level = server.overworld();
@@ -224,13 +224,14 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 			}
 			report.append(String.format(Locale.ROOT, " %s %.3f / %.3f ms (sampling and classifying %.3f / %.3f ms);",
 					BIOMES_AREAS[a], ms[0], ms[1], classifyMs[0], classifyMs[1]));
-			double limit = a == 0 ? BIOMES_LIMIT_MS : BIOMES_REGRESSION_MS;
+			double limit = a == 1 ? BIOMES_MOUNTAIN_LIMIT_MS : BIOMES_LIMIT_MS;
 			if (Math.max(ms[0], ms[1]) > limit) {
 				throw new AssertionError(String.format(Locale.ROOT, "BIOMES in %s %.3f / %.3f ms per chunk (limit %.1f ms)",
 						BIOMES_AREAS[a], ms[0], ms[1], limit));
 			}
 		}
-		return report.append(String.format(Locale.ROOT, " budget %.1f ms (lowland)", BIOMES_LIMIT_MS)).toString();
+		return report.append(String.format(Locale.ROOT, " budget %.1f ms (lowland, river), %.1f ms (Beskids)", BIOMES_LIMIT_MS,
+				BIOMES_MOUNTAIN_LIMIT_MS)).toString();
 	}
 
 	/**

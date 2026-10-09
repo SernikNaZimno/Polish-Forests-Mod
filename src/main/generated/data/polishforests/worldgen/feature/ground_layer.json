@@ -434,11 +434,7 @@
       "plants": [
         {
           "block": "minecraft:bush",
-          "weight": 25
-        },
-        {
-          "block": "minecraft:sweet_berry_bush",
-          "weight": 6
+          "weight": 31
         },
         {
           "block": "minecraft:short_grass",
@@ -489,11 +485,7 @@
         },
         {
           "block": "minecraft:bush",
-          "weight": 25
-        },
-        {
-          "block": "minecraft:sweet_berry_bush",
-          "weight": 10
+          "weight": 35
         },
         {
           "block": "minecraft:fern",
@@ -514,15 +506,11 @@
         },
         {
           "block": "minecraft:bush",
-          "weight": 15
+          "weight": 17
         },
         {
           "block": "minecraft:short_dry_grass",
           "weight": 8
-        },
-        {
-          "block": "minecraft:sweet_berry_bush",
-          "weight": 2
         }
       ]
     },
@@ -539,11 +527,7 @@
         },
         {
           "block": "minecraft:bush",
-          "weight": 25
-        },
-        {
-          "block": "minecraft:sweet_berry_bush",
-          "weight": 8
+          "weight": 33
         },
         {
           "block": "minecraft:fern",
@@ -564,15 +548,11 @@
         },
         {
           "block": "minecraft:bush",
-          "weight": 30
+          "weight": 35
         },
         {
           "block": "minecraft:pale_moss_carpet",
           "weight": 10
-        },
-        {
-          "block": "minecraft:sweet_berry_bush",
-          "weight": 5
         }
       ]
     },
@@ -589,11 +569,7 @@
         },
         {
           "block": "minecraft:bush",
-          "weight": 15
-        },
-        {
-          "block": "minecraft:sweet_berry_bush",
-          "weight": 10
+          "weight": 25
         },
         {
           "block": "minecraft:fern",
@@ -618,7 +594,7 @@
         },
         {
           "block": "minecraft:bush",
-          "weight": 20
+          "weight": 26
         },
         {
           "block": "minecraft:fern",
@@ -627,10 +603,6 @@
         {
           "block": "minecraft:large_fern",
           "weight": 3
-        },
-        {
-          "block": "minecraft:sweet_berry_bush",
-          "weight": 6
         },
         {
           "block": {
@@ -744,7 +716,7 @@
           "weight": 5
         },
         {
-          "block": "minecraft:sweet_berry_bush",
+          "block": "minecraft:bush",
           "weight": 3
         }
       ]
@@ -1060,11 +1032,7 @@
         },
         {
           "block": "minecraft:bush",
-          "weight": 15
-        },
-        {
-          "block": "minecraft:sweet_berry_bush",
-          "weight": 5
+          "weight": 20
         },
         {
           "block": "minecraft:large_fern",

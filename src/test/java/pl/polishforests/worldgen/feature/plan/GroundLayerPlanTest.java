@@ -265,6 +265,49 @@ class GroundLayerPlanTest {
 		System.out.println("ground layer of the dense habitats (small, tall, bare): " + report);
 	}
 
+	/**
+	 * Decision M2-13: bilberry is the vanilla {@code bush} until its own block in M4; no generated vegetation palette places
+	 * sweet berry bushes, which slow and hurt the player (7–10% of the pine forest columns before).
+	 */
+	@Test
+	void noSweetBerryBushes() {
+		for (String palette : List.of("ground_layer", "waterside_zones", "understory", "deadwood", "aquatic_plants")) {
+			java.nio.file.Path file = BiomeJsonTest.GENERATED.resolve("data/polishforests/worldgen/feature/" + palette + ".json");
+			if (!java.nio.file.Files.exists(file)) {
+				continue;
+			}
+			String text = BiomeJsonTest.json(file).toString();
+			assertFalse(text.contains("minecraft:sweet_berry_bush"), palette + " places sweet berry bushes");
+		}
+		JsonArray rules = BiomeJsonTest.json(BiomeJsonTest.GENERATED.resolve(
+				"data/polishforests/worldgen/feature/ground_layer.json")).getAsJsonArray("rules");
+		// The dwarf shrub share of the pine forests stays (the former sweet berry weight went to the bush).
+		for (HabitatBiome b : List.of(HabitatBiome.FRESH_PINE_FOREST, HabitatBiome.BOG_WOODLAND, HabitatBiome.MOIST_PINE_FOREST)) {
+			JsonObject rule = null;
+			for (JsonElement e : rules) {
+				JsonObject r = e.getAsJsonObject();
+				String medium = r.has("medium") ? r.get("medium").getAsString() : "land";
+				if (medium.equals("land") && r.has("biomes") && contains(r, "biomes", b.id()) && contains(r, "zones", Zone.NONE.id())) {
+					rule = r;
+					break;
+				}
+			}
+			assertTrue(rule != null, "no ground layer rule for " + b.id());
+			double all = 0;
+			double bush = 0;
+			for (JsonElement e : rule.getAsJsonArray("plants")) {
+				JsonObject p = e.getAsJsonObject();
+				double w = p.get("weight").getAsDouble();
+				all += w;
+				if (p.has("block") && blockName(p.get("block")).equals("minecraft:bush")) {
+					bush += w;
+				}
+			}
+			double share = rule.get("coverage").getAsDouble() * bush / all;
+			assertTrue(share >= 0.2 && share <= 0.4, b.id() + ": dwarf shrubs " + share);
+		}
+	}
+
 	private static void check(JsonArray rules, HabitatBiome b, Zone z, List<String> report) {
 		JsonObject rule = null;
 		for (JsonElement e : rules) {

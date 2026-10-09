@@ -452,11 +452,7 @@
       "plants": [
         {
           "block": "minecraft:bush",
-          "weight": 4
-        },
-        {
-          "block": "minecraft:sweet_berry_bush",
-          "weight": 2
+          "weight": 6
         },
         {
           "block": "minecraft:short_grass",

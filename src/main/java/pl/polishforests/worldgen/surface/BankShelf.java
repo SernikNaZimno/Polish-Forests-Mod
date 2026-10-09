@@ -11,17 +11,20 @@ import pl.polishforests.worldgen.landscape.WaterKind;
  * ground lies one or more blocks above the water and reeds or firefly bushes, which need water next to the block they
  * stand on, cannot grow.
  *
- * <p><b>Ramp (review of S6, round 1).</b> A dry column within {@link #RAMP} blocks (Chebyshev) of fresh model water
- * (channel, lake, oxbow lake; not the sea) goes down a ramp of one block per column from the water: at most to
- * {@code W + k − 1} for every water column within reach (water top {@code W}, distance {@code k}), at most
- * {@code MAX_DROP + 1 − c} blocks at distance {@code c} from the nearest water, so the ramp meets the model top within
- * four columns, and less on banks higher than {@link #MAX_DROP} blocks above any water within reach ({@link #FADE}).
- * The ramp follows the real water of the model, also beyond the chunk border (sampled, {@link ColumnCache}), not the
- * habitat zone or the model's distance fields: it is the same whichever chunk computes it, a channel stretch without
- * water gets no ditch, and the shelf leaves no step at a zone or chunk border. Every limit of the top is a minimum or
- * maximum of terms that change by at most one block between neighbors ({@link #drop}), so on flat model ground the plan
- * has steps of at most 1, and next to a model step of {@code k} blocks at most {@code k + 1}. Before round 1 the whole
- * shelf zones went down to the water and their inner edge was a wall of 2–3 blocks.
+ * <p><b>Ramp (review of S6, round 1; step S6b).</b> A dry column within {@link #RAMP} blocks (Chebyshev) of fresh model
+ * water (channel, lake, oxbow lake; not the sea) goes down a ramp of one block per column from the water. Each water
+ * column within reach (water top {@code W}, distance {@code k}, the column {@code h = a − W} blocks above it) allows the
+ * drop {@code min(h, MAX_DROP, FADE − h) + 1 − k} ({@link #waterDrop}): down to the water and one block more per column
+ * away from it, at most {@link #MAX_DROP} blocks, so the ramp meets the model top within four columns, and less on banks
+ * higher than {@code MAX_DROP} blocks above that water ({@link #FADE}). The column takes the largest drop over the
+ * waters within reach. The ramp follows the real water of the model, also beyond the chunk border (sampled,
+ * {@link ColumnCache}), not the habitat zone or the model's distance fields: a channel stretch without water gets no
+ * ditch, and the shelf leaves no step at a zone or chunk border. Each term changes by at most one block between
+ * neighbors and is at most 0 at the edge of the window, so on flat model ground the plan has steps of at most 1, and
+ * next to a model step of {@code k} blocks at most {@code k + 1}. Before round 1 the whole shelf zones went down to the
+ * water and their inner edge was a wall of 2–3 blocks; until step S6b the ramp top (the lowest {@code W + k − 1}) and the
+ * fade (the most favorable water) came from different waters within reach, so where the water level steps a water at
+ * Chebyshev 3 changed the fade of its neighbors by up to 3 blocks and left walls of 2 blocks.
  *
  * <p><b>Water cannot spill (review of S6, round 2).</b> The ramp never goes below the top of any fresh model water within
  * Manhattan distance {@link #GUARD_FULL} (the reach of water flowing from a source block and a margin for the higher
@@ -68,9 +71,9 @@ final class BankShelf {
 	 */
 	static final int FADE = 2 * MAX_DROP;
 	/**
-	 * Distance (blocks) within which the model's {@code channelDist} or {@code s} must put water for the generator to
-	 * sample the neighbors outside the chunk when looking for the nearest water (the fields are continuous and off by at
-	 * most a few blocks).
+	 * Distance (blocks) within which the model's {@code channelDist} or {@code s} must put water for a column to count as
+	 * near water in the summaries of the shared cache ({@link SurfaceBuilder#summary}: a puddle on the chunk edge holds
+	 * water only next to a neighbor outside the chunk that is surely not lowered).
 	 */
 	static final double NEAR_FIELD = 10;
 
@@ -97,18 +100,24 @@ final class BankShelf {
 	}
 
 	/**
-	 * Drop of a dry column with model top {@code a}, ramp top {@code r} (the lowest {@code W + k − 1} over the water
-	 * within reach: water top {@code W}, Chebyshev distance {@code k}), distance {@code c} (blocks, 1–{@link #RAMP}) from
-	 * the nearest water and fade term {@code f} (the lowest {@code k − W} over the water within reach): down to the ramp, at
-	 * most {@code MAX_DROP + 1 − c}, and at most {@code FADE + 1 − a − f}, i.e. {@code FADE − h + 1 − k} for every water
-	 * within reach at height {@code h = a − W} above it. With one water level {@code W} this is
-	 * {@code min(h, MAX_DROP, FADE − h) + 1 − c}, at least 0. Each of the three limits of the top {@code a − drop} is a
-	 * minimum or maximum of terms that change by at most one block between two neighbors on flat model ground, so the ramp
-	 * has no step of 2 there, also where the water level steps (review of S6, round 2: the fade measured from
-	 * {@code r − c + 1} made steps of 2 on high banks of stepped mountain streams).
+	 * Drop that one water column allows a dry column {@code h} blocks above its water top at Chebyshev distance {@code k}
+	 * (1–{@link #RAMP}): {@code min(h, MAX_DROP, FADE − h) + 1 − k}, at most 0 when the column is not above the water or
+	 * {@code k > MAX_DROP}. The drop of a column is the largest over the waters within reach, at least 0
+	 * ({@link SurfaceBuilder.Work#rampDrop}); with one water level it equals the drop of rounds 1 and 2 of the review of
+	 * S6. Every term changes by at most one block between two neighbors on flat model ground, so the ramp has no step of 2
+	 * there, also where the water level steps (step S6b, see the class comment).
 	 */
-	static int drop(int a, int r, int c, int f) {
-		return Math.max(0, Math.min(Math.min(a - r, MAX_DROP + 1 - c), FADE + 1 - a - f));
+	static int waterDrop(int h, int k) {
+		return Math.min(Math.min(h, MAX_DROP), FADE - h) + 1 - k;
+	}
+
+	/**
+	 * Distance (blocks) from which the fields of a sample allow water ({@link #waterMayBeWithin}): the distance from the
+	 * bank of the nearest channel or from the shore of the nearest standing water with water, less the margin of 2.
+	 */
+	static double waterReach(ColumnSample s) {
+		ColumnSample.Waters w = s.waters();
+		return Math.min(w.channelDist(), standingWaterDist(w)) - 2;
 	}
 
 	/** Whether the local fields of a sample put a channel or standing water within {@link #NEAR_FIELD} blocks. */
@@ -140,7 +149,7 @@ final class BankShelf {
 			}
 			ColumnSample s = w.columns[i];
 			int a = out.top[i];
-			int drop = w.nearestWater(i) ? drop(a, w.rampTop, w.nearestDist, w.fadeTerm) : 0;
+			int drop = w.rampDrop(i);
 			boolean shoreZone = shelfZone(w.codes[i]) || lakeShore(s);
 			if (drop == 0 && !shoreZone && !w.mayTouchLake(i)) {
 				continue;
@@ -189,12 +198,12 @@ final class BankShelf {
 	/**
 	 * Whether water may lie within Chebyshev {@code d} blocks of a column by its own fields (the distance from the bank
 	 * of the nearest channel and from the shore of the nearest standing water, both about 1-Lipschitz and off by at most
-	 * a few blocks): the guard ({@link SurfaceBuilder.Work#guardField}) samples a column outside the chunk only then.
+	 * a few blocks; the fields of an oxbow lake end 2–5 blocks from its shore): the guard
+	 * ({@link SurfaceBuilder.Work#guardField}) and the ramp ({@link SurfaceBuilder.Work#rampBand}) sample a column outside
+	 * the chunk only then.
 	 */
 	static boolean waterMayBeWithin(ColumnSample s, double d) {
-		double r = d + 2;
-		ColumnSample.Waters w = s.waters();
-		return w.channelDist() <= r || standingWaterDist(w) <= r;
+		return waterReach(s) <= d;
 	}
 
 	/**

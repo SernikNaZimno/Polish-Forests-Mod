@@ -61,6 +61,11 @@ class BankShelfTest {
 			// borders) and a seam between channels.
 			out.put("cascade", new int[] {59_458, 136_152});
 			out.put("channel_seam", new int[] {87_432, -42_036});
+			// Step S6b (walls of 2 blocks found by the review of S6, round 2): the fade of a stepped stream changed by a water
+			// entering the ramp's window at Chebyshev 3, and an oxbow lake beyond a chunk border that only one of two
+			// neighbors saw (its fields end a few blocks from the shore).
+			out.put("fade_step", new int[] {74_601, -33_251});
+			out.put("oxbow_border", new int[] {-27_778, -138_754});
 		} else {
 			out.put("oxbow_lake", new int[] {1_643, -452});
 			out.put("tunnel_lake", new int[] {-20_280, 10_620});
@@ -71,6 +76,10 @@ class BankShelfTest {
 			out.put("confluence", new int[] {17_085, 16_600});
 			out.put("oxbow_near_channel", new int[] {-14_271, 22_788});
 			out.put("stepped_stream", new int[] {20_028, -8_612});
+			// Step S6b, as in the realistic scale.
+			out.put("fade_step", new int[] {7_350, -19_466});
+			out.put("fade_step_b", new int[] {13_574, -5_053});
+			out.put("oxbow_border", new int[] {-16_353, -19_489});
 		}
 		put(out, f, "tall_herbs", 0, 0, p -> Habitat.zone(f.code(p[0], p[1])) == Zone.TALL_HERBS);
 		put(out, f, "point_bar", 0, 0, p -> Habitat.zone(f.code(p[0], p[1])) == Zone.POINT_BAR);
@@ -107,7 +116,7 @@ class BankShelfTest {
 	}
 
 	/** Plans of a grid of chunks with lookups by block coordinates. */
-	private static final class Grid {
+	static final class Grid {
 		final SurfaceFixture f;
 		final int x0;
 		final int z0;
@@ -241,9 +250,12 @@ class BankShelfTest {
 		assertTrue(failures.isEmpty(), failures + "; " + report);
 	}
 
-	/** Areas of the review of S6, round 2 (stepped water, a seam, a confluence), left out of the shore share. */
+	/**
+	 * Areas of the review of S6, round 2 (stepped water, a seam, a confluence) and of step S6b (stepped water), left out
+	 * of the shore share.
+	 */
 	private static final java.util.Set<String> ROUND2_AREAS = java.util.Set.of("cascade", "channel_seam", "confluence",
-			"oxbow_near_channel", "stepped_stream");
+			"oxbow_near_channel", "stepped_stream", "fade_step", "fade_step_b");
 
 	/** Number of random water areas per scale of {@link #shelfOverRandomWaterAreas}. */
 	private static final int RANDOM_AREAS = 120;
@@ -310,7 +322,7 @@ class BankShelfTest {
 	 * added), 11 mountain stream bed columns, 12 of them gravel or cobblestone, 13 shore bed columns, 14 of them mud
 	 * (gravel in streams).
 	 */
-	private static long[] area(Grid g, String name, List<String> failures, Map<String, Integer> dry) {
+	static long[] area(Grid g, String name, List<String> failures, Map<String, Integer> dry) {
 		long[] n = new long[15];
 		SurfaceFixture f = g.f;
 		String tag = f.scale + " " + name;

@@ -249,12 +249,12 @@ public final class SurfaceBuilder {
 		final int[] modelWater = new int[256];
 		final double[] microQ = new double[256];
 		/**
-		 * Result of {@link #nearestWater}: Chebyshev distance of the nearest water, the ramp top and the fade term
-		 * ({@link BankShelf#drop}).
+		 * Fresh model water of the columns outside the chunk within {@link BankShelf#RAMP} of it (index
+		 * {@code (x + RAMP) * RAMP_EDGE + z + RAMP}, chunk-relative coordinates), filled on first use by
+		 * {@link #rampBand()}; {@link ChunkSurface#NO_WATER} where dry or not sampled.
 		 */
-		int nearestDist;
-		int rampTop;
-		int fadeTerm;
+		private int[] rampBand;
+		private static final int RAMP_EDGE = 16 + 2 * BankShelf.RAMP;
 
 		Work(SurfaceBuilder builder, ColumnSample[] columns, int[] codes, int minX, int minZ, int minY, int maxY,
 				Sampler outside) {
@@ -329,90 +329,78 @@ public final class SurfaceBuilder {
 		}
 
 		/**
-		 * Looks for fresh (not sea) model water within Chebyshev {@link BankShelf#RAMP} of a column: sets
-		 * {@link #nearestDist} (the distance of the nearest water), {@link #rampTop}, the lowest {@code W + k − 1} over the
-		 * water columns within reach (water top {@code W}, distance {@code k}: a ramp of one block per column from every
-		 * water, 1-Lipschitz also where the water level steps) and {@link #fadeTerm}, the lowest {@code k − W} (the fade of
-		 * high banks, {@link BankShelf#drop}), and returns true, or returns false without water. Columns outside the chunk
-		 * are sampled when the window reaches beyond the chunk and the column's own fields put water near
-		 * ({@link BankShelf#waterMayBeNear}), so the result is the same whichever chunk computes it.
+		 * Drop of the dry column {@code i} by the ramp of the bank shelf ({@link BankShelf#waterDrop}): the largest drop
+		 * that any fresh (not sea) model water within Chebyshev {@link BankShelf#RAMP} allows, also outside the chunk
+		 * ({@link #rampBand}), or 0 without such water. Every term changes by at most one block between two neighbors on
+		 * flat model ground and is at most 0 at the edge of the window, so the drop makes no step there (step S6b: before,
+		 * the ramp top and the fade were a minimum and a maximum over different waters, and a water entering the window at
+		 * Chebyshev 3 changed the fade by up to 3 blocks).
 		 */
-		boolean nearestWater(int i) {
+		int rampDrop(int i) {
 			int x = i >> 4;
 			int z = i & 15;
-			// The rings up to the chunk border lie in the chunk; when water lies in one of them, the nearest distance is
-			// known and the outside is not sampled (a lower water across the border could lower the ramp by a block).
-			int border = Math.min(Math.min(x, 15 - x), Math.min(z, 15 - z));
-			boolean outsideToo = border < BankShelf.RAMP && !waterInside(x, z, border)
-					&& BankShelf.waterMayBeNear(columns[i]);
-			nearestDist = 0;
-			rampTop = Integer.MAX_VALUE;
-			fadeTerm = Integer.MAX_VALUE;
-			for (int k = 1; k <= BankShelf.RAMP; k++) {
-				int best = ChunkSurface.NO_WATER;
-				int lowest = Integer.MAX_VALUE;
-				for (int dx = -k; dx <= k; dx++) {
-					int step = Math.abs(dx) == k ? 1 : 2 * k;
-					for (int dz = -k; dz <= k; dz += step) {
-						int nx = x + dx;
-						int nz = z + dz;
-						int water;
-						if (nx >= 0 && nx < 16 && nz >= 0 && nz < 16) {
-							water = freshWater(nx << 4 | nz);
-						} else if (outsideToo) {
-							water = farFreshWater(minX + nx, minZ + nz);
-						} else {
-							continue;
-						}
-						if (water != ChunkSurface.NO_WATER) {
-							best = Math.max(best, water);
-							lowest = Math.min(lowest, water);
-						}
-					}
-				}
-				if (best == ChunkSurface.NO_WATER) {
-					continue;
-				}
-				if (nearestDist == 0) {
-					nearestDist = k;
-				}
-				rampTop = Math.min(rampTop, lowest + k - 1);
-				fadeTerm = Math.min(fadeTerm, k - best);
-			}
-			return nearestDist > 0;
-		}
-
-		/** Whether fresh model water lies within Chebyshev {@code r} of the in-chunk column (x, z) (all in the chunk). */
-		private boolean waterInside(int x, int z, int r) {
-			for (int nx = x - r; nx <= x + r; nx++) {
-				for (int nz = z - r; nz <= z + r; nz++) {
-					if (freshWater(nx << 4 | nz) != ChunkSurface.NO_WATER) {
-						return true;
-					}
-				}
-			}
-			return false;
-		}
-
-		/**
-		 * Highest fresh model water top within Chebyshev {@code r} of a column, also outside the chunk (sampled as in
-		 * {@link #nearestWater}), or {@link ChunkSurface#NO_WATER}.
-		 */
-		int waterNear(int i, int r) {
-			int x = i >> 4;
-			int z = i & 15;
-			boolean outsideToo = BankShelf.waterMayBeNear(columns[i]);
-			int best = ChunkSurface.NO_WATER;
-			for (int nx = x - r; nx <= x + r; nx++) {
-				for (int nz = z - r; nz <= z + r; nz++) {
+			int a = modelTop[i];
+			int r = BankShelf.RAMP;
+			boolean border = x < r || x > 15 - r || z < r || z > 15 - r;
+			int[] band = border ? rampBand() : null;
+			int best = 0;
+			for (int dx = -r; dx <= r; dx++) {
+				int nx = x + dx;
+				for (int dz = -r; dz <= r; dz++) {
+					int nz = z + dz;
+					int water;
 					if (nx >= 0 && nx < 16 && nz >= 0 && nz < 16) {
-						best = Math.max(best, freshWater(nx << 4 | nz));
-					} else if (outsideToo) {
-						best = Math.max(best, farFreshWater(minX + nx, minZ + nz));
+						water = freshWater(nx << 4 | nz);
+					} else {
+						water = band[(nx + r) * RAMP_EDGE + nz + r];
+					}
+					if (water != ChunkSurface.NO_WATER) {
+						best = Math.max(best, BankShelf.waterDrop(a - water, Math.max(Math.abs(dx), Math.abs(dz))));
 					}
 				}
 			}
 			return best;
+		}
+
+		/**
+		 * Fresh model water of the columns outside the chunk within {@link BankShelf#RAMP} of it. A column there is sampled
+		 * (or read from the shared cache) when the fields of some column of the chunk within {@code RAMP} of it put water
+		 * near it ({@link BankShelf#waterReach}, at their Euclidean distance). The decision belongs to the outside column,
+		 * so every column of the chunk sees the same outside water (step S6b: before, each column decided by its own fields,
+		 * and the fields of an oxbow lake end 2–5 blocks from its shore, so of two neighbors one saw the oxbow lake beyond
+		 * the chunk border and went down 2 blocks more than the other).
+		 */
+		int[] rampBand() {
+			if (rampBand != null) {
+				return rampBand;
+			}
+			int r = BankShelf.RAMP;
+			double[] reach = new double[256];
+			for (int i = 0; i < 256; i++) {
+				reach[i] = BankShelf.waterReach(columns[i]);
+			}
+			int[] band = new int[RAMP_EDGE * RAMP_EDGE];
+			java.util.Arrays.fill(band, ChunkSurface.NO_WATER);
+			for (int ex = 0; ex < RAMP_EDGE; ex++) {
+				int x = ex - r;
+				for (int ez = 0; ez < RAMP_EDGE; ez++) {
+					int z = ez - r;
+					if (x >= 0 && x < 16 && z >= 0 && z < 16) {
+						continue;
+					}
+					boolean sample = false;
+					for (int px = Math.max(0, x - r); px <= Math.min(15, x + r) && !sample; px++) {
+						for (int pz = Math.max(0, z - r); pz <= Math.min(15, z + r) && !sample; pz++) {
+							sample = reach[px << 4 | pz] <= Math.hypot(x - px, z - pz);
+						}
+					}
+					if (sample) {
+						band[ex * RAMP_EDGE + ez] = farFreshWater(minX + x, minZ + z);
+					}
+				}
+			}
+			rampBand = band;
+			return band;
 		}
 
 		/** Model water top of a column outside the chunk when it is not sea water, else {@link ChunkSurface#NO_WATER}. */
