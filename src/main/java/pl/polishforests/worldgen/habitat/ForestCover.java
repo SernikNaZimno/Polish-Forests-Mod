@@ -181,9 +181,9 @@ final class ForestCover {
 	}
 
 	/**
-	 * P_forest of dry land: the zonal P_forest blended across the fertility and moisture thresholds, with the sands, the
-	 * foothills and the uplands (P ≥ {@link Calibration#P_FIR_FOREST}), the mountains by altitude, the slope and valley side
-	 * context and the floor margin ({@link #floorMargin}).
+	 * P_forest of dry land: the zonal P_forest blended across the fertility and moisture thresholds, with the sands and
+	 * the foothills ({@link #zonal}), the mountains by altitude ({@link #mountain}), the slope, dune and valley side
+	 * context ({@link #withContext}) and the floor margin ({@link #floorMargin}).
 	 */
 	private double dryLand(HabitatClassifier.Column c) {
 		Fertility own = c.fertility();
