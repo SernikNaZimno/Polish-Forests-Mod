@@ -349,7 +349,7 @@ public final class Calibration {
 	 * weight. Small woods between the fields, and enough variation of F within a few hundred meters that the forest edges
 	 * follow F and not the site boundaries.
 	 */
-	public static final double F_WOODLOT_WAVELENGTH = 600, F_WOODLOT = 0.35;
+	public static final double F_WOODLOT_WAVELENGTH = 600, F_WOODLOT = 0.6;
 	/**
 	 * Blends of P_forest across the moisture thresholds (round 1 of the S8 review): half-width of the DGW band (m) and the
 	 * jitter of DGW (m) by the context noise (new salt {@code habitat.forest_cover.context}).
@@ -378,11 +378,11 @@ public final class Calibration {
 			P_VALLEY_SIDE_GAMEPLAY = 0.1;
 	/**
 	 * Valley side context (round 1 of the S8 review): it grows with the incision below the pre-valley terrain from FROM to
-	 * TO m, the incision jittered by ±JITTER m; it acts on about STRETCHES of the valley sides, chosen by the context noise
-	 * of BREAK_WAVELENGTH m·k with a blend of ±BREAK_BLEND in its quantile.
+	 * TO m, the incision jittered by ±JITTER m; its strength along the valley is a smoothstep of the quantile of the
+	 * context noise of BREAK_WAVELENGTH m·k from 1 − STRETCHES − BREAK_BLEND to 1 − STRETCHES + BREAK_BLEND.
 	 */
-	public static final double P_VALLEY_INCISION_FROM = 1, P_VALLEY_INCISION_TO = 4, P_VALLEY_INCISION_JITTER = 1;
-	public static final double P_VALLEY_SIDE_BREAK_WAVELENGTH = 700, P_VALLEY_SIDE_STRETCHES = 0.6, P_VALLEY_SIDE_BREAK_BLEND = 0.1;
+	public static final double P_VALLEY_INCISION_FROM = 1, P_VALLEY_INCISION_TO = 6, P_VALLEY_INCISION_JITTER = 1;
+	public static final double P_VALLEY_SIDE_BREAK_WAVELENGTH = 700, P_VALLEY_SIDE_STRETCHES = 0.6, P_VALLEY_SIDE_BREAK_BLEND = 0.3;
 	/**
 	 * Gray alder forest (§4.5): the strip by the stream that always stays (clamp(W·2, 5k, 20k) with the zone jitter), and
 	 * meadows beyond it on floors wider than D_STREAM_MEADOW_FLOOR_K·k below D_STREAM_MEADOW_H m.

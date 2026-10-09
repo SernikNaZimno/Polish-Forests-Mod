@@ -19,8 +19,8 @@ import java.util.List;
  *       {@link #MAX_ADJUST} blocks from the column top is skipped (deep structures, e.g. the ancient city).</li>
  *   <li><b>Vegetation mask.</b> For each column the Chebyshev distance (blocks) to the nearest footprint of a building
  *       piece (rigid pool pieces and pieces that are not pool elements) and of any piece (also the terrain-matching
- *       streets), counted only for pieces whose box reaches the surface ({@link #reachesSurface}), capped at
- *       {@link #FAR}. The tree stand and the plant layers skip columns near pieces ({@code TreeStandFeature},
+ *       streets), capped at {@link #FAR}; a building counts only when its box reaches the surface
+ *       ({@link #reachesSurface}), a street always (it follows the ground, its box need not). The tree stand and the plant layers skip columns near pieces ({@code TreeStandFeature},
  *       {@code PlantLayerFeature}): in a forest village trunks stood on the streets and crowns grew into the houses.</li>
  * </ul>
  *
@@ -73,7 +73,8 @@ public final class StructureGround {
 			for (Piece p : pieces) {
 				int dx = Math.max(0, Math.max(p.minX - x, x - p.maxX));
 				int dz = Math.max(0, Math.max(p.minZ - z, z - p.maxZ));
-				if (reachesSurface(p, top)) {
+				// A street follows the ground (terrain matching), so its box need not hold the column top.
+				if (!p.building || reachesSurface(p, top)) {
 					int d = Math.max(dx, dz);
 					any = Math.min(any, d);
 					if (p.building) {

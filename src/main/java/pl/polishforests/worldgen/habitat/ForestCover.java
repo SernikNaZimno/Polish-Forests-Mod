@@ -226,10 +226,10 @@ final class ForestCover {
 	 * (forests "on the poorest soils and where nothing else pays", docs/research/06 §1.3): P_forest moves towards
 	 * {@link Calibration#P_STEEP} by the steepness 0–1. The valley side (round 1 of the S8 review) grows with the incision
 	 * below the pre-valley terrain from {@link Calibration#P_VALLEY_INCISION_FROM} to {@link Calibration#P_VALLEY_INCISION_TO}
-	 * m (jittered by ±{@link Calibration#P_VALLEY_INCISION_JITTER} m) instead of a flag at 2 m, and only on stretches
-	 * chosen by the context noise of {@link Calibration#P_VALLEY_SIDE_BREAK_WAVELENGTH} m·k (about
-	 * {@link Calibration#P_VALLEY_SIDE_STRETCHES} of the valley sides), so forested valley sides are not continuous belts
-	 * on both sides of every valley.
+	 * m (jittered by ±{@link Calibration#P_VALLEY_INCISION_JITTER} m) instead of a flag at 2 m, and its strength changes
+	 * along the valley with the context noise of {@link Calibration#P_VALLEY_SIDE_BREAK_WAVELENGTH} m·k (a smoothstep of its
+	 * quantile around 1 − {@link Calibration#P_VALLEY_SIDE_STRETCHES} ± {@link Calibration#P_VALLEY_SIDE_BREAK_BLEND}), so
+	 * forested valley sides are not continuous belts of constant width on both sides of every valley.
 	 */
 	private double withContext(HabitatClassifier.Column c, double p) {
 		boolean gameplay = c.classifier.gameplay;

@@ -379,6 +379,17 @@ public final class PresentDayClientGameTest implements FabricClientGameTest {
 		throw new AssertionError("No village with the start piece center (" + center[0] + ", " + center[1] + ")");
 	}
 
+	/** Feature pieces of a village (its decoration: the oaks, flowers and hay of the templates' decor pools). */
+	private static List<BoundingBox> features(StructureStart start) {
+		List<BoundingBox> out = new ArrayList<>();
+		for (StructurePiece piece : start.getPieces()) {
+			if (piece instanceof PoolElementStructurePiece pool && pool.getElement() instanceof FeaturePoolElement) {
+				out.add(piece.getBoundingBox());
+			}
+		}
+		return out;
+	}
+
 	/** Building pieces of a village: rigid pool elements other than features (houses, town centers, farms, pens). */
 	private static List<BoundingBox> buildings(StructureStart start) {
 		List<BoundingBox> out = new ArrayList<>();
@@ -396,10 +407,11 @@ public final class PresentDayClientGameTest implements FabricClientGameTest {
 	}
 
 	/**
-	 * Village checks (round 1 of the S8 review) in the box of the village loaded to full status: trunks of the tree stand
-	 * on a street (a log on {@code dirt_path}), leaves and plants (moss carpet, grass, ferns, flowers, bushes, petals) under
-	 * the roof of a building piece on a block that is not soil, and floor columns of a building piece (a solid block in its
-	 * lowest layer) with 2 or more blocks without support below. All must be 0.
+	 * Village checks (round 1 of the S8 review) in the box of the village loaded to full status: trunks on a street (a log
+	 * on {@code dirt_path} outside the building and decor pieces, which have trees of their own), leaves under the roof of
+	 * a building piece (other than those of the village's decor trees) and plants (moss carpet, grass, ferns, flowers, bushes, petals) on a floor (under a roof, on a block
+	 * that is not soil), and floor columns of a building piece (a solid block in its lowest layer) with 2 or more blocks
+	 * without support below. All must be 0.
 	 */
 	static String villageCheck(MinecraftServer server, int[] center) {
 		ServerLevel level = server.overworld();
@@ -411,20 +423,28 @@ public final class PresentDayClientGameTest implements FabricClientGameTest {
 			}
 		}
 		BlockPos.MutableBlockPos p = new BlockPos.MutableBlockPos();
+		List<String> examples = new ArrayList<>();
+		List<BoundingBox> buildings = buildings(start);
+		List<BoundingBox> decor = features(start);
 		int trunksOnPath = 0;
 		for (int x = box.minX(); x <= box.maxX(); x++) {
 			for (int z = box.minZ(); z <= box.maxZ(); z++) {
+				if (inside(buildings, x, z) || inside(decor, x, z)) {
+					// The trees of the templates (the oak of a meeting point) and of the decor pools stand on the paths.
+					continue;
+				}
 				int top = level.getHeight(Heightmap.Types.WORLD_SURFACE, x, z);
 				for (int y = top; y > top - 40; y--) {
 					if (level.getBlockState(p.set(x, y, z)).is(BlockTags.LOGS) && level.getBlockState(p.set(x, y - 1, z)).is(Blocks.DIRT_PATH)) {
 						trunksOnPath++;
+						example(examples, level, "trunk on a street", x, y, z);
 						break;
 					}
 				}
 			}
 		}
-		List<BoundingBox> buildings = buildings(start);
 		int leaves = 0;
+		int decorLeaves = 0;
 		int plants = 0;
 		int hanging = 0;
 		int maxGap = 0;
@@ -450,21 +470,81 @@ public final class PresentDayClientGameTest implements FabricClientGameTest {
 					}
 					for (int y = y0; y < roof; y++) {
 						BlockState s = level.getBlockState(p.set(x, y, z));
-						if (s.is(BlockTags.LEAVES)) {
+						if (s.is(BlockTags.LEAVES) && near(decor, x, z, DECOR_CROWN)) {
+							// A tree of the village's own decoration (a feature piece of its decor pool), as in vanilla.
+							decorLeaves++;
+						} else if (s.is(BlockTags.LEAVES)) {
 							leaves++;
-						} else if (plant(s) && !level.getBlockState(p.set(x, y - 1, z)).is(BlockTags.DIRT)) {
+							example(examples, level, "leaves under a roof", x, y, z);
+						} else if (plant(s) && !soil(level.getBlockState(p.set(x, y - 1, z)))) {
 							plants++;
+							example(examples, level, "plant on a floor", x, y, z);
 						}
 					}
 				}
 			}
 		}
-		String report = String.format(Locale.ROOT, "village checks: %d buildings, trunks on streets %d, leaves under roofs %d, plants on floors %d, "
-				+ "floor columns hanging >= 2 blocks %d (largest gap %d)", buildings.size(), trunksOnPath, leaves, plants, hanging, maxGap);
+		String report = String.format(Locale.ROOT, "village checks: %d buildings, trunks on streets %d, leaves under roofs %d (and %d of the "
+				+ "village's own decor trees), plants on floors %d, floor columns hanging >= 2 blocks %d (largest gap %d)", buildings.size(),
+				trunksOnPath, leaves, decorLeaves, plants, hanging, maxGap);
 		if (trunksOnPath + leaves + plants + hanging > 0) {
-			throw new AssertionError("Village at (" + center[0] + ", " + center[1] + "): " + report);
+			throw new AssertionError("Village at (" + center[0] + ", " + center[1] + "): " + report + "; e.g. " + examples);
 		}
 		return report;
+	}
+
+	/** Records one of the first 8 offenders of {@link #villageCheck}: the block, the block below and the pieces there. */
+	private static void example(List<String> examples, ServerLevel level, String what, int x, int y, int z) {
+		if (examples.size() >= 8) {
+			return;
+		}
+		BlockPos at = new BlockPos(x, y, z);
+		StringBuilder pieces = new StringBuilder();
+		for (StructureStart start : level.structureManager().startsForStructure(x >> 4, z >> 4, st -> true)) {
+			for (StructurePiece piece : start.getPieces()) {
+				if (piece.getBoundingBox().isInside(at) || piece.getBoundingBox().isInside(at.below())) {
+					pieces.append(piece instanceof PoolElementStructurePiece pool ? pool.getElement().toString() : piece.getType().toString())
+							.append(' ').append(piece.getBoundingBox()).append(' ');
+				}
+			}
+		}
+		String log = "";
+		for (BlockPos q : BlockPos.betweenClosed(at.offset(-6, -12, -6), at.offset(6, 2, 6))) {
+			if (level.getBlockState(q).is(BlockTags.LOGS)) {
+				log = " log at " + q.toShortString();
+				break;
+			}
+		}
+		examples.add(String.format(Locale.ROOT, "%s at (%d, %d, %d): %s on %s,%s pieces %s", what, x, y, z, level.getBlockState(at),
+				level.getBlockState(at.below()), log, pieces));
+	}
+
+	/** Horizontal reach (blocks) of the crown of a decor tree of a village from its feature piece. */
+	private static final int DECOR_CROWN = 6;
+
+	/** Whether the column lies within {@code reach} blocks (Chebyshev) of the footprint of one of the boxes. */
+	private static boolean near(List<BoundingBox> boxes, int x, int z, int reach) {
+		for (BoundingBox b : boxes) {
+			if (x >= b.minX() - reach && x <= b.maxX() + reach && z >= b.minZ() - reach && z <= b.maxZ() + reach) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/** Whether the column lies in the footprint of one of the boxes. */
+	private static boolean inside(List<BoundingBox> boxes, int x, int z) {
+		for (BoundingBox b : boxes) {
+			if (x >= b.minX() && x <= b.maxX() && z >= b.minZ() && z <= b.maxZ()) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/** Ground a plant may stand on (the flower beds of the templates stand on grass under the eaves). */
+	private static boolean soil(BlockState s) {
+		return s.is(BlockTags.SUBSTRATE_OVERWORLD) || s.is(Blocks.FARMLAND) || s.is(Blocks.SAND) || s.is(Blocks.GRAVEL);
 	}
 
 	/** A plant of the plant layers that must not stand on a floor of a building. */
