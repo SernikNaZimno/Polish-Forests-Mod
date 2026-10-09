@@ -9,6 +9,13 @@
 	],
 	"contact": {},
 	"license": "MIT",
+	"icon": {
+		"16": "assets/polishforests/icon_16.png",
+		"32": "assets/polishforests/icon_32.png",
+		"64": "assets/polishforests/icon_64.png",
+		"128": "assets/polishforests/icon_128.png",
+		"512": "assets/polishforests/icon.png"
+	},
 	"environment": "*",
 	"entrypoints": {
 		"main": [

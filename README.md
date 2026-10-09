@@ -1,5 +1,7 @@
 # Polish Forests (dawniej „Przyrodniczo zgodne lasy”)
 
+<p align="center"><img src="docs/logo/logo_horizontal_pl.png" alt="Polish Forests — lasy, rzeki, góry" width="640"></p>
+
 Mod do Minecrafta 26.3 (Fabric), który generuje proceduralne krajobrazy Polski w skali 1:1 z przyrodniczo wiernymi lasami, florą i fauną oraz integracją z porami roku Serene Seasons.
 
 Stan: za nami M0, M1, skala rozgrywki oraz etap rzek, dolin i morza; trwa M2 (biomy, siedliska, gleby i temperatura), zrobiona jest faza 1 (kroki S0–S4: klasyfikator 36 biomów). Kod i teksty w grze są po angielsku (polski jako tłumaczenie), dokumentacja po polsku. Licencja: MIT. Plan i decyzje są w katalogu `docs`.
@@ -104,3 +106,7 @@ Informacje o krajobrazie są też na ekranie F3.
 | GeckoLib | 5.5.7 | wymagany |
 | SmartBrainLib | 2.0.2 | wymagany |
 | Serene Seasons | 26.1.2.0.7 | opcjonalny, bez niego działa własny kalendarz |
+
+## Logo
+
+Znak: liść dębu szypułkowego z wyciętym w nerwach świerkiem, na pniu w kolorze kory sosny. Pliki w `docs/logo/` (wersje z hasłem po polsku `_pl` i po angielsku `_en`, na jasne i ciemne tło, znak w SVG), ikona moda w `src/main/resources/assets/polishforests/` (16–512 px; 16 i 32 px rysowane ręcznie jako pixel art). Źródła: `tools/logo/` (`python tools/logo/build.py`, czcionka Bahnschrift z Windows).
