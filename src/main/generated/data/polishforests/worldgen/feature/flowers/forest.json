@@ -1,0 +1,166 @@
+{
+  "type": "minecraft:simple_block",
+  "to_place": {
+    "type": "minecraft:weighted",
+    "entries": [
+      {
+        "data": "minecraft:wildflowers",
+        "weight": 4
+      },
+      {
+        "data": {
+          "id": "minecraft:wildflowers",
+          "properties": {
+            "facing": "east",
+            "flower_amount": "1"
+          }
+        },
+        "weight": 4
+      },
+      {
+        "data": {
+          "id": "minecraft:wildflowers",
+          "properties": {
+            "facing": "south",
+            "flower_amount": "1"
+          }
+        },
+        "weight": 4
+      },
+      {
+        "data": {
+          "id": "minecraft:wildflowers",
+          "properties": {
+            "facing": "west",
+            "flower_amount": "1"
+          }
+        },
+        "weight": 4
+      },
+      {
+        "data": {
+          "id": "minecraft:wildflowers",
+          "properties": {
+            "facing": "north",
+            "flower_amount": "2"
+          }
+        },
+        "weight": 4
+      },
+      {
+        "data": {
+          "id": "minecraft:wildflowers",
+          "properties": {
+            "facing": "east",
+            "flower_amount": "2"
+          }
+        },
+        "weight": 4
+      },
+      {
+        "data": {
+          "id": "minecraft:wildflowers",
+          "properties": {
+            "facing": "south",
+            "flower_amount": "2"
+          }
+        },
+        "weight": 4
+      },
+      {
+        "data": {
+          "id": "minecraft:wildflowers",
+          "properties": {
+            "facing": "west",
+            "flower_amount": "2"
+          }
+        },
+        "weight": 4
+      },
+      {
+        "data": {
+          "id": "minecraft:wildflowers",
+          "properties": {
+            "facing": "north",
+            "flower_amount": "3"
+          }
+        },
+        "weight": 4
+      },
+      {
+        "data": {
+          "id": "minecraft:wildflowers",
+          "properties": {
+            "facing": "east",
+            "flower_amount": "3"
+          }
+        },
+        "weight": 4
+      },
+      {
+        "data": {
+          "id": "minecraft:wildflowers",
+          "properties": {
+            "facing": "south",
+            "flower_amount": "3"
+          }
+        },
+        "weight": 4
+      },
+      {
+        "data": {
+          "id": "minecraft:wildflowers",
+          "properties": {
+            "facing": "west",
+            "flower_amount": "3"
+          }
+        },
+        "weight": 4
+      },
+      {
+        "data": {
+          "id": "minecraft:wildflowers",
+          "properties": {
+            "facing": "north",
+            "flower_amount": "4"
+          }
+        },
+        "weight": 4
+      },
+      {
+        "data": {
+          "id": "minecraft:wildflowers",
+          "properties": {
+            "facing": "east",
+            "flower_amount": "4"
+          }
+        },
+        "weight": 4
+      },
+      {
+        "data": {
+          "id": "minecraft:wildflowers",
+          "properties": {
+            "facing": "south",
+            "flower_amount": "4"
+          }
+        },
+        "weight": 4
+      },
+      {
+        "data": {
+          "id": "minecraft:wildflowers",
+          "properties": {
+            "facing": "west",
+            "flower_amount": "4"
+          }
+        },
+        "weight": 4
+      },
+      {
+        "data": "minecraft:lily_of_the_valley",
+        "weight": 2
+      }
+    ]
+  }
+}

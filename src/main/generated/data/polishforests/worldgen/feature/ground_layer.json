@@ -1,3 +1,1172 @@
 {
-  "type": "polishforests:ground_layer"
+  "type": "polishforests:ground_layer",
+  "rules": [
+    {
+      "coverage": 0.85,
+      "patch": 3,
+      "plants": [
+        {
+          "block": "minecraft:tall_grass",
+          "weight": 55
+        },
+        {
+          "block": "minecraft:large_fern",
+          "weight": 25
+        },
+        {
+          "block": "minecraft:bush",
+          "weight": 10
+        },
+        {
+          "block": "minecraft:fern",
+          "weight": 10
+        }
+      ],
+      "zones": [
+        "herb_fringe",
+        "tall_herbs",
+        "montane_tall_herbs",
+        "willow_scrub",
+        "willow_carr",
+        "spring_area",
+        "shore_reedbed",
+        "riverside_willows",
+        "gravel_bar",
+        "point_bar"
+      ]
+    },
+    {
+      "biomes": [
+        "alder_carr"
+      ],
+      "coverage": 0.88,
+      "patch": 3,
+      "plants": [
+        {
+          "block": "minecraft:tall_grass",
+          "weight": 40
+        },
+        {
+          "block": "minecraft:large_fern",
+          "weight": 30
+        },
+        {
+          "block": "minecraft:fern",
+          "weight": 12
+        },
+        {
+          "block": "minecraft:bush",
+          "weight": 8
+        },
+        {
+          "block": "minecraft:firefly_bush",
+          "weight": 3
+        },
+        {
+          "block": "minecraft:short_grass",
+          "weight": 4
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "ash_alder_forest",
+        "gray_alder_forest"
+      ],
+      "coverage": 0.88,
+      "patch": 3,
+      "plants": [
+        {
+          "block": "minecraft:tall_grass",
+          "weight": 40
+        },
+        {
+          "block": "minecraft:large_fern",
+          "weight": 30
+        },
+        {
+          "block": "minecraft:fern",
+          "weight": 12
+        },
+        {
+          "block": "minecraft:bush",
+          "weight": 10
+        },
+        {
+          "block": "minecraft:short_grass",
+          "weight": 3
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "willow_poplar_forest"
+      ],
+      "coverage": 0.86,
+      "patch": 3,
+      "plants": [
+        {
+          "block": "minecraft:tall_grass",
+          "weight": 55
+        },
+        {
+          "block": "minecraft:large_fern",
+          "weight": 20
+        },
+        {
+          "block": "minecraft:bush",
+          "weight": 12
+        },
+        {
+          "block": "minecraft:fern",
+          "weight": 5
+        },
+        {
+          "block": "minecraft:short_grass",
+          "weight": 4
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "elm_ash_forest"
+      ],
+      "coverage": 0.88,
+      "patch": 3,
+      "plants": [
+        {
+          "block": "minecraft:tall_grass",
+          "weight": 45
+        },
+        {
+          "block": "minecraft:large_fern",
+          "weight": 25
+        },
+        {
+          "block": "minecraft:fern",
+          "weight": 8
+        },
+        {
+          "block": {
+            "id": "minecraft:leaf_litter",
+            "properties": {
+              "facing": "north",
+              "segment_amount": "2"
+            }
+          },
+          "weight": 3
+        },
+        {
+          "block": {
+            "id": "minecraft:leaf_litter",
+            "properties": {
+              "facing": "north",
+              "segment_amount": "3"
+            }
+          },
+          "weight": 3
+        },
+        {
+          "block": {
+            "id": "minecraft:leaf_litter",
+            "properties": {
+              "facing": "north",
+              "segment_amount": "4"
+            }
+          },
+          "weight": 4
+        },
+        {
+          "block": {
+            "id": "minecraft:wildflowers",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "2"
+            }
+          },
+          "weight": 1
+        },
+        {
+          "block": {
+            "id": "minecraft:wildflowers",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "3"
+            }
+          },
+          "weight": 1
+        },
+        {
+          "block": {
+            "id": "minecraft:wildflowers",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "4"
+            }
+          },
+          "weight": 2
+        },
+        {
+          "block": "minecraft:short_grass",
+          "weight": 2
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "reedbed"
+      ],
+      "coverage": 0.85,
+      "patch": 3,
+      "plants": [
+        {
+          "block": "minecraft:tall_grass",
+          "weight": 80
+        },
+        {
+          "block": "minecraft:large_fern",
+          "weight": 10
+        },
+        {
+          "block": "minecraft:short_grass",
+          "weight": 5
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "willow_scrub"
+      ],
+      "coverage": 0.8,
+      "patch": 3,
+      "plants": [
+        {
+          "block": "minecraft:tall_grass",
+          "weight": 55
+        },
+        {
+          "block": "minecraft:large_fern",
+          "weight": 20
+        },
+        {
+          "block": "minecraft:bush",
+          "weight": 10
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "fen"
+      ],
+      "coverage": 0.75,
+      "patch": 3,
+      "plants": [
+        {
+          "block": "minecraft:tall_grass",
+          "weight": 40
+        },
+        {
+          "block": "minecraft:short_grass",
+          "weight": 25
+        },
+        {
+          "block": "minecraft:fern",
+          "weight": 10
+        },
+        {
+          "block": "minecraft:moss_carpet",
+          "weight": 10
+        },
+        {
+          "block": "minecraft:allium",
+          "weight": 3
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "wet_meadow"
+      ],
+      "coverage": 0.85,
+      "patch": 3,
+      "plants": [
+        {
+          "block": "minecraft:tall_grass",
+          "weight": 35
+        },
+        {
+          "block": "minecraft:short_grass",
+          "weight": 35
+        },
+        {
+          "block": "minecraft:allium",
+          "weight": 4
+        },
+        {
+          "block": "minecraft:oxeye_daisy",
+          "weight": 4
+        },
+        {
+          "block": "minecraft:dandelion",
+          "weight": 3
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "hay_meadow"
+      ],
+      "coverage": 0.85,
+      "patch": 3,
+      "plants": [
+        {
+          "block": "minecraft:short_grass",
+          "weight": 50
+        },
+        {
+          "block": "minecraft:tall_grass",
+          "weight": 10
+        },
+        {
+          "block": "minecraft:dandelion",
+          "weight": 6
+        },
+        {
+          "block": "minecraft:poppy",
+          "weight": 4
+        },
+        {
+          "block": "minecraft:oxeye_daisy",
+          "weight": 6
+        },
+        {
+          "block": "minecraft:cornflower",
+          "weight": 4
+        },
+        {
+          "block": "minecraft:azure_bluet",
+          "weight": 3
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "arable_land"
+      ],
+      "coverage": 0.3,
+      "patch": 2,
+      "plants": [
+        {
+          "block": "minecraft:short_grass",
+          "weight": 30
+        },
+        {
+          "block": "minecraft:poppy",
+          "weight": 5
+        },
+        {
+          "block": "minecraft:cornflower",
+          "weight": 5
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "heath"
+      ],
+      "coverage": 0.75,
+      "patch": 4,
+      "plants": [
+        {
+          "block": {
+            "id": "minecraft:pink_petals",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "2"
+            }
+          },
+          "weight": 13
+        },
+        {
+          "block": {
+            "id": "minecraft:pink_petals",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "3"
+            }
+          },
+          "weight": 13
+        },
+        {
+          "block": {
+            "id": "minecraft:pink_petals",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "4"
+            }
+          },
+          "weight": 14
+        },
+        {
+          "block": "minecraft:pale_moss_carpet",
+          "weight": 12
+        },
+        {
+          "block": "minecraft:short_grass",
+          "weight": 15
+        },
+        {
+          "block": "minecraft:short_dry_grass",
+          "weight": 8
+        },
+        {
+          "block": "minecraft:bush",
+          "weight": 5
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "raised_bog"
+      ],
+      "coverage": 0.5,
+      "patch": 3,
+      "plants": [
+        {
+          "block": "minecraft:bush",
+          "weight": 25
+        },
+        {
+          "block": "minecraft:sweet_berry_bush",
+          "weight": 6
+        },
+        {
+          "block": "minecraft:short_grass",
+          "weight": 10
+        },
+        {
+          "block": {
+            "id": "minecraft:pink_petals",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "2"
+            }
+          },
+          "weight": 3
+        },
+        {
+          "block": {
+            "id": "minecraft:pink_petals",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "3"
+            }
+          },
+          "weight": 3
+        },
+        {
+          "block": {
+            "id": "minecraft:pink_petals",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "4"
+            }
+          },
+          "weight": 4
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "bog_woodland"
+      ],
+      "coverage": 0.85,
+      "patch": 4,
+      "plants": [
+        {
+          "block": "minecraft:moss_carpet",
+          "weight": 45
+        },
+        {
+          "block": "minecraft:bush",
+          "weight": 25
+        },
+        {
+          "block": "minecraft:sweet_berry_bush",
+          "weight": 10
+        },
+        {
+          "block": "minecraft:fern",
+          "weight": 5
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "dry_pine_forest"
+      ],
+      "coverage": 0.75,
+      "patch": 4,
+      "plants": [
+        {
+          "block": "minecraft:pale_moss_carpet",
+          "weight": 55
+        },
+        {
+          "block": "minecraft:bush",
+          "weight": 15
+        },
+        {
+          "block": "minecraft:short_dry_grass",
+          "weight": 8
+        },
+        {
+          "block": "minecraft:sweet_berry_bush",
+          "weight": 2
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "fresh_pine_forest"
+      ],
+      "coverage": 0.85,
+      "patch": 4,
+      "plants": [
+        {
+          "block": "minecraft:moss_carpet",
+          "weight": 50
+        },
+        {
+          "block": "minecraft:bush",
+          "weight": 25
+        },
+        {
+          "block": "minecraft:sweet_berry_bush",
+          "weight": 8
+        },
+        {
+          "block": "minecraft:fern",
+          "weight": 5
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "coastal_pine_forest"
+      ],
+      "coverage": 0.8,
+      "patch": 4,
+      "plants": [
+        {
+          "block": "minecraft:moss_carpet",
+          "weight": 35
+        },
+        {
+          "block": "minecraft:bush",
+          "weight": 30
+        },
+        {
+          "block": "minecraft:pale_moss_carpet",
+          "weight": 10
+        },
+        {
+          "block": "minecraft:sweet_berry_bush",
+          "weight": 5
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "moist_pine_forest"
+      ],
+      "coverage": 0.9,
+      "patch": 4,
+      "plants": [
+        {
+          "block": "minecraft:moss_carpet",
+          "weight": 50
+        },
+        {
+          "block": "minecraft:bush",
+          "weight": 15
+        },
+        {
+          "block": "minecraft:sweet_berry_bush",
+          "weight": 10
+        },
+        {
+          "block": "minecraft:fern",
+          "weight": 12
+        },
+        {
+          "block": "minecraft:large_fern",
+          "weight": 3
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "mixed_pine_forest"
+      ],
+      "coverage": 0.85,
+      "patch": 4,
+      "plants": [
+        {
+          "block": "minecraft:moss_carpet",
+          "weight": 30
+        },
+        {
+          "block": "minecraft:bush",
+          "weight": 20
+        },
+        {
+          "block": "minecraft:fern",
+          "weight": 12
+        },
+        {
+          "block": "minecraft:large_fern",
+          "weight": 3
+        },
+        {
+          "block": "minecraft:sweet_berry_bush",
+          "weight": 6
+        },
+        {
+          "block": {
+            "id": "minecraft:leaf_litter",
+            "properties": {
+              "facing": "north",
+              "segment_amount": "2"
+            }
+          },
+          "weight": 5
+        },
+        {
+          "block": {
+            "id": "minecraft:leaf_litter",
+            "properties": {
+              "facing": "north",
+              "segment_amount": "3"
+            }
+          },
+          "weight": 5
+        },
+        {
+          "block": {
+            "id": "minecraft:leaf_litter",
+            "properties": {
+              "facing": "north",
+              "segment_amount": "4"
+            }
+          },
+          "weight": 5
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "mixed_forest"
+      ],
+      "coverage": 0.8,
+      "patch": 4,
+      "plants": [
+        {
+          "block": {
+            "id": "minecraft:leaf_litter",
+            "properties": {
+              "facing": "north",
+              "segment_amount": "2"
+            }
+          },
+          "weight": 13
+        },
+        {
+          "block": {
+            "id": "minecraft:leaf_litter",
+            "properties": {
+              "facing": "north",
+              "segment_amount": "3"
+            }
+          },
+          "weight": 13
+        },
+        {
+          "block": {
+            "id": "minecraft:leaf_litter",
+            "properties": {
+              "facing": "north",
+              "segment_amount": "4"
+            }
+          },
+          "weight": 14
+        },
+        {
+          "block": "minecraft:moss_carpet",
+          "weight": 12
+        },
+        {
+          "block": "minecraft:fern",
+          "weight": 8
+        },
+        {
+          "block": {
+            "id": "minecraft:wildflowers",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "2"
+            }
+          },
+          "weight": 2
+        },
+        {
+          "block": {
+            "id": "minecraft:wildflowers",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "3"
+            }
+          },
+          "weight": 2
+        },
+        {
+          "block": {
+            "id": "minecraft:wildflowers",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "4"
+            }
+          },
+          "weight": 4
+        },
+        {
+          "block": "minecraft:short_grass",
+          "weight": 5
+        },
+        {
+          "block": "minecraft:sweet_berry_bush",
+          "weight": 3
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "oak_hornbeam_forest"
+      ],
+      "coverage": 0.85,
+      "patch": 4,
+      "plants": [
+        {
+          "block": {
+            "id": "minecraft:leaf_litter",
+            "properties": {
+              "facing": "north",
+              "segment_amount": "2"
+            }
+          },
+          "weight": 15
+        },
+        {
+          "block": {
+            "id": "minecraft:leaf_litter",
+            "properties": {
+              "facing": "north",
+              "segment_amount": "3"
+            }
+          },
+          "weight": 15
+        },
+        {
+          "block": {
+            "id": "minecraft:leaf_litter",
+            "properties": {
+              "facing": "north",
+              "segment_amount": "4"
+            }
+          },
+          "weight": 15
+        },
+        {
+          "block": {
+            "id": "minecraft:wildflowers",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "2"
+            }
+          },
+          "weight": 6
+        },
+        {
+          "block": {
+            "id": "minecraft:wildflowers",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "3"
+            }
+          },
+          "weight": 6
+        },
+        {
+          "block": {
+            "id": "minecraft:wildflowers",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "4"
+            }
+          },
+          "weight": 8
+        },
+        {
+          "block": "minecraft:lily_of_the_valley",
+          "weight": 4
+        },
+        {
+          "block": "minecraft:fern",
+          "weight": 6
+        },
+        {
+          "block": "minecraft:short_grass",
+          "weight": 6
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "lowland_beech_forest"
+      ],
+      "coverage": 0.85,
+      "patch": 4,
+      "plants": [
+        {
+          "block": {
+            "id": "minecraft:leaf_litter",
+            "properties": {
+              "facing": "north",
+              "segment_amount": "2"
+            }
+          },
+          "weight": 28
+        },
+        {
+          "block": {
+            "id": "minecraft:leaf_litter",
+            "properties": {
+              "facing": "north",
+              "segment_amount": "3"
+            }
+          },
+          "weight": 28
+        },
+        {
+          "block": {
+            "id": "minecraft:leaf_litter",
+            "properties": {
+              "facing": "north",
+              "segment_amount": "4"
+            }
+          },
+          "weight": 29
+        },
+        {
+          "block": "minecraft:fern",
+          "weight": 2
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "montane_beech_forest"
+      ],
+      "coverage": 0.85,
+      "patch": 4,
+      "plants": [
+        {
+          "block": {
+            "id": "minecraft:leaf_litter",
+            "properties": {
+              "facing": "north",
+              "segment_amount": "2"
+            }
+          },
+          "weight": 25
+        },
+        {
+          "block": {
+            "id": "minecraft:leaf_litter",
+            "properties": {
+              "facing": "north",
+              "segment_amount": "3"
+            }
+          },
+          "weight": 25
+        },
+        {
+          "block": {
+            "id": "minecraft:leaf_litter",
+            "properties": {
+              "facing": "north",
+              "segment_amount": "4"
+            }
+          },
+          "weight": 25
+        },
+        {
+          "block": "minecraft:fern",
+          "weight": 6
+        },
+        {
+          "block": {
+            "id": "minecraft:wildflowers",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "2"
+            }
+          },
+          "weight": 1
+        },
+        {
+          "block": {
+            "id": "minecraft:wildflowers",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "3"
+            }
+          },
+          "weight": 1
+        },
+        {
+          "block": {
+            "id": "minecraft:wildflowers",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "4"
+            }
+          },
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "upland_fir_forest"
+      ],
+      "coverage": 0.8,
+      "patch": 4,
+      "plants": [
+        {
+          "block": {
+            "id": "minecraft:leaf_litter",
+            "properties": {
+              "facing": "north",
+              "segment_amount": "2"
+            }
+          },
+          "weight": 13
+        },
+        {
+          "block": {
+            "id": "minecraft:leaf_litter",
+            "properties": {
+              "facing": "north",
+              "segment_amount": "3"
+            }
+          },
+          "weight": 13
+        },
+        {
+          "block": {
+            "id": "minecraft:leaf_litter",
+            "properties": {
+              "facing": "north",
+              "segment_amount": "4"
+            }
+          },
+          "weight": 14
+        },
+        {
+          "block": "minecraft:moss_carpet",
+          "weight": 20
+        },
+        {
+          "block": "minecraft:fern",
+          "weight": 12
+        },
+        {
+          "block": {
+            "id": "minecraft:wildflowers",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "2"
+            }
+          },
+          "weight": 1
+        },
+        {
+          "block": {
+            "id": "minecraft:wildflowers",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "3"
+            }
+          },
+          "weight": 1
+        },
+        {
+          "block": {
+            "id": "minecraft:wildflowers",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "4"
+            }
+          },
+          "weight": 2
+        }
+      ]
+    },
+    {
+      "associations": [
+        "gully_tall_herbs"
+      ],
+      "biomes": [
+        "montane_spruce_forest"
+      ],
+      "coverage": 0.8,
+      "patch": 3,
+      "plants": [
+        {
+          "block": "minecraft:tall_grass",
+          "weight": 50
+        },
+        {
+          "block": "minecraft:large_fern",
+          "weight": 30
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "montane_spruce_forest"
+      ],
+      "coverage": 0.85,
+      "patch": 4,
+      "plants": [
+        {
+          "block": "minecraft:moss_carpet",
+          "weight": 45
+        },
+        {
+          "block": "minecraft:fern",
+          "weight": 15
+        },
+        {
+          "block": "minecraft:bush",
+          "weight": 15
+        },
+        {
+          "block": "minecraft:sweet_berry_bush",
+          "weight": 5
+        },
+        {
+          "block": "minecraft:large_fern",
+          "weight": 5
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "dwarf_pine_scrub"
+      ],
+      "coverage": 0.6,
+      "patch": 3,
+      "plants": [
+        {
+          "block": "minecraft:moss_carpet",
+          "weight": 25
+        },
+        {
+          "block": "minecraft:bush",
+          "weight": 20
+        },
+        {
+          "block": "minecraft:fern",
+          "weight": 8
+        },
+        {
+          "block": "minecraft:short_grass",
+          "weight": 10
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "alpine_grassland"
+      ],
+      "coverage": 0.8,
+      "patch": 3,
+      "plants": [
+        {
+          "block": "minecraft:short_grass",
+          "weight": 60
+        },
+        {
+          "block": "minecraft:bush",
+          "weight": 12
+        },
+        {
+          "block": "minecraft:azure_bluet",
+          "weight": 3
+        },
+        {
+          "block": "minecraft:allium",
+          "weight": 2
+        },
+        {
+          "block": "minecraft:fern",
+          "weight": 3
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "white_dune"
+      ],
+      "coverage": 0.25,
+      "patch": 3,
+      "plants": [
+        {
+          "block": "minecraft:tall_dry_grass",
+          "weight": 5
+        },
+        {
+          "block": "minecraft:short_dry_grass",
+          "weight": 5
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "gray_dune"
+      ],
+      "coverage": 0.55,
+      "patch": 3,
+      "plants": [
+        {
+          "block": "minecraft:short_dry_grass",
+          "weight": 25
+        },
+        {
+          "block": "minecraft:pale_moss_carpet",
+          "weight": 25
+        },
+        {
+          "block": "minecraft:bush",
+          "weight": 10
+        },
+        {
+          "block": "minecraft:short_grass",
+          "weight": 15
+        }
+      ]
+    }
+  ]
 }

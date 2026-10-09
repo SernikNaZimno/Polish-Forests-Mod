@@ -26,6 +26,7 @@ public final class PolishForestsDataGenerator implements DataGeneratorEntrypoint
 		FabricDataGenerator.Pack pack = generator.createPack();
 		pack.addProvider(WorldgenProvider::new);
 		pack.addProvider(ModBiomeTagProvider::new);
+		pack.addProvider(ModFeatureTagProvider::new);
 		pack.addProvider(ModLanguageProvider.English::new);
 		pack.addProvider(ModLanguageProvider.Polish::new);
 	}

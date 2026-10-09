@@ -1,5 +1,5 @@
 {
-  "feature": "minecraft:flower_plain",
+  "feature": "polishforests:flowers/mountain",
   "placement": [
     {
       "type": "minecraft:count",

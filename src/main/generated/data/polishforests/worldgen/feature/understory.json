@@ -1,3 +1,123 @@
 {
-  "type": "polishforests:understory"
+  "type": "polishforests:understory",
+  "rules": [
+    {
+      "coverage": 0.0,
+      "plants": [],
+      "zones": [
+        "channel",
+        "submerged_plants",
+        "floating_leaved_plants",
+        "reedbed",
+        "shore_reedbed",
+        "point_bar",
+        "willow_scrub",
+        "herb_fringe",
+        "tall_herbs",
+        "willow_carr",
+        "gravel_bar",
+        "montane_tall_herbs",
+        "floating_mat",
+        "strandline",
+        "embryo_dune",
+        "cliff_face",
+        "cliff_top"
+      ]
+    },
+    {
+      "biomes": [
+        "dwarf_pine_scrub"
+      ],
+      "coverage": 0.05,
+      "plants": [
+        {
+          "feature": "polishforests:shrub/dwarf_mountain_pine",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "heath"
+      ],
+      "coverage": 0.01,
+      "patch": 3,
+      "plants": [
+        {
+          "feature": "polishforests:shrub/juniper",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "dry_pine_forest",
+        "fresh_pine_forest"
+      ],
+      "coverage": 0.00390625,
+      "plants": [
+        {
+          "feature": "polishforests:shrub/juniper",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "mixed_pine_forest",
+        "mixed_forest"
+      ],
+      "coverage": 0.005859375,
+      "plants": [
+        {
+          "feature": "polishforests:shrub/hazel",
+          "weight": 2
+        },
+        {
+          "feature": "polishforests:shrub/juniper",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "oak_hornbeam_forest",
+        "elm_ash_forest"
+      ],
+      "coverage": 0.01171875,
+      "plants": [
+        {
+          "feature": "polishforests:shrub/hazel",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "ash_alder_forest",
+        "alder_carr",
+        "upland_fir_forest"
+      ],
+      "coverage": 0.00390625,
+      "plants": [
+        {
+          "feature": "polishforests:shrub/hazel",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "gray_dune"
+      ],
+      "coverage": 0.01,
+      "patch": 3,
+      "plants": [
+        {
+          "feature": "polishforests:shrub/osier",
+          "weight": 1
+        }
+      ]
+    }
+  ]
 }

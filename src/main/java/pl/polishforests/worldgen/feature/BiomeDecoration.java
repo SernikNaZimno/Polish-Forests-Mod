@@ -19,6 +19,9 @@ public final class BiomeDecoration {
 	/** Step of the vegetation dispatchers ({@code VEGETAL_DECORATION}). */
 	public static final int VEGETATION_STEP = 9;
 
+	/** Glacial erratics of step 2 (§8.1). */
+	public static final String GLACIAL_ERRATICS = PolishForests.id("glacial_erratics").toString();
+
 	/** Lava lakes only below Y 0 (decision M2-4). */
 	public static final String DEEP_LAVA_LAKE = PolishForests.id("deep_lava_lake").toString();
 
@@ -34,8 +37,8 @@ public final class BiomeDecoration {
 			"minecraft:disk_sand", "minecraft:disk_clay", "minecraft:disk_gravel");
 
 	/**
-	 * Vegetation dispatchers of step 9 in their final order (§8.2). In step S5 only the tree stand works (basic version:
-	 * tree palettes per biome, without zones); the others are registered but do nothing yet (steps S7 and S8).
+	 * Vegetation dispatchers of step 9 in their final order (§8.2): the tree stand ({@code TreeStandFeature}) and the
+	 * five column layers ({@code PlantLayerFeature}).
 	 */
 	public enum Dispatcher {
 		TREE_STAND, DEADWOOD, UNDERSTORY, WATERSIDE_ZONES, GROUND_LAYER, AQUATIC_PLANTS;
@@ -65,7 +68,7 @@ public final class BiomeDecoration {
 			steps.add(new ArrayList<>());
 		}
 		steps.get(1).add(DEEP_LAVA_LAKE);
-		steps.get(2).add("minecraft:amethyst_geode");
+		steps.get(2).addAll(List.of("minecraft:amethyst_geode", GLACIAL_ERRATICS));
 		steps.get(3).addAll(List.of("minecraft:monster_room", "minecraft:monster_room_deep"));
 		steps.get(6).addAll(ORES_AND_DISKS);
 		for (Dispatcher d : Dispatcher.values()) {

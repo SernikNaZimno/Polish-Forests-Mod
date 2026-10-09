@@ -2,27 +2,38 @@ package pl.polishforests.worldgen.feature.plan;
 
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import pl.polishforests.worldgen.habitat.Habitat;
-import pl.polishforests.worldgen.habitat.HabitatBiome;
 import pl.polishforests.worldgen.landscape.Noise;
 
 /**
- * Tree stand plan of one chunk (docs/03-m2-biomy.md §8.2): a pure function of the chunk habitats, the palette, the world
- * seed and the chunk position, testable without the game.
+ * Tree stand plan of one chunk (docs/03-m2-biomy.md §8.2, §8.5, §9): a pure function of the chunk habitats, the palette,
+ * the world seed and the chunk position, testable without the game.
  *
  * <p>Candidate trunks form one pattern for the whole world, independent of chunk borders: a world-aligned grid of
  * {@value #CELL} × {@value #CELL} block cells has one candidate per cell at a random column of the cell (so every column
  * is equally likely), and a candidate is kept only if no kept candidate with a lower random mark stands closer than
  * {@value #MIN_SPACING} blocks (sequential inhibition in the order of the marks, evaluated locally and recursively, so a
  * chunk sees the same kept candidates near its border as its neighbor). The kept candidates have a known mean density of
- * {@value #DENSITY} per chunk; a kept candidate becomes a tree with probability n_b / {@value #DENSITY}, where n_b is the
- * number of trees per chunk of the biome of its column, so the stand has no grid, no lanes along chunk borders and at least
- * {@value #MIN_SPACING} blocks between trunks. Then a species from the weights of the column's biome, among the species
- * within their range (§9); a species out of range may give its weight to an alternative species ("beech or spruce",
- * §8.5). Columns under water get no tree (willows and alders in shallow water: step S7).
+ * {@value #DENSITY} per chunk. A kept candidate takes the first palette rule that matches its column's habitat code
+ * (biomes, zones, forest site types, associations; {@link HabitatMatch}) and becomes a tree with probability
+ * n / {@value #DENSITY}, where n is the rule's number of trees per chunk, so the stand has no grid, no lanes along chunk
+ * borders and at least {@value #MIN_SPACING} blocks between trunks.
  *
- * <p>Basic version of step S5: palettes per biome only, without zones, gaps and the range ramp.
+ * <p>Spacing of sparse stands (§12.1: at least c/2 between trunks, where c = 16 / ⌈√n⌉ is the mesh of a stratified
+ * sample of n trees per chunk): where c/2 exceeds {@value #MIN_SPACING} (n ≤ 4), a tree is dropped when a kept candidate
+ * with a lower mark closer than c/2 would also become a tree at the same chance (a hard-core thinning without
+ * recursion, computable across chunk borders from the candidate pattern alone). The chance is raised so that the mean
+ * stays n: for an exclusion area a = π ((c/2)² − 0.7 · {@value #MIN_SPACING}²) / 256 chunks the potential density x
+ * solves (1 − e^(−x a)) / a = n.
+ *
+ * <p>Gaps (§8.2): a noise field of wavelength {@value #GAP_WAVELENGTH} m·k removes the trees from about
+ * {@value #GAP_SHARE} of the area; the chance of the other candidates is raised by 1 / (1 − {@value #GAP_SHARE}), so the
+ * mean number of trees per chunk stays the palette's. Then a species from the rule's weights, among the species within
+ * their range (the flags of the habitat code, §9): the weight of a species with a range flag is multiplied by the
+ * chunk's range ramp ({@link SpeciesRamp}), and the rest of it goes to the entry's alternative species where that one is
+ * within its range ("beech or spruce", §8.5). A column under water takes only the entries whose maximum water depth
+ * covers it (willows and alders in shallow water, §8.2); others get no tree.
  */
 public final class TreeStandPlan {
 	/** Salt of the tree stand layer in the dispatcher seed and in the candidate pattern. */
@@ -36,43 +47,114 @@ public final class TreeStandPlan {
 	 * possible number of trees per chunk.
 	 */
 	public static final double DENSITY = 16.65;
+	/** Wavelength of the gap noise in meters at the realistic scale (times k, §8.2: 40–80 m). */
+	public static final double GAP_WAVELENGTH = 60;
+	/** Gap noise level above which a candidate is in a gap. */
+	public static final double GAP_THRESHOLD = 0.455;
+	/** Share of the area in gaps at {@link #GAP_THRESHOLD} (measured in {@code TreeStandPlanTest}; §8.2: 5–10%). */
+	public static final double GAP_SHARE = 0.075;
 
 	private static final int CELLS = 16 / CELL;
 	private static final int MIN_SPACING_SQ = MIN_SPACING * MIN_SPACING;
 
 	/**
-	 * Palette resolved for planning: for each biome ordinal the number of trees per chunk and the candidate trees
-	 * (indices into the dispatcher's tree list), their weights and the range flag masks ({@code Species.flag()}, 0 for
-	 * none), and for each entry an alternative tree used when the entry's species is out of range (-1 for none) with its
-	 * range flag mask.
+	 * A palette rule resolved for planning: the habitat condition, the number of trees per chunk and the candidate trees
+	 * (indices into the dispatcher's tree list) with their weights, range flag masks ({@code Species.flag()}, 0 for
+	 * none), alternative trees (-1 for none) with their range flag masks, and the deepest water each tree may stand in
+	 * (0: dry columns only).
 	 */
-	public record Palette(float[] treesPerChunk, int[][] trees, int[][] weights, int[][] flags, int[][] alternatives,
-			int[][] alternativeFlags) {
+	public record Rule(HabitatMatch match, float treesPerChunk, int[] trees, int[] weights, int[] flags, int[] alternatives,
+			int[] alternativeFlags, int[] maxWaterDepth) {
+		public Rule {
+			int n = trees.length;
+			if (weights.length != n || flags.length != n || alternatives.length != n || alternativeFlags.length != n
+					|| maxWaterDepth.length != n) {
+				throw new IllegalArgumentException("rule arrays differ in length");
+			}
+		}
+
+		/** Smallest distance between two trunks of this rule: c/2 with c = 16 / ⌈√n⌉, at least {@link #MIN_SPACING}. */
+		public double spacing() {
+			return TreeStandPlan.spacing(treesPerChunk);
+		}
+
+		/** A rule of dry trees without alternatives. */
+		public static Rule of(HabitatMatch match, float treesPerChunk, int[] trees, int[] weights, int[] flags) {
+			int[] none = new int[trees.length];
+			Arrays.fill(none, -1);
+			return new Rule(match, treesPerChunk, trees, weights, flags, none, new int[trees.length], new int[trees.length]);
+		}
+	}
+
+	/** Rules in order: the first rule that matches a column applies; a column without a rule gets no tree. */
+	public record Palette(List<Rule> rules) {
 		public Palette {
-			int n = HabitatBiome.values().length;
-			if (treesPerChunk.length != n || trees.length != n || weights.length != n || flags.length != n
-					|| alternatives.length != n || alternativeFlags.length != n) {
-				throw new IllegalArgumentException("palette needs an entry for each of the " + n + " biomes");
-			}
+			rules = List.copyOf(rules);
 		}
 
-		/** A palette without alternative species. */
-		public Palette(float[] treesPerChunk, int[][] trees, int[][] weights, int[][] flags) {
-			this(treesPerChunk, trees, weights, flags, noAlternatives(trees), noAlternatives(trees));
+		/** Index of the first rule matching the habitat code, or -1. */
+		public int ruleFor(int code) {
+			for (int r = 0; r < rules.size(); r++) {
+				if (rules.get(r).match().matches(code)) {
+					return r;
+				}
+			}
+			return -1;
 		}
 
-		private static int[][] noAlternatives(int[][] trees) {
-			int[][] out = new int[trees.length][];
-			for (int i = 0; i < trees.length; i++) {
-				out[i] = new int[trees[i].length];
-				Arrays.fill(out[i], -1);
-			}
-			return out;
+		/** Trees per chunk of the rule matching the habitat code (0 without a rule). */
+		public float treesPerChunk(int code) {
+			int r = ruleFor(code);
+			return r < 0 ? 0 : rules.get(r).treesPerChunk();
+		}
+	}
+
+	/**
+	 * Conditions of the chunk: the range ramp factor of each flag bit ({@link SpeciesRamp}, 1 = full weight) and the gap
+	 * noise (null: no gaps).
+	 *
+	 * @param ramp      factor of the species with flag bit 0–3 (beech, fir, spruce, hornbeam)
+	 * @param gaps      gap noise, or null
+	 * @param gapScale  horizontal scale of the gap noise (k of the landscape scale)
+	 */
+	public record Stand(float[] ramp, Noise gaps, double gapScale) {
+		/** Full weights everywhere and no gaps. */
+		public static final Stand PLAIN = new Stand(new float[] {1, 1, 1, 1}, null, 1);
+
+		boolean gap(int x, int z) {
+			return gaps != null && gaps.at(x, z, GAP_WAVELENGTH * gapScale) > GAP_THRESHOLD;
 		}
 	}
 
 	private TreeStandPlan() {
 	}
+
+	/** Smallest distance between trunks for n trees per chunk: c/2 with c = 16 / ⌈√n⌉, at least {@link #MIN_SPACING}. */
+	public static double spacing(double n) {
+		double c = 16.0 / Math.ceil(Math.sqrt(Math.max(n, 1e-9)));
+		return Math.max(MIN_SPACING, c / 2);
+	}
+
+	/**
+	 * Potential trees per chunk before the thinning of sparse stands, so that n remain: x with (1 − e^(−x a)) / a = n for
+	 * the exclusion area a = π (d² − {@value #THINNING_CORE} · {@value #MIN_SPACING}²) / 256 (chunks) of the spacing d (no
+	 * candidates stand closer than {@value #MIN_SPACING} anyway); n itself when the spacing is {@link #MIN_SPACING}.
+	 */
+	static double potential(double n) {
+		double d = spacing(n);
+		if (d <= MIN_SPACING || n <= 0) {
+			return n;
+		}
+		double a = Math.PI * (d * d - THINNING_CORE * MIN_SPACING * MIN_SPACING) / 256;
+		return -Math.log(1 - Math.min(n * a, 0.95)) / a;
+	}
+
+	/**
+	 * Share of the hard-core disk of {@value #MIN_SPACING} blocks taken out of the exclusion area: the candidates are not
+	 * a Poisson pattern (cells of {@value #CELL} blocks with a hard core), so few of them stand just outside the core
+	 * either (calibrated in {@code TreeStandPlanTest}: the mean stays within 2% of n for n from 0.125 to 4).
+	 */
+	static final double THINNING_CORE = 0.7;
 
 	/** Seed of a dispatcher layer in a chunk: (world seed, chunk, layer salt). */
 	public static long seed(long worldSeed, int chunkX, int chunkZ, long salt) {
@@ -83,17 +165,22 @@ public final class TreeStandPlan {
 	 * Trees of the chunk, each packed as {@code column << 16 | tree}, where column is {@code x * 16 + z} and tree the
 	 * index into the palette's tree list.
 	 *
-	 * @param codes habitat codes of the 256 columns
-	 * @param water whether each column is under water
+	 * @param codes      habitat codes of the 256 columns
+	 * @param waterDepth water depth of each column in blocks (0: dry)
 	 */
-	public static int[] of(int[] codes, boolean[] water, Palette palette, long worldSeed, int chunkX, int chunkZ) {
+	public static int[] of(int[] codes, int[] waterDepth, Palette palette, long worldSeed, int chunkX, int chunkZ,
+			Stand stand) {
 		boolean any = false;
-		boolean[] seen = new boolean[HabitatBiome.values().length];
+		int last = 0;
+		boolean lastKnown = false;
 		for (int code : codes) {
-			int b = Habitat.biome(code).ordinal();
-			if (!seen[b]) {
-				seen[b] = true;
-				any |= palette.treesPerChunk()[b] > 0;
+			if (!lastKnown || code != last) {
+				last = code;
+				lastKnown = true;
+				if (palette.treesPerChunk(code) > 0) {
+					any = true;
+					break;
+				}
 			}
 		}
 		if (!any) {
@@ -102,6 +189,7 @@ public final class TreeStandPlan {
 		Pattern pattern = new Pattern(worldSeed);
 		int[] out = new int[CELLS * CELLS];
 		int n = 0;
+		double boost = 1 / (DENSITY * (stand.gaps() == null ? 1 : 1 - GAP_SHARE));
 		for (int i = 0; i < CELLS; i++) {
 			for (int j = 0; j < CELLS; j++) {
 				int gx = chunkX * CELLS + i;
@@ -110,14 +198,29 @@ public final class TreeStandPlan {
 					continue;
 				}
 				long h = pattern.hash(gx, gz);
-				int column = (i * CELL + offsetX(h)) << 4 | (j * CELL + offsetZ(h));
+				int lx = i * CELL + offsetX(h);
+				int lz = j * CELL + offsetZ(h);
+				int column = lx << 4 | lz;
 				int code = codes[column];
-				int b = Habitat.biome(code).ordinal();
-				long h2 = Noise.mix(h ^ 0x5DEE_CE66_DA11L);
-				if (water[column] || unit(h2) >= palette.treesPerChunk()[b] / DENSITY) {
+				int r = palette.ruleFor(code);
+				if (r < 0) {
 					continue;
 				}
-				int tree = pickTree(palette, b, Habitat.flags(code), unit(Noise.mix(h2)));
+				Rule rule = palette.rules().get(r);
+				long h2 = Noise.mix(h ^ 0x5DEE_CE66_DA11L);
+				double chance = potential(rule.treesPerChunk()) * boost;
+				if (unit(h2) >= chance) {
+					continue;
+				}
+				double spacing = rule.spacing();
+				if (spacing > MIN_SPACING && pattern.thinned(gx, gz, h, spacing, chance)) {
+					continue;
+				}
+				if (stand.gap(chunkX * 16 + lx, chunkZ * 16 + lz)) {
+					continue;
+				}
+				int tree = pickTree(rule, pl.polishforests.worldgen.habitat.Habitat.flags(code), waterDepth[column],
+						stand.ramp(), unit(Noise.mix(h2)));
 				if (tree >= 0) {
 					out[n++] = column << 16 | tree;
 				}
@@ -153,7 +256,7 @@ public final class TreeStandPlan {
 	}
 
 	/** Uniform value in [0, 1) from the high 53 bits of a hash. */
-	private static double unit(long h) {
+	static double unit(long h) {
 		return (h >>> 11) * 0x1.0p-53;
 	}
 
@@ -204,6 +307,32 @@ public final class TreeStandPlan {
 			return result;
 		}
 
+		/**
+		 * Whether the candidate of cell (gx, gz) with hash h gives way in a sparse stand: a kept candidate with a lower mark
+		 * closer than the spacing that would become a tree at the same chance.
+		 */
+		boolean thinned(int gx, int gz, long h, double spacing, double chance) {
+			int x = gx * CELL + offsetX(h);
+			int z = gz * CELL + offsetZ(h);
+			int reach = (int) Math.ceil(spacing / CELL) + 1;
+			double limit = spacing * spacing;
+			for (int di = -reach; di <= reach; di++) {
+				for (int dj = -reach; dj <= reach; dj++) {
+					if (di == 0 && dj == 0) {
+						continue;
+					}
+					long hn = hash(gx + di, gz + dj);
+					int dx = (gx + di) * CELL + offsetX(hn) - x;
+					int dz = (gz + dj) * CELL + offsetZ(hn) - z;
+					if (dx * dx + dz * dz < limit && lower(hn, gx + di, gz + dj, h, gx, gz)
+							&& unit(Noise.mix(hn ^ 0x5DEE_CE66_DA11L)) < chance && kept(gx + di, gz + dj)) {
+						return true;
+					}
+				}
+			}
+			return false;
+		}
+
 		/** Whether mark a (cell a) is lower than mark b (cell b); ties broken by the cell, so the order is strict. */
 		private static boolean lower(long a, int ax, int az, long b, int bx, int bz) {
 			int c = Long.compareUnsigned(a, b);
@@ -214,40 +343,61 @@ public final class TreeStandPlan {
 		}
 	}
 
-	/** Tree by weight among the species of biome {@code b} within their range (or their alternatives), or -1. */
-	private static int pickTree(Palette palette, int b, int rangeFlags, double pick) {
-		int[] trees = palette.trees()[b];
-		int[] weights = palette.weights()[b];
-		int total = 0;
+	/**
+	 * Tree by weight among the entries of the rule within their range and water depth, or -1. Entry i contributes its
+	 * weight times the ramp of its species (0 out of range) and the rest of the weight times the ramp of its alternative
+	 * (0 out of range or without one).
+	 */
+	private static int pickTree(Rule rule, int rangeFlags, int depth, float[] ramp, double pick) {
+		int[] trees = rule.trees();
+		double total = 0;
 		for (int i = 0; i < trees.length; i++) {
-			if (resolve(palette, b, i, rangeFlags) >= 0) {
-				total += weights[i];
+			if (depth <= rule.maxWaterDepth()[i]) {
+				total += own(rule, i, rangeFlags, ramp) + alternative(rule, i, rangeFlags, ramp);
 			}
 		}
-		if (total == 0) {
+		if (total <= 0) {
 			return -1;
 		}
 		double target = pick * total;
 		for (int i = 0; i < trees.length; i++) {
-			int tree = resolve(palette, b, i, rangeFlags);
-			if (tree >= 0) {
-				target -= weights[i];
-				if (target < 0) {
-					return tree;
-				}
+			if (depth > rule.maxWaterDepth()[i]) {
+				continue;
+			}
+			target -= own(rule, i, rangeFlags, ramp);
+			if (target < 0) {
+				return trees[i];
+			}
+			target -= alternative(rule, i, rangeFlags, ramp);
+			if (target < 0) {
+				return rule.alternatives()[i];
 			}
 		}
 		return -1;
 	}
 
-	/** Tree of entry {@code i}: its species if within range, else its alternative if within range, else -1. */
-	private static int resolve(Palette palette, int b, int i, int rangeFlags) {
-		int flag = palette.flags()[b][i];
-		if (flag == 0 || (rangeFlags & flag) != 0) {
-			return palette.trees()[b][i];
+	/** Weight of entry i's own species: its weight times its range ramp, 0 out of range. */
+	private static double own(Rule rule, int i, int rangeFlags, float[] ramp) {
+		return rule.weights()[i] * factor(rule.flags()[i], rangeFlags, ramp);
+	}
+
+	/** Weight of entry i's alternative species: the rest of the entry's weight times the alternative's ramp. */
+	private static double alternative(Rule rule, int i, int rangeFlags, float[] ramp) {
+		if (rule.alternatives()[i] < 0) {
+			return 0;
 		}
-		int alt = palette.alternatives()[b][i];
-		int altFlag = palette.alternativeFlags()[b][i];
-		return alt >= 0 && (altFlag == 0 || (rangeFlags & altFlag) != 0) ? alt : -1;
+		double rest = 1 - factor(rule.flags()[i], rangeFlags, ramp);
+		return rest <= 0 ? 0 : rule.weights()[i] * rest * factor(rule.alternativeFlags()[i], rangeFlags, ramp);
+	}
+
+	/** Range factor of a species: 1 without a flag, 0 out of range, else the ramp of its flag bit. */
+	private static double factor(int flag, int rangeFlags, float[] ramp) {
+		if (flag == 0) {
+			return 1;
+		}
+		if ((rangeFlags & flag) == 0) {
+			return 0;
+		}
+		return ramp[Integer.numberOfTrailingZeros(flag)];
 	}
 }

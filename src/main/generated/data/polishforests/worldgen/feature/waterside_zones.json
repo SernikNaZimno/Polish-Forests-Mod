@@ -1,3 +1,366 @@
 {
-  "type": "polishforests:waterside_zones"
+  "type": "polishforests:waterside_zones",
+  "rules": [
+    {
+      "coverage": 0.6,
+      "grounds": [
+        "mud"
+      ],
+      "max_depth": 1,
+      "medium": "water_bottom",
+      "patch": 3,
+      "plants": [
+        {
+          "block": "minecraft:small_dripleaf",
+          "weight": 1
+        }
+      ],
+      "zones": [
+        "reedbed",
+        "shore_reedbed"
+      ]
+    },
+    {
+      "biomes": [
+        "river",
+        "lake",
+        "lagoon",
+        "reedbed",
+        "fen",
+        "wet_meadow",
+        "willow_scrub",
+        "alder_carr",
+        "ash_alder_forest",
+        "willow_poplar_forest",
+        "elm_ash_forest"
+      ],
+      "coverage": 0.3,
+      "grounds": [
+        "mud"
+      ],
+      "max_depth": 1,
+      "medium": "water_bottom",
+      "patch": 3,
+      "plants": [
+        {
+          "block": "minecraft:small_dripleaf",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "reedbed"
+      ],
+      "coverage": 0.75,
+      "medium": "shore",
+      "patch": 3,
+      "plants": [
+        {
+          "block": "minecraft:sugar_cane",
+          "max_height": 4,
+          "min_height": 2,
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "coverage": 0.7,
+      "medium": "shore",
+      "patch": 3,
+      "plants": [
+        {
+          "block": "minecraft:sugar_cane",
+          "max_height": 4,
+          "min_height": 2,
+          "weight": 1
+        }
+      ],
+      "zones": [
+        "shore_reedbed",
+        "willow_scrub",
+        "herb_fringe",
+        "tall_herbs",
+        "willow_carr"
+      ]
+    },
+    {
+      "biomes": [
+        "river",
+        "lake",
+        "lagoon",
+        "reedbed",
+        "fen",
+        "wet_meadow",
+        "willow_scrub",
+        "hay_meadow",
+        "arable_land",
+        "heath",
+        "alder_carr",
+        "ash_alder_forest",
+        "willow_poplar_forest",
+        "elm_ash_forest",
+        "oak_hornbeam_forest",
+        "mixed_forest",
+        "mixed_pine_forest",
+        "moist_pine_forest",
+        "fresh_pine_forest",
+        "lowland_beech_forest",
+        "dry_pine_forest"
+      ],
+      "coverage": 0.5,
+      "medium": "shore",
+      "patch": 3,
+      "plants": [
+        {
+          "block": "minecraft:sugar_cane",
+          "max_height": 4,
+          "min_height": 2,
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "coverage": 0.11,
+      "patch": 2,
+      "plants": [
+        {
+          "feature": "polishforests:shrub/osier",
+          "weight": 9
+        },
+        {
+          "block": "minecraft:firefly_bush",
+          "weight": 1
+        }
+      ],
+      "zones": [
+        "willow_scrub"
+      ]
+    },
+    {
+      "biomes": [
+        "willow_scrub"
+      ],
+      "coverage": 0.11,
+      "patch": 2,
+      "plants": [
+        {
+          "feature": "polishforests:shrub/osier",
+          "weight": 9
+        },
+        {
+          "block": "minecraft:firefly_bush",
+          "weight": 1
+        }
+      ],
+      "zones": [
+        "none"
+      ]
+    },
+    {
+      "coverage": 0.08,
+      "patch": 2,
+      "plants": [
+        {
+          "feature": "polishforests:shrub/osier",
+          "weight": 9
+        },
+        {
+          "block": "minecraft:firefly_bush",
+          "weight": 1
+        }
+      ],
+      "zones": [
+        "willow_carr"
+      ]
+    },
+    {
+      "coverage": 0.02,
+      "plants": [
+        {
+          "feature": "polishforests:shrub/osier",
+          "weight": 9
+        }
+      ],
+      "zones": [
+        "point_bar"
+      ]
+    },
+    {
+      "coverage": 0.5,
+      "grounds": [
+        "dirt"
+      ],
+      "plants": [
+        {
+          "block": "minecraft:big_dripleaf",
+          "weight": 1
+        }
+      ],
+      "zones": [
+        "gravel_bar"
+      ]
+    },
+    {
+      "coverage": 0.05,
+      "plants": [
+        {
+          "feature": "polishforests:shrub/osier",
+          "weight": 9
+        }
+      ],
+      "zones": [
+        "gravel_bar"
+      ]
+    },
+    {
+      "coverage": 0.3,
+      "grounds": [
+        "dirt",
+        "mud"
+      ],
+      "patch": 3,
+      "plants": [
+        {
+          "block": "minecraft:big_dripleaf",
+          "weight": 1
+        }
+      ],
+      "zones": [
+        "montane_tall_herbs"
+      ]
+    },
+    {
+      "biomes": [
+        "gray_alder_forest"
+      ],
+      "coverage": 0.12,
+      "grounds": [
+        "dirt",
+        "mud"
+      ],
+      "patch": 3,
+      "plants": [
+        {
+          "block": "minecraft:big_dripleaf",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "ash_alder_forest"
+      ],
+      "coverage": 0.04,
+      "grounds": [
+        "dirt",
+        "mud"
+      ],
+      "patch": 3,
+      "plants": [
+        {
+          "block": "minecraft:big_dripleaf",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "coverage": 0.3,
+      "patch": 4,
+      "plants": [
+        {
+          "block": {
+            "id": "minecraft:leaf_litter",
+            "properties": {
+              "facing": "north",
+              "segment_amount": "2"
+            }
+          },
+          "weight": 2
+        },
+        {
+          "block": {
+            "id": "minecraft:leaf_litter",
+            "properties": {
+              "facing": "north",
+              "segment_amount": "3"
+            }
+          },
+          "weight": 2
+        },
+        {
+          "block": {
+            "id": "minecraft:leaf_litter",
+            "properties": {
+              "facing": "north",
+              "segment_amount": "4"
+            }
+          },
+          "weight": 3
+        },
+        {
+          "block": "minecraft:short_dry_grass",
+          "weight": 3
+        }
+      ],
+      "zones": [
+        "strandline"
+      ]
+    },
+    {
+      "coverage": 0.15,
+      "patch": 3,
+      "plants": [
+        {
+          "block": "minecraft:short_dry_grass",
+          "weight": 6
+        },
+        {
+          "block": "minecraft:tall_dry_grass",
+          "weight": 4
+        }
+      ],
+      "zones": [
+        "embryo_dune"
+      ]
+    },
+    {
+      "coverage": 0.6,
+      "patch": 3,
+      "plants": [
+        {
+          "block": "minecraft:moss_carpet",
+          "weight": 7
+        },
+        {
+          "block": "minecraft:bush",
+          "weight": 1
+        }
+      ],
+      "zones": [
+        "floating_mat"
+      ]
+    },
+    {
+      "coverage": 0.4,
+      "patch": 3,
+      "plants": [
+        {
+          "block": "minecraft:bush",
+          "weight": 4
+        },
+        {
+          "block": "minecraft:sweet_berry_bush",
+          "weight": 2
+        },
+        {
+          "block": "minecraft:short_grass",
+          "weight": 4
+        }
+      ],
+      "zones": [
+        "cliff_top"
+      ]
+    }
+  ]
 }

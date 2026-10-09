@@ -1,5 +1,7 @@
 package pl.polishforests.worldgen.feature;
 
+import java.util.EnumMap;
+import java.util.Map;
 import java.util.concurrent.atomic.LongAdder;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentRegistry;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
@@ -13,8 +15,9 @@ import pl.polishforests.worldgen.chunk.ChunkHabitats;
 import pl.polishforests.worldgen.chunk.PolandChunkGenerator;
 
 /**
- * Registration of the vegetation dispatcher types ({@code BuiltInRegistries.FEATURE_TYPE}, docs/03-m2-biomy.md §8.2)
- * and of the {@link ChunkHabitats} chunk attachment (§8.3).
+ * Registration of the vegetation dispatcher types ({@code BuiltInRegistries.FEATURE_TYPE}, docs/03-m2-biomy.md §8.2),
+ * of the placement filter {@code polishforests:habitat} ({@link HabitatFilter}) and of the {@link ChunkHabitats} chunk
+ * attachment (§8.3).
  */
 public final class ModFeatures {
 	/**
@@ -31,11 +34,34 @@ public final class ModFeatures {
 	private ModFeatures() {
 	}
 
+	/** Time and placements of each dispatcher layer (§12.3: time of each layer). */
+	public static final Map<BiomeDecoration.Dispatcher, LayerStats> STATS = new EnumMap<>(BiomeDecoration.Dispatcher.class);
+
+	static {
+		for (BiomeDecoration.Dispatcher d : BiomeDecoration.Dispatcher.values()) {
+			STATS.put(d, new LayerStats());
+		}
+	}
+
+	/** Time (ns), chunks and placed plants or trees of one dispatcher layer, summed over the process. */
+	public static final class LayerStats {
+		public final LongAdder nanos = new LongAdder();
+		public final LongAdder chunks = new LongAdder();
+		public final LongAdder placed = new LongAdder();
+
+		void add(long nanos, int placed) {
+			this.nanos.add(nanos);
+			this.chunks.increment();
+			this.placed.add(placed);
+		}
+	}
+
 	public static void register() {
 		for (BiomeDecoration.Dispatcher d : BiomeDecoration.Dispatcher.values()) {
 			Registry.register(BuiltInRegistries.FEATURE_TYPE, PolishForests.id(d.path()),
-					d == BiomeDecoration.Dispatcher.TREE_STAND ? TreeStandFeature.CODEC : PendingFeature.codec(d));
+					d == BiomeDecoration.Dispatcher.TREE_STAND ? TreeStandFeature.CODEC : PlantLayerFeature.codec(d));
 		}
+		Registry.register(BuiltInRegistries.PLACEMENT_MODIFIER_TYPE, PolishForests.id("habitat"), HabitatFilter.CODEC);
 	}
 
 	/**

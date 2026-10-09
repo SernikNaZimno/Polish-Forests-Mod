@@ -15,63 +15,69 @@ import net.minecraft.world.level.levelgen.WorldgenRandom;
 import net.minecraft.world.level.levelgen.XoroshiroRandomSource;
 import net.minecraft.world.level.levelgen.feature.Feature;
 import net.minecraft.world.level.levelgen.placement.PlacedFeature;
+import org.jspecify.annotations.Nullable;
 import pl.polishforests.worldgen.chunk.ChunkHabitats;
+import pl.polishforests.worldgen.chunk.PolandChunkGenerator;
 import pl.polishforests.worldgen.feature.config.TreePalette;
+import pl.polishforests.worldgen.feature.plan.SpeciesRamp;
 import pl.polishforests.worldgen.feature.plan.TreeStandPlan;
-import pl.polishforests.worldgen.habitat.HabitatBiome;
+import pl.polishforests.worldgen.landscape.Noise;
 
 /**
  * Tree stand dispatcher {@code polishforests:tree_stand} (docs/03-m2-biomy.md §8.2): one placed feature in step 9 of
  * every biome, which plants the trees of the whole chunk from the chunk habitats ({@link ChunkHabitats}) and the tree
- * palette ({@link TreePalette}, JSON). The plan is a pure function ({@link TreeStandPlan}); the dispatcher has its own
- * random source from (world seed, chunk, layer salt), so features of other mods do not shift it. Each tree is a placed
- * feature {@code polishforests:tree/<species>} placed on the top ground block.
- *
- * <p>Basic version of step S5: tree palettes per biome, without zones (step S7).
+ * palette ({@link TreePalette}, JSON: rules by biome, zone, forest site type and association). The plan is a pure
+ * function ({@link TreeStandPlan}) with the chunk's range ramp ({@link SpeciesRamp}, from O and P of the chunk) and the
+ * gap noise; the dispatcher has its own random source from (world seed, chunk, layer salt), so features of other mods do
+ * not shift it. Each tree is a placed feature {@code polishforests:tree/<species>} (or a variant) placed on the top
+ * ground block, or on the bottom of shallow water for willows and alders.
  */
 public final class TreeStandFeature implements Feature {
 	public static final MapCodec<TreeStandFeature> CODEC = TreePalette.Rule.CODEC.listOf().fieldOf("rules")
 			.xmap(rules -> new TreeStandFeature(new TreePalette(rules)), f -> f.palette.rules());
 
 	/** Time spent in the tree stand (ns), number of chunks and of trees placed (§12.3: time of each dispatcher layer). */
-	public static final java.util.concurrent.atomic.LongAdder NANOS = new java.util.concurrent.atomic.LongAdder();
-	public static final java.util.concurrent.atomic.LongAdder CHUNKS = new java.util.concurrent.atomic.LongAdder();
-	public static final java.util.concurrent.atomic.LongAdder TREES = new java.util.concurrent.atomic.LongAdder();
+	public static final java.util.concurrent.atomic.LongAdder NANOS = ModFeatures.STATS.get(BiomeDecoration.Dispatcher.TREE_STAND).nanos;
+	public static final java.util.concurrent.atomic.LongAdder CHUNKS = ModFeatures.STATS.get(BiomeDecoration.Dispatcher.TREE_STAND).chunks;
+	public static final java.util.concurrent.atomic.LongAdder TREES = ModFeatures.STATS.get(BiomeDecoration.Dispatcher.TREE_STAND).placed;
+
+	/** Salts of the noises of the tree stand (new fields, new salts). */
+	private static final String RAMP_SALT = "feature.tree_stand.range_ramp";
+	private static final String GAP_SALT = "feature.tree_stand.gaps";
 
 	private final TreePalette palette;
-	private final List<Holder<PlacedFeature>> trees;
+	private final List<Holder<PlacedFeature>> trees = new ArrayList<>();
 	private final TreeStandPlan.Palette plan;
+	private volatile @Nullable Noises noises;
+
+	/** The noises of a world seed. */
+	private record Noises(long seed, Noise ramp, Noise gaps) {
+	}
 
 	public TreeStandFeature(TreePalette palette) {
 		this.palette = palette;
-		this.trees = new ArrayList<>();
-		int n = HabitatBiome.values().length;
-		float[] perChunk = new float[n];
-		int[][] index = new int[n][];
-		int[][] weights = new int[n][];
-		int[][] flags = new int[n][];
-		int[][] alternatives = new int[n][];
-		int[][] alternativeFlags = new int[n][];
-		for (HabitatBiome b : HabitatBiome.values()) {
-			TreePalette.Rule rule = palette.rules().stream().filter(r -> r.biomes().contains(b)).findFirst().orElse(null);
-			List<TreePalette.Entry> entries = rule == null ? List.of() : rule.trees();
-			int k = b.ordinal();
-			perChunk[k] = rule == null ? 0 : rule.treesPerChunk();
-			index[k] = new int[entries.size()];
-			weights[k] = new int[entries.size()];
-			flags[k] = new int[entries.size()];
-			alternatives[k] = new int[entries.size()];
-			alternativeFlags[k] = new int[entries.size()];
-			for (int i = 0; i < entries.size(); i++) {
-				TreePalette.Entry e = entries.get(i);
-				index[k][i] = treeIndex(e.tree());
-				weights[k][i] = e.weight();
-				flags[k][i] = e.species().flag();
-				alternatives[k][i] = e.alternative().map(a -> treeIndex(a.tree())).orElse(-1);
-				alternativeFlags[k][i] = e.alternative().map(a -> a.species().flag()).orElse(0);
+		List<TreeStandPlan.Rule> rules = new ArrayList<>();
+		for (TreePalette.Rule r : palette.rules()) {
+			int n = r.trees().size();
+			int[] index = new int[n];
+			int[] weights = new int[n];
+			int[] flags = new int[n];
+			int[] alternatives = new int[n];
+			int[] alternativeFlags = new int[n];
+			int[] depth = new int[n];
+			for (int i = 0; i < n; i++) {
+				TreePalette.Entry e = r.trees().get(i);
+				index[i] = treeIndex(e.tree());
+				weights[i] = e.weight();
+				flags[i] = e.species().flag();
+				alternatives[i] = e.alternative().map(a -> treeIndex(a.tree())).orElse(-1);
+				alternativeFlags[i] = e.alternative().map(a -> a.species().flag()).orElse(0);
+				depth[i] = e.maxWaterDepth();
 			}
+			rules.add(new TreeStandPlan.Rule(r.condition().match(), r.treesPerChunk(), index, weights, flags, alternatives,
+					alternativeFlags, depth));
 		}
-		this.plan = new TreeStandPlan.Palette(perChunk, index, weights, flags, alternatives, alternativeFlags);
+		this.plan = new TreeStandPlan.Palette(rules);
 	}
 
 	/** Index of a tree in {@link #trees}, added on first use. */
@@ -88,6 +94,11 @@ public final class TreeStandFeature implements Feature {
 		return palette;
 	}
 
+	/** Mean number of trees per chunk of the rule matching a habitat code (the census of the game test). */
+	public float treesPerChunk(int code) {
+		return plan.treesPerChunk(code);
+	}
+
 	@Override
 	public MapCodec<TreeStandFeature> codec() {
 		return CODEC;
@@ -96,36 +107,47 @@ public final class TreeStandFeature implements Feature {
 	@Override
 	public boolean place(WorldGenLevel level, ChunkGenerator generator, RandomSource random, BlockPos origin) {
 		long t0 = System.nanoTime();
+		int placed = 0;
 		try {
-			return plant(level, generator, origin);
+			placed = plant(level, generator, origin);
+			return placed > 0;
 		} finally {
-			NANOS.add(System.nanoTime() - t0);
-			CHUNKS.increment();
+			ModFeatures.STATS.get(BiomeDecoration.Dispatcher.TREE_STAND).add(System.nanoTime() - t0, placed);
 		}
 	}
 
-	private boolean plant(WorldGenLevel level, ChunkGenerator generator, BlockPos origin) {
+	private Noises noises(long seed) {
+		Noises n = noises;
+		if (n == null || n.seed() != seed) {
+			Noise root = new Noise(seed);
+			n = new Noises(seed, root.derive(RAMP_SALT), root.derive(GAP_SALT));
+			noises = n;
+		}
+		return n;
+	}
+
+	private int plant(WorldGenLevel level, ChunkGenerator generator, BlockPos origin) {
 		ChunkAccess chunk = level.getChunk(origin.getX() >> 4, origin.getZ() >> 4);
 		ChunkHabitats habitats = ModFeatures.habitats(chunk, generator, level.getSeed());
 		if (habitats == null) {
-			return false;
+			return 0;
 		}
 		ChunkPos pos = chunk.getPos();
-		boolean[] water = new boolean[256];
-		for (int i = 0; i < 256; i++) {
-			water[i] = habitats.hasWater(i);
-		}
+		double k = generator instanceof PolandChunkGenerator poland ? poland.settings().scale().landscape().local() : 1;
+		Noises n = noises(level.getSeed());
+		float[] ramp = SpeciesRamp.factors(habitats.oceanicity(), habitats.mountainInfluence(), n.ramp(),
+				pos.getMiddleBlockX(), pos.getMiddleBlockZ(), k);
 		long seed = TreeStandPlan.seed(level.getSeed(), pos.x(), pos.z(), TreeStandPlan.SALT);
-		int[] planned = TreeStandPlan.of(habitats.codes(), water, plan, level.getSeed(), pos.x(), pos.z());
+		int[] planned = TreeStandPlan.of(habitats.codes(), VegetationColumns.waterDepth(habitats), plan, level.getSeed(),
+				pos.x(), pos.z(), new TreeStandPlan.Stand(ramp, n.gaps(), k));
 		WorldgenRandom treeRandom = new WorldgenRandom(new XoroshiroRandomSource(seed));
-		boolean placed = false;
+		int placed = 0;
 		for (int p : planned) {
 			int column = p >>> 16;
 			BlockPos at = new BlockPos(pos.getMinBlockX() + (column >> 4), habitats.top()[column] + 1,
 					pos.getMinBlockZ() + (column & 15));
 			if (trees.get(p & 0xFFFF).value().place(level, generator, treeRandom, at)) {
-				placed = true;
-				TREES.increment();
+				placed++;
 			}
 		}
 		return placed;

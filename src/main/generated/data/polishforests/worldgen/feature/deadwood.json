@@ -1,3 +1,217 @@
 {
-  "type": "polishforests:deadwood"
+  "type": "polishforests:deadwood",
+  "rules": [
+    {
+      "biomes": [
+        "dry_pine_forest",
+        "fresh_pine_forest",
+        "coastal_pine_forest",
+        "moist_pine_forest"
+      ],
+      "coverage": 0.001171875,
+      "plants": [
+        {
+          "feature": "polishforests:deadwood/scots_pine",
+          "weight": 9
+        },
+        {
+          "feature": "polishforests:deadwood/birch",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "mixed_pine_forest"
+      ],
+      "coverage": 0.001171875,
+      "plants": [
+        {
+          "feature": "polishforests:deadwood/scots_pine",
+          "weight": 7
+        },
+        {
+          "feature": "polishforests:deadwood/oak",
+          "weight": 3
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "bog_woodland"
+      ],
+      "coverage": 9.765625E-4,
+      "plants": [
+        {
+          "feature": "polishforests:deadwood/birch",
+          "weight": 6
+        },
+        {
+          "feature": "polishforests:deadwood/scots_pine",
+          "weight": 4
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "mixed_forest"
+      ],
+      "coverage": 0.0013671875,
+      "plants": [
+        {
+          "feature": "polishforests:deadwood/oak",
+          "weight": 5
+        },
+        {
+          "feature": "polishforests:deadwood/scots_pine",
+          "weight": 3
+        },
+        {
+          "feature": "polishforests:deadwood/beech",
+          "weight": 2
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "oak_hornbeam_forest"
+      ],
+      "coverage": 0.0015625,
+      "plants": [
+        {
+          "feature": "polishforests:deadwood/oak",
+          "weight": 5
+        },
+        {
+          "feature": "polishforests:deadwood/hornbeam",
+          "weight": 4
+        },
+        {
+          "feature": "polishforests:deadwood/birch",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "lowland_beech_forest"
+      ],
+      "coverage": 0.001953125,
+      "plants": [
+        {
+          "feature": "polishforests:deadwood/beech",
+          "weight": 9
+        },
+        {
+          "feature": "polishforests:deadwood/oak",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "montane_beech_forest"
+      ],
+      "coverage": 0.001953125,
+      "plants": [
+        {
+          "feature": "polishforests:deadwood/beech",
+          "weight": 8
+        },
+        {
+          "feature": "polishforests:deadwood/fir",
+          "weight": 2
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "upland_fir_forest"
+      ],
+      "coverage": 0.0017578125,
+      "plants": [
+        {
+          "feature": "polishforests:deadwood/fir",
+          "weight": 6
+        },
+        {
+          "feature": "polishforests:deadwood/beech",
+          "weight": 4
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "montane_spruce_forest"
+      ],
+      "coverage": 0.001953125,
+      "plants": [
+        {
+          "feature": "polishforests:deadwood/spruce",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "alder_carr"
+      ],
+      "coverage": 0.0013671875,
+      "plants": [
+        {
+          "feature": "polishforests:deadwood/black_alder",
+          "weight": 8
+        },
+        {
+          "feature": "polishforests:deadwood/birch",
+          "weight": 2
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "ash_alder_forest",
+        "gray_alder_forest"
+      ],
+      "coverage": 0.001171875,
+      "plants": [
+        {
+          "feature": "polishforests:deadwood/black_alder",
+          "weight": 7
+        },
+        {
+          "feature": "polishforests:deadwood/oak",
+          "weight": 3
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "willow_poplar_forest"
+      ],
+      "coverage": 0.0013671875,
+      "plants": [
+        {
+          "feature": "polishforests:deadwood/poplar",
+          "weight": 5
+        },
+        {
+          "feature": "polishforests:deadwood/white_willow",
+          "weight": 5
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "elm_ash_forest"
+      ],
+      "coverage": 0.001171875,
+      "plants": [
+        {
+          "feature": "polishforests:deadwood/oak",
+          "weight": 1
+        }
+      ]
+    }
+  ]
 }

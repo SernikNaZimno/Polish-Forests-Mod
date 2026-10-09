@@ -104,7 +104,8 @@
       "polishforests:deep_lava_lake"
     ],
     [
-      "minecraft:amethyst_geode"
+      "minecraft:amethyst_geode",
+      "polishforests:glacial_erratics"
     ],
     [
       "minecraft:monster_room",

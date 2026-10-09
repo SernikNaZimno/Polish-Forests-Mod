@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:weighted_random_selector",
+  "features": [
+    {
+      "data": "polishforests:erratic/granite",
+      "weight": 5
+    },
+    {
+      "data": "polishforests:erratic/diorite",
+      "weight": 2
+    },
+    {
+      "data": "polishforests:erratic/mossy_cobblestone",
+      "weight": 3
+    }
+  ]
+}

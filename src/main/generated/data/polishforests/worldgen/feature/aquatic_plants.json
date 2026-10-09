@@ -1,3 +1,109 @@
 {
-  "type": "polishforests:aquatic_plants"
+  "type": "polishforests:aquatic_plants",
+  "rules": [
+    {
+      "coverage": 0.45,
+      "max_depth": 4,
+      "medium": "water_surface",
+      "patch": 4,
+      "plants": [
+        {
+          "block": "minecraft:lily_pad",
+          "weight": 1
+        }
+      ],
+      "zones": [
+        "floating_leaved_plants"
+      ]
+    },
+    {
+      "coverage": 0.35,
+      "max_depth": 6,
+      "medium": "water_bottom",
+      "min_depth": 2,
+      "patch": 3,
+      "plants": [
+        {
+          "block": "minecraft:seagrass",
+          "weight": 6
+        },
+        {
+          "block": "minecraft:tall_seagrass",
+          "weight": 4
+        }
+      ],
+      "zones": [
+        "submerged_plants"
+      ]
+    },
+    {
+      "coverage": 0.3,
+      "max_depth": 1,
+      "medium": "water_bottom",
+      "patch": 3,
+      "plants": [
+        {
+          "block": "minecraft:seagrass",
+          "weight": 1
+        }
+      ],
+      "zones": [
+        "submerged_plants"
+      ]
+    },
+    {
+      "biomes": [
+        "river"
+      ],
+      "coverage": 0.12,
+      "max_depth": 6,
+      "medium": "water_bottom",
+      "patch": 3,
+      "plants": [
+        {
+          "block": "minecraft:seagrass",
+          "weight": 8
+        },
+        {
+          "block": "minecraft:tall_seagrass",
+          "weight": 2
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "lagoon"
+      ],
+      "coverage": 0.15,
+      "max_depth": 4,
+      "medium": "water_bottom",
+      "patch": 3,
+      "plants": [
+        {
+          "block": "minecraft:seagrass",
+          "weight": 8
+        },
+        {
+          "block": "minecraft:tall_seagrass",
+          "weight": 2
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "sea"
+      ],
+      "coverage": 0.04,
+      "max_depth": 10,
+      "medium": "water_bottom",
+      "min_depth": 2,
+      "patch": 4,
+      "plants": [
+        {
+          "block": "minecraft:seagrass",
+          "weight": 1
+        }
+      ]
+    }
+  ]
 }

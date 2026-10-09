@@ -28,10 +28,10 @@ import pl.polishforests.worldgen.habitat.HabitatBiome;
  * climate of the enum, no carvers, names in {@code en_us} and {@code pl_pl}, and presence in {@code #is_overworld},
  * {@code #has_structure/trial_chambers} and {@code #polishforests:polish_climate}. Reads {@code src/main/generated}.
  */
-class BiomeJsonTest {
-	static final Path GENERATED = Path.of("src/main/generated");
+public class BiomeJsonTest {
+	public static final Path GENERATED = Path.of("src/main/generated");
 
-	static JsonObject json(Path path) {
+	public static JsonObject json(Path path) {
 		try (Reader r = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
 			return JsonParser.parseReader(r).getAsJsonObject();
 		} catch (IOException e) {

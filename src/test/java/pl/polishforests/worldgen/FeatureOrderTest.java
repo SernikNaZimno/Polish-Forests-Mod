@@ -90,12 +90,41 @@ class FeatureOrderTest {
 		assertEquals("polishforests:tree_stand", treeStand.get("type").getAsString());
 		int rules = 0;
 		for (JsonElement rule : treeStand.getAsJsonArray("rules")) {
+			if (!rule.getAsJsonObject().has("trees")) {
+				// A treeless zone.
+				assertEquals(0, rule.getAsJsonObject().get("trees_per_chunk").getAsDouble());
+				rules++;
+				continue;
+			}
 			for (JsonElement tree : rule.getAsJsonObject().getAsJsonArray("trees")) {
 				assertPlacedFeatureExists(tree.getAsJsonObject().get("tree").getAsString());
 			}
 			rules++;
 		}
 		assertTrue(rules >= 17, "tree palette rules: " + rules);
+		// The column layers name only existing placed features (shrubs, fallen trees) and have rules.
+		for (String layer : List.of("deadwood", "understory", "waterside_zones", "ground_layer", "aquatic_plants")) {
+			JsonObject json = BiomeJsonTest.json(BiomeJsonTest.GENERATED.resolve(
+					"data/polishforests/worldgen/feature/" + layer + ".json"));
+			assertEquals("polishforests:" + layer, json.get("type").getAsString());
+			assertFalse(json.getAsJsonArray("rules").isEmpty(), layer + " has no rules");
+			for (JsonElement rule : json.getAsJsonArray("rules")) {
+				for (JsonElement plant : rule.getAsJsonObject().getAsJsonArray("plants")) {
+					if (plant.getAsJsonObject().has("feature")) {
+						assertPlacedFeatureExists(plant.getAsJsonObject().get("feature").getAsString());
+					}
+				}
+			}
+		}
+		// The bone meal carriers place the mod's flowers, and those are in the feature tag that bone meal reads.
+		JsonObject tag = BiomeJsonTest.json(BiomeJsonTest.GENERATED.resolve(
+				"data/minecraft/tags/worldgen/feature/can_spawn_from_bone_meal.json"));
+		List<String> inTag = new ArrayList<>();
+		tag.getAsJsonArray("values").forEach(v -> inTag.add(v.getAsString()));
+		for (HabitatBiome b : HabitatBiome.values()) {
+			String feature = load("placed_feature", BiomeDecoration.boneMealCarrier(b)).get("feature").getAsString();
+			assertTrue(inTag.contains(feature), b.id() + ": bone meal flowers " + feature + " not in can_spawn_from_bone_meal");
+		}
 	}
 
 	/** A placed feature exists, and so does the feature it places. */

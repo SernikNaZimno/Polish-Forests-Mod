@@ -2,14 +2,12 @@ package pl.polishforests.client.datagen;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderGetter;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.BootstrapContext;
 import net.minecraft.data.worldgen.features.MiscOverworldFeatures;
-import net.minecraft.data.worldgen.features.VegetationFeatures;
 import net.minecraft.data.worldgen.placement.PlacementUtils;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
@@ -42,16 +40,18 @@ import net.minecraft.world.level.levelgen.placement.SurfaceRelativeThresholdFilt
 import pl.polishforests.PolishForests;
 import pl.polishforests.worldgen.chunk.ModBiomeKeys;
 import pl.polishforests.worldgen.feature.BiomeDecoration;
-import pl.polishforests.worldgen.feature.PendingFeature;
+import pl.polishforests.worldgen.feature.HabitatFilter;
+import pl.polishforests.worldgen.feature.PlantLayerFeature;
 import pl.polishforests.worldgen.feature.TreeStandFeature;
-import pl.polishforests.worldgen.feature.config.TreePalette;
+import pl.polishforests.worldgen.feature.config.HabitatCondition;
 import pl.polishforests.worldgen.habitat.HabitatBiome;
 import pl.polishforests.worldgen.habitat.Species;
 
 /**
  * Bootstrap of the mod's worldgen registries for datagen (docs/03-m2-biomy.md §8, §10): the 36 biomes from
- * {@link HabitatBiome} (Z8), the vegetation dispatchers of step 9 with the tree palettes (§8.5), the tree features and
- * the placed features. The step lists come from {@link BiomeDecoration} (Z5).
+ * {@link HabitatBiome} (Z8), the vegetation dispatchers of step 9 with their palettes ({@link ModVegetation}, §8.2–8.6),
+ * the tree and shrub features ({@link ModTrees}, §8.4), the glacial erratics and the placed features. The step lists
+ * come from {@link BiomeDecoration} (Z5).
  */
 final class ModWorldgen {
 	private ModWorldgen() {
@@ -70,83 +70,53 @@ final class ModWorldgen {
 	static void features(BootstrapContext<Feature> context) {
 		ModTrees.bootstrap(context);
 		HolderGetter<PlacedFeature> placedFeatures = context.lookup(Registries.PLACED_FEATURE);
+		ModVegetation.features(context, placedFeatures);
 		for (BiomeDecoration.Dispatcher d : BiomeDecoration.Dispatcher.values()) {
-			context.register(feature(d.path()), d == BiomeDecoration.Dispatcher.TREE_STAND
-					? new TreeStandFeature(treePalette(placedFeatures)) : new PendingFeature(d));
+			context.register(feature(d.path()), switch (d) {
+				case TREE_STAND -> new TreeStandFeature(ModVegetation.treePalette(placedFeatures));
+				case DEADWOOD -> new PlantLayerFeature(d, ModVegetation.deadwood(placedFeatures));
+				case UNDERSTORY -> new PlantLayerFeature(d, ModVegetation.understory(placedFeatures));
+				case WATERSIDE_ZONES -> new PlantLayerFeature(d, ModVegetation.watersideZones(placedFeatures));
+				case GROUND_LAYER -> new PlantLayerFeature(d, ModVegetation.groundLayer(placedFeatures));
+				case AQUATIC_PLANTS -> new PlantLayerFeature(d, ModVegetation.aquaticPlants(placedFeatures));
+			});
 		}
-	}
-
-	/**
-	 * Tree palette (§8.5): trees per chunk and composition in percent. A species with a range flag (beech, fir, spruce,
-	 * hornbeam) grows only within its range; "beech or spruce" is beech with spruce as the alternative species, so the
-	 * full weight goes to whichever of the two is within range (in the lowlands they rarely overlap). Basic version of S5:
-	 * one rule per biome, without zones (the timberline, the wind belt and the stunted pine come in step S7).
-	 */
-	private static TreePalette treePalette(HolderGetter<PlacedFeature> placed) {
-		List<TreePalette.Rule> rules = new ArrayList<>();
-		rule(rules, placed, HabitatBiome.DRY_PINE_FOREST, 7, Map.of(Species.SCOTS_PINE, 95, Species.BIRCH, 5));
-		rule(rules, placed, HabitatBiome.FRESH_PINE_FOREST, 11, Map.of(Species.SCOTS_PINE, 85, Species.BIRCH, 10, Species.SPRUCE, 5));
-		rule(rules, placed, HabitatBiome.COASTAL_PINE_FOREST, 9, Map.of(Species.SCOTS_PINE, 90, Species.BIRCH, 10));
-		rule(rules, placed, HabitatBiome.MOIST_PINE_FOREST, 10, Map.of(Species.SCOTS_PINE, 65, Species.BIRCH, 25, Species.SPRUCE, 10));
-		rule(rules, placed, HabitatBiome.BOG_WOODLAND, 6, Map.of(Species.SCOTS_PINE, 70, Species.BIRCH, 30));
-		rule(rules, placed, HabitatBiome.MIXED_PINE_FOREST, 10, Map.of(Species.SCOTS_PINE, 55, Species.OAK, 25, Species.BIRCH, 10,
-				Species.BEECH, 10), Map.of(Species.BEECH, Species.SPRUCE));
-		rule(rules, placed, HabitatBiome.MIXED_FOREST, 9, Map.of(Species.OAK, 45, Species.SCOTS_PINE, 30, Species.BEECH, 15,
-				Species.HORNBEAM, 10), Map.of(Species.BEECH, Species.SPRUCE));
-		rule(rules, placed, HabitatBiome.OAK_HORNBEAM_FOREST, 9, Map.of(Species.OAK, 35, Species.HORNBEAM, 30, Species.LINDEN, 15,
-				Species.ASH, 3, Species.NORWAY_MAPLE, 2, Species.BEECH, 10, Species.SPRUCE, 5));
-		rule(rules, placed, HabitatBiome.LOWLAND_BEECH_FOREST, 7, Map.of(Species.BEECH, 85, Species.OAK, 10, Species.SYCAMORE_MAPLE, 5));
-		rule(rules, placed, HabitatBiome.ALDER_CARR, 9, Map.of(Species.BLACK_ALDER, 85, Species.BIRCH, 10, Species.ASH, 5));
-		rule(rules, placed, HabitatBiome.ASH_ALDER_FOREST, 9, Map.of(Species.BLACK_ALDER, 55, Species.ASH, 30, Species.ELM, 10,
-				Species.BIRCH, 5));
-		rule(rules, placed, HabitatBiome.WILLOW_POPLAR_FOREST, 7, Map.of(Species.WHITE_WILLOW, 70, Species.POPLAR, 30));
-		rule(rules, placed, HabitatBiome.ELM_ASH_FOREST, 8, Map.of(Species.OAK, 35, Species.ASH, 30, Species.ELM, 25,
-				Species.NORWAY_MAPLE, 5, Species.LINDEN, 5));
-		rule(rules, placed, HabitatBiome.UPLAND_FIR_FOREST, 10, Map.of(Species.FIR, 50, Species.BEECH, 25, Species.OAK, 15,
-				Species.SCOTS_PINE, 10));
-		rule(rules, placed, HabitatBiome.MONTANE_BEECH_FOREST, 8, Map.of(Species.BEECH, 70, Species.FIR, 20, Species.SPRUCE, 5,
-				Species.SYCAMORE_MAPLE, 5));
-		rule(rules, placed, HabitatBiome.MONTANE_SPRUCE_FOREST, 12, Map.of(Species.SPRUCE, 90, Species.ROWAN, 10));
-		rule(rules, placed, HabitatBiome.GRAY_ALDER_FOREST, 8, Map.of(Species.GRAY_ALDER, 70, Species.ASH, 15, Species.SPRUCE, 10,
-				Species.WHITE_WILLOW, 5));
-		rule(rules, placed, HabitatBiome.RAISED_BOG, 0.3F, Map.of(Species.SCOTS_PINE, 1));
-		rule(rules, placed, HabitatBiome.HEATH, 0.5F, Map.of(Species.SCOTS_PINE, 60, Species.BIRCH, 40));
-		rule(rules, placed, HabitatBiome.WET_MEADOW, 0.1F, Map.of(Species.BLACK_ALDER, 60, Species.WHITE_WILLOW, 40));
-		rule(rules, placed, HabitatBiome.HAY_MEADOW, 0.1F, Map.of(Species.OAK, 50, Species.BIRCH, 30, Species.LINDEN, 20));
-		rule(rules, placed, HabitatBiome.GRAY_DUNE, 0.125F, Map.of(Species.SCOTS_PINE, 1));
-		return new TreePalette(rules);
-	}
-
-	/** A rule with the species in the order of {@link Species} (stable JSON). */
-	private static void rule(List<TreePalette.Rule> rules, HolderGetter<PlacedFeature> placed, HabitatBiome biome,
-			float treesPerChunk, Map<Species, Integer> composition) {
-		rule(rules, placed, biome, treesPerChunk, composition, Map.of());
-	}
-
-	/** A rule whose species may have an alternative species that takes their weight out of their range. */
-	private static void rule(List<TreePalette.Rule> rules, HolderGetter<PlacedFeature> placed, HabitatBiome biome,
-			float treesPerChunk, Map<Species, Integer> composition, Map<Species, Species> alternatives) {
-		List<TreePalette.Entry> entries = new ArrayList<>();
-		for (Species s : Species.values()) {
-			Integer weight = composition.get(s);
-			if (weight != null) {
-				Species alt = alternatives.get(s);
-				entries.add(new TreePalette.Entry(s, placed.getOrThrow(placed(s.path())), weight, java.util.Optional.ofNullable(alt)
-						.map(a -> new TreePalette.Alternative(a, placed.getOrThrow(placed(a.path()))))));
-			}
-		}
-		rules.add(new TreePalette.Rule(List.of(biome), treesPerChunk, entries));
 	}
 
 	// ------------------------------------------------------------------ placed features
 
 	static void placedFeatures(BootstrapContext<PlacedFeature> context) {
 		HolderGetter<Feature> features = context.lookup(Registries.FEATURE);
-		for (Species s : ModTrees.TREES) {
-			// Trees: only where a sapling would survive (§8.4); no biome filter (a sub-feature of a palette).
-			context.register(placed(s.path()), new PlacedFeature(features.getOrThrow(ModTrees.key(s)),
+		// Trees, shrubs and the variants of the palettes: only where a sapling would survive (§8.4; osiers also on the sand
+		// and gravel of bars); no biome filter (a sub-feature of a palette).
+		List<String> trees = new ArrayList<>();
+		ModTrees.TREES.forEach(s -> trees.add(s.path()));
+		ModTrees.SHRUBS.forEach(s -> trees.add(s.path()));
+		trees.addAll(ModTrees.VARIANTS);
+		for (String path : trees) {
+			context.register(placed(path), new PlacedFeature(features.getOrThrow(ModTrees.key(path)), ModTrees.placement(path)));
+		}
+		// The shapes inside the oak and birch selectors and the erratic stones inside theirs: no filter.
+		for (String path : ModTrees.SHAPES) {
+			context.register(placed(path), new PlacedFeature(features.getOrThrow(ModTrees.key(path)), List.of()));
+		}
+		for (String stone : ModVegetation.ERRATICS) {
+			String path = ModVegetation.erratic(stone);
+			context.register(placed(path), new PlacedFeature(features.getOrThrow(ModTrees.key(path)), List.of()));
+		}
+		// Fallen trees: where a sapling would survive.
+		for (Species s : ModVegetation.DEADWOOD) {
+			String path = ModVegetation.deadwood(s);
+			context.register(placed(path), new PlacedFeature(features.getOrThrow(ModTrees.key(path)),
 					List.of(PlacementUtils.filteredByBlockSurvival(Blocks.OAK_SAPLING))));
 		}
+		// Glacial erratics (step 2, §8.1): once in 6 chunks, on the young glacial till and sands (soils of the habitat
+		// code), never in water (the blob needs ground below).
+		context.register(placed("glacial_erratics"), new PlacedFeature(features.getOrThrow(ModTrees.key("glacial_erratics")),
+				List.of(RarityFilter.onAverageOnceEvery(6), InSquarePlacement.spread(),
+						net.minecraft.world.level.levelgen.placement.HeightmapPlacement.onHeightmap(Heightmap.Types.OCEAN_FLOOR_WG),
+						new HabitatFilter(new HabitatCondition(List.of(), List.of(), List.of(), List.of(), ModVegetation.ERRATIC_SOILS)),
+						BiomeFilter.biome())));
 		for (BiomeDecoration.Dispatcher d : BiomeDecoration.Dispatcher.values()) {
 			context.register(placed(d.path()), new PlacedFeature(features.getOrThrow(feature(d.path())), List.of(BiomeFilter.biome())));
 		}
@@ -158,15 +128,12 @@ final class ModWorldgen {
 				EnvironmentScanPlacement.scanningFor(Direction.DOWN, BlockPredicate.allOf(
 						BlockPredicate.not(BlockPredicate.ONLY_IN_AIR_PREDICATE), BlockPredicate.insideWorld(new BlockPos(0, -5, 0))), 32),
 				SurfaceRelativeThresholdFilter.of(Heightmap.Types.OCEAN_FLOOR_WG, Integer.MIN_VALUE, -5), BiomeFilter.biome())));
-		// Bone meal carriers (§8.1): never placed (count 0), they only give bone meal its flowers in the biome. The
-		// top-level placed features end with the biome filter, as vanilla requires (datagen checks it).
-		Map<HabitatBiome.BoneMeal, ResourceKey<Feature>> flowers = Map.of(
-				HabitatBiome.BoneMeal.FOREST, VegetationFeatures.WILDFLOWER,
-				HabitatBiome.BoneMeal.MEADOW, VegetationFeatures.FLOWER_MEADOW,
-				HabitatBiome.BoneMeal.WETLAND, VegetationFeatures.FLOWER_DEFAULT,
-				HabitatBiome.BoneMeal.MOUNTAIN, VegetationFeatures.FLOWER_PLAIN);
+		// Bone meal carriers (§8.1): never placed (count 0), they only give bone meal the flowers of the biome group
+		// (polishforests:flowers/*, in the feature tag minecraft:can_spawn_from_bone_meal). The top-level placed features
+		// end with the biome filter, as vanilla requires (datagen checks it).
 		for (HabitatBiome.BoneMeal b : HabitatBiome.BoneMeal.values()) {
-			context.register(placed(b.path()), new PlacedFeature(features.getOrThrow(flowers.get(b)),
+			String group = b.path().substring(b.path().indexOf('/') + 1);
+			context.register(placed(b.path()), new PlacedFeature(features.getOrThrow(ModTrees.key(ModVegetation.flowers(group))),
 					List.of(CountPlacement.of(ConstantInt.of(0)), BiomeFilter.biome())));
 		}
 	}

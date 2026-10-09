@@ -291,8 +291,9 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 					if (plan.wet(column)) {
 						continue;
 					}
-					HabitatBiome b = Habitat.biome(planCodes[(x >> 4) - cx0][(z >> 4) - cz0][column]);
-					expected[b.ordinal()] += treesPerChunk(stand, b) / 256.0;
+					int code = planCodes[(x >> 4) - cx0][(z >> 4) - cz0][column];
+					HabitatBiome b = Habitat.biome(code);
+					expected[b.ordinal()] += stand.treesPerChunk(code) / 256.0;
 					if (level.getBlockState(new BlockPos(x, top + 1, z)).is(BlockTags.LOGS)) {
 						trunks[b.ordinal()]++;
 					}
@@ -329,11 +330,6 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 			throw new AssertionError("Tree census off the palette by more than 20%: " + failures + "; " + report);
 		}
 		return report.toString();
-	}
-
-	private static float treesPerChunk(TreeStandFeature stand, HabitatBiome b) {
-		return stand.palette().rules().stream().filter(r -> r.biomes().contains(b)).findFirst()
-				.map(r -> r.treesPerChunk()).orElse(0.0F);
 	}
 
 	/**

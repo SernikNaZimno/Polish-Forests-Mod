@@ -1,0 +1,30 @@
+{
+  "feature": "polishforests:glacial_erratics",
+  "placement": [
+    {
+      "type": "minecraft:rarity_filter",
+      "chance": 6
+    },
+    {
+      "type": "minecraft:in_square"
+    },
+    {
+      "type": "minecraft:heightmap",
+      "heightmap": "OCEAN_FLOOR_WG"
+    },
+    {
+      "type": "polishforests:habitat",
+      "soils": [
+        "brown_soil",
+        "acid_brown_soil",
+        "rusty_soil",
+        "podzol",
+        "initial_podzol",
+        "beech_brown_soil"
+      ]
+    },
+    {
+      "type": "minecraft:biome"
+    }
+  ]
+}
