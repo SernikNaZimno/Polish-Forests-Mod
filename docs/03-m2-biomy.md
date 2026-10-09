@@ -949,6 +949,8 @@ Wnioski:
 
   Rekomendacja: wariant 1, a optymalizację planu powierzchni zrobić przy S10 razem z pomiarem całego chunka.
 
+**Pełny zestaw testów:** `tools/dev/run-tests test` PASS (drzewo `e2b735fbaea3`, 1143 s), złoty test bez zmian i bez listy dozwolonych zmian.
+
 **Sprostowania.**
 - Commit `1b87dfa` i podsumowanie kroku S6 podawały, że „żadna woda nie opuszcza planu w 200 tickach”. W rzeczywistości 56 bloków (duża rzeka REAL) i 4 (ols REAL) wypłynęło poza plan. Test pomijał je, bo leżały do 8 bloków od otwartych krawędzi modelu (stopnie poziomu rzeki). Ta sama maska ukrywała rozlewy S6 przy takich krawędziach. Od tej rundy woda w gruncie, który model miał (y ≤ wierzch modelu), liczy się zawsze jako rozlew S6.
 - Commit `1b87dfa` podawał też, że TERRAIN przekracza 1,10 × M1 „tylko przy dużej rzece”. Jeden z dwóch pomiarów Beskidów REAL też go przekraczał (1,16).
