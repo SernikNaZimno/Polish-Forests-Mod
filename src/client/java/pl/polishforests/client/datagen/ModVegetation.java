@@ -467,8 +467,10 @@ final class ModVegetation {
 		l.rule(biomes(reedBanks), Medium.PUDDLE_SHORE, 1, 64, List.of(), 0.1F, 3, reed);
 		Plant osier = l.feature(Species.OSIER.path(), 9);
 		Plant firefly = b(Blocks.FIREFLY_BUSH, 1);
-		l.land(HabitatCondition.zones(Zone.WILLOW_SCRUB), 0.11F, 2, osier, firefly);
-		l.land(biomes(WILLOW_SCRUB).withZones(Zone.NONE), 0.11F, 2, osier, firefly);
+		// 16% of the columns (S7 review: with 11% the crowns covered 71-78% of the willow scrub in the realistic scale and
+		// 62% in the narrower scrub of the gameplay scale; §8.5: 80-100%).
+		l.land(HabitatCondition.zones(Zone.WILLOW_SCRUB), 0.16F, 2, osier, firefly);
+		l.land(biomes(WILLOW_SCRUB).withZones(Zone.NONE), 0.16F, 2, osier, firefly);
 		l.land(HabitatCondition.zones(Zone.WILLOW_CARR), 0.08F, 2, osier, firefly);
 		l.land(HabitatCondition.zones(Zone.POINT_BAR), 0.02F, 1, osier);
 		Plant butterbur = Plant.column(Blocks.BIG_DRIPLEAF.defaultBlockState(), 1, 2, 1);

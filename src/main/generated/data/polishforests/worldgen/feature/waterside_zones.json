@@ -204,7 +204,7 @@
       ]
     },
     {
-      "coverage": 0.11,
+      "coverage": 0.16,
       "patch": 2,
       "plants": [
         {
@@ -224,7 +224,7 @@
       "biomes": [
         "willow_scrub"
       ],
-      "coverage": 0.11,
+      "coverage": 0.16,
       "patch": 2,
       "plants": [
         {

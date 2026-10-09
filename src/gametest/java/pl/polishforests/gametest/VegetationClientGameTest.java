@@ -64,8 +64,11 @@ public final class VegetationClientGameTest implements FabricClientGameTest {
 	private static final int TRANSECT_MIN_COLUMNS = 150;
 	/** Least number of land columns of the waterside zones in a transect (the crossing is a real river bank). */
 	private static final int TRANSECT_MIN_ZONE_COLUMNS = 40;
-	/** Least number of columns of the river's water (river or stream biome) in a transect. */
-	private static final int TRANSECT_MIN_WATER_COLUMNS = 20;
+	/**
+	 * Least number of columns of the river's water (river or stream biome) in a transect: a stream of the gameplay scale
+	 * is 1–2 blocks wide, so its 80 blocks of a transect hold only 15 or so.
+	 */
+	private static final int TRANSECT_MIN_WATER_COLUMNS = 10;
 	/** Greatest share of decaying leaves (distance 7, not persistent) among the leaves of the scanned areas. */
 	private static final double DECAYING_MAX = 0.001;
 	private static final double SMALL_MAX = 0.10;
@@ -183,17 +186,17 @@ public final class VegetationClientGameTest implements FabricClientGameTest {
 
 	/**
 	 * Crossings of the three rivers of a scale (block coordinates): the large river of the stage measurement (class A),
-	 * a small lowland river (class B: the nearest column of its tall herbs or riverside willows, the zones of class B,
-	 * to the place of the ash-alder riparian forest of the soil test; S7 review: that place itself has no river in the
-	 * gameplay scale) and a mountain stream with a gray alder forest found near the Beskids area of the stage measurement
-	 * (class C).
+	 * a small lowland river (class B: a column of its tall herbs or riverside willows, the zones of class B; S7 review:
+	 * the place of the ash-alder riparian forest of the soil test, used before, has no river in the gameplay scale and only
+	 * a stream in the realistic one; the starts are the nearest stretches of class B to it, 4.5 km and 1.5 km away, whose
+	 * 5 × 5 chunks hold about 440 columns of the class B zones) and a mountain stream
+	 * with a gray alder forest found near the Beskids area of the stage measurement (class C).
 	 */
 	private static List<int[]> crossings(MinecraftServer server, boolean real) {
-		int[][] soil = real ? HabitatsClientGameTest.SOIL_REAL : HabitatsClientGameTest.SOIL_GAMEPLAY;
 		List<int[]> out = new ArrayList<>();
 		out.add(real ? new int[] {-19_484, 11_253} : new int[] {-1_851, 6_022});
-		out.add(find(server, soil[1], code -> Habitat.zone(code) == Zone.TALL_HERBS || Habitat.zone(code) == Zone.RIVERSIDE_WILLOWS,
-				"small lowland river"));
+		out.add(find(server, real ? new int[] {800, -4_304} : new int[] {-1_400, -296},
+				code -> Habitat.zone(code) == Zone.TALL_HERBS || Habitat.zone(code) == Zone.RIVERSIDE_WILLOWS, "small lowland river"));
 		out.add(find(server, real ? new int[] {154_834, 1_058_738} : new int[] {27_609, 3_254},
 				code -> Habitat.biome(code) == HabitatBiome.GRAY_ALDER_FOREST || Habitat.zone(code) == Zone.GRAVEL_BAR,
 				"mountain stream with a gray alder forest"));
@@ -467,28 +470,27 @@ public final class VegetationClientGameTest implements FabricClientGameTest {
 		if (real) {
 			return HabitatsClientGameTest.SOIL_REAL[4];
 		}
-		return find(server, WILLOW_SCRUB_GAMEPLAY, code -> Habitat.biome(code) == HabitatBiome.WILLOW_SCRUB,
-				"willow scrub at the large river");
+		return find(server, WILLOW_SCRUB_GAMEPLAY, code -> Habitat.zone(code) == Zone.WILLOW_SCRUB
+				|| Habitat.biome(code) == HabitatBiome.WILLOW_SCRUB, "willow scrub at the large river");
 	}
 
 	// ------------------------------------------------------------------ checkpoint 2 (§12.3)
 
 	/**
-	 * Places seen from above: reedbed, willow scrub, beach, bogs, dwarf pine and the upper montane spruce forest (low
-	 * dense crowns), with the camera {@value #OPEN_ABOVE} blocks over the ground (the willow scrub and the montane spruce
-	 * forest {@value #CROWN_ABOVE}, above the crowns).
+	 * Places seen from above: reedbed, willow scrub, beach, bogs and dwarf pine, with the camera {@value #OPEN_ABOVE}
+	 * blocks over the ground (the willow scrub {@value #CROWN_ABOVE}, above the crowns). The upper montane spruce forest is
+	 * seen from inside like the other forests (from above its crowns filled the frame, S7 review).
 	 */
-	private static final Set<String> OPEN = Set.of("lake_reedbed", "willow_scrub", "beach", "raised_bog", "dwarf_pine_scrub",
-			"montane_spruce_forest");
+	private static final Set<String> OPEN = Set.of("lake_reedbed", "willow_scrub", "beach", "raised_bog", "dwarf_pine_scrub");
 	private static final int OPEN_ABOVE = 10;
 	private static final int CROWN_ABOVE = 16;
 
 	/**
 	 * A screenshot at each of the 11 places of §12.3 and at the extra forests ({@link #EXTRA_NAMES}), looking at the
-	 * place's center with the HUD hidden: in forests from 3 blocks above the ground 10–16 blocks away, below most crowns
+	 * place's center with the HUD hidden: in forests from 2–4 blocks above the ground 8–16 blocks away, below most crowns
 	 * (the floor, the trunks and the understory), in open habitats from {@value #OPEN_ABOVE} blocks above the ground, the
-	 * willow scrub and the montane spruce forest from {@value #CROWN_ABOVE}; the camera spot is the one with the clearest
-	 * line of sight in 8 directions ({@link #camera}).
+	 * willow scrub from {@value #CROWN_ABOVE}; the camera spot is the one with the clearest
+	 * view in 16 directions ({@link #camera}).
 	 *
 	 * @return the centers of the places taken
 	 */
@@ -525,7 +527,7 @@ public final class VegetationClientGameTest implements FabricClientGameTest {
 			boolean open = OPEN.contains(name);
 			int centerY = sp.getServer().computeOnServer(s -> groundY(s, center[0], center[1]));
 			String biome = sp.getServer().computeOnServer(s -> centerBiome(s, center[0], center[1]));
-			int above = name.equals("willow_scrub") || name.equals("montane_spruce_forest") ? CROWN_ABOVE : open ? OPEN_ABOVE : 3;
+			int above = name.equals("willow_scrub") ? CROWN_ABOVE : open ? OPEN_ABOVE : 3;
 			int[] camera = sp.getServer().computeOnServer(s -> camera(s, center[0], center[1], centerY, above));
 			double dx = center[0] - camera[0];
 			double dz = center[1] - camera[2];
@@ -537,7 +539,7 @@ public final class VegetationClientGameTest implements FabricClientGameTest {
 			context.waitTicks(20 * 25);
 			String client = context.computeOnClient(mc -> mc.level.getChunkSource().gatherStats());
 			PolishForests.LOG.info("[vegetation] {} {}: center ({}, {}) {} ground Y {}, camera ({}, {}, {}) yaw {} pitch {}, "
-					+ "{} blocked of the line of sight; client {}", scale, name, center[0], center[1], biome, centerY, camera[0],
+					+ "view score {} (blocked steps); client {}", scale, name, center[0], center[1], biome, centerY, camera[0],
 					camera[1], camera[2], String.format(Locale.ROOT, "%.1f", yaw), String.format(Locale.ROOT, "%.1f", pitch),
 					camera[3], client);
 			context.waitTicks(20 * 15);
@@ -560,31 +562,48 @@ public final class VegetationClientGameTest implements FabricClientGameTest {
 	}
 
 	/**
-	 * Camera feet position around the center (cx, cz): {@code above} blocks over the ground (or water), with the feet,
-	 * the head and the block above the head free (air or a plant, no leaves or logs), 10, 13 or 16 blocks away in one of
-	 * 8 directions; of these the one whose line of sight to the center's ground has the fewest leaves, logs and solid
-	 * blocks in its first 30 blocks (ties: the south-west first).
+	 * Camera feet position around the center (cx, cz): {@code above} blocks over the ground (or water; in forests also
+	 * one block lower or higher), with the feet, the head and the block above the head free (air or a plant, no leaves or
+	 * logs), 8–16 blocks away in one of 16 directions. Of these the one with the clearest view: the fewest leaves, logs
+	 * and solid blocks on the line of sight to the center's ground (first 30 blocks, weight 3) and on three lines to the
+	 * edges of the frame (about 30 degrees to either side of the center, 4 blocks above it; first 12 blocks), so no trunk
+	 * or crown fills a side of the frame (ties: the nearer to the south-west, the first distance).
 	 *
-	 * @return the feet position and the number of blocked steps
+	 * @return the feet position and the score (blocked steps)
 	 */
 	private static int[] camera(MinecraftServer server, int cx, int cz, int centerY, int above) {
 		ServerLevel level = server.overworld();
 		int[] best = null;
-		int bestBlocked = Integer.MAX_VALUE;
-		for (int back : new int[] {13, 10, 16}) {
-			for (int a = 0; a < 8; a++) {
+		int bestScore = Integer.MAX_VALUE;
+		int[] lifts = above <= 3 ? new int[] {above, above - 1, above + 1} : new int[] {above};
+		for (int back : new int[] {12, 10, 14, 16, 8}) {
+			for (int a = 0; a < 16; a++) {
 				// a = 0: south-west of the center (looking north-east), then around.
-				double angle = Math.PI * 1.25 + a * Math.PI / 4;
+				double angle = Math.PI * 1.25 + a * Math.PI / 8;
 				int x = cx + (int) Math.round(back * Math.cos(angle));
 				int z = cz + (int) Math.round(back * Math.sin(angle));
-				int y = groundY(server, x, z) + 1 + above;
-				if (!free(level, x, y, z) || !free(level, x, y + 1, z) || !free(level, x, y + 2, z)) {
-					continue;
-				}
-				int blocked = blocked(level, x + 0.5, y + 1.62, z + 0.5, cx + 0.5, centerY + 1.0, cz + 0.5);
-				if (blocked < bestBlocked) {
-					bestBlocked = blocked;
-					best = new int[] {x, y, z, blocked};
+				int ground = groundY(server, x, z);
+				for (int lift : lifts) {
+					int y = ground + 1 + lift;
+					if (!free(level, x, y, z) || !free(level, x, y + 1, z) || !free(level, x, y + 2, z)) {
+						continue;
+					}
+					double ex = x + 0.5;
+					double ey = y + 1.62;
+					double ez = z + 0.5;
+					double tx = cx + 0.5;
+					double tz = cz + 0.5;
+					// Side targets at about 30 degrees to either side: the edges of the frame.
+					double px = -(tz - ez) * 0.6;
+					double pz = (tx - ex) * 0.6;
+					int score = 3 * blocked(level, ex, ey, ez, tx, centerY + 1.0, tz, 30)
+							+ blocked(level, ex, ey, ez, tx + px, centerY + 1.0, tz + pz, 12)
+							+ blocked(level, ex, ey, ez, tx - px, centerY + 1.0, tz - pz, 12)
+							+ blocked(level, ex, ey, ez, tx, centerY + 5.0, tz, 12);
+					if (score < bestScore) {
+						bestScore = score;
+						best = new int[] {x, y, z, score};
+					}
 				}
 			}
 		}
@@ -600,12 +619,12 @@ public final class VegetationClientGameTest implements FabricClientGameTest {
 		return new int[] {x, y, z, -1};
 	}
 
-	/** Leaves, logs and solid blocks on the first 30 blocks of the line from the eye to the target (steps of 0.5). */
-	private static int blocked(ServerLevel level, double x0, double y0, double z0, double x1, double y1, double z1) {
+	/** Leaves, logs and solid blocks on the first {@code reach} blocks of the line from the eye to the target (steps of 0.5). */
+	private static int blocked(ServerLevel level, double x0, double y0, double z0, double x1, double y1, double z1, int reach) {
 		double length = Math.sqrt((x1 - x0) * (x1 - x0) + (y1 - y0) * (y1 - y0) + (z1 - z0) * (z1 - z0));
 		int n = 0;
 		BlockPos last = null;
-		for (double t = 0.5; t <= Math.min(30, length - 1); t += 0.5) {
+		for (double t = 0.5; t <= Math.min(reach, length - 1); t += 0.5) {
 			BlockPos pos = BlockPos.containing(x0 + (x1 - x0) * t / length, y0 + (y1 - y0) * t / length, z0 + (z1 - z0) * t / length);
 			if (pos.equals(last)) {
 				continue;
