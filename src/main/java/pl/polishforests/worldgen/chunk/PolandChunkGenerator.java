@@ -322,8 +322,8 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 		for (int i = 0; i < 256; i++) {
 			skip[i] = habitats.hasWater(i) || habitats.pieceDistance(i) <= 1;
 		}
-		int[] tops = SoilBlend.tops(pl.polishforests.worldgen.feature.ModFeatures.ecotoneRegion(level, chunk, habitats,
-				settings.scale().landscape().local()), level.getSeed(), builder, skip);
+		int[] tops = SoilBlend.tops(pl.polishforests.worldgen.feature.ChunkEcotones.of(level, chunk, habitats,
+				settings.scale().landscape().local()).region(), level.getSeed(), builder, skip);
 		ChunkPos pos = chunk.getPos();
 		BlockPos.MutableBlockPos at = new BlockPos.MutableBlockPos();
 		Material[] materials = Material.values();

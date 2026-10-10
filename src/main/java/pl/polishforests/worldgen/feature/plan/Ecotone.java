@@ -40,6 +40,14 @@ public final class Ecotone {
 	/** Width classes in blocks, from the widest: the effective half-width of a pair is the largest class within it. */
 	static final int[] WIDTHS = {16, 14, 12, 10, 8, 7, 6, 5, 4, 3, 2, 1};
 
+	/** Salt of the ecotone vectors of the tree stand. */
+	public static final long TREES_SALT = TreeStandPlan.SALT;
+	/** Salt of the ecotone vectors of the deadwood and the understory (one draw for both layers). */
+	public static final long PLANTS_SALT = 0x9A1D_E77EL;
+	/** Salt and patch size of the ecotone vectors of the ground layer (clumps of the other side's ground layer). */
+	public static final long GROUND_SALT = 0x6B0D_1A7EL;
+	public static final int GROUND_PATCH = 3;
+
 	/** Mantle depth into the forest (m·k). */
 	public static final double MANTLE = 4;
 	/** Mantle reach into the open land (m·k): shrubs grow out of the forest a little. */
@@ -314,18 +322,27 @@ public final class Ecotone {
 	 */
 	public static byte[] edges(Region region, Noise widths, int[] codes) {
 		byte[] out = new byte[256];
-		boolean any = false;
-		for (int i = 0; i < 256 && !any; i++) {
-			int code = region.at(i >> 4, i & 15);
-			any = mixingZone(code) && (woodland(kind(code)) || open(kind(code)));
-		}
-		if (!any) {
-			return out;
-		}
 		double k = region.k();
 		int reach = (int) Math.ceil(Math.max(MANTLE, FRINGE) * 1.5 * k) + 1;
 		int lo = -reach;
 		int n = 16 + 2 * reach;
+		// Most chunks have no forest edge within reach: no distance transform for them.
+		boolean anyForest = false;
+		boolean anyOpen = false;
+		for (int a = 0; a < n && !(anyForest && anyOpen); a++) {
+			for (int b = 0; b < n; b++) {
+				int code = region.at(lo + a, lo + b);
+				if (code != UNKNOWN && mixingZone(code)) {
+					Kind kd = kind(code);
+					anyForest |= woodland(kd);
+					anyOpen |= open(kd);
+				}
+			}
+		}
+		if (!anyForest || !anyOpen) {
+			return out;
+		}
+		double widest = 1.5 * k * Math.max(MANTLE, FRINGE) + 2;
 		// Chamfer distances (thirds of a block) to the nearest forest and open column, and the nearest forest column.
 		int[] toForest = new int[n * n];
 		int[] forest = new int[n * n];
@@ -354,6 +371,10 @@ public final class Ecotone {
 			}
 			Kind kd = kind(code);
 			int c = (x - lo) * n + z - lo;
+			int rel = woodland(kd) ? toOpen[c] : open(kd) ? toForest[c] : far;
+			if (rel / 3.0 > widest) {
+				continue;
+			}
 			double f = widths == null ? 1 : 1 + 0.5 * Math.clamp(widths.at(x0 + x, z0 + z, EDGE_WAVELENGTH * k) / 0.7, -1, 1);
 			if (woodland(kd)) {
 				if (toOpen[c] / 3.0 <= Math.max(1, MANTLE * k * f)) {

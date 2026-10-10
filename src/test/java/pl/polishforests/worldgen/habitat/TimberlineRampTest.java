@@ -14,7 +14,6 @@ import org.junit.jupiter.api.Test;
 import pl.polishforests.worldgen.BiomeJsonTest;
 import pl.polishforests.worldgen.feature.plan.Ecotone;
 import pl.polishforests.worldgen.feature.plan.HabitatMatch;
-import pl.polishforests.worldgen.feature.plan.TreeStandPlan;
 import pl.polishforests.worldgen.landscape.ColumnSample;
 import pl.polishforests.worldgen.landscape.LandscapeModel;
 import pl.polishforests.worldgen.landscape.LandscapeScale;
@@ -114,7 +113,7 @@ class TimberlineRampTest {
 					}
 				}
 				int[] eff = Ecotone.effective(Ecotone.Region.of(cx, cz, codes, sc.local()), Ecotone.Layer.TREES, SEED,
-						TreeStandPlan.SALT, 1);
+						Ecotone.TREES_SALT, 1);
 				for (int i = 0; i < 256; i++) {
 					int x = (cx << 4) + (i >> 4);
 					int z = (cz << 4) + (i & 15);

@@ -13,7 +13,6 @@ import java.util.concurrent.atomic.AtomicLongArray;
 import org.junit.jupiter.api.Test;
 import pl.polishforests.worldgen.BiomeJsonTest;
 import pl.polishforests.worldgen.chunk.PolandScale;
-import pl.polishforests.worldgen.feature.BiomeDecoration;
 import pl.polishforests.worldgen.habitat.Association;
 import pl.polishforests.worldgen.habitat.ForestSiteType;
 import pl.polishforests.worldgen.habitat.Habitat;
@@ -159,11 +158,6 @@ class EcotoneSharpnessTest {
 		};
 	}
 
-	/** Salt of a column layer of the game ({@code PlantLayerFeature}). */
-	private static long layerSalt(BiomeDecoration.Dispatcher d) {
-		return TreeStandPlan.SALT * 31 + d.ordinal() * 0x6A09_E667L;
-	}
-
 	/** Counters of one scale and mode. */
 	private static final class Stats {
 		// Coincidence: border pairs, pairs where all three change (before, after).
@@ -297,9 +291,8 @@ class EcotoneSharpnessTest {
 				int ccz = cz + b - 2;
 				Ecotone.Region region = Ecotone.Region.of(ccx, ccz, chunks, k);
 				int[] own = region.own();
-				int[] trees = Ecotone.effective(region, Ecotone.Layer.TREES, SEED, TreeStandPlan.SALT, 1);
-				int[] plants = Ecotone.effective(region, Ecotone.Layer.PLANTS, SEED,
-						layerSalt(BiomeDecoration.Dispatcher.GROUND_LAYER), 3);
+				int[] trees = Ecotone.effective(region, Ecotone.Layer.TREES, SEED, Ecotone.TREES_SALT, 1);
+				int[] plants = Ecotone.effective(region, Ecotone.Layer.PLANTS, SEED, Ecotone.GROUND_SALT, Ecotone.GROUND_PATCH);
 				byte[] edges = Ecotone.edges(region, widths, plants);
 				int[] soil = Ecotone.effective(region, Ecotone.Layer.SOIL, SEED, SoilBlend.SALT, SoilBlend.PATCH);
 				for (int i = 0; i < 256; i++) {

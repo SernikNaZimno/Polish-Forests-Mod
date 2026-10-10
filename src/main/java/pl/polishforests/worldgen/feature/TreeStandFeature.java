@@ -149,8 +149,7 @@ public final class TreeStandFeature implements Feature {
 		long seed = TreeStandPlan.seed(level.getSeed(), pos.x(), pos.z(), TreeStandPlan.SALT);
 		// Ecotones (rule Z10, step S8b): each candidate takes the rule of a column across the border within the belt of the
 		// pair, so composition and density change in a ramp.
-		int[] codes = Ecotone.effective(VegetationColumns.region(level, chunk, habitats, k), Ecotone.Layer.TREES,
-				level.getSeed(), TreeStandPlan.SALT, 1);
+		int[] codes = ChunkEcotones.of(level, chunk, habitats, k).trees();
 		int[] planned = TreeStandPlan.of(codes, VegetationColumns.waterDepth(habitats), plan, level.getSeed(),
 				pos.x(), pos.z(), new TreeStandPlan.Stand(ramp, n.gaps(), k));
 		WorldgenRandom treeRandom = new WorldgenRandom(new XoroshiroRandomSource(seed));
