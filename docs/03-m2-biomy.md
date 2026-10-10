@@ -566,7 +566,7 @@ BIOMES i TERRAIN nie wydłużyły się (klasyfikacja w `fill()` kosztuje 0,04–
   - REAL: olszyna górska 180 / 193,5 (wcześniej 0), łęg jesionowo-olszowy 447 / 440,6, łęg wierzbowo-topolowy 161 / 173,9 (wcześniej ok. 71% palety), las mieszany 241 / 263,4, grąd 190 / 189,2;
   - GAMEPLAY: olszyna górska 154 / 169,9, łęg wierzbowo-topolowy 166 / 161,7, łęg jesionowo-olszowy 63 / 73,3, las mieszany 429 / 447,3, grąd 160 / 144,6, ols 26 / 26,4;
   - wierzch: trawa na 0 z 6230 (REAL) i 0 z 5099 (GAMEPLAY) suchych kolumn plaży i wydmy białej; piasek na 422 z 38 018 i 171 z 31 164 suchych kolumn leśnych (łachy).
-- **Kolor wody jeziora dystroficznego** (i boru bagiennego, torfowiska wysokiego) to #3A3326 zamiast #5A4A2E, bo z góry woda wyglądała jak błotnista równina. Pełna kalibracja kolorów nadal w planie (§10).
+- **Kolor wody jeziora dystroficznego** (i boru bagiennego, torfowiska wysokiego) to #3A3326 zamiast #5A4A2E, bo z góry woda wyglądała jak błotnista równina. Pełna kalibracja kolorów nadal w planie (§10). **Zmienione w S8b (§8.8):** woda boru bagiennego i torfowiska wysokiego ma #3C5652 (bliżej wód sąsiadów), jezioro dystroficzne zostaje #3A3326, więc na jego brzegach w torfowiskach powstał skok koloru ΔE 20 (w S5 oba kolory były równe; decyzja M2-21).
 - **Obóz łąkowy** (`abandoned_camp_meadow`) także na wrzosowisku i hali. Struktury w trybie roślinności naturalnej opisuje §10.1.
 - **`.cache` datagenu** nie trafia już do jara (`processResources { exclude '.cache/**' }`; sprawdzone w `build/libs`).
 - **Dokumentacja:** czasy `/locate biome` w BRIEF poprawione, §14 pkt 5 oznaczony jako zastąpiony decyzją M2-C.
@@ -1683,7 +1683,7 @@ Tagi biomów (datagen):
   - `increased_fire_burnout`: olsy, łęgi, torfowiska, szuwar;
   - `dystrophic_lake`: `water_fog_color` #3B2A1A.
   - stan po S5: atrybuty i spawny są w datagenie (`ModWorldgen`, profile `HabitatBiome.music()`, `spawns()`, `increasedFireBurnout()`), §3.5.1.
-- **Kolory wody:** rzeka #4A6E5E, potok #4F8FB8, jezioro #3D6E70, dystroficzne #3A3326 (po rundzie 1 recenzji S5; było #5A4A2E, z góry wyglądało jak błotnista równina), morze #3A6A7A, zalew #5B7A5A. Kolory trawy i liści są wartościami startowymi z colormapy, kalibrowanymi na zrzutach w czterech porach roku z SS.
+- **Kolory wody:** rzeka #4A6E5E, potok #4C7879 (do S8b #4F8FB8), jezioro #3D6E70, dystroficzne #3A3326 (po rundzie 1 recenzji S5; było #5A4A2E, z góry wyglądało jak błotnista równina), morze #3A6A7A, zalew #5B7A5A. Od S8b (zasada Z10, §8.8; decyzja M2-21, domyślne, do potwierdzenia): woda gór (buczyna karpacka, świerczyna, kosodrzewina, hala) #4D8090 (było #4F8FB8), olszyna górska jak potok #4C7879, bór bagienny i torfowisko wysokie #3C5652 (było #3A3326, jak jezioro dystroficzne; teraz ΔE 20 na brzegach jezior dystroficznych w torfowiskach). Sąsiednie wody różnią się najwyżej o ok. ΔE 12 (pilnuje `BiomeJsonTest.neighborColorsStayClose`). Trawa pola (tryb D) #97BC5D (w S8 #AFB85E). Kolory trawy i liści są wartościami startowymi z colormapy, kalibrowanymi na zrzutach w czterech porach roku z SS.
 - **Chmury:** `visual/cloud_height` w obu typach wymiaru wynosi dziś 192,33. W REAL to poziom nizin. Podnosimy do REAL Y ≈ 1060 (ok. 1000 m n.p.m.) i GAMEPLAY Y ≈ 380.
 
 ### 10.1 Struktury (decyzja M2-C: wszystkie, które da się sensownie umieścić)

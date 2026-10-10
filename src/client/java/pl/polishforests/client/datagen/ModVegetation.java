@@ -425,14 +425,21 @@ final class ModVegetation {
 		// Forest edges (step S8b, rule Z10): the mantle of shrubs where a forest meets open land, on the outer meters of the
 		// forest and the first meter or two of the open land (those columns take the code of the nearest forest column):
 		// hazel on the fertile sites (blackthorn, hawthorn and dog rose have no vanilla substitute), juniper by the pine and
-		// spruce forests, gray and eared willow (osier) by the wet forests.
+		// spruce forests (hazel only by the fresh and mixed pine forests, not on the poor sands of the dry and coastal pine
+		// forests; round 1 of the S8b review), gray and eared willow (osier) by the alder carrs and willow-poplar forests,
+		// with hazel by the ash-alder and gray alder forests; at the edge of the bog woodland towards the raised bog stunted
+		// pines and birches, thinning out into the bog (round 1 of the S8b review: the willows belong to the lagg).
 		l.edge(biomes(OAK_HORNBEAM_FOREST, ELM_ASH_FOREST, MIXED_FOREST, LOWLAND_BEECH_FOREST, UPLAND_FIR_FOREST,
 				MONTANE_BEECH_FOREST), Ecotone.Edge.MANTLE, 0.06F, 1, l.feature(Species.HAZEL.path(), 1));
-		l.edge(biomes(DRY_PINE_FOREST, FRESH_PINE_FOREST, COASTAL_PINE_FOREST, MOIST_PINE_FOREST, MIXED_PINE_FOREST,
-				MONTANE_SPRUCE_FOREST), Ecotone.Edge.MANTLE, 0.05F, 1, l.feature(Species.JUNIPER.path(), 3),
+		l.edge(biomes(FRESH_PINE_FOREST, MIXED_PINE_FOREST), Ecotone.Edge.MANTLE, 0.05F, 1, l.feature(Species.JUNIPER.path(), 3),
 				l.feature(Species.HAZEL.path(), 1));
-		l.edge(biomes(ALDER_CARR, ASH_ALDER_FOREST, WILLOW_POPLAR_FOREST, BOG_WOODLAND, GRAY_ALDER_FOREST), Ecotone.Edge.MANTLE,
-				0.06F, 1, l.feature(Species.OSIER.path(), 3), l.feature(Species.HAZEL.path(), 1));
+		l.edge(biomes(DRY_PINE_FOREST, COASTAL_PINE_FOREST, MOIST_PINE_FOREST, MONTANE_SPRUCE_FOREST), Ecotone.Edge.MANTLE, 0.05F,
+				1, l.feature(Species.JUNIPER.path(), 1));
+		l.edge(biomes(ASH_ALDER_FOREST, GRAY_ALDER_FOREST), Ecotone.Edge.MANTLE, 0.06F, 1, l.feature(Species.OSIER.path(), 3),
+				l.feature(Species.HAZEL.path(), 1));
+		l.edge(biomes(ALDER_CARR, WILLOW_POPLAR_FOREST), Ecotone.Edge.MANTLE, 0.06F, 1, l.feature(Species.OSIER.path(), 1));
+		l.edge(biomes(BOG_WOODLAND), Ecotone.Edge.MANTLE, 0.02F, 1, l.feature(ModTrees.SCOTS_PINE_LOW, 2),
+				l.feature(Species.BIRCH.path(), 1));
 		// About 13 dwarf pines of 21–37 columns each per chunk: the crowns cover about 70% of the ground.
 		l.land(biomes(DWARF_PINE_SCRUB), 0.05F, 1, l.feature(Species.DWARF_MOUNTAIN_PINE.path(), 1));
 		l.land(biomes(HEATH), 0.01F, 3, l.feature(Species.JUNIPER.path(), 1));
@@ -538,8 +545,12 @@ final class ModVegetation {
 				grass.withWeight(6));
 		l.edge(biomes(HEATH, GRAY_DUNE), Ecotone.Edge.FRINGE, 0.75F, 3, bush.withWeight(30), b(Blocks.TALL_DRY_GRASS, 20),
 				dryGrass.withWeight(15), tallGrass.withWeight(10), lichen.withWeight(10), grass.withWeight(5));
-		l.edge(biomes(WET_MEADOW, FEN, RAISED_BOG, REEDBED), Ecotone.Edge.FRINGE, 0.85F, 3, tallGrass.withWeight(50),
+		l.edge(biomes(WET_MEADOW, FEN, REEDBED), Ecotone.Edge.FRINGE, 0.85F, 3, tallGrass.withWeight(50),
 				largeFern.withWeight(20), fern.withWeight(10), bush.withWeight(8));
+		// The raised bog at the bog woodland: dwarf shrubs (marsh Labrador tea, bog bilberry, heather) on peat moss (round 1
+		// of the S8b review).
+		l.edge(biomes(RAISED_BOG), Ecotone.Edge.FRINGE, 0.75F, 3, cat(bush.withWeight(45), moss.withWeight(15),
+				bed(Blocks.PINK_PETALS, 10)));
 		l.land(biomes(ALDER_CARR), 0.88F, 3, tallGrass.withWeight(40), largeFern.withWeight(30), fern.withWeight(12),
 				bush.withWeight(8), b(Blocks.FIREFLY_BUSH, 3), grass.withWeight(4));
 		l.land(biomes(ASH_ALDER_FOREST, GRAY_ALDER_FOREST), 0.88F, 3, tallGrass.withWeight(40), largeFern.withWeight(30),

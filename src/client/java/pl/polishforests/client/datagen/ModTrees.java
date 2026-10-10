@@ -134,6 +134,14 @@ final class ModTrees {
 					BlockPredicate.wouldSurvive(Blocks.OAK_SAPLING),
 					BlockPredicate.matchesBlocks(new Vec3i(0, -1, 0), List.of(Blocks.SAND, Blocks.GRAVEL)))));
 		}
+		if (path.equals(Species.SCOTS_PINE.path()) || path.equals(SCOTS_PINE_LOW)) {
+			// Scots pine also on sand: it invades the gray dunes and stands at the edge of the coastal pine forest on bare
+			// sand (round 1 of the S8b review; without this the tree ecotone ended at the sand). The sand under the trunk
+			// becomes dirt (the vanilla soil provider).
+			return List.of(net.minecraft.world.level.levelgen.placement.BlockPredicateFilter.forPredicate(BlockPredicate.anyOf(
+					BlockPredicate.wouldSurvive(Blocks.OAK_SAPLING),
+					BlockPredicate.matchesBlocks(new Vec3i(0, -1, 0), List.of(Blocks.SAND)))));
+		}
 		return List.of(PlacementUtils.filteredByBlockSurvival(Blocks.OAK_SAPLING));
 	}
 

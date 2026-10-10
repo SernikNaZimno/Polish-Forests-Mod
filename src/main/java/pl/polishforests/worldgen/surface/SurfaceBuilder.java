@@ -94,6 +94,22 @@ public final class SurfaceBuilder {
 	public Material soilTop(int code, int x, int z) {
 		double q1 = LandscapeModel.noiseQuantile(soil.at(x, z, SOIL_WAVELENGTH));
 		double q2 = LandscapeModel.noiseQuantile(soil.at(x + 1_013.0, z - 517.0, SOIL_MINOR_WAVELENGTH));
+		return soilTop(code, q1, q2);
+	}
+
+	/**
+	 * The tops of the soil profiles of two codes at world (x, z) ({@link #soilTop(int, int, int)} with the patch noises
+	 * evaluated once), packed as {@code own << 8 | other} ({@link Material} ordinals), or -1 when they are the same block.
+	 */
+	public int soilTops(int own, int other, int x, int z) {
+		double q1 = LandscapeModel.noiseQuantile(soil.at(x, z, SOIL_WAVELENGTH));
+		double q2 = LandscapeModel.noiseQuantile(soil.at(x + 1_013.0, z - 517.0, SOIL_MINOR_WAVELENGTH));
+		Material a = soilTop(own, q1, q2);
+		Material b = soilTop(other, q1, q2);
+		return a == b ? -1 : a.ordinal() << 8 | b.ordinal();
+	}
+
+	private static Material soilTop(int code, double q1, double q2) {
 		return SoilBlocks.top(SoilBlocks.dry(Habitat.soil(code), Habitat.zone(code), Habitat.biome(code), q1, q2, 1));
 	}
 

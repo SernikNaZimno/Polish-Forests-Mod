@@ -169,11 +169,13 @@ public final class PlantLayerFeature implements Feature {
 				|| dispatcher == BiomeDecoration.Dispatcher.GROUND_LAYER) {
 			// Ecotones (rule Z10, step S8b): the palette of each column from the code of a column across the border within
 			// the belt of the pair, and the mantle and fringe of the forest edges (shared by the layers of the chunk; the
-			// waterside zones and the aquatic plants follow the water, whose borders are sharp).
+			// waterside zones and the aquatic plants follow the water, whose borders are sharp). The understory sees the
+			// mantle, the ground layer the fringe.
 			double k = generator instanceof PolandChunkGenerator poland ? poland.settings().scale().landscape().local() : 1;
 			ChunkEcotones e = ChunkEcotones.of(level, chunk, habitats, k);
-			columns = columns.with(dispatcher == BiomeDecoration.Dispatcher.GROUND_LAYER ? e.ground() : e.plants(),
-					edges ? e.edges() : null);
+			boolean groundLayer = dispatcher == BiomeDecoration.Dispatcher.GROUND_LAYER;
+			columns = columns.with(groundLayer ? e.ground() : e.plants(),
+					edges ? groundLayer ? e.groundEdges() : e.shrubEdges() : null);
 		}
 		int[] planned = ColumnPlan.of(columns, plan, level.getSeed(), pos.x(), pos.z(), salt);
 		if (planned.length == 0) {

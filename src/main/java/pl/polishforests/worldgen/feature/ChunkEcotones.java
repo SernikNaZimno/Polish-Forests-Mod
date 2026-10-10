@@ -1,12 +1,10 @@
 package pl.polishforests.worldgen.feature;
 
-import java.util.Arrays;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import org.jspecify.annotations.Nullable;
 import pl.polishforests.worldgen.chunk.ChunkHabitats;
 import pl.polishforests.worldgen.feature.plan.Ecotone;
-import pl.polishforests.worldgen.landscape.Noise;
 
 /**
  * Ecotones of the chunk being decorated (rule Z10, step S8b; {@link Ecotone}), computed once and shared by the soil
@@ -16,8 +14,6 @@ import pl.polishforests.worldgen.landscape.Noise;
  */
 public final class ChunkEcotones {
 	private static final ThreadLocal<ChunkEcotones> LAST = new ThreadLocal<>();
-	/** Salt of the noise of the forest edge widths (a new field, a new salt; step S8b). */
-	private static final String EDGE_SALT = "feature.ecotone.edges";
 
 	private final long seed;
 	private final ChunkHabitats habitats;
@@ -25,13 +21,7 @@ public final class ChunkEcotones {
 	private int @Nullable [] trees;
 	private int @Nullable [] plants;
 	private int @Nullable [] ground;
-	private byte @Nullable [] edges;
-	private int @Nullable [] mantle;
-	private static volatile @Nullable Widths widths;
-
-	/** Noise of the forest edge widths of a world seed. */
-	private record Widths(long seed, Noise noise) {
-	}
+	private Ecotone.@Nullable Edges edges;
 
 	private ChunkEcotones(long seed, ChunkHabitats habitats, Ecotone.Region region) {
 		this.seed = seed;
@@ -65,48 +55,36 @@ public final class ChunkEcotones {
 
 	/** Ecotone codes of the deadwood and the understory, the open columns of the forest mantle with the forest's code. */
 	int[] plants() {
-		if (plants == null) {
-			plants = withMantle(Ecotone.effective(region, Ecotone.Layer.PLANTS, seed, Ecotone.PLANTS_SALT, 1));
-		}
+		edges();
 		return plants;
 	}
 
-	/** Ecotone codes of the ground layer (in patches), the open columns of the forest mantle with the forest's code. */
+	/**
+	 * Ecotone codes of the ground layer (in patches), the forest columns of the fringe with the open land's code and the
+	 * open columns before the fringe with the forest's code.
+	 */
 	int[] ground() {
-		if (ground == null) {
-			ground = withMantle(Ecotone.effective(region, Ecotone.Layer.PLANTS, seed, Ecotone.GROUND_SALT,
-					Ecotone.GROUND_PATCH));
-		}
+		edges();
 		return ground;
 	}
 
-	/** Forest edge classes of the columns ({@link Ecotone.Edge} ordinals). */
-	byte[] edges() {
-		if (edges == null) {
-			int[] m = new int[256];
-			Arrays.fill(m, Ecotone.UNKNOWN);
-			edges = Ecotone.edges(region, widths(seed), m);
-			mantle = m;
-		}
-		return edges;
+	/** Forest edge classes of the understory (the mantle). */
+	byte[] shrubEdges() {
+		return edges().shrubs();
 	}
 
-	private int[] withMantle(int[] codes) {
-		edges();
-		for (int i = 0; i < 256; i++) {
-			if (mantle[i] != Ecotone.UNKNOWN) {
-				codes[i] = mantle[i];
-			}
-		}
-		return codes;
+	/** Forest edge classes of the ground layer (the fringe). */
+	byte[] groundEdges() {
+		return edges().ground();
 	}
 
-	private static Noise widths(long seed) {
-		Widths w = widths;
-		if (w == null || w.seed() != seed) {
-			w = new Widths(seed, new Noise(seed).derive(EDGE_SALT));
-			widths = w;
+	private Ecotone.Edges edges() {
+		Ecotone.Edges e = edges;
+		if (e == null) {
+			plants = Ecotone.effective(region, Ecotone.Layer.PLANTS, seed, Ecotone.PLANTS_SALT, 1);
+			ground = Ecotone.effective(region, Ecotone.Layer.PLANTS, seed, Ecotone.GROUND_SALT, Ecotone.GROUND_PATCH);
+			e = edges = Ecotone.edges(region, Ecotone.Noises.of(seed), plants, ground);
 		}
-		return w.noise();
+		return e;
 	}
 }

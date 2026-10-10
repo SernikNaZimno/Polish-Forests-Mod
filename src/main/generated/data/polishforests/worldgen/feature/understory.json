@@ -46,12 +46,8 @@
     },
     {
       "biomes": [
-        "dry_pine_forest",
         "fresh_pine_forest",
-        "coastal_pine_forest",
-        "moist_pine_forest",
-        "mixed_pine_forest",
-        "montane_spruce_forest"
+        "mixed_pine_forest"
       ],
       "coverage": 0.05,
       "edges": [
@@ -70,10 +66,25 @@
     },
     {
       "biomes": [
-        "alder_carr",
+        "dry_pine_forest",
+        "coastal_pine_forest",
+        "moist_pine_forest",
+        "montane_spruce_forest"
+      ],
+      "coverage": 0.05,
+      "edges": [
+        "mantle"
+      ],
+      "plants": [
+        {
+          "feature": "polishforests:shrub/juniper",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "biomes": [
         "ash_alder_forest",
-        "willow_poplar_forest",
-        "bog_woodland",
         "gray_alder_forest"
       ],
       "coverage": 0.06,
@@ -87,6 +98,41 @@
         },
         {
           "feature": "polishforests:shrub/hazel",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "alder_carr",
+        "willow_poplar_forest"
+      ],
+      "coverage": 0.06,
+      "edges": [
+        "mantle"
+      ],
+      "plants": [
+        {
+          "feature": "polishforests:shrub/osier",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "bog_woodland"
+      ],
+      "coverage": 0.02,
+      "edges": [
+        "mantle"
+      ],
+      "plants": [
+        {
+          "feature": "polishforests:tree/scots_pine_low",
+          "weight": 2
+        },
+        {
+          "feature": "polishforests:tree/birch",
           "weight": 1
         }
       ]

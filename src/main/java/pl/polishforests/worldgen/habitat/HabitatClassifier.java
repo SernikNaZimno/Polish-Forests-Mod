@@ -43,8 +43,10 @@ public final class HabitatClassifier {
 	final Noise belts;
 	/** Variants within sites (lowland beech forest, heath openings), wavelength 1.5 km·k. */
 	final Noise variants;
-	/** Patches of the stunted spruces in the timberline ramp (step S8b, rule Z10). */
+	/** Patches of the stunted spruces in the timberline ramp (step S8b, rule Z10; round 1 of the S8b review: 40 m·k). */
 	final Noise timberline;
+	/** Mosaic of dwarf pine and spruce at the timberline and of alpine grassland and dwarf pine (round 1 of the S8b review). */
+	final Noise timberlineMosaic;
 	final ForestCover forestCover;
 
 	public HabitatClassifier(long seed, LandscapeScale scale, Mode mode) {
@@ -58,8 +60,11 @@ public final class HabitatClassifier {
 		this.patches = root.derive("habitat.platy");
 		this.belts = root.derive("habitat.pietra");
 		this.variants = root.derive("habitat.warianty");
-		// Step S8b: a new noise field with a new salt.
-		this.timberline = root.derive("habitat.timberline.patches");
+		// Round 1 of the S8b review: the patches of the stunted spruces are a new field (wavelength 40 m·k instead of 12)
+		// with a new salt, the mosaic of the belts at the timberline and the alpine threshold too (the S8b field with the
+		// salt "habitat.timberline.patches" is no longer used).
+		this.timberline = root.derive("habitat.timberline.clumps");
+		this.timberlineMosaic = root.derive("habitat.timberline.mosaic");
 		// Step S8: the second octave of F is a new noise field with its own salt; round 1 of the S8 review: the woodlot
 		// octave and the context noise, new fields with new salts.
 		this.forestCover = new ForestCover(root.derive("habitat.lesistosc"), root.derive("habitat.forest_cover.fine"),

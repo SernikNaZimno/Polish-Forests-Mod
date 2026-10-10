@@ -118,7 +118,6 @@
       "biomes": [
         "wet_meadow",
         "fen",
-        "raised_bog",
         "reedbed"
       ],
       "coverage": 0.85,
@@ -142,6 +141,56 @@
         {
           "block": "minecraft:bush",
           "weight": 8
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "raised_bog"
+      ],
+      "coverage": 0.75,
+      "edges": [
+        "fringe"
+      ],
+      "patch": 3,
+      "plants": [
+        {
+          "block": "minecraft:bush",
+          "weight": 45
+        },
+        {
+          "block": "minecraft:moss_carpet",
+          "weight": 15
+        },
+        {
+          "block": {
+            "id": "minecraft:pink_petals",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "2"
+            }
+          },
+          "weight": 3
+        },
+        {
+          "block": {
+            "id": "minecraft:pink_petals",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "3"
+            }
+          },
+          "weight": 3
+        },
+        {
+          "block": {
+            "id": "minecraft:pink_petals",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "4"
+            }
+          },
+          "weight": 4
         }
       ]
     },

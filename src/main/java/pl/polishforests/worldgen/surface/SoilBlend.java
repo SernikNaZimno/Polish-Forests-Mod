@@ -3,13 +3,14 @@ package pl.polishforests.worldgen.surface;
 import pl.polishforests.worldgen.feature.plan.Ecotone;
 
 /**
- * Soil ecotones (rule Z10, step S8b, docs/03-m2-biomy.md §7.6): where the soil changes between two habitats, the top
+ * Soil ecotones (rule Z10, step S8b, docs/03-m2-biomy.md §8.8): where the soil changes between two habitats, the top
  * blocks of both soils mix in a belt of a few to a dozen and more blocks ({@link Ecotone#halfWidth} of the layer
- * {@link Ecotone.Layer#SOIL}: 8 m·k between similar forests, 4 m·k at forest edges, none at water), in patches of
- * about {@value #PATCH} blocks with ragged borders, so the border of podzol and grass, coarse dirt, mud or moss is
- * neither a line nor a checkerboard. A pure function of the habitat codes of the chunk and its neighbors and the world
- * seed; the generator applies it to the top block of the dry columns before the decoration of the chunk, and only where
- * the top block is still the one of the column's own soil profile (not a hummock, a shelf bed or a structure's ground).
+ * {@link Ecotone.Layer#SOIL}: 8 m·k between similar forests, 4 m·k at forest edges, 2 m·k on the land side of the
+ * waterside zones, none at water), in patches of about {@value #PATCH} blocks with ragged borders, around the border moved
+ * by the meander of the ecotones, so the border of podzol and grass, coarse dirt, mud or moss is neither a line nor a
+ * checkerboard. A pure function of the habitat codes of the chunk and its neighbors and the world seed; the generator
+ * applies it to the top block of the dry columns before the decoration of the chunk, and only where the top block is
+ * still the one of the column's own soil profile (not a hummock, a shelf bed or a structure's ground).
  */
 public final class SoilBlend {
 	/** Salt of the soil ecotone vectors. */
@@ -40,12 +41,9 @@ public final class SoilBlend {
 			if (codes[i] == own[i] || skip != null && skip[i]) {
 				continue;
 			}
-			int x = x0 + (i >> 4);
-			int z = z0 + (i & 15);
-			Material mine = builder.soilTop(own[i], x, z);
-			Material taken = builder.soilTop(codes[i], x, z);
-			if (mine != taken) {
-				out[i] = mine.ordinal() << 8 | taken.ordinal();
+			int tops = builder.soilTops(own[i], codes[i], x0 + (i >> 4), z0 + (i & 15));
+			if (tops >= 0) {
+				out[i] = tops;
 			}
 		}
 		return out;

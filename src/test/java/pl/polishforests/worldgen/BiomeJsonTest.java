@@ -190,4 +190,76 @@ public class BiomeJsonTest {
 	private static String color(int rgb) {
 		return String.format(Locale.ROOT, "#%06x", rgb);
 	}
+
+	/**
+	 * Color steps between neighboring biomes (rule Z10, step S8b, docs/03-m2-biomy.md §8.8 and §10): the client blends the
+	 * colors over 5 blocks, so the listed neighbor pairs stay within the documented ΔE (CIELAB, CIE76) of their water and
+	 * grass colors; the dark brown water of the dystrophic lake against the bog water is the documented exception (ΔE 20).
+	 */
+	@Test
+	void neighborColorsStayClose() {
+		Object[][] pairs = {
+				// Water: mountains, streams and gray alder forests, lowland waters and floodplains.
+				{"water_color", HabitatBiome.MONTANE_SPRUCE_FOREST, HabitatBiome.GRAY_ALDER_FOREST, 12.5},
+				{"water_color", HabitatBiome.STREAM, HabitatBiome.RIVER, 12.5},
+				{"water_color", HabitatBiome.GRAY_ALDER_FOREST, HabitatBiome.ASH_ALDER_FOREST, 12.5},
+				{"water_color", HabitatBiome.MONTANE_BEECH_FOREST, HabitatBiome.UPLAND_FIR_FOREST, 12.5},
+				{"water_color", HabitatBiome.MONTANE_BEECH_FOREST, HabitatBiome.LAKE, 12.5},
+				// Water of the bog woodland and the raised bog against their mineral neighbors.
+				{"water_color", HabitatBiome.BOG_WOODLAND, HabitatBiome.MOIST_PINE_FOREST, 12.5},
+				{"water_color", HabitatBiome.RAISED_BOG, HabitatBiome.FEN, 12.5},
+				{"water_color", HabitatBiome.RAISED_BOG, HabitatBiome.HEATH, 12.5},
+				{"water_color", HabitatBiome.RAISED_BOG, HabitatBiome.DYSTROPHIC_LAKE, 20.5},
+				// Grass of the PRESENT_DAY mosaic and the dunes.
+				{"grass_color", HabitatBiome.ARABLE_LAND, HabitatBiome.HAY_MEADOW, 10.5},
+				{"grass_color", HabitatBiome.ARABLE_LAND, HabitatBiome.WET_MEADOW, 15.0},
+				{"grass_color", HabitatBiome.ARABLE_LAND, HabitatBiome.OAK_HORNBEAM_FOREST, 15.0},
+				{"grass_color", HabitatBiome.GRAY_DUNE, HabitatBiome.WET_MEADOW, 15.0}};
+		StringBuilder report = new StringBuilder();
+		List<String> failures = new java.util.ArrayList<>();
+		for (Object[] p : pairs) {
+			String key = (String) p[0];
+			HabitatBiome a = (HabitatBiome) p[1];
+			HabitatBiome b = (HabitatBiome) p[2];
+			double de = deltaE(colorOf(a, key), colorOf(b, key));
+			report.append(String.format(Locale.ROOT, "%s %s | %s: ΔE %.1f%n", key, a.id(), b.id(), de));
+			if (de > (Double) p[3]) {
+				failures.add(String.format(Locale.ROOT, "%s %s | %s: ΔE %.1f > %.1f", key, a.id(), b.id(), de, (Double) p[3]));
+			}
+		}
+		System.out.println(report);
+		assertTrue(failures.isEmpty(), failures.toString());
+	}
+
+	private static int colorOf(HabitatBiome b, String key) {
+		return Integer.parseInt(json(biomeFile(b)).getAsJsonObject("effects").get(key).getAsString().substring(1), 16);
+	}
+
+	/** CIE76 color difference of two sRGB colors (D65). */
+	static double deltaE(int a, int b) {
+		double[] x = lab(a);
+		double[] y = lab(b);
+		return Math.sqrt((x[0] - y[0]) * (x[0] - y[0]) + (x[1] - y[1]) * (x[1] - y[1]) + (x[2] - y[2]) * (x[2] - y[2]));
+	}
+
+	private static double[] lab(int rgb) {
+		double r = linear((rgb >> 16 & 255) / 255.0);
+		double g = linear((rgb >> 8 & 255) / 255.0);
+		double b = linear((rgb & 255) / 255.0);
+		double x = (0.4124 * r + 0.3576 * g + 0.1805 * b) / 0.95047;
+		double y = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+		double z = (0.0193 * r + 0.1192 * g + 0.9505 * b) / 1.08883;
+		double fx = labF(x);
+		double fy = labF(y);
+		double fz = labF(z);
+		return new double[] {116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)};
+	}
+
+	private static double linear(double v) {
+		return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+	}
+
+	private static double labF(double t) {
+		return t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16.0 / 116;
+	}
 }

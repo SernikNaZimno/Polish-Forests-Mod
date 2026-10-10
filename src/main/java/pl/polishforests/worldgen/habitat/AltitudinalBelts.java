@@ -14,6 +14,7 @@ import pl.polishforests.worldgen.landscape.Landform;
  * upperMontaneLimit = 1150 + aspectOffset + dT
  * timberline        = 1390 + aspectOffset − 60·[RIDGE and slope &lt; 15°] + dT
  * alpineThreshold   = 1650 + aspectOffset + dT
+ * (round 1 of the S8b review: both borders are mosaics of patches 40 m and 50 m either side, §8.8)
  * largeMassif       = summit within 3 km·mspace > 1470 m (E12), from the terrain.summit field
  * </pre>
  *
@@ -59,8 +60,22 @@ public final class AltitudinalBelts {
 	 * spruces cover half of the columns at the timberline and none at this height above it.
 	 */
 	public static final double TIMBERLINE_ABOVE = 40;
-	/** Wavelength of the noise of the stunted spruce patches (m·k). */
-	static final double TIMBERLINE_PATCHES = 12;
+	/**
+	 * Wavelength of the noise of the stunted spruce patches (m·k; round 1 of the S8b review: 40 m·k within the 30–60 m of
+	 * Z9 instead of 12, a new field with a new salt).
+	 */
+	static final double TIMBERLINE_PATCHES = 40;
+	/**
+	 * Mosaic of the dwarf pine scrub and the spruce forest at the timberline (m, round 1 of the S8b review): the share of
+	 * the dwarf pine rises from 0 at this depth below the timberline through 1/2 at it to 1 as far above it, in patches of
+	 * the mosaic noise; the dwarf pine patches below the timberline have the stunted spruces of the zone {@code TIMBERLINE},
+	 * the spruce patches above it are stunted spruce forest.
+	 */
+	public static final double KRUMMHOLZ_RAMP = 40;
+	/** The same mosaic of the alpine grassland and the dwarf pine scrub around the alpine threshold (m). */
+	public static final double ALPINE_RAMP = 50;
+	/** Wavelength of the mosaic noise (m·k, Z9). */
+	static final double MOSAIC_WAVELENGTH = 40;
 	/** Largest possible lowering of a threshold (aspect and noise), used to skip the noise low down. */
 	public static final double MAX_LOWERING = ASPECT + TEMPERATURE_NOISE;
 	/**
@@ -118,11 +133,16 @@ public final class AltitudinalBelts {
 		double corr = correction(c);
 		boolean large = largeMassif(c);
 		boolean onRidge = c.t.has(Landform.RIDGE);
-		if (large && h >= ALPINE_THRESHOLD + corr) {
+		double alpine = ALPINE_THRESHOLD + corr;
+		if (large && h >= alpine - ALPINE_RAMP && (h >= alpine + ALPINE_RAMP
+				|| mosaic(c, true) < 0.5 + (h - alpine) / (2 * ALPINE_RAMP))) {
 			return HabitatClassifier.Result.of(HabitatBiome.ALPINE_GRASSLAND, Zone.NONE, Association.TYPICAL);
 		}
 		double limit = TIMBERLINE + corr - (onRidge && c.slope < WINDY_RIDGE_SLOPE ? WINDY_RIDGE : 0);
-		if (large && h >= limit) {
+		if (large && h >= limit - KRUMMHOLZ_RAMP && (h >= limit + KRUMMHOLZ_RAMP
+				|| mosaic(c, false) < 0.5 + (h - limit) / (2 * KRUMMHOLZ_RAMP))) {
+			// Stunted spruces among the dwarf pines: in all of them at the lowest dwarf pine patches, in half of them at the
+			// timberline, none at TIMBERLINE_ABOVE over it.
 			Zone s = h < limit + TIMBERLINE_ABOVE && timberlinePatch(c) > 0.5 + 0.5 * (h - limit) / TIMBERLINE_ABOVE
 					? Zone.TIMBERLINE : Zone.NONE;
 			return HabitatClassifier.Result.of(HabitatBiome.DWARF_PINE_SCRUB, s, Association.TYPICAL);
@@ -164,6 +184,17 @@ public final class AltitudinalBelts {
 	static double timberlinePatch(HabitatClassifier.Column c) {
 		return pl.polishforests.worldgen.landscape.LandscapeModel.noiseQuantile(
 				c.classifier.timberline.at(c.x, c.z, TIMBERLINE_PATCHES * c.k));
+	}
+
+	/**
+	 * Uniform value 0–1 of the mosaic noise at the column (round 1 of the S8b review): the upper belt where it is below
+	 * the belt's share at the column's elevation; the alpine border reads the noise at shifted coordinates.
+	 */
+	static double mosaic(HabitatClassifier.Column c, boolean alpine) {
+		double dx = alpine ? 911.0 : 0;
+		double dz = alpine ? -1_733.0 : 0;
+		return pl.polishforests.worldgen.landscape.LandscapeModel.noiseQuantile(
+				c.classifier.timberlineMosaic.at(c.x + dx, c.z + dz, MOSAIC_WAVELENGTH * c.k));
 	}
 
 	/** Sycamore ravine forest on steep N–E slopes in the lower part of the slope, acidophilous form on poor sites. */
