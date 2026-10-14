@@ -6,6 +6,7 @@ import java.util.Locale;
 import java.util.Set;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import pl.polishforests.worldgen.habitat.HabitatClassifier;
 
 /**
  * Cost report of {@link LandscapeModel#sample} on a single thread (M2, step S0). No assertions: the result
@@ -23,6 +24,11 @@ import org.junit.jupiter.api.Test;
  * stream network), at the location of the "beskids" patch from the golden test, and 400 chunks on a large Beskid
  * massif (step K2 of the terrain geometry fix; the M1 copy has no massif there). The whole area at realistic scale
  * (±320 km around 0, 0) does not include mountains.
+ *
+ * <p>{@link #reportClassifyCost} (round 1 of the S10 review) measures the habitat classification the same way, on a single
+ * thread: {@link HabitatClassifier#classify} of the 256 columns of each chunk, in both vegetation modes, over samples
+ * computed beforehand (the classification alone, without {@code sample}), for the budget "classification ≤ 0.5 µs"
+ * (§3.6). Besides the scattered areas it measures the contiguous 8 × 8 chunks of the {@code stages} Beskids area.
  *
  * <p>Tagged {@code cost}: it runs only through {@code ./gradlew costTest} (a single JVM, alone, always rerun),
  * never in {@code test} or {@code fastTest}, whose parallel forks would disturb the timing.
@@ -68,6 +74,80 @@ class SampleCostTest {
 			report(scale.id() + " (large massif)", m, old, chunks(g[0], g[1], (long) m.greatMassifRa(),
 					0x5EED_0004L));
 		}
+	}
+
+	/**
+	 * Single-thread cost of the habitat classification per column in both modes (budget §3.6: at most 0.5 µs). The samples
+	 * are computed first, so only {@link HabitatClassifier#classify} is timed; the first round hits the cold caches of the
+	 * classifier (the chunks are scattered, as for {@code sample}), the following rounds the warm ones.
+	 */
+	@Test
+	void reportClassifyCost() {
+		for (LandscapeScale scale : new LandscapeScale[] {LandscapeScale.REALISTIC, LandscapeScale.GAMEPLAY}) {
+			LandscapeModel m = new LandscapeModel(SEED, scale, 1.0);
+			long half = (long) (m.regionSize() * 5);
+			long[] b = scale == LandscapeScale.REALISTIC ? BESKIDS_REAL : BESKIDS_GAMEPLAY;
+			long[] g = scale == LandscapeScale.REALISTIC ? MASSIF_REAL : MASSIF_GAMEPLAY;
+			long[][] warm = chunks(0, 0, half, 0x5EED_0002L);
+			String[] names = {"whole area", "Beskids", "large massif", "Beskids 8 x 8 (stages area)"};
+			long[][][] areas = {chunks(0, 0, half, 0x5EED_0001L), chunks(b[0], b[1], (long) (m.regionSize() * 0.15), 0x5EED_0003L),
+					chunks(g[0], g[1], (long) m.greatMassifRa(), 0x5EED_0004L), block(b[0] - 64, b[1] - 64)};
+			HabitatClassifier[] modes = {new HabitatClassifier(SEED, scale, HabitatClassifier.Mode.NATURAL),
+					new HabitatClassifier(SEED, scale, HabitatClassifier.Mode.PRESENT_DAY)};
+			ColumnSample[] warmSamples = samples(m, warm);
+			for (HabitatClassifier k : modes) {
+				for (int r = 0; r < 3; r++) {
+					classifyAll(k, warm, warmSamples);
+				}
+			}
+			for (int a = 0; a < areas.length; a++) {
+				ColumnSample[] samples = samples(m, areas[a]);
+				double columns = areas[a].length * 256.0;
+				double[][] us = new double[2][ROUNDS];
+				for (int r = 0; r < ROUNDS; r++) {
+					for (int i = 0; i < 2; i++) {
+						// The order of the modes is reversed every round, as for sample.
+						int mode = r % 2 == 0 ? i : 1 - i;
+						long t0 = System.nanoTime();
+						classifyAll(modes[mode], areas[a], samples);
+						us[mode][r] = (System.nanoTime() - t0) / 1e3 / columns;
+					}
+				}
+				System.out.println(String.format(Locale.ROOT, "[classify cost] %s (%s): %d columns; natural: first round %.3f µs/column, "
+						+ "median %.3f, minimum %.3f; present_day: first round %.3f, median %.3f, minimum %.3f", scale.id(), names[a],
+						(int) columns, us[0][0], median(us[0]), min(us[0]), us[1][0], median(us[1]), min(us[1])));
+			}
+		}
+	}
+
+	/** The 8 × 8 chunks with the north-west corner (x, z) (blocks), in raster order. */
+	private static long[][] block(long x, long z) {
+		long[][] out = new long[64][];
+		for (int i = 0; i < 64; i++) {
+			out[i] = new long[] {Math.floorDiv(x, 16) * 16 + (i / 8) * 16, Math.floorDiv(z, 16) * 16 + (i % 8) * 16};
+		}
+		return out;
+	}
+
+	/** Samples of all columns of the chunks, index chunk · 256 + x · 16 + z (the order of {@code fill()}). */
+	private static ColumnSample[] samples(LandscapeModel m, long[][] chunks) {
+		ColumnSample[] out = new ColumnSample[chunks.length * 256];
+		for (int c = 0; c < chunks.length; c++) {
+			for (int i = 0; i < 256; i++) {
+				out[c * 256 + i] = m.sample(chunks[c][0] + (i >> 4), chunks[c][1] + (i & 15));
+			}
+		}
+		return out;
+	}
+
+	private static void classifyAll(HabitatClassifier k, long[][] chunks, ColumnSample[] samples) {
+		long acc = 0;
+		for (int c = 0; c < chunks.length; c++) {
+			for (int i = 0; i < 256; i++) {
+				acc += k.classify(samples[c * 256 + i], chunks[c][0] + (i >> 4), chunks[c][1] + (i & 15));
+			}
+		}
+		sink += acc;
 	}
 
 	/**

@@ -59,10 +59,13 @@ dependencies {
 	implementation "maven.modrinth:geckolib:${project.geckolib_version}"
 	implementation "maven.modrinth:smartbrainlib:${project.smartbrainlib_version}"
 
-	// Optional: Serene Seasons. Compiled against its API; the dev environment runs with the mod.
+	// Optional: Serene Seasons. Compiled against its API; the dev environment runs with the mod, unless -PnoSeasons is given
+	// (round 1 of the S10 review: the climate game test without SS, docs/03-m2-biomy.md §12.4 point 4).
 	compileOnly "maven.modrinth:serene-seasons:${project.sereneseasons_version}"
-	localRuntime "maven.modrinth:serene-seasons:${project.sereneseasons_version}"
-	localRuntime "maven.modrinth:glitchcore:${project.glitchcore_version}"
+	if (!project.hasProperty('noSeasons')) {
+		localRuntime "maven.modrinth:serene-seasons:${project.sereneseasons_version}"
+		localRuntime "maven.modrinth:glitchcore:${project.glitchcore_version}"
+	}
 
 	// Performance mods from the recommended modpack; in the dev environment only with the -Poptimization flag.
 	if (project.hasProperty('optimization')) {

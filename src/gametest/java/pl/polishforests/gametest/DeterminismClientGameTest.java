@@ -5,11 +5,15 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Random;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.locks.LockSupport;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -17,6 +21,7 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.gui.screens.worldselection.WorldCreationUiState;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.level.ChunkResult;
 import net.minecraft.server.level.ServerChunkCache;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.state.BlockState;
@@ -36,7 +41,12 @@ import pl.polishforests.worldgen.chunk.PolandScale;
  *
  * <p>Each world generates two areas of 8 × 8 chunks: the large river and the Beskids interior of the {@code stages}
  * measurement. In both, the terrain (every block of every column, after TERRAIN, before FEATURES) is hashed first and
- * must be identical between the worlds. Features that cross chunk borders (crowns, logs, plants at the border) depend on
+ * must be identical between the worlds. The fixed-order worlds bring the 64 chunks to TERRAIN one at a time on the server
+ * thread; the free-order worlds (round 1 of the S10 review) request the 64 chunks and a ring of {@link #TERRAIN_RING}
+ * around them at TERRAIN all at once, in a shuffled order (another one in each world), so the generation threads fill
+ * them concurrently and in any order (with C2ME on its own thread pool), and the terrain is hashed only when all of them
+ * are done. Their terrain is compared exactly with the fixed-order world 1, so the shared caches of the model and the
+ * surface plan cannot depend on the order or the threads of {@code fill()} without the test noticing. Features that cross chunk borders (crowns, logs, plants at the border) depend on
  * the order in which a chunk and its neighbors are decorated, as in vanilla, so the decorated blocks are compared in two
  * ways (four worlds per scale and mode):
  * <ul>
@@ -46,7 +56,8 @@ import pl.polishforests.worldgen.chunk.PolandScale;
  * <li>"free order" (worlds 3 and 4): all 64 chunks of an area are requested at once and the generation threads decorate
  * them in any order, so crowns, logs and plants at chunk borders (and vanilla ores underground) can differ, as in
  * vanilla. In the decoration window (from 8 blocks below to 48 above the terrain ground) at most
- * {@link #FREE_ORDER_BLOCK_TOLERANCE} of the non-air blocks of the area may differ. The report also gives the worst chunk
+ * {@link #FREE_ORDER_TOLERANCE_PLAIN} of the non-air blocks of the area may differ without the optimization pack and
+ * {@link #FREE_ORDER_TOLERANCE_OPTIMIZATION} with it (C2ME decorates on more threads, so the order changes more often). The report also gives the worst chunk
  * (a whole tree at a border can be a quarter of a sparse chunk), the share of differing columns (any block of the column),
  * the most frequent pairs of differing blocks, the distance of the differing columns from the nearest chunk border and the groups of differing columns (8-connected) that do not
  * reach within {@link #BORDER_BAND} blocks of a border (a whole tree, or the leaf distances around a log that crosses the
@@ -68,8 +79,18 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 	private static final int SIZE = 8;
 	/** Distance from a chunk border (0 = edge column) used in the report of groups of differing columns. */
 	static final int BORDER_BAND = 3;
-	/** Largest share of decoration-window blocks that may differ between free-order generations. */
-	static final double FREE_ORDER_BLOCK_TOLERANCE = 0.05;
+	/**
+	 * Largest share of decoration-window blocks that may differ between free-order generations, without the optimization
+	 * pack (observed: at most 0.08% in S10, 0.001% since the free-order terrain is generated concurrently) and with it
+	 * (C2ME, observed: at most 3.4% in S10 and 3.8% in round 1 of the review). Round 1 of the S10 review: separate limits, so
+	 * that a regression of the mod's own decoration under concurrency does not hide behind the C2ME tolerance; the C2ME
+	 * limit has about twice the observed maximum, because the share there follows the thread scheduling of C2ME (the exact
+	 * criteria are the fixed order and the comparison with the reference file).
+	 */
+	static final double FREE_ORDER_TOLERANCE_PLAIN = 0.005;
+	static final double FREE_ORDER_TOLERANCE_OPTIMIZATION = 0.08;
+	/** Ring of chunks around a free-order area that is also requested at TERRAIN (concurrent generation of the neighbors). */
+	static final int TERRAIN_RING = 1;
 	/** Height of the decoration window of a column (blocks) and its part below the terrain ground. */
 	private static final int WINDOW = 56;
 	private static final int WINDOW_BELOW = 8;
@@ -88,6 +109,7 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 		boolean optimization = FabricLoader.getInstance().getAllMods().stream()
 				.anyMatch(m -> m.getMetadata().getId().startsWith("c2me"));
 		String label = optimization ? "optimization" : "plain";
+		double tolerance = optimization ? FREE_ORDER_TOLERANCE_OPTIMIZATION : FREE_ORDER_TOLERANCE_PLAIN;
 		PolishForests.LOG.info("[determinism] mod set: {} ({} mods)", label, FabricLoader.getInstance().getAllMods().size());
 		List<String> out = new ArrayList<>();
 		List<String> failures = new ArrayList<>();
@@ -112,7 +134,8 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 						for (int a = 0; a < areas.length; a++) {
 							int ox = areas[a][0] >> 4;
 							int oz = areas[a][1] >> 4;
-							Area terrain = sp.getServer().computeOnServer(s -> terrain(s.overworld(), ox, oz));
+							Area terrain = fixedOrder ? sp.getServer().computeOnServer(s -> terrain(s.overworld(), ox, oz))
+									: terrainConcurrently(sp, ox, oz, (long) w * 31 + a);
 							if (fixedOrder) {
 								sp.getServer().runOnServer(s -> decorateInOrder(s.overworld(), ox, oz));
 							} else {
@@ -134,11 +157,11 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 				for (int a = 0; a < areas.length; a++) {
 					String key = scale.getSerializedName() + " " + (presentDay ? "present_day" : "natural") + " " + a;
 					PolishForests.LOG.info("[determinism] {}", compare(name + " / " + AREA_NAMES[a] + ", fixed order",
-							worlds[0][a], worlds[1][a], true, failures));
+							worlds[0][a], worlds[1][a], true, tolerance, failures));
 					PolishForests.LOG.info("[determinism] {}", compare(name + " / " + AREA_NAMES[a] + ", free order",
-							worlds[2][a], worlds[3][a], false, failures));
+							worlds[2][a], worlds[3][a], false, tolerance, failures));
 					PolishForests.LOG.info("[determinism] {}", compare(name + " / " + AREA_NAMES[a] + ", fixed against free order "
-							+ "(report only)", worlds[0][a], worlds[2][a], null, failures));
+							+ "(terrain exactly, decoration report only)", worlds[0][a], worlds[2][a], null, tolerance, failures));
 					out.add("terrain " + key + " " + Long.toHexString(worlds[0][a].terrainHash()));
 					out.add("decorated " + key + " " + worlds[0][a].decoratedHex());
 				}
@@ -184,6 +207,45 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 			}
 		}
 		return new Area(terrain, ground, null, null);
+	}
+
+	/**
+	 * Terrain of a free-order area: the 8 × 8 chunks and a ring of {@link #TERRAIN_RING} around them requested at TERRAIN
+	 * from the test thread all at once, in an order shuffled with {@code shuffle}, so the generation threads fill them
+	 * concurrently and in any order; then, in one server task (no tick in between, so the request tickets stay), the server
+	 * thread runs the chunk system's tasks until every request is done and hashes the terrain.
+	 */
+	private static Area terrainConcurrently(TestSingleplayerContext sp, int ox, int oz, long shuffle) {
+		ServerChunkCache cache = sp.getServer().computeOnServer(s -> s.overworld().getChunkSource());
+		List<int[]> order = new ArrayList<>();
+		for (int cx = -TERRAIN_RING; cx < SIZE + TERRAIN_RING; cx++) {
+			for (int cz = -TERRAIN_RING; cz < SIZE + TERRAIN_RING; cz++) {
+				order.add(new int[] {ox + cx, oz + cz});
+			}
+		}
+		Collections.shuffle(order, new Random(shuffle));
+		List<CompletableFuture<ChunkResult<ChunkAccess>>> futures = new ArrayList<>();
+		for (int[] c : order) {
+			// Off the server thread getChunkFuture only queues the request (as for the free-order decoration below).
+			futures.add(cache.getChunkFuture(c[0], c[1], ChunkStatus.TERRAIN, true));
+		}
+		return sp.getServer().computeOnServer(s -> {
+			long deadline = System.nanoTime() + 600_000_000_000L;
+			while (!futures.stream().allMatch(CompletableFuture::isDone)) {
+				if (!cache.pollTask()) {
+					LockSupport.parkNanos(200_000);
+				}
+				if (System.nanoTime() > deadline) {
+					throw new AssertionError("Concurrent terrain of the area at chunk " + ox + ", " + oz + " not done in 600 s");
+				}
+			}
+			for (CompletableFuture<ChunkResult<ChunkAccess>> f : futures) {
+				if (f.join().orElse(null) == null) {
+					throw new AssertionError("Concurrent terrain request failed: " + f.join().getError());
+				}
+			}
+			return terrain(s.overworld(), ox, oz);
+		});
 	}
 
 	/**
@@ -273,7 +335,7 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 	}
 
 	/** Terrain exactly; decorated columns exactly in the fixed order, within the tolerance in the free order, null: report only. */
-	private static String compare(String name, Area x, Area y, Boolean exact, List<String> failures) {
+	private static String compare(String name, Area x, Area y, Boolean exact, double tolerance, List<String> failures) {
 		int terrainDiff = differing(x.terrain, y.terrain);
 		Diff d = Diff.of(x.decorated, y.decorated);
 		int blocks = 0;
@@ -310,8 +372,9 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 		if (terrainDiff > 0) {
 			failures.add(name + ": terrain differs in " + terrainDiff + " columns");
 		}
-		if (exact != null && (exact ? d.count > 0 : blockShare > FREE_ORDER_BLOCK_TOLERANCE)) {
-			failures.add(String.format(Locale.ROOT, "%s: decorated %s, %.3f%% of the window blocks", name, d, 100 * blockShare));
+		if (exact != null && (exact ? d.count > 0 : blockShare > tolerance)) {
+			failures.add(String.format(Locale.ROOT, "%s: decorated %s, %.3f%% of the window blocks (limit %s)", name, d,
+					100 * blockShare, exact ? "0" : String.format(Locale.ROOT, "%.1f%%", 100 * tolerance)));
 		}
 		return result;
 	}

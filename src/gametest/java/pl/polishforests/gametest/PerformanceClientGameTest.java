@@ -24,8 +24,8 @@ import pl.polishforests.worldgen.feature.TreeStandFeature;
  * Runs when {@code -Dpolishforests.gametest} is {@code performance} or {@code all}.
  * The {@code stages} mode only measures generation stage times in three areas of each scale (M2
  * baseline, {@code docs/m2/pomiary-bazowe-m1.md}), without measuring FPS and without a vanilla world; since step S10 in
- * both vegetation modes (natural and present-day) and with a fourth, scattered "area" sample for the TERRAIN budget of the
- * whole area (M2-11).
+ * both vegetation modes (natural and present-day) and with a fourth "area" sample for the TERRAIN budget of the whole area
+ * (M2-11): six contiguous 8 × 8 areas (384 chunks) at pseudo-random places in the D1 area.
  */
 public final class PerformanceClientGameTest implements FabricClientGameTest {
 	private static final String SEED = "20260927";
@@ -131,9 +131,9 @@ public final class PerformanceClientGameTest implements FabricClientGameTest {
 			{-1_851 - 64, 6_022 - 64}};
 	private static final String[] SPOT_NAMES = {"lowland", "beskids", "river"};
 	/**
-	 * Half size of the scattered "area" sample in blocks (step S10, budget M2-11: TERRAIN for the whole area, like D1): the
-	 * same area as the "whole area" of {@code SampleCostTest}, five macroregions around (0, 0) (REAL about ±320 km, GAMEPLAY
-	 * ±7 km), 64 single chunks at fixed pseudo-random positions.
+	 * Half size of the "area" sample in blocks (step S10, budget M2-11: TERRAIN for the whole area, like D1): the same area
+	 * as the "whole area" of {@code SampleCostTest}, five macroregions around (0, 0) (REAL about ±320 km, GAMEPLAY ±7 km),
+	 * six contiguous 8 × 8 areas (384 chunks) at fixed pseudo-random places.
 	 */
 	private static final int AREA_HALF_REAL = 320_000;
 	private static final int AREA_HALF_GAMEPLAY = 7_000;
@@ -159,7 +159,8 @@ public final class PerformanceClientGameTest implements FabricClientGameTest {
 	}
 
 	/**
-	 * TERRAIN of the whole area (step S10, M2-11): 64 single chunks scattered over the area, generated up to TERRAIN only
+	 * TERRAIN of the whole area (step S10, M2-11): six contiguous 8 × 8 areas (384 chunks) at pseudo-random places in the D1
+	 * area, generated up to TERRAIN only
 	 * (STRUCTURE_STARTS, BIOMES, then TERRAIN; the BIOMES stage of each chunk and its neighbors warms the regional caches
 	 * first, as contiguous generation in the game does). Logs the TERRAIN stage time and the model and fill counters per
 	 * chunk, in the same format as the contiguous areas.
