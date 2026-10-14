@@ -177,10 +177,13 @@ def tag_img(size, color, width=None, mode="natural"):
 
 
 TAG_SCALE, TAG_MODE = 0.36, "natural"
+TAGLINE = False         # 2026-10-14: the user asked for the logo without the tagline
 
 
 def wordmark(size, ink, tagc, tag_scale=None, mode=None):
     w = text_img(WORD, size, ink, "Bold", tracking=-0.005, kern=KERN, space=0.92)
+    if not TAGLINE:
+        return w, None, 0
     t, acc = tag_img(int(size * (tag_scale or TAG_SCALE)), tagc, w.width, mode or TAG_MODE)
     return w, t, acc
 
@@ -216,10 +219,11 @@ def logo_horizontal(dark=False, knock=None):
     img.alpha_composite(mimg, (mx, my))
     tx = mx + mw + gap_mt
     g = int(size * 0.24)                                 # wordmark baseline -> tagline cap top
-    block = w.height + g + (t.height - acc)
+    block = w.height + (g + t.height - acc if t is not None else 0)
     y0 = (H - block) // 2
     img.alpha_composite(w, (tx, y0))
-    img.alpha_composite(t, (tx, y0 + w.height + g - acc))
+    if t is not None:
+        img.alpha_composite(t, (tx, y0 + w.height + g - acc))
     return img
 
 
@@ -240,11 +244,12 @@ def logo_vertical(dark=False, knock=None):
     if knock:
         mimg = mimg.crop(mimg.getbbox())
         g1 = 56
-    block = mimg.height + g1 + w.height + g2 + (t.height - acc)
+    block = mimg.height + g1 + w.height + (g2 + t.height - acc if t is not None else 0)
     y = (H - block) // 2
     img.alpha_composite(mimg, ((W - mimg.width) // 2, y)); y += mimg.height + g1
     img.alpha_composite(w, ((W - w.width) // 2, y)); y += w.height + g2
-    img.alpha_composite(t, ((W - t.width) // 2, y - acc))
+    if t is not None:
+        img.alpha_composite(t, ((W - t.width) // 2, y - acc))
     return img
 
 # ---------------------------------------------------------------- preview

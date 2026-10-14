@@ -1,6 +1,6 @@
 # Polish Forests (dawniej „Przyrodniczo zgodne lasy”)
 
-<p align="center"><img src="docs/logo/logo_horizontal_pl.png" alt="Polish Forests — lasy, rzeki, góry" width="640"></p>
+<p align="center"><img src="docs/logo/logo_horizontal.png" alt="Polish Forests" width="640"></p>
 
 Mod do Minecrafta 26.3 (Fabric), który generuje proceduralne krajobrazy Polski w skali 1:1 z przyrodniczo wiernymi lasami, florą i fauną oraz integracją z porami roku Serene Seasons.
 
@@ -109,4 +109,4 @@ Informacje o krajobrazie są też na ekranie F3.
 
 ## Logo
 
-Znak: liść dębu szypułkowego z wyciętym w nerwach świerkiem, na pniu w kolorze kory sosny. Pliki w `docs/logo/` (wersje z hasłem po polsku `_pl` i po angielsku `_en`, na jasne i ciemne tło, znak w SVG), ikona moda w `src/main/resources/assets/polishforests/` (16–512 px; 16 i 32 px rysowane ręcznie jako pixel art). Źródła: `tools/logo/` (`python tools/logo/build.py`, czcionka Bahnschrift z Windows).
+Znak: liść dębu szypułkowego z wyciętym w nerwach świerkiem, na pniu w kolorze kory sosny. Pliki w `docs/logo/` (logo poziome i pionowe, na jasne i ciemne tło, bez hasła; znak w SVG), ikona moda w `src/main/resources/assets/polishforests/` (16–512 px; 16 i 32 px rysowane ręcznie jako pixel art). Źródła: `tools/logo/` (`python tools/logo/build.py`, czcionka Bahnschrift z Windows).
