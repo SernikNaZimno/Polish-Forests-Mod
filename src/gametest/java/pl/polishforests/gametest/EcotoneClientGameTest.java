@@ -26,8 +26,10 @@ import pl.polishforests.worldgen.surface.ChunkSurface;
  * raised bog, upper montane spruce forest and dwarf pine scrub, gray dune and coastal crowberry pine forest, Carpathian
  * beech forest and upland fir forest) and two in the PRESENT_DAY mode (ash-alder or elm-ash floodplain forest and
  * meadow, forest and field). Each from above the side of the first habitat, looking across the border at its center
- * (the places and the direction from the first habitat to the second come from a search of the classifier), the forest
- * edges also from low above the open land, looking at the mantle and the fringe ({@code ecotone_<border>_edge_<scale>});
+ * (the places and the direction from the first habitat to the second come from a search of the classifier;
+ * screenshot {@code ecotone_<border>_<scale>}), the forest edges also from low above the open land, looking at the mantle
+ * and the fringe ({@code ecotone_<border>_edge_<scale>}); in {@code docs/m2/przejscia/} the files are named
+ * {@code <border>[_edge]_<scale>_before.png} and {@code _after.png};
  * the camera stands above the ground and the crowns around it. Without the HUD, at noon in clear weather, with the default biome blend of the client. The test uses only classes that existed
  * before S8b, so the same file takes the "before" screenshots on the tree before the ecotones. Runs when
  * {@code -Dpolishforests.gametest} is {@code ecotones}; {@code -Pscales} picks one scale, {@code -Psites} some borders.

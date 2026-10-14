@@ -300,6 +300,20 @@ public final class Ecotone {
 		return (int) Math.min(REACH, Math.max(1, Math.round(h)));
 	}
 
+	/** Bits of {@link Region#pair}: the half-width in blocks (at most {@link #REACH}), then the flags; never 0. */
+	static final int BLOCKS = 31;
+	static final int STICKY = 1 << 5;
+	static final int SYMMETRIC = 1 << 6;
+	static final int FOLLOWS = 1 << 7;
+	private static final int KNOWN = 1 << 8;
+	/** Most distinct codes of a region whose pair facts are kept in a matrix (more: computed each time). */
+	private static final int MATRIX = 256;
+
+	private static int pairInfo(int own, int other, Layer layer, double k) {
+		return halfWidthBlocks(own, other, layer, k) | (sticky(own, other, layer) ? STICKY : 0)
+				| (symmetric(own, other, layer) ? SYMMETRIC : 0) | (follows(own, other, layer) ? FOLLOWS : 0) | KNOWN;
+	}
+
 	/** Whether the other side's code is taken in a one-sided belt: it mixes into own, but own never into it. */
 	static boolean sticky(int own, int other, Layer layer) {
 		return halfWidth(own, other, layer) > 0 && halfWidth(other, own, layer) <= 0;
@@ -519,6 +533,134 @@ public final class Ecotone {
 			return w;
 		}
 
+		/** Index of each cell's code among the region's distinct codes ({@link #codeOf}), -1 where not known (lazily). */
+		private short @Nullable [] index;
+		/** The region's distinct codes. */
+		private int[] distinct = new int[0];
+		private int count;
+		/** Facts of the pairs of distinct codes per layer, {@code [a * count + b]}, 0 until computed (lazily). */
+		private final int[][] pairs = new int[3][];
+		/**
+		 * Per layer and distinct code, the widest one-sided ({@link #STICKY}) and two-sided ({@link #SYMMETRIC}) partner of
+		 * the code anywhere in the region, in blocks ({@code sticky | symmetric << 8}), -1 until computed: the searches of
+		 * a column stop at these widths.
+		 */
+		private final int[][] reaches = new int[3][];
+
+		/** Index of the code at chunk-local (x, z) among the distinct codes, or -1 ({@link #UNKNOWN}). */
+		int indexAt(int x, int z) {
+			if (x < -REACH || x >= 16 + REACH || z < -REACH || z >= 16 + REACH) {
+				return -1;
+			}
+			short[] ix = index;
+			if (ix == null) {
+				ix = buildIndex();
+			}
+			return ix[(x + REACH) * SPAN + z + REACH];
+		}
+
+		/** The code of a distinct-code index. */
+		int codeOf(int i) {
+			return distinct[i];
+		}
+
+		private short[] buildIndex() {
+			short[] ix = new short[codes.length];
+			int cap = 4096;
+			int[] keys = new int[cap];
+			short[] slots = new short[cap];
+			java.util.Arrays.fill(slots, (short) -1);
+			int[] dist = new int[32];
+			int n = 0;
+			int last = UNKNOWN;
+			short lastIndex = -1;
+			for (int c = 0; c < codes.length; c++) {
+				int code = codes[c];
+				if (code != last) {
+					last = code;
+					if (code == UNKNOWN) {
+						lastIndex = -1;
+					} else {
+						int h = (code * 0x9E37_79B9) >>> 20;
+						while (slots[h] >= 0 && keys[h] != code) {
+							h = h + 1 & cap - 1;
+						}
+						if (slots[h] < 0) {
+							if (n == dist.length) {
+								dist = java.util.Arrays.copyOf(dist, 2 * n);
+							}
+							dist[n] = code;
+							keys[h] = code;
+							slots[h] = (short) n++;
+						}
+						lastIndex = slots[h];
+					}
+				}
+				ix[c] = lastIndex;
+			}
+			distinct = dist;
+			count = n;
+			index = ix;
+			return ix;
+		}
+
+		/**
+		 * Facts of a pair of distinct codes in a layer ({@link #BLOCKS} half-width in blocks, {@link #STICKY},
+		 * {@link #SYMMETRIC}, {@link #FOLLOWS}), memoized: a region holds few distinct codes.
+		 */
+		int pair(int a, int b, Layer layer) {
+			int n = count;
+			if (n > MATRIX) {
+				return pairInfo(distinct[a], distinct[b], layer, k);
+			}
+			int[] m = pairs[layer.ordinal()];
+			if (m == null) {
+				m = pairs[layer.ordinal()] = new int[n * n];
+			}
+			int v = m[a * n + b];
+			if (v == 0) {
+				v = m[a * n + b] = pairInfo(distinct[a], distinct[b], layer, k);
+			}
+			return v;
+		}
+
+		/** Widest one-sided partner (blocks, 0: none) of the distinct code {@code a} in the region. */
+		int stickyReach(int a, Layer layer) {
+			return reach(a, layer) & 0xFF;
+		}
+
+		/** Widest two-sided partner (blocks, 0: none) of the distinct code {@code a} in the region. */
+		int symmetricReach(int a, Layer layer) {
+			return reach(a, layer) >>> 8;
+		}
+
+		private int reach(int a, Layer layer) {
+			int[] r = reaches[layer.ordinal()];
+			if (r == null) {
+				r = reaches[layer.ordinal()] = new int[count];
+				java.util.Arrays.fill(r, -1);
+			}
+			int v = r[a];
+			if (v < 0) {
+				int sticky = 0;
+				int symmetric = 0;
+				for (int b = 0; b < count; b++) {
+					if (b == a) {
+						continue;
+					}
+					int info = pair(a, b, layer);
+					if ((info & STICKY) != 0) {
+						sticky = Math.max(sticky, info & BLOCKS);
+					}
+					if ((info & SYMMETRIC) != 0) {
+						symmetric = Math.max(symmetric, info & BLOCKS);
+					}
+				}
+				v = r[a] = sticky | symmetric << 8;
+			}
+			return v;
+		}
+
 		private static double bilinear(double[] g, int c, double fx, double fz) {
 			double top = g[c] + (g[c + 5] - g[c]) * fx;
 			double bottom = g[c + 1] + (g[c + 6] - g[c + 1]) * fx;
@@ -561,32 +703,43 @@ public final class Ecotone {
 			vector(seed, x0 + x, z0 + z, patch, u);
 			int wx = warp == null ? 0 : warp[2 * i];
 			int wz = warp == null ? 0 : warp[2 * i + 1];
-			out[i] = pick(region, layer, own, x, z, u[0], u[1], wx, wz, sticky);
+			out[i] = pick(region, layer, x, z, u[0], u[1], wx, wz, sticky);
 		}
 		return out;
 	}
 
 	/** Effective code of one column at chunk-local (x, z) with the random vector (ux, uz) and the meander (wx, wz). */
-	private static int pick(Region region, Layer layer, int own, int x, int z, double ux, double uz, int wx, int wz,
+	private static int pick(Region region, Layer layer, int x, int z, double ux, double uz, int wx, int wz,
 			boolean anySticky) {
-		double k = region.k();
-		if (anySticky) {
+		// Distinct-code indices: the pair facts are a matrix of the region, and each search stops at the widest partner
+		// of its code in the region (widths beyond it can never match, so the result is the same).
+		int self = region.indexAt(x, z);
+		int stickyLimit = anySticky ? region.stickyReach(self, layer) : 0;
+		if (stickyLimit > 0) {
 			// One-sided belts from the column itself (in both directions of the vector, so the share falls from 1 at the
-			// border to 0 at H), the width varying along the border with the meander field.
+			// border to 0 at H), the width varying along the border with the meander field (factor f at most 1.4).
 			double f = 1 + 0.4 * wx / WARP;
+			long limit = Math.max(1, Math.round(stickyLimit * 1.41));
 			for (int w : WIDTHS) {
+				if (w > limit) {
+					continue;
+				}
 				for (int s = 1; s >= -1; s -= 2) {
 					int dx = (int) Math.round(s * ux * w);
 					int dz = (int) Math.round(s * uz * w);
 					if (dx == 0 && dz == 0) {
 						continue;
 					}
-					int other = region.at(x + dx, z + dz);
-					if (other == UNKNOWN || other == own || !sticky(own, other, layer)) {
+					int other = region.indexAt(x + dx, z + dz);
+					if (other < 0 || other == self) {
 						continue;
 					}
-					if (Math.max(1, Math.round(halfWidthBlocks(own, other, layer, k) * f)) >= w) {
-						return other;
+					int info = region.pair(self, other, layer);
+					if ((info & STICKY) == 0) {
+						continue;
+					}
+					if (Math.max(1, Math.round((info & BLOCKS) * f)) >= w) {
+						return region.codeOf(other);
 					}
 				}
 			}
@@ -594,17 +747,18 @@ public final class Ecotone {
 		// Symmetric belts around the column moved by the meander.
 		int bx = x;
 		int bz = z;
-		int base = own;
+		int base = self;
 		int cap = REACH;
 		if (wx != 0 || wz != 0) {
-			int c = region.at(x + wx, z + wz);
-			if (c != UNKNOWN && (c == own || follows(own, c, layer))) {
+			int c = region.indexAt(x + wx, z + wz);
+			if (c >= 0 && (c == self || (region.pair(self, c, layer) & FOLLOWS) != 0)) {
 				bx += wx;
 				bz += wz;
 				base = c;
 				cap = REACH - Math.max(Math.abs(wx), Math.abs(wz));
 			}
 		}
+		cap = Math.min(cap, region.symmetricReach(base, layer));
 		for (int w : WIDTHS) {
 			if (w > cap) {
 				continue;
@@ -614,15 +768,16 @@ public final class Ecotone {
 			if (dx == 0 && dz == 0) {
 				continue;
 			}
-			int other = region.at(bx + dx, bz + dz);
-			if (other == UNKNOWN || other == base || !symmetric(base, other, layer)) {
+			int other = region.indexAt(bx + dx, bz + dz);
+			if (other < 0 || other == base) {
 				continue;
 			}
-			if (halfWidthBlocks(base, other, layer, k) >= w) {
-				return other == own || follows(own, other, layer) ? other : base;
+			int info = region.pair(base, other, layer);
+			if ((info & SYMMETRIC) != 0 && (info & BLOCKS) >= w) {
+				return region.codeOf(other == self || (region.pair(self, other, layer) & FOLLOWS) != 0 ? other : base);
 			}
 		}
-		return base;
+		return region.codeOf(base);
 	}
 
 	private static final int ANGLES = 1024;
