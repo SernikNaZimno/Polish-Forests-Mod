@@ -9,6 +9,8 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.ForkJoinWorkerThread;
 import java.util.function.IntPredicate;
 import java.util.function.Predicate;
 import java.util.function.BooleanSupplier;
@@ -26,7 +28,6 @@ import net.minecraft.network.chat.ComponentUtils;
 import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.util.Util;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
 import pl.polishforests.PolishForests;
@@ -311,7 +312,8 @@ public final class PolishForestsCommands {
 		source.sendSuccess(() -> Component.translatable("polishforests.command.searching", target.displayName()), false);
 		double[][] phases = phases(model, target.fine);
 		double radius = target.coastal ? coastalRadius(model) : phases[phases.length - 1][1];
-		runSearch(source, origin, cancelled -> locate(world, target, origin.x, origin.z), radius, target.displayName());
+		runSearch(source, origin, cancelled -> locate(world, target, origin.x, origin.z, cancelled), radius,
+				target.displayName());
 		return 1;
 	}
 
@@ -396,9 +398,15 @@ public final class PolishForestsCommands {
 
 	/** The nearest location of the target from point {@code (ox, oz)}: {x, z} or null. */
 	public static double[] locate(HabitatTargets.World world, Target target, double ox, double oz) {
+		return locate(world, target, ox, oz, () -> false);
+	}
+
+	/** As {@link #locate(HabitatTargets.World, Target, double, double)}; true from {@code cancelled} stops with null. */
+	static double[] locate(HabitatTargets.World world, Target target, double ox, double oz, BooleanSupplier cancelled) {
 		Predicate<double[]> test = p -> matches(world, target, p);
 		LandscapeModel model = world.model();
-		return target.coastal ? searchCoastal(model, test, ox, oz) : search(phases(model, target.fine), test, ox, oz);
+		return target.coastal ? searchCoastal(model, test, ox, oz, cancelled)
+				: search(phases(model, target.fine), test, ox, oz, cancelled);
 	}
 
 	/**
@@ -454,6 +462,16 @@ public final class PolishForestsCommands {
 	 * (coarsely, by the analytic distance from the shore), then a dense search around each of them.
 	 */
 	static double[] searchCoastal(LandscapeModel model, Predicate<double[]> test, double ox, double oz) {
+		return searchCoastal(model, test, ox, oz, () -> false);
+	}
+
+	/**
+	 * As {@link #searchCoastal(LandscapeModel, Predicate, double, double)}; {@code cancelled} is checked before each
+	 * stretch and between the batches of its dense search (S9 review round 1), true stops the search with null (the first
+	 * hit is returned at once, so a cancelled search has none).
+	 */
+	static double[] searchCoastal(LandscapeModel model, Predicate<double[]> test, double ox, double oz,
+			BooleanSupplier cancelled) {
 		boolean realistic = model.scale() == LandscapeScale.REALISTIC;
 		double coarse = realistic ? 1_500 : 150;
 		double band = realistic ? 2_500 : 250;
@@ -468,8 +486,11 @@ public final class PolishForestsCommands {
 				p[0] = ox + r * Math.cos(a);
 				p[1] = oz + r * Math.sin(a);
 				if (Math.abs(model.coastDistance(p[0], p[1])) < band) {
+					if (cancelled.getAsBoolean()) {
+						return null;
+					}
 					tries++;
-					double[] found = search(local, test, p[0], p[1]);
+					double[] found = search(local, test, p[0], p[1], cancelled);
 					if (found != null) {
 						return found;
 					}
@@ -500,7 +521,8 @@ public final class PolishForestsCommands {
 			ColumnSample s = model.sample(p[0], p[1]);
 			return !s.hasWater() && s.surface() >= lo && s.surface() <= hi;
 		};
-		runSearch(source, origin, cancelled -> search(phases, test, origin.x, origin.z), phases[phases.length - 1][1], name);
+		runSearch(source, origin, cancelled -> search(phases, test, origin.x, origin.z, cancelled), phases[phases.length - 1][1],
+				name);
 		return 1;
 	}
 
@@ -515,31 +537,85 @@ public final class PolishForestsCommands {
 				: new double[][] {{400, 60_000}, {2_000, 2_000_000}};
 	}
 
-	/** Step S9: longest search of {@code find biome} and {@code find zone} before it gives up (ms). */
+	/**
+	 * Step S9: longest search of {@code find}, {@code find biome}, {@code find zone} and {@code elevation} before it
+	 * gives up (ms).
+	 */
 	static final long SEARCH_LIMIT_MS = 60_000;
 
+	/** Number of the threads of {@link #SEARCH_POOL}, for their names. */
+	private static final java.util.concurrent.atomic.AtomicInteger SEARCH_THREADS = new java.util.concurrent.atomic.AtomicInteger();
+
 	/**
-	 * Runs the search off the server thread and reports the result on it. Step S9: the search gets a cancellation check
-	 * that turns true after {@link #SEARCH_LIMIT_MS} or when the server stops (the lattice searches of biomes and zones
-	 * check it between rings); a search that fails with an exception reports an error instead of staying silent.
+	 * S9 review round 1: the searches run in their own pool, not in {@code Util.backgroundExecutor()} ("Worker-Main"), which
+	 * also generates, loads and saves chunks: the parallel streams of a search fork into the pool of the thread that runs
+	 * them, so a search of 20–60 s there took most of the worldgen workers for its whole run. The pool leaves two
+	 * processors to the server and the worldgen, and its threads run below the normal priority (honored on Windows;
+	 * Linux ignores it without extra JVM flags). Concurrent searches share the pool. Idle threads end after a minute.
+	 */
+	static final ForkJoinPool SEARCH_POOL = new ForkJoinPool(
+			Math.max(1, Runtime.getRuntime().availableProcessors() - 2), pool -> {
+				ForkJoinWorkerThread t = ForkJoinPool.defaultForkJoinWorkerThreadFactory.newThread(pool);
+				t.setName("PolishForests-Search-" + SEARCH_THREADS.incrementAndGet());
+				t.setDaemon(true);
+				t.setPriority(Thread.NORM_PRIORITY - 2);
+				return t;
+			}, (t, e) -> PolishForests.LOG.error("Uncaught exception in {}", t.getName(), e), false);
+
+	/**
+	 * The cancellation check of one search: true after {@link #SEARCH_LIMIT_MS} or when the server stops. It remembers
+	 * whether it ever returned true (S9 review round 1), so "gave up after 60 s" is reported only for a search that was
+	 * really cut short, not for one that searched its whole radius slowly, and a hit of a cut-short lattice search is
+	 * reported as possibly not the nearest.
+	 */
+	static final class Deadline implements BooleanSupplier {
+		private final long deadline;
+		private final BooleanSupplier stopped;
+		private volatile boolean fired;
+
+		Deadline(long limitMs, BooleanSupplier stopped) {
+			this.deadline = System.nanoTime() + limitMs * 1_000_000L;
+			this.stopped = stopped;
+		}
+
+		@Override
+		public boolean getAsBoolean() {
+			if (!fired && (System.nanoTime() > deadline || stopped.getAsBoolean())) {
+				fired = true;
+			}
+			return fired;
+		}
+
+		/** Whether the search was cancelled. */
+		boolean fired() {
+			return fired;
+		}
+	}
+
+	/**
+	 * Runs the search off the server thread (in {@link #SEARCH_POOL}) and reports the result on it. Step S9: the search
+	 * gets a cancellation check ({@link Deadline}); every search plan checks it (the lattice and massif plans between
+	 * rings, the ring and coastline searches between batches and stretches), so no search runs much longer than
+	 * {@link #SEARCH_LIMIT_MS}; a search that fails with an exception reports an error instead of staying silent.
 	 */
 	private static void runSearch(CommandSourceStack source, Vec3 origin, Function<BooleanSupplier, double[]> search,
 			double radius, Component name) {
 		ServerLevel level = source.getLevel();
-		long deadline = System.nanoTime() + SEARCH_LIMIT_MS * 1_000_000L;
-		BooleanSupplier cancelled = () -> System.nanoTime() > deadline || !source.getServer().isRunning();
-		CompletableFuture.supplyAsync(() -> search.apply(cancelled), Util.backgroundExecutor())
+		Deadline cancelled = new Deadline(SEARCH_LIMIT_MS, () -> !source.getServer().isRunning());
+		String seconds = String.valueOf(SEARCH_LIMIT_MS / 1000);
+		CompletableFuture.supplyAsync(() -> search.apply(cancelled), SEARCH_POOL)
 				.whenComplete((found, error) -> source.getServer().execute(() -> {
 					if (error != null) {
 						PolishForests.LOG.error("Search for {} failed", name.getString(), error);
 						source.sendFailure(Component.translatable("polishforests.command.search_failed", name));
-					} else if (found == null && System.nanoTime() > deadline) {
-						source.sendFailure(Component.translatable("polishforests.command.search_timeout", name,
-								String.valueOf(SEARCH_LIMIT_MS / 1000)));
+					} else if (found == null && cancelled.fired()) {
+						source.sendFailure(Component.translatable("polishforests.command.search_timeout", name, seconds));
 					} else if (found == null) {
 						double km = radius / 1000.0;
 						source.sendFailure(Component.translatable("polishforests.command.not_found", name,
 								String.format(Locale.ROOT, "%.0f", km)));
+					} else if (cancelled.fired()) {
+						report(source, level, origin, found, "polishforests.command.found_unconfirmed", name, seconds);
 					} else {
 						report(source, level, origin, found, "polishforests.command.found", name);
 					}
@@ -555,6 +631,14 @@ public final class PolishForestsCommands {
 	 * result is the same as a sequential search; the test must not keep the point array it gets.
 	 */
 	static double[] search(double[][] phases, Predicate<double[]> test, double ox, double oz) {
+		return search(phases, test, ox, oz, () -> false);
+	}
+
+	/**
+	 * As {@link #search(double[][], Predicate, double, double)}; {@code cancelled} is checked before each batch (S9 review
+	 * round 1), true stops the search with null (a hit is returned at once, so a cancelled search has none).
+	 */
+	static double[] search(double[][] phases, Predicate<double[]> test, double ox, double oz, BooleanSupplier cancelled) {
 		double r = 0;
 		double[] xs = new double[SEARCH_BATCH];
 		double[] zs = new double[SEARCH_BATCH];
@@ -570,6 +654,9 @@ public final class PolishForestsCommands {
 					xs[count] = ox + r * Math.cos(a);
 					zs[count] = oz + r * Math.sin(a);
 					if (++count == SEARCH_BATCH) {
+						if (cancelled.getAsBoolean()) {
+							return null;
+						}
 						double[] hit = firstHit(test, xs, zs, count);
 						if (hit != null) {
 							return hit;
@@ -603,7 +690,7 @@ public final class PolishForestsCommands {
 		Component name = Component.translatable("polishforests.command.highest_name",
 				String.format(Locale.ROOT, "%.0f", radius / 1000.0));
 		source.sendSuccess(() -> Component.translatable("polishforests.command.searching", name), false);
-		CompletableFuture.supplyAsync(() -> highestPoint(model, origin.x, origin.z, radius), Util.backgroundExecutor())
+		CompletableFuture.supplyAsync(() -> highestPoint(model, origin.x, origin.z, radius), SEARCH_POOL)
 				.thenAccept(found -> source.getServer().execute(() -> {
 					Component title = Component.translatable("polishforests.command.highest_found",
 							String.format(Locale.ROOT, "%.0f", found[2]));
@@ -654,8 +741,9 @@ public final class PolishForestsCommands {
 
 	// ------------------------------------------------------------------ result
 
+	/** Sends the found message {@code key} with the name, the distance, the clickable coordinates and {@code extra}. */
 	private static void report(CommandSourceStack source, ServerLevel level, Vec3 origin, double[] found, String key,
-			Component name) {
+			Component name, Object... extra) {
 		int x = (int) Math.floor(found[0]);
 		int z = (int) Math.floor(found[1]);
 		int y = level.getChunkSource().getGenerator().getBaseHeight(x, z, Heightmap.Types.WORLD_SURFACE_WG, level,
@@ -665,6 +753,11 @@ public final class PolishForestsCommands {
 				.withStyle(s -> s.withColor(ChatFormatting.GREEN)
 						.withClickEvent(new ClickEvent.SuggestCommand("/tp @s " + x + " " + y + " " + z))
 						.withHoverEvent(new HoverEvent.ShowText(Component.translatable("chat.coordinates.tooltip"))));
-		source.sendSuccess(() -> Component.translatable(key, name, String.valueOf(distance), coords), false);
+		Object[] args = new Object[3 + extra.length];
+		args[0] = name;
+		args[1] = String.valueOf(distance);
+		args[2] = coords;
+		System.arraycopy(extra, 0, args, 3, extra.length);
+		source.sendSuccess(() -> Component.translatable(key, args), false);
 	}
 }

@@ -14,7 +14,8 @@ import java.util.stream.IntStream;
  * does, thrashes those caches far from the origin). The spacing of the lattice grows with the distance of the cell
  * ({@link Phase}). A probe returns a hit near its lattice point (at most {@code reach} away, e.g. on a transect from a
  * watercourse) or null. The search ends when no later ring can hold a nearer hit, so the result is the nearest hit of
- * the probes (ties broken by position), independent of the thread count.
+ * the probes (ties broken by position), independent of the thread count. A search cancelled after its first hit (S9
+ * review round 1) returns that hit, which may then not be the nearest: the rings that would confirm it were not probed.
  */
 final class GridSearch {
 	/**
@@ -36,7 +37,7 @@ final class GridSearch {
 	 * @param phases    phases with growing radius and spacing
 	 * @param reach     largest distance between a lattice point and the hit its probe returns (m)
 	 * @param probe     the hit near a lattice point {x, z} (the array may be reused), or null
-	 * @param cancelled checked between rings; true stops the search with null
+	 * @param cancelled checked between rings; true stops the search with the nearest hit so far (null without one)
 	 */
 	static double[] nearest(double cell, List<Phase> phases, double reach, Function<double[], double[]> probe, double ox,
 			double oz, BooleanSupplier cancelled) {
@@ -50,7 +51,8 @@ final class GridSearch {
 				break;
 			}
 			if (cancelled.getAsBoolean()) {
-				return null;
+				// A hit found before the cancellation is kept; only its nearness is unconfirmed.
+				return best;
 			}
 			List<double[]> rows = new ArrayList<>();
 			for (int i = -ring; i <= ring; i++) {

@@ -185,7 +185,12 @@ public final class UiAndCommandsClientGameTest implements FabricClientGameTest {
 		double s = (System.nanoTime() - t0) / 1e9;
 		Component last = messages.isEmpty() ? null : messages.getLast();
 		String result = last == null ? "no message" : last.getString();
-		if (last == null || !key(last).equals(expected)) {
+		// S9 review round 1: a place found by a search cut short at 60 s counts as found (its nearness is unconfirmed).
+		boolean unconfirmed = last != null && expected.equals("polishforests.command.found")
+				&& key(last).equals("polishforests.command.found_unconfirmed");
+		if (unconfirmed) {
+			PolishForests.LOG.warn("[ui] /{}: found, but the search stopped at the time limit", command);
+		} else if (last == null || !key(last).equals(expected)) {
 			problems.add("/" + command + ": " + result);
 		}
 		PolishForests.LOG.info(String.format(Locale.ROOT, "[ui] /%s: %s (%.1f s)", command, result, s));

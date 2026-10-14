@@ -1,5 +1,6 @@
 package pl.polishforests.client;
 
+import java.lang.ref.WeakReference;
 import java.util.List;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.debug.DebugScreenDisplayer;
@@ -27,6 +28,8 @@ public final class HabitatDebugEntry implements DebugScreenEntry {
 	private static final Identifier GROUP = PolishForests.id("habitat");
 
 	private @Nullable BlockPos lastPos;
+	/** Level of {@link #lastPos}; weak, so a closed world is not kept in memory. */
+	private WeakReference<ServerLevel> lastLevel = new WeakReference<>(null);
 	private List<String> lines = List.of();
 
 	public static void register() {
@@ -41,8 +44,10 @@ public final class HabitatDebugEntry implements DebugScreenEntry {
 			return;
 		}
 		BlockPos feet = camera.blockPosition();
-		if (!feet.equals(lastPos)) {
+		// S9 review round 1: also recompute in another level (another world opened at the same block, e.g. at spawn).
+		if (!feet.equals(lastPos) || lastLevel.get() != level) {
 			lastPos = feet;
+			lastLevel = new WeakReference<>(level);
 			HabitatInfo info = HabitatInfo.of(level, feet.getX(), feet.getY(), feet.getZ());
 			lines = info == null ? List.of() : info.debugLines();
 		}

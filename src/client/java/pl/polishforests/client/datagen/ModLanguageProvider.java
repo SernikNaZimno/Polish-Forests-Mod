@@ -239,6 +239,8 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 				+ "and fallow fields; the river banks stay overgrown.");
 		b.add("polishforests.command.searching", "Searching for %s…");
 		b.add("polishforests.command.found", "Found %s %s m away: %s");
+		b.add("polishforests.command.found_unconfirmed", "Found %s %s m away: %s (the search stopped after %s s, so a "
+				+ "nearer place may exist)");
 		b.add("polishforests.command.not_found", "No %s found within %s km");
 		b.add("polishforests.command.here", "Here: %s, ground at %s m above sea level, substrate: %s, water: %s, landforms: %s");
 		b.add("polishforests.command.not_poland", "This command only works in a Poland world");
@@ -255,8 +257,8 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		b.add("polishforests.kind.zone", "Zones (find zone)");
 		b.add("polishforests.command.unknown_biome", "Unknown biome: %s. Use /polishforests list to see all biomes");
 		b.add("polishforests.command.unknown_zone", "Unknown zone: %s. Use /polishforests list to see all zones");
-		b.add("polishforests.command.not_in_mode", "%s does not occur in the %s mode");
-		b.add("polishforests.command.not_in_scale", "%s does not occur in the gameplay scale");
+		b.add("polishforests.command.not_in_mode", "Not present in the %2$s mode: %1$s");
+		b.add("polishforests.command.not_in_scale", "Not present in the gameplay scale: %s");
 		b.add("polishforests.command.search_failed", "The search for %s failed (details in the log)");
 		b.add("polishforests.command.search_timeout", "Gave up searching for %s after %s s");
 		b.add("polishforests.command.here_habitat", "Habitat: %s, site type %s, %s, zone: %s, soil: %s, groundwater "
@@ -286,6 +288,8 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 				+ "odłogowane; brzegi rzek zostają zarośnięte.");
 		b.add("polishforests.command.searching", "Szukam: %s…");
 		b.add("polishforests.command.found", "Znaleziono: %s, odległość %s m: %s");
+		b.add("polishforests.command.found_unconfirmed", "Znaleziono: %s, odległość %s m: %s (szukanie przerwane po %s s, "
+				+ "więc może być bliższe miejsce)");
 		b.add("polishforests.command.not_found", "Nie znaleziono: %s w promieniu %s km");
 		b.add("polishforests.command.here", "Tutaj: %s, grunt %s m n.p.m., podłoże %s, wody: %s, formy: %s");
 		b.add("polishforests.command.not_poland", "Ta komenda działa tylko w świecie typu Polska");
@@ -302,8 +306,8 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		b.add("polishforests.kind.zone", "Strefy (find zone)");
 		b.add("polishforests.command.unknown_biome", "Nieznany biom: %s. Lista biomów: /polishforests list");
 		b.add("polishforests.command.unknown_zone", "Nieznana strefa: %s. Lista stref: /polishforests list");
-		b.add("polishforests.command.not_in_mode", "%s nie występuje w trybie „%s”");
-		b.add("polishforests.command.not_in_scale", "%s nie występuje w skali rozgrywki");
+		b.add("polishforests.command.not_in_mode", "Nie występuje w trybie „%2$s”: %1$s");
+		b.add("polishforests.command.not_in_scale", "Nie występuje w skali rozgrywki: %s");
 		b.add("polishforests.command.search_failed", "Szukanie nie powiodło się: %s (szczegóły w logu)");
 		b.add("polishforests.command.search_timeout", "Przerwano szukanie: %s po %s s");
 		b.add("polishforests.command.here_habitat", "Siedlisko: %s, STL %s, %s, strefa: %s, gleba: %s, DGW %s m, "

@@ -14,7 +14,6 @@ import pl.polishforests.worldgen.habitat.Zone;
 import pl.polishforests.worldgen.landscape.ColumnSample;
 import pl.polishforests.worldgen.landscape.LandscapeModel;
 import pl.polishforests.worldgen.landscape.LandscapeScale;
-import pl.polishforests.worldgen.landscape.LandscapeType;
 
 /**
  * Step S9: {@code /polishforests find biome <id>} and {@code find zone <id>}. Each biome and zone has a search plan
@@ -56,7 +55,14 @@ public final class HabitatTargets {
 		WIDE,
 		/** Coastline stretches first, then a dense search around each (as the coastal targets of {@code find}). */
 		COAST,
-		/** Transects from the bank of a watercourse outwards: belts a few blocks wide along the water. */
+		/**
+		 * Transects from the bank of a watercourse outwards: belts a few blocks wide along the water. S9 review round 1:
+		 * every lattice point near a bank starts one, not only those of the mountain belt (foothills and Beskids weigh
+		 * more than half), because the classifier gives the montane tall herbs to every class C stream, and a stream is
+		 * class C also outside the belt at a gradient above {@code CLASS_GRADIENT} (3 ‰): in the realistic scale the
+		 * nearest such place from (0, 0) of the test seed lies 5.7 km away (8.1 km in the belt), and from lowland origins
+		 * 6.8–70 km away with none in the belt within 120 km.
+		 */
 		WATERCOURSE,
 		/** Lattice with the wide phases, the full sample only where the land reaches {@link #highFrom}. */
 		HIGH_MOUNTAINS,
@@ -134,15 +140,6 @@ public final class HabitatTargets {
 		return zone == Zone.TIMBERLINE ? AltitudinalBelts.SUMMIT_FROM : Double.NEGATIVE_INFINITY;
 	}
 
-	/**
-	 * Whether the column lies in the mountain belt of the classifier (foothills and Beskids weigh more than half; a cheap
-	 * test on the region blend before the full sample), for the zones of mountain streams.
-	 */
-	static boolean mountains(LandscapeModel model, double x, double z) {
-		double[] w = model.typeWeights(x, z);
-		return w[LandscapeType.FOOTHILLS.ordinal()] + w[LandscapeType.BESKIDS.ordinal()] > 0.5;
-	}
-
 	// ------------------------------------------------------------------ search
 
 	/** The nearest place of the biome from (ox, oz), {x, z}, or null within {@link #radius}. */
@@ -179,14 +176,14 @@ public final class HabitatTargets {
 			BooleanSupplier cancelled) {
 		LandscapeModel model = world.model();
 		return switch (plan) {
-			case COAST -> PolishForestsCommands.searchCoastal(model, p -> test.test(world.code(p[0], p[1])), ox, oz);
+			case COAST -> PolishForestsCommands.searchCoastal(model, p -> test.test(world.code(p[0], p[1])), ox, oz, cancelled);
 			case WIDE -> GridSearch.nearest(cell(world), widePhases(world), 0,
 					p -> test.test(world.code(p[0], p[1])) ? p : null, ox, oz, cancelled);
 			case HIGH_MOUNTAINS -> GridSearch.nearest(cell(world), widePhases(world), 0,
 					p -> model.landElevation(p[0], p[1]) >= highFrom && test.test(world.code(p[0], p[1])) ? p : null,
 					ox, oz, cancelled);
 			case WATERCOURSE -> GridSearch.nearest(cell(world), watercoursePhases(world), bankBand(world) + transect(world),
-					p -> mountains(model, p[0], p[1]) ? Transect.fromBank(world, p, bankBand(world), transect(world), test) : null,
+					p -> Transect.fromBank(world, p, bankBand(world), transect(world), test),
 					ox, oz, cancelled);
 			case MASSIF -> aroundMassifs(world, highFrom, test, ox, oz, cancelled);
 		};
