@@ -147,9 +147,10 @@ pl.polishforests
 │   ├── surface/                plan powierzchni chunka: gleby, półka brzegowa, mikrorelief, pamięć kolumn przygranicznych, grunt pod strukturami (czysta Java)
 │   ├── tree/                   generator drzew, mapa drzewostanów
 │   └── feature/                dyspozytory kroku 9 (drzewostan, martwe drewno, podszyt, strefy nadwodne, runo, rośliny wodne), czyste plany (plan/), palety (config/), filtr siedliska, szybkie drzewa
+├── command/                    /polishforests: cele find, find biome/zone (plany szukania, siatka komórek, transekty), opis siedliska kolumny (here, F3)
 ├── block/                      pnie, liście, runo, grzyby, gleby
 ├── entity/                     zwierzęta, AI, spawnery, domy
-└── client/                     rendery, kolory, HUD, datagen (wynik w src/main/generated)
+└── client/                     rendery, kolory, HUD, wpis F3 siedliska, datagen (wynik w src/main/generated)
 tools/                          skrypty Python: generator modeli i tekstur, podgląd map
 ```
 
@@ -362,3 +363,19 @@ Etap wprowadzony po uwagach z gry: proste krawędzie den dolin, starorzeczy i je
 - Jeziora bezodpływowe u stóp wielkich masywów REAL (recenzja K7): ściany niecek (siatka 5 m: masyw 1719 m 598 par > 25 m, do 38,2 m; 1698 m 548 par, do 75,6 m; 1659 m 62 pary, do 31,7 m) i rzeki na wałach nad suchym gruntem, które spadają do jeziora (do 24 m nad gruntem i 25 m spadku); limity stanu zmierzonego w `SurfaceContinuityTest` i `MassifSinkLakeContainmentTest`, szczegóły w `docs/m2/poprawka-geometrii.md`, „Co zostaje”.
 - Proste załamania stoku na kopule masywu GAMEPLAY 1718 m (twarde maksimum kopuły i pola bazowego) i proste załamania w kadrach `R_potok_3km` i `G_rzeka_1km` (A8/G5, S8); żadne nie jest urwiskiem.
 - Proste stopnie zboczy prostych odcinków dolin przy starorzeczach (obie skale), prosta krawędź W–E u ujścia doliny przy (1643, −452) GAMEPLAY i wąskie starorzecza wzdłuż meandrującego dopływu (K8c i runda 1 jego recenzji, `docs/m2/poprawka-geometrii.md`).
+
+## 16. Komendy siedlisk i F3 (krok S9 fazy 2 M2, 2026-10-14)
+
+Szczegóły, pomiary i odstępstwa: `docs/03-m2-biomy.md` §11.1.
+
+| Komenda | Działanie |
+|---|---|
+| `/polishforests find biome <id>` | najbliższy biom moda (36, podpowiedzi z `HabitatBiome`); biomy trybu D w świecie trybu N od razu „nie występuje w trybie” |
+| `/polishforests find zone <id>` | najbliższa strefa (22, podpowiedzi z `Zone`); ziołorośla górskie tylko w skali rzeczywistej |
+| `/polishforests find peatland` | od S9 z siedliska: torfowisko wysokie albo niskie i przejściowe |
+| `/polishforests here` | druga linia: biom, STL, zespół, strefa, gleba, DGW, O, P, °C i gatunki drzewostanu z dopiskiem „zastępstwo do M3” przy drzewach z korą bladego dębu |
+| `/polishforests list` | także klikalne biomy i strefy |
+
+- **Pakiet `command`:** `PolishForestsCommands` (drzewo komend, `runSearch` w tle z limitem 60 s i komunikatem błędu), `HabitatTargets` (plan szukania każdego biomu i strefy: WIDE, COAST, HIGH_MOUNTAINS, MASSIF, WATERCOURSE; klasyfikator świata), `GridSearch` (siatka podzielona na komórki odwiedzane pierścieniami, równolegle po wierszach komórek; najbliższe trafienie niezależne od liczby wątków), `Transect` (od brzegu potoku na zewnątrz, dla pasów 1–2 bloków), `HabitatInfo` (opis siedliska kolumny dla `here` i F3). Dawne cele `find <target>` szukają okręgami jak dotąd, ale punkty pierścienia sprawdzają równolegle w paczkach (wyniki bez zmian).
+- **F3:** wpis `polishforests:habitat` (`client/HabitatDebugEntry`, rejestracja `DebugScreenEntries.register`) jest w nakładce F3 bez włączania, dzięki mixinowi `client/mixin/DebugScreenEntryListMixin` (status „in overlay”, gdy profil go nie wymienia). Działa w grze jednoosobowej i u gospodarza LAN (potrzebny generator serwera), jak wanilijny `chunk_generation_stats`.
+- **Lang:** nazwy stref, zespołów, gleb i gatunków w PL i EN z datagenu.

@@ -218,8 +218,18 @@ public final class UiAndCommandsClientGameTest implements FabricClientGameTest {
 			"polishforests.command.not_in_scale", "polishforests.command.unknown_target", "polishforests.command.unknown_biome",
 			"polishforests.command.unknown_zone", "polishforests.command.not_poland");
 
+	/** Translation key of a message; a failure message wraps it in an empty, red component. */
 	private static String key(Component c) {
-		return c.getContents() instanceof TranslatableContents t ? t.getKey() : "";
+		if (c.getContents() instanceof TranslatableContents t) {
+			return t.getKey();
+		}
+		for (Component sibling : c.getSiblings()) {
+			String k = key(sibling);
+			if (!k.isEmpty()) {
+				return k;
+			}
+		}
+		return "";
 	}
 
 	/** The F3 overlay shows the habitat entry without enabling it in the debug options (step S9). */
