@@ -71,31 +71,52 @@ class HabitatClassifierTest {
 		assertEquals(6, EnumSet.allOf(HabitatBiome.class).stream().filter(HabitatBiome::isWater).count());
 	}
 
+	/**
+	 * The same codes serially and in parallel on a second model (in reverse order), in both modes: the PRESENT_DAY mask
+	 * reads the grid of the height above the channels of its model (step S8c), which each model fills in its own order.
+	 * Besides the coarse grid of points, clusters of 8 × 8 columns 1 m apart (the grid of the mask is filled by tiles).
+	 */
 	@Test
 	void resultIsDeterministic() {
 		for (LandscapeScale sc : new LandscapeScale[] {LandscapeScale.REALISTIC, LandscapeScale.GAMEPLAY}) {
-			LandscapeModel m = new LandscapeModel(SEED, sc, 1.0);
-			HabitatClassifier a = new HabitatClassifier(SEED, sc, HabitatClassifier.Mode.NATURAL);
-			HabitatClassifier b = new HabitatClassifier(SEED, sc, HabitatClassifier.Mode.NATURAL);
-			double step = sc == LandscapeScale.REALISTIC ? 397 : 23;
-			int n = 160;
-			int[] serialCodes = new int[n * n];
-			for (int i = 0; i < n * n; i++) {
-				double x = (i % n) * step - 3_000;
-				double z = (i / n) * step + 1_000;
-				serialCodes[i] = a.classify(m.sample(x, z), x, z);
-			}
-			int[] parallelCodes = new int[n * n];
-			LandscapeModel m2 = new LandscapeModel(SEED, sc, 1.0);
-			IntStream.range(0, n * n).parallel().forEach(i -> {
-				double x = (i % n) * step - 3_000;
-				double z = (i / n) * step + 1_000;
-				parallelCodes[i] = b.classify(m2.sample(x, z), x, z);
-			});
-			for (int i = 0; i < n * n; i++) {
-				assertEquals(serialCodes[i], parallelCodes[i], "column " + i + " at scale " + sc.id());
+			for (HabitatClassifier.Mode mode : HabitatClassifier.Mode.values()) {
+				LandscapeModel m = new LandscapeModel(SEED, sc, 1.0);
+				LandscapeModel m2 = new LandscapeModel(SEED, sc, 1.0);
+				HabitatClassifier a = new HabitatClassifier(SEED, m, mode);
+				HabitatClassifier b = new HabitatClassifier(SEED, m2, mode);
+				double step = sc == LandscapeScale.REALISTIC ? 397 : 23;
+				int n = 160;
+				int[] serialCodes = new int[2 * n * n];
+				for (int i = 0; i < serialCodes.length; i++) {
+					serialCodes[i] = a.classify(m.sample(x(i, n, step), z(i, n, step)), x(i, n, step), z(i, n, step));
+				}
+				int[] parallelCodes = new int[serialCodes.length];
+				IntStream.range(0, parallelCodes.length).parallel().forEach(k -> {
+					int i = parallelCodes.length - 1 - k;
+					parallelCodes[i] = b.classify(m2.sample(x(i, n, step), z(i, n, step)), x(i, n, step), z(i, n, step));
+				});
+				for (int i = 0; i < serialCodes.length; i++) {
+					assertEquals(serialCodes[i], parallelCodes[i], "column " + i + " at scale " + sc.id() + ", mode " + mode);
+				}
 			}
 		}
+	}
+
+	/** Point i of the determinism test: the first n² on a grid {@code step} apart, the rest in clusters of 8 × 8 columns 1 m apart. */
+	private static double x(int i, int n, double step) {
+		if (i < n * n) {
+			return (i % n) * step - 3_000;
+		}
+		int j = i - n * n;
+		return (j / 64 % n) * step - 3_000 + j % 8 + 0.5;
+	}
+
+	private static double z(int i, int n, double step) {
+		if (i < n * n) {
+			return (i / n) * step + 1_000;
+		}
+		int j = i - n * n;
+		return (j / 64 / n) * step * 64 + 1_000 + j % 64 / 8 + 0.5;
 	}
 
 	@Test

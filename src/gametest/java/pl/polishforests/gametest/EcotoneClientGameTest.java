@@ -33,9 +33,17 @@ import pl.polishforests.worldgen.surface.ChunkSurface;
  * the camera stands above the ground and the crowns around it. Without the HUD, at noon in clear weather, with the default biome blend of the client. The test uses only classes that existed
  * before S8b, so the same file takes the "before" screenshots on the tree before the ecotones. Runs when
  * {@code -Dpolishforests.gametest} is {@code ecotones}; {@code -Pscales} picks one scale, {@code -Psites} some borders.
+ *
+ * <p>Step S8c (decision M2-20, rule Z10): the site {@value #STRAIGHT_EDGE} (realistic scale, PRESENT_DAY mode) takes the
+ * view of the S10 review of an almost straight forest edge (fresh meadow and montane beech forest; camera
+ * (150034, 734, 1049784), yaw −36.9°, pitch 34.9°; screenshot {@code s8c_straight_edge_realistic}) and an overview of
+ * the whole meadow from the north ({@code s8c_straight_edge_overview_realistic}); in {@code docs/m2/gra/} the files are
+ * named {@code s8c_straight_edge[_overview]_realistic_before.png} and {@code _after.png}.
  */
 public final class EcotoneClientGameTest implements FabricClientGameTest {
 	private static final String SEED = "20260927";
+	/** Site name of the view of the S10 review (step S8c). */
+	private static final String STRAIGHT_EDGE = "straight_edge_present_day";
 	private static final int RENDER_DISTANCE = 10;
 
 	/**
@@ -79,6 +87,13 @@ public final class EcotoneClientGameTest implements FabricClientGameTest {
 			ResourceKey<WorldPreset> preset = ResourceKey.create(Registries.WORLD_PRESET,
 					PolishForests.id(real ? "poland" : "poland_gameplay"));
 			for (boolean presentDay : new boolean[] {false, true}) {
+				boolean wanted = presentDay && real && (only.isBlank() || java.util.List.of(only.split(",")).contains(STRAIGHT_EDGE));
+				for (Border b : BORDERS) {
+					wanted |= b.presentDay() == presentDay && (only.isBlank() || java.util.List.of(only.split(",")).contains(b.name()));
+				}
+				if (!wanted) {
+					continue;
+				}
 				try (TestSingleplayerContext sp = context.worldBuilder().adjustSettings(ui -> select(ui, preset, presentDay))
 						.create()) {
 					sp.getServer().runCommand("gamerule advance_time false");
@@ -102,9 +117,35 @@ public final class EcotoneClientGameTest implements FabricClientGameTest {
 									"ecotone_" + b.name() + "_edge_" + scale.getSerializedName());
 						}
 					}
+					if (presentDay && real && (only.isBlank() || java.util.List.of(only.split(",")).contains(STRAIGHT_EDGE))) {
+						fixed(context, sp, 150_034, 734, 1_049_784, -36.9, 34.9, "s8c_straight_edge_" + scale.getSerializedName());
+						shot(context, sp, new int[] {150_150, 1_049_830}, new double[] {0, 1}, 110, 170,
+								"s8c_straight_edge_overview_" + scale.getSerializedName());
+					}
 				}
 			}
 		}
+	}
+
+	/** A screenshot from a fixed camera (feet position, yaw and pitch in degrees). */
+	private static void fixed(ClientGameTestContext context, TestSingleplayerContext sp, int x, int y, int z, double yaw, double pitch,
+			String screenshot) {
+		sp.getServer().runCommand(String.format(Locale.ROOT, "tp @a %d %d %d %.1f %.1f", x, y, z, yaw, pitch));
+		context.runOnClient(mc -> {
+			if (!mc.gui.hud.isHidden()) {
+				mc.gui.hud.toggle();
+			}
+		});
+		context.waitTicks(20 * 30);
+		PolishForests.LOG.info("[ecotones] {}: camera ({}, {}, {}) yaw {} pitch {}, client {}", screenshot, x, y, z, yaw, pitch,
+				context.computeOnClient(mc -> mc.level.getChunkSource().gatherStats()));
+		context.waitTicks(20 * 10);
+		context.takeScreenshot(screenshot);
+		context.runOnClient(mc -> {
+			if (mc.gui.hud.isHidden()) {
+				mc.gui.hud.toggle();
+			}
+		});
 	}
 
 	private static void select(WorldCreationUiState ui, ResourceKey<WorldPreset> preset, boolean presentDay) {

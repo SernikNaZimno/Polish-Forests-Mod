@@ -67,7 +67,7 @@ final class ForestCover {
 		double v = noise.at(x, z, Calibration.F_WAVELENGTH * k) + Calibration.F_FINE * fine.at(x, z, Calibration.F_FINE_WAVELENGTH * k)
 				+ Calibration.F_WOODLOT * woodlots.at(x, z, Calibration.F_WOODLOT_WAVELENGTH * k)
 				+ Calibration.F_EDGE * noise.at(x + 5_151, z - 919, Calibration.F_EDGE_WAVELENGTH * k)
-				+ Calibration.F_EDGE_FINE * edgeFine.at(x, z, Calibration.F_EDGE_FINE_WAVELENGTH * k);
+				+ Calibration.F_EDGE_FINE * edgeFine.at(x, z, Calibration.F_EDGE_FINE_WAVELENGTH);
 		return v / (1 + Calibration.F_FINE + Calibration.F_WOODLOT + Calibration.F_EDGE + Calibration.F_EDGE_FINE);
 	}
 
