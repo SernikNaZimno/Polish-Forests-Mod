@@ -118,7 +118,7 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 			m = model;
 			if (m == null || modelSeed != seed) {
 				m = new LandscapeModel(seed, settings.scale().landscape(), settings.regionScale());
-				HabitatClassifier k = new HabitatClassifier(seed, settings.scale().landscape(), settings.mode());
+				HabitatClassifier k = new HabitatClassifier(seed, m, settings.mode());
 				classifier = k;
 				surfaceBuilder = new SurfaceBuilder(seed, vertical, settings.coverInBlocks(),
 						SurfaceBuilder.debugFromSystem());

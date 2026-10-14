@@ -39,7 +39,7 @@ final class SurfaceFixture {
 		synchronized (MODELS) {
 			this.model = MODELS.computeIfAbsent(scale, s -> new LandscapeModel(SEED, s.landscape(), 1.0));
 		}
-		this.classifier = new HabitatClassifier(SEED, scale.landscape(), mode);
+		this.classifier = new HabitatClassifier(SEED, model, mode);
 		this.builder = new SurfaceBuilder(SEED, vertical, coverInBlocks, false);
 	}
 

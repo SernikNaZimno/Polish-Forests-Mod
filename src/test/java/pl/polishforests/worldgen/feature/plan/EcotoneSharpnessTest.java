@@ -194,10 +194,18 @@ class EcotoneSharpnessTest {
 			SurfaceBuilder builder = new SurfaceBuilder(SEED, scale.vertical(), true, false);
 			double k = scale.landscape().local();
 			for (HabitatClassifier.Mode mode : HabitatClassifier.Mode.values()) {
-				HabitatClassifier classifier = new HabitatClassifier(SEED, scale.landscape(), mode);
+				HabitatClassifier classifier = new HabitatClassifier(SEED, model, mode);
 				Stats stats = new Stats();
-				List<int[]> areas = areas(model, classifier, scale);
-				areas.parallelStream().forEach(a -> measure(model, classifier, builder, k, a[0], a[1], stats));
+				// Step S8c: the forest edges of the PRESENT_DAY mode bend every few tens of blocks, so 70 areas of the
+				// gameplay scale held only about 10 straight crossings; further batches of the same area sequence follow
+				// until there are at least 20 (at most 3 · AREAS areas).
+				List<int[]> candidates = areas(model, classifier, scale);
+				List<int[]> areas = new ArrayList<>();
+				for (int from = 0; from < candidates.size() && (from == 0 || stats.seen.get(0) < 20); from += AREAS) {
+					List<int[]> batch = candidates.subList(from, Math.min(candidates.size(), from + AREAS));
+					areas.addAll(batch);
+					batch.parallelStream().forEach(a -> measure(model, classifier, builder, k, a[0], a[1], stats));
+				}
 				boolean real = scale == PolandScale.REALISTIC;
 				double before = (double) stats.pairs.get(1) / Math.max(1, stats.pairs.get(0));
 				double after = (double) stats.pairs.get(2) / Math.max(1, stats.pairs.get(0));
@@ -285,12 +293,15 @@ class EcotoneSharpnessTest {
 		assertTrue(failures.isEmpty(), failures + "\n" + report);
 	}
 
-	/** Centers (chunk coordinates) of areas of 5 × 5 chunks with at least two land biomes at a few points. */
+	/**
+	 * Centers (chunk coordinates) of up to 3 · {@value #AREAS} areas of 5 × 5 chunks with at least two land biomes at a few
+	 * points, in a fixed sequence (the first {@value #AREAS} are the areas used before step S8c).
+	 */
 	private static List<int[]> areas(LandscapeModel model, HabitatClassifier classifier, PolandScale scale) {
 		Random r = new Random(scale.ordinal() * 31 + 5);
 		double span = scale == PolandScale.REALISTIC ? 200_000 : 20_000;
 		List<int[]> out = new ArrayList<>();
-		for (int tries = 0; tries < 20 * AREAS && out.size() < AREAS; tries++) {
+		for (int tries = 0; tries < 60 * AREAS && out.size() < 3 * AREAS; tries++) {
 			int cx = (int) ((r.nextDouble() * 2 - 1) * span) >> 4;
 			int cz = (int) ((r.nextDouble() * 2 - 1) * span) >> 4;
 			java.util.Set<HabitatBiome> seen = java.util.EnumSet.noneOf(HabitatBiome.class);

@@ -351,6 +351,14 @@ public final class Calibration {
 	 */
 	public static final double F_WOODLOT_WAVELENGTH = 600, F_WOODLOT = 0.6;
 	/**
+	 * Step S8c (rule Z10): short edge octave of F (new salt {@code habitat.forest_cover.edge_fine}), wavelength (m·k) and
+	 * weight. Where F and P_forest are both smooth over hundreds of meters, the contour F = P_forest followed the slowest
+	 * of them as an almost straight line over 50–100 blocks (the example of the S10 review: F changes there by 0.0003 per
+	 * block, P_forest by 0.001); the octave bends it by several blocks every few tens of blocks, the more the flatter
+	 * both fields are, and steep P_forest ramps keep their place. The quantile table includes it, so F stays uniform.
+	 */
+	public static final double F_EDGE_FINE_WAVELENGTH = 64, F_EDGE_FINE = 0.12;
+	/**
 	 * Blends of P_forest across the moisture thresholds (round 1 of the S8 review): half-width of the DGW band (m) and the
 	 * jitter of DGW (m) by the context noise (new salt {@code habitat.forest_cover.context}).
 	 */
@@ -413,7 +421,7 @@ public final class Calibration {
 	 * P_FLOOR_MARGIN_JITTER m plus the rise over P_FLOOR_MARGIN_SHIFT_K m;
 	 * only in a valley, by the incision from P_FLOOR_MARGIN_INCISION_FROM to _TO m.
 	 */
-	public static final double P_FLOOR_MARGIN = 0.1, P_FLOOR_MARGIN_POOR = 0.3, P_FLOOR_MARGIN_H = 0.5, P_FLOOR_MARGIN_JITTER = 0.5,
+	public static final double P_FLOOR_MARGIN = 0.1, P_FLOOR_MARGIN_POOR = 0.4, P_FLOOR_MARGIN_H = 0.5, P_FLOOR_MARGIN_JITTER = 0.5,
 			P_FLOOR_MARGIN_INCISION_FROM = 0.5, P_FLOOR_MARGIN_INCISION_TO = 2.5, P_FLOOR_MARGIN_WIDTH_K = 20,
 			P_FLOOR_MARGIN_SHIFT_K = 20;
 	/** Round 2 of the S8 review: gray alder forest, P_forest falls from the strip over this many strip widths. */

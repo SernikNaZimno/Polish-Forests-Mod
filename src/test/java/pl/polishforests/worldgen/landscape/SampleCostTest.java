@@ -93,7 +93,7 @@ class SampleCostTest {
 			long[][][] areas = {chunks(0, 0, half, 0x5EED_0001L), chunks(b[0], b[1], (long) (m.regionSize() * 0.15), 0x5EED_0003L),
 					chunks(g[0], g[1], (long) m.greatMassifRa(), 0x5EED_0004L), block(b[0] - 64, b[1] - 64)};
 			HabitatClassifier[] modes = {new HabitatClassifier(SEED, scale, HabitatClassifier.Mode.NATURAL),
-					new HabitatClassifier(SEED, scale, HabitatClassifier.Mode.PRESENT_DAY)};
+					new HabitatClassifier(SEED, m, HabitatClassifier.Mode.PRESENT_DAY)};
 			ColumnSample[] warmSamples = samples(m, warm);
 			for (HabitatClassifier k : modes) {
 				for (int r = 0; r < 3; r++) {

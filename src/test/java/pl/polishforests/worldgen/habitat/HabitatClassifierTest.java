@@ -29,8 +29,11 @@ import pl.polishforests.worldgen.landscape.WaterKind;
 class HabitatClassifierTest {
 	static final long SEED = 20260927L;
 
+	/** Model of the PRESENT_DAY classifiers of the synthetic cases (their forest mask reads its coarse grid, step S8c). */
+	static final LandscapeModel REAL_MODEL = new LandscapeModel(SEED, LandscapeScale.REALISTIC, 1.0);
+
 	static HabitatClassifier real(HabitatClassifier.Mode t) {
-		return new HabitatClassifier(SEED, LandscapeScale.REALISTIC, t);
+		return new HabitatClassifier(SEED, REAL_MODEL, t);
 	}
 
 	@Test
@@ -314,7 +317,7 @@ class HabitatClassifierTest {
 		HabitatClassifier k = real(HabitatClassifier.Mode.NATURAL);
 		for (Case p : cases()) {
 			if (findPoint(p) == null) {
-				int code = new HabitatClassifier(SEED, LandscapeScale.REALISTIC, p.mode()).classify(p.sample(), 0, -7_000);
+				int code = real(p.mode()).classify(p.sample(), 0, -7_000);
 				errors.add(p.description() + ": expected " + p.biome() + "/" + p.zone() + ", got " + Habitat.of(code));
 			}
 		}
@@ -384,7 +387,7 @@ class HabitatClassifierTest {
 	/** Clusters of 125 × 125 columns every 2 m·k at 64 points (about 10⁶ samples per scale). */
 	static void scan(LandscapeScale sc, HabitatClassifier.Mode mode, Predicate<int[]> action, Observer o) {
 		LandscapeModel m = new LandscapeModel(SEED, sc, 1.0);
-		HabitatClassifier k = new HabitatClassifier(SEED, sc, mode);
+		HabitatClassifier k = new HabitatClassifier(SEED, m, mode);
 		double area = sc == LandscapeScale.REALISTIC ? 300_000 : 20_000;
 		double step = 2 * sc.local();
 		IntStream.range(0, 64).parallel().forEach(q -> {

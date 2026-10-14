@@ -46,27 +46,34 @@ final class ForestCover {
 	private final Noise woodlots;
 	/** Noise of the context and of the open land (round 1 of the S8 review): layers by coordinate offsets. */
 	private final Noise context;
+	/** Short edge octave of F (step S8c, rule Z10). */
+	private final Noise edgeFine;
 	private final double k;
+	/** Model of the samples, for the steepness above the channels (step S8c); null in the NATURAL mode. */
+	private final LandscapeModel model;
 
-	ForestCover(Noise noise, Noise fine, Noise woodlots, Noise context, double k) {
+	ForestCover(Noise noise, Noise fine, Noise woodlots, Noise context, Noise edgeFine, double k, LandscapeModel model) {
 		this.noise = noise;
 		this.fine = fine;
 		this.woodlots = woodlots;
 		this.context = context;
+		this.edgeFine = edgeFine;
 		this.k = k;
+		this.model = model;
 	}
 
-	/** F before the quantile table: the three octaves and the edge noise, in [−1, 1]. */
-	private static double raw(Noise noise, Noise fine, Noise woodlots, double x, double z, double k) {
+	/** F before the quantile table: the three octaves and the two edge noises (the short one since step S8c), in [−1, 1]. */
+	private static double raw(Noise noise, Noise fine, Noise woodlots, Noise edgeFine, double x, double z, double k) {
 		double v = noise.at(x, z, Calibration.F_WAVELENGTH * k) + Calibration.F_FINE * fine.at(x, z, Calibration.F_FINE_WAVELENGTH * k)
 				+ Calibration.F_WOODLOT * woodlots.at(x, z, Calibration.F_WOODLOT_WAVELENGTH * k)
-				+ Calibration.F_EDGE * noise.at(x + 5_151, z - 919, Calibration.F_EDGE_WAVELENGTH * k);
-		return v / (1 + Calibration.F_FINE + Calibration.F_WOODLOT + Calibration.F_EDGE);
+				+ Calibration.F_EDGE * noise.at(x + 5_151, z - 919, Calibration.F_EDGE_WAVELENGTH * k)
+				+ Calibration.F_EDGE_FINE * edgeFine.at(x, z, Calibration.F_EDGE_FINE_WAVELENGTH * k);
+		return v / (1 + Calibration.F_FINE + Calibration.F_WOODLOT + Calibration.F_EDGE + Calibration.F_EDGE_FINE);
 	}
 
 	/** Quantile of F at the point, uniform on [0, 1]. */
 	double f(double x, double z) {
-		return quantile(raw(noise, fine, woodlots, x, z, k));
+		return quantile(raw(noise, fine, woodlots, edgeFine, x, z, k));
 	}
 
 	/** Context noise in [−1, 1] at the given wavelength (m·k); {@code layer} separates independent decisions. */
@@ -104,12 +111,13 @@ final class ForestCover {
 		Noise a = root.derive("cdf.a");
 		Noise b = root.derive("cdf.b");
 		Noise w = root.derive("cdf.w");
+		Noise e = root.derive("cdf.e");
 		long[] hist = new long[CDF_BINS];
 		long total = 0;
 		double step = 0.1713 * Calibration.F_WAVELENGTH;
 		for (int i = 0; i < 512; i++) {
 			for (int j = 0; j < 512; j++) {
-				double v = raw(a, b, w, i * step + 37.3, j * step * 0.917 - 11.9, 1.0);
+				double v = raw(a, b, w, e, i * step + 37.3, j * step * 0.917 - 11.9, 1.0);
 				int bin = (int) Math.clamp((long) Math.floor((v + 1) * 0.5 * CDF_BINS), 0, CDF_BINS - 1);
 				hist[bin]++;
 				total++;
@@ -124,10 +132,34 @@ final class ForestCover {
 		return cdf;
 	}
 
-	/** Whether a column of a forest biome stays forested in the PRESENT_DAY mode. */
+	/**
+	 * Least and greatest P_forest of every forest biome except the dwarf pine scrub (always 1) and the gray alder forest
+	 * (0 to 1): the elm-ash floodplain forest on the floor and the dry coniferous site (step S8c, M2-27 b; bounds widened by
+	 * 10⁻⁹ against rounding, {@code ForestCoverTest} checks them on samples of both scales).
+	 */
+	static final double P_LOWEST = Calibration.P_ELM_ASH - 1e-9, P_HIGHEST = Calibration.P_DRY_CONIFEROUS + 1e-9;
+
+	/**
+	 * Whether a column of a forest biome stays forested in the PRESENT_DAY mode: F below P_forest. Since step S8c
+	 * (decision M2-27 b) F comes first, and P_forest, with its noise layers and the steepness, only when F lies between
+	 * {@link #P_LOWEST} and {@link #P_HIGHEST} (about 82% of the columns); the result is the same.
+	 */
 	boolean isForested(HabitatClassifier.Column c, HabitatBiome biome, ForestSiteType siteType) {
-		double p = forestProbability(c, biome, siteType);
-		return p >= 1 || p > 0 && f(c.x, c.z) < p;
+		if (biome == HabitatBiome.DWARF_PINE_SCRUB) {
+			return true;
+		}
+		if (biome == HabitatBiome.GRAY_ALDER_FOREST) {
+			double p = grayAlder(c);
+			return p >= 1 || p > 0 && f(c.x, c.z) < p;
+		}
+		double f = f(c.x, c.z);
+		if (f < P_LOWEST) {
+			return true;
+		}
+		if (f >= P_HIGHEST) {
+			return false;
+		}
+		return f < forestProbability(c, biome, siteType);
 	}
 
 	/**
@@ -159,11 +191,26 @@ final class ForestCover {
 	/**
 	 * Horizontal scale of the transitions (round 2 of the S8 review): the rise (m) of the ground over {@code run} m
 	 * (blocks, the same in both scales: in GAMEPLAY the sides are steeper per block, and widths in m·k left ramps of a few
-	 * blocks). The coarse slope of the terrain grid ignores the valleys, so on a valley side the gradient is estimated
-	 * from the height above the floor margin and the distance beyond the floor edge.
+	 * blocks). The gradient is computed once per column ({@link #gradient}).
 	 */
 	private double rise(HabitatClassifier.Column c, double run) {
-		double g = Math.tan(Math.toRadians(Math.min(c.t.slope(), 60)));
+		return gradient(c) * run;
+	}
+
+	/**
+	 * Steepness of the column for the widths of the transitions, at most {@link Calibration#P_SIDE_MAX_GRADIENT}: the
+	 * coarse slope of the terrain grid, which ignores the valleys, and on a valley side the larger of two estimates: the
+	 * height above the floor margin over the distance beyond the floor edge (round 2 of the S8 review; on the sides of wide
+	 * valleys 3 to 10 times too small, decision M2-20) and, since step S8c (M2-20 variant d2), the steepness of the height
+	 * above the channels smoothed on the 64 m·k grid of the model ({@link LandscapeModel#channelReliefGradient}; too
+	 * small in narrow valleys, where the first estimate holds). Cached in the column.
+	 */
+	private double gradient(HabitatClassifier.Column c) {
+		double g = c.riseGradient;
+		if (!Double.isNaN(g)) {
+			return g;
+		}
+		g = Math.tan(Math.toRadians(Math.min(c.t.slope(), 60)));
 		if (c.w.streamOrder() > 0 && !Double.isNaN(c.w.softChannelLevel()) && Double.isFinite(c.w.channelDist()) && !c.onValleyFloor()) {
 			double above = c.H - c.w.softChannelLevel() - Calibration.FLOOR_H;
 			double half = Double.isNaN(c.w.floorHalfWidth()) ? 0 : c.w.floorHalfWidth();
@@ -171,8 +218,14 @@ final class ForestCover {
 			if (above > 0) {
 				g = Math.max(g, above / beyond);
 			}
+			double relief = model.channelReliefGradient(c.x, c.z);
+			if (relief > g) {
+				g = relief;
+			}
 		}
-		return Math.min(g, Calibration.P_SIDE_MAX_GRADIENT) * run;
+		g = Math.min(g, Calibration.P_SIDE_MAX_GRADIENT);
+		c.riseGradient = g;
+		return g;
 	}
 
 	/** Spatial jitter of a transition: ±({@code base} + the rise over {@link Calibration#P_EDGE_SHIFT_K} m), noise layer. */

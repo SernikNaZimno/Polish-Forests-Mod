@@ -249,7 +249,7 @@ public class BiomeSharesTest {
 		HabitatClassifier[] k = new HabitatClassifier[modes.length];
 		Shares[] result = new Shares[modes.length];
 		for (int i = 0; i < modes.length; i++) {
-			k[i] = new HabitatClassifier(seed, scale, modes[i]);
+			k[i] = new HabitatClassifier(seed, m, modes[i]);
 			result[i] = new Shares();
 		}
 		double step = 125 * scale.local();

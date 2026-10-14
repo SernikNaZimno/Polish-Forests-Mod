@@ -173,8 +173,8 @@ final class HabitatPreview {
 		// Forest mask of the PRESENT_DAY mode (calibrated in S8): 50 km and 5 km of the realistic scale on the edge of an
 		// outwash plain, 20 km and 5 km of the gameplay scale around the origin, the same places in the NATURAL mode in the
 		// other frames (outwash_plain_20km, gameplay_20km).
-		HabitatClassifier presentDayClassifier = new HabitatClassifier(seed, LandscapeScale.REALISTIC, HabitatClassifier.Mode.PRESENT_DAY);
-		HabitatClassifier presentDayGameplay = new HabitatClassifier(seed, LandscapeScale.GAMEPLAY, HabitatClassifier.Mode.PRESENT_DAY);
+		HabitatClassifier presentDayClassifier = new HabitatClassifier(seed, real, HabitatClassifier.Mode.PRESENT_DAY);
+		HabitatClassifier presentDayGameplay = new HabitatClassifier(seed, gameplayModel, HabitatClassifier.Mode.PRESENT_DAY);
 		p = LandscapePreview.find(real, LandscapeType.OUTWASH_PLAIN, false);
 		List<Frame> presentDay = new ArrayList<>();
 		if (p != null) {

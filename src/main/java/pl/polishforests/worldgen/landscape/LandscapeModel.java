@@ -83,6 +83,8 @@ public final class LandscapeModel {
 	/** Highest terrain within 3 km·mspace (a large massif in the altitudinal belts, E12). */
 	private final PeakField peaks;
 	private final RegionalField regional;
+	/** Step S8c (M2-20 d2): height above the channels on a 64 m·k grid, for the PRESENT_DAY forest mask only. */
+	private final ChannelReliefField channelRelief;
 
 	/**
 	 * Macroregion cells (round 1 of the review of K6: a lock-free {@link DirectCache} instead of a
@@ -220,6 +222,7 @@ public final class LandscapeModel {
 		this.coarse = new CoarseTerrainField(this, 32.0 * local);
 		this.peaks = new PeakField(this, 3_000 * mspace, 62.5 * mspace, 4);
 		this.regional = new RegionalField(this, root.derive("habitat.prowincje"), zs);
+		this.channelRelief = new ChannelReliefField(this, 64.0 * local);
 	}
 
 	public double regionScale() {
@@ -243,6 +246,20 @@ public final class LandscapeModel {
 	/** Regional field grid (tests). */
 	RegionalField regional() {
 		return regional;
+	}
+
+	/** Grid of the height above the channels (tests). */
+	ChannelReliefField channelRelief() {
+		return channelRelief;
+	}
+
+	/**
+	 * Steepness of the ground relative to the soft water level of the nearby channels (m per m), smoothed on a 64 m·k
+	 * grid ({@link ChannelReliefField}, step S8c, decision M2-20 variant d2); 0 far from any watercourse. Not a
+	 * field of {@link #sample}: only the PRESENT_DAY forest mask asks for it, and only on valley sides.
+	 */
+	public double channelReliefGradient(double x, double z) {
+		return channelRelief.gradient(x, z);
 	}
 
 	// ------------------------------------------------------------------ L0: zones

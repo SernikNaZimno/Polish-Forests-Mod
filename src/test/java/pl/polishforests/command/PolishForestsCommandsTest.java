@@ -25,7 +25,8 @@ class PolishForestsCommandsTest {
 	static final long SEED = 20260927L;
 
 	static HabitatTargets.World world(LandscapeScale scale, HabitatClassifier.Mode mode) {
-		return new HabitatTargets.World(new LandscapeModel(SEED, scale, 1.0), new HabitatClassifier(SEED, scale, mode));
+		LandscapeModel m = new LandscapeModel(SEED, scale, 1.0);
+		return new HabitatTargets.World(m, new HabitatClassifier(SEED, m, mode));
 	}
 
 	@Test

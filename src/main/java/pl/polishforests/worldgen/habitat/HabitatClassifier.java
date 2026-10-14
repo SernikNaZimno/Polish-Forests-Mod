@@ -49,7 +49,30 @@ public final class HabitatClassifier {
 	final Noise timberlineMosaic;
 	final ForestCover forestCover;
 
+	/**
+	 * Classifier of the NATURAL mode. The PRESENT_DAY mode needs the landscape model of the same seed and scale
+	 * ({@link #HabitatClassifier(long, LandscapeModel, Mode)}): its forest mask reads the steepness above the channels
+	 * from the model's coarse grid (step S8c).
+	 *
+	 * @throws IllegalArgumentException in the PRESENT_DAY mode
+	 */
 	public HabitatClassifier(long seed, LandscapeScale scale, Mode mode) {
+		this(seed, scale, mode, null);
+	}
+
+	/**
+	 * Classifier for samples of {@code model}, which must have been created with the same {@code seed}; the scale is the
+	 * model's. In the PRESENT_DAY mode the forest mask reads {@link LandscapeModel#channelReliefGradient} (step S8c,
+	 * decision M2-20 variant d2).
+	 */
+	public HabitatClassifier(long seed, LandscapeModel model, Mode mode) {
+		this(seed, model.scale(), mode, model);
+	}
+
+	private HabitatClassifier(long seed, LandscapeScale scale, Mode mode, LandscapeModel model) {
+		if (mode == Mode.PRESENT_DAY && model == null) {
+			throw new IllegalArgumentException("the PRESENT_DAY mode needs the landscape model (HabitatClassifier(seed, model, mode))");
+		}
 		this.scale = scale;
 		this.mode = mode;
 		this.k = scale.local();
@@ -66,9 +89,10 @@ public final class HabitatClassifier {
 		this.timberline = root.derive("habitat.timberline.clumps");
 		this.timberlineMosaic = root.derive("habitat.timberline.mosaic");
 		// Step S8: the second octave of F is a new noise field with its own salt; round 1 of the S8 review: the woodlot
-		// octave and the context noise, new fields with new salts.
+		// octave and the context noise, new fields with new salts; step S8c: the short edge octave of F, a new field with a new salt.
 		this.forestCover = new ForestCover(root.derive("habitat.lesistosc"), root.derive("habitat.forest_cover.fine"),
-				root.derive("habitat.forest_cover.woodlots"), root.derive("habitat.forest_cover.context"), k);
+				root.derive("habitat.forest_cover.woodlots"), root.derive("habitat.forest_cover.context"),
+				root.derive("habitat.forest_cover.edge_fine"), k, model);
 	}
 
 	public Mode mode() {
@@ -309,6 +333,8 @@ public final class HabitatClassifier {
 		private int onValleyFloor = -1;
 		private double jitter = Double.NaN;
 		private double uJitter = Double.NaN;
+		/** Steepness of the column for the widths of the PRESENT_DAY mask transitions (ForestCover, step S8c), NaN until computed. */
+		double riseGradient = Double.NaN;
 
 		Column(HabitatClassifier classifier, ColumnSample s, double x, double z) {
 			this.classifier = classifier;
