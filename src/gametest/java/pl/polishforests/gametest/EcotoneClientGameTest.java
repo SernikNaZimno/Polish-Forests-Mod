@@ -36,9 +36,9 @@ import pl.polishforests.worldgen.surface.ChunkSurface;
  *
  * <p>Step S8c (decision M2-20, rule Z10): the site {@value #STRAIGHT_EDGE} (realistic scale, PRESENT_DAY mode) takes the
  * view of the S10 review of an almost straight forest edge (fresh meadow and montane beech forest; camera
- * (150034, 734, 1049784), yaw −36.9°, pitch 34.9°; screenshot {@code s8c_straight_edge_realistic}) and an overview of
- * the whole meadow from the north ({@code s8c_straight_edge_overview_realistic}); in {@code docs/m2/gra/} the files are
- * named {@code s8c_straight_edge[_overview]_realistic_before.png} and {@code _after.png}.
+ * (150034, 734, 1049784), yaw −36.9°, pitch 34.9°; screenshot {@code s8c_straight_edge_realistic}) and a view straight
+ * down from 130 blocks above (150110, 1049800), north at the top ({@code s8c_straight_edge_top_realistic}); in
+ * {@code docs/m2/gra/} the files are named {@code s8c_straight_edge[_top]_realistic_before.png} and {@code _after.png}.
  */
 public final class EcotoneClientGameTest implements FabricClientGameTest {
 	private static final String SEED = "20260927";
@@ -119,8 +119,9 @@ public final class EcotoneClientGameTest implements FabricClientGameTest {
 					}
 					if (presentDay && real && (only.isBlank() || java.util.List.of(only.split(",")).contains(STRAIGHT_EDGE))) {
 						fixed(context, sp, 150_034, 734, 1_049_784, -36.9, 34.9, "s8c_straight_edge_" + scale.getSerializedName());
-						shot(context, sp, new int[] {150_150, 1_049_830}, new double[] {0, 1}, 110, 170,
-								"s8c_straight_edge_overview_" + scale.getSerializedName());
+						// Straight down from 130 blocks above (150110, 1049800), north at the top: compare with the mask map.
+						int top = sp.getServer().computeOnServer(s -> groundY(s, 150_110, 1_049_800)) + 130;
+						fixed(context, sp, 150_110, top, 1_049_800, 180, 90, "s8c_straight_edge_top_" + scale.getSerializedName());
 					}
 				}
 			}

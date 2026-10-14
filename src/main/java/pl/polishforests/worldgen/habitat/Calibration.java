@@ -351,16 +351,19 @@ public final class Calibration {
 	 */
 	public static final double F_WOODLOT_WAVELENGTH = 600, F_WOODLOT = 0.6;
 	/**
-	 * Step S8c (rule Z10): short edge octave of F (new salt {@code habitat.forest_cover.edge_fine}), wavelength in blocks
-	 * (the same in both scales, like the ramp widths of {@code ForestCover.rise}) and weight. Where F and P_forest are both
-	 * smooth over hundreds of meters, the contour F = P_forest followed the slowest of them as a long, almost straight arc
-	 * (the example of the S10 review: F changes there by 0.0003 per block, P_forest by 0.001); the octave bends it into
-	 * bays and tongues every few tens of blocks, the more the flatter both fields are, and steep P_forest ramps keep their
-	 * place. At 64 m·k the edges of the realistic scale kept their straight stretches (22.5% of the edge pixels on 40
-	 * blocks within ±1.5, as before S8c); at 36 blocks 9.6% ({@code ForestEdgeShapeTest}). The quantile table includes the
-	 * octave (the distribution of the sum does not depend on the wavelengths), so F stays uniform.
+	 * Step S8c (rule Z10): two edge octaves of F, wavelengths in blocks (the same in both scales, like the ramp widths of
+	 * {@code ForestCover.rise}) and weights. The short one is a new field with a new salt
+	 * ({@code habitat.forest_cover.edge_fine}), the middle one the same field shifted in coordinates. Where F and P_forest
+	 * are both smooth over hundreds of meters, the contour F = P_forest followed the slower of them as a long, almost
+	 * straight arc (the example of the S10 review: a contour of the altitude jitter of the mountain P_forest, which changes
+	 * there by about 0.001 per block, while F changed by 0.0003). The octaves bend it into bays and tongues of 10–30 blocks
+	 * (36 blocks: edge pixels on straight stretches of the realistic scale 22.9% → 9.6%, {@code ForestEdgeShapeTest}; at
+	 * 64 m·k as first tried 22.5%) and of 30–60 blocks (110 blocks: the bends that the tree ecotone of the edge does not
+	 * smooth away, visible in the game); steep P_forest ramps keep their place. The quantile table includes both octaves
+	 * (the distribution of the sum does not depend on the wavelengths), so F stays uniform.
 	 */
 	public static final double F_EDGE_FINE_WAVELENGTH = 36, F_EDGE_FINE = 0.12;
+	public static final double F_EDGE_MID_WAVELENGTH = 110, F_EDGE_MID = 0.15;
 	/**
 	 * Blends of P_forest across the moisture thresholds (round 1 of the S8 review): half-width of the DGW band (m) and the
 	 * jitter of DGW (m) by the context noise (new salt {@code habitat.forest_cover.context}).

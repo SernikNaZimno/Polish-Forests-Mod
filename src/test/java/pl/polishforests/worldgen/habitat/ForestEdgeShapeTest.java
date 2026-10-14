@@ -427,8 +427,8 @@ class ForestEdgeShapeTest {
 	}
 
 	/**
-	 * Limits of the state after step S8c (measured: REAL / GAMEPLAY 14.5 / 25.8% of the edges on P jumps, 14.6 / 3.2% of
-	 * the valley side edges on P jumps steeper than 3 times the mask steepness, 9.6 / 12.8% of the edge pixels on straight
+	 * Limits of the state after step S8c (measured: REAL / GAMEPLAY 13.9 / 24.7% of the edges on P jumps, 15.7 / 2.9% of
+	 * the valley side edges on P jumps steeper than 3 times the mask steepness, 10.3 / 13.1% of the edge pixels on straight
 	 * stretches; before S8c 32.9 / 35.6%, 74.1 / 26.9% and 22.9 / 21.4%).
 	 */
 	@Test

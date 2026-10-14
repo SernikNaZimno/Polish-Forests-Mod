@@ -32,7 +32,17 @@ import pl.polishforests.worldgen.landscape.Substrate;
  * altitude only, a floor margin ramp, and the inland dunes by their height. The remaining steps are the gray alder strip
  * (P_forest 1 by design, §4.5), the floor margin on poor sites (pine forests reaching the floor) and the classifier's
  * own DGW jumps (docs/03-m2-biomy.md §3.4.1, "Runda 2 poprawek S8").
- * Outside forest the non-forest biome follows the site (§2.2, column D); the zone, the potential STL and the association
+ *
+ * <p><b>Step S8c (decision M2-20 variant d2, rule Z10).</b> The widths of the transitions come from the steepness of the
+ * ground ({@link #gradient}); on the sides of wide valleys the estimate from the distance to the channel was 3 to 10
+ * times too small, so the ramps had about 10 m and lay on DGW contours. Now the steepness of the height above the
+ * channels on the 64 m·k grid of the model ({@link LandscapeModel#channelReliefGradient}) takes part. Two edge
+ * octaves of F ({@link Calibration#F_EDGE_FINE_WAVELENGTH} and {@link Calibration#F_EDGE_MID_WAVELENGTH} blocks) bend the
+ * contours F = P_forest where both fields are smooth, which before S8c were long, almost straight arcs. The gray alder strip stays "always forest" (variant b of
+ * M2-20 was measured and rejected: docs/03-m2-biomy.md §3.4.1 "Stan po S8c"). {@link #isForested} compares F with the
+ * bounds of P_forest before computing it (M2-27 b).
+ *
+ * <p>Outside forest the non-forest biome follows the site (§2.2, column D); the zone, the potential STL and the association
  * remain, so the terrain, the waterside zones and the potential habitat are the same in both modes. In the NATURAL mode
  * (the default until M8, decision M2-B) the classifier does not use the mask.
  */
@@ -46,7 +56,7 @@ final class ForestCover {
 	private final Noise woodlots;
 	/** Noise of the context and of the open land (round 1 of the S8 review): layers by coordinate offsets. */
 	private final Noise context;
-	/** Short edge octave of F (step S8c, rule Z10). */
+	/** Edge octaves of F (step S8c, rule Z10): the short one, and the middle one shifted in coordinates. */
 	private final Noise edgeFine;
 	private final double k;
 	/** Model of the samples, for the steepness above the channels (step S8c); null in the NATURAL mode. */
@@ -62,13 +72,14 @@ final class ForestCover {
 		this.model = model;
 	}
 
-	/** F before the quantile table: the three octaves and the two edge noises (the short one since step S8c), in [−1, 1]. */
+	/** F before the quantile table: the three octaves and the three edge noises (the two shorter ones since step S8c), in [−1, 1]. */
 	private static double raw(Noise noise, Noise fine, Noise woodlots, Noise edgeFine, double x, double z, double k) {
 		double v = noise.at(x, z, Calibration.F_WAVELENGTH * k) + Calibration.F_FINE * fine.at(x, z, Calibration.F_FINE_WAVELENGTH * k)
 				+ Calibration.F_WOODLOT * woodlots.at(x, z, Calibration.F_WOODLOT_WAVELENGTH * k)
 				+ Calibration.F_EDGE * noise.at(x + 5_151, z - 919, Calibration.F_EDGE_WAVELENGTH * k)
-				+ Calibration.F_EDGE_FINE * edgeFine.at(x, z, Calibration.F_EDGE_FINE_WAVELENGTH);
-		return v / (1 + Calibration.F_FINE + Calibration.F_WOODLOT + Calibration.F_EDGE + Calibration.F_EDGE_FINE);
+				+ Calibration.F_EDGE_FINE * edgeFine.at(x, z, Calibration.F_EDGE_FINE_WAVELENGTH)
+				+ Calibration.F_EDGE_MID * edgeFine.at(x + 7_919, z - 3_301, Calibration.F_EDGE_MID_WAVELENGTH);
+		return v / (1 + Calibration.F_FINE + Calibration.F_WOODLOT + Calibration.F_EDGE + Calibration.F_EDGE_FINE + Calibration.F_EDGE_MID);
 	}
 
 	/** Quantile of F at the point, uniform on [0, 1]. */
