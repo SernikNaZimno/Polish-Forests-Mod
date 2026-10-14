@@ -8,10 +8,12 @@ import pl.polishforests.worldgen.landscape.Substrate;
 /**
  * Forest mask of the PRESENT_DAY mode, "present-day Poland" (ecology report §6, docs/03-m2-biomy.md §3.4 step 6, §4.5,
  * calibrated in step S8). A column of a forest biome stays forest where the quantile of the smooth noise F is lower than
- * the column's P_forest, so at a constant P_forest the forest share equals P_forest. F has three octaves (wavelengths
- * {@link Calibration#F_WAVELENGTH}, {@link Calibration#F_FINE_WAVELENGTH} and, since round 1 of the S8 review, the
- * woodlots of {@link Calibration#F_WOODLOT_WAVELENGTH} m·k) and a fine edge noise ({@link Calibration#F_EDGE_WAVELENGTH}
- * m·k, Z9); its quantile comes from a table of its own distribution ({@link #quantile}), so it is uniform on [0, 1].
+ * the column's P_forest, so at a constant P_forest the forest share equals P_forest. F has five terms: three octaves
+ * (wavelengths {@link Calibration#F_WAVELENGTH}, {@link Calibration#F_FINE_WAVELENGTH} and, since round 1 of the S8
+ * review, the woodlots of {@link Calibration#F_WOODLOT_WAVELENGTH} m·k), a fine edge noise
+ * ({@link Calibration#F_EDGE_WAVELENGTH} m·k, Z9) and, since step S8c, two edge octaves in blocks
+ * ({@link Calibration#F_EDGE_FINE_WAVELENGTH} and {@link Calibration#F_EDGE_MID_WAVELENGTH}); its quantile comes from a
+ * table of its own distribution ({@link #quantile}), so it is uniform on [0, 1].
  * P_forest depends on the site (biome and STL), the slope and the context (valley side, end moraine, inland dunes, the
  * strip of the gray alder forest by a mountain stream, wide stream floors).
  *
@@ -31,7 +33,8 @@ import pl.polishforests.worldgen.landscape.Substrate;
  * DGW blends widened by the rise of the ground over tens of meters and jittered along the valley, the mountains by
  * altitude only, a floor margin ramp, and the inland dunes by their height. The remaining steps are the gray alder strip
  * (P_forest 1 by design, §4.5), the floor margin on poor sites (pine forests reaching the floor) and the classifier's
- * own DGW jumps (docs/03-m2-biomy.md §3.4.1, "Runda 2 poprawek S8").
+ * own DGW jumps (docs/03-m2-biomy.md §3.4.1, "Runda 2 poprawek S8"). The inland dunes stepped through the classifier's
+ * landform (coniferous class and dry site) until round 1 of the S8c review ({@link #inlandDune}, {@link #dry}).
  *
  * <p><b>Step S8c (decision M2-20 variant d2, rule Z10).</b> The widths of the transitions come from the steepness of the
  * ground ({@link #gradient}); on the sides of wide valleys the estimate from the distance to the channel was 3 to 10
@@ -59,7 +62,11 @@ final class ForestCover {
 	/** Edge octaves of F (step S8c, rule Z10): the short one, and the middle one shifted in coordinates. */
 	private final Noise edgeFine;
 	private final double k;
-	/** Model of the samples, for the steepness above the channels (step S8c); null in the NATURAL mode. */
+	/**
+	 * Model of the samples, for the steepness above the channels (step S8c) and the inland dune height (round 1 of the
+	 * S8c review); null when the classifier was built with the scale-only constructor (NATURAL mode only, which never
+	 * asks the mask).
+	 */
 	private final LandscapeModel model;
 
 	ForestCover(Noise noise, Noise fine, Noise woodlots, Noise context, Noise edgeFine, double k, LandscapeModel model) {
@@ -72,7 +79,7 @@ final class ForestCover {
 		this.model = model;
 	}
 
-	/** F before the quantile table: the three octaves and the three edge noises (the two shorter ones since step S8c), in [−1, 1]. */
+	/** F before the quantile table: the three octaves and the edge noises (the two in blocks since step S8c), in [−1, 1]. */
 	private static double raw(Noise noise, Noise fine, Noise woodlots, Noise edgeFine, double x, double z, double k) {
 		double v = noise.at(x, z, Calibration.F_WAVELENGTH * k) + Calibration.F_FINE * fine.at(x, z, Calibration.F_FINE_WAVELENGTH * k)
 				+ Calibration.F_WOODLOT * woodlots.at(x, z, Calibration.F_WOODLOT_WAVELENGTH * k)
@@ -145,10 +152,35 @@ final class ForestCover {
 
 	/**
 	 * Least and greatest P_forest of every forest biome except the dwarf pine scrub (always 1) and the gray alder forest
-	 * (0 to 1): the elm-ash floodplain forest on the floor and the dry coniferous site (step S8c, M2-27 b; bounds widened by
-	 * 10⁻⁹ against rounding, {@code ForestCoverTest} checks them on samples of both scales).
+	 * (0 to 1), step S8c, M2-27 b: since round 1 of the S8c review computed from every value that a path of
+	 * {@link #forestProbability} can end at ({@link #bound}; now 0.08, the elm-ash floodplain forest on the floor, and 0.9),
+	 * so a recalibration cannot leave a P_forest outside them; widened by 10⁻⁹ against rounding ({@code ForestCoverTest}
+	 * also checks them on samples of both scales).
 	 */
-	static final double P_LOWEST = Calibration.P_ELM_ASH - 1e-9, P_HIGHEST = Calibration.P_DRY_CONIFEROUS + 1e-9;
+	static final double P_LOWEST = bound(false) - 1e-9, P_HIGHEST = bound(true) + 1e-9;
+
+	/**
+	 * Least or greatest of the values that P_forest blends between: the floor and coast constants, the zonal table
+	 * (the poor sites also with the factor outside the outwash plain), the alder carr, the mountains and foothills, the
+	 * steep context and both floor margins. Every blend of {@link #forestProbability} (lerps, the context towards
+	 * {@link Calibration#P_STEEP} and the floor margin towards its target only when they lie on the other side) stays
+	 * between these; a new path must add its values here.
+	 */
+	private static double bound(boolean greatest) {
+		double s = Calibration.P_SAND_OUTSIDE_OUTWASH;
+		double[] values = {Calibration.P_WILLOW_POPLAR, Calibration.P_ELM_ASH, Calibration.P_ASH_ALDER, Calibration.P_ALDER_CARR,
+				Calibration.P_COASTAL_PINE, Calibration.P_MONTANE_SPRUCE, Calibration.P_MONTANE_BEECH, Calibration.P_MOUNTAIN_FLOOR,
+				Calibration.P_FOOTHILLS, Calibration.P_STEEP, Calibration.P_FLOOR_MARGIN, Calibration.P_FLOOR_MARGIN_POOR,
+				Calibration.P_DRY_CONIFEROUS, s * Calibration.P_DRY_CONIFEROUS, Calibration.P_FRESH_CONIFEROUS, s * Calibration.P_FRESH_CONIFEROUS,
+				Calibration.P_MOIST_CONIFEROUS, s * Calibration.P_MOIST_CONIFEROUS, Calibration.P_FRESH_MIXED_CONIFEROUS,
+				s * Calibration.P_FRESH_MIXED_CONIFEROUS, Calibration.P_FRESH_MIXED_BROADLEAVED, Calibration.P_MOIST_MIXED_BROADLEAVED,
+				Calibration.P_FRESH_BROADLEAVED, Calibration.P_MOIST_BROADLEAVED};
+		double b = values[0];
+		for (double v : values) {
+			b = greatest ? Math.max(b, v) : Math.min(b, v);
+		}
+		return b;
+	}
 
 	/**
 	 * Whether a column of a forest biome stays forested in the PRESENT_DAY mode: F below P_forest. Since step S8c
@@ -213,8 +245,8 @@ final class ForestCover {
 	 * coarse slope of the terrain grid, which ignores the valleys, and on a valley side the larger of two estimates: the
 	 * height above the floor margin over the distance beyond the floor edge (round 2 of the S8 review; on the sides of wide
 	 * valleys 3 to 10 times too small, decision M2-20) and, since step S8c (M2-20 variant d2), the steepness of the height
-	 * above the channels smoothed on the 64 m·k grid of the model ({@link LandscapeModel#channelReliefGradient}; too
-	 * small in narrow valleys, where the first estimate holds). Cached in the column.
+	 * above the channels smoothed on the 64 m·k grid of the model ({@link LandscapeModel#channelReliefGradient}; it
+	 * smooths sides shorter than about two nodes, where the first estimate may be larger). Cached in the column.
 	 */
 	private double gradient(HabitatClassifier.Column c) {
 		double g = c.riseGradient;
@@ -250,31 +282,97 @@ final class ForestCover {
 	 * context ({@link #withContext}) and the floor margin ({@link #floorMargin}).
 	 */
 	private double dryLand(HabitatClassifier.Column c) {
-		Fertility own = c.fertility();
+		// The inland dune landform forces the coniferous class and the dry site in the classifier, a step of P_forest of
+		// about 0.6 along the dune contour (straight edges of 200 blocks in GAMEPLAY, round 1 of the S8c review): the
+		// mask takes the class without the landform and blends towards the coniferous one by the dune weight.
+		Fertility own = c.t.has(Landform.INLAND_DUNES) ? Fertility.withoutInlandDunes(c) : c.fertility();
 		Fertility[] other = new Fertility[1];
 		double wOther = Fertility.blend(c, Calibration.P_FERTILITY_BAND, other);
 		double d = jitteredDgw(c);
-		double p = zonal(c, own, d);
+		double duneHeight = shiftedDuneHeight(c);
+		double dune = inlandDune(c, duneHeight);
+		double p = zonal(c, own, d, dune);
 		double fertile = own == Fertility.MESOTROPHIC || own == Fertility.EUTROPHIC ? 1 : 0;
 		if (wOther > 0) {
-			p = Noise.lerp(wOther, p, zonal(c, other[0], d));
+			p = Noise.lerp(wOther, p, zonal(c, other[0], d, dune));
 			fertile = Noise.lerp(wOther, fertile, other[0] == Fertility.MESOTROPHIC || other[0] == Fertility.EUTROPHIC ? 1 : 0);
+		}
+		if (dune > 0) {
+			p = Noise.lerp(dune, p, zonal(c, Fertility.OLIGOTROPHIC, d, dune));
+			fertile = Noise.lerp(dune, fertile, 0);
 		}
 		double wm = Noise.smoothstep(Calibration.P_MOUNTAIN_W_FROM, Calibration.P_MOUNTAIN_W_TO, c.wMountains);
 		if (wm > 0) {
 			p = Noise.lerp(wm, p, mountain(c));
 		}
-		return floorMargin(c, withContext(c, p, fertile), fertile);
+		return floorMargin(c, withContext(c, p, fertile, duneHeight), fertile);
+	}
+
+	/**
+	 * Dune height of the outwash plain (m, {@link LandscapeModel#inlandDuneHeight}) read at a point moved by up to
+	 * ±{@link Calibration#P_INLAND_DUNE_SHIFT_K} m·k on each axis (context noise layers 15 and 16 of
+	 * {@link Calibration#P_EDGE_SHIFT_WAVELENGTH} m·k), for the inland dune weight ({@link #inlandDune}) and the dune
+	 * context ({@link #withContext}); 0 outside the outwash plain (weight below 0.35) and the dune fields (one noise sample).
+	 * Round 1 of the S8c review: the dunes are elongated west to east, so P_forest changing along their contours left
+	 * straight edges of 200 blocks along the dune foot; the moved point makes the edge wind around it.
+	 */
+	private double shiftedDuneHeight(HabitatClassifier.Column c) {
+		if (c.wOutwashPlain <= 0.35 || !model.inDuneField(c.x, c.z)) {
+			return 0;
+		}
+		double shift = Calibration.P_INLAND_DUNE_SHIFT_K * k;
+		return model.inlandDuneHeight(c.x + shift * context(c, 15, Calibration.P_EDGE_SHIFT_WAVELENGTH),
+				c.z + shift * context(c, 16, Calibration.P_EDGE_SHIFT_WAVELENGTH));
+	}
+
+	/**
+	 * Weight 0–1 of the inland dunes (round 1 of the S8c review): the classifier's {@link Landform#INLAND_DUNES} landform
+	 * (coniferous class, dry site) steps at a dune height of {@link LandscapeModel#INLAND_DUNES_HEIGHT} m, a step of
+	 * P_forest of about 0.6. Here a smoothstep of the moved dune height {@code duneHeight} ({@link #shiftedDuneHeight}) over
+	 * the threshold ± {@link Calibration#P_INLAND_DUNE_BAND} m, times the outwash plain weight as in {@link #withContext}.
+	 */
+	private static double inlandDune(HabitatClassifier.Column c, double duneHeight) {
+		if (duneHeight <= 0) {
+			return 0;
+		}
+		return Noise.smoothstep(0.35, 0.65, c.wOutwashPlain) * Noise.smoothstep(LandscapeModel.INLAND_DUNES_HEIGHT - Calibration.P_INLAND_DUNE_BAND,
+				LandscapeModel.INLAND_DUNES_HEIGHT + Calibration.P_INLAND_DUNE_BAND, duneHeight);
+	}
+
+	/**
+	 * Weight 0–1 of the dry site on poor sand at the jittered DGW {@code d} (round 1 of the S8c review): the classifier's
+	 * {@link Moisture#DRY} (sand, DGW above {@link Calibration#DGW_DRY}, and an inland dune, a dune of
+	 * {@link Calibration#DRY_DUNE} m or a convexity above {@link Calibration#DRY_CONVEXITY} m) as a product of smoothsteps
+	 * over the DGW band of {@link #zonal} and the bands {@link Calibration#P_DRY_DUNE_BAND} and
+	 * {@link Calibration#P_DRY_CONVEXITY_BAND}, with the inland dune weight {@code dune}.
+	 */
+	private double dry(HabitatClassifier.Column c, double d, double dune) {
+		if (c.substrate != Substrate.SAND) {
+			return 0;
+		}
+		double band = Calibration.P_DGW_BAND + rise(c, Calibration.P_EDGE_WIDTH_K);
+		double wet = Noise.smoothstep(Calibration.DGW_DRY - band, Calibration.DGW_DRY + band, d);
+		if (wet <= 0) {
+			return 0;
+		}
+		double form = Math.max(dune, Math.max(
+				Noise.smoothstep(Calibration.DRY_DUNE - Calibration.P_DRY_DUNE_BAND, Calibration.DRY_DUNE + Calibration.P_DRY_DUNE_BAND, c.t.duneHeight()),
+				Noise.smoothstep(Calibration.DRY_CONVEXITY - Calibration.P_DRY_CONVEXITY_BAND,
+						Calibration.DRY_CONVEXITY + Calibration.P_DRY_CONVEXITY_BAND, c.concavity())));
+		return wet * form;
 	}
 
 	/**
 	 * Zonal P_forest of the fertility {@code t} at the jittered DGW {@code d}: the fresh and the moist site type blend over
 	 * DGW_FRESH ± the band (P_DGW_BAND plus the rise over {@link Calibration#P_EDGE_WIDTH_K} m); on fertile sites the
 	 * moist side blends down to the alder carr ({@link #moistSide}). Sands get the factor outside the outwash plain, the
-	 * foothills the farmland P_forest of their gentle slopes.
+	 * foothills the farmland P_forest of their gentle slopes. The coniferous class blends its fresh and dry site by
+	 * {@link #dry} (since round 1 of the S8c review; before, the classifier's moisture class stepped there).
 	 */
-	private double zonal(HabitatClassifier.Column c, Fertility t, double d) {
-		double fresh = table(ForestSiteType.zonal(t, c.moisture() == Moisture.DRY ? Moisture.DRY : Moisture.FRESH));
+	private double zonal(HabitatClassifier.Column c, Fertility t, double d, double dune) {
+		double fresh = t == Fertility.OLIGOTROPHIC
+				? Noise.lerp(dry(c, d, dune), Calibration.P_FRESH_CONIFEROUS, Calibration.P_DRY_CONIFEROUS)
+				: table(ForestSiteType.zonal(t, Moisture.FRESH));
 		double moist = table(ForestSiteType.zonal(t, Moisture.MOIST));
 		double band = Calibration.P_DGW_BAND + rise(c, Calibration.P_EDGE_WIDTH_K);
 		double w = Noise.smoothstep(Calibration.DGW_FRESH - band, Calibration.DGW_FRESH + band, d);
@@ -366,15 +464,16 @@ final class ForestCover {
 	 * 1 − {@link Calibration#P_VALLEY_SIDE_STRETCHES} ± {@link Calibration#P_VALLEY_SIDE_BREAK_BLEND}), so forested valley
 	 * sides are not continuous belts of constant width on both sides of every valley.
 	 */
-	private double withContext(HabitatClassifier.Column c, double p, double fertile) {
+	private double withContext(HabitatClassifier.Column c, double p, double fertile, double duneHeight) {
 		boolean gameplay = c.classifier.gameplay;
 		double steep = Noise.smoothstep(gameplay ? Calibration.P_SLOPE_FROM_GAMEPLAY : Calibration.P_SLOPE_FROM,
 				gameplay ? Calibration.P_SLOPE_TO_GAMEPLAY : Calibration.P_SLOPE_TO, c.slope);
 		if (c.t.has(Landform.END_MORAINE)) {
 			steep = Math.max(steep, Calibration.P_MORAINE_DUNE);
 		}
-		// Inland dunes by the dune height (round 2 of the S8 review: the INLAND_DUNES flag stepped at 4 m).
-		double dunes = Noise.smoothstep(Calibration.P_DUNE_FROM, Calibration.P_DUNE_TO, c.t.duneHeight())
+		// Inland dunes by the dune height (round 2 of the S8 review: the INLAND_DUNES flag stepped at 4 m), since round 1 of
+		// the S8c review read at the moved point of the dune weight (the dune contours are long west-east lines).
+		double dunes = Noise.smoothstep(Calibration.P_DUNE_FROM, Calibration.P_DUNE_TO, duneHeight)
 				* Noise.smoothstep(0.35, 0.65, c.wOutwashPlain);
 		steep = Math.max(steep, dunes * Calibration.P_MORAINE_DUNE);
 		if (fertile > 0 && c.w.streamOrder() > 0 && !c.onValleyFloor() && !c.s.hasWater()) {

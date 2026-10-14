@@ -58,6 +58,38 @@ class ChannelReliefFieldTest {
 		return Math.max(Double.isNaN(a) ? 0 : Math.abs(v - a), Double.isNaN(b) ? 0 : Math.abs(b - v));
 	}
 
+	/**
+	 * A point inside cell (cx, cz) at fractions (0.3, 0.7) is the bilinear blend of the four nodes computed from samples, on
+	 * a fresh grid (the cell path) and on the model's grid (the tile path).
+	 */
+	private static void checkCell(LandscapeModel m, long cx, long cz, double g) {
+		double fx = 0.3;
+		double fz = 0.7;
+		double e00 = expectedNode(m, cx, cz, g);
+		double e10 = expectedNode(m, cx + 1, cz, g);
+		double e01 = expectedNode(m, cx, cz + 1, g);
+		double e11 = expectedNode(m, cx + 1, cz + 1, g);
+		double expected = (1 - fx) * (1 - fz) * e00 + fx * (1 - fz) * e10 + (1 - fx) * fz * e01 + fx * fz * e11;
+		double x = (cx + fx) * g;
+		double z = (cz + fz) * g;
+		ChannelReliefField fresh = new ChannelReliefField(m, g);
+		assertEquals(expected, fresh.gradient(x, z), 1e-6 * Math.max(1, expected), "bilinear, cell path, at " + x + "," + z);
+		assertEquals(expected, m.channelReliefGradient(x, z), 1e-6 * Math.max(1, expected), "bilinear, tile path, at " + x + "," + z);
+	}
+
+	/** Steepness at node (ix, iz) by the formula of the grid, from samples: 0 without a value at the node. */
+	private static double expectedNode(LandscapeModel m, long ix, long iz, double g) {
+		double x = ix * g;
+		double z = iz * g;
+		double v = above(m, x, z);
+		if (Double.isNaN(v)) {
+			return 0;
+		}
+		double gx = steeper(v, above(m, x - g, z), above(m, x + g, z));
+		double gz = steeper(v, above(m, x, z - g), above(m, x, z + g));
+		return (float) (Math.hypot(gx, gz) / g);
+	}
+
 	/** At a node the value is the steeper one-sided difference of the samples on each axis, 0 without a watercourse. */
 	@Test
 	void nodeValuesComeFromSamples() {
@@ -92,6 +124,60 @@ class ChannelReliefFieldTest {
 			}
 			System.out.println(String.format(Locale.ROOT, "[channel relief] %s: %d nodes with a value, %d without a watercourse", scale.id(), values, nan));
 			assertTrue(values > 50, "too few nodes with a watercourse: " + values);
+		}
+	}
+
+	/**
+	 * At the edge of the reach of the river network (a node with a value next to one without, found along 8 directions from
+	 * each site, up to 600 nodes) the nodes follow the formula with the missing neighbors (round 1 of the S8c review: in
+	 * REAL the nodes of {@link #nodeValuesComeFromSamples} all have a value, and so does every node along 38 km from the
+	 * sites, so this part runs in GAMEPLAY), and a point inside those cells and four cells near each site is the bilinear
+	 * blend of its four nodes computed here from samples ({@link #checkCell}).
+	 */
+	@Test
+	void reachEdgeNodesAndInterpolation() {
+		for (LandscapeScale scale : SCALES) {
+			LandscapeModel m = new LandscapeModel(SEED, scale, 1.0);
+			double g = m.channelRelief().spacing();
+			int edges = 0;
+			int cells = 0;
+			for (double[] site : sites(m)) {
+				for (int dir = 0; dir < 8; dir++) {
+					int dx = new int[] {1, 1, 0, -1, -1, -1, 0, 1}[dir];
+					int dz = new int[] {0, 1, 1, 1, 0, -1, -1, -1}[dir];
+					long ix = Math.round(site[0] / g);
+					long iz = Math.round(site[1] / g);
+					boolean prev = Double.isNaN(above(m, ix * g, iz * g));
+					for (int step = 1; step <= 600; step++) {
+						long jx = ix + (long) dx * step;
+						long jz = iz + (long) dz * step;
+						boolean none = Double.isNaN(above(m, jx * g, jz * g));
+						if (none == prev) {
+							continue;
+						}
+						edges++;
+						// The node with a value, its neighbor without one, and the cells between them.
+						long px = jx - dx;
+						long pz = jz - dz;
+						for (long[] node : new long[][] {{jx, jz}, {px, pz}}) {
+							double expected = expectedNode(m, node[0], node[1], g);
+							double got = m.channelReliefGradient(node[0] * g, node[1] * g);
+							assertEquals(expected, got, 1e-6 * Math.max(1, expected), "reach edge node " + node[0] + "," + node[1] + " (" + scale.id() + ")");
+						}
+						checkCell(m, Math.min(jx, px), Math.min(jz, pz), g);
+						cells++;
+						break;
+					}
+				}
+				// Cells near the site too (in REAL every node within tens of kilometers has a watercourse in reach).
+				for (int i = 0; i < 4; i++) {
+					checkCell(m, Math.round(site[0] / g) + 3 * i - 5, Math.round(site[1] / g) - 2 * i + 3, g);
+					cells++;
+				}
+			}
+			System.out.println(String.format(Locale.ROOT, "[channel relief] %s: %d reach edges, %d interpolated cells checked", scale.id(), edges, cells));
+			// REAL: the river network reaches every land node along 38 km from the sites (0 found), so only GAMEPLAY has them.
+			assertTrue(scale == LandscapeScale.REALISTIC || edges >= 4, "too few edges of the river network reach found: " + edges + " (" + scale.id() + ")");
 		}
 	}
 
@@ -141,9 +227,11 @@ class ChannelReliefFieldTest {
 	/**
 	 * On valley sides (stream in reach, off the water, 2–15 m above the soft channel level, local steepness of the height
 	 * above the channels at least 0.03 from central differences of samples 4 m apart) the grid gives at least a third of
-	 * the local steepness at 85% (REAL) and 70% (GAMEPLAY, narrower valleys) of the points; the median ratio lies in
-	 * 0.6–2.5. Before step S8c the estimate from the distance to the channel was at least 3 times too small at 74% of the
-	 * edges on moisture ramps (REAL).
+	 * the local steepness at 92% (REAL) and 95% (GAMEPLAY) of the points (measured 95.0% and 99.6%; round 1 of the S8c
+	 * review raised the limits from 85% and 70%, and GAMEPLAY does not get too small values more often than REAL), the
+	 * median ratio lies in 0.6–2.5 and the 90th percentile at most 2.5 (the steeper one-sided difference at the valley
+	 * shoulders overestimates; measured REAL 2.14). Before step S8c the estimate from the distance to the channel was at
+	 * least 3 times too small at 74% of the edges on moisture ramps (REAL).
 	 */
 	@Test
 	void valleySidesGetTheirSteepness() {
@@ -180,8 +268,10 @@ class ChannelReliefFieldTest {
 					scale.id(), n, median, ratio.get(n / 10), ratio.get(9 * n / 10), third));
 			boolean real = scale == LandscapeScale.REALISTIC;
 			assertTrue(n > 300, "too few valley side points: " + n);
-			assertTrue(third >= (real ? 0.85 : 0.70), "grid steepness below a third of the local one too often: " + third + " (" + scale.id() + ")");
+			assertTrue(third >= (real ? 0.92 : 0.95), "grid steepness below a third of the local one too often: " + third + " (" + scale.id() + ")");
 			assertTrue(median >= 0.6 && median <= 2.5, "median ratio " + median + " (" + scale.id() + ")");
+			double p90 = ratio.get(9 * n / 10);
+			assertTrue(p90 <= 2.5, "grid steepness overestimated: 90th percentile of the ratio " + p90 + " (" + scale.id() + ")");
 		}
 	}
 }

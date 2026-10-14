@@ -414,6 +414,13 @@ public final class Calibration {
 	/** Round 2 of the S8 review: the inland dune context grows with the dune height from P_DUNE_FROM to P_DUNE_TO m. */
 	public static final double P_DUNE_FROM = 2, P_DUNE_TO = 6;
 	/**
+	 * Round 1 of the S8c review: the inland dune landform (coniferous class, dry site) as a weight in the mask. Half-width
+	 * (m) of the blend over the dune height around the landform threshold, and the shift (m·k) of the point where the dune
+	 * height is read; half-widths (m) of the dry site blends over the dune height and the convexity around
+	 * {@link #DRY_DUNE} and {@link #DRY_CONVEXITY}.
+	 */
+	public static final double P_INLAND_DUNE_BAND = 3, P_INLAND_DUNE_SHIFT_K = 60, P_DRY_DUNE_BAND = 1, P_DRY_CONVEXITY_BAND = 0.5;
+	/**
 	 * Round 2 of the S8 review: P_forest in the mountains by altitude, blended in by the mountain weight from W_FROM to
 	 * W_TO; P_FOOTHILLS below H_FROM m, P_MONTANE_BEECH at H_TO m, P_MONTANE_SPRUCE above the upper montane belt, the
 	 * altitude jittered by ±H_JITTER m.

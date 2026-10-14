@@ -39,11 +39,19 @@ import pl.polishforests.worldgen.surface.ChunkSurface;
  * (150034, 734, 1049784), yaw −36.9°, pitch 34.9°; screenshot {@code s8c_straight_edge_realistic}) and a view straight
  * down from 130 blocks above (150110, 1049800), north at the top ({@code s8c_straight_edge_top_realistic}); in
  * {@code docs/m2/gra/} the files are named {@code s8c_straight_edge[_top]_realistic_before.png} and {@code _after.png}.
+ *
+ * <p>Round 1 of the S8c review: the site {@value #DUNE_EDGE} (gameplay scale, PRESENT_DAY mode) looks at the field north of
+ * an inland dune whose forest edge was a straight line of about 211 blocks from (11354, −6951) to (11565, −6957): straight
+ * down from 160 blocks above (11448, −6952), north at the top ({@code s8c_r1_dune_edge_top_gameplay}), and along the
+ * edge from its west end, 12 blocks above the ground, looking east ({@code s8c_r1_dune_edge_along_gameplay}); in
+ * {@code docs/m2/gra/} with {@code _before.png} and {@code _after.png}.
  */
 public final class EcotoneClientGameTest implements FabricClientGameTest {
 	private static final String SEED = "20260927";
 	/** Site name of the view of the S10 review (step S8c). */
 	private static final String STRAIGHT_EDGE = "straight_edge_present_day";
+	/** Site name of the inland dune edge of round 1 of the S8c review. */
+	private static final String DUNE_EDGE = "dune_edge_present_day";
 	private static final int RENDER_DISTANCE = 10;
 
 	/**
@@ -88,6 +96,7 @@ public final class EcotoneClientGameTest implements FabricClientGameTest {
 					PolishForests.id(real ? "poland" : "poland_gameplay"));
 			for (boolean presentDay : new boolean[] {false, true}) {
 				boolean wanted = presentDay && real && (only.isBlank() || java.util.List.of(only.split(",")).contains(STRAIGHT_EDGE));
+				wanted |= presentDay && !real && (only.isBlank() || java.util.List.of(only.split(",")).contains(DUNE_EDGE));
 				for (Border b : BORDERS) {
 					wanted |= b.presentDay() == presentDay && (only.isBlank() || java.util.List.of(only.split(",")).contains(b.name()));
 				}
@@ -122,6 +131,12 @@ public final class EcotoneClientGameTest implements FabricClientGameTest {
 						// Straight down from 130 blocks above (150110, 1049800), north at the top: compare with the mask map.
 						int top = sp.getServer().computeOnServer(s -> groundY(s, 150_110, 1_049_800)) + 130;
 						fixed(context, sp, 150_110, top, 1_049_800, 180, 90, "s8c_straight_edge_top_" + scale.getSerializedName());
+					}
+					if (presentDay && !real && (only.isBlank() || java.util.List.of(only.split(",")).contains(DUNE_EDGE))) {
+						int top = sp.getServer().computeOnServer(s -> groundY(s, 11_448, -6_952)) + 160;
+						fixed(context, sp, 11_448, top, -6_952, 180, 90, "s8c_r1_dune_edge_top_" + scale.getSerializedName());
+						int low = sp.getServer().computeOnServer(s -> clear(s, 11_330, groundY(s, 11_330, -6_946) + 12, -6_946));
+						fixed(context, sp, 11_330, low, -6_946, -90, 12, "s8c_r1_dune_edge_along_" + scale.getSerializedName());
 					}
 				}
 			}

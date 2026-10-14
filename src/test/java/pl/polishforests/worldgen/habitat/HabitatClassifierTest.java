@@ -71,6 +71,15 @@ class HabitatClassifierTest {
 		assertEquals(6, EnumSet.allOf(HabitatBiome.class).stream().filter(HabitatBiome::isWater).count());
 	}
 
+	/** A model of another seed is refused (round 1 of the S8c review: its grids would describe another world). */
+	@Test
+	void modelWithAnotherSeedIsRefused() {
+		LandscapeModel other = new LandscapeModel(SEED + 1, LandscapeScale.GAMEPLAY, 1.0);
+		for (HabitatClassifier.Mode mode : HabitatClassifier.Mode.values()) {
+			org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class, () -> new HabitatClassifier(SEED, other, mode));
+		}
+	}
+
 	/**
 	 * The same codes serially and in parallel on a second model (in reverse order), in both modes: the PRESENT_DAY mask
 	 * reads the grid of the height above the channels of its model (step S8c), which each model fills in its own order.

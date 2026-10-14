@@ -17,9 +17,11 @@ import java.util.concurrent.atomic.AtomicLongArray;
  * (the caller takes the larger of it and its estimate from the distance to the channel, so 0 changes nothing).
  *
  * <p>Unlike {@link CoarseTerrainField} (the terrain without valleys) the grid sees the valley sides: on the side of a wide
- * valley the estimate from the distance to the channel was 3 to 10 times too small (decision M2-20). Narrow valleys
- * (sides shorter than about two node spacings, mostly in GAMEPLAY) still get too small a value; the caller takes the
- * larger of both estimates.
+ * valley the estimate from the distance to the channel was 3 to 10 times too small (decision M2-20). A side shorter than
+ * about two node spacings is smoothed, but measured on valley sides the grid gives at least a third of the local
+ * steepness at 95% (REAL) and 99.6% (GAMEPLAY) of the points ({@code ChannelReliefFieldTest}); at the valley shoulders the
+ * steeper one-sided difference overestimates (90th percentile of the ratio about 2). The caller takes the larger of this
+ * and its estimate from the distance to the channel.
  *
  * <p>Tiles of 8 × 8 cells (9 × 9 nodes from 11 × 11 raw nodes, the corners unused) live in a lock-free
  * {@link DirectCache}. A tile costs 117 samples of the model, about 0.12 samples per chunk in REAL (a tile covers 1024

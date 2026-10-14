@@ -37,9 +37,13 @@ public final class LandscapeModel {
 	private static final double GULLY_MEAN = 0.52;
 	/** Number of bins of the noise CDF table (sandiness quantiles). */
 	private static final int CDF_BINS = 512;
+	/** Inland dunes: the {@link Landform#INLAND_DUNES} landform where the outwash plain dominates and the dune is higher (m). */
+	public static final double INLAND_DUNES_HEIGHT = 4;
 	/** CDF of the values of {@link Noise#sample} on [-1, 1], computed once from a fixed seed. */
 	private static final double[] NOISE_CDF = noiseCdf();
 
+	/** World seed the noises derive from (the habitat classifier checks it, round 1 of the S8c review). */
+	private final long seed;
 	private final LandscapeScale scale;
 	private final double regionScale;
 	private final double regionSize;
@@ -174,6 +178,7 @@ public final class LandscapeModel {
 		if (!(regionScale > 0.01 && regionScale <= 4.0)) {
 			throw new IllegalArgumentException("regionScale out of range (0.01, 4]: " + regionScale);
 		}
+		this.seed = seed;
 		this.scale = scale;
 		this.regionScale = regionScale;
 		this.regionSize = scale.regionSize() * regionScale;
@@ -227,6 +232,11 @@ public final class LandscapeModel {
 
 	public double regionScale() {
 		return regionScale;
+	}
+
+	/** World seed of the model. */
+	public long seed() {
+		return seed;
 	}
 
 	public LandscapeScale scale() {
@@ -1195,6 +1205,21 @@ public final class LandscapeModel {
 		return tilt + ripple + dune;
 	}
 
+	/**
+	 * Dune height of the outwash plain relief at any point (m, before the compression near the sea): the height that the
+	 * {@link Landform#INLAND_DUNES} landform compares with {@link #INLAND_DUNES_HEIGHT}, 0 outside the dune fields. For the
+	 * PRESENT_DAY forest mask, which reads it at points moved along the dune foot instead of stepping at the landform
+	 * (round 1 of the S8c review); not a field of {@link #sample}.
+	 */
+	public double inlandDuneHeight(double x, double z) {
+		return duneHeight(x, z);
+	}
+
+	/** Whether the point lies in an inland dune field (the dune height may still be 0 between the dunes). */
+	public boolean inDuneField(double x, double z) {
+		return dunes.at(x, z, 18_000 * meso) > 0.15;
+	}
+
 	/** Dune height above the outwash plain surface (0 outside dune fields). */
 	private double duneHeight(double x, double z) {
 		double field = Noise.smoothstep(0.15, 0.45, dunes.at(x, z, 18_000 * meso));
@@ -1865,7 +1890,7 @@ public final class LandscapeModel {
 				landformBits |= Landform.COASTAL_DUNES.bit();
 			}
 		}
-		if (dominant == LandscapeType.OUTWASH_PLAIN && parts.duneHeight > 4) {
+		if (dominant == LandscapeType.OUTWASH_PLAIN && parts.duneHeight > INLAND_DUNES_HEIGHT) {
 			landformBits |= Landform.INLAND_DUNES.bit();
 		}
 		if (dominant == LandscapeType.MORAINE_PLATEAU && parts.moraineRidgeHeight > 25) {

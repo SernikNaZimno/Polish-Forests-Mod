@@ -64,9 +64,18 @@ public final class HabitatClassifier {
 	 * Classifier for samples of {@code model}, which must have been created with the same {@code seed}; the scale is the
 	 * model's. In the PRESENT_DAY mode the forest mask reads {@link LandscapeModel#channelReliefGradient} (step S8c,
 	 * decision M2-20 variant d2).
+	 *
+	 * @throws IllegalArgumentException when the model has another seed (its grids would describe another world)
 	 */
 	public HabitatClassifier(long seed, LandscapeModel model, Mode mode) {
-		this(seed, model.scale(), mode, model);
+		this(seed, model.scale(), mode, checkSeed(seed, model));
+	}
+
+	private static LandscapeModel checkSeed(long seed, LandscapeModel model) {
+		if (model.seed() != seed) {
+			throw new IllegalArgumentException("the landscape model has the seed " + model.seed() + ", the classifier " + seed);
+		}
+		return model;
 	}
 
 	private HabitatClassifier(long seed, LandscapeScale scale, Mode mode, LandscapeModel model) {

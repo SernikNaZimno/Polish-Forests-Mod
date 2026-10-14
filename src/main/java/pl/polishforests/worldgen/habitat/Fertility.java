@@ -16,11 +16,24 @@ public enum Fertility {
 	OLIGOTROPHIC, OLIGO_MESOTROPHIC, MESOTROPHIC, EUTROPHIC;
 
 	static Fertility compute(HabitatClassifier.Column c) {
+		return compute(c, c.t.has(Landform.INLAND_DUNES));
+	}
+
+	/**
+	 * The class of {@link #compute} as if the column had no {@link Landform#INLAND_DUNES} landform: for the PRESENT_DAY
+	 * forest mask, which blends across the dune landform by the dune height instead of stepping at it (round 1 of the S8c
+	 * review). The classifier keeps {@link #compute}.
+	 */
+	static Fertility withoutInlandDunes(HabitatClassifier.Column c) {
+		return compute(c, false);
+	}
+
+	private static Fertility compute(HabitatClassifier.Column c, boolean inlandDunes) {
 		Substrate sub = c.substrate;
 		// Inland and coastal dunes (on sand): coniferous. Beyond them the coastal belt works through the COASTLAND
 		// shares (70% B) weighted by wCoastland, so the boundary is not a straight line along the shore.
 		boolean sandSubstrate = sub == Substrate.SAND || sub == Substrate.BEACH_SAND;
-		if (c.t.has(Landform.INLAND_DUNES) || c.t.has(Landform.COASTAL_DUNES) && sandSubstrate || sub == Substrate.BEACH_SAND) {
+		if (inlandDunes || c.t.has(Landform.COASTAL_DUNES) && sandSubstrate || sub == Substrate.BEACH_SAND) {
 			return OLIGOTROPHIC;
 		}
 		// Alluvium on valley floors: L, except for valleys in sandy regions (there the floor gets the region's fertility);
@@ -61,18 +74,19 @@ public enum Fertility {
 	 * richness threshold within ±{@code band} of r, with its weight (0.5 at the threshold, 0 at the band edge), so
 	 * P_forest is continuous across the fertility boundaries. The threshold is the one {@link #compute} uses (the same
 	 * jitter noise; sampled within the jitter range plus the band, so the weight is continuous), and the class on the
-	 * column's side is the one {@link #compute} returns. Dunes, beach sand and fertile alluvium have no blend (their
-	 * class does not come from r).
+	 * column's side is the one {@link #withoutInlandDunes} returns. Coastal dunes, beach sand and fertile alluvium have no
+	 * blend (their class does not come from r). The inland dune landform is ignored (round 1 of the S8c review): the mask
+	 * blends towards the coniferous class of the dunes by the dune height itself.
 	 *
 	 * @return the weight of the other class, or 0; the other class is written into {@code other[0]}
 	 */
 	static double blend(HabitatClassifier.Column c, double band, Fertility[] other) {
 		Substrate sub = c.substrate;
 		boolean sandSubstrate = sub == Substrate.SAND || sub == Substrate.BEACH_SAND;
-		if (c.t.has(Landform.INLAND_DUNES) || c.t.has(Landform.COASTAL_DUNES) && sandSubstrate || sub == Substrate.BEACH_SAND) {
+		if (c.t.has(Landform.COASTAL_DUNES) && sandSubstrate || sub == Substrate.BEACH_SAND) {
 			return 0;
 		}
-		if (sub == Substrate.ALLUVIUM && c.fertility() == EUTROPHIC) {
+		if (sub == Substrate.ALLUVIUM && (c.t.has(Landform.INLAND_DUNES) ? withoutInlandDunes(c) : c.fertility()) == EUTROPHIC) {
 			return 0;
 		}
 		double sandiness = c.t.sandiness();
