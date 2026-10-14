@@ -93,8 +93,8 @@ public final class PerformanceClientGameTest implements FabricClientGameTest {
 			// Wait until the client has loaded 90% of the chunks within render distance (at most 4 minutes).
 			int target = (int) (0.9 * (2 * RENDER_DISTANCE + 1) * (2 * RENDER_DISTANCE + 1));
 			int loaded = 0;
-			for (int i = 0; i < 240 && loaded < target; i++) {
-				context.waitTicks(20);
+			for (int i = 0; i < 2400 && loaded < target; i++) {
+				context.waitTicks(2);
 				loaded = context.computeOnClient(mc -> mc.level.getChunkSource().getLoadedChunksCount());
 			}
 			double loadSeconds = (System.nanoTime() - t0) / 1e9;

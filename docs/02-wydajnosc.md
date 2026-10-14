@@ -1,6 +1,6 @@
 # Wydajność i zalecana paczka modów
 
-Stan: 2026-09-29. Pomiary z testów w grze (`./gradlew runClientGameTest -Pgametest=performance`), to samo ziarno, zasięg widzenia 12 chunków, okno 854 × 480, kamera 30 bloków nad lasem 4,2 km od startu.
+Stan: 2026-09-29, uzupełniony po M2 (2026-10-14). Pomiary z testów w grze (`./gradlew runClientGameTest -Pgametest=performance`), to samo ziarno, zasięg widzenia 12 chunków, okno 854 × 480, kamera 30 bloków nad lasem 4,2 km od startu.
 
 ## Skąd bierze się obciążenie
 
@@ -25,6 +25,18 @@ Wnioski:
 - **Skala rozgrywki wczytuje się szybciej** niż rzeczywista, bo świat jest niższy i ma mniej sekcji do wygenerowania i oświetlenia.
 - **FPS w skali rozgrywki wyszły niższe.** Kamera w tym trybie widzi więcej drzew i rzeźby, bo krajobrazy są gęściej upakowane, więc to nie jest porównanie tej samej sceny. Przy Sodium wysokość świata ma już niewielki wpływ na FPS.
 
+### Po M2 (krok S10, 2026-10-14)
+
+Ten sam pomiar wczytania nowego terenu (`-Pgametest=performance`) z zalecaną paczką. M1 pochodzi z migawki `migawki/m1-z-narzedziami-S0.tar`, po 3 przebiegi na przemian w jednej sesji, a klienta sprawdzaliśmy co 2 ticki. Liczba to czas, po którym klient ma 90% z 625 chunków, w nawiasie mediana chunków na sekundę.
+
+| Świat | M1 z paczką | M2 z paczką | M2 / M1 (chunki na s) |
+|---|---|---|---|
+| wanilia (kontrola) | 1,5–1,7 s | 1,7–1,9 s | – |
+| Polska, skala rzeczywista | 3,9–4,7 s (128) | 4,1–4,2 s (137) | 1,07 |
+| Polska, skala rozgrywki | 3,6–3,8 s (154) | 3,0–3,3 s (178) | 1,16 |
+
+M2 z 36 biomami, glebami, półką brzegową i roślinnością wczytuje się z paczką co najmniej tak szybko jak M1 (cel S10: ≥ 0,9 × M1). Czasy etapów generacji chunka, budżety M2 i determinizm z C2ME i bez niego opisuje `docs/03-m2-biomy.md` §12.5. Teren i dekoracja przy jednej kolejności generacji są identyczne z C2ME i bez niego. Przy zwykłej, wielowątkowej generacji drzewa i rośliny na granicach chunków zależą od kolejności, jak w wanilii.
+
 ### Zmiany w samym modzie
 
 | Zmiana | Efekt |
@@ -33,6 +45,7 @@ Wnioski:
 | Sekcje jednolite zapisywane jedną wartością, mieszane pakowane od razu do palety | etap terenu ok. 13 razy szybszy niż w pierwszej wersji |
 | Decyzja o istnieniu oczka liczona raz na oczko i buforowana | mniej obliczeń w strefach oczek |
 | Komendy szukające terenu działają w tle | serwer nie zacina się podczas wyszukiwania |
+| Głębokie sekcje jednej skały zapisywane jedną wartością palety bez wyboru materiału blok po bloku (M2, S10) | wypełnianie terenu o 10–30% tańsze, etap TERRAIN całego obszaru 1,01–1,07 × M1 |
 
 ### Znane problemy
 

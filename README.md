@@ -4,7 +4,7 @@
 
 Mod do Minecrafta 26.3 (Fabric), który generuje proceduralne krajobrazy Polski w skali 1:1 z przyrodniczo wiernymi lasami, florą i fauną oraz integracją z porami roku Serene Seasons.
 
-Stan: za nami M0, M1, skala rozgrywki oraz etap rzek, dolin i morza; trwa M2 (biomy, siedliska, gleby i temperatura), zrobiona jest faza 1 (kroki S0–S4: klasyfikator 36 biomów). Kod i teksty w grze są po angielsku (polski jako tłumaczenie), dokumentacja po polsku. Licencja: MIT. Plan i decyzje są w katalogu `docs`.
+Stan (2026-10-14): za nami M0, M1, skala rozgrywki, etap rzek, dolin i morza oraz M2 (biomy, siedliska, gleby i temperatura, kroki S0–S10). Świat ma 36 własnych biomów, strefy nadwodne, piętra Beskidów z kosodrzewiną i halą, gleby i półkę brzegową, zastępczą roślinność z płynnymi przejściami między siedliskami, tryb „dzisiejsza Polska” i komendy szukania biomów i stref. Budżety wydajności i determinizm generacji (także z C2ME) są sprawdzone. Na akceptację użytkownika czekają zrzuty punktów kontrolnych i trzy decyzje (`docs/00-decyzje-do-podjecia.md` E). Następny etap to pionowy wycinek: jeden kompletny las z drzewami, runem, martwym drewnem i kilkoma zwierzętami. Kod i teksty w grze są po angielsku (polski jako tłumaczenie), dokumentacja po polsku. Licencja: MIT. Plan i decyzje są w katalogu `docs`.
 
 ## Dokumentacja
 
@@ -52,7 +52,7 @@ Renderuje model krajobrazu do `build/preview/*.png` bez uruchamiania gry i wypis
 ./gradlew runClientGameTest -Pgametest=all
 ```
 
-Uruchamia prawdziwego klienta i testy w grze, a zrzuty ekranu zapisuje do `build/run/clientGameTest/screenshots`. Zamiast `all` można podać `ui` (ekran opcji i komendy), `performance` (porównanie z wanilią), `views` (przegląd krajobrazów), `stages` (czasy etapów generacji chunka) albo `climate` (temperatura i śnieg w obu skalach). Dopisek `-Psites=beach,cliff` ogranicza widoki do wybranych miejsc (nazwy w `PolandWorldClientGameTest`).
+Uruchamia prawdziwego klienta i testy w grze, a zrzuty ekranu zapisuje do `build/run/clientGameTest/screenshots`. Zamiast `all` można podać `ui` (ekran opcji i komendy), `performance` (porównanie z wanilią), `views` (przegląd krajobrazów), `stages` (czasy etapów generacji chunka), `climate` (temperatura i śnieg w obu skalach), `habitats`, `vegetation`, `present_day` (siedliska, roślinność i tryb „dzisiejsza Polska”), `determinism` (ten sam świat z tego samego ziarna) albo `ecotones` (zrzuty granic biomów, tylko z nazwy). Dopisek `-Psites=beach,cliff` ogranicza widoki do wybranych miejsc (nazwy w `PolandWorldClientGameTest`).
 
 ```bash
 python tools/build_mrpack.py
