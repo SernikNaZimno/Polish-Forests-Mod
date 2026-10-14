@@ -21,6 +21,34 @@ import pl.polishforests.worldgen.habitat.Species;
  * @param rules rules in order
  */
 public record TreePalette(List<Rule> rules) {
+	/**
+	 * Step S9: the tree species of the first rule matching a habitat code, in rule order, as the stand grows them there:
+	 * a species with a range flag outside its range ({@link pl.polishforests.worldgen.habitat.Habitat#has}) is replaced
+	 * by its alternative or left out (for {@code /polishforests here}; ecotones and the range ramp are not considered).
+	 */
+	public List<Species> species(int code) {
+		for (Rule r : rules) {
+			if (!r.condition().match().matches(code)) {
+				continue;
+			}
+			List<Species> out = new java.util.ArrayList<>();
+			for (Entry e : r.trees()) {
+				Species s = e.species();
+				if (e.rangeRamp() && s.flag() != 0 && !pl.polishforests.worldgen.habitat.Habitat.has(code, s)) {
+					s = e.alternative().map(Alternative::species).orElse(null);
+					if (s != null && s.flag() != 0 && !pl.polishforests.worldgen.habitat.Habitat.has(code, s)) {
+						s = null;
+					}
+				}
+				if (s != null && !out.contains(s)) {
+					out.add(s);
+				}
+			}
+			return out;
+		}
+		return List.of();
+	}
+
 	public static final Codec<Species> SPECIES_CODEC = Codec.STRING.comapFlatMap(id -> Arrays.stream(Species.values())
 			.filter(s -> s.id().equals(id)).findFirst().map(DataResult::success)
 			.orElseGet(() -> DataResult.error(() -> "Unknown species: " + id)), Species::id);

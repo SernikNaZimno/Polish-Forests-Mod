@@ -6,11 +6,15 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import java.util.Arrays;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.IntPredicate;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
+import java.util.function.BooleanSupplier;
+import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
@@ -25,9 +29,14 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Util;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
+import pl.polishforests.PolishForests;
 import pl.polishforests.worldgen.chunk.PolandChunkGenerator;
 import pl.polishforests.worldgen.habitat.AltitudinalBelts;
 import pl.polishforests.worldgen.habitat.Calibration;
+import pl.polishforests.worldgen.habitat.Habitat;
+import pl.polishforests.worldgen.habitat.HabitatBiome;
+import pl.polishforests.worldgen.habitat.HabitatClassifier;
+import pl.polishforests.worldgen.habitat.Zone;
 import pl.polishforests.worldgen.landscape.ColumnSample;
 import pl.polishforests.worldgen.landscape.LandscapeModel;
 import pl.polishforests.worldgen.landscape.LandscapeScale;
@@ -40,10 +49,13 @@ import pl.polishforests.worldgen.landscape.WaterKind;
  * Diagnostic commands of the "Poland" world:
  * <ul>
  * <li>{@code /polishforests find <target>} – the nearest landscape type or landform;</li>
+ * <li>{@code /polishforests find biome <id>} and {@code find zone <id>} (step S9) – the nearest biome or zone of the
+ * habitat classifier ({@link HabitatTargets});</li>
  * <li>{@code /polishforests elevation <from> <to>} – the nearest terrain with an elevation in the given range (m a.s.l.);</li>
  * <li>{@code /polishforests highest [radius_km]} – the highest point in the area;</li>
  * <li>{@code /polishforests list} – available targets;</li>
- * <li>{@code /polishforests here} – description of the terrain at the player's position.</li>
+ * <li>{@code /polishforests here} – description of the terrain at the player's position and (step S9) its habitat
+ * ({@link HabitatInfo}).</li>
  * </ul>
  */
 public final class PolishForestsCommands {
@@ -79,7 +91,10 @@ public final class PolishForestsCommands {
 		TUNNEL_VALLEY_LAKE(Kind.WATER, true, false,
 				d -> d.sample().waterKind() == WaterKind.LAKE && d.sample().hasWater()),
 		KETTLE_POND(Kind.WATER, true, false, d -> d.sample().waterKind() == WaterKind.KETTLE && d.sample().hasWater()),
-		PEATLAND(Kind.WATER, true, false, d -> d.sample().substrate() == Substrate.PEAT),
+		// Step S9: the peatland from the habitat (raised bog, fen and transition mire), not from the peat substrate of the
+		// model, which also lies under bog woodlands and alder carrs.
+		PEATLAND(Kind.WATER, code -> Habitat.biome(code) == HabitatBiome.RAISED_BOG || Habitat.biome(code) == HabitatBiome.FEN,
+				true),
 		STREAM(Kind.WATER, true, true, d -> d.forms().contains(Landform.STREAM)),
 		HEADWATERS(Kind.WATER, true, true, d -> d.forms().contains(Landform.HEADWATERS)),
 		OXBOW_LAKE(Kind.WATER, true, false, d -> d.sample().waterKind() == WaterKind.OXBOW && d.sample().hasWater()),
@@ -108,6 +123,8 @@ public final class PolishForestsCommands {
 		final boolean forms;
 		final boolean coastal;
 		final Predicate<LandscapeModel.Description> test;
+		/** Step S9: a test on the habitat code of the column instead of the terrain description (null: none). */
+		final IntPredicate habitat;
 
 		Target(Kind kind, boolean fine, boolean forms, Predicate<LandscapeModel.Description> test) {
 			this(kind, fine, forms, false, test);
@@ -119,6 +136,16 @@ public final class PolishForestsCommands {
 			this.forms = forms;
 			this.coastal = coastal;
 			this.test = test;
+			this.habitat = null;
+		}
+
+		Target(Kind kind, IntPredicate habitat, boolean fine) {
+			this.kind = kind;
+			this.fine = fine;
+			this.forms = false;
+			this.coastal = false;
+			this.test = d -> false;
+			this.habitat = habitat;
 		}
 
 		public String id() {
@@ -138,6 +165,16 @@ public final class PolishForestsCommands {
 		dispatcher.register(Commands.literal("polishforests")
 				.then(Commands.literal("find")
 						.requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
+						// Step S9: biomes and zones of the habitat classifier, with suggestions from the enums.
+						.then(Commands.literal("biome")
+								.then(Commands.argument("biome", StringArgumentType.word())
+										.suggests((ctx, builder) -> SharedSuggestionProvider.suggest(
+												Arrays.stream(HabitatBiome.values()).map(HabitatBiome::id), builder))
+										.executes(PolishForestsCommands::findBiome)))
+						.then(Commands.literal("zone")
+								.then(Commands.argument("zone", StringArgumentType.word())
+										.suggests((ctx, builder) -> SharedSuggestionProvider.suggest(zoneIds(), builder))
+										.executes(PolishForestsCommands::findZone)))
 						.then(Commands.argument("target", StringArgumentType.word())
 								.suggests((ctx, builder) -> SharedSuggestionProvider.suggest(
 										Arrays.stream(Target.values()).map(Target::id), builder))
@@ -193,7 +230,39 @@ public final class PolishForestsCommands {
 			}
 			source.sendSuccess(() -> line, false);
 		}
-		return Target.values().length;
+		// Step S9: the biomes and zones of find biome and find zone.
+		MutableComponent biomes = Component.translatable("polishforests.kind.biome").withStyle(ChatFormatting.GOLD).append(": ");
+		for (HabitatBiome b : HabitatBiome.values()) {
+			if (b.ordinal() > 0) {
+				biomes.append(", ");
+			}
+			biomes.append(listEntry(b.id(), "/polishforests find biome " + b.id(), biomeName(b)));
+		}
+		source.sendSuccess(() -> biomes, false);
+		MutableComponent zones = Component.translatable("polishforests.kind.zone").withStyle(ChatFormatting.GOLD).append(": ");
+		List<String> ids = zoneIds().toList();
+		for (int i = 0; i < ids.size(); i++) {
+			if (i > 0) {
+				zones.append(", ");
+			}
+			zones.append(listEntry(ids.get(i), "/polishforests find zone " + ids.get(i), HabitatInfo.zone(ids.get(i))));
+		}
+		source.sendSuccess(() -> zones, false);
+		return Target.values().length + HabitatBiome.values().length + ids.size();
+	}
+
+	private static Component listEntry(String id, String command, Component name) {
+		return Component.literal(id).withStyle(s -> s.withColor(ChatFormatting.GREEN)
+				.withClickEvent(new ClickEvent.SuggestCommand(command)).withHoverEvent(new HoverEvent.ShowText(name)));
+	}
+
+	private static Component biomeName(HabitatBiome b) {
+		return Component.translatable("biome.polishforests." + b.id());
+	}
+
+	/** Ids of the zones a player can search for (every zone except NONE). */
+	static Stream<String> zoneIds() {
+		return Arrays.stream(Zone.values()).filter(z -> z != Zone.NONE).map(Zone::id);
 	}
 
 	private static int here(CommandContext<CommandSourceStack> ctx) {
@@ -211,6 +280,13 @@ public final class PolishForestsCommands {
 		source.sendSuccess(() -> Component.translatable("polishforests.command.here",
 				s.type().name().toLowerCase(Locale.ROOT), String.format(Locale.ROOT, "%.1f", s.surface()),
 				s.substrate().name().toLowerCase(Locale.ROOT), water, forms), false);
+		// Step S9: the second line, the habitat of the column (biome, STL, association, zone, soil, DGW, O, P, T and the
+		// trees of the stand, the pale-bark stand-ins marked as placeholders until M3).
+		HabitatInfo info = HabitatInfo.of(source.getLevel(), (int) Math.floor(pos.x), (int) Math.floor(pos.y),
+				(int) Math.floor(pos.z));
+		if (info != null) {
+			source.sendSuccess(info::line, false);
+		}
 		return 1;
 	}
 
@@ -222,6 +298,7 @@ public final class PolishForestsCommands {
 		if (model == null) {
 			return 0;
 		}
+		HabitatTargets.World world = new HabitatTargets.World(model, generator(source).classifier(source.getLevel().getSeed()));
 		String arg = StringArgumentType.getString(ctx, "target").toUpperCase(Locale.ROOT);
 		Target target;
 		try {
@@ -234,21 +311,105 @@ public final class PolishForestsCommands {
 		source.sendSuccess(() -> Component.translatable("polishforests.command.searching", target.displayName()), false);
 		double[][] phases = phases(model, target.fine);
 		double radius = target.coastal ? coastalRadius(model) : phases[phases.length - 1][1];
-		runSearch(source, origin, () -> locate(model, target, origin.x, origin.z), radius, target.displayName());
+		runSearch(source, origin, cancelled -> locate(world, target, origin.x, origin.z), radius, target.displayName());
 		return 1;
 	}
 
-	/** The nearest location of the target from point {@code (ox, oz)}: {x, z} or null. */
+	/** Step S9: {@code find biome <id>}. */
+	private static int findBiome(CommandContext<CommandSourceStack> ctx) {
+		CommandSourceStack source = ctx.getSource();
+		HabitatTargets.World world = requireWorld(source);
+		if (world == null) {
+			return 0;
+		}
+		String arg = StringArgumentType.getString(ctx, "biome").toLowerCase(Locale.ROOT);
+		HabitatBiome biome = HabitatBiome.byId(arg);
+		if (biome == null) {
+			source.sendFailure(Component.translatable("polishforests.command.unknown_biome", arg));
+			return 0;
+		}
+		Component name = biomeName(biome);
+		if (!HabitatTargets.occurs(biome, world.classifier().mode())) {
+			source.sendFailure(Component.translatable("polishforests.command.not_in_mode", name, modeName(world)));
+			return 0;
+		}
+		Vec3 origin = source.getPosition();
+		source.sendSuccess(() -> Component.translatable("polishforests.command.searching", name), false);
+		runSearch(source, origin, cancelled -> HabitatTargets.locate(world, biome, origin.x, origin.z, cancelled),
+				HabitatTargets.radius(world, biome), name);
+		return 1;
+	}
+
+	/** Step S9: {@code find zone <id>}. */
+	private static int findZone(CommandContext<CommandSourceStack> ctx) {
+		CommandSourceStack source = ctx.getSource();
+		HabitatTargets.World world = requireWorld(source);
+		if (world == null) {
+			return 0;
+		}
+		String arg = StringArgumentType.getString(ctx, "zone").toLowerCase(Locale.ROOT);
+		Zone zone = Arrays.stream(Zone.values()).filter(z -> z != Zone.NONE && z.id().equals(arg)).findFirst().orElse(null);
+		if (zone == null) {
+			source.sendFailure(Component.translatable("polishforests.command.unknown_zone", arg));
+			return 0;
+		}
+		Component name = HabitatInfo.zone(zone.id());
+		if (!HabitatTargets.occurs(zone, world.classifier().mode())) {
+			source.sendFailure(Component.translatable("polishforests.command.not_in_mode", name, modeName(world)));
+			return 0;
+		}
+		if (!HabitatTargets.occurs(zone, world.model().scale())) {
+			source.sendFailure(Component.translatable("polishforests.command.not_in_scale", name));
+			return 0;
+		}
+		Vec3 origin = source.getPosition();
+		source.sendSuccess(() -> Component.translatable("polishforests.command.searching", name), false);
+		runSearch(source, origin, cancelled -> HabitatTargets.locate(world, zone, origin.x, origin.z, cancelled),
+				HabitatTargets.radius(world, zone), name);
+		return 1;
+	}
+
+	private static Component modeName(HabitatTargets.World world) {
+		return Component.translatable(world.classifier().mode() == HabitatClassifier.Mode.PRESENT_DAY
+				? "polishforests.options.landscape.today" : "polishforests.options.landscape.natural");
+	}
+
+	private static PolandChunkGenerator generator(CommandSourceStack source) {
+		return (PolandChunkGenerator) source.getLevel().getChunkSource().getGenerator();
+	}
+
+	private static HabitatTargets.World requireWorld(CommandSourceStack source) {
+		HabitatTargets.World world = HabitatTargets.World.of(source.getLevel());
+		if (world == null) {
+			source.sendFailure(Component.translatable("polishforests.command.not_poland"));
+		}
+		return world;
+	}
+
+	/** The nearest location of a target that does not need the habitat (every target but the peatland), {x, z} or null. */
 	public static double[] locate(LandscapeModel model, Target target, double ox, double oz) {
-		Predicate<double[]> test = p -> matches(model, target, p);
+		if (target.habitat != null) {
+			throw new IllegalArgumentException("The target " + target.id() + " needs the habitat classifier");
+		}
+		return locate(new HabitatTargets.World(model, null), target, ox, oz);
+	}
+
+	/** The nearest location of the target from point {@code (ox, oz)}: {x, z} or null. */
+	public static double[] locate(HabitatTargets.World world, Target target, double ox, double oz) {
+		Predicate<double[]> test = p -> matches(world, target, p);
+		LandscapeModel model = world.model();
 		return target.coastal ? searchCoastal(model, test, ox, oz) : search(phases(model, target.fine), test, ox, oz);
 	}
 
 	/**
-	 * Whether the place {@code p} = {x, z} is the target: its test on the sample or the terrain description, and for a
-	 * {@link Target#CLIFF} also a seaward wall ({@link #hasSeawardWall}).
+	 * Whether the place {@code p} = {x, z} is the target: its test on the sample, the terrain description or (step S9)
+	 * the habitat, and for a {@link Target#CLIFF} also a seaward wall ({@link #hasSeawardWall}).
 	 */
-	public static boolean matches(LandscapeModel model, Target target, double[] p) {
+	public static boolean matches(HabitatTargets.World world, Target target, double[] p) {
+		LandscapeModel model = world.model();
+		if (target.habitat != null) {
+			return target.habitat.test(world.code(p[0], p[1]));
+		}
 		boolean found = target.test.test(target.forms ? model.describe(p[0], p[1])
 				: new LandscapeModel.Description(model.sample(p[0], p[1]), EnumSet.noneOf(Landform.class)));
 		return found && (target != Target.CLIFF || hasSeawardWall(model, p[0], p[1]));
@@ -278,7 +439,7 @@ public final class PolishForestsCommands {
 	}
 
 	/** Coastline search range in meters. */
-	private static double coastalRadius(LandscapeModel model) {
+	static double coastalRadius(LandscapeModel model) {
 		return model.scale() == LandscapeScale.REALISTIC ? 2_000_000 : 300_000;
 	}
 
@@ -339,7 +500,7 @@ public final class PolishForestsCommands {
 			ColumnSample s = model.sample(p[0], p[1]);
 			return !s.hasWater() && s.surface() >= lo && s.surface() <= hi;
 		};
-		runSearch(source, origin, () -> search(phases, test, origin.x, origin.z), phases[phases.length - 1][1], name);
+		runSearch(source, origin, cancelled -> search(phases, test, origin.x, origin.z), phases[phases.length - 1][1], name);
 		return 1;
 	}
 
@@ -354,12 +515,28 @@ public final class PolishForestsCommands {
 				: new double[][] {{400, 60_000}, {2_000, 2_000_000}};
 	}
 
-	private static void runSearch(CommandSourceStack source, Vec3 origin, Supplier<double[]> search, double radius,
-			Component name) {
+	/** Step S9: longest search of {@code find biome} and {@code find zone} before it gives up (ms). */
+	static final long SEARCH_LIMIT_MS = 60_000;
+
+	/**
+	 * Runs the search off the server thread and reports the result on it. Step S9: the search gets a cancellation check
+	 * that turns true after {@link #SEARCH_LIMIT_MS} or when the server stops (the lattice searches of biomes and zones
+	 * check it between rings); a search that fails with an exception reports an error instead of staying silent.
+	 */
+	private static void runSearch(CommandSourceStack source, Vec3 origin, Function<BooleanSupplier, double[]> search,
+			double radius, Component name) {
 		ServerLevel level = source.getLevel();
-		CompletableFuture.supplyAsync(search, Util.backgroundExecutor())
-				.thenAccept(found -> source.getServer().execute(() -> {
-					if (found == null) {
+		long deadline = System.nanoTime() + SEARCH_LIMIT_MS * 1_000_000L;
+		BooleanSupplier cancelled = () -> System.nanoTime() > deadline || !source.getServer().isRunning();
+		CompletableFuture.supplyAsync(() -> search.apply(cancelled), Util.backgroundExecutor())
+				.whenComplete((found, error) -> source.getServer().execute(() -> {
+					if (error != null) {
+						PolishForests.LOG.error("Search for {} failed", name.getString(), error);
+						source.sendFailure(Component.translatable("polishforests.command.search_failed", name));
+					} else if (found == null && System.nanoTime() > deadline) {
+						source.sendFailure(Component.translatable("polishforests.command.search_timeout", name,
+								String.valueOf(SEARCH_LIMIT_MS / 1000)));
+					} else if (found == null) {
 						double km = radius / 1000.0;
 						source.sendFailure(Component.translatable("polishforests.command.not_found", name,
 								String.format(Locale.ROOT, "%.0f", km)));
@@ -369,10 +546,19 @@ public final class PolishForestsCommands {
 				}));
 	}
 
-	/** Search in rings around the player; returns {x, z} or null. */
+	/** Points of the ring search tested together (step S9: in parallel; the first hit in ring order wins). */
+	static final int SEARCH_BATCH = 4_096;
+
+	/**
+	 * Search in rings around the player; returns {x, z} or null. Step S9: the points are tested in parallel batches of
+	 * {@value #SEARCH_BATCH} (the model and the classifier are thread-safe) and the first hit in ring order wins, so the
+	 * result is the same as a sequential search; the test must not keep the point array it gets.
+	 */
 	static double[] search(double[][] phases, Predicate<double[]> test, double ox, double oz) {
 		double r = 0;
-		double[] p = new double[2];
+		double[] xs = new double[SEARCH_BATCH];
+		double[] zs = new double[SEARCH_BATCH];
+		int count = 0;
 		for (double[] phase : phases) {
 			double spacing = phase[0];
 			double max = phase[1];
@@ -381,15 +567,26 @@ public final class PolishForestsCommands {
 				double offset = r * 0.618;
 				for (int k = 0; k < n; k++) {
 					double a = offset + k * (2 * Math.PI / n);
-					p[0] = ox + r * Math.cos(a);
-					p[1] = oz + r * Math.sin(a);
-					if (test.test(p)) {
-						return new double[] {p[0], p[1]};
+					xs[count] = ox + r * Math.cos(a);
+					zs[count] = oz + r * Math.sin(a);
+					if (++count == SEARCH_BATCH) {
+						double[] hit = firstHit(test, xs, zs, count);
+						if (hit != null) {
+							return hit;
+						}
+						count = 0;
 					}
 				}
 			}
 		}
-		return null;
+		return count > 0 ? firstHit(test, xs, zs, count) : null;
+	}
+
+	/** The first of the {@code n} points (in order) that passes the test, tested in parallel; or null. */
+	private static double[] firstHit(Predicate<double[]> test, double[] xs, double[] zs, int n) {
+		int first = java.util.stream.IntStream.range(0, n).parallel()
+				.filter(i -> test.test(new double[] {xs[i], zs[i]})).findFirst().orElse(-1);
+		return first < 0 ? null : new double[] {xs[first], zs[first]};
 	}
 
 	// ------------------------------------------------------------------ highest point

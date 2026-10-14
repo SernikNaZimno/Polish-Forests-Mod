@@ -6,5 +6,7 @@ public final class PolishForestsClient implements ClientModInitializer {
 	@Override
 	public void onInitializeClient() {
 		ClientClimate.register();
+		// Step S9: the habitat in the F3 overlay.
+		HabitatDebugEntry.register();
 	}
 }

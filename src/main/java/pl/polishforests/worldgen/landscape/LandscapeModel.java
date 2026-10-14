@@ -1549,6 +1549,11 @@ public final class LandscapeModel {
 		return ok;
 	}
 
+	/** Reach of a large massif from its center (m): no influence farther away (step S9: {@code find biome} searches there). */
+	public double greatMassifReach() {
+		return greatMassifReach;
+	}
+
 	/** Large massifs with the center in the box, in the order of grid cells (i, then j). */
 	public List<GreatMassif> greatMassifs(double minX, double minZ, double maxX, double maxZ) {
 		List<GreatMassif> out = new ArrayList<>();
