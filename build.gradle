@@ -314,7 +314,7 @@ tasks.register('checkDatagen', CheckDatagen) {
 	outputs.upToDateWhen { false }
 }
 
-// Choosing in-game tests: ./gradlew runClientGameTest -Pgametest=performance|stages|views|climate|ui|habitats|vegetation|present_day|ecotones|all
+// Choosing in-game tests: ./gradlew runClientGameTest -Pgametest=performance|stages|views|climate|ui|habitats|vegetation|present_day|determinism|ecotones|all
 // (ecotones: only by name, not in all; screenshots of biome borders, step S8b)
 // Only selected views: -Psites=beach,cliff (names from PolandWorldClientGameTest; for vegetation the soil places of
 // HabitatsClientGameTest, or none for no screenshots).
@@ -331,6 +331,12 @@ tasks.named('runClientGameTest') {
 	// Time limits of HabitatsClientGameTest only reported (-PtimingsReportOnly), for runs on a machine that is not quiet.
 	if (project.hasProperty('timingsReportOnly')) {
 		jvmArgs '-Dpolishforests.timings.reportOnly=true'
+	}
+	// Determinism test (step S10, -Pgametest=determinism): column hashes go to build/determinism/<plain|optimization>.txt;
+	// -PdeterminismReference=<file> compares the run with a file of a run with the other mod set (with or without -Poptimization).
+	jvmArgs "-Dpolishforests.determinism.out=${layout.buildDirectory.dir('determinism').get().asFile.absolutePath}"
+	if (project.hasProperty('determinismReference')) {
+		jvmArgs "-Dpolishforests.determinism.reference=${file(project.property('determinismReference')).absolutePath}"
 	}
 	if (project.hasProperty('profile')) {
 		jvmArgs "-XX:StartFlightRecording=filename=${layout.buildDirectory.file('profile.jfr').get().asFile.absolutePath},settings=profile"

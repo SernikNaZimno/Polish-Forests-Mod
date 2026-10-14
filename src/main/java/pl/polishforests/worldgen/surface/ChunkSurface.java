@@ -121,6 +121,49 @@ public final class ChunkSurface {
 		return Material.STONE;
 	}
 
+	/**
+	 * Bounds of the rock of the whole chunk for {@link #uniformRock}: the highest bedrock top, the lowest rock top, the lowest
+	 * and highest deepslate limit, and 1 when some column has flysch. Computed once per chunk after the plan is final (the
+	 * beard of {@link StructureGround} may move tops and rock tops).
+	 */
+	public int[] rockBounds() {
+		int maxBedrock = Integer.MIN_VALUE;
+		int minRock = Integer.MAX_VALUE;
+		int minDeep = Integer.MAX_VALUE;
+		int maxDeep = Integer.MIN_VALUE;
+		int flysch = 0;
+		for (int i = 0; i < 256; i++) {
+			maxBedrock = Math.max(maxBedrock, bedrockTop[i]);
+			minRock = Math.min(minRock, rockTop[i]);
+			minDeep = Math.min(minDeep, deepRockY[i]);
+			maxDeep = Math.max(maxDeep, deepRockY[i]);
+			if (substrate[i] == Substrate.FLYSCH.ordinal()) {
+				flysch = 1;
+			}
+		}
+		return new int[] {maxBedrock, minRock, minDeep, maxDeep, flysch};
+	}
+
+	/**
+	 * The material of every block of the section {@code y0 … y0 + 15} when the whole section lies in the rock of every
+	 * column and in one rock kind (deepslate below the lowest deepslate limit, stone above the highest one without
+	 * flysch), else null; then {@link #material} gives the same block everywhere in it (step S10: the generator skips the
+	 * 4096 calls of {@link #material} for the deep sections, a third of the fill time in the realistic scale).
+	 */
+	public static Material uniformRock(int y0, int[] bounds) {
+		int y1 = y0 + 15;
+		if (y0 <= bounds[0] || y1 > bounds[1]) {
+			return null;
+		}
+		if (y1 < bounds[2]) {
+			return Material.DEEPSLATE;
+		}
+		if (y0 >= bounds[3] && bounds[4] == 0) {
+			return Material.STONE;
+		}
+		return null;
+	}
+
 	/** Deposits of the substrate under the soil (the M1 rules, by the depth below the top block). */
 	static Material deposit(Substrate sub, int depth, boolean gravelPatch) {
 		return switch (sub) {

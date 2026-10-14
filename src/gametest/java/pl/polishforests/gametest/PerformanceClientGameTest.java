@@ -13,6 +13,7 @@ import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.presets.WorldPreset;
 import pl.polishforests.PolishForests;
+import pl.polishforests.client.screen.PolandPresetEditor;
 import pl.polishforests.worldgen.chunk.PolandChunkGenerator;
 import pl.polishforests.worldgen.feature.ModFeatures;
 import pl.polishforests.worldgen.feature.TreeStandFeature;
@@ -22,7 +23,9 @@ import pl.polishforests.worldgen.feature.TreeStandFeature;
  * world, with the same graphics settings and the same seed.
  * Runs when {@code -Dpolishforests.gametest} is {@code performance} or {@code all}.
  * The {@code stages} mode only measures generation stage times in three areas of each scale (M2
- * baseline, {@code docs/m2/pomiary-bazowe-m1.md}), without measuring FPS and without a vanilla world.
+ * baseline, {@code docs/m2/pomiary-bazowe-m1.md}), without measuring FPS and without a vanilla world; since step S10 in
+ * both vegetation modes (natural and present-day) and with a fourth, scattered "area" sample for the TERRAIN budget of the
+ * whole area (M2-11).
  */
 public final class PerformanceClientGameTest implements FabricClientGameTest {
 	private static final String SEED = "20260927";
@@ -47,15 +50,21 @@ public final class PerformanceClientGameTest implements FabricClientGameTest {
 			mc.options.inactivityFpsLimit().set(InactivityFpsLimit.MINIMIZED);
 		});
 		if (!stagesOnly) {
-			measure(context, "vanilla", null, false);
+			measure(context, "vanilla", null, false, false);
 		}
-		measure(context, "poland", POLAND, stagesOnly);
-		measure(context, "poland_gameplay", POLAND_GAMEPLAY, stagesOnly);
+		measure(context, "poland", POLAND, stagesOnly, false);
+		measure(context, "poland_gameplay", POLAND_GAMEPLAY, stagesOnly, false);
+		if (stagesOnly) {
+			// Step S10: the same areas in the present-day mode (forest mask, fields and meadows).
+			measure(context, "poland_present_day", POLAND, true, true);
+			measure(context, "poland_gameplay_present_day", POLAND_GAMEPLAY, true, true);
+		}
 	}
 
 	private void measure(ClientGameTestContext context, String name, ResourceKey<WorldPreset> preset,
-			boolean stagesOnly) {
-		try (TestSingleplayerContext sp = context.worldBuilder().adjustSettings(ui -> configure(ui, preset)).create()) {
+			boolean stagesOnly, boolean presentDay) {
+		try (TestSingleplayerContext sp = context.worldBuilder().adjustSettings(ui -> configure(ui, preset, presentDay))
+				.create()) {
 			sp.getServer().runCommand("gamerule advance_time false");
 			sp.getServer().runCommand("gamerule advance_weather false");
 			sp.getServer().runCommand("gamerule spawn_mobs false");
@@ -66,7 +75,7 @@ public final class PerformanceClientGameTest implements FabricClientGameTest {
 			if (stagesOnly) {
 				waitForIdleGeneration(context, name);
 			}
-			profileStages(sp, name, stagesOnly);
+			profileStages(sp, name, preset == POLAND, stagesOnly);
 			if (stagesOnly) {
 				return;
 			}
@@ -121,6 +130,13 @@ public final class PerformanceClientGameTest implements FabricClientGameTest {
 	private static final int[][] SPOTS_GAMEPLAY = {{-40_000, 25_000}, {27_609 - 64, 3_254 - 64},
 			{-1_851 - 64, 6_022 - 64}};
 	private static final String[] SPOT_NAMES = {"lowland", "beskids", "river"};
+	/**
+	 * Half size of the scattered "area" sample in blocks (step S10, budget M2-11: TERRAIN for the whole area, like D1): the
+	 * same area as the "whole area" of {@code SampleCostTest}, five macroregions around (0, 0) (REAL about ±320 km, GAMEPLAY
+	 * ±7 km), 64 single chunks at fixed pseudo-random positions.
+	 */
+	private static final int AREA_HALF_REAL = 320_000;
+	private static final int AREA_HALF_GAMEPLAY = 7_000;
 
 	/**
 	 * Time to generate 64 chunks up to successive stages, on the server thread, in a new area. The model
@@ -129,13 +145,64 @@ public final class PerformanceClientGameTest implements FabricClientGameTest {
 	 * the measurement of the given area is logged. The increase also covers neighboring chunks needed for
 	 * decoration and light, and chunks loaded in the background around the player at the same time.
 	 */
-	private static void profileStages(TestSingleplayerContext sp, String name, boolean allSpots) {
-		boolean real = name.equals("poland");
+	private static void profileStages(TestSingleplayerContext sp, String name, boolean real, boolean allSpots) {
 		int[][] spots = real ? SPOTS_REAL : SPOTS_GAMEPLAY;
 		for (int i = 0; i < (allSpots ? spots.length : 1); i++) {
 			int[] spot = spots[i];
 			String label = i == 0 ? name : name + " / " + SPOT_NAMES[i];
 			sp.getServer().runOnServer(server -> profileSpot(server.overworld(), label, spot[0] >> 4, spot[1] >> 4));
+		}
+		if (allSpots) {
+			int half = real ? AREA_HALF_REAL : AREA_HALF_GAMEPLAY;
+			sp.getServer().runOnServer(server -> profileArea(server.overworld(), name + " / area", half));
+		}
+	}
+
+	/**
+	 * TERRAIN of the whole area (step S10, M2-11): 64 single chunks scattered over the area, generated up to TERRAIN only
+	 * (STRUCTURE_STARTS, BIOMES, then TERRAIN; the BIOMES stage of each chunk and its neighbors warms the regional caches
+	 * first, as contiguous generation in the game does). Logs the TERRAIN stage time and the model and fill counters per
+	 * chunk, in the same format as the contiguous areas.
+	 */
+	private static void profileArea(ServerLevel level, String name, int half) {
+		java.util.Random random = new java.util.Random(0x5EED_0001L);
+		// Six contiguous 8 x 8 areas at pseudo-random places: contiguous like generation in the game (the surface plan reuses
+		// the border columns of its neighbors, the regional grid tiles are shared), scattered over the whole area.
+		int[][] chunks = new int[6 * 64][];
+		for (int k = 0; k < 6; k++) {
+			int bx = (random.nextInt(2 * half) - half) >> 4;
+			int bz = (random.nextInt(2 * half) - half) >> 4;
+			for (int i = 0; i < 64; i++) {
+				chunks[k * 64 + i] = new int[] {bx + i / 8, bz + i % 8};
+			}
+		}
+		ChunkStatus[] stages = {ChunkStatus.STRUCTURE_STARTS, ChunkStatus.BIOMES, ChunkStatus.TERRAIN};
+		long sample0 = PolandChunkGenerator.SAMPLE_NANOS.sum();
+		long fill0 = PolandChunkGenerator.FILL_NANOS.sum();
+		long chunks0 = PolandChunkGenerator.CHUNKS.sum();
+		long classify0 = PolandChunkGenerator.CLASSIFY_NANOS.sum();
+		long surface0 = PolandChunkGenerator.SURFACE_NANOS.sum();
+		StringBuilder sb = new StringBuilder();
+		for (ChunkStatus stage : stages) {
+			long t0 = System.nanoTime();
+			for (int[] c : chunks) {
+				level.getChunkSource().getChunk(c[0], c[1], stage, true);
+			}
+			sb.append(stage.getName()).append('=').append(Math.round((System.nanoTime() - t0) / 1e6)).append(" ms ");
+		}
+		PolishForests.LOG.info("[performance] {}: stages for 384 chunks (incremental): {}", name, sb);
+		long n = PolandChunkGenerator.CHUNKS.sum() - chunks0;
+		if (n > 0) {
+			PolishForests.LOG.info(String.format(Locale.ROOT, "[performance] %s: terrain of %d chunks during the measurement, "
+					+ "sampling %.2f ms/chunk (model %.2f, classification %.2f), filling %.2f ms/chunk, surface plan %.3f ms/chunk",
+					name, n, (PolandChunkGenerator.SAMPLE_NANOS.sum() - sample0) / 1e6 / n,
+					(PolandChunkGenerator.SAMPLE_NANOS.sum() - sample0 - (PolandChunkGenerator.CLASSIFY_NANOS.sum() - classify0))
+							/ 1e6 / n,
+					(PolandChunkGenerator.CLASSIFY_NANOS.sum() - classify0) / 1e6 / n,
+					(PolandChunkGenerator.FILL_NANOS.sum() - fill0) / 1e6 / n,
+					(PolandChunkGenerator.SURFACE_NANOS.sum() - surface0) / 1e6 / n));
+		} else {
+			PolishForests.LOG.warn("[performance] {}: area was already generated, measurement invalid", name);
 		}
 	}
 
@@ -187,6 +254,7 @@ public final class PerformanceClientGameTest implements FabricClientGameTest {
 		long hits0 = pl.polishforests.worldgen.surface.SurfaceBuilder.OUTSIDE_HITS.sum();
 		long reused0 = pl.polishforests.worldgen.surface.SurfaceBuilder.REUSED_SAMPLES.sum();
 		StringBuilder sb = new StringBuilder();
+		long total = 0;
 		for (ChunkStatus stage : stages) {
 			long t0 = System.nanoTime();
 			for (int cx = 0; cx < 8; cx++) {
@@ -194,9 +262,15 @@ public final class PerformanceClientGameTest implements FabricClientGameTest {
 					level.getChunkSource().getChunk(ox + cx, oz + cz, stage, true);
 				}
 			}
-			sb.append(stage.getName()).append('=').append(Math.round((System.nanoTime() - t0) / 1e6)).append(" ms ");
+			long dt = System.nanoTime() - t0;
+			total += dt;
+			sb.append(stage.getName()).append('=').append(Math.round(dt / 1e6)).append(" ms ");
 		}
 		PolishForests.LOG.info("[performance] {}: stages for 64 chunks (incremental): {}", name, sb);
+		// Step S10 (budget "whole chunk"): the wall time of all stages divided by the 64 chunks of the area. It includes the
+		// neighbors that decoration and light need (about 100 chunks in all), so it is compared with M1 in the same session.
+		PolishForests.LOG.info(String.format(Locale.ROOT, "[performance] %s: whole chunk %.2f ms/chunk (all stages, 64 chunks)",
+				name, total / 1e6 / 64));
 		long decorated = Math.max(1, PolandChunkGenerator.DECORATION_CHUNKS.sum() - decorated0);
 		PolishForests.LOG.info(String.format(java.util.Locale.ROOT, "[performance] %s: decoration (applyBiomeDecoration) %.3f ms/chunk "
 				+ "over %d chunks", name, (PolandChunkGenerator.DECORATION_NANOS.sum() - decoration0) / 1e6 / decorated, decorated));
@@ -238,7 +312,7 @@ public final class PerformanceClientGameTest implements FabricClientGameTest {
 		}
 	}
 
-	private static void configure(WorldCreationUiState ui, ResourceKey<WorldPreset> preset) {
+	private static void configure(WorldCreationUiState ui, ResourceKey<WorldPreset> preset, boolean presentDay) {
 		ui.setSeed(SEED);
 		ui.setAllowCommands(true);
 		if (preset == null) {
@@ -247,6 +321,12 @@ public final class PerformanceClientGameTest implements FabricClientGameTest {
 		for (WorldCreationUiState.WorldTypeEntry entry : ui.getNormalPresetList()) {
 			if (entry.preset().is(preset)) {
 				ui.setWorldType(entry);
+				if (presentDay) {
+					if (!(ui.getSettings().selectedDimensions().overworld() instanceof PolandChunkGenerator gen)) {
+						throw new AssertionError("The preset " + preset.identifier() + " has no Poland generator");
+					}
+					ui.updateDimensions(PolandPresetEditor.apply(gen.settings().withAgriculture(true)));
+				}
 				return;
 			}
 		}

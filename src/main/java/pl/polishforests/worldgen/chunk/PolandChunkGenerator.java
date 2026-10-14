@@ -419,9 +419,17 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 		int[] buffer = new int[4096];
 		int[] ids = new int[4096];
 		int[] slots = new int[MATERIALS];
+		int[] rock = surface.rockBounds();
 		try {
 			for (int idx = bottomSection; idx <= topSection; idx++) {
 				int y0 = chunk.getSectionYFromSectionIndex(idx) << 4;
+				// Deep sections wholly in one rock kind: the same single-value palette as below, without 4096 material calls.
+				Material uniformRock = ChunkSurface.uniformRock(y0, rock);
+				if (uniformRock != null) {
+					chunkSections[idx] = new LevelChunkSection(new PalettedContainer<>(states[uniformRock.ordinal()], BLOCK_STRATEGY),
+							sections[idx - bottomSection].getBiomes());
+					continue;
+				}
 				// First compute the materials of the whole section; a uniform section gets a single-value palette,
 				// which is many times cheaper than 4096 separate palette writes.
 				int first = -1;
