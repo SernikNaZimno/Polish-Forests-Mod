@@ -42,9 +42,17 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: Fast tests
+      - name: Fast tests and mod jar
         if: github.event_name == 'push' || github.event_name == 'pull_request'
-        run: ./gradlew fastTest -PtestForks=2
+        run: ./gradlew fastTest build -x test -PtestForks=2
+
+      - name: Upload the mod jar
+        if: github.event_name == 'push' && success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: polishforests-${{ github.sha }}
+          path: build/libs/!(*-sources).jar
+          retention-days: 14
 
       - name: Full tests
         if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.full)
