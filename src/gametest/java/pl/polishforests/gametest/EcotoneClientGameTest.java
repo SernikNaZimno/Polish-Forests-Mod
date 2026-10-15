@@ -42,7 +42,8 @@ import pl.polishforests.worldgen.surface.ChunkSurface;
  *
  * <p>Round 1 of the S8c review: the site {@value #DUNE_EDGE} (gameplay scale, PRESENT_DAY mode) looks at the field north of
  * an inland dune whose forest edge was a straight line of about 211 blocks from (11354, −6951) to (11565, −6957): straight
- * down from 160 blocks above (11448, −6952), north at the top ({@code s8c_r1_dune_edge_top_gameplay}), and along the
+ * down from 90 blocks above (11448, −6952), north at the top ({@code s8c_r1_dune_edge_top_gameplay}), from 40 blocks
+ * above the field at (11448, −6880) looking north at the edge ({@code s8c_r1_dune_edge_oblique_gameplay}), and along the
  * edge from its west end, 12 blocks above the ground, looking east ({@code s8c_r1_dune_edge_along_gameplay}); in
  * {@code docs/m2/gra/} with {@code _before.png} and {@code _after.png}.
  */
@@ -133,8 +134,11 @@ public final class EcotoneClientGameTest implements FabricClientGameTest {
 						fixed(context, sp, 150_110, top, 1_049_800, 180, 90, "s8c_straight_edge_top_" + scale.getSerializedName());
 					}
 					if (presentDay && !real && (only.isBlank() || java.util.List.of(only.split(",")).contains(DUNE_EDGE))) {
-						int top = sp.getServer().computeOnServer(s -> groundY(s, 11_448, -6_952)) + 160;
+						// 90 blocks up: from higher the ground lies in the fog at the render distance of 10 chunks.
+						int top = sp.getServer().computeOnServer(s -> groundY(s, 11_448, -6_952)) + 90;
 						fixed(context, sp, 11_448, top, -6_952, 180, 90, "s8c_r1_dune_edge_top_" + scale.getSerializedName());
+						int high = sp.getServer().computeOnServer(s -> clear(s, 11_448, groundY(s, 11_448, -6_880) + 40, -6_880));
+						fixed(context, sp, 11_448, high, -6_880, 180, 30, "s8c_r1_dune_edge_oblique_" + scale.getSerializedName());
 						int low = sp.getServer().computeOnServer(s -> clear(s, 11_330, groundY(s, 11_330, -6_946) + 12, -6_946));
 						fixed(context, sp, 11_330, low, -6_946, -90, 12, "s8c_r1_dune_edge_along_" + scale.getSerializedName());
 					}

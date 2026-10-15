@@ -590,12 +590,13 @@ class ForestEdgeShapeTest {
 	}
 
 	/**
-	 * Limits of the state after round 1 of the S8c review (measured, REAL / GAMEPLAY: see the javadoc of the limits in
-	 * docs/03-m2-biomy.md §3.4.1 "Runda 1 poprawek S8c"; before step S8c 32.9 / 35.6% of the edges on P jumps, 74.1 / 26.9%
-	 * of the valley side edges on P jumps steeper than 3 times the mask steepness, 22.9 / 21.4% of the edge pixels on
-	 * straight stretches). Besides the shares, the edges on P jumps per km of row and the share of the edges following P
-	 * (the shares alone fall when new edges along F appear), the edges on P jumps at the inland dune or dry site boundary per km of row, and
-	 * the longest straight stretch without the gray alder strip in GAMEPLAY.
+	 * Limits of the state after round 1 of the S8c review (measured REAL / GAMEPLAY: 13.8 / 24.1% of the edges on P jumps,
+	 * 16.8 / 3.1% of the valley side edges on P jumps steeper than 3 times the mask steepness, 10.3 / 13.1% of the edge
+	 * pixels on straight stretches; before step S8c 32.9 / 35.6%, 74.1 / 26.9% and 22.9 / 21.4%). Besides the shares, which
+	 * fall when new edges along F appear, the counts ({@link #LIMIT_JUMPS_PER_KM_REAL} and the others): the edges on P jumps
+	 * per km of row (0.348 / 0.554; before S8c 0.41 / 0.61), the edges following P without the gray alder strip (15.7 /
+	 * 41.9%), the edges on P jumps at the inland dune or dry site boundary per km of row (0 / 0.001; before the round
+	 * 0.004 / 0.023) and the longest straight stretch without the gray alder strip in GAMEPLAY (108 blocks).
 	 */
 	@Test
 	void forestEdgesAreNotStraight() throws IOException {
@@ -633,7 +634,7 @@ class ForestEdgeShapeTest {
 		assertTrue(failures.isEmpty(), String.join("\n", failures));
 	}
 
-	/** Limits of the rows and windows (round 1 of the S8c review; measured values in docs/03-m2-biomy.md §3.4.1). */
+	/** Limits of the rows and windows (round 1 of the S8c review; measured values above and in docs/03-m2-biomy.md §3.4.1). */
 	private static final double LIMIT_JUMPS_PER_KM_REAL = 0.4, LIMIT_JUMPS_PER_KM_GAMEPLAY = 0.6, LIMIT_FOLLOWS_P_REAL = 20,
 			LIMIT_FOLLOWS_P_GAMEPLAY = 45, LIMIT_DUNE_PER_KM = 0.005, LIMIT_LONGEST_NON_ALDER_GAMEPLAY = 120;
 
