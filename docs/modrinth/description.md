@@ -1,0 +1,33 @@
+![Polish Forests](https://raw.githubusercontent.com/SernikNaZimno/Polish-Forests-Mod/main/docs/logo/logo_horizontal.png)
+
+**Polish Forests** generates an endless, procedural Poland: outwash plains and moraine uplands, meandering rivers with oxbow lakes, the Baltic coast with dunes and lagoons, and the Beskids with dwarf pine above the timberline. The vegetation follows Polish phytosociology: every column of the world gets a habitat, and the habitat decides the biome, the soil and the plants.
+
+> **Alpha.** World generation can change between versions. Start a new world after updating. The trees are still vanilla stand-ins; the mod's own trees, ground flora and animals come next.
+
+## Features
+
+- **Two world types.** *Poland (1:1 Scale)* with real distances with real heights (sea level at Y 63, the Beskids above 1,500 m), and *Poland (Gameplay Scale)* with smaller landscapes and lower mountains for normal play.
+- **Landscapes of the Polish lowlands and mountains.** Outwash plains with pine forests, moraine uplands with tunnel-valley lakes and kettle bogs, river valleys with smooth slopes, foothills and the Beskids with rare great massifs.
+- **Rivers and the coast.** Three orders of rivers with meanders and oxbow lakes, valley floors with willow scrub, reedbeds and floodplain forests; beaches, foredunes, gray dunes with crowberry pine forest, cliffs and lagoons with deltas.
+- **36 habitat biomes.** Fresh and dry pine forests, oak-hornbeam forests, lowland and Carpathian beech forests, fir forests, ash-alder and willow-poplar floodplain forests, alder carrs, raised bogs and fens, montane spruce forest, dwarf pine scrub and alpine grassland, and more.
+- **Smooth transitions.** Neighbouring forests mix their species over tens of blocks, forest edges get a shrub mantle and a herb fringe, and the timberline thins out gradually.
+- **Two vegetation modes.** *Natural vegetation* (default) or *present-day Poland* with about a third of the land forested, meadows, fallow fields and tree rows along streams.
+- **Climate.** Temperature falls with altitude, so snow lies on the mountains and not on the lowlands. Seasons with [Serene Seasons](https://modrinth.com/mod/serene-seasons) (optional).
+- **Commands.** `/polishforests find <target>`, `find biome <id>`, `find zone <id>` and `here` show where things are and what habitat you stand in. F3 shows the habitat too.
+
+## Requirements
+
+- Minecraft 26.3, Fabric Loader 0.19.5 or newer, Java 25
+- [Fabric API](https://modrinth.com/mod/fabric-api), [GeckoLib](https://modrinth.com/mod/geckolib), [SmartBrainLib](https://modrinth.com/mod/smartbrainlib)
+- Optional: [Serene Seasons](https://modrinth.com/mod/serene-seasons)
+- Recommended for the tall 1:1 world: [Sodium](https://modrinth.com/mod/sodium), [Lithium](https://modrinth.com/mod/lithium), [C2ME](https://modrinth.com/mod/c2me-fabric)
+
+Choose the *Poland (1:1 Scale)* or *Poland (Gameplay Scale)* world type when you create a world. The mod is needed on both the server and the client.
+
+## Roadmap
+
+Next is a complete oak-hornbeam and fresh pine forest: trees with trunks of varying thickness, ground flora with seasons, deadwood, roe deer, wild boar and birdsong. After that the same for all of Poland: more tree species, managed and natural forests, the Tatras and the Sudetes, and Polish fauna.
+
+## License
+
+Code: MIT. Textures, models and other assets: CC BY 4.0. Source and issue tracker on [GitHub](https://github.com/SernikNaZimno/Polish-Forests-Mod).
