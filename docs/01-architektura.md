@@ -133,7 +133,7 @@ Zrobione w kamieniu milowym M0: interfejs `SeasonProvider`, własny kalendarz i 
 | M8 | Tryby świata i dynamika | tryb rolniczy, infrastruktura leśna, gatunki obce, dynamika lasu |
 | M9 | Dopracowanie | wydajność, zgodność z Sodium, Lithium i Distant Horizons, balans |
 
-**Pionowy wycinek po M2 (decyzja P2, 2026-10-05).** Po zamknięciu M2, zanim M3–M7 poszerzą zakres na całą Polskę, powstaje jeden kompletny las, np. grąd i bór świeży: drzewa, runo, martwe drewno i kilka zwierząt. Wycinek bierze po kawałku z M3, M4 i M6 i sprawdza w grze, czy warstwy do siebie pasują; pozostałe siedliska i gatunki dochodzą potem w kolejnych kamieniach. **Stan 2026-10-15:** plan `docs/04-pionowy-wycinek.md` zaakceptowany (CP-0, decyzje w `docs/00` G), krok V0 (przygotowanie) zrobiony: stałe miejsca wycinka, gametest `slice`, baza pomiarowa M2 (tag `m2-baseline`), puste pakiety `block/`, `worldgen/tree/` i `entity/`.
+**Pionowy wycinek po M2 (decyzja P2, 2026-10-05).** Po zamknięciu M2, zanim M3–M7 poszerzą zakres na całą Polskę, powstaje jeden kompletny las, np. grąd i bór świeży: drzewa, runo, martwe drewno i kilka zwierząt. Wycinek bierze po kawałku z M3, M4 i M6 i sprawdza w grze, czy warstwy do siebie pasują; pozostałe siedliska i gatunki dochodzą potem w kolejnych kamieniach. **Stan 2026-10-15:** plan `docs/04-pionowy-wycinek.md` zaakceptowany (CP-0, decyzje w `docs/00` G), krok V0 (przygotowanie) zrobiony: stałe miejsca wycinka, gametest `slice`, baza pomiarowa M2 (tag `m2-baseline-r1` po rundzie 1 poprawek V0, ze stałymi kamerami `slice_cameras.txt`), puste pakiety `block/`, `worldgen/tree/` i `entity/`.
 
 ## 9. Struktura kodu
 

@@ -152,7 +152,7 @@ Plan: `docs/04-pionowy-wycinek.md`, **zaakceptowany przez użytkownika 2026-10-1
 | PW-14 | Fauna wycinka (dawne F4) | (b) minimum: sarna i dzik jako encje, żaba trawna jako `frog_variant`, dzięcioł, tło ptaków i skrzek sójki jako dźwięk; wiewiórka i sójka jako opcje O1, O2 | CP-D |
 | PW-15 | Zwierzęta wanilii i gęstość (dawne F1, F2) | (b) bez wilka i królika we wszystkich lasach (lis zostaje); gęstość ok. ×20–50, spawn przy generacji i naturalny kalibrowane osobno | CP-D |
 | PW-16 | Pejzaż dźwiękowy | (b) według biomu, podsezonu i pory dnia | CP-D |
-| PW-17 | Kolejność względem M2 | (b) wycinek startuje od razu. Stan 2026-10-15: S8c (M2-20 d2) i jego runda 1 poprawek są już zakończone (`9f627cd`), więc osobny worktree nie jest potrzebny, a baza pomiarowa M2 (tag `m2-baseline`) jest po S8c | — |
+| PW-17 | Kolejność względem M2 | (b) wycinek startuje od razu. Stan 2026-10-15: S8c (M2-20 d2) i jego runda 1 poprawek są już zakończone (`9f627cd`), więc osobny worktree nie jest potrzebny, a baza pomiarowa M2 (tag `m2-baseline-r1`, po rundzie 1 poprawek V0; wcześniejszy `m2-baseline` ma tę samą generację świata) jest po S8c | — |
 
 ### G.3 Inne otwarte decyzje, których dotyka wycinek (domyślne, do potwierdzenia, 2026-10-15)
 
