@@ -12,7 +12,7 @@
 		"sources": "https://github.com/SernikNaZimno/Polish-Forests-Mod",
 		"issues": "https://github.com/SernikNaZimno/Polish-Forests-Mod/issues"
 	},
-	"license": "MIT",
+	"license": ["MIT", "CC-BY-4.0"],
 	"icon": {
 		"16": "assets/polishforests/icon_16.png",
 		"32": "assets/polishforests/icon_32.png",

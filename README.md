@@ -4,7 +4,7 @@
 
 Mod do Minecrafta 26.3 (Fabric), który generuje proceduralne krajobrazy Polski w skali 1:1 z przyrodniczo wiernymi lasami, florą i fauną oraz integracją z porami roku Serene Seasons.
 
-Stan (2026-10-14): za nami M0, M1, skala rozgrywki, etap rzek, dolin i morza oraz M2 (biomy, siedliska, gleby i temperatura, kroki S0–S10). Świat ma 36 własnych biomów, strefy nadwodne, piętra Beskidów z kosodrzewiną i halą, gleby i półkę brzegową, zastępczą roślinność z płynnymi przejściami między siedliskami, tryb „dzisiejsza Polska” i komendy szukania biomów i stref. Budżety wydajności i determinizm generacji (także z C2ME) są sprawdzone. Na akceptację użytkownika czekają zrzuty punktów kontrolnych i pięć decyzji (`docs/00-decyzje-do-podjecia.md` E). Następny etap to pionowy wycinek: jeden kompletny las z drzewami, runem, martwym drewnem i kilkoma zwierzętami. Kod i teksty w grze są po angielsku (polski jako tłumaczenie), dokumentacja po polsku. Licencja: MIT. Plan i decyzje są w katalogu `docs`.
+Stan (2026-10-14): za nami M0, M1, skala rozgrywki, etap rzek, dolin i morza oraz M2 (biomy, siedliska, gleby i temperatura, kroki S0–S10). Świat ma 36 własnych biomów, strefy nadwodne, piętra Beskidów z kosodrzewiną i halą, gleby i półkę brzegową, zastępczą roślinność z płynnymi przejściami między siedliskami, tryb „dzisiejsza Polska” i komendy szukania biomów i stref. Budżety wydajności i determinizm generacji (także z C2ME) są sprawdzone. Na akceptację użytkownika czekają zrzuty punktów kontrolnych i pięć decyzji (`docs/00-decyzje-do-podjecia.md` E). Następny etap to pionowy wycinek: jeden kompletny las z drzewami, runem, martwym drewnem i kilkoma zwierzętami. Kod i teksty w grze są po angielsku (polski jako tłumaczenie), dokumentacja po polsku. Licencja: kod na MIT, grafika i inne zasoby na CC BY 4.0 (niżej). Plan i decyzje są w katalogu `docs`.
 
 ## Dokumentacja
 
@@ -66,6 +66,13 @@ Po `./gradlew build` buduje zalecaną paczkę modów `.mrpack` w `build/distribu
 
 Uruchamia grę w trybie deweloperskim. Z flagą `-Poptimization` dołącza mody z zalecanej paczki.
 
+```bash
+python tools/art/generate.py   # albo ./gradlew generateArt
+./gradlew checkArt
+```
+
+Tekstury bloków powstają proceduralnie w `tools/art` (przepisy gatunków, palety ze zdjęć CC0, lint stylu). `generateArt` zapisuje je do `src/main/resources/assets/polishforests/textures` razem z `CREDITS.md`, a `checkArt` sprawdza, czy pliki w repozytorium są dokładnie tym, co daje generator, i czy przechodzą lint. Oba zadania potrzebują Pythona 3.10+ z Pillow i NumPy (`pip install pillow numpy`) i nie wchodzą do `build`; inny interpreter wskazuje `-Ppython=<ścieżka>`.
+
 ## W grze
 
 Świat tworzy się na zakładce „Świat”. Do wyboru są dwa typy świata:
@@ -106,6 +113,10 @@ Informacje o krajobrazie są też na ekranie F3.
 | GeckoLib | 5.5.7 | wymagany |
 | SmartBrainLib | 2.0.3 | wymagany |
 | Serene Seasons | 26.1.2.0.7 | opcjonalny, bez niego działa własny kalendarz |
+
+## Licencja
+
+Kod (Java, skrypty budowania, narzędzia, w tym `tools/art`) jest na licencji MIT (`LICENSE`). Zasoby moda, czyli tekstury, modele, animacje i dźwięki w `src/main/resources/assets/polishforests/` i `src/main/generated/assets/polishforests/`, są na licencji Creative Commons Uznanie autorstwa 4.0 (CC BY 4.0, `LICENSE-assets`): można je wykorzystywać i przerabiać, także w innych modach i paczkach zasobów, z podaniem autorstwa („Polish Forests by SernikNaZimno” z odnośnikiem do repozytorium). `CREDITS.md` wymienia źródła zewnętrzne (zdjęcia CC0 i z domeny publicznej, z których mierzono same kolory palet; w przyszłości dźwięki CC0 i CC BY). Mod nie zawiera plików Minecrafta: do tekstur i modeli wanilii odwołuje się tylko po identyfikatorach. Obie licencje są też w pliku moda (`LICENSE_polishforests`, `LICENSE-assets_polishforests`, `CREDITS_polishforests.md`).
 
 ## Logo
 

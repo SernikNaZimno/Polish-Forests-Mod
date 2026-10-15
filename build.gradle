@@ -117,6 +117,17 @@ processResources {
 	exclude '.cache/**'
 }
 
+// The licenses go into the mod jar: MIT for the code, CC BY 4.0 for the assets (the license asks for the notice to
+// travel with the assets) and the credits of the outside sources (step V1, decision D5).
+def licenseSuffix = "_${project.archives_base_name}"
+tasks.named('jar', Jar) {
+	['LICENSE', 'LICENSE-assets', 'CREDITS.md'].each { name ->
+		from(name) {
+			rename { it.endsWith('.md') ? it.replace('.md', "${licenseSuffix}.md") : "${it}${licenseSuffix}" }
+		}
+	}
+}
+
 tasks.withType(JavaCompile).configureEach {
 	it.options.release = 25
 	it.options.encoding = 'UTF-8'
@@ -329,7 +340,95 @@ tasks.register('checkDatagen', CheckDatagen) {
 	outputs.upToDateWhen { false }
 }
 
-// Choosing in-game tests: ./gradlew runClientGameTest -Pgametest=performance|stages|views|climate|ui|habitats|vegetation|present_day|determinism|ecotones|slice|all
+// Textures from tools/art (step V1, rule ZW-9 of docs/04-pionowy-wycinek.md). The committed PNGs in
+// src/main/resources/assets/polishforests/textures must be exactly what the recipes make (decoded RGBA pixels and
+// .mcmeta, not PNG bytes), pass the style lint, and CREDITS.md must be up to date:
+//   ./gradlew checkArt      checks all that (tools/art/check.py), changes nothing;
+//   ./gradlew generateArt   rewrites the textures and CREDITS.md (tools/art/generate.py).
+// Neither is part of 'build' or 'check': both need Python 3.10+ with Pillow and NumPy (risk R24). The interpreter is
+// found by trying python3, python and 'py -3'; -Ppython=<path> names one. Without a usable one the task fails with a
+// message that says what to install.
+abstract class ArtTask extends DefaultTask {
+	@Inject
+	abstract ExecOperations getExecOperations()
+
+	@Internal
+	abstract DirectoryProperty getRoot()
+
+	@Input
+	@Optional
+	abstract Property<String> getPython()
+
+	@Input
+	abstract Property<String> getScript()
+
+	@TaskAction
+	void run() {
+		def dir = root.get().asFile
+		def candidates = python.isPresent() ? [[python.get()]] : [['python3'], ['python'], ['py', '-3']]
+		def probe = 'import sys, PIL, numpy; sys.exit(0 if sys.version_info >= (3, 10) else 3)'
+		def tried = []
+		List<String> chosen = null
+		for (c in candidates) {
+			def out = new ByteArrayOutputStream()
+			try {
+				def r = execOperations.exec { spec ->
+					spec.commandLine(c + ['-c', probe])
+					spec.workingDir = dir
+					spec.standardOutput = out
+					spec.errorOutput = out
+					spec.ignoreExitValue = true
+				}
+				if (r.exitValue == 0) {
+					chosen = c
+					break
+				}
+				def last = out.toString().readLines().findAll { !it.isBlank() }
+				def why = r.exitValue == 3 ? 'older than 3.10' : (last ? last.last().trim() : "exit ${r.exitValue}")
+				tried << "${c.join(' ')} (${why})"
+			} catch (Exception ignored) {
+				tried << "${c.join(' ')} (not found)"
+			}
+		}
+		if (chosen == null) {
+			throw new GradleException("${name} needs Python 3.10 or newer with Pillow and NumPy (pip install pillow numpy). " +
+					"Tried: ${tried.join('; ')}. Name an interpreter with -Ppython=<path>. ${name} is not part of 'build'.")
+		}
+		def result = execOperations.exec { spec ->
+			spec.commandLine(chosen + [new File(dir, script.get()).path])
+			spec.workingDir = dir
+			spec.environment('PYTHONIOENCODING', 'utf-8')
+			spec.ignoreExitValue = true
+		}
+		if (result.exitValue != 0) {
+			throw new GradleException("${name} failed, see the messages above (${script.get()} exited with ${result.exitValue})")
+		}
+	}
+}
+
+tasks.register('checkArt', ArtTask) {
+	group = 'verification'
+	description = 'Checks that the committed textures and CREDITS.md are exactly what tools/art makes and pass the style lint.'
+	root = layout.projectDirectory
+	script = 'tools/art/check.py'
+	if (project.hasProperty('python')) {
+		python = project.property('python').toString()
+	}
+	outputs.upToDateWhen { false }
+}
+
+tasks.register('generateArt', ArtTask) {
+	group = 'polishforests'
+	description = 'Regenerates the textures in src/main/resources/assets/polishforests/textures and CREDITS.md with tools/art.'
+	root = layout.projectDirectory
+	script = 'tools/art/generate.py'
+	if (project.hasProperty('python')) {
+		python = project.property('python').toString()
+	}
+	outputs.upToDateWhen { false }
+}
+
+// Choosing in-game tests:./gradlew runClientGameTest -Pgametest=performance|stages|views|climate|ui|habitats|vegetation|present_day|determinism|ecotones|slice|all
 // (ecotones: only by name, not in all; screenshots of biome borders, step S8b)
 // (slice: only by name; the fixed places of the vertical slice from src/test/resources/slice_sites.txt, step V0;
 // -Pmodes=natural|present_day picks a vegetation mode, -Psites=<place names>|none; the cameras come from

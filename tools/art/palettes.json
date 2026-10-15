@@ -1,0 +1,400 @@
+{
+	"_comment": "Palettes of tools/art: k-means colors (dark to light) of crops of CC0 or public-domain reference photos, made with tools/art/palette.py. Only the colors and the source links are kept; the photos are not in the repository. The sources are listed in CREDITS.md (tools/art/credits.py).",
+	"sources": {
+		"commons:20140209quercus_robur6": {
+			"title": "20140209Quercus robur6.jpg",
+			"url": "https://commons.wikimedia.org/wiki/File:20140209Quercus_robur6.jpg",
+			"author": "AnRo0002",
+			"license": "CC0",
+			"license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+		},
+		"commons:20140212tilia_cordata3": {
+			"title": "20140212Tilia cordata3.jpg",
+			"url": "https://commons.wikimedia.org/wiki/File:20140212Tilia_cordata3.jpg",
+			"author": "AnRo0002",
+			"license": "CC0",
+			"license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+		},
+		"commons:2025_warszawa_las_w_aleksandrowie_12": {
+			"title": "2025 Warszawa las w Aleksandrowie, 12.jpg",
+			"url": "https://commons.wikimedia.org/wiki/File:2025_Warszawa_las_w_Aleksandrowie,_12.jpg",
+			"author": "Cybularny",
+			"license": "CC0",
+			"license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+		},
+		"commons:bark_of_fagus_sylvatica_with_white_spots": {
+			"title": "Bark of Fagus sylvatica with white spots.jpg",
+			"url": "https://commons.wikimedia.org/wiki/File:Bark_of_Fagus_sylvatica_with_white_spots.jpg",
+			"author": "Jugrü",
+			"license": "Public domain",
+			"license_url": "https://commons.wikimedia.org/wiki/File:Bark_of_Fagus_sylvatica_with_white_spots.jpg"
+		},
+		"commons:bark_of_grimberg_natural_monument_scots_pine_pinus_sylvestris": {
+			"title": "Bark of Grimberg natural monument Scots pine (Pinus sylvestris).jpg",
+			"url": "https://commons.wikimedia.org/wiki/File:Bark_of_Grimberg_natural_monument_Scots_pine_(Pinus_sylvestris).jpg",
+			"author": "Pinecone23",
+			"license": "CC0",
+			"license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+		},
+		"commons:bilberry_bush_at_myrstigen_trail": {
+			"title": "Bilberry bush at Myrstigen trail.jpg",
+			"url": "https://commons.wikimedia.org/wiki/File:Bilberry_bush_at_Myrstigen_trail.jpg",
+			"author": "W.carter",
+			"license": "CC0",
+			"license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+		},
+		"commons:carpinus_betulus_bark_krivoklatsko": {
+			"title": "Carpinus betulus bark Křivoklátsko.jpg",
+			"url": "https://commons.wikimedia.org/wiki/File:Carpinus_betulus_bark_K%C5%99ivokl%C3%A1tsko.jpg",
+			"author": "Nefronus",
+			"license": "CC0",
+			"license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+		},
+		"commons:carpinusbetulusbark": {
+			"title": "CarpinusBetulusBark.jpg",
+			"url": "https://commons.wikimedia.org/wiki/File:CarpinusBetulusBark.jpg",
+			"author": "Chhe",
+			"license": "Public domain",
+			"license_url": "https://commons.wikimedia.org/wiki/File:CarpinusBetulusBark.jpg"
+		},
+		"commons:fagus_sylvatica1_fischerholzli_honeret": {
+			"title": "Fagus sylvatica1 Fischerhölzli Honeret.jpg",
+			"url": "https://commons.wikimedia.org/wiki/File:Fagus_sylvatica1_Fischerh%C3%B6lzli_Honeret.jpg",
+			"author": "Hubi47",
+			"license": "CC0",
+			"license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+		},
+		"commons:pinus_sylvestris_02_fws": {
+			"title": "Pinus-sylvestris-02-fws.jpg",
+			"url": "https://commons.wikimedia.org/wiki/File:Pinus-sylvestris-02-fws.jpg",
+			"author": "Francisco Welter-Schultes",
+			"license": "CC0",
+			"license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+		},
+		"commons:pinus_sylvestris_08_fws": {
+			"title": "Pinus-sylvestris-08-fws.jpg",
+			"url": "https://commons.wikimedia.org/wiki/File:Pinus-sylvestris-08-fws.jpg",
+			"author": "Francisco Welter-Schultes",
+			"license": "CC0",
+			"license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+		},
+		"commons:schwartau_winterlinde_mit_jadestift_2329": {
+			"title": "Schwartau Winterlinde mit Jädestift 2329.JPG",
+			"url": "https://commons.wikimedia.org/wiki/File:Schwartau_Winterlinde_mit_J%C3%A4destift_2329.JPG",
+			"author": "Ulf Heinsohn",
+			"license": "Public domain",
+			"license_url": "https://commons.wikimedia.org/wiki/File:Schwartau_Winterlinde_mit_J%C3%A4destift_2329.JPG"
+		},
+		"commons:stieleiche_stamm_mit_austrieb": {
+			"title": "Stieleiche Stamm mit Austrieb.jpg",
+			"url": "https://commons.wikimedia.org/wiki/File:Stieleiche_Stamm_mit_Austrieb.jpg",
+			"author": "Pedalito",
+			"license": "CC0",
+			"license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+		},
+		"commons:vaccinium_myrtillus_in_latvia": {
+			"title": "Vaccinium myrtillus in Latvia.jpg",
+			"url": "https://commons.wikimedia.org/wiki/File:Vaccinium_myrtillus_in_Latvia.jpg",
+			"author": "Gustamons",
+			"license": "CC0",
+			"license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+		}
+	},
+	"palettes": {
+		"scots_pine_bark": {
+			"colors": [
+				"#28231c",
+				"#5f574c",
+				"#867c70",
+				"#a4998d",
+				"#bfb4a8",
+				"#ddd4c9"
+			],
+			"shares": [
+				0.075,
+				0.112,
+				0.198,
+				0.265,
+				0.227,
+				0.122
+			],
+			"from": [
+				{
+					"source": "commons:pinus_sylvestris_08_fws",
+					"crop": [
+						0.22,
+						0.05,
+						0.72,
+						0.95
+					]
+				},
+				{
+					"source": "commons:bark_of_grimberg_natural_monument_scots_pine_pinus_sylvestris",
+					"crop": [
+						0.1,
+						0.05,
+						0.9,
+						0.95
+					]
+				}
+			],
+			"k": 6
+		},
+		"scots_pine_upper_bark": {
+			"colors": [
+				"#3e1710",
+				"#6a3e32",
+				"#916657",
+				"#b18d7c",
+				"#d0ae9c",
+				"#f2d1bd"
+			],
+			"shares": [
+				0.108,
+				0.154,
+				0.164,
+				0.226,
+				0.22,
+				0.128
+			],
+			"from": [
+				{
+					"source": "commons:2025_warszawa_las_w_aleksandrowie_12",
+					"crop": [
+						0.668,
+						0.33,
+						0.677,
+						0.6
+					]
+				},
+				{
+					"source": "commons:2025_warszawa_las_w_aleksandrowie_12",
+					"crop": [
+						0.708,
+						0.36,
+						0.722,
+						0.55
+					]
+				}
+			],
+			"k": 6
+		},
+		"oak_bark": {
+			"colors": [
+				"#322a1b",
+				"#63593d",
+				"#817a5b",
+				"#949176",
+				"#a8a489",
+				"#c2ba9c"
+			],
+			"shares": [
+				0.048,
+				0.098,
+				0.173,
+				0.274,
+				0.27,
+				0.137
+			],
+			"from": [
+				{
+					"source": "commons:20140209quercus_robur6",
+					"crop": [
+						0.25,
+						0.05,
+						0.75,
+						0.95
+					]
+				},
+				{
+					"source": "commons:stieleiche_stamm_mit_austrieb",
+					"crop": [
+						0.05,
+						0.6,
+						0.95,
+						0.98
+					]
+				}
+			],
+			"k": 6
+		},
+		"hornbeam_bark": {
+			"colors": [
+				"#31342e",
+				"#4a4f45",
+				"#61675d",
+				"#83817d",
+				"#a9a1a2",
+				"#c7bfc4"
+			],
+			"shares": [
+				0.141,
+				0.254,
+				0.205,
+				0.121,
+				0.145,
+				0.134
+			],
+			"from": [
+				{
+					"source": "commons:carpinus_betulus_bark_krivoklatsko",
+					"crop": [
+						0.35,
+						0.05,
+						0.6,
+						0.95
+					]
+				},
+				{
+					"source": "commons:carpinusbetulusbark",
+					"crop": [
+						0.15,
+						0.35,
+						0.42,
+						0.95
+					]
+				}
+			],
+			"k": 6
+		},
+		"linden_bark": {
+			"colors": [
+				"#2d2716",
+				"#4b432e",
+				"#625743",
+				"#7b6f59",
+				"#a69a6f",
+				"#d5ca9b"
+			],
+			"shares": [
+				0.142,
+				0.238,
+				0.308,
+				0.174,
+				0.088,
+				0.051
+			],
+			"from": [
+				{
+					"source": "commons:20140212tilia_cordata3",
+					"crop": [
+						0.35,
+						0.4,
+						0.65,
+						0.95
+					]
+				},
+				{
+					"source": "commons:schwartau_winterlinde_mit_jadestift_2329",
+					"crop": [
+						0.2,
+						0.62,
+						0.42,
+						0.95
+					]
+				}
+			],
+			"k": 6
+		},
+		"beech_bark": {
+			"colors": [
+				"#322f25",
+				"#606348",
+				"#7a7d5e",
+				"#98977a",
+				"#bab79e",
+				"#dfddcb"
+			],
+			"shares": [
+				0.061,
+				0.238,
+				0.271,
+				0.201,
+				0.146,
+				0.083
+			],
+			"from": [
+				{
+					"source": "commons:bark_of_fagus_sylvatica_with_white_spots",
+					"crop": [
+						0.1,
+						0.05,
+						0.9,
+						0.95
+					]
+				},
+				{
+					"source": "commons:fagus_sylvatica1_fischerholzli_honeret",
+					"crop": [
+						0.28,
+						0.35,
+						0.55,
+						0.85
+					]
+				}
+			],
+			"k": 6
+		},
+		"scots_pine_needles": {
+			"colors": [
+				"#292f14",
+				"#586135",
+				"#8e9963",
+				"#ccd4a5"
+			],
+			"shares": [
+				0.345,
+				0.297,
+				0.225,
+				0.133
+			],
+			"from": [
+				{
+					"source": "commons:pinus_sylvestris_02_fws",
+					"crop": [
+						0.3,
+						0.2,
+						0.8,
+						0.7
+					]
+				}
+			],
+			"k": 4
+		},
+		"bilberry": {
+			"colors": [
+				"#0e1b07",
+				"#31642b",
+				"#6cac53",
+				"#98e2aa"
+			],
+			"shares": [
+				0.413,
+				0.286,
+				0.176,
+				0.125
+			],
+			"from": [
+				{
+					"source": "commons:bilberry_bush_at_myrstigen_trail",
+					"crop": [
+						0.4,
+						0.2,
+						0.95,
+						0.85
+					]
+				},
+				{
+					"source": "commons:vaccinium_myrtillus_in_latvia",
+					"crop": [
+						0.25,
+						0.35,
+						0.85,
+						0.85
+					]
+				}
+			],
+			"k": 4
+		}
+	}
+}
