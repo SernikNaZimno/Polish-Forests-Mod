@@ -152,7 +152,8 @@ pl.polishforests
 ├── block/                      pnie, liście, runo, grzyby, gleby
 ├── entity/                     zwierzęta, AI, spawnery, domy
 └── client/                     rendery, kolory, HUD, wpis F3 siedliska, datagen (wynik w src/main/generated)
-tools/                          skrypty Python: generator modeli i tekstur, podgląd map
+tools/                          skrypty Python: art/ (tekstury bloków: biblioteka, przepisy gatunków, palety, lint, checkArt), logo/, paczka .mrpack, dev/run-tests
+src/main/resources/assets/polishforests/textures/   tylko pliki z tools/art (checkArt); zasoby na CC BY 4.0 (LICENSE-assets, CREDITS.md)
 ```
 
 Model krajobrazu nie zależy od klas Minecrafta. Dzięki temu da się go testować jednostkowo, renderować do PNG i profilować bez uruchamiania gry.

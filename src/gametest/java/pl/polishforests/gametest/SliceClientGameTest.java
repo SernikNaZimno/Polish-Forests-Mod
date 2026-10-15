@@ -64,7 +64,7 @@ import pl.polishforests.worldgen.surface.ChunkSurface;
  * leaves (new trees of a later step), the run logs it and removes those blocks.
  *
  * <p>Screenshots {@code slice_<scale>_<mode>_<place>_<camera>}: eye height and bark at 1280 × 720 (bark texture readable),
- * the others at 854 × 480; at noon (the canopy view at time 3000, with the sun outside the frame) in clear weather, without
+ * the others at 854 × 480; at noon (the canopy view at time 1000, with the sun outside the frame) in clear weather, without
  * the HUD, with Serene Seasons in {@code mid_summer} (without SS the calendar of the mod; the sub-season goes to the log).
  * The log ({@code [slice]}) gets the camera, the brightness of each screenshot (mean, share of dark pixels, share of sky)
  * with a warning for an eye-height view darker than {@link #MAX_DARK}, and per world the counters of the dispatcher layers
@@ -88,9 +88,21 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 	/** Screenshot sizes: eye height and bark close-ups, the other views. */
 	private static final int[] EYE_SIZE = {1280, 720};
 	private static final int[] VIEW_SIZE = {854, 480};
-	/** Time of the shots (noon) and of the canopy view: the sun 45° above the eastern horizon, outside the frame looking up. */
+	/**
+	 * Time of the shots (noon) and of the canopy view. The sun angle does not grow linearly with the time of day (the
+	 * celestial angle is eased towards noon): at 3000 the sun is only about 31-35° from the zenith and its disc showed in
+	 * the canopy views of V0 (vertical half field of view 35°). At 1000 it is about 62° from the zenith (28° above the
+	 * eastern horizon), clearly outside the frame, and the sky light is already full.
+	 */
 	private static final int NOON = 6000;
-	private static final int CANOPY_TIME = 3000;
+	private static final int CANOPY_TIME = 1000;
+	/** Sun disc check of a canopy view: near-white pixels (all channels above 235) in the top band, more is a warning. */
+	private static final int SUN_WHITE = 235;
+	private static final double SUN_BAND = 0.15;
+	private static final int SUN_MAX_PIXELS = 40;
+	/** Canopy column: no logs within this horizontal radius, from the feet up to this many blocks (trunks fill the view). */
+	private static final int CANOPY_TRUNK_RADIUS = 3;
+	private static final int CANOPY_TRUNK_HEIGHT = 8;
 	/** Free line of sight of an eye-height camera, blocks: least accepted, longest looked for; half-angle of the cone, °. */
 	private static final double MIN_RAY = 6;
 	private static final double MAX_RAY = 16;
@@ -417,8 +429,11 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 
 	/**
 	 * Straight up under the canopy: the nearest column (up to {@link #CANOPY_RADIUS} blocks) with 5 free blocks from the
-	 * feet up (the lowest leaves at least 4 blocks above the head) and leaves within 30 blocks above it and above the four
-	 * columns 2 blocks away; yaw 90 puts the morning sun of {@link #CANOPY_TIME} outside the frame.
+	 * feet up (the lowest leaves at least 4 blocks above the head), leaves within 30 blocks above it and above the four
+	 * columns 2 blocks away, and no logs within {@link #CANOPY_TRUNK_RADIUS} blocks from the feet up to
+	 * {@link #CANOPY_TRUNK_HEIGHT} blocks (a trunk next to the camera filled 10-30% of the V0 canopy views, which compare
+	 * canopy closure). When no column is free of trunks, the one with the fewest log blocks around it is taken (logged).
+	 * Yaw 90 puts the morning sun of {@link #CANOPY_TIME} outside the frame.
 	 */
 	private static Camera canopyCamera(Ground g, int x, int z, Camera eye) {
 		List<int[]> columns = new ArrayList<>();
@@ -430,6 +445,8 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 			}
 		}
 		columns.sort(Comparator.<int[]>comparingInt(c -> c[0] * c[0] + c[1] * c[1]).thenComparingInt(c -> c[0]).thenComparingInt(c -> c[1]));
+		Camera fewest = null;
+		int fewestLogs = Integer.MAX_VALUE;
 		for (int[] c : columns) {
 			int cx = x + c[0];
 			int cz = z + c[1];
@@ -440,9 +457,22 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 			}
 			ok = ok && g.leaves(cx, y + 5, y + 30, cz) && g.leaves(cx + 2, y + 3, y + 30, cz) && g.leaves(cx - 2, y + 3, y + 30, cz)
 					&& g.leaves(cx, y + 3, y + 30, cz + 2) && g.leaves(cx, y + 3, y + 30, cz - 2);
-			if (ok) {
+			if (!ok) {
+				continue;
+			}
+			int logs = g.logsAround(cx, y, y + CANOPY_TRUNK_HEIGHT, cz, CANOPY_TRUNK_RADIUS);
+			if (logs == 0) {
 				return new Camera("canopy", cx, y, cz, 90, -90);
 			}
+			if (logs < fewestLogs) {
+				fewestLogs = logs;
+				fewest = new Camera("canopy", cx, y, cz, 90, -90);
+			}
+		}
+		if (fewest != null) {
+			PolishForests.LOG.warn("[slice] canopy: every column under the canopy within {} blocks of ({}, {}) has logs within {} blocks; "
+					+ "taken ({}, {}) with {} log blocks", CANOPY_RADIUS, x, z, CANOPY_TRUNK_RADIUS, fewest.x(), fewest.z(), fewestLogs);
+			return fewest;
 		}
 		PolishForests.LOG.warn("[slice] canopy: no column under the canopy within {} blocks of ({}, {}), the eye column", CANOPY_RADIUS, x, z);
 		return new Camera("canopy", eye.x(), eye.y(), eye.z(), 90, -90);
@@ -587,8 +617,12 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 		int[] size = kind == SliceCameras.Kind.EYE || kind == SliceCameras.Kind.BARK ? EYE_SIZE : VIEW_SIZE;
 		Path path = context.takeScreenshot(TestScreenshotOptions.of(screenshot).disableCounterPrefix().withSize(size[0], size[1]));
 		double[] st = brightness(path);
-		PolishForests.LOG.info(String.format(Locale.ROOT, "[slice] %s: mean luma %.0f, dark %.0f%%, sky %.0f%%", screenshot, st[0], 100 * st[1],
-				100 * st[2]));
+		PolishForests.LOG.info(String.format(Locale.ROOT, "[slice] %s: mean luma %.0f, dark %.0f%%, sky %.0f%%%s", screenshot, st[0], 100 * st[1],
+				100 * st[2], kind == SliceCameras.Kind.CANOPY ? String.format(Locale.ROOT, ", sun pixels %.0f", st[3]) : ""));
+		if (kind == SliceCameras.Kind.CANOPY && st[3] > SUN_MAX_PIXELS) {
+			PolishForests.LOG.warn(String.format(Locale.ROOT, "[slice] %s: %.0f near-white pixels in the top %.0f%% of the view, the sun is "
+					+ "probably in the frame", screenshot, st[3], 100 * SUN_BAND));
+		}
 		if (kind == SliceCameras.Kind.EYE && st[1] > MAX_DARK) {
 			PolishForests.LOG.warn(String.format(Locale.ROOT, "[slice] %s: %.0f%% dark pixels (more than %.0f%%), something blocks the view",
 					screenshot, 100 * st[1], 100 * MAX_DARK));
@@ -656,7 +690,10 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 		return note.toString();
 	}
 
-	/** {mean luma, share of pixels with luma below 40, share of sky-blue pixels} of a screenshot. */
+	/**
+	 * {mean luma, share of pixels with luma below 40, share of sky-blue pixels, near-white pixels in the top
+	 * {@link #SUN_BAND} of the image (the sun disc and its glow in a view up)} of a screenshot.
+	 */
 	private static double[] brightness(Path path) {
 		BufferedImage img;
 		try {
@@ -668,6 +705,8 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 		double sum = 0;
 		long dark = 0;
 		long sky = 0;
+		long white = 0;
+		int band = (int) Math.round(img.getHeight() * SUN_BAND);
 		for (int y = 0; y < img.getHeight(); y++) {
 			for (int x = 0; x < img.getWidth(); x++) {
 				int rgb = img.getRGB(x, y);
@@ -678,9 +717,10 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 				sum += l;
 				dark += l < 40 ? 1 : 0;
 				sky += b > 140 && b > r + 20 && b >= gr ? 1 : 0;
+				white += y < band && r > SUN_WHITE && gr > SUN_WHITE && b > SUN_WHITE ? 1 : 0;
 			}
 		}
-		return new double[] {sum / n, (double) dark / n, (double) sky / n};
+		return new double[] {sum / n, (double) dark / n, (double) sky / n, white};
 	}
 
 	// ------------------------------------------------------------------ helpers
@@ -726,6 +766,24 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 				}
 			}
 			return false;
+		}
+
+		/** Log blocks within {@code radius} blocks (horizontally, Euclidean) of the column (x, z), from {@code from} to {@code to}. */
+		int logsAround(int x, int from, int to, int z, int radius) {
+			int n = 0;
+			for (int dx = -radius; dx <= radius; dx++) {
+				for (int dz = -radius; dz <= radius; dz++) {
+					if (dx * dx + dz * dz > radius * radius) {
+						continue;
+					}
+					for (int y = from; y <= to; y++) {
+						if (state(x + dx, y, z + dz).is(BlockTags.LOGS)) {
+							n++;
+						}
+					}
+				}
+			}
+			return n;
 		}
 
 		/** The 3 × 3 blocks around the feet, the head and above the head hold no leaves, logs or solid blocks. */

@@ -7,12 +7,12 @@
 # (the middle of each forest), edge_<biome>_<biome>_eye / _side (each border, along the line and from 35 blocks
 # above, across it), 30m (above the start) and, in the gameplay scale, overview (the whole line from the side).
 realistic oak_hornbeam_1 eye 436 265 -727 210.0 0.0
-realistic oak_hornbeam_1 canopy 445 265 -732 90.0 -90.0
+realistic oak_hornbeam_1 canopy 426 264 -737 90.0 -90.0
 realistic oak_hornbeam_1 30m 453 294 -756 30.0 45.6
 realistic oak_hornbeam_1 bark_oak_log 445 265 -733 90.0 -7.2
 realistic oak_hornbeam_1 bark_pale_oak_log 441 265 -726 90.0 -7.2
 realistic oak_hornbeam_2 eye -1595 229 -579 300.0 0.0
-realistic oak_hornbeam_2 canopy -1595 229 -572 90.0 -90.0
+realistic oak_hornbeam_2 canopy -1601 229 -559 90.0 -90.0
 realistic oak_hornbeam_2 30m -1581 258 -597 30.0 45.6
 realistic fresh_pine_1 eye -699 246 1924 210.0 0.0
 realistic fresh_pine_1 canopy -705 246 1916 90.0 -90.0
@@ -20,7 +20,7 @@ realistic fresh_pine_1 30m -684 275 1898 30.0 45.6
 realistic fresh_pine_1 bark_birch_log -700 246 1919 90.0 -7.2
 realistic fresh_pine_1 bark_spruce_log -704 246 1927 90.0 -7.2
 realistic fresh_pine_2 eye -2836 210 -1953 75.0 0.0
-realistic fresh_pine_2 canopy -2840 209 -1950 90.0 -90.0
+realistic fresh_pine_2 canopy -2841 209 -1950 90.0 -90.0
 realistic fresh_pine_2 30m -2822 239 -1974 30.0 45.6
 realistic transect eye_fresh_pine_forest -2626 215 -1524 -7.5 0.0
 realistic transect eye_mixed_pine_forest -2599 216 -1309 -7.5 0.0
@@ -39,15 +39,15 @@ gameplay oak_hornbeam_1 30m -1770 172 860 30.0 46.5
 gameplay oak_hornbeam_1 bark_oak_log -1786 142 888 -90.0 -7.2
 gameplay oak_hornbeam_1 bark_pale_oak_log -1781 142 882 90.0 -7.2
 gameplay oak_hornbeam_2 eye 870 177 1962 120.0 0.0
-gameplay oak_hornbeam_2 canopy 877 177 1959 90.0 -90.0
+gameplay oak_hornbeam_2 canopy 878 176 1962 90.0 -90.0
 gameplay oak_hornbeam_2 30m 885 206 1935 30.0 45.6
 gameplay fresh_pine_1 eye -1195 107 -580 165.0 0.0
-gameplay fresh_pine_1 canopy -1197 107 -580 90.0 -90.0
+gameplay fresh_pine_1 canopy -1188 108 -576 90.0 -90.0
 gameplay fresh_pine_1 30m -1180 135 -609 30.0 45.6
 gameplay fresh_pine_1 bark_birch_log -1193 107 -578 90.0 -7.2
 gameplay fresh_pine_1 bark_spruce_log -1196 107 -581 90.0 -7.2
 gameplay fresh_pine_2 eye -398 137 1001 120.0 0.0
-gameplay fresh_pine_2 canopy -394 138 1001 90.0 -90.0
+gameplay fresh_pine_2 canopy -388 139 989 90.0 -90.0
 gameplay fresh_pine_2 30m -383 170 973 30.0 49.1
 gameplay transect eye_fresh_pine_forest -1584 109 -42 0.0 0.0
 gameplay transect eye_mixed_pine_forest -1590 105 24 0.0 0.0

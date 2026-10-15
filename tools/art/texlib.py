@@ -7,7 +7,7 @@ Everything works on a 16 x 16 torus, so every texture tiles without seams. The b
 - worley: tileable Worley cells (F1, F2, cell id), optionally stretched along an axis (bark plates);
 - quantize: a scalar field to ramp indices, by equal-count or by explicit shares (every tone is used);
 - majority: a majority filter that removes isolated pixels (vanilla pixel art is built of 2-4 px clusters);
-- relief: light from the top-left on a height field (vanilla convention);
+- edge_light: light from the top-left next to grooves (lit upper-left edge of a plate, shaded lower-right edge);
 - stamp: small sprites (leaves, needle tufts) stamped until a target opacity;
 - edge_locked: a variant that shares its top and bottom rows with the base texture, so variants stack in any order;
 - ramps: palette colors (from tools/art/palettes.json) spread over n tones with a target luminance range.
@@ -58,9 +58,6 @@ class Rng:
         n = int(np.prod(shape))
         return np.array([self.random() for _ in range(n)], dtype=np.float64).reshape(shape)
 
-    def fork(self, label):
-        """An independent generator derived from this one and a label (stable when other draws are added later)."""
-        return Rng(f'{self.state}:{label}')
 
 
 # ---------------------------------------------------------------------------------------------------- noise fields
@@ -128,12 +125,6 @@ def worley(rng, n_points, stretch_x=1.0, stretch_y=1.0, points=None):
     return f1, f2, order[0]
 
 
-def normalize(a):
-    a = a - a.min()
-    m = a.max()
-    return a / m if m > 0 else a
-
-
 def roll(a, dy, dx):
     """Value of the neighbour at (y - dy, x - dx) on the torus, i.e. roll(a, 1, 0) is the pixel above."""
     return np.roll(np.roll(a, dy, axis=0), dx, axis=1)
@@ -189,14 +180,24 @@ def isolated_fraction(idx, alpha=None):
     return float(iso.mean())
 
 
-def relief(height, strength=1.0):
-    """Lighting from the top-left on a height field: > 0 where the surface faces the light (the pixel is higher than
-    its upper-left neighbour), < 0 in shadow. Returned in units of the height difference times strength."""
-    return strength * (height - roll(height, 1, 1))
-
-
-def shift_index(idx, delta, lo, hi):
-    return np.clip(idx + delta, lo, hi)
+def edge_light(idx, groove, lo, hi, across=(True, True)):
+    """Pixel-art light from the top-left next to grooves: a pixel with a groove above (or left) of it is the lit
+    upper-left edge of a plate (+1 tone), one with a groove below (or right) is in shadow (-1 tone).
+    across = (use the vertical neighbours, use the horizontal neighbours)."""
+    lit = np.zeros_like(groove)
+    shade = np.zeros_like(groove)
+    if across[0]:
+        lit |= roll(groove, 1, 0)
+        shade |= roll(groove, -1, 0)
+    if across[1]:
+        lit |= roll(groove, 0, 1)
+        shade |= roll(groove, 0, -1)
+    out = idx.copy()
+    up = lit & ~groove
+    dn = shade & ~groove & ~lit
+    out[up] = np.minimum(idx[up] + 1, hi)
+    out[dn] = np.maximum(idx[dn] - 1, lo)
+    return out
 
 
 def edge_locked(base_field, other_field, band=3):

@@ -176,3 +176,15 @@ Plan: `docs/04-pionowy-wycinek.md`, **zaakceptowany przez użytkownika 2026-10-1
 ### G.4 Stan M2 przy starcie wycinka
 
 M2 zamknięty (sekcja E, „Stan M2”): punkty kontrolne 1 i 2 zaakceptowane 2026-10-14, decyzje M2-13 … M2-27 bez zmian (wdrożone jako domyślne, do potwierdzenia).
+
+### G.5 Drobne wybory kroku V1 (domyślne, do potwierdzenia najpóźniej przy CP-A, 2026-10-16)
+
+Wybory przyjęte w kroku V1 (`tools/art`, pierwsze tekstury, licencja zasobów) bez pytania, zgodnie z zasadą z 2026-10-09. Szczegóły: `docs/04-pionowy-wycinek.md`, „Stan po V1”.
+
+| # | Wybór | Uzasadnienie i alternatywa |
+|---|---|---|
+| V1-a | Nazwy tekstur: `<gatunek>_bark` (kora: `scots_pine_bark` i `scots_pine_bark_2` dolna, `scots_pine_upper_bark` „lustro”, `oak_bark`, `hornbeam_bark`, `linden_bark`, `beech_bark`), `scots_pine_leaves`, `broadleaf_leaves`, `bilberry` w `textures/block/` | Ta sama kora posłuży pniowi `TrunkBlock` (V2) i bokowi pełnej kłody LITE sosny (V7). Nazwy plików tekstur nie trafiają do zapisów świata, więc można je zmienić bez migracji (identyfikatory bloków ustala V2) |
+| V1-b | Dolna kora sosny w 2 wariantach o wspólnym górnym i dolnym wierszu (warianty układają się w pniu w dowolnej kolejności bez szwu); kora pozostałych gatunków na razie w 1 wariancie | Arkusz `pnie.png` pokazuje powtarzanie co 16 px na pniach 1:1. Drugi wariant dla dębu, grabu, lipy i buka kosztuje ok. godzinę na gatunek; do decyzji przy CP-A |
+| V1-c | Borówka w szarości pod tint trawy biomu (jak wanilijne `bush` i `fern`), owoce i jesienne przebarwienie jako osobne stany w V12 i V13; igły sosny w szarości pod stały kolor (V7), propozycja `#8e9963` (jasny ton igieł z palety zdjęcia) | Zmienia kolor razem z porą roku SS i z Biome Blend. Alternatywa: borówka bez tintu, w gotowych kolorach (żywsza zieleń, ale bez sezonu i mieszania kolorów biomu) |
+| V1-d | Licencja zasobów (D5): CC BY 4.0 obejmuje pliki w `src/main/resources/assets/polishforests/` i `src/main/generated/assets/polishforests/` (tekstury, modele, animacje, dźwięki), uznanie autorstwa „Polish Forests by SernikNaZimno”; kod, skrypty i `tools/art` zostają na MIT; `LICENSE`, `LICENSE-assets` i `CREDITS.md` są w pliku moda, a `fabric.mod.json` podaje `["MIT", "CC-BY-4.0"]` | Zrzuty ekranu w `docs/` nie są objęte (pokazują grafikę Minecrafta) |
+| V1-e | Palety: k-średnie z wycinków zdjęć CC0 i z domeny publicznej z Wikimedia Commons (14 zdjęć; w repozytorium tylko kolory, wycinek i odnośnik). Odcień kory sosny i „lustra” z palety, nasycenie i jasność ustala przepis (`texlib.ramp_hue`), bo zdjęcia w słońcu wypłowiały w różowawą szarość | Alternatywa: same kolory ze zdjęć (lustro wychodziło łososiowe, dolna kora szara) |

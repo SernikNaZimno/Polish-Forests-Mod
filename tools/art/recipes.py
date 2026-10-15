@@ -64,26 +64,6 @@ def quantize_like(v, ref, levels, shares=None):
     return np.digitize(v, [cut_at(ref, c) for c in cum])
 
 
-def edge_light(idx, groove, lo, hi, across=(True, True)):
-    """Pixel-art light from the top-left next to grooves: a pixel with a groove above (or left) of it is the lit
-    upper-left edge of a plate (+1 tone), one with a groove below (or right) is in shadow (-1 tone).
-    across = (use the vertical neighbours, use the horizontal neighbours)."""
-    lit = np.zeros_like(groove)
-    shade = np.zeros_like(groove)
-    if across[0]:
-        lit |= t.roll(groove, 1, 0)
-        shade |= t.roll(groove, -1, 0)
-    if across[1]:
-        lit |= t.roll(groove, 0, 1)
-        shade |= t.roll(groove, 0, -1)
-    out = idx.copy()
-    up = lit & ~groove
-    dn = shade & ~groove & ~lit
-    out[up] = np.minimum(idx[up] + 1, hi)
-    out[dn] = np.maximum(idx[dn] - 1, lo)
-    return out
-
-
 def variant_fields(tex, fields_fn):
     """(fields, reference fields): for a variant, every field is edge-locked to the base texture's field and the
     tone thresholds come from the base fields."""
@@ -125,7 +105,7 @@ def pine_lower_index(tex):
     face = (1 - p['scale_mix']) * f['plate'] + p['scale_mix'] * f['scale']
     ref_face = (1 - p['scale_mix']) * ref['plate'] + p['scale_mix'] * ref['scale']
     idx = 2 + quantize_like(face, ref_face, 4, shares=[0.22, 0.3, 0.3, 0.18])     # plate faces: tones 2..5
-    idx = edge_light(idx, furrow, 1, 5)
+    idx = t.edge_light(idx, furrow, 1, 5)
     # rust-brown inner bark shows where the outer scales broke off, mostly along the lower and right edge of a plate
     near = t.roll(furrow, -1, 0) | t.roll(furrow, 0, -1) | t.roll(furrow, -2, 0)
     rust = (f['rust'] > cut_at(ref['rust'], 1 - p['rust'])) & near & ~furrow
@@ -174,7 +154,7 @@ def bark_furrowed(tex, palettes):
     notch = row & t.roll(furrow, 0, 1) & ~furrow                  # a crack starts at the furrow on its left ...
     crack = notch | (t.roll(notch, 0, 1) & row & ~furrow)         # ... and runs 1-2 px into the ridge
     groove = furrow | crack
-    idx = edge_light(idx, groove, 1, 5)
+    idx = t.edge_light(idx, groove, 1, 5)
     idx[crack] = 1
     idx[furrow] = p['furrow_tone']
     idx[deep] = 0
