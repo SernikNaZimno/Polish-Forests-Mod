@@ -6,7 +6,7 @@
 
 ## Features
 
-- **Two world types.** *Poland (1:1 Scale)* with real distances with real heights (sea level at Y 63, the Beskids above 1,500 m), and *Poland (Gameplay Scale)* with smaller landscapes and lower mountains for normal play.
+- **Two world types.** *Poland (1:1 Scale)* with real distances and heights (sea level at Y 63, the Beskids above 1,500 m), and *Poland (Gameplay Scale)* with smaller landscapes and lower mountains for normal play.
 - **Landscapes of the Polish lowlands and mountains.** Outwash plains with pine forests, moraine uplands with tunnel-valley lakes and kettle bogs, river valleys with smooth slopes, foothills and the Beskids with rare great massifs.
 - **Rivers and the coast.** Three orders of rivers with meanders and oxbow lakes, valley floors with willow scrub, reedbeds and floodplain forests; beaches, foredunes, gray dunes with crowberry pine forest, cliffs and lagoons with deltas.
 - **36 habitat biomes.** Fresh and dry pine forests, oak-hornbeam forests, lowland and Carpathian beech forests, fir forests, ash-alder and willow-poplar floodplain forests, alder carrs, raised bogs and fens, montane spruce forest, dwarf pine scrub and alpine grassland, and more.
