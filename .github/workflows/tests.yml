@@ -1,0 +1,58 @@
+name: Tests
+
+# Fast tests on every push and pull request; the full suite (slow tests included) every night
+# and on demand from the Actions tab. Client game tests need a display and stay local.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      full:
+        description: Run the full test suite (slow tests included)
+        type: boolean
+        default: true
+  schedule:
+    - cron: '0 2 * * *'
+
+concurrency:
+  group: tests-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      # gradle.properties pins org.gradle.java.home to the developer's Windows JDK;
+      # the user-home gradle.properties takes precedence over the project one.
+      - name: Point Gradle to the runner JDK
+        run: |
+          mkdir -p ~/.gradle
+          echo "org.gradle.java.home=$JAVA_HOME" >> ~/.gradle/gradle.properties
+          chmod +x gradlew
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Fast tests
+        if: github.event_name == 'push' || github.event_name == 'pull_request'
+        run: ./gradlew fastTest -PtestForks=2
+
+      - name: Full tests
+        if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.full)
+        run: ./gradlew test -PtestForks=2
+
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: build/reports/tests/
