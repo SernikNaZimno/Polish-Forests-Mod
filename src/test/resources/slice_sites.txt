@@ -1,0 +1,15 @@
+# Fixed places of the vertical slice (step V0, docs/04-pionowy-wycinek.md §3), seed 20260927. Written by
+# ./gradlew test --tests '*SliceSitesTest*' -PfindSliceSites, checked by SliceSitesTest, read by the in-game
+# test -Pgametest=slice and by -Pgametest=stages -Psites=slice. Columns: scale, modes (both, natural or
+# present_day), name, biome and center x z (a 100 x 100 block square of the biome), or 'transect' and the
+# start and end x z of a line through fresh pine -> mixed pine-oak -> mixed -> oak-hornbeam forest.
+realistic both oak_hornbeam_1 oak_hornbeam_forest 534 -714
+realistic both oak_hornbeam_2 oak_hornbeam_forest -1596 -571
+realistic both fresh_pine_1 fresh_pine_forest -699 1924
+realistic both fresh_pine_2 fresh_pine_forest -2837 -1948
+realistic both transect transect -2640 -1512 -2440 -776
+gameplay both oak_hornbeam_1 oak_hornbeam_forest -1279 530
+gameplay both oak_hornbeam_2 oak_hornbeam_forest -1509 181
+gameplay both fresh_pine_1 fresh_pine_forest -1195 -583
+gameplay both fresh_pine_2 fresh_pine_forest -398 999
+gameplay both transect transect -1686 1158 -1670 1042

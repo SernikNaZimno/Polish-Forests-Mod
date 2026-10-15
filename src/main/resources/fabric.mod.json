@@ -41,7 +41,7 @@
 		"java": ">=25",
 		"fabric-api": "*",
 		"geckolib": ">=5.5.7",
-		"smartbrainlib": ">=2.0.2"
+		"smartbrainlib": ">=2.0.3"
 	},
 	"recommends": {
 		"sereneseasons": "*"

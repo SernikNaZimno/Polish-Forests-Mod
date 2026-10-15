@@ -104,7 +104,7 @@ Informacje o krajobrazie są też na ekranie F3.
 |---|---|---|
 | Fabric API | 0.161.0+26.3 | wymagany |
 | GeckoLib | 5.5.7 | wymagany |
-| SmartBrainLib | 2.0.2 | wymagany |
+| SmartBrainLib | 2.0.3 | wymagany |
 | Serene Seasons | 26.1.2.0.7 | opcjonalny, bez niego działa własny kalendarz |
 
 ## Logo

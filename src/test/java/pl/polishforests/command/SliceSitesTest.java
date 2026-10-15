@@ -1,0 +1,432 @@
+package pl.polishforests.command;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Locale;
+import java.util.stream.IntStream;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
+import pl.polishforests.worldgen.habitat.Habitat;
+import pl.polishforests.worldgen.habitat.HabitatBiome;
+import pl.polishforests.worldgen.habitat.HabitatClassifier;
+import pl.polishforests.worldgen.landscape.LandscapeScale;
+
+/**
+ * Fixed places of the vertical slice (step V0, docs/04-pionowy-wycinek.md §3): two oak-hornbeam forests, two fresh pine
+ * forests and a transect fresh pine forest → mixed pine-oak forest → mixed forest → oak-hornbeam forest in each scale, for
+ * the seed of the in-game tests. The table lives in {@code src/test/resources/slice_sites.txt}; the in-game test
+ * {@code -Pgametest=slice} and the {@code stages} measurement with {@code -Psites=slice} read the same file.
+ *
+ * <p>Each site is the center of a square of 100 × 100 blocks (the 1 ha plot of the norm card, step V4) whose columns have
+ * the site's biome in both vegetation modes (in the PRESENT_DAY mode the square is forest), at least {@link #MIN_SHARE}
+ * of a lattice of 5 blocks; the sites lie at least {@link #MIN_ORIGIN} blocks from the spawn area and {@link #MIN_APART}
+ * from each other, so the 8 × 8 chunk areas of the stage measurement are new terrain, and the two sites of a biome
+ * {@link #MIN_SAME_BIOME_APART} apart, so they are different stands. A transect is a straight line whose
+ * columns pass the four forests in that order ({@link #transectProblem}). Columns of other biomes may interrupt it (water,
+ * a bog in a hollow) up to {@link #MAX_OTHER} of the line and {@link #MAX_OTHER_RUN} blocks at a time.
+ *
+ * <p>The sites were found with {@link HabitatTargets#locate} (nearest place of the biome in the PRESENT_DAY mode from a
+ * ring of origins) and a local search around each hit; {@code ./gradlew test --tests '*SliceSitesTest*' -PfindSliceSites}
+ * searches again and writes the file. The usual run only checks the table.
+ */
+class SliceSitesTest {
+	static final String RESOURCE = "/slice_sites.txt";
+	/** Least share of the 100 × 100 square with the site's biome, in each mode. */
+	static final double MIN_SHARE = 0.95;
+	/** Least distance of a site (and of the middle of a transect) from (0, 0), blocks: outside the chunks of the world start. */
+	static final double MIN_ORIGIN = 640;
+	/** Least distance between two places of a scale, blocks: separate 8 × 8 measurement areas with their neighbors. */
+	static final double MIN_APART = 320;
+	/** Least distance between the two sites of one biome, blocks per scale (realistic, gameplay): two different stands. */
+	static final double[] MIN_SAME_BIOME_APART = {1_500, 400};
+	/** Largest share of a transect in other biomes. */
+	static final double MAX_OTHER = 0.15;
+	/** Longest stretch of a transect in other biomes, blocks per scale (realistic, gameplay). */
+	static final int[] MAX_OTHER_RUN = {24, 12};
+	/** Least length of each of the four forests along a transect, blocks per scale. */
+	static final int[] MIN_RUN = {40, 16};
+	/** Largest transect length, blocks per scale. */
+	static final int[] MAX_LENGTH = {2_400, 800};
+	static final List<HabitatBiome> SEQUENCE = List.of(HabitatBiome.FRESH_PINE_FOREST, HabitatBiome.MIXED_PINE_FOREST,
+			HabitatBiome.MIXED_FOREST, HabitatBiome.OAK_HORNBEAM_FOREST);
+
+	/** A place of the table: a site (one biome, a center) or a transect (start and end; biome null). */
+	record Place(LandscapeScale scale, String modes, String name, HabitatBiome biome, int x, int z, int x2, int z2) {
+		boolean transect() {
+			return biome == null;
+		}
+
+		List<HabitatClassifier.Mode> modeList() {
+			return switch (modes) {
+				case "both" -> List.of(HabitatClassifier.Mode.NATURAL, HabitatClassifier.Mode.PRESENT_DAY);
+				case "natural" -> List.of(HabitatClassifier.Mode.NATURAL);
+				case "present_day" -> List.of(HabitatClassifier.Mode.PRESENT_DAY);
+				default -> throw new IllegalArgumentException("modes " + modes);
+			};
+		}
+
+		/** Middle of the place (the center of a site, the middle of a transect). */
+		int[] middle() {
+			return transect() ? new int[] {(x + x2) / 2, (z + z2) / 2} : new int[] {x, z};
+		}
+
+		String line() {
+			return transect()
+					? String.format(Locale.ROOT, "%s %s %s transect %d %d %d %d", scale.id(), modes, name, x, z, x2, z2)
+					: String.format(Locale.ROOT, "%s %s %s %s %d %d", scale.id(), modes, name, biome.id(), x, z);
+		}
+	}
+
+	static List<Place> read() throws IOException {
+		List<Place> places = new ArrayList<>();
+		try (InputStream in = SliceSitesTest.class.getResourceAsStream(RESOURCE)) {
+			assertTrue(in != null, "missing " + RESOURCE);
+			for (String line : new String(in.readAllBytes(), StandardCharsets.UTF_8).split("\n")) {
+				line = line.strip();
+				if (line.isEmpty() || line.startsWith("#")) {
+					continue;
+				}
+				String[] f = line.split("\\s+");
+				LandscapeScale scale = f[0].equals("realistic") ? LandscapeScale.REALISTIC : LandscapeScale.GAMEPLAY;
+				if (f[3].equals("transect")) {
+					places.add(new Place(scale, f[1], f[2], null, Integer.parseInt(f[4]), Integer.parseInt(f[5]),
+							Integer.parseInt(f[6]), Integer.parseInt(f[7])));
+				} else {
+					places.add(new Place(scale, f[1], f[2], HabitatBiome.byId(f[3]), Integer.parseInt(f[4]), Integer.parseInt(f[5]), 0, 0));
+				}
+			}
+		}
+		return places;
+	}
+
+	// ------------------------------------------------------------------ checks
+
+	@Test
+	void sitesHoldTheirForestInBothModes() throws IOException {
+		List<String> problems = new ArrayList<>();
+		for (Place p : read()) {
+			for (HabitatClassifier.Mode mode : p.modeList()) {
+				HabitatTargets.World w = PolishForestsCommandsTest.world(p.scale(), mode);
+				String problem = p.transect() ? transectProblem(w, p.x(), p.z(), p.x2(), p.z2()) : siteProblem(w, p.biome(), p.x(), p.z());
+				if (problem != null) {
+					problems.add(p.line() + " (" + mode + "): " + problem);
+				}
+			}
+		}
+		assertTrue(problems.isEmpty(), String.join("\n", problems));
+	}
+
+	@Test
+	void everyScaleAndModeHasAllPlaces() throws IOException {
+		List<Place> places = read();
+		for (LandscapeScale scale : List.of(LandscapeScale.REALISTIC, LandscapeScale.GAMEPLAY)) {
+			for (HabitatClassifier.Mode mode : HabitatClassifier.Mode.values()) {
+				List<Place> here = places.stream().filter(p -> p.scale() == scale && p.modeList().contains(mode)).toList();
+				assertEquals(2, here.stream().filter(p -> p.biome() == HabitatBiome.OAK_HORNBEAM_FOREST).count(), scale.id() + " " + mode);
+				assertEquals(2, here.stream().filter(p -> p.biome() == HabitatBiome.FRESH_PINE_FOREST).count(), scale.id() + " " + mode);
+				assertTrue(here.stream().anyMatch(Place::transect), scale.id() + " " + mode + ": no transect");
+				for (int i = 0; i < here.size(); i++) {
+					int[] a = here.get(i).middle();
+					assertTrue(Math.hypot(a[0], a[1]) >= MIN_ORIGIN, here.get(i).line() + ": too close to the spawn");
+					for (int j = i + 1; j < here.size(); j++) {
+						int[] b = here.get(j).middle();
+						double apart = here.get(i).biome() != null && here.get(i).biome() == here.get(j).biome()
+								? MIN_SAME_BIOME_APART[scale == LandscapeScale.REALISTIC ? 0 : 1] : MIN_APART;
+						assertTrue(Math.hypot(a[0] - b[0], a[1] - b[1]) >= apart, here.get(i).line() + " and " + here.get(j).line());
+					}
+				}
+			}
+		}
+	}
+
+	/** Null when the 100 × 100 square around (x, z) has the biome in at least {@link #MIN_SHARE} of the lattice points. */
+	static String siteProblem(HabitatTargets.World w, HabitatBiome biome, int x, int z) {
+		double share = share(w, biome, x, z);
+		return share >= MIN_SHARE ? null : String.format(Locale.ROOT, "%s only %.1f%% of the square", biome.id(), 100 * share);
+	}
+
+	static double share(HabitatTargets.World w, HabitatBiome biome, int x, int z) {
+		long hits = IntStream.range(0, 21 * 21).parallel()
+				.filter(i -> Habitat.biome(w.code(x - 50 + 5 * (i / 21), z - 50 + 5 * (i % 21))) == biome).count();
+		return hits / (21.0 * 21.0);
+	}
+
+	/**
+	 * Null when the columns of the line from (x1, z1) to (x2, z2), one per block, pass the four forests of
+	 * {@link #SEQUENCE} in order, each for at least {@link #MIN_RUN} blocks, with other biomes on at most
+	 * {@link #MAX_OTHER} of the line and {@link #MAX_OTHER_RUN} blocks at a time; otherwise the reason.
+	 */
+	static String transectProblem(HabitatTargets.World w, int x1, int z1, int x2, int z2) {
+		int n = (int) Math.ceil(Math.hypot(x2 - x1, z2 - z1));
+		HabitatBiome[] line = new HabitatBiome[n + 1];
+		IntStream.rangeClosed(0, n).parallel().forEach(i -> line[i] = Habitat.biome(w.code(
+				Math.floor(x1 + (x2 - x1) * (double) i / n) + 0.5, Math.floor(z1 + (z2 - z1) * (double) i / n) + 0.5)));
+		return sequenceProblem(line, w.model().scale() == LandscapeScale.REALISTIC ? 0 : 1);
+	}
+
+	static String sequenceProblem(HabitatBiome[] line, int s) {
+		int rank = 0;
+		int[] run = new int[SEQUENCE.size()];
+		int other = 0;
+		int otherRun = 0;
+		for (HabitatBiome b : line) {
+			int r = SEQUENCE.indexOf(b);
+			if (r < 0) {
+				other++;
+				if (++otherRun > MAX_OTHER_RUN[s]) {
+					return "more than " + MAX_OTHER_RUN[s] + " blocks of other biomes at a time";
+				}
+				continue;
+			}
+			otherRun = 0;
+			if (r < rank) {
+				return "back from " + SEQUENCE.get(rank).id() + " to " + b.id();
+			}
+			rank = r;
+			run[r]++;
+		}
+		for (int r = 0; r < run.length; r++) {
+			if (run[r] < MIN_RUN[s]) {
+				return SEQUENCE.get(r).id() + " only " + run[r] + " blocks";
+			}
+		}
+		if (other > MAX_OTHER * line.length) {
+			return String.format(Locale.ROOT, "%.1f%% other biomes", 100.0 * other / line.length);
+		}
+		return null;
+	}
+
+	// ------------------------------------------------------------------ search (-PfindSliceSites)
+
+	@Test
+	@EnabledIfSystemProperty(named = "polishforests.slice.find", matches = "true")
+	void findSites() throws IOException {
+		Path out = Path.of(System.getProperty("polishforests.slice.file", "src/test/resources/slice_sites.txt"));
+		List<String> lines = new ArrayList<>();
+		lines.add("# Fixed places of the vertical slice (step V0, docs/04-pionowy-wycinek.md §3), seed 20260927. Written by");
+		lines.add("# ./gradlew test --tests '*SliceSitesTest*' -PfindSliceSites, checked by SliceSitesTest, read by the in-game");
+		lines.add("# test -Pgametest=slice and by -Pgametest=stages -Psites=slice. Columns: scale, modes (both, natural or");
+		lines.add("# present_day), name, biome and center x z (a 100 x 100 block square of the biome), or 'transect' and the");
+		lines.add("# start and end x z of a line through fresh pine -> mixed pine-oak -> mixed -> oak-hornbeam forest.");
+		for (LandscapeScale scale : List.of(LandscapeScale.REALISTIC, LandscapeScale.GAMEPLAY)) {
+			HabitatTargets.World natural = PolishForestsCommandsTest.world(scale, HabitatClassifier.Mode.NATURAL);
+			HabitatTargets.World presentDay = PolishForestsCommandsTest.world(scale, HabitatClassifier.Mode.PRESENT_DAY);
+			List<int[]> taken = new ArrayList<>();
+			for (HabitatBiome biome : List.of(HabitatBiome.OAK_HORNBEAM_FOREST, HabitatBiome.FRESH_PINE_FOREST)) {
+				String prefix = biome == HabitatBiome.OAK_HORNBEAM_FOREST ? "oak_hornbeam_" : "fresh_pine_";
+				for (int k = 1; k <= 2; k++) {
+					int[] site = findSite(natural, presentDay, biome, taken, k == 2 ? taken.getLast() : null);
+					assertTrue(site != null, scale.id() + ": no site of " + biome.id());
+					taken.add(site);
+					lines.add(new Place(scale, "both", prefix + k, biome, site[0], site[1], 0, 0).line());
+					System.out.printf(Locale.ROOT, "%s %s%d: (%d, %d), %.0f blocks from the origin%n", scale.id(), prefix, k, site[0],
+							site[1], Math.hypot(site[0], site[1]));
+				}
+			}
+			int[] both = findTransect(natural, presentDay, taken);
+			if (both != null) {
+				lines.add(new Place(scale, "both", "transect", null, both[0], both[1], both[2], both[3]).line());
+			} else {
+				int[] n = findTransect(natural, null, taken);
+				assertTrue(n != null, scale.id() + ": no transect in the natural mode");
+				lines.add(new Place(scale, "natural", "transect", null, n[0], n[1], n[2], n[3]).line());
+				taken.add(new int[] {(n[0] + n[2]) / 2, (n[1] + n[3]) / 2});
+				int[] d = findTransect(presentDay, null, taken);
+				assertTrue(d != null, scale.id() + ": no transect in the present-day mode");
+				lines.add(new Place(scale, "present_day", "transect_present_day", null, d[0], d[1], d[2], d[3]).line());
+			}
+		}
+		Files.write(out, lines, StandardCharsets.UTF_8);
+		System.out.println("written " + out.toAbsolutePath());
+	}
+
+	/**
+	 * A site of the biome: from a ring of origins at growing distance, the nearest place of the biome in the PRESENT_DAY mode
+	 * ({@link HabitatTargets#locate}), then the nearest lattice point around it whose square holds the biome in both modes.
+	 */
+	private static int[] findSite(HabitatTargets.World natural, HabitatTargets.World presentDay, HabitatBiome biome, List<int[]> taken,
+			int[] sameBiome) {
+		boolean real = natural.model().scale() == LandscapeScale.REALISTIC;
+		double step = real ? 1_500 : 400;
+		for (int ring = 1; ring <= 12; ring++) {
+			for (int k = 0; k < 8; k++) {
+				double a = Math.PI / 4 * k + ring * 0.37;
+				double ox = ring * step * Math.cos(a);
+				double oz = ring * step * Math.sin(a);
+				double[] hit = HabitatTargets.locate(presentDay, biome, ox, oz, () -> false);
+				if (hit == null) {
+					continue;
+				}
+				List<int[]> avoid = new ArrayList<>(taken);
+				if (sameBiome != null) {
+					// The second site of the biome: the first one counts as a disc of MIN_SAME_BIOME_APART (several points).
+					double r = MIN_SAME_BIOME_APART[real ? 0 : 1] - MIN_APART;
+					for (int i = 0; i < 24; i++) {
+						for (double f : new double[] {0.35, 0.7, 1.0}) {
+							avoid.add(new int[] {(int) Math.round(sameBiome[0] + f * r * Math.cos(Math.PI / 12 * i)),
+									(int) Math.round(sameBiome[1] + f * r * Math.sin(Math.PI / 12 * i))});
+						}
+					}
+				}
+				int[] site = refine(natural, presentDay, biome, (int) Math.round(hit[0]), (int) Math.round(hit[1]), avoid, real ? 600 : 200);
+				if (site != null && (sameBiome == null
+						|| Math.hypot(site[0] - sameBiome[0], site[1] - sameBiome[1]) >= MIN_SAME_BIOME_APART[real ? 0 : 1])) {
+					return site;
+				}
+			}
+		}
+		return null;
+	}
+
+	private static int[] refine(HabitatTargets.World natural, HabitatTargets.World presentDay, HabitatBiome biome, int hx, int hz,
+			List<int[]> taken, int radius) {
+		List<int[]> candidates = new ArrayList<>();
+		for (int dx = -radius; dx <= radius; dx += 8) {
+			for (int dz = -radius; dz <= radius; dz += 8) {
+				int x = hx + dx;
+				int z = hz + dz;
+				if (Math.hypot(dx, dz) <= radius && free(x, z, taken)) {
+					candidates.add(new int[] {x, z});
+				}
+			}
+		}
+		candidates.sort(Comparator.comparingDouble(c -> Math.hypot(c[0] - hx, c[1] - hz)));
+		for (int[] c : candidates) {
+			// Cheap test first: the center and the four corners.
+			if (Habitat.biome(presentDay.code(c[0], c[1])) != biome || Habitat.biome(presentDay.code(c[0] - 50, c[1] - 50)) != biome
+					|| Habitat.biome(presentDay.code(c[0] + 50, c[1] + 50)) != biome
+					|| Habitat.biome(presentDay.code(c[0] - 50, c[1] + 50)) != biome
+					|| Habitat.biome(presentDay.code(c[0] + 50, c[1] - 50)) != biome) {
+				continue;
+			}
+			if (siteProblem(presentDay, biome, c[0], c[1]) == null && siteProblem(natural, biome, c[0], c[1]) == null) {
+				return c;
+			}
+		}
+		return null;
+	}
+
+	private static boolean free(int x, int z, List<int[]> taken) {
+		if (Math.hypot(x, z) < MIN_ORIGIN) {
+			return false;
+		}
+		for (int[] t : taken) {
+			if (Math.hypot(x - t[0], z - t[1]) < MIN_APART) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/**
+	 * The shortest transect near the nearest mixed forest places from a ring of origins: a map of the biomes of the
+	 * primary world (one column per {@code cell} blocks) in a window around each, then from each fresh pine cell straight
+	 * lines in 48 directions, kept when the coarse line passes the sequence; the best lines are checked block by block (in
+	 * the second world too, when given). Returns {x1, z1, x2, z2} or null.
+	 */
+	private static int[] findTransect(HabitatTargets.World primary, HabitatTargets.World second, List<int[]> taken) {
+		boolean real = primary.model().scale() == LandscapeScale.REALISTIC;
+		int s = real ? 0 : 1;
+		int cell = real ? 8 : 4;
+		int half = real ? 3_000 : 1_000;
+		double step = real ? 2_000 : 500;
+		for (int ring = 0; ring <= 8; ring++) {
+			for (int k = 0; k < (ring == 0 ? 1 : 8); k++) {
+				double a = Math.PI / 4 * k + ring * 0.37;
+				double[] hit = HabitatTargets.locate(second != null ? second : primary, HabitatBiome.MIXED_FOREST,
+						ring * step * Math.cos(a), ring * step * Math.sin(a), () -> false);
+				if (hit == null) {
+					continue;
+				}
+				int cx = (int) Math.round(hit[0]);
+				int cz = (int) Math.round(hit[1]);
+				int size = 2 * half / cell + 1;
+				byte[] map = new byte[size * size];
+				HabitatTargets.World w = second != null ? second : primary;
+				IntStream.range(0, size * size).parallel().forEach(i -> {
+					HabitatBiome b = Habitat.biome(w.code(cx - half + cell * (i / size) + 0.5, cz - half + cell * (i % size) + 0.5));
+					map[i] = (byte) SEQUENCE.indexOf(b);
+				});
+				List<int[]> lines = coarseLines(map, size, cell, s);
+				lines.sort(Comparator.comparingInt(l -> l[4]));
+				for (int[] l : lines.subList(0, Math.min(lines.size(), 400))) {
+					int x1 = cx - half + cell * l[0];
+					int z1 = cz - half + cell * l[1];
+					int x2 = cx - half + cell * l[2];
+					int z2 = cz - half + cell * l[3];
+					if (!free((x1 + x2) / 2, (z1 + z2) / 2, taken)) {
+						continue;
+					}
+					if (transectProblem(primary, x1, z1, x2, z2) == null
+							&& (second == null || transectProblem(second, x1, z1, x2, z2) == null)) {
+						System.out.printf(Locale.ROOT, "%s transect (%d, %d) -> (%d, %d), %d blocks%n", primary.model().scale().id(),
+								x1, z1, x2, z2, Math.round(Math.hypot(x2 - x1, z2 - z1)));
+						return new int[] {x1, z1, x2, z2};
+					}
+				}
+			}
+		}
+		return null;
+	}
+
+	/** Lines {i1, j1, i2, j2, length in cells} of the coarse map that pass the sequence (start in fresh pine, end in oak-hornbeam). */
+	private static List<int[]> coarseLines(byte[] map, int size, int cell, int s) {
+		int maxSteps = MAX_LENGTH[s] / cell;
+		int minRun = Math.max(2, MIN_RUN[s] / cell);
+		int maxOtherRun = Math.max(1, MAX_OTHER_RUN[s] / cell);
+		List<int[]> found = java.util.Collections.synchronizedList(new ArrayList<>());
+		IntStream.range(0, size * size).parallel().forEach(start -> {
+			if (map[start] != 0) {
+				return;
+			}
+			int i0 = start / size;
+			int j0 = start % size;
+			for (int d = 0; d < 48; d++) {
+				double a = 2 * Math.PI * d / 48;
+				double di = Math.cos(a);
+				double dj = Math.sin(a);
+				int rank = 0;
+				int[] run = new int[4];
+				int otherRun = 0;
+				int other = 0;
+				for (int t = 1; t <= maxSteps; t++) {
+					int i = (int) Math.round(i0 + di * t);
+					int j = (int) Math.round(j0 + dj * t);
+					if (i < 0 || j < 0 || i >= size || j >= size) {
+						break;
+					}
+					int r = map[i * size + j];
+					if (r < 0) {
+						other++;
+						if (++otherRun > maxOtherRun) {
+							break;
+						}
+						continue;
+					}
+					otherRun = 0;
+					if (r < rank) {
+						break;
+					}
+					rank = r;
+					run[r]++;
+					if (r == 3 && run[3] >= minRun) {
+						if (run[0] >= minRun && run[1] >= minRun && run[2] >= minRun && other <= MAX_OTHER * t) {
+							found.add(new int[] {i0, j0, i, j, t});
+						}
+						break;
+					}
+				}
+			}
+		});
+		return new ArrayList<>(found);
+	}
+}

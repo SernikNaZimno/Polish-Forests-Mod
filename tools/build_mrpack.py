@@ -24,7 +24,7 @@ PACK_NAME = "Polish Forests"
 MODS = [
     ("fabric-api", "bNnaTiuM", "both", True, "Fabric API, library required by the mod"),
     ("geckolib", "kSxHvs99", "both", True, "GeckoLib, animal models and animations"),
-    ("smartbrainlib", "i5vOn6hO", "both", True, "SmartBrainLib, animal behavior"),
+    ("smartbrainlib", "cwerutUM", "both", True, "SmartBrainLib, animal behavior"),
     ("serene-seasons", "V9PxJPuw", "both", True, "Serene Seasons, seasons"),
     ("glitchcore", "aaUghyGp", "both", True, "GlitchCore, library required by Serene Seasons"),
     ("sodium", "bAZQdGpg", "client", True, "Sodium, fast renderer (essential for the tall world)"),

@@ -7,7 +7,7 @@ Wersja dokumentu: 2026-09-27. Podstawa: decyzje w `00-decyzje-do-podjecia.md` i 
 | Obszar | Ustalenie |
 |---|---|
 | Platforma | Minecraft 26.3, Fabric Loader 0.19.5, Fabric API 0.161.0, Java 25, mapowania Mojang (kod gry nieobfuskowany) |
-| Zależności wymagane | Fabric API, GeckoLib 5.5.7, SmartBrainLib 2.0.2 |
+| Zależności wymagane | Fabric API, GeckoLib 5.5.7, SmartBrainLib 2.0.3 |
 | Zależności opcjonalne | Serene Seasons 26.1.2.0.7 (+ GlitchCore); bez niego działa własny kalendarz |
 | Świat | proceduralny, nieskończony, mozaika polskich typów krajobrazu z regułami geomorfologii |
 | Skala | 1:1 w poziomie i pionie (1 blok = 1 m), regiony domyślnie w rzeczywistych rozmiarach z suwakiem |

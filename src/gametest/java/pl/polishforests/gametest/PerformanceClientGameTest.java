@@ -26,6 +26,12 @@ import pl.polishforests.worldgen.feature.TreeStandFeature;
  * baseline, {@code docs/m2/pomiary-bazowe-m1.md}), without measuring FPS and without a vanilla world; since step S10 in
  * both vegetation modes (natural and present-day) and with a fourth "area" sample for the TERRAIN budget of the whole area
  * (M2-11): six contiguous 8 × 8 areas (384 chunks) at pseudo-random places in the D1 area.
+ *
+ * <p>Step V0 of the vertical slice (docs/04-pionowy-wycinek.md §3): with {@code -Psites=slice} the {@code stages} mode
+ * measures 8 × 8 chunk areas centered on the places of the slice ({@link SliceSites}: two oak-hornbeam forests, two fresh
+ * pine forests and the middle of the transect, per scale and mode) instead of the M2 areas and the "area" sample; the
+ * labels are {@code <world> / slice <place>}. The baseline of M2 for the A/B comparison of step V10 is the git tag
+ * {@code m2-baseline}.
  */
 public final class PerformanceClientGameTest implements FabricClientGameTest {
 	private static final String SEED = "20260927";
@@ -74,6 +80,10 @@ public final class PerformanceClientGameTest implements FabricClientGameTest {
 
 			if (stagesOnly) {
 				waitForIdleGeneration(context, name);
+			}
+			if (stagesOnly && System.getProperty("polishforests.sites", "").equals("slice")) {
+				profileSlice(sp, name, preset == POLAND, presentDay);
+				return;
 			}
 			profileStages(sp, name, preset == POLAND, stagesOnly);
 			if (stagesOnly) {
@@ -155,6 +165,15 @@ public final class PerformanceClientGameTest implements FabricClientGameTest {
 		if (allSpots) {
 			int half = real ? AREA_HALF_REAL : AREA_HALF_GAMEPLAY;
 			sp.getServer().runOnServer(server -> profileArea(server.overworld(), name + " / area", half));
+		}
+	}
+
+	/** The stages in 8 × 8 chunk areas centered on the places of the vertical slice (step V0). */
+	private static void profileSlice(TestSingleplayerContext sp, String name, boolean real, boolean presentDay) {
+		for (SliceSites.Place p : SliceSites.of(real, presentDay)) {
+			int[] m = p.middle();
+			sp.getServer().runOnServer(server -> profileSpot(server.overworld(), name + " / slice " + p.name(), (m[0] - 64) >> 4,
+					(m[1] - 64) >> 4));
 		}
 	}
 

@@ -13,7 +13,8 @@
 			"pl.polishforests.gametest.VegetationClientGameTest",
 			"pl.polishforests.gametest.PresentDayClientGameTest",
 			"pl.polishforests.gametest.EcotoneClientGameTest",
-			"pl.polishforests.gametest.DeterminismClientGameTest"
+			"pl.polishforests.gametest.DeterminismClientGameTest",
+			"pl.polishforests.gametest.SliceClientGameTest"
 		]
 	},
 	"depends": {

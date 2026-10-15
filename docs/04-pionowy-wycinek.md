@@ -1,6 +1,6 @@
 # Pionowy wycinek „Grąd i bór świeży”. Plan wykonawczy
 
-Data: 2026-10-14. Status: **projekt do akceptacji użytkownika** (punkt kontrolny CP-0). Po akceptacji plan trafia do `docs/04-pionowy-wycinek.md`, a decyzje z §0 do `docs/00-decyzje-do-podjecia.md` (nowa sekcja G: „Pionowy wycinek”).
+Data: 2026-10-14. Status: **zaakceptowany 2026-10-15** (punkt kontrolny CP-0: D1 (b), D2 (b), D5 (a) z zasobami na CC BY 4.0, PW-1 (a), PW-2 (a); pozostałe decyzje §0 przyjęte domyślnie według rekomendacji, „domyślne, do potwierdzenia”). Decyzje z §0 są w `docs/00-decyzje-do-podjecia.md`, sekcja G „Pionowy wycinek”. Stan kroków: na końcu dokumentu („Stan po V0” i kolejne).
 
 **Podstawa.** Plan łączy trzy projekty wycinka: „najpierw gra”, „wierność przyrodnicza” i „fundamenty techniczne”, według ocen dwóch sędziów. Pierwszy sędzia oceniał wartość dla gracza i realizm, drugi wykonalność techniczną i ryzyko. Wyniki: „najpierw gra” 7 i 7, „fundamenty” 6,5 i 7, „wierność” 6 i 3. Bazą jest „najpierw gra”: kolejność kroków, wczesne punkty kontrolne, dźwięk i fauna w wersji minimum. Przeszczepione elementy:
 - z „fundamentów”: docelowe klucze `tree/<gatunek>` z zastępstwami M2 pod `tree_substitute/`, nowe drzewa w ciągu Bśw → BMśw → LMśw → grąd, test migawki rejestru i zamrożenie identyfikatorów, krzywe koloru gatunków na „surowym” kolorze listowia, uproszczona mapa drzewostanów, pomiar kosztu przed runem i fauną, model sarny do samego renderu przed AI;
