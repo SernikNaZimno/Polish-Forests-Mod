@@ -54,6 +54,10 @@ class SliceSitesTest {
 	static final int[] MAX_OTHER_RUN = {24, 12};
 	/** Least length of each of the four forests along a transect, blocks per scale. */
 	static final int[] MIN_RUN = {40, 16};
+	/** Shortest forest of a transect that ends the search, blocks per scale (otherwise the best one of all windows). */
+	static final int[] GOOD_RUN = {80, 30};
+	/** Largest lengthening of a transect at each end, deeper into the end forests, blocks per scale. */
+	static final int[] EXTEND = {120, 40};
 	/** Largest transect length, blocks per scale. */
 	static final int[] MAX_LENGTH = {2_400, 800};
 	static final List<HabitatBiome> SEQUENCE = List.of(HabitatBiome.FRESH_PINE_FOREST, HabitatBiome.MIXED_PINE_FOREST,
@@ -328,10 +332,12 @@ class SliceSitesTest {
 	}
 
 	/**
-	 * The shortest transect near the nearest mixed forest places from a ring of origins: a map of the biomes of the
-	 * primary world (one column per {@code cell} blocks) in a window around each, then from each fresh pine cell straight
-	 * lines in 48 directions, kept when the coarse line passes the sequence; the best lines are checked block by block (in
-	 * the second world too, when given). Returns {x1, z1, x2, z2} or null.
+	 * A transect near the nearest mixed forest places from a ring of origins: a map of the biomes of the second world
+	 * (or the primary one) with one column per {@code cell} blocks in a window around each, then from each fresh pine cell
+	 * straight lines in 48 directions, kept when the coarse line passes the sequence; the 400 shortest are checked block by
+	 * block (in both worlds), lengthened at both ends ({@link #extend}) and rated by their shortest forest. The search
+	 * stops at the first window with a transect whose shortest forest has {@link #GOOD_RUN} blocks, otherwise it takes
+	 * the best of all windows. Returns {x1, z1, x2, z2} or null.
 	 */
 	private static int[] findTransect(HabitatTargets.World primary, HabitatTargets.World second, List<int[]> taken) {
 		boolean real = primary.model().scale() == LandscapeScale.REALISTIC;
@@ -339,6 +345,9 @@ class SliceSitesTest {
 		int cell = real ? 8 : 4;
 		int half = real ? 3_000 : 1_000;
 		double step = real ? 2_000 : 500;
+		int[] best = null;
+		int bestRun = 0;
+		search:
 		for (int ring = 0; ring <= 8; ring++) {
 			for (int k = 0; k < (ring == 0 ? 1 : 8); k++) {
 				double a = Math.PI / 4 * k + ring * 0.37;
@@ -359,23 +368,72 @@ class SliceSitesTest {
 				List<int[]> lines = coarseLines(map, size, cell, s);
 				lines.sort(Comparator.comparingInt(l -> l[4]));
 				for (int[] l : lines.subList(0, Math.min(lines.size(), 400))) {
-					int x1 = cx - half + cell * l[0];
-					int z1 = cz - half + cell * l[1];
-					int x2 = cx - half + cell * l[2];
-					int z2 = cz - half + cell * l[3];
-					if (!free((x1 + x2) / 2, (z1 + z2) / 2, taken)) {
+					int[] t = {cx - half + cell * l[0], cz - half + cell * l[1], cx - half + cell * l[2], cz - half + cell * l[3]};
+					if (!free((t[0] + t[2]) / 2, (t[1] + t[3]) / 2, taken) || transectProblem(primary, t[0], t[1], t[2], t[3]) != null
+							|| second != null && transectProblem(second, t[0], t[1], t[2], t[3]) != null) {
 						continue;
 					}
-					if (transectProblem(primary, x1, z1, x2, z2) == null
-							&& (second == null || transectProblem(second, x1, z1, x2, z2) == null)) {
-						System.out.printf(Locale.ROOT, "%s transect (%d, %d) -> (%d, %d), %d blocks%n", primary.model().scale().id(),
-								x1, z1, x2, z2, Math.round(Math.hypot(x2 - x1, z2 - z1)));
-						return new int[] {x1, z1, x2, z2};
+					t = extend(primary, second, t, s);
+					int least = leastRun(primary, t);
+					if (second != null) {
+						least = Math.min(least, leastRun(second, t));
 					}
+					if (best == null || least > bestRun) {
+						best = t;
+						bestRun = least;
+					}
+				}
+				if (best != null && bestRun >= GOOD_RUN[s]) {
+					break search;
 				}
 			}
 		}
-		return null;
+		if (best != null) {
+			System.out.printf(Locale.ROOT, "%s transect (%d, %d) -> (%d, %d), %d blocks, shortest forest %d blocks%n",
+					primary.model().scale().id(), best[0], best[1], best[2], best[3], Math.round(Math.hypot(best[2] - best[0], best[3] - best[1])),
+					bestRun);
+		}
+		return best;
+	}
+
+	/**
+	 * The transect lengthened at both ends, deeper into the fresh pine forest before its start and into the oak-hornbeam
+	 * forest after its end, up to {@link #EXTEND} blocks, while the columns (of both worlds) keep the end forest.
+	 */
+	private static int[] extend(HabitatTargets.World primary, HabitatTargets.World second, int[] t, int s) {
+		double len = Math.hypot(t[2] - t[0], t[3] - t[1]);
+		double ux = (t[2] - t[0]) / len;
+		double uz = (t[3] - t[1]) / len;
+		int back = 0;
+		while (back < EXTEND[s] && keeps(primary, second, t[0] - ux * (back + 1), t[1] - uz * (back + 1), SEQUENCE.getFirst())) {
+			back++;
+		}
+		int ahead = 0;
+		while (ahead < EXTEND[s] && keeps(primary, second, t[2] + ux * (ahead + 1), t[3] + uz * (ahead + 1), SEQUENCE.getLast())) {
+			ahead++;
+		}
+		return new int[] {(int) Math.round(t[0] - ux * back), (int) Math.round(t[1] - uz * back), (int) Math.round(t[2] + ux * ahead),
+				(int) Math.round(t[3] + uz * ahead)};
+	}
+
+	private static boolean keeps(HabitatTargets.World primary, HabitatTargets.World second, double x, double z, HabitatBiome biome) {
+		x = Math.floor(x) + 0.5;
+		z = Math.floor(z) + 0.5;
+		return Habitat.biome(primary.code(x, z)) == biome && (second == null || Habitat.biome(second.code(x, z)) == biome);
+	}
+
+	/** Shortest stretch (blocks) of the four forests along the transect. */
+	private static int leastRun(HabitatTargets.World w, int[] t) {
+		int n = (int) Math.ceil(Math.hypot(t[2] - t[0], t[3] - t[1]));
+		int[] run = new int[SEQUENCE.size()];
+		for (int i = 0; i <= n; i++) {
+			int r = SEQUENCE.indexOf(Habitat.biome(w.code(Math.floor(t[0] + (t[2] - t[0]) * (double) i / n) + 0.5,
+					Math.floor(t[1] + (t[3] - t[1]) * (double) i / n) + 0.5)));
+			if (r >= 0) {
+				run[r]++;
+			}
+		}
+		return IntStream.of(run).min().orElse(0);
 	}
 
 	/** Lines {i1, j1, i2, j2, length in cells} of the coarse map that pass the sequence (start in fresh pine, end in oak-hornbeam). */

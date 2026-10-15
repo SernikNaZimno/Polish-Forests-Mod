@@ -7,9 +7,9 @@ realistic both oak_hornbeam_1 oak_hornbeam_forest 534 -714
 realistic both oak_hornbeam_2 oak_hornbeam_forest -1596 -571
 realistic both fresh_pine_1 fresh_pine_forest -699 1924
 realistic both fresh_pine_2 fresh_pine_forest -2837 -1948
-realistic both transect transect -2640 -1512 -2440 -776
+realistic both transect transect -2628 -1565 -2504 -625
 gameplay both oak_hornbeam_1 oak_hornbeam_forest -1279 530
 gameplay both oak_hornbeam_2 oak_hornbeam_forest -1509 181
 gameplay both fresh_pine_1 fresh_pine_forest -1195 -583
 gameplay both fresh_pine_2 fresh_pine_forest -398 999
-gameplay both transect transect -1686 1158 -1670 1042
+gameplay both transect transect -1710 1190 -1586 1026

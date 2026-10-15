@@ -70,6 +70,7 @@ Najważniejsze są na początku. Decyzje oznaczone „do CP-0” trzeba rozstrzy
 - Punkt kontrolny 2 M2 (zrzuty roślinności) użytkownik przyjął 2026-10-14 (notatki projektu), a `docs/00` i BRIEF nadal podają go jako czekający. Zapisać jako PODJĘTY.
 - Akceptacji punktu kontrolnego 1 (PNG siedlisk) nikt nie zapisał. Zapytać przy CP-0 albo zapisać jako przyjęty razem z CP-0.
 - M2-20 (d2, krok S8c) jest w toku. Domyślne decyzje M2-13 … M2-27 bez zmian.
+- **Zapisane w V0 (2026-10-15):** punkt kontrolny 2 jako zaakceptowany 2026-10-14 (wprost), punkt kontrolny 1 jako przyjęty razem z nim (`docs/00` E, „Stan M2”); S8c i jego runda 1 poprawek są zakończone (`9f627cd`), więc M2 jest zamknięty.
 
 ---
 
@@ -505,3 +506,45 @@ S8c (M2-20 d2) kończy się w trzecim worktree przed CP-B (PW-17). Kalendarz jes
 | karta norm i pomiar bazowy, zima koron z marcescencją w rdzeniu, fazy runa po stronie klienta ze stanem serwera tylko dla owoców, forma śmierci według gatunku, pniaki tylko w gospodarczym, sosna tylko w lukach, przylaszczka, pejzaż ptaków, jawne odstępstwa w karcie | „wierność przyrodnicza” |
 | próba przycinania koron przed planerem, generacja bez pory roku, `checkArt` na pikselach, despawn > 128 bloków, osobna kalibracja spawnu przy generacji, mszysty spód pod krzewinkami, orlica w BMśw, ograniczona równoległość, realne szacunki, D9 85/15 w obu trybach | oceny sędziów |
 | odrzucone: globalna podmiana `tree/`, jeden stan lasu, mnożnik SS jako rozwiązanie główne, `PhenologySweep`, pełny zestaw sosny i wiewiórka w rdzeniu, linie oddziałowe, profile gleb, grzyby dynamiczne, 6 stadiów × 9 gatunków, 13 geofitów, przesunięcie fenologii z pola O po stronie klienta, 8 punktów kontrolnych | oceny sędziów |
+
+---
+
+## Stan po V0 (2026-10-15)
+
+**Zrobione.**
+- **Decyzje:** plan zaakceptowany przy CP-0 (status na górze dokumentu). D1 (b), D2 (b), D5 (a) z zasobami na CC BY 4.0, PW-1 (a) i PW-2 (a) zapisane w `docs/00` G.1 jako podjęte przez użytkownika 2026-10-15; B6, PW-3 … PW-17 (G.2) i decyzje z §0.3 (G.3) jako „domyślne, do potwierdzenia”, z punktem kontrolnym, przy którym najpóźniej trzeba je potwierdzić. Wpisy B6, D1, D2, D5, D6 (licencja zasobów), M2-24, B5 i C2 … C11 w `docs/00` wskazują na sekcję G.
+- **Stan M2 (§0.4):** M2 zamknięty: punkt kontrolny 2 zaakceptowany 2026-10-14 wprost, punkt kontrolny 1 razem z nim (`docs/00` E „Stan M2”, BRIEF, `docs/01` §8). S8c z rundą 1 poprawek był już zakończony (`9f627cd`), więc PW-17 nie wymaga osobnego worktree.
+- **SmartBrainLib 2.0.3:** wersja dla Fabric 26.3 istnieje w repozytorium Maven Modrinth (id wersji `cwerutUM`, opublikowana 2026-10-04, zależność wymagana: GeckoLib). Zmienione `gradle.properties`, `fabric.mod.json` (`>=2.0.3`), `tools/build_mrpack.py`, README i `docs/01` (tabela zależności). `build` i `fastTest` przechodzą, gra startuje z SBL 2.0.3 (lista modów w logu gametestu `slice`). SBL nie jest jeszcze używany w kodzie (fauna od V14).
+- **Stałe miejsca wycinka** (`src/test/resources/slice_sites.txt`, ziarno 20260927, wspólne dla trybów N i D):
+
+  | Skala | Miejsce | Biom | Środek albo początek → koniec |
+  |---|---|---|---|
+  | REAL | `oak_hornbeam_1` | grąd | (534, −714) |
+  | REAL | `oak_hornbeam_2` | grąd | (−1596, −571) |
+  | REAL | `fresh_pine_1` | bór świeży | (−699, 1924) |
+  | REAL | `fresh_pine_2` | bór świeży | (−2837, −1948) |
+  | REAL | `transect` | Bśw → BMśw → LMśw → grąd | (−2628, −1565) → (−2504, −625), 950 bloków: 93 / 330 / 366 / 161 bloków |
+  | GAMEPLAY | `oak_hornbeam_1` | grąd | (−1279, 530) |
+  | GAMEPLAY | `oak_hornbeam_2` | grąd | (−1509, 181) |
+  | GAMEPLAY | `fresh_pine_1` | bór świeży | (−1195, −583) |
+  | GAMEPLAY | `fresh_pine_2` | bór świeży | (−398, 999) |
+  | GAMEPLAY | `transect` | Bśw → BMśw → LMśw → grąd | (−1710, 1190) → (−1586, 1026), 207 bloków: 61 / 49 / 40 / 57 bloków |
+
+  Miejsca znalazł `SliceSitesTest.findSites` (`./gradlew test --tests '*SliceSitesTest*' -PfindSliceSites`): `HabitatTargets.locate` szuka najbliższego miejsca biomu w trybie D z pierścienia punktów startowych, a wokół trafienia szukany jest najbliższy środek kwadratu 100 × 100 bloków (powierzchnia 1 ha karty norm, V4), w którym biom ma ≥ 95% punktów siatki co 5 bloków w obu trybach (w trybie D kwadrat jest więc lasem). Miejsca leżą ≥ 640 bloków od (0, 0) (poza chunkami startu świata, więc obszary pomiaru etapów są nowym terenem), ≥ 320 bloków od siebie, a dwa miejsca jednego biomu ≥ 1500 bloków (REAL) i 400 (GAMEPLAY) od siebie (dwa różne drzewostany). Transekt: mapa biomów w oknie wokół trafień `HabitatTargets.locate` dla LMśw, linie z komórek Bśw w 48 kierunkach, sprawdzenie blok po bloku w obu trybach (kolejność Bśw → BMśw → LMśw → grąd bez powrotów, każdy las ≥ 40 bloków w REAL i ≥ 16 w GAMEPLAY, inne biomy ≤ 15% i najwyżej 24 / 12 bloków naraz), wydłużenie końców w głąb Bśw i grądu (do 120 / 40 bloków), wybór transektu o najdłuższym najkrótszym lesie. Zwykły przebieg `SliceSitesTest` (w `fastTest`, kilka sekund) tylko sprawdza tabelę. Pełny transekt mieści się blisko startu w obu skalach, więc zapas z §3 V0 (dwa krótsze transekty) nie był potrzebny.
+- **Gametest `slice`** (`SliceClientGameTest`, `-Pgametest=slice`, tylko z nazwy, nie w `all`; `-Pscales`, `-Pmodes=natural|present_day`, `-Psites=<miejsca>|none`): cztery światy (REAL i GAMEPLAY, N i D), w każdym dla każdego miejsca sprawdzenie klasyfikatora świata (kwadrat 100 × 100, transekt blok po bloku według tych samych reguł) i `getBiome` w środku wygenerowanego chunka, potem zrzuty: miejsce z wysokości oczu (`_eye`, wolna kolumna najbliżej środka, kierunek na południowy zachód), spod okapu (`_canopy`, ta sama kolumna, pochylenie −70°) i z 30 bloków nad gruntem (`_30m`, 30 bloków od środka, patrzy na środek); transekt z wysokości oczu w środku odcinka każdego lasu, patrząc wzdłuż transektu ku grądowi (`_eye_<biom>`), i z 30 bloków nad początkiem (`_30m`). Na świat log `[slice]` z licznikami warstw (`ModFeatures.STATS`: chunki, ms i obiekty na chunk) i `HABITAT_MISS` (musi być 0). Wspólny odczyt tabeli: `SliceSites` (ścieżkę podaje build jako `-Dpolishforests.slice.sites`).
+- **Etapy w miejscach wycinka:** `-Pgametest=stages -Psites=slice` mierzy w `PerformanceClientGameTest` obszary 8 × 8 chunków o środku w każdym miejscu (środek transektu) w czterech światach zamiast obszarów M2 i „area”.
+- **Baza pomiarowa M2:** tag git `m2-baseline` na ostatnim commicie V0. Generacja świata jest tam taka jak na `main` po S8c i rundzie 1 jego poprawek (`9f627cd`; V0 nie zmienia `src/main` poza wersją SBL i pustymi pakietami), a harness (gametest `slice`, `stages -Psites=slice`, tabela miejsc) jest już w tej wersji, więc V10 może zbudować bazę z tagu w osobnym worktree i mierzyć A/B w jednej sesji. Zrzuty bazowe: `docs/wycinek/baza/` (68 plików `slice_<skala>_<tryb>_<miejsce>_<kamera>.png`, 854 × 480, zapisane bez kanału alfa z optymalizacją PNG, ok. 30 MB). Pomiar etapów: `docs/wycinek/baza/stages_m2.csv`.
+- **Pakiety:** `pl.polishforests.block`, `pl.polishforests.worldgen.tree`, `pl.polishforests.entity` (same `package-info` z opisem przyszłej zawartości).
+
+**Odstępstwa.**
+- Pakiet drzew to `worldgen/tree/`, nie `tree/` na najwyższym poziomie: tak przewiduje `docs/01-architektura.md` §9 (model i generacja świata w `worldgen/`), a plan pisze ścieżki skrótowo (np. `habitat/ForestCover` to też `worldgen/habitat/`). W tym planie `tree/` oznacza odtąd `worldgen/tree/`.
+- Miejsca są wspólne dla trybów N i D (te same współrzędne, w trybie D też las), a nie osobne dla każdego trybu: zrzuty obu trybów pokazują to samo miejsce i da się je porównać. Udział biomu w kwadracie w trybie D wynosi 95,2–100% (REAL) i 97,1–100% (GAMEPLAY).
+- Tablica próbek pni (`-Psites=samples`) to część V2, nie V0.
+- `slice` nie wchodzi do `all` (jak `ecotones`), bo `all` już przekracza 7000 s; pełny przebieg `slice` trwa ok. 54 min (ok. 40 s oczekiwania na wczytanie przed pierwszym zrzutem w każdym nowym miejscu).
+- Transekt GAMEPLAY ma 207 bloków, a odcinki lasów 40–61 bloków. Szerokości przejść (N15) zmierzy karta norm (V4).
+
+**Pomiary (baza M2, 2026-10-15, spokojna maszyna: obciążenie CPU ok. 2% przed pomiarem, poza grą nic ciężkiego).**
+- `stages -Psites=slice`, 4 przebiegi w jednej sesji, mediany na obszar 8 × 8 chunków (pełne liczby z zakresami w `stages_m2.csv`): cały chunk 15,4–17,5 ms (budżet ≤ 48 ms), TERRAIN 2,7–4,0 ms, FEATURES 4,2–5,1 ms, LIGHT 6,3–7,2 ms na chunk z 64; dekoracja 2,2–3,1 ms na dekorowany chunk, w tym drzewostan 0,29–0,54 ms; drzewa 7,7–11,5 na chunk (grąd 7,7–9,1, bór świeży 9,3–11,5); `HABITAT_MISS` 0, żaden obszar nie był wygenerowany wcześniej. Rozrzut przebiegów (min–max) zwykle ≤ 1 ms, najwięcej w trybie D w `fresh_pine_2` REAL (15,1–18,2 ms).
+- Liczniki warstw w gametest `slice` (cały wczytany teren świata, nie same miejsca; obiekty na chunk): drzewostan REAL N 9,7, REAL D 8,0, GAMEPLAY N 9,2, GAMEPLAY D 6,5; runo 168–185; podszyt 1,3–1,7; martwe drewno 0,2–0,3; `HABITAT_MISS` 0 we wszystkich czterech światach.
+
+**Testy.** `SliceSitesTest` (tabela: każde miejsce w obu trybach, komplet miejsc w każdej skali i trybie, odległości), `fastTest`, `build`, pełny zestaw `tools/dev/run-tests test` (PASS), `runClientGameTest -Pgametest=slice` w obu skalach i trybach (PASS; transekty powtórzone po zmianie wyszukiwania z `-Psites=transect`, PASS), `-Pgametest=stages -Psites=slice` 4 × (PASS). Złoty test bez zmian (wycinek nie zmienia terenu).

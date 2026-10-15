@@ -245,9 +245,9 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 		}
 		int ground = sp.getServer().computeOnServer(s -> groundY(s, p.x(), p.z()));
 		int y = sp.getServer().computeOnServer(s -> clear(s, p.x(), ground + 30, p.z()));
-		// Looking along the transect, down to the ground at a third of its length.
-		double third = Math.hypot(p.x2() - p.x(), p.z2() - p.z()) / 3;
-		double pitch = Math.toDegrees(Math.atan2(y + 1.62 - (ground + 1), third));
+		// Looking along the transect, down to the ground 80 blocks ahead (realistic scale; gameplay 40 blocks).
+		double ahead = Math.min(p.realistic() ? 80 : 40, Math.hypot(p.x2() - p.x(), p.z2() - p.z()) / 2);
+		double pitch = Math.toDegrees(Math.atan2(y + 1.62 - (ground + 1), ahead));
 		shot(context, sp, p.x(), y, p.z(), yaw, pitch, prefix + "_30m", 30);
 	}
 

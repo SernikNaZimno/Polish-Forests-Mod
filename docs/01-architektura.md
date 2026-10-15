@@ -124,7 +124,7 @@ Zrobione w kamieniu milowym M0: interfejs `SeasonProvider`, własny kalendarz i 
 |---|---|---|
 | M0 | Szkielet projektu, kalendarz, most do Serene Seasons | **zrobione 2026-09-27**: build, testy i ładowanie gry przechodzą |
 | M1 | Rama świata i model krajobrazu v1 | **zrobione 2026-09-27**: world preset „Polska” (dziś `polishforests:poland`), wymiar 3056 bloków, własny generator, 5 krajobrazów prototypowych, podgląd PNG, test w kliencie; szczegóły w sekcji 10 |
-| M2 | Biomy i gleby | `BiomeSource`, 16 biomów leśnych i biomy nieleśne, bloki podłoża. **Stan 2026-10-14: kroki S0–S10 zrobione** (36 biomów kolumnowych, siedliska, strefy nadwodne, piętra, gleby i półka brzegowa, roślinność zastępcza z ekotonami Z10, tryb „dzisiejsza Polska”, temperatura z wysokości, komendy i F3, budżety i determinizm). Definicja ukończenia (`docs/03-m2-biomy.md` §12.4) spełniona poza punktami czekającymi na decyzję użytkownika: akceptacją punktów kontrolnych 1 i 2 (pkt 7; akceptacji punktu kontrolnego 1 nikt nie zapisał), ziołoroślami górskimi w skali rozgrywki (pkt 5, M2-24), budżetami całego chunka wobec M1, TERRAIN w mierze M2-11 i klasyfikacji trybu D (pkt 6, M2-25, M2-26, M2-27; runda 1 poprawek S10) oraz krawędziami lasu trybu D (pkt 9, M2-20); stan punkt po punkcie w §12.4 |
+| M2 | Biomy i gleby | `BiomeSource`, 16 biomów leśnych i biomy nieleśne, bloki podłoża. **Stan 2026-10-14: kroki S0–S10 zrobione** (36 biomów kolumnowych, siedliska, strefy nadwodne, piętra, gleby i półka brzegowa, roślinność zastępcza z ekotonami Z10, tryb „dzisiejsza Polska”, temperatura z wysokości, komendy i F3, budżety i determinizm). Definicja ukończenia (`docs/03-m2-biomy.md` §12.4) spełniona poza punktami czekającymi na decyzję użytkownika: akceptacją punktów kontrolnych 1 i 2 (pkt 7; akceptacji punktu kontrolnego 1 nikt nie zapisał), ziołoroślami górskimi w skali rozgrywki (pkt 5, M2-24), budżetami całego chunka wobec M1, TERRAIN w mierze M2-11 i klasyfikacji trybu D (pkt 6, M2-25, M2-26, M2-27; runda 1 poprawek S10) oraz krawędziami lasu trybu D (pkt 9, M2-20); stan punkt po punkcie w §12.4. **Zamknięty (zapisane 2026-10-15 w kroku V0 pionowego wycinka):** punkty kontrolne 1 i 2 zaakceptowane 2026-10-14, S8c z rundą 1 poprawek zakończony, M2-20 i M2-24 … M2-27 przyjęte domyślnie (do potwierdzenia, `docs/00` E) |
 | M3 | Drzewa | bloki pni o zmiennej grubości, generator 10 głównych gatunków, liście sezonowe, mapa drzewostanów |
 | M4 | Piętra lasu | podszyt, runo, mchy, ściółka, martwe drewno, grzybobranie, fenologia |
 | M5 | Pełna lista krajobrazów i hydrologia | ok. 30 typów, Tatry i Sudety; **sieć rzeczna, doliny, starorzecza i wybrzeże zrobione 2026-09-30** (sekcja 13) |
@@ -133,7 +133,7 @@ Zrobione w kamieniu milowym M0: interfejs `SeasonProvider`, własny kalendarz i 
 | M8 | Tryby świata i dynamika | tryb rolniczy, infrastruktura leśna, gatunki obce, dynamika lasu |
 | M9 | Dopracowanie | wydajność, zgodność z Sodium, Lithium i Distant Horizons, balans |
 
-**Pionowy wycinek po M2 (decyzja P2, 2026-10-05).** Po zamknięciu M2, zanim M3–M7 poszerzą zakres na całą Polskę, powstaje jeden kompletny las, np. grąd i bór świeży: drzewa, runo, martwe drewno i kilka zwierząt. Wycinek bierze po kawałku z M3, M4 i M6 i sprawdza w grze, czy warstwy do siebie pasują; pozostałe siedliska i gatunki dochodzą potem w kolejnych kamieniach.
+**Pionowy wycinek po M2 (decyzja P2, 2026-10-05).** Po zamknięciu M2, zanim M3–M7 poszerzą zakres na całą Polskę, powstaje jeden kompletny las, np. grąd i bór świeży: drzewa, runo, martwe drewno i kilka zwierząt. Wycinek bierze po kawałku z M3, M4 i M6 i sprawdza w grze, czy warstwy do siebie pasują; pozostałe siedliska i gatunki dochodzą potem w kolejnych kamieniach. **Stan 2026-10-15:** plan `docs/04-pionowy-wycinek.md` zaakceptowany (CP-0, decyzje w `docs/00` G), krok V0 (przygotowanie) zrobiony: stałe miejsca wycinka, gametest `slice`, baza pomiarowa M2 (tag `m2-baseline`), puste pakiety `block/`, `worldgen/tree/` i `entity/`.
 
 ## 9. Struktura kodu
 
@@ -146,7 +146,7 @@ pl.polishforests
 │   ├── habitat/                siedliska: 36 biomów, strefy, gleby, klasyfikator (czysta Java)
 │   ├── chunk/                  ChunkGenerator, BiomeSource, ChunkHabitats, rejestracja
 │   ├── surface/                plan powierzchni chunka: gleby, półka brzegowa, mikrorelief, pamięć kolumn przygranicznych, grunt pod strukturami (czysta Java)
-│   ├── tree/                   generator drzew, mapa drzewostanów
+│   ├── tree/                   generator drzew, mapa drzewostanów, martwe drewno (od V0 wycinka pusty pakiet; w planie wycinka „tree/”)
 │   └── feature/                dyspozytory kroku 9 (drzewostan, martwe drewno, podszyt, strefy nadwodne, runo, rośliny wodne), czyste plany (plan/), palety (config/), filtr siedliska, szybkie drzewa
 ├── command/                    /polishforests: cele find, find biome/zone (plany szukania, siatka komórek, transekty), opis siedliska kolumny (here, F3)
 ├── block/                      pnie, liście, runo, grzyby, gleby
