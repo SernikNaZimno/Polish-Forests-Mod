@@ -12,9 +12,13 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
+import pl.polishforests.worldgen.habitat.Association;
 import pl.polishforests.worldgen.habitat.Habitat;
 import pl.polishforests.worldgen.habitat.HabitatBiome;
 import pl.polishforests.worldgen.habitat.HabitatClassifier;
@@ -32,7 +36,9 @@ import pl.polishforests.worldgen.landscape.LandscapeScale;
  * from each other, so the 8 × 8 chunk areas of the stage measurement are new terrain, and the two sites of a biome
  * {@link #MIN_SAME_BIOME_APART} apart, so they are different stands. A transect is a straight line whose
  * columns pass the four forests in that order ({@link #transectProblem}). Columns of other biomes may interrupt it (water,
- * a bog in a hollow) up to {@link #MAX_OTHER} of the line and {@link #MAX_OTHER_RUN} blocks at a time.
+ * a bog in a hollow) up to {@link #MAX_OTHER} of the line and {@link #MAX_OTHER_RUN} blocks at a time. The sites and the
+ * forests of a transect are the typical association of the biome on at least {@link #MIN_TYPICAL} of their columns (V0
+ * review round 1: not the slope oak-hornbeam forest of a valley side).
  *
  * <p>The sites were found with {@link HabitatTargets#locate} (nearest place of the biome in the PRESENT_DAY mode from a
  * ring of origins) and a local search around each hit; {@code ./gradlew test --tests '*SliceSitesTest*' -PfindSliceSites}
@@ -40,8 +46,15 @@ import pl.polishforests.worldgen.landscape.LandscapeScale;
  */
 class SliceSitesTest {
 	static final String RESOURCE = "/slice_sites.txt";
+	static final String CAMERAS = "/slice_cameras.txt";
 	/** Least share of the 100 × 100 square with the site's biome, in each mode. */
 	static final double MIN_SHARE = 0.95;
+	/**
+	 * Least share of the 100 × 100 square with the site's biome in its typical form ({@link Association#TYPICAL}), in each
+	 * mode (V0 review round 1): the reference plots show the typical association the norms of docs/04 §6 describe (e.g.
+	 * Tilio-Carpinetum typicum), not a subassociation such as the slope oak-hornbeam forest of a valley side.
+	 */
+	static final double MIN_TYPICAL = 0.9;
 	/** Least distance of a site (and of the middle of a transect) from (0, 0), blocks: outside the chunks of the world start. */
 	static final double MIN_ORIGIN = 640;
 	/** Least distance between two places of a scale, blocks: separate 8 × 8 measurement areas with their neighbors. */
@@ -152,29 +165,144 @@ class SliceSitesTest {
 		}
 	}
 
-	/** Null when the 100 × 100 square around (x, z) has the biome in at least {@link #MIN_SHARE} of the lattice points. */
-	static String siteProblem(HabitatTargets.World w, HabitatBiome biome, int x, int z) {
-		double share = share(w, biome, x, z);
-		return share >= MIN_SHARE ? null : String.format(Locale.ROOT, "%s only %.1f%% of the square", biome.id(), 100 * share);
+	/**
+	 * The fixed cameras of the in-game test (V0 review round 1, {@code src/test/resources/slice_cameras.txt}, written by
+	 * {@code -Pgametest=slice -PfindSliceCameras}) cover every place: a site has eye, canopy and 30m (eye and canopy near
+	 * its center), a transect the eye views of its four forests, both views of its three borders, 30m and, in the gameplay
+	 * scale, overview; no camera belongs to a place missing from the table.
+	 */
+	@Test
+	void camerasCoverEveryPlace() throws IOException {
+		Map<String, Map<String, int[]>> cameras = new TreeMap<>();
+		try (InputStream in = SliceSitesTest.class.getResourceAsStream(CAMERAS)) {
+			assertTrue(in != null, "missing " + CAMERAS);
+			for (String line : new String(in.readAllBytes(), StandardCharsets.UTF_8).split("\n")) {
+				line = line.strip();
+				if (line.isEmpty() || line.startsWith("#")) {
+					continue;
+				}
+				String[] f = line.split("\\s+");
+				assertEquals(8, f.length, line);
+				cameras.computeIfAbsent(f[0] + " " + f[1], k -> new TreeMap<>()).put(f[2],
+						new int[] {Integer.parseInt(f[3]), Integer.parseInt(f[4]), Integer.parseInt(f[5])});
+			}
+		}
+		List<String> problems = new ArrayList<>();
+		List<String> keys = new ArrayList<>();
+		for (Place p : read()) {
+			String key = p.scale().id() + " " + p.name();
+			keys.add(key);
+			Map<String, int[]> here = cameras.getOrDefault(key, Map.of());
+			List<String> needed = new ArrayList<>();
+			if (p.transect()) {
+				for (int r = 0; r < SEQUENCE.size(); r++) {
+					needed.add("eye_" + SEQUENCE.get(r).id());
+					if (r > 0) {
+						String edge = "edge_" + SEQUENCE.get(r - 1).id() + "_" + SEQUENCE.get(r).id();
+						needed.add(edge + "_eye");
+						needed.add(edge + "_side");
+					}
+				}
+				needed.add("30m");
+				if (p.scale() == LandscapeScale.GAMEPLAY) {
+					needed.add("overview");
+				}
+			} else {
+				needed.addAll(List.of("eye", "canopy", "30m"));
+				for (String near : List.of("eye", "canopy")) {
+					int[] c = here.get(near);
+					if (c != null && Math.hypot(c[0] - p.x(), c[2] - p.z()) > 20) {
+						problems.add(key + ": " + near + " " + Math.round(Math.hypot(c[0] - p.x(), c[2] - p.z())) + " blocks from the center");
+					}
+				}
+			}
+			for (String n : needed) {
+				if (!here.containsKey(n)) {
+					problems.add(key + ": no camera " + n);
+				}
+			}
+		}
+		for (String key : cameras.keySet()) {
+			if (!keys.contains(key)) {
+				problems.add(key + ": cameras of a place missing from the table");
+			}
+		}
+		assertTrue(problems.isEmpty(), String.join("\n", problems));
 	}
 
-	static double share(HabitatTargets.World w, HabitatBiome biome, int x, int z) {
-		long hits = IntStream.range(0, 21 * 21).parallel()
-				.filter(i -> Habitat.biome(w.code(x - 50 + 5 * (i / 21), z - 50 + 5 * (i % 21))) == biome).count();
-		return hits / (21.0 * 21.0);
+	/**
+	 * Null when the 100 × 100 square around (x, z) has the biome in at least {@link #MIN_SHARE} of the lattice points and
+	 * its typical form in at least {@link #MIN_TYPICAL}.
+	 */
+	static String siteProblem(HabitatTargets.World w, HabitatBiome biome, int x, int z) {
+		double[] share = shares(w, biome, x, z);
+		if (share[0] < MIN_SHARE) {
+			return String.format(Locale.ROOT, "%s only %.1f%% of the square", biome.id(), 100 * share[0]);
+		}
+		return share[1] >= MIN_TYPICAL ? null
+				: String.format(Locale.ROOT, "%s typical only %.1f%% of the square", biome.id(), 100 * share[1]);
+	}
+
+	/** Shares of the 21 × 21 lattice of the square around (x, z): {the biome, the biome in its typical form}. */
+	static double[] shares(HabitatTargets.World w, HabitatBiome biome, int x, int z) {
+		int[] codes = IntStream.range(0, 21 * 21).parallel().map(i -> w.code(x - 50 + 5 * (i / 21), z - 50 + 5 * (i % 21))).toArray();
+		long hits = IntStream.of(codes).filter(c -> Habitat.biome(c) == biome).count();
+		long typical = IntStream.of(codes).filter(c -> Habitat.biome(c) == biome && Habitat.association(c) == Association.TYPICAL).count();
+		return new double[] {hits / (21.0 * 21.0), typical / (21.0 * 21.0)};
+	}
+
+	/** Biomes and associations of the square (or of the transect line): shares of the lattice (of the line), for the report. */
+	static String associations(HabitatTargets.World w, Place p) {
+		Map<String, Integer> count = new TreeMap<>();
+		int n = p.transect() ? (int) Math.ceil(Math.hypot(p.x2() - p.x(), p.z2() - p.z())) + 1 : 21 * 21;
+		for (int i = 0; i < n; i++) {
+			int c = p.transect()
+					? w.code(Math.floor(p.x() + (p.x2() - p.x()) * (double) i / (n - 1)) + 0.5,
+							Math.floor(p.z() + (p.z2() - p.z()) * (double) i / (n - 1)) + 0.5)
+					: w.code(p.x() - 50 + 5 * (i / 21), p.z() - 50 + 5 * (i % 21));
+			count.merge(Habitat.biome(c).id() + "/" + Habitat.association(c).name().toLowerCase(Locale.ROOT), 1, Integer::sum);
+		}
+		return count.entrySet().stream().map(e -> String.format(Locale.ROOT, "%s %.1f%%", e.getKey(), 100.0 * e.getValue() / n))
+				.collect(Collectors.joining(", "));
+	}
+
+	/** Biome and association shares of every place, for docs/04 ({@code -PsliceReport}; prints only). */
+	@Test
+	@EnabledIfSystemProperty(named = "polishforests.slice.report", matches = "true")
+	void reportAssociations() throws IOException {
+		for (Place p : read()) {
+			for (HabitatClassifier.Mode mode : p.modeList()) {
+				System.out.println(p.line() + " (" + mode + "): " + associations(PolishForestsCommandsTest.world(p.scale(), mode), p));
+			}
+		}
 	}
 
 	/**
 	 * Null when the columns of the line from (x1, z1) to (x2, z2), one per block, pass the four forests of
 	 * {@link #SEQUENCE} in order, each for at least {@link #MIN_RUN} blocks, with other biomes on at most
-	 * {@link #MAX_OTHER} of the line and {@link #MAX_OTHER_RUN} blocks at a time; otherwise the reason.
+	 * {@link #MAX_OTHER} of the line and {@link #MAX_OTHER_RUN} blocks at a time, and the forests in their typical
+	 * association on at least {@link #MIN_TYPICAL} of their columns; otherwise the reason.
 	 */
 	static String transectProblem(HabitatTargets.World w, int x1, int z1, int x2, int z2) {
 		int n = (int) Math.ceil(Math.hypot(x2 - x1, z2 - z1));
+		int[] codes = new int[n + 1];
+		IntStream.rangeClosed(0, n).parallel().forEach(i -> codes[i] = w.code(
+				Math.floor(x1 + (x2 - x1) * (double) i / n) + 0.5, Math.floor(z1 + (z2 - z1) * (double) i / n) + 0.5));
 		HabitatBiome[] line = new HabitatBiome[n + 1];
-		IntStream.rangeClosed(0, n).parallel().forEach(i -> line[i] = Habitat.biome(w.code(
-				Math.floor(x1 + (x2 - x1) * (double) i / n) + 0.5, Math.floor(z1 + (z2 - z1) * (double) i / n) + 0.5)));
-		return sequenceProblem(line, w.model().scale() == LandscapeScale.REALISTIC ? 0 : 1);
+		int forest = 0;
+		int typical = 0;
+		for (int i = 0; i <= n; i++) {
+			line[i] = Habitat.biome(codes[i]);
+			if (SEQUENCE.contains(line[i])) {
+				forest++;
+				typical += Habitat.association(codes[i]) == Association.TYPICAL ? 1 : 0;
+			}
+		}
+		String problem = sequenceProblem(line, w.model().scale() == LandscapeScale.REALISTIC ? 0 : 1);
+		if (problem == null && typical < MIN_TYPICAL * forest) {
+			problem = String.format(Locale.ROOT, "the forests typical only on %.1f%% of their columns", 100.0 * typical / forest);
+		}
+		return problem;
 	}
 
 	static String sequenceProblem(HabitatBiome[] line, int s) {
@@ -249,7 +377,8 @@ class SliceSitesTest {
 				lines.add(new Place(scale, "present_day", "transect_present_day", null, d[0], d[1], d[2], d[3]).line());
 			}
 		}
-		Files.write(out, lines, StandardCharsets.UTF_8);
+		// LF line ends on every system, as the file is kept in git.
+		Files.writeString(out, String.join("\n", lines) + "\n", StandardCharsets.UTF_8);
 		System.out.println("written " + out.toAbsolutePath());
 	}
 
@@ -366,7 +495,9 @@ class SliceSitesTest {
 					map[i] = (byte) SEQUENCE.indexOf(b);
 				});
 				List<int[]> lines = coarseLines(map, size, cell, s);
-				lines.sort(Comparator.comparingInt(l -> l[4]));
+				// A full order (length, then the cells), so the parallel search always checks the same lines (V0 review round 1).
+				lines.sort(Comparator.<int[]>comparingInt(l -> l[4]).thenComparingInt(l -> l[0]).thenComparingInt(l -> l[1])
+						.thenComparingInt(l -> l[2]).thenComparingInt(l -> l[3]));
 				for (int[] l : lines.subList(0, Math.min(lines.size(), 400))) {
 					int[] t = {cx - half + cell * l[0], cz - half + cell * l[1], cx - half + cell * l[2], cz - half + cell * l[3]};
 					if (!free((t[0] + t[2]) / 2, (t[1] + t[3]) / 2, taken) || transectProblem(primary, t[0], t[1], t[2], t[3]) != null
@@ -419,7 +550,11 @@ class SliceSitesTest {
 	private static boolean keeps(HabitatTargets.World primary, HabitatTargets.World second, double x, double z, HabitatBiome biome) {
 		x = Math.floor(x) + 0.5;
 		z = Math.floor(z) + 0.5;
-		return Habitat.biome(primary.code(x, z)) == biome && (second == null || Habitat.biome(second.code(x, z)) == biome);
+		return typical(primary.code(x, z), biome) && (second == null || typical(second.code(x, z), biome));
+	}
+
+	private static boolean typical(int code, HabitatBiome biome) {
+		return Habitat.biome(code) == biome && Habitat.association(code) == Association.TYPICAL;
 	}
 
 	/** Shortest stretch (blocks) of the four forests along the transect. */

@@ -212,6 +212,11 @@ tasks.withType(Test).configureEach {
 		systemProperty 'polishforests.slice.file', file('src/test/resources/slice_sites.txt').absolutePath
 		outputs.upToDateWhen { false }
 	}
+	// -PsliceReport: SliceSitesTest prints the biome and association shares of every place (for docs/04).
+	if (project.hasProperty('sliceReport')) {
+		systemProperty 'polishforests.slice.report', 'true'
+		outputs.upToDateWhen { false }
+	}
 	// SampleCostTest: number of runs (default 7), e.g. -PcostRuns=15 when settling the budget.
 	if (project.hasProperty('costRuns')) {
 		systemProperty 'polishforests.cost.runs', project.property('costRuns')
@@ -327,8 +332,9 @@ tasks.register('checkDatagen', CheckDatagen) {
 // Choosing in-game tests: ./gradlew runClientGameTest -Pgametest=performance|stages|views|climate|ui|habitats|vegetation|present_day|determinism|ecotones|slice|all
 // (ecotones: only by name, not in all; screenshots of biome borders, step S8b)
 // (slice: only by name; the fixed places of the vertical slice from src/test/resources/slice_sites.txt, step V0;
-// -Pmodes=natural|present_day picks a vegetation mode, -Psites=<place names>|none; -Pgametest=stages -Psites=slice
-// measures the stages in the places of the slice instead of the M2 areas)
+// -Pmodes=natural|present_day picks a vegetation mode, -Psites=<place names>|none; the cameras come from
+// src/test/resources/slice_cameras.txt, -PfindSliceCameras chooses them anew and writes the file; -Pgametest=stages
+// -Psites=slice measures the stages in the places of the slice instead of the M2 areas)
 // Only selected views: -Psites=beach,cliff (names from PolandWorldClientGameTest; for vegetation the soil places of
 // HabitatsClientGameTest, or none for no screenshots).
 // -PdebugHabitats: diagnostic mode, zones and biomes painted on the top block (docs/03-m2-biomy.md §7.5).
@@ -339,6 +345,11 @@ tasks.named('runClientGameTest') {
 	jvmArgs "-Dpolishforests.scales=${project.findProperty('scales') ?: ''}"
 	jvmArgs "-Dpolishforests.modes=${project.findProperty('modes') ?: ''}"
 	jvmArgs "-Dpolishforests.slice.sites=${file('src/test/resources/slice_sites.txt').absolutePath}"
+	// Fixed cameras of the slice (V0 review round 1); -PfindSliceCameras chooses them anew and writes the file.
+	jvmArgs "-Dpolishforests.slice.cameras=${file('src/test/resources/slice_cameras.txt').absolutePath}"
+	if (project.hasProperty('findSliceCameras')) {
+		jvmArgs '-Dpolishforests.slice.findCameras=true'
+	}
 	// Diagnostic mode of step S6: the top block painted with the color of the zone or biome (-PdebugHabitats).
 	if (project.hasProperty('debugHabitats')) {
 		jvmArgs '-Dpolishforests.debug.habitats=true'
