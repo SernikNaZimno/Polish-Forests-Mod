@@ -165,6 +165,21 @@ tasks.register('crownPreview', JavaExec) {
 	jvmArgs = ['-Djava.awt.headless=true']
 }
 
+// Tree planner preview (step V6 of the vertical slice) rendered to docs/wycinek/drzewa/*.png, without the game:
+// species by age class and layer from the side and from above, shape variants and stands of 3 x 3 chunks.
+// -PconifersOnly renders the conifer sheets and the pine stand only.
+tasks.register('treePreview', JavaExec) {
+	group = 'polishforests'
+	description = 'Renders the tree planner sheets and stands to docs/wycinek/drzewa/*.png'
+	classpath = sourceSets.test.runtimeClasspath
+	mainClass = 'pl.polishforests.worldgen.tree.TreePreview'
+	args = [file('docs/wycinek/drzewa').absolutePath]
+	if (project.hasProperty('conifersOnly')) {
+		args += ['conifers']
+	}
+	jvmArgs = ['-Djava.awt.headless=true']
+}
+
 // Unit tests (docs/BRIEF.md, "Komendy"). Test classes are tagged with JUnit 5 tags:
 //   @Tag("slow") - classes that take more than ~20 s (large terrain areas, golden test, continuity sweeps);
 //   @Tag("cost") - SampleCostTest and CrownTerritoryCostTest, wall-clock measurements without assertions.

@@ -107,6 +107,7 @@ public final class ModFeatures {
 					d == BiomeDecoration.Dispatcher.TREE_STAND ? TreeStandFeature.CODEC : PlantLayerFeature.codec(d));
 		}
 		Registry.register(BuiltInRegistries.FEATURE_TYPE, PolishForests.id("tree"), FastTreeFeature.CODEC);
+		Registry.register(BuiltInRegistries.FEATURE_TYPE, PolishForests.id("procedural_tree"), ProceduralTreeFeature.CODEC);
 		Registry.register(BuiltInRegistries.PLACEMENT_MODIFIER_TYPE, PolishForests.id("habitat"), HabitatFilter.CODEC);
 	}
 
