@@ -101,7 +101,7 @@ public record SpeciesShape(Archetype archetype, ByAge height, ByAge dbh, ByAge c
 				1, 48, 30, -0.35F, 0, 1.9F, 1.4F, 0.82F, 0, 2.3F, 0.8F, 0.15F));
 		// Pedunculate oak (a1 of the oak-hornbeam forest: thick limbs close to the axis, a broad irregular crown).
 		SHAPES.put(Species.OAK, new SpeciesShape(Archetype.BROAD, new ByAge(15, 27, 31), new ByAge(14, 45, 78),
-				new ByAge(0.46F, 0.52F, 0.56F), new ByAge(2.6F, 5.0F, 6.8F), new Profile(0.55F, 0.45F, 0.35F, 2.2F), 0.7F,
+				new ByAge(0.46F, 0.52F, 0.56F), new ByAge(2.4F, 4.3F, 5.6F), new Profile(0.55F, 0.45F, 0.35F, 2.2F), 0.7F,
 				1.1F, 1, 72, 40, 0.1F, 3, 2.3F, 1.7F, 0.8F, 0.45F, 2.4F, 0.82F, 0.08F));
 		// Small-leaved linden (a1: a dense ovate crown with a leader).
 		SHAPES.put(Species.LINDEN, new SpeciesShape(Archetype.BROAD, new ByAge(15, 25, 28), new ByAge(13, 40, 64),
@@ -112,14 +112,14 @@ public record SpeciesShape(Archetype archetype, ByAge height, ByAge dbh, ByAge c
 				new ByAge(0.6F, 0.65F, 0.66F), new ByAge(2.2F, 3.6F, 4.4F), new Profile(0.65F, 0.45F, 0.25F, 1.8F), 0.6F,
 				0.7F, 1, 64, 36, 0.08F, 0, 2.2F, 1.7F, 0.92F, 0.4F, 2.4F, 0.84F, 0.05F));
 		SHAPES.put(Species.BEECH, new SpeciesShape(Archetype.BROAD, new ByAge(15, 28, 32), new ByAge(13, 42, 64),
-				new ByAge(0.5F, 0.6F, 0.6F), new ByAge(2.4F, 4.8F, 6.0F), new Profile(0.6F, 0.45F, 0.25F, 1.9F), 0.4F, 0.8F,
+				new ByAge(0.5F, 0.6F, 0.6F), new ByAge(2.2F, 4.1F, 5.1F), new Profile(0.6F, 0.45F, 0.25F, 1.9F), 0.4F, 0.8F,
 				1, 70, 38, 0.06F, 0, 2.3F, 1.6F, 0.9F, 0.45F, 2.4F, 0.84F, 0.04F));
 		SHAPES.put(Species.NORWAY_MAPLE, new SpeciesShape(Archetype.BROAD, new ByAge(14, 24, 27), new ByAge(12, 38, 55),
-				new ByAge(0.55F, 0.6F, 0.6F), new ByAge(2.2F, 4.2F, 5.2F), new Profile(0.6F, 0.45F, 0.25F, 2.0F), 0.5F,
+				new ByAge(0.55F, 0.6F, 0.6F), new ByAge(2.0F, 3.8F, 4.6F), new Profile(0.6F, 0.45F, 0.25F, 2.0F), 0.5F,
 				0.9F, 1, 62, 34, 0.1F, 0, 2.3F, 1.7F, 0.88F, 0.4F, 2.4F, 0.84F, 0.05F));
 		// Ash: a tall bole, a high and open crown of few, steep branches.
 		SHAPES.put(Species.ASH, new SpeciesShape(Archetype.BROAD, new ByAge(16, 28, 32), new ByAge(13, 42, 60),
-				new ByAge(0.45F, 0.48F, 0.5F), new ByAge(2.2F, 4.2F, 5.4F), new Profile(0.55F, 0.5F, 0.3F, 2.0F), 0.5F,
+				new ByAge(0.45F, 0.48F, 0.5F), new ByAge(2.0F, 3.8F, 4.8F), new Profile(0.55F, 0.5F, 0.3F, 2.0F), 0.5F,
 				1.2F, 1, 58, 30, 0.12F, 0, 2.1F, 1.5F, 0.8F, 0.4F, 2.4F, 0.82F, 0.06F));
 	}
 

@@ -1386,3 +1386,69 @@ Transekt (obie skale, oba tryby): **kolejność zachowana**. Iglaste w pniach: R
 - Pełny przebieg ze zrzutami (`slice` bez `-Psites`, ok. 67 min) nie był potrzebny: V4 nie zmienia świata ani kadrów. Licznik biegnie w nim tak samo przed zrzutami.
 
 **Testy.** `ForestCensusTest` (12) i `ForestNormsTest` (5), `fastTest` (PASS), `runClientGameTest -Pgametest=slice -Psites=none` (PASS: powierzchnia testowa w grze zgodna co do komórki i wartości, 8 powierzchni i 4 transekty policzone w REAL i GAMEPLAY, N i D), pełny zestaw `tools/dev/run-tests test` (PASS, 1113 s, drzewo `ef474a910f9d`; różni się od commitu tylko tym zdaniem). Złoty test bez zmian (V4 nie zmienia terenu).
+
+## Stan po V6 (2026-10-17)
+
+Planer drzew `TreeShapePlan` (czysta Java) i ficzer `polishforests:procedural_tree` są w kodzie, podgląd PNG w `docs/wycinek/drzewa/`, tablica drzew w grze w gametescie `slice -Psites=trees`. Drzewostan świata nadal stawia drzewa M2: planer podłączy V9 (`TreeStandFeature` woła go wprost z terytorium, ZW-1), więc złoty test terenu i dekoracja świata są bez zmian. Najpierw powstały i poszły do wglądu iglaste (commit `7cfc61f`, PNG wysłane użytkownikowi), potem liściaste. Drobne wybory: `docs/00` G.12.
+
+**Zrobione.**
+- **`worldgen/tree/SpeciesShape`** (rekord; JSON z kodekiem w M3): archetyp (`PINE`, `SPRUCE`, `SLENDER`, `BROAD`), allometria według klasy wieku (wysokość, pierśnica, udział i promień korony okapu), profil obwiedni korony, parametry szkieletu (pochylenie pnia, odstęp okółków lub gałęzi, kąty, wygięcie końców, konary), liści (skupienia, wypełnienie, pusty środek), rury (n 2,2–2,4, udział promienia u nasady korony) i suchych kikutów. Dziewięć gatunków wycinka: sosna, świerk, brzoza, dąb, lipa, grab, buk, klon zwyczajny i jesion (buk, klon i jesion mają archetyp szeroki grabu z innymi parametrami). Wartości [S] z raportu techniki §3.3, do kalibracji z kartą norm w V9.
+- **`TreeRequest`** (gatunek, warstwa, klasa wieku, ziarno świata, podstawa pnia, terytorium korony z V5 albo brak, predykat pni `Trunks`) → **`TreeVoxels`** (drewno w kolejności od korzenia: promień 1–7 px albo pełna kłoda, kierunek i indeks rodzica, kora; liście z odległością 1–6; `leafDistances` na wypadek, gdy części drewna nie da się zapisać).
+- **`TreeShapePlan`**:
+  - **allometria** z rozrzutem z hasza pnia (sól `feature.tree.shape`, ZW-2); drzewo a2 to 0,62 wysokości gatunku, podrost 2,5–4,5 m;
+  - **pasma pięter** (G.12 V6-a): liście okapu od 6 / 13 / 16 bloków, a2 3–5 / 5–12 / 5–15, podrost do 2 / 4 / 4 (drągowina / dojrzały / starodrzew). Na płaskim terenie liście dwóch pięter nie trafiają w jeden blok, a drewno pięter niższych trzyma się kolumnę od każdego pnia (V6-b), więc zostają tylko pary drewno–liść, które nie zależą od kolejności (drewno nadpisuje liście, liście drewna nie);
+  - **szkielety:** sosna (okółki 2–4 gałęzi co ok. 1,4 bloku w górnych 30–40% wysokości, kępy igieł na końcach i w połowie pędów, w starodrzewie płaski „parasol”, suche kikuty niżej), świerk (stożek okółków po 3–5 gałęzi co blok, poziome gałęzie z opadającymi końcami, igły wzdłuż gałęzi), brzoza (przewodnik z pojedynczymi gałęziami pod kątem złotym, zwisające końce pędów), liściaste szerokie (przewodnik z gałęziami bocznymi i gałązkami; dąb od drzewostanu dojrzałego rozwidla się na 2–3 grube konary blisko osi, 12–24° od pionu);
+  - **model rury** od końców pędów, skalowany tak, że pień u nasady korony ma 0,78–0,84 promienia pierśnicy; pod nasadą przekrój r^n rośnie liniowo ku podstawie, więc półki r + 1 → r rozkładają się wzdłuż strzały (przegląd V2). Odcinki ukośne (> 25° od osi) mają najwyżej 2 px (R4);
+  - **wokselizacja 3D DDA** z krokami po ścianach, rodzic zawsze sąsiaduje ścianą, promień bloku najwyżej promień rodzica; odcinek wchodzący w istniejące drewno idzie dalej od niego (V6-c), wchodzący w kolumnę zakazaną urywa się z potomkami (mniejsze skupienie liści na końcu);
+  - **„lustro” sosny** od 0,45 / 0,50 / 0,55 wysokości: blok `scots_pine_transition_trunk`, na nim `scots_pine_transition_upper_trunk`, wyżej `scots_pine_upper_trunk`; gałęzie powyżej strefy z korą „lustra”, kikuty niżej z korą dolną;
+  - **korona:** postrzępione elipsoidy z dziurami wokół końców pędów, pusty środek dużych koron liściastych, liść nad każdym cienkim blokiem pędu (osłona z góry, V6-l), liście tylko w kolumnach terytorium, w kole 16 bloków i w paśmie piętra; BFS od drewna przez własne liście, liście dalej niż 6 kroków odpadają.
+- **`ProceduralTreeFeature`** (`polishforests:procedural_tree`, rekord z `MapCodec`: `species`, `layer`, `age_class`): drzewo samotne bez terytorium na wolnym bloku nad pełną ścianą. `write` (dla V9): drewno od korzenia, potem liście, tylko na powietrze i `#replaceable_by_trees`; drewno bez zapisanego rodzica odpada z potomkami, a odległości liści liczą się wtedy od nowa. Bez dekoratorów wanilii (R8). Liście zastępcze wanilii do V7 (V6-e). Pełna kłoda wanilii dla r ≥ 7,5 px; w tabeli wycinka najgrubszy dąb ma r 7, więc jeszcze jej nie ma (V6-f).
+- **Podgląd** `./gradlew treePreview [-PconifersOnly]` → `docs/wycinek/drzewa/`: `iglaste_bok.png`, `iglaste_gora.png`, `iglaste_warianty.png`, `lisciaste_bok.png`, `lisciaste_gora.png`, `lisciaste_warianty.png` (gatunek × klasa wieku i piętro, z boku z promieniem drewna i korą, z góry; warianty: 6 drzew dojrzałych na gatunek), `drzewostan_bor.png` (gospodarczy dojrzały: sosna, brzoza, w a2 świerk i brzoza) i `drzewostan_grad.png` (naturalny starodrzew: dąb, lipa, klon, jesion, buk; w a2 grab i lipa; podrost) na 3 × 3 chunkach z terytoriami.
+- **Gametest** `./gradlew runClientGameTest -Pgametest=slice -Psites=trees` (`TreeSamples`, ok. 2 min): w płaskim świecie ficzer sadzi drzewo okapu każdego gatunku w trzech klasach wieku, a `write` dwa drzewostany 3 × 3 chunki z terytoriami; sprawdza, że każdy zaplanowany blok drewna stoi w świecie z właściwym stanem i że żaden liść nie ma odległości 7 (zaraz i po 200 tickach), oraz liczy ekoton z drzewami zastępczymi (niżej). Zrzuty w `docs/wycinek/drzewa/gra/`.
+
+**Pomiary.**
+
+Koszt planera (`./gradlew costTest --tests '*TreeShapePlanCostTest*'`, jeden wątek, mediana 7 rund po 400 drzew; budżet planu: iglaste ≤ 0,2 ms, liściaste szerokie ≤ 0,5 ms):
+
+| Gatunek | dojrzały, ms | starodrzew, ms | budżet, ms |
+|---|---|---|---|
+| sosna | 0,033 | 0,041 | 0,2 |
+| świerk | 0,047 | 0,059 | 0,2 |
+| brzoza | 0,021 | 0,024 | 0,5 |
+| dąb | 0,089 | 0,134 | 0,5 |
+| buk | 0,084 | 0,104 | 0,5 |
+| grab | 0,030 | 0,029 | 0,5 |
+| lipa | 0,052 | 0,064 | 0,5 |
+| jesion | 0,043 | 0,054 | 0,5 |
+| klon | 0,042 | 0,049 | 0,5 |
+
+Drzewostan naturalnego starodrzewu 4 × 4 chunki (278 drzew wszystkich pięter z terytoriami i predykatem pni): 0,039 ms na drzewo z gatunkami boru i 0,047 ms z gatunkami grądu, czyli ok. 0,8 ms na chunk przy ok. 17 drzewach (sam planer, bez zapisu bloków i bez terytoriów). Najdroższy dąb starodrzewu mieści się w budżecie z zapasem ok. 3,7 ×, sosna ok. 5 ×.
+
+Bloki na drzewo (średnia z 40 kolumn, drewno + liście; `TreeShapePlanTest.reportBlocksPerTree`):
+
+| Gatunek | a1 drągowina | a1 dojrzały | a1 starodrzew | a2 dojrzały | a2 starodrzew | podrost |
+|---|---|---|---|---|---|---|
+| sosna | 33 + 19 | 72 + 64 | 96 + 112 | 27 + 24 | 42 + 55 | 10 + 14 |
+| świerk | 47 + 41 | 117 + 138 | 144 + 187 | 33 + 46 | 51 + 77 | 12 + 24 |
+| brzoza | 19 + 20 | 36 + 50 | 41 + 63 | 16 + 27 | 28 + 68 | 5 + 19 |
+| dąb | 26 + 52 | 112 + 369 | 185 + 606 | 15 + 58 | 30 + 117 | 4 + 31 |
+| lipa | 29 + 58 | 73 + 236 | 90 + 324 | 15 + 47 | 31 + 132 | 4 + 43 |
+| grab | 22 + 42 | 41 + 109 | 40 + 114 | 16 + 53 | 32 + 141 | 4 + 33 |
+| buk | 29 + 64 | 110 + 425 | 148 + 596 | 16 + 65 | 36 + 159 | 6 + 49 |
+
+Sylwetki (`archetypeSilhouettesDiffer`, średnie z 40 drzew okapu): najniższy liść sosny na 0,64 / 0,68 / 0,71 wysokości (korona w górnych 29–36%), świerka na 0,50–0,58 (stożek: promień liści w dolnej trzeciej korony 4,3, w górnej 1,5 w drzewostanie dojrzałym), suche kikuty ma 29–39 z 40 sosen; promień liści dojrzałego dębu 6,5, lipy 5,3, brzozy 3,9, sosny 3,5.
+
+Tablica w grze: 332 drzewa (27 samotnych i dwa drzewostany 3 × 3 chunki), 15 077 bloków drewna, wszystkie na miejscu z właściwym stanem, 22 932 liście, żaden z odległością 7 zaraz po zapisie ani po 200 tickach.
+
+Ekoton z drzewami zastępczymi (R5, V5-h; drzewostan grądu 3 × 3 chunki, 30% kandydatów z zastępczym `tree/oak` M2, zapis w obu kolejnościach): 145 kandydatów, 35 drzew zastępczych, 18 907 bloków; między kolejnościami różni się 320 bloków liści, 1 blok drewna proceduralnego wobec kłody wanilii i 21 bloków drewna proceduralnego nad nim (cała górna część pnia jednego drzewa), 0 bloków drewna wanilii. Liście różnią się zgodnie z R5 (ostatnie zapisane wygrywają). Drewno różni się tylko tam, gdzie gałąź dębu zastępczego, który nie zna terytoriów, przecina pień drzewa proceduralnego: placer pnia wanilii nadpisuje bloki `#logs` (także cienki pień), a planer nie pisze na kłodę, więc przy zastępczym najpierw blok pnia i wszystko nad nim nie powstaje. **Dla V9:** zapis drzew zastępczych w ekotonie przycinać do ich terytorium (setter pnia i liści w `FastTreeFeature`), wtedy drewno nie zależy od kolejności; w świecie tego jeszcze nie ma, bo planer nie jest podłączony.
+
+**Odstępstwa i uwagi.**
+- Pasma pięter skracają korony okapu, gdy nasada z tabeli gatunku wypada poniżej pasma (świerk i grab w okapie, lipa); drzewa a2 są niższe (do 12 / 15 bloków) niż 15–22 bloki z N2. Pasma to szacunki do kalibracji w V9. Pasma liczą się od podstawy pnia, więc na stoku liście dwóch pięter sąsiednich drzew mogą się spotkać; V9 ma teren i sąsiadów.
+- Ficzer `procedural_tree` nie zna terytorium (drzewo samotne); terytoria i predykat pni dostaje planer w drzewostanie V9.
+- Brak pełnych kłód w obecnej tabeli (pierśnica ≤ ok. 90 cm, r ≤ 7) i brak dysków kłód (pnie grubsze niż blok, pomniki) do M3.
+- Zapas z planu niepotrzebny (G.12 V6-m): koszt jest kilka razy poniżej budżetu, a korony mają rozwidlenia, kąt złoty i dziury w skupieniach. Kolonizacja przestrzeni zostaje opcją, gdyby przy CP-B korony liściaste okazały się zbyt regularne.
+- Drzewa samotne na tablicy w grze mają długie, czyste strzały i korony tylko w górnej części (to forma drzew w zwarciu, wymuszona pasmami). W drzewostanie wygląda to naturalnie (zrzuty `*_stand_*`), na otwartym terenie (skraj lasu, pojedyncze drzewa) korony powinny schodzić niżej; to zadanie dla V9, który zna skraj.
+- Model pnia po V2b bez zmian; pasek kolanka i dziury w narożnikach czapki rozstrzyga V10 (G.6 V2-l).
+- Liczby karty norm (N1–N4) mierzy dopiero V9, gdy planer stanie w świecie.
+
+**Testy.** `TreeShapePlanTest` (9: determinizm wobec kolejności, nowego obszaru roboczego i wątków; łańcuch `parent` do korzenia i promień nierosnący; liście ≤ 6 od drewna niezależnym BFS; zapis tylko w 3 × 3 chunkach i kole 16; brak sporów koron w drzewostanach 4 × 4 chunki dla 4 map drzewostanu i 2 zestawów gatunków, ponad 1000 drzew: w piętrze żadna kolumna dwóch drzew i wszystko w terytorium, między piętrami żadne dwa liście ani dwa drewna w jednym bloku, drewno pięter niższych z dala od pni; pasma liści; strefa przejściowa sosny; sylwetki archetypów; raport bloków), `ProceduralTreeStatesTest` (kodek ficzera z wartościami domyślnymi i błędami, stany pni, kory sosny, pełnej kłody i liści), `TreeShapePlanCostTest` (`@Tag("cost")`), `CrownTerritoryTest`, `RegistrySnapshotTest` (bez zmian: V6 nie dodaje bloków ani przedmiotów), `fastTest`, gametest `slice -Psites=trees` (PASS), pełny zestaw `tools/dev/run-tests test`.

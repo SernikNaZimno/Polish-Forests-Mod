@@ -1,6 +1,6 @@
 # Brief projektu „Polish Forests” (dla agentów)
 
-Stan: 2026-10-16. Krótki punkt wejścia: przeczytaj to zamiast całych planów; szczegóły w dokumentach z ostatniej sekcji. Pełna dawna wersja briefu z opisami wszystkich kroków: `docs/historia-stanu.md`.
+Stan: 2026-10-17. Krótki punkt wejścia: przeczytaj to zamiast całych planów; szczegóły w dokumentach z ostatniej sekcji. Pełna dawna wersja briefu z opisami wszystkich kroków: `docs/historia-stanu.md`.
 
 ## Czym jest projekt
 
@@ -10,7 +10,7 @@ Mod Fabric do Minecrafta 26.3 (Java 25, Loom, Gradle 9.7, JDK z `gradle.properti
 
 - M0, M1 i M2 zamknięte (M2: punkty kontrolne 1 i 2 przyjęte 2026-10-14; decyzje M2-13 … M2-27 domyślne, do potwierdzenia, `docs/00` E).
 - Pionowy wycinek (grąd i bór świeży, plan `docs/04-pionowy-wycinek.md`), część 1 zrobiona: V0, V1, V2 (+V2b), V3, V5, CP-A (styl tekstur i cienki pień przyjęte, `docs/00` G.9).
-- Część 2: **V1b** (wygładzenie tekstur) i **V4** (karta norm, pomiar bazowy M2: `docs/wycinek/karta-norm-m2.md`) zrobione. **Następne: V6** (planer drzew `TreeShapePlan`), **V7** (liście, sadzonki, LITE sosny), **V9** (`StandMap`, drzewostan wycinka; usuwa pas słabszego pokrycia koron na granicach chunków, V5-i), **V10** (pomiary i budżety; rozstrzyga pasek kolanka i dziury w narożnikach czapki pnia), potem **CP-B**.
+- Część 2: **V1b** (wygładzenie tekstur), **V4** (karta norm, pomiar bazowy M2: `docs/wycinek/karta-norm-m2.md`) i **V6** (planer drzew `TreeShapePlan`, ficzer `procedural_tree`, podgląd `docs/wycinek/drzewa/`; świat jeszcze bez nowych drzew, podłącza je V9) zrobione. **Następne: V7** (liście, sadzonki, LITE sosny), **V9** (`StandMap`, drzewostan wycinka; usuwa pas słabszego pokrycia koron na granicach chunków, V5-i), **V10** (pomiary i budżety; rozstrzyga pasek kolanka i dziury w narożnikach czapki pnia), potem **CP-B**.
 - Tor sarny **V8** gotowy na gałęzi `slice-fauna` (model i kalibracja GeckoLib, runda 1 poprawek), **wstrzymany przez użytkownika, nie scalać**.
 
 ## Konwencje
@@ -36,12 +36,13 @@ Mod Fabric do Minecrafta 26.3 (Java 25, Loom, Gradle 9.7, JDK z `gradle.properti
 - `worldgen/habitat/HabitatClassifier` – siedlisko kolumny; `HabitatBiome`, `Species`, `ForestCover` (maska trybu D), `Calibration` (progi).
 - `worldgen/surface/SurfaceBuilder` – plan powierzchni chunka; `SoilBlocks`, `BankShelf`, `SoilBlend`.
 - `worldgen/feature/` – `ModFeatures`, `TreeStandFeature` + `plan/TreeStandPlan` (drzewostan), `PlantLayerFeature` (warstwy runa), `plan/Ecotone`.
-- `worldgen/tree/CrownTerritories` – terytoria koron (V5); `StandMap` (w V9 pełna), `Vacancies`, `AgeClass`, `CrownLayer`.
+- `worldgen/tree/CrownTerritories` – terytoria koron (V5); `TreeShapePlan` – planer drzew (V6: `TreeRequest` → `TreeVoxels`, gatunki w `SpeciesShape`, pasma pięter); `StandMap` (w V9 pełna), `Vacancies`, `AgeClass`, `CrownLayer`.
+- `worldgen/feature/ProceduralTreeFeature` – ficzer `polishforests:procedural_tree` i zapis planu (`write`, liście zastępcze wanilii do V7).
 - `worldgen/norms/` – `ForestNorms` (karta norm §6), `ForestCensus`, `CensusGrid`, `CensusTestPlot` (V4).
 - `block/TrunkBlock` – cienki pień (`radius` 1–7); `TreeTrunk` (12 bloków pni), `ModBlocks`, `RegistrySnapshot`.
 - `src/client/.../datagen/` – datagen (biomy, drzewa, modele pni `TrunkTemplates`); wynik w `src/main/generated` (w repo, nie edytować ręcznie).
 - `src/gametest/` – testy w kliencie: m.in. `SliceClientGameTest` (wycinek, karta norm, tablica próbek pni), `RenderProbesClientGameTest`, `PerformanceClientGameTest`.
-- `src/test/` – JUnit, złoty test, podglądy PNG, `SliceSitesTest`, `TrunkModelRayTest`, `CrownTerritoryTest`.
+- `src/test/` – JUnit, złoty test, podglądy PNG, `SliceSitesTest`, `TrunkModelRayTest`, `CrownTerritoryTest`, `TreeShapePlanTest`.
 
 ## Komendy
 
@@ -50,7 +51,7 @@ Mod Fabric do Minecrafta 26.3 (Java 25, Loom, Gradle 9.7, JDK z `gradle.properti
 ./gradlew fastTest                  # bez 'slow' i 'cost', 3 procesy, ok. 1 min
 ./gradlew test                      # pełny zestaw (bez 'cost'); -PtestForks=<n> (każdy proces 3 GB sterty)
 tools/dev/run-tests [--reuse] test  # pełny zestaw ze skrótem drzewa; log w build/test-logs/
-./gradlew costTest [-PcostRuns=15]  # pomiary czasu (SampleCostTest, CrownTerritoryCostTest), tylko na spokojnej maszynie
+./gradlew costTest [-PcostRuns=15]  # pomiary czasu (SampleCostTest, CrownTerritoryCostTest, TreeShapePlanCostTest z budżetem V6), tylko na spokojnej maszynie
 ./gradlew test --tests '*GoldenTerrainTest*' [-PgoldenReport=build/g.txt] [-PwriteGolden -PgoldenKeepCenters -PgoldenFile=…]
 ./gradlew test --tests '*RegistrySnapshotTest*' [-PwriteRegistrySnapshot]
 ./gradlew test --tests '*SliceSitesTest*' [-PfindSliceSites] [-PsliceReport]
@@ -59,13 +60,14 @@ tools/dev/run-tests [--reuse] test  # pełny zestaw ze skrótem drzewa; log w bu
 python tools/art/sheet.py | lint.py | measure.py [png|katalog]   # arkusze docs/wycinek/grafika/, lint, kontrast i ΔE
 ./gradlew landscapePreview [-PhabitatsOnly]   # PNG do build/preview
 ./gradlew crownPreview                        # terytoria koron do docs/wycinek/korony/
+./gradlew treePreview [-PconifersOnly]        # drzewa planera (gatunek × wiek, z boku i z góry, drzewostany 3 × 3 chunki) do docs/wycinek/drzewa/
 ./gradlew runClient [-Poptimization [-PnoNvidium]]
 python tools/norms/table.py [build/norms/karta-norm.csv] [--out plik.md]   # tabela karty norm
 python tools/dev/contact_sheet.py <katalog|glob> [...] --out arkusz.png [--cols 3] [--thumb 480] [--crop x0,y0,x1,y1] [--title …]
 ```
 
 **Gametesty** (otwierają okno gry): `./gradlew runClientGameTest -Pgametest=<tryb>`, tryby: `all|ui|performance|views|stages|climate|habitats|vegetation|present_day|determinism|ecotones|slice|probes`.
-- Flagi: `-Psites=<lista>|none` (dla `slice`: `samples` = tablica próbek pni, ok. 3,5 min; `none` = sama karta norm, ok. 2 min → `build/norms/karta-norm.csv`; pełny `slice` ok. 67 min; dla `stages`: `slice`), `-Pscales=realistic|gameplay`, `-Pmodes=natural|present_day`, `-PnoSeasons` (bez SS i GlitchCore), `-Poptimization` (paczka: Sodium, C2ME…; na NVIDIA z shaderami siatek sam włącza Nvidium), `-PnoNvidium` (czysty Sodium), `-PtimingsReportOnly` (progi czasu tylko w raporcie, gdy maszyna zajęta), `-Pprofile`, `-PdebugHabitats`, `-PfindSliceCameras` (tylko świat M2).
+- Flagi: `-Psites=<lista>|none` (dla `slice`: `samples` = tablica próbek pni, ok. 3,5 min; `trees` = tablica drzew planera z drzewostanami i ekotonem z drzewami zastępczymi, ok. 2 min; `none` = sama karta norm, ok. 2 min → `build/norms/karta-norm.csv`; pełny `slice` ok. 67 min; dla `stages`: `slice`), `-Pscales=realistic|gameplay`, `-Pmodes=natural|present_day`, `-PnoSeasons` (bez SS i GlitchCore), `-Poptimization` (paczka: Sodium, C2ME…; na NVIDIA z shaderami siatek sam włącza Nvidium), `-PnoNvidium` (czysty Sodium), `-PtimingsReportOnly` (progi czasu tylko w raporcie, gdy maszyna zajęta), `-Pprofile`, `-PdebugHabitats`, `-PfindSliceCameras` (tylko świat M2).
 - `probes`: 6 zestawów (bez flag, `-Poptimization -PnoNvidium`, `-Poptimization`, każdy też z `-PnoSeasons`), wynik `build/probes/<renderer>_<ss|noss>.txt`.
 - Determinizm z paczką: `-Pgametest=determinism`, skopiuj `build/determinism/plain.txt` poza `build/determinism`, potem `-Poptimization -PdeterminismReference=<kopia>`.
 
