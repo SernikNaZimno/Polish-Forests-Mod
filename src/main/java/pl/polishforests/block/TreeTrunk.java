@@ -8,13 +8,14 @@ import pl.polishforests.worldgen.habitat.Species;
 /**
  * The thin trunk blocks of the vertical slice (step V2, docs/04-pionowy-wycinek.md §1.1): one {@link TrunkBlock} per
  * species of the slice, and the Scots pine has a second block for the thin orange bark of the upper trunk (the "mirror",
- * decision PW-11). The block id ({@link #id()}) goes into the saved worlds and is frozen after checkpoint CP-B by the
- * registry snapshot test; new trunks only at the end.
+ * decision PW-11) and a third for the transition zone between the two (step V1b, choice V1-i). The block id
+ * ({@link #id()}) goes into the saved worlds and is frozen after checkpoint CP-B by the registry snapshot test; new
+ * trunks only at the end.
  *
  * <p>Bark (D2): birch and spruce use the vanilla log texture by id, the others the textures of {@code tools/art} (oak,
- * pine, hornbeam, linden, beech), the ash and the Norway maple a shared substitute bark of the broad-crowned archetype
- * (§1.1). Loot (§1.1): radius ≤ 2 gives sticks, radius ≥ 3 the log of the species or, until the species has its own log,
- * the closest vanilla log ({@link #log()}).
+ * pine, hornbeam, linden, beech, in two or three variants), the ash and the Norway maple a shared substitute bark of the
+ * broad-crowned archetype (§1.1). Loot (§1.1): radius ≤ 2 gives sticks, radius ≥ 3 the log of the species or, until
+ * the species has its own log, the closest vanilla log ({@link #log()}).
  */
 public enum TreeTrunk {
 	SCOTS_PINE("scots_pine_trunk", Species.SCOTS_PINE, MapColor.COLOR_BROWN, "Scots Pine Trunk", "Pień sosny zwyczajnej"),
@@ -29,7 +30,14 @@ public enum TreeTrunk {
 	BEECH("beech_trunk", Species.BEECH, MapColor.COLOR_LIGHT_GRAY, "European Beech Trunk", "Pień buka zwyczajnego"),
 	ASH("ash_trunk", Species.ASH, MapColor.COLOR_GRAY, "European Ash Trunk", "Pień jesionu wyniosłego"),
 	NORWAY_MAPLE("norway_maple_trunk", Species.NORWAY_MAPLE, MapColor.COLOR_GRAY, "Norway Maple Trunk",
-			"Pień klonu zwyczajnego");
+			"Pień klonu zwyczajnego"),
+	/**
+	 * The Scots pine between the lower bark and the "mirror" (step V1b, choice V1-i, reserved before CP-B): thinner gray
+	 * plates of the lower bark on the orange bark of the upper trunk; the tree planner (V6) puts it in a short zone
+	 * between {@link #SCOTS_PINE} and {@link #SCOTS_PINE_UPPER}.
+	 */
+	SCOTS_PINE_TRANSITION("scots_pine_transition_trunk", Species.SCOTS_PINE, MapColor.COLOR_BROWN,
+			"Scots Pine Transition Trunk", "Przejściowy pień sosny zwyczajnej");
 
 	private final String id;
 	private final Species species;
@@ -73,7 +81,7 @@ public enum TreeTrunk {
 	 */
 	public Block log() {
 		return switch (this) {
-			case SCOTS_PINE, SCOTS_PINE_UPPER, SPRUCE -> Blocks.SPRUCE_LOG;
+			case SCOTS_PINE, SCOTS_PINE_UPPER, SCOTS_PINE_TRANSITION, SPRUCE -> Blocks.SPRUCE_LOG;
 			case BIRCH -> Blocks.BIRCH_LOG;
 			case OAK, LINDEN, ASH, NORWAY_MAPLE -> Blocks.OAK_LOG;
 			case HORNBEAM, BEECH -> Blocks.PALE_OAK_LOG;

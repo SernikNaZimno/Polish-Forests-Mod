@@ -17,7 +17,11 @@ Rules for every texture:
   at the 3 x 3 tiles of tools/art/sheet.py. Variants (Texture.variant_of) also continue into their base texture
   vertically;
 - isolated pixels (equal to none of their 4 neighbours) are at most 10% of the visible pixels of bark and 30% of
-  leaves (needle tips and leaf highlights are single pixels on purpose), so the texture is built of 2-4 px clusters.
+  leaves (needle tips and leaf highlights are single pixels on purpose), so the texture is built of 2-4 px clusters;
+- local contrast (step V1b, checkpoint CP-A: "a bit too sharp"; texlib.local_contrast, tools/art/measure.py): the mean
+  and the 90th percentile of the luma steps between neighbouring pixels and the share of pixels in dark one-pixel lines
+  stay under caps measured on vanilla 26.3 (CONTRAST: bark about the upper quartile of the natural logs, leaves and
+  plants about the median; Texture.expect['contrast'] may set other caps).
 Kind rules:
 - leaves: 55-70% of the pixels visible (vanilla 56-67%), alpha only 0 or 255; with expect['min_line'] every column and
   row has at least that many visible pixels (vanilla oak 9 of 16; a nearly empty column shows as a gap that repeats at
@@ -55,6 +59,17 @@ COLORS = (4, 9)
 MIN_COLOR_PIXELS = 4
 ISOLATED_MAX = {'bark': 0.10, 'leaves': 0.30, 'plant': 1.0}
 DARK = 50
+# Local contrast (step V1b, checkpoint CP-A: "the textures look a bit too sharp"; texlib.local_contrast): the largest
+# mean and 90th percentile of the luma steps between neighbouring pixels and the largest share of dark one-pixel lines.
+# Measured with tools/art/measure.py on vanilla 26.3 (client jar unpacked outside the repository, only the numbers
+# kept): bark = the sides of the 9 natural logs (acacia, cherry, dark oak, jungle, mangrove, oak, pale oak, poplar,
+# spruce; birch's black lenticels are lines on purpose): mean 7.2-19.8 (quartiles 8.1 / 9.1 / 13.1), p90 15.7-48.5
+# (19.6 / 21.8 / 32.6), lines 0-21% (0.4 / 1.2 / 3.1%): the caps are about the upper quartile. Leaves (the 7 grayscale
+# vanilla leaves, before the tint): mean 19.9-43.1 (median 28.3), p90 42.9-74.4 (median 60.9), lines 1.4-25.7% (median
+# 16.2%); plants (bush, fern, short grass, sweet berry bush 1-2): mean 18.0-27.2 (median 22.3), p90 41.0-53.7 (q3
+# 49.9), lines 3.6-13.1% (median 6.7%): the caps are about the median (the third quartile for the plant p90).
+# Before V1b our furrowed and plated barks had a mean of 18-24, a p90 of 54-67 and 17-26% lines, the needles a p90 of 110.
+CONTRAST = {'bark': (13.0, 33.0, 0.04), 'leaves': (29.0, 61.0, 0.16), 'plant': (23.0, 50.0, 0.07)}
 BANDING = (5.0, 9.0)
 BARK_STD = 28.0
 STONE_DELTA_E = 8.0
@@ -173,6 +188,15 @@ def lint_texture(name, img, tex, others=None):
     m['isolated'] = t.isolated_fraction(ids, a)
     if m['isolated'] > ISOLATED_MAX[tex.kind]:
         err.append(f'{name}: {m["isolated"]:.0%} isolated pixels, at most {ISOLATED_MAX[tex.kind]:.0%} for {tex.kind}')
+    lc = t.local_contrast(img)
+    m['contrast'] = lc
+    cap_mean, cap_p90, cap_lines = (tex.expect or {}).get('contrast', CONTRAST[tex.kind])
+    if lc['mean'] > cap_mean or lc['p90'] > cap_p90:
+        err.append(f'{name}: too sharp: luma steps between neighbouring pixels mean {lc["mean"]:.1f}, 90th percentile '
+                   f'{lc["p90"]:.1f}; at most {cap_mean} and {cap_p90} for {tex.kind} (vanilla 26.3, CP-A)')
+    if lc['lines'] > cap_lines:
+        err.append(f'{name}: {lc["lines"]:.1%} of the pixels in dark one-pixel lines ({t.LINE_STEP:.0f} darker than both '
+                   f'neighbours across), at most {cap_lines:.0%} for {tex.kind}: use a mid tone for fissures and twigs')
     if tex.kind in ('bark', 'leaves'):
         for axis, label in ((1, 'left-right'), (0, 'top-bottom')):
             for what, wrap, lim in seam_check(img, axis):
@@ -260,9 +284,11 @@ def format_report(report):
             extra = (f'  std {m["std"]:4.1f}  bands {m["rows"]:3.1f}/{m["slices"]:3.1f}  grain {m["grain"]:4.2f}'
                      f'  rings r1 {m["rings"][1]:4.1f} r2 {m["rings"][2]:4.1f} '
                      f'r3+ {max(list(m["rings"].values())[2:]):4.1f}')
+        lc = m.get('contrast', {})
+        contrast = (f'  steps {lc["mean"]:4.1f}/{lc["p90"]:4.1f}  lines {lc["lines"]:4.0%}' if lc else '')
         lines.append(f'  {name:24s} colors {m.get("colors", "?"):>2}  visible {m.get("opacity", 0):4.0%}  '
                      f'luma {m.get("luma", 0):5.1f}  dark {m.get("dark", 0):4.0%}  isolated {m.get("isolated", 0):4.0%}'
-                     + extra)
+                     + contrast + extra)
     return '\n'.join(lines)
 
 

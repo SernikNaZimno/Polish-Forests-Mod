@@ -4,8 +4,8 @@
   and grass colors of the oak-hornbeam and fresh pine forests, the proposed constant needle color);
 - kafle_3x3.png: 3 x 3 tiles at 8 x (seams and repetition are easiest to see here);
 - pnie.png: trunk columns as the game will stack them: the lower pine bark with its two variants in a random order,
-  then the "mirror", and one column per broadleaf bark (variants in a random order); on a 16 px wide and on a 6 px
-  wide (thin trunk) face;
+  then the transition bark (step V1b), then the "mirror", and one column per broadleaf bark (variants in a random
+  order); on a 16 px wide and on a 6 px wide (thin trunk) face;
 - pnie_cienkie.png: thin trunks of radius 1, 2 and 4 px, the four faces of each with the crops the game shows
   (TrunkTemplates.OFFSETS) and the game's face shading: rings at every block ("bamboo") and repeated motifs show here;
 - dystans.png: the trunk columns averaged down like the game's mipmaps at 4 and 8 blocks per pixel step (levels 2
@@ -98,9 +98,11 @@ def column(built, name, blocks, rng):
 
 
 def trunk_columns(built):
-    """(label, RGBA column) for the pine (4 blocks of "mirror" over 8 of lower bark) and each broadleaf bark."""
+    """(label, RGBA column) for the pine (4 blocks of "mirror" over 2 of transition bark over 6 of lower bark, step V1b)
+    and each broadleaf bark."""
     rng = t.Rng('sheet/trunks')
-    pine = np.concatenate([column(built, 'scots_pine_upper_bark', 4, rng), column(built, 'scots_pine_bark', 8, rng)])
+    pine = np.concatenate([column(built, 'scots_pine_upper_bark', 4, rng),
+                           column(built, 'scots_pine_transition_bark', 2, rng), column(built, 'scots_pine_bark', 6, rng)])
     out = [('scots_pine', pine)]
     for name in ('oak_bark', 'hornbeam_bark', 'linden_bark', 'beech_bark', 'broadleaf_bark'):
         out.append((name, column(built, name, 12, rng)))
@@ -108,7 +110,8 @@ def trunk_columns(built):
 
 
 def trunks(built, path):
-    """Trunk columns: 12 blocks high. Pine: 8 lower blocks (variants in a fixed pseudo-random order), 4 mirror blocks."""
+    """Trunk columns: 12 blocks high. Pine: 6 lower blocks (variants in a fixed pseudo-random order), 2 transition
+    blocks, 4 mirror blocks."""
     k = 3
     columns = trunk_columns(built)
     h = 12 * 16 * k

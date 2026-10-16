@@ -475,6 +475,37 @@ def rings(img, radii=range(1, 8)):
     return {r: max(ring_drop(img, u, 2 * r) for u in TRUNK_OFFSETS[r - 1]) for r in radii}
 
 
+# A pixel at least this much (luma, 0..255) darker than both its neighbours across a line (left and right, or above
+# and below) is part of a dark one-pixel line: a hard dark fissure or twig drawn in a single pixel (step V1b).
+LINE_STEP = 24.0
+
+
+def local_contrast(img):
+    """Local contrast of a texture (step V1b, the "too sharp" remark of checkpoint CP-A): dict with
+    - 'mean' and 'p90': the mean and the 90th percentile of the luma differences of all pairs of 4-neighbours (on the
+      torus, both pixels visible);
+    - 'lines': the share of visible pixels that lie in a dark one-pixel line (LINE_STEP darker than both neighbours on
+      the left and right, or above and below, all three visible);
+    - 'isolated': the share of visible pixels whose luma equals none of their 4 neighbours (lone specks).
+    Vanilla 26.3 bark (log sides) has a mean of 7-20 (median 9), a p90 of 16-49 (median 22) and 0-21% lines
+    (median 1%); docs/04 "Stan po V1b"."""
+    l = luma(img[..., :3])
+    vis = img[..., 3] > 0
+    diffs = []
+    lines = np.zeros((N, N), bool)
+    for axis in (0, 1):
+        nxt, nvis = np.roll(l, -1, axis=axis), np.roll(vis, -1, axis=axis)
+        diffs.append(np.abs(l - nxt)[vis & nvis])
+        prv, pvis = np.roll(l, 1, axis=axis), np.roll(vis, 1, axis=axis)
+        lines |= vis & nvis & pvis & (nxt - l > LINE_STEP) & (prv - l > LINE_STEP)
+    d = np.concatenate(diffs)
+    q = np.round(l).astype(int)
+    iso = np.all(np.stack([n != q for n in neighbours4(q)]), axis=0) & vis
+    n = max(int(vis.sum()), 1)
+    return dict(mean=float(d.mean()) if len(d) else 0.0, p90=float(np.percentile(d, 90)) if len(d) else 0.0,
+                lines=float(lines.sum()) / n, isolated=float(iso.sum()) / n)
+
+
 def grain(img):
     """|dx| / |dy|: mean luma jump between neighbouring columns over that between neighbouring rows (with wrap).
     Above 1 the texture has a vertical grain (vanilla oak and spruce logs about 3.3, stone 0.6-0.9)."""

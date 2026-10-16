@@ -29,6 +29,8 @@ def render():
             used.setdefault(tex.palette, []).append(f'`{tex.name}`' + (f' ({how})' if how else ''))
         if tex.name.startswith('scots_pine_bark'):
             used.setdefault('scots_pine_upper_bark', []).append(f'`{tex.name}` (fissure and rust tones)')
+        if tex.name.startswith('scots_pine_transition_bark'):
+            used.setdefault('scots_pine_upper_bark', []).append(f'`{tex.name}` (orange bark tones)')
     out = [
         '# Credits',
         '',

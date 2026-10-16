@@ -122,6 +122,36 @@ def run():
     plated = recipes.Texture('test_plated', 'bark', None, 'x', expect={'grain': 2.0})
     check(any('grain' in e for e in errs(np.ascontiguousarray(good.transpose(1, 0, 2)), plated)),
           'lint: misses a plated bark without vertical grain')
+
+    # 6. local contrast (step V1b): the measure, and the lint catches the sharp style of V1 (near-black one-pixel
+    # fissures between light plates) and too sharp leaves
+    flat_c = t.local_contrast(np.full((N, N, 4), 128, np.uint8))
+    check(flat_c['mean'] == 0 and flat_c['p90'] == 0 and flat_c['lines'] == 0, 'local_contrast: a flat texture is not 0')
+    checker = np.zeros((N, N, 4), np.uint8)
+    checker[..., :3] = (((ys + xs) % 2) * 100 + 50)[..., None]
+    checker[..., 3] = 255
+    cc = t.local_contrast(checker)
+    check(abs(cc['mean'] - 100) < 1e-9 and abs(cc['lines'] - 0.5) < 1e-9,
+          f'local_contrast: a 50/150 checkerboard gives mean {cc["mean"]:.1f} and lines {cc["lines"]:.2f}, not 100 and 0.5')
+    sharp = good.copy()                                 # V1 style: a near-black fissure every 4 columns
+    sharp[:, ::4, :3] = (40, 30, 22)
+    check(any('one-pixel lines' in e for e in errs(sharp, bark)), 'lint: misses dark one-pixel fissures')
+    check(any('too sharp' in e for e in errs(sharp, bark)), 'lint: misses a too sharp bark (local contrast)')
+    hard = lv.copy()                                    # leaves with black and white pixels side by side
+    vis = hard[..., 3] > 0
+    hard[..., :3] = np.where((((ys + xs) % 2 == 0) & vis)[..., None], 40, 220)
+    check(any('too sharp' in e for e in errs(hard, leaves)), 'lint: misses too sharp leaves')
+
+    # 7. the transition bark of the pine (V1b) is built on the structure of the lower bark: its furrows meet the lower
+    # bark's at the top and bottom rows, so the furrows run on across the block edge in both orders
+    pal = generate.load_palettes()
+    lower = recipes.TEXTURES_BY_NAME['scots_pine_bark']
+    trans = recipes.TEXTURES_BY_NAME['scots_pine_transition_bark']
+    s_lower = recipes.build_plated(lower, recipes.PLATED_PAINT[lower.make], pal)[1]
+    s_trans = recipes.build_plated(trans, recipes.PLATED_PAINT[trans.make], pal)[1]
+    for y in (0, N - 1):
+        check(sorted(c[y] for c in s_lower['cols']) == sorted(c[y] for c in s_trans['cols']),
+              f'scots_pine_transition_bark: furrows in row {y} differ from scots_pine_bark')
     return failures
 
 

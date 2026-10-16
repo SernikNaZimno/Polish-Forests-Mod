@@ -90,6 +90,25 @@ def bark_score(tex):
     return score
 
 
+_BUILT = {}
+
+
+def once(fn):
+    """Memoizes fn(tex, palettes, ...) per texture and palettes object: a variant rebuilds its base texture (and a base
+    may serve several variants), which is deterministic, so one build per base is enough. The cache keeps a reference
+    to the palettes object, so its id is not reused while the entry lives; a new palettes object (selftest's second
+    build) builds everything again."""
+    def wrapper(tex, palettes, *args):
+        key = (fn.__name__, tex.name, id(palettes))
+        hit = _BUILT.get(key)
+        if hit is None:
+            hit = _BUILT[key] = (palettes, fn(tex, palettes, *args))
+        return hit[1]
+    wrapper.__name__ = fn.__name__
+    wrapper.__doc__ = fn.__doc__
+    return wrapper
+
+
 def best_of(tex, build, score=None):
     """Builds the texture for every seed of seeds(tex) and keeps the lowest score (the first on a tie; default score:
     bark_score). build(seed) -> (img, state); returns (img, state) of the best."""
@@ -105,6 +124,41 @@ def best_of(tex, build, score=None):
 
 def roll(a, dy, dx):
     return t.roll(a, dy, dx)
+
+
+def tones_at(colors, lums, sat, hue_shift=0.0, hue_drift=0.0, hue=None):
+    """Tones of the palette's mean hue (texlib.ramp_hue) at the given lumas, in the given order (step V1b: the recipes
+    set every tone's luma, so the steps between neighbouring tones stay small). sat is one saturation or one per tone;
+    hue_drift (degrees) shifts the lightest tone by +half and the darkest by -half."""
+    lo, hi = min(lums), max(lums)
+    sats = sat if isinstance(sat, (list, tuple)) else [sat] * len(lums)
+    out = []
+    for lum, sa in zip(lums, sats):
+        f = (lum - lo) / (hi - lo) if hi > lo else 0.5
+        drift = (f - 0.5) * hue_drift
+        if hue is not None:
+            out += t.ramp_hue(None, 1, lum, lum, sat=sa, hue=hue + drift)
+        else:
+            out += t.ramp_hue(colors, 1, lum, lum, sat=sa, hue_shift=hue_shift + drift)
+    return out
+
+
+def fold_rare(idx, into, least=4):
+    """Tones used by fewer than `least` pixels take the tone given in `into` (e.g. {5: 4}): a tone on 1-3 pixels is a
+    lone speck that repeats on every block (lint rule)."""
+    out = idx.copy()
+    for k, v in into.items():
+        n = int((out == k).sum())
+        if 0 < n < least:
+            out[out == k] = v
+    return out
+
+
+def groove_sides(groove, faces):
+    """(left, right): the face pixels just left of a groove (its shaded wall) and just right of it (its lit wall)."""
+    right = roll(groove, 0, 1) & faces
+    left = roll(groove, 0, -1) & faces & ~right
+    return left, right
 
 
 # ---------------------------------------------------------------------------------------------------- plated barks
@@ -217,28 +271,23 @@ def plated(seed, p, base=None):
                 streak=streak)
 
 
-def light_edges(idx, groove, faces, lo, hi, vertical=True):
-    """Light from the top-left on the plate faces next to grooves (texlib.edge_light, on face pixels only): +1 tone
-    right of a groove (and under one), -1 tone left of a groove (and above one). vertical=False lights only the sides
-    of the plates (no bevel at the plate ends, which reads as masonry)."""
-    lit = roll(groove, 0, 1) & faces
-    shade = roll(groove, 0, -1) & faces
-    if vertical:
-        lit |= roll(groove, 1, 0) & faces
-        shade |= roll(groove, -1, 0) & faces
-    shade &= ~lit
-    out = idx.copy()
-    out[lit] = np.minimum(idx[lit] + 1, hi)
-    out[shade] = np.maximum(idx[shade] - 1, lo)
-    return out
-
-
 def build_plated(tex, paint_fn, palettes):
-    """best_of for a plated bark; a variant is built on the (selected) structure of its base texture."""
+    return build_plated_once(tex, palettes, paint_fn)
+
+
+@once
+def build_plated_once(tex, palettes, paint_fn):
+    """best_of for a plated bark; a variant is built on the (selected) structure of its base texture and takes its edge
+    rows exactly. With params['structure_of'] (step V1b, the pine transition bark) the texture is built on the structure
+    of that texture the same way (the furrows continue into it across the block edge in both orders), but painted on
+    its own, so it does not share the edge rows."""
     base_s = base_img = None
-    if tex.variant_of:
-        base_tex = TEXTURES_BY_NAME[tex.variant_of]
-        base_img, base_s = build_plated(base_tex, paint_fn, palettes)
+    base_name = tex.variant_of or tex.params.get('structure_of')
+    if base_name:
+        base_tex = TEXTURES_BY_NAME[base_name]
+        base_img, base_s = build_plated(base_tex, PLATED_PAINT[base_tex.make], palettes)
+        if not tex.variant_of:
+            base_img = None
 
     def build(seed):
         s = plated(seed, tex.params, base_s)
@@ -251,10 +300,13 @@ def build_plated(tex, paint_fn, palettes):
 
 # ---------------------------------------------------------------------------------------------------- pine, lower
 def paint_pine_lower(tex, s, palettes):
-    """Scots pine, lower trunk. Tones: 0 fissure (dark red-brown), 1 rust (inner bark at the fissure bottom),
-    2 fissure wall (the shaded right edge of a plate, red-brown, so the fissures read 2 px wide), 3 and 4 the two
-    gray-brown plate faces (plate tone mixed with vertical streaks), 5 lit left edge of a plate. The cross fissures
-    (plate ends) take p['cross_tone'] (the wall tone: shallower than the long fissures)."""
+    """Scots pine, lower trunk. Tones: 0 fissure (red-brown), 1 rust (inner bark at the fissure bottom), 2 fissure wall
+    (the shaded right edge of a plate, red-brown, so the fissures read 2 px wide), 3 and 4 the two gray-brown plate faces
+    (plate tone mixed with vertical streaks), 5 the lit wall right of a fissure. The cross fissures (plate ends) take
+    p['cross_tone'] (the wall tone: shallower than the long fissures).
+    Step V1b (CP-A: "a bit too sharp"): the fissure is a mid-dark red-brown, not a near-black line, and both its walls
+    are tones between it and the faces (p['lums']), so a fissure reads by its red hue and a soft 3 px groove; the steps
+    between neighbouring pixels stay at about the vanilla logs' (texlib.local_contrast)."""
     p = tex.params
     rng = t.Rng(tex.seed + '/paint')
     groove = s['furrow'] | s['cross']
@@ -263,7 +315,9 @@ def paint_pine_lower(tex, s, palettes):
     idx = np.where(v >= np.quantile(v[faces], 1 - p['light_share']), 4, 3)
     idx = np.where(faces, idx, 0)
     idx = t.majority(idx, passes=1, keep=(0,))
-    idx = light_edges(idx, groove, faces, 2, 5, vertical=p['bevel'])
+    left, right = groove_sides(s['furrow'], faces)
+    idx[left] = 2
+    idx[right] = 5
     idx[s['cross']] = p.get('cross_tone', 0)
     # rust: 2-4 px clusters along a fissure (2-3 px of the fissure, sometimes with the shaded face pixel beside it)
     cols = s['cols']
@@ -277,23 +331,73 @@ def paint_pine_lower(tex, s, palettes):
             x = (cols[i][y] - 1) % N
             if faces[y, x]:
                 idx[y, x] = 1
-    face = t.ramp_hue(palette_colors(palettes, 'scots_pine_bark'), 4, *p['face_lum'], sat=p['sat'],
-                      hue_drift=p['hue_drift'], hue_shift=p['hue_shift'])
+    return t.paint(idx, pine_lower_colors(palettes, p))
+
+
+def pine_lower_colors(palettes, p):
+    """Tones 0-5 of the lower pine bark (paint_pine_lower): fissure, rust and wall in the red-brown of the "mirror"
+    palette, faces and the lit wall in the gray-brown of the lower bark palette."""
     red = palette_colors(palettes, 'scots_pine_upper_bark')
-    fissure = t.ramp_hue(red, 1, p['fissure_lum'], p['fissure_lum'], sat=p['fissure_sat'], hue_shift=p['red_shift'])
-    rust = t.ramp_hue(red, 1, p['rust_lum'], p['rust_lum'], sat=p['rust_sat'], hue_shift=p['red_shift'])
-    wall = t.ramp_hue(red, 1, p['wall_lum'], p['wall_lum'], sat=p['wall_sat'], hue_shift=p['red_shift'])
-    return t.paint(idx, fissure + rust + wall + face[1:])
+    gray = palette_colors(palettes, 'scots_pine_bark')
+    fissure_lum, rust_lum, wall_lum, face_a, face_b, lit_lum = p['lums']
+    out = tones_at(red, [fissure_lum, rust_lum, wall_lum], [p['fissure_sat'], p['rust_sat'], p['wall_sat']],
+                   hue_shift=p['red_shift'])
+    return out + tones_at(gray, [face_a, face_b, lit_lum], p['sat'], hue_shift=p['hue_shift'], hue_drift=p['hue_drift'])
 
 
 def bark_scots_pine_lower(tex, palettes):
     return build_plated(tex, paint_pine_lower, palettes)[0]
 
 
+# ---------------------------------------------------------------------------------------------------- pine, transition
+def paint_pine_transition(tex, s, palettes):
+    """Scots pine, transition between the lower bark and the "mirror" (step V1b, choice V1-i): thinner gray-brown plates
+    of the lower bark lying on the orange bark of the upper trunk. The fissures of the lower bark are orange strips
+    here (the thin bark shows between the plates), and the plates whose tone is below p['orange_share'] have flaked
+    off (orange). Built on the structure of the lower bark (params['structure_of']), so its furrows continue into the
+    lower bark below and into itself. Tones: 0 fissure (deep red orange), 1 and 2 orange bark, 3 and 4 plate faces,
+    5 pale flake."""
+    p = tex.params
+    rng = t.Rng(tex.seed + '/paint')
+    groove = s['furrow'] | s['cross']
+    faces = ~groove
+    v = (1 - p['streak']) * np.nan_to_num(s['tone']) + p['streak'] * s['streak']
+    idx = np.where(v >= np.quantile(v[faces], 1 - p['light_share']), 4, 3)
+    tone = np.nan_to_num(s['tone'], nan=1.0)
+    peeled = faces & (tone < p['orange_share'])
+    idx = np.where(peeled, np.where(s['noise'] > 0.5, 2, 1), idx)
+    idx = np.where(faces, idx, 0)
+    idx = t.majority(idx, passes=1, keep=(0,))
+    left, right = groove_sides(s['furrow'], faces)
+    idx[left & ~peeled] = 1
+    idx[s['cross']] = 1
+    for _ in range(p['pale']):                       # small pale papery flakes on the orange bark, 2 px
+        y, x = rng.integers(0, N), rng.integers(0, N)
+        cells = [(y, x), (y, (x + 1) % N)]
+        if all(idx[q] in (1, 2) for q in cells):
+            for q in cells:
+                idx[q] = 5
+    idx = fold_rare(idx, {5: 2, 0: 1})
+    red = palette_colors(palettes, 'scots_pine_upper_bark')
+    gray = palette_colors(palettes, 'scots_pine_bark')
+    fissure, orange_a, orange_b, face_a, face_b, pale = p['lums']
+    out = tones_at(red, [fissure, orange_a, orange_b], p['orange_sat'], hue_shift=p['orange_shift'])
+    out += tones_at(gray, [face_a, face_b], p['sat'], hue_shift=p['hue_shift'])
+    out += tones_at(red, [pale], p['pale_sat'], hue_shift=p['orange_shift'] + 8)
+    return t.paint(idx, out)
+
+
+def bark_pine_transition(tex, palettes):
+    return build_plated(tex, paint_pine_transition, palettes)[0]
+
+
 # ---------------------------------------------------------------------------------------------------- oak, linden
 def paint_furrowed(tex, s, palettes):
-    """Oak and linden. Tones: 0 deep furrow, 1 shallow fissure and crack, 2 ridge shade, 3-4 ridge faces, 5 lit
-    edge. Oak: every long furrow is deep (tone 0); linden: the long fissures are shallow (tone 1) with deep spots."""
+    """Oak and linden. Tones: 0 deep furrow, 1 shallow fissure and crack, 2 ridge shade (left of a furrow), 3-4 ridge
+    faces, 5 lit edge (under a crack). Oak: every long furrow is deep (tone 0); linden: the long fissures are shallow
+    (tone 1) with deep spots. Step V1b: the tones have their own lumas (p['lums']) with small steps, and the ridge
+    right of a furrow takes the darker face tone (p['right_tone']) instead of a bright lit edge next to the darkest
+    tone, so a furrow is a soft groove, not a hard dark line."""
     p = tex.params
     rng = t.Rng(tex.seed + '/paint')
     groove = s['furrow'] | s['cross']
@@ -302,17 +406,22 @@ def paint_furrowed(tex, s, palettes):
     q = np.digitize(v, [np.quantile(v[faces], p['face_split'])])
     idx = np.where(faces, 3 + q, 0)
     idx = t.majority(idx, passes=1, keep=(0,))
-    idx = light_edges(idx, groove, faces, 2, 5)
+    lit = roll(s['cross'], 1, 0) & faces                # the top edge of a ridge under a crack catches the light
+    idx[lit] = np.minimum(idx[lit] + 1, 5)
+    left, right = groove_sides(s['furrow'], faces)
+    idx[left] = 2
+    idx[right] = np.minimum(idx[right], p.get('right_tone', 3))
     idx[s['furrow']] = p['furrow_tone']
     idx[s['cross']] = 1
+    idx = fold_rare(idx, {5: 4})                       # a lit edge on 1-3 pixels would repeat as a speck
     if p['deep'] and p['furrow_tone'] != 0:            # a few deep spots in the shallow fissures
         ys, xs = np.nonzero(s['furrow'])
         for k in range(p['deep']):
             j = rng.integers(0, len(ys))
             idx[ys[j], xs[j]] = 0
             idx[(ys[j] + 1) % N, xs[j]] = 0 if s['furrow'][(ys[j] + 1) % N, xs[j]] else idx[(ys[j] + 1) % N, xs[j]]
-    c = t.ramp_hue(palette_colors(palettes, tex.palette), 6, *p['lum'], sat=p['sat'], hue_shift=p.get('hue_shift', 0),
-                   hue_drift=p.get('hue_drift', 0))
+    c = tones_at(palette_colors(palettes, tex.palette), p['lums'], p['sat'], hue_shift=p.get('hue_shift', 0),
+                 hue_drift=p.get('hue_drift', 0), hue=p.get('hue'))
     return t.paint(idx, c)
 
 
@@ -427,23 +536,50 @@ def bark_scots_pine_upper(tex, palettes):
     return best_of(tex, build, score)
 
 
+@once
 def bark_scots_pine_upper_built(tex, palettes):
     """(image, (cells, tones)) of a "mirror" texture (the base of a variant)."""
     return bark_scots_pine_upper(tex, palettes)
 
 
 # ---------------------------------------------------------------------------------------------------- hornbeam
+def variant_base(tex, built_fn, palettes):
+    """(image, state) of the base texture of a variant (built_fn returns them), or (None, None) for a base texture."""
+    if not tex.variant_of:
+        return None, None
+    return built_fn(TEXTURES_BY_NAME[tex.variant_of], palettes)
+
+
+def lock_edge_rows(idx, base_idx, band):
+    """A variant takes the top and bottom `band` rows of its base's index map, so the two stack in any order."""
+    if base_idx is not None:
+        idx[:band], idx[N - band:] = base_idx[:band], base_idx[N - band:]
+    return idx
+
+
 def bark_hornbeam(tex, palettes):
+    return bark_hornbeam_built(tex, palettes)[0]
+
+
+@once
+def bark_hornbeam_built(tex, palettes):
     """Hornbeam: two broad flutes ('muscles') of uneven width with wavy borders, lit on the left and shaded on the
-    right, a faint groove between them, lighter streaks along the trunk and a few short fissures. Cool slate gray."""
+    right, a faint groove between them, lighter streaks along the trunk and a few short fissures. Cool slate gray.
+    A variant (step V1b) keeps the flute borders of its base at the top and bottom `band` rows (its own wobble in
+    between), draws its streaks and fissures in the middle rows and takes the base's edge rows exactly."""
     p = tex.params
+    band = p.get('band', 3)
+    base_img, base = variant_base(tex, bark_hornbeam_built, palettes)
 
     def build(seed):
         rng = t.Rng(seed)
-        ys, xs = t.grid()
         b0 = rng.uniform(0, N)
         w0 = rng.uniform(*p['flute'])
         wob = [2 * p['wobble'] * (t.noise_1d(rng, 4) - 0.5) for _ in range(2)]
+        if base is not None:
+            b0, w0 = base['b0'], base['w0']
+            w = t.edge_weight(band)
+            wob = [bw * (1 - w) + ow * w for bw, ow in zip(base['wob'], wob)]
         u = np.zeros((N, N))
         for y in range(N):
             a = b0 + wob[0][y]
@@ -460,19 +596,26 @@ def bark_hornbeam(tex, palettes):
         groove = (np.abs(f - 0.5) > 0.5 - 0.5 / 8) & (rng.array((N, N)) < p['groove'])
         idx[groove] = 1
         idx = t.majority(idx, passes=1)
+        lo, hi = (0, N) if base is None else (band, N - band)
         for _ in range(p['streaks']):
             x, y0, ln = rng.integers(0, N), rng.integers(0, N), rng.integers(3, 8)
+            if base is not None:
+                ln = min(ln, hi - lo - 1)
+                y0 = lo + rng.integers(0, hi - lo - ln + 1)
             if idx[y0, x] < 2:
                 continue
             for dy in range(ln):
                 idx[(y0 + dy) % N, x] = 4
         for _ in range(p['fissures']):
             x, y0, ln = rng.integers(0, N), rng.integers(0, N), rng.integers(2, 4)
+            if base is not None:
+                y0 = lo + rng.integers(0, hi - lo - ln + 1)
             for dy in range(ln):
                 idx[(y0 + dy) % N, x] = 0
-        c = t.ramp_hue(None, 5, *p['lum'], sat=p['sat'], hue=p['hue'])
-        return t.paint(idx, c), None
-    return best_of(tex, build)[0]
+        idx = lock_edge_rows(idx, None if base is None else base['idx'], band)
+        img = t.paint(idx, tones_at(None, p['lums'], p['sat'], hue=p['hue']))
+        return img, dict(b0=b0, w0=w0, wob=wob, idx=idx)
+    return best_of(tex, build)
 
 
 # ---------------------------------------------------------------------------------------------------- beech
@@ -480,21 +623,35 @@ MOUSTACHE = [(0, 0), (0, 1), (0, -1), (1, -2), (1, -3), (2, -4), (0, 2), (1, 3),
 
 
 def bark_beech(tex, palettes):
+    return bark_beech_built(tex, palettes)[0]
+
+
+@once
+def bark_beech_built(tex, palettes):
     """Beech: large faint patches of warm silver gray with a faint vertical streak, a greenish algae patch, irregular
-    pale lichen and one dark branch scar ('moustache') with a light lip under it."""
+    pale lichen and one dark branch scar ('moustache') with a light lip under it. A variant (step V1b) blends its
+    patch and algae fields into the base's at the top and bottom `band` rows (texlib.edge_locked), puts its lichen and
+    scars in the middle rows and takes the base's edge rows exactly."""
     p = tex.params
+    band = p.get('band', 3)
+    base_img, base = variant_base(tex, bark_beech_built, palettes)
 
     def build(seed):
         rng = t.Rng(seed)
         st = p.get('streak', 0.15)                                         # the faint vertical streak
         patches = (0.85 - st) / 0.85 * (0.55 * t.value_noise(rng, 2, 2) + 0.3 * t.value_noise(rng, 4, 4))
         patches = patches + st * t.value_noise(rng, 8, 1)
+        if base is not None:
+            patches = t.edge_locked(base['patches'], patches, band)
         idx = 1 + t.quantize(patches, 3, shares=[0.25, 0.5, 0.25])          # tones 1..3
         idx = t.majority(idx, passes=2)
         algae = t.value_noise(rng, 2, 2)
+        if base is not None:
+            algae = t.edge_locked(base['algae'], algae, band)
         idx[(algae > np.quantile(algae, 1 - p['algae'])) & (idx <= 2)] = 5
+        lo, hi = (0, N) if base is None else (band + 1, N - band - 2)
         for _ in range(p['lichen']):                                        # irregular lichen blob, 5-7 px
-            blob = [(rng.integers(0, N), rng.integers(0, N))]
+            blob = [(lo + rng.integers(0, hi - lo), rng.integers(0, N))]
             for _ in range(rng.integers(4, 7)):
                 y, x = blob[rng.integers(0, len(blob))]
                 d = rng.integers(0, 4)
@@ -504,19 +661,20 @@ def bark_beech(tex, palettes):
             for q in blob:
                 idx[q] = 4
         for _ in range(p['scars']):
-            y, x = rng.integers(2, N - 3), rng.integers(0, N)
+            y = rng.integers(2, N - 3) if base is None else rng.integers(band + 1, N - band - 3)
+            x = rng.integers(0, N)
             for dy, dx in MOUSTACHE:
                 idx[(y + dy) % N, (x + dx) % N] = 0
             for dy, dx in MOUSTACHE:
                 yy, xx = (y + dy + 1) % N, (x + dx) % N
                 if idx[yy, xx] != 0:
                     idx[yy, xx] = 3
-        silver = t.ramp_hue(palette_colors(palettes, 'beech_bark'), 5, *p['lum'], sat=p['sat'],
-                            hue_shift=p['hue_shift'])
+        idx = lock_edge_rows(idx, None if base is None else base['idx'], band)
+        silver = tones_at(palette_colors(palettes, 'beech_bark'), p['lums'], p['sat'], hue_shift=p['hue_shift'])
         green = t.ramp_hue(palette_colors(palettes, 'beech_bark'), 1, p['algae_lum'], p['algae_lum'],
                            sat=p['algae_sat'], hue_shift=p['algae_hue_shift'])
-        return t.paint(idx, silver + green), None
-    return best_of(tex, build)[0]
+        return t.paint(idx, silver + green), dict(patches=patches, algae=algae, idx=idx)
+    return best_of(tex, build)
 
 
 # ---------------------------------------------------------------------------------------------------- foliage
@@ -600,16 +758,33 @@ def pine_twig(rng, val, p):
 
 
 def leaves_needles(tex, palettes):
+    """Scots pine needles: twig tips (pine_twig) until the target opacity. Step V1b (CP-A: "less blotchy needles"):
+    each twig goes to the best of p['candidates'] random twigs (the one whose new pixels lie in the emptiest rows and
+    columns, as texlib.stamp), the gray ramp is narrower (no near-black twig against the lightest needle tips), and the
+    best of p['tries'] seeds by leaves_score, so the tile has no dense dark clumps and no empty holes that repeat."""
     p = tex.params
-    rng = t.Rng(tex.seed)
-    val = np.zeros((N, N), int)
-    tries = 0
-    while (val > 0).mean() < p['opacity'] and tries < 500:
-        tries += 1
-        pine_twig(rng, val, p)
-    alpha = np.where(val > 0, 255, 0).astype(np.uint8)
-    idx = np.clip(val - 1, 0, 4)
-    return t.paint(idx, t.gray_ramp(5, *p['gray']), alpha)
+
+    def build(seed):
+        rng = t.Rng(seed)
+        val = np.zeros((N, N), int)
+        tries = 0
+        while (val > 0).mean() < p['opacity'] and tries < 500:
+            tries += 1
+            best = None
+            for _ in range(p.get('candidates', 1)):
+                cand = val.copy()
+                pine_twig(rng, cand, p)
+                filled = val > 0
+                cols, rows = filled.sum(0), filled.sum(1)
+                ys, xs = np.nonzero((cand > 0) & ~filled)
+                gain = int(sum(2 * N - cols[x] - rows[y] for y, x in zip(ys, xs)))
+                if best is None or gain > best[0]:
+                    best = (gain, cand)
+            val = best[1]
+        alpha = np.where(val > 0, 255, 0).astype(np.uint8)
+        idx = np.clip(val - 1, 0, 4)
+        return t.paint(idx, t.gray_ramp(5, *p['gray']), alpha), None
+    return best_of(tex, build, leaves_score(tex))[0]
 
 
 BILBERRY_LEAVES = [["21", "13"], ["21"], ["2", "1"], ["21", "11"], ["12"]]
@@ -635,7 +810,7 @@ def plant_bilberry(tex, palettes):
                 xx = x + (dx if side > 0 else -dx)
                 yy = y - len(spr) + 1 + dy
                 if lo <= xx <= hi and 0 <= yy < N:
-                    val[yy, xx] = max(val[yy, xx], {'1': 4, '2': 5, '3': 2}[ch])
+                    val[yy, xx] = max(val[yy, xx], {'1': 4, '2': 5, '3': 3}[ch])   # V1b: shade = stem tone
 
     stems = p['stems']
     for k, x in enumerate(np.linspace(4, N - 5, stems).round().astype(int)):
@@ -660,37 +835,48 @@ def plant_bilberry(tex, palettes):
 LEAVES_MCMETA = {'texture': {'mipmap_strategy': 'dark_cutout'}}          # as vanilla *_leaves.png.mcmeta
 
 PINE_LOWER = dict(lines=3, amp=1.6, wave=2, jitter=0.6, plate=(9, 15), cross='diag', cross_tone=2, band=3, light_share=0.55,
-                  rust=3, streak=0.45, bevel=False, face_lum=(88, 132), sat=0.32, hue_drift=14, hue_shift=-6,
-                  fissure_lum=46, fissure_sat=0.5, wall_lum=70, wall_sat=0.42, rust_lum=84, rust_sat=0.6, red_shift=6,
-                  tries=48)
+                  rust=3, streak=0.45, lums=(78, 92, 88, 102, 113, 106), sat=0.3, hue_drift=14, hue_shift=-3,
+                  fissure_sat=0.5, wall_sat=0.4, rust_sat=0.55, red_shift=6, tries=48)
 PINE_EXPECT = {'luma': (92, 106), 'dark': 0.25, 'grain': 2.0, 'std': 30}     # deep, continuous fissures
 OAK = dict(lines=4, amp=1.0, wave=4, jitter=0.4, plate=(3, 7), cross='part', band=3, furrow_tone=0, deep=0,
-           face_split=0.5, lum=(58, 126), sat=0.42, hue_shift=-12, tries=48)
+           face_split=0.5, lums=(66, 78, 84, 92, 102, 108), sat=0.42, hue_shift=-12, tries=48)
 OAK_EXPECT = {'luma': (80, 100), 'dark': 0.05, 'grain': 2.0, 'near': ('oak_log', 10)}
 LINDEN = dict(lines=5, amp=1.4, wave=2, jitter=0.5, plate=(4, 8), cross='diag', band=3, furrow_tone=1, deep=3,
-              face_split=0.45, lum=(62, 146), sat=0.2, hue_shift=-6, tries=48)
-LINDEN_EXPECT = {'luma': (100, 120), 'dark': 0.05, 'grain': 2.0}
+              face_split=0.45, lums=(72, 84, 94, 106, 120, 126), sat=0.26, hue_shift=-6, tries=48)
+LINDEN_EXPECT = {'luma': (92, 110), 'dark': 0.05, 'grain': 2.0}
 # Shared substitute bark of the broad-crowned archetype for ash and Norway maple (V2, docs/04 §1.1): paler and grayer
 # than linden, a net of narrow ridges between shallow fissures (old ash bark is reticulate, Norway maple finely ridged).
 BROADLEAF_BARK = dict(lines=5, amp=1.2, wave=3, jitter=0.5, plate=(6, 12), cross='part', band=3, furrow_tone=1, deep=2,
-                      face_split=0.5, lum=(88, 164), sat=0.12, hue_shift=-10, tries=48)
-BROADLEAF_BARK_EXPECT = {'luma': (112, 132), 'dark': 0.05, 'grain': 2.0, 'distinct': ('linden_bark', 8)}
+                      face_split=0.5, lums=(108, 120, 128, 136, 148, 154), sat=0.07, hue_shift=-10, tries=48)
+BROADLEAF_BARK_EXPECT = {'luma': (122, 142), 'dark': 0.05, 'grain': 2.0, 'distinct': ('linden_bark', 15)}
 
 # Scots pine "mirror" (round 1 review of V2: 3 flake tones instead of one on 80% of the pixels, pale flakes, a variant).
 PINE_UPPER = dict(flakes=22, stretch_x=1.4, tones=(0.3, 0.4, 0.3), seam=(2, 4), row_max=2, seam_px=12, curl=0.6,
-                  pale=5, band=3, seam_lum=80, flake_lum=(112, 117, 122), flake_hue=(-5, 0, 8), curl_lum=140,
-                  pale_lum=136, pale_sat=0.5, pale_hue=8, sat=0.7, hue_shift=6.5, dominant=0.45, tries=96)
+                  pale=5, band=3, seam_lum=90, flake_lum=(104, 116, 128), flake_hue=(-5, 0, 8), curl_lum=138,
+                  pale_lum=142, pale_sat=0.3, pale_hue=8, sat=0.58, hue_shift=6.5, dominant=0.45, tries=96)
 PINE_UPPER_EXPECT = {'luma': (105, 135), 'dark': 0.02, 'hue': (18, 28)}
+# Scots pine transition bark (step V1b, V1-i): on the structure of the lower bark, plates a third peeled to orange.
+PINE_TRANSITION = dict(PINE_LOWER, structure_of='scots_pine_bark', light_share=0.5, orange_share=0.25, pale=4,
+                       lums=(94, 108, 118, 100, 110, 138), orange_sat=0.55, orange_shift=6.5, sat=0.3, hue_shift=-3,
+                       pale_sat=0.3, tries=48)
+PINE_TRANSITION_EXPECT = {'luma': (100, 118), 'dark': 0.02, 'grain': 1.5, 'hue': (16, 32)}
+HORNBEAM = dict(flute=(7, 9.5), wobble=1.0, lit=0.3, shade=0.3, groove=0.6, streaks=5, fissures=2, band=3,
+                lums=(98, 106, 117, 128, 136), sat=0.07, hue=80, tries=24)
+HORNBEAM_EXPECT = {'luma': (115, 132), 'dark': 0.02, 'grain': 2.0, 'distinct': ('beech_bark', 10)}
+BEECH = dict(lichen=2, scars=1, algae=0.06, lums=(146, 156, 165, 174, 186), sat=0.11, hue_shift=-14, algae_lum=150,
+             algae_sat=0.12, algae_hue_shift=14, streak=0.5, band=3, tries=48)
+BEECH_EXPECT = {'luma': (150, 172), 'dark': 0.0, 'grain': 1.2, 'std': 18}
 
 
 def upper_texture(tex, palettes):
-    return bark_scots_pine_upper(tex, palettes)[0]
+    return bark_scots_pine_upper_built(tex, palettes)[0]
 
 
 TEXTURES = [
     Texture('scots_pine_bark', 'bark', bark_scots_pine_lower, 'scots_pine_bark/5', 'scots_pine_bark',
             params=PINE_LOWER, expect=PINE_EXPECT,
-            note='Scots pine, lower trunk: long gray-brown plates, continuous dark red-brown fissures, rust patches'),
+            note='Scots pine, lower trunk: long gray-brown plates, continuous red-brown fissures in soft mid tones, rust '
+                 'patches'),
     Texture('scots_pine_bark_2', 'bark', bark_scots_pine_lower, 'scots_pine_bark_2/1', 'scots_pine_bark',
             variant_of='scots_pine_bark', params=PINE_LOWER, expect=PINE_EXPECT,
             note='second variant of the lower pine bark, same edge rows'),
@@ -700,17 +886,27 @@ TEXTURES = [
     Texture('scots_pine_upper_bark_2', 'bark', upper_texture, 'scots_pine_upper_bark_2/1', 'scots_pine_upper_bark',
             variant_of='scots_pine_upper_bark', params=PINE_UPPER, expect=PINE_UPPER_EXPECT,
             note='second variant of the "mirror", same edge rows'),
+    Texture('scots_pine_transition_bark', 'bark', bark_pine_transition, 'scots_pine_transition_bark/1',
+            'scots_pine_bark', params=PINE_TRANSITION, expect=PINE_TRANSITION_EXPECT,
+            palette_use='plate tones',
+            note='Scots pine, transition between the lower bark and the "mirror": thinner gray-brown plates on the '
+                 'orange bark, orange strips in the fissures (step V1b)'),
+    Texture('scots_pine_transition_bark_2', 'bark', bark_pine_transition, 'scots_pine_transition_bark_2/1',
+            'scots_pine_bark', variant_of='scots_pine_transition_bark', params=PINE_TRANSITION,
+            expect=PINE_TRANSITION_EXPECT, palette_use='plate tones',
+            note='second variant of the pine transition bark, same edge rows'),
     Texture('oak_bark', 'bark', bark_furrowed, 'oak_bark/2', 'oak_bark', params=OAK, expect=OAK_EXPECT,
             note='pedunculate oak: deep vertical furrows, ridges broken into platelets'),
     Texture('oak_bark_2', 'bark', bark_furrowed, 'oak_bark_2/1', 'oak_bark', variant_of='oak_bark',
             params=dict(OAK, tries=200),
             expect=OAK_EXPECT, note='second variant of the oak bark, same edge rows'),
-    Texture('hornbeam_bark', 'bark', bark_hornbeam, 'hornbeam_bark/2', 'hornbeam_bark',
-            params=dict(flute=(7, 9.5), wobble=1.0, lit=0.3, shade=0.3, groove=0.6, streaks=5, fissures=2,
-                        lum=(80, 156), sat=0.07, hue=80, tries=24),
-            expect={'luma': (115, 132), 'dark': 0.02, 'grain': 2.0, 'distinct': ('beech_bark', 10)},
+    Texture('hornbeam_bark', 'bark', bark_hornbeam, 'hornbeam_bark/2', 'hornbeam_bark', params=HORNBEAM,
+            expect=HORNBEAM_EXPECT,
             palette_use='reference photo; the recipe sets a cool gray, the palette hue is a white-balance cast',
             note='hornbeam: smooth slate gray, two uneven flutes, lighter streaks along the trunk'),
+    Texture('hornbeam_bark_2', 'bark', bark_hornbeam, 'hornbeam_bark_2/1', 'hornbeam_bark', variant_of='hornbeam_bark',
+            params=HORNBEAM, expect=HORNBEAM_EXPECT, palette_use='reference photo, as hornbeam_bark',
+            note='second variant of the hornbeam bark, same edge rows (step V1b)'),
     Texture('linden_bark', 'bark', bark_furrowed, 'linden_bark/3', 'linden_bark', params=LINDEN,
             expect=LINDEN_EXPECT, note='small-leaved lime: gray-brown, net of shallow longitudinal fissures'),
     Texture('linden_bark_2', 'bark', bark_furrowed, 'linden_bark_2/1', 'linden_bark', variant_of='linden_bark',
@@ -721,28 +917,32 @@ TEXTURES = [
             expect=BROADLEAF_BARK_EXPECT,
             palette_use='hue of the linden bark photo, made paler and grayer by the recipe',
             note='shared substitute bark of ash and Norway maple (step V2): pale gray, net of narrow ridges'),
-    Texture('beech_bark', 'bark', bark_beech, 'beech_bark/2', 'beech_bark',
-            params=dict(lichen=2, scars=1, algae=0.06, lum=(136, 194), sat=0.11, hue_shift=-14, algae_lum=150,
-                        algae_sat=0.12, algae_hue_shift=14, streak=0.5, tries=48),
-            expect={'luma': (150, 172), 'dark': 0.0, 'grain': 1.2, 'std': 18},
+    Texture('beech_bark', 'bark', bark_beech, 'beech_bark/2', 'beech_bark', params=BEECH, expect=BEECH_EXPECT,
             note='beech: smooth warm silver gray in faint patches, algae, lichen, a branch scar'),
+    Texture('beech_bark_2', 'bark', bark_beech, 'beech_bark_2/1', 'beech_bark', variant_of='beech_bark', params=BEECH,
+            expect=BEECH_EXPECT, note='second variant of the beech bark, same edge rows (step V1b)'),
     Texture('scots_pine_leaves', 'leaves', leaves_needles, 'scots_pine_leaves/1', 'scots_pine_needles',
             tint='#7f9c86', mcmeta=LEAVES_MCMETA,
-            params=dict(opacity=0.6, twig=(2, 5), fill=0.7, needle=(3, 5), gray=(64, 210)),
+            params=dict(opacity=0.6, twig=(2, 5), fill=0.7, needle=(3, 5), gray=(104, 184), candidates=6, tries=32),
+            expect={'min_line': 6},
             note='Scots pine twig tips with needles, grayscale for a constant needle color (V7); the proposed color '
                  '#7f9c86 is a gray green (hue 135), lighter and grayer than vanilla spruce; the palette photo gave a '
                  'yellow olive (#8e9963, hue 72) in warm light'),
     Texture('broadleaf_leaves', 'leaves', leaves_broadleaf, 'broadleaf_leaves/1', None, tint='foliage',
-            mcmeta=LEAVES_MCMETA, params=dict(opacity=0.63, gray=(88, 214), candidates=6, tries=32),
+            mcmeta=LEAVES_MCMETA, params=dict(opacity=0.63, gray=(100, 204), candidates=6, tries=32),
             expect={'min_line': 7},
             note='broadleaf leaves for the foliage tint and the species color curves (B6, V7); clumps spread over '
                  'the rows and columns (every one at least 7 of 16 pixels, V3 review round 1)'),
     Texture('bilberry', 'plant', plant_bilberry, 'bilberry/2', 'bilberry', tint='grass',
-            params=dict(stems=8, top=9, leafiness=0.75, zigzag=0.3, gray=(52, 194)),
+            params=dict(stems=8, top=9, leafiness=0.75, zigzag=0.3, gray=(92, 180)),
             note='bilberry dwarf shrub, cross model, grayscale for the grass tint'),
 ]
 
 TEXTURES_BY_NAME = {tx.name: tx for tx in TEXTURES}
+# The painter of each plated bark (a variant or a texture on another's structure rebuilds its base with the base's own
+# painter, so it gets the structure the base selected).
+PLATED_PAINT = {bark_scots_pine_lower: paint_pine_lower, bark_furrowed: paint_furrowed,
+                bark_pine_transition: paint_pine_transition}
 
 
 def make(tex, palettes):
