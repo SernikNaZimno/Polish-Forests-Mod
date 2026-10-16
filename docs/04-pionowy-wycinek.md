@@ -150,6 +150,7 @@ Ryzyko według B1. Wysokie (2 recenzentów, do 2 rund) mają: rejestracja blokó
 | V2 | `TrunkBlock`, tablica próbek, migawka rejestru | A | 2–2,5 | **wysokie** |
 | V3 | próby renderu klienta | B | 1 | **wysokie** |
 | **CP-A** | styl grafiki i pnia (ok. 4. dzień) | | | |
+| V1b | wygładzenie tekstur po CP-A (dodany 2026-10-16) | B | 0,5–1 | niskie (estetyka) |
 | V4 | karta norm i pomiar bazowy M2 | B | 1–1,5 | średnie |
 | V5 | próba przycinania koron | A | 0,5–1 | **wysokie** |
 | V6 | planer drzew `TreeShapePlan` | A | 5–7 | **wysokie** |
@@ -216,6 +217,18 @@ Ryzyko według B1. Wysokie (2 recenzentów, do 2 rund) mają: rejestracja blokó
 - **Użytkownik dostaje:** stronę z arkuszem 10 tekstur i kaflami 3 × 3, zrzuty z gry (tablica próbek z Sodium i bez, drzewo testowe), wynik prób V3 (liść w 4 porach z SS i bez, gałązki zimowe próbne).
 - **Pytanie:** czy styl tekstur i wygląd cienkiego pnia są do przyjęcia. „Nie” zatrzymuje dalsze tekstury: najwyżej 2 rundy, potem warianty (B3), w tym D5 (b).
 - **Rozstrzyga:** D5 i licencję zasobów, B6, T-D1, T-D2.
+- **Wynik (odpowiedź użytkownika 2026-10-16, `docs/00` G.9):** styl tekstur przyjęty jako baza, ale „trochę za ostry”, więc wygładzenie w kroku V1b; cienki pień (wariant D, model po V2b) przyjęty; decyzje „domyślne, do potwierdzenia” z terminem CP-A przyjęte. Drobiazgi modelu pnia (pasek kolanka, dziury w narożnikach czapki) rozstrzyga V10 po pomiarze kosztu renderu (`docs/00` G.6 V2-l).
+
+### V1b. Wygładzenie tekstur po CP-A (B, 0,5–1 dnia; dodany po CP-A)
+
+- **Zakres:**
+  - miara kontrastu lokalnego w `tools/art` (średnia i 90. percentyl różnic luminancji sąsiednich pikseli, udział ciemnych linii jednopikselowych, piksele samotne) na naszych teksturach i na korze i liściach wanilii 26.3 (kopia jara tylko poza repozytorium, do repozytorium tylko liczby);
+  - przepisy łagodniejsze: kontrast lokalny w okolicy wanilii albo trochę niżej, bruzdy w tonie pośrednim zamiast twardej ciemnej linii, łagodniejsze krawędzie płyt, mniej szumu i samotnych pikseli; nadal kafelkowanie bez szwów i styl wanilii;
+  - lint: nowa reguła kontrastu lokalnego z progami z pomiaru; autotest;
+  - rekomendacje CP-A: mniej nasycone i mniej płaskie „lustro”, lipa odróżniona od kory zastępczej także z daleka, mniej plamiste igły, drugi wariant kory dębu i lipy, tekstura przejścia między dolną korą a „lustrem” (V1-i) z blokiem albo wartością właściwości przed CP-B (świadoma zmiana migawki rejestru);
+  - tekstury (`generate.py`), arkusze w `docs/wycinek/grafika/` (przed i po: `arkusz_8x_przed.png`, `kafle_3x3_przed.png`), zrzuty tablicy próbek w `docs/wycinek/pnie/`.
+- **Ukończony, gdy:** lint z regułą kontrastu i `checkArt` przechodzą, każda kora ma kontrast lokalny nie wyższy niż górny kwartyl kory wanilii (liście i rośliny nie wyższy niż ich mediana), arkusze przed i po leżą w `docs/wycinek/grafika/`, tablica próbek przechodzi z nowym blokiem w migawce rejestru, a decyzja CP-A jest zapisana w `docs/00` G i tu.
+- **Ryzyko:** niskie; estetyka oceniana przy CP-B na drzewach w lesie.
 
 ### V4. Karta norm i pomiar bazowy M2 (B, 1–1,5 dnia)
 
@@ -1220,3 +1233,54 @@ Wnioski:
 - V3-a (uzupełnione): fala bierze środek z początku fali.
 
 **Testy rundy 1.** `runClientGameTest -Pgametest=probes` w 6 zestawach (wanilia, `-Poptimization -PnoNvidium`, `-Poptimization`, każdy z SS i z `-PnoSeasons`; PASS w sesji 1), część `rebuild` jeszcze raz w 6 zestawach (sesja 2, PASS); zwykła gra: 4 przebiegi pomocnika przeglądu; `compileGametestJava`, `fastTest`, `python tools/art/check.py` (15 tekstur, lint z `min_line`, autotest), pełny zestaw `tools/dev/run-tests test`. Złoty test terenu bez zmian (runda nie zmienia generacji świata).
+
+## Stan po V1b (2026-10-16)
+
+**Punkt kontrolny CP-A** (odpowiedź użytkownika 2026-10-16, `docs/00` G.9): styl tekstur przyjęty jako baza, ale „trochę za ostry”; cienki pień (model po V2b, V2-l (b)) przyjęty; decyzje „domyślne, do potwierdzenia” z terminem CP-A przyjęte. Rekomendacje strony CP-A przyjęte domyślnie i zrobione w tym kroku. Pasek kolanka i dziury w narożnikach czapki (skrzydełka +8 quadów) rozstrzyga V10 po pomiarze kosztu renderu.
+
+**Zrobione.**
+- **Miara „ostrości”** (`texlib.local_contrast`, `tools/art/measure.py`): średnia i 90. percentyl różnic luminancji (Rec. 709, 0–255) wszystkich par sąsiednich pikseli w 4-sąsiedztwie na torusie (oba widoczne), udział pikseli w ciemnych liniach jednopikselowych (piksel o ≥ 24 ciemniejszy od obu sąsiadów z lewej i prawej albo z góry i z dołu) i udział pikseli samotnych (luminancja inna niż u wszystkich 4 sąsiadów). `measure.py` mierzy nasze tekstury albo dowolne pliki PNG; wanilię 26.3 zmierzyłem na plikach wypakowanych z `minecraft-client.jar` (pamięć Loom) do scratchpada, poza repozytorium (do repozytorium trafiły tylko liczby).
+- **Lint** (`lint.py`, `CONTRAST`): kora: średnia ≤ 13, p90 ≤ 33, linie ≤ 4% (ok. górny kwartyl 9 naturalnych kłód wanilii); liście: ≤ 29, ≤ 61, ≤ 16% (mediana 7 szarych liści wanilii przed tintem); rośliny: ≤ 23, ≤ 50, ≤ 7% (mediana krzaka, paproci, trawy i krzewu jagód, dla p90 trzeci kwartyl). Przepis może podać własne progi (`expect['contrast']`). Reguła wchodzi też do kary wyboru ziarna (`best_of`), więc wybierane są gładsze ziarna. Tabela lintu pokazuje kontrast (`steps <średnia>/<p90>  lines`).
+- **Przepisy** (`recipes.py`; każdy ton ma własną luminancję, `tones_at` i parametr `lums`):
+  - **bruzdy jako miękki rowek** (dolna kora sosny, dąb, lipa, kora zastępcza): rdzeń w tonie średnio ciemnym, ściana z lewej w tonie pośrednim, z prawej ciemniejsze z dwóch lic (`groove_sides`), bez jasnej krawędzi obok najciemniejszego tonu; jasny ton tylko pod poprzecznym pęknięciem; tony użyte przez 1–3 piksele łączą się z sąsiednim (`fold_rare`). Sosna: rdzeń czerwonobrązowy 78 (było 46), ściana 88, lica 102 / 113 (było 103–132 z jasną krawędzią); bruzda czyta się barwą i 3 px przejścia, a nie skokiem 60–70 luminancji. Dąb: bruzda 66 (było 58), lica 92–108 (było 85–126);
+  - **„lustro”**: nasycenie 0,58 (było 0,7), łuski 104 / 116 / 128 (było 112 / 117 / 122: mniej płaskie), szczelina 90 (było 80), blade łuski szarsze (0,3), średni odcień 23,5°;
+  - **lipa** ciemniejsza i brązowa (średnia luminancja 96, nasycenie 0,26), **kora zastępcza** jesionu i klonu jaśniejsza i szara (129, nasycenie 0,07): ΔE 15,1 (było ok. 9; lint `distinct` ≥ 15, było ≥ 8), z daleka (`dystans.png`) ciemny brązowoszary pień wobec bladoszarego;
+  - **igły**: każdy pęd w najlepszym z 6 losowych miejsc (najpustsze wiersze i kolumny, jak stemple liści), rampa 104–184 (było 64–210), wybór z 32 ziaren według rozrzutu, każdy wiersz i kolumna ≥ 6 z 16 pikseli; **liście liściaste** rampa 100–204 (było 88–214); **borówka** rampa 92–180 (było 52–194), cień liścia w tonie pędu;
+  - **grab i buk** w tonach o mniejszych krokach (krótkie spękania grabu 98 zamiast 80, „wąsy” buka 146 zamiast 136) i **drugie warianty** `hornbeam_bark_2`, `beech_bark_2` (wspólne wiersze krawędzi z bazą: grab dzieli granice „muskułów” w pasie 3 wierszy, buk pola plam i glonów przez `edge_locked`; porosty, blizny, smugi i spękania tylko w środkowych wierszach);
+  - **kora przejściowa sosny** `scots_pine_transition_bark` i `_2` (V1-i): szarobrązowe płyty dolnej kory na rudej korze „lustra”, rude pasy w bruzdach, ok. 1/4 płyt złuszczona, kilka bladych łusek; zbudowana na strukturze dolnej kory (`params['structure_of']`, `build_plated`), więc bruzdy przechodzą przez granicę bloku z dolną korą w obu kolejnościach (autotest); z „lustrem” granica zostaje (inna struktura);
+  - budowa podstaw wariantów jest zapamiętana (`recipes.once`, klucz: nazwa i obiekt palet): 19 tekstur ok. 23 s (przed V1b 15 tekstur ok. 25 s).
+- **Blok `scots_pine_transition_trunk`** (`TreeTrunk.SCOTS_PINE_TRANSITION`, na końcu enuma; „Scots Pine Transition Trunk” / „Przejściowy pień sosny zwyczajnej”, łup jak sosna: `spruce_log`, słoje `spruce_log_top`, tagi `scots_pine_logs`, `trunks`): zarezerwowany przed CP-B, migawka rejestru przegenerowana świadomie (`-PwriteRegistrySnapshot`: +1 blok z 84 stanami, +1 przedmiot; nic innego się nie zmieniło). Strefę przejścia ustawi planer drzew (V6); sosna tablicy próbek ma 2 bloki kory przejściowej pod „lustrem” (`TrunkSamples.TRANSITION_BLOCKS`). Modele grabu i buka losują teraz 2 warianty kory, pnia przejściowego też 2.
+- **Autotest** (`selftest.py`): miara na teksturze płaskiej i szachownicy, lint łapie ciemne bruzdy jednopikselowe w stylu V1 i za ostrą korę i liście, bruzdy kory przejściowej w skrajnych wierszach leżą tam, gdzie bruzdy dolnej kory.
+- **Arkusze** `docs/wycinek/grafika/`: `arkusz_8x.png`, `kafle_3x3.png`, `pnie.png` (sosna: 6 bloków dolnej kory, 2 przejściowej, 4 „lustra”), `pnie_cienkie.png`, `dystans.png` po V1b; przed V1b: `arkusz_8x_przed.png`, `kafle_3x3_przed.png` (stan z `f5d4170`, piksel w piksel jak arkusze w repozytorium przed V1b).
+
+**Pomiary** (`python tools/art/measure.py`; średnia / p90 różnic luminancji sąsiednich pikseli / udział pikseli w ciemnych liniach jednopikselowych):
+
+| Tekstura | Przed V1b | Po V1b |
+|---|---|---|
+| `scots_pine_bark`; `_2` | 17,9 / 57,0 / 19,1%; 20,2 / 61,9 / 21,1% | 7,2 / 25,2 / 1,6%; 7,8 / 25,2 / 2,0% |
+| `scots_pine_upper_bark`; `_2` | 6,2 / 23,5 / 4,7%; 5,5 / 19,5 / 3,5% | 6,0 / 22,2 / 3,1%; 6,9 / 24,6 / 3,9% |
+| `scots_pine_transition_bark`; `_2` | — | 4,6 / 14,2 / 0%; 5,2 / 14,2 / 0% |
+| `oak_bark`; `_2` | 22,0 / 54,5 / 25,8%; 21,9 / 54,5 / 25,8% | 9,2 / 26,5 / 0%; 9,0 / 26,5 / 0% |
+| `hornbeam_bark`; `_2` | 7,0 / 19,6 / 0,8%; — | 4,5 / 18,9 / 0%; 4,4 / 18,9 / 0% |
+| `linden_bark`, `_2`, `_3` | 23,6–24,4 / 67,3 / 19,5–21,5% | 9,9–10,3 / 22,1 / 1,2–1,6% |
+| `broadleaf_bark` | 20,3 / 60,6 / 17,2% | 6,6 / 15,4 / 0,4% |
+| `beech_bark`; `_2` | 7,4 / 14,9 / 3,1%; — | 5,0 / 11,9 / 1,6%; 4,6 / 8,9 / 2,3% |
+| `scots_pine_leaves` | 29,1 / 110,0 / 12,0% | 17,7 / 60,0 / 6,2% |
+| `broadleaf_leaves` | 27,4 / 62,0 / 11,4% | 22,8 / 52,0 / 11,4% |
+| `bilberry` | 31,4 / 70,9 / 15,8% | 18,8 / 44,0 / 2,6% |
+
+Wanilia 26.3 (te same miary): kora 9 naturalnych kłód (akacja, wiśnia, ciemny dąb, dżungla, namorzyn, dąb, blady dąb, topola, świerk) średnia 7,2–19,8 (kwartyle 8,1 / 9,1 / 13,1), p90 15,7–48,5 (19,6 / 21,8 / 32,6), linie 0–21,1% (0,4 / 1,2 / 3,1%); `oak_log` 19,8 / 48,5 / 21,1%, `spruce_log` 9,1 / 21,8 / 0,4%, `jungle_log` 12,3 / 26,7 / 3,1%, `birch_log` 29,4 / 95,1 / 14,5% (czarne przetchlinki, poza progami). Liście szare (dąb, brzoza, świerk, dżungla, akacja, ciemny dąb, namorzyn): średnia 19,9–43,1 (mediana 28,3), p90 42,9–74,4 (60,9), linie 1,4–25,7% (16,2%); `spruce_leaves` 43,1 / 72,0 / 16,2%. Rośliny (krzak, paproć, trawa, krzew jagód 1–2): 18,0–27,2 (22,3), 41,0–53,7 (47,5, q3 49,9), 3,6–13,1% (6,7%). Nasza kora po V1b: średnia 4,4–10,3 (mediana 7,2), p90 8,9–26,5 (22,1), linie 0–3,9%: w okolicy mediany wanilii; dąb i sosna jak `jungle_log` i `spruce_log`, wyraźnie łagodniej niż `oak_log`.
+
+Inne miary lintu po V1b: sosna dolna luminancja 97,7, odchylenie 12,2–12,5 (było 28–29), ziarno 2,6–3,8; dąb 83,7–84,0, ΔE 7,4 od `oak_log` (lint ≤ 10); lipa 96,2–96,7; kora zastępcza 128,6; grab 116,4–116,5; buk 164,7–164,8; kora przejściowa 106,8–107,2, odcień 22,5°; „lustro” 115,8–118,6, odcień 23,5°; pierścienie na cienkich pniach najwyżej 25,7 (r1, „lustro”; próg 32), poza „lustrem” ≤ 16.
+
+**Odstępstwa i uwagi.**
+- „Drugi wariant kory dębu i lipy” z rekomendacji CP-A już był (`oak_bark_2` i `linden_bark_2` od rundy 1 V1, `linden_bark_3` od rundy 1 V2); zostały wygładzone. Dodałem za to drugie warianty grabu i buka (otwarte pytanie V1-b), żeby każdy własny pień miał co najmniej 2 warianty (`docs/00` G.10 V1b-f).
+- Kora przejściowa to osobny blok, nie wartość właściwości (G.10 V1b-g), spójnie z PW-11.
+- Kontrast tekstur pod tintem liczę na szarości (przed tintem), jak wanilię w pliku; tint zmniejsza różnice luminancji proporcjonalnie do jasności koloru.
+- Rysunek pojedynczych pędów igieł jest po wygładzeniu słabszy (równiejsza „mozaika” igieł zamiast ciemnych gałązek z jasnymi kępami); do oceny przy CP-B na drzewach.
+- Grab, buk i „lustro” już przed V1b miały kontrast w okolicy wanilii; zmiany tam są małe (tony spękań i blizn, nasycenie i rozrzut jasności „lustra”).
+- `check.py` (`checkArt`) trwa teraz ok. 1–2 min (3 pełne budowy: wynik, lint i autotest z dwiema budowami); przed V1b podobnie (ok. 25 s na budowę).
+
+**Zrzuty z gry** (`docs/wycinek/pnie/`): tablica próbek po V1b w trzech rendererach (`runClientGameTest -Pgametest=slice -Psites=samples`, bez flag, `-Poptimization -PnoNvidium`, `-Poptimization`; PASS w każdym: migawka rejestru w grze 55 wierszy, 924 stany pni = 11 bloków × 84, modele i cząsteczki wszystkich stanów), pliki `samples_<renderer>_*.png` podmienione (39 wanilii, 14 czystego Sodium, 3 Sodium + Nvidium); dla porównania stan przed V1b: `v1b_pine_przed.png`, `v1b_columns_przed.png`, `v1b_overview_przed.png`, `v1b_far_pine_48_przed.png` (te same kadry co `samples_vanilla_pine`, `_columns`, `_overview`, `_far_pine_48`). Sosna tablicy ma teraz 2 bloki kory przejściowej pod „lustrem”.
+
+**Testy.** `python tools/art/check.py` (PASS: 19 tekstur zgodnych z generatorem, lint z regułą kontrastu, `CREDITS.md`, autotest z nowymi przypadkami), `./gradlew runDatagen` i `checkDatagen` (398 plików bez zmian po drugim przebiegu), `RegistrySnapshotTest` z `-PwriteRegistrySnapshot` (świadomie: +`scots_pine_transition_trunk`), `fastTest` (PASS), tablica próbek w trzech rendererach (PASS), pełny zestaw `tools/dev/run-tests test` (PASS, 1665 s). Złoty test bez zmian (V1b nie zmienia terenu).
