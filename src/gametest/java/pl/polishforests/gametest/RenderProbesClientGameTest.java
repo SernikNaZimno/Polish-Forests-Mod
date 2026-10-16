@@ -484,7 +484,8 @@ public final class RenderProbesClientGameTest implements FabricClientGameTest {
 				context.waitTicks(40);
 				long[] frames = context.computeOnClient(mc -> FrameRecorder.stop());
 				int[] rendered = context.computeOnClient(mc -> FrameRecorder.renderedSeries());
-				// The rebuild lasts until the last slow frame or the last frame with less than 95% of the view meshed.
+				// The rebuild lasts until the last slow frame or the last frame with less than 95% of the view meshed, at least
+				// until the call is issued (the wave). Without slow frames this is a lower bound.
 				int lastSlow = -1;
 				int lastLow = -1;
 				for (int f = 0; f < frames.length; f++) {
@@ -495,7 +496,7 @@ public final class RenderProbesClientGameTest implements FabricClientGameTest {
 						lastLow = f;
 					}
 				}
-				int settled = Math.max(lastSlow, lastLow) + 1;
+				int settled = Math.max(issued, Math.max(lastSlow, lastLow) + 1);
 				double[] d = FrameRecorder.stats(frames);
 				int min = Arrays.stream(rendered).min().orElse(0);
 				long low = Arrays.stream(rendered).filter(r -> r < 0.95 * r0).count();
@@ -545,6 +546,8 @@ public final class RenderProbesClientGameTest implements FabricClientGameTest {
 			boolean seasons) {
 		// Places: on a 2-block grid within 112 blocks of the site, 2 blocks above the top block, the largest difference of
 		// the blend from the center biome color first, at least 8 blocks apart.
+		int[] scan = new int[2];
+		java.util.Set<Integer> colors = new java.util.HashSet<>();
 		List<long[]> places = context.computeOnClient(mc -> {
 			List<long[]> found = new ArrayList<>();
 			for (int x = site.x() - 112; x <= site.x() + 112; x += 2) {
@@ -554,6 +557,9 @@ public final class RenderProbesClientGameTest implements FabricClientGameTest {
 					int center = ProbeSeason.RAW_FOLIAGE.getColor(mc.level.getBiome(pos).value(), x, z);
 					int blend = mc.level.calculateBlockTint(pos, ProbeSeason.RAW_FOLIAGE);
 					int diff = channelDifference(center, blend);
+					scan[0]++;
+					scan[1] = Math.max(scan[1], diff);
+					colors.add(center);
 					if (diff >= MIN_BLEND_DIFFERENCE) {
 						found.add(new long[] {pos.asLong(), diff, blend, center});
 					}
@@ -570,6 +576,8 @@ public final class RenderProbesClientGameTest implements FabricClientGameTest {
 			return chosen;
 		});
 		int radius = context.computeOnClient(mc -> mc.options.biomeBlendRadius().get());
+		result("biome blend scan: %d columns, largest difference of the blend from the center biome %d, center colors %s", scan[0],
+				scan[1], colors.stream().map(RenderProbesClientGameTest::hex).sorted().toList());
 		if (places.isEmpty()) {
 			fail("biome blend: no place within 112 blocks of %s where the blend (radius %d) differs from the center biome by >= %d",
 					site.name(), radius, MIN_BLEND_DIFFERENCE);
@@ -585,7 +593,14 @@ public final class RenderProbesClientGameTest implements FabricClientGameTest {
 				put(server.overworld(), BlockPos.of(f[0]).getX(), BlockPos.of(f[0]).getY(), BlockPos.of(f[0]).getZ(), probe);
 			}
 		});
-		int waited = context.waitFor(mc -> places.stream().allMatch(f -> RenderProbesClient.MESHED_RAW.containsKey(f[0])), 20 * 60);
+		// Vanilla compiles only the sections it draws: the camera turns to each place in turn (from where it is).
+		int waited = 0;
+		for (long[] f : places) {
+			BlockPos pos = BlockPos.of(f[0]);
+			sp.getServer().runCommand(String.format(Locale.ROOT, "tp @a %d %d %d facing %d %d %d", site.x(), ground + 30, site.z() - 20,
+					pos.getX(), pos.getY(), pos.getZ()));
+			waited += context.waitFor(mc -> RenderProbesClient.MESHED_RAW.containsKey(f[0]), 20 * 30);
+		}
 		context.waitTicks(20);
 		context.runOnClient(mc -> RenderProbesClient.recordMeshedRaw = false);
 		int worst = 0;
