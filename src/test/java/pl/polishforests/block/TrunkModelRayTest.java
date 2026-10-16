@@ -38,6 +38,10 @@ import org.junit.jupiter.api.Test;
  * the face once (V2b: the flat faces of the cap of round 2 reached 0.09 px past the faces across them, and a scan saw
  * side, top, side, top: the dotted light line along the edges of every tip).
  * </ul>
+ * A separate check needs no rays: faces of the model in one plane and facing the same way must meet only at their
+ * corners and must not overlap. A corner of one face inside the edge of the other (a T-junction) leaves single pixels of
+ * the rasterized seam uncovered, which the analytic rays cannot see (V2b review: sky pixels along the ledge under the
+ * caps, where the cap's sides met the wider inner walls).
  * Near the edges of the ideal surface the model may differ by its insets (the reach lies ε = 0.01 px, the cap 0.1 px
  * inside the radius), and rays that get less than {@link #MIN_DEPTH} px under the ideal surface only graze its silhouette.
  * The models are read from {@code src/main/generated}, so {@code runDatagen} must run before this test after a change
@@ -61,10 +65,14 @@ class TrunkModelRayTest {
 	/** Rays that enter the ideal trunk at more than this angle from the normal of the face entered are not checked, deg. */
 	private static final double MAX_ENTRY_ANGLE = 80;
 	/**
-	 * Largest share of the rays of an elbow of equal radii that may show one of its two known faults (see {@link #check});
-	 * since V2b at most 0.04% each (the limit was 0.2% while the sliver showed the rings).
+	 * Largest share of the rays of an elbow of equal radii that may show the sliver of the end of the child's reach in the
+	 * step over the parent's cap, summed over the top and both sides (see {@link #check}); after the V2b review
+	 * 0.005–0.018% (the bark of the end lies 0.1 px behind the opening, so steep rays see the cap's top through it). With
+	 * the bark in the plane of the end (V2b) 0.04–0.10%, and with the rings there 0.15–0.19% (round 2 of the V2 review).
 	 */
-	private static final double ELBOW_SHARE = 0.001;
+	private static final double ELBOW_SLIVER_SHARE = 0.0003;
+	/** Largest share of the rays of an elbow of equal radii that may show the ε slit along the joint, both sides (0.005%). */
+	private static final double ELBOW_SLIT_SHARE = 0.0001;
 	/** Half-width of a scan across a convex edge of the ideal trunk, on each of its two faces, px. */
 	private static final double EDGE_SCAN = 0.6;
 	/** Step of the aim points of a scan across a convex edge, px. */
@@ -122,8 +130,99 @@ class TrunkModelRayTest {
 	@Test
 	void seamsLookLikeTheIdealTrunk() throws IOException {
 		long start = System.nanoTime();
-		for (int r = TrunkBlock.MIN_RADIUS; r <= TrunkBlock.MAX_RADIUS; r++) {
-			TEMPLATES.put(r, JsonParser.parseString(Files.readString(MODELS.resolve("template_trunk_r" + r + ".json"))).getAsJsonObject());
+		Map<String, List<Block>> scenes = scenes();
+		List<String> failures = new ArrayList<>();
+		List<String> report = new ArrayList<>();
+		scenes.entrySet().parallelStream().map(e -> check(e.getKey(), e.getValue())).toList().forEach(res -> {
+			report.add(res.summary());
+			failures.addAll(res.failures());
+		});
+		report.forEach(System.out::println);
+		System.out.printf(Locale.ROOT, "TrunkModelRayTest: %.1f s%n", (System.nanoTime() - start) / 1e9);
+		assertTrue(failures.isEmpty(), () -> "the model differs from the ideal trunk:\n" + String.join("\n", failures));
+	}
+
+	/**
+	 * Faces of the model in one plane and facing the same way (within one block and between the blocks of every scene)
+	 * meet only at their corners: no corner of one lies inside an edge of the other, and they do not overlap.
+	 */
+	@Test
+	void coplanarFacesMeetAtCorners() throws IOException {
+		List<String> failures = new ArrayList<>();
+		for (Map.Entry<String, List<Block>> scene : scenes().entrySet()) {
+			List<Quad> model = new ArrayList<>();
+			for (Block b : scene.getValue()) {
+				model.addAll(modelQuads(b));
+			}
+			for (Quad p : model) {
+				for (Quad q : model) {
+					if (p == q || p.axis() != q.axis() || p.sign() != q.sign() || Math.abs(p.plane() - q.plane()) > TOUCH) {
+						continue;
+					}
+					if (overlapArea(p, q) > TOUCH) {
+						failures.add(scene.getKey() + ": " + p.label() + " overlaps " + q.label());
+						continue;
+					}
+					for (double[] corner : corners(p)) {
+						if (insideEdge(corner, q)) {
+							failures.add(String.format(Locale.ROOT, "%s: a corner of %s at (%.2f, %.2f, %.2f) lies inside an edge of %s",
+									scene.getKey(), p.label(), corner[0], corner[1], corner[2], q.label()));
+						}
+					}
+				}
+			}
+		}
+		assertTrue(failures.isEmpty(), () -> "faces of the model meet in T-junctions:\n" + String.join("\n", failures));
+	}
+
+	/** Tolerance of the checks of coplanar faces, px (the templates have two decimals). */
+	private static final double TOUCH = 1e-6;
+
+	private static double overlapArea(Quad p, Quad q) {
+		double area = 1;
+		for (int k = 0; k < 3; k++) {
+			if (k != p.axis()) {
+				area *= Math.max(0, Math.min(p.max()[k], q.max()[k]) - Math.max(p.min()[k], q.min()[k]));
+			}
+		}
+		return area;
+	}
+
+	private static List<double[]> corners(Quad q) {
+		int t1 = (q.axis() + 1) % 3;
+		int t2 = (q.axis() + 2) % 3;
+		List<double[]> out = new ArrayList<>();
+		for (double u : new double[] {q.min()[t1], q.max()[t1]}) {
+			for (double v : new double[] {q.min()[t2], q.max()[t2]}) {
+				double[] c = new double[3];
+				c[q.axis()] = q.plane();
+				c[t1] = u;
+				c[t2] = v;
+				out.add(c);
+			}
+		}
+		return out;
+	}
+
+	/** Whether a point lies on an edge of a quad (in its plane) but not at one of the quad's corners. */
+	private static boolean insideEdge(double[] c, Quad q) {
+		int t1 = (q.axis() + 1) % 3;
+		int t2 = (q.axis() + 2) % 3;
+		boolean onU = Math.abs(c[t1] - q.min()[t1]) < TOUCH || Math.abs(c[t1] - q.max()[t1]) < TOUCH;
+		boolean onV = Math.abs(c[t2] - q.min()[t2]) < TOUCH || Math.abs(c[t2] - q.max()[t2]) < TOUCH;
+		boolean inU = c[t1] > q.min()[t1] + TOUCH && c[t1] < q.max()[t1] - TOUCH;
+		boolean inV = c[t2] > q.min()[t2] + TOUCH && c[t2] < q.max()[t2] - TOUCH;
+		return onU && inV || onV && inU;
+	}
+
+	/** The scenes: a lone tip, a column r → r, a joint r + 1 → r and elbows r → r and r + 1 → r of every radius. */
+	private static Map<String, List<Block>> scenes() throws IOException {
+		synchronized (TEMPLATES) {
+			if (TEMPLATES.isEmpty()) {
+				for (int r = TrunkBlock.MIN_RADIUS; r <= TrunkBlock.MAX_RADIUS; r++) {
+					TEMPLATES.put(r, JsonParser.parseString(Files.readString(MODELS.resolve("template_trunk_r" + r + ".json"))).getAsJsonObject());
+				}
+			}
 		}
 		Map<String, List<Block>> scenes = new LinkedHashMap<>();
 		for (int r = TrunkBlock.MIN_RADIUS; r <= TrunkBlock.MAX_RADIUS; r++) {
@@ -137,15 +236,7 @@ class TrunkModelRayTest {
 						List.of(new Block(0, 0, 0, r + 1, Direction.DOWN), new Block(0, 0, -1, r, Direction.SOUTH)));
 			}
 		}
-		List<String> failures = new ArrayList<>();
-		List<String> report = new ArrayList<>();
-		scenes.entrySet().parallelStream().map(e -> check(e.getKey(), e.getValue())).toList().forEach(res -> {
-			report.add(res.summary());
-			failures.addAll(res.failures());
-		});
-		report.forEach(System.out::println);
-		System.out.printf(Locale.ROOT, "TrunkModelRayTest: %.1f s%n", (System.nanoTime() - start) / 1e9);
-		assertTrue(failures.isEmpty(), () -> "the model differs from the ideal trunk:\n" + String.join("\n", failures));
+		return scenes;
 	}
 
 	/** The result of a scene: a summary line and the failures. */
@@ -207,25 +298,39 @@ class TrunkModelRayTest {
 				}
 			}
 		}
-		// An elbow of equal radii keeps two known faults, each below the given share of the rays: the cap lies 0.1 px inside
-		// the faces of the child's reach, so a 0.09 px sliver of the reach's end shows through the step on the top and the
-		// two sides facing away from the child at a slant (its bark frame since V2b, so never the rings), and the reach lies
-		// ε inside the parent's arm, so the arm's face across the branch shows in an ε slit along the joint. Everything else
-		// (rings included), and every fault of the other scenes, fails the test.
+		// An elbow of equal radii keeps two known faults, each below its share of the rays: the cap lies 0.1 px inside the
+		// faces of the child's reach, so a 0.09 px sliver of the reach's end shows through the step on the top and the two
+		// sides facing away from the child at a slant (its bark since V2b, so never the rings: rings fail as "off a stub"
+		// before the direction is judged), and the reach lies ε inside the parent's arm, so the arm's face across the branch
+		// shows in an ε slit along the joint. The share of each fault is summed over the faces it shows on. Everything else,
+		// and every fault of the other scenes, fails the test.
 		boolean elbow = blocks.size() > 1 && blocks.get(0).r() == blocks.get(1).r() && blocks.get(1).parent() != Direction.DOWN;
 		List<String> failures = new ArrayList<>();
 		int total = rays;
 		int faults = counts.values().stream().mapToInt(Integer::intValue).sum();
+		Map<String, Integer> known = new LinkedHashMap<>();
 		counts.forEach((fail, n) -> {
-			boolean known = elbow && (fail.startsWith("face south (") && fail.contains("down of block 0,0,-1")
-					|| fail.startsWith("face north (element 0 north of block 0,0,0)"));
-			if (!known || n > ELBOW_SHARE * total) {
+			String fault = !elbow ? null
+					: fail.startsWith("face south (") && fail.contains(" down #bark of block 0,0,-1)") ? "the sliver of the reach's end"
+					: fail.startsWith("face north (element 0 north #bark of block 0,0,0)") ? "the ε slit" : null;
+			if (fault == null) {
 				failures.add(String.format(Locale.ROOT, "%s: %s in %d of %d rays, e.g. %s", scene, fail, n, total, examples.get(fail)));
+			} else {
+				known.merge(fault, n, Integer::sum);
+			}
+		});
+		known.forEach((fault, n) -> {
+			double share = fault.equals("the ε slit") ? ELBOW_SLIT_SHARE : ELBOW_SLIVER_SHARE;
+			if (n > share * total) {
+				failures.add(String.format(Locale.ROOT, "%s: known fault %s in %d of %d rays (more than %.2f%%)", scene, fault, n, total,
+						100 * share));
 			}
 		});
 		int[] edges = edgeScans(scene, model, ideal, breaks, failures);
-		return new Result(String.format(Locale.ROOT, "%-16s %9d rays, %6d faults (%.3f%%); %5d scans across convex edges, %4d faulty",
-				scene, total, faults, 100.0 * faults / total, edges[0], edges[1]), failures);
+		StringBuilder shares = new StringBuilder();
+		counts.forEach((fail, n) -> shares.append(String.format(Locale.ROOT, "%n      %.4f%% %s", 100.0 * n / total, fail)));
+		return new Result(String.format(Locale.ROOT, "%-16s %9d rays, %6d faults (%.3f%%); %5d scans across convex edges, %4d faulty%s",
+				scene, total, faults, 100.0 * faults / total, edges[0], edges[1], shares), failures);
 	}
 
 	/**
@@ -495,9 +600,8 @@ class TrunkModelRayTest {
 		if (flat && dist(ph, pe) > MAX_DEPTH) {
 			return "deep hit (" + hit.label() + ")";
 		}
-		if (flat && (hit.axis() != eAxis || hit.sign() != eSign)) {
-			return "face " + name(hit.axis(), hit.sign()) + " (" + hit.label() + ") on an ideal " + name(eAxis, eSign) + " face";
-		}
+		// Rings are judged before the direction, so that rings on a flat face of another direction never pass as the known
+		// fault of an elbow (the bark of the end in the step).
 		if (hit.end()) {
 			boolean nearEnd = false;
 			for (Quad e : endFaces) {
@@ -506,6 +610,9 @@ class TrunkModelRayTest {
 			if (!nearEnd) {
 				return "rings (" + hit.label() + ") off a stub";
 			}
+		}
+		if (flat && (hit.axis() != eAxis || hit.sign() != eSign)) {
+			return "face " + name(hit.axis(), hit.sign()) + " (" + hit.label() + ") on an ideal " + name(eAxis, eSign) + " face";
 		}
 		return null;
 	}
@@ -624,9 +731,9 @@ class TrunkModelRayTest {
 				double[][] box = place(b, lo, hi);
 				int[] n = rotate(b.parent(), new double[] {dir.getStepX(), dir.getStepY(), dir.getStepZ()});
 				int nAxis = n[0] != 0 ? 0 : n[1] != 0 ? 1 : 2;
-				boolean end = "#end".equals(f.getValue().getAsJsonObject().get("texture").getAsString());
-				out.add(new Quad(nAxis, n[nAxis], box[0][nAxis], box[0], box[1], end,
-						"element " + i + " " + f.getKey() + " of block " + b.x() + "," + b.y() + "," + b.z()));
+				String texture = f.getValue().getAsJsonObject().get("texture").getAsString();
+				out.add(new Quad(nAxis, n[nAxis], box[0][nAxis], box[0], box[1], "#end".equals(texture),
+						"element " + i + " " + f.getKey() + " " + texture + " of block " + b.x() + "," + b.y() + "," + b.z()));
 			}
 		}
 		return out;

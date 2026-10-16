@@ -29,15 +29,21 @@ import pl.polishforests.block.TrunkBlock;
  * top;
  * <li><b>inner walls</b>, four flat faces c inside the arm, as wide as the reach (from a + ε to b − ε), from 0 to 8: what
  * shows through the seam at the center (the ε slit under the reach of a child, or the ledge under the cap of a tip) is
- * bark lit like the side around it;
+ * bark lit like the side around it. Each wall is three quads, split at a + c and b − c, so that its top edge has a
+ * vertex exactly at each bottom corner of the cap's side above it in the same plane: a corner lying inside the edge of
+ * the other quad (a T-junction) leaves single pixels of the rasterized seam uncovered, and the sky or the ground showed
+ * through them along the ledge under every exposed cap (V2b review);
  * <li><b>cap</b>, the core above the center: one box c inside the radius, [a + c, 8, a + c]–[b − c, 8 + r − c, b − c],
  * four bark faces (rows 16 − r + c to 16) and a top of bark: the tip of a branch (a living tip has bark, not rings); it
  * fills the elbow when the trunk turns and hides inside the reach of a child of the same radius;
  * <li><b>reach</b> into the parent, from its center to δ into the own block: [a + ε, −8, a + ε]–[b − ε, δ, b − ε], four
- * bark faces (rows 8 − δ to 16); its end at the bottom closes the 8 px stub when the parent is broken: rings c inside the
- * radius in a frame of four bark strips (from the ε margin to c) in the same plane.
+ * bark faces (rows 8 − δ to 16); its end at the bottom closes the 8 px stub when the parent is broken: the rings c
+ * inside the radius at the end and a bark face as wide as the reach {@link #END_BARK_DEPTH} behind them, so that a stub
+ * shows rings in a bark rim. The bark lies behind the rings, not around them in the same plane: four bark strips around
+ * the rings (V2b) met them in T-junctions, nine pieces without T-junctions would cost seven more quads, and bark in
+ * front of the rings would stand out of the trunk.
  * </ul>
- * 22 quads per block. Each block thus draws one whole texture tile over its own lower half and the upper half of its
+ * 27 quads per block. Each block thus draws one whole texture tile over its own lower half and the upper half of its
  * parent, so a standing trunk shows the bark tile by tile like a vanilla log, and the variants of a bark (same top and
  * bottom rows, V1) join without a seam. The margin ε keeps the reach of a child just outside the arm of its own block;
  * the overlap δ = {@link #DELTA} puts the reach behind the seam where it meets the outer arm (without it the ε-wide slit
@@ -48,8 +54,12 @@ import pl.polishforests.block.TrunkBlock;
  * cap of a tip as a light hairline (V2 review, round 2); the inner walls take its place. The cap is one box: in round 2
  * of the V2 review its sides and top were flat faces reaching out to the ε margin, 0.09 px past the faces across them,
  * and these fins drew a dotted light line along the convex edges of every tip, ledge and elbow (V2b). At an elbow of
- * equal radii the end of the side child's reach stands 0.09 px past the cap on three sides; the bark frame of the end
- * (choice V2-l (b)) shows there instead of the rings (TrunkModelRayTest measures the remaining slivers).
+ * equal radii the end of the side child's reach stands 0.09 px past the cap on three sides (as in round 2); the bark
+ * of the end (choice V2-l (b)) shows there instead of the rings, which lie inside the parent's cap (TrunkModelRayTest
+ * measures the remaining slivers and checks that coplanar faces meet only at their corners). Above the center the box
+ * leaves a 0.1 × 0.1 px gap at each corner between the faces of the arm; a ray at a slant can pass it into the hollow
+ * arm and out through the back of an arm face, so single pixels see through there (V2b review; closing them takes two
+ * bark wings per corner, 8 more quads, decision at CP-A).
  * <p>The models have no ambient occlusion ({@code "ambientocclusion": false}, like vanilla's cross plants): the arm is
  * lit in the context of its own block and the reach in that of the child, so smooth lighting darkened the lower half of
  * a trunk standing on the ground (the occluding ground is the neighbor of the arm, not of the reach) and broke off in a
@@ -66,6 +76,11 @@ final class TrunkTemplates implements DataProvider {
 	static final double DELTA = 0.25;
 	/** Inset of the cap's sides and top, px: far enough behind the reach of a child to stay out of depth fighting. */
 	static final double CAP_INSET = 0.1;
+	/**
+	 * Depth of the bark face behind the rings at the end of the reach, px: as far as the cap from the reach of a child, so
+	 * that the two faces do not fight in the depth buffer before the texture is mipmapped.
+	 */
+	static final double END_BARK_DEPTH = CAP_INSET;
 	/** Radius of the item model, px. */
 	static final int ITEM_RADIUS = TrunkBlock.DEFAULT_RADIUS;
 	/** Sides in the order around the trunk in which the bark continues over the corner (the right edge of a face seen from
@@ -134,7 +149,9 @@ final class TrunkTemplates implements DataProvider {
 		elements.add(element(new double[] {a, 0, a}, new double[] {b, 8, b}, r, 0, 0, 8));
 		// Inner walls behind the seam at the center: the ε slit under the reach of a child and the ledge under the cap.
 		for (String side : SIDES) {
-			elements.add(inner(side, r, 0, 8, 0, 8));
+			elements.add(inner(side, r, a + e, a + c));
+			elements.add(inner(side, r, a + c, b - c));
+			elements.add(inner(side, r, b - c, b - e));
 		}
 		// The cap: one box c inside the radius, so that its convex edges are clean (V2b: flat faces reaching out to the ε
 		// margin stood 0.09 px past the faces across them and drew a dotted light line along every edge of a tip).
@@ -144,50 +161,52 @@ final class TrunkTemplates implements DataProvider {
 		top.addProperty("texture", "#bark");
 		cap.getAsJsonObject("faces").add("up", top);
 		elements.add(cap);
-		// The reach; its end is rings c inside the radius in a frame of four bark strips in the same plane (V2-l (b)): at an
-		// elbow the end stands 0.09 px past the cap of the parent, and there it shows bark instead of rings.
+		// The reach; its end is the rings c inside the radius with bark as wide as the reach just behind them (V2-l (b)): at
+		// an elbow the end stands 0.09 px past the cap of the parent, and there it shows the bark instead of the rings.
 		elements.add(element(new double[] {a + e, -8, a + e}, new double[] {b - e, DELTA, b - e}, r, e, 8 - DELTA, 16));
-		elements.add(end(new double[] {a + c, b - c}, new double[] {a + c, b - c}, "#end"));
-		elements.add(end(new double[] {a + e, b - e}, new double[] {a + e, a + c}, "#bark"));
-		elements.add(end(new double[] {a + e, b - e}, new double[] {b - c, b - e}, "#bark"));
-		elements.add(end(new double[] {a + e, a + c}, new double[] {a + c, b - c}, "#bark"));
-		elements.add(end(new double[] {b - c, b - e}, new double[] {a + c, b - c}, "#bark"));
+		elements.add(end(new double[] {a + c, b - c}, -8, "#end"));
+		elements.add(end(new double[] {a + e, b - e}, -8 + END_BARK_DEPTH, "#bark"));
 		JsonObject m = model(elements);
 		m.addProperty("ambientocclusion", false);
 		return m;
 	}
 
 	/**
-	 * A flat side face {@link #CAP_INSET} inside the radius, as wide as the reach (ε margins), from y0 to y1 with texture rows
-	 * v0 to v1; its columns line up with those of the arm's face on the same side.
+	 * A piece of an inner wall: a flat side face {@link #CAP_INSET} inside the radius, from p0 to p1 along the side (x for
+	 * north and south, z for west and east) and from 0 to 8 high, with texture rows 8 to 0; its columns line up with those
+	 * of the arm's face on the same side (a north or an east face runs its texture from the high end of the side, as
+	 * vanilla's automatic UV does).
 	 */
-	private static JsonObject inner(String side, int r, double y0, double y1, double v0, double v1) {
+	private static JsonObject inner(String side, int r, double p0, double p1) {
 		double a = 8 - r;
 		double b = 8 + r;
 		double c = CAP_INSET;
-		double e = EPSILON;
 		double plane = switch (side) {
 			case "north", "west" -> a + c;
 			default -> b - c;
 		};
 		boolean alongX = side.equals("north") || side.equals("south");
-		double[] from = alongX ? new double[] {a + e, y0, plane} : new double[] {plane, y0, a + e};
-		double[] to = alongX ? new double[] {b - e, y1, plane} : new double[] {plane, y1, b - e};
+		double[] from = alongX ? new double[] {p0, 0, plane} : new double[] {plane, 0, p0};
+		double[] to = alongX ? new double[] {p1, 8, plane} : new double[] {plane, 8, p1};
 		JsonObject el = flat(from, to);
 		int u = faceOffset(r, side);
+		boolean fromHigh = side.equals("north") || side.equals("east");
+		double u0 = fromHigh ? u + (b - p1) : u + (p0 - a);
+		double u1 = fromHigh ? u + (b - p0) : u + (p1 - a);
 		JsonObject f = new JsonObject();
-		f.add("uv", vector(new double[] {u + e, v0, u + 2 * r - e, v1}));
+		f.add("uv", vector(new double[] {u0, 0, u1, 8}));
 		f.addProperty("texture", "#bark");
 		el.getAsJsonObject("faces").add(side, f);
 		return el;
 	}
 
 	/**
-	 * A part of the end of the reach: a flat face down at y = −8 over x in xs and z in zs, with the texture mapped as on a
-	 * vanilla bottom face (the middle of the tile under the middle of the trunk).
+	 * The end of the reach or the rings on it: a flat square face down at height y over xs × xs, with the texture mapped
+	 * as on a vanilla bottom face (the middle of the tile under the middle of the trunk).
 	 */
-	private static JsonObject end(double[] xs, double[] zs, String texture) {
-		JsonObject el = flat(new double[] {xs[0], -8, zs[0]}, new double[] {xs[1], -8, zs[1]});
+	private static JsonObject end(double[] xs, double y, String texture) {
+		double[] zs = xs;
+		JsonObject el = flat(new double[] {xs[0], y, zs[0]}, new double[] {xs[1], y, zs[1]});
 		JsonObject f = new JsonObject();
 		f.add("uv", vector(new double[] {xs[0], 16 - zs[1], xs[1], 16 - zs[0]}));
 		f.addProperty("texture", texture);
