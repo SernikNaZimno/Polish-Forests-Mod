@@ -22,11 +22,15 @@ import pl.polishforests.worldgen.habitat.Species;
 
 /**
  * Block and item tags of the blocks of the mod (step V2, docs/04-pionowy-wycinek.md §3 V2): every trunk is in
- * {@code #polishforests:<species>_logs}; the species tags of oak, birch and spruce go into the vanilla
+ * {@code #polishforests:<species>_logs}; the species block tags of oak, birch and spruce go into the vanilla
  * {@code #oak_logs}, {@code #birch_logs} and {@code #spruce_logs} (D2: the wood of these species is vanilla), the others
  * into {@code #logs_that_burn}, and through them into {@code #logs} (leaves do not decay next to a trunk, axes cut it,
  * heightmaps and movement treat it as a log). All trunks are also in {@code #overworld_natural_logs},
- * {@code #mineable/axe} and {@code #polishforests:trunks}. The items get the same tags.
+ * {@code #mineable/axe} and {@code #polishforests:trunks}.
+ * <p>The items (a trunk taken with silk touch) get {@code #polishforests:<species>_logs} and {@code #polishforests:trunks},
+ * and every species item tag goes into {@code #logs_that_burn} (fuel, charcoal), also for oak, birch and spruce: in the
+ * vanilla {@code #oak_logs} items a twig of radius 1 (2 × 2 px) would make 4 planks like a whole log (V2 review,
+ * choice V2-d); the planks come from the vanilla log a trunk drops without silk touch.
  */
 final class ModBlockTagProvider {
 	static final TagKey<Block> TRUNKS = TagKey.create(Registries.BLOCK, PolishForests.id("trunks"));
@@ -43,7 +47,7 @@ final class ModBlockTagProvider {
 		return out;
 	}
 
-	/** The vanilla tag (block and item) a species tag goes into. */
+	/** The vanilla block tag a species tag goes into (the item tags all go into {@code #logs_that_burn}). */
 	static BlockItemTagId vanillaParent(Species s) {
 		return switch (s) {
 			case OAK -> BlockItemTags.OAK_LOGS;
@@ -86,8 +90,9 @@ final class ModBlockTagProvider {
 			Map<Species, TagKey<Block>> species = speciesTags();
 			species.forEach((s, tag) -> {
 				copy(tag, item(tag));
-				builder(vanillaParent(s).item()).addTag(item(tag));
+				builder(BlockItemTags.LOGS_THAT_BURN.item()).addTag(item(tag));
 			});
+			copy(TRUNKS, item(TRUNKS));
 		}
 	}
 

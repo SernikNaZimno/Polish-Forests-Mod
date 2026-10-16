@@ -203,11 +203,24 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		for (TreeTrunk t : TreeTrunk.values()) {
 			builder.add(ModBlocks.trunk(t), polish ? t.polishName() : t.englishName());
 		}
+		// Item tags (recipe viewers show their names): a species tag is named after the first trunk of the species.
+		Map<Species, TreeTrunk> first = new LinkedHashMap<>();
+		for (TreeTrunk t : TreeTrunk.values()) {
+			first.putIfAbsent(t.species(), t);
+		}
+		ModBlockTagProvider.speciesTags().forEach((s, tag) -> builder.add(tagKey(tag.location().getPath()),
+				polish ? first.get(s).polishName().replaceFirst("^Pień ", "Pnie ") : first.get(s).englishName() + "s"));
+		builder.add(tagKey(ModBlockTagProvider.TRUNKS.location().getPath()), polish ? "Cienkie pnie" : "Thin Trunks");
 		if (polish) {
 			polish(builder);
 		} else {
 			english(builder);
 		}
+	}
+
+	/** Translation key of an item tag of the mod. */
+	private static String tagKey(String path) {
+		return "tag.item.polishforests." + path;
 	}
 
 	/** Adds the name of every enum constant; a constant without a name is an error (enums are only appended to). */

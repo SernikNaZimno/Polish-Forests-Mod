@@ -1,6 +1,9 @@
 {
   "values": [
     "#polishforests:scots_pine_logs",
+    "#polishforests:spruce_logs",
+    "#polishforests:birch_logs",
+    "#polishforests:oak_logs",
     "#polishforests:hornbeam_logs",
     "#polishforests:linden_logs",
     "#polishforests:beech_logs",

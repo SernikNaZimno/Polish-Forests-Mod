@@ -21,10 +21,14 @@ Rules for every texture:
 Kind rules:
 - leaves: 55-70% of the pixels visible (vanilla 56-67%), alpha only 0 or 255;
 - bark: fully opaque; no horizontal banding at the block period (the standard deviation of the row means of luma at
-  most 5 over the full width and at most 8 over the centre slices that thin trunks of radius 2-5 show; vanilla oak,
-  spruce and acacia logs 1.6-3.4 and 2.2-6.7), luma standard deviation at most 28 (vanilla logs 9-21), and not read as
+  most 5 over the full width and at most 9 over the crops that thin trunks of radius 2-5 show in game; vanilla oak,
+  spruce and acacia logs 1.6-3.4 and 3.9-7.4), luma standard deviation at most 28 (vanilla logs 9-21), and not read as
   stone: a mean color at least 8 (CIE76 delta E) from the vanilla stones, unless the texture has a clear vertical grain
   (texlib.grain >= 2);
+  rings: the four crops a thin trunk of radius 1-7 shows in game (texlib.TRUNK_OFFSETS, as TrunkTemplates.OFFSETS)
+  have no single row much darker or lighter than the rows around it (texlib.ring_drop, caps texlib.RING_CAPS: 32 at
+  radius 1, 26 above): a cross fissure or a pale flake over the whole width of a narrow crop reads as a ring at every
+  block ("bamboo", V2 review); the full-width banding measure does not see it;
 - plant: alpha only 0 or 255.
 Recipe bounds (Texture.expect): 'luma' mean luma range on 0..255, 'dark' the largest share of dark pixels (luma < 50),
 'grain' the smallest |dx| / |dy| (vertical grain of furrowed and plated bark; vanilla oak and spruce logs about 3.3),
@@ -49,7 +53,7 @@ COLORS = (4, 9)
 MIN_COLOR_PIXELS = 4
 ISOLATED_MAX = {'bark': 0.10, 'leaves': 0.30, 'plant': 1.0}
 DARK = 50
-BANDING = (5.0, 8.0)
+BANDING = (5.0, 9.0)
 BARK_STD = 28.0
 STONE_DELTA_E = 8.0
 STONE_GRAIN = 2.0
@@ -177,6 +181,12 @@ def lint_texture(name, img, tex, others=None):
         if m['rows'] > cap_rows or m['slices'] > cap_slices:
             err.append(f'{name}: horizontal banding at the block period (std of the row means {m["rows"]:.1f} over the '
                        f'full width, {m["slices"]:.1f} over thin-trunk slices; at most {cap_rows} and {cap_slices})')
+        m['rings'] = t.rings(img)
+        caps = exp.get('rings', t.RING_CAPS)
+        bad = [f'radius {r} {v:.0f} > {caps[r]:.0f}' for r, v in m['rings'].items() if v > caps[r]]
+        if bad:
+            err.append(f'{name}: dark or light rows across the crops of thin trunks, a ring at every block ("bamboo"; the '
+                       f'largest single-row step of the crops of TrunkTemplates: {", ".join(bad)})')
         cap = exp.get('std', BARK_STD)
         if m['std'] > cap:
             err.append(f'{name}: luma standard deviation {m["std"]:.1f}, at most {cap} (too much contrast)')
@@ -240,7 +250,9 @@ def format_report(report):
     for name, m in report.items():
         extra = ''
         if 'rows' in m:
-            extra = f'  std {m["std"]:4.1f}  bands {m["rows"]:3.1f}/{m["slices"]:3.1f}  grain {m["grain"]:4.2f}'
+            extra = (f'  std {m["std"]:4.1f}  bands {m["rows"]:3.1f}/{m["slices"]:3.1f}  grain {m["grain"]:4.2f}'
+                     f'  rings r1 {m["rings"][1]:4.1f} r2 {m["rings"][2]:4.1f} '
+                     f'r3+ {max(list(m["rings"].values())[2:]):4.1f}')
         lines.append(f'  {name:24s} colors {m.get("colors", "?"):>2}  visible {m.get("opacity", 0):4.0%}  '
                      f'luma {m.get("luma", 0):5.1f}  dark {m.get("dark", 0):4.0%}  isolated {m.get("isolated", 0):4.0%}'
                      + extra)

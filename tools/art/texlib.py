@@ -403,8 +403,48 @@ def row_std(img, x0=0, width=N):
 
 
 def banding(img, radii=(2, 3, 4, 5)):
-    """(row_std over the full width, largest row_std of the centre slices of thin trunks of the given radii)."""
-    return row_std(img), max(row_std(img, 8 - r, 2 * r) for r in radii)
+    """(row_std over the full width, largest row_std of the crops that thin trunks of the given radii show in game,
+    TRUNK_OFFSETS)."""
+    return row_std(img), max(row_std(img, u, 2 * r) for r in radii for u in TRUNK_OFFSETS[r - 1])
+
+
+# Left edge (u, px) of the bark crop on the north, west, south and east side of a thin trunk of radius 1-7: a copy of
+# TrunkTemplates.OFFSETS (src/client/java/.../datagen/TrunkTemplates.java); check.py fails when the two differ.
+TRUNK_OFFSETS = (
+    (4, 6, 8, 10),
+    (0, 4, 8, 12),
+    (0, 6, 3, 10),
+    (0, 8, 2, 6),
+    (0, 6, 2, 4),
+    (0, 4, 1, 3),
+    (0, 2, 0, 1),
+)
+
+
+def ring_drop(img, x0, width, k=3):
+    """Largest step of a single row of the crop x0 .. x0 + width - 1 (with wrap) out of the rows around it: the mean luma
+    of the row against the median of the k rows above and the k rows below it (with wrap), darker or lighter. A dark
+    cross fissure or a pale flake over the whole width of a narrow crop reads in game as a ring around a thin trunk at
+    the same height in every block ('bamboo')."""
+    l = luma(img[..., :3])
+    cols = [(x0 + i) % N for i in range(width)]
+    m = l[:, cols].mean(axis=1)
+    out = 0.0
+    for y in range(N):
+        around = [m[(y + d) % N] for d in range(-k, k + 1) if d != 0]
+        out = max(out, abs(float(np.median(around) - m[y])))
+    return out
+
+
+# Largest ring_drop allowed on a bark, by radius (lint.py and the selection of recipes.bark_score). Vanilla 26.3 logs
+# at the same crops (birch aside, whose dark lenticels are rings on purpose): radius 1 15-35 (jungle 35, the others
+# at most 28), radius 2 8-26, radius 3-7 4-25.
+RING_CAPS = {1: 32.0, 2: 26.0, 3: 26.0, 4: 26.0, 5: 26.0, 6: 26.0, 7: 26.0}
+
+
+def rings(img, radii=range(1, 8)):
+    """radius -> the largest ring_drop over the four crops the game shows on a trunk of that radius (TRUNK_OFFSETS)."""
+    return {r: max(ring_drop(img, u, 2 * r) for u in TRUNK_OFFSETS[r - 1]) for r in radii}
 
 
 def grain(img):

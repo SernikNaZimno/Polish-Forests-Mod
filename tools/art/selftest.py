@@ -105,6 +105,10 @@ def run():
     band = good.copy()
     band[3:5, :, :3] = np.minimum(band[3:5, :, :3].astype(int) + 45, 255)
     check(any('banding' in e for e in errs(band, bark)), 'lint: misses horizontal banding at the block period')
+    ring = good.copy()                                  # a dark cross fissure over one face of a radius 1 trunk
+    ring[9, 4:6, :3] = 30
+    check(any('rings' in e or 'ring at every block' in e for e in errs(ring, bark)),
+          'lint: misses a ring at every block on a thin trunk (bamboo)')
     loud = good.copy()                                  # too much contrast: every other column near black
     loud[:, ::2, :3] = 20
     check(any('standard deviation' in e for e in errs(loud, bark)), 'lint: misses a too contrasted bark')

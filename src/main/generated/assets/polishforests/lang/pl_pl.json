@@ -208,5 +208,15 @@
   "polishforests.zone.timberline": "górna granica lasu",
   "polishforests.zone.tree_row": "szpaler olszy nad ciekiem",
   "polishforests.zone.willow_carr": "łozowisko",
-  "polishforests.zone.willow_scrub": "wiklina nadrzeczna"
+  "polishforests.zone.willow_scrub": "wiklina nadrzeczna",
+  "tag.item.polishforests.ash_logs": "Pnie jesionu wyniosłego",
+  "tag.item.polishforests.beech_logs": "Pnie buka zwyczajnego",
+  "tag.item.polishforests.birch_logs": "Pnie brzozy",
+  "tag.item.polishforests.hornbeam_logs": "Pnie grabu zwyczajnego",
+  "tag.item.polishforests.linden_logs": "Pnie lipy drobnolistnej",
+  "tag.item.polishforests.norway_maple_logs": "Pnie klonu zwyczajnego",
+  "tag.item.polishforests.oak_logs": "Pnie dębu szypułkowego",
+  "tag.item.polishforests.scots_pine_logs": "Pnie sosny zwyczajnej",
+  "tag.item.polishforests.spruce_logs": "Pnie świerka pospolitego",
+  "tag.item.polishforests.trunks": "Cienkie pnie"
 }

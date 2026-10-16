@@ -8,7 +8,8 @@ Checks, in order:
    tools/art/overrides/ is named after a texture of the recipes (a misnamed correction would never ship);
 3. the style lint (lint.py) passes;
 4. CREDITS.md is up to date;
-5. the self-test of the library and the lint (selftest.py) passes.
+5. the self-test of the library and the lint (selftest.py) passes;
+6. texlib.TRUNK_OFFSETS, the crops of thin trunks the lint measures, equals TrunkTemplates.OFFSETS of the game.
 Exit status 0 when everything passes, 1 otherwise; the fix is usually 'python tools/art/generate.py' (or
 './gradlew generateArt'), which rewrites the textures and CREDITS.md.
 
@@ -16,6 +17,7 @@ Usage: python tools/art/check.py   (or ./gradlew checkArt, which also finds the 
 """
 import json
 import os
+import re
 import sys
 
 import numpy as np
@@ -26,10 +28,27 @@ import credits  # noqa: E402
 import generate  # noqa: E402
 import lint  # noqa: E402
 import selftest  # noqa: E402
+import texlib as t  # noqa: E402
 
 
 def rel(path):
     return os.path.relpath(path, generate.ROOT).replace('\\', '/')
+
+
+def offsets_errors():
+    """texlib.TRUNK_OFFSETS (the crops the lint measures) must equal TrunkTemplates.OFFSETS (the crops the game shows)."""
+    java = os.path.join(generate.ROOT, 'src', 'client', 'java', 'pl', 'polishforests', 'client', 'datagen',
+                        'TrunkTemplates.java')
+    try:
+        with open(java, encoding='utf-8') as f:
+            src = f.read()
+    except OSError as e:
+        return [f'cannot read {rel(java)}: {e}']
+    m = re.search(r'OFFSETS\s*=\s*\{(.*?)\};', src, re.S)
+    rows = [tuple(int(v) for v in r.split(',')) for r in re.findall(r'\{\s*([\d\s,]+?)\s*\}', m.group(1))] if m else []
+    if rows != [tuple(r) for r in t.TRUNK_OFFSETS]:
+        return [f'texlib.TRUNK_OFFSETS {list(t.TRUNK_OFFSETS)} differs from TrunkTemplates.OFFSETS {rows}']
+    return []
 
 
 def main():
@@ -71,6 +90,7 @@ def main():
             if f.lower().endswith('.png') and f[:-4] not in built:
                 errors.append(f'tools/art/overrides/{f} matches no texture of tools/art/recipes.py (names: '
                               f'<texture name>.png, e.g. oak_bark.png)')
+    errors += offsets_errors()
     lint_errors, report = lint.lint_all(built)
     errors += ['lint: ' + e for e in lint_errors]
     if not credits.is_current():

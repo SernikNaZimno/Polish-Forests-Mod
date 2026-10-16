@@ -49,17 +49,17 @@ final class ModBlockModels extends FabricModelProvider {
 			.select(Direction.WEST, BlockModelGenerators.X_ROT_270.then(BlockModelGenerators.Y_ROT_270))
 			.select(Direction.EAST, BlockModelGenerators.X_ROT_270.then(BlockModelGenerators.Y_ROT_90));
 
-	/** Bark textures of a trunk (one or two variants with the same top and bottom rows). */
+	/** Bark textures of a trunk (one to three variants with the same top and bottom rows). */
 	static List<Identifier> barks(TreeTrunk t) {
 		return switch (t) {
 			case SCOTS_PINE -> List.of(own("scots_pine_bark"), own("scots_pine_bark_2"));
-			case SCOTS_PINE_UPPER -> List.of(own("scots_pine_upper_bark"));
+			case SCOTS_PINE_UPPER -> List.of(own("scots_pine_upper_bark"), own("scots_pine_upper_bark_2"));
 			// D2: birch and spruce take the vanilla bark by id (no copy of the file).
 			case SPRUCE -> List.of(vanilla("spruce_log"));
 			case BIRCH -> List.of(vanilla("birch_log"));
 			case OAK -> List.of(own("oak_bark"), own("oak_bark_2"));
 			case HORNBEAM -> List.of(own("hornbeam_bark"));
-			case LINDEN -> List.of(own("linden_bark"), own("linden_bark_2"));
+			case LINDEN -> List.of(own("linden_bark"), own("linden_bark_2"), own("linden_bark_3"));
 			case BEECH -> List.of(own("beech_bark"));
 			// The shared substitute bark of the broad-crowned archetype (§1.1).
 			case ASH, NORWAY_MAPLE -> List.of(own("broadleaf_bark"));

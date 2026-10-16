@@ -6,9 +6,8 @@
 - pnie.png: trunk columns as the game will stack them: the lower pine bark with its two variants in a random order,
   then the "mirror", and one column per broadleaf bark (variants in a random order); on a 16 px wide and on a 6 px
   wide (thin trunk) face;
-- pnie_cienkie.png: thin trunks of radius 2, 3 and 5 px, two faces each with the game's face shading (0.8 for a
-  north or south face, 0.6 for an east or west face), all faces showing the centre slice of the texture as planned
-  for V2: horizontal banding and repeated motifs show here;
+- pnie_cienkie.png: thin trunks of radius 1, 2 and 4 px, the four faces of each with the crops the game shows
+  (TrunkTemplates.OFFSETS) and the game's face shading: rings at every block ("bamboo") and repeated motifs show here;
 - dystans.png: the trunk columns averaged down like the game's mipmaps at 4 and 8 blocks per pixel step (levels 2
   and 3, box filter), how a trunk reads from a distance.
 
@@ -103,7 +102,7 @@ def trunk_columns(built):
     rng = t.Rng('sheet/trunks')
     pine = np.concatenate([column(built, 'scots_pine_upper_bark', 4, rng), column(built, 'scots_pine_bark', 8, rng)])
     out = [('scots_pine', pine)]
-    for name in ('oak_bark', 'hornbeam_bark', 'linden_bark', 'beech_bark'):
+    for name in ('oak_bark', 'hornbeam_bark', 'linden_bark', 'beech_bark', 'broadleaf_bark'):
         out.append((name, column(built, name, 12, rng)))
     return out
 
@@ -133,22 +132,25 @@ def shade(img, f):
 
 
 def thin_trunks(built, path):
-    """Thin trunks (radius 2, 3, 5 px), 8 blocks high, two faces each (shading 0.8 and 0.6), scale 4."""
+    """Thin trunks of radius 1, 2 and 4 px, 8 blocks high, scale 4: the four faces (north, west, south, east) with the
+    crops the game shows (texlib.TRUNK_OFFSETS, as TrunkTemplates.OFFSETS) and the game's face shading (0.8 north and
+    south, 0.6 west and east). Rings at the block period ("bamboo", lint rule rings) and repeated motifs show here."""
     k = 4
     columns = [(n, c[:8 * 16]) for n, c in trunk_columns(built)]
-    radii = (2, 3, 5)
-    cell = sum(2 * 2 * r * k + 12 for r in radii) + 20
+    radii = (1, 2, 4)
+    cell = sum(4 * 2 * r * k + 12 for r in radii) + 20
     sheet = Image.new('RGBA', (len(columns) * cell + 20, 8 * 16 * k + 50), BG)
     d = ImageDraw.Draw(sheet)
     for i, (name, col) in enumerate(columns):
         x = 20 + i * cell
         d.text((x, 6), name, fill=(20, 20, 20, 255))
         for r in radii:
-            sl = np.ascontiguousarray(col[:, 8 - r:8 + r])
-            pair = np.concatenate([shade(sl, 0.8), shade(sl, 0.6)], axis=1)
-            sheet.paste(scale(Image.fromarray(pair, 'RGBA'), k), (x, 36))
+            faces = []
+            for u, f in zip(t.TRUNK_OFFSETS[r - 1], (0.8, 0.6, 0.8, 0.6)):
+                faces.append(shade(np.ascontiguousarray(col[:, [(u + j) % t.N for j in range(2 * r)]]), f))
+            sheet.paste(scale(Image.fromarray(np.concatenate(faces, axis=1), 'RGBA'), k), (x, 36))
             d.text((x, 22), f'r={r}', fill=(20, 20, 20, 255))
-            x += 2 * 2 * r * k + 12
+            x += 4 * 2 * r * k + 12
     sheet.convert('RGB').save(path, optimize=True)
 
 

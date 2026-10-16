@@ -37,8 +37,12 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  * and the face of the block, which is exactly where a gap would be without the reach. Children come from any side on
  * their own, so a block knows neither its children nor their radii and the models are static JSON
  * ({@code template_trunk_r1…r7}, made by the datagen). The core of the block (a cube of the radius around the center)
- * fills the elbow when the trunk turns. The reach outside the block is visual only: the shape for collision and the
- * outline is the core plus the own half of the arm ({@link #shape}).
+ * fills the elbow when the trunk turns. The reach outside the block is visual only. The shape for collision, the outline
+ * and ray casts is a prism of the radius through the whole block along the parent axis ({@link #shape}): a trunk block
+ * shows its own lower half and, through the reach of its child, the upper half, and only a block-long shape lets the
+ * crosshair hit every visible part of a straight trunk (with the core and the own half only, 8 − r px of every segment
+ * could be seen but not targeted; V2 review). A tip or an elbow is thus 8 − r px longer than drawn, as many thin vanilla
+ * blocks are.
  *
  * <p>The shape is not a full block, so the trunk lets the sky light through (no shade, light dampening 0, 1 when
  * waterlogged) and does not hide the faces of its neighbors. It is in {@code #minecraft:logs} through the species tags,
@@ -57,8 +61,8 @@ public final class TrunkBlock extends Block implements SimpleWaterloggedBlock {
 
 	static {
 		for (int r = MIN_RADIUS; r <= MAX_RADIUS; r++) {
-			// The core and the arm from the center to the north face, rotated to the six parents.
-			VoxelShape north = Shapes.or(Block.cube(2 * r), Block.boxZ(2 * r, 0, 8));
+			// A prism through the whole block along z, rotated to the six parents (north and south give the same box).
+			VoxelShape north = Block.boxZ(2 * r, 0, 16);
 			Map<Direction, VoxelShape> rotated = Shapes.rotateAll(north);
 			for (Direction d : Direction.values()) {
 				SHAPES[d.get3DDataValue()][r - 1] = rotated.get(d);
@@ -72,7 +76,7 @@ public final class TrunkBlock extends Block implements SimpleWaterloggedBlock {
 				.setValue(WATERLOGGED, false));
 	}
 
-	/** The shape of a trunk of the radius with its parent on the given side: the core and the own half of the arm. */
+	/** The shape of a trunk of the radius with its parent on the given side: a prism through the block along that axis. */
 	public static VoxelShape shape(Direction parent, int radius) {
 		return SHAPES[parent.get3DDataValue()][radius - 1];
 	}

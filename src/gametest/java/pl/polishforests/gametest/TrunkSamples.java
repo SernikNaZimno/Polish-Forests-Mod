@@ -5,6 +5,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -18,9 +19,12 @@ import net.minecraft.client.renderer.texture.MissingTextureAtlasSprite;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.protocol.game.ClientboundLightUpdatePacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LanternBlock;
@@ -28,6 +32,8 @@ import net.minecraft.world.level.block.LeavesBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
 import pl.polishforests.PolishForests;
 import pl.polishforests.block.ModBlocks;
 import pl.polishforests.block.RegistrySnapshot;
@@ -81,6 +87,8 @@ final class TrunkSamples {
 			sp.getServer().runCommand("time set " + NOON);
 			sp.getServer().runCommand("weather clear");
 			sp.getServer().runCommand("difficulty peaceful");
+			// No chat line "Your game mode has been updated" over the survival screenshots (V2 review).
+			sp.getServer().runCommand("gamerule send_command_feedback false");
 			String registry = sp.getServer().computeOnServer(s -> checkRegistry());
 			PolishForests.LOG.info("[samples] {}", registry);
 			int[] origin = sp.getServer().computeOnServer(TrunkSamples::build);
@@ -111,15 +119,28 @@ final class TrunkSamples {
 			}
 			shot(context, sp, b, p + "joints", 9.5, 4.5, Board.JOINTS_Z - 6, 0, 12, 3);
 			shot(context, sp, b, p + "joints_side", 21, 4.5, Board.JOINTS_Z - 2, 60, 12, 3);
-			shot(context, sp, b, p + "chunk_boundary", 16, 3.5, Board.CHUNK_ROW_Z - 4, 0, 12, 3);
+			// From the south, facing north: the joints row lies north of the branch (V2 review: the camera stood inside it).
+			shot(context, sp, b, p + "chunk_boundary", 16, 3.5, Board.CHUNK_ROW_Z + 4, 180, 12, 3);
 			shot(context, sp, b, p + "water", 35, 6, Board.POOL_Z0 - 3, 0, 32, 3);
 			shot(context, sp, b, p + "water_under", 31.5, 1.6, Board.POOL_Z0 + 1.5, 0, 0, 3);
 			shot(context, sp, b, p + "pine", Board.PINE_X + 0.5, 11, Board.PINE_Z - 20, 0, -8, 30);
 			shot(context, sp, b, p + "pine_crown", Board.PINE_X + 0.5, 19, Board.PINE_Z - 7, 0, -12, 3);
+			// Trunks on grass, against a step of the ground and among leaves (the light of the trunk base, V2 review).
+			shot(context, sp, b, p + "ground", Board.GROUND_X0 + 9, 4.5, Board.GROUND_Z0 - 5, 0, 15, 3);
+			shot(context, sp, b, p + "ground_leaves", Board.GROUND_X0 + 13, 6.5, Board.GROUND_Z0 - 1.5, -20, 15, 3);
+			far(context, sp, b, p);
 			// Night with lanterns at the joints: block light and ambient occlusion on the reaching parts.
 			sp.getServer().runCommand("time set " + NIGHT);
 			shot(context, sp, b, p + "joints_night", 9.5, 4.5, Board.JOINTS_Z - 6, 0, 12, 3);
 			sp.getServer().runCommand("time set " + NOON);
+			sp.getServer().runCommand("gamemode survival @a");
+			context.runOnClient(mc -> {
+				if (mc.gui.hud.isHidden()) {
+					mc.gui.hud.toggle();
+				}
+			});
+			hitbox(context, sp, b);
+			items(context, sp, b, p);
 			breaking(context, sp, b, p);
 		}
 	}
@@ -144,6 +165,7 @@ final class TrunkSamples {
 			if (missing.isEmpty()) {
 				PolishForests.LOG.info("[samples] the client has all {} blocks of the board{}", BOARD.size(),
 						round == 0 ? "" : " after " + round + " resend(s)");
+				syncLight(context, sp);
 				return;
 			}
 			PolishForests.LOG.warn("[samples] the client misses {} of {} blocks of the board (first at {}), sending them again",
@@ -151,6 +173,52 @@ final class TrunkSamples {
 			sp.getServer().runOnServer(s -> missing.forEach(pos -> s.overworld().getChunkSource().blockChanged(pos)));
 		}
 		throw new AssertionError("The client still misses blocks of the board after 3 resends");
+	}
+
+	/**
+	 * The client must also have the light of the board: in one run without Sodium the client kept block light 0 in the
+	 * section above the boundary (the trunks there were dark at night, the floor by the lanterns lit), while the server
+	 * had the lantern light. The test compares the block and sky light of every board position and sends the light of
+	 * the chunks that differ again.
+	 */
+	private static void syncLight(ClientGameTestContext context, TestSingleplayerContext sp) {
+		for (int round = 0; round < 3; round++) {
+			context.waitTicks(20);
+			Map<BlockPos, Integer> server = sp.getServer().computeOnServer(s -> {
+				Map<BlockPos, Integer> m = new LinkedHashMap<>();
+				BOARD.keySet().forEach(pos -> m.put(pos, light(s.overworld(), pos)));
+				return m;
+			});
+			List<BlockPos> differ = context.computeOnClient(mc -> server.entrySet().stream()
+					.filter(e -> light(mc.level, e.getKey()) != e.getValue()).map(Map.Entry::getKey).toList());
+			if (differ.isEmpty()) {
+				PolishForests.LOG.info("[samples] the client has the light of the board{}", round == 0 ? "" : " after "
+						+ round + " resend(s)");
+				// With Sodium a second run drew no mesh for the platform in whole chunks although the client had the
+				// blocks (a stale section mesh): rebuild every section once the blocks and the light are right.
+				context.runOnClient(mc -> mc.levelExtractor.allChanged());
+				context.waitTicks(60);
+				return;
+			}
+			List<ChunkPos> chunks = differ.stream().map(ChunkPos::containing).distinct().toList();
+			PolishForests.LOG.warn("[samples] the client has other light at {} of {} board positions (first at {}), sending "
+					+ "the light of {} chunk(s) again", differ.size(), BOARD.size(), differ.getFirst().toShortString(), chunks.size());
+			sp.getServer().runOnServer(s -> {
+				ServerLevel level = s.overworld();
+				BitSet all = new BitSet();
+				all.set(0, level.getLightEngine().getLightSectionCount());
+				for (ChunkPos c : chunks) {
+					ClientboundLightUpdatePacket packet = new ClientboundLightUpdatePacket(c, level.getLightEngine(), all, all);
+					level.players().forEach(pl -> pl.connection.send(packet));
+				}
+			});
+		}
+		throw new AssertionError("The client still has other light than the server on the board after 3 resends");
+	}
+
+	/** Block light × 16 + sky light at a position. */
+	private static int light(net.minecraft.world.level.Level level, BlockPos pos) {
+		return level.getBrightness(LightLayer.BLOCK, pos) * 16 + level.getBrightness(LightLayer.SKY, pos);
 	}
 
 	// ------------------------------------------------------------------ registry and models
@@ -204,6 +272,9 @@ final class TrunkSamples {
 		static final int POOL_Z0 = 8;
 		static final int PINE_X = 36;
 		static final int PINE_Z = 30;
+		/** The ground area (grass, a step, leaves): x 26..44, z 40..48. */
+		static final int GROUND_X0 = 26;
+		static final int GROUND_Z0 = 40;
 
 		/** z of the reach row of a direction index (down, up, north, south, west, east). */
 		static int reachRow(int i) {
@@ -319,6 +390,7 @@ final class TrunkSamples {
 		}
 		pool(w);
 		pine(w);
+		ground(w);
 		PolishForests.LOG.info("[samples] {} blocks placed", w.placed);
 		BOARD.clear();
 		BOARD.putAll(w.states);
@@ -356,9 +428,59 @@ final class TrunkSamples {
 	}
 
 	/**
-	 * A Scots pine from a pipe model: radius² of the trunk = 1 + Σ radius² of the branches above (Leonardo's rule, n = 2),
-	 * the lower two thirds with the lower bark, the upper third with the "mirror"; branches in the top third (some of
-	 * them climbing one block on the way, a step on the diagonal), dead stubs below, leaves at the branch tips.
+	 * Trunks standing on grass (the pale barks, where a hard light step at the base showed most), on the lower and the
+	 * upper level of a step of the ground (a side of the base against the slope) and a trunk with a branch among leaves.
+	 */
+	private static void ground(Builder w) {
+		int x0 = Board.GROUND_X0;
+		int z0 = Board.GROUND_Z0;
+		BlockState grass = Blocks.GRASS_BLOCK.defaultBlockState();
+		for (int x = x0; x <= x0 + 18; x++) {
+			for (int z = z0; z <= z0 + 8; z++) {
+				boolean step = x >= x0 + 8 && x <= x0 + 12 && z >= z0 + 4;
+				w.put(x, 1, z, step ? Blocks.DIRT.defaultBlockState() : grass);
+				if (step) {
+					w.put(x, 2, z, grass);                       // the step: one block higher south of z0 + 4
+				}
+			}
+		}
+		TreeTrunk[] pale = {TreeTrunk.BIRCH, TreeTrunk.HORNBEAM, TreeTrunk.BEECH, TreeTrunk.SCOTS_PINE};
+		for (int i = 0; i < pale.length; i++) {
+			for (int dy = 2; dy <= 5; dy++) {
+				w.trunk(pale[i], x0 + 1 + 2 * i, dy, z0 + 2, 3 + i, Direction.DOWN);
+			}
+		}
+		for (int dy = 2; dy <= 5; dy++) {
+			w.trunk(TreeTrunk.OAK, x0 + 9, dy, z0 + 3, 5, Direction.DOWN);       // below the step, its south side against it
+			w.trunk(TreeTrunk.LINDEN, x0 + 11, dy + 1, z0 + 5, 4, Direction.DOWN); // on the step
+		}
+		BlockState leaves = Blocks.OAK_LEAVES.defaultBlockState().setValue(LeavesBlock.PERSISTENT, true);
+		int lx = x0 + 15;
+		int lz = z0 + 3;
+		for (int dy = 2; dy <= 7; dy++) {
+			w.trunk(TreeTrunk.HORNBEAM, lx, dy, lz, 3, Direction.DOWN);
+		}
+		w.trunk(TreeTrunk.HORNBEAM, lx + 1, 6, lz, 2, Direction.WEST);
+		w.trunk(TreeTrunk.HORNBEAM, lx + 2, 6, lz, 2, Direction.WEST);
+		for (int dx = -1; dx <= 3; dx++) {
+			for (int dz = -1; dz <= 1; dz++) {
+				for (int dy = 5; dy <= 8; dy++) {
+					w.putIfAir(lx + dx, dy, lz + dz, leaves);
+				}
+			}
+		}
+	}
+
+	/** Share of the height above which the sample pine has the "mirror" (V2 review: about the upper half, docs/04 V6). */
+	private static final double MIRROR_START = 0.5;
+	/** Cross-section (px²) per block below the crown base added for the branches lost to self-pruning (stem taper). */
+	private static final double TAPER = 1.0;
+
+	/**
+	 * A Scots pine from a pipe model: radius² of the trunk = 1 + Σ radius² of the branches above (Leonardo's rule, n = 2)
+	 * plus a taper below the crown (the branches lost to self-pruning, {@link #TAPER}), the lower half with the lower bark,
+	 * the upper half with the "mirror" ({@link #MIRROR_START}); branches in the top third (some of them climbing one block
+	 * on the way, a step on the diagonal), dead stubs below, leaves at the branch tips.
 	 */
 	private static void pine(Builder w) {
 		int x0 = Board.PINE_X;
@@ -376,6 +498,7 @@ final class TrunkSamples {
 		stubs.put(11, 2);
 		stubs.put(13, 1);
 		Direction[] around = {Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST};
+		int crownBase = branches.getFirst().dy();
 		for (int dy = 1; dy <= height; dy++) {
 			double area = 1;
 			for (Branch br : branches) {
@@ -384,8 +507,10 @@ final class TrunkSamples {
 			for (int s : stubs.keySet()) {
 				area += s >= dy ? 1 : 0;
 			}
+			// Taper below the crown: the cross-section of the branches lost to self-pruning grows towards the base.
+			area += Math.max(0, crownBase - dy) * TAPER;
 			int r = (int) Math.round(Math.sqrt(area));
-			TreeTrunk t = dy > height * 2 / 3 ? TreeTrunk.SCOTS_PINE_UPPER : TreeTrunk.SCOTS_PINE;
+			TreeTrunk t = dy > height * MIRROR_START ? TreeTrunk.SCOTS_PINE_UPPER : TreeTrunk.SCOTS_PINE;
 			w.trunk(t, x0, dy, z0, Math.min(r, TrunkBlock.MAX_RADIUS), Direction.DOWN);
 		}
 		BlockState leaves = Blocks.SPRUCE_LEAVES.defaultBlockState().setValue(LeavesBlock.PERSISTENT, true);
@@ -399,8 +524,7 @@ final class TrunkSamples {
 				if (br.climbs() && k == br.length() / 2 + 1) {
 					y++;                                       // one block up: the child above its parent
 					w.trunk(TreeTrunk.SCOTS_PINE_UPPER, x, y, z, r, Direction.DOWN);
-					parent = Direction.DOWN;
-					continue;
+					continue;                                  // the next block hangs on this one from the side again
 				}
 				x += br.dir().getStepX();
 				z += br.dir().getStepZ();
@@ -442,18 +566,90 @@ final class TrunkSamples {
 	}
 
 	/**
+	 * Far views through a narrow field of view (30 degrees) of the elbows and joints and of the bark switch of the pine,
+	 * 48 and 96 blocks away, each twice with the camera moved 0.1 block sideways: faces of a cap and a reach lying close
+	 * to each other would fight in the depth buffer and change between the two frames (V2 review).
+	 */
+	private static void far(ClientGameTestContext context, TestSingleplayerContext sp, Board b, String prefix) {
+		int fov = context.computeOnClient(mc -> mc.options.fov().get());
+		context.runOnClient(mc -> mc.options.fov().set(30));
+		for (int d : new int[] {48, 96}) {
+			for (int k = 0; k < 2; k++) {
+				String suffix = d + (k == 0 ? "" : "_shift");
+				// From 10 blocks up, over the branch of the chunk row 4 blocks in front of the joints.
+				double pitch = Math.toDegrees(Math.atan2(10 - 2.5, d));
+				shot(context, sp, b, prefix + "far_joints_" + suffix, 10.5 + 0.1 * k, 10, Board.JOINTS_Z + d, 180, pitch, 2);
+				shot(context, sp, b, prefix + "far_pine_" + suffix, Board.PINE_X + 0.5 - d, 12, Board.PINE_Z + 0.5 + 0.1 * k, -90,
+						0, 2);
+			}
+		}
+		context.runOnClient(mc -> mc.options.fov().set(fov));
+	}
+
+	/**
+	 * The crosshair targets every visible part of a straight trunk (V2 review: with the core and the own half of the arm as
+	 * the shape, the upper 8 - r px of each segment, drawn by the reach of the child, could not be targeted): a survival
+	 * player aims at heights 2/16, 12/16 and 15/16 of the second block of the standing columns of radius 1 and 4.
+	 */
+	private static void hitbox(ClientGameTestContext context, TestSingleplayerContext sp, Board b) {
+		List<String> misses = new ArrayList<>();
+		for (int r : new int[] {1, 4}) {
+			BlockPos target = new BlockPos(b.x0() + Board.radiusX(r), b.y0() + 2, b.z0() + Board.COLUMNS_Z);
+			double ex = target.getX() + 0.5;
+			double feet = b.y0() + 1;
+			double ez = target.getZ() - 2.5;
+			for (int sixteenths : new int[] {2, 12, 15}) {
+				double ty = target.getY() + sixteenths / 16.0;
+				double pitch = -Math.toDegrees(Math.atan2(ty - (feet + 1.62), target.getZ() + 0.5 - ez));
+				sp.getServer().runCommand(String.format(Locale.ROOT, "tp @a %.3f %.3f %.3f 0 %.3f", ex, feet, ez, pitch));
+				context.waitTicks(4);
+				String hit = context.computeOnClient(mc -> mc.hitResult instanceof BlockHitResult h
+						&& h.getType() == HitResult.Type.BLOCK ? h.getBlockPos().toShortString() : String.valueOf(mc.hitResult));
+				PolishForests.LOG.info("[samples] hitbox: radius {} at {}/16: hit {}", r, sixteenths, hit);
+				if (!hit.equals(target.toShortString())) {
+					misses.add("radius " + r + " at " + sixteenths + "/16 hit " + hit + " instead of " + target.toShortString());
+				}
+			}
+		}
+		if (!misses.isEmpty()) {
+			throw new AssertionError("The crosshair misses visible parts of trunks: " + misses);
+		}
+	}
+
+	/**
+	 * The trunk items: nine in the hotbar (the first, oak, in the hand) and three dropped on the grass in front of the
+	 * player.
+	 */
+	private static void items(ClientGameTestContext context, TestSingleplayerContext sp, Board b, String prefix) {
+		TreeTrunk[] hotbar = {TreeTrunk.OAK, TreeTrunk.SCOTS_PINE, TreeTrunk.SCOTS_PINE_UPPER, TreeTrunk.SPRUCE, TreeTrunk.BIRCH,
+				TreeTrunk.HORNBEAM, TreeTrunk.LINDEN, TreeTrunk.BEECH, TreeTrunk.ASH};
+		for (int i = 0; i < hotbar.length; i++) {
+			sp.getServer().runCommand("item replace entity @a hotbar." + i + " with polishforests:" + hotbar[i].id());
+		}
+		double x = b.x0() + Board.GROUND_X0 + 4.5;
+		double z = b.z0() + Board.GROUND_Z0 - 3.5;
+		TreeTrunk[] dropped = {TreeTrunk.SCOTS_PINE_UPPER, TreeTrunk.BEECH, TreeTrunk.NORWAY_MAPLE};
+		for (int i = 0; i < dropped.length; i++) {
+			sp.getServer().runCommand(String.format(Locale.ROOT,
+					"summon item %.2f %d %.2f {Item:{id:\"polishforests:%s\",count:1},PickupDelay:32767s}", x - 0.8 + 0.8 * i,
+					b.y0() + 1, z + 2, dropped[i].id()));
+		}
+		sp.getServer().runCommand(String.format(Locale.ROOT, "tp @a %.2f %d %.2f 0 35", x, b.y0() + 1, z));
+		context.waitTicks(40);
+		context.runOnClient(mc -> mc.gui.toastManager().clear());   // "New recipes unlocked" (charcoal from the trunks)
+		context.waitTicks(2);
+		context.takeScreenshot(TestScreenshotOptions.of(prefix + "items").disableCounterPrefix());
+		sp.getServer().runCommand("clear @a");
+		sp.getServer().runCommand("kill @e[type=item]");
+	}
+
+	/**
 	 * A survival player on the platform breaks a standing birch trunk of radius 4 by hand: a screenshot of the crosshair outline
 	 * with the cracks and hit particles halfway, then of the destroy particles right after it breaks; the drop must be the
 	 * log of the species (loot of radius ≥ 3).
 	 */
 	private static void breaking(ClientGameTestContext context, TestSingleplayerContext sp, Board b, String prefix) {
 		BlockPos target = new BlockPos(b.x0() + Board.radiusX(4), b.y0() + 2, b.z0() + Board.COLUMNS_Z);
-		sp.getServer().runCommand("gamemode survival @a");
-		context.runOnClient(mc -> {
-			if (mc.gui.hud.isHidden()) {
-				mc.gui.hud.toggle();
-			}
-		});
 		sp.getServer().runCommand(String.format(Locale.ROOT, "tp @a %.2f %d %.2f 0 0", target.getX() + 0.5, b.y0() + 1, target.getZ() - 2.5));
 		context.waitTicks(40);
 		context.getInput().lookAt(target);
@@ -481,5 +677,14 @@ final class TrunkSamples {
 			throw new AssertionError("A trunk of radius 4 of " + species.id() + " dropped " + drops + " instead of " + log);
 		}
 		sp.getServer().runCommand("gamemode spectator @a");
+		sp.getServer().runCommand("kill @e[type=item]");
+		context.runOnClient(mc -> {
+			if (!mc.gui.hud.isHidden()) {
+				mc.gui.hud.toggle();
+			}
+		});
+		// The stub of the trunk above the broken block from a little below its end (rings of its reach, half a block
+		// above the broken block's floor): the eye of the spectator is 1.62 above the given position.
+		shot(context, sp, b, prefix + "stub", Board.radiusX(4) + 0.5, 0.3, Board.COLUMNS_Z - 2, 0, -12, 2);
 	}
 }

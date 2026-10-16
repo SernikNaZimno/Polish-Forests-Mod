@@ -207,5 +207,15 @@
   "polishforests.zone.timberline": "timberline",
   "polishforests.zone.tree_row": "row of alders along a stream",
   "polishforests.zone.willow_carr": "willow carr",
-  "polishforests.zone.willow_scrub": "riverside willow scrub"
+  "polishforests.zone.willow_scrub": "riverside willow scrub",
+  "tag.item.polishforests.ash_logs": "European Ash Trunks",
+  "tag.item.polishforests.beech_logs": "European Beech Trunks",
+  "tag.item.polishforests.birch_logs": "Birch Trunks",
+  "tag.item.polishforests.hornbeam_logs": "Hornbeam Trunks",
+  "tag.item.polishforests.linden_logs": "Small-leaved Linden Trunks",
+  "tag.item.polishforests.norway_maple_logs": "Norway Maple Trunks",
+  "tag.item.polishforests.oak_logs": "Pedunculate Oak Trunks",
+  "tag.item.polishforests.scots_pine_logs": "Scots Pine Trunks",
+  "tag.item.polishforests.spruce_logs": "Norway Spruce Trunks",
+  "tag.item.polishforests.trunks": "Thin Trunks"
 }
