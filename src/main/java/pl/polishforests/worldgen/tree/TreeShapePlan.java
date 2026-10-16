@@ -69,8 +69,8 @@ public final class TreeShapePlan {
 	private static final int[][] BANDS = {
 			// canopy min, subcanopy min, subcanopy max, regeneration max
 			{6, 3, 5, 2}, // pole stage
-			{13, 5, 11, 4}, // mature
-			{16, 6, 14, 4}, // old growth
+			{13, 5, 12, 4}, // mature
+			{16, 5, 15, 4}, // old growth
 	};
 	/** Height of a subcanopy tree as a share of a canopy tree of the species, before its band caps it. */
 	private static final double SUBCANOPY_HEIGHT = 0.62;
@@ -235,12 +235,15 @@ public final class TreeShapePlan {
 			double droop = Math.max(0, -shape.bend()) * crownR * 1.2;
 			double crownBase;
 			switch (r.layer()) {
-				case CANOPY -> crownBase = Math.max(height * (1 - ratio), minLeafY + leafV + 0.5 + droop);
+				case CANOPY -> crownBase = Math.max(height * (1 - ratio), minLeafY + leafV + 0.5 + droop + range(0, 2));
 				case SUBCANOPY -> {
-					height = Math.min(height * SUBCANOPY_HEIGHT, maxLeafY + 1 - leafV);
+					// Below the top of the band by up to three blocks (a third of a narrow band), so the subcanopy is no flat
+					// layer, but tall enough for a crown in the band.
+					double drop = range(0, Math.min(3, 0.3 * (maxLeafY - minLeafY)));
+					height = Math.max(minLeafY + 2.5, Math.min(height * SUBCANOPY_HEIGHT, maxLeafY + 1 - leafV - drop));
 					dbh *= SUBCANOPY_DBH;
 					crownR *= SUBCANOPY_CROWN;
-					crownBase = Math.max(height * (1 - Math.min(0.8, ratio * 1.15)), minLeafY + leafV + 0.5 + droop);
+					crownBase = Math.max(height * (1 - Math.min(0.8, ratio * 1.25)), minLeafY + leafV + 0.3 + droop);
 				}
 				default -> {
 					height = Math.min(REGENERATION_HEIGHT[age.ordinal()] * jh, maxLeafY + 1 - leafV * 0.7);

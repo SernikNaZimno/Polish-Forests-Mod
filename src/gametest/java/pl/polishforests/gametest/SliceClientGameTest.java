@@ -85,6 +85,7 @@ import pl.polishforests.worldgen.surface.ChunkSurface;
  * {@code -Pmodes=natural|present_day} a mode, {@code -Psites=<names>} some places (names of the table, e.g.
  * {@code oak_hornbeam_1,transect}); {@code -Psites=none} only checks the places, without screenshots.
  * {@code -Psites=samples} builds the sample board of the thin trunks instead (step V2, {@link TrunkSamples}).
+ * {@code -Psites=trees} plants the board of the tree planner instead (step V6, {@link TreeSamples}).
  */
 public final class SliceClientGameTest implements FabricClientGameTest {
 	private static final String SEED = "20260927";
@@ -145,6 +146,10 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 		String only = System.getProperty("polishforests.sites", "");
 		if (only.equals("samples")) {
 			TrunkSamples.run(context);
+			return;
+		}
+		if (only.equals("trees")) {
+			TreeSamples.run(context);
 			return;
 		}
 		boolean screenshots = !only.equals("none");

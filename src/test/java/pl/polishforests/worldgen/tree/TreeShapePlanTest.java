@@ -297,7 +297,9 @@ class TreeShapePlanTest {
 					assertEquals(TreeVoxels.LOWER, v.bark(v.parentIndex(transition)), r.toString());
 					double share = (v.woodY(transition) + 1) / v.height();
 					double mirror = new double[] {0.45, 0.5, 0.55}[age.ordinal()];
-					assertTrue(Math.abs(share - mirror) < 0.09, String.format(Locale.ROOT, "mirror at %.2f of %s", share, r));
+					// The zone starts on a whole block: one block of rounding is 1 / H of the height (small trees).
+					assertTrue(Math.abs(share - mirror) < 0.05 + 1.0 / v.height(), String.format(Locale.ROOT, "mirror at %.2f of %s",
+							share, r));
 					for (int i = 0; i < v.woodCount(); i++) {
 						if (v.woodY(i) < v.woodY(transition)) {
 							assertEquals(TreeVoxels.LOWER, v.bark(i), "lower bark below the zone in " + r);
