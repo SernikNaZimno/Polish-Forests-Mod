@@ -247,6 +247,72 @@ public final class TreeStandPlan {
 		return Arrays.copyOf(out, n);
 	}
 
+	/**
+	 * Read-only view of the world's candidate pattern for the planners of the vertical slice (crown territories, step
+	 * V5): the kept candidates of an area in world block coordinates, before any habitat, palette or gap rule, so a pure
+	 * function of the world seed. Kept states are memoized, so an instance serves one thread (one chunk being decorated
+	 * or one test); the results never depend on what it was asked before.
+	 */
+	public static final class Candidates {
+		/** Memoized cells after which the memo starts anew (a long-lived per-thread instance stays small). */
+		private static final int MAX_MEMO = 1 << 16;
+
+		private final long worldSeed;
+		private Pattern pattern;
+
+		public Candidates(long worldSeed) {
+			this.worldSeed = worldSeed;
+			this.pattern = new Pattern(worldSeed);
+		}
+
+		private Pattern pattern() {
+			if (pattern.kept.size() > MAX_MEMO) {
+				pattern = new Pattern(worldSeed);
+			}
+			return pattern;
+		}
+
+		/** Receives a kept candidate: its column in world block coordinates. */
+		@FunctionalInterface
+		public interface Visitor {
+			void accept(int x, int z);
+		}
+
+		/**
+		 * Calls the visitor for every kept candidate whose column lies in [minX, maxX] × [minZ, maxZ] (block coordinates,
+		 * inclusive), in the order of the cells (x major).
+		 */
+		public void forEach(int minX, int minZ, int maxX, int maxZ, Visitor visitor) {
+			Pattern pattern = pattern();
+			int gx0 = Math.floorDiv(minX, CELL);
+			int gx1 = Math.floorDiv(maxX, CELL);
+			int gz0 = Math.floorDiv(minZ, CELL);
+			int gz1 = Math.floorDiv(maxZ, CELL);
+			for (int gx = gx0; gx <= gx1; gx++) {
+				for (int gz = gz0; gz <= gz1; gz++) {
+					if (!pattern.kept(gx, gz)) {
+						continue;
+					}
+					long h = pattern.hash(gx, gz);
+					int x = gx * CELL + offsetX(h);
+					int z = gz * CELL + offsetZ(h);
+					if (x >= minX && x <= maxX && z >= minZ && z <= maxZ) {
+						visitor.accept(x, z);
+					}
+				}
+			}
+		}
+
+		/** Whether the column (x, z) holds a kept candidate. */
+		public boolean kept(int x, int z) {
+			Pattern pattern = pattern();
+			int gx = Math.floorDiv(x, CELL);
+			int gz = Math.floorDiv(z, CELL);
+			long h = pattern.hash(gx, gz);
+			return gx * CELL + offsetX(h) == x && gz * CELL + offsetZ(h) == z && pattern.kept(gx, gz);
+		}
+	}
+
 	private static int offsetX(long h) {
 		return (int) (h & (CELL - 1));
 	}
