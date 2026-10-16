@@ -441,7 +441,8 @@ final class NormsCensus {
 		Path file = Path.of(dir, name);
 		try {
 			Files.createDirectories(file.getParent());
-			Files.write(file, lines, StandardCharsets.UTF_8);
+			// LF on every system, as the files in docs/.
+			Files.writeString(file, String.join("\n", lines) + "\n", StandardCharsets.UTF_8);
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
 		}

@@ -402,7 +402,7 @@ public final class ForestCensus {
 			} else {
 				kind = species != null && species.path().startsWith("shrub/") ? Kind.SHRUB : Kind.TREE;
 			}
-			return new WoodObject(kind, x(base), z(base), ground, top - ground, woodHeight, woodHeight, volume, baseWood.diameter(),
+			return new WoodObject(kind, x(base), z(base), ground, Math.max(top, woodTop) - ground, woodHeight, woodHeight, volume, baseWood.diameter(),
 					leaves, species, baseWood.block());
 		}
 

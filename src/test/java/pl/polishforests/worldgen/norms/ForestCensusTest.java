@@ -68,6 +68,7 @@ class ForestCensusTest {
 		assertEquals("minecraft:oak_log", t3.block());
 		WoodObject stump = find(objects, 9, 12);
 		assertEquals(Kind.STUMP, stump.kind());
+		assertEquals(1, stump.height(), "a stump owns no leaves; its height is its wood");
 		WoodObject l3 = objects.stream().filter(o -> o.kind() == Kind.LOG && o.z() == 12).findFirst().orElseThrow();
 		assertEquals(12, l3.x(), "the middle of the log at x 10-13");
 		assertEquals(4, l3.length(), EPS);
