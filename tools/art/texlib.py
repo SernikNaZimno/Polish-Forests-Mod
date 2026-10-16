@@ -287,13 +287,15 @@ def mean_hue(colors, weights=None):
     return (math.atan2(sy, sx) / (2 * math.pi)) % 1.0
 
 
-def ramp_hue(colors, n, lum_lo, lum_hi, sat, hue_drift=0.0, weights=None):
+def ramp_hue(colors, n, lum_lo, lum_hi, sat, hue_drift=0.0, weights=None, hue_shift=0.0, hue=None):
     """n tones of the palette's mean hue (texlib.mean_hue) with a fixed HSV saturation, from luma lum_lo to lum_hi.
     For palettes whose photo crops are washed out by sunlight or shade (light tones turn gray or pink): the photo
     gives the hue, the recipe gives saturation and brightness. hue_drift (in degrees) shifts the light end of the ramp
-    (warmer, more yellow light tones with a positive drift); the dark end is shifted by the opposite half."""
+    (warmer, more yellow light tones with a positive drift); the dark end is shifted by the opposite half.
+    hue_shift (degrees) corrects the palette hue (the white balance of a photo); hue (degrees) replaces it, for a
+    palette whose hue is only a white-balance cast (colors may then be None)."""
     import colorsys
-    h0 = mean_hue(colors, weights)
+    h0 = hue / 360.0 if hue is not None else (mean_hue(colors, weights) + hue_shift / 360.0) % 1.0
     out = []
     for k in range(n):
         f = k / (n - 1) if n > 1 else 0.0
@@ -330,3 +332,105 @@ def to_gray_tint(img):
     for c in range(3):
         out[..., c] = l
     return out
+
+
+# ---------------------------------------------------------------------------------------------------- structures
+def edge_weight(band=3):
+    """Per-row weight of a variant: 0 in the top and bottom `band` rows (shared with the base texture), 1 in the
+    middle, smooth in between (the 1D form of edge_locked)."""
+    y = np.arange(N) + 0.5
+    dist = np.minimum(y, N - y)
+    w = np.clip((dist - band) / 2.5, 0.0, 1.0)
+    return w * w * (3 - 2 * w)
+
+
+def noise_1d(rng, period):
+    """Tileable smooth 1D noise along y (16 values, about 0..1) on a lattice of `period` points."""
+    return value_noise(rng, 1, period)[:, 0]
+
+
+def furrow_lines(rng, n, amp, period, jitter=0.0):
+    """x positions (array n x 16, one value per row) of n roughly vertical, wavy lines spread evenly across the
+    texture: the long furrows of a bark. amp is the largest sideways swing in pixels."""
+    start = rng.uniform(0, N / n)
+    xs = []
+    for i in range(n):
+        x0 = start + i * N / n + rng.uniform(-jitter, jitter)
+        xs.append(x0 + 2 * amp * (noise_1d(rng, period) - 0.5))
+    return np.array(xs)
+
+
+def raster_line(xs_row):
+    """Pixel column of a wavy vertical line in every row, so that consecutive rows (and row 15 -> row 0) differ by at
+    most 1 pixel: the line is 8-connected and has exactly one pixel per row."""
+    cols = [int(math.floor(x)) % N for x in xs_row]
+    for y in range(1, N + 1):
+        prev, cur = cols[y - 1], cols[y % N]
+        d = (cur - prev + N // 2) % N - N // 2
+        if abs(d) > 1 and y < N:
+            cols[y] = (prev + (1 if d > 0 else -1)) % N
+    return cols
+
+
+def label4(mask):
+    """Connected components (4-neighbourhood, on the torus) of a boolean mask: int array, -1 outside the mask,
+    components numbered 0, 1, ... in scan order (deterministic)."""
+    lab = np.full((N, N), -1, int)
+    k = 0
+    for y in range(N):
+        for x in range(N):
+            if not mask[y, x] or lab[y, x] >= 0:
+                continue
+            stack = [(y, x)]
+            lab[y, x] = k
+            while stack:
+                cy, cx = stack.pop()
+                for ny, nx in (((cy + 1) % N, cx), ((cy - 1) % N, cx), (cy, (cx + 1) % N), (cy, (cx - 1) % N)):
+                    if mask[ny, nx] and lab[ny, nx] < 0:
+                        lab[ny, nx] = k
+                        stack.append((ny, nx))
+            k += 1
+    return lab
+
+
+# ---------------------------------------------------------------------------------------------------- measures
+def row_std(img, x0=0, width=N):
+    """Standard deviation of the row means of luma over columns x0 .. x0 + width - 1 (with wrap): horizontal banding
+    at the block period. A trunk of radius r shows the columns 8 - r .. 7 + r on each face."""
+    l = luma(img[..., :3])
+    cols = [(x0 + i) % N for i in range(width)]
+    return float(l[:, cols].mean(axis=1).std())
+
+
+def banding(img, radii=(2, 3, 4, 5)):
+    """(row_std over the full width, largest row_std of the centre slices of thin trunks of the given radii)."""
+    return row_std(img), max(row_std(img, 8 - r, 2 * r) for r in radii)
+
+
+def grain(img):
+    """|dx| / |dy|: mean luma jump between neighbouring columns over that between neighbouring rows (with wrap).
+    Above 1 the texture has a vertical grain (vanilla oak and spruce logs about 3.3, stone 0.6-0.9)."""
+    l = luma(img[..., :3])
+    dx = np.abs(l - np.roll(l, 1, axis=1)).mean()
+    dy = np.abs(l - np.roll(l, 1, axis=0)).mean()
+    return float(dx / dy) if dy > 0 else float('inf')
+
+
+def srgb_to_lab(rgb):
+    """CIELAB (D65) of an sRGB triple 0..255."""
+    c = np.asarray(rgb, dtype=np.float64) / 255.0
+    c = np.where(c > 0.04045, ((c + 0.055) / 1.055) ** 2.4, c / 12.92)
+    m = np.array([[0.4124, 0.3576, 0.1805], [0.2126, 0.7152, 0.0722], [0.0193, 0.1192, 0.9505]])
+    xyz = m @ c / np.array([0.95047, 1.0, 1.08883])
+    f = np.where(xyz > 0.008856, np.cbrt(xyz), 7.787 * xyz + 16 / 116)
+    return np.array([116 * f[1] - 16, 500 * (f[0] - f[1]), 200 * (f[1] - f[2])])
+
+
+def mean_rgb(img):
+    vis = img[..., 3] > 0
+    return img[vis][:, :3].astype(np.float64).mean(axis=0)
+
+
+def delta_e(rgb_a, rgb_b):
+    """CIE76 color difference of two sRGB triples (about 2 is just noticeable, 10 clearly different)."""
+    return float(np.linalg.norm(srgb_to_lab(rgb_a) - srgb_to_lab(rgb_b)))

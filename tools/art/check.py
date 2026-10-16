@@ -4,7 +4,8 @@ Checks, in order:
 1. every texture of the recipes (or its override in tools/art/overrides/) exists in
    src/main/resources/assets/polishforests/textures/block/ with the same decoded RGBA pixels (PNG bytes may differ:
    compression depends on the Pillow and zlib versions) and the same .mcmeta content (parsed JSON);
-2. no other PNG or .mcmeta lies under assets/polishforests/textures/ (no hand-edited or stray files);
+2. no other PNG or .mcmeta lies under assets/polishforests/textures/ (no hand-edited or stray files), and every PNG in
+   tools/art/overrides/ is named after a texture of the recipes (a misnamed correction would never ship);
 3. the style lint (lint.py) passes;
 4. CREDITS.md is up to date;
 5. the self-test of the library and the lint (selftest.py) passes.
@@ -65,6 +66,11 @@ def main():
             p = os.path.normcase(os.path.abspath(os.path.join(dirpath, f)))
             if (f.endswith('.png') or f.endswith('.mcmeta')) and p not in expected:
                 errors.append(f'{rel(os.path.join(dirpath, f))} is not made by tools/art (no recipe or override)')
+    if os.path.isdir(generate.OVERRIDES):
+        for f in sorted(os.listdir(generate.OVERRIDES)):
+            if f.lower().endswith('.png') and f[:-4] not in built:
+                errors.append(f'tools/art/overrides/{f} matches no texture of tools/art/recipes.py (names: '
+                              f'<texture name>.png, e.g. oak_bark.png)')
     lint_errors, report = lint.lint_all(built)
     errors += ['lint: ' + e for e in lint_errors]
     if not credits.is_current():

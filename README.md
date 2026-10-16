@@ -71,7 +71,7 @@ python tools/art/generate.py   # albo ./gradlew generateArt
 ./gradlew checkArt
 ```
 
-Tekstury bloków powstają proceduralnie w `tools/art` (przepisy gatunków, palety ze zdjęć CC0, lint stylu). `generateArt` zapisuje je do `src/main/resources/assets/polishforests/textures` razem z `CREDITS.md`, a `checkArt` sprawdza, czy pliki w repozytorium są dokładnie tym, co daje generator, i czy przechodzą lint. Oba zadania potrzebują Pythona 3.10+ z Pillow i NumPy (`pip install pillow numpy`) i nie wchodzą do `build`; inny interpreter wskazuje `-Ppython=<ścieżka>`.
+Tekstury bloków powstają proceduralnie w `tools/art` (przepisy gatunków, palety ze zdjęć CC0 i z domeny publicznej, lint stylu). `generateArt` zapisuje je do `src/main/resources/assets/polishforests/textures` razem z `CREDITS.md`, a `checkArt` sprawdza, czy pliki w repozytorium są dokładnie tym, co daje generator, i czy przechodzą lint. Oba zadania potrzebują Pythona 3.10+ z Pillow i NumPy (`pip install pillow numpy`) i nie wchodzą do `build`; inny interpreter wskazuje `-Ppython=<ścieżka>`.
 
 ## W grze
 

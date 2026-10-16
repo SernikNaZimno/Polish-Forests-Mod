@@ -4,7 +4,13 @@
   and grass colors of the oak-hornbeam and fresh pine forests, the proposed constant needle color);
 - kafle_3x3.png: 3 x 3 tiles at 8 x (seams and repetition are easiest to see here);
 - pnie.png: trunk columns as the game will stack them: the lower pine bark with its two variants in a random order,
-  then the "mirror", and one column per broadleaf bark; on a 16 px wide and on a 6 px wide (thin trunk) face.
+  then the "mirror", and one column per broadleaf bark (variants in a random order); on a 16 px wide and on a 6 px
+  wide (thin trunk) face;
+- pnie_cienkie.png: thin trunks of radius 2, 3 and 5 px, two faces each with the game's face shading (0.8 for a
+  north or south face, 0.6 for an east or west face), all faces showing the centre slice of the texture as planned
+  for V2: horizontal banding and repeated motifs show here;
+- dystans.png: the trunk columns averaged down like the game's mipmaps at 4 and 8 blocks per pixel step (levels 2
+  and 3, box filter), how a trunk reads from a distance.
 
 Usage: python tools/art/sheet.py [<out dir>]   (default docs/wycinek/grafika)
 """
@@ -85,16 +91,27 @@ def tiles(built, path):
     sheet.convert('RGB').save(path, optimize=True)
 
 
+def column(built, name, blocks, rng):
+    """A trunk of `blocks` blocks of one bark: its variants (textures whose variant_of is `name`) drawn at random
+    per block, as V2 will draw them."""
+    family = [name] + [n for n, b in built.items() if b['tex'].variant_of == name]
+    return np.concatenate([built[family[rng.integers(0, len(family))]]['img'] for _ in range(blocks)], axis=0)
+
+
+def trunk_columns(built):
+    """(label, RGBA column) for the pine (4 blocks of "mirror" over 8 of lower bark) and each broadleaf bark."""
+    rng = t.Rng('sheet/trunks')
+    pine = np.concatenate([column(built, 'scots_pine_upper_bark', 4, rng), column(built, 'scots_pine_bark', 8, rng)])
+    out = [('scots_pine', pine)]
+    for name in ('oak_bark', 'hornbeam_bark', 'linden_bark', 'beech_bark'):
+        out.append((name, column(built, name, 12, rng)))
+    return out
+
+
 def trunks(built, path):
     """Trunk columns: 12 blocks high. Pine: 8 lower blocks (variants in a fixed pseudo-random order), 4 mirror blocks."""
-    rng = t.Rng('sheet/trunks')
     k = 3
-    columns = []
-    pine = [built['scots_pine_bark' if rng.random() < 0.5 else 'scots_pine_bark_2']['img'] for _ in range(8)]
-    pine = [built['scots_pine_upper_bark']['img']] * 4 + pine
-    columns.append(('scots_pine', np.concatenate(pine, axis=0)))
-    for name in ('oak_bark', 'hornbeam_bark', 'linden_bark', 'beech_bark'):
-        columns.append((name, np.concatenate([built[name]['img']] * 12, axis=0)))
+    columns = trunk_columns(built)
     h = 12 * 16 * k
     w_full, w_thin = 16 * k, 6 * k
     sheet = Image.new('RGBA', (len(columns) * (w_full + w_thin + 40) + 20, h + 40), BG)
@@ -109,6 +126,54 @@ def trunks(built, path):
     sheet.convert('RGB').save(path, optimize=True)
 
 
+def shade(img, f):
+    out = img.copy()
+    out[..., :3] = np.round(img[..., :3].astype(np.float64) * f).astype(np.uint8)
+    return out
+
+
+def thin_trunks(built, path):
+    """Thin trunks (radius 2, 3, 5 px), 8 blocks high, two faces each (shading 0.8 and 0.6), scale 4."""
+    k = 4
+    columns = [(n, c[:8 * 16]) for n, c in trunk_columns(built)]
+    radii = (2, 3, 5)
+    cell = sum(2 * 2 * r * k + 12 for r in radii) + 20
+    sheet = Image.new('RGBA', (len(columns) * cell + 20, 8 * 16 * k + 50), BG)
+    d = ImageDraw.Draw(sheet)
+    for i, (name, col) in enumerate(columns):
+        x = 20 + i * cell
+        d.text((x, 6), name, fill=(20, 20, 20, 255))
+        for r in radii:
+            sl = np.ascontiguousarray(col[:, 8 - r:8 + r])
+            pair = np.concatenate([shade(sl, 0.8), shade(sl, 0.6)], axis=1)
+            sheet.paste(scale(Image.fromarray(pair, 'RGBA'), k), (x, 36))
+            d.text((x, 22), f'r={r}', fill=(20, 20, 20, 255))
+            x += 2 * 2 * r * k + 12
+    sheet.convert('RGB').save(path, optimize=True)
+
+
+def mip(img, level):
+    """Box-filtered mipmap level (2 ** level pixels per step), as an RGBA array."""
+    f = 2 ** level
+    h, w = img.shape[0] // f, img.shape[1] // f
+    a = img[:h * f, :w * f].astype(np.float64).reshape(h, f, w, f, 4).mean(axis=(1, 3))
+    return np.round(a).astype(np.uint8)
+
+
+def distance(built, path):
+    """Trunk columns (16 px faces, 12 blocks) at mipmap levels 2 and 3, each pixel step shown 8 x 8."""
+    k = 8
+    columns = trunk_columns(built)
+    sheet = Image.new('RGBA', (len(columns) * (4 * k + 2 * k + 40) + 20, 12 * 4 * k + 40), BG)
+    d = ImageDraw.Draw(sheet)
+    for i, (name, col) in enumerate(columns):
+        x = 20 + i * (4 * k + 2 * k + 40)
+        d.text((x, 6), name[:12], fill=(20, 20, 20, 255))
+        sheet.paste(scale(Image.fromarray(mip(shade(col, 0.8), 2), 'RGBA'), k), (x, 26))
+        sheet.paste(scale(Image.fromarray(mip(shade(col, 0.8), 3), 'RGBA'), k), (x + 4 * k + 10, 26))
+    sheet.convert('RGB').save(path, optimize=True)
+
+
 def main():
     out = sys.argv[1] if len(sys.argv) > 1 else os.path.join(generate.ROOT, 'docs', 'wycinek', 'grafika')
     os.makedirs(out, exist_ok=True)
@@ -116,7 +181,9 @@ def main():
     contact(built, os.path.join(out, 'arkusz_8x.png'))
     tiles(built, os.path.join(out, 'kafle_3x3.png'))
     trunks(built, os.path.join(out, 'pnie.png'))
-    print('sheet: wrote arkusz_8x.png, kafle_3x3.png and pnie.png to', out)
+    thin_trunks(built, os.path.join(out, 'pnie_cienkie.png'))
+    distance(built, os.path.join(out, 'dystans.png'))
+    print('sheet: wrote arkusz_8x.png, kafle_3x3.png, pnie.png, pnie_cienkie.png and dystans.png to', out)
 
 
 if __name__ == '__main__':

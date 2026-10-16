@@ -25,9 +25,10 @@ def render():
     used = {}
     for tex in recipes.TEXTURES:
         if tex.palette:
-            used.setdefault(tex.palette, []).append(f'`{tex.name}`' + (' (reference for the tint)' if tex.tint else ''))
+            how = tex.palette_use or ('reference for the tint' if tex.tint else None)
+            used.setdefault(tex.palette, []).append(f'`{tex.name}`' + (f' ({how})' if how else ''))
         if tex.name.startswith('scots_pine_bark'):
-            used.setdefault('scots_pine_upper_bark', []).append(f'`{tex.name}` (rust tone)')
+            used.setdefault('scots_pine_upper_bark', []).append(f'`{tex.name}` (fissure and rust tones)')
     out = [
         '# Credits',
         '',

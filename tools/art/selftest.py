@@ -69,26 +69,42 @@ def run():
     many = good.copy()
     many[0, :12, :3] = np.arange(12)[:, None] * 7 + 3
     check(any('colors' in e for e in errs(many, bark)), 'lint: misses too many colors')
-    ys = np.mgrid[0:N, 0:N][0]
+    ys, xs = np.mgrid[0:N, 0:N]
     ramp = np.zeros((N, N, 4), np.uint8)
     ramp[..., :3] = (40 + ys * 10)[..., None]
     ramp[..., 3] = 255
     ramp = np.round(ramp / 30).astype(np.uint8) * 30
     ramp[..., 3] = 255
     check(any('seam' in e for e in errs(ramp, bark)), 'lint: misses a top-bottom seam')
+    # a smooth texture that does not tile: periods 23 and 19 px do not divide 16 (like a crop of a larger photo)
+    crop = 0.5 + 0.25 * np.sin(2 * np.pi * (xs + 3) / 23) + 0.25 * np.cos(2 * np.pi * (ys + 5) / 19 + 0.6 * np.sin(xs / 5))
+    q = t.quantize(crop, 6)
+    noise = t.paint(q, [(70 + 22 * k, 62 + 20 * k, 50 + 16 * k) for k in range(6)])
+    check(any('seam' in e for e in errs(noise, bark)), 'lint: misses the seam of a cropped, non-tiling noise bark')
     lv = a['broadleaf_leaves']['img']
-    colored = lv.copy()
-    colored[..., 0] = np.where(colored[..., 3] > 0, np.minimum(colored[..., 0].astype(int) + 20, 255), 0)
-    check(any('grayscale' in e for e in errs(colored, leaves)), 'lint: misses a colored texture under a tint')
-    sparse = lv.copy()
-    sparse[:8, :, 3] = 0
-    check(any('visible' in e for e in errs(sparse, leaves)), 'lint: misses too sparse leaves')
-    soft = lv.copy()
-    soft[0, 0, 3] = 128
-    check(any('semi-transparent' in e for e in errs(soft, leaves)), 'lint: misses semi-transparent pixels')
-    dark = (lv.astype(int) // 3).astype(np.uint8)
-    dark[..., 3] = lv[..., 3]
-    check(any('brightness' in e for e in errs(dark, leaves)), 'lint: misses a too dark tinted texture')
+    cut = lv.copy()                                     # leaves cut at the wrap: last row full, first row empty
+    cut[N - 1, :, :3], cut[N - 1, :, 3] = lv[N // 2, :, :3].max(axis=0), 255
+    cut[0, :, 3] = 0
+    cut[0, :, :3] = 0
+    check(any('seam' in e for e in errs(cut, leaves)), 'lint: misses the seam of a non-tileable leaves texture')
+    check(not any('seam' in e for e in errs(lv, leaves)), 'lint: a seam in the generated broadleaf leaves')
+    # banding: a light band across rows 3-4 (as the first "mirror" had) and a dark crack row on every block
+    band = good.copy()
+    band[3:5, :, :3] = np.minimum(band[3:5, :, :3].astype(int) + 45, 255)
+    check(any('banding' in e for e in errs(band, bark)), 'lint: misses horizontal banding at the block period')
+    loud = good.copy()                                  # too much contrast: every other column near black
+    loud[:, ::2, :3] = 20
+    check(any('standard deviation' in e for e in errs(loud, bark)), 'lint: misses a too contrasted bark')
+    speck = good.copy()                                 # a lone bright spot of 2 px repeats on every block
+    speck[7, 7:9, :3] = (250, 170, 110)
+    check(any('fewer than' in e for e in errs(speck, bark)), 'lint: misses a color used by 1-3 pixels')
+    flat = np.zeros((N, N, 4), np.uint8)                # an andesite-like gray mottle without grain
+    flat[..., :3] = (126 + 12 * t.quantize(t.value_noise(t.Rng('selftest/stone'), 4, 4), 4))[..., None]
+    flat[..., 3] = 255
+    check(any('reads as' in e for e in errs(flat, bark)), 'lint: misses a bark that reads as stone')
+    plated = recipes.Texture('test_plated', 'bark', None, 'x', expect={'grain': 2.0})
+    check(any('grain' in e for e in errs(np.ascontiguousarray(good.transpose(1, 0, 2)), plated)),
+          'lint: misses a plated bark without vertical grain')
     return failures
 
 

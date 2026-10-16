@@ -428,7 +428,7 @@ tasks.register('generateArt', ArtTask) {
 	outputs.upToDateWhen { false }
 }
 
-// Choosing in-game tests:./gradlew runClientGameTest -Pgametest=performance|stages|views|climate|ui|habitats|vegetation|present_day|determinism|ecotones|slice|all
+// Choosing in-game tests: ./gradlew runClientGameTest -Pgametest=performance|stages|views|climate|ui|habitats|vegetation|present_day|determinism|ecotones|slice|all
 // (ecotones: only by name, not in all; screenshots of biome borders, step S8b)
 // (slice: only by name; the fixed places of the vertical slice from src/test/resources/slice_sites.txt, step V0;
 // -Pmodes=natural|present_day picks a vegetation mode, -Psites=<place names>|none; the cameras come from

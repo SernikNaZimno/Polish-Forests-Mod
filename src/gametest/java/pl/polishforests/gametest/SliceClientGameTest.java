@@ -103,6 +103,11 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 	/** Canopy column: no logs within this horizontal radius, from the feet up to this many blocks (trunks fill the view). */
 	private static final int CANOPY_TRUNK_RADIUS = 3;
 	private static final int CANOPY_TRUNK_HEIGHT = 8;
+	/** Vertical field of view of the screenshots (the game's default, 70°) and the reach of the trunk rays, blocks. */
+	private static final double CANOPY_FOV = 70;
+	private static final double CANOPY_RAY = 32;
+	/** Largest share of a canopy view that trunks may fill when no column is free of logs nearby (rule of the fallback). */
+	private static final double CANOPY_MAX_COVER = 0.05;
 	/** Free line of sight of an eye-height camera, blocks: least accepted, longest looked for; half-angle of the cone, °. */
 	private static final double MIN_RAY = 6;
 	private static final double MAX_RAY = 16;
@@ -432,7 +437,10 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 	 * feet up (the lowest leaves at least 4 blocks above the head), leaves within 30 blocks above it and above the four
 	 * columns 2 blocks away, and no logs within {@link #CANOPY_TRUNK_RADIUS} blocks from the feet up to
 	 * {@link #CANOPY_TRUNK_HEIGHT} blocks (a trunk next to the camera filled 10-30% of the V0 canopy views, which compare
-	 * canopy closure). When no column is free of trunks, the one with the fewest log blocks around it is taken (logged).
+	 * canopy closure). When no column is free of trunks, the nearest one whose view trunks fill at most
+	 * {@link #CANOPY_MAX_COVER} is taken ({@link #trunkCover}), else the one they fill least (logged). The fewest log blocks
+	 * in the cylinder still left a trunk over about a quarter of the V1 GAMEPLAY fresh_pine_2 view, because a trunk 3-5
+	 * blocks away fills a wide wedge of an upward view; the least cover alone picks the densest canopy around (no sky).
 	 * Yaw 90 puts the morning sun of {@link #CANOPY_TIME} outside the frame.
 	 */
 	private static Camera canopyCamera(Ground g, int x, int z, Camera eye) {
@@ -446,7 +454,7 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 		}
 		columns.sort(Comparator.<int[]>comparingInt(c -> c[0] * c[0] + c[1] * c[1]).thenComparingInt(c -> c[0]).thenComparingInt(c -> c[1]));
 		Camera fewest = null;
-		int fewestLogs = Integer.MAX_VALUE;
+		double leastCover = Double.MAX_VALUE;
 		for (int[] c : columns) {
 			int cx = x + c[0];
 			int cz = z + c[1];
@@ -464,18 +472,62 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 			if (logs == 0) {
 				return new Camera("canopy", cx, y, cz, 90, -90);
 			}
-			if (logs < fewestLogs) {
-				fewestLogs = logs;
+			double cover = trunkCover(g, cx, y, cz);
+			if (cover <= CANOPY_MAX_COVER) {
+				PolishForests.LOG.warn("[slice] canopy: every column within {} blocks of ({}, {}) nearer than ({}, {}) has logs within {} "
+						+ "blocks; taken ({}, {}), trunks fill {}% of its view", CANOPY_RADIUS, x, z, cx, cz, CANOPY_TRUNK_RADIUS, cx, cz,
+						String.format(Locale.ROOT, "%.0f", 100 * cover));
+				return new Camera("canopy", cx, y, cz, 90, -90);
+			}
+			if (cover < leastCover) {
+				leastCover = cover;
 				fewest = new Camera("canopy", cx, y, cz, 90, -90);
 			}
 		}
 		if (fewest != null) {
 			PolishForests.LOG.warn("[slice] canopy: every column under the canopy within {} blocks of ({}, {}) has logs within {} blocks; "
-					+ "taken ({}, {}) with {} log blocks", CANOPY_RADIUS, x, z, CANOPY_TRUNK_RADIUS, fewest.x(), fewest.z(), fewestLogs);
+					+ "taken ({}, {}), trunks fill {}% of its view", CANOPY_RADIUS, x, z, CANOPY_TRUNK_RADIUS, fewest.x(), fewest.z(),
+					String.format(Locale.ROOT, "%.0f", 100 * leastCover));
 			return fewest;
 		}
 		PolishForests.LOG.warn("[slice] canopy: no column under the canopy within {} blocks of ({}, {}), the eye column", CANOPY_RADIUS, x, z);
 		return new Camera("canopy", eye.x(), eye.y(), eye.z(), 90, -90);
+	}
+
+	/**
+	 * Share of a straight-up view from the feet column (x, y, z) that trunks fill: rays on a 24 × 14 grid over the frame
+	 * (16:9, vertical field of view {@link #CANOPY_FOV}°, yaw 90, so the wide side of the frame runs along z) are
+	 * followed for up to {@link #CANOPY_RAY} blocks; a ray counts when the first block it meets that is not free is a
+	 * log (leaves, solid blocks and the open sky do not).
+	 */
+	private static double trunkCover(Ground g, int x, int y, int z) {
+		double ex = x + 0.5;
+		double ey = y + 1.62;
+		double ez = z + 0.5;
+		double tv = Math.tan(Math.toRadians(CANOPY_FOV / 2));
+		double th = tv * 16 / 9.0;
+		int hits = 0;
+		int rays = 0;
+		for (int i = 0; i < 24; i++) {
+			for (int j = 0; j < 14; j++) {
+				double u = ((i + 0.5) / 24 * 2 - 1) * th;
+				double v = ((j + 0.5) / 14 * 2 - 1) * tv;
+				double len = Math.sqrt(1 + u * u + v * v);
+				rays++;
+				for (double s = 0; s < CANOPY_RAY; s += 0.25) {
+					int bx = (int) Math.floor(ex + v / len * s);
+					int by = (int) Math.floor(ey + s / len);
+					int bz = (int) Math.floor(ez + u / len * s);
+					if (!g.free(bx, by, bz)) {
+						if (g.state(bx, by, bz).is(BlockTags.LOGS)) {
+							hits++;
+						}
+						break;
+					}
+				}
+			}
+		}
+		return (double) hits / rays;
 	}
 
 	/**
