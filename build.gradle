@@ -99,7 +99,9 @@ dependencies {
 			'alternate-current:nSBWPz6x', // Alternate Current 1.9.0
 			'asynclogger:Ert0LmWj',       // AsyncLogger 2.2.2
 			'clumps:J4I1wxJZ',            // Clumps 26.3.2
-		].each { localRuntime "maven.modrinth:${it}" }
+		// -PnoNvidium leaves Nvidium out (V3 review round 1): plain Sodium as on AMD and Intel GPUs, where Nvidium does not
+		// run; on an NVIDIA GPU with mesh shaders Nvidium switches itself on and draws the terrain instead of Sodium.
+		].findAll { !(project.hasProperty('noNvidium') && it.startsWith('nvidium:')) }.each { localRuntime "maven.modrinth:${it}" }
 	}
 
 	testImplementation 'org.junit.jupiter:junit-jupiter:5.13.4'
@@ -446,7 +448,8 @@ tasks.register('generateArt', ArtTask) {
 
 // Choosing in-game tests: ./gradlew runClientGameTest -Pgametest=performance|stages|views|climate|ui|habitats|vegetation|present_day|determinism|ecotones|slice|probes|all
 // (probes: only by name; the render trials of step V3 with probe blocks that exist only in this run, -Psites=board|rebuild
-// picks a part; combine with -Poptimization and -PnoSeasons; results in build/probes/<renderer>_<seasons>.txt)
+// picks a part; combine with -Poptimization (with -PnoNvidium: plain Sodium) and -PnoSeasons; results in
+// build/probes/<vanilla|sodium|sodium_nvidium>_<ss|noss>.txt)
 // (ecotones: only by name, not in all; screenshots of biome borders, step S8b)
 // (slice: only by name; the fixed places of the vertical slice from src/test/resources/slice_sites.txt, step V0;
 // -Pmodes=natural|present_day picks a vegetation mode, -Psites=<place names>|none; the cameras come from

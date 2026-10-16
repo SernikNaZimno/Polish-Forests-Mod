@@ -19,7 +19,9 @@ Rules for every texture:
 - isolated pixels (equal to none of their 4 neighbours) are at most 10% of the visible pixels of bark and 30% of
   leaves (needle tips and leaf highlights are single pixels on purpose), so the texture is built of 2-4 px clusters.
 Kind rules:
-- leaves: 55-70% of the pixels visible (vanilla 56-67%), alpha only 0 or 255;
+- leaves: 55-70% of the pixels visible (vanilla 56-67%), alpha only 0 or 255; with expect['min_line'] every column and
+  row has at least that many visible pixels (vanilla oak 9 of 16; a nearly empty column shows as a gap that repeats at
+  every block of a leaf wall, V3 review round 1);
 - bark: fully opaque; no horizontal banding at the block period (the standard deviation of the row means of luma at
   most 5 over the full width and at most 9 over the crops that thin trunks of radius 2-5 show in game; vanilla oak,
   spruce and acacia logs 1.6-3.4 and 3.9-7.4), luma standard deviation at most 28 (vanilla logs 9-21), and not read as
@@ -163,6 +165,11 @@ def lint_texture(name, img, tex, others=None):
         lo, hi = LEAF_OPACITY
         if not lo <= m['opacity'] <= hi:
             err.append(f'{name}: {m["opacity"]:.0%} of the pixels visible, leaves need {lo:.0%}-{hi:.0%}')
+        m['cols_min'], m['rows_min'], _, _ = t.line_cover(a)
+        need = (tex.expect or {}).get('min_line')
+        if need and min(m['cols_min'], m['rows_min']) < need:
+            err.append(f'{name}: a column or row with {min(m["cols_min"], m["rows_min"])} of {t.N} pixels visible, at least '
+                       f'{need} (an empty line repeats at every block of a leaf wall)')
     m['isolated'] = t.isolated_fraction(ids, a)
     if m['isolated'] > ISOLATED_MAX[tex.kind]:
         err.append(f'{name}: {m["isolated"]:.0%} isolated pixels, at most {ISOLATED_MAX[tex.kind]:.0%} for {tex.kind}')

@@ -537,14 +537,37 @@ BROADLEAF_SPRITES = [
 ]
 
 
+def leaves_score(tex):
+    """Score of a leaves candidate (V3 review round 1): the spread of the visible pixels over the columns and rows (the
+    larger standard deviation of the counts, against vanilla oak's 1.0-1.4 of 16), plus a large penalty for a column or
+    row below expect['min_line'] and for every lint error, so a tiled wall shows no gap that repeats at every block."""
+    exp = tex.expect
+
+    def score(img):
+        cmin, rmin, cstd, rstd = t.line_cover(img[..., 3])
+        sc = max(cstd, rstd)
+        if min(cmin, rmin) < exp.get('min_line', 0):
+            sc += 10
+        import lint
+        sc += 10 * len(lint.lint_texture(tex.name, img, tex)[0])
+        return sc
+    return score
+
+
 def leaves_broadleaf(tex, palettes):
+    """Broadleaf leaves for the foliage tint: small leaf clumps (BROADLEAF_SPRITES) stamped over the tile with wrap-around,
+    so clumps cross the tile edges, each at the best of p['candidates'] random places (emptiest rows and columns), two base
+    tones from a smooth noise field. The best of p['tries'] seeds by leaves_score."""
     p = tex.params
-    rng = t.Rng(tex.seed)
-    tone = t.fbm(rng, 2, 4, 4)
-    val = t.stamp(rng, BROADLEAF_SPRITES, p['opacity'], tone_field=tone)
-    alpha = np.where(val > 0, 255, 0).astype(np.uint8)
-    idx = np.clip(val - 1, 0, 4)
-    return t.paint(idx, t.gray_ramp(5, *p['gray']), alpha)
+
+    def build(seed):
+        rng = t.Rng(seed)
+        tone = t.fbm(rng, 2, 4, 4)
+        val = t.stamp(rng, BROADLEAF_SPRITES, p['opacity'], tone_field=tone, candidates=p.get('candidates', 1))
+        alpha = np.where(val > 0, 255, 0).astype(np.uint8)
+        idx = np.clip(val - 1, 0, 4)
+        return t.paint(idx, t.gray_ramp(5, *p['gray']), alpha), None
+    return best_of(tex, build, leaves_score(tex))[0]
 
 
 def put(val, x, y, v):
@@ -710,8 +733,10 @@ TEXTURES = [
                  '#7f9c86 is a gray green (hue 135), lighter and grayer than vanilla spruce; the palette photo gave a '
                  'yellow olive (#8e9963, hue 72) in warm light'),
     Texture('broadleaf_leaves', 'leaves', leaves_broadleaf, 'broadleaf_leaves/1', None, tint='foliage',
-            mcmeta=LEAVES_MCMETA, params=dict(opacity=0.63, gray=(88, 214)),
-            note='broadleaf leaves for the foliage tint and the species color curves (B6, V7)'),
+            mcmeta=LEAVES_MCMETA, params=dict(opacity=0.63, gray=(88, 214), candidates=6, tries=32),
+            expect={'min_line': 7},
+            note='broadleaf leaves for the foliage tint and the species color curves (B6, V7); clumps spread over '
+                 'the rows and columns (every one at least 7 of 16 pixels, V3 review round 1)'),
     Texture('bilberry', 'plant', plant_bilberry, 'bilberry/2', 'bilberry', tint='grass',
             params=dict(stems=8, top=9, leafiness=0.75, zigzag=0.3, gray=(52, 194)),
             note='bilberry dwarf shrub, cross model, grayscale for the grass tint'),

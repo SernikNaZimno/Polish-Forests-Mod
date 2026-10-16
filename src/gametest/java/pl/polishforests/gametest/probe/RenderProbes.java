@@ -1,11 +1,14 @@
 package pl.polishforests.gametest.probe;
 
 import net.fabricmc.api.ModInitializer;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.BushBlock;
@@ -46,7 +49,7 @@ public final class RenderProbes implements ModInitializer {
 		if (!enabled()) {
 			return;
 		}
-		leaves = register("probe_leaves", p -> new TintedParticleLeavesBlock(0.01F, p), Blocks.leavesProperties(SoundType.GRASS));
+		leaves = register("probe_leaves", ProbeLeavesBlock::new, Blocks.leavesProperties(SoundType.GRASS));
 		plant = register("probe_plant", BushBlock::new, BlockBehaviour.Properties.of().mapColor(MapColor.PLANT).replaceable()
 				.noCollision().instabreak().sound(SoundType.GRASS).pushReaction(PushReaction.POPPED));
 		PolishForests.LOG.info("[probes] render probe blocks registered: {}, {}", BuiltInRegistries.BLOCK.getKey(leaves),
@@ -69,6 +72,23 @@ public final class RenderProbes implements ModInitializer {
 
 	public static Identifier id(String path) {
 		return Identifier.fromNamespaceAndPath(NAMESPACE, path);
+	}
+
+	/**
+	 * The probe leaves: vanilla leaves with tinted falling leaf particles, but none in the leafless phase (review round 1
+	 * of V3: a bare crown in January must not shed leaves). The particles run only on the client, where the phase is known.
+	 */
+	static final class ProbeLeavesBlock extends TintedParticleLeavesBlock {
+		ProbeLeavesBlock(BlockBehaviour.Properties properties) {
+			super(0.01F, properties);
+		}
+
+		@Override
+		protected void spawnFallingLeavesParticle(Level level, BlockPos pos, RandomSource random) {
+			if (!ProbeSeason.leafless()) {
+				super.spawnFallingLeavesParticle(level, pos, random);
+			}
+		}
 	}
 
 	private static Block register(String path, java.util.function.Function<BlockBehaviour.Properties, Block> factory,

@@ -212,9 +212,12 @@ def edge_locked(base_field, other_field, band=3):
 
 
 # ---------------------------------------------------------------------------------------------------- stamping
-def stamp(rng, sprites, target_opacity, tone_field=None, base_levels=(1, 2), max_tries=4000):
+def stamp(rng, sprites, target_opacity, tone_field=None, base_levels=(1, 2), max_tries=4000, candidates=1):
     """Stamp sprites at random torus positions until `target_opacity` of the pixels are filled.
     Sprite rows are strings: '0' empty, '1' body, '2' highlight (lit edge), '3' shadow, '4' dark body.
+    With candidates > 1 each sprite goes to the best of that many random positions: the one whose new pixels lie in the
+    emptiest rows and columns (V3 review round 1: plain random stamping left columns with 2/16 pixels, a gap that repeats
+    at every block). With candidates = 1 the random sequence is the one of the plain stamping.
     Returns an int map: 0 = empty, otherwise shade index + 1 (shades 0..4 for a 5-tone ramp)."""
     val = np.zeros((N, N), int)
     tries = 0
@@ -222,6 +225,24 @@ def stamp(rng, sprites, target_opacity, tone_field=None, base_levels=(1, 2), max
         tries += 1
         spr = sprites[rng.integers(0, len(sprites))]
         x0, y0 = rng.integers(0, N), rng.integers(0, N)
+        if candidates > 1:
+            filled = val > 0
+            cols, rows = filled.sum(0), filled.sum(1)
+
+            def gain(x0, y0):
+                g = 0
+                for dy, row in enumerate(spr):
+                    for dx, ch in enumerate(row):
+                        y, x = (y0 + dy) % N, (x0 + dx) % N
+                        if ch != '0' and not filled[y, x]:
+                            g += 2 * N - cols[x] - rows[y]
+                return g
+            best = gain(x0, y0)
+            for _ in range(candidates - 1):
+                cx, cy = rng.integers(0, N), rng.integers(0, N)
+                g = gain(cx, cy)
+                if g > best:
+                    best, x0, y0 = g, cx, cy
         lo, hi = base_levels
         base = hi if (tone_field is not None and tone_field[y0, x0] > 0.5) else lo
         for dy, row in enumerate(spr):
@@ -232,6 +253,13 @@ def stamp(rng, sprites, target_opacity, tone_field=None, base_levels=(1, 2), max
                 shade = {'1': base, '2': base + 2, '3': max(base - 1, 0), '4': max(base - 2, 0)}[ch]
                 val[y, x] = min(shade, 4) + 1
     return val
+
+
+def line_cover(alpha):
+    """Visible pixels of the emptiest column and row and the standard deviations of the column and row counts (of N)."""
+    a = np.asarray(alpha) > 0
+    cols, rows = a.sum(0), a.sum(1)
+    return int(cols.min()), int(rows.min()), float(cols.std()), float(rows.std())
 
 
 # ---------------------------------------------------------------------------------------------------- color

@@ -41,9 +41,32 @@ public final class FrameRecorder {
 		return Arrays.copyOf(RENDERED, count);
 	}
 
+	/** Frames recorded so far in the running series. */
+	public static int count() {
+		return count;
+	}
+
 	/** Sections with a mesh in view (as of the last client tick). */
 	public static int rendered() {
 		return rendered;
+	}
+
+	/**
+	 * The last {@code frames} frames of the running series all took at most {@code thresholdNanos} (client thread). The end
+	 * of a rebuild (review round 1 of V3): Sodium's {@code hasRenderedAllSections()} can answer true before newly dirty
+	 * sections are even scheduled, so a rebuild counts as done only after a quiet streak of frames.
+	 */
+	public static boolean quiet(int frames, long thresholdNanos) {
+		int n = count;
+		if (n < frames) {
+			return false;
+		}
+		for (int i = n - frames; i < n; i++) {
+			if (FRAMES[i] > thresholdNanos) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	/** Every section of the view is compiled (as of the last client tick). */

@@ -24,6 +24,9 @@
 			"pl.polishforests.gametest.RenderProbesClientGameTest"
 		]
 	},
+	"mixins": [
+		"polishforests-gametest.mixins.json"
+	],
 	"depends": {
 		"polishforests": "*"
 	}

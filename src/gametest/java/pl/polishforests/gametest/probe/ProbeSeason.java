@@ -123,18 +123,25 @@ public final class ProbeSeason {
 				c.z() + rd);
 	}
 
+	/** The section of the camera now (the center of a wave rebuild). */
+	public static SectionPos cameraSection(Minecraft mc) {
+		return SectionPos.of(mc.gameRenderer.mainCamera().position());
+	}
+
 	/**
-	 * Marks the sections of the chunk columns at Chebyshev distance {@code ring} from the camera column dirty (the wave
-	 * rebuild of the V3 measurement: rings one after another spread the compile and upload over several frames).
+	 * Marks the sections of the chunk columns at Chebyshev distance {@code ring} from {@code center} dirty (the wave rebuild
+	 * of the V3 measurement: rings one after another spread the compile and upload over several frames). The center is
+	 * taken once at the start of the wave (review round 1): with a center that followed the camera, a player crossing a
+	 * section border during the wave would leave some loaded sections never marked, with the old color or phase.
 	 */
-	public static void markRingDirty(Minecraft mc, int ring) {
-		SectionPos c = SectionPos.of(mc.gameRenderer.mainCamera().position());
+	public static void markRingDirty(Minecraft mc, SectionPos center, int ring) {
 		int minY = mc.level.getMinSectionY();
 		int maxY = mc.level.getMaxSectionY();
 		for (int dx = -ring; dx <= ring; dx++) {
 			for (int dz = -ring; dz <= ring; dz++) {
 				if (Math.max(Math.abs(dx), Math.abs(dz)) == ring) {
-					mc.levelExtractor.setSectionRangeDirty(c.x() + dx, minY, c.z() + dz, c.x() + dx, maxY, c.z() + dz);
+					mc.levelExtractor.setSectionRangeDirty(center.x() + dx, minY, center.z() + dz, center.x() + dx, maxY,
+							center.z() + dz);
 				}
 			}
 		}
