@@ -483,7 +483,7 @@ S8c (M2-20 d2) kończy się w trzecim worktree przed CP-B (PW-17). Kalendarz jes
 | R14 | wanilijny predykat spawnu (`grass_block`, światło > 8) | 0 saren w borze na `podzol`, mało pod okapem | własny tag i predykat, próg z pomiaru V10 | V14 |
 | R15 | despawn wanilii (losowy powyżej 32 bloków, spawn `CREATURE` co 400 ticków) | rzadka, „migająca” populacja | `removeWhenFarAway` tylko powyżej 128 bloków, kalibracja na zrzutach | V14 |
 | R16 | spawn przy generacji poza limitem `CREATURE` | „zoo” przy eksploracji 1:1 | dwie osobne kalibracje (PW-15), startowo 0,02–0,04 | V14 |
-| R17 | konwencja osi i obrotów w GeckoLib 5 | „połamane” modele | kalibracja osi w grze i test regresji w V8 | V8 |
+| R17 | konwencja osi i obrotów w GeckoLib 5 | „połamane” modele | kalibracja osi w grze i test regresji w V8. **Zamknięte w V8:** konwencje odczytane z kodu GeckoLib 5.5.7; w grze każda kość i lokator modelu próbnego i sarny zgodne z `tools/fauna` co do 0,0001 px, sylwetki z 4 stron IoU 1,0 (gametest `fauna`, „Stan po V8”) | V8 |
 | R18 | nagrania polskich ptaków tylko z licencją NC | brak tła dźwiękowego | manifest licencji, dźwięki zastępcze wanilii, mniej gatunków | V16 |
 | R19 | subiektywna estetyka agentów | odrzucenie stylu po pracy | CP-A po 10 teksturach, model sarny przy CP-B przed AI, `overrides/`, D5 (b) | V1, V8 |
 | R20 | konflikty scalania torów (lang, tagi, `ModBlocks`, datagen biomów, `src/main/generated`) | `checkDatagen` FAIL, utracone zmiany | ZW-11: kolejność scalania, `runDatagen` po scaleniu, bez ręcznego scalania wygenerowanych plików | wszystkie |
@@ -1220,3 +1220,63 @@ Wnioski:
 - V3-a (uzupełnione): fala bierze środek z początku fali.
 
 **Testy rundy 1.** `runClientGameTest -Pgametest=probes` w 6 zestawach (wanilia, `-Poptimization -PnoNvidium`, `-Poptimization`, każdy z SS i z `-PnoSeasons`; PASS w sesji 1), część `rebuild` jeszcze raz w 6 zestawach (sesja 2, PASS); zwykła gra: 4 przebiegi pomocnika przeglądu; `compileGametestJava`, `fastTest`, `python tools/art/check.py` (15 tekstur, lint z `min_line`, autotest), pełny zestaw `tools/dev/run-tests test`. Złoty test terenu bez zmian (runda nie zmienia generacji świata).
+
+## Stan po V8 (2026-10-16)
+
+**Wynik.** Kryteria „Ukończony, gdy” spełnione: zrzut sarny z 4 stron w grze zgadza się z podglądem z kodu (sylwetki w 16 widokach, 4 tekstury × 4 strony, pokrywają się co do piksela: IoU 1,0000), test osi przechodzi (każda kość i każdy lokator modelu próbnego i sarny w grze, w przestrzeni modelu i w świecie, równy obliczeniu `tools/fauna` z dokładnością 0,0001 px), a walidator nie zgłasza błędów UV (sarna: 108 ścian, 934 z 2048 tekseli, żaden użyty dwa razy). Ryzyko **R17 zamknięte**: konwencje GeckoLib 5.5.7 są odczytane z jego kodu, zapisane w `tools/fauna/model.py` i sprawdzane w grze testem regresji. Drobne wybory: `docs/00` G.9 (V8-a … V8-p).
+
+**Zrobione.**
+- **`tools/fauna/`** (Python 3.10+, Pillow, NumPy; kod MIT, wynik CC BY 4.0):
+  - `model.py`: kości, prostopadłościany i lokatory w przestrzeni Bedrock, box UV dokładnie jak GeckoLib (narożniki i teksele ścian odczytane z kwadów, które GeckoLib wypieka), kinematyka (obrót X, Y, Z wokół osi kości, w pliku `R = Rz(−z)·Ry(y)·Rx(−x)`, animacja dodaje kąty do kąta spoczynkowego, przesunięcie animacji przed obrotem), przejście do świata (lustro X, obrót o 180° − yaw, podniesienie o 0,01 bloku), zapis `.geo.json` 1.12.0;
+  - `quadruped.py`: archetyp czworonoga z opisu gatunku w centymetrach (13 kości, V8-a, V8-b, V8-c), lokatory na końcach kości (nazwy jednoznaczne w modelu, bo GeckoLib szuka ich po nazwie); `species.py`: sarna i model próbny osi;
+  - `uvpack.py`: pakowanie półkowe box UV, sprawdzanie nakładania i wyjścia poza teksturę; wysokość tekstury to najmniejsza potęga dwójki, która mieści UV (sarna 64 × 32);
+  - `paint.py`: malowanie każdego teksela z jego punktu na modelu (cieniowanie grzbiet–brzuch i plamy ciągłe przez szwy), łagodnie według CP-A (V8-e); detale gatunku: oczy z miękką obwódką, czarny nos, biała warga i podbródek, ciemne brzegi uszu, jasne wnętrze ucha, lustro (V8-f), jasne gardło zimą, ciemniejsze czoło kozła, racice i pęciny, parostki wytarte albo w scypule (V8-g), ogon; jajo przyzywające 16 × 16;
+  - `animations.py`: `misc.idle`, `move.walk`, `move.run`, `misc.eat`, `misc.alert`, `misc.rest` (V8-k); kąt szyi przy żerowaniu jest szukany na kinematyce (nos 3 px nad gruntem); model próbny ma animację `calib.pose`;
+  - `render.py`: renderer z kodu z kamerą Minecrafta (oko, yaw, pitch, pionowe pole widzenia, rozmiar obrazu), bufor głębokości, tekstura, światło encji; `silhouette` daje maskę dla gametestu;
+  - `validate.py`, `check.py`, `selftest.py`: walidacja modeli, animacji, tekstur (ściany nieprzezroczyste, reszta przezroczysta, bez czerni, gładkość), jaj i pliku oczekiwanych pozycji; porównanie plików w repozytorium z generatorem (JSON po sparsowaniu, PNG po pikselach); autotest kinematyki wobec liczb z kodu GeckoLib i walidatora wobec zepsutych przykładów;
+  - `generate.py` (wszystkie pliki), `sheet.py` (arkusze do przeglądu; z `--game <katalog>` porównanie ze zrzutami gametestu);
+  - `checkArt` i `generateArt` uruchamiają `tools/fauna` w osobnym procesie (V8-o); `CREDITS.md`, `LICENSE-assets` i README wymieniają `tools/fauna`.
+- **Pliki zasobów** (z generatora): `assets/polishforests/geckolib/models/entity/roe_deer.geo.json`, `geckolib/animations/entity/roe_deer.animation.json`, `textures/entity/roe_deer/{doe,buck}_{summer,winter}.png`, `textures/item/roe_deer_spawn_egg.png`; model próbny w `src/gametest/resources/assets/polishforests_probe/`; dla gametestu `src/test/resources/fauna/fauna_expected.json` (pozycje kości i lokatorów, kamera, strony) i 8 sylwetek `roe_deer_<doe|buck>_<strona>.png`.
+- **Encja** `polishforests:roe_deer` (`entity/ModEntities`, `entity/roedeer/RoeDeer`; V8-h, V8-i, V8-j) i jajo `polishforests:roe_deer_spawn_egg` (V8-l). Po stronie klienta `client/entity/RoeDeerRenderer` (`GeoEntityRenderer`, tekstura według wariantu przez `DataTicket`, kości parostków kozy nierysowane) i `client/entity/BoneProbe` (pozycje kości z nasłuchu GeckoLib, włączane tylko przez gametest). Datagen: płaski model przedmiotu jaja (w `ModBlockModels`, bo pomocnicze metody `ItemModelGenerators` są w 26.3 prywatne), nazwy EN i PL. Renderer rejestruje wanilijne `EntityRenderers.register` (udostępnione przez Fabric), bo `EntityRendererRegistry` jest w Fabric API 0.161 przestarzałe.
+- **Migawka rejestru** obejmuje typy encji (V8-m); regenerowana świadomie: nagłówek, `item polishforests:roe_deer_spawn_egg`, `entity polishforests:roe_deer category=creature size=0.70x1.10`.
+- **Gametest** `FaunaClientGameTest` (`-Pgametest=fauna`, tylko z nazwy, ok. 1 min) z modelem próbnym `gametest/probe/FaunaProbes` (rejestrowany tylko w tym przebiegu, przestrzeń `polishforests_probe`):
+  - model próbny osi: ramiona obrócone o +30° wokół X, Y i Z, łańcuch dwóch obróconych kości (20, 30, 40) i (−10, 15, −25), kość poruszana tylko animacją (obrót (25, −35, 15), przesunięcie (1, 2, −3)), znaczniki lewej strony i przodu; jeden w spoczynku z yaw 0, drugi w animacji z yaw 45 (wielokrotność kroku 1,40625°, w którym serwer wysyła obrót ciała);
+  - sarna: 4 tekstury × 4 strony w pozie spoczynkowej przed tłem z limonkowego betonu, kamera stała (oko 7 bloków przed sarną, 0,62 bloku nad gruntem, pole widzenia 30°), sarna obracana; sylwetka zrzutu (piksele inne niż zielone tło) wobec maski z `tools/fauna`, próg IoU 0,97;
+  - zrzuty do przeglądu (pole widzenia 70): 4 warianty z przodu i z tyłu na trawie, wszystkie animacje obok siebie, jajo w pasku szybkiego wyboru; wyniki w `build/fauna/fauna.txt`.
+- **JUnit** `entity/FaunaModelTest`: 13 kości i poprawna hierarchia, wymagane animacje i klatki w granicach, pozycje spoczynkowe z modelu w repozytorium (kinematyka w Javie) równe `fauna_expected.json`, tekstury 4 wariantów i jaja istnieją. `GameRegistries` (testy migawki) rejestruje też encje.
+
+**Konwencje GeckoLib 5.5.7** (odczytane z klas jaru i sprawdzone w grze):
+- wypiekanie (`GeometryBone.bake`): X osi kości i narożników ze znakiem minus, kąty X i Y kości ze znakiem minus, Z bez zmiany; lokatory to punkty modelu (nie przesunięcia od osi kości), przesuwane macierzą kości;
+- render kości (`RenderUtil.prepMatrixForBoneAndUpdateListeners`): przesunięcie animacji (X ze znakiem minus w `BoneSnapshot.translate`), przejście do osi, obrót `PoseStack` Z, potem Y, potem X (w wierzchołku najpierw X), skala, powrót; kąty animacji (X i Y ze znakiem minus przy wczytaniu klatek, `ActorBoneAnimationKeyframe`) dodane do kątów spoczynkowych;
+- w przestrzeni pliku +X to lewa strona zwierzęcia, −Z przód; dodatni kąt X opuszcza przód kości, dodatni Y skręca przód w prawo (−X), dodatni Z przechyla górę w lewo (+X);
+- box UV: górny rząd góra (u + sz) i spód (u + sz + sx), drugi rząd prawa strona, przód, lewa strona, tył; z zewnątrz każda ściana wygląda nielustrzanie;
+- `GeoEntityRenderer.adjustRenderPose` obraca model o 180° − yaw ciała i podnosi go o 0,01 bloku; nasłuch pozycji (`RenderPassInfo.addBonePositionListener`, `addLocatorPositionListener`) podaje punkt w świecie, w przestrzeni modelu (piksele, osie pliku) i względem pozy przed renderem;
+- ścieżki `DefaultedEntityGeoModel`: `geckolib/models/entity/<id>.geo.json`, `geckolib/animations/entity/<id>.animation.json`, `textures/entity/<id>.png`; render state encji implementuje `GeoRenderState` przez wstrzyknięcie interfejsu (`geckolib.classtweaker`).
+
+**Pomiary** (gametest 2026-10-16, bez paczki i z `-Poptimization`: Sodium 0.9.2 + Nvidium, EntityCulling, ImmediatelyFast; oba PASS):
+
+| Sprawdzenie | Wynik |
+|---|---|
+| model próbny, spoczynek, yaw 0 (17 pozycji) | największa różnica 0,0001 px w modelu, 0,00000 bloku w świecie |
+| model próbny, `calib.pose`, yaw 45 (17 pozycji) | 0,0001 px, 0,00000 bloku; znacznik lewy 0,500 bloku na lewo, przedni 0,500 bloku przed encją |
+| sarna, 16 widoków (po 28 pozycji) | 0,0001 px, 0,00000 bloku |
+| sylwetki sarny, 16 widoków | IoU 1,0000 w każdym (koza: przód 5894 px, bok 8596, tył 5330; kozioł: 6234, 9060, 5548); 0 pikseli tylko w grze albo tylko w podglądzie |
+| tekstury (walidator) | średni skok jasności sąsiadów 4,1–4,8, 95. percentyl 21,1–21,9 (progi 6 i 24), najciemniejszy teksel 39; 90–106 kolorów |
+
+Pierwszy przebieg pokazał dwie rzeczy, które teraz są w modelu `tools/fauna`: GeckoLib podnosi każdy model o 0,01 bloku (różnica 0,0100 bloku przy każdej kości, sylwetki miały przez to IoU 0,946–0,968: pasek u góry tylko w grze, u dołu tylko w podglądzie), a serwer wysyła obrót ciała w krokach 1,40625° (yaw 37 dawał w świecie 36,56°; model próbny stoi teraz pod 45°).
+
+**Zrzuty i arkusze** (`docs/wycinek/fauna/`, 13 plików, ok. 2 MB):
+- `roe_deer_sides.png` (podgląd z kodu: 4 warianty z przodu, z lewej, z tyłu, z prawej i 3/4, siatka bloku i tyczka 1 m), `roe_deer_animations.png` (każda animacja w 6 chwilach), `roe_deer_textures.png` (4 tekstury i jajo, 8×), `axis_gauge.png` (model próbny w spoczynku i w `calib.pose`);
+- `compare_<doe|buck>_<summer|winter>.png`: zrzut z gry, podgląd z tej samej kamery i różnica sylwetek dla 4 stron;
+- `fauna_roe_deer_variants.png`, `fauna_roe_deer_variants_back.png`, `fauna_roe_deer_animations_0.png` (od prawej: idle, walk, run, eat, alert na koźle, rest), `fauna_axis_gauge.png`, `fauna_spawn_egg_hotbar.png`.
+
+**Odstępstwa.**
+- Plan mówi o „zrzucie z gametestu” jako kalibracji; sprawdzenie jest liczbowe (nasłuch pozycji kości GeckoLib w grze wobec obliczeń `tools/fauna`), a zrzuty i sylwetki są dodatkiem. Model próbny jest w modzie gametestów, nie w modzie.
+- „Zgadza się z podglądem” mierzy sylwetka (maska z tej samej kamery); zgodność tekstur (orientacja ścian, oko, nos, lustro) widać na arkuszach `compare_*`, ale nie jest liczona.
+- Encja dziedziczy po `Animal` (nie po `PathfinderMob`), bez celów AI; V14 i tak podmieni bazę na `PolishAnimal`.
+- Pole `Display` dla gametestu jest w klasie encji (synchronizowane, niezapisywane), a `BoneProbe` w kodzie klienta moda (nieaktywny, dopóki test go nie włączy).
+- Model przedmiotu jaja powstaje w `ModBlockModels` (tam jest dostęp do wyjścia modeli przedmiotów).
+
+**Otwarte przy CP-B** (pytanie planu „czy styl sarny pozwala robić AI”): wygląd sarny na zrzutach, zwłaszcza duże uszy, jednoczęściowe nogi i liczba kolorów (V8-p). Rekomendacja: przyjąć jako bazę V14; ewentualne poprawki to parametry `tools/fauna`.
+
+**Testy.** `runClientGameTest -Pgametest=fauna` (PASS bez paczki i z `-Poptimization`), `checkArt` (z `tools/fauna`: zgodność plików, walidator, autotest), `checkDatagen` (368 plików bez zmian), `fastTest`, `FaunaModelTest`, `RegistrySnapshotTest`, pełny zestaw `tools/dev/run-tests test`. Złoty test terenu bez zmian (V8 nie zmienia generacji świata).

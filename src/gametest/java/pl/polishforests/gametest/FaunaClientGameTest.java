@@ -19,6 +19,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.fabricmc.fabric.api.client.gametest.v1.screenshot.TestScreenshotOptions;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.CloudStatus;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.Identifier;
@@ -85,6 +86,9 @@ public final class FaunaClientGameTest implements FabricClientGameTest {
 		}
 		JsonObject expected = loadExpected();
 		int[] screen = ints(expected.getAsJsonArray("screen"));
+		FabricLoader loader = FabricLoader.getInstance();
+		result("mods: sodium %s, nvidium %s, entityculling %s, immediatelyfast %s", loader.isModLoaded("sodium"),
+				loader.isModLoaded("nvidium"), loader.isModLoaded("entityculling"), loader.isModLoaded("immediatelyfast"));
 		context.runOnClient(mc -> {
 			mc.options.fov().set(expected.get("fov").getAsInt());
 			mc.options.fovEffectScale().set(0.0);
@@ -223,7 +227,11 @@ public final class FaunaClientGameTest implements FabricClientGameTest {
 			level.addFreshEntity(posed);
 			return new Vec3[] {rest.position(), posed.position()};
 		});
-		Path shot = shot(context, sp, "fauna_axis_gauge", o.getX() + 0.5, o.getY() + 2.6, o.getZ() - 3.5, 0, 28, 1280, 720);
+		// The overview of both gauges with the normal field of view (the positions do not depend on the camera).
+		int fov = context.computeOnClient(mc -> mc.options.fov().get());
+		context.runOnClient(mc -> mc.options.fov().set(70));
+		Path shot = shot(context, sp, "fauna_axis_gauge", o.getX() + 0.5, o.getY() + 2.0, o.getZ() - 2.6, 0, 32, 1280, 720);
+		context.runOnClient(mc -> mc.options.fov().set(fov));
 		results.add("axis gauge screenshot " + shot.getFileName());
 		checkBones(context, "axis gauge at rest, yaw 0", pos[0], 0, gauge.getAsJsonObject("rest"), List.of());
 		checkBones(context, "axis gauge in calib.pose, yaw " + GAUGE_YAW, pos[1], GAUGE_YAW, gauge.getAsJsonObject("posed"), List.of());

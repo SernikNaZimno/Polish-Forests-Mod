@@ -8,7 +8,9 @@ Checks, in order:
    textures/item/*_spawn_egg.png, the probe assets of the game test mod, src/test/resources/fauna/);
 3. the validator (validate.py): models from the committed .geo.json files (bones, parents, UV inside the texture, no
    texel shared), animations, textures (opaque faces, transparent rest, no pure black, smoothness), spawn eggs, the
-   expected positions of the game test.
+   expected positions of the game test;
+4. the self-test (selftest.py): the kinematics against corners posed by GeckoLib itself, and the validator against
+   broken examples.
 Exit status 0 when everything passes, 1 otherwise; the fix is usually 'python tools/fauna/generate.py' (or
 './gradlew generateArt').
 
@@ -25,6 +27,7 @@ from PIL import Image
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import generate  # noqa: E402
+import selftest  # noqa: E402
 import validate  # noqa: E402
 
 # Directories (relative to the project) the generator owns, with the file patterns it owns there.
@@ -138,7 +141,7 @@ def run():
     files, models = generate.build_all()
     errors = compare(files) + strays(files)
     verrs, report = validation(files, models['details'])
-    return errors + verrs, report
+    return errors + verrs + ['selftest: ' + e for e in selftest.run()], report
 
 
 def main():
