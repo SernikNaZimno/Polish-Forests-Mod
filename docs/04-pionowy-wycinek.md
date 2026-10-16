@@ -483,7 +483,7 @@ S8c (M2-20 d2) kończy się w trzecim worktree przed CP-B (PW-17). Kalendarz jes
 | R14 | wanilijny predykat spawnu (`grass_block`, światło > 8) | 0 saren w borze na `podzol`, mało pod okapem | własny tag i predykat, próg z pomiaru V10 | V14 |
 | R15 | despawn wanilii (losowy powyżej 32 bloków, spawn `CREATURE` co 400 ticków) | rzadka, „migająca” populacja | `removeWhenFarAway` tylko powyżej 128 bloków, kalibracja na zrzutach | V14 |
 | R16 | spawn przy generacji poza limitem `CREATURE` | „zoo” przy eksploracji 1:1 | dwie osobne kalibracje (PW-15), startowo 0,02–0,04 | V14 |
-| R17 | konwencja osi i obrotów w GeckoLib 5 | „połamane” modele | kalibracja osi w grze i test regresji w V8. **Zamknięte w V8:** konwencje odczytane z kodu GeckoLib 5.5.7; w grze każda kość i lokator modelu próbnego i sarny zgodne z `tools/fauna` co do 0,0001 px, sylwetki z 4 stron IoU 1,0 (gametest `fauna`, „Stan po V8”) | V8 |
+| R17 | konwencja osi i obrotów w GeckoLib 5 | „połamane” modele | kalibracja osi w grze i test regresji w V8. **Zamknięte w V8:** konwencje odczytane z kodu GeckoLib 5.5.7; w grze każda kość i lokator modelu próbnego i sarny zgodne z `tools/fauna` co do 0,0001 px, sylwetki z 4 stron IoU 1,0 (gametest `fauna`, „Stan po V8”); od rundy 1 poprawek także kość animowana z kątem spoczynkowym i obróconym dzieckiem oraz sarna w trzymanej klatce `misc.alert` | V8 |
 | R18 | nagrania polskich ptaków tylko z licencją NC | brak tła dźwiękowego | manifest licencji, dźwięki zastępcze wanilii, mniej gatunków | V16 |
 | R19 | subiektywna estetyka agentów | odrzucenie stylu po pracy | CP-A po 10 teksturach, model sarny przy CP-B przed AI, `overrides/`, D5 (b) | V1, V8 |
 | R20 | konflikty scalania torów (lang, tagi, `ModBlocks`, datagen biomów, `src/main/generated`) | `checkDatagen` FAIL, utracone zmiany | ZW-11: kolejność scalania, `runDatagen` po scaleniu, bez ręcznego scalania wygenerowanych plików | wszystkie |
@@ -1277,6 +1277,51 @@ Pierwszy przebieg pokazał dwie rzeczy, które teraz są w modelu `tools/fauna`:
 - Pole `Display` dla gametestu jest w klasie encji (synchronizowane, niezapisywane), a `BoneProbe` w kodzie klienta moda (nieaktywny, dopóki test go nie włączy).
 - Model przedmiotu jaja powstaje w `ModBlockModels` (tam jest dostęp do wyjścia modeli przedmiotów).
 
-**Otwarte przy CP-B** (pytanie planu „czy styl sarny pozwala robić AI”): wygląd sarny na zrzutach, zwłaszcza duże uszy, jednoczęściowe nogi i liczba kolorów (V8-p). Rekomendacja: przyjąć jako bazę V14; ewentualne poprawki to parametry `tools/fauna`.
+**Otwarte przy CP-B** (pytanie planu „czy styl sarny pozwala robić AI”): wygląd sarny na zrzutach, zwłaszcza duże uszy, jednoczęściowe nogi i liczba kolorów (V8-p). Po rundzie 1 poprawek: zrzuty i liczby w „Runda 1 poprawek po przeglądzie V8” niżej. Rekomendacja: przyjąć jako bazę V14; ewentualne poprawki to parametry `tools/fauna`.
 
 **Testy.** `runClientGameTest -Pgametest=fauna` (PASS bez paczki i z `-Poptimization`), `checkArt` (z `tools/fauna`: zgodność plików, walidator, autotest), `checkDatagen` (368 plików bez zmian), `fastTest`, `FaunaModelTest`, `RegistrySnapshotTest`, pełny zestaw `tools/dev/run-tests test`. Złoty test terenu bez zmian (V8 nie zmienia generacji świata).
+
+### Runda 1 poprawek po przeglądzie V8 (2026-10-16)
+
+Wszystkie trzy uwagi główne i dziesięć drobnych potwierdzone na kodzie i zrzutach; żadna nie była fałszywym alarmem. Poprawki są w `tools/fauna` (model, animacje, malowanie i walidator), w gametescie `fauna` i w migawce rejestru. Pliki z generatora, sylwetki, `fauna_expected.json`, arkusze i zrzuty w `docs/wycinek/fauna/` zostały przeliczone. Drobne wybory tej rundy to V8-q … V8-u w `docs/00` G.9, a wpisy V8-b, V8-e, V8-f, V8-k, V8-m, V8-n i V8-p mają dopiski.
+
+**Żerowanie (uwaga główna 1).** Potwierdzone: stały dodatek głowy +20° do spoczynkowych 72° dawał czaszkę 131° od poziomu, z nosem 2,3 px za okiem i uszami do przodu. Teraz `misc.eat` ustawia czaszkę w świecie 80° pod poziomem (`EAT_SKULL`, pysk w dół i lekko do przodu). Dodatek głowy liczy się jako `EAT_SKULL − EAT_BODY − szyja − kąt spoczynkowy czaszki`, a kąt szyi szuka się na kinematyce, aż nos zejdzie 2 px nad grunt (`EAT_NOSE`). Uszy odchylają się w tył i w górę (`EAT_EARS`). Tułów zostaje poziomo (`EAT_BODY` 0°), przednie nogi wysuwają się o 4°. Przy tułowiu pochylonym o 3° przednie racice wchodziły w grunt, a wyrównanie ich obrotem nóg wymagało 17–30° (sylwetka kozła do piłowania). Wynik w pozie żerowania: nos (0; 2,00; −9,96), oko (±1,5; 5,44; −9,35), czyli nos 0,6 px przed okiem i 3,9 px przed przednimi nogami. Czubki uszu są na 8,9 px, a parostków na 7,6 px, więc nad okiem. Szyja jest opuszczona o 99,9° względem spoczynku, czyli 42° pod poziomem.
+
+**Futro w pasach (uwaga główna 2).** Potwierdzone: szum 4–5% był mniejszy od kroku 4%, więc zostawał sam pionowy gradient. Boki tułowia i szyi miały w każdym rzędzie jeden ton. Teraz (`paint.coat`, V8-q):
+- granice tonów przesuwa szum o okresie 4 px wzdłuż ciała (`COAT_EDGE` 1,3 teksela) z drobniejszym dodatkiem (`COAT_TUFT` 0,45 teksela, okres 1,7 px), nowe sole `edge` i `tuft`;
+- wysokość jest liczona w 8 pasmach tonów (`COAT_TONES`), a większość boku ma ton boku. Jasny brzuch i ciemny grzbiet zajmują skrajne rzędy, więc grzbiet ma postrzępiony brzeg;
+- zmienność futra wynosi 13% (`COAT_VARIATION`), czyli więcej niż 1,5 kroku 3% (`COAT_STEP`).
+
+Pomiary dla 4 tekstur: średni skok jasności 4,1–5,0 (próg 6), 95. percentyl 22,1–22,8 (próg 24), stosunek skoków wzdłuż rzędów do skoków w kolumnach 0,68–0,73 (przed poprawką 0,19–0,29 tą samą miarą). Rzędy jednego tonu na dużych ścianach: 0–3% (przed poprawką prawie wszystkie). Kolorów jest 107–133 (przed 89–106). Walidator sprawdza teraz także, czy stosunek wynosi co najmniej 0,5 i czy rzędów jednego tonu jest najwyżej 25% (`coat_report`, tylko w modzie, nie w modelu próbnym).
+
+**Parostki przed okiem (uwaga główna 3).** Potwierdzone na geometrii. Teraz:
+- parostki stoją w środkowej kolumnie czaszki, nad okiem (z = hp − 2 … hp − 1);
+- uszy są w tylnej kolumnie (z = hp − 1 … hp), z osią 0,25 px dalej na zewnątrz, a parostki 0,25 px bliżej środka (x 0,25 … 1,25). Przy pierwszej próbie z przeglądu (bez przesunięcia w x) ucho przecinało parostek, co pokazała nowa kontrola;
+- oko leży w środkowym rzędzie i środkowej kolumnie boku czaszki (`EYE_ROW`), z miękką obwódką od strony pyska.
+
+Zasada V8-c jest teraz sprawdzana automatycznie: walidator szuka par ścian różnych prostopadłościanów leżących w jednej płaszczyźnie, zwróconych w tę samą stronę i mających wspólne pole (`coplanar_faces`). Sarna i model próbny: 0 takich par. Sprawdza też, czy ucho nie przecina parostka (test osi rozdzielających prostopadłościanów).
+
+**Drobne uwagi.**
+1. *Regresja osi bez kąta spoczynkowego i dzieci:* potwierdzone. Kość `anim` modelu próbnego ma teraz rotację spoczynkową (10, 20, −15) i obrócone dziecko `anim_child` (0, −30, 20) z lokatorem. Gametest sprawdza też liczbowo sarnę (kozła) w trzymanej ostatniej klatce `misc.alert` pod yaw 45 (`alertPose`, pozycje `alert` w `fauna_expected.json`). Ta klatka ma kąty animacji dodane do niezerowych kątów spoczynkowych szyi, głowy i uszu oraz przesunięty i obrócony tułów z nogami, szyją i głową. Wynik: model próbny 19 pozycji, sarna w `misc.alert` 28 pozycji, wszystko co do 0,0001 px i 0,00001 bloku. Zdanie „sprawdzone w grze, z animacją” jest od tej rundy prawdziwe także dla tych dwóch konwencji.
+2. *`BoneProbe` bez czyszczenia:* potwierdzone. `BoneProbe.start()` jest teraz wołane przed każdym widokiem (i przed modelem próbnym), więc `checkBones` czeka na punkty nowej encji.
+3. *Migawka rejestru:* potwierdzone. Linia encji to teraz `entity polishforests:roe_deer saved=Buck,WinterCoat`: nazwy pól zapisu biorą się ze stałych `RoeDeer.TAG_BUCK` i `TAG_WINTER_COAT` (`ModEntities.savedFields`). Rozmiar i kategoria zniknęły z migawki, bo nie trafiają do zapisu. Migawka została przegenerowana świadomie (`-PwriteRegistrySnapshot`, zmienione nagłówek i linia encji; bloki i przedmioty bez zmian), V8-m.
+4. *Kształt parostka:* parostki mają 30 cm (5 px), przednia odnoga 2 px nad różą, tylna 3 px, a tyka kończy się 1 px nad nią (V8-r).
+5. *Głowa jak u lamy:* szyja 58° (było 52°), czaszka 38° pod poziomem (było 20°). W `misc.alert` szyja unosi się o 16°, a głowa nie unosi się wcale, więc pysk zostaje 20° pod poziomem (wcześniej 6° nad poziomem) (V8-s).
+6. *Pysk jak przyłbica:* grzbiet nosa (górna ściana pyska) jest ciemnoszarobrązowy, mieszany z kolorem nosa w 25–50%, najciemniejszy przy nosie. Biel zostaje na dolnym rzędzie przodu, wardze i podbródku.
+7. *Ogon za widoczny:* ogon jest teraz schowany w lustrze: wystaje 0,5 px za zad i leży 0,25 px pod jego wierzchem. Latem ma kolor sierści i lustra w tym miejscu, zimą biały kolor lustra. Oś obrotu przy górnej przedniej krawędzi, więc w `misc.alert` ogon wychodzi ok. 0,6 px nad zad. Puszenie lustra osobną teksturą to V14 (V8-t).
+8. *`move.run`:* nogi wysuwają się daleko do przodu (40°), ale cofają się tylko o 22°, a para tylna idzie 0,15 cyklu za przednią (V8-u). Wysokość tułowia w każdej klatce liczy kinematyka: racica dotyka gruntu poza dwiema fazami lotu (wyciągniętą do 1,4 px i krótką zebraną do 0,5 px). Racica na gruncie jest w 37% klatek, nogi się nie przecinają. `move.walk` liczy wysokość tak samo (32 klatki na cykl) i ma zawsze jedną racicę na gruncie (−0,005 … 0,012 px).
+9. *Nogi w gruncie (`misc.rest`, `misc.eat`):* obniżenie przy leżeniu liczy się z najniższego wierzchołka złożonych nóg i tułowia (5,56 px). Oddech w leżeniu i staniu tylko podnosi tułów (0 … 0,08 px i 0 … 0,06 px). W `misc.eat` i `misc.alert` wysokość tułowia też liczy kinematyka, w zejściu do trawy w 8 klatkach. Najniższy wierzchołek we wszystkich animacjach: −0,019 px (próg −0,05).
+10. *Zima jak źrebię osła:* bok zimą (130, 115, 96), grzbiet (104, 92, 79), brzuch (178, 165, 146). Spód szyi ma kolor sierści z dwiema oddzielnymi jasnymi plamami po 2 teksele: pod szczęką i niżej na szyi (`WINTER_THROAT_PATCHES`).
+11. *Kadr jaja w pasku:* wycięty na nowo z pełnego zrzutu: napis, serca, głód i 9 pól z jajem (×3) w polu 1 (`fauna_spawn_egg_hotbar.png`, 800 × 248).
+
+**Walidator i autotest.** Nowe kontrole (`validate.py`, uruchamiane w `checkArt`):
+- futro: stosunek skoków wzdłuż rzędów do skoków w kolumnach co najmniej 0,5, a rzędów jednego tonu na dużych ścianach najwyżej 25%;
+- kształt w spoczynku: ściany w jednej płaszczyźnie, ucho przez parostek;
+- pozy w każdej klatce kluczowej i w połowie między klatkami: żaden wierzchołek głębiej niż 0,05 px pod gruntem. Racica (w leżeniu tułów albo noga) najwyżej 0,1 px nad gruntem w każdej klatce, poza biegiem, w którym wystarczy 30% klatek. Nogi nie przecinają się, poza leżeniem (`FOLDED`): jednoczęściowe nogi złożone pod tułowiem leżą tam na sobie, schowane pod nim;
+- w połowie `misc.eat` nos przed oczami, a czubki uszu i parostków nad nimi.
+
+Autotest sprawdza na zepsutych przykładach, że walidator wykrywa futro w pasach, ściany w jednej płaszczyźnie, nogę w gruncie, zwierzę w powietrzu i nogi przez siebie.
+
+**Pomiary** (gametest `fauna` 2026-10-16, bez paczki i z `-Poptimization`): model próbny w spoczynku i w `calib.pose` 19 z 19 pozycji, sarna 16 widoków po 28 pozycji i kozioł w `misc.alert` 28 pozycji. Największa różnica wszędzie 0,0001 px w modelu i 0,00001 bloku w świecie. Sylwetki IoU 1,0000 w każdym z 16 widoków (koza: przód 5994 px, bok 8508, tył 5392; kozioł: 6588, 8974, 5734). UV: 942 z 2048 tekseli, żaden użyty dwa razy, 18 prostopadłościanów, 108 ścian. Uszy kozy sięgają 18,4 px, a parostki kozła 20,2 px, ponad wysokość hitboksu 17,6 px (V8-s).
+
+**Testy.** `checkArt` (z nowymi kontrolami i autotestem), `fastTest`, `RegistrySnapshotTest` (po świadomej regeneracji), `FaunaModelTest`, `runClientGameTest -Pgametest=fauna` bez paczki i z `-Poptimization` (PASS), pełny zestaw `tools/dev/run-tests test`.

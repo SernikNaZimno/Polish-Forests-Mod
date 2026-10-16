@@ -4,10 +4,13 @@ paint_model() walks the box UV faces of all cubes and asks a shader for the colo
 texel's part, face, position inside the face and its point on the model (rest pose, model pixels), so markings that run
 over several faces and cubes (the dark back, the light belly, the white rump patch) stay continuous across the seams.
 
-The style follows the user's note at checkpoint CP-A (textures too sharp): soft countershading gradients, a low and
-smooth fur variation (value noise with a period of several texels, never single-pixel noise), tones in small steps,
-and markings with an in-between tone at their edge; no pure black, the darkest details (eyes, nose, hooves) are dark
-browns. smoothness() measures the result (mean and largest neighbour difference inside faces).
+The style follows the user's note at checkpoint CP-A (textures too sharp): soft countershading, a low and smooth fur
+variation (value noise with a period of several texels, never single-pixel noise), tones in small steps, and markings
+with an in-between tone at their edge; no pure black, the darkest details (eyes, nose, hooves) are dark browns. After
+the review of V8 (the coat ran in rows of one tone, like a striped blanket) the countershading of the trunk and the
+neck comes in a few tone bands whose borders wander by about a texel along the body (low-frequency noise), so the tones
+form irregular clusters of 2-4 texels as in vanilla coats while the steps stay small. smoothness() measures the result
+(mean and largest neighbour difference inside faces); validate.coat_report() the rows of one tone.
 """
 import importlib.util
 import math
@@ -125,7 +128,9 @@ def smoothness(model, img, details=None):
 # ------------------------------------------------------------------ roe deer
 
 # Coat colors (report 07 §13: summer (175, 100, 55), winter (125, 115, 100), rump patch (240, 235, 225), black nose and
-# white "moustache"), spread into back / flank / belly tones.
+# white "moustache"), spread into back / flank / belly tones. The winter coat is a warm grey-brown (flank about
+# (130, 115, 96)); a cooler and lighter grey made the winter deer read as a donkey foal (review of V8). Its throat has the
+# coat color with two separate pale patches (WINTER_THROAT_PATCHES), not a pale underside.
 ROE_COATS = {
     'summer': dict(back=(160, 92, 52), flank=(192, 112, 62), belly=(218, 172, 124), face=(164, 116, 82),
                    muzzle=(134, 106, 88), patch=(230, 214, 180), throat=(206, 160, 112), leg=(182, 112, 70),
