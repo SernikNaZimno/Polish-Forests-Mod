@@ -802,5 +802,5 @@ Kolumny i złącza muszą być bez błędów; kolanko tych samych promieni ma dw
 - `TrunkModelRayTest`: PASS. Na modelach rundy 1 FAIL; na modelach c8c089d błędy tylko w kolankach.
 - `fastTest`, `checkDatagen`.
 - `runClientGameTest -Pgametest=slice -Psites=samples` bez Sodium i z `-Poptimization`, po 1 przebiegu, PASS: rejestr równy migawce, modele i cząsteczki 840 stanów, wszystkie 4733 bloki u klienta, światło zgodne po 1 ponownym wysłaniu, test celownika, łup `birch_log`.
-- Pełny zestaw `tools/dev/run-tests test`: PASS_PLACEHOLDER.
+- Pełny zestaw `tools/dev/run-tests test`: PASS (1205 s, na drzewie commitu 7241637, różniącym się od końcowego tylko tym zdaniem).
 - Złoty test terenu bez zmian (runda nie zmienia generacji świata).
