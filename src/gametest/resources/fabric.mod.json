@@ -5,6 +5,12 @@
 	"name": "Polish Forests Game Tests",
 	"environment": "*",
 	"entrypoints": {
+		"main": [
+			"pl.polishforests.gametest.probe.RenderProbes"
+		],
+		"client": [
+			"pl.polishforests.gametest.probe.RenderProbesClient"
+		],
 		"fabric-client-gametest": [
 			"pl.polishforests.gametest.UiAndCommandsClientGameTest",
 			"pl.polishforests.gametest.PerformanceClientGameTest",
@@ -14,7 +20,8 @@
 			"pl.polishforests.gametest.PresentDayClientGameTest",
 			"pl.polishforests.gametest.EcotoneClientGameTest",
 			"pl.polishforests.gametest.DeterminismClientGameTest",
-			"pl.polishforests.gametest.SliceClientGameTest"
+			"pl.polishforests.gametest.SliceClientGameTest",
+			"pl.polishforests.gametest.RenderProbesClientGameTest"
 		]
 	},
 	"depends": {

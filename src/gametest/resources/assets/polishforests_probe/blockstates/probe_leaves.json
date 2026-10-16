@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "polishforests_probe:block/probe_leaves"
+    }
+  }
+}
