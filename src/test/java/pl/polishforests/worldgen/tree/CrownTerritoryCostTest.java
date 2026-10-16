@@ -13,7 +13,6 @@ import pl.polishforests.worldgen.habitat.HabitatClassifier;
 import pl.polishforests.worldgen.landscape.ColumnSample;
 import pl.polishforests.worldgen.landscape.LandscapeModel;
 import pl.polishforests.worldgen.landscape.LandscapeScale;
-import pl.polishforests.worldgen.landscape.Noise;
 
 /**
  * Cost of the crown territories (step V5, decision PW-9), single thread, no assertions; the result goes into
@@ -23,8 +22,9 @@ import pl.polishforests.worldgen.landscape.Noise;
  * {@code oak_hornbeam_1} and {@code fresh_pine_1}) at both scales, in both vegetation modes. Per chunk of the area:
  * <ul>
  * <li><b>(a)</b> the territories of the trees of the chunk ({@link CrownTerritories.Session#chunk}) with vacancies from
- * the habitat codes of the chunks within radius 1 (precomputed, as the {@code ChunkHabitats} of the game: open ground)
- * and a stand-in for the palette that gives a tree to {@value #TREE_SHARE} of the forest candidates: in a fresh session
+ * the habitat codes (precomputed, as the {@code ChunkHabitats} of the game: open ground) and a stand-in for the palette
+ * that gives a tree to {@value #TREE_SHARE} of the forest candidates ({@link PaletteVacancies}: exact vacancies of the
+ * chunk's own candidates, sure ones of its neighbors): in a fresh session
  * per chunk (the worst case: the candidate pattern and the sites of a 80 × 80 block window computed anew) and in one
  * session per area in raster order (a per-thread session, as {@code ChunkEcotones}); also without vacancies (the pure
  * variant);</li>
@@ -93,16 +93,15 @@ class CrownTerritoryCostTest {
 		int bx = (cx0 - 1) * 16;
 		int bz = (cz0 - 1) * 16;
 		int side = span * 16;
-		Noise palette = new Noise(SEED).derive("test.crown_territory.vacant");
-		Vacancies open = (x, z) -> {
+		Vacancies open = new PaletteVacancies(SEED, TREE_SHARE, (x, z) -> {
 			int i = x - bx;
 			int j = z - bz;
 			if (i < 0 || j < 0 || i >= side || j >= side) {
 				throw new IllegalStateException("outside the precomputed habitats: " + x + ", " + z);
 			}
 			int code = codes[((i >> 4) * span + (j >> 4)) * 256 + ((i & 15) << 4 | (j & 15))];
-			return Habitat.biome(code).group() != HabitatBiome.Group.FOREST || palette.unit(x, z, 0) >= TREE_SHARE;
-		};
+			return Habitat.biome(code).group() != HabitatBiome.Group.FOREST;
+		});
 		CrownTerritories territories = new CrownTerritories(SEED, new PatchyStandMap(SEED, 0.15));
 		int chunks = SIZE * SIZE;
 		// Warm-up of the JIT on the variants.

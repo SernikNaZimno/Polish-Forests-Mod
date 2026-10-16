@@ -14,7 +14,8 @@ import pl.polishforests.worldgen.landscape.Noise;
  * PNG preview of the crown territories (step V5, rule ZW-1): {@code ./gradlew crownPreview} writes to
  * {@code docs/wycinek/korony/}. An area of 8 × 8 chunks of the test stand map ({@link PatchyStandMap}, half natural) with
  * a meandering open ground (pale yellow) and a palette that gives a tree to {@value #TREE_SHARE} of the forest candidates
- * (about 11 trees per chunk, as N1): one image per layer, each territory of a tree in its own color, trunks as black
+ * (about 11 trees per chunk, as N1; {@link PaletteVacancies}, with the rule of the game: exact vacancies of the trunk's
+ * own chunk, sure ones of its neighbors): one image per layer, each territory of a tree in its own color, trunks as black
  * dots, trunks next to a marker (a vacant candidate or a canopy gap within the edge reach) as red dots, vacant forest
  * candidates as gray rings, canopy gap columns of natural stands hatched gray, managed stands with a light blue tint and
  * chunk borders as thin lines. Every column belongs to at most one territory of a layer.
@@ -35,9 +36,8 @@ public final class CrownTerritoryPreview {
 		}
 		PatchyStandMap stands = new PatchyStandMap(SEED, 0.5);
 		Noise n = new Noise(SEED).derive("test.crown_territory.open");
-		Noise palette = new Noise(SEED).derive("test.crown_territory.vacant");
 		Vacancies open = (x, z) -> n.fbm(x, z, 90, 2, 0.5) > 0.2;
-		Vacancies vacancies = (x, z) -> open.vacant(x, z) || palette.unit(x, z, 0) >= TREE_SHARE;
+		Vacancies vacancies = new PaletteVacancies(SEED, TREE_SHARE, open);
 		CrownTerritories territories = new CrownTerritories(SEED, stands);
 		int x0 = 10 * 16;
 		int z0 = -6 * 16;

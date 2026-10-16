@@ -55,6 +55,8 @@ public final class TreeStandPlan {
 	public static final double GAP_SHARE = 0.075;
 
 	private static final int CELLS = 16 / CELL;
+	/** Salt of a candidate's chance draw, mixed into the candidate's hash. */
+	private static final long DRAW_SALT = 0x5DEE_CE66_DA11L;
 	private static final int MIN_SPACING_SQ = MIN_SPACING * MIN_SPACING;
 
 	/**
@@ -100,6 +102,18 @@ public final class TreeStandPlan {
 				}
 			}
 			return -1;
+		}
+
+		/**
+		 * Highest chance of any rule ({@link TreeStandPlan#chance}): a candidate whose draw is at or above it gets no tree
+		 * whatever its habitat code, also where an ecotone gives it the rule of another column.
+		 */
+		public double highestChance(boolean gaps) {
+			double highest = 0;
+			for (Rule rule : rules) {
+				highest = Math.max(highest, chance(rule.treesPerChunk(), gaps));
+			}
+			return highest;
 		}
 
 		/** Trees per chunk of the rule matching the habitat code (0 without a rule). */
@@ -150,6 +164,17 @@ public final class TreeStandPlan {
 	}
 
 	/**
+	 * Chance of a kept candidate to become a tree under a rule of n trees per chunk, before the thinning of sparse stands
+	 * and the gaps: the candidate's draw ({@link Candidates#draw}) must be below it. The potential trees per chunk over
+	 * the candidate density, raised by 1 / (1 − {@value #GAP_SHARE}) when the stand has gaps; 1 or more means every
+	 * candidate that is neither thinned nor in a gap.
+	 */
+	public static double chance(double treesPerChunk, boolean gaps) {
+		double boost = 1 / (DENSITY * (gaps ? 1 - GAP_SHARE : 1));
+		return potential(treesPerChunk) * boost;
+	}
+
+	/**
 	 * Share of the hard-core disk of {@value #MIN_SPACING} blocks taken out of the exclusion area: the candidates are not
 	 * a Poisson pattern (cells of {@value #CELL} blocks with a hard core), so few of them stand just outside the core
 	 * either (calibrated in {@code TreeStandPlanTest}: the mean stays within 2% of n for n from 0.125 to 4).
@@ -189,7 +214,6 @@ public final class TreeStandPlan {
 		Pattern pattern = new Pattern(worldSeed);
 		int[] out = new int[CELLS * CELLS];
 		int n = 0;
-		double boost = 1 / (DENSITY * (stand.gaps() == null ? 1 : 1 - GAP_SHARE));
 		for (int i = 0; i < CELLS; i++) {
 			for (int j = 0; j < CELLS; j++) {
 				int gx = chunkX * CELLS + i;
@@ -207,8 +231,8 @@ public final class TreeStandPlan {
 					continue;
 				}
 				Rule rule = palette.rules().get(r);
-				long h2 = Noise.mix(h ^ 0x5DEE_CE66_DA11L);
-				double chance = potential(rule.treesPerChunk()) * boost;
+				long h2 = Noise.mix(h ^ DRAW_SALT);
+				double chance = chance(rule.treesPerChunk(), stand.gaps() != null);
 				if (unit(h2) >= chance) {
 					continue;
 				}
@@ -303,6 +327,26 @@ public final class TreeStandPlan {
 			}
 		}
 
+		/**
+		 * The chance draw in [0, 1) of the candidate of the cell holding column (x, z): the candidate becomes a tree only if
+		 * its draw is below the chance of its rule ({@link TreeStandPlan#chance}). A pure function of the world seed.
+		 */
+		public double draw(int x, int z) {
+			long h = pattern().hash(Math.floorDiv(x, CELL), Math.floorDiv(z, CELL));
+			return unit(Noise.mix(h ^ DRAW_SALT));
+		}
+
+		/**
+		 * Whether the kept candidate at column (x, z) surely gets no tree under every rule whose chance is at most
+		 * {@code chance}, whatever its habitat code: its draw is at or above {@code chance} or it stands in a gap of the
+		 * stand. With {@link Palette#highestChance} this needs no habitats at all (only the seed and the gap noise), so
+		 * every chunk gives the same answer, also for a candidate whose rule comes from an ecotone (crown territories,
+		 * round 2 of the V5 review). The thinning of sparse stands, a missing rule and the water depth can remove more trees.
+		 */
+		public boolean treeless(int x, int z, double chance, Stand stand) {
+			return draw(x, z) >= chance || stand.gap(x, z);
+		}
+
 		/** Whether the column (x, z) holds a kept candidate. */
 		public boolean kept(int x, int z) {
 			Pattern pattern = pattern();
@@ -391,7 +435,7 @@ public final class TreeStandPlan {
 					int dx = (gx + di) * CELL + offsetX(hn) - x;
 					int dz = (gz + dj) * CELL + offsetZ(hn) - z;
 					if (dx * dx + dz * dz < limit && lower(hn, gx + di, gz + dj, h, gx, gz)
-							&& unit(Noise.mix(hn ^ 0x5DEE_CE66_DA11L)) < chance && kept(gx + di, gz + dj)) {
+							&& unit(Noise.mix(hn ^ DRAW_SALT)) < chance && kept(gx + di, gz + dj)) {
 						return true;
 					}
 				}

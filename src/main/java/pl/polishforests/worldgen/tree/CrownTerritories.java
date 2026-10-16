@@ -22,10 +22,10 @@ import pl.polishforests.worldgen.landscape.Noise;
  * (risk R5). The determinism test of step V6 covers such an ecotone.
  *
  * <p><b>Inputs.</b> Only the candidate pattern, the stand map ({@link StandMap}: age class, natural flag, canopy gaps), a
- * hash of the candidate's column with the salt {@value #SALT} (rule ZW-2) and, optionally, the vacant candidates of the
- * chunks within radius 1 ({@link Vacancies}); never the species: at the FEATURES stage the habitats exist only for the
- * chunks within radius 1, while a crown of up to {@value #MAX_REACH} blocks has neighbors up to {@value #SEARCH} blocks
- * away, in chunks at radius 2. The layer of a candidate ({@link CrownLayer}) comes from the hash with the shares of its
+ * hash of the candidate's column with the salt {@value #SALT} (rule ZW-2) and, optionally, the vacant candidates
+ * ({@link Vacancies}: exact ones of the trunk's own chunk, sure ones of the chunks within radius 1); never the species:
+ * at the FEATURES stage the habitats exist only for the chunks within radius 1, while a crown of up to
+ * {@value #MAX_REACH} blocks has neighbors up to {@value #SEARCH} blocks away, in chunks at radius 2. The layer of a candidate ({@link CrownLayer}) comes from the hash with the shares of its
  * stand (managed or natural, age class), the crown radius from the layer and the age class with a jitter of
  * {@value #JITTER_MIN}–{@value #JITTER_MAX}. A candidate in a canopy gap of a natural stand belongs to the regeneration.
  *
@@ -36,12 +36,14 @@ import pl.polishforests.worldgen.landscape.Noise;
  * canopy and the subcanopy, a candidate in a canopy gap are markers: in a pair of a marker and a tree the marker weighs 0
  * and the tree weighs its crown radius times {@value #EDGE_REACH}, and a tree with such a partner within that distance
  * may reach that far. So the neighbors of a candidate the palette leaves out share its cell (a sparse stand still closes
- * its canopy) and the crowns of the forest edge lean out over the open ground or the gap (§1.1). Vacancies need the
- * habitat codes, so they count in a pair only when the chunks of both trunks are within radius 1 of each other (the
- * relation is symmetric, so both trunks of a pair see the same weights); a vacant candidate farther away counts as a
- * tree. A trunk's territory then asks about the candidates of its own chunk and its 8 neighbors only, which the
- * decoration of that chunk has. Without {@link Vacancies} every candidate counts as a tree and the territories are a
- * pure function of the seed and the stand map that can be computed from any chunk.
+ * its canopy) and the crowns of the forest edge lean out over the open ground or the gap (§1.1). A marker has no
+ * territory, so only the trunk next to it uses the pair; the disjointness of two trees' territories needs only that no
+ * candidate called vacant grows a tree ({@link Vacancies}: the exact vacancy depends on the ecotone tree code, known only
+ * for the candidates of the chunk being decorated). So a pair takes the exact vacancy of a candidate in the trunk's own
+ * chunk, the sure vacancy (no habitat code needed) of a candidate in the chunks within radius 1, and no vacancy farther
+ * away; a candidate whose vacancy is not known counts as a tree, which at worst leaves a hole. A trunk's territory is
+ * computed by the decoration of its own chunk. Without {@link Vacancies} every candidate counts as a tree and the
+ * territories are a pure function of the seed and the stand map that can be computed from any chunk.
  *
  * <p><b>Exactness.</b> Positions are columns and weights are integers in sixteenths of a block squared, so the ownership
  * of a column is an exact comparison; equal powers go to the trunk with the smaller (x, z). Both trunks of a pair compute
@@ -131,15 +133,16 @@ public final class CrownTerritories {
 	 * results never depend on what the session was asked before (everything cached is a pure function).
 	 */
 	public Session session() {
-		return new Session(1);
+		return new Session(0, 1);
 	}
 
 	/**
-	 * A session that takes the vacancies into the pairs whose chunks are within {@code vacancyChunks} of each other (1 in
-	 * the game; 2 only in tests that measure what the radius-1 rule changes, with vacancies known everywhere).
+	 * A session that takes the exact vacancies of the candidates within {@code exactChunks} of the trunk's chunk and the
+	 * sure ones within {@code sureChunks} (0 and 1 in the game). Only for tests that compare the rule of the game with
+	 * the exact vacancies of radius 1 (not available at the FEATURES stage) or with none outside the trunk's chunk.
 	 */
-	Session session(int vacancyChunks) {
-		return new Session(vacancyChunks);
+	Session session(int exactChunks, int sureChunks) {
+		return new Session(exactChunks, sureChunks);
 	}
 
 	public final class Session {
@@ -155,12 +158,14 @@ public final class CrownTerritories {
 		private int[] pa = new int[64];
 		private int[] pb = new int[64];
 		private boolean[] pFirst = new boolean[64];
-		private final int vacancyChunks;
+		private final int exactChunks;
+		private final int sureChunks;
 		private int n;
 		private boolean edge;
 
-		private Session(int vacancyChunks) {
-			this.vacancyChunks = vacancyChunks;
+		private Session(int exactChunks, int sureChunks) {
+			this.exactChunks = exactChunks;
+			this.sureChunks = sureChunks;
 		}
 
 		/** Whether the column (x, z) holds a kept candidate of the M2 pattern. */
@@ -201,8 +206,8 @@ public final class CrownTerritories {
 
 		/**
 		 * Territory of the trunk at column (x, z), which must be a kept candidate that is not vacant. With
-		 * {@code vacancies} the territory asks it about the candidates of the chunks within radius 1 of the trunk's chunk
-		 * only.
+		 * {@code vacancies} the territory asks for the exact vacancy of the candidates of the trunk's chunk and for the sure
+		 * vacancy of the candidates of the chunks within radius 1 only, so the decoration of the trunk's chunk computes it.
 		 */
 		public CrownTerritory territory(int x, int z, @Nullable Vacancies vacancies) {
 			if (!candidates.kept(x, z)) {
@@ -221,9 +226,9 @@ public final class CrownTerritories {
 			edge = false;
 			for (int ti = -TILE_REACH; ti <= TILE_REACH; ti++) {
 				for (int tj = -TILE_REACH; tj <= TILE_REACH; tj++) {
-					// Vacancies only between trunks whose chunks are within radius 1 of each other (a symmetric relation).
-					boolean near = Math.abs(ti) <= vacancyChunks && Math.abs(tj) <= vacancyChunks;
-					pairs(t, tile(cx + ti, cz + tj), near ? vacancies : null);
+					// Exact vacancies only in the trunk's chunk, sure ones within radius 1 (round 2 of the V5 review).
+					int ring = Math.max(Math.abs(ti), Math.abs(tj));
+					pairs(t, tile(cx + ti, cz + tj), vacancies, ring <= exactChunks, ring <= sureChunks);
 				}
 			}
 			double reach = Math.min(MAX_REACH, edge ? EDGE_REACH * t.radius() : t.radius());
@@ -262,10 +267,10 @@ public final class CrownTerritories {
 		}
 
 		/**
-		 * Adds the pairs of tree t (not vacant) with the sites of one chunk. {@code vacancies} is null when the chunks of
-		 * the pair are not within radius 1 of each other.
+		 * Adds the pairs of tree t (not vacant) with the sites of one chunk, asking {@code vacancies} for the exact or the
+		 * sure vacancy of the sites, or neither.
 		 */
-		private void pairs(Site t, Site[] sites, @Nullable Vacancies vacancies) {
+		private void pairs(Site t, Site[] sites, @Nullable Vacancies vacancies, boolean exact, boolean sure) {
 			CrownLayer layer = t.layer();
 			double edgeLimit = EDGE_REACH * t.radius();
 			for (Site u : sites) {
@@ -275,8 +280,8 @@ public final class CrownTerritories {
 				if (d2 == 0 || d2 > SEARCH * SEARCH) {
 					continue;
 				}
-				boolean uMarker = (u.gap() && layer != CrownLayer.REGENERATION)
-						|| (vacancies != null && vacancies.vacant(u.x(), u.z()));
+				boolean uMarker = (u.gap() && layer != CrownLayer.REGENERATION) || (vacancies != null
+						&& (exact ? vacancies.vacant(u.x(), u.z()) : sure && vacancies.surelyVacant(u.x(), u.z())));
 				// A site of another layer takes part only as a marker: it has no crown in this layer.
 				boolean foreign = u.layer() != layer;
 				if (foreign && !uMarker) {

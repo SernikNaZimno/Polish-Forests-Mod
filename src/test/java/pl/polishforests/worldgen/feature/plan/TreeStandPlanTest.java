@@ -315,6 +315,58 @@ class TreeStandPlanTest {
 		assertEquals(0.40, (double) beech / trees, 0.05);
 	}
 
+	/**
+	 * The chance draw of the read-only candidate view (crown territories, round 2 of the V5 review): in a chunk of one
+	 * dense rule a kept candidate becomes a tree exactly when it is not {@code treeless} at the rule's chance, and in
+	 * chunks of mixed codes no candidate that is {@code treeless} at the palette's highest chance gets a tree.
+	 */
+	@Test
+	void treelessCandidatesGetNoTree() {
+		TreeStandPlan.Stand stand = new TreeStandPlan.Stand(new float[] {1, 1, 1, 1},
+				new Noise(SEED).derive("test.tree_stand.gaps"), 1);
+		TreeStandPlan.Palette palette = palette();
+		TreeStandPlan.Candidates candidates = new TreeStandPlan.Candidates(SEED);
+		double highest = palette.highestChance(true);
+		assertEquals(TreeStandPlan.chance(12, true), highest, 1e-12, "the montane spruce forest is the densest rule");
+		int[] oak = chunk(HabitatBiome.OAK_HORNBEAM_FOREST, 0);
+		double oakChance = TreeStandPlan.chance(9, true);
+		int[][] mixed = {oak, chunk(HabitatBiome.MONTANE_SPRUCE_FOREST, 0), chunk(HabitatBiome.WILLOW_POPLAR_FOREST, 0),
+				chunk(HabitatBiome.RAISED_BOG, 0), chunk(HabitatBiome.HEATH, 0)};
+		long trees = 0;
+		long sure = 0;
+		long kept = 0;
+		for (int cx = 0; cx < 60; cx++) {
+			for (int cz = 0; cz < 60; cz++) {
+				// One rule: trees exactly at the candidates not treeless at its chance (oak without range flags, dry).
+				boolean[] planted = new boolean[256];
+				for (int p : TreeStandPlan.of(oak, DRY, palette, SEED, cx, cz, stand)) {
+					planted[p >>> 16] = true;
+				}
+				for (int c : TreeStandPlan.keptCandidates(SEED, cx, cz)) {
+					int x = cx * 16 + (c >> 4);
+					int z = cz * 16 + (c & 15);
+					assertEquals(!candidates.treeless(x, z, oakChance, stand), planted[c], "candidate " + x + ", " + z);
+					kept++;
+					sure += candidates.treeless(x, z, highest, stand) ? 1 : 0;
+				}
+				// Codes mixed column by column (as an ecotone does): no tree at a candidate treeless at the highest chance.
+				int[] codes = new int[256];
+				for (int c = 0; c < 256; c++) {
+					codes[c] = mixed[Math.floorMod((int) Noise.mix(cx * 7919L + cz * 31L + c), mixed.length)][c];
+				}
+				for (int p : TreeStandPlan.of(codes, DRY, palette, SEED, cx, cz, stand)) {
+					int column = p >>> 16;
+					assertTrue(!candidates.treeless(cx * 16 + (column >> 4), cz * 16 + (column & 15), highest, stand),
+							"a tree at a surely treeless candidate");
+					trees++;
+				}
+			}
+		}
+		System.out.printf(Locale.ROOT, "treeless at the highest chance %.3f: %.1f%% of the kept candidates; %d trees of "
+				+ "mixed chunks checked%n", highest, 100.0 * sure / kept, trees);
+		assertTrue(trees > 10_000);
+	}
+
 	/** The range ramp scales the weight of a flagged species; its alternative takes the rest. */
 	@Test
 	void rangeRamp() {
