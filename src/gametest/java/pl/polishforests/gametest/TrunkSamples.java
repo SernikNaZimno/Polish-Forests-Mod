@@ -54,8 +54,8 @@ import pl.polishforests.block.TrunkBlock;
  * <li>a Scots pine built by hand from a pipe model (lower and upper trunk, branches of radius 1-2 with steps on the
  * diagonal, leaves at the branch tips);
  * </ul>
- * and takes screenshots ({@code samples_<renderer>_<view>}, renderer {@code sodium} with {@code -Poptimization}, else
- * {@code vanilla}) at noon with smooth lighting (ambient occlusion) on, one at night lit by lanterns, the crosshair
+ * and takes screenshots ({@code samples_<renderer>_<view>}, renderer {@code vanilla}, {@code sodium} with
+ * {@code -Poptimization -PnoNvidium} or {@code sodium_nvidium} with {@code -Poptimization} on an NVIDIA GPU) at noon with smooth lighting (ambient occlusion) on, one at night lit by lanterns, the crosshair
  * outline with the cracks and hit particles while a survival player breaks a trunk, and the destroy particles. It also
  * checks that the registry of the game equals {@code src/test/resources/registry_snapshot.txt} (decision PW-11), that every
  * trunk state has a model and a bark sprite on the client, and logs the number of block states of the mod and of the
@@ -75,7 +75,11 @@ final class TrunkSamples {
 
 	static void run(ClientGameTestContext context) {
 		boolean sodium = FabricLoader.getInstance().isModLoaded("sodium");
-		String renderer = sodium ? "sodium" : "vanilla";
+		// As in the render probes (V3 review, round 1): on an NVIDIA GPU with mesh shaders Nvidium draws the terrain
+		// instead of Sodium, so the renderer is vanilla, sodium (plain, -PnoNvidium) or sodium_nvidium.
+		boolean nvidium = context.computeOnClient(mc -> RenderProbesClientGameTest.nvidiumEnabled());
+		String renderer = !sodium ? "vanilla" : nvidium ? "sodium_nvidium" : "sodium";
+		PolishForests.LOG.info("[samples] renderer {}", renderer);
 		context.runOnClient(mc -> {
 			mc.options.ambientOcclusion().set(true);
 			mc.options.renderDistance().set(8);
@@ -122,6 +126,12 @@ final class TrunkSamples {
 			// The elbow of radius 4 from behind (the side away from its branch to the east), close up: the step between the
 			// cap and the reach of the branch (V2 review, round 2).
 			shot(context, sp, b, p + "joints_back", Board.radiusX(4) - 1.7, 5.4, Board.JOINTS_Z - 0.8, -60, 18, 3);
+			// Close-ups of convex edges of the model (V2b): the top of the tip of the column of radius 6 from the north-west,
+			// the ledge of the joint r5 -> r4 from the south-west and the elbow of radius 4 (branch to the east) from the
+			// south-west, about a block away (a 1 px line along an edge shows here as a dotted line of a few pixels).
+			closeUp(context, sp, b, p + "cap_edge", Board.radiusX(6) + 0.5, 4 + 14 / 16.0, Board.COLUMNS_Z + 0.5, -1, -1, 0.8);
+			closeUp(context, sp, b, p + "ledge_edge", Board.radiusX(4) + 0.5, 2 + 13 / 16.0, Board.JOINTS_Z + 0.5, -1, 1, 0.6);
+			closeUp(context, sp, b, p + "elbow_edge", Board.radiusX(4) + 0.5, 4 + 12 / 16.0, Board.JOINTS_Z + 0.5, -1, 1, 0.7);
 			// From the south, facing north: the joints row lies north of the branch (V2 review: the camera stood inside it).
 			shot(context, sp, b, p + "chunk_boundary", 16, 3.5, Board.CHUNK_ROW_Z + 4, 180, 12, 3);
 			shot(context, sp, b, p + "water", 35, 6, Board.POOL_Z0 - 3, 0, 32, 3);
@@ -566,6 +576,20 @@ final class TrunkSamples {
 		context.takeScreenshot(TestScreenshotOptions.of(name).disableCounterPrefix().withSize(SIZE[0], SIZE[1]));
 		PolishForests.LOG.info(String.format(Locale.ROOT, "[samples] %s: camera (%.1f, %.1f, %.1f) yaw %.0f pitch %.0f", name,
 				b.x0() + dx, b.y0() + dy, b.z0() + dz, yaw, pitch));
+	}
+
+	/**
+	 * A close-up of the point (x, y, z) relative to the board from the horizontal direction (sx, sz) (each -1 or 1, the
+	 * camera 0.9 block away on each axis) and h blocks above it, looking straight at it.
+	 */
+	private static void closeUp(ClientGameTestContext context, TestSingleplayerContext sp, Board b, String name, double x, double y, double z,
+			int sx, int sz, double h) {
+		double ex = x + 0.9 * sx;
+		double ez = z + 0.9 * sz;
+		double horizontal = Math.hypot(x - ex, z - ez);
+		double yaw = Math.toDegrees(Math.atan2(-(x - ex), z - ez));
+		double pitch = Math.toDegrees(Math.atan2(h, horizontal));
+		shot(context, sp, b, name, ex, y + h - 1.62, ez, yaw, pitch, 2);
 	}
 
 	/**

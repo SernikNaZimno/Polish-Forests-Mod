@@ -150,7 +150,7 @@ public final class RenderProbesClientGameTest implements FabricClientGameTest {
 	}
 
 	/** Nvidium switched on (it reads the GPU at start and turns itself off where mesh shaders are missing). */
-	private static boolean nvidiumEnabled() {
+	static boolean nvidiumEnabled() {
 		if (!FabricLoader.getInstance().isModLoaded("nvidium")) {
 			return false;
 		}
