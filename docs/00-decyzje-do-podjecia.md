@@ -159,7 +159,7 @@ Plan: `docs/04-pionowy-wycinek.md`, **zaakceptowany przez użytkownika 2026-10-1
 | # | Dla wycinka |
 |---|---|
 | T-D5 (zima koron) | w rdzeniu (V13): model gałązek po stronie klienta, marcescencja dębu i grabu; zapas: opcja po CP-D, jeśli próba V3 nie przejdzie |
-| T-D1, T-D2 (pień) | wariant D (`radius` 1–7 co 2 px, `parent`, `waterlogged`; 84 stany), zapas: wariant C (model FRAPI) |
+| T-D1, T-D2 (pień) | wariant D (`radius` 1–7 co 2 px, `parent`, `waterlogged`; 84 stany), zapas: wariant C (model FRAPI). **V2 (2026-10-16): wariant D wdrożony i sprawdzony na tablicy próbek z Sodium i bez (zrzuty różnią się na ≤ 0,2% pikseli), wariant C niepotrzebny; ocena wyglądu przy CP-A** |
 | T-D3 (generator) | parametryczny, lekka kolonizacja przestrzeni w koronach liściastych tylko w razie potrzeby; szablony NBT po wycinku |
 | B5 (zimy) | wycinek nie dotyka; „zima normalna”; decyzja zostaje otwarta |
 | C2 (hitboxy) | sarna 0,7 × 1,1, dzik 0,9 × 0,9; decyzja zostaje otwarta dla łosia i jelenia (M6) |
@@ -193,3 +193,18 @@ Wybory przyjęte w kroku V1 (`tools/art`, pierwsze tekstury, licencja zasobów) 
 | V1-h | Borówka 8 px wysokości (rzędy 8–15, ok. 50 cm), 8 pędów od podstawy, liście na całej wysokości, pędy w średnim tonie, podstawa w cieniu, 1 px marginesu po bokach | Borówka czernica ma zwykle 15–50 cm; pierwsza wersja miała 13 px (81 cm). Niższa (5–6 px) czytałaby się w grze słabo |
 | V1-i | **Pytanie do CP-A (przed CP-B):** przejście dolna kora → „lustro” jest dziś ostre, na granicy jednego bloku (`pnie.png`); w naturze jest strefa, gdzie szare płyty leżą na pomarańczowym tle. Domyślnie bez strefy przejściowej | Jeśli tak: trzecia tekstura kory sosny (dolne płyty z pomarańczowymi bruzdami) i blok albo wartość właściwości zarezerwowane w V2, bo identyfikatory zamraża test migawki rejestru przy CP-B (PW-11). Koszt: tekstura ok. 1 h, blok w V2 ok. 0,5 h |
 | V1-j | Ściany cienkiego pnia (V2): każda z 4 ścian pokazuje inny wycinek tekstury (przesunięcie mieszczące się w 0–16 px, przy r ≥ 6 najwyżej 2–4 px), a nie ten sam środek `[8 − r, 8 + r]` z raportu technicznego | Ten sam wycinek powtarza każdy motyw 4 razy wokół pnia (przegląd V1). Lint sprawdza pasy na środkowych wycinkach r = 2…5 |
+
+### G.6 Drobne wybory kroku V2 (domyślne, do potwierdzenia najpóźniej przy CP-A, identyfikatory przy CP-B, 2026-10-16)
+
+Wybory przyjęte w kroku V2 (cienkie pnie `TrunkBlock`) bez pytania, zgodnie z zasadą z 2026-10-09. Szczegóły: `docs/04-pionowy-wycinek.md`, „Stan po V2”. Identyfikatory bloków, przedmiotów i właściwości zamraża przy CP-B test migawki rejestru (PW-11); do tego czasu można je zmienić bez migracji.
+
+| # | Wybór | Uzasadnienie i alternatywa |
+|---|---|---|
+| V2-a | Identyfikatory: `<gatunek>_trunk` z identyfikatorem gatunku z `Species` (`scots_pine_trunk`, `scots_pine_upper_trunk`, `spruce_trunk`, `birch_trunk`, `oak_trunk`, `hornbeam_trunk`, `linden_trunk`, `beech_trunk`, `ash_trunk`, `norway_maple_trunk`), właściwości `radius` 1–7, `parent` (kierunek), `waterlogged`; tagi `polishforests:<gatunek>_logs` i `polishforests:trunks` | Te same nazwy gatunków co klucze cech `tree/<gatunek>` (PW-3). Klon zwyczajny i jesion zamiast jaworu: tylko one z archetypu „liściasty szeroki” są w paletach pasa W1b. Alternatywa: wspólny blok „liściasty szeroki” dla klonu i jesionu (mniej stanów, ale M3 musiałby go rozdzielić po zamrożeniu) |
+| V2-b | Pnie mają przedmioty (zakładka „Bloki naturalne”, paliwo jak kłoda); postawiony pień bierze za rodzica kliknięty blok, a promień z klikniętego pnia albo 4 | Gracz może budować i oglądać pnie w trybie kreatywnym, jedwabny dotyk zbiera pień. Alternatywa z raportu: pnie tylko z generacji, bez przedmiotów |
+| V2-c | Łup: r 1–2 patyki 1–2, r 3–7 jedna kłoda (wanilijna dla dębu, brzozy i świerka, D2; do czasu własnego drewna najbliższa kłoda wanilii: sosna `spruce_log` do V7, grab i buk `pale_oak_log`, lipa, jesion i klon `oak_log`); jedwabny dotyk daje pień | Plan §1.1. Alternatywa: zawsze patyki albo pień |
+| V2-d | Tagi gatunków dębu, brzozy i świerka w wanilijnych `#oak_logs`, `#birch_logs`, `#spruce_logs` (z przedmiotu pnia są deski wanilii), pozostałe w `#logs_that_burn` | D2: drewno tych gatunków jest wanilijne. Alternatywa: wszystkie tylko w `#logs_that_burn` (pnie dębu nie dawałyby desek) |
+| V2-e | Model: szablon z ramieniem w dół, czapka rdzenia i wysięg z zakładkami δ = 0,25 px za szwami, wierzchołek pędu w korze, słoje (wierzch kłody łupu, wanilia przez id) tylko na końcu wysięgu i na przedmiocie; ściany N, W, S, E z różnymi wycinkami kory (tabela w `TrunkTemplates`) | Bez zakładek były jasne włoskowate linie, słoje na wierzchu dawały jasne pierścienie przy złączach. Słoje na pniakach (V11) mogą dostać osobny model albo blok |
+| V2-f | Wspólna kora zastępcza klonu i jesionu: nowa tekstura `broadleaf_bark` (szara siatka wąskich listew, barwa zdjęcia lipy) | Plan §1.1 („wspólna kora zastępcza”). Alternatywa: kora lipy dla obu (klon i jesion wyglądałyby jak lipa) |
+| V2-g | Twardość 2 (jak kłoda) dla każdego promienia | Prosto i zgodnie z wanilią. Alternatywa: cieńsze gałęzie łamane szybciej (twardość zależna od stanu) |
+| V2-h | Bez okorowanego pnia w wycinku; bez bloku przejściowej kory sosny (V1-i), który można dodać do CP-B | Raport: okorowany pień w wycinku opcjonalny (kolejne 84 stany na gatunek) |

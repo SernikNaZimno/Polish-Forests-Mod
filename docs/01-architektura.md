@@ -93,7 +93,7 @@ Warstwa niezależna od biomu. Las gospodarczy dzieli się na oddziały 200–400
 
 ### 5.2 Drzewa
 
-- **Pnie o zmiennej grubości**: bloki pni i gałęzi o kilku średnicach w pikselach, pełny blok i układ 2×2 dla olbrzymów. Gałęzie łączą się z sąsiadami jak w modzie Dynamic Trees.
+- **Pnie o zmiennej grubości**: bloki pni i gałęzi o kilku średnicach w pikselach, pełny blok i układ 2×2 dla olbrzymów. Gałęzie łączą się z sąsiadami jak w modzie Dynamic Trees. **Od V2 wycinka (2026-10-16):** `block/TrunkBlock` w wariancie D (`radius` 1–7 px, `parent` w stronę korzenia, `waterlogged`; 84 stany na blok), statyczne modele z 7 szablonów `template_trunk_r1…r7` (ramię do środka rodzica z wysięgiem 8 px; z Sodium wygląda tak samo jak bez niego), 10 bloków gatunków wycinka (`block/TreeTrunk`), rejestracja w `block/ModBlocks`, migawka rejestru (`block/RegistrySnapshot`, `RegistrySnapshotTest`); szczegóły `docs/04-pionowy-wycinek.md`, „Stan po V2”.
 - **Generator proceduralny** z parametrami gatunku z raportu 06, sekcja 9: wysokość zależna od wieku i bonitacji, długość korony, pokrój, smukłość. Sosna w wieku 60 lat ma 18–26 bloków, stary buk 35–40.
 - **Liście**: tekstura w skali szarości i własne kolory sezonowe per gatunek, stan bezlistny zimą, modrzew zrzuca igły.
 - **Dynamika lasu**: wzrost i starzenie drzew, sukcesja na zrębach i lukach, wiatrołomy i gradacje kornika.
@@ -133,7 +133,7 @@ Zrobione w kamieniu milowym M0: interfejs `SeasonProvider`, własny kalendarz i 
 | M8 | Tryby świata i dynamika | tryb rolniczy, infrastruktura leśna, gatunki obce, dynamika lasu |
 | M9 | Dopracowanie | wydajność, zgodność z Sodium, Lithium i Distant Horizons, balans |
 
-**Pionowy wycinek po M2 (decyzja P2, 2026-10-05).** Po zamknięciu M2, zanim M3–M7 poszerzą zakres na całą Polskę, powstaje jeden kompletny las, np. grąd i bór świeży: drzewa, runo, martwe drewno i kilka zwierząt. Wycinek bierze po kawałku z M3, M4 i M6 i sprawdza w grze, czy warstwy do siebie pasują; pozostałe siedliska i gatunki dochodzą potem w kolejnych kamieniach. **Stan 2026-10-15:** plan `docs/04-pionowy-wycinek.md` zaakceptowany (CP-0, decyzje w `docs/00` G), krok V0 (przygotowanie) zrobiony: stałe miejsca wycinka, gametest `slice`, baza pomiarowa M2 (tag `m2-baseline-r1` po rundzie 1 poprawek V0, ze stałymi kamerami `slice_cameras.txt`), puste pakiety `block/`, `worldgen/tree/` i `entity/`.
+**Pionowy wycinek po M2 (decyzja P2, 2026-10-05).** Po zamknięciu M2, zanim M3–M7 poszerzą zakres na całą Polskę, powstaje jeden kompletny las, np. grąd i bór świeży: drzewa, runo, martwe drewno i kilka zwierząt. Wycinek bierze po kawałku z M3, M4 i M6 i sprawdza w grze, czy warstwy do siebie pasują; pozostałe siedliska i gatunki dochodzą potem w kolejnych kamieniach. **Stan 2026-10-15:** plan `docs/04-pionowy-wycinek.md` zaakceptowany (CP-0, decyzje w `docs/00` G), krok V0 (przygotowanie) zrobiony: stałe miejsca wycinka, gametest `slice`, baza pomiarowa M2 (tag `m2-baseline-r1` po rundzie 1 poprawek V0, ze stałymi kamerami `slice_cameras.txt`), puste pakiety `block/`, `worldgen/tree/` i `entity/`. **2026-10-16:** krok V1 (`tools/art`, pierwsze tekstury) i V2 (cienkie pnie `TrunkBlock`, 10 bloków, migawka rejestru, tablica próbek w grze) zrobione.
 
 ## 9. Struktura kodu
 
@@ -149,7 +149,7 @@ pl.polishforests
 │   ├── tree/                   generator drzew, mapa drzewostanów, martwe drewno (od V0 wycinka pusty pakiet; w planie wycinka „tree/”)
 │   └── feature/                dyspozytory kroku 9 (drzewostan, martwe drewno, podszyt, strefy nadwodne, runo, rośliny wodne), czyste plany (plan/), palety (config/), filtr siedliska, szybkie drzewa
 ├── command/                    /polishforests: cele find, find biome/zone (plany szukania, siatka komórek, transekty), opis siedliska kolumny (here, F3)
-├── block/                      pnie, liście, runo, grzyby, gleby
+├── block/                      pnie (od V2: TrunkBlock, TreeTrunk, ModBlocks, RegistrySnapshot), liście, runo, grzyby, gleby
 ├── entity/                     zwierzęta, AI, spawnery, domy
 └── client/                     rendery, kolory, HUD, wpis F3 siedliska, datagen (wynik w src/main/generated)
 tools/                          skrypty Python: art/ (tekstury bloków: biblioteka, przepisy gatunków, palety, lint, checkArt, overrides/ na ręczne poprawki), logo/, paczka .mrpack, dev/run-tests
