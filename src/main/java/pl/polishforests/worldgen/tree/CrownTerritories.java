@@ -25,9 +25,9 @@ import pl.polishforests.worldgen.landscape.Noise;
  * hash of the candidate's column with the salt {@value #SALT} (rule ZW-2) and, optionally, the vacant candidates
  * ({@link Vacancies}: exact ones of the trunk's own chunk, sure ones of the chunks within radius 1); never the species:
  * at the FEATURES stage the habitats exist only for the chunks within radius 1, while a crown of up to
- * {@value #MAX_REACH} blocks has neighbors up to {@value #SEARCH} blocks away, in chunks at radius 2. The layer of a candidate ({@link CrownLayer}) comes from the hash with the shares of its
- * stand (managed or natural, age class), the crown radius from the layer and the age class with a jitter of
- * {@value #JITTER_MIN}–{@value #JITTER_MAX}. A candidate in a canopy gap of a natural stand belongs to the regeneration.
+ * {@value #MAX_REACH} blocks has neighbors up to {@value #SEARCH} blocks away, in chunks at radius 2. The layer of a
+ * candidate ({@link CrownLayer}) comes from the hash with the shares of its stand (managed or natural, age class), the
+ * crown radius from the layer and the age class with a jitter of {@value #JITTER_MIN}–{@value #JITTER_MAX}. A candidate in a canopy gap of a natural stand belongs to the regeneration.
  *
  * <p><b>Layers.</b> Each layer has its own diagram: a canopy tree competes with canopy trees only, since the layers
  * occupy different heights (the tree planner keeps the lower layers below the crown base of the canopy).

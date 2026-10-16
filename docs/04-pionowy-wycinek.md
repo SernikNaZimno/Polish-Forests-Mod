@@ -969,6 +969,6 @@ Testy dla V6 i V9:
 **Testy.** Przeszły:
 - `CrownTerritoryTest` (11 testów) i `TreeStandPlanTest`;
 - `fastTest`;
-- pełny zestaw `tools/dev/run-tests test`.
+- pełny zestaw `tools/dev/run-tests test`: PASS (1479 s, na drzewie commitu 1723686, różniącym się od końcowego tylko tym zdaniem i zawinięciem jednego wiersza javadoc `CrownTerritories`).
 
 Złoty test terenu się nie zmienia, bo runda nie zmienia generacji świata.
