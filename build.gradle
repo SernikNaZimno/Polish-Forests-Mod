@@ -153,9 +153,19 @@ tasks.register('landscapePreview', JavaExec) {
 	jvmArgs = ['-Xmx3G', '-Djava.awt.headless=true']
 }
 
+// Crown territory preview (step V5 of the vertical slice) rendered to docs/wycinek/korony/*.png, without the game.
+tasks.register('crownPreview', JavaExec) {
+	group = 'polishforests'
+	description = 'Renders the crown territories of a test stand to docs/wycinek/korony/*.png'
+	classpath = sourceSets.test.runtimeClasspath
+	mainClass = 'pl.polishforests.worldgen.tree.CrownTerritoryPreview'
+	args = [file('docs/wycinek/korony').absolutePath]
+	jvmArgs = ['-Djava.awt.headless=true']
+}
+
 // Unit tests (docs/BRIEF.md, "Komendy"). Test classes are tagged with JUnit 5 tags:
 //   @Tag("slow") - classes that take more than ~20 s (large terrain areas, golden test, continuity sweeps);
-//   @Tag("cost") - SampleCostTest, a wall-clock measurement without assertions.
+//   @Tag("cost") - SampleCostTest and CrownTerritoryCostTest, wall-clock measurements without assertions.
 // Tasks:
 //   test     - everything except "cost", in 3 parallel forks (part of 'check' and 'build');
 //   fastTest - everything except "slow" and "cost", in 3 parallel forks (quick check during a step, about 1 min);
@@ -234,7 +244,7 @@ tasks.withType(Test).configureEach {
 		systemProperty 'polishforests.registry.write', file('src/test/resources/registry_snapshot.txt').absolutePath
 		outputs.upToDateWhen { false }
 	}
-	// SampleCostTest: number of runs (default 7), e.g. -PcostRuns=15 when settling the budget.
+	// Cost tests (SampleCostTest, CrownTerritoryCostTest): number of runs (default 7), e.g. -PcostRuns=15 when settling the budget.
 	if (project.hasProperty('costRuns')) {
 		systemProperty 'polishforests.cost.runs', project.property('costRuns')
 	}
@@ -263,7 +273,7 @@ tasks.register('costTest', Test) {
 	group = 'verification'
 	testClassesDirs = sourceSets.test.output.classesDirs
 	classpath = sourceSets.test.runtimeClasspath
-	description = 'Runs SampleCostTest (tag "cost") alone in a single fork, after any other test task.'
+	description = 'Runs the cost measurements (tag "cost") alone in a single fork, after any other test task.'
 	useJUnitPlatform {
 		includeTags 'cost'
 	}

@@ -146,7 +146,7 @@ pl.polishforests
 │   ├── habitat/                siedliska: 36 biomów, strefy, gleby, klasyfikator (czysta Java)
 │   ├── chunk/                  ChunkGenerator, BiomeSource, ChunkHabitats, rejestracja
 │   ├── surface/                plan powierzchni chunka: gleby, półka brzegowa, mikrorelief, pamięć kolumn przygranicznych, grunt pod strukturami (czysta Java)
-│   ├── tree/                   generator drzew, mapa drzewostanów, martwe drewno (od V0 wycinka pusty pakiet; w planie wycinka „tree/”)
+│   ├── tree/                   generator drzew, mapa drzewostanów, martwe drewno (od V0 wycinka; od V5 terytoria koron `CrownTerritories` i interfejs `StandMap`; w planie wycinka „tree/”)
 │   └── feature/                dyspozytory kroku 9 (drzewostan, martwe drewno, podszyt, strefy nadwodne, runo, rośliny wodne), czyste plany (plan/), palety (config/), filtr siedliska, szybkie drzewa
 ├── command/                    /polishforests: cele find, find biome/zone (plany szukania, siatka komórek, transekty), opis siedliska kolumny (here, F3)
 ├── block/                      pnie (od V2: TrunkBlock, TreeTrunk, ModBlocks, RegistrySnapshot), liście, runo, grzyby, gleby

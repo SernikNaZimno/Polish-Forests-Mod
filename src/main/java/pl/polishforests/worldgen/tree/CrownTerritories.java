@@ -29,7 +29,7 @@ import pl.polishforests.worldgen.landscape.Noise;
  *
  * <p><b>Edges.</b> A candidate in a canopy gap (in the canopy and lower layers) and a candidate on open ground
  * ({@link OpenGround}) are markers: in a pair of a marker and a tree the marker weighs 0 and the tree weighs its crown
- * radius times {@value #EDGE_REACH}, and a tree with such a pair within twice that distance may reach that far, so its
+ * radius times {@value #EDGE_REACH}, and a tree with such a partner within that distance may reach that far, so its
  * crown leans out over the gap or the open ground (the asymmetric crowns of the forest edge, §1.1). Open ground needs
  * the habitat codes, so it is used in a pair only when the chunks of both trunks are within radius 1 of each other (the
  * relation is symmetric, so both trunks of a pair see the same weights): a trunk's territory then asks about the columns
@@ -241,7 +241,7 @@ public final class CrownTerritories {
 		 */
 		private void pairs(Site t, Site[] sites, @Nullable OpenGround open, boolean tMarker) {
 			CrownLayer layer = t.layer();
-			double edgeLimit = 2 * EDGE_REACH * t.radius();
+			double edgeLimit = EDGE_REACH * t.radius();
 			for (Site u : sites) {
 				int dx = u.x() - t.x();
 				int dz = u.z() - t.z();
