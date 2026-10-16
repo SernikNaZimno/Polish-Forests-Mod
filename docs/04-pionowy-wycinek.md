@@ -846,7 +846,7 @@ Test pada więc na starych szablonach i przechodzi na nowych (ok. 15 s, w `fastT
 - Ściany wewnętrzne zostają płaskie i szerokie jak wysięg (ich krawędzie leżą wewnątrz ramienia i widać je tylko przez półkę 0,1 px i szczelinę ε).
 - Zrzuty przed poprawką zrobione nową wersją tablicy (z kadrami zbliżeń) na szablonach rundy 2, nie wzięte z przeglądu.
 
-**Testy V2b.** `TrunkModelRayTest` (FAIL na szablonach rundy 2, PASS na nowych), `RegistrySnapshotTest`, `TrunkShapeTest`, `fastTest`, `checkDatagen`, tablica próbek w 3 rendererach przed i po (6 × PASS), arkusze `python tools/art/sheet.py` (niżej), pełny zestaw `tools/dev/run-tests test`. Złoty test terenu bez zmian (V2b nie zmienia generacji świata).
+**Testy V2b.** `TrunkModelRayTest` (FAIL na szablonach rundy 2, PASS na nowych), `RegistrySnapshotTest`, `TrunkShapeTest`, `fastTest`, `checkDatagen`, tablica próbek w 3 rendererach przed i po (6 × PASS), arkusze `python tools/art/sheet.py` (niżej), pełny zestaw `tools/dev/run-tests test` (PASS, 1520 s, na drzewie commitu 6ee6e7c, różniącym się od końcowego tylko tym zdaniem). Złoty test terenu bez zmian (V2b nie zmienia generacji świata).
 
 **Arkusze tekstur** (`docs/wycinek/grafika/`) przeliczone z bieżących przepisów (`python tools/art/sheet.py`): `arkusz_8x.png` i `kafle_3x3.png` miały jeszcze kafel `broadleaf_leaves` sprzed poprawki V3-g (z pionową szczeliną); pozostałe arkusze bez zmian w pikselach.
 
