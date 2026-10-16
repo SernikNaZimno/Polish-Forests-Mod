@@ -27,8 +27,9 @@ import pl.polishforests.worldgen.habitat.Species;
  * @param perWhorl    branches per whorl (conifers) or per node (broad-leaved trees: 1)
  * @param angleLow    branch angle from the vertical at the crown base (degrees)
  * @param angleHigh   branch angle from the vertical at the top of the crown (degrees)
- * @param bend        bend of the branch tips: positive up, negative down (share of the branch length)
- * @param limbs       number of the main limbs where the trunk forks (0 = a leader to the top)
+ * @param bend        turn of a branch from its base to its tip: positive up, negative down (the planner turns the
+ *                    branch by about 110–220 degrees times this value, by archetype)
+ * @param limbs       number of the main limbs where the trunk forks, each forking again in two (0 = a leader to the top)
  * @param clusterH    horizontal radius of a leaf cluster at a shoot tip (blocks)
  * @param clusterV    vertical radius of a leaf cluster (blocks)
  * @param fill        share of the leaf cells of a cluster that hold a leaf (the rest are holes)
@@ -90,37 +91,40 @@ public record SpeciesShape(Archetype archetype, ByAge height, ByAge dbh, ByAge c
 		// Scots pine (fresh pine forest a1: 20-28 blocks; crown in the upper quarter to third, ovoid, flat in old age).
 		SHAPES.put(Species.SCOTS_PINE, new SpeciesShape(Archetype.PINE, new ByAge(14, 23, 27), new ByAge(13, 32, 48),
 				new ByAge(0.36F, 0.31F, 0.28F), new ByAge(1.4F, 2.2F, 2.9F), new Profile(0.55F, 0.45F, 0.2F, 1.8F), 0.8F,
-				1.4F, 3, 70, 50, 0.12F, 0, 1.6F, 1.25F, 0.76F, 0, 2.2F, 0.78F, 0.35F));
+				1.4F, 3, 76, 55, 0.12F, 0, 1.6F, 1.25F, 0.76F, 0, 2.2F, 0.78F, 0.35F));
 		// Norway spruce (admixture: a cone down to about half the height, drooping tips).
 		SHAPES.put(Species.SPRUCE, new SpeciesShape(Archetype.SPRUCE, new ByAge(15, 27, 31), new ByAge(14, 34, 48),
 				new ByAge(0.62F, 0.52F, 0.46F), new ByAge(2.0F, 3.0F, 3.4F), new Profile(1, 0, 0.05F, 1), 0.2F, 1.0F, 4, 88,
 				72, -0.25F, 0, 1.4F, 1.1F, 0.9F, 0, 2.2F, 0.8F, 0.45F));
 		// Birch (slender, ascending branches with hanging tips).
 		SHAPES.put(Species.BIRCH, new SpeciesShape(Archetype.SLENDER, new ByAge(13, 21, 24), new ByAge(10, 26, 36),
-				new ByAge(0.5F, 0.46F, 0.45F), new ByAge(1.8F, 2.8F, 3.4F), new Profile(0.6F, 0.4F, 0.2F, 1.5F), 0.9F, 0.8F,
+				new ByAge(0.5F, 0.46F, 0.45F), new ByAge(1.6F, 2.4F, 3.0F), new Profile(0.6F, 0.4F, 0.2F, 1.5F), 0.9F, 0.8F,
 				1, 48, 30, -0.35F, 0, 1.9F, 1.4F, 0.82F, 0, 2.3F, 0.8F, 0.15F));
-		// Pedunculate oak (a1 of the oak-hornbeam forest: thick limbs close to the axis, a broad irregular crown).
+		// Pedunculate oak (a1 of the oak-hornbeam forest: a fork into thick, crooked limbs, a broad irregular crown).
 		SHAPES.put(Species.OAK, new SpeciesShape(Archetype.BROAD, new ByAge(15, 27, 31), new ByAge(14, 45, 78),
-				new ByAge(0.46F, 0.52F, 0.56F), new ByAge(2.4F, 4.3F, 5.6F), new Profile(0.55F, 0.45F, 0.35F, 2.2F), 0.7F,
-				1.1F, 1, 72, 40, 0.1F, 3, 2.3F, 1.7F, 0.8F, 0.45F, 2.4F, 0.82F, 0.08F));
-		// Small-leaved linden (a1: a dense ovate crown with a leader).
+				new ByAge(0.46F, 0.44F, 0.47F), new ByAge(2.6F, 5.4F, 6.8F), new Profile(0.6F, 0.5F, 0.45F, 2.6F), 0.7F,
+				1.1F, 1, 72, 45, 0.1F, 3, 2.3F, 1.8F, 0.8F, 0.45F, 2.4F, 0.82F, 0.08F));
+		// Small-leaved linden (a1: a dense, low ovate crown with a leader).
 		SHAPES.put(Species.LINDEN, new SpeciesShape(Archetype.BROAD, new ByAge(15, 25, 28), new ByAge(13, 40, 64),
-				new ByAge(0.55F, 0.6F, 0.62F), new ByAge(2.2F, 3.7F, 4.7F), new Profile(0.65F, 0.35F, 0.2F, 1.6F), 0.5F,
-				0.8F, 1, 62, 30, 0.1F, 0, 2.0F, 2.0F, 0.9F, 0.4F, 2.4F, 0.84F, 0.05F));
-		// Hornbeam (a2 under the canopy: dense, lower, rounded); the archetype is shared with beech, maple and ash.
+				new ByAge(0.6F, 0.66F, 0.68F), new ByAge(2.3F, 4.0F, 5.0F), new Profile(0.75F, 0.3F, 0.15F, 1.4F), 0.5F,
+				0.7F, 1, 66, 34, 0.1F, 0, 2.0F, 2.0F, 0.94F, 0.3F, 2.4F, 0.84F, 0.05F));
+		// Hornbeam (a2 under the canopy: a dense, rounded ovate crown on a short bole); the archetype is shared with
+		// beech, maple and ash.
 		SHAPES.put(Species.HORNBEAM, new SpeciesShape(Archetype.BROAD, new ByAge(13, 21, 23), new ByAge(10, 25, 36),
-				new ByAge(0.6F, 0.65F, 0.66F), new ByAge(2.2F, 3.6F, 4.4F), new Profile(0.65F, 0.45F, 0.25F, 1.8F), 0.6F,
-				0.7F, 1, 64, 36, 0.08F, 0, 2.2F, 1.7F, 0.92F, 0.4F, 2.4F, 0.84F, 0.05F));
+				new ByAge(0.62F, 0.66F, 0.68F), new ByAge(2.2F, 3.4F, 4.2F), new Profile(0.72F, 0.4F, 0.3F, 1.6F), 0.6F,
+				0.6F, 1, 64, 36, 0.08F, 0, 2.1F, 1.9F, 0.96F, 0.2F, 2.4F, 0.84F, 0.05F));
+		// Beech: a dense dome of nearly horizontal, layered sprays.
 		SHAPES.put(Species.BEECH, new SpeciesShape(Archetype.BROAD, new ByAge(15, 28, 32), new ByAge(13, 42, 64),
-				new ByAge(0.5F, 0.6F, 0.6F), new ByAge(2.2F, 4.1F, 5.1F), new Profile(0.6F, 0.45F, 0.25F, 1.9F), 0.4F, 0.8F,
-				1, 70, 38, 0.06F, 0, 2.3F, 1.6F, 0.9F, 0.45F, 2.4F, 0.84F, 0.04F));
-		SHAPES.put(Species.NORWAY_MAPLE, new SpeciesShape(Archetype.BROAD, new ByAge(14, 24, 27), new ByAge(12, 38, 55),
-				new ByAge(0.55F, 0.6F, 0.6F), new ByAge(2.0F, 3.8F, 4.6F), new Profile(0.6F, 0.45F, 0.25F, 2.0F), 0.5F,
-				0.9F, 1, 62, 34, 0.1F, 0, 2.3F, 1.7F, 0.88F, 0.4F, 2.4F, 0.84F, 0.05F));
-		// Ash: a tall bole, a high and open crown of few, steep branches.
+				new ByAge(0.5F, 0.52F, 0.52F), new ByAge(2.4F, 4.6F, 5.6F), new Profile(0.6F, 0.35F, 0.55F, 3.0F), 0.4F, 0.8F,
+				1, 74, 42, 0.0F, 0, 2.4F, 1.9F, 0.93F, 0.4F, 2.4F, 0.84F, 0.04F));
+		// Norway maple: broad and round, shorter than the oak.
+		SHAPES.put(Species.NORWAY_MAPLE, new SpeciesShape(Archetype.BROAD, new ByAge(14, 22, 25), new ByAge(12, 38, 55),
+				new ByAge(0.58F, 0.62F, 0.62F), new ByAge(2.1F, 4.0F, 4.8F), new Profile(0.65F, 0.5F, 0.35F, 2.0F), 0.5F,
+				0.9F, 1, 62, 34, 0.1F, 0, 2.2F, 2.0F, 0.88F, 0.4F, 2.4F, 0.84F, 0.05F));
+		// Ash: a tall bole, a high, open dome of few, ascending branches with foliage at their ends.
 		SHAPES.put(Species.ASH, new SpeciesShape(Archetype.BROAD, new ByAge(16, 28, 32), new ByAge(13, 42, 60),
-				new ByAge(0.45F, 0.48F, 0.5F), new ByAge(2.0F, 3.8F, 4.8F), new Profile(0.55F, 0.5F, 0.3F, 2.0F), 0.5F,
-				1.2F, 1, 58, 30, 0.12F, 0, 2.1F, 1.5F, 0.8F, 0.4F, 2.4F, 0.82F, 0.06F));
+				new ByAge(0.42F, 0.45F, 0.48F), new ByAge(2.0F, 3.8F, 4.8F), new Profile(0.5F, 0.6F, 0.45F, 2.2F), 0.5F,
+				1.6F, 1, 50, 26, 0.12F, 0, 2.5F, 2.1F, 0.8F, 0.4F, 2.4F, 0.82F, 0.06F));
 	}
 
 	/** The shape of a species of the slice, or null when the planner has none (species outside the slice). */

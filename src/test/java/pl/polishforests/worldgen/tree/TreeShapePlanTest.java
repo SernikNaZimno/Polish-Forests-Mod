@@ -21,13 +21,16 @@ import pl.polishforests.worldgen.habitat.Species;
 /**
  * Invariants of the tree planner (step V6 of docs/04-pionowy-wycinek.md, §5): determinism, the parent chain to the root,
  * radii that never grow towards the tips, leaves within 6 steps of the wood, writes only in the 3 × 3 chunks around the
- * trunk, no disputes between the crowns of neighboring trees, the pine's bark zones, the layer bands and the archetype
- * silhouettes.
+ * trunk, no disputes between the crowns of neighboring trees, the pine's bark zones, the layer split surfaces, no empty
+ * leaf row in a stand, the branch shapes (risk R4) and the archetype silhouettes.
  */
 class TreeShapePlanTest {
 	private static final long SEED = 20260927L;
 
-	/** Lone trees of every species, layer and age class at a few columns (also at chunk corners). */
+	/**
+	 * Trees of every species, layer and age class at a few columns (also at chunk corners), without a territory: grown
+	 * alone (even k) or in the stand form of a uniform stand (odd k).
+	 */
 	private static List<TreeRequest> lone(int perCell) {
 		List<TreeRequest> out = new ArrayList<>();
 		Random random = new Random(7);
@@ -37,7 +40,8 @@ class TreeShapePlanTest {
 					for (int k = 0; k < perCell; k++) {
 						int x = k == 0 ? 16 * 5 : k == 1 ? 16 * -3 + 15 : random.nextInt(4000) - 2000;
 						int z = k == 0 ? 16 * -7 + 15 : k == 1 ? 16 * 9 : random.nextInt(4000) - 2000;
-						out.add(new TreeRequest(s, layer, age, SEED, x, 64, z));
+						out.add(new TreeRequest(s, layer, age, SEED, x, 64, z, null, null, k % 2 == 1
+								? StandMap.uniform(age, true) : null));
 					}
 				}
 			}
@@ -63,11 +67,12 @@ class TreeShapePlanTest {
 		assertEquals(first, parallel);
 		// The base height only moves the tree; another seed gives another tree.
 		TreeRequest r = requests.get(3);
-		TreeVoxels moved = TreeShapePlan.plan(new TreeRequest(r.species(), r.layer(), r.age(), SEED, r.x(), r.y() + 20, r.z()));
+		TreeVoxels moved = TreeShapePlan.plan(new TreeRequest(r.species(), r.layer(), r.age(), SEED, r.x(), r.y() + 20, r.z(), null,
+				null, r.stands()));
 		assertEquals(first.get(3).woodCount(), moved.woodCount());
 		assertEquals(first.get(3).leafCount(), moved.leafCount());
 		assertNotEquals(first.get(3), TreeShapePlan.plan(new TreeRequest(r.species(), r.layer(), r.age(), SEED + 1, r.x(), r.y(),
-				r.z())));
+				r.z(), null, null, r.stands())));
 	}
 
 	@Test
@@ -148,13 +153,75 @@ class TreeShapePlanTest {
 			assertTrue(d != null && d <= TreeVoxels.MAX_DISTANCE, "leaf at distance " + d + " in " + what);
 			assertEquals((int) d, v.leafDistance(e.getValue()), what);
 		}
-		// With some wood missing, the distances come from the wood that exists.
+		// All the wood written: the planned distances.
 		boolean[] written = new boolean[v.woodCount()];
 		java.util.Arrays.fill(written, true);
 		byte[] all = v.leafDistances(written);
 		for (int i = 0; i < v.leafCount(); i++) {
 			assertEquals(v.leafDistance(i), all[i], what);
 		}
+	}
+
+	@Test
+	void partialWritesGiveTheDistancesOfWhatExists() {
+		Random random = new Random(11);
+		int checked = 0;
+		for (TreeRequest r : lone(3)) {
+			TreeVoxels v = TreeShapePlan.plan(r);
+			if (v.woodCount() < 4 || v.leafCount() < 4) {
+				continue;
+			}
+			// One branch subtree missing (a block in its way stops it and everything beyond), and every fifth leaf not
+			// placeable (terrain or another feature in its block).
+			boolean[] written = new boolean[v.woodCount()];
+			java.util.Arrays.fill(written, true);
+			int cut = 1 + random.nextInt(v.woodCount() - 1);
+			written[cut] = false;
+			for (int i = cut + 1; i < v.woodCount(); i++) {
+				written[i] = written[v.parentIndex(i)];
+			}
+			boolean[] placeable = new boolean[v.leafCount()];
+			for (int i = 0; i < placeable.length; i++) {
+				placeable[i] = random.nextInt(5) != 0;
+			}
+			byte[] got = v.leafDistances(written, placeable);
+			// An independent breadth-first search from the written wood through the placeable leaves.
+			Map<Long, Integer> leaf = new HashMap<>();
+			for (int i = 0; i < v.leafCount(); i++) {
+				if (placeable[i]) {
+					leaf.put(key(v.leafX(i), v.leafY(i), v.leafZ(i)), i);
+				}
+			}
+			Map<Long, Integer> dist = new HashMap<>();
+			ArrayDeque<Long> queue = new ArrayDeque<>();
+			for (int i = 0; i < v.woodCount(); i++) {
+				if (written[i]) {
+					long k = key(v.woodX(i), v.woodY(i), v.woodZ(i));
+					dist.put(k, 0);
+					queue.add(k);
+				}
+			}
+			while (!queue.isEmpty()) {
+				long k = queue.poll();
+				int d = dist.get(k) + 1;
+				if (d > TreeVoxels.MAX_DISTANCE) {
+					continue;
+				}
+				for (int[] st : TreeVoxels.STEP) {
+					long n = key(x(k) + st[0], y(k) + st[1], z(k) + st[2]);
+					if (leaf.containsKey(n) && !dist.containsKey(n)) {
+						dist.put(n, d);
+						queue.add(n);
+					}
+				}
+			}
+			for (int i = 0; i < v.leafCount(); i++) {
+				Integer d = placeable[i] ? dist.get(key(v.leafX(i), v.leafY(i), v.leafZ(i))) : null;
+				assertEquals(d == null ? 0 : (int) d, got[i], "leaf " + i + " of " + r);
+			}
+			checked++;
+		}
+		assertTrue(checked > 50, "trees checked: " + checked);
 	}
 
 	@Test
@@ -194,7 +261,7 @@ class TreeShapePlanTest {
 				for (CrownTerritory t : s.chunk(cx, cz, null)) {
 					Species sp = TreePreview.standSpecies(grad, t.layer(), t.x(), t.z());
 					trees.add(TreeShapePlan.plan(new TreeRequest(sp, t.layer(), map.ageClass(t.x(), t.z()), SEED, t.x(), 64, t.z(),
-							t, s::candidate)));
+							t, s::candidate, map)));
 					list.add(t);
 				}
 			}
@@ -260,15 +327,186 @@ class TreeShapePlanTest {
 	}
 
 	@Test
-	void leavesKeepToTheBandOfTheirLayer() {
+	void layersKeepToTheirSplitSurfaces() {
 		for (TreeRequest r : lone(4)) {
 			TreeVoxels v = TreeShapePlan.plan(r);
-			int[] band = TreeShapePlan.band(r.layer(), r.age());
-			for (int i = 0; i < v.leafCount(); i++) {
-				assertTrue(v.leafY(i) >= band[0] && v.leafY(i) <= band[1], "leaf at " + v.leafY(i) + " in " + r);
-			}
 			assertTrue(v.leafCount() > 0, "no leaves in " + r);
+			for (int i = 0; i < v.woodCount() + v.leafCount(); i++) {
+				boolean w = i < v.woodCount();
+				int j = w ? i : i - v.woodCount();
+				int x = r.x() + (w ? v.woodX(j) : v.leafX(j));
+				int y = w ? v.woodY(j) : v.leafY(j);
+				int z = r.z() + (w ? v.woodZ(j) : v.leafZ(j));
+				int upper = TreeShapePlan.split(SEED, CrownLayer.SUBCANOPY, r.ageAt(x, z), x, z);
+				int lower = TreeShapePlan.split(SEED, CrownLayer.REGENERATION, r.ageAt(x, z), x, z);
+				String at = (w ? "wood" : "leaf") + " at " + y + " (split " + lower + "/" + upper + ") in " + r;
+				// The trunk and the dry stubs (within two columns of the trunk base: lean and stubs) pass the surface below their layer.
+				boolean trunk = w && Math.max(Math.abs(x - r.x()), Math.abs(z - r.z())) <= 2;
+				switch (r.layer()) {
+					case CANOPY -> assertTrue(r.openGrown() || y >= upper || trunk, at);
+					case SUBCANOPY -> assertTrue(y < upper && (y >= lower || trunk), at);
+					case REGENERATION -> assertTrue(y < lower, at);
+				}
+			}
 		}
+	}
+
+	@Test
+	void splitSurfacesAreWavyAndOrdered() {
+		for (AgeClass age : AgeClass.values()) {
+			Set<Integer> uppers = new HashSet<>();
+			for (int x = -200; x < 200; x += 7) {
+				for (int z = -200; z < 200; z += 11) {
+					int upper = TreeShapePlan.split(SEED, CrownLayer.SUBCANOPY, age, x, z);
+					int lower = TreeShapePlan.split(SEED, CrownLayer.REGENERATION, age, x, z);
+					assertTrue(lower >= 2 && upper >= lower + 3, age + " " + lower + "/" + upper);
+					// Neighboring columns differ by at most a block: a gentle surface, no step.
+					assertTrue(Math.abs(TreeShapePlan.split(SEED, CrownLayer.SUBCANOPY, age, x + 1, z) - upper) <= 1, age.toString());
+					uppers.add(upper);
+				}
+			}
+			// No flat surface: at least four heights over the area.
+			assertTrue(uppers.size() >= 4, age + " upper split heights " + uppers);
+		}
+	}
+
+	/**
+	 * The side view of a stand (the middle row of 3 × 3 chunks, 48 columns, as {@code drzewostan_*.png}) has leaves in
+	 * every block row from the lowest leaf (from the ground in the natural stand) to near the top: no stand-wide empty
+	 * row between the layers (rule Z10, review of V6).
+	 */
+	@Test
+	void standsHaveNoEmptyLeafRow() {
+		for (boolean grad : new boolean[] {false, true}) {
+			int cx0 = grad ? 27 : -44;
+			int cz0 = grad ? -46 : 120;
+			int[] rows = new int[TreeShapePlan.MAX_HEIGHT];
+			boolean[][] seen = new boolean[TreeShapePlan.MAX_HEIGHT][48];
+			for (TreePreview.Placed p : TreePreview.standTrees(grad, cx0, cz0)) {
+				TreeVoxels v = p.voxels();
+				for (int i = 0; i < v.leafCount(); i++) {
+					int x = p.x() + v.leafX(i);
+					int z = p.z() + v.leafZ(i);
+					if (x >= 0 && x < 48 && z >= 16 && z < 32 && !seen[v.leafY(i)][x]) {
+						seen[v.leafY(i)][x] = true;
+						rows[v.leafY(i)]++;
+					}
+				}
+			}
+			int low = 0;
+			while (rows[low] == 0) {
+				low++;
+			}
+			int high = rows.length - 1;
+			while (rows[high] == 0) {
+				high--;
+			}
+			StringBuilder report = new StringBuilder("[tree shape] " + (grad ? "grad" : "bor") + " leaf columns of 48 by row:");
+			for (int y = 0; y <= high; y++) {
+				report.append(' ').append(rows[y]);
+			}
+			System.out.println(report);
+			// The managed pine stand has little regeneration (a sparse layer by design): its rows from 5 on.
+			for (int y = grad ? 1 : Math.max(low, 5); y <= high - 3; y++) {
+				assertTrue(rows[y] >= 3, (grad ? "grad" : "bor") + " row " + y + " has " + rows[y] + " leaf columns");
+			}
+		}
+	}
+
+	/**
+	 * Risk R4 (review of V6): thin branches make no hooks (a path from a tip towards the trunk that goes both ways along
+	 * one horizontal axis), and right-angled elbows of thin wood within a branch, with both arms of two blocks or more, stay
+	 * rare (at most one per tree, four for the crooked oak); the
+	 * old oak's limbs are thick off the trunk column.
+	 */
+	@Test
+	void branchesMakeNoHooksAndFewElbows() {
+		StringBuilder report = new StringBuilder("[tree shape] per canopy tree in the stand form (40 trees): elbows, hooks, "
+				+ "off-axis blocks of r >= 3\n");
+		for (Species s : SpeciesShape.species()) {
+			for (AgeClass age : List.of(AgeClass.MATURE, AgeClass.OLD_GROWTH)) {
+				int elbows = 0;
+				int hooks = 0;
+				int thick = 0;
+				int n = 40;
+				for (int k = 0; k < n; k++) {
+					TreeVoxels v = TreeShapePlan.plan(new TreeRequest(s, CrownLayer.CANOPY, age, SEED, 37 * k + 5, 64, 53 * k - 7, null,
+							null, StandMap.uniform(age, true)));
+					int[] children = new int[v.woodCount()];
+					for (int i = 1; i < v.woodCount(); i++) {
+						children[v.parentIndex(i)]++;
+					}
+					for (int i = 1; i < v.woodCount(); i++) {
+						if ((v.woodX(i) != 0 || v.woodZ(i) != 0) && v.radius(i) >= 3) {
+							thick++;
+						}
+						if (v.radius(i) <= 2 && elbow(v, i)) {
+							elbows++;
+						}
+						if (children[i] == 0 && hook(v, i)) {
+							hooks++;
+						}
+					}
+				}
+				report.append(String.format(Locale.ROOT, "  %-13s %-10s %5.1f %4.2f %5.1f%n", s.id(), age.name().toLowerCase(Locale.ROOT),
+						elbows / (double) n, hooks / (double) n, thick / (double) n));
+				assertTrue(hooks <= n / 2, s + " " + age + " hooks per tree " + hooks / (double) n);
+				// The oak's limbs climb in runs with jogs (kinks fit the oak, review of V6), the others have smooth branches.
+				assertTrue(elbows <= (s == Species.OAK ? 4 : 1) * n, s + " " + age + " elbows per tree " + elbows / (double) n);
+				if (s == Species.OAK && age == AgeClass.OLD_GROWTH) {
+					assertTrue(thick >= 4 * n, "old oak limbs: off-axis blocks of r >= 3 per tree " + thick / (double) n);
+				}
+			}
+		}
+		System.out.print(report);
+	}
+
+	/**
+	 * Whether block i turns between vertical and horizontal with both arms at least two blocks long, within a branch: a
+	 * branch that leaves a vertical run of four blocks or more (a trunk, a leader, a limb) is a branch base, not an
+	 * elbow.
+	 */
+	private static boolean elbow(TreeVoxels v, int i) {
+		int p = v.parentIndex(i);
+		if (p <= 0) {
+			return false;
+		}
+		int d = v.parent(i);
+		int dp = v.parent(p);
+		if ((d <= TreeVoxels.UP) == (dp <= TreeVoxels.UP)) {
+			return false;
+		}
+		int run = 1;
+		for (int q = v.parentIndex(p); q > 0 && v.parent(q) == dp && run < 4; q = v.parentIndex(q)) {
+			run++;
+		}
+		boolean up = run >= 2 && (run < 4 || dp > TreeVoxels.UP);
+		boolean down = false;
+		for (int c = i + 1; c < v.woodCount() && !down; c++) {
+			down = v.parentIndex(c) == i && v.parent(c) == d;
+		}
+		return up && down;
+	}
+
+	/**
+	 * Whether the thin path from tip i towards the trunk steps both ways along one horizontal axis, up to where it meets
+	 * a vertical run of three blocks (the trunk or the leader, whose lean is no part of the branch).
+	 */
+	private static boolean hook(TreeVoxels v, int i) {
+		boolean[] seen = new boolean[6];
+		for (int q = i, steps = 0; q > 0 && steps < 8 && v.radius(q) <= 2; q = v.parentIndex(q), steps++) {
+			int d = v.parent(q);
+			if (verticalRun(v, q) >= 3) {
+				break;
+			}
+			if (d >= TreeVoxels.NORTH) {
+				if (seen[d ^ 1]) {
+					return true;
+				}
+				seen[d] = true;
+			}
+		}
+		return false;
 	}
 
 	@Test
@@ -303,13 +541,40 @@ class TreeShapePlanTest {
 					for (int i = 0; i < v.woodCount(); i++) {
 						if (v.woodY(i) < v.woodY(transition)) {
 							assertEquals(TreeVoxels.LOWER, v.bark(i), "lower bark below the zone in " + r);
-						} else if (v.woodY(i) > v.woodY(upper)) {
-							assertEquals(TreeVoxels.UPPER, v.bark(i), "mirror above the zone in " + r);
+						} else if (v.woodY(i) > v.woodY(upper) && v.bark(i) != TreeVoxels.UPPER) {
+							// Only a dry stub keeps the grey lower bark above the zone (review of V6).
+							assertTrue(stub(v, i) && v.bark(i) == TreeVoxels.LOWER, "mirror above the zone in " + r);
+						}
+						if (stub(v, i) && v.woodY(i) < lowestLeaf(v) - 1) {
+							assertEquals(TreeVoxels.LOWER, v.bark(i), "dry stub in " + r);
 						}
 					}
 				}
 			}
 		}
+	}
+
+	/** Whether wood block i has the shape of a dry stub: one block of 1 px, horizontal off a trunk block, no children. */
+	private static boolean stub(TreeVoxels v, int i) {
+		if (i == 0 || v.radius(i) != 1 || v.parent(i) < TreeVoxels.NORTH) {
+			return false;
+		}
+		for (int k = i + 1; k < v.woodCount(); k++) {
+			if (v.parentIndex(k) == i) {
+				return false;
+			}
+		}
+		int p = v.parentIndex(i);
+		// Its parent is a trunk block (the trunk climbs vertically).
+		return p == 0 || v.parent(p) <= TreeVoxels.UP;
+	}
+
+	private static int lowestLeaf(TreeVoxels v) {
+		int lowest = Integer.MAX_VALUE;
+		for (int k = 0; k < v.leafCount(); k++) {
+			lowest = Math.min(lowest, v.leafY(k));
+		}
+		return lowest;
 	}
 
 	/** Per-tree measures of a silhouette. */
@@ -348,7 +613,8 @@ class TreeShapePlanTest {
 		int stubs = 0;
 		int n = 40;
 		for (int k = 0; k < n; k++) {
-			Silhouette e = silhouette(TreeShapePlan.plan(new TreeRequest(s, layer, age, SEED, 300 * k - 6000, 64, 17 * k)));
+			Silhouette e = silhouette(TreeShapePlan.plan(new TreeRequest(s, layer, age, SEED, 300 * k - 6000, 64, 17 * k, null, null,
+					StandMap.uniform(age, true))));
 			h += e.height();
 			low += e.lowestLeaf();
 			w += e.width();
@@ -362,8 +628,8 @@ class TreeShapePlanTest {
 	@Test
 	void archetypeSilhouettesDiffer() {
 		Map<Species, Silhouette> mature = new HashMap<>();
-		StringBuilder report = new StringBuilder("[tree shape] species, age: height, lowest leaf share, crown width, "
-				+ "low/high third width, trees with dry stubs of 40\n");
+		StringBuilder report = new StringBuilder("[tree shape] species, age (stand form): height, lowest leaf share, crown "
+				+ "width, low/high third width, trees with dry stubs of 40\n");
 		for (Species s : SpeciesShape.species()) {
 			for (AgeClass age : AgeClass.values()) {
 				Silhouette m = mean(s, CrownLayer.CANOPY, age);
@@ -384,6 +650,17 @@ class TreeShapePlanTest {
 		// Spruce: a cone, widest in its lower third, a longer crown than the pine.
 		assertTrue(spruce.lowWidth() > spruce.highWidth() + 1, "spruce widths " + spruce.lowWidth() + " / " + spruce.highWidth());
 		assertTrue(spruce.lowestLeaf() / spruce.height() < pine.lowestLeaf() / pine.height(), "spruce crown longer than pine");
+		// Crown length (share of the height above the lowest leaf), which the split surface must not cut below the
+		// species' minimum (review of V6: hornbeam dense and rounded, birch, linden and maple no plates on poles).
+		Map<Species, Double> least = Map.of(Species.HORNBEAM, 0.4, Species.BIRCH, 0.3, Species.LINDEN, 0.4, Species.NORWAY_MAPLE,
+				0.4, Species.BEECH, 0.4, Species.SPRUCE, 0.4);
+		for (Map.Entry<Species, Double> e : least.entrySet()) {
+			for (AgeClass age : List.of(AgeClass.MATURE, AgeClass.OLD_GROWTH)) {
+				Silhouette m = mean(e.getKey(), CrownLayer.CANOPY, age);
+				double crown = 1 - m.lowestLeaf() / m.height();
+				assertTrue(crown >= e.getValue(), String.format(Locale.ROOT, "%s %s crown length %.2f", e.getKey().id(), age, crown));
+			}
+		}
 		// Broad crowns: oak and linden wider than birch and the conifers.
 		for (Species broad : List.of(Species.OAK, Species.LINDEN)) {
 			for (Species narrow : List.of(Species.BIRCH, Species.SCOTS_PINE, Species.SPRUCE)) {
@@ -415,6 +692,16 @@ class TreeShapePlanTest {
 			report.append('\n');
 		}
 		System.out.print(report);
+	}
+
+	/** Length of the run of vertical steps from block q towards the root. */
+	private static int verticalRun(TreeVoxels v, int q) {
+		int run = 0;
+		while (q > 0 && v.parent(q) <= TreeVoxels.UP && run < 3) {
+			run++;
+			q = v.parentIndex(q);
+		}
+		return run;
 	}
 
 	static long key(int x, int y, int z) {

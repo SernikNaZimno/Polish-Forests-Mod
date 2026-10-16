@@ -13,15 +13,26 @@ import pl.polishforests.worldgen.landscape.Noise;
  * <p><b>Steps.</b>
  * <ol>
  * <li><b>Allometry</b> ({@link #size}): height, breast-height diameter, crown base and crown radius from the species, the
- * age class and the layer, with a jitter from the hash of the trunk column (salt {@value #SALT}, rule ZW-2). The layers
- * keep to height bands ({@link #band}): the leaves of a canopy tree lie above those of the subcanopy, which lie above
- * those of the regeneration, so on level ground the crowns of different layers never share a block.</li>
- * <li><b>Skeleton:</b> a trunk with a slight lean and wobble; conifers with whorls (the pine with a crown in its upper
- * quarter to third and dry stubs below it, the spruce with a cone of horizontal branches whose tips droop), the birch with
- * ascending branches whose tips hang, broad-leaved trees with a leader and lateral branches with twigs, or (the oak) a
- * fork into thick limbs close to the axis. The branch lengths follow the crown envelope ({@link SpeciesShape.Profile}),
- * shortened to the columns the tree may use; at a forest edge (a territory with {@link CrownTerritory#edge()}) branches
- * towards the free side grow up to 30% longer.</li>
+ * age class and the layer, with a jitter from the hash of the trunk column (salt {@value #SALT}, rule ZW-2). The crown
+ * base of a canopy tree follows the species' crown ratio; a lone, open-grown tree ({@link TreeRequest#openGrown}) has a
+ * longer and wider crown. A subcanopy or regeneration tree is no taller than the split surface above its layer.</li>
+ * <li><b>Layer split surfaces</b> ({@link #split}): two wavy surfaces over the world columns (salts
+ * {@value #UPPER_SALT} and {@value #LOWER_SALT}), at a share of the stand top height of the age class at the column with
+ * ±{@value #UPPER_WOBBLE} and ±{@value #LOWER_WOBBLE} blocks of smooth noise. In a stand a canopy tree keeps its leaves
+ * and branches on or above the upper surface, a subcanopy tree between the two, a regeneration tree below the lower
+ * one; every tree of a stand sees the same surfaces, so on level ground the leaves of two layers never share a block,
+ * and the boundary between the layers is no stand-wide straight line (rule Z10). The rows next to a surface are thinned
+ * (a ragged edge instead of a cut). A lone tree has no surface above or below a canopy crown.</li>
+ * <li><b>Skeleton:</b> a trunk with a slight lean and wobble; branches are curves of nodes about one block apart whose
+ * angle from the vertical turns smoothly from the base to the tip and whose horizontal direction never reverses, so the
+ * voxels make slanted staircases instead of right-angled elbows (risk R4). Conifers with whorls rotated by the golden
+ * angle (the pine with a crown in its upper quarter to third, tufts along the outer half of each branch, an umbrella
+ * of few long limbs when old, dry stubs below the crown; the spruce with staggered whorls, the lowest ones drooping
+ * most, and a narrow spire), the birch with ascending branches whose tips hang, broad-leaved trees with a leader and
+ * curved lateral branches with twigs, or (the oak) a fork into thick, crooked limbs that climb in vertical runs of one
+ * to three blocks with one-block sideways jogs (axis-aligned, so they keep their radius). The branch lengths follow the
+ * crown envelope ({@link SpeciesShape.Profile}), shortened to the columns the tree may use; at a forest edge (a
+ * territory with {@link CrownTerritory#edge()}) branches towards the free side grow up to 30% longer.</li>
  * <li><b>Pipe model:</b> r_parent^n = Σ r_child^n from the tips (n = 2.2–2.4), scaled so that the trunk at the crown
  * base has its share of the breast-height radius; below the crown base the cross-section r^n grows linearly to the base
  * (the branches lost by self-pruning), so the steps r + 1 → r of the thin trunk spread along the bole. Segments more
@@ -29,55 +40,71 @@ import pl.polishforests.worldgen.landscape.Noise;
  * <li><b>Voxelization:</b> each segment from its parent node to its node by a 3D DDA whose steps are face-adjacent, so
  * the parent of every block is one of its six neighbors. A block takes the radius of its segment but never more than its
  * parent (the radius does not grow towards the tips); r ≤ 7 px is a thin trunk, more a full log. A segment that enters a
- * forbidden column (outside the territory, the disc of {@value #REACH} blocks or, for the lower layers, next to another
- * trunk) stops there, and its children with it (a smaller leaf cluster marks its end); a segment that meets wood already
- * placed (its parent, or a sibling from the same node) goes on from that block. The Scots pine gets the "mirror": the bark
- * of the trunk changes at 0.45–0.55 of the height (rising with the age class) through the two blocks of the transition
- * zone (V1b), the branches above it have the upper bark.</li>
- * <li><b>Foliage:</b> ragged ellipsoids with holes around the shoot tips (tufts of the pine, needles along the spruce
- * branches); large broad-leaved crowns stay empty inside (leaves in the outer shell only); leaves only in the allowed
- * columns, in the band of the layer and not in wood. A breadth-first search from the wood through the tree's own leaves
- * gives the leaf distance; leaves farther than {@value TreeVoxels#MAX_DISTANCE} are dropped.</li>
+ * forbidden cell (outside the territory, the disc of {@value #REACH} blocks, for the lower layers next to another trunk,
+ * or across a split surface) or the wood of another branch stops there, and its children with it (a smaller leaf
+ * cluster marks its end); a segment that meets the wood of an ancestor, or at its start of a sibling from the same node,
+ * goes on from that block. The Scots pine
+ * gets the "mirror": the bark of the trunk changes at 0.45–0.55 of the height (rising with the age class) through the
+ * two blocks of the transition zone (V1b), the live branches above it have the upper bark, the dry stubs keep the lower
+ * one.</li>
+ * <li><b>Foliage:</b> ragged ellipsoids with holes around the shoot tips, each with its own height and depth jitter;
+ * large broad-leaved crowns stay empty inside (leaves in the outer shell only); leaves only in the allowed columns,
+ * between the split surfaces of the layer and not in wood. Thin branch tips left without a leaf next to them (clipped
+ * clusters) are pruned. A breadth-first search from the wood through the tree's own leaves gives the leaf distance;
+ * leaves farther than {@value TreeVoxels#MAX_DISTANCE} are dropped.</li>
  * </ol>
  *
  * <p><b>Window.</b> Every block lies within {@value #REACH} blocks of the trunk column horizontally, so in the 3 × 3
  * chunks around the trunk's chunk (risk R6); with a territory every block lies in a column of the territory, so two
  * trees of one layer never write the same column. For the subcanopy and the regeneration the wood also keeps one column
- * away from every other trunk column (the trunks of the canopy pass through their bands).
+ * away from every other trunk column (the trunks of the canopy pass through their layers).
  *
  * <p><b>Determinism.</b> The result depends only on the request (thread-local working arrays are fully reset, the
- * random numbers come from the hash of the trunk column); math through {@link StrictMath}.
+ * random numbers come from the hash of the trunk column, the split surfaces from the world column); math through
+ * {@link StrictMath}.
  */
 public final class TreeShapePlan {
 	/** Salt of the tree shape hash (rule ZW-2). */
 	public static final String SALT = "feature.tree.shape";
+	/** Salt of the noise of the split surface between the canopy and the subcanopy (round 1 of the V6 review). */
+	public static final String UPPER_SALT = "feature.tree.layers.upper";
+	/** Salt of the noise of the split surface between the subcanopy and the regeneration. */
+	public static final String LOWER_SALT = "feature.tree.layers.lower";
 	/** Largest horizontal distance of a block from the trunk column: the write window of 3 × 3 chunks. */
 	public static final int REACH = CrownTerritories.MAX_REACH;
 	/** Largest height of a block above the trunk base (exclusive). */
 	public static final int MAX_HEIGHT = 48;
 	/** Pixels of the trunk radius per centimeter of the diameter: 16 px per meter, half of the diameter. */
 	public static final double PX_PER_CM = 0.08;
+	/** Largest offset of the upper and the lower split surface from their mean height (blocks). */
+	public static final int UPPER_WOBBLE = 3;
+	public static final double LOWER_WOBBLE = 1.5;
 
 	private static final int SIDE = 2 * REACH + 1;
 	private static final int CELLS = SIDE * SIDE * MAX_HEIGHT;
 
 	/**
-	 * Height bands of the leaves by layer and age class (blocks above the trunk base, inclusive) [S]: canopy from the
-	 * first value up, subcanopy between the second and the third, regeneration up to the fourth. A tree of a lower layer
-	 * is no taller than its band allows, a canopy tree has no branch below its band. To be calibrated with N2 in V9.
+	 * Top height of a stand by age class (blocks) [S], the scale of the split surfaces: the canopy trees of the slice are
+	 * 13–16 blocks tall in the pole stage, 21–28 when mature and 23–32 in old growth.
 	 */
-	private static final int[][] BANDS = {
-			// canopy min, subcanopy min, subcanopy max, regeneration max
-			{6, 3, 5, 2}, // pole stage
-			{13, 5, 12, 4}, // mature
-			{16, 5, 15, 4}, // old growth
-	};
-	/** Height of a subcanopy tree as a share of a canopy tree of the species, before its band caps it. */
+	private static final double[] STAND_TOP = {14, 25, 29};
+	/** Mean height of the split surfaces as a share of the stand top height [S], to be calibrated with N2 in V9. */
+	private static final double UPPER_SHARE = 0.44;
+	private static final double LOWER_SHARE = 0.2;
+	/** Wavelength of the split surface noise (blocks) and the spacing of its grid of corner values. */
+	private static final double WOBBLE_WAVELENGTH = 13;
+	private static final int GRID = 4;
+	/** Share of the cells of the row next to a split surface left empty (a ragged edge). */
+	private static final double EDGE_THIN = 0.45;
+	/** Height of a subcanopy tree as a share of a canopy tree of the species, before its split surface caps it. */
 	private static final double SUBCANOPY_HEIGHT = 0.62;
 	private static final double SUBCANOPY_DBH = 0.55;
 	private static final double SUBCANOPY_CROWN = 0.7;
-	/** Height of the regeneration by age class (blocks), before its band caps it. */
-	private static final double[] REGENERATION_HEIGHT = {2.5, 4.0, 4.5};
+	/** Height of the regeneration by age class (blocks), before its split surface caps it. */
+	private static final double[] REGENERATION_HEIGHT = {3.0, 4.5, 5.0};
+	/** An open-grown (lone) canopy tree: crown ratio added and crown radius factor. */
+	private static final double OPEN_RATIO = 0.15;
+	private static final double OPEN_RADIUS = 1.25;
 	/** Diagonal segments: at most this radius (px) when more than {@link #DIAGONAL} off every axis (risk R4). */
 	private static final int DIAGONAL_RADIUS = 2;
 	private static final double DIAGONAL = StrictMath.cos(StrictMath.toRadians(25));
@@ -85,6 +112,8 @@ public final class TreeShapePlan {
 	private static final double[] MIRROR = {0.45, 0.5, 0.55};
 	private static final double GOLDEN = StrictMath.toRadians(137.5);
 	private static final int AZIMUTH_BINS = 32;
+	/** Largest number of nodes of one branch curve. */
+	private static final int CURVE_MAX = 48;
 
 	private static final ThreadLocal<Workspace> WORKSPACE = ThreadLocal.withInitial(Workspace::new);
 
@@ -102,16 +131,46 @@ public final class TreeShapePlan {
 	}
 
 	/**
-	 * Leaf band of a layer and age class, {min, max} blocks above the trunk base (inclusive); the canopy has no upper
-	 * limit.
+	 * Height of a split surface at the world column (x, z), in blocks above the trunk base: the lowest block of the layer
+	 * above {@code lower} where that layer claims the column, one above the highest block of {@code lower}.
+	 * {@link CrownLayer#SUBCANOPY} gives the surface between the canopy and the subcanopy, {@link CrownLayer#REGENERATION}
+	 * the one between the subcanopy and the regeneration; {@code age} is the age class of the stand at the column.
 	 */
-	public static int[] band(CrownLayer layer, AgeClass age) {
-		int[] b = BANDS[age.ordinal()];
-		return switch (layer) {
-			case CANOPY -> new int[] {b[0], MAX_HEIGHT - 1};
-			case SUBCANOPY -> new int[] {b[1], b[2]};
-			case REGENERATION -> new int[] {0, b[3]};
-		};
+	public static int split(long worldSeed, CrownLayer lower, AgeClass age, int x, int z) {
+		if (lower == CrownLayer.CANOPY) {
+			throw new IllegalArgumentException("the canopy has no layer above it");
+		}
+		Noise upper = new Noise(worldSeed).derive(UPPER_SALT);
+		Noise low = new Noise(worldSeed).derive(LOWER_SALT);
+		int gx = Math.floorDiv(x, GRID);
+		int gz = Math.floorDiv(z, GRID);
+		double fx = (x - gx * GRID) / (double) GRID;
+		double fz = (z - gz * GRID) / (double) GRID;
+		double w1 = bilinear(corner(upper, gx, gz), corner(upper, gx + 1, gz), corner(upper, gx, gz + 1),
+				corner(upper, gx + 1, gz + 1), fx, fz);
+		double w2 = bilinear(corner(low, gx, gz), corner(low, gx + 1, gz), corner(low, gx, gz + 1), corner(low, gx + 1, gz + 1),
+				fx, fz);
+		int s2 = lowerSplit(age, w2);
+		return lower == CrownLayer.REGENERATION ? s2 : upperSplit(age, w1, s2);
+	}
+
+	/** Noise value of a corner of the split grid in [-1, 1]. */
+	private static double corner(Noise n, long gx, long gz) {
+		return Math.clamp(1.8 * n.fbm(gx * GRID, gz * GRID, WOBBLE_WAVELENGTH, 2, 0.5), -1, 1);
+	}
+
+	private static double bilinear(double v00, double v10, double v01, double v11, double fx, double fz) {
+		double a = v00 + (v10 - v00) * fx;
+		double b = v01 + (v11 - v01) * fx;
+		return a + (b - a) * fz;
+	}
+
+	private static int lowerSplit(AgeClass age, double w) {
+		return Math.max(3, (int) Math.round(LOWER_SHARE * STAND_TOP[age.ordinal()] + LOWER_WOBBLE * w));
+	}
+
+	private static int upperSplit(AgeClass age, double w, int lower) {
+		return Math.max(lower + 3, (int) Math.round(UPPER_SHARE * STAND_TOP[age.ordinal()] + UPPER_WOBBLE * w));
 	}
 
 	/**
@@ -143,6 +202,7 @@ public final class TreeShapePlan {
 		private static final int BRANCH = 2;
 		private static final int TWIG = 3;
 		private static final int STUB = 4;
+		private static final int GRID_SIDE = 2 * REACH / GRID + 3;
 
 		// Grid of the tree's box, valid where stamp == current.
 		private final int[] stamp = new int[CELLS];
@@ -153,6 +213,11 @@ public final class TreeShapePlan {
 		// Allowed columns: leaves (territory, disc) and wood (also away from other trunks for the lower layers).
 		private final boolean[] leafColumn = new boolean[SIDE * SIDE];
 		private final boolean[] woodColumn = new boolean[SIDE * SIDE];
+		// Lowest and highest block of the tree's layer in each column (split surfaces).
+		private final int[] floorY = new int[SIDE * SIDE];
+		private final int[] capY = new int[SIDE * SIDE];
+		private final double[] upperGrid = new double[GRID_SIDE * GRID_SIDE];
+		private final double[] lowerGrid = new double[GRID_SIDE * GRID_SIDE];
 		private final float[] reach = new float[AZIMUTH_BINS];
 		// Skeleton nodes; a node stands for the segment from its parent to it.
 		private int nodes;
@@ -166,6 +231,9 @@ public final class TreeShapePlan {
 		private float[] nLeafV = new float[256];
 		private int[] nEnd = new int[256];
 		private boolean[] nCut = new boolean[256];
+		// The nodes of the last curve.
+		private final int[] curveNodes = new int[CURVE_MAX];
+		private int curveCount;
 		// Wood blocks.
 		private int woods;
 		private int[] wPos = new int[512];
@@ -174,12 +242,16 @@ public final class TreeShapePlan {
 		private int[] wParentIndex = new int[512];
 		private int[] wOwner = new int[512];
 		private byte[] wBark = new byte[512];
+		private int[] wChildren = new int[512];
+		private boolean[] wGone = new boolean[512];
 		// Leaves.
 		private int leaves;
 		private int[] lPos = new int[2048];
 		private int[] queue = new int[4096];
 		// The request.
 		private @Nullable Noise noise;
+		private @Nullable Noise upperNoise;
+		private @Nullable Noise lowerNoise;
 		private long noiseSeed;
 		private long rng;
 		private long cellSeed;
@@ -188,12 +260,13 @@ public final class TreeShapePlan {
 		private Size size;
 		private double top;
 		private double crownLength;
-		private int minLeafY;
-		private int maxLeafY;
 		private double leafH;
 		private double leafV;
 		private SpeciesShape.Profile profile;
 		private boolean edge;
+		private boolean oldPine;
+		private int gridX0;
+		private int gridZ0;
 
 		private Workspace() {
 		}
@@ -204,17 +277,18 @@ public final class TreeShapePlan {
 			request = r;
 			shape = SpeciesShape.of(r.species());
 			if (noise == null || noiseSeed != r.worldSeed()) {
-				noise = new Noise(r.worldSeed()).derive(SALT);
+				Noise world = new Noise(r.worldSeed());
+				noise = world.derive(SALT);
+				upperNoise = world.derive(UPPER_SALT);
+				lowerNoise = world.derive(LOWER_SALT);
 				noiseSeed = r.worldSeed();
 			}
 			long salt = ((long) r.species().ordinal() << 8) | ((long) r.layer().ordinal() << 4) | r.age().ordinal();
 			long h = noise.hash(r.x(), r.z(), salt);
 			rng = h;
 			cellSeed = Noise.mix(h ^ 0x5DEECE66DL);
+			splitGrid(r);
 			AgeClass age = r.age();
-			int[] band = band(r.layer(), age);
-			minLeafY = band[0];
-			maxLeafY = band[1];
 			double jh = range(0.9, 1.1);
 			double jd = range(0.85, 1.15);
 			double jr = range(0.85, 1.15);
@@ -224,32 +298,47 @@ public final class TreeShapePlan {
 			double crownR = shape.crownRadius().get(age) * jr;
 			double ratio = Math.min(0.85, shape.crownRatio().get(age) * jc);
 			profile = shape.profile();
-			if (shape.archetype() == SpeciesShape.Archetype.PINE && age == AgeClass.OLD_GROWTH) {
-				// Old pines: a flatter, umbrella-like top.
-				profile = new SpeciesShape.Profile(profile.base(), Math.min(0.75F, profile.peak() + 0.15F),
-						Math.min(0.6F, profile.top() + 0.25F), profile.shape() * 1.5F);
+			oldPine = shape.archetype() == SpeciesShape.Archetype.PINE && age == AgeClass.OLD_GROWTH
+					&& r.layer() == CrownLayer.CANOPY;
+			if (oldPine) {
+				// Old pines: a short, broad umbrella of few long limbs with flat tufts.
+				ratio = range(0.22, 0.27);
+				crownR *= 1.3;
+				profile = new SpeciesShape.Profile(0.75F, 0.7F, 0.6F, 3.0F);
+			}
+			if (r.openGrown() && r.layer() == CrownLayer.CANOPY) {
+				ratio = Math.min(0.8, ratio + OPEN_RATIO);
+				crownR *= OPEN_RADIUS;
 			}
 			double hs = Math.clamp(0.55 + 0.15 * crownR, 0.7, 1.2);
 			leafH = shape.clusterH() * hs;
 			leafV = shape.clusterV() * Math.clamp(0.6 + 0.12 * crownR, 0.75, 1.15);
-			double droop = Math.max(0, -shape.bend()) * crownR * 1.2;
+			if (shape.archetype() == SpeciesShape.Archetype.BROAD) {
+				// Rounded clusters, not flat puffs.
+				leafV = Math.max(leafV, 0.8 * leafH);
+			}
 			double crownBase;
+			int cap = capAt(0, 0);
 			switch (r.layer()) {
-				case CANOPY -> crownBase = Math.max(height * (1 - ratio), minLeafY + leafV + 0.5 + droop + range(0, 2));
+				case CANOPY -> crownBase = height * (1 - ratio);
 				case SUBCANOPY -> {
-					// Below the top of the band by up to three blocks (a third of a narrow band), so the subcanopy is no flat
-					// layer, but tall enough for a crown in the band.
-					double drop = range(0, Math.min(3, 0.3 * (maxLeafY - minLeafY)));
-					height = Math.max(minLeafY + 2.5, Math.min(height * SUBCANOPY_HEIGHT, maxLeafY + 1 - leafV - drop));
+					// Below the split surface by up to two and a half blocks, so the subcanopy has no flat top.
+					double drop = range(0, 2.5);
+					height = Math.max(floorAt(0, 0) + 2.5, Math.min(height * SUBCANOPY_HEIGHT, cap + 1 - 0.5 * leafV - drop));
 					dbh *= SUBCANOPY_DBH;
 					crownR *= SUBCANOPY_CROWN;
-					crownBase = Math.max(height * (1 - Math.min(0.8, ratio * 1.25)), minLeafY + leafV + 0.3 + droop);
+					// No common shelf at the lower split surface: each crown starts up to three blocks above it.
+					crownBase = Math.max(height * (1 - Math.min(0.75, ratio * 1.2)), floorAt(0, 0) + range(0, 3));
 				}
 				default -> {
-					height = Math.min(REGENERATION_HEIGHT[age.ordinal()] * jh, maxLeafY + 1 - leafV * 0.7);
+					// Young trees of every height up to the split surface; the smallest are left to the saplings (V7).
+					double most = Math.min(REGENERATION_HEIGHT[age.ordinal()] * jh, cap + 1 - 0.2);
+					height = Math.max(2, most * range(0.6, 1.0));
 					dbh = Math.max(2, height * 0.8);
-					crownR = Math.min(crownR * 0.35, 1.5);
-					crownBase = height * 0.3;
+					crownR = Math.min(crownR * 0.35, 1.5) * range(0.75, 1.05);
+					leafH = Math.min(leafH, Math.max(1.4, crownR + 0.6));
+					leafV = Math.min(leafV, 0.45 * height + 0.4);
+					crownBase = height * range(0.2, 0.4);
 				}
 			}
 			height = Math.max(2, height);
@@ -258,6 +347,55 @@ public final class TreeShapePlan {
 			crownBase = Math.max(crownBase, 0.5);
 			crownLength = top - crownBase;
 			size = new Size(height, crownBase, crownR, Math.max(1, dbh * PX_PER_CM));
+		}
+
+		/** The corner values of the split surfaces around the tree. */
+		private void splitGrid(TreeRequest r) {
+			gridX0 = Math.floorDiv(r.x() - REACH, GRID);
+			gridZ0 = Math.floorDiv(r.z() - REACH, GRID);
+			for (int i = 0; i < GRID_SIDE; i++) {
+				for (int j = 0; j < GRID_SIDE; j++) {
+					upperGrid[i * GRID_SIDE + j] = corner(upperNoise, gridX0 + i, gridZ0 + j);
+					lowerGrid[i * GRID_SIDE + j] = corner(lowerNoise, gridX0 + i, gridZ0 + j);
+				}
+			}
+		}
+
+		/** The split surfaces at a column relative to the trunk: {upper, lower}, as {@link #split}. */
+		private int[] splitsAt(int dx, int dz, int[] out) {
+			int x = request.x() + dx;
+			int z = request.z() + dz;
+			int gx = Math.floorDiv(x, GRID);
+			int gz = Math.floorDiv(z, GRID);
+			double fx = (x - gx * GRID) / (double) GRID;
+			double fz = (z - gz * GRID) / (double) GRID;
+			int i = (gx - gridX0) * GRID_SIDE + gz - gridZ0;
+			double w1 = bilinear(upperGrid[i], upperGrid[i + GRID_SIDE], upperGrid[i + 1], upperGrid[i + GRID_SIDE + 1], fx, fz);
+			double w2 = bilinear(lowerGrid[i], lowerGrid[i + GRID_SIDE], lowerGrid[i + 1], lowerGrid[i + GRID_SIDE + 1], fx, fz);
+			AgeClass age = request.ageAt(x, z);
+			out[1] = lowerSplit(age, w2);
+			out[0] = upperSplit(age, w1, out[1]);
+			return out;
+		}
+
+		private final int[] splitTmp = new int[2];
+
+		/** Lowest block of the tree's layer at the column (dx, dz). */
+		private int floorAt(int dx, int dz) {
+			return switch (request.layer()) {
+				case CANOPY -> request.openGrown() ? 0 : splitsAt(dx, dz, splitTmp)[0];
+				case SUBCANOPY -> splitsAt(dx, dz, splitTmp)[1];
+				case REGENERATION -> 0;
+			};
+		}
+
+		/** Highest block of the tree's layer at the column (dx, dz). */
+		private int capAt(int dx, int dz) {
+			return switch (request.layer()) {
+				case CANOPY -> MAX_HEIGHT - 1;
+				case SUBCANOPY -> splitsAt(dx, dz, splitTmp)[0] - 1;
+				case REGENERATION -> splitsAt(dx, dz, splitTmp)[1] - 1;
+			};
 		}
 
 		private double next() {
@@ -296,19 +434,25 @@ public final class TreeShapePlan {
 			voxelize();
 			bark();
 			foliage();
+			prune();
 			distances();
 			return result();
 		}
 
-		/** Allowed columns of leaves and wood and the reach of the territory by azimuth. */
+		/** Allowed columns of leaves and wood, the split surfaces and the reach of the territory by azimuth. */
 		private void columns(TreeRequest r) {
 			CrownTerritory t = r.territory();
 			edge = t != null && t.edge();
 			for (int dz = -REACH; dz <= REACH; dz++) {
 				for (int dx = -REACH; dx <= REACH; dx++) {
 					boolean in = dx * dx + dz * dz <= REACH * REACH && (t == null || t.contains(r.x() + dx, r.z() + dz));
-					leafColumn[col(dx, dz)] = in;
-					woodColumn[col(dx, dz)] = in;
+					int c = col(dx, dz);
+					leafColumn[c] = in;
+					woodColumn[c] = in;
+					if (in || dx == 0 && dz == 0) {
+						floorY[c] = floorAt(dx, dz);
+						capY[c] = capAt(dx, dz);
+					}
 				}
 			}
 			Trunks trunks = r.layer() == CrownLayer.CANOPY ? null : r.trunks();
@@ -430,6 +574,11 @@ public final class TreeShapePlan {
 			double phi = range(0, 2 * Math.PI);
 			double lean = shape.lean() * range(0.3, 1.0);
 			double wobble = 0.12 * next();
+			if (shape.archetype() == SpeciesShape.Archetype.PINE || shape.archetype() == SpeciesShape.Archetype.SPRUCE) {
+				// A conifer's leader stays in its column: a jog of the thin top reads as a step (review of V6).
+				lean = Math.min(lean, 0.42);
+				wobble = 0;
+			}
 			double phase = range(0, 2 * Math.PI);
 			double end = forks() ? size.crownBase() + 0.15 * crownLength : top;
 			int count = (int) Math.ceil(end);
@@ -454,7 +603,12 @@ public final class TreeShapePlan {
 				}
 			}
 			if (!forks()) {
-				leafAt(parent, leafH * 0.85, leafV * 1.2);
+				if (shape.archetype() == SpeciesShape.Archetype.SPRUCE && top > 8) {
+					// The spire: one block wide.
+					leafAt(parent, 0.55, leafV * 1.5);
+				} else {
+					leafAt(parent, leafH * 0.85, leafV * 1.2);
+				}
 			}
 			return parent;
 		}
@@ -484,24 +638,93 @@ public final class TreeShapePlan {
 			return i;
 		}
 
-		/** Pine and spruce: whorls of branches from the crown base to the top. */
+		/**
+		 * A curved branch from node {@code at}: nodes about one block of arc apart along the azimuth until the horizontal
+		 * reach, the angle from the vertical turning linearly with the horizontal progress from {@code a0} to {@code a1}
+		 * (degrees; above 90 the branch goes down). The horizontal direction is fixed, so it never reverses. The nodes are
+		 * left in {@link #curveNodes}.
+		 *
+		 * @return the last node, or {@code at} when the reach is too short
+		 */
+		private int curve(int at, double azimuth, double reachH, double a0, double a1, int kind) {
+			double c = StrictMath.cos(azimuth);
+			double s = StrictMath.sin(azimuth);
+			double x = nx[at];
+			double y = ny[at];
+			double z = nz[at];
+			double h = 0;
+			int parent = at;
+			curveCount = 0;
+			boolean steep = Math.max(a0, a1) < 45;
+			while (reachH - h > 0.3 && curveCount < CURVE_MAX) {
+				double th = StrictMath.toRadians(voxelAngle(a0 + (a1 - a0) * (h / reachH), steep));
+				double sin = Math.max(0.26, StrictMath.sin(th));
+				double cos = StrictMath.cos(th);
+				double step = Math.min(1.0, (reachH - h) / sin);
+				h += step * sin;
+				x += step * sin * c;
+				z += step * sin * s;
+				y += step * cos;
+				if (y > top + 0.5) {
+					break;
+				}
+				parent = node(parent, x, Math.max(0.5, y), z, kind);
+				curveNodes[curveCount++] = parent;
+			}
+			return parent;
+		}
+
+		/**
+		 * The angle from the vertical (degrees) of a thin branch step, moved to one that voxelizes cleanly (risk R4): a run
+		 * of single steps up and out (about 45°, a slanted line from a distance) or long runs out with single steps up or
+		 * down (70–110°), not runs of two to three each way, which read as right-angled elbows. A branch steeper than 45°
+		 * all along ({@code steep}) keeps its angle; any other one never gets steeper than 45° or droops more than 135°,
+		 * so no branch has both a vertical run of two and a horizontal run of two.
+		 */
+		private static double voxelAngle(double degrees, boolean steep) {
+			if (steep) {
+				return degrees;
+			}
+			if (degrees < 52) {
+				return Math.max(45, degrees);
+			}
+			if (degrees < 70) {
+				return degrees < 61 ? 47 : 72;
+			}
+			if (degrees <= 110) {
+				return degrees;
+			}
+			if (degrees < 128) {
+				return degrees < 119 ? 108 : 133;
+			}
+			return Math.min(135, degrees);
+		}
+
+		/** Pine and spruce: whorls of branches from the crown base to the top, rotated by the golden angle. */
 		private void conifer() {
 			boolean spruce = shape.archetype() == SpeciesShape.Archetype.SPRUCE;
 			double phase = range(0, 2 * Math.PI);
 			double y = size.crownBase();
-			while (y < top - 0.6) {
+			// The spruce's spire: its top two blocks without branches (a tree taller than 8 blocks).
+			double end = spruce && top > 8 ? top - 2.2 : top - 0.6;
+			while (y < end) {
 				int at = trunkNode(Math.floor(y));
 				double ay = ny[at];
 				double t = (ay - size.crownBase()) / Math.max(0.5, crownLength);
-				int k = shape.perWhorl() + (next() < 0.35 ? 1 : 0) - (next() < 0.25 ? 1 : 0);
-				phase += range(0.6, 1.4);
+				int k = oldPine ? 2 + (next() < 0.45 ? 1 : 0)
+						: shape.perWhorl() + (next() < 0.35 ? 1 : 0) - (next() < 0.3 ? 1 : 0);
+				phase += GOLDEN + range(-0.3, 0.3);
 				for (int j = 0; j < k; j++) {
-					double azimuth = phase + j * 2 * Math.PI / k + range(-0.35, 0.35);
-					double length = envelope(ay, azimuth) * range(0.8, 1.1);
-					double angle = StrictMath.toRadians(lerp(t, shape.angleLow(), shape.angleHigh()));
-					branch(at, azimuth, length, angle, spruce);
+					double azimuth = phase + j * 2 * Math.PI / k + range(-0.4, 0.4);
+					int from = at;
+					if (next() < 0.35 && ay + 1 < end) {
+						// Staggered whorls: some branches a block higher.
+						from = trunkNode(ay + 1);
+					}
+					double length = envelope(ny[from], azimuth) * range(0.72, 1.1);
+					branch(from, azimuth, length, t, spruce);
 				}
-				y = ay + shape.spacing() * range(0.85, 1.15);
+				y = ay + shape.spacing() * (oldPine ? 1.4 : 1) * range(0.85, 1.15);
 				if (Math.floor(y) <= ay) {
 					y = ay + 1;
 				}
@@ -509,29 +732,56 @@ public final class TreeShapePlan {
 		}
 
 		/**
-		 * A conifer branch from trunk node {@code at}: horizontal length {@code length}, angle from the vertical, the tip
-		 * bent by {@link SpeciesShape#bend()}; a short one leaves only a cluster at the trunk.
+		 * A conifer branch from trunk node {@code at}: a curve of horizontal length {@code length}; the pine's tip turns
+		 * up and carries tufts along its outer half, the spruce's droops (the lowest whorls most) with needles along all
+		 * of it. A short one leaves only a cluster at the trunk.
 		 */
-		private void branch(int at, double azimuth, double length, double angle, boolean spruce) {
+		private void branch(int at, double azimuth, double length, double t, boolean spruce) {
 			double c = StrictMath.cos(azimuth);
 			double s = StrictMath.sin(azimuth);
-			double x0 = nx[at];
-			double z0 = nz[at];
-			length = fit(x0, z0, c, s, length, 0.6 * leafH);
+			length = fit(nx[at], nz[at], c, s, length, 0.6 * leafH);
 			if (length < 0.9) {
 				// Too short for wood: needles right at the trunk (the young top of the crown).
-				int n = node(at, x0 + 0.6 * c, ny[at], z0 + 0.6 * s, STUB);
+				int n = node(at, nx[at] + 0.6 * c, ny[at], nz[at] + 0.6 * s, STUB);
 				leafAt(n, leafH * 0.75, leafV * 0.85);
 				return;
 			}
-			double rise = length / StrictMath.tan(angle);
-			double bend = shape.bend() * length;
-			int mid = node(at, x0 + 0.5 * length * c, ny[at] + 0.5 * rise + 0.2 * bend, z0 + 0.5 * length * s, BRANCH);
-			int tip = node(mid, x0 + length * c, ny[at] + rise + bend, z0 + length * s, BRANCH);
+			double a0 = lerp(t, shape.angleLow(), shape.angleHigh()) + range(-5, 5);
+			double a1;
+			if (spruce) {
+				// Droop: up to about 55 degrees at the crown base (one to two blocks of sag spread along the branch), little
+				// in the middle, the top branches slightly ascending (bend is negative).
+				a1 = a0 + -shape.bend() * 220 * StrictMath.pow(1 - t, 1.5) * range(0.6, 1.3) - 8 * t;
+			} else if (oldPine) {
+				a0 = lerp(t, 74, 62) + range(-5, 5);
+				a1 = a0 - range(28, 40);
+			} else {
+				a1 = a0 - shape.bend() * 110 * range(0.7, 1.3);
+			}
+			int tip = curve(at, azimuth, length, a0, a1, BRANCH);
+			if (tip == at) {
+				return;
+			}
 			double scale = Math.clamp(0.75 + 0.15 * length, 0.75, 1.15);
-			leafAt(tip, leafH * scale, leafV);
-			// Needles along the spruce branch; the pine's tuft reaches back over the outer half of the shoot.
-			leafAt(mid, leafH * (spruce ? 0.85 : 0.7), leafV * (spruce ? 0.9 : 0.8));
+			if (oldPine) {
+				// Separate flat tufts at the ends of the limbs.
+				leafAt(tip, leafH * scale * 1.15, leafV * 0.7);
+			} else {
+				leafAt(tip, leafH * scale, leafV);
+			}
+			int n = curveCount;
+			for (int i = 0; i < n - 1; i++) {
+				int node = curveNodes[i];
+				if (spruce) {
+					// Needles along the spruce branch.
+					if (i >= 1) {
+						leafAt(node, leafH * 0.7, leafV * 0.8);
+					}
+				} else if (i >= n * 0.45) {
+					// The pine's tufts cover the outer half of the shoot, so no bare elbow shows.
+					leafAt(node, leafH * (oldPine ? 0.8 : 0.65), leafV * (oldPine ? 0.6 : 0.75));
+				}
+			}
 		}
 
 		/** Shortens a horizontal reach from (x0, z0) along (c, s) until its end lies in an allowed wood column. */
@@ -544,7 +794,7 @@ public final class TreeShapePlan {
 			return length;
 		}
 
-		/** Birch: a leader with single ascending branches whose tips hang down. */
+		/** Birch: a leader with single branches that rise and then hang. */
 		private void slender() {
 			double azimuth = range(0, 2 * Math.PI);
 			double y = size.crownBase();
@@ -556,17 +806,21 @@ public final class TreeShapePlan {
 				double c = StrictMath.cos(azimuth);
 				double s = StrictMath.sin(azimuth);
 				double length = fit(nx[at], nz[at], c, s, envelope(ay, azimuth) * range(0.8, 1.1), 0.5 * leafH);
-				double angle = StrictMath.toRadians(lerp(t, shape.angleLow(), shape.angleHigh()));
 				if (length >= 0.9) {
-					double rise = length / StrictMath.tan(angle);
-					int mid = node(at, nx[at] + 0.55 * length * c, ay + 0.6 * rise, nz[at] + 0.55 * length * s, BRANCH);
-					int tip = node(mid, nx[at] + length * c, ay + rise + shape.bend() * length, nz[at] + length * s, BRANCH);
-					leafAt(mid, leafH * 0.8, leafV * 0.9);
-					leafAt(tip, leafH, leafV * 1.1);
-					if (length >= 2) {
-						// The hanging end of the shoot.
-						int hang = node(tip, nx[tip] + 0.3 * c, ny[tip] - 1.2, nz[tip] + 0.3 * s, TWIG);
-						leafAt(hang, leafH * 0.8, leafV * 1.2);
+					double a0 = lerp(t, shape.angleLow(), shape.angleHigh()) + range(-5, 5);
+					double a1 = a0 - shape.bend() * 160 * range(0.8, 1.2);
+					int tip = curve(at, azimuth, length, a0, a1, BRANCH);
+					if (tip != at) {
+						int n = curveCount;
+						for (int i = n / 2; i < n - 1; i++) {
+							leafAt(curveNodes[i], leafH * 0.75, leafV * 0.9);
+						}
+						leafAt(tip, leafH, leafV * 1.1);
+						if (length >= 2) {
+							// The hanging end of the shoot.
+							int hang = node(tip, nx[tip], ny[tip] - 1.2, nz[tip], TWIG);
+							leafAt(hang, leafH * 0.8, leafV * 1.2);
+						}
 					}
 				}
 				y = ay + shape.spacing() * range(0.8, 1.2);
@@ -580,7 +834,7 @@ public final class TreeShapePlan {
 		private void broad(int trunkTop) {
 			double azimuth = range(0, 2 * Math.PI);
 			// Laterals from the trunk (or the leader) above the crown base.
-			azimuth = laterals(0, trunkTop, azimuth, 0);
+			azimuth = laterals(0, trunkTop, azimuth, Double.NaN);
 			if (!forks()) {
 				return;
 			}
@@ -588,36 +842,79 @@ public final class TreeShapePlan {
 			double phase = range(0, 2 * Math.PI);
 			for (int j = 0; j < limbs; j++) {
 				double a = phase + j * 2 * Math.PI / limbs + range(-0.4, 0.4);
-				double c = StrictMath.cos(a);
-				double s = StrictMath.sin(a);
-				double tilt = StrictMath.toRadians(range(12, 24));
-				double height = top - ny[trunkTop] - range(0, 1.5);
-				int count = Math.max(1, (int) Math.round(height));
-				int parent = trunkTop;
-				double x = nx[trunkTop];
-				double y = ny[trunkTop];
-				double z = nz[trunkTop];
-				int first = -1;
-				for (int k = 1; k <= count; k++) {
-					// The limb leans out more towards its top.
-					double tk = tilt * (1 + 0.6 * k / count);
-					double nxv = x + StrictMath.sin(tk) * c;
-					double nzv = z + StrictMath.sin(tk) * s;
-					if (StrictMath.hypot(nxv, nzv) > envelope(y + 1, a) * 0.6 || !woodAt(nxv, nzv)) {
-						nxv = x;
-						nzv = z;
-					}
-					x = nxv;
-					z = nzv;
-					y += StrictMath.cos(tk);
-					parent = node(parent, x, y, z, LIMB);
-					if (first < 0) {
-						first = parent;
+				int first = nodes;
+				int last = limb(trunkTop, a, range(0.45, 0.6));
+				if (last == trunkTop) {
+					continue;
+				}
+				azimuth = laterals(first, last, azimuth, a);
+				// The limb forks again into two crooked branches that spread on to the crown's edge.
+				int forks = 0;
+				for (int k = 0; k < 2; k++) {
+					double b = keepSigns(a + (k == 0 ? 1 : -1) * range(0.3, 0.75), a);
+					int start = nodes;
+					int end = limb(last, b, range(0.85, 1.0));
+					if (end != last) {
+						forks++;
+						leafAt(end, leafH, leafV * 1.1);
+						azimuth = laterals(start, end, azimuth, b);
 					}
 				}
-				leafAt(parent, leafH, leafV * 1.1);
-				azimuth = laterals(first, parent, azimuth, a);
+				if (forks == 0) {
+					leafAt(last, leafH, leafV * 1.1);
+				}
 			}
+		}
+
+		/**
+		 * A thick, crooked limb of a forking tree (the oak): vertical runs of one to three blocks with a one-block jog
+		 * sideways after each, which climbs at 30–48° from the vertical until it reaches {@code share} of the crown
+		 * envelope horizontally (or the top of the crown, or a column it may not use). Every node is a whole block off its
+		 * parent along one axis, so the limb keeps its radius (no diagonal segment); the jogs keep the signs of the
+		 * azimuth, so the limb never turns back.
+		 *
+		 * @return the last node of the limb, or {@code from} when there is no room
+		 */
+		private int limb(int from, double azimuth, double share) {
+			double c = StrictMath.cos(azimuth);
+			double s = StrictMath.sin(azimuth);
+			double slope = StrictMath.tan(StrictMath.toRadians(range(30, 48)));
+			double x = nx[from];
+			double y = ny[from];
+			double z = nz[from];
+			double yEnd = top - range(0.5, 2);
+			double hReach = Math.max(1.5, envelope(y + 0.5 * (yEnd - y), azimuth) * share);
+			// The horizontal distance from the trunk axis grows along the limb's line from where it starts.
+			double h = StrictMath.hypot(x, z);
+			double lineX = x;
+			double lineZ = z;
+			double along = 0;
+			int parent = from;
+			for (int guard = 0; guard < 64 && y < yEnd - 0.5; guard++) {
+				int run = (int) Math.clamp(Math.round(range(0.7, 1.3) / slope), 1, 3);
+				y += Math.min(run, Math.max(1, Math.round(yEnd - y)));
+				parent = node(parent, x, y, z, LIMB);
+				if (y >= yEnd) {
+					break;
+				}
+				// One jog sideways: the axis that lags most behind the limb's line.
+				along += 1;
+				double tx = lineX + along * c;
+				double tz = lineZ + along * s;
+				double ex = Math.abs(tx - x);
+				double ez = Math.abs(tz - z);
+				boolean alongX = s == 0 || c != 0 && ex >= ez;
+				double gx = x + (alongX ? Math.signum(c) : 0);
+				double gz = z + (alongX ? 0 : Math.signum(s));
+				h = StrictMath.hypot(gx, gz);
+				if (h > hReach || !woodAt(gx, gz)) {
+					break;
+				}
+				x = gx;
+				z = gz;
+				parent = node(parent, x, y, z, LIMB);
+			}
+			return parent;
 		}
 
 		/**
@@ -636,18 +933,39 @@ public final class TreeShapePlan {
 				double ay = ny[i];
 				double t = (ay - size.crownBase()) / Math.max(0.5, crownLength);
 				if (limb) {
-					azimuth = outward + range(-1.3, 1.3);
+					azimuth = keepSigns(outward + range(-1.2, 1.2), outward);
 				} else {
 					azimuth += GOLDEN + range(-0.35, 0.35);
 				}
-				lateral(i, azimuth, t);
+				lateral(i, azimuth, t, limb ? outward : Double.NaN);
 				next = ay + shape.spacing() * range(0.75, 1.25);
 			}
 			return azimuth;
 		}
 
-		/** One lateral branch of a broad-leaved tree from node {@code at}, with twigs. */
-		private void lateral(int at, double azimuth, double t) {
+		/**
+		 * An azimuth whose horizontal components do not point against those of {@code ref} (a component that would is
+		 * dropped), so a side branch never turns back towards the trunk along an axis its parent went out along.
+		 */
+		private static double keepSigns(double azimuth, double ref) {
+			if (Double.isNaN(ref)) {
+				return azimuth;
+			}
+			double c = StrictMath.cos(azimuth);
+			double s = StrictMath.sin(azimuth);
+			double rc = StrictMath.cos(ref);
+			double rs = StrictMath.sin(ref);
+			if (c * rc < 0) {
+				c = 0;
+			}
+			if (s * rs < 0) {
+				s = 0;
+			}
+			return c == 0 && s == 0 ? ref : StrictMath.atan2(s, c);
+		}
+
+		/** One curved lateral branch of a broad-leaved tree from node {@code at}, with twigs. */
+		private void lateral(int at, double azimuth, double t, double limbAzimuth) {
 			double c = StrictMath.cos(azimuth);
 			double s = StrictMath.sin(azimuth);
 			double x0 = nx[at];
@@ -662,19 +980,28 @@ public final class TreeShapePlan {
 			if (length < 1.0) {
 				return;
 			}
-			double angle = StrictMath.toRadians(lerp(t, shape.angleLow(), shape.angleHigh()) + range(-6, 6));
-			double rise = length / StrictMath.tan(angle);
-			double bend = shape.bend() * length;
-			int a = node(at, x0 + 0.4 * length * c, ay + 0.4 * rise, z0 + 0.4 * length * s, BRANCH);
-			int b = node(a, x0 + 0.75 * length * c, ay + 0.75 * rise + 0.3 * bend, z0 + 0.75 * length * s, BRANCH);
-			int tip = node(b, x0 + length * c, ay + rise + bend, z0 + length * s, BRANCH);
+			double a0 = lerp(t, shape.angleLow(), shape.angleHigh()) + range(-6, 6);
+			double a1 = a0 - shape.bend() * 150 * range(0.6, 1.4);
+			int tip = curve(at, azimuth, length, a0, a1, BRANCH);
+			if (tip == at) {
+				return;
+			}
 			leafAt(tip, leafH, leafV);
-			if (length >= 2.5) {
-				twig(a, azimuth + (next() < 0.5 ? 1 : -1) * range(0.7, 1.1), length * range(0.3, 0.45), t);
-				twig(b, azimuth + (next() < 0.5 ? 1 : -1) * range(0.6, 1.0), length * range(0.25, 0.4), t);
-			} else {
+			int n = curveCount;
+			int a = curveNodes[Math.max(0, (int) (0.35 * n))];
+			int b = curveNodes[Math.max(0, Math.min(n - 2, (int) (0.7 * n)))];
+			if (length >= 2.5 && n >= 3) {
+				twig(a, side(azimuth, limbAzimuth, range(0.5, 0.9)), length * range(0.3, 0.45), t);
+				twig(b, side(azimuth, limbAzimuth, range(0.45, 0.8)), length * range(0.25, 0.4), t);
+			} else if (b != tip) {
 				leafAt(b, leafH * 0.8, leafV * 0.9);
 			}
+		}
+
+		/** A twig azimuth off the branch by {@code turn} radians to a random side, keeping the signs of both parents. */
+		private double side(double azimuth, double limbAzimuth, double turn) {
+			double a = keepSigns(azimuth + (next() < 0.5 ? turn : -turn), azimuth);
+			return keepSigns(a, limbAzimuth);
 		}
 
 		private void twig(int at, double azimuth, double length, double t) {
@@ -693,8 +1020,12 @@ public final class TreeShapePlan {
 				leafAt(at, leafH * 0.8, leafV * 0.85);
 				return;
 			}
-			double rise = length * range(0.15, 0.5) + shape.bend() * length;
-			int tip = node(at, x0 + length * c, ny[at] + rise, z0 + length * s, TWIG);
+			double a0 = range(58, 75);
+			int tip = curve(at, azimuth, length, a0, a0 - shape.bend() * 150, TWIG);
+			if (tip == at) {
+				leafAt(at, leafH * 0.8, leafV * 0.85);
+				return;
+			}
 			leafAt(tip, leafH * 0.85, leafV * 0.9);
 		}
 
@@ -806,6 +1137,8 @@ public final class TreeShapePlan {
 				wParentIndex = Arrays.copyOf(wParentIndex, n);
 				wOwner = Arrays.copyOf(wOwner, n);
 				wBark = Arrays.copyOf(wBark, n);
+				wChildren = Arrays.copyOf(wChildren, n);
+				wGone = Arrays.copyOf(wGone, n);
 			}
 			int i = woods++;
 			wPos[i] = TreeVoxels.pack(x, y, z);
@@ -814,6 +1147,11 @@ public final class TreeShapePlan {
 			wParentIndex[i] = parentIndex;
 			wOwner[i] = owner;
 			wBark[i] = TreeVoxels.LOWER;
+			wChildren[i] = 0;
+			wGone[i] = false;
+			if (parentIndex >= 0) {
+				wChildren[parentIndex]++;
+			}
 			int c = cellOf(x, y, z);
 			stamp[c] = current;
 			cell[c] = WOOD;
@@ -832,6 +1170,22 @@ public final class TreeShapePlan {
 				}
 				segment(i, p);
 			}
+		}
+
+		/**
+		 * Whether wood of node i may stand at (x, y, z): an allowed column and, except for the trunk below its layer and
+		 * the dry stubs (both next to the trunk column, where no wood of another layer stands), between the split
+		 * surfaces of the layer.
+		 */
+		private boolean woodCell(int i, int x, int y, int z) {
+			if (!inBox(x, y, z) || !woodColumn[col(x, z)]) {
+				return false;
+			}
+			int c = col(x, z);
+			if (y > capY[c]) {
+				return false;
+			}
+			return nKind[i] == TRUNK || nKind[i] == STUB || y >= floorY[c];
 		}
 
 		/** The blocks of the segment from node p to node i, a 3D DDA with face-adjacent steps from p's end block. */
@@ -858,6 +1212,7 @@ public final class TreeShapePlan {
 			double ty = dy != 0 ? (sy > 0 ? y + 1 - ay : ay - y) * tdy : Double.POSITIVE_INFINITY;
 			double tz = dz != 0 ? (sz > 0 ? z + 1 - az : az - z) * tdz : Double.POSITIVE_INFINITY;
 			int q = quantized(i);
+			boolean fresh = true;
 			for (int guard = 0; guard < 4 * MAX_HEIGHT; guard++) {
 				int dir;
 				if (tx <= ty && tx <= tz) {
@@ -882,21 +1237,39 @@ public final class TreeShapePlan {
 					tz += tdz;
 					dir = sz > 0 ? TreeVoxels.NORTH : TreeVoxels.SOUTH;
 				}
-				if (!inBox(x, y, z) || !woodColumn[col(x, z)]) {
+				if (!woodCell(i, x, y, z)) {
 					nCut[i] = true;
 					break;
 				}
 				int c = cellOf(x, y, z);
 				if (stamp[c] == current && cell[c] == WOOD) {
-					// Through wood that already exists (an ancestor, or a sibling that left the same node): the segment
-					// goes on from that block, whose chain leads to the root; the radius rule below keeps it no thicker.
-					cursor = cellIndex[c];
-					continue;
+					// Through wood that already exists: an ancestor, or (before the segment has a block of its own) a
+					// sibling that left the same node. The segment goes on from that block, whose chain leads to the root;
+					// the radius rule below keeps it no thicker. Wood of another branch stops it, so two branches never
+					// merge into a loop or a rod (review of V6).
+					int owner = wOwner[cellIndex[c]];
+					if (ancestor(owner, i) || fresh && ancestor(p, owner)) {
+						cursor = cellIndex[c];
+						continue;
+					}
+					nCut[i] = true;
+					break;
 				}
 				int r = Math.min(q, wRadius[cursor]);
 				cursor = addWood(x, y, z, r, dir, cursor, i);
+				fresh = false;
 			}
 			nEnd[i] = cursor;
+		}
+
+		/** Whether node a is node n or one of its ancestors. */
+		private boolean ancestor(int a, int n) {
+			for (int j = n; j >= 0; j = nParent[j]) {
+				if (j == a) {
+					return true;
+				}
+			}
+			return false;
 		}
 
 		/** Barks: the pine's lower bark, transition zone and "mirror"; one bark for the other species. */
@@ -909,7 +1282,8 @@ public final class TreeShapePlan {
 			int zone = 0;
 			for (int i = 0; i < woods; i++) {
 				int y = TreeVoxels.unpackY(wPos[i]);
-				if (nKind[wOwner[i]] == TRUNK) {
+				int owner = wOwner[i];
+				if (nKind[owner] == TRUNK) {
 					if (zone == 0 && y >= start) {
 						wBark[i] = TreeVoxels.TRANSITION;
 						zone = 1;
@@ -919,6 +1293,9 @@ public final class TreeShapePlan {
 					} else {
 						wBark[i] = (byte) (zone == 0 ? TreeVoxels.LOWER : TreeVoxels.UPPER);
 					}
+				} else if (nKind[owner] == STUB && nLeafH[owner] <= 0) {
+					// A dry stub keeps the grey lower bark at any height.
+					wBark[i] = TreeVoxels.LOWER;
 				} else {
 					wBark[i] = (byte) (y > start + 1 ? TreeVoxels.UPPER : TreeVoxels.LOWER);
 				}
@@ -954,6 +1331,9 @@ public final class TreeShapePlan {
 					cy = ny[i];
 					cz = nz[i];
 				}
+				// Each cluster with its own depth and a jitter of its height, so the bottoms do not line up.
+				v *= range(0.85, 1.2);
+				cy += range(-0.4, 0.4);
 				cluster(cx, cy, cz, h, v, hollow);
 			}
 			// Shoots are covered: a leaf right above every thin branch block of the crown, so no bare branch tops the
@@ -963,15 +1343,24 @@ public final class TreeShapePlan {
 				boolean shoot = nKind[owner] != STUB || nLeafH[owner] > 0;
 				int pos = wPos[i];
 				int y = TreeVoxels.unpackY(pos) + 1;
-				if (!shoot || wRadius[i] > DIAGONAL_RADIUS || y < size.crownBase() || y < minLeafY || y > maxLeafY) {
+				if (!shoot || wRadius[i] > DIAGONAL_RADIUS || y < size.crownBase()) {
 					continue;
 				}
 				int x = TreeVoxels.unpackX(pos);
 				int z = TreeVoxels.unpackZ(pos);
-				if (inBox(x, y, z) && leafColumn[col(x, z)] && stamp[cellOf(x, y, z)] != current) {
+				if (leafCell(x, y, z) && stamp[cellOf(x, y, z)] != current) {
 					addLeaf(x, y, z);
 				}
 			}
+		}
+
+		/** Whether a leaf may stand at (x, y, z): an allowed column between the split surfaces of the layer. */
+		private boolean leafCell(int x, int y, int z) {
+			if (!inBox(x, y, z) || !leafColumn[col(x, z)]) {
+				return false;
+			}
+			int c = col(x, z);
+			return y >= floorY[c] && y <= capY[c];
 		}
 
 		private void addLeaf(int x, int y, int z) {
@@ -994,14 +1383,14 @@ public final class TreeShapePlan {
 			int z0 = (int) Math.floor(cz - h + 0.5);
 			int z1 = (int) Math.floor(cz + h + 0.5);
 			double fill = shape.fill();
-			for (int y = Math.max(y0, minLeafY); y <= Math.min(y1, maxLeafY); y++) {
+			for (int y = Math.max(y0, 0); y <= y1; y++) {
 				double ey = (y - cy) / v;
 				for (int x = x0; x <= x1; x++) {
 					double ex = (x - cx) / h;
 					for (int z = z0; z <= z1; z++) {
 						double ez = (z - cz) / h;
 						double e = ex * ex + ey * ey + ez * ez;
-						if (e > 1 || !inBox(x, y, z) || !leafColumn[col(x, z)]) {
+						if (e > 1 || !leafCell(x, y, z)) {
 							continue;
 						}
 						int c = cellOf(x, y, z);
@@ -1017,10 +1406,19 @@ public final class TreeShapePlan {
 						if (hollow && hollowAt(x, y, z)) {
 							continue;
 						}
+						if (nearSplit(x, y, z) && cellUnit(x, y, z, 3) < EDGE_THIN) {
+							continue;
+						}
 						addLeaf(x, y, z);
 					}
 				}
 			}
+		}
+
+		/** Whether a cell lies in the row next to a split surface of its column (thinned, a ragged edge). */
+		private boolean nearSplit(int x, int y, int z) {
+			int c = col(x, z);
+			return y == floorY[c] && floorY[c] > 0 || y == capY[c] && capY[c] < MAX_HEIGHT - 1;
 		}
 
 		/** Whether a leaf cell lies in the empty core of a large crown (below its top fifth). */
@@ -1033,6 +1431,44 @@ public final class TreeShapePlan {
 			return rho < shape.hollow() * size.crownRadius() * profile.at(t);
 		}
 
+		/**
+		 * Prunes the thin branch tips (radius ≤ 2, not the trunk, not a dry stub) without a leaf next to them, from the
+		 * tips inwards: the bare ends of clusters that the territory or a split surface clipped.
+		 */
+		private void prune() {
+			for (int i = woods - 1; i > 0; i--) {
+				if (wGone[i] || wChildren[i] > 0 || wRadius[i] > DIAGONAL_RADIUS) {
+					continue;
+				}
+				int kind = nKind[wOwner[i]];
+				if (kind == TRUNK || kind == STUB) {
+					continue;
+				}
+				int p = wPos[i];
+				int x = TreeVoxels.unpackX(p);
+				int y = TreeVoxels.unpackY(p);
+				int z = TreeVoxels.unpackZ(p);
+				boolean covered = false;
+				for (int[] s : TreeVoxels.STEP) {
+					int x2 = x + s[0];
+					int y2 = y + s[1];
+					int z2 = z + s[2];
+					if (inBox(x2, y2, z2)) {
+						int c = cellOf(x2, y2, z2);
+						if (stamp[c] == current && cell[c] == LEAF) {
+							covered = true;
+							break;
+						}
+					}
+				}
+				if (!covered) {
+					wGone[i] = true;
+					wChildren[wParentIndex[i]]--;
+					cell[cellOf(x, y, z)] = 0;
+				}
+			}
+		}
+
 		/** Leaf distances by a breadth-first search from the wood through the tree's own leaves. */
 		private void distances() {
 			if (queue.length < woods + leaves) {
@@ -1041,6 +1477,9 @@ public final class TreeShapePlan {
 			int head = 0;
 			int tail = 0;
 			for (int i = 0; i < woods; i++) {
+				if (wGone[i]) {
+					continue;
+				}
 				int p = wPos[i];
 				int c = cellOf(TreeVoxels.unpackX(p), TreeVoxels.unpackY(p), TreeVoxels.unpackZ(p));
 				cellDist[c] = 0;
@@ -1084,10 +1523,30 @@ public final class TreeShapePlan {
 					kept++;
 				}
 			}
-			byte[] parents = Arrays.copyOf(wParent, woods);
-			return new TreeVoxels(request.x(), request.y(), request.z(), Arrays.copyOf(wPos, woods), Arrays.copyOf(wRadius, woods),
-					parents, Arrays.copyOf(wParentIndex, woods), Arrays.copyOf(wBark, woods), Arrays.copyOf(lp, kept),
-					Arrays.copyOf(ld, kept), (float) size.height());
+			// The wood without the pruned tips; the parents always precede their children.
+			int[] remap = new int[woods];
+			int n = 0;
+			for (int i = 0; i < woods; i++) {
+				remap[i] = wGone[i] ? -1 : n++;
+			}
+			int[] pos = new int[n];
+			byte[] radius = new byte[n];
+			byte[] parents = new byte[n];
+			int[] parentIndex = new int[n];
+			byte[] barks = new byte[n];
+			for (int i = 0; i < woods; i++) {
+				int j = remap[i];
+				if (j < 0) {
+					continue;
+				}
+				pos[j] = wPos[i];
+				radius[j] = wRadius[i];
+				parents[j] = wParent[i];
+				parentIndex[j] = wParentIndex[i] < 0 ? -1 : remap[wParentIndex[i]];
+				barks[j] = wBark[i];
+			}
+			return new TreeVoxels(request.x(), request.y(), request.z(), pos, radius, parents, parentIndex, barks,
+					Arrays.copyOf(lp, kept), Arrays.copyOf(ld, kept), (float) size.height());
 		}
 	}
 }

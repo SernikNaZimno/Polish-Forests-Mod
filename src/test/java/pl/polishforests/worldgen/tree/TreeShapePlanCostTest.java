@@ -54,13 +54,15 @@ class TreeShapePlanCostTest {
 		}
 		for (boolean grad : new boolean[] {false, true}) {
 			List<TreeRequest> requests = new ArrayList<>();
-			CrownTerritories territories = new CrownTerritories(SEED, StandMap.uniform(AgeClass.OLD_GROWTH, true));
+			StandMap map = StandMap.uniform(AgeClass.OLD_GROWTH, true);
+			CrownTerritories territories = new CrownTerritories(SEED, map);
 			CrownTerritories.Session session = territories.session();
 			for (int cx = 0; cx < 4; cx++) {
 				for (int cz = 0; cz < 4; cz++) {
 					for (CrownTerritory t : session.chunk(cx + 40, cz - 30, null)) {
 						Species sp = TreePreview.standSpecies(grad, t.layer(), t.x(), t.z());
-						requests.add(new TreeRequest(sp, t.layer(), AgeClass.OLD_GROWTH, SEED, t.x(), 64, t.z(), t, session::candidate));
+						requests.add(new TreeRequest(sp, t.layer(), AgeClass.OLD_GROWTH, SEED, t.x(), 64, t.z(), t, session::candidate,
+								map));
 					}
 				}
 			}

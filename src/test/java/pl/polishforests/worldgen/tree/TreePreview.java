@@ -23,9 +23,12 @@ import pl.polishforests.worldgen.landscape.Noise;
  * <ul>
  * <li>{@code iglaste_bok.png} / {@code iglaste_gora.png}, {@code lisciaste_bok.png} / {@code lisciaste_gora.png}: side
  * and top views of every species (rows) by age class and layer (columns: canopy in the pole stage, mature stand and old
- * growth, subcanopy of the mature stand and of the old growth, regeneration of the old growth), one lone tree each;</li>
+ * growth, subcanopy of the mature stand and of the old growth, regeneration of the old growth, all in their stand form
+ * with the layer split surfaces; last a mature canopy tree grown alone, open-grown), one tree each;</li>
  * <li>{@code iglaste_warianty.png}, {@code lisciaste_warianty.png}: six canopy trees of the mature stand of each species
  * at other columns (the spread of the shapes);</li>
+ * <li>{@code iglaste_drewno.png}, {@code lisciaste_drewno.png}: the wood alone of four mature and two old canopy trees of
+ * each species, leaves faint, at 10 px a block, to judge the branch shapes (risk R4: elbows, hooks, stairs);</li>
  * <li>{@code drzewostan_bor.png}, {@code drzewostan_grad.png}: a stand of 3 × 3 chunks on level ground, the trees of
  * every kept candidate of the M2 pattern with their crown territories ({@link CrownTerritories}): a managed mature pine
  * stand (Scots pine, some birch; spruce and birch below) and a natural old oak-hornbeam stand (oak, linden, maple, ash and
@@ -44,16 +47,17 @@ public final class TreePreview {
 	private static final int ROWS_H = 44;
 	private static final Font FONT = new Font(Font.SANS_SERIF, Font.PLAIN, 12);
 
-	private record Column(String label, CrownLayer layer, AgeClass age) {
+	private record Column(String label, CrownLayer layer, AgeClass age, boolean open) {
 	}
 
 	private static final Column[] COLUMNS = {
-			new Column("a1 pole stage", CrownLayer.CANOPY, AgeClass.POLE_STAGE),
-			new Column("a1 mature", CrownLayer.CANOPY, AgeClass.MATURE),
-			new Column("a1 old growth", CrownLayer.CANOPY, AgeClass.OLD_GROWTH),
-			new Column("a2 mature", CrownLayer.SUBCANOPY, AgeClass.MATURE),
-			new Column("a2 old growth", CrownLayer.SUBCANOPY, AgeClass.OLD_GROWTH),
-			new Column("regeneration", CrownLayer.REGENERATION, AgeClass.OLD_GROWTH),
+			new Column("a1 pole stage", CrownLayer.CANOPY, AgeClass.POLE_STAGE, false),
+			new Column("a1 mature", CrownLayer.CANOPY, AgeClass.MATURE, false),
+			new Column("a1 old growth", CrownLayer.CANOPY, AgeClass.OLD_GROWTH, false),
+			new Column("a2 mature", CrownLayer.SUBCANOPY, AgeClass.MATURE, false),
+			new Column("a2 old growth", CrownLayer.SUBCANOPY, AgeClass.OLD_GROWTH, false),
+			new Column("regeneration", CrownLayer.REGENERATION, AgeClass.OLD_GROWTH, false),
+			new Column("a1 mature, alone", CrownLayer.CANOPY, AgeClass.MATURE, true),
 	};
 
 	static final Species[] CONIFERS = {Species.SCOTS_PINE, Species.SPRUCE};
@@ -98,6 +102,7 @@ public final class TreePreview {
 		write(dir, "iglaste_bok.png", sheet(CONIFERS, true));
 		write(dir, "iglaste_gora.png", sheet(CONIFERS, false));
 		write(dir, "iglaste_warianty.png", variants(CONIFERS));
+		write(dir, "iglaste_drewno.png", wood(CONIFERS));
 		write(dir, "drzewostan_bor.png", stand(false));
 		if (conifersOnly) {
 			return;
@@ -105,6 +110,7 @@ public final class TreePreview {
 		write(dir, "lisciaste_bok.png", sheet(BROADLEAVES, true));
 		write(dir, "lisciaste_gora.png", sheet(BROADLEAVES, false));
 		write(dir, "lisciaste_warianty.png", variants(BROADLEAVES));
+		write(dir, "lisciaste_drewno.png", wood(BROADLEAVES));
 		write(dir, "drzewostan_grad.png", stand(true));
 	}
 
@@ -114,8 +120,10 @@ public final class TreePreview {
 		System.out.println("[tree preview] " + out.getPath());
 	}
 
-	private static TreeVoxels lone(Species species, CrownLayer layer, AgeClass age, int x, int z) {
-		return TreeShapePlan.plan(new TreeRequest(species, layer, age, SEED, x, 0, z));
+	/** A tree in its stand form (the layer split surfaces of a uniform stand, no territory), or grown alone. */
+	private static TreeVoxels lone(Species species, CrownLayer layer, AgeClass age, int x, int z, boolean open) {
+		return TreeShapePlan.plan(new TreeRequest(species, layer, age, SEED, x, 0, z, null, null, open ? null
+				: StandMap.uniform(age, true)));
 	}
 
 	/** Species by age class and layer, side or top views. */
@@ -136,7 +144,7 @@ public final class TreePreview {
 			g.drawString(species[r].id(), 6, y0 + cellH / 2);
 			for (int c = 0; c < COLUMNS.length; c++) {
 				Column col = COLUMNS[c];
-				TreeVoxels v = lone(species[r], col.layer(), col.age(), 100 + 37 * r, 200 + 53 * c);
+				TreeVoxels v = lone(species[r], col.layer(), col.age(), 100 + 37 * r, 200 + 53 * c, col.open());
 				int x0 = labelW + c * cellW;
 				g.setColor(new Color(0xF4F4F0));
 				g.fillRect(x0 + 1, y0, cellW - 2, cellH);
@@ -169,12 +177,68 @@ public final class TreePreview {
 			g.setColor(Color.BLACK);
 			g.drawString(species[r].id(), 6, y0 + cellH / 2);
 			for (int c = 0; c < n; c++) {
-				TreeVoxels v = lone(species[r], CrownLayer.CANOPY, AgeClass.MATURE, -400 + 91 * c, 700 + 29 * r);
+				TreeVoxels v = lone(species[r], CrownLayer.CANOPY, AgeClass.MATURE, -400 + 91 * c, 700 + 29 * r, false);
 				int x0 = 110 + c * cellW;
 				g.setColor(new Color(0xF4F4F0));
 				g.fillRect(x0 + 1, y0, cellW - 2, cellH);
 				side(g, List.of(new Placed(v, species[r], 0, 0)), x0 + REACH * PX, y0 + cellH - PX, Integer.MIN_VALUE,
 						Integer.MAX_VALUE);
+			}
+		}
+		g.dispose();
+		return image;
+	}
+
+	/** The wood of four mature and two old canopy trees of each species, leaves faint, 10 px a block (risk R4). */
+	private static BufferedImage wood(Species[] species) {
+		int px = 10;
+		int n = 6;
+		int cellW = 30 * px;
+		int cellH = ROWS_H * px;
+		BufferedImage image = new BufferedImage(110 + n * cellW, 20 + species.length * (cellH + 4), BufferedImage.TYPE_INT_RGB);
+		Graphics2D g = graphics(image);
+		g.setColor(Color.BLACK);
+		g.drawString("wood of a1 trees in their stand form (four mature, two old growth), leaves faint; the side view shows "
+				+ "the blocks with z >= 0", 116, 14);
+		for (int r = 0; r < species.length; r++) {
+			int y0 = 20 + r * (cellH + 4);
+			g.setColor(Color.BLACK);
+			g.drawString(species[r].id(), 6, y0 + cellH / 2);
+			for (int c = 0; c < n; c++) {
+				AgeClass age = c < 4 ? AgeClass.MATURE : AgeClass.OLD_GROWTH;
+				TreeVoxels v = lone(species[r], CrownLayer.CANOPY, age, 1300 + 71 * c, -500 + 43 * r, false);
+				int x0 = 110 + c * cellW;
+				int ox = x0 + cellW / 2;
+				int oy = y0 + cellH - px;
+				g.setColor(new Color(0xF4F4F0));
+				g.fillRect(x0 + 1, y0, cellW - 2, cellH);
+				g.setClip(x0 + 1, y0, cellW - 2, cellH);
+				g.setColor(new Color(0xDCE8D6));
+				for (int i = 0; i < v.leafCount(); i++) {
+					if (v.leafZ(i) >= 0) {
+						g.fillRect(ox + v.leafX(i) * px, oy - v.leafY(i) * px, px, px);
+					}
+				}
+				Color bark = shade(BARK.get(species[r]), 0.7);
+				for (int i = 0; i < v.woodCount(); i++) {
+					if (v.woodZ(i) < 0) {
+						continue;
+					}
+					g.setColor(species[r] == Species.SCOTS_PINE ? shade(PINE_BARK[v.bark(i)], 0.85) : bark);
+					int thick = v.radius(i) >= TreeVoxels.FULL ? px : Math.max(2, (int) Math.round(2 * v.radius(i) * px / 16.0));
+					int off = (px - thick) / 2;
+					int bx = ox + v.woodX(i) * px;
+					int by = oy - v.woodY(i) * px;
+					// A bar along the axis of the parent (a block along the line of sight is a square).
+					switch (v.parent(i)) {
+						case TreeVoxels.DOWN, TreeVoxels.UP -> g.fillRect(bx + off, by, thick, px);
+						case TreeVoxels.WEST, TreeVoxels.EAST -> g.fillRect(bx, by + off, px, thick);
+						default -> g.fillRect(bx + off, by + off, thick, thick);
+					}
+				}
+				g.setClip(null);
+				g.setColor(Color.DARK_GRAY);
+				g.drawString(String.format(Locale.ROOT, "%s %.1f m", c < 4 ? "mature" : "old", v.height()), x0 + 4, y0 + 12);
 			}
 		}
 		g.dispose();
@@ -206,14 +270,16 @@ public final class TreePreview {
 	/** The trees of every kept candidate of 3 × 3 chunks with their territories, on level ground. */
 	static List<Placed> standTrees(boolean grad, int cx0, int cz0) {
 		AgeClass age = grad ? AgeClass.OLD_GROWTH : AgeClass.MATURE;
-		CrownTerritories territories = new CrownTerritories(SEED, StandMap.uniform(age, grad));
+		StandMap map = StandMap.uniform(age, grad);
+		CrownTerritories territories = new CrownTerritories(SEED, map);
 		CrownTerritories.Session s = territories.session();
 		List<Placed> out = new ArrayList<>();
 		for (int cx = cx0; cx < cx0 + 3; cx++) {
 			for (int cz = cz0; cz < cz0 + 3; cz++) {
 				for (CrownTerritory t : s.chunk(cx, cz, null)) {
 					Species sp = standSpecies(grad, t.layer(), t.x(), t.z());
-					TreeVoxels v = TreeShapePlan.plan(new TreeRequest(sp, t.layer(), age, SEED, t.x(), 0, t.z(), t, s::candidate));
+					TreeVoxels v = TreeShapePlan.plan(new TreeRequest(sp, t.layer(), age, SEED, t.x(), 0, t.z(), t, s::candidate,
+							map));
 					out.add(new Placed(v, sp, t.x() - cx0 * 16, t.z() - cz0 * 16));
 				}
 			}

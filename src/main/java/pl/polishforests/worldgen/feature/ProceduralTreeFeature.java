@@ -33,15 +33,20 @@ import pl.polishforests.worldgen.tree.TreeVoxels;
 /**
  * Feature type {@code polishforests:procedural_tree} (step V6 of docs/04-pionowy-wycinek.md): one tree of the tree
  * planner ({@link TreeShapePlan}) with the species, the layer and the age class of its configuration, as a lone tree
- * (no crown territory; a sapling, {@code /place feature}). The tree stand of step V9 calls the planner directly with
+ * (no crown territory and no stand map, so an open-grown crown; for saplings and solitary trees, reachable from Java
+ * only until a configured feature of this type exists, V7/V9). The tree stand of step V9 calls the planner directly with
  * the territories and the stand map (rule ZW-1, {@code PlacedFeature.place} passes no context) and writes the result with
  * {@link #write}.
  *
  * <p><b>Writing</b> ({@link #write}): every block only where the world holds air or a block of
  * {@code #minecraft:replaceable_by_trees} (plants, leaves), so the wood of a tree replaces leaves of another tree and leaves
  * never replace wood, in either order. The wood goes first, in the planner's order from the root; a block whose parent
- * could not be written is left out with all its descendants, and the leaf distances are then computed again from the
- * wood that exists ({@link TreeVoxels#leafDistances}), so no leaf is placed that would decay. No vanilla tree decorators
+ * could not be written is left out with all its descendants. Before the leaves, the feature notes which leaf blocks can
+ * be placed; when some wood or some leaf cannot, the leaf distances are computed again from the wood that exists through
+ * the placeable leaves only ({@link TreeVoxels#leafDistances(boolean[], boolean[])}), so no leaf is placed that would
+ * decay. (A leaf of this tree that a later tree overwrites can still cut the path of another leaf; within a stand the
+ * territories and the split surfaces keep the leaves of procedural trees apart, risk R5 for the vanilla substitutes.)
+ * No vanilla tree decorators
  * (risk R8: a bracket fungus or moss on the face of a block would hang 8 − r px away from a thin trunk; own fungi in M4).
  *
  * <p><b>Blocks.</b> Radius 1–7 px: the {@code TrunkBlock} of the species with its parent direction (the Scots pine with
@@ -137,17 +142,22 @@ public record ProceduralTreeFeature(Species species, CrownLayer layer, AgeClass 
 		if (count == 0) {
 			return 0;
 		}
-		byte[] distances = count == n ? null : v.leafDistances(written);
+		int leaves = v.leafCount();
+		boolean[] placeable = new boolean[leaves];
+		boolean all = count == n;
+		for (int i = 0; i < leaves; i++) {
+			pos.set(v.x() + v.leafX(i), v.y() + v.leafY(i), v.z() + v.leafZ(i));
+			placeable[i] = pos.getY() < level.getMaxY() && replaceable(level.getBlockState(pos));
+			all &= placeable[i];
+		}
+		byte[] distances = all ? null : v.leafDistances(written, placeable);
 		BlockState leaf = leaves(species);
-		for (int i = 0; i < v.leafCount(); i++) {
+		for (int i = 0; i < leaves; i++) {
 			int d = distances == null ? v.leafDistance(i) : distances[i];
-			if (d < 1) {
+			if (d < 1 || !placeable[i]) {
 				continue;
 			}
 			pos.set(v.x() + v.leafX(i), v.y() + v.leafY(i), v.z() + v.leafZ(i));
-			if (pos.getY() >= level.getMaxY() || !replaceable(level.getBlockState(pos))) {
-				continue;
-			}
 			level.setBlock(pos, leaf.setValue(LeavesBlock.DISTANCE, d), FLAGS);
 		}
 		return count;

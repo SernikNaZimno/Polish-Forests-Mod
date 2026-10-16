@@ -15,9 +15,13 @@ import pl.polishforests.worldgen.habitat.Species;
  * @param trunks    the columns where other trunks may stand (in the game the kept candidates of the M2 pattern,
  *                  {@code CrownTerritories.Session#candidate}): the wood of a subcanopy or regeneration tree keeps one
  *                  column away from them, so it never meets the trunk or a dry stub of a canopy tree; null for none
+ * @param stands    the stand map of a tree in a stand: its age class at each column sets the layer split surfaces
+ *                  ({@link TreeShapePlan#split}), which every tree of the stand must see alike; null for the age class of
+ *                  the request everywhere. A request with neither a territory nor a stand map is a lone, open-grown tree
+ *                  (a longer and wider crown, no split below the canopy)
  */
 public record TreeRequest(Species species, CrownLayer layer, AgeClass age, long worldSeed, int x, int y, int z,
-		@Nullable CrownTerritory territory, TreeShapePlan.@Nullable Trunks trunks) {
+		@Nullable CrownTerritory territory, TreeShapePlan.@Nullable Trunks trunks, @Nullable StandMap stands) {
 	public TreeRequest {
 		if (!SpeciesShape.supported(species)) {
 			throw new IllegalArgumentException("no tree shape for " + species);
@@ -28,8 +32,18 @@ public record TreeRequest(Species species, CrownLayer layer, AgeClass age, long 
 		}
 	}
 
-	/** A lone tree without a territory. */
+	/** A lone, open-grown tree without a territory. */
 	public TreeRequest(Species species, CrownLayer layer, AgeClass age, long worldSeed, int x, int y, int z) {
-		this(species, layer, age, worldSeed, x, y, z, null, null);
+		this(species, layer, age, worldSeed, x, y, z, null, null, null);
+	}
+
+	/** Whether the tree grows alone (no territory and no stand map): an open-grown crown, no split below the canopy. */
+	public boolean openGrown() {
+		return territory == null && stands == null;
+	}
+
+	/** Age class of the stand at column (x, z): from the stand map, or the request's own. */
+	public AgeClass ageAt(int wx, int wz) {
+		return stands == null ? age : stands.ageClass(wx, wz);
 	}
 }

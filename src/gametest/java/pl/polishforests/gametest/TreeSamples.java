@@ -43,8 +43,10 @@ import pl.polishforests.worldgen.tree.TreeVoxels;
  * planner in the pole stage, the mature stand and the old growth (one row per species), and the planner with crown
  * territories writes two stands of 3 × 3 chunks through {@link ProceduralTreeFeature#write} (a managed mature pine stand
  * and a natural old oak-hornbeam stand with their lower layers, species as in the PNG preview). The test checks that
- * every planned wood block is in the world with its state (the board is level ground with nothing in the way), that no
- * leaf of the board has the decay distance 7 right after the planting and 200 ticks later, and takes screenshots
+ * every planned wood block is in the world with its state (the board is level ground with nothing in the way), that every
+ * leaf of the board has a distance of at most 6 that the world around it supports, right after the planting and 200
+ * ticks later (also for six lone trees with stone in a fifth of their leaf positions and in one branch block, which
+ * exercise the partial write of {@link ProceduralTreeFeature#write}), and takes screenshots
  * ({@code trees_<renderer>_<view>}): each species row from the side, the stands from outside, inside and above, and the
  * pine's bark change close up.
  */
@@ -60,6 +62,8 @@ final class TreeSamples {
 	/** Origin (x) of the ecotone of procedural trees and vanilla substitutes (risk R5), its share of substitutes. */
 	private static final int ECOTONE_X = 272;
 	private static final double SUBSTITUTES = 0.3;
+	/** Origin (x) of the lone trees with obstacles in their crowns. */
+	private static final int OBSTACLE_X = 380;
 
 	private TreeSamples() {
 	}
@@ -85,11 +89,14 @@ final class TreeSamples {
 			sp.getServer().runCommand("weather clear");
 			sp.getServer().runCommand("difficulty peaceful");
 			List<Placed> placed = new ArrayList<>();
-			int[] board = sp.getServer().computeOnServer(s -> build(s, placed));
+			List<Placed> blocked = new ArrayList<>();
+			int[] board = sp.getServer().computeOnServer(s -> build(s, placed, blocked));
 			PolishForests.LOG.info("[trees] board at ({}, {}, {}): {} trees", board[0], board[1], board[2], placed.size());
 			context.waitTicks(200);
 			String later = sp.getServer().computeOnServer(s -> check(s.overworld(), placed, false));
 			PolishForests.LOG.info("[trees] after 200 ticks: {}", later);
+			String obstacles = sp.getServer().computeOnServer(s -> check(s.overworld(), blocked, false));
+			PolishForests.LOG.info("[trees] obstacles after 200 ticks: {}", obstacles);
 			sp.getServer().runCommand("gamemode spectator @a");
 			context.runOnClient(mc -> {
 				if (!mc.gui.hud.isHidden()) {
@@ -124,7 +131,7 @@ final class TreeSamples {
 	}
 
 	/** Plants the board on the server; returns its origin (x, y of the first block above the ground, z). */
-	private static int[] build(MinecraftServer server, List<Placed> placed) {
+	private static int[] build(MinecraftServer server, List<Placed> placed, List<Placed> blocked) {
 		ServerLevel level = server.overworld();
 		ChunkGenerator generator = level.getChunkSource().getGenerator();
 		int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING, 0, 0);
@@ -153,13 +160,15 @@ final class TreeSamples {
 		String first = check(level, placed, true);
 		PolishForests.LOG.info("[trees] planted: {}", first);
 		PolishForests.LOG.info("[trees] ecotone: {}", ecotone(level, generator, x0 + ECOTONE_X, y, z0));
+		PolishForests.LOG.info("[trees] obstacles: {}", obstacles(level, blocked, x0 + OBSTACLE_X, y, z0));
 		return new int[] {x0, y, z0};
 	}
 
 	/** A stand of 3 × 3 chunks from (x, z) on: every kept candidate with its territory, written by the feature's writer. */
 	private static void stand(ServerLevel level, List<Placed> placed, boolean grad, int x, int y, int z) {
 		AgeClass age = grad ? AgeClass.OLD_GROWTH : AgeClass.MATURE;
-		CrownTerritories.Session s = new CrownTerritories(level.getSeed(), StandMap.uniform(age, grad)).session();
+		StandMap map = StandMap.uniform(age, grad);
+		CrownTerritories.Session s = new CrownTerritories(level.getSeed(), map).session();
 		int cx0 = x >> 4;
 		int cz0 = z >> 4;
 		for (int cx = cx0; cx < cx0 + 3; cx++) {
@@ -167,7 +176,7 @@ final class TreeSamples {
 				for (CrownTerritory t : s.chunk(cx, cz, null)) {
 					Species sp = species(grad, t.layer(), t.x(), t.z());
 					TreeVoxels v = TreeShapePlan.plan(new TreeRequest(sp, t.layer(), age, level.getSeed(), t.x(), y, t.z(), t,
-							s::candidate));
+							s::candidate, map));
 					ProceduralTreeFeature.write(level, v, sp);
 					placed.add(new Placed(v, sp));
 				}
@@ -187,7 +196,8 @@ final class TreeSamples {
 	private static String ecotone(ServerLevel level, ChunkGenerator generator, int x, int y, int z) {
 		Holder<PlacedFeature> oak = level.registryAccess().lookupOrThrow(Registries.PLACED_FEATURE)
 				.getOrThrow(ResourceKey.create(Registries.PLACED_FEATURE, PolishForests.id("tree/oak")));
-		CrownTerritories.Session s = new CrownTerritories(level.getSeed(), StandMap.uniform(AgeClass.OLD_GROWTH, true)).session();
+		StandMap map = StandMap.uniform(AgeClass.OLD_GROWTH, true);
+		CrownTerritories.Session s = new CrownTerritories(level.getSeed(), map).session();
 		List<CrownTerritory> all = new ArrayList<>();
 		for (int cx = (x >> 4); cx < (x >> 4) + 3; cx++) {
 			for (int cz = (z >> 4); cz < (z >> 4) + 3; cz++) {
@@ -225,7 +235,7 @@ final class TreeSamples {
 					} else {
 						Species sp = species(true, t.layer(), t.x(), t.z());
 						ProceduralTreeFeature.write(level, TreeShapePlan.plan(new TreeRequest(sp, t.layer(), AgeClass.OLD_GROWTH,
-								level.getSeed(), t.x(), y, t.z(), t, s::candidate)), sp);
+								level.getSeed(), t.x(), y, t.z(), t, s::candidate, map)), sp);
 					}
 				}
 			}
@@ -273,6 +283,39 @@ final class TreeSamples {
 				+ "%d vanilla wood, %d leaves, %d other", all.size(), substitutes, blocks, trunkLog, trunk, log, leaves, other);
 	}
 
+	/**
+	 * Lone mature trees of six species with stone in every fifth planned leaf position and in one thin branch block (and
+	 * so without the branch's outer part), written by {@link ProceduralTreeFeature#write}: the leaf distances must come
+	 * from the wood and the leaves that exist ({@link #check} after the planting and after 200 ticks).
+	 */
+	private static String obstacles(ServerLevel level, List<Placed> blocked, int x, int y, int z) {
+		Species[] species = {Species.OAK, Species.LINDEN, Species.SCOTS_PINE, Species.SPRUCE, Species.BEECH, Species.HORNBEAM};
+		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+		int stones = 0;
+		for (int k = 0; k < species.length; k++) {
+			int tx = x + 40 * (k % 3);
+			int tz = z + 40 * (k / 3);
+			TreeVoxels v = TreeShapePlan.plan(new TreeRequest(species[k], CrownLayer.CANOPY, AgeClass.MATURE, level.getSeed(), tx, y,
+					tz));
+			for (int i = 0; i < v.leafCount(); i += 5) {
+				level.setBlock(pos.set(v.x() + v.leafX(i), v.y() + v.leafY(i), v.z() + v.leafZ(i)), Blocks.STONE.defaultBlockState(),
+						Block.UPDATE_CLIENTS | 16);
+				stones++;
+			}
+			for (int i = v.woodCount() / 2; i < v.woodCount(); i++) {
+				if (v.radius(i) <= 2 && v.parent(i) >= TreeVoxels.NORTH) {
+					level.setBlock(pos.set(v.x() + v.woodX(i), v.y() + v.woodY(i), v.z() + v.woodZ(i)), Blocks.STONE.defaultBlockState(),
+							Block.UPDATE_CLIENTS | 16);
+					stones++;
+					break;
+				}
+			}
+			ProceduralTreeFeature.write(level, v, species[k]);
+			blocked.add(new Placed(v, species[k]));
+		}
+		return stones + " stones; " + check(level, blocked, false);
+	}
+
 	/** Species of a stand tree as in the PNG preview ({@code TreePreview.standSpecies}). */
 	private static Species species(boolean grad, CrownLayer layer, int x, int z) {
 		double u = (pl.polishforests.worldgen.landscape.Noise.mix(pl.polishforests.worldgen.landscape.Noise.key(x, z,
@@ -293,8 +336,13 @@ final class TreeSamples {
 	}
 
 	/**
-	 * Every planned wood block is in the world with its state and no planned leaf position holds a leaf at the decay
-	 * distance 7. With {@code strict} a missing wood block fails the test.
+	 * Every planned wood block is in the world with its state, and every leaf at a planned leaf position has a distance of
+	 * at most 6 that the world supports: no less than the game would compute from the six neighbors (the least of them,
+	 * a log counting 0 and a leaf its own distance, plus one; {@link LeavesBlock#getOptionalDistanceAt}), so a chain of
+	 * falling distances leads from every leaf to a log and no leaf decays. (More is allowed: a leaf of a neighboring tree
+	 * may be closer to its wood.) The blocks are written with flags that skip the shape updates, so the leaves never get a
+	 * tick of their own: the check computes what such a tick would need, so a distance through a leaf that could not be
+	 * placed fails it. With {@code strict} a missing wood block fails the test.
 	 */
 	private static String check(ServerLevel level, List<Placed> placed, boolean strict) {
 		int wood = 0;
@@ -317,13 +365,21 @@ final class TreeSamples {
 				BlockState s = level.getBlockState(pos);
 				if (s.getBlock() instanceof LeavesBlock) {
 					leaves++;
-					if (s.getValue(LeavesBlock.DISTANCE) >= LeavesBlock.DECAY_DISTANCE) {
+					int expected = LeavesBlock.DECAY_DISTANCE;
+					for (Direction d : Direction.values()) {
+						java.util.OptionalInt n = LeavesBlock.getOptionalDistanceAt(level.getBlockState(pos.relative(d)));
+						if (n.isPresent()) {
+							expected = Math.min(expected, n.getAsInt() + 1);
+						}
+					}
+					int stored = s.getValue(LeavesBlock.DISTANCE);
+					if (stored >= LeavesBlock.DECAY_DISTANCE || stored < expected) {
 						decaying++;
 					}
 				}
 			}
 		}
-		String report = String.format(Locale.ROOT, "%d trees, %d wood blocks (%d missing or other), %d leaves (%d at distance 7)",
+		String report = String.format(Locale.ROOT, "%d trees, %d wood blocks (%d missing or other), %d leaves (%d at distance 7 or not supported by the world)",
 				placed.size(), wood, missing, leaves, decaying);
 		if ((strict && missing > 0) || decaying > 0) {
 			throw new AssertionError("[trees] " + report);

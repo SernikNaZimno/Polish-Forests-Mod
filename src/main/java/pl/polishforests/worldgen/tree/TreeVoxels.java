@@ -1,6 +1,7 @@
 package pl.polishforests.worldgen.tree;
 
 import java.util.Arrays;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Output of the tree planner ({@link TreeShapePlan}): the wood and leaf blocks of one tree, relative to the trunk base
@@ -169,8 +170,24 @@ public final class TreeVoxels {
 	 * @param written whether each wood block exists
 	 */
 	public byte[] leafDistances(boolean[] written) {
+		return leafDistances(written, null);
+	}
+
+	/**
+	 * Leaf distances when only some wood blocks exist and only some leaves can be placed (a leaf whose block holds
+	 * terrain or another feature is skipped, and a path through it does not count): the search runs from the given wood
+	 * blocks through the placeable leaves only; 0 for a leaf that is not placeable, farther than {@value #MAX_DISTANCE}
+	 * or not reached at all, which must not be placed.
+	 *
+	 * @param written   whether each wood block exists
+	 * @param placeable whether each leaf can be placed, or null for all of them
+	 */
+	public byte[] leafDistances(boolean[] written, boolean @Nullable [] placeable) {
 		if (written.length != wood.length) {
 			throw new IllegalArgumentException("one flag per wood block");
+		}
+		if (placeable != null && placeable.length != leaves.length) {
+			throw new IllegalArgumentException("one flag per leaf");
 		}
 		int minX = 0;
 		int maxX = 0;
@@ -195,6 +212,9 @@ public final class TreeVoxels {
 		byte[] cell = new byte[sx * sy * sz];
 		int[] index = new int[cell.length];
 		for (int i = 0; i < leaves.length; i++) {
+			if (placeable != null && !placeable[i]) {
+				continue;
+			}
 			int c = ((unpackX(leaves[i]) - minX) * sy + unpackY(leaves[i]) - minY) * sz + unpackZ(leaves[i]) - minZ;
 			cell[c] = 1;
 			index[c] = i;
