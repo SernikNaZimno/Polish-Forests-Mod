@@ -10,12 +10,14 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.Bootstrap;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
+import pl.polishforests.entity.ModEntities;
 
 /**
  * The vanilla registries in a unit test, with the blocks and items of the mod registered the way the game does it.
  * Unit tests run without the Fabric loader, so no mixin unfreezes the registries after the vanilla bootstrap: the block
  * and item registries are opened by reflection (as Fabric's registry sync does with its mixins), the content of the mod
- * is registered by {@link ModBlocks#registerContent()} and the registries are closed again (the vanilla tags stay, the new
+ * is registered by {@link ModBlocks#registerContent()} (and, from step V8, the entity types and spawn eggs by
+ * {@link ModEntities#registerContent()}) and the registries are closed again (the vanilla tags stay, the new
  * entries get bound, empty tag lists as in the game before the data packs load).
  */
 final class GameRegistries {
@@ -33,7 +35,9 @@ final class GameRegistries {
 		Bootstrap.bootStrap();
 		unfreeze(BuiltInRegistries.BLOCK);
 		unfreeze(BuiltInRegistries.ITEM);
+		unfreeze(BuiltInRegistries.ENTITY_TYPE);
 		ModBlocks.registerContent();
+		ModEntities.registerContent();
 		// As vanilla does for its blocks in Blocks.<clinit> and Fabric for registered ones: state ids and state caches.
 		for (TrunkBlock b : ModBlocks.trunks().values()) {
 			for (BlockState state : b.getStateDefinition().getPossibleStates()) {
@@ -43,6 +47,7 @@ final class GameRegistries {
 		}
 		refreeze(BuiltInRegistries.BLOCK);
 		refreeze(BuiltInRegistries.ITEM);
+		refreeze(BuiltInRegistries.ENTITY_TYPE);
 		ready = true;
 	}
 

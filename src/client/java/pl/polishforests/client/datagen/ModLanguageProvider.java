@@ -12,6 +12,7 @@ import net.minecraft.core.HolderLookup;
 import pl.polishforests.block.ModBlocks;
 import pl.polishforests.block.TreeTrunk;
 import pl.polishforests.command.PolishForestsCommands;
+import pl.polishforests.entity.ModEntities;
 import pl.polishforests.worldgen.habitat.AltitudinalBelts;
 import pl.polishforests.worldgen.habitat.Association;
 import pl.polishforests.worldgen.habitat.HabitatBiome;
@@ -23,7 +24,8 @@ import pl.polishforests.worldgen.habitat.Zone;
  * Language files {@code en_us} and {@code pl_pl} (datagen, step S5): the biome names from {@link HabitatBiome} (Z8), the
  * names of the {@code /polishforests find} targets (every {@link PolishForestsCommands.Target} must have one; the
  * montane belts show the boundary {@link AltitudinalBelts#UPPER_MONTANE}) and the texts of the options screen and the
- * commands. The game shows English with a Polish translation.
+ * commands, and from step V8 the names of the animals and their spawn eggs. The game shows English with a Polish
+ * translation.
  */
 abstract class ModLanguageProvider extends FabricLanguageProvider {
 	/** Display names of the {@code find} targets other than the montane belts: English and Polish. */
@@ -211,6 +213,9 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		ModBlockTagProvider.speciesTags().forEach((s, tag) -> builder.add(tagKey(tag.location().getPath()),
 				polish ? first.get(s).polishName().replaceFirst("^Pień ", "Pnie ") : first.get(s).englishName() + "s"));
 		builder.add(tagKey(ModBlockTagProvider.TRUNKS.location().getPath()), polish ? "Cienkie pnie" : "Thin Trunks");
+		// Step V8: the roe deer (vanilla Polish names spawn eggs "Jajo przyzywające <biernik>").
+		builder.add(ModEntities.roeDeer(), polish ? "Sarna" : "Roe Deer");
+		builder.add(ModEntities.roeDeerSpawnEgg(), polish ? "Jajo przyzywające sarnę" : "Roe Deer Spawn Egg");
 		if (polish) {
 			polish(builder);
 		} else {

@@ -426,7 +426,7 @@ abstract class ArtTask extends DefaultTask {
 
 tasks.register('checkArt', ArtTask) {
 	group = 'verification'
-	description = 'Checks that the committed textures and CREDITS.md are exactly what tools/art makes and pass the style lint.'
+	description = 'Checks that the committed textures, animal assets (tools/fauna) and CREDITS.md are exactly what the generators make and pass the lint.'
 	root = layout.projectDirectory
 	script = 'tools/art/check.py'
 	if (project.hasProperty('python')) {
@@ -437,7 +437,7 @@ tasks.register('checkArt', ArtTask) {
 
 tasks.register('generateArt', ArtTask) {
 	group = 'polishforests'
-	description = 'Regenerates the textures in src/main/resources/assets/polishforests/textures and CREDITS.md with tools/art.'
+	description = 'Regenerates the textures and CREDITS.md with tools/art and the animal assets with tools/fauna.'
 	root = layout.projectDirectory
 	script = 'tools/art/generate.py'
 	if (project.hasProperty('python')) {
@@ -451,6 +451,8 @@ tasks.register('generateArt', ArtTask) {
 // picks a part; combine with -Poptimization (with -PnoNvidium: plain Sodium) and -PnoSeasons; results in
 // build/probes/<vanilla|sodium|sodium_nvidium>_<ss|noss>.txt)
 // (ecotones: only by name, not in all; screenshots of biome borders, step S8b)
+// (fauna: only by name; step V8, the roe deer model against the preview of tools/fauna and the axis gauge of GeckoLib,
+// screenshots fauna_*, results in build/fauna/fauna.txt)
 // (slice: only by name; the fixed places of the vertical slice from src/test/resources/slice_sites.txt, step V0;
 // -Pmodes=natural|present_day picks a vegetation mode, -Psites=<place names>|none; the cameras come from
 // src/test/resources/slice_cameras.txt, -PfindSliceCameras chooses them anew and writes the file; -Pgametest=stages
@@ -488,6 +490,10 @@ tasks.named('runClientGameTest') {
 	}
 	// Render trials of step V3 (-Pgametest=probes): the measured colors, shares and frame times of each run.
 	jvmArgs "-Dpolishforests.probes.out=${layout.buildDirectory.dir('probes').get().asFile.absolutePath}"
+	// Fauna of step V8 (-Pgametest=fauna): the expected bone positions, cameras and silhouettes from tools/fauna, and the
+	// results (build/fauna/fauna.txt).
+	jvmArgs "-Dpolishforests.fauna.expected=${file('src/test/resources/fauna').absolutePath}"
+	jvmArgs "-Dpolishforests.fauna.out=${layout.buildDirectory.dir('fauna').get().asFile.absolutePath}"
 	if (project.hasProperty('profile')) {
 		jvmArgs "-XX:StartFlightRecording=filename=${layout.buildDirectory.file('profile.jfr').get().asFile.absolutePath},settings=profile"
 	}

@@ -3,10 +3,12 @@ package pl.polishforests.block;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
@@ -16,14 +18,14 @@ import pl.polishforests.PolishForests;
 
 /**
  * The part of the registries that goes into the saved worlds (rule ZW-4, decision PW-11 of docs/04-pionowy-wycinek.md):
- * every block of the mod with its properties, their values in order and the default state, and every item with the
- * block it places. {@code RegistrySnapshotTest} compares these lines with {@code src/test/resources/registry_snapshot.txt}
+ * every block of the mod with its properties, their values in order and the default state, every item with the
+ * block it places, and (from step V8) every entity type with its category and size. {@code RegistrySnapshotTest} compares these lines with {@code src/test/resources/registry_snapshot.txt}
  * (regenerated on purpose with {@code -PwriteRegistrySnapshot}, like the golden terrain), and the trunk samples game
  * test compares the registry of the running game with the same file. After checkpoint CP-B the file is frozen: new
  * blocks, items and property values only at the end of their lists, new properties with a default matching old saves.
  */
 public final class RegistrySnapshot {
-	public static final String HEADER = "# Blocks, properties, values and items of polishforests that go into saved worlds (PW-11). "
+	public static final String HEADER = "# Blocks, properties, values, items and entity types of polishforests that go into saved worlds (PW-11). "
 			+ "Regenerate on purpose: ./gradlew test --tests '*RegistrySnapshotTest*' -PwriteRegistrySnapshot";
 
 	private RegistrySnapshot() {
@@ -53,6 +55,14 @@ public final class RegistrySnapshot {
 					Item item = e.getValue();
 					String placed = item instanceof BlockItem bi ? " block=" + BuiltInRegistries.BLOCK.getKey(bi.getBlock()) : "";
 					out.add("item " + e.getKey().identifier() + placed);
+				});
+		BuiltInRegistries.ENTITY_TYPE.entrySet().stream()
+				.filter(e -> e.getKey().identifier().getNamespace().equals(PolishForests.MOD_ID))
+				.sorted(Comparator.comparing(e -> e.getKey().identifier().toString()))
+				.forEach(e -> {
+					EntityType<?> type = e.getValue();
+					out.add(String.format(Locale.ROOT, "entity %s category=%s size=%.2fx%.2f", e.getKey().identifier(),
+							type.getCategory().getName(), type.getWidth(), type.getHeight()));
 				});
 		return out;
 	}

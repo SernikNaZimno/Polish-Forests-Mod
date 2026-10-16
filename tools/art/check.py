@@ -9,15 +9,19 @@ Checks, in order:
 3. the style lint (lint.py) passes;
 4. CREDITS.md is up to date;
 5. the self-test of the library and the lint (selftest.py) passes;
-6. texlib.TRUNK_OFFSETS, the crops of thin trunks the lint measures, equals TrunkTemplates.OFFSETS of the game.
+6. texlib.TRUNK_OFFSETS, the crops of thin trunks the lint measures, equals TrunkTemplates.OFFSETS of the game;
+7. the animal assets (step V8): tools/fauna/check.py, run as a separate process (its modules have the same names as
+   these); the textures it owns (textures/entity/, textures/item/*_spawn_egg.png) are left out of point 2 here.
 Exit status 0 when everything passes, 1 otherwise; the fix is usually 'python tools/art/generate.py' (or
-'./gradlew generateArt'), which rewrites the textures and CREDITS.md.
+'./gradlew generateArt'), which rewrites the textures, the animal assets and CREDITS.md.
 
 Usage: python tools/art/check.py   (or ./gradlew checkArt, which also finds the Python interpreter)
 """
+import fnmatch
 import json
 import os
 import re
+import subprocess
 import sys
 
 import numpy as np
@@ -29,6 +33,23 @@ import generate  # noqa: E402
 import lint  # noqa: E402
 import selftest  # noqa: E402
 import texlib as t  # noqa: E402
+
+
+# Textures made by tools/fauna (checked by tools/fauna/check.py): directory relative to the textures root, file pattern.
+FAUNA_OWNED = (('entity', '*'), ('item', '*_spawn_egg.png'))
+
+
+def fauna_owned(path):
+    r = os.path.relpath(path, generate.TEXTURES_DIR).replace(os.sep, '/')
+    return any(r.startswith(d + '/') and fnmatch.fnmatch(os.path.basename(r), p) for d, p in FAUNA_OWNED)
+
+
+def fauna_errors():
+    """Runs tools/fauna/check.py in its own process; its output goes to the console, the result is a list of problems."""
+    script = os.path.join(generate.ROOT, 'tools', 'fauna', 'check.py')
+    env = dict(os.environ, PYTHONIOENCODING='utf-8')
+    r = subprocess.run([sys.executable, script], cwd=generate.ROOT, env=env)
+    return [] if r.returncode == 0 else [f'tools/fauna/check.py failed (exit {r.returncode}), see its messages above']
 
 
 def rel(path):
@@ -83,7 +104,7 @@ def main():
     for dirpath, _, files in os.walk(generate.TEXTURES_DIR):
         for f in files:
             p = os.path.normcase(os.path.abspath(os.path.join(dirpath, f)))
-            if (f.endswith('.png') or f.endswith('.mcmeta')) and p not in expected:
+            if (f.endswith('.png') or f.endswith('.mcmeta')) and p not in expected and not fauna_owned(os.path.join(dirpath, f)):
                 errors.append(f'{rel(os.path.join(dirpath, f))} is not made by tools/art (no recipe or override)')
     if os.path.isdir(generate.OVERRIDES):
         for f in sorted(os.listdir(generate.OVERRIDES)):
@@ -97,6 +118,7 @@ def main():
         errors.append('CREDITS.md is out of date')
     errors += ['selftest: ' + f for f in selftest.run()]
     print(lint.format_report(report))
+    errors += fauna_errors()
     if errors:
         print(f'checkArt: FAILED, {len(errors)} problem(s):')
         for e in errors:
@@ -105,7 +127,7 @@ def main():
         sys.exit(1)
     overrides = sum(1 for b in built.values() if b['override'])
     print(f'checkArt: {len(built)} textures match tools/art ({overrides} from overrides), lint passes, '
-          f'CREDITS.md is up to date, self-test passes')
+          f'CREDITS.md is up to date, self-test passes, the animal assets match tools/fauna')
 
 
 if __name__ == '__main__':

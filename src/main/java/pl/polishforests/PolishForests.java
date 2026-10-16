@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import pl.polishforests.block.ModBlocks;
 import pl.polishforests.climate.ClimateBinding;
 import pl.polishforests.command.PolishForestsCommands;
+import pl.polishforests.entity.ModEntities;
 import pl.polishforests.season.Seasons;
 import pl.polishforests.worldgen.PolishForestsWorldgen;
 
@@ -24,6 +25,7 @@ public final class PolishForests implements ModInitializer {
 	@Override
 	public void onInitialize() {
 		ModBlocks.register();
+		ModEntities.register();
 		PolishForestsWorldgen.register();
 		PolishForestsCommands.register();
 		Seasons.init();

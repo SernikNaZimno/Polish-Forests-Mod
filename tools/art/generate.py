@@ -4,7 +4,8 @@ Usage (Git Bash, project directory; Python 3.10+ with Pillow and NumPy):
     python tools/art/generate.py          writes src/main/resources/assets/polishforests/textures/block/*.png
                                           (and .mcmeta where a recipe has one) and CREDITS.md
     python tools/art/generate.py --out <dir>   writes the textures to another directory (CREDITS.md untouched)
-    ./gradlew generateArt                 the same through Gradle
+    ./gradlew generateArt                 the same through Gradle; also runs tools/fauna/generate.py (the animal models,
+                                          animations and textures, step V8)
 
 Hand-made corrections (decision D5): a PNG in tools/art/overrides/<name>.png replaces the generated texture of the same
 name; it is copied as it is and only has to pass the style lint (lint.py). checkArt (check.py) then compares the
@@ -13,6 +14,7 @@ committed file with the override instead of the generator.
 import argparse
 import json
 import os
+import subprocess
 import sys
 
 import numpy as np
@@ -85,6 +87,11 @@ def main():
     if not a.out:
         credits.write()
         print('generate: wrote', credits.CREDITS)
+        # The animal assets (tools/fauna) in their own process: their modules have the same names as these.
+        env = dict(os.environ, PYTHONIOENCODING='utf-8')
+        r = subprocess.run([sys.executable, os.path.join(ROOT, 'tools', 'fauna', 'generate.py')], cwd=ROOT, env=env)
+        if r.returncode:
+            sys.exit(r.returncode)
 
 
 if __name__ == '__main__':

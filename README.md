@@ -71,7 +71,7 @@ python tools/art/generate.py   # albo ./gradlew generateArt
 ./gradlew checkArt
 ```
 
-Tekstury bloków powstają proceduralnie w `tools/art` (przepisy gatunków, palety ze zdjęć CC0 i z domeny publicznej, lint stylu). `generateArt` zapisuje je do `src/main/resources/assets/polishforests/textures` razem z `CREDITS.md`, a `checkArt` sprawdza, czy pliki w repozytorium są dokładnie tym, co daje generator, i czy przechodzą lint. Oba zadania potrzebują Pythona 3.10+ z Pillow i NumPy (`pip install pillow numpy`) i nie wchodzą do `build`; inny interpreter wskazuje `-Ppython=<ścieżka>`.
+Tekstury bloków powstają proceduralnie w `tools/art` (przepisy gatunków, palety ze zdjęć CC0 i z domeny publicznej, lint stylu), a modele zwierząt GeckoLib (`.geo.json`, animacje, tekstury i jaja przyzywające) w `tools/fauna` (opis gatunku w centymetrach, podgląd z kodu: `python tools/fauna/sheet.py`). `generateArt` zapisuje je do `src/main/resources/assets/polishforests/` razem z `CREDITS.md`, a `checkArt` sprawdza, czy pliki w repozytorium są dokładnie tym, co dają generatory, i czy przechodzą lint i walidator. Oba zadania potrzebują Pythona 3.10+ z Pillow i NumPy (`pip install pillow numpy`) i nie wchodzą do `build`; inny interpreter wskazuje `-Ppython=<ścieżka>`.
 
 ## W grze
 
@@ -116,7 +116,7 @@ Informacje o krajobrazie są też na ekranie F3.
 
 ## Licencja
 
-Kod (Java, skrypty budowania, narzędzia, w tym `tools/art`) jest na licencji MIT (`LICENSE`). Zasoby moda, czyli tekstury, modele, animacje i dźwięki w `src/main/resources/assets/polishforests/` i `src/main/generated/assets/polishforests/`, są na licencji Creative Commons Uznanie autorstwa 4.0 (CC BY 4.0, `LICENSE-assets`): można je wykorzystywać i przerabiać, także w innych modach i paczkach zasobów, z podaniem autorstwa („Polish Forests by SernikNaZimno” z odnośnikiem do repozytorium). `CREDITS.md` wymienia źródła zewnętrzne (zdjęcia CC0 i z domeny publicznej, z których mierzono same kolory palet; w przyszłości dźwięki CC0 i CC BY). Mod nie zawiera plików Minecrafta: do tekstur i modeli wanilii odwołuje się tylko po identyfikatorach. Obie licencje są też w pliku moda (`LICENSE_polishforests`, `LICENSE-assets_polishforests`, `CREDITS_polishforests.md`).
+Kod (Java, skrypty budowania, narzędzia, w tym `tools/art` i `tools/fauna`) jest na licencji MIT (`LICENSE`). Zasoby moda, czyli tekstury, modele, animacje i dźwięki w `src/main/resources/assets/polishforests/` i `src/main/generated/assets/polishforests/`, są na licencji Creative Commons Uznanie autorstwa 4.0 (CC BY 4.0, `LICENSE-assets`): można je wykorzystywać i przerabiać, także w innych modach i paczkach zasobów, z podaniem autorstwa („Polish Forests by SernikNaZimno” z odnośnikiem do repozytorium). `CREDITS.md` wymienia źródła zewnętrzne (zdjęcia CC0 i z domeny publicznej, z których mierzono same kolory palet; w przyszłości dźwięki CC0 i CC BY). Mod nie zawiera plików Minecrafta: do tekstur i modeli wanilii odwołuje się tylko po identyfikatorach. Obie licencje są też w pliku moda (`LICENSE_polishforests`, `LICENSE-assets_polishforests`, `CREDITS_polishforests.md`).
 
 ## Logo
 

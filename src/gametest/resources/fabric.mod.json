@@ -6,10 +6,12 @@
 	"environment": "*",
 	"entrypoints": {
 		"main": [
-			"pl.polishforests.gametest.probe.RenderProbes"
+			"pl.polishforests.gametest.probe.RenderProbes",
+			"pl.polishforests.gametest.probe.FaunaProbes"
 		],
 		"client": [
-			"pl.polishforests.gametest.probe.RenderProbesClient"
+			"pl.polishforests.gametest.probe.RenderProbesClient",
+			"pl.polishforests.gametest.probe.FaunaProbesClient"
 		],
 		"fabric-client-gametest": [
 			"pl.polishforests.gametest.UiAndCommandsClientGameTest",
@@ -21,7 +23,8 @@
 			"pl.polishforests.gametest.EcotoneClientGameTest",
 			"pl.polishforests.gametest.DeterminismClientGameTest",
 			"pl.polishforests.gametest.SliceClientGameTest",
-			"pl.polishforests.gametest.RenderProbesClientGameTest"
+			"pl.polishforests.gametest.RenderProbesClientGameTest",
+			"pl.polishforests.gametest.FaunaClientGameTest"
 		]
 	},
 	"mixins": [

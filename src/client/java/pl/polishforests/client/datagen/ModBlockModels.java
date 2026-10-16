@@ -10,7 +10,10 @@ import net.minecraft.client.data.models.ItemModelGenerators;
 import net.minecraft.client.data.models.MultiVariant;
 import net.minecraft.client.data.models.blockstates.MultiVariantGenerator;
 import net.minecraft.client.data.models.blockstates.PropertyDispatch;
+import net.minecraft.client.data.models.model.ItemModelUtils;
+import net.minecraft.client.data.models.model.ModelLocationUtils;
 import net.minecraft.client.data.models.model.ModelTemplate;
+import net.minecraft.client.data.models.model.ModelTemplates;
 import net.minecraft.client.data.models.model.TextureMapping;
 import net.minecraft.client.data.models.model.TextureSlot;
 import net.minecraft.client.renderer.block.dispatch.Variant;
@@ -18,10 +21,12 @@ import net.minecraft.client.renderer.block.dispatch.VariantMutator;
 import net.minecraft.client.resources.model.sprite.Material;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.item.Item;
 import pl.polishforests.PolishForests;
 import pl.polishforests.block.ModBlocks;
 import pl.polishforests.block.TreeTrunk;
 import pl.polishforests.block.TrunkBlock;
+import pl.polishforests.entity.ModEntities;
 
 /**
  * Blockstates, block models and item models of the blocks of the mod (step V2: the thin trunks). A trunk has one model
@@ -84,6 +89,12 @@ final class ModBlockModels extends FabricModelProvider {
 		for (TreeTrunk t : TreeTrunk.values()) {
 			trunk(gen, t);
 		}
+		// Step V8: the spawn egg of the roe deer, a flat item with the egg texture of tools/fauna. Written here, where the
+		// item model output is reachable (the flat item helpers of ItemModelGenerators are private in 26.3).
+		Item egg = ModEntities.roeDeerSpawnEgg();
+		Identifier eggModel = ModelTemplates.FLAT_ITEM.create(ModelLocationUtils.getModelLocation(egg),
+				TextureMapping.layer0(egg), gen.modelOutput);
+		gen.itemModelOutput.accept(egg, ItemModelUtils.plainModel(eggModel));
 	}
 
 	@Override

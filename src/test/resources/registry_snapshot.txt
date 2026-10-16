@@ -1,4 +1,4 @@
-# Blocks, properties, values and items of polishforests that go into saved worlds (PW-11). Regenerate on purpose: ./gradlew test --tests '*RegistrySnapshotTest*' -PwriteRegistrySnapshot
+# Blocks, properties, values, items and entity types of polishforests that go into saved worlds (PW-11). Regenerate on purpose: ./gradlew test --tests '*RegistrySnapshotTest*' -PwriteRegistrySnapshot
 block polishforests:ash_trunk states=84 default=parent=down,radius=4,waterlogged=false
   property parent: down up north south west east
   property radius: 1 2 3 4 5 6 7
@@ -46,6 +46,8 @@ item polishforests:hornbeam_trunk block=polishforests:hornbeam_trunk
 item polishforests:linden_trunk block=polishforests:linden_trunk
 item polishforests:norway_maple_trunk block=polishforests:norway_maple_trunk
 item polishforests:oak_trunk block=polishforests:oak_trunk
+item polishforests:roe_deer_spawn_egg
 item polishforests:scots_pine_trunk block=polishforests:scots_pine_trunk
 item polishforests:scots_pine_upper_trunk block=polishforests:scots_pine_upper_trunk
 item polishforests:spruce_trunk block=polishforests:spruce_trunk
+entity polishforests:roe_deer category=creature size=0.70x1.10
