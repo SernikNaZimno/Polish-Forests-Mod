@@ -119,6 +119,9 @@ final class TrunkSamples {
 			}
 			shot(context, sp, b, p + "joints", 9.5, 4.5, Board.JOINTS_Z - 6, 0, 12, 3);
 			shot(context, sp, b, p + "joints_side", 21, 4.5, Board.JOINTS_Z - 2, 60, 12, 3);
+			// The elbow of radius 4 from behind (the side away from its branch to the east), close up: the step between the
+			// cap and the reach of the branch (V2 review, round 2).
+			shot(context, sp, b, p + "joints_back", Board.radiusX(4) - 1.7, 5.4, Board.JOINTS_Z - 0.8, -60, 18, 3);
 			// From the south, facing north: the joints row lies north of the branch (V2 review: the camera stood inside it).
 			shot(context, sp, b, p + "chunk_boundary", 16, 3.5, Board.CHUNK_ROW_Z + 4, 180, 12, 3);
 			shot(context, sp, b, p + "water", 35, 6, Board.POOL_Z0 - 3, 0, 32, 3);

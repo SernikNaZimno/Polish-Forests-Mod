@@ -692,7 +692,7 @@ Generacja 12 tekstur z wyborem ziaren trwa ok. 1,6 s, `python tools/art/check.py
 
 **Wybór wariantu (R3).** Wariant D zostaje, zapasowy wariant C (model FRAPI czytający sąsiadów) nie jest potrzebny. Z Sodium 0.9.2 (`-Poptimization`, cała paczka) zrzuty różnią się od zrzutów bez Sodium na 0,0–0,2% pikseli (próg 40 jednostek jasności; do 0,6% w kadrach z cząsteczkami i ręką): wysięg poza blok, AO, granica sekcji i chunka, woda, obrys i cząsteczki rysują się tak samo.
 
-**Poprawione w trakcie (przed commitem).** (1) Szablon z raportu technicznego (ramię w górę, wysięg wcięty o ε, rdzeń tylko do środka) dawał jasne włoskowate linie: w szczelinie szerokości ε, gdzie wcięta ściana zaczyna się dokładnie tam, gdzie kończy się zewnętrzna, część wierszy pikseli patrzyła przez puste wnętrze pnia na tło. Teraz wewnętrzna ściana zachodzi δ = 0,25 px za każdy taki szew (wysięg w głąb własnego bloku, czapka w dół do ramienia) i linii nie ma (kadry `seams_above`, `seams_below`, `columns`). (2) Wierzch czapki ze słojami dawał przy złączu r + 1 → r jasny pierścień: teraz kora. (3) W pierwszym przebiegu z Sodium (z C2ME) klient nie dostał części aktualizacji sekcji (kamienna platforma znikła w całych chunkach, pnie nad nią były): tablica porównuje teraz każdy postawiony blok klienta ze stanem serwera i wysyła różnice ponownie; w kolejnych przebiegach klient miał od razu wszystkie 4450 bloków. To wyścig paczki przy blokach stawianych tuż po starcie świata, nie sprawa pni.
+**Poprawione w trakcie (przed commitem).** (1) Szablon z raportu technicznego (ramię w górę, wysięg wcięty o ε, rdzeń tylko do środka) dawał jasne włoskowate linie: w szczelinie szerokości ε, gdzie wcięta ściana zaczyna się dokładnie tam, gdzie kończy się zewnętrzna, część wierszy pikseli patrzyła przez puste wnętrze pnia na tło. Teraz wewnętrzna ściana zachodzi δ = 0,25 px za każdy taki szew (wysięg w głąb własnego bloku, czapka w dół do ramienia) i linii nie ma (kadry `seams_above`, `seams_below`, `columns`). (Stan commitu c8c089d: runda 1 poprawek zaczęła czapkę w środku bloku i dała ramieniu wierzch, co przywróciło linie na szwie w środku bloku; runda 2 zastąpiła zakładkę czapki ścianami wewnętrznymi, zob. niżej.) (2) Wierzch czapki ze słojami dawał przy złączu r + 1 → r jasny pierścień: teraz kora. (3) W pierwszym przebiegu z Sodium (z C2ME) klient nie dostał części aktualizacji sekcji (kamienna platforma znikła w całych chunkach, pnie nad nią były): tablica porównuje teraz każdy postawiony blok klienta ze stanem serwera i wysyła różnice ponownie; w kolejnych przebiegach klient miał od razu wszystkie 4450 bloków. To wyścig paczki przy blokach stawianych tuż po starcie świata, nie sprawa pni.
 
 **Pomiary.**
 - **Stany bloków:** moda 840 (10 bloków × 84), gry z modem 36 627, czyli +2,3% wobec 35 787 bez pni (wanilia 35 723 i inne mody środowiska deweloperskiego). Plan zakładał ok. 10 × 84.
@@ -718,7 +718,7 @@ Generacja 12 tekstur z wyborem ziaren trwa ok. 1,6 s, `python tools/art/check.py
 
 **Model i blok.**
 - **Bez AO** (`"ambientocclusion": false` w szablonach `template_trunk_r1…r7`, `docs/00` G.6 V2-j): pień stojący na ziemi nie ma już progu jasności pół bloku nad ziemią (zrzuty `ground`, `columns`); w liściach i przy stopniu terenu też nie (`ground`, `ground_leaves`). Cień styku z ziemią znika razem z progiem. **Decyzja przy CP-A:** zostaje płaskie światło albo wariant C (model FRAPI z bocznymi ścianami całego bloku w jednym kontekście AO, +1–1,5 dnia).
-- **Czapka:** wcięta o c = 0,1 px (boki i wierzch, było 2ε = 0,02 px) i zaczyna się w środku bloku; ramię dostało korę na wierzchu (zamyka półkę 0,1 px wokół czapki, inaczej przez nią byłoby widać puste wnętrze); wiersze tekstury biegną bez przerwy (wiersz = 8 − y mod 16 na każdej ścianie, czapka nie jest już ściśnięta). Ściany czapki i wysięgu dziecka są 0,09 px od siebie zamiast 0,01 px: według przeglądu (bufor głębi 24 bity, bliska płaszczyzna 0,05) walczą dopiero od ok. 70 bloków, gdzie tekstura jest już zmipmapowana. 15 quadów na blok (było 14).
+- **Czapka:** wcięta o c = 0,1 px (boki i wierzch, było 2ε = 0,02 px) i zaczyna się w środku bloku; ramię dostało korę na wierzchu (zamyka półkę 0,1 px wokół czapki, inaczej przez nią byłoby widać puste wnętrze); wiersze tekstury biegną bez przerwy (wiersz = 8 − y mod 16 na każdej ścianie, czapka nie jest już ściśnięta). Ściany czapki i wysięgu dziecka są 0,09 px od siebie zamiast 0,01 px: według przeglądu (bufor głębi 24 bity, bliska płaszczyzna 0,05) walczą dopiero od ok. 70 bloków, gdzie tekstura jest już zmipmapowana. 15 quadów na blok (było 14). **Regres** (przegląd rundy 2): wierzch ramienia, oświetlony jak ściana górna, prześwitywał przez szczelinę ε pod wysięgiem dziecka i leżał na półce 0,1 px pod czapką wierzchołka, czyli jasna linia na szwie w środku bloku; poprawione w rundzie 2.
 - **Kształt** (`TrunkBlock.shape`, V2-i): graniastosłup promienia przez cały blok wzdłuż osi rodzica (był rdzeń i własna połowa ramienia), dla kolizji, obrysu i promieni. Celownik trafia w każdą widoczną część prostego pnia; wierzchołek i kolanko są o 8 − r px dłuższe niż rysunek. Kształt zależny od sąsiadów odrzucony: kolizja bez właściwości stanu zależałaby od sąsiadów i omijała pamięć kształtów stanu. `TrunkShapeTest` sprawdza nowe granice, objętość (2r)² × 16 px³ i punkty przy obu ścianach osi.
 - **Tagi** (V2-d): przedmioty wszystkich gatunków tylko w `#logs_that_burn` (paliwo, węgiel drzewny) i w nowym tagu przedmiotów `#polishforests:trunks`; z wanilijnych tagów przedmiotów `#oak_logs`, `#birch_logs`, `#spruce_logs` wyszły (gałązka r1 nie daje już 4 desek). Tagi bloków bez zmian. Nazwy tagów przedmiotów w lang EN i PL (`tag.item.polishforests.<gatunek>_logs` jak nazwa pnia w liczbie mnogiej, `trunks`: „Thin Trunks” / „Cienkie pnie”).
 
@@ -752,3 +752,55 @@ Generacja 12 tekstur z wyborem ziaren trwa ok. 1,6 s, `python tools/art/check.py
 **Do CP-A** (obok „Uwag do CP-A” wyżej, które przy „bambusie” są już nieaktualne): V2-j (płaskie światło pni albo wariant C), wygląd nowego „lustra” i kory po zmianach (V2-k; `pnie_cienkie.png`, zrzuty `section_boundary`, `pine`, `columns`, `ground`), strefa przejściowa sosny (V1-i, teraz przy „lustrze” od połowy wysokości). Półka 1 px przy złączu r + 1 → r zostaje do planera V6 (zbieżystość rozkłada takie półki wzdłuż pnia).
 
 **Testy rundy 1.** `fastTest` (z `TrunkShapeTest` i `RegistrySnapshotTest`), `checkDatagen`, `checkArt` i `python tools/art/check.py` (15 tekstur, lint z pierścieniami, `CREDITS.md`, autotest z nowym przypadkiem, zgodność `TRUNK_OFFSETS`), `runClientGameTest -Pgametest=slice -Psites=samples`: bez Sodium 4 przebiegi (PASS; drugi z ciemnymi pniami nocą przed synchronizacją światła), z `-Poptimization` 3 przebiegi (PASS; drugi bez siatki platformy przed przebudową siatek); w każdym: rejestr równy migawce, modele i cząsteczki 840 stanów, test celownika, łup `birch_log`; pełny zestaw `tools/dev/run-tests test` (PASS, 1205 s, na drzewie commitu 6664b32, różniącym się od końcowego tylko tym zdaniem). Złoty test terenu bez zmian (runda nie zmienia generacji świata).
+
+### Runda 2 poprawek po przeglądzie V2 (2026-10-16)
+
+**Weryfikacja uwag.**
+- **Poważna (linie na szwie w środku bloku): potwierdzona.** Na zrzutach rundy 1 jasna linia 1 px na y = 8 bloku (lipa r7 i grab r6 w `seams_above`, lipa r7 w `columns`, `reach_down_thick`), z Sodium i bez; w c8c089d jej nie było. Przyczyna jak w uwadze: od rundy 1 czapka zaczynała się w y = 8, a ramię miało wierzch oświetlony jak ściana górna (1,0 wobec 0,8 i 0,6 ścian bocznych); przez szczelinę ε między ramieniem a wysięgiem dziecka i na półce 0,1 px pod czapką wierzchołka widać było ten wierzch. Nowy test promieni (niżej) pokazuje to samo na modelach rundy 1: wierzch ramienia na idealnej ścianie bocznej w 0,10–0,18% promieni kolumn i 0,18–0,35% promieni złączy r + 1 → r.
+- **Drobne (10): nieaktualne, wszystkie poprawione już w rundzie 1** (opisują stan c8c089d i jego numery wierszy): błąd rodzica sosny po wspięciu (tego wiersza już nie ma, rodzic gałęzi zostaje `br.dir().getOpposite()`), migotanie z daleka (czapka wcięta o 0,1 px, widoki `far_*` z 48 i 96 bloków z klatką przesuniętą), V2-d (przedmioty pni tylko w `#logs_that_burn` i `#polishforests:trunks`), tag przedmiotów `trunks` (jest: `copy(TRUNKS, item(TRUNKS))`), „lustro” od połowy wysokości (`MIRROR_START` 0,5, plan V6), zbieżystość (`TAPER`), drugie migotanie bez pliku (jak wyżej), czytelność kory buka, grabu i lipy (V2-k, `linden_bark_3`), nazwy tagów przedmiotów w lang (`tag.item.polishforests.*`, EN i PL), kadry tablicy (kamera `chunk_boundary` z południa, bez napisu czatu, nowe kadry `items`, `stub`, `far_*`, `ground*`). Sprawdzone w kodzie tej rundy; nic nie trzeba było zmieniać.
+
+**Model** (`TrunkTemplates`, szablony `template_trunk_r1…r7`, V2-e):
+- **ramię** bez wierzchu (4 ściany, wiersze 0–8);
+- **ściany wewnętrzne:** 4 płaskie ściany c = 0,1 px wewnątrz ramienia, szerokie jak wysięg (od a + ε do b − ε), od 0 do 8, z kolumnami i wierszami tekstury jak na ramieniu. Przez szczelinę ε pod wysięgiem dziecka i przez półkę pod czapką widać teraz korę oświetloną jak ściana wokół. Przegląd podpowiadał „fartuch” 0,25 px pod czapką; ściany na całą wysokość ramienia łapią promienie do ok. 89° z góry, a fartuch tylko do ok. 68°;
+- **czapka** z płaskich ścian: 4 boki c wewnątrz promienia, szerokie jak wysięg, od 8 do wierzchu wysięgu dziecka z boku (8 + r − ε, wiersze 16 − r + ε…16), i wierzch z kory c poniżej promienia (8 + r − c), też szeroki jak wysięg. Boki sięgające do marginesu ε zasłaniają koniec wysięgu dziecka z boku (słoje), który przy kolanku wystawał 0,09 px za czapkę: w rundzie 1 widać go było na wprost jako pasek słojów na tylnej stronie kolanka;
+- wysięg bez zmian (tylko kolumny tekstury wyrównane do ramienia, było lekkie ściśnięcie o 2ε);
+- **18 quadów na blok** (było 15); stany, blockstates i migawka rejestru bez zmian.
+
+**Test promieni** (`block/TrunkModelRayTest`, w `fastTest`, ok. 9–12 s). Czyta wygenerowane szablony i składa sceny z dwóch bloków dla wszystkich promieni: kolumna r → r, złącze r + 1 → r, kolanko r → r i r → r − 1. Strzela promieniami w punkty powierzchni idealnego pnia (graniastosłupa promienia), gęsto przy krawędziach ścian modelu, z 64 kierunków (0,5–75° od normalnej), i porównuje pierwszą przednią ścianę modelu z wejściem w idealny pień:
+- na płaskiej części idealnej powierzchni (dalej niż 0,4 px od jej krawędzi) promień musi trafić w model (bez prześwitu), najwyżej 1,5 px od wejścia, w ścianę tego samego kierunku, czyli z tym samym cieniowaniem kierunkowym (jasna linia z przeglądu to ściana górna w ścianie bocznej);
+- słoje mogą się pokazać tylko na odsłoniętym końcu wysięgu (kikucie);
+- promienie, które nie wchodzą głębiej niż 0,25 px albo wchodzą pod kątem ponad 80° do ściany, tylko muskają sylwetkę i nie są sprawdzane.
+
+Kolumny i złącza muszą być bez błędów; kolanko tych samych promieni ma dwie znane wady (niżej), każdą z limitem 0,2% promieni.
+
+| Model | kolumny | złącza r + 1 → r | kolanka r → r − 1 | kolanka r → r |
+|---|---|---|---|---|
+| c8c089d (czapka 2ε od 8 − δ) | 0 | 0 | 0 | 0,04–0,05% |
+| runda 1 (0efdf26) | 0,10–0,18% | 0,18–0,35% | 0,15–0,18% | 0,37–0,48% |
+| runda 2 | 0 | 0 | 0 | 0,16–0,20% |
+
+**Znane wady kolanka tych samych promieni** (pień skręca w bok bez zmiany promienia: wspięcie gałęzi, skręt przewodnika). Czapka leży 0,1 px pod bokami wysięgu dziecka, żeby nie walczyć z nimi w buforze głębi. Na stronie odwróconej od dziecka zostaje więc stopień 0,09 px, przez który pod skosem widać pasek końca wysięgu (słoje): na zrzutach `joints_back` i `joints` to pojedyncze brązowe piksele na krawędzi wierzchu kolanka. Do tego dochodzi szczelina ε wzdłuż złącza gałęzi z ramieniem (widać przez nią ścianę ramienia w poprzek gałęzi). W c8c089d (czapka 0,02 px) było tego 4 razy mniej, ale tamte ściany, 0,01 px od siebie, walczyłyby w buforze głębi od ok. 25 bloków. Możliwości do CP-A (`docs/00` G.6 V2-l):
+- zostawić tak (domyślnie);
+- obramować słoje paskiem kory w tej samej płaszczyźnie: słoje wcięte o c, 4 paski kory w pierścieniu; +4 quady (22 na blok), kikut dostaje korowy brzeg;
+- mniejsze wcięcie c, np. 0,05 px: o połowę mniej tych pikseli, ale walka w buforze głębi od ok. 46 bloków.
+
+**Tablica próbek:** nowy kadr `joints_back` (kolanko r4 z bliska, od strony odwróconej od gałęzi). Automatycznego sprawdzenia linii na zrzutach nie ma: tę rolę pełni test promieni (deterministyczny, bez gry). Prosty detektor jasnych poziomych odcinków (co najmniej 5 pikseli jaśniejszych o ponad 20 od pikseli nad i pod) łapie na zrzutach z gry także fakturę kory, więc nie nadaje się na próg testu; niżej służy tylko jako pomiar.
+
+**Pomiary.**
+- **Zrzuty:** linie z przeglądu znikły w `seams_above`, `columns` i `reach_down_thick`, z Sodium i bez (powiększenia porównane z rundą 1).
+- **Detektor jasnych odcinków** (piksele w odcinkach, bez Sodium; c8c089d / runda 1 / runda 2): `seams_above` 32 / 132 / 15, `columns` 53 / 69 / 37, `reach_down_thick` 63 / 161 / 66, `reach_north_thick` 36 / 58 / 17, `section_boundary` 64 / 114 / 69. Z Sodium (runda 1 → runda 2): `seams_above` 173 → 69, `columns` 136 → 111. Resztę daje faktura kory; kora zmieniła się w rundzie 1, więc z c8c089d porównanie jest tylko przybliżone.
+- **Sodium wobec wanilii** (próg 40): 0,01–0,13% pikseli w kadrach statycznych, 0,17–0,25% w widokach z 96 bloków, 0,35–0,57% w kadrach z cząsteczkami, ręką i animowaną wodą.
+- **Widoki z daleka** (klatka przesunięta o 0,1 bloku): różnica 0,45–1,62% pikseli bez Sodium i 0,50–2,01% z Sodium, jak w rundzie 1 (paralaksa).
+- **Model:** 18 quadów na blok pnia (pełna kłoda 6); koszt mierzy V10.
+
+**Odstępstwa.**
+- Zamiast fartucha 0,25 px pod czapką są ściany wewnętrzne na całą wysokość ramienia.
+- Czapka i ściany wewnętrzne są z płaskich elementów szerokich jak wysięg (to zasłania pasek słojów kolanka oglądany na wprost), a wierzch czapki to osobny płaski element.
+- Kolanko tych samych promieni ma resztę wady (wyżej); test ją mierzy i ogranicza, a nie zeruje.
+
+**Testy rundy 2.**
+- `TrunkModelRayTest`: PASS. Na modelach rundy 1 FAIL; na modelach c8c089d błędy tylko w kolankach.
+- `fastTest`, `checkDatagen`.
+- `runClientGameTest -Pgametest=slice -Psites=samples` bez Sodium i z `-Poptimization`, po 1 przebiegu, PASS: rejestr równy migawce, modele i cząsteczki 840 stanów, wszystkie 4733 bloki u klienta, światło zgodne po 1 ponownym wysłaniu, test celownika, łup `birch_log`.
+- Pełny zestaw `tools/dev/run-tests test`: PASS_PLACEHOLDER.
+- Złoty test terenu bez zmian (runda nie zmienia generacji świata).
