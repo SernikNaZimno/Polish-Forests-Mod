@@ -1,0 +1,186 @@
+{
+  "variants": {
+    "parent=down,radius=1": {
+      "model": "polishforests:block/ash_trunk_r1"
+    },
+    "parent=down,radius=2": {
+      "model": "polishforests:block/ash_trunk_r2"
+    },
+    "parent=down,radius=3": {
+      "model": "polishforests:block/ash_trunk_r3"
+    },
+    "parent=down,radius=4": {
+      "model": "polishforests:block/ash_trunk_r4"
+    },
+    "parent=down,radius=5": {
+      "model": "polishforests:block/ash_trunk_r5"
+    },
+    "parent=down,radius=6": {
+      "model": "polishforests:block/ash_trunk_r6"
+    },
+    "parent=down,radius=7": {
+      "model": "polishforests:block/ash_trunk_r7"
+    },
+    "parent=east,radius=1": {
+      "model": "polishforests:block/ash_trunk_r1",
+      "x": 270,
+      "y": 90
+    },
+    "parent=east,radius=2": {
+      "model": "polishforests:block/ash_trunk_r2",
+      "x": 270,
+      "y": 90
+    },
+    "parent=east,radius=3": {
+      "model": "polishforests:block/ash_trunk_r3",
+      "x": 270,
+      "y": 90
+    },
+    "parent=east,radius=4": {
+      "model": "polishforests:block/ash_trunk_r4",
+      "x": 270,
+      "y": 90
+    },
+    "parent=east,radius=5": {
+      "model": "polishforests:block/ash_trunk_r5",
+      "x": 270,
+      "y": 90
+    },
+    "parent=east,radius=6": {
+      "model": "polishforests:block/ash_trunk_r6",
+      "x": 270,
+      "y": 90
+    },
+    "parent=east,radius=7": {
+      "model": "polishforests:block/ash_trunk_r7",
+      "x": 270,
+      "y": 90
+    },
+    "parent=north,radius=1": {
+      "model": "polishforests:block/ash_trunk_r1",
+      "x": 270
+    },
+    "parent=north,radius=2": {
+      "model": "polishforests:block/ash_trunk_r2",
+      "x": 270
+    },
+    "parent=north,radius=3": {
+      "model": "polishforests:block/ash_trunk_r3",
+      "x": 270
+    },
+    "parent=north,radius=4": {
+      "model": "polishforests:block/ash_trunk_r4",
+      "x": 270
+    },
+    "parent=north,radius=5": {
+      "model": "polishforests:block/ash_trunk_r5",
+      "x": 270
+    },
+    "parent=north,radius=6": {
+      "model": "polishforests:block/ash_trunk_r6",
+      "x": 270
+    },
+    "parent=north,radius=7": {
+      "model": "polishforests:block/ash_trunk_r7",
+      "x": 270
+    },
+    "parent=south,radius=1": {
+      "model": "polishforests:block/ash_trunk_r1",
+      "x": 270,
+      "y": 180
+    },
+    "parent=south,radius=2": {
+      "model": "polishforests:block/ash_trunk_r2",
+      "x": 270,
+      "y": 180
+    },
+    "parent=south,radius=3": {
+      "model": "polishforests:block/ash_trunk_r3",
+      "x": 270,
+      "y": 180
+    },
+    "parent=south,radius=4": {
+      "model": "polishforests:block/ash_trunk_r4",
+      "x": 270,
+      "y": 180
+    },
+    "parent=south,radius=5": {
+      "model": "polishforests:block/ash_trunk_r5",
+      "x": 270,
+      "y": 180
+    },
+    "parent=south,radius=6": {
+      "model": "polishforests:block/ash_trunk_r6",
+      "x": 270,
+      "y": 180
+    },
+    "parent=south,radius=7": {
+      "model": "polishforests:block/ash_trunk_r7",
+      "x": 270,
+      "y": 180
+    },
+    "parent=up,radius=1": {
+      "model": "polishforests:block/ash_trunk_r1",
+      "x": 180
+    },
+    "parent=up,radius=2": {
+      "model": "polishforests:block/ash_trunk_r2",
+      "x": 180
+    },
+    "parent=up,radius=3": {
+      "model": "polishforests:block/ash_trunk_r3",
+      "x": 180
+    },
+    "parent=up,radius=4": {
+      "model": "polishforests:block/ash_trunk_r4",
+      "x": 180
+    },
+    "parent=up,radius=5": {
+      "model": "polishforests:block/ash_trunk_r5",
+      "x": 180
+    },
+    "parent=up,radius=6": {
+      "model": "polishforests:block/ash_trunk_r6",
+      "x": 180
+    },
+    "parent=up,radius=7": {
+      "model": "polishforests:block/ash_trunk_r7",
+      "x": 180
+    },
+    "parent=west,radius=1": {
+      "model": "polishforests:block/ash_trunk_r1",
+      "x": 270,
+      "y": 270
+    },
+    "parent=west,radius=2": {
+      "model": "polishforests:block/ash_trunk_r2",
+      "x": 270,
+      "y": 270
+    },
+    "parent=west,radius=3": {
+      "model": "polishforests:block/ash_trunk_r3",
+      "x": 270,
+      "y": 270
+    },
+    "parent=west,radius=4": {
+      "model": "polishforests:block/ash_trunk_r4",
+      "x": 270,
+      "y": 270
+    },
+    "parent=west,radius=5": {
+      "model": "polishforests:block/ash_trunk_r5",
+      "x": 270,
+      "y": 270
+    },
+    "parent=west,radius=6": {
+      "model": "polishforests:block/ash_trunk_r6",
+      "x": 270,
+      "y": 270
+    },
+    "parent=west,radius=7": {
+      "model": "polishforests:block/ash_trunk_r7",
+      "x": 270,
+      "y": 270
+    }
+  }
+}

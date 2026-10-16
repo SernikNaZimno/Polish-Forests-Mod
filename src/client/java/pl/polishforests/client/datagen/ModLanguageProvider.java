@@ -9,6 +9,8 @@ import java.util.stream.Stream;
 import net.fabricmc.fabric.api.datagen.v1.FabricPackOutput;
 import net.fabricmc.fabric.api.datagen.v1.provider.FabricLanguageProvider;
 import net.minecraft.core.HolderLookup;
+import pl.polishforests.block.ModBlocks;
+import pl.polishforests.block.TreeTrunk;
 import pl.polishforests.command.PolishForestsCommands;
 import pl.polishforests.worldgen.habitat.AltitudinalBelts;
 import pl.polishforests.worldgen.habitat.Association;
@@ -198,6 +200,9 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 				Arrays.stream(Association.values()).map(a -> a.name().toLowerCase(Locale.ROOT)));
 		names(builder, "polishforests.soil.", SOILS, Arrays.stream(Soil.values()).map(x -> x.name().toLowerCase(Locale.ROOT)));
 		names(builder, "polishforests.species.", SPECIES, Arrays.stream(Species.values()).map(Species::id));
+		for (TreeTrunk t : TreeTrunk.values()) {
+			builder.add(ModBlocks.trunk(t), polish ? t.polishName() : t.englishName());
+		}
 		if (polish) {
 			polish(builder);
 		} else {

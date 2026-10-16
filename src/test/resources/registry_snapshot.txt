@@ -1,0 +1,51 @@
+# Blocks, properties, values and items of polishforests that go into saved worlds (PW-11). Regenerate on purpose: ./gradlew test --tests '*RegistrySnapshotTest*' -PwriteRegistrySnapshot
+block polishforests:ash_trunk states=84 default=parent=down,radius=4,waterlogged=false
+  property parent: down up north south west east
+  property radius: 1 2 3 4 5 6 7
+  property waterlogged: true false
+block polishforests:beech_trunk states=84 default=parent=down,radius=4,waterlogged=false
+  property parent: down up north south west east
+  property radius: 1 2 3 4 5 6 7
+  property waterlogged: true false
+block polishforests:birch_trunk states=84 default=parent=down,radius=4,waterlogged=false
+  property parent: down up north south west east
+  property radius: 1 2 3 4 5 6 7
+  property waterlogged: true false
+block polishforests:hornbeam_trunk states=84 default=parent=down,radius=4,waterlogged=false
+  property parent: down up north south west east
+  property radius: 1 2 3 4 5 6 7
+  property waterlogged: true false
+block polishforests:linden_trunk states=84 default=parent=down,radius=4,waterlogged=false
+  property parent: down up north south west east
+  property radius: 1 2 3 4 5 6 7
+  property waterlogged: true false
+block polishforests:norway_maple_trunk states=84 default=parent=down,radius=4,waterlogged=false
+  property parent: down up north south west east
+  property radius: 1 2 3 4 5 6 7
+  property waterlogged: true false
+block polishforests:oak_trunk states=84 default=parent=down,radius=4,waterlogged=false
+  property parent: down up north south west east
+  property radius: 1 2 3 4 5 6 7
+  property waterlogged: true false
+block polishforests:scots_pine_trunk states=84 default=parent=down,radius=4,waterlogged=false
+  property parent: down up north south west east
+  property radius: 1 2 3 4 5 6 7
+  property waterlogged: true false
+block polishforests:scots_pine_upper_trunk states=84 default=parent=down,radius=4,waterlogged=false
+  property parent: down up north south west east
+  property radius: 1 2 3 4 5 6 7
+  property waterlogged: true false
+block polishforests:spruce_trunk states=84 default=parent=down,radius=4,waterlogged=false
+  property parent: down up north south west east
+  property radius: 1 2 3 4 5 6 7
+  property waterlogged: true false
+item polishforests:ash_trunk block=polishforests:ash_trunk
+item polishforests:beech_trunk block=polishforests:beech_trunk
+item polishforests:birch_trunk block=polishforests:birch_trunk
+item polishforests:hornbeam_trunk block=polishforests:hornbeam_trunk
+item polishforests:linden_trunk block=polishforests:linden_trunk
+item polishforests:norway_maple_trunk block=polishforests:norway_maple_trunk
+item polishforests:oak_trunk block=polishforests:oak_trunk
+item polishforests:scots_pine_trunk block=polishforests:scots_pine_trunk
+item polishforests:scots_pine_upper_trunk block=polishforests:scots_pine_upper_trunk
+item polishforests:spruce_trunk block=polishforests:spruce_trunk

@@ -12,7 +12,8 @@ import net.minecraft.core.registries.Registries;
 /**
  * Data generator of the mod (docs/03-m2-biomy.md §11, step S5): the 36 biomes, the features and placed features of the
  * decoration, the biome tags (vanilla, structures, Serene Seasons, {@code polishforests:*}) and the language files, all
- * from the enums of the habitat package (Z8). The output lives in {@code src/main/generated} in the repository;
+ * from the enums of the habitat package (Z8); from step V2 of the vertical slice also the blockstates, models, model
+ * templates, loot tables and tags of the blocks ({@code pl.polishforests.block}). The output lives in {@code src/main/generated} in the repository;
  * {@code ./gradlew checkDatagen} runs {@code runDatagen} and fails when the files change.
  *
  * <p>Fabric datagen 26.3 works for {@code Registries.BIOME}, {@code Registries.FEATURE} and
@@ -29,6 +30,12 @@ public final class PolishForestsDataGenerator implements DataGeneratorEntrypoint
 		pack.addProvider(ModFeatureTagProvider::new);
 		pack.addProvider(ModLanguageProvider.English::new);
 		pack.addProvider(ModLanguageProvider.Polish::new);
+		// Step V2: the thin trunks (models, model templates, loot, block and item tags).
+		pack.addProvider(TrunkTemplates::new);
+		pack.addProvider(ModBlockModels::new);
+		pack.addProvider(ModBlockLoot::new);
+		ModBlockTagProvider.Blocks blockTags = pack.addProvider(ModBlockTagProvider.Blocks::new);
+		pack.addProvider((output, registries) -> new ModBlockTagProvider.Items(output, registries, blockTags));
 	}
 
 	@Override

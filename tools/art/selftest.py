@@ -88,6 +88,19 @@ def run():
     cut[0, :, :3] = 0
     check(any('seam' in e for e in errs(cut, leaves)), 'lint: misses the seam of a non-tileable leaves texture')
     check(not any('seam' in e for e in errs(lv, leaves)), 'lint: a seam in the generated broadleaf leaves')
+    # the core rules for tinted textures and leaves (V1 plan): grayscale, 55-70% visible, alpha 0/255, brightness
+    colored = lv.copy()
+    colored[..., 0] = np.where(colored[..., 3] > 0, np.minimum(colored[..., 0].astype(int) + 20, 255), 0)
+    check(any('grayscale' in e for e in errs(colored, leaves)), 'lint: misses a colored texture under a tint')
+    sparse = lv.copy()
+    sparse[:8, :, 3] = 0
+    check(any('visible' in e for e in errs(sparse, leaves)), 'lint: misses too sparse leaves')
+    soft = lv.copy()
+    soft[0, 0, 3] = 128
+    check(any('semi-transparent' in e for e in errs(soft, leaves)), 'lint: misses semi-transparent pixels')
+    dark = (lv.astype(int) // 3).astype(np.uint8)
+    dark[..., 3] = lv[..., 3]
+    check(any('brightness' in e for e in errs(dark, leaves)), 'lint: misses a too dark tinted texture')
     # banding: a light band across rows 3-4 (as the first "mirror" had) and a dark crack row on every block
     band = good.copy()
     band[3:5, :, :3] = np.minimum(band[3:5, :, :3].astype(int) + 45, 255)

@@ -570,6 +570,11 @@ OAK_EXPECT = {'luma': (80, 100), 'dark': 0.05, 'grain': 2.0, 'near': ('oak_log',
 LINDEN = dict(lines=5, amp=1.4, wave=2, jitter=0.5, plate=(4, 8), cross='diag', band=3, furrow_tone=1, deep=3,
               face_split=0.45, lum=(62, 146), sat=0.3, hue_shift=-6, tries=48)
 LINDEN_EXPECT = {'luma': (100, 120), 'dark': 0.05, 'grain': 2.0}
+# Shared substitute bark of the broad-crowned archetype for ash and Norway maple (V2, docs/04 §1.1): paler and grayer
+# than linden, a net of narrow ridges between shallow fissures (old ash bark is reticulate, Norway maple finely ridged).
+BROADLEAF_BARK = dict(lines=5, amp=1.2, wave=3, jitter=0.5, plate=(6, 12), cross='part', band=3, furrow_tone=1, deep=2,
+                      face_split=0.5, lum=(88, 164), sat=0.12, hue_shift=-10, tries=48)
+BROADLEAF_BARK_EXPECT = {'luma': (112, 132), 'dark': 0.05, 'grain': 2.0, 'distinct': ('linden_bark', 8)}
 
 TEXTURES = [
     Texture('scots_pine_bark', 'bark', bark_scots_pine_lower, 'scots_pine_bark/5', 'scots_pine_bark',
@@ -598,6 +603,10 @@ TEXTURES = [
             expect=LINDEN_EXPECT, note='small-leaved lime: gray-brown, net of shallow longitudinal fissures'),
     Texture('linden_bark_2', 'bark', bark_furrowed, 'linden_bark_2/1', 'linden_bark', variant_of='linden_bark',
             params=LINDEN, expect=LINDEN_EXPECT, note='second variant of the linden bark, same edge rows'),
+    Texture('broadleaf_bark', 'bark', bark_furrowed, 'broadleaf_bark/1', 'linden_bark', params=BROADLEAF_BARK,
+            expect=BROADLEAF_BARK_EXPECT,
+            palette_use='hue of the linden bark photo, made paler and grayer by the recipe',
+            note='shared substitute bark of ash and Norway maple (step V2): pale gray, net of narrow ridges'),
     Texture('beech_bark', 'bark', bark_beech, 'beech_bark/2', 'beech_bark',
             params=dict(lichen=2, scars=1, algae=0.12, lum=(126, 190), sat=0.13, hue_shift=-14, algae_lum=146,
                         algae_sat=0.2, algae_hue_shift=14, tries=24),

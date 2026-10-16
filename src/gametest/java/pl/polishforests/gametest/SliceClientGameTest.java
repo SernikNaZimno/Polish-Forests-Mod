@@ -74,6 +74,7 @@ import pl.polishforests.worldgen.surface.ChunkSurface;
  * <p>Runs only by name ({@code -Pgametest=slice}, not in {@code all}); {@code -Pscales=realistic|gameplay} picks a scale,
  * {@code -Pmodes=natural|present_day} a mode, {@code -Psites=<names>} some places (names of the table, e.g.
  * {@code oak_hornbeam_1,transect}); {@code -Psites=none} only checks the places, without screenshots.
+ * {@code -Psites=samples} builds the sample board of the thin trunks instead (step V2, {@link TrunkSamples}).
  */
 public final class SliceClientGameTest implements FabricClientGameTest {
 	private static final String SEED = "20260927";
@@ -132,6 +133,10 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 		String scales = System.getProperty("polishforests.scales", "");
 		String modes = System.getProperty("polishforests.modes", "");
 		String only = System.getProperty("polishforests.sites", "");
+		if (only.equals("samples")) {
+			TrunkSamples.run(context);
+			return;
+		}
 		boolean screenshots = !only.equals("none");
 		boolean find = Boolean.getBoolean("polishforests.slice.findCameras");
 		List<String> names = only.isBlank() || !screenshots ? List.of() : List.of(only.split(","));

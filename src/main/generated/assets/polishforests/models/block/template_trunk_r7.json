@@ -1,0 +1,176 @@
+{
+  "parent": "minecraft:block/block",
+  "elements": [
+    {
+      "faces": {
+        "east": {
+          "texture": "#bark",
+          "uv": [
+            1,
+            0,
+            15,
+            8
+          ]
+        },
+        "north": {
+          "texture": "#bark",
+          "uv": [
+            0,
+            0,
+            14,
+            8
+          ]
+        },
+        "south": {
+          "texture": "#bark",
+          "uv": [
+            0,
+            0,
+            14,
+            8
+          ]
+        },
+        "west": {
+          "texture": "#bark",
+          "uv": [
+            2,
+            0,
+            16,
+            8
+          ]
+        }
+      },
+      "from": [
+        1,
+        0,
+        1
+      ],
+      "to": [
+        15,
+        8,
+        15
+      ]
+    },
+    {
+      "faces": {
+        "east": {
+          "texture": "#bark",
+          "uv": [
+            1,
+            9,
+            15,
+            16
+          ]
+        },
+        "north": {
+          "texture": "#bark",
+          "uv": [
+            0,
+            9,
+            14,
+            16
+          ]
+        },
+        "south": {
+          "texture": "#bark",
+          "uv": [
+            0,
+            9,
+            14,
+            16
+          ]
+        },
+        "up": {
+          "texture": "#bark",
+          "uv": [
+            1,
+            1,
+            15,
+            15
+          ]
+        },
+        "west": {
+          "texture": "#bark",
+          "uv": [
+            2,
+            9,
+            16,
+            16
+          ]
+        }
+      },
+      "from": [
+        1.02,
+        7.75,
+        1.02
+      ],
+      "to": [
+        14.98,
+        15,
+        14.98
+      ]
+    },
+    {
+      "faces": {
+        "down": {
+          "texture": "#end",
+          "uv": [
+            1,
+            1,
+            15,
+            15
+          ]
+        },
+        "east": {
+          "texture": "#bark",
+          "uv": [
+            1,
+            7.75,
+            15,
+            16
+          ]
+        },
+        "north": {
+          "texture": "#bark",
+          "uv": [
+            0,
+            7.75,
+            14,
+            16
+          ]
+        },
+        "south": {
+          "texture": "#bark",
+          "uv": [
+            0,
+            7.75,
+            14,
+            16
+          ]
+        },
+        "west": {
+          "texture": "#bark",
+          "uv": [
+            2,
+            7.75,
+            16,
+            16
+          ]
+        }
+      },
+      "from": [
+        1.01,
+        -8,
+        1.01
+      ],
+      "to": [
+        14.99,
+        0.25,
+        14.99
+      ]
+    }
+  ],
+  "textures": {
+    "particle": "#bark"
+  }
+}

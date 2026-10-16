@@ -228,6 +228,12 @@ tasks.withType(Test).configureEach {
 		systemProperty 'polishforests.slice.report', 'true'
 		outputs.upToDateWhen { false }
 	}
+	// Registry snapshot (step V2, RegistrySnapshotTest): -PwriteRegistrySnapshot writes the blocks, properties and items of
+	// the mod to src/test/resources/registry_snapshot.txt instead of comparing (only on purpose: saved worlds depend on them).
+	if (project.hasProperty('writeRegistrySnapshot')) {
+		systemProperty 'polishforests.registry.write', file('src/test/resources/registry_snapshot.txt').absolutePath
+		outputs.upToDateWhen { false }
+	}
 	// SampleCostTest: number of runs (default 7), e.g. -PcostRuns=15 when settling the budget.
 	if (project.hasProperty('costRuns')) {
 		systemProperty 'polishforests.cost.runs', project.property('costRuns')
@@ -444,6 +450,8 @@ tasks.named('runClientGameTest') {
 	jvmArgs "-Dpolishforests.scales=${project.findProperty('scales') ?: ''}"
 	jvmArgs "-Dpolishforests.modes=${project.findProperty('modes') ?: ''}"
 	jvmArgs "-Dpolishforests.slice.sites=${file('src/test/resources/slice_sites.txt').absolutePath}"
+	// Registry snapshot (step V2): the trunk samples (-Pgametest=slice -Psites=samples) compare the game's registry with it.
+	jvmArgs "-Dpolishforests.registry.snapshot=${file('src/test/resources/registry_snapshot.txt').absolutePath}"
 	// Fixed cameras of the slice (V0 review round 1); -PfindSliceCameras chooses them anew and writes the file.
 	jvmArgs "-Dpolishforests.slice.cameras=${file('src/test/resources/slice_cameras.txt').absolutePath}"
 	if (project.hasProperty('findSliceCameras')) {

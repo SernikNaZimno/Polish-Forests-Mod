@@ -1,0 +1,7 @@
+{
+  "parent": "polishforests:block/template_trunk_r4",
+  "textures": {
+    "bark": "polishforests:block/scots_pine_upper_bark",
+    "end": "minecraft:block/spruce_log_top"
+  }
+}

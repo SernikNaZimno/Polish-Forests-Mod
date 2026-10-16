@@ -4,6 +4,7 @@ import net.fabricmc.api.ModInitializer;
 import net.minecraft.resources.Identifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import pl.polishforests.block.ModBlocks;
 import pl.polishforests.climate.ClimateBinding;
 import pl.polishforests.command.PolishForestsCommands;
 import pl.polishforests.season.Seasons;
@@ -22,6 +23,7 @@ public final class PolishForests implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
+		ModBlocks.register();
 		PolishForestsWorldgen.register();
 		PolishForestsCommands.register();
 		Seasons.init();
