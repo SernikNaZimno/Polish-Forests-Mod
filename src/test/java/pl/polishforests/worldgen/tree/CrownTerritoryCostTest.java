@@ -1,7 +1,9 @@
 package pl.polishforests.worldgen.tree;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import pl.polishforests.worldgen.feature.plan.TreeStandPlan;
@@ -11,6 +13,7 @@ import pl.polishforests.worldgen.habitat.HabitatClassifier;
 import pl.polishforests.worldgen.landscape.ColumnSample;
 import pl.polishforests.worldgen.landscape.LandscapeModel;
 import pl.polishforests.worldgen.landscape.LandscapeScale;
+import pl.polishforests.worldgen.landscape.Noise;
 
 /**
  * Cost of the crown territories (step V5, decision PW-9), single thread, no assertions; the result goes into
@@ -19,14 +22,17 @@ import pl.polishforests.worldgen.landscape.LandscapeScale;
  * <p>Areas of 8 × 8 chunks around the oak-hornbeam and fresh pine sites of the slice ({@code slice_sites.txt},
  * {@code oak_hornbeam_1} and {@code fresh_pine_1}) at both scales, in both vegetation modes. Per chunk of the area:
  * <ul>
- * <li><b>(a)</b> the territories of all kept candidates of the chunk ({@link CrownTerritories.Session#chunk}) with open
- * ground from the habitat codes of the chunks within radius 1 (precomputed, as the {@code ChunkHabitats} of the game):
- * in a fresh session per chunk (the worst case: the candidate pattern and the sites of a 80 × 80 block window computed
- * anew) and in one session per area in raster order (a per-thread session, as {@code ChunkEcotones}); also without open
- * ground (the pure variant);</li>
+ * <li><b>(a)</b> the territories of the trees of the chunk ({@link CrownTerritories.Session#chunk}) with vacancies from
+ * the habitat codes of the chunks within radius 1 (precomputed, as the {@code ChunkHabitats} of the game: open ground)
+ * and a stand-in for the palette that gives a tree to {@value #TREE_SHARE} of the forest candidates: in a fresh session
+ * per chunk (the worst case: the candidate pattern and the sites of a 80 × 80 block window computed anew) and in one
+ * session per area in raster order (a per-thread session, as {@code ChunkEcotones}); also without vacancies (the pure
+ * variant);</li>
  * <li><b>(b)</b> the habitat codes of the kept candidates in the ring of chunks at radius 2 (the 16 chunks without
  * {@code ChunkHabitats} at the FEATURES stage): enumeration of the candidates, {@link LandscapeModel#sample} and
- * {@link HabitatClassifier#classify} of each, without a cache shared between chunks;</li>
+ * {@link HabitatClassifier#classify} of each, without a cache shared between chunks (fresh, like (a) in a fresh session)
+ * and with a per-thread cache of the codes of each ring chunk in raster order (like (a) in a per-thread session: about 5
+ * new ring chunks per chunk). The territories of (b) would come on top of that;</li>
  * <li>for scale: sampling and classifying the 256 columns of the chunk, the core of the TERRAIN stage.</li>
  * </ul>
  * The model's tile caches are warmed on the area first, as in a world where the neighbors were generated. Rounds
@@ -39,6 +45,8 @@ class CrownTerritoryCostTest {
 	private static final long SEED = 20260927L;
 	private static final int ROUNDS = Math.max(3, Integer.getInteger("polishforests.cost.runs", 7));
 	private static final int SIZE = 8;
+	/** Share of the forest candidates that grow a tree in the palette stand-in (about 11 trees per chunk, as N1). */
+	private static final double TREE_SHARE = 0.65;
 
 	private static volatile long sink;
 
@@ -85,14 +93,15 @@ class CrownTerritoryCostTest {
 		int bx = (cx0 - 1) * 16;
 		int bz = (cz0 - 1) * 16;
 		int side = span * 16;
-		OpenGround open = (x, z) -> {
+		Noise palette = new Noise(SEED).derive("test.crown_territory.vacant");
+		Vacancies open = (x, z) -> {
 			int i = x - bx;
 			int j = z - bz;
 			if (i < 0 || j < 0 || i >= side || j >= side) {
 				throw new IllegalStateException("outside the precomputed habitats: " + x + ", " + z);
 			}
 			int code = codes[((i >> 4) * span + (j >> 4)) * 256 + ((i & 15) << 4 | (j & 15))];
-			return Habitat.biome(code).group() != HabitatBiome.Group.FOREST;
+			return Habitat.biome(code).group() != HabitatBiome.Group.FOREST || palette.unit(x, z, 0) >= TREE_SHARE;
 		};
 		CrownTerritories territories = new CrownTerritories(SEED, new PatchyStandMap(SEED, 0.15));
 		int chunks = SIZE * SIZE;
@@ -100,17 +109,20 @@ class CrownTerritoryCostTest {
 		for (int r = 0; r < 2; r++) {
 			coldA(territories, cx0, cz0, open);
 			ringB(model, classifier, cx0, cz0, new int[1]);
+			cachedRingB(model, classifier, cx0, cz0, new int[1]);
 			terrain(model, classifier, cx0, cz0);
 		}
 		double[] coldA = new double[ROUNDS];
 		double[] warmA = new double[ROUNDS];
 		double[] pureA = new double[ROUNDS];
 		double[] ringB = new double[ROUNDS];
+		double[] cachedB = new double[ROUNDS];
 		double[] terrain = new double[ROUNDS];
 		int[] samples = new int[1];
+		int[] cachedSamples = new int[1];
 		for (int r = 0; r < ROUNDS; r++) {
-			for (int v = 0; v < 5; v++) {
-				int which = r % 2 == 0 ? v : 4 - v;
+			for (int v = 0; v < 6; v++) {
+				int which = r % 2 == 0 ? v : 5 - v;
 				long t0 = System.nanoTime();
 				switch (which) {
 					case 0 -> coldA(territories, cx0, cz0, open);
@@ -120,6 +132,10 @@ class CrownTerritoryCostTest {
 						samples[0] = 0;
 						ringB(model, classifier, cx0, cz0, samples);
 					}
+					case 4 -> {
+						cachedSamples[0] = 0;
+						cachedRingB(model, classifier, cx0, cz0, cachedSamples);
+					}
 					default -> terrain(model, classifier, cx0, cz0);
 				}
 				double us = (System.nanoTime() - t0) / 1e3 / chunks;
@@ -128,6 +144,7 @@ class CrownTerritoryCostTest {
 					case 1 -> warmA[r] = us;
 					case 2 -> pureA[r] = us;
 					case 3 -> ringB[r] = us;
+					case 4 -> cachedB[r] = us;
 					default -> terrain[r] = us;
 				}
 			}
@@ -140,18 +157,20 @@ class CrownTerritoryCostTest {
 			}
 		}
 		System.out.printf(Locale.ROOT, "[crown cost] %s %s %s (%d%% forest columns): per chunk (median of %d, µs): "
-						+ "(a) fresh session %.0f, per-thread session %.0f, pure (no open ground) %.0f, for %.1f trunks; "
-						+ "(b) %.0f for %.0f samples of the radius-2 ring (%.2f µs/sample); 256 columns sampled and classified %.0f; "
-						+ "(b)/(a fresh) %.1f, (b)/TERRAIN core %.2f%n",
+						+ "(a) fresh session %.0f, per-thread session %.0f, pure (no vacancies) %.0f, for %.1f trees; "
+						+ "(b) fresh %.0f for %.0f samples of the radius-2 ring (%.2f µs/sample), per-thread cache %.0f for %.0f "
+						+ "samples; 256 columns sampled and classified %.0f; (b)/(a) fresh %.1f, per-thread %.1f; "
+						+ "(b fresh)/TERRAIN core %.2f%n",
 				site.scale().id(), site.name(), mode.name().toLowerCase(Locale.ROOT), 100 * forest / (span * span * 256),
 				ROUNDS, median(coldA), median(warmA), median(pureA), trunks / (double) chunks, median(ringB),
-				samples[0] / (double) chunks, median(ringB) * chunks / samples[0], median(terrain),
-				median(ringB) / median(coldA), median(ringB) / median(terrain));
+				samples[0] / (double) chunks, median(ringB) * chunks / samples[0], median(cachedB),
+				cachedSamples[0] / (double) chunks, median(terrain), median(ringB) / median(coldA),
+				median(cachedB) / median(warmA), median(ringB) / median(terrain));
 		System.out.printf(Locale.ROOT, "[crown cost] rounds (a) fresh %s; (b) %s; TERRAIN core %s%n", format(coldA),
 				format(ringB), format(terrain));
 	}
 
-	private static void coldA(CrownTerritories t, int cx0, int cz0, OpenGround open) {
+	private static void coldA(CrownTerritories t, int cx0, int cz0, Vacancies open) {
 		long acc = 0;
 		for (int i = 0; i < SIZE; i++) {
 			for (int j = 0; j < SIZE; j++) {
@@ -161,7 +180,7 @@ class CrownTerritoryCostTest {
 		sink += acc;
 	}
 
-	private static void warmA(CrownTerritories t, int cx0, int cz0, OpenGround open) {
+	private static void warmA(CrownTerritories t, int cx0, int cz0, Vacancies open) {
 		long acc = 0;
 		CrownTerritories.Session s = t.session();
 		for (int i = 0; i < SIZE; i++) {
@@ -196,6 +215,44 @@ class CrownTerritoryCostTest {
 						});
 						acc += local[0];
 						samples[0] += count[0];
+					}
+				}
+			}
+		}
+		sink += acc;
+	}
+
+	/**
+	 * Variant (b) with a per-thread cache: the codes of the kept candidates of each ring chunk are kept between the chunks
+	 * of the area (raster order, one session per area), so only the ring chunks not seen before are sampled.
+	 */
+	private static void cachedRingB(LandscapeModel model, HabitatClassifier classifier, int cx0, int cz0, int[] samples) {
+		long acc = 0;
+		TreeStandPlan.Candidates candidates = new TreeStandPlan.Candidates(SEED);
+		Map<Long, int[]> cache = new HashMap<>();
+		for (int i = 0; i < SIZE; i++) {
+			for (int j = 0; j < SIZE; j++) {
+				int cx = cx0 + i;
+				int cz = cz0 + j;
+				for (int di = -2; di <= 2; di++) {
+					for (int dj = -2; dj <= 2; dj++) {
+						if (Math.max(Math.abs(di), Math.abs(dj)) != 2) {
+							continue;
+						}
+						int rx = cx + di;
+						int rz = cz + dj;
+						int[] ring = cache.computeIfAbsent((long) rx << 32 | (rz & 0xFFFF_FFFFL), k -> {
+							int[] out = new int[64];
+							int[] n = new int[1];
+							candidates.forEach(rx * 16, rz * 16, rx * 16 + 15, rz * 16 + 15, (x, z) -> {
+								out[n[0]++] = classifier.classify(model.sample(x, z), x, z);
+							});
+							samples[0] += n[0];
+							return Arrays.copyOf(out, n[0]);
+						});
+						for (int code : ring) {
+							acc += code;
+						}
 					}
 				}
 			}

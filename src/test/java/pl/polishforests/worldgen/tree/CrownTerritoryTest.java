@@ -8,52 +8,67 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import pl.polishforests.worldgen.landscape.Noise;
 
 /**
  * Crown territories (step V5, decision PW-9 a, docs/04-pionowy-wycinek.md §5 {@code CrownTerritoryTest}): the territory of
- * a trunk does not depend on the chunk from which it is asked nor on the order of the questions; with open ground it asks
+ * a trunk does not depend on the chunk from which it is asked nor on the order of the questions; with vacancies it asks
  * only about the chunks within radius 1 of the trunk's chunk (the habitats a chunk being decorated has); territories of
  * one layer never share a column (no crown disputes, also across chunk borders) and each holds its own trunk; the crowns
- * of the forest edge lean out over the open ground. Prints the canopy cover and the trunks per layer for step V9.
+ * of the forest edge lean out over the open ground; the neighbors of vacant candidates close the canopy. Prints the
+ * canopy cover, the closure ceiling with and without vacancies and the trunks per layer for step V9.
  */
 class CrownTerritoryTest {
 	private static final long SEED = 20260927L;
 	private static final long OTHER_SEED = -7_334_120_551L;
 
 	/** Open ground: a meandering forest edge from smooth noise (a test field; the game reads the chunk habitats). */
-	private static OpenGround meadows(long seed) {
+	private static Vacancies meadows(long seed) {
 		Noise n = new Noise(seed).derive("test.crown_territory.open");
 		return (x, z) -> n.fbm(x, z, 90, 2, 0.5) > 0.2;
 	}
 
 	/**
-	 * Open ground that answers only for the chunks within radius 1 of (chunkX, chunkZ) and fails otherwise, like the
+	 * Vacancies of a palette that gives a tree to a hash-random share p of the forest candidates (a test field standing in
+	 * for the rule chance of the game), plus the open ground, if any.
+	 */
+	private static Vacancies palette(long seed, double p, @Nullable Vacancies open) {
+		Noise n = new Noise(seed).derive("test.crown_territory.vacant");
+		return (x, z) -> (open != null && open.vacant(x, z)) || n.unit(x, z, 0) >= p;
+	}
+
+	/**
+	 * Vacancies that answer only for the chunks within radius 1 of (chunkX, chunkZ) and fail otherwise, like the
 	 * habitats at the FEATURES stage.
 	 */
-	private static OpenGround radiusOne(OpenGround open, int chunkX, int chunkZ) {
+	private static Vacancies radiusOne(Vacancies vacancies, int chunkX, int chunkZ) {
 		return (x, z) -> {
 			if (Math.abs((x >> 4) - chunkX) > 1 || Math.abs((z >> 4) - chunkZ) > 1) {
 				throw new IllegalStateException("asked about " + x + ", " + z + " outside radius 1 of chunk " + chunkX + ", "
 						+ chunkZ);
 			}
-			return open.open(x, z);
+			return vacancies.vacant(x, z);
 		};
 	}
 
-	/** Trunk candidates of the chunks [x0, x0 + size) × [z0, z0 + size), as {x, z}. */
-	private static List<int[]> trunks(CrownTerritories t, int x0, int z0, int size) {
+	/** Trunks (candidates that are not vacant) of the chunks [x0, x0 + size) × [z0, z0 + size), as {x, z}. */
+	private static List<int[]> trunks(CrownTerritories t, int x0, int z0, int size, @Nullable Vacancies vacancies) {
 		List<int[]> out = new ArrayList<>();
 		CrownTerritories.Session s = t.session();
 		for (int cx = x0; cx < x0 + size; cx++) {
 			for (int cz = z0; cz < z0 + size; cz++) {
 				for (CrownTerritory c : s.chunk(cx, cz, null)) {
-					out.add(new int[] {c.x(), c.z()});
+					if (vacancies == null || !vacancies.vacant(c.x(), c.z())) {
+						out.add(new int[] {c.x(), c.z()});
+					}
 				}
 			}
 		}
@@ -64,7 +79,7 @@ class CrownTerritoryTest {
 	void independentOfTheAskingChunkAndOrder() {
 		for (long seed : new long[] {SEED, OTHER_SEED}) {
 			CrownTerritories t = new CrownTerritories(seed, new PatchyStandMap(seed, 0.5));
-			List<int[]> trunks = trunks(t, -2, 3, 4);
+			List<int[]> trunks = trunks(t, -2, 3, 4, null);
 			Map<Long, CrownTerritory> reference = new HashMap<>();
 			for (int[] p : trunks) {
 				// Reference: each trunk in a session of its own.
@@ -93,24 +108,24 @@ class CrownTerritoryTest {
 	}
 
 	@Test
-	void edgeTerritoryNeedsOnlyRadiusOneAndKeepsOrder() {
+	void vacanciesNeedOnlyRadiusOneAndKeepOrder() {
 		CrownTerritories t = new CrownTerritories(SEED, new PatchyStandMap(SEED, 0.5));
-		OpenGround open = meadows(SEED);
-		List<int[]> trunks = trunks(t, 10, -6, 5);
+		Vacancies vacancies = palette(SEED, 0.7, meadows(SEED));
+		List<int[]> trunks = trunks(t, 10, -6, 5, vacancies);
 		Map<Long, CrownTerritory> reference = new HashMap<>();
 		int edges = 0;
 		for (int[] p : trunks) {
 			// The habitats of radius 1 only: a question beyond it fails the test.
-			CrownTerritory c = t.session().territory(p[0], p[1], radiusOne(open, p[0] >> 4, p[1] >> 4));
+			CrownTerritory c = t.session().territory(p[0], p[1], radiusOne(vacancies, p[0] >> 4, p[1] >> 4));
 			reference.put(key(p[0], p[1]), c);
 			edges += c.edge() ? 1 : 0;
 		}
-		assertTrue(edges > trunks.size() / 20, "too few edge trunks to test the open ground: " + edges);
+		assertTrue(edges > trunks.size() / 20, "too few edge trunks to test the vacancies: " + edges);
 		// From another chunk the habitats of the trunk's radius 1 are not all there: the question fails instead of giving
 		// a territory that depends on the asking chunk.
 		int[] first = trunks.get(0);
 		assertThrows(IllegalStateException.class, () -> t.session().territory(first[0], first[1],
-				radiusOne(open, (first[0] >> 4) + 1, first[1] >> 4)));
+				radiusOne(vacancies, (first[0] >> 4) + 1, first[1] >> 4)));
 		// One shared session asked in random orders, interleaved with whole chunks: the same territories.
 		Random random = new Random(1);
 		CrownTerritories.Session shared = t.session();
@@ -121,21 +136,40 @@ class CrownTerritoryTest {
 				if (random.nextInt(8) == 0) {
 					int cx = 10 + random.nextInt(5);
 					int cz = -6 + random.nextInt(5);
-					shared.chunk(cx, cz, radiusOne(open, cx, cz));
+					shared.chunk(cx, cz, radiusOne(vacancies, cx, cz));
 				}
-				assertEquals(reference.get(key(p[0], p[1])), shared.territory(p[0], p[1], radiusOne(open, p[0] >> 4, p[1] >> 4)));
+				assertEquals(reference.get(key(p[0], p[1])),
+						shared.territory(p[0], p[1], radiusOne(vacancies, p[0] >> 4, p[1] >> 4)));
 			}
 		}
-		System.out.printf(Locale.ROOT, "[crowns] open ground: %d trunks, %d at an edge%n", trunks.size(), edges);
+		System.out.printf(Locale.ROOT, "[crowns] vacancies: %d trunks, %d next to a marker%n", trunks.size(), edges);
+	}
+
+	@Test
+	void vacantCandidatesHaveNoTerritory() {
+		CrownTerritories t = new CrownTerritories(SEED, StandMap.uniform(AgeClass.MATURE, false));
+		Vacancies vacancies = palette(SEED, 0.6, null);
+		CrownTerritories.Session s = t.session();
+		int vacant = 0;
+		for (CrownTerritory c : s.chunk(0, 0, null)) {
+			if (vacancies.vacant(c.x(), c.z())) {
+				vacant++;
+				assertThrows(IllegalArgumentException.class, () -> s.territory(c.x(), c.z(), vacancies));
+			}
+		}
+		assertTrue(vacant > 0);
+		for (CrownTerritory c : s.chunk(0, 0, vacancies)) {
+			assertTrue(!vacancies.vacant(c.x(), c.z()), "territory of a vacant candidate: " + c);
+		}
 	}
 
 	@Test
 	void noDisputesAndEachTrunkUnderItsCrown() {
 		StandMap[] maps = {new PatchyStandMap(SEED, 0.5), StandMap.uniform(AgeClass.MATURE, false),
 				StandMap.uniform(AgeClass.OLD_GROWTH, true)};
-		OpenGround open = meadows(SEED);
+		Vacancies[] fields = {null, meadows(SEED), palette(SEED, 0.6, meadows(SEED))};
 		for (StandMap map : maps) {
-			for (boolean withOpen : new boolean[] {false, true}) {
+			for (Vacancies field : fields) {
 				CrownTerritories t = new CrownTerritories(SEED, map);
 				CrownTerritories.Session s = t.session();
 				Map<CrownLayer, Map<Long, Long>> owners = new EnumMap<>(CrownLayer.class);
@@ -143,7 +177,7 @@ class CrownTerritoryTest {
 				for (int cx = -3; cx < 3; cx++) {
 					for (int cz = -3; cz < 3; cz++) {
 						// Each chunk with the habitats of its own radius 1, as in the game.
-						for (CrownTerritory c : s.chunk(cx, cz, withOpen ? radiusOne(open, cx, cz) : null)) {
+						for (CrownTerritory c : s.chunk(cx, cz, field == null ? null : radiusOne(field, cx, cz))) {
 							count++;
 							assertTrue(c.contains(c.x(), c.z()), "trunk outside its territory: " + c);
 							assertTrue(c.reach() <= CrownTerritories.MAX_REACH);
@@ -160,7 +194,7 @@ class CrownTerritoryTest {
 						}
 					}
 				}
-				assertTrue(count > 36 * 15, "too few trunks: " + count);
+				assertTrue(count > 36 * 4, "too few trunks: " + count);
 			}
 		}
 	}
@@ -170,7 +204,7 @@ class CrownTerritoryTest {
 		// A managed mature stand (nearly all canopy) with open ground east of x = 64: the crowns within 4 blocks of the
 		// edge lean east and reach over it, the crowns deep in the forest do not lean.
 		CrownTerritories t = new CrownTerritories(SEED, StandMap.uniform(AgeClass.MATURE, false));
-		OpenGround open = (x, z) -> x >= 64;
+		Vacancies open = (x, z) -> x >= 64;
 		CrownTerritories.Session s = t.session();
 		double edgeLean = 0;
 		double innerLean = 0;
@@ -226,49 +260,155 @@ class CrownTerritoryTest {
 		assertTrue(asked > 200);
 	}
 
-	/** Canopy cover and trunks per layer by stand (for the calibration in step V9; no thresholds beyond sanity). */
+	/** Canopy cover and trunks per layer by stand, every candidate a tree (for the calibration in step V9). */
 	@Test
 	void reportCoverByStand() {
 		for (boolean natural : new boolean[] {false, true}) {
 			for (AgeClass age : AgeClass.values()) {
+				Cover c = cover(new CrownTerritories(SEED, StandMap.uniform(age, natural)), null, null);
+				System.out.printf(Locale.ROOT, "[crowns] %s %s: trunks per chunk canopy %.2f, subcanopy %.2f, regeneration %.2f; "
+						+ "mean territory %.1f / %.1f / %.1f columns; canopy cover %.0f%%, any layer %.0f%%%n",
+						natural ? "natural" : "managed", age, c.trunks[0], c.trunks[1], c.trunks[2], c.area[0], c.area[1],
+						c.area[2], 100 * c.canopy, 100 * c.any);
+				assertTrue(c.any > 0.5, "cover of all layers");
+			}
+		}
+	}
+
+	/**
+	 * Closure ceiling when only a share p of the candidates becomes trees (review of V5, round 1): with the vacant
+	 * candidates as markers their neighbors take over their cells; counted as trees (no {@link Vacancies}) they leave
+	 * holes and the cover of the trees' territories falls to about p times the cover at p = 1. The cover is an upper
+	 * bound of the canopy closure N4 (crowns that fill their territories).
+	 */
+	@Test
+	void vacantCandidatesLeaveNoHoles() {
+		double[] shares = {1.0, 0.9, 0.7, 0.55};
+		for (boolean natural : new boolean[] {false, true}) {
+			for (AgeClass age : AgeClass.values()) {
 				CrownTerritories t = new CrownTerritories(SEED, StandMap.uniform(age, natural));
-				CrownTerritories.Session s = t.session();
-				int size = 8;
-				int[] trunks = new int[CrownLayer.values().length];
-				long[] area = new long[CrownLayer.values().length];
-				java.util.Set<Long> canopy = new java.util.HashSet<>();
-				java.util.Set<Long> any = new java.util.HashSet<>();
-				for (int cx = 0; cx < size; cx++) {
-					for (int cz = 0; cz < size; cz++) {
-						for (CrownTerritory c : s.chunk(cx, cz, null)) {
-							trunks[c.layer().ordinal()]++;
-							area[c.layer().ordinal()] += c.area();
-							for (int dz = -16; dz <= 16; dz++) {
-								for (int dx = -16; dx <= 16; dx++) {
-									int x = c.x() + dx;
-									int z = c.z() + dz;
-									// Inner chunks only, so the cover is not cut at the border of the area.
-									if (x >= 16 && z >= 16 && x < 16 * (size - 1) && z < 16 * (size - 1) && c.contains(x, z)) {
-										any.add(key(x, z));
-										if (c.layer() == CrownLayer.CANOPY) {
-											canopy.add(key(x, z));
-										}
-									}
+				StringBuilder line = new StringBuilder();
+				for (double p : shares) {
+					Vacancies v = palette(SEED, p, null);
+					Cover holes = cover(t, null, v);
+					Cover markers = cover(t, v, v);
+					line.append(String.format(Locale.ROOT, "%n  p %.2f (%.1f trees/chunk): cover %.0f%% -> %.0f%%, canopy %.0f%% -> "
+							+ "%.0f%%, mean canopy territory %.0f -> %.0f columns", p, markers.trunks[0] + markers.trunks[1]
+							+ markers.trunks[2], 100 * holes.any, 100 * markers.any, 100 * holes.canopy, 100 * markers.canopy,
+							holes.area[0], markers.area[0]));
+					if (p < 1) {
+						assertTrue(markers.any >= holes.any, "vacancies close the canopy: " + markers.any + " vs " + holes.any
+								+ " at p " + p);
+						assertTrue(markers.any > 0.9, "cover of all layers " + markers.any + " at p " + p);
+						if (!natural) {
+							// A single-storied stand: without markers the holes of the vacant candidates stay open.
+							assertTrue(markers.canopy > holes.canopy + 0.5 * (1 - p), "canopy cover " + markers.canopy + " vs "
+									+ holes.canopy + " at p " + p);
+						}
+					}
+				}
+				System.out.printf(Locale.ROOT, "[crowns] closure %s %s (vacancies as trees -> as markers):%s%n",
+						natural ? "natural" : "managed", age, line);
+			}
+		}
+	}
+
+	/**
+	 * What the radius-1 rule of the vacancies changes (review of V5, round 1): territories with vacancies known only
+	 * within radius 1 of the pair against vacancies known within radius 2 (all partners), over 16 × 16 chunks.
+	 */
+	@Test
+	void reportRadiusOneVacancyRule() {
+		StandMap[] maps = {new PatchyStandMap(SEED, 0.5), StandMap.uniform(AgeClass.MATURE, false),
+				StandMap.uniform(AgeClass.OLD_GROWTH, true)};
+		String[] names = {"patchy", "managed mature", "natural old growth"};
+		Vacancies[] fields = {meadows(SEED), palette(SEED, 0.6, meadows(SEED))};
+		String[] fieldNames = {"meadows", "meadows and p 0.6"};
+		for (int m = 0; m < maps.length; m++) {
+			for (int f = 0; f < fields.length; f++) {
+				CrownTerritories t = new CrownTerritories(SEED, maps[m]);
+				CrownTerritories.Session one = t.session();
+				CrownTerritories.Session two = t.session(2);
+				int trunks = 0;
+				int differ = 0;
+				int worst = 0;
+				for (int cx = 0; cx < 16; cx++) {
+					for (int cz = 0; cz < 16; cz++) {
+						List<CrownTerritory> a = one.chunk(cx, cz, fields[f]);
+						List<CrownTerritory> b = two.chunk(cx, cz, fields[f]);
+						assertEquals(a.size(), b.size());
+						for (int i = 0; i < a.size(); i++) {
+							trunks++;
+							if (!a.get(i).equals(b.get(i))) {
+								differ++;
+								worst = Math.max(worst, symmetricDifference(a.get(i), b.get(i)));
+							}
+						}
+					}
+				}
+				System.out.printf(Locale.ROOT, "[crowns] radius-1 vacancies, %s, %s: %d of %d territories differ from radius 2,"
+						+ " at most by %d columns%n", names[m], fieldNames[f], differ, trunks, worst);
+				assertTrue(differ <= trunks / 50, "radius-1 rule changes " + differ + " of " + trunks);
+			}
+		}
+	}
+
+	private static int symmetricDifference(CrownTerritory a, CrownTerritory b) {
+		int n = 0;
+		for (int dz = -CrownTerritories.MAX_REACH; dz <= CrownTerritories.MAX_REACH; dz++) {
+			for (int dx = -CrownTerritories.MAX_REACH; dx <= CrownTerritories.MAX_REACH; dx++) {
+				n += a.contains(a.x() + dx, a.z() + dz) != b.contains(a.x() + dx, a.z() + dz) ? 1 : 0;
+			}
+		}
+		return n;
+	}
+
+	/** Cover of an area, per chunk: trunks and mean territory area per layer, canopy cover and cover of any layer. */
+	private record Cover(double[] trunks, double[] area, double canopy, double any) {
+	}
+
+	/**
+	 * Cover of the territories of the trees (candidates that {@code trees} does not call vacant; all without it) in 8 × 8
+	 * chunks, the territories drawn with {@code vacancies}; only the inner 6 × 6 chunks count, so the cover is not cut at
+	 * the border of the area.
+	 */
+	private static Cover cover(CrownTerritories t, @Nullable Vacancies vacancies, @Nullable Vacancies trees) {
+		CrownTerritories.Session s = t.session();
+		int size = 8;
+		int layers = CrownLayer.values().length;
+		double[] trunks = new double[layers];
+		double[] area = new double[layers];
+		Set<Long> canopy = new HashSet<>();
+		Set<Long> any = new HashSet<>();
+		for (int cx = 0; cx < size; cx++) {
+			for (int cz = 0; cz < size; cz++) {
+				for (CrownTerritory c : s.chunk(cx, cz, vacancies)) {
+					if (trees != null && trees.vacant(c.x(), c.z())) {
+						continue;
+					}
+					trunks[c.layer().ordinal()]++;
+					area[c.layer().ordinal()] += c.area();
+					for (int dz = -16; dz <= 16; dz++) {
+						for (int dx = -16; dx <= 16; dx++) {
+							int x = c.x() + dx;
+							int z = c.z() + dz;
+							if (x >= 16 && z >= 16 && x < 16 * (size - 1) && z < 16 * (size - 1) && c.contains(x, z)) {
+								any.add(key(x, z));
+								if (c.layer() == CrownLayer.CANOPY) {
+									canopy.add(key(x, z));
 								}
 							}
 						}
 					}
 				}
-				double inner = Math.pow(16.0 * (size - 2), 2);
-				double chunks = size * size;
-				System.out.printf(Locale.ROOT, "[crowns] %s %s: trunks per chunk canopy %.2f, subcanopy %.2f, regeneration %.2f; "
-						+ "mean territory %.1f / %.1f / %.1f columns; canopy cover %.0f%%, any layer %.0f%%%n",
-						natural ? "natural" : "managed", age, trunks[0] / chunks, trunks[1] / chunks, trunks[2] / chunks,
-						area[0] / (double) Math.max(1, trunks[0]), area[1] / (double) Math.max(1, trunks[1]),
-						area[2] / (double) Math.max(1, trunks[2]), 100 * canopy.size() / inner, 100 * any.size() / inner);
-				assertTrue(any.size() / inner > 0.5, "cover of all layers");
 			}
 		}
+		double inner = Math.pow(16.0 * (size - 2), 2);
+		for (int l = 0; l < layers; l++) {
+			area[l] /= Math.max(1, trunks[l]);
+			trunks[l] /= size * size;
+		}
+		return new Cover(trunks, area, canopy.size() / inner, any.size() / inner);
 	}
 
 	private static long key(int x, int z) {

@@ -10,36 +10,44 @@ import pl.polishforests.worldgen.landscape.Noise;
 
 /**
  * Crown territories (step V5 of docs/04-pionowy-wycinek.md, decision PW-9 variant a): every kept candidate of the M2
- * trunk pattern ({@link TreeStandPlan.Candidates}) owns the cell of a power diagram (a Voronoi diagram weighted by the
- * squared crown radius), clipped to a disc of its reach. The crowns of the tree planner (step V6) stay inside their
- * territories, so the crowns of two trunks never claim the same column and the result does not depend on the order in
- * which the chunks are decorated.
+ * trunk pattern ({@link TreeStandPlan.Candidates}) that grows a tree owns the cell of a power diagram (a Voronoi diagram
+ * weighted by the squared crown radius), clipped to a disc of its reach. The crowns of the procedural trees of the tree
+ * planner (step V6) stay inside their territories, so two procedural crowns of one layer never claim the same column and
+ * the result does not depend on the order in which the chunks are decorated.
  *
- * <p><b>Inputs.</b> Only the candidate pattern, the stand map ({@link StandMap}: age class, natural flag, canopy gaps) and
- * a hash of the candidate's column with the salt {@value #SALT} (rule ZW-2), never the species or the habitat code: at
- * the FEATURES stage the habitats exist only for the chunks within radius 1, while a crown of up to {@value #MAX_REACH}
- * blocks has neighbors up to {@value #SEARCH} blocks away, in chunks at radius 2. The layer of a candidate
- * ({@link CrownLayer}) comes from the hash with the shares of its stand (managed or natural, age class), the crown radius
- * from the layer and the age class with a jitter of {@value #JITTER_MIN}–{@value #JITTER_MAX}. A candidate in a canopy
- * gap of a natural stand belongs to the regeneration. A candidate that does not become a tree (palette chance, structure,
- * water) keeps its territory empty: a gap in the canopy, as in nature (crown shyness).
+ * <p><b>Trees that ignore territories.</b> The guarantee holds between procedural trees only. A candidate with a vanilla
+ * substitute tree ({@code tree_substitute/} rules, PW-3: biomes outside the slice, ecotone columns) is not vacant
+ * ({@link Vacancies}), so it keeps its cell and its procedural neighbors get no edge reach toward it, but its own crown
+ * does not follow the cell and may overlap the procedural crowns next to it; where it does, the leaves written last win
+ * (risk R5). The determinism test of step V6 covers such an ecotone.
+ *
+ * <p><b>Inputs.</b> Only the candidate pattern, the stand map ({@link StandMap}: age class, natural flag, canopy gaps), a
+ * hash of the candidate's column with the salt {@value #SALT} (rule ZW-2) and, optionally, the vacant candidates of the
+ * chunks within radius 1 ({@link Vacancies}); never the species: at the FEATURES stage the habitats exist only for the
+ * chunks within radius 1, while a crown of up to {@value #MAX_REACH} blocks has neighbors up to {@value #SEARCH} blocks
+ * away, in chunks at radius 2. The layer of a candidate ({@link CrownLayer}) comes from the hash with the shares of its
+ * stand (managed or natural, age class), the crown radius from the layer and the age class with a jitter of
+ * {@value #JITTER_MIN}–{@value #JITTER_MAX}. A candidate in a canopy gap of a natural stand belongs to the regeneration.
  *
  * <p><b>Layers.</b> Each layer has its own diagram: a canopy tree competes with canopy trees only, since the layers
  * occupy different heights (the tree planner keeps the lower layers below the crown base of the canopy).
  *
- * <p><b>Edges.</b> A candidate in a canopy gap (in the canopy and lower layers) and a candidate on open ground
- * ({@link OpenGround}) are markers: in a pair of a marker and a tree the marker weighs 0 and the tree weighs its crown
- * radius times {@value #EDGE_REACH}, and a tree with such a partner within that distance may reach that far, so its
- * crown leans out over the gap or the open ground (the asymmetric crowns of the forest edge, §1.1). Open ground needs
- * the habitat codes, so it is used in a pair only when the chunks of both trunks are within radius 1 of each other (the
- * relation is symmetric, so both trunks of a pair see the same weights): a trunk's territory then asks about the columns
- * of its own chunk and its 8 neighbors only, which the decoration of that chunk has. Without {@link OpenGround} the
- * territories are a pure function of the seed and the stand map and can be computed from any chunk.
+ * <p><b>Markers: vacancies and edges.</b> A vacant candidate (no tree: palette, open ground; {@link Vacancies}) and, in the
+ * canopy and the subcanopy, a candidate in a canopy gap are markers: in a pair of a marker and a tree the marker weighs 0
+ * and the tree weighs its crown radius times {@value #EDGE_REACH}, and a tree with such a partner within that distance
+ * may reach that far. So the neighbors of a candidate the palette leaves out share its cell (a sparse stand still closes
+ * its canopy) and the crowns of the forest edge lean out over the open ground or the gap (§1.1). Vacancies need the
+ * habitat codes, so they count in a pair only when the chunks of both trunks are within radius 1 of each other (the
+ * relation is symmetric, so both trunks of a pair see the same weights); a vacant candidate farther away counts as a
+ * tree. A trunk's territory then asks about the candidates of its own chunk and its 8 neighbors only, which the
+ * decoration of that chunk has. Without {@link Vacancies} every candidate counts as a tree and the territories are a
+ * pure function of the seed and the stand map that can be computed from any chunk.
  *
  * <p><b>Exactness.</b> Positions are columns and weights are integers in sixteenths of a block squared, so the ownership
  * of a column is an exact comparison; equal powers go to the trunk with the smaller (x, z). Both trunks of a pair compute
- * the same weights, so their territories are disjoint. In a pair the weights are clamped so that each trunk owns its own
- * column (a small tree next to a large one still has a crown over its trunk).
+ * the same weights, so their territories are disjoint. In a pair of two trees of a layer the weights are clamped so that
+ * each trunk owns its own column (a small tree next to a large one still has a crown over its trunk); a marker's column
+ * is not reserved, so a crown may spread over it.
  */
 public final class CrownTerritories {
 	/** Salt of the crown hash (rule ZW-2). */
@@ -48,7 +56,7 @@ public final class CrownTerritories {
 	public static final int MAX_REACH = 16;
 	/** Distance up to which two trunks can share a column: twice {@link #MAX_REACH}. */
 	public static final int SEARCH = 2 * MAX_REACH;
-	/** Reach of an edge tree over open ground or a canopy gap, as a multiple of its crown radius. */
+	/** Reach of a tree next to a marker (a vacant candidate or a canopy gap), as a multiple of its crown radius. */
 	public static final double EDGE_REACH = 1.5;
 	/** Least and largest factor of the crown radius jitter. */
 	public static final double JITTER_MIN = 0.85;
@@ -123,7 +131,15 @@ public final class CrownTerritories {
 	 * results never depend on what the session was asked before (everything cached is a pure function).
 	 */
 	public Session session() {
-		return new Session();
+		return new Session(1);
+	}
+
+	/**
+	 * A session that takes the vacancies into the pairs whose chunks are within {@code vacancyChunks} of each other (1 in
+	 * the game; 2 only in tests that measure what the radius-1 rule changes, with vacancies known everywhere).
+	 */
+	Session session(int vacancyChunks) {
+		return new Session(vacancyChunks);
 	}
 
 	public final class Session {
@@ -139,10 +155,12 @@ public final class CrownTerritories {
 		private int[] pa = new int[64];
 		private int[] pb = new int[64];
 		private boolean[] pFirst = new boolean[64];
+		private final int vacancyChunks;
 		private int n;
 		private boolean edge;
 
-		private Session() {
+		private Session(int vacancyChunks) {
+			this.vacancyChunks = vacancyChunks;
 		}
 
 		/** Whether the column (x, z) holds a kept candidate of the M2 pattern. */
@@ -167,37 +185,45 @@ public final class CrownTerritories {
 			return sites;
 		}
 
-		/** Territories of every kept candidate of the chunk, in the order of the candidate cells. */
-		public List<CrownTerritory> chunk(int chunkX, int chunkZ, @Nullable OpenGround open) {
+		/**
+		 * Territories of the kept candidates of the chunk that grow a tree (all of them without {@code vacancies}), in the
+		 * order of the candidate cells.
+		 */
+		public List<CrownTerritory> chunk(int chunkX, int chunkZ, @Nullable Vacancies vacancies) {
 			List<CrownTerritory> out = new ArrayList<>();
 			for (Site s : tile(chunkX, chunkZ)) {
-				out.add(territory(s, open));
+				if (vacancies == null || !vacancies.vacant(s.x(), s.z())) {
+					out.add(territory(s, vacancies));
+				}
 			}
 			return out;
 		}
 
 		/**
-		 * Territory of the trunk at column (x, z), which must be a kept candidate. With {@code open} the territory asks it
-		 * about the columns of the chunks within radius 1 of the trunk's chunk only.
+		 * Territory of the trunk at column (x, z), which must be a kept candidate that is not vacant. With
+		 * {@code vacancies} the territory asks it about the candidates of the chunks within radius 1 of the trunk's chunk
+		 * only.
 		 */
-		public CrownTerritory territory(int x, int z, @Nullable OpenGround open) {
+		public CrownTerritory territory(int x, int z, @Nullable Vacancies vacancies) {
 			if (!candidates.kept(x, z)) {
 				throw new IllegalArgumentException("no trunk candidate at " + x + ", " + z);
 			}
-			return territory(site(x, z), open);
+			if (vacancies != null && vacancies.vacant(x, z)) {
+				throw new IllegalArgumentException("vacant trunk candidate at " + x + ", " + z);
+			}
+			return territory(site(x, z), vacancies);
 		}
 
-		private CrownTerritory territory(Site t, @Nullable OpenGround open) {
+		private CrownTerritory territory(Site t, @Nullable Vacancies vacancies) {
 			int cx = t.x() >> 4;
 			int cz = t.z() >> 4;
-			boolean tOpen = open != null && open.open(t.x(), t.z());
 			n = 0;
 			edge = false;
 			for (int ti = -TILE_REACH; ti <= TILE_REACH; ti++) {
 				for (int tj = -TILE_REACH; tj <= TILE_REACH; tj++) {
-					// Open ground only between trunks whose chunks are within radius 1 of each other (a symmetric relation).
-					boolean adjacent = open != null && Math.abs(ti) <= 1 && Math.abs(tj) <= 1;
-					pairs(t, tile(cx + ti, cz + tj), adjacent ? open : null, adjacent && tOpen);
+					// Vacancies only between trunks whose chunks are within radius 1 of each other (a symmetric relation).
+					boolean near = Math.abs(ti) <= vacancyChunks && Math.abs(tj) <= vacancyChunks;
+					pairs(t, tile(cx + ti, cz + tj), near ? vacancies : null);
 				}
 			}
 			double reach = Math.min(MAX_REACH, edge ? EDGE_REACH * t.radius() : t.radius());
@@ -236,10 +262,10 @@ public final class CrownTerritories {
 		}
 
 		/**
-		 * Adds the pairs of trunk t with the sites of one chunk. {@code open} is null when the chunks of the pair are not
-		 * within radius 1 of each other; {@code tMarker} tells whether t is on open ground for these pairs.
+		 * Adds the pairs of tree t (not vacant) with the sites of one chunk. {@code vacancies} is null when the chunks of
+		 * the pair are not within radius 1 of each other.
 		 */
-		private void pairs(Site t, Site[] sites, @Nullable OpenGround open, boolean tMarker) {
+		private void pairs(Site t, Site[] sites, @Nullable Vacancies vacancies) {
 			CrownLayer layer = t.layer();
 			double edgeLimit = EDGE_REACH * t.radius();
 			for (Site u : sites) {
@@ -249,31 +275,26 @@ public final class CrownTerritories {
 				if (d2 == 0 || d2 > SEARCH * SEARCH) {
 					continue;
 				}
-				boolean uMarker = (u.gap() && layer != CrownLayer.REGENERATION) || (open != null && open.open(u.x(), u.z()));
+				boolean uMarker = (u.gap() && layer != CrownLayer.REGENERATION)
+						|| (vacancies != null && vacancies.vacant(u.x(), u.z()));
 				// A site of another layer takes part only as a marker: it has no crown in this layer.
 				boolean foreign = u.layer() != layer;
 				if (foreign && !uMarker) {
 					continue;
 				}
-				int wt = t.weight();
-				int wu = u.weight();
-				if (tMarker && !uMarker) {
-					wt = 0;
-					wu = u.edgeWeight();
-				} else if (foreign || uMarker && !tMarker) {
-					wt = t.edgeWeight();
-					wu = 0;
+				int a;
+				int b;
+				if (uMarker) {
+					a = t.edgeWeight();
+					b = 0;
 					if (d2 <= edgeLimit * edgeLimit) {
 						edge = true;
 					}
-				}
-				// Each trunk of the layer owns its own column: the power of the other trunk there is never lower. The crown
-				// may cover a marker of another layer.
-				int a = wt;
-				int b = wu;
-				if (!foreign) {
-					a = Math.min(wt, wu + 16 * d2 - 1);
-					b = Math.min(wu, wt + 16 * d2 - 1);
+				} else {
+					// Two trees of the layer: each owns its own column, the power of the other trunk there is never lower.
+					// A marker's column is not reserved, so the crown may spread over it.
+					a = Math.min(t.weight(), u.weight() + 16 * d2 - 1);
+					b = Math.min(u.weight(), t.weight() + 16 * d2 - 1);
 				}
 				if (n == px.length) {
 					grow();

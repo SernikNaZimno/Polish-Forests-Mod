@@ -53,7 +53,10 @@ public final class CrownTerritory {
 		return reach;
 	}
 
-	/** Whether the trunk stands at an edge (open ground or a canopy gap within its reach), so its crown may lean out. */
+	/**
+	 * Whether a marker stands within the edge reach of the trunk (a vacant candidate, on open ground or in the forest, or
+	 * a canopy gap), so its crown may reach out to {@link CrownTerritories#EDGE_REACH} times its radius.
+	 */
 	public boolean edge() {
 		return edge;
 	}
