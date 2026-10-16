@@ -888,7 +888,7 @@ Test pada więc na starych szablonach i przechodzi na nowych (ok. 15 s, w `fastT
 
 **Koszt.** 27 quadów na blok to 1,5 × rundy 2 (18); wanilijna kłoda ma 6, a po zasłonięciu przez sąsiadów zwykle mniej. 14 z nich (ściany wewnętrzne i koniec wysięgu) leży wewnątrz bloku, więc ani wanilia, ani Sodium nie odrzucą ich przez zasłonięcie. Pomiaru renderu gęstego lasu nie było (pnie wycinka trafią do świata w V6). Warianty przy CP-A (V2-l): (a) słoje na całym końcu wysięgu, 26 quadów; (b) obecne, 27; (c) c = 0,05 px: pasek o połowę węższy, walka ścian w buforze głębi od ok. 46 bloków zamiast ok. 70, 27 quadów; do tego ewentualnie skrzydełka w narożnikach, +8.
 
-**Testy rundy.** `TrunkModelRayTest` (oba testy PASS; `coplanarFacesMeetAtCorners` pada na szablonach V2b, `seamsLookLikeTheIdealTrunk` na szablonach rundy 2), `RegistrySnapshotTest`, `TrunkShapeTest`, `fastTest`, `checkDatagen`, tablica próbek w 3 rendererach (3 × PASS: rejestr równy migawce, 840 stanów moda, 36 627 gry, wszystkie 4733 bloki u klienta, modele i cząsteczki, światło, łup `birch_log`), pełny zestaw `tools/dev/run-tests test` (wynik w opisie commitu końcowego rundy). Złoty test terenu bez zmian.
+**Testy rundy.** `TrunkModelRayTest` (oba testy PASS; `coplanarFacesMeetAtCorners` pada na szablonach V2b, `seamsLookLikeTheIdealTrunk` na szablonach rundy 2), `RegistrySnapshotTest`, `TrunkShapeTest`, `fastTest`, `checkDatagen`, tablica próbek w 3 rendererach (3 × PASS: rejestr równy migawce, 840 stanów moda, 36 627 gry, wszystkie 4733 bloki u klienta, modele i cząsteczki, światło, łup `birch_log`), pełny zestaw `tools/dev/run-tests test` (PASS, 1237 s, na drzewie commitu 92078c3, różniącym się od końcowego tylko tym zdaniem). Złoty test terenu bez zmian.
 
 ## Stan po V5 (2026-10-16)
 
