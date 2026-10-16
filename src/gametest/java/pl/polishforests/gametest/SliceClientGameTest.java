@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import javax.imageio.ImageIO;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -42,7 +43,9 @@ import pl.polishforests.worldgen.feature.BiomeDecoration;
 import pl.polishforests.worldgen.feature.ModFeatures;
 import pl.polishforests.worldgen.habitat.Habitat;
 import pl.polishforests.worldgen.habitat.HabitatClassifier;
+import pl.polishforests.worldgen.habitat.Species;
 import pl.polishforests.worldgen.landscape.LandscapeModel;
+import pl.polishforests.worldgen.norms.ForestNorms;
 import pl.polishforests.worldgen.surface.ChunkSurface;
 
 /**
@@ -70,6 +73,13 @@ import pl.polishforests.worldgen.surface.ChunkSurface;
  * with a warning for an eye-height view darker than {@link #MAX_DARK}, and per world the counters of the dispatcher layers
  * ({@link ModFeatures#STATS}) and {@link ModFeatures#HABITAT_MISS} (must stay 0). The baseline of M2 is in
  * {@code docs/wycinek/baza/}.
+ *
+ * <p>The norms card (step V4, {@link NormsCensus}): in every world the census counts the 1 ha plot (100 × 100 blocks) of
+ * each site and the band of the transect and compares them with the norms of docs/04 §6 (the natural columns of the card
+ * in the natural mode, the managed ones in the present-day mode), also with {@code -Psites=none}; the rows go to
+ * {@code build/norms/karta-norm.csv}, a summary line per place to the log. Before that, once per run, the hand-built test
+ * plot is built in the sky, read back and counted (it must agree piece by piece). The species of the M2 placeholder trees
+ * come from {@code ModFeatures.WOODY_PLACEMENTS}, which the test sets while its worlds exist.
  *
  * <p>Runs only by name ({@code -Pgametest=slice}, not in {@code all}); {@code -Pscales=realistic|gameplay} picks a scale,
  * {@code -Pmodes=natural|present_day} a mode, {@code -Psites=<names>} some places (names of the table, e.g.
@@ -144,6 +154,30 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 		Map<String, List<Camera>> found = new LinkedHashMap<>();
 		boolean seasons = FabricLoader.getInstance().isModLoaded("sereneseasons");
 		context.runOnClient(mc -> mc.options.renderDistance().set(RENDER_DISTANCE));
+		// The species of each tree and shrub placed while the worlds of the test generate (the census of the norms card).
+		Map<Long, Species> records = new ConcurrentHashMap<>();
+		ModFeatures.WOODY_PLACEMENTS = (at, species) -> records.put(NormsCensus.key(at.getX(), at.getZ()), species);
+		List<String> norms = new ArrayList<>();
+		boolean[] testPlot = {false};
+		try {
+			worlds(context, scales, modes, names, screenshots, find, cameras, found, seasons, records, norms, testPlot);
+		} finally {
+			ModFeatures.WOODY_PLACEMENTS = null;
+		}
+		if (!norms.isEmpty()) {
+			NormsCensus.write(norms);
+		}
+		if (find && !found.isEmpty()) {
+			Map<String, List<Camera>> all = new LinkedHashMap<>(cameras);
+			all.putAll(found);
+			SliceCameras.write(all);
+			PolishForests.LOG.info("[slice] cameras of {} places written to {}", found.size(), SliceCameras.file());
+		}
+	}
+
+	private static void worlds(ClientGameTestContext context, String scales, String modes, List<String> names, boolean screenshots,
+			boolean find, Map<String, List<Camera>> cameras, Map<String, List<Camera>> found, boolean seasons, Map<Long, Species> records,
+			List<String> norms, boolean[] testPlot) {
 		for (boolean real : new boolean[] {true, false}) {
 			String scale = real ? "realistic" : "gameplay";
 			if (!scales.isBlank() && !scales.contains(scale)) {
@@ -161,6 +195,7 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 				if (places.isEmpty()) {
 					continue;
 				}
+				records.clear();
 				try (TestSingleplayerContext sp = context.worldBuilder().adjustSettings(ui -> select(ui, preset, presentDay)).create()) {
 					sp.getServer().runCommand("gamerule advance_time false");
 					sp.getServer().runCommand("gamerule advance_weather false");
@@ -180,18 +215,39 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 						return gen.settings().toString();
 					});
 					PolishForests.LOG.info("[slice] {} {}: world {}", scale, mode, world);
+					String season = sp.getServer().computeOnServer(s -> Seasons.provider().subSeason(s.overworld()).name()
+							.toLowerCase(Locale.ROOT));
+					ForestNorms.Aspect aspect = sp.getServer().computeOnServer(s -> ForestNorms.Aspect.of(Seasons.provider()
+							.subSeason(s.overworld())));
+					if (!testPlot[0]) {
+						int[] at = places.get(0).middle();
+						String checked = sp.getServer().computeOnServer(s -> NormsCensus.checkTestPlot(s.overworld(), at[0], at[1]));
+						PolishForests.LOG.info("[slice] {} {}: {}", scale, mode, checked);
+						testPlot[0] = true;
+					}
 					long[] before = counters();
 					int[] last = null;
 					for (SliceSites.Place p : places) {
 						String prefix = "slice_" + scale + "_" + mode + "_" + p.name();
+						NormsCensus.Context ctx = new NormsCensus.Context(scale, mode, p.name(), season, aspect);
+						StringBuilder census = new StringBuilder();
 						int[][] marks;
 						if (p.transect()) {
-							marks = sp.getServer().computeOnServer(s -> checkTransect(s, p));
+							TransectCheck check = sp.getServer().computeOnServer(s -> checkTransect(s, p));
+							marks = check.marks();
+							ForestNorms.Forest forest = NormsCensus.forest("oak_hornbeam_forest", presentDay);
+							norms.addAll(sp.getServer().computeOnServer(s -> NormsCensus.transect(s.overworld(), ctx, forest, p.x(), p.z(),
+									p.x2(), p.z2(), check.steps(), check.rank(), generator(s).settings().scale().landscape().local(), records,
+									census)));
 						} else {
 							String report = sp.getServer().computeOnServer(s -> checkSite(s, p));
 							PolishForests.LOG.info("[slice] {} {} {}: {}", scale, mode, p.name(), report);
 							marks = null;
+							ForestNorms.Forest forest = NormsCensus.forest(p.biome(), presentDay);
+							norms.addAll(sp.getServer().computeOnServer(s -> NormsCensus.plot(s.overworld(), ctx, forest, p.x(), p.z(), records,
+									census)));
 						}
+						PolishForests.LOG.info("[slice] {} {} norms card, {}", scale, mode, census);
 						if (!screenshots) {
 							continue;
 						}
@@ -213,22 +269,16 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 							last = shot(context, sp, c, prefix + "_" + c.name(), last);
 						}
 					}
-					String season = sp.getServer().computeOnServer(s -> Seasons.provider().name() + " "
+					String provider = sp.getServer().computeOnServer(s -> Seasons.provider().name() + " "
 							+ Seasons.provider().subSeason(s.overworld()));
 					long[] after = counters();
-					PolishForests.LOG.info("[slice] {} {}: season {}; {}", scale, mode, season, layers(before, after));
+					PolishForests.LOG.info("[slice] {} {}: season {}; {}", scale, mode, provider, layers(before, after));
 					if (after[after.length - 1] != before[before.length - 1]) {
 						throw new AssertionError(scale + " " + mode + ": habitats missing in " + (after[after.length - 1] - before[before.length - 1])
 								+ " chunks (HABITAT_MISS)");
 					}
 				}
 			}
-		}
-		if (find && !found.isEmpty()) {
-			Map<String, List<Camera>> all = new LinkedHashMap<>(cameras);
-			all.putAll(found);
-			SliceCameras.write(all);
-			PolishForests.LOG.info("[slice] cameras of {} places written to {}", found.size(), SliceCameras.file());
 		}
 	}
 
@@ -264,10 +314,14 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 	}
 
 	/**
-	 * The columns of the transect pass the four forests in order (rules of {@code SliceSitesTest}); returns the middle
-	 * {x, z} of the stretch of each forest (0–3) and the {x, z} of the three borders between them (4–6).
+	 * A checked transect: the middle {x, z} of the stretch of each forest (0–3) and the {x, z} of the three borders
+	 * between them (4–6); the number of steps of the line and the forest of each step (0–3, -1 another biome).
 	 */
-	private static int[][] checkTransect(MinecraftServer server, SliceSites.Place p) {
+	record TransectCheck(int[][] marks, int steps, int[] rank) {
+	}
+
+	/** The columns of the transect pass the four forests in order (rules of {@code SliceSitesTest}). */
+	private static TransectCheck checkTransect(MinecraftServer server, SliceSites.Place p) {
 		PolandChunkGenerator gen = generator(server);
 		long seed = server.overworld().getSeed();
 		LandscapeModel m = gen.model(seed);
@@ -281,12 +335,14 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 		int other = 0;
 		int otherRun = 0;
 		int[][] at = new int[n + 1][];
+		int[] ranks = new int[n + 1];
 		for (int i = 0; i <= n; i++) {
 			double x = Math.floor(p.x() + (p.x2() - p.x()) * (double) i / n) + 0.5;
 			double z = Math.floor(p.z() + (p.z2() - p.z()) * (double) i / n) + 0.5;
 			at[i] = new int[] {(int) Math.floor(x), (int) Math.floor(z)};
 			String b = Habitat.biome(k.classify(m.sample(x, z), x, z)).id();
 			int r = SliceSites.SEQUENCE.indexOf(b);
+			ranks[i] = r;
 			if (r < 0) {
 				other++;
 				if (++otherRun > MAX_OTHER_RUN[s]) {
@@ -324,7 +380,7 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 		}
 		PolishForests.LOG.info(String.format(Locale.ROOT, "[slice] %s %s: (%d, %d) -> (%d, %d), %d blocks:%s %d other",
 				p.realistic() ? "realistic" : "gameplay", p.name(), p.x(), p.z(), p.x2(), p.z2(), n + 1, report, other));
-		return marks;
+		return new TransectCheck(marks, n, ranks);
 	}
 
 	// ------------------------------------------------------------------ choosing the cameras (-PfindSliceCameras)

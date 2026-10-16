@@ -1,0 +1,721 @@
+scale,mode,place,forest,season,metric,part,value,norm,low,high,verdict,source
+realistic,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N1.trees_per_chunk,,8.14,15,12,18,out,[Ź Miścicki 2016; L 06 §6]
+realistic,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N2.a1_per_chunk,,5.32,3–5,2.4,6,tolerance,[L 06 §3.5; Ź Janów]
+realistic,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N2.a1_height,,9.5,28–40,22.4,48,out,[L 06 §3.5; Ź Janów]
+realistic,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N2.a2_per_chunk,,2.82,6–9,4.8,10.8,out,[L 06 §3.5; Ź Janów]
+realistic,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N2.a2_height,,6.55,15–22,12,26.4,out,[L 06 §3.5; Ź Janów]
+realistic,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N2.a2_share,,34.59,,,,none,
+realistic,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N2.top_height,,10.72,,,,none,
+realistic,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N3.oak,,28.85,20–50,16,60,in,"[L 06 §3.5, §6.2]"
+realistic,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N3.linden,,17.31,10–40,8,48,in,"[L 06 §3.5, §6.2]"
+realistic,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N3.maple_ash,,4.33,5–15,4,18,tolerance,"[L 06 §3.5, §6.2]"
+realistic,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N3.hornbeam,,42.31,,,,none,
+realistic,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N3.spruce,,0,0–30,0,36,in,"[L 06 §3.5, §6.2] (NE)"
+realistic,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N3.beech,,7.21,0–30,0,36,in,"[L 06 §3.5, §6.2] (W)"
+realistic,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N3.scots_pine,,0,,,,none,
+realistic,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N3.birch,,0,,,,none,
+realistic,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N3.other,,0,,,,none,
+realistic,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N4.canopy,,77.37,80–95,64,114,tolerance,[L 06 §4.1; Ź Janów]
+realistic,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N5.gap_share,,15.23,3–8,2.1,10.4,out,[Ź BPN; S]
+realistic,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N5.gap_diameter,,12.32,18–45,12.6,58.5,out,[Ź BPN]
+realistic,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N6.regeneration_per_ha,,0,,,,none,
+realistic,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N6.gap_ratio,,,≥ 4,3.2,inf,none,[Ź BPN]
+realistic,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N6.oak_per_ha,,0,0–2,0,2.4,in,[Ź Bobiec i in. 2011]
+realistic,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N6.pine_under_canopy_per_ha,,0,,,,none,
+realistic,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N7.understory,,12.86,10–40,8,48,in,[L 06 §4.1]
+realistic,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N7.shrubs_per_chunk,,1.95,,,,none,
+realistic,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N8.herbs,,29.65,20–60,16,72,in,[Ź Popiołek; L]
+realistic,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N8.bilberry,,0,,,,none,
+realistic,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N8.litter,,35.91,,,,none,
+realistic,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N9.moss,,0,5–20,4,24,out,[Ź Popiołek]
+realistic,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N10.objects_per_chunk,,0.54,2,1.4,2.6,out,[Ź GIOŚ 9170; Mróz i Pawlaczyk; Piętka; PW-5 b]
+realistic,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N10.logs_per_chunk,,0.33,,,,none,
+realistic,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N10.stumps_per_chunk,,0.2,,,,none,
+realistic,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N10.snags_per_chunk,,0,,,,none,
+realistic,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N10.volume,,42,100–160,70,208,out,[Ź GIOŚ 9170; Mróz i Pawlaczyk; Piętka; PW-5 b]
+realistic,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N10.coarse_per_ha,,6,≥ 5,3.5,inf,in,[Ź GIOŚ 9170]
+realistic,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N15.conifers,,0,,,,none,
+realistic,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N1.trees_per_chunk,,7.42,15,12,18,out,[Ź Miścicki 2016; L 06 §6]
+realistic,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N2.a1_per_chunk,,4.66,3–5,2.4,6,in,[L 06 §3.5; Ź Janów]
+realistic,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N2.a1_height,,9.52,28–40,22.4,48,out,[L 06 §3.5; Ź Janów]
+realistic,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N2.a2_per_chunk,,2.76,6–9,4.8,10.8,out,[L 06 §3.5; Ź Janów]
+realistic,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N2.a2_height,,6.57,15–22,12,26.4,out,[L 06 §3.5; Ź Janów]
+realistic,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N2.a2_share,,37.24,,,,none,
+realistic,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N2.top_height,,10.54,,,,none,
+realistic,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N3.oak,,33.52,20–50,16,60,in,"[L 06 §3.5, §6.2]"
+realistic,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N3.linden,,16.48,10–40,8,48,in,"[L 06 §3.5, §6.2]"
+realistic,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N3.maple_ash,,8.79,5–15,4,18,in,"[L 06 §3.5, §6.2]"
+realistic,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N3.hornbeam,,39.56,,,,none,
+realistic,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N3.spruce,,0,0–30,0,36,in,"[L 06 §3.5, §6.2] (NE)"
+realistic,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N3.beech,,1.65,0–30,0,36,in,"[L 06 §3.5, §6.2] (W)"
+realistic,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N3.scots_pine,,0,,,,none,
+realistic,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N3.birch,,0,,,,none,
+realistic,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N3.other,,0,,,,none,
+realistic,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N4.canopy,,74.62,80–95,64,114,tolerance,[L 06 §4.1; Ź Janów]
+realistic,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N5.gap_share,,18.78,3–8,2.1,10.4,out,[Ź BPN; S]
+realistic,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N5.gap_diameter,,13.44,18–45,12.6,58.5,tolerance,[Ź BPN]
+realistic,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N6.regeneration_per_ha,,0,,,,none,
+realistic,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N6.gap_ratio,,,≥ 4,3.2,inf,none,[Ź BPN]
+realistic,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N6.oak_per_ha,,0,0–2,0,2.4,in,[Ź Bobiec i in. 2011]
+realistic,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N6.pine_under_canopy_per_ha,,0,,,,none,
+realistic,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N7.understory,,12.3,10–40,8,48,in,[L 06 §4.1]
+realistic,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N7.shrubs_per_chunk,,1.74,,,,none,
+realistic,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N8.herbs,,30.25,20–60,16,72,in,[Ź Popiołek; L]
+realistic,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N8.bilberry,,0,,,,none,
+realistic,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N8.litter,,37.3,,,,none,
+realistic,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N9.moss,,0,5–20,4,24,out,[Ź Popiołek]
+realistic,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N10.objects_per_chunk,,0.59,2,1.4,2.6,out,[Ź GIOŚ 9170; Mróz i Pawlaczyk; Piętka; PW-5 b]
+realistic,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N10.logs_per_chunk,,0.31,,,,none,
+realistic,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N10.stumps_per_chunk,,0.28,,,,none,
+realistic,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N10.snags_per_chunk,,0,,,,none,
+realistic,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N10.volume,,34,100–160,70,208,out,[Ź GIOŚ 9170; Mróz i Pawlaczyk; Piętka; PW-5 b]
+realistic,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N10.coarse_per_ha,,2,≥ 5,3.5,inf,out,[Ź GIOŚ 9170]
+realistic,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N15.conifers,,0,,,,none,
+realistic,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N1.trees_per_chunk,,9.29,8–14,6.4,16.8,in,[Ź Miścicki 2016; L 06 §6]
+realistic,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N2.a1_per_chunk,,8.63,,,,none,
+realistic,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N2.a1_height,,10.1,,,,none,
+realistic,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N2.a2_per_chunk,,0.67,,,,none,
+realistic,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N2.a2_height,,6.65,,,,none,
+realistic,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N2.a2_share,,7.16,,,,none,
+realistic,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N2.top_height,,11.66,,,,none,
+realistic,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N3.oak,,0,,,,none,
+realistic,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N3.linden,,0,,,,none,
+realistic,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N3.maple_ash,,0,,,,none,
+realistic,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N3.hornbeam,,0,,,,none,
+realistic,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N3.spruce,,0,,,,none,
+realistic,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N3.beech,,0,,,,none,
+realistic,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N3.scots_pine,,93.77,80–95,64,114,in,"[L 06 §3.5, §6.2]"
+realistic,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N3.birch,,6.23,5–15,4,18,in,"[L 06 §3.5, §6.2]"
+realistic,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N3.other,,0,,,,none,
+realistic,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N4.canopy,,62.09,50–75,40,90,in,[L 06 §4.1; Ź Janów]
+realistic,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N5.gap_share,,33.63,,,,none,
+realistic,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N5.gap_diameter,,16.79,,,,none,
+realistic,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N6.regeneration_per_ha,,0,,,,none,
+realistic,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N6.gap_ratio,,,,,,none,
+realistic,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N6.oak_per_ha,,0,,,,none,
+realistic,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N6.pine_under_canopy_per_ha,,0,0,0,0,in,[Ź Paluch; Sokołowski]
+realistic,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N7.understory,,1.71,10–30,8,36,out,[L 06 §4.1]
+realistic,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N7.shrubs_per_chunk,,0.84,,,,none,
+realistic,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N8.herbs,,35.65,40–80,32,96,tolerance,[Ź Popiołek; L]
+realistic,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N8.bilberry,,31.78,40–70,32,84,out,[Ź Popiołek; L]
+realistic,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N8.litter,,0,,,,none,
+realistic,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N9.moss,,45.93,60–90,48,108,out,[Ź Popiołek]
+realistic,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N10.objects_per_chunk,,0.31,1,0.7,1.3,out,[Ź GIOŚ 9170; Mróz i Pawlaczyk; Piętka; PW-5 b] (Taborz)
+realistic,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N10.logs_per_chunk,,0.13,,,,none,
+realistic,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N10.stumps_per_chunk,,0.18,,,,none,
+realistic,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N10.snags_per_chunk,,0,,,,none,
+realistic,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N10.volume,,24,50–80,35,104,out,[Ź GIOŚ 9170; Mróz i Pawlaczyk; Piętka; PW-5 b] (Taborz)
+realistic,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N10.coarse_per_ha,,4,,,,none,
+realistic,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N15.conifers,,87.05,,,,none,
+realistic,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N1.trees_per_chunk,,11.9,8–14,6.4,16.8,in,[Ź Miścicki 2016; L 06 §6]
+realistic,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N2.a1_per_chunk,,11.08,,,,none,
+realistic,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N2.a1_height,,9.99,,,,none,
+realistic,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N2.a2_per_chunk,,0.82,,,,none,
+realistic,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N2.a2_height,,6.53,,,,none,
+realistic,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N2.a2_share,,6.88,,,,none,
+realistic,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N2.top_height,,11.92,,,,none,
+realistic,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N3.oak,,0,,,,none,
+realistic,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N3.linden,,0,,,,none,
+realistic,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N3.maple_ash,,0,,,,none,
+realistic,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N3.hornbeam,,0,,,,none,
+realistic,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N3.spruce,,0,,,,none,
+realistic,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N3.beech,,0,,,,none,
+realistic,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N3.scots_pine,,92.84,80–95,64,114,in,"[L 06 §3.5, §6.2]"
+realistic,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N3.birch,,7.16,5–15,4,18,in,"[L 06 §3.5, §6.2]"
+realistic,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N3.other,,0,,,,none,
+realistic,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N4.canopy,,78.85,50–75,40,90,tolerance,[L 06 §4.1; Ź Janów]
+realistic,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N5.gap_share,,10.22,,,,none,
+realistic,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N5.gap_diameter,,12.45,,,,none,
+realistic,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N6.regeneration_per_ha,,0,,,,none,
+realistic,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N6.gap_ratio,,,,,,none,
+realistic,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N6.oak_per_ha,,0,,,,none,
+realistic,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N6.pine_under_canopy_per_ha,,0,0,0,0,in,[Ź Paluch; Sokołowski]
+realistic,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N7.understory,,2.06,10–30,8,36,out,[L 06 §4.1]
+realistic,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N7.shrubs_per_chunk,,0.72,,,,none,
+realistic,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N8.herbs,,33.75,40–80,32,96,tolerance,[Ź Popiołek; L]
+realistic,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N8.bilberry,,29.35,40–70,32,84,out,[Ź Popiołek; L]
+realistic,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N8.litter,,0,,,,none,
+realistic,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N9.moss,,44.35,60–90,48,108,out,[Ź Popiołek]
+realistic,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N10.objects_per_chunk,,0.33,1,0.7,1.3,out,[Ź GIOŚ 9170; Mróz i Pawlaczyk; Piętka; PW-5 b] (Taborz)
+realistic,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N10.logs_per_chunk,,0.15,,,,none,
+realistic,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N10.stumps_per_chunk,,0.18,,,,none,
+realistic,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N10.snags_per_chunk,,0,,,,none,
+realistic,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N10.volume,,28,50–80,35,104,out,[Ź GIOŚ 9170; Mróz i Pawlaczyk; Piętka; PW-5 b] (Taborz)
+realistic,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N10.coarse_per_ha,,3,,,,none,
+realistic,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N15.conifers,,86.45,,,,none,
+realistic,natural,transect,oak_hornbeam_natural,mid_summer,N1.trees_per_chunk,fresh_pine_forest,12.06,,,,none,
+realistic,natural,transect,oak_hornbeam_natural,mid_summer,N15.conifers,fresh_pine_forest,81.43,,,,none,
+realistic,natural,transect,oak_hornbeam_natural,mid_summer,N4.canopy,fresh_pine_forest,81.02,,,,none,
+realistic,natural,transect,oak_hornbeam_natural,mid_summer,N7.understory,fresh_pine_forest,4.17,,,,none,
+realistic,natural,transect,oak_hornbeam_natural,mid_summer,N8.herbs,fresh_pine_forest,31.9,,,,none,
+realistic,natural,transect,oak_hornbeam_natural,mid_summer,N9.moss,fresh_pine_forest,42.8,,,,none,
+realistic,natural,transect,oak_hornbeam_natural,mid_summer,N8.litter,fresh_pine_forest,1.21,,,,none,
+realistic,natural,transect,oak_hornbeam_natural,mid_summer,N10.objects_per_chunk,fresh_pine_forest,0.52,,,,none,
+realistic,natural,transect,oak_hornbeam_natural,mid_summer,N1.trees_per_chunk,mixed_pine_forest,9.8,,,,none,
+realistic,natural,transect,oak_hornbeam_natural,mid_summer,N15.conifers,mixed_pine_forest,62.38,,,,none,
+realistic,natural,transect,oak_hornbeam_natural,mid_summer,N4.canopy,mixed_pine_forest,74.82,,,,none,
+realistic,natural,transect,oak_hornbeam_natural,mid_summer,N7.understory,mixed_pine_forest,6.27,,,,none,
+realistic,natural,transect,oak_hornbeam_natural,mid_summer,N8.herbs,mixed_pine_forest,35.7,,,,none,
+realistic,natural,transect,oak_hornbeam_natural,mid_summer,N9.moss,mixed_pine_forest,25.25,,,,none,
+realistic,natural,transect,oak_hornbeam_natural,mid_summer,N8.litter,mixed_pine_forest,12.47,,,,none,
+realistic,natural,transect,oak_hornbeam_natural,mid_summer,N10.objects_per_chunk,mixed_pine_forest,0.39,,,,none,
+realistic,natural,transect,oak_hornbeam_natural,mid_summer,N1.trees_per_chunk,mixed_forest,7.3,,,,none,
+realistic,natural,transect,oak_hornbeam_natural,mid_summer,N15.conifers,mixed_forest,35.93,,,,none,
+realistic,natural,transect,oak_hornbeam_natural,mid_summer,N4.canopy,mixed_forest,63.54,,,,none,
+realistic,natural,transect,oak_hornbeam_natural,mid_summer,N7.understory,mixed_forest,10.44,,,,none,
+realistic,natural,transect,oak_hornbeam_natural,mid_summer,N8.herbs,mixed_forest,22.13,,,,none,
+realistic,natural,transect,oak_hornbeam_natural,mid_summer,N9.moss,mixed_forest,10.03,,,,none,
+realistic,natural,transect,oak_hornbeam_natural,mid_summer,N8.litter,mixed_forest,35.62,,,,none,
+realistic,natural,transect,oak_hornbeam_natural,mid_summer,N10.objects_per_chunk,mixed_forest,0.57,,,,none,
+realistic,natural,transect,oak_hornbeam_natural,mid_summer,N1.trees_per_chunk,oak_hornbeam_forest,7.96,,,,none,
+realistic,natural,transect,oak_hornbeam_natural,mid_summer,N15.conifers,oak_hornbeam_forest,1.25,,,,none,
+realistic,natural,transect,oak_hornbeam_natural,mid_summer,N4.canopy,oak_hornbeam_forest,79.4,,,,none,
+realistic,natural,transect,oak_hornbeam_natural,mid_summer,N7.understory,oak_hornbeam_forest,18.15,,,,none,
+realistic,natural,transect,oak_hornbeam_natural,mid_summer,N8.herbs,oak_hornbeam_forest,25.77,,,,none,
+realistic,natural,transect,oak_hornbeam_natural,mid_summer,N9.moss,oak_hornbeam_forest,0,,,,none,
+realistic,natural,transect,oak_hornbeam_natural,mid_summer,N8.litter,oak_hornbeam_forest,35.02,,,,none,
+realistic,natural,transect,oak_hornbeam_natural,mid_summer,N10.objects_per_chunk,oak_hornbeam_forest,0.6,,,,none,
+realistic,natural,transect,oak_hornbeam_natural,mid_summer,N15.order,,1,1,1,1,in,[Ź Stefańska 2007]
+realistic,natural,transect,oak_hornbeam_natural,mid_summer,N15.transition_width,fresh_pine_forest>mixed_pine_forest,1.1,20–100,16,120,out,[Ź Stefańska 2007; S]
+realistic,natural,transect,oak_hornbeam_natural,mid_summer,N15.transition_width,mixed_pine_forest>mixed_forest,48.3,20–100,16,120,in,[Ź Stefańska 2007; S]
+realistic,natural,transect,oak_hornbeam_natural,mid_summer,N15.transition_width,mixed_forest>oak_hornbeam_forest,,20–100,16,120,none,[Ź Stefańska 2007; S]
+realistic,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N1.trees_per_chunk,,7.88,9–14,7.2,16.8,tolerance,[Ź Miścicki 2016; L 06 §6]
+realistic,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N2.a1_per_chunk,,5.17,,,,none,
+realistic,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N2.a1_height,,9.5,22–30,17.6,36,out,[L 06 §3.5; Ź Janów]
+realistic,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N2.a2_per_chunk,,2.71,,,,none,
+realistic,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N2.a2_height,,6.54,,,,none,
+realistic,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N2.a2_share,,34.42,,,,none,
+realistic,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N2.top_height,,10.67,,,,none,
+realistic,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N3.oak,,29.21,50–80,40,96,out,"[L 06 §3.5, §6.2]"
+realistic,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N3.linden,,17.33,,,,none,
+realistic,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N3.maple_ash,,4.46,,,,none,
+realistic,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N3.hornbeam,,41.58,,,,none,
+realistic,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N3.spruce,,0,,,,none,
+realistic,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N3.beech,,7.43,,,,none,
+realistic,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N3.scots_pine,,0,,,,none,
+realistic,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N3.birch,,0,,,,none,
+realistic,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N3.other,,0,,,,none,
+realistic,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N4.canopy,,75.79,75–90,60,108,in,[L 06 §4.1; Ź Janów]
+realistic,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N5.gap_share,,16.51,0,0,0,out,[Ź BPN]
+realistic,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N5.gap_diameter,,13.01,,,,none,
+realistic,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N6.regeneration_per_ha,,0,,,,none,
+realistic,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N6.gap_ratio,,,,,,none,
+realistic,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N6.oak_per_ha,,0,,,,none,
+realistic,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N6.pine_under_canopy_per_ha,,0,,,,none,
+realistic,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N7.understory,,13.96,10–30,8,36,in,[L 06 §4.1]
+realistic,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N7.shrubs_per_chunk,,2.12,,,,none,
+realistic,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N8.herbs,,30.05,,,,none,
+realistic,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N8.bilberry,,0.13,,,,none,
+realistic,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N8.litter,,34.06,,,,none,
+realistic,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N9.moss,,0,5–15,4,18,out,[Ź Popiołek]
+realistic,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N10.objects_per_chunk,,0.54,0.25,0.18,0.33,out,[Ź WISL 2010–2014; Piętka; L W13]
+realistic,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N10.logs_per_chunk,,0.33,,,,none,
+realistic,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N10.stumps_per_chunk,,0.2,,,,none,
+realistic,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N10.snags_per_chunk,,0,,,,none,
+realistic,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N10.volume,,42,10–16,7,20.8,out,[Ź WISL 2010–2014; Piętka; L W13]
+realistic,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N10.coarse_per_ha,,6,,,,none,
+realistic,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N15.conifers,,0,,,,none,
+realistic,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N1.trees_per_chunk,,7.19,9–14,7.2,16.8,out,[Ź Miścicki 2016; L 06 §6]
+realistic,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N2.a1_per_chunk,,4.51,,,,none,
+realistic,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N2.a1_height,,9.54,22–30,17.6,36,out,[L 06 §3.5; Ź Janów]
+realistic,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N2.a2_per_chunk,,2.69,,,,none,
+realistic,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N2.a2_height,,6.54,,,,none,
+realistic,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N2.a2_share,,37.37,,,,none,
+realistic,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N2.top_height,,10.51,,,,none,
+realistic,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N3.oak,,34.66,50–80,40,96,out,"[L 06 §3.5, §6.2]"
+realistic,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N3.linden,,15.34,,,,none,
+realistic,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N3.maple_ash,,9.09,,,,none,
+realistic,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N3.hornbeam,,39.2,,,,none,
+realistic,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N3.spruce,,0,,,,none,
+realistic,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N3.beech,,1.7,,,,none,
+realistic,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N3.scots_pine,,0,,,,none,
+realistic,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N3.birch,,0,,,,none,
+realistic,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N3.other,,0,,,,none,
+realistic,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N4.canopy,,72.69,75–90,60,108,tolerance,[L 06 §4.1; Ź Janów]
+realistic,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N5.gap_share,,21.46,0,0,0,out,[Ź BPN]
+realistic,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N5.gap_diameter,,14.2,,,,none,
+realistic,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N6.regeneration_per_ha,,0,,,,none,
+realistic,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N6.gap_ratio,,,,,,none,
+realistic,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N6.oak_per_ha,,0,,,,none,
+realistic,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N6.pine_under_canopy_per_ha,,0,,,,none,
+realistic,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N7.understory,,12.75,10–30,8,36,in,[L 06 §4.1]
+realistic,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N7.shrubs_per_chunk,,1.77,,,,none,
+realistic,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N8.herbs,,30.69,,,,none,
+realistic,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N8.bilberry,,0.08,,,,none,
+realistic,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N8.litter,,35.71,,,,none,
+realistic,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N9.moss,,0,5–15,4,18,out,[Ź Popiołek]
+realistic,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N10.objects_per_chunk,,0.59,0.25,0.18,0.33,out,[Ź WISL 2010–2014; Piętka; L W13]
+realistic,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N10.logs_per_chunk,,0.31,,,,none,
+realistic,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N10.stumps_per_chunk,,0.28,,,,none,
+realistic,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N10.snags_per_chunk,,0,,,,none,
+realistic,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N10.volume,,34,10–16,7,20.8,out,[Ź WISL 2010–2014; Piętka; L W13]
+realistic,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N10.coarse_per_ha,,2,,,,none,
+realistic,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N15.conifers,,0,,,,none,
+realistic,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N1.trees_per_chunk,,8.93,8–16,6.4,19.2,in,[Ź Miścicki 2016; L 06 §6]
+realistic,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N2.a1_per_chunk,,8.29,,,,none,
+realistic,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N2.a1_height,,10.07,20–28,16,33.6,out,[L 06 §3.5; Ź Janów]
+realistic,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N2.a2_per_chunk,,0.64,,,,none,
+realistic,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N2.a2_height,,6.68,,,,none,
+realistic,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N2.a2_share,,7.16,0–20,0,24,in,[L 06 §3.5; Ź Janów]
+realistic,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N2.top_height,,11.62,,,,none,
+realistic,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N3.oak,,0,,,,none,
+realistic,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N3.linden,,0,,,,none,
+realistic,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N3.maple_ash,,0,,,,none,
+realistic,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N3.hornbeam,,0,,,,none,
+realistic,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N3.spruce,,0,,,,none,
+realistic,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N3.beech,,0,,,,none,
+realistic,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N3.scots_pine,,93.83,80–95,64,114,in,"[L 06 §3.5, §6.2]"
+realistic,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N3.birch,,6.17,5–15,4,18,in,"[L 06 §3.5, §6.2]"
+realistic,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N3.other,,0,,,,none,
+realistic,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N4.canopy,,60.65,60–80,48,96,in,[L 06 §4.1; Ź Janów]
+realistic,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N5.gap_share,,34.72,0,0,0,out,[Ź BPN]
+realistic,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N5.gap_diameter,,16.26,,,,none,
+realistic,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N6.regeneration_per_ha,,0,,,,none,
+realistic,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N6.gap_ratio,,,,,,none,
+realistic,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N6.oak_per_ha,,0,,,,none,
+realistic,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N6.pine_under_canopy_per_ha,,0,0,0,0,in,[Ź Paluch; Sokołowski]
+realistic,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N7.understory,,2.76,5–30,4,36,out,[L 06 §4.1]
+realistic,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N7.shrubs_per_chunk,,1.13,,,,none,
+realistic,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N8.herbs,,35.94,40–80,32,96,tolerance,[Ź Popiołek; L]
+realistic,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N8.bilberry,,31.28,40–70,32,84,out,[Ź Popiołek; L]
+realistic,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N8.litter,,0,,,,none,
+realistic,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N9.moss,,44.26,60–95,48,114,out,[Ź Popiołek]
+realistic,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N10.objects_per_chunk,,0.31,,,,none,
+realistic,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N10.logs_per_chunk,,0.13,0.1,0.07,0.13,tolerance,[Ź WISL 2010–2014; Piętka; L W13]
+realistic,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N10.stumps_per_chunk,,0.18,1–2,0.7,2.6,out,[Ź WISL 2010–2014; Piętka; L W13]
+realistic,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N10.snags_per_chunk,,0,,,,none,
+realistic,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N10.volume,,24,5–11,3.5,14.3,out,[Ź WISL 2010–2014; Piętka; L W13]
+realistic,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N10.coarse_per_ha,,4,,,,none,
+realistic,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N15.conifers,,87.11,,,,none,
+realistic,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N1.trees_per_chunk,,11.9,8–16,6.4,19.2,in,[Ź Miścicki 2016; L 06 §6]
+realistic,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N2.a1_per_chunk,,11.08,,,,none,
+realistic,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N2.a1_height,,9.99,20–28,16,33.6,out,[L 06 §3.5; Ź Janów]
+realistic,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N2.a2_per_chunk,,0.82,,,,none,
+realistic,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N2.a2_height,,6.53,,,,none,
+realistic,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N2.a2_share,,6.88,0–20,0,24,in,[L 06 §3.5; Ź Janów]
+realistic,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N2.top_height,,11.92,,,,none,
+realistic,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N3.oak,,0,,,,none,
+realistic,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N3.linden,,0,,,,none,
+realistic,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N3.maple_ash,,0,,,,none,
+realistic,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N3.hornbeam,,0,,,,none,
+realistic,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N3.spruce,,0,,,,none,
+realistic,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N3.beech,,0,,,,none,
+realistic,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N3.scots_pine,,92.84,80–95,64,114,in,"[L 06 §3.5, §6.2]"
+realistic,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N3.birch,,7.16,5–15,4,18,in,"[L 06 §3.5, §6.2]"
+realistic,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N3.other,,0,,,,none,
+realistic,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N4.canopy,,78.85,60–80,48,96,in,[L 06 §4.1; Ź Janów]
+realistic,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N5.gap_share,,10.22,0,0,0,out,[Ź BPN]
+realistic,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N5.gap_diameter,,12.45,,,,none,
+realistic,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N6.regeneration_per_ha,,0,,,,none,
+realistic,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N6.gap_ratio,,,,,,none,
+realistic,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N6.oak_per_ha,,0,,,,none,
+realistic,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N6.pine_under_canopy_per_ha,,0,0,0,0,in,[Ź Paluch; Sokołowski]
+realistic,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N7.understory,,2.06,5–30,4,36,out,[L 06 §4.1]
+realistic,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N7.shrubs_per_chunk,,0.72,,,,none,
+realistic,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N8.herbs,,33.75,40–80,32,96,tolerance,[Ź Popiołek; L]
+realistic,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N8.bilberry,,29.35,40–70,32,84,out,[Ź Popiołek; L]
+realistic,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N8.litter,,0,,,,none,
+realistic,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N9.moss,,44.35,60–95,48,114,out,[Ź Popiołek]
+realistic,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N10.objects_per_chunk,,0.33,,,,none,
+realistic,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N10.logs_per_chunk,,0.15,0.1,0.07,0.13,out,[Ź WISL 2010–2014; Piętka; L W13]
+realistic,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N10.stumps_per_chunk,,0.18,1–2,0.7,2.6,out,[Ź WISL 2010–2014; Piętka; L W13]
+realistic,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N10.snags_per_chunk,,0,,,,none,
+realistic,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N10.volume,,28,5–11,3.5,14.3,out,[Ź WISL 2010–2014; Piętka; L W13]
+realistic,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N10.coarse_per_ha,,3,,,,none,
+realistic,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N15.conifers,,86.45,,,,none,
+realistic,present_day,transect,oak_hornbeam_managed,mid_summer,N1.trees_per_chunk,fresh_pine_forest,12.06,,,,none,
+realistic,present_day,transect,oak_hornbeam_managed,mid_summer,N15.conifers,fresh_pine_forest,81.43,,,,none,
+realistic,present_day,transect,oak_hornbeam_managed,mid_summer,N4.canopy,fresh_pine_forest,81.02,,,,none,
+realistic,present_day,transect,oak_hornbeam_managed,mid_summer,N7.understory,fresh_pine_forest,4.17,,,,none,
+realistic,present_day,transect,oak_hornbeam_managed,mid_summer,N8.herbs,fresh_pine_forest,31.9,,,,none,
+realistic,present_day,transect,oak_hornbeam_managed,mid_summer,N9.moss,fresh_pine_forest,42.8,,,,none,
+realistic,present_day,transect,oak_hornbeam_managed,mid_summer,N8.litter,fresh_pine_forest,1.21,,,,none,
+realistic,present_day,transect,oak_hornbeam_managed,mid_summer,N10.objects_per_chunk,fresh_pine_forest,0.52,,,,none,
+realistic,present_day,transect,oak_hornbeam_managed,mid_summer,N1.trees_per_chunk,mixed_pine_forest,9.8,,,,none,
+realistic,present_day,transect,oak_hornbeam_managed,mid_summer,N15.conifers,mixed_pine_forest,62.38,,,,none,
+realistic,present_day,transect,oak_hornbeam_managed,mid_summer,N4.canopy,mixed_pine_forest,74.82,,,,none,
+realistic,present_day,transect,oak_hornbeam_managed,mid_summer,N7.understory,mixed_pine_forest,6.27,,,,none,
+realistic,present_day,transect,oak_hornbeam_managed,mid_summer,N8.herbs,mixed_pine_forest,35.7,,,,none,
+realistic,present_day,transect,oak_hornbeam_managed,mid_summer,N9.moss,mixed_pine_forest,25.25,,,,none,
+realistic,present_day,transect,oak_hornbeam_managed,mid_summer,N8.litter,mixed_pine_forest,12.47,,,,none,
+realistic,present_day,transect,oak_hornbeam_managed,mid_summer,N10.objects_per_chunk,mixed_pine_forest,0.39,,,,none,
+realistic,present_day,transect,oak_hornbeam_managed,mid_summer,N1.trees_per_chunk,mixed_forest,7.3,,,,none,
+realistic,present_day,transect,oak_hornbeam_managed,mid_summer,N15.conifers,mixed_forest,35.93,,,,none,
+realistic,present_day,transect,oak_hornbeam_managed,mid_summer,N4.canopy,mixed_forest,63.54,,,,none,
+realistic,present_day,transect,oak_hornbeam_managed,mid_summer,N7.understory,mixed_forest,10.44,,,,none,
+realistic,present_day,transect,oak_hornbeam_managed,mid_summer,N8.herbs,mixed_forest,22.13,,,,none,
+realistic,present_day,transect,oak_hornbeam_managed,mid_summer,N9.moss,mixed_forest,10.03,,,,none,
+realistic,present_day,transect,oak_hornbeam_managed,mid_summer,N8.litter,mixed_forest,35.62,,,,none,
+realistic,present_day,transect,oak_hornbeam_managed,mid_summer,N10.objects_per_chunk,mixed_forest,0.57,,,,none,
+realistic,present_day,transect,oak_hornbeam_managed,mid_summer,N1.trees_per_chunk,oak_hornbeam_forest,7.96,,,,none,
+realistic,present_day,transect,oak_hornbeam_managed,mid_summer,N15.conifers,oak_hornbeam_forest,1.25,,,,none,
+realistic,present_day,transect,oak_hornbeam_managed,mid_summer,N4.canopy,oak_hornbeam_forest,79.4,,,,none,
+realistic,present_day,transect,oak_hornbeam_managed,mid_summer,N7.understory,oak_hornbeam_forest,18.15,,,,none,
+realistic,present_day,transect,oak_hornbeam_managed,mid_summer,N8.herbs,oak_hornbeam_forest,25.77,,,,none,
+realistic,present_day,transect,oak_hornbeam_managed,mid_summer,N9.moss,oak_hornbeam_forest,0,,,,none,
+realistic,present_day,transect,oak_hornbeam_managed,mid_summer,N8.litter,oak_hornbeam_forest,35.02,,,,none,
+realistic,present_day,transect,oak_hornbeam_managed,mid_summer,N10.objects_per_chunk,oak_hornbeam_forest,0.6,,,,none,
+realistic,present_day,transect,oak_hornbeam_managed,mid_summer,N15.order,,1,1,1,1,in,[Ź Stefańska 2007]
+realistic,present_day,transect,oak_hornbeam_managed,mid_summer,N15.transition_width,fresh_pine_forest>mixed_pine_forest,1.1,20–100,16,120,out,[Ź Stefańska 2007; S]
+realistic,present_day,transect,oak_hornbeam_managed,mid_summer,N15.transition_width,mixed_pine_forest>mixed_forest,48.3,20–100,16,120,in,[Ź Stefańska 2007; S]
+realistic,present_day,transect,oak_hornbeam_managed,mid_summer,N15.transition_width,mixed_forest>oak_hornbeam_forest,,20–100,16,120,none,[Ź Stefańska 2007; S]
+gameplay,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N1.trees_per_chunk,,8.45,15,12,18,out,[Ź Miścicki 2016; L 06 §6]
+gameplay,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N2.a1_per_chunk,,7.42,3–5,2.4,6,out,[L 06 §3.5; Ź Janów]
+gameplay,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N2.a1_height,,8.75,28–40,22.4,48,out,[L 06 §3.5; Ź Janów]
+gameplay,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N2.a2_per_chunk,,1.02,6–9,4.8,10.8,out,[L 06 §3.5; Ź Janów]
+gameplay,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N2.a2_height,,5.58,15–22,12,26.4,out,[L 06 §3.5; Ź Janów]
+gameplay,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N2.a2_share,,12.12,,,,none,
+gameplay,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N2.top_height,,10.47,,,,none,
+gameplay,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N3.oak,,32.07,20–50,16,60,in,"[L 06 §3.5, §6.2]"
+gameplay,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N3.linden,,21.03,10–40,8,48,in,"[L 06 §3.5, §6.2]"
+gameplay,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N3.maple_ash,,6.9,5–15,4,18,in,"[L 06 §3.5, §6.2]"
+gameplay,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N3.hornbeam,,38.62,,,,none,
+gameplay,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N3.spruce,,0,0–30,0,36,in,"[L 06 §3.5, §6.2] (NE)"
+gameplay,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N3.beech,,1.38,0–30,0,36,in,"[L 06 §3.5, §6.2] (W)"
+gameplay,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N3.scots_pine,,0,,,,none,
+gameplay,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N3.birch,,0,,,,none,
+gameplay,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N3.other,,0,,,,none,
+gameplay,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N4.canopy,,78.19,80–95,64,114,tolerance,[L 06 §4.1; Ź Janów]
+gameplay,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N5.gap_share,,14.96,3–8,2.1,10.4,out,[Ź BPN; S]
+gameplay,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N5.gap_diameter,,11.57,18–45,12.6,58.5,out,[Ź BPN]
+gameplay,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N6.regeneration_per_ha,,0,,,,none,
+gameplay,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N6.gap_ratio,,,≥ 4,3.2,inf,none,[Ź BPN]
+gameplay,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N6.oak_per_ha,,0,0–2,0,2.4,in,[Ź Bobiec i in. 2011]
+gameplay,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N6.pine_under_canopy_per_ha,,0,,,,none,
+gameplay,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N7.understory,,13.14,10–40,8,48,in,[L 06 §4.1]
+gameplay,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N7.shrubs_per_chunk,,1.95,,,,none,
+gameplay,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N8.herbs,,29.61,20–60,16,72,in,[Ź Popiołek; L]
+gameplay,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N8.bilberry,,0.03,,,,none,
+gameplay,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N8.litter,,36.28,,,,none,
+gameplay,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N9.moss,,0.01,5–20,4,24,out,[Ź Popiołek]
+gameplay,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N10.objects_per_chunk,,0.54,2,1.4,2.6,out,[Ź GIOŚ 9170; Mróz i Pawlaczyk; Piętka; PW-5 b]
+gameplay,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N10.logs_per_chunk,,0.28,,,,none,
+gameplay,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N10.stumps_per_chunk,,0.26,,,,none,
+gameplay,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N10.snags_per_chunk,,0,,,,none,
+gameplay,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N10.volume,,39,100–160,70,208,out,[Ź GIOŚ 9170; Mróz i Pawlaczyk; Piętka; PW-5 b]
+gameplay,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N10.coarse_per_ha,,5,≥ 5,3.5,inf,in,[Ź GIOŚ 9170]
+gameplay,natural,oak_hornbeam_1,oak_hornbeam_natural,mid_summer,N15.conifers,,0,,,,none,
+gameplay,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N1.trees_per_chunk,,7.68,15,12,18,out,[Ź Miścicki 2016; L 06 §6]
+gameplay,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N2.a1_per_chunk,,5.5,3–5,2.4,6,tolerance,[L 06 §3.5; Ź Janów]
+gameplay,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N2.a1_height,,10.15,28–40,22.4,48,out,[L 06 §3.5; Ź Janów]
+gameplay,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N2.a2_per_chunk,,2.18,6–9,4.8,10.8,out,[L 06 §3.5; Ź Janów]
+gameplay,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N2.a2_height,,6.52,15–22,12,26.4,out,[L 06 §3.5; Ź Janów]
+gameplay,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N2.a2_share,,28.33,,,,none,
+gameplay,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N2.top_height,,11.97,,,,none,
+gameplay,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N3.oak,,26.51,20–50,16,60,in,"[L 06 §3.5, §6.2]"
+gameplay,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N3.linden,,19.07,10–40,8,48,in,"[L 06 §3.5, §6.2]"
+gameplay,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N3.maple_ash,,5.12,5–15,4,18,in,"[L 06 §3.5, §6.2]"
+gameplay,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N3.hornbeam,,31.16,,,,none,
+gameplay,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N3.spruce,,0,0–30,0,36,in,"[L 06 §3.5, §6.2] (NE)"
+gameplay,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N3.beech,,17.21,0–30,0,36,in,"[L 06 §3.5, §6.2] (W)"
+gameplay,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N3.scots_pine,,0.93,,,,none,
+gameplay,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N3.birch,,0,,,,none,
+gameplay,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N3.other,,0,,,,none,
+gameplay,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N4.canopy,,76.17,80–95,64,114,tolerance,[L 06 §4.1; Ź Janów]
+gameplay,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N5.gap_share,,18.1,3–8,2.1,10.4,out,[Ź BPN; S]
+gameplay,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N5.gap_diameter,,14.82,18–45,12.6,58.5,tolerance,[Ź BPN]
+gameplay,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N6.regeneration_per_ha,,0,,,,none,
+gameplay,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N6.gap_ratio,,,≥ 4,3.2,inf,none,[Ź BPN]
+gameplay,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N6.oak_per_ha,,0,0–2,0,2.4,in,[Ź Bobiec i in. 2011]
+gameplay,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N6.pine_under_canopy_per_ha,,0,,,,none,
+gameplay,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N7.understory,,14.85,10–40,8,48,in,[L 06 §4.1]
+gameplay,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N7.shrubs_per_chunk,,2.2,,,,none,
+gameplay,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N8.herbs,,31.53,20–60,16,72,in,[Ź Popiołek; L]
+gameplay,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N8.bilberry,,0,,,,none,
+gameplay,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N8.litter,,38.37,,,,none,
+gameplay,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N9.moss,,0.32,5–20,4,24,out,[Ź Popiołek]
+gameplay,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N10.objects_per_chunk,,0.41,2,1.4,2.6,out,[Ź GIOŚ 9170; Mróz i Pawlaczyk; Piętka; PW-5 b]
+gameplay,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N10.logs_per_chunk,,0.2,,,,none,
+gameplay,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N10.stumps_per_chunk,,0.2,,,,none,
+gameplay,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N10.snags_per_chunk,,0,,,,none,
+gameplay,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N10.volume,,26,100–160,70,208,out,[Ź GIOŚ 9170; Mróz i Pawlaczyk; Piętka; PW-5 b]
+gameplay,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N10.coarse_per_ha,,3,≥ 5,3.5,inf,out,[Ź GIOŚ 9170]
+gameplay,natural,oak_hornbeam_2,oak_hornbeam_natural,mid_summer,N15.conifers,,0.67,,,,none,
+gameplay,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N1.trees_per_chunk,,11.39,8–14,6.4,16.8,in,[Ź Miścicki 2016; L 06 §6]
+gameplay,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N2.a1_per_chunk,,10.6,,,,none,
+gameplay,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N2.a1_height,,9.99,,,,none,
+gameplay,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N2.a2_per_chunk,,0.79,,,,none,
+gameplay,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N2.a2_height,,6.74,,,,none,
+gameplay,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N2.a2_share,,6.97,,,,none,
+gameplay,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N2.top_height,,11.77,,,,none,
+gameplay,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N3.oak,,0,,,,none,
+gameplay,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N3.linden,,0,,,,none,
+gameplay,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N3.maple_ash,,0,,,,none,
+gameplay,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N3.hornbeam,,0,,,,none,
+gameplay,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N3.spruce,,0,,,,none,
+gameplay,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N3.beech,,0.24,,,,none,
+gameplay,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N3.scots_pine,,94.2,80–95,64,114,in,"[L 06 §3.5, §6.2]"
+gameplay,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N3.birch,,5.56,5–15,4,18,in,"[L 06 §3.5, §6.2]"
+gameplay,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N3.other,,0,,,,none,
+gameplay,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N4.canopy,,77.12,50–75,40,90,tolerance,[L 06 §4.1; Ź Janów]
+gameplay,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N5.gap_share,,14.63,,,,none,
+gameplay,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N5.gap_diameter,,11.75,,,,none,
+gameplay,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N6.regeneration_per_ha,,0,,,,none,
+gameplay,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N6.gap_ratio,,,,,,none,
+gameplay,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N6.oak_per_ha,,0,,,,none,
+gameplay,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N6.pine_under_canopy_per_ha,,0,0,0,0,in,[Ź Paluch; Sokołowski]
+gameplay,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N7.understory,,3.46,10–30,8,36,out,[L 06 §4.1]
+gameplay,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N7.shrubs_per_chunk,,1.1,,,,none,
+gameplay,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N8.herbs,,34.19,40–80,32,96,tolerance,[Ź Popiołek; L]
+gameplay,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N8.bilberry,,29.62,40–70,32,84,out,[Ź Popiołek; L]
+gameplay,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N8.litter,,0.19,,,,none,
+gameplay,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N9.moss,,44.17,60–90,48,108,out,[Ź Popiołek]
+gameplay,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N10.objects_per_chunk,,0.26,1,0.7,1.3,out,[Ź GIOŚ 9170; Mróz i Pawlaczyk; Piętka; PW-5 b] (Taborz)
+gameplay,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N10.logs_per_chunk,,0.13,,,,none,
+gameplay,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N10.stumps_per_chunk,,0.13,,,,none,
+gameplay,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N10.snags_per_chunk,,0,,,,none,
+gameplay,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N10.volume,,18,50–80,35,104,out,[Ź GIOŚ 9170; Mróz i Pawlaczyk; Piętka; PW-5 b] (Taborz)
+gameplay,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N10.coarse_per_ha,,2,,,,none,
+gameplay,natural,fresh_pine_1,fresh_pine_natural,mid_summer,N15.conifers,,87.87,,,,none,
+gameplay,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N1.trees_per_chunk,,10.7,8–14,6.4,16.8,in,[Ź Miścicki 2016; L 06 §6]
+gameplay,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N2.a1_per_chunk,,10.09,,,,none,
+gameplay,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N2.a1_height,,10.04,,,,none,
+gameplay,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N2.a2_per_chunk,,0.61,,,,none,
+gameplay,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N2.a2_height,,6.54,,,,none,
+gameplay,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N2.a2_share,,5.74,,,,none,
+gameplay,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N2.top_height,,11.84,,,,none,
+gameplay,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N3.oak,,0,,,,none,
+gameplay,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N3.linden,,0,,,,none,
+gameplay,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N3.maple_ash,,0,,,,none,
+gameplay,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N3.hornbeam,,0,,,,none,
+gameplay,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N3.spruce,,0,,,,none,
+gameplay,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N3.beech,,0,,,,none,
+gameplay,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N3.scots_pine,,93.91,80–95,64,114,in,"[L 06 §3.5, §6.2]"
+gameplay,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N3.birch,,6.09,5–15,4,18,in,"[L 06 §3.5, §6.2]"
+gameplay,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N3.other,,0,,,,none,
+gameplay,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N4.canopy,,70.63,50–75,40,90,in,[L 06 §4.1; Ź Janów]
+gameplay,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N5.gap_share,,23.21,,,,none,
+gameplay,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N5.gap_diameter,,13.74,,,,none,
+gameplay,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N6.regeneration_per_ha,,0,,,,none,
+gameplay,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N6.gap_ratio,,,,,,none,
+gameplay,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N6.oak_per_ha,,0,,,,none,
+gameplay,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N6.pine_under_canopy_per_ha,,0,0,0,0,in,[Ź Paluch; Sokołowski]
+gameplay,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N7.understory,,2.14,10–30,8,36,out,[L 06 §4.1]
+gameplay,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N7.shrubs_per_chunk,,0.82,,,,none,
+gameplay,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N8.herbs,,33.29,40–80,32,96,tolerance,[Ź Popiołek; L]
+gameplay,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N8.bilberry,,28.17,40–70,32,84,out,[Ź Popiołek; L]
+gameplay,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N8.litter,,0,,,,none,
+gameplay,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N9.moss,,46.71,60–90,48,108,out,[Ź Popiołek]
+gameplay,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N10.objects_per_chunk,,0.23,1,0.7,1.3,out,[Ź GIOŚ 9170; Mróz i Pawlaczyk; Piętka; PW-5 b] (Taborz)
+gameplay,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N10.logs_per_chunk,,0.08,,,,none,
+gameplay,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N10.stumps_per_chunk,,0.15,,,,none,
+gameplay,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N10.snags_per_chunk,,0,,,,none,
+gameplay,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N10.volume,,13,50–80,35,104,out,[Ź GIOŚ 9170; Mróz i Pawlaczyk; Piętka; PW-5 b] (Taborz)
+gameplay,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N10.coarse_per_ha,,2,,,,none,
+gameplay,natural,fresh_pine_2,fresh_pine_natural,mid_summer,N15.conifers,,88.52,,,,none,
+gameplay,natural,transect,oak_hornbeam_natural,mid_summer,N1.trees_per_chunk,fresh_pine_forest,11.1,,,,none,
+gameplay,natural,transect,oak_hornbeam_natural,mid_summer,N15.conifers,fresh_pine_forest,88.1,,,,none,
+gameplay,natural,transect,oak_hornbeam_natural,mid_summer,N4.canopy,fresh_pine_forest,77.5,,,,none,
+gameplay,natural,transect,oak_hornbeam_natural,mid_summer,N7.understory,fresh_pine_forest,1.34,,,,none,
+gameplay,natural,transect,oak_hornbeam_natural,mid_summer,N8.herbs,fresh_pine_forest,42.41,,,,none,
+gameplay,natural,transect,oak_hornbeam_natural,mid_summer,N9.moss,fresh_pine_forest,39.94,,,,none,
+gameplay,natural,transect,oak_hornbeam_natural,mid_summer,N8.litter,fresh_pine_forest,0.31,,,,none,
+gameplay,natural,transect,oak_hornbeam_natural,mid_summer,N10.objects_per_chunk,fresh_pine_forest,0.79,,,,none,
+gameplay,natural,transect,oak_hornbeam_natural,mid_summer,N1.trees_per_chunk,mixed_pine_forest,9.25,,,,none,
+gameplay,natural,transect,oak_hornbeam_natural,mid_summer,N15.conifers,mixed_pine_forest,71.43,,,,none,
+gameplay,natural,transect,oak_hornbeam_natural,mid_summer,N4.canopy,mixed_pine_forest,68.11,,,,none,
+gameplay,natural,transect,oak_hornbeam_natural,mid_summer,N7.understory,mixed_pine_forest,1.14,,,,none,
+gameplay,natural,transect,oak_hornbeam_natural,mid_summer,N8.herbs,mixed_pine_forest,29.62,,,,none,
+gameplay,natural,transect,oak_hornbeam_natural,mid_summer,N9.moss,mixed_pine_forest,36.02,,,,none,
+gameplay,natural,transect,oak_hornbeam_natural,mid_summer,N8.litter,mixed_pine_forest,9.6,,,,none,
+gameplay,natural,transect,oak_hornbeam_natural,mid_summer,N10.objects_per_chunk,mixed_pine_forest,0.26,,,,none,
+gameplay,natural,transect,oak_hornbeam_natural,mid_summer,N1.trees_per_chunk,mixed_forest,9.08,,,,none,
+gameplay,natural,transect,oak_hornbeam_natural,mid_summer,N15.conifers,mixed_forest,31.58,,,,none,
+gameplay,natural,transect,oak_hornbeam_natural,mid_summer,N4.canopy,mixed_forest,75.82,,,,none,
+gameplay,natural,transect,oak_hornbeam_natural,mid_summer,N7.understory,mixed_forest,8.78,,,,none,
+gameplay,natural,transect,oak_hornbeam_natural,mid_summer,N8.herbs,mixed_forest,25.68,,,,none,
+gameplay,natural,transect,oak_hornbeam_natural,mid_summer,N9.moss,mixed_forest,11.02,,,,none,
+gameplay,natural,transect,oak_hornbeam_natural,mid_summer,N8.litter,mixed_forest,34.73,,,,none,
+gameplay,natural,transect,oak_hornbeam_natural,mid_summer,N10.objects_per_chunk,mixed_forest,0.96,,,,none,
+gameplay,natural,transect,oak_hornbeam_natural,mid_summer,N1.trees_per_chunk,oak_hornbeam_forest,7.26,,,,none,
+gameplay,natural,transect,oak_hornbeam_natural,mid_summer,N15.conifers,oak_hornbeam_forest,0,,,,none,
+gameplay,natural,transect,oak_hornbeam_natural,mid_summer,N4.canopy,oak_hornbeam_forest,77,,,,none,
+gameplay,natural,transect,oak_hornbeam_natural,mid_summer,N7.understory,oak_hornbeam_forest,23.21,,,,none,
+gameplay,natural,transect,oak_hornbeam_natural,mid_summer,N8.herbs,oak_hornbeam_forest,26.05,,,,none,
+gameplay,natural,transect,oak_hornbeam_natural,mid_summer,N9.moss,oak_hornbeam_forest,0.63,,,,none,
+gameplay,natural,transect,oak_hornbeam_natural,mid_summer,N8.litter,oak_hornbeam_forest,32.04,,,,none,
+gameplay,natural,transect,oak_hornbeam_natural,mid_summer,N10.objects_per_chunk,oak_hornbeam_forest,0.81,,,,none,
+gameplay,natural,transect,oak_hornbeam_natural,mid_summer,N15.order,,1,1,1,1,in,[Ź Stefańska 2007]
+gameplay,natural,transect,oak_hornbeam_natural,mid_summer,N15.transition_width,fresh_pine_forest>mixed_pine_forest,2.2,20–100,16,120,out,[Ź Stefańska 2007; S]
+gameplay,natural,transect,oak_hornbeam_natural,mid_summer,N15.transition_width,mixed_pine_forest>mixed_forest,35.16,20–100,16,120,in,[Ź Stefańska 2007; S]
+gameplay,natural,transect,oak_hornbeam_natural,mid_summer,N15.transition_width,mixed_forest>oak_hornbeam_forest,,20–100,16,120,none,[Ź Stefańska 2007; S]
+gameplay,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N1.trees_per_chunk,,8.42,9–14,7.2,16.8,tolerance,[Ź Miścicki 2016; L 06 §6]
+gameplay,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N2.a1_per_chunk,,7.42,,,,none,
+gameplay,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N2.a1_height,,8.77,22–30,17.6,36,out,[L 06 §3.5; Ź Janów]
+gameplay,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N2.a2_per_chunk,,1,,,,none,
+gameplay,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N2.a2_height,,5.59,,,,none,
+gameplay,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N2.a2_share,,11.85,,,,none,
+gameplay,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N2.top_height,,10.49,,,,none,
+gameplay,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N3.oak,,31.72,50–80,40,96,out,"[L 06 §3.5, §6.2]"
+gameplay,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N3.linden,,21.03,,,,none,
+gameplay,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N3.maple_ash,,6.9,,,,none,
+gameplay,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N3.hornbeam,,38.97,,,,none,
+gameplay,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N3.spruce,,0,,,,none,
+gameplay,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N3.beech,,1.38,,,,none,
+gameplay,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N3.scots_pine,,0,,,,none,
+gameplay,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N3.birch,,0,,,,none,
+gameplay,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N3.other,,0,,,,none,
+gameplay,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N4.canopy,,78.12,75–90,60,108,in,[L 06 §4.1; Ź Janów]
+gameplay,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N5.gap_share,,15.1,0,0,0,out,[Ź BPN]
+gameplay,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N5.gap_diameter,,11.64,,,,none,
+gameplay,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N6.regeneration_per_ha,,0,,,,none,
+gameplay,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N6.gap_ratio,,,,,,none,
+gameplay,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N6.oak_per_ha,,0,,,,none,
+gameplay,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N6.pine_under_canopy_per_ha,,0,,,,none,
+gameplay,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N7.understory,,13.18,10–30,8,36,in,[L 06 §4.1]
+gameplay,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N7.shrubs_per_chunk,,1.95,,,,none,
+gameplay,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N8.herbs,,29.68,,,,none,
+gameplay,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N8.bilberry,,0.03,,,,none,
+gameplay,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N8.litter,,36.19,,,,none,
+gameplay,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N9.moss,,0.01,5–15,4,18,out,[Ź Popiołek]
+gameplay,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N10.objects_per_chunk,,0.54,0.25,0.18,0.33,out,[Ź WISL 2010–2014; Piętka; L W13]
+gameplay,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N10.logs_per_chunk,,0.28,,,,none,
+gameplay,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N10.stumps_per_chunk,,0.26,,,,none,
+gameplay,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N10.snags_per_chunk,,0,,,,none,
+gameplay,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N10.volume,,39,10–16,7,20.8,out,[Ź WISL 2010–2014; Piętka; L W13]
+gameplay,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N10.coarse_per_ha,,5,,,,none,
+gameplay,present_day,oak_hornbeam_1,oak_hornbeam_managed,mid_summer,N15.conifers,,0,,,,none,
+gameplay,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N1.trees_per_chunk,,7.68,9–14,7.2,16.8,tolerance,[Ź Miścicki 2016; L 06 §6]
+gameplay,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N2.a1_per_chunk,,5.5,,,,none,
+gameplay,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N2.a1_height,,10.16,22–30,17.6,36,out,[L 06 §3.5; Ź Janów]
+gameplay,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N2.a2_per_chunk,,2.18,,,,none,
+gameplay,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N2.a2_height,,6.53,,,,none,
+gameplay,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N2.a2_share,,28.33,,,,none,
+gameplay,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N2.top_height,,11.99,,,,none,
+gameplay,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N3.oak,,26.51,50–80,40,96,out,"[L 06 §3.5, §6.2]"
+gameplay,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N3.linden,,18.14,,,,none,
+gameplay,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N3.maple_ash,,5.58,,,,none,
+gameplay,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N3.hornbeam,,31.63,,,,none,
+gameplay,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N3.spruce,,0,,,,none,
+gameplay,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N3.beech,,17.21,,,,none,
+gameplay,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N3.scots_pine,,0.93,,,,none,
+gameplay,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N3.birch,,0,,,,none,
+gameplay,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N3.other,,0,,,,none,
+gameplay,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N4.canopy,,76.18,75–90,60,108,in,[L 06 §4.1; Ź Janów]
+gameplay,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N5.gap_share,,18.1,0,0,0,out,[Ź BPN]
+gameplay,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N5.gap_diameter,,14.82,,,,none,
+gameplay,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N6.regeneration_per_ha,,0,,,,none,
+gameplay,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N6.gap_ratio,,,,,,none,
+gameplay,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N6.oak_per_ha,,0,,,,none,
+gameplay,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N6.pine_under_canopy_per_ha,,0,,,,none,
+gameplay,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N7.understory,,15.01,10–30,8,36,in,[L 06 §4.1]
+gameplay,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N7.shrubs_per_chunk,,2.23,,,,none,
+gameplay,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N8.herbs,,31.53,,,,none,
+gameplay,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N8.bilberry,,0.01,,,,none,
+gameplay,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N8.litter,,38.26,,,,none,
+gameplay,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N9.moss,,0.32,5–15,4,18,out,[Ź Popiołek]
+gameplay,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N10.objects_per_chunk,,0.41,0.25,0.18,0.33,out,[Ź WISL 2010–2014; Piętka; L W13]
+gameplay,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N10.logs_per_chunk,,0.2,,,,none,
+gameplay,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N10.stumps_per_chunk,,0.2,,,,none,
+gameplay,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N10.snags_per_chunk,,0,,,,none,
+gameplay,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N10.volume,,26,10–16,7,20.8,out,[Ź WISL 2010–2014; Piętka; L W13]
+gameplay,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N10.coarse_per_ha,,3,,,,none,
+gameplay,present_day,oak_hornbeam_2,oak_hornbeam_managed,mid_summer,N15.conifers,,0.67,,,,none,
+gameplay,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N1.trees_per_chunk,,11.39,8–16,6.4,19.2,in,[Ź Miścicki 2016; L 06 §6]
+gameplay,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N2.a1_per_chunk,,10.6,,,,none,
+gameplay,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N2.a1_height,,9.99,20–28,16,33.6,out,[L 06 §3.5; Ź Janów]
+gameplay,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N2.a2_per_chunk,,0.79,,,,none,
+gameplay,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N2.a2_height,,6.74,,,,none,
+gameplay,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N2.a2_share,,6.97,0–20,0,24,in,[L 06 §3.5; Ź Janów]
+gameplay,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N2.top_height,,11.77,,,,none,
+gameplay,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N3.oak,,0,,,,none,
+gameplay,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N3.linden,,0,,,,none,
+gameplay,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N3.maple_ash,,0,,,,none,
+gameplay,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N3.hornbeam,,0,,,,none,
+gameplay,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N3.spruce,,0,,,,none,
+gameplay,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N3.beech,,0.24,,,,none,
+gameplay,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N3.scots_pine,,94.2,80–95,64,114,in,"[L 06 §3.5, §6.2]"
+gameplay,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N3.birch,,5.56,5–15,4,18,in,"[L 06 §3.5, §6.2]"
+gameplay,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N3.other,,0,,,,none,
+gameplay,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N4.canopy,,77.12,60–80,48,96,in,[L 06 §4.1; Ź Janów]
+gameplay,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N5.gap_share,,14.63,0,0,0,out,[Ź BPN]
+gameplay,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N5.gap_diameter,,11.75,,,,none,
+gameplay,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N6.regeneration_per_ha,,0,,,,none,
+gameplay,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N6.gap_ratio,,,,,,none,
+gameplay,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N6.oak_per_ha,,0,,,,none,
+gameplay,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N6.pine_under_canopy_per_ha,,0,0,0,0,in,[Ź Paluch; Sokołowski]
+gameplay,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N7.understory,,3.46,5–30,4,36,out,[L 06 §4.1]
+gameplay,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N7.shrubs_per_chunk,,1.1,,,,none,
+gameplay,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N8.herbs,,34.19,40–80,32,96,tolerance,[Ź Popiołek; L]
+gameplay,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N8.bilberry,,29.62,40–70,32,84,out,[Ź Popiołek; L]
+gameplay,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N8.litter,,0.19,,,,none,
+gameplay,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N9.moss,,44.17,60–95,48,114,out,[Ź Popiołek]
+gameplay,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N10.objects_per_chunk,,0.26,,,,none,
+gameplay,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N10.logs_per_chunk,,0.13,0.1,0.07,0.13,tolerance,[Ź WISL 2010–2014; Piętka; L W13]
+gameplay,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N10.stumps_per_chunk,,0.13,1–2,0.7,2.6,out,[Ź WISL 2010–2014; Piętka; L W13]
+gameplay,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N10.snags_per_chunk,,0,,,,none,
+gameplay,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N10.volume,,18,5–11,3.5,14.3,out,[Ź WISL 2010–2014; Piętka; L W13]
+gameplay,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N10.coarse_per_ha,,2,,,,none,
+gameplay,present_day,fresh_pine_1,fresh_pine_managed,mid_summer,N15.conifers,,87.87,,,,none,
+gameplay,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N1.trees_per_chunk,,10.7,8–16,6.4,19.2,in,[Ź Miścicki 2016; L 06 §6]
+gameplay,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N2.a1_per_chunk,,10.09,,,,none,
+gameplay,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N2.a1_height,,10.04,20–28,16,33.6,out,[L 06 §3.5; Ź Janów]
+gameplay,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N2.a2_per_chunk,,0.61,,,,none,
+gameplay,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N2.a2_height,,6.54,,,,none,
+gameplay,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N2.a2_share,,5.74,0–20,0,24,in,[L 06 §3.5; Ź Janów]
+gameplay,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N2.top_height,,11.84,,,,none,
+gameplay,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N3.oak,,0,,,,none,
+gameplay,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N3.linden,,0,,,,none,
+gameplay,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N3.maple_ash,,0,,,,none,
+gameplay,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N3.hornbeam,,0,,,,none,
+gameplay,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N3.spruce,,0,,,,none,
+gameplay,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N3.beech,,0,,,,none,
+gameplay,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N3.scots_pine,,93.91,80–95,64,114,in,"[L 06 §3.5, §6.2]"
+gameplay,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N3.birch,,6.09,5–15,4,18,in,"[L 06 §3.5, §6.2]"
+gameplay,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N3.other,,0,,,,none,
+gameplay,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N4.canopy,,70.67,60–80,48,96,in,[L 06 §4.1; Ź Janów]
+gameplay,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N5.gap_share,,23.17,0,0,0,out,[Ź BPN]
+gameplay,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N5.gap_diameter,,13.73,,,,none,
+gameplay,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N6.regeneration_per_ha,,0,,,,none,
+gameplay,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N6.gap_ratio,,,,,,none,
+gameplay,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N6.oak_per_ha,,0,,,,none,
+gameplay,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N6.pine_under_canopy_per_ha,,0,0,0,0,in,[Ź Paluch; Sokołowski]
+gameplay,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N7.understory,,2.18,5–30,4,36,out,[L 06 §4.1]
+gameplay,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N7.shrubs_per_chunk,,0.84,,,,none,
+gameplay,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N8.herbs,,33.28,40–80,32,96,tolerance,[Ź Popiołek; L]
+gameplay,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N8.bilberry,,28.16,40–70,32,84,out,[Ź Popiołek; L]
+gameplay,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N8.litter,,0,,,,none,
+gameplay,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N9.moss,,46.7,60–95,48,114,out,[Ź Popiołek]
+gameplay,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N10.objects_per_chunk,,0.23,,,,none,
+gameplay,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N10.logs_per_chunk,,0.08,0.1,0.07,0.13,tolerance,[Ź WISL 2010–2014; Piętka; L W13]
+gameplay,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N10.stumps_per_chunk,,0.15,1–2,0.7,2.6,out,[Ź WISL 2010–2014; Piętka; L W13]
+gameplay,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N10.snags_per_chunk,,0,,,,none,
+gameplay,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N10.volume,,13,5–11,3.5,14.3,tolerance,[Ź WISL 2010–2014; Piętka; L W13]
+gameplay,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N10.coarse_per_ha,,2,,,,none,
+gameplay,present_day,fresh_pine_2,fresh_pine_managed,mid_summer,N15.conifers,,88.52,,,,none,
+gameplay,present_day,transect,oak_hornbeam_managed,mid_summer,N1.trees_per_chunk,fresh_pine_forest,11.1,,,,none,
+gameplay,present_day,transect,oak_hornbeam_managed,mid_summer,N15.conifers,fresh_pine_forest,88.1,,,,none,
+gameplay,present_day,transect,oak_hornbeam_managed,mid_summer,N4.canopy,fresh_pine_forest,77.5,,,,none,
+gameplay,present_day,transect,oak_hornbeam_managed,mid_summer,N7.understory,fresh_pine_forest,1.34,,,,none,
+gameplay,present_day,transect,oak_hornbeam_managed,mid_summer,N8.herbs,fresh_pine_forest,42.41,,,,none,
+gameplay,present_day,transect,oak_hornbeam_managed,mid_summer,N9.moss,fresh_pine_forest,39.94,,,,none,
+gameplay,present_day,transect,oak_hornbeam_managed,mid_summer,N8.litter,fresh_pine_forest,0.31,,,,none,
+gameplay,present_day,transect,oak_hornbeam_managed,mid_summer,N10.objects_per_chunk,fresh_pine_forest,0.79,,,,none,
+gameplay,present_day,transect,oak_hornbeam_managed,mid_summer,N1.trees_per_chunk,mixed_pine_forest,9.25,,,,none,
+gameplay,present_day,transect,oak_hornbeam_managed,mid_summer,N15.conifers,mixed_pine_forest,71.43,,,,none,
+gameplay,present_day,transect,oak_hornbeam_managed,mid_summer,N4.canopy,mixed_pine_forest,68.11,,,,none,
+gameplay,present_day,transect,oak_hornbeam_managed,mid_summer,N7.understory,mixed_pine_forest,1.14,,,,none,
+gameplay,present_day,transect,oak_hornbeam_managed,mid_summer,N8.herbs,mixed_pine_forest,29.62,,,,none,
+gameplay,present_day,transect,oak_hornbeam_managed,mid_summer,N9.moss,mixed_pine_forest,36.02,,,,none,
+gameplay,present_day,transect,oak_hornbeam_managed,mid_summer,N8.litter,mixed_pine_forest,9.6,,,,none,
+gameplay,present_day,transect,oak_hornbeam_managed,mid_summer,N10.objects_per_chunk,mixed_pine_forest,0.26,,,,none,
+gameplay,present_day,transect,oak_hornbeam_managed,mid_summer,N1.trees_per_chunk,mixed_forest,9.08,,,,none,
+gameplay,present_day,transect,oak_hornbeam_managed,mid_summer,N15.conifers,mixed_forest,31.58,,,,none,
+gameplay,present_day,transect,oak_hornbeam_managed,mid_summer,N4.canopy,mixed_forest,75.82,,,,none,
+gameplay,present_day,transect,oak_hornbeam_managed,mid_summer,N7.understory,mixed_forest,8.78,,,,none,
+gameplay,present_day,transect,oak_hornbeam_managed,mid_summer,N8.herbs,mixed_forest,25.68,,,,none,
+gameplay,present_day,transect,oak_hornbeam_managed,mid_summer,N9.moss,mixed_forest,11.02,,,,none,
+gameplay,present_day,transect,oak_hornbeam_managed,mid_summer,N8.litter,mixed_forest,34.73,,,,none,
+gameplay,present_day,transect,oak_hornbeam_managed,mid_summer,N10.objects_per_chunk,mixed_forest,0.96,,,,none,
+gameplay,present_day,transect,oak_hornbeam_managed,mid_summer,N1.trees_per_chunk,oak_hornbeam_forest,7.26,,,,none,
+gameplay,present_day,transect,oak_hornbeam_managed,mid_summer,N15.conifers,oak_hornbeam_forest,0,,,,none,
+gameplay,present_day,transect,oak_hornbeam_managed,mid_summer,N4.canopy,oak_hornbeam_forest,77,,,,none,
+gameplay,present_day,transect,oak_hornbeam_managed,mid_summer,N7.understory,oak_hornbeam_forest,23.21,,,,none,
+gameplay,present_day,transect,oak_hornbeam_managed,mid_summer,N8.herbs,oak_hornbeam_forest,26.05,,,,none,
+gameplay,present_day,transect,oak_hornbeam_managed,mid_summer,N9.moss,oak_hornbeam_forest,0.63,,,,none,
+gameplay,present_day,transect,oak_hornbeam_managed,mid_summer,N8.litter,oak_hornbeam_forest,32.04,,,,none,
+gameplay,present_day,transect,oak_hornbeam_managed,mid_summer,N10.objects_per_chunk,oak_hornbeam_forest,0.81,,,,none,
+gameplay,present_day,transect,oak_hornbeam_managed,mid_summer,N15.order,,1,1,1,1,in,[Ź Stefańska 2007]
+gameplay,present_day,transect,oak_hornbeam_managed,mid_summer,N15.transition_width,fresh_pine_forest>mixed_pine_forest,2.2,20–100,16,120,out,[Ź Stefańska 2007; S]
+gameplay,present_day,transect,oak_hornbeam_managed,mid_summer,N15.transition_width,mixed_pine_forest>mixed_forest,35.16,20–100,16,120,in,[Ź Stefańska 2007; S]
+gameplay,present_day,transect,oak_hornbeam_managed,mid_summer,N15.transition_width,mixed_forest>oak_hornbeam_forest,,20–100,16,120,none,[Ź Stefańska 2007; S]

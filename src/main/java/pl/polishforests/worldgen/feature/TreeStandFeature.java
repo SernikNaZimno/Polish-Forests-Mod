@@ -22,6 +22,7 @@ import pl.polishforests.worldgen.feature.config.TreePalette;
 import pl.polishforests.worldgen.feature.plan.Ecotone;
 import pl.polishforests.worldgen.feature.plan.SpeciesRamp;
 import pl.polishforests.worldgen.feature.plan.TreeStandPlan;
+import pl.polishforests.worldgen.habitat.Species;
 import pl.polishforests.worldgen.landscape.Noise;
 
 /**
@@ -56,6 +57,8 @@ public final class TreeStandFeature implements Feature {
 
 	private final TreePalette palette;
 	private final List<Holder<PlacedFeature>> trees = new ArrayList<>();
+	/** Species of each tree of {@link #trees} (for {@link ModFeatures#WOODY_PLACEMENTS}). */
+	private final List<Species> species = new ArrayList<>();
 	private final TreeStandPlan.Palette plan;
 	private volatile @Nullable Noises noises;
 
@@ -76,10 +79,10 @@ public final class TreeStandFeature implements Feature {
 			int[] depth = new int[n];
 			for (int i = 0; i < n; i++) {
 				TreePalette.Entry e = r.trees().get(i);
-				index[i] = treeIndex(e.tree());
+				index[i] = treeIndex(e.tree(), e.species());
 				weights[i] = e.weight();
 				flags[i] = e.rangeRamp() ? e.species().flag() : 0;
-				alternatives[i] = e.alternative().map(a -> treeIndex(a.tree())).orElse(-1);
+				alternatives[i] = e.alternative().map(a -> treeIndex(a.tree(), a.species())).orElse(-1);
 				alternativeFlags[i] = e.alternative().map(a -> a.species().flag()).orElse(0);
 				depth[i] = e.maxWaterDepth();
 			}
@@ -89,11 +92,12 @@ public final class TreeStandFeature implements Feature {
 		this.plan = new TreeStandPlan.Palette(rules);
 	}
 
-	/** Index of a tree in {@link #trees}, added on first use. */
-	private int treeIndex(Holder<PlacedFeature> tree) {
+	/** Index of a tree in {@link #trees}, added on first use with its species. */
+	private int treeIndex(Holder<PlacedFeature> tree, Species of) {
 		int t = trees.indexOf(tree);
 		if (t < 0) {
 			trees.add(tree);
+			species.add(of);
 			t = trees.size() - 1;
 		}
 		return t;
@@ -164,6 +168,7 @@ public final class TreeStandFeature implements Feature {
 					pos.getMinBlockZ() + (column & 15));
 			if (trees.get(p & 0xFFFF).value().place(level, generator, treeRandom, at)) {
 				placed++;
+				ModFeatures.woodyPlaced(at, species.get(p & 0xFFFF));
 			}
 		}
 		return placed;

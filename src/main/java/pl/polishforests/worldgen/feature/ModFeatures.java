@@ -5,14 +5,18 @@ import java.util.Map;
 import java.util.concurrent.atomic.LongAdder;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentRegistry;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ChunkGenerator;
+import net.minecraft.world.level.levelgen.placement.PlacedFeature;
 import org.jspecify.annotations.Nullable;
 import pl.polishforests.PolishForests;
 import pl.polishforests.worldgen.chunk.ChunkHabitats;
 import pl.polishforests.worldgen.chunk.PolandChunkGenerator;
+import pl.polishforests.worldgen.habitat.Species;
 
 /**
  * Registration of the vegetation dispatcher types ({@code BuiltInRegistries.FEATURE_TYPE}, docs/03-m2-biomy.md §8.2),
@@ -32,6 +36,47 @@ public final class ModFeatures {
 	public static final LongAdder HABITAT_MISS = new LongAdder();
 
 	private ModFeatures() {
+	}
+
+	/**
+	 * Observer of the woody plants the dispatchers place (step V4, the census of the norms card in the game test
+	 * {@code slice}): the species of each tree ({@link TreeStandFeature}) and of each shrub or tree feature of a column
+	 * layer ({@link PlantLayerFeature}, by the path of the placed feature), at the block where the feature was placed.
+	 * The M2 trees are vanilla placeholders (an oak log is oak, linden, ash or maple), so the census takes their species
+	 * from here. Null outside that test; reading it costs one volatile read per placed tree and does not change what is
+	 * generated. Called on the generation threads, so the observer must be thread-safe.
+	 */
+	public interface WoodyPlacements {
+		void placed(BlockPos at, Species species);
+	}
+
+	public static volatile @Nullable WoodyPlacements WOODY_PLACEMENTS;
+
+	/** Reports a placed woody plant to {@link #WOODY_PLACEMENTS}, if set. */
+	static void woodyPlaced(BlockPos at, @Nullable Species species) {
+		WoodyPlacements w = WOODY_PLACEMENTS;
+		if (w != null && species != null) {
+			w.placed(at.immutable(), species);
+		}
+	}
+
+	/**
+	 * Species of a placed feature {@code polishforests:tree/<species>[_<variant>]} or {@code shrub/<species>}, e.g.
+	 * {@code tree/scots_pine_low} is the Scots pine; null for other features (fallen trees, flowers) and direct holders.
+	 */
+	static @Nullable Species woodySpecies(Holder<PlacedFeature> feature) {
+		String path = feature.unwrapKey().map(k -> k.identifier().getPath()).orElse("");
+		String rest = path.startsWith("tree/") ? path.substring(5) : path.startsWith("shrub/") ? path.substring(6) : null;
+		if (rest == null) {
+			return null;
+		}
+		Species best = null;
+		for (Species s : Species.values()) {
+			if ((rest.equals(s.id()) || rest.startsWith(s.id() + "_")) && (best == null || s.id().length() > best.id().length())) {
+				best = s;
+			}
+		}
+		return best;
 	}
 
 	/** Time and placements of each dispatcher layer (§12.3: time of each layer). */

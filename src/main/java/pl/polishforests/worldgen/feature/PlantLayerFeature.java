@@ -215,7 +215,11 @@ public final class PlantLayerFeature implements Feature {
 		}
 		BlockPos pos = at.immutable();
 		if (plant.feature().isPresent()) {
-			return plant.feature().get().value().place(level, generator, random, pos);
+			boolean placed = plant.feature().get().value().place(level, generator, random, pos);
+			if (placed && ModFeatures.WOODY_PLACEMENTS != null) {
+				ModFeatures.woodyPlaced(pos, ModFeatures.woodySpecies(plant.feature().get()));
+			}
+			return placed;
 		}
 		BlockState state = plant.block().orElseThrow();
 		if (state.hasProperty(BlockStateProperties.HORIZONTAL_FACING)) {

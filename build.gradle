@@ -486,6 +486,8 @@ tasks.named('runClientGameTest') {
 	if (project.hasProperty('determinismReference')) {
 		jvmArgs "-Dpolishforests.determinism.reference=${file(project.property('determinismReference')).absolutePath}"
 	}
+	// Norms card of step V4 (-Pgametest=slice): the census of the plots and transects, build/norms/karta-norm.csv.
+	jvmArgs "-Dpolishforests.norms.out=${layout.buildDirectory.dir('norms').get().asFile.absolutePath}"
 	// Render trials of step V3 (-Pgametest=probes): the measured colors, shares and frame times of each run.
 	jvmArgs "-Dpolishforests.probes.out=${layout.buildDirectory.dir('probes').get().asFile.absolutePath}"
 	if (project.hasProperty('profile')) {
