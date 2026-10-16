@@ -142,16 +142,27 @@ def run():
     hard[..., :3] = np.where((((ys + xs) % 2 == 0) & vis)[..., None], 40, 220)
     check(any('too sharp' in e for e in errs(hard, leaves)), 'lint: misses too sharp leaves')
 
-    # 7. the transition bark of the pine (V1b) is built on the structure of the lower bark: its furrows meet the lower
-    # bark's at the top and bottom rows, so the furrows run on across the block edge in both orders
-    pal = generate.load_palettes()
-    lower = recipes.TEXTURES_BY_NAME['scots_pine_bark']
-    trans = recipes.TEXTURES_BY_NAME['scots_pine_transition_bark']
-    s_lower = recipes.build_plated(lower, recipes.PLATED_PAINT[lower.make], pal)[1]
-    s_trans = recipes.build_plated(trans, recipes.PLATED_PAINT[trans.make], pal)[1]
-    for y in (0, N - 1):
-        check(sorted(c[y] for c in s_lower['cols']) == sorted(c[y] for c in s_trans['cols']),
-              f'scots_pine_transition_bark: furrows in row {y} differ from scots_pine_bark')
+    # 7. the pine transition zone (V1b review round 1): the lint catches a straight seam between two different barks of
+    # one trunk (the "mirror" right on the lower bark, the seam the transition zone exists for), the generated zone has
+    # none, and the lower stage's bottom row is the lower bark's (it continues into the lower bark below it)
+    mirror = recipes.Texture('test_mirror', 'bark', None, 'x', expect={'below': ('scots_pine_bark',)})
+    check(any('straight seam' in e for e in lint.lint_texture('test_mirror', a['scots_pine_upper_bark']['img'], mirror,
+                                                                {n: x['img'] for n, x in a.items()})[0]),
+          'lint: misses the straight seam of the "mirror" right on the lower pine bark')
+    imgs = {n: x['img'] for n, x in a.items()}
+    for name in ('scots_pine_transition_bark', 'scots_pine_transition_upper_bark'):
+        e = lint.lint_texture(name, imgs[name], a[name]['tex'], imgs)[0]
+        check(not any('straight seam' in x for x in e), f'{name}: a straight seam in the transition zone: {e}')
+    trans, lower = imgs['scots_pine_transition_bark'], imgs['scots_pine_bark']
+    check(np.mean(np.any(trans[N - 1] != lower[N - 1], axis=1)) <= 0.25,
+          'scots_pine_transition_bark: the bottom row is not the one of the lower bark (it must continue into it)')
+    # 8. roughness order (V1b review round 1): the lint catches a linden smoother than the hornbeam
+    smooth = np.zeros((N, N, 4), np.uint8)
+    smooth[..., :3] = 90
+    smooth[..., 3] = 255
+    linden = recipes.TEXTURES_BY_NAME['linden_bark']
+    check(any('not rougher' in e for e in lint.lint_texture('linden_bark', smooth, linden, imgs)[0]),
+          'lint: misses a linden bark smoother than the hornbeam')
     return failures
 
 

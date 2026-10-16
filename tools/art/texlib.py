@@ -422,18 +422,25 @@ def label4(mask):
 
 
 # ---------------------------------------------------------------------------------------------------- measures
-def row_std(img, x0=0, width=N):
+def row_std(img, x0=0, width=N, detrend=False):
     """Standard deviation of the row means of luma over columns x0 .. x0 + width - 1 (with wrap): horizontal banding
-    at the block period. A trunk of radius r shows the columns 8 - r .. 7 + r on each face."""
+    at the block period. A trunk of radius r shows the columns 8 - r .. 7 + r on each face. detrend: about the
+    least-squares line through the row means instead of their mean (a texture with an intended vertical gradient, the
+    pine transition zone, V1b review round 1)."""
     l = luma(img[..., :3])
     cols = [(x0 + i) % N for i in range(width)]
-    return float(l[:, cols].mean(axis=1).std())
+    m = l[:, cols].mean(axis=1)
+    if detrend:
+        y = np.arange(N, dtype=np.float64)
+        m = m - np.polyval(np.polyfit(y, m, 1), y)
+    return float(m.std())
 
 
-def banding(img, radii=(2, 3, 4, 5)):
+def banding(img, radii=(2, 3, 4, 5), detrend=False):
     """(row_std over the full width, largest row_std of the crops that thin trunks of the given radii show in game,
     TRUNK_OFFSETS)."""
-    return row_std(img), max(row_std(img, u, 2 * r) for r in radii for u in TRUNK_OFFSETS[r - 1])
+    return (row_std(img, detrend=detrend),
+            max(row_std(img, u, 2 * r, detrend) for r in radii for u in TRUNK_OFFSETS[r - 1]))
 
 
 # Left edge (u, px) of the bark crop on the north, west, south and east side of a thin trunk of radius 1-7: a copy of
@@ -533,3 +540,27 @@ def mean_rgb(img):
 def delta_e(rgb_a, rgb_b):
     """CIE76 color difference of two sRGB triples (about 2 is just noticeable, 10 clearly different)."""
     return float(np.linalg.norm(srgb_to_lab(rgb_a) - srgb_to_lab(rgb_b)))
+
+
+def lab_image(img):
+    """CIELAB (D65) of every pixel of an RGBA or RGB image: array (..., 3)."""
+    c = np.asarray(img, dtype=np.float64)[..., :3] / 255.0
+    c = np.where(c > 0.04045, ((c + 0.055) / 1.055) ** 2.4, c / 12.92)
+    m = np.array([[0.4124, 0.3576, 0.1805], [0.2126, 0.7152, 0.0722], [0.0193, 0.1192, 0.9505]])
+    xyz = c @ m.T / np.array([0.95047, 1.0, 1.08883])
+    f = np.where(xyz > 0.008856, np.cbrt(xyz), 7.787 * xyz + 16 / 116)
+    return np.stack([116 * f[..., 1] - 16, 500 * (f[..., 0] - f[..., 1]), 200 * (f[..., 1] - f[..., 2])], axis=-1)
+
+
+def neighbour_delta_e(img):
+    """90th percentile of the CIE76 color difference of all pairs of 4-neighbours (on the torus, both visible): the
+    local contrast of local_contrast measured in color, so it also sees edges of hue alone (V1b review round 1; vanilla
+    26.3 log sides: median 12.6, upper quartile about 14.4, oak_log 24.0). Reported, not a lint rule."""
+    lab = lab_image(img)
+    vis = img[..., 3] > 0
+    d = []
+    for axis in (0, 1):
+        both = vis & np.roll(vis, -1, axis=axis)
+        d.append(np.linalg.norm(lab - np.roll(lab, -1, axis=axis), axis=-1)[both])
+    d = np.concatenate(d)
+    return float(np.percentile(d, 90)) if len(d) else 0.0

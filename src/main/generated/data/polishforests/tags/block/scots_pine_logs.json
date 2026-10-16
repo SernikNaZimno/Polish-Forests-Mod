@@ -2,6 +2,7 @@
   "values": [
     "polishforests:scots_pine_trunk",
     "polishforests:scots_pine_upper_trunk",
-    "polishforests:scots_pine_transition_trunk"
+    "polishforests:scots_pine_transition_trunk",
+    "polishforests:scots_pine_transition_upper_trunk"
   ]
 }

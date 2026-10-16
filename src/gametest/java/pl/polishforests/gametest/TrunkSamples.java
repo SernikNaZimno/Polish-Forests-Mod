@@ -486,7 +486,10 @@ final class TrunkSamples {
 
 	/** Share of the height above which the sample pine has the "mirror" (V2 review: about the upper half, docs/04 V6). */
 	private static final double MIRROR_START = 0.5;
-	/** Blocks of transition bark right under the "mirror" of the sample pine (step V1b, choice V1-i). */
+	/**
+	 * Blocks of the transition zone right under the "mirror" of the sample pine (step V1b, choice V1-i): the lower and the
+	 * upper transition block (V1b review round 1).
+	 */
 	private static final int TRANSITION_BLOCKS = 2;
 	/** Cross-section (px²) per block below the crown base added for the branches lost to self-pruning (stem taper). */
 	private static final double TAPER = 1.0;
@@ -494,9 +497,9 @@ final class TrunkSamples {
 	/**
 	 * A Scots pine from a pipe model: radius² of the trunk = 1 + Σ radius² of the branches above (Leonardo's rule, n = 2)
 	 * plus a taper below the crown (the branches lost to self-pruning, {@link #TAPER}), the lower half with the lower bark
-	 * and its top {@link #TRANSITION_BLOCKS} blocks with the transition bark, the upper half with the "mirror"
-	 * ({@link #MIRROR_START}); branches in the top third (some of them climbing one block
-	 * on the way, a step on the diagonal), dead stubs below, leaves at the branch tips.
+	 * and its top {@link #TRANSITION_BLOCKS} blocks the transition zone (lower, then upper block), the upper half with the
+	 * "mirror" ({@link #MIRROR_START}); branches in the top third (some of them climbing one block on the way, a step on
+	 * the diagonal), dead stubs below, leaves at the branch tips.
 	 */
 	private static void pine(Builder w) {
 		int x0 = Board.PINE_X;
@@ -526,8 +529,10 @@ final class TrunkSamples {
 			// Taper below the crown: the cross-section of the branches lost to self-pruning grows towards the base.
 			area += Math.max(0, crownBase - dy) * TAPER;
 			int r = (int) Math.round(Math.sqrt(area));
+			double zone = dy - (height * MIRROR_START - TRANSITION_BLOCKS);       // > 0 in the transition zone and above
 			TreeTrunk t = dy > height * MIRROR_START ? TreeTrunk.SCOTS_PINE_UPPER
-					: dy > height * MIRROR_START - TRANSITION_BLOCKS ? TreeTrunk.SCOTS_PINE_TRANSITION : TreeTrunk.SCOTS_PINE;
+					: zone > 1 ? TreeTrunk.SCOTS_PINE_TRANSITION_UPPER
+					: zone > 0 ? TreeTrunk.SCOTS_PINE_TRANSITION : TreeTrunk.SCOTS_PINE;
 			w.trunk(t, x0, dy, z0, Math.min(r, TrunkBlock.MAX_RADIUS), Direction.DOWN);
 		}
 		BlockState leaves = Blocks.SPRUCE_LEAVES.defaultBlockState().setValue(LeavesBlock.PERSISTENT, true);

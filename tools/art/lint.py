@@ -15,13 +15,16 @@ Rules for every texture:
   passes; a cropped, non-tiling noise texture fails in about 4 of 5 cases (probe of 400 each). For sparse leaves the
   measure is weak (it catches gross seams, not every shifted half), so a hand-made leaves override also needs a look
   at the 3 x 3 tiles of tools/art/sheet.py. Variants (Texture.variant_of) also continue into their base texture
-  vertically;
+  vertically. A texture that lies only between given textures (expect 'below' / 'above', the two blocks of the pine
+  transition zone) is not checked against itself vertically, but against those textures (see 'below' and 'above');
 - isolated pixels (equal to none of their 4 neighbours) are at most 10% of the visible pixels of bark and 30% of
   leaves (needle tips and leaf highlights are single pixels on purpose), so the texture is built of 2-4 px clusters;
 - local contrast (step V1b, checkpoint CP-A: "a bit too sharp"; texlib.local_contrast, tools/art/measure.py): the mean
   and the 90th percentile of the luma steps between neighbouring pixels and the share of pixels in dark one-pixel lines
-  stay under caps measured on vanilla 26.3 (CONTRAST: bark about the upper quartile of the natural logs, leaves and
-  plants about the median; Texture.expect['contrast'] may set other caps).
+  stay under caps measured on vanilla 26.3 (CONTRAST: bark the upper quartile of the natural logs, leaves and plants
+  the median; Texture.expect['contrast'] may set other caps). The measure sees luma only: an edge of hue alone (orange
+  next to gray-brown at the same brightness) does not count; the report shows the CIELAB neighbour steps beside it
+  (texlib.neighbour_delta_e, not a rule).
 Kind rules:
 - leaves: 55-70% of the pixels visible (vanilla 56-67%), alpha only 0 or 255; with expect['min_line'] every column and
   row has at least that many visible pixels (vanilla oak 9 of 16; a nearly empty column shows as a gap that repeats at
@@ -39,7 +42,13 @@ Kind rules:
 Recipe bounds (Texture.expect): 'luma' mean luma range on 0..255, 'dark' the largest share of dark pixels (luma < 50),
 'grain' the smallest |dx| / |dy| (vertical grain of furrowed and plated bark; vanilla oak and spruce logs about 3.3),
 'std', 'rows', 'slices' other caps for the bark rules above, 'hue' the range of the mean hue in degrees, 'near'
-(vanilla texture, largest delta E) and 'distinct' (another texture, smallest delta E).
+(vanilla texture, largest delta E), 'distinct' (another texture and the smallest delta E of the mean colors, or a
+tuple of such pairs), 'rougher' (pairs of another texture and a margin or None: this texture's mean local contrast
+is at least the other's and, with a margin, its 90th percentile at least the other's plus the margin; V1b review round
+1: the order of roughness pine and oak > linden and the ash/maple bark > hornbeam and beech), 'below' and 'above' (the
+textures that lie
+directly under or over this one in a trunk: the jump across that block edge, as the mean luma step and the mean CIE76
+step of the two rows, is at most STACK_STEP times the mean step between neighbouring rows inside the two textures).
 
 Usage: python tools/art/lint.py   (lints the generated textures and the overrides; exit 1 on errors)
 """
@@ -69,7 +78,13 @@ DARK = 50
 # 16.2%); plants (bush, fern, short grass, sweet berry bush 1-2): mean 18.0-27.2 (median 22.3), p90 41.0-53.7 (q3
 # 49.9), lines 3.6-13.1% (median 6.7%): the caps are about the median (the third quartile for the plant p90).
 # Before V1b our furrowed and plated barks had a mean of 18-24, a p90 of 54-67 and 17-26% lines, the needles a p90 of 110.
-CONTRAST = {'bark': (13.0, 33.0, 0.04), 'leaves': (29.0, 61.0, 0.16), 'plant': (23.0, 50.0, 0.07)}
+# V1b review round 1: the caps are exactly the quartiles named in the V1b criterion (they were rounded up before:
+# 13 / 33 / 4%, 29 / 61 / 16%, 23 / 50 / 7%).
+CONTRAST = {'bark': (13.1, 32.6, 0.031), 'leaves': (28.3, 60.9, 0.162), 'plant': (22.3, 47.5, 0.067)}
+# The jump across a block edge between two different textures of one trunk (expect 'below' / 'above') may be at most
+# this many times the mean step between neighbouring rows inside them (V1b review round 1: the first transition bark
+# had jumps 3-4 times the inner steps, a straight line around the trunk).
+STACK_STEP = 2.0
 BANDING = (5.0, 9.0)
 BARK_STD = 28.0
 STONE_DELTA_E = 8.0
@@ -138,6 +153,32 @@ def stack_seam(top, bottom):
     return float(np.abs(lt[-1, :] - lb[0, :]).mean())
 
 
+def row_steps(img):
+    """(luma, delta E): the mean step between neighbouring rows inside a texture (no wrap)."""
+    l = t.luma(img[..., :3])
+    lab = t.lab_image(img)
+    return (float(np.abs(np.diff(l, axis=0)).mean()),
+            float(np.linalg.norm(np.diff(lab, axis=0), axis=2).mean()))
+
+
+def junction(top, bottom):
+    """(luma, delta E): the mean step between the bottom row of `top` and the top row of `bottom`."""
+    l = float(np.abs(t.luma(top[-1, :, :3]) - t.luma(bottom[0, :, :3])).mean())
+    de = float(np.linalg.norm(t.lab_image(top)[-1] - t.lab_image(bottom)[0], axis=1).mean())
+    return l, de
+
+
+def stack_errors(name, top_name, top, bottom_name, bottom):
+    inside = np.mean([row_steps(top), row_steps(bottom)], axis=0)
+    jump = junction(top, bottom)
+    out = []
+    for what, j, ins in (('luma', jump[0], inside[0]), ('delta E', jump[1], inside[1])):
+        if j > STACK_STEP * ins:
+            out.append(f'{name}: straight seam where {top_name} lies on {bottom_name} ({what} step {j:.1f} across the '
+                       f'block edge, at most {STACK_STEP:.0f} x the {ins:.1f} between rows inside)')
+    return out
+
+
 def mean_hue(img):
     return colorsys.rgb_to_hsv(*(t.mean_rgb(img) / 255.0))[0] * 360.0
 
@@ -190,6 +231,7 @@ def lint_texture(name, img, tex, others=None):
         err.append(f'{name}: {m["isolated"]:.0%} isolated pixels, at most {ISOLATED_MAX[tex.kind]:.0%} for {tex.kind}')
     lc = t.local_contrast(img)
     m['contrast'] = lc
+    m['neighbour_de'] = t.neighbour_delta_e(img)
     cap_mean, cap_p90, cap_lines = (tex.expect or {}).get('contrast', CONTRAST[tex.kind])
     if lc['mean'] > cap_mean or lc['p90'] > cap_p90:
         err.append(f'{name}: too sharp: luma steps between neighbouring pixels mean {lc["mean"]:.1f}, 90th percentile '
@@ -197,17 +239,18 @@ def lint_texture(name, img, tex, others=None):
     if lc['lines'] > cap_lines:
         err.append(f'{name}: {lc["lines"]:.1%} of the pixels in dark one-pixel lines ({t.LINE_STEP:.0f} darker than both '
                    f'neighbours across), at most {cap_lines:.0%} for {tex.kind}: use a mid tone for fissures and twigs')
+    exp = tex.expect or {}
+    between = 'below' in exp or 'above' in exp          # lies only between other textures, never on itself
     if tex.kind in ('bark', 'leaves'):
-        for axis, label in ((1, 'left-right'), (0, 'top-bottom')):
+        for axis, label in ((1, 'left-right'),) + (() if between else ((0, 'top-bottom'),)):
             for what, wrap, lim in seam_check(img, axis):
                 err.append(f'{name}: visible {label} seam when tiled ({what} {wrap:.2f} across the edge, at most '
                            f'{lim:.2f} from the jumps inside)')
-    exp = tex.expect or {}
     m['grain'] = t.grain(img)
     if tex.kind == 'bark':
         if not vis.all():
             err.append(f'{name}: bark must be fully opaque')
-        m['rows'], m['slices'] = t.banding(img)
+        m['rows'], m['slices'] = t.banding(img, detrend=between)   # the transition zone's gradient is intended
         cap_rows, cap_slices = exp.get('rows', BANDING[0]), exp.get('slices', BANDING[1])
         if m['rows'] > cap_rows or m['slices'] > cap_slices:
             err.append(f'{name}: horizontal banding at the block period (std of the row means {m["rows"]:.1f} over the '
@@ -228,7 +271,7 @@ def lint_texture(name, img, tex, others=None):
                 if de < STONE_DELTA_E:
                     err.append(f'{name}: reads as {stone} (mean color delta E {de:.1f} < {STONE_DELTA_E} and no '
                                f'vertical grain, |dx|/|dy| {m["grain"]:.2f} < {STONE_GRAIN})')
-    if tex.variant_of and others is not None and tex.variant_of in others:
+    if tex.variant_of and not between and others is not None and tex.variant_of in others:
         base = others[tex.variant_of]
         lv = t.luma(img[..., :3])
         inside = np.abs(np.diff(lv, axis=0)).mean(axis=1)
@@ -256,12 +299,27 @@ def lint_texture(name, img, tex, others=None):
         m['near'] = de
         if de > most:
             err.append(f'{name}: mean color delta E {de:.1f} from vanilla {ref}, recipe allows at most {most}')
-    if 'distinct' in exp and others is not None and exp['distinct'][0] in others:
-        other, least = exp['distinct']
-        de = t.delta_e(t.mean_rgb(img), t.mean_rgb(others[other]))
-        m['distinct'] = de
-        if de < least:
-            err.append(f'{name}: mean color delta E {de:.1f} from {other}, recipe needs at least {least}')
+    pairs = exp.get('distinct', ())
+    for other, least in ((pairs,) if pairs and isinstance(pairs[0], str) else pairs):
+        if others is not None and other in others:
+            de = t.delta_e(t.mean_rgb(img), t.mean_rgb(others[other]))
+            m.setdefault('distinct', {})[other] = de
+            if de < least:
+                err.append(f'{name}: mean color delta E {de:.1f} from {other}, recipe needs at least {least}')
+    for other, margin in exp.get('rougher', ()):
+        if others is not None and other in others:
+            oc = t.local_contrast(others[other])
+            if lc['mean'] < oc['mean'] or (margin is not None and lc['p90'] < oc['p90'] + margin):
+                need = '' if margin is None else f' and a 90th percentile at least {margin} higher'
+                err.append(f'{name}: not rougher than {other} (local contrast {lc["mean"]:.1f} / {lc["p90"]:.1f} against '
+                           f'{oc["mean"]:.1f} / {oc["p90"]:.1f}; recipe needs a mean at least as high{need})')
+    if others is not None:
+        for key, as_top in (('below', False), ('above', True)):
+            for other in exp.get(key, ()):
+                if other in others:
+                    top, bottom = (others[other], img) if as_top else (img, others[other])
+                    top_name, bottom_name = (other, name) if as_top else (name, other)
+                    err += stack_errors(name, top_name, top, bottom_name, bottom)
     return err, m
 
 
@@ -285,7 +343,8 @@ def format_report(report):
                      f'  rings r1 {m["rings"][1]:4.1f} r2 {m["rings"][2]:4.1f} '
                      f'r3+ {max(list(m["rings"].values())[2:]):4.1f}')
         lc = m.get('contrast', {})
-        contrast = (f'  steps {lc["mean"]:4.1f}/{lc["p90"]:4.1f}  lines {lc["lines"]:4.0%}' if lc else '')
+        contrast = (f'  steps {lc["mean"]:4.1f}/{lc["p90"]:4.1f}  lines {lc["lines"]:4.1%}  dE90 {m["neighbour_de"]:4.1f}'
+                    if lc else '')
         lines.append(f'  {name:24s} colors {m.get("colors", "?"):>2}  visible {m.get("opacity", 0):4.0%}  '
                      f'luma {m.get("luma", 0):5.1f}  dark {m.get("dark", 0):4.0%}  isolated {m.get("isolated", 0):4.0%}'
                      + contrast + extra)

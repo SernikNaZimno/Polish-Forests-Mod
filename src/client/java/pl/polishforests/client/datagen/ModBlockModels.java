@@ -55,13 +55,15 @@ final class ModBlockModels extends FabricModelProvider {
 			case SCOTS_PINE -> List.of(own("scots_pine_bark"), own("scots_pine_bark_2"));
 			case SCOTS_PINE_UPPER -> List.of(own("scots_pine_upper_bark"), own("scots_pine_upper_bark_2"));
 			case SCOTS_PINE_TRANSITION -> List.of(own("scots_pine_transition_bark"), own("scots_pine_transition_bark_2"));
+			case SCOTS_PINE_TRANSITION_UPPER ->
+					List.of(own("scots_pine_transition_upper_bark"), own("scots_pine_transition_upper_bark_2"));
 			// D2: birch and spruce take the vanilla bark by id (no copy of the file).
 			case SPRUCE -> List.of(vanilla("spruce_log"));
 			case BIRCH -> List.of(vanilla("birch_log"));
 			case OAK -> List.of(own("oak_bark"), own("oak_bark_2"));
 			case HORNBEAM -> List.of(own("hornbeam_bark"), own("hornbeam_bark_2"));
 			case LINDEN -> List.of(own("linden_bark"), own("linden_bark_2"), own("linden_bark_3"));
-			case BEECH -> List.of(own("beech_bark"), own("beech_bark_2"));
+			case BEECH -> List.of(own("beech_bark"), own("beech_bark_2"), own("beech_bark_3"));
 			// The shared substitute bark of the broad-crowned archetype (§1.1).
 			case ASH, NORWAY_MAPLE -> List.of(own("broadleaf_bark"));
 		};
@@ -73,7 +75,8 @@ final class ModBlockModels extends FabricModelProvider {
 	 */
 	static Identifier end(TreeTrunk t) {
 		return switch (t) {
-			case SCOTS_PINE, SCOTS_PINE_UPPER, SCOTS_PINE_TRANSITION, SPRUCE -> vanilla("spruce_log_top");
+			case SCOTS_PINE, SCOTS_PINE_UPPER, SCOTS_PINE_TRANSITION, SCOTS_PINE_TRANSITION_UPPER, SPRUCE ->
+					vanilla("spruce_log_top");
 			case BIRCH -> vanilla("birch_log_top");
 			case OAK, LINDEN, ASH, NORWAY_MAPLE -> vanilla("oak_log_top");
 			case HORNBEAM, BEECH -> vanilla("pale_oak_log_top");

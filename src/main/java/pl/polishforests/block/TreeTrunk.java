@@ -8,7 +8,8 @@ import pl.polishforests.worldgen.habitat.Species;
 /**
  * The thin trunk blocks of the vertical slice (step V2, docs/04-pionowy-wycinek.md §1.1): one {@link TrunkBlock} per
  * species of the slice, and the Scots pine has a second block for the thin orange bark of the upper trunk (the "mirror",
- * decision PW-11) and a third for the transition zone between the two (step V1b, choice V1-i). The block id
+ * decision PW-11) and two more for the transition zone between the two, its lower and its upper block (step V1b, choice
+ * V1-i; V1b review round 1). The block id
  * ({@link #id()}) goes into the saved worlds and is frozen after checkpoint CP-B by the registry snapshot test; new
  * trunks only at the end.
  *
@@ -32,12 +33,19 @@ public enum TreeTrunk {
 	NORWAY_MAPLE("norway_maple_trunk", Species.NORWAY_MAPLE, MapColor.COLOR_GRAY, "Norway Maple Trunk",
 			"Pień klonu zwyczajnego"),
 	/**
-	 * The Scots pine between the lower bark and the "mirror" (step V1b, choice V1-i, reserved before CP-B): thinner gray
-	 * plates of the lower bark on the orange bark of the upper trunk; the tree planner (V6) puts it in a short zone
-	 * between {@link #SCOTS_PINE} and {@link #SCOTS_PINE_UPPER}.
+	 * The lower block of the Scots pine's transition zone between the lower bark and the "mirror" (step V1b, choice V1-i,
+	 * reserved before CP-B): the gray-brown plates of the lower bark start to flake off, the orange bark shows in the
+	 * fissures. The tree planner (V6) puts it right on {@link #SCOTS_PINE} and {@link #SCOTS_PINE_TRANSITION_UPPER} right
+	 * on it; the textures of the two continue into each other and into their neighbours only in this order.
 	 */
 	SCOTS_PINE_TRANSITION("scots_pine_transition_trunk", Species.SCOTS_PINE, MapColor.COLOR_BROWN,
-			"Scots Pine Transition Trunk", "Przejściowy pień sosny zwyczajnej");
+			"Scots Pine Transition Trunk", "Przejściowy pień sosny zwyczajnej"),
+	/**
+	 * The upper block of the transition zone (V1b review round 1, reserved before CP-B): mostly the orange bark of the
+	 * "mirror" with the last gray-brown plates at the bottom; {@link #SCOTS_PINE_UPPER} goes right on it.
+	 */
+	SCOTS_PINE_TRANSITION_UPPER("scots_pine_transition_upper_trunk", Species.SCOTS_PINE, MapColor.COLOR_ORANGE,
+			"Scots Pine Upper Transition Trunk", "Górny przejściowy pień sosny zwyczajnej");
 
 	private final String id;
 	private final Species species;
@@ -81,7 +89,7 @@ public enum TreeTrunk {
 	 */
 	public Block log() {
 		return switch (this) {
-			case SCOTS_PINE, SCOTS_PINE_UPPER, SCOTS_PINE_TRANSITION, SPRUCE -> Blocks.SPRUCE_LOG;
+			case SCOTS_PINE, SCOTS_PINE_UPPER, SCOTS_PINE_TRANSITION, SCOTS_PINE_TRANSITION_UPPER, SPRUCE -> Blocks.SPRUCE_LOG;
 			case BIRCH -> Blocks.BIRCH_LOG;
 			case OAK, LINDEN, ASH, NORWAY_MAPLE -> Blocks.OAK_LOG;
 			case HORNBEAM, BEECH -> Blocks.PALE_OAK_LOG;

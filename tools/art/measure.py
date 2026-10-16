@@ -1,6 +1,8 @@
 """Local contrast of block textures (step V1b of docs/04-pionowy-wycinek.md): the measures of texlib.local_contrast
 (mean and 90th percentile of the luma differences of neighbouring pixels, share of dark one-pixel lines, share of lone
-pixels) and the luma standard deviation, for our textures or for any PNG files, e.g. vanilla textures unpacked from the
+pixels), the luma standard deviation and, for information, the 90th percentile of the CIE76 color difference of
+neighbouring pixels (texlib.neighbour_delta_e: edges of hue alone, which the luma measures do not see; V1b review round
+1), for our textures or for any PNG files, e.g. vanilla textures unpacked from the
 client jar OUTSIDE the repository (only the numbers may go into docs/ or into the lint thresholds, never the files).
 
 Usage (Git Bash, project directory):
@@ -30,17 +32,18 @@ def row(name, img):
     m = t.local_contrast(img)
     vis = img[..., 3] > 0
     std = float(t.luma(img[..., :3])[vis].std())
-    return (f'  {name:28s} mean {m["mean"]:5.1f}  p90 {m["p90"]:5.1f}  lines {m["lines"]:5.1%}  '
-            f'isolated {m["isolated"]:5.1%}  std {std:5.1f}'), m
+    m['de90'] = t.neighbour_delta_e(img)
+    return (f'  {name:34s} mean {m["mean"]:5.1f}  p90 {m["p90"]:5.1f}  lines {m["lines"]:5.1%}  '
+            f'isolated {m["isolated"]:5.1%}  std {std:5.1f}  dE90 {m["de90"]:5.1f}'), m
 
 
 def summary(label, ms):
     if not ms:
         return
-    a = {k: np.array([m[k] for m in ms]) for k in ('mean', 'p90', 'lines')}
+    a = {k: np.array([m[k] for m in ms]) for k in ('mean', 'p90', 'lines', 'de90')}
     q = lambda v: '/'.join(f'{x:.1f}' for x in np.percentile(v, (0, 25, 50, 75, 100)))
     print(f'  {label}: min/q1/median/q3/max  mean {q(a["mean"])}  p90 {q(a["p90"])}  '
-          f'lines {"/".join(f"{x:.1%}" for x in np.percentile(a["lines"], (0, 25, 50, 75, 100)))}')
+          f'lines {"/".join(f"{x:.1%}" for x in np.percentile(a["lines"], (0, 25, 50, 75, 100)))}  dE90 {q(a["de90"])}')
 
 
 def main():

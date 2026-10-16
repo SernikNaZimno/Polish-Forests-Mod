@@ -31,6 +31,10 @@ block polishforests:scots_pine_transition_trunk states=84 default=parent=down,ra
   property parent: down up north south west east
   property radius: 1 2 3 4 5 6 7
   property waterlogged: true false
+block polishforests:scots_pine_transition_upper_trunk states=84 default=parent=down,radius=4,waterlogged=false
+  property parent: down up north south west east
+  property radius: 1 2 3 4 5 6 7
+  property waterlogged: true false
 block polishforests:scots_pine_trunk states=84 default=parent=down,radius=4,waterlogged=false
   property parent: down up north south west east
   property radius: 1 2 3 4 5 6 7
@@ -51,6 +55,7 @@ item polishforests:linden_trunk block=polishforests:linden_trunk
 item polishforests:norway_maple_trunk block=polishforests:norway_maple_trunk
 item polishforests:oak_trunk block=polishforests:oak_trunk
 item polishforests:scots_pine_transition_trunk block=polishforests:scots_pine_transition_trunk
+item polishforests:scots_pine_transition_upper_trunk block=polishforests:scots_pine_transition_upper_trunk
 item polishforests:scots_pine_trunk block=polishforests:scots_pine_trunk
 item polishforests:scots_pine_upper_trunk block=polishforests:scots_pine_upper_trunk
 item polishforests:spruce_trunk block=polishforests:spruce_trunk
