@@ -103,27 +103,33 @@ def build(q, texture_size=(64, 64)):
                       locators={'nose': nose, 'eye_left': (hwid / 2.0, eye_y, eye_z),
                                 'eye_right': (-hwid / 2.0, eye_y, eye_z)}))
 
-    # Ears at the back top corners of the skull, thin (1 px) plates turned outwards.
+    # Ears at the back top corners of the skull (the back column, behind the eye and the antlers), thin (1 px) plates
+    # turned outwards.
     el, ew = px(q.ear_length), px(q.ear_width)
     top = hp[1] + hh / 2.0
     for side, sx in (('left', 1), ('right', -1)):
-        x_in = sx * (hwid / 2.0 - 0.5)
-        pivot = (x_in, top, hp[2] - 1.0)
+        x_in = sx * (hwid / 2.0 - 0.25)
+        pivot = (x_in, top, hp[2] - 0.5)
         x0 = x_in if sx > 0 else x_in - ew
-        ear = Cube((x0, top, hp[2] - 1.5), (ew, el, 1), 'ear')
+        ear = Cube((x0, top, hp[2] - 1.0), (ew, el, 1), 'ear')
         bones.append(Bone(f'ear_{side}', pivot, 'head', rotation=(-10, 0, sx * q.ear_spread), cubes=[ear],
-                          locators={f'ear_{side}_tip': (x_in + sx * ew / 2.0, top + el, hp[2] - 1.0)}))
+                          locators={f'ear_{side}_tip': (x_in + sx * ew / 2.0, top + el, hp[2] - 0.5)}))
 
+    # Antlers (pedicles on the frontal bone above the eyes, just in front of the ears: the middle column of the skull).
+    # A roe buck's six-pointer: the front tine about 2 px above the burr, the back tine about 3 px, the beam ending
+    # above it.
     if q.antler_length > 0:
         al = px(q.antler_length)
+        front_y = max(1, int(round(al * 0.4)))
+        back_y = max(front_y + 1, al - 2)
         for side, sx in (('left', 1), ('right', -1)):
-            x0 = 0.5 if sx > 0 else -1.5
-            base = (x0 + 0.5, top, hp[2] - 2.5)
-            beam = Cube((x0, top, hp[2] - 3.0), (1, al, 1), 'antler')
-            front_tine = Cube((x0, top + al // 2, hp[2] - 4.0), (1, 1, 1), 'antler_tine')
-            back_tine = Cube((x0, top + al - 1, hp[2] - 2.0), (1, 1, 1), 'antler_tine')
+            x0 = 0.25 if sx > 0 else -1.25
+            base = (x0 + 0.5, top, hp[2] - 1.5)
+            beam = Cube((x0, top, hp[2] - 2.0), (1, al, 1), 'antler')
+            front_tine = Cube((x0, top + front_y, hp[2] - 3.0), (1, 1, 1), 'antler_tine')
+            back_tine = Cube((x0, top + back_y, hp[2] - 1.0), (1, 1, 1), 'antler_tine')
             bones.append(Bone(f'antler_{side}', base, 'head', rotation=(-12, 0, sx * 8),
-                              cubes=[beam, front_tine, back_tine], locators={f'antler_{side}_tip': (x0 + 0.5, top + al, hp[2] - 2.5)}))
+                              cubes=[beam, front_tine, back_tine], locators={f'antler_{side}_tip': (x0 + 0.5, top + al, hp[2] - 1.5)}))
 
     # Legs: one cube each from the ground to 1 px inside the trunk, at the sides of the trunk (+X = left), turning about
     # a pivot 0.5 px inside the trunk: no gap opens at the shoulder or hip when a leg swings, and no face of the leg lies
@@ -138,7 +144,11 @@ def build(q, texture_size=(64, 64)):
         leg = Cube((xc - lw / 2.0, 0, zc - lw / 2.0), (lw, h + 1, lw), part)
         bones.append(Bone(name, (xc, h + 0.5, zc), 'body', cubes=[leg], locators={f'{name}_tip': (xc, 0, zc)}))
 
+    # Tail: 1-2 cm, practically invisible (report 07 §3.2): a 1 px cube sunk into the top of the rump patch, 0.5 px out
+    # of the rump and 0.25 px under its top (off the planes of the hindquarters); turning about its top front edge lifts
+    # it above the rump (misc.alert).
     tl = max(1, px(q.tail_length))
-    tail = Cube((-0.5, rump - 1.0 - tl + 1, z_back), (1, tl, 1), 'tail')
-    bones.append(Bone('tail', (0, rump - 0.5, z_back), 'body', cubes=[tail], locators={'tail_tip': (0, rump - tl, z_back + 0.5)}))
+    tail = Cube((-0.5, rump - 0.25 - tl, z_back - 0.5), (1, tl, 1), 'tail')
+    bones.append(Bone('tail', (0, rump - 0.25, z_back - 0.5), 'body', cubes=[tail],
+                      locators={'tail_tip': (0, rump - 0.25 - tl, z_back + 0.5)}))
     return Model(q.id, bones, texture_size, q.hitbox)

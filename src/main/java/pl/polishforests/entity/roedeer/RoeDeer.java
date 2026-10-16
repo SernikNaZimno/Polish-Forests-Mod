@@ -8,6 +8,7 @@ import com.geckolib.animation.RawAnimation;
 import com.geckolib.animation.object.PlayState;
 import com.geckolib.animation.state.AnimationTest;
 import com.geckolib.util.GeckoLibUtil;
+import java.util.List;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -51,6 +52,10 @@ public class RoeDeer extends Animal implements GeoEntity {
 	public static final RawAnimation EAT = RawAnimation.begin().thenLoop("misc.eat");
 	public static final RawAnimation ALERT = RawAnimation.begin().thenPlayAndHold("misc.alert");
 	public static final RawAnimation REST = RawAnimation.begin().thenLoop("misc.rest");
+	/** The fields the roe deer adds to its saved data; they go into saved worlds (the registry snapshot lists them). */
+	public static final String TAG_BUCK = "Buck";
+	public static final String TAG_WINTER_COAT = "WinterCoat";
+	public static final List<String> SAVED_FIELDS = List.of(TAG_BUCK, TAG_WINTER_COAT);
 	/** Speed above which a moving deer runs instead of walking (blocks per tick, horizontal). */
 	private static final double RUN_SPEED = 0.12;
 
@@ -137,15 +142,15 @@ public class RoeDeer extends Animal implements GeoEntity {
 	@Override
 	protected void addAdditionalSaveData(ValueOutput output) {
 		super.addAdditionalSaveData(output);
-		output.putBoolean("Buck", isBuck());
-		output.putBoolean("WinterCoat", hasWinterCoat());
+		output.putBoolean(TAG_BUCK, isBuck());
+		output.putBoolean(TAG_WINTER_COAT, hasWinterCoat());
 	}
 
 	@Override
 	protected void readAdditionalSaveData(ValueInput input) {
 		super.readAdditionalSaveData(input);
-		setBuck(input.getBooleanOr("Buck", false));
-		setWinterCoat(input.getBooleanOr("WinterCoat", false));
+		setBuck(input.getBooleanOr(TAG_BUCK, false));
+		setWinterCoat(input.getBooleanOr(TAG_WINTER_COAT, false));
 	}
 
 	/** No food: the slice has no breeding (C10, growing up only in spawn groups from V14). */

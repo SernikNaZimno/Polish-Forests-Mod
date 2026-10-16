@@ -5,7 +5,9 @@
    RenderUtil.prepMatrixForBoneAndUpdateListeners run outside the game on 2026-10-16, numbers below) must come out of
    model.bone_matrices within 1e-3 px.
 2. The validator finds what it must: UV rectangles of two cubes on the same texels, a face outside the texture, a missing
-   parent, a repeated locator name, an animation keyframe after the end, a texel painted outside the faces, a black texel.
+   parent, a repeated locator name, an animation keyframe after the end, a texel painted outside the faces, a black texel,
+   a coat in rows of one tone, two faces in one plane, a leg under the ground, an animal floating above it, two legs
+   through each other.
 Usage: python tools/fauna/selftest.py
 """
 import copy
@@ -89,6 +91,45 @@ def validator_errors():
     black[ys[0], xs[0]] = (0, 0, 0, 255)
     if not any('pure black' in m for m in validate.texture_report(base, black)[0]):
         errs.append('validator: black texel not found')
+    errs += shape_and_pose_errors()
+    return errs
+
+
+def shape_and_pose_errors():
+    """The checks added after the review of V8: a coat in rows of one tone, faces in one plane, a leg under the ground,
+    an animal floating above it, legs through each other."""
+    errs = []
+    flat = Model('f', [Bone('a', (0, 0, 0), cubes=[Cube((0, 0, 0), (8, 4, 2), 'a')])], (32, 16))
+    uvpack.pack(flat)
+    occ, _ = uvpack.occupancy(flat)
+    striped = np.zeros((16, 32, 4), np.uint8)
+    for v in range(16):
+        striped[v, :] = (60 + 12 * v, 40 + 10 * v, 30, 255)
+    striped[occ == 0] = 0
+    if not any('one tone' in m for m in validate.coat_report(flat, striped)[0]):
+        errs.append('validator: a coat in rows of one tone not found')
+    twins = Model('c', [Bone('a', (0, 0, 0), cubes=[Cube((0, 0, 0), (2, 2, 2), 'a')]),
+                        Bone('b', (0, 0, 0), cubes=[Cube((1, 0, 1), (2, 2, 2), 'b')])], (32, 16))
+    uvpack.pack(twins)
+    if not validate.coplanar_faces(twins):
+        errs.append('validator: faces in one plane not found')
+    legs = Model('l', [Bone('body', (0, 4, 0), cubes=[Cube((-2, 4, -3), (4, 2, 6), 'body')]),
+                       Bone('leg_front_left', (1, 4, -2), 'body', cubes=[Cube((0.5, 0, -2.5), (1, 5, 1), 'leg')]),
+                       Bone('leg_back_left', (1, 4, 2), 'body', cubes=[Cube((0.5, 0, 1.5), (1, 5, 1), 'leg')])], (32, 16))
+    uvpack.pack(legs)
+
+    def anim(bones):
+        return {'animations': {'misc.test': {'loop': True, 'animation_length': 1.0, 'bones': bones}}}
+    sunk = anim({'body': {'position': {'0.0': [0, -0.5, 0], '1.0': [0, -0.5, 0]}}})
+    if not any('under the ground' in m for m in validate.check_poses(sunk, legs)):
+        errs.append('validator: a leg under the ground not found')
+    floating = anim({'body': {'position': {'0.0': [0, 0.5, 0], '1.0': [0, 0.5, 0]}}})
+    if not any('floats' in m for m in validate.check_poses(floating, legs)):
+        errs.append('validator: a floating animal not found')
+    crossed = anim({'leg_front_left': {'rotation': {'0.0': [60, 0, 0], '1.0': [60, 0, 0]}},
+                    'leg_back_left': {'rotation': {'0.0': [-60, 0, 0], '1.0': [-60, 0, 0]}}})
+    if not any('goes through' in m for m in validate.check_poses(crossed, legs)):
+        errs.append('validator: legs through each other not found')
     return errs
 
 

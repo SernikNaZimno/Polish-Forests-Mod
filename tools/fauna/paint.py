@@ -130,14 +130,30 @@ ROE_COATS = {
     'summer': dict(back=(160, 92, 52), flank=(192, 112, 62), belly=(218, 172, 124), face=(164, 116, 82),
                    muzzle=(134, 106, 88), patch=(230, 214, 180), throat=(206, 160, 112), leg=(182, 112, 70),
                    ear_out=(152, 110, 84), ear_in=(214, 194, 168)),
-    'winter': dict(back=(114, 104, 92), flank=(140, 128, 112), belly=(186, 176, 160), face=(124, 112, 100),
-                   muzzle=(108, 98, 90), patch=(238, 234, 224), throat=(218, 210, 196), leg=(134, 122, 108),
-                   ear_out=(116, 106, 96), ear_in=(204, 194, 180)),
+    'winter': dict(back=(104, 92, 79), flank=(130, 115, 96), belly=(178, 165, 146), face=(120, 106, 92),
+                   muzzle=(104, 94, 86), patch=(238, 234, 224), throat=(140, 126, 108), leg=(126, 112, 96),
+                   ear_out=(112, 100, 89), ear_in=(200, 188, 172)),
 }
+# The eye: the middle row of the side of the skull (3 x 3 texels), in its middle column.
+EYE_ROW = 1
+# Winter throat: the pale patches on the underside of the neck, rows counted from the head end.
+WINTER_THROAT_PATCHES = (1, 4)
 ROE_DARK = dict(eye=(48, 37, 32), eye_rim=(92, 74, 62), nose=(56, 47, 43), lip=(222, 216, 204), hoof=(70, 60, 54),
                 ear_tip=(84, 72, 64))
 ANTLERS = {'summer': dict(beam=(118, 94, 70), tip=(212, 198, 168)),     # polished antlers (V-X)
            'winter': dict(beam=(128, 112, 96), tip=(156, 140, 120))}    # in velvet (scypuł, XII-IV)
+
+
+# The coat of the trunk and the neck (review of V8: rows of one tone looked like a striped blanket): the tone borders move
+# by COAT_EDGE texels (noise with a period of COAT_EDGE_PERIOD px along the body) plus COAT_TUFT texels of finer noise,
+# and the brightness varies by COAT_VARIATION, at least 1.5 tone steps (COAT_STEP).
+COAT_EDGE = 1.3
+COAT_EDGE_PERIOD = 4.0
+COAT_TUFT = 0.45
+COAT_TUFT_PERIOD = 1.7
+COAT_VARIATION = 0.13
+COAT_STEP = 0.03
+COAT_TONES = 8
 
 
 def roe_deer_shader(model, sex, season, seed='roe_deer'):
@@ -154,16 +170,26 @@ def roe_deer_shader(model, sex, season, seed='roe_deer'):
     rump_patch = 2.4 if season == 'winter' else 1.9     # half width on the back of the rump, px
     patch_strength = 1.0 if season == 'winter' else 0.7
 
+    edge = Noise3(f'{seed}/{season}/edge', period=COAT_EDGE_PERIOD)
+    tuft = Noise3(f'{seed}/{season}/tuft', period=COAT_TUFT_PERIOD)
+
     def variation(p, amount=0.05):
         return 1.0 + amount * (0.75 * fur(p) + 0.25 * fine(p))
 
-    def coat(t, p, side_light=1.0):
-        """Countershading by height t (0 belly .. 1 back)."""
+    def coat(t, p, side_light=1.0, span=6.0):
+        """Countershading by height t (0 belly .. 1 back) over a face span pixels high. The tone borders are shifted up
+        and down by low-frequency noise along the body (about a texel either way), so the tones run in irregular
+        clusters of 2-4 texels and the dark back has a ragged edge, instead of rows of one tone; the fur variation on
+        top is larger than a tone step, so the steps do not swallow it. The height is taken in COAT_TONES bands (a
+        small palette of tones, as in vanilla coats), and most of the side is the flank tone: the light belly and the
+        dark back take the lowest and the highest rows."""
+        t = t + (COAT_EDGE * edge(p) + COAT_TUFT * tuft(p)) / span
+        t = round(t * COAT_TONES) / COAT_TONES
         if t < 0.5:
-            c = mix(C['belly'], C['flank'], (t - 0.08) / 0.42)
+            c = mix(C['belly'], C['flank'], (t + 0.05) / 0.3)
         else:
-            c = mix(C['flank'], C['back'], (t - 0.55) / 0.45)
-        return shade(c, posterize(variation(p) * side_light))
+            c = mix(C['flank'], C['back'], (t - 0.7) / 0.3)
+        return shade(c, posterize(variation(p, COAT_VARIATION) * side_light, COAT_STEP))
 
     def patch_weight(p, cube):
         """0..1 share of the rump patch (lustro) at a point on the hindquarters: an ellipse on the back of the rump that
@@ -191,7 +217,7 @@ def roe_deer_shader(model, sex, season, seed='roe_deer'):
                 h = 1.0
             elif face == 'down':
                 h = 0.0
-            col = coat(h, p)
+            col = coat(h, p, span=trunk_y1 - trunk_y0)
             if part == 'hind':
                 w = patch_weight(p, t.cube)
                 if w > 0:
@@ -203,24 +229,31 @@ def roe_deer_shader(model, sex, season, seed='roe_deer'):
         if part == 'neck':
             # the neck cube's top (mane line) is darker, its underside is the throat
             if face == 'up':
-                col = coat(0.95, p)
+                col = coat(0.95, p, span=t.cube.size[1] / 0.6)
             elif face == 'down':
                 col = shade(C['throat'], posterize(variation(p, 0.03)))
-                if season == 'winter' and 1 <= t.j <= 2:
-                    col = mix(col, C['patch'], 0.55)      # the pale winter throat patch
+                if season == 'winter':
+                    # winter: two separate pale patches on the grey-brown throat, one under the jaw and one lower on the
+                    # neck (cube_t z: 0 at the head end)
+                    row = int(t.cube_t[2] * t.cube.size[2])
+                    if row in WINTER_THROAT_PATCHES:
+                        t.detail = True
+                        col = mix(col, C['patch'], 0.8)
             else:
-                col = coat(0.85 - 0.6 * t.j / max(1, t.h - 1), p)
+                col = coat(0.85 - 0.6 * t.j / max(1, t.h - 1), p, span=t.cube.size[1] / 0.6)
             return col
         if part == 'skull':
             base = C['face'] if not (sex == 'buck' and face == 'up') else shade(C['face'], 0.82)  # buck: darker forehead
             col = shade(base, posterize(variation(p, 0.04)))
             if face in ('left', 'right'):
-                # eye: one dark texel in the front column of the upper row, with a soft rim tone in front of and above it
-                front_col = t.w - 2 if face == 'right' else 1     # the right side shows the head to the right
-                if t.j == 0 and t.i == front_col:
+                # eye: one dark texel in the middle of the side of the skull (under the antler, in front of the ear),
+                # with a soft rim tone in front of it, towards the muzzle
+                eye_col = t.w // 2
+                forward = 1 if face == 'right' else -1            # the right side shows the head to the right
+                if t.j == EYE_ROW and t.i == eye_col:
                     t.detail = True
                     return ROE_DARK['eye']
-                if (t.j == 0 and abs(t.i - front_col) == 1) or (t.j == 1 and t.i == front_col):
+                if t.j == EYE_ROW and t.i == eye_col + forward:
                     t.detail = True
                     col = mix(col, ROE_DARK['eye_rim'], 0.45)
                 if t.j == t.h - 1:
@@ -245,7 +278,9 @@ def roe_deer_shader(model, sex, season, seed='roe_deer'):
                 if front:
                     return mix(col, ROE_DARK['nose'], 0.55)       # nose wraps the front corner
             if face == 'up':
-                col = mix(col, C['face'], 0.3)
+                # the bridge of the nose: dark grey-brown, darkest at the nose (with the light from above it is the
+                # brightest face, so a light bridge framed the black nose like a visor)
+                col = mix(col, ROE_DARK['nose'], 0.25 + 0.25 * (1.0 - t.cube_t[2]))
             return col
         if part == 'ear':
             if face == 'front':                                  # inner side: pale, a soft darker middle
@@ -285,8 +320,13 @@ def roe_deer_shader(model, sex, season, seed='roe_deer'):
                 col = mix(col, ROE_DARK['hoof'], 0.3)             # pastern
             return col
         if part == 'tail':
+            # hidden in the rump patch: in summer the coat of the rump around it, in winter the white of the patch
             t.detail = True
-            return shade(C['patch'], posterize(variation(p, 0.02)) * (0.94 if face == 'down' else 1.0))
+            if season == 'winter':
+                return shade(C['patch'], posterize(variation(p, 0.02)) * (0.94 if face == 'down' else 1.0))
+            hind = body[-1]
+            col = coat((p[1] - trunk_y0) / (trunk_y1 - trunk_y0), p, span=trunk_y1 - trunk_y0)
+            return mix(col, shade(C['patch'], posterize(variation(p, 0.025))), patch_weight(p, hind))
         raise ValueError(f'roe deer: no paint for part {part}')
 
     return shader
@@ -295,8 +335,8 @@ def roe_deer_shader(model, sex, season, seed='roe_deer'):
 # ------------------------------------------------------------------ axis gauge
 
 GAUGE_COLORS = {'base': (150, 150, 150), 'pitch': (220, 60, 50), 'yaw': (60, 190, 70), 'roll': (60, 90, 220),
-                'chain': (230, 200, 40), 'chain_child': (240, 140, 30), 'anim': (210, 60, 210), 'left': (245, 245, 245),
-                'front': (80, 80, 80)}
+                'chain': (230, 200, 40), 'chain_child': (240, 140, 30), 'anim': (210, 60, 210),
+                'anim_child': (120, 40, 160), 'left': (245, 245, 245), 'front': (80, 80, 80)}
 
 
 def gauge_shader(t):

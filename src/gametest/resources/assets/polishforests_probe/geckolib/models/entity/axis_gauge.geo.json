@@ -5,7 +5,7 @@
    "description": {
     "identifier": "geometry.axis_gauge",
     "texture_width": 64,
-    "texture_height": 16,
+    "texture_height": 32,
     "visible_bounds_width": 3,
     "visible_bounds_height": 2.5,
     "visible_bounds_offset": [0, 1, 0]
@@ -106,6 +106,7 @@
      "name": "anim",
      "parent": "base",
      "pivot": [6, 4, 0],
+     "rotation": [10, 20, -15],
      "cubes": [
       {
        "origin": [5.5, 3.5, -6],
@@ -118,6 +119,22 @@
      }
     },
     {
+     "name": "anim_child",
+     "parent": "anim",
+     "pivot": [6, 4, -6],
+     "rotation": [0, -30, 20],
+     "cubes": [
+      {
+       "origin": [5.5, 3.5, -10],
+       "size": [1, 1, 4],
+       "uv": [44, 7]
+      }
+     ],
+     "locators": {
+      "anim_child_tip": [6, 4, -10]
+     }
+    },
+    {
      "name": "left_marker",
      "parent": "base",
      "pivot": [8, 0, 0],
@@ -125,7 +142,7 @@
       {
        "origin": [7, 0, -1],
        "size": [2, 3, 2],
-       "uv": [44, 7]
+       "uv": [54, 7]
       }
      ],
      "locators": {
@@ -140,7 +157,7 @@
       {
        "origin": [-1, 0, -9],
        "size": [2, 2, 2],
-       "uv": [52, 7]
+       "uv": [0, 14]
       }
      ],
      "locators": {

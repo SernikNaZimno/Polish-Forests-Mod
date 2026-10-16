@@ -2,12 +2,13 @@
 
 ROE_DEER: the European roe deer (Capreolus capreolus), adults from docs/research/07-fauna-polski-siedliska-zachowania.md
 §3.2 and §13: withers 60-90 cm (75 on average), the rump higher than the withers, trunk length about 1.6 x the withers
-height with the head, legs about 55% of the withers height, large ears, antlers of the buck 25 cm with 3 tines each.
-Hitbox 0.7 x 1.1 blocks (docs/04 §0.3, C2).
+height with the head, legs about 55% of the withers height, large ears, antlers of the buck 25-30 cm with 3 tines each
+(30 cm: 5 px, so the beam ends above the back tine). The neck is carried steeply (58 degrees) and the muzzle clearly
+lowered (38 degrees below the horizontal), not level as in a llama. Hitbox 0.7 x 1.1 blocks (docs/04 §0.3, C2).
 
 AXIS_GAUGE: the calibration model of the fauna game test (step V8): arms turned by known angles about each axis, a chain
-of two turned bones, a bone moved and turned only by an animation, and a marker on the left side (+X), each with a
-locator at its tip. It lives only in the game test mod (namespace polishforests_probe).
+of two turned bones, a bone with a rest rotation that an animation moves and turns further (with a turned child that
+must follow it), and markers on the left side (+X) and the front, each with a locator at its tip. It lives only in the game test mod (namespace polishforests_probe).
 """
 from model import Bone, Cube, Model
 from quadruped import Quadruped, build
@@ -15,11 +16,11 @@ from quadruped import Quadruped, build
 ROE_DEER_SHAPE = Quadruped(
     id='roe_deer',
     withers=75, rump=81, trunk_length=80, chest_share=0.55, chest_depth=34, flank_depth=31, width=28,
-    neck_length=44, neck_thickness=18, neck_width=12.5, neck_angle=52,
+    neck_length=44, neck_thickness=18, neck_width=12.5, neck_angle=58,
     head_length=19, head_height=16, head_width=18, muzzle_length=12.5, muzzle_height=12.5, muzzle_width=12.5,
-    head_angle=20,
+    head_angle=38,
     ear_length=17, ear_width=11, ear_spread=14,
-    leg_width=12.5, tail_length=2, antler_length=25, hitbox=(0.7, 1.1))
+    leg_width=12.5, tail_length=2, antler_length=30, hitbox=(0.7, 1.1))
 
 
 def roe_deer():
@@ -47,8 +48,12 @@ def axis_gauge():
              locators={'chain_tip': (0, 16, 10)}),
         Bone('chain_child', (0, 16, 10), 'chain', rotation=(-10, 15, -25), cubes=[Cube((-0.5, 15.5, 10), (1, 1, 5), 'chain_child')],
              locators={'chain_child_tip': (0, 16, 15)}),
-        # Turned and moved only by the animation.
-        Bone('anim', (6, 4, 0), 'base', cubes=[Cube((5.5, 3.5, -6), (1, 1, 6), 'anim')], locators={'anim_tip': (6, 4, -6)}),
+        # Turned at rest, then moved and turned further by the animation (the animation angles add to the rest angles);
+        # its turned child must follow the animated parent.
+        Bone('anim', (6, 4, 0), 'base', rotation=(10, 20, -15), cubes=[Cube((5.5, 3.5, -6), (1, 1, 6), 'anim')],
+             locators={'anim_tip': (6, 4, -6)}),
+        Bone('anim_child', (6, 4, -6), 'anim', rotation=(0, -30, 20), cubes=[Cube((5.5, 3.5, -10), (1, 1, 4), 'anim_child')],
+             locators={'anim_child_tip': (6, 4, -10)}),
         # The left side of the model (+X); in the world it must be on the left of the entity.
         Bone('left_marker', (8, 0, 0), 'base', cubes=[Cube((7, 0, -1), (2, 3, 2), 'left')], locators={'left_marker_tip': (8, 3, 0)}),
         # The front of the model (-Z); in the world it must point where the entity looks.

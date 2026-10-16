@@ -44,7 +44,8 @@ import pl.polishforests.gametest.probe.FaunaProbes;
  *
  * <ol>
  * <li><b>Axis gauge</b> ({@link FaunaProbes}): two gauges, one at rest facing south, one in its animation pose
- * {@code calib.pose} turned to yaw {@value #GAUGE_YAW}. GeckoLib's position listeners ({@link BoneProbe}) report every bone
+ * {@code calib.pose} turned to yaw {@value #GAUGE_YAW} (the animated bone has a rest rotation, so the animation angles add
+ * to non-zero angles, and a turned child that must follow it). GeckoLib's position listeners ({@link BoneProbe}) report every bone
  * pivot and locator in model space and in the world; they must equal the positions tools/fauna computed with its own
  * kinematics ({@code src/test/resources/fauna/fauna_expected.json}, written by {@code tools/fauna/generate.py}) within
  * {@value #MODEL_TOLERANCE} px, and in the world the left marker must be on the left of the entity and the front marker in
@@ -56,6 +57,9 @@ import pl.polishforests.gametest.probe.FaunaProbes;
  * silhouette of the screenshot (every pixel that is not the green backdrop) must cover the silhouette tools/fauna rendered
  * from the same camera ({@code roe_deer_<sex>_<view>.png}) with an intersection over union of at least
  * {@value #MIN_IOU}.
+ * <li><b>Roe deer in an animation</b>: a buck holding the last frame of {@code misc.alert} (turned to yaw
+ * {@value #GAUGE_YAW}): the positions of every bone and locator as tools/fauna computes them for that frame (animation
+ * angles added to the rest angles of the neck, head and ears; the body moved and turned with the legs, neck and head).
  * <li>Screenshots for the review (field of view 70): the 4 variants side by side on grass from the front and from behind,
  * each animation (from the right: idle, walk, run, eat, alert on a buck, rest), the spawn egg in the hotbar.
  * </ol>
@@ -110,6 +114,7 @@ public final class FaunaClientGameTest implements FabricClientGameTest {
 			BoneProbe.start();
 			gauges(context, sp, o, expected);
 			fourSides(context, sp, o, expected, screen);
+			alertPose(context, sp, o, expected, screen);
 			BoneProbe.stop();
 			context.runOnClient(mc -> mc.options.fov().set(70));
 			showcase(context, sp, o);
@@ -216,6 +221,7 @@ public final class FaunaClientGameTest implements FabricClientGameTest {
 
 	private void gauges(ClientGameTestContext context, TestSingleplayerContext sp, BlockPos o, JsonObject expected) {
 		JsonObject gauge = expected.getAsJsonObject("models").getAsJsonObject("axis_gauge");
+		BoneProbe.start();
 		Vec3[] pos = sp.getServer().computeOnServer(s -> {
 			ServerLevel level = s.overworld();
 			FaunaProbes.AxisGauge rest = FaunaProbes.axisGauge().create(level, EntitySpawnReason.COMMAND);
@@ -335,6 +341,9 @@ public final class FaunaClientGameTest implements FabricClientGameTest {
 			for (JsonElement view : expected.getAsJsonArray("views")) {
 				String name = view.getAsJsonObject().get("name").getAsString();
 				float yaw = view.getAsJsonObject().get("yaw").getAsFloat();
+				// fresh points for every view: all 16 deer stand in the same place, so the points of the previous one
+				// must not satisfy the wait in checkBones
+				BoneProbe.start();
 				Vec3 pos = deer(sp, feetX, o.getY(), feetZ, yaw, v[0], v[1], RoeDeer.Display.NONE);
 				String shotName = "fauna_roe_deer_" + variant + "_" + name;
 				Path shot = shot(context, sp, shotName, feetX + eye[0], o.getY() + eye[1], feetZ + eye[2], cam.get("yaw").getAsDouble(),
@@ -348,6 +357,28 @@ public final class FaunaClientGameTest implements FabricClientGameTest {
 			}
 		}
 		result("roe deer 4 sides: smallest silhouette IoU game / preview %.4f (at least %.2f)", worstIou, MIN_IOU);
+	}
+
+	/**
+	 * A buck in {@code misc.alert}: after the transition and the animation (0.45 s) it holds the last frame; then the probe
+	 * starts afresh and every bone and locator must be where tools/fauna puts it in that frame ({@code alert} of
+	 * fauna_expected.json).
+	 */
+	private void alertPose(ClientGameTestContext context, TestSingleplayerContext sp, BlockPos o, JsonObject expected, int[] screen) {
+		JsonObject deer = expected.getAsJsonObject("models").getAsJsonObject("roe_deer");
+		JsonObject cam = expected.getAsJsonObject("camera");
+		double[] eye = doubles(cam.getAsJsonArray("eye"));
+		double feetX = o.getX() + 0.5;
+		double feetZ = o.getZ() + 0.5;
+		Vec3 pos = deer(sp, feetX, o.getY(), feetZ, GAUGE_YAW, true, false, RoeDeer.Display.ALERT);
+		shot(context, sp, "fauna_roe_deer_alert_check", feetX + eye[0], o.getY() + eye[1], feetZ + eye[2], cam.get("yaw").getAsDouble(),
+				cam.get("pitch").getAsDouble(), screen[0], screen[1]);
+		context.waitTicks(20);
+		BoneProbe.start();
+		checkBones(context, "roe deer buck in " + deer.get("alert_animation").getAsString() + " (held), yaw " + GAUGE_YAW, pos, GAUGE_YAW,
+				deer.getAsJsonObject("alert"), List.of());
+		clear(sp);
+		context.waitTicks(2);
 	}
 
 	/** Intersection over union of the screenshot silhouette (not the green backdrop) and the preview mask. */

@@ -1,5 +1,6 @@
 package pl.polishforests.entity;
 
+import java.util.List;
 import net.fabricmc.fabric.api.creativetab.v1.CreativeModeTabEvents;
 import net.fabricmc.fabric.api.object.builder.v1.entity.FabricDefaultAttributeRegistry;
 import net.minecraft.core.Registry;
@@ -56,6 +57,14 @@ public final class ModEntities {
 			throw new IllegalStateException("The entity types are not registered yet");
 		}
 		return roeDeer;
+	}
+
+	/**
+	 * The names of the fields an entity type of the mod adds to the saved entity data (in the order it writes them); the
+	 * registry snapshot lists them, so renaming a field, which breaks saved worlds after CP-B, fails its test.
+	 */
+	public static List<String> savedFields(EntityType<?> type) {
+		return type == roeDeer ? RoeDeer.SAVED_FIELDS : List.of();
 	}
 
 	public static Item roeDeerSpawnEgg() {

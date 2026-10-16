@@ -111,11 +111,13 @@ def validation(files, details):
                 errors += [f'{rel}: {m}' for m in e.args[0]]
                 continue
             errors += [f'{rel}: {m}' for m in validate.check_model(model)]
+            errors += [f'{rel}: {m}' for m in validate.check_shape(model)]
             anim = committed.get(f'{base}/geckolib/animations/entity/{mid}.animation.json')
             if anim is None:
                 errors.append(f'{mid}: no animation file')
             else:
                 errors += [f'{mid} animations: {m}' for m in validate.check_animations(anim, model, mid)]
+                errors += [f'{mid} poses: {m}' for m in validate.check_poses(anim, model)]
             textures = {r: img for r, img in committed.items()
                         if isinstance(img, np.ndarray) and (r.startswith(f'{base}/textures/entity/{mid}/')
                                                             or r == f'{base}/textures/entity/{mid}.png')}
@@ -124,9 +126,14 @@ def validation(files, details):
             for r, img in sorted(textures.items()):
                 errs, stats = validate.texture_report(model, img, details.get(r))
                 errors += [f'{r}: {m}' for m in errs]
+                coat = ''
+                if base == generate.ASSETS:     # animal coats (not the flat colors of the axis gauge)
+                    cerrs, (ratio, single) = validate.coat_report(model, img, details.get(r))
+                    errors += [f'{r}: {m}' for m in cerrs]
+                    coat = f'; along / down {ratio:.2f}, single-tone rows {single:.0%}'
                 if stats:
                     report.append(f'  {os.path.basename(r):24s} neighbour step mean {stats[0]:4.1f}, p95 {stats[1]:4.1f}, '
-                                  f'largest {stats[2]:5.1f}; darkest texel {stats[3]:5.1f}')
+                                  f'largest {stats[2]:5.1f}; darkest texel {stats[3]:5.1f}{coat}')
             errors += validate.check_expected(expected, model)
             report.append(f'  {mid}: {len(model.bones)} bones, {len(model.cubes())} cubes, {validate.face_count(model)} faces, '
                           f'texture {model.texture_size[0]} x {model.texture_size[1]}')

@@ -11,7 +11,8 @@ Files (paths relative to the project):
     src/main/resources/assets/polishforests/textures/entity/roe_deer/<doe|buck>_<summer|winter>.png
     src/main/resources/assets/polishforests/textures/item/roe_deer_spawn_egg.png
     src/gametest/resources/assets/polishforests_probe/...                                    the axis gauge (game test only)
-    src/test/resources/fauna/fauna_expected.json   bone and locator positions, cameras of the 4-side views
+    src/test/resources/fauna/fauna_expected.json   bone and locator positions (rest pose; the held misc.alert pose;
+                                                   the axis gauge at rest and posed), cameras of the 4-side views
     src/test/resources/fauna/<model>_<variant>_<view>.png   silhouettes of the 4-side views (preview from code)
 The fauna game test (-Pgametest=fauna) compares the game with the last two; checkArt (tools/art/check.py) compares the
 committed files with this generator (JSON parsed, PNG by decoded pixels) and runs the validator (validate.py).
@@ -116,8 +117,13 @@ def build_all():
         'views': [{'name': n, 'yaw': y} for n, y in VIEWS],
         'models': {},
     }
+    alert = deer_anims['animations']['misc.alert']
     expected['models']['roe_deer'] = {
         'rest': _round(pivots_and_locators(deer)),
+        # the held last frame of misc.alert: animation angles added to non-zero rest angles (neck, head, ears), the body
+        # moved and turned with its children (legs, neck, head)
+        'alert': _round(pivots_and_locators(deer, animations.pose_at(alert, alert['animation_length']))),
+        'alert_animation': 'misc.alert',
         'hidden': {'doe': list(ANTLERS), 'buck': []},
         'masks': {},
     }
