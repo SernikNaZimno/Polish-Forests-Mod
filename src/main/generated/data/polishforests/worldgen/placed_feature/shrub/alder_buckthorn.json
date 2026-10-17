@@ -1,5 +1,5 @@
 {
-  "feature": "polishforests:tree/gray_alder",
+  "feature": "polishforests:shrub/alder_buckthorn",
   "placement": [
     {
       "type": "minecraft:block_predicate_filter",

@@ -1,5 +1,5 @@
 {
-  "feature": "polishforests:tree/yew",
+  "feature": "polishforests:tree_substitute/hornbeam",
   "placement": [
     {
       "type": "minecraft:block_predicate_filter",

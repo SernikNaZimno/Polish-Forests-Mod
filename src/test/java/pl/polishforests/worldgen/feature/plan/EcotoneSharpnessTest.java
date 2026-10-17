@@ -69,12 +69,12 @@ class EcotoneSharpnessTest {
 		return out;
 	}
 
-	private static JsonArray rules(String palette) {
+	static JsonArray rules(String palette) {
 		return BiomeJsonTest.json(BiomeJsonTest.GENERATED.resolve("data/polishforests/worldgen/feature/" + palette + ".json"))
 				.getAsJsonArray("rules");
 	}
 
-	private static HabitatMatch match(JsonObject r) {
+	static HabitatMatch match(JsonObject r) {
 		List<HabitatBiome> biomes = new ArrayList<>();
 		for (String id : strings(r, "biomes")) {
 			biomes.add(HabitatBiome.byId(id));
@@ -98,7 +98,7 @@ class EcotoneSharpnessTest {
 		return HabitatMatch.of(biomes, zones, sites, associations, soils);
 	}
 
-	private static List<String> strings(JsonObject r, String key) {
+	static List<String> strings(JsonObject r, String key) {
 		List<String> out = new ArrayList<>();
 		if (r.has(key)) {
 			for (JsonElement e : r.getAsJsonArray(key)) {

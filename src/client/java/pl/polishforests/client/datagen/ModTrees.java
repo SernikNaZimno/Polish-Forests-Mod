@@ -43,44 +43,55 @@ import net.minecraft.world.level.levelgen.placement.PlacedFeature;
 import net.minecraft.world.level.levelgen.placement.PlacementModifier;
 import pl.polishforests.PolishForests;
 import pl.polishforests.worldgen.feature.FastTreeFeature;
+import pl.polishforests.worldgen.feature.ProceduralTreeFeature;
 import pl.polishforests.worldgen.habitat.Species;
+import pl.polishforests.worldgen.tree.AgeClass;
+import pl.polishforests.worldgen.tree.CrownLayer;
+import pl.polishforests.worldgen.tree.SpeciesShape;
 
 /**
- * Tree and shrub features (docs/03-m2-biomy.md §8.4): vanilla tree shapes with the bark and leaves chosen for each
- * species, a placeholder until the mod's own trees of M3, which replace these files under the same identifiers.
- * {@code polishforests:tree/<species>} for the 20 tree species, {@code polishforests:shrub/<species>} for the dwarf
- * mountain pine, osier, hazel and juniper, and the variants a palette picks by site: the stunted Scots pine of bog
- * woodlands, dry pine forests and the wind belt ({@code tree/scots_pine_low}), the stunted spruce of the timberline
- * ({@code tree/spruce_stunted}) and the mega spruce of the mountains ({@code tree/spruce_mega}). Oak and birch mix two
- * vanilla shapes inside their own feature (fancy oak 60% and small oak 40%; birch 80% and tall birch with rare bee nests
- * 20%), through the placed features {@code tree/oak_fancy}, {@code tree/oak_small}, {@code tree/birch_small} and
- * {@code tree/birch_tall}, which have no filter (the selector is placed through {@code tree/oak} and {@code tree/birch}).
- * All tree configurations are of the type {@code polishforests:tree} ({@link FastTreeFeature}), the vanilla tree with a
- * cheaper leaf update.
+ * Tree and shrub features (docs/03-m2-biomy.md §8.4, decision PW-3 of docs/04-pionowy-wycinek.md). The placeholders of
+ * M2: vanilla tree shapes with the bark and leaves chosen for each species, {@code polishforests:tree_substitute/<species>}
+ * for the 20 tree species, {@code polishforests:shrub/<species>} for the dwarf mountain pine, osier, hazel, juniper and
+ * alder buckthorn (step V9), and the variants a palette picks by site: the stunted Scots pine of bog woodlands, dry pine
+ * forests and the wind belt ({@code tree_substitute/scots_pine_low}), the stunted spruce of the timberline
+ * ({@code tree_substitute/spruce_stunted}) and the mega spruce of the mountains ({@code tree_substitute/spruce_mega}). Oak
+ * and birch mix two vanilla shapes inside their own feature (fancy oak 60% and small oak 40%; birch 80% and tall birch
+ * with rare bee nests 20%), through the placed features {@code tree_substitute/oak_fancy}, {@code oak_small},
+ * {@code birch_small} and {@code birch_tall}, which have no filter. All placeholder configurations are of the type
+ * {@code polishforests:tree} ({@link FastTreeFeature}), the vanilla tree with a cheaper leaf update.
+ *
+ * <p>The target keys {@code polishforests:tree/<species>} (rule ZW-3) are the procedural trees of the tree planner
+ * ({@link ProceduralTreeFeature}, a lone mature canopy tree; the tree stand calls the planner itself with the layer, age
+ * class and territory) for the species with a planner shape; the palettes of the forests of the vertical slice point to
+ * them, all others to the placeholders (step V9). M3 changes only the palettes.
  */
 final class ModTrees {
-	/** Species with a tree feature: all trees of {@link Species}. */
-	static final List<Species> TREES = java.util.Arrays.stream(Species.values()).filter(s -> s.path().startsWith("tree/"))
-			.toList();
+	/** Species with a placeholder tree feature: all trees of {@link Species}. */
+	static final List<Species> TREES = java.util.Arrays.stream(Species.values()).filter(s -> !s.shrub()).toList();
+	/** Species with a procedural tree feature {@code tree/<species>}: those with a planner shape (step V9). */
+	static final List<Species> PROCEDURAL = TREES.stream().filter(SpeciesShape::supported).toList();
 	/** Species with a shrub feature (ivy is a climber, from M4). */
-	static final List<Species> SHRUBS = List.of(Species.DWARF_MOUNTAIN_PINE, Species.OSIER, Species.HAZEL, Species.JUNIPER);
+	static final List<Species> SHRUBS = List.of(Species.DWARF_MOUNTAIN_PINE, Species.OSIER, Species.HAZEL, Species.JUNIPER,
+			Species.ALDER_BUCKTHORN);
 	/** Tree variants picked by the palettes. */
-	static final String SCOTS_PINE_LOW = "tree/scots_pine_low";
-	static final String SPRUCE_STUNTED = "tree/spruce_stunted";
-	static final String SPRUCE_MEGA = "tree/spruce_mega";
+	static final String SCOTS_PINE_LOW = "tree_substitute/scots_pine_low";
+	static final String SPRUCE_STUNTED = "tree_substitute/spruce_stunted";
+	static final String SPRUCE_MEGA = "tree_substitute/spruce_mega";
 	static final List<String> VARIANTS = List.of(SCOTS_PINE_LOW, SPRUCE_STUNTED, SPRUCE_MEGA);
 	/** Shapes inside the oak and birch features (placed features without a filter). */
-	static final String OAK_FANCY = "tree/oak_fancy";
-	static final String OAK_SMALL = "tree/oak_small";
-	static final String BIRCH_SMALL = "tree/birch_small";
-	static final String BIRCH_TALL = "tree/birch_tall";
+	static final String OAK_FANCY = "tree_substitute/oak_fancy";
+	static final String OAK_SMALL = "tree_substitute/oak_small";
+	static final String BIRCH_SMALL = "tree_substitute/birch_small";
+	static final String BIRCH_TALL = "tree_substitute/birch_tall";
 	static final List<String> SHAPES = List.of(OAK_FANCY, OAK_SMALL, BIRCH_SMALL, BIRCH_TALL);
 
 	private ModTrees() {
 	}
 
+	/** Key of the placeholder of a species (a shrub's own feature). */
 	static ResourceKey<Feature> key(Species species) {
-		return key(species.path());
+		return key(species.substitutePath());
 	}
 
 	static ResourceKey<Feature> key(String path) {
@@ -98,6 +109,10 @@ final class ModTrees {
 		}
 		for (Species s : SHRUBS) {
 			register(context, key(s), shrub(s, soil));
+		}
+		// Step V9: the procedural trees of the target keys (a lone mature canopy tree; the tree stand plans its trees itself).
+		for (Species s : PROCEDURAL) {
+			context.register(key(s.path()), new ProceduralTreeFeature(s, CrownLayer.CANOPY, AgeClass.MATURE));
 		}
 		// Stunted Scots pine (bog woodland, raised bog, the low share of the dry pine forest and the wind belt): 3+2.
 		register(context, key(SCOTS_PINE_LOW), builder(Blocks.SPRUCE_LOG, new StraightTrunkPlacer(3, 2, 0), Blocks.SPRUCE_LEAVES,
@@ -134,7 +149,7 @@ final class ModTrees {
 					BlockPredicate.wouldSurvive(Blocks.OAK_SAPLING),
 					BlockPredicate.matchesBlocks(new Vec3i(0, -1, 0), List.of(Blocks.SAND, Blocks.GRAVEL)))));
 		}
-		if (path.equals(Species.SCOTS_PINE.path()) || path.equals(SCOTS_PINE_LOW)) {
+		if (path.equals(Species.SCOTS_PINE.substitutePath()) || path.equals(SCOTS_PINE_LOW)) {
 			// Scots pine also on sand: it invades the gray dunes and stands at the edge of the coastal pine forest on bare
 			// sand (round 1 of the S8b review; without this the tree ecotone ended at the sand). The sand under the trunk
 			// becomes dirt (the vanilla soil provider).
@@ -207,6 +222,9 @@ final class ModTrees {
 			// counts three vertical logs as a trunk, does not count it as a tree.
 			case JUNIPER -> bush(Blocks.SPRUCE_LOG, new StraightTrunkPlacer(1, 1, 0), Blocks.SPRUCE_LEAVES,
 					new SpruceFoliagePlacer(ConstantInt.of(1), ConstantInt.of(0), ConstantInt.of(2)), soil);
+			// Alder buckthorn (step V9, the shrub layer of the pine forests): 1-2 dark stems and a loose crown of radius 2.
+			case ALDER_BUCKTHORN -> bush(Blocks.DARK_OAK_LOG, new StraightTrunkPlacer(1, 1, 0), Blocks.DARK_OAK_LEAVES,
+					new BushFoliagePlacer(ConstantInt.of(2), ConstantInt.of(1), 2), soil);
 			default -> throw new IllegalArgumentException("not a shrub: " + species);
 		};
 	}

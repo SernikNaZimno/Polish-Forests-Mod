@@ -45,6 +45,7 @@ import pl.polishforests.worldgen.habitat.ForestSiteType;
 import pl.polishforests.worldgen.habitat.HabitatBiome;
 import pl.polishforests.worldgen.habitat.Soil;
 import pl.polishforests.worldgen.habitat.Species;
+import pl.polishforests.worldgen.tree.SpeciesShape;
 import pl.polishforests.worldgen.habitat.Zone;
 
 /**
@@ -196,20 +197,58 @@ final class ModVegetation {
 				.add(Species.SYCAMORE_MAPLE, 500).add(Species.BEECH, 300).add(Species.ASH, 100).add(Species.FIR, 100);
 		t.rule(HabitatCondition.biomes(DRY_PINE_FOREST), 7).add(Species.SCOTS_PINE, 665)
 				.add(Species.SCOTS_PINE, ModTrees.SCOTS_PINE_LOW, 285).add(Species.BIRCH, 50);
-		t.rule(HabitatCondition.biomes(FRESH_PINE_FOREST), 11).add(Species.SCOTS_PINE, 850).add(Species.BIRCH, 100)
-				.add(Species.SPRUCE, 50);
+		// The forests of the vertical slice (step V9 of docs/04-pionowy-wycinek.md, PW-3): procedural trees in the layered
+		// stand of the stand map (canopy, managed canopy, subcanopy, regeneration under the canopy and in canopy gaps) with
+		// the chance of a candidate to grow a tree by stand (managed, natural: pole stage, mature, old growth; in a gap),
+		// calibrated with the norms card (§6: N1 trunks per chunk, N2 layers, N3 composition). Fresh pine forest: pine with
+		// birch, spruce in the subcanopy in the north-east (range flag; elsewhere oak), the pine regenerates only in gaps.
+		t.slice(HabitatCondition.biomes(FRESH_PINE_FOREST), 11).add(Species.SCOTS_PINE, 850).add(Species.BIRCH, 120)
+				.add(Species.SPRUCE, 30)
+				.managed().add(Species.SCOTS_PINE, 880).add(Species.BIRCH, 100).add(Species.SPRUCE, 20)
+				.subcanopy().alt(Species.SPRUCE, 600, Species.OAK).add(Species.BIRCH, 200).add(Species.OAK, 200)
+				.regeneration().alt(Species.SPRUCE, 300, Species.OAK).add(Species.OAK, 300).add(Species.ROWAN, 250)
+				.add(Species.BIRCH, 150)
+				.gapRegeneration().add(Species.SCOTS_PINE, 600).add(Species.BIRCH, 400)
+				.chances(new float[] {0.93F, 0.70F, 0.60F}, new float[] {0.80F, 0.80F, 0.80F}, 0.6F);
 		t.rule(HabitatCondition.biomes(COASTAL_PINE_FOREST), 9).add(Species.SCOTS_PINE, 900).add(Species.BIRCH, 100);
 		t.rule(HabitatCondition.biomes(MOIST_PINE_FOREST), 10).add(Species.SCOTS_PINE, 650).add(Species.BIRCH, 250)
 				.add(Species.SPRUCE, 100);
 		t.rule(HabitatCondition.biomes(BOG_WOODLAND), 6).add(Species.SCOTS_PINE, ModTrees.SCOTS_PINE_LOW, 700)
 				.add(Species.BIRCH, 300);
-		t.rule(HabitatCondition.biomes(MIXED_PINE_FOREST), 10).add(Species.SCOTS_PINE, 550).add(Species.OAK, 250)
-				.add(Species.BIRCH, 100).alt(Species.BEECH, 100, Species.SPRUCE);
-		t.rule(HabitatCondition.biomes(MIXED_FOREST), 9).add(Species.OAK, 450).add(Species.SCOTS_PINE, 300)
-				.alt(Species.BEECH, 150, Species.SPRUCE).add(Species.HORNBEAM, 100);
-		t.rule(HabitatCondition.biomes(OAK_HORNBEAM_FOREST), 9).add(Species.OAK, 350).add(Species.HORNBEAM, 300)
-				.add(Species.LINDEN, 150).add(Species.ASH, 30).add(Species.NORWAY_MAPLE, 20).add(Species.BEECH, 100)
-				.add(Species.SPRUCE, 50);
+		// The belt between them (PW-3): mixed pine-oak and mixed forest with the trees of the slice.
+		t.slice(HabitatCondition.biomes(MIXED_PINE_FOREST), 10).add(Species.SCOTS_PINE, 550).add(Species.OAK, 250)
+				.add(Species.BIRCH, 100).alt(Species.BEECH, 100, Species.SPRUCE)
+				.managed().add(Species.SCOTS_PINE, 650).add(Species.OAK, 200).add(Species.BIRCH, 80).alt(Species.BEECH, 70, Species.SPRUCE)
+				.subcanopy().add(Species.OAK, 400).add(Species.BIRCH, 200).alt(Species.SPRUCE, 300, Species.OAK)
+				.alt(Species.BEECH, 100, Species.SPRUCE)
+				.regeneration().add(Species.OAK, 300).alt(Species.SPRUCE, 300, Species.OAK).add(Species.ROWAN, 200)
+				.add(Species.BIRCH, 100).add(Species.HAZEL, 100)
+				.gapRegeneration().add(Species.SCOTS_PINE, 400).add(Species.BIRCH, 300).add(Species.OAK, 300)
+				.chances(new float[] {0.90F, 0.68F, 0.58F}, new float[] {0.85F, 0.85F, 0.85F}, 0.7F);
+		t.slice(HabitatCondition.biomes(MIXED_FOREST), 9).add(Species.OAK, 400).add(Species.SCOTS_PINE, 300)
+				.alt(Species.BEECH, 150, Species.SPRUCE).alt(Species.HORNBEAM, 100, Species.LINDEN).add(Species.BIRCH, 50)
+				.managed().add(Species.OAK, 350).add(Species.SCOTS_PINE, 400).alt(Species.BEECH, 120, Species.SPRUCE)
+				.alt(Species.HORNBEAM, 80, Species.LINDEN).add(Species.BIRCH, 50)
+				.subcanopy().alt(Species.HORNBEAM, 500, Species.LINDEN).alt(Species.SPRUCE, 250, Species.OAK).add(Species.LINDEN, 150)
+				.alt(Species.BEECH, 100, Species.SPRUCE)
+				.regeneration().alt(Species.HORNBEAM, 400, Species.LINDEN).add(Species.ROWAN, 150).add(Species.HAZEL, 250)
+				.alt(Species.SPRUCE, 200, Species.LINDEN)
+				.gapRegeneration().add(Species.OAK, 250).add(Species.SCOTS_PINE, 200).add(Species.BIRCH, 250).add(Species.HAZEL, 300)
+				.chances(new float[] {0.88F, 0.70F, 0.60F}, new float[] {0.92F, 0.92F, 0.92F}, 0.8F);
+		// Oak-hornbeam forest: natural stands two-storied (a1 oak, linden, maple and ash, beech in the west and spruce in the
+		// north-east by their range flags; a2 hornbeam with linden), managed ones dominated by oak; regeneration of hornbeam
+		// and linden, hazel denser in the gaps; no oak in the regeneration (N6).
+		t.slice(HabitatCondition.biomes(OAK_HORNBEAM_FOREST), 12).add(Species.OAK, 350).add(Species.LINDEN, 250)
+				.add(Species.NORWAY_MAPLE, 60).add(Species.ASH, 60).add(Species.BEECH, 150).add(Species.SPRUCE, 130)
+				.alt(Species.HORNBEAM, 50, Species.LINDEN)
+				.managed().add(Species.OAK, 650).add(Species.LINDEN, 120).add(Species.NORWAY_MAPLE, 40).add(Species.ASH, 40)
+				.add(Species.BEECH, 80).add(Species.SPRUCE, 70)
+				.subcanopy().alt(Species.HORNBEAM, 700, Species.LINDEN).add(Species.LINDEN, 300)
+				.regeneration().alt(Species.HORNBEAM, 500, Species.LINDEN).add(Species.LINDEN, 300).add(Species.NORWAY_MAPLE, 100)
+				.add(Species.HAZEL, 100)
+				.gapRegeneration().alt(Species.HORNBEAM, 350, Species.LINDEN).add(Species.LINDEN, 250).add(Species.NORWAY_MAPLE, 100)
+				.add(Species.ASH, 100).add(Species.HAZEL, 150)
+				.chances(new float[] {0.85F, 0.72F, 0.62F}, new float[] {1.0F, 1.0F, 1.0F}, 0.9F);
 		// Beech forests: the biome already lies within the beech range (O, P), so beech keeps its full weight there (with
 		// the ramp a beech forest at the range edge had 40% oak, S7 review).
 		t.rule(HabitatCondition.biomes(LOWLAND_BEECH_FOREST), 7).full(Species.BEECH, 850).add(Species.OAK, 100)
@@ -240,13 +279,27 @@ final class ModVegetation {
 		return new TreePalette(t.rules());
 	}
 
-	/** Builder of the tree palette rules. */
+	/**
+	 * Builder of the tree palette rules: a {@link #rule} with the placeholder trees of M2 ({@code tree_substitute/}, PW-3),
+	 * or a {@link #slice} rule with the procedural trees ({@code tree/<species>} where the species has a planner shape) and
+	 * the layered stand, whose lists follow {@link #managed}, {@link #subcanopy}, {@link #regeneration} and
+	 * {@link #gapRegeneration}.
+	 */
 	private static final class Trees {
 		private final HolderGetter<PlacedFeature> placed;
 		private final List<TreePalette.Rule> rules = new ArrayList<>();
 		private HabitatCondition condition;
 		private float perChunk;
+		private boolean slice;
 		private List<TreePalette.Entry> entries;
+		private List<TreePalette.Entry> managed;
+		private List<TreePalette.Entry> subcanopy;
+		private List<TreePalette.Entry> regeneration;
+		private List<TreePalette.Entry> gapRegeneration;
+		private List<TreePalette.Entry> target;
+		private float[] managedChance;
+		private float[] naturalChance;
+		private float gapChance;
 
 		Trees(HolderGetter<PlacedFeature> placed) {
 			this.placed = placed;
@@ -256,16 +309,61 @@ final class ModVegetation {
 			flush();
 			this.condition = condition;
 			this.perChunk = perChunk;
+			this.slice = false;
 			this.entries = new ArrayList<>();
+			this.target = entries;
 			return this;
 		}
 
+		/** A rule of the vertical slice: procedural trees in a layered stand (step V9). */
+		Trees slice(HabitatCondition condition, float perChunk) {
+			rule(condition, perChunk);
+			slice = true;
+			managed = new ArrayList<>();
+			subcanopy = new ArrayList<>();
+			regeneration = new ArrayList<>();
+			gapRegeneration = new ArrayList<>();
+			return this;
+		}
+
+		Trees managed() {
+			target = managed;
+			return this;
+		}
+
+		Trees subcanopy() {
+			target = subcanopy;
+			return this;
+		}
+
+		Trees regeneration() {
+			target = regeneration;
+			return this;
+		}
+
+		Trees gapRegeneration() {
+			target = gapRegeneration;
+			return this;
+		}
+
+		Trees chances(float[] managed, float[] natural, float gap) {
+			managedChance = managed;
+			naturalChance = natural;
+			gapChance = gap;
+			return this;
+		}
+
+		/** The feature path of a species in this rule: the procedural tree in a slice rule, else the placeholder. */
+		private String path(Species s) {
+			return slice && SpeciesShape.supported(s) ? s.path() : s.substitutePath();
+		}
+
 		Trees add(Species s, int weight) {
-			return add(s, s.path(), weight, 0);
+			return add(s, path(s), weight, 0);
 		}
 
 		Trees add(Species s, int weight, int maxWaterDepth) {
-			return add(s, s.path(), weight, maxWaterDepth);
+			return add(s, path(s), weight, maxWaterDepth);
 		}
 
 		Trees add(Species s, String tree, int weight) {
@@ -273,19 +371,19 @@ final class ModVegetation {
 		}
 
 		Trees add(Species s, String tree, int weight, int maxWaterDepth) {
-			entries.add(new TreePalette.Entry(s, tree(tree), weight, Optional.empty(), maxWaterDepth));
+			target.add(new TreePalette.Entry(s, tree(tree), weight, Optional.empty(), maxWaterDepth));
 			return this;
 		}
 
 		Trees alt(Species s, int weight, Species alternative) {
-			entries.add(new TreePalette.Entry(s, tree(s.path()), weight,
-					Optional.of(new TreePalette.Alternative(alternative, tree(alternative.path()))), 0));
+			target.add(new TreePalette.Entry(s, tree(path(s)), weight,
+					Optional.of(new TreePalette.Alternative(alternative, tree(path(alternative)))), 0));
 			return this;
 		}
 
 		/** A species with its full weight, without the range ramp (a biome that already lies within its range). */
 		Trees full(Species s, int weight) {
-			entries.add(new TreePalette.Entry(s, tree(s.path()), weight, Optional.empty(), 0, false));
+			target.add(new TreePalette.Entry(s, tree(path(s)), weight, Optional.empty(), 0, false));
 			return this;
 		}
 
@@ -295,7 +393,12 @@ final class ModVegetation {
 
 		private void flush() {
 			if (condition != null) {
-				rules.add(new TreePalette.Rule(condition, perChunk, List.copyOf(entries)));
+				Optional<TreePalette.Stand> stand = Optional.empty();
+				if (slice) {
+					stand = Optional.of(new TreePalette.Stand(List.copyOf(managed), List.copyOf(subcanopy), List.copyOf(regeneration),
+							List.copyOf(gapRegeneration), floats(managedChance), floats(naturalChance), gapChance));
+				}
+				rules.add(new TreePalette.Rule(condition, perChunk, List.copyOf(entries), stand));
 				condition = null;
 			}
 		}
@@ -303,6 +406,10 @@ final class ModVegetation {
 		List<TreePalette.Rule> rules() {
 			flush();
 			return rules;
+		}
+
+		private static List<Float> floats(float[] values) {
+			return List.of(values[0], values[1], values[2]);
 		}
 	}
 
@@ -439,11 +546,14 @@ final class ModVegetation {
 				l.feature(Species.HAZEL.path(), 1));
 		l.edge(biomes(ALDER_CARR, WILLOW_POPLAR_FOREST), Ecotone.Edge.MANTLE, 0.06F, 1, l.feature(Species.OSIER.path(), 1));
 		l.edge(biomes(BOG_WOODLAND), Ecotone.Edge.MANTLE, 0.02F, 1, l.feature(ModTrees.SCOTS_PINE_LOW, 2),
-				l.feature(Species.BIRCH.path(), 1));
+				l.feature(Species.BIRCH.substitutePath(), 1));
 		// About 13 dwarf pines of 21–37 columns each per chunk: the crowns cover about 70% of the ground.
 		l.land(biomes(DWARF_PINE_SCRUB), 0.05F, 1, l.feature(Species.DWARF_MOUNTAIN_PINE.path(), 1));
 		l.land(biomes(HEATH), 0.01F, 3, l.feature(Species.JUNIPER.path(), 1));
-		l.land(biomes(DRY_PINE_FOREST, FRESH_PINE_FOREST), perChunk(1), 1, l.feature(Species.JUNIPER.path(), 1));
+		l.land(biomes(DRY_PINE_FOREST), perChunk(1), 1, l.feature(Species.JUNIPER.path(), 1));
+		// Fresh pine forest (step V9, N7: shrub layer 5-30%): juniper, alder buckthorn and rowan.
+		l.land(biomes(FRESH_PINE_FOREST), perChunk(5), 1, l.feature(Species.JUNIPER.path(), 2),
+				l.feature(Species.ALDER_BUCKTHORN.path(), 2), l.feature(Species.ROWAN.substitutePath(), 1));
 		l.land(biomes(MIXED_PINE_FOREST, MIXED_FOREST), perChunk(1.5), 1, l.feature(Species.HAZEL.path(), 2),
 				l.feature(Species.JUNIPER.path(), 1));
 		l.land(biomes(OAK_HORNBEAM_FOREST, ELM_ASH_FOREST), perChunk(3), 1, l.feature(Species.HAZEL.path(), 1));

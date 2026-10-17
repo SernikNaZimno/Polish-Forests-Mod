@@ -4,7 +4,12 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.jspecify.annotations.Nullable;
 import pl.polishforests.worldgen.landscape.Noise;
+import pl.polishforests.worldgen.tree.AgeClass;
+import pl.polishforests.worldgen.tree.CrownLayer;
+import pl.polishforests.worldgen.tree.CrownTerritories;
+import pl.polishforests.worldgen.tree.StandMap;
 
 /**
  * Tree stand plan of one chunk (docs/03-m2-biomy.md §8.2, §8.5, §9): a pure function of the chunk habitats, the palette,
@@ -34,6 +39,15 @@ import pl.polishforests.worldgen.landscape.Noise;
  * chunk's range ramp ({@link SpeciesRamp}), and the rest of it goes to the entry's alternative species where that one is
  * within its range ("beech or spruce", §8.5). A column under water takes only the entries whose maximum water depth
  * covers it (willows and alders in shallow water, §8.2); others get no tree.
+ *
+ * <p><b>Layered stands</b> (step V9 of docs/04-pionowy-wycinek.md): a rule with {@link Layers} (the forests of the
+ * vertical slice) plants the stand of the stand map ({@link StandMap}) instead: each kept candidate has the crown layer
+ * of its site ({@link CrownTerritories#site}: canopy, subcanopy or regeneration from the shares of its stand, the
+ * regeneration in a canopy gap) and becomes a tree with the chance of its stand (managed or natural and the age class,
+ * or the gap chance), of a species from the list of its layer; instead of the draw it compares its rank value
+ * ({@link Candidates#rank}: the rank of its draw among the candidates around it), so the candidates without a tree
+ * spread out as in a thinned stand; no thinning of sparse stands and no M2 gap noise. The candidates and the draws stay those of M2 (rule ZW-2), so the stands of the other biomes do not change.
+ * The plan packs the layer of every tree ({@link #layer}) when the conditions carry the crown territories.
  */
 public final class TreeStandPlan {
 	/** Salt of the tree stand layer in the dispatcher seed and in the candidate pattern. */
@@ -57,6 +71,10 @@ public final class TreeStandPlan {
 	private static final int CELLS = 16 / CELL;
 	/** Salt of a candidate's chance draw, mixed into the candidate's hash. */
 	private static final long DRAW_SALT = 0x5DEE_CE66_DA11L;
+	/** Salt of the uniform part of a candidate's rank value (step V9: a new field, a new salt). */
+	private static final long RANK_SALT = 0x2A9C_15E7_0B3DL;
+	/** Radius of the neighborhood of a rank value, blocks (about 7 kept candidates). */
+	static final int RANK_RADIUS = 6;
 	private static final int MIN_SPACING_SQ = MIN_SPACING * MIN_SPACING;
 
 	/**
@@ -66,7 +84,17 @@ public final class TreeStandPlan {
 	 * (0: dry columns only).
 	 */
 	public record Rule(HabitatMatch match, float treesPerChunk, int[] trees, int[] weights, int[] flags, int[] alternatives,
-			int[] alternativeFlags, int[] maxWaterDepth) {
+			int[] alternativeFlags, int[] maxWaterDepth, @Nullable Layers layers) {
+		public Rule(HabitatMatch match, float treesPerChunk, int[] trees, int[] weights, int[] flags, int[] alternatives,
+				int[] alternativeFlags, int[] maxWaterDepth) {
+			this(match, treesPerChunk, trees, weights, flags, alternatives, alternativeFlags, maxWaterDepth, null);
+		}
+
+		/** The same rule with a layered stand. */
+		public Rule withLayers(Layers layers) {
+			return new Rule(match, treesPerChunk, trees, weights, flags, alternatives, alternativeFlags, maxWaterDepth, layers);
+		}
+
 		public Rule {
 			int n = trees.length;
 			if (weights.length != n || flags.length != n || alternatives.length != n || alternativeFlags.length != n
@@ -85,6 +113,38 @@ public final class TreeStandPlan {
 			int[] none = new int[trees.length];
 			Arrays.fill(none, -1);
 			return new Rule(match, treesPerChunk, trees, weights, flags, none, new int[trees.length], new int[trees.length]);
+		}
+	}
+
+	/**
+	 * The layered stand of a rule (step V9): the species lists of the layers (rules used as lists: their match and trees
+	 * per chunk are not read) and the chances of a candidate to grow a tree by stand.
+	 *
+	 * @param managedCanopy   canopy of managed stands, or null for the rule's own trees
+	 * @param managed         chance by age class ({@link AgeClass} ordinal) in a managed stand
+	 * @param natural         chance by age class in a natural stand
+	 * @param gap             chance in a canopy gap
+	 */
+	public record Layers(@Nullable Rule managedCanopy, Rule subcanopy, Rule regeneration, Rule gapRegeneration, double[] managed,
+			double[] natural, double gap) {
+		public Layers {
+			if (managed.length != 3 || natural.length != 3) {
+				throw new IllegalArgumentException("one chance per age class");
+			}
+		}
+
+		/** Chance of a candidate of a stand (or in a canopy gap) to grow a tree. */
+		public double chance(boolean natural, AgeClass age, boolean gap) {
+			return gap ? this.gap : natural ? this.natural[age.ordinal()] : managed[age.ordinal()];
+		}
+
+		/** Highest chance of any candidate. */
+		double highest() {
+			double h = gap;
+			for (int a = 0; a < 3; a++) {
+				h = Math.max(h, Math.max(managed[a], natural[a]));
+			}
+			return h;
 		}
 	}
 
@@ -111,9 +171,50 @@ public final class TreeStandPlan {
 		public double highestChance(boolean gaps) {
 			double highest = 0;
 			for (Rule rule : rules) {
-				highest = Math.max(highest, chance(rule.treesPerChunk(), gaps));
+				highest = Math.max(highest, rule.layers() != null ? rule.layers().highest() : chance(rule.treesPerChunk(), gaps));
 			}
 			return highest;
+		}
+
+		/**
+		 * Whether the kept candidate at world column (x, z) surely grows no tree under any rule, whatever its habitat code
+		 * (an ecotone may give it the rule of another column): its draw is at or above the highest chance of the M2 rules
+		 * (or it stands in an M2 gap), and its rank value ({@link Candidates#rank}) at or above the chance of every layered
+		 * rule at its stand. Needs only the seed, the gap noise and the stand map.
+		 */
+		public boolean surelyTreeless(Candidates candidates, int x, int z, Stand stand) {
+			double m2 = 0;
+			double layered = 0;
+			boolean anyLayered = false;
+			StandSite site = null;
+			for (Rule rule : rules) {
+				Layers l = rule.layers();
+				if (l == null) {
+					m2 = Math.max(m2, chance(rule.treesPerChunk(), stand.gaps() != null));
+				} else {
+					anyLayered = true;
+					if (stand.crowns() == null) {
+						layered = Math.max(layered, l.highest());
+					} else {
+						if (site == null) {
+							site = stand.site(x, z);
+						}
+						layered = Math.max(layered, l.chance(site.natural(), site.age(), site.gap()));
+					}
+				}
+			}
+			boolean m2None = stand.gap(x, z) || candidates.draw(x, z) >= m2;
+			return m2None && (!anyLayered || candidates.rank(x, z) >= layered);
+		}
+
+		/** Whether any rule has a layered stand. */
+		public boolean layered() {
+			for (Rule rule : rules) {
+				if (rule.layers() != null) {
+					return true;
+				}
+			}
+			return false;
 		}
 
 		/** Trees per chunk of the rule matching the habitat code (0 without a rule). */
@@ -131,13 +232,58 @@ public final class TreeStandPlan {
 	 * @param gaps      gap noise, or null
 	 * @param gapScale  horizontal scale of the gap noise (k of the landscape scale)
 	 */
-	public record Stand(float[] ramp, Noise gaps, double gapScale) {
+	public record Stand(float[] ramp, Noise gaps, double gapScale, @Nullable StandMap map, @Nullable CrownTerritories crowns) {
 		/** Full weights everywhere and no gaps. */
 		public static final Stand PLAIN = new Stand(new float[] {1, 1, 1, 1}, null, 1);
+
+		/** Conditions without the stand map (the M2 stand). */
+		public Stand(float[] ramp, Noise gaps, double gapScale) {
+			this(ramp, gaps, gapScale, null, null);
+		}
+
+		/** The same conditions with the range ramp of another chunk. */
+		public Stand withRamp(float[] ramp) {
+			return new Stand(ramp, gaps, gapScale, map, crowns);
+		}
 
 		boolean gap(int x, int z) {
 			return gaps != null && gaps.at(x, z, GAP_WAVELENGTH * gapScale) > GAP_THRESHOLD;
 		}
+
+		/** The stand facts of a candidate column (requires the crown territories). */
+		StandSite site(int x, int z) {
+			CrownTerritories.Site s = crowns.site(x, z);
+			return new StandSite(s.layer(), s.age(), s.natural(), s.gap(), s.gap() ? crowns.stands().gapDepth(x, z) : 0);
+		}
+	}
+
+	/** Layer, age class, natural flag and canopy gap (with its depth) of a candidate. */
+	record StandSite(CrownLayer layer, AgeClass age, boolean natural, boolean gap, double gapDepth) {
+	}
+
+	/**
+	 * Least depth (blocks) inside a canopy gap of a candidate that takes the gap regeneration ({@link Layers#gapRegeneration}):
+	 * the crowns at the gap's edge lean over its outer meters (a young pine there would stand "under the canopy", N6).
+	 */
+	public static final double GAP_INTERIOR = 7;
+
+	/** Bits of the packed tree of {@link #of}: tree index in bits 0-13, layer in 14-15, column in 16-23. */
+	private static final int TREE_MASK = 0x3FFF;
+	private static final int LAYER_SHIFT = 14;
+
+	/** Column ({@code x * 16 + z}) of a packed tree of {@link #of}. */
+	public static int column(int packed) {
+		return packed >>> 16;
+	}
+
+	/** Tree index of a packed tree of {@link #of}. */
+	public static int tree(int packed) {
+		return packed & TREE_MASK;
+	}
+
+	/** Crown layer of a packed tree of {@link #of} (the canopy without the crown territories). */
+	public static CrownLayer layer(int packed) {
+		return CrownLayer.values()[packed >>> LAYER_SHIFT & 3];
 	}
 
 	private TreeStandPlan() {
@@ -226,31 +372,61 @@ public final class TreeStandPlan {
 				int lz = j * CELL + offsetZ(h);
 				int column = lx << 4 | lz;
 				int code = codes[column];
-				int r = palette.ruleFor(code);
-				if (r < 0) {
-					continue;
-				}
-				Rule rule = palette.rules().get(r);
-				long h2 = Noise.mix(h ^ DRAW_SALT);
-				double chance = chance(rule.treesPerChunk(), stand.gaps() != null);
-				if (unit(h2) >= chance) {
-					continue;
-				}
-				double spacing = rule.spacing();
-				if (spacing > MIN_SPACING && pattern.thinned(gx, gz, h, spacing, chance)) {
-					continue;
-				}
-				if (stand.gap(chunkX * 16 + lx, chunkZ * 16 + lz)) {
-					continue;
-				}
-				int tree = pickTree(rule, pl.polishforests.worldgen.habitat.Habitat.flags(code), waterDepth[column],
-						stand.ramp(), unit(Noise.mix(h2)));
+				int tree = decide(pattern, gx, gz, h, chunkX * 16 + lx, chunkZ * 16 + lz, code, waterDepth[column], palette, stand);
 				if (tree >= 0) {
 					out[n++] = column << 16 | tree;
 				}
 			}
 		}
 		return Arrays.copyOf(out, n);
+	}
+
+	/**
+	 * The tree of a kept candidate (cell (gx, gz) with hash h, world column (x, z)) under its habitat code: the layer and
+	 * tree index packed as in {@link #of} (without the column), or -1 for none.
+	 */
+	private static int decide(Pattern pattern, int gx, int gz, long h, int x, int z, int code, int depth, Palette palette,
+			Stand stand) {
+		int r = palette.ruleFor(code);
+		if (r < 0) {
+			return -1;
+		}
+		Rule rule = palette.rules().get(r);
+		long h2 = Noise.mix(h ^ DRAW_SALT);
+		Layers layers = rule.layers();
+		StandSite site = stand.crowns() == null ? null : stand.site(x, z);
+		Rule list = rule;
+		if (layers == null) {
+			double chance = chance(rule.treesPerChunk(), stand.gaps() != null);
+			if (unit(h2) >= chance) {
+				return -1;
+			}
+			double spacing = rule.spacing();
+			if (spacing > MIN_SPACING && pattern.thinned(gx, gz, h, spacing, chance)) {
+				return -1;
+			}
+			if (stand.gap(x, z)) {
+				return -1;
+			}
+		} else {
+			boolean natural = site != null ? site.natural() : stand.map() != null && stand.map().natural(x, z);
+			AgeClass age = site != null ? site.age() : stand.map() != null ? stand.map().ageClass(x, z) : AgeClass.MATURE;
+			boolean gap = site != null && site.gap();
+			if (pattern.rank(gx, gz, h) >= layers.chance(natural, age, gap)) {
+				return -1;
+			}
+			CrownLayer layer = site == null ? CrownLayer.CANOPY : site.layer();
+			list = switch (layer) {
+				case CANOPY -> natural || layers.managedCanopy() == null ? rule : layers.managedCanopy();
+				case SUBCANOPY -> layers.subcanopy();
+				case REGENERATION -> gap && site.gapDepth() >= GAP_INTERIOR ? layers.gapRegeneration() : layers.regeneration();
+			};
+		}
+		int tree = pickTree(list, pl.polishforests.worldgen.habitat.Habitat.flags(code), depth, stand.ramp(), unit(Noise.mix(h2)));
+		if (tree < 0) {
+			return -1;
+		}
+		return site == null ? tree : site.layer().ordinal() << LAYER_SHIFT | tree;
 	}
 
 	/** Kept candidates of the chunk (local columns {@code x * 16 + z}), for tests: the pattern before biome thinning. */
@@ -337,6 +513,19 @@ public final class TreeStandPlan {
 		}
 
 		/**
+		 * The rank value in [0, 1) of the kept candidate at column (x, z), which decides its tree under a layered rule
+		 * ({@link Layers}): uniform over the candidates like the draw, but low where the neighbors' draws are higher, so the
+		 * candidates without a tree spread out evenly (a thinned stand, not clumps and clearings). A pure function of the
+		 * world seed.
+		 */
+		public double rank(int x, int z) {
+			Pattern pattern = pattern();
+			int gx = Math.floorDiv(x, CELL);
+			int gz = Math.floorDiv(z, CELL);
+			return pattern.rank(gx, gz, pattern.hash(gx, gz));
+		}
+
+		/**
 		 * Whether the kept candidate at column (x, z) surely gets no tree under every rule whose chance is at most
 		 * {@code chance}, whatever its habitat code: its draw is at or above {@code chance} or it stands in a gap of the
 		 * stand. With {@link Palette#highestChance} this needs no habitats at all (only the seed and the gap noise), so
@@ -345,6 +534,19 @@ public final class TreeStandPlan {
 		 */
 		public boolean treeless(int x, int z, double chance, Stand stand) {
 			return draw(x, z) >= chance || stand.gap(x, z);
+		}
+
+		/**
+		 * The tree of the kept candidate at world column (x, z) under the habitat code {@code code} and the water depth
+		 * {@code depth} of its column, with the conditions of its chunk ({@code stand}, with that chunk's range ramp): the
+		 * packed layer and tree index as in {@link TreeStandPlan#of} (without the column), or -1 for none. The same decision
+		 * as the plan of the candidate's chunk, for the exact vacancies of the crown territories.
+		 */
+		public int decide(int x, int z, int code, int depth, Palette palette, Stand stand) {
+			Pattern pattern = pattern();
+			int gx = Math.floorDiv(x, CELL);
+			int gz = Math.floorDiv(z, CELL);
+			return TreeStandPlan.decide(pattern, gx, gz, pattern.hash(gx, gz), x, z, code, depth, palette, stand);
 		}
 
 		/** Whether the column (x, z) holds a kept candidate. */
@@ -441,6 +643,40 @@ public final class TreeStandPlan {
 				}
 			}
 			return false;
+		}
+
+		/**
+		 * Rank value of the candidate of cell (gx, gz) with hash h (step V9): (k + u) / n, where n counts it and the kept
+		 * candidates within {@value #RANK_RADIUS} blocks, k those of them with a lower draw and u a uniform value of its
+		 * own; uniform in [0, 1) for every candidate (its draw's rank among n independent draws is uniform), and the
+		 * candidates with the highest draws of their neighborhood get the highest values.
+		 */
+		double rank(int gx, int gz, long h) {
+			int x = gx * CELL + offsetX(h);
+			int z = gz * CELL + offsetZ(h);
+			double d = unit(Noise.mix(h ^ DRAW_SALT));
+			int reach = RANK_RADIUS / CELL + 1;
+			int n = 1;
+			int lower = 0;
+			for (int di = -reach; di <= reach; di++) {
+				for (int dj = -reach; dj <= reach; dj++) {
+					if (di == 0 && dj == 0) {
+						continue;
+					}
+					long hn = hash(gx + di, gz + dj);
+					int dx = (gx + di) * CELL + offsetX(hn) - x;
+					int dz = (gz + dj) * CELL + offsetZ(hn) - z;
+					if (dx * dx + dz * dz > RANK_RADIUS * RANK_RADIUS || !kept(gx + di, gz + dj)) {
+						continue;
+					}
+					n++;
+					double dn = unit(Noise.mix(hn ^ DRAW_SALT));
+					if (dn < d || dn == d && lower(hn, gx + di, gz + dj, h, gx, gz)) {
+						lower++;
+					}
+				}
+			}
+			return (lower + unit(Noise.mix(h ^ RANK_SALT))) / n;
 		}
 
 		/** Whether mark a (cell a) is lower than mark b (cell b); ties broken by the cell, so the order is strict. */

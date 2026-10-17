@@ -61,12 +61,14 @@ public final class ModFeatures {
 	}
 
 	/**
-	 * Species of a placed feature {@code polishforests:tree/<species>[_<variant>]} or {@code shrub/<species>}, e.g.
-	 * {@code tree/scots_pine_low} is the Scots pine; null for other features (fallen trees, flowers) and direct holders.
+	 * Species of a placed feature {@code polishforests:tree/<species>}, {@code tree_substitute/<species>[_<variant>]} or
+	 * {@code shrub/<species>}, e.g. {@code tree_substitute/scots_pine_low} is the Scots pine; null for other features
+	 * (fallen trees, flowers) and direct holders.
 	 */
 	static @Nullable Species woodySpecies(Holder<PlacedFeature> feature) {
 		String path = feature.unwrapKey().map(k -> k.identifier().getPath()).orElse("");
-		String rest = path.startsWith("tree/") ? path.substring(5) : path.startsWith("shrub/") ? path.substring(6) : null;
+		String rest = path.startsWith("tree/") ? path.substring(5) : path.startsWith("tree_substitute/") ? path.substring(16)
+				: path.startsWith("shrub/") ? path.substring(6) : null;
 		if (rest == null) {
 			return null;
 		}
@@ -88,11 +90,16 @@ public final class ModFeatures {
 		}
 	}
 
-	/** Time (ns), chunks and placed plants or trees of one dispatcher layer, summed over the process. */
+	/**
+	 * Time (ns), chunks and placed plants or trees of one dispatcher layer, summed over the process; for the tree stand
+	 * also the wood blocks and leaves its trees placed (step V9).
+	 */
 	public static final class LayerStats {
 		public final LongAdder nanos = new LongAdder();
 		public final LongAdder chunks = new LongAdder();
 		public final LongAdder placed = new LongAdder();
+		public final LongAdder wood = new LongAdder();
+		public final LongAdder leaves = new LongAdder();
 
 		void add(long nanos, int placed) {
 			this.nanos.add(nanos);

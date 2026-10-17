@@ -86,7 +86,7 @@ final class ModWorldgen {
 			});
 		}
 		// Step V7: the trees the saplings grow into, a pole-stage canopy tree of the planner in its open-grown form (a lone
-		// tree, no territory). The keys stay apart from tree/<species> (the M2 substitutes until V9, PW-3).
+		// tree, no territory), apart from tree/<species> (a lone mature tree, step V9; decision V7-a).
 		for (TreeFoliage f : TreeFoliage.values()) {
 			context.register(feature(f.featurePath()), new ProceduralTreeFeature(f.species(), CrownLayer.CANOPY, AgeClass.POLE_STAGE));
 		}
@@ -99,9 +99,11 @@ final class ModWorldgen {
 		// Trees, shrubs and the variants of the palettes: only where a sapling would survive (§8.4; osiers also on the sand
 		// and gravel of bars); no biome filter (a sub-feature of a palette).
 		List<String> trees = new ArrayList<>();
-		ModTrees.TREES.forEach(s -> trees.add(s.path()));
+		ModTrees.TREES.forEach(s -> trees.add(s.substitutePath()));
 		ModTrees.SHRUBS.forEach(s -> trees.add(s.path()));
 		trees.addAll(ModTrees.VARIANTS);
+		// Step V9: the procedural trees (the tree stand calls their planner itself; placed alone they need a sapling's ground).
+		ModTrees.PROCEDURAL.forEach(s -> trees.add(s.path()));
 		for (String path : trees) {
 			context.register(placed(path), new PlacedFeature(features.getOrThrow(ModTrees.key(path)), ModTrees.placement(path)));
 		}

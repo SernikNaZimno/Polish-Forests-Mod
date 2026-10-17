@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:weighted_random_selector",
+  "features": [
+    {
+      "data": "polishforests:tree_substitute/birch_small",
+      "weight": 80
+    },
+    {
+      "data": "polishforests:tree_substitute/birch_tall",
+      "weight": 20
+    }
+  ]
+}

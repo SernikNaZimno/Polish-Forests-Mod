@@ -22,7 +22,9 @@ import pl.polishforests.worldgen.landscape.Noise;
  * and branches on or above the upper surface, a subcanopy tree between the two, a regeneration tree below the lower
  * one; every tree of a stand sees the same surfaces, so on level ground the leaves of two layers never share a block,
  * and the boundary between the layers is no stand-wide straight line (rule Z10). The rows next to a surface are thinned
- * (a ragged edge instead of a cut). A lone tree has no surface above or below a canopy crown.</li>
+ * (a ragged edge instead of a cut). A lone tree has no surface above or below a canopy crown. In a stand of the world
+ * the surfaces stand at their height above the ground of each column ({@link TreeRequest#ground}, step V9), so on a
+ * slope they follow the terrain and the leaves of the layers of neighboring trees still keep apart.</li>
  * <li><b>Skeleton:</b> a trunk with a slight lean and wobble; branches are curves of nodes about one block apart whose
  * angle from the vertical turns smoothly from the base to the tip and whose horizontal direction never reverses, so the
  * voxels make slanted staircases instead of right-angled elbows (risk R4). Conifers with whorls rotated by the golden
@@ -188,6 +190,18 @@ public final class TreeShapePlan {
 		return w.size;
 	}
 
+	/**
+	 * The ground of the world columns around a tree in a stand (step V9): the split surfaces follow the ground, so on a
+	 * slope the leaves of two layers of neighboring trees still keep apart.
+	 */
+	@FunctionalInterface
+	public interface Ground {
+		/** Y of the top ground block of world column (x, z), or {@link #UNKNOWN}. */
+		int top(int x, int z);
+
+		int UNKNOWN = Integer.MIN_VALUE;
+	}
+
 	/** Columns of other trunks, which the wood of a lower layer keeps away from (with the pattern of M2 trunks). */
 	@FunctionalInterface
 	public interface Trunks {
@@ -325,8 +339,8 @@ public final class TreeShapePlan {
 			switch (r.layer()) {
 				case CANOPY -> crownBase = height * (1 - ratio);
 				case SUBCANOPY -> {
-					// Below the split surface by up to two and a half blocks, so the subcanopy has no flat top.
-					double drop = range(0, 2.5);
+					// Below the split surface by up to one and a half blocks (V9; V6: two and a half), so the subcanopy has no flat top.
+					double drop = range(0, 1.5);
 					height = Math.max(floorAt(0, 0) + 2.5, Math.min(height * SUBCANOPY_HEIGHT, cap + 1 - 0.5 * leafV - drop));
 					dbh *= SUBCANOPY_DBH;
 					crownR *= SUBCANOPY_CROWN;
@@ -376,8 +390,10 @@ public final class TreeShapePlan {
 			double w1 = bilinear(upperGrid[i], upperGrid[i + GRID_SIDE], upperGrid[i + 1], upperGrid[i + GRID_SIDE + 1], fx, fz);
 			double w2 = bilinear(lowerGrid[i], lowerGrid[i + GRID_SIDE], lowerGrid[i + 1], lowerGrid[i + GRID_SIDE + 1], fx, fz);
 			AgeClass age = request.ageAt(x, z);
-			out[1] = lowerSplit(age, w2);
-			out[0] = upperSplit(age, w1, out[1]);
+			int lower = lowerSplit(age, w2);
+			int shift = request.groundShift(x, z);
+			out[1] = lower + shift;
+			out[0] = upperSplit(age, w1, lower) + shift;
 			return out;
 		}
 

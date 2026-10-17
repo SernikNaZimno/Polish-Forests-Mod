@@ -39,18 +39,29 @@ public final class CensusGrid {
 	 * @param diameter thickness in m (a full log 1, a thin trunk 2r / 16)
 	 * @param species  species of the block (thin trunks), or null for a vanilla log
 	 * @param block    block id, the label of a tree of unknown species
+	 * @param parent   direction of the cell's parent towards the root of its tree ({@code Direction} 3D data value, 0 down
+	 *                 … 5 east) for a thin trunk of the tree planner, -1 when unknown (a vanilla log)
 	 */
-	public record Wood(double volume, double diameter, @Nullable Species species, String block) {
+	public record Wood(double volume, double diameter, @Nullable Species species, String block, int parent) {
+		/** The same wood with the direction of its parent. */
+		public Wood withParent(int direction) {
+			return new Wood(volume, diameter, species, block, direction);
+		}
 	}
 
 	/** A full vanilla log block of unknown species. */
 	public static Wood log(String block) {
-		return new Wood(1, 1, null, block);
+		return new Wood(1, 1, null, block, -1);
 	}
 
-	/** A thin trunk block of radius r px (1–7). */
+	/** A thin trunk block of radius r px (1–7) without a known parent. */
 	public static Wood trunk(int radius, Species species, String block) {
-		return new Wood(Math.PI * radius * radius / 256.0, 2 * radius / 16.0, species, block);
+		return trunk(radius, species, block, -1);
+	}
+
+	/** A thin trunk block of radius r px (1–7) with the direction of its parent (step V9). */
+	public static Wood trunk(int radius, Species species, String block, int parent) {
+		return new Wood(Math.PI * radius * radius / 256.0, 2 * radius / 16.0, species, block, parent);
 	}
 
 	private final int minX;

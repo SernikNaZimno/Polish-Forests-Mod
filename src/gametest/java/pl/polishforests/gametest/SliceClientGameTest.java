@@ -47,6 +47,7 @@ import pl.polishforests.worldgen.habitat.HabitatClassifier;
 import pl.polishforests.worldgen.habitat.Species;
 import pl.polishforests.worldgen.landscape.LandscapeModel;
 import pl.polishforests.worldgen.norms.ForestNorms;
+import pl.polishforests.worldgen.tree.ForestStandMap;
 import pl.polishforests.worldgen.surface.ChunkSurface;
 
 /**
@@ -76,8 +77,10 @@ import pl.polishforests.worldgen.surface.ChunkSurface;
  * {@code docs/wycinek/baza/}.
  *
  * <p>The norms card (step V4, {@link NormsCensus}): in every world the census counts the 1 ha plot (100 × 100 blocks) of
- * each site and the band of the transect and compares them with the norms of docs/04 §6 (the natural columns of the card
- * in the natural mode, the managed ones in the present-day mode), also with {@code -Psites=none}; the rows go to
+ * each site, the sample plots of {@link SlicePlots} in natural and managed stands (step V9; with {@code -Psites} only when
+ * the list holds {@code plots}) and the band of the transect and compares them with the norms of docs/04 §6 (the column
+ * of the card by the stand of the stand map at the plot's center, the norms by its age class), also with
+ * {@code -Psites=none}; the rows go to
  * {@code build/norms/karta-norm.csv}, a summary line per place to the log. Before that, once per run, the hand-built test
  * plot is built in the sky, read back and counted (it must agree piece by piece). The species of the M2 placeholder trees
  * come from {@code ModFeatures.WOODY_PLACEMENTS}, which the test sets while its worlds exist.
@@ -203,7 +206,7 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 				}
 				List<SliceSites.Place> places = SliceSites.of(real, presentDay).stream()
 						.filter(p -> names.isEmpty() || names.contains(p.name())).toList();
-				if (places.isEmpty()) {
+				if (places.isEmpty() && !names.contains("plots")) {
 					continue;
 				}
 				records.clear();
@@ -230,7 +233,8 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 					ForestNorms.Aspect aspect = sp.getServer().computeOnServer(s -> ForestNorms.Aspect.of(Seasons.provider()
 							.subSeason(s.overworld())));
 					if (!testPlot[0]) {
-						int[] at = places.get(0).middle();
+						SlicePlots.Plot first = SlicePlots.of(real).getFirst();
+						int[] at = places.isEmpty() ? new int[] {first.x(), first.z()} : places.get(0).middle();
 						String checked = sp.getServer().computeOnServer(s -> NormsCensus.checkTestPlot(s.overworld(), at[0], at[1]));
 						PolishForests.LOG.info("[slice] {} {}: {}", scale, mode, checked);
 						testPlot[0] = true;
@@ -245,7 +249,7 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 						if (p.transect()) {
 							TransectCheck check = sp.getServer().computeOnServer(s -> checkTransect(s, p));
 							marks = check.marks();
-							ForestNorms.Forest forest = NormsCensus.forest("oak_hornbeam_forest", presentDay);
+							ForestNorms.Forest forest = NormsCensus.forest("oak_hornbeam_forest", !presentDay);
 							norms.addAll(sp.getServer().computeOnServer(s -> NormsCensus.transect(s.overworld(), ctx, forest, p.x(), p.z(),
 									p.x2(), p.z2(), check.steps(), check.rank(), generator(s).settings().scale().landscape().local(), records,
 									census)));
@@ -253,8 +257,10 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 							String report = sp.getServer().computeOnServer(s -> checkSite(s, p));
 							PolishForests.LOG.info("[slice] {} {} {}: {}", scale, mode, p.name(), report);
 							marks = null;
-							ForestNorms.Forest forest = NormsCensus.forest(p.biome(), presentDay);
-							norms.addAll(sp.getServer().computeOnServer(s -> NormsCensus.plot(s.overworld(), ctx, forest, p.x(), p.z(), records,
+							// The column of the card by the stand at the center (step V9).
+							ForestStandMap.Stand stand = sp.getServer().computeOnServer(s -> stands(s).stand(p.x(), p.z()));
+							ForestNorms.Forest forest = NormsCensus.forest(p.biome(), stand.natural());
+							norms.addAll(sp.getServer().computeOnServer(s -> NormsCensus.plot(s.overworld(), ctx, forest, stand.age(), p.x(), p.z(), records,
 									census)));
 						}
 						PolishForests.LOG.info("[slice] {} {} norms card, {}", scale, mode, census);
@@ -279,6 +285,21 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 							last = shot(context, sp, c, prefix + "_" + c.name(), last);
 						}
 					}
+					// The sample plots of the norms card by stand (step V9): natural and managed stands of both forests.
+					if (names.isEmpty() || names.contains("plots")) {
+						for (SlicePlots.Plot plot : SlicePlots.of(real)) {
+							NormsCensus.Context ctx = new NormsCensus.Context(scale, mode, plot.name(), season, aspect);
+							StringBuilder census = new StringBuilder();
+							ForestStandMap.Stand stand = sp.getServer().computeOnServer(s -> stands(s).stand(plot.x(), plot.z()));
+							if (stand.natural() != plot.natural() || plot.age() != null && stand.age() != plot.age()) {
+								throw new AssertionError(plot.name() + ": the stand at the center is " + stand + " in this world");
+							}
+							ForestNorms.Forest forest = NormsCensus.forest(plot.biome(), plot.natural());
+							norms.addAll(sp.getServer().computeOnServer(s -> NormsCensus.plot(s.overworld(), ctx, forest, stand.age(), plot.x(),
+									plot.z(), records, census)));
+							PolishForests.LOG.info("[slice] {} {} norms card, {}", scale, mode, census);
+						}
+					}
 					String provider = sp.getServer().computeOnServer(s -> Seasons.provider().name() + " "
 							+ Seasons.provider().subSeason(s.overworld()));
 					long[] after = counters();
@@ -290,6 +311,13 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 				}
 			}
 		}
+	}
+
+	/** The stand map of the world (the seed, the scale's k and the managed share of its settings). */
+	private static ForestStandMap stands(MinecraftServer server) {
+		PolandChunkGenerator gen = generator(server);
+		return new ForestStandMap(server.overworld().getSeed(), gen.settings().scale().landscape().local(),
+				gen.settings().managedForestShare());
 	}
 
 	// ------------------------------------------------------------------ checks
@@ -935,13 +963,16 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 	/** Counters of the dispatcher layers (nanoseconds, chunks, placements per layer), then {@link ModFeatures#HABITAT_MISS}. */
 	private static long[] counters() {
 		BiomeDecoration.Dispatcher[] ds = BiomeDecoration.Dispatcher.values();
-		long[] c = new long[ds.length * 3 + 1];
+		long[] c = new long[ds.length * 3 + 3];
 		for (BiomeDecoration.Dispatcher d : ds) {
 			ModFeatures.LayerStats st = ModFeatures.STATS.get(d);
 			c[d.ordinal() * 3] = st.nanos.sum();
 			c[d.ordinal() * 3 + 1] = st.chunks.sum();
 			c[d.ordinal() * 3 + 2] = st.placed.sum();
 		}
+		ModFeatures.LayerStats trees = ModFeatures.STATS.get(BiomeDecoration.Dispatcher.TREE_STAND);
+		c[c.length - 3] = trees.wood.sum();
+		c[c.length - 2] = trees.leaves.sum();
 		c[c.length - 1] = ModFeatures.HABITAT_MISS.sum();
 		return c;
 	}
@@ -954,7 +985,15 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 			parts.add(String.format(Locale.ROOT, "%s %d chunks, %.3f ms/chunk, %.1f placed/chunk", d.path(), chunks,
 					(after[o] - before[o]) / 1e6 / Math.max(1, chunks), (double) (after[o + 2] - before[o + 2]) / Math.max(1, chunks)));
 		}
+		long chunks = Math.max(1, after[BiomeDecoration.Dispatcher.TREE_STAND.ordinal() * 3 + 1]
+				- before[BiomeDecoration.Dispatcher.TREE_STAND.ordinal() * 3 + 1]);
 		return "dispatcher layers (terrain generated during the visits, without the world start): " + String.join("; ", parts)
+				+ String.format(Locale.ROOT, "; tree stand wood %.1f and leaves %.1f per chunk", (double) (after[after.length - 3]
+						- before[before.length - 3]) / chunks, (double) (after[after.length - 2] - before[before.length - 2]) / chunks)
+				+ String.format(Locale.ROOT, "; procedural trees not planted since the start: structure or water %d, trunk base %d, "
+						+ "nothing written %d", pl.polishforests.worldgen.feature.TreeStandFeature.SKIPPED_STRUCTURE.sum(),
+						pl.polishforests.worldgen.feature.TreeStandFeature.SKIPPED_BASE.sum(),
+						pl.polishforests.worldgen.feature.TreeStandFeature.SKIPPED_WRITE.sum())
 				+ "; HABITAT_MISS " + (after[after.length - 1] - before[before.length - 1]);
 	}
 

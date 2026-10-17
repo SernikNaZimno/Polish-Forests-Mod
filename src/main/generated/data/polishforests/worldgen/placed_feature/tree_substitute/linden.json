@@ -1,5 +1,5 @@
 {
-  "feature": "polishforests:tree/spruce_mega",
+  "feature": "polishforests:tree_substitute/linden",
   "placement": [
     {
       "type": "minecraft:block_predicate_filter",

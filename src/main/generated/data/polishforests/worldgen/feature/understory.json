@@ -128,11 +128,11 @@
       ],
       "plants": [
         {
-          "feature": "polishforests:tree/scots_pine_low",
+          "feature": "polishforests:tree_substitute/scots_pine_low",
           "weight": 2
         },
         {
-          "feature": "polishforests:tree/birch",
+          "feature": "polishforests:tree_substitute/birch",
           "weight": 1
         }
       ]
@@ -164,13 +164,32 @@
     },
     {
       "biomes": [
-        "dry_pine_forest",
-        "fresh_pine_forest"
+        "dry_pine_forest"
       ],
       "coverage": 0.00390625,
       "plants": [
         {
           "feature": "polishforests:shrub/juniper",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "fresh_pine_forest"
+      ],
+      "coverage": 0.01953125,
+      "plants": [
+        {
+          "feature": "polishforests:shrub/juniper",
+          "weight": 2
+        },
+        {
+          "feature": "polishforests:shrub/alder_buckthorn",
+          "weight": 2
+        },
+        {
+          "feature": "polishforests:tree_substitute/rowan",
           "weight": 1
         }
       ]

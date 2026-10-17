@@ -1,9 +1,11 @@
 package pl.polishforests.worldgen.habitat;
 
 /**
- * Tree and shrub species: placed feature identifiers {@code polishforests:tree/<id>} and
- * {@code polishforests:shrub/<id>} (§8.4) and range rules ({@link SpeciesRanges}). Four species have a flag
- * in the habitat code (4 bits): beech, fir, native spruce and hornbeam.
+ * Tree and shrub species: placed feature identifiers {@code polishforests:tree/<id>} (the procedural tree of the tree
+ * planner, step V9; only for the species with a planner shape), {@code polishforests:tree_substitute/<id>} (the vanilla
+ * placeholder of M2, decision PW-3) and {@code polishforests:shrub/<id>} (§8.4) and range rules ({@link SpeciesRanges}).
+ * Four species have a flag in the habitat code (4 bits): beech, fir, native spruce and hornbeam. New constants only at
+ * the end.
  */
 public enum Species {
 	SCOTS_PINE("scots_pine", false, -1),
@@ -31,7 +33,9 @@ public enum Species {
 	OSIER("osier", true, -1),
 	HAZEL("hazel", true, -1),
 	JUNIPER("juniper", true, -1),
-	IVY("ivy", true, -1);
+	IVY("ivy", true, -1),
+	/** Alder buckthorn, Frangula alnus (the shrub layer of the pine forests, step V9). */
+	ALDER_BUCKTHORN("alder_buckthorn", true, -1);
 
 	/** Species flags in the habitat code: bit 0 beech, 1 fir, 2 native spruce, 3 hornbeam. */
 	public static final int FLAG_BEECH = 1;
@@ -51,6 +55,16 @@ public enum Species {
 
 	public String id() {
 		return id;
+	}
+
+	/** Path of the placeholder tree of M2 (decision PW-3): {@code tree_substitute/<id>}; for a shrub its {@link #path}. */
+	public String substitutePath() {
+		return shrub ? path() : "tree_substitute/" + id;
+	}
+
+	/** Whether the species is a shrub ({@code shrub/<id>}). */
+	public boolean shrub() {
+		return shrub;
 	}
 
 	/** Placed feature path: {@code tree/<id>} or {@code shrub/<id>}. */

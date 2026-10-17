@@ -1,5 +1,5 @@
 {
-  "feature": "polishforests:tree/rowan",
+  "feature": "polishforests:tree_substitute/norway_maple",
   "placement": [
     {
       "type": "minecraft:block_predicate_filter",

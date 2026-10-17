@@ -167,6 +167,7 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		SPECIES.put("hazel", new String[] {"hazel", "leszczyna"});
 		SPECIES.put("juniper", new String[] {"juniper", "jałowiec"});
 		SPECIES.put("ivy", new String[] {"ivy", "bluszcz"});
+		SPECIES.put("alder_buckthorn", new String[] {"alder buckthorn", "kruszyna pospolita"});
 	}
 
 	private final boolean polish;
@@ -264,8 +265,8 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		b.add("polishforests.options.alien_species", "Alien & Invasive Species");
 		b.add("polishforests.options.note", "Real scale: landscapes at their true size and elevation. Gameplay scale: "
 				+ "landscapes about 1.4 km across, lower mountains and a shorter world, which is much easier on your computer. "
-				+ "The landscape mode already chooses the biomes; managed forests and alien species will take effect in future "
-				+ "versions of the mod.");
+				+ "The landscape mode already chooses the biomes, and the managed forest share the stands of the oak-hornbeam and "
+				+ "pine forests; alien species will take effect in future versions of the mod.");
 		b.add("polishforests.options.landscape.natural.tooltip", "The forest that would grow without people, on almost the "
 				+ "whole land.");
 		b.add("polishforests.options.landscape.today.tooltip", "About 30% forest, mostly pine forests on sand, with meadows "
@@ -315,7 +316,8 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		b.add("polishforests.options.alien_species", "Gatunki obce i inwazyjne");
 		b.add("polishforests.options.note", "Skala rzeczywista: krajobrazy w prawdziwych rozmiarach i wysokościach. Skala "
 				+ "rozgrywki: krajobrazy ok. 1,4 km, niższe góry i niższy świat, co wyraźnie odciąża komputer. Tryb krajobrazu "
-				+ "wybiera już biomy; lasy gospodarcze i gatunki obce zaczną działać w kolejnych wersjach moda.");
+				+ "wybiera już biomy, a udział lasów gospodarczych drzewostany grądów i borów; gatunki obce zaczną działać "
+				+ "w kolejnych wersjach moda.");
 		b.add("polishforests.options.landscape.natural.tooltip", "Las, który rósłby bez ludzi, prawie na całym lądzie.");
 		b.add("polishforests.options.landscape.today.tooltip", "Ok. 30% lasów, głównie bory na piaskach, łąki i pola "
 				+ "odłogowane; brzegi rzek zostają zarośnięte.");

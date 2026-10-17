@@ -1,13 +1,4 @@
 {
-  "type": "minecraft:weighted_random_selector",
-  "features": [
-    {
-      "data": "polishforests:tree/oak_fancy",
-      "weight": 60
-    },
-    {
-      "data": "polishforests:tree/oak_small",
-      "weight": 40
-    }
-  ]
+  "type": "polishforests:procedural_tree",
+  "species": "oak"
 }

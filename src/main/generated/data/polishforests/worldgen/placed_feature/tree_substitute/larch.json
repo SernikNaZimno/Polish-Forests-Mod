@@ -1,5 +1,5 @@
 {
-  "feature": "polishforests:tree/black_alder",
+  "feature": "polishforests:tree_substitute/larch",
   "placement": [
     {
       "type": "minecraft:block_predicate_filter",

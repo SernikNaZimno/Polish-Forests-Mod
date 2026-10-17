@@ -71,6 +71,36 @@ public final class CrownTerritory {
 		return (rows[dz + R] >>> (dx + R) & 1) != 0;
 	}
 
+	/** A test of world columns. */
+	@FunctionalInterface
+	public interface Columns {
+		boolean test(int wx, int wz);
+	}
+
+	/**
+	 * The territory without the columns {@code out} holds (a structure mask, step V9: no crown over a roof or a street),
+	 * keeping the trunk's own column; the territory itself when nothing is left out.
+	 */
+	public CrownTerritory without(Columns out) {
+		long[] kept = null;
+		for (int dz = -R; dz <= R; dz++) {
+			long row = rows[dz + R];
+			long bits = row;
+			while (bits != 0) {
+				int bit = Long.numberOfTrailingZeros(bits);
+				bits &= bits - 1;
+				int dx = bit - R;
+				if ((dx != 0 || dz != 0) && out.test(x + dx, z + dz)) {
+					if (kept == null) {
+						kept = rows.clone();
+					}
+					kept[dz + R] &= ~(1L << bit);
+				}
+			}
+		}
+		return kept == null ? this : new CrownTerritory(x, z, layer, radius, reach, edge, kept);
+	}
+
 	/** Number of columns. */
 	public int area() {
 		int n = 0;

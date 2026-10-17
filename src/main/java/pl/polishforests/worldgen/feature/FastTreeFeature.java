@@ -45,6 +45,11 @@ public record FastTreeFeature(TreeFeature tree) implements Feature {
 	public static final MapCodec<FastTreeFeature> CODEC = TreeFeature.CODEC.xmap(FastTreeFeature::new, FastTreeFeature::tree);
 	private static final int FLAGS = 19;
 	private static final byte NONE = Byte.MAX_VALUE;
+	/**
+	 * Counters of the logs and leaves the trees of this thread place while the tree stand sets them ({wood, leaves}),
+	 * for the counters of the tree stand ({@code ModFeatures.STATS}); null otherwise.
+	 */
+	static final ThreadLocal<long[]> COUNTS = new ThreadLocal<>();
 
 	@Override
 	public MapCodec<FastTreeFeature> codec() {
@@ -60,12 +65,18 @@ public record FastTreeFeature(TreeFeature tree) implements Feature {
 		List<BlockPos> leaves = new ArrayList<>();
 		LongOpenHashSet leafSet = new LongOpenHashSet();
 		BiConsumer<BlockPos, BlockState> trunkSetter = (pos, state) -> {
+			if (procedural(level.getBlockState(pos))) {
+				return;
+			}
 			logs.add(pos.immutable());
 			level.setBlock(pos, state, FLAGS);
 		};
 		FoliagePlacer.FoliageSetter foliageSetter = new FoliagePlacer.FoliageSetter() {
 			@Override
 			public void set(BlockPos pos, BlockState state) {
+				if (procedural(level.getBlockState(pos))) {
+					return;
+				}
 				boolean first = leafSet.add(pos.asLong());
 				if (state.hasProperty(BlockStateProperties.DISTANCE)) {
 					if (first) {
@@ -88,6 +99,11 @@ public record FastTreeFeature(TreeFeature tree) implements Feature {
 			return false;
 		}
 		List<BlockPos> kept = updateLeaves(level, logs, leaves);
+		long[] counts = COUNTS.get();
+		if (counts != null) {
+			counts[0] += logs.size();
+			counts[1] += kept.size();
+		}
 		if (!tree.decorators().isEmpty()) {
 			Set<BlockPos> decorations = new HashSet<>();
 			BiConsumer<BlockPos, BlockState> decorationSetter = (pos, state) -> {
@@ -102,6 +118,17 @@ public record FastTreeFeature(TreeFeature tree) implements Feature {
 			tree.decorators().forEach(d -> d.place(context));
 		}
 		return true;
+	}
+
+	/**
+	 * Whether a block belongs to a procedural tree of the tree planner (a thin trunk or the leaves of a species, step V9):
+	 * a placeholder tree in an ecotone does not overwrite it, as the procedural trees do not overwrite the leaves of other
+	 * trees (decision V9, risk R5), so no tree cuts the leaf paths of another one. Outside the forests of the vertical
+	 * slice there are no such blocks, so the M2 trees are unchanged there.
+	 */
+	private static boolean procedural(BlockState state) {
+		return state.getBlock() instanceof pl.polishforests.block.SpeciesLeavesBlock
+				|| state.getBlock() instanceof pl.polishforests.block.TrunkBlock;
 	}
 
 	/** The vanilla {@code doPlace} without roots: trunk height, free space, trunk and foliage. */

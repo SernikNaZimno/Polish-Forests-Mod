@@ -251,6 +251,19 @@ tasks.withType(Test).configureEach {
 		systemProperty 'polishforests.slice.file', file('src/test/resources/slice_sites.txt').absolutePath
 		outputs.upToDateWhen { false }
 	}
+	// Sample plots of the norms card by stand (step V9, SlicePlotsTest): -PfindSlicePlots searches them again and writes
+	// src/test/resources/slice_plots.txt (only with --tests '*SlicePlotsTest*'; the usual run checks the table).
+	if (project.hasProperty('findSlicePlots')) {
+		systemProperty 'polishforests.slice.plots.find', 'true'
+		systemProperty 'polishforests.slice.plots.file', file('src/test/resources/slice_plots.txt').absolutePath
+		outputs.upToDateWhen { false }
+	}
+	// -PcalibrateSlice: StandCensusSimulationTest prints the norms of simulated stands of the slice (step V9; a report).
+	if (project.hasProperty('calibrateSlice')) {
+		systemProperty 'polishforests.slice.calibrate', 'true'
+		systemProperty 'polishforests.slice.calibrate.only', project.findProperty('calibrateOnly') ?: ''
+		outputs.upToDateWhen { false }
+	}
 	// -PsliceReport: SliceSitesTest prints the biome and association shares of every place (for docs/04).
 	if (project.hasProperty('sliceReport')) {
 		systemProperty 'polishforests.slice.report', 'true'
@@ -483,6 +496,8 @@ tasks.named('runClientGameTest') {
 	jvmArgs "-Dpolishforests.scales=${project.findProperty('scales') ?: ''}"
 	jvmArgs "-Dpolishforests.modes=${project.findProperty('modes') ?: ''}"
 	jvmArgs "-Dpolishforests.slice.sites=${file('src/test/resources/slice_sites.txt').absolutePath}"
+	// Sample plots of the norms card by stand (step V9).
+	jvmArgs "-Dpolishforests.slice.plots=${file('src/test/resources/slice_plots.txt').absolutePath}"
 	// Registry snapshot (step V2): the trunk samples (-Pgametest=slice -Psites=samples) compare the game's registry with it.
 	jvmArgs "-Dpolishforests.registry.snapshot=${file('src/test/resources/registry_snapshot.txt').absolutePath}"
 	// Fixed cameras of the slice (V0 review round 1); -PfindSliceCameras chooses them anew and writes the file.

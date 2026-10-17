@@ -216,7 +216,7 @@ public final class ForestNorms {
 		METRICS.put(REGENERATION, "regeneration (young trees in the shrub layer) per ha");
 		METRICS.put(REGENERATION_RATIO, "regeneration density in gaps over under the canopy");
 		METRICS.put(OAK_REGENERATION, "young oaks (regeneration) per ha");
-		METRICS.put(PINE_REGENERATION_UNDER_CANOPY, "young Scots pines under the canopy per ha");
+		METRICS.put(PINE_REGENERATION_UNDER_CANOPY, "young Scots pines of the tree planner under the canopy per ha");
 		METRICS.put(UNDERSTORY, "understory (shrubs and regeneration) cover, %");
 		METRICS.put(SHRUBS_PER_CHUNK, "shrubs per chunk");
 		METRICS.put(HERBS, "herb layer cover, % of columns");
@@ -260,7 +260,12 @@ public final class ForestNorms {
 		norm(A2_PER_CHUNK, ohn, 6, 9, layers);
 		norm(A2_HEIGHT, ohn, 15, 22, layers);
 		norm(A1_HEIGHT, ohm, 22, 30, layers);
+		// Step V9: a managed oak-hornbeam forest in the pole stage (21-40 years) is lower (oak about 12-18 m) [S].
+		norm(A1_HEIGHT, ohm, AgeClass.POLE_STAGE, 12, 18, layers + " [S: tablice zasobności dębu]");
 		norm(A1_HEIGHT, fpm, 20, 28, layers);
+		// Step V9: a managed pine forest in the pole stage (21-40 years) is lower (yield tables of the Scots pine, site
+		// classes I-II: about 11-17 m at 30-40 years) [S].
+		norm(A1_HEIGHT, fpm, AgeClass.POLE_STAGE, 11, 17, layers + " [S: tablice zasobności sosny]");
 		norm(A2_SHARE, fpm, 0, 20, layers);
 		// N3 composition of a1.
 		norm(COMPOSITION + "oak", ohn, 20, 50, composition);

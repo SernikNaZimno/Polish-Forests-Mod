@@ -109,8 +109,11 @@ public final class CensusTestPlot {
 	 * regeneration. Trees (a1 + a2) 4 / 1.5625 = 2.56 per chunk, a1 1.92 of mean height 34 / 3, a2 0.64 of height 6, a2
 	 * share 25%; a1 composition oak, hornbeam and Scots pine a third each; conifers 1 of 4.</li>
 	 * <li>Canopy (leaves at dy ≥ 3): T1 25 columns, T2 25, T3 9, T4 9, T5 5 (lx 0, lz 8–12); R1 and S1 have leaves only
-	 * up to dy 2: 73 columns, 18.25%. The open columns (327) touch each other around the crowns: one gap of 327 columns,
-	 * 81.75%, diameter 2·√(327 / π).</li>
+	 * up to dy 2: 73 columns, 18.25%. The open columns (327) touch each other around the crowns; a gap holds only those a
+	 * square of 5 × 5 open columns of the plot covers (step V9), which leaves out 52: the lane of 4 columns between T1 and
+	 * T2 (lx 6–9, lz 1–5: 20), the row between T1, T2 and the plot's edge (lx 0–14, lz 0: 15), the column between T1, T5
+	 * and the edge (lx 0, lz 1–7: 7), the columns between T5, T3 and the edge (lx 0, lz 13 and lx 1, lz 11–13: 4) and those
+	 * between T4 and the edge (lx 18–19, lz 8–10: 6): one gap of 275 columns, 68.75%, diameter 2·√(275 / π).</li>
 	 * <li>Regeneration R1 (oak) stands in the gap and none under the canopy: 25 per ha, ratio infinite, oaks 25 per ha,
 	 * pines under the canopy 0. Understory: R1 and S1 cover 9 columns each, 18 columns, 4.5%; 1 shrub, 0.64 per chunk.</li>
 	 * <li>Ground: herbs bush 10 + fern 5 + short grass 5 + tall grass 1 = 21 columns, 5.25%; bilberry 10, 2.5%; moss
@@ -136,8 +139,8 @@ public final class CensusTestPlot {
 			m.put(ForestNorms.COMPOSITION + key, third ? 100 / 3.0 : 0.0);
 		}
 		m.put(ForestNorms.CANOPY, 18.25);
-		m.put(ForestNorms.GAP_SHARE, 81.75);
-		m.put(ForestNorms.GAP_DIAMETER, 2 * Math.sqrt(327 / Math.PI));
+		m.put(ForestNorms.GAP_SHARE, 68.75);
+		m.put(ForestNorms.GAP_DIAMETER, 2 * Math.sqrt(275 / Math.PI));
 		m.put(ForestNorms.REGENERATION, 1 / ha);
 		m.put(ForestNorms.REGENERATION_RATIO, Double.POSITIVE_INFINITY);
 		m.put(ForestNorms.OAK_REGENERATION, 1 / ha);
@@ -169,21 +172,27 @@ public final class CensusTestPlot {
 		private final int x0;
 		private final int z0;
 
+		/** Directions of a parent ({@code Direction} 3D data values). */
+		private static final int DOWN = 0;
+		private static final int WEST = 4;
+
 		Plot(CensusGrid g, int x0, int z0) {
 			this.g = g;
 			this.x0 = x0;
 			this.z0 = z0;
 		}
 
+		/** Standing wood; a thin trunk with its parent below (as the world builds it, step V9). */
 		Plot up(int lx, int lz, int from, int to, CensusGrid.Wood w) {
 			for (int dy = from; dy <= to; dy++) {
-				g.setWood(x0 + lx, dy, z0 + lz, true, w);
+				g.setWood(x0 + lx, dy, z0 + lz, true, w.species() == null ? w : w.withParent(DOWN));
 			}
 			return this;
 		}
 
+		/** Lying wood; a thin trunk with its parent to the west (the branches of the plot grow east). */
 		Plot side(int lx, int lz, int dy, CensusGrid.Wood w) {
-			g.setWood(x0 + lx, dy, z0 + lz, false, w);
+			g.setWood(x0 + lx, dy, z0 + lz, false, w.species() == null ? w : w.withParent(WEST));
 			return this;
 		}
 

@@ -43,14 +43,16 @@ import pl.polishforests.worldgen.tree.TreeVoxels;
  * the territories and the stand map (rule ZW-1, {@code PlacedFeature.place} passes no context) and writes the result with
  * {@link #write}.
  *
- * <p><b>Writing</b> ({@link #write}): every block only where the world holds air or a block of
+ * <p><b>Writing</b> ({@link #write}): the wood only where the world holds air or a block of
  * {@code #minecraft:replaceable_by_trees} (plants, leaves), so the wood of a tree replaces leaves of another tree and leaves
- * never replace wood, in either order. The wood goes first, in the planner's order from the root; a block whose parent
- * could not be written is left out with all its descendants. Before the leaves, the feature notes which leaf blocks can
- * be placed; when some wood or some leaf cannot, the leaf distances are computed again from the wood that exists through
- * the placeable leaves only ({@link TreeVoxels#leafDistances(boolean[], boolean[])}), so no leaf is placed that would
- * decay. (A leaf of this tree that a later tree overwrites can still cut the path of another leaf; within a stand the
- * territories and the split surfaces keep the leaves of procedural trees apart, risk R5 for the vanilla substitutes.)
+ * never replace wood, in either order; the leaves only on air or such a block that is not a leaf (step V9: a leaf never
+ * replaces the leaf of another tree, and the placeholder trees of {@link FastTreeFeature} do not replace the blocks of
+ * procedural trees, so no tree cuts the leaf paths of another one; where two crowns meet, the first one keeps the block).
+ * The wood goes first, in the planner's order from the root; a block whose parent could not be written is left out with
+ * all its descendants. Before the leaves, the feature notes which leaf blocks can be placed; when some wood or some leaf
+ * cannot, the leaf distances are computed again from the wood that exists through the placeable leaves only
+ * ({@link TreeVoxels#leafDistances(boolean[], boolean[])}), so no leaf is placed that would decay. Within a stand the
+ * territories and the split surfaces keep the crowns of procedural trees apart.
  * No vanilla tree decorators
  * (risk R8: a bracket fungus or moss on the face of a block would hang 8 − r px away from a thin trunk; own fungi in M4).
  *
@@ -189,6 +191,14 @@ public record ProceduralTreeFeature(Species species, CrownLayer layer, AgeClass 
 	 * @return the number of wood blocks written (0 when even the root could not be)
 	 */
 	public static int write(WorldGenLevel level, TreeVoxels v, Species species, CrownLayer layer, AgeClass age) {
+		return (int) (writeCounted(level, v, species, layer, age) >>> 32);
+	}
+
+	/**
+	 * {@link #write}, returning the wood blocks written in the high and the leaves written in the low 32 bits (the counters
+	 * of the tree stand, {@code ModFeatures.STATS}).
+	 */
+	public static long writeCounted(WorldGenLevel level, TreeVoxels v, Species species, CrownLayer layer, AgeClass age) {
 		int n = v.woodCount();
 		boolean[] written = new boolean[n];
 		int count = 0;
@@ -214,7 +224,7 @@ public record ProceduralTreeFeature(Species species, CrownLayer layer, AgeClass 
 		boolean all = count == n;
 		for (int i = 0; i < leaves; i++) {
 			pos.set(v.x() + v.leafX(i), v.y() + v.leafY(i), v.z() + v.leafZ(i));
-			placeable[i] = pos.getY() < level.getMaxY() && replaceable(level.getBlockState(pos));
+			placeable[i] = pos.getY() < level.getMaxY() && leafReplaceable(level.getBlockState(pos));
 			all &= placeable[i];
 		}
 		byte[] distances = all ? null : v.leafDistances(written, placeable);
@@ -231,6 +241,7 @@ public record ProceduralTreeFeature(Species species, CrownLayer layer, AgeClass 
 			dryBelow = lo + (int) Math.ceil(share * (hi - lo + 1));
 		}
 		BlockState dry = dryBelow == Integer.MIN_VALUE ? leaf : leaf.setValue(MarcescentLeavesBlock.MARCESCENT, true);
+		int placed = 0;
 		for (int i = 0; i < leaves; i++) {
 			int d = distances == null ? v.leafDistance(i) : distances[i];
 			if (d < 1 || !placeable[i]) {
@@ -238,12 +249,21 @@ public record ProceduralTreeFeature(Species species, CrownLayer layer, AgeClass 
 			}
 			pos.set(v.x() + v.leafX(i), v.y() + v.leafY(i), v.z() + v.leafZ(i));
 			level.setBlock(pos, (v.leafY(i) < dryBelow ? dry : leaf).setValue(LeavesBlock.DISTANCE, d), FLAGS);
+			placed++;
 		}
-		return count;
+		return (long) count << 32 | placed;
 	}
 
 	private static boolean replaceable(BlockState state) {
 		return state.isAir() || state.is(BlockTags.REPLACEABLE_BY_TREES);
+	}
+
+	/**
+	 * Where a leaf may go: air or a block trees replace, but not the leaves of another tree (decision V9): a leaf that
+	 * overwrote a neighbor's leaf could cut the path of that neighbor's other leaves to its wood, and they would decay.
+	 */
+	private static boolean leafReplaceable(BlockState state) {
+		return state.isAir() || state.is(BlockTags.REPLACEABLE_BY_TREES) && !state.is(BlockTags.LEAVES);
 	}
 
 	/** The trunk block of a species and bark ({@link TreeVoxels#LOWER} … {@link TreeVoxels#UPPER}). */

@@ -39,6 +39,7 @@ import pl.polishforests.worldgen.norms.ForestCensus;
 import pl.polishforests.worldgen.norms.ForestNorms;
 import pl.polishforests.worldgen.norms.ForestNorms.Forest;
 import pl.polishforests.worldgen.norms.ForestNorms.Norm;
+import pl.polishforests.worldgen.tree.AgeClass;
 
 /**
  * The census of the norms card in the game (step V4, docs/04-pionowy-wycinek.md §6): reads the blocks of a sample plot
@@ -115,7 +116,7 @@ final class NormsCensus {
 					} else if (c.getBlock() instanceof TrunkBlock) {
 						Direction parent = c.getValue(TrunkBlock.PARENT);
 						g.setWood(x, dy, z, parent.getAxis() == Direction.Axis.Y, CensusGrid.trunk(c.getValue(TrunkBlock.RADIUS), species(c),
-								name(c)));
+								name(c), parent.get3DDataValue()));
 					} else if (c.is(BlockTags.LOGS)) {
 						boolean up = !c.hasProperty(BlockStateProperties.AXIS) || c.getValue(BlockStateProperties.AXIS) == Direction.Axis.Y;
 						g.setWood(x, dy, z, up, CensusGrid.log(name(c)));
@@ -293,29 +294,48 @@ final class NormsCensus {
 	record Context(String scale, String mode, String place, String season, ForestNorms.Aspect aspect) {
 	}
 
-	/** The column of the card for a site: its forest type, natural in the natural mode, managed in the present-day mode. */
-	static Forest forest(String biome, boolean presentDay) {
+	/**
+	 * The column of the card for a place: its forest type, natural or managed by the stand of the stand map at its center
+	 * (step V9; until V9 by the vegetation mode, decision V4-g).
+	 */
+	static Forest forest(String biome, boolean natural) {
 		return switch (biome) {
-			case "oak_hornbeam_forest" -> presentDay ? Forest.OAK_HORNBEAM_MANAGED : Forest.OAK_HORNBEAM_NATURAL;
-			case "fresh_pine_forest" -> presentDay ? Forest.FRESH_PINE_MANAGED : Forest.FRESH_PINE_NATURAL;
+			case "oak_hornbeam_forest" -> natural ? Forest.OAK_HORNBEAM_NATURAL : Forest.OAK_HORNBEAM_MANAGED;
+			case "fresh_pine_forest" -> natural ? Forest.FRESH_PINE_NATURAL : Forest.FRESH_PINE_MANAGED;
 			default -> throw new AssertionError("No column of the card for " + biome);
 		};
 	}
 
-	/** The census of the 100 × 100 plot of a site centered at (x, z): rows of the report and a line for the log. */
-	static List<String> plot(ServerLevel level, Context c, Forest forest, int x, int z, Map<Long, Species> records, StringBuilder log) {
+	/**
+	 * The census of the 100 × 100 plot centered at (x, z) in a stand of the age class {@code age} (the norms by age class):
+	 * rows of the report and a line for the log.
+	 */
+	static List<String> plot(ServerLevel level, Context c, Forest forest, AgeClass age, int x, int z, Map<Long, Species> records,
+			StringBuilder log) {
 		int minX = x - PLOT / 2;
 		int minZ = z - PLOT / 2;
 		CensusGrid g = read(level, minX - MARGIN, minZ - MARGIN, PLOT + 2 * MARGIN, PLOT + 2 * MARGIN, HEIGHT, records, (a, b) -> true);
 		boolean[] area = ForestCensus.rectangle(g, minX, minZ, PLOT, PLOT);
+		// Step V9: the plot is its forest columns (a forest biome without a zone of the model's habitat code): a meadow, a
+		// field, a herb fringe or a shore of up to 5% of the square (the places allow it) is no canopy gap of the forest,
+		// nor is an opening at its edge.
+		boolean[] nonForestColumns = nonForest(level, g);
+		int nonForest = 0;
+		for (int col = 0; col < area.length; col++) {
+			if (area[col] && nonForestColumns[col]) {
+				area[col] = false;
+				nonForest++;
+			}
+		}
 		ForestCensus.Census census = ForestCensus.of(g);
-		Map<String, Double> values = census.measure(area);
+		Map<String, Double> values = census.measure(area, nonForestColumns);
+		writeMap(g, census.canopyMap(), c.scale() + "_" + c.mode() + "_" + c.place());
 		List<String> rows = new ArrayList<>();
 		int in = 0;
 		int tolerance = 0;
 		int out = 0;
 		for (Map.Entry<String, Double> e : values.entrySet()) {
-			Optional<Norm> norm = ForestNorms.of(e.getKey(), forest, c.aspect(), null);
+			Optional<Norm> norm = ForestNorms.of(e.getKey(), forest, c.aspect(), age);
 			ForestNorms.Verdict v = norm.map(n -> ForestNorms.verdict(e.getValue(), n)).orElse(ForestNorms.Verdict.NONE);
 			in += v == ForestNorms.Verdict.IN ? 1 : 0;
 			tolerance += v == ForestNorms.Verdict.TOLERANCE ? 1 : 0;
@@ -331,13 +351,37 @@ final class NormsCensus {
 		if (!young.isEmpty()) {
 			PolishForests.LOG.info("[slice] {}: regeneration {}", c.place(), young);
 		}
-		log.append(String.format(Locale.ROOT, "%s: %s trees/chunk (a1 %s, a2 %s, top height %s), canopy %s%%, gaps %s%%, understory %s%%, "
-				+ "herbs %s%%, moss %s%%, dead wood %s/chunk; vs %s: %d in, %d within tolerance, %d out%s", c.place(), n(values,
+		// The young Scots pines (N6: only in gaps), for a look where they stand (step V9).
+		List<String> pines = census.objects().stream().filter(o -> o.kind() == ForestCensus.Kind.TREE && area[g.column(o.x(), o.z())]
+				&& o.species() == Species.SCOTS_PINE && ForestCensus.layer(o, top) == ForestCensus.Layer.B).limit(12)
+				.map(o -> String.format(Locale.ROOT, "%s at (%d, %d, %d) height %d", o.block(), o.x(), o.y() + 1, o.z(), o.height())).toList();
+		if (!pines.isEmpty()) {
+			PolishForests.LOG.info("[slice] {}: young pines {}", c.place(), pines);
+		}
+		// The tallest trees, for a look at the canopy (step V9).
+		List<String> tallest = census.objects().stream().filter(o -> o.kind() == ForestCensus.Kind.TREE && area[g.column(o.x(), o.z())])
+				.sorted(java.util.Comparator.comparingInt(ForestCensus.WoodObject::height).reversed()).limit(6)
+				.map(o -> String.format(Locale.ROOT, "%s at (%d, %d, %d) height %d, wood %d, %d leaves", o.species(), o.x(), o.y() + 1, o.z(),
+						o.height(), o.woodHeight(), o.leaves())).toList();
+		PolishForests.LOG.info("[slice] {}: tallest trees {}", c.place(), tallest);
+		List<String> outside = new ArrayList<>();
+		for (Map.Entry<String, Double> e : values.entrySet()) {
+			Optional<Norm> norm = ForestNorms.of(e.getKey(), forest, c.aspect(), age);
+			if (norm.isPresent() && ForestNorms.verdict(e.getValue(), norm.get()) == ForestNorms.Verdict.OUT) {
+				outside.add(e.getKey() + " " + ForestNorms.number(e.getValue()) + " (" + norm.get().range() + ")");
+			}
+		}
+		if (nonForest > 0) {
+			log.append(String.format(Locale.ROOT, "[%d columns of the square outside the forest] ", nonForest));
+		}
+		log.append(String.format(Locale.ROOT, "%s (%s): %s trees/chunk (a1 %s, a2 %s, top height %s), canopy %s%%, gaps %s%%, understory %s%%, "
+				+ "herbs %s%%, moss %s%%, dead wood %s/chunk; vs %s: %d in, %d within tolerance, %d out%s%s", c.place(),
+				age.name().toLowerCase(Locale.ROOT), n(values,
 						ForestNorms.TREES_PER_CHUNK), n(values, ForestNorms.A1_PER_CHUNK), n(values, ForestNorms.A2_PER_CHUNK), n(values,
 								ForestNorms.TOP_HEIGHT), n(values, ForestNorms.CANOPY), n(values, ForestNorms.GAP_SHARE), n(values,
 										ForestNorms.UNDERSTORY), n(values, ForestNorms.HERBS), n(values, ForestNorms.MOSS), n(values,
 												ForestNorms.DEADWOOD_PER_CHUNK), forest.polishName(), in, tolerance, out,
-				unknown.isEmpty() ? "" : "; plants unknown to the census " + unknown));
+				outside.isEmpty() ? "" : " " + outside, unknown.isEmpty() ? "" : "; plants unknown to the census " + unknown));
 		if (values.get(ForestNorms.TREES_PER_CHUNK) == 0) {
 			throw new AssertionError(c.place() + ": no trees counted in the plot of a forest");
 		}
@@ -402,6 +446,63 @@ final class NormsCensus {
 		}
 		writeLines("transect_" + c.scale() + "_" + c.mode() + ".csv", profile);
 		return rows;
+	}
+
+	/** The columns of the grid that are not forest by the habitat code of the world's model (a forest biome without a zone). */
+	private static boolean[] nonForest(ServerLevel level, CensusGrid g) {
+		boolean[] out = new boolean[g.sizeX() * g.sizeZ()];
+		if (!(level.getChunkSource().getGenerator() instanceof pl.polishforests.worldgen.chunk.PolandChunkGenerator gen)) {
+			return out;
+		}
+		pl.polishforests.worldgen.landscape.LandscapeModel m = gen.model(level.getSeed());
+		pl.polishforests.worldgen.habitat.HabitatClassifier k = gen.classifier(level.getSeed());
+		for (int c = 0; c < out.length; c++) {
+			int x = g.columnX(c);
+			int z = g.columnZ(c);
+			int code = k.classify(m.sample(x, z), x, z);
+			out[c] = pl.polishforests.worldgen.habitat.Habitat.biome(code).group() != pl.polishforests.worldgen.habitat.HabitatBiome.Group.FOREST
+					|| pl.polishforests.worldgen.habitat.Habitat.zone(code) != pl.polishforests.worldgen.habitat.Zone.NONE;
+		}
+		return out;
+	}
+
+	/**
+	 * A PNG of the canopy of a plot (step V9, {@code build/norms/plots/<scale>_<mode>_<place>.png}, 3 px per column):
+	 * closed canopy green, open columns light, gaps yellow, tree bases dark (a1), blue (a2) and red (regeneration).
+	 */
+	private static void writeMap(CensusGrid g, byte[] map, String name) {
+		int px = 3;
+		java.awt.image.BufferedImage img = new java.awt.image.BufferedImage(g.sizeX() * px, g.sizeZ() * px,
+				java.awt.image.BufferedImage.TYPE_INT_RGB);
+		for (int a = 0; a < g.sizeX(); a++) {
+			for (int b = 0; b < g.sizeZ(); b++) {
+				int rgb = switch (map[g.column(g.minX() + a, g.minZ() + b)]) {
+					case ForestCensus.MAP_CLOSED -> 0x3E7A3A;
+					case ForestCensus.MAP_OPEN -> 0xC8D8B0;
+					case ForestCensus.MAP_GAP -> 0xF0D040;
+					case ForestCensus.MAP_A1 -> 0x202020;
+					case ForestCensus.MAP_A2 -> 0x2050D0;
+					case ForestCensus.MAP_B -> 0xD03020;
+					default -> 0x808080;
+				};
+				for (int i = 0; i < px; i++) {
+					for (int j = 0; j < px; j++) {
+						img.setRGB(a * px + i, b * px + j, rgb);
+					}
+				}
+			}
+		}
+		String dir = System.getProperty("polishforests.norms.out", "");
+		if (dir.isBlank()) {
+			return;
+		}
+		try {
+			Path file = Path.of(dir, "plots", name + ".png");
+			Files.createDirectories(file.getParent());
+			javax.imageio.ImageIO.write(img, "png", file.toFile());
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
 	}
 
 	private static String n(Map<String, Double> values, String metric) {

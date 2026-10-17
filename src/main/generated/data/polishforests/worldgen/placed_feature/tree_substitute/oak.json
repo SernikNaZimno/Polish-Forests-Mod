@@ -1,5 +1,5 @@
 {
-  "feature": "polishforests:tree/sessile_oak",
+  "feature": "polishforests:tree_substitute/oak",
   "placement": [
     {
       "type": "minecraft:block_predicate_filter",

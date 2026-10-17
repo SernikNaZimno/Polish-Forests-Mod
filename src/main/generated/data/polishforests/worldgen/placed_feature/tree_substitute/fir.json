@@ -1,5 +1,5 @@
 {
-  "feature": "polishforests:tree/sycamore_maple",
+  "feature": "polishforests:tree_substitute/fir",
   "placement": [
     {
       "type": "minecraft:block_predicate_filter",

@@ -81,7 +81,7 @@ public final class CrownTerritories {
 	 */
 	private static final double[][][] SHARES = {
 			{{0.95, 0.05}, {0.85, 0.10}, {0.80, 0.10}}, // managed: pole stage, mature, old growth
-			{{0.70, 0.25}, {0.35, 0.50}, {0.30, 0.50}}, // natural
+			{{0.70, 0.25}, {0.35, 0.58}, {0.30, 0.64}}, // natural
 	};
 	private static final int R = MAX_REACH;
 	private static final long LAYER_SALT = 1;
@@ -101,11 +101,17 @@ public final class CrownTerritories {
 	 * A kept candidate as a site of the diagrams: its column, layer, age class, crown radius and whether it stands in a
 	 * canopy gap. {@code weight} and {@code edgeWeight} are the squared radius and the squared edge reach in sixteenths.
 	 */
-	public record Site(int x, int z, CrownLayer layer, AgeClass age, float radius, boolean gap, int weight, int edgeWeight) {
+	public record Site(int x, int z, CrownLayer layer, AgeClass age, boolean natural, float radius, boolean gap, int weight,
+			int edgeWeight) {
 		/** Whether this site precedes the other one when their powers are equal. */
 		boolean before(Site o) {
 			return x != o.x ? x < o.x : z < o.z;
 		}
+	}
+
+	/** The stand map of the territories. */
+	public StandMap stands() {
+		return stands;
 	}
 
 	/** Site of the candidate at column (x, z) (whether or not a candidate stands there): a pure function. */
@@ -125,7 +131,7 @@ public final class CrownTerritories {
 		double radius = Math.min(MAX_REACH / EDGE_REACH, RADIUS[layer.ordinal()][age.ordinal()] * jitter);
 		int weight = (int) Math.round(16 * radius * radius);
 		int edgeWeight = (int) Math.round(16 * EDGE_REACH * EDGE_REACH * radius * radius);
-		return new Site(x, z, layer, age, (float) radius, gap, weight, edgeWeight);
+		return new Site(x, z, layer, age, natural, (float) radius, gap, weight, edgeWeight);
 	}
 
 	/**

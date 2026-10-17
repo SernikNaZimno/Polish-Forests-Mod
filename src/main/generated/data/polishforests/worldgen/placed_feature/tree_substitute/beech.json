@@ -1,5 +1,5 @@
 {
-  "feature": "polishforests:tree/elm",
+  "feature": "polishforests:tree_substitute/beech",
   "placement": [
     {
       "type": "minecraft:block_predicate_filter",

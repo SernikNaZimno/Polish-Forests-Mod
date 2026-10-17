@@ -39,8 +39,9 @@ import pl.polishforests.worldgen.chunk.PolandScale;
  * Determinism of the world generation (step S10, {@code docs/03-m2-biomy.md} §12.3): two worlds with the same seed, in
  * both scales and both vegetation modes, give the same blocks.
  *
- * <p>Each world generates two areas of 8 × 8 chunks: the large river and the Beskids interior of the {@code stages}
- * measurement. In both, the terrain (every block of every column, after TERRAIN, before FEATURES) is hashed first and
+ * <p>Each world generates four areas of 8 × 8 chunks: the large river and the Beskids interior of the {@code stages}
+ * measurement and, from step V9 of docs/04-pionowy-wycinek.md, an oak-hornbeam and a fresh pine forest site of the
+ * vertical slice with the procedural trees. In both, the terrain (every block of every column, after TERRAIN, before FEATURES) is hashed first and
  * must be identical between the worlds. The fixed-order worlds bring the 64 chunks to TERRAIN one at a time on the server
  * thread; the free-order worlds (round 1 of the S10 review) request the 64 chunks and a ring of {@link #TERRAIN_RING}
  * around them at TERRAIN all at once, in a shuffled order (another one in each world), so the generation threads fill
@@ -67,15 +68,20 @@ import pl.polishforests.worldgen.chunk.PolandScale;
  * <p>The column hashes go to {@code polishforests.determinism.out} ({@code build/determinism/<plain|optimization>.txt});
  * with {@code -PdeterminismReference=<file>} the run also compares itself with a file written by a run with the other
  * mod set (the optimization pack with C2ME, {@code -Poptimization}, or without it): terrain and the fixed-order decorated
- * columns of both areas exactly. Runs when {@code -Dpolishforests.gametest} is
+ * columns of every area exactly. Runs when {@code -Dpolishforests.gametest} is
  * {@code determinism} or {@code all}; {@code -Pscales} limits the scales.
  */
 public final class DeterminismClientGameTest implements FabricClientGameTest {
 	private static final String SEED = "20260927";
-	/** North-west corners (blocks) of the two areas: the river and Beskids areas of the stages test. */
-	private static final int[][] AREAS_REAL = {{-19_484 - 64, 11_253 - 64}, {154_834 - 64, 1_058_738 - 64}};
-	private static final int[][] AREAS_GAMEPLAY = {{-1_851 - 64, 6_022 - 64}, {27_609 - 64, 3_254 - 64}};
-	private static final String[] AREA_NAMES = {"river", "beskids"};
+	/**
+	 * North-west corners (blocks) of the areas: the river and Beskids areas of the stages test and (step V9) the sites
+	 * oak_hornbeam_1 and fresh_pine_1 of the vertical slice ({@code slice_sites.txt}), where the procedural trees stand.
+	 */
+	private static final int[][] AREAS_REAL = {{-19_484 - 64, 11_253 - 64}, {154_834 - 64, 1_058_738 - 64}, {438 - 64, -730 - 64},
+			{-699 - 64, 1_924 - 64}};
+	private static final int[][] AREAS_GAMEPLAY = {{-1_851 - 64, 6_022 - 64}, {27_609 - 64, 3_254 - 64}, {-1_785 - 64, 886 - 64},
+			{-1_195 - 64, -583 - 64}};
+	private static final String[] AREA_NAMES = {"river", "beskids", "oak_hornbeam", "fresh_pine"};
 	private static final int SIZE = 8;
 	/** Distance from a chunk border (0 = edge column) used in the report of groups of differing columns. */
 	static final int BORDER_BAND = 3;

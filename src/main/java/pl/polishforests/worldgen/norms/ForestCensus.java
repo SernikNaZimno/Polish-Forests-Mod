@@ -19,7 +19,8 @@ import pl.polishforests.worldgen.habitat.Species;
  *
  * <p><b>Objects.</b> Wood cells form objects: cells touching by a face, an edge or a corner belong together, except that
  * wood lying on the ground (on its side, 1 block above the ground) never joins wood standing up, so a fallen log next
- * to a stump or a trunk stays an object of its own. An object with standing wood right on the ground (its base) stands;
+ * to a stump or a trunk stays an object of its own, and two thin trunks of the tree planner with a known parent belong
+ * together only when one is the other's parent (step V9: neighboring crowns touch, each block leads to its own root). An object with standing wood right on the ground (its base) stands;
  * one without a base made of lying wood is a lying log; other wood (branches of a tree rooted outside the grid) is left
  * out. Leaves belong to the standing object whose wood they reach first through leaves (faces only, at most
  * {@value #LEAF_REACH} steps, as vanilla leaves stay alive); a leaf reached by two objects in the same step goes to the
@@ -41,8 +42,13 @@ import pl.polishforests.worldgen.habitat.Species;
  * and a2.
  *
  * <p><b>Columns.</b> Every column of the area with ground counts once for the cover metrics: canopy closure is the share
- * of columns with leaves {@value #CANOPY_FROM} or more blocks above the ground (more than 2 blocks, §3 V4); a canopy gap
- * is a group of open columns (touching by a side) of at least {@value #GAP_MIN_AREA} columns, its size as the
+ * of columns with leaves {@value #CANOPY_FROM} or more blocks above the ground (more than 2 blocks, §3 V4) of a tree of
+ * the layers a1 or a2 or of no object (step V9: the leaves of the shrub layer, regeneration and shrubs, do not close
+ * the canopy, so the young trees of a canopy gap leave it a gap, as the canopy gap of the foresters); a canopy gap
+ * is a group of open columns (touching by a side) of at least {@value #GAP_MIN_AREA} columns, each covered by a square
+ * of {@value #GAP_MIN_WIDTH} × {@value #GAP_MIN_WIDTH} open columns of the area (step V9: the narrow lanes between the
+ * crowns of a closed stand are no gap, nor a strip along the edge of the area), not touching a column that is not forest
+ * (step V9: an opening at the forest's edge is no canopy gap; the caller may name such columns), its size as the
  * diameter of a circle of the same area; the understory cover the share of columns that a cell of a shrub or of
  * regeneration covers; the herb layer, bilberry, mosses and leaf litter are read from the block standing on the ground
  * and the ground block ({@link #herb}, {@link #moss}).
@@ -50,6 +56,14 @@ import pl.polishforests.worldgen.habitat.Species;
 public final class ForestCensus {
 	private ForestCensus() {
 	}
+
+	/** Columns of {@link Census#canopyMap}: closed canopy, open, in a gap, a tree base of a1, a2 or the regeneration. */
+	public static final byte MAP_CLOSED = 1;
+	public static final byte MAP_OPEN = 2;
+	public static final byte MAP_GAP = 3;
+	public static final byte MAP_A1 = 4;
+	public static final byte MAP_A2 = 5;
+	public static final byte MAP_B = 6;
 
 	/** Suffix of a plant or ground id whose block is in its mossy state (the mossy underside of PW-7, from V12). */
 	public static final String MOSSY = "[mossy]";
@@ -66,6 +80,11 @@ public final class ForestCensus {
 	public static final int STUMP_MAX_HEIGHT = 1;
 	/** Least area of a canopy gap, columns (m²): about the crown of one tree, a diameter of 8 m. */
 	public static final int GAP_MIN_AREA = 50;
+	/**
+	 * Least width of a canopy gap, columns (step V9): the side of a square of open columns that must cover each column of a
+	 * gap, so the lanes between crowns of a closed stand are not gaps.
+	 */
+	public static final int GAP_MIN_WIDTH = 5;
 	/** A coarse piece of dead wood (GIOŚ 9170): longer than this, m ... */
 	public static final double COARSE_LENGTH = 3;
 	/** ... and at least this thick, m. */
@@ -212,6 +231,8 @@ public final class ForestCensus {
 		private final int height;
 		/** Owner object of each cell (wood and leaves), -1 for none. */
 		private final int[] owner;
+		/** The map of the area of the last {@link #measure} ({@link #canopyMap}). */
+		private byte[] lastMap = new byte[0];
 		private final List<WoodObject> objects = new ArrayList<>();
 
 		Census(CensusGrid grid) {
@@ -450,7 +471,24 @@ public final class ForestCensus {
 		 * The metrics of {@link ForestNorms#METRICS} for an area of the grid ({@link #rectangle}); NaN where nothing was
 		 * measured (no trees for the composition, no gap for its diameter).
 		 */
+		/**
+		 * The map of the area of the last {@link #measure}, by grid column: {@link #MAP_CLOSED}, {@link #MAP_OPEN} or
+		 * {@link #MAP_GAP}, the base columns of trees by layer ({@link #MAP_A1}, {@link #MAP_A2}, {@link #MAP_B}), 0 outside
+		 * the area (step V9: a look at the canopy of a plot).
+		 */
+		public byte[] canopyMap() {
+			return lastMap;
+		}
+
 		public Map<String, Double> measure(boolean[] area) {
+			return measure(area, null);
+		}
+
+		/**
+		 * {@link #measure} with the columns of the grid that are not forest (null: all are): an opening that touches one
+		 * is the edge of the forest, not a canopy gap (step V9).
+		 */
+		public Map<String, Double> measure(boolean[] area, boolean @Nullable [] nonForest) {
 			int columns = 0;
 			int groundColumns = 0;
 			for (int c = 0; c < area.length; c++) {
@@ -485,63 +523,7 @@ public final class ForestCensus {
 					case B -> regeneration.add(t);
 				}
 			}
-			// Canopy and gaps.
-			boolean[] open = new boolean[area.length];
-			int canopy = 0;
-			for (int c = 0; c < area.length; c++) {
-				if (!area[c] || grid.groundAt(c) == CensusGrid.NO_GROUND) {
-					continue;
-				}
-				boolean closed = false;
-				for (int dy = CANOPY_FROM; dy <= height && !closed; dy++) {
-					closed = grid.cellAt(c, dy) == CensusGrid.LEAVES;
-				}
-				if (closed) {
-					canopy++;
-				} else {
-					open[c] = true;
-				}
-			}
-			boolean[] gap = new boolean[area.length];
-			int gapColumns = 0;
-			List<Integer> gapSizes = new ArrayList<>();
-			boolean[] seen = new boolean[area.length];
-			int[] queue = new int[area.length];
-			for (int c = 0; c < area.length; c++) {
-				if (!open[c] || seen[c]) {
-					continue;
-				}
-				int head = 0;
-				int tail = 0;
-				queue[tail++] = c;
-				seen[c] = true;
-				while (head < tail) {
-					int a = queue[head++];
-					int ax = grid.columnX(a);
-					int az = grid.columnZ(a);
-					int[][] sides = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
-					for (int[] s : sides) {
-						int bx = ax + s[0];
-						int bz = az + s[1];
-						if (!grid.contains(bx, bz)) {
-							continue;
-						}
-						int b = grid.column(bx, bz);
-						if (open[b] && !seen[b]) {
-							seen[b] = true;
-							queue[tail++] = b;
-						}
-					}
-				}
-				if (tail >= GAP_MIN_AREA) {
-					gapSizes.add(tail);
-					gapColumns += tail;
-					for (int k = 0; k < tail; k++) {
-						gap[queue[k]] = true;
-					}
-				}
-			}
-			// The shrub layer: shrubs and regeneration, and the columns their cells cover.
+			// The shrub layer: shrubs and regeneration.
 			boolean[] shrubLayer = new boolean[objects.size()];
 			int shrubs = 0;
 			for (WoodObject o : in) {
@@ -554,6 +536,105 @@ public final class ForestCensus {
 				// Trees around the area are layered by the top height of the area; an area without trees has no regeneration.
 				shrubLayer[k] = o.kind() == Kind.SHRUB || o.kind() == Kind.TREE && !trees.isEmpty() && layer(o, topHeight) == Layer.B;
 			}
+			// Canopy and gaps: the leaves of the tree layers (step V9: the young trees in a gap do not close it).
+			boolean[] open = new boolean[area.length];
+			boolean[] openAll = new boolean[area.length];
+			int canopy = 0;
+			for (int c = 0; c < area.length; c++) {
+				if (grid.groundAt(c) == CensusGrid.NO_GROUND) {
+					continue;
+				}
+				boolean closed = false;
+				for (int dy = CANOPY_FROM; dy <= height && !closed; dy++) {
+					int o = owner[c * height + dy - 1];
+					closed = grid.cellAt(c, dy) == CensusGrid.LEAVES && (o < 0 || !shrubLayer[o]);
+				}
+				openAll[c] = !closed;
+				if (!area[c]) {
+					continue;
+				}
+				if (closed) {
+					canopy++;
+				} else {
+					open[c] = true;
+				}
+			}
+			// Gaps are openings at least GAP_MIN_WIDTH wide (step V9): an open column belongs to a gap only where a square of
+			// that side of open columns of the area covers it (a morphological opening), so the narrow lanes between the
+			// crowns of a closed stand are not a gap, nor a strip along the area's edge next to open land outside it.
+			boolean[] wide = opening(open);
+			for (int c = 0; c < area.length; c++) {
+				open[c] &= wide[c];
+			}
+			boolean[] gap = new boolean[area.length];
+			int gapColumns = 0;
+			List<Integer> gapSizes = new ArrayList<>();
+			boolean[] seen = new boolean[area.length];
+			int[] queue = new int[area.length];
+			int[][] sides = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+			for (int c = 0; c < area.length; c++) {
+				if (!open[c] || seen[c]) {
+					continue;
+				}
+				int head = 0;
+				int tail = 0;
+				queue[tail++] = c;
+				seen[c] = true;
+				while (head < tail) {
+					int a = queue[head++];
+					int ax = grid.columnX(a);
+					int az = grid.columnZ(a);
+					for (int[] sd : sides) {
+						int bx = ax + sd[0];
+						int bz = az + sd[1];
+						if (!grid.contains(bx, bz)) {
+							continue;
+						}
+						int b = grid.column(bx, bz);
+						if (open[b] && !seen[b]) {
+							seen[b] = true;
+							queue[tail++] = b;
+						}
+					}
+				}
+				boolean edge = false;
+				for (int k = 0; k < tail && nonForest != null && !edge; k++) {
+					int ax = grid.columnX(queue[k]);
+					int az = grid.columnZ(queue[k]);
+					for (int[] sd : sides) {
+						int bx = ax + sd[0];
+						int bz = az + sd[1];
+						if (grid.contains(bx, bz) && nonForest[grid.column(bx, bz)]) {
+							edge = true;
+							break;
+						}
+					}
+				}
+				if (tail >= GAP_MIN_AREA && !edge) {
+					gapSizes.add(tail);
+					gapColumns += tail;
+					for (int k = 0; k < tail; k++) {
+						gap[queue[k]] = true;
+					}
+				}
+			}
+			// The map of the area for a look (step V9).
+			byte[] map = new byte[area.length];
+			for (int c = 0; c < area.length; c++) {
+				if (area[c] && grid.groundAt(c) != CensusGrid.NO_GROUND) {
+					map[c] = gap[c] ? MAP_GAP : openAll[c] ? MAP_OPEN : MAP_CLOSED;
+				}
+			}
+			for (WoodObject t : trees) {
+				int c = grid.column(t.x(), t.z());
+				map[c] = switch (layer(t, topHeight)) {
+					case A1 -> MAP_A1;
+					case A2 -> MAP_A2;
+					case B -> MAP_B;
+				};
+			}
+			lastMap = map;
+			// The columns the cells of the shrub layer cover.
 			int understory = 0;
 			for (int c = 0; c < area.length; c++) {
 				if (!area[c] || grid.groundAt(c) == CensusGrid.NO_GROUND) {
@@ -578,7 +659,9 @@ public final class ForestCensus {
 				if (ForestNorms.GROUPS.get("oak").contains(id)) {
 					oaks++;
 				}
-				if (id.equals("scots_pine") && !inGap) {
+				// Only the young pines of the tree planner (step V9): a placeholder pine of an M2 biome in the ecotone belt is a
+				// mature tree of that biome, however low.
+				if (id.equals("scots_pine") && !inGap && r.block().startsWith("polishforests:")) {
 					pinesUnderCanopy++;
 				}
 			}
@@ -717,6 +800,39 @@ public final class ForestCensus {
 			return dy < 1 || dy > height ? -1 : c * height + dy - 1;
 		}
 
+		/**
+		 * The columns covered by a square of {@link #GAP_MIN_WIDTH} columns of the grid that are all open (a morphological
+		 * opening of the open columns with that square).
+		 */
+		private boolean[] opening(boolean[] open) {
+			int sx = grid.sizeX();
+			int sz = grid.sizeZ();
+			int[] sum = new int[(sx + 1) * (sz + 1)];
+			for (int a = 0; a < sx; a++) {
+				int row = 0;
+				for (int b = 0; b < sz; b++) {
+					row += open[grid.column(grid.minX() + a, grid.minZ() + b)] ? 1 : 0;
+					sum[(a + 1) * (sz + 1) + b + 1] = sum[a * (sz + 1) + b + 1] + row;
+				}
+			}
+			int side = GAP_MIN_WIDTH;
+			boolean[] out = new boolean[open.length];
+			for (int a = 0; a + side <= sx; a++) {
+				for (int b = 0; b + side <= sz; b++) {
+					int n = sum[(a + side) * (sz + 1) + b + side] - sum[a * (sz + 1) + b + side] - sum[(a + side) * (sz + 1) + b]
+							+ sum[a * (sz + 1) + b];
+					if (n == side * side) {
+						for (int i = a; i < a + side; i++) {
+							for (int j = b; j < b + side; j++) {
+								out[grid.column(grid.minX() + i, grid.minZ() + j)] = true;
+							}
+						}
+					}
+				}
+			}
+			return out;
+		}
+
 		private boolean wood(int cell) {
 			byte k = grid.cellAt(cell / height, dy(cell));
 			return k == CensusGrid.WOOD_UP || k == CensusGrid.WOOD_SIDE;
@@ -726,11 +842,35 @@ public final class ForestCensus {
 			return dy(cell) == 1 && grid.cellAt(cell / height, 1) == CensusGrid.WOOD_SIDE;
 		}
 
-		/** Two wood cells next to each other belong together, unless one lies on the ground and the other stands. */
+		/**
+		 * Two wood cells next to each other belong together, unless one lies on the ground and the other stands; two thin
+		 * trunks of the tree planner whose parents are known only when one is the other's parent (step V9: the wood of
+		 * neighboring crowns may touch, and each block knows its way to its own root).
+		 */
 		private boolean joined(int a, int b) {
+			CensusGrid.Wood wa = woodOf(a);
+			CensusGrid.Wood wb = woodOf(b);
+			if (wa.parent() >= 0 && wb.parent() >= 0) {
+				return parentOf(a, wa.parent()) == b || parentOf(b, wb.parent()) == a;
+			}
 			boolean upA = grid.cellAt(a / height, dy(a)) == CensusGrid.WOOD_UP;
 			boolean upB = grid.cellAt(b / height, dy(b)) == CensusGrid.WOOD_UP;
 			return !(lyingCell(a) && upB || lyingCell(b) && upA);
+		}
+
+		/** The cell in the direction of a parent ({@code Direction} 3D data value) from a cell, or -1 outside the grid. */
+		private int parentOf(int cell, int direction) {
+			int x = x(cell);
+			int y = y(cell);
+			int z = z(cell);
+			return switch (direction) {
+				case 0 -> index(x, y - 1, z);
+				case 1 -> index(x, y + 1, z);
+				case 2 -> index(x, y, z - 1);
+				case 3 -> index(x, y, z + 1);
+				case 4 -> index(x - 1, y, z);
+				default -> index(x + 1, y, z);
+			};
 		}
 
 		private CensusGrid.Wood woodOf(int cell) {

@@ -1,5 +1,5 @@
 {
-  "feature": "polishforests:tree/poplar",
+  "feature": "polishforests:tree_substitute/white_willow",
   "placement": [
     {
       "type": "minecraft:block_predicate_filter",

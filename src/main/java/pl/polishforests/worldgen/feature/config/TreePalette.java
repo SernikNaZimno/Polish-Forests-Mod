@@ -22,7 +22,8 @@ import pl.polishforests.worldgen.habitat.Species;
  */
 public record TreePalette(List<Rule> rules) {
 	/**
-	 * Step S9: the tree species of the first rule matching a habitat code, in rule order, as the stand grows them there:
+	 * Step S9: the tree species of the first rule matching a habitat code, in rule order (with the layers of a stand of the
+	 * vertical slice, step V9), as the stand grows them there:
 	 * a species with a range flag outside its range ({@link pl.polishforests.worldgen.habitat.Habitat#has}) is replaced
 	 * by its alternative or left out (for {@code /polishforests here}; ecotones and the range ramp are not considered).
 	 */
@@ -32,7 +33,15 @@ public record TreePalette(List<Rule> rules) {
 				continue;
 			}
 			List<Species> out = new java.util.ArrayList<>();
-			for (Entry e : r.trees()) {
+			List<Entry> entries = new java.util.ArrayList<>(r.trees());
+			// Step V9: the layers of the stand too (managed canopy, subcanopy, regeneration).
+			r.stand().ifPresent(st -> {
+				entries.addAll(st.managedCanopy());
+				entries.addAll(st.subcanopy());
+				entries.addAll(st.regeneration());
+				entries.addAll(st.gapRegeneration());
+			});
+			for (Entry e : entries) {
 				Species s = e.species();
 				if (e.rangeRamp() && s.flag() != 0 && !pl.polishforests.worldgen.habitat.Habitat.has(code, s)) {
 					s = e.alternative().map(Alternative::species).orElse(null);
@@ -100,17 +109,56 @@ public record TreePalette(List<Rule> rules) {
 	}
 
 	/**
+	 * The stand of a rule of the vertical slice (step V9 of docs/04-pionowy-wycinek.md): the rule's trees become the
+	 * layered stand of the stand map ({@code ForestStandMap}): every kept candidate of the M2 pattern has a crown layer
+	 * (canopy a1, subcanopy a2 or regeneration; {@code CrownTerritories}) and becomes a tree with the chance of its stand
+	 * (managed or natural, by age class; in a canopy gap {@code gap_chance}), of a species from the list of its layer.
+	 * The canopy takes {@link Rule#trees} ({@code managed_canopy} instead in managed stands, when given), the subcanopy
+	 * {@code subcanopy}, the regeneration under the canopy {@code regeneration} and in the inner part of a canopy gap
+	 * {@code gap_regeneration}. The trees per chunk of the rule are then only nominal; the M2 gap noise does not apply
+	 * (natural stands have canopy gaps, managed ones none).
+	 *
+	 * @param managedCanopy   canopy species of managed stands (empty: the rule's trees)
+	 * @param subcanopy       species of the subcanopy
+	 * @param regeneration    species of the regeneration under the canopy
+	 * @param gapRegeneration species of the regeneration in canopy gaps
+	 * @param managedChance   chance of a candidate to grow a tree in a managed stand, by age class (pole stage, mature,
+	 *                        old growth)
+	 * @param naturalChance   the same in a natural stand
+	 * @param gapChance       chance in a canopy gap
+	 */
+	public record Stand(List<Entry> managedCanopy, List<Entry> subcanopy, List<Entry> regeneration, List<Entry> gapRegeneration,
+			List<Float> managedChance, List<Float> naturalChance, float gapChance) {
+		private static final Codec<List<Float>> CHANCES = Codec.floatRange(0, 1).listOf(3, 3);
+		public static final Codec<Stand> CODEC = RecordCodecBuilder.create(i -> i.group(
+				Entry.CODEC.listOf().optionalFieldOf("managed_canopy", List.of()).forGetter(Stand::managedCanopy),
+				Entry.CODEC.listOf().fieldOf("subcanopy").forGetter(Stand::subcanopy),
+				Entry.CODEC.listOf().fieldOf("regeneration").forGetter(Stand::regeneration),
+				Entry.CODEC.listOf().fieldOf("gap_regeneration").forGetter(Stand::gapRegeneration),
+				CHANCES.fieldOf("managed_chance").forGetter(Stand::managedChance),
+				CHANCES.fieldOf("natural_chance").forGetter(Stand::naturalChance),
+				Codec.floatRange(0, 1).fieldOf("gap_chance").forGetter(Stand::gapChance)
+		).apply(i, Stand::new));
+	}
+
+	/**
 	 * A palette rule.
 	 *
 	 * @param condition     habitat condition of the columns the rule applies to
-	 * @param treesPerChunk mean number of trees per chunk (§8.5)
-	 * @param trees         species and weights (empty with 0 trees: a treeless zone)
+	 * @param treesPerChunk mean number of trees per chunk (§8.5); nominal for a rule with a {@code stand}
+	 * @param trees         species and weights (empty with 0 trees: a treeless zone); the canopy of a rule with a stand
+	 * @param stand         the layered stand of the vertical slice (step V9), or empty for the M2 stand
 	 */
-	public record Rule(HabitatCondition condition, float treesPerChunk, List<Entry> trees) {
+	public record Rule(HabitatCondition condition, float treesPerChunk, List<Entry> trees, Optional<Stand> stand) {
 		public static final Codec<Rule> CODEC = RecordCodecBuilder.create(i -> i.group(
 				HabitatCondition.MAP_CODEC.forGetter(Rule::condition),
 				Codec.floatRange(0.0F, 16.0F).fieldOf("trees_per_chunk").forGetter(Rule::treesPerChunk),
-				Entry.CODEC.listOf().optionalFieldOf("trees", List.of()).forGetter(Rule::trees)
+				Entry.CODEC.listOf().optionalFieldOf("trees", List.of()).forGetter(Rule::trees),
+				Stand.CODEC.optionalFieldOf("stand").forGetter(Rule::stand)
 		).apply(i, Rule::new));
+
+		public Rule(HabitatCondition condition, float treesPerChunk, List<Entry> trees) {
+			this(condition, treesPerChunk, trees, Optional.empty());
+		}
 	}
 }

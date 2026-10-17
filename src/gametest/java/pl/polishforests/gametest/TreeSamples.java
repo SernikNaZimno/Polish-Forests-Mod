@@ -201,7 +201,7 @@ final class TreeSamples {
 
 	/**
 	 * Risk R5 (docs/04 §8, decision V5-h): an oak-hornbeam stand of 3 × 3 chunks where {@value #SUBSTITUTES} of the
-	 * candidates grow the vanilla substitute of M2 ({@code polishforests:tree/oak}, which ignores the crown territories)
+	 * candidates grow the vanilla substitute of M2 ({@code polishforests:tree_substitute/oak}, which ignores the crown territories)
 	 * and the others procedural trees with their territories, written once with the procedural trees first and once with
 	 * the substitutes first (the area cleared in between, each substitute with the same random source). Reports the blocks
 	 * that differ between the two orders by kind, for the record of risk R5 (no assertion): leaves (the leaves written
@@ -210,7 +210,7 @@ final class TreeSamples {
 	 */
 	private static String ecotone(ServerLevel level, ChunkGenerator generator, int x, int y, int z) {
 		Holder<PlacedFeature> oak = level.registryAccess().lookupOrThrow(Registries.PLACED_FEATURE)
-				.getOrThrow(ResourceKey.create(Registries.PLACED_FEATURE, PolishForests.id("tree/oak")));
+				.getOrThrow(ResourceKey.create(Registries.PLACED_FEATURE, PolishForests.id("tree_substitute/oak")));
 		StandMap map = StandMap.uniform(AgeClass.OLD_GROWTH, true);
 		CrownTerritories.Session s = new CrownTerritories(level.getSeed(), map).session();
 		List<CrownTerritory> all = new ArrayList<>();

@@ -780,6 +780,143 @@ public final class Ecotone {
 		return region.codeOf(base);
 	}
 
+	/**
+	 * The effective tree code ({@link Layer#TREES}, as {@link #effective} with a patch of 1 and the meander gives it in
+	 * the chunk of the column) of the column at chunk-local (x, z) of the region, which may lie in a neighboring chunk
+	 * (x, z in −16…31), or {@link #UNKNOWN} when it cannot be proved from the region: the search reads only the cells the
+	 * mixing of that column reads, with the widest belts any pair of codes could have (not only the pairs of this region),
+	 * and gives up as soon as one of them is unknown. When it gives a code, the code is exact: the decoration of the
+	 * column's own chunk, with the codes of its own 8 neighbors, gives the same (round 2 of the V5 review, rule (i+) of
+	 * decision V5-i: the exact vacancies of the crown territories in the chunks around the decorated one).
+	 */
+	public static int provableTrees(Region region, long worldSeed, long salt, int x, int z) {
+		int own = region.at(x, z);
+		if (own == UNKNOWN || !takes(own)) {
+			return own;
+		}
+		Layer layer = Layer.TREES;
+		long seed = Noise.mix(worldSeed ^ Noise.mix(salt ^ 0xEC07_0E5AL));
+		int worldX = (region.chunkX() << 4) + x;
+		int worldZ = (region.chunkZ() << 4) + z;
+		double[] u = new double[2];
+		vector(seed, worldX, worldZ, 1, u);
+		int[] w = warpAt(worldSeed, region.k(), worldX, worldZ);
+		double ux = u[0];
+		double uz = u[1];
+		int wx = w[0];
+		int wz = w[1];
+		double k = region.k();
+		// One-sided belts: only waterside zones of the land are taken one-sided by the trees, at most this wide.
+		int stickyLimit = kind(own) == Kind.SAND ? 0
+				: (int) Math.min(REACH, Math.max(1, Math.round(Math.max(ZONE_TREES, TREE_ROW_TREES) * k)));
+		if (stickyLimit > 0) {
+			double f = 1 + 0.4 * wx / WARP;
+			long limit = Math.max(1, Math.round(stickyLimit * 1.41));
+			for (int width : WIDTHS) {
+				if (width > limit) {
+					continue;
+				}
+				for (int sgn = 1; sgn >= -1; sgn -= 2) {
+					int dx = (int) Math.round(sgn * ux * width);
+					int dz = (int) Math.round(sgn * uz * width);
+					if (dx == 0 && dz == 0) {
+						continue;
+					}
+					int other = region.at(x + dx, z + dz);
+					if (other == UNKNOWN) {
+						return UNKNOWN;
+					}
+					if (other == own) {
+						continue;
+					}
+					int info = pairInfo(own, other, layer, k);
+					if ((info & STICKY) == 0) {
+						continue;
+					}
+					if (Math.max(1, Math.round((info & BLOCKS) * f)) >= width) {
+						return other;
+					}
+				}
+			}
+		}
+		int bx = x;
+		int bz = z;
+		int base = own;
+		int cap = REACH;
+		if (wx != 0 || wz != 0) {
+			int c = region.at(x + wx, z + wz);
+			if (c == UNKNOWN) {
+				return UNKNOWN;
+			}
+			if (c == own || (pairInfo(own, c, layer, k) & FOLLOWS) != 0) {
+				bx += wx;
+				bz += wz;
+				base = c;
+				cap = REACH - Math.max(Math.abs(wx), Math.abs(wz));
+			}
+		}
+		// The widest two-sided belt of any pair of tree codes: similar forests, 24 m·k.
+		cap = (int) Math.min(cap, Math.min(REACH, Math.max(1, Math.round(24 * k))));
+		for (int width : WIDTHS) {
+			if (width > cap) {
+				continue;
+			}
+			int dx = (int) Math.round(ux * width);
+			int dz = (int) Math.round(uz * width);
+			if (dx == 0 && dz == 0) {
+				continue;
+			}
+			int other = region.at(bx + dx, bz + dz);
+			if (other == UNKNOWN) {
+				return UNKNOWN;
+			}
+			if (other == base) {
+				continue;
+			}
+			int info = pairInfo(base, other, layer, k);
+			if ((info & SYMMETRIC) != 0 && (info & BLOCKS) >= width) {
+				return other == own || (pairInfo(own, other, layer, k) & FOLLOWS) != 0 ? other : base;
+			}
+		}
+		return base;
+	}
+
+	/**
+	 * The meander (blocks, x and z) of the world column (x, z), as {@link Region#warp} gives it for the columns of its
+	 * chunk: the field on the world grid of 4 blocks, interpolated.
+	 */
+	static int[] warpAt(long worldSeed, double k, int x, int z) {
+		Noise n = Noises.of(worldSeed).warp();
+		double wavelength = Math.max(WARP_MIN_WAVELENGTH, WARP_WAVELENGTH * k);
+		int gx = Math.floorDiv(x, 4) * 4;
+		int gz = Math.floorDiv(z, 4) * 4;
+		double[] cx = new double[4];
+		double[] cz = new double[4];
+		for (int a = 0; a < 2; a++) {
+			for (int b = 0; b < 2; b++) {
+				double wx = WARP * Math.clamp(n.at(gx + 4 * a, gz + 4 * b, wavelength) / 0.5, -1, 1);
+				double wz = WARP * Math.clamp(n.at(gx + 4 * a + 5_003.0, gz + 4 * b - 3_001.0, wavelength) / 0.5, -1, 1);
+				double len = Math.sqrt(wx * wx + wz * wz);
+				if (len > WARP) {
+					wx *= WARP / len;
+					wz *= WARP / len;
+				}
+				cx[a * 2 + b] = wx;
+				cz[a * 2 + b] = wz;
+			}
+		}
+		double fx = (x - gx) / 4.0;
+		double fz = (z - gz) / 4.0;
+		return new int[] {(int) Math.round(corners(cx, fx, fz)), (int) Math.round(corners(cz, fx, fz))};
+	}
+
+	/** Bilinear interpolation of the corners {(0,0), (0,1), (1,0), (1,1)} as {@code Region.bilinear} computes it. */
+	private static double corners(double[] g, double fx, double fz) {
+		double top = g[0] + (g[2] - g[0]) * fx;
+		double bottom = g[1] + (g[3] - g[1]) * fx;
+		return top + (bottom - top) * fz;
+	}
+
 	private static final int ANGLES = 1024;
 	private static final double[] COS = new double[ANGLES];
 	private static final double[] SIN = new double[ANGLES];
