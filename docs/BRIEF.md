@@ -10,7 +10,7 @@ Mod Fabric do Minecrafta 26.3 (Java 25, Loom, Gradle 9.7, JDK z `gradle.properti
 
 - M0, M1 i M2 zamknięte (M2: punkty kontrolne 1 i 2 przyjęte 2026-10-14; decyzje M2-13 … M2-27 domyślne, do potwierdzenia, `docs/00` E).
 - Pionowy wycinek (grąd i bór świeży, plan `docs/04-pionowy-wycinek.md`), część 1 zrobiona: V0, V1, V2 (+V2b), V3, V5, CP-A (styl tekstur i cienki pień przyjęte, `docs/00` G.9).
-- Część 2: **V1b** (wygładzenie tekstur), **V4** (karta norm, pomiar bazowy M2: `docs/wycinek/karta-norm-m2.md`) i **V6** (planer drzew `TreeShapePlan`, ficzer `procedural_tree`, podgląd `docs/wycinek/drzewa/`; świat jeszcze bez nowych drzew, podłącza je V9) zrobione. **Następne: V7** (liście, sadzonki, LITE sosny), **V9** (`StandMap`, drzewostan wycinka; usuwa pas słabszego pokrycia koron na granicach chunków, V5-i), **V10** (pomiary i budżety; rozstrzyga pasek kolanka i dziury w narożnikach czapki pnia), potem **CP-B**.
+- Część 2: **V1b** (wygładzenie tekstur), **V4** (karta norm, pomiar bazowy M2: `docs/wycinek/karta-norm-m2.md`) i **V6** (planer drzew `TreeShapePlan`, ficzer `procedural_tree`, podgląd `docs/wycinek/drzewa/`; świat jeszcze bez nowych drzew, podłącza je V9) zrobione; runda 1 przeglądu V6: faliste powierzchnie podziału pięter zamiast pasm, gałęzie jako krzywe bez kolanek i haków, drzewa wolnostojące (pytanie do CP-B: kompromis N2, `docs/04` „Runda 1 poprawek po przeglądzie V6”). **Następne: V7** (liście, sadzonki, LITE sosny), **V9** (`StandMap`, drzewostan wycinka; usuwa pas słabszego pokrycia koron na granicach chunków, V5-i), **V10** (pomiary i budżety; rozstrzyga pasek kolanka i dziury w narożnikach czapki pnia), potem **CP-B**.
 - Tor sarny **V8** gotowy na gałęzi `slice-fauna` (model i kalibracja GeckoLib, runda 1 poprawek), **wstrzymany przez użytkownika, nie scalać**.
 
 ## Konwencje
@@ -36,7 +36,7 @@ Mod Fabric do Minecrafta 26.3 (Java 25, Loom, Gradle 9.7, JDK z `gradle.properti
 - `worldgen/habitat/HabitatClassifier` – siedlisko kolumny; `HabitatBiome`, `Species`, `ForestCover` (maska trybu D), `Calibration` (progi).
 - `worldgen/surface/SurfaceBuilder` – plan powierzchni chunka; `SoilBlocks`, `BankShelf`, `SoilBlend`.
 - `worldgen/feature/` – `ModFeatures`, `TreeStandFeature` + `plan/TreeStandPlan` (drzewostan), `PlantLayerFeature` (warstwy runa), `plan/Ecotone`.
-- `worldgen/tree/CrownTerritories` – terytoria koron (V5); `TreeShapePlan` – planer drzew (V6: `TreeRequest` → `TreeVoxels`, gatunki w `SpeciesShape`, pasma pięter); `StandMap` (w V9 pełna), `Vacancies`, `AgeClass`, `CrownLayer`.
+- `worldgen/tree/CrownTerritories` – terytoria koron (V5); `TreeShapePlan` – planer drzew (V6: `TreeRequest` → `TreeVoxels`, gatunki w `SpeciesShape`, powierzchnie podziału pięter `split`); `StandMap` (w V9 pełna), `Vacancies`, `AgeClass`, `CrownLayer`.
 - `worldgen/feature/ProceduralTreeFeature` – ficzer `polishforests:procedural_tree` i zapis planu (`write`, liście zastępcze wanilii do V7).
 - `worldgen/norms/` – `ForestNorms` (karta norm §6), `ForestCensus`, `CensusGrid`, `CensusTestPlot` (V4).
 - `block/TrunkBlock` – cienki pień (`radius` 1–7); `TreeTrunk` (12 bloków pni), `ModBlocks`, `RegistrySnapshot`.

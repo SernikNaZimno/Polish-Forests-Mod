@@ -26,8 +26,9 @@ import pl.polishforests.worldgen.landscape.Noise;
  * <li><b>Skeleton:</b> a trunk with a slight lean and wobble; branches are curves of nodes about one block apart whose
  * angle from the vertical turns smoothly from the base to the tip and whose horizontal direction never reverses, so the
  * voxels make slanted staircases instead of right-angled elbows (risk R4). Conifers with whorls rotated by the golden
- * angle (the pine with a crown in its upper quarter to third, tufts along the outer half of each branch, an umbrella
- * of few long limbs when old, dry stubs below the crown; the spruce with staggered whorls, the lowest ones drooping
+ * angle and a leader that stays in its column (the pine with a crown in its upper quarter to third, tufts along the
+ * outer half of each branch and around the leader in the upper crown, an umbrella of few long limbs when old, dry
+ * stubs below the crown; the spruce with staggered whorls, the lowest ones drooping
  * most, and a narrow spire), the birch with ascending branches whose tips hang, broad-leaved trees with a leader and
  * curved lateral branches with twigs, or (the oak) a fork into thick, crooked limbs that climb in vertical runs of one
  * to three blocks with one-block sideways jogs (axis-aligned, so they keep their radius). The branch lengths follow the
@@ -714,6 +715,10 @@ public final class TreeShapePlan {
 				int k = oldPine ? 2 + (next() < 0.45 ? 1 : 0)
 						: shape.perWhorl() + (next() < 0.35 ? 1 : 0) - (next() < 0.3 ? 1 : 0);
 				phase += GOLDEN + range(-0.3, 0.3);
+				if (!spruce && t >= 0.4 && nLeafH[at] <= 0) {
+					// Needles around the pine's leader in the upper crown: no bare candelabra of leader and branch bases.
+					leafAt(at, leafH * 0.6, leafV * 0.7);
+				}
 				for (int j = 0; j < k; j++) {
 					double azimuth = phase + j * 2 * Math.PI / k + range(-0.4, 0.4);
 					int from = at;
@@ -777,8 +782,8 @@ public final class TreeShapePlan {
 					if (i >= 1) {
 						leafAt(node, leafH * 0.7, leafV * 0.8);
 					}
-				} else if (i >= n * 0.45) {
-					// The pine's tufts cover the outer half of the shoot, so no bare elbow shows.
+				} else if (i >= (n <= 3 ? 0 : n * 0.45)) {
+					// The pine's tufts cover the outer half of the shoot (a short one all along), so no bare elbow shows.
 					leafAt(node, leafH * (oldPine ? 0.8 : 0.65), leafV * (oldPine ? 0.6 : 0.75));
 				}
 			}
