@@ -20,6 +20,22 @@ FORESTS = [('oak_hornbeam', 'Grąd', 'oak_hornbeam_natural', 'oak_hornbeam_manag
 SEQUENCE = {'fresh_pine_forest': 'Bśw', 'mixed_pine_forest': 'BMśw', 'mixed_forest': 'LMśw', 'oak_hornbeam_forest': 'grąd'}
 
 
+PLACE = {'natural_1': 'nat1', 'natural_2': 'nat2', 'managed_1': 'gosp1', 'managed_2': 'gosp2',
+         'managed_pole_stage': 'drąg', 'managed_mature': 'dojrz', 'managed_old_growth': 'stary'}
+
+
+def label(place, forest):
+    """Short name of a place: a site of V4 by its number with the column of the card by its stand (step V9), a sample
+    plot by stand (step V9) by its kind."""
+    for prefix, _, _, _ in FORESTS:
+        if place.startswith(prefix + '_'):
+            rest = place[len(prefix) + 1:]
+            if rest in PLACE:
+                return PLACE[rest]
+            return 'm' + rest + (' (nat)' if forest.endswith('natural') else ' (gosp)')
+    return place
+
+
 def cell(row):
     mark = MARK[row['verdict']]
     return row['value'] + (' ' + mark if mark else '') if row['value'] else '—'
@@ -44,9 +60,12 @@ def plots(rows, out):
         for r in mine:
             if r['norm']:
                 norm[(r['forest'], r['metric'])] = r['norm']
-        heads = [f"{SCALE[s]} {MODE[m]} {p.rsplit('_', 1)[-1]}" for s, m, p in columns]
-        out.write(f"\n**{title}** (norma N: kolumna naturalna, norma D: gospodarcza; ✓ w normie, ≈ w tolerancji, ✗ poza nią)\n\n")
-        out.write('| Miara | Norma N | Norma D | ' + ' | '.join(heads) + ' |\n')
+        forest = {(r['scale'], r['mode'], r['place']): r['forest'] for r in mine}
+        heads = [f"{SCALE[s]} {MODE[m]} {label(p, forest[(s, m, p)])}" for s, m, p in columns]
+        out.write(f"\n**{title}** (norma nat.: kolumna lasu naturalnego, norma gosp.: gospodarczego; od V9 kolumna każdej "
+                  f"powierzchni według wydzielenia w jej środku: m1, m2 to miejsca V4, nat1, nat2, gosp1, gosp2, drąg, dojrz, "
+                  f"stary to powierzchnie według wydzieleń; ✓ w normie, ≈ w tolerancji, ✗ poza nią)\n\n")
+        out.write('| Miara | Norma nat. | Norma gosp. | ' + ' | '.join(heads) + ' |\n')
         out.write('|---|---|---|' + '---|' * len(heads) + '\n')
         for m in metrics:
             values = [cell(by[c + (m,)]) if c + (m,) in by else '' for c in columns]

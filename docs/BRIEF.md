@@ -98,4 +98,4 @@ python tools/dev/contact_sheet.py <katalog|glob> [...] --out arkusz.png [--cols 
 - `docs/01-architektura.md` – architektura, kamienie milowe (§8), skale (§12), rzeki i morze (§13); `docs/02-wydajnosc.md` – wydajność w grze.
 - `docs/m2/poprawka-geometrii.md` – K0–K8 i „Co zostaje do M5”.
 - `docs/historia-stanu.md` – pełna dawna treść briefu (opisy kroków M2 i wycinka do V4).
-- Zrzuty: `docs/wycinek/` (baza M2, grafika, pnie, korony, v3), `docs/m2/`.
+- Zrzuty: `docs/wycinek/` (baza M2, grafika, pnie, korony, v3, drzewa, liście, drzewostan V9 z mapami okapu), karta norm V9 `docs/wycinek/karta-norm-v9.md`, `docs/m2/`.
