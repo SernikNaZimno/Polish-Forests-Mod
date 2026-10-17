@@ -63,9 +63,13 @@ class ProceduralTreeStatesTest {
 			BlockState log = ProceduralTreeFeature.wood(s, TreeVoxels.LOWER, TreeVoxels.FULL, Direction.WEST);
 			assertSame(ProceduralTreeFeature.trunk(s, TreeVoxels.LOWER).log(), log.getBlock());
 			assertEquals(Direction.Axis.X, log.getValue(RotatedPillarBlock.AXIS));
-			BlockState leaf = ProceduralTreeFeature.leaves(s);
-			assertTrue(leaf.getBlock() instanceof LeavesBlock);
-			assertTrue(!leaf.getValue(LeavesBlock.PERSISTENT));
+			for (int phase = 0; phase < 4; phase++) {
+				BlockState leaf = ProceduralTreeFeature.leaves(s, phase);
+				assertTrue(leaf.getBlock() instanceof LeavesBlock);
+				assertSame(ModBlocks.leaves(TreeFoliage.of(s)), leaf.getBlock(), s.id());
+				assertTrue(!leaf.getValue(LeavesBlock.PERSISTENT));
+				assertEquals(phase, leaf.getValue(SpeciesLeavesBlock.PHASE));
+			}
 		}
 		// The pine's barks: lower bark, the two blocks of the transition zone, the "mirror".
 		assertEquals(TreeTrunk.SCOTS_PINE, ProceduralTreeFeature.trunk(Species.SCOTS_PINE, TreeVoxels.LOWER));
@@ -73,6 +77,26 @@ class ProceduralTreeStatesTest {
 		assertEquals(TreeTrunk.SCOTS_PINE_TRANSITION_UPPER, ProceduralTreeFeature.trunk(Species.SCOTS_PINE,
 				TreeVoxels.TRANSITION_UPPER));
 		assertEquals(TreeTrunk.SCOTS_PINE_UPPER, ProceduralTreeFeature.trunk(Species.SCOTS_PINE, TreeVoxels.UPPER));
-		assertSame(Blocks.BIRCH_LEAVES, ProceduralTreeFeature.leaves(Species.BIRCH).getBlock());
+		// Step V7: the pine trunks drop the pine log of the LITE set; spruce, birch and oak the vanilla logs (D2).
+		assertSame(ModBlocks.pineLog(), TreeTrunk.SCOTS_PINE.log());
+		assertSame(ModBlocks.pineLog(), TreeTrunk.SCOTS_PINE_UPPER.log());
+		assertSame(Blocks.SPRUCE_LOG, TreeTrunk.SPRUCE.log());
+		assertSame(Blocks.BIRCH_LOG, TreeTrunk.BIRCH.log());
+	}
+
+	/** Step V7: the phase of a tree is a pure function of the seed and the trunk base, and every phase occurs. */
+	@Test
+	void treePhaseIsDeterministicAndSpread() {
+		int[] counts = new int[4];
+		for (int x = 0; x < 64; x++) {
+			for (int z = 0; z < 64; z++) {
+				int p = ProceduralTreeFeature.phase(12345L, x, z);
+				assertEquals(p, ProceduralTreeFeature.phase(12345L, x, z));
+				counts[p]++;
+			}
+		}
+		for (int c : counts) {
+			assertTrue(c > 900 && c < 1150, java.util.Arrays.toString(counts));
+		}
 	}
 }

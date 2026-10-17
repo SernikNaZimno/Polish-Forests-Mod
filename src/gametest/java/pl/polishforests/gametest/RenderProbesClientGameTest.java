@@ -643,7 +643,7 @@ public final class RenderProbesClientGameTest implements FabricClientGameTest {
 
 	// ------------------------------------------------------------------ image measures
 
-	private static BufferedImage read(Path path) {
+	static BufferedImage read(Path path) {
 		try {
 			return ImageIO.read(path.toFile());
 		} catch (IOException e) {
@@ -663,7 +663,7 @@ public final class RenderProbesClientGameTest implements FabricClientGameTest {
 		return px;
 	}
 
-	private static double[] median(Path path) {
+	static double[] median(Path path) {
 		int[] px = center(path);
 		int[][] ch = new int[3][px.length];
 		for (int i = 0; i < px.length; i++) {
@@ -689,7 +689,7 @@ public final class RenderProbesClientGameTest implements FabricClientGameTest {
 	}
 
 	/** Share of sky pixels (light and clearly blue) in the central region. */
-	private static double sky(Path path) {
+	static double sky(Path path) {
 		int[] px = center(path);
 		int n = 0;
 		for (int p : px) {
@@ -719,7 +719,7 @@ public final class RenderProbesClientGameTest implements FabricClientGameTest {
 	}
 
 	/** Largest difference of the chromaticity (each channel over the sum of the channels) of a pixel and a tint. */
-	private static double chromaDistance(double[] pixel, int tint) {
+	static double chromaDistance(double[] pixel, int tint) {
 		double[] t = {(tint >> 16) & 255, (tint >> 8) & 255, tint & 255};
 		double sp = pixel[0] + pixel[1] + pixel[2];
 		double st = t[0] + t[1] + t[2];
@@ -730,15 +730,15 @@ public final class RenderProbesClientGameTest implements FabricClientGameTest {
 		return d;
 	}
 
-	private static String hex(int argb) {
+	static String hex(int argb) {
 		return String.format(Locale.ROOT, "#%06x", argb & 0xFFFFFF);
 	}
 
-	private static double[] rgbOf(int color) {
+	static double[] rgbOf(int color) {
 		return new double[] {(color >> 16) & 255, (color >> 8) & 255, color & 255};
 	}
 
-	private static String rgb(double[] c) {
+	static String rgb(double[] c) {
 		return String.format(Locale.ROOT, "(%.0f, %.0f, %.0f)", c[0], c[1], c[2]);
 	}
 

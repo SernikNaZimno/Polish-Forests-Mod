@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "polishforests:block/scots_pine_sapling"
+  }
+}

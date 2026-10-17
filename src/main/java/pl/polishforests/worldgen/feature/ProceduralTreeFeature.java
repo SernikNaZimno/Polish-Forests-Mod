@@ -13,14 +13,16 @@ import net.minecraft.tags.BlockTags;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LeavesBlock;
 import net.minecraft.world.level.block.RotatedPillarBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.levelgen.feature.Feature;
 import pl.polishforests.block.ModBlocks;
+import pl.polishforests.block.SpeciesLeavesBlock;
+import pl.polishforests.block.TreeFoliage;
 import pl.polishforests.block.TreeTrunk;
+import pl.polishforests.worldgen.landscape.Noise;
 import pl.polishforests.worldgen.feature.config.TreePalette;
 import pl.polishforests.worldgen.habitat.Species;
 import pl.polishforests.worldgen.tree.AgeClass;
@@ -33,8 +35,8 @@ import pl.polishforests.worldgen.tree.TreeVoxels;
 /**
  * Feature type {@code polishforests:procedural_tree} (step V6 of docs/04-pionowy-wycinek.md): one tree of the tree
  * planner ({@link TreeShapePlan}) with the species, the layer and the age class of its configuration, as a lone tree
- * (no crown territory and no stand map, so an open-grown crown; for saplings and solitary trees, reachable from Java
- * only until a configured feature of this type exists, V7/V9). The tree stand of step V9 calls the planner directly with
+ * (no crown territory and no stand map, so an open-grown crown; the configured features {@code polishforests:sapling/<species>}
+ * of step V7 grow the saplings, the pole stage of the canopy; solitary trees V9). The tree stand of step V9 calls the planner directly with
  * the territories and the stand map (rule ZW-1, {@code PlacedFeature.place} passes no context) and writes the result with
  * {@link #write}.
  *
@@ -51,9 +53,9 @@ import pl.polishforests.worldgen.tree.TreeVoxels;
  *
  * <p><b>Blocks.</b> Radius 1–7 px: the {@code TrunkBlock} of the species with its parent direction (the Scots pine with
  * its lower bark, the two blocks of the transition zone and the "mirror"); a full log ({@link TreeVoxels#FULL}): the
- * vanilla log of {@link TreeTrunk#log()} with the axis of its parent. Leaves: vanilla placeholder leaves by id until step
- * V7 adds the species' own leaf blocks (pine and spruce {@code spruce_leaves}, birch {@code birch_leaves}, hornbeam and
- * beech {@code dark_oak_leaves}, oak, linden, maple and ash {@code oak_leaves}), with the planner's distance.
+ * vanilla log of {@link TreeTrunk#log()} with the axis of its parent. Leaves (step V7): the species' own leaf block
+ * ({@link SpeciesLeavesBlock}) with the planner's distance and the tree's phase ({@link #phase}: 0-3 from the hash of the
+ * trunk base, so every leaf of a tree turns at the same time and the trees of a stand at different times; ZW-5).
  *
  * @param species a species with a planner shape ({@link SpeciesShape#supported})
  */
@@ -65,6 +67,9 @@ public record ProceduralTreeFeature(Species species, CrownLayer layer, AgeClass 
 			enumCodec(CrownLayer.values()).optionalFieldOf("layer", CrownLayer.CANOPY).forGetter(ProceduralTreeFeature::layer),
 			enumCodec(AgeClass.values()).optionalFieldOf("age_class", AgeClass.MATURE).forGetter(ProceduralTreeFeature::age))
 			.apply(i, ProceduralTreeFeature::new));
+
+	/** Salt of the tree phase (rule ZW-2: a new field, a new salt). */
+	public static final String PHASE_SALT = "feature.tree.phase";
 
 	/** Block update flags of the generation, as {@link FastTreeFeature}. */
 	private static final int FLAGS = 19;
@@ -107,13 +112,47 @@ public record ProceduralTreeFeature(Species species, CrownLayer layer, AgeClass 
 				|| !level.getBlockState(below).isFaceSturdy(level, below, Direction.UP)) {
 			return false;
 		}
-		TreeVoxels v = TreeShapePlan.plan(new TreeRequest(species, layer, age, level.getSeed(), origin.getX(), origin.getY(),
-				origin.getZ()));
+		TreeVoxels v = plan(level.getSeed(), origin);
 		if (write(level, v, species) == 0) {
 			return false;
 		}
 		ModFeatures.woodyPlaced(origin, species);
 		return true;
+	}
+
+	/** The tree of this configuration with its trunk base at {@code origin} (a pure function of the seed and position). */
+	public TreeVoxels plan(long seed, BlockPos origin) {
+		return TreeShapePlan.plan(new TreeRequest(species, layer, age, seed, origin.getX(), origin.getY(), origin.getZ()));
+	}
+
+	/**
+	 * Whether the tree of this configuration fits at {@code origin} (a sapling's room check, step V7): a sturdy block below,
+	 * and every wood block of the planned tree inside the build height on air or a block that trees replace; the block at
+	 * {@code origin} itself counts as free (the sapling is removed before the tree is placed). Leaves need no room, as in
+	 * {@link #write} they are left out where something else stands.
+	 */
+	public boolean fits(WorldGenLevel level, BlockPos origin) {
+		BlockPos below = origin.below();
+		if (origin.getY() <= level.getMinY() || !level.getBlockState(below).isFaceSturdy(level, below, Direction.UP)) {
+			return false;
+		}
+		TreeVoxels v = plan(level.getSeed(), origin);
+		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+		for (int i = 0; i < v.woodCount(); i++) {
+			pos.set(v.x() + v.woodX(i), v.y() + v.woodY(i), v.z() + v.woodZ(i));
+			if (pos.equals(origin)) {
+				continue;
+			}
+			if (pos.getY() >= level.getMaxY() || !replaceable(level.getBlockState(pos))) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/** The phase 0-3 of the tree with its trunk base at (x, z): the shift of its color curve (step V7, ZW-5). */
+	public static int phase(long seed, int x, int z) {
+		return (int) (new Noise(seed).derive(PHASE_SALT).hash(x, z) >>> 62);
 	}
 
 	/**
@@ -151,7 +190,7 @@ public record ProceduralTreeFeature(Species species, CrownLayer layer, AgeClass 
 			all &= placeable[i];
 		}
 		byte[] distances = all ? null : v.leafDistances(written, placeable);
-		BlockState leaf = leaves(species);
+		BlockState leaf = leaves(species, phase(level.getSeed(), v.x(), v.z()));
 		for (int i = 0; i < leaves; i++) {
 			int d = distances == null ? v.leafDistance(i) : distances[i];
 			if (d < 1 || !placeable[i]) {
@@ -195,14 +234,12 @@ public record ProceduralTreeFeature(Species species, CrownLayer layer, AgeClass 
 		return ModBlocks.trunk(t).state(radius, parent);
 	}
 
-	/** The placeholder leaves of a species until step V7 (vanilla blocks by id), without a distance. */
-	public static BlockState leaves(Species species) {
-		Block b = switch (species) {
-			case SCOTS_PINE, SPRUCE -> Blocks.SPRUCE_LEAVES;
-			case BIRCH -> Blocks.BIRCH_LEAVES;
-			case HORNBEAM, BEECH -> Blocks.DARK_OAK_LEAVES;
-			default -> Blocks.OAK_LEAVES;
-		};
-		return b.defaultBlockState().setValue(LeavesBlock.PERSISTENT, false);
+	/** The leaves of a species (step V7) in a phase, not persistent, without a distance. */
+	public static BlockState leaves(Species species, int phase) {
+		TreeFoliage f = TreeFoliage.of(species);
+		if (f == null) {
+			throw new IllegalArgumentException("no leaf block for " + species);
+		}
+		return ModBlocks.leaves(f).defaultBlockState().setValue(LeavesBlock.PERSISTENT, false).setValue(SpeciesLeavesBlock.PHASE, phase);
 	}
 }

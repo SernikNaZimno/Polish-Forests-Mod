@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/cube_all",
+  "textures": {
+    "all": "polishforests:block/scots_pine_planks"
+  }
+}

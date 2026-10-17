@@ -36,6 +36,8 @@ public final class PolishForestsDataGenerator implements DataGeneratorEntrypoint
 		pack.addProvider(ModBlockLoot::new);
 		ModBlockTagProvider.Blocks blockTags = pack.addProvider(ModBlockTagProvider.Blocks::new);
 		pack.addProvider((output, registries) -> new ModBlockTagProvider.Items(output, registries, blockTags));
+		// Step V7: the recipes of the LITE Scots pine set.
+		pack.addProvider(ModRecipeProvider::new);
 	}
 
 	@Override

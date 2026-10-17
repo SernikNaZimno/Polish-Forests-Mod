@@ -471,7 +471,8 @@ tasks.register('generateArt', ArtTask) {
 // -Pmodes=natural|present_day picks a vegetation mode, -Psites=<place names>|none; the cameras come from
 // src/test/resources/slice_cameras.txt, -PfindSliceCameras chooses them anew and writes the file; -Pgametest=stages
 // -Psites=slice measures the stages in the places of the slice instead of the M2 areas; -Psites=samples builds the sample
-// board of the thin trunks (step V2), -Psites=trees the board of the tree planner (step V6))
+// board of the thin trunks (step V2), -Psites=trees the board of the tree planner (step V6), -Psites=leaves the board of
+// the species leaves, saplings and the LITE pine set in the seasons (step V7, results in build/leaves/))
 // Only selected views: -Psites=beach,cliff (names from PolandWorldClientGameTest; for vegetation the soil places of
 // HabitatsClientGameTest, or none for no screenshots).
 // -PdebugHabitats: diagnostic mode, zones and biomes painted on the top block (docs/03-m2-biomy.md §7.5).
@@ -507,6 +508,8 @@ tasks.named('runClientGameTest') {
 	jvmArgs "-Dpolishforests.norms.out=${layout.buildDirectory.dir('norms').get().asFile.absolutePath}"
 	// Render trials of step V3 (-Pgametest=probes): the measured colors, shares and frame times of each run.
 	jvmArgs "-Dpolishforests.probes.out=${layout.buildDirectory.dir('probes').get().asFile.absolutePath}"
+	// Leaves board of step V7 (-Pgametest=slice -Psites=leaves): build/leaves/<renderer>_<ss|noss>.txt.
+	jvmArgs "-Dpolishforests.leaves.out=${layout.buildDirectory.dir('leaves').get().asFile.absolutePath}"
 	if (project.hasProperty('profile')) {
 		jvmArgs "-XX:StartFlightRecording=filename=${layout.buildDirectory.file('profile.jfr').get().asFile.absolutePath},settings=profile"
 	}

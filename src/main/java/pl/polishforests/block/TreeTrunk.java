@@ -83,13 +83,14 @@ public enum TreeTrunk {
 	}
 
 	/**
-	 * The log dropped by a trunk of radius ≥ 3: the vanilla log of oak, birch and spruce (D2); for the others the closest
-	 * vanilla log until their own wood comes (the LITE set of the Scots pine in V7, the other species in M3): the gray
-	 * barks of hornbeam and beech give the pale oak log, linden, ash and maple the oak log, the pine the spruce log.
+	 * The log dropped by a trunk of radius ≥ 3: the vanilla log of oak, birch and spruce (D2), the Scots pine log of the
+	 * LITE set (step V7, D1 b); for the others the closest vanilla log until their own wood comes (M3): the gray barks of
+	 * hornbeam and beech give the pale oak log, linden, ash and maple the oak log.
 	 */
 	public Block log() {
 		return switch (this) {
-			case SCOTS_PINE, SCOTS_PINE_UPPER, SCOTS_PINE_TRANSITION, SCOTS_PINE_TRANSITION_UPPER, SPRUCE -> Blocks.SPRUCE_LOG;
+			case SCOTS_PINE, SCOTS_PINE_UPPER, SCOTS_PINE_TRANSITION, SCOTS_PINE_TRANSITION_UPPER -> ModBlocks.pineLog();
+			case SPRUCE -> Blocks.SPRUCE_LOG;
 			case BIRCH -> Blocks.BIRCH_LOG;
 			case OAK, LINDEN, ASH, NORWAY_MAPLE -> Blocks.OAK_LOG;
 			case HORNBEAM, BEECH -> Blocks.PALE_OAK_LOG;

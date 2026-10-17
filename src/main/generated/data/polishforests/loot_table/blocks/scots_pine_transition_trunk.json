@@ -52,7 +52,7 @@
               "condition": {
                 "type": "minecraft:survives_explosion"
               },
-              "name": "minecraft:spruce_log"
+              "name": "polishforests:scots_pine_log"
             }
           ]
         }

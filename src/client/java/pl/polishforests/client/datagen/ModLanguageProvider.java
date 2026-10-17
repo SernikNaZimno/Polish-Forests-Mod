@@ -10,6 +10,7 @@ import net.fabricmc.fabric.api.datagen.v1.FabricPackOutput;
 import net.fabricmc.fabric.api.datagen.v1.provider.FabricLanguageProvider;
 import net.minecraft.core.HolderLookup;
 import pl.polishforests.block.ModBlocks;
+import pl.polishforests.block.TreeFoliage;
 import pl.polishforests.block.TreeTrunk;
 import pl.polishforests.command.PolishForestsCommands;
 import pl.polishforests.worldgen.habitat.AltitudinalBelts;
@@ -203,6 +204,20 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		for (TreeTrunk t : TreeTrunk.values()) {
 			builder.add(ModBlocks.trunk(t), polish ? t.polishName() : t.englishName());
 		}
+		// Step V7: leaves, saplings, potted saplings and the LITE Scots pine wood set.
+		for (TreeFoliage f : TreeFoliage.values()) {
+			builder.add(ModBlocks.leaves(f), polish ? (f.conifer() ? "Igły " : "Liście ") + f.polishGenitive() : f.englishName()
+					+ (f.conifer() ? " Needles" : " Leaves"));
+			builder.add(ModBlocks.sapling(f), polish ? "Sadzonka " + f.polishGenitive() : f.englishName() + " Sapling");
+			builder.add(ModBlocks.potted(f), polish ? "Sadzonka " + f.polishGenitive() + " w doniczce" : "Potted " + f.englishName()
+					+ " Sapling");
+		}
+		builder.add(ModBlocks.pineLog(), polish ? "Kłoda sosnowa" : "Scots Pine Log");
+		builder.add(ModBlocks.pineWood(), polish ? "Drewno sosnowe" : "Scots Pine Wood");
+		builder.add(ModBlocks.strippedPineLog(), polish ? "Okorowana kłoda sosnowa" : "Stripped Scots Pine Log");
+		builder.add(ModBlocks.strippedPineWood(), polish ? "Okorowane drewno sosnowe" : "Stripped Scots Pine Wood");
+		builder.add(ModBlocks.pinePlanks(), polish ? "Deski sosnowe" : "Scots Pine Planks");
+		builder.add(tagKey(ModBlockTagProvider.PINE_FULL_LOGS.location().getPath()), polish ? "Kłody sosnowe" : "Scots Pine Logs");
 		// Item tags (recipe viewers show their names): a species tag is named after the first trunk of the species.
 		Map<Species, TreeTrunk> first = new LinkedHashMap<>();
 		for (TreeTrunk t : TreeTrunk.values()) {

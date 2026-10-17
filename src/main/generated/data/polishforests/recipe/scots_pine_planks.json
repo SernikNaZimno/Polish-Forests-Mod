@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "building",
+  "group": "planks",
+  "ingredients": [
+    "#polishforests:scots_pine_full_logs"
+  ],
+  "result": {
+    "count": 4,
+    "id": "polishforests:scots_pine_planks"
+  }
+}

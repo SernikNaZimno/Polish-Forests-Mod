@@ -38,7 +38,9 @@ Kind rules:
   have no single row much darker or lighter than the rows around it (texlib.ring_drop, caps texlib.RING_CAPS: 32 at
   radius 1, 26 above): a cross fissure or a pale flake over the whole width of a narrow crop reads as a ring at every
   block ("bamboo", V2 review); the full-width banding measure does not see it;
-- plant: alpha only 0 or 255.
+- plant and sapling: alpha only 0 or 255;
+- planks, stripped (log sides without bark) and end (log tops), step V7: fully opaque; planks and stripped tile (the
+  seam rule above), ends do not; each kind has its contrast caps (CONTRAST).
 Recipe bounds (Texture.expect): 'luma' mean luma range on 0..255, 'dark' the largest share of dark pixels (luma < 50),
 'grain' the smallest |dx| / |dy| (vertical grain of furrowed and plated bark; vanilla oak and spruce logs about 3.3),
 'std', 'rows', 'slices' other caps for the bark rules above, 'hue' the range of the mean hue in degrees, 'near'
@@ -66,7 +68,10 @@ TINT_LUMA = (0.45, 0.65)
 LEAF_OPACITY = (0.55, 0.70)
 COLORS = (4, 9)
 MIN_COLOR_PIXELS = 4
-ISOLATED_MAX = {'bark': 0.10, 'leaves': 0.30, 'plant': 1.0}
+ISOLATED_MAX = {'bark': 0.10, 'leaves': 0.30, 'plant': 1.0, 'planks': 0.30, 'stripped': 0.25, 'end': 0.30, 'sapling': 1.0}
+# Kinds that tile on a wall (seam check both ways) and kinds that must be fully opaque.
+TILED = ('bark', 'leaves', 'planks', 'stripped')
+OPAQUE = ('planks', 'stripped', 'end')
 DARK = 50
 # Local contrast (step V1b, checkpoint CP-A: "the textures look a bit too sharp"; texlib.local_contrast): the largest
 # mean and 90th percentile of the luma steps between neighbouring pixels and the largest share of dark one-pixel lines.
@@ -80,7 +85,15 @@ DARK = 50
 # Before V1b our furrowed and plated barks had a mean of 18-24, a p90 of 54-67 and 17-26% lines, the needles a p90 of 110.
 # V1b review round 1: the caps are exactly the quartiles named in the V1b criterion (they were rounded up before:
 # 13 / 33 / 4%, 29 / 61 / 16%, 23 / 50 / 7%).
-CONTRAST = {'bark': (13.1, 32.6, 0.031), 'leaves': (28.3, 60.9, 0.162), 'plant': (22.3, 47.5, 0.067)}
+CONTRAST = {'bark': (13.1, 32.6, 0.031), 'leaves': (28.3, 60.9, 0.162), 'plant': (22.3, 47.5, 0.067),
+            # Step V7 (the LITE pine set and the saplings), measured the same way on vanilla 26.3: planks (10 kinds) mean
+            # 8.7-21.1 (median 15.3), p90 21.6-54.1 (median 42.0), lines 2-26% (median 17%; the gaps between boards);
+            # stripped log sides mean 3.1-7.4 (q3 6.8), p90 7.8-15.7 (q3 15.2), no lines; log tops mean 6.7-30.5
+            # (median 17.9), p90 16-150 (median 55.8), lines 0.8-19% (median 5.9%); saplings mean 17-45 (median 23.6),
+            # p90 35-165 (median 48.9), lines 0-15% (median 5.4%). The caps are the medians (CP-A: smoother), for the
+            # stripped sides the upper quartile.
+            'planks': (15.3, 42.0, 0.17), 'stripped': (6.8, 15.2, 0.01), 'end': (17.9, 55.8, 0.059),
+            'sapling': (23.6, 48.9, 0.054)}
 # The jump across a block edge between two different textures of one trunk (expect 'below' / 'above') may be at most
 # this many times the mean step between neighbouring rows inside them (V1b review round 1: the first transition bark
 # had jumps 3-4 times the inner steps, a straight line around the trunk).
@@ -241,12 +254,14 @@ def lint_texture(name, img, tex, others=None):
                    f'neighbours across), at most {cap_lines:.0%} for {tex.kind}: use a mid tone for fissures and twigs')
     exp = tex.expect or {}
     between = 'below' in exp or 'above' in exp          # lies only between other textures, never on itself
-    if tex.kind in ('bark', 'leaves'):
+    if tex.kind in TILED:
         for axis, label in ((1, 'left-right'),) + (() if between else ((0, 'top-bottom'),)):
             for what, wrap, lim in seam_check(img, axis):
                 err.append(f'{name}: visible {label} seam when tiled ({what} {wrap:.2f} across the edge, at most '
                            f'{lim:.2f} from the jumps inside)')
     m['grain'] = t.grain(img)
+    if tex.kind in OPAQUE and not vis.all():
+        err.append(f'{name}: {tex.kind} must be fully opaque')
     if tex.kind == 'bark':
         if not vis.all():
             err.append(f'{name}: bark must be fully opaque')

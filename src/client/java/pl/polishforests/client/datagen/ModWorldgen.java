@@ -38,6 +38,10 @@ import net.minecraft.world.level.levelgen.placement.PlacedFeature;
 import net.minecraft.world.level.levelgen.placement.RarityFilter;
 import net.minecraft.world.level.levelgen.placement.SurfaceRelativeThresholdFilter;
 import pl.polishforests.PolishForests;
+import pl.polishforests.block.TreeFoliage;
+import pl.polishforests.worldgen.feature.ProceduralTreeFeature;
+import pl.polishforests.worldgen.tree.AgeClass;
+import pl.polishforests.worldgen.tree.CrownLayer;
 import pl.polishforests.worldgen.chunk.ModBiomeKeys;
 import pl.polishforests.worldgen.feature.BiomeDecoration;
 import pl.polishforests.worldgen.feature.HabitatFilter;
@@ -80,6 +84,11 @@ final class ModWorldgen {
 				case GROUND_LAYER -> new PlantLayerFeature(d, ModVegetation.groundLayer(placedFeatures));
 				case AQUATIC_PLANTS -> new PlantLayerFeature(d, ModVegetation.aquaticPlants(placedFeatures));
 			});
+		}
+		// Step V7: the trees the saplings grow into, a pole-stage canopy tree of the planner in its open-grown form (a lone
+		// tree, no territory). The keys stay apart from tree/<species> (the M2 substitutes until V9, PW-3).
+		for (TreeFoliage f : TreeFoliage.values()) {
+			context.register(feature(f.featurePath()), new ProceduralTreeFeature(f.species(), CrownLayer.CANOPY, AgeClass.POLE_STAGE));
 		}
 	}
 

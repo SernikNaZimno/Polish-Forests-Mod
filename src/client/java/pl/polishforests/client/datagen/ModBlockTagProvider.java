@@ -17,6 +17,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 import pl.polishforests.PolishForests;
 import pl.polishforests.block.ModBlocks;
+import pl.polishforests.block.TreeFoliage;
 import pl.polishforests.block.TreeTrunk;
 import pl.polishforests.worldgen.habitat.Species;
 
@@ -31,9 +32,17 @@ import pl.polishforests.worldgen.habitat.Species;
  * and every species item tag goes into {@code #logs_that_burn} (fuel, charcoal), also for oak, birch and spruce: in the
  * vanilla {@code #oak_logs} items a twig of radius 1 (2 × 2 px) would make 4 planks like a whole log (V2 review,
  * choice V2-d); the planks come from the vanilla log a trunk drops without silk touch.
+ * <p>Step V7: the LITE Scots pine set (log, wood, stripped log, stripped wood) is in
+ * {@code #polishforests:scots_pine_full_logs} (blocks and items; the planks recipe), which is part of the species tag
+ * {@code #polishforests:scots_pine_logs}; the log is in {@code #overworld_natural_logs}, all four and the planks in
+ * {@code #mineable/axe}, the planks in {@code #planks}; the leaves of the species in {@code #leaves} (and through it
+ * {@code #mineable/hoe}, {@code #sword_efficient} …), the saplings in {@code #saplings}, the potted saplings in
+ * {@code #flower_pots}.
  */
 final class ModBlockTagProvider {
 	static final TagKey<Block> TRUNKS = TagKey.create(Registries.BLOCK, PolishForests.id("trunks"));
+	/** Step V7: the full blocks of the LITE Scots pine set that make planks (log, wood, stripped log, stripped wood). */
+	static final TagKey<Block> PINE_FULL_LOGS = TagKey.create(Registries.BLOCK, PolishForests.id("scots_pine_full_logs"));
 
 	private ModBlockTagProvider() {
 	}
@@ -77,6 +86,20 @@ final class ModBlockTagProvider {
 				builder(BlockTags.MINEABLE_WITH_AXE).add(key);
 			}
 			species.forEach((s, tag) -> builder(vanillaParent(s).block()).addTag(tag));
+			for (Block b : java.util.List.of(ModBlocks.pineLog(), ModBlocks.pineWood(), ModBlocks.strippedPineLog(),
+					ModBlocks.strippedPineWood())) {
+				builder(PINE_FULL_LOGS).add(key(b));
+				builder(BlockTags.MINEABLE_WITH_AXE).add(key(b));
+			}
+			builder(species.get(Species.SCOTS_PINE)).addTag(PINE_FULL_LOGS);
+			builder(BlockTags.OVERWORLD_NATURAL_LOGS).add(key(ModBlocks.pineLog()));
+			builder(BlockItemTags.PLANKS.block()).add(key(ModBlocks.pinePlanks()));
+			builder(BlockTags.MINEABLE_WITH_AXE).add(key(ModBlocks.pinePlanks()));
+			for (TreeFoliage f : TreeFoliage.values()) {
+				builder(BlockItemTags.LEAVES.block()).add(key(ModBlocks.leaves(f)));
+				builder(BlockItemTags.SAPLINGS.block()).add(key(ModBlocks.sapling(f)));
+				builder(BlockTags.FLOWER_POTS).add(key(ModBlocks.potted(f)));
+			}
 		}
 	}
 
@@ -93,10 +116,18 @@ final class ModBlockTagProvider {
 				builder(BlockItemTags.LOGS_THAT_BURN.item()).addTag(item(tag));
 			});
 			copy(TRUNKS, item(TRUNKS));
+			copy(PINE_FULL_LOGS, item(PINE_FULL_LOGS));
+			copy(BlockItemTags.PLANKS.block(), BlockItemTags.PLANKS.item());
+			copy(BlockItemTags.LEAVES.block(), BlockItemTags.LEAVES.item());
+			copy(BlockItemTags.SAPLINGS.block(), BlockItemTags.SAPLINGS.item());
 		}
 	}
 
 	private static ResourceKey<Block> key(TreeTrunk t) {
-		return BuiltInRegistries.BLOCK.getResourceKey(ModBlocks.trunk(t)).orElseThrow();
+		return key(ModBlocks.trunk(t));
+	}
+
+	private static ResourceKey<Block> key(Block b) {
+		return BuiltInRegistries.BLOCK.getResourceKey(b).orElseThrow();
 	}
 }

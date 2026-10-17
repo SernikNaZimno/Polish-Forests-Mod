@@ -1,32 +1,100 @@
 # Blocks, properties, values and items of polishforests that go into saved worlds (PW-11). Regenerate on purpose: ./gradlew test --tests '*RegistrySnapshotTest*' -PwriteRegistrySnapshot
+block polishforests:ash_leaves states=112 default=distance=7,persistent=false,phase=0,waterlogged=false
+  property distance: 1 2 3 4 5 6 7
+  property persistent: true false
+  property phase: 0 1 2 3
+  property waterlogged: true false
+block polishforests:ash_sapling states=2 default=stage=0
+  property stage: 0 1
 block polishforests:ash_trunk states=84 default=parent=down,radius=4,waterlogged=false
   property parent: down up north south west east
   property radius: 1 2 3 4 5 6 7
   property waterlogged: true false
+block polishforests:beech_leaves states=112 default=distance=7,persistent=false,phase=0,waterlogged=false
+  property distance: 1 2 3 4 5 6 7
+  property persistent: true false
+  property phase: 0 1 2 3
+  property waterlogged: true false
+block polishforests:beech_sapling states=2 default=stage=0
+  property stage: 0 1
 block polishforests:beech_trunk states=84 default=parent=down,radius=4,waterlogged=false
   property parent: down up north south west east
   property radius: 1 2 3 4 5 6 7
   property waterlogged: true false
+block polishforests:birch_leaves states=112 default=distance=7,persistent=false,phase=0,waterlogged=false
+  property distance: 1 2 3 4 5 6 7
+  property persistent: true false
+  property phase: 0 1 2 3
+  property waterlogged: true false
+block polishforests:birch_sapling states=2 default=stage=0
+  property stage: 0 1
 block polishforests:birch_trunk states=84 default=parent=down,radius=4,waterlogged=false
   property parent: down up north south west east
   property radius: 1 2 3 4 5 6 7
   property waterlogged: true false
+block polishforests:hornbeam_leaves states=112 default=distance=7,persistent=false,phase=0,waterlogged=false
+  property distance: 1 2 3 4 5 6 7
+  property persistent: true false
+  property phase: 0 1 2 3
+  property waterlogged: true false
+block polishforests:hornbeam_sapling states=2 default=stage=0
+  property stage: 0 1
 block polishforests:hornbeam_trunk states=84 default=parent=down,radius=4,waterlogged=false
   property parent: down up north south west east
   property radius: 1 2 3 4 5 6 7
   property waterlogged: true false
+block polishforests:linden_leaves states=112 default=distance=7,persistent=false,phase=0,waterlogged=false
+  property distance: 1 2 3 4 5 6 7
+  property persistent: true false
+  property phase: 0 1 2 3
+  property waterlogged: true false
+block polishforests:linden_sapling states=2 default=stage=0
+  property stage: 0 1
 block polishforests:linden_trunk states=84 default=parent=down,radius=4,waterlogged=false
   property parent: down up north south west east
   property radius: 1 2 3 4 5 6 7
   property waterlogged: true false
+block polishforests:norway_maple_leaves states=112 default=distance=7,persistent=false,phase=0,waterlogged=false
+  property distance: 1 2 3 4 5 6 7
+  property persistent: true false
+  property phase: 0 1 2 3
+  property waterlogged: true false
+block polishforests:norway_maple_sapling states=2 default=stage=0
+  property stage: 0 1
 block polishforests:norway_maple_trunk states=84 default=parent=down,radius=4,waterlogged=false
   property parent: down up north south west east
   property radius: 1 2 3 4 5 6 7
   property waterlogged: true false
+block polishforests:oak_leaves states=112 default=distance=7,persistent=false,phase=0,waterlogged=false
+  property distance: 1 2 3 4 5 6 7
+  property persistent: true false
+  property phase: 0 1 2 3
+  property waterlogged: true false
+block polishforests:oak_sapling states=2 default=stage=0
+  property stage: 0 1
 block polishforests:oak_trunk states=84 default=parent=down,radius=4,waterlogged=false
   property parent: down up north south west east
   property radius: 1 2 3 4 5 6 7
   property waterlogged: true false
+block polishforests:potted_ash_sapling states=1 default=
+block polishforests:potted_beech_sapling states=1 default=
+block polishforests:potted_birch_sapling states=1 default=
+block polishforests:potted_hornbeam_sapling states=1 default=
+block polishforests:potted_linden_sapling states=1 default=
+block polishforests:potted_norway_maple_sapling states=1 default=
+block polishforests:potted_oak_sapling states=1 default=
+block polishforests:potted_scots_pine_sapling states=1 default=
+block polishforests:potted_spruce_sapling states=1 default=
+block polishforests:scots_pine_leaves states=112 default=distance=7,persistent=false,phase=0,waterlogged=false
+  property distance: 1 2 3 4 5 6 7
+  property persistent: true false
+  property phase: 0 1 2 3
+  property waterlogged: true false
+block polishforests:scots_pine_log states=3 default=axis=y
+  property axis: x y z
+block polishforests:scots_pine_planks states=1 default=
+block polishforests:scots_pine_sapling states=2 default=stage=0
+  property stage: 0 1
 block polishforests:scots_pine_transition_trunk states=84 default=parent=down,radius=4,waterlogged=false
   property parent: down up north south west east
   property radius: 1 2 3 4 5 6 7
@@ -43,19 +111,55 @@ block polishforests:scots_pine_upper_trunk states=84 default=parent=down,radius=
   property parent: down up north south west east
   property radius: 1 2 3 4 5 6 7
   property waterlogged: true false
+block polishforests:scots_pine_wood states=3 default=axis=y
+  property axis: x y z
+block polishforests:spruce_leaves states=112 default=distance=7,persistent=false,phase=0,waterlogged=false
+  property distance: 1 2 3 4 5 6 7
+  property persistent: true false
+  property phase: 0 1 2 3
+  property waterlogged: true false
+block polishforests:spruce_sapling states=2 default=stage=0
+  property stage: 0 1
 block polishforests:spruce_trunk states=84 default=parent=down,radius=4,waterlogged=false
   property parent: down up north south west east
   property radius: 1 2 3 4 5 6 7
   property waterlogged: true false
+block polishforests:stripped_scots_pine_log states=3 default=axis=y
+  property axis: x y z
+block polishforests:stripped_scots_pine_wood states=3 default=axis=y
+  property axis: x y z
+item polishforests:ash_leaves block=polishforests:ash_leaves
+item polishforests:ash_sapling block=polishforests:ash_sapling
 item polishforests:ash_trunk block=polishforests:ash_trunk
+item polishforests:beech_leaves block=polishforests:beech_leaves
+item polishforests:beech_sapling block=polishforests:beech_sapling
 item polishforests:beech_trunk block=polishforests:beech_trunk
+item polishforests:birch_leaves block=polishforests:birch_leaves
+item polishforests:birch_sapling block=polishforests:birch_sapling
 item polishforests:birch_trunk block=polishforests:birch_trunk
+item polishforests:hornbeam_leaves block=polishforests:hornbeam_leaves
+item polishforests:hornbeam_sapling block=polishforests:hornbeam_sapling
 item polishforests:hornbeam_trunk block=polishforests:hornbeam_trunk
+item polishforests:linden_leaves block=polishforests:linden_leaves
+item polishforests:linden_sapling block=polishforests:linden_sapling
 item polishforests:linden_trunk block=polishforests:linden_trunk
+item polishforests:norway_maple_leaves block=polishforests:norway_maple_leaves
+item polishforests:norway_maple_sapling block=polishforests:norway_maple_sapling
 item polishforests:norway_maple_trunk block=polishforests:norway_maple_trunk
+item polishforests:oak_leaves block=polishforests:oak_leaves
+item polishforests:oak_sapling block=polishforests:oak_sapling
 item polishforests:oak_trunk block=polishforests:oak_trunk
+item polishforests:scots_pine_leaves block=polishforests:scots_pine_leaves
+item polishforests:scots_pine_log block=polishforests:scots_pine_log
+item polishforests:scots_pine_planks block=polishforests:scots_pine_planks
+item polishforests:scots_pine_sapling block=polishforests:scots_pine_sapling
 item polishforests:scots_pine_transition_trunk block=polishforests:scots_pine_transition_trunk
 item polishforests:scots_pine_transition_upper_trunk block=polishforests:scots_pine_transition_upper_trunk
 item polishforests:scots_pine_trunk block=polishforests:scots_pine_trunk
 item polishforests:scots_pine_upper_trunk block=polishforests:scots_pine_upper_trunk
+item polishforests:scots_pine_wood block=polishforests:scots_pine_wood
+item polishforests:spruce_leaves block=polishforests:spruce_leaves
+item polishforests:spruce_sapling block=polishforests:spruce_sapling
 item polishforests:spruce_trunk block=polishforests:spruce_trunk
+item polishforests:stripped_scots_pine_log block=polishforests:stripped_scots_pine_log
+item polishforests:stripped_scots_pine_wood block=polishforests:stripped_scots_pine_wood

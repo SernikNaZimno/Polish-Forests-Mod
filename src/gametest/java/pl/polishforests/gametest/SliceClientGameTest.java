@@ -86,6 +86,7 @@ import pl.polishforests.worldgen.surface.ChunkSurface;
  * {@code oak_hornbeam_1,transect}); {@code -Psites=none} only checks the places, without screenshots.
  * {@code -Psites=samples} builds the sample board of the thin trunks instead (step V2, {@link TrunkSamples}).
  * {@code -Psites=trees} plants the board of the tree planner instead (step V6, {@link TreeSamples}).
+ * {@code -Psites=leaves} builds the board of the species leaves, saplings and the LITE pine set (step V7, {@link LeafSamples}).
  */
 public final class SliceClientGameTest implements FabricClientGameTest {
 	private static final String SEED = "20260927";
@@ -150,6 +151,10 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 		}
 		if (only.equals("trees")) {
 			TreeSamples.run(context);
+			return;
+		}
+		if (only.equals("leaves")) {
+			LeafSamples.run(context);
 			return;
 		}
 		boolean screenshots = !only.equals("none");

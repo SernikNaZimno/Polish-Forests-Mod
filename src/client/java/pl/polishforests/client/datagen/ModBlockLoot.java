@@ -6,6 +6,7 @@ import net.fabricmc.fabric.api.datagen.v1.provider.FabricBlockLootSubProvider;
 import net.minecraft.advancements.predicates.StatePropertiesPredicate;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.storage.loot.LootPool;
 import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.entries.LootItem;
@@ -16,6 +17,7 @@ import net.minecraft.world.level.storage.loot.predicates.LootItemCondition;
 import net.minecraft.world.level.storage.loot.predicates.MatchBlock;
 import net.minecraft.world.level.storage.loot.providers.number.ints.ContextIntProviders;
 import pl.polishforests.block.ModBlocks;
+import pl.polishforests.block.TreeFoliage;
 import pl.polishforests.block.TreeTrunk;
 import pl.polishforests.block.TrunkBlock;
 
@@ -47,6 +49,17 @@ final class ModBlockLoot extends FabricBlockLootSubProvider {
 					LootItem.lootTableItem(t.log()));
 			add(block, LootTable.lootTable().withPool(LootPool.lootPool().setRolls(ContextIntProviders.exactly(1))
 					.add(LootItem.lootTableItem(block).when(hasSilkTouch()).otherwise(sticks).otherwise(log))));
+		}
+		// Step V7: the LITE Scots pine set drops itself; the leaves as vanilla leaves (shears or silk touch: the leaves,
+		// else the sapling with vanilla's chances and sticks); a sapling itself, a pot its sapling and the pot.
+		for (Block b : java.util.List.of(ModBlocks.pineLog(), ModBlocks.pineWood(), ModBlocks.strippedPineLog(),
+				ModBlocks.strippedPineWood(), ModBlocks.pinePlanks())) {
+			dropSelf(b);
+		}
+		for (TreeFoliage f : TreeFoliage.values()) {
+			add(ModBlocks.leaves(f), createLeavesDrops(ModBlocks.leaves(f), ModBlocks.sapling(f), NORMAL_LEAVES_SAPLING_CHANCES));
+			dropSelf(ModBlocks.sapling(f));
+			dropPottedContents(ModBlocks.potted(f));
 		}
 	}
 

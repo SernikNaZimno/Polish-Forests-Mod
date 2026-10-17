@@ -35,7 +35,7 @@ final class GameRegistries {
 		unfreeze(BuiltInRegistries.ITEM);
 		ModBlocks.registerContent();
 		// As vanilla does for its blocks in Blocks.<clinit> and Fabric for registered ones: state ids and state caches.
-		for (TrunkBlock b : ModBlocks.trunks().values()) {
+		for (Block b : ModBlocks.all()) {
 			for (BlockState state : b.getStateDefinition().getPossibleStates()) {
 				Block.BLOCK_STATE_REGISTRY.add(state);
 				state.initCache();

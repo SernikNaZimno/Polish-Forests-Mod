@@ -2,6 +2,6 @@
   "parent": "polishforests:block/template_trunk_r1",
   "textures": {
     "bark": "polishforests:block/scots_pine_transition_bark_2",
-    "end": "minecraft:block/spruce_log_top"
+    "end": "polishforests:block/scots_pine_log_top"
   }
 }

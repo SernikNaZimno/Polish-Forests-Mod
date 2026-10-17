@@ -29,4 +29,12 @@ public interface SeasonProvider {
 	default float temperatureInSeason(LevelReader level, Biome biome, BlockPos pos, float temperature) {
 		return temperature;
 	}
+
+	/**
+	 * Whether the foliage of the species changes its color with the season (step V7, {@link SeasonPhase#foliageChanges()}):
+	 * the {@code changeFoliageColor} switch of Serene Seasons; the built-in calendar always changes it.
+	 */
+	default boolean changesFoliageColor() {
+		return true;
+	}
 }

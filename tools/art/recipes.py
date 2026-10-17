@@ -40,6 +40,7 @@ from dataclasses import dataclass, field
 import numpy as np
 
 import texlib as t
+import wood
 from texlib import N
 
 
@@ -963,6 +964,31 @@ BEECH_VARIANT = dict(BEECH, scars=0, lichen=3, lock=1)
 BEECH_EXPECT = {'luma': (150, 172), 'dark': 0.0, 'grain': 1.2, 'std': 18}
 
 
+# Step V7: LITE pine wood (tones set by the recipe from the wood description in tools/art/wood.py) and saplings.
+PINE_PLANKS = dict(colors=['#8c5d36', '#ae8754', '#bc945e', '#c7a068', '#d2ac73'], tries=64)
+PINE_STRIPPED = dict(colors=['#bf9763', '#c69f6a', '#cda772', '#d4af79'], streak=5, tries=64)
+PINE_LOG_TOP = dict(colors=['#8e5c36', '#a06c41', '#b27f4e', '#c39963', '#d1ab74', '#6c5d4f', '#867868'], ring=2.1,
+                    late=0.62, heart=4.4, bark=True, tries=32)
+PINE_STRIPPED_TOP = dict(PINE_LOG_TOP, colors=['#8e5c36', '#a06c41', '#b27f4e', '#c39963', '#d1ab74', '#bf9763'],
+                         bark=False)
+SAPLING_SHAPE = dict(top=4, zigzag=0.2, shoots=3, shoot_gap=3, shoot_len=(2, 4), leaf_from=2, leaf_every=3, tries=64)
+SAPLINGS = [
+    ('scots_pine', dict(SAPLING_SHAPE, leaf='pine', shoots=0, top=2, whorl=3, zigzag=0.0,
+                        colors=['#5e4630', '#7d5f3e', '#3f5a46', '#5c7c63', '#86a48a']),
+     'young Scots pine: a short leader and whorl shoots with gray-green needle tufts'),
+    ('linden', dict(SAPLING_SHAPE, leaf='linden', colors=['#5a4632', '#7a5f42', '#2f5a22', '#477a30', '#6a9c45']),
+     'young small-leaved lime: rounded heart-shaped leaves'),
+    ('hornbeam', dict(SAPLING_SHAPE, leaf='hornbeam', colors=['#5d554a', '#7c7366', '#345f24', '#4d8232', '#74a64a']),
+     'young hornbeam: oval pleated leaves on a gray stem'),
+    ('beech', dict(SAPLING_SHAPE, leaf='beech', colors=['#5f5650', '#837a70', '#3b6a1f', '#5a8f2a', '#86b841']),
+     'young beech: oval glossy leaves, a lighter green'),
+    ('ash', dict(SAPLING_SHAPE, leaf='ash', shoots=3, colors=['#6b6a60', '#8e8d80', '#2c5426', '#426f35', '#63904f']),
+     'young ash: pinnate leaves with pairs of leaflets'),
+    ('norway_maple', dict(SAPLING_SHAPE, leaf='maple', colors=['#5a4a36', '#7a6548', '#2e5e20', '#47812f', '#6aa445']),
+     'young Norway maple: palmate lobed leaves'),
+]
+
+
 def upper_texture(tex, palettes):
     return bark_scots_pine_upper_built(tex, palettes)[0]
 
@@ -1048,7 +1074,21 @@ TEXTURES = [
     Texture('bilberry', 'plant', plant_bilberry, 'bilberry/2', 'bilberry', tint='grass',
             params=dict(stems=8, top=9, leafiness=0.75, zigzag=0.3, gray=(92, 180)),
             note='bilberry dwarf shrub, cross model, grayscale for the grass tint'),
-]
+    # Step V7: the LITE Scots pine wood set (D1 b; the log side is scots_pine_bark) and the saplings (tools/art/wood.py).
+    Texture('scots_pine_planks', 'planks', wood.planks, 'scots_pine_planks/1', None, params=PINE_PLANKS,
+            expect={'luma': (135, 165), 'hue': (28, 40)}, palette_use=None,
+            note='Scots pine planks: four boards of warm light yellow wood, grain along the boards, a knot'),
+    Texture('stripped_scots_pine_log', 'stripped', wood.stripped_side, 'stripped_scots_pine_log/1', None,
+            params=PINE_STRIPPED, expect={'luma': (145, 170), 'hue': (28, 40)},
+            note='stripped Scots pine log: pale yellow wood with a fine vertical grain and a resin streak'),
+    Texture('scots_pine_log_top', 'end', wood.log_end, 'scots_pine_log_top/1', None, params=PINE_LOG_TOP,
+            expect={'luma': (120, 160)},
+            note='Scots pine log top: reddish-brown heartwood, pale sapwood, distinct rings, a gray-brown bark border'),
+    Texture('stripped_scots_pine_log_top', 'end', wood.log_end, 'stripped_scots_pine_log_top/1', None,
+            params=PINE_STRIPPED_TOP, expect={'luma': (130, 170)},
+            note='stripped Scots pine log top: the rings of the log top with a pale wood border'),
+] + [Texture(f'{name}_sapling', 'sapling', wood.sapling, f'{name}_sapling/1', None, params=params, note=note)
+     for name, params, note in SAPLINGS]
 
 TEXTURES_BY_NAME = {tx.name: tx for tx in TEXTURES}
 # The painter of each plated bark (a variant rebuilds its base with the base's own painter, so it gets the structure
