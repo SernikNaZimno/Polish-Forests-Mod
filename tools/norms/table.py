@@ -21,7 +21,8 @@ SEQUENCE = {'fresh_pine_forest': 'Bśw', 'mixed_pine_forest': 'BMśw', 'mixed_fo
 
 
 PLACE = {'natural_1': 'nat1', 'natural_2': 'nat2', 'managed_1': 'gosp1', 'managed_2': 'gosp2',
-         'managed_pole_stage': 'drąg', 'managed_mature': 'dojrz', 'managed_old_growth': 'stary'}
+         'managed_pole_stage': 'drąg', 'managed_mature': 'dojrz', 'managed_old_growth': 'stary',
+         'natural_pole_stage': 'nat-drąg'}
 
 
 def label(place, forest):
@@ -63,7 +64,7 @@ def plots(rows, out):
         forest = {(r['scale'], r['mode'], r['place']): r['forest'] for r in mine}
         heads = [f"{SCALE[s]} {MODE[m]} {label(p, forest[(s, m, p)])}" for s, m, p in columns]
         out.write(f"\n**{title}** (norma nat.: kolumna lasu naturalnego, norma gosp.: gospodarczego; od V9 kolumna każdej "
-                  f"powierzchni według wydzielenia w jej środku: m1, m2 to miejsca V4, nat1, nat2, gosp1, gosp2, drąg, dojrz, "
+                  f"powierzchni według wydzielenia w jej środku: m1, m2 to miejsca V4, nat1, nat2, gosp1, gosp2, drąg, nat-drąg, dojrz, "
                   f"stary to powierzchnie według wydzieleń; ✓ w normie, ≈ w tolerancji, ✗ poza nią)\n\n")
         out.write('| Miara | Norma nat. | Norma gosp. | ' + ' | '.join(heads) + ' |\n')
         out.write('|---|---|---|' + '---|' * len(heads) + '\n')
