@@ -61,7 +61,8 @@ import pl.polishforests.worldgen.tree.TreeVoxels;
  * set, and two leaf screens (species oak leaves and vanilla oak leaves) against the sky.
  * <ul>
  * <li><b>Seasons</b> (with Serene Seasons by {@code season set}, without it by {@code time set} on the built-in calendar,
- * there also the 2nd and 3rd color step of MID_AUTUMN): MID_SPRING, MID_SUMMER, MID_AUTUMN, LATE_AUTUMN and MID_WINTER.
+ * there also the 3rd color step of MID_SPRING and the 2nd and 3rd of MID_AUTUMN): LATE_SPRING (leaf-out of the
+ * species at different dates), MID_SUMMER, MID_AUTUMN, LATE_AUTUMN and MID_WINTER.
  * For every species the tint of {@code BlockColors} must equal the curve ({@link FoliageCurve}) at the client's color step,
  * the swatch on the screen must have the curve's chromaticity (median of the central third, ±0.03, as V3; not in
  * winter, when the dull dormant color is near the gray of the shading) and the raw foliage color of the biome must not
@@ -89,7 +90,8 @@ final class LeafSamples {
 	private static final int SAPLING_Z = 90;
 	private static final int PINE_SET_Z = -45;
 	private static final int SCREEN_Z = -60;
-	private static final Object[][] SEQUENCE = {{SubSeason.MID_SPRING, 0}, {SubSeason.MID_SUMMER, 0}, {SubSeason.MID_AUTUMN, 0},
+	private static final Object[][] SEQUENCE = {{SubSeason.MID_SPRING, 8}, {SubSeason.LATE_SPRING, 0}, {SubSeason.MID_SUMMER, 0},
+			{SubSeason.MID_AUTUMN, 0},
 			{SubSeason.MID_AUTUMN, 4}, {SubSeason.MID_AUTUMN, 8}, {SubSeason.LATE_AUTUMN, 0}, {SubSeason.MID_WINTER, 0}};
 
 	private final List<String> results = new ArrayList<>();

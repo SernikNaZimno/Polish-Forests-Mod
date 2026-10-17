@@ -10,7 +10,7 @@ Mod Fabric do Minecrafta 26.3 (Java 25, Loom, Gradle 9.7, JDK z `gradle.properti
 
 - M0, M1 i M2 zamknięte (M2: punkty kontrolne 1 i 2 przyjęte 2026-10-14; decyzje M2-13 … M2-27 domyślne, do potwierdzenia, `docs/00` E).
 - Pionowy wycinek (grąd i bór świeży, plan `docs/04-pionowy-wycinek.md`), część 1 zrobiona: V0, V1, V2 (+V2b), V3, V5, CP-A (styl tekstur i cienki pień przyjęte, `docs/00` G.9).
-- Część 2: **V1b** (wygładzenie tekstur), **V4** (karta norm, pomiar bazowy M2: `docs/wycinek/karta-norm-m2.md`) i **V6** (planer drzew `TreeShapePlan`, ficzer `procedural_tree`, podgląd `docs/wycinek/drzewa/`; świat jeszcze bez nowych drzew, podłącza je V9) zrobione; runda 1 przeglądu V6: faliste powierzchnie podziału pięter zamiast pasm, gałęzie jako krzywe bez kolanek i haków, drzewa wolnostojące (pytanie do CP-B: kompromis N2, `docs/04` „Runda 1 poprawek po przeglądzie V6”); runda 2: iglica świerka jako kolumna igieł. **Następne: V7** (liście, sadzonki, LITE sosny), **V9** (`StandMap`, drzewostan wycinka; usuwa pas słabszego pokrycia koron na granicach chunków, V5-i), **V10** (pomiary i budżety; rozstrzyga pasek kolanka i dziury w narożnikach czapki pnia), potem **CP-B**.
+- Część 2: **V1b** (wygładzenie tekstur), **V4** (karta norm, pomiar bazowy M2: `docs/wycinek/karta-norm-m2.md`) i **V6** (planer drzew `TreeShapePlan`, ficzer `procedural_tree`, podgląd `docs/wycinek/drzewa/`; świat jeszcze bez nowych drzew, podłącza je V9) zrobione; runda 1 przeglądu V6: faliste powierzchnie podziału pięter zamiast pasm, gałęzie jako krzywe bez kolanek i haków, drzewa wolnostojące (pytanie do CP-B: kompromis N2, `docs/04` „Runda 1 poprawek po przeglądzie V6”); runda 2: iglica świerka jako kolumna igieł. **V7** zrobione (liście gatunków z fazą drzewa, krzywe kolorów `season/FoliageCurve` i `SeasonPhase`, sadzonki rosnące w drzewo planera, LITE sosny; `docs/04` „Stan po V7”, zrzuty `docs/wycinek/liscie/`). **Następne: V9** (`StandMap`, drzewostan wycinka; usuwa pas słabszego pokrycia koron na granicach chunków, V5-i), **V10** (pomiary i budżety; rozstrzyga pasek kolanka i dziury w narożnikach czapki pnia), potem **CP-B**.
 - Tor sarny **V8** gotowy na gałęzi `slice-fauna` (model i kalibracja GeckoLib, runda 1 poprawek), **wstrzymany przez użytkownika, nie scalać**.
 
 ## Konwencje
@@ -29,7 +29,7 @@ Mod Fabric do Minecrafta 26.3 (Java 25, Loom, Gradle 9.7, JDK z `gradle.properti
 
 ## Struktura pakietów (`src/main/java/pl/polishforests/`, najważniejsze)
 
-- `PolishForests` – punkt wejścia; `season/` – kalendarz, most do SS; `climate/` + `mixin/` – temperatura z wysokości.
+- `PolishForests` – punkt wejścia; `season/` – kalendarz, most do SS, `SeasonPhase` (krok koloru) i `FoliageCurve` (krzywe gatunków, V7); `climate/` + `mixin/` – temperatura z wysokości.
 - `command/PolishForestsCommands` – `/polishforests find|here|…`; `HabitatTargets` – plany szukania biomów i stref.
 - `worldgen/chunk/PolandChunkGenerator` – wypełnianie chunków; `PolandBiomeSource` (36 biomów), `ChunkHabitats`, `PolandSettings`, `VerticalScale`.
 - `worldgen/landscape/LandscapeModel` – model krajobrazu (czysta Java), `sample` → `ColumnSample`; `RiverNetwork`, `PeakField`, `Noise`.
@@ -39,7 +39,8 @@ Mod Fabric do Minecrafta 26.3 (Java 25, Loom, Gradle 9.7, JDK z `gradle.properti
 - `worldgen/tree/CrownTerritories` – terytoria koron (V5); `TreeShapePlan` – planer drzew (V6: `TreeRequest` → `TreeVoxels`, gatunki w `SpeciesShape`, powierzchnie podziału pięter `split`); `StandMap` (w V9 pełna), `Vacancies`, `AgeClass`, `CrownLayer`.
 - `worldgen/feature/ProceduralTreeFeature` – ficzer `polishforests:procedural_tree` i zapis planu (`write`, liście zastępcze wanilii do V7).
 - `worldgen/norms/` – `ForestNorms` (karta norm §6), `ForestCensus`, `CensusGrid`, `CensusTestPlot` (V4).
-- `block/TrunkBlock` – cienki pień (`radius` 1–7); `TreeTrunk` (12 bloków pni), `ModBlocks`, `RegistrySnapshot`.
+- `block/TrunkBlock` – cienki pień (`radius` 1–7); `TreeTrunk` (12 bloków pni), `TreeFoliage` (liście `SpeciesLeavesBlock` z `phase`, sadzonki `SpeciesSaplingBlock`, doniczki; V7), LITE sosny w `ModBlocks`, `RegistrySnapshot`.
+- `src/client/.../ClientSeasonPhase` – krok koloru klienta, odcień liści gatunków, przebudowa siatek falą (V7).
 - `src/client/.../datagen/` – datagen (biomy, drzewa, modele pni `TrunkTemplates`); wynik w `src/main/generated` (w repo, nie edytować ręcznie).
 - `src/gametest/` – testy w kliencie: m.in. `SliceClientGameTest` (wycinek, karta norm, tablica próbek pni), `RenderProbesClientGameTest`, `PerformanceClientGameTest`.
 - `src/test/` – JUnit, złoty test, podglądy PNG, `SliceSitesTest`, `TrunkModelRayTest`, `CrownTerritoryTest`, `TreeShapePlanTest`.
@@ -67,7 +68,7 @@ python tools/dev/contact_sheet.py <katalog|glob> [...] --out arkusz.png [--cols 
 ```
 
 **Gametesty** (otwierają okno gry): `./gradlew runClientGameTest -Pgametest=<tryb>`, tryby: `all|ui|performance|views|stages|climate|habitats|vegetation|present_day|determinism|ecotones|slice|probes`.
-- Flagi: `-Psites=<lista>|none` (dla `slice`: `samples` = tablica próbek pni, ok. 3,5 min; `trees` = tablica drzew planera z drzewostanami i ekotonem z drzewami zastępczymi, ok. 2 min; `none` = sama karta norm, ok. 2 min → `build/norms/karta-norm.csv`; pełny `slice` ok. 67 min; dla `stages`: `slice`), `-Pscales=realistic|gameplay`, `-Pmodes=natural|present_day`, `-PnoSeasons` (bez SS i GlitchCore), `-Poptimization` (paczka: Sodium, C2ME…; na NVIDIA z shaderami siatek sam włącza Nvidium), `-PnoNvidium` (czysty Sodium), `-PtimingsReportOnly` (progi czasu tylko w raporcie, gdy maszyna zajęta), `-Pprofile`, `-PdebugHabitats`, `-PfindSliceCameras` (tylko świat M2).
+- Flagi: `-Psites=<lista>|none` (dla `slice`: `samples` = tablica próbek pni, ok. 3,5 min; `trees` = tablica drzew planera z drzewostanami i ekotonem z drzewami zastępczymi, ok. 2 min; `leaves` = liście gatunków w porach roku, sadzonki, LITE sosny, tryb Fast, ok. 2,5 min, wyniki `build/leaves/`; `none` = sama karta norm, ok. 2 min → `build/norms/karta-norm.csv`; pełny `slice` ok. 67 min; dla `stages`: `slice`), `-Pscales=realistic|gameplay`, `-Pmodes=natural|present_day`, `-PnoSeasons` (bez SS i GlitchCore), `-Poptimization` (paczka: Sodium, C2ME…; na NVIDIA z shaderami siatek sam włącza Nvidium), `-PnoNvidium` (czysty Sodium), `-PtimingsReportOnly` (progi czasu tylko w raporcie, gdy maszyna zajęta), `-Pprofile`, `-PdebugHabitats`, `-PfindSliceCameras` (tylko świat M2).
 - `probes`: 6 zestawów (bez flag, `-Poptimization -PnoNvidium`, `-Poptimization`, każdy też z `-PnoSeasons`), wynik `build/probes/<renderer>_<ss|noss>.txt`.
 - Determinizm z paczką: `-Pgametest=determinism`, skopiuj `build/determinism/plain.txt` poza `build/determinism`, potem `-Poptimization -PdeterminismReference=<kopia>`.
 
