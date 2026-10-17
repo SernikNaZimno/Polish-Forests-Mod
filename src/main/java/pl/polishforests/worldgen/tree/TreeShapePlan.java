@@ -127,6 +127,8 @@ public final class TreeShapePlan {
 	 * V9, round 1), and the spacing of those branches as a multiple of the species' branch spacing.
 	 */
 	private static final double SKIRT_FROM = 0.2;
+	/** Fewest leaves next to the wood of a side branch that keep it (review of V9, round 1). */
+	private static final int MIN_BRANCH_LEAVES = 4;
 	private static final double SKIRT_SPACING = 1.3;
 	/** Share of the crown length from its base above which the upward shoots are sleeved with leaves (review of V9). */
 	private static final double SLEEVE_FROM = 0.5;
@@ -301,6 +303,9 @@ public final class TreeShapePlan {
 		private byte[] wBark = new byte[512];
 		private int[] wChildren = new int[512];
 		private boolean[] wGone = new boolean[512];
+		// The side branch each node belongs to (its first node; -1 for the trunk, limbs and stubs) and its leaves.
+		private int[] root = new int[256];
+		private int[] branchLeaves = new int[256];
 		// Leaves.
 		private int leaves;
 		private int[] lPos = new int[2048];
@@ -498,6 +503,7 @@ public final class TreeShapePlan {
 			bark();
 			foliage();
 			prune();
+			dropBareBranches();
 			distances();
 			return result();
 		}
@@ -1659,6 +1665,62 @@ public final class TreeShapePlan {
 					wChildren[wParentIndex[i]]--;
 					cell[cellOf(x, y, z)] = 0;
 				}
+			}
+		}
+
+		/**
+		 * Drops the side branches (with their twigs) that carry fewer than {@value #MIN_BRANCH_LEAVES} leaves next to their
+		 * wood (review of V9, round 1): a branch whose cluster the territory, a split surface or the wood of the tree itself
+		 * clipped would stand bare under the foliage of the stand, like an arm of a lamp post. The trunk, the limbs and the
+		 * dry stubs stay.
+		 */
+		private void dropBareBranches() {
+			if (root.length < nodes) {
+				root = new int[Math.max(nodes, root.length * 2)];
+				branchLeaves = new int[root.length];
+			}
+			for (int i = 0; i < nodes; i++) {
+				int kind = nKind[i];
+				branchLeaves[i] = 0;
+				if (kind == TRUNK || kind == LIMB || kind == STUB) {
+					root[i] = -1;
+					continue;
+				}
+				int parent = nParent[i];
+				root[i] = parent < 0 || nKind[parent] == TRUNK || nKind[parent] == LIMB ? i : root[parent];
+			}
+			for (int i = 0; i < woods; i++) {
+				int r = root[wOwner[i]];
+				if (wGone[i] || r < 0) {
+					continue;
+				}
+				int pos = wPos[i];
+				int x = TreeVoxels.unpackX(pos);
+				int y = TreeVoxels.unpackY(pos);
+				int z = TreeVoxels.unpackZ(pos);
+				for (int[] st : TreeVoxels.STEP) {
+					int x2 = x + st[0];
+					int y2 = y + st[1];
+					int z2 = z + st[2];
+					if (inBox(x2, y2, z2)) {
+						int c = cellOf(x2, y2, z2);
+						if (stamp[c] == current && cell[c] == LEAF) {
+							branchLeaves[r]++;
+						}
+					}
+				}
+			}
+			// In the wood order (parents first): a block goes with its branch, or with its parent block when that went.
+			for (int i = 0; i < woods; i++) {
+				int r = root[wOwner[i]];
+				int parent = wParentIndex[i];
+				boolean orphan = parent >= 0 && wGone[parent];
+				if (wGone[i] || !orphan && (r < 0 || branchLeaves[r] >= MIN_BRANCH_LEAVES)) {
+					continue;
+				}
+				wGone[i] = true;
+				int pos = wPos[i];
+				cell[cellOf(TreeVoxels.unpackX(pos), TreeVoxels.unpackY(pos), TreeVoxels.unpackZ(pos))] = 0;
 			}
 		}
 
