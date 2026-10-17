@@ -750,8 +750,9 @@ public final class ForestCensus {
 			m.put(ForestNorms.SNAGS_PER_CHUNK, snags / chunks);
 			m.put(ForestNorms.DEADWOOD_VOLUME, volume / ha);
 			m.put(ForestNorms.COARSE_PIECES, coarse / ha);
-			// Bare wood in the upper half of the stand (review of V9): wood without a leaf among its 26 neighbors, and the part
-			// of it open to the sky.
+			// Bare wood in the upper half of the stand (review of V9; round 2: as CrownCover counts it in a plan): wood with at
+			// most one leaf among its 26 neighbors, and the part of it open to the side (no leaf within 6 blocks in one of the
+			// four horizontal directions, at its height or one above).
 			int bare = 0;
 			int exposed = 0;
 			if (!Double.isNaN(topHeight)) {
@@ -762,15 +763,11 @@ public final class ForestCensus {
 					}
 					for (int dy = Math.max(2, from); dy <= height; dy++) {
 						int i = c * height + dy - 1;
-						if (!wood(i) || leafAround(i)) {
+						if (!wood(i) || leavesAround(i) > 1) {
 							continue;
 						}
 						bare++;
-						boolean covered = false;
-						for (int up = dy + 1; up <= height && !covered; up++) {
-							covered = grid.cellAt(c, up) != CensusGrid.AIR;
-						}
-						exposed += covered ? 0 : 1;
+						exposed += openSide(i) ? 1 : 0;
 					}
 				}
 			}
@@ -861,19 +858,41 @@ public final class ForestCensus {
 			return out;
 		}
 
-		/** Whether a leaf stands among the 26 neighbors of a cell. */
-		private boolean leafAround(int cell) {
+		/** Leaves among the 26 neighbors of a cell (counting stops at 2). */
+		private int leavesAround(int cell) {
 			int x = x(cell);
 			int y = y(cell);
 			int z = z(cell);
-			for (int dx = -1; dx <= 1; dx++) {
+			int count = 0;
+			for (int dx = -1; dx <= 1 && count < 2; dx++) {
 				for (int dy = -1; dy <= 1; dy++) {
 					for (int dz = -1; dz <= 1; dz++) {
 						int n = index(x + dx, y + dy, z + dz);
 						if (n >= 0 && grid.cellAt(n / height, dy(n)) == CensusGrid.LEAVES) {
-							return true;
+							count++;
 						}
 					}
+				}
+			}
+			return count;
+		}
+
+		/** Whether no leaf stands within 6 blocks of a cell in one of the four horizontal directions, at its height or one above. */
+		private boolean openSide(int cell) {
+			int x = x(cell);
+			int y = y(cell);
+			int z = z(cell);
+			int[][] sides = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+			for (int[] d : sides) {
+				boolean open = true;
+				for (int s = 1; s <= 6 && open; s++) {
+					for (int up = 0; up <= 1 && open; up++) {
+						int n = index(x + d[0] * s, y + up, z + d[1] * s);
+						open = n < 0 || grid.cellAt(n / height, dy(n)) != CensusGrid.LEAVES;
+					}
+				}
+				if (open) {
+					return true;
 				}
 			}
 			return false;

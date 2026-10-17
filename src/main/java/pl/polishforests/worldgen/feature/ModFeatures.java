@@ -116,6 +116,7 @@ public final class ModFeatures {
 		Registry.register(BuiltInRegistries.FEATURE_TYPE, PolishForests.id("tree"), FastTreeFeature.CODEC);
 		Registry.register(BuiltInRegistries.FEATURE_TYPE, PolishForests.id("procedural_tree"), ProceduralTreeFeature.CODEC);
 		Registry.register(BuiltInRegistries.PLACEMENT_MODIFIER_TYPE, PolishForests.id("habitat"), HabitatFilter.CODEC);
+		Registry.register(BuiltInRegistries.TRUNK_PLACER_TYPE, PolishForests.id("clump"), ClumpTrunkPlacer.TYPE);
 	}
 
 	/**

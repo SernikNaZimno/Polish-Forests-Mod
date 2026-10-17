@@ -46,6 +46,7 @@ import net.minecraft.world.level.levelgen.placement.PlacementModifier;
 import pl.polishforests.PolishForests;
 import pl.polishforests.block.ModBlocks;
 import pl.polishforests.block.TreeTrunk;
+import pl.polishforests.worldgen.feature.ClumpTrunkPlacer;
 import pl.polishforests.worldgen.feature.FastTreeFeature;
 import pl.polishforests.worldgen.feature.ProceduralTreeFeature;
 import pl.polishforests.worldgen.habitat.Species;
@@ -140,19 +141,22 @@ final class ModTrees {
 				new GiantTrunkPlacer(13, 2, 14), BlockStateProvider.of(Blocks.SPRUCE_LEAVES),
 				new MegaPineFoliagePlacer(ConstantInt.of(0), ConstantInt.of(0), UniformInt.of(13, 17)),
 				new TwoLayersFeatureSize(1, 1, 2), soil).decorators(List.of(new AlterGroundDecorator(podzol))).build());
-		// The placeholders of the slice (review of V9, round 1): thin stems, loose crowns. Hazel: one or two blocks of a thin
-		// gray stem (the bark of the hornbeam) under a mound of leaves; along the forest edge a taller hazel of 3-5 blocks.
-		register(context, key(SLICE.get(Species.HAZEL)), thinShrub(TreeTrunk.HORNBEAM, 1, new StraightTrunkPlacer(2, 1, 0),
-				Blocks.OAK_LEAVES, new BushFoliagePlacer(ConstantInt.of(2), ConstantInt.of(1), 2), soil));
-		register(context, key(HAZEL_MANTLE), thinShrub(TreeTrunk.HORNBEAM, 1, new StraightTrunkPlacer(3, 1, 0),
-				Blocks.OAK_LEAVES, new BlobFoliagePlacer(ConstantInt.of(2), ConstantInt.of(0), 3), soil));
+		// The placeholders of the slice (review of V9, round 1): thin stems, loose crowns. Round 2: the hazel has two or three
+		// stems from one root crown (ClumpTrunkPlacer) and round crowns narrow at their lowest row (the fancy foliage: a
+		// cross, two rows of 5 x 5 without the corners, a cross), so no flat plate of leaves stands on a stem at head height;
+		// 4-5 blocks tall, along the forest edge a taller hazel of 5-6 blocks.
+		register(context, key(SLICE.get(Species.HAZEL)), thinShrub(TreeTrunk.HORNBEAM, 1, new ClumpTrunkPlacer(3, 1, 0, 2),
+				Blocks.OAK_LEAVES, new FancyFoliagePlacer(ConstantInt.of(2), ConstantInt.of(0), 3), soil));
+		register(context, key(HAZEL_MANTLE), thinShrub(TreeTrunk.HORNBEAM, 1, new ClumpTrunkPlacer(4, 1, 0, 2),
+				Blocks.OAK_LEAVES, new FancyFoliagePlacer(ConstantInt.of(2), ConstantInt.of(0), 3), soil));
 		// Juniper: a narrow column of needles on a thin dark stem (the bark of the spruce).
 		register(context, key(SLICE.get(Species.JUNIPER)), thinShrub(TreeTrunk.SPRUCE, 1, new StraightTrunkPlacer(1, 1, 0),
 				Blocks.SPRUCE_LEAVES, new SpruceFoliagePlacer(ConstantInt.of(1), ConstantInt.of(0), ConstantInt.of(2)), soil));
-		// Alder buckthorn: a thin dark gray stem (the bark of the linden) and a loose crown of the jungle leaves, lighter and
-		// coarser than those of the hazel (V9: the dark oak leaves made a black box in the shade).
-		register(context, key(SLICE.get(Species.ALDER_BUCKTHORN)), thinShrub(TreeTrunk.LINDEN, 1, new StraightTrunkPlacer(2, 1, 0),
-				Blocks.JUNGLE_LEAVES, new BushFoliagePlacer(ConstantInt.of(2), ConstantInt.of(1), 2), soil));
+		// Alder buckthorn: thin dark gray stems (the bark of the linden), one or two, and a loose crown of the jungle leaves,
+		// lighter and coarser than those of the hazel (V9: the dark oak leaves made a black box in the shade); round 2: the
+		// fancy foliage of three rows (a cross, 5 x 5 without the corners, a cross) above a short bare stem, no plate.
+		register(context, key(SLICE.get(Species.ALDER_BUCKTHORN)), thinShrub(TreeTrunk.LINDEN, 1, new ClumpTrunkPlacer(3, 1, 0, 1),
+				Blocks.JUNGLE_LEAVES, new FancyFoliagePlacer(ConstantInt.of(2), ConstantInt.of(0), 2), soil));
 		// Rowan: a small tree of 5-6 blocks on a thin smooth gray stem (the bark of the beech), a round crown narrow at its
 		// bottom row (no flat ceiling of leaves at head height).
 		register(context, key(SLICE.get(Species.ROWAN)), thinShrub(TreeTrunk.BEECH, 2, new StraightTrunkPlacer(5, 1, 0),

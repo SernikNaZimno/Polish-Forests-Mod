@@ -29,6 +29,7 @@ import pl.polishforests.season.SubSeason;
 import pl.polishforests.worldgen.feature.ProceduralTreeFeature;
 import pl.polishforests.worldgen.habitat.Species;
 import pl.polishforests.worldgen.tree.AgeClass;
+import pl.polishforests.worldgen.tree.CrownCover;
 import pl.polishforests.worldgen.tree.CrownLayer;
 import pl.polishforests.worldgen.tree.CrownTerritories;
 import pl.polishforests.worldgen.tree.CrownTerritory;
@@ -66,6 +67,9 @@ final class TreeSamples {
 	/** Origin (x) of the ecotone of procedural trees and vanilla substitutes (risk R5), its share of substitutes. */
 	private static final int ECOTONE_X = 272;
 	private static final double SUBSTITUTES = 0.3;
+	/** Most bare crown wood open to the side per tree ({@link CrownCover}): lone trees and the two stands. */
+	private static final double MAX_BARE_LONE = 1.6;
+	private static final double MAX_BARE_STAND = 0.8;
 	/** Origin (x) of the lone trees with obstacles in their crowns. */
 	private static final int OBSTACLE_X = 380;
 
@@ -170,8 +174,22 @@ final class TreeSamples {
 		if (failed > 0) {
 			throw new AssertionError(failed + " lone trees of the board were not placed");
 		}
+		int lone = placed.size();
 		stand(level, placed, false, x0 + PINE_STAND_X, y, z0);
 		stand(level, placed, true, x0 + GRAD_STAND_X, y, z0);
+		// Bare wood of the crowns, open to the side (review of V9, round 2; the limits of StandCrownCoverTest).
+		CrownCover.Totals loneCover = new CrownCover.Totals();
+		CrownCover.Totals standCover = new CrownCover.Totals();
+		for (int i = 0; i < placed.size(); i++) {
+			(i < lone ? loneCover : standCover).add(CrownCover.of(placed.get(i).voxels()));
+		}
+		PolishForests.LOG.info(String.format(Locale.ROOT, "[trees] bare crown wood open to the side: lone trees %.2f per tree, stands %.2f "
+				+ "per tree (%s)", loneCover.exposedPerTree(), standCover.exposedPerTree(), standCover.report(18)));
+		if (loneCover.exposedPerTree() > MAX_BARE_LONE || standCover.exposedPerTree() > MAX_BARE_STAND) {
+			throw new AssertionError(String.format(Locale.ROOT, "[trees] bare crown wood open to the side: lone trees %.2f (limit %.1f), "
+					+ "stands %.2f (limit %.1f) per tree", loneCover.exposedPerTree(), MAX_BARE_LONE, standCover.exposedPerTree(),
+					MAX_BARE_STAND));
+		}
 		String first = check(level, placed, true);
 		PolishForests.LOG.info("[trees] planted: {}", first);
 		PolishForests.LOG.info("[trees] ecotone: {}", ecotone(level, generator, x0 + ECOTONE_X, y, z0));

@@ -134,7 +134,7 @@ public final class ForestNorms {
 	public static final String CONIFERS = "N15.conifers";
 	/** Check, not a norm (review of V9): bare wood in the upper half of the stand per chunk. */
 	public static final String BARE_WOOD = "X.bare_wood_per_chunk";
-	/** Check, not a norm: the part of {@link #BARE_WOOD} open to the sky. */
+	/** Check, not a norm: the part of {@link #BARE_WOOD} open to the side (review of V9, round 2). */
 	public static final String EXPOSED_WOOD = "X.exposed_wood_per_chunk";
 
 	/**
@@ -236,8 +236,9 @@ public final class ForestNorms {
 		METRICS.put(TRANSITION_WIDTH, "width of a transition along the transect, m·k");
 		METRICS.put(TRANSECT_ORDER, "indicators in the order Bsw -> BMsw -> LMsw -> grad (1 yes, 0 no)");
 		METRICS.put(CONIFERS, "conifer share of the trees of a transect stretch, %");
-		METRICS.put(BARE_WOOD, "wood above half the top height with no leaf among its 26 neighbors, blocks per chunk");
-		METRICS.put(EXPOSED_WOOD, "the part of that bare wood open to the sky, blocks per chunk");
+		METRICS.put(BARE_WOOD, "wood above half the top height with at most one leaf among its 26 neighbors, blocks per chunk");
+		METRICS.put(EXPOSED_WOOD, "the part of that bare wood open to the side (no leaf within 6 blocks in one of the four "
+				+ "horizontal directions), blocks per chunk");
 
 		Forest ohn = Forest.OAK_HORNBEAM_NATURAL;
 		Forest ohm = Forest.OAK_HORNBEAM_MANAGED;

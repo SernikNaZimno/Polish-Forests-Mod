@@ -180,6 +180,20 @@ tasks.register('treePreview', JavaExec) {
 	jvmArgs = ['-Djava.awt.headless=true']
 }
 
+// Views of simulated stands of the slice (review of V9, round 2) rendered to build/stand-preview/*.png, without the game:
+// ray-cast eye and above-canopy views with the bare wood of the crowns. -PstandOnly=<part of a stand name> renders one.
+tasks.register('standPreview', JavaExec) {
+	group = 'polishforests'
+	description = 'Renders views of simulated slice stands to build/stand-preview/*.png'
+	classpath = sourceSets.test.runtimeClasspath
+	mainClass = 'pl.polishforests.worldgen.feature.plan.SliceStandPreview'
+	args = [layout.buildDirectory.dir('stand-preview').get().asFile.absolutePath, project.findProperty('standOnly') ?: '']
+	if (project.hasProperty('standFocus')) {
+		args += [project.property('standFocus')]
+	}
+	jvmArgs = ['-Djava.awt.headless=true']
+}
+
 // Unit tests (docs/BRIEF.md, "Komendy"). Test classes are tagged with JUnit 5 tags:
 //   @Tag("slow") - classes that take more than ~20 s (large terrain areas, golden test, continuity sweeps);
 //   @Tag("cost") - SampleCostTest, CrownTerritoryCostTest (wall-clock measurements without assertions) and

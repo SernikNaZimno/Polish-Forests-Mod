@@ -1,8 +1,6 @@
 package pl.polishforests.worldgen.feature.plan;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -12,19 +10,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import pl.polishforests.worldgen.habitat.HabitatBiome;
 import pl.polishforests.worldgen.habitat.Species;
-import pl.polishforests.worldgen.habitat.Zone;
-import pl.polishforests.worldgen.landscape.Noise;
 import pl.polishforests.worldgen.norms.CensusGrid;
 import pl.polishforests.worldgen.norms.ForestCensus;
 import pl.polishforests.worldgen.norms.ForestNorms;
 import pl.polishforests.worldgen.tree.AgeClass;
-import pl.polishforests.worldgen.tree.CrownLayer;
-import pl.polishforests.worldgen.tree.CrownTerritories;
-import pl.polishforests.worldgen.tree.CrownTerritory;
-import pl.polishforests.worldgen.tree.ForestStandMap;
-import pl.polishforests.worldgen.tree.StandMap;
-import pl.polishforests.worldgen.tree.TreeRequest;
-import pl.polishforests.worldgen.tree.TreeShapePlan;
 import pl.polishforests.worldgen.tree.TreeVoxels;
 
 /**
@@ -37,43 +26,14 @@ import pl.polishforests.worldgen.tree.TreeVoxels;
  */
 @EnabledIfSystemProperty(named = "polishforests.slice.calibrate", matches = "true")
 class StandCensusSimulationTest {
-	private static final long SEED = 20260927L;
-	private static final GeneratedTreePalette GENERATED = GeneratedTreePalette.load();
-	private static final float[] RAMP = {1, 1, 1, 1};
 	private static final int CHUNKS = 24;
-	private static final int GROUND = 64;
+	private static final int GROUND = SimulatedStands.GROUND;
 	private static final String[] KEYS = {ForestNorms.TREES_PER_CHUNK, ForestNorms.A1_PER_CHUNK, ForestNorms.A2_PER_CHUNK,
 			ForestNorms.A1_HEIGHT, ForestNorms.A2_HEIGHT, ForestNorms.A2_SHARE, ForestNorms.COMPOSITION + "oak",
 			ForestNorms.COMPOSITION + "linden", ForestNorms.COMPOSITION + "maple_ash", ForestNorms.COMPOSITION + "scots_pine",
 			ForestNorms.COMPOSITION + "birch", ForestNorms.COMPOSITION + "hornbeam", ForestNorms.CANOPY, ForestNorms.GAP_SHARE, ForestNorms.GAP_DIAMETER,
 			ForestNorms.REGENERATION_RATIO, ForestNorms.OAK_REGENERATION, ForestNorms.PINE_REGENERATION_UNDER_CANOPY,
 			ForestNorms.TOP_HEIGHT, ForestNorms.BARE_WOOD, ForestNorms.EXPOSED_WOOD};
-
-	/** A stand map of one stand everywhere, with the canopy gaps of the world's stand map when natural. */
-	private static StandMap stand(AgeClass age, boolean natural) {
-		ForestStandMap world = new ForestStandMap(SEED, 1, 0.85);
-		return new StandMap() {
-			@Override
-			public AgeClass ageClass(int x, int z) {
-				return age;
-			}
-
-			@Override
-			public boolean natural(int x, int z) {
-				return natural;
-			}
-
-			@Override
-			public boolean canopyGap(int x, int z) {
-				return natural && world.rawGapDepth(x, z, age) > 0;
-			}
-
-			@Override
-			public double gapDepth(int x, int z) {
-				return natural ? Math.max(0, world.rawGapDepth(x, z, age)) : 0;
-			}
-		};
-	}
 
 	@Test
 	void reportNormsOfSimulatedStands() {
@@ -90,13 +50,6 @@ class StandCensusSimulationTest {
 	}
 
 	private static void report(HabitatBiome biome, boolean natural, AgeClass age) {
-		// Within the range of the hornbeam (lowlands), as the plots of the slice.
-		int code = pl.polishforests.worldgen.habitat.Habitat.pack(biome, Zone.NONE, pl.polishforests.worldgen.habitat.ForestSiteType.NONE,
-				pl.polishforests.worldgen.habitat.Association.TYPICAL, pl.polishforests.worldgen.habitat.LandCover.forBiome(biome),
-				Species.FLAG_HORNBEAM, pl.polishforests.worldgen.habitat.Soil.forBiome(biome, Zone.NONE));
-		StandMap map = stand(age, natural);
-		CrownTerritories crowns = new CrownTerritories(SEED, map);
-		TreeStandPlan.Stand stand = new TreeStandPlan.Stand(RAMP, new Noise(SEED).derive("feature.tree_stand.gaps"), 1, map, crowns);
 		int side = CHUNKS * 16;
 		CensusGrid grid = new CensusGrid(0, 0, side, side, 48);
 		for (int x = 0; x < side; x++) {
@@ -104,43 +57,7 @@ class StandCensusSimulationTest {
 				grid.setGround(x, z, GROUND, "minecraft:grass_block");
 			}
 		}
-		int[] codes = new int[256];
-		Arrays.fill(codes, code);
-		Map<Long, int[]> written = new HashMap<>();
-		CrownTerritories.Session session = crowns.session();
-		for (int a = 0; a < CHUNKS; a++) {
-			for (int b = 0; b < CHUNKS; b++) {
-				int[] plan = TreeStandPlan.of(codes, new int[256], GENERATED.palette, SEED, a, b, stand);
-				Ecotone.Region r = new Ecotone.Region(a, b, uniformRegion(code), 1);
-				StandVacancies v = new StandVacancies(a, b, plan, r, GENERATED.palette, stand, new StandVacancies.Neighbors() {
-					@Override
-					public int waterDepth(int x, int z) {
-						return 0;
-					}
-
-					@Override
-					public float[] ramp(int chunkX, int chunkZ) {
-						return RAMP;
-					}
-				}, new TreeStandPlan.Candidates(SEED), SEED);
-				for (int p : plan) {
-					int t = TreeStandPlan.tree(p);
-					if (!GENERATED.procedural(t)) {
-						continue;
-					}
-					Species species = GENERATED.species.get(t);
-					int c = TreeStandPlan.column(p);
-					int x = (a << 4) + (c >> 4);
-					int z = (b << 4) + (c & 15);
-					CrownLayer layer = TreeStandPlan.layer(p);
-					CrownTerritory territory = session.territory(x, z, v);
-					AgeClass treeAge = layer == CrownLayer.REGENERATION && map.canopyGap(x, z) ? AgeClass.POLE_STAGE : age;
-					TreeVoxels vox = TreeShapePlan.plan(new TreeRequest(species, layer, treeAge, SEED, x, GROUND + 1, z, territory,
-							session::candidate, map, (gx, gz) -> GROUND));
-					write(grid, written, vox, species);
-				}
-			}
-		}
+		SimulatedStands.plant(biome, natural, age, CHUNKS, (vox, species, layer) -> write(grid, vox, species));
 		ForestCensus.Census census = ForestCensus.of(grid);
 		ForestNorms.Forest forest = biome == HabitatBiome.OAK_HORNBEAM_FOREST
 				? natural ? ForestNorms.Forest.OAK_HORNBEAM_NATURAL : ForestNorms.Forest.OAK_HORNBEAM_MANAGED
@@ -170,14 +87,8 @@ class StandCensusSimulationTest {
 		System.out.printf(Locale.ROOT, "[calibrate] %s %s %s:%s%n", biome.id(), natural ? "natural" : "managed", age, sb);
 	}
 
-	private static int[] uniformRegion(int code) {
-		int[] r = new int[Ecotone.SPAN * Ecotone.SPAN];
-		Arrays.fill(r, code);
-		return r;
-	}
-
 	/** Writes a tree into the grid as {@code ProceduralTreeFeature.write} does (wood on air or leaves, leaves on air). */
-	private static void write(CensusGrid g, Map<Long, int[]> written, TreeVoxels v, Species species) {
+	private static void write(CensusGrid g, TreeVoxels v, Species species) {
 		int n = v.woodCount();
 		boolean[] ok = new boolean[n];
 		int count = 0;
