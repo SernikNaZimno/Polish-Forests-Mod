@@ -569,6 +569,54 @@ class TreeShapePlanTest {
 		return p == 0 || v.parent(p) <= TreeVoxels.UP;
 	}
 
+	/**
+	 * The conifer's top is a column of needles, not a bare leader with one leaf floating above it (review of V6, round 2):
+	 * for 100 canopy spruces per age class, grown alone and in the stand form, the top four leaf rows follow one another
+	 * without an empty row. The pine's open crown is reported; only its leader's top block must have needles beside it.
+	 */
+	@Test
+	void conifersTopsAreColumnsOfNeedles() {
+		StringBuilder report = new StringBuilder("[tree shape] conifer tops, trees with an empty leaf row in the top four of 100"
+				+ " (alone / stand form)\n");
+		int spruceGaps = 0;
+		for (Species s : List.of(Species.SPRUCE, Species.SCOTS_PINE)) {
+			for (AgeClass age : AgeClass.values()) {
+				int[] gaps = new int[2];
+				for (int form = 0; form < 2; form++) {
+					for (int k = 0; k < 100; k++) {
+						TreeVoxels v = TreeShapePlan.plan(new TreeRequest(s, CrownLayer.CANOPY, age, SEED, 263 * k - 13000, 64,
+								-181 * k + 50, null, null, form == 1 ? StandMap.uniform(age, true) : null));
+						Set<Integer> rows = new HashSet<>();
+						int top = Integer.MIN_VALUE;
+						for (int i = 0; i < v.leafCount(); i++) {
+							rows.add(v.leafY(i));
+							top = Math.max(top, v.leafY(i));
+						}
+						boolean gap = false;
+						for (int y = top - 3; y < top; y++) {
+							gap |= !rows.contains(y);
+						}
+						if (gap) {
+							gaps[form]++;
+							if (s == Species.SCOTS_PINE) {
+								// The pine's crown is open (bare rows between tufts are allowed), but its leader never ends
+								// bare: the row below the top leaf has needles.
+								assertTrue(rows.contains(top - 1), "bare leader top of a pine, " + age + ", k " + k);
+							}
+						}
+					}
+				}
+				report.append(String.format(Locale.ROOT, "  %-13s %-10s %3d / %3d%n", s.id(), age.name().toLowerCase(Locale.ROOT),
+						gaps[0], gaps[1]));
+				if (s == Species.SPRUCE) {
+					spruceGaps += gaps[0] + gaps[1];
+				}
+			}
+		}
+		System.out.print(report);
+		assertEquals(0, spruceGaps, "spruces with an empty leaf row in their top");
+	}
+
 	private static int lowestLeaf(TreeVoxels v) {
 		int lowest = Integer.MAX_VALUE;
 		for (int k = 0; k < v.leafCount(); k++) {

@@ -266,6 +266,8 @@ public final class TreeShapePlan {
 		private SpeciesShape.Profile profile;
 		private boolean edge;
 		private boolean oldPine;
+		/** Height from which the spruce's leader is a spire without branches (infinite for other trees). */
+		private double spireFrom;
 		private int gridX0;
 		private int gridZ0;
 
@@ -603,13 +605,10 @@ public final class TreeShapePlan {
 					break;
 				}
 			}
-			if (!forks()) {
-				if (shape.archetype() == SpeciesShape.Archetype.SPRUCE && top > 8) {
-					// The spire: one block wide.
-					leafAt(parent, 0.55, leafV * 1.5);
-				} else {
-					leafAt(parent, leafH * 0.85, leafV * 1.2);
-				}
+			spireFrom = shape.archetype() == SpeciesShape.Archetype.SPRUCE && top > 8 ? top - 2.2 : Double.POSITIVE_INFINITY;
+			if (!forks() && spireFrom == Double.POSITIVE_INFINITY) {
+				// (The spruce's spire gets its needles in foliage(): a cross around each of its blocks.)
+				leafAt(parent, leafH * 0.85, leafV * 1.2);
 			}
 			return parent;
 		}
@@ -707,7 +706,7 @@ public final class TreeShapePlan {
 			double phase = range(0, 2 * Math.PI);
 			double y = size.crownBase();
 			// The spruce's spire: its top two blocks without branches (a tree taller than 8 blocks).
-			double end = spruce && top > 8 ? top - 2.2 : top - 0.6;
+			double end = Math.min(spireFrom, top - 0.6);
 			while (y < end) {
 				int at = trunkNode(Math.floor(y));
 				double ay = ny[at];
@@ -1340,6 +1339,30 @@ public final class TreeShapePlan {
 				v *= range(0.85, 1.2);
 				cy += range(-0.4, 0.4);
 				cluster(cx, cy, cz, h, v, hollow);
+			}
+			boolean pine = shape.archetype() == SpeciesShape.Archetype.PINE;
+			if (spireFrom < top || pine && !forks()) {
+				// The spruce's spire is a narrow column of needles, not a bare stick with a tuft (review of V6, round 2): a
+				// leaf on the four sides of each leader block and of the short shoots of the highest whorl, whose own small
+				// clusters may leave their row bare; the shoot cover below adds the leaf above the top. The pine's leader
+				// gets the same around its top block only (its crown below stays open).
+				int from = pine ? (int) Math.floor(top) : (int) Math.floor(spireFrom) - 1;
+				for (int i = 0; i < woods; i++) {
+					int pos = wPos[i];
+					int y = TreeVoxels.unpackY(pos);
+					if (y < from || wRadius[i] > DIAGONAL_RADIUS || nKind[wOwner[i]] == STUB && nLeafH[wOwner[i]] <= 0) {
+						continue;
+					}
+					int x = TreeVoxels.unpackX(pos);
+					int z = TreeVoxels.unpackZ(pos);
+					for (int side = 0; side < 4; side++) {
+						int lx = x + (side == 0 ? 1 : side == 1 ? -1 : 0);
+						int lz = z + (side == 2 ? 1 : side == 3 ? -1 : 0);
+						if (leafCell(lx, y, lz) && stamp[cellOf(lx, y, lz)] != current) {
+							addLeaf(lx, y, lz);
+						}
+					}
+				}
 			}
 			// Shoots are covered: a leaf right above every thin branch block of the crown, so no bare branch tops the
 			// crown seen from above.
