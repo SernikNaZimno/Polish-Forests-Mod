@@ -973,18 +973,19 @@ PINE_STRIPPED_TOP = dict(PINE_LOG_TOP, colors=['#8e5c36', '#a06c41', '#b27f4e', 
                          bark=False)
 SAPLING_SHAPE = dict(top=4, zigzag=0.2, shoots=3, shoot_gap=3, shoot_len=(2, 4), leaf_from=2, leaf_every=3, tries=64)
 SAPLINGS = [
-    ('scots_pine', dict(SAPLING_SHAPE, leaf='pine', shoots=0, top=2, whorl=3, zigzag=0.0,
-                        colors=['#5e4630', '#7d5f3e', '#3f5a46', '#5c7c63', '#86a48a']),
-     'young Scots pine: a short leader and whorl shoots with gray-green needle tufts'),
-    ('linden', dict(SAPLING_SHAPE, leaf='linden', colors=['#5a4632', '#7a5f42', '#2f5a22', '#477a30', '#6a9c45']),
+    ('scots_pine', dict(SAPLING_SHAPE, leaf='pine', shoots=0, top=3, zigzag=0.0, tuft_at=5, whorl_at=9, rays=13,
+                        ray_len=7, spread=1.15, colors=['#8a5233', '#ad6b3e', '#4f6e45', '#6f915e', '#97b37f']),
+     'young Scots pine: an orange-brown stem under a dense fresh gray-green tuft of long needles and a lower whorl '
+     '(V7 review round 1: no spruce-like cone)'),
+    ('linden', dict(SAPLING_SHAPE, leaf='linden', colors=['#5f4a36', '#806548', '#386428', '#497a33', '#5e8f40']),
      'young small-leaved lime: rounded heart-shaped leaves'),
-    ('hornbeam', dict(SAPLING_SHAPE, leaf='hornbeam', colors=['#5d554a', '#7c7366', '#345f24', '#4d8232', '#74a64a']),
+    ('hornbeam', dict(SAPLING_SHAPE, leaf='hornbeam', leaf_every=2, colors=['#5d554a', '#7c7366', '#3d6a2c', '#4e7f38', '#629446']),
      'young hornbeam: oval pleated leaves on a gray stem'),
-    ('beech', dict(SAPLING_SHAPE, leaf='beech', colors=['#5f5650', '#837a70', '#3b6a1f', '#5a8f2a', '#86b841']),
+    ('beech', dict(SAPLING_SHAPE, leaf='beech', leaf_every=2, colors=['#5f5650', '#837a70', '#3b6a1f', '#5a8f2a', '#86b841']),
      'young beech: oval glossy leaves, a lighter green'),
-    ('ash', dict(SAPLING_SHAPE, leaf='ash', shoots=3, colors=['#6b6a60', '#8e8d80', '#2c5426', '#426f35', '#63904f']),
-     'young ash: pinnate leaves with pairs of leaflets'),
-    ('norway_maple', dict(SAPLING_SHAPE, leaf='maple', colors=['#5a4a36', '#7a6548', '#2e5e20', '#47812f', '#6aa445']),
+    ('ash', dict(SAPLING_SHAPE, leaf='ash', shoots=4, shoot_gap=2, colors=['#5e5d54', '#7f7e72', '#2a5a22', '#3f7a2e', '#5f9a45']),
+     'young ash: pinnate leaves with pairs of leaflets, darker greens than before (V7 review round 1: the first was pale)'),
+    ('norway_maple', dict(SAPLING_SHAPE, leaf='maple', leaf_every=2, colors=['#5f4e3a', '#806a4c', '#386a28', '#4a8034', '#5f9642']),
      'young Norway maple: palmate lobed leaves'),
 ]
 
@@ -1059,18 +1060,20 @@ TEXTURES = [
             params=BEECH_VARIANT, expect=BEECH_EXPECT,
             note='third variant of the beech bark, same edge rows, no branch scar (V1b review round 1)'),
     Texture('scots_pine_leaves', 'leaves', leaves_needles, 'scots_pine_leaves/1', 'scots_pine_needles',
-            tint='#7f9c86', mcmeta=LEAVES_MCMETA,
+            tint='#7c996d', mcmeta=LEAVES_MCMETA,
             params=dict(opacity=0.6, twig=(3, 6), fill=0.6, needle=(2, 4), grays=(102, 126, 144, 161, 178), twig_axes=True,
                         candidates=6, tries=32),
             expect={'min_line': 6},
-            note='Scots pine twig tips with needles, grayscale for a constant needle color (V7); the proposed color '
-                 '#7f9c86 is a gray green (hue 135), lighter and grayer than vanilla spruce; the palette photo gave a '
-                 'yellow olive (#8e9963, hue 72) in warm light'),
+            note='Scots pine twig tips with needles, grayscale for the needle color of the curve (V7); the summer '
+                 'color #7c996d is a gray green (Lab chroma 27, hue 133; V7 review round 1: less teal, more chroma than '
+                 'the first #7f9c86), turning a yellower olive #8a9670 in winter; the palette photo gave a yellow olive '
+                 '(#8e9963, hue 72) in warm light'),
     Texture('broadleaf_leaves', 'leaves', leaves_broadleaf, 'broadleaf_leaves/1', None, tint='foliage',
-            mcmeta=LEAVES_MCMETA, params=dict(opacity=0.63, gray=(100, 204), candidates=6, tries=32),
+            mcmeta=LEAVES_MCMETA, params=dict(opacity=0.63, gray=(107, 211), candidates=6, tries=32),
             expect={'min_line': 7},
             note='broadleaf leaves for the foliage tint and the species color curves (B6, V7); clumps spread over '
-                 'the rows and columns (every one at least 7 of 16 pixels, V3 review round 1)'),
+                 'the rows and columns (every one at least 7 of 16 pixels, V3 review round 1); the gray ramp moved '
+                 'up by 7 (V7 review round 1: mean as vanilla oak_leaves, the same local contrast)'),
     Texture('bilberry', 'plant', plant_bilberry, 'bilberry/2', 'bilberry', tint='grass',
             params=dict(stems=8, top=9, leafiness=0.75, zigzag=0.3, gray=(92, 180)),
             note='bilberry dwarf shrub, cross model, grayscale for the grass tint'),

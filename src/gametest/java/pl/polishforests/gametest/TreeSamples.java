@@ -25,6 +25,7 @@ import net.minecraft.world.level.levelgen.XoroshiroRandomSource;
 import net.minecraft.world.level.levelgen.placement.PlacedFeature;
 import pl.polishforests.block.TrunkBlock;
 import pl.polishforests.PolishForests;
+import pl.polishforests.season.SubSeason;
 import pl.polishforests.worldgen.feature.ProceduralTreeFeature;
 import pl.polishforests.worldgen.habitat.Species;
 import pl.polishforests.worldgen.tree.AgeClass;
@@ -48,11 +49,14 @@ import pl.polishforests.worldgen.tree.TreeVoxels;
  * ticks later (also for six lone trees with stone in a fifth of their leaf positions and in one branch block, which
  * exercise the partial write of {@link ProceduralTreeFeature#write}), and takes screenshots
  * ({@code trees_<renderer>_<view>}): each species row from the side, the stands from outside, inside and above, and the
- * pine's bark change close up.
+ * pine's bark change close up, all in summer (the date is set explicitly, {@link SeasonDates}); then the stands and the
+ * lone oaks again in October, November, January and March ({@code trees_<renderer>_season_<sub-season>_<view>}).
  */
 final class TreeSamples {
 	private static final int[] SIZE = {1280, 720};
-	private static final int NOON = 6000;
+	/** The sub-seasons of the seasonal stand views, after the summer board. */
+	private static final SubSeason[] SEASONS = {SubSeason.MID_AUTUMN, SubSeason.LATE_AUTUMN, SubSeason.MID_WINTER,
+			SubSeason.EARLY_SPRING};
 	/** Distance of the species rows (z) and of the age classes in a row (x). */
 	private static final int ROW = 64;
 	private static final int COLUMN = 18;
@@ -85,7 +89,8 @@ final class TreeSamples {
 			sp.getServer().runCommand("gamerule advance_weather false");
 			sp.getServer().runCommand("gamerule spawn_mobs false");
 			sp.getServer().runCommand("gamerule send_command_feedback false");
-			sp.getServer().runCommand("time set " + NOON);
+			// The board in summer (the middle of MID_SUMMER without SS): the date decides the leaf colors since V7.
+			SeasonDates.set(sp, SubSeason.MID_SUMMER, 4, "trees");
 			sp.getServer().runCommand("weather clear");
 			sp.getServer().runCommand("difficulty peaceful");
 			List<Placed> placed = new ArrayList<>();
@@ -127,6 +132,16 @@ final class TreeSamples {
 			}
 			shot(context, sp, p + "pine_mirror", oldPine.voxels().x() + 0.5, oldPine.voxels().y() + mirror, oldPine.voxels().z() - 3,
 					0, 0, 3);
+			// The stands through the year (V7 review round 1): golden October, November, January and March (a new world).
+			for (SubSeason sub : SEASONS) {
+				int day = sub == SubSeason.MID_AUTUMN ? 4 : 0;
+				SeasonDates.setAndWait(context, sp, sub, day, "trees");
+				String q = p + "season_" + sub.name().toLowerCase(Locale.ROOT) + "_";
+				shot(context, sp, q + "grad_stand_edge", x0 + GRAD_STAND_X + 24, y0 + 3, z0 - 22, 0, -12, 3);
+				shot(context, sp, q + "grad_stand_inside", x0 + GRAD_STAND_X + 8, y0 + 1.6, z0 + 6, 20, -25, 3);
+				shot(context, sp, q + "pine_stand_edge", x0 + PINE_STAND_X + 24, y0 + 3, z0 - 22, 0, -12, 3);
+				shot(context, sp, q + "lone_oak_beech", x0 + COLUMN, y0 + 12, z0 + ROW * species.indexOf(Species.OAK) - 32, 0, -8, 3);
+			}
 		}
 	}
 
@@ -177,7 +192,7 @@ final class TreeSamples {
 					Species sp = species(grad, t.layer(), t.x(), t.z());
 					TreeVoxels v = TreeShapePlan.plan(new TreeRequest(sp, t.layer(), age, level.getSeed(), t.x(), y, t.z(), t,
 							s::candidate, map));
-					ProceduralTreeFeature.write(level, v, sp);
+					ProceduralTreeFeature.write(level, v, sp, t.layer(), age);
 					placed.add(new Placed(v, sp));
 				}
 			}
@@ -235,7 +250,7 @@ final class TreeSamples {
 					} else {
 						Species sp = species(true, t.layer(), t.x(), t.z());
 						ProceduralTreeFeature.write(level, TreeShapePlan.plan(new TreeRequest(sp, t.layer(), AgeClass.OLD_GROWTH,
-								level.getSeed(), t.x(), y, t.z(), t, s::candidate, map)), sp);
+								level.getSeed(), t.x(), y, t.z(), t, s::candidate, map)), sp, t.layer(), AgeClass.OLD_GROWTH);
 					}
 				}
 			}
@@ -310,7 +325,7 @@ final class TreeSamples {
 					break;
 				}
 			}
-			ProceduralTreeFeature.write(level, v, species[k]);
+			ProceduralTreeFeature.write(level, v, species[k], CrownLayer.CANOPY, AgeClass.MATURE);
 			blocked.add(new Placed(v, species[k]));
 		}
 		return stones + " stones; " + check(level, blocked, false);

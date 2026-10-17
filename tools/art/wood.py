@@ -190,11 +190,16 @@ def log_end(tex, palettes):
 
 # ---------------------------------------------------------------------------------------------------- saplings
 # Leaf sprites per species: rows top to bottom; '2' lit edge, '1' leaf, '3' shade, '0' empty.
+# Leaf sprites of the saplings, drawn upward from the petiole at the bottom middle ('1' leaf, '2' lit, '3' shade).
+# V7 review round 1: larger leaves with the shape of the species (about 85-110 opaque pixels per sapling, as vanilla):
+# linden heart-shaped (the notch at the petiole, a pointed apex), Norway maple five-lobed, hornbeam a long oval with
+# pleats (lit and plain rows alternating along the veins), beech a plain oval with a lit edge.
 SAPLING_LEAVES = {
-    'linden': [["0220", "2111", "1113", "0130"], ["020", "211", "113", "030"], ["0220", "2111", "0113", "0030"]],
-    'hornbeam': [["02", "21", "13", "11", "03"], ["020", "211", "131", "113", "030"], ["02", "21", "11", "03"]],
-    'beech': [["021", "211", "113", "030"], ["0220", "2211", "1113", "0300"], ["02", "21", "13"]],
-    'maple': [["20102", "21112", "01113", "00300"], ["2012", "2111", "0130"], ["202", "211", "030"]],
+    'linden': [["00200", "02110", "21111", "11113", "13031"], ["0020", "0211", "2111", "1113", "1301"]],
+    'hornbeam': [["020", "212", "111", "212", "113", "010"], ["02", "21", "11", "21", "13", "01"],
+                 ["020", "212", "111", "213", "010"]],
+    'beech': [["0220", "2211", "2111", "1113", "0130"], ["0220", "2111", "1113", "0130"]],
+    'maple': [["00200", "20102", "21112", "31113", "00300"], ["0200", "2012", "2111", "3113", "0030"]],
 }
 
 
@@ -248,7 +253,7 @@ def sapling(tex, palettes):
             tips.append((cx, cy, side))
             side = -side
         if kind == 'pine':
-            pine_tufts(rng, val, stem, tips, p)
+            pine_fan(rng, val, stem, p)
         elif kind == 'ash':
             ash_leaves(rng, val, tips, p)
         else:
@@ -273,41 +278,31 @@ def sapling(tex, palettes):
     return best(tex, build)
 
 
-def pine_tufts(rng, val, stem, tips, p):
-    """Young Scots pine: a narrow cone of whorls. Every p['whorl'] rows below the leader top a whorl of shoots reaches
-    out on both sides (longer lower down), each shoot pixel with needles above and below it (tones 3 shade on the
-    right, 4 needle, 5 lit on the left and at the shoot ends), a needle tuft around the leader top. The side shoots of
-    the generic sapling (tips) are ignored."""
-    top = stem[-1]
-    xs = {y: x for x, y in stem}
+def pine_fan(rng, val, stem, p):
+    """Young Scots pine (V7 review round 1): a short orange-brown stem (stem tones) ending in a dense fresh tuft of long
+    needles fanning upward and outward from the leader top, and a lower whorl of shorter, more level needle rays. A
+    needle is darker at its base (tone 3), mid along it (4) and lit at the tip when it faces the top-left light (5). The
+    stem above the tuft centre is not drawn (the needles hide it); the side shoots of the generic sapling are ignored."""
+    cx, cy = stem[-1][0], stem[-1][1] + p['tuft_at']
+    for (sx, sy) in stem:
+        if sy < cy:
+            val[sy, sx] = 0
+
     def needle(x, y, tone):
         if 1 <= x <= N - 2 and 0 <= y < N and val[y, x] in (0, 3, 4):
             val[y, x] = max(val[y, x], tone)
-    for dy in range(0, 3):
-        needle(top[0] - 1, top[1] + dy, 5)
-        needle(top[0] + 1, top[1] + dy, 3)
-    needle(top[0], top[1] - 1, 4)
-    k = 0
-    for y in range(top[1] + 3, N - 3, p['whorl']):
-        k += 1
-        x0 = xs.get(y, top[0])
-        reach = min(1 + k, 5)
-        for side in (-1, 1):
-            ln = reach - rng.integers(0, 2)
+
+    def fan(fx, fy, rays, length, spread, lift):
+        for k in range(rays):
+            a = -math.pi / 2 + spread * (2 * k / (rays - 1) - 1) + rng.uniform(-0.1, 0.1)
+            dx, dy = math.cos(a), math.sin(a) * lift
+            ln = length - rng.integers(0, 2) - (1 if abs(dx) > 0.8 else 0)
             for s in range(1, ln + 1):
-                x = x0 + side * s
-                yy = y - (1 if s == ln and ln > 2 else 0)
-                if not 1 <= x <= N - 2:
-                    break
-                val[yy, x] = 2
-                lit = 5 if side < 0 else 3
-                needle(x, yy - 1, lit if s == ln else 4)
-                needle(x, yy + 1, 3 if side > 0 else 4)
-            needle(x0 + side * (ln + 1), y - 1, 5 if side < 0 else 4)
-    for (sx, sy) in stem:
-        if top[1] < sy < N - 3:
-            for s in (-1, 1):
-                needle(sx + s, sy, 4 if s < 0 else 3)
+                x, y = int(round(fx + dx * s)), int(round(fy + dy * s))
+                tone = 3 if s == 1 else (5 if s == ln and dx < 0.35 else 4)
+                needle(x, y, tone)
+    fan(cx, cy, p['rays'], p['ray_len'], p['spread'], 1.0)
+    fan(cx, cy + p['whorl_at'] - p['tuft_at'], p['rays'] - 3, p['ray_len'] - 2, p['spread'] + 0.3, 0.6)
 
 
 def ash_leaves(rng, val, tips, p):

@@ -1,6 +1,7 @@
 package pl.polishforests.block;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -73,8 +74,12 @@ class RegistrySnapshotTest {
 		}
 		// Step V7: + 9 leaf blocks of 112 states (distance 7 × persistent × waterlogged × phase 4), 9 saplings of 2 stages,
 		// 9 flower pots, the 4 pillars of the pine set (3 axes) and the planks.
+		// The leaves of oak, hornbeam and beech have the property marcescent too (V7 review round 1).
 		int foliage = TreeFoliage.values().length;
-		assertEquals(84 * TreeTrunk.values().length + foliage * (112 + 2 + 1) + 4 * 3 + 1, RegistrySnapshot.stateCount());
+		int marcescent = (int) java.util.Arrays.stream(TreeFoliage.values()).filter(TreeFoliage::marcescent).count();
+		assertEquals(3, marcescent);
+		assertEquals(84 * TreeTrunk.values().length + foliage * (112 + 2 + 1) + marcescent * 112 + 4 * 3 + 1,
+				RegistrySnapshot.stateCount());
 	}
 
 	/** Step V7: every species leaf block is a leaves block with the phase 0-3, every sapling has an item and a pot. */
@@ -85,6 +90,9 @@ class RegistrySnapshotTest {
 			assertEquals(f.leavesId(), BuiltInRegistries.BLOCK.getKey(leaves).getPath());
 			assertEquals(java.util.List.of(0, 1, 2, 3), java.util.List.copyOf(SpeciesLeavesBlock.PHASE.getPossibleValues()));
 			assertEquals(0, leaves.defaultBlockState().getValue(SpeciesLeavesBlock.PHASE));
+			assertEquals(f.marcescent(), leaves instanceof MarcescentLeavesBlock, f.leavesId());
+			assertEquals(f.marcescent(), pl.polishforests.season.FoliageCurve.marcescent(f.species()), f.leavesId());
+			assertFalse(MarcescentLeavesBlock.marcescent(leaves.defaultBlockState()), f.leavesId());
 			assertEquals(leaves, ((net.minecraft.world.item.BlockItem) leaves.asItem()).getBlock());
 			SpeciesSaplingBlock sapling = ModBlocks.sapling(f);
 			assertEquals(f.saplingId(), BuiltInRegistries.BLOCK.getKey(sapling).getPath());

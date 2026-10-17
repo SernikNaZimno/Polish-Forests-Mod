@@ -84,6 +84,23 @@ class ProceduralTreeStatesTest {
 		assertSame(Blocks.BIRCH_LOG, TreeTrunk.BIRCH.log());
 	}
 
+	/**
+	 * V7 review round 1: only oak, hornbeam and beech keep dead leaves, on the whole crown of a young tree, the lower half of
+	 * a subcanopy tree and the lowest quarter of a canopy tree; a player's leaves are not marcescent.
+	 */
+	@Test
+	void marcescentLeavesOnYoungTreesAndLowerCrowns() {
+		for (Species s : pl.polishforests.worldgen.tree.SpeciesShape.species()) {
+			boolean dry = s == Species.OAK || s == Species.HORNBEAM || s == Species.BEECH;
+			assertEquals(dry ? 1.0 : 0.0, ProceduralTreeFeature.marcescentShare(s, CrownLayer.CANOPY, AgeClass.POLE_STAGE), s.id());
+			assertEquals(dry ? 0.5 : 0.0, ProceduralTreeFeature.marcescentShare(s, CrownLayer.SUBCANOPY, AgeClass.MATURE), s.id());
+			assertEquals(dry ? 0.25 : 0.0, ProceduralTreeFeature.marcescentShare(s, CrownLayer.CANOPY, AgeClass.OLD_GROWTH), s.id());
+			BlockState leaf = ProceduralTreeFeature.leaves(s, 2);
+			assertEquals(dry, leaf.hasProperty(MarcescentLeavesBlock.MARCESCENT), s.id());
+			assertTrue(!MarcescentLeavesBlock.marcescent(leaf), s.id());
+		}
+	}
+
 	/** Step V7: the phase of a tree is a pure function of the seed and the trunk base, and every phase occurs. */
 	@Test
 	void treePhaseIsDeterministicAndSpread() {

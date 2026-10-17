@@ -410,12 +410,7 @@ public final class RenderProbesClientGameTest implements FabricClientGameTest {
 					"time set " + NOON, "weather clear", "gamemode spectator @a"}) {
 				sp.getServer().runCommand(c);
 			}
-			if (seasons) {
-				sp.getServer().runCommand("season set mid_summer");
-			} else {
-				sp.getServer().runCommand("time set " + ((long) SubSeason.MID_SUMMER.ordinal() * Seasons.DEFAULT_DAYS_PER_SUB_SEASON
-						* FallbackCalendar.TICKS_PER_DAY + NOON));
-			}
+			SeasonDates.set(sp, SubSeason.MID_SUMMER, 0, "probes");
 			int ground = sp.getServer().computeOnServer(s -> s.overworld().getChunk(site.x() >> 4, site.z() >> 4)
 					.getHeight(Heightmap.Types.MOTION_BLOCKING, site.x() & 15, site.z() & 15));
 			sp.getServer().runCommand(String.format(Locale.ROOT, "tp @a %d %d %d 30 30", site.x(), ground + 30, site.z() - 20));

@@ -10,8 +10,9 @@ block polishforests:ash_trunk states=84 default=parent=down,radius=4,waterlogged
   property parent: down up north south west east
   property radius: 1 2 3 4 5 6 7
   property waterlogged: true false
-block polishforests:beech_leaves states=112 default=distance=7,persistent=false,phase=0,waterlogged=false
+block polishforests:beech_leaves states=224 default=distance=7,marcescent=false,persistent=false,phase=0,waterlogged=false
   property distance: 1 2 3 4 5 6 7
+  property marcescent: true false
   property persistent: true false
   property phase: 0 1 2 3
   property waterlogged: true false
@@ -32,8 +33,9 @@ block polishforests:birch_trunk states=84 default=parent=down,radius=4,waterlogg
   property parent: down up north south west east
   property radius: 1 2 3 4 5 6 7
   property waterlogged: true false
-block polishforests:hornbeam_leaves states=112 default=distance=7,persistent=false,phase=0,waterlogged=false
+block polishforests:hornbeam_leaves states=224 default=distance=7,marcescent=false,persistent=false,phase=0,waterlogged=false
   property distance: 1 2 3 4 5 6 7
+  property marcescent: true false
   property persistent: true false
   property phase: 0 1 2 3
   property waterlogged: true false
@@ -65,8 +67,9 @@ block polishforests:norway_maple_trunk states=84 default=parent=down,radius=4,wa
   property parent: down up north south west east
   property radius: 1 2 3 4 5 6 7
   property waterlogged: true false
-block polishforests:oak_leaves states=112 default=distance=7,persistent=false,phase=0,waterlogged=false
+block polishforests:oak_leaves states=224 default=distance=7,marcescent=false,persistent=false,phase=0,waterlogged=false
   property distance: 1 2 3 4 5 6 7
+  property marcescent: true false
   property persistent: true false
   property phase: 0 1 2 3
   property waterlogged: true false

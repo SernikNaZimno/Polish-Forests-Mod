@@ -39,6 +39,7 @@ import net.minecraft.world.level.levelgen.feature.Feature;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import pl.polishforests.PolishForests;
+import pl.polishforests.block.MarcescentLeavesBlock;
 import pl.polishforests.block.ModBlocks;
 import pl.polishforests.block.SpeciesLeavesBlock;
 import pl.polishforests.block.SpeciesSaplingBlock;
@@ -64,14 +65,16 @@ import pl.polishforests.worldgen.tree.TreeVoxels;
  * there also the 3rd color step of MID_SPRING and the 2nd and 3rd of MID_AUTUMN): LATE_SPRING (leaf-out of the
  * species at different dates), MID_SUMMER, MID_AUTUMN, LATE_AUTUMN and MID_WINTER.
  * For every species the tint of {@code BlockColors} must equal the curve ({@link FoliageCurve}) at the client's color step,
- * the swatch on the screen must have the curve's chromaticity (median of the central third, ±0.03, as V3; not in
- * winter, when the dull dormant color is near the gray of the shading) and the raw foliage color of the biome must not
+ * the swatch on the screen must have the curve's chromaticity (median of the central third, ±0.03, as V3; since the V7
+ * review also in winter, with the light twig haze), the tint of the marcescent leaves of oak, hornbeam and beech (a column
+ * behind the swatch) must equal their curve, and the raw foliage color of the biome must not
  * change with the season (no double seasoning by SS). Screenshots: every swatch, the tree rows and the sapling trees.
  * <li><b>Fast</b> graphics mode (MID_SUMMER): the species leaves are leaves ({@code instanceof LeavesBlock}) and their
  * screen is as cut out or as opaque as the vanilla oak screen in the same renderer.
  * <li><b>Saplings</b>: every sapling grows (two {@code advanceTree}) into exactly the tree of its configured feature
- * {@code polishforests:sapling/<species>} (every planned wood block in place); a sapling under a stone block takes no bone
- * meal and does not grow; leaves and saplings are compostable, the pots hold their saplings.
+ * {@code polishforests:sapling/<species>} (every planned wood block in place; the young oak, hornbeam and beech with all
+ * leaves marcescent, the others with none); a sapling under a stone block takes no bone meal and does not grow, a sapling
+ * on farmland grows and leaves dirt; leaves and saplings are compostable, the pots hold their saplings.
  * <li><b>LITE pine</b>: the tags (planks, logs that burn, leaves, saplings) are loaded, an axe strips the log keeping its
  * axis, and the planks recipe exists.
  * </ul>
@@ -145,7 +148,7 @@ final class LeafSamples {
 				}
 				int expected = setSeason(context, sp, sub, day, seasons);
 				String name = sub.name().toLowerCase(Locale.ROOT) + (day == 0 ? "" : "_d" + day);
-				check(context, sp, y0, p, name, expected, sub);
+				check(context, sp, y0, p, name, expected);
 			}
 			fast(context, sp, y0, p, seasons);
 			sp.getServer().runCommand("gamemode creative @a");
@@ -174,10 +177,15 @@ final class LeafSamples {
 					}
 				}
 			}
-			// The four phases side by side behind the swatch (a column of 3 blocks each).
+			// The four phases side by side behind the swatch (a column of 3 blocks each), then the marcescent leaves (phase 1).
 			for (int phase = 0; phase < 4; phase++) {
 				for (int y = 0; y < 3; y++) {
 					level.setBlock(new BlockPos(x0 + phase, y0 + y, SWATCH_Z + 8), leaf.setValue(SpeciesLeavesBlock.PHASE, phase), 2);
+				}
+			}
+			if (all[i].marcescent()) {
+				for (int y = 0; y < 3; y++) {
+					level.setBlock(new BlockPos(x0 + 4, y0 + y, SWATCH_Z + 8), leaf.setValue(MarcescentLeavesBlock.MARCESCENT, true), 2);
 				}
 			}
 			ProceduralTreeFeature f = new ProceduralTreeFeature(all[i].species(), CrownLayer.CANOPY, AgeClass.MATURE);
@@ -222,6 +230,7 @@ final class LeafSamples {
 			TreeVoxels v = tree.plan(level.getSeed(), pos);
 			int missing = 0;
 			int leaves = 0;
+			int dry = 0;
 			for (int k = 0; k < v.woodCount(); k++) {
 				BlockPos w = new BlockPos(v.x() + v.woodX(k), v.y() + v.woodY(k), v.z() + v.woodZ(k));
 				if (level.getBlockState(w) != ProceduralTreeFeature.wood(all[i].species(), v.bark(k), v.radius(k),
@@ -233,15 +242,22 @@ final class LeafSamples {
 				BlockState s = level.getBlockState(new BlockPos(v.x() + v.leafX(k), v.y() + v.leafY(k), v.z() + v.leafZ(k)));
 				if (s.is(ModBlocks.leaves(all[i]))) {
 					leaves++;
+					if (MarcescentLeavesBlock.marcescent(s)) {
+						dry++;
+					}
 				}
 			}
 			int height = 0;
 			for (int k = 0; k < v.woodCount(); k++) {
 				height = Math.max(height, v.woodY(k) + 1);
 			}
-			result("sapling %s grew into %s: %d wood blocks (%d missing), %d of %d leaves, %d blocks tall, phase %d",
-					all[i].species().id(), sapling.feature().identifier(), v.woodCount(), missing, leaves, v.leafCount(), height,
+			result("sapling %s grew into %s: %d wood blocks (%d missing), %d of %d leaves (%d marcescent), %d blocks tall, phase %d",
+					all[i].species().id(), sapling.feature().identifier(), v.woodCount(), missing, leaves, v.leafCount(), dry, height,
 					ProceduralTreeFeature.phase(level.getSeed(), pos.getX(), pos.getZ()));
+			// A young tree (pole stage) of oak, hornbeam or beech keeps all its dead leaves over the winter; others none.
+			if (dry != (all[i].marcescent() ? leaves : 0)) {
+				fail("sapling %s: %d of %d leaves marcescent", all[i].species().id(), dry, leaves);
+			}
 			if (missing > 0 || leaves < v.leafCount() * 0.95 || v.woodCount() == 0) {
 				fail("sapling %s: the grown tree differs from the planner (%d wood missing, %d of %d leaves)", all[i].species().id(),
 						missing, leaves, v.leafCount());
@@ -272,6 +288,20 @@ final class LeafSamples {
 		result("blocked sapling: takes bone meal %s, still a sapling after 3 advances %s", meal, still);
 		if (meal || !still) {
 			fail("a sapling under a stone block took bone meal (%s) or grew (%s)", meal, !still);
+		}
+		// A birch sapling on farmland grows (as vanilla saplings do) and the farmland turns into dirt.
+		SpeciesSaplingBlock birch = ModBlocks.sapling(TreeFoliage.BIRCH);
+		BlockPos farm = new BlockPos(all.length * TREE_STEP + 24, y0, SAPLING_Z);
+		level.setBlock(farm.below(), Blocks.FARMLAND.defaultBlockState(), 3);
+		level.setBlock(farm, birch.defaultBlockState(), 3);
+		boolean farmMeal = birch.isValidBonemealTarget(level, farm, level.getBlockState(farm), BonemealSource.INTERACTION);
+		birch.advanceTree(level, farm, level.getBlockState(farm), level.getRandom());
+		birch.advanceTree(level, farm, level.getBlockState(farm), level.getRandom());
+		boolean farmTree = !level.getBlockState(farm).is(birch) && !level.getBlockState(farm).isAir();
+		boolean dirt = level.getBlockState(farm.below()).is(Blocks.DIRT);
+		result("sapling on farmland: takes bone meal %s, grew %s, farmland turned into dirt %s", farmMeal, farmTree, dirt);
+		if (!farmMeal || !farmTree || !dirt) {
+			fail("a sapling on farmland: bone meal %s, grew %s, dirt %s", farmMeal, farmTree, dirt);
 		}
 		// The LITE pine set: tags, stripping with an axe (the axis kept), the planks recipe.
 		boolean tags = ModBlocks.pinePlanks().defaultBlockState().is(BlockTags.PLANKS)
@@ -338,8 +368,7 @@ final class LeafSamples {
 		return expected;
 	}
 
-	private void check(ClientGameTestContext context, TestSingleplayerContext sp, int y0, String p, String name, int step,
-			SubSeason sub) {
+	private void check(ClientGameTestContext context, TestSingleplayerContext sp, int y0, String p, String name, int step) {
 		TreeFoliage[] all = TreeFoliage.values();
 		StringBuilder line = new StringBuilder();
 		for (int i = 0; i < all.length; i++) {
@@ -353,8 +382,24 @@ final class LeafSamples {
 				int rawColor = mc.level.getBlockTint(pos, ClientSeasonPhase.RAW_FOLIAGE);
 				int curve = 0xFF000000 | FoliageCurve.color(f.species(), step, 1, rawColor);
 				int tint = mc.getBlockColors().getTintSources(s).getFirst().colorInWorld(s, mc.level, pos);
-				return new int[] {rawColor, curve, tint};
+				int dryCurve = curve;
+				int dryTint = tint;
+				if (f.marcescent()) {
+					BlockPos dryPos = new BlockPos(pos.getX() + 2, pos.getY() - 1, SWATCH_Z + 8);
+					BlockState d = mc.level.getBlockState(dryPos);
+					if (!MarcescentLeavesBlock.marcescent(d)) {
+						throw new AssertionError("The client has " + d + " at the marcescent leaves of " + f);
+					}
+					dryCurve = 0xFF000000 | FoliageCurve.color(f.species(), step, 1, true, mc.level.getBlockTint(dryPos,
+							ClientSeasonPhase.RAW_FOLIAGE));
+					dryTint = mc.getBlockColors().getTintSources(d).getFirst().colorInWorld(d, mc.level, dryPos);
+				}
+				return new int[] {rawColor, curve, tint, dryCurve, dryTint};
 			});
+			if (t[3] != t[4]) {
+				fail("%s %s marcescent: BlockColors gives %s, the curve %s", name, f.species().id(), RenderProbesClientGameTest.hex(t[4]),
+						RenderProbesClientGameTest.hex(t[3]));
+			}
 			Path shot = shot(context, sp, p + "swatch_" + f.species().id() + "_" + name, i * SWATCH_STEP + 2.5, y0 + 2.5 - 1.62,
 					SWATCH_Z - 3, 0, 0, SIZE);
 			double[] m = RenderProbesClientGameTest.median(shot);
@@ -370,8 +415,7 @@ final class LeafSamples {
 				fail("%s %s: the raw foliage color changed with the season: %s -> %s", name, f.species().id(),
 						RenderProbesClientGameTest.hex(before), RenderProbesClientGameTest.hex(t[0]));
 			}
-			boolean dormant = sub == SubSeason.MID_WINTER;
-			if (!dormant && d > CHROMA_TOLERANCE) {
+			if (d > CHROMA_TOLERANCE) {
 				fail("%s %s: the swatch %s is not the curve %s (chroma distance %.3f)", name, f.species().id(),
 						RenderProbesClientGameTest.rgb(m), RenderProbesClientGameTest.hex(t[1]), d);
 			}

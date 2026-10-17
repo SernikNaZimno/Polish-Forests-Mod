@@ -14,6 +14,7 @@ import net.minecraft.world.level.ColorResolver;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
 import pl.polishforests.PolishForests;
+import pl.polishforests.block.MarcescentLeavesBlock;
 import pl.polishforests.block.ModBlocks;
 import pl.polishforests.block.SpeciesLeavesBlock;
 import pl.polishforests.block.TreeFoliage;
@@ -45,6 +46,7 @@ public final class ClientSeasonPhase {
 	private static volatile int rebuilds;
 	private static SectionPos waveCenter;
 	private static int ring = -1;
+	/** The last ring of a wave (render distance + 1); rings 0 … {@code rings} are marked, so a wave has rings + 1. */
 	private static int rings;
 	private static int waveTick;
 	private static long[] frames = new long[0];
@@ -103,7 +105,7 @@ public final class ClientSeasonPhase {
 			if (old >= 0) {
 				startWave(mc);
 				PolishForests.LOG.info("[seasons] color step {} -> {} ({}{}), section meshes rebuilt in a wave of {} rings", old, now,
-						subSeason(), ch ? "" : ", foliage colors off", rings);
+						subSeason(), ch ? "" : ", foliage colors off", rings + 1);
 			}
 		}
 		if (ring >= 0) {
@@ -171,18 +173,20 @@ public final class ClientSeasonPhase {
 		@Override
 		public int color(BlockState state) {
 			return 0xFF000000 | FoliageCurve.color(species, curveStep(), state.getValue(SpeciesLeavesBlock.PHASE),
-					FoliageCurve.DEFAULT_FOLIAGE);
+					MarcescentLeavesBlock.marcescent(state), FoliageCurve.DEFAULT_FOLIAGE);
 		}
 
 		@Override
 		public int colorInWorld(BlockState state, BlockAndTintGetter level, BlockPos pos) {
 			int raw = FoliageCurve.conifer(species) ? 0 : level.getBlockTint(pos, RAW_FOLIAGE);
-			return 0xFF000000 | FoliageCurve.color(species, curveStep(), state.getValue(SpeciesLeavesBlock.PHASE), raw);
+			return 0xFF000000 | FoliageCurve.color(species, curveStep(), state.getValue(SpeciesLeavesBlock.PHASE),
+					MarcescentLeavesBlock.marcescent(state), raw);
 		}
 
 		@Override
 		public java.util.Set<Property<?>> relevantProperties() {
-			return java.util.Set.of(SpeciesLeavesBlock.PHASE);
+			return FoliageCurve.marcescent(species) ? java.util.Set.of(SpeciesLeavesBlock.PHASE, MarcescentLeavesBlock.MARCESCENT)
+					: java.util.Set.of(SpeciesLeavesBlock.PHASE);
 		}
 	}
 }

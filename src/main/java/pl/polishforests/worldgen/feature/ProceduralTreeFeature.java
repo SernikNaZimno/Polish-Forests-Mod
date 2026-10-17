@@ -13,15 +13,18 @@ import net.minecraft.tags.BlockTags;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LeavesBlock;
 import net.minecraft.world.level.block.RotatedPillarBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.levelgen.feature.Feature;
+import pl.polishforests.block.MarcescentLeavesBlock;
 import pl.polishforests.block.ModBlocks;
 import pl.polishforests.block.SpeciesLeavesBlock;
 import pl.polishforests.block.TreeFoliage;
 import pl.polishforests.block.TreeTrunk;
+import pl.polishforests.season.FoliageCurve;
 import pl.polishforests.worldgen.landscape.Noise;
 import pl.polishforests.worldgen.feature.config.TreePalette;
 import pl.polishforests.worldgen.habitat.Species;
@@ -53,9 +56,14 @@ import pl.polishforests.worldgen.tree.TreeVoxels;
  *
  * <p><b>Blocks.</b> Radius 1–7 px: the {@code TrunkBlock} of the species with its parent direction (the Scots pine with
  * its lower bark, the two blocks of the transition zone and the "mirror"); a full log ({@link TreeVoxels#FULL}): the
- * vanilla log of {@link TreeTrunk#log()} with the axis of its parent. Leaves (step V7): the species' own leaf block
- * ({@link SpeciesLeavesBlock}) with the planner's distance and the tree's phase ({@link #phase}: 0-3 from the hash of the
- * trunk base, so every leaf of a tree turns at the same time and the trees of a stand at different times; ZW-5).
+ * log of {@link TreeTrunk#log()} (vanilla, or the LITE Scots pine log) with the axis of its parent. Leaves (step V7): the
+ * species' own leaf block ({@link SpeciesLeavesBlock}) with the planner's distance and the tree's phase ({@link #phase}:
+ * 0-3 from the hash of the trunk base, so every leaf of a tree turns at the same time and the trees of a stand at different
+ * times; ZW-5); for oak, hornbeam and beech the marcescent leaves ({@link MarcescentLeavesBlock}) on the lower share
+ * {@link #marcescentShare} of the crown (V7 review round 1).
+ *
+ * <p><b>Ground.</b> The trunk base needs a block below with a sturdy top face, or farmland (as vanilla saplings grow on
+ * it); farmland under a placed tree turns into dirt.
  *
  * @param species a species with a planner shape ({@link SpeciesShape#supported})
  */
@@ -104,20 +112,28 @@ public record ProceduralTreeFeature(Species species, CrownLayer layer, AgeClass 
 		return CODEC;
 	}
 
-	/** Plants the tree with its trunk base at {@code origin}, which must be free with a sturdy block below. */
+	/** Plants the tree with its trunk base at {@code origin}, which must be free with ground below ({@link #ground}). */
 	@Override
 	public boolean place(WorldGenLevel level, ChunkGenerator generator, RandomSource random, BlockPos origin) {
 		BlockPos below = origin.below();
-		if (origin.getY() <= level.getMinY() || !replaceable(level.getBlockState(origin))
-				|| !level.getBlockState(below).isFaceSturdy(level, below, Direction.UP)) {
+		if (origin.getY() <= level.getMinY() || !replaceable(level.getBlockState(origin)) || !ground(level, below)) {
 			return false;
 		}
 		TreeVoxels v = plan(level.getSeed(), origin);
-		if (write(level, v, species) == 0) {
+		if (write(level, v, species, layer, age) == 0) {
 			return false;
+		}
+		if (level.getBlockState(below).is(Blocks.FARMLAND)) {
+			level.setBlock(below, Blocks.DIRT.defaultBlockState(), FLAGS);
 		}
 		ModFeatures.woodyPlaced(origin, species);
 		return true;
+	}
+
+	/** Ground for a trunk base: a block with a sturdy top face, or farmland (a sapling planted on it can grow). */
+	static boolean ground(WorldGenLevel level, BlockPos below) {
+		BlockState s = level.getBlockState(below);
+		return s.isFaceSturdy(level, below, Direction.UP) || s.is(Blocks.FARMLAND);
 	}
 
 	/** The tree of this configuration with its trunk base at {@code origin} (a pure function of the seed and position). */
@@ -126,14 +142,14 @@ public record ProceduralTreeFeature(Species species, CrownLayer layer, AgeClass 
 	}
 
 	/**
-	 * Whether the tree of this configuration fits at {@code origin} (a sapling's room check, step V7): a sturdy block below,
+	 * Whether the tree of this configuration fits at {@code origin} (a sapling's room check, step V7): ground below,
 	 * and every wood block of the planned tree inside the build height on air or a block that trees replace; the block at
 	 * {@code origin} itself counts as free (the sapling is removed before the tree is placed). Leaves need no room, as in
 	 * {@link #write} they are left out where something else stands.
 	 */
 	public boolean fits(WorldGenLevel level, BlockPos origin) {
 		BlockPos below = origin.below();
-		if (origin.getY() <= level.getMinY() || !level.getBlockState(below).isFaceSturdy(level, below, Direction.UP)) {
+		if (origin.getY() <= level.getMinY() || !ground(level, below)) {
 			return false;
 		}
 		TreeVoxels v = plan(level.getSeed(), origin);
@@ -156,11 +172,23 @@ public record ProceduralTreeFeature(Species species, CrownLayer layer, AgeClass 
 	}
 
 	/**
-	 * Writes a planned tree (see the class comment).
+	 * The share of the crown (from its lowest leaf up) whose leaves are marcescent (V7 review round 1): none for a species
+	 * that never keeps dead leaves; for oak, hornbeam and beech the whole crown of a young tree (pole stage, also a tree
+	 * grown from a sapling), the lower half of a subcanopy tree and the lowest quarter of a canopy tree (the juvenile zone).
+	 */
+	public static double marcescentShare(Species species, CrownLayer layer, AgeClass age) {
+		if (!FoliageCurve.marcescent(species)) {
+			return 0.0;
+		}
+		return age == AgeClass.POLE_STAGE ? 1.0 : layer == CrownLayer.SUBCANOPY ? 0.5 : 0.25;
+	}
+
+	/**
+	 * Writes a planned tree (see the class comment) of a crown layer and age class (they pick the marcescent leaves).
 	 *
 	 * @return the number of wood blocks written (0 when even the root could not be)
 	 */
-	public static int write(WorldGenLevel level, TreeVoxels v, Species species) {
+	public static int write(WorldGenLevel level, TreeVoxels v, Species species, CrownLayer layer, AgeClass age) {
 		int n = v.woodCount();
 		boolean[] written = new boolean[n];
 		int count = 0;
@@ -191,13 +219,25 @@ public record ProceduralTreeFeature(Species species, CrownLayer layer, AgeClass 
 		}
 		byte[] distances = all ? null : v.leafDistances(written, placeable);
 		BlockState leaf = leaves(species, phase(level.getSeed(), v.x(), v.z()));
+		int dryBelow = Integer.MIN_VALUE;
+		double share = marcescentShare(species, layer, age);
+		if (share > 0 && leaves > 0) {
+			int lo = Integer.MAX_VALUE;
+			int hi = Integer.MIN_VALUE;
+			for (int i = 0; i < leaves; i++) {
+				lo = Math.min(lo, v.leafY(i));
+				hi = Math.max(hi, v.leafY(i));
+			}
+			dryBelow = lo + (int) Math.ceil(share * (hi - lo + 1));
+		}
+		BlockState dry = dryBelow == Integer.MIN_VALUE ? leaf : leaf.setValue(MarcescentLeavesBlock.MARCESCENT, true);
 		for (int i = 0; i < leaves; i++) {
 			int d = distances == null ? v.leafDistance(i) : distances[i];
 			if (d < 1 || !placeable[i]) {
 				continue;
 			}
 			pos.set(v.x() + v.leafX(i), v.y() + v.leafY(i), v.z() + v.leafZ(i));
-			level.setBlock(pos, leaf.setValue(LeavesBlock.DISTANCE, d), FLAGS);
+			level.setBlock(pos, (v.leafY(i) < dryBelow ? dry : leaf).setValue(LeavesBlock.DISTANCE, d), FLAGS);
 		}
 		return count;
 	}
@@ -223,7 +263,10 @@ public record ProceduralTreeFeature(Species species, CrownLayer layer, AgeClass 
 		return t;
 	}
 
-	/** A wood block: a thin trunk of radius 1–7 px or, for {@link TreeVoxels#FULL}, a vanilla log along the parent axis. */
+	/**
+	 * A wood block: a thin trunk of radius 1–7 px or, for {@link TreeVoxels#FULL}, the log of {@link TreeTrunk#log()} (vanilla,
+	 * or the LITE Scots pine log) along the parent axis.
+	 */
 	public static BlockState wood(Species species, int bark, int radius, Direction parent) {
 		TreeTrunk t = trunk(species, bark);
 		if (radius >= TreeVoxels.FULL) {

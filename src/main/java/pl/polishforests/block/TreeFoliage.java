@@ -60,6 +60,11 @@ public enum TreeFoliage {
 		return this == SCOTS_PINE || this == SPRUCE;
 	}
 
+	/** Keeps dead leaves over the winter on young trees and lower crowns: oak, hornbeam, beech ({@link MarcescentLeavesBlock}). */
+	public boolean marcescent() {
+		return this == OAK || this == HORNBEAM || this == BEECH;
+	}
+
 	public String englishName() {
 		return englishName;
 	}

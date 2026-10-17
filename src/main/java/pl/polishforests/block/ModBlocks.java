@@ -135,7 +135,8 @@ public final class ModBlocks {
 		item("scots_pine_planks", pinePlanks, woodFuel());
 		for (TreeFoliage f : TreeFoliage.values()) {
 			float particles = f.conifer() ? NEEDLE_PARTICLES : LEAF_PARTICLES;
-			SpeciesLeavesBlock leaves = (SpeciesLeavesBlock) block(f.leavesId(), p -> new SpeciesLeavesBlock(f, particles, p),
+			SpeciesLeavesBlock leaves = (SpeciesLeavesBlock) block(f.leavesId(), p -> f.marcescent()
+					? new MarcescentLeavesBlock(f, particles, p) : new SpeciesLeavesBlock(f, particles, p),
 					Blocks.leavesProperties(SoundType.GRASS));
 			item(f.leavesId(), leaves, new Item.Properties().compostable(ContextIntProviders.COMPOSTABLE_LOW));
 			LEAVES.put(f, leaves);

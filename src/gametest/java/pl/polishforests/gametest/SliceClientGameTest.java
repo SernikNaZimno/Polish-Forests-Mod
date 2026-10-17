@@ -37,6 +37,7 @@ import pl.polishforests.PolishForests;
 import pl.polishforests.client.screen.PolandPresetEditor;
 import pl.polishforests.gametest.SliceCameras.Camera;
 import pl.polishforests.season.Seasons;
+import pl.polishforests.season.SubSeason;
 import pl.polishforests.worldgen.chunk.ChunkHabitats;
 import pl.polishforests.worldgen.chunk.PolandChunkGenerator;
 import pl.polishforests.worldgen.feature.BiomeDecoration;
@@ -213,9 +214,8 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 					sp.getServer().runCommand("time set " + NOON);
 					sp.getServer().runCommand("weather clear");
 					sp.getServer().runCommand("gamemode spectator @a");
-					if (seasons) {
-						sp.getServer().runCommand("season set mid_summer");
-					}
+					// The date decides the leaf colors (V7): mid-summer with SS and on the built-in calendar alike.
+					SeasonDates.set(sp, SubSeason.MID_SUMMER, 0, "slice");
 					String world = sp.getServer().computeOnServer(s -> {
 						PolandChunkGenerator gen = generator(s);
 						gen.validate();

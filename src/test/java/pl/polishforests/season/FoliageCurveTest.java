@@ -15,8 +15,9 @@ import pl.polishforests.worldgen.tree.SpeciesShape;
 /**
  * The species foliage curves of step V7 (docs/04-pionowy-wycinek.md, report 08 §9): every slice species has one, the
  * species turn in the order of the Polish calendar (birch and linden first, oak last), the colors of the curves (yellow,
- * yellow then brown, green-yellow), 2-3 color steps per autumn sub-season, the phase shift, the conifers' constant hue
- * with a slight winter darkening and the distinct summer colors of the species.
+ * yellow then brown, green-yellow), 2-3 color steps per autumn sub-season, the phase shift, the conifers' winter colors
+ * (V7 review round 1: the pine yellower, the spruce darker), the distinct summer colors of the species (CIE76 ΔE), the
+ * light twig haze of the leafless crowns and the dry brown of marcescent leaves only.
  */
 class FoliageCurveTest {
 	/** The raw foliage color of the oak-hornbeam forest (src/main/generated). */
@@ -27,6 +28,48 @@ class FoliageCurveTest {
 	private static int dist(int a, int b) {
 		return Math.max(Math.abs(((a >> 16) & 255) - ((b >> 16) & 255)), Math.max(Math.abs(((a >> 8) & 255) - ((b >> 8) & 255)),
 				Math.abs((a & 255) - (b & 255))));
+	}
+
+	/** CIE L*a*b* (D65) of an sRGB color. */
+	static double[] lab(int c) {
+		double[] rgb = new double[3];
+		for (int i = 0; i < 3; i++) {
+			double v = ((c >> (16 - 8 * i)) & 255) / 255.0;
+			rgb[i] = v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+		}
+		double x = (0.4124 * rgb[0] + 0.3576 * rgb[1] + 0.1805 * rgb[2]) / 0.95047;
+		double y = 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2];
+		double z = (0.0193 * rgb[0] + 0.1192 * rgb[1] + 0.9505 * rgb[2]) / 1.08883;
+		double fy = f(y);
+		return new double[] {116 * fy - 16, 500 * (f(x) - fy), 200 * (fy - f(z))};
+	}
+
+	private static double f(double t) {
+		return t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16.0 / 116;
+	}
+
+	/** CIE76 color difference. */
+	static double deltaE(int a, int b) {
+		double[] p = lab(a);
+		double[] q = lab(b);
+		return Math.sqrt((p[0] - q[0]) * (p[0] - q[0]) + (p[1] - q[1]) * (p[1] - q[1]) + (p[2] - q[2]) * (p[2] - q[2]));
+	}
+
+	private static double chroma(int c) {
+		double[] p = lab(c);
+		return Math.hypot(p[1], p[2]);
+	}
+
+	private static double hue(int c) {
+		double[] p = lab(c);
+		return Math.toDegrees(Math.atan2(p[2], p[1]));
+	}
+
+	/** HSV saturation. */
+	private static double saturation(int c) {
+		int max = Math.max(r(c), Math.max(g(c), b(c)));
+		int min = Math.min(r(c), Math.min(g(c), b(c)));
+		return max == 0 ? 0 : (max - min) / (double) max;
 	}
 
 	private static int r(int c) {
@@ -152,29 +195,102 @@ class FoliageCurveTest {
 	}
 
 	@Test
-	void conifersKeepTheirHueAndDarkenInWinter() {
+	void conifersKeepTheirHueAndChangeInWinter() {
 		for (Species s : List.of(Species.SCOTS_PINE, Species.SPRUCE)) {
 			int summer = FoliageCurve.summer(s, GRAD);
 			for (int step = SeasonPhase.firstStep(SubSeason.MID_SPRING); step < SeasonPhase.firstStep(SubSeason.LATE_AUTUMN); step++) {
 				assertEquals(summer, FoliageCurve.color(s, step, 0, GRAD), s + " step " + step);
 			}
-			int winter = FoliageCurve.color(s, SeasonPhase.firstStep(SubSeason.MID_WINTER), 0, GRAD);
-			double k = (double) g(winter) / g(summer);
-			assertTrue(k < 0.97 && k > 0.85, s + " winter darkening " + k);
+		}
+		int mid = SeasonPhase.firstStep(SubSeason.MID_WINTER);
+		// Norway spruce stays dark green and darkens a little.
+		int spruce = FoliageCurve.summer(Species.SPRUCE, GRAD);
+		double k = (double) g(FoliageCurve.color(Species.SPRUCE, mid, 0, GRAD)) / g(spruce);
+		assertTrue(k < 0.97 && k > 0.85, "spruce winter darkening " + k);
+		// Scots pine: a gray-green with some chroma (not a frosted teal), a yellower olive in winter, not darker.
+		int pine = FoliageCurve.summer(Species.SCOTS_PINE, GRAD);
+		int pineWinter = FoliageCurve.color(Species.SCOTS_PINE, mid, 0, GRAD);
+		assertTrue(chroma(pine) >= 24 && chroma(pine) <= 32 && hue(pine) < 140, "pine chroma " + chroma(pine) + " hue " + hue(pine));
+		assertTrue(hue(pineWinter) < hue(pine) - 6, "pine winter hue " + hue(pineWinter) + " vs " + hue(pine));
+		assertTrue(lab(pineWinter)[0] >= lab(pine)[0] - 1, "pine not darker in winter");
+		assertTrue(deltaE(pine, spruce) >= 10, "pine and spruce distinct");
+	}
+
+	/**
+	 * Winter (V7 review round 1): the leafless crowns of every broadleaf species show a light, low-chroma twig haze close
+	 * to the summer lightness; only the marcescent leaves of oak, hornbeam and beech keep a dry, warm brown.
+	 */
+	@Test
+	void leaflessCrownsAreLightAndOnlyMarcescentLeavesStayBrown() {
+		double winter = SeasonPhase.firstStep(SubSeason.MID_WINTER) + 1.5;
+		double march = SeasonPhase.firstStep(SubSeason.EARLY_SPRING) + 1.5;
+		for (Species s : FoliageCurve.species()) {
+			if (FoliageCurve.conifer(s)) {
+				continue;
+			}
+			double summerL = lab(FoliageCurve.summer(s, GRAD))[0];
+			for (double at : new double[] {winter, march}) {
+				int haze = FoliageCurve.colorAt(s, at, GRAD);
+				assertTrue(lab(haze)[0] >= summerL - 8, s.id() + " twig haze too dark: " + Integer.toHexString(haze));
+				assertTrue(chroma(haze) <= 20, s.id() + " twig haze too colorful: " + Integer.toHexString(haze));
+				int dry = FoliageCurve.colorAt(s, at, true, GRAD);
+				if (FoliageCurve.marcescent(s)) {
+					assertTrue(r(dry) - b(dry) >= 40 && r(dry) > g(dry) && lab(dry)[0] >= 52, s.id() + " dry brown " + Integer.toHexString(dry));
+					assertTrue(deltaE(dry, haze) >= 12, s.id() + " dry leaves distinct from the twig haze");
+				} else {
+					assertEquals(haze, dry, s.id() + " has no marcescent leaves");
+				}
+			}
+		}
+		assertTrue(FoliageCurve.marcescent(Species.OAK) && FoliageCurve.marcescent(Species.HORNBEAM) && FoliageCurve.marcescent(Species.BEECH));
+		assertTrue(!FoliageCurve.marcescent(Species.BIRCH) && !FoliageCurve.marcescent(Species.LINDEN)
+				&& !FoliageCurve.marcescent(Species.NORWAY_MAPLE) && !FoliageCurve.marcescent(Species.ASH));
+		// The 3rd decade of April: birch, maple and hornbeam light green, the later species still leafless.
+		double april = SeasonPhase.firstStep(SubSeason.MID_SPRING) + 2.5;
+		for (Species s : List.of(Species.BIRCH, Species.NORWAY_MAPLE, Species.HORNBEAM)) {
+			int c = FoliageCurve.colorAt(s, april, GRAD);
+			assertTrue(g(c) > r(c) + 40 && lab(c)[0] > 70, s.id() + " young leaves " + Integer.toHexString(c));
+		}
+		for (Species s : List.of(Species.LINDEN, Species.ASH, Species.OAK)) {
+			assertTrue(chroma(FoliageCurve.colorAt(s, april, GRAD)) <= 20, s.id() + " still leafless");
 		}
 	}
 
+	/** Birch, linden and maple hold their clear autumn color until the leaves fall instead of fading into khaki. */
 	@Test
-	void summerColorsOfTheSpeciesDiffer() {
+	void goldenAutumnHoldsUntilLeafFall() {
+		int birch = FoliageCurve.colorAt(Species.BIRCH, 23.5, GRAD);              // 3rd decade of X
+		assertTrue(saturation(birch) >= 0.5 && r(birch) > 190, "birch " + Integer.toHexString(birch));
+		int linden = FoliageCurve.colorAt(Species.LINDEN, 23.0, GRAD);
+		assertTrue(saturation(linden) >= 0.5, "linden " + Integer.toHexString(linden));
+		int maple = FoliageCurve.colorAt(Species.NORWAY_MAPLE, 23.8, GRAD);
+		assertTrue(r(maple) > 190 && r(maple) - g(maple) > 40, "maple " + Integer.toHexString(maple));
+		// A birch of phase 3 (one step early) in the 2nd decade of X is still yellow.
+		int early = FoliageCurve.color(Species.BIRCH, SeasonPhase.firstStep(SubSeason.MID_AUTUMN) + 1, 3, GRAD);
+		assertTrue(saturation(early) >= 0.5, "early birch " + Integer.toHexString(early));
+	}
+
+	/**
+	 * Every two species differ in summer by at least ΔE 6 (CIE76) over the oak-hornbeam forest color, the pairs that grow
+	 * together (hornbeam and beech, linden and ash, linden and maple, ash and oak) included (V7 review round 1).
+	 */
+	@Test
+	void summerColorsOfTheSpeciesAreDistinct() {
 		List<Species> all = new ArrayList<>(FoliageCurve.species());
+		StringBuilder report = new StringBuilder();
 		for (int i = 0; i < all.size(); i++) {
 			for (int j = i + 1; j < all.size(); j++) {
 				int a = FoliageCurve.summer(all.get(i), GRAD);
 				int c = FoliageCurve.summer(all.get(j), GRAD);
-				assertTrue(dist(a, c) >= 4, all.get(i).id() + " " + Integer.toHexString(a) + " / " + all.get(j).id() + " "
-						+ Integer.toHexString(c));
+				double d = deltaE(a, c);
+				report.append(String.format(Locale.ROOT, "%s/%s %.1f; ", all.get(i).id(), all.get(j).id(), d));
+				assertTrue(d >= 6, all.get(i).id() + " " + Integer.toHexString(a) + " / " + all.get(j).id() + " "
+						+ Integer.toHexString(c) + ": dE " + d);
 			}
 		}
+		System.out.println("[foliage] summer dE: " + report);
+		// Hornbeam is a dull green, not the most saturated of the species.
+		assertTrue(chroma(FoliageCurve.summer(Species.HORNBEAM, GRAD)) < chroma(FoliageCurve.summer(Species.BEECH, GRAD)) - 8);
 		// Spring: young leaves lighter than the summer leaves.
 		int young = FoliageCurve.colorAt(Species.BIRCH, 5.5, GRAD);
 		assertTrue(g(young) > g(FoliageCurve.summer(Species.BIRCH, GRAD)) + 15);

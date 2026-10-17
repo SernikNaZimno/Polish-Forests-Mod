@@ -24,7 +24,8 @@ import pl.polishforests.worldgen.feature.ProceduralTreeFeature;
  * stage in its open-grown form). Unlike vanilla, the sapling checks the room first ({@link #hasRoom}): it advances to the
  * tree, and accepts bone meal, only when every wood block of the planned tree lands on air or a block that trees replace
  * (the planner's tree is a pure function of the seed and the position, so the check sees exactly the tree that would
- * grow); a sapling under a roof or next to a wall stays a sapling.
+ * grow); a sapling under a roof or next to a wall stays a sapling. When the key points to another feature type (a later
+ * step or a datapack), the sapling behaves as vanilla: it tries to grow and stays a sapling when the feature fails.
  */
 public class SpeciesSaplingBlock extends SaplingBlock {
 	private final TreeFoliage foliage;
@@ -62,9 +63,15 @@ public class SpeciesSaplingBlock extends SaplingBlock {
 		return super.isValidBonemealTarget(level, pos, state, source) && level instanceof ServerLevel server && hasRoom(server, pos);
 	}
 
-	/** Whether the tree of this sapling at {@code pos} has room (the sapling's own block counts as free). */
+	/**
+	 * Whether the tree of this sapling at {@code pos} has room (the sapling's own block counts as free): the planner's check
+	 * for a procedural tree, always true for another feature type (vanilla behavior), false when the key is missing.
+	 */
 	public boolean hasRoom(ServerLevel level, BlockPos pos) {
 		Optional<Feature> f = level.registryAccess().lookupOrThrow(Registries.FEATURE).getOptional(feature);
-		return f.isPresent() && f.get() instanceof ProceduralTreeFeature tree && tree.fits(level, pos);
+		if (f.isEmpty()) {
+			return false;
+		}
+		return !(f.get() instanceof ProceduralTreeFeature tree) || tree.fits(level, pos);
 	}
 }
