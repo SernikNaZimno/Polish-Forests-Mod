@@ -1633,17 +1633,28 @@ public final class TreeShapePlan {
 		private void prune() {
 			double sleeveFrom = size.crownBase() + SLEEVE_FROM * crownLength;
 			for (int i = woods - 1; i > 0; i--) {
-				if (wGone[i] || wChildren[i] > 0 || wRadius[i] > DIAGONAL_RADIUS) {
+				int kind = nKind[wOwner[i]];
+				boolean leaderTop = kind == TRUNK && wRadius[i] <= DIAGONAL_RADIUS + 1;
+				if (wGone[i] || wChildren[i] > 0 || wRadius[i] > DIAGONAL_RADIUS && !leaderTop) {
 					continue;
 				}
-				int kind = nKind[wOwner[i]];
-				if (kind == TRUNK || kind == STUB) {
+				if (kind == STUB) {
 					continue;
 				}
 				int p = wPos[i];
 				int x = TreeVoxels.unpackX(p);
 				int y = TreeVoxels.unpackY(p);
 				int z = TreeVoxels.unpackZ(p);
+				if (kind == TRUNK) {
+					// The top of the leader (review of V9, round 1): a squeezed crown left a bare stem standing above the
+					// foliage; it ends at the last block with an own leaf around it (26 neighbors).
+					if (y > size.crownBase() && !leafAround(x, y, z)) {
+						wGone[i] = true;
+						wChildren[wParentIndex[i]]--;
+						cell[cellOf(x, y, z)] = 0;
+					}
+					continue;
+				}
 				boolean covered = false;
 				// An upward tip of the upper crown needs a leaf at its side (review of V9, round 1): one only above it leaves a
 				// bare stick in the side view.
@@ -1725,6 +1736,23 @@ public final class TreeShapePlan {
 				int pos = wPos[i];
 				cell[cellOf(TreeVoxels.unpackX(pos), TreeVoxels.unpackY(pos), TreeVoxels.unpackZ(pos))] = 0;
 			}
+		}
+
+		/** Whether an own leaf stands among the 26 neighbors of a cell. */
+		private boolean leafAround(int x, int y, int z) {
+			for (int dx = -1; dx <= 1; dx++) {
+				for (int dy = -1; dy <= 1; dy++) {
+					for (int dz = -1; dz <= 1; dz++) {
+						if (inBox(x + dx, y + dy, z + dz)) {
+							int c = cellOf(x + dx, y + dy, z + dz);
+							if (stamp[c] == current && cell[c] == LEAF) {
+								return true;
+							}
+						}
+					}
+				}
+			}
+			return false;
 		}
 
 		/** Leaf distances by a breadth-first search from the wood through the tree's own leaves. */
