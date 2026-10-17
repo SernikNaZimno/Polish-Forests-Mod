@@ -698,7 +698,8 @@ public final class TreeShapePlan {
 				} else {
 					lateral(at, azimuth, 0, Double.NaN);
 				}
-				y = ny[at] + shape.spacing() * SKIRT_SPACING * range(0.8, 1.2);
+				// At least one block up: the trunk node at the next height must be another one.
+				y = Math.max(Math.floor(y) + 1, ny[at] + shape.spacing() * SKIRT_SPACING * range(0.8, 1.2));
 			}
 			skirtEnd = nodes;
 		}
@@ -1523,15 +1524,17 @@ public final class TreeShapePlan {
 			// Upward shoots of the upper crown are sleeved (review of V9, round 1): a leaf on the four sides of every thin block
 			// that grows up from its parent there, so no bare stick of a leader or of an upturned tip stands above the
 			// foliage (the leaf above a shoot covers it only from above; from the side, a pine's upturned tips read as a "U").
+			// The leader of a pine (up to 3 px, the stem of an old pine's umbrella) all through the crown.
 			double sleeveFrom = size.crownBase() + SLEEVE_FROM * crownLength;
 			for (int i = 0; i < woods; i++) {
 				int owner = wOwner[i];
-				if (wRadius[i] > DIAGONAL_RADIUS || wParent[i] != TreeVoxels.DOWN || nKind[owner] == STUB && nLeafH[owner] <= 0) {
+				boolean leader = pine && nKind[owner] == TRUNK && wRadius[i] <= DIAGONAL_RADIUS + 1;
+				if (wRadius[i] > DIAGONAL_RADIUS && !leader || wParent[i] != TreeVoxels.DOWN || nKind[owner] == STUB && nLeafH[owner] <= 0) {
 					continue;
 				}
 				int pos = wPos[i];
 				int y = TreeVoxels.unpackY(pos);
-				if (y < sleeveFrom) {
+				if (y < (leader ? size.crownBase() : sleeveFrom)) {
 					continue;
 				}
 				int x = TreeVoxels.unpackX(pos);

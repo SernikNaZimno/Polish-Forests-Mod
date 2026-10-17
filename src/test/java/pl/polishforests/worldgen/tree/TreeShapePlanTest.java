@@ -326,6 +326,55 @@ class TreeShapePlanTest {
 		assertTrue(checked > 1000, "trees checked: " + checked);
 	}
 
+	/**
+	 * Canopy trees of every species and age class at an edge whose territory reaches open land (review of V9, round 1;
+	 * here every column counts as open) are planned in bounded time, keep their structure (parents, radii, leaf
+	 * distances, the window) and carry leaves low on the open side.
+	 */
+	@Test
+	void edgeTreesNextToOpenLandHaveLowBranches() {
+		TreeShapePlan.Open open = (x, z) -> true;
+		int edges = 0;
+		int low = 0;
+		long t0 = System.nanoTime();
+		StandMap map = new PatchyStandMap(SEED, 0.5);
+		CrownTerritories.Session s = new CrownTerritories(SEED, map).session();
+		{
+			for (int cx = 0; cx < 8; cx++) {
+				for (int cz = 0; cz < 8; cz++) {
+					for (CrownTerritory t : s.chunk(cx, cz, null)) {
+						if (t.layer() != CrownLayer.CANOPY || !t.edge()) {
+							continue;
+						}
+						AgeClass age = map.ageClass(t.x(), t.z());
+						for (Species sp : Species.values()) {
+							if (!SpeciesShape.supported(sp)) {
+								continue;
+							}
+							TreeRequest r = new TreeRequest(sp, CrownLayer.CANOPY, age, SEED, t.x(), 64, t.z(), t, s::candidate, map, null,
+									open);
+							TreeVoxels v = TreeShapePlan.plan(r);
+							String what = r.toString();
+							chain(v, what);
+							leaves(v, what);
+							window(v, what);
+							edges++;
+							for (int i = 0; i < v.leafCount(); i++) {
+								low += v.leafY(i) < 0.4 * v.height() ? 1 : 0;
+							}
+						}
+					}
+				}
+			}
+		}
+		double seconds = (System.nanoTime() - t0) / 1e9;
+		System.out.printf(Locale.ROOT, "[tree plan] %d edge trees next to open land, %d leaves below 0.4 of the height, %.1f s%n", edges,
+				low, seconds);
+		assertTrue(edges > 100, "edge trees: " + edges);
+		assertTrue(low > edges, "low leaves of the edge trees: " + low);
+		assertTrue(seconds < 60, "planning time " + seconds);
+	}
+
 	@Test
 	void layersKeepToTheirSplitSurfaces() {
 		for (TreeRequest r : lone(4)) {
