@@ -132,6 +132,10 @@ public final class ForestNorms {
 	public static final String TRANSECT_ORDER = "N15.order";
 	/** N15 (no norm): share of conifers (Scots pine, spruce, fir, larch) among the trees of a stretch of the transect, %. */
 	public static final String CONIFERS = "N15.conifers";
+	/** Check, not a norm (review of V9): bare wood in the upper half of the stand per chunk. */
+	public static final String BARE_WOOD = "X.bare_wood_per_chunk";
+	/** Check, not a norm: the part of {@link #BARE_WOOD} open to the sky. */
+	public static final String EXPOSED_WOOD = "X.exposed_wood_per_chunk";
 
 	/**
 	 * Species groups of the composition norms: the maples and the ash share one norm in the oak-hornbeam forest
@@ -232,6 +236,8 @@ public final class ForestNorms {
 		METRICS.put(TRANSITION_WIDTH, "width of a transition along the transect, m·k");
 		METRICS.put(TRANSECT_ORDER, "indicators in the order Bsw -> BMsw -> LMsw -> grad (1 yes, 0 no)");
 		METRICS.put(CONIFERS, "conifer share of the trees of a transect stretch, %");
+		METRICS.put(BARE_WOOD, "wood above half the top height with no leaf among its 26 neighbors, blocks per chunk");
+		METRICS.put(EXPOSED_WOOD, "the part of that bare wood open to the sky, blocks per chunk");
 
 		Forest ohn = Forest.OAK_HORNBEAM_NATURAL;
 		Forest ohm = Forest.OAK_HORNBEAM_MANAGED;
@@ -271,6 +277,8 @@ public final class ForestNorms {
 		norm(COMPOSITION + "oak", ohn, 20, 50, composition);
 		norm(COMPOSITION + "linden", ohn, 10, 40, composition);
 		norm(COMPOSITION + "maple_ash", ohn, 5, 15, composition);
+		// Hornbeam, the name-giving tree of Tilio-Carpinetum, in the a1 of a natural stand (review of V9, round 1) [S].
+		norm(COMPOSITION + "hornbeam", ohn, 10, 30, "[S]");
 		norm(COMPOSITION + "spruce", ohn, 0, 30, composition + " (NE)");
 		norm(COMPOSITION + "beech", ohn, 0, 30, composition + " (W)");
 		norm(COMPOSITION + "oak", ohm, 50, 80, composition);

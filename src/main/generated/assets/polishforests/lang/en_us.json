@@ -132,7 +132,7 @@
   "polishforests.options.landscape.today": "Present-Day Poland",
   "polishforests.options.landscape.today.tooltip": "About 30% forest, mostly pine forests on sand, with meadows and fallow fields; the river banks stay overgrown.",
   "polishforests.options.managed_share": "Managed Forests: %s%%",
-  "polishforests.options.note": "Real scale: landscapes at their true size and elevation. Gameplay scale: landscapes about 1.4 km across, lower mountains and a shorter world, which is much easier on your computer. The landscape mode already chooses the biomes, and the managed forest share the stands of the oak-hornbeam and pine forests; alien species will take effect in future versions of the mod.",
+  "polishforests.options.note": "Real scale: landscapes at their true size and elevation. Gameplay scale: landscapes about 1.4 km across, lower mountains and a shorter world, which is much easier on your computer. The landscape mode already chooses the biomes, and the managed forest share already shapes the stands of the oak-hornbeam and pine forests; alien species will take effect in future versions of the mod.",
   "polishforests.options.region_scale": "Region Size: %s%% (about %s km)",
   "polishforests.options.scale": "Scale",
   "polishforests.options.scale.gameplay": "Gameplay-Friendly",

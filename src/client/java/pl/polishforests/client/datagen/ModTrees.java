@@ -1,8 +1,10 @@
 package pl.polishforests.client.datagen;
 
 import java.util.List;
+import java.util.Map;
 import java.util.OptionalInt;
 import net.minecraft.core.Holder;
+import net.minecraft.core.Direction;
 import net.minecraft.core.HolderGetter;
 import net.minecraft.core.Vec3i;
 import net.minecraft.core.registries.Registries;
@@ -42,6 +44,8 @@ import net.minecraft.world.level.levelgen.feature.trunkplacers.TrunkPlacer;
 import net.minecraft.world.level.levelgen.placement.PlacedFeature;
 import net.minecraft.world.level.levelgen.placement.PlacementModifier;
 import pl.polishforests.PolishForests;
+import pl.polishforests.block.ModBlocks;
+import pl.polishforests.block.TreeTrunk;
 import pl.polishforests.worldgen.feature.FastTreeFeature;
 import pl.polishforests.worldgen.feature.ProceduralTreeFeature;
 import pl.polishforests.worldgen.habitat.Species;
@@ -53,7 +57,8 @@ import pl.polishforests.worldgen.tree.SpeciesShape;
  * Tree and shrub features (docs/03-m2-biomy.md §8.4, decision PW-3 of docs/04-pionowy-wycinek.md). The placeholders of
  * M2: vanilla tree shapes with the bark and leaves chosen for each species, {@code polishforests:tree_substitute/<species>}
  * for the 20 tree species, {@code polishforests:shrub/<species>} for the dwarf mountain pine, osier, hazel, juniper and
- * alder buckthorn (step V9), and the variants a palette picks by site: the stunted Scots pine of bog woodlands, dry pine
+ * alder buckthorn (step V9), the thin-stemmed placeholders of the shrubs and the rowan in the forests of the slice
+ * ({@link #SLICE}, review of V9), and the variants a palette picks by site: the stunted Scots pine of bog woodlands, dry pine
  * forests and the wind belt ({@code tree_substitute/scots_pine_low}), the stunted spruce of the timberline
  * ({@code tree_substitute/spruce_stunted}) and the mega spruce of the mountains ({@code tree_substitute/spruce_mega}). Oak
  * and birch mix two vanilla shapes inside their own feature (fancy oak 60% and small oak 40%; birch 80% and tall birch
@@ -85,6 +90,16 @@ final class ModTrees {
 	static final String BIRCH_SMALL = "tree_substitute/birch_small";
 	static final String BIRCH_TALL = "tree_substitute/birch_tall";
 	static final List<String> SHAPES = List.of(OAK_FANCY, OAK_SMALL, BIRCH_SMALL, BIRCH_TALL);
+	/**
+	 * Placeholders of the shrubs and the rowan in the forests of the vertical slice (review of V9, round 1): thin stems of
+	 * the thin trunk block of a species with a similar bark (the census takes the species from the planted feature), so a
+	 * shrub never has a trunk thicker than the pines around it, and loose crowns without a flat underside. The M2 forests
+	 * keep their placeholders.
+	 */
+	static final Map<Species, String> SLICE = Map.of(Species.HAZEL, "shrub/hazel_thin", Species.JUNIPER, "shrub/juniper_thin",
+			Species.ALDER_BUCKTHORN, "shrub/alder_buckthorn_thin", Species.ROWAN, "tree_substitute/rowan_thin");
+	/** The taller hazel of the forest mantle of the slice (shrubs of 3-5 blocks along the forest edge). */
+	static final String HAZEL_MANTLE = "shrub/hazel_mantle_thin";
 
 	private ModTrees() {
 	}
@@ -125,6 +140,23 @@ final class ModTrees {
 				new GiantTrunkPlacer(13, 2, 14), BlockStateProvider.of(Blocks.SPRUCE_LEAVES),
 				new MegaPineFoliagePlacer(ConstantInt.of(0), ConstantInt.of(0), UniformInt.of(13, 17)),
 				new TwoLayersFeatureSize(1, 1, 2), soil).decorators(List.of(new AlterGroundDecorator(podzol))).build());
+		// The placeholders of the slice (review of V9, round 1): thin stems, loose crowns. Hazel: one or two blocks of a thin
+		// gray stem (the bark of the hornbeam) under a mound of leaves; along the forest edge a taller hazel of 3-5 blocks.
+		register(context, key(SLICE.get(Species.HAZEL)), thinShrub(TreeTrunk.HORNBEAM, 1, new StraightTrunkPlacer(2, 1, 0),
+				Blocks.OAK_LEAVES, new BushFoliagePlacer(ConstantInt.of(2), ConstantInt.of(1), 2), soil));
+		register(context, key(HAZEL_MANTLE), thinShrub(TreeTrunk.HORNBEAM, 1, new StraightTrunkPlacer(3, 1, 0),
+				Blocks.OAK_LEAVES, new BlobFoliagePlacer(ConstantInt.of(2), ConstantInt.of(0), 3), soil));
+		// Juniper: a narrow column of needles on a thin dark stem (the bark of the spruce).
+		register(context, key(SLICE.get(Species.JUNIPER)), thinShrub(TreeTrunk.SPRUCE, 1, new StraightTrunkPlacer(1, 1, 0),
+				Blocks.SPRUCE_LEAVES, new SpruceFoliagePlacer(ConstantInt.of(1), ConstantInt.of(0), ConstantInt.of(2)), soil));
+		// Alder buckthorn: a thin dark gray stem (the bark of the linden) and a loose crown of the jungle leaves, lighter and
+		// coarser than those of the hazel (V9: the dark oak leaves made a black box in the shade).
+		register(context, key(SLICE.get(Species.ALDER_BUCKTHORN)), thinShrub(TreeTrunk.LINDEN, 1, new StraightTrunkPlacer(2, 1, 0),
+				Blocks.JUNGLE_LEAVES, new BushFoliagePlacer(ConstantInt.of(2), ConstantInt.of(1), 2), soil));
+		// Rowan: a small tree of 5-6 blocks on a thin smooth gray stem (the bark of the beech), a round crown narrow at its
+		// bottom row (no flat ceiling of leaves at head height).
+		register(context, key(SLICE.get(Species.ROWAN)), thinShrub(TreeTrunk.BEECH, 2, new StraightTrunkPlacer(5, 1, 0),
+				Blocks.OAK_LEAVES, new FancyFoliagePlacer(ConstantInt.of(1), ConstantInt.of(0), 3), soil));
 		register(context, key(OAK_FANCY), fancy(Blocks.OAK_LOG, soil));
 		register(context, key(OAK_SMALL), blob(Blocks.OAK_LOG, Blocks.OAK_LEAVES, 4, 2, 0, 2, soil));
 		register(context, key(BIRCH_SMALL), blob(Blocks.BIRCH_LOG, Blocks.BIRCH_LEAVES, 5, 2, 0, 2, soil));
@@ -227,6 +259,13 @@ final class ModTrees {
 					new BushFoliagePlacer(ConstantInt.of(2), ConstantInt.of(1), 2), soil);
 			default -> throw new IllegalArgumentException("not a shrub: " + species);
 		};
+	}
+
+	/** A placeholder of the slice on a thin stem: the thin trunk block of radius {@code radius} px, growing up. */
+	private static TreeFeature thinShrub(TreeTrunk bark, int radius, TrunkPlacer trunk, Block leaves, FoliagePlacer foliage,
+			Holder<BlockStateProvider> soil) {
+		return new TreeFeature.Builder(BlockStateProvider.of(ModBlocks.trunk(bark).state(radius, Direction.DOWN)), trunk,
+				BlockStateProvider.of(leaves), foliage, new TwoLayersFeatureSize(0, 0, 0), soil).ignoreVines().build();
 	}
 
 	private static TreeFeature bush(Block log, TrunkPlacer trunk, Block leaves, FoliagePlacer foliage,

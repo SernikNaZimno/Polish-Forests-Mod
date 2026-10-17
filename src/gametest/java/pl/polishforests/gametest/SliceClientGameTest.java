@@ -138,6 +138,9 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 	private static final int EYE_RADIUS = 8;
 	private static final int CANOPY_RADIUS = 16;
 	private static final int BARK_RADIUS = 24;
+	/** Height above the ground of the views of the sample plots over the canopy and over a few hectares, blocks. */
+	private static final int ABOVE_HEIGHT = 48;
+	private static final int OVERVIEW_HEIGHT = 95;
 	/** Yaws tried for the eye-height view of a site (30° = south-south-west first). */
 	private static final double[] SITE_YAWS = {30, 75, 120, 165, 210, 255, 300, 345};
 
@@ -279,7 +282,10 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 							}
 						}
 						for (Camera c : list) {
-							if (presentDay && c.kind() == SliceCameras.Kind.BARK) {
+							// The present-day mode only along the transects (review of V9, round 1): in the forests of the slice
+							// it looks as the natural mode does (0-2% of the pixels differ), so only the transect, whose fields
+							// and meadows differ, is shot in both modes.
+							if (presentDay && (c.kind() == SliceCameras.Kind.BARK || !p.transect())) {
 								continue;
 							}
 							last = shot(context, sp, c, prefix + "_" + c.name(), last);
@@ -298,6 +304,14 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 							norms.addAll(sp.getServer().computeOnServer(s -> NormsCensus.plot(s.overworld(), ctx, forest, stand.age(), plot.x(),
 									plot.z(), records, census)));
 							PolishForests.LOG.info("[slice] {} {} norms card, {}", scale, mode, census);
+							// Views of the plots (review of V9, round 1), in the natural mode only (the slice forests look the same
+							// in both modes): chosen in each run from the world, as the plots are.
+							if (screenshots && !presentDay) {
+								List<Camera> views = sp.getServer().computeOnServer(s -> plotCameras(s, plot));
+								for (Camera c : views) {
+									last = shot(context, sp, c, "slice_" + scale + "_" + mode + "_" + plot.name() + "_" + c.name(), last);
+								}
+							}
 						}
 					}
 					String provider = sp.getServer().computeOnServer(s -> Seasons.provider().name() + " "
@@ -419,6 +433,49 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 		PolishForests.LOG.info(String.format(Locale.ROOT, "[slice] %s %s: (%d, %d) -> (%d, %d), %d blocks:%s %d other",
 				p.realistic() ? "realistic" : "gameplay", p.name(), p.x(), p.z(), p.x2(), p.z2(), n + 1, report, other));
 		return new TransectCheck(marks, n, ranks);
+	}
+
+	// ------------------------------------------------------------------ the views of the sample plots
+
+	/**
+	 * The views of a sample plot of the norms card (review of V9, round 1: the V0 cameras were chosen for the M2 forest):
+	 * from eye height at the center ({@code eye}), from {@value #ABOVE_HEIGHT} blocks above the ground 50 blocks back,
+	 * looking at the center over the canopy ({@code above}); in a natural stand also from eye height in its deepest canopy
+	 * gap ({@code gap_eye}) and from {@value #OVERVIEW_HEIGHT} blocks above 110 blocks back, so the spread of the gaps over
+	 * a few hectares shows ({@code overview}).
+	 */
+	private static List<Camera> plotCameras(MinecraftServer server, SlicePlots.Plot plot) {
+		Ground g = new Ground(server);
+		List<Camera> list = new ArrayList<>();
+		list.add(eyeCamera(g, "eye", plot.x(), plot.z(), SITE_YAWS, EYE_RADIUS));
+		double yaw = Math.toRadians(30);
+		list.add(aerial(g, "above", (int) Math.round(plot.x() + 50 * Math.sin(yaw)), (int) Math.round(plot.z() - 50 * Math.cos(yaw)),
+				ABOVE_HEIGHT, plot.x(), plot.z()));
+		if (plot.natural()) {
+			ForestStandMap map = stands(server);
+			int bx = plot.x();
+			int bz = plot.z();
+			double best = 0;
+			for (int dx = -48; dx <= 48; dx += 2) {
+				for (int dz = -48; dz <= 48; dz += 2) {
+					double d = map.gapDepth(plot.x() + dx, plot.z() + dz);
+					if (d > best) {
+						best = d;
+						bx = plot.x() + dx;
+						bz = plot.z() + dz;
+					}
+				}
+			}
+			if (best > 0) {
+				list.add(eyeCamera(g, "gap_eye", bx, bz, SITE_YAWS, 3));
+			}
+			list.add(aerial(g, "overview", (int) Math.round(plot.x() + 110 * Math.sin(yaw)),
+					(int) Math.round(plot.z() - 110 * Math.cos(yaw)), OVERVIEW_HEIGHT, plot.x(), plot.z()));
+		}
+		for (Camera c : list) {
+			PolishForests.LOG.info("[slice] {}: chosen {}", plot.name(), c);
+		}
+		return list;
 	}
 
 	// ------------------------------------------------------------------ choosing the cameras (-PfindSliceCameras)

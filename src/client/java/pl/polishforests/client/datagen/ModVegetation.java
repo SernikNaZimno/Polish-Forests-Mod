@@ -235,12 +235,13 @@ final class ModVegetation {
 				.alt(Species.SPRUCE, 200, Species.LINDEN)
 				.gapRegeneration().add(Species.OAK, 250).add(Species.SCOTS_PINE, 200).add(Species.BIRCH, 250).add(Species.HAZEL, 300)
 				.chances(new float[] {0.88F, 0.70F, 0.60F}, new float[] {0.92F, 0.92F, 0.92F}, 0.8F);
-		// Oak-hornbeam forest: natural stands two-storied (a1 oak, linden, maple and ash, beech in the west and spruce in the
+		// Oak-hornbeam forest: natural stands two-storied (a1 oak, linden, hornbeam (review of V9, round 1: the name-giving
+		// tree of Tilio-Carpinetum, about a fifth of the a1 trunks), maple and ash, beech in the west and spruce in the
 		// north-east by their range flags; a2 hornbeam with linden), managed ones dominated by oak; regeneration of hornbeam
 		// and linden, hazel denser in the gaps; no oak in the regeneration (N6).
-		t.slice(HabitatCondition.biomes(OAK_HORNBEAM_FOREST), 12).add(Species.OAK, 350).add(Species.LINDEN, 250)
+		t.slice(HabitatCondition.biomes(OAK_HORNBEAM_FOREST), 12).add(Species.OAK, 300).add(Species.LINDEN, 180)
 				.add(Species.NORWAY_MAPLE, 60).add(Species.ASH, 60).add(Species.BEECH, 150).add(Species.SPRUCE, 130)
-				.alt(Species.HORNBEAM, 50, Species.LINDEN)
+				.alt(Species.HORNBEAM, 160, Species.LINDEN)
 				.managed().add(Species.OAK, 650).add(Species.LINDEN, 120).add(Species.NORWAY_MAPLE, 40).add(Species.ASH, 40)
 				.add(Species.BEECH, 80).add(Species.SPRUCE, 70)
 				.subcanopy().alt(Species.HORNBEAM, 700, Species.LINDEN).add(Species.LINDEN, 300)
@@ -355,7 +356,7 @@ final class ModVegetation {
 
 		/** The feature path of a species in this rule: the procedural tree in a slice rule, else the placeholder. */
 		private String path(Species s) {
-			return slice && SpeciesShape.supported(s) ? s.path() : s.substitutePath();
+			return !slice ? s.substitutePath() : SpeciesShape.supported(s) ? s.path() : ModTrees.SLICE.getOrDefault(s, s.substitutePath());
 		}
 
 		Trees add(Species s, int weight) {
@@ -536,10 +537,16 @@ final class ModVegetation {
 		// forests; round 1 of the S8b review), gray and eared willow (osier) by the alder carrs and willow-poplar forests,
 		// with hazel by the ash-alder and gray alder forests; at the edge of the bog woodland towards the raised bog stunted
 		// pines and birches, thinning out into the bog (round 1 of the S8b review: the willows belong to the lagg).
-		l.edge(biomes(OAK_HORNBEAM_FOREST, ELM_ASH_FOREST, MIXED_FOREST, LOWLAND_BEECH_FOREST, UPLAND_FIR_FOREST,
-				MONTANE_BEECH_FOREST), Ecotone.Edge.MANTLE, 0.06F, 1, l.feature(Species.HAZEL.path(), 1));
-		l.edge(biomes(FRESH_PINE_FOREST, MIXED_PINE_FOREST), Ecotone.Edge.MANTLE, 0.05F, 1, l.feature(Species.JUNIPER.path(), 3),
-				l.feature(Species.HAZEL.path(), 1));
+		// The forests of the vertical slice (review of V9, round 1): a denser mantle of thin-stemmed hazels, taller ones
+		// of 3-5 blocks along the edge, so the forest edge seen from a field is a wall of shrubs, not a colonnade of bare
+		// boles; juniper and alder buckthorn by the pine forests.
+		l.edge(biomes(OAK_HORNBEAM_FOREST, MIXED_FOREST), Ecotone.Edge.MANTLE, 0.35F, 1, l.feature(ModTrees.HAZEL_MANTLE, 2),
+				l.feature(ModTrees.SLICE.get(Species.HAZEL), 1));
+		l.edge(biomes(FRESH_PINE_FOREST, MIXED_PINE_FOREST), Ecotone.Edge.MANTLE, 0.3F, 1,
+				l.feature(ModTrees.SLICE.get(Species.JUNIPER), 2), l.feature(ModTrees.HAZEL_MANTLE, 1),
+				l.feature(ModTrees.SLICE.get(Species.ALDER_BUCKTHORN), 1));
+		l.edge(biomes(ELM_ASH_FOREST, LOWLAND_BEECH_FOREST, UPLAND_FIR_FOREST, MONTANE_BEECH_FOREST), Ecotone.Edge.MANTLE, 0.06F,
+				1, l.feature(Species.HAZEL.path(), 1));
 		l.edge(biomes(DRY_PINE_FOREST, COASTAL_PINE_FOREST, MOIST_PINE_FOREST, MONTANE_SPRUCE_FOREST), Ecotone.Edge.MANTLE, 0.05F,
 				1, l.feature(Species.JUNIPER.path(), 1));
 		l.edge(biomes(ASH_ALDER_FOREST, GRAY_ALDER_FOREST), Ecotone.Edge.MANTLE, 0.06F, 1, l.feature(Species.OSIER.path(), 3),
@@ -552,11 +559,13 @@ final class ModVegetation {
 		l.land(biomes(HEATH), 0.01F, 3, l.feature(Species.JUNIPER.path(), 1));
 		l.land(biomes(DRY_PINE_FOREST), perChunk(1), 1, l.feature(Species.JUNIPER.path(), 1));
 		// Fresh pine forest (step V9, N7: shrub layer 5-30%): juniper, alder buckthorn and rowan.
-		l.land(biomes(FRESH_PINE_FOREST), perChunk(5), 1, l.feature(Species.JUNIPER.path(), 2),
-				l.feature(Species.ALDER_BUCKTHORN.path(), 2), l.feature(Species.ROWAN.substitutePath(), 1));
-		l.land(biomes(MIXED_PINE_FOREST, MIXED_FOREST), perChunk(1.5), 1, l.feature(Species.HAZEL.path(), 2),
-				l.feature(Species.JUNIPER.path(), 1));
-		l.land(biomes(OAK_HORNBEAM_FOREST, ELM_ASH_FOREST), perChunk(3), 1, l.feature(Species.HAZEL.path(), 1));
+		// The slice (review of V9, round 1): the thin-stemmed placeholders.
+		l.land(biomes(FRESH_PINE_FOREST), perChunk(5), 1, l.feature(ModTrees.SLICE.get(Species.JUNIPER), 2),
+				l.feature(ModTrees.SLICE.get(Species.ALDER_BUCKTHORN), 2), l.feature(ModTrees.SLICE.get(Species.ROWAN), 1));
+		l.land(biomes(MIXED_PINE_FOREST, MIXED_FOREST), perChunk(1.5), 1, l.feature(ModTrees.SLICE.get(Species.HAZEL), 2),
+				l.feature(ModTrees.SLICE.get(Species.JUNIPER), 1));
+		l.land(biomes(OAK_HORNBEAM_FOREST), perChunk(3), 1, l.feature(ModTrees.SLICE.get(Species.HAZEL), 1));
+		l.land(biomes(ELM_ASH_FOREST), perChunk(3), 1, l.feature(Species.HAZEL.path(), 1));
 		l.land(biomes(ASH_ALDER_FOREST, UPLAND_FIR_FOREST), perChunk(1), 1, l.feature(Species.HAZEL.path(), 1));
 		// Alder carr: no hazel on waterlogged peat; gray willow (Salix cinerea) as an osier.
 		l.land(biomes(ALDER_CARR), perChunk(1.5), 1, l.feature(Species.OSIER.path(), 1));

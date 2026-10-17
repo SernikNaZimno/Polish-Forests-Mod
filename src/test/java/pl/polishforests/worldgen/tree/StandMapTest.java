@@ -16,9 +16,9 @@ import org.junit.jupiter.api.Test;
 /**
  * The stand map of the world ({@link ForestStandMap}, step V9 of docs/04-pionowy-wycinek.md §5): shares of the age
  * classes and of the natural stands in 10⁴ stands within ±3 percentage points, stand sizes of 2–30 ha·k² in both scales,
- * the borders meander and mix in a ramp (no straight line), canopy gaps of the planned size (about 9% of the area before
- * the crowns of their edge lean in; the census measures 3–8%, N5) only in natural stands, and the map is a pure function
- * of the seed and the position.
+ * the borders meander and mix in a ramp (no straight line), canopy gaps only in natural stands, fewer in the pole stage,
+ * of skewed sizes and without a lattice (review of V9, round 1; the census of the gaps, N5, is reported by
+ * {@code StandCensusSimulationTest}), and the map is a pure function of the seed and the position.
  */
 class StandMapTest {
 	private static final long SEED = 20260927L;
@@ -114,80 +114,98 @@ class StandMapTest {
 	@Test
 	void canopyGapsOnlyInNaturalStandsOfThePlannedSize() {
 		ForestStandMap map = new ForestStandMap(SEED, 1, 0.85);
-		// Gap grid alone over 2000 × 2000 blocks.
-		long inGap = 0;
-		long all = 0;
-		for (int x = 0; x < 2000; x++) {
-			for (int z = 0; z < 2000; z++) {
-				all++;
-				inGap += map.rawGapDepth(x, z) > 0 ? 1 : 0;
-			}
-		}
-		double share = (double) inGap / all;
-		// Equivalent diameters of the gaps of the cells in the area (whole gaps only).
-		List<Double> diameters = new ArrayList<>();
-		for (int i = 1; i < 16; i++) {
-			for (int j = 1; j < 16; j++) {
-				int area = gapArea(map, i, j);
-				if (area > 0) {
-					diameters.add(2 * Math.sqrt(area / Math.PI));
+		int side = 2000;
+		double[] shares = new double[3];
+		for (AgeClass age : AgeClass.values()) {
+			long inGap = 0;
+			for (int x = 0; x < side; x++) {
+				for (int z = 0; z < side; z++) {
+					inGap += map.rawGapDepth(x, z, age) > 0 ? 1 : 0;
 				}
 			}
+			shares[age.ordinal()] = (double) inGap / side / side;
 		}
-		double mean = diameters.stream().mapToDouble(Double::doubleValue).average().orElseThrow();
-		double min = diameters.stream().mapToDouble(Double::doubleValue).min().orElseThrow();
-		double max = diameters.stream().mapToDouble(Double::doubleValue).max().orElseThrow();
-		System.out.printf(Locale.ROOT, "[stands] gaps: %.2f%% of the area, %d gaps, diameter mean %.1f, min %.1f, max %.1f blocks; one per %.2f ha%n",
-				100 * share, diameters.size(), mean, min, max, ForestStandMap.GAP_SPACING * ForestStandMap.GAP_SPACING / 1e4 / ForestStandMap.GAP_CHANCE);
-		// The planned gaps; the crowns of their edge lean in, so the census measures 18-45 blocks and 3-8% (N5).
-		assertTrue(share >= 0.06 && share <= 0.12, "planned gap share 6-12%: " + share);
-		assertTrue(min >= ForestStandMap.GAP_MIN - 2 && max <= ForestStandMap.GAP_MAX + 3, "planned gap diameters");
+		// Gaps of the old growth: connected areas, their equivalent diameters.
+		boolean[] gap = new boolean[side * side];
+		for (int x = 0; x < side; x++) {
+			for (int z = 0; z < side; z++) {
+				gap[x * side + z] = map.rawGapDepth(x, z, AgeClass.OLD_GROWTH) > 0;
+			}
+		}
+		List<Double> diameters = new ArrayList<>();
+		boolean[] seen = new boolean[gap.length];
+		int[] queue = new int[gap.length];
+		for (int c = 0; c < gap.length; c++) {
+			if (!gap[c] || seen[c]) {
+				continue;
+			}
+			int head = 0;
+			int tail = 0;
+			queue[tail++] = c;
+			seen[c] = true;
+			boolean border = false;
+			while (head < tail) {
+				int q = queue[head++];
+				int x = q / side;
+				int z = q % side;
+				border |= x == 0 || z == 0 || x == side - 1 || z == side - 1;
+				int[][] steps = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+				for (int[] st : steps) {
+					int nx = x + st[0];
+					int nz = z + st[1];
+					if (nx >= 0 && nz >= 0 && nx < side && nz < side && gap[nx * side + nz] && !seen[nx * side + nz]) {
+						seen[nx * side + nz] = true;
+						queue[tail++] = nx * side + nz;
+					}
+				}
+			}
+			if (!border) {
+				diameters.add(2 * Math.sqrt(tail / Math.PI));
+			}
+		}
+		double[] d = diameters.stream().mapToDouble(Double::doubleValue).sorted().toArray();
+		double mean = Arrays.stream(d).average().orElseThrow();
+		double median = d[d.length / 2];
+		long small = Arrays.stream(d).filter(v -> v < 25).count();
+		long large = Arrays.stream(d).filter(v -> v >= 45).count();
+		// No lattice: the lines of a fixed x or z without any gap over the area (the regular grid of V9 left 28% of them).
+		int emptyLines = 0;
+		for (int a = 0; a < side; a++) {
+			boolean xLine = false;
+			boolean zLine = false;
+			for (int b = 0; b < side && !(xLine && zLine); b++) {
+				xLine |= gap[a * side + b];
+				zLine |= gap[b * side + a];
+			}
+			emptyLines += (xLine ? 0 : 1) + (zLine ? 0 : 1);
+		}
+		System.out.printf(Locale.ROOT, "[stands] planned gap share pole/mature/old %.2f / %.2f / %.2f%%; old growth: %d gaps, "
+				+ "diameter p10 %.1f, median %.1f, mean %.1f, p90 %.1f, max %.1f blocks, %d%% below 25, %d%% from 45; lines "
+				+ "without a gap %d of %d%n", 100 * shares[0], 100 * shares[1], 100 * shares[2], d.length, d[d.length / 10], median,
+				mean, d[d.length * 9 / 10], d[d.length - 1], 100 * small / d.length, 100 * large / d.length, emptyLines, 2 * side);
+		// The planned gaps; the crowns of their edge lean in, so the census measures less (N5: 3-8%, 18-45 blocks).
+		assertTrue(shares[0] < shares[1] / 2, "few gaps in the pole stage");
+		assertTrue(shares[1] >= 0.06 && shares[1] <= 0.14, "planned gap share of a mature stand 6-14%: " + shares[1]);
+		assertTrue(shares[2] >= shares[1] && shares[2] <= 0.16, "planned gap share of the old growth: " + shares[2]);
+		assertTrue(median < mean && d[d.length / 10] <= 0.7 * median && small > 0 && large > 0 && large < d.length / 4,
+				"skewed gap sizes: from small to few large ones");
+		// The largest are clusters of two or three touching gaps.
+		assertTrue(d[0] >= 6 && d[d.length - 1] <= 100, "gap diameters within bounds");
+		assertTrue(emptyLines <= 2 * side / 100, "no gap-free straight lines (no lattice): " + emptyLines);
 		// Gaps only in natural stands.
 		int natural = 0;
 		int managedGaps = 0;
 		for (int x = 0; x < 3000; x += 3) {
 			for (int z = 0; z < 3000; z += 3) {
-				boolean gap = map.canopyGap(x, z);
-				if (gap && !map.natural(x, z)) {
+				boolean g = map.canopyGap(x, z);
+				if (g && !map.natural(x, z)) {
 					managedGaps++;
 				}
-				natural += gap ? 1 : 0;
+				natural += g ? 1 : 0;
 			}
 		}
 		assertEquals(0, managedGaps);
 		assertTrue(natural > 0, "some gaps in natural stands");
-	}
-
-	/** Columns of the gap of grid cell (i, j), counted around its center. */
-	private static int gapArea(ForestStandMap map, int i, int j) {
-		double s = ForestStandMap.GAP_SPACING;
-		int count = 0;
-		for (int x = (int) Math.floor((i - 0.3) * s); x < (int) Math.ceil((i + 1.3) * s); x++) {
-			for (int z = (int) Math.floor((j - 0.3) * s); z < (int) Math.ceil((j + 1.3) * s); z++) {
-				if (map.rawGapDepth(x, z) > 0 && owner(map, x, z) == ((long) i << 32 | j & 0xFFFF_FFFFL)) {
-					count++;
-				}
-			}
-		}
-		return count;
-	}
-
-	/** The gap cell whose gap is deepest at (x, z) (gaps of neighboring cells never touch in practice). */
-	private static long owner(ForestStandMap map, int x, int z) {
-		int gx = (int) Math.floor(x / ForestStandMap.GAP_SPACING);
-		int gz = (int) Math.floor(z / ForestStandMap.GAP_SPACING);
-		double best = -Double.MAX_VALUE;
-		long id = 0;
-		for (int i = gx - 1; i <= gx + 1; i++) {
-			for (int j = gz - 1; j <= gz + 1; j++) {
-				double d = map.gapDepthOf(i, j, x, z);
-				if (d > best) {
-					best = d;
-					id = (long) i << 32 | j & 0xFFFF_FFFFL;
-				}
-			}
-		}
-		return id;
 	}
 
 	@Test

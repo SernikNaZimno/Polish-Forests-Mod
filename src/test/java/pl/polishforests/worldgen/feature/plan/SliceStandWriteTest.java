@@ -28,7 +28,8 @@ import pl.polishforests.worldgen.tree.TreeVoxels;
  * planner with the stand map and the ground, and the write rules of {@code ProceduralTreeFeature.write}: wood on air or
  * leaves, leaves on air only, a block whose parent is missing left out), on rolling ground, with the chunks decorated in
  * two orders: the trees are written whole (every planned wood block stands), the two orders give the same blocks, and no
- * leaf is farther than 6 from its tree's wood through its tree's leaves.
+ * leaf is farther than 6 from its tree's wood through its tree's leaves. The world has meadows too (review of V9, round
+ * 1): the canopy trees of their edges carry low branches over the open land, without meeting the wood of other trees.
  */
 @Tag("slow")
 class SliceStandWriteTest {
@@ -66,14 +67,19 @@ class SliceStandWriteTest {
 		Noise relief = new Noise(SEED).derive("test.relief");
 		int ohf = EcotoneTest.code(HabitatBiome.OAK_HORNBEAM_FOREST, Zone.NONE);
 		int fpf = EcotoneTest.code(HabitatBiome.FRESH_PINE_FOREST, Zone.NONE);
+		int meadow = EcotoneTest.code(HabitatBiome.HAY_MEADOW, Zone.NONE);
 		Noise biomes = new Noise(SEED).derive("test.biomes");
-		IntBinaryOperator world = (x, z) -> biomes.at(x, z, 120) > 0 ? ohf : fpf;
+		IntBinaryOperator world = (x, z) -> {
+			double v = biomes.at(x, z, 120);
+			return v > 0.3 ? meadow : v > 0 ? ohf : fpf;
+		};
 		ForestStandMap map = new ForestStandMap(SEED, k, 0.85);
 		CrownTerritories crowns = new CrownTerritories(SEED, map);
 		TreeStandPlan.Stand stand = new TreeStandPlan.Stand(RAMP, new Noise(SEED).derive("feature.tree_stand.gaps"), k, map, crowns);
 		World[] worlds = new World[2];
 		int[] planned = new int[2];
 		int[] missing = new int[2];
+		int[] low = new int[2];
 		for (int order = 0; order < 2; order++) {
 			World w = new World();
 			worlds[order] = w;
@@ -109,8 +115,22 @@ class SliceStandWriteTest {
 					CrownTerritory territory = session.territory(x, z, v);
 					AgeClass age = layer == CrownLayer.REGENERATION && map.canopyGap(x, z) ? AgeClass.POLE_STAGE : map.ageClass(x, z);
 					int y = ground(relief, x, z) + 1;
+					int ca = a;
+					int cb = b;
+					TreeShapePlan.Open open = (wx, wz) -> Ecotone.openLand(Ecotone.provableTrees(region, SEED, Ecotone.TREES_SALT,
+							wx - (ca << 4), wz - (cb << 4)));
 					TreeVoxels vox = TreeShapePlan.plan(new TreeRequest(species, layer, age, SEED, x, y, z, territory, session::candidate, map,
-							(gx, gz) -> ground(relief, gx, gz)));
+							(gx, gz) -> ground(relief, gx, gz), open));
+					if (layer == CrownLayer.CANOPY) {
+						// Leaves of a canopy tree low over open land: the low branches of the forest edge.
+						for (int q = 0; q < vox.leafCount(); q++) {
+							int lx = x + vox.leafX(q);
+							int lz = z + vox.leafZ(q);
+							if (vox.leafY(q) < 0.4 * vox.height() && open.open(lx, lz)) {
+								low[order]++;
+							}
+						}
+					}
 					int[] result = write(w, vox, x * 31 + z);
 					planned[order] += vox.woodCount();
 					missing[order] += vox.woodCount() - result[0];
@@ -134,12 +154,14 @@ class SliceStandWriteTest {
 			}
 		}
 		System.out.printf(Locale.ROOT, "[slice write] %d planned wood blocks, %d left out (raster order), %d (reverse order); %d leaves, "
-				+ "%d with a distance over 6; %d of %d blocks differ between the orders%n", planned[0], missing[0], missing[1], leaves,
-				decaying, differ, worlds[0].cells.size());
+				+ "%d with a distance over 6; %d of %d blocks differ between the orders; %d leaves of canopy trees low over open "
+				+ "land%n", planned[0], missing[0], missing[1], leaves, decaying, differ, worlds[0].cells.size(), low[0]);
 		assertEquals(0, missing[0], "wood left out");
 		assertEquals(0, missing[1], "wood left out");
 		assertEquals(0, decaying);
 		assertTrue(differ <= worlds[0].cells.size() / 1000, "blocks differing between the orders: " + differ);
+		assertEquals(low[0], low[1]);
+		assertTrue(low[0] > 200, "low branches of the edge trees over open land: " + low[0]);
 	}
 
 	/** Writes a tree as {@code ProceduralTreeFeature.write} does; returns {wood written, leaves written}. */

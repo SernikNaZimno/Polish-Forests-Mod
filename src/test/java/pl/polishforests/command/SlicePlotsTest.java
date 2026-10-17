@@ -133,6 +133,9 @@ class SlicePlotsTest {
 				assertEquals(1, here.stream().filter(p -> p.biome() == HabitatBiome.FRESH_PINE_FOREST && !p.natural() && p.age() == age)
 						.count(), scale.id() + " managed pine " + age);
 			}
+			assertEquals(1, count(here, HabitatBiome.OAK_HORNBEAM_FOREST, false, AgeClass.POLE_STAGE), scale.id());
+			assertEquals(scale == LandscapeScale.REALISTIC ? 1 : 0, count(here, HabitatBiome.OAK_HORNBEAM_FOREST, true, AgeClass.POLE_STAGE),
+					scale.id());
 			for (int i = 0; i < here.size(); i++) {
 				for (int j = i + 1; j < here.size(); j++) {
 					assertTrue(Math.hypot(here.get(i).x() - here.get(j).x(), here.get(i).z() - here.get(j).z()) >= MIN_APART,
@@ -154,8 +157,8 @@ class SlicePlotsTest {
 		List<String> lines = new ArrayList<>();
 		lines.add("# Sample plots of the norms card by stand (step V9, docs/04-pionowy-wycinek.md §6), seed 20260927, managed share");
 		lines.add("# 85%. Written by ./gradlew test --tests '*SlicePlotsTest*' -PfindSlicePlots, checked by SlicePlotsTest, read by");
-		lines.add("# the in-game test -Pgametest=slice. Columns: scale, stand kind, age class (any or the class of a managed pine");
-		lines.add("# forest plot), name, biome and the center x z of a 100 x 100 block square of the biome in stands of that kind.");
+		lines.add("# the in-game test -Pgametest=slice. Columns: scale, stand kind, age class (any or the class of a plot of one");
+		lines.add("# age class), name, biome and the center x z of a 100 x 100 block square of the biome in stands of that kind.");
 		for (LandscapeScale scale : List.of(LandscapeScale.REALISTIC, LandscapeScale.GAMEPLAY)) {
 			List<SliceSitesTest.Place> sites = SliceSitesTest.read().stream().filter(p -> p.scale() == scale && !p.transect()).toList();
 			List<Plot> chosen = new ArrayList<>();
@@ -185,6 +188,22 @@ class SlicePlotsTest {
 					lines.add(p.line());
 					System.out.println("[plots] " + p.line());
 				}
+			}
+			// The pole stage of the oak-hornbeam forest (review of V9, round 1), searched last so the plots above keep their
+			// places: managed (norm of the a1 height of the pole stage) and natural (for the record: the card describes old
+			// growth; only in the realistic scale: in the gameplay one the natural pole-stage stands, a seventh of the natural
+			// ones, are too small for a plot of 1 ha within reach of the sites).
+			List<int[]> origins = sites.stream().filter(p -> p.biome() == HabitatBiome.OAK_HORNBEAM_FOREST).map(p -> new int[] {p.x(), p.z()})
+					.toList();
+			int k = 0;
+			for (boolean wantNatural : scale == LandscapeScale.REALISTIC ? new boolean[] {false, true} : new boolean[] {false}) {
+				String name = "oak_hornbeam_" + (wantNatural ? "natural" : "managed") + "_pole_stage";
+				int[] at = search(map, natural, presentDay, HabitatBiome.OAK_HORNBEAM_FOREST, wantNatural, AgeClass.POLE_STAGE,
+						origins.get(k++ % origins.size()), chosen, scale);
+				Plot p = new Plot(scale, wantNatural, AgeClass.POLE_STAGE, name, HabitatBiome.OAK_HORNBEAM_FOREST, at[0], at[1]);
+				chosen.add(p);
+				lines.add(p.line());
+				System.out.println("[plots] " + p.line());
 			}
 		}
 		Path file = Path.of(System.getProperty("polishforests.slice.plots.file"));

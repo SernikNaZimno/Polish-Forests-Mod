@@ -21,22 +21,26 @@ import pl.polishforests.worldgen.landscape.Noise;
  * by default, in both vegetation modes, PW-2), else managed; the age class by the shares of {@link #MANAGED_AGES} or
  * {@link #NATURAL_AGES}.
  *
- * <p><b>Canopy gaps</b> (only in natural stands): on a jittered grid of {@value #GAP_SPACING} blocks a cell holds a gap
- * with the chance {@value #GAP_CHANCE} (one gap per about 1.2 ha, so a sample plot of 1 ha nearly always holds one), of
- * a planned diameter in {@value #GAP_MIN}–{@value #GAP_MAX} blocks, the small ones more frequent (32 + 12 u², mean 36),
- * with a wavy outline; the centers keep a fairly even spacing, so every plot of 1 ha holds about one gap's area. The
- * crowns around a gap lean into it (crown territories: a gap is a marker), so the gap the census measures, the opening of
- * the canopy, is narrower: about 18–35 blocks across and 3–8% of the area of a natural stand, as N5 of the norms card. Gaps are tree-sized (a gap is the place of one to a few fallen trees), so they
- * keep their size in blocks in both scales, like the trees (PW-12).
+ * <p><b>Canopy gaps</b> (only in natural stands; review of V9, round 1: no lattice): a Poisson-like process on cells of
+ * {@value #GAP_CELL} blocks. A cell holds a gap with a chance by the age class of the column ({@link #GAP_CHANCE}: few in
+ * the pole stage), its center anywhere in the cell; next to it a smaller second gap with the chance
+ * {@value #CLUSTER_CHANCE} (gaps in clusters, as windthrow and the death of neighboring trees make them). The planned
+ * diameter is log-normal (median {@value #GAP_MEDIAN}, {@value #GAP_MIN}–{@value #GAP_MAX} blocks: many gaps of one to
+ * three trees, few large ones); the outline is an ellipse of axis ratio 1–{@value #GAP_ELONGATION} in a random
+ * direction (the fall of the trees), with a wavy edge. The crowns around a gap lean into it (crown territories: a gap is
+ * a marker), so the opening the census measures is narrower, and the smallest gaps close above the young trees they
+ * hold; {@code StandCensusSimulationTest} reports the census of the gaps (N5 of the norms card). Gaps are tree-sized,
+ * so they keep their size in blocks in both scales, like the trees (PW-12).
  *
  * <p>Salts (rule ZW-2): {@value #CELLS_SALT} (sites, weights, meander, ramp), {@value #AGE_SALT}, {@value #NATURAL_SALT}
- * and {@value #GAPS_SALT}. Immutable and thread-safe.
+ * and {@value #GAP_SALT} (the regular gap grid of V9 under {@code feature.stand.canopy_gaps} is gone; its salt is not
+ * reused). Immutable and thread-safe.
  */
 public final class ForestStandMap implements StandMap {
 	public static final String CELLS_SALT = "feature.stand.cells";
 	public static final String AGE_SALT = "feature.stand.age";
 	public static final String NATURAL_SALT = "feature.stand.natural";
-	public static final String GAPS_SALT = "feature.stand.canopy_gaps";
+	public static final String GAP_SALT = "feature.stand.gap_clusters";
 
 	/** Spacing of the stand sites, m·k. */
 	public static final double SPACING = 240;
@@ -58,11 +62,21 @@ public final class ForestStandMap implements StandMap {
 	/** Shares of the age classes (pole stage, mature, old growth) of managed and natural stands [S]. */
 	static final double[] MANAGED_AGES = {0.20, 0.58, 0.22};
 	static final double[] NATURAL_AGES = {0.10, 0.35, 0.55};
-	/** Spacing of the gap grid (blocks, 1:1 in both scales), chance of a gap in a cell, diameters (blocks). */
-	public static final double GAP_SPACING = 105;
-	public static final double GAP_CHANCE = 1.0;
-	public static final double GAP_MIN = 32;
-	public static final double GAP_MAX = 44;
+	/** Side of a gap cell (blocks, 1:1 in both scales). */
+	public static final int GAP_CELL = 64;
+	/** Chance of a gap in a cell by the age class of the column (pole stage, mature, old growth) [S]. */
+	static final double[] GAP_CHANCE = {0.09, 0.32, 0.36};
+	/** Chance of a second, smaller gap next to the first (a cluster). */
+	public static final double CLUSTER_CHANCE = 0.4;
+	/** Planned gap diameters (blocks): log-normal median and spread, bounds. */
+	public static final double GAP_MEDIAN = 30;
+	public static final double GAP_SIGMA = 0.4;
+	public static final double GAP_MIN = 14;
+	public static final double GAP_MAX = 50;
+	/** Largest axis ratio of a gap's ellipse. */
+	public static final double GAP_ELONGATION = 1.6;
+	/** Largest distance of a gap's outline from its center (blocks): the neighbors of a cell are enough. */
+	private static final double GAP_REACH = GAP_CELL;
 
 	private static final long SITE_X = 1;
 	private static final long SITE_Z = 2;
@@ -74,6 +88,10 @@ public final class ForestStandMap implements StandMap {
 	private static final long GAP_Z = 3;
 	private static final long GAP_SIZE = 4;
 	private static final long GAP_SHAPE = 5;
+	private static final long GAP_AXIS = 6;
+	private static final long GAP_SECOND = 7;
+	private static final long GAP_SECOND_SIZE = 8;
+	private static final long GAP_SECOND_PLACE = 9;
 
 	private final Noise cells;
 	private final Noise ages;
@@ -93,7 +111,7 @@ public final class ForestStandMap implements StandMap {
 		this.cells = root.derive(CELLS_SALT);
 		this.ages = root.derive(AGE_SALT);
 		this.naturals = root.derive(NATURAL_SALT);
-		this.gaps = root.derive(GAPS_SALT);
+		this.gaps = root.derive(GAP_SALT);
 		this.k = k;
 		this.spacing = SPACING * k;
 		this.naturalShare = 1 - Math.clamp(managedShare, 0, 1);
@@ -129,10 +147,8 @@ public final class ForestStandMap implements StandMap {
 
 	@Override
 	public double gapDepth(int x, int z) {
-		if (!natural(x, z)) {
-			return 0;
-		}
-		return rawGapDepth(x, z);
+		Stand stand = stand(x, z);
+		return stand.natural() ? rawGapDepth(x, z, stand.age()) : 0;
 	}
 
 	/** The stand of column (x, z), with the age ramp at the borders. */
@@ -210,45 +226,99 @@ public final class ForestStandMap implements StandMap {
 	}
 
 	/**
-	 * Depth of column (x, z) inside a canopy gap of the gap grid, ignoring the stand (blocks; positive inside a gap, the
-	 * distance to its outline, else 0 or less; the gaps of {@link #gapDepth} are these in natural stands).
+	 * Depth of column (x, z) inside a canopy gap of a natural stand of the age class {@code age}, ignoring the stand map
+	 * (blocks; positive inside a gap, the distance to its outline, else 0 or less; the gaps of {@link #gapDepth} are
+	 * these with the column's own stand). The gaps of the pole stage are among those of the mature stands, and these among
+	 * those of the old growth, so a gap is cut at a border of two age classes only where it loses its place.
 	 */
-	public double rawGapDepth(int x, int z) {
-		int gx = (int) Math.floor(x / GAP_SPACING);
-		int gz = (int) Math.floor(z / GAP_SPACING);
+	public double rawGapDepth(int x, int z, AgeClass age) {
+		int gx = Math.floorDiv(x, GAP_CELL);
+		int gz = Math.floorDiv(z, GAP_CELL);
+		double chance = GAP_CHANCE[age.ordinal()];
 		double depth = -Double.MAX_VALUE;
 		for (int i = gx - 1; i <= gx + 1; i++) {
 			for (int j = gz - 1; j <= gz + 1; j++) {
-				depth = Math.max(depth, gapDepthOf(i, j, x, z));
+				depth = Math.max(depth, gapDepthOf(i, j, x, z, chance));
 			}
 		}
 		return depth;
 	}
 
-	/** Depth of column (x, z) inside the gap of gap grid cell (i, j) ({@code -Double.MAX_VALUE} without a gap or far). */
-	double gapDepthOf(int i, int j, int x, int z) {
-		if (gaps.unit(i, j, GAP_PRESENT) >= GAP_CHANCE) {
+	/**
+	 * Depth of column (x, z) inside the gaps of gap cell (i, j) when a cell holds a gap with the chance {@code chance}
+	 * ({@code -Double.MAX_VALUE} without a gap or far).
+	 */
+	double gapDepthOf(int i, int j, int x, int z, double chance) {
+		if (gaps.unit(i, j, GAP_PRESENT) >= chance) {
 			return -Double.MAX_VALUE;
 		}
-		// The center keeps 0.4 of the cell from its sides: the gaps keep a fairly even spacing, so every plot of 1 ha holds
-		// about one gap's area (whole or in parts), as N5 of the norms card describes it.
-		double cx = (i + 0.4 + 0.2 * gaps.unit(i, j, GAP_X)) * GAP_SPACING;
-		double cz = (j + 0.4 + 0.2 * gaps.unit(i, j, GAP_Z)) * GAP_SPACING;
+		double cx = (i + gaps.unit(i, j, GAP_X)) * GAP_CELL;
+		double cz = (j + gaps.unit(i, j, GAP_Z)) * GAP_CELL;
 		double dx = x + 0.5 - cx;
 		double dz = z + 0.5 - cz;
-		double d = Math.sqrt(dx * dx + dz * dz);
-		if (d > GAP_MAX) {
+		if (dx * dx + dz * dz > GAP_REACH * GAP_REACH) {
 			return -Double.MAX_VALUE;
 		}
-		double u = gaps.unit(i, j, GAP_SIZE);
-		double radius = (GAP_MIN + (GAP_MAX - GAP_MIN) * u * u) / 2;
-		double angle = Math.atan2(dz, dx);
-		long h = gaps.hash(i, j, GAP_SHAPE);
+		double first = diameter(gaps.unit(i, j, GAP_SIZE));
+		double depth = ellipse(i, j, 0, dx, dz, first / 2);
+		if (gaps.unit(i, j, GAP_SECOND) < CLUSTER_CHANCE) {
+			// A smaller gap next to the first one: its center near the first one's outline, so the two touch or overlap.
+			double second = Math.min(first, diameter(0.5 * gaps.unit(i, j, GAP_SECOND_SIZE)));
+			double angle = 2 * Math.PI * gaps.unit(i, j, GAP_SECOND_PLACE);
+			double off = 0.5 * (first + second) * 0.75;
+			depth = Math.max(depth, ellipse(i, j, 1, dx - off * Math.cos(angle), dz - off * Math.sin(angle), second / 2));
+		}
+		return depth;
+	}
+
+	/** A planned gap diameter from a uniform number: log-normal, bounded. */
+	static double diameter(double u) {
+		double n = inverseNormal(Math.clamp(u, 1e-6, 1 - 1e-6));
+		return Math.clamp(GAP_MEDIAN * Math.exp(GAP_SIGMA * n), GAP_MIN, GAP_MAX);
+	}
+
+	/** Depth inside an elongated, wavy gap of mean radius {@code radius} at the offset (dx, dz) from its center. */
+	private double ellipse(int i, int j, int k, double dx, double dz, double radius) {
+		long h = gaps.hash(i, j, GAP_SHAPE + 16L * k);
+		double axis = Math.PI * ((h >>> 48 & 0xFFFF) / 65_536.0);
+		double ratio = 1 + (GAP_ELONGATION - 1) * gaps.unit(i, j, GAP_AXIS + 16L * k);
+		double c = Math.cos(axis);
+		double s = Math.sin(axis);
+		double u = (dx * c + dz * s) / Math.sqrt(ratio);
+		double v = (-dx * s + dz * c) * Math.sqrt(ratio);
+		double d = Math.sqrt(u * u + v * v);
+		double angle = Math.atan2(v, u);
 		double p1 = (h & 0xFFFF) * (2 * Math.PI / 65_536);
 		double p2 = (h >>> 16 & 0xFFFF) * (2 * Math.PI / 65_536);
 		double p3 = (h >>> 32 & 0xFFFF) * (2 * Math.PI / 65_536);
-		double outline = radius * (1 + 0.12 * Math.sin(2 * angle + p1) + 0.08 * Math.sin(3 * angle + p2)
+		double outline = radius * (1 + 0.1 * Math.sin(2 * angle + p1) + 0.07 * Math.sin(3 * angle + p2)
 				+ 0.05 * Math.sin(5 * angle + p3));
 		return outline - d;
+	}
+
+	/** The inverse of the standard normal distribution (rational approximation of P. J. Acklam, relative error below 1e-8). */
+	static double inverseNormal(double p) {
+		double low = 0.02425;
+		if (p < low) {
+			double q = Math.sqrt(-2 * Math.log(p));
+			return tail(q);
+		}
+		if (p > 1 - low) {
+			double q = Math.sqrt(-2 * Math.log(1 - p));
+			return -tail(q);
+		}
+		double q = p - 0.5;
+		double r = q * q;
+		return (((((-3.969683028665376e+01 * r + 2.209460984245205e+02) * r - 2.759285104469687e+02) * r
+				+ 1.383577518672690e+02) * r - 3.066479806614716e+01) * r + 2.506628277459239e+00) * q
+				/ (((((-5.447609879822406e+01 * r + 1.615858368580409e+02) * r - 1.556989798598866e+02) * r
+				+ 6.680131188771972e+01) * r - 1.328068155288572e+01) * r + 1);
+	}
+
+	private static double tail(double q) {
+		return (((((-7.784894002430293e-03 * q - 3.223964580411365e-01) * q - 2.400758277161838e+00) * q
+				- 2.549732539343734e+00) * q + 4.374664141464968e+00) * q + 2.938163982698783e+00)
+				/ ((((7.784695709041462e-03 * q + 3.224671290700398e-01) * q + 2.445134137142996e+00) * q
+				+ 3.754408661907416e+00) * q + 1);
 	}
 }

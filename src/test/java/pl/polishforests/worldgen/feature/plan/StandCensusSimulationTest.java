@@ -45,9 +45,9 @@ class StandCensusSimulationTest {
 	private static final String[] KEYS = {ForestNorms.TREES_PER_CHUNK, ForestNorms.A1_PER_CHUNK, ForestNorms.A2_PER_CHUNK,
 			ForestNorms.A1_HEIGHT, ForestNorms.A2_HEIGHT, ForestNorms.A2_SHARE, ForestNorms.COMPOSITION + "oak",
 			ForestNorms.COMPOSITION + "linden", ForestNorms.COMPOSITION + "maple_ash", ForestNorms.COMPOSITION + "scots_pine",
-			ForestNorms.COMPOSITION + "birch", ForestNorms.CANOPY, ForestNorms.GAP_SHARE, ForestNorms.GAP_DIAMETER,
+			ForestNorms.COMPOSITION + "birch", ForestNorms.COMPOSITION + "hornbeam", ForestNorms.CANOPY, ForestNorms.GAP_SHARE, ForestNorms.GAP_DIAMETER,
 			ForestNorms.REGENERATION_RATIO, ForestNorms.OAK_REGENERATION, ForestNorms.PINE_REGENERATION_UNDER_CANOPY,
-			ForestNorms.TOP_HEIGHT};
+			ForestNorms.TOP_HEIGHT, ForestNorms.BARE_WOOD, ForestNorms.EXPOSED_WOOD};
 
 	/** A stand map of one stand everywhere, with the canopy gaps of the world's stand map when natural. */
 	private static StandMap stand(AgeClass age, boolean natural) {
@@ -65,12 +65,12 @@ class StandCensusSimulationTest {
 
 			@Override
 			public boolean canopyGap(int x, int z) {
-				return natural && world.rawGapDepth(x, z) > 0;
+				return natural && world.rawGapDepth(x, z, age) > 0;
 			}
 
 			@Override
 			public double gapDepth(int x, int z) {
-				return natural ? Math.max(0, world.rawGapDepth(x, z)) : 0;
+				return natural ? Math.max(0, world.rawGapDepth(x, z, age)) : 0;
 			}
 		};
 	}
@@ -90,7 +90,10 @@ class StandCensusSimulationTest {
 	}
 
 	private static void report(HabitatBiome biome, boolean natural, AgeClass age) {
-		int code = EcotoneTest.code(biome, Zone.NONE);
+		// Within the range of the hornbeam (lowlands), as the plots of the slice.
+		int code = pl.polishforests.worldgen.habitat.Habitat.pack(biome, Zone.NONE, pl.polishforests.worldgen.habitat.ForestSiteType.NONE,
+				pl.polishforests.worldgen.habitat.Association.TYPICAL, pl.polishforests.worldgen.habitat.LandCover.forBiome(biome),
+				Species.FLAG_HORNBEAM, pl.polishforests.worldgen.habitat.Soil.forBiome(biome, Zone.NONE));
 		StandMap map = stand(age, natural);
 		CrownTerritories crowns = new CrownTerritories(SEED, map);
 		TreeStandPlan.Stand stand = new TreeStandPlan.Stand(RAMP, new Noise(SEED).derive("feature.tree_stand.gaps"), 1, map, crowns);

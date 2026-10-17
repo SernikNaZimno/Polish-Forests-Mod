@@ -270,6 +270,14 @@ public final class TreeStandFeature implements Feature {
 		StandVacancies vacancies = null;
 		SessionHolder session = null;
 		WorldgenRandom treeRandom = new WorldgenRandom(new XoroshiroRandomSource(seed));
+		// Open land around the trees of a forest edge (review of V9, round 1): the proved tree code of a column (exact, or
+		// unknown and then not open), so a canopy tree there carries low branches on that side.
+		Ecotone.Region region = ecotones.region();
+		long worldSeed = level.getSeed();
+		java.util.Map<Long, Boolean> openMemo = new java.util.HashMap<>();
+		TreeShapePlan.Open open = (wx, wz) -> openMemo.computeIfAbsent((long) wx << 32 | wz & 0xFFFF_FFFFL,
+				key -> Ecotone.openLand(Ecotone.provableTrees(region, worldSeed, Ecotone.TREES_SALT, wx - pos.getMinBlockX(),
+						wz - pos.getMinBlockZ())));
 		long[] substitute = new long[2];
 		for (int p : planned) {
 			int column = TreeStandPlan.column(p);
@@ -340,7 +348,7 @@ public final class TreeStandFeature implements Feature {
 			// A young cohort in a canopy gap; elsewhere the trees have the age class of their stand.
 			AgeClass age = layer == CrownLayer.REGENERATION && n.stands().canopyGap(x, z) ? AgeClass.POLE_STAGE : standAge;
 			TreeRequest request = new TreeRequest(proc.species(), layer, age, level.getSeed(), x, at.getY(), z, territory,
-					session.session()::candidate, n.stands(), a::top);
+					session.session()::candidate, n.stands(), a::top, open);
 			TreeVoxels voxels = TreeShapePlan.plan(request);
 			long written = ProceduralTreeFeature.writeCounted(level, voxels, proc.species(), layer, age);
 			if (written >>> 32 > 0) {

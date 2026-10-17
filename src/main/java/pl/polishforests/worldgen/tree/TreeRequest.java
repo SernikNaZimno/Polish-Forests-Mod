@@ -21,14 +21,23 @@ import pl.polishforests.worldgen.habitat.Species;
  *                  (a longer and wider crown, no split below the canopy)
  * @param ground    the ground of the columns around the trunk (step V9): the split surfaces stand at their height above
  *                  the ground of each column, so they follow a slope; null for level ground at the trunk base
+ * @param open      the open land around a tree of a forest edge (review of V9, round 1): a canopy tree carries low branches
+ *                  on that side; null for none
  */
 public record TreeRequest(Species species, CrownLayer layer, AgeClass age, long worldSeed, int x, int y, int z,
 		@Nullable CrownTerritory territory, TreeShapePlan.@Nullable Trunks trunks, @Nullable StandMap stands,
-		TreeShapePlan.@Nullable Ground ground) {
+		TreeShapePlan.@Nullable Ground ground, TreeShapePlan.@Nullable Open open) {
+	/** A request without open land around. */
+	public TreeRequest(Species species, CrownLayer layer, AgeClass age, long worldSeed, int x, int y, int z,
+			@Nullable CrownTerritory territory, TreeShapePlan.@Nullable Trunks trunks, @Nullable StandMap stands,
+			TreeShapePlan.@Nullable Ground ground) {
+		this(species, layer, age, worldSeed, x, y, z, territory, trunks, stands, ground, null);
+	}
+
 	/** A request on level ground. */
 	public TreeRequest(Species species, CrownLayer layer, AgeClass age, long worldSeed, int x, int y, int z,
 			@Nullable CrownTerritory territory, TreeShapePlan.@Nullable Trunks trunks, @Nullable StandMap stands) {
-		this(species, layer, age, worldSeed, x, y, z, territory, trunks, stands, null);
+		this(species, layer, age, worldSeed, x, y, z, territory, trunks, stands, null, null);
 	}
 
 	public TreeRequest {
@@ -43,7 +52,7 @@ public record TreeRequest(Species species, CrownLayer layer, AgeClass age, long 
 
 	/** A lone, open-grown tree without a territory. */
 	public TreeRequest(Species species, CrownLayer layer, AgeClass age, long worldSeed, int x, int y, int z) {
-		this(species, layer, age, worldSeed, x, y, z, null, null, null, null);
+		this(species, layer, age, worldSeed, x, y, z, null, null, null, null, null);
 	}
 
 	/** Whether the tree grows alone (no territory and no stand map): an open-grown crown, no split below the canopy. */

@@ -102,6 +102,9 @@ final class ModWorldgen {
 		ModTrees.TREES.forEach(s -> trees.add(s.substitutePath()));
 		ModTrees.SHRUBS.forEach(s -> trees.add(s.path()));
 		trees.addAll(ModTrees.VARIANTS);
+		// The thin-stemmed placeholders of the slice (review of V9, round 1).
+		trees.addAll(new java.util.TreeSet<>(ModTrees.SLICE.values()));
+		trees.add(ModTrees.HAZEL_MANTLE);
 		// Step V9: the procedural trees (the tree stand calls their planner itself; placed alone they need a sapling's ground).
 		ModTrees.PROCEDURAL.forEach(s -> trees.add(s.path()));
 		for (String path : trees) {

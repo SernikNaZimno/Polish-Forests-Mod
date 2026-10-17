@@ -197,6 +197,14 @@ public final class Ecotone {
 		return KINDS[code & 63];
 	}
 
+	/**
+	 * Whether a code is open land: a meadow, a field, a heath, a fen or a bog (no forest; review of V9, round 1: the
+	 * canopy trees of a forest edge carry low branches over it). False for {@link #UNKNOWN}.
+	 */
+	public static boolean openLand(int code) {
+		return code != UNKNOWN && open(kind(code));
+	}
+
 	private static boolean woodland(Kind k) {
 		return k == Kind.DRY_WOODLAND || k == Kind.WET_WOODLAND;
 	}

@@ -265,8 +265,8 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		b.add("polishforests.options.alien_species", "Alien & Invasive Species");
 		b.add("polishforests.options.note", "Real scale: landscapes at their true size and elevation. Gameplay scale: "
 				+ "landscapes about 1.4 km across, lower mountains and a shorter world, which is much easier on your computer. "
-				+ "The landscape mode already chooses the biomes, and the managed forest share the stands of the oak-hornbeam and "
-				+ "pine forests; alien species will take effect in future versions of the mod.");
+				+ "The landscape mode already chooses the biomes, and the managed forest share already shapes the stands of the "
+				+ "oak-hornbeam and pine forests; alien species will take effect in future versions of the mod.");
 		b.add("polishforests.options.landscape.natural.tooltip", "The forest that would grow without people, on almost the "
 				+ "whole land.");
 		b.add("polishforests.options.landscape.today.tooltip", "About 30% forest, mostly pine forests on sand, with meadows "

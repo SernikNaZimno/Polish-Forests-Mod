@@ -327,7 +327,7 @@
           },
           {
             "species": "rowan",
-            "tree": "polishforests:tree_substitute/rowan",
+            "tree": "polishforests:tree_substitute/rowan_thin",
             "weight": 250
           },
           {
@@ -512,7 +512,7 @@
           },
           {
             "species": "rowan",
-            "tree": "polishforests:tree_substitute/rowan",
+            "tree": "polishforests:tree_substitute/rowan_thin",
             "weight": 200
           },
           {
@@ -522,7 +522,7 @@
           },
           {
             "species": "hazel",
-            "tree": "polishforests:shrub/hazel",
+            "tree": "polishforests:shrub/hazel_thin",
             "weight": 100
           }
         ],
@@ -609,7 +609,7 @@
           },
           {
             "species": "hazel",
-            "tree": "polishforests:shrub/hazel",
+            "tree": "polishforests:shrub/hazel_thin",
             "weight": 300
           }
         ],
@@ -670,12 +670,12 @@
           },
           {
             "species": "rowan",
-            "tree": "polishforests:tree_substitute/rowan",
+            "tree": "polishforests:tree_substitute/rowan_thin",
             "weight": 150
           },
           {
             "species": "hazel",
-            "tree": "polishforests:shrub/hazel",
+            "tree": "polishforests:shrub/hazel_thin",
             "weight": 250
           },
           {
@@ -793,7 +793,7 @@
           },
           {
             "species": "hazel",
-            "tree": "polishforests:shrub/hazel",
+            "tree": "polishforests:shrub/hazel_thin",
             "weight": 150
           }
         ],
@@ -861,7 +861,7 @@
           },
           {
             "species": "hazel",
-            "tree": "polishforests:shrub/hazel",
+            "tree": "polishforests:shrub/hazel_thin",
             "weight": 100
           }
         ],
@@ -886,12 +886,12 @@
         {
           "species": "oak",
           "tree": "polishforests:tree/oak",
-          "weight": 350
+          "weight": 300
         },
         {
           "species": "linden",
           "tree": "polishforests:tree/linden",
-          "weight": 250
+          "weight": 180
         },
         {
           "species": "norway_maple",
@@ -920,7 +920,7 @@
           },
           "species": "hornbeam",
           "tree": "polishforests:tree/hornbeam",
-          "weight": 50
+          "weight": 160
         }
       ],
       "trees_per_chunk": 12.0

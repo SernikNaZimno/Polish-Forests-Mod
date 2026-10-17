@@ -402,11 +402,13 @@ public final class ForestCensus {
 				}
 			}
 			CensusGrid.Wood baseWood = woodOf(base);
-			if (baseWood.species() != null) {
+			// The species planted at the base column first (review of V9, round 1: the placeholder shrubs of the slice stand
+			// on the thin trunk block of another species), then the species of the base block.
+			Species planted = grid.recordAt(base / height);
+			if (planted != null) {
+				species = planted;
+			} else if (baseWood.species() != null) {
 				species = baseWood.species();
-			}
-			if (species == null) {
-				species = grid.recordAt(base / height);
 			}
 			if (species == null) {
 				for (int i : cells) {
@@ -748,8 +750,34 @@ public final class ForestCensus {
 			m.put(ForestNorms.SNAGS_PER_CHUNK, snags / chunks);
 			m.put(ForestNorms.DEADWOOD_VOLUME, volume / ha);
 			m.put(ForestNorms.COARSE_PIECES, coarse / ha);
+			// Bare wood in the upper half of the stand (review of V9): wood without a leaf among its 26 neighbors, and the part
+			// of it open to the sky.
+			int bare = 0;
+			int exposed = 0;
+			if (!Double.isNaN(topHeight)) {
+				int from = (int) Math.ceil(topHeight / 2);
+				for (int c = 0; c < area.length; c++) {
+					if (!area[c] || grid.groundAt(c) == CensusGrid.NO_GROUND) {
+						continue;
+					}
+					for (int dy = Math.max(2, from); dy <= height; dy++) {
+						int i = c * height + dy - 1;
+						if (!wood(i) || leafAround(i)) {
+							continue;
+						}
+						bare++;
+						boolean covered = false;
+						for (int up = dy + 1; up <= height && !covered; up++) {
+							covered = grid.cellAt(c, up) != CensusGrid.AIR;
+						}
+						exposed += covered ? 0 : 1;
+					}
+				}
+			}
 			long conifers = a1.stream().filter(WoodObject::conifer).count() + a2.stream().filter(WoodObject::conifer).count();
 			m.put(ForestNorms.CONIFERS, layered == 0 ? Double.NaN : 100.0 * conifers / layered);
+			m.put(ForestNorms.BARE_WOOD, bare / chunks);
+			m.put(ForestNorms.EXPOSED_WOOD, exposed / chunks);
 			return m;
 		}
 
@@ -831,6 +859,24 @@ public final class ForestCensus {
 				}
 			}
 			return out;
+		}
+
+		/** Whether a leaf stands among the 26 neighbors of a cell. */
+		private boolean leafAround(int cell) {
+			int x = x(cell);
+			int y = y(cell);
+			int z = z(cell);
+			for (int dx = -1; dx <= 1; dx++) {
+				for (int dy = -1; dy <= 1; dy++) {
+					for (int dz = -1; dz <= 1; dz++) {
+						int n = index(x + dx, y + dy, z + dz);
+						if (n >= 0 && grid.cellAt(n / height, dy(n)) == CensusGrid.LEAVES) {
+							return true;
+						}
+					}
+				}
+			}
+			return false;
 		}
 
 		private boolean wood(int cell) {

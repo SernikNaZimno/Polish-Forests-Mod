@@ -27,19 +27,19 @@
     {
       "biomes": [
         "oak_hornbeam_forest",
-        "elm_ash_forest",
-        "mixed_forest",
-        "lowland_beech_forest",
-        "upland_fir_forest",
-        "montane_beech_forest"
+        "mixed_forest"
       ],
-      "coverage": 0.06,
+      "coverage": 0.35,
       "edges": [
         "mantle"
       ],
       "plants": [
         {
-          "feature": "polishforests:shrub/hazel",
+          "feature": "polishforests:shrub/hazel_mantle_thin",
+          "weight": 2
+        },
+        {
+          "feature": "polishforests:shrub/hazel_thin",
           "weight": 1
         }
       ]
@@ -49,15 +49,37 @@
         "fresh_pine_forest",
         "mixed_pine_forest"
       ],
-      "coverage": 0.05,
+      "coverage": 0.3,
       "edges": [
         "mantle"
       ],
       "plants": [
         {
-          "feature": "polishforests:shrub/juniper",
-          "weight": 3
+          "feature": "polishforests:shrub/juniper_thin",
+          "weight": 2
         },
+        {
+          "feature": "polishforests:shrub/hazel_mantle_thin",
+          "weight": 1
+        },
+        {
+          "feature": "polishforests:shrub/alder_buckthorn_thin",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "elm_ash_forest",
+        "lowland_beech_forest",
+        "upland_fir_forest",
+        "montane_beech_forest"
+      ],
+      "coverage": 0.06,
+      "edges": [
+        "mantle"
+      ],
+      "plants": [
         {
           "feature": "polishforests:shrub/hazel",
           "weight": 1
@@ -181,15 +203,15 @@
       "coverage": 0.01953125,
       "plants": [
         {
-          "feature": "polishforests:shrub/juniper",
+          "feature": "polishforests:shrub/juniper_thin",
           "weight": 2
         },
         {
-          "feature": "polishforests:shrub/alder_buckthorn",
+          "feature": "polishforests:shrub/alder_buckthorn_thin",
           "weight": 2
         },
         {
-          "feature": "polishforests:tree_substitute/rowan",
+          "feature": "polishforests:tree_substitute/rowan_thin",
           "weight": 1
         }
       ]
@@ -202,18 +224,29 @@
       "coverage": 0.005859375,
       "plants": [
         {
-          "feature": "polishforests:shrub/hazel",
+          "feature": "polishforests:shrub/hazel_thin",
           "weight": 2
         },
         {
-          "feature": "polishforests:shrub/juniper",
+          "feature": "polishforests:shrub/juniper_thin",
           "weight": 1
         }
       ]
     },
     {
       "biomes": [
-        "oak_hornbeam_forest",
+        "oak_hornbeam_forest"
+      ],
+      "coverage": 0.01171875,
+      "plants": [
+        {
+          "feature": "polishforests:shrub/hazel_thin",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "biomes": [
         "elm_ash_forest"
       ],
       "coverage": 0.01171875,

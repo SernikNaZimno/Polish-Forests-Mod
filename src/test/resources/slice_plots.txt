@@ -1,7 +1,7 @@
 # Sample plots of the norms card by stand (step V9, docs/04-pionowy-wycinek.md §6), seed 20260927, managed share
 # 85%. Written by ./gradlew test --tests '*SlicePlotsTest*' -PfindSlicePlots, checked by SlicePlotsTest, read by
-# the in-game test -Pgametest=slice. Columns: scale, stand kind, age class (any or the class of a managed pine
-# forest plot), name, biome and the center x z of a 100 x 100 block square of the biome in stands of that kind.
+# the in-game test -Pgametest=slice. Columns: scale, stand kind, age class (any or the class of a plot of one
+# age class), name, biome and the center x z of a 100 x 100 block square of the biome in stands of that kind.
 realistic natural any oak_hornbeam_natural_1 oak_hornbeam_forest 418 -750
 realistic natural any oak_hornbeam_natural_2 oak_hornbeam_forest -2536 -591
 realistic managed any oak_hornbeam_managed_1 oak_hornbeam_forest 278 -890
@@ -11,6 +11,8 @@ realistic natural any fresh_pine_natural_2 fresh_pine_forest -3177 -2288
 realistic managed pole_stage fresh_pine_managed_pole_stage fresh_pine_forest 741 5644
 realistic managed mature fresh_pine_managed_mature fresh_pine_forest -2857 -1968
 realistic managed old_growth fresh_pine_managed_old_growth fresh_pine_forest -2259 4944
+realistic managed pole_stage oak_hornbeam_managed_pole_stage oak_hornbeam_forest -322 -1490
+realistic natural pole_stage oak_hornbeam_natural_pole_stage oak_hornbeam_forest 524 -1151
 gameplay natural any oak_hornbeam_natural_1 oak_hornbeam_forest -1785 886
 gameplay natural any oak_hornbeam_natural_2 oak_hornbeam_forest 1750 4061
 gameplay managed any oak_hornbeam_managed_1 oak_hornbeam_forest -1825 746
@@ -20,3 +22,4 @@ gameplay natural any fresh_pine_natural_2 fresh_pine_forest -458 939
 gameplay managed pole_stage fresh_pine_managed_pole_stage fresh_pine_forest -2275 1217
 gameplay managed mature fresh_pine_managed_mature fresh_pine_forest -1738 1519
 gameplay managed old_growth fresh_pine_managed_old_growth fresh_pine_forest -1695 -1303
+gameplay managed pole_stage oak_hornbeam_managed_pole_stage oak_hornbeam_forest -1425 1026

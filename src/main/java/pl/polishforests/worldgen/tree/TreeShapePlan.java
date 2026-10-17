@@ -35,7 +35,9 @@ import pl.polishforests.worldgen.landscape.Noise;
  * curved lateral branches with twigs, or (the oak) a fork into thick, crooked limbs that climb in vertical runs of one
  * to three blocks with one-block sideways jogs (axis-aligned, so they keep their radius). The branch lengths follow the
  * crown envelope ({@link SpeciesShape.Profile}), shortened to the columns the tree may use; at a forest edge (a
- * territory with {@link CrownTerritory#edge()}) branches towards the free side grow up to 30% longer.</li>
+ * territory with {@link CrownTerritory#edge()}) branches towards the free side grow up to 30% longer, and a canopy tree
+ * next to open land ({@link Open}) has live branches down to {@value #SKIRT_FROM} of its height on that side (review of
+ * V9, round 1).</li>
  * <li><b>Pipe model:</b> r_parent^n = Σ r_child^n from the tips (n = 2.2–2.4), scaled so that the trunk at the crown
  * base has its share of the breast-height radius; below the crown base the cross-section r^n grows linearly to the base
  * (the branches lost by self-pruning), so the steps r + 1 → r of the thin trunk spread along the bole. Segments more
@@ -52,8 +54,10 @@ import pl.polishforests.worldgen.landscape.Noise;
  * one.</li>
  * <li><b>Foliage:</b> ragged ellipsoids with holes around the shoot tips, each with its own height and depth jitter;
  * large broad-leaved crowns stay empty inside (leaves in the outer shell only); leaves only in the allowed columns,
- * between the split surfaces of the layer and not in wood. Thin branch tips left without a leaf next to them (clipped
- * clusters) are pruned. A breadth-first search from the wood through the tree's own leaves gives the leaf distance;
+ * between the split surfaces of the layer and not in wood. In the upper half of the crown every thin block growing up
+ * from its parent (the leader, upturned tips) gets a leaf on its four sides (review of V9, round 1). Thin branch tips
+ * left without a leaf next to them (clipped clusters; an upward tip of the upper crown without one at its side) are
+ * pruned. A breadth-first search from the wood through the tree's own leaves gives the leaf distance;
  * leaves farther than {@value TreeVoxels#MAX_DISTANCE} are dropped.</li>
  * </ol>
  *
@@ -73,6 +77,11 @@ public final class TreeShapePlan {
 	public static final String UPPER_SALT = "feature.tree.layers.upper";
 	/** Salt of the noise of the split surface between the subcanopy and the regeneration. */
 	public static final String LOWER_SALT = "feature.tree.layers.lower";
+	/**
+	 * Salt of the short wave of the upper split surface (review of V9, round 1): the crowns of a layer end at the
+	 * surface, so its long wave alone left level shelves of crown bottoms across a view of 20-40 blocks.
+	 */
+	public static final String SHORT_SALT = "feature.tree.layers.upper_short";
 	/** Largest horizontal distance of a block from the trunk column: the write window of 3 × 3 chunks. */
 	public static final int REACH = CrownTerritories.MAX_REACH;
 	/** Largest height of a block above the trunk base (exclusive). */
@@ -82,6 +91,9 @@ public final class TreeShapePlan {
 	/** Largest offset of the upper and the lower split surface from their mean height (blocks). */
 	public static final int UPPER_WOBBLE = 3;
 	public static final double LOWER_WOBBLE = 1.5;
+	/** Amplitude (blocks) and wavelength (blocks) of the short wave of the upper split surface. */
+	public static final double SHORT_WOBBLE = 1.0;
+	public static final double SHORT_WAVELENGTH = 7;
 
 	private static final int SIDE = 2 * REACH + 1;
 	private static final int CELLS = SIDE * SIDE * MAX_HEIGHT;
@@ -110,6 +122,14 @@ public final class TreeShapePlan {
 	private static final double OPEN_RADIUS = 1.25;
 	/** Diagonal segments: at most this radius (px) when more than {@link #DIAGONAL} off every axis (risk R4). */
 	private static final int DIAGONAL_RADIUS = 2;
+	/**
+	 * Lowest live branch of a canopy tree on the side of open land at a forest edge, as a share of its height (review of
+	 * V9, round 1), and the spacing of those branches as a multiple of the species' branch spacing.
+	 */
+	private static final double SKIRT_FROM = 0.2;
+	private static final double SKIRT_SPACING = 1.3;
+	/** Share of the crown length from its base above which the upward shoots are sleeved with leaves (review of V9). */
+	private static final double SLEEVE_FROM = 0.5;
 	private static final double DIAGONAL = StrictMath.cos(StrictMath.toRadians(25));
 	/** Share of the height where the pine's "mirror" starts, by age class (plan V6: 0.45–0.55, rising with age). */
 	private static final double[] MIRROR = {0.45, 0.5, 0.55};
@@ -154,7 +174,12 @@ public final class TreeShapePlan {
 		double w2 = bilinear(corner(low, gx, gz), corner(low, gx + 1, gz), corner(low, gx, gz + 1), corner(low, gx + 1, gz + 1),
 				fx, fz);
 		int s2 = lowerSplit(age, w2);
-		return lower == CrownLayer.REGENERATION ? s2 : upperSplit(age, w1, s2);
+		return lower == CrownLayer.REGENERATION ? s2 : upperSplit(age, w1 + shortWave(new Noise(worldSeed).derive(SHORT_SALT), x, z), s2);
+	}
+
+	/** The short wave of the upper split surface at a world column, in units of {@link #UPPER_WOBBLE}. */
+	private static double shortWave(Noise n, int x, int z) {
+		return SHORT_WOBBLE / UPPER_WOBBLE * Math.clamp(1.6 * n.at(x, z, SHORT_WAVELENGTH), -1, 1);
 	}
 
 	/** Noise value of a corner of the split grid in [-1, 1]. */
@@ -202,6 +227,17 @@ public final class TreeShapePlan {
 		int UNKNOWN = Integer.MIN_VALUE;
 	}
 
+	/**
+	 * Open land around a tree at a forest edge (review of V9, round 1): the world columns without forest (a field, a
+	 * meadow, a heath), where no tree of a lower layer grows, so a canopy tree of the edge may carry live branches low on
+	 * that side, as the trees of a real forest edge do.
+	 */
+	@FunctionalInterface
+	public interface Open {
+		/** Whether world column (x, z) is open land for sure (false when unknown). */
+		boolean open(int x, int z);
+	}
+
 	/** Columns of other trunks, which the wood of a lower layer keeps away from (with the pattern of M2 trunks). */
 	@FunctionalInterface
 	public interface Trunks {
@@ -234,6 +270,12 @@ public final class TreeShapePlan {
 		private final double[] upperGrid = new double[GRID_SIDE * GRID_SIDE];
 		private final double[] lowerGrid = new double[GRID_SIDE * GRID_SIDE];
 		private final float[] reach = new float[AZIMUTH_BINS];
+		// Open land of an edge tree (columns, and the azimuth bins that reach it) and the nodes of its low branches.
+		private final boolean[] openColumn = new boolean[SIDE * SIDE];
+		private final boolean[] skirtBin = new boolean[AZIMUTH_BINS];
+		private int skirtBins;
+		private int skirtFirst;
+		private int skirtEnd;
 		// Skeleton nodes; a node stands for the segment from its parent to it.
 		private int nodes;
 		private float[] nx = new float[256];
@@ -267,6 +309,7 @@ public final class TreeShapePlan {
 		private @Nullable Noise noise;
 		private @Nullable Noise upperNoise;
 		private @Nullable Noise lowerNoise;
+		private @Nullable Noise shortNoise;
 		private long noiseSeed;
 		private long rng;
 		private long cellSeed;
@@ -298,6 +341,7 @@ public final class TreeShapePlan {
 				noise = world.derive(SALT);
 				upperNoise = world.derive(UPPER_SALT);
 				lowerNoise = world.derive(LOWER_SALT);
+				shortNoise = world.derive(SHORT_SALT);
 				noiseSeed = r.worldSeed();
 			}
 			long salt = ((long) r.species().ordinal() << 8) | ((long) r.layer().ordinal() << 4) | r.age().ordinal();
@@ -393,7 +437,7 @@ public final class TreeShapePlan {
 			int lower = lowerSplit(age, w2);
 			int shift = request.groundShift(x, z);
 			out[1] = lower + shift;
-			out[0] = upperSplit(age, w1, lower) + shift;
+			out[0] = upperSplit(age, w1 + shortWave(shortNoise, x, z), lower) + shift;
 			return out;
 		}
 
@@ -492,6 +536,7 @@ public final class TreeShapePlan {
 			}
 			woodColumn[col(0, 0)] = true;
 			leafColumn[col(0, 0)] = true;
+			openLand(r);
 			for (int b = 0; b < AZIMUTH_BINS; b++) {
 				double a = 2 * Math.PI * b / AZIMUTH_BINS;
 				double c = StrictMath.cos(a);
@@ -504,6 +549,39 @@ public final class TreeShapePlan {
 					d = (float) step;
 				}
 				reach[b] = d;
+			}
+		}
+
+		/**
+		 * The open land of a canopy tree at a forest edge (review of V9, round 1): its columns of open land take the lower
+		 * split surface as their floor (no tree of a lower layer grows there), and the azimuth bins with at least two of
+		 * them get low branches ({@link #skirt}).
+		 */
+		private void openLand(TreeRequest r) {
+			skirtBins = 0;
+			skirtFirst = 0;
+			skirtEnd = 0;
+			TreeShapePlan.Open open = r.open();
+			if (open == null || !edge || r.layer() != CrownLayer.CANOPY || r.openGrown()) {
+				return;
+			}
+			Arrays.fill(openColumn, false);
+			int[] count = new int[AZIMUTH_BINS];
+			for (int dz = -REACH; dz <= REACH; dz++) {
+				for (int dx = -REACH; dx <= REACH; dx++) {
+					int c = col(dx, dz);
+					if (!leafColumn[c] || dx * dx + dz * dz < 4 || !open.open(r.x() + dx, r.z() + dz)) {
+						continue;
+					}
+					openColumn[c] = true;
+					floorY[c] = Math.min(floorY[c], Math.max(1, splitsAt(dx, dz, splitTmp)[1]));
+					double turns = StrictMath.atan2(dz, dx) / (2 * Math.PI);
+					count[(int) Math.floorMod(Math.round((turns - Math.floor(turns)) * AZIMUTH_BINS), AZIMUTH_BINS)]++;
+				}
+			}
+			for (int b = 0; b < AZIMUTH_BINS; b++) {
+				skirtBin[b] = count[b] >= 2;
+				skirtBins += skirtBin[b] ? 1 : 0;
 			}
 		}
 
@@ -580,7 +658,43 @@ public final class TreeShapePlan {
 				case SLENDER -> slender();
 				case BROAD -> broad(trunkTop);
 			}
+			skirt();
 			stubs();
+		}
+
+		/**
+		 * Live branches below the crown base towards the open land of a forest edge (review of V9, round 1): from
+		 * {@value #SKIRT_FROM} of the height up, each towards an azimuth bin that reaches open land, so the edge seen
+		 * from a field is green down to the shrubs of the mantle instead of a colonnade of bare boles.
+		 */
+		private void skirt() {
+			skirtFirst = nodes;
+			skirtEnd = nodes;
+			if (skirtBins == 0) {
+				return;
+			}
+			boolean conifer = shape.archetype() == SpeciesShape.Archetype.PINE || shape.archetype() == SpeciesShape.Archetype.SPRUCE;
+			double y = Math.max(2, SKIRT_FROM * size.height()) + range(0, 1);
+			double end = size.crownBase() - 0.5;
+			while (y < end) {
+				int pick = (int) (next() * skirtBins);
+				int bin = 0;
+				for (int b = 0; b < AZIMUTH_BINS; b++) {
+					if (skirtBin[b] && pick-- == 0) {
+						bin = b;
+						break;
+					}
+				}
+				double azimuth = 2 * Math.PI * (bin + range(-0.4, 0.4)) / AZIMUTH_BINS;
+				int at = trunkNode(Math.floor(y));
+				if (conifer) {
+					branch(at, azimuth, size.crownRadius() * range(0.7, 1.0), 0, shape.archetype() == SpeciesShape.Archetype.SPRUCE);
+				} else {
+					lateral(at, azimuth, 0, Double.NaN);
+				}
+				y = ny[at] + shape.spacing() * SKIRT_SPACING * range(0.8, 1.2);
+			}
+			skirtEnd = nodes;
 		}
 
 		/**
@@ -1205,6 +1319,10 @@ public final class TreeShapePlan {
 			if (y > capY[c]) {
 				return false;
 			}
+			if (i >= skirtFirst && i < skirtEnd && Math.max(Math.abs(x), Math.abs(z)) <= 2) {
+				// A low branch of an edge tree leaves the trunk below the layer's surface, like a dry stub.
+				return true;
+			}
 			return nKind[i] == TRUNK || nKind[i] == STUB || y >= floorY[c];
 		}
 
@@ -1396,6 +1514,30 @@ public final class TreeShapePlan {
 					addLeaf(x, y, z);
 				}
 			}
+			// Upward shoots of the upper crown are sleeved (review of V9, round 1): a leaf on the four sides of every thin block
+			// that grows up from its parent there, so no bare stick of a leader or of an upturned tip stands above the
+			// foliage (the leaf above a shoot covers it only from above; from the side, a pine's upturned tips read as a "U").
+			double sleeveFrom = size.crownBase() + SLEEVE_FROM * crownLength;
+			for (int i = 0; i < woods; i++) {
+				int owner = wOwner[i];
+				if (wRadius[i] > DIAGONAL_RADIUS || wParent[i] != TreeVoxels.DOWN || nKind[owner] == STUB && nLeafH[owner] <= 0) {
+					continue;
+				}
+				int pos = wPos[i];
+				int y = TreeVoxels.unpackY(pos);
+				if (y < sleeveFrom) {
+					continue;
+				}
+				int x = TreeVoxels.unpackX(pos);
+				int z = TreeVoxels.unpackZ(pos);
+				for (int side = 0; side < 4; side++) {
+					int lx = x + (side == 0 ? 1 : side == 1 ? -1 : 0);
+					int lz = z + (side == 2 ? 1 : side == 3 ? -1 : 0);
+					if (leafCell(lx, y, lz) && stamp[cellOf(lx, y, lz)] != current) {
+						addLeaf(lx, y, lz);
+					}
+				}
+			}
 		}
 
 		/** Whether a leaf may stand at (x, y, z): an allowed column between the split surfaces of the layer. */
@@ -1480,6 +1622,7 @@ public final class TreeShapePlan {
 		 * tips inwards: the bare ends of clusters that the territory or a split surface clipped.
 		 */
 		private void prune() {
+			double sleeveFrom = size.crownBase() + SLEEVE_FROM * crownLength;
 			for (int i = woods - 1; i > 0; i--) {
 				if (wGone[i] || wChildren[i] > 0 || wRadius[i] > DIAGONAL_RADIUS) {
 					continue;
@@ -1493,7 +1636,13 @@ public final class TreeShapePlan {
 				int y = TreeVoxels.unpackY(p);
 				int z = TreeVoxels.unpackZ(p);
 				boolean covered = false;
+				// An upward tip of the upper crown needs a leaf at its side (review of V9, round 1): one only above it leaves a
+				// bare stick in the side view.
+				boolean upright = wParent[i] == TreeVoxels.DOWN && y >= sleeveFrom;
 				for (int[] s : TreeVoxels.STEP) {
+					if (upright && s[1] != 0) {
+						continue;
+					}
 					int x2 = x + s[0];
 					int y2 = y + s[1];
 					int z2 = z + s[2];
