@@ -722,7 +722,8 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 			context.runOnClient(mc -> mc.options.renderDistance().set(OVERVIEW_RENDER_DISTANCE));
 		}
 		if (kind == SliceCameras.Kind.CANOPY) {
-			sp.getServer().runCommand("time set " + CANOPY_TIME);
+			// Keeps the date (V7 review round 2): a plain 'time set' moves the built-in calendar to day 0, early spring.
+			SeasonDates.setTimeOfDay(sp, CANOPY_TIME, "slice");
 		}
 		sp.getServer().runCommand(String.format(Locale.ROOT, "tp @a %.1f %d %.1f %.1f %.1f", c.x() + 0.5, c.y(), c.z() + 0.5, c.yaw(), c.pitch()));
 		context.runOnClient(mc -> {
@@ -756,7 +757,7 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 			}
 		});
 		if (kind == SliceCameras.Kind.CANOPY) {
-			sp.getServer().runCommand("time set " + NOON);
+			SeasonDates.setTimeOfDay(sp, NOON, "slice");
 		}
 		if (overview) {
 			context.runOnClient(mc -> mc.options.renderDistance().set(RENDER_DISTANCE));

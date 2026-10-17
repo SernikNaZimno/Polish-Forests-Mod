@@ -15,7 +15,8 @@ import pl.polishforests.season.SubSeason;
  * Sets the date of a test world explicitly (V7 review round 1): since step V7 the date decides how the leaves look, and
  * a new world starts in early spring (Serene Seasons' default {@code starting_sub_season}, day 0 of the built-in
  * calendar), so screenshot tests set the season they show: with Serene Seasons by {@code season set}, without it by
- * {@code time set} on the built-in calendar, always at noon.
+ * {@code time set} on the built-in calendar, always at noon. A later change of the time of day must keep the date
+ * ({@link #setTimeOfDay}, V7 review round 2).
  */
 final class SeasonDates {
 	static final int NOON = 6000;
@@ -47,6 +48,28 @@ final class SeasonDates {
 		}
 		PolishForests.LOG.info("[{}] date: {} day {} ({}), color step {}", tag, sub, day, serene() ? "Serene Seasons" : "built-in calendar",
 				expectedStep(sub, day));
+	}
+
+	/**
+	 * Sets the time of day ({@code 0-23999}) without changing the date (V7 review round 2). Without Serene Seasons the
+	 * built-in calendar reads the date from the overworld clock, so a plain {@code time set <timeOfDay>} would move the world
+	 * back to day 0 (early spring); here the day of the clock is kept. With Serene Seasons the season has its own counter
+	 * and {@code time set} does not touch it. Throws if the sub-season changed anyway.
+	 */
+	static void setTimeOfDay(TestSingleplayerContext sp, int timeOfDay, String tag) {
+		SubSeason before = sp.getServer().computeOnServer(s -> Seasons.provider().subSeason(s.overworld()));
+		if (serene()) {
+			sp.getServer().runCommand("time set " + timeOfDay);
+		} else {
+			long now = sp.getServer().computeOnServer(s -> s.overworld().getOverworldClockTime());
+			long day = Math.floorDiv(now, FallbackCalendar.TICKS_PER_DAY);
+			sp.getServer().runCommand("time set " + (day * FallbackCalendar.TICKS_PER_DAY + timeOfDay));
+		}
+		SubSeason after = sp.getServer().computeOnServer(s -> Seasons.provider().subSeason(s.overworld()));
+		if (after != before) {
+			throw new AssertionError("[" + tag + "] setting the time of day " + timeOfDay + " changed the date: " + before + " -> " + after);
+		}
+		PolishForests.LOG.info("[{}] time of day {}, date kept: {}", tag, timeOfDay, after);
 	}
 
 	/** Sets the date and waits until the client has the color step and the leaf meshes are rebuilt. */
