@@ -330,6 +330,25 @@ final class NormsCensus {
 		ForestCensus.Census census = ForestCensus.of(g);
 		Map<String, Double> values = census.measure(area, nonForestColumns);
 		writeMap(g, census.canopyMap(), c.scale() + "_" + c.mode() + "_" + c.place());
+		// The canopy by the distance from the nearest chunk border (step V9, V5-i: no band of weaker cover along the borders).
+		byte[] map = census.canopyMap();
+		long[] closedBy = new long[8];
+		long[] allBy = new long[8];
+		for (int col = 0; col < map.length; col++) {
+			byte m = map[col];
+			if (m == ForestCensus.MAP_CLOSED || m == ForestCensus.MAP_OPEN) {
+				int bx = g.columnX(col) & 15;
+				int bz = g.columnZ(col) & 15;
+				int d = Math.min(Math.min(bx, 15 - bx), Math.min(bz, 15 - bz));
+				allBy[d]++;
+				closedBy[d] += m == ForestCensus.MAP_CLOSED ? 1 : 0;
+			}
+		}
+		StringBuilder band = new StringBuilder();
+		for (int d = 0; d < 8; d++) {
+			band.append(String.format(Locale.ROOT, " %d: %.1f%%", d, 100.0 * closedBy[d] / Math.max(1, allBy[d])));
+		}
+		PolishForests.LOG.info("[slice] {}: canopy outside gaps by distance from a chunk border:{}", c.place(), band);
 		List<String> rows = new ArrayList<>();
 		int in = 0;
 		int tolerance = 0;

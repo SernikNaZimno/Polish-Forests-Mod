@@ -148,7 +148,8 @@ public final class PresentDayClientGameTest implements FabricClientGameTest {
 		sp.getServer().runCommand("gamerule advance_time false");
 		sp.getServer().runCommand("gamerule advance_weather false");
 		sp.getServer().runCommand("gamerule spawn_mobs false");
-		sp.getServer().runCommand("time set 6000");
+		// Step V9: mid-summer at noon (the procedural trees have the colors of their date, V7).
+		SeasonDates.set(sp, pl.polishforests.season.SubSeason.MID_SUMMER, 0, "present_day");
 		sp.getServer().runCommand("weather clear");
 		sp.getServer().runCommand("gamemode spectator @a");
 	}

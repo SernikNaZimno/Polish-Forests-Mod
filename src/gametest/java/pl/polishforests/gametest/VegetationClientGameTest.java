@@ -129,7 +129,9 @@ public final class VegetationClientGameTest implements FabricClientGameTest {
 				sp.getServer().runCommand("gamerule advance_time false");
 				sp.getServer().runCommand("gamerule advance_weather false");
 				sp.getServer().runCommand("gamerule spawn_mobs false");
-				sp.getServer().runCommand("time set 6000");
+				// Step V9: mid-summer at noon (the procedural trees have the colors of their date, V7; the built-in calendar
+				// reads the date from the clock, so a plain "time set 6000" would be early spring).
+				SeasonDates.set(sp, pl.polishforests.season.SubSeason.MID_SUMMER, 0, "vegetation");
 				sp.getServer().runCommand("weather clear");
 				sp.getServer().runCommand("gamemode spectator @a");
 				String name = scale.getSerializedName();

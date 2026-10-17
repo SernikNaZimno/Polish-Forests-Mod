@@ -66,8 +66,8 @@ public final class CrownTerritories {
 
 	/**
 	 * Crown radius (blocks) by layer and age class [S]: upper bounds of the crown spread of the broad-leaved trees of the
-	 * slice (oak, linden), since the species is unknown; narrower crowns (pine, birch) do not fill their territory. To be
-	 * calibrated against the cover N4 in step V9.
+	 * slice (oak, linden), since the species is unknown; narrower crowns (pine, birch) do not fill their territory. In a
+	 * closed stand the density sets the crown size (step V9 kept these values: the cover N4 is within its norms).
 	 */
 	private static final double[][] RADIUS = {
 			{3.5, 5.5, 7.0}, // canopy: pole stage, mature, old growth
@@ -77,7 +77,8 @@ public final class CrownTerritories {
 	/**
 	 * Shares of the canopy and the subcanopy among the candidates (the rest is regeneration) by stand and age class [S]:
 	 * managed stands are single-storied, natural ones two-storied (N2: 3–5 canopy and 6–9 subcanopy trees per chunk in a
-	 * natural oak-hornbeam forest of about 15). To be calibrated against N1 and N2 in step V9.
+	 * natural oak-hornbeam forest of about 15). Calibrated in step V9 against N1, N2 and N6 (natural mature and old growth
+	 * with more of the subcanopy than in V5).
 	 */
 	private static final double[][][] SHARES = {
 			{{0.95, 0.05}, {0.85, 0.10}, {0.80, 0.10}}, // managed: pole stage, mature, old growth

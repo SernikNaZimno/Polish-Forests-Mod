@@ -4,7 +4,8 @@ import java.util.Arrays;
 
 /**
  * Crown territory of one trunk ({@link CrownTerritories}): the columns over which the crown of the tree may spread, a
- * convex region around the trunk of at most {@value CrownTerritories#MAX_REACH} blocks. Rows are bit masks: row
+ * convex region around the trunk of at most {@value CrownTerritories#MAX_REACH} blocks (no longer convex when a
+ * structure mask leaves columns out, {@link #without}). Rows are bit masks: row
  * {@code dz + MAX_REACH} holds bit {@code dx + MAX_REACH} for every column (x + dx, z + dz) of the territory. The trunk's
  * own column always belongs to it. Immutable.
  */
