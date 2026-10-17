@@ -1,27 +1,28 @@
 sodium_ss: calendar Serene Seasons, board at y -60
-sapling scots_pine grew into polishforests:sapling/scots_pine: 34 wood blocks (0 missing), 42 of 42 leaves, 14 blocks tall, phase 3
-sapling spruce grew into polishforests:sapling/spruce: 72 wood blocks (0 missing), 110 of 110 leaves, 14 blocks tall, phase 0
-sapling birch grew into polishforests:sapling/birch: 28 wood blocks (0 missing), 48 of 48 leaves, 12 blocks tall, phase 3
-sapling oak grew into polishforests:sapling/oak: 38 wood blocks (0 missing), 163 of 163 leaves, 16 blocks tall, phase 0
-sapling hornbeam grew into polishforests:sapling/hornbeam: 63 wood blocks (0 missing), 233 of 233 leaves, 14 blocks tall, phase 2
-sapling linden grew into polishforests:sapling/linden: 60 wood blocks (0 missing), 213 of 213 leaves, 15 blocks tall, phase 0
-sapling beech grew into polishforests:sapling/beech: 66 wood blocks (0 missing), 339 of 339 leaves, 16 blocks tall, phase 3
-sapling ash grew into polishforests:sapling/ash: 31 wood blocks (0 missing), 106 of 106 leaves, 17 blocks tall, phase 0
-sapling norway_maple grew into polishforests:sapling/norway_maple: 41 wood blocks (0 missing), 142 of 142 leaves, 14 blocks tall, phase 3
+sapling scots_pine grew into polishforests:sapling/scots_pine: 34 wood blocks (0 missing), 42 of 42 leaves (0 marcescent), 14 blocks tall, phase 3
+sapling spruce grew into polishforests:sapling/spruce: 72 wood blocks (0 missing), 110 of 110 leaves (0 marcescent), 14 blocks tall, phase 0
+sapling birch grew into polishforests:sapling/birch: 28 wood blocks (0 missing), 48 of 48 leaves (0 marcescent), 12 blocks tall, phase 3
+sapling oak grew into polishforests:sapling/oak: 38 wood blocks (0 missing), 163 of 163 leaves (163 marcescent), 16 blocks tall, phase 0
+sapling hornbeam grew into polishforests:sapling/hornbeam: 63 wood blocks (0 missing), 233 of 233 leaves (233 marcescent), 14 blocks tall, phase 2
+sapling linden grew into polishforests:sapling/linden: 60 wood blocks (0 missing), 213 of 213 leaves (0 marcescent), 15 blocks tall, phase 0
+sapling beech grew into polishforests:sapling/beech: 66 wood blocks (0 missing), 339 of 339 leaves (339 marcescent), 16 blocks tall, phase 3
+sapling ash grew into polishforests:sapling/ash: 31 wood blocks (0 missing), 106 of 106 leaves (0 marcescent), 17 blocks tall, phase 0
+sapling norway_maple grew into polishforests:sapling/norway_maple: 41 wood blocks (0 missing), 142 of 142 leaves (0 marcescent), 14 blocks tall, phase 3
 saplings: 9 of 9 grew into the trees of their features
 blocked sapling: takes bone meal false, still a sapling after 3 advances true
+sapling on farmland: takes bone meal true, grew true, farmland turned into dirt true
 LITE pine and foliage tags loaded: true
 axe on a pine log (axis z): Success[swingSource=PREDICTED, itemContext=ItemContext[wasItemInteraction=true, heldItemTransformedTo=1 minecraft:iron_axe]], now Block{polishforests:stripped_scots_pine_log}[axis=z]
 planks recipe polishforests:scots_pine_planks present: true
 LATE_SPRING day 0: color step 6 after 2 ticks, 1 rebuilds
-late_spring step 6: scots_pine #7f9c86 (screen (41, 50, 43), 0.001); spruce #619961 (screen (26, 41, 27), 0.008); birch #95c046 (screen (53, 66, 25), 0.009); oak #948e46 (screen (59, 57, 28), 0.001); hornbeam #96c248 (screen (60, 77, 29), 0.002); linden #96b64c (screen (60, 73, 31), 0.003); beech #96c743 (screen (60, 79, 27), 0.002); ash #7c714d (screen (49, 45, 31), 0.003); norway_maple #99c347 (screen (61, 77, 29), 0.004);
+late_spring step 6: scots_pine #7c996d (screen (40, 49, 35), 0.001); spruce #619961 (screen (26, 41, 27), 0.008); birch #95c046 (screen (53, 66, 25), 0.009); oak #978970 (screen (63, 58, 48), 0.005); hornbeam #96c248 (screen (63, 81, 31), 0.004); linden #9fb158 (screen (67, 74, 38), 0.005); beech #96c743 (screen (63, 83, 29), 0.005); ash #989e87 (screen (64, 66, 57), 0.002); norway_maple #99c347 (screen (64, 82, 30), 0.002);
 MID_SUMMER day 0: color step 12 after 2 ticks, 2 rebuilds
-mid_summer step 12: scots_pine #7f9c86 (screen (41, 50, 43), 0.001); spruce #619961 (screen (26, 41, 27), 0.008); birch #80b037 (screen (45, 61, 20), 0.006); oak #68992e (screen (41, 61, 19), 0.005); hornbeam #72ae2c (screen (45, 69, 18), 0.004); linden #629e3d (screen (39, 63, 25), 0.004); beech #78b02f (screen (48, 70, 19), 0.002); ash #619835 (screen (39, 61, 22), 0.005); norway_maple #6aa634 (screen (42, 66, 21), 0.002);
+mid_summer step 12: scots_pine #7c996d (screen (40, 49, 35), 0.001); spruce #619961 (screen (26, 41, 27), 0.008); birch #91b339 (screen (51, 62, 21), 0.007); oak #6e9634 (screen (46, 63, 23), 0.008); hornbeam #73a148 (screen (48, 68, 31), 0.004); linden #58a755 (screen (37, 70, 36), 0.002); beech #78ae37 (screen (50, 73, 24), 0.006); ash #87a83d (screen (57, 70, 26), 0.004); norway_maple #5dae3f (screen (40, 73, 27), 0.006);
 MID_AUTUMN day 0: color step 21 after 2 ticks, 3 rebuilds
-mid_autumn step 21: scots_pine #7f9c86 (screen (41, 50, 43), 0.001); spruce #619961 (screen (26, 41, 27), 0.008); birch #b0b938 (screen (62, 64, 20), 0.005); oak #68992e (screen (41, 61, 19), 0.005); hornbeam #72ae2c (screen (45, 69, 18), 0.004); linden #9eaa3b (screen (63, 68, 24), 0.002); beech #83af30 (screen (52, 70, 20), 0.005); ash #679b36 (screen (41, 62, 22), 0.003); norway_maple #91aa32 (screen (58, 68, 20), 0.000);
+mid_autumn step 21: scots_pine #7c996d (screen (40, 49, 35), 0.001); spruce #619961 (screen (26, 41, 27), 0.008); birch #b7ba38 (screen (64, 64, 20), 0.005); oak #6e9634 (screen (46, 63, 23), 0.008); hornbeam #73a148 (screen (48, 68, 31), 0.004); linden #9aae45 (screen (64, 73, 29), 0.002); beech #83ad37 (screen (55, 72, 24), 0.006); ash #88a93d (screen (57, 71, 26), 0.002); norway_maple #8aae39 (screen (58, 73, 25), 0.006);
 LATE_AUTUMN day 0: color step 24 after 2 ticks, 4 rebuilds
-late_autumn step 24: scots_pine #7c9983 (screen (40, 49, 43), 0.005); spruce #5f965f (screen (26, 41, 26), 0.000); birch #7d724d (screen (44, 39, 28), 0.009); oak #a59435 (screen (66, 59, 22), 0.005); hornbeam #9e7f32 (screen (63, 51, 20), 0.001); linden #7c714d (screen (49, 45, 31), 0.003); beech #9a6a2c (screen (61, 42, 18), 0.004); ash #7c714d (screen (49, 45, 31), 0.003); norway_maple #8b7747 (screen (55, 47, 29), 0.006);
+late_autumn step 24: scots_pine #7e996e (screen (41, 49, 36), 0.004); spruce #5f965f (screen (26, 41, 26), 0.000); birch #b19181 (screen (63, 50, 46), 0.007); oak #a59435 (screen (69, 62, 23), 0.005); hornbeam #9e7f32 (screen (66, 54, 22), 0.007); linden #a58770 (screen (69, 57, 48), 0.004); beech #9a6a2c (screen (64, 45, 19), 0.007); ash #989e87 (screen (64, 66, 57), 0.002); norway_maple #b69254 (screen (76, 61, 36), 0.004);
 MID_WINTER day 0: color step 30 after 2 ticks, 5 rebuilds
-mid_winter step 30: scots_pine #708976 (screen (36, 45, 39), 0.005); spruce #558755 (screen (23, 36, 23), 0.004); birch #7c714d (screen (44, 39, 28), 0.009); oak #88713d (screen (54, 45, 25), 0.005); hornbeam #88713d (screen (54, 45, 25), 0.005); linden #7c714d (screen (49, 45, 31), 0.003); beech #88713d (screen (54, 45, 25), 0.005); ash #7c714d (screen (49, 45, 31), 0.003); norway_maple #7c714d (screen (49, 45, 31), 0.003);
+mid_winter step 30: scots_pine #8a9670 (screen (44, 48, 37), 0.007); spruce #558755 (screen (23, 36, 23), 0.004); birch #af8e85 (screen (62, 49, 47), 0.005); oak #978970 (screen (63, 58, 48), 0.005); hornbeam #92937c (screen (61, 62, 52), 0.002); linden #a58770 (screen (69, 57, 48), 0.004); beech #9d8c76 (screen (66, 59, 50), 0.001); ash #989e87 (screen (64, 66, 57), 0.002); norway_maple #999178 (screen (64, 61, 51), 0.003);
 MID_SUMMER day 0: color step 12 after 2 ticks, 6 rebuilds
 fast: leaves block true; screen sky Fancy 18.1% / Fast 0.0%, vanilla oak screen Fancy 16.8% / Fast 0.0%
