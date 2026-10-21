@@ -21,7 +21,7 @@ import pl.polishforests.worldgen.tree.TreeShapePlan;
  * every stand and under {@value #MAX_MEAN} on average. Before round 2 of the review the old-growth oak-hornbeam forest had
  * 0.90 and the managed one 1.75 per tree (an arm of a "lamp post", a gray candelabra of limbs under the foliage, a bare
  * whorl of a pine between crowns that do not meet); after it 0.26 and 0.60, and with the leaf below each branch block
- * (round 2, after the frames) 0.11 and 0.33, the limits tightened from 0.8 / 0.4 / 1.6.
+ * and the sleeve of the lower crown (round 2, after the frames) 0.08 and 0.12, the limits tightened from 0.8 / 0.4 / 1.6.
  */
 @Tag("slow")
 class StandCrownCoverTest {

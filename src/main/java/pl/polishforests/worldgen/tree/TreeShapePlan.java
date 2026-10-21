@@ -1610,7 +1610,10 @@ public final class TreeShapePlan {
 			// The leader of a pine (up to 3 px, the stem of an old pine's umbrella) all through the crown.
 			// Round 2: the sideways shoots of the upper crown too, on their two sides across the shoot, and the branches at any
 			// radius (seen from above at 30 m, a bare candelabra of a pine's top whorl showed between the tufts; the leaf above
-			// covers it only from straight above).
+			// covers it only from straight above). After the frames of round 2: below that, down to the crown base, the same
+			// sleeve but only in the columns that already hold a leaf of the tree, so the hooks and forks of branches at the
+			// bottom of a crown are covered from the side without widening the crown (the canopy closure stays within one
+			// percentage point; a sleeve in new columns raised it by 4-6 points in the managed oak-hornbeam forest).
 			double sleeveFrom = size.crownBase() + SLEEVE_FROM * crownLength;
 			for (int i = 0; i < woods; i++) {
 				if (wGone[i]) {
@@ -1627,7 +1630,8 @@ public final class TreeShapePlan {
 				}
 				int pos = wPos[i];
 				int y = TreeVoxels.unpackY(pos);
-				if (y < (leader ? size.crownBase() : sleeveFrom)) {
+				boolean below = y < (leader ? size.crownBase() : sleeveFrom);
+				if (below && y < size.crownBase()) {
 					continue;
 				}
 				int x = TreeVoxels.unpackX(pos);
@@ -1639,11 +1643,24 @@ public final class TreeShapePlan {
 					}
 					int lx = x + (side == 0 ? 1 : side == 1 ? -1 : 0);
 					int lz = z + (side == 2 ? 1 : side == 3 ? -1 : 0);
-					if (leafCell(lx, y, lz) && free(lx, y, lz)) {
+					if (leafCell(lx, y, lz) && free(lx, y, lz) && (!below || ownLeafColumn(lx, lz))) {
 						addLeaf(lx, y, lz);
 					}
 				}
 			}
+		}
+
+		/** Whether the column (x, z) of the box holds a leaf of the tree at any height. */
+		private boolean ownLeafColumn(int x, int z) {
+			for (int y = 0; y < MAX_HEIGHT; y++) {
+				if (inBox(x, y, z)) {
+					int c = cellOf(x, y, z);
+					if (stamp[c] == current && cell[c] == LEAF) {
+						return true;
+					}
+				}
+			}
+			return false;
 		}
 
 		/**
