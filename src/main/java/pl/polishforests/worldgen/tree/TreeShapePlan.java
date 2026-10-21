@@ -541,6 +541,7 @@ public final class TreeShapePlan {
 			dropBareBranches();
 			cover();
 			sprouts();
+			trimBareTips();
 			distances();
 			return result();
 		}
@@ -1664,6 +1665,30 @@ public final class TreeShapePlan {
 					if (leafCell(lx, y, lz) && free(lx, y, lz)) {
 						addLeaf(lx, y, lz);
 					}
+				}
+			}
+		}
+
+		/**
+		 * Trims the bare ends of the side branches and their twigs at any radius (review of V9, round 2), after the shoots
+		 * are covered: a tip block with at most one own leaf among its 26 neighbors goes, from the tips inwards, so a branch
+		 * ends at its last block with leaves around it, and one with none goes back to its parent. The thick base of a pine's
+		 * whorl branch, which {@link #prune} leaves (radius over 2 px), stood bare between the crowns seen from 30 m.
+		 */
+		private void trimBareTips() {
+			for (int i = woods - 1; i > 0; i--) {
+				int kind = nKind[wOwner[i]];
+				if (wGone[i] || wChildren[i] > 0 || kind != BRANCH && kind != TWIG) {
+					continue;
+				}
+				int p = wPos[i];
+				int x = TreeVoxels.unpackX(p);
+				int y = TreeVoxels.unpackY(p);
+				int z = TreeVoxels.unpackZ(p);
+				if (leavesAround(x, y, z) <= 1) {
+					wGone[i] = true;
+					wChildren[wParentIndex[i]]--;
+					cell[cellOf(x, y, z)] = 0;
 				}
 			}
 		}

@@ -245,6 +245,7 @@ public final class SliceStandPreview {
 		int crownWood = 0;
 		int orange = 0;
 		int side = 0;
+		int orangeUp = 0;
 		for (int py = 0; py < H; py++) {
 			for (int px = 0; px < W; px++) {
 				double a = (2.0 * (px + 0.5) / W - 1) * th;
@@ -266,12 +267,13 @@ public final class SliceStandPreview {
 				int cb = rgb & 255;
 				if (cr > 150 && cr - cg > 40 && cr - cb > 80) {
 					orange++;
+					orangeUp += hit[0] >= 0 && kind[hit[0]] == WOOD && axis[hit[0]] == 1 ? 1 : 0;
 				}
 			}
 		}
 		ImageIO.write(image, "png", new File(dir, name + ".png"));
-		return String.format(Locale.ROOT, "%n    %-48s crown wood %.2f%% of pixels, orange %.2f%%, branches (wood on its side) %.2f%%", name,
-				100.0 * crownWood / (W * H), 100.0 * orange / (W * H), 100.0 * side / (W * H));
+		return String.format(Locale.ROOT, "%n    %-48s crown wood %.2f%% of pixels, orange %.2f%% (%.0f%% of it on upright wood), branches (wood on its side) %.2f%%",
+				name, 100.0 * crownWood / (W * H), 100.0 * orange / (W * H), 100.0 * orangeUp / Math.max(1, orange), 100.0 * side / (W * H));
 	}
 
 	/** Casts a ray through the grid (Amanatides–Woo); hit[0] is the cell index or −1. */

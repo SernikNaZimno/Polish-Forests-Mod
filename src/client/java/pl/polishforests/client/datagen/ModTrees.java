@@ -154,9 +154,11 @@ final class ModTrees {
 				Blocks.SPRUCE_LEAVES, new SpruceFoliagePlacer(ConstantInt.of(1), ConstantInt.of(0), ConstantInt.of(2)), soil));
 		// Alder buckthorn: thin dark gray stems (the bark of the linden), one or two, and a loose crown of the jungle leaves,
 		// lighter and coarser than those of the hazel (V9: the dark oak leaves made a black box in the shade); round 2: the
-		// fancy foliage of three rows (a cross, 5 x 5 without the corners, a cross) above a short bare stem, no plate.
+		// fancy foliage of three rows (a cross, 5 x 5 without the corners, a cross) above a short bare stem, no plate; round 2
+		// after the frames: those crowns of 5 x 5 stood on bare stems two blocks up and joined into a hedge-like slab, so a
+		// slender crown of radius 1 down to the ground (four rows from the top of the stem), as the open, upright shrub is.
 		register(context, key(SLICE.get(Species.ALDER_BUCKTHORN)), thinShrub(TreeTrunk.LINDEN, 1, new ClumpTrunkPlacer(3, 1, 0, 1),
-				Blocks.JUNGLE_LEAVES, new FancyFoliagePlacer(ConstantInt.of(2), ConstantInt.of(0), 2), soil));
+				Blocks.JUNGLE_LEAVES, new FancyFoliagePlacer(ConstantInt.of(1), ConstantInt.of(0), 3), soil));
 		// Rowan: a small tree of 5-6 blocks on a thin smooth gray stem (the bark of the beech), a round crown narrow at its
 		// bottom row (no flat ceiling of leaves at head height).
 		register(context, key(SLICE.get(Species.ROWAN)), thinShrub(TreeTrunk.BEECH, 2, new StraightTrunkPlacer(5, 1, 0),

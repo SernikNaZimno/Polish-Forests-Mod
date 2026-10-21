@@ -4,9 +4,9 @@
   "decorators": [],
   "foliage_placer": {
     "type": "minecraft:fancy_foliage_placer",
-    "height": 2,
+    "height": 3,
     "offset": 0,
-    "radius": 2
+    "radius": 1
   },
   "foliage_provider": {
     "id": "minecraft:jungle_leaves",
