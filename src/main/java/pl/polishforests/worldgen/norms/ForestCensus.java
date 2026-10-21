@@ -234,6 +234,8 @@ public final class ForestCensus {
 		/** The map of the area of the last {@link #measure} ({@link #canopyMap}). */
 		private byte[] lastMap = new byte[0];
 		private final List<WoodObject> objects = new ArrayList<>();
+		/** World y of the lowest leaf each object owns (its crown base), {@link Integer#MAX_VALUE} for none. */
+		private int[] crownBase = new int[0];
 
 		Census(CensusGrid grid) {
 			this.grid = grid;
@@ -361,6 +363,13 @@ public final class ForestCensus {
 					owner[i] = objectOf[owner[i]];
 				} else if (component[i] >= 0) {
 					owner[i] = objectOf[component[i]];
+				}
+			}
+			crownBase = new int[objects.size()];
+			Arrays.fill(crownBase, Integer.MAX_VALUE);
+			for (int i = 0; i < cells; i++) {
+				if (owner[i] >= 0 && !wood(i) && grid.cellAt(i / height, dy(i)) == CensusGrid.LEAVES) {
+					crownBase[owner[i]] = Math.min(crownBase[owner[i]], y(i));
 				}
 			}
 		}
@@ -750,9 +759,10 @@ public final class ForestCensus {
 			m.put(ForestNorms.SNAGS_PER_CHUNK, snags / chunks);
 			m.put(ForestNorms.DEADWOOD_VOLUME, volume / ha);
 			m.put(ForestNorms.COARSE_PIECES, coarse / ha);
-			// Bare wood in the upper half of the stand (review of V9; round 2: as CrownCover counts it in a plan): wood with at
-			// most one leaf among its 26 neighbors, and the part of it open to the side (no leaf within 6 blocks in one of the
-			// four horizontal directions, at its height or one above).
+			// Bare wood in the upper half of the stand (review of V9; round 2: as CrownCover counts it in a plan): crown wood
+			// (at or above the lowest leaf of its object, so the clear bole below a crown does not count) with at most one leaf
+			// among its 26 neighbors, and the part of it open to the side (no leaf within 6 blocks in one of the four
+			// horizontal directions, at its height or one above).
 			int bare = 0;
 			int exposed = 0;
 			if (!Double.isNaN(topHeight)) {
@@ -763,7 +773,7 @@ public final class ForestCensus {
 					}
 					for (int dy = Math.max(2, from); dy <= height; dy++) {
 						int i = c * height + dy - 1;
-						if (!wood(i) || leavesAround(i) > 1) {
+						if (!wood(i) || belowCrown(i) || leavesAround(i) > 1) {
 							continue;
 						}
 						bare++;
@@ -775,6 +785,7 @@ public final class ForestCensus {
 			m.put(ForestNorms.CONIFERS, layered == 0 ? Double.NaN : 100.0 * conifers / layered);
 			m.put(ForestNorms.BARE_WOOD, bare / chunks);
 			m.put(ForestNorms.EXPOSED_WOOD, exposed / chunks);
+			m.put(ForestNorms.BARE_ARMS, bareArms(area, Integer.MAX_VALUE).size() / chunks);
 			return m;
 		}
 
@@ -856,6 +867,57 @@ public final class ForestCensus {
 				}
 			}
 			return out;
+		}
+
+		/**
+		 * The bare arms of the living trees in the area (review of V9, round 2), at most {@code limit}, as {x, y, z} of each
+		 * block: wood lying on its side at least 3 blocks above the ground, with at most one leaf (of any tree) among its 26
+		 * neighbors, whose parent block lies on its side too (a horizontal run of two or more; a dry stub is one block). At
+		 * any height, so the arm of a "lamp post" below the crown counts as well as one in it.
+		 */
+		public List<int[]> bareArms(boolean[] area, int limit) {
+			List<int[]> out = new ArrayList<>();
+			for (int c = 0; c < area.length && out.size() < limit; c++) {
+				if (!area[c] || grid.groundAt(c) == CensusGrid.NO_GROUND) {
+					continue;
+				}
+				for (int dy = 3; dy <= height && out.size() < limit; dy++) {
+					int i = c * height + dy - 1;
+					if (bareArm(i)) {
+						out.add(new int[] {x(i), y(i), z(i)});
+					}
+				}
+			}
+			return out;
+		}
+
+		private boolean bareArm(int cell) {
+			if (grid.cellAt(cell / height, dy(cell)) != CensusGrid.WOOD_SIDE) {
+				return false;
+			}
+			int o = owner[cell];
+			if (o < 0 || objects.get(o).kind() != Kind.TREE || objects.get(o).leaves() == 0 || leavesAround(cell) > 1) {
+				return false;
+			}
+			CensusGrid.Wood w = woodOf(cell);
+			if (w.parent() >= 0) {
+				int p = parentOf(cell, w.parent());
+				return p >= 0 && grid.cellAt(p / height, dy(p)) == CensusGrid.WOOD_SIDE;
+			}
+			int[][] sides = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+			for (int[] d : sides) {
+				int n = index(x(cell) + d[0], y(cell), z(cell) + d[1]);
+				if (n >= 0 && grid.cellAt(n / height, dy(n)) == CensusGrid.WOOD_SIDE) {
+					return true;
+				}
+			}
+			return false;
+		}
+
+		/** Whether a wood cell lies below the lowest leaf of its object (or its object has no leaves). */
+		private boolean belowCrown(int cell) {
+			int o = owner[cell];
+			return o < 0 || y(cell) < crownBase[o];
 		}
 
 		/** Leaves among the 26 neighbors of a cell (counting stops at 2). */

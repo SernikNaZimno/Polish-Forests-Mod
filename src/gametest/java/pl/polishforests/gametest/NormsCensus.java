@@ -237,6 +237,17 @@ final class NormsCensus {
 
 	private static final int FLAGS = Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE;
 
+	/**
+	 * The bare arms of the living trees of a plot (review of V9, round 2; {@link ForestNorms#BARE_ARMS}): their number and
+	 * the first few, with their height above the ground of their column, for a look in the world.
+	 */
+	private static void logBareArms(CensusGrid g, ForestCensus.Census census, boolean[] area, String place) {
+		List<int[]> arms = census.bareArms(area, Integer.MAX_VALUE);
+		List<String> first = arms.stream().limit(6).map(a -> String.format(Locale.ROOT, "(%d, %d, %d) %d up", a[0], a[1], a[2],
+				a[1] - g.ground(a[0], a[2]))).toList();
+		PolishForests.LOG.info("[slice] {}: {} bare arm blocks {}", place, arms.size(), first);
+	}
+
 	/** Places the blocks of a grid: ground, plants (double plants with their upper half), leaves and wood. */
 	private static void build(ServerLevel level, CensusGrid g) {
 		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
@@ -383,6 +394,7 @@ final class NormsCensus {
 				.map(o -> String.format(Locale.ROOT, "%s at (%d, %d, %d) height %d, wood %d, %d leaves", o.species(), o.x(), o.y() + 1, o.z(),
 						o.height(), o.woodHeight(), o.leaves())).toList();
 		PolishForests.LOG.info("[slice] {}: tallest trees {}", c.place(), tallest);
+		logBareArms(g, census, area, c.place());
 		List<String> outside = new ArrayList<>();
 		for (Map.Entry<String, Double> e : values.entrySet()) {
 			Optional<Norm> norm = ForestNorms.of(e.getKey(), forest, c.aspect(), age);

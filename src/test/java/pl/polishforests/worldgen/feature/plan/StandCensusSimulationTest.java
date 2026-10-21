@@ -33,7 +33,7 @@ class StandCensusSimulationTest {
 			ForestNorms.COMPOSITION + "linden", ForestNorms.COMPOSITION + "maple_ash", ForestNorms.COMPOSITION + "scots_pine",
 			ForestNorms.COMPOSITION + "birch", ForestNorms.COMPOSITION + "hornbeam", ForestNorms.CANOPY, ForestNorms.GAP_SHARE, ForestNorms.GAP_DIAMETER,
 			ForestNorms.REGENERATION_RATIO, ForestNorms.OAK_REGENERATION, ForestNorms.PINE_REGENERATION_UNDER_CANOPY,
-			ForestNorms.TOP_HEIGHT, ForestNorms.BARE_WOOD, ForestNorms.EXPOSED_WOOD};
+			ForestNorms.TOP_HEIGHT, ForestNorms.BARE_WOOD, ForestNorms.EXPOSED_WOOD, ForestNorms.BARE_ARMS};
 
 	@Test
 	void reportNormsOfSimulatedStands() {

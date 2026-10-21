@@ -136,6 +136,8 @@ public final class ForestNorms {
 	public static final String BARE_WOOD = "X.bare_wood_per_chunk";
 	/** Check, not a norm: the part of {@link #BARE_WOOD} open to the side (review of V9, round 2). */
 	public static final String EXPOSED_WOOD = "X.exposed_wood_per_chunk";
+	/** Check, not a norm: bare arms of living trees at any height, blocks per chunk (review of V9, round 2). */
+	public static final String BARE_ARMS = "X.bare_arms_per_chunk";
 
 	/**
 	 * Species groups of the composition norms: the maples and the ash share one norm in the oak-hornbeam forest
@@ -239,6 +241,8 @@ public final class ForestNorms {
 		METRICS.put(BARE_WOOD, "wood above half the top height with at most one leaf among its 26 neighbors, blocks per chunk");
 		METRICS.put(EXPOSED_WOOD, "the part of that bare wood open to the side (no leaf within 6 blocks in one of the four "
 				+ "horizontal directions), blocks per chunk");
+		METRICS.put(BARE_ARMS, "bare arms of living trees: wood on its side at least 3 blocks up with at most one leaf among its 26 "
+				+ "neighbors in a horizontal run of two or more, blocks per chunk");
 
 		Forest ohn = Forest.OAK_HORNBEAM_NATURAL;
 		Forest ohm = Forest.OAK_HORNBEAM_MANAGED;

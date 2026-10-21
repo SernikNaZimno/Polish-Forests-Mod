@@ -1224,11 +1224,17 @@ public final class TreeShapePlan {
 			leafAt(tip, leafH * 0.85, leafV * 0.9);
 		}
 
-		/** Dry stubs of self-pruned branches on the bole below the crown base (one block, axis-aligned). */
+		/**
+		 * Dry stubs of self-pruned branches on the bole below the crown base (one block, axis-aligned). Only on the
+		 * conifers and the birch (review of V9, round 2): on the gray bole of a broad-leaved tree a one-block stub of 1 px
+		 * read as the arm of a lamp post at eye height. The random draws stay the same for every species, so the rest of
+		 * the tree does not change.
+		 */
 		private void stubs() {
 			if (request.layer() == CrownLayer.REGENERATION || shape.stubs() <= 0) {
 				return;
 			}
+			boolean broad = shape.archetype() == SpeciesShape.Archetype.BROAD;
 			double y = Math.max(2, 0.25 * size.height());
 			double end = size.crownBase() - 0.8;
 			while (y < end) {
@@ -1237,7 +1243,7 @@ public final class TreeShapePlan {
 					int dir = (int) (next() * 4);
 					double dx = dir == 0 ? 1 : dir == 1 ? -1 : 0;
 					double dz = dir == 2 ? 1 : dir == 3 ? -1 : 0;
-					if (woodAt(nx[at] + dx, nz[at] + dz)) {
+					if (!broad && woodAt(nx[at] + dx, nz[at] + dz)) {
 						node(at, nx[at] + dx, ny[at], nz[at] + dz, STUB);
 					}
 				}
