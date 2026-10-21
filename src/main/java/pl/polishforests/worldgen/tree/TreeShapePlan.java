@@ -1572,7 +1572,7 @@ public final class TreeShapePlan {
 
 		/**
 		 * Covers the shoots (after the clusters, and again after pruning and dropping freed cells next to the wood): a leaf
-		 * above each thin live shoot and a sleeve of leaves along the shoots of the upper crown.
+		 * above each thin live shoot, one below each branch block (round 2) and a sleeve of leaves along the shoots of the upper crown.
 		 */
 		private void cover() {
 			boolean pine = shape.archetype() == SpeciesShape.Archetype.PINE;
@@ -1595,6 +1595,13 @@ public final class TreeShapePlan {
 				int z = TreeVoxels.unpackZ(pos);
 				if (leafCell(x, y, z) && free(x, y, z)) {
 					addLeaf(x, y, z);
+				}
+				// Round 2 (after the frames): a leaf below each branch block too, where the layer allows it, so the branches at
+				// the bottom of a crown do not stand bare against the sky seen from below (the "lamp-post arms" and hooks of
+				// the eye views); it halves the bare wood open to the side and adds 3-10% leaves, with the canopy closure
+				// within 1 percentage point.
+				if (branch && leafCell(x, y - 2, z) && free(x, y - 2, z)) {
+					addLeaf(x, y - 2, z);
 				}
 			}
 			// Upward shoots of the upper crown are sleeved (review of V9, round 1): a leaf on the four sides of every thin block

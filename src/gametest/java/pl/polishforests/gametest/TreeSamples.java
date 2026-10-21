@@ -68,8 +68,8 @@ final class TreeSamples {
 	private static final int ECOTONE_X = 272;
 	private static final double SUBSTITUTES = 0.3;
 	/** Most bare crown wood open to the side per tree ({@link CrownCover}): lone trees and the two stands. */
-	private static final double MAX_BARE_LONE = 1.6;
-	private static final double MAX_BARE_STAND = 0.8;
+	private static final double MAX_BARE_LONE = 0.6;
+	private static final double MAX_BARE_STAND = 0.5;
 	/** Origin (x) of the lone trees with obstacles in their crowns. */
 	private static final int OBSTACLE_X = 380;
 

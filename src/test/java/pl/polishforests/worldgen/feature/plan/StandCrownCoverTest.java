@@ -20,14 +20,15 @@ import pl.polishforests.worldgen.tree.TreeShapePlan;
  * ({@link CrownCover}: at most one own leaf among its 26 neighbors) stays under {@value #MAX_PER_TREE} blocks per tree in
  * every stand and under {@value #MAX_MEAN} on average. Before round 2 of the review the old-growth oak-hornbeam forest had
  * 0.90 and the managed one 1.75 per tree (an arm of a "lamp post", a gray candelabra of limbs under the foliage, a bare
- * whorl of a pine between crowns that do not meet); after it 0.26 and 0.60.
+ * whorl of a pine between crowns that do not meet); after it 0.26 and 0.60, and with the leaf below each branch block
+ * (round 2, after the frames) 0.11 and 0.33, the limits tightened from 0.8 / 0.4 / 1.6.
  */
 @Tag("slow")
 class StandCrownCoverTest {
 	private static final int CHUNKS = 6;
-	private static final double MAX_PER_TREE = 0.8;
-	private static final double MAX_MEAN = 0.4;
-	private static final double MAX_LONE = 1.6;
+	private static final double MAX_PER_TREE = 0.5;
+	private static final double MAX_MEAN = 0.25;
+	private static final double MAX_LONE = 0.6;
 	private static final int RANGES = Species.FLAG_HORNBEAM | Species.FLAG_BEECH | Species.FLAG_SPRUCE;
 
 	private record Stand(HabitatBiome biome, boolean natural, AgeClass age) {
