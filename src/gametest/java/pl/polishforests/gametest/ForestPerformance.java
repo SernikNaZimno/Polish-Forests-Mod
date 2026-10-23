@@ -43,9 +43,8 @@ import pl.polishforests.PolishForests;
  * share of the ground where a monster may spawn by the vanilla rule ({@link Monster#isDarkEnoughToSpawn}) and a live
  * spawn test, against the dark forest and the forest of a vanilla world (PW-13).</li>
  * </ul>
- * A client game test runs the client and the integrated server in lockstep, one frame per tick as fast as they go, so the
- * frames per second of a flight are the ticks per wall second of the turns (a frame, a client tick and an idle server
- * tick); they compare builds and renderers in one session, not with a normal game.
+ * A client game test syncs the client and the integrated server at every client tick (at most one per frame), so the
+ * numbers compare builds and renderers in one session, not with a normal game.
  */
 final class ForestPerformance {
 	/** Radius of the camera circle (blocks) and the client ticks of one lap. */
@@ -59,6 +58,20 @@ final class ForestPerformance {
 	/** Per recorded tick: the client tick (START to END of the client tick event) and the whole loop (END to END). */
 	private static final long[] TICKS = new long[4 * SWEEP_TICKS];
 	private static final long[] LOOPS = new long[4 * SWEEP_TICKS];
+	/** The frame rate of the game ({@link Minecraft#getFps}, frames of the last second) at each recorded tick. */
+	private static final int[] FPS = new int[4 * SWEEP_TICKS];
+	private static final int FPS_FROM = 20;
+	/**
+	 * GPU time of the level pass (Fabric's START_MAIN to END_MAIN of every frame), read by a timestamp query: the frames
+	 * per second of the window depend on whether it has the focus (a background window is capped by the driver at about
+	 * 50-60 frames per second on the test machine), the GPU time per frame does not.
+	 */
+	private static com.mojang.blaze3d.systems.TimerQuery gpu;
+	private static boolean gpuAwaiting;
+	private static int gpuWarm;
+	private static long gpuSum;
+	private static int gpuCount;
+	private static int levelFrames;
 	private static volatile long tickStart;
 	private static volatile long lastEnd;
 	private static volatile int frameCount;
@@ -125,30 +138,46 @@ final class ForestPerformance {
 			String label = name + " / " + p.name();
 			int ground = sp.getServer().computeOnServer(s -> surface(s.overworld(), m[0], m[1]));
 			// New terrain: the client gets the chunks around a teleport (chunks per second; with C2ME the budget of PW-10).
-			// Counted around the target, since the client keeps the old chunks for a while.
-			int tx = (m[0] + ORBIT_RADIUS) >> 4;
-			int tz = m[1] >> 4;
-			long t0 = System.nanoTime();
-			sp.getServer().runCommand(String.format(Locale.ROOT, "tp @a %d %d %d 0 20", m[0] + ORBIT_RADIUS, ground + CANOPY_FLIGHT,
-					m[1]));
+			// Counted around the target, since the client keeps the old chunks for a while. The camera looks straight up
+			// (pitch -90): the client and the server of a game test are synced at every client tick, so with the forest in view the slower
+			// frames of a build would also slow down its server ticks and the chunk sending; looking at the sky, the load
+			// measures the generation and the transfer of the chunks.
+			// Three loads, 450 blocks apart (the 25 × 25 chunks of a load do not overlap): east of the place, then north and
+			// south of it; the chunks per second are summed up over the three.
+			int[][] targets = {{m[0] + ORBIT_RADIUS, m[1]}, {m[0], m[1] - 450}, {m[0], m[1] + 450}};
 			int all = (2 * RENDER_DISTANCE + 1) * (2 * RENDER_DISTANCE + 1);
 			int target = (int) (0.9 * all);
-			int loaded = 0;
-			for (int i = 0; i < 6000 && loaded < target; i++) {
-				context.waitTick();
-				loaded = context.computeOnClient(mc -> {
-					int n = 0;
-					for (int dx = -RENDER_DISTANCE; dx <= RENDER_DISTANCE; dx++) {
-						for (int dz = -RENDER_DISTANCE; dz <= RENDER_DISTANCE; dz++) {
-							n += mc.level.getChunkSource().getChunk(tx + dx, tz + dz, ChunkStatus.FULL, false) != null ? 1 : 0;
+			int loadedAll = 0;
+			double secondsAll = 0;
+			StringBuilder loads = new StringBuilder();
+			for (int[] t : targets) {
+				int tx = t[0] >> 4;
+				int tz = t[1] >> 4;
+				int ty = sp.getServer().computeOnServer(s -> s.overworld().getChunkSource().getGenerator().getBaseHeight(t[0], t[1],
+						Heightmap.Types.WORLD_SURFACE_WG, s.overworld(), s.overworld().getChunkSource().randomState()));
+				long t0 = System.nanoTime();
+				sp.getServer().runCommand(String.format(Locale.ROOT, "tp @a %d %d %d 0 -90", t[0], ty + CANOPY_FLIGHT, t[1]));
+				int loaded = 0;
+				for (int i = 0; i < 6000 && loaded < target; i++) {
+					context.waitTick();
+					loaded = context.computeOnClient(mc -> {
+						int n = 0;
+						for (int dx = -RENDER_DISTANCE; dx <= RENDER_DISTANCE; dx++) {
+							for (int dz = -RENDER_DISTANCE; dz <= RENDER_DISTANCE; dz++) {
+								n += mc.level.getChunkSource().getChunk(tx + dx, tz + dz, ChunkStatus.FULL, false) != null ? 1 : 0;
+							}
 						}
-					}
-					return n;
-				});
+						return n;
+					});
+				}
+				double seconds = (System.nanoTime() - t0) / 1e9;
+				loadedAll += loaded;
+				secondsAll += seconds;
+				loads.append(String.format(Locale.ROOT, " %.1f", loaded / seconds));
 			}
-			double seconds = (System.nanoTime() - t0) / 1e9;
 			PolishForests.LOG.info(String.format(Locale.ROOT, "[performance] %s: new terrain, client has %d of the %d chunks around "
-					+ "the teleport after %.2f s, %.1f chunks/s", label, loaded, all, seconds, loaded / seconds));
+					+ "three teleports after %.2f s, %.1f chunks/s (per load%s)", label, loadedAll, 3 * all, secondsAll, loadedAll
+					/ secondsAll, loads));
 			// The whole flight area to FULL on the server first, so the turns do not wait for the generation.
 			sp.getServer().runOnServer(s -> {
 				int r = RENDER_DISTANCE + (ORBIT_RADIUS >> 4) + 2;
@@ -174,10 +203,13 @@ final class ForestPerformance {
 	}
 
 	/**
-	 * At each point of the path: the camera waits until the view is meshed and the generation is idle, then turns once
-	 * around ({@value #SWEEP_TICKS} ticks, the yaw moved every tick); the turns of all points are measured together. A game
-	 * test runs the client and the server in lockstep (one frame per tick, as fast as they go), so the frame rate is the
-	 * ticks of the turns per wall second: a frame, a client tick and an idle server tick.
+	 * At each point of the path: the camera waits until the view is meshed and the generation is idle, turns once around
+	 * to mesh the whole circle, waits again, then turns once more ({@value #SWEEP_TICKS} ticks, the yaw moved every tick)
+	 * for the measurement; the measured turns of all points are summed up together. A game
+	 * test syncs the client and the server at every client tick, and the client still ticks by the wall clock (20 per
+	 * second, at most one tick per frame), so the ticks per second show 20 for every build whose frames take under 50 ms;
+	 * the frame rate is therefore the game's own frames per second ({@link Minecraft#getFps}), sampled at every tick after
+	 * the first second of each turn. When a frame takes over 50 ms, each frame has its tick and the server waits for it.
 	 */
 	private static void sweeps(ClientGameTestContext context, TestSingleplayerContext sp, String label, double[][] points) {
 		long wall = 0;
@@ -186,9 +218,23 @@ final class ForestPerformance {
 		long[] ticks = new long[points.length * SWEEP_TICKS];
 		long[] loops = new long[points.length * SWEEP_TICKS];
 		double server = 0;
+		double fpsSum = 0;
+		int fpsN = 0;
+		context.runOnClient(mc -> {
+			gpuSum = 0;
+			gpuCount = 0;
+			levelFrames = 0;
+		});
+		StringBuilder perPoint = new StringBuilder();
 		for (double[] q : points) {
 			sp.getServer().runCommand(String.format(Locale.ROOT, "tp @a %.2f %.2f %.2f 0 %.1f", q[0], q[1], q[2], q[3]));
 			context.waitTicks(10);
+			settle(context);
+			// A warm-up turn: the client meshes the sections of the view only, so the first turn would also build the
+			// sections behind the camera; the measured turn then draws a meshed view.
+			yawStep = 360f / SWEEP_TICKS;
+			context.waitTicks(SWEEP_TICKS);
+			yawStep = 0;
 			settle(context);
 			frameCount = 0;
 			yawStep = 360f / SWEEP_TICKS;
@@ -202,10 +248,19 @@ final class ForestPerformance {
 			int c = Math.min(frameCount, SWEEP_TICKS);
 			System.arraycopy(FRAMES, 0, f, n, c);
 			System.arraycopy(TICKS, 0, ticks, n, c);
+			// The frame rate of the game (frames counted over each second) at the ticks after the first second of the turn.
+			double pointSum = 0;
+			for (int i = FPS_FROM; i < c; i++) {
+				fpsSum += FPS[i];
+				fpsN++;
+				pointSum += FPS[i];
+			}
+			perPoint.append(String.format(Locale.ROOT, " %.0f", pointSum / Math.max(1, c - FPS_FROM)));
 			// The first loop of a turn started before the recording.
 			System.arraycopy(LOOPS, 1, loops, n, Math.max(0, c - 1));
 			n += c;
 		}
+		long[] gpuRead = context.computeOnClient(mc -> new long[] {gpuSum, gpuCount, levelFrames});
 		f = Arrays.copyOf(f, n);
 		Arrays.sort(f);
 		ticks = Arrays.copyOf(ticks, n);
@@ -213,10 +268,12 @@ final class ForestPerformance {
 		loops = Arrays.copyOf(loops, Math.max(0, n - points.length));
 		Arrays.sort(loops);
 		double mean = Arrays.stream(f).average().orElse(0) / 1e6;
-		PolishForests.LOG.info(String.format(Locale.ROOT, "[performance] %s flight: %d points, %d frames in %.2f s, %.0f frames/s; "
-				+ "render time per frame median %.2f ms, mean %.2f ms, p95 %.2f ms, p99 %.2f ms, max %.2f ms; server tick %.2f ms (mean "
+		PolishForests.LOG.info(String.format(Locale.ROOT, "[performance] %s flight: %d points, %d ticks in %.2f s (%.1f ticks/s); "
+				+ "FPS %.1f (mean of the game's frames per second over the turns; per point%s), %d frames drawn (%.1f/s); GPU time of the "
+				+ "level pass per frame %.2f ms (%d queries); CPU render time per frame median %.2f ms, mean %.2f ms, p95 %.2f ms, p99 %.2f ms, max %.2f ms; server tick %.2f ms (mean "
 				+ "of the 100-tick averages after each turn); client tick median %.2f ms, p95 %.2f ms; whole loop median %.2f ms, p95 "
-				+ "%.2f ms", label, points.length, n, wall / 1e9, n / (wall / 1e9), at(f, 0.5), mean, at(f, 0.95), at(f, 0.99),
+				+ "%.2f ms", label, points.length, n, wall / 1e9, n / (wall / 1e9), fpsSum / Math.max(1, fpsN), perPoint, gpuRead[2], gpuRead[2] / (wall / 1e9),
+				gpuRead[0] / 1e6 / Math.max(1, gpuRead[1]), gpuRead[1], at(f, 0.5), mean, at(f, 0.95), at(f, 0.99),
 				n == 0 ? 0 : f[n - 1] / 1e6, server / points.length, at(ticks, 0.5), at(ticks, 0.95), at(loops, 0.5), at(loops, 0.95)));
 		context.takeScreenshot("flight_" + label.replace(" / ", "_").replace(' ', '_'));
 	}
@@ -254,6 +311,39 @@ final class ForestPerformance {
 		registered = true;
 		ClientTickEvents.START_CLIENT_TICK.register(mc -> tickStart = System.nanoTime());
 		ClientTickEvents.END_CLIENT_TICK.register(ForestPerformance::tick);
+		net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents.START_MAIN.register(c -> startLevel());
+		net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents.END_MAIN.register(c -> endLevel());
+	}
+
+	/** Start of the level pass of a frame (render thread): counts the frame and starts a GPU timestamp query when free. */
+	private static void startLevel() {
+		if (recording) {
+			levelFrames++;
+		}
+		if (gpu == null) {
+			gpu = new com.mojang.blaze3d.systems.TimerQuery();
+		}
+		if (gpu.getStatus() != com.mojang.blaze3d.systems.TimerQuery.Status.NOT_RECORDING) {
+			return;
+		}
+		if (gpuAwaiting) {
+			// A query finished: get() is the mean of the last three results; the first three are skipped (zeros at start).
+			gpuAwaiting = false;
+			if (++gpuWarm > 3 && recording) {
+				gpuSum += gpu.get();
+				gpuCount++;
+			}
+		}
+		if (recording) {
+			gpu.beginProfile();
+		}
+	}
+
+	private static void endLevel() {
+		if (gpu != null && gpu.getStatus() == com.mojang.blaze3d.systems.TimerQuery.Status.STARTED) {
+			gpu.endProfile();
+			gpuAwaiting = true;
+		}
 	}
 
 	private static void tick(Minecraft mc) {
@@ -261,6 +351,7 @@ final class ForestPerformance {
 		if (recording && frameCount < FRAMES.length) {
 			TICKS[frameCount] = now - tickStart;
 			LOOPS[frameCount] = now - lastEnd;
+			FPS[frameCount] = mc.getFps();
 			FRAMES[frameCount++] = mc.getFrameTimeNs();
 		}
 		lastEnd = now;

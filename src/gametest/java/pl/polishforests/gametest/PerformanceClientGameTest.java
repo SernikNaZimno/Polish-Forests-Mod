@@ -61,6 +61,12 @@ public final class PerformanceClientGameTest implements FabricClientGameTest {
 			mc.options.enableVsync().set(false);
 			mc.options.inactivityFpsLimit().set(InactivityFpsLimit.MINIMIZED);
 		});
+		if (mode.equals("performance") && sites.equals("slice_fastleaves")) {
+			// Diagnosis of step V10: the flights with the leaves drawn without cutout (inner faces of leaves hidden), to see
+			// how much of the frame time the leaf faces take.
+			context.runOnClient(mc -> mc.options.cutoutLeaves().set(false));
+			sites = "slice";
+		}
 		if (mode.equals("performance") && (sites.equals("slice") || sites.equals("light"))) {
 			// Step V10: the flights and the load of new terrain in the forests of the slice, or the light under the canopy.
 			boolean light = sites.equals("light");
@@ -166,7 +172,12 @@ public final class PerformanceClientGameTest implements FabricClientGameTest {
 	 * and a live spawn test (PW-13).
 	 */
 	private void forest(ClientGameTestContext context, String name, ResourceKey<WorldPreset> preset, boolean light) {
-		try (TestSingleplayerContext sp = context.worldBuilder().adjustSettings(ui -> configure(ui, preset, false)).create()) {
+		boolean poland = preset == POLAND || preset == POLAND_GAMEPLAY;
+		// The consistent settings of the game test world builder make a superflat world; the vanilla forest needs a normal one.
+		try (TestSingleplayerContext sp = context.worldBuilder().setUseConsistentSettings(poland).adjustSettings(ui -> configure(ui, preset,
+				false)).create()) {
+			PolishForests.LOG.info("[performance] {}: generator {}", name, sp.getServer().computeOnServer(s -> s.overworld().getChunkSource()
+					.getGenerator().getClass().getSimpleName()));
 			sp.getServer().runCommand("gamerule advance_time false");
 			sp.getServer().runCommand("gamerule advance_weather false");
 			sp.getServer().runCommand("gamerule spawn_mobs false");
