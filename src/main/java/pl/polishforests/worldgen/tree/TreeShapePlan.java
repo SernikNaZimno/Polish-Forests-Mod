@@ -149,6 +149,15 @@ public final class TreeShapePlan {
 	 */
 	private static final double SPROUTS_FROM = 0.1;
 	private static final int SPROUTS_RADIUS = 4;
+	/**
+	 * A suppressed canopy tree of a stand (review of V9, round 2, carried into V10): a tree at least
+	 * {@value #SUPPRESSED_HEIGHT} blocks tall whose crown the territories of its neighbors cut down to fewer than
+	 * {@value #SUPPRESSED_LEAVES} leaves (or fewer than one leaf per two blocks of its height) is not planned at all. Such a
+	 * tree was a bare pole of a thin trunk with a tuft or a single leaf on top, plain from 25-35 blocks above the canopy; in
+	 * a real stand it dies of suppression (dead standing wood belongs to step V11).
+	 */
+	static final int SUPPRESSED_HEIGHT = 12;
+	static final int SUPPRESSED_LEAVES = 12;
 	private static final double DIAGONAL = StrictMath.cos(StrictMath.toRadians(25));
 	/** Share of the height where the pine's "mirror" starts, by age class (plan V6: 0.45–0.55, rising with age). */
 	private static final double[] MIRROR = {0.45, 0.5, 0.55};
@@ -2072,6 +2081,12 @@ public final class TreeShapePlan {
 			}
 		}
 
+		/** A canopy tree of a stand left with a degenerate crown ({@link #SUPPRESSED_LEAVES}). */
+		private boolean suppressed(int height, int leafCount) {
+			return request.layer() == CrownLayer.CANOPY && request.territory() != null && height >= SUPPRESSED_HEIGHT
+					&& leafCount < Math.max(SUPPRESSED_LEAVES, height / 2);
+		}
+
 		private TreeVoxels result() {
 			int kept = 0;
 			int[] lp = new int[leaves];
@@ -2088,8 +2103,16 @@ public final class TreeShapePlan {
 			// The wood without the pruned tips; the parents always precede their children.
 			int[] remap = new int[woods];
 			int n = 0;
+			int topY = 0;
 			for (int i = 0; i < woods; i++) {
 				remap[i] = wGone[i] ? -1 : n++;
+				if (!wGone[i]) {
+					topY = Math.max(topY, TreeVoxels.unpackY(wPos[i]));
+				}
+			}
+			if (suppressed(topY + 1, kept)) {
+				return new TreeVoxels(request.x(), request.y(), request.z(), new int[0], new byte[0], new byte[0], new int[0],
+						new byte[0], new int[0], new byte[0], (float) size.height());
 			}
 			int[] pos = new int[n];
 			byte[] radius = new byte[n];

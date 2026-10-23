@@ -260,8 +260,13 @@ class TreeShapePlanTest {
 			for (int cz = cz0; cz < cz0 + 4; cz++) {
 				for (CrownTerritory t : s.chunk(cx, cz, null)) {
 					Species sp = TreePreview.standSpecies(grad, t.layer(), t.x(), t.z());
-					trees.add(TreeShapePlan.plan(new TreeRequest(sp, t.layer(), map.ageClass(t.x(), t.z()), SEED, t.x(), 64, t.z(),
-							t, s::candidate, map)));
+					TreeVoxels v = TreeShapePlan.plan(new TreeRequest(sp, t.layer(), map.ageClass(t.x(), t.z()), SEED, t.x(), 64, t.z(),
+							t, s::candidate, map));
+					if (v.woodCount() == 0) {
+						// A suppressed canopy tree (V10): left out, as in the game.
+						continue;
+					}
+					trees.add(v);
 					list.add(t);
 				}
 			}
@@ -354,6 +359,10 @@ class TreeShapePlanTest {
 							TreeRequest r = new TreeRequest(sp, CrownLayer.CANOPY, age, SEED, t.x(), 64, t.z(), t, s::candidate, map, null,
 									open);
 							TreeVoxels v = TreeShapePlan.plan(r);
+							if (v.woodCount() == 0) {
+								// A suppressed canopy tree (V10): not planted.
+								continue;
+							}
 							String what = r.toString();
 							chain(v, what);
 							leaves(v, what);

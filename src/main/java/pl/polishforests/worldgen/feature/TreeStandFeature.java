@@ -84,6 +84,11 @@ public final class TreeStandFeature implements Feature {
 	public static final java.util.concurrent.atomic.LongAdder SKIPPED_STRUCTURE = new java.util.concurrent.atomic.LongAdder();
 	public static final java.util.concurrent.atomic.LongAdder SKIPPED_BASE = new java.util.concurrent.atomic.LongAdder();
 	public static final java.util.concurrent.atomic.LongAdder SKIPPED_WRITE = new java.util.concurrent.atomic.LongAdder();
+	/** Canopy trees the planner leaves out as suppressed (a degenerate crown, {@link TreeShapePlan}; step V10). */
+	public static final java.util.concurrent.atomic.LongAdder SKIPPED_SUPPRESSED = new java.util.concurrent.atomic.LongAdder();
+	/** Time in the tree planner ({@link TreeShapePlan#plan}) and the planned trees, for the measurements of step V10. */
+	public static final java.util.concurrent.atomic.LongAdder PLAN_NANOS = new java.util.concurrent.atomic.LongAdder();
+	public static final java.util.concurrent.atomic.LongAdder PLANNED = new java.util.concurrent.atomic.LongAdder();
 	/** Least distance of a trunk from any structure piece, also a street (ChunkHabitats mask, {@code StructureGround}). */
 	public static final int PIECE_GAP = 2;
 	/** Least distance of a procedural trunk from a building; more for a larger crown radius (step V9). */
@@ -349,7 +354,14 @@ public final class TreeStandFeature implements Feature {
 			AgeClass age = layer == CrownLayer.REGENERATION && n.stands().canopyGap(x, z) ? AgeClass.POLE_STAGE : standAge;
 			TreeRequest request = new TreeRequest(proc.species(), layer, age, level.getSeed(), x, at.getY(), z, territory,
 					session.session()::candidate, n.stands(), a::top, open);
+			long planStart = System.nanoTime();
 			TreeVoxels voxels = TreeShapePlan.plan(request);
+			PLAN_NANOS.add(System.nanoTime() - planStart);
+			PLANNED.increment();
+			if (voxels.woodCount() == 0) {
+				SKIPPED_SUPPRESSED.increment();
+				continue;
+			}
 			long written = ProceduralTreeFeature.writeCounted(level, voxels, proc.species(), layer, age);
 			if (written >>> 32 > 0) {
 				counts[0]++;

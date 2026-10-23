@@ -32,6 +32,8 @@ final class SimulatedStands {
 	static final int GROUND = 64;
 	private static final GeneratedTreePalette GENERATED = GeneratedTreePalette.load();
 	private static final float[] RAMP = {1, 1, 1, 1};
+	/** Canopy trees the planner left out as suppressed (empty voxels, step V10), since the start of the test process. */
+	static final java.util.concurrent.atomic.AtomicLong SUPPRESSED = new java.util.concurrent.atomic.AtomicLong();
 
 	/** A planned tree. */
 	@FunctionalInterface
@@ -124,6 +126,11 @@ final class SimulatedStands {
 					AgeClass treeAge = layer == CrownLayer.REGENERATION && map.canopyGap(x, z) ? AgeClass.POLE_STAGE : age;
 					TreeVoxels vox = TreeShapePlan.plan(new TreeRequest(species, layer, treeAge, SEED, x, ground.top(x, z) + 1, z, territory,
 							session::candidate, map, ground));
+					if (vox.woodCount() == 0) {
+						// Like the game (TreeStandFeature): a suppressed canopy tree is not planted.
+						SUPPRESSED.incrementAndGet();
+						continue;
+					}
 					sink.tree(vox, species, layer);
 				}
 			}

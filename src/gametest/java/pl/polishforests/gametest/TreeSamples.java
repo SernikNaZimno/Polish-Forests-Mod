@@ -210,6 +210,10 @@ final class TreeSamples {
 					Species sp = species(grad, t.layer(), t.x(), t.z());
 					TreeVoxels v = TreeShapePlan.plan(new TreeRequest(sp, t.layer(), age, level.getSeed(), t.x(), y, t.z(), t,
 							s::candidate, map));
+					if (v.woodCount() == 0) {
+						// A suppressed canopy tree (V10): not planted, as in the world.
+						continue;
+					}
 					ProceduralTreeFeature.write(level, v, sp, t.layer(), age);
 					placed.add(new Placed(v, sp));
 				}

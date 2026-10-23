@@ -97,6 +97,20 @@ public record CrownCover(int crownWood, int bare, int exposed) {
 		return new CrownCover(crown, bare, exposed);
 	}
 
+	/**
+	 * A bare pole (review of V9, round 2): a tree of at least 12 blocks whose leaves are fewer than 12 or fewer than one per
+	 * two blocks of its height, a thin trunk with a tuft. The crown cover above counts only the wood at or above the lowest
+	 * leaf, so for such a tree the whole trunk is "bole" and passes; this catches it.
+	 */
+	public static boolean pole(TreeVoxels v) {
+		int top = 0;
+		for (int i = 0; i < v.woodCount(); i++) {
+			top = Math.max(top, v.woodY(i));
+		}
+		int height = top + 1;
+		return v.woodCount() > 0 && height >= 12 && v.leafCount() < Math.max(12, height / 2);
+	}
+
 	private static boolean leafAt(boolean[] leaf, int sx, int sy, int sz, int x, int y, int z) {
 		return x >= 0 && y >= 0 && z >= 0 && x < sx && y < sy && z < sz && leaf[(y * sx + x) * sz + z];
 	}

@@ -538,6 +538,10 @@ tasks.named('runClientGameTest') {
 	// Render trials of step V3 (-Pgametest=probes): the measured colors, shares and frame times of each run.
 	jvmArgs "-Dpolishforests.probes.out=${layout.buildDirectory.dir('probes').get().asFile.absolutePath}"
 	// Leaves board of step V7 (-Pgametest=slice -Psites=leaves): build/leaves/<renderer>_<ss|noss>.txt.
+	// Step V10: -PskipSeasonWave skips the own mesh wave when Serene Seasons changes the sub-season (a measurement switch).
+	if (project.hasProperty('skipSeasonWave')) {
+		jvmArgs '-Dpolishforests.skipSeasonWave=true'
+	}
 	jvmArgs "-Dpolishforests.leaves.out=${layout.buildDirectory.dir('leaves').get().asFile.absolutePath}"
 	if (project.hasProperty('profile')) {
 		jvmArgs "-XX:StartFlightRecording=filename=${layout.buildDirectory.file('profile.jfr').get().asFile.absolutePath},settings=profile"

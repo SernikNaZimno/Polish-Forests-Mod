@@ -31,7 +31,12 @@ import pl.polishforests.worldgen.feature.TreeStandFeature;
  * measures 8 × 8 chunk areas centered on the places of the slice ({@link SliceSites}: two oak-hornbeam forests, two fresh
  * pine forests and the middle of the transect, per scale and mode) instead of the M2 areas and the "area" sample; the
  * labels are {@code <world> / slice <place>}. The baseline of M2 for the A/B comparison of step V10 is the git tag
- * {@code m2-baseline}.
+ * {@code m2-baseline-r1}.
+ *
+ * <p>Step V10: the stages also log the wood and leaves per chunk of each area and, per world, the used heap and the block
+ * states; {@code -Pgametest=performance -Psites=slice} measures the load of new terrain and a fixed camera flight in the
+ * forests of the slice and {@code -Psites=light} the light under the canopy and the spawns of monsters at noon
+ * ({@link ForestPerformance}).
  */
 public final class PerformanceClientGameTest implements FabricClientGameTest {
 	private static final String SEED = "20260927";
@@ -48,6 +53,7 @@ public final class PerformanceClientGameTest implements FabricClientGameTest {
 			return;
 		}
 		boolean stagesOnly = mode.equals("stages");
+		String sites = System.getProperty("polishforests.sites", "");
 		context.runOnClient(mc -> {
 			mc.options.renderDistance().set(RENDER_DISTANCE);
 			mc.options.simulationDistance().set(8);
@@ -55,6 +61,23 @@ public final class PerformanceClientGameTest implements FabricClientGameTest {
 			mc.options.enableVsync().set(false);
 			mc.options.inactivityFpsLimit().set(InactivityFpsLimit.MINIMIZED);
 		});
+		if (mode.equals("performance") && (sites.equals("slice") || sites.equals("light"))) {
+			// Step V10: the flights and the load of new terrain in the forests of the slice, or the light under the canopy.
+			boolean light = sites.equals("light");
+			if (light) {
+				// A default (noise) vanilla world: the plain world builder of the game tests makes a superflat one.
+				forest(context, "vanilla", net.minecraft.world.level.levelgen.presets.WorldPresets.NORMAL, true);
+			}
+			// -Pscales=realistic|gameplay: one scale only.
+			String scales = System.getProperty("polishforests.scales", "");
+			if (!scales.equals("gameplay")) {
+				forest(context, "poland", POLAND, light);
+			}
+			if (!scales.equals("realistic")) {
+				forest(context, "poland_gameplay", POLAND_GAMEPLAY, light);
+			}
+			return;
+		}
 		if (!stagesOnly) {
 			measure(context, "vanilla", null, false, false);
 		}
@@ -83,10 +106,12 @@ public final class PerformanceClientGameTest implements FabricClientGameTest {
 			}
 			if (stagesOnly && System.getProperty("polishforests.sites", "").equals("slice")) {
 				profileSlice(sp, name, preset == POLAND, presentDay);
+				PolishForests.LOG.info("[performance] {}: {}", name, sp.getServer().computeOnServer(ForestPerformance::memoryAndStates));
 				return;
 			}
 			profileStages(sp, name, preset == POLAND, stagesOnly);
 			if (stagesOnly) {
+				PolishForests.LOG.info("[performance] {}: {}", name, sp.getServer().computeOnServer(ForestPerformance::memoryAndStates));
 				return;
 			}
 
@@ -135,6 +160,56 @@ public final class PerformanceClientGameTest implements FabricClientGameTest {
 	 * taken from the {@code beskids} and {@code large_river} patches in
 	 * {@code src/test/resources/golden_terrain_m1.txt}, far from the spawn point.
 	 */
+	/**
+	 * Step V10: a world of the scale (natural mode) or a vanilla one: the load and flight measurements in the forests of
+	 * the slice ({@link ForestPerformance#flights}), or with {@code light} the light at the ground under the canopy at noon
+	 * and a live spawn test (PW-13).
+	 */
+	private void forest(ClientGameTestContext context, String name, ResourceKey<WorldPreset> preset, boolean light) {
+		try (TestSingleplayerContext sp = context.worldBuilder().adjustSettings(ui -> configure(ui, preset, false)).create()) {
+			sp.getServer().runCommand("gamerule advance_time false");
+			sp.getServer().runCommand("gamerule advance_weather false");
+			sp.getServer().runCommand("gamerule spawn_mobs false");
+			sp.getServer().runCommand("time set 6000");
+			sp.getServer().runCommand("weather clear");
+			sp.getServer().runCommand("gamemode spectator @a");
+			waitForIdleGeneration(context, name);
+			PolishForests.LOG.info("[performance] {}: {}", name, sp.getServer().computeOnServer(ForestPerformance::memoryAndStates));
+			if (!light) {
+				ForestPerformance.flights(context, sp, name, preset == POLAND);
+				return;
+			}
+			if (preset != POLAND && preset != POLAND_GAMEPLAY) {
+				for (boolean dark : new boolean[] {true, false}) {
+					String label = name + " / " + (dark ? "dark_forest" : "forest");
+					int[] at = sp.getServer().computeOnServer(s -> ForestPerformance.vanillaPlace(s.overworld(), dark));
+					if (at == null) {
+						PolishForests.LOG.warn("[performance] {}: biome not found", label);
+						continue;
+					}
+					PolishForests.LOG.info("[performance] {}: at ({}, {})", label, at[0], at[1]);
+					PolishForests.LOG.info(sp.getServer().computeOnServer(s -> ForestPerformance.groundLight(s.overworld(), label, at[0], at[1])));
+					ForestPerformance.liveSpawns(context, sp, label, at[0], at[1], LIVE_SPAWN_TICKS);
+				}
+				return;
+			}
+			for (SliceSites.Place p : SliceSites.of(preset == POLAND, false)) {
+				if (p.name().equals("transect")) {
+					continue;
+				}
+				int[] m = p.middle();
+				String label = name + " / " + p.name();
+				PolishForests.LOG.info(sp.getServer().computeOnServer(s -> ForestPerformance.groundLight(s.overworld(), label, m[0], m[1])));
+				if (p.name().endsWith("_1")) {
+					ForestPerformance.liveSpawns(context, sp, label, m[0], m[1], LIVE_SPAWN_TICKS);
+				}
+			}
+		}
+	}
+
+	/** Ticks of the live spawn test of step V10 (PW-13). */
+	private static final int LIVE_SPAWN_TICKS = 2400;
+
 	private static final int[][] SPOTS_REAL = {{-40_000, 25_000}, {154_834 - 64, 1_058_738 - 64},
 			{-19_484 - 64, 11_253 - 64}};
 	private static final int[][] SPOTS_GAMEPLAY = {{-40_000, 25_000}, {27_609 - 64, 3_254 - 64},
@@ -259,6 +334,8 @@ public final class PerformanceClientGameTest implements FabricClientGameTest {
 		long tree0 = TreeStandFeature.NANOS.sum();
 		long treeChunks0 = TreeStandFeature.CHUNKS.sum();
 		long trees0 = TreeStandFeature.TREES.sum();
+		long plan0 = TreeStandFeature.PLAN_NANOS.sum();
+		long planned0 = TreeStandFeature.PLANNED.sum();
 		long miss0 = ModFeatures.HABITAT_MISS.sum();
 		long[] layer0 = new long[pl.polishforests.worldgen.feature.BiomeDecoration.Dispatcher.values().length * 3];
 		for (var d : pl.polishforests.worldgen.feature.BiomeDecoration.Dispatcher.values()) {
@@ -291,6 +368,10 @@ public final class PerformanceClientGameTest implements FabricClientGameTest {
 		// neighbors that decoration and light need (about 100 chunks in all), so it is compared with M1 in the same session.
 		PolishForests.LOG.info(String.format(Locale.ROOT, "[performance] %s: whole chunk %.2f ms/chunk (all stages, 64 chunks)",
 				name, total / 1e6 / 64));
+		// Step V10: wood and leaves of the area by block tags (counted after the timing; the same count on the M2 baseline).
+		double[] wl = ForestPerformance.woodAndLeaves(level, ox, oz, 8);
+		PolishForests.LOG.info(String.format(Locale.ROOT, "[performance] %s: blocks per chunk of the 64: wood %.1f, leaves %.1f", name,
+				wl[0], wl[1]));
 		long decorated = Math.max(1, PolandChunkGenerator.DECORATION_CHUNKS.sum() - decorated0);
 		PolishForests.LOG.info(String.format(java.util.Locale.ROOT, "[performance] %s: decoration (applyBiomeDecoration) %.3f ms/chunk "
 				+ "over %d chunks", name, (PolandChunkGenerator.DECORATION_NANOS.sum() - decoration0) / 1e6 / decorated, decorated));
@@ -311,6 +392,11 @@ public final class PerformanceClientGameTest implements FabricClientGameTest {
 					(PolandChunkGenerator.CLASSIFY_NANOS.sum() - classify0) / 1e6 / n,
 					(TreeStandFeature.NANOS.sum() - tree0) / 1e6 / treeChunks, treeChunks,
 					(double) (TreeStandFeature.TREES.sum() - trees0) / treeChunks, ModFeatures.HABITAT_MISS.sum() - miss0));
+			// Step V10: the planner time within the tree stand (procedural trees of the slice).
+			long planned = TreeStandFeature.PLANNED.sum() - planned0;
+			PolishForests.LOG.info(String.format(Locale.ROOT, "[performance] %s: tree planner %.3f ms/chunk (%d trees planned, %.3f "
+					+ "ms/tree)", name, (TreeStandFeature.PLAN_NANOS.sum() - plan0) / 1e6 / treeChunks, planned,
+					(TreeStandFeature.PLAN_NANOS.sum() - plan0) / 1e6 / Math.max(1, planned)));
 			StringBuilder layers = new StringBuilder();
 			for (var d : pl.polishforests.worldgen.feature.BiomeDecoration.Dispatcher.values()) {
 				ModFeatures.LayerStats st = ModFeatures.STATS.get(d);

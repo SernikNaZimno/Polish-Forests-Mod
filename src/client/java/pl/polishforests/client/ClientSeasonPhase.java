@@ -40,6 +40,8 @@ public final class ClientSeasonPhase {
 	static final int WAVE_TICKS = 2;
 	/** Frame samples kept after the last ring for the log line. */
 	private static final int TAIL_TICKS = 40;
+	/** Measurement switch of step V10: skip the own wave on a sub-season change with Serene Seasons. */
+	private static final boolean SKIP_SS_WAVE = Boolean.getBoolean("polishforests.skipSeasonWave");
 
 	private static volatile int step = -1;
 	private static volatile boolean changes = true;
@@ -102,7 +104,14 @@ public final class ClientSeasonPhase {
 			int old = step;
 			step = now;
 			changes = ch;
-			if (old >= 0) {
+			if (old >= 0 && SKIP_SS_WAVE && SeasonPhase.subSeason(old) != SeasonPhase.subSeason(now)
+					&& net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("sereneseasons")) {
+				// Measurement switch of step V10 (-Dpolishforests.skipSeasonWave): no own wave when Serene Seasons changes the
+				// sub-season, since it rebuilds every mesh itself then (allChanged).
+				rebuilds++;
+				PolishForests.LOG.info("[seasons] color step {} -> {} ({}), own wave skipped (Serene Seasons rebuilds the meshes)", old, now,
+						subSeason());
+			} else if (old >= 0) {
 				startWave(mc);
 				PolishForests.LOG.info("[seasons] color step {} -> {} ({}{}), section meshes rebuilt in a wave of {} rings", old, now,
 						subSeason(), ch ? "" : ", foliage colors off", rings + 1);

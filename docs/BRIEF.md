@@ -88,6 +88,7 @@ python tools/dev/contact_sheet.py <katalog|glob> [...] --out arkusz.png [--cols 
 - **A4/A5:** ten brief jako wejście; agenci równolegli tylko w osobnych worktree bez wspólnych plików.
 - **B1:** recenzja według ryzyka (teren, mixiny, biomy, datagen: 2 recenzentów, do 2 rund; dokumentacja, lang, tabele: 1 recenzent, 1 runda). **B2:** tańszy model do prac mechanicznych. **B3:** problem po 2 rundach poprawek → stop i 2–3 warianty z kosztami dla użytkownika. Recenzenci oglądają pełne zestawy kadrów (B4 odrzucona).
 - **T1–T5 (2026-10-16):** T1 krótki brief (ten plik; historia w `historia-stanu.md`). T2 mniej tur: zbieraj odczyty i komendy w paczki. T3 zrzuty oglądaj na arkuszach miniatur (`tools/dev/contact_sheet.py`), pełne kadry tylko do zbliżeń. T4 wykonawca przed recenzją sam sprawdza swoją pracę (testy, kadry, opis zgodny z faktami). T5 ponowna recenzja i zbieranie materiałów na tańszym modelu.
+- **P4 (2026-10-21):** łagodniejszy próg recenzji: `blocking`/`major` tylko dla usterek widocznych z normalnej odległości gry (8–32 bloki) albo łamiących poprawność, determinizm, zapis, wydajność lub kryteria kroku; drobiazgi idą na listę „Do kroku porządkowego” w `docs/04`. **P5:** kroki niskiego ryzyka (dokumentacja, dane palet, tekstury z przepisów, lang) wykonuje i poprawia tańszy model (Sonnet).
 - Drobne wybory domyślnie, z zapisem w `docs/00` G i raporcie; pytaj tylko o duże, trudne do odwrócenia sprawy.
 
 ## Gdzie szukać szczegółów

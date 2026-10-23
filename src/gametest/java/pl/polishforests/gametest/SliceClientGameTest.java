@@ -1048,9 +1048,10 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 				+ String.format(Locale.ROOT, "; tree stand wood %.1f and leaves %.1f per chunk", (double) (after[after.length - 3]
 						- before[before.length - 3]) / chunks, (double) (after[after.length - 2] - before[before.length - 2]) / chunks)
 				+ String.format(Locale.ROOT, "; procedural trees not planted since the start: structure or water %d, trunk base %d, "
-						+ "nothing written %d", pl.polishforests.worldgen.feature.TreeStandFeature.SKIPPED_STRUCTURE.sum(),
+						+ "nothing written %d, suppressed canopy trees %d", pl.polishforests.worldgen.feature.TreeStandFeature.SKIPPED_STRUCTURE.sum(),
 						pl.polishforests.worldgen.feature.TreeStandFeature.SKIPPED_BASE.sum(),
-						pl.polishforests.worldgen.feature.TreeStandFeature.SKIPPED_WRITE.sum())
+						pl.polishforests.worldgen.feature.TreeStandFeature.SKIPPED_WRITE.sum(),
+						pl.polishforests.worldgen.feature.TreeStandFeature.SKIPPED_SUPPRESSED.sum())
 				+ "; HABITAT_MISS " + (after[after.length - 1] - before[before.length - 1]);
 	}
 
