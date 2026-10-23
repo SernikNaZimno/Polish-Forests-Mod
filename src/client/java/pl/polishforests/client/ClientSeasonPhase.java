@@ -54,6 +54,8 @@ public final class ClientSeasonPhase {
 	private static long[] frames = new long[0];
 	private static int frameCount;
 	private static int waveFrom;
+	/** The frames of a skipped wave are measured all the same (V10), without marking the rings. */
+	private static boolean measureOnly;
 
 	private ClientSeasonPhase() {
 	}
@@ -107,8 +109,9 @@ public final class ClientSeasonPhase {
 			if (old >= 0 && SKIP_SS_WAVE && SeasonPhase.subSeason(old) != SeasonPhase.subSeason(now)
 					&& net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("sereneseasons")) {
 				// Measurement switch of step V10 (-Dpolishforests.skipSeasonWave): no own wave when Serene Seasons changes the
-				// sub-season, since it rebuilds every mesh itself then (allChanged).
-				rebuilds++;
+				// sub-season, since it rebuilds every mesh itself then (allChanged). The frames of the same ticks are logged.
+				startWave(mc);
+				measureOnly = true;
 				PolishForests.LOG.info("[seasons] color step {} -> {} ({}), own wave skipped (Serene Seasons rebuilds the meshes)", old, now,
 						subSeason());
 			} else if (old >= 0) {
@@ -131,6 +134,7 @@ public final class ClientSeasonPhase {
 		waveFrom = 0;
 		frameCount = 0;
 		frames = new long[rings * WAVE_TICKS + TAIL_TICKS + 1];
+		measureOnly = false;
 	}
 
 	private static void waveTick(Minecraft mc) {
@@ -139,7 +143,9 @@ public final class ClientSeasonPhase {
 		}
 		if (ring <= rings) {
 			if (waveTick++ % WAVE_TICKS == 0) {
-				markRing(mc, waveCenter, ring);
+				if (!measureOnly) {
+					markRing(mc, waveCenter, ring);
+				}
 				ring++;
 			}
 			waveFrom = frameCount;
@@ -150,8 +156,9 @@ public final class ClientSeasonPhase {
 			long[] sorted = f.clone();
 			Arrays.sort(sorted);
 			PolishForests.LOG.info(String.format(java.util.Locale.ROOT,
-					"[seasons] wave rebuild done: frame time over %d client ticks (last frame of each tick): median %.1f ms, p95 %.1f ms, "
-							+ "max %.1f ms (max during the rings %.1f ms)", f.length, sorted[f.length / 2] / 1e6,
+					"[seasons] wave %s: frame time over %d client ticks (last frame of each tick): median %.1f ms, p95 %.1f ms, "
+							+ "max %.1f ms (max during the rings %.1f ms)", measureOnly ? "skipped, frames measured" : "rebuild done", f.length,
+					sorted[f.length / 2] / 1e6,
 					sorted[Math.min(f.length - 1, (int) (f.length * 0.95))] / 1e6, sorted[f.length - 1] / 1e6,
 					Arrays.stream(f, 0, Math.max(1, waveFrom)).max().orElse(0) / 1e6));
 			ring = -1;

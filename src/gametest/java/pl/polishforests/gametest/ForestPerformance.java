@@ -270,9 +270,10 @@ final class ForestPerformance {
 		double mean = Arrays.stream(f).average().orElse(0) / 1e6;
 		PolishForests.LOG.info(String.format(Locale.ROOT, "[performance] %s flight: %d points, %d ticks in %.2f s (%.1f ticks/s); "
 				+ "FPS %.1f (mean of the game's frames per second over the turns; per point%s), %d frames drawn (%.1f/s); GPU time of the "
-				+ "level pass per frame %.2f ms (%d queries); CPU render time per frame median %.2f ms, mean %.2f ms, p95 %.2f ms, p99 %.2f ms, max %.2f ms; server tick %.2f ms (mean "
-				+ "of the 100-tick averages after each turn); client tick median %.2f ms, p95 %.2f ms; whole loop median %.2f ms, p95 "
-				+ "%.2f ms", label, points.length, n, wall / 1e9, n / (wall / 1e9), fpsSum / Math.max(1, fpsN), perPoint, gpuRead[2], gpuRead[2] / (wall / 1e9),
+				+ "level pass per frame %.2f ms (%d queries); CPU render time per frame median %.2f ms, mean %.2f ms, p95 %.2f ms, "
+				+ "p99 %.2f ms, max %.2f ms; server tick %.2f ms (mean of the 100-tick averages after each turn); client tick median "
+				+ "%.2f ms, p95 %.2f ms; whole loop median %.2f ms, p95 %.2f ms", label, points.length, n, wall / 1e9, n / (wall / 1e9),
+				fpsSum / Math.max(1, fpsN), perPoint, gpuRead[2], gpuRead[2] / (wall / 1e9),
 				gpuRead[0] / 1e6 / Math.max(1, gpuRead[1]), gpuRead[1], at(f, 0.5), mean, at(f, 0.95), at(f, 0.99),
 				n == 0 ? 0 : f[n - 1] / 1e6, server / points.length, at(ticks, 0.5), at(ticks, 0.95), at(loops, 0.5), at(loops, 0.95)));
 		context.takeScreenshot("flight_" + label.replace(" / ", "_").replace(' ', '_'));
