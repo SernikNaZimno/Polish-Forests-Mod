@@ -13,8 +13,9 @@ import java.util.Locale;
  * @param crownWood the wood blocks at or above the lowest leaf
  * @param bare      the part of them with at most one own leaf among the 26 neighbors
  * @param exposed   the part of the bare wood open to the side
+ * @param sparse    the crown wood with at most two own leaves among the 26 neighbors ({@link #sparseCrown}, step V10)
  */
-public record CrownCover(int crownWood, int bare, int exposed) {
+public record CrownCover(int crownWood, int bare, int exposed, int sparse) {
 	/** Length of the side rays (blocks). */
 	public static final int REACH = 6;
 	private static final int[][] SIDES = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
@@ -22,7 +23,7 @@ public record CrownCover(int crownWood, int bare, int exposed) {
 	public static CrownCover of(TreeVoxels v) {
 		int leaves = v.leafCount();
 		if (leaves == 0) {
-			return new CrownCover(0, 0, 0);
+			return new CrownCover(0, 0, 0, 0);
 		}
 		int minX = Integer.MAX_VALUE;
 		int minY = Integer.MAX_VALUE;
@@ -60,6 +61,7 @@ public record CrownCover(int crownWood, int bare, int exposed) {
 		int crown = 0;
 		int bare = 0;
 		int exposed = 0;
+		int sparse = 0;
 		for (int i = 0; i < v.woodCount(); i++) {
 			int x = v.woodX(i) - x0;
 			int y = v.woodY(i) - y0;
@@ -69,7 +71,7 @@ public record CrownCover(int crownWood, int bare, int exposed) {
 			}
 			crown++;
 			int around = 0;
-			for (int dy = -1; dy <= 1 && around < 2; dy++) {
+			for (int dy = -1; dy <= 1 && around < 3; dy++) {
 				for (int dx = -1; dx <= 1; dx++) {
 					for (int dz = -1; dz <= 1; dz++) {
 						if (leafAt(leaf, sx, sy, sz, x + dx, y + dy, z + dz)) {
@@ -77,6 +79,9 @@ public record CrownCover(int crownWood, int bare, int exposed) {
 						}
 					}
 				}
+			}
+			if (around <= 2) {
+				sparse++;
 			}
 			if (around > 1) {
 				continue;
@@ -94,7 +99,7 @@ public record CrownCover(int crownWood, int bare, int exposed) {
 				}
 			}
 		}
-		return new CrownCover(crown, bare, exposed);
+		return new CrownCover(crown, bare, exposed, sparse);
 	}
 
 	/**
@@ -109,6 +114,20 @@ public record CrownCover(int crownWood, int bare, int exposed) {
 		}
 		int height = top + 1;
 		return v.woodCount() > 0 && height >= 12 && v.leafCount() < Math.max(12, height / 2);
+	}
+
+	/**
+	 * A sparse crown of a tall broad-leaved canopy tree (step V10, after the frames of the stand preview): at least
+	 * {@value #SPARSE_MIN_WOOD} wood blocks at or above the lowest leaf, and {@value #SPARSE_SHARE} of them or more with at most
+	 * two own leaves among their 26 neighbors. The territories of the neighbors cut such a crown down to a few tufts along the
+	 * upper stem (a beech of 31 blocks with 41 leaves, 8 of its 25 crown blocks nearly bare): from above the canopy it reads as
+	 * a gray pole with flat arms, which {@link #pole} (fewer than one leaf per two blocks of height) does not catch.
+	 */
+	public static final int SPARSE_MIN_WOOD = 8;
+	public static final double SPARSE_SHARE = 0.3;
+
+	public boolean sparseCrown() {
+		return crownWood >= SPARSE_MIN_WOOD && sparse >= SPARSE_SHARE * crownWood;
 	}
 
 	private static boolean leafAt(boolean[] leaf, int sx, int sy, int sz, int x, int y, int z) {

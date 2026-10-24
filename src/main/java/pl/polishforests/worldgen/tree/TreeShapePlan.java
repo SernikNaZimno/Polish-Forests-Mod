@@ -2130,8 +2130,23 @@ public final class TreeShapePlan {
 				parentIndex[j] = wParentIndex[i] < 0 ? -1 : remap[wParentIndex[i]];
 				barks[j] = wBark[i];
 			}
-			return new TreeVoxels(request.x(), request.y(), request.z(), pos, radius, parents, parentIndex, barks,
+			TreeVoxels voxels = new TreeVoxels(request.x(), request.y(), request.z(), pos, radius, parents, parentIndex, barks,
 					Arrays.copyOf(lp, kept), Arrays.copyOf(ld, kept), (float) size.height());
+			if (sparse(topY + 1, voxels)) {
+				return new TreeVoxels(request.x(), request.y(), request.z(), new int[0], new byte[0], new byte[0], new int[0],
+						new byte[0], new int[0], new byte[0], (float) size.height());
+			}
+			return voxels;
+		}
+
+		/**
+		 * A broad-leaved canopy tree of a stand whose crown the territories left sparse ({@link CrownCover#sparseCrown}, step
+		 * V10): left out like a suppressed one. The open crowns of the pine and the spruce are their shape (a question for CP-B).
+		 */
+		private boolean sparse(int height, TreeVoxels voxels) {
+			return request.layer() == CrownLayer.CANOPY && request.territory() != null && height >= SUPPRESSED_HEIGHT
+					&& shape.archetype() != SpeciesShape.Archetype.PINE && shape.archetype() != SpeciesShape.Archetype.SPRUCE
+					&& CrownCover.of(voxels).sparseCrown();
 		}
 	}
 }

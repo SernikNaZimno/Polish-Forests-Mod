@@ -14,6 +14,7 @@ import pl.polishforests.worldgen.tree.CrownLayer;
 import pl.polishforests.worldgen.tree.SpeciesShape;
 import pl.polishforests.worldgen.tree.TreeRequest;
 import pl.polishforests.worldgen.tree.TreeShapePlan;
+import pl.polishforests.worldgen.tree.TreeVoxels;
 
 /**
  * Bare wood in the crowns of the stands of the slice (review of V9, round 2): in simulated stands on rolling ground
@@ -24,7 +25,9 @@ import pl.polishforests.worldgen.tree.TreeShapePlan;
  * whorl of a pine between crowns that do not meet); after it 0.26 and 0.60, and with the leaf below each branch block
  * and the sleeve of the lower crown (round 2, after the frames) 0.08 and 0.12, the limits tightened from 0.8 / 0.4 / 1.6.
  * Since V10 also no canopy tree is a bare pole ({@link CrownCover#pole}: before, 3-7% of the canopy trees of 12 or more
- * blocks had fewer than 12 leaves, a thin trunk with a tuft seen from above the canopy); the planner leaves such trees out.
+ * blocks had fewer than 12 leaves, a thin trunk with a tuft seen from above the canopy); the planner leaves such trees out,
+ * and likewise a broad-leaved canopy tree with a sparse crown ({@link CrownCover#sparseCrown}: a gray pole with flat arms
+ * in the view from above the old-growth oak-hornbeam forest, 1-5% of its canopy trees).
  */
 @Tag("slow")
 class StandCrownCoverTest {
@@ -37,6 +40,14 @@ class StandCrownCoverTest {
 	private static final int RANGES = Species.FLAG_HORNBEAM | Species.FLAG_BEECH | Species.FLAG_SPRUCE;
 
 	private record Stand(HabitatBiome biome, boolean natural, AgeClass age) {
+	}
+
+	private static int height(TreeVoxels v) {
+		int top = 0;
+		for (int i = 0; i < v.woodCount(); i++) {
+			top = Math.max(top, v.woodY(i));
+		}
+		return top + 1;
 	}
 
 	@Test
@@ -57,7 +68,8 @@ class StandCrownCoverTest {
 				all.add(c);
 				if (layer == CrownLayer.CANOPY) {
 					poles[0]++;
-					if (CrownCover.pole(v)) {
+					boolean conifer = species == Species.SCOTS_PINE || species == Species.SPRUCE;
+					if (CrownCover.pole(v) || !conifer && height(v) >= 12 && c.sparseCrown()) {
 						poles[1]++;
 					}
 				}

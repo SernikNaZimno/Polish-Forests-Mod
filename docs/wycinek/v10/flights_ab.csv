@@ -1,0 +1,92 @@
+# Step V10: flights and chunk loading A/B, M2 baseline (tag m2-baseline-r1 + V10 harness) against V10, one session 2026-10-24, alternating runs (ABBA), quiet machine.
+# Per place: 8 points on a circle of 40 blocks, a warm-up turn and a measured turn each; canopy = 42 blocks above the ground, eye = eye height. fps_game = Minecraft.getFps mean;
+# frames_per_s = frames of the level pass; gpu_ms_per_frame = GPU time of the level pass (timer queries); cpu = CPU render time per frame; chunks_per_s = three teleports of 450 blocks, camera at the sky.
+renderer,world,place,view,metric,base_median,base_runs,v10_median,v10_runs,v10_to_base
+sodium+nvidium (-Poptimization),poland,fresh_pine_1,canopy,fps_game,1611.50,1611.0 1612.0,1363.10,1357.2 1369.0,0.85
+sodium+nvidium (-Poptimization),poland,fresh_pine_1,canopy,frames_per_s,1628.40,1630.5 1626.3,1358.65,1352.7 1364.6,0.83
+sodium+nvidium (-Poptimization),poland,fresh_pine_1,canopy,gpu_ms_per_frame,0.35,0.35 0.35,0.59,0.6 0.59,1.70
+sodium+nvidium (-Poptimization),poland,fresh_pine_1,canopy,cpu_ms_median,0.42,0.43 0.42,0.41,0.4 0.42,0.96
+sodium+nvidium (-Poptimization),poland,fresh_pine_1,canopy,cpu_ms_p95,0.51,0.55 0.47,0.50,0.49 0.51,0.98
+sodium+nvidium (-Poptimization),poland,fresh_pine_1,eye,fps_game,1514.40,1526.7 1502.1,1540.75,1512.9 1568.6,1.02
+sodium+nvidium (-Poptimization),poland,fresh_pine_1,eye,frames_per_s,1522.40,1533.3 1511.5,1545.15,1517.0 1573.3,1.01
+sodium+nvidium (-Poptimization),poland,fresh_pine_1,eye,gpu_ms_per_frame,0.21,0.21 0.22,0.46,0.47 0.46,2.16
+sodium+nvidium (-Poptimization),poland,fresh_pine_1,eye,cpu_ms_median,0.48,0.49 0.47,0.45,0.45 0.44,0.93
+sodium+nvidium (-Poptimization),poland,fresh_pine_1,eye,cpu_ms_p95,0.61,0.64 0.58,0.51,0.51 0.5,0.83
+sodium+nvidium (-Poptimization),poland,fresh_pine_1,load,chunks_per_s,229.45,226.3 232.6,170.25,168.4 172.1,0.74
+sodium+nvidium (-Poptimization),poland,oak_hornbeam_1,canopy,fps_game,1550.90,1557.9 1543.9,1444.95,1427.4 1462.5,0.93
+sodium+nvidium (-Poptimization),poland,oak_hornbeam_1,canopy,frames_per_s,1559.95,1571.8 1548.1,1450.85,1430.7 1471.0,0.93
+sodium+nvidium (-Poptimization),poland,oak_hornbeam_1,canopy,gpu_ms_per_frame,0.47,0.48 0.47,0.53,0.53 0.52,1.11
+sodium+nvidium (-Poptimization),poland,oak_hornbeam_1,canopy,cpu_ms_median,0.42,0.42 0.42,0.45,0.45 0.44,1.06
+sodium+nvidium (-Poptimization),poland,oak_hornbeam_1,canopy,cpu_ms_p95,0.52,0.52 0.52,0.52,0.52 0.52,1.00
+sodium+nvidium (-Poptimization),poland,oak_hornbeam_1,eye,fps_game,1478.55,1481.0 1476.1,1528.75,1498.5 1559.0,1.03
+sodium+nvidium (-Poptimization),poland,oak_hornbeam_1,eye,frames_per_s,1489.80,1493.4 1486.2,1544.00,1514.8 1573.2,1.04
+sodium+nvidium (-Poptimization),poland,oak_hornbeam_1,eye,gpu_ms_per_frame,0.23,0.23 0.23,0.33,0.33 0.33,1.43
+sodium+nvidium (-Poptimization),poland,oak_hornbeam_1,eye,cpu_ms_median,0.46,0.47 0.46,0.45,0.45 0.45,0.97
+sodium+nvidium (-Poptimization),poland,oak_hornbeam_1,eye,cpu_ms_p95,0.53,0.54 0.52,0.50,0.5 0.5,0.94
+sodium+nvidium (-Poptimization),poland,oak_hornbeam_1,load,chunks_per_s,144.00,144.7 143.3,117.00,116.1 117.9,0.81
+sodium+nvidium (-Poptimization),poland_gameplay,fresh_pine_1,canopy,fps_game,1626.30,1606.1 1646.5,1428.30,1428.3 1428.3,0.88
+sodium+nvidium (-Poptimization),poland_gameplay,fresh_pine_1,canopy,frames_per_s,1648.25,1627.5 1669.0,1429.05,1426.1 1432.0,0.87
+sodium+nvidium (-Poptimization),poland_gameplay,fresh_pine_1,canopy,gpu_ms_per_frame,0.38,0.38 0.38,0.54,0.54 0.54,1.42
+sodium+nvidium (-Poptimization),poland_gameplay,fresh_pine_1,canopy,cpu_ms_median,0.60,0.66 0.54,0.43,0.43 0.44,0.72
+sodium+nvidium (-Poptimization),poland_gameplay,fresh_pine_1,canopy,cpu_ms_p95,0.79,0.89 0.7,0.56,0.5 0.63,0.71
+sodium+nvidium (-Poptimization),poland_gameplay,fresh_pine_1,eye,fps_game,1535.20,1525.6 1544.8,1519.40,1525.0 1513.8,0.99
+sodium+nvidium (-Poptimization),poland_gameplay,fresh_pine_1,eye,frames_per_s,1546.95,1535.8 1558.1,1529.35,1539.0 1519.7,0.99
+sodium+nvidium (-Poptimization),poland_gameplay,fresh_pine_1,eye,gpu_ms_per_frame,0.22,0.22 0.22,0.43,0.43 0.43,1.95
+sodium+nvidium (-Poptimization),poland_gameplay,fresh_pine_1,eye,cpu_ms_median,0.49,0.54 0.45,0.46,0.45 0.48,0.94
+sodium+nvidium (-Poptimization),poland_gameplay,fresh_pine_1,eye,cpu_ms_p95,0.69,0.76 0.61,0.60,0.52 0.68,0.88
+sodium+nvidium (-Poptimization),poland_gameplay,fresh_pine_1,load,chunks_per_s,217.10,228.0 206.2,163.45,170.8 156.1,0.75
+sodium+nvidium (-Poptimization),poland_gameplay,oak_hornbeam_1,canopy,fps_game,1623.50,1616.8 1630.2,1411.50,1398.1 1424.9,0.87
+sodium+nvidium (-Poptimization),poland_gameplay,oak_hornbeam_1,canopy,frames_per_s,1639.20,1633.2 1645.2,1417.45,1404.2 1430.7,0.86
+sodium+nvidium (-Poptimization),poland_gameplay,oak_hornbeam_1,canopy,gpu_ms_per_frame,0.45,0.45 0.45,0.56,0.56 0.55,1.23
+sodium+nvidium (-Poptimization),poland_gameplay,oak_hornbeam_1,canopy,cpu_ms_median,0.48,0.52 0.45,0.45,0.45 0.44,0.92
+sodium+nvidium (-Poptimization),poland_gameplay,oak_hornbeam_1,canopy,cpu_ms_p95,0.71,0.79 0.63,0.53,0.52 0.54,0.75
+sodium+nvidium (-Poptimization),poland_gameplay,oak_hornbeam_1,eye,fps_game,1511.30,1512.9 1509.7,1525.05,1498.5 1551.6,1.01
+sodium+nvidium (-Poptimization),poland_gameplay,oak_hornbeam_1,eye,frames_per_s,1522.85,1523.6 1522.1,1539.10,1510.5 1567.7,1.01
+sodium+nvidium (-Poptimization),poland_gameplay,oak_hornbeam_1,eye,gpu_ms_per_frame,0.23,0.22 0.23,0.32,0.32 0.32,1.42
+sodium+nvidium (-Poptimization),poland_gameplay,oak_hornbeam_1,eye,cpu_ms_median,0.62,0.66 0.59,0.45,0.45 0.45,0.72
+sodium+nvidium (-Poptimization),poland_gameplay,oak_hornbeam_1,eye,cpu_ms_p95,0.93,0.91 0.95,0.51,0.49 0.53,0.55
+sodium+nvidium (-Poptimization),poland_gameplay,oak_hornbeam_1,load,chunks_per_s,212.20,210.7 213.7,162.90,164.5 161.3,0.77
+vanilla,poland,fresh_pine_1,canopy,fps_game,1541.55,1530.5 1552.6,477.25,477.4 477.1,0.31
+vanilla,poland,fresh_pine_1,canopy,frames_per_s,1541.55,1527.4 1555.7,468.75,468.6 468.9,0.30
+vanilla,poland,fresh_pine_1,canopy,gpu_ms_per_frame,0.50,0.5 0.5,2.00,2.0 1.99,3.99
+vanilla,poland,fresh_pine_1,canopy,cpu_ms_median,0.39,0.43 0.34,0.42,0.43 0.4,1.08
+vanilla,poland,fresh_pine_1,canopy,cpu_ms_p95,0.51,0.65 0.37,0.49,0.56 0.43,0.97
+vanilla,poland,fresh_pine_1,eye,fps_game,1578.50,1571.6 1585.4,499.25,497.2 501.3,0.32
+vanilla,poland,fresh_pine_1,eye,frames_per_s,1584.10,1580.6 1587.6,491.00,489.7 492.3,0.31
+vanilla,poland,fresh_pine_1,eye,gpu_ms_per_frame,0.45,0.45 0.45,1.88,1.89 1.88,4.19
+vanilla,poland,fresh_pine_1,eye,cpu_ms_median,0.54,0.64 0.44,0.51,0.52 0.49,0.94
+vanilla,poland,fresh_pine_1,eye,cpu_ms_p95,0.66,0.84 0.48,0.59,0.57 0.62,0.90
+vanilla,poland,fresh_pine_1,load,chunks_per_s,40.45,39.5 41.4,37.30,37.3 37.3,0.92
+vanilla,poland,oak_hornbeam_1,canopy,fps_game,956.70,959.7 953.7,365.05,365.2 364.9,0.38
+vanilla,poland,oak_hornbeam_1,canopy,frames_per_s,966.35,970.1 962.6,373.00,372.5 373.5,0.39
+vanilla,poland,oak_hornbeam_1,canopy,gpu_ms_per_frame,0.88,0.88 0.88,2.54,2.54 2.53,2.88
+vanilla,poland,oak_hornbeam_1,canopy,cpu_ms_median,0.36,0.36 0.37,0.59,0.74 0.45,1.63
+vanilla,poland,oak_hornbeam_1,canopy,cpu_ms_p95,0.45,0.4 0.49,0.73,0.92 0.53,1.63
+vanilla,poland,oak_hornbeam_1,eye,fps_game,1031.05,1036.7 1025.4,390.00,389.8 390.2,0.38
+vanilla,poland,oak_hornbeam_1,eye,frames_per_s,1040.90,1044.8 1037.0,398.60,398.1 399.1,0.38
+vanilla,poland,oak_hornbeam_1,eye,gpu_ms_per_frame,0.79,0.79 0.79,2.36,2.36 2.36,2.99
+vanilla,poland,oak_hornbeam_1,eye,cpu_ms_median,0.46,0.47 0.46,0.59,0.67 0.52,1.28
+vanilla,poland,oak_hornbeam_1,eye,cpu_ms_p95,0.54,0.58 0.51,0.83,1.03 0.63,1.52
+vanilla,poland,oak_hornbeam_1,load,chunks_per_s,39.05,38.5 39.6,35.35,35.3 35.4,0.91
+vanilla,poland_gameplay,fresh_pine_1,canopy,fps_game,1398.10,1397.8 1398.4,513.25,512.0 514.5,0.37
+vanilla,poland_gameplay,fresh_pine_1,canopy,frames_per_s,1380.80,1380.8 1380.8,509.25,510.0 508.5,0.37
+vanilla,poland_gameplay,fresh_pine_1,canopy,gpu_ms_per_frame,0.57,0.57 0.57,1.81,1.81 1.81,3.18
+vanilla,poland_gameplay,fresh_pine_1,canopy,cpu_ms_median,0.35,0.35 0.35,0.43,0.44 0.43,1.24
+vanilla,poland_gameplay,fresh_pine_1,canopy,cpu_ms_p95,0.41,0.41 0.4,0.49,0.5 0.49,1.22
+vanilla,poland_gameplay,fresh_pine_1,eye,fps_game,1472.05,1472.3 1471.8,546.80,547.4 546.2,0.37
+vanilla,poland_gameplay,fresh_pine_1,eye,frames_per_s,1453.00,1454.5 1451.5,541.95,542.4 541.5,0.37
+vanilla,poland_gameplay,fresh_pine_1,eye,gpu_ms_per_frame,0.51,0.51 0.51,1.70,1.7 1.7,3.33
+vanilla,poland_gameplay,fresh_pine_1,eye,cpu_ms_median,0.44,0.44 0.44,0.52,0.53 0.51,1.18
+vanilla,poland_gameplay,fresh_pine_1,eye,cpu_ms_p95,0.49,0.49 0.49,0.61,0.61 0.61,1.24
+vanilla,poland_gameplay,fresh_pine_1,load,chunks_per_s,39.55,39.2 39.9,42.40,45.5 39.3,1.07
+vanilla,poland_gameplay,oak_hornbeam_1,canopy,fps_game,1023.80,1021.0 1026.6,380.65,380.3 381.0,0.37
+vanilla,poland_gameplay,oak_hornbeam_1,canopy,frames_per_s,1045.45,1043.6 1047.3,396.70,396.6 396.8,0.38
+vanilla,poland_gameplay,oak_hornbeam_1,canopy,gpu_ms_per_frame,0.81,0.81 0.81,2.37,2.37 2.37,2.93
+vanilla,poland_gameplay,oak_hornbeam_1,canopy,cpu_ms_median,0.37,0.37 0.37,0.47,0.49 0.46,1.28
+vanilla,poland_gameplay,oak_hornbeam_1,canopy,cpu_ms_p95,0.41,0.4 0.41,0.55,0.57 0.54,1.37
+vanilla,poland_gameplay,oak_hornbeam_1,eye,fps_game,1128.65,1127.1 1130.2,412.15,412.2 412.1,0.37
+vanilla,poland_gameplay,oak_hornbeam_1,eye,frames_per_s,1155.50,1153.9 1157.1,429.10,429.5 428.7,0.37
+vanilla,poland_gameplay,oak_hornbeam_1,eye,gpu_ms_per_frame,0.70,0.7 0.7,2.19,2.18 2.19,3.12
+vanilla,poland_gameplay,oak_hornbeam_1,eye,cpu_ms_median,0.41,0.41 0.41,0.51,0.52 0.49,1.23
+vanilla,poland_gameplay,oak_hornbeam_1,eye,cpu_ms_p95,0.48,0.47 0.49,0.60,0.61 0.59,1.25
+vanilla,poland_gameplay,oak_hornbeam_1,load,chunks_per_s,41.90,41.7 42.1,37.25,37.2 37.3,0.89
