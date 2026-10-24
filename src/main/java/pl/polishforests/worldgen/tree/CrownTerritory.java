@@ -7,7 +7,8 @@ import java.util.Arrays;
  * convex region around the trunk of at most {@value CrownTerritories#MAX_REACH} blocks (no longer convex when a
  * structure mask leaves columns out, {@link #without}). Rows are bit masks: row
  * {@code dz + MAX_REACH} holds bit {@code dx + MAX_REACH} for every column (x + dx, z + dz) of the territory. The trunk's
- * own column always belongs to it. Immutable.
+ * own column always belongs to it, and so do the four columns next to it within the reach (unless a structure mask leaves
+ * them out). Immutable.
  */
 public final class CrownTerritory {
 	private static final int R = CrownTerritories.MAX_REACH;

@@ -1,6 +1,10 @@
 package pl.polishforests.worldgen.tree;
 
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Locale;
+import java.util.Set;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Bare wood of a planned tree's crown, from its voxels alone (review of V9, round 2): the wood at or above the tree's
@@ -128,6 +132,85 @@ public record CrownCover(int crownWood, int bare, int exposed, int sparse) {
 
 	public boolean sparseCrown() {
 		return crownWood >= SPARSE_MIN_WOOD && sparse >= SPARSE_SHARE * crownWood;
+	}
+
+	/** Reach of the side check of an open stem ({@link #openStem}, review of V10, round 1). */
+	public static final int STEM_REACH = 3;
+
+	/**
+	 * The longest run of stem blocks open to one side within the crown (review of V10, round 1): the upright chain of wood
+	 * from the base (each block the child right above the one below), at or above the lowest leaf, with no wood or leaf
+	 * of the tree within {@value #STEM_REACH} blocks on one of its four sides (at its height or one above). A trunk at the
+	 * edge of its territory carried its crown on one side only and its stem stood bare above lower neighbors, a gray pole
+	 * seen from above the canopy that the bare-wood counts above miss (the stem has the leaves of its one-sided crown
+	 * around it).
+	 */
+	public static int openStem(TreeVoxels v) {
+		return openStem(v, null);
+	}
+
+	/** Leaves of the other trees of a stand, by world position. */
+	@FunctionalInterface
+	public interface Leaves {
+		boolean leaf(int x, int y, int z);
+	}
+
+	/**
+	 * {@link #openStem(TreeVoxels)} in a stand: a side is closed by the leaves of the other trees too (what a player sees
+	 * of the stem from above the canopy).
+	 */
+	public static int openStem(TreeVoxels v, @Nullable Leaves others) {
+		int woods = v.woodCount();
+		if (woods == 0 || v.leafCount() == 0) {
+			return 0;
+		}
+		int lowest = Integer.MAX_VALUE;
+		Set<Long> own = new HashSet<>();
+		for (int i = 0; i < v.leafCount(); i++) {
+			lowest = Math.min(lowest, v.leafY(i));
+			own.add(key(v.leafX(i), v.leafY(i), v.leafZ(i)));
+		}
+		int root = -1;
+		int[] above = new int[woods];
+		Arrays.fill(above, -1);
+		for (int i = 0; i < woods; i++) {
+			own.add(key(v.woodX(i), v.woodY(i), v.woodZ(i)));
+			int p = v.parentIndex(i);
+			if (p < 0) {
+				root = root < 0 ? i : root;
+			} else if (v.parent(i) == TreeVoxels.DOWN) {
+				above[p] = i;
+			}
+		}
+		int run = 0;
+		int best = 0;
+		for (int i = root; i >= 0; i = above[i]) {
+			int x = v.woodX(i);
+			int y = v.woodY(i);
+			int z = v.woodZ(i);
+			if (y < lowest) {
+				continue;
+			}
+			boolean open = false;
+			for (int[] d : SIDES) {
+				boolean side = true;
+				for (int s = 1; s <= STEM_REACH && side; s++) {
+					for (int up = 0; up <= 1 && side; up++) {
+						int ax = x + d[0] * s;
+						int az = z + d[1] * s;
+						side = !own.contains(key(ax, y + up, az)) && (others == null || !others.leaf(v.x() + ax, v.y() + y + up, v.z() + az));
+					}
+				}
+				open |= side;
+			}
+			run = open ? run + 1 : 0;
+			best = Math.max(best, run);
+		}
+		return best;
+	}
+
+	private static long key(int x, int y, int z) {
+		return ((long) (x + 512) << 40) | ((long) (y + 512) << 20) | (z + 512);
 	}
 
 	private static boolean leafAt(boolean[] leaf, int sx, int sy, int sz, int x, int y, int z) {

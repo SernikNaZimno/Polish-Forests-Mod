@@ -149,6 +149,10 @@ public final class TreeShapePlan {
 	 */
 	private static final double SPROUTS_FROM = 0.1;
 	private static final int SPROUTS_RADIUS = 4;
+	/** Reach of the side check of the stem sleeve (review of V10, round 1; {@link CrownCover#openStem}). */
+	private static final int STEM_REACH = CrownCover.STEM_REACH;
+	/** Depth below the top of a broad-leaved canopy tree within which its upturned tips must be covered on every side. */
+	private static final int TIP_DEPTH = 4;
 	/**
 	 * A suppressed canopy tree of a stand (review of V9, round 2, carried into V10): a tree at least
 	 * {@value #SUPPRESSED_HEIGHT} blocks tall whose crown the territories of its neighbors cut down to fewer than
@@ -549,6 +553,7 @@ public final class TreeShapePlan {
 			prune();
 			dropBareBranches();
 			cover();
+			stemSleeve();
 			sprouts();
 			trimBareTips();
 			distances();
@@ -1659,6 +1664,73 @@ public final class TreeShapePlan {
 			}
 		}
 
+		/**
+		 * The stem of a broad-leaved canopy tree of a stand is never open to one side within its crown (review of V10, round
+		 * 1): a trunk block at or above the lowest leaf of the tree with no wood or leaf of the tree within
+		 * {@value #STEM_REACH} blocks on one of its four sides (at its height or one above) gets a leaf next to it on that
+		 * side, within the layer (the four columns next to a trunk belong to its territory, {@link CrownTerritories}). A
+		 * heavy neighbor took those columns, or the clusters of a crown carried on one side of the trunk left the other
+		 * side empty, and where the neighbors on that side are lower the stem stood bare above their crowns for the whole
+		 * length of its own crown (an ash of 37 blocks in the natural oak-hornbeam forest: a gray pole of 15 blocks seen from
+		 * 10-20 blocks above the canopy). A real crown carries short shoots on that side of the stem too. A leaf outside the
+		 * territory could meet a leaf of a neighbor in the same block, which the order of the decoration would settle (not
+		 * deterministic). Pine and spruce keep their open crowns (the leader of a pine is sleeved in {@link #cover}).
+		 */
+		private void stemSleeve() {
+			if (!stemSleeves() || leaves == 0) {
+				return;
+			}
+			int lowest = Integer.MAX_VALUE;
+			for (int i = 0; i < leaves; i++) {
+				lowest = Math.min(lowest, TreeVoxels.unpackY(lPos[i]));
+			}
+			for (int i = 0; i < woods; i++) {
+				if (wGone[i] || nKind[wOwner[i]] != TRUNK) {
+					continue;
+				}
+				int pos = wPos[i];
+				int x = TreeVoxels.unpackX(pos);
+				int y = TreeVoxels.unpackY(pos);
+				int z = TreeVoxels.unpackZ(pos);
+				if (y < lowest) {
+					continue;
+				}
+				for (int side = 0; side < 4; side++) {
+					int dx = side == 0 ? 1 : side == 1 ? -1 : 0;
+					int dz = side == 2 ? 1 : side == 3 ? -1 : 0;
+					if (openSide(x, y, z, dx, dz) && leafCell(x + dx, y, z + dz) && free(x + dx, y, z + dz)) {
+						addLeaf(x + dx, y, z + dz);
+					}
+				}
+			}
+		}
+
+		/** A broad-leaved canopy tree of a stand: its stem is sleeved and its upturned tips at the top must be covered. */
+		private boolean stemSleeves() {
+			return request.layer() == CrownLayer.CANOPY && request.territory() != null && shape.archetype() != SpeciesShape.Archetype.PINE
+					&& shape.archetype() != SpeciesShape.Archetype.SPRUCE;
+		}
+
+		/** Whether (x, y, z) is open to one of its four sides ({@link #openSide(int, int, int, int, int)}). */
+		private boolean openSide(int x, int y, int z) {
+			return openSide(x, y, z, 1, 0) || openSide(x, y, z, -1, 0) || openSide(x, y, z, 0, 1) || openSide(x, y, z, 0, -1);
+		}
+
+		/** Whether no wood or leaf of the tree stands within {@value #STEM_REACH} blocks of (x, y, z) in direction (dx, dz). */
+		private boolean openSide(int x, int y, int z, int dx, int dz) {
+			for (int s = 1; s <= STEM_REACH; s++) {
+				for (int up = 0; up <= 1; up++) {
+					int ax = x + dx * s;
+					int ay = y + up;
+					int az = z + dz * s;
+					if (inBox(ax, ay, az) && !free(ax, ay, az)) {
+						return false;
+					}
+				}
+			}
+			return true;
+		}
+
 		/** Whether the column (x, z) of the box holds a leaf of the tree at any height. */
 		private boolean ownLeafColumn(int x, int z) {
 			for (int y = 0; y < MAX_HEIGHT; y++) {
@@ -1709,6 +1781,17 @@ public final class TreeShapePlan {
 		 * whorl branch, which {@link #prune} leaves (radius over 2 px), stood bare between the crowns seen from 30 m.
 		 */
 		private void trimBareTips() {
+			// Review of V10, round 1: an upturned branch tip within TIP_DEPTH blocks of the top of a broad-leaved canopy tree
+			// that is open to one side (no wood or leaf of the tree within STEM_REACH blocks) goes too: at the edge of the
+			// territory its sleeve has no columns outside, and it stood as a gray hook above the canopy.
+			int tipFrom = Integer.MAX_VALUE;
+			if (stemSleeves()) {
+				int top = 0;
+				for (int i = 0; i < woods; i++) {
+					top = wGone[i] ? top : Math.max(top, TreeVoxels.unpackY(wPos[i]));
+				}
+				tipFrom = top - TIP_DEPTH;
+			}
 			for (int i = woods - 1; i > 0; i--) {
 				int kind = nKind[wOwner[i]];
 				if (wGone[i] || wChildren[i] > 0 || kind != BRANCH && kind != TWIG) {
@@ -1718,7 +1801,7 @@ public final class TreeShapePlan {
 				int x = TreeVoxels.unpackX(p);
 				int y = TreeVoxels.unpackY(p);
 				int z = TreeVoxels.unpackZ(p);
-				if (leavesAround(x, y, z) <= 1) {
+				if (leavesAround(x, y, z) <= 1 || y >= tipFrom && wParent[i] == TreeVoxels.DOWN && openSide(x, y, z)) {
 					wGone[i] = true;
 					wChildren[wParentIndex[i]]--;
 					cell[cellOf(x, y, z)] = 0;

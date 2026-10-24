@@ -48,8 +48,9 @@ import pl.polishforests.worldgen.landscape.Noise;
  * <p><b>Exactness.</b> Positions are columns and weights are integers in sixteenths of a block squared, so the ownership
  * of a column is an exact comparison; equal powers go to the trunk with the smaller (x, z). Both trunks of a pair compute
  * the same weights, so their territories are disjoint. In a pair of two trees of a layer the weights are clamped so that
- * each trunk owns its own column (a small tree next to a large one still has a crown over its trunk); a marker's column
- * is not reserved, so a crown may spread over it.
+ * each trunk owns its own column (a small tree next to a large one still has a crown over its trunk) and, since the review
+ * of V10 (round 1), the four columns next to it within its reach (the stem sleeve of {@link TreeShapePlan}); a marker's
+ * column is not reserved, so a crown may spread over it.
  */
 public final class CrownTerritories {
 	/** Salt of the crown hash (rule ZW-2). */
@@ -304,9 +305,14 @@ public final class CrownTerritories {
 					}
 				} else {
 					// Two trees of the layer: each owns its own column, the power of the other trunk there is never lower.
-					// A marker's column is not reserved, so the crown may spread over it.
-					a = Math.min(t.weight(), u.weight() + 16 * d2 - 1);
-					b = Math.min(u.weight(), t.weight() + 16 * d2 - 1);
+					// A marker's column is not reserved, so the crown may spread over it. Review of V10, round 1: each also
+					// owns the four columns next to its trunk (the nearest of them is m² away from the other trunk, at least
+					// 4 at the spacing of the candidates), so its crown can sleeve the stem on every side; a heavy neighbor
+					// took them and the stem stood bare on that side above lower crowns.
+					int m2 = Math.min(Math.min(sq(dx - 1, dz), sq(dx + 1, dz)), Math.min(sq(dx, dz - 1), sq(dx, dz + 1)));
+					int cap = 16 * Math.max(2, m2) - 17;
+					a = Math.min(t.weight(), u.weight() + cap);
+					b = Math.min(u.weight(), t.weight() + cap);
 				}
 				if (n == px.length) {
 					grow();
@@ -332,6 +338,10 @@ public final class CrownTerritories {
 				}
 			}
 			return true;
+		}
+
+		private static int sq(int x, int z) {
+			return x * x + z * z;
 		}
 
 		private void grow() {
