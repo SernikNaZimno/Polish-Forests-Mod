@@ -1,9 +1,8 @@
 package pl.polishforests.worldgen.tree;
 
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import org.jspecify.annotations.Nullable;
 import pl.polishforests.worldgen.feature.plan.TreeStandPlan;
 import pl.polishforests.worldgen.landscape.Noise;
@@ -89,9 +88,22 @@ public final class CrownTerritories {
 	private static final long LAYER_SALT = 1;
 	private static final long RADIUS_SALT = 2;
 
+	/**
+	 * Size of the tile cache shared by the sessions (2^12 chunks). Step O1: with C2ME many threads decorate the chunks of
+	 * one area, and a session's own memo of 256 tiles rarely held the 25 tiles around a trunk. A tile is a pure function of
+	 * the seed and the stand map, and an entry is an immutable record (final fields) written whole, so a thread that reads
+	 * an entry another thread has just written sees its sites; a lost entry is only computed again.
+	 */
+	private static final int TILE_CACHE_BITS = 12;
+
+	/** A cached tile: the sites of the kept candidates of one chunk. */
+	private record TileEntry(long key, Site[] sites) {
+	}
+
 	private final long worldSeed;
 	private final Noise crown;
 	private final StandMap stands;
+	private final TileEntry[] tileCache = new TileEntry[1 << TILE_CACHE_BITS];
 
 	public CrownTerritories(long worldSeed, StandMap stands) {
 		this.worldSeed = worldSeed;
@@ -159,7 +171,7 @@ public final class CrownTerritories {
 		private static final int TILE_REACH = SEARCH / 16;
 
 		private final TreeStandPlan.Candidates candidates = new TreeStandPlan.Candidates(worldSeed);
-		private final Map<Long, Site[]> tiles = new HashMap<>();
+		private final Long2ObjectOpenHashMap<Site[]> tiles = new Long2ObjectOpenHashMap<>();
 		// Pairs of the territory being computed (reused arrays).
 		private int[] px = new int[64];
 		private int[] pz = new int[64];
@@ -181,7 +193,30 @@ public final class CrownTerritories {
 			return candidates.kept(x, z);
 		}
 
-		/** Sites of the kept candidates of the chunk (chunkX, chunkZ), memoized. */
+		/**
+		 * The kept candidates as the trunks of the tree planner ({@link #candidate}); step O1: an area is visited by the
+		 * cells of the pattern ({@link TreeStandPlan.Candidates#forEach}), not by asking each of its columns.
+		 */
+		public TreeShapePlan.Trunks trunks() {
+			return trunks;
+		}
+
+		private final TreeShapePlan.Trunks trunks = new TreeShapePlan.Trunks() {
+			@Override
+			public boolean trunk(int x, int z) {
+				return candidates.kept(x, z);
+			}
+
+			@Override
+			public void forEach(int minX, int minZ, int maxX, int maxZ, TreeShapePlan.Trunks.Column visitor) {
+				candidates.forEach(minX, minZ, maxX, maxZ, visitor::accept);
+			}
+		};
+
+		/**
+		 * Sites of the kept candidates of the chunk (chunkX, chunkZ), memoized in the session and (step O1) in the cache
+		 * shared by the sessions of all threads ({@link #TILE_CACHE_BITS}); the arrays are never changed after they are made.
+		 */
 		Site[] tile(int chunkX, int chunkZ) {
 			long key = (long) chunkX << 32 | (chunkZ & 0xFFFF_FFFFL);
 			Site[] known = tiles.get(key);
@@ -191,9 +226,17 @@ public final class CrownTerritories {
 			if (tiles.size() >= MAX_TILES) {
 				tiles.clear();
 			}
-			List<Site> out = new ArrayList<>();
-			candidates.forEach(chunkX * 16, chunkZ * 16, chunkX * 16 + 15, chunkZ * 16 + 15, (x, z) -> out.add(site(x, z)));
-			Site[] sites = out.toArray(new Site[0]);
+			int slot = (int) (Noise.mix(key) >>> (64 - TILE_CACHE_BITS));
+			TileEntry shared = tileCache[slot];
+			Site[] sites;
+			if (shared != null && shared.key() == key) {
+				sites = shared.sites();
+			} else {
+				List<Site> out = new ArrayList<>();
+				candidates.forEach(chunkX * 16, chunkZ * 16, chunkX * 16 + 15, chunkZ * 16 + 15, (x, z) -> out.add(site(x, z)));
+				sites = out.toArray(new Site[0]);
+				tileCache[slot] = new TileEntry(key, sites);
+			}
 			tiles.put(key, sites);
 			return sites;
 		}
@@ -281,11 +324,19 @@ public final class CrownTerritories {
 		private void pairs(Site t, Site[] sites, @Nullable Vacancies vacancies, boolean exact, boolean sure) {
 			CrownLayer layer = t.layer();
 			double edgeLimit = EDGE_REACH * t.radius();
+			// Step O1: a site of another layer can only be a marker, and a marker pair matters only within twice the largest
+			// reach (its boundary lies at least half the distance away, and edgeLimit is the largest reach): beyond that the
+			// pair would be dropped below without setting the edge, so its vacancy is not asked for. One block of margin.
+			double markerLimit = 2 * Math.min(MAX_REACH, edgeLimit) + 1;
+			int markerLimit2 = (int) Math.ceil(markerLimit * markerLimit);
 			for (Site u : sites) {
 				int dx = u.x() - t.x();
 				int dz = u.z() - t.z();
 				int d2 = dx * dx + dz * dz;
 				if (d2 == 0 || d2 > SEARCH * SEARCH) {
+					continue;
+				}
+				if (u.layer() != layer && d2 > markerLimit2) {
 					continue;
 				}
 				boolean uMarker = (u.gap() && layer != CrownLayer.REGENERATION) || (vacancies != null

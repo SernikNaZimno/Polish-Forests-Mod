@@ -1,7 +1,6 @@
 package pl.polishforests.worldgen.feature.plan;
 
-import java.util.HashMap;
-import java.util.Map;
+import it.unimi.dsi.fastutil.longs.Long2ByteOpenHashMap;
 import pl.polishforests.worldgen.tree.Vacancies;
 
 /**
@@ -39,7 +38,8 @@ public final class StandVacancies implements Vacancies {
 	private final Neighbors neighbors;
 	private final TreeStandPlan.Candidates candidates;
 	private final long seed;
-	private final Map<Long, Boolean> sure = new HashMap<>();
+	/** Memo of {@link #surelyVacant} (1 vacant, 0 not; step O1: a fastutil map, see {@code TreeStandPlan.Pattern}). */
+	private final Long2ByteOpenHashMap sure = new Long2ByteOpenHashMap();
 	private final TreeStandPlan.Stand[] stands = new TreeStandPlan.Stand[9];
 
 	/**
@@ -73,12 +73,12 @@ public final class StandVacancies implements Vacancies {
 	@Override
 	public boolean surelyVacant(int x, int z) {
 		long key = (long) x << 32 | z & 0xFFFF_FFFFL;
-		Boolean known = sure.get(key);
-		if (known == null) {
-			known = compute(x, z);
+		byte known = sure.getOrDefault(key, (byte) -1);
+		if (known < 0) {
+			known = (byte) (compute(x, z) ? 1 : 0);
 			sure.put(key, known);
 		}
-		return known;
+		return known == 1;
 	}
 
 	private boolean compute(int x, int z) {

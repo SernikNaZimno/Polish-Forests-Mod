@@ -1,9 +1,7 @@
 package pl.polishforests.worldgen.feature.plan;
 
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import org.jspecify.annotations.Nullable;
 import pl.polishforests.worldgen.landscape.Noise;
 import pl.polishforests.worldgen.tree.AgeClass;
@@ -450,25 +448,17 @@ public final class TreeStandPlan {
 	/**
 	 * Read-only view of the world's candidate pattern for the planners of the vertical slice (crown territories, step
 	 * V5): the kept candidates of an area in world block coordinates, before any habitat, palette or gap rule, so a pure
-	 * function of the world seed. Kept states are memoized, so an instance serves one thread (one chunk being decorated
-	 * or one test); the results never depend on what it was asked before.
+	 * function of the world seed. Kept states are memoized in a table shared by the threads (step O1), so an instance
+	 * may serve any thread; the results never depend on what it was asked before.
 	 */
 	public static final class Candidates {
-		/** Memoized cells after which the memo starts anew (a long-lived per-thread instance stays small). */
-		private static final int MAX_MEMO = 1 << 16;
-
-		private final long worldSeed;
-		private Pattern pattern;
+		private final Pattern pattern;
 
 		public Candidates(long worldSeed) {
-			this.worldSeed = worldSeed;
 			this.pattern = new Pattern(worldSeed);
 		}
 
 		private Pattern pattern() {
-			if (pattern.kept.size() > MAX_MEMO) {
-				pattern = new Pattern(worldSeed);
-			}
 			return pattern;
 		}
 
@@ -573,16 +563,81 @@ public final class TreeStandPlan {
 	}
 
 	/**
+	 * Memo of the kept states of the candidate pattern of one world seed (step O1), shared by the generation threads: a
+	 * direct-mapped table of {@value #KEPT_BITS} bits, each slot one {@code long} with the cell, the state and a valid bit,
+	 * read and written whole (opaque access), so a thread never sees half of another thread's entry. A kept state is a pure
+	 * function of the seed and the cell, so an entry is the computed answer; a slot taken by another cell only means
+	 * computing again. Before O1 every chunk and every session had its own {@code HashMap<Long, Boolean>}, whose key
+	 * hash (gx ^ gz) put the cells of an area into few bins.
+	 */
+	private static final class KeptTable {
+		private static final int KEPT_BITS = 18;
+		/** Cells with coordinates of up to this many bits (signed) are memoized: ±33 million cells, past the world border. */
+		private static final int COORD_BITS = 26;
+		private static final long COORD_MASK = (1L << COORD_BITS) - 1;
+		private static volatile @Nullable KeptTable last;
+
+		private final long worldSeed;
+		private final java.util.concurrent.atomic.AtomicLongArray slots = new java.util.concurrent.atomic.AtomicLongArray(1 << KEPT_BITS);
+
+		private KeptTable(long worldSeed) {
+			this.worldSeed = worldSeed;
+		}
+
+		/** The table of a world seed (the last one asked for is kept; another seed gets a new table). */
+		static KeptTable of(long worldSeed) {
+			KeptTable t = last;
+			if (t == null || t.worldSeed != worldSeed) {
+				t = new KeptTable(worldSeed);
+				last = t;
+			}
+			return t;
+		}
+
+		private static boolean fits(int g) {
+			return g >= -(1 << (COORD_BITS - 1)) && g < 1 << (COORD_BITS - 1);
+		}
+
+		/** The cell part of a slot: gx in bits 38-63, gz in bits 12-37. */
+		private static long cell(int gx, int gz) {
+			return (gx & COORD_MASK) << 38 | (gz & COORD_MASK) << 12;
+		}
+
+		private static int slot(int gx, int gz) {
+			return (int) (Noise.mix(gx * 0x9E37_79B9_7F4A_7C15L + gz * 0xC2B2_AE3D_27D4_EB4FL) >>> (64 - KEPT_BITS));
+		}
+
+		/** The memoized state of a cell: 1 kept, 0 not, -1 unknown. */
+		int get(int gx, int gz) {
+			if (!fits(gx) || !fits(gz)) {
+				return -1;
+			}
+			long e = slots.getOpaque(slot(gx, gz));
+			if ((e & 1) == 0 || (e & ~0xFFFL) != cell(gx, gz)) {
+				return -1;
+			}
+			return (int) (e >>> 1 & 1);
+		}
+
+		void put(int gx, int gz, boolean kept) {
+			if (fits(gx) && fits(gz)) {
+				slots.setOpaque(slot(gx, gz), cell(gx, gz) | (kept ? 2 : 0) | 1);
+			}
+		}
+	}
+
+	/**
 	 * The world's candidate pattern: candidate of cell (gx, gz) and its mark from a hash of (world seed, cell); a
 	 * candidate is kept unless a kept candidate with a lower mark is closer than {@link #MIN_SPACING}. Kept states are
-	 * memoized for one chunk.
+	 * memoized in a table shared by all threads ({@link KeptTable}, step O1).
 	 */
 	private static final class Pattern {
 		private final long seed;
-		private final Map<Long, Boolean> kept = new HashMap<>();
+		private final KeptTable table;
 
 		Pattern(long worldSeed) {
 			this.seed = worldSeed ^ SALT;
+			this.table = KeptTable.of(worldSeed);
 		}
 
 		long hash(int gx, int gz) {
@@ -590,10 +645,9 @@ public final class TreeStandPlan {
 		}
 
 		boolean kept(int gx, int gz) {
-			long key = (long) gx << 32 | (gz & 0xFFFF_FFFFL);
-			Boolean known = kept.get(key);
-			if (known != null) {
-				return known;
+			int known = table.get(gx, gz);
+			if (known >= 0) {
+				return known == 1;
 			}
 			long h = hash(gx, gz);
 			int x = gx * CELL + offsetX(h);
@@ -615,7 +669,7 @@ public final class TreeStandPlan {
 					}
 				}
 			}
-			kept.put(key, result);
+			table.put(gx, gz, result);
 			return result;
 		}
 

@@ -279,10 +279,18 @@ public final class TreeStandFeature implements Feature {
 		// unknown and then not open), so a canopy tree there carries low branches on that side.
 		Ecotone.Region region = ecotones.region();
 		long worldSeed = level.getSeed();
-		java.util.Map<Long, Boolean> openMemo = new java.util.HashMap<>();
-		TreeShapePlan.Open open = (wx, wz) -> openMemo.computeIfAbsent((long) wx << 32 | wz & 0xFFFF_FFFFL,
-				key -> Ecotone.openLand(Ecotone.provableTrees(region, worldSeed, Ecotone.TREES_SALT, wx - pos.getMinBlockX(),
-						wz - pos.getMinBlockZ())));
+		// Memo by column (1 open, 0 not; step O1: a fastutil map, a HashMap<Long, …> hashed the column to x ^ z).
+		it.unimi.dsi.fastutil.longs.Long2ByteOpenHashMap openMemo = new it.unimi.dsi.fastutil.longs.Long2ByteOpenHashMap();
+		TreeShapePlan.Open open = (wx, wz) -> {
+			long key = (long) wx << 32 | wz & 0xFFFF_FFFFL;
+			byte known = openMemo.getOrDefault(key, (byte) -1);
+			if (known < 0) {
+				known = (byte) (Ecotone.openLand(Ecotone.provableTrees(region, worldSeed, Ecotone.TREES_SALT, wx - pos.getMinBlockX(),
+						wz - pos.getMinBlockZ())) ? 1 : 0);
+				openMemo.put(key, known);
+			}
+			return known == 1;
+		};
 		long[] substitute = new long[2];
 		for (int p : planned) {
 			int column = TreeStandPlan.column(p);
@@ -353,7 +361,7 @@ public final class TreeStandFeature implements Feature {
 			// A young cohort in a canopy gap; elsewhere the trees have the age class of their stand.
 			AgeClass age = layer == CrownLayer.REGENERATION && n.stands().canopyGap(x, z) ? AgeClass.POLE_STAGE : standAge;
 			TreeRequest request = new TreeRequest(proc.species(), layer, age, level.getSeed(), x, at.getY(), z, territory,
-					session.session()::candidate, n.stands(), a::top, open);
+					session.session().trunks(), n.stands(), a::top, open);
 			long planStart = System.nanoTime();
 			TreeVoxels voxels = TreeShapePlan.plan(request);
 			PLAN_NANOS.add(System.nanoTime() - planStart);

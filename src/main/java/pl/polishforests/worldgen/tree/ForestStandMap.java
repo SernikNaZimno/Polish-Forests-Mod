@@ -34,7 +34,7 @@ import pl.polishforests.worldgen.landscape.Noise;
  *
  * <p>Salts (rule ZW-2): {@value #CELLS_SALT} (sites, weights, meander, ramp), {@value #AGE_SALT}, {@value #NATURAL_SALT}
  * and {@value #GAP_SALT} (the regular gap grid of V9 under {@code feature.stand.canopy_gaps} is gone; its salt is not
- * reused). Immutable and thread-safe.
+ * reused). Thread-safe; the only state is the cache of {@link #stand} (step O1), which never changes an answer.
  */
 public final class ForestStandMap implements StandMap {
 	public static final String CELLS_SALT = "feature.stand.cells";
@@ -93,6 +93,10 @@ public final class ForestStandMap implements StandMap {
 	private static final long GAP_SECOND_SIZE = 8;
 	private static final long GAP_SECOND_PLACE = 9;
 
+	/** Size of the stand cache of {@link #stand} (2^16 columns, about 3 MB with the entries: 256 chunks). */
+	private static final int STAND_CACHE_BITS = 16;
+
+	private final StandEntry[] standCache = new StandEntry[1 << STAND_CACHE_BITS];
 	private final Noise cells;
 	private final Noise ages;
 	private final Noise naturals;
@@ -151,8 +155,29 @@ public final class ForestStandMap implements StandMap {
 		return stand.natural() ? rawGapDepth(x, z, stand.age()) : 0;
 	}
 
-	/** The stand of column (x, z), with the age ramp at the borders. */
+	/**
+	 * The stand of column (x, z), with the age ramp at the borders. Step O1: memoized in a direct-mapped cache shared by
+	 * the generation threads ({@link #STAND_CACHE_BITS}); the stand is a pure function of the column, so a cached answer
+	 * is the computed one. Entries are immutable records (final fields), so a thread that reads an entry another thread
+	 * has just written sees it whole; a lost or overwritten entry is only computed again.
+	 */
 	public Stand stand(int x, int z) {
+		long key = (long) x << 32 | z & 0xFFFF_FFFFL;
+		int slot = (int) (Noise.mix(key) >>> (64 - STAND_CACHE_BITS));
+		StandEntry e = standCache[slot];
+		if (e != null && e.key() == key) {
+			return e.stand();
+		}
+		Stand stand = computeStand(x, z);
+		standCache[slot] = new StandEntry(key, stand);
+		return stand;
+	}
+
+	/** A cached stand of a column ({@link #stand}). */
+	private record StandEntry(long key, Stand stand) {
+	}
+
+	private Stand computeStand(int x, int z) {
 		double px = x + MEANDER * k * cells.fbm(x, z, MEANDER_WAVELENGTH * k, 2, 0.5);
 		double pz = z + MEANDER * k * cells.fbm(x + 7_919.0, z - 4_201.0, MEANDER_WAVELENGTH * k, 2, 0.5);
 		int gx = (int) Math.floor(px / spacing);

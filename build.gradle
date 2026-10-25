@@ -542,6 +542,10 @@ tasks.named('runClientGameTest') {
 	if (project.hasProperty('skipSeasonWave')) {
 		jvmArgs '-Dpolishforests.skipSeasonWave=true'
 	}
+	// Step O1: -Pgametest=performance -Psites=slice -PloadOnly measures only the load of new terrain (no camera flight).
+	if (project.hasProperty('loadOnly')) {
+		jvmArgs '-Dpolishforests.loadOnly=true'
+	}
 	jvmArgs "-Dpolishforests.leaves.out=${layout.buildDirectory.dir('leaves').get().asFile.absolutePath}"
 	if (project.hasProperty('profile')) {
 		jvmArgs "-XX:StartFlightRecording=filename=${layout.buildDirectory.file('profile.jfr').get().asFile.absolutePath},settings=profile"

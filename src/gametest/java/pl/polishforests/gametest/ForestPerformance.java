@@ -35,8 +35,8 @@ import pl.polishforests.PolishForests;
  * <li>{@link #woodAndLeaves}: wood and leaves of a generated area by block tags (both builds count the same way);</li>
  * <li>{@link #memoryAndStates}: the used heap after a full garbage collection and the number of block states;</li>
  * <li>{@link #flights} ({@code -Pgametest=performance -Psites=slice}): in the oak-hornbeam and the fresh pine forest of
- * each scale, the load of new terrain around a teleport (chunks per second, the C2ME budget with {@code -Poptimization})
- * and a fixed camera flight: {@value #FLIGHT_POINTS} points on a circle of {@value #ORBIT_RADIUS} blocks around the place,
+ * each scale, the load of new terrain around a teleport (chunks per second, the C2ME budget with {@code -Poptimization};
+ * only this with {@code -PloadOnly}, step O1) and a fixed camera flight: {@value #FLIGHT_POINTS} points on a circle of {@value #ORBIT_RADIUS} blocks around the place,
  * above the canopy and at eye level, with a full turn of the camera at each (frames per second and the render time of
  * each frame);</li>
  * <li>{@link #light} ({@code -Pgametest=performance -Psites=light}): the light at the ground under the canopy at noon, the
@@ -187,6 +187,10 @@ final class ForestPerformance {
 					}
 				}
 			});
+			if (Boolean.getBoolean("polishforests.loadOnly")) {
+				// Step O1: only the load of new terrain (-PloadOnly), the flight left out.
+				continue;
+			}
 			for (boolean canopy : new boolean[] {true, false}) {
 				double[][] points = new double[FLIGHT_POINTS][];
 				sp.getServer().runOnServer(s -> {

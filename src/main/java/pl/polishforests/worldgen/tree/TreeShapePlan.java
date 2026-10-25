@@ -280,6 +280,27 @@ public final class TreeShapePlan {
 	public interface Trunks {
 		/** Whether a trunk (of any layer) may stand at column (x, z). */
 		boolean trunk(int x, int z);
+
+		/**
+		 * Calls the visitor for every column of [minX, maxX] × [minZ, maxZ] (inclusive) where {@link #trunk} holds, in any
+		 * order. By default every column is asked; step O1: the candidate pattern visits its cells instead
+		 * ({@code CrownTerritories.Session#trunks}).
+		 */
+		default void forEach(int minX, int minZ, int maxX, int maxZ, Column visitor) {
+			for (int x = minX; x <= maxX; x++) {
+				for (int z = minZ; z <= maxZ; z++) {
+					if (trunk(x, z)) {
+						visitor.accept(x, z);
+					}
+				}
+			}
+		}
+
+		/** Receives a world column. */
+		@FunctionalInterface
+		interface Column {
+			void accept(int x, int z);
+		}
 	}
 
 	public static final class Workspace {
@@ -308,6 +329,9 @@ public final class TreeShapePlan {
 		private final int[] capY = new int[SIDE * SIDE];
 		private final double[] upperGrid = new double[GRID_SIDE * GRID_SIDE];
 		private final double[] lowerGrid = new double[GRID_SIDE * GRID_SIDE];
+		/** The plan whose corners {@link #upperGrid} and {@link #lowerGrid} hold, by corner (step O1: computed on demand). */
+		private final int[] gridStamp = new int[GRID_SIDE * GRID_SIDE];
+		private int gridPlan;
 		private final float[] reach = new float[AZIMUTH_BINS];
 		// Open land of an edge tree (columns, and the azimuth bins that reach it) and the nodes of its low branches.
 		private final boolean[] openColumn = new boolean[SIDE * SIDE];
@@ -463,15 +487,34 @@ public final class TreeShapePlan {
 			size = new Size(height, crownBase, crownR, Math.max(1, dbh * PX_PER_CM));
 		}
 
-		/** The corner values of the split surfaces around the tree. */
+		/**
+		 * The grid of the corner values of the split surfaces around the tree. Step O1: the corners are computed when a
+		 * column first needs them ({@link #corners}), since a territory of a few blocks needs a fraction of the grid.
+		 */
 		private void splitGrid(TreeRequest r) {
 			gridX0 = Math.floorDiv(r.x() - REACH, GRID);
 			gridZ0 = Math.floorDiv(r.z() - REACH, GRID);
-			for (int i = 0; i < GRID_SIDE; i++) {
-				for (int j = 0; j < GRID_SIDE; j++) {
-					upperGrid[i * GRID_SIDE + j] = corner(upperNoise, gridX0 + i, gridZ0 + j);
-					lowerGrid[i * GRID_SIDE + j] = corner(lowerNoise, gridX0 + i, gridZ0 + j);
-				}
+			if (++gridPlan == 0) {
+				Arrays.fill(gridStamp, 0);
+				gridPlan = 1;
+			}
+		}
+
+		/** Computes the four corners from index i of the grid (the cell of a column), unless already done for this plan. */
+		private void corners(int i) {
+			gridCorner(i);
+			gridCorner(i + 1);
+			gridCorner(i + GRID_SIDE);
+			gridCorner(i + GRID_SIDE + 1);
+		}
+
+		private void gridCorner(int i) {
+			if (gridStamp[i] != gridPlan) {
+				int gi = i / GRID_SIDE;
+				int gj = i % GRID_SIDE;
+				upperGrid[i] = TreeShapePlan.corner(upperNoise, gridX0 + gi, gridZ0 + gj);
+				lowerGrid[i] = TreeShapePlan.corner(lowerNoise, gridX0 + gi, gridZ0 + gj);
+				gridStamp[i] = gridPlan;
 			}
 		}
 
@@ -484,6 +527,7 @@ public final class TreeShapePlan {
 			double fx = (x - gx * GRID) / (double) GRID;
 			double fz = (z - gz * GRID) / (double) GRID;
 			int i = (gx - gridX0) * GRID_SIDE + gz - gridZ0;
+			corners(i);
 			double w1 = bilinear(upperGrid[i], upperGrid[i + GRID_SIDE], upperGrid[i + 1], upperGrid[i + GRID_SIDE + 1], fx, fz);
 			double w2 = bilinear(lowerGrid[i], lowerGrid[i + GRID_SIDE], lowerGrid[i + 1], lowerGrid[i + GRID_SIDE + 1], fx, fz);
 			AgeClass age = request.ageAt(x, z);
@@ -578,19 +622,21 @@ public final class TreeShapePlan {
 			}
 			Trunks trunks = r.layer() == CrownLayer.CANOPY ? null : r.trunks();
 			if (trunks != null) {
-				for (int dz = -REACH; dz <= REACH; dz++) {
-					for (int dx = -REACH; dx <= REACH; dx++) {
-						if ((dx != 0 || dz != 0) && trunks.trunk(r.x() + dx, r.z() + dz)) {
-							for (int ez = Math.max(-REACH, dz - 1); ez <= Math.min(REACH, dz + 1); ez++) {
-								for (int ex = Math.max(-REACH, dx - 1); ex <= Math.min(REACH, dx + 1); ex++) {
-									if (ex != 0 || ez != 0) {
-										woodColumn[col(ex, ez)] = false;
-									}
+				int x0 = r.x();
+				int z0 = r.z();
+				trunks.forEach(x0 - REACH, z0 - REACH, x0 + REACH, z0 + REACH, (tx, tz) -> {
+					int dx = tx - x0;
+					int dz = tz - z0;
+					if (dx != 0 || dz != 0) {
+						for (int ez = Math.max(-REACH, dz - 1); ez <= Math.min(REACH, dz + 1); ez++) {
+							for (int ex = Math.max(-REACH, dx - 1); ex <= Math.min(REACH, dx + 1); ex++) {
+								if (ex != 0 || ez != 0) {
+									woodColumn[col(ex, ez)] = false;
 								}
 							}
 						}
 					}
-				}
+				});
 			}
 			woodColumn[col(0, 0)] = true;
 			leafColumn[col(0, 0)] = true;
