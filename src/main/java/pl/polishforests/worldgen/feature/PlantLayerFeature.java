@@ -172,7 +172,8 @@ public final class PlantLayerFeature implements Feature {
 			// waterside zones and the aquatic plants follow the water, whose borders are sharp). The understory sees the
 			// mantle, the ground layer the fringe.
 			double k = generator instanceof PolandChunkGenerator poland ? poland.settings().scale().landscape().local() : 1;
-			ChunkEcotones e = ChunkEcotones.of(level, chunk, habitats, k);
+			ChunkEcotones e = ChunkEcotones.of(level, chunk, habitats, k,
+					generator instanceof PolandChunkGenerator poland ? poland.forestBlend(level.getSeed()) : null);
 			boolean groundLayer = dispatcher == BiomeDecoration.Dispatcher.GROUND_LAYER;
 			columns = columns.with(groundLayer ? e.ground() : e.plants(),
 					edges ? groundLayer ? e.groundEdges() : e.shrubEdges() : null);

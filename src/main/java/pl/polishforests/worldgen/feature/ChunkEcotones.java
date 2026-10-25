@@ -5,6 +5,7 @@ import net.minecraft.world.level.chunk.ChunkAccess;
 import org.jspecify.annotations.Nullable;
 import pl.polishforests.worldgen.chunk.ChunkHabitats;
 import pl.polishforests.worldgen.feature.plan.Ecotone;
+import pl.polishforests.worldgen.feature.plan.ForestBlend;
 
 /**
  * Ecotones of the chunk being decorated (rule Z10, step S8b; {@link Ecotone}), computed once and shared by the soil
@@ -29,14 +30,18 @@ public final class ChunkEcotones {
 		this.region = region;
 	}
 
-	/** Ecotones of the chunk with these habitats. */
-	public static ChunkEcotones of(WorldGenLevel level, ChunkAccess chunk, ChunkHabitats habitats, double k) {
+	/**
+	 * Ecotones of the chunk with these habitats; {@code blend} the wide blend of the forests of the slice (step Z1) of the
+	 * world's generator, or null.
+	 */
+	public static ChunkEcotones of(WorldGenLevel level, ChunkAccess chunk, ChunkHabitats habitats, double k,
+			@Nullable ForestBlend blend) {
 		ChunkEcotones e = LAST.get();
 		long seed = level.getSeed();
-		if (e != null && e.habitats == habitats && e.seed == seed) {
+		if (e != null && e.habitats == habitats && e.seed == seed && e.region.blend() == blend) {
 			return e;
 		}
-		e = new ChunkEcotones(seed, habitats, VegetationColumns.region(level, chunk, habitats, k));
+		e = new ChunkEcotones(seed, habitats, VegetationColumns.region(level, chunk, habitats, k).withBlend(blend));
 		LAST.set(e);
 		return e;
 	}

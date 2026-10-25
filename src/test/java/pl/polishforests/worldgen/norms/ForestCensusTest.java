@@ -287,6 +287,49 @@ class ForestCensusTest {
 		assertTrue(ForestCensus.reversed(Double.NaN, 20, 50, 20), "nothing counted breaks the order");
 	}
 
+	/**
+	 * Noisy transects (step Z1): each band column has moss or leaf litter by its own draw, as on the ground of the game. A
+	 * weak contrast (moss 40% → 30%, litter 0 → 10%) over a wide transition leaves the width unmeasured (the interval spans
+	 * more than {@link ForestCensus#RESOLVED_RATIO} times); a strong one (moss 80% → 0, litter 0 → 80%) at a step gives a
+	 * narrow interval and a width below 20.
+	 */
+	@Test
+	void noisyTransectsGiveAWidthOnlyWhenTheFitIsResolved() {
+		java.util.Random random = new java.util.Random(7);
+		int[] rank = new int[400];
+		for (int z = 0; z < 400; z++) {
+			rank[z] = z / 200;
+		}
+		double[][] cases = {{0.4, 0.3, 0, 0.1, 30}, {0.8, 0, 0, 0.8, 0.25}};
+		for (int q = 0; q < cases.length; q++) {
+			double[] c = cases[q];
+			CensusGrid g = new CensusGrid(-10, 0, 21, 400, 4);
+			for (int z = 0; z < 400; z++) {
+				double s = 1 / (1 + Math.exp(-(z - 199.5) / c[4]));
+				double moss = c[0] + (c[1] - c[0]) * s;
+				double litter = c[2] + (c[3] - c[2]) * s;
+				for (int x = -10; x <= 10; x++) {
+					g.setGround(x, z, 0, "minecraft:grass_block");
+					double u = random.nextDouble();
+					if (u < moss) {
+						g.setPlant(x, z, "minecraft:moss_carpet");
+					} else if (u < moss + litter) {
+						g.setPlant(x, z, "minecraft:leaf_litter");
+					}
+				}
+			}
+			ForestCensus.Transect t = ForestCensus.transect(g, 0.5, 0.5, 0.5, 399.5, 399, rank, 8, 1);
+			double lo = t.widthLow()[0];
+			double hi = t.widthHigh()[0];
+			if (q == 0) {
+				assertTrue(Double.isNaN(t.widths()[0]), "weak contrast: not measured, interval " + lo + "-" + hi);
+				assertTrue(hi > ForestCensus.RESOLVED_RATIO * lo, "a wide interval " + lo + "-" + hi);
+			} else {
+				assertTrue(t.widths()[0] < 20 && hi < 20, "a sharp step: " + t.widths()[0] + ", interval " + lo + "-" + hi);
+			}
+		}
+	}
+
 	@Test
 	void transectWithoutContrastHasNoWidth() {
 		double[] same = new double[400];

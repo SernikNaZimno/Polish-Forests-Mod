@@ -124,6 +124,13 @@ def main():
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
         z.writestr("modrinth.index.json", json.dumps(index, indent=2, ensure_ascii=False))
         z.write(jar, f"overrides/mods/{os.path.basename(jar)}")
+        # Recommended configuration of the bundled mods (step Z1: Serene Seasons starts a new world in late spring,
+        # 12 days per sub-season, as the mod's built-in calendar); the mods fill in their other settings.
+        pack_config = os.path.join(root, "tools", "modpack")
+        for dirpath, _, names in os.walk(os.path.join(pack_config, "config")):
+            for name in sorted(names):
+                path = os.path.join(dirpath, name)
+                z.write(path, "overrides/" + os.path.relpath(path, pack_config).replace(os.sep, "/"))
     sha = hashlib.sha1(open(out, "rb").read()).hexdigest()
     print(f"Wrote {out} ({os.path.getsize(out) // 1024} KB, sha1 {sha})")
 

@@ -132,6 +132,25 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 		}
 	}
 
+	private volatile pl.polishforests.worldgen.feature.plan.@Nullable ForestBlend forestBlend;
+
+	/**
+	 * The wide blend of the forests of the vertical slice for the world seed (step Z1 of docs/04-pionowy-wycinek.md): the
+	 * habitat lattice from this generator's landscape model and classifier, shared by the decoration of all chunks.
+	 */
+	public pl.polishforests.worldgen.feature.plan.ForestBlend forestBlend(long seed) {
+		pl.polishforests.worldgen.feature.plan.ForestBlend b = forestBlend;
+		if (b != null && b.worldSeed() == seed) {
+			return b;
+		}
+		LandscapeModel m = model(seed);
+		HabitatClassifier k = classifier(seed);
+		b = new pl.polishforests.worldgen.feature.plan.ForestBlend(seed, settings.scale().landscape().local(),
+				(x, z) -> k.classify(m.sample(x, z), x, z));
+		forestBlend = b;
+		return b;
+	}
+
 	/** Habitat classifier for the world seed (the same instance the biome source uses). */
 	public HabitatClassifier classifier(long seed) {
 		model(seed);
@@ -323,7 +342,7 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 			skip[i] = habitats.hasWater(i) || habitats.pieceDistance(i) <= 1;
 		}
 		int[] tops = SoilBlend.tops(pl.polishforests.worldgen.feature.ChunkEcotones.of(level, chunk, habitats,
-				settings.scale().landscape().local()).region(), level.getSeed(), builder, skip);
+				settings.scale().landscape().local(), forestBlend(level.getSeed())).region(), level.getSeed(), builder, skip);
 		ChunkPos pos = chunk.getPos();
 		BlockPos.MutableBlockPos at = new BlockPos.MutableBlockPos();
 		Material[] materials = Material.values();

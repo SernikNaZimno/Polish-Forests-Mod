@@ -20,7 +20,7 @@ class EcotoneProvableTest {
 	private static final long SEED = 20260927L;
 
 	/** A world of forest patches (oak-hornbeam, mixed, fresh pine), meadows, herb fringes and lakes. */
-	private static IntBinaryOperator world(double k) {
+	static IntBinaryOperator world(double k) {
 		Noise n = new Noise(SEED).derive("test.provable");
 		int ohf = EcotoneTest.code(HabitatBiome.OAK_HORNBEAM_FOREST, Zone.NONE);
 		int mf = EcotoneTest.code(HabitatBiome.MIXED_FOREST, Zone.NONE);

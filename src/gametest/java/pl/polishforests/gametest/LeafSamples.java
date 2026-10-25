@@ -45,7 +45,6 @@ import pl.polishforests.block.SpeciesLeavesBlock;
 import pl.polishforests.block.SpeciesSaplingBlock;
 import pl.polishforests.block.TreeFoliage;
 import pl.polishforests.client.ClientSeasonPhase;
-import pl.polishforests.season.FallbackCalendar;
 import pl.polishforests.season.FoliageCurve;
 import pl.polishforests.season.SeasonPhase;
 import pl.polishforests.season.Seasons;
@@ -355,7 +354,7 @@ final class LeafSamples {
 		if (seasons) {
 			sp.getServer().runCommand("season set " + sub.name().toLowerCase(Locale.ROOT));
 		} else {
-			long ticks = (sub.ordinal() * (long) Seasons.DEFAULT_DAYS_PER_SUB_SEASON + day) * FallbackCalendar.TICKS_PER_DAY + NOON;
+			long ticks = Seasons.BUILT_IN.dayTimeOf(sub, day) + NOON;
 			sp.getServer().runCommand("time set " + ticks);
 		}
 		int expected = SeasonPhase.firstStep(sub) + (seasons ? 0 : day / 4);

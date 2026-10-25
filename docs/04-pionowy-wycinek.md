@@ -160,8 +160,12 @@ Ryzyko według B1. Wysokie (2 recenzentów, do 2 rund) mają: rejestracja blokó
 | V10 | pomiary i budżety | A | 1–1,5 | **wysokie** |
 | **CP-B** | las drzew w grze, zamrożenie (ok. 13.–17. dzień) | | | |
 | O1 | optymalizacja generacji drzewostanu i światła przed V11 (dodany po CP-B, 2026-10-25) | A | 0,5–1 | **wysokie** (generator, wydajność) |
+| Z1 | poprawki po CP-B: przejścia Z10 lasów wycinka, pas drzew zastępczych przy grądzie, start nowego świata w LATE_SPRING (dodany po CP-B, 2026-10-25) | A | 1–1,5 | **wysokie** (ekotony, generator, kalendarz) |
 | V11 | martwe drewno | A | 1,5–2 | średnie |
+| I1 | korzenie drzew (prośba użytkownika z 2026-10-25) | A | 1,5–2,5 | **wysokie** (planer, zapis w gruncie) |
 | V12 | runo, mchy, ściółka | A | 2–2,5 | **wysokie** (datagen) |
+| G1 | zgodność z modami do ścinania całych drzew (prośba użytkownika z 2026-10-25) | B | 0,5–1 | średnie |
+| K1 | cieńsza pokrywa gliny i piasku nad skałą, więcej kamienia (rozgrywka; prośba użytkownika z 2026-10-25) | A | 1–1,5 | **wysokie** (teren, złoty test) |
 | V13 | wygląd sezonowy klienta: zima koron, fazy runa, owoce | B | 2–2,5 | **wysokie** |
 | **CP-C** | pory roku i dno lasu (ok. 19.–23. dzień) | | | |
 | V14 | szkielet fauny i sarna | B | 3–3,5 | **wysokie** |
@@ -169,7 +173,7 @@ Ryzyko według B1. Wysokie (2 recenzentów, do 2 rund) mają: rejestracja blokó
 | V16 | pejzaż dźwiękowy i żaba trawna | A | 1–1,5 | niskie |
 | V17 | integracja, pełne testy, dokumentacja | A | 1,5–2 | średnie |
 | **CP-D** | spacer (ok. 22.–28. dzień) | | | |
-| **Razem** | | | **31–42** (kalendarzowo ok. 22–28) | |
+| **Razem** | | | **31–42** (kalendarzowo ok. 22–28) + kroki dodane po CP-B: O1, Z1, I1, G1, K1 (4,5–8) | |
 
 ### V0. Przygotowanie (A, 0,5–1 dnia)
 
@@ -335,6 +339,17 @@ Decyzja użytkownika CP-B.2 (C) (`docs/00` G.16): krok optymalizacji zapisu drze
 - **Ukończony, gdy:** wynik generacji identyczny (te same bloki dla tego samego ziarna: hasze kolumn testu `determinism` z C2ME i bez wobec przebiegu sprzed O1); testy drzew i spisu zielone; chunki na sekundę z C2ME ≥ 0,7 × M2 we wszystkich 4 miejscach (cel ≥ 0,75); FEATURES ≤ 2,0 × i ≤ 10 ms, LIGHT ≤ 1,75 × i ≤ 12 ms, cały chunk ≤ 48 ms; gdy 0,7 jest nieosiągalne bez zmiany wyglądu, warianty dla użytkownika (B3).
 - **Ryzyko:** wysokie (generator, wątki C2ME, determinizm). Wygląd lasu i karta norm (N1–N7) bez zmian.
 
+### Z1. Poprawki po CP-B: przejścia lasów wycinka, pas zastępstw, start świata (A, 1–1,5 dnia; dodany po CP-B)
+
+Decyzje CP-B.1 i CP-B.4 (`docs/00` G.16); wynik w „Stan po Z1”, drobne wybory w `docs/00` G.18.
+- **Zakres:**
+  - zasada Z10 na transekcie Bśw → BMśw → LMśw → grąd: skład gatunków, piętra drzewostanu, podszyt i runo zmieniają się w szerokim pasie (mieszanie palet na szerokości ekotonu), a nie w rampie M2 (`Ecotone`, zasięg sąsiednich chunków, w REAL ok. 25 m); bez prostej linii; przejście mieszany → grąd w normie 20–100;
+  - jaskrawozielony pas drzew zastępczych M2 (`tree_substitute`) obok ciemnych drzew planera przy grądzie w GAMEPLAY: zastępstwa blisko lasów wycinka jako drzewa planera, z płynnym przejściem;
+  - nowy świat startuje w LATE_SPRING: kalendarz wbudowany i zalecana konfiguracja SS (`starting_sub_season`) w paczce `.mrpack`, opis dla graczy; skutki dla śniegu i zamarzania (`BiomeFreezeMixin`);
+  - prośby użytkownika z 2026-10-25 (po grze w 0.2.0-alpha.1) w planie: kroki I1, G1, K1 i decyzje domyślne G.18 do potwierdzenia przy CP-C.
+- **Ukończony, gdy:** karta transektu (V4): szerokości przejść w normie 20–100 w obu skalach i trybach, kolejność wskaźników zachowana (N15.order); kadry transektu bez prostej granicy i bez pasa jaskrawych drzew; test startu świata w LATE_SPRING; złoty test bez zmian; pozostałe normy i FEATURES bez pogorszenia.
+- **Ryzyko:** wysokie (ekotony w generatorze, determinizm i dowodliwość kodów sąsiadów, koszt próbek modelu krajobrazu).
+
 ### V11. Martwe drewno (A, 1,5–2 dnia)
 
 - **Zakres:**
@@ -343,6 +358,17 @@ Decyzja użytkownika CP-B.2 (C) (`docs/00` G.16): krok optymalizacji zapisu drze
   - klucze `deadwood/<gatunek>` zostają, a zmienia się plik featura.
 - **Ukończony, gdy:** liczba obiektów na chunk w normie ±30% w obu lasach, stanach i trybach; kłody leżą na gruncie (≤ 1 blok luki na ≥ 80% długości); nie ma kłód w wodzie ani na ulicach; determinizm bez zmian; FEATURES w budżecie PW-10.
 - **Ryzyko:** średnie. Kłody na stokach mogą wisieć albo wbijać się w teren (zapas: krótsza kłoda).
+
+### I1. Korzenie drzew (A, 1,5–2,5 dnia; prośba użytkownika z 2026-10-25)
+
+W planie wycinka korzeni nie było (tylko kłoda „z kikutem korzeni” w V11), a opis na Modrinth zapowiada je w następnym etapie. Zakres i liczby to decyzje domyślne do potwierdzenia przy CP-C (`docs/00` G.18, I1-a … I1-d).
+- **Zakres:**
+  - nabiegi korzeniowe: u drzew okapu w drzewostanie dojrzałym i starodrzewiu (dąb, buk, lipa, klon, jesion, świerk) 2–5 korzeni z cienkiego pnia (`TrunkBlock`, promień 1–3, kora gatunku), które od podstawy pnia biegną 1–3 bloki po powierzchni gruntu i schodzą w grunt; sosna i brzoza bez widocznych nabiegów (sosna: korzeń palowy w głąb);
+  - korzenie w gruncie z wokselizatora planera (`parent` w stronę pnia), tylko w miejsce gleby i luźnej pokrywy (ziemia, piasek, glina; nie skała, woda, droga), do 2–6 bloków w głąb według gatunku (świerk płasko, sosna i dąb głęboko); widoczne w skarpach, brzegach rzek, jaskiniach i przy kopaniu; `rooted_dirt` i `hanging_roots` wanilii tylko na ścianach pustek;
+  - drzewo na stoku i brzegu: korzenie odsłonięte po stronie spadku; talerz korzeniowy kłody wywrotu z V11 z tych samych korzeni;
+  - planer: nowa faza po pniu (czysta Java, nowa sól), budżet wokseli i czasu, zapis tylko w oknie 3 × 3 chunków; korzenie nie wchodzą do terytoriów koron ani do spisu drzew.
+- **Ukończony, gdy:** `treePreview` z korzeniami (gatunek × wiek, przekrój gruntu); w grze nabiegi widoczne z wysokości oczu na kadrach grądu i boru; brak korzeni w skale, wodzie i na drogach; karta norm N1–N7 bez zmian; FEATURES najwyżej +10% wobec Z1; determinizm.
+- **Ryzyko:** wysokie (zapis w gruncie przy granicach chunków, kolejność dekoracji, koszt).
 
 ### V12. Runo, mchy, ściółka (A, 2–2,5 dnia)
 
@@ -356,6 +382,27 @@ Decyzja użytkownika CP-B.2 (C) (`docs/00` G.16): krok optymalizacji zapisu drze
   - lang EN i PL, tagi (mączka kostna `can_spawn_from_bone_meal`, kompost, `sereneseasons:summer_crops` dla borówki), tekstury z toru B.
 - **Ukończony, gdy:** karta norm N8 i N9 w tolerancji (latem i wiosną); transekty §4.6 i `EcotoneSharpnessTest` bez regresji; `GroundLayerPlanTest` rozszerzony; FEATURES w budżecie; zrzuty z bliska i z wysokości gracza.
 - **Ryzyko:** wysokie (datagen). „Kropki” jaskrawych kwiatów i zbyt jednorodne łany (kontrola na zrzutach).
+
+### G1. Mody do ścinania całych drzew (B, 0,5–1 dnia; prośba użytkownika z 2026-10-25)
+
+Decyzje domyślne do potwierdzenia przy CP-C (`docs/00` G.18, G1-a … G1-d).
+- **Zakres:**
+  - zgodność z modami Fabric do ścinania drzew, które mają wersję na 26.3 (sprawdzić przy kroku): FallingTree (całe drzewo naraz, rozpoznaje pnie i liście po tagach) i HT's TreeChop (ścinanie stopniowe); bez twardej zależności: tagi, a w razie potrzeby mała klasa zgodności ładowana tylko z modem (jak most SS);
+  - pnie (`TrunkBlock`) są w `#minecraft:logs` (przez `#logs_that_burn`), liście gatunków w `#minecraft:leaves` od V2 i V7; do sprawdzenia: rozpoznanie drzewa przez połączenia cienkich gałęzi (rodzic w bok i w górę), limity modów przy dużych drzewach planera (300–600 bloków drewna), opadanie liści po ścięciu;
+  - łup ścinanego drzewa: cienkie gałęzie (promień 1–2) jako patyki, grube części jako pnie, żeby duże drzewo nie dawało setek kłód (dotyczy też ścinania ręcznego);
+  - test w grze z modem w środowisku deweloperskim (Modrinth Maven jak inne mody): ścięcie dębu i sosny planera, liście opadają, nie zostają wiszące bloki; mod do ścinania jako opcjonalny wpis paczki `.mrpack`.
+- **Ukończony, gdy:** drzewo planera w obu modach ścina się w całości (albo wiadomo, który limit podnieść w zalecanej konfiguracji), liście znikają, łup zgodny z decyzją; opis w README i na stronie Modrinth.
+- **Ryzyko:** średnie (wersje modów na 26.3, różne algorytmy wykrywania drzew).
+
+### K1. Cieńsza pokrywa gliny i piasku nad skałą (A, 1–1,5 dnia; prośba użytkownika z 2026-10-25)
+
+Powód: rozgrywka (więcej kamienia blisko powierzchni). Na nizinach Polski osady czwartorzędowe mają dziesiątki metrów, więc to świadome odstępstwo od realizmu. Decyzje domyślne do potwierdzenia przy CP-C (`docs/00` G.18, K1-a … K1-d).
+- **Zakres:**
+  - grubość luźnej pokrywy (`coverDepth` modelu → `rockTop` w `SurfaceBuilder`, `docs/03` §7.1) mnożona przez współczynnik i przycięta: GAMEPLAY × 0,35 i najwyżej 6 bloków pod glebą, REAL × 0,5 i najwyżej 12 bloków; profil gleby (`SoilBlocks`, 1–3 bloki) bez zmian; w dolinach, na wydmach, plażach i torfowiskach najmniejsza grubość według formy terenu, żeby brzeg i wydma nie były skałą;
+  - ustawienie świata (`PolandSettings`, np. `cover_scale`) z wartością domyślną skali; zmiana dotyczy nowych chunków (w starym zapisie szew na granicy wygenerowanego obszaru, opis w changelogu);
+  - złoty test: świadoma regeneracja z listą zmian (`src/test/golden-allow/K*.txt`, kolejny numer), opis w docs; klasyfikator, biomy i `ColumnSample` bez zmian.
+- **Ukończony, gdy:** w przekrojach (`landscapePreview`, gametest `views`) skała 3–8 bloków pod glebą na nizinach GAMEPLAY i 6–14 w REAL; brzegi, wydmy, plaże i torfowiska bez odsłoniętej skały; złoty test z opisaną listą zmian; TERRAIN bez pogorszenia.
+- **Ryzyko:** wysokie (teren, złoty test, szwy w starych światach).
 
 ### V13. Wygląd sezonowy klienta: zima koron, fazy runa, owoce (B, 2–2,5 dnia)
 
@@ -372,7 +419,7 @@ Decyzja użytkownika CP-B.2 (C) (`docs/00` G.16): krok optymalizacji zapisu drze
 ### Punkt kontrolny CP-C: pory roku i dno lasu (ok. 19.–23. dzień)
 
 - **Użytkownik dostaje:** stronę z tymi samymi kadrami w podsezonach (suwak), z SS i bez; zrzuty martwego drewna w lesie gospodarczym i naturalnym; tabelę karty norm (N1–N10, N12, N15) wobec M2 i wobec celów.
-- **Pytania:** ilość martwego drewna (PW-5), gęstość runa i mchów, aspekt wiosenny, przebarwienie i zima.
+- **Pytania:** ilość martwego drewna (PW-5), gęstość runa i mchów, aspekt wiosenny, przebarwienie i zima; korzenie (I1), mody do ścinania drzew i łup gałęzi (G1), grubość pokrywy nad skałą (K1), drobne wybory Z1 (`docs/00` G.18).
 
 ### V14. Szkielet fauny i sarna (B, 3–3,5 dnia)
 
@@ -423,7 +470,7 @@ Decyzja użytkownika CP-B.2 (C) (`docs/00` G.16): krok optymalizacji zapisu drze
 | CP-A | ok. 4. dzień | 10 tekstur, tablica pni z Sodium i bez, próby kolorów i zimy | styl (D5), licencja, B6, technika pnia |
 | (podgląd) | ok. 9. dzień | PNG drzew iglastych, bez czekania na odpowiedź | uwagi do pokroju przed liściastymi |
 | CP-B | ok. 13.–17. dzień | las drzew w grze, karta norm, wydajność, model sarny | pokrój i gęstość, PW-10, PW-12; zamrożenie zapisu |
-| CP-C | ok. 19.–23. dzień | pory roku, runo, martwe drewno, karta norm | PW-5, gęstość runa i mchów, fenologia |
+| CP-C | ok. 19.–23. dzień | pory roku, runo, martwe drewno, korzenie, ścinanie drzew, pokrywa nad skałą, karta norm | PW-5, gęstość runa i mchów, fenologia, G1, K1, I1 i wybory Z1 (`docs/00` G.18) |
 | CP-D | ok. 22.–28. dzień | spacer z fauną i dźwiękiem | odbiór wycinka, PW-15, opcje O1–O4, start M3 |
 
 Zrzuty trafiają na stronę Artifact (jak punkt kontrolny 2 M2) i do `docs/wycinek/cp-x/`. Każdy zrzut ma współrzędne kamery. Recenzenci oglądają pełne zestawy (B4 odrzucona). Poprawki po punkcie: najwyżej 2 rundy, potem warianty (B3).
@@ -475,6 +522,7 @@ Odstępstwa celowe, jawnie w karcie: gęstość fauny ×20–50 (PW-15), żaba w
 | 11–15 | V9 | V8, tekstury martwego drewna | |
 | 13–17 | V10 | | **CP-B** |
 | 15–21 | V11, V12 | V13, start V14 | **CP-C** |
+| po CP-B (2026-10-25) | O1, Z1, V11, I1, V12, K1 | V13, G1 (V14 wstrzymany) | **CP-C**: kroki dodane po CP-B (O1, Z1) i prośby użytkownika (I1, G1, K1) przesuwają CP-C o ok. 4,5–8 dni [S] |
 | 19–26 | V16, V17 | V14, V15 | |
 | 22–28 | | | **CP-D** |
 

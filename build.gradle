@@ -505,6 +505,17 @@ tasks.register('generateArt', ArtTask) {
 // -PdebugHabitats: diagnostic mode, zones and biomes painted on the top block (docs/03-m2-biomy.md §7.5).
 // -Pscales=realistic or -Pscales=gameplay: HabitatsClientGameTest, VegetationClientGameTest and PresentDayClientGameTest in one scale only.
 tasks.named('runClientGameTest') {
+	// Step Z1: the recommended Serene Seasons configuration of the modpack (a new world starts in late spring, 12 days per
+	// sub-season) in the run directory, so the tests see the same start as the players of the pack.
+	def seasonsConfig = file('tools/modpack/config/sereneseasons/seasons.toml')
+	def seasonsTarget = layout.buildDirectory.file('run/clientGameTest/config/sereneseasons/seasons.toml').get().asFile
+	def withSeasons = !project.hasProperty('noSeasons')
+	doFirst {
+		if (withSeasons) {
+			seasonsTarget.parentFile.mkdirs()
+			java.nio.file.Files.copy(seasonsConfig.toPath(), seasonsTarget.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+		}
+	}
 	jvmArgs "-Dpolishforests.gametest=${project.findProperty('gametest') ?: 'all'}"
 	jvmArgs "-Dpolishforests.sites=${project.findProperty('sites') ?: ''}"
 	jvmArgs "-Dpolishforests.scales=${project.findProperty('scales') ?: ''}"

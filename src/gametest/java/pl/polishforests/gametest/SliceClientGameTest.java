@@ -214,6 +214,7 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 				}
 				records.clear();
 				try (TestSingleplayerContext sp = context.worldBuilder().adjustSettings(ui -> select(ui, preset, presentDay)).create()) {
+					SeasonDates.checkNewWorldStart(sp, "slice");
 					sp.getServer().runCommand("gamerule advance_time false");
 					sp.getServer().runCommand("gamerule advance_weather false");
 					sp.getServer().runCommand("gamerule spawn_mobs false");
@@ -1052,6 +1053,9 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 						pl.polishforests.worldgen.feature.TreeStandFeature.SKIPPED_BASE.sum(),
 						pl.polishforests.worldgen.feature.TreeStandFeature.SKIPPED_WRITE.sum(),
 						pl.polishforests.worldgen.feature.TreeStandFeature.SKIPPED_SUPPRESSED.sum())
+				+ String.format(Locale.ROOT, "; since the start: forest blend lattice samples %d, planner twins %d (step Z1)",
+						pl.polishforests.worldgen.feature.plan.ForestBlend.SAMPLES.sum(),
+						pl.polishforests.worldgen.feature.TreeStandFeature.TWINS.sum())
 				+ "; HABITAT_MISS " + (after[after.length - 1] - before[before.length - 1]);
 	}
 

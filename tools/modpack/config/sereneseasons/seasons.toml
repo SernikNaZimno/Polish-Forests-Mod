@@ -1,0 +1,7 @@
+# Polish Forests: recommended Serene Seasons settings (decisions B2 and CP-B.4, docs/04-pionowy-wycinek.md, step Z1).
+# Serene Seasons fills in all other settings with its defaults and rewrites this file when the game starts.
+[time_settings]
+	# A new world starts in late spring (3 = Late Spring, May), as the built-in calendar of Polish Forests.
+	starting_sub_season = 3
+	# 12 game days per sub-season (a 144-day year), as the built-in calendar of Polish Forests.
+	sub_season_duration = 12

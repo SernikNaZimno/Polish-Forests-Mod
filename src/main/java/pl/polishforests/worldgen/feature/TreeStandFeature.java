@@ -22,6 +22,7 @@ import pl.polishforests.worldgen.chunk.ChunkHabitats;
 import pl.polishforests.worldgen.chunk.PolandChunkGenerator;
 import pl.polishforests.worldgen.feature.config.TreePalette;
 import pl.polishforests.worldgen.feature.plan.Ecotone;
+import pl.polishforests.worldgen.feature.plan.ForestBlend;
 import pl.polishforests.worldgen.feature.plan.SpeciesRamp;
 import pl.polishforests.worldgen.feature.plan.StandVacancies;
 import pl.polishforests.worldgen.feature.plan.TreeStandPlan;
@@ -109,6 +110,16 @@ public final class TreeStandFeature implements Feature {
 	private final List<Species> species = new ArrayList<>();
 	/** The procedural tree of each tree of {@link #trees}, or null for a placeholder (lazily, after the registries load). */
 	private volatile @Nullable ProceduralTreeFeature[] procedural;
+	/**
+	 * The planner twin of each tree of {@link #trees} (step Z1): for the plain placeholder of a species with a planner
+	 * shape ({@code tree_substitute/<species>}), the index of the procedural tree of that species in {@link #trees}, else
+	 * -1 (lazily, with {@link #procedural}).
+	 */
+	private volatile int @Nullable [] twins;
+	/** Salt of the draw of a planner twin near the forests of the slice (a new field, a new salt; step Z1). */
+	public static final long TWIN_SALT = 0x7B1C_4E2A_95D3L;
+	/** Placeholder trees planted as their planner twin near the forests of the slice (step Z1, diagnostics). */
+	public static final java.util.concurrent.atomic.LongAdder TWINS = new java.util.concurrent.atomic.LongAdder();
 	private final TreeStandPlan.Palette plan;
 	private volatile @Nullable Noises noises;
 
@@ -237,9 +248,41 @@ public final class TreeStandFeature implements Feature {
 				Feature f = trees.get(i).value().getFeatures().findFirst().map(Holder::value).orElse(null);
 				p[i] = f instanceof ProceduralTreeFeature tree ? tree : null;
 			}
+			int[] t = new int[p.length];
+			for (int i = 0; i < p.length; i++) {
+				t[i] = -1;
+				String path = trees.get(i).unwrapKey().map(k -> k.identifier().getPath()).orElse("");
+				if (p[i] != null || !path.equals(species.get(i).substitutePath())) {
+					continue;
+				}
+				for (int j = 0; j < p.length; j++) {
+					if (p[j] != null && p[j].species() == species.get(i)) {
+						t[i] = j;
+						break;
+					}
+				}
+			}
+			twins = t;
 			procedural = p;
 		}
 		return p;
+	}
+
+	/**
+	 * Whether the placeholder at world (x, z) grows as its planner twin (step Z1, decision CP-B.1): near the forests of
+	 * the slice the placeholders of the species with a planner shape (a stream's ash-alder belt in an oak-hornbeam forest,
+	 * the edge of another forest) are planner trees, so no band of bright vanilla-shaped crowns stands next to the dark
+	 * planner trees. The chance is twice the share of the slice forests within the blend's radius ({@link ForestBlend}),
+	 * at most 1: 1 up to their edge, falling smoothly to 0 one radius away (about 48 m·k). Only canopy trees: the plain
+	 * rules of M2 have no layered stand, and a young planner pine under the canopy of a fresh pine forest would count as
+	 * pine regeneration under the canopy (N6).
+	 */
+	private static boolean twin(Ecotone.Region region, long worldSeed, int localX, int localZ, int worldX, int worldZ) {
+		if (region.blend() == null) {
+			return false;
+		}
+		double chance = Math.min(1, 2 * region.blendTotal(localX, localZ));
+		return chance > 0 && ForestBlend.draw(worldSeed, TWIN_SALT, worldX, worldZ, 1) < chance;
 	}
 
 	/** Plants the trees of the chunk; adds the trees, wood blocks and leaves placed to {@code counts}. */
@@ -262,7 +305,8 @@ public final class TreeStandFeature implements Feature {
 		long seed = TreeStandPlan.seed(level.getSeed(), pos.x(), pos.z(), TreeStandPlan.SALT);
 		// Ecotones (rule Z10, step S8b): each candidate takes the rule of a column across the border within the belt of the
 		// pair, so composition and density change in a ramp.
-		ChunkEcotones ecotones = ChunkEcotones.of(level, chunk, habitats, k);
+		ChunkEcotones ecotones = ChunkEcotones.of(level, chunk, habitats, k,
+				generator instanceof PolandChunkGenerator poland ? poland.forestBlend(level.getSeed()) : null);
 		int[] codes = ecotones.trees();
 		TreeStandPlan.Stand stand = new TreeStandPlan.Stand(ramp, n.gaps(), k, n.stands(), n.crowns());
 		int[] planned = TreeStandPlan.of(codes, VegetationColumns.waterDepth(habitats), plan, level.getSeed(), pos.x(), pos.z(),
@@ -271,6 +315,7 @@ public final class TreeStandFeature implements Feature {
 			return;
 		}
 		ProceduralTreeFeature[] procedural = procedural();
+		int[] twins = java.util.Objects.requireNonNull(this.twins);
 		Around around = null;
 		StandVacancies vacancies = null;
 		SessionHolder session = null;
@@ -299,6 +344,14 @@ public final class TreeStandFeature implements Feature {
 			int z = pos.getMinBlockZ() + (column & 15);
 			BlockPos at = new BlockPos(x, habitats.top()[column] + 1, z);
 			ProceduralTreeFeature proc = procedural[tree];
+			int twin = twins[tree];
+			if (proc == null && twin >= 0 && TreeStandPlan.layer(p) == CrownLayer.CANOPY && !habitats.hasWater(column)
+					&& twin(region, worldSeed, column >> 4, column & 15, x, z)) {
+				// The planner twin of a placeholder near the forests of the slice (step Z1).
+				tree = twin;
+				proc = procedural[twin];
+				TWINS.increment();
+			}
 			if (proc == null) {
 				if (habitats.buildingDistance(column) <= BUILDING_GAP || habitats.pieceDistance(column) <= PIECE_GAP) {
 					// A structure nearby (round 1 of the S8 review): no trunk on a street, no crown in a house.

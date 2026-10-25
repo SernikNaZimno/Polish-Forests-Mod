@@ -463,8 +463,36 @@ final class NormsCensus {
 		for (int r = 0; r < t.widths().length; r++) {
 			String part = SliceSites.SEQUENCE.get(r) + ">" + SliceSites.SEQUENCE.get(r + 1);
 			rows.add(row(c, forest, ForestNorms.TRANSITION_WIDTH, part, t.widths()[r], width, ForestNorms.verdict(t.widths()[r], width)));
-			widths.append(String.format(Locale.ROOT, " %s %s m·k (score change %s);", part, ForestNorms.number(t.widths()[r]),
-					ForestNorms.number(t.contrasts()[r])));
+			// The interval of the width (step Z1): a width is not measured when its ends differ more than RESOLVED_RATIO times.
+			rows.add(row(c, forest, ForestNorms.TRANSITION_WIDTH_LOW, part, t.widthLow()[r], null, ForestNorms.Verdict.NONE));
+			rows.add(row(c, forest, ForestNorms.TRANSITION_WIDTH_HIGH, part, t.widthHigh()[r], null, ForestNorms.Verdict.NONE));
+			widths.append(String.format(Locale.ROOT, " %s %s m·k (interval %s-%s, score change %s);", part, ForestNorms.number(t.widths()[r]),
+					ForestNorms.number(t.widthLow()[r]), ForestNorms.number(t.widthHigh()[r]), ForestNorms.number(t.contrasts()[r])));
+		}
+		// The palettes' transitions (step Z1): the share of the next forest's tree stand and ground layer palettes and of the
+		// blend's field along the same band, from the world's classifier and blend.
+		if (level.getChunkSource().getGenerator() instanceof pl.polishforests.worldgen.chunk.PolandChunkGenerator gen) {
+			long seed = level.getSeed();
+			pl.polishforests.worldgen.landscape.LandscapeModel model = gen.model(seed);
+			pl.polishforests.worldgen.habitat.HabitatClassifier classifier = gen.classifier(seed);
+			List<pl.polishforests.worldgen.habitat.HabitatBiome> sequence = SliceSites.SEQUENCE.stream()
+					.map(pl.polishforests.worldgen.habitat.HabitatBiome::byId).toList();
+			pl.polishforests.worldgen.feature.plan.TransectPalettes.Result palettes = pl.polishforests.worldgen.feature.plan.TransectPalettes.of(
+					(x, z) -> classifier.classify(model.sample(x, z), x, z), gen.forestBlend(seed), seed, k, sequence, ax, az, bx, bz, steps,
+					rank, BAND);
+			Norm paletteNorm = ForestNorms.of(ForestNorms.PALETTE_WIDTH, forest, c.aspect(), null).orElseThrow();
+			String[] kinds = {"trees", "ground", "field"};
+			double[][] values = {palettes.treeWidths(), palettes.groundWidths(), palettes.fieldWidths()};
+			widths.append(" palettes (trees / ground layer / field):");
+			for (int r = 0; r < t.widths().length; r++) {
+				String part = SliceSites.SEQUENCE.get(r) + ">" + SliceSites.SEQUENCE.get(r + 1);
+				for (int q = 0; q < kinds.length; q++) {
+					rows.add(row(c, forest, ForestNorms.PALETTE_WIDTH, kinds[q] + ":" + part, values[q][r], paletteNorm,
+							ForestNorms.verdict(values[q][r], paletteNorm)));
+				}
+				widths.append(String.format(Locale.ROOT, " %s %s / %s / %s m·k;", part, ForestNorms.number(values[0][r]),
+						ForestNorms.number(values[1][r]), ForestNorms.number(values[2][r])));
+			}
 		}
 		log.append(String.format(Locale.ROOT, "%s: order %s;%s transitions:%s", c.place(), t.order() ? "kept" : "BROKEN", stretches, widths));
 		// The score of each step, for a look at the transitions (build/norms/transect_<scale>_<mode>.csv).

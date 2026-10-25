@@ -6,9 +6,9 @@ import net.minecraft.world.level.Level;
  * The phase of the year shared by the client and the server (step V7 of docs/04-pionowy-wycinek.md): the color step of
  * the species foliage curves ({@link FoliageCurve}), {@value #STEPS_PER_SUB_SEASON} steps per sub-season and
  * {@value #STEPS} per year, from the year progress of the season provider ({@link Seasons}: Serene Seasons when it is
- * installed, else the built-in {@link FallbackCalendar}). Step 0 starts at EARLY_SPRING (1 March); one step is about ten
- * days of the Polish calendar (a decade, as the phenology of report 08 §9 counts). Both sides compute the step from the
- * same provider, so a server-side rule (V13: the berries of the bilberry) and the client's colors agree.
+ * installed, else the built-in {@link FallbackCalendar}). Step 0 starts at EARLY_SPRING (1 March, year progress 0,
+ * whatever the sub-season of a new world); one step is about ten days of the Polish calendar (a decade, as the
+ * phenology of report 08 §9 counts). Both sides compute the step from the same provider, so a server-side rule (V13: the berries of the bilberry) and the client's colors agree.
  */
 public final class SeasonPhase {
 	public static final int STEPS_PER_SUB_SEASON = 3;

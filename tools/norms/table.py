@@ -73,6 +73,10 @@ def plots(rows, out):
             out.write(f"| `{m}` | {norm.get((natural, m), '')} | {norm.get((managed, m), '')} | " + ' | '.join(values) + ' |\n')
 
 
+
+# Kinds of the palette transitions (step Z1).
+KIND = {'trees': 'drzewa', 'ground': 'runo', 'field': 'pole'}
+
 def transects(rows, out):
     mine = [r for r in rows if r['place'] == 'transect']
     if not mine:
@@ -82,14 +86,29 @@ def transects(rows, out):
         if (r['scale'], r['mode']) not in worlds:
             worlds.append((r['scale'], r['mode']))
     out.write('\n**Transekt Bśw → BMśw → LMśw → grąd** (pas ±8 bloków; szerokość przejścia 10–90% krzywej logistycznej '
-              'wskaźnika „mchy − ściółka liściasta”, m·k)\n\n')
+              'wskaźnika „mchy − ściółka liściasta”, m·k; od Z1 także przejścia palet: drzewostanu, runa i pola mieszania)\n\n')
     out.write('| Świat | Kolejność | Przejścia | ' + ' | '.join(f'{v} (iglaste / mchy / ściółka %)' for v in SEQUENCE.values()) + ' |\n')
     out.write('|---|---|---|' + '---|' * len(SEQUENCE) + '\n')
     for s, m in worlds:
         rs = [r for r in mine if r['scale'] == s and r['mode'] == m]
         order = next((cell(r) for r in rs if r['metric'] == 'N15.order'), '')
-        widths = ', '.join(f"{'→'.join(SEQUENCE[p] for p in r['part'].split('>'))} {cell(r)}"
+        bounds = {(r['metric'], r['part']): r['value'] for r in rs
+                  if r['metric'] in ('N15.transition_width_low', 'N15.transition_width_high')}
+
+        def interval(part):
+            lo = bounds.get(('N15.transition_width_low', part), '')
+            hi = bounds.get(('N15.transition_width_high', part), '')
+            return f" [{lo}–{hi}]" if lo and hi else ''
+        widths = ', '.join(f"{'→'.join(SEQUENCE[p] for p in r['part'].split('>'))} {cell(r)}{interval(r['part'])}"
                            for r in rs if r['metric'] == 'N15.transition_width')
+        palettes = []
+        for r in rs:
+            if r['metric'] != 'N15.palette_width':
+                continue
+            kind, pair = r['part'].split(':', 1)
+            palettes.append(f"{KIND.get(kind, kind)} {'→'.join(SEQUENCE[p] for p in pair.split('>'))} {cell(r)}")
+        if palettes:
+            widths += '; palety: ' + ', '.join(palettes)
         stretch = []
         for part in SEQUENCE:
             v = {r['metric']: r['value'] for r in rs if r['part'] == part}

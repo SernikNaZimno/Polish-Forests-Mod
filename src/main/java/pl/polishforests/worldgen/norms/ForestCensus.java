@@ -94,6 +94,19 @@ public final class ForestCensus {
 	 * with less, the score of a step (17 columns, noise about 15 points) cannot place the transition.
 	 */
 	public static final double MIN_CONTRAST = 10;
+	/**
+	 * Interval of a transition width (step Z1): the widths whose best fit has a sum of squares at most this many residual
+	 * variances above the best one (about a one-sided 95% interval for independent steps; the steps' scores are
+	 * correlated over a few steps by the patches of the ground layer, so the interval is wider than for independent
+	 * noise).
+	 */
+	public static final double WIDTH_INTERVAL = 4;
+	/**
+	 * Largest ratio of the interval's ends for a width to count as measured (step Z1): with the ground layers of M2 the
+	 * score of a step varies by about ±12 points, so a contrast of 10–20 points between two forests can leave widths from
+	 * 1 to 100 m·k equally good, and the best fit sat at an end of the grid (1.1 or 263 m·k) by chance.
+	 */
+	public static final double RESOLVED_RATIO = 4;
 
 	/**
 	 * Plants of the herb layer (c): herbs, grasses, ferns and dwarf shrubs, as the M2 vanilla placeholders stand for them
@@ -1055,8 +1068,13 @@ public final class ForestCensus {
 	 * @param order     the indicators keep the order of the sequence: conifer share and moss cover do not grow, leaf
 	 *                  litter cover does not shrink from one forest to the next by more than the sampling noise
 	 *                  ({@link #reversed})
+	 * @param widthLow  the smallest width of the interval of each transition ({@link #WIDTH_INTERVAL}), m·k (NaN without
+	 *                  contrast); a width is NaN also when the interval's ends differ by more than
+	 *                  {@link #RESOLVED_RATIO} times (step Z1: not measured)
+	 * @param widthHigh the largest width of the interval
 	 */
-	public record Transect(List<Map<String, Double>> stretches, double[] score, double[] widths, double[] contrasts, boolean order) {
+	public record Transect(List<Map<String, Double>> stretches, double[] score, double[] widths, double[] contrasts, boolean order,
+			double[] widthLow, double[] widthHigh) {
 	}
 
 	/**
@@ -1140,19 +1158,30 @@ public final class ForestCensus {
 		}
 		double[] widths = new double[Math.max(0, forests - 1)];
 		double[] contrasts = new double[widths.length];
+		double[] low = new double[widths.length];
+		double[] high = new double[widths.length];
 		for (int r = 0; r + 1 < forests; r++) {
 			if (first[r] < 0 || first[r + 1] < 0) {
 				widths[r] = Double.NaN;
 				contrasts[r] = Double.NaN;
+				low[r] = Double.NaN;
+				high[r] = Double.NaN;
 				continue;
 			}
 			double a = mean(score, rank, r);
 			double b = mean(score, rank, r + 1);
 			contrasts[r] = Math.abs(b - a);
-			double[] fit = fitLogistic(score, (first[r] + last[r]) / 2, (first[r + 1] + last[r + 1]) / 2, a, b);
-			widths[r] = !(contrasts[r] >= MIN_CONTRAST) ? Double.NaN : 2 * Math.log(9) * fit[0] * stepLength / k;
+			int from = (first[r] + last[r]) / 2;
+			int to = (first[r + 1] + last[r + 1]) / 2;
+			double[] fit = fitLogistic(score, from, to, a, b);
+			double[] interval = widthInterval(score, from, to, a, b);
+			double unit = 2 * Math.log(9) * stepLength / k;
+			boolean contrast = contrasts[r] >= MIN_CONTRAST;
+			low[r] = contrast ? interval[0] * unit : Double.NaN;
+			high[r] = contrast ? interval[1] * unit : Double.NaN;
+			widths[r] = !contrast || interval[1] > RESOLVED_RATIO * interval[0] ? Double.NaN : fit[0] * unit;
 		}
-		return new Transect(stretches, score, widths, contrasts, order);
+		return new Transect(stretches, score, widths, contrasts, order, low, high);
 	}
 
 	/**
@@ -1206,11 +1235,52 @@ public final class ForestCensus {
 	}
 
 	/**
+	 * The interval of the scale w of {@link #fitLogistic} (step Z1): for each scale of the grid the best center, and the
+	 * smallest and the largest scale whose sum of squares is at most {@link #WIDTH_INTERVAL} residual variances (the best
+	 * sum over the steps less two) above the best. Returns {w low, w high}.
+	 */
+	static double[] widthInterval(double[] score, int from, int to, double a, double b) {
+		double[] profile = new double[SCALES.length];
+		java.util.Arrays.fill(profile, Double.MAX_VALUE);
+		int n = 0;
+		for (int i = from; i <= to; i++) {
+			n += Double.isNaN(score[i]) ? 0 : 1;
+		}
+		double best = Double.MAX_VALUE;
+		for (int s = 0; s < SCALES.length; s++) {
+			double w = SCALES[s];
+			for (double c = from; c <= to; c += 0.5) {
+				double sse = 0;
+				for (int i = from; i <= to; i++) {
+					if (Double.isNaN(score[i])) {
+						continue;
+					}
+					double g = 1 / (1 + Math.exp(-(i - c) / w));
+					double e = score[i] - (a + (b - a) * g);
+					sse += e * e;
+				}
+				profile[s] = Math.min(profile[s], sse);
+			}
+			best = Math.min(best, profile[s]);
+		}
+		double limit = best + WIDTH_INTERVAL * best / Math.max(1, n - 2) + 1e-9;
+		double lo = Double.NaN;
+		double hi = Double.NaN;
+		for (int s = 0; s < SCALES.length; s++) {
+			if (profile[s] <= limit) {
+				lo = Double.isNaN(lo) ? SCALES[s] : lo;
+				hi = SCALES[s];
+			}
+		}
+		return new double[] {lo, hi};
+	}
+
+	/**
 	 * Least-squares fit of a + (b − a)·σ((i − c) / w) to the scores of the steps from {@code from} to {@code to}, with the
 	 * levels a and b given (the mean scores of the two forests, so noise within a stretch cannot pose as a step): a grid
 	 * search over the center c (half steps) and the scale w ({@link #SCALES}). Returns {w, c}.
 	 */
-	static double[] fitLogistic(double[] score, int from, int to, double a, double b) {
+	public static double[] fitLogistic(double[] score, int from, int to, double a, double b) {
 		double best = Double.MAX_VALUE;
 		double[] out = {Double.NaN, Double.NaN};
 		for (double c = from; c <= to; c += 0.5) {

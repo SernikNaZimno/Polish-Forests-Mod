@@ -317,7 +317,12 @@ public final class Ecotone {
 	/** Most distinct codes of a region whose pair facts are kept in a matrix (more: computed each time). */
 	private static final int MATRIX = 256;
 
-	private static int pairInfo(int own, int other, Layer layer, double k) {
+	private static int pairInfo(int own, int other, Layer layer, double k, boolean blended) {
+		if (blended && layer != Layer.SOIL && ForestBlend.member(own) != ForestBlend.member(other) && ForestBlend.member(own) > 0
+				&& ForestBlend.member(other) > 0) {
+			// Two forests of the wide blend (step Z1): they mix in the blend's belt, not in this ramp.
+			return KNOWN;
+		}
 		return halfWidthBlocks(own, other, layer, k) | (sticky(own, other, layer) ? STICKY : 0)
 				| (symmetric(own, other, layer) ? SYMMETRIC : 0) | (follows(own, other, layer) ? FOLLOWS : 0) | KNOWN;
 	}
@@ -380,6 +385,9 @@ public final class Ecotone {
 		private long warpSeed;
 		/** Meander of the chunk's columns, x and z in blocks per column (lazily, per world seed). */
 		private byte @Nullable [] warp;
+		/** The wide blend of the forests of the slice (step Z1), or null (the ramps only). */
+		private @Nullable ForestBlend blend;
+		private ForestBlend.@Nullable Field blendField;
 
 		/**
 		 * @param chunkX chunk coordinates
@@ -414,6 +422,45 @@ public final class Ecotone {
 				}
 			}
 			return new Region(chunkX, chunkZ, codes, k);
+		}
+
+		/**
+		 * Gives the region the wide blend of the forests of the slice ({@link ForestBlend}, step Z1): the pairs of those
+		 * forests then mix in the blend's belt instead of this class's ramp (not in the soil). Returns this region.
+		 */
+		public Region withBlend(@Nullable ForestBlend blend) {
+			if (blend != null && (blend.k() != k)) {
+				throw new IllegalArgumentException("blend of another scale: k " + blend.k() + " vs " + k);
+			}
+			this.blend = blend;
+			this.blendField = null;
+			this.pairs[0] = null;
+			this.pairs[1] = null;
+			this.pairs[2] = null;
+			java.util.Arrays.fill(this.reaches, null);
+			return this;
+		}
+
+		/** The wide blend of the region, or null. */
+		public @Nullable ForestBlend blend() {
+			return blend;
+		}
+
+		/** The blend's share field around the chunk (lazily); only with a blend. */
+		ForestBlend.Field blendField() {
+			ForestBlend.Field f = blendField;
+			if (f == null) {
+				f = blendField = java.util.Objects.requireNonNull(blend, "no blend").field(chunkX, chunkZ);
+			}
+			return f;
+		}
+
+		/**
+		 * Sum of the shares of the forests of the slice at chunk-local (x, z) (−{@value #REACH} … 15 + {@value #REACH}):
+		 * 0 without a blend or far from them, about 0.5 at their edge, 1 inside them.
+		 */
+		public float blendTotal(int x, int z) {
+			return blend == null ? 0 : blendField().total((chunkX << 4) + x, (chunkZ << 4) + z);
 		}
 
 		public int chunkX() {
@@ -619,7 +666,7 @@ public final class Ecotone {
 		int pair(int a, int b, Layer layer) {
 			int n = count;
 			if (n > MATRIX) {
-				return pairInfo(distinct[a], distinct[b], layer, k);
+				return pairInfo(distinct[a], distinct[b], layer, k, blend != null);
 			}
 			int[] m = pairs[layer.ordinal()];
 			if (m == null) {
@@ -627,7 +674,7 @@ public final class Ecotone {
 			}
 			int v = m[a * n + b];
 			if (v == 0) {
-				v = m[a * n + b] = pairInfo(distinct[a], distinct[b], layer, k);
+				v = m[a * n + b] = pairInfo(distinct[a], distinct[b], layer, k, blend != null);
 			}
 			return v;
 		}
@@ -692,29 +739,38 @@ public final class Ecotone {
 	/** {@link #effective} with or without the meander (tests of the plain ramps). */
 	static int[] effective(Region region, Layer layer, long worldSeed, long salt, int patch, boolean meander) {
 		int[] out = region.own();
-		if (region.uniform()) {
+		boolean blended = region.blend() != null && layer != Layer.SOIL;
+		boolean uniform = region.uniform();
+		if (uniform && (!blended || ForestBlend.member(out[0]) == 0)) {
 			return out;
 		}
 		long seed = Noise.mix(worldSeed ^ Noise.mix(salt ^ 0xEC07_0E5AL));
 		byte[] warp = meander ? region.warp(worldSeed) : null;
-		boolean sticky = region.anySticky();
+		boolean sticky = !uniform && region.anySticky();
 		int x0 = region.chunkX() << 4;
 		int z0 = region.chunkZ() << 4;
 		double[] u = new double[2];
+		float[] shares = blended ? new float[4] : null;
 		for (int i = 0; i < 256; i++) {
 			int own = out[i];
 			int x = i >> 4;
 			int z = i & 15;
-			if (!takes(own) || region.uniform(x, z, REACH)) {
-				continue;
-			}
-			vector(seed, x0 + x, z0 + z, patch, u);
 			int wx = warp == null ? 0 : warp[2 * i];
 			int wz = warp == null ? 0 : warp[2 * i + 1];
-			out[i] = pick(region, layer, x, z, u[0], u[1], wx, wz, sticky);
+			int code = own;
+			if (!uniform && takes(own) && !region.uniform(x, z, REACH)) {
+				vector(seed, x0 + x, z0 + z, patch, u);
+				code = pick(region, layer, x, z, u[0], u[1], wx, wz, sticky);
+			}
+			if (shares != null && ForestBlend.member(code) > 0) {
+				region.blendField().at(x0 + x + wx, z0 + z + wz, shares);
+				code = ForestBlend.pick(code, shares, ForestBlend.draw(worldSeed, salt, x0 + x, z0 + z, patch));
+			}
+			out[i] = code;
 		}
 		return out;
 	}
+
 
 	/** Effective code of one column at chunk-local (x, z) with the random vector (ux, uz) and the meander (wx, wz). */
 	private static int pick(Region region, Layer layer, int x, int z, double ux, double uz, int wx, int wz,
@@ -798,17 +854,32 @@ public final class Ecotone {
 	 * decision V5-i: the exact vacancies of the crown territories in the chunks around the decorated one).
 	 */
 	public static int provableTrees(Region region, long worldSeed, long salt, int x, int z) {
+		int worldX = (region.chunkX() << 4) + x;
+		int worldZ = (region.chunkZ() << 4) + z;
+		int[] w = warpAt(worldSeed, region.k(), worldX, worldZ);
+		int code = provableRamp(region, worldSeed, salt, x, z, w);
+		if (region.blend() != null && ForestBlend.member(code) > 0) {
+			// The wide blend (step Z1): a pure function of the column, its code and the world's lattice.
+			float[] shares = new float[4];
+			region.blendField().at(worldX + w[0], worldZ + w[1], shares);
+			code = ForestBlend.pick(code, shares, ForestBlend.draw(worldSeed, salt, worldX, worldZ, 1));
+		}
+		return code;
+	}
+
+	/** {@link #provableTrees} before the wide blend: the ramps of this class. */
+	private static int provableRamp(Region region, long worldSeed, long salt, int x, int z, int[] w) {
 		int own = region.at(x, z);
 		if (own == UNKNOWN || !takes(own)) {
 			return own;
 		}
+		boolean blended = region.blend() != null;
 		Layer layer = Layer.TREES;
 		long seed = Noise.mix(worldSeed ^ Noise.mix(salt ^ 0xEC07_0E5AL));
 		int worldX = (region.chunkX() << 4) + x;
 		int worldZ = (region.chunkZ() << 4) + z;
 		double[] u = new double[2];
 		vector(seed, worldX, worldZ, 1, u);
-		int[] w = warpAt(worldSeed, region.k(), worldX, worldZ);
 		double ux = u[0];
 		double uz = u[1];
 		int wx = w[0];
@@ -837,7 +908,7 @@ public final class Ecotone {
 					if (other == own) {
 						continue;
 					}
-					int info = pairInfo(own, other, layer, k);
+					int info = pairInfo(own, other, layer, k, blended);
 					if ((info & STICKY) == 0) {
 						continue;
 					}
@@ -856,7 +927,7 @@ public final class Ecotone {
 			if (c == UNKNOWN) {
 				return UNKNOWN;
 			}
-			if (c == own || (pairInfo(own, c, layer, k) & FOLLOWS) != 0) {
+			if (c == own || (pairInfo(own, c, layer, k, blended) & FOLLOWS) != 0) {
 				bx += wx;
 				bz += wz;
 				base = c;
@@ -881,9 +952,9 @@ public final class Ecotone {
 			if (other == base) {
 				continue;
 			}
-			int info = pairInfo(base, other, layer, k);
+			int info = pairInfo(base, other, layer, k, blended);
 			if ((info & SYMMETRIC) != 0 && (info & BLOCKS) >= width) {
-				return other == own || (pairInfo(own, other, layer, k) & FOLLOWS) != 0 ? other : base;
+				return other == own || (pairInfo(own, other, layer, k, blended) & FOLLOWS) != 0 ? other : base;
 			}
 		}
 		return base;

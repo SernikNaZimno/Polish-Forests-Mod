@@ -128,6 +128,14 @@ public final class ForestNorms {
 	public static final String COARSE_PIECES = "N10.coarse_per_ha";
 	/** N15: width of the transitions along the transect, m·k (REAL blocks, GAMEPLAY blocks / k). */
 	public static final String TRANSITION_WIDTH = "N15.transition_width";
+	/**
+	 * N15 (step Z1): width of the transition of the palettes along the transect (part {@code trees:}, {@code ground:} or
+	 * {@code field:} and the pair of forests; {@code TransectPalettes}), m·k.
+	 */
+	public static final String PALETTE_WIDTH = "N15.palette_width";
+	/** N15 (no norm, step Z1): the ends of the interval of a transition width ({@code ForestCensus.WIDTH_INTERVAL}), m·k. */
+	public static final String TRANSITION_WIDTH_LOW = "N15.transition_width_low";
+	public static final String TRANSITION_WIDTH_HIGH = "N15.transition_width_high";
 	/** N15: the indicators keep the order fresh pine → mixed pine-oak → mixed → oak-hornbeam forest: 1 yes, 0 no. */
 	public static final String TRANSECT_ORDER = "N15.order";
 	/** N15 (no norm): share of conifers (Scots pine, spruce, fir, larch) among the trees of a stretch of the transect, %. */
@@ -236,6 +244,9 @@ public final class ForestNorms {
 		METRICS.put(DEADWOOD_VOLUME, "dead wood volume without stumps, m3/ha");
 		METRICS.put(COARSE_PIECES, "coarse dead wood pieces (> 3 m, >= 50 cm) per ha");
 		METRICS.put(TRANSITION_WIDTH, "width of a transition along the transect, m·k");
+		METRICS.put(TRANSITION_WIDTH_LOW, "smallest width of the interval of a transition, m·k");
+		METRICS.put(TRANSITION_WIDTH_HIGH, "largest width of the interval of a transition, m·k");
+		METRICS.put(PALETTE_WIDTH, "width of a transition of the palettes (tree stand, ground layer, blend field) along the transect, m·k");
 		METRICS.put(TRANSECT_ORDER, "indicators in the order Bsw -> BMsw -> LMsw -> grad (1 yes, 0 no)");
 		METRICS.put(CONIFERS, "conifer share of the trees of a transect stretch, %");
 		METRICS.put(BARE_WOOD, "wood above half the top height with at most one leaf among its 26 neighbors, blocks per chunk");
@@ -339,6 +350,7 @@ public final class ForestNorms {
 		// N15 transect: the same for every forest of the card (the transect crosses all four).
 		for (Forest f : Forest.values()) {
 			norm(TRANSITION_WIDTH, f, 20, 100, "[Ź Stefańska 2007; S]");
+			norm(PALETTE_WIDTH, f, 20, 100, "[Ź Stefańska 2007; S]");
 			NORMS.add(new Norm(TRANSECT_ORDER, f, 1, 1, 0, null, null, "[Ź Stefańska 2007]"));
 		}
 	}

@@ -36,7 +36,6 @@ import pl.polishforests.gametest.probe.FrameRecorder;
 import pl.polishforests.gametest.probe.ProbeSeason;
 import pl.polishforests.gametest.probe.RenderProbes;
 import pl.polishforests.gametest.probe.RenderProbesClient;
-import pl.polishforests.season.FallbackCalendar;
 import pl.polishforests.season.Seasons;
 import pl.polishforests.season.SubSeason;
 
@@ -306,7 +305,7 @@ public final class RenderProbesClientGameTest implements FabricClientGameTest {
 		if (seasons) {
 			sp.getServer().runCommand("season set " + sub.name().toLowerCase(Locale.ROOT));
 		} else {
-			long ticks = (sub.ordinal() * (long) Seasons.DEFAULT_DAYS_PER_SUB_SEASON + day) * FallbackCalendar.TICKS_PER_DAY + NOON;
+			long ticks = Seasons.BUILT_IN.dayTimeOf(sub, day) + NOON;
 			sp.getServer().runCommand("time set " + ticks);
 		}
 		int waited = context.waitFor(mc -> ProbeSeason.subSeason() == sub && ProbeSeason.step() >= 0
@@ -454,8 +453,7 @@ public final class RenderProbesClientGameTest implements FabricClientGameTest {
 					if (seasons) {
 						sp.getServer().runCommand("season set late_summer");
 					} else {
-						sp.getServer().runCommand("time set " + (((long) SubSeason.MID_SUMMER.ordinal() * Seasons.DEFAULT_DAYS_PER_SUB_SEASON + 4)
-								* FallbackCalendar.TICKS_PER_DAY + NOON));
+						sp.getServer().runCommand("time set " + (Seasons.BUILT_IN.dayTimeOf(SubSeason.MID_SUMMER, 4) + NOON));
 					}
 					context.waitFor(mc -> ProbeSeason.rebuilds() > before, 200);
 				} else if (mode == 0) {
