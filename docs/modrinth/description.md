@@ -2,7 +2,7 @@
 
 **Polish Forests** generates an endless, procedural Poland: outwash plains and moraine uplands, meandering rivers with oxbow lakes, the Baltic coast with dunes and lagoons, and the Beskids with dwarf pine above the timberline. The vegetation follows Polish phytosociology: every column of the world gets a habitat, and the habitat decides the biome, the soil and the plants.
 
-> **Alpha.** World generation can change between versions. Start a new world after updating. The trees are still vanilla stand-ins; the mod's own trees, ground flora and animals come next.
+> **Alpha.** World generation can change between versions. Start a new world after updating. The oak-hornbeam and pine forests already have the mod's own trees; the other forests still use vanilla stand-ins. Ground flora, deadwood and animals come next.
 
 ## Features
 
@@ -10,6 +10,7 @@
 - **Landscapes of the Polish lowlands and mountains.** Outwash plains with pine forests, moraine uplands with tunnel-valley lakes and kettle bogs, river valleys with smooth slopes, foothills and the Beskids with rare great massifs.
 - **Rivers and the coast.** Three orders of rivers with meanders and oxbow lakes, valley floors with willow scrub, reedbeds and floodplain forests; beaches, foredunes, gray dunes with crowberry pine forest, cliffs and lagoons with deltas.
 - **36 habitat biomes.** Fresh and dry pine forests, oak-hornbeam forests, lowland and Carpathian beech forests, fir forests, ash-alder and willow-poplar floodplain forests, alder carrs, raised bogs and fens, montane spruce forest, dwarf pine scrub and alpine grassland, and more.
+- **Own trees.** Nine Polish tree species with trunks of varying thickness, their own bark, leaves and saplings, and leaves that change with the seasons. Oak-hornbeam and pine forests have a canopy, a lower tree layer, young trees and shrubs, as managed or natural stands.
 - **Smooth transitions.** Neighbouring forests mix their species over tens of blocks, forest edges get a shrub mantle and a herb fringe, and the timberline thins out gradually.
 - **Two vegetation modes.** *Natural vegetation* (default) or *present-day Poland* with about a third of the land forested, meadows, fallow fields and tree rows along streams.
 - **Climate.** Temperature falls with altitude, so snow lies on the mountains and not on the lowlands. Seasons with [Serene Seasons](https://modrinth.com/mod/serene-seasons) (optional).
@@ -26,7 +27,7 @@ Choose the *Poland (1:1 Scale)* or *Poland (Gameplay Scale)* world type when you
 
 ## Roadmap
 
-Next is a complete oak-hornbeam and fresh pine forest: trees with trunks of varying thickness, ground flora with seasons, deadwood, roe deer, wild boar and birdsong. After that the same for all of Poland: more tree species, managed and natural forests, the Tatras and the Sudetes, and Polish fauna.
+Next is the rest of the oak-hornbeam and fresh pine forest: deadwood, roots, ground flora and mosses with seasons, roe deer, wild boar and birdsong. After that the same for all of Poland: more tree species, managed and natural forests, the Tatras and the Sudetes, and Polish fauna.
 
 ## License
 

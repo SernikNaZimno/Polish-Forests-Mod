@@ -2,6 +2,22 @@
 
 Versions are published to Modrinth and GitHub Releases by the `Release` workflow. Alpha versions can change world generation: start a new world after updating.
 
+## [0.2.0-alpha.2]
+
+The mod's own trees grow in the oak-hornbeam and pine forests. Tree generation has changed: start a new world.
+
+- **Nine tree species** with their own trunks, bark, leaves and saplings: Scots pine, Norway spruce, birch, pedunculate oak, hornbeam, small-leaved linden, European beech, European ash and Norway maple.
+- **Trunks of varying thickness.** Trees are built from thin trunk blocks that taper from the base to the tips of the branches. Each species has its own crown shape: pines with high, open crowns and an orange upper trunk, oaks with broad forked crowns, spruces with narrow cones.
+- **Real forest structure** in oak-hornbeam forests, fresh and mixed pine forests and mixed forests: a canopy, a lower tree layer, young trees and shrubs (hazel, alder buckthorn, rowan). Other forests still use vanilla stand-in trees.
+- **Managed and natural forests.** Managed stands have one age class and no gaps; natural stands mix ages, with old trees and gaps in the canopy. The *Managed Forests* slider (default 85%) now works.
+- **Seasonal leaves** for every species, with Serene Seasons or with the built-in calendar: spring flush, autumn colors, and in winter deciduous crowns take the gray-brown color of bare twigs. Young oaks, hornbeams and beeches keep dry brown leaves through the winter.
+- **Saplings** of all nine species grow into a young tree (12–17 blocks). Scots pine wood set: log, wood, stripped log and wood, planks.
+- **Smoother textures** for bark and leaves.
+
+Known issues:
+- New worlds start in early spring, so deciduous forests are leafless for the first days. The next version starts in late spring.
+- The new forests are heavier to draw. With [Sodium](https://modrinth.com/mod/sodium) the frame rate stays about the same as before; without it, it drops noticeably. Chunks in the new forests load about 20–25% slower.
+
 ## [0.2.0-alpha.1]
 
 First public alpha. World generation of Poland is complete; the forests still use vanilla tree models until the next milestones.
