@@ -159,6 +159,7 @@ Ryzyko według B1. Wysokie (2 recenzentów, do 2 rund) mają: rejestracja blokó
 | V9 | `StandMap` i drzewostan wycinka | A | 3–4 | **wysokie** |
 | V10 | pomiary i budżety | A | 1–1,5 | **wysokie** |
 | **CP-B** | las drzew w grze, zamrożenie (ok. 13.–17. dzień) | | | |
+| O1 | optymalizacja generacji drzewostanu i światła przed V11 (dodany po CP-B, 2026-10-25) | A | 0,5–1 | **wysokie** (generator, wydajność) |
 | V11 | martwe drewno | A | 1,5–2 | średnie |
 | V12 | runo, mchy, ściółka | A | 2–2,5 | **wysokie** (datagen) |
 | V13 | wygląd sezonowy klienta: zima koron, fazy runa, owoce | B | 2–2,5 | **wysokie** |
@@ -322,6 +323,17 @@ To pierwszy moment, w którym użytkownik **gra**.
   - ziarno i współrzędne (`/polishforests find biome oak_hornbeam_forest`), listę do sprawdzenia: spacer 10 minut, ścięcie drzewa, posadzenie sadzonki, przelot elytrą nad lasem, `runClient -Poptimization`.
 - **Pytania:** pokrój i gęstość; budżety (PW-10); skala w GAMEPLAY (PW-12); czy styl sarny pozwala robić AI; z V7 (`docs/00` G.13): wielkość drzewa z sadzonki (V7-o), barwy gatunków latem i terminy przebarwiania (V7-d), zima liściastych do V13 (V7-l), data startu nowego świata (V7-p).
 - **Po akceptacji:** zamrożenie zapisu (PW-11, ZW-4).
+
+### O1. Optymalizacja generacji drzewostanu i światła (A, 0,5–1 dnia; dodany po CP-B)
+
+Decyzja użytkownika CP-B.2 (C) (`docs/00` G.16): krok optymalizacji zapisu drzew i światła przed V11, potem próg chunków na sekundę z C2ME ≥ 0,7 × M2. Krok O1 to nie opcja O1 (wiewiórka) z §1.3.
+- **Zakres:**
+  - najpierw profil (JFR, `-Pprofile`) generacji i oświetlenia lasu z paczką (C2ME) w miejscach wycinka;
+  - zmiany bez wpływu na wygląd i normy: zapis sekcjami lub paletą, mniej aktualizacji sąsiadów i kształtów, bez powtórnego liczenia `CrownCover` i terytoriów, mniej pracy silnika światła — według tego, co pokaże profil;
+  - ponowny pomiar FEATURES i LIGHT po V10-h/j (DP-7);
+  - pomiary tylko na spokojnej maszynie, A/B z bazą M2 w jednej sesji, mediany; razem najwyżej ok. 2 h czasu maszyny.
+- **Ukończony, gdy:** wynik generacji identyczny (te same bloki dla tego samego ziarna: hasze kolumn testu `determinism` z C2ME i bez wobec przebiegu sprzed O1); testy drzew i spisu zielone; chunki na sekundę z C2ME ≥ 0,7 × M2 we wszystkich 4 miejscach (cel ≥ 0,75); FEATURES ≤ 2,0 × i ≤ 10 ms, LIGHT ≤ 1,75 × i ≤ 12 ms, cały chunk ≤ 48 ms; gdy 0,7 jest nieosiągalne bez zmiany wyglądu, warianty dla użytkownika (B3).
+- **Ryzyko:** wysokie (generator, wątki C2ME, determinizm). Wygląd lasu i karta norm (N1–N7) bez zmian.
 
 ### V11. Martwe drewno (A, 1,5–2 dnia)
 

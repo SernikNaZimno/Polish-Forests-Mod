@@ -332,6 +332,12 @@ public final class TreeShapePlan {
 		/** The plan whose corners {@link #upperGrid} and {@link #lowerGrid} hold, by corner (step O1: computed on demand). */
 		private final int[] gridStamp = new int[GRID_SIDE * GRID_SIDE];
 		private int gridPlan;
+		/** Memo of the split surfaces by world column ({@link #splitsAt}, step O1): key, {upper, lower} and their stand map. */
+		private static final int SPLIT_BITS = 14;
+		private final long[] splitKeys = new long[1 << SPLIT_BITS];
+		private final long[] splitValues = new long[1 << SPLIT_BITS];
+		private @Nullable StandMap splitStands;
+		private long splitSeed;
 		private final float[] reach = new float[AZIMUTH_BINS];
 		// Open land of an edge tree (columns, and the azimuth bins that reach it) and the nodes of its low branches.
 		private final boolean[] openColumn = new boolean[SIDE * SIDE];
@@ -425,6 +431,12 @@ public final class TreeShapePlan {
 			long h = noise.hash(r.x(), r.z(), salt);
 			rng = h;
 			cellSeed = Noise.mix(h ^ 0x5DEECE66DL);
+			if (r.stands() != splitStands || r.worldSeed() != splitSeed) {
+				// Another world or stand map: the memo of the split surfaces starts anew.
+				Arrays.fill(splitKeys, Long.MIN_VALUE);
+				splitStands = r.stands();
+				splitSeed = r.worldSeed();
+			}
 			splitGrid(r);
 			AgeClass age = r.age();
 			double jh = range(0.9, 1.1);
@@ -518,10 +530,40 @@ public final class TreeShapePlan {
 			}
 		}
 
-		/** The split surfaces at a column relative to the trunk: {upper, lower}, as {@link #split}. */
+		/**
+		 * The split surfaces at a column relative to the trunk: {upper, lower}, as {@link #split}. Step O1: with a stand map,
+		 * the surfaces of a world column before the shift of the ground are memoized by column in this thread
+		 * ({@link #SPLIT_BITS}); they are a pure function of the seed, the stand map and the column, the same for every
+		 * tree that reaches the column.
+		 */
 		private int[] splitsAt(int dx, int dz, int[] out) {
 			int x = request.x() + dx;
 			int z = request.z() + dz;
+			int shift = request.groundShift(x, z);
+			if (request.stands() != null) {
+				long key = (long) x << 32 | z & 0xFFFF_FFFFL;
+				int slot = (int) (Noise.mix(key) >>> (64 - SPLIT_BITS));
+				long v;
+				if (splitKeys[slot] == key) {
+					v = splitValues[slot];
+				} else {
+					splitsOf(x, z, out);
+					v = (long) out[0] << 32 | out[1] & 0xFFFF_FFFFL;
+					splitKeys[slot] = key;
+					splitValues[slot] = v;
+				}
+				out[0] = (int) (v >> 32) + shift;
+				out[1] = (int) v + shift;
+				return out;
+			}
+			splitsOf(x, z, out);
+			out[0] += shift;
+			out[1] += shift;
+			return out;
+		}
+
+		/** The split surfaces of world column (x, z) within the tree's grid, before the shift of the ground. */
+		private void splitsOf(int x, int z, int[] out) {
 			int gx = Math.floorDiv(x, GRID);
 			int gz = Math.floorDiv(z, GRID);
 			double fx = (x - gx * GRID) / (double) GRID;
@@ -532,10 +574,8 @@ public final class TreeShapePlan {
 			double w2 = bilinear(lowerGrid[i], lowerGrid[i + GRID_SIDE], lowerGrid[i + 1], lowerGrid[i + GRID_SIDE + 1], fx, fz);
 			AgeClass age = request.ageAt(x, z);
 			int lower = lowerSplit(age, w2 + lowerShortWave(lowerShortNoise, x, z));
-			int shift = request.groundShift(x, z);
-			out[1] = lower + shift;
-			out[0] = upperSplit(age, w1 + shortWave(shortNoise, x, z), lower) + shift;
-			return out;
+			out[1] = lower;
+			out[0] = upperSplit(age, w1 + shortWave(shortNoise, x, z), lower);
 		}
 
 		private final int[] splitTmp = new int[2];
