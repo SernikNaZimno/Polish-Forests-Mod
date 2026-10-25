@@ -90,7 +90,7 @@ public final class CrownTerritories {
 
 	/**
 	 * Size of the tile cache shared by the sessions (2^12 chunks). Step O1: with C2ME many threads decorate the chunks of
-	 * one area, and a session's own memo of 256 tiles rarely held the 25 tiles around a trunk. A tile is a pure function of
+	 * one area, and each thread's session computed the tiles around its trunks again. A tile is a pure function of
 	 * the seed and the stand map, and an entry is an immutable record (final fields) written whole, so a thread that reads
 	 * an entry another thread has just written sees its sites; a lost entry is only computed again.
 	 */

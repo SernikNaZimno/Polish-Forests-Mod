@@ -1,0 +1,8 @@
+# Step O1: A/B of the M2 baseline (tag m2-baseline-r1 + V10 harness), pre-O1 (c724068) and O1 (51fa613) in one session, 2026-10-25 18:49-19:58,
+# quiet machine (no game process, GPU < 50%, CPU < 25% before each run), rotated order. Load of new terrain with the optimization pack (C2ME):
+# -Pgametest=performance -Psites=slice -Poptimization -PloadOnly, 4 runs per build, chunks per second (three teleports, natural mode).
+world,place,base_runs,pre_runs,o1_runs,base_median,pre_median,o1_median,pre_to_base,o1_to_base,o1_to_pre
+poland,fresh_pine_1,193.6 189.4 194.3 194.1,139.4 137.8 138.9 141.9,153.2 153.5 155.6 150.3,193.8,139.2,153.3,0.72,0.79,1.10
+poland,oak_hornbeam_1,145.3 148.4 145.5 151.0,113.5 113.9 112.8 111.6,116.6 119.6 122.8 118.0,146.9,113.2,118.8,0.77,0.81,1.05
+poland_gameplay,fresh_pine_1,216.6 215.0 207.7 214.8,155.1 157.8 156.8 160.8,168.6 168.0 168.9 165.1,214.9,157.3,168.3,0.73,0.78,1.07
+poland_gameplay,oak_hornbeam_1,221.6 219.2 219.7 222.3,160.2 159.1 160.2 157.3,174.6 169.9 176.8 175.5,220.6,159.6,175.1,0.72,0.79,1.10
