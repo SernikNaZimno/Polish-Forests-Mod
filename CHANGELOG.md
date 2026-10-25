@@ -16,7 +16,7 @@ The mod's own trees grow in the oak-hornbeam and pine forests. Tree generation h
 
 Known issues:
 - New worlds start in early spring, so deciduous forests are leafless for the first days. The next version starts in late spring.
-- The new forests are heavier to draw. With [Sodium](https://modrinth.com/mod/sodium) the frame rate stays about the same as before; without it, it drops noticeably. Chunks in the new forests load about 20–25% slower.
+- The new forests are heavier to draw. With [Sodium](https://modrinth.com/mod/sodium) the frame rate stays about the same as before; without it, it drops noticeably. Chunks in the new forests load about 20% slower.
 
 ## [0.2.0-alpha.1]
 
