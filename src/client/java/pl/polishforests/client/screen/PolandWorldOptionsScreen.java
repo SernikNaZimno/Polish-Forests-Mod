@@ -14,6 +14,7 @@ import net.minecraft.client.gui.layouts.LinearLayout;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
+import pl.polishforests.worldgen.chunk.LooseCover;
 import pl.polishforests.worldgen.chunk.PolandSettings;
 import pl.polishforests.worldgen.chunk.PolandScale;
 
@@ -33,6 +34,7 @@ public final class PolandWorldOptionsScreen extends Screen {
 	private boolean alienSpecies;
 	private final int version;
 	private final boolean coverInBlocks;
+	private LooseCover looseCover;
 
 	public PolandWorldOptionsScreen(Screen parent, PolandSettings current, Consumer<PolandSettings> apply) {
 		super(Component.translatable("polishforests.options.title"));
@@ -45,6 +47,7 @@ public final class PolandWorldOptionsScreen extends Screen {
 		this.alienSpecies = current.alienSpecies();
 		this.version = current.version();
 		this.coverInBlocks = current.coverInBlocks();
+		this.looseCover = current.looseCover();
 	}
 
 	@Override
@@ -78,6 +81,14 @@ public final class PolandWorldOptionsScreen extends Screen {
 				v -> Component.translatable("polishforests.options.managed_share", percent(v)),
 				v -> managedShare = Math.round(v * 20.0) / 20.0));
 
+		column.addChild(CycleButton.<LooseCover>builder(
+				v -> Component.translatable("polishforests.options.loose_cover." + v.getSerializedName()), looseCover)
+				.withValues(LooseCover.values())
+				.withTooltip(v -> Tooltip.create(Component.translatable(
+						"polishforests.options.loose_cover." + v.getSerializedName() + ".tooltip")))
+				.create(0, 0, WIDGET_WIDTH, 20, Component.translatable("polishforests.options.loose_cover"),
+						(button, value) -> looseCover = value));
+
 		column.addChild(CycleButton.onOffBuilder(alienSpecies)
 				.create(0, 0, WIDGET_WIDTH, 20, Component.translatable("polishforests.options.alien_species"),
 						(button, value) -> alienSpecies = value));
@@ -89,7 +100,7 @@ public final class PolandWorldOptionsScreen extends Screen {
 		LinearLayout footer = layout.addToFooter(LinearLayout.horizontal().spacing(8));
 		footer.addChild(Button.builder(CommonComponents.GUI_DONE, b -> {
 			apply.accept(new PolandSettings(scale, regionScale, agriculture, managedShare, alienSpecies, version,
-					coverInBlocks));
+					coverInBlocks, looseCover));
 			onClose();
 		}).build());
 		footer.addChild(Button.builder(CommonComponents.GUI_CANCEL, b -> onClose()).build());

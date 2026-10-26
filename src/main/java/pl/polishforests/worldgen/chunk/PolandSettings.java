@@ -29,23 +29,26 @@ import pl.polishforests.worldgen.habitat.HabitatClassifier;
  *                           thickness. The other surface changes of S6 (bank shelf, soils, micro-relief, a soil or bed
  *                           top on every column) also apply to the new chunks of old worlds, so these do not match the
  *                           chunks generated before (no migration, decision M2-7)
+ * @param looseCover         thickness of the loose cover in the lowland in blocks (step K1): {@link LooseCover#THIN} in new
+ *                           worlds of both scales; missing in worlds created before K1, which keep the
+ *                           {@link LooseCover#REALISTIC} cover, so their new chunks match the old ones without a seam
  */
 public record PolandSettings(PolandScale scale, double regionScale, boolean agriculture, double managedForestShare,
-		boolean alienSpecies, int version, boolean coverInBlocks) {
+		boolean alienSpecies, int version, boolean coverInBlocks, LooseCover looseCover) {
 	/** Version of the presets and of new worlds: M2 (habitat biomes). */
 	public static final int CURRENT_VERSION = 2;
 	/** Version of worlds created before the field existed (M1). */
 	public static final int LEGACY_VERSION = 1;
 
 	public static final PolandSettings DEFAULT = new PolandSettings(PolandScale.REALISTIC, 1.0, false, 0.85, true,
-			CURRENT_VERSION, true);
+			CURRENT_VERSION, true, LooseCover.THIN);
 
 	/**
 	 * Settings of an M1 world saved without a {@code settings} object: in M1 the codec left out settings equal to the M1
 	 * default (realistic scale, "present-day Poland" mode).
 	 */
 	public static final PolandSettings LEGACY_M1 = new PolandSettings(PolandScale.REALISTIC, 1.0, true, 0.85, true,
-			LEGACY_VERSION, false);
+			LEGACY_VERSION, false, LooseCover.REALISTIC);
 
 	public static final Codec<PolandSettings> CODEC = RecordCodecBuilder.create(i -> i.group(
 			PolandScale.CODEC.optionalFieldOf("scale").forGetter(s -> Optional.of(s.scale())),
@@ -55,7 +58,8 @@ public record PolandSettings(PolandScale scale, double regionScale, boolean agri
 					.forGetter(s -> Optional.of(s.managedForestShare())),
 			Codec.BOOL.optionalFieldOf("alien_species").forGetter(s -> Optional.of(s.alienSpecies())),
 			Codec.intRange(1, 1_000).optionalFieldOf("version").forGetter(s -> Optional.of(s.version())),
-			Codec.BOOL.optionalFieldOf("cover_in_blocks").forGetter(s -> Optional.of(s.coverInBlocks()))
+			Codec.BOOL.optionalFieldOf("cover_in_blocks").forGetter(s -> Optional.of(s.coverInBlocks())),
+			LooseCover.CODEC.optionalFieldOf("loose_cover").forGetter(s -> Optional.of(s.looseCover()))
 	).apply(i, PolandSettings::decode));
 
 	/**
@@ -68,21 +72,28 @@ public record PolandSettings(PolandScale scale, double regionScale, boolean agri
 
 	private static PolandSettings decode(Optional<PolandScale> scale, Optional<Double> regionScale,
 			Optional<Boolean> agriculture, Optional<Double> managedForestShare, Optional<Boolean> alienSpecies,
-			Optional<Integer> version, Optional<Boolean> coverInBlocks) {
+			Optional<Integer> version, Optional<Boolean> coverInBlocks, Optional<LooseCover> looseCover) {
 		int v = version.orElse(LEGACY_VERSION);
 		return new PolandSettings(scale.orElse(PolandScale.REALISTIC), regionScale.orElse(1.0),
 				agriculture.orElse(v < 2), managedForestShare.orElse(0.85), alienSpecies.orElse(true), v,
-				coverInBlocks.orElse(false));
+				coverInBlocks.orElse(false), looseCover.orElse(LooseCover.REALISTIC));
 	}
 
 	public PolandSettings withScale(PolandScale newScale) {
 		return new PolandSettings(newScale, regionScale, agriculture, managedForestShare, alienSpecies, version,
-				coverInBlocks);
+				coverInBlocks, looseCover);
 	}
 
 	/** The same settings in the "present-day Poland" mode ({@code true}) or the natural-vegetation mode. */
 	public PolandSettings withAgriculture(boolean presentDay) {
-		return new PolandSettings(scale, regionScale, presentDay, managedForestShare, alienSpecies, version, coverInBlocks);
+		return new PolandSettings(scale, regionScale, presentDay, managedForestShare, alienSpecies, version, coverInBlocks,
+				looseCover);
+	}
+
+	/** The same settings with the given loose cover in the lowland (step K1). */
+	public PolandSettings withLooseCover(LooseCover cover) {
+		return new PolandSettings(scale, regionScale, agriculture, managedForestShare, alienSpecies, version, coverInBlocks,
+				cover);
 	}
 
 	/** Vegetation mode of the habitat classifier: "present-day Poland" or natural vegetation. */

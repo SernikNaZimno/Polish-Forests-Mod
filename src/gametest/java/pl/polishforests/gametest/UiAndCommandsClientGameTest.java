@@ -26,6 +26,7 @@ import pl.polishforests.client.HabitatDebugEntry;
 import pl.polishforests.client.screen.PolandPresetEditor;
 import pl.polishforests.client.screen.PolandWorldOptionsScreen;
 import pl.polishforests.command.PolishForestsCommands;
+import pl.polishforests.worldgen.chunk.LooseCover;
 import pl.polishforests.worldgen.chunk.PolandChunkGenerator;
 import pl.polishforests.worldgen.chunk.PolandScale;
 import pl.polishforests.worldgen.habitat.HabitatBiome;
@@ -76,6 +77,8 @@ public final class UiAndCommandsClientGameTest implements FabricClientGameTest {
 		context.takeScreenshot(screenshot);
 		// Step S8: the landscape switch turns the "present-day Poland" mode on (the presets start in the natural mode).
 		context.clickScreenButton("polishforests.options.landscape");
+		// Step K1: the presets start with the thin loose cover; the switch selects the realistic one.
+		context.clickScreenButton("polishforests.options.loose_cover");
 		context.waitTicks(2);
 		context.takeScreenshot(screenshot + "_present_day");
 		context.clickScreenButton("gui.done");
@@ -91,6 +94,9 @@ public final class UiAndCommandsClientGameTest implements FabricClientGameTest {
 			if (!gen.settings().agriculture() || gen.settings().mode() != HabitatClassifier.Mode.PRESENT_DAY) {
 				return "the landscape switch did not select the present-day mode: " + gen.settings();
 			}
+			if (gen.settings().looseCover() != LooseCover.REALISTIC) {
+				return "the loose cover switch did not select the realistic cover: " + gen.settings();
+			}
 			LevelStem stem = dims.dimensions().get(LevelStem.OVERWORLD);
 			if (!stem.type().is(expected.dimensionType())) {
 				return "dimension type " + stem.type().unwrapKey() + " instead of " + expected.dimensionType();
@@ -104,7 +110,8 @@ public final class UiAndCommandsClientGameTest implements FabricClientGameTest {
 			throw new AssertionError(preset.identifier() + ": " + result);
 		}
 		PolishForests.LOG.info("[ui] {}: options screen works, scale {}, dimension height {}, landscape switch selects the "
-				+ "present-day mode", preset.identifier(), expected.getSerializedName(), expected.vertical().height());
+				+ "present-day mode, loose cover switch selects the realistic cover", preset.identifier(),
+				expected.getSerializedName(), expected.vertical().height());
 		context.setScreen(() -> null);
 	}
 

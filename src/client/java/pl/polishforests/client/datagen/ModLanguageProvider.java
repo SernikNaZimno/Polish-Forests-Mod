@@ -263,6 +263,14 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		b.add("polishforests.options.landscape.natural", "Natural Vegetation");
 		b.add("polishforests.options.managed_share", "Managed Forests: %s%%");
 		b.add("polishforests.options.alien_species", "Alien & Invasive Species");
+		b.add("polishforests.options.loose_cover", "Loose Cover");
+		b.add("polishforests.options.loose_cover.thin", "Thin (Gameplay)");
+		b.add("polishforests.options.loose_cover.realistic", "Realistic");
+		b.add("polishforests.options.loose_cover.thin.tooltip", "In the lowlands only 4–10 blocks of soil, sand, clay or "
+				+ "mud lie on the stone, so stone and ores are close to the surface. Foothills and mountains are the same in both "
+				+ "settings.");
+		b.add("polishforests.options.loose_cover.realistic.tooltip", "Sand and clay tens of blocks deep in the lowlands, as "
+				+ "in Poland, so stone and ores lie deep. Worlds made before this option have this cover.");
 		b.add("polishforests.options.note", "Real scale: landscapes at their true size and elevation. Gameplay scale: "
 				+ "landscapes about 1.4 km across, lower mountains and a shorter world, which is much easier on your computer. "
 				+ "The landscape mode already chooses the biomes, and the managed forest share already shapes the stands of the "
@@ -314,6 +322,13 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		b.add("polishforests.options.landscape.natural", "Roślinność naturalna");
 		b.add("polishforests.options.managed_share", "Lasy gospodarcze: %s%%");
 		b.add("polishforests.options.alien_species", "Gatunki obce i inwazyjne");
+		b.add("polishforests.options.loose_cover", "Pokrywa osadów");
+		b.add("polishforests.options.loose_cover.thin", "Cienka (rozgrywka)");
+		b.add("polishforests.options.loose_cover.realistic", "Realistyczna");
+		b.add("polishforests.options.loose_cover.thin.tooltip", "Na nizinach na skale leży tylko 4–10 bloków gleby, piasku, "
+				+ "gliny albo mułu, więc kamień i rudy są blisko powierzchni. Pogórza i góry są takie same w obu ustawieniach.");
+		b.add("polishforests.options.loose_cover.realistic.tooltip", "Piasek i glina na nizinach na dziesiątki bloków w głąb, "
+				+ "jak w Polsce, więc kamień i rudy leżą głęboko. Taką pokrywę mają światy utworzone przed tą opcją.");
 		b.add("polishforests.options.note", "Skala rzeczywista: krajobrazy w prawdziwych rozmiarach i wysokościach. Skala "
 				+ "rozgrywki: krajobrazy ok. 1,4 km, niższe góry i niższy świat, co wyraźnie odciąża komputer. Tryb krajobrazu "
 				+ "wybiera już biomy, a udział lasów gospodarczych drzewostany grądów i borów; gatunki obce zaczną działać "

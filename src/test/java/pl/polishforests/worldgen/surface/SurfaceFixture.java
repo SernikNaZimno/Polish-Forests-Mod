@@ -3,6 +3,7 @@ package pl.polishforests.worldgen.surface;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Predicate;
+import pl.polishforests.worldgen.chunk.LooseCover;
 import pl.polishforests.worldgen.chunk.PolandDimension;
 import pl.polishforests.worldgen.chunk.PolandScale;
 import pl.polishforests.worldgen.chunk.VerticalScale;
@@ -34,13 +35,22 @@ final class SurfaceFixture {
 	}
 
 	SurfaceFixture(PolandScale scale, boolean coverInBlocks, HabitatClassifier.Mode mode) {
+		this(scale, coverInBlocks, LooseCover.REALISTIC, mode);
+	}
+
+	/** Plans with the given loose cover (step K1). */
+	SurfaceFixture(PolandScale scale, boolean coverInBlocks, LooseCover cover) {
+		this(scale, coverInBlocks, cover, HabitatClassifier.Mode.NATURAL);
+	}
+
+	SurfaceFixture(PolandScale scale, boolean coverInBlocks, LooseCover cover, HabitatClassifier.Mode mode) {
 		this.scale = scale;
 		this.vertical = scale.vertical();
 		synchronized (MODELS) {
 			this.model = MODELS.computeIfAbsent(scale, s -> new LandscapeModel(SEED, s.landscape(), 1.0));
 		}
 		this.classifier = new HabitatClassifier(SEED, model, mode);
-		this.builder = new SurfaceBuilder(SEED, vertical, coverInBlocks, false);
+		this.builder = new SurfaceBuilder(SEED, vertical, coverInBlocks, cover, false);
 	}
 
 	/** Number of chunk plans built so far. */

@@ -27,12 +27,18 @@ class PolandSettingsTest {
 	void defaultIsWrittenInFull() {
 		JsonObject json = encode(PolandSettings.DEFAULT);
 		for (String field : new String[] {"scale", "region_scale", "agriculture", "managed_forest_share", "alien_species",
-				"version", "cover_in_blocks"}) {
+				"version", "cover_in_blocks", "loose_cover"}) {
 			assertTrue(json.has(field), "missing " + field + " in " + json);
 		}
 		assertEquals(PolandSettings.CURRENT_VERSION, json.get("version").getAsInt());
 		assertFalse(json.get("agriculture").getAsBoolean());
 		assertTrue(json.get("cover_in_blocks").getAsBoolean());
+		// Step K1: new worlds get the thin loose cover in both scales, and the setting is saved and read back.
+		assertEquals("thin", json.get("loose_cover").getAsString());
+		assertEquals(LooseCover.THIN, PolandSettings.DEFAULT.withScale(PolandScale.GAMEPLAY).looseCover());
+		PolandSettings realistic = PolandSettings.DEFAULT.withLooseCover(LooseCover.REALISTIC);
+		assertEquals("realistic", encode(realistic).get("loose_cover").getAsString());
+		assertEquals(realistic, decode(encode(realistic).toString()));
 		assertEquals(PolandSettings.DEFAULT, decode(json.toString()));
 		PolandSettings gameplay = PolandSettings.DEFAULT.withScale(PolandScale.GAMEPLAY);
 		assertEquals(gameplay, decode(encode(gameplay).toString()));
@@ -66,6 +72,31 @@ class PolandSettingsTest {
 		assertFalse(v2.coverInBlocks());
 		assertFalse(m1.coverInBlocks());
 		assertTrue(decode("{\"version\": 2, \"cover_in_blocks\": true}").coverInBlocks());
+		// A world from before K1 has no "loose_cover" and keeps the realistic cover, so its new chunks match the old ones.
+		assertEquals(LooseCover.REALISTIC, v2.looseCover());
+		assertEquals(LooseCover.REALISTIC, m1.looseCover());
+		PolandSettings beforeK1 = decode("{\"scale\": \"gameplay\", \"region_scale\": 1.0, \"agriculture\": false, "
+				+ "\"managed_forest_share\": 0.85, \"alien_species\": true, \"version\": 2, \"cover_in_blocks\": true}");
+		assertEquals(LooseCover.REALISTIC, beforeK1.looseCover());
+		assertEquals(PolandSettings.DEFAULT.withScale(PolandScale.GAMEPLAY).withLooseCover(LooseCover.REALISTIC), beforeK1);
+		assertEquals(LooseCover.THIN, decode("{\"version\": 2, \"loose_cover\": \"thin\"}").looseCover());
+	}
+
+	/** Step K1: both presets create worlds with the thin loose cover. */
+	@Test
+	void presetsUseTheThinCover() throws java.io.IOException {
+		for (String preset : new String[] {"poland", "poland_gameplay"}) {
+			String path = "/data/polishforests/worldgen/world_preset/" + preset + ".json";
+			try (var in = PolandSettingsTest.class.getResourceAsStream(path)) {
+				assertTrue(in != null, "missing " + path);
+				JsonObject settings = JsonParser.parseString(new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8))
+						.getAsJsonObject().getAsJsonObject("dimensions").getAsJsonObject("minecraft:overworld")
+						.getAsJsonObject("generator").getAsJsonObject("settings");
+				PolandSettings read = decode(settings.toString());
+				assertEquals(LooseCover.THIN, read.looseCover(), preset);
+				assertTrue(read.coverInBlocks(), preset);
+			}
+		}
 	}
 
 	@Test
@@ -73,7 +104,7 @@ class PolandSettingsTest {
 		var field = PolandSettings.GENERATOR_FIELD.codec();
 		JsonObject json = field.encodeStart(JsonOps.INSTANCE, PolandSettings.DEFAULT).getOrThrow().getAsJsonObject();
 		assertTrue(json.has("settings"), "the default settings are left out: " + json);
-		assertEquals(7, json.getAsJsonObject("settings").size());
+		assertEquals(8, json.getAsJsonObject("settings").size());
 		assertEquals(PolandSettings.DEFAULT, field.parse(JsonOps.INSTANCE, json).getOrThrow());
 		assertEquals(PolandSettings.LEGACY_M1, field.parse(JsonOps.INSTANCE, new JsonObject()).getOrThrow());
 	}

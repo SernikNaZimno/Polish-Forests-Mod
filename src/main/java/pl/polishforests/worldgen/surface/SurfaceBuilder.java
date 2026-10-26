@@ -1,5 +1,6 @@
 package pl.polishforests.worldgen.surface;
 
+import pl.polishforests.worldgen.chunk.LooseCover;
 import pl.polishforests.worldgen.chunk.VerticalScale;
 import pl.polishforests.worldgen.habitat.Habitat;
 import pl.polishforests.worldgen.habitat.HabitatBiome;
@@ -25,6 +26,18 @@ import pl.polishforests.worldgen.landscape.WaterKind;
  * 2.5–4 times too thick. With {@code coverInBlocks} the rock starts at {@code vertical.topBlockY(surface − coverDepth)}
  * (world setting {@code cover_in_blocks}; missing in older worlds, which keep the old cover).
  *
+ * <p><b>Thin cover (step K1, docs/04-pionowy-wycinek.md).</b> With {@link LooseCover#THIN} (world setting
+ * {@code loose_cover}, the default of new worlds) a column whose model cover is thicker than {@value #THIN_FROM_METERS} m
+ * (the lowland and the sea floor: 40–100 m; the foothills and mountains have at most 7 m and keep their cover) has a loose
+ * cover of only {@value #THIN_MIN_COVER}–{@value #THIN_MAX_COVER} blocks: its soil or bed profile, under it at least
+ * {@value #THIN_MIN_DEPOSIT} blocks of the deposits of its substrate ({@link ChunkSurface#deposit}: sand, clay under the
+ * till, alluvium, mud and clay under peat and lake beds), then stone. The thickness follows a noise of its own (two
+ * wavelengths, {@value #THIN_WAVELENGTH} and {@value #THIN_MINOR_WAVELENGTH} blocks), so the rock top has no straight
+ * edges (rule Z10).
+ * A column never shows rock in its side face: its rock stays below the top of its lowest neighbor (river bluffs, dune
+ * flanks, cliffs and channel banks keep loose material in sight). The landscape model and {@code coverDepth} are the same
+ * in both settings; only their conversion to blocks differs.
+ *
  * <p><b>Diagnostic mode.</b> With {@code -D}{@value #DEBUG_PROPERTY}{@code =true} the top block of every column shows
  * its zone, or its biome when it has no zone, so narrow belts can be checked in the game at a glance; every zone and
  * every biome has its own block ({@link Material#zoneColor}, {@link Material#biomeColor}).
@@ -40,6 +53,18 @@ public final class SurfaceBuilder {
 	private static final WaterKind[] KINDS = WaterKind.values();
 	/** Least loose cover of a dry column in blocks: its soil top block. */
 	static final int MIN_SOIL = 1;
+	/** Thin cover (step K1): the model cover above which a column gets it (meters; lowland 40–100, foothills ≤ 7). */
+	static final double THIN_FROM_METERS = 20;
+	/** Thin cover: the range of the loose cover, soil or bed profile included (blocks). */
+	static final int THIN_MIN_COVER = 4;
+	static final int THIN_MAX_COVER = 10;
+	/** Thin cover: least deposits under the soil or bed profile (blocks). */
+	static final int THIN_MIN_DEPOSIT = 2;
+	/** Thin cover: wavelengths of the thickness noise (blocks). */
+	static final double THIN_WAVELENGTH = 47;
+	static final double THIN_MINOR_WAVELENGTH = 13;
+	/** Thin cover: weight of the minor wavelength in the thickness. */
+	private static final double THIN_MINOR_WEIGHT = 0.3;
 
 	/** Number of neighbor columns outside the chunk sampled from the model for the shelf (diagnostics). */
 	public static final java.util.concurrent.atomic.LongAdder OUTSIDE_SAMPLES = ColumnCache.MISSES;
@@ -58,22 +83,47 @@ public final class SurfaceBuilder {
 	/** Summaries of the columns near chunk borders, shared by the chunks of the world seed (review of S6, round 1). */
 	private final ColumnCache cache = new ColumnCache(1 << 18);
 	private final boolean coverInBlocks;
+	private final boolean thinCover;
 	private final boolean debug;
 	private final Noise soil;
 	private final Noise micro;
+	private final Noise thin;
+
+	/** A builder with the realistic loose cover ({@link LooseCover#REALISTIC}, the cover of worlds from before K1). */
+	public SurfaceBuilder(long seed, VerticalScale vertical, boolean coverInBlocks, boolean debug) {
+		this(seed, vertical, coverInBlocks, LooseCover.REALISTIC, debug);
+	}
 
 	/**
 	 * @param seed          world seed
 	 * @param coverInBlocks the loose cover in blocks ({@code cover_in_blocks}); false: the pre-S6 cover
+	 * @param looseCover    thickness of the lowland cover ({@code loose_cover}, step K1)
 	 * @param debug         diagnostic mode (zones and biomes painted on the top)
 	 */
-	public SurfaceBuilder(long seed, VerticalScale vertical, boolean coverInBlocks, boolean debug) {
+	public SurfaceBuilder(long seed, VerticalScale vertical, boolean coverInBlocks, LooseCover looseCover, boolean debug) {
 		this.vertical = vertical;
 		this.coverInBlocks = coverInBlocks;
+		this.thinCover = looseCover == LooseCover.THIN;
 		this.debug = debug;
 		Noise root = new Noise(seed);
 		this.soil = root.derive("surface.soil");
 		this.micro = root.derive("surface.microrelief");
+		this.thin = root.derive("surface.thin_cover");
+	}
+
+	/** Loose cover of this builder ({@code loose_cover}). */
+	public LooseCover looseCover() {
+		return thinCover ? LooseCover.THIN : LooseCover.REALISTIC;
+	}
+
+	/**
+	 * Thin cover (step K1): the loose cover in blocks at world (x, z), soil or bed profile included, from
+	 * {@value #THIN_MIN_COVER} to {@value #THIN_MAX_COVER}, smooth along the ground (one block of change at a time).
+	 */
+	public int thinCover(int x, int z) {
+		double q = (1 - THIN_MINOR_WEIGHT) * LandscapeModel.noiseQuantile(thin.at(x, z, THIN_WAVELENGTH))
+				+ THIN_MINOR_WEIGHT * LandscapeModel.noiseQuantile(thin.at(x - 2_741.0, z + 1_399.0, THIN_MINOR_WAVELENGTH));
+		return Math.min(THIN_MAX_COVER, THIN_MIN_COVER + (int) Math.floor(q * (THIN_MAX_COVER - THIN_MIN_COVER + 1)));
 	}
 
 	/** Whether the diagnostic mode is on in this process. */
@@ -233,6 +283,12 @@ public final class SurfaceBuilder {
 							SoilBlocks.layer1(profile), SoilBlocks.layer1Depth(profile));
 				}
 			}
+			if (thinCover && s.coverDepth() > THIN_FROM_METERS) {
+				// Step K1: the profile, a few blocks of deposits, then the rock, but never rock in the side face.
+				int cover = Math.max(thinCover(wx, wz), SoilBlocks.depth(profile) + THIN_MIN_DEPOSIT);
+				int rock = Math.min(out.top[i] - cover, w.lowestNeighborTop(i, out) - 1);
+				out.rockTop[i] = Math.max(out.rockTop[i], rock);
+			}
 			if (debug) {
 				Zone zone = Habitat.zone(code);
 				Material paint = zone != Zone.NONE ? Material.zoneColor(zone.ordinal() - 1)
@@ -328,6 +384,30 @@ public final class SurfaceBuilder {
 				return columns[n].waterKind();
 			}
 			return summaryKind(outsideSummary(i, dir));
+		}
+
+		/**
+		 * Lowest top of the four neighbors of column {@code i} (thin cover, step K1): the final tops in the chunk; outside
+		 * it the model top, {@link BankShelf#MAX_DROP} lower for a dry column the shelf may lower (water near by its own
+		 * fields). A pure function of the chunk, whichever chunks were built before.
+		 */
+		int lowestNeighborTop(int i, ChunkSurface out) {
+			int lowest = Integer.MAX_VALUE;
+			for (int dir = 0; dir < 4; dir++) {
+				int n = neighbor(i, dir);
+				int t;
+				if (n >= 0) {
+					t = out.top[n];
+				} else {
+					int summary = outsideSummary(i, dir);
+					t = summaryTop(summary);
+					if (summaryWater(summary) == ChunkSurface.NO_WATER && summaryNear(summary)) {
+						t -= BankShelf.MAX_DROP;
+					}
+				}
+				lowest = Math.min(lowest, t);
+			}
+			return lowest;
 		}
 
 		/**
