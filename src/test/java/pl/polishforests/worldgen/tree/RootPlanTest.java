@@ -21,7 +21,7 @@ import pl.polishforests.worldgen.habitat.Species;
  * root and the level ground under every flare, the write window, and in stands of the tree planner (with the trunk
  * candidates of the M2 pattern on wavy ground) no shared cell between two trees and no flare touching another tree's
  * flare or trunk column; the habits of the species (flares of old broad-leaved trees, few on pine and birch, none on
- * young trees), the walls of the ground (exposed cells, protruding roots) and unknown columns.
+ * young trees), the walls of the ground (exposed cells) and unknown columns.
  */
 class RootPlanTest {
 	private static final long SEED = 20260927L;
@@ -105,7 +105,7 @@ class RootPlanTest {
 			int pz = p < 0 ? 0 : v.flareZ(p);
 			assertEquals(px, x + step[0], what);
 			assertEquals(pz, z + step[2], what);
-			assertTrue(v.flareRadius(i) >= 1 && v.flareRadius(i) <= 6, what);
+			assertTrue(v.flareRadius(i) >= 1 && v.flareRadius(i) <= RootPlan.MAX_FLARE_RADIUS, what);
 			if (p >= 0) {
 				assertTrue(v.flareRadius(i) <= v.flareRadius(p), what + ": the radius grows outwards");
 			}
@@ -120,13 +120,9 @@ class RootPlanTest {
 			int top = g.top(v.x() + x, v.z() + z);
 			int p = v.rootParentIndex(i);
 			assertTrue(p < i, what);
-			if (v.rootKind(i) == RootVoxels.PROTRUDING) {
-				assertTrue(y > top, what + ": a protruding root in the ground");
-			} else {
-				boolean trunkColumn = x == 0 && z == 0;
-				assertTrue(y <= top - (trunkColumn ? 1 : RootPlan.COVER), what + ": root under " + (top - y) + " blocks of ground");
-				assertTrue(top - y <= RootPlan.MAX_DEPTH, what + ": root too deep");
-			}
+			boolean trunkColumn = x == 0 && z == 0;
+			assertTrue(y <= top - (trunkColumn ? 1 : RootPlan.COVER), what + ": root under " + (top - y) + " blocks of ground");
+			assertTrue(top - y <= RootPlan.MAX_DEPTH, what + ": root too deep");
 			int[] step = TreeVoxels.STEP[v.rootParent(i)];
 			if (p < 0) {
 				assertEquals(TreeVoxels.UP, v.rootParent(i), what);
@@ -280,15 +276,14 @@ class RootPlanTest {
 	}
 
 	/**
-	 * A wall of the ground: on a ledge 4 blocks above a lower terrace, the root cells at the wall turn into rooted dirt and
-	 * some roots stick out of it into the air; no root in unknown columns (water).
+	 * A wall of the ground: on a ledge 4 blocks above a lower terrace, the root cells at the wall turn into rooted dirt; no
+	 * root in unknown columns (water).
 	 */
 	@Test
 	void wallsAndUnknownColumns() {
 		// Terrace: x >= 3 is 4 blocks lower; z >= 4 is water (unknown).
 		TreeShapePlan.Ground terrace = (x, z) -> z >= 4 ? TreeShapePlan.Ground.UNKNOWN : x >= 3 ? 59 : 63;
 		int exposed = 0;
-		int protruding = 0;
 		for (int k = 0; k < 40; k++) {
 			Species s = SPECIES.get(k % SPECIES.size());
 			RootVoxels v = RootPlan.plan(new RootPlan.Request(s, CrownLayer.CANOPY, AgeClass.OLD_GROWTH, SEED + k, 0, 64, 0, 6, terrace, null));
@@ -297,7 +292,6 @@ class RootPlanTest {
 				assertTrue(v.rootZ(i) < 4, "a root in an unknown column");
 				int kind = v.rootKind(i);
 				exposed += kind == RootVoxels.EXPOSED ? 1 : 0;
-				protruding += kind == RootVoxels.PROTRUDING ? 1 : 0;
 				if (kind == RootVoxels.ROOT) {
 					// A root cell has soil on its four sides.
 					for (int[] f : new int[][] {{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
@@ -311,7 +305,6 @@ class RootPlanTest {
 			}
 		}
 		assertTrue(exposed > 10, "exposed cells: " + exposed);
-		assertTrue(protruding > 3, "protruding roots: " + protruding);
 	}
 
 	/** The lateral roots the windthrows turn up are the ones the living tree has (same values for the same tree). */

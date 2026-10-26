@@ -14,8 +14,7 @@ import java.util.Arrays;
  * <p><b>Roots</b> lie in the ground (dy -2 and lower), each with a radius 1–7 px, the direction to its parent (towards the
  * trunk) and the index of the parent root (-1: the trunk base above the root collar). The radius never grows from a
  * parent to its child. A cell of the root system that the planner knows to touch open air at a side (a bank, a step of
- * the ground) is rooted dirt instead of a root ({@link #EXPOSED}); a {@link #PROTRUDING} root sticks one block out of such
- * a wall.
+ * the ground) is rooted dirt instead of a root ({@link #EXPOSED}).
  *
  * <p><b>Rooted dirt</b>: cells of the soil around the roots and the exposed cells of the root system.
  */
@@ -153,7 +152,7 @@ public final class RootVoxels {
 		return rootParentIndex[i];
 	}
 
-	/** What root i is: {@link #ROOT}, {@link #EXPOSED} or {@link #PROTRUDING}. */
+	/** What root i is: {@link #ROOT} or {@link #EXPOSED}. */
 	public int rootKind(int i) {
 		return rootKind[i];
 	}
@@ -165,8 +164,6 @@ public final class RootVoxels {
 	 * dirt instead of a root block, so the wall shows no hole with a root in it.
 	 */
 	public static final int EXPOSED = 1;
-	/** A root sticking one block out of such a wall into the open, over the lower ground. */
-	public static final int PROTRUDING = 2;
 
 	public int dirtCount() {
 		return dirt.length;

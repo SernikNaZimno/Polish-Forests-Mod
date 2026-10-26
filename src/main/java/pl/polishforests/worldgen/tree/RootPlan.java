@@ -35,8 +35,7 @@ import pl.polishforests.worldgen.landscape.Noise;
  * leaves out water and structures) and in the columns of the tree's own Voronoi cell among the trunk candidates (ties to
  * the lower x, then z), so the roots of two trees never share a block and the result does not depend on the order in
  * which the trees are written. A cell whose side faces a lower column (a bank, a step of the ground; the planner knows the
- * ground of the columns) is rooted dirt instead of a root ({@link RootVoxels#EXPOSED}), and half of them let a root stick
- * one block out of the wall ({@link RootVoxels#PROTRUDING}). About {@value #DIRT_SHARE} of the soil cells next to a root
+ * ground of the columns) is rooted dirt instead of a root ({@link RootVoxels#EXPOSED}). About {@value #DIRT_SHARE} of the soil cells next to a root
  * become rooted dirt.
  *
  * <p><b>Window.</b> Flares lie within {@value #FLARE_LENGTH} blocks of the trunk, roots within the disc of
@@ -52,6 +51,8 @@ public final class RootPlan {
 	public static final int REACH = 8;
 	/** Longest root flare, blocks. */
 	public static final int FLARE_LENGTH = 4;
+	/** Thickest root flare, px. */
+	public static final int MAX_FLARE_RADIUS = 5;
 	/** Least trunk base radius (px) of a tree with root flares. */
 	public static final int FLARE_BASE = 3;
 	/** Blocks of ground above every root cell outside the trunk column (the root collar under the trunk has one). */
@@ -456,7 +457,8 @@ public final class RootPlan {
 			double drawn = h.flaresMin() + rnd.next() * (h.flaresMax() - h.flaresMin() + 1);
 			int count = (int) Math.floor(old ? drawn : 0.6 * drawn);
 			int length = old ? h.flareLength() : Math.max(1, h.flareLength() - 1);
-			int start = Math.min(base - h.flareLess(), 6);
+			// At most 5 px (8 px high on the ground): thicker flares of the oldest oaks read as benches next to the trunk.
+			int start = Math.min(base - h.flareLess(), MAX_FLARE_RADIUS);
 			if (count == 0 || start < 1) {
 				return;
 			}
@@ -788,7 +790,11 @@ public final class RootPlan {
 
 		// ------------------------------------------------------------------ walls of the ground and rooted dirt
 
-		/** Root cells with a side towards a lower or unknown column turn into rooted dirt; half of them push a root out. */
+		/**
+		 * Root cells with a side towards a lower or unknown column turn into rooted dirt. (No root sticks out of such a wall:
+		 * a block in the open air above lower ground could take the place of another tree's trunk, a log or a plant, and the
+		 * result would depend on the order of the writes.)
+		 */
 		private void exposure() {
 			int n = roots;
 			for (int i = 0; i < n; i++) {
@@ -796,8 +802,6 @@ public final class RootPlan {
 				int dy = RootVoxels.unpackY(rPos[i]);
 				int z = RootVoxels.unpackZ(rPos[i]);
 				int y = request.y() + dy;
-				int outX = 0;
-				int outZ = 0;
 				boolean exposed = false;
 				for (int[] f : FACES) {
 					int nx = x + f[0];
@@ -805,22 +809,12 @@ public final class RootPlan {
 					int top = inReach(nx, nz) ? top(nx, nz) : TreeShapePlan.Ground.UNKNOWN;
 					if (top == TreeShapePlan.Ground.UNKNOWN || y > top) {
 						exposed = true;
-						if (top != TreeShapePlan.Ground.UNKNOWN && outX == 0 && outZ == 0) {
-							outX = f[0];
-							outZ = f[1];
-						}
 					}
 				}
 				if (!exposed) {
 					continue;
 				}
 				rKind[i] = RootVoxels.EXPOSED;
-				int ox = x + outX;
-				int oz = z + outZ;
-				if ((outX != 0 || outZ != 0) && inDisc(ox, oz) && at(ox, dy, oz) == NONE && own(ox, oz) && cellUnit(x, dy, z, 0xB4A1L) < 0.5) {
-					int p = addRoot(ox, dy, oz, 1, TreeVoxelsDirs.of(-outX, 0, -outZ), i);
-					rKind[p] = RootVoxels.PROTRUDING;
-				}
 			}
 		}
 

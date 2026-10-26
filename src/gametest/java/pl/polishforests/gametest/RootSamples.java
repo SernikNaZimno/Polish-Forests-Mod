@@ -512,7 +512,7 @@ final class RootSamples {
 		for (Placed p : placed) {
 			RootVoxels v = p.plan();
 			for (int i = 0; i < v.rootCount(); i++) {
-				if (p.written().roots()[i] == 0 || v.rootKind(i) == RootVoxels.PROTRUDING) {
+				if (p.written().roots()[i] == 0) {
 					continue;
 				}
 				int x = v.x() + v.rootX(i);

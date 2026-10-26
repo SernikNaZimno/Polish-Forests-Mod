@@ -27,8 +27,8 @@ import pl.polishforests.worldgen.tree.RootVoxels;
  * do not matter (the model's reach into a parent hides in the ground). Over an open space below (a cave of another mod) a
  * root cell becomes rooted dirt with vanilla hanging roots under it (they need the sturdy face of a full block above).
  * The cells the planner marks exposed (a wall of the ground) and the rooted dirt around the roots turn dirt or coarse dirt
- * into rooted dirt; a protruding root goes only into air. Nothing is written above the ground but the flares and the
- * protruding roots, and the top ground block of every column stays as it is.
+ * into rooted dirt. Nothing is written above the ground but the flares, and the top ground block of every column stays as
+ * it is.
  */
 public final class TreeRoots {
 	/** Blocks written (diagnostics for the game tests and the measurements). */
@@ -101,12 +101,6 @@ public final class TreeRoots {
 			pos.set(v.x() + v.rootX(i), v.y() + v.rootY(i), v.z() + v.rootZ(i));
 			BlockState at = level.getBlockState(pos);
 			switch (v.rootKind(i)) {
-				case RootVoxels.PROTRUDING -> {
-					if (at.isAir()) {
-						level.setBlock(pos, ModBlocks.treeRoot().state(v.rootRadius(i), Direction.from3DDataValue(v.rootParent(i))), FLAGS);
-						roots[i] = Written.ROOT;
-					}
-				}
 				case RootVoxels.EXPOSED -> {
 					if (dirtLike(at)) {
 						level.setBlock(pos, rooted, FLAGS);
