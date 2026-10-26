@@ -719,7 +719,7 @@
               "segment_amount": "2"
             }
           },
-          "weight": 4
+          "weight": 5
         },
         {
           "block": {
@@ -730,7 +730,7 @@
               "segment_amount": "3"
             }
           },
-          "weight": 4
+          "weight": 5
         },
         {
           "block": {
@@ -741,40 +741,7 @@
               "segment_amount": "4"
             }
           },
-          "weight": 6
-        },
-        {
-          "block": {
-            "id": "polishforests:needle_litter",
-            "properties": {
-              "facing": "north",
-              "mossy": "false",
-              "segment_amount": "2"
-            }
-          },
-          "weight": 1
-        },
-        {
-          "block": {
-            "id": "polishforests:needle_litter",
-            "properties": {
-              "facing": "north",
-              "mossy": "false",
-              "segment_amount": "3"
-            }
-          },
-          "weight": 1
-        },
-        {
-          "block": {
-            "id": "polishforests:needle_litter",
-            "properties": {
-              "facing": "north",
-              "mossy": "false",
-              "segment_amount": "4"
-            }
-          },
-          "weight": 1
+          "weight": 7
         },
         {
           "block": "minecraft:fern",
@@ -882,7 +849,7 @@
               "segment_amount": "2"
             }
           },
-          "weight": 2
+          "weight": 3
         },
         {
           "block": {
@@ -893,7 +860,7 @@
               "segment_amount": "3"
             }
           },
-          "weight": 2
+          "weight": 3
         },
         {
           "block": {
@@ -904,40 +871,7 @@
               "segment_amount": "4"
             }
           },
-          "weight": 2
-        },
-        {
-          "block": {
-            "id": "polishforests:needle_litter",
-            "properties": {
-              "facing": "north",
-              "mossy": "false",
-              "segment_amount": "2"
-            }
-          },
-          "weight": 1
-        },
-        {
-          "block": {
-            "id": "polishforests:needle_litter",
-            "properties": {
-              "facing": "north",
-              "mossy": "false",
-              "segment_amount": "3"
-            }
-          },
-          "weight": 1
-        },
-        {
-          "block": {
-            "id": "polishforests:needle_litter",
-            "properties": {
-              "facing": "north",
-              "mossy": "false",
-              "segment_amount": "4"
-            }
-          },
-          "weight": 2
+          "weight": 4
         },
         {
           "block": {
@@ -1111,7 +1045,7 @@
               "flower_amount": "2"
             }
           },
-          "weight": 17
+          "weight": 14
         },
         {
           "block": {
@@ -1121,7 +1055,7 @@
               "flower_amount": "3"
             }
           },
-          "weight": 17
+          "weight": 14
         },
         {
           "block": {
@@ -1131,7 +1065,7 @@
               "flower_amount": "4"
             }
           },
-          "weight": 18
+          "weight": 16
         },
         {
           "block": {
@@ -1141,7 +1075,7 @@
               "flower_amount": "2"
             }
           },
-          "weight": 2
+          "weight": 3
         },
         {
           "block": {
@@ -1151,7 +1085,7 @@
               "flower_amount": "3"
             }
           },
-          "weight": 2
+          "weight": 3
         },
         {
           "block": {
@@ -1169,11 +1103,11 @@
         },
         {
           "block": "minecraft:fern",
-          "weight": 8
+          "weight": 11
         },
         {
           "block": "minecraft:short_grass",
-          "weight": 6
+          "weight": 9
         },
         {
           "block": {

@@ -398,6 +398,26 @@ final class NormsCensus {
 			rows.add(row(c, forest, e.getKey(), "", e.getValue(), norm.orElse(null), v));
 		}
 		Map<String, Integer> unknown = census.unclassified(area);
+		// Step V12: the columns without a plant, by their ground block and what stands at dy 1 (a look at the bare floor).
+		Map<String, Integer> bare = new java.util.TreeMap<>();
+		int withGround = 0;
+		for (int bx = 0; bx < g.sizeX(); bx++) {
+			for (int bz = 0; bz < g.sizeZ(); bz++) {
+				int wx = g.minX() + bx;
+				int wz = g.minZ() + bz;
+				int col = g.column(wx, wz);
+				if (!area[col] || g.ground(wx, wz) == CensusGrid.NO_GROUND) {
+					continue;
+				}
+				withGround++;
+				if (g.plant(wx, wz) == null) {
+					bare.merge(g.groundBlock(wx, wz) + "/" + g.cell(wx, 1, wz), 1, Integer::sum);
+				}
+			}
+		}
+		final int ground = Math.max(1, withGround);
+		log.append(" [columns without a plant: ").append(bare.entrySet().stream().sorted((a, b) -> b.getValue() - a.getValue()).limit(6)
+				.map(e -> String.format(Locale.ROOT, "%s %.1f%%", e.getKey(), 100.0 * e.getValue() / ground)).toList()).append("] ");
 		// The young trees below a third of the top height, for a look in the world (M2 has no regeneration of its own).
 		double top = values.get(ForestNorms.TOP_HEIGHT);
 		List<String> young = census.objects().stream().filter(o -> o.kind() == ForestCensus.Kind.TREE && area[g.column(o.x(), o.z())]
