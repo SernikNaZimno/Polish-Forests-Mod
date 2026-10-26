@@ -230,3 +230,16 @@ def berries(tex, palettes):
     alpha = np.where(val >= 0, 255, 0).astype(np.uint8)
     colors = [t.hex_to_rgb(c) for c in p['colors']]
     return t.paint(np.clip(val, 0, 3), colors, alpha)
+
+
+def forest_moss(tex, palettes):
+    """The moss under the dwarf shrubs and the needles of the pine forests (PW-7; the carpet layer of the mossy states):
+    feather mosses (Pleurozium, Hylocomium) as a dense, tileable mat of fine tufts in olive greens, duller and greener
+    than the vanilla moss block (V0 review: the vanilla moss carpet is too saturated and yellow-green for the pine
+    forest floor). A tileable value noise of 8 and 16 cells per block plus fine noise (no large blotch that repeats at every block), cut into p['colors'] tones at equal shares, so
+    neighbouring pixels differ by one small step (CP-A: smooth)."""
+    p = tex.params
+    rng = t.Rng(tex.seed)
+    v = t.fbm(rng, 2, 8, 8, 0.6) + p['grain'] * t.value_noise(rng, 16, 16)
+    idx = t.quantize(v, len(p['colors']))
+    return t.paint(idx, [t.hex_to_rgb(c) for c in p['colors']])

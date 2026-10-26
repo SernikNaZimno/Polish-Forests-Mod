@@ -119,28 +119,39 @@ final class ModBlockModels extends FabricModelProvider {
 			sapling(gen, f);
 		}
 		// Step V12: the herb layer and litter.
+		MultiVariant moss = mossLayer(gen);
 		for (GroundPlant g : GroundPlant.values()) {
-			ground(gen, g);
+			ground(gen, g, moss);
 		}
 		gen.registerSimpleItemModel(ModBlocks.bilberries(), gen.createFlatItemModel(ModBlocks.bilberries(),
 				new Material(own(ModBlocks.BILBERRIES))));
 	}
 
-	/** The vanilla moss carpet by id: the second layer of a mossy block (PW-7). */
-	static final Identifier MOSS_CARPET = Identifier.withDefaultNamespace("block/moss_carpet");
+	/**
+	 * The moss layer of a mossy block (PW-7): the vanilla carpet model by id with the own feather moss texture
+	 * {@code forest_moss} (duller and greener than the vanilla moss carpet, V0 review), in four random rotations.
+	 */
+	private static MultiVariant mossLayer(BlockModelGenerators gen) {
+		Identifier m = new ModelTemplate(Optional.of(Identifier.withDefaultNamespace("block/carpet")), Optional.empty(), TextureSlot.WOOL)
+				.create(PolishForests.id("block/forest_moss_layer"), new TextureMapping().put(TextureSlot.WOOL, new Material(own("forest_moss"))),
+						gen.modelOutput);
+		return BlockModelGenerators.variants(BlockModelGenerators.plainModel(m), BlockModelGenerators.plainModel(m).with(BlockModelGenerators.Y_ROT_90),
+				BlockModelGenerators.plainModel(m).with(BlockModelGenerators.Y_ROT_180),
+				BlockModelGenerators.plainModel(m).with(BlockModelGenerators.Y_ROT_270));
+	}
 	/** The texture slot of the berries template. */
 	static final TextureSlot BERRIES = TextureSlot.create("berries");
 
 	/**
 	 * A block of the herb layer (step V12). The dwarf shrub: the vanilla tinted cross with its texture, the berries as
-	 * the untinted cross {@link GroundTemplates#BERRIES} when {@code berries} is on, the vanilla moss carpet under it when
+	 * the untinted cross {@link GroundTemplates#BERRIES} when {@code berries} is on, the moss layer under it when
 	 * {@code mossy} is on; the item flat and tinted with the grass color. A spring geophyte: the vanilla flowerbed models
 	 * with its texture and the shared stem {@code forest_flower_stem}, segments as vanilla's flower beds. A litter: the
 	 * vanilla leaf litter templates with its texture, or with {@code mossy} the templates one pixel higher
-	 * ({@link GroundTemplates#mossyLitter}) over the moss carpet; segments as vanilla's leaf litter. The tall fern: the
+	 * ({@link GroundTemplates#mossyLitter}) over the moss layer; segments as vanilla's leaf litter. The tall fern: the
 	 * vanilla tinted double plant with the textures {@code <id>_bottom} and {@code <id>_top}.
 	 */
-	private static void ground(BlockModelGenerators gen, GroundPlant g) {
+	private static void ground(BlockModelGenerators gen, GroundPlant g, MultiVariant moss) {
 		Block block = ModBlocks.ground(g);
 		switch (g.kind()) {
 			case BERRY_SHRUB -> {
@@ -152,7 +163,7 @@ final class ModBlockModels extends FabricModelProvider {
 				gen.blockStateOutput.accept(MultiPartGenerator.multiPart(block)
 						.with(BlockModelGenerators.plainVariant(shrub))
 						.with(BlockModelGenerators.condition().term(BerryShrubBlock.BERRIES, true), BlockModelGenerators.plainVariant(berries))
-						.with(BlockModelGenerators.condition().term(BerryShrubBlock.MOSSY, true), BlockModelGenerators.plainVariant(MOSS_CARPET)));
+						.with(BlockModelGenerators.condition().term(BerryShrubBlock.MOSSY, true), moss));
 				gen.createItemWithGrassTint(block);
 			}
 			case SEASONAL -> {
@@ -192,7 +203,7 @@ final class ModBlockModels extends FabricModelProvider {
 						}
 					}
 				}
-				parts.with(BlockModelGenerators.condition().term(BerryShrubBlock.MOSSY, true), BlockModelGenerators.plainVariant(MOSS_CARPET));
+				parts.with(BlockModelGenerators.condition().term(BerryShrubBlock.MOSSY, true), moss);
 				gen.blockStateOutput.accept(parts);
 				gen.registerSimpleFlatItemModel(block);
 			}

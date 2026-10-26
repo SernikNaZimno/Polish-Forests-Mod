@@ -354,8 +354,10 @@ class GroundLayerPlanTest {
 		double[] aligned = new double[2];
 		double[] agree = new double[2];
 		for (ColumnPlan.PatchShape shape : ColumnPlan.PatchShape.values()) {
+			// Two plants, every column covered: the borders between the plants' patches (with rounded patches the cover is
+			// drawn per column, the plants by patch).
 			ColumnPlan.Palette p = new ColumnPlan.Palette(List.of(new ColumnPlan.Rule(HabitatMatch.ANY, ColumnPlan.Medium.LAND, 1, 64,
-					0, 0.5, patch, new int[] {0}, new int[] {1}, 0, shape)));
+					0, 1.0, patch, new int[] {0, 1}, new int[] {1, 1}, 0, shape)));
 			boolean[][] raw = field(p, 24);
 			boolean[][] covered = majority(majority(raw));
 			int n = covered.length;
@@ -438,7 +440,7 @@ class GroundLayerPlanTest {
 		return out;
 	}
 
-	/** Covered columns of a size × size chunk field of a one-plant palette. */
+	/** Columns with plant 0 of a size × size chunk field. */
 	private static boolean[][] field(ColumnPlan.Palette p, int size) {
 		boolean[][] covered = new boolean[size * 16][size * 16];
 		ColumnPlan.Columns c = uniform(code(HabitatBiome.FRESH_PINE_FOREST, Zone.NONE), 0, ColumnPlan.Ground.PODZOL, false);
@@ -446,7 +448,7 @@ class GroundLayerPlanTest {
 			for (int cz = 0; cz < size; cz++) {
 				for (int q : ColumnPlan.of(c, p, SEED, cx, cz, SALT)) {
 					int column = ColumnPlan.column(q);
-					covered[cx * 16 + (column >> 4)][cz * 16 + (column & 15)] = true;
+					covered[cx * 16 + (column >> 4)][cz * 16 + (column & 15)] = ColumnPlan.plant(q) == 0;
 				}
 			}
 		}

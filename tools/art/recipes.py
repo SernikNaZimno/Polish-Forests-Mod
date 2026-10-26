@@ -1120,6 +1120,10 @@ TEXTURES = [
             params=dict(count=5, rows=(10, 14), colors=['#272b45', '#2f3656', '#384166', '#454f78']),
             note='bilberry fruit, overlay of the bilberry cross model in its berries state (not tinted): blue-black '
                  'berries with a frosty blue bloom'),
+    Texture('forest_moss', 'plant', ground.forest_moss, 'forest_moss/1', None,
+            params=dict(grain=2.0, colors=['#3e4f2c', '#465a31', '#4f6436', '#586e3b', '#62783f']),
+            note='feather moss mat of the pine forests under the bilberry and the needles (the mossy states, PW-7): '
+                 'olive greens, duller and greener than the vanilla moss block, tileable'),
     Texture('bilberries', 'plant', ground.berries, 'bilberries/1', None,
             params=dict(count=9, rows=(3, 13), colors=['#272b45', '#2f3656', '#384166', '#454f78']),
             note='the bilberry fruit item: a handful of blue-black berries with a frosty blue bloom'),

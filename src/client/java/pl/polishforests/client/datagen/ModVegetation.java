@@ -516,6 +516,15 @@ final class ModVegetation {
 				Plant.block(s.setValue(LeafLitterBlock.AMOUNT, 4), weight - 2 * (weight / 3))};
 	}
 
+	/**
+	 * The moss floor of the pine forests (step V12, PW-7): one segment of needle litter over the moss layer (the own feather
+	 * moss, duller than the vanilla moss carpet, V0 review), so the mossy columns with and without dwarf shrubs look alike.
+	 */
+	private static Plant mossFloor(int weight) {
+		return Plant.block(ModBlocks.ground(GroundPlant.NEEDLE_LITTER).defaultBlockState().setValue(GroundCoverBlock.MOSSY, true)
+				.setValue(LeafLitterBlock.AMOUNT, 1), weight);
+	}
+
 	/** Wood anemone beds of 2–4 flowers (step V12). */
 	private static Plant[] anemone(int weight) {
 		return bed(ModBlocks.ground(GroundPlant.WOOD_ANEMONE), weight);
@@ -799,23 +808,23 @@ final class ModVegetation {
 		// patches (no square patches of litter and bare ground, CP-B), the ground nearly covered. Fresh pine forest: bilberry
 		// about half of the columns (two thirds of it over moss), moss carpet, needle litter partly over moss, bracken rare
 		// (at most 2%); moss with the mossy underside about 70% of the columns, the herb layer about 53%.
-		l.blobs(biomes(FRESH_PINE_FOREST), 0.97F, 6, cat(bilberry(36, true), bilberry(14, false), moss.withWeight(30),
-				needles(6, true), needles(8, false), fern.withWeight(2), grass.withWeight(2), bracken(2)));
+		l.blobs(biomes(FRESH_PINE_FOREST), 0.97F, 6, cat(bilberry(40, true), bilberry(8, false), mossFloor(26), needles(14, true),
+				needles(3, false), fern.withWeight(2), grass.withWeight(2), bracken(2)));
 		l.land(biomes(COASTAL_PINE_FOREST), 0.8F, 4, moss.withWeight(35), bush.withWeight(35), lichen.withWeight(10));
 		l.land(biomes(MOIST_PINE_FOREST), 0.9F, 4, moss.withWeight(50), bush.withWeight(25), fern.withWeight(12),
 				largeFern.withWeight(3));
 		// Mixed coniferous forest: less moss, leaf litter of the oaks, bracken as its indicator (about 9%).
-		l.blobs(biomes(MIXED_PINE_FOREST), 0.93F, 6, cat(moss.withWeight(18), bilberry(16, true), bilberry(10, false),
-				bracken(8), needles(8, false), litter(10), fern.withWeight(6), grass.withWeight(3)));
+		l.blobs(biomes(MIXED_PINE_FOREST), 0.93F, 6, cat(mossFloor(16), bilberry(16, true), bilberry(10, false),
+				bracken(8), needles(6, true), needles(4, false), litter(4), fern.withWeight(6), grass.withWeight(3)));
 		// Mixed forest: leaf litter at most as much as in the oak-hornbeam forest (the order of the transect indicators,
 		// N15), wood anemone and liverleaf as in the broadleaved forests.
-		l.blobs(biomes(MIXED_FOREST), 0.9F, 5, cat(litter(14), moss.withWeight(10), anemone(14), hepatica(3),
+		l.blobs(biomes(MIXED_FOREST), 0.9F, 5, cat(litter(5), moss.withWeight(10), anemone(14), hepatica(3),
 				fern.withWeight(8), grass.withWeight(5), bilberry(4, false)));
 		// Oak-hornbeam forest: wood anemone in carpets (spring herb layer about 72%, without it about 26%: the summer one),
 		// liverleaf in tufts, lily of the valley, ferns and sedges (as short grass), leaf litter about 22%, moss on the
 		// ground little (more at the bases of the trunks, TreeMoss).
-		l.blobs(biomes(OAK_HORNBEAM_FOREST), 0.97F, 5, cat(anemone(42), hepatica(8), b(Blocks.LILY_OF_THE_VALLEY, 4),
-				fern.withWeight(7), grass.withWeight(5), litter(20), moss.withWeight(3)));
+		l.blobs(biomes(OAK_HORNBEAM_FOREST), 0.98F, 5, cat(anemone(52), hepatica(8), b(Blocks.LILY_OF_THE_VALLEY, 4),
+				fern.withWeight(8), grass.withWeight(6), litter(9), moss.withWeight(1)));
 		l.land(biomes(LOWLAND_BEECH_FOREST), 0.85F, 4, cat(litter(85), fern.withWeight(2)));
 		l.land(biomes(MONTANE_BEECH_FOREST), 0.85F, 4, cat(litter(75), fern.withWeight(6), bed(Blocks.WILDFLOWERS, 3)));
 		l.land(biomes(UPLAND_FIR_FOREST), 0.8F, 4, cat(litter(40), moss.withWeight(20), fern.withWeight(12),

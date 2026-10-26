@@ -22,7 +22,9 @@ import pl.polishforests.worldgen.landscape.Noise;
  * <p>The patches of a rule with {@link PatchShape#BLOBS} (step V12; the CP-B remark on the pine forest: flat patches of
  * litter and bare ground with rectangular edges) are the cells of a jittered grid of the patch size seen through a
  * smooth warp of about half a patch ({@link #blob}): rounded, irregular patches of mixed sizes without straight edges,
- * with the same mean coverage and shares (each column still takes one uniform value, its own or its patch's).
+ * with the same mean coverage and shares (each column still takes one uniform value, its own or its patch's). With
+ * rounded patches only the plants clump; whether a column is covered is drawn per column, so the few bare columns of a
+ * nearly covered floor do not form flat bare plates.
  */
 public final class ColumnPlan {
 	/** Where a plant stands (new constants only at the end: the order is part of the packed placements). */
@@ -209,7 +211,9 @@ public final class ColumnPlan {
 			Rule rule = palette.rules().get(r);
 			int x = x0 + (i >> 4);
 			int z = z0 + (i & 15);
-			if (value(seed, x, z, 0x51A7L, rule.patch(), rule.shape()) >= rule.coverage()) {
+			// Rounded patches: whether a column is covered is its own draw (the bare columns of a nearly covered forest floor
+			// lie scattered; a bare patch of a whole blob read as a flat plate of bare ground, CP-B), the plant is the patch's.
+			if (value(seed, x, z, 0x51A7L, rule.shape() == PatchShape.BLOBS ? 1 : rule.patch(), rule.shape()) >= rule.coverage()) {
 				continue;
 			}
 			int plant = pick(rule, value(seed, x, z, 0x9E11L, rule.patch(), rule.shape()));

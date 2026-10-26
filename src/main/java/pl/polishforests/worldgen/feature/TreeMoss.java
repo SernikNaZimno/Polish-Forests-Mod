@@ -35,19 +35,28 @@ public final class TreeMoss {
 	/**
 	 * Chances of a moss carpet on a cell beside the trunk base and beside a flare, by the habitat of the tree: in the
 	 * broadleaved forests (the oak-hornbeam forest: mosses 5–20% of the columns, N9) the bases are the main place of the
-	 * mosses; in the pine forests the floor is mossy anyway (N9 60–90%), the bases a little more.
+	 * mosses (with these chances about 8–12% of the columns, the ground layer 1%); in the pine forests none: their floor
+	 * is mossy anyway (N9 60–90%, the mossy states of the ground layer), and moss at the bases took the place of the
+	 * bilberry (N8, 40–70%: 31–37% in the first measurement).
 	 */
 	static double[] chances(HabitatBiome biome) {
+		return pine(biome) ? new double[] {0, 0} : new double[] {0.2, 0.3};
+	}
+
+	private static boolean pine(HabitatBiome biome) {
 		return switch (biome) {
-			case FRESH_PINE_FOREST, MIXED_PINE_FOREST, DRY_PINE_FOREST, MOIST_PINE_FOREST, COASTAL_PINE_FOREST, BOG_WOODLAND ->
-					new double[] {0.4, 0.5};
-			default -> new double[] {0.3, 0.45};
+			case FRESH_PINE_FOREST, MIXED_PINE_FOREST, DRY_PINE_FOREST, MOIST_PINE_FOREST, COASTAL_PINE_FOREST, BOG_WOODLAND -> true;
+			default -> false;
 		};
 	}
 
 	/** Writes the moss around the trunk base and the written flares of a tree; returns the carpets written. */
 	public static int write(WorldGenLevel level, RootVoxels v, TreeRoots.Written w, HabitatBiome biome, long worldSeed) {
 		double[] p = chances(biome);
+		if (p[0] <= 0 && p[1] <= 0) {
+			return 0;
+		}
+		BlockState moss = Blocks.MOSS_CARPET.defaultBlockState();
 		LongOpenHashSet seen = new LongOpenHashSet();
 		BlockPos.MutableBlockPos at = new BlockPos.MutableBlockPos();
 		BlockPos.MutableBlockPos below = new BlockPos.MutableBlockPos();
@@ -56,7 +65,7 @@ public final class TreeMoss {
 		for (int dx = -1; dx <= 1; dx++) {
 			for (int dz = -1; dz <= 1; dz++) {
 				if ((dx != 0 || dz != 0) && seen.add(BlockPos.asLong(v.x() + dx, v.y(), v.z() + dz))) {
-					written += moss(level, v.x() + dx, v.y(), v.z() + dz, p[0], worldSeed, at, below);
+					written += moss(level, v.x() + dx, v.y(), v.z() + dz, p[0], moss, worldSeed, at, below);
 				}
 			}
 		}
@@ -72,7 +81,7 @@ public final class TreeMoss {
 				int x = fx + d.getStepX();
 				int z = fz + d.getStepZ();
 				if (seen.add(BlockPos.asLong(x, fy, z))) {
-					written += moss(level, x, fy, z, p[1], worldSeed, at, below);
+					written += moss(level, x, fy, z, p[1], moss, worldSeed, at, below);
 				}
 			}
 		}
@@ -84,8 +93,8 @@ public final class TreeMoss {
 	 * A moss carpet at (x, y, z) or, on a slope, one block lower or higher (the first of y, y − 1, y + 1 that is free over
 	 * soil), with chance p; returns 1 if written.
 	 */
-	private static int moss(WorldGenLevel level, int x, int y, int z, double p, long worldSeed, BlockPos.MutableBlockPos at,
-			BlockPos.MutableBlockPos below) {
+	private static int moss(WorldGenLevel level, int x, int y, int z, double p, BlockState moss, long worldSeed,
+			BlockPos.MutableBlockPos at, BlockPos.MutableBlockPos below) {
 		if ((Noise.mix(worldSeed ^ Noise.mix(x * 0x9E37_79B9_7F4A_7C15L + z * 0xC2B2_AE3D_27D4_EB4FL + SALT)) >>> 11) * 0x1.0p-53 >= p) {
 			return 0;
 		}
@@ -97,13 +106,13 @@ public final class TreeMoss {
 			}
 			below.setWithOffset(at, Direction.DOWN);
 			BlockState ground = level.getBlockState(below);
-			if (!ground.is(BlockTags.DIRT) || !ground.isFaceSturdy(level, below, Direction.UP)) {
+			if (!ground.is(BlockTags.SUPPORTS_VEGETATION) || !ground.isFaceSturdy(level, below, Direction.UP)) {
 				continue;
 			}
 			if (here.is(Blocks.MOSS_CARPET)) {
 				return 0;
 			}
-			level.setBlock(at, Blocks.MOSS_CARPET.defaultBlockState(), 2);
+			level.setBlock(at, moss, 2);
 			return 1;
 		}
 		return 0;

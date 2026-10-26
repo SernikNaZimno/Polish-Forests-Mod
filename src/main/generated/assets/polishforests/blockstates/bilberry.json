@@ -14,9 +14,23 @@
       }
     },
     {
-      "apply": {
-        "model": "minecraft:block/moss_carpet"
-      },
+      "apply": [
+        {
+          "model": "polishforests:block/forest_moss_layer"
+        },
+        {
+          "model": "polishforests:block/forest_moss_layer",
+          "y": 90
+        },
+        {
+          "model": "polishforests:block/forest_moss_layer",
+          "y": 180
+        },
+        {
+          "model": "polishforests:block/forest_moss_layer",
+          "y": 270
+        }
+      ],
       "when": {
         "mossy": "true"
       }

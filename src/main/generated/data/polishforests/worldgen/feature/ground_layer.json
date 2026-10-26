@@ -693,15 +693,22 @@
               "mossy": "true"
             }
           },
-          "weight": 36
+          "weight": 40
         },
         {
           "block": "polishforests:bilberry",
-          "weight": 14
+          "weight": 8
         },
         {
-          "block": "minecraft:moss_carpet",
-          "weight": 30
+          "block": {
+            "id": "polishforests:needle_litter",
+            "properties": {
+              "facing": "north",
+              "mossy": "true",
+              "segment_amount": "1"
+            }
+          },
+          "weight": 26
         },
         {
           "block": {
@@ -710,64 +717,64 @@
               "facing": "north",
               "mossy": "true",
               "segment_amount": "2"
-            }
-          },
-          "weight": 2
-        },
-        {
-          "block": {
-            "id": "polishforests:needle_litter",
-            "properties": {
-              "facing": "north",
-              "mossy": "true",
-              "segment_amount": "3"
-            }
-          },
-          "weight": 2
-        },
-        {
-          "block": {
-            "id": "polishforests:needle_litter",
-            "properties": {
-              "facing": "north",
-              "mossy": "true",
-              "segment_amount": "4"
-            }
-          },
-          "weight": 2
-        },
-        {
-          "block": {
-            "id": "polishforests:needle_litter",
-            "properties": {
-              "facing": "north",
-              "mossy": "false",
-              "segment_amount": "2"
-            }
-          },
-          "weight": 2
-        },
-        {
-          "block": {
-            "id": "polishforests:needle_litter",
-            "properties": {
-              "facing": "north",
-              "mossy": "false",
-              "segment_amount": "3"
-            }
-          },
-          "weight": 2
-        },
-        {
-          "block": {
-            "id": "polishforests:needle_litter",
-            "properties": {
-              "facing": "north",
-              "mossy": "false",
-              "segment_amount": "4"
             }
           },
           "weight": 4
+        },
+        {
+          "block": {
+            "id": "polishforests:needle_litter",
+            "properties": {
+              "facing": "north",
+              "mossy": "true",
+              "segment_amount": "3"
+            }
+          },
+          "weight": 4
+        },
+        {
+          "block": {
+            "id": "polishforests:needle_litter",
+            "properties": {
+              "facing": "north",
+              "mossy": "true",
+              "segment_amount": "4"
+            }
+          },
+          "weight": 6
+        },
+        {
+          "block": {
+            "id": "polishforests:needle_litter",
+            "properties": {
+              "facing": "north",
+              "mossy": "false",
+              "segment_amount": "2"
+            }
+          },
+          "weight": 1
+        },
+        {
+          "block": {
+            "id": "polishforests:needle_litter",
+            "properties": {
+              "facing": "north",
+              "mossy": "false",
+              "segment_amount": "3"
+            }
+          },
+          "weight": 1
+        },
+        {
+          "block": {
+            "id": "polishforests:needle_litter",
+            "properties": {
+              "facing": "north",
+              "mossy": "false",
+              "segment_amount": "4"
+            }
+          },
+          "weight": 1
         },
         {
           "block": "minecraft:fern",
@@ -838,8 +845,15 @@
       "patch_shape": "blobs",
       "plants": [
         {
-          "block": "minecraft:moss_carpet",
-          "weight": 18
+          "block": {
+            "id": "polishforests:needle_litter",
+            "properties": {
+              "facing": "north",
+              "mossy": "true",
+              "segment_amount": "1"
+            }
+          },
+          "weight": 16
         },
         {
           "block": {
@@ -864,7 +878,7 @@
             "id": "polishforests:needle_litter",
             "properties": {
               "facing": "north",
-              "mossy": "false",
+              "mossy": "true",
               "segment_amount": "2"
             }
           },
@@ -875,7 +889,7 @@
             "id": "polishforests:needle_litter",
             "properties": {
               "facing": "north",
-              "mossy": "false",
+              "mossy": "true",
               "segment_amount": "3"
             }
           },
@@ -886,11 +900,44 @@
             "id": "polishforests:needle_litter",
             "properties": {
               "facing": "north",
+              "mossy": "true",
+              "segment_amount": "4"
+            }
+          },
+          "weight": 2
+        },
+        {
+          "block": {
+            "id": "polishforests:needle_litter",
+            "properties": {
+              "facing": "north",
+              "mossy": "false",
+              "segment_amount": "2"
+            }
+          },
+          "weight": 1
+        },
+        {
+          "block": {
+            "id": "polishforests:needle_litter",
+            "properties": {
+              "facing": "north",
+              "mossy": "false",
+              "segment_amount": "3"
+            }
+          },
+          "weight": 1
+        },
+        {
+          "block": {
+            "id": "polishforests:needle_litter",
+            "properties": {
+              "facing": "north",
               "mossy": "false",
               "segment_amount": "4"
             }
           },
-          "weight": 4
+          "weight": 2
         },
         {
           "block": {
@@ -900,7 +947,7 @@
               "segment_amount": "2"
             }
           },
-          "weight": 3
+          "weight": 1
         },
         {
           "block": {
@@ -910,7 +957,7 @@
               "segment_amount": "3"
             }
           },
-          "weight": 3
+          "weight": 1
         },
         {
           "block": {
@@ -920,7 +967,7 @@
               "segment_amount": "4"
             }
           },
-          "weight": 4
+          "weight": 2
         },
         {
           "block": "minecraft:fern",
@@ -948,7 +995,7 @@
               "segment_amount": "2"
             }
           },
-          "weight": 4
+          "weight": 1
         },
         {
           "block": {
@@ -958,7 +1005,7 @@
               "segment_amount": "3"
             }
           },
-          "weight": 4
+          "weight": 1
         },
         {
           "block": {
@@ -968,7 +1015,7 @@
               "segment_amount": "4"
             }
           },
-          "weight": 6
+          "weight": 3
         },
         {
           "block": "minecraft:moss_carpet",
@@ -1052,7 +1099,7 @@
       "biomes": [
         "oak_hornbeam_forest"
       ],
-      "coverage": 0.97,
+      "coverage": 0.98,
       "patch": 5,
       "patch_shape": "blobs",
       "plants": [
@@ -1064,7 +1111,7 @@
               "flower_amount": "2"
             }
           },
-          "weight": 14
+          "weight": 17
         },
         {
           "block": {
@@ -1074,7 +1121,7 @@
               "flower_amount": "3"
             }
           },
-          "weight": 14
+          "weight": 17
         },
         {
           "block": {
@@ -1084,7 +1131,7 @@
               "flower_amount": "4"
             }
           },
-          "weight": 14
+          "weight": 18
         },
         {
           "block": {
@@ -1122,11 +1169,11 @@
         },
         {
           "block": "minecraft:fern",
-          "weight": 7
+          "weight": 8
         },
         {
           "block": "minecraft:short_grass",
-          "weight": 5
+          "weight": 6
         },
         {
           "block": {
@@ -1136,7 +1183,7 @@
               "segment_amount": "2"
             }
           },
-          "weight": 6
+          "weight": 3
         },
         {
           "block": {
@@ -1146,7 +1193,7 @@
               "segment_amount": "3"
             }
           },
-          "weight": 6
+          "weight": 3
         },
         {
           "block": {
@@ -1156,11 +1203,11 @@
               "segment_amount": "4"
             }
           },
-          "weight": 8
+          "weight": 3
         },
         {
           "block": "minecraft:moss_carpet",
-          "weight": 3
+          "weight": 1
         }
       ]
     },
