@@ -220,6 +220,10 @@ final class NormsCensus {
 			}
 		}
 		build(level, plot);
+		// The dead wood placed in the world is recorded by column (DEAD): the test plot, built high above some site, must
+		// not take the dead wood of the world's columns under it (found in step V12 with fresh_pine_1 as the first site).
+		java.util.Set<Long> dead = new java.util.HashSet<>(DEAD);
+		DEAD.clear();
 		try {
 			CensusGrid read = read(level, minX, minZ, plot.sizeX(), plot.sizeZ(), plot.height(), records, (a, b) -> true);
 			List<String> differences = plot.differences(read, 20);
@@ -247,6 +251,7 @@ final class NormsCensus {
 			return String.format(Locale.ROOT, "census test plot at (%d, %d, %d): grid read back cell by cell, %d values as counted by hand, "
 					+ "%d objects", x, groundY, z, values.size(), census.objects().size());
 		} finally {
+			DEAD.addAll(dead);
 			clear(level, plot);
 		}
 	}
