@@ -80,6 +80,8 @@ public final class ForestBlend {
 
 	/** Lattice points classified (samples of the landscape model, the blend's cost; diagnostics of the slice test). */
 	public static final java.util.concurrent.atomic.LongAdder SAMPLES = new java.util.concurrent.atomic.LongAdder();
+	/** Kernel sums of lattice nodes computed (not found in the shared node table; diagnostics of the slice test). */
+	public static final java.util.concurrent.atomic.LongAdder NODES = new java.util.concurrent.atomic.LongAdder();
 
 	/** Forest site type of each forest's canonical code. */
 	private static final ForestSiteType[] SITES = {ForestSiteType.FRESH_CONIFEROUS, ForestSiteType.FRESH_MIXED_CONIFEROUS,
@@ -104,6 +106,7 @@ public final class ForestBlend {
 	private final int radius;
 	private final Sampler sampler;
 	private final Lattice lattice = new Lattice();
+	private final Nodes nodes = new Nodes();
 	/** Kernel stencil: lattice offsets (di, dj) within the radius and their weights, normalized to a sum of 1. */
 	private final int[] stencilI;
 	private final int[] stencilJ;
@@ -232,6 +235,33 @@ public final class ForestBlend {
 		out[offset + 2] = c;
 		out[offset + 3] = d;
 		out[offset + 4] = e;
+	}
+
+	/**
+	 * {@link #node(int, int, float[], int)} through the node table shared by all threads ({@link Nodes}): the kernel sum of
+	 * a lattice point is computed once while it stays in the table, not again by each chunk whose field covers it (a
+	 * chunk's field holds about 100 nodes in the realistic scale and about 300 in the gameplay scale, each a sum over
+	 * {@link #stencilSize()} lattice points). The sum is a pure function of the lattice point, so the result does not
+	 * depend on whether it came from the table.
+	 */
+	void sharedNode(int i, int j, float[] out, int offset) {
+		Nodes.Node e = nodes.get(i, j);
+		if (e == null) {
+			node(i, j, out, offset);
+			NODES.increment();
+			nodes.put(new Nodes.Node(i, j, out, offset));
+			return;
+		}
+		out[offset] = e.a;
+		out[offset + 1] = e.b;
+		out[offset + 2] = e.c;
+		out[offset + 3] = e.d;
+		out[offset + 4] = e.e;
+	}
+
+	/** Number of lattice points in the kernel's stencil. */
+	public int stencilSize() {
+		return stencilW.length;
 	}
 
 	/**
@@ -387,10 +417,54 @@ public final class ForestBlend {
 			}
 			int c = a * n + b;
 			if (!done[c]) {
-				ForestBlend.this.node(i, j, shares, SHARES * c);
+				ForestBlend.this.sharedNode(i, j, shares, SHARES * c);
 				done[c] = true;
 			}
 			return SHARES * c;
+		}
+	}
+
+	/**
+	 * Shares of the lattice nodes (the kernel sums), a direct-mapped table shared by all threads without locks: a slot
+	 * holds an immutable entry with its lattice point (final fields, so a reader sees a whole entry or none), and an
+	 * overwritten entry is only computed again.
+	 */
+	private static final class Nodes {
+		private static final int BITS = 16;
+		private final java.util.concurrent.atomic.AtomicReferenceArray<Node> slots =
+				new java.util.concurrent.atomic.AtomicReferenceArray<>(1 << BITS);
+
+		static final class Node {
+			final int i;
+			final int j;
+			final float a;
+			final float b;
+			final float c;
+			final float d;
+			final float e;
+
+			Node(int i, int j, float[] s, int offset) {
+				this.i = i;
+				this.j = j;
+				this.a = s[offset];
+				this.b = s[offset + 1];
+				this.c = s[offset + 2];
+				this.d = s[offset + 3];
+				this.e = s[offset + 4];
+			}
+		}
+
+		private static int slot(int i, int j) {
+			return (int) (Noise.mix(i * 0xC2B2_AE3D_27D4_EB4FL + j * 0x9E37_79B9_7F4A_7C15L) >>> (64 - BITS));
+		}
+
+		@org.jspecify.annotations.Nullable Node get(int i, int j) {
+			Node e = slots.getOpaque(slot(i, j));
+			return e != null && e.i == i && e.j == j ? e : null;
+		}
+
+		void put(Node e) {
+			slots.setRelease(slot(e.i, e.j), e);
 		}
 	}
 

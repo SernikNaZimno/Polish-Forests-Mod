@@ -1053,8 +1053,9 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 						pl.polishforests.worldgen.feature.TreeStandFeature.SKIPPED_BASE.sum(),
 						pl.polishforests.worldgen.feature.TreeStandFeature.SKIPPED_WRITE.sum(),
 						pl.polishforests.worldgen.feature.TreeStandFeature.SKIPPED_SUPPRESSED.sum())
-				+ String.format(Locale.ROOT, "; since the start: forest blend lattice samples %d, planner twins %d (step Z1)",
+				+ String.format(Locale.ROOT, "; since the start: forest blend lattice samples %d, kernel sums %d, planner twins %d (step Z1)",
 						pl.polishforests.worldgen.feature.plan.ForestBlend.SAMPLES.sum(),
+						pl.polishforests.worldgen.feature.plan.ForestBlend.NODES.sum(),
 						pl.polishforests.worldgen.feature.TreeStandFeature.TWINS.sum())
 				+ "; HABITAT_MISS " + (after[after.length - 1] - before[before.length - 1]);
 	}

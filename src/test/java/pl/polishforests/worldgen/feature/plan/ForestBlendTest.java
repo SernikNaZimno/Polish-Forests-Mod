@@ -98,6 +98,63 @@ class ForestBlendTest {
 	}
 
 	@Test
+	void sharedNodeTableGivesTheSameSharesAsTheKernelSumInAnyOrderAndThread() {
+		int[] codes = {FRESH, MIXED_PINE, EcotoneTest.code(HabitatBiome.MIXED_FOREST, Zone.NONE),
+				EcotoneTest.code(HabitatBiome.OAK_HORNBEAM_FOREST, Zone.NONE), EcotoneTest.code(HabitatBiome.ALDER_CARR, Zone.NONE)};
+		// Patches of 40 blocks of the four forests and an alder carr: every node mixes several categories.
+		IntBinaryOperator world = (x, z) -> codes[(int) Math.floorMod(
+				pl.polishforests.worldgen.landscape.Noise.mix(Math.floorDiv(x, 40) * 31L + Math.floorDiv(z, 40) * 1_000_003L), 5L)];
+		for (double k : new double[] {1.0, 0.5}) {
+			ForestBlend shared = blend(world, k);
+			ForestBlend fresh = blend(world, k);
+			List<int[]> chunks = new ArrayList<>();
+			for (int cx = -12; cx < 12; cx++) {
+				for (int cz = -12; cz < 12; cz++) {
+					chunks.add(new int[] {cx, cz});
+				}
+			}
+			java.util.Collections.shuffle(chunks, new java.util.Random(7));
+			long before = ForestBlend.NODES.sum();
+			// Each chunk's field twice (in parallel, in shuffled order): from the shared table and from the kernel sum.
+			List<String> diffs = java.util.Collections.synchronizedList(new ArrayList<>());
+			chunks.parallelStream().forEach(c -> {
+				ForestBlend.Field f = shared.field(c[0], c[1]);
+				float[] a = new float[ForestBlend.SHARES];
+				float[] b = new float[ForestBlend.SHARES];
+				int s = shared.spacing();
+				for (int x = (c[0] << 4) - 20; x < (c[0] << 4) + 36; x += 3) {
+					for (int z = (c[1] << 4) - 20; z < (c[1] << 4) + 36; z += 5) {
+						f.at(x, z, a);
+						int i = Math.floorDiv(x - s / 2, s);
+						int j = Math.floorDiv(z - s / 2, s);
+						float fx = (x - s / 2 - i * s) / (float) s;
+						float fz = (z - s / 2 - j * s) / (float) s;
+						float[] n = new float[4 * ForestBlend.SHARES];
+						fresh.node(i, j, n, 0);
+						fresh.node(i + 1, j, n, ForestBlend.SHARES);
+						fresh.node(i, j + 1, n, 2 * ForestBlend.SHARES);
+						fresh.node(i + 1, j + 1, n, 3 * ForestBlend.SHARES);
+						for (int q = 0; q < ForestBlend.SHARES; q++) {
+							float top = n[q] + (n[ForestBlend.SHARES + q] - n[q]) * fx;
+							float bottom = n[2 * ForestBlend.SHARES + q] + (n[3 * ForestBlend.SHARES + q] - n[2 * ForestBlend.SHARES + q]) * fx;
+							b[q] = top + (bottom - top) * fz;
+						}
+						if (!Arrays.equals(a, b)) {
+							diffs.add(x + "," + z + ": " + Arrays.toString(a) + " vs " + Arrays.toString(b));
+						}
+					}
+				}
+			});
+			long computed = ForestBlend.NODES.sum() - before;
+			int n = (int) Math.ceil((16.0 + 2 * (Ecotone.REACH + Ecotone.WARP)) / shared.spacing()) + 2;
+			System.out.printf(Locale.ROOT, "[blend] k %.1f: %d chunks, kernel sums %d (%.1f per chunk, without the table up to about %d), stencil %d%n",
+					k, chunks.size(), computed, (double) computed / chunks.size(), n * n, shared.stencilSize());
+			assertTrue(diffs.isEmpty(), diffs.size() + " columns differ, e.g. " + (diffs.isEmpty() ? "" : diffs.get(0)));
+			assertTrue(computed < chunks.size() * (long) n * n / 3, "the table shares the nodes between chunks: " + computed);
+		}
+	}
+
+	@Test
 	void meanderMovesTheBlendAndOtherBiomesAndSoilsKeepTheirRamps() {
 		double k = 1;
 		IntBinaryOperator world = (x, z) -> x < 0 ? FRESH : MIXED_PINE;
