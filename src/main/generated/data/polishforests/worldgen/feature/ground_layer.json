@@ -681,20 +681,105 @@
       "biomes": [
         "fresh_pine_forest"
       ],
-      "coverage": 0.85,
-      "patch": 4,
+      "coverage": 0.97,
+      "patch": 6,
+      "patch_shape": "blobs",
       "plants": [
         {
-          "block": "minecraft:moss_carpet",
-          "weight": 50
+          "block": {
+            "id": "polishforests:bilberry",
+            "properties": {
+              "berries": "false",
+              "mossy": "true"
+            }
+          },
+          "weight": 36
         },
         {
-          "block": "minecraft:bush",
-          "weight": 33
+          "block": "polishforests:bilberry",
+          "weight": 14
+        },
+        {
+          "block": "minecraft:moss_carpet",
+          "weight": 30
+        },
+        {
+          "block": {
+            "id": "polishforests:needle_litter",
+            "properties": {
+              "facing": "north",
+              "mossy": "true",
+              "segment_amount": "2"
+            }
+          },
+          "weight": 2
+        },
+        {
+          "block": {
+            "id": "polishforests:needle_litter",
+            "properties": {
+              "facing": "north",
+              "mossy": "true",
+              "segment_amount": "3"
+            }
+          },
+          "weight": 2
+        },
+        {
+          "block": {
+            "id": "polishforests:needle_litter",
+            "properties": {
+              "facing": "north",
+              "mossy": "true",
+              "segment_amount": "4"
+            }
+          },
+          "weight": 2
+        },
+        {
+          "block": {
+            "id": "polishforests:needle_litter",
+            "properties": {
+              "facing": "north",
+              "mossy": "false",
+              "segment_amount": "2"
+            }
+          },
+          "weight": 2
+        },
+        {
+          "block": {
+            "id": "polishforests:needle_litter",
+            "properties": {
+              "facing": "north",
+              "mossy": "false",
+              "segment_amount": "3"
+            }
+          },
+          "weight": 2
+        },
+        {
+          "block": {
+            "id": "polishforests:needle_litter",
+            "properties": {
+              "facing": "north",
+              "mossy": "false",
+              "segment_amount": "4"
+            }
+          },
+          "weight": 4
         },
         {
           "block": "minecraft:fern",
-          "weight": 5
+          "weight": 2
+        },
+        {
+          "block": "minecraft:short_grass",
+          "weight": 2
+        },
+        {
+          "block": "polishforests:bracken",
+          "weight": 2
         }
       ]
     },
@@ -748,24 +833,64 @@
       "biomes": [
         "mixed_pine_forest"
       ],
-      "coverage": 0.85,
-      "patch": 4,
+      "coverage": 0.93,
+      "patch": 6,
+      "patch_shape": "blobs",
       "plants": [
         {
           "block": "minecraft:moss_carpet",
-          "weight": 30
+          "weight": 18
         },
         {
-          "block": "minecraft:bush",
-          "weight": 26
+          "block": {
+            "id": "polishforests:bilberry",
+            "properties": {
+              "berries": "false",
+              "mossy": "true"
+            }
+          },
+          "weight": 16
         },
         {
-          "block": "minecraft:fern",
-          "weight": 12
+          "block": "polishforests:bilberry",
+          "weight": 10
         },
         {
-          "block": "minecraft:large_fern",
-          "weight": 3
+          "block": "polishforests:bracken",
+          "weight": 8
+        },
+        {
+          "block": {
+            "id": "polishforests:needle_litter",
+            "properties": {
+              "facing": "north",
+              "mossy": "false",
+              "segment_amount": "2"
+            }
+          },
+          "weight": 2
+        },
+        {
+          "block": {
+            "id": "polishforests:needle_litter",
+            "properties": {
+              "facing": "north",
+              "mossy": "false",
+              "segment_amount": "3"
+            }
+          },
+          "weight": 2
+        },
+        {
+          "block": {
+            "id": "polishforests:needle_litter",
+            "properties": {
+              "facing": "north",
+              "mossy": "false",
+              "segment_amount": "4"
+            }
+          },
+          "weight": 4
         },
         {
           "block": {
@@ -775,7 +900,7 @@
               "segment_amount": "2"
             }
           },
-          "weight": 5
+          "weight": 3
         },
         {
           "block": {
@@ -785,7 +910,7 @@
               "segment_amount": "3"
             }
           },
-          "weight": 5
+          "weight": 3
         },
         {
           "block": {
@@ -795,7 +920,15 @@
               "segment_amount": "4"
             }
           },
-          "weight": 5
+          "weight": 4
+        },
+        {
+          "block": "minecraft:fern",
+          "weight": 6
+        },
+        {
+          "block": "minecraft:short_grass",
+          "weight": 3
         }
       ]
     },
@@ -803,8 +936,9 @@
       "biomes": [
         "mixed_forest"
       ],
-      "coverage": 0.8,
-      "patch": 4,
+      "coverage": 0.9,
+      "patch": 5,
+      "patch_shape": "blobs",
       "plants": [
         {
           "block": {
@@ -814,7 +948,7 @@
               "segment_amount": "2"
             }
           },
-          "weight": 13
+          "weight": 4
         },
         {
           "block": {
@@ -824,7 +958,7 @@
               "segment_amount": "3"
             }
           },
-          "weight": 13
+          "weight": 4
         },
         {
           "block": {
@@ -834,53 +968,83 @@
               "segment_amount": "4"
             }
           },
-          "weight": 14
+          "weight": 6
         },
         {
           "block": "minecraft:moss_carpet",
-          "weight": 12
+          "weight": 10
+        },
+        {
+          "block": {
+            "id": "polishforests:wood_anemone",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "2"
+            }
+          },
+          "weight": 4
+        },
+        {
+          "block": {
+            "id": "polishforests:wood_anemone",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "3"
+            }
+          },
+          "weight": 4
+        },
+        {
+          "block": {
+            "id": "polishforests:wood_anemone",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "4"
+            }
+          },
+          "weight": 6
+        },
+        {
+          "block": {
+            "id": "polishforests:hepatica",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "2"
+            }
+          },
+          "weight": 1
+        },
+        {
+          "block": {
+            "id": "polishforests:hepatica",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "3"
+            }
+          },
+          "weight": 1
+        },
+        {
+          "block": {
+            "id": "polishforests:hepatica",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "4"
+            }
+          },
+          "weight": 1
         },
         {
           "block": "minecraft:fern",
           "weight": 8
         },
         {
-          "block": {
-            "id": "minecraft:wildflowers",
-            "properties": {
-              "facing": "north",
-              "flower_amount": "2"
-            }
-          },
-          "weight": 2
-        },
-        {
-          "block": {
-            "id": "minecraft:wildflowers",
-            "properties": {
-              "facing": "north",
-              "flower_amount": "3"
-            }
-          },
-          "weight": 2
-        },
-        {
-          "block": {
-            "id": "minecraft:wildflowers",
-            "properties": {
-              "facing": "north",
-              "flower_amount": "4"
-            }
-          },
-          "weight": 4
-        },
-        {
           "block": "minecraft:short_grass",
           "weight": 5
         },
         {
-          "block": "minecraft:bush",
-          "weight": 3
+          "block": "polishforests:bilberry",
+          "weight": 4
         }
       ]
     },
@@ -888,9 +1052,82 @@
       "biomes": [
         "oak_hornbeam_forest"
       ],
-      "coverage": 0.85,
-      "patch": 4,
+      "coverage": 0.97,
+      "patch": 5,
+      "patch_shape": "blobs",
       "plants": [
+        {
+          "block": {
+            "id": "polishforests:wood_anemone",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "2"
+            }
+          },
+          "weight": 14
+        },
+        {
+          "block": {
+            "id": "polishforests:wood_anemone",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "3"
+            }
+          },
+          "weight": 14
+        },
+        {
+          "block": {
+            "id": "polishforests:wood_anemone",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "4"
+            }
+          },
+          "weight": 14
+        },
+        {
+          "block": {
+            "id": "polishforests:hepatica",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "2"
+            }
+          },
+          "weight": 2
+        },
+        {
+          "block": {
+            "id": "polishforests:hepatica",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "3"
+            }
+          },
+          "weight": 2
+        },
+        {
+          "block": {
+            "id": "polishforests:hepatica",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "4"
+            }
+          },
+          "weight": 4
+        },
+        {
+          "block": "minecraft:lily_of_the_valley",
+          "weight": 4
+        },
+        {
+          "block": "minecraft:fern",
+          "weight": 7
+        },
+        {
+          "block": "minecraft:short_grass",
+          "weight": 5
+        },
         {
           "block": {
             "id": "minecraft:leaf_litter",
@@ -899,7 +1136,7 @@
               "segment_amount": "2"
             }
           },
-          "weight": 15
+          "weight": 6
         },
         {
           "block": {
@@ -909,7 +1146,7 @@
               "segment_amount": "3"
             }
           },
-          "weight": 15
+          "weight": 6
         },
         {
           "block": {
@@ -919,49 +1156,11 @@
               "segment_amount": "4"
             }
           },
-          "weight": 15
-        },
-        {
-          "block": {
-            "id": "minecraft:wildflowers",
-            "properties": {
-              "facing": "north",
-              "flower_amount": "2"
-            }
-          },
-          "weight": 6
-        },
-        {
-          "block": {
-            "id": "minecraft:wildflowers",
-            "properties": {
-              "facing": "north",
-              "flower_amount": "3"
-            }
-          },
-          "weight": 6
-        },
-        {
-          "block": {
-            "id": "minecraft:wildflowers",
-            "properties": {
-              "facing": "north",
-              "flower_amount": "4"
-            }
-          },
           "weight": 8
         },
         {
-          "block": "minecraft:lily_of_the_valley",
-          "weight": 4
-        },
-        {
-          "block": "minecraft:fern",
-          "weight": 6
-        },
-        {
-          "block": "minecraft:short_grass",
-          "weight": 6
+          "block": "minecraft:moss_carpet",
+          "weight": 3
         }
       ]
     },

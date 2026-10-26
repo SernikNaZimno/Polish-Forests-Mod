@@ -18,6 +18,11 @@ import pl.polishforests.worldgen.landscape.Noise;
  * from the column (40%) or from its patch (60%), a cell of the patch size whose border is shifted by up to one block per
  * column; a mixture of two uniform values is uniform, so the mean coverage and the shares stay the palette's, while
  * plants grow in clumps and the ground layer has bare patches, as in a real forest floor.
+ *
+ * <p>The patches of a rule with {@link PatchShape#BLOBS} (step V12; the CP-B remark on the pine forest: flat patches of
+ * litter and bare ground with rectangular edges) are the cells of a jittered grid of the patch size seen through a
+ * smooth warp of about half a patch ({@link #blob}): rounded, irregular patches of mixed sizes without straight edges,
+ * with the same mean coverage and shares (each column still takes one uniform value, its own or its patch's).
  */
 public final class ColumnPlan {
 	/** Where a plant stands (new constants only at the end: the order is part of the packed placements). */
@@ -58,6 +63,20 @@ public final class ColumnPlan {
 
 	/** Share of the values of a patchy rule taken from the patch rather than from the column. */
 	static final double PATCH_SHARE = 0.6;
+	/** The same for the rounded patches ({@link PatchShape#BLOBS}): more coherent, the edges still frayed. */
+	static final double BLOB_SHARE = 0.75;
+	/** Amplitude of the warp of the rounded patches, in patch sizes. */
+	static final double BLOB_WARP = 0.55;
+	/** Salt of the warp of the rounded patches ({@code feature.ground.patches}, ZW-2). */
+	static final long BLOB_SALT = 0x4F1B_6C3A_29D7_E085L;
+
+	/** Shape of the patches of a rule (new constants only at the end: the palettes name them). */
+	public enum PatchShape {
+		/** Square cells of the patch size, their borders shifted by up to a block per column (M2). */
+		CELLS,
+		/** Rounded, irregular patches (step V12). */
+		BLOBS
+	}
 
 	/**
 	 * A palette rule resolved for planning.
@@ -72,13 +91,20 @@ public final class ColumnPlan {
 	 * @param plants   indices of the plants in the layer's plant list
 	 * @param weights  weights of the plants
 	 * @param edges    mask of {@link Ecotone.Edge} ordinals the column must have (0: any; step S8b)
+	 * @param shape    shape of the patches (step V12)
 	 */
 	public record Rule(HabitatMatch match, Medium medium, int minDepth, int maxDepth, int grounds, double coverage, int patch,
-			int[] plants, int[] weights, int edges) {
+			int[] plants, int[] weights, int edges, PatchShape shape) {
 		public Rule {
 			if (plants.length != weights.length) {
 				throw new IllegalArgumentException("plants and weights differ in length");
 			}
+		}
+
+		/** A rule with square patches. */
+		public Rule(HabitatMatch match, Medium medium, int minDepth, int maxDepth, int grounds, double coverage, int patch,
+				int[] plants, int[] weights, int edges) {
+			this(match, medium, minDepth, maxDepth, grounds, coverage, patch, plants, weights, edges, PatchShape.CELLS);
 		}
 
 		/** A rule for any forest edge class. */
@@ -183,10 +209,10 @@ public final class ColumnPlan {
 			Rule rule = palette.rules().get(r);
 			int x = x0 + (i >> 4);
 			int z = z0 + (i & 15);
-			if (value(seed, x, z, 0x51A7L, rule.patch()) >= rule.coverage()) {
+			if (value(seed, x, z, 0x51A7L, rule.patch(), rule.shape()) >= rule.coverage()) {
 				continue;
 			}
-			int plant = pick(rule, value(seed, x, z, 0x9E11L, rule.patch()));
+			int plant = pick(rule, value(seed, x, z, 0x9E11L, rule.patch(), rule.shape()));
 			if (plant >= 0) {
 				out[n++] = i << 16 | rule.medium().ordinal() << 13 | plant;
 			}
@@ -211,6 +237,62 @@ public final class ColumnPlan {
 			}
 		}
 		return rule.plants()[rule.plants().length - 1];
+	}
+
+	/** Uniform value in [0, 1) of the column at world (x, z) for patches of a shape. */
+	static double value(long seed, int x, int z, long salt, int patch, PatchShape shape) {
+		return shape == PatchShape.BLOBS && patch > 1 ? blob(seed, x, z, salt, patch) : value(seed, x, z, salt, patch);
+	}
+
+	/**
+	 * Uniform value in [0, 1) of the column at world (x, z) with rounded patches: its own value, or with probability
+	 * {@link #BLOB_SHARE} the value of its patch, the nearest point of a jittered grid of the patch size (one point per
+	 * cell, anywhere in it) to the column moved by a smooth warp ({@link #smooth}, wavelength two patches, amplitude
+	 * {@link #BLOB_WARP} patches). The patches are rounded polygons of mixed sizes whose borders bend; a column takes the
+	 * uniform value of one point, so the mean coverage and the shares stay the palette's.
+	 */
+	static double blob(long seed, int x, int z, long salt, int patch) {
+		long h = hash(seed, x, z, salt);
+		long h2 = Noise.mix(h ^ 0x2545_F491_4F6C_DD1DL);
+		if ((h2 & 0xFFFF) >= BLOB_SHARE * 0x10000) {
+			return TreeStandPlan.unit(h);
+		}
+		long warpSeed = seed ^ BLOB_SALT ^ salt;
+		double wave = 2.0 * patch;
+		double wx = (x + 0.5) / patch + BLOB_WARP * (2 * smooth(warpSeed, x / wave, z / wave) - 1);
+		double wz = (z + 0.5) / patch + BLOB_WARP * (2 * smooth(warpSeed ^ 0x6A09_E667_F3BC_C909L, x / wave, z / wave) - 1);
+		int cx = (int) Math.floor(wx);
+		int cz = (int) Math.floor(wz);
+		double best = Double.MAX_VALUE;
+		long bestHash = 0;
+		for (int dx = -1; dx <= 1; dx++) {
+			for (int dz = -1; dz <= 1; dz++) {
+				long c = hash(seed, cx + dx, cz + dz, salt ^ 0x7A7C_4E5BL);
+				double px = cx + dx + TreeStandPlan.unit(Noise.mix(c ^ 0x1L));
+				double pz = cz + dz + TreeStandPlan.unit(Noise.mix(c ^ 0x2L));
+				double d = (px - wx) * (px - wx) + (pz - wz) * (pz - wz);
+				if (d < best) {
+					best = d;
+					bestHash = c;
+				}
+			}
+		}
+		return TreeStandPlan.unit(Noise.mix(bestHash ^ 0x3L));
+	}
+
+	/** Smooth value noise in [0, 1] at (u, v) in lattice units: smoothstep interpolation of hashed lattice values. */
+	static double smooth(long seed, double u, double v) {
+		int iu = (int) Math.floor(u);
+		int iv = (int) Math.floor(v);
+		double fu = u - iu;
+		double fv = v - iv;
+		fu = fu * fu * (3 - 2 * fu);
+		fv = fv * fv * (3 - 2 * fv);
+		double a = TreeStandPlan.unit(hash(seed, iu, iv, 0x3C6E_F372L));
+		double b = TreeStandPlan.unit(hash(seed, iu + 1, iv, 0x3C6E_F372L));
+		double c = TreeStandPlan.unit(hash(seed, iu, iv + 1, 0x3C6E_F372L));
+		double d = TreeStandPlan.unit(hash(seed, iu + 1, iv + 1, 0x3C6E_F372L));
+		return a + (b - a) * fu + (c - a) * fv + (a - b - c + d) * fu * fv;
 	}
 
 	/**

@@ -281,8 +281,9 @@ class GroundLayerPlanTest {
 		}
 		JsonArray rules = BiomeJsonTest.json(BiomeJsonTest.GENERATED.resolve(
 				"data/polishforests/worldgen/feature/ground_layer.json")).getAsJsonArray("rules");
-		// The dwarf shrub share of the pine forests stays (the former sweet berry weight went to the bush).
-		for (HabitatBiome b : List.of(HabitatBiome.FRESH_PINE_FOREST, HabitatBiome.BOG_WOODLAND, HabitatBiome.MOIST_PINE_FOREST)) {
+		// The dwarf shrub share of the pine forests stays (the former sweet berry weight went to the bush; the fresh pine
+		// forest has the own bilberry since step V12, slicePalettesMeetTheNorms).
+		for (HabitatBiome b : List.of(HabitatBiome.BOG_WOODLAND, HabitatBiome.MOIST_PINE_FOREST)) {
 			JsonObject rule = null;
 			for (JsonElement e : rules) {
 				JsonObject r = e.getAsJsonObject();
@@ -306,6 +307,247 @@ class GroundLayerPlanTest {
 			double share = rule.get("coverage").getAsDouble() * bush / all;
 			assertTrue(share >= 0.2 && share <= 0.4, b.id() + ": dwarf shrubs " + share);
 		}
+	}
+
+	// ------------------------------------------------------------------ step V12: the herb layer of the slice
+
+	/** Rounded patches: cover and shares as the palette's (as the square patches, ±5%). */
+	@Test
+	void blobsKeepCoverAndShares() {
+		ColumnPlan.Palette p = new ColumnPlan.Palette(List.of(new ColumnPlan.Rule(biome(HabitatBiome.FRESH_PINE_FOREST),
+				ColumnPlan.Medium.LAND, 1, 64, 0, 0.9, 6, new int[] {0, 1, 2}, new int[] {50, 30, 20}, 0, ColumnPlan.PatchShape.BLOBS)));
+		ColumnPlan.Columns c = uniform(code(HabitatBiome.FRESH_PINE_FOREST, Zone.NONE), 0, ColumnPlan.Ground.PODZOL, false);
+		long placed = 0;
+		long[] counts = new long[3];
+		int chunks = 0;
+		for (int cx = -20; cx < 20; cx++) {
+			for (int cz = -10; cz < 10; cz++) {
+				chunks++;
+				for (int q : ColumnPlan.of(c, p, SEED, cx, cz, SALT)) {
+					counts[ColumnPlan.plant(q)]++;
+					placed++;
+				}
+			}
+		}
+		double cover = (double) placed / (chunks * 256);
+		System.out.printf(Locale.ROOT, "blobs: cover %.3f (palette 0.90), plants %s%n", cover, Arrays.toString(counts));
+		assertEquals(0.9, cover, 0.05 * 0.9);
+		assertEquals(0.5, (double) counts[0] / placed, 0.05);
+		assertEquals(0.3, (double) counts[1] / placed, 0.05);
+		assertEquals(0.2, (double) counts[2] / placed, 0.05);
+		assertArrayEquals(ColumnPlan.of(c, p, SEED, 3, 7, SALT), ColumnPlan.of(c, p, SEED, 3, 7, SALT));
+	}
+
+	/**
+	 * The CP-B remark on the pine forest (flat patches of litter and bare ground with rectangular edges): the borders of
+	 * the rounded patches do not run straight. Over a field of 24 × 24 chunks, smoothed by a 3 × 3 majority twice (the
+	 * patch shapes the eye sees through the single columns), the borders between covered and bare columns of the square
+	 * patches of M2 lie on the lines of the cell grid (the border edges between x and x + 1 pile up at one value of
+	 * (x + 1) mod patch), those of the rounded patches spread evenly over the offsets (at most 25% at one offset, 1/6 for
+	 * an even spread). The patches still clump (neighbors agree more than independent columns) and show no seam at chunk
+	 * borders (the raw field).
+	 */
+	@Test
+	void blobsHaveNoStraightEdges() {
+		int patch = 6;
+		double[] longRuns = new double[2];
+		double[] aligned = new double[2];
+		double[] agree = new double[2];
+		for (ColumnPlan.PatchShape shape : ColumnPlan.PatchShape.values()) {
+			ColumnPlan.Palette p = new ColumnPlan.Palette(List.of(new ColumnPlan.Rule(HabitatMatch.ANY, ColumnPlan.Medium.LAND, 1, 64,
+					0, 0.5, patch, new int[] {0}, new int[] {1}, 0, shape)));
+			boolean[][] raw = field(p, 24);
+			boolean[][] covered = majority(majority(raw));
+			int n = covered.length;
+			long borders = 0;
+			long inLongRuns = 0;
+			long[] offsets = new long[patch];
+			long same = 0;
+			long pairs = 0;
+			long edgeCover = 0;
+			long edgeCount = 0;
+			long innerCover = 0;
+			long innerCount = 0;
+			for (int axis = 0; axis < 2; axis++) {
+				for (int a = 0; a < n - 1; a++) {
+					int run = 0;
+					for (int b = 0; b <= n; b++) {
+						boolean border = b < n && (axis == 0 ? covered[a][b] != covered[a + 1][b] : covered[b][a] != covered[b][a + 1]);
+						if (border) {
+							run++;
+							borders++;
+							offsets[(a + 1) % patch]++;
+						} else {
+							if (run >= patch) {
+								inLongRuns += run;
+							}
+							run = 0;
+						}
+						if (b < n) {
+							pairs++;
+							same += border ? 0 : 1;
+						}
+					}
+				}
+			}
+			for (int x = 0; x < n; x++) {
+				for (int z = 0; z < n; z++) {
+					if ((x & 15) == 0 || (x & 15) == 15) {
+						edgeCount++;
+						edgeCover += raw[x][z] ? 1 : 0;
+					} else {
+						innerCount++;
+						innerCover += raw[x][z] ? 1 : 0;
+					}
+				}
+			}
+			longRuns[shape.ordinal()] = (double) inLongRuns / borders;
+			aligned[shape.ordinal()] = (double) java.util.Arrays.stream(offsets).max().orElse(0) / borders;
+			agree[shape.ordinal()] = (double) same / pairs;
+			System.out.printf(Locale.ROOT, "%s: border edges at the most frequent offset in the cell grid %.3f, in straight runs of >= %d "
+					+ "blocks %.4f, neighbors agree %.3f, cover at chunk borders %.3f, inside %.3f%n", shape, aligned[shape.ordinal()], patch,
+					longRuns[shape.ordinal()], agree[shape.ordinal()],
+					(double) edgeCover / edgeCount, (double) innerCover / innerCount);
+			assertEquals((double) innerCover / innerCount, (double) edgeCover / edgeCount, 0.02, shape + ": seam at chunk borders");
+		}
+		assertTrue(aligned[0] > 0.3, "the square patches of M2 follow the cell grid (the measure works)");
+		assertTrue(aligned[1] < 0.25, "the rounded patches follow the cell grid");
+		assertTrue(longRuns[1] < longRuns[0], "rounded patches have more straight edges than square ones");
+		assertTrue(agree[1] > 0.5 + 0.1, "rounded patches do not clump");
+	}
+
+	/** A 3 × 3 majority filter (at least 5 of the 9 columns covered; the border rows stay as they are). */
+	private static boolean[][] majority(boolean[][] f) {
+		int n = f.length;
+		boolean[][] out = new boolean[n][n];
+		for (int x = 0; x < n; x++) {
+			for (int z = 0; z < n; z++) {
+				if (x == 0 || z == 0 || x == n - 1 || z == n - 1) {
+					out[x][z] = f[x][z];
+					continue;
+				}
+				int c = 0;
+				for (int dx = -1; dx <= 1; dx++) {
+					for (int dz = -1; dz <= 1; dz++) {
+						c += f[x + dx][z + dz] ? 1 : 0;
+					}
+				}
+				out[x][z] = c >= 5;
+			}
+		}
+		return out;
+	}
+
+	/** Covered columns of a size × size chunk field of a one-plant palette. */
+	private static boolean[][] field(ColumnPlan.Palette p, int size) {
+		boolean[][] covered = new boolean[size * 16][size * 16];
+		ColumnPlan.Columns c = uniform(code(HabitatBiome.FRESH_PINE_FOREST, Zone.NONE), 0, ColumnPlan.Ground.PODZOL, false);
+		for (int cx = 0; cx < size; cx++) {
+			for (int cz = 0; cz < size; cz++) {
+				for (int q : ColumnPlan.of(c, p, SEED, cx, cz, SALT)) {
+					int column = ColumnPlan.column(q);
+					covered[cx * 16 + (column >> 4)][cz * 16 + (column & 15)] = true;
+				}
+			}
+		}
+		return covered;
+	}
+
+	/**
+	 * The generated ground layer of the slice forests (docs/04 §6, N8 and N9, step V12) from the palette alone, before the
+	 * trees: the world covers somewhat less (trunks, root flares, dead wood and low shrubs take columns; M2 measured 0.85
+	 * to 0.95 of the palette), so the palette aims at the middle of the norms. Fresh pine forest: moss with the mossy
+	 * underside 66–85% (N9 60–90%), bilberry 45–60% (40–70%), herb layer 45–75% (40–80%), bracken at most 2%; mixed
+	 * coniferous forest: bracken 5–15% (its indicator); oak-hornbeam forest: herb layer in spring at least 68% (60–100%),
+	 * in summer (without the wood anemone) 22–50% (20–60%), moss on the ground at most 8% (5–20% with the trunk bases),
+	 * bare ground at most 5%. The order of the transect indicators (N15): moss does not grow and leaf litter does not
+	 * shrink from the fresh pine forest through the mixed coniferous and mixed forests to the oak-hornbeam forest.
+	 */
+	@Test
+	void slicePalettesMeetTheNorms() {
+		JsonArray rules = BiomeJsonTest.json(BiomeJsonTest.GENERATED.resolve(
+				"data/polishforests/worldgen/feature/ground_layer.json")).getAsJsonArray("rules");
+		JsonObject pine = landRule(rules, HabitatBiome.FRESH_PINE_FOREST);
+		JsonObject mixedPine = landRule(rules, HabitatBiome.MIXED_PINE_FOREST);
+		JsonObject mixed = landRule(rules, HabitatBiome.MIXED_FOREST);
+		JsonObject oak = landRule(rules, HabitatBiome.OAK_HORNBEAM_FOREST);
+		for (JsonObject r : List.of(pine, mixedPine, mixed, oak)) {
+			assertEquals("blobs", r.get("patch_shape").getAsString(), "rounded patches in the slice forests");
+		}
+		double pineMoss = share(pine, GroundLayerPlanTest::moss);
+		double pineBilberry = share(pine, (id, p) -> id.equals("polishforests:bilberry"));
+		double pineHerbs = share(pine, (id, p) -> herb(id));
+		double pineBracken = share(pine, (id, p) -> id.equals("polishforests:bracken"));
+		double oakSpring = share(oak, (id, p) -> herb(id));
+		double oakSummer = share(oak, (id, p) -> herb(id) && !id.equals("polishforests:wood_anemone"));
+		double oakMoss = share(oak, GroundLayerPlanTest::moss);
+		System.out.printf(Locale.ROOT, "fresh pine: moss %.3f, bilberry %.3f, herbs %.3f, bracken %.3f; mixed coniferous bracken %.3f; "
+				+ "oak-hornbeam: herbs in spring %.3f, in summer %.3f, moss %.3f, bare %.3f%n", pineMoss, pineBilberry, pineHerbs,
+				pineBracken, share(mixedPine, (id, p) -> id.equals("polishforests:bracken")), oakSpring, oakSummer, oakMoss,
+				1 - oak.get("coverage").getAsDouble());
+		assertTrue(pineMoss >= 0.66 && pineMoss <= 0.85, "fresh pine forest moss " + pineMoss);
+		assertTrue(pineBilberry >= 0.45 && pineBilberry <= 0.6, "fresh pine forest bilberry " + pineBilberry);
+		assertTrue(pineHerbs >= 0.45 && pineHerbs <= 0.75, "fresh pine forest herb layer " + pineHerbs);
+		assertTrue(pineBracken > 0 && pineBracken <= 0.02, "fresh pine forest bracken " + pineBracken);
+		double mixedBracken = share(mixedPine, (id, p) -> id.equals("polishforests:bracken"));
+		assertTrue(mixedBracken >= 0.05 && mixedBracken <= 0.15, "mixed coniferous forest bracken " + mixedBracken);
+		assertTrue(oakSpring >= 0.68, "oak-hornbeam forest herb layer in spring " + oakSpring);
+		assertTrue(oakSummer >= 0.22 && oakSummer <= 0.5, "oak-hornbeam forest herb layer in summer " + oakSummer);
+		assertTrue(oakMoss <= 0.08, "oak-hornbeam forest moss on the ground " + oakMoss);
+		assertTrue(1 - oak.get("coverage").getAsDouble() <= 0.05 && 1 - pine.get("coverage").getAsDouble() <= 0.05, "bare ground");
+		List<JsonObject> transect = List.of(pine, mixedPine, mixed, oak);
+		for (int i = 0; i + 1 < transect.size(); i++) {
+			double mossA = share(transect.get(i), GroundLayerPlanTest::moss);
+			double mossB = share(transect.get(i + 1), GroundLayerPlanTest::moss);
+			double litterA = share(transect.get(i), (id, p) -> id.equals("minecraft:leaf_litter"));
+			double litterB = share(transect.get(i + 1), (id, p) -> id.equals("minecraft:leaf_litter"));
+			assertTrue(mossB <= mossA + 0.01, "moss grows along the transect at step " + i + ": " + mossA + " -> " + mossB);
+			assertTrue(litterB >= litterA - 0.01, "leaf litter shrinks along the transect at step " + i + ": " + litterA + " -> " + litterB);
+		}
+	}
+
+	/** Moss as the census counts it: moss carpets and every block in its mossy state (PW-7). */
+	private static boolean moss(String id, JsonObject properties) {
+		return id.equals("minecraft:moss_carpet") || id.equals("minecraft:pale_moss_carpet")
+				|| properties != null && properties.has("mossy") && properties.get("mossy").getAsString().equals("true");
+	}
+
+	/** The herb layer as the census counts it (pl.polishforests.worldgen.norms.ForestCensus#herb). */
+	private static boolean herb(String id) {
+		return pl.polishforests.worldgen.norms.ForestCensus.herb(id);
+	}
+
+	/** Share of the columns a rule gives to the plants that match: coverage × their weight share. */
+	private static double share(JsonObject rule, java.util.function.BiPredicate<String, JsonObject> plant) {
+		double all = 0;
+		double match = 0;
+		for (JsonElement e : rule.getAsJsonArray("plants")) {
+			JsonObject p = e.getAsJsonObject();
+			double w = p.get("weight").getAsDouble();
+			all += w;
+			if (!p.has("block")) {
+				continue;
+			}
+			JsonElement b = p.get("block");
+			JsonObject props = b.isJsonObject() && b.getAsJsonObject().has("properties") ? b.getAsJsonObject().getAsJsonObject("properties") : null;
+			if (plant.test(blockName(b), props)) {
+				match += w;
+			}
+		}
+		return rule.get("coverage").getAsDouble() * match / all;
+	}
+
+	/** The first land rule of a biome without zones. */
+	private static JsonObject landRule(JsonArray rules, HabitatBiome b) {
+		for (JsonElement e : rules) {
+			JsonObject r = e.getAsJsonObject();
+			String medium = r.has("medium") ? r.get("medium").getAsString() : "land";
+			if (medium.equals("land") && r.has("biomes") && !r.has("edges") && contains(r, "biomes", b.id())
+					&& contains(r, "zones", Zone.NONE.id())) {
+				return r;
+			}
+		}
+		throw new AssertionError("no ground layer rule for " + b.id());
 	}
 
 	private static void check(JsonArray rules, HabitatBiome b, Zone z, List<String> report) {

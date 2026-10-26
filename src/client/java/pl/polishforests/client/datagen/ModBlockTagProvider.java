@@ -12,11 +12,13 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.BlockItemTagId;
 import net.minecraft.tags.BlockItemTags;
+import net.minecraft.tags.ItemTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 import pl.polishforests.PolishForests;
 import pl.polishforests.block.ModBlocks;
+import pl.polishforests.block.GroundPlant;
 import pl.polishforests.block.TreeFoliage;
 import pl.polishforests.block.TreeTrunk;
 import pl.polishforests.worldgen.habitat.Species;
@@ -43,6 +45,9 @@ final class ModBlockTagProvider {
 	static final TagKey<Block> TRUNKS = TagKey.create(Registries.BLOCK, PolishForests.id("trunks"));
 	/** Step V7: the full blocks of the LITE Scots pine set that make planks (log, wood, stripped log, stripped wood). */
 	static final TagKey<Block> PINE_FULL_LOGS = TagKey.create(Registries.BLOCK, PolishForests.id("scots_pine_full_logs"));
+	/** Serene Seasons: crops that grow in summer (step V12: the bilberry). */
+	static final TagKey<Block> SUMMER_CROPS = TagKey.create(Registries.BLOCK,
+			net.minecraft.resources.Identifier.fromNamespaceAndPath("sereneseasons", "summer_crops"));
 
 	private ModBlockTagProvider() {
 	}
@@ -110,6 +115,26 @@ final class ModBlockTagProvider {
 				builder(BlockItemTags.SAPLINGS.block()).add(key(ModBlocks.sapling(f)));
 				builder(BlockTags.FLOWER_POTS).add(key(ModBlocks.potted(f)));
 			}
+			// Step V12: the herb layer and litter as vanilla's plants: trees, mushrooms and water take their place, the
+			// flower beds and the litter make the inside step sound, the geophytes are flowers (bees), the bilberry a
+			// summer crop of Serene Seasons.
+			for (GroundPlant g : GroundPlant.values()) {
+				ResourceKey<Block> key = key(ModBlocks.ground(g));
+				builder(BlockTags.REPLACEABLE_BY_TREES).add(key);
+				builder(BlockTags.REPLACEABLE_BY_MUSHROOMS).add(key);
+				builder(BlockTags.WASHED_AWAY_BY_FLUIDS).add(key);
+				if (g.kind() != GroundPlant.Kind.SEASONAL) {
+					builder(BlockTags.REPLACEABLE).add(key);
+				}
+				if (g.kind() == GroundPlant.Kind.SEASONAL) {
+					builder(BlockItemTags.FLOWERS.block()).add(key);
+					builder(BlockTags.BEE_ATTRACTIVE).add(key);
+				}
+				if (g.kind() == GroundPlant.Kind.SEASONAL || g.kind() == GroundPlant.Kind.COVER) {
+					builder(BlockTags.INSIDE_STEP_SOUND_BLOCKS).add(key);
+				}
+			}
+			builder(SUMMER_CROPS).add(key(ModBlocks.ground(GroundPlant.BILBERRY)));
 		}
 	}
 
@@ -130,6 +155,10 @@ final class ModBlockTagProvider {
 			copy(BlockItemTags.PLANKS.block(), BlockItemTags.PLANKS.item());
 			copy(BlockItemTags.LEAVES.block(), BlockItemTags.LEAVES.item());
 			copy(BlockItemTags.SAPLINGS.block(), BlockItemTags.SAPLINGS.item());
+			// Step V12: the geophytes are flowers, the bilberry fruit fox food.
+			copy(BlockItemTags.FLOWERS.block(), BlockItemTags.FLOWERS.item());
+			builder(ItemTags.FOX_FOOD).add(BuiltInRegistries.ITEM.getResourceKey(ModBlocks.bilberries()).orElseThrow());
+			copy(SUMMER_CROPS, item(SUMMER_CROPS));
 		}
 	}
 

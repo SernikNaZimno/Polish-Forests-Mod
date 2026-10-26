@@ -41,8 +41,10 @@ class ForestNormsTest {
 		assertRange(8, 16, ForestNorms.TREES_PER_CHUNK, Forest.FRESH_PINE_MANAGED, null, null);
 		assertRange(80, 95, ForestNorms.CANOPY, Forest.OAK_HORNBEAM_NATURAL, null, null);
 		assertRange(60, 95, ForestNorms.MOSS, Forest.FRESH_PINE_MANAGED, null, null);
-		assertRange(60, 100, ForestNorms.HERBS, Forest.OAK_HORNBEAM_NATURAL, Aspect.SPRING, null);
+		// Step V12: the spring and summer herb layer from one census (HERBS_SPRING and HERBS), whatever the season.
+		assertRange(60, 100, ForestNorms.HERBS_SPRING, Forest.OAK_HORNBEAM_NATURAL, Aspect.SUMMER, null);
 		assertRange(20, 60, ForestNorms.HERBS, Forest.OAK_HORNBEAM_NATURAL, Aspect.SUMMER, null);
+		assertRange(50, 90, ForestNorms.HERBS_SPRING, Forest.OAK_HORNBEAM_MANAGED, null, null);
 		assertRange(80, 95, ForestNorms.COMPOSITION + "scots_pine", Forest.FRESH_PINE_NATURAL, null, null);
 		assertRange(2, 2, ForestNorms.DEADWOOD_PER_CHUNK, Forest.OAK_HORNBEAM_NATURAL, null, null);
 		assertEquals(ForestNorms.TOLERANCE_WIDE, ForestNorms.of(ForestNorms.GAP_SHARE, Forest.OAK_HORNBEAM_NATURAL, null, null).orElseThrow()
@@ -57,11 +59,11 @@ class ForestNormsTest {
 
 	@Test
 	void lookupsByAspectAndAge() {
-		// The herb layer of the oak-hornbeam forest has only spring and summer rows: nothing in autumn.
-		assertTrue(ForestNorms.of(ForestNorms.HERBS, Forest.OAK_HORNBEAM_NATURAL, Aspect.OTHER, null).isEmpty());
-		assertTrue(ForestNorms.of(ForestNorms.HERBS, Forest.OAK_HORNBEAM_NATURAL, null, null).isEmpty());
-		// The pine forest holds all year.
+		// A row without an aspect holds all year (step V12: the herb layer rows of both aspects come from one census).
+		assertTrue(ForestNorms.of(ForestNorms.HERBS, Forest.OAK_HORNBEAM_NATURAL, Aspect.OTHER, null).isPresent());
+		assertTrue(ForestNorms.of(ForestNorms.HERBS_SPRING, Forest.OAK_HORNBEAM_NATURAL, null, null).isPresent());
 		assertTrue(ForestNorms.of(ForestNorms.HERBS, Forest.FRESH_PINE_MANAGED, Aspect.OTHER, null).isPresent());
+		assertTrue(ForestNorms.of(ForestNorms.HERBS_SPRING, Forest.FRESH_PINE_MANAGED, null, null).isEmpty(), "no spring row in the pine forest");
 		// Unknown age class: the general row.
 		assertRange(8, 16, ForestNorms.TREES_PER_CHUNK, Forest.FRESH_PINE_MANAGED, Aspect.SUMMER, null);
 		assertRange(15, 16, ForestNorms.TREES_PER_CHUNK, Forest.FRESH_PINE_MANAGED, Aspect.SUMMER, AgeClass.POLE_STAGE);

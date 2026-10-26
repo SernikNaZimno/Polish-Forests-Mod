@@ -1,0 +1,25 @@
+{
+  "multipart": [
+    {
+      "apply": {
+        "model": "polishforests:block/bilberry"
+      }
+    },
+    {
+      "apply": {
+        "model": "polishforests:block/bilberry_berries"
+      },
+      "when": {
+        "berries": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "minecraft:block/moss_carpet"
+      },
+      "when": {
+        "mossy": "true"
+      }
+    }
+  ]
+}

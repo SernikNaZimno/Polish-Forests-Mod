@@ -431,11 +431,11 @@ final class NormsCensus {
 			log.append(String.format(Locale.ROOT, "[%d columns of the square outside the forest] ", nonForest));
 		}
 		log.append(String.format(Locale.ROOT, "%s (%s): %s trees/chunk (a1 %s, a2 %s, top height %s), canopy %s%%, gaps %s%%, understory %s%%, "
-				+ "herbs %s%%, moss %s%%, dead wood %s/chunk; vs %s: %d in, %d within tolerance, %d out%s%s", c.place(),
+				+ "herbs %s%% (spring %s%%), moss %s%%, dead wood %s/chunk; vs %s: %d in, %d within tolerance, %d out%s%s", c.place(),
 				age.name().toLowerCase(Locale.ROOT), n(values,
 						ForestNorms.TREES_PER_CHUNK), n(values, ForestNorms.A1_PER_CHUNK), n(values, ForestNorms.A2_PER_CHUNK), n(values,
 								ForestNorms.TOP_HEIGHT), n(values, ForestNorms.CANOPY), n(values, ForestNorms.GAP_SHARE), n(values,
-										ForestNorms.UNDERSTORY), n(values, ForestNorms.HERBS), n(values, ForestNorms.MOSS), n(values,
+										ForestNorms.UNDERSTORY), n(values, ForestNorms.HERBS), n(values, ForestNorms.HERBS_SPRING), n(values, ForestNorms.MOSS), n(values,
 												ForestNorms.DEADWOOD_PER_CHUNK), forest.polishName(), in, tolerance, out,
 				outside.isEmpty() ? "" : " " + outside, unknown.isEmpty() ? "" : "; plants unknown to the census " + unknown));
 		if (values.get(ForestNorms.TREES_PER_CHUNK) == 0) {
@@ -469,7 +469,7 @@ final class NormsCensus {
 		ForestCensus.Transect t = ForestCensus.transect(g, ax, az, bx, bz, steps, rank, BAND, k);
 		List<String> rows = new ArrayList<>();
 		String[] metrics = {ForestNorms.TREES_PER_CHUNK, ForestNorms.CONIFERS, ForestNorms.CANOPY, ForestNorms.UNDERSTORY, ForestNorms.HERBS,
-				ForestNorms.MOSS, ForestNorms.LITTER, ForestNorms.DEADWOOD_PER_CHUNK};
+				ForestNorms.HERBS_SPRING, ForestNorms.MOSS, ForestNorms.LITTER, ForestNorms.DEADWOOD_PER_CHUNK};
 		StringBuilder stretches = new StringBuilder();
 		for (int r = 0; r < t.stretches().size(); r++) {
 			Map<String, Double> s = t.stretches().get(r);

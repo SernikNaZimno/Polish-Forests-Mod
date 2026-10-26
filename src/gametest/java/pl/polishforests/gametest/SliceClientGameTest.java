@@ -467,7 +467,15 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 	private static List<Camera> plotCameras(MinecraftServer server, SlicePlots.Plot plot) {
 		Ground g = new Ground(server);
 		List<Camera> list = new ArrayList<>();
-		list.add(eyeCamera(g, "eye", plot.x(), plot.z(), SITE_YAWS, EYE_RADIUS));
+		Camera eye = eyeCamera(g, "eye", plot.x(), plot.z(), SITE_YAWS, EYE_RADIUS);
+		list.add(eye);
+		// Step V12: the forest floor from the eye height, looking down (herb layer, moss and litter close up), and the
+		// base of a canopy tree with root flares from 3 blocks (moss at the base and along the flares).
+		list.add(new Camera("floor_eye", eye.x(), eye.y(), eye.z(), eye.yaw(), FLOOR_PITCH));
+		Camera base = baseCamera(g, plot.x(), plot.z());
+		if (base != null) {
+			list.add(base);
+		}
 		double yaw = Math.toRadians(30);
 		list.add(aerial(g, "above", (int) Math.round(plot.x() + 50 * Math.sin(yaw)), (int) Math.round(plot.z() - 50 * Math.cos(yaw)),
 				ABOVE_HEIGHT, plot.x(), plot.z()));
@@ -496,6 +504,57 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 			PolishForests.LOG.info("[slice] {}: chosen {}", plot.name(), c);
 		}
 		return list;
+	}
+
+	/** Pitch of the view of the forest floor, degrees down (step V12). */
+	private static final double FLOOR_PITCH = 40;
+
+	/**
+	 * A view of a trunk base with root flares (step V12): the trunk with the most flare blocks around its base within
+	 * {@value #EYE_RADIUS} × 2 blocks of the point, seen from the eye height of a free column 3 blocks from it, looking
+	 * at the base; null when there is none.
+	 */
+	private static Camera baseCamera(Ground g, int x, int z) {
+		int bestFlares = 2;
+		int bx = 0;
+		int bz = 0;
+		int by = 0;
+		int r = 2 * EYE_RADIUS;
+		for (int dx = -r; dx <= r; dx++) {
+			for (int dz = -r; dz <= r; dz++) {
+				int y = g.y(x + dx, z + dz) + 1;
+				if (!g.state(x + dx, y, z + dz).is(BlockTags.LOGS)) {
+					continue;
+				}
+				int flares = 0;
+				for (int ax = -1; ax <= 1; ax++) {
+					for (int az = -1; az <= 1; az++) {
+						flares += g.state(x + dx + ax, y, z + dz + az).getBlock() instanceof pl.polishforests.block.RootFlareBlock ? 1 : 0;
+					}
+				}
+				if (flares > bestFlares) {
+					bestFlares = flares;
+					bx = x + dx;
+					bz = z + dz;
+					by = y;
+				}
+			}
+		}
+		if (bestFlares <= 2) {
+			return null;
+		}
+		for (double yaw : SITE_YAWS) {
+			double a = Math.toRadians(yaw);
+			int cx = (int) Math.round(bx + 3 * Math.sin(a));
+			int cz = (int) Math.round(bz - 3 * Math.cos(a));
+			int cy = g.y(cx, cz) + 1;
+			if (g.free(cx, cy, cz) && g.free(cx, cy + 1, cz) && Math.abs(cy - by) <= 1) {
+				double look = Math.toDegrees(Math.atan2(-(bx - cx), bz - cz));
+				double pitch = Math.toDegrees(Math.atan2(cy + 1.62 - (by + 0.3), Math.hypot(bx - cx, bz - cz)));
+				return new Camera("base_eye", cx, cy, cz, round1(look), round1(pitch));
+			}
+		}
+		return null;
 	}
 
 	// ------------------------------------------------------------------ choosing the cameras (-PfindSliceCameras)

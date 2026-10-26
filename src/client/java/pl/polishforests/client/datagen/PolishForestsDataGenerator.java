@@ -32,6 +32,8 @@ public final class PolishForestsDataGenerator implements DataGeneratorEntrypoint
 		pack.addProvider(ModLanguageProvider.Polish::new);
 		// Step V2: the thin trunks (models, model templates, loot, block and item tags).
 		pack.addProvider(TrunkTemplates::new);
+		// Step V12: the model templates of the herb layer.
+		pack.addProvider(GroundTemplates::new);
 		pack.addProvider(ModBlockModels::new);
 		pack.addProvider(ModBlockLoot::new);
 		ModBlockTagProvider.Blocks blockTags = pack.addProvider(ModBlockTagProvider.Blocks::new);

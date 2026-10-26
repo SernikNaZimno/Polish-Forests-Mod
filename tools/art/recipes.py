@@ -39,6 +39,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
+import ground
 import texlib as t
 import wood
 from texlib import N
@@ -1086,6 +1087,42 @@ TEXTURES = [
     Texture('bilberry', 'plant', plant_bilberry, 'bilberry/2', 'bilberry', tint='grass',
             params=dict(stems=8, top=9, leafiness=0.75, zigzag=0.3, gray=(92, 180)),
             note='bilberry dwarf shrub, cross model, grayscale for the grass tint'),
+    # Step V12 (herb layer and litter, decision PW-6; tools/art/ground.py): the flower beds of the spring geophytes and
+    # their shared stem, the pine needle litter, bracken and the bilberry fruit.
+    Texture('wood_anemone', 'plant', ground.flower_bed, 'wood_anemone/1', None,
+            params=dict(leaves=ground.ANEMONE_LEAVES, flower_sprites=ground.ANEMONE_FLOWERS, leaf_cover=0.6, flowers=2, halo=((1, 7),),
+                        colors=['#3f5f2d', '#4c6f35', '#5f8344', '#56603a', '#a5a99b', '#bdbcb4', '#b8ab68', '#7a9860']),
+            note='wood anemone flower bed (vanilla flowerbed models by id): whorls of divided dark green leaves, white '
+                 'six-tepalled flowers with a lavender shade and a yellow centre'),
+    Texture('hepatica', 'plant', ground.flower_bed, 'hepatica/1', None,
+            params=dict(leaves=ground.HEPATICA_LEAVES, flower_sprites=ground.HEPATICA_FLOWERS, leaf_cover=0.55, flowers=2, halo=((1, 7),),
+                        colors=['#304b28', '#3d5b30', '#4e6c3d', '#5b4a4e', '#6b62a6', '#8079c0', '#a9a4cc', '#5d7a4c']),
+            note='liverleaf flower bed: three-lobed leathery leaves, some of last year purplish brown, blue-violet '
+                 'flowers with pale stamens'),
+    Texture('forest_flower_stem', 'plant', ground.flower_stem, 'forest_flower_stem/1', None, tint='grass',
+            params=dict(gray=(118, 150)),
+            note='stem of the flower beds (column 0, rows 4-7 in game), grayscale for the grass tint'),
+    Texture('needle_litter', 'plant', ground.needle_litter, 'needle_litter/1', None,
+            params=dict(cover=0.62, length=(3, 6), tone_weights=(2, 3, 4, 2),
+                        colors=['#74624f', '#7a5139', '#875c42', '#946a4d']),
+            note='Scots pine needle litter (vanilla leaf litter templates by id, not tinted): rust-brown and older '
+                 'gray-brown needles in a loose mat'),
+    Texture('bracken_bottom', 'plant', ground.bracken, 'bracken_bottom/1', None, tint='grass',
+            params=dict(part='bottom', frond_from=6, top=0, pinna_gap=2, pinna=(3, 6), droop=3, skip=0.15, under=0.5,
+                        grays=(108, 130, 148, 122)),
+            note='bracken, lower half: the erect stipe and the lowest pinnae, grayscale for the grass tint'),
+    Texture('bracken_top', 'plant', ground.bracken, 'bracken_top/1', None, tint='grass',
+            params=dict(part='top', frond_from=0, top=5, pinna_gap=2, pinna=(2, 7), droop=3, skip=0.1, under=0.6,
+                        grays=(108, 130, 148, 122)),
+            note='bracken, upper half: the broad frond held almost level, pinnae with pinnules, grayscale for the '
+                 'grass tint'),
+    Texture('bilberry_berries', 'plant', ground.berries, 'bilberry_berries/1', None,
+            params=dict(count=5, rows=(10, 14), colors=['#272b45', '#2f3656', '#384166', '#454f78']),
+            note='bilberry fruit, overlay of the bilberry cross model in its berries state (not tinted): blue-black '
+                 'berries with a frosty blue bloom'),
+    Texture('bilberries', 'plant', ground.berries, 'bilberries/1', None,
+            params=dict(count=9, rows=(3, 13), colors=['#272b45', '#2f3656', '#384166', '#454f78']),
+            note='the bilberry fruit item: a handful of blue-black berries with a frosty blue bloom'),
     # Step V7: the LITE Scots pine wood set (D1 b; the log side is scots_pine_bark) and the saplings (tools/art/wood.py).
     Texture('scots_pine_planks', 'planks', wood.planks, 'scots_pine_planks/1', None, params=PINE_PLANKS,
             expect={'luma': (135, 165), 'hue': (28, 40)}, palette_use=None,

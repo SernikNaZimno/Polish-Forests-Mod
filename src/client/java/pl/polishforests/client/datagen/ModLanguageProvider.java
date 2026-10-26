@@ -223,6 +223,17 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 			builder.add(ModBlocks.flare(f), polish ? f.polishName() : f.englishName());
 		}
 		builder.add(ModBlocks.treeRoot(), polish ? "Korzeń drzewa" : "Tree Root");
+		// Step V12: the herb layer, the litter and the bilberry fruit.
+		for (pl.polishforests.block.GroundPlant g : pl.polishforests.block.GroundPlant.values()) {
+			builder.add(ModBlocks.ground(g), switch (g) {
+				case BILBERRY -> polish ? "Borówka czarna" : "Bilberry";
+				case WOOD_ANEMONE -> polish ? "Zawilec gajowy" : "Wood Anemone";
+				case HEPATICA -> polish ? "Przylaszczka pospolita" : "Liverleaf";
+				case NEEDLE_LITTER -> polish ? "Igliwie sosnowe" : "Pine Needle Litter";
+				case BRACKEN -> polish ? "Orlica pospolita" : "Bracken";
+			});
+		}
+		builder.add(ModBlocks.bilberries(), polish ? "Czarne jagody" : "Bilberries");
 		builder.add(tagKey(ModBlockTagProvider.PINE_FULL_LOGS.location().getPath()), polish ? "Kłody sosnowe" : "Scots Pine Logs");
 		// Item tags (recipe viewers show their names): a species tag is named after the first trunk of the species.
 		Map<Species, TreeTrunk> first = new LinkedHashMap<>();

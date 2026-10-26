@@ -30,6 +30,9 @@ block polishforests:beech_trunk states=84 default=parent=down,radius=4,waterlogg
   property parent: down up north south west east
   property radius: 1 2 3 4 5 6 7
   property waterlogged: true false
+block polishforests:bilberry states=4 default=berries=false,mossy=false
+  property berries: true false
+  property mossy: true false
 block polishforests:birch_leaves states=112 default=distance=7,persistent=false,phase=0,waterlogged=false
   property distance: 1 2 3 4 5 6 7
   property persistent: true false
@@ -45,6 +48,11 @@ block polishforests:birch_trunk states=84 default=parent=down,radius=4,waterlogg
   property parent: down up north south west east
   property radius: 1 2 3 4 5 6 7
   property waterlogged: true false
+block polishforests:bracken states=2 default=half=lower
+  property half: upper lower
+block polishforests:hepatica states=16 default=facing=north,flower_amount=1
+  property facing: north south west east
+  property flower_amount: 1 2 3 4
 block polishforests:hornbeam_leaves states=224 default=distance=7,marcescent=false,persistent=false,phase=0,waterlogged=false
   property distance: 1 2 3 4 5 6 7
   property marcescent: true false
@@ -76,6 +84,10 @@ block polishforests:linden_trunk states=84 default=parent=down,radius=4,waterlog
   property parent: down up north south west east
   property radius: 1 2 3 4 5 6 7
   property waterlogged: true false
+block polishforests:needle_litter states=32 default=facing=north,mossy=false,segment_amount=1
+  property facing: north south west east
+  property mossy: true false
+  property segment_amount: 1 2 3 4
 block polishforests:norway_maple_leaves states=112 default=distance=7,persistent=false,phase=0,waterlogged=false
   property distance: 1 2 3 4 5 6 7
   property persistent: true false
@@ -171,6 +183,9 @@ block polishforests:tree_root states=84 default=parent=down,radius=4,waterlogged
   property parent: down up north south west east
   property radius: 1 2 3 4 5 6 7
   property waterlogged: true false
+block polishforests:wood_anemone states=16 default=facing=north,flower_amount=1
+  property facing: north south west east
+  property flower_amount: 1 2 3 4
 item polishforests:ash_leaves block=polishforests:ash_leaves
 item polishforests:ash_root_flare block=polishforests:ash_root_flare
 item polishforests:ash_sapling block=polishforests:ash_sapling
@@ -179,10 +194,14 @@ item polishforests:beech_leaves block=polishforests:beech_leaves
 item polishforests:beech_root_flare block=polishforests:beech_root_flare
 item polishforests:beech_sapling block=polishforests:beech_sapling
 item polishforests:beech_trunk block=polishforests:beech_trunk
+item polishforests:bilberries
+item polishforests:bilberry block=polishforests:bilberry
 item polishforests:birch_leaves block=polishforests:birch_leaves
 item polishforests:birch_root_flare block=polishforests:birch_root_flare
 item polishforests:birch_sapling block=polishforests:birch_sapling
 item polishforests:birch_trunk block=polishforests:birch_trunk
+item polishforests:bracken block=polishforests:bracken
+item polishforests:hepatica block=polishforests:hepatica
 item polishforests:hornbeam_leaves block=polishforests:hornbeam_leaves
 item polishforests:hornbeam_root_flare block=polishforests:hornbeam_root_flare
 item polishforests:hornbeam_sapling block=polishforests:hornbeam_sapling
@@ -191,6 +210,7 @@ item polishforests:linden_leaves block=polishforests:linden_leaves
 item polishforests:linden_root_flare block=polishforests:linden_root_flare
 item polishforests:linden_sapling block=polishforests:linden_sapling
 item polishforests:linden_trunk block=polishforests:linden_trunk
+item polishforests:needle_litter block=polishforests:needle_litter
 item polishforests:norway_maple_leaves block=polishforests:norway_maple_leaves
 item polishforests:norway_maple_root_flare block=polishforests:norway_maple_root_flare
 item polishforests:norway_maple_sapling block=polishforests:norway_maple_sapling
@@ -216,3 +236,4 @@ item polishforests:spruce_trunk block=polishforests:spruce_trunk
 item polishforests:stripped_scots_pine_log block=polishforests:stripped_scots_pine_log
 item polishforests:stripped_scots_pine_wood block=polishforests:stripped_scots_pine_wood
 item polishforests:tree_root block=polishforests:tree_root
+item polishforests:wood_anemone block=polishforests:wood_anemone

@@ -50,6 +50,32 @@ final class ModBlockLoot extends FabricBlockLootSubProvider {
 		add(root, LootTable.lootTable().withPool(LootPool.lootPool().setRolls(ContextIntProviders.exactly(1))
 				.add(LootItem.lootTableItem(root).when(hasSilkTouch()).otherwise(rootSticks))));
 		lite();
+		ground();
+	}
+
+	/**
+	 * Step V12: the herb layer. The dwarf shrub gives itself with shears or silk touch, and its fruit when it has some
+	 * (1-2, as picking it); a flower bed gives as many flowers as it has (as vanilla's wildflowers); the litter gives its
+	 * segments (as vanilla's leaf litter); the tall fern gives itself with shears only.
+	 */
+	private void ground() {
+		for (pl.polishforests.block.GroundPlant g : pl.polishforests.block.GroundPlant.values()) {
+			Block block = ModBlocks.ground(g);
+			switch (g.kind()) {
+				case BERRY_SHRUB -> {
+					LootItemCondition.Builder ripe = MatchBlock.blockMatches(blocks, block, StatePropertiesPredicate.Builder.properties()
+							.hasProperty(pl.polishforests.block.BerryShrubBlock.BERRIES, true));
+					add(block, LootTable.lootTable()
+							.withPool(LootPool.lootPool().setRolls(ContextIntProviders.exactly(1)).when(hasShearsOrSilkTouch())
+									.add(LootItem.lootTableItem(block)))
+							.withPool(LootPool.lootPool().setRolls(ContextIntProviders.exactly(1)).when(ripe)
+									.add((LootPoolEntryContainer.Builder<?>) applyExplosionDecay(block, LootItem.lootTableItem(ModBlocks.bilberries())
+											.apply(SetItemCountFunction.setCount(ContextIntProviders.between(1, 2)))))));
+				}
+				case SEASONAL, COVER -> add(block, createSegmentedBlockDrops(block));
+				case TALL -> add(block, createDoublePlantShearsDrop(block));
+			}
+		}
 	}
 
 	/** A thin trunk (or a root flare) with the loot of a trunk: itself with silk touch, sticks when thin, else the log. */

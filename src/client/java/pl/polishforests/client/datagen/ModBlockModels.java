@@ -8,6 +8,8 @@ import net.fabricmc.fabric.api.datagen.v1.FabricPackOutput;
 import net.minecraft.client.data.models.BlockModelGenerators;
 import net.minecraft.client.data.models.ItemModelGenerators;
 import net.minecraft.client.data.models.MultiVariant;
+import net.minecraft.client.data.models.blockstates.ConditionBuilder;
+import net.minecraft.client.data.models.blockstates.MultiPartGenerator;
 import net.minecraft.client.data.models.blockstates.MultiVariantGenerator;
 import net.minecraft.client.data.models.blockstates.PropertyDispatch;
 import net.minecraft.client.data.models.model.ItemModelUtils;
@@ -21,6 +23,10 @@ import net.minecraft.client.resources.model.sprite.Material;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.block.state.properties.IntegerProperty;
+import pl.polishforests.block.BerryShrubBlock;
+import pl.polishforests.block.GroundPlant;
 import pl.polishforests.PolishForests;
 import pl.polishforests.block.ModBlocks;
 import pl.polishforests.block.TreeFoliage;
@@ -112,6 +118,96 @@ final class ModBlockModels extends FabricModelProvider {
 			leaves(gen, f);
 			sapling(gen, f);
 		}
+		// Step V12: the herb layer and litter.
+		for (GroundPlant g : GroundPlant.values()) {
+			ground(gen, g);
+		}
+		gen.registerSimpleItemModel(ModBlocks.bilberries(), gen.createFlatItemModel(ModBlocks.bilberries(),
+				new Material(own(ModBlocks.BILBERRIES))));
+	}
+
+	/** The vanilla moss carpet by id: the second layer of a mossy block (PW-7). */
+	static final Identifier MOSS_CARPET = Identifier.withDefaultNamespace("block/moss_carpet");
+	/** The texture slot of the berries template. */
+	static final TextureSlot BERRIES = TextureSlot.create("berries");
+
+	/**
+	 * A block of the herb layer (step V12). The dwarf shrub: the vanilla tinted cross with its texture, the berries as
+	 * the untinted cross {@link GroundTemplates#BERRIES} when {@code berries} is on, the vanilla moss carpet under it when
+	 * {@code mossy} is on; the item flat and tinted with the grass color. A spring geophyte: the vanilla flowerbed models
+	 * with its texture and the shared stem {@code forest_flower_stem}, segments as vanilla's flower beds. A litter: the
+	 * vanilla leaf litter templates with its texture, or with {@code mossy} the templates one pixel higher
+	 * ({@link GroundTemplates#mossyLitter}) over the moss carpet; segments as vanilla's leaf litter. The tall fern: the
+	 * vanilla tinted double plant with the textures {@code <id>_bottom} and {@code <id>_top}.
+	 */
+	private static void ground(BlockModelGenerators gen, GroundPlant g) {
+		Block block = ModBlocks.ground(g);
+		switch (g.kind()) {
+			case BERRY_SHRUB -> {
+				Identifier shrub = ModelTemplates.TINTED_CROSS.create(block, TextureMapping.cross(new Material(own(g.id()))), gen.modelOutput);
+				ModelTemplate berriesTemplate = new ModelTemplate(Optional.of(PolishForests.id(GroundTemplates.BERRIES)), Optional.of("_berries"),
+						BERRIES);
+				Identifier berries = berriesTemplate.create(block, new TextureMapping().put(BERRIES, new Material(own(g.id() + "_berries"))),
+						gen.modelOutput);
+				gen.blockStateOutput.accept(MultiPartGenerator.multiPart(block)
+						.with(BlockModelGenerators.plainVariant(shrub))
+						.with(BlockModelGenerators.condition().term(BerryShrubBlock.BERRIES, true), BlockModelGenerators.plainVariant(berries))
+						.with(BlockModelGenerators.condition().term(BerryShrubBlock.MOSSY, true), BlockModelGenerators.plainVariant(MOSS_CARPET)));
+				gen.createItemWithGrassTint(block);
+			}
+			case SEASONAL -> {
+				IntegerProperty amount = BlockStateProperties.FLOWER_AMOUNT;
+				TextureMapping textures = new TextureMapping().put(TextureSlot.FLOWERBED, new Material(own(g.id())))
+						.put(TextureSlot.STEM, new Material(own("forest_flower_stem")));
+				MultiVariant[] m = {
+						BlockModelGenerators.plainVariant(ModelTemplates.FLOWERBED_1.create(block, textures, gen.modelOutput)),
+						BlockModelGenerators.plainVariant(ModelTemplates.FLOWERBED_2.create(block, textures, gen.modelOutput)),
+						BlockModelGenerators.plainVariant(ModelTemplates.FLOWERBED_3.create(block, textures, gen.modelOutput)),
+						BlockModelGenerators.plainVariant(ModelTemplates.FLOWERBED_4.create(block, textures, gen.modelOutput))};
+				// As vanilla's flower beds: model k with k or more flowers.
+				gen.createSegmentedBlock(block, m[0], c -> c.term(amount, 1, 2, 3, 4), m[1], c -> c.term(amount, 2, 3, 4),
+						m[2], c -> c.term(amount, 3, 4), m[3], c -> c.term(amount, 4));
+				gen.registerSimpleFlatItemModel(block);
+			}
+			case COVER -> {
+				IntegerProperty amount = BlockStateProperties.SEGMENT_AMOUNT;
+				TextureMapping textures = new TextureMapping().put(TextureSlot.TEXTURE, new Material(own(g.id())));
+				ModelTemplate[] plain = {ModelTemplates.LEAF_LITTER_1, ModelTemplates.LEAF_LITTER_2, ModelTemplates.LEAF_LITTER_3,
+						ModelTemplates.LEAF_LITTER_4};
+				MultiPartGenerator parts = MultiPartGenerator.multiPart(block);
+				// As vanilla's leaf litter: model 1 with one segment, 2 with two or three, 3 with three, 4 with four.
+				int[][] amounts = {{1}, {2, 3}, {3}, {4}};
+				for (int k = 1; k <= 4; k++) {
+					Identifier low = plain[k - 1].create(block, textures, gen.modelOutput);
+					Identifier high = new ModelTemplate(Optional.of(PolishForests.id(GroundTemplates.mossyLitter(k))), Optional.of("_mossy_" + k),
+							TextureSlot.TEXTURE).create(block, textures, gen.modelOutput);
+					for (boolean mossy : new boolean[] {false, true}) {
+						MultiVariant model = BlockModelGenerators.plainVariant(mossy ? high : low);
+						for (Direction d : Direction.Plane.HORIZONTAL) {
+							ConditionBuilder c = BlockModelGenerators.condition().term(BlockStateProperties.HORIZONTAL_FACING, d)
+									.term(BerryShrubBlock.MOSSY, mossy);
+							c = amounts[k - 1].length == 1 ? c.term(amount, amounts[k - 1][0])
+									: c.term(amount, amounts[k - 1][0], amounts[k - 1][1]);
+							parts.with(c, model.with(facing(d)));
+						}
+					}
+				}
+				parts.with(BlockModelGenerators.condition().term(BerryShrubBlock.MOSSY, true), BlockModelGenerators.plainVariant(MOSS_CARPET));
+				gen.blockStateOutput.accept(parts);
+				gen.registerSimpleFlatItemModel(block);
+			}
+			case TALL -> gen.createTintedDoublePlant(block);
+		}
+	}
+
+	/** Rotation of a segment model drawn facing north, as vanilla's segmented blocks. */
+	private static VariantMutator facing(Direction d) {
+		return switch (d) {
+			case EAST -> BlockModelGenerators.Y_ROT_90;
+			case SOUTH -> BlockModelGenerators.Y_ROT_180;
+			case WEST -> BlockModelGenerators.Y_ROT_270;
+			default -> BlockModelGenerators.NOP;
+		};
 	}
 
 	/** The leaves texture of a species (D2, V7): own needles and broadleaf leaves, birch and spruce from vanilla by id. */

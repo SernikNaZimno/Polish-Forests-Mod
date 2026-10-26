@@ -121,8 +121,21 @@ public final class ForestCensus {
 			"minecraft:white_tulip", "minecraft:pink_tulip", "minecraft:sunflower", "minecraft:lilac", "minecraft:peony",
 			"minecraft:firefly_bush", "minecraft:short_dry_grass", "minecraft:tall_dry_grass", "minecraft:small_dripleaf",
 			"minecraft:big_dripleaf", "minecraft:big_dripleaf_stem", "minecraft:sugar_cane", "minecraft:sweet_berry_bush");
-	/** The bilberry (a part of the herb layer): in M2 the {@code bush} of the pine forests (decision M2-13). */
-	public static final Set<String> BILBERRY_PLANTS = Set.of("minecraft:bush");
+	/**
+	 * The bilberry (a part of the herb layer): in M2 the {@code bush} of the pine forests (decision M2-13), from step V12
+	 * the own block.
+	 */
+	public static final Set<String> BILBERRY_PLANTS = Set.of("minecraft:bush", "polishforests:bilberry");
+	/** The herb layer of step V12 (own blocks, decision PW-6). */
+	public static final Set<String> OWN_HERB_PLANTS = Set.of("polishforests:bilberry", "polishforests:wood_anemone",
+			"polishforests:hepatica", "polishforests:bracken");
+	/**
+	 * Spring geophytes: part of the herb layer in spring only (the client shows nothing from early summer, PW-8 (a), N12);
+	 * liverleaf keeps its leaves all year.
+	 */
+	public static final Set<String> SPRING_GEOPHYTES = Set.of("polishforests:wood_anemone");
+	/** Needle litter (step V12): neither herb layer nor leaf litter (the leaf litter is the indicator of the transect). */
+	public static final Set<String> NEEDLE_LITTER_PLANTS = Set.of("polishforests:needle_litter");
 	/** Mosses and lichens (layer d) standing on the ground. */
 	public static final Set<String> MOSS_PLANTS = Set.of("minecraft:moss_carpet", "minecraft:pale_moss_carpet");
 	/** Ground blocks that are moss. */
@@ -184,9 +197,15 @@ public final class ForestCensus {
 		return id == null ? "" : id.endsWith(MOSSY) ? id.substring(0, id.length() - MOSSY.length()) : id;
 	}
 
-	/** A plant of the herb layer (dwarf shrubs included). */
+	/** A plant of the herb layer (dwarf shrubs included), as in spring. */
 	public static boolean herb(@Nullable String plant) {
-		return HERB_PLANTS.contains(strip(plant));
+		String p = strip(plant);
+		return HERB_PLANTS.contains(p) || OWN_HERB_PLANTS.contains(p);
+	}
+
+	/** A plant of the herb layer as in summer: without the spring geophytes. */
+	public static boolean summerHerb(@Nullable String plant) {
+		return herb(plant) && !SPRING_GEOPHYTES.contains(strip(plant));
 	}
 
 	/** The bilberry. */
@@ -208,8 +227,9 @@ public final class ForestCensus {
 	/** A plant id the census does not know (listed in the report, so it can be classified). */
 	public static boolean unclassified(@Nullable String plant) {
 		String p = strip(plant);
-		return plant != null && !HERB_PLANTS.contains(p) && !MOSS_PLANTS.contains(p) && !LITTER_PLANTS.contains(p)
-				&& !OTHER_PLANTS.contains(p) && !p.endsWith("_sapling");
+		return plant != null && !HERB_PLANTS.contains(p) && !OWN_HERB_PLANTS.contains(p) && !MOSS_PLANTS.contains(p)
+				&& !LITTER_PLANTS.contains(p) && !NEEDLE_LITTER_PLANTS.contains(p) && !OTHER_PLANTS.contains(p)
+				&& !p.endsWith("_sapling");
 	}
 
 	// ------------------------------------------------------------------ areas
@@ -702,6 +722,7 @@ public final class ForestCensus {
 			}
 			// The ground.
 			int herbs = 0;
+			int springHerbs = 0;
 			int bilberry = 0;
 			int moss = 0;
 			int litter = 0;
@@ -710,7 +731,8 @@ public final class ForestCensus {
 					continue;
 				}
 				String plant = grid.plantAt(c);
-				herbs += herb(plant) ? 1 : 0;
+				herbs += summerHerb(plant) ? 1 : 0;
+				springHerbs += herb(plant) ? 1 : 0;
 				bilberry += bilberry(plant) ? 1 : 0;
 				moss += moss(plant, grid.groundBlockAt(c)) ? 1 : 0;
 				litter += litter(plant) ? 1 : 0;
@@ -767,6 +789,7 @@ public final class ForestCensus {
 			m.put(ForestNorms.UNDERSTORY, percent(understory, groundColumns));
 			m.put(ForestNorms.SHRUBS_PER_CHUNK, shrubs / chunks);
 			m.put(ForestNorms.HERBS, percent(herbs, groundColumns));
+			m.put(ForestNorms.HERBS_SPRING, percent(springHerbs, groundColumns));
 			m.put(ForestNorms.BILBERRY, percent(bilberry, groundColumns));
 			m.put(ForestNorms.LITTER, percent(litter, groundColumns));
 			m.put(ForestNorms.MOSS, percent(moss, groundColumns));

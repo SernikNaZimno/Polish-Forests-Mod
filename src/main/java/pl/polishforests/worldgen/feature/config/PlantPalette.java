@@ -26,6 +26,8 @@ public record PlantPalette(List<Rule> rules) {
 	public static final Codec<ColumnPlan.Ground> GROUND = HabitatCondition.enumCodec(ColumnPlan.Ground.class,
 			ColumnPlan.Ground.values());
 	public static final Codec<Ecotone.Edge> EDGE = HabitatCondition.enumCodec(Ecotone.Edge.class, Ecotone.Edge.values());
+	public static final Codec<ColumnPlan.PatchShape> SHAPE = HabitatCondition.enumCodec(ColumnPlan.PatchShape.class,
+			ColumnPlan.PatchShape.values());
 
 	/**
 	 * A plant of a rule: a block state (a double plant gets both halves, a block with a height above 1 is a column such
@@ -79,9 +81,11 @@ public record PlantPalette(List<Rule> rules) {
 	 * @param patch     patch size in blocks (1: none)
 	 * @param plants    plants and their weights
 	 * @param edges     forest edge classes of the columns (empty: any; step S8b, {@link Ecotone#edges})
+	 * @param shape     shape of the patches (step V12; absent: square cells as in M2)
 	 */
 	public record Rule(HabitatCondition condition, ColumnPlan.Medium medium, int minDepth, int maxDepth,
-			List<ColumnPlan.Ground> grounds, float coverage, int patch, List<Plant> plants, List<Ecotone.Edge> edges) {
+			List<ColumnPlan.Ground> grounds, float coverage, int patch, List<Plant> plants, List<Ecotone.Edge> edges,
+			ColumnPlan.PatchShape shape) {
 		public static final Codec<Rule> CODEC = RecordCodecBuilder.create(i -> i.group(
 				HabitatCondition.MAP_CODEC.forGetter(Rule::condition),
 				MEDIUM.optionalFieldOf("medium", ColumnPlan.Medium.LAND).forGetter(Rule::medium),
@@ -91,13 +95,20 @@ public record PlantPalette(List<Rule> rules) {
 				Codec.floatRange(0.0F, 1.0F).fieldOf("coverage").forGetter(Rule::coverage),
 				Codec.intRange(1, 16).optionalFieldOf("patch", 1).forGetter(Rule::patch),
 				Plant.CODEC.listOf().fieldOf("plants").forGetter(Rule::plants),
-				EDGE.listOf().optionalFieldOf("edges", List.of()).forGetter(Rule::edges)
+				EDGE.listOf().optionalFieldOf("edges", List.of()).forGetter(Rule::edges),
+				SHAPE.optionalFieldOf("patch_shape", ColumnPlan.PatchShape.CELLS).forGetter(Rule::shape)
 		).apply(i, Rule::new));
 
 		public Rule {
 			grounds = List.copyOf(grounds);
 			plants = List.copyOf(plants);
 			edges = List.copyOf(edges);
+		}
+
+		/** A rule with square patches. */
+		public Rule(HabitatCondition condition, ColumnPlan.Medium medium, int minDepth, int maxDepth,
+				List<ColumnPlan.Ground> grounds, float coverage, int patch, List<Plant> plants, List<Ecotone.Edge> edges) {
+			this(condition, medium, minDepth, maxDepth, grounds, coverage, patch, plants, edges, ColumnPlan.PatchShape.CELLS);
 		}
 
 		/** A rule for any forest edge class. */

@@ -33,6 +33,10 @@ import net.minecraft.world.level.levelgen.feature.stateproviders.WeightedStatePr
 import net.minecraft.world.level.levelgen.feature.treedecorators.AttachedToLogsDecorator;
 import net.minecraft.world.level.levelgen.feature.treedecorators.TrunkVineDecorator;
 import net.minecraft.world.level.levelgen.placement.PlacedFeature;
+import pl.polishforests.block.BerryShrubBlock;
+import pl.polishforests.block.GroundCoverBlock;
+import pl.polishforests.block.GroundPlant;
+import pl.polishforests.block.ModBlocks;
 import pl.polishforests.worldgen.feature.DeadwoodFeature;
 import pl.polishforests.worldgen.feature.config.HabitatCondition;
 import pl.polishforests.worldgen.feature.config.PlantPalette;
@@ -123,8 +127,11 @@ final class ModVegetation {
 			context.register(ModTrees.key(deadwood(s)), new DeadwoodFeature(s, false));
 			context.register(ModTrees.key(stump(s)), new DeadwoodFeature(s, true));
 		}
+		// Step V12: wood anemone and liverleaf (own blocks) besides the wildflowers (yellow anemone) and lily of the valley.
 		context.register(ModTrees.key(flowers("forest")), flowers(List.of(
-				segments(Blocks.WILDFLOWERS, FlowerBedBlock.AMOUNT, 1, 4, 4), single(Blocks.LILY_OF_THE_VALLEY, 2))));
+				segments(ModBlocks.ground(GroundPlant.WOOD_ANEMONE), FlowerBedBlock.AMOUNT, 1, 4, 4),
+				segments(ModBlocks.ground(GroundPlant.HEPATICA), FlowerBedBlock.AMOUNT, 1, 4, 2),
+				segments(Blocks.WILDFLOWERS, FlowerBedBlock.AMOUNT, 1, 4, 2), single(Blocks.LILY_OF_THE_VALLEY, 2))));
 		context.register(ModTrees.key(flowers("meadow")), flowers(List.of(single(Blocks.DANDELION, 3), single(Blocks.POPPY, 2),
 				single(Blocks.OXEYE_DAISY, 3), single(Blocks.CORNFLOWER, 2), single(Blocks.AZURE_BLUET, 1))));
 		// Marsh marigold as dandelion, garlic (Allium angulosum) as allium.
@@ -457,6 +464,13 @@ final class ModVegetation {
 			return rule(c, Medium.LAND, 1, 64, grounds, coverage, patch, plants);
 		}
 
+		/** A land rule with rounded patches (step V12, {@link pl.polishforests.worldgen.feature.plan.ColumnPlan.PatchShape#BLOBS}). */
+		Layer blobs(HabitatCondition c, float coverage, int patch, Plant... plants) {
+			rules.add(new PlantPalette.Rule(c, Medium.LAND, 1, 64, List.of(), coverage, patch, List.of(plants), List.of(),
+					pl.polishforests.worldgen.feature.plan.ColumnPlan.PatchShape.BLOBS));
+			return this;
+		}
+
 		Layer rule(HabitatCondition c, Medium medium, int minDepth, int maxDepth, List<Ground> grounds, float coverage,
 				int patch, Plant... plants) {
 			rules.add(new PlantPalette.Rule(c, medium, minDepth, maxDepth, grounds, coverage, patch, List.of(plants)));
@@ -487,6 +501,34 @@ final class ModVegetation {
 		return new Plant[] {Plant.block(Blocks.LEAF_LITTER.defaultBlockState().setValue(LeafLitterBlock.AMOUNT, 2), weight / 3),
 				Plant.block(Blocks.LEAF_LITTER.defaultBlockState().setValue(LeafLitterBlock.AMOUNT, 3), weight / 3),
 				Plant.block(Blocks.LEAF_LITTER.defaultBlockState().setValue(LeafLitterBlock.AMOUNT, 4), weight - 2 * (weight / 3))};
+	}
+
+	/** Bilberry (step V12), with or without the mossy underside (PW-7). */
+	private static Plant bilberry(int weight, boolean mossy) {
+		return Plant.block(ModBlocks.ground(GroundPlant.BILBERRY).defaultBlockState().setValue(BerryShrubBlock.MOSSY, mossy), weight);
+	}
+
+	/** Scots pine needle litter of 2–4 segments (step V12), with or without the mossy underside. */
+	private static Plant[] needles(int weight, boolean mossy) {
+		BlockState s = ModBlocks.ground(GroundPlant.NEEDLE_LITTER).defaultBlockState().setValue(GroundCoverBlock.MOSSY, mossy);
+		return new Plant[] {Plant.block(s.setValue(LeafLitterBlock.AMOUNT, 2), weight / 3),
+				Plant.block(s.setValue(LeafLitterBlock.AMOUNT, 3), weight / 3),
+				Plant.block(s.setValue(LeafLitterBlock.AMOUNT, 4), weight - 2 * (weight / 3))};
+	}
+
+	/** Wood anemone beds of 2–4 flowers (step V12). */
+	private static Plant[] anemone(int weight) {
+		return bed(ModBlocks.ground(GroundPlant.WOOD_ANEMONE), weight);
+	}
+
+	/** Liverleaf tufts of 2–4 flowers (step V12). */
+	private static Plant[] hepatica(int weight) {
+		return bed(ModBlocks.ground(GroundPlant.HEPATICA), weight);
+	}
+
+	/** Bracken, two blocks (step V12). */
+	private static Plant bracken(int weight) {
+		return Plant.block(ModBlocks.ground(GroundPlant.BRACKEN).defaultBlockState(), weight);
 	}
 
 	/** A flower bed (wildflowers, pink petals) of 2–4 flowers. */
@@ -753,16 +795,27 @@ final class ModVegetation {
 				bed(Blocks.PINK_PETALS, 10)));
 		l.land(biomes(BOG_WOODLAND), 0.85F, 4, moss.withWeight(45), bush.withWeight(35), fern.withWeight(5));
 		l.land(biomes(DRY_PINE_FOREST), 0.75F, 4, lichen.withWeight(55), bush.withWeight(17), dryGrass.withWeight(8));
-		l.land(biomes(FRESH_PINE_FOREST), 0.85F, 4, moss.withWeight(50), bush.withWeight(33), fern.withWeight(5));
+		// The forests of the vertical slice (step V12, docs/04 §6 N8 and N9, decisions PW-6 and PW-7): own blocks, rounded
+		// patches (no square patches of litter and bare ground, CP-B), the ground nearly covered. Fresh pine forest: bilberry
+		// about half of the columns (two thirds of it over moss), moss carpet, needle litter partly over moss, bracken rare
+		// (at most 2%); moss with the mossy underside about 70% of the columns, the herb layer about 53%.
+		l.blobs(biomes(FRESH_PINE_FOREST), 0.97F, 6, cat(bilberry(36, true), bilberry(14, false), moss.withWeight(30),
+				needles(6, true), needles(8, false), fern.withWeight(2), grass.withWeight(2), bracken(2)));
 		l.land(biomes(COASTAL_PINE_FOREST), 0.8F, 4, moss.withWeight(35), bush.withWeight(35), lichen.withWeight(10));
 		l.land(biomes(MOIST_PINE_FOREST), 0.9F, 4, moss.withWeight(50), bush.withWeight(25), fern.withWeight(12),
 				largeFern.withWeight(3));
-		l.land(biomes(MIXED_PINE_FOREST), 0.85F, 4, cat(moss.withWeight(30), bush.withWeight(26), fern.withWeight(12),
-				largeFern.withWeight(3), litter(15)));
-		l.land(biomes(MIXED_FOREST), 0.8F, 4, cat(litter(40), moss.withWeight(12), fern.withWeight(8),
-				bed(Blocks.WILDFLOWERS, 8), grass.withWeight(5), bush.withWeight(3)));
-		l.land(biomes(OAK_HORNBEAM_FOREST), 0.85F, 4, cat(litter(45), bed(Blocks.WILDFLOWERS, 20),
-				b(Blocks.LILY_OF_THE_VALLEY, 4), fern.withWeight(6), grass.withWeight(6)));
+		// Mixed coniferous forest: less moss, leaf litter of the oaks, bracken as its indicator (about 9%).
+		l.blobs(biomes(MIXED_PINE_FOREST), 0.93F, 6, cat(moss.withWeight(18), bilberry(16, true), bilberry(10, false),
+				bracken(8), needles(8, false), litter(10), fern.withWeight(6), grass.withWeight(3)));
+		// Mixed forest: leaf litter at most as much as in the oak-hornbeam forest (the order of the transect indicators,
+		// N15), wood anemone and liverleaf as in the broadleaved forests.
+		l.blobs(biomes(MIXED_FOREST), 0.9F, 5, cat(litter(14), moss.withWeight(10), anemone(14), hepatica(3),
+				fern.withWeight(8), grass.withWeight(5), bilberry(4, false)));
+		// Oak-hornbeam forest: wood anemone in carpets (spring herb layer about 72%, without it about 26%: the summer one),
+		// liverleaf in tufts, lily of the valley, ferns and sedges (as short grass), leaf litter about 22%, moss on the
+		// ground little (more at the bases of the trunks, TreeMoss).
+		l.blobs(biomes(OAK_HORNBEAM_FOREST), 0.97F, 5, cat(anemone(42), hepatica(8), b(Blocks.LILY_OF_THE_VALLEY, 4),
+				fern.withWeight(7), grass.withWeight(5), litter(20), moss.withWeight(3)));
 		l.land(biomes(LOWLAND_BEECH_FOREST), 0.85F, 4, cat(litter(85), fern.withWeight(2)));
 		l.land(biomes(MONTANE_BEECH_FOREST), 0.85F, 4, cat(litter(75), fern.withWeight(6), bed(Blocks.WILDFLOWERS, 3)));
 		l.land(biomes(UPLAND_FIR_FOREST), 0.8F, 4, cat(litter(40), moss.withWeight(20), fern.withWeight(12),

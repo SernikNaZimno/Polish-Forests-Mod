@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "half=lower": {
+      "model": "polishforests:block/bracken_bottom"
+    },
+    "half=upper": {
+      "model": "polishforests:block/bracken_top"
+    }
+  }
+}

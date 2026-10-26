@@ -109,8 +109,13 @@ public final class ForestNorms {
 	public static final String UNDERSTORY = "N7.understory";
 	/** N7 (no norm): shrubs (shrub species) per chunk. */
 	public static final String SHRUBS_PER_CHUNK = "N7.shrubs_per_chunk";
-	/** N8: herb layer cover, % of the columns; the bilberry alone. */
+	/**
+	 * N8: herb layer cover, % of the columns, as it is in summer (without the spring geophytes, which the client shows
+	 * only in spring, PW-8 (a)); the same in spring ({@link #HERBS_SPRING}, with them; step V12: both from one census, the
+	 * server state of the plants does not change with the season); the bilberry alone.
+	 */
 	public static final String HERBS = "N8.herbs";
+	public static final String HERBS_SPRING = "N8.herbs_spring";
 	public static final String BILBERRY = "N8.bilberry";
 	/** N8 (no norm): leaf litter cover, % of the columns (an indicator of the transect). */
 	public static final String LITTER = "N8.litter";
@@ -238,7 +243,8 @@ public final class ForestNorms {
 		METRICS.put(PINE_REGENERATION_UNDER_CANOPY, "young Scots pines of the tree planner under the canopy per ha");
 		METRICS.put(UNDERSTORY, "understory (shrubs and regeneration) cover, %");
 		METRICS.put(SHRUBS_PER_CHUNK, "shrubs per chunk");
-		METRICS.put(HERBS, "herb layer cover, % of columns");
+		METRICS.put(HERBS, "herb layer cover in summer, % of columns");
+		METRICS.put(HERBS_SPRING, "herb layer cover in spring, % of columns");
 		METRICS.put(BILBERRY, "bilberry cover, % of columns");
 		METRICS.put(LITTER, "leaf litter cover, % of columns");
 		METRICS.put(MOSS, "moss cover, % of columns");
@@ -329,10 +335,11 @@ public final class ForestNorms {
 		norm(UNDERSTORY, ohm, 10, 30, understory);
 		norm(UNDERSTORY, fpm, 5, 30, understory);
 		norm(UNDERSTORY, fpn, 10, 30, understory);
-		// N8 herb layer: the oak-hornbeam forest by aspect, the pine forest the same all year with the bilberry.
-		norm(HERBS, ohn, Aspect.SPRING, 60, 100, herbs);
-		norm(HERBS, ohn, Aspect.SUMMER, 20, 60, herbs);
-		norm(HERBS, ohm, Aspect.SPRING, 50, 90, herbs);
+		// N8 herb layer: the oak-hornbeam forest in spring (with the geophytes) and in summer, the pine forest the same all
+		// year with the bilberry (step V12: both aspects from one census, HERBS_SPRING and HERBS).
+		norm(HERBS_SPRING, ohn, 60, 100, herbs);
+		norm(HERBS, ohn, 20, 60, herbs);
+		norm(HERBS_SPRING, ohm, 50, 90, herbs);
 		for (Forest pine : new Forest[] {fpm, fpn}) {
 			norm(HERBS, pine, 40, 80, herbs);
 			norm(BILBERRY, pine, 40, 70, herbs);

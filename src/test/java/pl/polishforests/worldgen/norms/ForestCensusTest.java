@@ -189,7 +189,22 @@ class ForestCensusTest {
 		assertFalse(ForestCensus.unclassified("minecraft:red_mushroom"));
 		assertTrue(ForestCensus.unclassified("minecraft:cobweb"));
 		for (String id : ForestCensus.BILBERRY_PLANTS) {
-			assertTrue(ForestCensus.HERB_PLANTS.contains(id), "the bilberry is a part of the herb layer");
+			assertTrue(ForestCensus.herb(id), "the bilberry is a part of the herb layer");
+		}
+		// Step V12: the own herb layer. The wood anemone is herb layer in spring only, the liverleaf all year; mossy
+		// bilberry and needle litter are moss too (PW-7); the needle litter is no leaf litter (the transect indicator).
+		assertTrue(ForestCensus.herb("polishforests:wood_anemone") && !ForestCensus.summerHerb("polishforests:wood_anemone"));
+		assertTrue(ForestCensus.summerHerb("polishforests:hepatica") && ForestCensus.summerHerb("polishforests:bracken"));
+		assertTrue(ForestCensus.bilberry("polishforests:bilberry" + ForestCensus.MOSSY));
+		assertTrue(ForestCensus.herb("polishforests:bilberry" + ForestCensus.MOSSY));
+		assertTrue(ForestCensus.moss("polishforests:bilberry" + ForestCensus.MOSSY, "minecraft:podzol"));
+		assertTrue(ForestCensus.moss("polishforests:needle_litter" + ForestCensus.MOSSY, "minecraft:podzol"));
+		assertFalse(ForestCensus.moss("polishforests:needle_litter", "minecraft:podzol"));
+		assertFalse(ForestCensus.litter("polishforests:needle_litter"));
+		assertFalse(ForestCensus.herb("polishforests:needle_litter"));
+		for (String id : java.util.List.of("polishforests:bilberry", "polishforests:wood_anemone", "polishforests:hepatica",
+				"polishforests:bracken", "polishforests:needle_litter", "polishforests:needle_litter" + ForestCensus.MOSSY)) {
+			assertFalse(ForestCensus.unclassified(id), id);
 		}
 	}
 

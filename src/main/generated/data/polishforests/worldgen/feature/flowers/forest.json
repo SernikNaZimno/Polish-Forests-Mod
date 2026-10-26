@@ -4,8 +4,316 @@
     "type": "minecraft:weighted",
     "entries": [
       {
+        "data": "polishforests:wood_anemone",
+        "weight": 4
+      },
+      {
+        "data": {
+          "id": "polishforests:wood_anemone",
+          "properties": {
+            "facing": "east",
+            "flower_amount": "1"
+          }
+        },
+        "weight": 4
+      },
+      {
+        "data": {
+          "id": "polishforests:wood_anemone",
+          "properties": {
+            "facing": "south",
+            "flower_amount": "1"
+          }
+        },
+        "weight": 4
+      },
+      {
+        "data": {
+          "id": "polishforests:wood_anemone",
+          "properties": {
+            "facing": "west",
+            "flower_amount": "1"
+          }
+        },
+        "weight": 4
+      },
+      {
+        "data": {
+          "id": "polishforests:wood_anemone",
+          "properties": {
+            "facing": "north",
+            "flower_amount": "2"
+          }
+        },
+        "weight": 4
+      },
+      {
+        "data": {
+          "id": "polishforests:wood_anemone",
+          "properties": {
+            "facing": "east",
+            "flower_amount": "2"
+          }
+        },
+        "weight": 4
+      },
+      {
+        "data": {
+          "id": "polishforests:wood_anemone",
+          "properties": {
+            "facing": "south",
+            "flower_amount": "2"
+          }
+        },
+        "weight": 4
+      },
+      {
+        "data": {
+          "id": "polishforests:wood_anemone",
+          "properties": {
+            "facing": "west",
+            "flower_amount": "2"
+          }
+        },
+        "weight": 4
+      },
+      {
+        "data": {
+          "id": "polishforests:wood_anemone",
+          "properties": {
+            "facing": "north",
+            "flower_amount": "3"
+          }
+        },
+        "weight": 4
+      },
+      {
+        "data": {
+          "id": "polishforests:wood_anemone",
+          "properties": {
+            "facing": "east",
+            "flower_amount": "3"
+          }
+        },
+        "weight": 4
+      },
+      {
+        "data": {
+          "id": "polishforests:wood_anemone",
+          "properties": {
+            "facing": "south",
+            "flower_amount": "3"
+          }
+        },
+        "weight": 4
+      },
+      {
+        "data": {
+          "id": "polishforests:wood_anemone",
+          "properties": {
+            "facing": "west",
+            "flower_amount": "3"
+          }
+        },
+        "weight": 4
+      },
+      {
+        "data": {
+          "id": "polishforests:wood_anemone",
+          "properties": {
+            "facing": "north",
+            "flower_amount": "4"
+          }
+        },
+        "weight": 4
+      },
+      {
+        "data": {
+          "id": "polishforests:wood_anemone",
+          "properties": {
+            "facing": "east",
+            "flower_amount": "4"
+          }
+        },
+        "weight": 4
+      },
+      {
+        "data": {
+          "id": "polishforests:wood_anemone",
+          "properties": {
+            "facing": "south",
+            "flower_amount": "4"
+          }
+        },
+        "weight": 4
+      },
+      {
+        "data": {
+          "id": "polishforests:wood_anemone",
+          "properties": {
+            "facing": "west",
+            "flower_amount": "4"
+          }
+        },
+        "weight": 4
+      },
+      {
+        "data": "polishforests:hepatica",
+        "weight": 2
+      },
+      {
+        "data": {
+          "id": "polishforests:hepatica",
+          "properties": {
+            "facing": "east",
+            "flower_amount": "1"
+          }
+        },
+        "weight": 2
+      },
+      {
+        "data": {
+          "id": "polishforests:hepatica",
+          "properties": {
+            "facing": "south",
+            "flower_amount": "1"
+          }
+        },
+        "weight": 2
+      },
+      {
+        "data": {
+          "id": "polishforests:hepatica",
+          "properties": {
+            "facing": "west",
+            "flower_amount": "1"
+          }
+        },
+        "weight": 2
+      },
+      {
+        "data": {
+          "id": "polishforests:hepatica",
+          "properties": {
+            "facing": "north",
+            "flower_amount": "2"
+          }
+        },
+        "weight": 2
+      },
+      {
+        "data": {
+          "id": "polishforests:hepatica",
+          "properties": {
+            "facing": "east",
+            "flower_amount": "2"
+          }
+        },
+        "weight": 2
+      },
+      {
+        "data": {
+          "id": "polishforests:hepatica",
+          "properties": {
+            "facing": "south",
+            "flower_amount": "2"
+          }
+        },
+        "weight": 2
+      },
+      {
+        "data": {
+          "id": "polishforests:hepatica",
+          "properties": {
+            "facing": "west",
+            "flower_amount": "2"
+          }
+        },
+        "weight": 2
+      },
+      {
+        "data": {
+          "id": "polishforests:hepatica",
+          "properties": {
+            "facing": "north",
+            "flower_amount": "3"
+          }
+        },
+        "weight": 2
+      },
+      {
+        "data": {
+          "id": "polishforests:hepatica",
+          "properties": {
+            "facing": "east",
+            "flower_amount": "3"
+          }
+        },
+        "weight": 2
+      },
+      {
+        "data": {
+          "id": "polishforests:hepatica",
+          "properties": {
+            "facing": "south",
+            "flower_amount": "3"
+          }
+        },
+        "weight": 2
+      },
+      {
+        "data": {
+          "id": "polishforests:hepatica",
+          "properties": {
+            "facing": "west",
+            "flower_amount": "3"
+          }
+        },
+        "weight": 2
+      },
+      {
+        "data": {
+          "id": "polishforests:hepatica",
+          "properties": {
+            "facing": "north",
+            "flower_amount": "4"
+          }
+        },
+        "weight": 2
+      },
+      {
+        "data": {
+          "id": "polishforests:hepatica",
+          "properties": {
+            "facing": "east",
+            "flower_amount": "4"
+          }
+        },
+        "weight": 2
+      },
+      {
+        "data": {
+          "id": "polishforests:hepatica",
+          "properties": {
+            "facing": "south",
+            "flower_amount": "4"
+          }
+        },
+        "weight": 2
+      },
+      {
+        "data": {
+          "id": "polishforests:hepatica",
+          "properties": {
+            "facing": "west",
+            "flower_amount": "4"
+          }
+        },
+        "weight": 2
+      },
+      {
         "data": "minecraft:wildflowers",
-        "weight": 4
+        "weight": 2
       },
       {
         "data": {
@@ -15,7 +323,7 @@
             "flower_amount": "1"
           }
         },
-        "weight": 4
+        "weight": 2
       },
       {
         "data": {
@@ -25,7 +333,7 @@
             "flower_amount": "1"
           }
         },
-        "weight": 4
+        "weight": 2
       },
       {
         "data": {
@@ -35,7 +343,7 @@
             "flower_amount": "1"
           }
         },
-        "weight": 4
+        "weight": 2
       },
       {
         "data": {
@@ -45,7 +353,7 @@
             "flower_amount": "2"
           }
         },
-        "weight": 4
+        "weight": 2
       },
       {
         "data": {
@@ -55,7 +363,7 @@
             "flower_amount": "2"
           }
         },
-        "weight": 4
+        "weight": 2
       },
       {
         "data": {
@@ -65,7 +373,7 @@
             "flower_amount": "2"
           }
         },
-        "weight": 4
+        "weight": 2
       },
       {
         "data": {
@@ -75,7 +383,7 @@
             "flower_amount": "2"
           }
         },
-        "weight": 4
+        "weight": 2
       },
       {
         "data": {
@@ -85,7 +393,7 @@
             "flower_amount": "3"
           }
         },
-        "weight": 4
+        "weight": 2
       },
       {
         "data": {
@@ -95,7 +403,7 @@
             "flower_amount": "3"
           }
         },
-        "weight": 4
+        "weight": 2
       },
       {
         "data": {
@@ -105,7 +413,7 @@
             "flower_amount": "3"
           }
         },
-        "weight": 4
+        "weight": 2
       },
       {
         "data": {
@@ -115,7 +423,7 @@
             "flower_amount": "3"
           }
         },
-        "weight": 4
+        "weight": 2
       },
       {
         "data": {
@@ -125,7 +433,7 @@
             "flower_amount": "4"
           }
         },
-        "weight": 4
+        "weight": 2
       },
       {
         "data": {
@@ -135,7 +443,7 @@
             "flower_amount": "4"
           }
         },
-        "weight": 4
+        "weight": 2
       },
       {
         "data": {
@@ -145,7 +453,7 @@
             "flower_amount": "4"
           }
         },
-        "weight": 4
+        "weight": 2
       },
       {
         "data": {
@@ -155,7 +463,7 @@
             "flower_amount": "4"
           }
         },
-        "weight": 4
+        "weight": 2
       },
       {
         "data": "minecraft:lily_of_the_valley",

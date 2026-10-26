@@ -1,0 +1,6 @@
+{
+  "parent": "polishforests:block/template_berries_cross",
+  "textures": {
+    "berries": "polishforests:block/bilberry_berries"
+  }
+}

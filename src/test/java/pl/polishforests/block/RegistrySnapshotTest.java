@@ -80,8 +80,38 @@ class RegistrySnapshotTest {
 		assertEquals(3, marcescent);
 		// Step I1: + 9 root flares and the underground root, thin trunks of 84 states each.
 		assertEquals(RootFlare.values().length, ModBlocks.flares().size());
+		// Step V12: + the herb layer: bilberry 4 (berries × mossy), wood anemone and liverleaf 16 each (facing 4 × flowers
+		// 4), needle litter 32 (facing 4 × segments 4 × mossy), bracken 2 (half).
+		assertEquals(GroundPlant.values().length, ModBlocks.groundPlants().size());
+		int ground = 4 + 16 + 16 + 32 + 2;
 		assertEquals(84 * TreeTrunk.values().length + foliage * (112 + 2 + 1) + marcescent * 112 + 4 * 3 + 1
-				+ 84 * (RootFlare.values().length + 1), RegistrySnapshot.stateCount());
+				+ 84 * (RootFlare.values().length + 1) + ground, RegistrySnapshot.stateCount());
+	}
+
+	/**
+	 * Step V12: the herb layer and litter blocks keep their families (BerryShrubBlock, SeasonalPlantBlock,
+	 * GroundCoverBlock, a double plant), each with its block item; the default states are the generated ones of ZW-5 (no
+	 * fruit, no moss), and the bilberry fruit is a food.
+	 */
+	@Test
+	void groundPlantsOfStepV12() {
+		for (GroundPlant g : GroundPlant.values()) {
+			net.minecraft.world.level.block.Block b = ModBlocks.ground(g);
+			assertEquals(g.id(), BuiltInRegistries.BLOCK.getKey(b).getPath());
+			assertEquals(b, ((net.minecraft.world.item.BlockItem) b.asItem()).getBlock(), g.id());
+			Class<?> family = switch (g.kind()) {
+				case BERRY_SHRUB -> BerryShrubBlock.class;
+				case SEASONAL -> SeasonalPlantBlock.class;
+				case COVER -> GroundCoverBlock.class;
+				case TALL -> net.minecraft.world.level.block.DoublePlantBlock.class;
+			};
+			assertTrue(family.isInstance(b), g.id() + " is a " + family.getSimpleName());
+			if (g.mossy()) {
+				assertTrue(!b.defaultBlockState().getValue(BerryShrubBlock.MOSSY), g.id() + ": mossy by default");
+			}
+		}
+		assertTrue(!ModBlocks.ground(GroundPlant.BILBERRY).defaultBlockState().getValue(BerryShrubBlock.BERRIES));
+		assertEquals(ModBlocks.BILBERRIES, BuiltInRegistries.ITEM.getKey(ModBlocks.bilberries()).getPath());
 	}
 
 	/** Step V7: every species leaf block is a leaves block with the phase 0-3, every sapling has an item and a pot. */

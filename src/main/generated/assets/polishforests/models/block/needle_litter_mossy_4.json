@@ -1,0 +1,6 @@
+{
+  "parent": "polishforests:block/template_mossy_litter_4",
+  "textures": {
+    "texture": "polishforests:block/needle_litter"
+  }
+}

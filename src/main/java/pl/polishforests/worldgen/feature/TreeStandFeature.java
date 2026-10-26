@@ -437,6 +437,8 @@ public final class TreeStandFeature implements Feature {
 					RootVoxels roots = RootPlan.plan(new RootPlan.Request(proc.species(), layer, age, level.getSeed(), x, at.getY(), z,
 							voxels.radius(0), a::rootGround, session.session().trunks(), session.session().rootKinds()));
 					TreeRoots.Written w = TreeRoots.write(level, roots, proc.species());
+					// Step V12: moss at the trunk base and along the flares.
+					TreeMoss.write(level, roots, w, pl.polishforests.worldgen.habitat.Habitat.biome(codes[column]), level.getSeed());
 					TreeRoots.NANOS.add(System.nanoTime() - rootStart);
 					TreeRoots.TREES.increment();
 					ModFeatures.rootsPlaced(proc.species(), roots, w);

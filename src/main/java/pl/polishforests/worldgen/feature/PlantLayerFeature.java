@@ -115,7 +115,7 @@ public final class PlantLayerFeature implements Feature {
 			}
 			anyEdge |= edgeMask != 0;
 			rules.add(new ColumnPlan.Rule(r.condition().match(), r.medium(), r.minDepth(), r.maxDepth(), grounds, r.coverage(),
-					r.patch(), index, weights, edgeMask));
+					r.patch(), index, weights, edgeMask, r.shape()));
 		}
 		this.plan = new ColumnPlan.Palette(rules);
 		this.shore = anyShore;

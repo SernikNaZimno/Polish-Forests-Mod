@@ -15,9 +15,12 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.DoubleHighBlockItem;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.DoublePlantBlock;
 import net.minecraft.world.level.block.FlowerPotBlock;
 import net.minecraft.world.level.block.RotatedPillarBlock;
 import net.minecraft.world.level.block.SoundType;
@@ -33,7 +36,8 @@ import pl.polishforests.PolishForests;
  * Blocks and block items of the mod (vertical slice, step V2: the thin trunks {@link TreeTrunk}; step V7: the leaves,
  * saplings and potted saplings of the species ({@link TreeFoliage}) and the LITE wood set of the Scots pine, decision D1
  * (b): log, wood, stripped log, stripped wood and planks, the log and the wood stripped with an axe; step I1: the root
- * flares of the species {@link RootFlare} and the underground root {@value #TREE_ROOT}). The ids, properties
+ * flares of the species {@link RootFlare} and the underground root {@value #TREE_ROOT}; step V12: the herb layer and
+ * litter {@link GroundPlant} and the fruit item {@value #BILBERRIES}). The ids, properties
  * and property values go into the saved worlds; {@code RegistrySnapshotTest} compares them with
  * {@code src/test/resources/registry_snapshot.txt} and they are frozen after checkpoint CP-B (PW-11, ZW-4).
  */
@@ -45,6 +49,9 @@ public final class ModBlocks {
 	/** Step I1: the root flares of the species and the underground root. */
 	private static final Map<RootFlare, RootFlareBlock> FLARES = new EnumMap<>(RootFlare.class);
 	private static TrunkBlock treeRoot;
+	/** Step V12: the herb layer and litter blocks and the bilberry fruit. */
+	private static final Map<GroundPlant, Block> GROUND = new EnumMap<>(GroundPlant.class);
+	private static Item bilberries;
 	/** Hardness and blast resistance of the underground root: as vanilla mangrove roots, quicker than a log. */
 	private static final float ROOT_STRENGTH = 0.7F;
 	/** Every block of the mod in registration order. */
@@ -87,6 +94,10 @@ public final class ModBlocks {
 			fire.add(b, IGNITE_ODDS, BURN_ODDS);
 		}
 		fire.add(pinePlanks, 5, 20);
+		// Step V12: the herb layer as vanilla plants (FireBlock: grass and flowers 60 / 100, leaf litter 60 / 100).
+		for (Block b : GROUND.values()) {
+			fire.add(b, 60, 100);
+		}
 		// Axe stripping of the full log and wood, keeping the axis (the thin trunks are not stripped until M3).
 		BlockTransformerHelper.registerStripping(pineLog, new CopyPropertiesProvider(strippedPineLog));
 		BlockTransformerHelper.registerStripping(pineWood, new CopyPropertiesProvider(strippedPineWood));
@@ -113,7 +124,15 @@ public final class ModBlocks {
 				out.insertAfter(previous, b);
 				previous = b.asItem();
 			}
+			// Step V12: the herb layer and litter after the vanilla bush.
+			previous = Items.BUSH;
+			for (Block b : GROUND.values()) {
+				out.insertAfter(previous, b);
+				previous = b.asItem();
+			}
 		});
+		CreativeModeTabEvents.modifyOutputEvent(CreativeModeTabs.FOOD_AND_DRINKS).register(out ->
+				out.insertAfter(Items.SWEET_BERRIES, bilberries));
 		CreativeModeTabEvents.modifyOutputEvent(CreativeModeTabs.BUILDING_BLOCKS).register(out -> {
 			Item previous = Items.PALE_OAK_BUTTON;
 			for (Block b : List.of(pineLog, pineWood, strippedPineLog, strippedPineWood, pinePlanks)) {
@@ -173,6 +192,54 @@ public final class ModBlocks {
 		treeRoot = (TrunkBlock) block(TREE_ROOT, TrunkBlock::new, BlockBehaviour.Properties.of().mapColor(MapColor.DIRT)
 				.instrument(NoteBlockInstrument.BASS).strength(ROOT_STRENGTH).sound(SoundType.MANGROVE_ROOTS).ignitedByLava());
 		item(TREE_ROOT, treeRoot, woodFuel());
+		// Step V12 (herb layer, litter, decision PW-6), registered after the frozen blocks of CP-B.
+		bilberries = Registry.register(BuiltInRegistries.ITEM, ResourceKey.create(Registries.ITEM, PolishForests.id(BILBERRIES)),
+				new Item(new Item.Properties().setId(ResourceKey.create(Registries.ITEM, PolishForests.id(BILBERRIES)))
+						.food(BILBERRY_FOOD).compostable(ContextIntProviders.COMPOSTABLE_LOW)));
+		for (GroundPlant g : GroundPlant.values()) {
+			Block block = switch (g.kind()) {
+				case BERRY_SHRUB -> block(g.id(), p -> new BerryShrubBlock(ModBlocks::bilberries, p), BlockBehaviour.Properties.of()
+						.mapColor(MapColor.PLANT).replaceable().noCollision().instabreak().sound(SoundType.GRASS).ignitedByLava()
+						.pushReaction(PushReaction.POPPED));
+				case SEASONAL -> block(g.id(), SeasonalPlantBlock::new, BlockBehaviour.Properties.of().mapColor(MapColor.PLANT)
+						.noCollision().sound(SoundType.PINK_PETALS).pushReaction(PushReaction.POPPED));
+				case COVER -> block(g.id(), GroundCoverBlock::new, BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_BROWN)
+						.replaceable().noCollision().sound(SoundType.LEAF_LITTER).pushReaction(PushReaction.POPPED));
+				case TALL -> block(g.id(), DoublePlantBlock::new, BlockBehaviour.Properties.of().mapColor(MapColor.PLANT)
+						.replaceable().noCollision().instabreak().sound(SoundType.GRASS).offsetType(BlockBehaviour.OffsetType.XZ)
+						.ignitedByLava().pushReaction(PushReaction.POPPED));
+			};
+			Item.Properties props = new Item.Properties().compostable(g.kind() == GroundPlant.Kind.TALL
+					? ContextIntProviders.COMPOSTABLE_MEDIUM : ContextIntProviders.COMPOSTABLE_LOW);
+			if (g.kind() == GroundPlant.Kind.TALL) {
+				ResourceKey<Item> key = ResourceKey.create(Registries.ITEM, PolishForests.id(g.id()));
+				DoubleHighBlockItem item = new DoubleHighBlockItem(block, props.setId(key).useBlockDescriptionPrefix());
+				item.registerBlocks(Item.BY_BLOCK, item);
+				Registry.register(BuiltInRegistries.ITEM, key, item);
+			} else {
+				item(g.id(), block, props);
+			}
+			GROUND.put(g, block);
+		}
+	}
+
+	/** Item path of the bilberry fruit (step V12). */
+	public static final String BILBERRIES = "bilberries";
+	/** The bilberry fruit as food: as vanilla sweet berries. */
+	private static final FoodProperties BILBERRY_FOOD = new FoodProperties.Builder().nutrition(2).saturationModifier(0.1F).build();
+
+	/** A block of the herb layer or the litter (step V12). */
+	public static Block ground(GroundPlant g) {
+		return registered(GROUND.get(g));
+	}
+
+	public static Map<GroundPlant, Block> groundPlants() {
+		return Collections.unmodifiableMap(GROUND);
+	}
+
+	/** The bilberry fruit (step V12). */
+	public static Item bilberries() {
+		return registered(bilberries);
 	}
 
 	/** Block and item path of the underground root (step I1). */
