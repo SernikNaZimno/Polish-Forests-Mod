@@ -82,10 +82,12 @@ public record PlantPalette(List<Rule> rules) {
 	 * @param plants    plants and their weights
 	 * @param edges     forest edge classes of the columns (empty: any; step S8b, {@link Ecotone#edges})
 	 * @param shape     shape of the patches (step V12; absent: square cells as in M2)
+	 * @param scattered plants drawn per column, not per patch, sharing the coverage with {@code plants} by weight (round 1
+	 *                  of the V12 review; {@link ColumnPlan.Rule#scatteredFrom})
 	 */
 	public record Rule(HabitatCondition condition, ColumnPlan.Medium medium, int minDepth, int maxDepth,
 			List<ColumnPlan.Ground> grounds, float coverage, int patch, List<Plant> plants, List<Ecotone.Edge> edges,
-			ColumnPlan.PatchShape shape) {
+			ColumnPlan.PatchShape shape, List<Plant> scattered) {
 		public static final Codec<Rule> CODEC = RecordCodecBuilder.create(i -> i.group(
 				HabitatCondition.MAP_CODEC.forGetter(Rule::condition),
 				MEDIUM.optionalFieldOf("medium", ColumnPlan.Medium.LAND).forGetter(Rule::medium),
@@ -96,13 +98,32 @@ public record PlantPalette(List<Rule> rules) {
 				Codec.intRange(1, 16).optionalFieldOf("patch", 1).forGetter(Rule::patch),
 				Plant.CODEC.listOf().fieldOf("plants").forGetter(Rule::plants),
 				EDGE.listOf().optionalFieldOf("edges", List.of()).forGetter(Rule::edges),
-				SHAPE.optionalFieldOf("patch_shape", ColumnPlan.PatchShape.CELLS).forGetter(Rule::shape)
+				SHAPE.optionalFieldOf("patch_shape", ColumnPlan.PatchShape.CELLS).forGetter(Rule::shape),
+				Plant.CODEC.listOf().optionalFieldOf("scattered", List.of()).forGetter(Rule::scattered)
 		).apply(i, Rule::new));
 
 		public Rule {
 			grounds = List.copyOf(grounds);
 			plants = List.copyOf(plants);
 			edges = List.copyOf(edges);
+			scattered = List.copyOf(scattered);
+		}
+
+		/** A rule without scattered plants. */
+		public Rule(HabitatCondition condition, ColumnPlan.Medium medium, int minDepth, int maxDepth,
+				List<ColumnPlan.Ground> grounds, float coverage, int patch, List<Plant> plants, List<Ecotone.Edge> edges,
+				ColumnPlan.PatchShape shape) {
+			this(condition, medium, minDepth, maxDepth, grounds, coverage, patch, plants, edges, shape, List.of());
+		}
+
+		/** The clumped and the scattered plants, in this order (the plan's plant list of the rule). */
+		public List<Plant> allPlants() {
+			if (scattered.isEmpty()) {
+				return plants;
+			}
+			List<Plant> all = new java.util.ArrayList<>(plants);
+			all.addAll(scattered);
+			return all;
 		}
 
 		/** A rule with square patches. */

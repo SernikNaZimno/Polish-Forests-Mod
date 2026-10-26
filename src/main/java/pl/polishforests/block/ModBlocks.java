@@ -20,6 +20,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.CarpetBlock;
 import net.minecraft.world.level.block.DoublePlantBlock;
 import net.minecraft.world.level.block.FlowerPotBlock;
 import net.minecraft.world.level.block.RotatedPillarBlock;
@@ -37,7 +38,8 @@ import pl.polishforests.PolishForests;
  * saplings and potted saplings of the species ({@link TreeFoliage}) and the LITE wood set of the Scots pine, decision D1
  * (b): log, wood, stripped log, stripped wood and planks, the log and the wood stripped with an axe; step I1: the root
  * flares of the species {@link RootFlare} and the underground root {@value #TREE_ROOT}; step V12: the herb layer and
- * litter {@link GroundPlant} and the fruit item {@value #BILBERRIES}). The ids, properties
+ * litter {@link GroundPlant} and the fruit item {@value #BILBERRIES}; round 1 of the V12 review: the forest moss carpet
+ * {@value #FOREST_MOSS_CARPET} and the mossy podzol {@value #MOSSY_PODZOL}). The ids, properties
  * and property values go into the saved worlds; {@code RegistrySnapshotTest} compares them with
  * {@code src/test/resources/registry_snapshot.txt} and they are frozen after checkpoint CP-B (PW-11, ZW-4).
  */
@@ -52,6 +54,9 @@ public final class ModBlocks {
 	/** Step V12: the herb layer and litter blocks and the bilberry fruit. */
 	private static final Map<GroundPlant, Block> GROUND = new EnumMap<>(GroundPlant.class);
 	private static Item bilberries;
+	/** Round 1 of the V12 review: the own moss carpet and the podzol under feather moss. */
+	private static Block forestMossCarpet;
+	private static Block mossyPodzol;
 	/** Hardness and blast resistance of the underground root: as vanilla mangrove roots, quicker than a log. */
 	private static final float ROOT_STRENGTH = 0.7F;
 	/** Every block of the mod in registration order. */
@@ -98,6 +103,7 @@ public final class ModBlocks {
 		for (Block b : GROUND.values()) {
 			fire.add(b, 60, 100);
 		}
+		fire.add(forestMossCarpet, 60, 100);
 		// Axe stripping of the full log and wood, keeping the axis (the thin trunks are not stripped until M3).
 		BlockTransformerHelper.registerStripping(pineLog, new CopyPropertiesProvider(strippedPineLog));
 		BlockTransformerHelper.registerStripping(pineWood, new CopyPropertiesProvider(strippedPineWood));
@@ -130,6 +136,8 @@ public final class ModBlocks {
 				out.insertAfter(previous, b);
 				previous = b.asItem();
 			}
+			out.insertAfter(Items.MOSS_CARPET, forestMossCarpet);
+			out.insertAfter(Items.PODZOL, mossyPodzol);
 		});
 		CreativeModeTabEvents.modifyOutputEvent(CreativeModeTabs.FOOD_AND_DRINKS).register(out ->
 				out.insertAfter(Items.SWEET_BERRIES, bilberries));
@@ -221,6 +229,31 @@ public final class ModBlocks {
 			}
 			GROUND.put(g, block);
 		}
+		// Round 1 of the V12 review, registered after the blocks of V12: the moss at the trunk bases and on the floor of the
+		// broadleaved forests of the slice as the own feather moss (the moss layer of the pine forest; the vanilla moss
+		// carpet read as yellow-olive rugs), and the podzol under the trunks and the root flares of the pine forests,
+		// overgrown with it (no plant can stand in these cells, and the bare podzol read as orange squares at every trunk).
+		forestMossCarpet = block(FOREST_MOSS_CARPET, CarpetBlock::new, BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_GREEN)
+				.strength(0.1F).sound(SoundType.MOSS_CARPET).pushReaction(PushReaction.POPPED));
+		item(FOREST_MOSS_CARPET, forestMossCarpet, new Item.Properties().compostable(ContextIntProviders.COMPOSTABLE_LOW));
+		mossyPodzol = block(MOSSY_PODZOL, Block::new, BlockBehaviour.Properties.of().mapColor(MapColor.PODZOL).strength(0.5F)
+				.sound(SoundType.MOSS));
+		item(MOSSY_PODZOL, mossyPodzol, new Item.Properties());
+	}
+
+	/** Block and item path of the own moss carpet (round 1 of the V12 review). */
+	public static final String FOREST_MOSS_CARPET = "forest_moss_carpet";
+	/** Block and item path of the podzol under feather moss (round 1 of the V12 review). */
+	public static final String MOSSY_PODZOL = "mossy_podzol";
+
+	/** The own moss carpet: the feather moss of the forest floor (round 1 of the V12 review). */
+	public static Block forestMossCarpet() {
+		return registered(forestMossCarpet);
+	}
+
+	/** The podzol under feather moss, under the trunks and root flares of the pine forests (round 1 of the V12 review). */
+	public static Block mossyPodzol() {
+		return registered(mossyPodzol);
 	}
 
 	/** Item path of the bilberry fruit (step V12). */

@@ -339,6 +339,58 @@ class GroundLayerPlanTest {
 	}
 
 	/**
+	 * Round 1 of the V12 review: the scattered plants of a rule with rounded patches (the plants without a mossy underside
+	 * of the pine forests, whose patches read as plates of bare podzol) keep their share but do not clump: the chance that
+	 * the east neighbor of a column with a scattered plant has one too is their share (as for independent columns), while
+	 * the clumped plants still clump.
+	 */
+	@Test
+	void scatteredPlantsKeepTheirShareWithoutClumping() {
+		// Plants 0 and 1 clumped (weights 60 and 25), plant 2 scattered (weight 15).
+		ColumnPlan.Palette p = new ColumnPlan.Palette(List.of(new ColumnPlan.Rule(biome(HabitatBiome.FRESH_PINE_FOREST),
+				ColumnPlan.Medium.LAND, 1, 64, 0, 1.0, 6, new int[] {0, 1, 2}, new int[] {60, 25, 15}, 0, ColumnPlan.PatchShape.BLOBS,
+				2)));
+		ColumnPlan.Columns c = uniform(code(HabitatBiome.FRESH_PINE_FOREST, Zone.NONE), 0, ColumnPlan.Ground.PODZOL, false);
+		int n = 16 * 24;
+		int[][] field = new int[n][n];
+		for (int[] row : field) {
+			Arrays.fill(row, -1);
+		}
+		for (int cx = 0; cx < 24; cx++) {
+			for (int cz = 0; cz < 24; cz++) {
+				for (int q : ColumnPlan.of(c, p, SEED, cx, cz, SALT)) {
+					int col = ColumnPlan.column(q);
+					field[cx * 16 + (col >> 4)][cz * 16 + (col & 15)] = ColumnPlan.plant(q);
+				}
+			}
+		}
+		long[] counts = new long[3];
+		long[] pairs = new long[3];
+		long[] same = new long[3];
+		for (int x = 0; x < n; x++) {
+			for (int z = 0; z < n; z++) {
+				int a = field[x][z];
+				counts[a]++;
+				if (x + 1 < n) {
+					pairs[a]++;
+					same[a] += field[x + 1][z] == a ? 1 : 0;
+				}
+			}
+		}
+		double all = (double) n * n;
+		double scattered = counts[2] / all;
+		double scatteredNext = (double) same[2] / pairs[2];
+		double clumpedNext = (double) same[1] / pairs[1];
+		System.out.printf(Locale.ROOT, "scattered: shares %s, neighbor alike: scattered %.3f, clumped %.3f%n",
+				Arrays.toString(counts), scatteredNext, clumpedNext);
+		assertEquals(0.60, counts[0] / all, 0.05);
+		assertEquals(0.25, counts[1] / all, 0.05);
+		assertEquals(0.15, scattered, 0.02);
+		assertEquals(scattered, scatteredNext, 0.03, "scattered plants clump");
+		assertTrue(clumpedNext > 0.25 + 0.2, "clumped plants do not clump: " + clumpedNext);
+	}
+
+	/**
 	 * The CP-B remark on the pine forest (flat patches of litter and bare ground with rectangular edges): the borders of
 	 * the rounded patches do not run straight. Over a field of 24 × 24 chunks, smoothed by a 3 × 3 majority twice (the
 	 * patch shapes the eye sees through the single columns), the borders between covered and bare columns of the square
@@ -487,7 +539,7 @@ class GroundLayerPlanTest {
 				+ "oak-hornbeam: herbs in spring %.3f, in summer %.3f, moss %.3f, bare %.3f%n", pineMoss, pineBilberry, pineHerbs,
 				pineBracken, share(mixedPine, (id, p) -> id.equals("polishforests:bracken")), oakSpring, oakSummer, oakMoss,
 				1 - oak.get("coverage").getAsDouble());
-		assertTrue(pineMoss >= 0.66 && pineMoss <= 0.85, "fresh pine forest moss " + pineMoss);
+		assertTrue(pineMoss >= 0.66 && pineMoss <= 0.93, "fresh pine forest moss " + pineMoss);
 		assertTrue(pineBilberry >= 0.45 && pineBilberry <= 0.6, "fresh pine forest bilberry " + pineBilberry);
 		assertTrue(pineHerbs >= 0.45 && pineHerbs <= 0.75, "fresh pine forest herb layer " + pineHerbs);
 		assertTrue(pineBracken > 0 && pineBracken <= 0.02, "fresh pine forest bracken " + pineBracken);
@@ -510,7 +562,7 @@ class GroundLayerPlanTest {
 
 	/** Moss as the census counts it: moss carpets and every block in its mossy state (PW-7). */
 	private static boolean moss(String id, JsonObject properties) {
-		return id.equals("minecraft:moss_carpet") || id.equals("minecraft:pale_moss_carpet")
+		return pl.polishforests.worldgen.norms.ForestCensus.MOSS_PLANTS.contains(id)
 				|| properties != null && properties.has("mossy") && properties.get("mossy").getAsString().equals("true");
 	}
 
@@ -523,7 +575,12 @@ class GroundLayerPlanTest {
 	private static double share(JsonObject rule, java.util.function.BiPredicate<String, JsonObject> plant) {
 		double all = 0;
 		double match = 0;
-		for (JsonElement e : rule.getAsJsonArray("plants")) {
+		List<JsonElement> plants = new ArrayList<>();
+		rule.getAsJsonArray("plants").forEach(plants::add);
+		if (rule.has("scattered")) {
+			rule.getAsJsonArray("scattered").forEach(plants::add);
+		}
+		for (JsonElement e : plants) {
 			JsonObject p = e.getAsJsonObject();
 			double w = p.get("weight").getAsDouble();
 			all += w;

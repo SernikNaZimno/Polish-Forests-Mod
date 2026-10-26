@@ -431,6 +431,8 @@ public final class TreeStandFeature implements Feature {
 				counts[1] += written >>> 32;
 				counts[2] += written & 0xFFFF_FFFFL;
 				ModFeatures.woodyPlaced(at, proc.species());
+				// Round 1 of the V12 review: the podzol under the trunk of a pine forest with the moss floor turns mossy.
+				TreeMoss.mossyGround(level, x, at.getY(), z, pl.polishforests.worldgen.habitat.Habitat.biome(codes[column]));
 				if (layer != CrownLayer.REGENERATION) {
 					// Step I1: the root flares and the roots in the soil, after the tree (its trunk base is written).
 					long rootStart = System.nanoTime();

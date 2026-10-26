@@ -25,6 +25,11 @@ import pl.polishforests.worldgen.landscape.Noise;
  * with the same mean coverage and shares (each column still takes one uniform value, its own or its patch's). With
  * rounded patches only the plants clump; whether a column is covered is drawn per column, so the few bare columns of a
  * nearly covered floor do not form flat bare plates.
+ *
+ * <p>The scattered plants of a rule (those from {@link Rule#scatteredFrom}; round 1 of the V12 review: the plants
+ * without the mossy underside of the pine forests, whose patches read as plates of bare podzol) do not clump: a column
+ * first draws its own value whether it takes a scattered plant (with their weight share) and which, and only otherwise
+ * takes the plant of its patch among the clumped ones. The shares stay the palette's.
  */
 public final class ColumnPlan {
 	/** Where a plant stands (new constants only at the end: the order is part of the packed placements). */
@@ -71,6 +76,8 @@ public final class ColumnPlan {
 	static final double BLOB_WARP = 0.55;
 	/** Salt of the warp of the rounded patches ({@code feature.ground.patches}, ZW-2). */
 	static final long BLOB_SALT = 0x4F1B_6C3A_29D7_E085L;
+	/** Salt of the column's draw of a scattered plant (round 1 of the V12 review, a new salt, ZW-2). */
+	static final long SCATTER_SALT = 0x5CA7_7E2DL;
 
 	/** Shape of the patches of a rule (new constants only at the end: the palettes name them). */
 	public enum PatchShape {
@@ -94,13 +101,24 @@ public final class ColumnPlan {
 	 * @param weights  weights of the plants
 	 * @param edges    mask of {@link Ecotone.Edge} ordinals the column must have (0: any; step S8b)
 	 * @param shape    shape of the patches (step V12)
+	 * @param scatteredFrom index of the first scattered plant: the plants from it on are drawn per column, not per
+	 *                 patch ({@code plants.length}: none; round 1 of the V12 review)
 	 */
 	public record Rule(HabitatMatch match, Medium medium, int minDepth, int maxDepth, int grounds, double coverage, int patch,
-			int[] plants, int[] weights, int edges, PatchShape shape) {
+			int[] plants, int[] weights, int edges, PatchShape shape, int scatteredFrom) {
 		public Rule {
 			if (plants.length != weights.length) {
 				throw new IllegalArgumentException("plants and weights differ in length");
 			}
+			if (scatteredFrom < 0 || scatteredFrom > plants.length) {
+				throw new IllegalArgumentException("scatteredFrom out of range");
+			}
+		}
+
+		/** A rule without scattered plants. */
+		public Rule(HabitatMatch match, Medium medium, int minDepth, int maxDepth, int grounds, double coverage, int patch,
+				int[] plants, int[] weights, int edges, PatchShape shape) {
+			this(match, medium, minDepth, maxDepth, grounds, coverage, patch, plants, weights, edges, shape, plants.length);
 		}
 
 		/** A rule with square patches. */
@@ -216,7 +234,7 @@ public final class ColumnPlan {
 			if (value(seed, x, z, 0x51A7L, rule.shape() == PatchShape.BLOBS ? 1 : rule.patch(), rule.shape()) >= rule.coverage()) {
 				continue;
 			}
-			int plant = pick(rule, value(seed, x, z, 0x9E11L, rule.patch(), rule.shape()));
+			int plant = pick(rule, seed, x, z);
 			if (plant >= 0) {
 				out[n++] = i << 16 | rule.medium().ordinal() << 13 | plant;
 			}
@@ -224,23 +242,50 @@ public final class ColumnPlan {
 		return Arrays.copyOf(out, n);
 	}
 
-	/** Plant by weight, or -1 when the rule has none. */
-	private static int pick(Rule rule, double v) {
-		int total = 0;
-		for (int w : rule.weights()) {
-			total += w;
+	/**
+	 * Plant of a covered column at world (x, z), or -1 when the rule has none: a scattered plant by the column's own value
+	 * with their weight share, else a clumped plant by the value of the column or its patch.
+	 */
+	private static int pick(Rule rule, long seed, int x, int z) {
+		int n = rule.plants().length;
+		int from = rule.scatteredFrom();
+		if (from < n) {
+			int total = weight(rule, 0, n);
+			if (total <= 0) {
+				return -1;
+			}
+			double t = value(seed, x, z, SCATTER_SALT, 1) * total;
+			int scattered = weight(rule, from, n);
+			if (t < scattered || from == 0) {
+				return pick(rule, from, n, Math.min(t / scattered, 1.0 - 0x1.0p-53));
+			}
+			return pick(rule, 0, from, value(seed, x, z, 0x9E11L, rule.patch(), rule.shape()));
 		}
+		return pick(rule, 0, n, value(seed, x, z, 0x9E11L, rule.patch(), rule.shape()));
+	}
+
+	private static int weight(Rule rule, int from, int to) {
+		int total = 0;
+		for (int k = from; k < to; k++) {
+			total += rule.weights()[k];
+		}
+		return total;
+	}
+
+	/** Plant by weight among the plants from {@code from} to {@code to} for a uniform value v, or -1 when they have none. */
+	private static int pick(Rule rule, int from, int to, double v) {
+		int total = weight(rule, from, to);
 		if (total <= 0) {
 			return -1;
 		}
 		double target = v * total;
-		for (int k = 0; k < rule.plants().length; k++) {
+		for (int k = from; k < to; k++) {
 			target -= rule.weights()[k];
 			if (target < 0) {
 				return rule.plants()[k];
 			}
 		}
-		return rule.plants()[rule.plants().length - 1];
+		return rule.plants()[to - 1];
 	}
 
 	/** Uniform value in [0, 1) of the column at world (x, z) for patches of a shape. */

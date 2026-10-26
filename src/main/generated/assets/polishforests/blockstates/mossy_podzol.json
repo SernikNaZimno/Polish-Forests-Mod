@@ -1,0 +1,21 @@
+{
+  "variants": {
+    "": [
+      {
+        "model": "polishforests:block/mossy_podzol"
+      },
+      {
+        "model": "polishforests:block/mossy_podzol",
+        "y": 90
+      },
+      {
+        "model": "polishforests:block/mossy_podzol",
+        "y": 180
+      },
+      {
+        "model": "polishforests:block/mossy_podzol",
+        "y": 270
+      }
+    ]
+  }
+}

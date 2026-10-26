@@ -693,11 +693,7 @@
               "mossy": "true"
             }
           },
-          "weight": 40
-        },
-        {
-          "block": "polishforests:bilberry",
-          "weight": 8
+          "weight": 48
         },
         {
           "block": {
@@ -742,7 +738,9 @@
             }
           },
           "weight": 7
-        },
+        }
+      ],
+      "scattered": [
         {
           "block": "minecraft:fern",
           "weight": 2
@@ -830,11 +828,7 @@
               "mossy": "true"
             }
           },
-          "weight": 16
-        },
-        {
-          "block": "polishforests:bilberry",
-          "weight": 10
+          "weight": 26
         },
         {
           "block": "polishforests:bracken",
@@ -872,7 +866,9 @@
             }
           },
           "weight": 4
-        },
+        }
+      ],
+      "scattered": [
         {
           "block": {
             "id": "minecraft:leaf_litter",
@@ -952,7 +948,7 @@
           "weight": 3
         },
         {
-          "block": "minecraft:moss_carpet",
+          "block": "polishforests:forest_moss_carpet",
           "weight": 10
         },
         {
@@ -1140,8 +1136,8 @@
           "weight": 3
         },
         {
-          "block": "minecraft:moss_carpet",
-          "weight": 1
+          "block": "polishforests:forest_moss_carpet",
+          "weight": 3
         }
       ]
     },

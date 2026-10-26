@@ -137,9 +137,10 @@ public final class ForestCensus {
 	/** Needle litter (step V12): neither herb layer nor leaf litter (the leaf litter is the indicator of the transect). */
 	public static final Set<String> NEEDLE_LITTER_PLANTS = Set.of("polishforests:needle_litter");
 	/** Mosses and lichens (layer d) standing on the ground. */
-	public static final Set<String> MOSS_PLANTS = Set.of("minecraft:moss_carpet", "minecraft:pale_moss_carpet");
+	public static final Set<String> MOSS_PLANTS = Set.of("minecraft:moss_carpet", "minecraft:pale_moss_carpet",
+			"polishforests:forest_moss_carpet");
 	/** Ground blocks that are moss. */
-	public static final Set<String> MOSS_GROUNDS = Set.of("minecraft:moss_block");
+	public static final Set<String> MOSS_GROUNDS = Set.of("minecraft:moss_block", "polishforests:mossy_podzol");
 	/** Leaf litter (not a plant layer; an indicator of the broadleaved forests on the transect). */
 	public static final Set<String> LITTER_PLANTS = Set.of("minecraft:leaf_litter");
 	/** Known blocks on the ground that are none of the layers (mushrooms, snow, a shrub of the fringe). */

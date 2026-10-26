@@ -90,10 +90,11 @@ public final class PlantLayerFeature implements Feature {
 		boolean anySeaward = false;
 		boolean anyEdge = false;
 		for (PlantPalette.Rule r : palette.rules()) {
-			int[] index = new int[r.plants().size()];
-			int[] weights = new int[r.plants().size()];
+			List<PlantPalette.Plant> all = r.allPlants();
+			int[] index = new int[all.size()];
+			int[] weights = new int[all.size()];
 			for (int k = 0; k < index.length; k++) {
-				PlantPalette.Plant p = r.plants().get(k);
+				PlantPalette.Plant p = all.get(k);
 				PlantPalette.Plant key = p.withWeight(1);
 				int at = plants.indexOf(key);
 				if (at < 0) {
@@ -115,7 +116,7 @@ public final class PlantLayerFeature implements Feature {
 			}
 			anyEdge |= edgeMask != 0;
 			rules.add(new ColumnPlan.Rule(r.condition().match(), r.medium(), r.minDepth(), r.maxDepth(), grounds, r.coverage(),
-					r.patch(), index, weights, edgeMask, r.shape()));
+					r.patch(), index, weights, edgeMask, r.shape(), r.plants().size()));
 		}
 		this.plan = new ColumnPlan.Palette(rules);
 		this.shore = anyShore;
@@ -215,7 +216,8 @@ public final class PlantLayerFeature implements Feature {
 		// V12: written with the trees, before these layers; without this the dead wood of the oak-hornbeam forest lost
 		// about a tenth of its objects), as the trees' wood does.
 		if (underwater ? !isWaterSource(here, level.getFluidState(at))
-				: !(here.isAir() || plant.feature().isPresent() && here.is(Blocks.MOSS_CARPET))) {
+				: !(here.isAir() || plant.feature().isPresent() && (here.is(Blocks.MOSS_CARPET)
+						|| here.is(pl.polishforests.block.ModBlocks.forestMossCarpet())))) {
 			return false;
 		}
 		BlockPos pos = at.immutable();

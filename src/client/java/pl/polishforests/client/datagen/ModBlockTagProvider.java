@@ -1,6 +1,7 @@
 package pl.polishforests.client.datagen;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import net.fabricmc.fabric.api.datagen.v1.FabricPackOutput;
@@ -138,6 +139,19 @@ final class ModBlockTagProvider {
 			// The moss carpets at the trunk bases (TreeMoss, step V12) give way to wood as the pale moss carpet does in
 			// vanilla: lying logs of the dead wood (written after the trees) ran into them and ended short.
 			builder(BlockTags.REPLACEABLE_BY_TREES).add(key(net.minecraft.world.level.block.Blocks.MOSS_CARPET));
+			// Round 1 of the V12 review: the own moss carpet as that vanilla moss carpet (trees and the dead wood take its
+			// place, a hoe breaks it fast), the mossy podzol as vanilla podzol (the grass blocks: plants, saplings and
+			// mushrooms grow on it, mobs spawn on it, a shovel digs it and makes a path).
+			ResourceKey<Block> forestMoss = key(ModBlocks.forestMossCarpet());
+			builder(BlockTags.REPLACEABLE_BY_TREES).add(forestMoss);
+			builder(BlockTags.MINEABLE_WITH_HOE).add(forestMoss);
+			builder(BlockTags.COMBINATION_STEP_SOUND_BLOCKS).add(forestMoss);
+			ResourceKey<Block> mossyPodzol = key(ModBlocks.mossyPodzol());
+			for (TagKey<Block> t : List.of(BlockTags.GRASS_BLOCKS, BlockTags.MINEABLE_WITH_SHOVEL, BlockTags.CANNOT_REPLACE_BELOW_TREE_TRUNK,
+					BlockTags.VALID_SPAWN, BlockTags.FOXES_SPAWNABLE_ON, BlockTags.WOLVES_SPAWNABLE_ON, BlockTags.SNIFFER_DIGGABLE_BLOCK,
+					BlockTags.TURNS_INTO_DIRT_PATH, BlockTags.OVERRIDES_MUSHROOM_LIGHT_REQUIREMENT)) {
+				builder(t).add(mossyPodzol);
+			}
 		}
 	}
 

@@ -234,6 +234,8 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 			});
 		}
 		builder.add(ModBlocks.bilberries(), polish ? "Czarne jagody" : "Bilberries");
+		builder.add(ModBlocks.forestMossCarpet(), polish ? "Dywan mchu leśnego" : "Forest Moss Carpet");
+		builder.add(ModBlocks.mossyPodzol(), polish ? "Omszona bielica" : "Mossy Podzol");
 		builder.add(tagKey(ModBlockTagProvider.PINE_FULL_LOGS.location().getPath()), polish ? "Kłody sosnowe" : "Scots Pine Logs");
 		// Item tags (recipe viewers show their names): a species tag is named after the first trunk of the species.
 		Map<Species, TreeTrunk> first = new LinkedHashMap<>();

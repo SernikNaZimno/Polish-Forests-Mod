@@ -50,6 +50,7 @@ block polishforests:birch_trunk states=84 default=parent=down,radius=4,waterlogg
   property waterlogged: true false
 block polishforests:bracken states=2 default=half=lower
   property half: upper lower
+block polishforests:forest_moss_carpet states=1 default=
 block polishforests:hepatica states=16 default=facing=north,flower_amount=1
   property facing: north south west east
   property flower_amount: 1 2 3 4
@@ -84,6 +85,7 @@ block polishforests:linden_trunk states=84 default=parent=down,radius=4,waterlog
   property parent: down up north south west east
   property radius: 1 2 3 4 5 6 7
   property waterlogged: true false
+block polishforests:mossy_podzol states=1 default=
 block polishforests:needle_litter states=32 default=facing=north,mossy=false,segment_amount=1
   property facing: north south west east
   property mossy: true false
@@ -201,6 +203,7 @@ item polishforests:birch_root_flare block=polishforests:birch_root_flare
 item polishforests:birch_sapling block=polishforests:birch_sapling
 item polishforests:birch_trunk block=polishforests:birch_trunk
 item polishforests:bracken block=polishforests:bracken
+item polishforests:forest_moss_carpet block=polishforests:forest_moss_carpet
 item polishforests:hepatica block=polishforests:hepatica
 item polishforests:hornbeam_leaves block=polishforests:hornbeam_leaves
 item polishforests:hornbeam_root_flare block=polishforests:hornbeam_root_flare
@@ -210,6 +213,7 @@ item polishforests:linden_leaves block=polishforests:linden_leaves
 item polishforests:linden_root_flare block=polishforests:linden_root_flare
 item polishforests:linden_sapling block=polishforests:linden_sapling
 item polishforests:linden_trunk block=polishforests:linden_trunk
+item polishforests:mossy_podzol block=polishforests:mossy_podzol
 item polishforests:needle_litter block=polishforests:needle_litter
 item polishforests:norway_maple_leaves block=polishforests:norway_maple_leaves
 item polishforests:norway_maple_root_flare block=polishforests:norway_maple_root_flare

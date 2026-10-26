@@ -125,6 +125,18 @@ final class ModBlockModels extends FabricModelProvider {
 		}
 		gen.registerSimpleItemModel(ModBlocks.bilberries(), gen.createFlatItemModel(ModBlocks.bilberries(),
 				new Material(own(ModBlocks.BILBERRIES))));
+		// Round 1 of the V12 review: the own moss carpet (the moss layer model, four turns) and the mossy podzol (the own
+		// feather moss on top, the vanilla podzol side and dirt bottom by id, four turns of the top).
+		gen.blockStateOutput.accept(MultiVariantGenerator.dispatch(ModBlocks.forestMossCarpet(), moss));
+		gen.registerSimpleItemModel(ModBlocks.forestMossCarpet(), PolishForests.id("block/forest_moss_layer"));
+		Identifier podzol = ModelTemplates.CUBE_BOTTOM_TOP.create(ModBlocks.mossyPodzol(), new TextureMapping()
+				.put(TextureSlot.TOP, new Material(own("forest_moss"))).put(TextureSlot.SIDE, new Material(vanilla("podzol_side")))
+				.put(TextureSlot.BOTTOM, new Material(vanilla("dirt"))), gen.modelOutput);
+		gen.blockStateOutput.accept(MultiVariantGenerator.dispatch(ModBlocks.mossyPodzol(), BlockModelGenerators.variants(
+				BlockModelGenerators.plainModel(podzol), BlockModelGenerators.plainModel(podzol).with(BlockModelGenerators.Y_ROT_90),
+				BlockModelGenerators.plainModel(podzol).with(BlockModelGenerators.Y_ROT_180),
+				BlockModelGenerators.plainModel(podzol).with(BlockModelGenerators.Y_ROT_270))));
+		gen.registerSimpleItemModel(ModBlocks.mossyPodzol(), podzol);
 	}
 
 	/**
@@ -156,12 +168,24 @@ final class ModBlockModels extends FabricModelProvider {
 		switch (g.kind()) {
 			case BERRY_SHRUB -> {
 				Identifier shrub = ModelTemplates.TINTED_CROSS.create(block, TextureMapping.cross(new Material(own(g.id()))), gen.modelOutput);
+				// Round 1 of the V12 review: the vanilla cross and the own turned and shifted crosses, each in four turns of
+				// the block, drawn at random per position (a carpet of bilberry read as rows of a planted crop).
+				List<Variant> shrubs = new ArrayList<>();
+				for (int k = 0; k <= GroundTemplates.SHRUB_VARIANTS; k++) {
+					Identifier m = k == 0 ? shrub : new ModelTemplate(Optional.of(PolishForests.id(GroundTemplates.shrubCross(k))),
+							Optional.of("_" + k), TextureSlot.CROSS).create(block, TextureMapping.cross(new Material(own(g.id()))),
+							gen.modelOutput);
+					for (VariantMutator y : List.of(BlockModelGenerators.NOP, BlockModelGenerators.Y_ROT_90, BlockModelGenerators.Y_ROT_180,
+							BlockModelGenerators.Y_ROT_270)) {
+						shrubs.add(BlockModelGenerators.plainModel(m).with(y));
+					}
+				}
 				ModelTemplate berriesTemplate = new ModelTemplate(Optional.of(PolishForests.id(GroundTemplates.BERRIES)), Optional.of("_berries"),
 						BERRIES);
 				Identifier berries = berriesTemplate.create(block, new TextureMapping().put(BERRIES, new Material(own(g.id() + "_berries"))),
 						gen.modelOutput);
 				gen.blockStateOutput.accept(MultiPartGenerator.multiPart(block)
-						.with(BlockModelGenerators.plainVariant(shrub))
+						.with(BlockModelGenerators.variants(shrubs.toArray(Variant[]::new)))
 						.with(BlockModelGenerators.condition().term(BerryShrubBlock.BERRIES, true), BlockModelGenerators.plainVariant(berries))
 						.with(BlockModelGenerators.condition().term(BerryShrubBlock.MOSSY, true), moss));
 				gen.createItemWithGrassTint(block);

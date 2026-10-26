@@ -1,9 +1,68 @@
 {
   "multipart": [
     {
-      "apply": {
-        "model": "polishforests:block/bilberry"
-      }
+      "apply": [
+        {
+          "model": "polishforests:block/bilberry"
+        },
+        {
+          "model": "polishforests:block/bilberry",
+          "y": 90
+        },
+        {
+          "model": "polishforests:block/bilberry",
+          "y": 180
+        },
+        {
+          "model": "polishforests:block/bilberry",
+          "y": 270
+        },
+        {
+          "model": "polishforests:block/bilberry_1"
+        },
+        {
+          "model": "polishforests:block/bilberry_1",
+          "y": 90
+        },
+        {
+          "model": "polishforests:block/bilberry_1",
+          "y": 180
+        },
+        {
+          "model": "polishforests:block/bilberry_1",
+          "y": 270
+        },
+        {
+          "model": "polishforests:block/bilberry_2"
+        },
+        {
+          "model": "polishforests:block/bilberry_2",
+          "y": 90
+        },
+        {
+          "model": "polishforests:block/bilberry_2",
+          "y": 180
+        },
+        {
+          "model": "polishforests:block/bilberry_2",
+          "y": 270
+        },
+        {
+          "model": "polishforests:block/bilberry_3"
+        },
+        {
+          "model": "polishforests:block/bilberry_3",
+          "y": 90
+        },
+        {
+          "model": "polishforests:block/bilberry_3",
+          "y": 180
+        },
+        {
+          "model": "polishforests:block/bilberry_3",
+          "y": 270
+        }
+      ]
     },
     {
       "apply": {

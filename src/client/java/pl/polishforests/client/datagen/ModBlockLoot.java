@@ -51,6 +51,10 @@ final class ModBlockLoot extends FabricBlockLootSubProvider {
 				.add(LootItem.lootTableItem(root).when(hasSilkTouch()).otherwise(rootSticks))));
 		lite();
 		ground();
+		// Round 1 of the V12 review: the own moss carpet gives itself, the mossy podzol itself with silk touch, else dirt (as
+		// vanilla podzol).
+		dropSelf(ModBlocks.forestMossCarpet());
+		add(ModBlocks.mossyPodzol(), b -> createSingleItemTableWithSilkTouch(b, net.minecraft.world.level.block.Blocks.DIRT));
 	}
 
 	/**

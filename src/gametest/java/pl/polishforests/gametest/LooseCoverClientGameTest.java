@@ -50,7 +50,7 @@ public final class LooseCoverClientGameTest implements FabricClientGameTest {
 	/** Ground blocks of the surface plan (soil, deposits, beds) besides rock. */
 	private static final Set<Block> LOOSE = Set.of(Blocks.GRASS_BLOCK, Blocks.DIRT, Blocks.COARSE_DIRT, Blocks.PODZOL,
 			Blocks.ROOTED_DIRT, Blocks.MUD, Blocks.MOSS_BLOCK, Blocks.SAND, Blocks.GRAVEL, Blocks.CLAY, Blocks.COBBLESTONE,
-			Blocks.FARMLAND, Blocks.DIRT_PATH);
+			Blocks.FARMLAND, Blocks.DIRT_PATH, pl.polishforests.block.ModBlocks.mossyPodzol());
 	/** Rock blocks in a row that start the rock body under the cover (taller than the boulders of the till). */
 	private static final int RUN = 4;
 	/** Model cover above which the thin cover applies (SurfaceBuilder.THIN_FROM_METERS). */

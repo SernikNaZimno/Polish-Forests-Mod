@@ -1,0 +1,98 @@
+{
+  "ambientocclusion": false,
+  "elements": [
+    {
+      "faces": {
+        "north": {
+          "texture": "#cross",
+          "tintindex": 0,
+          "uv": [
+            0,
+            2,
+            16,
+            16
+          ]
+        },
+        "south": {
+          "texture": "#cross",
+          "tintindex": 0,
+          "uv": [
+            0,
+            2,
+            16,
+            16
+          ]
+        }
+      },
+      "from": [
+        -0.7,
+        0,
+        9.5
+      ],
+      "rotation": {
+        "angle": -22.5,
+        "axis": "y",
+        "origin": [
+          6.5,
+          8,
+          9.5
+        ],
+        "rescale": true
+      },
+      "shade_direction_override": "up",
+      "to": [
+        13.7,
+        14,
+        9.5
+      ]
+    },
+    {
+      "faces": {
+        "east": {
+          "texture": "#cross",
+          "tintindex": 0,
+          "uv": [
+            0,
+            2,
+            16,
+            16
+          ]
+        },
+        "west": {
+          "texture": "#cross",
+          "tintindex": 0,
+          "uv": [
+            0,
+            2,
+            16,
+            16
+          ]
+        }
+      },
+      "from": [
+        6.5,
+        0,
+        2.3
+      ],
+      "rotation": {
+        "angle": -22.5,
+        "axis": "y",
+        "origin": [
+          6.5,
+          8,
+          9.5
+        ],
+        "rescale": true
+      },
+      "shade_direction_override": "up",
+      "to": [
+        6.5,
+        14,
+        16.7
+      ]
+    }
+  ],
+  "textures": {
+    "particle": "#cross"
+  }
+}

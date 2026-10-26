@@ -1,0 +1,6 @@
+{
+  "parent": "polishforests:block/template_shrub_cross_1",
+  "textures": {
+    "cross": "polishforests:block/bilberry"
+  }
+}

@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -200,29 +199,36 @@ class SoilTest {
 		return out;
 	}
 
+	/**
+	 * The values of a block tag as the game merges it: every copy of the file on the class path (the game jar and the
+	 * generated resources of the mod, which add to vanilla tags such as grass_blocks since round 1 of the V12 review).
+	 */
 	private static void collect(String name, Set<String> out, Set<String> seen) {
 		if (!seen.add(name)) {
 			return;
 		}
-		InputStream in = resource("/data/minecraft/tags/block/" + name + ".json");
-		if (in == null) {
-			throw new AssertionError("no vanilla tag " + name);
-		}
-		try (InputStreamReader r = new InputStreamReader(in, StandardCharsets.UTF_8)) {
-			for (JsonElement e : JsonParser.parseReader(r).getAsJsonObject().getAsJsonArray("values")) {
-				String v = e.isJsonObject() ? e.getAsJsonObject().get("id").getAsString() : e.getAsString();
-				if (v.startsWith("#")) {
-					collect(v.substring("#minecraft:".length()), out, seen);
-				} else {
-					out.add(v);
-				}
-			}
+		java.util.List<java.net.URL> copies;
+		try {
+			copies = java.util.Collections.list(SoilTest.class.getClassLoader().getResources("data/minecraft/tags/block/" + name + ".json"));
 		} catch (java.io.IOException ex) {
 			throw new java.io.UncheckedIOException(ex);
 		}
-	}
-
-	private static InputStream resource(String path) {
-		return SoilTest.class.getResourceAsStream(path);
+		if (copies.isEmpty()) {
+			throw new AssertionError("no vanilla tag " + name);
+		}
+		for (java.net.URL url : copies) {
+			try (InputStreamReader r = new InputStreamReader(url.openStream(), StandardCharsets.UTF_8)) {
+				for (JsonElement e : JsonParser.parseReader(r).getAsJsonObject().getAsJsonArray("values")) {
+					String v = e.isJsonObject() ? e.getAsJsonObject().get("id").getAsString() : e.getAsString();
+					if (v.startsWith("#")) {
+						collect(v.substring("#minecraft:".length()), out, seen);
+					} else {
+						out.add(v);
+					}
+				}
+			} catch (java.io.IOException ex) {
+				throw new java.io.UncheckedIOException(ex);
+			}
+		}
 	}
 }

@@ -84,8 +84,10 @@ class RegistrySnapshotTest {
 		// 4), needle litter 32 (facing 4 × segments 4 × mossy), bracken 2 (half).
 		assertEquals(GroundPlant.values().length, ModBlocks.groundPlants().size());
 		int ground = 4 + 16 + 16 + 32 + 2;
+		// Round 1 of the V12 review: + the forest moss carpet and the mossy podzol, one state each.
+		int review = 2;
 		assertEquals(84 * TreeTrunk.values().length + foliage * (112 + 2 + 1) + marcescent * 112 + 4 * 3 + 1
-				+ 84 * (RootFlare.values().length + 1) + ground, RegistrySnapshot.stateCount());
+				+ 84 * (RootFlare.values().length + 1) + ground + review, RegistrySnapshot.stateCount());
 	}
 
 	/**
