@@ -11,7 +11,7 @@ import pl.polishforests.worldgen.landscape.Noise;
  * ({@link TreeShapePlan}, the trunk radii and limbs of a tree of the stand) and written with the thin trunk blocks.
  *
  * <p><b>Objects</b> ({@link Kind}): a lying log, a fragment of a stem with branch stubs (from the stem base with a stub of
- * roots, or from higher up); a snag, a standing dead tree without leaves and twigs, broken at 30–90% of its height with
+ * roots, or from higher up, then possibly lying across its base column); a snag, a standing dead tree without leaves and twigs, broken at 30–90% of its height with
  * a splinter on top (oaks keep their thick limbs, pines only stubs); a broken tree, a stem snapped 2–8 blocks above the
  * ground with its top lying beside it; a windthrow, a whole stem with its limbs on the ground, the root plate standing on
  * edge at its base and the shallow pit the plate came from; a stump, one block of trunk (managed stands only, decision
@@ -68,7 +68,7 @@ public final class DeadwoodPlan {
 	 * in Taborz and 0.1 logs with a snag per ha against 1 object per chunk). Broad-leaved species
 	 * ({@link #MANAGED_KEEP}) and conifers ({@link #MANAGED_KEEP_CONIFER}).
 	 */
-	public static final double MANAGED_KEEP = 0.13;
+	public static final double MANAGED_KEEP = 0.12;
 	public static final double MANAGED_KEEP_CONIFER = 0.22;
 
 	/** Share of the dead tree picks a managed stand keeps for a species. */
@@ -467,14 +467,24 @@ public final class DeadwoodPlan {
 		boolean conifer = r.species() == Species.SCOTS_PINE || r.species() == Species.SPRUCE;
 		// Natural broad-leaved stands: fragments of a stem; natural pine forests longer pieces; managed stands mostly whole
 		// stems left lying (windfalls, crowns of the fellings), the WISL volume per piece [S].
-		double share = !r.natural() ? 0.5 + 0.4 * rnd.next() : conifer ? 0.55 + 0.45 * rnd.next() : 0.3 + 0.45 * rnd.next();
+		double share = !r.natural() ? 0.8 + 0.2 * rnd.next() : conifer ? 0.55 + 0.45 * rnd.next() : 0.3 + 0.45 * rnd.next();
 		int count = Math.clamp((int) Math.round(share * (thick - from)), MIN_LOG, thick - from);
 		int dir = direction(r, rnd, 0, count, false);
 		if (dir < 0) {
 			return -1;
 		}
 		int fit = fit(r, dir, 0, count);
-		int first = lying(r, b, s, from, fit, dir, 0, -1, opposite(dir), 2, 2, rnd);
+		// A fragment off the stem base may lie across its base column (review of V11, round 1: on uneven ground the stricter
+		// resting rule shortens logs; the room behind the base gives some of the length back).
+		int start = 0;
+		for (int back = 1; !fromBase && fit < count && back <= count - MIN_LOG; back++) {
+			int f = fit(r, dir, -back, count);
+			if (f > fit) {
+				fit = f;
+				start = -back;
+			}
+		}
+		int first = lying(r, b, s, from, fit, dir, start, -1, opposite(dir), 2, 2, rnd);
 		if (fromBase && first >= 0) {
 			// The stub of roots at the stem base: the flare behind it, short roots to the sides and one up.
 			TreeVoxels t = s.tree;
