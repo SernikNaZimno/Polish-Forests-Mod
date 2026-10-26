@@ -44,8 +44,9 @@ import pl.polishforests.worldgen.tree.TreeVoxels;
  * of both forests in natural and managed stands the test finds the objects the generation placed within
  * {@link #RADIUS} blocks of the plot center ({@code ModFeatures.DEADWOOD_PLACEMENTS}) and shoots the nearest of each kind
  * from eye height with the clearest line of sight ({@code deadwood_<scale>_<plot>_<kind>}). Over all objects placed in
- * those worlds it checks the lying wood against the world: at least {@link DeadwoodPlan#MIN_RESTING} of each lying stem
- * rests on the ground (at most one block of air below), no wood over water or a dirt path; the log gets the shares.
+ * those worlds it checks the lying wood against the world ({@link #check}): at least {@link DeadwoodPlan#MIN_RESTING} of
+ * each lying stem rests on the ground (no air below), few blocks over air and no rails, no wood over water or a dirt path;
+ * the log gets the shares.
  */
 final class DeadwoodSamples {
 	private static final int[] SIZE = {1280, 720};
@@ -314,31 +315,33 @@ final class DeadwoodSamples {
 	}
 
 	/**
-	 * The lying wood of all objects placed in the world against the world: the air below each block of a lying stem (the
-	 * blocks at the base level with the fall direction's parent), water or a dirt path below; the objects whose wood is in
-	 * the world (a later feature may have replaced some).
+	 * The lying wood of all objects placed in the world against the world: the air below each block of a lying stem
+	 * ({@link DeadwoodVoxels#lyingStem}), water or a dirt path below; the objects whose wood is in the world (a later feature
+	 * may have replaced some). Review of V11, round 1: a block rests only with no air below; the check reports the blocks
+	 * over one block of air and over more, the longest run of blocks over air in a stem, and fails when fewer than 95% of
+	 * the stems rest on {@link DeadwoodPlan#MIN_RESTING} of their length, more than {@link #MAX_OVER_AIR} of the blocks lie
+	 * over air, more than {@link #MAX_RAILS} of the stems have a run of {@link DeadwoodPlan#MAX_GAP_RUN} + 1 or more such
+	 * blocks (a rail), or any wood lies over water or a dirt path.
 	 */
 	private static String check(ServerLevel level, Map<Long, DeadwoodVoxels> placed) {
 		Map<DeadwoodPlan.Kind, Integer> kinds = new EnumMap<>(DeadwoodPlan.Kind.class);
 		int lying = 0;
 		int resting = 0;
 		int blocks = 0;
-		int restingBlocks = 0;
+		int[] byAir = new int[3];
+		int rails = 0;
+		int longest = 0;
 		int overWater = 0;
 		int overPath = 0;
 		List<String> bad = new ArrayList<>();
 		for (DeadwoodVoxels v : placed.values()) {
 			kinds.merge(v.kind(), 1, Integer::sum);
-			if (v.direction() < 0) {
-				continue;
-			}
 			TreeVoxels t = v.wood();
 			int n = 0;
 			int ok = 0;
-			for (int i = 0; i < t.woodCount(); i++) {
-				if (t.woodY(i) != 0 || t.parent(i) != (v.direction() ^ 1)) {
-					continue;
-				}
+			int run = 0;
+			int maxRun = 0;
+			for (int i : v.lyingStem()) {
 				BlockPos p = new BlockPos(t.x() + t.woodX(i), t.y(), t.z() + t.woodZ(i));
 				if (!(level.getBlockState(p).getBlock() instanceof TrunkBlock)) {
 					continue;
@@ -360,31 +363,45 @@ final class DeadwoodSamples {
 					below.move(0, -1, 0);
 				}
 				n++;
-				if (air <= 1) {
-					ok++;
-				}
+				byAir[Math.min(air, 2)]++;
+				ok += air == 0 ? 1 : 0;
+				run = air == 0 ? 0 : run + 1;
+				maxRun = Math.max(maxRun, run);
 			}
 			if (n == 0) {
 				continue;
 			}
 			lying++;
 			blocks += n;
-			restingBlocks += ok;
+			longest = Math.max(longest, maxRun);
+			if (maxRun > DeadwoodPlan.MAX_GAP_RUN) {
+				rails++;
+			}
 			if (ok >= DeadwoodPlan.MIN_RESTING * n - 1e-9) {
 				resting++;
-			} else if (bad.size() < 8) {
-				bad.add(String.format(Locale.ROOT, "%s %s at (%d, %d, %d): %d of %d", v.kind(), v.species().id(), t.x(), t.y(), t.z(), ok, n));
+			}
+			if ((ok < DeadwoodPlan.MIN_RESTING * n - 1e-9 || maxRun > DeadwoodPlan.MAX_GAP_RUN) && bad.size() < 8) {
+				bad.add(String.format(Locale.ROOT, "%s %s at (%d, %d, %d): %d of %d resting, run %d", v.kind(), v.species().id(), t.x(), t.y(),
+						t.z(), ok, n, maxRun));
 			}
 		}
-		String report = String.format(Locale.ROOT, "objects %s; lying %d, resting on at least %.0f%% of their length %d (%.1f%%), lying "
-				+ "blocks resting %.1f%%, over water %d, over a dirt path %d%s", kinds, lying, 100 * DeadwoodPlan.MIN_RESTING, resting,
-				100.0 * resting / Math.max(1, lying), 100.0 * restingBlocks / Math.max(1, blocks), overWater, overPath,
-				bad.isEmpty() ? "" : "; not resting: " + String.join(", ", bad));
-		if (lying == 0 || resting < 0.95 * lying || overWater > 0 || overPath > 0) {
+		double overAir = (blocks - byAir[0]) / (double) Math.max(1, blocks);
+		String report = String.format(Locale.ROOT, "objects %s; lying %d, resting (no air below) on at least %.0f%% of their length %d "
+				+ "(%.1f%%), lying blocks %d: no air %.1f%%, one block of air %.1f%%, more %.1f%%; stems with %d or more blocks over air in "
+				+ "a row %d (%.1f%%), longest run %d; over water %d, over a dirt path %d%s", kinds, lying, 100 * DeadwoodPlan.MIN_RESTING,
+				resting, 100.0 * resting / Math.max(1, lying), blocks, 100.0 * byAir[0] / Math.max(1, blocks),
+				100.0 * byAir[1] / Math.max(1, blocks), 100.0 * byAir[2] / Math.max(1, blocks), DeadwoodPlan.MAX_GAP_RUN + 1, rails,
+				100.0 * rails / Math.max(1, lying), longest, overWater, overPath, bad.isEmpty() ? "" : "; e.g. " + String.join(", ", bad));
+		if (lying == 0 || resting < 0.95 * lying || overAir > MAX_OVER_AIR || rails > MAX_RAILS * lying || overWater > 0 || overPath > 0) {
 			throw new AssertionError("[deadwood] " + report);
 		}
 		return report;
 	}
+
+	/** Most of the lying blocks over air in the world (the planner allows 20% per stem, single blocks over a dip). */
+	private static final double MAX_OVER_AIR = 0.05;
+	/** Most of the lying stems with a run of blocks over air (the world differs from the planner's ground: pits, features). */
+	private static final double MAX_RAILS = 0.01;
 
 	// ------------------------------------------------------------------ helpers
 

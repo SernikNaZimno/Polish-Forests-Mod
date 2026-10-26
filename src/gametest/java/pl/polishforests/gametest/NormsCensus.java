@@ -368,12 +368,21 @@ final class NormsCensus {
 		}
 		PolishForests.LOG.info("[slice] {}: canopy outside gaps by distance from a chunk border:{}", c.place(), band);
 		List<String> rows = new ArrayList<>();
+		// Review of V11, round 1: the dead wood norms of the plot's stand state apply only where that state holds at least
+		// STAND_SHARE of the plot's forest columns (a natural stand has no stumps and about 8 times the dead trees of a managed
+		// one, so a mixed plot fits neither norm); the share is reported and a mixed plot's N10 rows are not judged.
+		double share = standShare(level, g, area, forest);
+		boolean mixed = share < STAND_SHARE;
+		rows.add(row(c, forest, STAND_SHARE_METRIC, "", share, null, ForestNorms.Verdict.NONE));
+		PolishForests.LOG.info(String.format(Locale.ROOT, "[slice] %s: share of the plot's forest columns in the %s stand %.3f%s",
+				c.place(), forest.name().toLowerCase(Locale.ROOT), share, mixed ? " (mixed: N10 not judged)" : ""));
 		int in = 0;
 		int tolerance = 0;
 		int out = 0;
 		for (Map.Entry<String, Double> e : values.entrySet()) {
 			Optional<Norm> norm = ForestNorms.of(e.getKey(), forest, c.aspect(), age);
-			ForestNorms.Verdict v = norm.map(n -> ForestNorms.verdict(e.getValue(), n)).orElse(ForestNorms.Verdict.NONE);
+			ForestNorms.Verdict v = mixed && e.getKey().startsWith("N10.") ? ForestNorms.Verdict.NONE
+					: norm.map(n -> ForestNorms.verdict(e.getValue(), n)).orElse(ForestNorms.Verdict.NONE);
 			in += v == ForestNorms.Verdict.IN ? 1 : 0;
 			tolerance += v == ForestNorms.Verdict.TOLERANCE ? 1 : 0;
 			out += v == ForestNorms.Verdict.OUT ? 1 : 0;
@@ -573,6 +582,28 @@ final class NormsCensus {
 
 	private static String n(Map<String, Double> values, String metric) {
 		return ForestNorms.number(values.get(metric));
+	}
+
+	/** Least share of a plot's forest columns in the stand state of its card column for the N10 norms to apply. */
+	static final double STAND_SHARE = 0.8;
+	static final String STAND_SHARE_METRIC = "N10.stand_share";
+
+	/** Share of the plot's forest columns whose stand (natural or managed, the world's stand map) is the forest's. */
+	private static double standShare(ServerLevel level, CensusGrid g, boolean[] area, Forest forest) {
+		if (!(level.getChunkSource().getGenerator() instanceof pl.polishforests.worldgen.chunk.PolandChunkGenerator poland)) {
+			return 1;
+		}
+		pl.polishforests.worldgen.tree.ForestStandMap stands = poland.standMap(level.getSeed());
+		boolean natural = forest == Forest.OAK_HORNBEAM_NATURAL || forest == Forest.FRESH_PINE_NATURAL;
+		int all = 0;
+		int same = 0;
+		for (int col = 0; col < area.length; col++) {
+			if (area[col]) {
+				all++;
+				same += stands.natural(g.columnX(col), g.columnZ(col)) == natural ? 1 : 0;
+			}
+		}
+		return all == 0 ? 1 : same / (double) all;
 	}
 
 	private static String row(Context c, Forest forest, String metric, String part, double value, Norm norm, ForestNorms.Verdict v) {

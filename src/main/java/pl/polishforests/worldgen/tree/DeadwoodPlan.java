@@ -20,16 +20,18 @@ import pl.polishforests.worldgen.landscape.Noise;
  *
  * <p><b>Lying wood</b> lies along an axis (thin trunks bend only by whole blocks), along the contour on a slope and into
  * the columns the caller knows ({@link TreeShapePlan.Ground}, which answers {@link TreeShapePlan.Ground#UNKNOWN} outside
- * the write window, on water and on streets): a log rests on the ground with at most one block of air below it on at least
- * {@link #MIN_RESTING} of its length, and is shortened where the ground rises into it or falls away (risk of §3 V11).
+ * the write window, on water and on streets): a log rests on the ground with no air below it on at least
+ * {@link #MIN_RESTING} of its length, bridges only single columns of a dip (one block of air) and is shortened where the
+ * ground rises into it or falls away (risk of §3 V11; {@link #fit}).
  * Rotated limbs that would reach into the ground are left out, as are limbs that would stand up from the ground (the
  * census counts standing wood on the ground as a standing object).
  *
- * <p><b>Root plate</b> (windthrow): a disc of soil one block thick standing on edge at the stem base (rooted dirt inside,
- * coarse dirt and dirt at the ragged rim), with roots of the species' trunk block radiating from the stem base through it
- * ({@link DeadwoodVoxels#soil}, {@link DeadwoodVoxels#soilType}); step I1 (roots) may swap the soil cells and the roots for
- * its own blocks without changing the plan's geometry. The pit behind it is one block deep (two in the middle of a large
- * plate).
+ * <p><b>Root plate</b> (windthrow): a solid disc of soil one block thick standing on edge at the stem base (rooted dirt
+ * inside, coarse dirt and dirt at the ragged rim), with roots of the species' trunk block radiating over its underside,
+ * the face toward the pit, from a root collar behind the stem base ({@link DeadwoodVoxels#soil},
+ * {@link DeadwoodVoxels#soilType}); step I1 (roots) may swap the soil cells and the roots for its own blocks without
+ * changing the plan's geometry. The pit behind it is one block deep (two in the middle of a large plate); the roots hang
+ * over it.
  *
  * <p>Moss and leaf litter are planned beside the lying wood ({@link DeadwoodVoxels#cover}).
  */
@@ -73,8 +75,13 @@ public final class DeadwoodPlan {
 	public static double managedKeep(Species species) {
 		return species == Species.SCOTS_PINE || species == Species.SPRUCE ? MANAGED_KEEP_CONIFER : MANAGED_KEEP;
 	}
-	/** Least share of a log's length resting on the ground (at most one block of air below; §3 V11). */
+	/**
+	 * Least share of a log's length resting on the ground: no air below (§3 V11, stricter after the review of V11, round
+	 * 1); the rest over one block of air, never more, and only alone ({@link #MAX_GAP_RUN}).
+	 */
 	public static final double MIN_RESTING = 0.8;
+	/** Longest run of lying blocks over one block of air: a log bridges a dip of one column, it never runs on as a rail. */
+	public static final int MAX_GAP_RUN = 1;
 	/** Shortest lying log, blocks. */
 	public static final int MIN_LOG = 3;
 	/** Soil of the root plate: rooted dirt (inside), coarse dirt or dirt (the rim). */
@@ -198,6 +205,18 @@ public final class DeadwoodPlan {
 	 * direction with room for a log, a suppressed tree).
 	 */
 	public static DeadwoodVoxels plan(Request r) {
+		DeadwoodVoxels v = planOnce(r);
+		if (v.empty() && r.kind() != Kind.STUMP && r.layer() == CrownLayer.SUBCANOPY) {
+			// A suppressed tree whose stem is under 2 px within MIN_LOG blocks has no lying wood (it would lie as a stick):
+			// the dead tree is one of the canopy (review of V11, round 1: about a third of the logs of managed mature pine
+			// stands and a quarter of those of hornbeams were lost this way).
+			return planOnce(new Request(r.species(), r.kind(), CrownLayer.CANOPY, r.age(), r.natural(), r.worldSeed(), r.x(), r.y(),
+					r.z(), r.ground()));
+		}
+		return v;
+	}
+
+	private static DeadwoodVoxels planOnce(Request r) {
 		Random rnd = new Random(noise(r.worldSeed()).hash(r.x(), r.z(), 7 + r.kind().ordinal()));
 		Builder b = new Builder(r);
 		if (r.kind() == Kind.STUMP) {
@@ -362,13 +381,18 @@ public final class DeadwoodPlan {
 		double plate = Math.clamp(0.9 + 2.2 * dbh, 1.2, 3.0) * (r.species() == Species.SPRUCE ? 1.25 : 1.0);
 		int reach = (int) Math.ceil(plate);
 		double cy = plate - 0.5;
-		// Roots: left, right, up and the two diagonals, from the stem base out to about the rim.
+		// Roots on the plate's underside, the face toward the pit (one block behind the plate's plane; review of V11, round 1:
+		// roots inside the plane left see-through slots in the soil): from a root collar block behind the stem base left,
+		// right, up and the two diagonals out to about the rim, past it at the sides.
+		int collar = b.woodGrounded(-f[0], 0, -f[2], Math.max(1, r0 - 1), dir, hub, TreeVoxels.LOWER);
 		int[][] rays = {{-1, 0}, {1, 0}, {0, 1}, {-1, 1}, {1, 1}};
-		boolean[][] root = new boolean[2 * reach + 3][2 * reach + 3];
 		for (int[] ray : rays) {
+			if (collar < 0) {
+				break;
+			}
 			int u = 0;
 			int v = 0;
-			int parent = hub;
+			int parent = collar;
 			int length = (int) Math.round(plate - 0.3 + 0.6 * rnd.next());
 			for (int k = 0; k < length; k++) {
 				int du = 0;
@@ -389,20 +413,18 @@ public final class DeadwoodPlan {
 				// The parent is the previous block: back along the step.
 				int pdir = du != 0 ? dirOf(-du * l[0], 0, -du * l[2]) : TreeVoxels.DOWN;
 				int radius = k < 2 ? 2 : 1;
-				int at = b.woodGrounded(u * l[0], v, u * l[2], radius, pdir, parent, TreeVoxels.LOWER);
+				int at = b.woodGrounded(u * l[0] - f[0], v, u * l[2] - f[2], radius, pdir, parent, TreeVoxels.LOWER);
 				if (at < 0) {
 					break;
 				}
 				parent = at;
-				if (Math.abs(u) <= reach + 1 && v <= 2 * reach + 1) {
-					root[u + reach + 1][v] = true;
-				}
 			}
 		}
+		// The soil: a solid disc (no cell left out but the stem base).
 		for (int u = -reach; u <= reach; u++) {
 			for (int v = 0; v <= 2 * reach; v++) {
 				double rho = Math.sqrt(u * u + (v - cy) * (v - cy));
-				if (rho > plate + 0.2 || u == 0 && v == 0 || root[u + reach + 1][v]) {
+				if (rho > plate + 0.2 || u == 0 && v == 0) {
 					continue;
 				}
 				double rel = rho / plate;
@@ -555,8 +577,8 @@ public final class DeadwoodPlan {
 	/**
 	 * Fall direction of lying wood starting {@code start} blocks off the base and {@code count} long: along the contour on
 	 * a slope (the axis across the steeper gradient), windthrows mostly to the east (the prevailing westerly winds) on
-	 * level ground, else at random; the first with room for the whole length, else the one with the most room (at least
-	 * {@link #MIN_LOG}), or -1.
+	 * level ground, else at random; the one with the most room (at least {@link #MIN_LOG}) and of those the one with the
+	 * fewest blocks over a dip ({@link #gaps}), or -1.
 	 */
 	private static int direction(Request r, Random rnd, int start, int count, boolean windthrow) {
 		TreeShapePlan.Ground g = r.ground();
@@ -586,16 +608,21 @@ public final class DeadwoodPlan {
 				order[j] = tmp;
 			}
 		}
+		// The longest (the whole length when any has room for it), of equals the fewest blocks over a dip (review of V11,
+		// round 1), then the order above.
 		int best = -1;
 		int bestFit = MIN_LOG - 1;
+		int bestGaps = Integer.MAX_VALUE;
 		for (int d : order) {
 			int fit = fit(r, d, start, count);
-			if (fit >= count) {
-				return d;
+			if (fit < MIN_LOG) {
+				continue;
 			}
-			if (fit > bestFit) {
+			int gaps = gaps(r, d, start, fit);
+			if (fit > bestFit || fit == bestFit && gaps < bestGaps) {
 				best = d;
 				bestFit = fit;
+				bestGaps = gaps;
 			}
 		}
 		return best;
@@ -615,8 +642,10 @@ public final class DeadwoodPlan {
 
 	/**
 	 * Length of lying wood that fits along {@code dir} from {@code start} blocks off the base, at most {@code count}: the
-	 * blocks stay above the ground of their columns, never over more than two blocks of air, the last one resting, and at
-	 * least {@link #MIN_RESTING} of them resting (at most one block of air below); 0 when not even one fits.
+	 * blocks stay above the ground of their columns and never over more than one block of air, a block over one block of
+	 * air only alone ({@link #MAX_GAP_RUN}: a log bridges a dip of one column, it never runs on as a rail above lower ground;
+	 * review of V11, round 1), the last one resting and at least {@link #MIN_RESTING} of them resting (no air below); 0 when
+	 * not even one fits.
 	 */
 	static int fit(Request r, int dir, int start, int count) {
 		int[] f = TreeVoxels.STEP[dir];
@@ -628,22 +657,41 @@ public final class DeadwoodPlan {
 				break;
 			}
 			int air = r.y() - 1 - top;
-			if (air > 2) {
+			if (air > 1) {
 				break;
 			}
 			gap[n++] = air;
 		}
 		int best = 0;
-		int high = 0;
+		int ones = 0;
+		int run = 0;
 		for (int len = 1; len <= n; len++) {
-			if (gap[len - 1] > 1) {
-				high++;
+			if (gap[len - 1] == 1) {
+				ones++;
+				if (++run > MAX_GAP_RUN) {
+					break;
+				}
+				continue;
 			}
-			if (gap[len - 1] <= 1 && high <= (1 - MIN_RESTING) * len) {
+			run = 0;
+			if (ones <= (1 - MIN_RESTING) * len + 1e-9) {
 				best = len;
 			}
 		}
 		return best;
+	}
+
+	/** Blocks over one block of air among the first {@code len} blocks of lying wood along {@code dir} (see {@link #fit}). */
+	static int gaps(Request r, int dir, int start, int len) {
+		int[] f = TreeVoxels.STEP[dir];
+		int n = 0;
+		for (int k = 0; k < len; k++) {
+			int top = r.ground().top(r.x() + (start + k) * f[0], r.z() + (start + k) * f[2]);
+			if (top != TreeShapePlan.Ground.UNKNOWN && r.y() - 1 - top == 1) {
+				n++;
+			}
+		}
+		return n;
 	}
 
 	// ------------------------------------------------------------------ directions

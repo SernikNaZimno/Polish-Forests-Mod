@@ -122,54 +122,63 @@ class DeadwoodPlanTest {
 		}
 	}
 
+	/**
+	 * Lying stems on rolling ground of ±1.5 and ±3 blocks (review of V11, round 1: a log one block above lower ground along
+	 * its length reads as a fence rail): no block over more than one block of air, blocks over one block of air only alone
+	 * between resting ones ({@link DeadwoodPlan#MAX_GAP_RUN}), at least {@link DeadwoodPlan#MIN_RESTING} of each stem with
+	 * no air below, the tip resting.
+	 */
 	@Test
 	void logsRestOnRollingGround() {
-		TreeShapePlan.Ground g = rolling(3);
-		Noise pick = new Noise(SEED).derive("test.deadwood.positions");
-		int objects = 0;
-		int lyingBlocks = 0;
-		int resting = 0;
-		int worst = 0;
-		for (DeadwoodPlan.Kind kind : new DeadwoodPlan.Kind[] {DeadwoodPlan.Kind.LOG, DeadwoodPlan.Kind.BROKEN,
-				DeadwoodPlan.Kind.WINDTHROW}) {
-			for (int k = 0; k < 150; k++) {
-				int x = (int) (pick.unit(k, kind.ordinal(), 1) * 16);
-				int z = (int) (pick.unit(k, kind.ordinal(), 2) * 16);
-				Species s = new ArrayList<>(SpeciesShape.species()).get(k % SpeciesShape.species().size());
-				DeadwoodVoxels v = plan(s, kind, k % 3 == 0 ? AgeClass.MATURE : AgeClass.OLD_GROWTH, k % 2 == 0, x, z, g);
-				if (v.empty() || v.direction() < 0) {
-					continue;
-				}
-				checkWood(v, g);
-				TreeVoxels t = v.wood();
-				int n = 0;
-				int ok = 0;
-				for (int i = 0; i < t.woodCount(); i++) {
-					// The lying stem: the blocks at the base level along the fall direction.
-					if (t.woodY(i) != 0 || t.parent(i) != DeadwoodPlan.opposite(v.direction())) {
+		for (double amplitude : new double[] {1.5, 3}) {
+			TreeShapePlan.Ground g = rolling(amplitude);
+			Noise pick = new Noise(SEED).derive("test.deadwood.positions");
+			int objects = 0;
+			int planned = 0;
+			int lyingBlocks = 0;
+			int overDip = 0;
+			int withDip = 0;
+			for (DeadwoodPlan.Kind kind : new DeadwoodPlan.Kind[] {DeadwoodPlan.Kind.LOG, DeadwoodPlan.Kind.BROKEN,
+					DeadwoodPlan.Kind.WINDTHROW}) {
+				for (int k = 0; k < 150; k++) {
+					int x = (int) (pick.unit(k, kind.ordinal(), 1) * 16);
+					int z = (int) (pick.unit(k, kind.ordinal(), 2) * 16);
+					Species s = new ArrayList<>(SpeciesShape.species()).get(k % SpeciesShape.species().size());
+					DeadwoodVoxels v = plan(s, kind, k % 3 == 0 ? AgeClass.MATURE : AgeClass.OLD_GROWTH, k % 2 == 0, x, z, g);
+					planned++;
+					if (v.empty() || v.direction() < 0) {
 						continue;
 					}
-					int air = t.y() - 1 - g.top(t.x() + t.woodX(i), t.z() + t.woodZ(i));
-					assertTrue(air <= 2, kind + " over " + air + " blocks of air");
-					n++;
-					if (air <= 1) {
-						ok++;
+					checkWood(v, g);
+					int[] air = DeadwoodGrid.lyingAir(v, g);
+					int n = air.length;
+					if (n == 0) {
+						continue;
 					}
+					objects++;
+					lyingBlocks += n;
+					int ok = 0;
+					int ones = 0;
+					int run = 0;
+					String where = String.format(Locale.ROOT, "%s of %s at %d, %d (±%.1f)", kind, s, x, z, amplitude);
+					for (int a : air) {
+						assertTrue(a <= 1, where + ": over " + a + " blocks of air");
+						ok += a == 0 ? 1 : 0;
+						ones += a == 1 ? 1 : 0;
+						run = a == 1 ? run + 1 : 0;
+						assertTrue(run <= DeadwoodPlan.MAX_GAP_RUN, where + ": " + run + " blocks in a row over a dip");
+					}
+					assertEquals(0, air[n - 1], where + ": the tip hangs");
+					assertTrue(ok >= DeadwoodPlan.MIN_RESTING * n - 1e-9, where + ": " + ok + " of " + n + " blocks rest");
+					overDip += ones;
+					withDip += ones > 0 ? 1 : 0;
 				}
-				if (n == 0) {
-					continue;
-				}
-				objects++;
-				lyingBlocks += n;
-				resting += ok;
-				assertTrue(ok >= DeadwoodPlan.MIN_RESTING * n - 1e-9, String.format(Locale.ROOT, "%s of %s at %d, %d: %d of %d blocks rest",
-						kind, s, x, z, ok, n));
-				worst = Math.max(worst, n - ok);
 			}
+			assertTrue(objects > 300, "lying objects planned: " + objects);
+			System.out.printf(Locale.ROOT, "[deadwood] rolling ground ±%.1f: %d lying objects of %d plans, %d blocks (%.1f per object), "
+					+ "%.1f%% blocks over one block of air, %.1f%% objects with such a block%n", amplitude, objects, planned, lyingBlocks,
+					lyingBlocks / (double) objects, 100.0 * overDip / lyingBlocks, 100.0 * withDip / objects);
 		}
-		assertTrue(objects > 350, "lying objects planned: " + objects);
-		System.out.printf(Locale.ROOT, "[deadwood] rolling ground: %d lying objects, %d blocks, %.1f%% resting%n", objects, lyingBlocks,
-				100.0 * resting / lyingBlocks);
 	}
 
 	@Test

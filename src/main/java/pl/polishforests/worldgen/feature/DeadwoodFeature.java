@@ -67,6 +67,15 @@ public record DeadwoodFeature(Species species, boolean stump) implements Feature
 	public static final int PIECE_GAP = PlantLayerFeature.FEATURE_GAP;
 	/** Objects placed, by kind (diagnostics for the game tests). */
 	public static final Map<DeadwoodPlan.Kind, LongAdder> PLACED = new EnumMap<>(DeadwoodPlan.Kind.class);
+	/**
+	 * Picks not placed (diagnostics for the game tests, review of V11, round 1): the base column is not the ground of the
+	 * habitats, the stand does not keep the pick (a stump in a natural stand, a dead tree a managed stand leaves out), the
+	 * plan is empty, nothing of it could be written.
+	 */
+	public static final LongAdder SKIPPED_BASE = new LongAdder();
+	public static final LongAdder NOT_KEPT = new LongAdder();
+	public static final LongAdder EMPTY = new LongAdder();
+	public static final LongAdder UNWRITTEN = new LongAdder();
 
 	static {
 		for (DeadwoodPlan.Kind k : DeadwoodPlan.Kind.values()) {
@@ -97,14 +106,21 @@ public record DeadwoodFeature(Species species, boolean stump) implements Feature
 				: StandMap.uniform(AgeClass.MATURE, true);
 		Ground ground = new Ground(level, level.getChunk(x >> 4, z >> 4), generator, seed);
 		if (ground.top(x, z) != origin.getY() - 1) {
+			SKIPPED_BASE.increment();
 			return false;
 		}
 		DeadwoodPlan.Request request = DeadwoodPlan.request(seed, species, stump, stands, x, origin.getY(), z, ground);
 		if (request == null) {
+			NOT_KEPT.increment();
 			return false;
 		}
 		DeadwoodVoxels v = DeadwoodPlan.plan(request);
-		if (v.empty() || write(level, v) == 0) {
+		if (v.empty()) {
+			EMPTY.increment();
+			return false;
+		}
+		if (write(level, v) == 0) {
+			UNWRITTEN.increment();
 			return false;
 		}
 		PLACED.get(request.kind()).increment();
@@ -121,6 +137,14 @@ public record DeadwoodFeature(Species species, boolean stump) implements Feature
 		boolean[] written = new boolean[n];
 		int count = 0;
 		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+		if (n == 0 || t.y() >= level.getMaxY() || !replaceable(level.getBlockState(pos.set(t.x() + t.woodX(0), t.y() + t.woodY(0),
+				t.z() + t.woodZ(0))))) {
+			return 0;
+		}
+		// The pit of a windthrow before the wood: the roots on the plate's underside hang over it (review of V11, round 1).
+		for (int p : v.pit()) {
+			dig(level, t.x() + v.x(p), t.y() - 1, t.z() + v.z(p), v.y(p), pos);
+		}
 		for (int i = 0; i < n; i++) {
 			int p = t.parentIndex(i);
 			if (p >= 0 && !written[p]) {
@@ -145,9 +169,6 @@ public record DeadwoodFeature(Species species, boolean stump) implements Feature
 			if (pos.getY() < level.getMaxY() && (here.isAir() || here.is(BlockTags.REPLACEABLE_BY_TREES) && !here.is(BlockTags.LEAVES))) {
 				level.setBlock(pos, soil(v.soilType()[i]), Block.UPDATE_CLIENTS);
 			}
-		}
-		for (int p : v.pit()) {
-			dig(level, t.x() + v.x(p), t.y() - 1, t.z() + v.z(p), v.y(p), pos);
 		}
 		long seed = level.getSeed();
 		for (int i = 0; i < v.cover().length; i++) {

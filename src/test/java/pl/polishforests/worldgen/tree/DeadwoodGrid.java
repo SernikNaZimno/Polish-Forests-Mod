@@ -12,6 +12,12 @@ public final class DeadwoodGrid {
 	private DeadwoodGrid() {
 	}
 
+	/** Blocks of air below each block of the lying stem ({@link DeadwoodVoxels#lyingStem}), along the fall direction. */
+	public static int[] lyingAir(DeadwoodVoxels v, TreeShapePlan.Ground g) {
+		TreeVoxels t = v.wood();
+		return java.util.Arrays.stream(v.lyingStem()).map(i -> t.y() - 1 - g.top(t.x() + t.woodX(i), t.z() + t.woodZ(i))).toArray();
+	}
+
 	/** Writes the plan; returns the wood blocks written. */
 	public static int write(CensusGrid g, DeadwoodVoxels v) {
 		TreeVoxels t = v.wood();

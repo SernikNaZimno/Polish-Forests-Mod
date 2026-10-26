@@ -1071,6 +1071,9 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 						pl.polishforests.worldgen.feature.plan.ForestBlend.NODES.sum(),
 						pl.polishforests.worldgen.feature.TreeStandFeature.TWINS.sum())
 				+ "; dead wood objects since the start (step V11): " + pl.polishforests.worldgen.feature.DeadwoodFeature.PLACED
+				+ String.format(Locale.ROOT, ", picks not placed: base column %d, not kept by the stand %d, empty plan %d, nothing written %d",
+						pl.polishforests.worldgen.feature.DeadwoodFeature.SKIPPED_BASE.sum(), pl.polishforests.worldgen.feature.DeadwoodFeature.NOT_KEPT.sum(),
+						pl.polishforests.worldgen.feature.DeadwoodFeature.EMPTY.sum(), pl.polishforests.worldgen.feature.DeadwoodFeature.UNWRITTEN.sum())
 				+ "; HABITAT_MISS " + (after[after.length - 1] - before[before.length - 1]);
 	}
 
