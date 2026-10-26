@@ -67,7 +67,7 @@ public final class DeadwoodPlan {
 	 * ({@link #MANAGED_KEEP}) and conifers ({@link #MANAGED_KEEP_CONIFER}).
 	 */
 	public static final double MANAGED_KEEP = 0.13;
-	public static final double MANAGED_KEEP_CONIFER = 0.17;
+	public static final double MANAGED_KEEP_CONIFER = 0.22;
 
 	/** Share of the dead tree picks a managed stand keeps for a species. */
 	public static double managedKeep(Species species) {
@@ -134,7 +134,7 @@ public final class DeadwoodPlan {
 	 * suppressed trees out before they die, so the dead wood left there (the WISL volumes per piece) is of canopy trees.
 	 */
 	public static CrownLayer layer(long worldSeed, Species species, boolean natural, int x, int z) {
-		double canopy = natural ? species == Species.SCOTS_PINE || species == Species.SPRUCE ? 0.7 : 0.5 : 0.7;
+		double canopy = natural ? species == Species.SCOTS_PINE || species == Species.SPRUCE ? 0.8 : 0.5 : 0.7;
 		return noise(worldSeed).unit(x, z, 3) < canopy ? CrownLayer.CANOPY : CrownLayer.SUBCANOPY;
 	}
 
@@ -235,11 +235,12 @@ public final class DeadwoodPlan {
 
 	private static void snag(Request r, Builder b, Skeleton s, Random rnd) {
 		double[] range = switch (r.species()) {
-			case OAK -> new double[] {0.45, 0.75};
+			// Oaks and ashes break above the crown base, among their limbs.
+			case OAK -> new double[] {0.6, 0.85};
 			case SCOTS_PINE -> new double[] {0.35, 0.8};
 			case SPRUCE -> new double[] {0.5, 0.9};
 			case BIRCH -> new double[] {0.25, 0.5};
-			case ASH -> new double[] {0.5, 0.8};
+			case ASH -> new double[] {0.6, 0.85};
 			default -> new double[] {0.3, 0.65};
 		};
 		double frac = range[0] + (range[1] - range[0]) * rnd.next();
@@ -444,7 +445,7 @@ public final class DeadwoodPlan {
 		boolean conifer = r.species() == Species.SCOTS_PINE || r.species() == Species.SPRUCE;
 		// Natural broad-leaved stands: fragments of a stem; natural pine forests longer pieces; managed stands mostly whole
 		// stems left lying (windfalls, crowns of the fellings), the WISL volume per piece [S].
-		double share = !r.natural() ? 0.5 + 0.4 * rnd.next() : conifer ? 0.45 + 0.45 * rnd.next() : 0.3 + 0.45 * rnd.next();
+		double share = !r.natural() ? 0.5 + 0.4 * rnd.next() : conifer ? 0.55 + 0.45 * rnd.next() : 0.3 + 0.45 * rnd.next();
 		int count = Math.clamp((int) Math.round(share * (thick - from)), MIN_LOG, thick - from);
 		int dir = direction(r, rnd, 0, count, false);
 		if (dir < 0) {

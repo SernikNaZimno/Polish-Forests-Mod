@@ -248,7 +248,8 @@ final class DeadwoodSamples {
 				int ground = ground(level, cx, cz);
 				double ey = ground + 1.62;
 				BlockPos feet = new BlockPos(cx, ground, cz);
-				if (ground == Integer.MIN_VALUE || !free(level.getBlockState(feet)) || !free(level.getBlockState(feet.above()))) {
+				// On the ground near the object's level (not on a root plate, a log or a step of the terrain).
+				if (ground == Integer.MIN_VALUE || Math.abs(ground - t.y()) > 2 || !free(level.getBlockState(feet)) || !free(level.getBlockState(feet.above()))) {
 					continue;
 				}
 				// Blocks around the eye fill the frame: trunks, leaves, soil within a block of the camera count three times.
