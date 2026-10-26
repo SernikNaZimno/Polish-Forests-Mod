@@ -1,0 +1,7 @@
+{
+  "parent": "polishforests:block/template_trunk_r3",
+  "textures": {
+    "bark": "polishforests:block/tree_root_bark",
+    "end": "minecraft:block/oak_log_top"
+  }
+}

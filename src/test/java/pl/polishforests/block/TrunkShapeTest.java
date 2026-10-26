@@ -78,4 +78,37 @@ class TrunkShapeTest {
 		}
 		return false;
 	}
+
+	/**
+	 * Step I1: a root flare lying on its side (a horizontal parent) has the prism of its radius lowered to the floor of the
+	 * block, from 0 to 2r - sink px high (the part below the floor is only drawn), along the parent axis through the block;
+	 * a vertical flare is a thin trunk's prism.
+	 */
+	@Test
+	void rootFlareLiesOnTheGround() {
+		for (Direction parent : Direction.values()) {
+			for (int r = TrunkBlock.MIN_RADIUS; r <= TrunkBlock.MAX_RADIUS; r++) {
+				VoxelShape s = RootFlareBlock.flareShape(parent, r);
+				if (parent.getAxis() == Direction.Axis.Y) {
+					assertEquals(TrunkBlock.shape(parent, r).bounds(), s.bounds(), parent + " r" + r);
+					continue;
+				}
+				AABB box = s.bounds();
+				double px = 1 / 16.0;
+				assertEquals(0.0, box.minY, 1e-9, parent + " r" + r);
+				assertEquals((2 * r - RootFlareBlock.sink(r)) * px, box.maxY, 1e-9, parent + " r" + r);
+				for (Direction.Axis axis : new Direction.Axis[] {Direction.Axis.X, Direction.Axis.Z}) {
+					boolean along = axis == parent.getAxis();
+					assertEquals(along ? 0.0 : 0.5 - r * px, box.min(axis), 1e-9, parent + " r" + r + " " + axis);
+					assertEquals(along ? 1.0 : 0.5 + r * px, box.max(axis), 1e-9, parent + " r" + r + " " + axis);
+				}
+			}
+		}
+		// The flares are thin trunks of the species' bark, the underground root is one with its own bark.
+		RootFlareBlock oak = ModBlocks.flare(RootFlare.OAK);
+		assertTrue(oak instanceof TrunkBlock);
+		assertEquals("oak_root_flare", RootFlare.OAK.id());
+		assertEquals(ModBlocks.TREE_ROOT, net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(ModBlocks.treeRoot()).getPath());
+		assertFalse(ModBlocks.treeRoot() instanceof RootFlareBlock);
+	}
 }

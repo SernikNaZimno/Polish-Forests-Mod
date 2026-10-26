@@ -1,0 +1,7 @@
+{
+  "parent": "polishforests:block/template_root_flare_r6",
+  "textures": {
+    "bark": "polishforests:block/beech_bark",
+    "end": "minecraft:block/pale_oak_log_top"
+  }
+}

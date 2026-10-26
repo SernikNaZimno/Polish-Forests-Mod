@@ -78,8 +78,10 @@ class RegistrySnapshotTest {
 		int foliage = TreeFoliage.values().length;
 		int marcescent = (int) java.util.Arrays.stream(TreeFoliage.values()).filter(TreeFoliage::marcescent).count();
 		assertEquals(3, marcescent);
-		assertEquals(84 * TreeTrunk.values().length + foliage * (112 + 2 + 1) + marcescent * 112 + 4 * 3 + 1,
-				RegistrySnapshot.stateCount());
+		// Step I1: + 9 root flares and the underground root, thin trunks of 84 states each.
+		assertEquals(RootFlare.values().length, ModBlocks.flares().size());
+		assertEquals(84 * TreeTrunk.values().length + foliage * (112 + 2 + 1) + marcescent * 112 + 4 * 3 + 1
+				+ 84 * (RootFlare.values().length + 1), RegistrySnapshot.stateCount());
 	}
 
 	/** Step V7: every species leaf block is a leaves block with the phase 0-3, every sapling has an item and a pot. */

@@ -181,12 +181,21 @@ final class NormsCensus {
 		return name(s);
 	}
 
-	private static Species species(BlockState s) {
+	private static @org.jspecify.annotations.Nullable Species species(BlockState s) {
 		String path = BuiltInRegistries.BLOCK.getKey(s.getBlock()).getPath();
 		for (TreeTrunk t : TreeTrunk.values()) {
 			if (t.id().equals(path)) {
 				return t.species();
 			}
+		}
+		// Step I1: a root flare is the trunk of its species; the root block (the roots of a windthrow's root plate) has none.
+		for (pl.polishforests.block.RootFlare f : pl.polishforests.block.RootFlare.values()) {
+			if (f.id().equals(path)) {
+				return f.species();
+			}
+		}
+		if (path.equals(pl.polishforests.block.ModBlocks.TREE_ROOT)) {
+			return null;
 		}
 		throw new AssertionError("A trunk block without a species: " + path);
 	}

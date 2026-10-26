@@ -11,6 +11,7 @@ import net.minecraft.data.CachedOutput;
 import net.minecraft.data.DataProvider;
 import net.minecraft.data.PackOutput;
 import pl.polishforests.PolishForests;
+import pl.polishforests.block.RootFlareBlock;
 import pl.polishforests.block.TrunkBlock;
 
 /**
@@ -115,6 +116,11 @@ final class TrunkTemplates implements DataProvider {
 
 	static final String ITEM_TEMPLATE = "block/template_trunk_inventory";
 
+	/** Model id of the lying template of a root flare of radius r (step I1). */
+	static String flareTemplate(int r) {
+		return "block/template_root_flare_r" + r;
+	}
+
 	/** Left edge of the bark crop of a side ({@code north}, {@code west}, {@code south}, {@code east}) at radius r, px. */
 	static int faceOffset(int r, String side) {
 		for (int i = 0; i < SIDES.length; i++) {
@@ -132,6 +138,9 @@ final class TrunkTemplates implements DataProvider {
 			out.add(DataProvider.saveStable(cache, trunk(r), models.json(PolishForests.id(template(r)))));
 		}
 		out.add(DataProvider.saveStable(cache, item(), models.json(PolishForests.id(ITEM_TEMPLATE))));
+		for (int r = TrunkBlock.MIN_RADIUS; r <= TrunkBlock.MAX_RADIUS; r++) {
+			out.add(DataProvider.saveStable(cache, flare(r), models.json(PolishForests.id(flareTemplate(r)))));
+		}
 		return CompletableFuture.allOf(out.toArray(CompletableFuture[]::new));
 	}
 
@@ -168,6 +177,25 @@ final class TrunkTemplates implements DataProvider {
 		elements.add(end(new double[] {a + e, b - e}, -8 + END_BARK_DEPTH, "#bark"));
 		JsonObject m = model(elements);
 		m.addProperty("ambientocclusion", false);
+		return m;
+	}
+
+	/**
+	 * The lying template of a root flare of radius r (step I1, {@link RootFlareBlock}): the trunk template moved along its
+	 * z axis by 8 − r + sink, which the blockstate's x rotation of 270° (every horizontal parent) turns into world down, so
+	 * the prism lies {@link RootFlareBlock#sink} px deep in the ground below the block and its reach runs into the parent
+	 * at the same height. Nothing else changes (texture rows and columns, the end, the seams).
+	 */
+	private static JsonObject flare(int r) {
+		double shift = 8 - r + RootFlareBlock.sink(r);
+		JsonObject m = trunk(r);
+		for (var e : m.getAsJsonArray("elements")) {
+			JsonObject el = e.getAsJsonObject();
+			for (String key : new String[] {"from", "to"}) {
+				JsonArray v = el.getAsJsonArray(key);
+				el.add(key, vector(new double[] {v.get(0).getAsDouble(), v.get(1).getAsDouble(), v.get(2).getAsDouble() + shift}));
+			}
+		}
 		return m;
 	}
 

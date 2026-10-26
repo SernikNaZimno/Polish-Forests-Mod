@@ -347,6 +347,8 @@ public final class PerformanceClientGameTest implements FabricClientGameTest {
 		long trees0 = TreeStandFeature.TREES.sum();
 		long plan0 = TreeStandFeature.PLAN_NANOS.sum();
 		long planned0 = TreeStandFeature.PLANNED.sum();
+		long roots0 = pl.polishforests.worldgen.feature.TreeRoots.NANOS.sum();
+		long rootTrees0 = pl.polishforests.worldgen.feature.TreeRoots.TREES.sum();
 		long miss0 = ModFeatures.HABITAT_MISS.sum();
 		long[] layer0 = new long[pl.polishforests.worldgen.feature.BiomeDecoration.Dispatcher.values().length * 3];
 		for (var d : pl.polishforests.worldgen.feature.BiomeDecoration.Dispatcher.values()) {
@@ -408,6 +410,11 @@ public final class PerformanceClientGameTest implements FabricClientGameTest {
 			PolishForests.LOG.info(String.format(Locale.ROOT, "[performance] %s: tree planner %.3f ms/chunk (%d trees planned, %.3f "
 					+ "ms/tree)", name, (TreeStandFeature.PLAN_NANOS.sum() - plan0) / 1e6 / treeChunks, planned,
 					(TreeStandFeature.PLAN_NANOS.sum() - plan0) / 1e6 / Math.max(1, planned)));
+			// Step I1: the roots within the tree stand (planner and writing).
+			long rootTrees = pl.polishforests.worldgen.feature.TreeRoots.TREES.sum() - rootTrees0;
+			PolishForests.LOG.info(String.format(Locale.ROOT, "[performance] %s: roots %.3f ms/chunk (%d trees, %.3f ms/tree)", name,
+					(pl.polishforests.worldgen.feature.TreeRoots.NANOS.sum() - roots0) / 1e6 / treeChunks, rootTrees,
+					(pl.polishforests.worldgen.feature.TreeRoots.NANOS.sum() - roots0) / 1e6 / Math.max(1, rootTrees)));
 			StringBuilder layers = new StringBuilder();
 			for (var d : pl.polishforests.worldgen.feature.BiomeDecoration.Dispatcher.values()) {
 				ModFeatures.LayerStats st = ModFeatures.STATS.get(d);

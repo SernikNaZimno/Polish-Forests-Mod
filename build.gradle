@@ -180,6 +180,17 @@ tasks.register('treePreview', JavaExec) {
 	jvmArgs = ['-Djava.awt.headless=true']
 }
 
+// Cross-sections and top views of the roots of the planner trees (step I1) to docs/wycinek/korzenie/*.png, without the
+// game (treePreview writes them too).
+tasks.register('rootPreview', JavaExec) {
+	group = 'polishforests'
+	description = 'Renders the root planner sheets to docs/wycinek/korzenie/*.png'
+	classpath = sourceSets.test.runtimeClasspath
+	mainClass = 'pl.polishforests.worldgen.tree.RootPreview'
+	args = [file('docs/wycinek/korzenie').absolutePath]
+	jvmArgs = ['-Djava.awt.headless=true']
+}
+
 // Views of simulated stands of the slice (review of V9, round 2) rendered to build/stand-preview/*.png, without the game:
 // ray-cast eye and above-canopy views with the bare wood of the crowns. -PstandOnly=<part of a stand name> renders one.
 tasks.register('standPreview', JavaExec) {

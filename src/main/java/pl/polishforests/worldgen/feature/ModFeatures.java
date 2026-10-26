@@ -80,6 +80,25 @@ public final class ModFeatures {
 	}
 
 	/**
+	 * Observer of the roots the tree stand writes (step I1): the species, the plan
+	 * ({@link pl.polishforests.worldgen.tree.RootVoxels}) and the blocks written. The root views of the game test find trees
+	 * with flares and check the written blocks. Null outside the game tests; called on the generation threads.
+	 */
+	public interface RootPlacements {
+		void placed(Species species, pl.polishforests.worldgen.tree.RootVoxels plan, TreeRoots.Written written);
+	}
+
+	public static volatile @Nullable RootPlacements ROOT_PLACEMENTS;
+
+	/** Reports written roots to {@link #ROOT_PLACEMENTS}, if set. */
+	static void rootsPlaced(Species species, pl.polishforests.worldgen.tree.RootVoxels plan, TreeRoots.Written written) {
+		RootPlacements r = ROOT_PLACEMENTS;
+		if (r != null) {
+			r.placed(species, plan, written);
+		}
+	}
+
+	/**
 	 * Species of a placed feature {@code polishforests:tree/<species>}, {@code tree_substitute/<species>[_<variant>]} or
 	 * {@code shrub/<species>}, e.g. {@code tree_substitute/scots_pine_low} is the Scots pine; null for other features
 	 * (fallen trees, flowers) and direct holders.

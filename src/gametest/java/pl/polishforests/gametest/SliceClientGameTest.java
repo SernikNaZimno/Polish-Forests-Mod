@@ -93,6 +93,8 @@ import pl.polishforests.worldgen.surface.ChunkSurface;
  * {@code -Psites=leaves} builds the board of the species leaves, saplings and the LITE pine set (step V7, {@link LeafSamples}).
  * {@code -Psites=deadwood} builds the board of the dead wood planner and shoots its objects in the worlds (step V11,
  * {@link DeadwoodSamples}).
+ * {@code -Psites=roots} builds the board of the roots and shoots the trunk bases, flares and a trench in the worlds (step
+ * I1, {@link RootSamples}).
  */
 public final class SliceClientGameTest implements FabricClientGameTest {
 	private static final String SEED = "20260927";
@@ -168,6 +170,10 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 		}
 		if (only.equals("deadwood")) {
 			DeadwoodSamples.run(context);
+			return;
+		}
+		if (only.equals("roots")) {
+			RootSamples.run(context);
 			return;
 		}
 		boolean screenshots = !only.equals("none");

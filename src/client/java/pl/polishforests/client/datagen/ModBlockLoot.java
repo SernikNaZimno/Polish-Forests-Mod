@@ -37,19 +37,37 @@ final class ModBlockLoot extends FabricBlockLootSubProvider {
 	@Override
 	public void generate() {
 		for (TreeTrunk t : TreeTrunk.values()) {
-			TrunkBlock block = ModBlocks.trunk(t);
-			AnyOfCondition.Builder thin = AnyOfCondition.anyOf();
-			for (int r = TrunkBlock.MIN_RADIUS; r <= STICK_RADIUS; r++) {
-				thin.or(radius(block, r));
-			}
-			LootPoolEntryContainer.Builder<?> sticks = ((LootPoolEntryContainer.Builder<?>) applyExplosionDecay(block,
-					LootItem.lootTableItem(Items.STICK).apply(SetItemCountFunction.setCount(ContextIntProviders.between(1, 2)))))
-					.when(thin);
-			LootPoolEntryContainer.Builder<?> log = (LootPoolEntryContainer.Builder<?>) applyExplosionCondition(block,
-					LootItem.lootTableItem(t.log()));
-			add(block, LootTable.lootTable().withPool(LootPool.lootPool().setRolls(ContextIntProviders.exactly(1))
-					.add(LootItem.lootTableItem(block).when(hasSilkTouch()).otherwise(sticks).otherwise(log))));
+			trunk(ModBlocks.trunk(t), t);
 		}
+		// Step I1: a root flare as the trunk of its species; the underground root gives itself with silk touch, else 1-2
+		// sticks.
+		for (pl.polishforests.block.RootFlare f : pl.polishforests.block.RootFlare.values()) {
+			trunk(ModBlocks.flare(f), f.trunk());
+		}
+		TrunkBlock root = ModBlocks.treeRoot();
+		LootPoolEntryContainer.Builder<?> rootSticks = (LootPoolEntryContainer.Builder<?>) applyExplosionDecay(root,
+				LootItem.lootTableItem(Items.STICK).apply(SetItemCountFunction.setCount(ContextIntProviders.between(1, 2))));
+		add(root, LootTable.lootTable().withPool(LootPool.lootPool().setRolls(ContextIntProviders.exactly(1))
+				.add(LootItem.lootTableItem(root).when(hasSilkTouch()).otherwise(rootSticks))));
+		lite();
+	}
+
+	/** A thin trunk (or a root flare) with the loot of a trunk: itself with silk touch, sticks when thin, else the log. */
+	private void trunk(TrunkBlock block, TreeTrunk t) {
+		AnyOfCondition.Builder thin = AnyOfCondition.anyOf();
+		for (int r = TrunkBlock.MIN_RADIUS; r <= STICK_RADIUS; r++) {
+			thin.or(radius(block, r));
+		}
+		LootPoolEntryContainer.Builder<?> sticks = ((LootPoolEntryContainer.Builder<?>) applyExplosionDecay(block,
+				LootItem.lootTableItem(Items.STICK).apply(SetItemCountFunction.setCount(ContextIntProviders.between(1, 2)))))
+				.when(thin);
+		LootPoolEntryContainer.Builder<?> log = (LootPoolEntryContainer.Builder<?>) applyExplosionCondition(block,
+				LootItem.lootTableItem(t.log()));
+		add(block, LootTable.lootTable().withPool(LootPool.lootPool().setRolls(ContextIntProviders.exactly(1))
+				.add(LootItem.lootTableItem(block).when(hasSilkTouch()).otherwise(sticks).otherwise(log))));
+	}
+
+	private void lite() {
 		// Step V7: the LITE Scots pine set drops itself; the leaves as vanilla leaves (shears or silk touch: the leaves,
 		// else the sapling with vanilla's chances and sticks); a sapling itself, a pot its sapling and the pot.
 		for (Block b : java.util.List.of(ModBlocks.pineLog(), ModBlocks.pineWood(), ModBlocks.strippedPineLog(),

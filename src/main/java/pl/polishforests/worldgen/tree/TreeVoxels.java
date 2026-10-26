@@ -39,6 +39,11 @@ public final class TreeVoxels {
 	public static final int TRANSITION_UPPER = 2;
 	/** Scots pine: the thin orange bark of the upper trunk and the branches (the "mirror"). */
 	public static final int UPPER = 3;
+	/**
+	 * Step I1: the root block of every species ({@code polishforests:tree_root}), used by the roots of the root plate of a
+	 * windthrow (dead wood planner); the tree planner never sets it.
+	 */
+	public static final int ROOT = 4;
 	/** Largest leaf distance that does not decay. */
 	public static final int MAX_DISTANCE = 6;
 

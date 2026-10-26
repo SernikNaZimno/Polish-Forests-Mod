@@ -47,8 +47,11 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  * <p>The shape is not a full block, so the trunk lets the sky light through (no shade, light dampening 0, 1 when
  * waterlogged) and does not hide the faces of its neighbors. It is in {@code #minecraft:logs} through the species tags,
  * so it keeps leaves from decaying and counts as a log for heightmaps and movement.
+ *
+ * <p>Step I1 (roots): the same block class makes the underground root {@code polishforests:tree_root} (own root bark, not
+ * a log), and the root flares ({@link RootFlareBlock}) override the shape of a horizontal segment.
  */
-public final class TrunkBlock extends Block implements SimpleWaterloggedBlock {
+public class TrunkBlock extends Block implements SimpleWaterloggedBlock {
 	public static final int MIN_RADIUS = 1;
 	public static final int MAX_RADIUS = 7;
 	/** Radius of a trunk placed by a player against a block that is not a trunk, px. */
@@ -88,7 +91,12 @@ public final class TrunkBlock extends Block implements SimpleWaterloggedBlock {
 
 	@Override
 	protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
-		return shape(state.getValue(PARENT), state.getValue(RADIUS));
+		return shapeOf(state.getValue(PARENT), state.getValue(RADIUS));
+	}
+
+	/** The shape of a state of this block (step I1: a root flare lowers its horizontal segments). */
+	protected VoxelShape shapeOf(Direction parent, int radius) {
+		return shape(parent, radius);
 	}
 
 	/**
@@ -99,9 +107,14 @@ public final class TrunkBlock extends Block implements SimpleWaterloggedBlock {
 	public BlockState getStateForPlacement(BlockPlaceContext context) {
 		Direction parent = context.getClickedFace().getOpposite();
 		BlockState against = context.getLevel().getBlockState(context.getClickedPos().relative(parent));
-		int radius = against.getBlock() instanceof TrunkBlock ? against.getValue(RADIUS) : DEFAULT_RADIUS;
+		int radius = against.getBlock() instanceof TrunkBlock ? against.getValue(RADIUS) : defaultRadius();
 		boolean water = context.getLevel().getFluidState(context.getClickedPos()).is(Fluids.WATER);
 		return state(radius, parent).setValue(WATERLOGGED, water);
+	}
+
+	/** Radius of this block placed by a player against a block that is not a trunk. */
+	protected int defaultRadius() {
+		return DEFAULT_RADIUS;
 	}
 
 	@Override

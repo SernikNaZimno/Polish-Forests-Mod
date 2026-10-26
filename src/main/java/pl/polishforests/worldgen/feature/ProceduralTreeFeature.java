@@ -288,6 +288,10 @@ public record ProceduralTreeFeature(Species species, CrownLayer layer, AgeClass 
 	 * or the LITE Scots pine log) along the parent axis.
 	 */
 	public static BlockState wood(Species species, int bark, int radius, Direction parent) {
+		if (bark == TreeVoxels.ROOT) {
+			// Step I1: the roots of a windthrow's root plate.
+			return ModBlocks.treeRoot().state(radius, parent);
+		}
 		TreeTrunk t = trunk(species, bark);
 		if (radius >= TreeVoxels.FULL) {
 			Block log = t.log();

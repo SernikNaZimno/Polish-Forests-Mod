@@ -218,6 +218,11 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		builder.add(ModBlocks.strippedPineLog(), polish ? "Okorowana kłoda sosnowa" : "Stripped Scots Pine Log");
 		builder.add(ModBlocks.strippedPineWood(), polish ? "Okorowane drewno sosnowe" : "Stripped Scots Pine Wood");
 		builder.add(ModBlocks.pinePlanks(), polish ? "Deski sosnowe" : "Scots Pine Planks");
+		// Step I1: root flares and the underground root.
+		for (pl.polishforests.block.RootFlare f : pl.polishforests.block.RootFlare.values()) {
+			builder.add(ModBlocks.flare(f), polish ? f.polishName() : f.englishName());
+		}
+		builder.add(ModBlocks.treeRoot(), polish ? "Korzeń drzewa" : "Tree Root");
 		builder.add(tagKey(ModBlockTagProvider.PINE_FULL_LOGS.location().getPath()), polish ? "Kłody sosnowe" : "Scots Pine Logs");
 		// Item tags (recipe viewers show their names): a species tag is named after the first trunk of the species.
 		Map<Species, TreeTrunk> first = new LinkedHashMap<>();

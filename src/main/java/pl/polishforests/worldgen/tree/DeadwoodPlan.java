@@ -29,8 +29,8 @@ import pl.polishforests.worldgen.landscape.Noise;
  * <p><b>Root plate</b> (windthrow): a solid disc of soil one block thick standing on edge at the stem base (rooted dirt
  * inside, coarse dirt and dirt at the ragged rim), with roots of the species' trunk block radiating over its underside,
  * the face toward the pit, from a root collar behind the stem base ({@link DeadwoodVoxels#soil},
- * {@link DeadwoodVoxels#soilType}); step I1 (roots) may swap the soil cells and the roots for its own blocks without
- * changing the plan's geometry. The pit behind it is one block deep (two in the middle of a large plate); the roots hang
+ * {@link DeadwoodVoxels#soilType}); step I1 (roots): the roots are the lateral roots of the living tree
+ * ({@link RootPlan#laterals}) turned up with the plate, of the root block ({@link TreeVoxels#ROOT}). The pit behind it is one block deep (two in the middle of a large plate); the roots hang
  * over it.
  *
  * <p>Moss and leaf litter are planned beside the lying wood ({@link DeadwoodVoxels#cover}).
@@ -382,43 +382,32 @@ public final class DeadwoodPlan {
 		int reach = (int) Math.ceil(plate);
 		double cy = plate - 0.5;
 		// Roots on the plate's underside, the face toward the pit (one block behind the plate's plane; review of V11, round 1:
-		// roots inside the plane left see-through slots in the soil): from a root collar block behind the stem base left,
-		// right, up and the two diagonals out to about the rim, past it at the sides.
+		// roots inside the plane left see-through slots in the soil), from a root collar block behind the stem base. Step I1:
+		// the lateral roots of the living tree ({@link RootPlan#laterals}) turned up with the plate: a root that ran behind
+		// the base (against the fall) now runs up the plate, one that ran to a side along its bottom; those ahead of the base
+		// stay torn off in the ground. The roots are the root block of step I1 ({@link TreeVoxels#ROOT}).
 		int collar = b.woodGrounded(-f[0], 0, -f[2], Math.max(1, r0 - 1), dir, hub, TreeVoxels.LOWER);
-		int[][] rays = {{-1, 0}, {1, 0}, {0, 1}, {-1, 1}, {1, 1}};
-		for (int[] ray : rays) {
-			if (collar < 0) {
+		double[][] laterals = RootPlan.laterals(r.species(), CrownLayer.CANOPY, r.age(), r.worldSeed(), r.x(), r.z(), t.radius(0));
+		double[] along = new double[laterals.length];
+		Integer[] order = new Integer[laterals.length];
+		for (int i = 0; i < laterals.length; i++) {
+			along[i] = Math.cos(laterals[i][0]) * f[0] + Math.sin(laterals[i][0]) * f[2];
+			order[i] = i;
+		}
+		Arrays.sort(order, (x, y) -> Double.compare(along[x], along[y]));
+		for (int k = 0; k < order.length && collar >= 0; k++) {
+			int i = order[k];
+			if (along[i] > 0.35 && k >= 3) {
 				break;
 			}
-			int u = 0;
-			int v = 0;
-			int parent = collar;
-			int length = (int) Math.round(plate - 0.3 + 0.6 * rnd.next());
-			for (int k = 0; k < length; k++) {
-				int du = 0;
-				int dv = 0;
-				if (ray[0] != 0 && ray[1] != 0) {
-					// A diagonal: sideways first, then up (no vertical step on the ground).
-					if (k % 2 == 0) {
-						du = ray[0];
-					} else {
-						dv = 1;
-					}
-				} else {
-					du = ray[0];
-					dv = ray[1];
-				}
-				u += du;
-				v += dv;
-				// The parent is the previous block: back along the step.
-				int pdir = du != 0 ? dirOf(-du * l[0], 0, -du * l[2]) : TreeVoxels.DOWN;
-				int radius = k < 2 ? 2 : 1;
-				int at = b.woodGrounded(u * l[0] - f[0], v, u * l[2] - f[2], radius, pdir, parent, TreeVoxels.LOWER);
-				if (at < 0) {
-					break;
-				}
-				parent = at;
+			double side = Math.cos(laterals[i][0]) * l[0] + Math.sin(laterals[i][0]) * l[2];
+			double up = Math.max(0, -along[i]);
+			double norm = Math.hypot(side, up);
+			if (norm < 1e-6) {
+				continue;
 			}
+			int length = (int) Math.round(Math.min(laterals[i][1], plate + 0.3) - 0.3 + 0.6 * rnd.next());
+			plateRoot(b, collar, side / norm, up / norm, length, (int) laterals[i][2], f, l);
 		}
 		// The soil: a solid disc (no cell left out but the stem base).
 		for (int u = -reach; u <= reach; u++) {
@@ -455,6 +444,40 @@ public final class DeadwoodPlan {
 			}
 		}
 		return dir;
+	}
+
+	/**
+	 * One root on the underside of a root plate (step I1): from the collar along (side, up) in the plate's plane by a grid
+	 * walk of face steps (a tie goes sideways first: no vertical step on the ground), 2 px for the first two blocks (at most
+	 * the lateral's radius), then 1 px.
+	 */
+	private static void plateRoot(Builder b, int collar, double su, double sv, int length, int radius, int[] f, int[] l) {
+		double cu = 0.5;
+		double cv = 0.5;
+		int u = 0;
+		int v = 0;
+		double tMaxU = su > 0 ? (1 - cu) / su : su < 0 ? cu / -su : Double.MAX_VALUE;
+		double tMaxV = sv > 0 ? (1 - cv) / sv : Double.MAX_VALUE;
+		double tDU = su == 0 ? Double.MAX_VALUE : 1 / Math.abs(su);
+		double tDV = sv == 0 ? Double.MAX_VALUE : 1 / sv;
+		int parent = collar;
+		for (int k = 0; k < length && parent >= 0; k++) {
+			int du = 0;
+			int dv = 0;
+			if (tMaxU <= tMaxV) {
+				du = su > 0 ? 1 : -1;
+				tMaxU += tDU;
+			} else {
+				dv = 1;
+				tMaxV += tDV;
+			}
+			u += du;
+			v += dv;
+			// The parent is the previous block: back along the step.
+			int pdir = du != 0 ? dirOf(-du * l[0], 0, -du * l[2]) : TreeVoxels.DOWN;
+			int rad = k < 2 ? Math.clamp(radius, 1, 2) : 1;
+			parent = b.woodGrounded(u * l[0] - f[0], v, u * l[2] - f[2], rad, pdir, parent, TreeVoxels.ROOT);
+		}
 	}
 
 	private static int log(Request r, Builder b, Skeleton s, Random rnd) {

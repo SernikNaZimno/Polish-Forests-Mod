@@ -1,0 +1,7 @@
+{
+  "parent": "polishforests:block/template_root_flare_r2",
+  "textures": {
+    "bark": "minecraft:block/spruce_log",
+    "end": "minecraft:block/spruce_log_top"
+  }
+}

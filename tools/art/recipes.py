@@ -962,6 +962,12 @@ BEECH = dict(lichen=2, scars=1, algae=0.06, lums=(146, 156, 165, 174, 186), sat=
              algae_sat=0.13, algae_hue_shift=28, streak=0.5, band=3, tries=48)
 BEECH_VARIANT = dict(BEECH, scars=0, lichen=3, lock=1)
 BEECH_EXPECT = {'luma': (150, 172), 'dark': 0.0, 'grain': 1.2, 'std': 18}
+# Step I1 (roots): the bark of the underground roots, one for every species (tree_root). Roots in the soil have a thin,
+# smooth brown bark with fine shallow fissures, warmer and smoother than the trunks (CP-A: smooth textures): the
+# furrowed recipe with shallow fissures only and small luma steps.
+ROOT = dict(lines=5, amp=1.2, wave=3, jitter=0.5, plate=(4, 8), cross='diag', band=3, furrow_tone=1, deep=0,
+            face_split=0.5, lums=(68, 79, 86, 93, 99, 103), right_tone=3, sat=0.36, hue=22, tries=48)
+ROOT_EXPECT = {'luma': (80, 100), 'dark': 0.02, 'grain': 1.5, 'distinct': (('oak_bark', 6), ('linden_bark', 8))}
 
 
 # Step V7: LITE pine wood (tones set by the recipe from the wood description in tools/art/wood.py) and saplings.
@@ -1059,6 +1065,9 @@ TEXTURES = [
     Texture('beech_bark_3', 'bark', bark_beech, 'beech_bark_3/1', 'beech_bark', variant_of='beech_bark',
             params=BEECH_VARIANT, expect=BEECH_EXPECT,
             note='third variant of the beech bark, same edge rows, no branch scar (V1b review round 1)'),
+    Texture('tree_root_bark', 'bark', bark_furrowed, 'tree_root_bark/1', 'oak_bark', params=ROOT, expect=ROOT_EXPECT,
+            palette_use='hue of the oak bark photo, made warmer and smoother by the recipe',
+            note='underground roots of every species (step I1): thin smooth brown bark with fine shallow fissures'),
     Texture('scots_pine_leaves', 'leaves', leaves_needles, 'scots_pine_leaves/1', 'scots_pine_needles',
             tint='#7c996d', mcmeta=LEAVES_MCMETA,
             params=dict(opacity=0.6, twig=(3, 6), fill=0.6, needle=(2, 4), grays=(102, 126, 144, 161, 178), twig_axes=True,

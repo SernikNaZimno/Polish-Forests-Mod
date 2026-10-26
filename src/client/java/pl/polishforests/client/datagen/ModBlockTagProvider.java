@@ -85,6 +85,16 @@ final class ModBlockTagProvider {
 				builder(BlockTags.OVERWORLD_NATURAL_LOGS).add(key);
 				builder(BlockTags.MINEABLE_WITH_AXE).add(key);
 			}
+			// Step I1: a root flare belongs to its tree (the species' log tag, so axes, felling mods and leaves treat it as
+			// the trunk); the underground root is no log (an axe cuts it, nothing else).
+			for (pl.polishforests.block.RootFlare f : pl.polishforests.block.RootFlare.values()) {
+				ResourceKey<Block> key = key(ModBlocks.flare(f));
+				builder(species.get(f.species())).add(key);
+				builder(TRUNKS).add(key);
+				builder(BlockTags.OVERWORLD_NATURAL_LOGS).add(key);
+				builder(BlockTags.MINEABLE_WITH_AXE).add(key);
+			}
+			builder(BlockTags.MINEABLE_WITH_AXE).add(key(ModBlocks.treeRoot()));
 			species.forEach((s, tag) -> builder(vanillaParent(s).block()).addTag(tag));
 			for (Block b : java.util.List.of(ModBlocks.pineLog(), ModBlocks.pineWood(), ModBlocks.strippedPineLog(),
 					ModBlocks.strippedPineWood())) {

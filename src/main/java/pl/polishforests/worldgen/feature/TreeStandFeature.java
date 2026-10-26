@@ -33,6 +33,8 @@ import pl.polishforests.worldgen.tree.CrownLayer;
 import pl.polishforests.worldgen.tree.CrownTerritories;
 import pl.polishforests.worldgen.tree.CrownTerritory;
 import pl.polishforests.worldgen.tree.ForestStandMap;
+import pl.polishforests.worldgen.tree.RootPlan;
+import pl.polishforests.worldgen.tree.RootVoxels;
 import pl.polishforests.worldgen.tree.TreeRequest;
 import pl.polishforests.worldgen.tree.TreeShapePlan;
 import pl.polishforests.worldgen.tree.TreeVoxels;
@@ -429,6 +431,16 @@ public final class TreeStandFeature implements Feature {
 				counts[1] += written >>> 32;
 				counts[2] += written & 0xFFFF_FFFFL;
 				ModFeatures.woodyPlaced(at, proc.species());
+				if (layer != CrownLayer.REGENERATION) {
+					// Step I1: the root flares and the roots in the soil, after the tree (its trunk base is written).
+					long rootStart = System.nanoTime();
+					RootVoxels roots = RootPlan.plan(new RootPlan.Request(proc.species(), layer, age, level.getSeed(), x, at.getY(), z,
+							voxels.radius(0), a::rootGround, session.session().trunks(), session.session().rootKinds()));
+					TreeRoots.Written w = TreeRoots.write(level, roots, proc.species());
+					TreeRoots.NANOS.add(System.nanoTime() - rootStart);
+					TreeRoots.TREES.increment();
+					ModFeatures.rootsPlaced(proc.species(), roots, w);
+				}
 			} else {
 				SKIPPED_WRITE.increment();
 			}
@@ -473,6 +485,19 @@ public final class TreeStandFeature implements Feature {
 		int top(int x, int z) {
 			ChunkHabitats h = at(x, z);
 			return h == null ? TreeShapePlan.Ground.UNKNOWN : h.top()[ChunkHabitats.index(x & 15, z & 15)];
+		}
+
+		/**
+		 * The ground of world column (x, z) for the roots (step I1): its top ground block, or {@link TreeShapePlan.Ground#UNKNOWN}
+		 * for a column with water, a column of a structure piece or near one ({@link #PIECE_GAP}) and beyond the 8 neighbors.
+		 */
+		int rootGround(int x, int z) {
+			ChunkHabitats h = at(x, z);
+			if (h == null) {
+				return TreeShapePlan.Ground.UNKNOWN;
+			}
+			int i = ChunkHabitats.index(x & 15, z & 15);
+			return h.hasWater(i) || h.pieceDistance(i) <= PIECE_GAP ? TreeShapePlan.Ground.UNKNOWN : h.top()[i];
 		}
 
 		/** Whether world column (x, z) is in the structure mask of the crowns (by a building or on a piece). */

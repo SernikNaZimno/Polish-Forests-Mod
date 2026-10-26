@@ -94,6 +94,12 @@ final class ModBlockModels extends FabricModelProvider {
 		for (TreeTrunk t : TreeTrunk.values()) {
 			trunk(gen, t);
 		}
+		// Step I1: the root flares (the bark of the species' lower trunk) and the underground root (own root bark, the oak
+		// log top as its rings, by id).
+		for (pl.polishforests.block.RootFlare f : pl.polishforests.block.RootFlare.values()) {
+			flare(gen, f);
+		}
+		trunk(gen, ModBlocks.treeRoot(), List.of(own("tree_root_bark")), vanilla("oak_log_top"));
 		// Step V7: the LITE Scots pine set (the log side is the lower pine bark, as the thin trunk).
 		Material bark = new Material(own("scots_pine_bark"));
 		gen.new WoodProvider(TextureMapping.column(bark, new Material(own("scots_pine_log_top")))).logWithHorizontal(ModBlocks.pineLog())
@@ -158,8 +164,10 @@ final class ModBlockModels extends FabricModelProvider {
 	}
 
 	private static void trunk(BlockModelGenerators gen, TreeTrunk t) {
-		TrunkBlock block = ModBlocks.trunk(t);
-		List<Identifier> barks = barks(t);
+		trunk(gen, ModBlocks.trunk(t), barks(t), end(t));
+	}
+
+	private static void trunk(BlockModelGenerators gen, TrunkBlock block, List<Identifier> barks, Identifier end) {
 		PropertyDispatch.C1<MultiVariant, Integer> radii = PropertyDispatch.initial(TrunkBlock.RADIUS);
 		for (int r = TrunkBlock.MIN_RADIUS; r <= TrunkBlock.MAX_RADIUS; r++) {
 			ModelTemplate template = new ModelTemplate(Optional.of(PolishForests.id(TrunkTemplates.template(r))), Optional.empty(), BARK,
@@ -167,7 +175,7 @@ final class ModBlockModels extends FabricModelProvider {
 			List<Variant> variants = new ArrayList<>();
 			for (int k = 0; k < barks.size(); k++) {
 				String suffix = "_r" + r + (k == 0 ? "" : "_" + (k + 1));
-				Identifier model = template.createWithSuffix(block, suffix, textures(barks.get(k), end(t)), gen.modelOutput);
+				Identifier model = template.createWithSuffix(block, suffix, textures(barks.get(k), end), gen.modelOutput);
 				variants.add(BlockModelGenerators.plainModel(model));
 			}
 			radii.select(r, BlockModelGenerators.variants(variants.toArray(Variant[]::new)));
@@ -175,7 +183,52 @@ final class ModBlockModels extends FabricModelProvider {
 		gen.blockStateOutput.accept(MultiVariantGenerator.dispatch(block).with(radii).with(PARENT_ROTATIONS));
 		ModelTemplate item = new ModelTemplate(Optional.of(PolishForests.id(TrunkTemplates.ITEM_TEMPLATE)), Optional.of("_inventory"),
 				BARK, TextureSlot.END);
-		gen.registerSimpleItemModel(block, item.create(block, textures(barks.get(0), end(t)), gen.modelOutput));
+		gen.registerSimpleItemModel(block, item.create(block, textures(barks.get(0), end), gen.modelOutput));
+	}
+
+	/** The rotation of the trunk template (the arm down) to a parent, as {@link #PARENT_ROTATIONS}. */
+	private static VariantMutator rotation(Direction parent) {
+		return switch (parent) {
+			case DOWN -> BlockModelGenerators.NOP;
+			case UP -> BlockModelGenerators.X_ROT_180;
+			case NORTH -> BlockModelGenerators.X_ROT_270;
+			case SOUTH -> BlockModelGenerators.X_ROT_270.then(BlockModelGenerators.Y_ROT_180);
+			case WEST -> BlockModelGenerators.X_ROT_270.then(BlockModelGenerators.Y_ROT_270);
+			case EAST -> BlockModelGenerators.X_ROT_270.then(BlockModelGenerators.Y_ROT_90);
+		};
+	}
+
+	/**
+	 * A root flare (step I1): the models of the species' trunk (same bark variants and end) for a vertical parent, the
+	 * lying templates {@link TrunkTemplates#flareTemplate} for a horizontal one; each state takes its rotation directly (the
+	 * model depends on the parent too, so the parent cannot be a second stage of the dispatch).
+	 */
+	private static void flare(BlockModelGenerators gen, pl.polishforests.block.RootFlare f) {
+		Block block = ModBlocks.flare(f);
+		List<Identifier> barks = barks(f.trunk());
+		Identifier end = end(f.trunk());
+		PropertyDispatch.C2<MultiVariant, Integer, Direction> states = PropertyDispatch.initial(TrunkBlock.RADIUS, TrunkBlock.PARENT);
+		for (int r = TrunkBlock.MIN_RADIUS; r <= TrunkBlock.MAX_RADIUS; r++) {
+			List<Variant> standing = new ArrayList<>();
+			List<Variant> lying = new ArrayList<>();
+			for (int lie = 0; lie <= 1; lie++) {
+				ModelTemplate template = new ModelTemplate(Optional.of(PolishForests.id(lie == 1 ? TrunkTemplates.flareTemplate(r)
+						: TrunkTemplates.template(r))), Optional.empty(), BARK, TextureSlot.END);
+				for (int k = 0; k < barks.size(); k++) {
+					String suffix = (lie == 1 ? "_lying" : "") + "_r" + r + (k == 0 ? "" : "_" + (k + 1));
+					Identifier model = template.createWithSuffix(block, suffix, textures(barks.get(k), end), gen.modelOutput);
+					(lie == 1 ? lying : standing).add(BlockModelGenerators.plainModel(model));
+				}
+			}
+			for (Direction d : Direction.values()) {
+				List<Variant> v = d.getAxis() == Direction.Axis.Y ? standing : lying;
+				states.select(r, d, BlockModelGenerators.variants(v.toArray(Variant[]::new)).with(rotation(d)));
+			}
+		}
+		gen.blockStateOutput.accept(MultiVariantGenerator.dispatch(block).with(states));
+		ModelTemplate item = new ModelTemplate(Optional.of(PolishForests.id(TrunkTemplates.ITEM_TEMPLATE)), Optional.of("_inventory"),
+				BARK, TextureSlot.END);
+		gen.registerSimpleItemModel(block, item.create(block, textures(barks.get(0), end), gen.modelOutput));
 	}
 
 	private static TextureMapping textures(Identifier bark, Identifier end) {

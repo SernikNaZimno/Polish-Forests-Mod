@@ -32,7 +32,8 @@ import pl.polishforests.PolishForests;
 /**
  * Blocks and block items of the mod (vertical slice, step V2: the thin trunks {@link TreeTrunk}; step V7: the leaves,
  * saplings and potted saplings of the species ({@link TreeFoliage}) and the LITE wood set of the Scots pine, decision D1
- * (b): log, wood, stripped log, stripped wood and planks, the log and the wood stripped with an axe). The ids, properties
+ * (b): log, wood, stripped log, stripped wood and planks, the log and the wood stripped with an axe; step I1: the root
+ * flares of the species {@link RootFlare} and the underground root {@value #TREE_ROOT}). The ids, properties
  * and property values go into the saved worlds; {@code RegistrySnapshotTest} compares them with
  * {@code src/test/resources/registry_snapshot.txt} and they are frozen after checkpoint CP-B (PW-11, ZW-4).
  */
@@ -41,6 +42,11 @@ public final class ModBlocks {
 	private static final Map<TreeFoliage, SpeciesLeavesBlock> LEAVES = new EnumMap<>(TreeFoliage.class);
 	private static final Map<TreeFoliage, SpeciesSaplingBlock> SAPLINGS = new EnumMap<>(TreeFoliage.class);
 	private static final Map<TreeFoliage, FlowerPotBlock> POTTED = new EnumMap<>(TreeFoliage.class);
+	/** Step I1: the root flares of the species and the underground root. */
+	private static final Map<RootFlare, RootFlareBlock> FLARES = new EnumMap<>(RootFlare.class);
+	private static TrunkBlock treeRoot;
+	/** Hardness and blast resistance of the underground root: as vanilla mangrove roots, quicker than a log. */
+	private static final float ROOT_STRENGTH = 0.7F;
 	/** Every block of the mod in registration order. */
 	private static final List<Block> ALL = new ArrayList<>();
 	/** Hardness and blast resistance of a trunk: as a vanilla log. */
@@ -69,6 +75,10 @@ public final class ModBlocks {
 		for (TrunkBlock b : TRUNKS.values()) {
 			fire.add(b, IGNITE_ODDS, BURN_ODDS);
 		}
+		for (RootFlareBlock b : FLARES.values()) {
+			fire.add(b, IGNITE_ODDS, BURN_ODDS);
+		}
+		fire.add(treeRoot, IGNITE_ODDS, BURN_ODDS);
 		// As the vanilla FireBlock: leaves 30 / 60, logs 5 / 5, planks 5 / 20.
 		for (SpeciesLeavesBlock b : LEAVES.values()) {
 			fire.add(b, 30, 60);
@@ -87,6 +97,12 @@ public final class ModBlocks {
 				previous = b.asItem();
 			}
 			out.insertAfter(previous, pineLog);
+			previous = pineLog.asItem();
+			for (RootFlareBlock b : FLARES.values()) {
+				out.insertAfter(previous, b);
+				previous = b.asItem();
+			}
+			out.insertAfter(previous, treeRoot);
 			previous = Items.PALE_OAK_LEAVES;
 			for (SpeciesLeavesBlock b : LEAVES.values()) {
 				out.insertAfter(previous, b);
@@ -148,7 +164,19 @@ public final class ModBlocks {
 			SAPLINGS.put(f, sapling);
 			POTTED.put(f, (FlowerPotBlock) block(f.pottedId(), p -> new FlowerPotBlock(sapling, p), Blocks.flowerPotProperties()));
 		}
+		// Step I1 (roots), registered after the frozen blocks of CP-B: a root flare per species and the underground root.
+		for (RootFlare f : RootFlare.values()) {
+			RootFlareBlock block = (RootFlareBlock) block(f.id(), RootFlareBlock::new, trunkProperties(f.trunk()));
+			item(f.id(), block, woodFuel());
+			FLARES.put(f, block);
+		}
+		treeRoot = (TrunkBlock) block(TREE_ROOT, TrunkBlock::new, BlockBehaviour.Properties.of().mapColor(MapColor.DIRT)
+				.instrument(NoteBlockInstrument.BASS).strength(ROOT_STRENGTH).sound(SoundType.MANGROVE_ROOTS).ignitedByLava());
+		item(TREE_ROOT, treeRoot, woodFuel());
 	}
+
+	/** Block and item path of the underground root (step I1). */
+	public static final String TREE_ROOT = "tree_root";
 
 	private static Item.Properties woodFuel() {
 		return new Item.Properties().cookingFuel(ContextIntProviders.COOKING_TIME_WOOD_BLOCKS);
@@ -160,6 +188,20 @@ public final class ModBlocks {
 
 	public static Map<TreeTrunk, TrunkBlock> trunks() {
 		return Collections.unmodifiableMap(TRUNKS);
+	}
+
+	/** The root flare of a species (step I1). */
+	public static RootFlareBlock flare(RootFlare f) {
+		return registered(FLARES.get(f));
+	}
+
+	public static Map<RootFlare, RootFlareBlock> flares() {
+		return Collections.unmodifiableMap(FLARES);
+	}
+
+	/** The underground root (step I1): a thin trunk block with the root bark, not a log. */
+	public static TrunkBlock treeRoot() {
+		return registered(treeRoot);
 	}
 
 	public static SpeciesLeavesBlock leaves(TreeFoliage f) {

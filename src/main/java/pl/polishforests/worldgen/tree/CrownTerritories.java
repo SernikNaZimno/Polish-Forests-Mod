@@ -242,6 +242,27 @@ public final class CrownTerritories {
 		}
 
 		/**
+		 * The site of the kept candidate at column (x, z) from the memo of its chunk, or null where none stands (step I1:
+		 * what may grow at the trunk candidates around a tree, {@link RootPlan.Kinds}).
+		 */
+		public @Nullable Site candidateSite(int x, int z) {
+			for (Site s : tile(x >> 4, z >> 4)) {
+				if (s.x() == x && s.z() == z) {
+					return s;
+				}
+			}
+			return null;
+		}
+
+		/** The kinds of the trunk candidates for the root planner (step I1), from their sites. */
+		public RootPlan.Kinds rootKinds() {
+			return (x, z) -> {
+				Site s = candidateSite(x, z);
+				return s == null ? RootPlan.Kinds.FLARES : RootPlan.Kinds.of(s.layer(), s.age());
+			};
+		}
+
+		/**
 		 * Territories of the kept candidates of the chunk that grow a tree (all of them without {@code vacancies}), in the
 		 * order of the candidate cells.
 		 */

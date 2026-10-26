@@ -112,6 +112,8 @@ public final class TreePreview {
 		write(dir, "lisciaste_warianty.png", variants(BROADLEAVES));
 		write(dir, "lisciaste_drewno.png", wood(BROADLEAVES));
 		write(dir, "drzewostan_grad.png", stand(true));
+		// Step I1: the roots of the planner trees, next to the trees.
+		RootPreview.main(new String[] {new File(dir.getAbsoluteFile().getParentFile(), "korzenie").getPath()});
 	}
 
 	private static void write(File dir, String name, BufferedImage image) throws IOException {
