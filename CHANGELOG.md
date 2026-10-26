@@ -8,6 +8,7 @@ Versions are published to Modrinth and GitHub Releases by the `Release` workflow
 - **Wider forest transitions.** Fresh pine, mixed pine, mixed and oak-hornbeam forests now blend their tree species, lower layers and ground flora over about 50 blocks in the 1:1 world and 25 blocks in the gameplay world, following the shape of the border.
 - **Stone closer to the surface in the lowlands.** New worlds have a thin loose cover: under the soil only a few blocks of sand, clay, alluvium or mud (4–10 blocks in all, varying smoothly), then stone with its ores. River banks, dunes and cliffs never show stone in their sides; foothills and mountains are unchanged. The *Loose Cover* option on the Customize screen switches back to the realistic cover (sand and clay tens of blocks deep). Worlds created before this version keep the realistic cover, also in newly generated chunks, so there is no seam.
 - **No band of vanilla stand-in trees by the new forests.** Narrow strips and patches of other lowland forests inside the oak-hornbeam, pine and mixed forests (for example the ash-alder belt of a stream) now grow the trees of the surrounding forest, and canopy stand-ins of the nine species with own models nearby grow as the mod's own trees. Larger alder carrs and floodplain forests keep their own trees beyond a mixed edge.
+- **The Customize screen fits a small window again.** The explanations below the buttons moved into tooltips, so the Scale button no longer slides off the top of the screen at the default window size.
 
 ## [0.2.0-alpha.2]
 

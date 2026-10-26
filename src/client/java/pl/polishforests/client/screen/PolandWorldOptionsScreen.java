@@ -7,7 +7,6 @@ import java.util.function.DoubleFunction;
 import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.CycleButton;
-import net.minecraft.client.gui.components.MultiLineTextWidget;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.layouts.HeaderAndFooterLayout;
 import net.minecraft.client.gui.layouts.LinearLayout;
@@ -21,10 +20,13 @@ import pl.polishforests.worldgen.chunk.PolandScale;
 /** World generation options screen for "Poland". */
 public final class PolandWorldOptionsScreen extends Screen {
 	private static final int WIDGET_WIDTH = 310;
+	/** Row spacing of the options column. */
+	private static final int SPACING = 6;
 
 	private final Screen parent;
 	private final Consumer<PolandSettings> apply;
 	private final HeaderAndFooterLayout layout = new HeaderAndFooterLayout(this);
+	private LinearLayout column;
 
 	private PolandScale scale;
 	private double regionScale;
@@ -53,12 +55,17 @@ public final class PolandWorldOptionsScreen extends Screen {
 	@Override
 	protected void init() {
 		layout.addTitleHeader(getTitle(), font);
-		LinearLayout column = layout.addToContents(LinearLayout.vertical().spacing(6));
+		// The column does not scroll, so every explanation lives in a tooltip: six 20-px rows (150 GUI px) fit between the
+		// header and the footer down to a GUI height of 216, and the automatic GUI scale never goes below 240 (step K1,
+		// review round 1: the former note under the buttons pushed the Scale button off the top at 854x480).
+		column = layout.addToContents(LinearLayout.vertical().spacing(SPACING));
 		column.defaultCellSetting().alignHorizontallyCenter();
 
 		column.addChild(CycleButton.<PolandScale>builder(
 				v -> Component.translatable("polishforests.options.scale." + v.getSerializedName()), scale)
 				.withValues(PolandScale.values())
+				.withTooltip(v -> Tooltip.create(Component.translatable(
+						"polishforests.options.scale." + v.getSerializedName() + ".tooltip")))
 				.create(0, 0, WIDGET_WIDTH, 20, Component.translatable("polishforests.options.scale"),
 						(button, value) -> {
 							scale = value;
@@ -77,9 +84,10 @@ public final class PolandWorldOptionsScreen extends Screen {
 				.create(0, 0, WIDGET_WIDTH, 20, Component.translatable("polishforests.options.landscape"),
 						(button, value) -> agriculture = value));
 
-		column.addChild(new ValueSlider(0.0, 1.0, managedShare,
+		ValueSlider managedSlider = column.addChild(new ValueSlider(0.0, 1.0, managedShare,
 				v -> Component.translatable("polishforests.options.managed_share", percent(v)),
 				v -> managedShare = Math.round(v * 20.0) / 20.0));
+		managedSlider.setTooltip(Tooltip.create(Component.translatable("polishforests.options.managed_share.tooltip")));
 
 		column.addChild(CycleButton.<LooseCover>builder(
 				v -> Component.translatable("polishforests.options.loose_cover." + v.getSerializedName()), looseCover)
@@ -90,12 +98,9 @@ public final class PolandWorldOptionsScreen extends Screen {
 						(button, value) -> looseCover = value));
 
 		column.addChild(CycleButton.onOffBuilder(alienSpecies)
+				.withTooltip(v -> Tooltip.create(Component.translatable("polishforests.options.alien_species.tooltip")))
 				.create(0, 0, WIDGET_WIDTH, 20, Component.translatable("polishforests.options.alien_species"),
 						(button, value) -> alienSpecies = value));
-
-		MultiLineTextWidget note = new MultiLineTextWidget(Component.translatable("polishforests.options.note"), font);
-		note.setMaxWidth(WIDGET_WIDTH);
-		column.addChild(note);
 
 		LinearLayout footer = layout.addToFooter(LinearLayout.horizontal().spacing(8));
 		footer.addChild(Button.builder(CommonComponents.GUI_DONE, b -> {
@@ -111,6 +116,12 @@ public final class PolandWorldOptionsScreen extends Screen {
 	@Override
 	protected void repositionElements() {
 		layout.arrangeElements();
+	}
+
+	/** Whether the options column lies wholly between the header and the footer (checked by the UI game test). */
+	public boolean contentsFit() {
+		return column.getY() >= layout.getHeaderHeight()
+				&& column.getY() + column.getHeight() <= height - layout.getFooterHeight();
 	}
 
 	@Override

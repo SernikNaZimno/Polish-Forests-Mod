@@ -55,6 +55,28 @@ public final class UiAndCommandsClientGameTest implements FabricClientGameTest {
 		commands(context);
 	}
 
+	/** Fails when the options column runs over the header or the footer of the screen (step K1, review round 1). */
+	private static void assertOptionsFit(ClientGameTestContext context, String frame) {
+		String problem = context.computeOnClient(mc -> mc.gui.screen() instanceof PolandWorldOptionsScreen screen
+				&& !screen.contentsFit()
+						? "the options do not fit between the header and the footer at " + mc.getWindow().getWidth() + "x"
+								+ mc.getWindow().getHeight() + " (GUI " + screen.width + "x" + screen.height + ")"
+						: null);
+		if (problem != null) {
+			throw new AssertionError(frame + ": " + problem);
+		}
+	}
+
+	/** Switches the client language without a full resource reload and rebuilds the open screen. */
+	private static void setLanguage(ClientGameTestContext context, String code) {
+		context.runOnClient(mc -> {
+			mc.getLanguageManager().setSelected(code);
+			mc.getLanguageManager().onResourceManagerReload(mc.getResourceManager());
+			mc.gui.screen().resize(mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight());
+		});
+		context.waitTicks(5);
+	}
+
 	private void optionsScreen(ClientGameTestContext context, ResourceKey<WorldPreset> preset, PolandScale expected,
 			String screenshot) {
 		context.runOnClient(mc -> CreateWorldScreen.openFresh(mc, () -> mc.gui.setScreen(null)));
@@ -74,7 +96,15 @@ public final class UiAndCommandsClientGameTest implements FabricClientGameTest {
 		});
 		context.waitForScreen(PolandWorldOptionsScreen.class);
 		context.waitTicks(10);
+		assertOptionsFit(context, screenshot);
 		context.takeScreenshot(screenshot);
+		if (expected == PolandScale.REALISTIC) {
+			// Step K1, review round 1: the labels have a fixed width, but the Polish frame is checked too.
+			setLanguage(context, "pl_pl");
+			assertOptionsFit(context, screenshot + "_pl");
+			context.takeScreenshot(screenshot + "_pl");
+			setLanguage(context, "en_us");
+		}
 		// Step S8: the landscape switch turns the "present-day Poland" mode on (the presets start in the natural mode).
 		context.clickScreenButton("polishforests.options.landscape");
 		// Step K1: the presets start with the thin loose cover; the switch selects the realistic one.

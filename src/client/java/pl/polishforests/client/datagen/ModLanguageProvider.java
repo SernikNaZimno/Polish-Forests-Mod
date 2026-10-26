@@ -271,10 +271,13 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 				+ "settings.");
 		b.add("polishforests.options.loose_cover.realistic.tooltip", "Sand and clay tens of blocks deep in the lowlands, as "
 				+ "in Poland, so stone and ores lie deep. Worlds made before this option have this cover.");
-		b.add("polishforests.options.note", "Real scale: landscapes at their true size and elevation. Gameplay scale: "
-				+ "landscapes about 1.4 km across, lower mountains and a shorter world, which is much easier on your computer. "
-				+ "The landscape mode already chooses the biomes, and the managed forest share already shapes the stands of the "
-				+ "oak-hornbeam and pine forests; alien species will take effect in future versions of the mod.");
+		b.add("polishforests.options.scale.realistic.tooltip", "Landscapes at their true size and elevation.");
+		b.add("polishforests.options.scale.gameplay.tooltip", "Landscapes about 1.4 km across, lower mountains and a "
+				+ "shorter world, which is much easier on your computer.");
+		b.add("polishforests.options.managed_share.tooltip", "The share of managed stands in the oak-hornbeam and pine "
+				+ "forests; the rest grow as natural forest.");
+		b.add("polishforests.options.alien_species.tooltip", "Alien and invasive species will take effect in future "
+				+ "versions of the mod.");
 		b.add("polishforests.options.landscape.natural.tooltip", "The forest that would grow without people, on almost the "
 				+ "whole land.");
 		b.add("polishforests.options.landscape.today.tooltip", "About 30% forest, mostly pine forests on sand, with meadows "
@@ -329,10 +332,13 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 				+ "gliny albo mułu, więc kamień i rudy są blisko powierzchni. Pogórza i góry są takie same w obu ustawieniach.");
 		b.add("polishforests.options.loose_cover.realistic.tooltip", "Piasek i glina na nizinach na dziesiątki bloków w głąb, "
 				+ "jak w Polsce, więc kamień i rudy leżą głęboko. Taką pokrywę mają światy utworzone przed tą opcją.");
-		b.add("polishforests.options.note", "Skala rzeczywista: krajobrazy w prawdziwych rozmiarach i wysokościach. Skala "
-				+ "rozgrywki: krajobrazy ok. 1,4 km, niższe góry i niższy świat, co wyraźnie odciąża komputer. Tryb krajobrazu "
-				+ "wybiera już biomy, a udział lasów gospodarczych drzewostany grądów i borów; gatunki obce zaczną działać "
-				+ "w kolejnych wersjach moda.");
+		b.add("polishforests.options.scale.realistic.tooltip", "Krajobrazy w prawdziwych rozmiarach i wysokościach.");
+		b.add("polishforests.options.scale.gameplay.tooltip", "Krajobrazy ok. 1,4 km, niższe góry i niższy świat, co "
+				+ "wyraźnie odciąża komputer.");
+		b.add("polishforests.options.managed_share.tooltip", "Udział drzewostanów gospodarczych w grądach i borach; "
+				+ "pozostałe rosną jak las naturalny.");
+		b.add("polishforests.options.alien_species.tooltip", "Gatunki obce i inwazyjne zaczną działać w kolejnych "
+				+ "wersjach moda.");
 		b.add("polishforests.options.landscape.natural.tooltip", "Las, który rósłby bez ludzi, prawie na całym lądzie.");
 		b.add("polishforests.options.landscape.today.tooltip", "Ok. 30% lasów, głównie bory na piaskach, łąki i pola "
 				+ "odłogowane; brzegi rzek zostają zarośnięte.");
