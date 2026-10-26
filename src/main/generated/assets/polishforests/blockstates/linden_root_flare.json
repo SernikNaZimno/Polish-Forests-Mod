@@ -80,336 +80,273 @@
     "parent=east,radius=1": [
       {
         "model": "polishforests:block/linden_root_flare_lying_r1",
-        "x": 270,
         "y": 90
       },
       {
         "model": "polishforests:block/linden_root_flare_lying_r1_2",
-        "x": 270,
         "y": 90
       },
       {
         "model": "polishforests:block/linden_root_flare_lying_r1_3",
-        "x": 270,
         "y": 90
       }
     ],
     "parent=east,radius=2": [
       {
         "model": "polishforests:block/linden_root_flare_lying_r2",
-        "x": 270,
         "y": 90
       },
       {
         "model": "polishforests:block/linden_root_flare_lying_r2_2",
-        "x": 270,
         "y": 90
       },
       {
         "model": "polishforests:block/linden_root_flare_lying_r2_3",
-        "x": 270,
         "y": 90
       }
     ],
     "parent=east,radius=3": [
       {
         "model": "polishforests:block/linden_root_flare_lying_r3",
-        "x": 270,
         "y": 90
       },
       {
         "model": "polishforests:block/linden_root_flare_lying_r3_2",
-        "x": 270,
         "y": 90
       },
       {
         "model": "polishforests:block/linden_root_flare_lying_r3_3",
-        "x": 270,
         "y": 90
       }
     ],
     "parent=east,radius=4": [
       {
         "model": "polishforests:block/linden_root_flare_lying_r4",
-        "x": 270,
         "y": 90
       },
       {
         "model": "polishforests:block/linden_root_flare_lying_r4_2",
-        "x": 270,
         "y": 90
       },
       {
         "model": "polishforests:block/linden_root_flare_lying_r4_3",
-        "x": 270,
         "y": 90
       }
     ],
     "parent=east,radius=5": [
       {
         "model": "polishforests:block/linden_root_flare_lying_r5",
-        "x": 270,
         "y": 90
       },
       {
         "model": "polishforests:block/linden_root_flare_lying_r5_2",
-        "x": 270,
         "y": 90
       },
       {
         "model": "polishforests:block/linden_root_flare_lying_r5_3",
-        "x": 270,
         "y": 90
       }
     ],
     "parent=east,radius=6": [
       {
         "model": "polishforests:block/linden_root_flare_lying_r6",
-        "x": 270,
         "y": 90
       },
       {
         "model": "polishforests:block/linden_root_flare_lying_r6_2",
-        "x": 270,
         "y": 90
       },
       {
         "model": "polishforests:block/linden_root_flare_lying_r6_3",
-        "x": 270,
         "y": 90
       }
     ],
     "parent=east,radius=7": [
       {
         "model": "polishforests:block/linden_root_flare_lying_r7",
-        "x": 270,
         "y": 90
       },
       {
         "model": "polishforests:block/linden_root_flare_lying_r7_2",
-        "x": 270,
         "y": 90
       },
       {
         "model": "polishforests:block/linden_root_flare_lying_r7_3",
-        "x": 270,
         "y": 90
       }
     ],
     "parent=north,radius=1": [
       {
-        "model": "polishforests:block/linden_root_flare_lying_r1",
-        "x": 270
+        "model": "polishforests:block/linden_root_flare_lying_r1"
       },
       {
-        "model": "polishforests:block/linden_root_flare_lying_r1_2",
-        "x": 270
+        "model": "polishforests:block/linden_root_flare_lying_r1_2"
       },
       {
-        "model": "polishforests:block/linden_root_flare_lying_r1_3",
-        "x": 270
+        "model": "polishforests:block/linden_root_flare_lying_r1_3"
       }
     ],
     "parent=north,radius=2": [
       {
-        "model": "polishforests:block/linden_root_flare_lying_r2",
-        "x": 270
+        "model": "polishforests:block/linden_root_flare_lying_r2"
       },
       {
-        "model": "polishforests:block/linden_root_flare_lying_r2_2",
-        "x": 270
+        "model": "polishforests:block/linden_root_flare_lying_r2_2"
       },
       {
-        "model": "polishforests:block/linden_root_flare_lying_r2_3",
-        "x": 270
+        "model": "polishforests:block/linden_root_flare_lying_r2_3"
       }
     ],
     "parent=north,radius=3": [
       {
-        "model": "polishforests:block/linden_root_flare_lying_r3",
-        "x": 270
+        "model": "polishforests:block/linden_root_flare_lying_r3"
       },
       {
-        "model": "polishforests:block/linden_root_flare_lying_r3_2",
-        "x": 270
+        "model": "polishforests:block/linden_root_flare_lying_r3_2"
       },
       {
-        "model": "polishforests:block/linden_root_flare_lying_r3_3",
-        "x": 270
+        "model": "polishforests:block/linden_root_flare_lying_r3_3"
       }
     ],
     "parent=north,radius=4": [
       {
-        "model": "polishforests:block/linden_root_flare_lying_r4",
-        "x": 270
+        "model": "polishforests:block/linden_root_flare_lying_r4"
       },
       {
-        "model": "polishforests:block/linden_root_flare_lying_r4_2",
-        "x": 270
+        "model": "polishforests:block/linden_root_flare_lying_r4_2"
       },
       {
-        "model": "polishforests:block/linden_root_flare_lying_r4_3",
-        "x": 270
+        "model": "polishforests:block/linden_root_flare_lying_r4_3"
       }
     ],
     "parent=north,radius=5": [
       {
-        "model": "polishforests:block/linden_root_flare_lying_r5",
-        "x": 270
+        "model": "polishforests:block/linden_root_flare_lying_r5"
       },
       {
-        "model": "polishforests:block/linden_root_flare_lying_r5_2",
-        "x": 270
+        "model": "polishforests:block/linden_root_flare_lying_r5_2"
       },
       {
-        "model": "polishforests:block/linden_root_flare_lying_r5_3",
-        "x": 270
+        "model": "polishforests:block/linden_root_flare_lying_r5_3"
       }
     ],
     "parent=north,radius=6": [
       {
-        "model": "polishforests:block/linden_root_flare_lying_r6",
-        "x": 270
+        "model": "polishforests:block/linden_root_flare_lying_r6"
       },
       {
-        "model": "polishforests:block/linden_root_flare_lying_r6_2",
-        "x": 270
+        "model": "polishforests:block/linden_root_flare_lying_r6_2"
       },
       {
-        "model": "polishforests:block/linden_root_flare_lying_r6_3",
-        "x": 270
+        "model": "polishforests:block/linden_root_flare_lying_r6_3"
       }
     ],
     "parent=north,radius=7": [
       {
-        "model": "polishforests:block/linden_root_flare_lying_r7",
-        "x": 270
+        "model": "polishforests:block/linden_root_flare_lying_r7"
       },
       {
-        "model": "polishforests:block/linden_root_flare_lying_r7_2",
-        "x": 270
+        "model": "polishforests:block/linden_root_flare_lying_r7_2"
       },
       {
-        "model": "polishforests:block/linden_root_flare_lying_r7_3",
-        "x": 270
+        "model": "polishforests:block/linden_root_flare_lying_r7_3"
       }
     ],
     "parent=south,radius=1": [
       {
         "model": "polishforests:block/linden_root_flare_lying_r1",
-        "x": 270,
         "y": 180
       },
       {
         "model": "polishforests:block/linden_root_flare_lying_r1_2",
-        "x": 270,
         "y": 180
       },
       {
         "model": "polishforests:block/linden_root_flare_lying_r1_3",
-        "x": 270,
         "y": 180
       }
     ],
     "parent=south,radius=2": [
       {
         "model": "polishforests:block/linden_root_flare_lying_r2",
-        "x": 270,
         "y": 180
       },
       {
         "model": "polishforests:block/linden_root_flare_lying_r2_2",
-        "x": 270,
         "y": 180
       },
       {
         "model": "polishforests:block/linden_root_flare_lying_r2_3",
-        "x": 270,
         "y": 180
       }
     ],
     "parent=south,radius=3": [
       {
         "model": "polishforests:block/linden_root_flare_lying_r3",
-        "x": 270,
         "y": 180
       },
       {
         "model": "polishforests:block/linden_root_flare_lying_r3_2",
-        "x": 270,
         "y": 180
       },
       {
         "model": "polishforests:block/linden_root_flare_lying_r3_3",
-        "x": 270,
         "y": 180
       }
     ],
     "parent=south,radius=4": [
       {
         "model": "polishforests:block/linden_root_flare_lying_r4",
-        "x": 270,
         "y": 180
       },
       {
         "model": "polishforests:block/linden_root_flare_lying_r4_2",
-        "x": 270,
         "y": 180
       },
       {
         "model": "polishforests:block/linden_root_flare_lying_r4_3",
-        "x": 270,
         "y": 180
       }
     ],
     "parent=south,radius=5": [
       {
         "model": "polishforests:block/linden_root_flare_lying_r5",
-        "x": 270,
         "y": 180
       },
       {
         "model": "polishforests:block/linden_root_flare_lying_r5_2",
-        "x": 270,
         "y": 180
       },
       {
         "model": "polishforests:block/linden_root_flare_lying_r5_3",
-        "x": 270,
         "y": 180
       }
     ],
     "parent=south,radius=6": [
       {
         "model": "polishforests:block/linden_root_flare_lying_r6",
-        "x": 270,
         "y": 180
       },
       {
         "model": "polishforests:block/linden_root_flare_lying_r6_2",
-        "x": 270,
         "y": 180
       },
       {
         "model": "polishforests:block/linden_root_flare_lying_r6_3",
-        "x": 270,
         "y": 180
       }
     ],
     "parent=south,radius=7": [
       {
         "model": "polishforests:block/linden_root_flare_lying_r7",
-        "x": 270,
         "y": 180
       },
       {
         "model": "polishforests:block/linden_root_flare_lying_r7_2",
-        "x": 270,
         "y": 180
       },
       {
         "model": "polishforests:block/linden_root_flare_lying_r7_3",
-        "x": 270,
         "y": 180
       }
     ],
@@ -514,119 +451,98 @@
     "parent=west,radius=1": [
       {
         "model": "polishforests:block/linden_root_flare_lying_r1",
-        "x": 270,
         "y": 270
       },
       {
         "model": "polishforests:block/linden_root_flare_lying_r1_2",
-        "x": 270,
         "y": 270
       },
       {
         "model": "polishforests:block/linden_root_flare_lying_r1_3",
-        "x": 270,
         "y": 270
       }
     ],
     "parent=west,radius=2": [
       {
         "model": "polishforests:block/linden_root_flare_lying_r2",
-        "x": 270,
         "y": 270
       },
       {
         "model": "polishforests:block/linden_root_flare_lying_r2_2",
-        "x": 270,
         "y": 270
       },
       {
         "model": "polishforests:block/linden_root_flare_lying_r2_3",
-        "x": 270,
         "y": 270
       }
     ],
     "parent=west,radius=3": [
       {
         "model": "polishforests:block/linden_root_flare_lying_r3",
-        "x": 270,
         "y": 270
       },
       {
         "model": "polishforests:block/linden_root_flare_lying_r3_2",
-        "x": 270,
         "y": 270
       },
       {
         "model": "polishforests:block/linden_root_flare_lying_r3_3",
-        "x": 270,
         "y": 270
       }
     ],
     "parent=west,radius=4": [
       {
         "model": "polishforests:block/linden_root_flare_lying_r4",
-        "x": 270,
         "y": 270
       },
       {
         "model": "polishforests:block/linden_root_flare_lying_r4_2",
-        "x": 270,
         "y": 270
       },
       {
         "model": "polishforests:block/linden_root_flare_lying_r4_3",
-        "x": 270,
         "y": 270
       }
     ],
     "parent=west,radius=5": [
       {
         "model": "polishforests:block/linden_root_flare_lying_r5",
-        "x": 270,
         "y": 270
       },
       {
         "model": "polishforests:block/linden_root_flare_lying_r5_2",
-        "x": 270,
         "y": 270
       },
       {
         "model": "polishforests:block/linden_root_flare_lying_r5_3",
-        "x": 270,
         "y": 270
       }
     ],
     "parent=west,radius=6": [
       {
         "model": "polishforests:block/linden_root_flare_lying_r6",
-        "x": 270,
         "y": 270
       },
       {
         "model": "polishforests:block/linden_root_flare_lying_r6_2",
-        "x": 270,
         "y": 270
       },
       {
         "model": "polishforests:block/linden_root_flare_lying_r6_3",
-        "x": 270,
         "y": 270
       }
     ],
     "parent=west,radius=7": [
       {
         "model": "polishforests:block/linden_root_flare_lying_r7",
-        "x": 270,
         "y": 270
       },
       {
         "model": "polishforests:block/linden_root_flare_lying_r7_2",
-        "x": 270,
         "y": 270
       },
       {
         "model": "polishforests:block/linden_root_flare_lying_r7_3",
-        "x": 270,
         "y": 270
       }
     ]

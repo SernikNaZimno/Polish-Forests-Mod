@@ -80,35 +80,67 @@ class TrunkShapeTest {
 	}
 
 	/**
-	 * Step I1: a root flare lying on its side (a horizontal parent) has the prism of its radius lowered to the floor of the
-	 * block, from 0 to 2r - sink px high (the part below the floor is only drawn), along the parent axis through the block;
-	 * a vertical flare is a thin trunk's prism.
+	 * Step I1 (review round 1): a root flare with a horizontal parent is a fin on the ground: from the floor of the block up
+	 * to the profile's height at the parent's side, as wide as its foot across the parent axis and through the whole block
+	 * along it, the top falling along the block (the far half lower); the stages fall in height and width outwards, the
+	 * stage-1 block ends at the ground; the spruce's flat flares are lower. A vertical flare is a thin trunk's prism.
 	 */
 	@Test
-	void rootFlareLiesOnTheGround() {
-		for (Direction parent : Direction.values()) {
-			for (int r = TrunkBlock.MIN_RADIUS; r <= TrunkBlock.MAX_RADIUS; r++) {
-				VoxelShape s = RootFlareBlock.flareShape(parent, r);
-				if (parent.getAxis() == Direction.Axis.Y) {
-					assertEquals(TrunkBlock.shape(parent, r).bounds(), s.bounds(), parent + " r" + r);
-					continue;
-				}
-				AABB box = s.bounds();
-				double px = 1 / 16.0;
-				assertEquals(0.0, box.minY, 1e-9, parent + " r" + r);
-				assertEquals((2 * r - RootFlareBlock.sink(r)) * px, box.maxY, 1e-9, parent + " r" + r);
-				for (Direction.Axis axis : new Direction.Axis[] {Direction.Axis.X, Direction.Axis.Z}) {
-					boolean along = axis == parent.getAxis();
-					assertEquals(along ? 0.0 : 0.5 - r * px, box.min(axis), 1e-9, parent + " r" + r + " " + axis);
-					assertEquals(along ? 1.0 : 0.5 + r * px, box.max(axis), 1e-9, parent + " r" + r + " " + axis);
+	void rootFlareIsAFinOnTheGround() {
+		for (RootFlare f : new RootFlare[] {RootFlare.OAK, RootFlare.SPRUCE}) {
+			RootFlareBlock block = ModBlocks.flare(f);
+			boolean flat = block.flat();
+			assertEquals(f == RootFlare.SPRUCE, flat);
+			for (Direction parent : Direction.values()) {
+				for (int s = TrunkBlock.MIN_RADIUS; s <= TrunkBlock.MAX_RADIUS; s++) {
+					VoxelShape shape = block.flareShape(parent, s);
+					String what = f + " " + parent + " s" + s;
+					if (parent.getAxis() == Direction.Axis.Y) {
+						assertEquals(TrunkBlock.shape(parent, s).bounds(), shape.bounds(), what);
+						continue;
+					}
+					AABB box = shape.bounds();
+					double px = 1 / 16.0;
+					assertEquals(0.0, box.minY, 1e-9, what);
+					double high = flat ? Math.max(1, FlareProfile.height(true, s)) : FlareProfile.height(false, s);
+					assertEquals(high * px, box.maxY, 1e-9, what);
+					double half = FlareProfile.footWidth(flat, s) / 2;
+					for (Direction.Axis axis : new Direction.Axis[] {Direction.Axis.X, Direction.Axis.Z}) {
+						boolean along = axis == parent.getAxis();
+						assertEquals(along ? 0.0 : 0.5 - half * px, box.min(axis), 1e-9, what + " " + axis);
+						assertEquals(along ? 1.0 : 0.5 + half * px, box.max(axis), 1e-9, what + " " + axis);
+					}
+					if (!flat && FlareProfile.height(false, s - 1) < FlareProfile.height(false, s)) {
+						// The far half of the fin is lower than the near one.
+						Vec3 near = new Vec3(0.5 + 0.4 * parent.getStepX(), 0, 0.5 + 0.4 * parent.getStepZ());
+						Vec3 far = new Vec3(0.5 - 0.4 * parent.getStepX(), 0, 0.5 - 0.4 * parent.getStepZ());
+						assertTrue(top(shape, near) > top(shape, far), what + ": the fin does not fall away from the parent");
+					}
+					if (s > 1) {
+						assertTrue(FlareProfile.height(flat, s) > FlareProfile.height(flat, s - 1) || s > 4, what);
+						assertTrue(FlareProfile.footWidth(flat, s) >= FlareProfile.footWidth(flat, s - 1), what);
+					}
 				}
 			}
+			assertEquals(0.0, FlareProfile.height(flat, 0), "a flare ends in the ground");
 		}
+		assertTrue(FlareProfile.height(true, 3) < FlareProfile.height(false, 3), "flat flares as high as fins");
 		// The flares are thin trunks of the species' bark, the underground root is one with its own bark.
 		RootFlareBlock oak = ModBlocks.flare(RootFlare.OAK);
 		assertTrue(oak instanceof TrunkBlock);
 		assertEquals("oak_root_flare", RootFlare.OAK.id());
 		assertEquals(ModBlocks.TREE_ROOT, net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(ModBlocks.treeRoot()).getPath());
 		assertFalse(ModBlocks.treeRoot() instanceof RootFlareBlock);
+	}
+
+	/** The highest y of the shape's boxes over the point (x, z) of the block. */
+	private static double top(VoxelShape shape, Vec3 p) {
+		double y = 0;
+		for (AABB b : shape.toAabbs()) {
+			if (p.x >= b.minX && p.x <= b.maxX && p.z >= b.minZ && p.z <= b.maxZ) {
+				y = Math.max(y, b.maxY);
+			}
+		}
+		return y;
 	}
 }

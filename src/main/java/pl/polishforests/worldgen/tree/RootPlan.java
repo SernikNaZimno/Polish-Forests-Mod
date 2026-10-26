@@ -14,24 +14,28 @@ import pl.polishforests.worldgen.landscape.Noise;
  * shallow, thin roots).
  *
  * <p><b>Root flares</b> (buttresses): an old or mature canopy tree with a trunk base of at least {@value #FLARE_BASE} px
- * gets 0–6 flares ({@link Habit}: many and strong on beech, oak, linden and hornbeam, fewer on maple and ash, long, thin
- * and flat on spruce, few and short on pine and birch; a mature tree about 60% of the count and one block shorter). Up to
- * four start from the faces of the trunk base, each along its face with a turn of up to 35°, the others fork off sideways
- * from the first block of one of them; each runs 1–4 blocks over the ground at the level of the trunk base with a radius
- * falling from one or two px below the trunk's, so it tapers into the ground. A flare block stands only on level ground
+ * gets flares ({@link Habit}: up to four on beech, oak, linden and hornbeam, fewer on maple and ash, long and flat on
+ * spruce, a short widening of the base on pine and birch; a full cross of four only on some old trees, a mature tree one
+ * or two, one block shorter). Each starts from a face of the trunk base, in a random order of the faces, and runs straight
+ * out from it (review of I1: turned flares became elbows and crossbars on the grid) for 1–4 blocks, each flare of its
+ * own length, at the level of the trunk base; its blocks have the stages n, …, 1 of the fin's profile
+ * ({@code RootFlareBlock}: highest at the trunk, its top falling along each block, the last one running out into the
+ * ground). A flare block stands only on level ground
  * (the column's ground one below the trunk base), never face to face with another flare of the tree, and only where the
  * block and its eight neighbors lie in the tree's own Voronoi cell among the trunk candidates (the kept candidates of the
  * M2 pattern, {@link TreeShapePlan.Trunks}; see below): so two flares of neighboring trees, or a flare and another trunk,
  * never touch, not even at an edge or a corner, and a felling mod never takes two trees for one.
  *
  * <p><b>Roots in the soil</b>: a root collar under the trunk column (dy -2, under the top ground block, which the trunk's
- * model reaches into), a taproot below it for oak, pine, ash and maple, and 2–8 lateral roots fanning out at even
- * azimuths under the crown (about 0.65–1.0 × the crown radius, at most {@value #REACH} blocks), in the soil at a depth of
+ * model reaches into), a taproot below it for oak, pine, ash and maple, and 2–8 lateral roots fanning out under the
+ * crown, each turned off the even fan by up to 30°, of its own length (about 0.5–1.2 × the crown radius, at most
+ * {@value #REACH} blocks) and wandering softly outwards, in the soil at a depth of
  * {@value #COVER}–3 blocks below the top of each column (on a slope they follow the ground; the spruce stays at
  * {@value #COVER}), thinning to 1 px, each with a side root; sinkers go down from the laterals of oak, beech, linden,
  * hornbeam and maple to the depth of the species (at most {@value #MAX_DEPTH}). Every cell of the root system lies under
- * at least {@value #COVER} blocks of ground (the top block and the one under it stay as they are: the surface keeps its
- * blocks and the pits of the windthrows, which dig at most two blocks, never meet a root), in a known column (the caller
+ * at least {@value #COVER} blocks of ground (the top block and the one under it stay as they are, so the surface keeps its
+ * blocks; the floor of a windthrow pit two blocks deep lies at the level of the shallowest roots, a known flaw for the
+ * clean-up step, docs/04), in a known column (the caller
  * leaves out water and structures) and in the columns of the tree's own Voronoi cell among the trunk candidates (ties to
  * the lower x, then z), so the roots of two trees never share a block and the result does not depend on the order in
  * which the trees are written. A cell whose side faces a lower column (a bank, a step of the ground; the planner knows the
@@ -51,10 +55,15 @@ public final class RootPlan {
 	public static final int REACH = 8;
 	/** Longest root flare, blocks. */
 	public static final int FLARE_LENGTH = 4;
-	/** Thickest root flare, px. */
-	public static final int MAX_FLARE_RADIUS = 5;
-	/** Least trunk base radius (px) of a tree with root flares. */
-	public static final int FLARE_BASE = 3;
+	/** Highest stage of a root flare's profile (the stage of its first block is its length; {@code RootFlareBlock}). */
+	public static final int MAX_FLARE_STAGE = FLARE_LENGTH;
+	/** Least trunk base radius (px) of a tree with root flares (review of I1: thinner trunks stood on a cross of arms). */
+	public static final int FLARE_BASE = 4;
+	/** Largest turn (radians) of a lateral root from the even fan, and of its heading per block. */
+	static final double LATERAL_JITTER = Math.toRadians(30);
+	static final double WANDER = Math.toRadians(15);
+	/** Largest angle (radians) between a root's heading and the direction away from the trunk. */
+	static final double OUTWARD = Math.toRadians(60);
 	/** Blocks of ground above every root cell outside the trunk column (the root collar under the trunk has one). */
 	public static final int COVER = 2;
 	/** Deepest root cell below the top of its column. */
@@ -65,21 +74,21 @@ public final class RootPlan {
 	public static final double DIRT_SHARE = 0.3;
 
 	/** Root habit of a species [S]. */
-	record Habit(int flaresMin, int flaresMax, int flareLength, int flareLess, boolean flatFlares, int lateralsMin,
-			int lateralsMax, double spread, int lateralDepth, int depth, int tap, boolean sinkers) {
+	record Habit(int flaresMin, int flaresMax, int flareLength, int lateralsMin, int lateralsMax, double spread,
+			int lateralDepth, int depth, int tap, boolean sinkers) {
 	}
 
 	static Habit habit(Species species) {
 		return switch (species) {
-			case OAK -> new Habit(4, 6, 3, 1, false, 4, 6, 0.8, 3, 5, 4, true);
-			case BEECH -> new Habit(4, 6, 3, 1, false, 5, 7, 0.85, 3, 4, 0, true);
-			case LINDEN -> new Habit(4, 6, 3, 1, false, 5, 7, 0.8, 3, 4, 0, true);
-			case HORNBEAM -> new Habit(4, 6, 2, 1, false, 5, 6, 0.75, 3, 4, 0, true);
-			case NORWAY_MAPLE -> new Habit(3, 5, 2, 1, false, 4, 6, 0.75, 3, 4, 2, true);
-			case ASH -> new Habit(3, 5, 2, 1, false, 4, 6, 0.8, 3, 4, 3, false);
-			case SPRUCE -> new Habit(4, 6, 4, 2, true, 6, 8, 1.0, 2, 2, 0, false);
-			case SCOTS_PINE -> new Habit(0, 3, 1, 2, false, 3, 5, 0.75, 3, 3, 5, false);
-			case BIRCH -> new Habit(0, 3, 1, 2, false, 4, 5, 0.65, 2, 3, 0, false);
+			case OAK -> new Habit(4, 6, 3, 4, 6, 0.8, 3, 5, 4, true);
+			case BEECH -> new Habit(4, 6, 3, 5, 7, 0.85, 3, 4, 0, true);
+			case LINDEN -> new Habit(4, 6, 3, 5, 7, 0.8, 3, 4, 0, true);
+			case HORNBEAM -> new Habit(4, 6, 2, 5, 6, 0.75, 3, 4, 0, true);
+			case NORWAY_MAPLE -> new Habit(3, 5, 2, 4, 6, 0.75, 3, 4, 2, true);
+			case ASH -> new Habit(3, 5, 2, 4, 6, 0.8, 3, 4, 3, false);
+			case SPRUCE -> new Habit(4, 6, 4, 6, 8, 1.0, 2, 2, 0, false);
+			case SCOTS_PINE -> new Habit(0, 3, 1, 3, 5, 0.75, 3, 3, 5, false);
+			case BIRCH -> new Habit(0, 3, 1, 4, 5, 0.65, 2, 3, 0, false);
 			default -> throw new IllegalArgumentException("no root habit for " + species);
 		};
 	}
@@ -152,8 +161,10 @@ public final class RootPlan {
 		double a0 = rnd.next() * 2 * Math.PI;
 		double[][] out = new double[n][];
 		for (int i = 0; i < n; i++) {
-			double azimuth = a0 + 2 * Math.PI * (i + 0.5 * (rnd.next() - 0.5)) / n;
-			double length = Math.clamp(h.spread() * crown * (0.75 + 0.4 * rnd.next()) * (young ? 0.6 : 1.0), 2, REACH);
+			// Review of I1: each root turned on its own by up to 30° and of its own length (an even fan of equal roots read as
+			// a pinwheel from above).
+			double azimuth = a0 + 2 * Math.PI * i / n + LATERAL_JITTER * (2 * rnd.next() - 1);
+			double length = Math.clamp(h.spread() * crown * (0.6 + 0.6 * rnd.next()) * (young ? 0.6 : 1.0), 2, REACH);
 			int radius = Math.clamp(collar - 1 - (i % 2), 1, young ? 1 : 3);
 			out[i] = new double[] {azimuth, length, radius};
 		}
@@ -455,88 +466,41 @@ public final class RootPlan {
 			}
 			boolean old = r.age() == AgeClass.OLD_GROWTH;
 			double drawn = h.flaresMin() + rnd.next() * (h.flaresMax() - h.flaresMin() + 1);
-			int count = (int) Math.floor(old ? drawn : 0.6 * drawn);
-			int length = old ? h.flareLength() : Math.max(1, h.flareLength() - 1);
-			// At most 5 px (8 px high on the ground): thicker flares of the oldest oaks read as benches next to the trunk.
-			int start = Math.min(base - h.flareLess(), MAX_FLARE_RADIUS);
-			if (count == 0 || start < 1) {
-				return;
+			// Review of I1: a mature tree has one or two short flares, an old one up to four, a full cross only now and then.
+			int count = Math.min(4, (int) Math.floor(old ? drawn : 0.35 * drawn));
+			if (count == 4 && rnd.next() < 0.35) {
+				count = 3;
 			}
-			int primaries = Math.min(4, count);
-			int r0 = (int) (rnd.next() * 4);
-			int[] faces = switch (primaries) {
-				case 1 -> new int[] {r0};
-				case 2 -> new int[] {r0, (r0 + 2) & 3};
-				case 3 -> new int[] {r0, (r0 + 1) & 3, (r0 + 2) & 3};
-				default -> new int[] {0, 1, 2, 3};
-			};
-			boolean[] used = new boolean[4];
-			int[] first = new int[4];
-			Arrays.fill(first, -1);
-			for (int f : faces) {
-				used[f] = true;
-				double azimuth = Math.atan2(FACES[f][1], FACES[f][0]) + Math.toRadians(35) * (2 * rnd.next() - 1);
-				int len = Math.max(1, length - (rnd.next() < 0.35 ? 1 : 0));
-				first[f] = flare(0.5, 0.5, -1, azimuth, len, start, h.flatFlares());
+			int longest = old ? h.flareLength() : Math.max(1, h.flareLength() - 1);
+			int[] order = {0, 1, 2, 3};
+			for (int i = 3; i > 0; i--) {
+				int j = (int) (rnd.next() * (i + 1));
+				int t = order[i];
+				order[i] = order[j];
+				order[j] = t;
 			}
-			// Forks off the first block of a flare towards a free face (a diagonal between the two faces).
-			for (int k = 0, f = r0; k < 4 && count > primaries; k++, f = (f + 1) & 3) {
-				int side = (f + 1) & 3;
-				if (first[f] < 0 || used[side]) {
-					continue;
-				}
-				used[side] = true;
-				int parent = first[f];
-				double azimuth = Math.atan2(FACES[f][1] + FACES[side][1], FACES[f][0] + FACES[side][0]);
-				int sx = RootVoxels.unpackX(fPos[parent]);
-				int sz = RootVoxels.unpackZ(fPos[parent]);
-				if (flare(sx + 0.5, sz + 0.5, parent, azimuth, Math.max(1, length - 1), fRadius[parent] - 1, h.flatFlares()) >= 0) {
-					count--;
-				}
+			for (int k = 0; k < count; k++) {
+				flare(order[k], longest - (int) (rnd.next() * Math.min(2, longest)));
 			}
 		}
 
 		/**
-		 * Lays one flare from the column (cx, cz) (cell centers; the trunk or a flare block {@code parent}) along the
-		 * azimuth by a 2D grid walk; returns the index of its first block, or -1.
+		 * Lays one flare straight out from a face of the trunk (review of I1: a flare turned off its face became an elbow or
+		 * a crossbar on the grid): as many of its {@code length} blocks as fit, with the stages n, n - 1, …, 1 from the trunk
+		 * outwards (n the blocks that fit), so its top falls from block to block and its last block runs out into the ground.
 		 */
-		private int flare(double cx, double cz, int parent, double azimuth, int length, int radius, boolean flat) {
-			double ux = Math.cos(azimuth);
-			double uz = Math.sin(azimuth);
-			int x = (int) Math.floor(cx);
-			int z = (int) Math.floor(cz);
-			double tMaxX = ux > 0 ? (x + 1 - cx) / ux : ux < 0 ? (cx - x) / -ux : Double.MAX_VALUE;
-			double tMaxZ = uz > 0 ? (z + 1 - cz) / uz : uz < 0 ? (cz - z) / -uz : Double.MAX_VALUE;
-			double tDX = ux == 0 ? Double.MAX_VALUE : 1 / Math.abs(ux);
-			double tDZ = uz == 0 ? Double.MAX_VALUE : 1 / Math.abs(uz);
-			int firstIndex = -1;
-			int prev = parent;
-			int r = radius;
-			for (int k = 0; k < length && r >= 1; k++) {
-				int px = x;
-				int pz = z;
-				if (tMaxX < tMaxZ) {
-					x += ux > 0 ? 1 : -1;
-					tMaxX += tDX;
-				} else {
-					z += uz > 0 ? 1 : -1;
-					tMaxZ += tDZ;
-				}
-				if (!flareCell(x, z, px, pz)) {
-					break;
-				}
-				int dir = TreeVoxelsDirs.of(px - x, 0, pz - z);
-				int i = addFlare(x, z, r, dir, prev);
-				if (firstIndex < 0) {
-					firstIndex = i;
-				}
-				prev = i;
-				// Broad-leaved flares taper by a third of their radius a block (at least 1 px: 6, 4, 3, 2 px), so they slope into
-				// the ground; the flat surface roots of the spruce by 1 px every second block.
-				r -= flat ? k % 2 : Math.max(1, (int) Math.round(r / 3.0));
-				r = Math.min(r, fRadius[i]);
+		private void flare(int face, int length) {
+			int fx = FACES[face][0];
+			int fz = FACES[face][1];
+			int fit = 0;
+			while (fit < length && flareCell(fx * (fit + 1), fz * (fit + 1), fx * fit, fz * fit)) {
+				fit++;
 			}
-			return firstIndex;
+			int dir = TreeVoxelsDirs.of(-fx, 0, -fz);
+			int prev = -1;
+			for (int k = 1; k <= fit; k++) {
+				prev = addFlare(fx * k, fz * k, fit - k + 1, dir, prev);
+			}
 		}
 
 		private boolean flareCell(int x, int z, int px, int pz) {
@@ -614,40 +578,35 @@ public final class RootPlan {
 				double azimuth = laterals[i][0];
 				double length = laterals[i][1];
 				int radius = (int) laterals[i][2];
-				int d0 = h.lateralDepth() > COVER && i % 2 == 1 ? COVER + 1 : COVER;
-				int end = strand(collar, 0, 0, azimuth, length, radius, d0, h.lateralDepth());
+				Random w = new Random(Noise.mix(cellSeed ^ (0x7A1EL + 31L * i)));
+				int d0 = h.lateralDepth() > COVER && w.next() < 0.5 ? COVER + 1 : COVER;
+				int end = strand(collar, 0, 0, azimuth, length, radius, d0, h.lateralDepth(), w);
 				if (end < 0) {
 					continue;
 				}
-				// A side root from about the middle, and the sinkers.
+				// A side root from about the middle, and the sinkers, from the root blocks of the lateral's path.
 				if (!young || i % 2 == 0) {
-					branchOff(collar, i, azimuth, length, h, depth);
+					branchOff(Arrays.copyOf(path, pathLength), i, azimuth, h, depth);
 				}
 			}
 		}
 
-		/** The side root and the sinkers of lateral i (drawn again along its path from the collar). */
-		private void branchOff(int collar, int i, double azimuth, double length, Habit h, int depth) {
+		/** The side root and the sinkers of lateral i from the root blocks of its path (one per column, outwards). */
+		private void branchOff(int[] lateral, int i, double azimuth, Habit h, int depth) {
+			if (lateral.length == 0) {
+				return;
+			}
 			Random b = new Random(Noise.mix(cellSeed ^ (0x51DEL + i)));
-			double at = length * (0.3 + 0.25 * b.next());
+			int from = lateral[Math.min(lateral.length - 1, (int) (lateral.length * (0.3 + 0.25 * b.next())))];
 			double turn = Math.toRadians(25 + 20 * b.next()) * (b.next() < 0.5 ? -1 : 1);
-			int[] from = along(azimuth, at);
-			if (from != null) {
-				int fromIndex = rootAt(from[0], from[1]);
-				if (fromIndex >= 0) {
-					strand(fromIndex, from[0], from[1], azimuth + turn, length * 0.45, 1, COVER, h.lateralDepth());
-				}
+			// Only a lateral of at least 4 columns branches (the side root of a short one read as a hook at its end).
+			if (lateral.length >= 4) {
+				strand(from, RootVoxels.unpackX(rPos[from]), RootVoxels.unpackZ(rPos[from]), azimuth + turn, lateral.length * 0.45,
+						1, COVER, h.lateralDepth(), b);
 			}
 			if (h.sinkers()) {
 				for (double share : new double[] {0.35, 0.7}) {
-					int[] s = along(azimuth, length * share);
-					if (s == null) {
-						continue;
-					}
-					int si = rootAt(s[0], s[1]);
-					if (si < 0) {
-						continue;
-					}
+					int si = lateral[Math.min(lateral.length - 1, (int) (lateral.length * share))];
 					int x = RootVoxels.unpackX(rPos[si]);
 					int y = RootVoxels.unpackY(rPos[si]);
 					int z = RootVoxels.unpackZ(rPos[si]);
@@ -660,91 +619,130 @@ public final class RootPlan {
 			}
 		}
 
-		/** The column of the grid walk along the azimuth at the horizontal distance s (from the trunk center), or null. */
-		private int @Nullable [] along(double azimuth, double s) {
-			int x = (int) Math.floor(0.5 + s * Math.cos(azimuth));
-			int z = (int) Math.floor(0.5 + s * Math.sin(azimuth));
-			return inDisc(x, z) ? new int[] {x, z} : null;
-		}
-
-		/** The highest root block of the column (dx, dz), or -1. */
-		private int rootAt(int dx, int dz) {
-			for (int dy = HEIGHT - DEPTH_OFF - 1; dy >= -DEPTH_OFF; dy--) {
-				if (at(dx, dy, dz) == ROOT) {
-					return index[cellOf(dx, dy, dz)];
-				}
-			}
-			return -1;
-		}
+		// The root blocks of the last strand's path, one per column it entered.
+		private int[] path = new int[64];
+		private int pathLength;
+		// The strand being drawn: its column, height (dy) and last root block.
+		private int sx;
+		private int sz;
+		private int sy;
+		private int sPrev;
 
 		/**
-		 * One root from root block {@code from} (in column (fx, fz)) along the azimuth for {@code length} blocks, at a depth
-		 * running from d0 to d1 blocks below the top of each column, the radius falling to 1 px; returns its last block or
-		 * -1 when it could not start.
+		 * One root from root block {@code from} (in column (fx, fz)) for {@code length} blocks, at a depth running from d0 to
+		 * d1 blocks below the top of each column, the radius falling to 1 px; returns its last block or -1 when it could not
+		 * start. Review of I1: its heading starts at the azimuth and wanders by up to {@link #WANDER} a block (the random
+		 * numbers {@code w}), never more than {@link #OUTWARD} off the direction away from the trunk, so the root bends
+		 * softly and never turns back; the path is followed by half blocks and goes from column to column through a shared
+		 * face (across a corner through the column whose side it crosses first), so the staircase of a slanting root is
+		 * even and ends in no hook. The root blocks of the columns it enters are in {@link #path}.
 		 */
-		private int strand(int from, int fx, int fz, double azimuth, double length, int radius, int d0, int d1) {
-			double ux = Math.cos(azimuth);
-			double uz = Math.sin(azimuth);
-			double cx = fx + 0.5;
-			double cz = fz + 0.5;
-			int x = fx;
-			int z = fz;
-			double tMaxX = ux > 0 ? (x + 1 - cx) / ux : ux < 0 ? (cx - x) / -ux : Double.MAX_VALUE;
-			double tMaxZ = uz > 0 ? (z + 1 - cz) / uz : uz < 0 ? (cz - z) / -uz : Double.MAX_VALUE;
-			double tDX = ux == 0 ? Double.MAX_VALUE : 1 / Math.abs(ux);
-			double tDZ = uz == 0 ? Double.MAX_VALUE : 1 / Math.abs(uz);
-			int prev = from;
-			int y = RootVoxels.unpackY(rPos[from]);
-			int steps = Math.max(1, (int) Math.round(length));
-			int last = -1;
-			for (int k = 1; k <= steps; k++) {
-				int px = x;
-				int pz = z;
-				if (tMaxX < tMaxZ) {
-					x += ux > 0 ? 1 : -1;
-					tMaxX += tDX;
-				} else {
-					z += uz > 0 ? 1 : -1;
-					tMaxZ += tDZ;
+		private int strand(int from, int fx, int fz, double azimuth, double length, int radius, int d0, int d1, Random w) {
+			double px = fx + 0.5;
+			double pz = fz + 0.5;
+			sx = fx;
+			sz = fz;
+			sy = RootVoxels.unpackY(rPos[from]);
+			sPrev = from;
+			pathLength = 0;
+			lastDx = 0;
+			lastDz = 0;
+			double heading = azimuth;
+			double travelled = 0;
+			while (travelled < length - 1e-9) {
+				heading += 0.5 * WANDER * (2 * w.next() - 1);
+				if (px != 0.5 || pz != 0.5) {
+					double out = Math.atan2(pz - 0.5, px - 0.5);
+					heading = out + Math.clamp(Math.IEEEremainder(heading - out, 2 * Math.PI), -OUTWARD, OUTWARD);
 				}
-				if (!inDisc(x, z)) {
+				double nx = px + 0.5 * Math.cos(heading);
+				double nz = pz + 0.5 * Math.sin(heading);
+				travelled += 0.5;
+				double t = Math.min(1, travelled / length);
+				int cx = (int) Math.floor(nx);
+				int cz = (int) Math.floor(nz);
+				boolean go = true;
+				if (cx != sx && cz != sz) {
+					// Across a corner: first into the face neighbor whose side the segment crosses first.
+					double tx = ((cx > sx ? sx + 1 : sx) - px) / (nx - px);
+					double tz = ((cz > sz ? sz + 1 : sz) - pz) / (nz - pz);
+					go = tx <= tz ? step(cx, sz, length - travelled, t, radius, d0, d1) : step(sx, cz, length - travelled, t, radius, d0, d1);
+				}
+				if (!go || (cx != sx || cz != sz) && !step(cx, cz, length - travelled, t, radius, d0, d1)) {
 					break;
 				}
-				int top = top(x, z);
-				if (top == TreeShapePlan.Ground.UNKNOWN || !own(x, z)) {
-					break;
-				}
-				double t = k / (double) steps;
-				int d = (int) Math.round(d0 + (d1 - d0) * t);
-				int want = top - d - request.y();
-				int r = Math.max(1, (int) Math.round(radius * (1 - 0.7 * t)));
-				if (want < y) {
-					// Down first in the old column, then across.
-					for (int dy = y - 1; dy >= want && prev >= 0; dy--) {
-						prev = rootCell(px, dy, pz, r, TreeVoxels.UP, prev);
-					}
-					y = want;
-				}
-				if (prev < 0) {
-					break;
-				}
-				prev = rootCell(x, y, z, r, TreeVoxelsDirs.of(px - x, 0, pz - z), prev);
-				if (prev < 0) {
-					break;
-				}
-				if (want > y) {
-					// Across first, then up in the new column.
-					for (int dy = y + 1; dy <= want && prev >= 0; dy++) {
-						prev = rootCell(x, dy, z, r, TreeVoxels.DOWN, prev);
-					}
-					y = want;
-				}
-				if (prev < 0) {
-					break;
-				}
-				last = prev;
+				px = nx;
+				pz = nz;
 			}
-			return last;
+			return pathLength == 0 ? -1 : sPrev;
+		}
+
+		// The direction of the strand's last step across (0, 0 before the first).
+		private int lastDx;
+		private int lastDz;
+
+		/**
+		 * A step of the strand into (x, z), except a turn in its last block (with less than a block left a step to the
+		 * side of its way would end the root in a hook: the root ends instead).
+		 */
+		private boolean step(int x, int z, double left, double t, int radius, int d0, int d1) {
+			int dx = x - sx;
+			int dz = z - sz;
+			if (left < 1 && pathLength >= 2 && (dx != lastDx || dz != lastDz)) {
+				return false;
+			}
+			lastDx = dx;
+			lastDz = dz;
+			return stepTo(x, z, t, radius, d0, d1);
+		}
+
+		/** Moves the strand into its face neighbor (x, z) at the share t of its length; false where it has to stop. */
+		private boolean stepTo(int x, int z, double t, int radius, int d0, int d1) {
+			int px = sx;
+			int pz = sz;
+			if (!inDisc(x, z)) {
+				return false;
+			}
+			int top = top(x, z);
+			if (top == TreeShapePlan.Ground.UNKNOWN || !own(x, z)) {
+				return false;
+			}
+			int d = (int) Math.round(d0 + (d1 - d0) * t);
+			int want = top - d - request.y();
+			int r = Math.max(1, (int) Math.round(radius * (1 - 0.7 * t)));
+			int prev = sPrev;
+			if (want < sy) {
+				// Down first in the old column, then across.
+				for (int dy = sy - 1; dy >= want && prev >= 0; dy--) {
+					prev = rootCell(px, dy, pz, r, TreeVoxels.UP, prev);
+				}
+				sy = want;
+			}
+			if (prev < 0) {
+				return false;
+			}
+			prev = rootCell(x, sy, z, r, TreeVoxelsDirs.of(px - x, 0, pz - z), prev);
+			if (prev < 0) {
+				return false;
+			}
+			if (pathLength == path.length) {
+				path = Arrays.copyOf(path, 2 * pathLength);
+			}
+			path[pathLength++] = prev;
+			if (want > sy) {
+				// Across first, then up in the new column.
+				for (int dy = sy + 1; dy <= want && prev >= 0; dy++) {
+					prev = rootCell(x, dy, z, r, TreeVoxels.DOWN, prev);
+				}
+				sy = want;
+			}
+			if (prev < 0) {
+				return false;
+			}
+			sx = x;
+			sz = z;
+			sPrev = prev;
+			return true;
 		}
 
 		/**

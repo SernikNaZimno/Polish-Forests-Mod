@@ -166,7 +166,7 @@ public final class ModBlocks {
 		}
 		// Step I1 (roots), registered after the frozen blocks of CP-B: a root flare per species and the underground root.
 		for (RootFlare f : RootFlare.values()) {
-			RootFlareBlock block = (RootFlareBlock) block(f.id(), RootFlareBlock::new, trunkProperties(f.trunk()));
+			RootFlareBlock block = (RootFlareBlock) block(f.id(), p -> new RootFlareBlock(p, f.flat()), trunkProperties(f.trunk()));
 			item(f.id(), block, woodFuel());
 			FLARES.put(f, block);
 		}

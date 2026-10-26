@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
 import javax.imageio.ImageIO;
+import pl.polishforests.block.FlareProfile;
 import pl.polishforests.worldgen.habitat.Species;
 
 /**
@@ -149,14 +150,25 @@ public final class RootPreview {
 			}
 			bar(g, c, cx(x0, v.rootX(i)), cy(y0, v.rootY(i)), cx(x0, p < 0 ? 0 : px), cy(y0, p < 0 ? -1 : py), v.rootRadius(i));
 		}
-		// Flares, lying on the ground: the lowered prism (bottom sink px below the floor of the block).
+		// Flares: fins on the ground, from the profile's height at the parent's side down to that of the next stage.
 		for (int i = 0; i < v.flareCount(); i++) {
-			int r = v.flareRadius(i);
+			int s = v.flareRadius(i);
+			boolean flat = sp == Species.SPRUCE;
 			int[] step = TreeVoxels.STEP[v.flareParent(i)];
-			// The middle of the lowered prism: r - sink px above the floor of the block (the ground).
-			double lift = (r - Math.max(1, r / 2)) / 16.0;
-			int yy = (int) Math.round(cy(y0, 0) + PX / 2.0 - lift * PX);
-			bar(g, bark.darker(), cx(x0, v.flareX(i)), yy, cx(x0, v.flareX(i) + step[0]), yy, r);
+			int floor = cy(y0, 0) + PX / 2;
+			int mid = cx(x0, v.flareX(i));
+			g.setColor(bark.darker());
+			if (step[0] == 0) {
+				int w = (int) Math.ceil(FlareProfile.footWidth(flat, s) / 2);
+				int h = (int) Math.round(FlareProfile.height(flat, s));
+				g.fillRect(mid - w, floor - h, 2 * w, h);
+			} else {
+				int near = mid + step[0] * PX / 2;
+				int far = mid - step[0] * PX / 2;
+				g.fillPolygon(new int[] {near, near, far, far},
+						new int[] {floor, floor - (int) Math.round(FlareProfile.height(flat, s)),
+								floor - (int) Math.round(FlareProfile.height(flat, s - 1)), floor}, 4);
+			}
 		}
 	}
 
@@ -187,7 +199,7 @@ public final class RootPreview {
 			int[] step = TreeVoxels.STEP[v.flareParent(i)];
 			bar(g, bark.darker(), x0 + v.flareX(i) * PX + REACH * PX + PX / 2, y0 + v.flareZ(i) * PX + REACH * PX + PX / 2,
 					x0 + (v.flareX(i) + step[0]) * PX + REACH * PX + PX / 2, y0 + (v.flareZ(i) + step[2]) * PX + REACH * PX + PX / 2,
-					v.flareRadius(i));
+					(int) Math.ceil(FlareProfile.footWidth(sp == Species.SPRUCE, v.flareRadius(i)) / 2));
 		}
 		g.setColor(Color.BLACK);
 		g.fillOval(x0 + REACH * PX + 1, y0 + REACH * PX + 1, PX - 2, PX - 2);

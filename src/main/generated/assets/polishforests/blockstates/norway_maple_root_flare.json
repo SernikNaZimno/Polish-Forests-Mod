@@ -23,100 +23,79 @@
     },
     "parent=east,radius=1": {
       "model": "polishforests:block/norway_maple_root_flare_lying_r1",
-      "x": 270,
       "y": 90
     },
     "parent=east,radius=2": {
       "model": "polishforests:block/norway_maple_root_flare_lying_r2",
-      "x": 270,
       "y": 90
     },
     "parent=east,radius=3": {
       "model": "polishforests:block/norway_maple_root_flare_lying_r3",
-      "x": 270,
       "y": 90
     },
     "parent=east,radius=4": {
       "model": "polishforests:block/norway_maple_root_flare_lying_r4",
-      "x": 270,
       "y": 90
     },
     "parent=east,radius=5": {
       "model": "polishforests:block/norway_maple_root_flare_lying_r5",
-      "x": 270,
       "y": 90
     },
     "parent=east,radius=6": {
       "model": "polishforests:block/norway_maple_root_flare_lying_r6",
-      "x": 270,
       "y": 90
     },
     "parent=east,radius=7": {
       "model": "polishforests:block/norway_maple_root_flare_lying_r7",
-      "x": 270,
       "y": 90
     },
     "parent=north,radius=1": {
-      "model": "polishforests:block/norway_maple_root_flare_lying_r1",
-      "x": 270
+      "model": "polishforests:block/norway_maple_root_flare_lying_r1"
     },
     "parent=north,radius=2": {
-      "model": "polishforests:block/norway_maple_root_flare_lying_r2",
-      "x": 270
+      "model": "polishforests:block/norway_maple_root_flare_lying_r2"
     },
     "parent=north,radius=3": {
-      "model": "polishforests:block/norway_maple_root_flare_lying_r3",
-      "x": 270
+      "model": "polishforests:block/norway_maple_root_flare_lying_r3"
     },
     "parent=north,radius=4": {
-      "model": "polishforests:block/norway_maple_root_flare_lying_r4",
-      "x": 270
+      "model": "polishforests:block/norway_maple_root_flare_lying_r4"
     },
     "parent=north,radius=5": {
-      "model": "polishforests:block/norway_maple_root_flare_lying_r5",
-      "x": 270
+      "model": "polishforests:block/norway_maple_root_flare_lying_r5"
     },
     "parent=north,radius=6": {
-      "model": "polishforests:block/norway_maple_root_flare_lying_r6",
-      "x": 270
+      "model": "polishforests:block/norway_maple_root_flare_lying_r6"
     },
     "parent=north,radius=7": {
-      "model": "polishforests:block/norway_maple_root_flare_lying_r7",
-      "x": 270
+      "model": "polishforests:block/norway_maple_root_flare_lying_r7"
     },
     "parent=south,radius=1": {
       "model": "polishforests:block/norway_maple_root_flare_lying_r1",
-      "x": 270,
       "y": 180
     },
     "parent=south,radius=2": {
       "model": "polishforests:block/norway_maple_root_flare_lying_r2",
-      "x": 270,
       "y": 180
     },
     "parent=south,radius=3": {
       "model": "polishforests:block/norway_maple_root_flare_lying_r3",
-      "x": 270,
       "y": 180
     },
     "parent=south,radius=4": {
       "model": "polishforests:block/norway_maple_root_flare_lying_r4",
-      "x": 270,
       "y": 180
     },
     "parent=south,radius=5": {
       "model": "polishforests:block/norway_maple_root_flare_lying_r5",
-      "x": 270,
       "y": 180
     },
     "parent=south,radius=6": {
       "model": "polishforests:block/norway_maple_root_flare_lying_r6",
-      "x": 270,
       "y": 180
     },
     "parent=south,radius=7": {
       "model": "polishforests:block/norway_maple_root_flare_lying_r7",
-      "x": 270,
       "y": 180
     },
     "parent=up,radius=1": {
@@ -149,37 +128,30 @@
     },
     "parent=west,radius=1": {
       "model": "polishforests:block/norway_maple_root_flare_lying_r1",
-      "x": 270,
       "y": 270
     },
     "parent=west,radius=2": {
       "model": "polishforests:block/norway_maple_root_flare_lying_r2",
-      "x": 270,
       "y": 270
     },
     "parent=west,radius=3": {
       "model": "polishforests:block/norway_maple_root_flare_lying_r3",
-      "x": 270,
       "y": 270
     },
     "parent=west,radius=4": {
       "model": "polishforests:block/norway_maple_root_flare_lying_r4",
-      "x": 270,
       "y": 270
     },
     "parent=west,radius=5": {
       "model": "polishforests:block/norway_maple_root_flare_lying_r5",
-      "x": 270,
       "y": 270
     },
     "parent=west,radius=6": {
       "model": "polishforests:block/norway_maple_root_flare_lying_r6",
-      "x": 270,
       "y": 270
     },
     "parent=west,radius=7": {
       "model": "polishforests:block/norway_maple_root_flare_lying_r7",
-      "x": 270,
       "y": 270
     }
   }

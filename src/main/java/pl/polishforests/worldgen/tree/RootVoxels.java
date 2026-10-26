@@ -7,9 +7,12 @@ import java.util.Arrays;
  * in the ground of one tree, relative to its trunk base (the block above the ground of the trunk column), without game
  * classes (rule ZW-1); the tree stand writes it after the tree ({@code TreeRoots}).
  *
- * <p><b>Flares</b> lie at the level of the trunk base (dy 0) in the order from the trunk outwards: a radius 1–7 px, the
- * direction to the parent (as {@link TreeVoxels#parent}: the trunk base for the first block of a flare, else the previous
- * block) and the index of the parent flare block (-1: the trunk base).
+ * <p><b>Flares</b> lie at the level of the trunk base (dy 0), each flare a run of consecutive blocks from the trunk
+ * outwards (the first with the parent index -1, every other one with the index of the block before it), straight out
+ * from a face of the trunk: per block the stage of the fin's profile ({@link #flareRadius}: n, …, 1 for a flare of n
+ * blocks, the value of the block's {@code radius} property; {@code RootFlareBlock}), the direction to the parent (as
+ * {@link TreeVoxels#parent}: the trunk base for the first block of a flare, else the previous block) and the index of
+ * the parent flare block (-1: the trunk base).
  *
  * <p><b>Roots</b> lie in the ground (dy -2 and lower), each with a radius 1–7 px, the direction to its parent (towards the
  * trunk) and the index of the parent root (-1: the trunk base above the root collar). The radius never grows from a
@@ -108,6 +111,7 @@ public final class RootVoxels {
 		return unpackZ(flare[i]);
 	}
 
+	/** The stage of flare block i (its {@code radius} property; the last block of a flare has stage 1). */
 	public int flareRadius(int i) {
 		return flareRadius[i];
 	}

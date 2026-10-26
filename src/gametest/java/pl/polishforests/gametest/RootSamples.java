@@ -245,6 +245,7 @@ final class RootSamples {
 			List<String> names = presentDay ? PRESENT_DAY_PLOTS : PLOTS;
 			List<SlicePlots.Plot> plots = SlicePlots.of(real).stream().filter(p -> names.contains(p.name())).toList();
 			Set<String> trenched = new HashSet<>();
+			TRENCHES.clear();
 			for (SlicePlots.Plot plot : plots) {
 				sp.getServer().runCommand(String.format(Locale.ROOT, "tp @a %d 200 %d", plot.x(), plot.z()));
 				context.waitTicks(20 * 25);
@@ -370,6 +371,7 @@ final class RootSamples {
 		int roots = 0;
 		for (int dx = -6; dx <= 6; dx++) {
 			for (int dz = 1; dz <= 4; dz++) {
+				TRENCHES.add(column(v.x() + dx, v.z() + dz));
 				for (int y = top + 3; y >= top - 7; y--) {
 					BlockState s = level.getBlockState(b.set(v.x() + dx, y, v.z() + dz));
 					if (s.getBlock() instanceof TrunkBlock || s.is(BlockTags.LOGS) || s.is(BlockTags.LEAVES)) {
@@ -387,6 +389,16 @@ final class RootSamples {
 				v.x(), v.y(), v.z(), dug, roots);
 		return List.of(look("trench_above_" + p.species().id(), v.x() + 0.5, top + 2.5, v.z() + 5.5, v.x() + 0.5, top - 3.5, v.z() + 1.5),
 				look("trench_along_" + p.species().id(), v.x() + 6.5, top - 5.5, v.z() + 3.5, v.x() - 2.5, top - 3.0, v.z() + 1.0));
+	}
+
+	/**
+	 * The columns of the trenches the test dug in the current world (x, z packed as a chunk position): the flares and roots
+	 * left standing there lose their ground by the test, so the check counts them apart.
+	 */
+	private static final Set<Long> TRENCHES = java.util.concurrent.ConcurrentHashMap.newKeySet();
+
+	private static long column(int x, int z) {
+		return (long) x << 32 | z & 0xFFFFFFFFL;
 	}
 
 	/** A view from feet position (x, y, z) at eye height towards a target point. */
@@ -454,6 +466,8 @@ final class RootSamples {
 		int touching = 0;
 		int nextToBase = 0;
 		int floating = 0;
+		int trenchFlares = 0;
+		int trenchRoots = 0;
 		int changed = 0;
 		int surface = 0;
 		List<String> bad = new ArrayList<>();
@@ -466,7 +480,9 @@ final class RootSamples {
 				changed++;
 				continue;
 			}
-			if (!level.getBlockState(f.below()).isFaceSturdy(level, f.below(), Direction.UP)) {
+			if (!level.getBlockState(f.below()).isFaceSturdy(level, f.below(), Direction.UP) && TRENCHES.contains(column(f.getX(), f.getZ()))) {
+				trenchFlares++;
+			} else if (!level.getBlockState(f.below()).isFaceSturdy(level, f.below(), Direction.UP)) {
 				floating++;
 				if (bad.size() < 6) {
 					bad.add("flare at " + f.toShortString() + " over " + level.getBlockState(f.below()));
@@ -531,7 +547,9 @@ final class RootSamples {
 					above++;
 				}
 				boolean trunkColumn = v.rootX(i) == 0 && v.rootZ(i) == 0;
-				if (above < (trunkColumn ? 1 : RootPlan.COVER)) {
+				if (above < (trunkColumn ? 1 : RootPlan.COVER) && TRENCHES.contains(column(x, z))) {
+					trenchRoots++;
+				} else if (above < (trunkColumn ? 1 : RootPlan.COVER)) {
 					surface++;
 					if (bad.size() < 10) {
 						bad.add("root at " + x + ", " + y + ", " + z + " under " + above + " blocks");
@@ -543,10 +561,10 @@ final class RootSamples {
 				+ "(%.1f%%, the rest in the way of other blocks), %.2f per tree with flares; roots %d of %d planned (%.1f%%), rooted dirt %d, "
 				+ "hanging roots %d; flares touching another tree's flare %d, next to another woody base %d, over no sturdy block %d, "
 				+ "replaced later %d; woody bases beside the trunk base of a tree with roots %d; root cells in loaded chunks %d, under less "
-				+ "than %d blocks of ground %d%s", trees, withFlares, 100.0 * withFlares / Math.max(1, trees),
+				+ "than %d blocks of ground %d; in the trenches of the test (not counted above) flares over air %d, roots uncovered %d%s", trees, withFlares, 100.0 * withFlares / Math.max(1, trees),
 				flares, flaresPlanned, 100.0 * flares / Math.max(1, flaresPlanned), flares / (double) Math.max(1, withFlares), roots,
 				rootsPlanned, 100.0 * roots / Math.max(1, rootsPlanned), dirt, hanging, touching, nextToBase, floating, changed, besideTrunk, covered,
-				RootPlan.COVER, surface,
+				RootPlan.COVER, surface, trenchFlares, trenchRoots,
 				bad.isEmpty() ? "" : "; e.g. " + String.join(", ", bad));
 		// Flares over no sturdy block and roots near the surface only where a later feature (a windthrow's pit) dug the
 		// ground away: at most 0.1%.

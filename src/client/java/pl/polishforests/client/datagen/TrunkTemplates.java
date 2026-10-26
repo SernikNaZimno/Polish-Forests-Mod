@@ -11,6 +11,7 @@ import net.minecraft.data.CachedOutput;
 import net.minecraft.data.DataProvider;
 import net.minecraft.data.PackOutput;
 import pl.polishforests.PolishForests;
+import pl.polishforests.block.FlareProfile;
 import pl.polishforests.block.RootFlareBlock;
 import pl.polishforests.block.TrunkBlock;
 
@@ -116,9 +117,9 @@ final class TrunkTemplates implements DataProvider {
 
 	static final String ITEM_TEMPLATE = "block/template_trunk_inventory";
 
-	/** Model id of the lying template of a root flare of radius r (step I1). */
-	static String flareTemplate(int r) {
-		return "block/template_root_flare_r" + r;
+	/** Model id of the lying template of a root flare of stage s (step I1; {@code flat}: the spruce's surface roots). */
+	static String flareTemplate(boolean flat, int s) {
+		return "block/template_root_flare_" + (flat ? "flat_" : "") + "r" + s;
 	}
 
 	/** Left edge of the bark crop of a side ({@code north}, {@code west}, {@code south}, {@code east}) at radius r, px. */
@@ -138,8 +139,10 @@ final class TrunkTemplates implements DataProvider {
 			out.add(DataProvider.saveStable(cache, trunk(r), models.json(PolishForests.id(template(r)))));
 		}
 		out.add(DataProvider.saveStable(cache, item(), models.json(PolishForests.id(ITEM_TEMPLATE))));
-		for (int r = TrunkBlock.MIN_RADIUS; r <= TrunkBlock.MAX_RADIUS; r++) {
-			out.add(DataProvider.saveStable(cache, flare(r), models.json(PolishForests.id(flareTemplate(r)))));
+		for (boolean flat : new boolean[] {false, true}) {
+			for (int r = TrunkBlock.MIN_RADIUS; r <= TrunkBlock.MAX_RADIUS; r++) {
+				out.add(DataProvider.saveStable(cache, flare(flat, r), models.json(PolishForests.id(flareTemplate(flat, r)))));
+			}
 		}
 		return CompletableFuture.allOf(out.toArray(CompletableFuture[]::new));
 	}
@@ -180,23 +183,83 @@ final class TrunkTemplates implements DataProvider {
 		return m;
 	}
 
+	/** Segments of a lying flare along its block (each 16 / n px long, its top at the height of its middle). */
+	static final int FLARE_SEGMENTS = 4;
+	/** Segments of a fin along its block (2 px each: steps of under a pixel). */
+	static final int FIN_SEGMENTS = 8;
+	/** Inset (px) of the reach of a flare into its parent, so that it never lies in a face of the parent. */
+	static final double FLARE_REACH_INSET = 0.05;
+
 	/**
-	 * The lying template of a root flare of radius r (step I1, {@link RootFlareBlock}): the trunk template moved along its
-	 * z axis by 8 − r + sink, which the blockstate's x rotation of 270° (every horizontal parent) turns into world down, so
-	 * the prism lies {@link RootFlareBlock#sink} px deep in the ground below the block and its reach runs into the parent
-	 * at the same height. Nothing else changes (texture rows and columns, the end, the seams).
+	 * The lying template of a root flare of stage s (step I1, review round 1; {@link RootFlareBlock}), drawn with the
+	 * parent to the north (z 0; the blockstates turn it about y only): {@value #FLARE_SEGMENTS} segments of a foot along z
+	 * ({@link FlareProfile#footWidth} wide, {@link FlareProfile#FOOT_SHARE} of the height) and {@value #FIN_SEGMENTS} of a
+	 * fin on it ({@link FlareProfile#finWidth}), each up to the height of the profile at the segment's middle
+	 * ({@link FlareProfile#heightAt}), so the top falls in steps of under a pixel from the parent's side to the far side;
+	 * a flat flare (the spruce) is the foot alone, as high as the profile. A reach of the first segment, a little inset,
+	 * runs 8 px into the parent (the trunk or the higher flare block), where the parent hides it. Bark on the top, the two
+	 * sides and the far end of every segment; nothing at the bottom (the ground) or towards the parent.
 	 */
-	private static JsonObject flare(int r) {
-		double shift = 8 - r + RootFlareBlock.sink(r);
-		JsonObject m = trunk(r);
-		for (var e : m.getAsJsonArray("elements")) {
-			JsonObject el = e.getAsJsonObject();
-			for (String key : new String[] {"from", "to"}) {
-				JsonArray v = el.getAsJsonArray(key);
-				el.add(key, vector(new double[] {v.get(0).getAsDouble(), v.get(1).getAsDouble(), v.get(2).getAsDouble() + shift}));
+	private static JsonObject flare(boolean flat, int s) {
+		JsonArray elements = new JsonArray();
+		double fin = FlareProfile.finWidth(flat, s);
+		double foot = FlareProfile.footWidth(flat, s);
+		double i = FLARE_REACH_INSET;
+		double len = 16.0 / FLARE_SEGMENTS;
+		double[] footTop = new double[FLARE_SEGMENTS];
+		for (int j = 0; j < FLARE_SEGMENTS; j++) {
+			double z0 = j * len;
+			double h = Math.max(0.5, quarter(FlareProfile.heightAt(flat, s, z0 + len / 2)));
+			footTop[j] = flat ? h : Math.max(0.25, quarter(FlareProfile.FOOT_SHARE * h));
+			elements.add(flareBox(8 - foot / 2, 8 + foot / 2, 0, footTop[j], z0, z0 + len, true));
+			if (j == 0) {
+				elements.add(flareBox(8 - foot / 2 + i, 8 + foot / 2 - i, 0, footTop[0] - i, -8, 0, false));
 			}
 		}
+		if (!flat) {
+			double finLen = 16.0 / FIN_SEGMENTS;
+			for (int k = 0; k < FIN_SEGMENTS; k++) {
+				double z0 = k * finLen;
+				double fh = footTop[(int) (z0 / len)];
+				double h = Math.max(fh + 0.25, quarter(FlareProfile.heightAt(false, s, z0 + finLen / 2)));
+				elements.add(flareBox(8 - fin / 2, 8 + fin / 2, fh, h, z0, z0 + finLen, true));
+				if (k == 0) {
+					elements.add(flareBox(8 - fin / 2 + i, 8 + fin / 2 - i, fh, h - i, -8, 0, false));
+				}
+			}
+		}
+		JsonObject m = model(elements);
+		m.addProperty("ambientocclusion", false);
 		return m;
+	}
+
+	private static double quarter(double v) {
+		return Math.round(v * 4) / 4.0;
+	}
+
+	/**
+	 * A box of a flare from x0 to x1, y0 to y1 and z0 to z1 (px) with bark on its top and sides (texture rows from the
+	 * ground, 16 − y; columns from x or z as vanilla's automatic UV) and, if {@code end}, on its far side (south).
+	 */
+	private static JsonObject flareBox(double x0, double x1, double y0, double y1, double z0, double z1, boolean end) {
+		JsonObject el = flat(new double[] {x0, y0, z0}, new double[] {x1, y1, z1});
+		JsonObject faces = el.getAsJsonObject("faces");
+		double u0 = Math.max(0, z0);
+		double u1 = Math.max(u0 + 0.5, z1);
+		faces.add("up", face(new double[] {x0, u0, x1, u1}));
+		faces.add("west", face(new double[] {u0, 16 - y1, u1, 16 - y0}));
+		faces.add("east", face(new double[] {16 - u1, 16 - y1, 16 - u0, 16 - y0}));
+		if (end) {
+			faces.add("south", face(new double[] {x0, 16 - y1, x1, 16 - y0}));
+		}
+		return el;
+	}
+
+	private static JsonObject face(double[] uv) {
+		JsonObject f = new JsonObject();
+		f.add("uv", vector(uv));
+		f.addProperty("texture", "#bark");
+		return f;
 	}
 
 	/**

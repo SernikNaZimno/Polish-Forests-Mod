@@ -105,9 +105,18 @@ class RootPlanTest {
 			int pz = p < 0 ? 0 : v.flareZ(p);
 			assertEquals(px, x + step[0], what);
 			assertEquals(pz, z + step[2], what);
-			assertTrue(v.flareRadius(i) >= 1 && v.flareRadius(i) <= RootPlan.MAX_FLARE_RADIUS, what);
+			assertTrue(v.flareRadius(i) >= 1 && v.flareRadius(i) <= RootPlan.MAX_FLARE_STAGE, what);
+			// Review of I1: every block farther from the trunk than its parent (no elbow, no crossbar), straight on from the
+			// parent's own direction, its stage one below the parent's; the last block of a flare has stage 1.
+			assertTrue(x * x + z * z > px * px + pz * pz, what + ": a flare block not farther from the trunk than its parent");
 			if (p >= 0) {
-				assertTrue(v.flareRadius(i) <= v.flareRadius(p), what + ": the radius grows outwards");
+				assertEquals(v.flareParent(p), v.flareParent(i), what + ": a flare turns");
+				assertEquals(i - 1, p, what + ": a flare's blocks not in a run");
+				assertEquals(v.flareRadius(p) - 1, v.flareRadius(i), what + ": the stage does not fall by one outwards");
+			}
+			boolean last = i + 1 == v.flareCount() || v.flareParentIndex(i + 1) != i;
+			if (last) {
+				assertEquals(1, v.flareRadius(i), what + ": a flare does not run out into the ground");
 			}
 		}
 		for (int i = 0; i < v.rootCount(); i++) {
@@ -216,8 +225,8 @@ class RootPlanTest {
 					}
 				}
 			}
-			// Few in the pine stand (pine flares are weak), many in the oak-hornbeam stand.
-			assertTrue(flares > (grad ? 100 : 20), "flare blocks in the stand: " + flares);
+			// Few in the pine stand (pine flares are a short widening of the base of old trunks), many in the oak-hornbeam stand.
+			assertTrue(flares > (grad ? 80 : 5), "flare blocks in the stand: " + flares);
 			System.out.println("RootPlanTest stand " + (grad ? "oak-hornbeam" : "pine") + ": flare blocks " + flares + ", roots " + roots);
 			assertTrue(roots > 1000, "roots in the stand: " + roots);
 		}
@@ -318,5 +327,41 @@ class RootPlanTest {
 			assertTrue(a[i][1] >= 2 && a[i][1] <= RootPlan.REACH, "length " + a[i][1]);
 		}
 		assertTrue(a.length >= 6, "spruce laterals " + a.length);
+	}
+
+	/**
+	 * Review of I1: the lateral roots of a tree are no even fan (a pinwheel from above): the gaps between their azimuths
+	 * differ within a tree.
+	 */
+	@Test
+	void lateralsAreNoEvenFan() {
+		int even = 0;
+		int trees = 0;
+		for (Species s : SPECIES) {
+			for (int k = 0; k < 40; k++) {
+				double[][] l = RootPlan.laterals(s, CrownLayer.CANOPY, AgeClass.OLD_GROWTH, SEED, 37 * k, -23 * k, 6);
+				double[] az = new double[l.length];
+				double minLen = Double.MAX_VALUE;
+				double maxLen = 0;
+				for (int i = 0; i < l.length; i++) {
+					az[i] = Math.floorMod((long) Math.round(Math.toDegrees(l[i][0]) * 100), 36000L) / 100.0;
+					minLen = Math.min(minLen, l[i][1]);
+					maxLen = Math.max(maxLen, l[i][1]);
+				}
+				java.util.Arrays.sort(az);
+				double minGap = 360;
+				double maxGap = 0;
+				for (int i = 0; i < az.length; i++) {
+					double gap = i + 1 < az.length ? az[i + 1] - az[i] : az[0] + 360 - az[i];
+					minGap = Math.min(minGap, gap);
+					maxGap = Math.max(maxGap, gap);
+				}
+				trees++;
+				if (maxGap - minGap < 15) {
+					even++;
+				}
+			}
+		}
+		assertTrue(even < trees / 10, "trees with an even fan of laterals: " + even + " of " + trees);
 	}
 }

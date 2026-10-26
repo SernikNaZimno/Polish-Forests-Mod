@@ -186,6 +186,16 @@ final class ModBlockModels extends FabricModelProvider {
 		gen.registerSimpleItemModel(block, item.create(block, textures(barks.get(0), end), gen.modelOutput));
 	}
 
+	/** The rotation of a lying flare template (drawn with the parent to the north) to a horizontal parent. */
+	private static VariantMutator flareRotation(Direction parent) {
+		return switch (parent) {
+			case EAST -> BlockModelGenerators.Y_ROT_90;
+			case SOUTH -> BlockModelGenerators.Y_ROT_180;
+			case WEST -> BlockModelGenerators.Y_ROT_270;
+			default -> BlockModelGenerators.NOP;
+		};
+	}
+
 	/** The rotation of the trunk template (the arm down) to a parent, as {@link #PARENT_ROTATIONS}. */
 	private static VariantMutator rotation(Direction parent) {
 		return switch (parent) {
@@ -212,7 +222,7 @@ final class ModBlockModels extends FabricModelProvider {
 			List<Variant> standing = new ArrayList<>();
 			List<Variant> lying = new ArrayList<>();
 			for (int lie = 0; lie <= 1; lie++) {
-				ModelTemplate template = new ModelTemplate(Optional.of(PolishForests.id(lie == 1 ? TrunkTemplates.flareTemplate(r)
+				ModelTemplate template = new ModelTemplate(Optional.of(PolishForests.id(lie == 1 ? TrunkTemplates.flareTemplate(f.flat(), r)
 						: TrunkTemplates.template(r))), Optional.empty(), BARK, TextureSlot.END);
 				for (int k = 0; k < barks.size(); k++) {
 					String suffix = (lie == 1 ? "_lying" : "") + "_r" + r + (k == 0 ? "" : "_" + (k + 1));
@@ -222,7 +232,8 @@ final class ModBlockModels extends FabricModelProvider {
 			}
 			for (Direction d : Direction.values()) {
 				List<Variant> v = d.getAxis() == Direction.Axis.Y ? standing : lying;
-				states.select(r, d, BlockModelGenerators.variants(v.toArray(Variant[]::new)).with(rotation(d)));
+				states.select(r, d, BlockModelGenerators.variants(v.toArray(Variant[]::new)).with(d.getAxis() == Direction.Axis.Y
+						? rotation(d) : flareRotation(d)));
 			}
 		}
 		gen.blockStateOutput.accept(MultiVariantGenerator.dispatch(block).with(states));

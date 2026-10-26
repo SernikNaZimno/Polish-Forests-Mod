@@ -1,5 +1,5 @@
 {
-  "parent": "polishforests:block/template_root_flare_r3",
+  "parent": "polishforests:block/template_root_flare_flat_r3",
   "textures": {
     "bark": "minecraft:block/spruce_log",
     "end": "minecraft:block/spruce_log_top"

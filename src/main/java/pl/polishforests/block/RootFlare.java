@@ -31,6 +31,11 @@ public enum RootFlare {
 		return trunk;
 	}
 
+	/** Whether the flares are flat surface roots (the spruce) rather than fins ({@link RootFlareBlock#flat}). */
+	public boolean flat() {
+		return this == SPRUCE;
+	}
+
 	public Species species() {
 		return trunk.species();
 	}

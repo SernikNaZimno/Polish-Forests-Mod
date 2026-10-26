@@ -17,10 +17,10 @@ import pl.polishforests.worldgen.tree.RootVoxels;
  * Writes the roots of a tree (step I1 of docs/04-pionowy-wycinek.md; the plan: {@link RootPlan}) after the tree stand has
  * written the tree ({@link TreeStandFeature}).
  *
- * <p><b>Root flares</b>: the flare block of the species ({@link RootFlare}) with the planned radius and the parent towards
+ * <p><b>Root flares</b>: the flare block of the species ({@link RootFlare}) with the planned stage and the parent towards
  * the trunk, from the trunk outwards, only on air or a block that trees replace (plants, leaves; as the tree's own wood)
- * over ground with a sturdy top (no flare over a pit); a block whose parent could not be written is left out with the
- * rest of its flare.
+ * over ground with a sturdy top (no flare over a pit); a block that cannot be written is left out with the rest of its
+ * flare, and the stages of the blocks before it fall by the blocks left out, so the flare still ends in the ground.
  *
  * <p><b>Roots in the soil</b> ({@code tree_root}): only in place of soil ({@code #minecraft:dirt}, {@code #minecraft:sand},
  * clay; not stone, gravel, water or what other features put there), each root cell on its own: the parents in the soil
@@ -78,20 +78,24 @@ public final class TreeRoots {
 		BlockPos.MutableBlockPos below = new BlockPos.MutableBlockPos();
 		RootFlare flare = RootFlare.of(species);
 		boolean[] flares = new boolean[v.flareCount()];
-		for (int i = 0; i < v.flareCount() && flare != null; i++) {
-			int p = v.flareParentIndex(i);
-			if (p >= 0 && !flares[p]) {
-				continue;
+		for (int i = 0; i < v.flareCount() && flare != null; ) {
+			// One flare: the blocks i … j - 1. Only the blocks up to the first that cannot be written are, with their stages
+			// lowered by the blocks left out, so that a shortened flare still runs out into the ground.
+			int j = i + 1;
+			while (j < v.flareCount() && v.flareParentIndex(j) == j - 1) {
+				j++;
 			}
-			pos.set(v.x() + v.flareX(i), v.y() + v.flareY(i), v.z() + v.flareZ(i));
-			below.setWithOffset(pos, Direction.DOWN);
-			BlockState at = level.getBlockState(pos);
-			if (!(at.isAir() || at.is(BlockTags.REPLACEABLE_BY_TREES)) || !at.getFluidState().isEmpty()
-					|| !level.getBlockState(below).isFaceSturdy(level, below, Direction.UP)) {
-				continue;
+			int fit = 0;
+			while (i + fit < j && flareFits(level, v, i + fit, pos, below)) {
+				fit++;
 			}
-			level.setBlock(pos, ModBlocks.flare(flare).state(v.flareRadius(i), Direction.from3DDataValue(v.flareParent(i))), FLAGS);
-			flares[i] = true;
+			for (int k = i; k < i + fit; k++) {
+				pos.set(v.x() + v.flareX(k), v.y() + v.flareY(k), v.z() + v.flareZ(k));
+				int stage = v.flareRadius(k) - (j - i - fit);
+				level.setBlock(pos, ModBlocks.flare(flare).state(stage, Direction.from3DDataValue(v.flareParent(k))), FLAGS);
+				flares[k] = true;
+			}
+			i = j;
 		}
 		byte[] roots = new byte[v.rootCount()];
 		int dirt = 0;
@@ -139,6 +143,16 @@ public final class TreeRoots {
 		DIRT.add(dirt);
 		HANGING.add(hanging);
 		return w;
+	}
+
+	/** Whether flare block i may be written: air or a block trees replace, no fluid, over ground with a sturdy top. */
+	private static boolean flareFits(WorldGenLevel level, RootVoxels v, int i, BlockPos.MutableBlockPos pos,
+			BlockPos.MutableBlockPos below) {
+		pos.set(v.x() + v.flareX(i), v.y() + v.flareY(i), v.z() + v.flareZ(i));
+		below.setWithOffset(pos, Direction.DOWN);
+		BlockState at = level.getBlockState(pos);
+		return (at.isAir() || at.is(BlockTags.REPLACEABLE_BY_TREES)) && at.getFluidState().isEmpty()
+				&& level.getBlockState(below).isFaceSturdy(level, below, Direction.UP);
 	}
 
 	/** Vanilla hanging roots under rooted dirt at {@code pos} when the block below is air; returns 1 if placed. */
