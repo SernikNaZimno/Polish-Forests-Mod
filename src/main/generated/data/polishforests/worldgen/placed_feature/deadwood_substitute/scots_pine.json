@@ -1,5 +1,5 @@
 {
-  "feature": "polishforests:deadwood/poplar",
+  "feature": "polishforests:deadwood_substitute/scots_pine",
   "placement": [
     {
       "type": "minecraft:block_predicate_filter",

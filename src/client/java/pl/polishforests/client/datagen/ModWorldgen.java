@@ -118,9 +118,14 @@ final class ModWorldgen {
 			String path = ModVegetation.erratic(stone);
 			context.register(placed(path), new PlacedFeature(features.getOrThrow(ModTrees.key(path)), List.of()));
 		}
-		// Fallen trees: where a sapling would survive.
-		for (Species s : ModVegetation.DEADWOOD) {
-			String path = ModVegetation.deadwood(s);
+		// Fallen trees of M2, dead trees and stumps of the slice (step V11): where a sapling would survive.
+		List<String> deadwood = new ArrayList<>();
+		ModVegetation.DEADWOOD.forEach(s -> deadwood.add(ModVegetation.deadwoodSubstitute(s)));
+		ModVegetation.PROCEDURAL_DEADWOOD.forEach(s -> {
+			deadwood.add(ModVegetation.deadwood(s));
+			deadwood.add(ModVegetation.stump(s));
+		});
+		for (String path : deadwood) {
 			context.register(placed(path), new PlacedFeature(features.getOrThrow(ModTrees.key(path)),
 					List.of(PlacementUtils.filteredByBlockSurvival(Blocks.OAK_SAPLING))));
 		}

@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import pl.polishforests.worldgen.habitat.HabitatBiome;
@@ -13,7 +15,12 @@ import pl.polishforests.worldgen.habitat.Species;
 import pl.polishforests.worldgen.norms.CensusGrid;
 import pl.polishforests.worldgen.norms.ForestCensus;
 import pl.polishforests.worldgen.norms.ForestNorms;
+import pl.polishforests.worldgen.landscape.Noise;
 import pl.polishforests.worldgen.tree.AgeClass;
+import pl.polishforests.worldgen.tree.DeadwoodGrid;
+import pl.polishforests.worldgen.tree.DeadwoodPlan;
+import pl.polishforests.worldgen.tree.StandMap;
+import pl.polishforests.worldgen.tree.TreeShapePlan;
 import pl.polishforests.worldgen.tree.TreeVoxels;
 
 /**
@@ -33,7 +40,9 @@ class StandCensusSimulationTest {
 			ForestNorms.COMPOSITION + "linden", ForestNorms.COMPOSITION + "maple_ash", ForestNorms.COMPOSITION + "scots_pine",
 			ForestNorms.COMPOSITION + "birch", ForestNorms.COMPOSITION + "hornbeam", ForestNorms.CANOPY, ForestNorms.GAP_SHARE, ForestNorms.GAP_DIAMETER,
 			ForestNorms.REGENERATION_RATIO, ForestNorms.OAK_REGENERATION, ForestNorms.PINE_REGENERATION_UNDER_CANOPY,
-			ForestNorms.TOP_HEIGHT, ForestNorms.BARE_WOOD, ForestNorms.EXPOSED_WOOD, ForestNorms.BARE_ARMS};
+			ForestNorms.TOP_HEIGHT, ForestNorms.BARE_WOOD, ForestNorms.EXPOSED_WOOD, ForestNorms.BARE_ARMS,
+			ForestNorms.DEADWOOD_PER_CHUNK, ForestNorms.PIECES_PER_CHUNK, ForestNorms.LOGS_PER_CHUNK, ForestNorms.SNAGS_PER_CHUNK,
+			ForestNorms.STUMPS_PER_CHUNK, ForestNorms.DEADWOOD_VOLUME, ForestNorms.COARSE_PIECES};
 
 	@Test
 	void reportNormsOfSimulatedStands() {
@@ -58,6 +67,8 @@ class StandCensusSimulationTest {
 			}
 		}
 		SimulatedStands.plant(biome, natural, age, CHUNKS, (vox, species, layer) -> write(grid, vox, species));
+		// Step V11: the dead wood of the generated palette, as the dead wood layer and DeadwoodFeature place it.
+		deadwood(grid, biome, SimulatedStands.stand(age, natural), side);
 		ForestCensus.Census census = ForestCensus.of(grid);
 		ForestNorms.Forest forest = biome == HabitatBiome.OAK_HORNBEAM_FOREST
 				? natural ? ForestNorms.Forest.OAK_HORNBEAM_NATURAL : ForestNorms.Forest.OAK_HORNBEAM_MANAGED
@@ -85,6 +96,57 @@ class StandCensusSimulationTest {
 							.orElse("")));
 		}
 		System.out.printf(Locale.ROOT, "[calibrate] %s %s %s:%s%n", biome.id(), natural ? "natural" : "managed", age, sb);
+	}
+
+	/**
+	 * Places the dead wood of the biome's rule of the generated dead wood palette over the area (step V11): a column is
+	 * picked with the rule's coverage (its block standing on the ground free), the plant by weight, and the object of
+	 * {@link DeadwoodPlan#request} is planned and written ({@link DeadwoodGrid}).
+	 */
+	static void deadwood(CensusGrid grid, HabitatBiome biome, StandMap stands, int side) {
+		JsonObject rule = null;
+		for (JsonElement e : EcotoneSharpnessTest.rules("deadwood")) {
+			for (JsonElement b : e.getAsJsonObject().getAsJsonArray("biomes")) {
+				if (b.getAsString().equals(biome.id())) {
+					rule = e.getAsJsonObject();
+				}
+			}
+		}
+		if (rule == null) {
+			throw new AssertionError("no dead wood rule for " + biome.id());
+		}
+		double coverage = rule.get("coverage").getAsFloat();
+		List<String> paths = new ArrayList<>();
+		List<Integer> weights = new ArrayList<>();
+		int total = 0;
+		for (JsonElement e : rule.getAsJsonArray("plants")) {
+			JsonObject p = e.getAsJsonObject();
+			paths.add(p.get("feature").getAsString().substring("polishforests:".length()));
+			weights.add(p.get("weight").getAsInt());
+			total += p.get("weight").getAsInt();
+		}
+		Noise n = new Noise(SimulatedStands.SEED).derive("test.deadwood.columns");
+		TreeShapePlan.Ground ground = (x, z) -> grid.contains(x, z) ? GROUND : TreeShapePlan.Ground.UNKNOWN;
+		for (int x = 0; x < side; x++) {
+			for (int z = 0; z < side; z++) {
+				if (n.unit(x, z, 1) >= coverage || grid.cell(x, 1, z) != CensusGrid.AIR) {
+					continue;
+				}
+				double target = n.unit(x, z, 2) * total;
+				int k = 0;
+				while (k < paths.size() - 1 && (target -= weights.get(k)) >= 0) {
+					k++;
+				}
+				String path = paths.get(k);
+				boolean stump = path.startsWith("stump/");
+				String id = path.substring(path.indexOf('/') + 1);
+				Species species = java.util.Arrays.stream(Species.values()).filter(s -> s.id().equals(id)).findFirst().orElseThrow();
+				DeadwoodPlan.Request r = DeadwoodPlan.request(SimulatedStands.SEED, species, stump, stands, x, GROUND + 1, z, ground);
+				if (r != null) {
+					DeadwoodGrid.write(grid, DeadwoodPlan.plan(r));
+				}
+			}
+		}
 	}
 
 	/** Writes a tree into the grid as {@code ProceduralTreeFeature.write} does (wood on air or leaves, leaves on air). */

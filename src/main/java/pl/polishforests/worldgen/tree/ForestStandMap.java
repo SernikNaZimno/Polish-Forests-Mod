@@ -119,6 +119,16 @@ public final class ForestStandMap implements StandMap {
 		this.k = k;
 		this.spacing = SPACING * k;
 		this.naturalShare = 1 - Math.clamp(managedShare, 0, 1);
+		this.worldSeed = worldSeed;
+		this.managedShare = managedShare;
+	}
+
+	private final long worldSeed;
+	private final double managedShare;
+
+	/** Whether this map is the one of a world seed, scale and managed share. */
+	public boolean matches(long worldSeed, double k, double managedShare) {
+		return this.worldSeed == worldSeed && this.k == k && this.managedShare == managedShare;
 	}
 
 	/**

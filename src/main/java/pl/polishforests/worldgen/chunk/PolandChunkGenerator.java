@@ -133,6 +133,23 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 	}
 
 	private volatile pl.polishforests.worldgen.feature.plan.@Nullable ForestBlend forestBlend;
+	private volatile pl.polishforests.worldgen.tree.@Nullable ForestStandMap standMap;
+
+	/**
+	 * The stand map of the world (step V9; shared by the dead wood of step V11): managed or natural stands and their age
+	 * classes for the world seed, the scale and the managed share of the settings.
+	 */
+	public pl.polishforests.worldgen.tree.ForestStandMap standMap(long seed) {
+		pl.polishforests.worldgen.tree.ForestStandMap m = standMap;
+		double k = settings.scale().landscape().local();
+		double managed = settings.managedForestShare();
+		if (m != null && m.matches(seed, k, managed)) {
+			return m;
+		}
+		m = new pl.polishforests.worldgen.tree.ForestStandMap(seed, k, managed);
+		standMap = m;
+		return m;
+	}
 
 	/**
 	 * The wide blend of the forests of the vertical slice for the world seed (step Z1 of docs/04-pionowy-wycinek.md): the

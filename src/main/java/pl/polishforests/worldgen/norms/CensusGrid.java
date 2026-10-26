@@ -74,6 +74,8 @@ public final class CensusGrid {
 	private final @Nullable String[] plant;
 	private final @Nullable String[] groundBlock;
 	private final @Nullable Species[] record;
+	/** Columns where the generator placed a standing dead wood object (step V11): a snag or a stump based there. */
+	private final boolean[] dead;
 	private final Map<Long, Wood> wood = new HashMap<>();
 
 	/**
@@ -92,6 +94,7 @@ public final class CensusGrid {
 		this.plant = new String[sizeX * sizeZ];
 		this.groundBlock = new String[sizeX * sizeZ];
 		this.record = new Species[sizeX * sizeZ];
+		this.dead = new boolean[sizeX * sizeZ];
 	}
 
 	public int minX() {
@@ -233,6 +236,24 @@ public final class CensusGrid {
 	}
 
 	/**
+	 * Whether the generator placed a standing dead wood object (a snag, the snag of a broken tree, a stump) with its base
+	 * in this column (step V11): the census gives it no leaves of the crowns around it, as a forester tells a dead stem
+	 * from the living crowns that touch it.
+	 */
+	public boolean dead(int x, int z) {
+		return dead[column(x, z)];
+	}
+
+	boolean deadAt(int column) {
+		return dead[column];
+	}
+
+	public CensusGrid setDead(int x, int z, boolean value) {
+		dead[column(x, z)] = value;
+		return this;
+	}
+
+	/**
 	 * Differences from another grid over the same rectangle and height (ground, ground block, plant, record, every cell
 	 * and its wood), at most {@code max} of them as text; empty when the grids are the same.
 	 */
@@ -253,6 +274,9 @@ public final class CensusGrid {
 			}
 			if (record[c] != other.record[c]) {
 				out.add(at + ": record " + record[c] + " vs " + other.record[c]);
+			}
+			if (dead[c] != other.dead[c]) {
+				out.add(at + ": dead " + dead[c] + " vs " + other.dead[c]);
 			}
 			for (int dy = 1; dy <= height && out.size() < max; dy++) {
 				if (cellAt(c, dy) != other.cellAt(c, dy) || !Objects.equals(woodAt(c, dy), other.woodAt(c, dy))) {

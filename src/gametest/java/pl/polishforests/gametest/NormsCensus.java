@@ -64,6 +64,12 @@ final class NormsCensus {
 	private NormsCensus() {
 	}
 
+	/**
+	 * Base columns ({@link #key}) of the standing dead wood objects placed while the worlds of the test generate (step V11:
+	 * snags, the snags of broken trees, stumps; {@code ModFeatures.DEADWOOD_PLACEMENTS}): the census gives them no leaves.
+	 */
+	static final java.util.Set<Long> DEAD = java.util.concurrent.ConcurrentHashMap.newKeySet();
+
 	static long key(int x, int z) {
 		return (long) x << 32 | z & 0xFFFFFFFFL;
 	}
@@ -131,6 +137,7 @@ final class NormsCensus {
 					truncated++;
 				}
 				g.setRecord(x, z, records.get(key(x, z)));
+				g.setDead(x, z, DEAD.contains(key(x, z)));
 			}
 		}
 		if (truncated > 0) {

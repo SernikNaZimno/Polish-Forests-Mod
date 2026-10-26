@@ -33,6 +33,7 @@ import net.minecraft.world.level.levelgen.feature.stateproviders.WeightedStatePr
 import net.minecraft.world.level.levelgen.feature.treedecorators.AttachedToLogsDecorator;
 import net.minecraft.world.level.levelgen.feature.treedecorators.TrunkVineDecorator;
 import net.minecraft.world.level.levelgen.placement.PlacedFeature;
+import pl.polishforests.worldgen.feature.DeadwoodFeature;
 import pl.polishforests.worldgen.feature.config.HabitatCondition;
 import pl.polishforests.worldgen.feature.config.PlantPalette;
 import pl.polishforests.worldgen.feature.config.PlantPalette.Plant;
@@ -72,12 +73,31 @@ final class ModVegetation {
 			Zone.WILLOW_CARR, Zone.GRAVEL_BAR, Zone.MONTANE_TALL_HERBS, Zone.FLOATING_MAT, Zone.STRANDLINE, Zone.EMBRYO_DUNE,
 			Zone.CLIFF_FACE, Zone.CLIFF_TOP);
 
-	/** Species of the fallen trees, {@code polishforests:deadwood/<species>}. */
+	/**
+	 * Species of the M2 fallen trees (vanilla logs), {@code polishforests:deadwood_substitute/<species>} since step V11
+	 * (decision PW-3 b for dead wood: the forests outside the slice keep them).
+	 */
 	static final List<Species> DEADWOOD = List.of(Species.SCOTS_PINE, Species.SPRUCE, Species.FIR, Species.BIRCH, Species.OAK,
 			Species.BEECH, Species.HORNBEAM, Species.BLACK_ALDER, Species.POPLAR, Species.WHITE_WILLOW, Species.GRAY_ALDER);
 
+	/**
+	 * Species of the dead wood of the dead wood planner (step V11): every species with a planner shape,
+	 * {@code polishforests:deadwood/<species>} (a dead tree) and {@code polishforests:stump/<species>}.
+	 */
+	static final List<Species> PROCEDURAL_DEADWOOD = List.copyOf(SpeciesShape.species());
+
+	/** A dead tree of the dead wood planner (step V11; until V11 the vanilla fallen tree, now {@link #deadwoodSubstitute}). */
 	static String deadwood(Species s) {
 		return "deadwood/" + s.id();
+	}
+
+	static String deadwoodSubstitute(Species s) {
+		return "deadwood_substitute/" + s.id();
+	}
+
+	/** A stump of the dead wood planner (managed stands, step V11). */
+	static String stump(Species s) {
+		return "stump/" + s.id();
 	}
 
 	/** Bone meal flower groups, {@code polishforests:flowers/<group>}. */
@@ -97,7 +117,11 @@ final class ModVegetation {
 
 	static void features(BootstrapContext<Feature> context, HolderGetter<PlacedFeature> placed) {
 		for (Species s : DEADWOOD) {
-			context.register(ModTrees.key(deadwood(s)), fallen(s));
+			context.register(ModTrees.key(deadwoodSubstitute(s)), fallen(s));
+		}
+		for (Species s : PROCEDURAL_DEADWOOD) {
+			context.register(ModTrees.key(deadwood(s)), new DeadwoodFeature(s, false));
+			context.register(ModTrees.key(stump(s)), new DeadwoodFeature(s, true));
 		}
 		context.register(ModTrees.key(flowers("forest")), flowers(List.of(
 				segments(Blocks.WILDFLOWERS, FlowerBedBlock.AMOUNT, 1, 4, 4), single(Blocks.LILY_OF_THE_VALLEY, 2))));
@@ -488,37 +512,71 @@ final class ModVegetation {
 		return HabitatCondition.biomes(biomes);
 	}
 
-	/** Deadwood (§8.2): fallen trees of the stand's species, 0.15–0.5 per chunk. */
+	/**
+	 * Deadwood (§8.2). The forests of the slice (step V11, decision PW-5 b): the dead trees of the dead wood planner as a
+	 * natural stand has them (reserves) and the stumps of a managed stand, by species weight; at each pick the stand map
+	 * decides ({@code DeadwoodFeature}: no stumps in a natural stand, an eighth of the dead trees in a managed one). The
+	 * other forests: the M2 fallen trees of the stand's species, 0.15–0.5 per chunk.
+	 */
 	static PlantPalette deadwood(HolderGetter<PlacedFeature> placed) {
 		Layer l = new Layer(placed);
-		l.land(biomes(DRY_PINE_FOREST, FRESH_PINE_FOREST, COASTAL_PINE_FOREST, MOIST_PINE_FOREST), perChunk(0.3), 1,
-				l.feature(deadwood(Species.SCOTS_PINE), 9), l.feature(deadwood(Species.BIRCH), 1));
-		l.land(biomes(MIXED_PINE_FOREST), perChunk(0.3), 1, l.feature(deadwood(Species.SCOTS_PINE), 7),
-				l.feature(deadwood(Species.OAK), 3));
-		l.land(biomes(BOG_WOODLAND), perChunk(0.25), 1, l.feature(deadwood(Species.BIRCH), 6),
-				l.feature(deadwood(Species.SCOTS_PINE), 4));
-		l.land(biomes(MIXED_FOREST), perChunk(0.35), 1, l.feature(deadwood(Species.OAK), 5),
-				l.feature(deadwood(Species.SCOTS_PINE), 3), l.feature(deadwood(Species.BEECH), 2));
-		l.land(biomes(OAK_HORNBEAM_FOREST), perChunk(0.4), 1, l.feature(deadwood(Species.OAK), 5),
-				l.feature(deadwood(Species.HORNBEAM), 4), l.feature(deadwood(Species.BIRCH), 1));
-		l.land(biomes(LOWLAND_BEECH_FOREST), perChunk(0.5), 1, l.feature(deadwood(Species.BEECH), 9),
-				l.feature(deadwood(Species.OAK), 1));
-		l.land(biomes(MONTANE_BEECH_FOREST), perChunk(0.5), 1, l.feature(deadwood(Species.BEECH), 8),
-				l.feature(deadwood(Species.FIR), 2));
-		l.land(biomes(UPLAND_FIR_FOREST), perChunk(0.45), 1, l.feature(deadwood(Species.FIR), 6),
-				l.feature(deadwood(Species.BEECH), 4));
-		l.land(biomes(MONTANE_SPRUCE_FOREST), perChunk(0.5), 1, l.feature(deadwood(Species.SPRUCE), 1));
-		l.land(biomes(ALDER_CARR), perChunk(0.35), 1, l.feature(deadwood(Species.BLACK_ALDER), 8),
-				l.feature(deadwood(Species.BIRCH), 2));
-		l.land(biomes(ASH_ALDER_FOREST), perChunk(0.3), 1, l.feature(deadwood(Species.BLACK_ALDER), 7),
-				l.feature(deadwood(Species.OAK), 3));
+		// Oak-hornbeam forest: about 2 dead wood objects per chunk in a natural stand (BPN), 1-2 stumps in a managed one.
+		l.land(biomes(OAK_HORNBEAM_FOREST), perChunk(SLICE_DEAD_TREES[0] + SLICE_STUMPS), 1,
+				l.feature(deadwood(Species.OAK), 8), l.feature(deadwood(Species.HORNBEAM), 6), l.feature(deadwood(Species.LINDEN), 4),
+				l.feature(deadwood(Species.ASH), 2), l.feature(stump(Species.OAK), stumpWeight(0, 20, 0.72)),
+				l.feature(stump(Species.HORNBEAM), stumpWeight(0, 20, 0.14)), l.feature(stump(Species.LINDEN), stumpWeight(0, 20, 0.1)),
+				l.feature(stump(Species.ASH), stumpWeight(0, 20, 0.04)));
+		// Fresh pine forest: about 1 per chunk in a natural stand (Taborz), 1-2 stumps in a managed one.
+		l.land(biomes(FRESH_PINE_FOREST), perChunk(SLICE_DEAD_TREES[1] + SLICE_STUMPS), 1,
+				l.feature(deadwood(Species.SCOTS_PINE), 9), l.feature(deadwood(Species.BIRCH), 1),
+				l.feature(stump(Species.SCOTS_PINE), stumpWeight(1, 10, 0.94)), l.feature(stump(Species.BIRCH), stumpWeight(1, 10, 0.06)));
+		// Mixed pine and mixed forests between them (no norms; between the two).
+		l.land(biomes(MIXED_PINE_FOREST), perChunk(SLICE_DEAD_TREES[2] + SLICE_STUMPS), 1,
+				l.feature(deadwood(Species.SCOTS_PINE), 7), l.feature(deadwood(Species.OAK), 3),
+				l.feature(stump(Species.SCOTS_PINE), stumpWeight(2, 10, 0.8)), l.feature(stump(Species.OAK), stumpWeight(2, 10, 0.2)));
+		l.land(biomes(MIXED_FOREST), perChunk(SLICE_DEAD_TREES[3] + SLICE_STUMPS), 1, l.feature(deadwood(Species.OAK), 5),
+				l.feature(deadwood(Species.SCOTS_PINE), 3), l.feature(deadwood(Species.BEECH), 2),
+				l.feature(stump(Species.SCOTS_PINE), stumpWeight(3, 10, 0.5)), l.feature(stump(Species.OAK), stumpWeight(3, 10, 0.4)),
+				l.feature(stump(Species.BEECH), stumpWeight(3, 10, 0.1)));
+		l.land(biomes(DRY_PINE_FOREST, COASTAL_PINE_FOREST, MOIST_PINE_FOREST), perChunk(0.3), 1,
+				l.feature(deadwoodSubstitute(Species.SCOTS_PINE), 9), l.feature(deadwoodSubstitute(Species.BIRCH), 1));
+		l.land(biomes(BOG_WOODLAND), perChunk(0.25), 1, l.feature(deadwoodSubstitute(Species.BIRCH), 6),
+				l.feature(deadwoodSubstitute(Species.SCOTS_PINE), 4));
+		l.land(biomes(LOWLAND_BEECH_FOREST), perChunk(0.5), 1, l.feature(deadwoodSubstitute(Species.BEECH), 9),
+				l.feature(deadwoodSubstitute(Species.OAK), 1));
+		l.land(biomes(MONTANE_BEECH_FOREST), perChunk(0.5), 1, l.feature(deadwoodSubstitute(Species.BEECH), 8),
+				l.feature(deadwoodSubstitute(Species.FIR), 2));
+		l.land(biomes(UPLAND_FIR_FOREST), perChunk(0.45), 1, l.feature(deadwoodSubstitute(Species.FIR), 6),
+				l.feature(deadwoodSubstitute(Species.BEECH), 4));
+		l.land(biomes(MONTANE_SPRUCE_FOREST), perChunk(0.5), 1, l.feature(deadwoodSubstitute(Species.SPRUCE), 1));
+		l.land(biomes(ALDER_CARR), perChunk(0.35), 1, l.feature(deadwoodSubstitute(Species.BLACK_ALDER), 8),
+				l.feature(deadwoodSubstitute(Species.BIRCH), 2));
+		l.land(biomes(ASH_ALDER_FOREST), perChunk(0.3), 1, l.feature(deadwoodSubstitute(Species.BLACK_ALDER), 7),
+				l.feature(deadwoodSubstitute(Species.OAK), 3));
 		// Gray alder forest: the gray bark of its gray alders (pale oak, §8.4), some spruce.
-		l.land(biomes(GRAY_ALDER_FOREST), perChunk(0.3), 1, l.feature(deadwood(Species.GRAY_ALDER), 8),
-				l.feature(deadwood(Species.SPRUCE), 2));
-		l.land(biomes(WILLOW_POPLAR_FOREST), perChunk(0.35), 1, l.feature(deadwood(Species.POPLAR), 5),
-				l.feature(deadwood(Species.WHITE_WILLOW), 5));
-		l.land(biomes(ELM_ASH_FOREST), perChunk(0.3), 1, l.feature(deadwood(Species.OAK), 1));
+		l.land(biomes(GRAY_ALDER_FOREST), perChunk(0.3), 1, l.feature(deadwoodSubstitute(Species.GRAY_ALDER), 8),
+				l.feature(deadwoodSubstitute(Species.SPRUCE), 2));
+		l.land(biomes(WILLOW_POPLAR_FOREST), perChunk(0.35), 1, l.feature(deadwoodSubstitute(Species.POPLAR), 5),
+				l.feature(deadwoodSubstitute(Species.WHITE_WILLOW), 5));
+		l.land(biomes(ELM_ASH_FOREST), perChunk(0.3), 1, l.feature(deadwoodSubstitute(Species.OAK), 1));
 		return l.palette();
+	}
+
+	/**
+	 * Dead tree picks per chunk of the palettes of the slice forests as a natural stand has them (oak-hornbeam, fresh pine,
+	 * mixed pine and mixed forest), calibrated so the census of a natural stand counts the norms of N10 (a broken tree is
+	 * two objects; step V11, {@code StandCensusSimulationTest}) [S].
+	 */
+	static final double[] SLICE_DEAD_TREES = {2.1, 0.92, 1.3, 1.7};
+	/** Stumps per chunk of a managed stand of the slice forests (WISL: 30-80 per ha, 1-2 per chunk) [S]. */
+	static final double SLICE_STUMPS = 1.5;
+
+	/**
+	 * Weight of a species' stumps in a palette whose dead trees weigh {@code deadWeight} in all: the stumps of the forest
+	 * ({@link #SLICE_STUMPS}) against its dead trees ({@link #SLICE_DEAD_TREES}) times the species' share of the stumps.
+	 */
+	private static int stumpWeight(int forest, int deadWeight, double share) {
+		return Math.max(1, (int) Math.round(deadWeight * SLICE_STUMPS / SLICE_DEAD_TREES[forest] * share));
 	}
 
 	/** Coverage of a column for a mean number per chunk. */

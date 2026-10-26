@@ -91,6 +91,8 @@ import pl.polishforests.worldgen.surface.ChunkSurface;
  * {@code -Psites=samples} builds the sample board of the thin trunks instead (step V2, {@link TrunkSamples}).
  * {@code -Psites=trees} plants the board of the tree planner instead (step V6, {@link TreeSamples}).
  * {@code -Psites=leaves} builds the board of the species leaves, saplings and the LITE pine set (step V7, {@link LeafSamples}).
+ * {@code -Psites=deadwood} builds the board of the dead wood planner and shoots its objects in the worlds (step V11,
+ * {@link DeadwoodSamples}).
  */
 public final class SliceClientGameTest implements FabricClientGameTest {
 	private static final String SEED = "20260927";
@@ -164,6 +166,10 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 			LeafSamples.run(context);
 			return;
 		}
+		if (only.equals("deadwood")) {
+			DeadwoodSamples.run(context);
+			return;
+		}
 		boolean screenshots = !only.equals("none");
 		boolean find = Boolean.getBoolean("polishforests.slice.findCameras");
 		List<String> names = only.isBlank() || !screenshots ? List.of() : List.of(only.split(","));
@@ -174,12 +180,18 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 		// The species of each tree and shrub placed while the worlds of the test generate (the census of the norms card).
 		Map<Long, Species> records = new ConcurrentHashMap<>();
 		ModFeatures.WOODY_PLACEMENTS = (at, species) -> records.put(NormsCensus.key(at.getX(), at.getZ()), species);
+		ModFeatures.DEADWOOD_PLACEMENTS = (at, plan) -> {
+			if (plan.kind().standing()) {
+				NormsCensus.DEAD.add(NormsCensus.key(at.getX(), at.getZ()));
+			}
+		};
 		List<String> norms = new ArrayList<>();
 		boolean[] testPlot = {false};
 		try {
 			worlds(context, scales, modes, names, screenshots, find, cameras, found, seasons, records, norms, testPlot);
 		} finally {
 			ModFeatures.WOODY_PLACEMENTS = null;
+			ModFeatures.DEADWOOD_PLACEMENTS = null;
 		}
 		if (!norms.isEmpty()) {
 			NormsCensus.write(norms);
@@ -213,6 +225,7 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 					continue;
 				}
 				records.clear();
+				NormsCensus.DEAD.clear();
 				try (TestSingleplayerContext sp = context.worldBuilder().adjustSettings(ui -> select(ui, preset, presentDay)).create()) {
 					SeasonDates.checkNewWorldStart(sp, "slice");
 					sp.getServer().runCommand("gamerule advance_time false");
@@ -1057,10 +1070,11 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 						pl.polishforests.worldgen.feature.plan.ForestBlend.SAMPLES.sum(),
 						pl.polishforests.worldgen.feature.plan.ForestBlend.NODES.sum(),
 						pl.polishforests.worldgen.feature.TreeStandFeature.TWINS.sum())
+				+ "; dead wood objects since the start (step V11): " + pl.polishforests.worldgen.feature.DeadwoodFeature.PLACED
 				+ "; HABITAT_MISS " + (after[after.length - 1] - before[before.length - 1]);
 	}
 
-	private static void select(WorldCreationUiState ui, ResourceKey<WorldPreset> preset, boolean presentDay) {
+	static void select(WorldCreationUiState ui, ResourceKey<WorldPreset> preset, boolean presentDay) {
 		ui.setSeed(SEED);
 		ui.setAllowCommands(true);
 		ui.setWorldType(ui.getNormalPresetList().stream().filter(e -> e.preset().is(preset)).findFirst()

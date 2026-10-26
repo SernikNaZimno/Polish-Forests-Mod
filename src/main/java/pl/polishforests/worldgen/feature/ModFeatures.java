@@ -61,6 +61,25 @@ public final class ModFeatures {
 	}
 
 	/**
+	 * Observer of the dead wood objects ({@link DeadwoodFeature}, step V11): the base of each object (the block above the
+	 * ground at its base column) and its plan. The census of the norms card marks the base columns of the standing ones
+	 * dead, the dead wood views find objects to look at. Null outside the game tests; called on the generation threads.
+	 */
+	public interface DeadwoodPlacements {
+		void placed(BlockPos base, pl.polishforests.worldgen.tree.DeadwoodVoxels plan);
+	}
+
+	public static volatile @Nullable DeadwoodPlacements DEADWOOD_PLACEMENTS;
+
+	/** Reports a placed dead wood object to {@link #DEADWOOD_PLACEMENTS}, if set. */
+	static void deadwoodPlaced(BlockPos base, pl.polishforests.worldgen.tree.DeadwoodVoxels plan) {
+		DeadwoodPlacements d = DEADWOOD_PLACEMENTS;
+		if (d != null) {
+			d.placed(base.immutable(), plan);
+		}
+	}
+
+	/**
 	 * Species of a placed feature {@code polishforests:tree/<species>}, {@code tree_substitute/<species>[_<variant>]} or
 	 * {@code shrub/<species>}, e.g. {@code tree_substitute/scots_pine_low} is the Scots pine; null for other features
 	 * (fallen trees, flowers) and direct holders.
@@ -115,6 +134,7 @@ public final class ModFeatures {
 		}
 		Registry.register(BuiltInRegistries.FEATURE_TYPE, PolishForests.id("tree"), FastTreeFeature.CODEC);
 		Registry.register(BuiltInRegistries.FEATURE_TYPE, PolishForests.id("procedural_tree"), ProceduralTreeFeature.CODEC);
+		Registry.register(BuiltInRegistries.FEATURE_TYPE, PolishForests.id("procedural_deadwood"), DeadwoodFeature.CODEC);
 		Registry.register(BuiltInRegistries.PLACEMENT_MODIFIER_TYPE, PolishForests.id("habitat"), HabitatFilter.CODEC);
 		Registry.register(BuiltInRegistries.TRUNK_PLACER_TYPE, PolishForests.id("clump"), ClumpTrunkPlacer.TYPE);
 	}

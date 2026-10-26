@@ -153,6 +153,7 @@ public final class CensusTestPlot {
 		m.put(ForestNorms.MOSS, 4.5);
 		m.put(ForestNorms.DEADWOOD_PER_CHUNK, 4 / chunks);
 		m.put(ForestNorms.LOGS_PER_CHUNK, 2 / chunks);
+		m.put(ForestNorms.PIECES_PER_CHUNK, 3 / chunks);
 		m.put(ForestNorms.STUMPS_PER_CHUNK, 1 / chunks);
 		m.put(ForestNorms.SNAGS_PER_CHUNK, 1 / chunks);
 		m.put(ForestNorms.DEADWOOD_VOLUME, (5 + 4 + 5 * Math.PI * 9 / 256) / ha);

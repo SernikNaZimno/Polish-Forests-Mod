@@ -1,5 +1,5 @@
 {
-  "feature": "polishforests:deadwood/black_alder",
+  "feature": "polishforests:stump/oak",
   "placement": [
     {
       "type": "minecraft:block_predicate_filter",

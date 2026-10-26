@@ -120,6 +120,11 @@ public final class ForestNorms {
 	public static final String DEADWOOD_PER_CHUNK = "N10.objects_per_chunk";
 	public static final String LOGS_PER_CHUNK = "N10.logs_per_chunk";
 	public static final String STUMPS_PER_CHUNK = "N10.stumps_per_chunk";
+	/**
+	 * N10 (step V11): dead trees per chunk without the stumps (logs and snags): the managed oak-hornbeam forest has its
+	 * WISL mean of dead wood plus the stumps of the thinnings (research-ekologia §5: "ok. 0,25 obiektu, pniaki").
+	 */
+	public static final String PIECES_PER_CHUNK = "N10.pieces_per_chunk";
 	/** N10 (no norm): standing dead trees (snags) per chunk. */
 	public static final String SNAGS_PER_CHUNK = "N10.snags_per_chunk";
 	/** N10: dead wood volume without the stumps (lying logs and snags), m³/ha from the voxels. */
@@ -239,6 +244,7 @@ public final class ForestNorms {
 		METRICS.put(MOSS, "moss cover, % of columns");
 		METRICS.put(DEADWOOD_PER_CHUNK, "dead wood objects (logs, snags, stumps) per chunk");
 		METRICS.put(LOGS_PER_CHUNK, "lying logs per chunk");
+		METRICS.put(PIECES_PER_CHUNK, "dead trees without the stumps (logs and snags) per chunk");
 		METRICS.put(STUMPS_PER_CHUNK, "stumps per chunk");
 		METRICS.put(SNAGS_PER_CHUNK, "standing dead trees (snags) per chunk");
 		METRICS.put(DEADWOOD_VOLUME, "dead wood volume without stumps, m3/ha");
@@ -340,7 +346,10 @@ public final class ForestNorms {
 		wide(DEADWOOD_PER_CHUNK, ohn, 2, 2, deadwood);
 		wide(DEADWOOD_VOLUME, ohn, 100, 160, deadwood);
 		wide(COARSE_PIECES, ohn, 5, Double.POSITIVE_INFINITY, "[Ź GIOŚ 9170]");
-		wide(DEADWOOD_PER_CHUNK, ohm, 0.25, 0.25, managedDeadwood);
+		// Step V11: the 0.25 objects of the managed oak-hornbeam forest are its dead trees; the stumps of the thinnings come
+		// on top, about as many as in the managed pine forest [S] (decision V11-a, docs/00 G.20).
+		wide(PIECES_PER_CHUNK, ohm, 0.25, 0.25, managedDeadwood);
+		wide(STUMPS_PER_CHUNK, ohm, 1, 2, managedDeadwood + " [S]");
 		wide(DEADWOOD_VOLUME, ohm, 10, 16, managedDeadwood);
 		wide(LOGS_PER_CHUNK, fpm, 0.1, 0.1, managedDeadwood);
 		wide(STUMPS_PER_CHUNK, fpm, 1, 2, managedDeadwood);

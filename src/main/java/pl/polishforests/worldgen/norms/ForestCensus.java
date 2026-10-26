@@ -26,7 +26,8 @@ import pl.polishforests.worldgen.habitat.Species;
  * {@value #LEAF_REACH} steps, as vanilla leaves stay alive); a leaf reached by two objects in the same step goes to the
  * one with more wood, with as much wood to the one of a known species (a recorded hazel, not the stump next to it).
  * Standing wood of at most {@value #STUMP_MAX_HEIGHT} block without a known species (no species in its blocks, none
- * recorded at its base) is a stump by its shape and takes no leaves. A standing object with leaves lives: a shrub when its species is a shrub, else a tree. One without
+ * recorded at its base) is a stump by its shape and takes no leaves; so is standing wood whose base column the grid marks
+ * dead ({@link CensusGrid#dead}, step V11: the snags and stumps of the dead wood planner, whose thin trunks have a species). A standing object with leaves lives: a shrub when its species is a shrub, else a tree. One without
  * leaves is dead: a stump up to {@value #STUMP_MAX_HEIGHT} block of wood, else a snag.
  *
  * <p><b>Where an object counts.</b> A standing object counts for the area that holds its base (the base column with the
@@ -306,16 +307,19 @@ public final class ForestCensus {
 			for (int id = 0; id < n; id++) {
 				woodCount[id] = members.get(id).length;
 				boolean low = true;
+				boolean dead = false;
 				for (int i : members.get(id)) {
 					boolean base = grid.cellAt(i / height, dy(i)) == CensusGrid.WOOD_UP && dy(i) == 1;
 					standing[id] |= base;
 					lying[id] |= lyingCell(i);
 					known[id] |= woodOf(i).species() != null || base && grid.recordAt(i / height) != null;
+					dead |= base && grid.deadAt(i / height);
 					low &= dy(i) <= STUMP_MAX_HEIGHT;
 				}
 				// Wood only on the ground and no species known: a stump by its shape, which takes no leaves of the crowns
-				// around it (the stumps of the M2 fallen trees under low crowns).
-				stump[id] = standing[id] && low && !known[id];
+				// around it (the stumps of the M2 fallen trees under low crowns). A standing dead object the generator
+				// recorded (step V11: a snag, a stump) takes none either.
+				stump[id] = standing[id] && (low && !known[id] || dead);
 			}
 			// Leaves: breadth-first from the wood of the standing objects, level by level; ties to the object with more wood.
 			byte[] dist = new byte[cells];
@@ -768,6 +772,7 @@ public final class ForestCensus {
 			m.put(ForestNorms.MOSS, percent(moss, groundColumns));
 			m.put(ForestNorms.DEADWOOD_PER_CHUNK, (logs + stumps + snags) / chunks);
 			m.put(ForestNorms.LOGS_PER_CHUNK, logs / chunks);
+			m.put(ForestNorms.PIECES_PER_CHUNK, (logs + snags) / chunks);
 			m.put(ForestNorms.STUMPS_PER_CHUNK, stumps / chunks);
 			m.put(ForestNorms.SNAGS_PER_CHUNK, snags / chunks);
 			m.put(ForestNorms.DEADWOOD_VOLUME, volume / ha);
