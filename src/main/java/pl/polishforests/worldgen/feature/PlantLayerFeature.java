@@ -211,7 +211,11 @@ public final class PlantLayerFeature implements Feature {
 			ColumnPlan.Medium medium, BlockPos.MutableBlockPos at) {
 		boolean underwater = medium == ColumnPlan.Medium.WATER_BOTTOM;
 		BlockState here = level.getBlockState(at);
-		if (underwater ? !isWaterSource(here, level.getFluidState(at)) : !here.isAir()) {
+		// A feature plant (dead wood, a shrub) may also take the place of a moss carpet of the trunk bases (TreeMoss, step
+		// V12: written with the trees, before these layers; without this the dead wood of the oak-hornbeam forest lost
+		// about a tenth of its objects), as the trees' wood does.
+		if (underwater ? !isWaterSource(here, level.getFluidState(at))
+				: !(here.isAir() || plant.feature().isPresent() && here.is(Blocks.MOSS_CARPET))) {
 			return false;
 		}
 		BlockPos pos = at.immutable();

@@ -135,6 +135,9 @@ final class ModBlockTagProvider {
 				}
 			}
 			builder(SUMMER_CROPS).add(key(ModBlocks.ground(GroundPlant.BILBERRY)));
+			// The moss carpets at the trunk bases (TreeMoss, step V12) give way to wood as the pale moss carpet does in
+			// vanilla: lying logs of the dead wood (written after the trees) ran into them and ended short.
+			builder(BlockTags.REPLACEABLE_BY_TREES).add(key(net.minecraft.world.level.block.Blocks.MOSS_CARPET));
 		}
 	}
 
