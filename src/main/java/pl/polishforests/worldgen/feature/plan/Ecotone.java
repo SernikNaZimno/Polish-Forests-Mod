@@ -38,6 +38,11 @@ import pl.polishforests.worldgen.landscape.Noise;
  * {@value #REACH} blocks of the column: the half-widths are in meters·k (Z7) and capped at {@value #REACH} blocks (in the
  * realistic scale the widest ecotones are 32 m instead of 48 m).
  *
+ * <p><b>Wide blend</b> (step Z1 of docs/04-pionowy-wycinek.md): a region with a {@link ForestBlend}
+ * ({@link Region#withBlend}) leaves the pairs of the forests of the slice (fresh pine, mixed pine-oak, mixed and
+ * oak-hornbeam forest) out of these ramps in the tree and plant layers and mixes them in the blend's belt of about
+ * {@value ForestBlend#RADIUS} m·k instead, after the ramps; their soils keep the ramp.
+ *
  * <p><b>Forest edges</b> ({@link #edges}): where a forest meets open land (meadow, field, heath, gray dune, alpine
  * grassland, peatland, reedbed), the forest columns within {@value #MANTLE} m·k of the open land and the open columns
  * within {@value #MANTLE_OUT} m·k of the forest are the mantle (shrubs, in clumps with gaps and with single shrubs
@@ -741,7 +746,7 @@ public final class Ecotone {
 		int[] out = region.own();
 		boolean blended = region.blend() != null && layer != Layer.SOIL;
 		boolean uniform = region.uniform();
-		if (uniform && (!blended || ForestBlend.member(out[0]) == 0)) {
+		if (uniform && (!blended || ForestBlend.member(out[0]) == 0 && !(layer == Layer.TREES && ForestBlend.takenOver(out[0])))) {
 			return out;
 		}
 		long seed = Noise.mix(worldSeed ^ Noise.mix(salt ^ 0xEC07_0E5AL));
@@ -750,7 +755,7 @@ public final class Ecotone {
 		int x0 = region.chunkX() << 4;
 		int z0 = region.chunkZ() << 4;
 		double[] u = new double[2];
-		float[] shares = blended ? new float[4] : null;
+		float[] shares = blended ? new float[ForestBlend.SHARES] : null;
 		for (int i = 0; i < 256; i++) {
 			int own = out[i];
 			int x = i >> 4;
@@ -765,6 +770,9 @@ public final class Ecotone {
 			if (shares != null && ForestBlend.member(code) > 0) {
 				region.blendField().at(x0 + x + wx, z0 + z + wz, shares);
 				code = ForestBlend.pick(code, shares, ForestBlend.draw(worldSeed, salt, x0 + x, z0 + z, patch));
+			} else if (shares != null && layer == Layer.TREES && ForestBlend.takenOver(code)) {
+				region.blendField().at(x0 + x + wx, z0 + z + wz, shares);
+				code = ForestBlend.takeover(code, shares, ForestBlend.draw(worldSeed, salt ^ ForestBlend.TAKEOVER_SALT, x0 + x, z0 + z, 1));
 			}
 			out[i] = code;
 		}
@@ -860,9 +868,13 @@ public final class Ecotone {
 		int code = provableRamp(region, worldSeed, salt, x, z, w);
 		if (region.blend() != null && ForestBlend.member(code) > 0) {
 			// The wide blend (step Z1): a pure function of the column, its code and the world's lattice.
-			float[] shares = new float[4];
+			float[] shares = new float[ForestBlend.SHARES];
 			region.blendField().at(worldX + w[0], worldZ + w[1], shares);
 			code = ForestBlend.pick(code, shares, ForestBlend.draw(worldSeed, salt, worldX, worldZ, 1));
+		} else if (region.blend() != null && ForestBlend.takenOver(code)) {
+			float[] shares = new float[ForestBlend.SHARES];
+			region.blendField().at(worldX + w[0], worldZ + w[1], shares);
+			code = ForestBlend.takeover(code, shares, ForestBlend.draw(worldSeed, salt ^ ForestBlend.TAKEOVER_SALT, worldX, worldZ, 1));
 		}
 		return code;
 	}

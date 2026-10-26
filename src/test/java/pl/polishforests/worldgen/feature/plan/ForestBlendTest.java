@@ -110,15 +110,16 @@ class ForestBlendTest {
 		Ecotone.Region c = EcotoneTest.region(0, 3, world, k);
 		assertEquals(Arrays.toString(Ecotone.effective(c, Ecotone.Layer.SOIL, SEED, 77, 1)),
 				Arrays.toString(Ecotone.effective(EcotoneTest.region(0, 3, world, k).withBlend(blend), Ecotone.Layer.SOIL, SEED, 77, 1)));
-		// Other forests (alder carr against oak-hornbeam forest) mix as before.
+		// Other forests (alder carr against oak-hornbeam forest) keep the ramp in the plant layers (their trees near the
+		// slice forests: sliceForestsTakeOverTheTreesOfAStreamBeltButNotOfALargeAlderCarr).
 		int alder = EcotoneTest.code(HabitatBiome.ALDER_CARR, Zone.NONE);
 		int oak = EcotoneTest.code(HabitatBiome.OAK_HORNBEAM_FOREST, Zone.NONE);
 		IntBinaryOperator other = (x, z) -> x < 0 ? alder : oak;
 		ForestBlend otherBlend = blend(other, k);
 		for (int cx = -1; cx <= 0; cx++) {
-			int[] plain = Ecotone.effective(EcotoneTest.region(cx, 3, other, k), Ecotone.Layer.TREES, SEED, Ecotone.TREES_SALT, 1);
-			int[] withBlend = Ecotone.effective(EcotoneTest.region(cx, 3, other, k).withBlend(otherBlend), Ecotone.Layer.TREES, SEED,
-					Ecotone.TREES_SALT, 1);
+			int[] plain = Ecotone.effective(EcotoneTest.region(cx, 3, other, k), Ecotone.Layer.PLANTS, SEED, Ecotone.PLANTS_SALT, 1);
+			int[] withBlend = Ecotone.effective(EcotoneTest.region(cx, 3, other, k).withBlend(otherBlend), Ecotone.Layer.PLANTS, SEED,
+					Ecotone.PLANTS_SALT, 1);
 			for (int i = 0; i < 256; i++) {
 				if (Habitat.biome(plain[i]) == HabitatBiome.ALDER_CARR) {
 					assertEquals(plain[i], withBlend[i], "an alder carr column keeps its ramp");
@@ -128,9 +129,62 @@ class ForestBlendTest {
 	}
 
 	@Test
+	void sliceForestsTakeOverTheTreesOfAStreamBeltButNotOfALargeAlderCarr() {
+		for (double k : new double[] {1.0, 0.5}) {
+			int oak = EcotoneTest.code(HabitatBiome.OAK_HORNBEAM_FOREST, Zone.NONE);
+			int spring = EcotoneTest.code(HabitatBiome.ASH_ALDER_FOREST, Zone.SPRING_AREA);
+			int alder = EcotoneTest.code(HabitatBiome.ALDER_CARR, Zone.NONE);
+			int belt = (int) Math.round(80 * k);
+			// A stream belt of ash-alder forest in a spring area (|x| < belt / 2) in an oak-hornbeam forest for z < 400, a
+			// large alder carr (x >= 0) next to it for z >= 400.
+			IntBinaryOperator world = (x, z) -> z < 400 ? (Math.abs(x) < belt / 2 ? spring : oak) : (x < 0 ? oak : alder);
+			ForestBlend blend = blend(world, k);
+			long beltColumns = 0;
+			long beltTaken = 0;
+			long deep = 0;
+			long deepTaken = 0;
+			long plantsChanged = 0;
+			for (int cx = -6; cx < 6; cx++) {
+				for (int cz = 2; cz < 48; cz++) {
+					Ecotone.Region region = EcotoneTest.region(cx, cz, world, k).withBlend(blend);
+					int[] trees = Ecotone.effective(region, Ecotone.Layer.TREES, SEED, Ecotone.TREES_SALT, 1);
+					int[] plants = Ecotone.effective(region, Ecotone.Layer.PLANTS, SEED, Ecotone.PLANTS_SALT, 1);
+					int[] plain = Ecotone.effective(EcotoneTest.region(cx, cz, world, k), Ecotone.Layer.PLANTS, SEED, Ecotone.PLANTS_SALT, 1);
+					for (int i = 0; i < 256; i++) {
+						int x = (cx << 4) + (i >> 4);
+						int z = (cz << 4) + (i & 15);
+						int own = world.applyAsInt(x, z);
+						boolean member = ForestBlend.member(trees[i]) > 0;
+						if (own == spring && z < 400 - blend.radius() - 8) {
+							beltColumns++;
+							beltTaken += member ? 1 : 0;
+						}
+						if (own == alder && z > 420 && x > 0.6 * blend.radius()) {
+							deep++;
+							deepTaken += member ? 1 : 0;
+						}
+						if (own != oak && Habitat.biome(plain[i]) != HabitatBiome.OAK_HORNBEAM_FOREST && plants[i] != plain[i]) {
+							plantsChanged++;
+						}
+					}
+				}
+			}
+			System.out.printf(Locale.ROOT, "[blend] k %.1f: stream belt %d columns, %.1f%% slice trees; alder carr beyond 0.6 R %.2f%%%n", k,
+					beltColumns, 100.0 * beltTaken / beltColumns, 100.0 * deepTaken / Math.max(1, deep));
+			assertTrue(beltTaken > 0.9 * beltColumns, "the stream belt grows the oak-hornbeam forest's trees");
+			assertEquals(0, deepTaken, "deep in a large alder carr its own trees");
+			assertEquals(0, plantsChanged, "the plants of the belt and the carr keep their palettes");
+		}
+	}
+
+	@Test
 	void provedCodesWithTheBlendEqualTheCodesOfTheColumnsOwnChunk() {
 		for (double k : new double[] {1.0, 0.5}) {
-			IntBinaryOperator w = EcotoneProvableTest.world(k);
+			IntBinaryOperator forests = EcotoneProvableTest.world(k);
+			int alderCarr = EcotoneTest.code(HabitatBiome.ALDER_CARR, Zone.NONE);
+			pl.polishforests.worldgen.landscape.Noise carr = new pl.polishforests.worldgen.landscape.Noise(SEED).derive("test.blend.carr");
+			// The forests of the provable test with patches of alder carr (taken over near the slice forests).
+			IntBinaryOperator w = (x, z) -> carr.at(x, z, 60 * k) > 0.35 ? alderCarr : forests.applyAsInt(x, z);
 			ForestBlend blend = blend(w, k);
 			for (int cx = -3; cx < 3; cx++) {
 				for (int cz = -3; cz < 3; cz++) {

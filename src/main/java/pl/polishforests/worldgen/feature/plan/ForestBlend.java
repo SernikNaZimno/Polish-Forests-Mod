@@ -50,6 +50,34 @@ public final class ForestBlend {
 	public static final double MIN_TOTAL = 0.5;
 	/** Salt of the draws of the blend (a new field, a new salt), mixed with each layer's ecotone salt. */
 	public static final long DRAW_SALT = 0x2B1E_7D5F_0C39L;
+	/**
+	 * Lowland woodlands next to the forests of the slice whose trees the slice forests take over near them (trees only,
+	 * {@link #takeover}): pine forests of other sites, bog woodland, alder carr, floodplain forests, lowland beech forest.
+	 */
+	private static final long NEIGHBORS = bits(HabitatBiome.DRY_PINE_FOREST, HabitatBiome.MOIST_PINE_FOREST,
+			HabitatBiome.COASTAL_PINE_FOREST, HabitatBiome.BOG_WOODLAND, HabitatBiome.ALDER_CARR, HabitatBiome.ASH_ALDER_FOREST,
+			HabitatBiome.ELM_ASH_FOREST, HabitatBiome.WILLOW_POPLAR_FOREST, HabitatBiome.LOWLAND_BEECH_FOREST);
+	/**
+	 * Share of the slice forests among the land without a zone within the radius ({@link #takeover}) at which the takeover
+	 * starts, and at which it is complete (smoothstep between).
+	 */
+	public static final double TAKEOVER_FROM = 0.55;
+	public static final double TAKEOVER_TO = 0.85;
+	/** Least sum of the slice forests' shares for a takeover (some slice forest within the radius). */
+	public static final double TAKEOVER_MIN = 0.001;
+	/** Number of shares of the field: the four forests, then the other land without a zone. */
+	public static final int SHARES = 5;
+	/** Salt of the draw of the takeover (a new field, a new salt), mixed with the tree layer's ecotone salt. */
+	public static final long TAKEOVER_SALT = 0x4F2D_A61C_83E5L;
+
+	private static long bits(HabitatBiome... biomes) {
+		long m = 0;
+		for (HabitatBiome b : biomes) {
+			m |= 1L << b.ordinal();
+		}
+		return m;
+	}
+
 	/** Lattice points classified (samples of the landscape model, the blend's cost; diagnostics of the slice test). */
 	public static final java.util.concurrent.atomic.LongAdder SAMPLES = new java.util.concurrent.atomic.LongAdder();
 
@@ -160,32 +188,41 @@ public final class ForestBlend {
 
 	/**
 	 * Category of lattice point (i, j), the column (i·s + s/2, j·s + s/2) for the spacing s (the centers of the lattice's
-	 * cells, so a border between two columns lies halfway between two points): the forest's index 1–4, 0 for any other
-	 * habitat (memoized).
+	 * cells, so a border between two columns lies halfway between two points): the forest's index 1–4, 5 for other land
+	 * without a zone, 0 for water and the zones (memoized).
 	 */
 	int category(int i, int j) {
 		int c = lattice.get(i, j);
 		if (c < 0) {
 			int half = spacing / 2;
-			c = member(sampler.code(i * spacing + half, j * spacing + half));
+			int code = sampler.code(i * spacing + half, j * spacing + half);
+			c = member(code);
+			if (c == 0 && Habitat.zone(code) == Zone.NONE && Habitat.cover(code) != LandCover.WATER) {
+				c = 5;
+			}
 			SAMPLES.increment();
 			lattice.put(i, j, c);
 		}
 		return c;
 	}
 
-	/** Shares of the four forests at lattice point (i, j) (out[0..3], the kernel sum over the lattice). */
+	/**
+	 * Shares of the four forests and of the other land without a zone at lattice point (i, j) (out[0..4], the kernel sum
+	 * over the lattice).
+	 */
 	void node(int i, int j, float[] out, int offset) {
 		float a = 0;
 		float b = 0;
 		float c = 0;
 		float d = 0;
+		float e = 0;
 		for (int s = 0; s < stencilW.length; s++) {
 			switch (category(i + stencilI[s], j + stencilJ[s])) {
 				case 1 -> a += stencilW[s];
 				case 2 -> b += stencilW[s];
 				case 3 -> c += stencilW[s];
 				case 4 -> d += stencilW[s];
+				case 5 -> e += stencilW[s];
 				default -> {
 				}
 			}
@@ -194,6 +231,7 @@ public final class ForestBlend {
 		out[offset + 1] = b;
 		out[offset + 2] = c;
 		out[offset + 3] = d;
+		out[offset + 4] = e;
 	}
 
 	/**
@@ -217,6 +255,54 @@ public final class ForestBlend {
 			}
 		}
 		return code;
+	}
+
+	/**
+	 * Whether the slice forests take over the trees of a column of this code near them ({@link #takeover}): a lowland
+	 * woodland of {@link #NEIGHBORS} without a zone or in a spring area (a stream's ash-alder belt in an oak-hornbeam forest).
+	 */
+	public static boolean takenOver(int code) {
+		if (code == Ecotone.UNKNOWN || member(code) > 0 || (NEIGHBORS >>> (code & 63) & 1) == 0) {
+			return false;
+		}
+		Zone z = Habitat.zone(code);
+		return z == Zone.NONE || z == Zone.SPRING_AREA;
+	}
+
+	/**
+	 * The tree code of a column of a neighboring woodland ({@link #takenOver}) near the slice forests (step Z1, decision
+	 * CP-B.1: no band of the M2 placeholder trees next to the planner trees). q is the share of the slice forests among
+	 * the land without a zone within the radius (water and zones such as the spring area itself do not count); with the
+	 * chance smoothstep of q between {@value #TAKEOVER_FROM} and {@value #TAKEOVER_TO} the column takes the canonical code
+	 * of one of the slice forests by their shares. A stream's spring-area belt or a patch surrounded by the slice forests
+	 * (q near 1) grows their trees, however wide it is within the radius; a large woodland next to them (q about 0.5 at
+	 * its edge, falling inside) keeps its own trees.
+	 */
+	static int takeover(int code, float[] s, double v) {
+		double total = s[0] + s[1] + s[2] + s[3];
+		if (total < TAKEOVER_MIN) {
+			return code;
+		}
+		double q = total / (total + s[4]);
+		double t = Math.clamp((q - TAKEOVER_FROM) / (TAKEOVER_TO - TAKEOVER_FROM), 0, 1);
+		double p = t * t * (3 - 2 * t);
+		if (!(v < p)) {
+			return code;
+		}
+		double u = v / p * total;
+		double acc = 0;
+		int last = 0;
+		for (int b = 0; b < 4; b++) {
+			if (s[b] <= 0) {
+				continue;
+			}
+			last = b;
+			acc += s[b];
+			if (u < acc) {
+				return code(code, b);
+			}
+		}
+		return code(code, last);
 	}
 
 	/**
@@ -264,11 +350,11 @@ public final class ForestBlend {
 			j0 = Math.floorDiv((chunkZ << 4) - margin - spacing, spacing);
 			int i1 = Math.floorDiv((chunkX << 4) + 15 + margin, spacing) + 1;
 			n = i1 - i0 + 1;
-			shares = new float[n * n * 4];
+			shares = new float[n * n * SHARES];
 			done = new boolean[n * n];
 		}
 
-		/** The shares of the four forests at world (x, z), into {@code out[0..3]}. */
+		/** The shares of the four forests and of the other land without a zone at world (x, z), into {@code out[0..4]}. */
 		public void at(int x, int z, float[] out) {
 			int half = spacing / 2;
 			int i = Math.floorDiv(x - half, spacing);
@@ -279,7 +365,7 @@ public final class ForestBlend {
 			int c10 = node(i + 1, j);
 			int c01 = node(i, j + 1);
 			int c11 = node(i + 1, j + 1);
-			for (int b = 0; b < 4; b++) {
+			for (int b = 0; b < SHARES; b++) {
 				float top = shares[c00 + b] + (shares[c10 + b] - shares[c00 + b]) * fx;
 				float bottom = shares[c01 + b] + (shares[c11 + b] - shares[c01 + b]) * fx;
 				out[b] = top + (bottom - top) * fz;
@@ -288,7 +374,7 @@ public final class ForestBlend {
 
 		/** Sum of the four forests' shares at world (x, z) (how close the forests of the slice are). */
 		public float total(int x, int z) {
-			float[] s = new float[4];
+			float[] s = new float[SHARES];
 			at(x, z, s);
 			return s[0] + s[1] + s[2] + s[3];
 		}
@@ -301,10 +387,10 @@ public final class ForestBlend {
 			}
 			int c = a * n + b;
 			if (!done[c]) {
-				ForestBlend.this.node(i, j, shares, 4 * c);
+				ForestBlend.this.node(i, j, shares, SHARES * c);
 				done[c] = true;
 			}
-			return 4 * c;
+			return SHARES * c;
 		}
 	}
 

@@ -20,7 +20,7 @@
 
 - Minecraft 26.3, Fabric Loader 0.19.5 or newer, Java 25
 - [Fabric API](https://modrinth.com/mod/fabric-api), [GeckoLib](https://modrinth.com/mod/geckolib), [SmartBrainLib](https://modrinth.com/mod/smartbrainlib)
-- Optional: [Serene Seasons](https://modrinth.com/mod/serene-seasons)
+- Optional: [Serene Seasons](https://modrinth.com/mod/serene-seasons). A new world starts in late spring; to match it with Serene Seasons, set `starting_sub_season = 3` and `sub_season_duration = 12` under `[time_settings]` in `config/sereneseasons/seasons.toml` (the modpack does this for you).
 - Recommended for the tall 1:1 world: [Sodium](https://modrinth.com/mod/sodium), [Lithium](https://modrinth.com/mod/lithium), [C2ME](https://modrinth.com/mod/c2me-fabric)
 
 Choose the *Poland (1:1 Scale)* or *Poland (Gameplay Scale)* world type when you create a world. The mod is needed on both the server and the client.

@@ -114,6 +114,8 @@ Informacje o krajobrazie są też na ekranie F3.
 | SmartBrainLib | 2.0.3 | wymagany |
 | Serene Seasons | 26.1.2.0.7 | opcjonalny, bez niego działa własny kalendarz |
 
+Nowy świat zaczyna się późną wiosną (maj). Własny kalendarz moda ma 12 dni gry na podsezon. Z Serene Seasons ten sam start i długość roku daje plik `config/sereneseasons/seasons.toml` z `starting_sub_season = 3` i `sub_season_duration = 12` w sekcji `[time_settings]`; paczka `.mrpack` go zawiera (`tools/modpack/config/`).
+
 ## Licencja
 
 Kod (Java, skrypty budowania, narzędzia, w tym `tools/art`) jest na licencji MIT (`LICENSE`). Zasoby moda, czyli tekstury, modele, animacje i dźwięki w `src/main/resources/assets/polishforests/` i `src/main/generated/assets/polishforests/`, są na licencji Creative Commons Uznanie autorstwa 4.0 (CC BY 4.0, `LICENSE-assets`): można je wykorzystywać i przerabiać, także w innych modach i paczkach zasobów, z podaniem autorstwa („Polish Forests by SernikNaZimno” z odnośnikiem do repozytorium). `CREDITS.md` wymienia źródła zewnętrzne (zdjęcia CC0 i z domeny publicznej, z których mierzono same kolory palet; w przyszłości dźwięki CC0 i CC BY). Mod nie zawiera plików Minecrafta: do tekstur i modeli wanilii odwołuje się tylko po identyfikatorach. Obie licencje są też w pliku moda (`LICENSE_polishforests`, `LICENSE-assets_polishforests`, `CREDITS_polishforests.md`).

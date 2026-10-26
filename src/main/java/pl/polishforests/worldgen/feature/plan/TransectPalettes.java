@@ -53,7 +53,7 @@ public final class TransectPalettes {
 		// Expected share of each forest from the blend's field, summed over the band columns of the sequence's forests.
 		double[][] expected = new double[steps + 1][forests];
 		int[] expectedColumns = new int[steps + 1];
-		float[] shares = new float[4];
+		float[] shares = new float[ForestBlend.SHARES];
 		int minCx = Math.floorDiv((int) Math.floor(Math.min(x0, x1) - band - 1), 16);
 		int maxCx = Math.floorDiv((int) Math.ceil(Math.max(x0, x1) + band + 1), 16);
 		int minCz = Math.floorDiv((int) Math.floor(Math.min(z0, z1) - band - 1), 16);

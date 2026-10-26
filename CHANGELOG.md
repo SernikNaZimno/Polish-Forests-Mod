@@ -2,6 +2,12 @@
 
 Versions are published to Modrinth and GitHub Releases by the `Release` workflow. Alpha versions can change world generation: start a new world after updating.
 
+## [Unreleased]
+
+- **New worlds start in late spring** (May), with the forest in full leaf: the built-in calendar starts there, and the modpack sets Serene Seasons to the same start (`starting_sub_season = 3`, 12 days per sub-season). Without the modpack, set these two values in `config/sereneseasons/seasons.toml`. Worlds of earlier versions without Serene Seasons move two sub-seasons forward once.
+- **Wider forest transitions.** Fresh pine, mixed pine, mixed and oak-hornbeam forests now blend their tree species, lower layers and ground flora over about 50 blocks in the 1:1 world and 25 blocks in the gameplay world, following the shape of the border.
+- **No band of vanilla stand-in trees by the new forests.** Narrow strips and patches of other lowland forests inside the oak-hornbeam, pine and mixed forests (for example the ash-alder belt of a stream) now grow the trees of the surrounding forest, and canopy stand-ins of the nine species with own models nearby grow as the mod's own trees. Larger alder carrs and floodplain forests keep their own trees beyond a mixed edge.
+
 ## [0.2.0-alpha.2]
 
 The mod's own trees grow in the oak-hornbeam and pine forests. Tree generation has changed: start a new world.
