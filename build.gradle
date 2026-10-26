@@ -489,7 +489,9 @@ tasks.register('generateArt', ArtTask) {
 	outputs.upToDateWhen { false }
 }
 
-// Choosing in-game tests: ./gradlew runClientGameTest -Pgametest=performance|stages|views|climate|ui|habitats|vegetation|present_day|determinism|ecotones|slice|probes|all
+// Choosing in-game tests: ./gradlew runClientGameTest -Pgametest=performance|stages|views|climate|ui|habitats|vegetation|present_day|determinism|ecotones|slice|probes|cover|all
+// (cover: only by name; step K1, the thin and the realistic loose cover in pits down to Y 0 in a sandy lowland, a till
+// lowland and a valley floor, with a survey of cover, ores, voids and side faces; -Pscales=realistic|gameplay)
 // (probes: only by name; the render trials of step V3 with probe blocks that exist only in this run, -Psites=board|rebuild
 // picks a part; combine with -Poptimization (with -PnoNvidium: plain Sodium) and -PnoSeasons; results in
 // build/probes/<vanilla|sodium|sodium_nvidium>_<ss|noss>.txt)

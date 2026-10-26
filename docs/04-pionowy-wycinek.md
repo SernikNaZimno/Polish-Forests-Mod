@@ -397,12 +397,13 @@ Decyzje domyślne do potwierdzenia przy CP-C (`docs/00` G.18, G1-a … G1-d).
 ### K1. Cieńsza pokrywa gliny i piasku nad skałą (A, 1–1,5 dnia; prośba użytkownika z 2026-10-25)
 
 Powód: rozgrywka (więcej kamienia blisko powierzchni). Na nizinach Polski osady czwartorzędowe mają dziesiątki metrów, więc to świadome odstępstwo od realizmu. Decyzje domyślne do potwierdzenia przy CP-C (`docs/00` G.18, K1-a … K1-d).
-- **Zakres:**
-  - grubość luźnej pokrywy (`coverDepth` modelu → `rockTop` w `SurfaceBuilder`, `docs/03` §7.1) mnożona przez współczynnik i przycięta: GAMEPLAY × 0,35 i najwyżej 6 bloków pod glebą, REAL × 0,5 i najwyżej 12 bloków; profil gleby (`SoilBlocks`, 1–3 bloki) bez zmian; w dolinach, na wydmach, plażach i torfowiskach najmniejsza grubość według formy terenu, żeby brzeg i wydma nie były skałą;
-  - ustawienie świata (`PolandSettings`, np. `cover_scale`) z wartością domyślną skali; zmiana dotyczy nowych chunków (w starym zapisie szew na granicy wygenerowanego obszaru, opis w changelogu);
-  - złoty test: świadoma regeneracja z listą zmian (`src/test/golden-allow/K*.txt`, kolejny numer), opis w docs; klasyfikator, biomy i `ColumnSample` bez zmian.
-- **Ukończony, gdy:** w przekrojach (`landscapePreview`, gametest `views`) skała 3–8 bloków pod glebą na nizinach GAMEPLAY i 6–14 w REAL; brzegi, wydmy, plaże i torfowiska bez odsłoniętej skały; złoty test z opisaną listą zmian; TERRAIN bez pogorszenia.
-- **Ryzyko:** wysokie (teren, złoty test, szwy w starych światach).
+- **Zakres (zlecenie z 2026-10-26, zastępuje pierwotny kształt; `docs/00` G.19):**
+  - ustawienie świata `loose_cover` (`thin` / `realistic`, przycisk „Pokrywa osadów” na ekranie Dostosuj, en_us i pl_pl, podpowiedź), `thin` domyślne w obu skalach; brak pola w zapisie = `realistic`, więc istniejące światy zachowują dawny wynik bez szwu;
+  - w trybie `thin` pokrywa na nizinach 4–10 bloków (razem z profilem gleby) z płynną zmiennością (szum, Z10), w kolejności warstw z `ChunkSurface.deposit` (gleba, osady podłoża, kamień); doliny, torfowiska, jeziora i plaże z tymi samymi osadami, tylko cieńszymi; pogórza i góry bez zmian;
+  - `LandscapeModel` i złoty test bez zmian (zmienia się tylko zamiana `coverDepth` na bloki w `SurfaceBuilder`), nowa sól szumu;
+  - jaskinie i rudy: kamień i rudy kilka bloków pod nizinami, liczba otworów jaskiń przed i po.
+- **Ukończony, gdy:** test jednostkowy rozkładu grubości (thin i realistic), test zgodności starych zapisów (brak pola = dawny wynik), kadry z gry przekroju gruntu (ściana wykopu do Y 0) na nizinie piaszczystej, gliniastej i w dolinie w obu skalach, budżet chunka bez pogorszenia.
+- **Ryzyko:** wysokie (teren w nowych światach, zgodność starych zapisów).
 
 ### V13. Wygląd sezonowy klienta: zima koron, fazy runa, owoce (B, 2–2,5 dnia)
 

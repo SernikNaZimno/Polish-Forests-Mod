@@ -63,6 +63,8 @@ public final class SurfaceBuilder {
 	/** Thin cover: wavelengths of the thickness noise (blocks). */
 	static final double THIN_WAVELENGTH = 47;
 	static final double THIN_MINOR_WAVELENGTH = 13;
+	/** Thin cover: distance from water (blocks, by the column's fields) within which the side faces look across chunks. */
+	static final double THIN_WATER_REACH = 4;
 	/** Thin cover: weight of the minor wavelength in the thickness. */
 	private static final double THIN_MINOR_WEIGHT = 0.3;
 
@@ -387,23 +389,29 @@ public final class SurfaceBuilder {
 		}
 
 		/**
-		 * Lowest top of the four neighbors of column {@code i} (thin cover, step K1): the final tops in the chunk; outside
-		 * it the model top, {@link BankShelf#MAX_DROP} lower for a dry column the shelf may lower (water near by its own
-		 * fields). A pure function of the chunk, whichever chunks were built before.
+		 * Lowest top of the four neighbors of column {@code i} (thin cover, step K1): the final tops in the chunk. Outside
+		 * the chunk, by water (by the column's own fields, where banks are steep) the model top of the neighbor, and
+		 * {@link BankShelf#MAX_DROP} lower for a dry neighbor the shelf may lower; elsewhere the slope of the column
+		 * continued across the border ({@code 2 · top − top of the opposite neighbor}), so the plan samples no column
+		 * outside the chunk for it (sampling them made the plan about 4 times slower). A pure function of the chunk,
+		 * whichever chunks were built before.
 		 */
 		int lowestNeighborTop(int i, ChunkSurface out) {
 			int lowest = Integer.MAX_VALUE;
+			boolean byWater = BankShelf.waterMayBeWithin(columns[i], THIN_WATER_REACH);
 			for (int dir = 0; dir < 4; dir++) {
 				int n = neighbor(i, dir);
 				int t;
 				if (n >= 0) {
 					t = out.top[n];
-				} else {
+				} else if (byWater) {
 					int summary = outsideSummary(i, dir);
 					t = summaryTop(summary);
 					if (summaryWater(summary) == ChunkSurface.NO_WATER && summaryNear(summary)) {
 						t -= BankShelf.MAX_DROP;
 					}
+				} else {
+					t = 2 * out.top[i] - out.top[neighbor(i, dir ^ 1)];
 				}
 				lowest = Math.min(lowest, t);
 			}

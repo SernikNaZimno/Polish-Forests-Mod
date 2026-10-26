@@ -82,7 +82,7 @@ Tekstury bloków powstają proceduralnie w `tools/art` (przepisy gatunków, pale
 | Poland (1:1 Scale), po polsku „Polska (skala 1:1)”, `polishforests:poland` | rzeczywiste, makroregiony ok. 64 km | 1:1 do ok. 900 m, Rysy na Y 2000 | wierność i dalekie wyprawy |
 | Poland (Gameplay Scale), po polsku „Polska (skala rozgrywki)”, `polishforests:poland_gameplay` | ok. 1,4 km, ok. 2 razy więcej niż biom wanilijny | obniżone proporcjonalnie, Rysy na Y ok. 690 | zwykła gra, słabszy komputer |
 
-Przycisk „Dostosuj” otwiera opcje generowania: skalę, rozmiar regionów, tryb krajobrazu, udział lasów gospodarczych i gatunki obce.
+Przycisk „Dostosuj” otwiera opcje generowania: skalę, rozmiar regionów, tryb krajobrazu, udział lasów gospodarczych, pokrywę osadów (cienka: na nizinach 4–10 bloków gleby, piasku albo gliny nad kamieniem, domyślna; realistyczna: dziesiątki bloków, jak w światach sprzed tej opcji) i gatunki obce.
 
 | Komenda | Działanie |
 |---|---|

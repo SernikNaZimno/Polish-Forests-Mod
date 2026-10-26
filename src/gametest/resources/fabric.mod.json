@@ -21,7 +21,8 @@
 			"pl.polishforests.gametest.EcotoneClientGameTest",
 			"pl.polishforests.gametest.DeterminismClientGameTest",
 			"pl.polishforests.gametest.SliceClientGameTest",
-			"pl.polishforests.gametest.RenderProbesClientGameTest"
+			"pl.polishforests.gametest.RenderProbesClientGameTest",
+			"pl.polishforests.gametest.LooseCoverClientGameTest"
 		]
 	},
 	"mixins": [
