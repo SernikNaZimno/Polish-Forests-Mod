@@ -505,7 +505,7 @@ Mierzona w `slice` (V4) na powierzchniach 1 ha (100 × 100 bloków ≈ 39 chunk�
 | N7 | podszyt (pokrycie) | 10–40% | 10–30% | 5–30% | 10–30% | [L 06 §4.1] |
 | N8 | runo (pokrycie kolumn) | wiosną 60–100%, latem 20–60% | wiosną 50–90% | 40–80%, borówka 40–70% kolumn | jak gospodarczy | [Ź Popiołek; L] |
 | N9 | mchy (z mszystym spodem, PW-7) | 5–20% | 5–15% | 60–95% | 60–90% | [Ź Popiołek] |
-| N10 | martwe drewno (obiekty na chunk) | ok. 2 (PW-5 b) albo 0,5 (a) | ok. 0,25 | ok. 0,1 kłody i 1–2 pniaki | ok. 1 (b) albo 0,4 (a) | [Ź GIOŚ; Mróz i Pawlaczyk; Piętka] |
+| N10 | martwe drewno (obiekty na chunk) | ok. 2 (PW-5 b) albo 0,5 (a) | ok. 0,25 martwego drzewa (kłody i posusz) + 1–2 pniaki [S, V11-a] | ok. 0,1 kłody i 1–2 pniaki | ok. 1 (b) albo 0,4 (a) | [Ź GIOŚ; Mróz i Pawlaczyk; Piętka] |
 | N12 | geofity grądu | widoczne Early–Late Spring, szczyt Mid Spring, 0 od Early Summer | jw. | — | — | [Ź Rawlik 2021] |
 | N15 | transekt Bśw → BMśw → LMśw → grąd | kolejność wskaźników zachowana, przejście 20–100 m (REAL) przy ostrej granicy podłoża, bez prostej linii | | | | [Ź Stefańska; S] |
 
@@ -2019,6 +2019,69 @@ Przegląd: jedna sprawa główna (prawdziwa, poprawiona) i 6 drobnych (sprawdzon
 
 **Testy rundy:** `runDatagen`, `compileGametestJava`, `checkDatagen`, `fastTest`, gametest `ui` (PASS, w tym kontrola układu w 5 kadrach), pełny zestaw `tools/dev/run-tests test` (PASS, 1111 s, drzewo `60f64787b4bd`; różni się od commitu tylko tym zdaniem). Złoty test i migawka rejestru bez zmian.
 
+## Stan po V11 (2026-10-26)
+
+Martwe drewno (PW-5 b: las naturalny na poziomie rezerwatów, gospodarczy według średnich WISL). Drobne wybory: `docs/00` G.20 (V11-a … V11-l). Kadry: `docs/wycinek/martwe-drewno/` (arkusze `arkusz_tablica.png`, `arkusz_realistic.png`, `arkusz_gameplay.png` i wybrane kadry), karta norm: `docs/wycinek/karta-norm-v11.csv` i `.md`.
+
+**Zrobione:**
+- **`tree/DeadwoodPlan`** (czysty, nowa sól `feature.deadwood.objects`, ZW-1, ZW-2) → `DeadwoodVoxels`: pięć obiektów z wokselizatora V6 (planer drzewa wydzielenia daje promienie pnia, konary i korę, także „lustro” sosny) i bloków pnia gatunku:
+  - **kłoda** — fragment pnia (w lesie naturalnym liściastym 30–75% długości grubego pnia, w borze naturalnym 55–100%, w gospodarczym 50–90%), od nasady z kikutem korzeni (nabieg, krótkie korzenie w bok i w górę) albo z wyższej części, z prostymi kikutami konarów;
+  - **posusz** — pień bez liści i drobnych gałęzi, złamany na 30–90% wysokości według gatunku, z drzazgą na szczycie; dąb i jesion łamią się wśród konarów i zostają „rosochate” (konary do 5 bloków nad złamaniem), iglaste mają tylko część suchych kikutów okółka;
+  - **złom** — pień złamany na 2–8 blokach z drzazgą, wierzchołek z konarami leży obok (blok przerwy), w spisie dwa obiekty (posusz i kłoda);
+  - **wykrot** — cały pień z kikutami konarów na ziemi, przy nasadzie talerz korzeniowy na sztorc (tarcza ziemi grubości 1 bloku o promieniu 1,2–3 bloków: `rooted_dirt`, na poszarpanym brzegu `coarse_dirt` i `dirt`, korzenie z bloku pnia gatunku od nasady w bok, w górę i ukośnie), za nim dół 1 blok (2 w środku dużego talerza); na płaskim terenie przewracają się głównie na wschód;
+  - **pniak** — jeden blok pnia (0,7–0,9 m modelu), tylko w lesie gospodarczym.
+  Leżące drewno leży wzdłuż osi, na stoku wzdłuż poziomicy, tylko na kolumnach znanego gruntu okna 3 × 3 chunki (bez wody i bez otoczenia elementów struktur, czyli ulic i budynków), skrócone tam, gdzie grunt wchodzi w kłodę albo opada (co najmniej 80% długości z najwyżej 1 blokiem powietrza, nigdy 3); konary, które weszłyby w grunt albo stały pionowo na gruncie, odpadają. Obok leżącego pnia `moss_carpet` i `leaf_litter` (40% po każdej stronie). **Korzenie (I1):** komórki talerza mają typ (rdzeń, brzeg, korzeń), więc krok I1 może podmienić ziemię i korzenie talerza na swoje korzenie bez zmiany planu (G.20 V11-g).
+- **Forma śmierci według gatunku** (G.20 V11-d): świerk przewraca wiatr, dąb i jesion stoją jako posusz, brzoza i buk się łamią, grab i lipa zamierają rzadko; w lesie gospodarczym kłody i posusz, bez wykrotów.
+- **`DeadwoodFeature`** (`polishforests:procedural_deadwood`): `deadwood/<gatunek>` (martwe drzewo) i `stump/<gatunek>` w paletach grądu, Bśw, BMśw i LMśw; zwalone drzewa M2 pod `deadwood_substitute/<gatunek>` w pozostałych lasach (PW-3 b dla martwego drewna, V11-b). Palety podają martwe drewno lasu naturalnego i pniaki gospodarczego, w punkcie decyduje mapa drzewostanów (`PolandChunkGenerator.standMap`): wydzielenie naturalne bez pniaków, gospodarcze zostawia 13% martwych drzew liściastych i 22% iglastych (V11-c); wielkość według V11-e (w lesie naturalnym martwe drewno starych drzew, w drągowinie gospodarczej poprzedniego pokolenia). Zapis jak drzewa (drewno tylko na powietrze i bloki zastępowane przez drzewa, potomkowie niezapisanego bloku odpadają), ziemia talerza na powietrze i rośliny, dół tylko w naturalnym gruncie bez niczego na wierzchu.
+- **Spis (V4):** stojące martwe drewno nie bierze liści sąsiednich koron (`CensusGrid.dead`, kolumny podstawy z `ModFeatures.DEADWOOD_PLACEMENTS`, V11-f); nowa miara `N10.pieces_per_chunk` (kłody i posusz bez pniaków), norma grądu gospodarczego 0,25 martwego drzewa + 1–2 pniaki (V11-a, §6).
+- **Testy:** `DeadwoodPlanTest` (9: łańcuch rodziców i promienie, okno, determinizm, kłody na falującym gruncie — 97,5% bloków leżących z najwyżej 1 blokiem powietrza, każda co najmniej 80%, nic w nieznanych kolumnach, spis każdego obiektu, posusz bez liści sąsiada, udział gospodarczy, formy śmierci, talerz i dół wykrotu), `DeadwoodGrid` (zapis planu do siatki spisu), martwe drewno w `StandCensusSimulationTest` (`-PcalibrateSlice`), gametest `slice -Psites=deadwood` (`DeadwoodSamples`: tablica obiektów 9 gatunków w płaskim świecie z kontrolą każdego bloku, obiekty powierzchni próbnych w obu skalach, kontrola leżącego drewna w świecie).
+
+**Karta norm N10** (`slice -Psites=none`, 4 światy z SS, `-PtimingsReportOnly`; powierzchnie 1 ha; pełna tabela `docs/wycinek/karta-norm-v11.md`):
+
+| las | miara | norma | REAL: zakres (średnio) | GAMEPLAY: zakres (średnio) | przed V11 (Z1) |
+|---|---|---|---|---|---|
+| grąd naturalny | obiekty na chunk | 2 (±30%) | 1,61–2,10 (1,80) | 2,30–2,41 (2,37) | 0,21–0,48 |
+| grąd naturalny | m³/ha | 100–160 | 80–121 (101) | 115–179 (158) | 15–37 |
+| grąd naturalny | grube kawałki na ha | ≥ 5 | 17–29 | 34–38 | 1–4 |
+| grąd gospodarczy | martwe drzewa (kłody i posusz) | 0,25 [V11-a] | 0,20–0,42 (0,30) | 0,15–0,92 (0,41) | — |
+| grąd gospodarczy | pniaki na chunk | 1–2 [S] | 1,20–1,54 | 0,95–1,59 | 0,13–0,28 |
+| grąd gospodarczy | m³/ha | 10–16 | 9,1–15,7 (12,8) | 4,5–30,8 (15,5) | 16–51 |
+| bór naturalny | obiekty na chunk | 1 (±30%) | 1,10–1,25 (1,18) | 1,18–1,20 (1,19) | 0,28–0,54 |
+| bór naturalny | m³/ha | 50–80 | 37–56 (47) | 33–46 (39) | 19–38 |
+| bór gospodarczy | kłody na chunk | 0,1 | 0–0,15 (0,07) | 0,03–0,31 (0,11) | 0,05–0,33 |
+| bór gospodarczy | pniaki na chunk | 1–2 | 1,38–1,66 | 0,97–1,66 | 0,13–0,36 |
+| bór gospodarczy | m³/ha | 5–11 | 0–10,5 (4,4) | 2,1–17,3 (7,3) | 10–71 |
+
+Tryby N i D dają prawie te same liczby (powierzchnie leżą w lesie w obu trybach); przed V11 obiekty to zwalone drzewa M2 z kłód wanilii (1 m³ na blok), stąd duże objętości przy małej liczbie. Średnie w każdej skali są w normie albo w tolerancji (±30%); poza tolerancją są pojedyncze powierzchnie lasu gospodarczego, bo na 1 ha przypada tam tylko 3–10 martwych drzew (rozkład Poissona: np. `fresh_pine_managed_mature` REAL ma w plocie 23 wylosowane martwe drzewa, z których mapa drzewostanów zostawiła 2 wobec oczekiwanych 5, więc 0 kłód i 0 m³), oraz miejsce V4 `oak_hornbeam_2` (m2) w GAMEPLAY, które leży częściowo w wydzieleniu naturalnym (luki 9,4%, N5 „out” już przed V11). Objętość boru naturalnego (śr. 47 i 39 m³/ha) jest w tolerancji (od 35), ale poniżej symulacji (60): w grze więcej losowań trafia na kolumny zajęte przez pnie i podszyt. Pozostałe normy bez pogorszenia wobec Z1 (N1–N9, N15; N9 mchy i N8 runo jak przed V11, do V12). Symulacja spisu (`-PcalibrateSlice`, 49 powierzchni na stan i klasę wieku): grąd naturalny 2,0 obiektu i 137–139 m³/ha, gospodarczy 0,25–0,28 martwego drzewa, 1,45 pniaka, 7–22 m³/ha (według wieku), bór naturalny 1,06 i 60 m³/ha, gospodarczy 0,1–0,14 kłody, 1,4 pniaka, 3,8–13 m³/ha.
+
+**W grze** (`slice -Psites=deadwood`): na tablicy wszystkie 959 planowanych bloków drewna 45 obiektów (9 gatunków × 5 rodzajów) w świecie; w światach wycinka (natural, obie skale) objekty REAL: 928 kłód, 488 posuszy, 291 złomów, 140 wykrotów, 2772 pniaki, GAMEPLAY: 794, 424, 237, 125, 3093; leżące drewno (1308 i 1129 obiektów) w 100% leży na co najmniej 80% długości (w 100% bloków najwyżej 1 blok powietrza), 0 bloków nad wodą i nad ścieżką. Kadry (72, obejrzane na arkuszach, podejrzane w pełnej rozdzielczości): kłody z mchem i liśćmi obok, posusz z drzazgą, rosochate dęby, złomy z leżącym wierzchołkiem (u sosny z pomarańczowym „lustrem”), wykroty z talerzem i dołem, pniaki; kamery w gęstym lesie są ciasne (pnie przy kadrze, DP-27).
+
+**Determinizm** (`determinism`, bez paczki, `-PtimingsReportOnly`): kolejność stała identyczna we wszystkich obszarach, skalach i trybach; kolejność dowolna najwyżej 0,006% bloków okna (próg 0,5%; Z1: 0,003%, różnice: mech przy kłodzie i pień sąsiada, liście na zmianę kolejności).
+
+**Koszt:** pomiar A/B (2026-10-26 08:26–08:55, skrypt Z1 na spokojnej maszynie: start bez procesu gry, GPU < 50%, CPU < 25%, żaden przebieg nie był zakłócony ani nie zawiódł; baza M2 = `pl-m2-baseline`, przed V11 = `fe15cfa` (K1), V11 = `2d9ce52`; 2 rundy wczytywania i 1 runda etapów, kolejność kompilacji zmieniana; liczby: `docs/wycinek/martwe-drewno/ab_v11.txt`):
+
+| chunki na sekundę z C2ME (`-PloadOnly`, mediana 2 przebiegów) | baza M2 | przed V11 | V11 | V11 / M2 | V11 / przed V11 |
+|---|---|---|---|---|---|
+| bór REAL `fresh_pine_1` | 185,8 | 141,6 | 144,1 | **0,78** | 1,02 |
+| grąd REAL `oak_hornbeam_1` | 139,5 | 115,2 | 115,8 | **0,83** | 1,01 |
+| bór GAMEPLAY | 204,6 | 160,7 | 158,0 | **0,77** | 0,98 |
+| grąd GAMEPLAY | 214,4 | 163,6 | 165,2 | **0,77** | 1,01 |
+
+| etapy (`stages -Psites=slice`, 1 przebieg na kompilację, 20 obszarów: 5 miejsc × 2 skale × 2 tryby) | V11 | V11 / M2 | V11 / przed V11 (mediana, zakres) |
+|---|---|---|---|
+| FEATURES, ms na chunk | 5,7–8,3 | 1,01–1,57 | 1,01 (0,88–1,20), +0,06 ms (−0,82 … +1,40) |
+| LIGHT, ms na chunk | 7,9–10,3 | 1,15–1,56 | 0,98 (0,82–1,20) |
+| cały chunk, ms | 18,9–24,7 | 1,01–1,31 | 0,99 (0,90–1,06) |
+| warstwa martwego drewna, ms na chunk | 0,07–0,46 | — | przed V11 0,04–0,14 (zwalone drzewa M2) |
+
+Próg PW-10 po CP-B (chunki na sekundę z C2ME ≥ 0,7 × M2) spełniony (najniżej 0,77, bez zmiany wobec K1 w rozrzucie przebiegów), budżety V10-e także (FEATURES ≤ 2,0 × i ≤ 10 ms: najwyżej 1,57 × i 8,3 ms; LIGHT ≤ 1,75 × i ≤ 12 ms; cały chunk ≤ 48 ms). Najdroższa jest warstwa w starym grądzie naturalnym (0,4–0,46 ms: planer drzewa dla ok. 2 obiektów na chunk); różnica FEATURES mieści się w rozrzucie jednego przebiegu.
+
+**Kryteria „Ukończony, gdy”:** liczba obiektów na chunk w normie ±30% w obu lasach, stanach i trybach (średnio REAL / GAMEPLAY: grąd naturalny 1,80 / 2,37, gospodarczy 0,30 / 0,41 martwego drzewa (z miejscem m2) + 1,4 / 1,3 pniaka, bór naturalny 1,18 / 1,19, gospodarczy 0,07 / 0,11 kłody + 1,6 / 1,5 pniaka; pojedyncze powierzchnie gospodarcze poza tolerancją przez małą liczbę obiektów na ha, wyżej); kłody leżą na gruncie (100% obiektów w grze, test JUnit na falującym gruncie); brak kłód w wodzie i na ulicach (kolumny wody i otoczenia struktur wyłączone, w grze 0); determinizm bez zmian (wyżej); FEATURES w budżecie PW-10 (wyżej). Norma N10 karty: obiekty, objętość i grube kawałki obu lasów w normie albo tolerancji w średniej.
+
+**Odstępstwa od §3 V11:** zamiast samej „kłody z kikutem korzeni” także wykrot z talerzem i dołem (zlecenie kroku); pniak 1 blok (0,7–0,9 m modelu) zamiast 0,3–0,6 m (blok pnia nie ma niższego modelu); kłoda „wisi” nad gruntem o 8 − r px (V11-i, DP-26); bez nowych bloków (V11-j).
+
+**Testy kroku:** `DeadwoodPlanTest`, `ForestCensusTest`, `ForestNormsTest`, `StandCensusSimulationTest -PcalibrateSlice`, `fastTest`, `checkDatagen`, gametesty `slice -Psites=deadwood`, `slice -Psites=none` (4 światy), `determinism` (PASS), pełny zestaw `tools/dev/run-tests test` (PASS, 1131 s, drzewo `e397820a11b1`; różni się od commitu tylko tym zdaniem). Złoty test terenu i migawka rejestru bez zmian.
+
 ## Do kroku porządkowego (lista drobiazgów z recenzji)
 
 Lista założona w V10 według decyzji użytkownika z 2026-10-21 (`docs/00` F, P4): drobiazgi widoczne tylko na zbliżeniach albo w pomiarach bez wpływu na grę nie są poprawiane od razu, tylko trafiają tutaj; zbiorczy krok porządkowy na końcu kamienia milowego przegląda listę i poprawia, co warto. Każdy wpis: krok, w którym powstał, opis, gdzie szukać, propozycja. Wpis usuwamy (albo przekreślamy z commitem), gdy jest zrobiony.
@@ -2050,3 +2113,6 @@ Lista założona w V10 według decyzji użytkownika z 2026-10-21 (`docs/00` F, P
 | DP-23 | K1 (przegląd, runda 1) | „Stan po K1” tłumaczy kolumny poniżej 4 bloków (GAMEPLAY glina zwałowa, 3–15) bryłą rudy w kamieniu tuż pod pokrywą, ale rudy (`ore_*`) zastępują tylko kamień, więc nie podnoszą początku skały, a plan daje zawsze ≥ 4 bloki (test: 100% w 4–10, `adjustTop` zachowuje grubość); to raczej artefakt pomiaru (głaz albo ficzer na wierzchu, broda struktury) | `docs/04` „Stan po K1”, `LooseCoverClientGameTest` | Sprawdzić jedną taką kolumnę ze współrzędnymi (blok na wierzchu, broda, ficzer) i poprawić zdanie |
 | DP-24 | K1 (przegląd, runda 1) | „Przekładaniec”: wierzch skały kopiuje rzeźbę w prawie stałej głębokości (cover = max(cienka, profil + 2) od wierzchu kolumny; przy profilu 3–4 bloków wygrywa próg, np. 68% kolumn REAL piasek dokładnie 6), więc kontakt piasek–kamień biegnie równolegle do gleby (`cover_gameplay_thin_sand.png`, ściana północna: ok. 15 bloków na jednym Y), a wydmy, ozy, kemy i wzgórza morenowe mają kamienny rdzeń 4–10 bloków pod grzbietem; widoczne tylko w wykopach | `SurfaceBuilder` (grubość cienka), `docs/wycinek/pokrywa/` | Wierzch skały od wygładzonej powierzchni: rockTop = gładki(top) − cienka(x, z), grubość w [profil + 2, ok. 14]; albo szum pod progiem profilu (profil + 2 + szum) zamiast max() |
 | DP-25 | K1 (przegląd; sprzed K1) | Na zmianie podłoża (piasek → glina zwałowa, w dolinie REAL glina → piasek) granica osadów pod ziemią jest pionowa i prosta (`cover_realistic_thin_sand.png`, ściana północna ok. x = 567 px; w pokrywie realistycznej na całą głębokość wykopu, w cienkiej 2–4 bloki); podziemny odpowiednik zasady Z10 | `SurfaceBuilder` / `SoilBlend` (wybór osadu podłoża) | Przesunąć wybór osadu na granicy podłoży szumem głębokości (przeplatanie albo skos kilku bloków), gdy kolumna ma dwa podłoża w odległości 1–2 bloków |
+| DP-26 | V11 (V11-i) | Cienka kłoda (r 2–4) „wisi” 4–6 px nad gruntem (model pnia wyśrodkowany w bloku), widać z bliska na równym gruncie | `DeadwoodPlan`, kadry `docs/wycinek/martwe-drewno/` | Przy CP-C: blok „kłoda leżąca” z modelem przy ziemi (nowy blok, migawka rejestru) albo zostawić |
+| DP-27 | V11 | Kamery oka w `slice -Psites=deadwood` stoją w gęstym lesie ciasno (pnie i liście przy kadrze); obiekty widać, ale kadry nie są ładne | `DeadwoodSamples.camera` | Kamera z wyszukiwaniem jak `-PfindSliceCameras` (stożek widoku bez pni) |
+| DP-28 | V11 | Talerz korzeniowy z pełnych bloków ziemi wygląda z bliska jak „wieża” z kostek; korzenie przez talerz cienkie | `DeadwoodPlan.windthrow` | Krok I1: korzenie talerza z bloków korzeni I1, ziemia tylko w środku |
