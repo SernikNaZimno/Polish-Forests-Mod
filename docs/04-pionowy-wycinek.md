@@ -1968,6 +1968,47 @@ FEATURES rośnie o ok. 4% (mediana +0,23 ms), drzewostan o ok. 0,4 ms na dekorow
 
 **Testy rundy:** `ForestBlendTest` (6, w tym nowy), `fastTest`, pełny zestaw `tools/dev/run-tests test` (PASS, 1139 s, drzewo `9b5261fc63a6`; różni się od commitu rundy tylko tym zdaniem). Złoty test i migawka rejestru bez zmian.
 
+## Stan po K1 (2026-10-26)
+
+Cieńsza pokrywa luźnych osadów nad skałą (prośba użytkownika z 2026-10-25, powód: rozgrywka). Zlecenie nazywało krok „G1”; w planie to K1 (G1 to mody do ścinania drzew), więc w kodzie i dokumentach zostaje K1. Zakres według zlecenia z 2026-10-26 (§3 K1 zaktualizowany), drobne wybory `docs/00` G.19 (K1-a′ … K1-f).
+
+**Zrobione:**
+- **Ustawienie świata `loose_cover`** (`LooseCover`: `thin` / `realistic`, nazwy zapisywane w świecie), pole `PolandSettings.looseCover`; `thin` w obu presetach (`poland.json`, `poland_gameplay.json`) i w `PolandSettings.DEFAULT`; **brak pola = `realistic`** (światy sprzed K1 i M1), więc nowe chunki starych światów mają dokładnie dawną pokrywę, bez szwu. Przycisk „Pokrywa osadów” / „Loose Cover” na ekranie Dostosuj z podpowiedzią dla obu wartości (en_us i pl_pl przez datagen), README, CHANGELOG.
+- **`SurfaceBuilder`**: przy `thin` kolumna z `coverDepth` > 20 m (niziny i dno morza: 40–100 m) ma pokrywę 4–10 bloków razem z profilem gleby albo dna: `thinCover(x, z)` z nowego szumu (sól `surface.thin_cover`, fale 47 i 13 bloków, wagi 0,7 / 0,3, kwantyle szumu), co najmniej profil + 2 bloki osadów podłoża, potem kamień. Liczone po półce brzegowej i mikroreliefie, od ostatecznego wierzchu kolumny, więc brzegi obniżone przez półkę mają tę samą pokrywę. Kolejność warstw bez zmian (`ChunkSurface.deposit` według głębokości: gleba, mada, piasek, glina pod gliną zwałową, muł i glina pod torfem i dnem jezior, piasek plaży), zmienia się tylko miejsce, gdzie zaczyna się kamień; wszystko nad kamieniem jest identyczne z pokrywą realistyczną (test). **Bez skały w bocznej ścianie:** kamień kolumny leży co najmniej blok niżej niż wierzch najniższego z czterech sąsiadów (w chunku ostateczne wierzchy; za granicą chunka przy wodzie wierzch modelu sąsiada, przy suchym sąsiedzie, którego półka może obniżyć, 3 bloki niżej; gdzie indziej przedłużony spadek kolumny, bez próbkowania sąsiadów: pierwsza wersja z próbkami spoza chunka spowalniała plan ok. 4 razy). Pogórza i góry (≤ 7 m) bez zmian. `LandscapeModel`, `coverDepth`, klasyfikator i złoty test bez zmian.
+- **Testy:** `LooseCoverTest` (5), rozszerzony `PolandSettingsTest`, `LooseCoverCostTest` (`@Tag("cost")`), gametest `cover` (`LooseCoverClientGameTest`, tylko po nazwie, ok. 10 min), `ui` przełącza pokrywę na realistyczną i sprawdza ustawienie.
+
+**Rozkład grubości (JUnit, `LooseCoverTest`, 120 chunków na skalę, kolumny nizin):**
+
+| | kolumny nizin | cienka: p5 / mediana / p95 | w 4–10 blokach | realistyczna: mediana |
+|---|---|---|---|---|
+| REAL | 18 944 | 5 / 7 / 9 | 100% | 73 |
+| GAMEPLAY | 29 184 | 5 / 7 / 9 | 100% | 32 |
+
+Średnio według podłoża 6,3–7,2 bloku (piasek, glina zwałowa, mada, koryto, muł jeziorny). Wierzchy, woda, profile i flagi kolumn identyczne w obu ustawieniach, pogórza i góry identyczne. Szum grubości: skok między sąsiadami najwyżej 1 blok, każda wartość 4–10 w ≥ 2% kolumn, granice wartości równo wzdłuż x i z (79 217 / 79 177), najdłuższa prosta granica 18 / 21 bloków (< 2 chunki), na brzegach chunków średnio 7,07 / 7,11 bloku i wewnątrz 7,06 / 7,13 (bez szwu, Z10). Boczne ściany: 0 odsłoniętej skały w 184 tys. ścian (dolina rzeki, klif złotego testu, nizina w obu skalach); ścian wyższych niż 4 bloki nie było wcale, więc straż ścian jest siatką bezpieczeństwa. Plany nie zależą od kolejności budowy chunków. **Zgodność starych zapisów:** ustawienia zapisane przed K1 (wszystkie pola presetu bez `loose_cover`) czytają się jako `realistic`, a plany 40 chunków w każdej skali mają skrót identyczny z obliczonym na `8d34f5e` (przed K1).
+
+**W grze** (`-Pgametest=cover`, ziarno 20260927, w każdej skali świat `thin` i `realistic`, te same miejsca: nizina piaszczysta, nizina gliniasta (glina zwałowa), dno doliny z madą przy rzece; przegląd 3 × 3 chunki przed kopaniem, potem wykop 32 × 32 do Y 0 i kadr północnej ściany z 21 bloków; kadry `docs/wycinek/pokrywa/`, arkusz `arkusz_przekroje.png`):
+
+| miejsce | cienka: średnio (min–max) | realistyczna: średnio | rudy do 16 bloków pod gruntem (cienka / realistyczna) | puste przestrzenie pod gruntem | skała w ścianach / na wierzchu |
+|---|---|---|---|---|---|
+| REAL piasek | 6,5 (6–13) | 80,2 | 234 / 0 | 0 / 0 | 0 / 0 |
+| REAL glina zwałowa | 6,8 (5–9) | 70,0 | 327 / 0 | 0 / 0 | 0 / 0 |
+| REAL dolina (mada) | 6,6 (4–10) | 70,3 | 361 / 0 | 0 / 0 | 0 / 0 |
+| GAMEPLAY piasek | 7,6 (4–15) | 25,2 | 550 / 0 | 0 / 0 | 0 / 0 |
+| GAMEPLAY glina zwałowa | 6,9 (3–15) | 29,6 | 360 / 0 | 0 / 0 | 0 / 0 |
+| GAMEPLAY dolina (mada) | 7,7 (5–15) | 30,5 | 442 / 0 | 0 / 0 | 0 / 0 |
+
+Kolumn na miejsce 2304; w 4–10 blokach 97–100% (najmniej GAMEPLAY piasek). Dwa przebiegi na kodzie końcowym i na wersji z próbkami sąsiadów spoza chunka dały te same histogramy grubości i kadry (różnica pikseli ≤ 0,4%, ruch liści); liczba rud w GAMEPLAY piasek 569 → 550.
+
+Grubość w grze to wierzch gruntu do początku litej skały (4 bloki skały pod rząd, więc głaz gliny zwałowej na glebie i bryła rudy ziemi w kamieniu nie liczą się jako skała). Pojedyncze kolumny powyżej 10 bloków (najwyżej ok. 3% w GAMEPLAY) to bryły rud ziemi i żwiru wanilii (`ore_dirt`, `ore_gravel`) tuż pod granicą skały albo głazy na glebie; poniżej 4 bloków pojedyncze kolumny z bryłą rudy w kamieniu tuż pod pokrywą. W pierwszym przebiegu (pomiar od pierwszego bloku skały) 2–7 kolumn na miejsce miało „skałę na wierzchu” i 7–10 „skałę w ścianie”, w obu ustawieniach jednakowo: to głazy gliny zwałowej (ficzer na glebie), nie pokrywa. Na kadrach: pod glebą 1–3 bloki ziemi lub mułu, potem 2–7 bloków piasku, gliny albo mady o falistej granicy, niżej kamień z rudami węgla, żelaza i miedzi oraz bryłami granitu, diorytu, andezytu, ziemi i żwiru; w ustawieniu realistycznym ściana to sam piasek, glina albo mada aż poniżej kadru.
+
+**Jaskinie i rudy.** Generator nie ma jaskiń: biomy mają `carvers: []` (`BiomeJsonTest`), a `PolandChunkGenerator` nie robi jaskiń szumowych, więc cienka pokrywa nie otwiera jaskiń (0 kolumn z pustką do 40 bloków pod gruntem w obu ustawieniach i skalach). Rudy wanilii (węgiel, żelazo, miedź, złoto, lapis, redstone, diament, bryły skał) zastępują tylko kamień, więc przy pokrywie cienkiej pojawiają się kilka bloków pod nizinami (setki bloków rud do 16 bloków pod gruntem na 3 × 3 chunki, przy realistycznej 0). Czy dodać jaskinie, to pytanie do użytkownika (raport kroku).
+
+**Koszt** (`LooseCoverCostTest`, `costTest`, bez gry w tle, 300 chunków nizin na skalę, 7 rund, mediana ms na chunk, cienka / realistyczna w tej samej JVM na przemian): plan powierzchni REAL 0,142 / 0,116, GAMEPLAY 0,231 / 0,210 (+0,02–0,03 ms: szum i straż ścian), wypełnienie bloków REAL 0,056 / 0,158, GAMEPLAY 0,059 / 0,107 (więcej sekcji jednolitej skały pomijanych przez `uniformRock`); razem 0,72 × (REAL) i 0,91 × (GAMEPLAY). Budżet chunka bez pogorszenia (TERRAIN szybszy). Pomiaru A/B etapów w grze (`stages`) nie robiłem: zmiana dotyczy tylko planu powierzchni i wypełnienia, zmierzonych wyżej.
+
+**Odstępstwa od pierwotnego §3 K1** (zlecenie z 2026-10-26): 4–10 bloków w obu skalach zamiast × 0,35 / × 0,5 z przycięciem; ustawienie bez szwu (brak pola = dawny wynik) zamiast `cover_scale` ze szwem; złoty test bez zmian zamiast przegenerowania; zamiast najmniejszej grubości według form terenu jedna reguła: co najmniej 2 bloki osadów pod profilem i bez skały w bocznych ścianach.
+
+**Testy kroku:** `LooseCoverTest`, `PolandSettingsTest`, `SoilTest`, `UniformRockTest`, `BankShelfTest`, `StructureGroundTest`, `fastTest`, `checkDatagen`, gametesty `cover` i `ui` (PASS), pełny zestaw `tools/dev/run-tests test` (PASS, 1098 s, drzewo `9fc0b1ffe0d6`; różni się od commitu tylko tym zdaniem). Złoty test i migawka rejestru bez zmian.
+
 ## Do kroku porządkowego (lista drobiazgów z recenzji)
 
 Lista założona w V10 według decyzji użytkownika z 2026-10-21 (`docs/00` F, P4): drobiazgi widoczne tylko na zbliżeniach albo w pomiarach bez wpływu na grę nie są poprawiane od razu, tylko trafiają tutaj; zbiorczy krok porządkowy na końcu kamienia milowego przegląda listę i poprawia, co warto. Każdy wpis: krok, w którym powstał, opis, gdzie szukać, propozycja. Wpis usuwamy (albo przekreślamy z commitem), gdy jest zrobiony.
