@@ -116,6 +116,29 @@ class RegistrySnapshotTest {
 		assertEquals(ModBlocks.BILBERRIES, BuiltInRegistries.ITEM.getKey(ModBlocks.bilberries()).getPath());
 	}
 
+	/**
+	 * Step V13 (ZW-5): the seasonal properties have one place, {@code SeasonalProperties}: the fruit of the bilberry is
+	 * neutralized (off) for the determinism hash, every other property stays; the bilberry ticks at random (the fruit in its
+	 * season) and the flower beds know their plant (their phases and outline).
+	 */
+	@Test
+	void seasonalPropertiesOfStepV13() {
+		net.minecraft.world.level.block.state.BlockState ripe = ModBlocks.ground(GroundPlant.BILBERRY).defaultBlockState()
+				.setValue(BerryShrubBlock.BERRIES, true).setValue(BerryShrubBlock.MOSSY, true);
+		net.minecraft.world.level.block.state.BlockState neutral = pl.polishforests.season.SeasonalProperties.neutral(ripe);
+		assertTrue(!neutral.getValue(BerryShrubBlock.BERRIES) && neutral.getValue(BerryShrubBlock.MOSSY), neutral.toString());
+		assertTrue(pl.polishforests.season.SeasonalProperties.seasonal(BerryShrubBlock.BERRIES));
+		assertTrue(!pl.polishforests.season.SeasonalProperties.seasonal(BerryShrubBlock.MOSSY));
+		net.minecraft.world.level.block.state.BlockState leaf = ModBlocks.leaves(TreeFoliage.OAK).defaultBlockState();
+		assertEquals(leaf, pl.polishforests.season.SeasonalProperties.neutral(leaf));
+		assertTrue(ripe.isRandomlyTicking(), "the bilberry ticks for its fruit");
+		for (GroundPlant g : GroundPlant.values()) {
+			if (ModBlocks.ground(g) instanceof SeasonalPlantBlock bed) {
+				assertEquals(g, bed.plant());
+			}
+		}
+	}
+
 	/** Step V7: every species leaf block is a leaves block with the phase 0-3, every sapling has an item and a pot. */
 	@Test
 	void leavesAndSaplingsOfTheSpecies() {

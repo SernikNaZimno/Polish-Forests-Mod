@@ -63,7 +63,8 @@ public final class ClientSeasonPhase {
 	static void register() {
 		ColorResolverRegistry.register(RAW_FOLIAGE);
 		for (TreeFoliage f : TreeFoliage.values()) {
-			BlockColorRegistry.register(List.of(new SpeciesTint(f.species())), ModBlocks.leaves(f));
+			// Tint index 0: the leaves (the curve); 1: the bare twigs of the leafless crown (step V13, ClientSeasonModels).
+			BlockColorRegistry.register(List.of(new SpeciesTint(f.species()), new TwigTint(f.species())), ModBlocks.leaves(f));
 		}
 		ClientTickEvents.END_CLIENT_TICK.register(ClientSeasonPhase::tick);
 	}
@@ -175,6 +176,33 @@ public final class ClientSeasonPhase {
 					mc.levelExtractor.setSectionRangeDirty(center.x() + dx, minY, center.z() + dz, center.x() + dx, maxY, center.z() + dz);
 				}
 			}
+		}
+	}
+
+	/**
+	 * The tint of the bare twigs of a species (step V13, tint index 1 of the twig model): its twig color over the raw biome
+	 * color ({@link FoliageCurve#twigs}), the same the whole year.
+	 */
+	public static final class TwigTint implements BlockTintSource {
+		private final Species species;
+
+		TwigTint(Species species) {
+			this.species = species;
+		}
+
+		@Override
+		public int color(BlockState state) {
+			return 0xFF000000 | FoliageCurve.twigs(species, FoliageCurve.DEFAULT_FOLIAGE);
+		}
+
+		@Override
+		public int colorInWorld(BlockState state, BlockAndTintGetter level, BlockPos pos) {
+			return 0xFF000000 | FoliageCurve.twigs(species, level.getBlockTint(pos, RAW_FOLIAGE));
+		}
+
+		@Override
+		public java.util.Set<Property<?>> relevantProperties() {
+			return java.util.Set.of();
 		}
 	}
 

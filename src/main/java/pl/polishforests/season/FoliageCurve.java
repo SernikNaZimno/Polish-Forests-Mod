@@ -16,17 +16,19 @@ import pl.polishforests.worldgen.habitat.Species;
  * weight of the target over the biome color); between two keys the two blended colors are interpolated linearly. The
  * dates follow report 08 §9 (Polish lowlands; a step is about ten days, a decade):
  * <ul>
- * <li>leaf-out: birch about 20 IV, maple and hornbeam late IV, beech early V, linden and oak early to mid V, ash mid V;
- * young leaves light yellow-green, fading into the summer color within about 1.5 sub-seasons;
+ * <li>leaf-out (step V13: the Polish phenological network of 1991-2020): birch and hornbeam about 20 IV, maple 22 IV,
+ * beech 28 IV, linden 30 IV, oak 2 V, ash 8 V; young leaves light yellow-green, fading into the summer color within
+ * about 1.5 sub-seasons;
  * <li>summer: the biome color with a species cast of weight {@value #CAST_WEIGHT} (birch light and yellow, beech bright,
  * Norway maple a clear green, ash light yellow-green, linden blue-green, hornbeam a dull mid green, oak dark); every two
  * broadleaf species differ by at least ΔE 6 (CIE76) over the oak-hornbeam forest color, so the hue still helps to tell the
  * species apart in a mixed stand, though mainly the crown shape does;
  * <li>autumn: birch and linden yellow from the end of IX, full in the 1st-2nd decade of X, holding their clear yellow
  * until the leaves fall (birch bare at the end of X); Norway maple yellow to orange from the end of IX; ash drops its
- * leaves green-yellow early in X; hornbeam yellow from the 1st-2nd decade of X, then brown in XI; beech golden, copper,
- * then brown; oak late, yellow-brown at the end of X, brown in XI, bare in XII;
- * <li>winter and before leaf-out (until step V13 replaces the leafless crowns with twigs): a light "twig haze" of each
+ * leaves green-yellow early in X; hornbeam yellow from the 2nd decade of X, then brown in XI; beech golden from the 1st
+ * decade of X, copper, then brown; oak late, yellow-brown in the 3rd decade of X, brown in XI, bare at the end of XI;
+ * <li>winter and before leaf-out: the crown shows bare twigs (step V13, {@link #leafless}, tinted by {@link #twigs}),
+ * and the curve itself ends in a light "twig haze" of each
  * species, low in chroma and close to the summer lightness (birch purple-brown, linden reddish, maple and oak gray-brown,
  * hornbeam and beech gray, ash pale gray), so a leafless forest reads neither dead nor burnt. Only the <b>marcescent</b>
  * leaves ({@link #marcescent}: oak, hornbeam and beech, written by the tree planner on young trees and the lower crowns,
@@ -45,7 +47,7 @@ public final class FoliageCurve {
 	private static final double PHASE_STEP = 2.0 / 3.0;
 	public static final double CONIFER_WINTER_DARKENING = 0.12;
 	/** Weight of the summer cast of a broadleaf species over the biome color. */
-	public static final double CAST_WEIGHT = 0.4;
+	public static final double CAST_WEIGHT = 0.5;
 	/** Weight of the winter color (twig haze or marcescent brown) over the biome color. */
 	private static final double WINTER_WEIGHT = 0.9;
 	/** The default foliage color of vanilla (item colors and the tint without a level). */
@@ -53,6 +55,15 @@ public final class FoliageCurve {
 
 	/** A key of a curve: at {@code at} color steps from 1 March, the blend of {@code target} over the biome by {@code weight}. */
 	record Key(double at, int target, double weight) {
+	}
+
+	/**
+	 * The leafless window of a broadleaf species (step V13, T-D5): its crown shows bare twigs from {@code leafFall} (the
+	 * middle of the last segment of the curve, from the last autumn key to bare, when more than half of the leaves are
+	 * down) until {@code budBurst} ({@value #BUD_BURST_LEAD} step before the leaf-out key, when the young leaves already
+	 * outweigh the twig haze of the curve). Positions in color steps from 1 March, cyclic.
+	 */
+	private record Leafless(double leafFall, double budBurst, double autumn, double bare, int twigs) {
 	}
 
 	/** The needles of a conifer: the color of the growing season and the winter color. */
@@ -63,25 +74,32 @@ public final class FoliageCurve {
 	/** The curves of the marcescent leaves (dry brown until leaf-out), for the species of {@link #marcescent}. */
 	private static final Map<Species, List<Key>> MARCESCENT = new EnumMap<>(Species.class);
 	private static final Map<Species, Needles> CONIFERS = new EnumMap<>(Species.class);
+	private static final Map<Species, Leafless> LEAFLESS = new EnumMap<>(Species.class);
+	/** How long before the leaf-out key the crown shows leaves again, in color steps. */
+	static final double BUD_BURST_LEAD = 0.1;
 
 	static {
 		CONIFERS.put(Species.SCOTS_PINE, new Needles(0x7C996D, 0x8A9670));
 		CONIFERS.put(Species.SPRUCE, new Needles(0x619961, darken(0x619961, CONIFER_WINTER_DARKENING)));
 		//               leaf-out, young, summer cast, autumn keys (position, target, weight; weight 0 = summer), bare at,
 		//               twig haze, marcescent brown (0: none)
-		broadleaf(Species.BIRCH, 4.9, 0xB9D860, 0xB8C049, keys(20.0, 0, 0, 22.0, 0xE2C23A, 0.85, 23.6, 0xE2C23A, 0.85), 24.2,
+		// Step V13 (CP-B: "in late spring a few oaks, hornbeams and beeches are still brown", "in mid-autumn most crowns are
+		// green"): leaf-out after the Polish phenological network of 1991-2020 (birch and hornbeam about 20 IV, maple 22 IV,
+		// beech 28 IV, linden 30 IV, oak 2 V, ash 8 V; V7 had the older dates of report 08, 5-8 days later), and the
+		// autumn of hornbeam, beech and oak 3-5 days earlier with the leaf fall in the 2nd-3rd decade of XI.
+		broadleaf(Species.BIRCH, 4.8, 0xBCDC62, 0xB8C049, keys(20.0, 0, 0, 22.0, 0xE2C23A, 0.85, 23.6, 0xE2C23A, 0.85), 24.2,
 				0xB58B8F, 0);
-		broadleaf(Species.LINDEN, 6.3, 0xB0D45C, 0x2AA28F, keys(20.0, 0, 0, 22.0, 0xD8B43C, 0.85, 23.1, 0xD8B43C, 0.85), 23.6,
+		broadleaf(Species.LINDEN, 5.9, 0xB0D45C, 0x2AA28F, keys(20.0, 0, 0, 22.0, 0xD8B43C, 0.85, 23.1, 0xD8B43C, 0.85), 23.6,
 				0xAA8377, 0);
-		broadleaf(Species.NORWAY_MAPLE, 5.5, 0xB4D65A, 0x36B356,
+		broadleaf(Species.NORWAY_MAPLE, 5.2, 0xB4D65A, 0x36B356,
 				keys(20.6, 0, 0, 22.0, 0xE0B030, 0.8, 23.0, 0xE3902A, 0.9, 23.9, 0xE3902A, 0.9), 24.4, 0x9D8E80, 0);
-		broadleaf(Species.ASH, 7.0, 0xB0D45C, 0x9FA453, keys(21.0, 0, 0, 22.3, 0xA8B84A, 0.55), 23.0, 0x9C9C91, 0);
-		broadleaf(Species.HORNBEAM, 5.5, 0xB0D45C, 0x6D926E,
-				keys(21.3, 0, 0, 23.0, 0xD2B03A, 0.8, 24.6, 0x946630, 0.9), 26.0, 0x959084, 0xA58660);
-		broadleaf(Species.BEECH, 6.0, 0xA8D850, 0x7AB344,
-				keys(21.0, 0, 0, 22.2, 0xD8A53A, 0.8, 23.3, 0xC0702C, 0.85, 24.6, 0x8E5A2C, 0.9), 26.0, 0xA1897E, 0xBE8C5F);
-		broadleaf(Species.OAK, 6.6, 0xC2C86A, 0x60773C,
-				keys(22.4, 0, 0, 24.0, 0xB89238, 0.75, 25.5, 0x8C6A30, 0.85), 27.0, 0x9A8577, 0xA77F56);
+		broadleaf(Species.ASH, 6.8, 0xB0D45C, 0x9FA453, keys(21.0, 0, 0, 22.3, 0xA8B84A, 0.55), 23.0, 0x9C9C91, 0);
+		broadleaf(Species.HORNBEAM, 5.0, 0xB0D45C, 0x6D926E,
+				keys(21.0, 0, 0, 22.6, 0xD2B03A, 0.8, 24.2, 0x946630, 0.9), 25.6, 0x959084, 0xA58660);
+		broadleaf(Species.BEECH, 5.7, 0xA8D850, 0x7AB344,
+				keys(20.8, 0, 0, 22.0, 0xD8A53A, 0.8, 23.1, 0xC0702C, 0.85, 24.4, 0x8E5A2C, 0.9), 25.6, 0xA1897E, 0xBE8C5F);
+		broadleaf(Species.OAK, 6.1, 0xC2C86A, 0x60773C,
+				keys(22.0, 0, 0, 23.6, 0xB89238, 0.75, 25.1, 0x8C6A30, 0.85), 26.6, 0x9A8577, 0xA77F56);
 	}
 
 	private FoliageCurve() {
@@ -96,6 +114,8 @@ public final class FoliageCurve {
 	private static void broadleaf(Species s, double leafOut, int young, int cast, double[] autumn, double bare, int twigs,
 			int marcescent) {
 		CURVES.put(s, curve(s, leafOut, young, cast, autumn, bare, twigs));
+		double lastKey = autumn[autumn.length - 3];
+		LEAFLESS.put(s, new Leafless((lastKey + bare) / 2.0, leafOut - BUD_BURST_LEAD, autumn[0], bare, twigs));
 		if (marcescent != 0) {
 			MARCESCENT.put(s, curve(s, leafOut, young, cast, autumn, bare, marcescent));
 		}
@@ -135,6 +155,67 @@ public final class FoliageCurve {
 	/** Whether the species can keep its dead leaves over the winter (oak, hornbeam, beech: it has a marcescent curve). */
 	public static boolean marcescent(Species s) {
 		return MARCESCENT.containsKey(s);
+	}
+
+	/**
+	 * Whether the crown of a broadleaf tree shows bare twigs instead of leaves (step V13, T-D5): at a color step and phase,
+	 * for leaves that are not marcescent ({@code dryLeaves} false), within the species' leafless window (from the leaf fall
+	 * to the bud burst). Conifers and marcescent leaves (which keep their dry brown leaves until leaf-out) are never
+	 * leafless.
+	 */
+	public static boolean leafless(Species species, int step, int phase, boolean dryLeaves) {
+		return !dryLeaves && leaflessAt(species, position(step, phase));
+	}
+
+	/** Whether a broadleaf species is in its leafless window at a curve position (false for conifers). */
+	public static boolean leaflessAt(Species species, double at) {
+		Leafless w = LEAFLESS.get(species);
+		if (w == null) {
+			return false;
+		}
+		double x = cyclic(at);
+		return w.leafFall() <= w.budBurst() ? x >= w.leafFall() && x < w.budBurst() : x >= w.leafFall() || x < w.budBurst();
+	}
+
+	/** The start of the leaf fall of a broadleaf species (curve position), or NaN for a conifer. */
+	public static double leafFall(Species species) {
+		Leafless w = LEAFLESS.get(species);
+		return w == null ? Double.NaN : w.leafFall();
+	}
+
+	/** The bud burst of a broadleaf species (curve position, the end of the leafless window), or NaN for a conifer. */
+	public static double budBurst(Species species) {
+		Leafless w = LEAFLESS.get(species);
+		return w == null ? Double.NaN : w.budBurst();
+	}
+
+	/** The end of the leaf fall of a broadleaf species (the bare key of its curve), or NaN for a conifer. */
+	public static double bare(Species species) {
+		Leafless w = LEAFLESS.get(species);
+		return w == null ? Double.NaN : w.bare();
+	}
+
+	/** The first autumn key of a broadleaf species (the end of the summer color), or NaN for a conifer. */
+	public static double autumnStart(Species species) {
+		Leafless w = LEAFLESS.get(species);
+		return w == null ? Double.NaN : w.autumn();
+	}
+
+	/**
+	 * The color of the bare twigs of a broadleaf species over a raw biome foliage color (step V13): its twig haze with the
+	 * winter weight, the tint of the twig model (tint index 1 of the leaf block); for a conifer its winter needles.
+	 */
+	public static int twigs(Species species, int raw) {
+		Leafless w = LEAFLESS.get(species);
+		if (w == null) {
+			return colorAt(species, SeasonPhase.firstStep(SubSeason.MID_WINTER) + 1.5, raw);
+		}
+		return lerp(raw & 0xFFFFFF, w.twigs(), WINTER_WEIGHT);
+	}
+
+	/** A curve position in [0, {@value SeasonPhase#STEPS}). */
+	static double cyclic(double at) {
+		return ((at % SeasonPhase.STEPS) + SeasonPhase.STEPS) % SeasonPhase.STEPS;
 	}
 
 	/** The position of a tree's leaf on its curve at a color step: the middle of the step shifted by the phase. */

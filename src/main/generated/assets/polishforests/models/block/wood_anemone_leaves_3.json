@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/flowerbed_3",
+  "textures": {
+    "flowerbed": "polishforests:block/wood_anemone_leaves",
+    "stem": "polishforests:block/forest_flower_stem"
+  }
+}

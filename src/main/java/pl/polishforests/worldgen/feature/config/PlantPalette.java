@@ -90,10 +90,14 @@ public record PlantPalette(List<Rule> rules) {
 	 *                  bare orange squares; round 2: also the bracken of the mixed coniferous forest, and the turf
 	 *                  {@code grass_block} under the herb layer of the mixed forest, whose podzol patches read as orange
 	 *                  plates)
+	 * @param plantGroundColumns whether {@code plantGround} also covers the podzol of every column the rule claims, not
+	 *                  only the columns with a placed plant (step V13, the carried finding 3 of the V12 review: the
+	 *                  podzol columns left without a plant, about 7-10% of the mixed coniferous and mixed forests, and the
+	 *                  patches whose plant was not placed, still read as bare orange plates); false: under the plants only
 	 */
 	public record Rule(HabitatCondition condition, ColumnPlan.Medium medium, int minDepth, int maxDepth,
 			List<ColumnPlan.Ground> grounds, float coverage, int patch, List<Plant> plants, List<Ecotone.Edge> edges,
-			ColumnPlan.PatchShape shape, List<Plant> scattered, Optional<BlockState> plantGround) {
+			ColumnPlan.PatchShape shape, List<Plant> scattered, Optional<BlockState> plantGround, boolean plantGroundColumns) {
 		public static final Codec<Rule> CODEC = RecordCodecBuilder.create(i -> i.group(
 				HabitatCondition.MAP_CODEC.forGetter(Rule::condition),
 				MEDIUM.optionalFieldOf("medium", ColumnPlan.Medium.LAND).forGetter(Rule::medium),
@@ -106,7 +110,8 @@ public record PlantPalette(List<Rule> rules) {
 				EDGE.listOf().optionalFieldOf("edges", List.of()).forGetter(Rule::edges),
 				SHAPE.optionalFieldOf("patch_shape", ColumnPlan.PatchShape.CELLS).forGetter(Rule::shape),
 				Plant.CODEC.listOf().optionalFieldOf("scattered", List.of()).forGetter(Rule::scattered),
-				BlockState.CODEC.optionalFieldOf("plant_ground").forGetter(Rule::plantGround)
+				BlockState.CODEC.optionalFieldOf("plant_ground").forGetter(Rule::plantGround),
+				Codec.BOOL.optionalFieldOf("plant_ground_columns", false).forGetter(Rule::plantGroundColumns)
 		).apply(i, Rule::new));
 
 		public Rule {
@@ -120,7 +125,8 @@ public record PlantPalette(List<Rule> rules) {
 		public Rule(HabitatCondition condition, ColumnPlan.Medium medium, int minDepth, int maxDepth,
 				List<ColumnPlan.Ground> grounds, float coverage, int patch, List<Plant> plants, List<Ecotone.Edge> edges,
 				ColumnPlan.PatchShape shape) {
-			this(condition, medium, minDepth, maxDepth, grounds, coverage, patch, plants, edges, shape, List.of(), Optional.empty());
+			this(condition, medium, minDepth, maxDepth, grounds, coverage, patch, plants, edges, shape, List.of(), Optional.empty(),
+					false);
 		}
 
 		/** The clumped and the scattered plants, in this order (the plan's plant list of the rule). */

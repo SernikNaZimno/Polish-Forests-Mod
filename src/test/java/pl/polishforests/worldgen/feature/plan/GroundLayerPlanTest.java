@@ -536,6 +536,11 @@ class GroundLayerPlanTest {
 		assertEquals("polishforests:mossy_podzol", blockName(mixedPine.get("plant_ground")), "ground under the mixed coniferous plants");
 		assertEquals("minecraft:grass_block", blockName(mixed.get("plant_ground")), "ground under the mixed forest plants");
 		assertEquals("minecraft:grass_block", blockName(oak.get("plant_ground")), "ground under the oak-hornbeam plants");
+		// Step V13 (finding 3 of the V12 review): in the mixed coniferous and mixed forests the plant ground covers every
+		// podzol column of the rule, also the columns left without a plant (bare plates of 3 x 2 to 4 x 3 blocks).
+		assertTrue(mixedPine.has("plant_ground_columns") && mixedPine.get("plant_ground_columns").getAsBoolean());
+		assertTrue(mixed.has("plant_ground_columns") && mixed.get("plant_ground_columns").getAsBoolean());
+		assertTrue(!pine.has("plant_ground_columns") && !oak.has("plant_ground_columns"), "the fresh pine and oak-hornbeam forests unchanged");
 		double pineMoss = share(pine, GroundLayerPlanTest::moss);
 		double pineBilberry = share(pine, (id, p) -> id.equals("polishforests:bilberry"));
 		double pineHerbs = share(pine, (id, p) -> herb(id));

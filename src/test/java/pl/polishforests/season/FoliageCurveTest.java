@@ -146,9 +146,9 @@ class FoliageCurveTest {
 		// Ash drops its leaves green-yellow: green at least as strong as red.
 		int ash = FoliageCurve.colorAt(Species.ASH, full + 0.8, GRAD);
 		assertTrue(g(ash) >= r(ash) && r(ash) > 120, "ash green-yellow " + Integer.toHexString(ash));
-		// Hornbeam yellow in the 3rd decade of X, brown in XI.
+		// Hornbeam yellow in the 3rd decade of X, brown in the 1st decade of XI (step V13: 4 days earlier).
 		int hbYellow = FoliageCurve.colorAt(Species.HORNBEAM, 23.0, GRAD);
-		int hbBrown = FoliageCurve.colorAt(Species.HORNBEAM, 24.6, GRAD);
+		int hbBrown = FoliageCurve.colorAt(Species.HORNBEAM, 24.2, GRAD);
 		assertTrue(r(hbYellow) > 170 && g(hbYellow) > 140, "hornbeam yellow " + Integer.toHexString(hbYellow));
 		assertTrue(r(hbBrown) - g(hbBrown) >= 25 && g(hbBrown) < g(hbYellow) - 30, "hornbeam brown " + Integer.toHexString(hbBrown));
 		// Oak late, yellow-brown at the end of X, brown in XI.
@@ -294,6 +294,113 @@ class FoliageCurveTest {
 		// Spring: young leaves lighter than the summer leaves.
 		int young = FoliageCurve.colorAt(Species.BIRCH, 5.5, GRAD);
 		assertTrue(g(young) > g(FoliageCurve.summer(Species.BIRCH, GRAD)) + 15);
+	}
+
+	/**
+	 * Step V13 (T-D5, CP-B): the bare twigs. Every broadleaf species is leafless in mid-winter and in leaf in summer; the
+	 * marcescent leaves and the conifers never show twigs; in the 1st decade of May (the start of LATE_SPRING, the date
+	 * of a new world) only some oaks and ashes are still bare, from the 2nd decade of May at most a late ash; the leaf
+	 * fall follows the calendar (ash, linden, birch, maple, then hornbeam and beech, oak last, at the end of XI).
+	 */
+	@Test
+	void leaflessWindowsFollowTheCalendar() {
+		int winter = SeasonPhase.firstStep(SubSeason.MID_WINTER) + 1;
+		int summer = SeasonPhase.firstStep(SubSeason.MID_SUMMER) + 1;
+		for (Species s : FoliageCurve.species()) {
+			for (int phase = 0; phase < FoliageCurve.PHASES; phase++) {
+				boolean conifer = FoliageCurve.conifer(s);
+				assertEquals(!conifer, FoliageCurve.leafless(s, winter, phase, false), s.id() + " in winter, phase " + phase);
+				assertTrue(!FoliageCurve.leafless(s, summer, phase, false), s.id() + " in summer");
+				for (int step = 0; step < SeasonPhase.STEPS; step++) {
+					assertTrue(!FoliageCurve.leafless(s, step, phase, true), s.id() + ": marcescent leaves never show twigs");
+				}
+			}
+		}
+		int may = SeasonPhase.firstStep(SubSeason.LATE_SPRING);
+		StringBuilder report = new StringBuilder();
+		for (Species s : FoliageCurve.species()) {
+			report.append(String.format(Locale.ROOT, "%s %d/%d; ", s.id(), bare(s, may), bare(s, may + 1)));
+		}
+		System.out.println("[foliage] bare phases of 4 in the 1st / 2nd decade of May: " + report);
+		for (Species s : List.of(Species.BIRCH, Species.HORNBEAM, Species.NORWAY_MAPLE)) {
+			assertEquals(0, bare(s, may), s.id() + " leafed out by May: " + report);
+		}
+		for (Species s : List.of(Species.BEECH, Species.LINDEN, Species.OAK)) {
+			assertTrue(bare(s, may) <= 1, s.id() + ": a few late trees only: " + report);
+			assertEquals(0, bare(s, may + 1), s.id() + " leafed out by mid-May: " + report);
+		}
+		assertTrue(bare(Species.ASH, may) <= 2 && bare(Species.ASH, may + 1) <= 1, report.toString());
+		// The 3rd decade of April: birch and hornbeam in leaf, oak and ash bare.
+		assertTrue(!FoliageCurve.leaflessAt(Species.BIRCH, 5.5) && !FoliageCurve.leaflessAt(Species.HORNBEAM, 5.5));
+		assertTrue(FoliageCurve.leaflessAt(Species.OAK, 5.5) && FoliageCurve.leaflessAt(Species.ASH, 5.5));
+		// Leaf fall in the order of the calendar.
+		assertTrue(FoliageCurve.leafFall(Species.ASH) < FoliageCurve.leafFall(Species.LINDEN));
+		assertTrue(FoliageCurve.leafFall(Species.LINDEN) < FoliageCurve.leafFall(Species.BIRCH));
+		assertTrue(FoliageCurve.leafFall(Species.BIRCH) < FoliageCurve.leafFall(Species.NORWAY_MAPLE));
+		assertTrue(FoliageCurve.leafFall(Species.NORWAY_MAPLE) < FoliageCurve.leafFall(Species.HORNBEAM));
+		assertTrue(FoliageCurve.leafFall(Species.BEECH) < FoliageCurve.leafFall(Species.OAK));
+		assertTrue(FoliageCurve.leafFall(Species.OAK) < SeasonPhase.firstStep(SubSeason.EARLY_WINTER), "oak bare by December");
+		assertTrue(Double.isNaN(FoliageCurve.leafFall(Species.SCOTS_PINE)));
+	}
+
+	/**
+	 * Step V13 (CP-B: "in mid-autumn most crowns are green"): in the middle of MID_AUTUMN (the 2nd decade of X, the peak of
+	 * the autumn colors in the Polish lowlands) most crowns of every broadleaf species but the oak have turned, and in the
+	 * 3rd decade of X the oak too; in the 1st decade of X the early species (birch, linden, maple) have turned.
+	 */
+	@Test
+	void midAutumnCrownsHaveTurned() {
+		int first = SeasonPhase.firstStep(SubSeason.MID_AUTUMN);
+		StringBuilder report = new StringBuilder();
+		for (Species s : FoliageCurve.species()) {
+			if (!FoliageCurve.conifer(s)) {
+				report.append(String.format(Locale.ROOT, "%s %d/%d/%d; ", s.id(), turned(s, first), turned(s, first + 1),
+						turned(s, first + 2)));
+			}
+		}
+		System.out.println("[foliage] turned or bare phases of 4 in the 1st / 2nd / 3rd decade of X: " + report);
+		for (Species s : List.of(Species.BIRCH, Species.LINDEN, Species.NORWAY_MAPLE)) {
+			assertTrue(turned(s, first) >= 2, s.id() + ": " + report);
+		}
+		for (Species s : List.of(Species.BIRCH, Species.LINDEN, Species.NORWAY_MAPLE, Species.BEECH, Species.HORNBEAM)) {
+			assertTrue(turned(s, first + 1) >= 3, s.id() + ": " + report);
+		}
+		// The ash drops its leaves green-yellow over the 2nd and 3rd decades of X.
+		assertTrue(turned(Species.ASH, first + 1) >= 2, report.toString());
+		assertTrue(turned(Species.OAK, first + 2) >= 3, report.toString());
+	}
+
+	/** Step V13: the twig color of a species is its winter color of the curve (the twig haze), low in chroma. */
+	@Test
+	void twigColorIsTheTwigHaze() {
+		double winter = SeasonPhase.firstStep(SubSeason.MID_WINTER) + 1.5;
+		for (Species s : FoliageCurve.species()) {
+			if (FoliageCurve.conifer(s)) {
+				continue;
+			}
+			int twigs = FoliageCurve.twigs(s, GRAD);
+			assertEquals(FoliageCurve.colorAt(s, winter, GRAD), twigs, s.id());
+			assertTrue(chroma(twigs) <= 20, s.id() + " twigs " + Integer.toHexString(twigs));
+		}
+	}
+
+	/** The phases of 4 of a species that show bare twigs at a step. */
+	private static int bare(Species s, int step) {
+		int n = 0;
+		for (int phase = 0; phase < FoliageCurve.PHASES; phase++) {
+			n += FoliageCurve.leafless(s, step, phase, false) ? 1 : 0;
+		}
+		return n;
+	}
+
+	/** The phases of 4 of a species whose crown has turned from the summer color or is bare at a step. */
+	private static int turned(Species s, int step) {
+		int n = 0;
+		int summer = FoliageCurve.summer(s, GRAD);
+		for (int phase = 0; phase < FoliageCurve.PHASES; phase++) {
+			n += FoliageCurve.leafless(s, step, phase, false) || dist(FoliageCurve.color(s, step, phase, GRAD), summer) >= TURNED ? 1 : 0;
+		}
+		return n;
 	}
 
 	@Test

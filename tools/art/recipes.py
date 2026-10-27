@@ -997,6 +997,104 @@ SAPLINGS = [
 ]
 
 
+
+# ---------------------------------------------------------------------------------------------------- bare twigs (V13)
+def twig_score(tex):
+    """Score of a twigs candidate: the spread of the visible pixels over the columns and rows (as leaves_score), plus a
+    large penalty for every lint error."""
+    def score(img):
+        cmin, rmin, cstd, rstd = t.line_cover(img[..., 3])
+        sc = max(cstd, rstd)
+        import lint
+        sc += 10 * len(lint.lint_texture(tex.name, img, tex)[0])
+        return sc
+    return score
+
+
+def _twig_path(rng, val, x, y, angle, length, tone, zigzag):
+    """A 4-connected twig from (x, y) along `angle` (any direction: a crown seen from any side has no 'up'), `length`
+    steps, bending by up to `zigzag` radians at random kinks (oak and hornbeam twigs zigzag, birch twigs run straight);
+    every pixel takes `tone` unless a darker tone is there already. Returns the pixels in order."""
+    pts = []
+    fx, fy = x + 0.5, y + 0.5
+    a = angle
+    cx, cy = int(math.floor(fx)), int(math.floor(fy))
+    for s in range(length):
+        if zigzag and rng.random() < 0.3:
+            a += rng.uniform(-zigzag, zigzag)
+        fx += math.cos(a)
+        fy += math.sin(a)
+        nx, ny = int(math.floor(fx)), int(math.floor(fy))
+        # walk 4-connected: first along x, then along y, so the line has no diagonal-only steps
+        while (cx, cy) != (nx, ny):
+            if cx != nx:
+                cx += 1 if nx > cx else -1
+            else:
+                cy += 1 if ny > cy else -1
+            px, py = cx % N, cy % N
+            if val[py, px] == 0 or val[py, px] > tone:
+                val[py, px] = tone
+            pts.append((cx, cy))
+    return pts
+
+
+def twigs(tex, palettes):
+    """Bare twigs of a leafless broadleaf crown (step V13, T-D5; V3-f: no 'up' direction, twigs crossing the tile edges,
+    grayscale for the twig color of the species, tint index 1 of the leaf block): branches from random points in random
+    directions (tone 1, the body of a twig), each with side twigs at p['fork'] (tone 2, lighter: thinner and lit) and
+    their tips (tone 3, the last p['tip'] pixels, catching the light), until p['opacity'] of the pixels are twigs;
+    p['zigzag'] bends them (oak and hornbeam zigzag, birch and linden straight and fine, ash coarse and sparse). The
+    darkest tone 0 marks where twigs cross. The best of p['tries'] seeds by twig_score."""
+    p = tex.params
+
+    def build(seed):
+        rng = t.Rng(seed)
+        val = np.zeros((N, N), int)
+        tries = 0
+        while (val > 0).mean() < p['opacity'] and tries < 60:
+            tries += 1
+            x, y = rng.uniform(0, N), rng.uniform(0, N)
+            a = rng.uniform(0, 2 * math.pi)
+            if tries % 2 == 0:
+                # every other branch starts in the emptiest column or row and runs across it, so no empty line repeats
+                cols, rows = (val > 0).sum(axis=0), (val > 0).sum(axis=1)
+                if cols.min() <= rows.min():
+                    x = int(np.argmin(cols)) + 0.5
+                    a = rng.choice((0.0, math.pi)) + rng.uniform(-0.6, 0.6)
+                else:
+                    y = int(np.argmin(rows)) + 0.5
+                    a = rng.choice((0.5 * math.pi, 1.5 * math.pi)) + rng.uniform(-0.6, 0.6)
+                a += 0.5 * math.pi
+            main = _twig_path(rng, val, x, y, a, rng.integers(*p['length']), 1, p['zigzag'])
+            for i, (mx, my) in enumerate(main):
+                if i < 2 or rng.random() > p['fork']:
+                    continue
+                side = a + rng.choice((-1, 1)) * rng.uniform(0.5, 1.1)
+                pts = _twig_path(rng, val, mx, my, side, rng.integers(*p['side']), 2, p['zigzag'])
+                for (sx, sy) in pts[-p['tip']:]:
+                    if val[sy % N, sx % N] == 2:
+                        val[sy % N, sx % N] = 3
+        alpha = np.where(val > 0, 255, 0).astype(np.uint8)
+        idx = np.clip(val, 0, 3)
+        # crossings: a body pixel with twig pixels on three or four sides takes the darkest tone
+        nb = np.stack(t.neighbours4(val))
+        idx = np.where((val == 1) & ((nb > 0).sum(axis=0) >= 3), 0, idx)
+        return t.paint(idx, t.gray_ramp(4, *p['gray']), alpha), None
+    return best_of(tex, build, twig_score(tex))[0]
+
+
+TWIG_SPECIES = [
+    # (species, twig color of the curve = the tint in the sheets, opacity, zigzag, branch length, side length, fork, note)
+    ('birch', '#b58b8f', 0.40, 0.15, (9, 15), (3, 6), 0.45,
+     'birch: dense, fine, straight purple-brown twigs (the purple haze of a birch crown in winter)'),
+    ('linden', '#aa8377', 0.36, 0.25, (8, 14), (3, 6), 0.40, 'small-leaved lime: straight reddish twigs in a dense net'),
+    ('norway_maple', '#9d8e80', 0.32, 0.25, (8, 13), (3, 5), 0.35, 'Norway maple: gray-brown twigs, opposite forks'),
+    ('ash', '#9c9c91', 0.27, 0.15, (9, 15), (2, 5), 0.25, 'ash: few coarse pale gray twigs (thick shoots, black buds)'),
+    ('hornbeam', '#959084', 0.38, 0.55, (8, 13), (3, 6), 0.45, 'hornbeam: dense gray zigzag twigs'),
+    ('beech', '#a1897e', 0.36, 0.45, (8, 14), (3, 6), 0.40, 'beech: fine gray zigzag twigs with long pointed buds'),
+    ('oak', '#9a8577', 0.32, 0.70, (7, 12), (2, 5), 0.40, 'pedunculate oak: gnarled, strongly zigzagging gray-brown twigs'),
+]
+
 def upper_texture(tex, palettes):
     return bark_scots_pine_upper_built(tex, palettes)[0]
 
@@ -1124,6 +1222,22 @@ TEXTURES = [
             params=dict(grain=2.0, colors=['#3e4f2c', '#465a31', '#4f6436', '#586e3b', '#62783f']),
             note='feather moss mat of the pine forests under the bilberry and the needles (the mossy states, PW-7): '
                  'olive greens, duller and greener than the vanilla moss block, tileable'),
+    # Step V13: the seasonal looks of the herb layer (decision PW-8 (a)): the leaves of the flower beds without flowers
+    # (the same layout as the flowering texture, the flowers replaced by leaf tones) and the flowers of the bilberry.
+    Texture('wood_anemone_leaves', 'plant', ground.flower_bed, 'wood_anemone/1', None,
+            params=dict(leaves=ground.ANEMONE_LEAVES, flower_sprites=ground.ANEMONE_FLOWERS, leaf_cover=0.6, flowers=2, halo=((1, 7),),
+                        drop_flowers=True,
+                        colors=['#4a6431', '#5a7838', '#6f8c45', '#56603a', '#a5a99b', '#bdbcb4', '#b8ab68', '#86a061']),
+            note='wood anemone after the flowering (step V13, May to early June): the same whorls of divided leaves, a '
+                 'little lighter and yellower, no flowers'),
+    Texture('hepatica_leaves', 'plant', ground.flower_bed, 'hepatica/1', None,
+            params=dict(leaves=ground.HEPATICA_LEAVES, flower_sprites=ground.HEPATICA_FLOWERS, leaf_cover=0.55, flowers=2, halo=((1, 7),),
+                        drop_flowers=True,
+                        colors=['#304b28', '#3d5b30', '#4e6c3d', '#5b4a4e', '#6b62a6', '#8079c0', '#a9a4cc', '#5d7a4c']),
+            note='liverleaf outside the flowering (step V13): the same three-lobed leathery leaves, no flowers'),
+    Texture('bilberry_flowers', 'plant', ground.berries, 'bilberry_flowers/1', None,
+            params=dict(count=7, rows=(4, 11), colors=['#c99aa2', '#d3a8ae', '#dbb4b9', '#e3c0c3']),
+            note='bilberry flowers (step V13, May): small nodding greenish-pink bells, overlay of the bilberry cross model'),
     Texture('bilberries', 'plant', ground.berries, 'bilberries/1', None,
             params=dict(count=9, rows=(3, 13), colors=['#272b45', '#2f3656', '#384166', '#454f78']),
             note='the bilberry fruit item: a handful of blue-black berries with a frosty blue bloom'),
@@ -1141,7 +1255,12 @@ TEXTURES = [
             params=PINE_STRIPPED_TOP, expect={'luma': (130, 170)},
             note='stripped Scots pine log top: the rings of the log top with a pale wood border'),
 ] + [Texture(f'{name}_sapling', 'sapling', wood.sapling, f'{name}_sapling/1', None, params=params, note=note)
-     for name, params, note in SAPLINGS]
+     for name, params, note in SAPLINGS] + [
+    # Step V13 (T-D5): the bare twigs of the leafless broadleaf crowns, grayscale for the twig color of the species.
+    Texture(f'{name}_twigs', 'twigs', twigs, f'{name}_twigs/1', None, tint=color, mcmeta=LEAVES_MCMETA,
+            params=dict(opacity=opacity, zigzag=zigzag, length=length, side=side, fork=fork, tip=2, gray=(98, 166), tries=24),
+            expect={'min_line': 2}, note=note)
+    for name, color, opacity, zigzag, length, side, fork, note in TWIG_SPECIES]
 
 TEXTURES_BY_NAME = {tx.name: tx for tx in TEXTURES}
 # The painter of each plated bark (a variant rebuilds its base with the base's own painter, so it gets the structure

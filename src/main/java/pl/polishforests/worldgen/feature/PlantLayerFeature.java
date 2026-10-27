@@ -83,6 +83,9 @@ public final class PlantLayerFeature implements Feature {
 	/** Whether a plant of the palette has its own mossy underside, so the ground under it stays (the plant indices). */
 	private final boolean[] ownUnderside;
 	private final boolean anyPlantGround;
+	/** Rules whose plant ground covers every podzol column they claim (step V13, {@link PlantPalette.Rule#plantGroundColumns}). */
+	private final boolean[] plantGroundColumns;
+	private final boolean anyPlantGroundColumns;
 	private final boolean shore;
 	private final boolean seaward;
 	/** Whether a rule of the palette asks for a forest edge class (the mantle and fringe of step S8b). */
@@ -128,6 +131,13 @@ public final class PlantLayerFeature implements Feature {
 		}
 		this.plan = new ColumnPlan.Palette(rules);
 		this.plantGround = new BlockState[rules.size()];
+		this.plantGroundColumns = new boolean[rules.size()];
+		boolean anyColumns = false;
+		for (int r = 0; r < rules.size(); r++) {
+			plantGroundColumns[r] = palette.rules().get(r).plantGroundColumns() && palette.rules().get(r).plantGround().isPresent();
+			anyColumns |= plantGroundColumns[r];
+		}
+		this.anyPlantGroundColumns = anyColumns;
 		boolean any = false;
 		for (int r = 0; r < rules.size(); r++) {
 			plantGround[r] = palette.rules().get(r).plantGround().orElse(null);
@@ -233,7 +243,34 @@ public final class PlantLayerFeature implements Feature {
 				}
 			}
 		}
+		if (anyPlantGroundColumns) {
+			groundOfColumns(level, habitats, columns, pos, at);
+		}
 		return placed;
+	}
+
+	/**
+	 * Step V13 (finding 3 of the V12 review): the podzol of every land column claimed by a rule with
+	 * {@link PlantPalette.Rule#plantGroundColumns} turns into the rule's plant ground, with or without a plant (the columns
+	 * left uncovered and the patches whose plant was not placed read as bare orange plates). Under a plant with its own
+	 * mossy underside the change is hidden. No randomness: the result is a pure function of the columns.
+	 */
+	private void groundOfColumns(WorldGenLevel level, ChunkHabitats habitats, ColumnPlan.Columns columns, ChunkPos pos,
+			BlockPos.MutableBlockPos at) {
+		for (int column = 0; column < 256; column++) {
+			if (habitats.pieceDistance(column) == 0) {
+				continue;
+			}
+			int r = plan.ruleFor(columns.codes()[column], columns.waterDepth()[column], columns.ground()[column], columns.side()[column],
+					columns.edge() == null ? 0 : columns.edge()[column]);
+			if (r < 0 || !plantGroundColumns[r]) {
+				continue;
+			}
+			at.set(pos.getMinBlockX() + (column >> 4), habitats.top()[column], pos.getMinBlockZ() + (column & 15));
+			if (level.getBlockState(at).is(Blocks.PODZOL)) {
+				level.setBlock(at, plantGround[r], Block.UPDATE_CLIENTS);
+			}
+		}
 	}
 
 	/** The ground block of the rule of a column for its placed plant, or null when the ground stays. */

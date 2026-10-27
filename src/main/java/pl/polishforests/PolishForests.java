@@ -27,6 +27,8 @@ public final class PolishForests implements ModInitializer {
 		PolishForestsWorldgen.register();
 		PolishForestsCommands.register();
 		Seasons.init();
+		// Step V13: the fruit of the bilberry through the year (random tick and the catch-up of loaded chunks).
+		pl.polishforests.season.BerrySeason.register();
 		ClimateBinding.register();
 		LOG.info("Polish Forests: initialization complete (calendar: {})", Seasons.provider().name());
 	}

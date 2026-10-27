@@ -207,9 +207,9 @@ public final class ModBlocks {
 		for (GroundPlant g : GroundPlant.values()) {
 			Block block = switch (g.kind()) {
 				case BERRY_SHRUB -> block(g.id(), p -> new BerryShrubBlock(ModBlocks::bilberries, p), BlockBehaviour.Properties.of()
-						.mapColor(MapColor.PLANT).replaceable().noCollision().instabreak().sound(SoundType.GRASS).ignitedByLava()
+						.mapColor(MapColor.PLANT).replaceable().noCollision().randomTicks().instabreak().sound(SoundType.GRASS).ignitedByLava()
 						.pushReaction(PushReaction.POPPED));
-				case SEASONAL -> block(g.id(), SeasonalPlantBlock::new, BlockBehaviour.Properties.of().mapColor(MapColor.PLANT)
+				case SEASONAL -> block(g.id(), p -> new SeasonalPlantBlock(g, p), BlockBehaviour.Properties.of().mapColor(MapColor.PLANT)
 						.noCollision().sound(SoundType.PINK_PETALS).pushReaction(PushReaction.POPPED));
 				case COVER -> block(g.id(), GroundCoverBlock::new, BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_BROWN)
 						.replaceable().noCollision().sound(SoundType.LEAF_LITTER).pushReaction(PushReaction.POPPED));

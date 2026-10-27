@@ -571,6 +571,8 @@ tasks.named('runClientGameTest') {
 		jvmArgs '-Dpolishforests.loadOnly=true'
 	}
 	jvmArgs "-Dpolishforests.leaves.out=${layout.buildDirectory.dir('leaves').get().asFile.absolutePath}"
+	// Step V13: the results of -Pgametest=slice -Psites=seasons.
+	jvmArgs "-Dpolishforests.seasons.out=${layout.buildDirectory.dir('seasons').get().asFile.absolutePath}"
 	if (project.hasProperty('profile')) {
 		jvmArgs "-XX:StartFlightRecording=filename=${layout.buildDirectory.file('profile.jfr').get().asFile.absolutePath},settings=profile"
 	}

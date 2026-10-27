@@ -32,6 +32,7 @@ import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.presets.WorldPreset;
 import pl.polishforests.PolishForests;
 import pl.polishforests.client.screen.PolandPresetEditor;
+import pl.polishforests.season.SeasonalProperties;
 import pl.polishforests.worldgen.chunk.PolandChunkGenerator;
 import pl.polishforests.worldgen.chunk.PolandScale;
 
@@ -285,7 +286,8 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 						int i = offset + x * 16 + z;
 						int y0 = terrain.ground()[i] - WINDOW_BELOW;
 						for (int k = 0; k < WINDOW; k++) {
-							BlockState state = chunk.getBlockState(pos.set(x, y0 + k, z));
+							// Rule ZW-5 (step V13): the seasonal properties (the bilberry fruit) at their neutral value.
+							BlockState state = SeasonalProperties.neutral(chunk.getBlockState(pos.set(x, y0 + k, z)));
 							window[i * WINDOW + k] = STATE_IDS.computeIfAbsent(state, st -> STATE_IDS.size());
 						}
 					}
@@ -310,7 +312,7 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 			for (int y = 0; y < 16; y++) {
 				for (int x = 0; x < 16; x++) {
 					for (int z = 0; z < 16; z++) {
-						BlockState state = section.getBlockState(x, y, z);
+						BlockState state = SeasonalProperties.neutral(section.getBlockState(x, y, z));
 						Long sh = STATE_HASHES.get(state);
 						if (sh == null) {
 							sh = stableHash(state.toString());

@@ -10,6 +10,8 @@ public final class PolishForestsClient implements ClientModInitializer {
 		ClientSeasonPhase.register();
 		// Step V12: the tints of the herb layer.
 		ClientGroundPlants.register();
+		// Step V13: the seasonal models (bare twigs, the phases of the herb layer).
+		ClientSeasonModels.register();
 		// Step S9: the habitat in the F3 overlay.
 		HabitatDebugEntry.register();
 	}

@@ -91,6 +91,8 @@ import pl.polishforests.worldgen.surface.ChunkSurface;
  * {@code -Psites=samples} builds the sample board of the thin trunks instead (step V2, {@link TrunkSamples}).
  * {@code -Psites=trees} plants the board of the tree planner instead (step V6, {@link TreeSamples}).
  * {@code -Psites=leaves} builds the board of the species leaves, saplings and the LITE pine set (step V7, {@link LeafSamples}).
+ * {@code -Psites=seasons} shoots the forests in the sub-seasons and checks the herb phases, the bare twigs, the falling
+ * leaves and the bilberry fruit with its catch-up (step V13, {@link SeasonSamples}).
  * {@code -Psites=deadwood} builds the board of the dead wood planner and shoots its objects in the worlds (step V11,
  * {@link DeadwoodSamples}).
  * {@code -Psites=roots} builds the board of the roots and shoots the trunk bases, flares and a trench in the worlds (step
@@ -166,6 +168,10 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 		}
 		if (only.equals("leaves")) {
 			LeafSamples.run(context);
+			return;
+		}
+		if (only.equals("seasons")) {
+			SeasonSamples.run(context);
 			return;
 		}
 		if (only.equals("deadwood")) {

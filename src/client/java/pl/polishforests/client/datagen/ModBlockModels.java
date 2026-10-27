@@ -184,6 +184,9 @@ final class ModBlockModels extends FabricModelProvider {
 						BERRIES);
 				Identifier berries = berriesTemplate.create(block, new TextureMapping().put(BERRIES, new Material(own(g.id() + "_berries"))),
 						gen.modelOutput);
+				// Step V13: the flowers over the shrub in May (a seasonal alternative of the client, not in the block state).
+				berriesTemplate.create(pl.polishforests.client.ClientSeasonModels.flowers(g), new TextureMapping().put(BERRIES,
+						new Material(own(g.id() + "_flowers"))), gen.modelOutput);
 				gen.blockStateOutput.accept(MultiPartGenerator.multiPart(block)
 						.with(BlockModelGenerators.variants(shrubs.toArray(Variant[]::new)))
 						.with(BlockModelGenerators.condition().term(BerryShrubBlock.BERRIES, true), BlockModelGenerators.plainVariant(berries))
@@ -199,6 +202,13 @@ final class ModBlockModels extends FabricModelProvider {
 						BlockModelGenerators.plainVariant(ModelTemplates.FLOWERBED_2.create(block, textures, gen.modelOutput)),
 						BlockModelGenerators.plainVariant(ModelTemplates.FLOWERBED_3.create(block, textures, gen.modelOutput)),
 						BlockModelGenerators.plainVariant(ModelTemplates.FLOWERBED_4.create(block, textures, gen.modelOutput))};
+				// Step V13: the leaves without flowers (block/<id>_leaves_1 … 4), a seasonal alternative of the client.
+				TextureMapping leaves = new TextureMapping().put(TextureSlot.FLOWERBED, new Material(own(g.id() + "_leaves")))
+						.put(TextureSlot.STEM, new Material(own("forest_flower_stem")));
+				for (ModelTemplate t : List.of(ModelTemplates.FLOWERBED_1, ModelTemplates.FLOWERBED_2, ModelTemplates.FLOWERBED_3,
+						ModelTemplates.FLOWERBED_4)) {
+					t.createWithSuffix(block, "_leaves", leaves, gen.modelOutput);
+				}
 				// As vanilla's flower beds: model k with k or more flowers.
 				gen.createSegmentedBlock(block, m[0], c -> c.term(amount, 1, 2, 3, 4), m[1], c -> c.term(amount, 2, 3, 4),
 						m[2], c -> c.term(amount, 3, 4), m[3], c -> c.term(amount, 4));
@@ -276,6 +286,12 @@ final class ModBlockModels extends FabricModelProvider {
 		gen.blockStateOutput.accept(BlockModelGenerators.createSimpleBlock(block, BlockModelGenerators.plainVariant(model)));
 		gen.registerSimpleTintedItemModel(block, model,
 				ItemModelUtils.constantTint(0xFF000000 | FoliageCurve.summer(f.species(), FoliageCurve.DEFAULT_FOLIAGE)));
+		if (!f.conifer()) {
+			// Step V13 (T-D5): the bare twigs of the leafless crown, a seasonal alternative of the client (tint index 1).
+			new ModelTemplate(Optional.of(PolishForests.id(GroundTemplates.TWIGS)), Optional.empty(), TextureSlot.ALL)
+					.create(pl.polishforests.client.ClientSeasonModels.twigs(f), TextureMapping.cube(new Material(own(f.species().id()
+							+ "_twigs"))), gen.modelOutput);
+		}
 	}
 
 	/** A sapling (cross, not tinted), its flat item model and its flower pot, as vanilla's saplings. */

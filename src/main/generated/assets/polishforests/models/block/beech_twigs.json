@@ -1,0 +1,6 @@
+{
+  "parent": "polishforests:block/template_twigs",
+  "textures": {
+    "all": "polishforests:block/beech_twigs"
+  }
+}

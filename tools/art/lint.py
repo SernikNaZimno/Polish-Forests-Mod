@@ -68,9 +68,13 @@ TINT_LUMA = (0.45, 0.65)
 LEAF_OPACITY = (0.55, 0.70)
 COLORS = (4, 9)
 MIN_COLOR_PIXELS = 4
-ISOLATED_MAX = {'bark': 0.10, 'leaves': 0.30, 'plant': 1.0, 'planks': 0.30, 'stripped': 0.25, 'end': 0.30, 'sapling': 1.0}
+ISOLATED_MAX = {'bark': 0.10, 'leaves': 0.30, 'plant': 1.0, 'planks': 0.30, 'stripped': 0.25, 'end': 0.30, 'sapling': 1.0,
+                'twigs': 0.30}
 # Kinds that tile on a wall (seam check both ways) and kinds that must be fully opaque.
-TILED = ('bark', 'leaves', 'planks', 'stripped')
+TILED = ('bark', 'leaves', 'planks', 'stripped', 'twigs')
+# Bare twigs (step V13): the share of visible pixels of a leafless crown block (vanilla has no bare crowns; a crown of
+# 3-4 blocks then shows about 70-85% of twigs against the sky, as a crown seen through in winter).
+TWIG_OPACITY = (0.24, 0.45)
 OPAQUE = ('planks', 'stripped', 'end')
 DARK = 50
 # Local contrast (step V1b, checkpoint CP-A: "the textures look a bit too sharp"; texlib.local_contrast): the largest
@@ -93,7 +97,9 @@ CONTRAST = {'bark': (13.1, 32.6, 0.031), 'leaves': (28.3, 60.9, 0.162), 'plant':
             # p90 35-165 (median 48.9), lines 0-15% (median 5.4%). The caps are the medians (CP-A: smoother), for the
             # stripped sides the upper quartile.
             'planks': (15.3, 42.0, 0.17), 'stripped': (6.8, 15.2, 0.01), 'end': (17.9, 55.8, 0.059),
-            'sapling': (23.6, 48.9, 0.054)}
+            'sapling': (23.6, 48.9, 0.054),
+            # Step V13: bare twigs, no vanilla counterpart; the caps of the leaves (a crown texture under the tint).
+            'twigs': (28.3, 60.9, 0.162)}
 # The jump across a block edge between two different textures of one trunk (expect 'below' / 'above') may be at most
 # this many times the mean step between neighbouring rows inside them (V1b review round 1: the first transition bark
 # had jumps 3-4 times the inner steps, a straight line around the trunk).
@@ -239,6 +245,15 @@ def lint_texture(name, img, tex, others=None):
         if need and min(m['cols_min'], m['rows_min']) < need:
             err.append(f'{name}: a column or row with {min(m["cols_min"], m["rows_min"])} of {t.N} pixels visible, at least '
                        f'{need} (an empty line repeats at every block of a leaf wall)')
+    if tex.kind == 'twigs':
+        lo, hi = TWIG_OPACITY
+        if not lo <= m['opacity'] <= hi:
+            err.append(f'{name}: {m["opacity"]:.0%} of the pixels visible, twigs need {lo:.0%}-{hi:.0%}')
+        m['cols_min'], m['rows_min'], _, _ = t.line_cover(a)
+        need = (tex.expect or {}).get('min_line')
+        if need and min(m['cols_min'], m['rows_min']) < need:
+            err.append(f'{name}: a column or row with {min(m["cols_min"], m["rows_min"])} of {t.N} pixels visible, at least '
+                       f'{need} (an empty line repeats at every block of a bare crown)')
     m['isolated'] = t.isolated_fraction(ids, a)
     if m['isolated'] > ISOLATED_MAX[tex.kind]:
         err.append(f'{name}: {m["isolated"]:.0%} isolated pixels, at most {ISOLATED_MAX[tex.kind]:.0%} for {tex.kind}')

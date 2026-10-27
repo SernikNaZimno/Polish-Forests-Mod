@@ -27,6 +27,9 @@ import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import pl.polishforests.season.BerrySeason;
+import pl.polishforests.season.GroundPhases;
+import pl.polishforests.season.Seasons;
 
 /**
  * A dwarf shrub with fruit (step V12, {@link GroundPlant.Kind#BERRY_SHRUB}; the bilberry): low, without collision,
@@ -41,6 +44,11 @@ public class BerryShrubBlock extends VegetationBlock implements BonemealableBloc
 	public static final BooleanProperty MOSSY = BooleanProperty.create("mossy");
 	/** Bilberry is 15–50 cm: the outline of a low shrub. */
 	private static final VoxelShape SHAPE = Block.column(14.0, 0.0, 9.0);
+
+	/** One random tick in this many ripens the fruit of a fertile plant in the fruiting season (about 14 minutes). */
+	static final int RIPEN = 12;
+	/** One random tick in this many drops the fruit outside the fruiting season (about 4.5 minutes). */
+	static final int DROP = 4;
 
 	private final Supplier<Item> fruit;
 
@@ -84,8 +92,26 @@ public class BerryShrubBlock extends VegetationBlock implements BonemealableBloc
 	}
 
 	@Override
+	protected boolean isRandomlyTicking(BlockState state) {
+		return true;
+	}
+
+	/** The fruit follows the season (step V13): ripens in MID_SUMMER and LATE_SUMMER, falls afterwards. */
+	@Override
+	protected void randomTick(BlockState state, ServerLevel level, BlockPos pos, RandomSource random) {
+		boolean season = GroundPhases.fruiting(Seasons.provider().subSeason(level));
+		boolean berries = state.getValue(BERRIES);
+		if (season && !berries && GroundPhases.fertile(pos.getX(), pos.getY(), pos.getZ()) && random.nextInt(RIPEN) == 0) {
+			level.setBlock(pos, state.setValue(BERRIES, true), Block.UPDATE_CLIENTS);
+		} else if (!season && berries && random.nextInt(DROP) == 0) {
+			level.setBlock(pos, state.setValue(BERRIES, false), Block.UPDATE_CLIENTS);
+		}
+	}
+
+	/** Bone meal ripens the fruit in the fruiting season only (step V13; outside it the bilberry has no flowers left). */
+	@Override
 	public boolean isValidBonemealTarget(LevelReader level, BlockPos pos, BlockState state, BonemealSource source) {
-		return !state.getValue(BERRIES);
+		return !state.getValue(BERRIES) && (!(level instanceof Level l) || GroundPhases.fruiting(Seasons.provider().subSeason(l)));
 	}
 
 	@Override

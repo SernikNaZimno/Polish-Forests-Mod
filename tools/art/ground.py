@@ -106,6 +106,9 @@ def flower_bed(tex, palettes):
             _place(val, spr, x0, y0, flower_map, (qx + 1, qy + 1, qx + 7, qy + 7))
             centres.append((x0, y0))
             placed += 1
+    if p.get('drop_flowers'):
+        # Step V13: the leaves without flowers, same layout: the tepals take the leaf body tones, the centre the lit leaf.
+        val = np.where(val == 4, 1, np.where(val == 5, 2, np.where(val == 6, 7, val)))
     alpha = np.where(val >= 0, 255, 0).astype(np.uint8)
     colors = [t.hex_to_rgb(c) for c in p['colors']]
     return t.paint(np.clip(val, 0, len(colors) - 1), colors, alpha)

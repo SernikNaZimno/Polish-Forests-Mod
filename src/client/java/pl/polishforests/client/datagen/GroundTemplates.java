@@ -21,6 +21,12 @@ import pl.polishforests.PolishForests;
  * crosses.
  */
 final class GroundTemplates implements DataProvider {
+	/**
+	 * Model id of the bare twigs of a leafless crown (step V13, T-D5): a cube as vanilla's leaves template, but with the
+	 * tint index 1 (the twig color of the species, the second tint source of the leaf block; tint index 0 stays the leaf
+	 * curve), textures {@code all}.
+	 */
+	static final String TWIGS = "block/template_twigs";
 	/** Model id of the berries cross. */
 	static final String BERRIES = "block/template_berries_cross";
 	/** Height of the litter planes over the moss carpet, px (vanilla leaf litter: 0.25 over the ground). */
@@ -54,6 +60,7 @@ final class GroundTemplates implements DataProvider {
 	public CompletableFuture<?> run(CachedOutput cache) {
 		List<CompletableFuture<?>> out = new ArrayList<>();
 		out.add(DataProvider.saveStable(cache, berries(), models.json(PolishForests.id(BERRIES))));
+		out.add(DataProvider.saveStable(cache, twigs(), models.json(PolishForests.id(TWIGS))));
 		for (int k = 1; k <= SHRUB_VARIANTS; k++) {
 			out.add(DataProvider.saveStable(cache, shrub(SHRUB[k - 1]), models.json(PolishForests.id(shrubCross(k)))));
 		}
@@ -79,6 +86,32 @@ final class GroundTemplates implements DataProvider {
 		m.addProperty("ambientocclusion", false);
 		JsonObject textures = new JsonObject();
 		textures.addProperty("particle", "#berries");
+		m.add("textures", textures);
+		m.add("elements", elements);
+		return m;
+	}
+
+	/** The twigs cube: vanilla's leaves template with the tint index 1. */
+	private static JsonObject twigs() {
+		JsonObject faces = new JsonObject();
+		for (String side : new String[] {"down", "up", "north", "south", "west", "east"}) {
+			JsonObject f = new JsonObject();
+			f.add("uv", vector(new double[] {0, 0, 16, 16}));
+			f.addProperty("texture", "#all");
+			f.addProperty("tintindex", 1);
+			f.addProperty("cullface", side);
+			faces.add(side, f);
+		}
+		JsonObject e = new JsonObject();
+		e.add("from", vector(new double[] {0, 0, 0}));
+		e.add("to", vector(new double[] {16, 16, 16}));
+		e.add("faces", faces);
+		JsonArray elements = new JsonArray();
+		elements.add(e);
+		JsonObject m = new JsonObject();
+		m.addProperty("parent", "minecraft:block/block");
+		JsonObject textures = new JsonObject();
+		textures.addProperty("particle", "#all");
 		m.add("textures", textures);
 		m.add("elements", elements);
 		return m;

@@ -811,6 +811,7 @@
       "patch": 6,
       "patch_shape": "blobs",
       "plant_ground": "polishforests:mossy_podzol",
+      "plant_ground_columns": true,
       "plants": [
         {
           "block": {
@@ -920,6 +921,7 @@
       "patch": 5,
       "patch_shape": "blobs",
       "plant_ground": "minecraft:grass_block",
+      "plant_ground_columns": true,
       "plants": [
         {
           "block": {

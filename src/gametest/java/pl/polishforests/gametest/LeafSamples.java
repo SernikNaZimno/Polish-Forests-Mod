@@ -150,6 +150,7 @@ final class LeafSamples {
 				check(context, sp, y0, p, name, expected);
 			}
 			fast(context, sp, y0, p, seasons);
+			fastWinter(context, sp, y0, p, seasons);
 			sp.getServer().runCommand("gamemode creative @a");
 		}
 		write(tag);
@@ -379,8 +380,10 @@ final class LeafSamples {
 					throw new AssertionError("The client has " + s + " at the swatch of " + f);
 				}
 				int rawColor = mc.level.getBlockTint(pos, ClientSeasonPhase.RAW_FOLIAGE);
-				int curve = 0xFF000000 | FoliageCurve.color(f.species(), step, 1, rawColor);
-				int tint = mc.getBlockColors().getTintSources(s).getFirst().colorInWorld(s, mc.level, pos);
+				// Step V13: a leafless crown shows the bare twigs, tinted by the twig color of the species (tint index 1).
+				boolean bare = FoliageCurve.leafless(f.species(), step, 1, false);
+				int curve = 0xFF000000 | (bare ? FoliageCurve.twigs(f.species(), rawColor) : FoliageCurve.color(f.species(), step, 1, rawColor));
+				int tint = mc.getBlockColors().getTintSources(s).get(bare ? 1 : 0).colorInWorld(s, mc.level, pos);
 				int dryCurve = curve;
 				int dryTint = tint;
 				if (f.marcescent()) {
@@ -449,6 +452,31 @@ final class LeafSamples {
 		if (!leaves || (sky > 0.05) != (oakSky > 0.05) || Math.abs(fancy - fancyOak) > 0.08) {
 			fail("fast: species leaves behave unlike vanilla leaves (screen sky %.1f%% / vanilla %.1f%%, Fancy %.1f%% / %.1f%%)",
 					100 * sky, 100 * oakSky, 100 * fancy, 100 * fancyOak);
+		}
+	}
+
+	/**
+	 * Step V13 (T-D5, V3-b): in MID_WINTER the species oak screen shows bare twigs against the sky in the Fancy mode, and in
+	 * the Fast mode the twigs stay cut out (the forceOpaque mixin) with as much sky as in the Fancy mode (the faces towards
+	 * other leaves kept); the vanilla oak screen keeps its leaves.
+	 */
+	private void fastWinter(ClientGameTestContext context, TestSingleplayerContext sp, int y0, String p, boolean seasons) {
+		setSeason(context, sp, SubSeason.MID_WINTER, 0, seasons);
+		double fancy = RenderProbesClientGameTest.sky(shot(context, sp, p + "screen_fancy_mid_winter", 3.5, y0 + 2.2 - 1.62 + 1,
+				SCREEN_Z - 3, 0, -30, SIZE));
+		context.runOnClient(mc -> mc.options.cutoutLeaves().set(false));
+		context.waitTicks(60);
+		waitCompiled(context);
+		double sky = RenderProbesClientGameTest.sky(shot(context, sp, p + "screen_fast_mid_winter", 3.5, y0 + 2.2 - 1.62 + 1,
+				SCREEN_Z - 3, 0, -30, SIZE));
+		shot(context, sp, p + "trees_left_fast_mid_winter", 2 * TREE_STEP, y0 + 9, TREE_Z - 34, 0, -8, WIDE);
+		context.runOnClient(mc -> mc.options.cutoutLeaves().set(true));
+		context.waitTicks(60);
+		waitCompiled(context);
+		result("winter twigs: screen sky Fancy %.1f%% / Fast %.1f%%", 100 * fancy, 100 * sky);
+		if (fancy < 0.35 || sky < 0.35 || Math.abs(fancy - sky) > 0.08) {
+			fail("winter twigs: screen sky Fancy %.1f%% / Fast %.1f%% (bare twigs must let the sky through, also in Fast mode)",
+					100 * fancy, 100 * sky);
 		}
 	}
 
