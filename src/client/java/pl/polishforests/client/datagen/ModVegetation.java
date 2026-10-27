@@ -466,16 +466,19 @@ final class ModVegetation {
 
 		/** A land rule with rounded patches (step V12, {@link pl.polishforests.worldgen.feature.plan.ColumnPlan.PatchShape#BLOBS}). */
 		Layer blobs(HabitatCondition c, float coverage, int patch, Plant... plants) {
-			return blobs(c, coverage, patch, plants, new Plant[0], false);
+			return blobs(c, coverage, patch, plants, new Plant[0], null);
 		}
 
 		/**
 		 * A land rule with rounded patches of the clumped plants and the scattered plants drawn per column (round 1 of the
-		 * V12 review: the plants without a mossy underside in the pine forests, whose patches read as plates of bare podzol).
+		 * V12 review: the plants without a mossy underside in the pine forests, whose patches read as plates of bare podzol),
+		 * and the ground the podzol under its plants without a mossy underside turns into (null: none; rounds 1 and 2 of
+		 * the V12 review, {@link PlantPalette.Rule#plantGround}).
 		 */
-		Layer blobs(HabitatCondition c, float coverage, int patch, Plant[] clumped, Plant[] scattered, boolean mossyGround) {
+		Layer blobs(HabitatCondition c, float coverage, int patch, Plant[] clumped, Plant[] scattered, BlockState plantGround) {
 			rules.add(new PlantPalette.Rule(c, Medium.LAND, 1, 64, List.of(), coverage, patch, List.of(clumped), List.of(),
-					pl.polishforests.worldgen.feature.plan.ColumnPlan.PatchShape.BLOBS, List.of(scattered), mossyGround));
+					pl.polishforests.worldgen.feature.plan.ColumnPlan.PatchShape.BLOBS, List.of(scattered),
+					java.util.Optional.ofNullable(plantGround)));
 			return this;
 		}
 
@@ -825,26 +828,29 @@ final class ModVegetation {
 		// without a mossy underside scattered per column, not in patches, on the mossy podzol (on bare podzol they read
 		// as orange squares); moss with the mossy underside about 91% of the columns, the herb layer about 54%.
 		l.blobs(biomes(FRESH_PINE_FOREST), 0.97F, 6, cat(bilberry(48, true), mossFloor(26), needles(17, true)),
-				cat(fern.withWeight(2), grass.withWeight(2), bracken(2)), true);
+				cat(fern.withWeight(2), grass.withWeight(2), bracken(2)), ModBlocks.mossyPodzol().defaultBlockState());
 		l.land(biomes(COASTAL_PINE_FOREST), 0.8F, 4, moss.withWeight(35), bush.withWeight(35), lichen.withWeight(10));
 		l.land(biomes(MOIST_PINE_FOREST), 0.9F, 4, moss.withWeight(50), bush.withWeight(25), fern.withWeight(12),
 				largeFern.withWeight(3));
 		// Mixed coniferous forest: less moss, leaf litter of the oaks, bracken as its indicator (about 10%, in stands whose
 		// fronds hide the ground); the bilberry over moss, fern, grass and the oak litter scattered per column on the
-		// mossy podzol (round 1 of the V12 review).
+		// mossy podzol (round 1 of the V12 review), the bracken stands on the mossy podzol too (round 2: its stands on the
+		// podzol of the rusty soil read as orange plates).
 		l.blobs(biomes(MIXED_PINE_FOREST), 0.93F, 6, cat(mossFloor(16), bilberry(26, true), bracken(8), needles(10, true)),
-				cat(litter(4), fern.withWeight(6), grass.withWeight(3)), true);
+				cat(litter(4), fern.withWeight(6), grass.withWeight(3)), ModBlocks.mossyPodzol().defaultBlockState());
 		// Mixed forest: leaf litter at most as much as in the oak-hornbeam forest (the order of the transect indicators,
 		// N15), wood anemone and liverleaf as in the broadleaved forests; the moss on the ground in small cushions scattered
-		// per column (round 1 of the V12 review: in patches it read as square rugs).
+		// per column (round 1 of the V12 review: in patches it read as square rugs); the herb layer and the litter stand on
+		// the turf, not on the podzol patches of the acid brown soil (round 2 of the V12 review: they read as orange plates
+		// under the anemone beds, grass and litter; mossy podzol would break the transect moss order, N15).
 		l.blobs(biomes(MIXED_FOREST), 0.9F, 5, cat(litter(5), anemone(14), hepatica(3), fern.withWeight(8), grass.withWeight(5),
-				bilberry(4, false)), cat(forestMoss.withWeight(10)), false);
+				bilberry(4, false)), cat(forestMoss.withWeight(10)), Blocks.GRASS_BLOCK.defaultBlockState());
 		// Oak-hornbeam forest: wood anemone in carpets (spring herb layer about 88%, without it about 38%: the summer one),
 		// liverleaf in tufts, lily of the valley, ferns and sedges (as short grass), leaf litter about 10%, moss on the
 		// ground little, scattered per column (more at the bases of the trunks, TreeMoss; the own moss carpet since round 1
 		// of the V12 review).
 		l.blobs(biomes(OAK_HORNBEAM_FOREST), 0.98F, 5, cat(anemone(44), hepatica(10), b(Blocks.LILY_OF_THE_VALLEY, 4),
-				fern.withWeight(11), grass.withWeight(9), litter(9)), cat(forestMoss.withWeight(2)), false);
+				fern.withWeight(11), grass.withWeight(9), litter(9)), cat(forestMoss.withWeight(2)), null);
 		l.land(biomes(LOWLAND_BEECH_FOREST), 0.85F, 4, cat(litter(85), fern.withWeight(2)));
 		l.land(biomes(MONTANE_BEECH_FOREST), 0.85F, 4, cat(litter(75), fern.withWeight(6), bed(Blocks.WILDFLOWERS, 3)));
 		l.land(biomes(UPLAND_FIR_FOREST), 0.8F, 4, cat(litter(40), moss.withWeight(20), fern.withWeight(12),

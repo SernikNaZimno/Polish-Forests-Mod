@@ -75,9 +75,14 @@ public final class PlantLayerFeature implements Feature {
 	private final PlantPalette palette;
 	private final List<PlantPalette.Plant> plants = new ArrayList<>();
 	private final ColumnPlan.Palette plan;
-	/** Whether a rule turns the podzol under its scattered plants into the mossy podzol (round 1 of the V12 review). */
-	private final boolean[] mossyGround;
-	private final boolean anyMossyGround;
+	/**
+	 * Block the podzol under a placed plant of a rule turns into, or null (rounds 1 and 2 of the V12 review,
+	 * {@link PlantPalette.Rule#plantGround}).
+	 */
+	private final BlockState[] plantGround;
+	/** Whether a plant of the palette has its own mossy underside, so the ground under it stays (the plant indices). */
+	private final boolean[] ownUnderside;
+	private final boolean anyPlantGround;
 	private final boolean shore;
 	private final boolean seaward;
 	/** Whether a rule of the palette asks for a forest edge class (the mantle and fringe of step S8b). */
@@ -122,15 +127,17 @@ public final class PlantLayerFeature implements Feature {
 					r.patch(), index, weights, edgeMask, r.shape(), r.plants().size()));
 		}
 		this.plan = new ColumnPlan.Palette(rules);
-		this.mossyGround = new boolean[rules.size()];
-		for (int r = 0; r < rules.size(); r++) {
-			mossyGround[r] = palette.rules().get(r).mossyGround() && !palette.rules().get(r).scattered().isEmpty();
-		}
+		this.plantGround = new BlockState[rules.size()];
 		boolean any = false;
-		for (boolean m : mossyGround) {
-			any |= m;
+		for (int r = 0; r < rules.size(); r++) {
+			plantGround[r] = palette.rules().get(r).plantGround().orElse(null);
+			any |= plantGround[r] != null;
 		}
-		this.anyMossyGround = any;
+		this.anyPlantGround = any;
+		this.ownUnderside = new boolean[plants.size()];
+		for (int k = 0; k < ownUnderside.length; k++) {
+			ownUnderside[k] = plants.get(k).block().map(PlantLayerFeature::ownUnderside).orElse(true);
+		}
 		this.shore = anyShore;
 		this.seaward = anySeaward;
 		this.edges = anyEdge;
@@ -214,12 +221,14 @@ public final class PlantLayerFeature implements Feature {
 			at.set(pos.getMinBlockX() + (column >> 4), y, pos.getMinBlockZ() + (column & 15));
 			if (place(level, generator, random, plant, medium, at)) {
 				placed++;
-				if (mossyGround(columns, column, ColumnPlan.plant(p))) {
-					// Round 1 of the V12 review: a scattered plant of the pine forests with the moss floor stands on the
-					// mossy podzol (plants without a mossy underside showed bare orange squares of podzol).
+				BlockState ground = plantGround(columns, column, ColumnPlan.plant(p));
+				if (ground != null) {
+					// Rounds 1 and 2 of the V12 review: a plant without its own mossy underside stands on the ground of its
+					// rule (the mossy podzol in the pine forests, the turf in the mixed forest): on bare podzol the plants
+					// and their patches read as orange plates (CP-B).
 					at.move(Direction.DOWN);
 					if (level.getBlockState(at).is(Blocks.PODZOL)) {
-						level.setBlock(at, pl.polishforests.block.ModBlocks.mossyPodzol().defaultBlockState(), Block.UPDATE_CLIENTS);
+						level.setBlock(at, ground, Block.UPDATE_CLIENTS);
 					}
 				}
 			}
@@ -227,19 +236,27 @@ public final class PlantLayerFeature implements Feature {
 		return placed;
 	}
 
-	/** Whether the plant of a column is a scattered plant of a rule that turns the podzol under it mossy. */
-	private boolean mossyGround(ColumnPlan.Columns columns, int column, int plant) {
-		if (!anyMossyGround) {
-			return false;
+	/** The ground block of the rule of a column for its placed plant, or null when the ground stays. */
+	private BlockState plantGround(ColumnPlan.Columns columns, int column, int plant) {
+		if (!anyPlantGround || ownUnderside[plant]) {
+			return null;
 		}
 		int r = plan.ruleFor(columns.codes()[column], columns.waterDepth()[column], columns.ground()[column], columns.side()[column],
 				columns.edge() == null ? 0 : columns.edge()[column]);
-		if (r < 0 || !mossyGround[r]) {
-			return false;
+		return r < 0 ? null : plantGround[r];
+	}
+
+	/**
+	 * Whether a block plant hides the ground with its own mossy underside: a moss carpet or a state with
+	 * {@code mossy=true} (the bilberry over moss, the needle litter over moss of step V12).
+	 */
+	static boolean ownUnderside(BlockState state) {
+		if (state.is(Blocks.MOSS_CARPET) || state.is(Blocks.PALE_MOSS_CARPET)
+				|| state.is(pl.polishforests.block.ModBlocks.forestMossCarpet())) {
+			return true;
 		}
-		ColumnPlan.Rule rule = plan.rules().get(r);
-		for (int k = rule.scatteredFrom(); k < rule.plants().length; k++) {
-			if (rule.plants()[k] == plant) {
+		for (net.minecraft.world.level.block.state.properties.Property<?> property : state.getProperties()) {
+			if (property.getName().equals("mossy") && Boolean.TRUE.equals(state.getValue(property))) {
 				return true;
 			}
 		}

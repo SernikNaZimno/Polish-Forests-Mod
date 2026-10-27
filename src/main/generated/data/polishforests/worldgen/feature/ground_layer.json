@@ -682,9 +682,9 @@
         "fresh_pine_forest"
       ],
       "coverage": 0.97,
-      "mossy_ground": true,
       "patch": 6,
       "patch_shape": "blobs",
+      "plant_ground": "polishforests:mossy_podzol",
       "plants": [
         {
           "block": {
@@ -807,9 +807,9 @@
         "mixed_pine_forest"
       ],
       "coverage": 0.93,
-      "mossy_ground": true,
       "patch": 6,
       "patch_shape": "blobs",
+      "plant_ground": "polishforests:mossy_podzol",
       "plants": [
         {
           "block": {
@@ -918,6 +918,7 @@
       "coverage": 0.9,
       "patch": 5,
       "patch_shape": "blobs",
+      "plant_ground": "minecraft:grass_block",
       "plants": [
         {
           "block": {

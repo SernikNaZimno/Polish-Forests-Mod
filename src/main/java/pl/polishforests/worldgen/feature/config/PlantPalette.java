@@ -84,13 +84,16 @@ public record PlantPalette(List<Rule> rules) {
 	 * @param shape     shape of the patches (step V12; absent: square cells as in M2)
 	 * @param scattered plants drawn per column, not per patch, sharing the coverage with {@code plants} by weight (round 1
 	 *                  of the V12 review; {@link ColumnPlan.Rule#scatteredFrom})
-	 * @param mossyGround whether the podzol under a placed scattered plant turns into the mossy podzol (round 1 of the V12
-	 *                  review: the pine forests with the moss floor, where the plants without a mossy underside showed
-	 *                  bare orange squares)
+	 * @param plantGround block the podzol under a placed block plant of the rule turns into, unless the plant has its own
+	 *                  mossy underside (a moss carpet, a {@code mossy=true} state); empty: the ground stays (round 1 of the
+	 *                  V12 review: the mossy podzol under the plants of the pine forests with the moss floor, which showed
+	 *                  bare orange squares; round 2: also the bracken of the mixed coniferous forest, and the turf
+	 *                  {@code grass_block} under the herb layer of the mixed forest, whose podzol patches read as orange
+	 *                  plates)
 	 */
 	public record Rule(HabitatCondition condition, ColumnPlan.Medium medium, int minDepth, int maxDepth,
 			List<ColumnPlan.Ground> grounds, float coverage, int patch, List<Plant> plants, List<Ecotone.Edge> edges,
-			ColumnPlan.PatchShape shape, List<Plant> scattered, boolean mossyGround) {
+			ColumnPlan.PatchShape shape, List<Plant> scattered, Optional<BlockState> plantGround) {
 		public static final Codec<Rule> CODEC = RecordCodecBuilder.create(i -> i.group(
 				HabitatCondition.MAP_CODEC.forGetter(Rule::condition),
 				MEDIUM.optionalFieldOf("medium", ColumnPlan.Medium.LAND).forGetter(Rule::medium),
@@ -103,7 +106,7 @@ public record PlantPalette(List<Rule> rules) {
 				EDGE.listOf().optionalFieldOf("edges", List.of()).forGetter(Rule::edges),
 				SHAPE.optionalFieldOf("patch_shape", ColumnPlan.PatchShape.CELLS).forGetter(Rule::shape),
 				Plant.CODEC.listOf().optionalFieldOf("scattered", List.of()).forGetter(Rule::scattered),
-				Codec.BOOL.optionalFieldOf("mossy_ground", false).forGetter(Rule::mossyGround)
+				BlockState.CODEC.optionalFieldOf("plant_ground").forGetter(Rule::plantGround)
 		).apply(i, Rule::new));
 
 		public Rule {
@@ -117,7 +120,7 @@ public record PlantPalette(List<Rule> rules) {
 		public Rule(HabitatCondition condition, ColumnPlan.Medium medium, int minDepth, int maxDepth,
 				List<ColumnPlan.Ground> grounds, float coverage, int patch, List<Plant> plants, List<Ecotone.Edge> edges,
 				ColumnPlan.PatchShape shape) {
-			this(condition, medium, minDepth, maxDepth, grounds, coverage, patch, plants, edges, shape, List.of(), false);
+			this(condition, medium, minDepth, maxDepth, grounds, coverage, patch, plants, edges, shape, List.of(), Optional.empty());
 		}
 
 		/** The clumped and the scattered plants, in this order (the plan's plant list of the rule). */
