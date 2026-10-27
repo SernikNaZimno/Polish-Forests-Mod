@@ -396,7 +396,7 @@ final class LeafSamples {
 							ClientSeasonPhase.RAW_FOLIAGE));
 					dryTint = mc.getBlockColors().getTintSources(d).getFirst().colorInWorld(d, mc.level, dryPos);
 				}
-				return new int[] {rawColor, curve, tint, dryCurve, dryTint};
+				return new int[] {rawColor, curve, tint, dryCurve, dryTint, bare ? 1 : 0};
 			});
 			if (t[3] != t[4]) {
 				fail("%s %s marcescent: BlockColors gives %s, the curve %s", name, f.species().id(), RenderProbesClientGameTest.hex(t[4]),
@@ -406,8 +406,8 @@ final class LeafSamples {
 					SWATCH_Z - 3, 0, 0, SIZE);
 			double[] m = RenderProbesClientGameTest.median(shot);
 			double d = RenderProbesClientGameTest.chromaDistance(m, t[1]);
-			line.append(String.format(Locale.ROOT, " %s %s (screen %s, %.3f);", f.species().id(), RenderProbesClientGameTest.hex(t[1]),
-					RenderProbesClientGameTest.rgb(m), d));
+			line.append(String.format(Locale.ROOT, " %s %s%s (screen %s, %.3f);", f.species().id(), t[5] == 1 ? "twigs " : "",
+					RenderProbesClientGameTest.hex(t[1]), RenderProbesClientGameTest.rgb(m), d));
 			if (t[2] != t[1]) {
 				fail("%s %s: BlockColors gives %s, the curve %s", name, f.species().id(), RenderProbesClientGameTest.hex(t[2]),
 						RenderProbesClientGameTest.hex(t[1]));
@@ -417,7 +417,9 @@ final class LeafSamples {
 				fail("%s %s: the raw foliage color changed with the season: %s -> %s", name, f.species().id(),
 						RenderProbesClientGameTest.hex(before), RenderProbesClientGameTest.hex(t[0]));
 			}
-			if (d > CHROMA_TOLERANCE) {
+			// Step V13: through a swatch of bare twigs the sky and the columns behind it show, so its median is only logged
+			// (the twig color is checked by BlockColors above, the twigs themselves by fastWinter).
+			if (d > CHROMA_TOLERANCE && t[5] == 0) {
 				fail("%s %s: the swatch %s is not the curve %s (chroma distance %.3f)", name, f.species().id(),
 						RenderProbesClientGameTest.rgb(m), RenderProbesClientGameTest.hex(t[1]), d);
 			}

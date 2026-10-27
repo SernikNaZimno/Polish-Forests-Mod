@@ -4,8 +4,10 @@ import com.mojang.math.Quadrant;
 import java.util.ArrayList;
 import java.util.List;
 import net.fabricmc.fabric.api.client.model.loading.v1.ModelLoadingPlugin;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.block.dispatch.Variant;
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.FlowerBedBlock;
 import net.minecraft.world.level.block.state.BlockState;
@@ -17,6 +19,7 @@ import pl.polishforests.block.SpeciesLeavesBlock;
 import pl.polishforests.block.TreeFoliage;
 import pl.polishforests.season.FoliageCurve;
 import pl.polishforests.season.GroundPhases;
+import pl.polishforests.season.SeasonPhase;
 
 /**
  * The seasonal looks of the blocks of the vertical slice on the client (step V13 of docs/04-pionowy-wycinek.md, decisions
@@ -59,15 +62,23 @@ public final class ClientSeasonModels {
 		return PolishForests.id("block/" + plant.id() + "_flowers");
 	}
 
-	/** The color step the phases use: the season's (0 before the first client tick in a level). */
+	/**
+	 * The color step the phases use: the season's; before the first client tick in a level (no wave rebuilds the meshes
+	 * built then) the step of the client level itself, 0 without a level.
+	 */
 	private static int step() {
-		return Math.max(0, ClientSeasonPhase.step());
+		int s = ClientSeasonPhase.step();
+		if (s >= 0) {
+			return s;
+		}
+		Level level = Minecraft.getInstance().level;
+		return level == null ? 0 : SeasonPhase.step(level);
 	}
 
 	/** Whether a block state shows its bare twigs now (leaves of a broadleaf species in their leafless window). */
 	public static boolean leafless(BlockState state) {
-		return state.getBlock() instanceof SpeciesLeavesBlock leaves && ClientSeasonPhase.step() >= 0
-				&& FoliageCurve.leafless(leaves.foliage().species(), ClientSeasonPhase.step(), state.getValue(SpeciesLeavesBlock.PHASE),
+		return state.getBlock() instanceof SpeciesLeavesBlock leaves && !leaves.foliage().conifer()
+				&& FoliageCurve.leafless(leaves.foliage().species(), step(), state.getValue(SpeciesLeavesBlock.PHASE),
 						MarcescentLeavesBlock.marcescent(state));
 	}
 
