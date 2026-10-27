@@ -10,6 +10,7 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.FullChunkStatus;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
@@ -25,9 +26,11 @@ import pl.polishforests.block.BerryShrubBlock;
  * (a), risk R13). While a chunk is ticked, the random tick of {@link BerryShrubBlock} ripens the fruit of the fertile
  * plants in MID_SUMMER and LATE_SUMMER and drops it afterwards. A chunk that was not ticked (unloaded, or generated, where
  * the fruit is always off: rule ZW-5) catches up when it is loaded: the chunk carries the sub-season it was last brought
- * up to date in (the attachment {@link #STAMP}); on {@code CHUNK_LOAD} it only goes into a queue, and the next server
- * ticks (never the load itself) set the fruit of every bilberry in it to the state of the current sub-season and stamp it,
- * within a time budget per tick ({@value #BUDGET_NANOS} ns), so a returning player sees the right state within a second.
+ * up to date in (the attachment {@link #STAMP}); on {@code CHUNK_LOAD}, and whenever it rises into FULL or into ticking
+ * again (a chunk the player left can stay in memory below FULL and come back without a load), it only goes into a queue,
+ * and the next server ticks (never the load itself) set the fruit of every bilberry in it to the state of the current
+ * sub-season and stamp it, within a time budget per tick ({@value #BUDGET_NANOS} ns), so a returning player sees the
+ * right state within a second.
  * Chunks without a bilberry get no stamp.
  */
 public final class BerrySeason {
@@ -51,6 +54,14 @@ public final class BerrySeason {
 	public static void register() {
 		ServerChunkEvents.CHUNK_LOAD.register((level, chunk, generated) -> QUEUE.add(new Pending(level.dimension(),
 				chunk.getPos().pack())));
+		// A chunk the player left may only drop below FULL and stay in memory (no CHUNK_UNLOAD, so no CHUNK_LOAD on return);
+		// it missed its random ticks all the same, so every rise into FULL or into ticking queues it too (the stamp makes
+		// the repeat cheap).
+		ServerChunkEvents.FULL_CHUNK_STATUS_CHANGE.register((level, chunk, from, to) -> {
+			if (to.isOrAfter(FullChunkStatus.FULL) && !from.isOrAfter(to)) {
+				QUEUE.add(new Pending(level.dimension(), chunk.getPos().pack()));
+			}
+		});
 		ServerTickEvents.END_SERVER_TICK.register(BerrySeason::tick);
 	}
 

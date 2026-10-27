@@ -7,10 +7,12 @@ import net.fabricmc.fabric.api.client.rendering.v1.BlockColorRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.ColorResolverRegistry;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.color.block.BlockTintSource;
+import net.minecraft.client.color.block.BlockTintSources;
 import net.minecraft.client.renderer.block.BlockAndTintGetter;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.world.level.ColorResolver;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
 import pl.polishforests.PolishForests;
@@ -40,10 +42,15 @@ public final class ClientSeasonPhase {
 	static final int WAVE_TICKS = 2;
 	/** Frame samples kept after the last ring for the log line. */
 	private static final int TAIL_TICKS = 40;
+	/** The constant tint of vanilla birch leaves ({@code BlockColors.createDefault}). */
+	private static final int VANILLA_BIRCH = -8345771;
 	/** Measurement switch of step V10: skip the own wave on a sub-season change with Serene Seasons. */
 	private static final boolean SKIP_SS_WAVE = Boolean.getBoolean("polishforests.skipSeasonWave");
 
 	private static volatile int step = -1;
+	/** Whether the client level is the Polska world (the biome at the camera is one of the mod's; V13-i). */
+	private static volatile boolean polishWorld;
+	private static net.minecraft.world.level.Level lastLevel;
 	private static volatile boolean changes = true;
 	private static volatile int rebuilds;
 	private static SectionPos waveCenter;
@@ -66,7 +73,19 @@ public final class ClientSeasonPhase {
 			// Tint index 0: the leaves (the curve); 1: the bare twigs of the leafless crown (step V13, ClientSeasonModels).
 			BlockColorRegistry.register(List.of(new SpeciesTint(f.species()), new TwigTint(f.species())), ModBlocks.leaves(f));
 		}
+		// Step V13 (V13-i): the vanilla leaves of the shrubs and of the M2 placeholder trees show the bare twigs of the species
+		// they follow (ClientSeasonModels) in the Polska world; tint index 0 stays the vanilla one.
+		BlockColorRegistry.register(List.of(BlockTintSources.foliage(), new TwigTint(Species.OAK)), Blocks.OAK_LEAVES,
+				Blocks.DARK_OAK_LEAVES);
+		BlockColorRegistry.register(List.of(BlockTintSources.foliage(), new TwigTint(Species.HORNBEAM)), Blocks.JUNGLE_LEAVES);
+		BlockColorRegistry.register(List.of(BlockTintSources.constant(VANILLA_BIRCH), new TwigTint(Species.BIRCH)),
+				Blocks.BIRCH_LEAVES);
 		ClientTickEvents.END_CLIENT_TICK.register(ClientSeasonPhase::tick);
+	}
+
+	/** Whether the client level is the Polska world (V13-i: the vanilla leaves there follow the seasons too). */
+	public static boolean polishWorld() {
+		return polishWorld;
 	}
 
 	/** The color step shown now (−1 before the first client tick in a level). */
@@ -89,21 +108,43 @@ public final class ClientSeasonPhase {
 		return ring >= 0;
 	}
 
+	/**
+	 * The color step of the season for meshes and tints: the step shown now; before the first client tick in a level the
+	 * step of the client level itself (meshes can be built then; the first tick rebuilds them all the same, since the
+	 * season of the server may arrive only after them), 0 without a level.
+	 */
+	static int seasonStep() {
+		int s = step;
+		if (s >= 0) {
+			return s;
+		}
+		net.minecraft.world.level.Level level = Minecraft.getInstance().level;
+		return level == null ? 0 : SeasonPhase.step(level);
+	}
+
 	/** The color step the curves use: the season's, or MID_SUMMER when the foliage does not change (SS switch). */
 	static int curveStep() {
-		int s = step;
-		return !changes ? SeasonPhase.firstStep(SubSeason.MID_SUMMER) + 1 : Math.max(0, s);
+		return !changes ? SeasonPhase.firstStep(SubSeason.MID_SUMMER) + 1 : seasonStep();
 	}
 
 	static void tick(Minecraft mc) {
 		if (mc.level == null) {
 			step = -1;
 			ring = -1;
+			lastLevel = null;
 			return;
 		}
+		if (mc.level != lastLevel) {
+			// A new level (joining, another dimension): its meshes are rebuilt by the wave of its first step.
+			lastLevel = mc.level;
+			step = -1;
+		}
+		boolean polish = ClientLeafFall.polish(mc.level, BlockPos.containing(mc.gameRenderer.mainCamera().position()));
+		boolean polishChanged = polish != polishWorld;
+		polishWorld = polish;
 		int now = SeasonPhase.step(mc.level);
 		boolean ch = SeasonPhase.foliageChanges();
-		if (now != step || ch != changes) {
+		if (now != step || ch != changes || polishChanged) {
 			int old = step;
 			step = now;
 			changes = ch;
@@ -115,7 +156,9 @@ public final class ClientSeasonPhase {
 				measureOnly = true;
 				PolishForests.LOG.info("[seasons] color step {} -> {} ({}), own wave skipped (Serene Seasons rebuilds the meshes)", old, now,
 						subSeason());
-			} else if (old >= 0) {
+			} else {
+				// Also on the first step in a level (old -1): meshes built before it took the step of the client level, which
+				// with Serene Seasons can precede the season sent by the server (step V13, -Poptimization swatches).
 				startWave(mc);
 				PolishForests.LOG.info("[seasons] color step {} -> {} ({}{}), section meshes rebuilt in a wave of {} rings", old, now,
 						subSeason(), ch ? "" : ", foliage colors off", rings + 1);

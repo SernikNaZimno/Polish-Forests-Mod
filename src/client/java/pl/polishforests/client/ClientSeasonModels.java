@@ -4,11 +4,11 @@ import com.mojang.math.Quadrant;
 import java.util.ArrayList;
 import java.util.List;
 import net.fabricmc.fabric.api.client.model.loading.v1.ModelLoadingPlugin;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.block.dispatch.Variant;
 import net.minecraft.resources.Identifier;
-import net.minecraft.world.level.Level;
+import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.FlowerBedBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import pl.polishforests.PolishForests;
@@ -19,7 +19,7 @@ import pl.polishforests.block.SpeciesLeavesBlock;
 import pl.polishforests.block.TreeFoliage;
 import pl.polishforests.season.FoliageCurve;
 import pl.polishforests.season.GroundPhases;
-import pl.polishforests.season.SeasonPhase;
+import pl.polishforests.worldgen.habitat.Species;
 
 /**
  * The seasonal looks of the blocks of the vertical slice on the client (step V13 of docs/04-pionowy-wycinek.md, decisions
@@ -36,6 +36,8 @@ import pl.polishforests.season.SeasonPhase;
  * with the textures {@code <plant>_leaves}, as many and turned as the bed;
  * <li>the bilberry shows its flowers ({@code polishforests:block/bilberry_flowers} over the shrub) in May.
  * </ul>
+ * In the Polska world the vanilla oak, dark oak, jungle and birch leaves (the shrubs of the slice and the M2 placeholder
+ * trees) show the twigs of the oak, hornbeam or birch in their leafless window too (V13-i); elsewhere they are unchanged.
  * The conifers, the bracken (only its color changes, {@code ClientGroundPlants}) and the litter have no seasonal model.
  */
 public final class ClientSeasonModels {
@@ -62,17 +64,34 @@ public final class ClientSeasonModels {
 		return PolishForests.id("block/" + plant.id() + "_flowers");
 	}
 
-	/**
-	 * The color step the phases use: the season's; before the first client tick in a level (no wave rebuilds the meshes
-	 * built then) the step of the client level itself, 0 without a level.
-	 */
+	/** The color step the phases use: the season's (before the first client tick, the client level's). */
 	private static int step() {
-		int s = ClientSeasonPhase.step();
-		if (s >= 0) {
-			return s;
+		return ClientSeasonPhase.seasonStep();
+	}
+
+	/**
+	 * The vanilla leaves that show bare twigs in the Polska world (V13-i: the shrubs of the slice, hazel and rowan on oak
+	 * leaves, alder buckthorn on jungle leaves, and the M2 placeholder trees), by the species whose curve and twigs they
+	 * follow, as their falling leaves ({@link ClientLeafFall}).
+	 */
+	private static final java.util.Map<Block, TreeFoliage> VANILLA_TWIGS = java.util.Map.of(Blocks.OAK_LEAVES, foliage(Species.OAK),
+			Blocks.DARK_OAK_LEAVES, foliage(Species.OAK), Blocks.JUNGLE_LEAVES, foliage(Species.HORNBEAM), Blocks.BIRCH_LEAVES,
+			foliage(Species.BIRCH));
+
+	private static TreeFoliage foliage(Species species) {
+		for (TreeFoliage f : TreeFoliage.values()) {
+			if (f.species() == species && !f.conifer()) {
+				return f;
+			}
 		}
-		Level level = Minecraft.getInstance().level;
-		return level == null ? 0 : SeasonPhase.step(level);
+		throw new IllegalStateException("No broadleaf foliage of " + species);
+	}
+
+	/** Whether a vanilla leaf block at a position shows bare twigs now (the Polska world only, V13-i). */
+	public static boolean vanillaLeafless(BlockState state, BlockPos pos) {
+		TreeFoliage f = VANILLA_TWIGS.get(state.getBlock());
+		return f != null && ClientSeasonPhase.polishWorld()
+				&& FoliageCurve.leafless(f.species(), step(), ClientLeafFall.vanillaPhase(pos), false);
 	}
 
 	/** Whether a block state shows its bare twigs now (leaves of a broadleaf species in their leafless window). */
@@ -87,13 +106,33 @@ public final class ClientSeasonModels {
 	 * the Fast mode would otherwise move to the solid layer as opaque cubes (V3-b).
 	 */
 	public static boolean cutOutInFastMode(BlockState state) {
-		return leafless(state);
+		if (leafless(state)) {
+			return true;
+		}
+		// Vanilla leaves (no position here): cut out in the Polska world while any of their phases is leafless.
+		TreeFoliage f = VANILLA_TWIGS.get(state.getBlock());
+		if (f == null || !ClientSeasonPhase.polishWorld()) {
+			return false;
+		}
+		int s = step();
+		for (int phase = 0; phase < 4; phase++) {
+			if (FoliageCurve.leafless(f.species(), s, phase, false)) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	static void register() {
 		ModelLoadingPlugin.register(ctx -> ctx.modifyBlockModelOnLoad().register((model, context) -> {
 			BlockState state = context.state();
 			Block block = state.getBlock();
+			TreeFoliage vanilla = VANILLA_TWIGS.get(block);
+			if (vanilla != null) {
+				List<Variant> twigs = twigVariants(vanilla);
+				return new SeasonalModel.Root(model, (s, pos) -> vanillaLeafless(s, pos) ? 1 : SeasonalModel.Look.BASE,
+						List.of(new SeasonalModel.Alternative(s -> twigs, true, false, true)), twigs);
+			}
 			if (block instanceof SpeciesLeavesBlock leaves && !leaves.foliage().conifer()) {
 				List<Variant> twigs = twigVariants(leaves.foliage());
 				return new SeasonalModel.Root(model, (s, pos) -> leafless(s) ? 1 : SeasonalModel.Look.BASE,

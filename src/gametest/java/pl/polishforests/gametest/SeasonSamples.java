@@ -18,6 +18,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.LevelChunkSection;
@@ -229,11 +230,11 @@ final class SeasonSamples {
 	/** The share of the broadleaf leaves around a camera that show their bare twigs (marcescent leaves counted apart). */
 	private void twigs(ClientGameTestContext context, SliceCameras.Camera cam, SubSeason sub) {
 		int[] c = context.computeOnClient(mc -> {
-			int[] n = new int[4];
+			int[] n = new int[6];
 			BlockPos.MutableBlockPos at = new BlockPos.MutableBlockPos();
 			for (int dx = -RADIUS; dx <= RADIUS; dx++) {
 				for (int dz = -RADIUS; dz <= RADIUS; dz++) {
-					for (int dy = 0; dy <= 32; dy++) {
+					for (int dy = -8; dy <= 32; dy++) {
 						at.set(cam.x() + dx, cam.y() + dy, cam.z() + dz);
 						BlockState s = mc.level.getBlockState(at);
 						if (s.getBlock() instanceof SpeciesLeavesBlock leaves && !leaves.foliage().conifer()) {
@@ -241,6 +242,11 @@ final class SeasonSamples {
 							boolean bare = ClientSeasonModels.leafless(s);
 							n[dry ? 2 : 0]++;
 							n[dry ? 3 : 1] += bare ? 1 : 0;
+						} else if (s.is(Blocks.OAK_LEAVES) || s.is(Blocks.JUNGLE_LEAVES) || s.is(Blocks.DARK_OAK_LEAVES)
+								|| s.is(Blocks.BIRCH_LEAVES)) {
+							// V13-i: the vanilla leaves of the shrubs (hazel, rowan, alder buckthorn) in the Polska world.
+							n[4]++;
+							n[5] += ClientSeasonModels.vanillaLeafless(s, at) ? 1 : 0;
 						}
 					}
 				}
@@ -248,12 +254,17 @@ final class SeasonSamples {
 			return n;
 		});
 		double share = c[0] == 0 ? 0 : c[1] / (double) c[0];
-		result("%s broadleaf leaves around the camera: %d, bare twigs %.0f%%; marcescent %d, bare %d", sub, c[0], 100 * share, c[2], c[3]);
+		double vanilla = c[4] == 0 ? 0 : c[5] / (double) c[4];
+		result("%s broadleaf leaves around the camera: %d, bare twigs %.0f%%; marcescent %d, bare %d; vanilla leaves (shrubs) %d, "
+				+ "bare twigs %.0f%%", sub, c[0], 100 * share, c[2], c[3], c[4], 100 * vanilla);
 		if (c[3] > 0) {
 			fail("%s: %d marcescent leaves show twigs", sub, c[3]);
 		}
 		if (sub == SubSeason.MID_WINTER && share < 0.8 || sub == SubSeason.MID_SUMMER && c[1] > 0) {
 			fail("%s: %.0f%% of the broadleaf leaves show twigs", sub, 100 * share);
+		}
+		if (c[4] >= 20 && (sub == SubSeason.MID_WINTER && vanilla < 0.8 || sub == SubSeason.MID_SUMMER && c[5] > 0)) {
+			fail("%s: %.0f%% of the vanilla shrub leaves show twigs", sub, 100 * vanilla);
 		}
 	}
 

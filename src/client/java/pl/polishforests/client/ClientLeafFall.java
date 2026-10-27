@@ -19,8 +19,8 @@ import pl.polishforests.worldgen.habitat.Species;
  * with falling particles): the chance of {@link LeafFall} for the leaves of the slice species everywhere, and for the
  * vanilla leaves in the "Polska" world only (decision V13-g: the biome at the leaf is one of the mod's biomes, which only
  * the Polska chunk generator places; the other worlds keep the vanilla chance). A vanilla leaf block falls as its species
- * ({@code oak_leaves} and {@code dark_oak_leaves} as the oak, {@code birch_leaves} as the birch) or, for the leaves the
- * slice has no curve for, as the hornbeam (a broadleaf of the middle dates), scaled by its vanilla chance against
+ * ({@code oak_leaves} and {@code dark_oak_leaves} as the oak, {@code birch_leaves} as the birch, {@code spruce_leaves} as
+ * the spruce) or, for the leaves the slice has no curve for, as the hornbeam (a broadleaf of the middle dates), scaled by its vanilla chance against
  * vanilla oak (the cherry petals stay ten times denser), with a phase from its position (cells of 4 x 4 columns). The
  * particle keeps the tint of the block: our leaves fall in the color of their curve, vanilla leaves in their own (with
  * Serene Seasons its autumn colors).
@@ -32,6 +32,7 @@ public final class ClientLeafFall {
 		VANILLA.put(Blocks.OAK_LEAVES, Species.OAK);
 		VANILLA.put(Blocks.DARK_OAK_LEAVES, Species.OAK);
 		VANILLA.put(Blocks.BIRCH_LEAVES, Species.BIRCH);
+		VANILLA.put(Blocks.SPRUCE_LEAVES, Species.SPRUCE);
 	}
 
 	/** Sums of the chances asked for since the start (game test: the expected particles of our and of vanilla leaves). */
@@ -63,12 +64,20 @@ public final class ClientLeafFall {
 		if (!polish(level, pos)) {
 			return original;
 		}
-		Species species = VANILLA.getOrDefault(block, Species.HORNBEAM);
-		int phase = (int) (mix((pos.getX() >> 2) * 0x9E3779B97F4A7C15L ^ (pos.getZ() >> 2) * 0xC2B2AE3D27D4EB4FL) >>> 62);
-		float c = LeafFall.chance(species, step, phase, false) * (original / LeafFall.VANILLA);
+		float c = LeafFall.chance(vanillaSpecies(block), step, vanillaPhase(pos), false) * (original / LeafFall.VANILLA);
 		askedVanilla++;
 		expectedVanilla += c;
 		return c;
+	}
+
+	/** The species whose curve a vanilla leaf block follows in the Polska world (the hornbeam where the slice has none). */
+	static Species vanillaSpecies(Block block) {
+		return VANILLA.getOrDefault(block, Species.HORNBEAM);
+	}
+
+	/** The phase (0-3) of a vanilla leaf block in the Polska world: one per cell of 4 x 4 columns. */
+	static int vanillaPhase(BlockPos pos) {
+		return (int) (mix((pos.getX() >> 2) * 0x9E3779B97F4A7C15L ^ (pos.getZ() >> 2) * 0xC2B2AE3D27D4EB4FL) >>> 62);
 	}
 
 	/** Whether a position of a level lies in the "Polska" world (a biome of the mod). */
