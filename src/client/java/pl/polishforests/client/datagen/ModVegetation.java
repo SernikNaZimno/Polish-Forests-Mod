@@ -818,7 +818,10 @@ final class ModVegetation {
 		l.land(biomes(RAISED_BOG), 0.5F, 3, cat(bush.withWeight(31), grass.withWeight(10),
 				bed(Blocks.PINK_PETALS, 10)));
 		l.land(biomes(BOG_WOODLAND), 0.85F, 4, moss.withWeight(45), bush.withWeight(35), fern.withWeight(5));
-		l.land(biomes(DRY_PINE_FOREST), 0.75F, 4, lichen.withWeight(55), bush.withWeight(17), dryGrass.withWeight(8));
+		// Dry pine forest: lichen, dwarf shrubs and dry grass in rounded patches with the bare sand and podzol scattered per
+		// column (round 2 of the V12 review: its square M2 cells read as grey and orange plates in the mixed coniferous
+		// forest of the gameplay transect, and the palette reaches it within the ecotone belt).
+		l.blobs(biomes(DRY_PINE_FOREST), 0.75F, 4, lichen.withWeight(55), bush.withWeight(17), dryGrass.withWeight(8));
 		// The forests of the vertical slice (step V12, docs/04 §6 N8 and N9, decisions PW-6 and PW-7): own blocks, rounded
 		// patches (no square patches of litter and bare ground, CP-B), the ground nearly covered; the palette shares below are
 		// before the trees (the census measures about 0.87 of them in the pine forest, 0.7 in the oak-hornbeam forest).
@@ -848,9 +851,10 @@ final class ModVegetation {
 		// Oak-hornbeam forest: wood anemone in carpets (spring herb layer about 88%, without it about 38%: the summer one),
 		// liverleaf in tufts, lily of the valley, ferns and sedges (as short grass), leaf litter about 10%, moss on the
 		// ground little, scattered per column (more at the bases of the trunks, TreeMoss; the own moss carpet since round 1
-		// of the V12 review).
+		// of the V12 review); the turf of the brown soil on top, so the plants also stand on turf where the palette of the
+		// transect belt reaches the podzol patches of the mixed forest's soil (round 2 of the V12 review).
 		l.blobs(biomes(OAK_HORNBEAM_FOREST), 0.98F, 5, cat(anemone(44), hepatica(10), b(Blocks.LILY_OF_THE_VALLEY, 4),
-				fern.withWeight(11), grass.withWeight(9), litter(9)), cat(forestMoss.withWeight(2)), null);
+				fern.withWeight(11), grass.withWeight(9), litter(9)), cat(forestMoss.withWeight(2)), Blocks.GRASS_BLOCK.defaultBlockState());
 		l.land(biomes(LOWLAND_BEECH_FOREST), 0.85F, 4, cat(litter(85), fern.withWeight(2)));
 		l.land(biomes(MONTANE_BEECH_FOREST), 0.85F, 4, cat(litter(75), fern.withWeight(6), bed(Blocks.WILDFLOWERS, 3)));
 		l.land(biomes(UPLAND_FIR_FOREST), 0.8F, 4, cat(litter(40), moss.withWeight(20), fern.withWeight(12),

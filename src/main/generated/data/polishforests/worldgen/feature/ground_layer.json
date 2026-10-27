@@ -662,6 +662,7 @@
       ],
       "coverage": 0.75,
       "patch": 4,
+      "patch_shape": "blobs",
       "plants": [
         {
           "block": "minecraft:pale_moss_carpet",
@@ -1037,6 +1038,7 @@
       "coverage": 0.98,
       "patch": 5,
       "patch_shape": "blobs",
+      "plant_ground": "minecraft:grass_block",
       "plants": [
         {
           "block": {

@@ -530,11 +530,12 @@ class GroundLayerPlanTest {
 		}
 		// Rounds 1 and 2 of the V12 review: the plants without a mossy underside of the forests with podzol on top (the
 		// fresh and mixed coniferous forests, the podzol patches of the mixed forest's acid brown soil) stand on the
-		// mossy podzol or the turf, not on bare podzol (orange plates, CP-B); the oak-hornbeam forest has turf on top.
+		// mossy podzol or the turf, not on bare podzol (orange plates, CP-B); the oak-hornbeam forest has turf on top, but
+		// its palette reaches the podzol patches of the mixed forest within the transect belt.
 		assertEquals("polishforests:mossy_podzol", blockName(pine.get("plant_ground")), "ground under the fresh pine plants");
 		assertEquals("polishforests:mossy_podzol", blockName(mixedPine.get("plant_ground")), "ground under the mixed coniferous plants");
 		assertEquals("minecraft:grass_block", blockName(mixed.get("plant_ground")), "ground under the mixed forest plants");
-		assertFalse(oak.has("plant_ground"), "the oak-hornbeam forest keeps its ground");
+		assertEquals("minecraft:grass_block", blockName(oak.get("plant_ground")), "ground under the oak-hornbeam plants");
 		double pineMoss = share(pine, GroundLayerPlanTest::moss);
 		double pineBilberry = share(pine, (id, p) -> id.equals("polishforests:bilberry"));
 		double pineHerbs = share(pine, (id, p) -> herb(id));
