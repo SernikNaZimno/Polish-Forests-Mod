@@ -235,6 +235,56 @@ def berries(tex, palettes):
     return t.paint(np.clip(val, 0, 3), colors, alpha)
 
 
+def bells(tex, palettes):
+    """Bilberry flowers for the flowers overlay of the bilberry's cross model (not tinted; review round 1 of V13: the
+    earlier 2 x 2 px pink squares on top of the plant read from 15-30 blocks as a pink flowering meadow): p['count'] small
+    nodding bells of 1 x 2 px, the green-tinged calyx above (color 2) and the greenish-pink corolla below (color 1, every
+    other bell the darker edge color 0), hung on the sides of the plant (columns p['columns']) under the leaves (rows
+    p['rows']), kept apart."""
+    p = tex.params
+    rng = t.Rng(tex.seed)
+    val = np.full((N, N), -1, int)
+    spots = []
+    tries = 0
+    while len(spots) < p['count'] and tries < 500:
+        tries += 1
+        lo, hi = p['columns'][rng.integers(0, len(p['columns']))]
+        x, y = rng.integers(lo, hi + 1), rng.integers(*p['rows'])
+        if any(abs(x - a) < 4 and abs(y - b) < 3 for a, b in spots):
+            continue
+        val[y, x] = 2
+        val[y + 1, x] = 1 if len(spots) % 2 == 0 else 0
+        spots.append((x, y))
+    alpha = np.where(val >= 0, 255, 0).astype(np.uint8)
+    colors = [t.hex_to_rgb(c) for c in p['colors']]
+    return t.paint(np.clip(val, 0, 2), colors, alpha)
+
+
+def paired_leaves(tex, palettes):
+    """Lily of the valley without flowers (the vanilla tinted cross by id, grayscale for the grass tint; review round 1
+    of V13): two broad elliptic leaves rising from a common sheath at the bottom middle and leaning a little apart, the
+    left one taller (p['leaves']: base column, top column, top row, half width). Light from the top left: the left part
+    of a leaf lit (tone 2), the body (tone 1), the right edge in shade (tone 0); the sheath at the base tone 3."""
+    p = tex.params
+    val = np.full((N, N), -1, int)
+    for bx, tx, ty, half in p['leaves']:
+        for y in range(ty, N):
+            f = (N - 1 - y) / max(N - 1 - ty, 1)
+            cx = bx + (tx - bx) * f
+            w = half * np.sin(np.pi * min(max(f, 0.0), 1.0)) ** 0.7
+            for x in range(N):
+                d = x - cx
+                if abs(d) <= w + 0.25 and (w >= 0.45 or abs(d) < 0.5):
+                    tone = 2 if d < -0.35 * w else 0 if d > 0.6 * w and w > 1.0 else 1
+                    if val[y, x] < 0 or tone > val[y, x]:
+                        val[y, x] = tone
+    for y in range(N - p['sheath'], N):
+        for x in p['sheath_columns']:
+            val[y, x] = 3
+    alpha = np.where(val >= 0, 255, 0).astype(np.uint8)
+    return t.paint(np.clip(val, 0, 3), [(g, g, g) for g in p['grays']], alpha)
+
+
 def forest_moss(tex, palettes):
     """The moss under the dwarf shrubs and the needles of the pine forests (PW-7; the carpet layer of the mossy states):
     feather mosses (Pleurozium, Hylocomium) as a dense, tileable mat of fine tufts in olive greens, duller and greener

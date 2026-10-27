@@ -8,6 +8,7 @@
 		"BiomeFreezeMixin",
 		"ChunkGeneratorDecorationMixin",
 		"ChunkGeneratorStructureMixin",
+		"FlowerBlockMixin",
 		"StructureCheckMixin"
 	],
 	"injectors": {

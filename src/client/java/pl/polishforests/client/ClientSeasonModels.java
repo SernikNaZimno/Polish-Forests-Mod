@@ -4,12 +4,15 @@ import com.mojang.math.Quadrant;
 import java.util.ArrayList;
 import java.util.List;
 import net.fabricmc.fabric.api.client.model.loading.v1.ModelLoadingPlugin;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.block.dispatch.Variant;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.FlowerBedBlock;
+import net.minecraft.world.level.block.LeavesBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import pl.polishforests.PolishForests;
 import pl.polishforests.block.GroundPlant;
@@ -19,6 +22,7 @@ import pl.polishforests.block.SpeciesLeavesBlock;
 import pl.polishforests.block.TreeFoliage;
 import pl.polishforests.season.FoliageCurve;
 import pl.polishforests.season.GroundPhases;
+import pl.polishforests.season.VanillaLeafPhase;
 import pl.polishforests.worldgen.habitat.Species;
 
 /**
@@ -34,10 +38,14 @@ import pl.polishforests.worldgen.habitat.Species;
  * <li>the wood anemone shows its leaves without flowers after the flowering, and nothing while it is withdrawn
  * underground; the liverleaf its leaves outside the flowering ({@link GroundPhases#look}): the vanilla flower bed models
  * with the textures {@code <plant>_leaves}, as many and turned as the bed;
- * <li>the bilberry shows its flowers ({@code polishforests:block/bilberry_flowers} over the shrub) in May.
+ * <li>the bilberry shows its flowers ({@code polishforests:block/bilberry_flowers} over the shrub, two or three small
+ * bells) in May, the fertile plants only ({@link GroundPhases#fertile}).
  * </ul>
  * In the Polska world the vanilla oak, dark oak, jungle and birch leaves (the shrubs of the slice and the M2 placeholder
- * trees) show the twigs of the oak, hornbeam or birch in their leafless window too (V13-i); elsewhere they are unchanged.
+ * trees) show the twigs of the oak, hornbeam or birch in their leafless window too (V13-i), with one phase per crown
+ * ({@link VanillaLeafPhase}); the vanilla lily of the valley shows its leaves, its flowers in May or nothing
+ * ({@link GroundPhases#lilyOfTheValley}); elsewhere they are unchanged. Every other leaf block is wrapped too, only for
+ * its faces towards bare twigs in the Fast mode ({@link SeasonalModel}).
  * The conifers, the bracken (only its color changes, {@code ClientGroundPlants}) and the litter have no seasonal model.
  */
 public final class ClientSeasonModels {
@@ -94,6 +102,21 @@ public final class ClientSeasonModels {
 				&& FoliageCurve.leafless(f.species(), step(), ClientLeafFall.vanillaPhase(pos), false);
 	}
 
+	/** Whether a leaf block at a position shows bare twigs now (the leaves of a species or, in Polska, vanilla leaves). */
+	public static boolean showsTwigs(BlockState state, BlockPos pos) {
+		return leafless(state) || vanillaLeafless(state, pos);
+	}
+
+	/** Whether leaves are drawn in the Fast graphics mode (no cutout: they skip their faces towards other leaves). */
+	static boolean fastLeaves() {
+		return !Minecraft.getInstance().options.cutoutLeaves().get();
+	}
+
+	/** The model id of the leaves of the lily of the valley without flowers (datagen writes it; review round 1 of V13). */
+	public static Identifier lilyLeaves() {
+		return PolishForests.id("block/lily_of_the_valley_leaves");
+	}
+
 	/** Whether a block state shows its bare twigs now (leaves of a broadleaf species in their leafless window). */
 	public static boolean leafless(BlockState state) {
 		return state.getBlock() instanceof SpeciesLeavesBlock leaves && !leaves.foliage().conifer()
@@ -103,7 +126,9 @@ public final class ClientSeasonModels {
 
 	/**
 	 * Whether a block must stay cut out in the Fast graphics mode ({@code ModelBlockRendererMixin}): the bare twigs, which
-	 * the Fast mode would otherwise move to the solid layer as opaque cubes (V3-b).
+	 * the Fast mode would otherwise move to the solid layer as opaque cubes (V3-b). The renderers ask by the block state
+	 * alone, so vanilla leaves in Polska stay cut out while any of their phases is leafless; those in leaf then keep their
+	 * faces towards other leaves ({@link SeasonalModel}), as in the Fancy mode.
 	 */
 	public static boolean cutOutInFastMode(BlockState state) {
 		if (leafless(state)) {
@@ -138,6 +163,23 @@ public final class ClientSeasonModels {
 				return new SeasonalModel.Root(model, (s, pos) -> leafless(s) ? 1 : SeasonalModel.Look.BASE,
 						List.of(new SeasonalModel.Alternative(s -> twigs, true, false, true)), twigs);
 			}
+			String namespace = BuiltInRegistries.BLOCK.getKey(block).getNamespace();
+			if (block instanceof LeavesBlock && (namespace.equals("minecraft") || namespace.equals(PolishForests.MOD_ID))) {
+				// Review round 1 of V13: every other leaf block of vanilla and of the mod (conifers, the other vanilla leaves)
+				// keeps its faces towards bare twigs in the Fast mode (SeasonalModel.emitLeaves).
+				return new SeasonalModel.Root(model, (s, pos) -> SeasonalModel.Look.BASE, List.of(), List.of());
+			}
+			if (block == Blocks.LILY_OF_THE_VALLEY) {
+				// Review round 1 of V13: the vanilla lily of the valley in the Polska world: leaves from the end of April, the
+				// vanilla flowering model in May, leaves through the summer (yellow in September), nothing from October.
+				List<Variant> leaves = List.of(new Variant(lilyLeaves()));
+				return new SeasonalModel.Root(model, (s, pos) -> !ClientSeasonPhase.polishWorld() ? SeasonalModel.Look.BASE
+						: switch (GroundPhases.lilyOfTheValley(step(), pos.getX(), pos.getZ())) {
+							case NONE -> SeasonalModel.Look.NOTHING;
+							case LEAVES -> 1;
+							default -> SeasonalModel.Look.BASE;
+						}, List.of(new SeasonalModel.Alternative(s -> leaves, false, false, false)), leaves);
+			}
 			for (GroundPlant g : GroundPlant.values()) {
 				if (block != ModBlocks.ground(g)) {
 					continue;
@@ -155,8 +197,10 @@ public final class ClientSeasonModels {
 				}
 				if (g.kind() == GroundPlant.Kind.BERRY_SHRUB) {
 					List<Variant> flowers = List.of(new Variant(flowers(g)));
+					// Review round 1 of V13: only the fertile plants flower (the others neither flower nor fruit).
 					return new SeasonalModel.Root(model, (s, pos) -> GroundPhases.look(g, step(), pos.getX(), pos.getZ())
-							== GroundPhases.Look.FLOWERING ? 1 : SeasonalModel.Look.BASE,
+							== GroundPhases.Look.FLOWERING && GroundPhases.fertile(pos.getX(), pos.getY(), pos.getZ()) ? 1
+									: SeasonalModel.Look.BASE,
 							List.of(new SeasonalModel.Alternative(s -> flowers, false, true, false)), flowers);
 				}
 			}

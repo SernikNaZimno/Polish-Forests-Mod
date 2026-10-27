@@ -217,11 +217,15 @@ def lint_texture(name, img, tex, others=None):
     ids = color_ids(img)
     vals, counts = np.unique(ids[vis], return_counts=True)
     m['colors'] = int(len(vals))
-    if not COLORS[0] <= m['colors'] <= COLORS[1]:
-        err.append(f'{name}: {m["colors"]} colors, allowed {COLORS[0]}-{COLORS[1]}')
-    if counts.min() < MIN_COLOR_PIXELS:
-        rare = ', '.join(f'#{int(v) >> 8:06x} ({c} px)' for v, c in zip(vals, counts) if c < MIN_COLOR_PIXELS)
-        err.append(f'{name}: colors used by fewer than {MIN_COLOR_PIXELS} pixels (a lone spot repeats on every block): '
+    # A sparse overlay of a few tiny spots (the bilberry flowers, review round 1 of V13) may set its own limits in
+    # expect: 'colors' (min, max) and 'min_color_pixels' (its spots are meant to be small).
+    lo_colors, hi_colors = (tex.expect or {}).get('colors', COLORS)
+    min_pixels = (tex.expect or {}).get('min_color_pixels', MIN_COLOR_PIXELS)
+    if not lo_colors <= m['colors'] <= hi_colors:
+        err.append(f'{name}: {m["colors"]} colors, allowed {lo_colors}-{hi_colors}')
+    if counts.min() < min_pixels:
+        rare = ', '.join(f'#{int(v) >> 8:06x} ({c} px)' for v, c in zip(vals, counts) if c < min_pixels)
+        err.append(f'{name}: colors used by fewer than {min_pixels} pixels (a lone spot repeats on every block): '
                    f'{rare}')
     if not np.isin(a, (0, 255)).all():
         err.append(f'{name}: semi-transparent pixels (alpha must be 0 or 255)')

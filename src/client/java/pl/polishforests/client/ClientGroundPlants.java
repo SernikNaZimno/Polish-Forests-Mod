@@ -10,6 +10,7 @@ import net.minecraft.client.renderer.block.BlockAndTintGetter;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.ColorResolver;
 import net.minecraft.world.level.GrassColor;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.DoublePlantBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
@@ -46,6 +47,28 @@ public final class ClientGroundPlants {
 				case COVER -> {
 				}
 			}
+		}
+		// Review round 1 of V13: the leaves model of the vanilla lily of the valley in Polska (tint index 0; the vanilla
+		// flowering model has no tint index, so it is unchanged).
+		BlockColorRegistry.register(List.of(new LilyTint()), Blocks.LILY_OF_THE_VALLEY);
+	}
+
+	/** The seasonal tint of the leaves of the lily of the valley ({@link GroundPhases#lilyColor}). */
+	static final class LilyTint implements BlockTintSource {
+		@Override
+		public int color(BlockState state) {
+			return 0xFF000000 | GroundPhases.lilyColor(ClientSeasonPhase.curveStep(), 0, 0, GrassColor.getDefaultColor());
+		}
+
+		@Override
+		public int colorInWorld(BlockState state, BlockAndTintGetter level, BlockPos pos) {
+			return 0xFF000000 | GroundPhases.lilyColor(ClientSeasonPhase.curveStep(), pos.getX(), pos.getZ(),
+					level.getBlockTint(pos, RAW_GRASS));
+		}
+
+		@Override
+		public Set<Property<?>> relevantProperties() {
+			return Set.of();
 		}
 	}
 

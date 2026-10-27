@@ -21,7 +21,11 @@ import pl.polishforests.block.GroundPlant;
  * fruit in MID_SUMMER and LATE_SUMMER ({@link #fruiting}; a server state, {@code BerrySeason}); its leaves turn red in
  * October and fall in November, the bare green-brown twigs stay ({@link #bilberryColor});
  * <li><b>Bracken</b>: fronds unfold at the end of May, turn yellow-brown from the end of September and dead brown in
- * MID_AUTUMN, and the dead fronds stay brown until the new ones ({@link #brackenColor}).
+ * MID_AUTUMN, and the dead fronds stay brown until the new ones ({@link #brackenColor});
+ * <li><b>Lily of the valley</b> (the vanilla block, in the Polska world only; review round 1 of V13): leaves from the end
+ * of April ({@value #LILY_SHOOTS}), the white bells in May ({@value #LILY_FLOWERS} … {@value #LILY_FLOWERS_END}), leaves
+ * through the summer, yellow in September ({@link #lilyColor}) and gone from October ({@value #LILY_GONE}) to the end of
+ * April: it dies back to its rhizome ({@link #lilyOfTheValley}).
  * </ul>
  */
 public final class GroundPhases {
@@ -45,6 +49,10 @@ public final class GroundPhases {
 	static final double HEPATICA_FLOWERS_END = 4.4;
 	static final double BILBERRY_FLOWERS = 5.8;
 	static final double BILBERRY_FLOWERS_END = 8.6;
+	static final double LILY_SHOOTS = 5.0;
+	static final double LILY_FLOWERS = 6.2;
+	static final double LILY_FLOWERS_END = 8.8;
+	static final double LILY_GONE = 20.7;
 
 	/** Keys of a tint curve: position, target color, weight of the target over the raw grass color. */
 	private record Key(double at, int target, double weight) {
@@ -57,6 +65,9 @@ public final class GroundPhases {
 	private static final int BRACKEN_DEAD = 0x7A5634;
 	private static final Key[] BRACKEN = {new Key(6.0, BRACKEN_DEAD, 0.85), new Key(7.6, 0x8CB84A, 0.5), new Key(9.2, 0, 0.0),
 			new Key(19.2, 0, 0.0), new Key(21.0, 0xB08A3C, 0.7), new Key(22.5, 0x8E5B2E, 0.85), new Key(24.5, BRACKEN_DEAD, 0.85)};
+
+	private static final Key[] LILY = {new Key(LILY_SHOOTS, 0x86B861, 0.3), new Key(9.0, 0, 0.0), new Key(17.6, 0, 0.0),
+			new Key(19.3, 0xC9B451, 0.7), new Key(LILY_GONE, 0xA9893F, 0.8)};
 
 	private GroundPhases() {
 	}
@@ -84,6 +95,20 @@ public final class GroundPhases {
 			case BILBERRY -> at >= BILBERRY_FLOWERS && at < BILBERRY_FLOWERS_END ? Look.FLOWERING : Look.FULL;
 			default -> Look.FULL;
 		};
+	}
+
+	/**
+	 * What the client draws of a lily of the valley at a color step (the vanilla block in the Polska world): the full
+	 * vanilla model in flower, {@link Look#LEAVES} (the own leaves model, tinted by {@link #lilyColor}) or nothing.
+	 */
+	public static Look lilyOfTheValley(int step, int x, int z) {
+		double at = position(step, x, z);
+		return at >= LILY_FLOWERS && at < LILY_FLOWERS_END ? Look.FULL : at >= LILY_SHOOTS && at < LILY_GONE ? Look.LEAVES : Look.NONE;
+	}
+
+	/** The color of the lily of the valley leaves at a color step over the raw grass color of the biome. */
+	public static int lilyColor(int step, int x, int z, int raw) {
+		return color(LILY, position(step, x, z), raw);
 	}
 
 	/** Whether a herb has withdrawn underground at a color step: no model and no outline (R12). */

@@ -19,22 +19,27 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.LeavesBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.LevelChunkSection;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.presets.WorldPreset;
 import pl.polishforests.PolishForests;
 import pl.polishforests.block.BerryShrubBlock;
 import pl.polishforests.block.GroundPlant;
 import pl.polishforests.block.MarcescentLeavesBlock;
+import pl.polishforests.block.ModBlocks;
 import pl.polishforests.block.SeasonalPlantBlock;
 import pl.polishforests.block.SpeciesLeavesBlock;
+import pl.polishforests.block.TreeFoliage;
 import pl.polishforests.client.ClientGroundPlants;
 import pl.polishforests.client.ClientLeafFall;
 import pl.polishforests.client.ClientSeasonModels;
 import pl.polishforests.client.ClientSeasonPhase;
 import pl.polishforests.season.BerrySeason;
 import pl.polishforests.season.GroundPhases;
+import pl.polishforests.season.SeasonPhase;
 import pl.polishforests.season.Seasons;
 import pl.polishforests.season.SubSeason;
 
@@ -49,8 +54,16 @@ import pl.polishforests.season.SubSeason;
  * <li><b>Herb layer</b> (PW-8 (a)): around the oak-hornbeam camera the share of wood anemones the client draws with
  * flowers, leaves only or not at all ({@link GroundPhases#look}) must follow the plan (flowering in MID_SPRING, none in
  * MID_SUMMER), and a withdrawn anemone has no outline on the client and the server (R12);
+ * <li><b>Lily of the valley</b> (review round 1): the vanilla lilies around the camera show nothing in MID_WINTER, EARLY_SPRING
+ * and LATE_AUTUMN and leaves only in MID_SUMMER, and a withdrawn one has no outline on the client and the server;
  * <li><b>Bare twigs</b> (T-D5): in MID_WINTER at least 80% of the non-marcescent broadleaf leaves around the camera show
- * twigs, none in MID_SUMMER; the marcescent leaves never;
+ * twigs, none in MID_SUMMER; the marcescent leaves never; the canopy frame lets through at least
+ * {@value #MIN_WINTER_CANOPY_SKY} of sky in MID_WINTER and {@value #MIN_WINTER_CANOPY_RATIO} times the summer share (review
+ * round 1: one screen of twigs per crown);
+ * <li><b>Fast mode</b> (review round 1) on a rig high over the oak-hornbeam forest in LATE_SPRING, LATE_AUTUMN and
+ * MID_WINTER (without SS in both sub-seasons): no more sky in the Fast mode than in the Fancy mode where leaves in leaf
+ * stand behind bare twigs, and vanilla leaves kept cut out in a transition step as in the Fancy mode; a Fast-mode frame
+ * of the forest from 30 m;
  * <li><b>Falling leaves</b> (the user's request of 2026-10-26): the expected particles of our leaves per asked animation
  * tick ({@link ClientLeafFall#counters}) over 10 s under the oak-hornbeam canopy: in MID_SUMMER at most the rare needles,
  * in MID_AUTUMN and LATE_AUTUMN more than vanilla's 0.01; a 10 s shot of the falling leaves in LATE_AUTUMN;
@@ -69,8 +82,16 @@ final class SeasonSamples {
 			SubSeason.EARLY_SUMMER, SubSeason.MID_SUMMER, SubSeason.MID_AUTUMN, SubSeason.LATE_AUTUMN, SubSeason.MID_WINTER);
 	private static final List<SubSeason> WITHOUT_SS = List.of(SubSeason.MID_SPRING, SubSeason.MID_AUTUMN);
 
+	/** Sky through the bare canopy (review round 1 of V13): the least share of sky in the canopy frame in MID_WINTER. */
+	private static final double MIN_WINTER_CANOPY_SKY = 0.04;
+	/** … and at least this many times the share in MID_SUMMER. */
+	private static final double MIN_WINTER_CANOPY_RATIO = 4.0;
+	/** Fast-mode rig: largest excess of sky in the Fast mode over the Fancy mode (a hole in a crown, review round 1). */
+	private static final double MAX_FAST_EXCESS = 0.05;
+
 	private final List<String> results = new ArrayList<>();
 	private final List<String> failures = new ArrayList<>();
+	private final Map<SubSeason, Double> canopySky = new java.util.EnumMap<>(SubSeason.class);
 
 	private SeasonSamples() {
 	}
@@ -102,6 +123,13 @@ final class SeasonSamples {
 				}
 			});
 			result("%s %s: calendar %s", tag, scale, Seasons.provider().name());
+			BlockPos rig = sp.getServer().computeOnServer(s -> buildRig(s.overworld(), grad));
+			context.waitTicks(100);
+			String light = context.computeOnClient(mc -> mc.level.getBlockState(rig.offset(3, 5, 0)) + " sky light "
+					+ mc.level.getBrightness(net.minecraft.world.level.LightLayer.SKY, rig.offset(3, 5, -1)) + ", camera chunk loaded "
+					+ mc.level.hasChunk(rig.getX() >> 4, rig.getZ() >> 4));
+			result("Fast-mode rig at %s (max y %d): %s", rig.toShortString(), sp.getServer().computeOnServer(s -> s.overworld().getMaxY()),
+					light);
 			String p = "seasons_" + scale + "_" + tag + "_";
 			for (SubSeason sub : seasons ? WITH_SS : WITHOUT_SS) {
 				int day = seasons ? 0 : 4;
@@ -112,17 +140,25 @@ final class SeasonSamples {
 						{"fresh_pine_1", "eye"}, {"transect", "eye_mixed_forest"}}) {
 					SliceCameras.Camera cam = camera(cameras, scale, view[0], view[1]);
 					if (cam != null) {
-						shot(context, sp, p + name + "_" + view[0] + "_" + view[1], cam, 4);
+						Path path = shot(context, sp, p + name + "_" + view[0] + "_" + view[1], cam, 4);
+						if (view[1].equals("canopy")) {
+							canopySky.put(sub, skyShare(path));
+						}
 					}
 				}
 				go(context, sp, grad, 3);
 				rawColors(context, grad, sub);
 				herbs(context, sp, grad, sub);
+				lilies(context, sp, grad, sub);
 				twigs(context, grad, sub);
+				if (!seasons || sub == SubSeason.LATE_SPRING || sub == SubSeason.LATE_AUTUMN || sub == SubSeason.MID_WINTER) {
+					fastRig(context, sp, rig, sub, p + name + "_", scale);
+				}
 				if (sub == SubSeason.MID_SUMMER || sub == SubSeason.MID_AUTUMN || sub == SubSeason.LATE_AUTUMN) {
 					leafFall(context, sp, grad, sub, sub == SubSeason.LATE_AUTUMN ? p + "late_autumn_falling_leaves" : null);
 				}
 			}
+			canopy();
 			SliceCameras.Camera pine = camera(cameras, scale, "fresh_pine_1", "eye");
 			if (pine != null) {
 				berries(context, sp, pine);
@@ -400,6 +436,179 @@ final class SeasonSamples {
 		return n;
 	}
 
+	/**
+	 * The lilies of the valley around a camera (review round 1 of V13: the vanilla block in Polska follows its phases,
+	 * {@link GroundPhases#lilyOfTheValley}): the looks on the client, nothing drawn from October to April, and the outline
+	 * of a withdrawn one empty on the client and on the server.
+	 */
+	private void lilies(ClientGameTestContext context, TestSingleplayerContext sp, SliceCameras.Camera cam, SubSeason sub) {
+		int[] counts = context.computeOnClient(mc -> {
+			int[] c = new int[GroundPhases.Look.values().length + 1];
+			BlockPos.MutableBlockPos at = new BlockPos.MutableBlockPos();
+			for (int dx = -RADIUS; dx <= RADIUS; dx++) {
+				for (int dz = -RADIUS; dz <= RADIUS; dz++) {
+					for (int dy = -8; dy <= 4; dy++) {
+						at.set(cam.x() + dx, cam.y() + dy, cam.z() + dz);
+						BlockState s = mc.level.getBlockState(at);
+						if (s.is(Blocks.LILY_OF_THE_VALLEY)) {
+							GroundPhases.Look l = GroundPhases.lilyOfTheValley(ClientSeasonPhase.step(), at.getX(), at.getZ());
+							c[l.ordinal()]++;
+							if (l == GroundPhases.Look.NONE && c[c.length - 1] == 0) {
+								c[c.length - 1] = s.getShape(mc.level, at).isEmpty() ? 1 : -1;
+							}
+						}
+					}
+				}
+			}
+			return c;
+		});
+		int total = 0;
+		for (int k = 0; k < GroundPhases.Look.values().length; k++) {
+			total += counts[k];
+		}
+		if (total == 0) {
+			result("%s lilies of the valley around the camera: none", sub);
+			return;
+		}
+		double flowering = counts[GroundPhases.Look.FULL.ordinal()] / (double) total;
+		double none = counts[GroundPhases.Look.NONE.ordinal()] / (double) total;
+		boolean serverEmpty = none == 0 || sp.getServer().computeOnServer(s -> {
+			ServerLevel level = s.overworld();
+			int step = SeasonPhase.step(level);
+			BlockPos.MutableBlockPos at = new BlockPos.MutableBlockPos();
+			for (int dx = -RADIUS; dx <= RADIUS; dx++) {
+				for (int dz = -RADIUS; dz <= RADIUS; dz++) {
+					for (int dy = -8; dy <= 4; dy++) {
+						at.set(cam.x() + dx, cam.y() + dy, cam.z() + dz);
+						BlockState st = level.getBlockState(at);
+						if (st.is(Blocks.LILY_OF_THE_VALLEY)
+								&& GroundPhases.lilyOfTheValley(step, at.getX(), at.getZ()) == GroundPhases.Look.NONE) {
+							return st.getShape(level, at).isEmpty();
+						}
+					}
+				}
+			}
+			return true;
+		});
+		result("%s lilies of the valley around the camera: %d, flowering %.0f%%, leaves %.0f%%, withdrawn %.0f%%; outline of a "
+				+ "withdrawn one: client %s, server %s", sub, total, 100 * flowering,
+				100.0 * counts[GroundPhases.Look.LEAVES.ordinal()] / total, 100 * none,
+				counts[counts.length - 1] == 0 ? "-" : counts[counts.length - 1] > 0 ? "empty" : "NOT EMPTY",
+				none == 0 ? "-" : serverEmpty ? "empty" : "NOT EMPTY");
+		boolean dormant = sub == SubSeason.MID_WINTER || sub == SubSeason.EARLY_SPRING || sub == SubSeason.LATE_AUTUMN;
+		if (dormant && none < 0.999 || sub == SubSeason.MID_SUMMER && counts[GroundPhases.Look.LEAVES.ordinal()] < total) {
+			fail("%s: lilies of the valley flowering %.0f%%, withdrawn %.0f%%", sub, 100 * flowering, 100 * none);
+		}
+		if (counts[counts.length - 1] < 0 || !serverEmpty) {
+			fail("%s: a withdrawn lily of the valley has an outline", sub);
+		}
+	}
+
+	/**
+	 * The sky through the bare canopy (review round 1 of V13): in the frame up into the oak-hornbeam canopy the bare crowns
+	 * of MID_WINTER let through at least {@value #MIN_WINTER_CANOPY_SKY} of sky and {@value #MIN_WINTER_CANOPY_RATIO} times
+	 * as much as the leafy canopy of MID_SUMMER (one screen of twigs per crown, not a stack of them).
+	 */
+	private void canopy() {
+		Double winter = canopySky.get(SubSeason.MID_WINTER);
+		Double summer = canopySky.get(SubSeason.MID_SUMMER);
+		StringBuilder all = new StringBuilder();
+		canopySky.forEach((k, v) -> all.append(String.format(Locale.ROOT, " %s %.1f%%", k, 100 * v)));
+		result("sky in the oak-hornbeam canopy frame:%s", all);
+		if (winter != null && summer != null
+				&& (winter < MIN_WINTER_CANOPY_SKY || winter < MIN_WINTER_CANOPY_RATIO * Math.max(summer, 0.002))) {
+			fail("bare canopy: sky %.1f%% in MID_WINTER against %.1f%% in MID_SUMMER (at least %.0f%% and %.0f times)", 100 * winter,
+					100 * summer, 100 * MIN_WINTER_CANOPY_SKY, MIN_WINTER_CANOPY_RATIO);
+		}
+	}
+
+	/**
+	 * Builds the Fast-mode rig of review round 1 of V13 high over the oak-hornbeam camera, against the sky: a wall of species
+	 * oak leaves (bare in winter) with marcescent oak leaves behind it (leaves in leaf next to bare twigs), and a wall of
+	 * vanilla oak leaves three blocks deep (the vanilla leaves that the Fast mode keeps cut out in a transition step).
+	 * Returns the corner of the rig (the walls stand at y + 3 … y + 7, the first at x … x + 6, the second at x + 12 … x + 18,
+	 * from z).
+	 */
+	private static BlockPos buildRig(ServerLevel level, SliceCameras.Camera cam) {
+		// Just over the highest crown around (the sections high above the terrain may have no light on the client yet).
+		int top = level.getMinY();
+		for (int dx = -24; dx <= 24; dx += 2) {
+			for (int dz = -16; dz <= 48; dz += 2) {
+				// The heightmap of a chunk that is not loaded is the bottom of the world: load it first.
+				level.getChunk((cam.x() + dx) >> 4, (cam.z() + dz) >> 4);
+				top = Math.max(top, level.getHeight(Heightmap.Types.MOTION_BLOCKING, cam.x() + dx, cam.z() + dz));
+			}
+		}
+		int y = Math.min(top + 2, level.getMaxY() - 12);
+		BlockPos corner = new BlockPos(cam.x() - 9, y, cam.z() + 6);
+		BlockState bare = ModBlocks.leaves(TreeFoliage.OAK).defaultBlockState().setValue(LeavesBlock.PERSISTENT, true)
+				.setValue(SpeciesLeavesBlock.PHASE, 1);
+		BlockState brown = bare.setValue(MarcescentLeavesBlock.MARCESCENT, true);
+		BlockState vanilla = Blocks.OAK_LEAVES.defaultBlockState().setValue(LeavesBlock.PERSISTENT, true);
+		for (int x = 0; x < 7; x++) {
+			for (int h = 3; h < 8; h++) {
+				level.setBlock(corner.offset(x, h, 0), bare, 2);
+				level.setBlock(corner.offset(x, h, 1), brown, 2);
+				for (int z = 0; z < 3; z++) {
+					level.setBlock(corner.offset(x + 12, h, z), vanilla, 2);
+				}
+			}
+		}
+		return corner;
+	}
+
+	/**
+	 * The Fast graphics mode at a step (review round 1 of V13): the sky through the rig walls in the Fast mode at most
+	 * {@value #MAX_FAST_EXCESS} over the Fancy mode (no hole where leaves in leaf meet bare twigs), and, when the vanilla
+	 * leaves are kept cut out in the Fast mode (a transition step), the vanilla wall as in the Fancy mode (no hollow
+	 * crown); then a Fast-mode frame of the oak-hornbeam forest from 30 m.
+	 */
+	private void fastRig(ClientGameTestContext context, TestSingleplayerContext sp, BlockPos rig, SubSeason sub, String prefix,
+			String scale) {
+		double[] fancy = rigSky(context, sp, rig, prefix + "rig_fancy");
+		context.runOnClient(mc -> mc.options.cutoutLeaves().set(false));
+		context.waitTicks(40);
+		context.waitFor(SeasonSamples::compiled, 1200);
+		double[] fast = rigSky(context, sp, rig, prefix + "rig_fast");
+		boolean transition = context.computeOnClient(mc -> ClientSeasonModels.cutOutInFastMode(Blocks.OAK_LEAVES.defaultBlockState()));
+		boolean vanillaBare = context.computeOnClient(mc -> ClientSeasonModels.vanillaLeafless(Blocks.OAK_LEAVES.defaultBlockState(),
+				rig.offset(15, 5, 0)));
+		boolean oursBare = context.computeOnClient(mc -> ClientSeasonModels.leafless(mc.level.getBlockState(rig.offset(3, 5, 0))));
+		SliceCameras.Camera view = camera(SliceCameras.read(), scale, "oak_hornbeam_1", "30m");
+		if (view != null) {
+			shot(context, sp, prefix + "oak_hornbeam_1_30m_fast", view, 3);
+		}
+		context.runOnClient(mc -> mc.options.cutoutLeaves().set(true));
+		context.waitTicks(40);
+		context.waitFor(SeasonSamples::compiled, 1200);
+		result("%s Fast-mode rig: species oak (bare %s) before marcescent leaves, sky Fancy %.1f%% / Fast %.1f%%; vanilla oak wall "
+				+ "(cut out in Fast %s, bare %s) Fancy %.1f%% / Fast %.1f%%", sub, oursBare, 100 * fancy[0], 100 * fast[0], transition,
+				vanillaBare, 100 * fancy[1], 100 * fast[1]);
+		if (fast[0] > fancy[0] + MAX_FAST_EXCESS) {
+			fail("%s: Fast mode shows %.1f%% sky through bare twigs before leaves in leaf (Fancy %.1f%%): a hole", sub, 100 * fast[0],
+					100 * fancy[0]);
+		}
+		if (transition && Math.abs(fast[1] - fancy[1]) > MAX_FAST_EXCESS) {
+			fail("%s: the vanilla oak wall cut out in the Fast mode shows %.1f%% sky (Fancy %.1f%%)", sub, 100 * fast[1], 100 * fancy[1]);
+		}
+	}
+
+	/** The sky share in the middle of the frames of the two rig walls (camera below them, looking up at them). */
+	private static double[] rigSky(ClientGameTestContext context, TestSingleplayerContext sp, BlockPos rig, String name) {
+		double[] out = new double[2];
+		for (int k = 0; k < 2; k++) {
+			sp.getServer().runCommand(String.format(Locale.ROOT, "tp @a %.2f %.2f %.2f 0 -30", rig.getX() + 12 * k + 3.5,
+					rig.getY() + 1.58, rig.getZ() - 3.0));
+			context.waitTicks(10);
+			context.waitFor(SeasonSamples::compiled, 1200);
+			context.waitTicks(5);
+			Path path = context.takeScreenshot(TestScreenshotOptions.of(name + (k == 0 ? "_twigs" : "_vanilla")).disableCounterPrefix()
+					.withSize(854, 480));
+			out[k] = RenderProbesClientGameTest.sky(path);
+		}
+		return out;
+	}
+
 	// ------------------------------------------------------------------ helpers
 
 	private static SliceCameras.Camera camera(Map<String, List<SliceCameras.Camera>> cameras, String scale, String place, String name) {
@@ -417,12 +626,35 @@ final class SeasonSamples {
 		context.waitTicks(20 * waitSeconds);
 	}
 
-	private static void shot(ClientGameTestContext context, TestSingleplayerContext sp, String name, SliceCameras.Camera cam,
+	private static Path shot(ClientGameTestContext context, TestSingleplayerContext sp, String name, SliceCameras.Camera cam,
 			int waitSeconds) {
 		go(context, sp, cam, waitSeconds);
 		context.waitFor(SeasonSamples::compiled, 1200);
-		context.takeScreenshot(TestScreenshotOptions.of(name).disableCounterPrefix().withSize(SIZE[0], SIZE[1]));
+		Path path = context.takeScreenshot(TestScreenshotOptions.of(name).disableCounterPrefix().withSize(SIZE[0], SIZE[1]));
 		PolishForests.LOG.info("[seasons] shot {}", name);
+		return path;
+	}
+
+	/** The share of sky pixels (clearly blue) in a whole frame. */
+	static double skyShare(Path path) {
+		try {
+			java.awt.image.BufferedImage img = javax.imageio.ImageIO.read(path.toFile());
+			int w = img.getWidth();
+			int h = img.getHeight();
+			int[] px = img.getRGB(0, 0, w, h, null, 0, w);
+			int n = 0;
+			for (int p : px) {
+				int r = (p >> 16) & 255;
+				int g = (p >> 8) & 255;
+				int b = p & 255;
+				if (b >= 120 && b > r + 30 && b >= g) {
+					n++;
+				}
+			}
+			return (double) n / px.length;
+		} catch (IOException e) {
+			throw new java.io.UncheckedIOException(e);
+		}
 	}
 
 	private static boolean compiled(Minecraft mc) {

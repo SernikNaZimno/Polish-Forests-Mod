@@ -31,10 +31,13 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>An alternative is a list of model parts built from the block state ({@link Alternative}): all of them (the leaves
  * of a flower bed of 1–4 plants, turned as the bed) or one drawn at random per position (the turned variants of the bare
- * twigs). The bare twigs keep their faces towards other leaves ({@code facesToLeaves}: in the Fast graphics mode leaves
- * skip those faces, {@code LeavesBlock.skipRendering}, and the renderers cull a quad again by its cull face, so the faces
- * pass the cull test and lose their cull face), so a bare crown is as dense in the Fast mode as in the Fancy mode; the
- * Fast mode would also move the twigs to the solid layer, which the mixin {@code ModelBlockRendererMixin} prevents
+ * twigs). The bare twigs ({@code facesToLeaves}) draw no face towards other bare twigs, so a bare crown is one screen of
+ * twigs over its branches with the sky behind it (review round 1 of V13: the stacked faces of a crown 4-6 blocks deep let
+ * almost no sky through; the faces into small hollows of the crown are dropped too, {@link #CROWN_GAP}), and keep their faces towards leaves in leaf (in the Fast graphics mode leaves skip those faces,
+ * {@code LeavesBlock.skipRendering}, and the renderers cull a quad again by its cull face, so the faces pass the cull
+ * test and lose their cull face). A leaf block in leaf next to bare twigs keeps its face towards them in the Fast mode too
+ * ({@link #emitLeaves}; every leaf block of vanilla and of the mod is wrapped for it). The Fast mode would also move the
+ * twigs to the solid layer, which the mixin {@code ModelBlockRendererMixin} prevents
  * ({@link ClientSeasonModels#cutOutInFastMode}). The particles of breaking and landing come from the shown model.
  * {@code createGeometryKey} is null (V3-c): the geometry depends on the season.
  */
@@ -60,6 +63,10 @@ public final class SeasonalModel extends WrapperBlockStateModel {
 	private final Look look;
 	private final List<Alternative> alternatives;
 	private final List<List<BlockStateModel>> baked;
+	/** The widest gap of air inside a bare crown whose faces are dropped (blocks). */
+	static final int CROWN_GAP = 2;
+	/** Whether the block is a leaf block (the faces towards bare twigs in the Fast mode, {@link #emitLeaves}). */
+	private final boolean leaves;
 
 	private SeasonalModel(BlockStateModel wrapped, BlockState state, Look look, List<Alternative> alternatives,
 			List<List<BlockStateModel>> baked) {
@@ -68,6 +75,7 @@ public final class SeasonalModel extends WrapperBlockStateModel {
 		this.look = look;
 		this.alternatives = alternatives;
 		this.baked = baked;
+		this.leaves = state.getBlock() instanceof LeavesBlock;
 	}
 
 	private int lookAt(BlockState s, @Nullable BlockPos pos) {
@@ -80,7 +88,11 @@ public final class SeasonalModel extends WrapperBlockStateModel {
 			Predicate<Direction> cullTest) {
 		int l = lookAt(s, pos);
 		if (l == Look.BASE) {
-			super.emitQuads(emitter, level, pos, s, random, cullTest);
+			if (leaves) {
+				emitLeaves(emitter, level, pos, s, random, cullTest);
+			} else {
+				super.emitQuads(emitter, level, pos, s, random, cullTest);
+			}
 			return;
 		}
 		if (l == Look.NOTHING) {
@@ -97,21 +109,102 @@ public final class SeasonalModel extends WrapperBlockStateModel {
 			}
 			return;
 		}
-		boolean[] towardsLeaves = new boolean[6];
+		// The bare twigs: no face towards other bare twigs (a bare crown is one screen of twigs over its branches, not a
+		// stack of them, review round 1 of V13), the faces towards leaves in leaf kept (also in the Fast mode).
+		int keep = 0;
+		int drop = 0;
 		for (Direction d : Direction.values()) {
-			towardsLeaves[d.ordinal()] = level.getBlockState(pos.relative(d)).getBlock() instanceof LeavesBlock;
+			BlockPos at = pos.relative(d);
+			BlockState n = level.getBlockState(at);
+			if (n.getBlock() instanceof LeavesBlock) {
+				if (ClientSeasonModels.showsTwigs(n, at)) {
+					drop |= 1 << d.ordinal();
+				} else {
+					keep |= 1 << d.ordinal();
+				}
+			} else if (n.isAir() && gapInCrown(level, pos, d)) {
+				drop |= 1 << d.ordinal();
+			}
+		}
+		int k = keep;
+		int x = drop;
+		// The quads without a cull face are asked with a null direction: never culled here.
+		Predicate<Direction> cull = d -> d == null ? cullTest.test(null)
+				: (x & 1 << d.ordinal()) != 0 || (k & 1 << d.ordinal()) == 0 && cullTest.test(d);
+		emitKeeping(emitter, k, () -> {
+			for (BlockStateModelPart part : parts) {
+				part.emitQuads(emitter, cull);
+			}
+		});
+	}
+
+	/**
+	 * Whether the air next to bare twigs in direction {@code d} is a gap of at most {@value #CROWN_GAP} blocks inside a bare
+	 * crown (bare twigs beyond it): its faces are dropped as those between two twig blocks, so the small hollows of a
+	 * crown add no screens of twigs either (review round 1 of V13: a crown is one screen over its branches).
+	 */
+	private static boolean gapInCrown(BlockAndTintGetter level, BlockPos pos, Direction d) {
+		for (int k = 2; k <= CROWN_GAP + 1; k++) {
+			BlockPos at = pos.relative(d, k);
+			BlockState n = level.getBlockState(at);
+			if (n.getBlock() instanceof LeavesBlock) {
+				return ClientSeasonModels.showsTwigs(n, at);
+			}
+			if (!n.isAir()) {
+				return false;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * The model of a leaf block in leaf. In the Fast graphics mode leaves skip their faces towards every other leaf block
+	 * ({@code LeavesBlock.skipRendering}); next to bare twigs, which are cut out, that would leave a hole through the crown,
+	 * so the faces towards bare twigs are kept (review round 1 of V13). Vanilla leaves that the Fast mode keeps cut out for
+	 * the twigs of some of their phases ({@link ClientSeasonModels#cutOutInFastMode}) keep all their faces towards other
+	 * leaves, as in the Fancy mode, so a leafy crown is not a hollow shell. In the Fancy mode nothing changes.
+	 */
+	private void emitLeaves(QuadEmitter emitter, BlockAndTintGetter level, BlockPos pos, BlockState s, RandomSource random,
+			Predicate<Direction> cullTest) {
+		if (!ClientSeasonModels.fastLeaves()) {
+			super.emitQuads(emitter, level, pos, s, random, cullTest);
+			return;
+		}
+		boolean all = ClientSeasonModels.cutOutInFastMode(s);
+		int keep = 0;
+		for (Direction d : Direction.values()) {
+			BlockPos at = pos.relative(d);
+			BlockState n = level.getBlockState(at);
+			if (n.getBlock() instanceof LeavesBlock && (all || ClientSeasonModels.showsTwigs(n, at)) && cullTest.test(d)) {
+				keep |= 1 << d.ordinal();
+			}
+		}
+		if (keep == 0) {
+			super.emitQuads(emitter, level, pos, s, random, cullTest);
+			return;
+		}
+		int k = keep;
+		emitKeeping(emitter, k, () -> super.emitQuads(emitter, level, pos, s, random,
+				d -> cullTest.test(d) && (d == null || (k & 1 << d.ordinal()) == 0)));
+	}
+
+	/**
+	 * Emits with the faces of the directions in {@code keep} (bits by {@code Direction.ordinal}) without their cull face: the
+	 * renderers cull a quad again by its cull face, so a kept face must lose it.
+	 */
+	private static void emitKeeping(QuadEmitter emitter, int keep, Runnable emit) {
+		if (keep == 0) {
+			emit.run();
+			return;
 		}
 		emitter.pushTransform(q -> {
 			Direction face = q.cullFace();
-			if (face != null && towardsLeaves[face.ordinal()]) {
+			if (face != null && (keep & 1 << face.ordinal()) != 0) {
 				q.cullFace(null);
 			}
 			return true;
 		});
-		Predicate<Direction> cull = d -> cullTest.test(d) && !towardsLeaves[d.ordinal()];
-		for (BlockStateModelPart part : parts) {
-			part.emitQuads(emitter, cull);
-		}
+		emit.run();
 		emitter.popTransform();
 	}
 

@@ -186,6 +186,12 @@ public final class PerformanceClientGameTest implements FabricClientGameTest {
 			sp.getServer().runCommand("gamemode spectator @a");
 			waitForIdleGeneration(context, name);
 			PolishForests.LOG.info("[performance] {}: {}", name, sp.getServer().computeOnServer(ForestPerformance::memoryAndStates));
+			String season = System.getProperty("polishforests.perfSeason", "");
+			if (!season.isEmpty() && poland) {
+				// Review round 1 of V13: the flights in a given sub-season (-PperfSeason=mid_winter: the bare crowns).
+				SeasonDates.setAndWait(context, sp, pl.polishforests.season.SubSeason.valueOf(season.toUpperCase(Locale.ROOT)), 0,
+						"performance");
+			}
 			if (!light) {
 				ForestPerformance.flights(context, sp, name, preset == POLAND);
 				return;

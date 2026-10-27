@@ -1235,9 +1235,17 @@ TEXTURES = [
                         drop_flowers=True,
                         colors=['#304b28', '#3d5b30', '#4e6c3d', '#5b4a4e', '#6b62a6', '#8079c0', '#a9a4cc', '#5d7a4c']),
             note='liverleaf outside the flowering (step V13): the same three-lobed leathery leaves, no flowers'),
-    Texture('bilberry_flowers', 'plant', ground.berries, 'bilberry_flowers/1', None,
-            params=dict(count=7, rows=(4, 11), colors=['#c99aa2', '#d3a8ae', '#dbb4b9', '#e3c0c3']),
-            note='bilberry flowers (step V13, May): small nodding greenish-pink bells, overlay of the bilberry cross model'),
+    Texture('bilberry_flowers', 'plant', ground.bells, 'bilberry_flowers/2', None,
+            params=dict(count=3, columns=((2, 4), (11, 13)), rows=(10, 13), colors=['#a88a80', '#c9a0a0', '#b8b089']),
+            expect={'colors': (3, 3), 'min_color_pixels': 1},
+            note='bilberry flowers (step V13, May; review round 1: 1 x 2 px instead of 2 x 2 px pink squares): two or three '
+                 'small nodding greenish-pink bells on the sides of the plant, under the leaves'),
+    Texture('lily_of_the_valley_leaves', 'plant', ground.paired_leaves, 'lily_of_the_valley_leaves/1', None, tint='grass',
+            params=dict(leaves=((7.0, 4.2, 3, 2.3), (8.4, 11.2, 5, 2.1)), sheath=3, sheath_columns=(7, 8),
+                        grays=(104, 126, 146, 136)),
+            note='lily of the valley without flowers (review round 1 of V13: the vanilla lily of the valley in the Polska '
+                 'world, end of April and June to September): two broad elliptic leaves from a common sheath, '
+                 'grayscale for the grass tint'),
     Texture('bilberries', 'plant', ground.berries, 'bilberries/1', None,
             params=dict(count=9, rows=(3, 13), colors=['#272b45', '#2f3656', '#384166', '#454f78']),
             note='the bilberry fruit item: a handful of blue-black berries with a frosty blue bloom'),

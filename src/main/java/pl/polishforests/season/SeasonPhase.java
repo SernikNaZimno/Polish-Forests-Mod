@@ -1,6 +1,8 @@
 package pl.polishforests.season;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
+import pl.polishforests.PolishForests;
 
 /**
  * The phase of the year shared by the client and the server (step V7 of docs/04-pionowy-wycinek.md): the color step of
@@ -43,5 +45,13 @@ public final class SeasonPhase {
 	 */
 	public static boolean foliageChanges() {
 		return Seasons.provider().changesFoliageColor();
+	}
+
+	/**
+	 * Whether a position of a level lies in the "Polska" world: its biome is one of the mod's, which only the Polska chunk
+	 * generator places (step V13: vanilla leaves and the lily of the valley follow the seasons there, decision V13-i).
+	 */
+	public static boolean polishWorld(Level level, BlockPos pos) {
+		return level.getBiome(pos).unwrapKey().map(k -> k.identifier().getNamespace().equals(PolishForests.MOD_ID)).orElse(false);
 	}
 }

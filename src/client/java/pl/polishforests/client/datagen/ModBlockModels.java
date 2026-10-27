@@ -123,6 +123,10 @@ final class ModBlockModels extends FabricModelProvider {
 		for (GroundPlant g : GroundPlant.values()) {
 			ground(gen, g, moss);
 		}
+		// Review round 1 of V13: the leaves of the vanilla lily of the valley without flowers (a seasonal alternative of the
+		// client in the Polska world), the vanilla tinted cross with the own texture.
+		ModelTemplates.TINTED_CROSS.create(pl.polishforests.client.ClientSeasonModels.lilyLeaves(),
+				TextureMapping.cross(new Material(own("lily_of_the_valley_leaves"))), gen.modelOutput);
 		gen.registerSimpleItemModel(ModBlocks.bilberries(), gen.createFlatItemModel(ModBlocks.bilberries(),
 				new Material(own(ModBlocks.BILBERRIES))));
 		// Round 1 of the V12 review: the own moss carpet (the moss layer model, four turns) and the mossy podzol (the own

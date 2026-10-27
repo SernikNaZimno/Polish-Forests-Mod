@@ -112,6 +112,48 @@ class GroundPhasesTest {
 		}
 	}
 
+	/** The share of a carpet of lilies of the valley showing each look at a step. */
+	private static Map<Look, Double> lilies(int step) {
+		Map<Look, Double> out = new EnumMap<>(Look.class);
+		for (Look l : Look.values()) {
+			out.put(l, 0.0);
+		}
+		for (int x = 0; x < SIZE; x++) {
+			for (int z = 0; z < SIZE; z++) {
+				out.merge(GroundPhases.lilyOfTheValley(step, x * 7 - 100, z * 13 + 5), 1.0 / (SIZE * SIZE), Double::sum);
+			}
+		}
+		return out;
+	}
+
+	/**
+	 * Review round 1 of V13: the lily of the valley (vanilla block in Polska) has died back from October to April, has
+	 * leaves at the end of April, flowers in May, leaves through the summer and yellow leaves in September.
+	 */
+	@Test
+	void lilyOfTheValleyFlowersInMayAndDiesBackInAutumn() {
+		for (int step = 0; step < 4; step++) {
+			assertEquals(1.0, lilies(step).get(Look.NONE), 1e-9, "March and 1st decade of April, step " + step);
+		}
+		for (SubSeason sub : new SubSeason[] {SubSeason.LATE_AUTUMN, SubSeason.EARLY_WINTER, SubSeason.MID_WINTER, SubSeason.LATE_WINTER}) {
+			for (int k = 0; k < 3; k++) {
+				assertEquals(1.0, lilies(step(sub, k)).get(Look.NONE), 1e-9, sub + " " + k);
+			}
+		}
+		assertEquals(1.0, lilies(step(SubSeason.MID_AUTUMN, 2)).get(Look.NONE), 1e-9, "end of October");
+		assertEquals(1.0, lilies(step(SubSeason.LATE_SPRING, 1)).get(Look.FULL), 1e-9, "mid-May in flower");
+		for (SubSeason sub : new SubSeason[] {SubSeason.MID_SUMMER, SubSeason.LATE_SUMMER}) {
+			assertEquals(1.0, lilies(step(sub, 1)).get(Look.LEAVES), 1e-9, sub + ": leaves only");
+		}
+		int raw = 0x79C05A;
+		for (int x = 0; x < 8; x++) {
+			int summer = GroundPhases.lilyColor(step(SubSeason.MID_SUMMER, 1), x, 3 * x, raw);
+			assertEquals(raw, summer, "lily of the valley in summer is the grass color");
+			int september = GroundPhases.lilyColor(step(SubSeason.EARLY_AUTUMN, 2), x, 3 * x, raw);
+			assertTrue(((september >> 16) & 255) > ((raw >> 16) & 255) + 30, "yellow in September: " + Integer.toHexString(september));
+		}
+	}
+
 	@Test
 	void shiftsAreSpreadEvenly() {
 		Map<Double, Integer> counts = new java.util.TreeMap<>();
