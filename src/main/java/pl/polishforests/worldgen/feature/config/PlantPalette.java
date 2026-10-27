@@ -84,10 +84,13 @@ public record PlantPalette(List<Rule> rules) {
 	 * @param shape     shape of the patches (step V12; absent: square cells as in M2)
 	 * @param scattered plants drawn per column, not per patch, sharing the coverage with {@code plants} by weight (round 1
 	 *                  of the V12 review; {@link ColumnPlan.Rule#scatteredFrom})
+	 * @param mossyGround whether the podzol under a placed scattered plant turns into the mossy podzol (round 1 of the V12
+	 *                  review: the pine forests with the moss floor, where the plants without a mossy underside showed
+	 *                  bare orange squares)
 	 */
 	public record Rule(HabitatCondition condition, ColumnPlan.Medium medium, int minDepth, int maxDepth,
 			List<ColumnPlan.Ground> grounds, float coverage, int patch, List<Plant> plants, List<Ecotone.Edge> edges,
-			ColumnPlan.PatchShape shape, List<Plant> scattered) {
+			ColumnPlan.PatchShape shape, List<Plant> scattered, boolean mossyGround) {
 		public static final Codec<Rule> CODEC = RecordCodecBuilder.create(i -> i.group(
 				HabitatCondition.MAP_CODEC.forGetter(Rule::condition),
 				MEDIUM.optionalFieldOf("medium", ColumnPlan.Medium.LAND).forGetter(Rule::medium),
@@ -99,7 +102,8 @@ public record PlantPalette(List<Rule> rules) {
 				Plant.CODEC.listOf().fieldOf("plants").forGetter(Rule::plants),
 				EDGE.listOf().optionalFieldOf("edges", List.of()).forGetter(Rule::edges),
 				SHAPE.optionalFieldOf("patch_shape", ColumnPlan.PatchShape.CELLS).forGetter(Rule::shape),
-				Plant.CODEC.listOf().optionalFieldOf("scattered", List.of()).forGetter(Rule::scattered)
+				Plant.CODEC.listOf().optionalFieldOf("scattered", List.of()).forGetter(Rule::scattered),
+				Codec.BOOL.optionalFieldOf("mossy_ground", false).forGetter(Rule::mossyGround)
 		).apply(i, Rule::new));
 
 		public Rule {
@@ -113,7 +117,7 @@ public record PlantPalette(List<Rule> rules) {
 		public Rule(HabitatCondition condition, ColumnPlan.Medium medium, int minDepth, int maxDepth,
 				List<ColumnPlan.Ground> grounds, float coverage, int patch, List<Plant> plants, List<Ecotone.Edge> edges,
 				ColumnPlan.PatchShape shape) {
-			this(condition, medium, minDepth, maxDepth, grounds, coverage, patch, plants, edges, shape, List.of());
+			this(condition, medium, minDepth, maxDepth, grounds, coverage, patch, plants, edges, shape, List.of(), false);
 		}
 
 		/** The clumped and the scattered plants, in this order (the plan's plant list of the rule). */

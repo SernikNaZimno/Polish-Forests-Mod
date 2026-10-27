@@ -76,7 +76,7 @@ public final class ColumnPlan {
 	static final double BLOB_WARP = 0.55;
 	/** Salt of the warp of the rounded patches ({@code feature.ground.patches}, ZW-2). */
 	static final long BLOB_SALT = 0x4F1B_6C3A_29D7_E085L;
-	/** Salt of the column's draw of a scattered plant (round 1 of the V12 review, a new salt, ZW-2). */
+	/** Salt of the column's draw of a scattered plant ({@code feature.ground.scatter}, round 1 of the V12 review, ZW-2). */
 	static final long SCATTER_SALT = 0x5CA7_7E2DL;
 
 	/** Shape of the patches of a rule (new constants only at the end: the palettes name them). */

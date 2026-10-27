@@ -682,6 +682,7 @@
         "fresh_pine_forest"
       ],
       "coverage": 0.97,
+      "mossy_ground": true,
       "patch": 6,
       "patch_shape": "blobs",
       "plants": [
@@ -806,6 +807,7 @@
         "mixed_pine_forest"
       ],
       "coverage": 0.93,
+      "mossy_ground": true,
       "patch": 6,
       "patch_shape": "blobs",
       "plants": [
@@ -948,10 +950,6 @@
           "weight": 3
         },
         {
-          "block": "polishforests:forest_moss_carpet",
-          "weight": 10
-        },
-        {
           "block": {
             "id": "polishforests:wood_anemone",
             "properties": {
@@ -1022,6 +1020,12 @@
         {
           "block": "polishforests:bilberry",
           "weight": 4
+        }
+      ],
+      "scattered": [
+        {
+          "block": "polishforests:forest_moss_carpet",
+          "weight": 10
         }
       ]
     },
@@ -1134,10 +1138,12 @@
             }
           },
           "weight": 3
-        },
+        }
+      ],
+      "scattered": [
         {
           "block": "polishforests:forest_moss_carpet",
-          "weight": 3
+          "weight": 2
         }
       ]
     },
