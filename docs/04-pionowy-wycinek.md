@@ -2278,7 +2278,7 @@ Przegląd: 1 uwaga „major” — uwaga 3 rundy 1 naprawiona tylko w borach: w 
 
 **Drobne uwagi przeglądu (bez poprawiania):** wszystkie są już na liście „Do kroku porządkowego” albo nieaktualne: zakres `TreeMoss.chances` = DP-48; wanilijny `moss_carpet` przy pniach — **nieaktualne**, od rundy 1 `forest_moss_carpet` (`TreeMoss`); gołe komórki pni i nabiegów w borach — **nieaktualne**, od rundy 1 `mossy_podzol` pod pniem i nabiegami Bśw i BMśw (`TreeMoss.mossyGround`); rośliny dwublokowe a kolejność chunków = DP-49 (Javadoc poprawiony w rundzie 1); konwalia = DP-47; łososiowe igliwie = DP-50; łany przylaszczki i siatka zawilca = DP-51; kwitnienie latem i kadry `base_eye` = V13 i DP-46. Nowe: DP-55.
 
-**Testy rundy:** `GroundLayerPlanTest` (grunt pod roślinami palet wycinka), `ForestCensusTest`, `ForestNormsTest`, `EcotoneTest`, `EcotoneSharpnessTest`, `fastTest`, `checkDatagen`; gametesty `slice` (transekt obu skal, karta norm), `determinism` (kolejność stała 0 różnic, dowolna najwyżej 0,098% bloków okna przy progu 0,5%: pnącza i liście drzew M2 nad rzeką, obroty igliwia), VEGECO; pełny zestaw FULLSUITE.
+**Testy rundy:** `GroundLayerPlanTest` (grunt pod roślinami palet wycinka), `ForestCensusTest`, `ForestNormsTest`, `EcotoneTest`, `EcotoneSharpnessTest`, `fastTest`, `checkDatagen`; gametesty `slice` (transekt obu skal, karta norm), `determinism` (kolejność stała 0 różnic, dowolna najwyżej 0,098% bloków okna przy progu 0,5%: pnącza i liście drzew M2 nad rzeką, obroty igliwia), `vegetation` i `ecotones` (PASS, regresja M2 po zmianie palety Bs); pełny zestaw `tools/dev/run-tests test` (PASS, 1182 s, drzewo `bca4c40f33f7`; różni się od commitu tylko tym zdaniem).
 
 ## Do kroku porządkowego (lista drobiazgów z recenzji)
 
