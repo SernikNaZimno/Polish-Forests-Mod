@@ -27,7 +27,7 @@ Choose the *Poland (1:1 Scale)* or *Poland (Gameplay Scale)* world type when you
 
 ## Compatibility
 
-- **Tree felling:** [FallingTree](https://modrinth.com/mod/fallingtree) and [Tree Harvester](https://modrinth.com/mod/tree-harvester) (optional) fell the mod's trees whole with one cut: trunk, branches and root flares, never a neighbouring tree, a shrub, dead wood or the roots in the ground. Cut-off leaves of the mod's trees fall within about two seconds. Thick wood gives logs, thin branches sticks. The mod's old trees have up to about 330 wood blocks, while FallingTree by default fells at most 100: raise `maxSize` and `maxScanSize` under `trees` in `config/fallingtree.json` (the modpack sets 2048, drops the loot at the cut and lowers the axe wear to 0.2 per block).
+- **Tree felling:** [FallingTree](https://modrinth.com/mod/fallingtree) and [Tree Harvester](https://modrinth.com/mod/tree-harvester) (optional) fell the mod's trees whole with one cut: trunk, branches and root flares, never a neighboring tree, a shrub or the roots in the ground. Dead wood (lying logs, windthrows) is cut block by block. Cut-off leaves of the mod's trees fall within one to three seconds, while leaves a neighboring crown still holds stay. Thick wood gives logs, thin branches sticks, and young pole-stage trees only sticks. The mod's old trees have up to about 360 wood blocks, while FallingTree by default fells at most 100: raise `maxSize` and `maxScanSize` under `trees` in `config/fallingtree.json` (the modpack sets 2048, drops the loot at the cut and lowers the axe wear to 0.2 per block). Tree Harvester has no size limit; it wears the axe by 1 per wood block (`loseDurabilityModifier` in its config) and replants a sapling at the base.
 
 ## Roadmap
 

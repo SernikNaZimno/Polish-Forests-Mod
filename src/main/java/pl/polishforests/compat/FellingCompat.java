@@ -2,6 +2,7 @@ package pl.polishforests.compat;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.LongAdder;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.core.BlockPos;
@@ -106,5 +107,16 @@ public final class FellingCompat {
 		}
 		int leaves = TreeWood.leavesAround(level::getBlockState, tree.wood(), TREE_HARVESTER_LEAVES, ignorePlayerMadeTrees);
 		return leaves < TREE_HARVESTER_LEAVES ? -1 : Math.max(1, tree.logDrops());
+	}
+
+	/**
+	 * Tree Harvester: the places where the mod may replant a sapling after felling the tree at {@code pos} (the base it
+	 * found), or {@code null} for the mod's own rules. A tree of this mod has one stem, so only its base: the mod offers
+	 * every block around the base whose name starts with the same word (a shrub stem, a neighbor's trunk, the tree's own
+	 * root flares) and later sets saplings there without looking.
+	 */
+	public static @Nullable Set<BlockPos> treeHarvesterReplant(Level level, BlockPos pos) {
+		TreeWood.Tree tree = TreeWood.GAME.of(level::getBlockState, pos);
+		return tree == null ? null : Set.of(pos.immutable());
 	}
 }

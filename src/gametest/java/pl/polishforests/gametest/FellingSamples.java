@@ -35,6 +35,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LeavesBlock;
+import net.minecraft.world.level.block.SaplingBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.presets.WorldPreset;
@@ -74,7 +75,8 @@ import pl.polishforests.worldgen.tree.TreeVoxels;
  * two nearest the plot center.</li>
  * </ul>
  * Each felling is checked: the whole tree as the parent graph gives it ({@link TreeWood}: trunk, branches, flares) is gone;
- * no other wood (the neighbor, the shrub stem, dead wood), no ground block (soil, the underground roots) changed; the
+ * no other wood (the neighbor, the shrub stem, dead wood), no ground block (soil, the underground roots; dirt and grass
+ * turning into each other on random ticks only noted) changed; the
  * drops are the tree's log-giving blocks as logs and its thin wood as sticks; the cut-off leaves fall within
  * {@value #LEAF_TICKS} ticks and the leaves the neighbors' wood holds stay; the break takes at most {@value #MAX_MS} ms
  * (only reported with {@code -PtimingsReportOnly}). Results in {@code build/felling/<mod>.txt} and the log
@@ -371,12 +373,14 @@ final class FellingSamples {
 					String shotName = "felling_" + scale + "_" + plot.name() + "_" + (k + 1);
 					if (k == 0) {
 						shot(context, sp, shotName + "_before", view);
+						shotAbove(context, sp, shotName + "_above_before", view);
 					}
 					stand(sp, base.getX() + 3.5, base.getY() + 2, base.getZ() + 3.5);
 					context.waitTicks(20);
 					fell(context, sp, mod, name, base, true, done);
 					if (k == 0) {
 						shot(context, sp, shotName + "_after", view);
+						shotAbove(context, sp, shotName + "_above_after", view);
 					}
 				}
 			}
@@ -546,6 +550,7 @@ final class FellingSamples {
 		int[] b = f.inner;
 		int woodChanged = 0;
 		int groundChanged = 0;
+		int grassSpread = 0;
 		int neighborLeavesLost = 0;
 		int leavesFallen = 0;
 		int other = 0;
@@ -573,6 +578,9 @@ final class FellingSamples {
 						if (f.neighborLeaves.contains(p) && !(now.getBlock() instanceof LeavesBlock)) {
 							neighborLeavesLost++;
 						}
+					} else if (soilCover(was) && soilCover(now)) {
+						// Grass spreading onto the dirt under the trunk or dying back on random ticks: not the felling.
+						grassSpread++;
 					} else if (ground(was)) {
 						groundChanged++;
 						if (examples.size() < 5) {
@@ -584,8 +592,18 @@ final class FellingSamples {
 				}
 			}
 		}
+		int saplings = 0;
+		for (BlockPos q : f.wood) {
+			saplings += level.getBlockState(q).getBlock() instanceof SaplingBlock ? 1 : 0;
+		}
 		f.notes.add(String.format(Locale.ROOT, "leaves fallen %d, neighbor-held leaves kept %d of %d, other blocks changed %d",
 				leavesFallen, f.neighborLeaves.size() - neighborLeavesLost, f.neighborLeaves.size(), other));
+		if (grassSpread > 0) {
+			f.notes.add("grass spread or died back on " + grassSpread + " ground blocks");
+		}
+		if (saplings > 0) {
+			f.notes.add("sapling replanted on " + saplings + " places of the tree's wood");
+		}
 		if (woodChanged > 0) {
 			f.problems.add(woodChanged + " blocks of other wood changed");
 		}
@@ -601,6 +619,11 @@ final class FellingSamples {
 		if (!examples.isEmpty()) {
 			f.problems.add("e.g. " + String.join(", ", examples));
 		}
+	}
+
+	/** Dirt or grass: the soil cover that random ticks turn into each other. */
+	private static boolean soilCover(BlockState s) {
+		return s.is(Blocks.DIRT) || s.is(Blocks.GRASS_BLOCK);
 	}
 
 	/** Ground: full solid blocks, soil, the underground roots. */
@@ -747,6 +770,18 @@ final class FellingSamples {
 				mc.gui.hud.toggle();
 			}
 		});
+	}
+
+	/**
+	 * A view down on a tree of a world from above the canopy (south of it, steeply down), where the gap it leaves shows;
+	 * from the ground the trunks of a dense stand hide it.
+	 */
+	private static void shotAbove(ClientGameTestContext context, TestSingleplayerContext sp, String name, Cell cell) {
+		double x = cell.base().getX() + 0.5;
+		double z = cell.base().getZ() + 0.5 + 12;
+		double y = cell.base().getY() + cell.height() + 22;
+		sp.getServer().runCommand(String.format(Locale.ROOT, "tp @a %.2f %.2f %.2f 180.0 60.0", x, y, z));
+		ViewReady.shot(context, sp, name, SIZE, 3);
 	}
 
 	/** A view of a tree from the south-east, far enough for its height. */
