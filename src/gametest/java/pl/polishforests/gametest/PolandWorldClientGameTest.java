@@ -166,8 +166,11 @@ public final class PolandWorldClientGameTest implements FabricClientGameTest {
 			if (renderDistance != RENDER_DISTANCE) {
 				waitForChunks(context, site.name(), renderDistance);
 			}
-			// Step T7: until the view is drawn (ViewReady) instead of a fixed 40 s.
-			ViewReady.Result ready = ViewReady.beforeShot(context, sp, prefix + site.name(), null, 40, 0);
+			// Step T7: until the view is drawn (ViewReady) instead of a fixed 40 s; a site with its own render distance
+			// shows the distant landscape, so it waits for the whole render distance (review of T7, round 1).
+			ViewReady.Result ready = renderDistance != RENDER_DISTANCE
+					? ViewReady.beforeShotHorizon(context, sp, prefix + site.name(), null, 40)
+					: ViewReady.beforeShot(context, sp, prefix + site.name(), null, 40, 0);
 			int loaded = sp.getServer().computeOnServer(s -> s.overworld().getChunkSource().getLoadedChunksCount());
 			String client = context.computeOnClient(mc -> mc.level.getChunkSource().gatherStats() + ", fps " + mc.getFps());
 			PolishForests.LOG.info("[test] {} after {} s: server {} chunks; client: {}", site.name(),

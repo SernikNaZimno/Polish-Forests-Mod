@@ -60,6 +60,12 @@ import pl.polishforests.PolishForests;
  * teleport, compares them pixel by pixel ({@link FrameDiff}, clouds off for the whole run) and writes
  * {@code build/view-check/report.txt} and the diff images; {@code -PviewCheckOnly=<regex>} limits the check to some
  * frames; {@code -PviewReach=<blocks>} overrides the reach of the cone.
+ *
+ * <p>Horizon frames ({@link #beforeShotHorizon}: views with their own, longer render distance that exist to show the
+ * distant landscape; review of T7, round 1): the cone reaches the whole render distance less {@link ViewCone#EDGE_CHUNKS},
+ * the count of client chunks must not have changed for {@value #HORIZON_STEADY_TICKS} ticks, the wait ends only with an
+ * empty compile queue (no early exit while far sections still mesh) and the safety limit is at least
+ * {@value #HORIZON_SAFETY_SECONDS} s.
  */
 final class ViewReady {
 	static final int POLL_TICKS = 5;
@@ -69,6 +75,9 @@ final class ViewReady {
 	static final int QUEUE_GRACE_TICKS_SODIUM = 60;
 	static final int MARGIN_TICKS = 60;
 	static final int MIN_SAFETY_SECONDS = 30;
+	/** Horizon frames: ticks without a change of the client's chunk count, and the least safety limit. */
+	static final int HORIZON_STEADY_TICKS = 40;
+	static final int HORIZON_SAFETY_SECONDS = 120;
 	/** Rays through the frame: columns and rows, 10% beyond the frame's edges. */
 	static final int RAY_COLUMNS = 24;
 	static final int RAY_ROWS = 14;
@@ -147,6 +156,20 @@ final class ViewReady {
 	/** Waits for the view and the margin before a screenshot the caller takes itself (with an overlay, for example). */
 	static Result beforeShot(ClientGameTestContext context, TestSingleplayerContext sp, String name, int[] size, int legacySeconds,
 			int minSeconds) {
+		return beforeShot(context, sp, name, size, legacySeconds, minSeconds, false);
+	}
+
+	/**
+	 * As {@link #beforeShot} for a horizon frame: waits until the whole render distance is on the client and drawn (see the
+	 * class comment).
+	 */
+	static Result beforeShotHorizon(ClientGameTestContext context, TestSingleplayerContext sp, String name, int[] size,
+			int legacySeconds) {
+		return beforeShot(context, sp, name, size, legacySeconds, 0, true);
+	}
+
+	private static Result beforeShot(ClientGameTestContext context, TestSingleplayerContext sp, String name, int[] size,
+			int legacySeconds, int minSeconds, boolean horizon) {
 		long t0 = System.nanoTime();
 		if (CHECK && !cloudsOff) {
 			context.runOnClient(mc -> mc.options.cloudStatus().set(CloudStatus.OFF));
@@ -154,7 +177,7 @@ final class ViewReady {
 			PolishForests.LOG.info("[view] check mode: clouds off for the whole run, reference frames {} s after the teleport",
 					CHECK_SECONDS);
 		}
-		Result r = await(context, sp, name, size, legacySeconds, minSeconds);
+		Result r = await(context, sp, name, size, legacySeconds, minSeconds, horizon);
 		if (!FIXED) {
 			context.waitTicks(MARGIN_TICKS);
 		}
@@ -169,6 +192,11 @@ final class ViewReady {
 	 */
 	static Result await(ClientGameTestContext context, TestSingleplayerContext sp, String name, int[] size, int legacySeconds,
 			int minSeconds) {
+		return await(context, sp, name, size, legacySeconds, minSeconds, false);
+	}
+
+	private static Result await(ClientGameTestContext context, TestSingleplayerContext sp, String name, int[] size,
+			int legacySeconds, int minSeconds, boolean horizon) {
 		if (FIXED) {
 			context.waitTicks(20 * legacySeconds);
 			PolishForests.LOG.info("[view] {}: {} s, {}", name, legacySeconds, Reason.FIXED.text);
@@ -176,16 +204,17 @@ final class ViewReady {
 		}
 		double aspect = size == null ? 0 : (double) size[0] / size[1];
 		int min = Math.max(MIN_TICKS, 20 * minSeconds);
-		int max = 20 * Math.max(legacySeconds, MIN_SAFETY_SECONDS);
+		int max = 20 * Math.max(legacySeconds, horizon ? HORIZON_SAFETY_SECONDS : MIN_SAFETY_SECONDS);
 		int ticks = 0;
 		int coneSince = -1;
 		int steadySince = -1;
+		int chunksSince = 0;
 		Probe last = null;
 		Reason reason = Reason.TIMEOUT;
 		while (ticks < max) {
 			context.waitTicks(POLL_TICKS);
 			ticks += POLL_TICKS;
-			Probe p = context.computeOnClient(mc -> probe(mc, aspect));
+			Probe p = context.computeOnClient(mc -> probe(mc, aspect, horizon));
 			if (p.missing() > 0 && sp != null) {
 				long[] keys = p.missingChunks();
 				int generating = sp.getServer().computeOnServer(s -> {
@@ -212,11 +241,23 @@ final class ViewReady {
 			} else if (steadySince < 0) {
 				steadySince = ticks;
 			}
+			if (last == null || p.clientChunks() != last.clientChunks()) {
+				chunksSince = ticks;
+			}
 			last = p;
 			if (ticks < min || coneSince < 0) {
 				continue;
 			}
 			int cone = ticks - coneSince + POLL_TICKS;
+			if (horizon) {
+				// Horizon frames: only an empty queue after the client's chunk count has stopped changing.
+				if (steadySince >= 0 && cone >= STABLE_TICKS && ticks - steadySince + POLL_TICKS >= STABLE_TICKS
+						&& ticks - chunksSince >= HORIZON_STEADY_TICKS) {
+					reason = Reason.QUEUE_EMPTY;
+					break;
+				}
+				continue;
+			}
 			if (p.renderer().equals("unknown")) {
 				if (steadySince >= 0 && cone >= STABLE_TICKS && ticks >= 5 * 20) {
 					reason = Reason.FALLBACK;
@@ -293,11 +334,11 @@ final class ViewReady {
 	 */
 	record Probe(String renderer, double x, double y, double z, float yaw, float pitch, int reach, int rays, int chunks, int missing,
 			long[] missingChunks, int generating, int content, int unbuilt, int hitSections, int emptyHits, boolean queueEmpty,
-			int rendered, int queued) {
+			int rendered, int queued, int clientChunks) {
 
 		Probe withGenerating(int n) {
 			return new Probe(renderer, x, y, z, yaw, pitch, reach, rays, chunks, missing, missingChunks, n, content, unbuilt, hitSections,
-					emptyHits, queueEmpty, rendered, queued);
+					emptyHits, queueEmpty, rendered, queued, clientChunks);
 		}
 
 		boolean coneReady() {
@@ -314,24 +355,24 @@ final class ViewReady {
 				return "no level or player on the client";
 			}
 			return String.format(Locale.ROOT, "renderer %s, cone reach %d blocks, %d rays; chunks %d (missing %d%s), content sections %d "
-					+ "(not built %d), hit sections %d (empty %d), compile queue %s, rendered sections %d", renderer, reach, rays,
-					chunks, missing, generating < 0 ? "" : ", " + generating + " generating on the server", content, unbuilt,
-					hitSections, emptyHits, queueEmpty ? "empty" : queued < 0 ? "busy" : queued + " tasks", rendered);
+					+ "(not built %d), hit sections %d (empty %d), compile queue %s, rendered sections %d, client chunks %d", renderer, reach,
+					rays, chunks, missing, generating < 0 ? "" : ", " + generating + " generating on the server", content, unbuilt,
+					hitSections, emptyHits, queueEmpty ? "empty" : queued < 0 ? "busy" : queued + " tasks", rendered, clientChunks);
 		}
 	}
 
-	static Probe probe(Minecraft mc, double frameAspect) {
+	static Probe probe(Minecraft mc, double frameAspect, boolean horizon) {
 		ClientLevel level = mc.level;
 		if (level == null || mc.player == null) {
-			return new Probe("none", 0, 0, 0, 0, 0, 0, 0, 0, 0, new long[0], -1, 0, 0, 0, 0, false, 0, -1);
+			return new Probe("none", 0, 0, 0, 0, 0, 0, 0, 0, 0, new long[0], -1, 0, 0, 0, 0, false, 0, -1, 0);
 		}
 		Vec3 eye = mc.player.getEyePosition();
 		float yaw = mc.player.getYRot();
 		float pitch = mc.player.getXRot();
 		int rd = mc.options.getEffectiveRenderDistance();
 		int ground = level.getHeight(Heightmap.Types.MOTION_BLOCKING, (int) Math.floor(eye.x), (int) Math.floor(eye.z));
-		double reach = ViewCone.reach(eye.y - ground, rd, REACH_OVERRIDE);
 		double limit = ViewCone.horizontalLimit(rd);
+		double reach = horizon && REACH_OVERRIDE <= 0 ? limit : ViewCone.reach(eye.y - ground, rd, REACH_OVERRIDE);
 		double aspect = frameAspect > 0 ? frameAspect : (double) mc.getWindow().getWidth() / Math.max(1, mc.getWindow().getHeight());
 		double[][] rays = ViewCone.rays(yaw, pitch, mc.options.fov().get(), aspect, RAY_COLUMNS, RAY_ROWS, RAY_MARGIN);
 		LongOpenHashSet chunks = new LongOpenHashSet();
@@ -438,7 +479,8 @@ final class ViewReady {
 			rendered = -1;
 		}
 		return new Probe(renderer, eye.x, eye.y, eye.z, yaw, pitch, (int) Math.round(reach), rays.length, chunks.size(), missing.size(),
-				missing.toLongArray(), -1, content.size(), unbuilt, hits.size(), emptyHits, queueEmpty, rendered, queued);
+				missing.toLongArray(), -1, content.size(), unbuilt, hits.size(), emptyHits, queueEmpty, rendered, queued,
+				level.getChunkSource().getLoadedChunksCount());
 	}
 
 	/** A block that hides what lies behind it: opaque blocks, leaves and fluids. */
