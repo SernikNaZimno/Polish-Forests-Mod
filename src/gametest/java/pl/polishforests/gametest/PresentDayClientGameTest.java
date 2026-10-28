@@ -390,12 +390,12 @@ public final class PresentDayClientGameTest implements FabricClientGameTest {
 				mc.gui.hud.toggle();
 			}
 		});
-		context.waitTicks(20 * 40);
+		// Step T7: until the view is drawn (ViewReady) instead of a fixed 40 + 10 s.
+		ViewReady.Result ready = ViewReady.beforeShot(context, sp, screenshot, null, 50, 0);
 		PolishForests.LOG.info("[present_day] {}: camera ({}, {}, {}) yaw {} pitch {}, client {}", screenshot, cx, y, cz,
 				String.format(Locale.ROOT, "%.1f", yaw), String.format(Locale.ROOT, "%.1f", pitch),
 				context.computeOnClient(mc -> mc.level.getChunkSource().gatherStats()));
-		context.waitTicks(20 * 10);
-		context.takeScreenshot(screenshot);
+		ViewReady.take(context, screenshot, null, ready);
 		context.runOnClient(mc -> {
 			if (mc.gui.hud.isHidden()) {
 				mc.gui.hud.toggle();
@@ -744,11 +744,11 @@ public final class PresentDayClientGameTest implements FabricClientGameTest {
 				mc.gui.hud.toggle();
 			}
 		});
-		context.waitTicks(20 * 15);
+		// Step T7: until the view is drawn (ViewReady) instead of a fixed 15 + 3 s.
+		ViewReady.Result ready = ViewReady.beforeShot(context, sp, screenshot, null, 18, 0);
 		PolishForests.LOG.info("[present_day] {}: camera ({}, {}, {}) yaw {} pitch {}, target ({}, {}, {})", screenshot, v[0], v[1], v[2],
 				String.format(Locale.ROOT, "%.1f", yaw), String.format(Locale.ROOT, "%.1f", pitch), v[3], v[4], v[5]);
-		context.waitTicks(20 * 3);
-		context.takeScreenshot(screenshot);
+		ViewReady.take(context, screenshot, null, ready);
 		context.runOnClient(mc -> {
 			if (mc.gui.hud.isHidden()) {
 				mc.gui.hud.toggle();

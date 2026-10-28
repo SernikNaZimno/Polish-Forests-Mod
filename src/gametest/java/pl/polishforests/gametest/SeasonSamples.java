@@ -10,7 +10,6 @@ import java.util.Locale;
 import java.util.Map;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
-import net.fabricmc.fabric.api.client.gametest.v1.screenshot.TestScreenshotOptions;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
@@ -76,6 +75,7 @@ import pl.polishforests.season.SubSeason;
  */
 final class SeasonSamples {
 	private static final int[] SIZE = {1280, 720};
+	private static final int[] RIG_SIZE = {854, 480};
 	private static final int RADIUS = 24;
 	/** Sub-seasons of the shots with Serene Seasons (day 0) and without it (day 4, the 2nd color step). */
 	private static final List<SubSeason> WITH_SS = List.of(SubSeason.EARLY_SPRING, SubSeason.MID_SPRING, SubSeason.LATE_SPRING,
@@ -129,7 +129,9 @@ final class SeasonSamples {
 			String p = "seasons_" + scale + "_" + tag + "_";
 			for (SubSeason sub : seasons ? WITH_SS : WITHOUT_SS) {
 				int day = seasons ? 0 : 4;
-				go(context, sp, grad, 25);
+				// Step T7: until the view is drawn instead of a fixed 25 s.
+				teleport(sp, grad);
+				ViewReady.await(context, sp, p + name(sub) + "_arrival", SIZE, 25, 0);
 				SeasonDates.setAndWait(context, sp, sub, day, "seasons");
 				String name = sub.name().toLowerCase(Locale.ROOT);
 				for (String[] view : new String[][] {{"oak_hornbeam_1", "eye"}, {"oak_hornbeam_1", "canopy"}, {"oak_hornbeam_1", "30m"},
@@ -320,8 +322,8 @@ final class SeasonSamples {
 		if (shotName != null) {
 			sp.getServer().runCommand(String.format(Locale.ROOT, "tp @a %.2f %.2f %.2f %.1f %.1f", cam.x() + 0.5, (double) cam.y(),
 					cam.z() + 0.5, cam.yaw(), -15.0));
-			context.waitTicks(200);
-			context.takeScreenshot(TestScreenshotOptions.of(shotName).disableCounterPrefix().withSize(SIZE[0], SIZE[1]));
+			// Step T7: the view drawn, but still at least the old 10 s, so that as many leaves fall in the frame as before.
+			ViewReady.shot(context, sp, shotName, SIZE, 10, 10);
 		}
 	}
 
@@ -600,12 +602,8 @@ final class SeasonSamples {
 		for (int k = 0; k < 3; k++) {
 			sp.getServer().runCommand(String.format(Locale.ROOT, "tp @a %.2f %.2f %.2f 0 -30", rig.getX() + 12 * k + 3.5,
 					rig.getY() + 1.58, rig.getZ() - 3.0));
-			context.waitTicks(10);
-			context.waitFor(SeasonSamples::compiled, 1200);
-			context.waitTicks(5);
-			Path path = context.takeScreenshot(TestScreenshotOptions.of(name + (k == 0 ? "_twigs" : k == 1 ? "_vanilla" : "_reference"))
-					.disableCounterPrefix()
-					.withSize(854, 480));
+			// Step T7: until the view is drawn instead of 15 ticks and an empty compile queue.
+			Path path = ViewReady.shot(context, sp, name + (k == 0 ? "_twigs" : k == 1 ? "_vanilla" : "_reference"), RIG_SIZE, 1);
 			out[k] = RenderProbesClientGameTest.sky(path);
 		}
 		return out;
@@ -622,17 +620,26 @@ final class SeasonSamples {
 		return null;
 	}
 
-	private static void go(ClientGameTestContext context, TestSingleplayerContext sp, SliceCameras.Camera cam, int waitSeconds) {
+	private static void teleport(TestSingleplayerContext sp, SliceCameras.Camera cam) {
 		sp.getServer().runCommand(String.format(Locale.ROOT, "tp @a %.2f %d %.2f %.1f %.1f", cam.x() + 0.5, cam.y(), cam.z() + 0.5,
 				cam.yaw(), cam.pitch()));
+	}
+
+	/** A fixed wait at a camera, for the checks that need the chunks around it ticking (fruit, catch-up), not for frames. */
+	private static void go(ClientGameTestContext context, TestSingleplayerContext sp, SliceCameras.Camera cam, int waitSeconds) {
+		teleport(sp, cam);
 		context.waitTicks(20 * waitSeconds);
 	}
 
+	private static String name(SubSeason sub) {
+		return sub.name().toLowerCase(Locale.ROOT);
+	}
+
+	/** A frame of a camera: until the view is drawn (step T7; before: 4 s and an empty compile queue). */
 	private static Path shot(ClientGameTestContext context, TestSingleplayerContext sp, String name, SliceCameras.Camera cam,
-			int waitSeconds) {
-		go(context, sp, cam, waitSeconds);
-		context.waitFor(SeasonSamples::compiled, 1200);
-		Path path = context.takeScreenshot(TestScreenshotOptions.of(name).disableCounterPrefix().withSize(SIZE[0], SIZE[1]));
+			int legacySeconds) {
+		teleport(sp, cam);
+		Path path = ViewReady.shot(context, sp, name, SIZE, legacySeconds);
 		PolishForests.LOG.info("[seasons] shot {}", name);
 		return path;
 	}

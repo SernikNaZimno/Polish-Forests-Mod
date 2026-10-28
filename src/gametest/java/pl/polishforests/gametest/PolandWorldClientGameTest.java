@@ -166,14 +166,13 @@ public final class PolandWorldClientGameTest implements FabricClientGameTest {
 			if (renderDistance != RENDER_DISTANCE) {
 				waitForChunks(context, site.name(), renderDistance);
 			}
-			for (int step = 0; step < 2; step++) {
-				context.waitTicks(20 * 20);
-				int loaded = sp.getServer().computeOnServer(s -> s.overworld().getChunkSource().getLoadedChunksCount());
-				String client = context.computeOnClient(mc -> mc.level.getChunkSource().gatherStats() + ", fps " + mc.getFps());
-				PolishForests.LOG.info("[test] {} after {} s: server {} chunks; client: {}", site.name(), (step + 1) * 20,
-						loaded, client);
-			}
-			context.takeScreenshot(prefix + site.name());
+			// Step T7: until the view is drawn (ViewReady) instead of a fixed 40 s.
+			ViewReady.Result ready = ViewReady.beforeShot(context, sp, prefix + site.name(), null, 40, 0);
+			int loaded = sp.getServer().computeOnServer(s -> s.overworld().getChunkSource().getLoadedChunksCount());
+			String client = context.computeOnClient(mc -> mc.level.getChunkSource().gatherStats() + ", fps " + mc.getFps());
+			PolishForests.LOG.info("[test] {} after {} s: server {} chunks; client: {}", site.name(),
+					String.format(Locale.ROOT, "%.1f", ready.ticks() / 20.0), loaded, client);
+			ViewReady.take(context, prefix + site.name(), null, ready);
 			if (renderDistance != RENDER_DISTANCE) {
 				setRenderDistance(context, RENDER_DISTANCE);
 			}
@@ -193,7 +192,7 @@ public final class PolandWorldClientGameTest implements FabricClientGameTest {
 
 	/**
 	 * Longer render distance: waits until the client holds 80% of the chunks of the circular view area or the count
-	 * stops growing for 15 s (at most 4 minutes); the usual 40 s wait before the screenshot follows.
+	 * stops growing for 15 s (at most 4 minutes); the wait for the view (ViewReady, step T7) follows.
 	 */
 	private static void waitForChunks(ClientGameTestContext context, String name, int renderDistance) {
 		int target = (int) (0.8 * Math.PI * renderDistance * renderDistance);

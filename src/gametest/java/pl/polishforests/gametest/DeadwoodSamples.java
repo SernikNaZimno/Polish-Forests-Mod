@@ -10,7 +10,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
-import net.fabricmc.fabric.api.client.gametest.v1.screenshot.TestScreenshotOptions;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
@@ -428,8 +427,8 @@ final class DeadwoodSamples {
 	private static void shot(ClientGameTestContext context, TestSingleplayerContext sp, String name, double x, double y, double z,
 			double yaw, double pitch, int waitSeconds) {
 		sp.getServer().runCommand(String.format(Locale.ROOT, "tp @a %.2f %.2f %.2f %.1f %.1f", x, y, z, yaw, pitch));
-		context.waitTicks(20 * waitSeconds);
-		context.takeScreenshot(TestScreenshotOptions.of(name).disableCounterPrefix().withSize(SIZE[0], SIZE[1]));
+		// Step T7: until the view is drawn (ViewReady) instead of a fixed wait of waitSeconds.
+		ViewReady.shot(context, sp, name, SIZE, waitSeconds);
 		PolishForests.LOG.info(String.format(Locale.ROOT, "[deadwood] %s: camera (%.1f, %.1f, %.1f) yaw %.0f pitch %.0f", name, x, y, z,
 				yaw, pitch));
 	}

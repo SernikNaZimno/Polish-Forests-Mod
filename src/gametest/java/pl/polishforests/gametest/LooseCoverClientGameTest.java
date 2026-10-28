@@ -353,8 +353,8 @@ public final class LooseCoverClientGameTest implements FabricClientGameTest {
 				mc.gui.hud.toggle();
 			}
 		});
-		context.waitTicks(20 * 25);
-		context.takeScreenshot(name);
+		// Step T7: until the view is drawn (ViewReady) instead of a fixed 25 s.
+		ViewReady.shot(context, sp, name, null, 25);
 		context.runOnClient(mc -> {
 			if (mc.gui.hud.isHidden()) {
 				mc.gui.hud.toggle();

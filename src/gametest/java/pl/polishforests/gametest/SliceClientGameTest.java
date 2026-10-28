@@ -17,7 +17,6 @@ import javax.imageio.ImageIO;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
-import net.fabricmc.fabric.api.client.gametest.v1.screenshot.TestScreenshotOptions;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.gui.screens.worldselection.WorldCreationUiState;
 import net.minecraft.core.BlockPos;
@@ -880,8 +879,8 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 	// ------------------------------------------------------------------ screenshots
 
 	/**
-	 * Takes the screenshot of a camera: removes trunks and leaves the camera stands in (logged), waits for the terrain (30
-	 * seconds at a new place, 3 near the last camera), logs the line of sight of an eye-height view and the brightness of
+	 * Takes the screenshot of a camera: removes trunks and leaves the camera stands in (logged), waits until the view is
+	 * drawn ({@link ViewReady}, step T7), logs the line of sight of an eye-height view and the brightness of
 	 * the image. Returns the position of this camera.
 	 */
 	private static int[] shot(ClientGameTestContext context, TestSingleplayerContext sp, Camera c, String screenshot, int[] last) {
@@ -901,15 +900,13 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 				mc.gui.hud.toggle();
 			}
 		});
+		// Step T7: waits until the view is drawn (ViewReady) instead of 30 + 10 s at a new place and 3 + 3 s near the last camera.
 		boolean near = last != null && Math.hypot(c.x() - last[0], c.z() - last[1]) < 64 && !overview;
-		int wait = near ? 3 : 30;
-		context.waitTicks(20 * wait);
+		int[] size = kind == SliceCameras.Kind.EYE || kind == SliceCameras.Kind.BARK ? EYE_SIZE : VIEW_SIZE;
+		Path path = ViewReady.shot(context, sp, screenshot, size, near ? 6 : 40);
 		PolishForests.LOG.info("[slice] {}: camera ({}, {}, {}) yaw {} pitch {}{}, client {}", screenshot, c.x(), c.y(), c.z(),
 				String.format(Locale.ROOT, "%.1f", c.yaw()), String.format(Locale.ROOT, "%.1f", c.pitch()), prepared,
 				context.computeOnClient(mc -> mc.level.getChunkSource().gatherStats()));
-		context.waitTicks(20 * Math.min(10, wait));
-		int[] size = kind == SliceCameras.Kind.EYE || kind == SliceCameras.Kind.BARK ? EYE_SIZE : VIEW_SIZE;
-		Path path = context.takeScreenshot(TestScreenshotOptions.of(screenshot).disableCounterPrefix().withSize(size[0], size[1]));
 		double[] st = brightness(path);
 		PolishForests.LOG.info(String.format(Locale.ROOT, "[slice] %s: mean luma %.0f, dark %.0f%%, sky %.0f%%%s", screenshot, st[0], 100 * st[1],
 				100 * st[2], kind == SliceCameras.Kind.CANOPY ? String.format(Locale.ROOT, ", sun pixels %.0f", st[3]) : ""));

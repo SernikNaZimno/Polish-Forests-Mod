@@ -581,8 +581,8 @@ final class TrunkSamples {
 	private static void shot(ClientGameTestContext context, TestSingleplayerContext sp, Board b, String name, double dx, double dy, double dz,
 			double yaw, double pitch, int waitSeconds) {
 		sp.getServer().runCommand(String.format(Locale.ROOT, "tp @a %.2f %.2f %.2f %.1f %.1f", b.x0() + dx, b.y0() + dy, b.z0() + dz, yaw, pitch));
-		context.waitTicks(20 * waitSeconds);
-		context.takeScreenshot(TestScreenshotOptions.of(name).disableCounterPrefix().withSize(SIZE[0], SIZE[1]));
+		// Step T7: until the view is drawn (ViewReady) instead of a fixed wait of waitSeconds.
+		ViewReady.shot(context, sp, name, SIZE, waitSeconds);
 		PolishForests.LOG.info(String.format(Locale.ROOT, "[samples] %s: camera (%.1f, %.1f, %.1f) yaw %.0f pitch %.0f", name,
 				b.x0() + dx, b.y0() + dy, b.z0() + dz, yaw, pitch));
 	}

@@ -2368,6 +2368,56 @@ Tryb Fast zimą nie spada gwałtownie: zimowa korona ma w Fast tę samą geometr
 
 **Testy rundy:** `VanillaLeafPhaseTest` (nowy), `GroundPhasesTest` (konwalia), `fastTest`, `checkArt`, `checkDatagen`, gametesty jak wyżej, pełny zestaw `tools/dev/run-tests --reuse test` (wynik w raporcie rundy). Generacja, teren i rejestr bez zmian (złoty test, migawka rejestru bez przegenerowania); determinizm nie powtarzany (zmiany tylko w kliencie, obrysie konwalii i fladze `setBlock` nadrabiania).
 
+## Projekt T7 (2026-10-28, etap 1: narzędzia testów — zrzuty bez sztywnego czekania)
+
+Krok narzędziowy z próśb użytkownika z 2026-10-27: zrzuty w client gametestach czekały na sztywno (zwykle dużo dłużej, niż trzeba), a w kilku miejscach za krótko (teren w kadrze jeszcze niedorysowany). Etap 1 nie uruchamiał gametestów ani pomiarów; przebiegi porównawcze, czasy przed i po oraz „Stan po T7” dopisze etap 2. Drobne wybory (T7-a … T7-f) są domyślne, do potwierdzenia przy CP-C (etap 2 przenosi je do `docs/00` G).
+
+**Inwentaryzacja zrzutów (przed T7).** „Za długo”: czekanie zwykle dłuższe niż potrzebne; „za krótko”: kadr bywa gotowy dopiero później.
+
+| test | metoda | dziś czeka | ryzyko | T7 |
+|---|---|---|---|---|
+| `SliceClientGameTest` | `shot` (wszystkie kamery `slice`, powierzchnie próbne) | 30 s + log + 10 s w nowym miejscu; 3 + 3 s, gdy kamera < 64 m od poprzedniej | za długo; za krótko blisko poprzedniej (np. `30m`, `canopy`, kamery `bark` nad tym samym miejscem) | `ViewReady.shot` (dawne 40 / 6 s jako tryb `fixed`) |
+| `SeasonSamples` (`-Psites=seasons`) | `shot` (5 widoków × podsezon, `oak_hornbeam_1_30m_fast`) | 4 s + `hasRenderedAllSections` | za krótko: kolejka kompilacji bywa pusta, zanim serwer dośle chunki | `ViewReady.shot` |
+| | przybycie przed zmianą daty (`go(…, 25)`) | 25 s | za długo | `ViewReady.await` (bez zapasu) |
+| | `rigSky` (stelaż trybu Fast, 3 kadry × 2 tryby) | 10 + 5 ticków + kolejka pusta | za krótko po przełączeniu trybu | `ViewReady.shot` |
+| | `leafFall` (kadr opadających liści) | 10 s | — (czas na cząsteczki) | `ViewReady.shot`, minimum 10 s |
+| | `go(…, 3/10/20)` przed owocami i nadrabianiem, `SeasonDates.setAndWait` | stałe / kolejka | — (nie kadr: ticki chunków, fala przebudowy) | bez zmian |
+| `PolandWorldClientGameTest` | widoki `views` | 2 × 20 s (+ `waitForChunks` przy większym zasięgu) | za długo | `ViewReady` (dawne 40 s); `waitForChunks` zostaje |
+| `EcotoneClientGameTest` | `fixed`, `shot` | 30 + 10 s | za długo | `ViewReady` (40 s) |
+| `PresentDayClientGameTest` | `shot` / `shotAt` | 40 + 10 s / 15 + 3 s | za długo / za krótko przy dalekim teleporcie (`shotAt`) | `ViewReady` (50 / 18 s) |
+| `VegetationClientGameTest` | widoki siedlisk | 25 + 15 s | za długo | `ViewReady` (40 s) |
+| `LooseCoverClientGameTest` | `shoot` (ściana wykopu) | 25 s | za długo | `ViewReady` (25 s) |
+| `HabitatsClientGameTest` | `f3` | 15 + 1 s | za długo | `ViewReady`, potem nakładka F3 i 1 s jak dotąd |
+| | kadry `s6_shelf_*` | 12 s + `SPILL_TICKS` (warunki sprawdzeń brzegu) | niskie | czekania sprawdzeń bez zmian, kadr przez `ViewReady` |
+| | przybycia `tp … 600` × 3 (spis `HABITAT_MISS`) | 25 s | — (nie kadr) | bez zmian |
+| `DeadwoodSamples`, `RootSamples` | `shot` (tablice: 4–6 s pierwszy, 1 s kolejne; powierzchnie: 3–4 s) | stałe | za krótko na tablicy po `setBlock` (1 s) | `ViewReady.shot` |
+| | przybycie `tp … 200` + 25 s przed wyborem widoków | 25 s | — (dane spisu z generacji okolicy) | bez zmian |
+| `TreeSamples`, `TrunkSamples` | `shot` (2–40 s) | stałe | za krótko przy 2–3 s, za długo przy 30–40 s | `ViewReady.shot`; kadry przedmiotów i niszczenia (UI) bez zmian |
+| `LeafSamples` | `shot` | 10 + 5 ticków + kolejka pusta | za krótko | `ViewReady.shot` (dłużej: min. 1 s + 3 s zapasu na kadr) |
+| `RenderProbesClientGameTest`, `ForestPerformance`, `PerformanceClientGameTest` | próby renderowania V3, przeloty i pomiary | własne zasady (`settle`, `allCompiled`, okna pomiaru) | — | bez zmian (pomiary czasu zostają przy swoich zasadach) |
+| `UiAndCommandsClientGameTest` | ekrany UI, `ui_f3_habitat` | 2–20 ticków | — (ekrany, nie teren) | bez zmian |
+
+**Niedorysowany teren w dotychczasowych zrzutach.** Przegląd ok. 11,8 tys. zrzutów z poprzednich kroków (kopie `build/run/clientGameTest/screenshots` i arkusze w katalogu roboczym): pary kadrów o tej samej nazwie z tej samej rundy porównane pikselowo (niebo w miejscu terenu). Dużych dziur blisko kamery nie znaleziono; różnice to dalekie drzewa i teren przy horyzoncie: `ecotone_beech_fir_realistic` (regresja Z1, przed i po: 3,2% kadru nieba zamiast drzew w lewym górnym rogu), `seasons_realistic_vanilla_ss_early_spring_fresh_pine_1_eye` (V13, przebiegi r3 i r4: 1,8%, horyzont), `deadwood_gameplay_fresh_pine_natural_1_broken_scots_pine` (V11: 4,1%, ale między przebiegami zmienił się kod). Ryzyka „za krótko” z inwentaryzacji sprawdzi tryb porównawczy (niżej).
+
+**Zrobione w kodzie.**
+- **`gametest/ViewReady`** — wspólny pomocnik: po teleporcie co 5 ticków sonda stanu widoku (wątek klienta) i warunki gotowości:
+  (a) chunki w stożku widzenia nieobecne u klienta są zgłaszane jako „generowane na serwerze” (`getChunkNow` = null) albo „w drodze”;
+  (b) stożek (`gametest/ViewCone`): 24 × 14 promieni przez kadr (+10% na brzegach; kąt widzenia z opcji, proporcje kadru zrzutu albo okna) z oka gracza, krok 0,7 bloku, aż do bloku zasłaniającego widok (nieprzezroczysty, liście, płyn) albo zasięgu: 128 bloków (8 chunków) z oczu, +2 bloki na każdy blok wysokości kamery nad gruntem ponad 2, najwyżej do zasięgu widzenia − 1,5 chunka (sekcje na krawędzi bez sąsiadów nigdy się nie kompilują); każdy chunk na drodze promieni musi być wczytany u klienta;
+  (c) każda sekcja, w której promień trafił na blok, skompilowana i bez oczekującego zadania kompilacji, a sekcja, w której promień się zatrzymał, niepusta (wanilia: `ViewArea`, siatka sekcji, `lastCompileTask` przez refleksję); Sodium i Nvidium: `SodiumWorldRenderer.isSectionReady` i `isTerrainRenderComplete` przez refleksję, bez twardej zależności (Sodium nie ma zadania „w toku” na sekcję, więc dłuższa karencja);
+  koniec czekania: stożek kompletny przez ≥ 15 ticków przy stojącej kamerze i (kolejka kompilacji pusta, liczba rysowanych sekcji stała ±1%) albo stożek kompletny przez 2 s (Sodium 3 s), gdy dalekie sekcje poza kadrem jeszcze się kompilują; minimum 1 s, bezpiecznik = dawne czekanie, ale nie mniej niż 30 s (przekroczenie: WARN z nazwą kadru i stanem stożka); potem **zawsze 3 s zapasu** przed zrzutem. Log `[view]`: czas, powód zakończenia, stan stożka (chunki, sekcje, trafienia, kolejka), suma czekania wszystkich kadrów.
+- **Tryb porównawczy `-PviewCheck`**: po każdym zrzucie (filtr `-PviewCheckOnly=<regex>`) kadr wzorcowy `<nazwa>_ref` 60 s po teleporcie (`-PviewCheckSeconds`), porównanie pikselowe `gametest/FrameDiff` (piksel różny: kanał > 40; „dziura”: niebo w kadrze, teren we wzorcu; kafel 16 × 9 różny: > 25% pikseli; kadr równy: ≤ 1% pikseli, ≤ 0,2% dziur, ≤ 1 kafel), obrazy różnic i `build/view-check/report.txt`; chmury wyłączone w całym przebiegu porównawczym (ruch chmur zasłaniałby wynik). `-PviewWait=fixed` przywraca dawne sztywne czekania (czas „przed” w tym samym kodzie); `-PviewReach=<bloki>` zmienia zasięg stożka.
+- Zastąpione czekania według tabeli; kadry, daty, godziny i warunki testów bez zmian (w trybie porównawczym tylko chmury wyłączone). Pomiary czasu (`ForestPerformance`, `PerformanceClientGameTest`, `RenderProbes`) bez zmian.
+
+**Drobne wybory (domyślne, do potwierdzenia przy CP-C).**
+- T7-a: zasięg stożka 128 bloków z oczu, +2 bloki na blok wysokości, krawędź zasięgu widzenia − 1,5 chunka; promienie 24 × 14, +10%, krok 0,7.
+- T7-b: stabilność 15 ticków, karencja kolejki 2 s (Sodium 3 s), minimum 1 s, zapas 3 s po gotowości, bezpiecznik = dawne czekanie, nie mniej niż 30 s.
+- T7-c: blok zasłaniający widok = nieprzezroczysty, liście albo płyn; cienkie pnie i rośliny przepuszczają promień (ich sekcje i tak muszą być skompilowane).
+- T7-d: w testach danych (spis, ticki chunków, rozlewanie brzegu) czekania zostają; `waitForChunks` dla dużego zasięgu w `views` zostaje przed `ViewReady`; kadr opadających liści z minimum 10 s.
+- T7-e: progi równości kadru: ≤ 1% pikseli, ≤ 0,2% dziur, ≤ 1 kafel; chmury wyłączone tylko w trybie porównawczym.
+- T7-f: test jednostkowy klas pomocnika w czystej Javie (`ViewReadyMathTest`): `src/test` widzi klasy (bez zasobów) zbioru `gametest`.
+
+**Testy etapu 1.** Nowy `ViewReadyMathTest` (promienie i zasięg stożka, porównanie kadrów); `compileGametestJava`, `fastTest` przechodzą. Gametesty i pomiary czasu (slice z kamerami REAL, `seasons`; wanilia i `-Poptimization`; przed: `-PviewWait=fixed`, po: domyślnie; porównanie z wzorcem 60 s: `-PviewCheck`) — etap 2.
+
 ## Do kroku porządkowego (lista drobiazgów z recenzji)
 
 Lista założona w V10 według decyzji użytkownika z 2026-10-21 (`docs/00` F, P4): drobiazgi widoczne tylko na zbliżeniach albo w pomiarach bez wpływu na grę nie są poprawiane od razu, tylko trafiają tutaj; zbiorczy krok porządkowy na końcu kamienia milowego przegląda listę i poprawia, co warto. Każdy wpis: krok, w którym powstał, opis, gdzie szukać, propozycja. Wpis usuwamy (albo przekreślamy z commitem), gdy jest zrobiony.

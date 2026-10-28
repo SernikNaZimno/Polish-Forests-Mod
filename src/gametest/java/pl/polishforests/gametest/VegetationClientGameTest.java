@@ -561,15 +561,15 @@ public final class VegetationClientGameTest implements FabricClientGameTest {
 			double pitch = Math.toDegrees(Math.atan2(camera[1] + 1.62 - (centerY + 1), Math.hypot(dx, dz))) + (open ? 4 : 0);
 			sp.getServer().runCommand(String.format(Locale.ROOT, "tp @a %d %d %d %.1f %.1f", camera[0], camera[1], camera[2], yaw,
 					pitch));
-			context.waitTicks(20 * 25);
+			// Step T7: until the view is drawn (ViewReady) instead of a fixed 25 + 15 s.
+			ViewReady.Result ready = ViewReady.beforeShot(context, sp, "vegetation_" + name + "_" + scale, null, 40, 0);
 			String client = context.computeOnClient(mc -> mc.level.getChunkSource().gatherStats());
 			PolishForests.LOG.info("[vegetation] {} {}: center ({}, {}) {} ({} of the biome within {} blocks) ground Y {}, "
 					+ "camera ({}, {}, {}) yaw {} pitch {}, view score {} (blocked steps); client {}", scale, name, center[0],
 					center[1], biome, Double.isNaN(share) ? "-" : String.format(Locale.ROOT, "%.0f%%", 100 * share),
 					EXTRA_SHARE_RADIUS, centerY, camera[0], camera[1], camera[2], String.format(Locale.ROOT, "%.1f", yaw),
 					String.format(Locale.ROOT, "%.1f", pitch), camera[3], client);
-			context.waitTicks(20 * 15);
-			context.takeScreenshot("vegetation_" + name + "_" + scale);
+			ViewReady.take(context, "vegetation_" + name + "_" + scale, null, ready);
 		}
 		context.runOnClient(mc -> {
 			if (mc.gui.hud.isHidden()) {

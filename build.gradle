@@ -105,6 +105,9 @@ dependencies {
 	}
 
 	testImplementation 'org.junit.jupiter:junit-jupiter:5.13.4'
+	// Step T7: the plain-Java helpers of the client game tests (ViewCone, FrameDiff) have unit tests; classes only, without
+	// the resources (fabric.mod.json) of the game-test mod.
+	testImplementation files(sourceSets.gametest.output.classesDirs)
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
@@ -577,6 +580,26 @@ tasks.named('runClientGameTest') {
 	jvmArgs "-Dpolishforests.leaves.out=${layout.buildDirectory.dir('leaves').get().asFile.absolutePath}"
 	// Step V13: the results of -Pgametest=slice -Psites=seasons.
 	jvmArgs "-Dpolishforests.seasons.out=${layout.buildDirectory.dir('seasons').get().asFile.absolutePath}"
+	// Step T7: screenshots wait until the view is drawn (gametest ViewReady). -PviewWait=fixed restores the fixed waits of
+	// before T7 (for a timing comparison); -PviewCheck takes a reference frame <name>_ref 60 s (-PviewCheckSeconds) after
+	// each teleport and compares it with the frame (build/view-check/report.txt and diff images; clouds off in the run),
+	// -PviewCheckOnly=<regex> limits the check to some frames; -PviewReach=<blocks> overrides the reach of the view cone.
+	if (project.hasProperty('viewWait')) {
+		jvmArgs "-Dpolishforests.view.wait=${project.property('viewWait')}"
+	}
+	if (project.hasProperty('viewCheck')) {
+		jvmArgs '-Dpolishforests.view.check=true'
+	}
+	if (project.hasProperty('viewCheckSeconds')) {
+		jvmArgs "-Dpolishforests.view.checkSeconds=${project.property('viewCheckSeconds')}"
+	}
+	if (project.hasProperty('viewCheckOnly')) {
+		jvmArgs "-Dpolishforests.view.checkOnly=${project.property('viewCheckOnly')}"
+	}
+	if (project.hasProperty('viewReach')) {
+		jvmArgs "-Dpolishforests.view.reach=${project.property('viewReach')}"
+	}
+	jvmArgs "-Dpolishforests.view.out=${layout.buildDirectory.dir('view-check').get().asFile.absolutePath}"
 	if (project.hasProperty('profile')) {
 		jvmArgs "-XX:StartFlightRecording=filename=${layout.buildDirectory.file('profile.jfr').get().asFile.absolutePath},settings=profile"
 	}

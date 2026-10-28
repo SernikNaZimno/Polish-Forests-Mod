@@ -11,7 +11,6 @@ import java.util.Locale;
 import java.util.Map;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
-import net.fabricmc.fabric.api.client.gametest.v1.screenshot.TestScreenshotOptions;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
@@ -499,10 +498,8 @@ final class LeafSamples {
 	private static Path shot(ClientGameTestContext context, TestSingleplayerContext sp, String name, double x, double y, double z,
 			double yaw, double pitch, int[] size) {
 		sp.getServer().runCommand(String.format(Locale.ROOT, "tp @a %.2f %.2f %.2f %.1f %.1f", x, y, z, yaw, pitch));
-		context.waitTicks(10);
-		waitCompiled(context);
-		context.waitTicks(5);
-		return context.takeScreenshot(TestScreenshotOptions.of(name).disableCounterPrefix().withSize(size[0], size[1]));
+		// Step T7: until the view is drawn (ViewReady) instead of 15 ticks and an empty compile queue.
+		return ViewReady.shot(context, sp, name, size, 1);
 	}
 
 	private void result(String format, Object... args) {

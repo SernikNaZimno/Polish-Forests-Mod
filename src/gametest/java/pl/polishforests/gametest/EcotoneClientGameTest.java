@@ -157,11 +157,11 @@ public final class EcotoneClientGameTest implements FabricClientGameTest {
 				mc.gui.hud.toggle();
 			}
 		});
-		context.waitTicks(20 * 30);
+		// Step T7: until the view is drawn (ViewReady) instead of a fixed 30 + 10 s.
+		ViewReady.Result ready = ViewReady.beforeShot(context, sp, screenshot, null, 40, 0);
 		PolishForests.LOG.info("[ecotones] {}: camera ({}, {}, {}) yaw {} pitch {}, client {}", screenshot, x, y, z, yaw, pitch,
 				context.computeOnClient(mc -> mc.level.getChunkSource().gatherStats()));
-		context.waitTicks(20 * 10);
-		context.takeScreenshot(screenshot);
+		ViewReady.take(context, screenshot, null, ready);
 		context.runOnClient(mc -> {
 			if (mc.gui.hud.isHidden()) {
 				mc.gui.hud.toggle();
@@ -206,12 +206,12 @@ public final class EcotoneClientGameTest implements FabricClientGameTest {
 				mc.gui.hud.toggle();
 			}
 		});
-		context.waitTicks(20 * 30);
+		// Step T7: until the view is drawn (ViewReady) instead of a fixed 30 + 10 s.
+		ViewReady.Result ready = ViewReady.beforeShot(context, sp, screenshot, null, 40, 0);
 		PolishForests.LOG.info("[ecotones] {}: center ({}, {}) {}, camera ({}, {}, {}) yaw {} pitch {}, client {}", screenshot,
 				center[0], center[1], habitat, cx, y, cz, String.format(Locale.ROOT, "%.1f", yaw),
 				String.format(Locale.ROOT, "%.1f", pitch), context.computeOnClient(mc -> mc.level.getChunkSource().gatherStats()));
-		context.waitTicks(20 * 10);
-		context.takeScreenshot(screenshot);
+		ViewReady.take(context, screenshot, null, ready);
 		context.runOnClient(mc -> {
 			if (mc.gui.hud.isHidden()) {
 				mc.gui.hud.toggle();

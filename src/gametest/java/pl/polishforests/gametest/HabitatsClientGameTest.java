@@ -527,7 +527,8 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 		int ground = sp.getServer().computeOnServer(s -> s.overworld().getChunkSource().getGenerator().getBaseHeight(place[0],
 				place[1], Heightmap.Types.WORLD_SURFACE_WG, s.overworld(), s.overworld().getChunkSource().randomState()));
 		sp.getServer().runCommand(String.format(Locale.ROOT, "tp @a %d %d %d 30.0 25.0", place[0], ground + 40, place[1]));
-		context.waitTicks(20 * 15);
+		// Step T7: until the view is drawn (ViewReady) instead of a fixed 15 s.
+		ViewReady.Result ready = ViewReady.beforeShot(context, sp, "habitats_f3_" + name, null, 15, 0);
 		String lines = sp.getServer().computeOnServer(s -> {
 			ServerLevel level = s.overworld();
 			List<String> out = new ArrayList<>();
@@ -550,7 +551,7 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 			mc.debugEntries.setOverlayVisible(true);
 		});
 		context.waitTicks(20);
-		context.takeScreenshot("habitats_f3_" + name);
+		ViewReady.take(context, "habitats_f3_" + name, null, ready);
 		context.runOnClient(mc -> mc.debugEntries.setOverlayVisible(false));
 		PolishForests.LOG.info("[habitats] {}: F3 biome {}, generator lines: {}", name, clientBiome, lines);
 	}
@@ -778,7 +779,8 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 			long[] counts = sp.getServer().computeOnServer(s -> shelfArea(s, c, true));
 			context.waitTicks(SPILL_TICKS);
 			long[] after = sp.getServer().computeOnServer(s -> shelfArea(s, c, false));
-			context.takeScreenshot(prefix + name + "_" + scale);
+			// Step T7: the waits above belong to the shelf checks; the frame itself waits until the view is drawn.
+			ViewReady.shot(context, sp, prefix + name + "_" + scale, null, 0);
 			// counts: shore, wet shore, scheduled, shelf steps; after: S6 spills, model spills, ticks still scheduled, new
 			// open edges
 			if (!ROUND2_AREAS.contains(name)) {
