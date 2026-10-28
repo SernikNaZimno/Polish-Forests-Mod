@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# Ends client gametest runs of THIS project that nobody waits for: the game client (java with -Dfabric.client.gametest)
+# and the Gradle wrapper that started it (java ... gradle-wrapper.jar runClientGameTest), both only when their command
+# line names this project's folder. The Gradle daemon, other Java programs and the user's own Minecraft are never touched.
+# Use it before starting a gametest when an old client is still open (a stopped agent or workflow can leave one behind),
+# or as a watchdog for a hung client.
+#
+# Usage: tools/dev/kill-stale-gametest [--list] [--older-than <minutes>] [--watch <minutes between checks>]
+#   tools/dev/kill-stale-gametest                       end every gametest client and wrapper of this project now
+#   tools/dev/kill-stale-gametest --list                only list them (process id, age in minutes, kind)
+#   tools/dev/kill-stale-gametest --older-than 180      end only those running for at least 180 minutes (a hung run)
+#   tools/dev/kill-stale-gametest --older-than 180 --watch 5   repeat that every 5 minutes until stopped
+# Every ended process is logged with the time to build/stale-gametest.log.
+set -u
+cd "$(dirname "$0")/../.." || exit 1
+list=0 older=0 watch=0
+while [ $# -gt 0 ]; do
+	case "$1" in
+		--list) list=1 ;;
+		--older-than) older="$2"; shift ;;
+		--watch) watch="$2"; shift ;;
+		*) echo "unknown argument: $1" >&2; exit 2 ;;
+	esac
+	shift
+done
+mkdir -p build
+
+once() {
+	# The folder name as it appears in the command lines (forward or back slashes; Loom also writes spaces as @@0020).
+	powershell.exe -NoProfile -NonInteractive -Command "
+		\$list = $list; \$older = $older
+		\$now = Get-Date
+		Get-CimInstance Win32_Process -Filter \"Name='java.exe'\" | ForEach-Object {
+			\$c = [string]\$_.CommandLine
+			\$mine = \$c -like '*Przyrodniczo zgodne lasy minecraft*' -or \$c -like '*Przyrodniczo@@0020zgodne@@0020lasy@@0020minecraft*'
+			\$kind = if (\$c -like '*-Dfabric.client.gametest*') { 'client' } elseif (\$c -like '*gradle-wrapper.jar*runClientGameTest*') { 'wrapper' } else { \$null }
+			if (\$mine -and \$kind) {
+				\$age = [int]((\$now - \$_.CreationDate).TotalMinutes)
+				if (\$list) { '{0} {1} min {2}' -f \$_.ProcessId, \$age, \$kind }
+				elseif (\$age -ge \$older) {
+					Stop-Process -Id \$_.ProcessId -Force -ErrorAction SilentlyContinue
+					'{0} ended {1} {2} ({3} min)' -f \$now.ToString('yyyy-MM-dd HH:mm:ss'), \$kind, \$_.ProcessId, \$age
+				}
+			}
+		}" | tr -d '\r' | tee -a "$([ "$list" = 1 ] && echo /dev/null || echo build/stale-gametest.log)"
+}
+
+if [ "$watch" -gt 0 ] 2>/dev/null; then
+	while true; do once; sleep $((watch * 60)); done
+else
+	once
+fi

@@ -82,6 +82,7 @@ python tools/dev/contact_sheet.py <katalog|glob> [...] --out arkusz.png [--cols 
 - Windows + Git Bash; skrypty Pythona z `PYTHONIOENCODING=utf-8`; ścieżka repo ma spacje (cudzysłów); długie komendy w tle.
 - Zrzuty gametestów w `build/run/clientGameTest/screenshots` – katalog czyszczony przy każdym starcie, kopiuj od razu.
 - Każda zmiana drzewa (także `docs/`) zmienia skrót `run-tests`; `test --tests …` w międzyczasie unieważnia UP-TO-DATE i pełny zestaw idzie od nowa.
+- Stary klient gametestu po przerwanym agencie albo workflow (okno gry nadal otwarte, gradle `runClientGameTest` w tle): `tools/dev/kill-stale-gametest --list`, potem `tools/dev/kill-stale-gametest` (kończy tylko klienta gametestu i wrapper gradle tego projektu; `--older-than <min>` tylko zawieszone). Nigdy dwa klienty naraz.
 - `costTest` i pomiary czasu w grze tylko bez innej pracy w tle (drugi klient, testy); inaczej `-PtimingsReportOnly`.
 - Pomiar wobec M1: migawka w osobnym katalogu (`migawki/README.md`).
 
