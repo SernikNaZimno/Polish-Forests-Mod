@@ -2418,6 +2418,62 @@ Krok narzędziowy z próśb użytkownika z 2026-10-27: zrzuty w client gametesta
 
 **Testy etapu 1.** Nowy `ViewReadyMathTest` (promienie i zasięg stożka, porównanie kadrów); `compileGametestJava`, `fastTest` przechodzą. Gametesty i pomiary czasu (slice z kamerami REAL, `seasons`; wanilia i `-Poptimization`; przed: `-PviewWait=fixed`, po: domyślnie; porównanie z wzorcem 60 s: `-PviewCheck`) — etap 2.
 
+## Stan po T7 (2026-10-28)
+
+Etap 2 kroku T7: przebiegi według planu (dym, czas przed i po, porównanie z kadrem po 60 s, regresja trybów ze zmienionym czekaniem, pełny zestaw testów). Kod pomocnika z etapu 1 bez zmian — żaden kadr nie wymagał strojenia zasięgu ani karencji. Drobne wybory T7-a … T7-g w `docs/00` G.24 (do CP-C); P7 w `docs/00` F: zrobione.
+
+**Dym** (`slice`, REAL, `oak_hornbeam_1`, 5 kamer, w tym 4 blisko siebie): każdy kadr gotowy po 1,0–2,0 s, stożek pełny (`missing 0`, `not built 0`, `empty 0`), refleksja wanilii (`ViewArea`, `lastCompileTask`) działa, 0 WARN.
+
+**Czas przed i po** (maszyna spokojna we wszystkich 8 przebiegach, druga praca nie działała; „przed” = `-PviewWait=fixed`, ten sam kod):
+
+| przebieg | czas ściany przed → po | czekanie na kadry przed → po | kadry | WARN |
+|---|---|---|---|---|
+| `slice` REAL (`oak_hornbeam_1`, `fresh_pine_1`, `transect`), wanilia | 524 → 175 s (**0,33 ×**) | 468 → 118 s | 21 | 0 |
+| to samo, `-Poptimization` (Sodium + Nvidium) | 520 → 158 s (**0,30 ×**) | 468 → 107 s | 21 | 0 |
+| `seasons`, wanilia | 630 → 562 s (0,89 ×) | 200 → 322 s (+ przybycia 8 × 25 s → 14 s) | 62 | 0 |
+| `seasons`, `-Poptimization` | 625 → 527 s (0,84 ×) | 199 → 293 s | 62 | 0 |
+
+- `slice` spełnia cel (≥ 2 × krócej): kadr czeka 1,0–6,8 s (mediana 1,75 s) + 3 s zapasu zamiast 40 s (6 s blisko poprzedniej kamery).
+- `seasons` **nie spełnia celu** i nie może go spełnić przy stałych 3 s zapasu: ok. 230 s przebiegu to nie czekanie na kadr (start, zmiany daty z falą przebudowy `SeasonDates.setAndWait`, okna ticków owoców `go(…, 3/10/20)`), a dawne czekanie na 62 kadry wynosiło 200 s — tyle, ile sam zapas 62 × 3 s = 186 s. Zysk jest tylko na przybyciach (8 × 25 s → 14 s łącznie); kadry, które dawniej czekały 1 s (4 s + `hasRenderedAllSections`), czekają teraz min. 1 s + 3 s, a 25 z 70 czekań kończy się ścieżką „stożek pełny, dalekie sekcje jeszcze się kompilują” po 3–4,5 s. Dolna granica przy obecnych zasadach: ok. 62 × 4 s + 8 × 1 s → ok. 490 s (0,77 ×). Decyzja do CP-C: G.24 T7-g.
+
+**Porównanie z kadrem po 60 s** (`-PviewCheck`, chmury wyłączone; kadr po nowym czekaniu wobec kadru 60 s po teleporcie):
+
+| test | renderer | kadry EQUAL / wszystkie | największa różnica pikseli | niebo zamiast terenu | średnie czekanie (z zapasem) |
+|---|---|---|---|---|---|
+| `slice` REAL (w tym kamery `bark`, `canopy`, `30m` blisko siebie) | wanilia | 21 / 21 | 0,14% (`fresh_pine_1_eye`) | ≤ 0,03% | 5,7 s |
+| | Sodium + Nvidium | 21 / 21 | 0,09% | 0% | 5,0 s |
+| `seasons` (8 podsezonów, stelaż trybu Fast, opadające liście) | wanilia | 62 / 62 | 0,20% (`late_autumn_fresh_pine_1_eye`) | ≤ 0,15% | 5,2 s |
+| | Sodium + Nvidium (`renderer sodium_nvidium` w każdym czekaniu) | 62 / 62 | 0,09% | ≤ 0,06% | 4,8 s |
+
+Żaden kadr nie powstał przed narysowaniem (0 kafli różnych we wszystkich 166 kadrach); różnice to pojedyncze piksele (cząstki, ruch roślin, woda). Ścieżka Sodium (`isSectionReady`, `isTerrainRenderComplete` przez refleksję) działa z Nvidium; czystego Sodium (`-PnoNvidium`) nie uruchamiano osobno (ta sama ścieżka API Sodium).
+
+**Regresja trybów ze zmienionym czekaniem** (wanilia, kadry obejrzane na arkuszach miniatur — bez dziur, pustki i nieba w miejscu ziemi):
+
+| tryb | wynik | kadry | czekanie łącznie | czas ściany | uwagi |
+|---|---|---|---|---|---|
+| `views` | PASS | 15 | 257 s | 1052 s | dawniej 40 s na kadr (+ `waitForChunks`, zostaje) |
+| `ecotones` | PASS | 27 | 254 s | 320 s | dawniej 40 s na kadr |
+| `vegetation` (GAMEPLAY) | PASS | 18 | 142 s | 196 s | |
+| `present_day` (GAMEPLAY) | PASS | 7 | 61 s | 145 s | |
+| `cover` (GAMEPLAY) | PASS | 6 | 37 s | 83 s | |
+| `habitats` (GAMEPLAY) | **FAIL, niezależnie od T7** | 1 | 5 s | 54 s | spis drzew: las mieszany 604 pnie wobec 447,3 z palety (> 20%); ten sam wynik z `-PviewWait=fixed` (dawne czekania), więc to nie czekanie; prawdopodobna przyczyna: spis porównuje pnie z paletą M2 (`tree_stand`), a las mieszany transektu ma od Z1 palety i drzewa wycinka (w M2/S7: 431 / 447,3) — do sprawdzenia w osobnym kroku (DP-66) |
+| `slice -Psites=samples` | PASS | 40 | 163 s | 213 s | |
+| `slice -Psites=trees` | PASS | 32 | 154 s | 218 s | |
+| `slice -Psites=leaves` | PASS | 75 | 312 s | 386 s | dłużej niż przed T7 (BRIEF: ok. 2,5 min): min. 1 s + 3 s zapasu zamiast ok. 0,75 s na kadr |
+| `slice -Psites=deadwood` | PASS | 72 | 325 s | 617 s | dłużej niż przed T7 (BRIEF: ok. 8 min; tablica dawniej 1 s na kadr) |
+| `slice -Psites=roots` | PASS | 82 | 394 s | 901 s | dłużej niż przed T7 (powtórka z `-PviewWait=fixed`: 592 s, czekanie 178 s); kadr `trench_above_oak` (obie skale) prawie czarny od liści tuż przed kamerą — ten sam kadr z `-PviewWait=fixed` (średnia jasność 11/20/6 w obu), więc nie czekanie: kamera nad rowem stoi w koronie (krzew lub drzewo od V12/V13; w I1 rów był widoczny) — DP-65 |
+
+0 przekroczeń bezpiecznika (WARN) we wszystkich przebiegach.
+
+**Niedorysowany teren w dotychczasowych zrzutach (uzupełnienie).** Przebiegi porównawcze nie znalazły kadru „za krótko” w nowym kodzie. Przebiegu `-PviewWait=fixed -PviewCheck` (dawne czekania wobec wzorca) nie robiono — dawne przykłady z etapu 1 (horyzont, dalekie drzewa) wystarczają do opisu ryzyka.
+
+**Testy.** `ViewReadyMathTest` i `fastTest` (etap 1); dym, czas, porównanie i regresja jak wyżej; pełny zestaw `tools/dev/run-tests test`: PASS na kodzie etapu 1 (1110 s) i ponownie na drzewie z tą dokumentacją, przed ostatnim commitem.
+
+**Odstępstwa.**
+- Cel „co najmniej 2 × krócej” spełniony w `slice` (3,0–3,3 ×), nie w `seasons` (0,84–0,89 ×), a tablice prób są dłuższe niż przed T7 — skutek stałych 3 s zapasu na kadr (G.24 T7-g, do CP-C).
+- Ścieżka „stożek pełny przy zajętej kolejce” (T7-b) jest łagodniejszym odczytaniem warunku (c) (pusta kolejka i stała liczba sekcji); porównanie z kadrem po 60 s nie wykazało różnic.
+- `habitats` (GAMEPLAY) nie przechodzi z powodu spisu drzew w lesie mieszanym — niezależnie od T7 (sprawdzone dawnymi czekaniami); DP-66, do osobnego kroku przed CP-C.
+
 ## Do kroku porządkowego (lista drobiazgów z recenzji)
 
 Lista założona w V10 według decyzji użytkownika z 2026-10-21 (`docs/00` F, P4): drobiazgi widoczne tylko na zbliżeniach albo w pomiarach bez wpływu na grę nie są poprawiane od razu, tylko trafiają tutaj; zbiorczy krok porządkowy na końcu kamienia milowego przegląda listę i poprawia, co warto. Każdy wpis: krok, w którym powstał, opis, gdzie szukać, propozycja. Wpis usuwamy (albo przekreślamy z commitem), gdy jest zrobiony.
@@ -2488,3 +2544,5 @@ Lista założona w V10 według decyzji użytkownika z 2026-10-21 (`docs/00` F, P
 | DP-62 | V13 (przegląd, runda 1) | Kadry pór roku GAMEPLAY etapu 2 sprzed poprawek V13-i/j (zielone krzewy pod bezlistnym okapem wczesną wiosną), a raport mówił o 5 przebiegach po poprawkach (były 4); kamera `canopy` GAMEPLAY patrzy wzdłuż pnia (ok. 35% kadru) | `SliceCameras` (GAMEPLAY `oak_hornbeam_1 canopy`) | Przebieg GAMEPLAY `seasons` po poprawkach — **zrobiony w rundzie 1** (zob. „Runda 1 poprawek po przeglądzie V13”); kamerę przesunąć 1–2 bloki od pnia albo wybierać z linią wzroku jak w DP-46 |
 | DP-63 | V13 (przegląd, runda 1) | Borówka wczesną i w połowie wiosny (1 III, 1 IV) tak samo liściasta i jasnozielona jak latem (`ss_fresh_pine_1_eye`, kadry 1–2); borówka zrzuca liście: od XI do końca IV same zielone pędy, liście pod koniec IV i w V; świadomy wybór V13-e („jasna wiosną”) | `GroundPhases.BILBERRY`, model borówki | Przy CP-C (V13-e): od XI do IV wariant „same pędy” (zielone łodyżki bez tekstury liści) albo co najmniej ciemniejszy, rzadszy odcień wczesną i w połowie wiosny |
 | DP-64 | V13 (przegląd, runda 1) | Kadr opadających liści (`docs/wycinek/pory_roku/ss_late_autumn_falling_leaves.png`) nie pokazuje czytelnych cząstek na tle brązowych koron; pomiar (szansa 0,017–0,019) potwierdza działanie, ale kadr nie jest dowodem dla użytkownika przy CP-C | `SeasonSamples.leafFall` (kamera) | Na CP-C kadr na tle nieba albo jasnego tła (kamera na skraju luki, w górę) albo wycinek ze strzałkami |
+| DP-65 | T7 (etap 2) | Kadr `roots_*_oak_hornbeam_natural_1_trench_above_oak` (obie skale) prawie czarny: kamera nad rowem stoi w liściach krzewu lub korony (tak samo z dawnymi czekaniami, w I1 rów był widoczny); jak DP-46 | `RootSamples.trench`, widok `trench_above_` | Kamera nad rowem przesunięta, gdy w jej bloku lub na drodze do dna rowu są liście (albo liście nad rowem usuwane razem z wykopem) |
+| DP-66 | T7 (etap 2) | `-Pgametest=habitats -Pscales=gameplay` nie przechodzi: spis drzew lasu mieszanego 604 pnie wobec 447,3 z palety M2 (> 20%; grąd 219 / 192,8); tak samo z `-PviewWait=fixed`, więc nie T7. Prawdopodobnie las mieszany transektu ma od Z1 palety i drzewa wycinka, a spis liczy oczekiwanie z `tree_stand` M2 (S7: 431 / 447,3). Test regresji z §5 — **nie drobiazg**, do osobnego kroku przed CP-C | `HabitatsClientGameTest.census` | Oczekiwanie spisu dla lasów wycinka z planu drzewostanu wycinka (albo wyłączenie ich ze spisu palety M2); sprawdzić też skalę REAL |
