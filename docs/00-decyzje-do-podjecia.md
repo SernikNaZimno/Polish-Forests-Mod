@@ -605,3 +605,17 @@ Krok G1 (prośba użytkownika z 2026-10-25: zgodność z modami do ścinania ca�
 | G1-k | **Tree Harvester: jedna sadzonka, tylko u podstawy ściętego drzewa** (mixin na `prepareSaplingReplant`) | Mod sadził sadzonki na każdym bloku obok podstawy, którego nazwa zaczyna się tym samym słowem, nadpisując łodygę krzewu (DP-34) albo pień sąsiada (w teście 27 tablic i 1 drzewo w świecie), a po ograniczeniu do drewna drzewa — do 5 sadzonek na nabiegach. Alternatywa: wyłączyć sadzenie dla drzew moda |
 | G1-l | **Martwe drewno (kłody, wykroty) mody ścinają po jednym bloku** | Bez liści oba mody nie uznają go za drzewo; tak jest bezpieczniej (kłody leżą obok drzew i między sobą). Alternatywa: hak, który ścina całą kłodę |
 
+
+### G.26 Punkt kontrolny CP-C (decyzje użytkownika, 2026-10-28)
+
+Materiały: arkusze zrzutów z gry na `a03990f` (pory roku, runo i mchy, martwe drewno, korzenie, pokrywa K1, ścinanie G1), karta norm przed i po, zbiorczy pomiar O1 (raport CP-C, pytania z G.17–G.25). Odpowiedzi wykonuje część 4 wycinka (kroki S1, Z2, J1, O2, T8 oraz DP-66 przed nimi; `docs/04` §3).
+
+| # | Pytanie | Decyzja |
+|---|---|---|
+| CP-C.1 | Drzewo z sadzonki moda daje 0 kłód (G1-j) | **Jak w wanilii: losowy rozmiar drzewa z sadzonki — małe, średnie albo duże**, najczęściej średnie. Krok **S1**. Domyślnie (do potwierdzenia przy CP-D): małe 25% (dzisiejsza drągowina 12–17 bloków), średnie 55%, duże 20%; gdy większe drzewo się nie mieści, sadzonka próbuje mniejszego (jak duże drzewa wanilii); każdy rozmiar daje odnawialne drewno (średnie i duże z grubszego pnia według G1-e, małe z podstawy pnia według wariantu 3 z G1-j: 1–2 kłody) |
+| CP-C.2 | Zima ciemna i za zamknięta (niebo przez bezlistny okap grądu 5,3% wobec 15%) | **Tak, poprawić według rekomendacji:** jaśniejsze tekstury gałązek, mniej marcescencji w dolnych koronach. Krok **Z2** |
+| CP-C.3 | Wydajność na krawędzi (chunki/s z C2ME 0,71 × M2, FPS okapu boru 0,79) | **Tak, krok O2:** rezerwy bez zmiany wyniku i geometria dna boru i korzeni (DP-38) |
+| CP-C.4 | Jaskinie (generator ich nie ma) | **Dodać jaskinie takie same jak w wanilii, pełny zakres** (odpowiedź na pytanie uzupełniające): jaskinie szumowe (ser, spaghetti, makaron), wąwozy i jaskinie z carverów, akwifery z wodą i lawą, biomy jaskiniowe (bujne, naciekowe, głęboki mrok) z ich ozdobami i strukturami. Krok **J1** |
+| CP-C.5 | T7-g: skrócić zapas 3 s → 1 s dla tablic prób na płaskim świecie | **Tak, skrócić.** Krok **T8** |
+| CP-C.6 | Pozostałe wybory G.17–G.25 z rekomendacją „przyjąć”, mchy jako „dywaniki”, kontrastowe owoce borówki, cienka kłoda nad gruntem (V11-i) | Bez odpowiedzi: zostają domyślne według rekomendacji raportu CP-C, do potwierdzenia przy CP-D |
+| CP-C.7 | Starsze pytania (cienka pokrywa także w REAL, cienkie gałęzie dające patyki, LATE_SPRING w dniu 0, N15, normy V11) | Bez odpowiedzi: zostają domyślne, do potwierdzenia przy CP-D |
