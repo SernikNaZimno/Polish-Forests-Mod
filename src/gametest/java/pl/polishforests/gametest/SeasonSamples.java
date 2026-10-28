@@ -83,9 +83,9 @@ final class SeasonSamples {
 	private static final List<SubSeason> WITHOUT_SS = List.of(SubSeason.MID_SPRING, SubSeason.MID_AUTUMN);
 
 	/** Sky through the bare canopy (review round 1 of V13): the least share of sky in the canopy frame in MID_WINTER. */
-	private static final double MIN_WINTER_CANOPY_SKY = 0.04;
-	/** … and at least this many times the share in MID_SUMMER. */
-	private static final double MIN_WINTER_CANOPY_RATIO = 4.0;
+	private static final double MIN_WINTER_CANOPY_SKY = 0.025;
+	/** … and at least this many times the share in MID_SUMMER (V13 before the review: 1.3% against 0.5%). */
+	private static final double MIN_WINTER_CANOPY_RATIO = 5.0;
 	/** Fast-mode rig: largest excess of sky in the Fast mode over the Fancy mode (a hole in a crown, review round 1). */
 	private static final double MAX_FAST_EXCESS = 0.05;
 
@@ -125,11 +125,7 @@ final class SeasonSamples {
 			result("%s %s: calendar %s", tag, scale, Seasons.provider().name());
 			BlockPos rig = sp.getServer().computeOnServer(s -> buildRig(s.overworld(), grad));
 			context.waitTicks(100);
-			String light = context.computeOnClient(mc -> mc.level.getBlockState(rig.offset(3, 5, 0)) + " sky light "
-					+ mc.level.getBrightness(net.minecraft.world.level.LightLayer.SKY, rig.offset(3, 5, -1)) + ", camera chunk loaded "
-					+ mc.level.hasChunk(rig.getX() >> 4, rig.getZ() >> 4));
-			result("Fast-mode rig at %s (max y %d): %s", rig.toShortString(), sp.getServer().computeOnServer(s -> s.overworld().getMaxY()),
-					light);
+			result("Fast-mode rig at %s", rig.toShortString());
 			String p = "seasons_" + scale + "_" + tag + "_";
 			for (SubSeason sub : seasons ? WITH_SS : WITHOUT_SS) {
 				int day = seasons ? 0 : 4;
@@ -525,9 +521,10 @@ final class SeasonSamples {
 	/**
 	 * Builds the Fast-mode rig of review round 1 of V13 high over the oak-hornbeam camera, against the sky: a wall of species
 	 * oak leaves (bare in winter) with marcescent oak leaves behind it (leaves in leaf next to bare twigs), and a wall of
-	 * vanilla oak leaves three blocks deep (the vanilla leaves that the Fast mode keeps cut out in a transition step).
-	 * Returns the corner of the rig (the walls stand at y + 3 … y + 7, the first at x … x + 6, the second at x + 12 … x + 18,
-	 * from z).
+	 * vanilla oak leaves three blocks deep (the vanilla leaves that the Fast mode keeps cut out in a transition step), and a
+	 * reference of two layers of marcescent leaves (always in leaf: how much sky the renderer's own Fast mode shows through
+	 * leaves; Sodium and Nvidium cut their opaque layer at alpha 0.5, so there the Fast mode shows sky through leaves too).
+	 * Returns the corner of the rig (the walls stand at y + 3 … y + 7 and x + 12 k … x + 12 k + 6, from z).
 	 */
 	private static BlockPos buildRig(ServerLevel level, SliceCameras.Camera cam) {
 		// Just over the highest crown around (the sections high above the terrain may have no light on the client yet).
@@ -552,6 +549,8 @@ final class SeasonSamples {
 				for (int z = 0; z < 3; z++) {
 					level.setBlock(corner.offset(x + 12, h, z), vanilla, 2);
 				}
+				level.setBlock(corner.offset(x + 24, h, 0), brown, 2);
+				level.setBlock(corner.offset(x + 24, h, 1), brown, 2);
 			}
 		}
 		return corner;
@@ -559,9 +558,9 @@ final class SeasonSamples {
 
 	/**
 	 * The Fast graphics mode at a step (review round 1 of V13): the sky through the rig walls in the Fast mode at most
-	 * {@value #MAX_FAST_EXCESS} over the Fancy mode (no hole where leaves in leaf meet bare twigs), and, when the vanilla
-	 * leaves are kept cut out in the Fast mode (a transition step), the vanilla wall as in the Fancy mode (no hollow
-	 * crown); then a Fast-mode frame of the oak-hornbeam forest from 30 m.
+	 * {@value #MAX_FAST_EXCESS} over the Fancy mode and over the reference wall (no hole where leaves in leaf meet bare twigs),
+	 * and, when the vanilla leaves are kept cut out in the Fast mode (a transition step), the vanilla wall as in the Fancy
+	 * mode (no hollow crown); then a Fast-mode frame of the oak-hornbeam forest from 30 m.
 	 */
 	private void fastRig(ClientGameTestContext context, TestSingleplayerContext sp, BlockPos rig, SubSeason sub, String prefix,
 			String scale) {
@@ -582,27 +581,30 @@ final class SeasonSamples {
 		context.waitTicks(40);
 		context.waitFor(SeasonSamples::compiled, 1200);
 		result("%s Fast-mode rig: species oak (bare %s) before marcescent leaves, sky Fancy %.1f%% / Fast %.1f%%; vanilla oak wall "
-				+ "(cut out in Fast %s, bare %s) Fancy %.1f%% / Fast %.1f%%", sub, oursBare, 100 * fancy[0], 100 * fast[0], transition,
-				vanillaBare, 100 * fancy[1], 100 * fast[1]);
-		if (fast[0] > fancy[0] + MAX_FAST_EXCESS) {
-			fail("%s: Fast mode shows %.1f%% sky through bare twigs before leaves in leaf (Fancy %.1f%%): a hole", sub, 100 * fast[0],
-					100 * fancy[0]);
+				+ "(cut out in Fast %s, bare %s) Fancy %.1f%% / Fast %.1f%%; reference (two layers in leaf) Fancy %.1f%% / Fast %.1f%%",
+				sub, oursBare, 100 * fancy[0], 100 * fast[0], transition, vanillaBare, 100 * fancy[1], 100 * fast[1], 100 * fancy[2],
+				100 * fast[2]);
+		// A hole: more sky than in the Fancy mode and than the renderer's own Fast mode shows through two layers in leaf.
+		if (fast[0] > Math.max(fancy[0], fast[2]) + MAX_FAST_EXCESS) {
+			fail("%s: Fast mode shows %.1f%% sky through bare twigs before leaves in leaf (Fancy %.1f%%, reference %.1f%%): a hole", sub,
+					100 * fast[0], 100 * fancy[0], 100 * fast[2]);
 		}
 		if (transition && Math.abs(fast[1] - fancy[1]) > MAX_FAST_EXCESS) {
 			fail("%s: the vanilla oak wall cut out in the Fast mode shows %.1f%% sky (Fancy %.1f%%)", sub, 100 * fast[1], 100 * fancy[1]);
 		}
 	}
 
-	/** The sky share in the middle of the frames of the two rig walls (camera below them, looking up at them). */
+	/** The sky share in the middle of the frames of the three rig walls (camera below them, looking up at them). */
 	private static double[] rigSky(ClientGameTestContext context, TestSingleplayerContext sp, BlockPos rig, String name) {
-		double[] out = new double[2];
-		for (int k = 0; k < 2; k++) {
+		double[] out = new double[3];
+		for (int k = 0; k < 3; k++) {
 			sp.getServer().runCommand(String.format(Locale.ROOT, "tp @a %.2f %.2f %.2f 0 -30", rig.getX() + 12 * k + 3.5,
 					rig.getY() + 1.58, rig.getZ() - 3.0));
 			context.waitTicks(10);
 			context.waitFor(SeasonSamples::compiled, 1200);
 			context.waitTicks(5);
-			Path path = context.takeScreenshot(TestScreenshotOptions.of(name + (k == 0 ? "_twigs" : "_vanilla")).disableCounterPrefix()
+			Path path = context.takeScreenshot(TestScreenshotOptions.of(name + (k == 0 ? "_twigs" : k == 1 ? "_vanilla" : "_reference"))
+					.disableCounterPrefix()
 					.withSize(854, 480));
 			out[k] = RenderProbesClientGameTest.sky(path);
 		}

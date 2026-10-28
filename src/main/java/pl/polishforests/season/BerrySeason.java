@@ -130,7 +130,10 @@ public final class BerrySeason {
 						boolean ripe = season && GroundPhases.fertile(at.getX(), at.getY(), at.getZ())
 								&& GroundPhases.ripeAfterCatchUp(at.getX(), at.getY(), at.getZ(), serial);
 						if (state.getValue(BerryShrubBlock.BERRIES) != ripe) {
-							level.setBlock(at, state.setValue(BerryShrubBlock.BERRIES, ripe), Block.UPDATE_CLIENTS);
+							// No shape updates of the neighbours (review round 1 of V13): the fruit changes no shape, and a shape update
+							// at the edge of a chunk that has just risen to FULL read a neighbour chunk that was not loaded, so the
+							// server thread waited for it inside its tick and the game hung (vanilla renderer flight in MID_SUMMER).
+							level.setBlock(at, state.setValue(BerryShrubBlock.BERRIES, ripe), Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE);
 							changed++;
 						}
 					}
