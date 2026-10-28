@@ -624,6 +624,11 @@ tasks.named('runClientGameTest') {
 	if (project.hasProperty('viewCheckOnly')) {
 		jvmArgs "-Dpolishforests.view.checkOnly=${project.property('viewCheckOnly')}"
 	}
+	// Step T8: -PviewBoardMargin=<seconds> sets the margin of the frames of sample boards on the flat world (default 1;
+	// 3 = the margin before T8, for a timing comparison).
+	if (project.hasProperty('viewBoardMargin')) {
+		jvmArgs "-Dpolishforests.view.boardMargin=${project.property('viewBoardMargin')}"
+	}
 	if (project.hasProperty('viewReach')) {
 		jvmArgs "-Dpolishforests.view.reach=${project.property('viewReach')}"
 	}

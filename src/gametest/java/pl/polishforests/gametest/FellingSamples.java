@@ -245,7 +245,7 @@ final class FellingSamples {
 					context.waitTicks(40);
 					boolean shots = SHOTS.contains(name);
 					if (shots) {
-						shot(context, sp, "felling_board_" + name + "_before", cell);
+						shot(context, sp, "felling_board_" + name + "_before", cell, true);
 					}
 					stand(sp, cx + 0.5 - 8, y + 2, 0.5 - 8);
 					fell(context, sp, mod, "board " + name, cell.base(), true, done);
@@ -254,7 +254,7 @@ final class FellingSamples {
 						fell(context, sp, mod, "board " + name + " dead wood " + (k == 0 ? "log" : "windthrow"), d, false, done);
 					}
 					if (shots) {
-						shot(context, sp, "felling_board_" + name + "_after", cell);
+						shot(context, sp, "felling_board_" + name + "_after", cell, true);
 					}
 				}
 			}
@@ -372,14 +372,14 @@ final class FellingSamples {
 					Cell view = new Cell(name, base, base, List.of(), sp.getServer().computeOnServer(s -> height(s.overworld(), base)));
 					String shotName = "felling_" + scale + "_" + plot.name() + "_" + (k + 1);
 					if (k == 0) {
-						shot(context, sp, shotName + "_before", view);
+						shot(context, sp, shotName + "_before", view, false);
 						shotAbove(context, sp, shotName + "_above_before", view);
 					}
 					stand(sp, base.getX() + 3.5, base.getY() + 2, base.getZ() + 3.5);
 					context.waitTicks(20);
 					fell(context, sp, mod, name, base, true, done);
 					if (k == 0) {
-						shot(context, sp, shotName + "_after", view);
+						shot(context, sp, shotName + "_after", view, false);
 						shotAbove(context, sp, shotName + "_above_after", view);
 					}
 				}
@@ -785,7 +785,7 @@ final class FellingSamples {
 	}
 
 	/** A view of a tree from the south-east, far enough for its height. */
-	private static void shot(ClientGameTestContext context, TestSingleplayerContext sp, String name, Cell cell) {
+	private static void shot(ClientGameTestContext context, TestSingleplayerContext sp, String name, Cell cell, boolean board) {
 		double d = Math.max(10, cell.height() * 1.1);
 		double x = cell.base().getX() + 0.5 + d * 0.6;
 		double z = cell.base().getZ() + 0.5 + d * 0.8;
@@ -796,7 +796,12 @@ final class FellingSamples {
 		double yaw = Math.toDegrees(Math.atan2(-tx, tz));
 		double pitch = -Math.toDegrees(Math.atan2(ty, Math.hypot(tx, tz)));
 		sp.getServer().runCommand(String.format(Locale.ROOT, "tp @a %.2f %.2f %.2f %.1f %.1f", x, y, z, yaw, pitch));
-		ViewReady.shot(context, sp, name, SIZE, 3);
+		if (board) {
+			// Flat test world: the short margin of step T8.
+			ViewReady.shotBoard(context, sp, name, SIZE, 3);
+		} else {
+			ViewReady.shot(context, sp, name, SIZE, 3);
+		}
 		PolishForests.LOG.info(String.format(Locale.ROOT, "[felling] %s: camera (%.1f, %.1f, %.1f) yaw %.0f pitch %.0f", name, x, y, z,
 				yaw, pitch));
 	}

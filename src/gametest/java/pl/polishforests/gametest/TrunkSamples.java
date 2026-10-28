@@ -582,7 +582,7 @@ final class TrunkSamples {
 			double yaw, double pitch, int waitSeconds) {
 		sp.getServer().runCommand(String.format(Locale.ROOT, "tp @a %.2f %.2f %.2f %.1f %.1f", b.x0() + dx, b.y0() + dy, b.z0() + dz, yaw, pitch));
 		// Step T7: until the view is drawn (ViewReady) instead of a fixed wait of waitSeconds.
-		ViewReady.shot(context, sp, name, SIZE, waitSeconds);
+		ViewReady.shotBoard(context, sp, name, SIZE, waitSeconds);
 		PolishForests.LOG.info(String.format(Locale.ROOT, "[samples] %s: camera (%.1f, %.1f, %.1f) yaw %.0f pitch %.0f", name,
 				b.x0() + dx, b.y0() + dy, b.z0() + dz, yaw, pitch));
 	}

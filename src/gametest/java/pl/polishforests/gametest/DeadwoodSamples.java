@@ -99,7 +99,7 @@ final class DeadwoodSamples {
 			});
 			for (int i = 0; i < views.size(); i++) {
 				View c = views.get(i);
-				shot(context, sp, "deadwood_board_" + c.name(), c.x(), c.y(), c.z(), c.yaw(), c.pitch(), i == 0 ? 4 : 1);
+				shot(context, sp, "deadwood_board_" + c.name(), c.x(), c.y(), c.z(), c.yaw(), c.pitch(), i == 0 ? 4 : 1, true);
 			}
 		}
 	}
@@ -426,9 +426,19 @@ final class DeadwoodSamples {
 
 	private static void shot(ClientGameTestContext context, TestSingleplayerContext sp, String name, double x, double y, double z,
 			double yaw, double pitch, int waitSeconds) {
+		shot(context, sp, name, x, y, z, yaw, pitch, waitSeconds, false);
+	}
+
+	/** {@code board}: a frame of the board on the flat test world, with the short margin of step T8. */
+	private static void shot(ClientGameTestContext context, TestSingleplayerContext sp, String name, double x, double y, double z,
+			double yaw, double pitch, int waitSeconds, boolean board) {
 		sp.getServer().runCommand(String.format(Locale.ROOT, "tp @a %.2f %.2f %.2f %.1f %.1f", x, y, z, yaw, pitch));
 		// Step T7: until the view is drawn (ViewReady) instead of a fixed wait of waitSeconds.
-		ViewReady.shot(context, sp, name, SIZE, waitSeconds);
+		if (board) {
+			ViewReady.shotBoard(context, sp, name, SIZE, waitSeconds);
+		} else {
+			ViewReady.shot(context, sp, name, SIZE, waitSeconds);
+		}
 		PolishForests.LOG.info(String.format(Locale.ROOT, "[deadwood] %s: camera (%.1f, %.1f, %.1f) yaw %.0f pitch %.0f", name, x, y, z,
 				yaw, pitch));
 	}

@@ -40,6 +40,7 @@ import pl.polishforests.worldgen.chunk.PolandChunkGenerator;
 import pl.polishforests.worldgen.chunk.PolandScale;
 import pl.polishforests.worldgen.feature.ModFeatures;
 import pl.polishforests.worldgen.feature.TreeStandFeature;
+import pl.polishforests.worldgen.feature.plan.ForestBlend;
 import pl.polishforests.worldgen.habitat.Habitat;
 import pl.polishforests.worldgen.habitat.HabitatBiome;
 import pl.polishforests.worldgen.habitat.HabitatClassifier;
@@ -251,12 +252,26 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 	/** Allowed relative difference of the trunks per biome from the palette, for biomes with enough expected trees. */
 	private static final double CENSUS_TOLERANCE = 0.20;
 	private static final int CENSUS_MIN_EXPECTED = 40;
+	/**
+	 * Step T8 (DP-66): the four forests of the vertical slice ({@link ForestBlend#FORESTS}) are not compared with the M2
+	 * palette: since V9 their trees come from the stand map of the slice (age classes, layers, canopy gaps) and the palettes
+	 * of the neighboring forests are mixed in over the belts of {@link ForestBlend}, so the nominal trees per chunk of the
+	 * M2 rule are not their expectation (the mixed forest counted 604 trunks against 447.3). They are checked by a census of
+	 * their own: trunks per chunk of their dry columns within the envelope of the tolerances of the norm N1 of the norms card
+	 * (living trees per chunk, {@code ForestNorms.TREES_PER_CHUNK}: from 6.4, the lower bound of the natural pine forest, to
+	 * 19.2, the upper bound of the pine forest in the pole stage), for each forest with at least
+	 * {@value #SLICE_MIN_COLUMNS} dry columns. The other habitats keep the tolerance of {@value #CENSUS_TOLERANCE}.
+	 */
+	private static final java.util.Set<HabitatBiome> SLICE_FORESTS = java.util.EnumSet.copyOf(java.util.Arrays.asList(ForestBlend.FORESTS));
+	private static final double SLICE_N1_LOW = 6.4;
+	private static final double SLICE_N1_HIGH = 19.2;
+	private static final int SLICE_MIN_COLUMNS = 2048;
 
 	/**
 	 * Census of the tree stand: 5 × 5 full chunks around each census site and the first three places of the biome
 	 * comparison; for each biome the trunks ({@link #trunk}) against the palette's trees per chunk times
 	 * the number of the biome's dry columns / 256. Each biome with at least {@value #CENSUS_MIN_EXPECTED} expected trees
-	 * must be within ±20%. Dry beach and white dune columns must have a sand top, and dry forest columns are reported
+	 * must be within ±20%, except the forests of the slice (checked against the N1 envelope, see {@link #SLICE_N1_LOW}). Dry beach and white dune columns must have a sand top, and dry forest columns are reported
 	 * when their top is bare sand.
 	 */
 	private static String census(MinecraftServer server, boolean real, List<int[]> places) {
@@ -268,6 +283,8 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 		int n = HabitatBiome.values().length;
 		double[] expected = new double[n];
 		long[] trunks = new long[n];
+		long[] sliceColumns = new long[n];
+		long[] sliceTrunks = new long[n];
 		long grassBeach = 0;
 		long beachColumns = 0;
 		long sandForest = 0;
@@ -301,9 +318,13 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 					}
 					int code = planCodes[(x >> 4) - cx0][(z >> 4) - cz0][column];
 					HabitatBiome b = Habitat.biome(code);
-					expected[b.ordinal()] += stand.treesPerChunk(code) / 256.0;
-					if (trunk(level, x, top, z)) {
-						trunks[b.ordinal()]++;
+					boolean trunk = trunk(level, x, top, z);
+					if (SLICE_FORESTS.contains(b)) {
+						sliceColumns[b.ordinal()]++;
+						sliceTrunks[b.ordinal()] += trunk ? 1 : 0;
+					} else {
+						expected[b.ordinal()] += stand.treesPerChunk(code) / 256.0;
+						trunks[b.ordinal()] += trunk ? 1 : 0;
 					}
 					net.minecraft.world.level.block.state.BlockState ground = level.getBlockState(new BlockPos(x, top, z));
 					if (b == HabitatBiome.BEACH || b == HabitatBiome.WHITE_DUNE) {
@@ -334,8 +355,22 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 				failures.add(String.format(Locale.ROOT, "%s %d trunks instead of %.1f", b.id(), t, e));
 			}
 		}
+		report.append(" slice forests (trunks per chunk, N1 envelope ").append(SLICE_N1_LOW).append("-").append(SLICE_N1_HIGH).append("):");
+		for (HabitatBiome b : ForestBlend.FORESTS) {
+			long columns = sliceColumns[b.ordinal()];
+			if (columns == 0) {
+				continue;
+			}
+			double perChunk = 256.0 * sliceTrunks[b.ordinal()] / columns;
+			report.append(String.format(Locale.ROOT, " %s %.1f (%d columns);", b.id(), perChunk, columns));
+			if (columns >= SLICE_MIN_COLUMNS && (perChunk < SLICE_N1_LOW || perChunk > SLICE_N1_HIGH)) {
+				failures.add(String.format(Locale.ROOT, "%s %.1f trunks per chunk outside the N1 envelope %.1f-%.1f", b.id(), perChunk,
+						SLICE_N1_LOW, SLICE_N1_HIGH));
+			}
+		}
 		if (!failures.isEmpty()) {
-			throw new AssertionError("Tree census off the palette by more than 20%: " + failures + "; " + report);
+			throw new AssertionError("Tree census off the palette by more than 20% (or a slice forest off the N1 envelope): " + failures
+					+ "; " + report);
 		}
 		return report.toString();
 	}

@@ -427,7 +427,7 @@ final class TreeSamples {
 			double yaw, double pitch, int waitSeconds) {
 		sp.getServer().runCommand(String.format(Locale.ROOT, "tp @a %.2f %.2f %.2f %.1f %.1f", x, y, z, yaw, pitch));
 		// Step T7: until the view is drawn (ViewReady) instead of a fixed wait of waitSeconds.
-		ViewReady.shot(context, sp, name, SIZE, waitSeconds);
+		ViewReady.shotBoard(context, sp, name, SIZE, waitSeconds);
 		PolishForests.LOG.info(String.format(Locale.ROOT, "[trees] %s: camera (%.1f, %.1f, %.1f) yaw %.0f pitch %.0f", name, x, y, z,
 				yaw, pitch));
 	}

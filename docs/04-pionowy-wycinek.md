@@ -423,6 +423,11 @@ Powód: rozgrywka (więcej kamienia blisko powierzchni). Na nizinach Polski osad
 - **Użytkownik dostaje:** stronę z tymi samymi kadrami w podsezonach (suwak), z SS i bez; zrzuty martwego drewna w lesie gospodarczym i naturalnym; tabelę karty norm (N1–N10, N12, N15) wobec M2 i wobec celów.
 - **Pytania:** ilość martwego drewna (PW-5), gęstość runa i mchów, aspekt wiosenny, przebarwienie i zima; korzenie (I1), mody do ścinania drzew i łup gałęzi (G1), grubość pokrywy nad skałą (K1), drobne wybory Z1 (`docs/00` G.18).
 
+### T8. Narzędzia testów: zapas 1 s dla tablic, spis siedlisk, półka i ścieżka `CONE_READY` (B, 0,5 dnia; decyzja CP-C.5, `docs/00` G.26)
+
+- **Zakres:** (1) `ViewReady.shotBoard`: zapas po gotowości kadru 1 s zamiast 3 s tylko dla kadrów tablic prób na płaskim świecie (`TrunkSamples`, `TreeSamples`, `LeafSamples`, tablice `DeadwoodSamples` i `RootSamples`, tablica `FellingSamples`); kadry terenu w światach Polska i stelaż pór roku w świecie Polska zostają przy 3 s; (2) DP-66: spis drzew w `HabitatsClientGameTest` bez czterech lasów wycinka (`ForestBlend.FORESTS`) w porównaniu z paletą M2 — osobny spis ich pni na chunk w obwiedni tolerancji N1 (6,4–19,2); (3) DP-68: `habitats` w obu skalach, kadry `s6_shelf` na arkuszu; (4) DP-69: `ecotones -PviewCheck`.
+- **Ukończony, gdy:** czasy `leaves`, `deadwood`, `roots` przed i po zapisane, kilka kadrów tablic równych kadrowi po 60 s, `habitats` GAMEPLAY i REAL przechodzą, DP-66/68/69 oznaczone jako zrobione w T8.
+
 ### V14. Szkielet fauny i sarna (B, 3–3,5 dnia)
 
 - **Zakres:**
@@ -2552,6 +2557,14 @@ Przegląd: jedna uwaga „major”, prawdziwa (poprawka dokumentacji), i 7 drobn
 - **Koszt opadania liści niezmierzony** (DP-74; szacunek „kilka ms na tick” wyżej oznaczony jako niezmierzony), **krok FallingTree po przekątnej między pełnymi kłodami** (DP-75), **test zawsze uderza blok nad podstawą** (DP-76), **ujęcia z ziemi nie kadrują ściętego drzewa** (DP-77; sprawdzone na wycinkach przed i po: różnią się kilkoma pikselami), **drągowina w świecie niewidoczna pod okapem** (DP-78), **przedmioty na ziemi w ujęciach „po”** (DP-79) — prawdziwe, na liście.
 
 Fałszywych alarmów nie było. Kod bez zmian; pełny zestaw `tools/dev/run-tests test` przed commitem rundy.
+
+## Projekt T8 (2026-10-28, etap 1: narzędzia testów — zapas 1 s dla tablic i spis siedlisk)
+
+Krok z decyzji CP-C.5 (`docs/00` G.26) i z listy „Do kroku porządkowego” (DP-66, DP-68, DP-69). Etap 1 nie uruchamiał gametestów; przebiegi, czasy przed i po oraz „Stan po T8” dopisze etap 2.
+
+- **Zapas 1 s (CP-C.5, wariant 1 z T7-g).** `ViewReady.BOARD_MARGIN_TICKS = 20` i `ViewReady.shotBoard(...)`; `Result` niesie użyty zapas (`margin`), więc napis `[view] … screenshot after …` i porównanie z kadrem po 60 s liczą go poprawnie. Wywołują go: `TrunkSamples.shot`, `TreeSamples.shot`, `LeafSamples.shot` (cały tryb `leaves` w świecie płaskim), `DeadwoodSamples` i `RootSamples` tylko dla widoków tablicy (`deadwood_board_*`, `roots_board_*`), `FellingSamples` tylko dla komórek tablicy (`felling_board_*`; kadry w światach Polska i `shotAbove` zostają przy 3 s). Bez zmian przy 3 s: kadry terenu, `slice`, stelaż `SeasonSamples.rigSky` (stoi w świecie Polska), kadry `habitats`, `ecotones`, `vegetation`, `views`. Reszta ViewReady (stabilność, karencja kolejki, bezpiecznik) bez zmian.
+- **Spis drzew `habitats` (DP-66).** Przyczyna: od V9 drzewa czterech lasów wycinka (Bśw, BMśw, LMśw, grąd; `ForestBlend.FORESTS`) pochodzą z mapy drzewostanów wycinka (klasy wieku, piętra, luki) z domieszką palet sąsiednich lasów w pasach `ForestBlend`, a nominalne „drzew na chunk” reguły M2 nie jest ich oczekiwaniem; las mieszany policzył 604 pnie wobec 447,3 (zakładając nominał 8 na chunk: 10,8 pnia na chunk, tyle co N1 w transekcie karty z1, 10,85). Rozwiązanie: te cztery lasy wychodzą ze spisu palety M2 (reszta siedlisk bez zmian, tolerancja ±20%), a ich suche kolumny liczone osobno: pnie na chunk w obwiedni tolerancji N1 karty norm (6,4 = dolna granica boru naturalnego, 19,2 = górna granica boru w drągowinie; stałe `SLICE_N1_LOW/HIGH`), dla lasu z co najmniej 2048 suchymi kolumnami (8 chunków). Raport spisu dostaje wiersz „slice forests (trunks per chunk …)”. Siedliska sąsiednie przejmowane przez lasy wycinka (`ForestBlend` `NEIGHBORS`, przejęcie drzew) zostają przy palecie M2; jeśli któreś nie przejdzie w REAL, trzeba je traktować tak samo.
+- **DP-68, DP-69:** same przebiegi (etap 2), polecenia w `runs.md` kroku.
 
 ## Do kroku porządkowego (lista drobiazgów z recenzji)
 

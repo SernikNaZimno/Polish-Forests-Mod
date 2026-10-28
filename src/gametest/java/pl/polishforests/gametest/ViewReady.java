@@ -39,6 +39,9 @@ import pl.polishforests.PolishForests;
  * {@value #POLL_TICKS} ticks until the frame is drawn, then always waits {@value #MARGIN_TICKS} ticks more (the user's
  * request of 2026-10-27: light updates and a margin for Sodium) before the screenshot.
  *
+ * <p>Frames of sample boards on the flat test world ({@link #shotBoard}, step T8) wait only {@value #BOARD_MARGIN_TICKS}
+ * ticks of margin (the user's decision CP-C.5 of 2026-10-28); frames of terrain in the Poland worlds keep the full margin.
+ *
  * <p>The frame is drawn when, for {@value #STABLE_TICKS} ticks with the camera standing still:
  * <ul>
  * <li>(a, b) every chunk the rays of the view cone ({@link ViewCone}) pass through up to the reach that fills the frame is
@@ -74,6 +77,15 @@ final class ViewReady {
 	static final int QUEUE_GRACE_TICKS = 40;
 	static final int QUEUE_GRACE_TICKS_SODIUM = 60;
 	static final int MARGIN_TICKS = 60;
+	/**
+	 * The margin of a board frame (step T8): a sample board on the flat test world, where the camera hovers over a board that
+	 * is already drawn (no far terrain, nothing generating around it); the user's decision CP-C.5 of 2026-10-28 (docs/00
+	 * G.26): 1 s instead of {@value #MARGIN_TICKS} ticks. Terrain frames of the Poland worlds keep the full margin.
+	 */
+	static final int BOARD_MARGIN_TICKS = 20;
+	/** The margin of a board frame in ticks: {@value #BOARD_MARGIN_TICKS}; {@code -PviewBoardMargin=<seconds>} overrides it (3 = as before T8). */
+	private static final int BOARD_MARGIN = Math.max(0, (int) Math.round(20 * Double.parseDouble(System.getProperty(
+			"polishforests.view.boardMargin", String.valueOf(BOARD_MARGIN_TICKS / 20.0)))));
 	static final int MIN_SAFETY_SECONDS = 30;
 	/** Horizon frames: ticks without a change of the client's chunk count, and the least safety limit. */
 	static final int HORIZON_STEADY_TICKS = 40;
@@ -118,8 +130,15 @@ final class ViewReady {
 		}
 	}
 
-	/** The outcome of a wait: ticks waited, the reason and the last state of the view. */
-	record Result(int ticks, Reason reason, Probe probe) {
+	/**
+	 * The outcome of a wait: ticks waited, the reason and the last state of the view; {@code margin} is the margin in ticks
+	 * that followed the wait (0 for {@link #await}, which has none; {@value #MARGIN_TICKS} or {@value #BOARD_MARGIN_TICKS}
+	 * after {@link #beforeShot}).
+	 */
+	record Result(int ticks, Reason reason, Probe probe, int margin) {
+		Result(int ticks, Reason reason, Probe probe) {
+			this(ticks, reason, probe, 0);
+		}
 	}
 
 	// ------------------------------------------------------------------ public helpers
@@ -140,23 +159,31 @@ final class ViewReady {
 	}
 
 	/**
+	 * As {@link #shot(ClientGameTestContext, TestSingleplayerContext, String, int[], int)} for a frame of a sample board on
+	 * the flat test world, with the short margin {@value #BOARD_MARGIN_TICKS} ticks (step T8, see {@link #BOARD_MARGIN_TICKS}).
+	 */
+	static Path shotBoard(ClientGameTestContext context, TestSingleplayerContext sp, String name, int[] size, int legacySeconds) {
+		return take(context, name, size, beforeShot(context, sp, name, size, legacySeconds, 0, false, BOARD_MARGIN));
+	}
+
+	/**
 	 * Takes the screenshot after {@link #beforeShot} (with {@code -PviewCheck} also the reference frame and the comparison)
 	 * and logs the time waited.
 	 */
 	static Path take(ClientGameTestContext context, String name, int[] size, Result ready) {
 		Path path = context.takeScreenshot(options(name, size));
 		if (CHECK && !FIXED && CHECK_ONLY.matcher(name).find()) {
-			check(context, name, size, path, ready.ticks() + MARGIN_TICKS);
+			check(context, name, size, path, ready.ticks() + ready.margin());
 		}
 		PolishForests.LOG.info(String.format(Locale.ROOT, "[view] %s: screenshot after %.1f s (all frames so far: %d, %.0f s waiting, %d over "
-				+ "the safety limit)", name, (ready.ticks() + (FIXED ? 0 : MARGIN_TICKS)) / 20.0, shots, totalNanos / 1e9, timeouts));
+				+ "the safety limit)", name, (ready.ticks() + ready.margin()) / 20.0, shots, totalNanos / 1e9, timeouts));
 		return path;
 	}
 
 	/** Waits for the view and the margin before a screenshot the caller takes itself (with an overlay, for example). */
 	static Result beforeShot(ClientGameTestContext context, TestSingleplayerContext sp, String name, int[] size, int legacySeconds,
 			int minSeconds) {
-		return beforeShot(context, sp, name, size, legacySeconds, minSeconds, false);
+		return beforeShot(context, sp, name, size, legacySeconds, minSeconds, false, MARGIN_TICKS);
 	}
 
 	/**
@@ -165,11 +192,11 @@ final class ViewReady {
 	 */
 	static Result beforeShotHorizon(ClientGameTestContext context, TestSingleplayerContext sp, String name, int[] size,
 			int legacySeconds) {
-		return beforeShot(context, sp, name, size, legacySeconds, 0, true);
+		return beforeShot(context, sp, name, size, legacySeconds, 0, true, MARGIN_TICKS);
 	}
 
 	private static Result beforeShot(ClientGameTestContext context, TestSingleplayerContext sp, String name, int[] size,
-			int legacySeconds, int minSeconds, boolean horizon) {
+			int legacySeconds, int minSeconds, boolean horizon, int marginTicks) {
 		long t0 = System.nanoTime();
 		if (CHECK && !cloudsOff) {
 			context.runOnClient(mc -> mc.options.cloudStatus().set(CloudStatus.OFF));
@@ -178,12 +205,13 @@ final class ViewReady {
 					CHECK_SECONDS);
 		}
 		Result r = await(context, sp, name, size, legacySeconds, minSeconds, horizon);
-		if (!FIXED) {
-			context.waitTicks(MARGIN_TICKS);
+		int margin = FIXED ? 0 : marginTicks;
+		if (margin > 0) {
+			context.waitTicks(margin);
 		}
 		shots++;
 		totalNanos += System.nanoTime() - t0;
-		return r;
+		return new Result(r.ticks(), r.reason(), r.probe(), margin);
 	}
 
 	/**

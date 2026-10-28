@@ -12,6 +12,17 @@ class ViewReadyMathTest {
 	private static final double EPS = 1e-9;
 
 	@Test
+	void boardMarginIsOneSecondAndShorterThanTheTerrainMargin() {
+		// Step T8 (CP-C.5): 1 s over a board on the flat world, 3 s over terrain; a wait without a margin reports 0.
+		assertEquals(20, ViewReady.BOARD_MARGIN_TICKS);
+		assertEquals(60, ViewReady.MARGIN_TICKS);
+		ViewReady.Result plain = new ViewReady.Result(40, ViewReady.Reason.QUEUE_EMPTY, null);
+		assertEquals(0, plain.margin());
+		assertEquals(40, plain.ticks());
+		assertEquals(20, new ViewReady.Result(40, ViewReady.Reason.QUEUE_EMPTY, null, ViewReady.BOARD_MARGIN_TICKS).margin());
+	}
+
+	@Test
 	void centralRayLooksWhereTheCameraLooks() {
 		// yaw 0 looks south (+z), yaw 90 west (-x), pitch 90 straight down.
 		assertVector(new double[] {0, 0, 1}, center(0, 0));

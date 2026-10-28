@@ -498,8 +498,9 @@ final class LeafSamples {
 	private static Path shot(ClientGameTestContext context, TestSingleplayerContext sp, String name, double x, double y, double z,
 			double yaw, double pitch, int[] size) {
 		sp.getServer().runCommand(String.format(Locale.ROOT, "tp @a %.2f %.2f %.2f %.1f %.1f", x, y, z, yaw, pitch));
-		// Step T7: until the view is drawn (ViewReady) instead of 15 ticks and an empty compile queue.
-		return ViewReady.shot(context, sp, name, size, 1);
+		// Step T7: until the view is drawn (ViewReady) instead of 15 ticks and an empty compile queue; flat test world, so the
+		// short board margin (step T8).
+		return ViewReady.shotBoard(context, sp, name, size, 1);
 	}
 
 	private void result(String format, Object... args) {
