@@ -1,0 +1,10 @@
+{
+  "trees": {
+    "maxScanSize": 2048,
+    "maxSize": 2048,
+    "spawnItemsAtBreakPoint": true
+  },
+  "tools": {
+    "damageMultiplicand": 0.2
+  }
+}

@@ -14,19 +14,61 @@
             {
               "type": "minecraft:item",
               "condition": {
+                "type": "minecraft:match_block",
+                "blocks": "polishforests:ash_root_flare",
+                "state": {
+                  "radius": "1"
+                }
+              },
+              "modifier": [
+                {
+                  "type": "minecraft:set_count",
+                  "count": {
+                    "type": "minecraft:uniform",
+                    "max": 1,
+                    "min": 0
+                  }
+                },
+                {
+                  "type": "minecraft:explosion_decay"
+                }
+              ],
+              "name": "minecraft:stick"
+            },
+            {
+              "type": "minecraft:item",
+              "condition": {
                 "type": "minecraft:any_of",
                 "terms": [
                   {
                     "type": "minecraft:match_block",
                     "blocks": "polishforests:ash_root_flare",
                     "state": {
-                      "radius": "1"
+                      "parent": "north",
+                      "radius": "2"
                     }
                   },
                   {
                     "type": "minecraft:match_block",
                     "blocks": "polishforests:ash_root_flare",
                     "state": {
+                      "parent": "east",
+                      "radius": "2"
+                    }
+                  },
+                  {
+                    "type": "minecraft:match_block",
+                    "blocks": "polishforests:ash_root_flare",
+                    "state": {
+                      "parent": "south",
+                      "radius": "2"
+                    }
+                  },
+                  {
+                    "type": "minecraft:match_block",
+                    "blocks": "polishforests:ash_root_flare",
+                    "state": {
+                      "parent": "west",
                       "radius": "2"
                     }
                   }

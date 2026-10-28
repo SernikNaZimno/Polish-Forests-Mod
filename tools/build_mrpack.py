@@ -60,6 +60,9 @@ MODS = [
     ("clumps", "J4I1wxJZ", "both", True, "Clumps, merges experience orbs"),
     ("nvidium", "8mVK1zbk", "client", False, "Nvidium (optional, NVIDIA GPUs only), faster long-distance rendering"),
     ("distanthorizons", "gfi11b05", "client", False, "Distant Horizons (optional), distant mountain views"),
+    # Step G1: tree felling; the mod fells the trees of the tree planner by their parent graph (compatibility mixins), the
+    # recommended configuration (tools/modpack/config/fallingtree.json) raises its tree size limit for them.
+    ("fallingtree", "D0B62UJ5", "both", False, "FallingTree (optional), fells a whole tree with one cut"),
 ]
 
 API = "https://api.modrinth.com/v2"
@@ -98,7 +101,8 @@ def main():
         f = next((x for x in v["files"] if x.get("primary")), v["files"][0])
         env_client = "required" if required and side in ("both", "client") else (
             "optional" if side in ("both", "client") else "unsupported")
-        env_server = "required" if side in ("both", "server") else "unsupported"
+        env_server = "required" if required and side in ("both", "server") else (
+            "optional" if side in ("both", "server") else "unsupported")
         files.append({
             "path": f"mods/{f['filename']}",
             "hashes": {"sha1": f["hashes"]["sha1"], "sha512": f["hashes"]["sha512"]},

@@ -67,6 +67,21 @@ dependencies {
 		localRuntime "maven.modrinth:glitchcore:${project.glitchcore_version}"
 	}
 
+	// Step G1: optional tree-felling mods. The compatibility mixins (pl.polishforests.compat.felling, applied only when the
+	// mod is loaded) compile against them; the dev environment runs with one of them only with -PtreeFelling=fallingtree or
+	// -PtreeFelling=treeharvester (the two would both fell the same tree, so never together).
+	compileOnly "maven.modrinth:fallingtree:${project.fallingtree_version}"
+	compileOnly "maven.modrinth:tree-harvester:${project.treeharvester_version}"
+	def felling = project.findProperty('treeFelling')?.toString()
+	if (felling == 'fallingtree') {
+		localRuntime "maven.modrinth:fallingtree:${project.fallingtree_version}"
+	} else if (felling == 'treeharvester') {
+		localRuntime "maven.modrinth:tree-harvester:${project.treeharvester_version}"
+		localRuntime "maven.modrinth:collective:${project.collective_version}"
+	} else if (felling != null) {
+		throw new GradleException("-PtreeFelling=${felling}: use fallingtree or treeharvester")
+	}
+
 	// Performance mods from the recommended modpack; in the dev environment only with the -Poptimization flag.
 	if (project.hasProperty('optimization')) {
 		[
@@ -510,6 +525,8 @@ tasks.register('generateArt', ArtTask) {
 // picks a part; combine with -Poptimization (with -PnoNvidium: plain Sodium) and -PnoSeasons; results in
 // build/probes/<vanilla|sodium|sodium_nvidium>_<ss|noss>.txt)
 // (ecotones: only by name, not in all; screenshots of biome borders, step S8b)
+// (slice -Psites=felling: step G1, felling trees with a tree-felling mod; needs -PtreeFelling=fallingtree|treeharvester,
+// results in build/felling/<mod>.txt)
 // (slice: only by name; the fixed places of the vertical slice from src/test/resources/slice_sites.txt, step V0;
 // -Pmodes=natural|present_day picks a vegetation mode, -Psites=<place names>|none; the cameras come from
 // src/test/resources/slice_cameras.txt, -PfindSliceCameras chooses them anew and writes the file; -Pgametest=stages
@@ -526,10 +543,19 @@ tasks.named('runClientGameTest') {
 	def seasonsConfig = file('tools/modpack/config/sereneseasons/seasons.toml')
 	def seasonsTarget = layout.buildDirectory.file('run/clientGameTest/config/sereneseasons/seasons.toml').get().asFile
 	def withSeasons = !project.hasProperty('noSeasons')
+	// Step G1: with -PtreeFelling=fallingtree the recommended FallingTree configuration of the modpack (tree size limits,
+	// drops at the cut, axe damage), so the felling test (-Pgametest=slice -Psites=felling) sees what the players of the pack do.
+	def fellingConfig = file('tools/modpack/config/fallingtree.json')
+	def fellingTarget = layout.buildDirectory.file('run/clientGameTest/config/fallingtree.json').get().asFile
+	def withFallingTree = project.findProperty('treeFelling')?.toString() == 'fallingtree'
 	doFirst {
 		if (withSeasons) {
 			seasonsTarget.parentFile.mkdirs()
 			java.nio.file.Files.copy(seasonsConfig.toPath(), seasonsTarget.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+		}
+		if (withFallingTree) {
+			fellingTarget.parentFile.mkdirs()
+			java.nio.file.Files.copy(fellingConfig.toPath(), fellingTarget.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
 		}
 	}
 	jvmArgs "-Dpolishforests.gametest=${project.findProperty('gametest') ?: 'all'}"
@@ -578,6 +604,8 @@ tasks.named('runClientGameTest') {
 		jvmArgs "-Dpolishforests.perfSeason=${project.property('perfSeason')}"
 	}
 	jvmArgs "-Dpolishforests.leaves.out=${layout.buildDirectory.dir('leaves').get().asFile.absolutePath}"
+	// Step G1: the results of -Pgametest=slice -Psites=felling (with -PtreeFelling=fallingtree|treeharvester).
+	jvmArgs "-Dpolishforests.felling.out=${layout.buildDirectory.dir('felling').get().asFile.absolutePath}"
 	// Step V13: the results of -Pgametest=slice -Psites=seasons.
 	jvmArgs "-Dpolishforests.seasons.out=${layout.buildDirectory.dir('seasons').get().asFile.absolutePath}"
 	// Step T7: screenshots wait until the view is drawn (gametest ViewReady). -PviewWait=fixed restores the fixed waits of

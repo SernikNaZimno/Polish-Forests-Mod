@@ -18,14 +18,14 @@ import net.minecraft.world.level.block.state.BlockState;
  * is registered by {@link ModBlocks#registerContent()} and the registries are closed again (the vanilla tags stay, the new
  * entries get bound, empty tag lists as in the game before the data packs load).
  */
-final class GameRegistries {
+public final class GameRegistries {
 	private static boolean ready;
 
 	private GameRegistries() {
 	}
 
 	/** Bootstraps the game registries and registers the blocks and items of the mod, once per test JVM. */
-	static synchronized void bootstrap() {
+	public static synchronized void bootstrap() {
 		if (ready) {
 			return;
 		}

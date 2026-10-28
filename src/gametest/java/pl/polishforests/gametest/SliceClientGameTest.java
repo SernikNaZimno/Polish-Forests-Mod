@@ -181,6 +181,10 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 			RootSamples.run(context);
 			return;
 		}
+		if (only.equals("felling")) {
+			FellingSamples.run(context);
+			return;
+		}
 		boolean screenshots = !only.equals("none");
 		boolean find = Boolean.getBoolean("polishforests.slice.findCameras");
 		List<String> names = only.isBlank() || !screenshots ? List.of() : List.of(only.split(","));

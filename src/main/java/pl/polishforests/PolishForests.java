@@ -30,6 +30,8 @@ public final class PolishForests implements ModInitializer {
 		// Step V13: the fruit of the bilberry through the year (random tick and the catch-up of loaded chunks).
 		pl.polishforests.season.BerrySeason.register();
 		ClimateBinding.register();
+		// Step G1: the tree-felling mods (FallingTree, Tree Harvester) fell the trees of the planner by their parent graph.
+		pl.polishforests.compat.FellingCompat.announce();
 		LOG.info("Polish Forests: initialization complete (calendar: {})", Seasons.provider().name());
 	}
 }

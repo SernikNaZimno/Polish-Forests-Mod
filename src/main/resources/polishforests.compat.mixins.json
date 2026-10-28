@@ -1,0 +1,14 @@
+{
+	"required": false,
+	"package": "pl.polishforests.compat.mixin",
+	"plugin": "pl.polishforests.compat.FellingMixinPlugin",
+	"compatibilityLevel": "JAVA_25",
+	"mixins": [
+		"FallingTreeBuilderMixin",
+		"TreeHarvesterLeavesMixin",
+		"TreeHarvesterProcessingMixin"
+	],
+	"injectors": {
+		"defaultRequire": 0
+	}
+}

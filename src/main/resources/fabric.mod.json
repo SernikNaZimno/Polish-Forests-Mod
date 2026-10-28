@@ -34,6 +34,7 @@
 	},
 	"mixins": [
 		"polishforests.mixins.json",
+		"polishforests.compat.mixins.json",
 		{
 			"config": "polishforests.client.mixins.json",
 			"environment": "client"
@@ -49,5 +50,8 @@
 	},
 	"recommends": {
 		"sereneseasons": "*"
+	},
+	"suggests": {
+		"fallingtree": "*"
 	}
 }

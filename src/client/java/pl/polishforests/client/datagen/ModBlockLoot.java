@@ -4,6 +4,7 @@ import java.util.concurrent.CompletableFuture;
 import net.fabricmc.fabric.api.datagen.v1.FabricPackOutput;
 import net.fabricmc.fabric.api.datagen.v1.provider.FabricBlockLootSubProvider;
 import net.minecraft.advancements.predicates.StatePropertiesPredicate;
+import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Block;
@@ -23,11 +24,15 @@ import pl.polishforests.block.TrunkBlock;
 
 /**
  * Loot tables of the blocks of the mod (step V2). A thin trunk (docs/04-pionowy-wycinek.md §1.1) gives itself with silk
- * touch; otherwise radius 1-2 (a twig or branch up to 25 cm) gives 1-2 sticks and radius 3-7 one log of the species
- * ({@link TreeTrunk#log()}: vanilla oak, birch and spruce logs, D2; the closest vanilla log until the species has its own).
+ * touch; otherwise radius 3-7 one log of the species ({@link TreeTrunk#log()}: vanilla oak, birch and spruce logs, D2;
+ * the closest vanilla log until the species has its own), radius 2 (a branch up to 25 cm) 1-2 sticks and radius 1 (a
+ * twig) 0-1 stick. Step G1 (tree-felling mods, decisions G1-e and G1-f): an upright segment of radius 2 (parent below or
+ * above: the stem of a young tree, which had given no log at all) gives a log too, and a twig at most one stick, so a
+ * felled crown of 200-300 blocks does not shower hundreds of sticks. {@code pl.polishforests.compat.TreeWood#dropsLog}
+ * follows these rules.
  */
 final class ModBlockLoot extends FabricBlockLootSubProvider {
-	/** Largest radius that gives sticks, px. */
+	/** Largest radius that gives sticks, px (an upright segment of this radius gives a log, G1-e). */
 	static final int STICK_RADIUS = 2;
 
 	ModBlockLoot(FabricPackOutput output, CompletableFuture<HolderLookup.Provider> registries) {
@@ -82,19 +87,28 @@ final class ModBlockLoot extends FabricBlockLootSubProvider {
 		}
 	}
 
-	/** A thin trunk (or a root flare) with the loot of a trunk: itself with silk touch, sticks when thin, else the log. */
+	/**
+	 * A thin trunk (or a root flare) with the loot of a trunk: itself with silk touch, 0-1 stick for a twig, 1-2 sticks for
+	 * a branch of radius 2 that is not upright, else the log.
+	 */
 	private void trunk(TrunkBlock block, TreeTrunk t) {
-		AnyOfCondition.Builder thin = AnyOfCondition.anyOf();
-		for (int r = TrunkBlock.MIN_RADIUS; r <= STICK_RADIUS; r++) {
-			thin.or(radius(block, r));
+		LootPoolEntryContainer.Builder<?> twig = ((LootPoolEntryContainer.Builder<?>) applyExplosionDecay(block,
+				LootItem.lootTableItem(Items.STICK).apply(SetItemCountFunction.setCount(ContextIntProviders.between(0, 1)))))
+				.when(radius(block, TrunkBlock.MIN_RADIUS));
+		AnyOfCondition.Builder branch = AnyOfCondition.anyOf();
+		for (int r = TrunkBlock.MIN_RADIUS + 1; r <= STICK_RADIUS; r++) {
+			for (Direction d : Direction.Plane.HORIZONTAL) {
+				branch.or(MatchBlock.blockMatches(blocks, block, StatePropertiesPredicate.Builder.properties()
+						.hasProperty(TrunkBlock.RADIUS, r).hasProperty(TrunkBlock.PARENT, d.getSerializedName())));
+			}
 		}
 		LootPoolEntryContainer.Builder<?> sticks = ((LootPoolEntryContainer.Builder<?>) applyExplosionDecay(block,
 				LootItem.lootTableItem(Items.STICK).apply(SetItemCountFunction.setCount(ContextIntProviders.between(1, 2)))))
-				.when(thin);
+				.when(branch);
 		LootPoolEntryContainer.Builder<?> log = (LootPoolEntryContainer.Builder<?>) applyExplosionCondition(block,
 				LootItem.lootTableItem(t.log()));
 		add(block, LootTable.lootTable().withPool(LootPool.lootPool().setRolls(ContextIntProviders.exactly(1))
-				.add(LootItem.lootTableItem(block).when(hasSilkTouch()).otherwise(sticks).otherwise(log))));
+				.add(LootItem.lootTableItem(block).when(hasSilkTouch()).otherwise(twig).otherwise(sticks).otherwise(log))));
 	}
 
 	private void lite() {

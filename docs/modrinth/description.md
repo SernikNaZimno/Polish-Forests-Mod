@@ -25,6 +25,10 @@
 
 Choose the *Poland (1:1 Scale)* or *Poland (Gameplay Scale)* world type when you create a world. The mod is needed on both the server and the client.
 
+## Compatibility
+
+- **Tree felling:** [FallingTree](https://modrinth.com/mod/fallingtree) and [Tree Harvester](https://modrinth.com/mod/tree-harvester) (optional) fell the mod's trees whole with one cut: trunk, branches and root flares, never a neighbouring tree, a shrub, dead wood or the roots in the ground. Cut-off leaves of the mod's trees fall within about two seconds. Thick wood gives logs, thin branches sticks. The mod's old trees have up to about 330 wood blocks, while FallingTree by default fells at most 100: raise `maxSize` and `maxScanSize` under `trees` in `config/fallingtree.json` (the modpack sets 2048, drops the loot at the cut and lowers the axe wear to 0.2 per block).
+
 ## Roadmap
 
 Next is the rest of the oak-hornbeam and fresh pine forest: deadwood, roots, ground flora and mosses with seasons, roe deer, wild boar and birdsong. After that the same for all of Poland: more tree species, managed and natural forests, the Tatras and the Sudetes, and Polish fauna.

@@ -64,7 +64,7 @@ Po `./gradlew build` buduje zalecaną paczkę modów `.mrpack` w `build/distribu
 ./gradlew runClient
 ```
 
-Uruchamia grę w trybie deweloperskim. Z flagą `-Poptimization` dołącza mody z zalecanej paczki.
+Uruchamia grę w trybie deweloperskim. Z flagą `-Poptimization` dołącza mody z zalecanej paczki, z `-PtreeFelling=fallingtree` albo `-PtreeFelling=treeharvester` mod do ścinania całych drzew (krok G1; test w grze: `./gradlew runClientGameTest -Pgametest=slice -Psites=felling -PtreeFelling=…`).
 
 ```bash
 python tools/art/generate.py   # albo ./gradlew generateArt
@@ -113,8 +113,12 @@ Informacje o krajobrazie są też na ekranie F3.
 | GeckoLib | 5.5.7 | wymagany |
 | SmartBrainLib | 2.0.3 | wymagany |
 | Serene Seasons | 26.1.2.0.7 | opcjonalny, bez niego działa własny kalendarz |
+| FallingTree | 26.3-26.3.0.4 | opcjonalny, ścina całe drzewo jednym cięciem (w paczce `.mrpack` jako opcjonalny) |
+| Tree Harvester (+ Collective) | 26.3.0-10.3 | opcjonalny, ścina całe drzewo jednym cięciem (w kucki) |
 
 Nowy świat zaczyna się późną wiosną (maj). Własny kalendarz moda ma 12 dni gry na podsezon. Z Serene Seasons ten sam start i długość roku daje plik `config/sereneseasons/seasons.toml` z `starting_sub_season = 3` i `sub_season_duration = 12` w sekcji `[time_settings]`; paczka `.mrpack` go zawiera (`tools/modpack/config/`).
+
+Mody do ścinania całych drzew (krok G1): FallingTree i Tree Harvester ścinają drzewa moda po grafie „rodziców” cienkich pni (klasa zgodności ładowana tylko z modem, bez twardej zależności): całe drzewo z gałęziami i nabiegami, bez sąsiednich drzew, krzewów, martwego drewna i korzeni w gruncie; odcięte liście moda opadają same w ciągu ok. 2 s. FallingTree domyślnie nie ścina drzew większych niż 100 bloków drewna, a drzewa moda mają ich do ok. 330: zalecana konfiguracja `tools/modpack/config/fallingtree.json` (w paczce `.mrpack`) podnosi limit do 2048, zrzuca łup w miejscu cięcia i zmniejsza zużycie siekiery (0,2 na blok). Tree Harvester nie ma limitu; zużywa 1 punkt siekiery na blok drewna (w jego konfiguracji `loseDurabilityModifier` można to zmniejszyć).
 
 ## Licencja
 
