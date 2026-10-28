@@ -2424,7 +2424,7 @@ Etap 2 kroku T7: przebiegi według planu (dym, czas przed i po, porównanie z ka
 
 **Dym** (`slice`, REAL, `oak_hornbeam_1`, 5 kamer, w tym 4 blisko siebie): każdy kadr gotowy po 1,0–2,0 s, stożek pełny (`missing 0`, `not built 0`, `empty 0`), refleksja wanilii (`ViewArea`, `lastCompileTask`) działa, 0 WARN.
 
-**Czas przed i po** (maszyna spokojna we wszystkich 8 przebiegach, druga praca nie działała; „przed” = `-PviewWait=fixed`, ten sam kod):
+**Czas przed i po** (maszyna spokojna we wszystkich 8 przebiegach, druga praca nie działała; „przed” = `-PviewWait=fixed`, ten sam kod poza dawnym czekaniem na pustą kolejkę kompilacji w `seasons`, stelażu i `LeafSamples` — DP-67):
 
 | przebieg | czas ściany przed → po | czekanie na kadry przed → po | kadry | WARN |
 |---|---|---|---|---|
@@ -2485,6 +2485,10 @@ Etap 2 kroku T7: przebiegi według planu (dym, czas przed i po, porównanie z ka
 **Drobiazgi przeglądu** (bez poprawek, łagodniejszy próg P4) dopisane do listy „Do kroku porządkowego”: DP-67 … DP-73 (tryb `fixed`, nieuruchomione kadry `s6_shelf`, porównanie ścieżki `CONE_READY` w trybach krajobrazu, tekst powodu `CONE_READY`, czysty Sodium, czat w kadrze `habitats_f3_gameplay`, kamery `slice` w liściach); DP-66 (spis `habitats`) już na liście jako osobny krok przed CP-C.
 
 **Testy.** Dwa przebiegi `views` (3 miejsca horyzontu, `-PviewCheck`) przed i po poprawce, pełna regresja `views` z `-PviewCheck -PviewCheckOnly=beach|cliff`, `fastTest` z `ViewReadyMathTest`, pełny zestaw `tools/dev/run-tests test` przed commitem rundy. Bez pomiarów czasu (krok narzędziowy).
+
+### Runda 2 poprawek po przeglądzie T7 (2026-10-28)
+
+Przegląd: brak uwag „blocking” i „major”; 8 drobnych, wszystkie sprawdzone w kodzie i logach i prawdziwe, ale każda to powtórka wpisu z rundy 1 — są już na liście „Do kroku porządkowego” jako DP-66 … DP-73 (tryb `fixed` bez dawnego czekania na kolejkę = DP-67, kadry `s6_shelf` = DP-68, ścieżka `CONE_READY` bez porównania z wzorcem = DP-69, tekst powodu `CONE_READY` = DP-70, czysty Sodium = DP-71, spis `habitats` = DP-66, czat w `habitats_f3_gameplay` = DP-72, kamery `slice` w liściach = DP-73). Nowych wpisów nie ma; jedyna poprawka to zdanie „ten sam kod” w tabeli „Stanu po T7” (teraz z zastrzeżeniem DP-67). Fałszywych alarmów nie było. Kod bez zmian; pełny zestaw `tools/dev/run-tests test` przed commitem rundy.
 
 ## Do kroku porządkowego (lista drobiazgów z recenzji)
 
