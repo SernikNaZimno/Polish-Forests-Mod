@@ -8,7 +8,10 @@ import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Pattern;
@@ -59,10 +62,16 @@ import pl.polishforests.PolishForests;
  * ({@code [view]}).
  *
  * <p>Switches: {@code -PviewWait=fixed} restores the old fixed waits (the time before step T7); {@code -PviewCheck}
- * takes, after each screenshot, a reference frame {@code <name>_ref} {@code -PviewCheckSeconds} (60) after the
- * teleport, compares them pixel by pixel ({@link FrameDiff}, clouds off for the whole run) and writes
- * {@code build/view-check/report.txt} and the diff images; {@code -PviewCheckOnly=<regex>} limits the check to some
- * frames; {@code -PviewReach=<blocks>} overrides the reach of the cone.
+ * takes, after each screenshot, a reference frame {@code <name>_ref}, compares them pixel by pixel ({@link FrameDiff},
+ * clouds off for the whole run) and writes {@code build/view-check/report.txt} and the diff images. Since step T8 the
+ * reference frame is adaptive: probe frames every {@value #PROBE_TICKS} ticks, and the reference is the first probe that has
+ * not changed for the stability window {@code W} ({@code -PviewCheckWindow}, {@link #STABLE_SECONDS_DEFAULT} s; see
+ * {@link ViewPattern}) while the server has no generation work around the camera and the client's compile queue is empty;
+ * the safety limit is {@code -PviewCheckSeconds} (60) after the teleport, as the whole fixed wait was before.
+ * {@code -PviewCheckFixed} restores the fixed reference 60 s after the teleport; {@code -PviewCheckCalibrate} probes every
+ * second for the whole {@code -PviewCheckSeconds} and records the moments of change ({@code build/view-check/calibration.tsv},
+ * analysed by {@code tools/dev/view_calibration.py}) to choose {@code W}. {@code -PviewCheckOnly=<regex>} limits the check
+ * to some frames; {@code -PviewReach=<blocks>} overrides the reach of the cone.
  *
  * <p>Horizon frames ({@link #beforeShotHorizon}: views with their own, longer render distance that exist to show the
  * distant landscape; review of T7, round 1): the cone reaches the whole render distance less {@link ViewCone#EDGE_CHUNKS},
@@ -99,7 +108,23 @@ final class ViewReady {
 	static final double STILL = 0.25;
 
 	private static final boolean FIXED = "fixed".equals(System.getProperty("polishforests.view.wait", ""));
-	private static final boolean CHECK = Boolean.getBoolean("polishforests.view.check");
+	private static final boolean CALIBRATE = Boolean.getBoolean("polishforests.view.calibrate");
+	private static final boolean CHECK = Boolean.getBoolean("polishforests.view.check") || CALIBRATE;
+	private static final boolean CHECK_FIXED = Boolean.getBoolean("polishforests.view.checkFixed");
+	/** Probe frames of the check: every second (step T8). */
+	static final int PROBE_TICKS = 20;
+	/**
+	 * The stability window W of the adaptive reference frame in seconds (step T8); {@code -PviewCheckWindow=<seconds>}
+	 * overrides it. The value is chosen from the calibration run ({@code -PviewCheckCalibrate}), see docs/04 "Stan po T8".
+	 */
+	static final double STABLE_SECONDS_DEFAULT = 5;
+	/**
+	 * Whether the adaptive reference also waits for the client's whole compile queue (default; the user's request), not only for
+	 * the sections of the view cone; {@code -PviewCheckIdle=cone} leaves the far sections out (a decision from the calibration).
+	 */
+	private static final boolean IDLE_QUEUE = !"cone".equals(System.getProperty("polishforests.view.checkIdle", "strict"));
+	private static final int STABLE_TICKS_WINDOW = Math.max(PROBE_TICKS, (int) Math.round(20 * Double.parseDouble(System.getProperty(
+			"polishforests.view.checkWindow", String.valueOf(STABLE_SECONDS_DEFAULT)))));
 	private static final int CHECK_SECONDS = Integer.getInteger("polishforests.view.checkSeconds", 60);
 	private static final Pattern CHECK_ONLY = Pattern.compile(System.getProperty("polishforests.view.checkOnly", "").isBlank() ? ".*"
 			: System.getProperty("polishforests.view.checkOnly"));
@@ -111,6 +136,8 @@ final class ViewReady {
 	private static int checked;
 	private static int different;
 	private static boolean cloudsOff;
+	/** The singleplayer context of the latest wait, for the server side of the adaptive check (callers of {@link #take} pass none). */
+	private static TestSingleplayerContext lastSingleplayer;
 
 	private ViewReady() {
 	}
@@ -198,6 +225,7 @@ final class ViewReady {
 	private static Result beforeShot(ClientGameTestContext context, TestSingleplayerContext sp, String name, int[] size,
 			int legacySeconds, int minSeconds, boolean horizon, int marginTicks) {
 		long t0 = System.nanoTime();
+		lastSingleplayer = sp;
 		if (CHECK && !cloudsOff) {
 			context.runOnClient(mc -> mc.options.cloudStatus().set(CloudStatus.OFF));
 			cloudsOff = true;
@@ -319,11 +347,101 @@ final class ViewReady {
 		return size == null ? TestScreenshotOptions.of(name) : TestScreenshotOptions.of(name).disableCounterPrefix().withSize(size[0], size[1]);
 	}
 
-	// ------------------------------------------------------------------ check against a long wait
+	// ------------------------------------------------------------------ check against a later frame
 
 	private static void check(ClientGameTestContext context, String name, int[] size, Path frame, int waited) {
-		context.waitTicks(Math.max(0, 20 * CHECK_SECONDS - waited));
-		Path ref = context.takeScreenshot(options(name + "_ref", size == null ? null : size));
+		if (CHECK_FIXED && !CALIBRATE) {
+			context.waitTicks(Math.max(0, 20 * CHECK_SECONDS - waited));
+			Path ref = context.takeScreenshot(options(name + "_ref", size));
+			report(name, frame, ref, String.format(Locale.ROOT, "%.1f s\tfixed reference at %d s", waited / 20.0, CHECK_SECONDS));
+		} else {
+			probed(context, name, size, frame, waited);
+		}
+	}
+
+	/**
+	 * The adaptive reference frame and the calibration (step T8): probe frames every {@value #PROBE_TICKS} ticks after the
+	 * screenshot. A probe that differs from the anchor frame (the frame of the last change, tolerance of {@link FrameDiff})
+	 * is a change of the image and becomes the anchor; the reference is the first probe at which {@link ViewPattern} finds
+	 * the image unchanged for the window and the view idle ({@link #idle}), or, at the latest, the probe at the safety limit
+	 * {@code -PviewCheckSeconds}. In the calibration the probes run to the safety limit and are all recorded.
+	 */
+	private static void probed(ClientGameTestContext context, String name, int[] size, Path frame, int waited) {
+		int limit = 20 * CHECK_SECONDS;
+		double aspect = size == null ? 0 : (double) size[0] / size[1];
+		ViewPattern pattern = new ViewPattern(waited, STABLE_TICKS_WINDOW);
+		long g0 = gameTime(context);
+		int clock = waited;
+		int cost = 0;
+		Path ref;
+		int refAt;
+		boolean stable;
+		List<Calibration> rows = new ArrayList<>();
+		Path dir = calibrationDir();
+		try {
+			BufferedImage anchor = ImageIO.read(frame.toFile());
+			BufferedImage previous = anchor;
+			if (CALIBRATE) {
+				rows.add(new Calibration(waited, false, null, 0, keep(dir, name, 0, frame), idle(context, aspect)));
+			}
+			int index = 0;
+			while (true) {
+				index++;
+				context.waitTicks(Math.max(1, Math.min(PROBE_TICKS - cost, limit - clock)));
+				long before = gameTime(context);
+				Path probe = context.takeScreenshot(options(name + "_ref", size));
+				long after = gameTime(context);
+				int at = waited + (int) (before - g0);
+				clock = waited + (int) (after - g0);
+				cost = (int) (after - before);
+				boolean atLimit = clock >= limit;
+				BufferedImage image = ImageIO.read(probe.toFile());
+				FrameDiff.Result vsAnchor = FrameDiff.compare(anchor, image, false);
+				boolean changed = !vsAnchor.equal();
+				if (changed) {
+					anchor = image;
+				}
+				boolean found;
+				if (CALIBRATE) {
+					Idle idle = idle(context, aspect);
+					found = pattern.accept(at, changed, idle::ready);
+					rows.add(new Calibration(at, changed, vsAnchor, FrameDiff.compare(previous, image, false).diffShare(),
+							keep(dir, name, index, probe), idle));
+				} else {
+					found = pattern.accept(at, changed, () -> idle(context, aspect).ready());
+				}
+				previous = image;
+				if (CALIBRATE ? atLimit : found || atLimit) {
+					ref = probe;
+					refAt = at;
+					stable = pattern.found();
+					break;
+				}
+				Files.delete(probe);
+			}
+			if (CALIBRATE) {
+				calibration(name, rows, ImageIO.read(ref.toFile()), dir, pattern);
+			}
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
+		String kind = CALIBRATE ? "calibration final frame" : stable ? "pattern" : "NO STABLE FRAME, limit";
+		String last = pattern.lastChangeTick() < 0 ? "no change after the screenshot"
+				: String.format(Locale.ROOT, "last change %.1f s after the screenshot", (pattern.lastChangeTick() - waited) / 20.0);
+		if (!stable && !CALIBRATE) {
+			PolishForests.LOG.warn("[view] {}: no stable reference frame within {} s (window {} s)", name, CHECK_SECONDS,
+					STABLE_TICKS_WINDOW / 20.0);
+		}
+		report(name, frame, ref, String.format(Locale.ROOT, "%.1f s\t%s at %.1f s, %s, %d changes, window %.1f s", waited / 20.0, kind,
+				refAt / 20.0, last, pattern.changes(), STABLE_TICKS_WINDOW / 20.0));
+	}
+
+	private static long gameTime(ClientGameTestContext context) {
+		return context.computeOnClient(mc -> mc.level == null ? 0L : mc.level.getGameTime());
+	}
+
+	/** Compares the screenshot with the reference, logs and records the result ({@code head}: the leading columns of the report line). */
+	private static void report(String name, Path frame, Path ref, String head) {
 		try {
 			BufferedImage a = ImageIO.read(frame.toFile());
 			BufferedImage b = ImageIO.read(ref.toFile());
@@ -332,7 +450,7 @@ final class ViewReady {
 			if (!d.equal()) {
 				different++;
 			}
-			String line = String.format(Locale.ROOT, "%s\t%.1f s\t%s", name, waited / 20.0, d.describe());
+			String line = String.format(Locale.ROOT, "%s\t%s\t%s", name, head, d.describe());
 			if (d.equal()) {
 				PolishForests.LOG.info("[view] check {}", line);
 			} else {
@@ -350,6 +468,97 @@ final class ViewReady {
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
 		}
+	}
+
+	// ------------------------------------------------------------------ idleness of the view and the calibration
+
+	/**
+	 * What may still change the image: {@code queue}: the client's compile queue is empty; {@code cone}: every section the
+	 * rays of the cone meet is meshed; {@code server}: every chunk around the camera (to the horizontal limit of the cone) is
+	 * full on the server and its light engine has no work; {@code light}: the client's light engine has work.
+	 */
+	record Idle(boolean queue, boolean cone, boolean server, boolean light) {
+		boolean ready() {
+			return (queue || !IDLE_QUEUE) && cone && server && !light;
+		}
+	}
+
+	private record ClientState(Probe probe, boolean light, int renderDistance) {
+	}
+
+	private static Idle idle(ClientGameTestContext context, double aspect) {
+		ClientState c = context.computeOnClient(mc -> new ClientState(probe(mc, aspect, false), mc.level != null
+				&& mc.level.getLightEngine().hasLightWork(), mc.options.getEffectiveRenderDistance()));
+		Probe p = c.probe();
+		boolean server = true;
+		TestSingleplayerContext sp = lastSingleplayer;
+		if (sp != null && p.rays() > 0) {
+			int cx = (int) Math.floor(p.x()) >> 4;
+			int cz = (int) Math.floor(p.z()) >> 4;
+			int radius = (int) Math.ceil(ViewCone.horizontalLimit(c.renderDistance()) / 16.0);
+			server = sp.getServer().computeOnServer(s -> {
+				for (int dx = -radius; dx <= radius; dx++) {
+					for (int dz = -radius; dz <= radius; dz++) {
+						if (s.overworld().getChunkSource().getChunkNow(cx + dx, cz + dz) == null) {
+							return false;
+						}
+					}
+				}
+				return !s.overworld().getChunkSource().getLightEngine().hasLightWork();
+			});
+		}
+		return new Idle(p.queueEmpty(), p.coneReady(), server, c.light());
+	}
+
+	/** One probe of the calibration run: the time, the verdict on the change and the file to compare with the final frame later. */
+	private record Calibration(int tick, boolean changed, FrameDiff.Result vsAnchor, double previousShare, Path copy, Idle idle) {
+	}
+
+	private static Path calibrationDir() {
+		String dir = System.getProperty("polishforests.view.out");
+		return CALIBRATE && dir != null && !dir.isBlank() ? Path.of(dir, "calib") : null;
+	}
+
+	/** Keeps a copy of a probe frame for the comparison with the final frame (calibration only). */
+	private static Path keep(Path dir, String name, int index, Path probe) throws IOException {
+		if (dir == null) {
+			return null;
+		}
+		Files.createDirectories(dir);
+		Path copy = dir.resolve(name + "_" + index + ".png");
+		Files.copy(probe, copy, StandardCopyOption.REPLACE_EXISTING);
+		return copy;
+	}
+
+	/**
+	 * Writes the rows of a calibration run to {@code calibration.tsv}: for each probe the time (s after the teleport), the
+	 * change against the anchor frame, the differences against the anchor, the previous probe and the final frame, and the
+	 * idleness flags. {@code tools/dev/view_calibration.py} derives the window W and the loss of the adaptive reference from them.
+	 */
+	private static void calibration(String name, List<Calibration> rows, BufferedImage fin, Path dir, ViewPattern pattern) throws IOException {
+		if (dir == null) {
+			return;
+		}
+		Path file = dir.getParent().resolve("calibration.tsv");
+		StringBuilder out = new StringBuilder();
+		if (!Files.exists(file)) {
+			out.append("frame\tt\tchange\tanchorShare\tanchorHole\tanchorTiles\tprevShare\tfinalEqual\tfinalShare\tfinalHole\tfinalTiles"
+					+ "\tqueue\tcone\tserver\tlight\n");
+		}
+		for (Calibration r : rows) {
+			FrameDiff.Result f = FrameDiff.compare(ImageIO.read(r.copy().toFile()), fin, false);
+			FrameDiff.Result a = r.vsAnchor();
+			out.append(String.format(Locale.ROOT, "%s\t%.2f\t%d\t%.5f\t%.5f\t%d\t%.5f\t%d\t%.5f\t%.5f\t%d\t%d\t%d\t%d\t%d\n", name,
+					r.tick() / 20.0, r.changed() ? 1 : 0, a == null ? 0 : a.diffShare(), a == null ? 0 : a.holeShare(), a == null ? 0 : a.tiles(),
+					r.previousShare(), f.equal() ? 1 : 0, f.diffShare(), f.holeShare(), f.tiles(), r.idle().queue() ? 1 : 0,
+					r.idle().cone() ? 1 : 0, r.idle().server() ? 1 : 0, r.idle().light() ? 1 : 0));
+			Files.deleteIfExists(r.copy());
+		}
+		Files.writeString(file, out.toString(), StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+		PolishForests.LOG.info("[view] calibration {}: {} probes, {} changes, last change at {} s, reference at {} s with window {} s", name,
+				rows.size() - 1, pattern.changes(), pattern.lastChangeTick() < 0 ? "-" : String.format(Locale.ROOT, "%.1f",
+				pattern.lastChangeTick() / 20.0), pattern.found() ? String.format(Locale.ROOT, "%.1f", pattern.foundTick() / 20.0) : "-",
+				STABLE_TICKS_WINDOW / 20.0);
 	}
 
 	// ------------------------------------------------------------------ the state of the view (client thread)

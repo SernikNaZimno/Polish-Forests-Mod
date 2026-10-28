@@ -609,14 +609,30 @@ tasks.named('runClientGameTest') {
 	// Step V13: the results of -Pgametest=slice -Psites=seasons.
 	jvmArgs "-Dpolishforests.seasons.out=${layout.buildDirectory.dir('seasons').get().asFile.absolutePath}"
 	// Step T7: screenshots wait until the view is drawn (gametest ViewReady). -PviewWait=fixed restores the fixed waits of
-	// before T7 (for a timing comparison); -PviewCheck takes a reference frame <name>_ref 60 s (-PviewCheckSeconds) after
-	// each teleport and compares it with the frame (build/view-check/report.txt and diff images; clouds off in the run),
+	// before T7 (for a timing comparison); -PviewCheck takes a reference frame <name>_ref (adaptive since T8, at the latest 60 s
+	// = -PviewCheckSeconds after each teleport) and compares it with the frame (build/view-check/report.txt and diff images; clouds off in the run),
 	// -PviewCheckOnly=<regex> limits the check to some frames; -PviewReach=<blocks> overrides the reach of the view cone.
 	if (project.hasProperty('viewWait')) {
 		jvmArgs "-Dpolishforests.view.wait=${project.property('viewWait')}"
 	}
 	if (project.hasProperty('viewCheck')) {
 		jvmArgs '-Dpolishforests.view.check=true'
+	}
+	// Step T8: the reference frame of -PviewCheck is adaptive (probe frames every second; the reference is the first one that has
+	// not changed for the window -PviewCheckWindow=<seconds> while the view is idle); -PviewCheckSeconds is the safety limit.
+	// -PviewCheckFixed restores the fixed reference after -PviewCheckSeconds; -PviewCheckCalibrate probes for the whole
+	// -PviewCheckSeconds and records the changes in build/view-check/calibration.tsv (tools/dev/view_calibration.py).
+	if (project.hasProperty('viewCheckFixed')) {
+		jvmArgs '-Dpolishforests.view.checkFixed=true'
+	}
+	if (project.hasProperty('viewCheckCalibrate')) {
+		jvmArgs '-Dpolishforests.view.calibrate=true'
+	}
+	if (project.hasProperty('viewCheckIdle')) {
+		jvmArgs "-Dpolishforests.view.checkIdle=${project.property('viewCheckIdle')}"
+	}
+	if (project.hasProperty('viewCheckWindow')) {
+		jvmArgs "-Dpolishforests.view.checkWindow=${project.property('viewCheckWindow')}"
 	}
 	if (project.hasProperty('viewCheckSeconds')) {
 		jvmArgs "-Dpolishforests.view.checkSeconds=${project.property('viewCheckSeconds')}"

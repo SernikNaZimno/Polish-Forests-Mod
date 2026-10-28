@@ -39,6 +39,11 @@ public final class FrameDiff {
 
 	/** Compares a frame with its reference (same size; a different size counts as entirely different). */
 	public static Result compare(BufferedImage frame, BufferedImage reference) {
+		return compare(frame, reference, true);
+	}
+
+	/** As {@link #compare(BufferedImage, BufferedImage)}; without {@code withImage} the result has no diff image ({@code diff()} is null). */
+	public static Result compare(BufferedImage frame, BufferedImage reference, boolean withImage) {
 		int w = frame.getWidth();
 		int h = frame.getHeight();
 		if (reference.getWidth() != w || reference.getHeight() != h) {
@@ -48,7 +53,7 @@ public final class FrameDiff {
 		int[] b = reference.getRGB(0, 0, w, h, null, 0, w);
 		int[] tileDiff = new int[TILES_X * TILES_Y];
 		int[] tileAll = new int[TILES_X * TILES_Y];
-		BufferedImage out = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
+		BufferedImage out = withImage ? new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB) : null;
 		long diff = 0;
 		long holes = 0;
 		for (int y = 0; y < h; y++) {
@@ -71,7 +76,9 @@ public final class FrameDiff {
 						rgb = 0xFF00FF;
 					}
 				}
-				out.setRGB(x, y, rgb);
+				if (out != null) {
+					out.setRGB(x, y, rgb);
+				}
 			}
 		}
 		int tiles = 0;

@@ -23,6 +23,60 @@ class ViewReadyMathTest {
 	}
 
 	@Test
+	void patternIsTheFirstProbeAfterAQuietWindowOnAnIdleView() {
+		// Step T8: window of 5 s = 100 ticks from the screenshot at tick 40; probes every 20 ticks.
+		ViewPattern p = new ViewPattern(40, 100);
+		assertFalse(p.accept(60, false, () -> true));
+		assertFalse(p.accept(120, false, () -> true));
+		assertTrue(p.accept(140, false, () -> true));
+		assertEquals(-1, p.lastChangeTick());
+		assertEquals(0, p.changes());
+		assertEquals(140, p.foundTick());
+	}
+
+	@Test
+	void aChangeRestartsTheWindowAndIdlenessIsAskedOnlyAfterIt() {
+		ViewPattern p = new ViewPattern(0, 100);
+		assertFalse(p.accept(80, true, () -> true));
+		assertEquals(80, p.lastChangeTick());
+		int[] asked = {0};
+		assertFalse(p.accept(160, false, () -> {
+			asked[0]++;
+			return true;
+		}));
+		assertEquals(0, asked[0], "the view is not asked before the window is over");
+		assertFalse(p.accept(180, false, () -> {
+			asked[0]++;
+			return false;
+		}));
+		assertEquals(1, asked[0]);
+		assertFalse(p.found());
+		assertTrue(p.accept(200, false, () -> true));
+		assertEquals(200, p.foundTick());
+		assertFalse(p.accept(220, true, () -> true));
+		assertEquals(2, p.changes());
+		assertEquals(220, p.lastChangeTick());
+		assertEquals(200, p.foundTick(), "the first reference found stays recorded");
+	}
+
+	@Test
+	void frameDiffWithoutImageGivesTheSameNumbers() {
+		BufferedImage a = new BufferedImage(32, 18, BufferedImage.TYPE_INT_RGB);
+		BufferedImage b = new BufferedImage(32, 18, BufferedImage.TYPE_INT_RGB);
+		for (int x = 0; x < 16; x++) {
+			for (int y = 0; y < 18; y++) {
+				b.setRGB(x, y, 0xFFFFFF);
+			}
+		}
+		FrameDiff.Result with = FrameDiff.compare(a, b);
+		FrameDiff.Result without = FrameDiff.compare(a, b, false);
+		assertEquals(with.diffShare(), without.diffShare(), EPS);
+		assertEquals(with.tiles(), without.tiles());
+		assertFalse(without.equal());
+		assertTrue(without.diff() == null);
+	}
+
+	@Test
 	void centralRayLooksWhereTheCameraLooks() {
 		// yaw 0 looks south (+z), yaw 90 west (-x), pitch 90 straight down.
 		assertVector(new double[] {0, 0, 1}, center(0, 0));
