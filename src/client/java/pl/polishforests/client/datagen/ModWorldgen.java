@@ -50,6 +50,7 @@ import pl.polishforests.worldgen.tree.CrownLayer;
 import pl.polishforests.worldgen.chunk.ModBiomeKeys;
 import pl.polishforests.worldgen.feature.BiomeDecoration;
 import pl.polishforests.worldgen.feature.CavesFilter;
+import pl.polishforests.worldgen.feature.LakeClearanceFilter;
 import pl.polishforests.worldgen.feature.TopOfWorldPlacement;
 import pl.polishforests.worldgen.feature.HabitatFilter;
 import pl.polishforests.worldgen.feature.PlantLayerFeature;
@@ -175,9 +176,11 @@ final class ModWorldgen {
 
 	/**
 	 * The vanilla underground features of the worlds with caves (step J2, {@link BiomeDecoration.CaveFeature}): the vanilla
-	 * configured feature and placement, behind the gate {@code polishforests:caves}. Two differences: the springs only 8
+	 * configured feature and placement, behind the gate {@code polishforests:caves}. Three differences: the springs only 8
 	 * blocks or more below the surface (vanilla also lets them break out of banks and slopes, which would change the
-	 * surface of the forest), and the fossils only under the wetlands and dunes (vanilla: swamps, mangroves, deserts).
+	 * surface of the forest), the lava lake 5 blocks below the ground of its whole footprint, not only of its origin
+	 * ({@link LakeClearanceFilter}: on slopes it opened holes under the forest), and the fossils only under the wetlands
+	 * and dunes (vanilla: swamps, mangroves, deserts).
 	 */
 	private static void caveFeatures(BootstrapContext<PlacedFeature> context, HolderGetter<Feature> features) {
 		HabitatFilter fossilHabitats = new HabitatFilter(new HabitatCondition(FOSSIL_HABITATS, List.of(), List.of(), List.of(),
@@ -192,7 +195,8 @@ final class ModWorldgen {
 							EnvironmentScanPlacement.scanningFor(Direction.DOWN, BlockPredicate.allOf(
 									BlockPredicate.not(BlockPredicate.ONLY_IN_AIR_PREDICATE),
 									BlockPredicate.insideWorld(new BlockPos(0, -5, 0))), 32),
-							SurfaceRelativeThresholdFilter.of(Heightmap.Types.OCEAN_FLOOR_WG, Integer.MIN_VALUE, -5)));
+							SurfaceRelativeThresholdFilter.of(Heightmap.Types.OCEAN_FLOOR_WG, Integer.MIN_VALUE, -5),
+							LakeClearanceFilter.INSTANCE));
 					yield MiscOverworldFeatures.LAKE_LAVA;
 				}
 				case FOSSIL_UPPER -> {

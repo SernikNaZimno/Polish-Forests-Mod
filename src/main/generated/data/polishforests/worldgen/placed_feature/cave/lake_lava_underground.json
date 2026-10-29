@@ -54,6 +54,9 @@
       "max_inclusive": -5
     },
     {
+      "type": "polishforests:lake_clearance"
+    },
+    {
       "type": "minecraft:biome"
     }
   ]

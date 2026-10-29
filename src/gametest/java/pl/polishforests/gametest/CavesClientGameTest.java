@@ -22,6 +22,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.NoiseColumn;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -60,7 +61,10 @@ public final class CavesClientGameTest implements FabricClientGameTest {
 	/**
 	 * Lowest Y of a fault of lava: the vanilla aquifers put lava only below Y -10 (fluid level at most -10) and below the
 	 * vanilla lava level -54, and the deep lava lakes of M2 ({@code polishforests:deep_lava_lake}, vanilla {@code lake_lava}
-	 * placed at Y -54 … 0) fill their lower half, up to 1 block below their origin, so no lava lies at Y 0 or higher.
+	 * placed at Y -54 … 0) fill their lower half, up to 1 block below their origin, so no lava of the noise lies at Y 0
+	 * or higher. Since step J2 the vanilla underground lava lakes and lava springs (Y 0 up to the surface, as in vanilla)
+	 * put lava higher, so the fault is lava at Y 0 or higher that the base column of the generator (the noise caves and
+	 * aquifers, without the features) also has; the lava of the features is only counted.
 	 */
 	private static final int LAVA_FROM_Y = 0;
 	private static final String[] KINDS = {"cheese", "spaghetti", "noodle", "ravine", "lake", "lava", "entrance"};
@@ -312,6 +316,8 @@ public final class CavesClientGameTest implements FabricClientGameTest {
 		long floatingTrunks = 0;
 		long floatingPlants = 0;
 		long highLava = 0;
+		long highNoiseLava = 0;
+		Map<Long, NoiseColumn> baseColumns = new HashMap<>();
 		List<String> faultsAt = new ArrayList<>();
 		long underWater = 0;
 		long underWaterFlooded = 0;
@@ -352,6 +358,13 @@ public final class CavesClientGameTest implements FabricClientGameTest {
 						lava++;
 						if (y >= LAVA_FROM_Y) {
 							highLava++;
+							int bx = x;
+							int bz = z;
+							NoiseColumn base = baseColumns.computeIfAbsent(ChunkPos.pack(x, z), k -> gen.getBaseColumn(bx, bz, level,
+									level.getChunkSource().randomState()));
+							if (base.getBlock(y).is(Blocks.LAVA)) {
+								highNoiseLava++;
+							}
 						}
 					}
 					// Surface water beside or above the cave: a draining river, lake or sea.
@@ -394,9 +407,9 @@ public final class CavesClientGameTest implements FabricClientGameTest {
 			text.append(String.format(Locale.ROOT, " %d+ %.2f%%", BINS[b], allByDepth[b] == 0 ? Double.NaN
 					: 100.0 * caveByDepth[b] / allByDepth[b]));
 		}
-		text.append(String.format(Locale.ROOT, "; cave water %d, lava %d (at or above Y %d: %d); entrances %d (%.0f per km2); "
+		text.append(String.format(Locale.ROOT, "; cave water %d, lava %d (at or above Y %d: %d, of the noise %d); entrances %d (%.0f per km2); "
 				+ "under surface water (32 blocks): %d of %d blocks cave water; contacts with surface water %d; trunks over "
-				+ "opened tops %d, other blocks over opened tops %d; spots %s", water, lava, LAVA_FROM_Y, highLava, entrances,
+				+ "opened tops %d, other blocks over opened tops %d; spots %s", water, lava, LAVA_FROM_Y, highLava, highNoiseLava, entrances,
 				entrances / km2, underWaterFlooded, underWater, contacts, floatingTrunks, floatingPlants, spots.keySet()));
 		List<String> failures = new ArrayList<>();
 		if (contacts > 0) {
@@ -408,8 +421,8 @@ public final class CavesClientGameTest implements FabricClientGameTest {
 		if (floatingPlants > 0) {
 			failures.add(name + ": " + floatingPlants + " blocks over opened tops " + faultsAt);
 		}
-		if (highLava > 0) {
-			failures.add(name + ": lava at or above Y " + LAVA_FROM_Y + " in " + highLava + " blocks");
+		if (highNoiseLava > 0) {
+			failures.add(name + ": lava of the noise at or above Y " + LAVA_FROM_Y + " in " + highNoiseLava + " blocks");
 		}
 		section(level, place, name);
 		return new Report(text.toString(), failures, spots, top0);

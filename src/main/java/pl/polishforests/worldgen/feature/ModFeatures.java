@@ -159,6 +159,7 @@ public final class ModFeatures {
 		// the cave biomes.
 		Registry.register(BuiltInRegistries.PLACEMENT_MODIFIER_TYPE, PolishForests.id("caves"), CavesFilter.CODEC);
 		Registry.register(BuiltInRegistries.PLACEMENT_MODIFIER_TYPE, PolishForests.id("top_of_world"), TopOfWorldPlacement.CODEC);
+		Registry.register(BuiltInRegistries.PLACEMENT_MODIFIER_TYPE, PolishForests.id("lake_clearance"), LakeClearanceFilter.CODEC);
 		Registry.register(BuiltInRegistries.TRUNK_PLACER_TYPE, PolishForests.id("clump"), ClumpTrunkPlacer.TYPE);
 	}
 

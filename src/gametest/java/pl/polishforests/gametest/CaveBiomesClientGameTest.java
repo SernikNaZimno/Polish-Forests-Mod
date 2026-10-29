@@ -72,7 +72,21 @@ public final class CaveBiomesClientGameTest implements FabricClientGameTest {
 	/** Blocks that the cave biomes may change at the surface: the azaleas of the lush caves and the sulfur springs. */
 	private static final List<Block> SURFACE_ALLOWED = List.of(Blocks.AZALEA, Blocks.FLOWERING_AZALEA, Blocks.AZALEA_LEAVES,
 			Blocks.FLOWERING_AZALEA_LEAVES, Blocks.OAK_LOG, Blocks.ROOTED_DIRT, Blocks.HANGING_ROOTS, Blocks.MOSS_BLOCK,
-			Blocks.MOSS_CARPET, Blocks.SULFUR, Blocks.CINNABAR, Blocks.WATER);
+			Blocks.MOSS_CARPET, Blocks.SULFUR, Blocks.CINNABAR, Blocks.WATER,
+			// The floor of a cave mouth: a column whose top the cave took is the cave floor, where the cave biome below
+			// the model top decorates it (clay pools and dripleaves, vines, dripstone, sculk, glow lichen), as in vanilla.
+			Blocks.CLAY, Blocks.BIG_DRIPLEAF, Blocks.BIG_DRIPLEAF_STEM, Blocks.SMALL_DRIPLEAF, Blocks.CAVE_VINES,
+			Blocks.CAVE_VINES_PLANT, Blocks.SPORE_BLOSSOM, Blocks.GLOW_LICHEN, Blocks.POINTED_DRIPSTONE, Blocks.DRIPSTONE_BLOCK,
+			Blocks.SCULK, Blocks.SCULK_VEIN);
+
+	/** The decorations of each cave biome ({@link CaveBiomes#KEYS} order) that the frame of the biome should show. */
+	private static final List<List<Block>> MARKERS = List.of(
+			List.of(Blocks.MOSS_BLOCK, Blocks.MOSS_CARPET, Blocks.CAVE_VINES, Blocks.CAVE_VINES_PLANT, Blocks.SPORE_BLOSSOM,
+					Blocks.BIG_DRIPLEAF, Blocks.BIG_DRIPLEAF_STEM, Blocks.SMALL_DRIPLEAF, Blocks.CLAY, Blocks.AZALEA,
+					Blocks.FLOWERING_AZALEA, Blocks.ROOTED_DIRT, Blocks.HANGING_ROOTS),
+			List.of(Blocks.DRIPSTONE_BLOCK, Blocks.POINTED_DRIPSTONE),
+			List.of(Blocks.SULFUR, Blocks.CINNABAR),
+			List.of(Blocks.SCULK, Blocks.SCULK_VEIN, Blocks.SCULK_SENSOR, Blocks.SCULK_SHRIEKER, Blocks.SCULK_CATALYST));
 
 	/** A camera spot. */
 	private record Spot(int x, int y, int z, float yaw, float pitch, int score) {
@@ -99,6 +113,11 @@ public final class CaveBiomesClientGameTest implements FabricClientGameTest {
 				forest = sp.getServer().computeOnServer(CaveBiomesClientGameTest::forest);
 				report.append(String.format(Locale.ROOT, "forest over the lush caves at (%d, %d), lush caves at Y %d%n", forest[0],
 						forest[1], forest[2]));
+				// 4. The forest over the lush caves, after J2: generated first, in the same order as in the world before J2
+				// (decoration across chunk borders depends on the order of generation, the known 0.9% of `determinism`; the
+				// frames below would otherwise generate these chunks from the client's view first).
+				int[] place = forest;
+				after = sp.getServer().computeOnServer(s -> surface(s.overworld(), place));
 				BlockPos origin = new BlockPos(forest[0], 0, forest[1]);
 				// 1. Locate.
 				List<BlockPos> located = new ArrayList<>();
@@ -131,8 +150,9 @@ public final class CaveBiomesClientGameTest implements FabricClientGameTest {
 					}
 					ResourceKey<Biome> key = CaveBiomes.KEYS.get(k);
 					BlockPos at = located.get(k);
+					int biomeIndex = k;
 					Spot spot = sp.getServer().computeOnServer(s -> spot(s.overworld(), at, 40,
-							p -> s.overworld().getBiome(p).is(key)));
+							p -> s.overworld().getBiome(p).is(key), MARKERS.get(biomeIndex)));
 					if (spot == null) {
 						failures.add(scale.getSerializedName() + ": no open spot in " + NAMES[k] + " near " + at.toShortString());
 						continue;
@@ -173,8 +193,6 @@ public final class CaveBiomesClientGameTest implements FabricClientGameTest {
 					}
 					shot(context, sp, spot, name + "_" + feature);
 				}
-				// 4. The forest over the lush caves, after J2.
-				after = sp.getServer().computeOnServer(s -> surface(s.overworld(), forest));
 				forestShot(context, sp, forest, name + "_forest_after");
 			}
 			// 4. The same world without the cave biomes (step J1), the same forest before J2.
@@ -202,6 +220,8 @@ public final class CaveBiomesClientGameTest implements FabricClientGameTest {
 	private static void select(WorldCreationUiState ui, ResourceKey<WorldPreset> preset) {
 		ui.setSeed(SEED);
 		ui.setAllowCommands(true);
+		// The test world builder turns structures off by default; /locate structure and the frames of the structures need them.
+		ui.setGenerateStructures(true);
 		ui.setWorldType(ui.getNormalPresetList().stream().filter(e -> e.preset().is(preset)).findFirst()
 				.orElseThrow(() -> new AssertionError("Missing world type " + preset.identifier())));
 		if (!(ui.getSettings().selectedDimensions().overworld() instanceof PolandChunkGenerator gen) || !gen.settings().caves()) {
@@ -212,6 +232,8 @@ public final class CaveBiomesClientGameTest implements FabricClientGameTest {
 	private static void prepare(ClientGameTestContext context, TestSingleplayerContext sp) {
 		sp.getServer().runCommand("gamerule advance_time false");
 		sp.getServer().runCommand("gamerule advance_weather false");
+		// No random ticks: grass spreading and the plants' own ticks would differ between the forest before and after.
+		sp.getServer().runCommand("gamerule random_tick_speed 0");
 		sp.getServer().runCommand("time set 6000");
 		sp.getServer().runCommand("weather clear");
 		sp.getServer().runCommand("gamemode spectator @a");
@@ -331,10 +353,11 @@ public final class CaveBiomesClientGameTest implements FabricClientGameTest {
 	}
 
 	/**
-	 * The most open air spot within {@code radius} blocks (and 32 blocks up or down) of {@code center} that passes
-	 * {@code inside}, with a floor below; the camera looks along the longest run of air.
+	 * The most open air spot within {@code radius} blocks (and 32 blocks up or down) of {@code center} whose standing
+	 * position passes {@code inside}, with a floor below; the camera looks along the longest run of air. Blocks of
+	 * {@code markers} (the decorations of a cave biome) within 6 blocks add to the score, so the frame shows them.
 	 */
-	private static Spot spot(ServerLevel level, BlockPos center, int radius, Predicate<BlockPos> inside) {
+	private static Spot spot(ServerLevel level, BlockPos center, int radius, Predicate<BlockPos> inside, List<Block> markers) {
 		load(level, center, radius + 24);
 		BlockPos.MutableBlockPos at = new BlockPos.MutableBlockPos();
 		Spot best = null;
@@ -349,7 +372,8 @@ public final class CaveBiomesClientGameTest implements FabricClientGameTest {
 					while (floor < 5 && level.getBlockState(at.set(x, y - floor - 1, z)).isAir()) {
 						floor++;
 					}
-					if (floor >= 5 || !inside.test(at.set(x, y, z))) {
+					// The biome where the camera stands (F3 and the frame), not at the air cell above it.
+					if (floor >= 5 || !inside.test(at.set(x, y - floor, z))) {
 						continue;
 					}
 					int[] runs = {run(level, x, y + 1, z, 1, 0), run(level, x, y + 1, z, -1, 0), run(level, x, y + 1, z, 0, 1),
@@ -360,7 +384,7 @@ public final class CaveBiomesClientGameTest implements FabricClientGameTest {
 							dir = d;
 						}
 					}
-					int score = runs[0] + runs[1] + runs[2] + runs[3];
+					int score = runs[0] + runs[1] + runs[2] + runs[3] + 2 * markers(level, x, y, z, markers);
 					if (best == null || score > best.score()) {
 						float yaw = switch (dir) {
 							case 0 -> -90.0F;
@@ -374,6 +398,25 @@ public final class CaveBiomesClientGameTest implements FabricClientGameTest {
 			}
 		}
 		return best;
+	}
+
+	/** Blocks of {@code markers} in a 13-block cube around (x, y, z), sampled every second block, at most 40. */
+	private static int markers(ServerLevel level, int x, int y, int z, List<Block> markers) {
+		if (markers.isEmpty()) {
+			return 0;
+		}
+		BlockPos.MutableBlockPos at = new BlockPos.MutableBlockPos();
+		int n = 0;
+		for (int dx = -6; dx <= 6; dx += 2) {
+			for (int dy = -6; dy <= 6; dy += 2) {
+				for (int dz = -6; dz <= 6; dz += 2) {
+					if (markers.contains(level.getBlockState(at.set(x + dx, y + dy, z + dz)).getBlock()) && ++n >= 40) {
+						return n;
+					}
+				}
+			}
+		}
+		return n;
 	}
 
 	/** Air run from (x, y, z) along (dx, dz), up to 24 blocks. */
@@ -449,7 +492,11 @@ public final class CaveBiomesClientGameTest implements FabricClientGameTest {
 				key.identifier().getPath(), chunk.toShortString(), box, start.getPieces().size(), biome));
 		BoundingBox first = start.getPieces().getFirst().getBoundingBox();
 		BlockPos at = new BlockPos(first.getCenter().getX(), first.minY() + 2, first.getCenter().getZ());
-		return spot(level, at, 20, p -> box.isInside(p));
+		return spot(level, at, 20, p -> box.isInside(p), List.of());
+	}
+
+	private static boolean dungeonFloor(BlockState s) {
+		return s.is(Blocks.COBBLESTONE) || s.is(Blocks.MOSSY_COBBLESTONE);
 	}
 
 	/** A geode (an air cell with amethyst around it) or a monster room (a spawner) within 6 chunks of {@code around}. */
@@ -468,10 +515,13 @@ public final class CaveBiomesClientGameTest implements FabricClientGameTest {
 					}
 					for (int y = bottom; y <= (geode ? Math.min(top, 40) : top); y++) {
 						BlockState s = level.getBlockState(at.set(x, y, z));
-						if (geode ? s.is(Blocks.BUDDING_AMETHYST) : s.is(Blocks.SPAWNER)) {
+						// A monster room: a spawner on its cobblestone floor (not the cave spider spawner of a mineshaft).
+						if (geode ? s.is(Blocks.BUDDING_AMETHYST) : s.is(Blocks.SPAWNER) && dungeonFloor(level.getBlockState(
+								at.set(x, y - 1, z)))) {
+							at.set(x, y, z);
 							report.append(String.format(Locale.ROOT, "%s at (%d, %d, %d)%n", feature, x, y, z));
 							BlockPos found = new BlockPos(x, y, z);
-							Spot spot = spot(level, found, 6, p -> p.distSqr(found) <= 49);
+							Spot spot = spot(level, found, 6, p -> p.distSqr(found) <= 49, List.of());
 							if (spot != null) {
 								return spot;
 							}
@@ -503,13 +553,22 @@ public final class CaveBiomesClientGameTest implements FabricClientGameTest {
 			failures.add(name + ": F3 biome on the client is " + clientBiome);
 		}
 		context.runOnClient(mc -> {
+			// The other frames hide the HUD (F1), which hides the F3 overlay too.
+			if (mc.gui.hud.isHidden()) {
+				mc.gui.hud.toggle();
+			}
 			mc.debugEntries.setStatus(DebugScreenEntries.BIOME, DebugScreenEntryStatus.IN_OVERLAY);
 			mc.debugEntries.setOverlayVisible(true);
 			mc.gui.hud.getChat().clearMessages(false);
 		});
 		context.waitTicks(20);
 		ViewReady.take(context, name, null, ready);
-		context.runOnClient(mc -> mc.debugEntries.setOverlayVisible(false));
+		context.runOnClient(mc -> {
+			mc.debugEntries.setOverlayVisible(false);
+			if (!mc.gui.hud.isHidden()) {
+				mc.gui.hud.toggle();
+			}
+		});
 		PolishForests.LOG.info("[cave_biomes] {}: client biome {}", name, clientBiome);
 	}
 
@@ -527,7 +586,10 @@ public final class CaveBiomesClientGameTest implements FabricClientGameTest {
 
 	/**
 	 * The surface of the 5 × 5 chunks around the forest place: per block from 8 below to 40 above the top of the column
-	 * ({@code WORLD_SURFACE_WG} of the generator), the block id by position.
+	 * ({@code WORLD_SURFACE_WG} of the generator), the block id by position. The key starts with {@code S} for the forest
+	 * (the top block of the column and everything above it) and with {@code U} for the ground below it, where the
+	 * underground features of J2 may legitimately reach (lava lakes 5 and springs 8 blocks under the surface, the clay
+	 * pools of the lush caves).
 	 */
 	private static Map<String, Integer> surface(ServerLevel level, int[] forest) {
 		Map<String, Integer> blocks = new TreeMap<>();
@@ -545,37 +607,84 @@ public final class CaveBiomesClientGameTest implements FabricClientGameTest {
 						level.getChunkSource().randomState());
 				for (int y = top - 8; y <= top + 40; y++) {
 					BlockState s = level.getBlockState(at.set(x, y, z));
-					blocks.put(x + " " + y + " " + z, Block.getId(s));
+					blocks.put((y >= top - 1 ? "S " : "U ") + x + " " + y + " " + z, Block.getId(s));
 				}
 			}
 		}
 		return blocks;
 	}
 
-	/** Differences of the surface before and after: FAIL when a block outside {@link #SURFACE_ALLOWED} changed. */
+	/**
+	 * Differences of the surface before and after: FAIL when a block of the forest (the top block of a column and above)
+	 * outside {@link #SURFACE_ALLOWED} changed; the changes of the ground below are listed (report only). A change between
+	 * two blocks of the vegetation ({@link #vegetation}: a leaf state, a plant overwritten by a moss carpet of a
+	 * neighboring tree) is the order of generation of the decoration across chunk borders, which differs between two
+	 * worlds (the free order of the {@code determinism} test: up to 0.006% of the blocks of its windows); up to
+	 * {@link #ORDER_SHARE} of the forest blocks they are only counted, more of them fail as an unexpected change (a shift
+	 * of the feature seeds, J2-h, would change thousands).
+	 */
 	private static String compare(Map<String, Integer> before, Map<String, Integer> after) {
 		Map<String, Integer> pairs = new TreeMap<>();
+		Map<String, Integer> ground = new TreeMap<>();
+		List<String> where = new ArrayList<>();
 		int changed = 0;
 		int unexpected = 0;
+		int order = 0;
+		int forest = 0;
 		for (Map.Entry<String, Integer> e : before.entrySet()) {
+			boolean surface = e.getKey().startsWith("S");
+			if (surface) {
+				forest++;
+			}
 			Integer a = after.get(e.getKey());
 			if (a == null || a.equals(e.getValue())) {
 				continue;
 			}
-			changed++;
 			BlockState b0 = Block.stateById(e.getValue());
 			BlockState b1 = Block.stateById(a);
+			String pair = BuiltInRegistries.BLOCK.getKey(b0.getBlock()).getPath() + "->"
+					+ BuiltInRegistries.BLOCK.getKey(b1.getBlock()).getPath();
+			if (!surface) {
+				ground.merge(pair, 1, Integer::sum);
+				continue;
+			}
+			changed++;
 			boolean allowed = SURFACE_ALLOWED.contains(b0.getBlock()) || SURFACE_ALLOWED.contains(b1.getBlock());
+			if (!allowed && vegetation(b0) && vegetation(b1)) {
+				order++;
+				pairs.merge(pair + "(order)", 1, Integer::sum);
+				continue;
+			}
 			if (!allowed) {
 				unexpected++;
+				if (where.size() < 8) {
+					where.add(pair + " at (" + e.getKey().substring(2) + ")");
+				}
 			}
-			String pair = BuiltInRegistries.BLOCK.getKey(b0.getBlock()).getPath() + "->"
-					+ BuiltInRegistries.BLOCK.getKey(b1.getBlock()).getPath() + (allowed ? "" : "(!)");
-			pairs.merge(pair, 1, Integer::sum);
+			pairs.merge(pair + (allowed ? "" : "(!)"), 1, Integer::sum);
 		}
-		String text = String.format(Locale.ROOT, "%d of %d blocks changed, %d unexpected: %s", changed, before.size(), unexpected,
-				pairs);
-		return unexpected > 0 ? "FAIL " + text : text;
+		boolean tooMuchOrder = order > ORDER_SHARE * forest;
+		String text = String.format(Locale.ROOT, "%d of %d forest blocks changed, %d unexpected, %d of the vegetation by the order "
+				+ "of generation (at most %.0f): %s%s; ground below (report only): %s", changed, forest, unexpected, order,
+				ORDER_SHARE * forest, pairs, where.isEmpty() ? "" : " " + where, ground);
+		return unexpected > 0 || tooMuchOrder ? "FAIL " + text : text;
+	}
+
+	/** Share of the forest blocks whose vegetation may differ by the order of generation (0.01%). */
+	private static final double ORDER_SHARE = 1e-4;
+
+	/**
+	 * A block of the vegetation over the ground: air, leaves, logs and trunks, or a block without a full collision box
+	 * (plants, carpets, litter), never a fluid.
+	 */
+	private static boolean vegetation(BlockState s) {
+		if (!s.getFluidState().isEmpty()) {
+			return false;
+		}
+		return s.isAir() || s.is(net.minecraft.tags.BlockTags.LEAVES) || s.is(net.minecraft.tags.BlockTags.LOGS)
+				|| s.getBlock() instanceof pl.polishforests.block.TrunkBlock
+				|| s.getCollisionShape(net.minecraft.world.level.EmptyBlockGetter.INSTANCE, BlockPos.ZERO).max(
+						net.minecraft.core.Direction.Axis.Y) <= 0.25;
 	}
 
 	private static void write(String scale, String text) {
