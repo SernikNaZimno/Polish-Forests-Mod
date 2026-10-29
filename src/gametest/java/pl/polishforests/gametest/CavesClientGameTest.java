@@ -22,6 +22,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
@@ -42,11 +43,12 @@ import pl.polishforests.worldgen.surface.ChunkSurface;
  * and the sea coast found in the model, and the nearest start chunk of the vanilla canyon carver. In each place a survey of the generated chunks against their surface plans
  * ({@code PolandChunkGenerator.surface}): the share of cave blocks by depth below the plan top, cave water and lava,
  * cave entrances per km², and the faults: a cave beside or under the water of the surface (a draining river, lake or sea),
- * a trunk or plant over an opened top, lava above Y -10. Then pictures: the 16 vertical slices of the place's chunk down
+ * a trunk or plant over an opened top, lava at Y 0 or higher. Then pictures: the 16 vertical slices of the place's chunk down
  * to the world bottom ({@code build/caves/<scale>_<place>_section.png}, one pixel per block), the inside of the caves
  * found nearby (cheese, spaghetti, noodle, ravine, underground lake, deep lava; {@code caves_<scale>_<place>_<kind>}),
  * a cave entrance in the forest from above and three windows cut into the ground of the lowland and the mountains at the
- * surface, half way down and near the bottom ({@code caves_<scale>_<place>_cut_<level>}).
+ * surface, half way down and near the bottom ({@code caves_<scale>_<place>_cut_<level>}), cut after all places were
+ * surveyed and shot, so no survey sees a window.
  */
 public final class CavesClientGameTest implements FabricClientGameTest {
 	private static final String SEED = "20260927";
@@ -93,6 +95,10 @@ public final class CavesClientGameTest implements FabricClientGameTest {
 				if (places.size() < 5) {
 					failures.add(scale.getSerializedName() + ": only " + places.size() + " of 5 places found");
 				}
+				// The windows are cut only after every place was surveyed and shot: a window opens the ground, and a later place
+				// whose area covers it (the REAL river valley next to the lowland forest) would count and shoot it as a cave
+				// entrance (J1 review, round 1).
+				List<Runnable> cuts = new ArrayList<>();
 				for (Place place : places) {
 					String name = "caves_" + scale.getSerializedName() + "_" + place.name();
 					Report r = sp.getServer().computeOnServer(s -> survey(s, place, name));
@@ -114,9 +120,10 @@ public final class CavesClientGameTest implements FabricClientGameTest {
 						ViewReady.shot(context, sp, name + "_" + spot.kind(), null, 25);
 					}
 					if (place.cut()) {
-						cut(context, sp, place, r.top(), name);
+						cuts.add(() -> cut(context, sp, place, r.top(), name, failures));
 					}
 				}
+				cuts.forEach(Runnable::run);
 			}
 		}
 		if (!failures.isEmpty()) {
@@ -615,9 +622,13 @@ public final class CavesClientGameTest implements FabricClientGameTest {
 
 	/**
 	 * Three windows cut into the ground in front of the place's chunk (16 × 24 blocks, 14 deep: the chunk south of it) at
-	 * the surface, half way down and near the bottom, each shot from inside the window toward the cut face.
+	 * the surface, half way down and near the bottom, each shot from inside the window toward the cut face. The window is
+	 * cleared on the server after loading its chunk, not with the {@code fill} command: since the windows are cut after all
+	 * places, the player stands far away and {@code fill} would fail on an unloaded chunk without an error in the test, leaving
+	 * the camera inside the rock (J1 review, round 2). A window that is not empty afterwards is a test failure.
 	 */
-	private static void cut(ClientGameTestContext context, TestSingleplayerContext sp, Place place, int top, String name) {
+	private static void cut(ClientGameTestContext context, TestSingleplayerContext sp, Place place, int top, String name,
+			List<String> failures) {
 		int minY = -64;
 		int x0 = place.cx() << 4;
 		int z0 = (place.cz() << 4) + 16;
@@ -625,9 +636,26 @@ public final class CavesClientGameTest implements FabricClientGameTest {
 		String[] names = {"surface", "middle", "bottom"};
 		for (int k = 0; k < levels.length; k++) {
 			int y0 = levels[k];
-			sp.getServer().runCommand(String.format(Locale.ROOT, "fill %d %d %d %d %d %d air", x0, y0, z0, x0 + 15, y0 + 23, z0 + 13));
+			int left = sp.getServer().computeOnServer(s -> clear(s.overworld(), x0, y0, z0));
+			if (left > 0) {
+				failures.add(name + "_cut_" + names[k] + ": " + left + " blocks left in the window");
+			}
 			sp.getServer().runCommand(String.format(Locale.ROOT, "tp @a %.1f %.1f %.1f 180 0", x0 + 8.0, y0 + 11.0, z0 + 13.0));
 			ViewReady.shot(context, sp, name + "_cut_" + names[k], null, 25);
 		}
+	}
+
+	/** Sets the 16 × 24 × 14 window to air (block updates to the clients only) and returns the blocks that are not air after it. */
+	private static int clear(ServerLevel level, int x0, int y0, int z0) {
+		level.getChunk(x0 >> 4, z0 >> 4);
+		BlockState air = Blocks.AIR.defaultBlockState();
+		int left = 0;
+		for (BlockPos p : BlockPos.betweenClosed(x0, y0, z0, x0 + 15, y0 + 23, z0 + 13)) {
+			if (!level.getBlockState(p).isAir()) {
+				level.setBlock(p, air, Block.UPDATE_CLIENTS);
+				left += level.getBlockState(p).isAir() ? 0 : 1;
+			}
+		}
+		return left;
 	}
 }
