@@ -9,7 +9,8 @@
 			"pl.polishforests.gametest.probe.RenderProbes"
 		],
 		"client": [
-			"pl.polishforests.gametest.probe.RenderProbesClient"
+			"pl.polishforests.gametest.probe.RenderProbesClient",
+			"pl.polishforests.gametest.GameTestWatchdog"
 		],
 		"fabric-client-gametest": [
 			"pl.polishforests.gametest.UiAndCommandsClientGameTest",

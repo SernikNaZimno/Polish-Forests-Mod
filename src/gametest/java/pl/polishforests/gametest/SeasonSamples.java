@@ -89,12 +89,10 @@ final class SeasonSamples {
 	 */
 	private static final double MIN_WINTER_CANOPY_SKY = 0.15;
 	/**
-	 * … and in GAMEPLAY (stage 2 of Z2, to confirm at CP-D): 11%. The GAMEPLAY oak-hornbeam canopy is denser in the frame
-	 * (15262 broadleaf leaves around the camera against 13468 in REAL): 12.3-13.1% at the canopy camera
-	 * in two runs and 11.6-16.5% (mean 14.0%) at 8 other free columns within 10 blocks, against 17.6% at the REAL camera
-	 * (15.7-21.4%, mean 18.8% at 8 other columns).
+	 * … and in GAMEPLAY the same 15% (review round 1 of Z2; stage 2 had 11%: 12.3% at the canopy camera, where the dry lower
+	 * crowns of subcanopy hornbeams overhead cost about 3 points of sky; without subcanopy marcescence 15.4%).
 	 */
-	private static final double MIN_WINTER_CANOPY_SKY_GAMEPLAY = 0.11;
+	private static final double MIN_WINTER_CANOPY_SKY_GAMEPLAY = 0.15;
 	/** Step Z2 (DP-62): how far the canopy camera may move from the fixed one to a free column. */
 	private static final int CANOPY_SHIFT = 4;
 	/** Wood blocks in one column from 2 to 10 blocks above the camera's feet that make a trunk (step Z2). */
@@ -666,7 +664,147 @@ final class SeasonSamples {
 		}
 		result("canopy camera at %d %d %d (moved %d, %d from the fixed camera to a free column)", cam.x() + shift[0], cam.y(),
 				cam.z() + shift[1], shift[0], shift[1]);
-		return new SliceCameras.Camera(cam.name(), cam.x() + shift[0], cam.y(), cam.z() + shift[1], cam.yaw(), cam.pitch());
+		SliceCameras.Camera moved = new SliceCameras.Camera(cam.name(), cam.x() + shift[0], cam.y(), cam.z() + shift[1], cam.yaw(),
+				cam.pitch());
+		String profile = sp.getServer().computeOnServer(s -> canopyProfile(s, moved));
+		result("%s", profile);
+		return moved;
+	}
+
+	/** Review round 1 of Z2: free columns within this many blocks of the canopy camera for the stand profile. */
+	private static final int PROFILE_RADIUS = 10;
+	/** … and the rays of one canopy frame (vertical field of view 70°, 16:9). */
+	private static final int PROFILE_COLUMNS = 48;
+	private static final int PROFILE_ROWS = 27;
+	private static final int PROFILE_HEIGHT = 48;
+
+	/**
+	 * Review round 1 of Z2: why one canopy frame shows less sky than another. The rays of the frame up from the camera's
+	 * eyes through the blocks (a block traversal): the share of rays that meet no leaves and no wood, the crown shells a ray
+	 * crosses (runs of leaf blocks: a bare crown draws its outer faces only, V13-l, so each run costs the sky of about two
+	 * twig faces), the height of the first leaves above the eyes, and the same for every free column within
+	 * {@value #PROFILE_RADIUS} blocks (the stand around the camera); with the stand of the camera's column.
+	 */
+	private static String canopyProfile(net.minecraft.server.MinecraftServer server, SliceCameras.Camera cam) {
+		ServerLevel level = server.overworld();
+		double[][] rays = ViewCone.rays(cam.yaw(), cam.pitch(), 70, 16 / 9.0, PROFILE_COLUMNS, PROFILE_ROWS, 1.0);
+		double[] here = profile(level, cam.x(), cam.y(), cam.z(), rays);
+		double[] around = new double[here.length];
+		int columns = 0;
+		for (int dx = -PROFILE_RADIUS; dx <= PROFILE_RADIUS; dx++) {
+			for (int dz = -PROFILE_RADIUS; dz <= PROFILE_RADIUS; dz++) {
+				if (dx * dx + dz * dz <= PROFILE_RADIUS * PROFILE_RADIUS && clearUp(level, cam.x() + dx, cam.y(), cam.z() + dz)) {
+					double[] p = profile(level, cam.x() + dx, cam.y(), cam.z() + dz, rays);
+					for (int i = 0; i < p.length; i++) {
+						around[i] += p[i];
+					}
+					columns++;
+				}
+			}
+		}
+		for (int i = 0; i < around.length; i++) {
+			around[i] /= Math.max(1, columns);
+		}
+		String stand = "unknown";
+		if (level.getChunkSource().getGenerator() instanceof pl.polishforests.worldgen.chunk.PolandChunkGenerator gen) {
+			pl.polishforests.worldgen.tree.ForestStandMap.Stand st = gen.standMap(level.getSeed()).stand(cam.x(), cam.z());
+			stand = st.age() + (st.natural() ? " natural" : " managed");
+		}
+		return String.format(Locale.ROOT, "canopy profile: stand %s; camera: %s; %d free columns within %d blocks: %s", stand,
+				profileText(here), columns, PROFILE_RADIUS, profileText(around));
+	}
+
+	private static String profileText(double[] p) {
+		return String.format(Locale.ROOT, "open rays %.1f%%, crown shells per ray %.2f (0: %.0f%%, 1: %.0f%%, 2: %.0f%%, 3: %.0f%%, "
+				+ "4+: %.0f%%), leaf blocks per ray %.1f, first leaves +%.1f, rays through wood %.1f%%, through marcescent leaves %.1f%% (%.2f blocks per ray), through needles %.1f%%",
+				100 * p[0], p[1], 100 * p[2], 100 * p[3], 100 * p[4], 100 * p[5], 100 * p[6], p[7], p[8], 100 * p[9], 100 * p[10], p[11],
+				100 * p[12]);
+	}
+
+	/**
+	 * One column's profile: {open share, shells per ray, share with 0/1/2/3/4+ shells, leaf blocks per ray, mean height of
+	 * the first leaves above the eyes, share through wood, share through marcescent leaves, marcescent blocks per ray, share
+	 * through needles}.
+	 */
+	private static double[] profile(ServerLevel level, int x, int y, int z, double[][] rays) {
+		double[] out = new double[13];
+		BlockPos.MutableBlockPos at = new BlockPos.MutableBlockPos();
+		int firstCount = 0;
+		for (double[] d : rays) {
+			double ox = x + 0.5;
+			double oy = y + 1.62;
+			double oz = z + 0.5;
+			int bx = (int) Math.floor(ox);
+			int by = (int) Math.floor(oy);
+			int bz = (int) Math.floor(oz);
+			int sx = d[0] > 0 ? 1 : -1;
+			int sy = d[1] > 0 ? 1 : -1;
+			int sz = d[2] > 0 ? 1 : -1;
+			double tdx = Math.abs(1 / d[0]);
+			double tdy = Math.abs(1 / d[1]);
+			double tdz = Math.abs(1 / d[2]);
+			double tx = (sx > 0 ? bx + 1 - ox : ox - bx) * tdx;
+			double ty = (sy > 0 ? by + 1 - oy : oy - by) * tdy;
+			double tz = (sz > 0 ? bz + 1 - oz : oz - bz) * tdz;
+			int shells = 0;
+			int leaves = 0;
+			boolean run = false;
+			boolean wood = false;
+			boolean dry = false;
+			boolean needles = false;
+			int dryBlocks = 0;
+			double first = -1;
+			while (by <= y + PROFILE_HEIGHT) {
+				BlockState st = level.getBlockState(at.set(bx, by, bz));
+				if (st.getBlock() instanceof LeavesBlock) {
+					if (!run) {
+						shells++;
+						run = true;
+					}
+					leaves++;
+					if (first < 0) {
+						first = by - oy;
+					}
+					if (MarcescentLeavesBlock.marcescent(st)) {
+						dry = true;
+						dryBlocks++;
+					} else if (st.getBlock() instanceof SpeciesLeavesBlock sl && sl.foliage().conifer()) {
+						needles = true;
+					}
+				} else {
+					run = false;
+					if (st.is(net.minecraft.tags.BlockTags.LOGS) || st.getBlock() instanceof pl.polishforests.block.TrunkBlock) {
+						wood = true;
+					}
+				}
+				if (tx <= ty && tx <= tz) {
+					bx += sx;
+					tx += tdx;
+				} else if (ty <= tz) {
+					by += sy;
+					ty += tdy;
+				} else {
+					bz += sz;
+					tz += tdz;
+				}
+			}
+			out[0] += shells == 0 && !wood ? 1 : 0;
+			out[1] += shells;
+			out[2 + Math.min(4, shells)] += 1;
+			out[7] += leaves;
+			if (first >= 0) {
+				out[8] += first;
+				firstCount++;
+			}
+			out[9] += wood ? 1 : 0;
+			out[10] += dry ? 1 : 0;
+			out[11] += dryBlocks;
+			out[12] += needles ? 1 : 0;
+		}
+		for (int i = 0; i < out.length; i++) {
+			out[i] = i == 8 ? out[i] / Math.max(1, firstCount) : out[i] / rays.length;
+		}
+		return out;
 	}
 
 	/**

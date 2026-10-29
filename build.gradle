@@ -649,6 +649,13 @@ tasks.named('runClientGameTest') {
 		jvmArgs "-Dpolishforests.view.reach=${project.property('viewReach')}"
 	}
 	jvmArgs "-Dpolishforests.view.out=${layout.buildDirectory.dir('view-check').get().asFile.absolutePath}"
+	// Review round 1 of Z2 (the user's request of 2026-10-29: "waiting 60 s is too long"): the stall watchdog of the game
+	// (gametest GameTestWatchdog) ends a run without a game tick and without test work after -PgametestStall=<seconds>
+	// (default 20; 0 = off) with a thread dump in build/gametest-stall/.
+	if (project.hasProperty('gametestStall')) {
+		jvmArgs "-Dpolishforests.gametest.stallSeconds=${project.property('gametestStall')}"
+	}
+	jvmArgs "-Dpolishforests.gametest.stallDir=${layout.buildDirectory.dir('gametest-stall').get().asFile.absolutePath}"
 	if (project.hasProperty('profile')) {
 		jvmArgs "-XX:StartFlightRecording=filename=${layout.buildDirectory.file('profile.jfr').get().asFile.absolutePath},settings=profile"
 	}

@@ -206,9 +206,11 @@ public record ProceduralTreeFeature(Species species, CrownLayer layer, AgeClass 
 	/**
 	 * The chance that a tree of a species, crown layer and age class keeps dead leaves over the winter (step Z2, CP-C.2:
 	 * the bare oak-hornbeam canopy was too closed and too brown, about 17% of its broadleaf leaves marcescent). Strongest in
-	 * young hornbeams and beeches (juvenile marcescence: 3 of 4 pole-stage trees), weaker in young oaks (1 of 2), in about a
-	 * third of the subcanopy hornbeams and beeches (stage 2 of Z2: 0.35, was 0.5) and a quarter of the subcanopy oaks, in
-	 * the lower crown of 1 of 4 mature canopy beeches only; none for a species that never keeps dead leaves. A pole-stage tree includes one grown from a sapling.
+	 * young hornbeams and beeches (juvenile marcescence: 3 of 4 pole-stage trees), weaker in young oaks (1 of 2), in the
+	 * lower crown of 1 of 4 mature canopy beeches only; none for a species that never keeps dead leaves. Subcanopy trees
+	 * keep none (review round 1 of Z2: the dry lower crowns of subcanopy hornbeams overhead cost the GAMEPLAY canopy frame
+	 * about 3 points of sky, 12.3% against 15.4% without them; stage 1 of Z2 had 0.5 for hornbeam and beech and 0.25 for
+	 * oak, stage 2 0.35 and 0.25). A pole-stage tree includes one grown from a sapling.
 	 */
 	public static double marcescentChance(Species species, CrownLayer layer, AgeClass age) {
 		if (!FoliageCurve.marcescent(species)) {
@@ -219,7 +221,7 @@ public record ProceduralTreeFeature(Species species, CrownLayer layer, AgeClass 
 			return oak ? 0.5 : 0.75;
 		}
 		if (layer == CrownLayer.SUBCANOPY) {
-			return oak ? 0.25 : 0.35;
+			return 0.0;
 		}
 		return species == Species.BEECH ? 0.25 : 0.0;
 	}
@@ -228,7 +230,8 @@ public record ProceduralTreeFeature(Species species, CrownLayer layer, AgeClass 
 	 * The share of the crown (from its lowest leaf up) whose leaves are marcescent on a tree that keeps its dead leaves
 	 * ({@link #marcescentChance}): V7 review round 1 had the whole crown of a young tree, the lower half of a subcanopy tree
 	 * and the lowest quarter of a canopy tree on every tree; step Z2 keeps the juvenile zone smaller: 0.6 of a young
-	 * hornbeam or beech (0.4 of a young oak), the lower 0.3 of a subcanopy tree and the lowest 0.15 of a canopy beech.
+	 * hornbeam or beech (0.4 of a young oak) and the lowest 0.15 of a canopy beech (subcanopy trees keep none since review
+	 * round 1 of Z2; before, the lower 0.3).
 	 */
 	public static double marcescentShare(Species species, CrownLayer layer, AgeClass age) {
 		if (marcescentChance(species, layer, age) <= 0.0) {
@@ -237,7 +240,7 @@ public record ProceduralTreeFeature(Species species, CrownLayer layer, AgeClass 
 		if (age == AgeClass.POLE_STAGE) {
 			return species == Species.OAK ? 0.4 : 0.6;
 		}
-		return layer == CrownLayer.SUBCANOPY ? 0.3 : 0.15;
+		return 0.15;
 	}
 
 	/**
