@@ -143,6 +143,10 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 							int oz = areas[a][1] >> 4;
 							Area terrain = fixedOrder ? sp.getServer().computeOnServer(s -> terrain(s.overworld(), ox, oz))
 									: terrainConcurrently(sp, ox, oz, (long) w * 31 + a);
+							String areaKey = scale.getSerializedName() + " " + (presentDay ? "present_day" : "natural") + " " + a;
+							if (w == 0 && DUMP.contains(areaKey)) {
+								sp.getServer().runOnServer(s -> dump(s.overworld(), ox, oz, label, areaKey));
+							}
 							if (fixedOrder) {
 								sp.getServer().runOnServer(s -> decorateInOrder(s.overworld(), ox, oz));
 							} else {
@@ -191,6 +195,50 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 		}
 		if (!failures.isEmpty()) {
 			throw new AssertionError("Determinism: " + String.join("; ", failures));
+		}
+	}
+
+	/**
+	 * Areas whose terrain (after TERRAIN, before FEATURES, the fixed-order world 1) is written block by block for a diff
+	 * between two mod sets ({@code -PdeterminismDump="realistic natural 0;gameplay natural 0"}; step J1 diagnostics):
+	 * {@code <out>/<label>_dump_<area>.txt}, one line per column with its runs of equal blocks.
+	 */
+	private static final java.util.Set<String> DUMP = java.util.Set.of(
+			System.getProperty("polishforests.determinism.dump", "").split(";")).stream().filter(t -> !t.isBlank())
+			.collect(java.util.stream.Collectors.toUnmodifiableSet());
+
+	private static void dump(ServerLevel level, int ox, int oz, String label, String areaKey) {
+		List<String> lines = new ArrayList<>();
+		var source = level.getChunkSource();
+		for (int cx = 0; cx < SIZE; cx++) {
+			for (int cz = 0; cz < SIZE; cz++) {
+				ChunkAccess chunk = source.getChunk(ox + cx, oz + cz, ChunkStatus.TERRAIN, true);
+				for (int x = 0; x < 16; x++) {
+					for (int z = 0; z < 16; z++) {
+						StringBuilder sb = new StringBuilder();
+						sb.append(((ox + cx) << 4) + x).append(' ').append(((oz + cz) << 4) + z);
+						String last = null;
+						net.minecraft.core.BlockPos.MutableBlockPos at = new net.minecraft.core.BlockPos.MutableBlockPos();
+						for (int y = chunk.getMinY(); y <= chunk.getMaxY(); y++) {
+							String st = chunk.getBlockState(at.set(x, y, z)).toString();
+							if (!st.equals(last)) {
+								sb.append(' ').append(y).append(':').append(st.replace(' ', '_'));
+								last = st;
+							}
+						}
+						lines.add(sb.toString());
+					}
+				}
+			}
+		}
+		String dir = System.getProperty("polishforests.determinism.out", "");
+		try {
+			Path file = Path.of(dir.isBlank() ? "." : dir, label + "_dump_" + areaKey.replace(' ', '_') + ".txt");
+			Files.createDirectories(file.getParent());
+			Files.write(file, lines, StandardCharsets.UTF_8);
+			PolishForests.LOG.info("[determinism] terrain of {} written to {}", areaKey, file);
+		} catch (IOException e) {
+			throw new AssertionError("Cannot write the determinism dump", e);
 		}
 	}
 

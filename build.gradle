@@ -116,7 +116,9 @@ dependencies {
 			'clumps:J4I1wxJZ',            // Clumps 26.3.2
 		// -PnoNvidium leaves Nvidium out (V3 review round 1): plain Sodium as on AMD and Intel GPUs, where Nvidium does not
 		// run; on an NVIDIA GPU with mesh shaders Nvidium switches itself on and draws the terrain instead of Sodium.
-		].findAll { !(project.hasProperty('noNvidium') && it.startsWith('nvidium:')) }.each { localRuntime "maven.modrinth:${it}" }
+		].findAll { !(project.hasProperty('noNvidium') && it.startsWith('nvidium:')) }
+				.findAll { m -> !(project.findProperty('excludeMods')?.toString()?.split(',')?.any { m.startsWith(it + ':') }) }
+				.each { localRuntime "maven.modrinth:${it}" }
 	}
 
 	testImplementation 'org.junit.jupiter:junit-jupiter:5.13.4'
@@ -586,6 +588,11 @@ tasks.named('runClientGameTest') {
 	// Determinism test (step S10, -Pgametest=determinism): column hashes go to build/determinism/<plain|optimization>.txt;
 	// -PdeterminismReference=<file> compares the run with a file of a run with the other mod set (with or without -Poptimization).
 	jvmArgs "-Dpolishforests.determinism.out=${layout.buildDirectory.dir('determinism').get().asFile.absolutePath}"
+	// Step J1 diagnostics: -PdeterminismDump="realistic natural 0;gameplay natural 0" writes the terrain of these areas block
+	// by block (build/determinism/<label>_dump_<area>.txt) for a diff between two mod sets.
+	if (project.hasProperty('determinismDump')) {
+		jvmArgs "-Dpolishforests.determinism.dump=${project.property('determinismDump')}"
+	}
 	if (project.hasProperty('determinismReference')) {
 		jvmArgs "-Dpolishforests.determinism.reference=${file(project.property('determinismReference')).absolutePath}"
 	}

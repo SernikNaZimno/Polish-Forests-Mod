@@ -702,6 +702,9 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 				}
 			}
 			int[] blend = gen.soilBlend(pos, around, seed);
+			// Step J1: the columns whose plan top a cave entrance took away, as the chunk fill computed them.
+			long[] caveOpened = gen.caveOpened(pos, level.getChunk(pos.x(), pos.z()), seed, level.getChunkSource().randomState(),
+					level.structureManager());
 			int center = ChunkHabitats.index(x0 & 15, z0 & 15);
 			int blended = 0;
 			HabitatBiome biome = Habitat.biome(codes[center]);
@@ -709,6 +712,8 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 			int mismatched = 0;
 			int erratics = 0;
 			int turf = 0;
+			int opened = 0;
+			int ceilings = 0;
 			Map<String, Integer> blocks = new java.util.TreeMap<>();
 			for (int i = 0; i < 256; i++) {
 				if (Habitat.biome(codes[i]) != biome || plan.wet(i)) {
@@ -719,9 +724,24 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 				if (above.is(BlockTags.LOGS)) {
 					continue;
 				}
+				net.minecraft.world.level.block.state.BlockState actual = level.getBlockState(ground);
+				if ((caveOpened[i >> 6] >>> (i & 63) & 1L) != 0) {
+					// Step J1: the plan top taken away by a cave entrance (the caves are a stage after the plan), so the column
+					// has no ground block of the plan to compare.
+					opened++;
+					continue;
+				}
 				checked++;
 				net.minecraft.world.level.block.Block expected = MaterialStates.of(plan.topMaterial(i)).getBlock();
-				net.minecraft.world.level.block.state.BlockState actual = level.getBlockState(ground);
+				net.minecraft.world.level.block.state.BlockState under = level.getBlockState(ground.below());
+				if ((under.isAir() || !under.getFluidState().isEmpty())
+						&& (expected == net.minecraft.world.level.block.Blocks.SAND && actual.is(net.minecraft.world.level.block.Blocks.SANDSTONE)
+						|| expected == net.minecraft.world.level.block.Blocks.GRAVEL && actual.is(net.minecraft.world.level.block.Blocks.STONE))) {
+					// Step J1: a sand or gravel top over a cave is the ceiling of the cave and turns to sandstone or stone, as the
+					// vanilla rules sand_or_sandstone_if_ceiling and gravel_or_stone_if_ceiling (PolandCaves.finish).
+					expected = actual.getBlock();
+					ceilings++;
+				}
 				if (blend[i] != pl.polishforests.worldgen.surface.SoilBlend.KEEP && !actual.is(expected)
 						&& actual.is(MaterialStates.of(pl.polishforests.worldgen.surface.Material.values()[blend[i] & 0xFF]).getBlock())) {
 					// The soil of a habitat across a border (soil ecotone, step S8b).
@@ -760,7 +780,8 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 			}
 			report.append(String.format(Locale.ROOT, " %s (%d, %d) %s: %d/%d %s%s%s;", SOIL_NAMES[p], x0, z0, biome.id(),
 					checked - mismatched - erratics, checked, blocks, erratics > 0 ? ", " + erratics + " under an erratic" : "",
-					blended > 0 ? ", " + blended + " of a soil across a border" : "") + (turf > 0 ? ", " + turf + " turf over podzol" : ""));
+					blended > 0 ? ", " + blended + " of a soil across a border" : "") + (turf > 0 ? ", " + turf + " turf over podzol" : "")
+					+ (opened > 0 ? ", " + opened + " opened by a cave" : "") + (ceilings > 0 ? ", " + ceilings + " cave ceilings" : ""));
 		}
 		if (!failures.isEmpty()) {
 			throw new AssertionError("Ground blocks differ from the surface plan: " + failures + "; " + report);

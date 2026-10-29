@@ -493,7 +493,8 @@ public final class TreeStandFeature implements Feature {
 
 		/**
 		 * The ground of world column (x, z) for the roots (step I1): its top ground block, or {@link TreeShapePlan.Ground#UNKNOWN}
-		 * for a column with water, a column of a structure piece or near one ({@link #PIECE_GAP}) and beyond the 8 neighbors.
+		 * for a column with water, a column of a structure piece or near one ({@link #PIECE_GAP}), a column whose top a cave
+		 * entrance took away (step J1) and beyond the 8 neighbors.
 		 */
 		int rootGround(int x, int z) {
 			ChunkHabitats h = at(x, z);
@@ -501,7 +502,7 @@ public final class TreeStandFeature implements Feature {
 				return TreeShapePlan.Ground.UNKNOWN;
 			}
 			int i = ChunkHabitats.index(x & 15, z & 15);
-			return h.hasWater(i) || h.pieceDistance(i) <= PIECE_GAP ? TreeShapePlan.Ground.UNKNOWN : h.top()[i];
+			return h.hasWater(i) || h.pieceDistance(i) <= PIECE_GAP || h.caveOpened(i) ? TreeShapePlan.Ground.UNKNOWN : h.top()[i];
 		}
 
 		/** Whether world column (x, z) is in the structure mask of the crowns (by a building or on a piece). */

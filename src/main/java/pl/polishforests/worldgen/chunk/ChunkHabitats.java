@@ -24,13 +24,17 @@ import pl.polishforests.worldgen.habitat.HabitatBiome;
  * @param structures   vegetation mask of the structure pieces near each column ({@code StructureGround}: distance to
  *                     the nearest building piece in the high nibble, to any piece in the low nibble), or
  *                     {@link #NO_STRUCTURES}
+ * @param caveOpened   the columns whose top ground block a cave entrance took away (step J1), one bit per column
+ *                     (4 longs), or {@link #NO_CAVES}; the planners of wood on the ground treat their ground as unknown
  */
 public record ChunkHabitats(int[] codes, short[] top, short[] water, float oceanicity, float mountainInfluence,
-		byte[] structures) {
+		byte[] structures, long[] caveOpened) {
 	/** {@link #water} of a column without water. */
 	public static final short NO_WATER = Short.MIN_VALUE;
 	/** {@link #structures} of a chunk without structure pieces nearby: every distance is the cap 15. */
 	public static final byte[] NO_STRUCTURES = noStructures();
+	/** {@link #caveOpened} of a chunk without opened tops (no caves, or none reaching the surface). */
+	public static final long[] NO_CAVES = new long[4];
 
 	private static byte[] noStructures() {
 		byte[] b = new byte[256];
@@ -48,8 +52,15 @@ public record ChunkHabitats(int[] codes, short[] top, short[] water, float ocean
 			Codec.FLOAT.fieldOf("mountain_influence").forGetter(ChunkHabitats::mountainInfluence),
 			// Since round 1 of the S8 review; missing in attachments saved before it (no structures nearby).
 			Codec.BYTE_BUFFER.xmap(ChunkHabitats::bytes, java.nio.ByteBuffer::wrap)
-					.optionalFieldOf("structures", NO_STRUCTURES).forGetter(ChunkHabitats::structures)
+					.optionalFieldOf("structures", NO_STRUCTURES).forGetter(ChunkHabitats::structures),
+			// Since step J1; missing in attachments saved before it (no caves).
+			Codec.LONG_STREAM.xmap(st -> opened(st.toArray()), java.util.Arrays::stream)
+					.optionalFieldOf("cave_opened", NO_CAVES).forGetter(ChunkHabitats::caveOpened)
 	).apply(i, ChunkHabitats::unpack));
+
+	private static long[] opened(long[] values) {
+		return values.length == 4 ? values : NO_CAVES;
+	}
 
 	private static byte[] bytes(java.nio.ByteBuffer buffer) {
 		byte[] b = new byte[buffer.remaining()];
@@ -73,7 +84,8 @@ public record ChunkHabitats(int[] codes, short[] top, short[] water, float ocean
 	/** Number of attachments read from saved proto-chunks (diagnostics of the game test "habitats"). */
 	public static final java.util.concurrent.atomic.LongAdder LOADED = new java.util.concurrent.atomic.LongAdder();
 
-	private static ChunkHabitats unpack(int[] codes, int[] levels, float oceanicity, float mountainInfluence, byte[] structures) {
+	private static ChunkHabitats unpack(int[] codes, int[] levels, float oceanicity, float mountainInfluence, byte[] structures,
+			long[] caveOpened) {
 		LOADED.increment();
 		short[] top = new short[256];
 		short[] water = new short[256];
@@ -81,11 +93,12 @@ public record ChunkHabitats(int[] codes, short[] top, short[] water, float ocean
 			top[k] = (short) (levels[k] >> 16);
 			water[k] = (short) levels[k];
 		}
-		return new ChunkHabitats(codes, top, water, oceanicity, mountainInfluence, structures);
+		return new ChunkHabitats(codes, top, water, oceanicity, mountainInfluence, structures, caveOpened);
 	}
 
 	public ChunkHabitats {
-		if (codes.length != 256 || top.length != 256 || water.length != 256 || structures.length != 256) {
+		if (codes.length != 256 || top.length != 256 || water.length != 256 || structures.length != 256
+				|| caveOpened.length != 4) {
 			throw new IllegalArgumentException("ChunkHabitats needs 256 columns");
 		}
 	}
@@ -111,6 +124,11 @@ public record ChunkHabitats(int[] codes, short[] top, short[] water, float ocean
 	/** Distance of the column to the nearest structure piece of any kind, also a street (blocks, 15 = none nearby). */
 	public int pieceDistance(int index) {
 		return structures[index] & 15;
+	}
+
+	/** Whether a cave entrance took away the top ground block of the column (step J1): no ground at {@link #top}. */
+	public boolean caveOpened(int index) {
+		return (caveOpened[index >> 6] >>> (index & 63) & 1L) != 0;
 	}
 
 	/** Whether the column is covered by water (the water surface is above the top ground block). */

@@ -26,11 +26,15 @@ class CaveCostTest {
 		int runs = Integer.getInteger("polishforests.cost.runs", 7);
 		for (PolandScale scale : PolandScale.values()) {
 			CaveFixture f = new CaveFixture(scale);
-			int[] mountains = CaveFixture.find(0, 0, 512, 20_000, p -> {
+			// From the Beskids interior of the test seed (RiverNetworkTest.BESKIDS_REAL; the realistic Beskids lie about
+			// 1070 km from the origin, beyond a search from it).
+			int[] beskids = scale == PolandScale.REALISTIC ? new int[] {154_834, 1_058_738} : new int[] {27_609, 3_254};
+			int[] mountains = CaveFixture.find(beskids[0], beskids[1], 512, 20_000, p -> {
 				ColumnSample s = f.model.sample(p[0], p[1]);
 				return s.type() == LandscapeType.BESKIDS && s.surface() > 800;
 			});
-			int[][] origins = {{200, -300}, mountains == null ? new int[] {0, 0} : new int[] {mountains[0] >> 4, mountains[1] >> 4}};
+			org.junit.jupiter.api.Assertions.assertNotNull(mountains, "no Beskids above 800 m near the Beskids interior");
+			int[][] origins = {{200, -300}, {mountains[0] >> 4, mountains[1] >> 4}};
 			String[] names = {"lowland", "mountains"};
 			for (int o = 0; o < origins.length; o++) {
 				ChunkSurface[] plans = new ChunkSurface[CHUNKS];

@@ -478,14 +478,14 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 		ChunkSurface surface = surfaceBuilder().build(columns, codes, minX, minZ, minY, maxY, PolandDimension.DEEP_ROCK_Y,
 				m::sample);
 		byte[] structures = StructureGround.apply(surface, structurePieces(structureManager, pos), minX, minZ);
-		chunk.setAttached(ModFeatures.CHUNK_HABITATS, habitats(columns, codes, surface,
-				structures != null ? structures : ChunkHabitats.NO_STRUCTURES));
 		SURFACE_NANOS.add(System.nanoTime() - t1);
 		// The caves (step J1): a separate stage over the final plan, as vanilla carves its noise terrain.
 		CaveCarving carving = caves == null ? null : caves.carve(pos, surface, minY, maxY, randomState,
 				caveColumns(m, columns, minX, minZ, minY, maxY), edgeNear(columns, surface, minY, maxY),
 				net.minecraft.world.level.levelgen.Beardifier.forStructuresInChunk(structureManager, pos),
 				new net.minecraft.world.level.levelgen.WorldGenerationContext(this, chunk.getHeightAccessorForGeneration()));
+		chunk.setAttached(ModFeatures.CHUNK_HABITATS, habitats(columns, codes, surface,
+				structures != null ? structures : ChunkHabitats.NO_STRUCTURES, opened(carving, surface)));
 		int highest = Math.max(minY, surface.highest());
 		int bottomSection = chunk.getSectionIndex(minY);
 		int topSection = chunk.getSectionIndex(highest);
@@ -760,7 +760,25 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 	 * Habitats of a chunk: the codes, the top ground block and the water surface of the surface plan (after the shelf and
 	 * the micro-relief, so trees stand on hummocks and not in puddles), and O and P at the chunk center.
 	 */
-	private static ChunkHabitats habitats(ColumnSample[] columns, int[] codes, ChunkSurface surface, byte[] structures) {
+	/** The columns whose plan top the caves carved (step J1, {@link ChunkHabitats#caveOpened}). */
+	private static long[] opened(@Nullable CaveCarving carving, ChunkSurface surface) {
+		if (carving == null) {
+			return ChunkHabitats.NO_CAVES;
+		}
+		long[] opened = null;
+		for (int i = 0; i < 256; i++) {
+			if (carving.carved(i, surface.top(i))) {
+				if (opened == null) {
+					opened = new long[4];
+				}
+				opened[i >> 6] |= 1L << (i & 63);
+			}
+		}
+		return opened == null ? ChunkHabitats.NO_CAVES : opened;
+	}
+
+	private static ChunkHabitats habitats(ColumnSample[] columns, int[] codes, ChunkSurface surface, byte[] structures,
+			long[] caveOpened) {
 		short[] tops = new short[256];
 		short[] water = new short[256];
 		for (int i = 0; i < 256; i++) {
@@ -769,7 +787,7 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 		}
 		ColumnSample center = columns[8 * 16 + 8];
 		return new ChunkHabitats(codes, tops, water, (float) center.region().oceanicity(),
-				(float) center.region().mountainInfluence(), structures);
+				(float) center.region().mountainInfluence(), structures, caveOpened);
 	}
 
 	/**
@@ -796,9 +814,35 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 	}
 
 	/**
+	 * The columns of a chunk whose plan top the caves took away ({@link ChunkHabitats#caveOpened} layout, 4 longs), computed
+	 * again exactly as {@code fill()} computes them (for game tests that compare the world with the surface plan, step J1);
+	 * {@link ChunkHabitats#NO_CAVES} in a world without caves.
+	 */
+	public long[] caveOpened(ChunkPos pos, ChunkAccess chunk, long seed, RandomState randomState,
+			StructureManager structureManager) {
+		PolandCaves c = caves(structureManager.registryAccess());
+		if (c == null) {
+			return ChunkHabitats.NO_CAVES;
+		}
+		int minY = chunk.getMinY();
+		int maxY = chunk.getMaxY();
+		LandscapeModel m = model(seed);
+		ColumnSample[] columns = new ColumnSample[256];
+		for (int i = 0; i < 256; i++) {
+			columns[i] = m.sample(pos.getMinBlockX() + (i >> 4), pos.getMinBlockZ() + (i & 15));
+		}
+		ChunkSurface surface = surface(pos, minY, maxY, seed, null, structureManager);
+		CaveCarving carving = c.carve(pos, surface, minY, maxY, randomState,
+				caveColumns(m, columns, pos.getMinBlockX(), pos.getMinBlockZ(), minY, maxY), edgeNear(columns, surface, minY, maxY),
+				net.minecraft.world.level.levelgen.Beardifier.forStructuresInChunk(structureManager, pos),
+				new net.minecraft.world.level.levelgen.WorldGenerationContext(this, chunk.getHeightAccessorForGeneration()));
+		return opened(carving, surface);
+	}
+
+	/**
 	 * Habitats of a chunk computed again from the model, for a chunk that lost its attachment (proto-chunk saved
 	 * between TERRAIN and FEATURES; counted by {@code ModFeatures.HABITAT_MISS}). Without the structure pieces: no beard
-	 * and no vegetation mask ({@link ChunkHabitats#NO_STRUCTURES}).
+	 * and no vegetation mask ({@link ChunkHabitats#NO_STRUCTURES}); without the caves ({@link ChunkHabitats#NO_CAVES}).
 	 */
 	public ChunkHabitats computeHabitats(ChunkPos pos, int minY, int maxY, long seed) {
 		LandscapeModel m = model(seed);
@@ -809,7 +853,7 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 		int[] codes = classify(columns, classifier(seed), pos.getMinBlockX(), pos.getMinBlockZ());
 		ChunkSurface surface = surfaceBuilder().build(columns, codes, pos.getMinBlockX(), pos.getMinBlockZ(), minY, maxY,
 				PolandDimension.DEEP_ROCK_Y, m::sample);
-		return habitats(columns, codes, surface, ChunkHabitats.NO_STRUCTURES);
+		return habitats(columns, codes, surface, ChunkHabitats.NO_STRUCTURES, ChunkHabitats.NO_CAVES);
 	}
 
 	/**

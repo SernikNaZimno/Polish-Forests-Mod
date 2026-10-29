@@ -55,6 +55,12 @@ public final class CavesClientGameTest implements FabricClientGameTest {
 	private static final ResourceKey<WorldPreset> PRESET_GAMEPLAY = ResourceKey.create(Registries.WORLD_PRESET,
 			PolishForests.id("poland_gameplay"));
 	private static final int[] BINS = {0, 5, 10, 20, 40, 80, 160, 320};
+	/**
+	 * Lowest Y of a fault of lava: the vanilla aquifers put lava only below Y -10 (fluid level at most -10) and below the
+	 * vanilla lava level -54, and the deep lava lakes of M2 ({@code polishforests:deep_lava_lake}, vanilla {@code lake_lava}
+	 * placed at Y -54 … 0) fill their lower half, up to 1 block below their origin, so no lava lies at Y 0 or higher.
+	 */
+	private static final int LAVA_FROM_Y = 0;
 	private static final String[] KINDS = {"cheese", "spaghetti", "noodle", "ravine", "lake", "lava", "entrance"};
 
 	/** A place: name, center chunk and survey radius in chunks. */
@@ -84,6 +90,9 @@ public final class CavesClientGameTest implements FabricClientGameTest {
 			try (TestSingleplayerContext sp = context.worldBuilder().adjustSettings(ui -> select(ui, preset)).create()) {
 				prepare(sp);
 				List<Place> places = sp.getServer().computeOnServer(CavesClientGameTest::findPlaces);
+				if (places.size() < 4) {
+					failures.add(scale.getSerializedName() + ": only " + places.size() + " of 4 places found");
+				}
 				for (Place place : places) {
 					String name = "caves_" + scale.getSerializedName() + "_" + place.name();
 					Report r = sp.getServer().computeOnServer(s -> survey(s, place, name));
@@ -93,8 +102,12 @@ public final class CavesClientGameTest implements FabricClientGameTest {
 						if (!mc.gui.hud.isHidden()) {
 							mc.gui.hud.toggle();
 						}
+						// Without the renderer's cave culling: after a teleport into a cave its section graph sometimes leaves out
+						// sections seen through an opening, and the sky shows through the rock (stage 2 of J1, first runs).
+						mc.smartCull = false;
 					});
-					for (Spot spot : r.spots().values()) {
+					for (Spot spot0 : r.spots().values()) {
+						Spot spot = sp.getServer().computeOnServer(s -> inAir(s.overworld(), spot0));
 						sp.getServer().runCommand(String.format(Locale.ROOT, "tp @a %.1f %.1f %.1f %.0f %.0f", spot.x() + 0.5,
 								spot.y() + 0.1, spot.z() + 0.5, spot.yaw(), spot.pitch()));
 						PolishForests.LOG.info("[caves] {}_{} at ({}, {}, {})", name, spot.kind(), spot.x(), spot.y(), spot.z());
@@ -130,17 +143,34 @@ public final class CavesClientGameTest implements FabricClientGameTest {
 		sp.getServer().runCommand("effect give @a minecraft:night_vision infinite 0 true");
 	}
 
-	/** The places of the seed, found along a spiral in the model. */
+	/**
+	 * Start points of the searches for the test seed {@value #SEED}: the Beskids interior and a sea cliff of each scale
+	 * (the same points as {@code RiverNetworkTest.BESKIDS_REAL}, {@code CoarseTerrainFieldTest} and {@code PolandCavesTest}).
+	 * The Beskids of the realistic scale lie about 1070 km from the origin, so a search from the origin never reached them
+	 * (stage 2 of J1: the first run stalled for 10 minutes in the model).
+	 */
+	private static final int[] BESKIDS_REAL = {154_834, 1_058_738};
+	private static final int[] BESKIDS_GAMEPLAY = {27_609, 3_254};
+	private static final int[] CLIFF_REAL = {-181_586, -207_822};
+	private static final int[] CLIFF_GAMEPLAY = {-3_216, 6_103};
+	/** Most model samples of one search (a bound on its time: a fresh area of the model costs up to about 1 ms a sample). */
+	private static final int MAX_SAMPLES = 40_000;
+	/** Largest distance of a search from its start point (m). */
+	private static final int MAX_REACH = 40_000;
+
+	/** The places of the seed, found along a spiral in the model around the start point of each. */
 	private static List<Place> findPlaces(MinecraftServer server) {
 		ServerLevel level = server.overworld();
 		LandscapeModel m = ((PolandChunkGenerator) level.getChunkSource().getGenerator()).model(level.getSeed());
+		boolean real = m.scale() == pl.polishforests.worldgen.landscape.LandscapeScale.REALISTIC;
 		List<Place> places = new ArrayList<>();
-		add(places, level, m, "forest", 4, true, (s, p) -> !s.hasWater() && s.type().isLowland()
+		add(places, m, "forest", 4, true, new int[] {0, 0}, (s, p) -> !s.hasWater() && s.type().isLowland()
 				&& level.getBiome(new BlockPos(p[0], 200, p[1])).is(ModBiomeKeys.FORESTS) && dryAround(m, p, 40));
-		add(places, level, m, "river", 2, false, (s, p) -> s.waterKind() == WaterKind.RIVER && s.type().isLowland());
-		add(places, level, m, "mountains", 2, true, (s, p) -> s.type() == LandscapeType.BESKIDS && s.surface() > 700
-				&& dryAround(m, p, 24));
-		add(places, level, m, "sea", 2, false, (s, p) -> s.waterKind() == WaterKind.SEA && landNear(m, p));
+		add(places, m, "river", 2, false, new int[] {0, 0}, (s, p) -> s.waterKind() == WaterKind.RIVER && s.type().isLowland());
+		add(places, m, "mountains", 2, true, real ? BESKIDS_REAL : BESKIDS_GAMEPLAY, (s, p) -> s.type() == LandscapeType.BESKIDS
+				&& s.surface() > 700 && dryAround(m, p, 24));
+		add(places, m, "sea", 2, false, real ? CLIFF_REAL : CLIFF_GAMEPLAY, (s, p) -> s.waterKind() == WaterKind.SEA
+				&& landNear(m, p));
 		return places;
 	}
 
@@ -148,20 +178,31 @@ public final class CavesClientGameTest implements FabricClientGameTest {
 		boolean test(ColumnSample s, int[] p);
 	}
 
-	private static void add(List<Place> places, ServerLevel level, LandscapeModel m, String name, int radius, boolean cut,
+	/**
+	 * The first point of a spiral around {@code start} that passes the test: rings 64 m apart near the start, wider with
+	 * the distance (1/40 of it), points along a ring as far apart as the rings; at most {@link #MAX_SAMPLES} samples within
+	 * {@link #MAX_REACH}.
+	 */
+	private static void add(List<Place> places, LandscapeModel m, String name, int radius, boolean cut, int[] start,
 			Test2 test) {
-		for (int r = 0; r < 400_000; r += 96) {
-			int samples = Math.max(16, r / 48);
-			for (int k = 0; k < samples; k++) {
+		long t0 = System.nanoTime();
+		int tried = 0;
+		for (int r = 0; r <= MAX_REACH && tried < MAX_SAMPLES; r += Math.max(64, r / 40)) {
+			int step = Math.max(64, r / 40);
+			int samples = r == 0 ? 1 : Math.max(16, (int) Math.ceil(2 * Math.PI * r / step));
+			for (int k = 0; k < samples && tried < MAX_SAMPLES; k++, tried++) {
 				double a = k * (2 * Math.PI / samples) + r * 0.37;
-				int[] p = {(int) (Math.cos(a) * r), (int) (Math.sin(a) * r)};
+				int[] p = {start[0] + (int) (Math.cos(a) * r), start[1] + (int) (Math.sin(a) * r)};
 				if (test.test(m.sample(p[0], p[1]), p)) {
 					places.add(new Place(name, p[0] >> 4, p[1] >> 4, radius, cut));
+					PolishForests.LOG.info("[caves] place {} at ({}, {}), {} m from the start, {} samples, {} ms", name, p[0], p[1], r,
+							tried + 1, (System.nanoTime() - t0) / 1_000_000);
 					return;
 				}
 			}
 		}
-		PolishForests.LOG.warn("[caves] no place found for {}", name);
+		PolishForests.LOG.warn("[caves] no place found for {} within {} m of ({}, {}) in {} samples", name, MAX_REACH, start[0],
+				start[1], tried);
 	}
 
 	private static boolean dryAround(LandscapeModel m, int[] p, int reach) {
@@ -224,6 +265,7 @@ public final class CavesClientGameTest implements FabricClientGameTest {
 		long floatingTrunks = 0;
 		long floatingPlants = 0;
 		long highLava = 0;
+		List<String> faultsAt = new ArrayList<>();
 		long underWater = 0;
 		long underWaterFlooded = 0;
 		boolean[][] opened = new boolean[side][side];
@@ -261,7 +303,7 @@ public final class CavesClientGameTest implements FabricClientGameTest {
 						}
 					} else if (s.is(Blocks.LAVA)) {
 						lava++;
-						if (y >= -10) {
+						if (y >= LAVA_FROM_Y) {
 							highLava++;
 						}
 					}
@@ -284,10 +326,14 @@ public final class CavesClientGameTest implements FabricClientGameTest {
 						&& cave(chunk.getBlockState(at.set(x, top - 2, z)))) {
 					opened[lx][lz] = true;
 					BlockState above = chunk.getBlockState(at.set(x, top + 1, z));
-					if (above.is(BlockTags.LOGS) || above.getBlock() instanceof pl.polishforests.block.TrunkBlock) {
+					boolean trunk = above.is(BlockTags.LOGS) || above.getBlock() instanceof pl.polishforests.block.TrunkBlock;
+					if (trunk) {
 						floatingTrunks++;
 					} else if (!cave(above) && !above.is(BlockTags.LEAVES)) {
 						floatingPlants++;
+					}
+					if ((trunk || !cave(above) && !above.is(BlockTags.LEAVES)) && faultsAt.size() < 6) {
+						faultsAt.add(String.format(Locale.ROOT, "%s at (%d, %d, %d)", above, x, top + 1, z));
 					}
 				}
 			}
@@ -301,22 +347,22 @@ public final class CavesClientGameTest implements FabricClientGameTest {
 			text.append(String.format(Locale.ROOT, " %d+ %.2f%%", BINS[b], allByDepth[b] == 0 ? Double.NaN
 					: 100.0 * caveByDepth[b] / allByDepth[b]));
 		}
-		text.append(String.format(Locale.ROOT, "; cave water %d, lava %d (above Y -10: %d); entrances %d (%.0f per km2); "
+		text.append(String.format(Locale.ROOT, "; cave water %d, lava %d (at or above Y %d: %d); entrances %d (%.0f per km2); "
 				+ "under surface water (32 blocks): %d of %d blocks cave water; contacts with surface water %d; trunks over "
-				+ "opened tops %d, other blocks over opened tops %d; spots %s", water, lava, highLava, entrances,
+				+ "opened tops %d, other blocks over opened tops %d; spots %s", water, lava, LAVA_FROM_Y, highLava, entrances,
 				entrances / km2, underWaterFlooded, underWater, contacts, floatingTrunks, floatingPlants, spots.keySet()));
 		List<String> failures = new ArrayList<>();
 		if (contacts > 0) {
 			failures.add(name + ": " + contacts + " cave blocks beside the water of the surface");
 		}
 		if (floatingTrunks > 0) {
-			failures.add(name + ": " + floatingTrunks + " trunks over opened tops");
+			failures.add(name + ": " + floatingTrunks + " trunks over opened tops " + faultsAt);
 		}
 		if (floatingPlants > 0) {
-			failures.add(name + ": " + floatingPlants + " blocks over opened tops");
+			failures.add(name + ": " + floatingPlants + " blocks over opened tops " + faultsAt);
 		}
 		if (highLava > 0) {
-			failures.add(name + ": lava above Y -10 in " + highLava + " blocks");
+			failures.add(name + ": lava at or above Y " + LAVA_FROM_Y + " in " + highLava + " blocks");
 		}
 		section(level, place, name);
 		return new Report(text.toString(), failures, spots, top0);
@@ -339,7 +385,7 @@ public final class CavesClientGameTest implements FabricClientGameTest {
 						depth++;
 					}
 					if (depth >= 5) {
-						keep(best, new Spot("entrance", x, top + 18, z - 10, 0, 55, depth));
+						keep(best, new Spot("entrance", x, top + 7, z - 8, 0, 40, depth));
 					}
 				}
 				for (int y = top - 6; y > minY + 6; y -= 2) {
@@ -379,6 +425,22 @@ public final class CavesClientGameTest implements FabricClientGameTest {
 				spots.put(kind, best.get(kind));
 			}
 		}
+	}
+
+	/**
+	 * The spot with its feet moved (by at most 3 blocks, down first) so that the eye block is air: a spectator camera whose
+	 * eye is inside rock sees through the ground (no cave culling), which is no picture of the cave.
+	 */
+	private static Spot inAir(ServerLevel level, Spot s) {
+		BlockPos.MutableBlockPos at = new BlockPos.MutableBlockPos();
+		for (int d = 0; d <= 3; d++) {
+			for (int f : new int[] {s.y() - d, s.y() + d}) {
+				if (level.getBlockState(at.set(s.x(), f + 1, s.z())).isAir()) {
+					return new Spot(s.kind(), s.x(), f, s.z(), s.yaw(), s.pitch(), s.score());
+				}
+			}
+		}
+		return s;
 	}
 
 	private static void keep(Map<String, Spot> best, Spot s) {

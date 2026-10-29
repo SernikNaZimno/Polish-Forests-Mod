@@ -236,7 +236,7 @@ public record DeadwoodFeature(Species species, boolean stump) implements Feature
 
 	/**
 	 * The ground of the write window from the chunk habitats: the top ground block of each column of the decorated chunk
-	 * and its eight neighbors, unknown on water, near structure pieces and outside.
+	 * and its eight neighbors, unknown on water, near structure pieces, over a top opened by a cave (J1) and outside.
 	 */
 	static final class Ground implements TreeShapePlan.Ground {
 		private final int chunkX;
@@ -266,7 +266,8 @@ public record DeadwoodFeature(Species species, boolean stump) implements Feature
 				return UNKNOWN;
 			}
 			int i = ChunkHabitats.index(x & 15, z & 15);
-			if (h.hasWater(i) || h.pieceDistance(i) <= PIECE_GAP) {
+			if (h.hasWater(i) || h.pieceDistance(i) <= PIECE_GAP || h.caveOpened(i)) {
+				// No wood over water, by structures or over a top that a cave entrance took away (step J1).
 				return UNKNOWN;
 			}
 			return h.top()[i];
