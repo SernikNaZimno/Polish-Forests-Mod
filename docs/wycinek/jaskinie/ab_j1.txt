@@ -1,0 +1,315 @@
+# J1 A/B (CP-C.4a), 2026-10-29. Session 1: driver run_j1.sh (ab/), session 2: run_j1b (ab2/). base = M2 (pl-m2-baseline), head = J1, off = J1 -Pcaves=off.
+## ab runs
+13:01:04 driver run_j1 (load x2, stages x1, flights x1)
+13:01:20 start base load_r1 gpu=35 cpu=18 -Pgametest=performance -Psites=slice -Poptimization -PloadOnly
+13:03:07 end base load_r1 exit=0 game_during=0
+13:03:23 start head load_r1 gpu=32 cpu=2 -Pgametest=performance -Psites=slice -Poptimization -PloadOnly
+13:05:41 end head load_r1 exit=0 game_during=0
+13:05:57 start head load_off_r1 gpu=33 cpu=3 -Pcaves=off -Pgametest=performance -Psites=slice -Poptimization -PloadOnly
+13:07:54 end head load_off_r1 exit=0 game_during=0
+13:08:10 start head load_off_r2 gpu=35 cpu=9 -Pcaves=off -Pgametest=performance -Psites=slice -Poptimization -PloadOnly
+13:10:09 end head load_off_r2 exit=0 game_during=0
+13:10:25 start head load_r2 gpu=32 cpu=9 -Pgametest=performance -Psites=slice -Poptimization -PloadOnly
+13:12:44 end head load_r2 exit=0 game_during=0
+13:13:00 start base load_r2 gpu=37 cpu=6 -Pgametest=performance -Psites=slice -Poptimization -PloadOnly
+13:14:46 end base load_r2 exit=0 game_during=0
+13:15:02 start base stages_r1 gpu=32 cpu=22 -Pgametest=stages -Psites=slice
+13:17:29 end base stages_r1 exit=0 game_during=0
+13:17:45 start head stages_r1 gpu=33 cpu=3 -Pgametest=stages -Psites=slice
+13:20:44 end head stages_r1 exit=0 game_during=0
+13:21:00 start head stages_off_r1 gpu=33 cpu=7 -Pcaves=off -Pgametest=stages -Psites=slice
+13:23:38 end head stages_off_r1 exit=0 game_during=0
+13:23:54 start base flights_r1 gpu=35 cpu=8 -Pgametest=performance -Psites=slice -Poptimization
+13:38:04 end base flights_r1 exit=0 game_during=0
+13:38:20 start head flights_r1 gpu=38 cpu=7 -Pgametest=performance -Psites=slice -Poptimization
+13:53:03 end head flights_r1 exit=0 game_during=0
+13:53:03 AB DONE
+13:53:19 start costTest gpu=30 cpu=3
+13:53:54 ALL DONE
+## ab/flights_r1_base.log
+poland / oak_hornbeam_1: new terrain, client has 1720 of the 1875 chunks around three teleports after 11.68 s, 147.2 chunks/s (per load 125.2 155.7 166.9)
+poland / oak_hornbeam_1 canopy flight: 8 points, 576 ticks in 28.80 s (20.0 ticks/s); FPS 1547.2 (mean of the game's frames per second over the turns; per point 1555 1572 1579 1497 1554 1551 1525 1544), 44766 frames drawn (1554.5/s); GPU time of the level pass
+poland / oak_hornbeam_1 eye flight: 8 points, 576 ticks in 28.80 s (20.0 ticks/s); FPS 1468.1 (mean of the game's frames per second over the turns; per point 1440 1471 1489 1485 1495 1444 1469 1451), 42541 frames drawn (1477.1/s); GPU time of the level pass pe
+poland / fresh_pine_1: new terrain, client has 1697 of the 1875 chunks around three teleports after 7.34 s, 231.2 chunks/s (per load 258.0 227.3 212.9)
+poland / fresh_pine_1 canopy flight: 8 points, 576 ticks in 28.80 s (20.0 ticks/s); FPS 1580.8 (mean of the game's frames per second over the turns; per point 1526 1559 1589 1592 1603 1597 1575 1605), 45987 frames drawn (1596.7/s); GPU time of the level pass p
+poland / fresh_pine_1 eye flight: 8 points, 576 ticks in 28.80 s (20.0 ticks/s); FPS 1488.8 (mean of the game's frames per second over the turns; per point 1479 1494 1449 1499 1500 1505 1485 1499), 43166 frames drawn (1498.9/s); GPU time of the level pass per 
+poland_gameplay / oak_hornbeam_1: new terrain, client has 1705 of the 1875 chunks around three teleports after 7.68 s, 222.0 chunks/s (per load 207.0 213.5 250.7)
+poland_gameplay / oak_hornbeam_1 canopy flight: 8 points, 576 ticks in 28.80 s (20.0 ticks/s); FPS 1592.6 (mean of the game's frames per second over the turns; per point 1595 1610 1576 1542 1595 1603 1614 1606), 46177 frames drawn (1603.4/s); GPU time of the l
+poland_gameplay / oak_hornbeam_1 eye flight: 8 points, 576 ticks in 28.80 s (20.0 ticks/s); FPS 1479.0 (mean of the game's frames per second over the turns; per point 1488 1490 1462 1467 1452 1486 1489 1499), 42925 frames drawn (1490.4/s); GPU time of the leve
+poland_gameplay / fresh_pine_1: new terrain, client has 1695 of the 1875 chunks around three teleports after 7.35 s, 230.7 chunks/s (per load 240.4 236.3 216.6)
+poland_gameplay / fresh_pine_1 canopy flight: 8 points, 576 ticks in 28.80 s (20.0 ticks/s); FPS 1574.5 (mean of the game's frames per second over the turns; per point 1587 1594 1589 1593 1600 1563 1531 1538), 45783 frames drawn (1589.7/s); GPU time of the lev
+poland_gameplay / fresh_pine_1 eye flight: 8 points, 576 ticks in 28.80 s (20.0 ticks/s); FPS 1498.3 (mean of the game's frames per second over the turns; per point 1501 1486 1491 1530 1484 1561 1467 1466), 43514 frames drawn (1510.9/s); GPU time of the level 
+## ab/flights_r1_head.log
+poland / oak_hornbeam_1: new terrain, client has 1703 of the 1875 chunks around three teleports after 18.36 s, 92.8 chunks/s (per load 79.2 94.6 108.9)
+poland / oak_hornbeam_1 canopy flight: 8 points, 576 ticks in 28.80 s (20.0 ticks/s); FPS 1312.9 (mean of the game's frames per second over the turns; per point 1373 1338 1349 1303 1295 1299 1275 1270), 38045 frames drawn (1321.0/s); GPU time of the level pass
+poland / oak_hornbeam_1 eye flight: 8 points, 576 ticks in 28.80 s (20.0 ticks/s); FPS 1552.0 (mean of the game's frames per second over the turns; per point 1555 1584 1575 1543 1555 1561 1506 1537), 44867 frames drawn (1557.8/s); GPU time of the level pass pe
+poland / fresh_pine_1: new terrain, client has 1715 of the 1875 chunks around three teleports after 12.86 s, 133.4 chunks/s (per load 129.1 139.1 132.5)
+poland / fresh_pine_1 canopy flight: 8 points, 576 ticks in 28.80 s (20.0 ticks/s); FPS 1217.3 (mean of the game's frames per second over the turns; per point 1234 1223 1223 1195 1227 1171 1197 1270), 34774 frames drawn (1207.4/s); GPU time of the level pass p
+poland / fresh_pine_1 eye flight: 8 points, 576 ticks in 28.80 s (20.0 ticks/s); FPS 1331.1 (mean of the game's frames per second over the turns; per point 1329 1208 1285 1355 1442 1381 1368 1280), 37918 frames drawn (1316.6/s); GPU time of the level pass per 
+poland_gameplay / oak_hornbeam_1: new terrain, client has 1704 of the 1875 chunks around three teleports after 12.64 s, 134.8 chunks/s (per load 126.7 132.4 146.7)
+poland_gameplay / oak_hornbeam_1 canopy flight: 8 points, 576 ticks in 28.80 s (20.0 ticks/s); FPS 1265.5 (mean of the game's frames per second over the turns; per point 1318 1275 1236 1236 1256 1257 1261 1286), 36702 frames drawn (1274.4/s); GPU time of the l
+poland_gameplay / oak_hornbeam_1 eye flight: 8 points, 576 ticks in 28.80 s (20.0 ticks/s); FPS 1560.3 (mean of the game's frames per second over the turns; per point 1563 1573 1570 1551 1546 1573 1560 1546), 45082 frames drawn (1565.5/s); GPU time of the leve
+poland_gameplay / fresh_pine_1: new terrain, client has 1692 of the 1875 chunks around three teleports after 12.21 s, 138.6 chunks/s (per load 132.0 152.5 133.0)
+poland_gameplay / fresh_pine_1 canopy flight: 8 points, 576 ticks in 28.80 s (20.0 ticks/s); FPS 1309.1 (mean of the game's frames per second over the turns; per point 1341 1340 1346 1342 1322 1268 1206 1308), 37690 frames drawn (1308.7/s); GPU time of the lev
+poland_gameplay / fresh_pine_1 eye flight: 8 points, 576 ticks in 28.80 s (20.0 ticks/s); FPS 1422.7 (mean of the game's frames per second over the turns; per point 1476 1352 1389 1372 1416 1373 1555 1447), 41021 frames drawn (1424.4/s); GPU time of the level 
+## ab/load_off_r1_head.log
+poland / oak_hornbeam_1: new terrain, client has 1700 of the 1875 chunks around three teleports after 15.45 s, 110.0 chunks/s (per load 93.9 112.6 129.1)
+poland / fresh_pine_1: new terrain, client has 1695 of the 1875 chunks around three teleports after 12.42 s, 136.5 chunks/s (per load 112.0 165.2 143.1)
+poland_gameplay / oak_hornbeam_1: new terrain, client has 1691 of the 1875 chunks around three teleports after 10.97 s, 154.1 chunks/s (per load 148.0 148.1 168.0)
+poland_gameplay / fresh_pine_1: new terrain, client has 1712 of the 1875 chunks around three teleports after 10.94 s, 156.5 chunks/s (per load 141.3 167.1 163.7)
+## ab/load_off_r2_head.log
+poland / oak_hornbeam_1: new terrain, client has 1704 of the 1875 chunks around three teleports after 15.88 s, 107.3 chunks/s (per load 93.3 111.2 121.1)
+poland / fresh_pine_1: new terrain, client has 1705 of the 1875 chunks around three teleports after 12.17 s, 140.1 chunks/s (per load 118.8 149.5 158.3)
+poland_gameplay / oak_hornbeam_1: new terrain, client has 1695 of the 1875 chunks around three teleports after 11.09 s, 152.8 chunks/s (per load 146.0 150.4 163.3)
+poland_gameplay / fresh_pine_1: new terrain, client has 1697 of the 1875 chunks around three teleports after 11.02 s, 154.0 chunks/s (per load 139.9 162.0 162.0)
+## ab/load_r1_base.log
+poland / oak_hornbeam_1: new terrain, client has 1716 of the 1875 chunks around three teleports after 12.10 s, 141.9 chunks/s (per load 125.2 142.2 163.4)
+poland / fresh_pine_1: new terrain, client has 1723 of the 1875 chunks around three teleports after 9.23 s, 186.6 chunks/s (per load 160.6 182.9 227.7)
+poland_gameplay / oak_hornbeam_1: new terrain, client has 1707 of the 1875 chunks around three teleports after 7.98 s, 213.9 chunks/s (per load 189.3 219.3 239.6)
+poland_gameplay / fresh_pine_1: new terrain, client has 1703 of the 1875 chunks around three teleports after 8.14 s, 209.1 chunks/s (per load 193.0 218.1 218.4)
+## ab/load_r1_head.log
+poland / oak_hornbeam_1: new terrain, client has 1706 of the 1875 chunks around three teleports after 18.17 s, 93.9 chunks/s (per load 82.6 100.9 100.6)
+poland / fresh_pine_1: new terrain, client has 1708 of the 1875 chunks around three teleports after 14.12 s, 121.0 chunks/s (per load 102.9 138.1 127.6)
+poland_gameplay / oak_hornbeam_1: new terrain, client has 1693 of the 1875 chunks around three teleports after 12.18 s, 139.0 chunks/s (per load 129.7 135.7 153.6)
+poland_gameplay / fresh_pine_1: new terrain, client has 1697 of the 1875 chunks around three teleports after 11.96 s, 141.9 chunks/s (per load 121.9 162.1 147.6)
+## ab/load_r2_base.log
+poland / oak_hornbeam_1: new terrain, client has 1704 of the 1875 chunks around three teleports after 11.63 s, 146.5 chunks/s (per load 123.8 155.7 167.2)
+poland / fresh_pine_1: new terrain, client has 1723 of the 1875 chunks around three teleports after 9.09 s, 189.5 chunks/s (per load 165.0 205.7 203.1)
+poland_gameplay / oak_hornbeam_1: new terrain, client has 1698 of the 1875 chunks around three teleports after 8.08 s, 210.2 chunks/s (per load 189.3 211.5 234.6)
+poland_gameplay / fresh_pine_1: new terrain, client has 1722 of the 1875 chunks around three teleports after 8.20 s, 210.0 chunks/s (per load 187.9 234.1 212.3)
+## ab/load_r2_head.log
+poland / oak_hornbeam_1: new terrain, client has 1693 of the 1875 chunks around three teleports after 17.91 s, 94.5 chunks/s (per load 83.2 96.9 106.2)
+poland / fresh_pine_1: new terrain, client has 1706 of the 1875 chunks around three teleports after 14.64 s, 116.6 chunks/s (per load 99.8 132.2 122.2)
+poland_gameplay / oak_hornbeam_1: new terrain, client has 1698 of the 1875 chunks around three teleports after 12.51 s, 135.7 chunks/s (per load 125.3 131.5 153.4)
+poland_gameplay / fresh_pine_1: new terrain, client has 1696 of the 1875 chunks around three teleports after 11.91 s, 142.4 chunks/s (per load 127.2 155.3 148.0)
+## ab/stages_off_r1_head.log
+poland / slice oak_hornbeam_1: stages for 64 chunks (incremental): minecraft:structure_starts=6 ms minecraft:biomes=116 ms minecraft:terrain=216 ms minecraft:features=563 ms minecraft:light=622 ms minecraft:full=0 ms 
+poland / slice oak_hornbeam_1: whole chunk 23.82 ms/chunk (all stages, 64 chunks)
+poland / slice oak_hornbeam_1: caves in the fill 0.000 ms/chunk over 0 chunks (0 noise and 0 carver blocks carved in all)
+poland / slice oak_hornbeam_2: stages for 64 chunks (incremental): minecraft:structure_starts=12 ms minecraft:biomes=140 ms minecraft:terrain=206 ms minecraft:features=444 ms minecraft:light=591 ms minecraft:full=0 ms 
+poland / slice oak_hornbeam_2: whole chunk 21.78 ms/chunk (all stages, 64 chunks)
+poland / slice oak_hornbeam_2: caves in the fill 0.000 ms/chunk over 0 chunks (0 noise and 0 carver blocks carved in all)
+poland / slice fresh_pine_1: stages for 64 chunks (incremental): minecraft:structure_starts=6 ms minecraft:biomes=111 ms minecraft:terrain=206 ms minecraft:features=509 ms minecraft:light=615 ms minecraft:full=0 ms 
+poland / slice fresh_pine_1: whole chunk 22.61 ms/chunk (all stages, 64 chunks)
+poland / slice fresh_pine_1: caves in the fill 0.000 ms/chunk over 0 chunks (0 noise and 0 carver blocks carved in all)
+poland / slice fresh_pine_2: stages for 64 chunks (incremental): minecraft:structure_starts=6 ms minecraft:biomes=109 ms minecraft:terrain=205 ms minecraft:features=417 ms minecraft:light=548 ms minecraft:full=0 ms 
+poland / slice fresh_pine_2: whole chunk 20.09 ms/chunk (all stages, 64 chunks)
+poland / slice fresh_pine_2: caves in the fill 0.000 ms/chunk over 0 chunks (0 noise and 0 carver blocks carved in all)
+poland / slice transect: stages for 64 chunks (incremental): minecraft:structure_starts=6 ms minecraft:biomes=130 ms minecraft:terrain=185 ms minecraft:features=441 ms minecraft:light=564 ms minecraft:full=0 ms 
+poland / slice transect: whole chunk 20.73 ms/chunk (all stages, 64 chunks)
+poland / slice transect: caves in the fill 0.000 ms/chunk over 0 chunks (0 noise and 0 carver blocks carved in all)
+poland_gameplay / slice oak_hornbeam_1: stages for 64 chunks (incremental): minecraft:structure_starts=5 ms minecraft:biomes=116 ms minecraft:terrain=187 ms minecraft:features=514 ms minecraft:light=618 ms minecraft:full=0 ms 
+poland_gameplay / slice oak_hornbeam_1: whole chunk 22.51 ms/chunk (all stages, 64 chunks)
+poland_gameplay / slice oak_hornbeam_1: caves in the fill 0.000 ms/chunk over 0 chunks (0 noise and 0 carver blocks carved in all)
+poland_gameplay / slice oak_hornbeam_2: stages for 64 chunks (incremental): minecraft:structure_starts=5 ms minecraft:biomes=134 ms minecraft:terrain=322 ms minecraft:features=559 ms minecraft:light=647 ms minecraft:full=0 ms 
+poland_gameplay / slice oak_hornbeam_2: whole chunk 26.03 ms/chunk (all stages, 64 chunks)
+poland_gameplay / slice oak_hornbeam_2: caves in the fill 0.000 ms/chunk over 0 chunks (0 noise and 0 carver blocks carved in all)
+poland_gameplay / slice fresh_pine_1: stages for 64 chunks (incremental): minecraft:structure_starts=5 ms minecraft:biomes=118 ms minecraft:terrain=255 ms minecraft:features=490 ms minecraft:light=655 ms minecraft:full=0 ms 
+poland_gameplay / slice fresh_pine_1: whole chunk 23.81 ms/chunk (all stages, 64 chunks)
+poland_gameplay / slice fresh_pine_1: caves in the fill 0.000 ms/chunk over 0 chunks (0 noise and 0 carver blocks carved in all)
+poland_gameplay / slice fresh_pine_2: stages for 64 chunks (incremental): minecraft:structure_starts=6 ms minecraft:biomes=145 ms minecraft:terrain=255 ms minecraft:features=477 ms minecraft:light=596 ms minecraft:full=0 ms 
+poland_gameplay / slice fresh_pine_2: whole chunk 23.11 ms/chunk (all stages, 64 chunks)
+poland_gameplay / slice fresh_pine_2: caves in the fill 0.000 ms/chunk over 0 chunks (0 noise and 0 carver blocks carved in all)
+poland_gameplay / slice transect: stages for 64 chunks (incremental): minecraft:structure_starts=7 ms minecraft:biomes=122 ms minecraft:terrain=220 ms minecraft:features=447 ms minecraft:light=570 ms minecraft:full=0 ms 
+poland_gameplay / slice transect: whole chunk 21.33 ms/chunk (all stages, 64 chunks)
+poland_gameplay / slice transect: caves in the fill 0.000 ms/chunk over 0 chunks (0 noise and 0 carver blocks carved in all)
+poland_present_day / slice oak_hornbeam_1: stages for 64 chunks (incremental): minecraft:structure_starts=5 ms minecraft:biomes=117 ms minecraft:terrain=219 ms minecraft:features=506 ms minecraft:light=616 ms minecraft:full=0 ms 
+poland_present_day / slice oak_hornbeam_1: whole chunk 22.86 ms/chunk (all stages, 64 chunks)
+poland_present_day / slice oak_hornbeam_1: caves in the fill 0.000 ms/chunk over 0 chunks (0 noise and 0 carver blocks carved in all)
+poland_present_day / slice oak_hornbeam_2: stages for 64 chunks (incremental): minecraft:structure_starts=5 ms minecraft:biomes=133 ms minecraft:terrain=216 ms minecraft:features=434 ms minecraft:light=592 ms minecraft:full=0 ms 
+poland_present_day / slice oak_hornbeam_2: whole chunk 21.56 ms/chunk (all stages, 64 chunks)
+poland_present_day / slice oak_hornbeam_2: caves in the fill 0.000 ms/chunk over 0 chunks (0 noise and 0 carver blocks carved in all)
+poland_present_day / slice fresh_pine_1: stages for 64 chunks (incremental): minecraft:structure_starts=5 ms minecraft:biomes=110 ms minecraft:terrain=209 ms minecraft:features=569 ms minecraft:light=579 ms minecraft:full=0 ms 
+poland_present_day / slice fresh_pine_1: whole chunk 23.01 ms/chunk (all stages, 64 chunks)
+poland_present_day / slice fresh_pine_1: caves in the fill 0.000 ms/chunk over 0 chunks (0 noise and 0 carver blocks carved in all)
+poland_present_day / slice fresh_pine_2: stages for 64 chunks (incremental): minecraft:structure_starts=5 ms minecraft:biomes=116 ms minecraft:terrain=193 ms minecraft:features=389 ms minecraft:light=547 ms minecraft:full=0 ms 
+poland_present_day / slice fresh_pine_2: whole chunk 19.56 ms/chunk (all stages, 64 chunks)
+poland_present_day / slice fresh_pine_2: caves in the fill 0.000 ms/chunk over 0 chunks (0 noise and 0 carver blocks carved in all)
+poland_present_day / slice transect: stages for 64 chunks (incremental): minecraft:structure_starts=6 ms minecraft:biomes=139 ms minecraft:terrain=198 ms minecraft:features=454 ms minecraft:light=579 ms minecraft:full=0 ms 
+poland_present_day / slice transect: whole chunk 21.50 ms/chunk (all stages, 64 chunks)
+poland_present_day / slice transect: caves in the fill 0.000 ms/chunk over 0 chunks (0 noise and 0 carver blocks carved in all)
+poland_gameplay_present_day / slice oak_hornbeam_1: stages for 64 chunks (incremental): minecraft:structure_starts=5 ms minecraft:biomes=119 ms minecraft:terrain=187 ms minecraft:features=494 ms minecraft:light=624 ms minecraft:full=0 ms 
+poland_gameplay_present_day / slice oak_hornbeam_1: whole chunk 22.31 ms/chunk (all stages, 64 chunks)
+poland_gameplay_present_day / slice oak_hornbeam_1: caves in the fill 0.000 ms/chunk over 0 chunks (0 noise and 0 carver blocks carved in all)
+poland_gameplay_present_day / slice oak_hornbeam_2: stages for 64 chunks (incremental): minecraft:structure_starts=8 ms minecraft:biomes=152 ms minecraft:terrain=328 ms minecraft:features=547 ms minecraft:light=626 ms minecraft:full=0 ms 
+poland_gameplay_present_day / slice oak_hornbeam_2: whole chunk 25.96 ms/chunk (all stages, 64 chunks)
+poland_gameplay_present_day / slice oak_hornbeam_2: caves in the fill 0.000 ms/chunk over 0 chunks (0 noise and 0 carver blocks carved in all)
+poland_gameplay_present_day / slice fresh_pine_1: stages for 64 chunks (incremental): minecraft:structure_starts=5 ms minecraft:biomes=113 ms minecraft:terrain=250 ms minecraft:features=461 ms minecraft:light=576 ms minecraft:full=0 ms 
+poland_gameplay_present_day / slice fresh_pine_1: whole chunk 21.96 ms/chunk (all stages, 64 chunks)
+poland_gameplay_present_day / slice fresh_pine_1: caves in the fill 0.000 ms/chunk over 0 chunks (0 noise and 0 carver blocks carved in all)
+poland_gameplay_present_day / slice fresh_pine_2: stages for 64 chunks (incremental): minecraft:structure_starts=6 ms minecraft:biomes=143 ms minecraft:terrain=267 ms minecraft:features=478 ms minecraft:light=578 ms minecraft:full=0 ms 
+poland_gameplay_present_day / slice fresh_pine_2: whole chunk 23.00 ms/chunk (all stages, 64 chunks)
+poland_gameplay_present_day / slice fresh_pine_2: caves in the fill 0.000 ms/chunk over 0 chunks (0 noise and 0 carver blocks carved in all)
+poland_gameplay_present_day / slice transect: stages for 64 chunks (incremental): minecraft:structure_starts=6 ms minecraft:biomes=119 ms minecraft:terrain=239 ms minecraft:features=435 ms minecraft:light=548 ms minecraft:full=0 ms 
+poland_gameplay_present_day / slice transect: whole chunk 21.05 ms/chunk (all stages, 64 chunks)
+poland_gameplay_present_day / slice transect: caves in the fill 0.000 ms/chunk over 0 chunks (0 noise and 0 carver blocks carved in all)
+## ab/stages_r1_base.log
+poland / slice oak_hornbeam_1: stages for 64 chunks (incremental): minecraft:structure_starts=6 ms minecraft:biomes=113 ms minecraft:terrain=211 ms minecraft:features=344 ms minecraft:light=481 ms minecraft:full=0 ms 
+poland / slice oak_hornbeam_1: whole chunk 18.07 ms/chunk (all stages, 64 chunks)
+poland / slice oak_hornbeam_2: stages for 64 chunks (incremental): minecraft:structure_starts=6 ms minecraft:biomes=146 ms minecraft:terrain=219 ms minecraft:features=307 ms minecraft:light=451 ms minecraft:full=0 ms 
+poland / slice oak_hornbeam_2: whole chunk 17.65 ms/chunk (all stages, 64 chunks)
+poland / slice fresh_pine_1: stages for 64 chunks (incremental): minecraft:structure_starts=6 ms minecraft:biomes=109 ms minecraft:terrain=210 ms minecraft:features=337 ms minecraft:light=413 ms minecraft:full=0 ms 
+poland / slice fresh_pine_1: whole chunk 16.79 ms/chunk (all stages, 64 chunks)
+poland / slice fresh_pine_2: stages for 64 chunks (incremental): minecraft:structure_starts=6 ms minecraft:biomes=105 ms minecraft:terrain=195 ms minecraft:features=348 ms minecraft:light=421 ms minecraft:full=0 ms 
+poland / slice fresh_pine_2: whole chunk 16.81 ms/chunk (all stages, 64 chunks)
+poland / slice transect: stages for 64 chunks (incremental): minecraft:structure_starts=9 ms minecraft:biomes=137 ms minecraft:terrain=207 ms minecraft:features=298 ms minecraft:light=426 ms minecraft:full=0 ms 
+poland / slice transect: whole chunk 16.83 ms/chunk (all stages, 64 chunks)
+poland_gameplay / slice oak_hornbeam_1: stages for 64 chunks (incremental): minecraft:structure_starts=4 ms minecraft:biomes=110 ms minecraft:terrain=186 ms minecraft:features=314 ms minecraft:light=409 ms minecraft:full=0 ms 
+poland_gameplay / slice oak_hornbeam_1: whole chunk 15.99 ms/chunk (all stages, 64 chunks)
+poland_gameplay / slice oak_hornbeam_2: stages for 64 chunks (incremental): minecraft:structure_starts=5 ms minecraft:biomes=135 ms minecraft:terrain=341 ms minecraft:features=368 ms minecraft:light=475 ms minecraft:full=0 ms 
+poland_gameplay / slice oak_hornbeam_2: whole chunk 20.70 ms/chunk (all stages, 64 chunks)
+poland_gameplay / slice fresh_pine_1: stages for 64 chunks (incremental): minecraft:structure_starts=5 ms minecraft:biomes=109 ms minecraft:terrain=266 ms minecraft:features=323 ms minecraft:light=411 ms minecraft:full=0 ms 
+poland_gameplay / slice fresh_pine_1: whole chunk 17.41 ms/chunk (all stages, 64 chunks)
+poland_gameplay / slice fresh_pine_2: stages for 64 chunks (incremental): minecraft:structure_starts=7 ms minecraft:biomes=144 ms minecraft:terrain=264 ms minecraft:features=304 ms minecraft:light=429 ms minecraft:full=0 ms 
+poland_gameplay / slice fresh_pine_2: whole chunk 17.93 ms/chunk (all stages, 64 chunks)
+poland_gameplay / slice transect: stages for 64 chunks (incremental): minecraft:structure_starts=6 ms minecraft:biomes=120 ms minecraft:terrain=232 ms minecraft:features=310 ms minecraft:light=444 ms minecraft:full=0 ms 
+poland_gameplay / slice transect: whole chunk 17.38 ms/chunk (all stages, 64 chunks)
+poland_present_day / slice oak_hornbeam_1: stages for 64 chunks (incremental): minecraft:structure_starts=5 ms minecraft:biomes=110 ms minecraft:terrain=261 ms minecraft:features=311 ms minecraft:light=430 ms minecraft:full=0 ms 
+poland_present_day / slice oak_hornbeam_1: whole chunk 17.44 ms/chunk (all stages, 64 chunks)
+poland_present_day / slice oak_hornbeam_2: stages for 64 chunks (incremental): minecraft:structure_starts=5 ms minecraft:biomes=136 ms minecraft:terrain=233 ms minecraft:features=309 ms minecraft:light=448 ms minecraft:full=0 ms 
+poland_present_day / slice oak_hornbeam_2: whole chunk 17.68 ms/chunk (all stages, 64 chunks)
+poland_present_day / slice fresh_pine_1: stages for 64 chunks (incremental): minecraft:structure_starts=5 ms minecraft:biomes=120 ms minecraft:terrain=213 ms minecraft:features=330 ms minecraft:light=417 ms minecraft:full=0 ms 
+poland_present_day / slice fresh_pine_1: whole chunk 16.95 ms/chunk (all stages, 64 chunks)
+poland_present_day / slice fresh_pine_2: stages for 64 chunks (incremental): minecraft:structure_starts=6 ms minecraft:biomes=112 ms minecraft:terrain=198 ms minecraft:features=281 ms minecraft:light=420 ms minecraft:full=0 ms 
+poland_present_day / slice fresh_pine_2: whole chunk 15.89 ms/chunk (all stages, 64 chunks)
+poland_present_day / slice transect: stages for 64 chunks (incremental): minecraft:structure_starts=7 ms minecraft:biomes=139 ms minecraft:terrain=192 ms minecraft:features=300 ms minecraft:light=442 ms minecraft:full=0 ms 
+poland_present_day / slice transect: whole chunk 16.87 ms/chunk (all stages, 64 chunks)
+poland_gameplay_present_day / slice oak_hornbeam_1: stages for 64 chunks (incremental): minecraft:structure_starts=4 ms minecraft:biomes=122 ms minecraft:terrain=195 ms minecraft:features=302 ms minecraft:light=417 ms minecraft:full=0 ms 
+poland_gameplay_present_day / slice oak_hornbeam_1: whole chunk 16.25 ms/chunk (all stages, 64 chunks)
+poland_gameplay_present_day / slice oak_hornbeam_2: stages for 64 chunks (incremental): minecraft:structure_starts=5 ms minecraft:biomes=138 ms minecraft:terrain=333 ms minecraft:features=443 ms minecraft:light=475 ms minecraft:full=0 ms 
+poland_gameplay_present_day / slice oak_hornbeam_2: whole chunk 21.78 ms/chunk (all stages, 64 chunks)
+poland_gameplay_present_day / slice fresh_pine_1: stages for 64 chunks (incremental): minecraft:structure_starts=5 ms minecraft:biomes=113 ms minecraft:terrain=259 ms minecraft:features=330 ms minecraft:light=420 ms minecraft:full=0 ms 
+poland_gameplay_present_day / slice fresh_pine_1: whole chunk 17.62 ms/chunk (all stages, 64 chunks)
+poland_gameplay_present_day / slice fresh_pine_2: stages for 64 chunks (incremental): minecraft:structure_starts=7 ms minecraft:biomes=151 ms minecraft:terrain=275 ms minecraft:features=308 ms minecraft:light=432 ms minecraft:full=0 ms 
+poland_gameplay_present_day / slice fresh_pine_2: whole chunk 18.32 ms/chunk (all stages, 64 chunks)
+poland_gameplay_present_day / slice transect: stages for 64 chunks (incremental): minecraft:structure_starts=6 ms minecraft:biomes=120 ms minecraft:terrain=228 ms minecraft:features=302 ms minecraft:light=438 ms minecraft:full=0 ms 
+poland_gameplay_present_day / slice transect: whole chunk 17.10 ms/chunk (all stages, 64 chunks)
+## ab/stages_r1_head.log
+poland / slice oak_hornbeam_1: stages for 64 chunks (incremental): minecraft:structure_starts=6 ms minecraft:biomes=118 ms minecraft:terrain=451 ms minecraft:features=606 ms minecraft:light=736 ms minecraft:full=0 ms 
+poland / slice oak_hornbeam_1: whole chunk 29.95 ms/chunk (all stages, 64 chunks)
+poland / slice oak_hornbeam_1: caves in the fill 3.631 ms/chunk over 144 chunks (6882029 noise and 1603992 carver blocks carved in all)
+poland / slice oak_hornbeam_2: stages for 64 chunks (incremental): minecraft:structure_starts=9 ms minecraft:biomes=135 ms minecraft:terrain=434 ms minecraft:features=616 ms minecraft:light=699 ms minecraft:full=0 ms 
+poland / slice oak_hornbeam_2: whole chunk 29.57 ms/chunk (all stages, 64 chunks)
+poland / slice oak_hornbeam_2: caves in the fill 3.123 ms/chunk over 144 chunks (7267902 noise and 1788306 carver blocks carved in all)
+poland / slice fresh_pine_1: stages for 64 chunks (incremental): minecraft:structure_starts=6 ms minecraft:biomes=112 ms minecraft:terrain=482 ms minecraft:features=549 ms minecraft:light=666 ms minecraft:full=0 ms 
+poland / slice fresh_pine_1: whole chunk 28.35 ms/chunk (all stages, 64 chunks)
+poland / slice fresh_pine_1: caves in the fill 3.625 ms/chunk over 144 chunks (8187241 noise and 2016193 carver blocks carved in all)
+poland / slice fresh_pine_2: stages for 64 chunks (incremental): minecraft:structure_starts=6 ms minecraft:biomes=113 ms minecraft:terrain=462 ms minecraft:features=517 ms minecraft:light=748 ms minecraft:full=0 ms 
+poland / slice fresh_pine_2: whole chunk 28.84 ms/chunk (all stages, 64 chunks)
+poland / slice fresh_pine_2: caves in the fill 3.858 ms/chunk over 144 chunks (9513877 noise and 2207884 carver blocks carved in all)
+poland / slice transect: stages for 64 chunks (incremental): minecraft:structure_starts=7 ms minecraft:biomes=133 ms minecraft:terrain=431 ms minecraft:features=515 ms minecraft:light=672 ms minecraft:full=0 ms 
+poland / slice transect: whole chunk 27.48 ms/chunk (all stages, 64 chunks)
+poland / slice transect: caves in the fill 3.243 ms/chunk over 144 chunks (10080426 noise and 2457450 carver blocks carved in all)
+poland_gameplay / slice oak_hornbeam_1: stages for 64 chunks (incremental): minecraft:structure_starts=6 ms minecraft:biomes=111 ms minecraft:terrain=343 ms minecraft:features=592 ms minecraft:light=681 ms minecraft:full=0 ms 
+poland_gameplay / slice oak_hornbeam_1: whole chunk 27.07 ms/chunk (all stages, 64 chunks)
+poland_gameplay / slice oak_hornbeam_1: caves in the fill 2.416 ms/chunk over 144 chunks (14330840 noise and 3792003 carver blocks carved in all)
+poland_gameplay / slice oak_hornbeam_2: stages for 64 chunks (incremental): minecraft:structure_starts=5 ms minecraft:biomes=137 ms minecraft:terrain=518 ms minecraft:features=632 ms minecraft:light=718 ms minecraft:full=0 ms 
+poland_gameplay / slice oak_hornbeam_2: whole chunk 31.41 ms/chunk (all stages, 64 chunks)
+poland_gameplay / slice oak_hornbeam_2: caves in the fill 2.988 ms/chunk over 144 chunks (14879079 noise and 3970184 carver blocks carved in all)
+poland_gameplay / slice fresh_pine_1: stages for 64 chunks (incremental): minecraft:structure_starts=6 ms minecraft:biomes=121 ms minecraft:terrain=400 ms minecraft:features=526 ms minecraft:light=635 ms minecraft:full=0 ms 
+poland_gameplay / slice fresh_pine_1: whole chunk 26.37 ms/chunk (all stages, 64 chunks)
+poland_gameplay / slice fresh_pine_1: caves in the fill 2.117 ms/chunk over 144 chunks (15211373 noise and 4072132 carver blocks carved in all)
+poland_gameplay / slice fresh_pine_2: stages for 64 chunks (incremental): minecraft:structure_starts=5 ms minecraft:biomes=139 ms minecraft:terrain=395 ms minecraft:features=516 ms minecraft:light=653 ms minecraft:full=0 ms 
+poland_gameplay / slice fresh_pine_2: whole chunk 26.70 ms/chunk (all stages, 64 chunks)
+poland_gameplay / slice fresh_pine_2: caves in the fill 2.270 ms/chunk over 144 chunks (15457193 noise and 4169531 carver blocks carved in all)
+poland_gameplay / slice transect: stages for 64 chunks (incremental): minecraft:structure_starts=6 ms minecraft:biomes=118 ms minecraft:terrain=374 ms minecraft:features=505 ms minecraft:light=610 ms minecraft:full=0 ms 
+poland_gameplay / slice transect: whole chunk 25.21 ms/chunk (all stages, 64 chunks)
+poland_gameplay / slice transect: caves in the fill 2.217 ms/chunk over 144 chunks (15862030 noise and 4297060 carver blocks carved in all)
+poland_present_day / slice oak_hornbeam_1: stages for 64 chunks (incremental): minecraft:structure_starts=5 ms minecraft:biomes=114 ms minecraft:terrain=444 ms minecraft:features=617 ms minecraft:light=725 ms minecraft:full=0 ms 
+poland_present_day / slice oak_hornbeam_1: whole chunk 29.77 ms/chunk (all stages, 64 chunks)
+poland_present_day / slice oak_hornbeam_1: caves in the fill 3.695 ms/chunk over 144 chunks (22744059 noise and 5901052 carver blocks carved in all)
+poland_present_day / slice oak_hornbeam_2: stages for 64 chunks (incremental): minecraft:structure_starts=6 ms minecraft:biomes=126 ms minecraft:terrain=450 ms minecraft:features=540 ms minecraft:light=681 ms minecraft:full=0 ms 
+poland_present_day / slice oak_hornbeam_2: whole chunk 28.19 ms/chunk (all stages, 64 chunks)
+poland_present_day / slice oak_hornbeam_2: caves in the fill 3.046 ms/chunk over 144 chunks (23129932 noise and 6085366 carver blocks carved in all)
+poland_present_day / slice fresh_pine_1: stages for 64 chunks (incremental): minecraft:structure_starts=5 ms minecraft:biomes=121 ms minecraft:terrain=602 ms minecraft:features=557 ms minecraft:light=646 ms minecraft:full=0 ms 
+poland_present_day / slice fresh_pine_1: whole chunk 30.18 ms/chunk (all stages, 64 chunks)
+poland_present_day / slice fresh_pine_1: caves in the fill 3.728 ms/chunk over 144 chunks (24049271 noise and 6313253 carver blocks carved in all)
+poland_present_day / slice fresh_pine_2: stages for 64 chunks (incremental): minecraft:structure_starts=5 ms minecraft:biomes=114 ms minecraft:terrain=457 ms minecraft:features=524 ms minecraft:light=670 ms minecraft:full=0 ms 
+poland_present_day / slice fresh_pine_2: whole chunk 27.66 ms/chunk (all stages, 64 chunks)
+poland_present_day / slice fresh_pine_2: caves in the fill 3.842 ms/chunk over 144 chunks (25375907 noise and 6504944 carver blocks carved in all)
+poland_present_day / slice transect: stages for 64 chunks (incremental): minecraft:structure_starts=7 ms minecraft:biomes=138 ms minecraft:terrain=418 ms minecraft:features=529 ms minecraft:light=667 ms minecraft:full=0 ms 
+poland_present_day / slice transect: whole chunk 27.48 ms/chunk (all stages, 64 chunks)
+poland_present_day / slice transect: caves in the fill 3.210 ms/chunk over 144 chunks (25942456 noise and 6754510 carver blocks carved in all)
+poland_gameplay_present_day / slice oak_hornbeam_1: stages for 64 chunks (incremental): minecraft:structure_starts=4 ms minecraft:biomes=119 ms minecraft:terrain=344 ms minecraft:features=559 ms minecraft:light=664 ms minecraft:full=0 ms 
+poland_gameplay_present_day / slice oak_hornbeam_1: whole chunk 26.42 ms/chunk (all stages, 64 chunks)
+poland_gameplay_present_day / slice oak_hornbeam_1: caves in the fill 2.378 ms/chunk over 144 chunks (30192779 noise and 8088921 carver blocks carved in all)
+poland_gameplay_present_day / slice oak_hornbeam_2: stages for 64 chunks (incremental): minecraft:structure_starts=5 ms minecraft:biomes=136 ms minecraft:terrain=517 ms minecraft:features=616 ms minecraft:light=701 ms minecraft:full=0 ms 
+poland_gameplay_present_day / slice oak_hornbeam_2: whole chunk 30.86 ms/chunk (all stages, 64 chunks)
+poland_gameplay_present_day / slice oak_hornbeam_2: caves in the fill 2.998 ms/chunk over 144 chunks (30741018 noise and 8267102 carver blocks carved in all)
+poland_gameplay_present_day / slice fresh_pine_1: stages for 64 chunks (incremental): minecraft:structure_starts=5 ms minecraft:biomes=114 ms minecraft:terrain=395 ms minecraft:features=497 ms minecraft:light=636 ms minecraft:full=0 ms 
+poland_gameplay_present_day / slice fresh_pine_1: whole chunk 25.72 ms/chunk (all stages, 64 chunks)
+poland_gameplay_present_day / slice fresh_pine_1: caves in the fill 2.110 ms/chunk over 144 chunks (31073312 noise and 8369050 carver blocks carved in all)
+poland_gameplay_present_day / slice fresh_pine_2: stages for 64 chunks (incremental): minecraft:structure_starts=5 ms minecraft:biomes=140 ms minecraft:terrain=407 ms minecraft:features=522 ms minecraft:light=644 ms minecraft:full=0 ms 
+poland_gameplay_present_day / slice fresh_pine_2: whole chunk 26.85 ms/chunk (all stages, 64 chunks)
+poland_gameplay_present_day / slice fresh_pine_2: caves in the fill 2.251 ms/chunk over 144 chunks (31319132 noise and 8466449 carver blocks carved in all)
+poland_gameplay_present_day / slice transect: stages for 64 chunks (incremental): minecraft:structure_starts=7 ms minecraft:biomes=120 ms minecraft:terrain=374 ms minecraft:features=500 ms minecraft:light=600 ms minecraft:full=0 ms 
+poland_gameplay_present_day / slice transect: whole chunk 25.01 ms/chunk (all stages, 64 chunks)
+poland_gameplay_present_day / slice transect: caves in the fill 2.236 ms/chunk over 144 chunks (31723969 noise and 8593978 carver blocks carved in all)
+## ab2 runs
+14:07:07 driver run_j1b (load x2 base/head after the fill fast path; flights head off + head)
+14:07:23 start base load_r1 gpu=33 cpu=10 -Pgametest=performance -Psites=slice -Poptimization -PloadOnly
+14:08:59 end base load_r1 exit=0 game_during=0
+14:09:16 start head load_r1 gpu=36 cpu=13 -Pgametest=performance -Psites=slice -Poptimization -PloadOnly
+14:11:34 end head load_r1 exit=0 game_during=0
+14:11:50 start head load_r2 gpu=34 cpu=3 -Pgametest=performance -Psites=slice -Poptimization -PloadOnly
+14:14:08 end head load_r2 exit=0 game_during=0
+14:14:24 start base load_r2 gpu=37 cpu=7 -Pgametest=performance -Psites=slice -Poptimization -PloadOnly
+14:16:10 end base load_r2 exit=0 game_during=0
+14:16:26 start head flights_off_r1 gpu=32 cpu=6 -Pcaves=off -Pgametest=performance -Psites=slice -Poptimization
+14:30:58 end head flights_off_r1 exit=0 game_during=0
+14:31:14 start head flights_r2 gpu=33 cpu=8 -Pgametest=performance -Psites=slice -Poptimization
+14:45:56 end head flights_r2 exit=0 game_during=0
+14:45:57 ALL DONE
+## ab2/flights_off_r1_head.log
+poland / oak_hornbeam_1: new terrain, client has 1691 of the 1875 chunks around three teleports after 15.52 s, 108.9 chunks/s (per load 94.1 113.9 122.9)
+poland / oak_hornbeam_1 canopy flight: 8 points, 576 ticks in 28.80 s (20.0 ticks/s); FPS 1306.5 (mean of the game's frames per second over the turns; per point 1366 1387 1330 1302 1275 1258 1263 1271), 37608 frames drawn (1305.8/s); GPU time of the level pass
+poland / oak_hornbeam_1 eye flight: 8 points, 576 ticks in 28.80 s (20.0 ticks/s); FPS 1505.9 (mean of the game's frames per second over the turns; per point 1487 1529 1492 1550 1447 1492 1509 1541), 43568 frames drawn (1512.8/s); GPU time of the level pass pe
+poland / fresh_pine_1: new terrain, client has 1711 of the 1875 chunks around three teleports after 11.01 s, 155.4 chunks/s (per load 154.2 161.4 151.1)
+poland / fresh_pine_1 canopy flight: 8 points, 576 ticks in 28.80 s (20.0 ticks/s); FPS 1226.0 (mean of the game's frames per second over the turns; per point 1257 1256 1221 1220 1214 1198 1207 1236), 35170 frames drawn (1221.2/s); GPU time of the level pass p
+poland / fresh_pine_1 eye flight: 8 points, 576 ticks in 28.80 s (20.0 ticks/s); FPS 1333.4 (mean of the game's frames per second over the turns; per point 1341 1210 1283 1309 1453 1416 1350 1305), 38036 frames drawn (1320.6/s); GPU time of the level pass per 
+poland_gameplay / oak_hornbeam_1: new terrain, client has 1705 of the 1875 chunks around three teleports after 10.62 s, 160.6 chunks/s (per load 160.0 148.3 176.2)
+poland_gameplay / oak_hornbeam_1 canopy flight: 8 points, 576 ticks in 28.80 s (20.0 ticks/s); FPS 1266.2 (mean of the game's frames per second over the turns; per point 1298 1287 1251 1231 1258 1266 1269 1270), 36710 frames drawn (1274.7/s); GPU time of the l
+poland_gameplay / oak_hornbeam_1 eye flight: 8 points, 576 ticks in 28.80 s (20.0 ticks/s); FPS 1558.5 (mean of the game's frames per second over the turns; per point 1526 1550 1569 1572 1545 1570 1576 1561), 45122 frames drawn (1566.8/s); GPU time of the leve
+poland_gameplay / fresh_pine_1: new terrain, client has 1697 of the 1875 chunks around three teleports after 11.17 s, 151.9 chunks/s (per load 141.3 164.1 152.2)
+poland_gameplay / fresh_pine_1 canopy flight: 8 points, 576 ticks in 28.80 s (20.0 ticks/s); FPS 1315.8 (mean of the game's frames per second over the turns; per point 1366 1388 1341 1331 1328 1282 1231 1259), 37819 frames drawn (1313.2/s); GPU time of the lev
+poland_gameplay / fresh_pine_1 eye flight: 8 points, 576 ticks in 28.80 s (20.0 ticks/s); FPS 1430.6 (mean of the game's frames per second over the turns; per point 1491 1392 1394 1456 1377 1365 1546 1424), 41214 frames drawn (1431.0/s); GPU time of the level 
+## ab2/flights_r2_head.log
+poland / oak_hornbeam_1: new terrain, client has 1708 of the 1875 chunks around three teleports after 17.61 s, 97.0 chunks/s (per load 84.5 99.1 110.7)
+poland / oak_hornbeam_1 canopy flight: 8 points, 576 ticks in 28.80 s (20.0 ticks/s); FPS 1306.8 (mean of the game's frames per second over the turns; per point 1331 1371 1353 1286 1289 1295 1266 1263), 37858 frames drawn (1314.4/s); GPU time of the level pass
+poland / oak_hornbeam_1 eye flight: 8 points, 576 ticks in 28.80 s (20.0 ticks/s); FPS 1517.8 (mean of the game's frames per second over the turns; per point 1518 1537 1533 1515 1516 1516 1508 1500), 43894 frames drawn (1524.1/s); GPU time of the level pass pe
+poland / fresh_pine_1: new terrain, client has 1701 of the 1875 chunks around three teleports after 13.04 s, 130.4 chunks/s (per load 120.2 144.6 128.7)
+poland / fresh_pine_1 canopy flight: 8 points, 576 ticks in 28.80 s (20.0 ticks/s); FPS 1236.9 (mean of the game's frames per second over the turns; per point 1267 1256 1233 1217 1227 1207 1222 1267), 35296 frames drawn (1225.5/s); GPU time of the level pass p
+poland / fresh_pine_1 eye flight: 8 points, 576 ticks in 28.80 s (20.0 ticks/s); FPS 1315.5 (mean of the game's frames per second over the turns; per point 1319 1215 1288 1286 1428 1374 1340 1274), 37615 frames drawn (1306.1/s); GPU time of the level pass per 
+poland_gameplay / oak_hornbeam_1: new terrain, client has 1710 of the 1875 chunks around three teleports after 12.83 s, 133.2 chunks/s (per load 123.1 136.9 141.3)
+poland_gameplay / oak_hornbeam_1 canopy flight: 8 points, 576 ticks in 28.80 s (20.0 ticks/s); FPS 1263.0 (mean of the game's frames per second over the turns; per point 1317 1276 1240 1234 1251 1269 1240 1277), 36614 frames drawn (1271.4/s); GPU time of the l
+poland_gameplay / oak_hornbeam_1 eye flight: 8 points, 576 ticks in 28.80 s (20.0 ticks/s); FPS 1523.4 (mean of the game's frames per second over the turns; per point 1492 1513 1555 1526 1539 1532 1518 1512), 44018 frames drawn (1528.4/s); GPU time of the leve
+poland_gameplay / fresh_pine_1: new terrain, client has 1708 of the 1875 chunks around three teleports after 11.49 s, 148.6 chunks/s (per load 149.9 152.3 143.9)
+poland_gameplay / fresh_pine_1 canopy flight: 8 points, 576 ticks in 28.80 s (20.0 ticks/s); FPS 1299.2 (mean of the game's frames per second over the turns; per point 1348 1371 1373 1330 1301 1237 1162 1271), 37509 frames drawn (1302.4/s); GPU time of the lev
+poland_gameplay / fresh_pine_1 eye flight: 8 points, 576 ticks in 28.80 s (20.0 ticks/s); FPS 1411.3 (mean of the game's frames per second over the turns; per point 1481 1348 1437 1390 1381 1337 1506 1410), 40688 frames drawn (1412.8/s); GPU time of the level 
+## ab2/load_r1_base.log
+poland / oak_hornbeam_1: new terrain, client has 1704 of the 1875 chunks around three teleports after 11.57 s, 147.3 chunks/s (per load 128.5 151.5 167.1)
+poland / fresh_pine_1: new terrain, client has 1711 of the 1875 chunks around three teleports after 8.90 s, 192.3 chunks/s (per load 162.0 197.2 229.6)
+poland_gameplay / oak_hornbeam_1: new terrain, client has 1715 of the 1875 chunks around three teleports after 7.75 s, 221.2 chunks/s (per load 199.3 227.9 240.6)
+poland_gameplay / fresh_pine_1: new terrain, client has 1715 of the 1875 chunks around three teleports after 7.99 s, 214.5 chunks/s (per load 203.2 220.4 220.8)
+## ab2/load_r1_head.log
+poland / oak_hornbeam_1: new terrain, client has 1702 of the 1875 chunks around three teleports after 18.44 s, 92.3 chunks/s (per load 81.7 99.3 98.1)
+poland / fresh_pine_1: new terrain, client has 1700 of the 1875 chunks around three teleports after 14.26 s, 119.2 chunks/s (per load 110.4 129.4 119.3)
+poland_gameplay / oak_hornbeam_1: new terrain, client has 1706 of the 1875 chunks around three teleports after 12.61 s, 135.3 chunks/s (per load 129.0 126.0 153.7)
+poland_gameplay / fresh_pine_1: new terrain, client has 1713 of the 1875 chunks around three teleports after 12.52 s, 136.8 chunks/s (per load 117.1 151.8 146.9)
+## ab2/load_r2_base.log
+poland / oak_hornbeam_1: new terrain, client has 1713 of the 1875 chunks around three teleports after 11.39 s, 150.4 chunks/s (per load 130.3 154.3 172.0)
+poland / fresh_pine_1: new terrain, client has 1701 of the 1875 chunks around three teleports after 8.45 s, 201.3 chunks/s (per load 167.7 208.8 240.5)
+poland_gameplay / oak_hornbeam_1: new terrain, client has 1710 of the 1875 chunks around three teleports after 7.97 s, 214.7 chunks/s (per load 186.9 220.4 244.9)
+poland_gameplay / fresh_pine_1: new terrain, client has 1733 of the 1875 chunks around three teleports after 8.04 s, 215.4 chunks/s (per load 196.2 229.0 223.5)
+## ab2/load_r2_head.log
+poland / oak_hornbeam_1: new terrain, client has 1724 of the 1875 chunks around three teleports after 18.63 s, 92.5 chunks/s (per load 79.3 93.2 109.4)
+poland / fresh_pine_1: new terrain, client has 1717 of the 1875 chunks around three teleports after 14.20 s, 120.9 chunks/s (per load 107.3 135.4 123.2)
+poland_gameplay / oak_hornbeam_1: new terrain, client has 1696 of the 1875 chunks around three teleports after 12.34 s, 137.4 chunks/s (per load 130.0 132.9 151.0)
+poland_gameplay / fresh_pine_1: new terrain, client has 1701 of the 1875 chunks around three teleports after 11.88 s, 143.2 chunks/s (per load 127.5 157.0 148.2)
+## costtest
+    [cave cost] vanilla overworld: noise with caves 4.197 ms, without caves 2.327 ms per chunk (medians of 7 rounds of 64 chunks; the vanilla carvers are not in the noise)
+    [cave cost] REALISTIC lowland: plan 1.740 ms, noise caves 3.166 ms, noise caves and carvers 3.532 ms per chunk (medians of 7 rounds of 64 chunks; 5832 carved blocks per chunk)
+    [cave cost] REALISTIC mountains: plan 1.532 ms, noise caves 6.728 ms, noise caves and carvers 7.235 ms per chunk (medians of 7 rounds of 64 chunks; 13903 carved blocks per chunk)
+    [cave cost] GAMEPLAY lowland: plan 1.286 ms, noise caves 1.250 ms, noise caves and carvers 1.547 ms per chunk (medians of 7 rounds of 64 chunks; 2661 carved blocks per chunk)
+    [cave cost] GAMEPLAY mountains: plan 3.441 ms, noise caves 4.494 ms, noise caves and carvers 4.942 ms per chunk (medians of 7 rounds of 64 chunks; 17320 carved blocks per chunk)
+BUILD SUCCESSFUL in 34s

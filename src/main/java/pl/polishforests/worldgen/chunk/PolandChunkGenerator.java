@@ -507,22 +507,25 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 				int y0 = chunk.getSectionYFromSectionIndex(idx) << 4;
 				byte[] cave = carving == null ? null : carving.section((y0 - minY) >> 4);
 				// Deep sections wholly in one rock kind: the same single-value palette as below, without 4096 material calls.
-				Material uniformRock = cave != null ? null : ChunkSurface.uniformRock(y0, rock);
-				if (uniformRock != null) {
+				Material uniformRock = ChunkSurface.uniformRock(y0, rock);
+				if (uniformRock != null && cave == null) {
 					chunkSections[idx] = new LevelChunkSection(new PalettedContainer<>(states[uniformRock.ordinal()], BLOCK_STRATEGY),
 							sections[idx - bottomSection].getBiomes());
 					continue;
 				}
 				// First compute the materials of the whole section; a uniform section gets a single-value palette,
-				// which is many times cheaper than 4096 separate palette writes.
+				// which is many times cheaper than 4096 separate palette writes. A rock section with caves (step J1) is its
+				// rock with the cave blocks over it, without the 4096 material calls.
 				int first = -1;
 				boolean uniform = true;
+				int rockId = uniformRock != null ? uniformRock.ordinal() : -1;
 				for (int i = 0; i < 256; i++) {
 					// Index order as in the section palette: y, then z, then x.
 					int column = ((i & 15) << 4) | (i >> 4);
 					for (int dy = 0; dy < 16; dy++) {
 						int k = (dy << 8) | column;
-						int material = cave != null && cave[k] != 0 ? cave[k] - 1 : surface.material(i, y0 + dy).ordinal();
+						int material = cave != null && cave[k] != 0 ? cave[k] - 1
+								: rockId >= 0 ? rockId : surface.material(i, y0 + dy).ordinal();
 						buffer[k] = material;
 						if (first < 0) {
 							first = material;

@@ -38,8 +38,8 @@ import pl.polishforests.worldgen.surface.ChunkSurface;
 
 /**
  * Caves of step J1 (docs/04-pionowy-wycinek.md), {@code -Pgametest=caves} (only by name): in each scale
- * ({@code -Pscales}) a world of the preset (caves on) and four places found in the model: a lowland forest, a river
- * valley, the mountains and the sea coast. In each place a survey of the generated chunks against their surface plans
+ * ({@code -Pscales}) a world of the preset (caves on) and five places: a lowland forest, a river valley, the mountains
+ * and the sea coast found in the model, and the nearest start chunk of the vanilla canyon carver. In each place a survey of the generated chunks against their surface plans
  * ({@code PolandChunkGenerator.surface}): the share of cave blocks by depth below the plan top, cave water and lava,
  * cave entrances per km², and the faults: a cave beside or under the water of the surface (a draining river, lake or sea),
  * a trunk or plant over an opened top, lava above Y -10. Then pictures: the 16 vertical slices of the place's chunk down
@@ -90,8 +90,8 @@ public final class CavesClientGameTest implements FabricClientGameTest {
 			try (TestSingleplayerContext sp = context.worldBuilder().adjustSettings(ui -> select(ui, preset)).create()) {
 				prepare(sp);
 				List<Place> places = sp.getServer().computeOnServer(CavesClientGameTest::findPlaces);
-				if (places.size() < 4) {
-					failures.add(scale.getSerializedName() + ": only " + places.size() + " of 4 places found");
+				if (places.size() < 5) {
+					failures.add(scale.getSerializedName() + ": only " + places.size() + " of 5 places found");
 				}
 				for (Place place : places) {
 					String name = "caves_" + scale.getSerializedName() + "_" + place.name();
@@ -171,7 +171,47 @@ public final class CavesClientGameTest implements FabricClientGameTest {
 				&& s.surface() > 700 && dryAround(m, p, 24));
 		add(places, m, "sea", 2, false, real ? CLIFF_REAL : CLIFF_GAMEPLAY, (s, p) -> s.waterKind() == WaterKind.SEA
 				&& landNear(m, p));
+		canyon(places, level, m);
 		return places;
+	}
+
+	/**
+	 * The nearest start chunk of the vanilla carver {@code minecraft:canyon} under dry land, from the origin along a square
+	 * spiral of chunks, seeded as {@code PolandCaves} seeds it (world seed + index 2 of the carver list, as vanilla); the
+	 * geometric "ravine" spots of the other places are tall gaps of any cave, this place shows the carver's canyon itself.
+	 */
+	private static void canyon(List<Place> places, ServerLevel level, LandscapeModel m) {
+		net.minecraft.world.level.levelgen.carver.WorldCarver carver = level.registryAccess()
+				.lookupOrThrow(Registries.CARVER).getOrThrow(net.minecraft.data.worldgen.Carvers.CANYON).value();
+		net.minecraft.world.level.levelgen.WorldgenRandom random = new net.minecraft.world.level.levelgen.WorldgenRandom(
+				new net.minecraft.world.level.levelgen.LegacyRandomSource(0L));
+		int x = 0;
+		int z = 0;
+		int dx = 1;
+		int dz = 0;
+		int leg = 1;
+		int inLeg = 0;
+		int turns = 0;
+		for (int k = 0; k < 128 * 128; k++) {
+			random.setLargeFeatureSeed(level.getSeed() + 2, x, z);
+			if (carver.isStartChunk(random) && !m.sample((x << 4) + 8, (z << 4) + 8).hasWater()) {
+				places.add(new Place("canyon", x, z, 2, false));
+				PolishForests.LOG.info("[caves] place canyon: start chunk ({}, {}), {} chunks searched", x, z, k + 1);
+				return;
+			}
+			x += dx;
+			z += dz;
+			if (++inLeg == leg) {
+				inLeg = 0;
+				int t = dx;
+				dx = -dz;
+				dz = t;
+				if (++turns % 2 == 0) {
+					leg++;
+				}
+			}
+		}
+		PolishForests.LOG.warn("[caves] no canyon start chunk within 64 chunks of the origin");
 	}
 
 	private interface Test2 {
