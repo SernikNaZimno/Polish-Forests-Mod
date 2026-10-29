@@ -229,8 +229,9 @@ final class ViewReady {
 		if (CHECK && !cloudsOff) {
 			context.runOnClient(mc -> mc.options.cloudStatus().set(CloudStatus.OFF));
 			cloudsOff = true;
-			PolishForests.LOG.info("[view] check mode: clouds off for the whole run, reference frames {} s after the teleport",
-					CHECK_SECONDS);
+			PolishForests.LOG.info("[view] check mode: clouds off for the whole run, {}", CHECK_FIXED
+					? "reference frames " + CHECK_SECONDS + " s after the teleport (fixed)"
+					: "adaptive reference frames (safety limit " + CHECK_SECONDS + " s after the teleport)");
 		}
 		Result r = await(context, sp, name, size, legacySeconds, minSeconds, horizon);
 		int margin = FIXED ? 0 : marginTicks;

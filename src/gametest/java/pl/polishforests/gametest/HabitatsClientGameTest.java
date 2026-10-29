@@ -584,6 +584,8 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 			mc.debugEntries.setStatus(DebugScreenEntries.BIOME, DebugScreenEntryStatus.IN_OVERLAY);
 			mc.debugEntries.setStatus(DebugScreenEntries.CHUNK_GENERATION_STATS, DebugScreenEntryStatus.IN_OVERLAY);
 			mc.debugEntries.setOverlayVisible(true);
+			// Step T8 (DP-72): the chat of the preparation commands must not cover the frame (the adaptive check saw it fade).
+			mc.gui.hud.getChat().clearMessages(false);
 		});
 		context.waitTicks(20);
 		ViewReady.take(context, "habitats_f3_" + name, null, ready);
@@ -664,6 +666,8 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 			{-1_072, -288}, {-32, -416}, {27_257, 3_622}, {6_854, -33_756}, {-4_160, -4_160}, {-2_944, -896}};
 	/** Least number of checked columns per soil place. */
 	private static final int SOIL_MIN_COLUMNS = 8;
+	/** Most columns of a soil place that may carry the turf of the plant ground rules over a planned podzol (step T8, DP-70). */
+	private static final double TURF_SHARE = 0.25;
 
 	/**
 	 * The ground block of the world equals the soil of the surface plan ({@code SoilBlocks}, §7.4) at the 11 soil places:
@@ -704,6 +708,7 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 			int checked = 0;
 			int mismatched = 0;
 			int erratics = 0;
+			int turf = 0;
 			Map<String, Integer> blocks = new java.util.TreeMap<>();
 			for (int i = 0; i < 256; i++) {
 				if (Habitat.biome(codes[i]) != biome || plan.wet(i)) {
@@ -729,6 +734,14 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 					continue;
 				}
 				boolean solidAbove = above.isSolidRender() && !above.is(BlockTags.LEAVES);
+				if (expected == net.minecraft.world.level.block.Blocks.PODZOL && actual.is(net.minecraft.world.level.block.Blocks.GRASS_BLOCK)
+						&& !solidAbove) {
+					// Step T8 (DP-70): the turf of the plant ground rules of the mixed and oak-hornbeam forests (steps V12, V13,
+					// PlantLayerFeature.groundOfColumns) lies on the podzol of a forest across a ForestBlend belt. Only this one
+					// pair is accepted, and only up to TURF_SHARE of the checked columns of the place (below).
+					turf++;
+					continue;
+				}
 				// No exemption for the vanilla disks of sand, clay and gravel: S8 removed them from step 6.
 				if (!actual.is(expected) || solidAbove) {
 					mismatched++;
@@ -739,12 +752,15 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 				}
 				blocks.merge(plan.topMaterial(i).id().substring("minecraft:".length()), 1, Integer::sum);
 			}
+			if (turf > TURF_SHARE * checked) {
+				failures.add(SOIL_NAMES[p] + ": " + turf + " turf columns of " + checked + " instead of podzol");
+			}
 			if (checked < SOIL_MIN_COLUMNS) {
 				failures.add(SOIL_NAMES[p] + ": only " + checked + " columns of " + biome.id());
 			}
 			report.append(String.format(Locale.ROOT, " %s (%d, %d) %s: %d/%d %s%s%s;", SOIL_NAMES[p], x0, z0, biome.id(),
 					checked - mismatched - erratics, checked, blocks, erratics > 0 ? ", " + erratics + " under an erratic" : "",
-					blended > 0 ? ", " + blended + " of a soil across a border" : ""));
+					blended > 0 ? ", " + blended + " of a soil across a border" : "") + (turf > 0 ? ", " + turf + " turf over podzol" : ""));
 		}
 		if (!failures.isEmpty()) {
 			throw new AssertionError("Ground blocks differ from the surface plan: " + failures + "; " + report);
