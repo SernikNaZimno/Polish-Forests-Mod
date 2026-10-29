@@ -89,8 +89,8 @@ final class SeasonSamples {
 	 */
 	private static final double MIN_WINTER_CANOPY_SKY = 0.15;
 	/**
-	 * … and in GAMEPLAY (stage 2 of Z2, to confirm at CP-D): 11%. The GAMEPLAY oak-hornbeam forest has lower trees with
-	 * the crowns closer above the ground, so the same crowns fill more of an upward frame: 12.3-13.1% at the canopy camera
+	 * … and in GAMEPLAY (stage 2 of Z2, to confirm at CP-D): 11%. The GAMEPLAY oak-hornbeam canopy is denser in the frame
+	 * (15262 broadleaf leaves around the camera against 13468 in REAL): 12.3-13.1% at the canopy camera
 	 * in two runs and 11.6-16.5% (mean 14.0%) at 8 other free columns within 10 blocks, against 17.6% at the REAL camera
 	 * (15.7-21.4%, mean 18.8% at 8 other columns).
 	 */
