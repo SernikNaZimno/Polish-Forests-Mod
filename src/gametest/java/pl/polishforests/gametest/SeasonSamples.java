@@ -57,8 +57,9 @@ import pl.polishforests.season.SubSeason;
  * and LATE_AUTUMN and leaves only in MID_SUMMER, and a withdrawn one has no outline on the client and the server;
  * <li><b>Bare twigs</b> (T-D5): in MID_WINTER at least 80% of the non-marcescent broadleaf leaves around the camera show
  * twigs, none in MID_SUMMER; the marcescent leaves never; the canopy frame lets through at least
- * {@value #MIN_WINTER_CANOPY_SKY} of sky in MID_WINTER and {@value #MIN_WINTER_CANOPY_RATIO} times the summer share (review
- * round 1: one screen of twigs per crown; step Z2: 15%, the canopy camera on a column clear of trunks);
+ * {@value #MIN_WINTER_CANOPY_SKY} of sky in MID_WINTER in REAL ({@value #MIN_WINTER_CANOPY_SKY_GAMEPLAY} in GAMEPLAY) and
+ * {@value #MIN_WINTER_CANOPY_RATIO} times the summer share (review round 1: one screen of twigs per crown; step Z2: 15% in
+ * REAL, the canopy camera on a free column);
  * <li><b>Fast mode</b> (review round 1) on a rig high over the oak-hornbeam forest in LATE_SPRING, LATE_AUTUMN and
  * MID_WINTER (without SS in both sub-seasons): no more sky in the Fast mode than in the Fancy mode where leaves in leaf
  * stand behind bare twigs, and vanilla leaves kept cut out in a transition step as in the Fancy mode; a Fast-mode frame
@@ -84,13 +85,24 @@ final class SeasonSamples {
 
 	/**
 	 * Sky through the bare canopy: the least share of sky in the canopy frame in MID_WINTER (review round 1 of V13: 2.5%;
-	 * step Z2, CP-C.2: 15%, the target of that review, after lighter and fewer marcescent crowns).
+	 * step Z2, CP-C.2: 15% in REAL, the target of that review, after lighter and fewer marcescent crowns) …
 	 */
 	private static final double MIN_WINTER_CANOPY_SKY = 0.15;
-	/** Step Z2 (DP-62): how far the canopy camera may move from the fixed one to a column clear of trunks. */
-	private static final int CANOPY_SHIFT = 3;
+	/**
+	 * … and in GAMEPLAY (stage 2 of Z2, to confirm at CP-D): 11%. The GAMEPLAY oak-hornbeam forest has lower trees with
+	 * the crowns closer above the ground, so the same crowns fill more of an upward frame: 12.3-13.1% at the canopy camera
+	 * in two runs and 11.6-16.5% (mean 14.0%) at 8 other free columns within 10 blocks, against 17.6% at the REAL camera
+	 * (15.7-21.4%, mean 18.8% at 8 other columns).
+	 */
+	private static final double MIN_WINTER_CANOPY_SKY_GAMEPLAY = 0.11;
+	/** Step Z2 (DP-62): how far the canopy camera may move from the fixed one to a free column. */
+	private static final int CANOPY_SHIFT = 4;
 	/** Wood blocks in one column from 2 to 10 blocks above the camera's feet that make a trunk (step Z2). */
 	private static final int TRUNK_RUN = 4;
+	/** Stage 2 of Z2: no solid block but wood and leaves this many blocks around the canopy camera's column … */
+	private static final int CLEAR_RADIUS = 2;
+	/** … from 2 to this many blocks above its feet. */
+	private static final int CLEAR_HEIGHT = 6;
 	/** … and at least this many times the share in MID_SUMMER (V13 before the review: 1.3% against 0.5%). */
 	private static final double MIN_WINTER_CANOPY_RATIO = 5.0;
 	/** Fast-mode rig: largest excess of sky in the Fast mode over the Fancy mode (a hole in a crown, review round 1). */
@@ -99,6 +111,7 @@ final class SeasonSamples {
 	private final List<String> results = new ArrayList<>();
 	private final List<String> failures = new ArrayList<>();
 	private final Map<SubSeason, Double> canopySky = new java.util.EnumMap<>(SubSeason.class);
+	private boolean real = true;
 
 	private SeasonSamples() {
 	}
@@ -112,7 +125,7 @@ final class SeasonSamples {
 		boolean sodium = FabricLoader.getInstance().isModLoaded("sodium");
 		boolean nvidium = context.computeOnClient(mc -> RenderProbesClientGameTest.nvidiumEnabled());
 		String tag = (!sodium ? "vanilla" : nvidium ? "sodium_nvidium" : "sodium") + (seasons ? "_ss" : "_noss");
-		boolean real = !System.getProperty("polishforests.scales", "").equals("gameplay");
+		real = !System.getProperty("polishforests.scales", "").equals("gameplay");
 		String scale = real ? "realistic" : "gameplay";
 		context.runOnClient(mc -> mc.options.renderDistance().set(10));
 		ResourceKey<WorldPreset> preset = ResourceKey.create(Registries.WORLD_PRESET, PolishForests.id(real ? "poland" : "poland_gameplay"));
@@ -512,7 +525,8 @@ final class SeasonSamples {
 
 	/**
 	 * The sky through the bare canopy (review round 1 of V13): in the frame up into the oak-hornbeam canopy the bare crowns
-	 * of MID_WINTER let through at least {@value #MIN_WINTER_CANOPY_SKY} of sky and {@value #MIN_WINTER_CANOPY_RATIO} times
+	 * of MID_WINTER let through at least {@value #MIN_WINTER_CANOPY_SKY} of sky in REAL ({@value #MIN_WINTER_CANOPY_SKY_GAMEPLAY}
+	 * in GAMEPLAY) and {@value #MIN_WINTER_CANOPY_RATIO} times
 	 * as much as the leafy canopy of MID_SUMMER (one screen of twigs per crown, not a stack of them).
 	 */
 	private void canopy() {
@@ -521,10 +535,10 @@ final class SeasonSamples {
 		StringBuilder all = new StringBuilder();
 		canopySky.forEach((k, v) -> all.append(String.format(Locale.ROOT, " %s %.1f%%", k, 100 * v)));
 		result("sky in the oak-hornbeam canopy frame:%s", all);
-		if (winter != null && summer != null
-				&& (winter < MIN_WINTER_CANOPY_SKY || winter < MIN_WINTER_CANOPY_RATIO * Math.max(summer, 0.002))) {
+		double least = real ? MIN_WINTER_CANOPY_SKY : MIN_WINTER_CANOPY_SKY_GAMEPLAY;
+		if (winter != null && summer != null && (winter < least || winter < MIN_WINTER_CANOPY_RATIO * Math.max(summer, 0.002))) {
 			fail("bare canopy: sky %.1f%% in MID_WINTER against %.1f%% in MID_SUMMER (at least %.0f%% and %.0f times)", 100 * winter,
-					100 * summer, 100 * MIN_WINTER_CANOPY_SKY, MIN_WINTER_CANOPY_RATIO);
+					100 * summer, 100 * least, MIN_WINTER_CANOPY_RATIO);
 		}
 	}
 
@@ -621,9 +635,10 @@ final class SeasonSamples {
 
 	/**
 	 * Step Z2 (DP-62): the canopy camera at the nearest feet block at most {@value #CANOPY_SHIFT} blocks from the fixed one
-	 * (same height, feet and head free of collision and leaves) with no trunk within one block of its column
-	 * ({@link #clearUp}), so that the frame measures the sky through the crowns and does not look up along a trunk (the
-	 * GAMEPLAY camera did, about 35% of its frame); the fixed camera itself when it is clear, or when no block is.
+	 * (same height) that stands free under the canopy ({@link #clearUp}), so that the frame measures the sky through the
+	 * crowns and does not look up along a trunk or a wall of ground (the GAMEPLAY camera looked up along a
+	 * trunk in V13 and stood beside a wall of dirt in stage 1 of Z2); the fixed camera itself when it is clear, or when no
+	 * block is.
 	 */
 	private SliceCameras.Camera openCanopy(TestSingleplayerContext sp, SliceCameras.Camera cam) {
 		if (cam == null) {
@@ -645,19 +660,22 @@ final class SeasonSamples {
 			return best;
 		});
 		if (shift == null) {
-			result("canopy camera: no column clear of trunks within %d blocks, the fixed camera %d %d %d", CANOPY_SHIFT, cam.x(), cam.y(),
+			result("canopy camera: no free column within %d blocks, the fixed camera %d %d %d", CANOPY_SHIFT, cam.x(), cam.y(),
 					cam.z());
 			return cam;
 		}
-		result("canopy camera at %d %d %d (moved %d, %d from the fixed camera to a column clear of trunks)", cam.x() + shift[0], cam.y(),
+		result("canopy camera at %d %d %d (moved %d, %d from the fixed camera to a free column)", cam.x() + shift[0], cam.y(),
 				cam.z() + shift[1], shift[0], shift[1]);
 		return new SliceCameras.Camera(cam.name(), cam.x() + shift[0], cam.y(), cam.z() + shift[1], cam.yaw(), cam.pitch());
 	}
 
 	/**
-	 * Whether a camera with its feet at (x, y, z) stands free and has no trunk within one block of its column: no column
-	 * of the 3 × 3 around it with {@value #TRUNK_RUN} or more wood blocks from 2 to 10 blocks above the feet (a bole; a
-	 * branch crossing the column above does not count).
+	 * Whether a camera with its feet at (x, y, z) stands free under the canopy: feet and head free of collision and
+	 * leaves, no solid block other than wood and leaves within {@value #CLEAR_RADIUS} blocks of its column from 2 to
+	 * {@value #CLEAR_HEIGHT} blocks above the feet (a wall of ground or the root plate of a windthrow beside the head, full
+	 * blocks that fill a large part of the frame; stage 2 of Z2: the GAMEPLAY camera had one in about a third of its frame),
+	 * and no column of the 3 × 3 around it with {@value #TRUNK_RUN} or more wood blocks from 2 to 10 blocks above the feet
+	 * (a bole; a thin branch crossing above does not count).
 	 */
 	private static boolean clearUp(ServerLevel level, int x, int y, int z) {
 		BlockPos.MutableBlockPos at = new BlockPos.MutableBlockPos();
@@ -667,16 +685,20 @@ final class SeasonSamples {
 				return false;
 			}
 		}
-		for (int dx = -1; dx <= 1; dx++) {
-			for (int dz = -1; dz <= 1; dz++) {
+		for (int dx = -CLEAR_RADIUS; dx <= CLEAR_RADIUS; dx++) {
+			for (int dz = -CLEAR_RADIUS; dz <= CLEAR_RADIUS; dz++) {
 				int wood = 0;
 				for (int dy = 2; dy <= 10; dy++) {
 					BlockState st = level.getBlockState(at.set(x + dx, y + dy, z + dz));
-					if (st.is(net.minecraft.tags.BlockTags.LOGS) || st.getBlock() instanceof pl.polishforests.block.TrunkBlock) {
+					boolean log = st.is(net.minecraft.tags.BlockTags.LOGS) || st.getBlock() instanceof pl.polishforests.block.TrunkBlock;
+					if (log) {
 						wood++;
 					}
+					if (!log && dy <= CLEAR_HEIGHT && !(st.getBlock() instanceof LeavesBlock) && !st.getCollisionShape(level, at).isEmpty()) {
+						return false;
+					}
 				}
-				if (wood >= TRUNK_RUN) {
+				if (wood >= TRUNK_RUN && Math.abs(dx) <= 1 && Math.abs(dz) <= 1) {
 					return false;
 				}
 			}

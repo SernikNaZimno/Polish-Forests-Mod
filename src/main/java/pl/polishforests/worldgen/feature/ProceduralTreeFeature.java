@@ -206,9 +206,9 @@ public record ProceduralTreeFeature(Species species, CrownLayer layer, AgeClass 
 	/**
 	 * The chance that a tree of a species, crown layer and age class keeps dead leaves over the winter (step Z2, CP-C.2:
 	 * the bare oak-hornbeam canopy was too closed and too brown, about 17% of its broadleaf leaves marcescent). Strongest in
-	 * young hornbeams and beeches (juvenile marcescence: 3 of 4 pole-stage trees), weaker in young oaks (1 of 2), in half of
-	 * the subcanopy hornbeams and beeches and a quarter of the subcanopy oaks, in the lower crown of 1 of 4 mature canopy
-	 * beeches only; none for a species that never keeps dead leaves. A pole-stage tree includes one grown from a sapling.
+	 * young hornbeams and beeches (juvenile marcescence: 3 of 4 pole-stage trees), weaker in young oaks (1 of 2), in about a
+	 * third of the subcanopy hornbeams and beeches (stage 2 of Z2: 0.35, was 0.5) and a quarter of the subcanopy oaks, in
+	 * the lower crown of 1 of 4 mature canopy beeches only; none for a species that never keeps dead leaves. A pole-stage tree includes one grown from a sapling.
 	 */
 	public static double marcescentChance(Species species, CrownLayer layer, AgeClass age) {
 		if (!FoliageCurve.marcescent(species)) {
@@ -219,7 +219,7 @@ public record ProceduralTreeFeature(Species species, CrownLayer layer, AgeClass 
 			return oak ? 0.5 : 0.75;
 		}
 		if (layer == CrownLayer.SUBCANOPY) {
-			return oak ? 0.25 : 0.5;
+			return oak ? 0.25 : 0.35;
 		}
 		return species == Species.BEECH ? 0.25 : 0.0;
 	}

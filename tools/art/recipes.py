@@ -1033,8 +1033,9 @@ def stripes(alpha):
 def twig_score(tex):
     """Score of a twigs candidate: the spread of the visible pixels over the columns and rows (as leaves_score), step
     Z2 (sparser tiles): a penalty for straight runs longer than 8 px along a row or column (zigzag species only) and for
-    bands (stripes() over 0.28), both a grid or bands over a crown when the tile repeats at every block; plus a large
-    penalty for every lint error."""
+    bands (stripes() over 0.28), both a grid or bands over a crown when the tile repeats at every block; a point per
+    percentage point of visible pixels over p['max_visible'] (stage 2 of Z2); plus a large penalty for every lint
+    error."""
     straight = tex.params.get('zigzag', 1.0) <= 0.15     # birch and ash: straight twigs by nature, no run penalty
 
     def score(img):
@@ -1043,6 +1044,7 @@ def twig_score(tex):
         if not straight:
             sc += 0.5 * max(0, straight_run(img[..., 3]) - 8)
         sc += 40 * max(0.0, stripes(img[..., 3]) - 0.28)
+        sc += 100 * max(0.0, float((img[..., 3] > 0).mean()) - tex.params.get('max_visible', 1.0))
         import lint
         sc += 10 * len(lint.lint_texture(tex.name, img, tex)[0])
         return sc
@@ -1089,11 +1091,17 @@ def twigs(tex, palettes):
         rng = t.Rng(seed)
         val = np.zeros((N, N), int)
         tries = 0
-        while (val > 0).mean() < p['opacity'] and tries < 60:
+        def thin_line():
+            # stage 2 of Z2: a sparse tile (max_visible) goes on with branches across its emptiest line until every
+            # column and row has 2 twig pixels (lint: an empty line repeats at every block of a bare crown)
+            vis = val > 0
+            return p.get('max_visible', 1.0) < 1.0 and min(vis.sum(axis=0).min(), vis.sum(axis=1).min()) < 2
+
+        while ((val > 0).mean() < p['opacity'] or thin_line()) and tries < 60:
             tries += 1
             x, y = rng.uniform(0, N), rng.uniform(0, N)
             a = rng.uniform(0, 2 * math.pi)
-            if tries % 2 == 0:
+            if tries % 2 == 0 or (val > 0).mean() >= p['opacity']:
                 # every other branch starts in the emptiest column or row and runs across it, so no empty line repeats
                 cols, rows = (val > 0).sum(axis=0), (val > 0).sum(axis=1)
                 if cols.min() <= rows.min():
@@ -1103,6 +1111,12 @@ def twigs(tex, palettes):
                     y = int(np.argmin(rows)) + 0.5
                     a = rng.choice((0.5 * math.pi, 1.5 * math.pi)) + rng.uniform(-0.6, 0.6)
                 a += 0.5 * math.pi
+            if (val > 0).mean() >= p['opacity']:
+                # filling a thin line: one short side twig obliquely across it (a 4-connected diagonal puts 2 pixels in
+                # every line it crosses; along the line the stubs made a comb), no new branch
+                a = (0.25 + 0.5 * rng.integers(0, 4)) * math.pi + rng.uniform(-0.3, 0.3)
+                _twig_path(rng, val, x, y, a, rng.integers(*p['side']), 2, p['zigzag'])
+                continue
             main = _twig_path(rng, val, x, y, a, rng.integers(*p['length']), 1, p['zigzag'])
             for i, (mx, my) in enumerate(main):
                 if i < 2 or rng.random() > p['fork']:
@@ -1130,15 +1144,22 @@ TWIG_SPECIES = [
     # 40 -> 38%, birch 45% and ash 36% (the same tile, the first branches already reach the target).
     ('birch', '#d3b0b3', 0.36, 0.15, (9, 15), (3, 6), 0.45,
      'birch: dense, fine, straight purple-brown twigs (the purple haze of a birch crown in winter)'),
-    ('linden', '#c8a79d', 0.32, 0.25, (8, 14), (3, 6), 0.40, 'small-leaved lime: straight reddish twigs in a dense net'),
-    ('norway_maple', '#beb1a5', 0.28, 0.25, (8, 13), (3, 5), 0.35, 'Norway maple: gray-brown twigs, opposite forks'),
+    ('linden', '#c8a79d', 0.22, 0.25, (8, 14), (3, 6), 0.40, 'small-leaved lime: straight reddish twigs in a dense net'),
+    ('norway_maple', '#beb1a5', 0.24, 0.25, (8, 13), (3, 5), 0.35, 'Norway maple: gray-brown twigs, opposite forks'),
     ('ash', '#bfbfb6', 0.25, 0.15, (9, 15), (2, 5), 0.25, 'ash: few coarse pale gray twigs (thick shoots, black buds)'),
-    ('hornbeam', '#b7b3a9', 0.31, 0.55, (8, 13), (3, 6), 0.45, 'hornbeam: dense gray zigzag twigs'),
-    ('beech', '#c1aca3', 0.32, 0.45, (8, 14), (3, 6), 0.40, 'beech: fine gray zigzag twigs with long pointed buds'),
+    ('hornbeam', '#b7b3a9', 0.21, 0.55, (8, 13), (3, 6), 0.45, 'hornbeam: dense gray zigzag twigs'),
+    ('beech', '#c1aca3', 0.23, 0.45, (8, 14), (3, 6), 0.40, 'beech: fine gray zigzag twigs with long pointed buds'),
     ('oak', '#baa89c', 0.25, 0.70, (7, 12), (2, 5), 0.40, 'pedunculate oak: gnarled, strongly zigzagging gray-brown twigs'),
 ]
 # The gray ramp of the twig tones (crossing, body, side twig, lit tip): V13 had 98-166; step Z2 126-184.
 TWIG_GRAY = (126, 184)
+# Stage 2 of Z2 (the winter sky through the bare oak-hornbeam canopy 12.4% against at least 15%): the twigs of the
+# oak-hornbeam forest sparser still. The tile with more visible pixels than TWIG_MAX_VISIBLE loses a point of
+# twig_score per percentage point over it, and the seeds tried rise from 24 to TWIG_TRIES (the sparser tiles need more
+# to find one without an empty line); visible pixels hornbeam 33 -> 29%, linden 33 -> 29%, beech 38 -> 30%. Oak (27%:
+# a sparser oak tile came out in diagonal bands), birch, ash and maple keep their tiles.
+TWIG_TRIES = {'hornbeam': 96, 'linden': 96, 'beech': 96}
+TWIG_MAX_VISIBLE = {'hornbeam': 0.25, 'linden': 0.25, 'beech': 0.26}
 
 def upper_texture(tex, palettes):
     return bark_scots_pine_upper_built(tex, palettes)[0]
@@ -1311,7 +1332,8 @@ TEXTURES = [
      for name, params, note in SAPLINGS] + [
     # Step V13 (T-D5): the bare twigs of the leafless broadleaf crowns, grayscale for the twig color of the species.
     Texture(f'{name}_twigs', 'twigs', twigs, f'{name}_twigs/1', None, tint=color, mcmeta=LEAVES_MCMETA,
-            params=dict(opacity=opacity, zigzag=zigzag, length=length, side=side, fork=fork, tip=2, gray=TWIG_GRAY, tries=24),
+            params=dict(opacity=opacity, zigzag=zigzag, length=length, side=side, fork=fork, tip=2, gray=TWIG_GRAY, tries=TWIG_TRIES.get(name, 24),
+                        max_visible=TWIG_MAX_VISIBLE.get(name, 1.0)),
             expect={'min_line': 2}, note=note)
     for name, color, opacity, zigzag, length, side, fork, note in TWIG_SPECIES]
 

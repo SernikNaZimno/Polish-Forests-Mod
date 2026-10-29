@@ -87,7 +87,7 @@ class ProceduralTreeStatesTest {
 	/**
 	 * V7 review round 1: only oak, hornbeam and beech keep dead leaves, on young trees and lower crowns; a player's leaves
 	 * are not marcescent. Step Z2 (CP-C.2): fewer of them, in a smaller lower share of the crown — 3 of 4 young hornbeams
-	 * and beeches (0.6 of the crown), 1 of 2 young oaks (0.4), half of the subcanopy hornbeams and beeches and a quarter of
+	 * and beeches (0.6 of the crown), 1 of 2 young oaks (0.4), 0.35 of the subcanopy hornbeams and beeches and a quarter of
 	 * the subcanopy oaks (0.3), a quarter of the canopy beeches (0.15), no other canopy tree.
 	 */
 	@Test
@@ -99,7 +99,7 @@ class ProceduralTreeStatesTest {
 					s.id());
 			assertEquals(dry ? oak ? 0.4 : 0.6 : 0.0, ProceduralTreeFeature.marcescentShare(s, CrownLayer.CANOPY, AgeClass.POLE_STAGE),
 					s.id());
-			assertEquals(dry ? oak ? 0.25 : 0.5 : 0.0, ProceduralTreeFeature.marcescentChance(s, CrownLayer.SUBCANOPY, AgeClass.MATURE),
+			assertEquals(dry ? oak ? 0.25 : 0.35 : 0.0, ProceduralTreeFeature.marcescentChance(s, CrownLayer.SUBCANOPY, AgeClass.MATURE),
 					s.id());
 			assertEquals(dry ? 0.3 : 0.0, ProceduralTreeFeature.marcescentShare(s, CrownLayer.SUBCANOPY, AgeClass.MATURE), s.id());
 			boolean beech = s == Species.BEECH;
