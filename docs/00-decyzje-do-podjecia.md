@@ -711,3 +711,11 @@ Krok J2 (decyzja CP-C.4: biomy jaskiniowe i struktury jak w wanilii). Projekt: `
 | J2-m | Dekoracja | Czyta biomy sekcji poniżej Y 256 (20 sekcji zamiast 1; dawniej 131 w REAL) |
 | J2-n | Struktury | Starożytne miasta w głębokim mroku (Y −27 jak w wanilii: w REAL nizina leży ok. 200 bloków wyżej, więc mrok na Y −27 jest częstszy niż pod równinami wanilii); kopalnie, komnaty prób, twierdze, lochy i geody bez zmian z M2 (komnaty prób nie startują w głębokim mroku, jak w wanilii) |
 | J2-o | Przełącznik diagnostyczny | `-PcaveBiomes=off` (`-Dpolishforests.caveBiomes=off`): świat z jaskiniami J1 bez biomów i ficzerów J2 (porównanie kosztu i powierzchni) |
+
+### G.32 Decyzje użytkownika do J1 i Z2 (2026-10-29)
+
+| # | Pytanie | Decyzja użytkownika |
+|---|---|---|
+| J1-r | Chunki na sekundę z C2ME w świecie z jaskiniami 0,61–0,68 × M2 wobec progu 0,7 (G.30) | **(a)** J1 przyjęte. Koszt jaskiń przechodzi do kroku O2: cel O2 chunki na sekundę z C2ME ≥ 0,75 × M2 **mierzone w świecie z jaskiniami** (wobec tej samej bazy M2 bez jaskiń, CP-C.4a). Jaskinie zostają „jak w wanilii” — optymalizacja bez zmiany wyniku generacji |
+| J1-q | Determinizm terenu między zestawami modów (z C2ME i bez) | **Tolerancja.** W obrębie jednego zestawu modów teren dalej musi być identyczny (także wielowątkowo). Porównanie terenu między zestawami modów (`determinism -Poptimization -PdeterminismReference`) staje się raportem z tolerancją kilku bloków różnicy, wynikających z niedokładnych optymalizacji szumów, akwifera i „beard” w C2ME |
+| Z2-e′ | Podokap bez marcescencji (G.29) | **Tak, zostaje.** Szansa marcescencji drzew podokapu 0; suche liście na drągowinach i w dolnej koronie 1 z 4 buków okapu; próg nieba zimą ≥ 15% w obu skalach |
