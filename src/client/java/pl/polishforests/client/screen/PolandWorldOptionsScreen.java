@@ -20,8 +20,8 @@ import pl.polishforests.worldgen.chunk.PolandScale;
 /** World generation options screen for "Poland". */
 public final class PolandWorldOptionsScreen extends Screen {
 	private static final int WIDGET_WIDTH = 310;
-	/** Row spacing of the options column. */
-	private static final int SPACING = 6;
+	/** Row spacing of the options column (4 since step J1: seven rows of 20 px fit in 164 GUI px). */
+	private static final int SPACING = 4;
 
 	private final Screen parent;
 	private final Consumer<PolandSettings> apply;
@@ -37,6 +37,7 @@ public final class PolandWorldOptionsScreen extends Screen {
 	private final int version;
 	private final boolean coverInBlocks;
 	private LooseCover looseCover;
+	private boolean caves;
 
 	public PolandWorldOptionsScreen(Screen parent, PolandSettings current, Consumer<PolandSettings> apply) {
 		super(Component.translatable("polishforests.options.title"));
@@ -50,14 +51,16 @@ public final class PolandWorldOptionsScreen extends Screen {
 		this.version = current.version();
 		this.coverInBlocks = current.coverInBlocks();
 		this.looseCover = current.looseCover();
+		this.caves = current.caves();
 	}
 
 	@Override
 	protected void init() {
 		layout.addTitleHeader(getTitle(), font);
-		// The column does not scroll, so every explanation lives in a tooltip: six 20-px rows (150 GUI px) fit between the
-		// header and the footer down to a GUI height of 216, and the automatic GUI scale never goes below 240 (step K1,
-		// review round 1: the former note under the buttons pushed the Scale button off the top at 854x480).
+		// The column does not scroll, so every explanation lives in a tooltip: seven 20-px rows 4 px apart (164 GUI px) fit
+		// between the header and the footer down to a GUI height of 230, and the automatic GUI scale never goes below 240
+		// (step K1, review round 1: the former note under the buttons pushed the Scale button off the top at 854x480;
+		// step J1 added the caves switch).
 		column = layout.addToContents(LinearLayout.vertical().spacing(SPACING));
 		column.defaultCellSetting().alignHorizontallyCenter();
 
@@ -97,6 +100,12 @@ public final class PolandWorldOptionsScreen extends Screen {
 				.create(0, 0, WIDGET_WIDTH, 20, Component.translatable("polishforests.options.loose_cover"),
 						(button, value) -> looseCover = value));
 
+		column.addChild(CycleButton.onOffBuilder(caves)
+				.withTooltip(v -> Tooltip.create(Component.translatable(v ? "polishforests.options.caves.on.tooltip"
+						: "polishforests.options.caves.off.tooltip")))
+				.create(0, 0, WIDGET_WIDTH, 20, Component.translatable("polishforests.options.caves"),
+						(button, value) -> caves = value));
+
 		column.addChild(CycleButton.onOffBuilder(alienSpecies)
 				.withTooltip(v -> Tooltip.create(Component.translatable("polishforests.options.alien_species.tooltip")))
 				.create(0, 0, WIDGET_WIDTH, 20, Component.translatable("polishforests.options.alien_species"),
@@ -105,7 +114,7 @@ public final class PolandWorldOptionsScreen extends Screen {
 		LinearLayout footer = layout.addToFooter(LinearLayout.horizontal().spacing(8));
 		footer.addChild(Button.builder(CommonComponents.GUI_DONE, b -> {
 			apply.accept(new PolandSettings(scale, regionScale, agriculture, managedShare, alienSpecies, version,
-					coverInBlocks, looseCover));
+					coverInBlocks, looseCover, caves));
 			onClose();
 		}).build());
 		footer.addChild(Button.builder(CommonComponents.GUI_CANCEL, b -> onClose()).build());

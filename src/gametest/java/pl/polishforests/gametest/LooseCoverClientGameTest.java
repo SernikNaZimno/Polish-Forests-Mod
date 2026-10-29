@@ -123,9 +123,9 @@ public final class LooseCoverClientGameTest implements FabricClientGameTest {
 		if (gen.settings().looseCover() != LooseCover.THIN) {
 			throw new AssertionError("The preset " + preset.identifier() + " has the loose cover " + gen.settings().looseCover());
 		}
-		if (cover != LooseCover.THIN) {
-			ui.updateDimensions(PolandPresetEditor.apply(gen.settings().withLooseCover(cover)));
-		}
+		// Step J1: the cover is measured without the caves (the presets have them on; caves would break the runs of rock
+		// that end the cover and add voids under the ground in both settings alike).
+		ui.updateDimensions(PolandPresetEditor.apply(gen.settings().withLooseCover(cover).withCaves(false)));
 	}
 
 	private static void prepare(TestSingleplayerContext sp, LooseCover cover) {

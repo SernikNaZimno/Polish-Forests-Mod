@@ -33,6 +33,12 @@ public final class PolishForests implements ModInitializer {
 		ClimateBinding.register();
 		// Step G1: the tree-felling mods (FallingTree, Tree Harvester) fell the trees of the planner by their parent graph.
 		pl.polishforests.compat.FellingCompat.announce();
+		// Step J1: the caves read the vanilla density functions, noises and carvers from the registries of the server, also
+		// for the base heights that the structures ask before any chunk has terrain.
+		net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STARTING.register(
+				server -> pl.polishforests.worldgen.cave.PolandCaves.bindServer(server.registryAccess()));
+		net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STOPPED.register(
+				server -> pl.polishforests.worldgen.cave.PolandCaves.bindServer(null));
 		LOG.info("Polish Forests: initialization complete (calendar: {})", Seasons.provider().name());
 	}
 }

@@ -109,6 +109,8 @@ public final class UiAndCommandsClientGameTest implements FabricClientGameTest {
 		context.clickScreenButton("polishforests.options.landscape");
 		// Step K1: the presets start with the thin loose cover; the switch selects the realistic one.
 		context.clickScreenButton("polishforests.options.loose_cover");
+		// Step J1: the presets start with the caves on; the switch turns them off.
+		context.clickScreenButton("polishforests.options.caves");
 		context.waitTicks(2);
 		context.takeScreenshot(screenshot + "_present_day");
 		context.clickScreenButton("gui.done");
@@ -127,6 +129,9 @@ public final class UiAndCommandsClientGameTest implements FabricClientGameTest {
 			if (gen.settings().looseCover() != LooseCover.REALISTIC) {
 				return "the loose cover switch did not select the realistic cover: " + gen.settings();
 			}
+			if (gen.settings().caves()) {
+				return "the caves switch did not turn the caves off: " + gen.settings();
+			}
 			LevelStem stem = dims.dimensions().get(LevelStem.OVERWORLD);
 			if (!stem.type().is(expected.dimensionType())) {
 				return "dimension type " + stem.type().unwrapKey() + " instead of " + expected.dimensionType();
@@ -140,7 +145,8 @@ public final class UiAndCommandsClientGameTest implements FabricClientGameTest {
 			throw new AssertionError(preset.identifier() + ": " + result);
 		}
 		PolishForests.LOG.info("[ui] {}: options screen works, scale {}, dimension height {}, landscape switch selects the "
-				+ "present-day mode, loose cover switch selects the realistic cover", preset.identifier(),
+				+ "present-day mode, loose cover switch selects the realistic cover, caves switch turns the caves off",
+				preset.identifier(),
 				expected.getSerializedName(), expected.vertical().height());
 		context.setScreen(() -> null);
 	}

@@ -3,7 +3,8 @@
 	"package": "pl.polishforests.gametest.mixin",
 	"compatibilityLevel": "JAVA_25",
 	"client": [
-		"ModelBlockRendererMixin"
+		"ModelBlockRendererMixin",
+		"WorldCreationCavesMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

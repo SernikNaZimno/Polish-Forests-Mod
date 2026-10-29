@@ -183,7 +183,7 @@ public final class SurfaceBuilder {
 	 * Packed summary of a column for the plans of its neighbors: model top and water top (blocks, +64), water kind and
 	 * whether its own fields put water near ({@link BankShelf#waterMayBeNear}).
 	 */
-	int summary(ColumnSample s, int minY, int maxY) {
+	public int summary(ColumnSample s, int minY, int maxY) {
 		int top = topY(s, minY, maxY);
 		int water = waterTopY(s, maxY);
 		int w = water > top ? water + Y_OFFSET : NO_WATER_CODE;
@@ -193,11 +193,11 @@ public final class SurfaceBuilder {
 	private static final int Y_OFFSET = 64;
 	private static final int NO_WATER_CODE = 0xFFF;
 
-	static int summaryTop(int summary) {
+	public static int summaryTop(int summary) {
 		return (summary & 0xFFF) - Y_OFFSET;
 	}
 
-	static int summaryWater(int summary) {
+	public static int summaryWater(int summary) {
 		int w = summary >>> 12 & 0xFFF;
 		return w == NO_WATER_CODE ? ChunkSurface.NO_WATER : w - Y_OFFSET;
 	}
@@ -206,8 +206,17 @@ public final class SurfaceBuilder {
 		return KINDS[summary >>> 24 & 7];
 	}
 
-	static boolean summaryNear(int summary) {
+	public static boolean summaryNear(int summary) {
 		return (summary & 1 << 27) != 0;
+	}
+
+	/**
+	 * Summary of world column (x, z) ({@link #summary}) from the cache shared by the chunks of the seed, or sampled with
+	 * {@code outside} and stored (step J1: the model tops and water of the caves, which look beyond the chunk). A pure
+	 * function of the column, whichever chunk asks first.
+	 */
+	public int cachedSummary(int x, int z, Sampler outside, int minY, int maxY) {
+		return cache.summary(x, z, this, outside, minY, maxY);
 	}
 
 	/**

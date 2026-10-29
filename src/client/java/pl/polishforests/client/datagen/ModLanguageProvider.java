@@ -296,6 +296,12 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 				+ "forests; the rest grow as natural forest.");
 		b.add("polishforests.options.alien_species.tooltip", "Alien and invasive species will take effect in future "
 				+ "versions of the mod.");
+		b.add("polishforests.options.caves", "Caves");
+		b.add("polishforests.options.caves.on.tooltip", "Caves as in vanilla Minecraft under the whole land: cheese, "
+				+ "spaghetti and noodle caves, ravines, underground lakes and lava deep down. Rivers, lakes and the sea keep "
+				+ "a rock floor above the caves.");
+		b.add("polishforests.options.caves.off.tooltip", "Solid ground without caves, as in worlds made before this "
+				+ "option.");
 		b.add("polishforests.options.landscape.natural.tooltip", "The forest that would grow without people, on almost the "
 				+ "whole land.");
 		b.add("polishforests.options.landscape.today.tooltip", "About 30% forest, mostly pine forests on sand, with meadows "
@@ -357,6 +363,12 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 				+ "pozostałe rosną jak las naturalny.");
 		b.add("polishforests.options.alien_species.tooltip", "Gatunki obce i inwazyjne zaczną działać w kolejnych "
 				+ "wersjach moda.");
+		b.add("polishforests.options.caves", "Jaskinie");
+		b.add("polishforests.options.caves.on.tooltip", "Jaskinie jak w zwykłym Minecrafcie pod całym lądem: jaskinie "
+				+ "serowe, spaghetti i makaronowe, wąwozy, podziemne jeziora i lawa w głębi. Pod rzekami, jeziorami i morzem "
+				+ "zostaje skalne dno.");
+		b.add("polishforests.options.caves.off.tooltip", "Lity grunt bez jaskiń, jak w światach utworzonych przed tą "
+				+ "opcją.");
 		b.add("polishforests.options.landscape.natural.tooltip", "Las, który rósłby bez ludzi, prawie na całym lądzie.");
 		b.add("polishforests.options.landscape.today.tooltip", "Ok. 30% lasów, głównie bory na piaskach, łąki i pola "
 				+ "odłogowane; brzegi rzek zostają zarośnięte.");

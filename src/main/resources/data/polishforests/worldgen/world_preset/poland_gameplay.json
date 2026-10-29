@@ -15,7 +15,8 @@
           "managed_forest_share": 0.85,
           "alien_species": true,
           "cover_in_blocks": true,
-          "loose_cover": "thin"
+          "loose_cover": "thin",
+          "caves": true
         }
       }
     },

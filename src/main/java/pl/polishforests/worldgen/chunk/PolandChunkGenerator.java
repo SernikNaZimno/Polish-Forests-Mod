@@ -56,6 +56,8 @@ import net.minecraft.world.level.levelgen.structure.TerrainAdjustment;
 import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
 import org.jspecify.annotations.Nullable;
 import pl.polishforests.climate.ClimateBinding;
+import pl.polishforests.worldgen.cave.CaveCarving;
+import pl.polishforests.worldgen.cave.PolandCaves;
 import pl.polishforests.worldgen.feature.ModFeatures;
 import pl.polishforests.worldgen.habitat.HabitatClassifier;
 import pl.polishforests.worldgen.landscape.ColumnSample;
@@ -90,6 +92,8 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 	private volatile @Nullable HabitatClassifier classifier;
 	private volatile @Nullable SurfaceBuilder surfaceBuilder;
 	private volatile long modelSeed;
+	/** The vanilla caves of the world (step J1), built on first use from the registries of the world; null without caves. */
+	private volatile @Nullable PolandCaves caves;
 
 	public PolandChunkGenerator(BiomeSource biomeSource, PolandSettings settings) {
 		super(biomeSource);
@@ -176,6 +180,31 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 		}
 	}
 
+	/**
+	 * The caves of the world (step J1) when the settings have them: built once from {@code registries}, or from the
+	 * registries of the running server when the caller has none ({@link PolandCaves#serverRegistries}). Null without
+	 * caves, and null while no registries are known (a base height asked before the server started).
+	 */
+	public @Nullable PolandCaves caves(net.minecraft.core.HolderLookup.@Nullable Provider registries) {
+		if (!settings.caves()) {
+			return null;
+		}
+		PolandCaves c = caves;
+		if (c != null) {
+			return c;
+		}
+		net.minecraft.core.HolderLookup.Provider r = registries != null ? registries : PolandCaves.serverRegistries();
+		if (r == null) {
+			return null;
+		}
+		synchronized (this) {
+			if (caves == null) {
+				caves = PolandCaves.create(r, vertical);
+			}
+			return caves;
+		}
+	}
+
 	/** Whether the world is in the "present-day Poland" mode (PRESENT_DAY). */
 	public boolean presentDay() {
 		return settings.mode() == HabitatClassifier.Mode.PRESENT_DAY;
@@ -243,6 +272,16 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 		return super.findNearestMapStructure(level, wantedStructures, pos, maxSearchRadius, createReference);
 	}
 
+	/** Binds the caves to the registries of the world before the structures ask for base heights (step J1). */
+	@Override
+	public void createStructures(net.minecraft.core.RegistryAccess registryAccess, ChunkGeneratorStructureState state,
+			StructureManager structureManager, ChunkAccess centerChunk,
+			net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager structureTemplateManager,
+			net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> level) {
+		caves(registryAccess);
+		super.createStructures(registryAccess, state, structureManager, centerChunk, structureTemplateManager, level);
+	}
+
 	@Override
 	protected MapCodec<? extends ChunkGenerator> codec() {
 		return CODEC;
@@ -307,8 +346,9 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 			Set<Holder<Biome>> possibleBiomes) {
 		LandscapeModel m = model(randomState.seed());
 		HabitatClassifier k = classifier(randomState.seed());
+		PolandCaves c = caves(structureManager.registryAccess());
 		return CompletableFuture.supplyAsync(() -> {
-			fill(chunk, m, k, structureManager);
+			fill(chunk, m, k, structureManager, randomState, c);
 			return chunk;
 		}, Util.backgroundExecutor().forName("polishforests_buildTerrain"));
 	}
@@ -421,7 +461,8 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 	private static final int MATERIALS = Material.values().length;
 	private static final int AIR_ID = Material.AIR.ordinal();
 
-	private void fill(ChunkAccess chunk, LandscapeModel m, HabitatClassifier classifier, StructureManager structureManager) {
+	private void fill(ChunkAccess chunk, LandscapeModel m, HabitatClassifier classifier, StructureManager structureManager,
+			RandomState randomState, @Nullable PolandCaves caves) {
 		long t0 = System.nanoTime();
 		ChunkPos pos = chunk.getPos();
 		int minX = pos.getMinBlockX();
@@ -440,6 +481,11 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 		chunk.setAttached(ModFeatures.CHUNK_HABITATS, habitats(columns, codes, surface,
 				structures != null ? structures : ChunkHabitats.NO_STRUCTURES));
 		SURFACE_NANOS.add(System.nanoTime() - t1);
+		// The caves (step J1): a separate stage over the final plan, as vanilla carves its noise terrain.
+		CaveCarving carving = caves == null ? null : caves.carve(pos, surface, minY, maxY, randomState,
+				caveColumns(m, columns, minX, minZ, minY, maxY), edgeNear(columns, surface, minY, maxY),
+				net.minecraft.world.level.levelgen.Beardifier.forStructuresInChunk(structureManager, pos),
+				new net.minecraft.world.level.levelgen.WorldGenerationContext(this, chunk.getHeightAccessorForGeneration()));
 		int highest = Math.max(minY, surface.highest());
 		int bottomSection = chunk.getSectionIndex(minY);
 		int topSection = chunk.getSectionIndex(highest);
@@ -459,8 +505,9 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 		try {
 			for (int idx = bottomSection; idx <= topSection; idx++) {
 				int y0 = chunk.getSectionYFromSectionIndex(idx) << 4;
+				byte[] cave = carving == null ? null : carving.section((y0 - minY) >> 4);
 				// Deep sections wholly in one rock kind: the same single-value palette as below, without 4096 material calls.
-				Material uniformRock = ChunkSurface.uniformRock(y0, rock);
+				Material uniformRock = cave != null ? null : ChunkSurface.uniformRock(y0, rock);
 				if (uniformRock != null) {
 					chunkSections[idx] = new LevelChunkSection(new PalettedContainer<>(states[uniformRock.ordinal()], BLOCK_STRATEGY),
 							sections[idx - bottomSection].getBiomes());
@@ -474,8 +521,9 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 					// Index order as in the section palette: y, then z, then x.
 					int column = ((i & 15) << 4) | (i >> 4);
 					for (int dy = 0; dy < 16; dy++) {
-						int material = surface.material(i, y0 + dy).ordinal();
-						buffer[(dy << 8) | column] = material;
+						int k = (dy << 8) | column;
+						int material = cave != null && cave[k] != 0 ? cave[k] - 1 : surface.material(i, y0 + dy).ordinal();
+						buffer[k] = material;
 						if (first < 0) {
 							first = material;
 						} else if (uniform && material != first) {
@@ -508,10 +556,14 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 			for (int i = 0; i < 256; i++) {
 				int x = i >> 4;
 				int z = i & 15;
-				int top = surface.top(i);
+				int top = carving != null ? carving.solidTop(i) : surface.top(i);
 				BlockState topState = chunkSections[chunk.getSectionIndex(top)].getBlockState(x, top & 15, z);
 				oceanFloor.update(x, top, z, topState);
 				worldSurface.update(x, top, z, topState);
+				if (carving != null && carving.fluidTop(i) > top) {
+					int f = carving.fluidTop(i);
+					worldSurface.update(x, f, z, chunkSections[chunk.getSectionIndex(f)].getBlockState(x, f & 15, z));
+				}
 				if (surface.wet(i)) {
 					worldSurface.update(x, surface.waterTop(i), z, WATER);
 				}
@@ -521,8 +573,118 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 				section.release();
 			}
 		}
+		if (carving != null) {
+			BlockPos.MutableBlockPos at = new BlockPos.MutableBlockPos();
+			for (int k = 0; k < carving.markCount(); k++) {
+				chunk.markPosForPostProcessing(at.set(carving.mark(k)));
+			}
+		}
 		FILL_NANOS.add(System.nanoTime() - t1);
 		CHUNKS.increment();
+	}
+
+	/**
+	 * The model columns for the caves of a chunk (step J1): the samples of the chunk for its own columns, the summaries
+	 * shared by the chunks of the seed beyond it ({@link SurfaceBuilder#cachedSummary}).
+	 *
+	 * @param chunkColumns samples of the chunk's columns, or null to read every column from the shared summaries
+	 */
+	private PolandCaves.Columns caveColumns(LandscapeModel m, ColumnSample @Nullable [] chunkColumns, int minX, int minZ,
+			int minY, int maxY) {
+		SurfaceBuilder b = surfaceBuilder();
+		return new PolandCaves.Columns() {
+			private long lastKey = Long.MIN_VALUE;
+			private int last;
+
+			private int summary(int x, int z) {
+				long key = (long) x << 32 | (z & 0xFFFFFFFFL);
+				if (key == lastKey) {
+					return last;
+				}
+				int dx = x - minX;
+				int dz = z - minZ;
+				int s = chunkColumns != null && dx >= 0 && dx < 16 && dz >= 0 && dz < 16
+						? b.summary(chunkColumns[dx * 16 + dz], minY, maxY) : b.cachedSummary(x, z, m::sample, minY, maxY);
+				lastKey = key;
+				last = s;
+				return s;
+			}
+
+			@Override
+			public int top(int x, int z) {
+				return SurfaceBuilder.summaryTop(summary(x, z));
+			}
+
+			@Override
+			public int water(int x, int z) {
+				return SurfaceBuilder.summaryWater(summary(x, z));
+			}
+		};
+	}
+
+	/**
+	 * Columns of a chunk whose neighbors beyond the chunk may hold water (step J1, guard of the water beds): wet columns,
+	 * columns whose model fields put water near, and low columns by the sea.
+	 */
+	private boolean[] edgeNear(ColumnSample[] columns, ChunkSurface surface, int minY, int maxY) {
+		SurfaceBuilder b = surfaceBuilder();
+		boolean[] near = new boolean[256];
+		for (int i = 0; i < 256; i++) {
+			int x = i >> 4;
+			int z = i & 15;
+			if (x != 0 && x != 15 && z != 0 && z != 15) {
+				continue;
+			}
+			near[i] = surface.wet(i) || SurfaceBuilder.summaryNear(b.summary(columns[i], minY, maxY))
+					|| surface.top(i) <= vertical.seaLevelY() + 3;
+		}
+		return near;
+	}
+
+	/** The caves of the world when the settings have them and registries are known (for the base heights). */
+	private @Nullable PolandCaves activeCaves() {
+		return settings.caves() ? caves(null) : null;
+	}
+
+	/**
+	 * Highest Y a cave may reach in model column (x, z) ({@link PolandCaves#guardBelow}): below the lowest water bed of
+	 * the column and its 8 neighbors.
+	 */
+	private static int caveGuard(PolandCaves.Columns cols, int x, int z) {
+		int lowest = Integer.MAX_VALUE;
+		for (int dx = -1; dx <= 1; dx++) {
+			for (int dz = -1; dz <= 1; dz++) {
+				if (cols.water(x + dx, z + dz) != ChunkSurface.NO_WATER) {
+					lowest = Math.min(lowest, cols.top(x + dx, z + dz));
+				}
+			}
+		}
+		return PolandCaves.guardBelow(lowest);
+	}
+
+	/**
+	 * Y of the highest block of column (x, z) that counts for {@code opaque}, down from the model top through the caves
+	 * (the noise caves and aquifers without the carvers, as the vanilla base height); {@code top} when the top stays.
+	 */
+	private int caveGround(PolandCaves c, LandscapeModel m, int x, int z, int top, int minY, int maxY,
+			Predicate<BlockState> opaque, RandomState randomState) {
+		PolandCaves.Columns cols = caveColumns(m, null, x, z, minY, maxY);
+		int guard = caveGuard(cols, x, z);
+		if (guard < top) {
+			return top;
+		}
+		for (int hi = top; hi > minY; ) {
+			int lo = Math.max(minY, hi - 31);
+			BlockState[] states = c.column(x, z, lo, hi, guard, randomState, cols);
+			for (int y = hi; y >= lo; y--) {
+				BlockState st = states[y - lo];
+				if (st == null || !st.isAir() && opaque.test(st)) {
+					return y;
+				}
+			}
+			hi = lo - 1;
+		}
+		return minY;
 	}
 
 	/**
@@ -689,8 +851,13 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 	@Override
 	public int getBaseHeight(int x, int z, Heightmap.Types type, LevelHeightAccessor heightAccessor,
 			RandomState randomState) {
-		ColumnSample s = model(randomState.seed()).sample(x, z);
+		LandscapeModel m = model(randomState.seed());
+		ColumnSample s = m.sample(x, z);
 		int top = topY(s, heightAccessor.getMinY(), heightAccessor.getMaxY());
+		PolandCaves c = activeCaves();
+		if (c != null) {
+			top = caveGround(c, m, x, z, top, heightAccessor.getMinY(), heightAccessor.getMaxY(), type.isOpaque(), randomState);
+		}
 		if (s.hasWater() && type.isOpaque().test(WATER)) {
 			top = Math.max(top, waterTopY(s, heightAccessor.getMaxY()));
 		}
@@ -699,7 +866,8 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 
 	@Override
 	public NoiseColumn getBaseColumn(int x, int z, LevelHeightAccessor heightAccessor, RandomState randomState) {
-		ColumnSample s = model(randomState.seed()).sample(x, z);
+		LandscapeModel m = model(randomState.seed());
+		ColumnSample s = m.sample(x, z);
 		int minY = heightAccessor.getMinY();
 		int top = topY(s, minY, heightAccessor.getMaxY());
 		int waterTop = waterTopY(s, heightAccessor.getMaxY());
@@ -707,6 +875,17 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 		for (int i = 0; i < states.length; i++) {
 			int y = minY + i;
 			states[i] = y <= top ? STONE : y <= waterTop ? WATER : AIR;
+		}
+		PolandCaves c = activeCaves();
+		if (c != null) {
+			// The caves of the column as in the fill, without the carvers (as the vanilla base column).
+			PolandCaves.Columns cols = caveColumns(m, null, x, z, minY, heightAccessor.getMaxY());
+			BlockState[] caves = c.column(x, z, minY, top, caveGuard(cols, x, z), randomState, cols);
+			for (int y = minY; y <= top; y++) {
+				if (caves[y - minY] != null) {
+					states[y - minY] = caves[y - minY];
+				}
+			}
 		}
 		return new NoiseColumn(minY, states);
 	}

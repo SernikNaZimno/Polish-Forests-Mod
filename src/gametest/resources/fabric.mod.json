@@ -23,7 +23,8 @@
 			"pl.polishforests.gametest.DeterminismClientGameTest",
 			"pl.polishforests.gametest.SliceClientGameTest",
 			"pl.polishforests.gametest.RenderProbesClientGameTest",
-			"pl.polishforests.gametest.LooseCoverClientGameTest"
+			"pl.polishforests.gametest.LooseCoverClientGameTest",
+			"pl.polishforests.gametest.CavesClientGameTest"
 		]
 	},
 	"mixins": [

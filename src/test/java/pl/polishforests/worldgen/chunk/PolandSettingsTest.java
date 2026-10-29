@@ -27,7 +27,7 @@ class PolandSettingsTest {
 	void defaultIsWrittenInFull() {
 		JsonObject json = encode(PolandSettings.DEFAULT);
 		for (String field : new String[] {"scale", "region_scale", "agriculture", "managed_forest_share", "alien_species",
-				"version", "cover_in_blocks", "loose_cover"}) {
+				"version", "cover_in_blocks", "loose_cover", "caves"}) {
 			assertTrue(json.has(field), "missing " + field + " in " + json);
 		}
 		assertEquals(PolandSettings.CURRENT_VERSION, json.get("version").getAsInt());
@@ -51,6 +51,26 @@ class PolandSettingsTest {
 			assertEquals(HabitatClassifier.Mode.PRESENT_DAY, read.mode());
 		}
 		assertEquals(PolandSettings.DEFAULT, PolandSettings.DEFAULT.withAgriculture(true).withAgriculture(false));
+		// Step J1: new worlds have the vanilla caves in both scales, and the switch is saved and read back.
+		assertTrue(json.get("caves").getAsBoolean());
+		assertTrue(gameplay.caves());
+		PolandSettings solid = PolandSettings.DEFAULT.withCaves(false);
+		assertFalse(encode(solid).get("caves").getAsBoolean());
+		assertEquals(solid, decode(encode(solid).toString()));
+		assertEquals(PolandSettings.DEFAULT, solid.withCaves(true));
+	}
+
+	/** Step J1: a world saved before the caves (no "caves" field) stays without caves, so its new chunks have no seam. */
+	@Test
+	void worldsWithoutTheCavesFieldHaveNoCaves() {
+		assertFalse(decode("{}").caves());
+		assertFalse(PolandSettings.LEGACY_M1.caves());
+		PolandSettings beforeJ1 = decode("{\"version\": 2, \"scale\": \"gameplay\", \"region_scale\": 1.0, "
+				+ "\"agriculture\": false, \"managed_forest_share\": 0.85, \"alien_species\": true, \"cover_in_blocks\": true, "
+				+ "\"loose_cover\": \"thin\"}");
+		assertFalse(beforeJ1.caves());
+		assertEquals(PolandSettings.DEFAULT.withScale(PolandScale.GAMEPLAY).withCaves(false), beforeJ1);
+		assertTrue(decode("{\"version\": 2, \"caves\": true}").caves());
 	}
 
 	@Test
@@ -78,7 +98,8 @@ class PolandSettingsTest {
 		PolandSettings beforeK1 = decode("{\"scale\": \"gameplay\", \"region_scale\": 1.0, \"agriculture\": false, "
 				+ "\"managed_forest_share\": 0.85, \"alien_species\": true, \"version\": 2, \"cover_in_blocks\": true}");
 		assertEquals(LooseCover.REALISTIC, beforeK1.looseCover());
-		assertEquals(PolandSettings.DEFAULT.withScale(PolandScale.GAMEPLAY).withLooseCover(LooseCover.REALISTIC), beforeK1);
+		assertEquals(PolandSettings.DEFAULT.withScale(PolandScale.GAMEPLAY).withLooseCover(LooseCover.REALISTIC).withCaves(false),
+				beforeK1);
 		assertEquals(LooseCover.THIN, decode("{\"version\": 2, \"loose_cover\": \"thin\"}").looseCover());
 	}
 
@@ -95,6 +116,7 @@ class PolandSettingsTest {
 				PolandSettings read = decode(settings.toString());
 				assertEquals(LooseCover.THIN, read.looseCover(), preset);
 				assertTrue(read.coverInBlocks(), preset);
+				assertTrue(read.caves(), preset + ": new worlds have caves (step J1)");
 			}
 		}
 	}
@@ -104,7 +126,7 @@ class PolandSettingsTest {
 		var field = PolandSettings.GENERATOR_FIELD.codec();
 		JsonObject json = field.encodeStart(JsonOps.INSTANCE, PolandSettings.DEFAULT).getOrThrow().getAsJsonObject();
 		assertTrue(json.has("settings"), "the default settings are left out: " + json);
-		assertEquals(8, json.getAsJsonObject("settings").size());
+		assertEquals(9, json.getAsJsonObject("settings").size());
 		assertEquals(PolandSettings.DEFAULT, field.parse(JsonOps.INSTANCE, json).getOrThrow());
 		assertEquals(PolandSettings.LEGACY_M1, field.parse(JsonOps.INSTANCE, new JsonObject()).getOrThrow());
 	}
