@@ -176,7 +176,8 @@ public final class CavesClientGameTest implements FabricClientGameTest {
 		boolean real = m.scale() == pl.polishforests.worldgen.landscape.LandscapeScale.REALISTIC;
 		List<Place> places = new ArrayList<>();
 		add(places, m, "forest", 4, true, new int[] {0, 0}, (s, p) -> !s.hasWater() && s.type().isLowland()
-				&& level.getBiome(new BlockPos(p[0], 200, p[1])).is(ModBiomeKeys.FORESTS) && dryAround(m, p, 40));
+				// The habitat at the top of the world (below Y 256 a cave biome of step J2 may lie under the forest).
+				&& level.getBiome(new BlockPos(p[0], level.getMaxY() - 1, p[1])).is(ModBiomeKeys.FORESTS) && dryAround(m, p, 40));
 		add(places, m, "river", 2, false, new int[] {0, 0}, (s, p) -> s.waterKind() == WaterKind.RIVER && s.type().isLowland());
 		add(places, m, "mountains", 2, true, real ? BESKIDS_REAL : BESKIDS_GAMEPLAY, (s, p) -> s.type() == LandscapeType.BESKIDS
 				&& s.surface() > 700 && dryAround(m, p, 24));

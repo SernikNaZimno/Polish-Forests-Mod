@@ -49,6 +49,7 @@ import pl.polishforests.worldgen.tree.AgeClass;
 import pl.polishforests.worldgen.tree.CrownLayer;
 import pl.polishforests.worldgen.chunk.ModBiomeKeys;
 import pl.polishforests.worldgen.feature.BiomeDecoration;
+import pl.polishforests.worldgen.feature.CaveOpeningFilter;
 import pl.polishforests.worldgen.feature.CavesFilter;
 import pl.polishforests.worldgen.feature.LakeClearanceFilter;
 import pl.polishforests.worldgen.feature.TopOfWorldPlacement;
@@ -132,7 +133,6 @@ final class ModWorldgen {
 		}
 		// Fallen trees of M2, dead trees and stumps of the slice (step V11): where a sapling would survive.
 		List<String> deadwood = new ArrayList<>();
-		ModVegetation.DEADWOOD.forEach(s -> deadwood.add(ModVegetation.deadwoodSubstitute(s)));
 		ModVegetation.PROCEDURAL_DEADWOOD.forEach(s -> {
 			deadwood.add(ModVegetation.deadwood(s));
 			deadwood.add(ModVegetation.stump(s));
@@ -140,6 +140,12 @@ final class ModWorldgen {
 		for (String path : deadwood) {
 			context.register(placed(path), new PlacedFeature(features.getOrThrow(ModTrees.key(path)),
 					List.of(PlacementUtils.filteredByBlockSurvival(Blocks.OAK_SAPLING))));
+		}
+		// The vanilla fallen log of M2 bridges gaps of up to 2 blocks, so not beside a cave entrance (step J2).
+		for (Species s : ModVegetation.DEADWOOD) {
+			String path = ModVegetation.deadwoodSubstitute(s);
+			context.register(placed(path), new PlacedFeature(features.getOrThrow(ModTrees.key(path)),
+					List.of(PlacementUtils.filteredByBlockSurvival(Blocks.OAK_SAPLING), CaveOpeningFilter.INSTANCE)));
 		}
 		// Glacial erratics (step 2, §8.1): once in 6 chunks, on the young glacial till and sands (soils of the habitat
 		// code), never in water (the blob needs ground below).

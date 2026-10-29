@@ -131,6 +131,16 @@ public record ChunkHabitats(int[] codes, short[] top, short[] water, float ocean
 		return (caveOpened[index >> 6] >>> (index & 63) & 1L) != 0;
 	}
 
+	/** Whether a cave entrance took away the top of any column of the chunk (step J1). */
+	public boolean anyCaveOpened() {
+		for (long bits : caveOpened) {
+			if (bits != 0) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	/** Whether the column is covered by water (the water surface is above the top ground block). */
 	public boolean hasWater(int index) {
 		return water[index] > top[index];
