@@ -27,12 +27,12 @@ import pl.polishforests.worldgen.habitat.Species;
  * until the leaves fall (birch bare at the end of X); Norway maple yellow to orange from the end of IX; ash drops its
  * leaves green-yellow early in X; hornbeam yellow from the 2nd decade of X, then brown in XI; beech golden from the 1st
  * decade of X, copper, then brown; oak late, yellow-brown in the 3rd decade of X, brown in XI, bare at the end of XI;
- * <li>winter and before leaf-out: the crown shows bare twigs (step V13, {@link #leafless}, tinted by {@link #twigs}),
- * and the curve itself ends in a light "twig haze" of each
+ * <li>winter and before leaf-out: the crown shows bare twigs (step V13, {@link #leafless}, tinted by {@link #twigs}: a
+ * lighter, grayer twig tint since step Z2), and the curve itself ends in a light "twig haze" of each
  * species, low in chroma and close to the summer lightness (birch purple-brown, linden reddish, maple and oak gray-brown,
  * hornbeam and beech gray, ash pale gray), so a leafless forest reads neither dead nor burnt. Only the <b>marcescent</b>
  * leaves ({@link #marcescent}: oak, hornbeam and beech, written by the tree planner on young trees and the lower crowns,
- * see {@code ProceduralTreeFeature#marcescentShare}) keep a light, warm dry brown until leaf-out.
+ * see {@code ProceduralTreeFeature#marcescentShare}) keep a light, warm dry brown until leaf-out (a paler tan since Z2).
  * </ul>
  * Each tree shifts its curve by its phase ({@code phase} 0-3 of the leaf block, from the hash of its trunk): −1, −1/3,
  * +1/3 or +1 step, so a stand does not turn at once. Conifers keep their needle color through the growing season and
@@ -82,24 +82,28 @@ public final class FoliageCurve {
 		CONIFERS.put(Species.SCOTS_PINE, new Needles(0x7C996D, 0x8A9670));
 		CONIFERS.put(Species.SPRUCE, new Needles(0x619961, darken(0x619961, CONIFER_WINTER_DARKENING)));
 		//               leaf-out, young, summer cast, autumn keys (position, target, weight; weight 0 = summer), bare at,
-		//               twig haze, marcescent brown (0: none)
+		//               twig haze, twig tint, marcescent brown (0: none)
 		// Step V13 (CP-B: "in late spring a few oaks, hornbeams and beeches are still brown", "in mid-autumn most crowns are
 		// green"): leaf-out after the Polish phenological network of 1991-2020 (birch and hornbeam about 20 IV, maple 22 IV,
 		// beech 28 IV, linden 30 IV, oak 2 V, ash 8 V; V7 had the older dates of report 08, 5-8 days later), and the
 		// autumn of hornbeam, beech and oak 3-5 days earlier with the leaf fall in the 2nd-3rd decade of XI.
+		// Step Z2 (CP-C.2: "winter and early spring too dark and brown"): the twig tint of each species (the last argument
+		// before the marcescent brown) is its twig haze 13 L* lighter at 0.8 of its chroma, so the bare crowns read as a
+		// light gray haze as the leaf blocks of V7 did; the marcescent browns are 9-10 L* lighter (a pale, dry tan).
 		broadleaf(Species.BIRCH, 4.8, 0xBCDC62, 0xB8C049, keys(20.0, 0, 0, 22.0, 0xE2C23A, 0.85, 23.6, 0xE2C23A, 0.85), 24.2,
-				0xB58B8F, 0);
+				0xB58B8F, 0xD3B0B3, 0);
 		broadleaf(Species.LINDEN, 5.9, 0xB0D45C, 0x2AA28F, keys(20.0, 0, 0, 22.0, 0xD8B43C, 0.85, 23.1, 0xD8B43C, 0.85), 23.6,
-				0xAA8377, 0);
+				0xAA8377, 0xC8A79D, 0);
 		broadleaf(Species.NORWAY_MAPLE, 5.2, 0xB4D65A, 0x36B356,
-				keys(20.6, 0, 0, 22.0, 0xE0B030, 0.8, 23.0, 0xE3902A, 0.9, 23.9, 0xE3902A, 0.9), 24.4, 0x9D8E80, 0);
-		broadleaf(Species.ASH, 6.8, 0xB0D45C, 0x9FA453, keys(21.0, 0, 0, 22.3, 0xA8B84A, 0.55), 23.0, 0x9C9C91, 0);
+				keys(20.6, 0, 0, 22.0, 0xE0B030, 0.8, 23.0, 0xE3902A, 0.9, 23.9, 0xE3902A, 0.9), 24.4, 0x9D8E80, 0xBEB1A5, 0);
+		broadleaf(Species.ASH, 6.8, 0xB0D45C, 0x9FA453, keys(21.0, 0, 0, 22.3, 0xA8B84A, 0.55), 23.0, 0x9C9C91, 0xBFBFB6, 0);
 		broadleaf(Species.HORNBEAM, 5.0, 0xB0D45C, 0x6D926E,
-				keys(21.0, 0, 0, 22.6, 0xD2B03A, 0.8, 24.2, 0x946630, 0.9), 25.6, 0x959084, 0xA58660);
+				keys(21.0, 0, 0, 22.6, 0xD2B03A, 0.8, 24.2, 0x946630, 0.9), 25.6, 0x959084, 0xB7B3A9, 0xC0A07B);
 		broadleaf(Species.BEECH, 5.7, 0xA8D850, 0x7AB344,
-				keys(20.8, 0, 0, 22.0, 0xD8A53A, 0.8, 23.1, 0xC0702C, 0.85, 24.4, 0x8E5A2C, 0.9), 25.6, 0xA1897E, 0xBE8C5F);
+				keys(20.8, 0, 0, 22.0, 0xD8A53A, 0.8, 23.1, 0xC0702C, 0.85, 24.4, 0x8E5A2C, 0.9), 25.6, 0xA1897E, 0xC1ACA3,
+				0xD6A478);
 		broadleaf(Species.OAK, 6.1, 0xC2C86A, 0x60773C,
-				keys(22.0, 0, 0, 23.6, 0xB89238, 0.75, 25.1, 0x8C6A30, 0.85), 26.6, 0x9A8577, 0xA77F56);
+				keys(22.0, 0, 0, 23.6, 0xB89238, 0.75, 25.1, 0x8C6A30, 0.85), 26.6, 0x9A8577, 0xBAA89C, 0xBF976F);
 	}
 
 	private FoliageCurve() {
@@ -110,10 +114,13 @@ public final class FoliageCurve {
 		return values;
 	}
 
-	/** A broadleaf curve and, when {@code marcescent} is not 0, the curve of its marcescent leaves. */
-	private static void broadleaf(Species s, double leafOut, int young, int cast, double[] autumn, double bare, int twigs,
-			int marcescent) {
-		CURVES.put(s, curve(s, leafOut, young, cast, autumn, bare, twigs));
+	/**
+	 * A broadleaf curve ending in the twig haze {@code haze}, the tint of its bare twigs {@code twigs} (step Z2) and, when
+	 * {@code marcescent} is not 0, the curve of its marcescent leaves.
+	 */
+	private static void broadleaf(Species s, double leafOut, int young, int cast, double[] autumn, double bare, int haze,
+			int twigs, int marcescent) {
+		CURVES.put(s, curve(s, leafOut, young, cast, autumn, bare, haze));
 		double lastKey = autumn[autumn.length - 3];
 		LEAFLESS.put(s, new Leafless((lastKey + bare) / 2.0, leafOut - BUD_BURST_LEAD, autumn[0], bare, twigs));
 		if (marcescent != 0) {
@@ -202,8 +209,10 @@ public final class FoliageCurve {
 	}
 
 	/**
-	 * The color of the bare twigs of a broadleaf species over a raw biome foliage color (step V13): its twig haze with the
-	 * winter weight, the tint of the twig model (tint index 1 of the leaf block); for a conifer its winter needles.
+	 * The color of the bare twigs of a broadleaf species over a raw biome foliage color (step V13): its twig tint with the
+	 * winter weight, the tint of the twig model (tint index 1 of the leaf block); for a conifer its winter needles. Step Z2:
+	 * the twig tint is a lighter, grayer version of the twig haze that ends the curve (the haze stays the color the last
+	 * and the first leaves of the year blend into), so that the thin twigs over the sky read as light as the V7 haze.
 	 */
 	public static int twigs(Species species, int raw) {
 		Leafless w = LEAFLESS.get(species);

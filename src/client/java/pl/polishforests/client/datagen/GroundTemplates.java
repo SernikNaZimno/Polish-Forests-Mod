@@ -91,7 +91,12 @@ final class GroundTemplates implements DataProvider {
 		return m;
 	}
 
-	/** The twigs cube: vanilla's leaves template with the tint index 1. */
+	/**
+	 * The twigs cube: vanilla's leaves template with the tint index 1. Step Z2 (CP-C.2: winter too dark): without ambient
+	 * occlusion and face shading — a bare crown is an open net of twigs that lets the light through, not a solid block,
+	 * so neither the full-block neighbors (other twig blocks, as leaves full-collision blocks) nor the side or bottom of the
+	 * cube darken it (seen from below, the bottom faces were drawn at half brightness).
+	 */
 	private static JsonObject twigs() {
 		JsonObject faces = new JsonObject();
 		for (String side : new String[] {"down", "up", "north", "south", "west", "east"}) {
@@ -105,11 +110,13 @@ final class GroundTemplates implements DataProvider {
 		JsonObject e = new JsonObject();
 		e.add("from", vector(new double[] {0, 0, 0}));
 		e.add("to", vector(new double[] {16, 16, 16}));
+		e.addProperty("shade", false);
 		e.add("faces", faces);
 		JsonArray elements = new JsonArray();
 		elements.add(e);
 		JsonObject m = new JsonObject();
 		m.addProperty("parent", "minecraft:block/block");
+		m.addProperty("ambientocclusion", false);
 		JsonObject textures = new JsonObject();
 		textures.addProperty("particle", "#all");
 		m.add("textures", textures);

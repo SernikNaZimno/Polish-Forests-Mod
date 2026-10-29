@@ -370,17 +370,26 @@ class FoliageCurveTest {
 		assertTrue(turned(Species.OAK, first + 2) >= 3, report.toString());
 	}
 
-	/** Step V13: the twig color of a species is its winter color of the curve (the twig haze), low in chroma. */
+	/**
+	 * Step V13: the twig color of a species is low in chroma; step Z2 (CP-C.2: winter too dark): it is a lighter, grayer
+	 * version of the winter color of the curve (the twig haze), at least 10 L* lighter, of no higher chroma and of about
+	 * the same hue, and at least as light as the summer leaves.
+	 */
 	@Test
-	void twigColorIsTheTwigHaze() {
+	void twigColorIsALighterTwigHaze() {
 		double winter = SeasonPhase.firstStep(SubSeason.MID_WINTER) + 1.5;
 		for (Species s : FoliageCurve.species()) {
 			if (FoliageCurve.conifer(s)) {
 				continue;
 			}
 			int twigs = FoliageCurve.twigs(s, GRAD);
-			assertEquals(FoliageCurve.colorAt(s, winter, GRAD), twigs, s.id());
-			assertTrue(chroma(twigs) <= 20, s.id() + " twigs " + Integer.toHexString(twigs));
+			int haze = FoliageCurve.colorAt(s, winter, GRAD);
+			String id = s.id() + " twigs " + Integer.toHexString(twigs) + ", haze " + Integer.toHexString(haze);
+			assertTrue(chroma(twigs) <= 20 && chroma(twigs) <= chroma(haze) + 0.5, id);
+			assertTrue(lab(twigs)[0] >= lab(haze)[0] + 10, id);
+			assertTrue(lab(twigs)[0] >= lab(FoliageCurve.summer(s, GRAD))[0], id);
+			double dh = Math.abs(hue(twigs) - hue(haze));
+			assertTrue(Math.min(dh, 360 - dh) <= 25 || chroma(haze) < 8, id);
 		}
 	}
 

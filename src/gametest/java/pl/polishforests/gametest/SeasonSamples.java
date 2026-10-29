@@ -58,7 +58,7 @@ import pl.polishforests.season.SubSeason;
  * <li><b>Bare twigs</b> (T-D5): in MID_WINTER at least 80% of the non-marcescent broadleaf leaves around the camera show
  * twigs, none in MID_SUMMER; the marcescent leaves never; the canopy frame lets through at least
  * {@value #MIN_WINTER_CANOPY_SKY} of sky in MID_WINTER and {@value #MIN_WINTER_CANOPY_RATIO} times the summer share (review
- * round 1: one screen of twigs per crown);
+ * round 1: one screen of twigs per crown; step Z2: 15%, the canopy camera on a column clear of trunks);
  * <li><b>Fast mode</b> (review round 1) on a rig high over the oak-hornbeam forest in LATE_SPRING, LATE_AUTUMN and
  * MID_WINTER (without SS in both sub-seasons): no more sky in the Fast mode than in the Fancy mode where leaves in leaf
  * stand behind bare twigs, and vanilla leaves kept cut out in a transition step as in the Fancy mode; a Fast-mode frame
@@ -82,8 +82,15 @@ final class SeasonSamples {
 			SubSeason.EARLY_SUMMER, SubSeason.MID_SUMMER, SubSeason.MID_AUTUMN, SubSeason.LATE_AUTUMN, SubSeason.MID_WINTER);
 	private static final List<SubSeason> WITHOUT_SS = List.of(SubSeason.MID_SPRING, SubSeason.MID_AUTUMN);
 
-	/** Sky through the bare canopy (review round 1 of V13): the least share of sky in the canopy frame in MID_WINTER. */
-	private static final double MIN_WINTER_CANOPY_SKY = 0.025;
+	/**
+	 * Sky through the bare canopy: the least share of sky in the canopy frame in MID_WINTER (review round 1 of V13: 2.5%;
+	 * step Z2, CP-C.2: 15%, the target of that review, after lighter and fewer marcescent crowns).
+	 */
+	private static final double MIN_WINTER_CANOPY_SKY = 0.15;
+	/** Step Z2 (DP-62): how far the canopy camera may move from the fixed one to a column clear of trunks. */
+	private static final int CANOPY_SHIFT = 3;
+	/** Wood blocks in one column from 2 to 10 blocks above the camera's feet that make a trunk (step Z2). */
+	private static final int TRUNK_RUN = 4;
 	/** … and at least this many times the share in MID_SUMMER (V13 before the review: 1.3% against 0.5%). */
 	private static final double MIN_WINTER_CANOPY_RATIO = 5.0;
 	/** Fast-mode rig: largest excess of sky in the Fast mode over the Fancy mode (a hole in a crown, review round 1). */
@@ -126,6 +133,7 @@ final class SeasonSamples {
 			BlockPos rig = sp.getServer().computeOnServer(s -> buildRig(s.overworld(), grad));
 			context.waitTicks(100);
 			result("Fast-mode rig at %s", rig.toShortString());
+			SliceCameras.Camera canopyCam = openCanopy(sp, camera(cameras, scale, "oak_hornbeam_1", "canopy"));
 			String p = "seasons_" + scale + "_" + tag + "_";
 			for (SubSeason sub : seasons ? WITH_SS : WITHOUT_SS) {
 				int day = seasons ? 0 : 4;
@@ -136,7 +144,7 @@ final class SeasonSamples {
 				String name = sub.name().toLowerCase(Locale.ROOT);
 				for (String[] view : new String[][] {{"oak_hornbeam_1", "eye"}, {"oak_hornbeam_1", "canopy"}, {"oak_hornbeam_1", "30m"},
 						{"fresh_pine_1", "eye"}, {"transect", "eye_mixed_forest"}}) {
-					SliceCameras.Camera cam = camera(cameras, scale, view[0], view[1]);
+					SliceCameras.Camera cam = view[1].equals("canopy") ? canopyCam : camera(cameras, scale, view[0], view[1]);
 					if (cam != null) {
 						Path path = shot(context, sp, p + name + "_" + view[0] + "_" + view[1], cam, 4);
 						if (view[1].equals("canopy")) {
@@ -610,6 +618,71 @@ final class SeasonSamples {
 	}
 
 	// ------------------------------------------------------------------ helpers
+
+	/**
+	 * Step Z2 (DP-62): the canopy camera at the nearest feet block at most {@value #CANOPY_SHIFT} blocks from the fixed one
+	 * (same height, feet and head free of collision and leaves) with no trunk within one block of its column
+	 * ({@link #clearUp}), so that the frame measures the sky through the crowns and does not look up along a trunk (the
+	 * GAMEPLAY camera did, about 35% of its frame); the fixed camera itself when it is clear, or when no block is.
+	 */
+	private SliceCameras.Camera openCanopy(TestSingleplayerContext sp, SliceCameras.Camera cam) {
+		if (cam == null) {
+			return null;
+		}
+		int[] shift = sp.getServer().computeOnServer(s -> {
+			ServerLevel level = s.overworld();
+			int[] best = null;
+			int bestD = Integer.MAX_VALUE;
+			for (int dx = -CANOPY_SHIFT; dx <= CANOPY_SHIFT; dx++) {
+				for (int dz = -CANOPY_SHIFT; dz <= CANOPY_SHIFT; dz++) {
+					int d = dx * dx + dz * dz;
+					if (d < bestD && d <= CANOPY_SHIFT * CANOPY_SHIFT && clearUp(level, cam.x() + dx, cam.y(), cam.z() + dz)) {
+						best = new int[] {dx, dz};
+						bestD = d;
+					}
+				}
+			}
+			return best;
+		});
+		if (shift == null) {
+			result("canopy camera: no column clear of trunks within %d blocks, the fixed camera %d %d %d", CANOPY_SHIFT, cam.x(), cam.y(),
+					cam.z());
+			return cam;
+		}
+		result("canopy camera at %d %d %d (moved %d, %d from the fixed camera to a column clear of trunks)", cam.x() + shift[0], cam.y(),
+				cam.z() + shift[1], shift[0], shift[1]);
+		return new SliceCameras.Camera(cam.name(), cam.x() + shift[0], cam.y(), cam.z() + shift[1], cam.yaw(), cam.pitch());
+	}
+
+	/**
+	 * Whether a camera with its feet at (x, y, z) stands free and has no trunk within one block of its column: no column
+	 * of the 3 × 3 around it with {@value #TRUNK_RUN} or more wood blocks from 2 to 10 blocks above the feet (a bole; a
+	 * branch crossing the column above does not count).
+	 */
+	private static boolean clearUp(ServerLevel level, int x, int y, int z) {
+		BlockPos.MutableBlockPos at = new BlockPos.MutableBlockPos();
+		for (int dy = 0; dy <= 1; dy++) {
+			BlockState st = level.getBlockState(at.set(x, y + dy, z));
+			if (!st.getCollisionShape(level, at).isEmpty() || st.getBlock() instanceof LeavesBlock) {
+				return false;
+			}
+		}
+		for (int dx = -1; dx <= 1; dx++) {
+			for (int dz = -1; dz <= 1; dz++) {
+				int wood = 0;
+				for (int dy = 2; dy <= 10; dy++) {
+					BlockState st = level.getBlockState(at.set(x + dx, y + dy, z + dz));
+					if (st.is(net.minecraft.tags.BlockTags.LOGS) || st.getBlock() instanceof pl.polishforests.block.TrunkBlock) {
+						wood++;
+					}
+				}
+				if (wood >= TRUNK_RUN) {
+					return false;
+				}
+			}
+		}
+		return true;
+	}
 
 	private static SliceCameras.Camera camera(Map<String, List<SliceCameras.Camera>> cameras, String scale, String place, String name) {
 		for (SliceCameras.Camera c : cameras.getOrDefault(scale + " " + place, List.of())) {

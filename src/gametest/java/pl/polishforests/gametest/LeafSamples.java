@@ -71,8 +71,8 @@ import pl.polishforests.worldgen.tree.TreeVoxels;
  * <li><b>Fast</b> graphics mode (MID_SUMMER): the species leaves are leaves ({@code instanceof LeavesBlock}) and their
  * screen is as cut out or as opaque as the vanilla oak screen in the same renderer.
  * <li><b>Saplings</b>: every sapling grows (one {@code advanceTree} to stage 1, then the small size forced, step S1) into
- * exactly the tree of its configured feature {@code polishforests:sapling/<species>} (every planned wood block in place; the young oak, hornbeam and beech with all
- * leaves marcescent, the others with none); a sapling under a stone block takes no bone meal and does not grow, a sapling
+ * exactly the tree of its configured feature {@code polishforests:sapling/<species>} (every planned wood block in place; the young oak, hornbeam and beech with
+ * marcescent leaves on the lower part of the crown where the roll of the tree says so, step Z2, the others with none); a sapling under a stone block takes no bone meal and does not grow, a sapling
  * on farmland grows and leaves dirt; leaves and saplings are compostable, the pots hold their saplings.
  * <li><b>LITE pine</b>: the tags (planks, logs that burn, leaves, saplings) are loaded, an axe strips the log keeping its
  * axis, and the planks recipe exists.
@@ -235,6 +235,9 @@ final class LeafSamples {
 			int missing = 0;
 			int leaves = 0;
 			int dry = 0;
+			// Step Z2: the dry leaves of the tree (pole stage, as a sapling's small tree) by its roll and share.
+			int dryBelow = ProceduralTreeFeature.dryBelow(level.getSeed(), v, all[i].species(), CrownLayer.CANOPY, AgeClass.POLE_STAGE);
+			int expectDry = 0;
 			for (int k = 0; k < v.woodCount(); k++) {
 				BlockPos w = new BlockPos(v.x() + v.woodX(k), v.y() + v.woodY(k), v.z() + v.woodZ(k));
 				if (level.getBlockState(w) != ProceduralTreeFeature.wood(all[i].species(), v.bark(k), v.radius(k),
@@ -249,6 +252,9 @@ final class LeafSamples {
 					if (MarcescentLeavesBlock.marcescent(s)) {
 						dry++;
 					}
+					if (v.leafY(k) < dryBelow) {
+						expectDry++;
+					}
 				}
 			}
 			int height = 0;
@@ -258,9 +264,10 @@ final class LeafSamples {
 			result("sapling %s grew into %s: %d wood blocks (%d missing), %d of %d leaves (%d marcescent), %d blocks tall, phase %d",
 					all[i].species().id(), sapling.feature().identifier(), v.woodCount(), missing, leaves, v.leafCount(), dry, height,
 					ProceduralTreeFeature.phase(level.getSeed(), pos.getX(), pos.getZ()));
-			// A young tree (pole stage) of oak, hornbeam or beech keeps all its dead leaves over the winter; others none.
-			if (dry != (all[i].marcescent() ? leaves : 0)) {
-				fail("sapling %s: %d of %d leaves marcescent", all[i].species().id(), dry, leaves);
+			// A young tree (pole stage) of oak, hornbeam or beech may keep its dead leaves on the lower part of its crown
+			// (step Z2: by the roll of its trunk base, ProceduralTreeFeature.dryBelow); others none.
+			if (dry != (all[i].marcescent() ? expectDry : 0)) {
+				fail("sapling %s: %d of %d leaves marcescent, expected %d", all[i].species().id(), dry, leaves, expectDry);
 			}
 			if (missing > 0 || leaves < v.leafCount() * 0.95 || v.woodCount() == 0) {
 				fail("sapling %s: the grown tree differs from the planner (%d wood missing, %d of %d leaves)", all[i].species().id(),

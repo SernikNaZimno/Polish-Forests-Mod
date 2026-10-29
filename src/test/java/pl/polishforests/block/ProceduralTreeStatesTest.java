@@ -85,20 +85,94 @@ class ProceduralTreeStatesTest {
 	}
 
 	/**
-	 * V7 review round 1: only oak, hornbeam and beech keep dead leaves, on the whole crown of a young tree, the lower half of
-	 * a subcanopy tree and the lowest quarter of a canopy tree; a player's leaves are not marcescent.
+	 * V7 review round 1: only oak, hornbeam and beech keep dead leaves, on young trees and lower crowns; a player's leaves
+	 * are not marcescent. Step Z2 (CP-C.2): fewer of them, in a smaller lower share of the crown — 3 of 4 young hornbeams
+	 * and beeches (0.6 of the crown), 1 of 2 young oaks (0.4), half of the subcanopy hornbeams and beeches and a quarter of
+	 * the subcanopy oaks (0.3), a quarter of the canopy beeches (0.15), no other canopy tree.
 	 */
 	@Test
 	void marcescentLeavesOnYoungTreesAndLowerCrowns() {
 		for (Species s : pl.polishforests.worldgen.tree.SpeciesShape.species()) {
 			boolean dry = s == Species.OAK || s == Species.HORNBEAM || s == Species.BEECH;
-			assertEquals(dry ? 1.0 : 0.0, ProceduralTreeFeature.marcescentShare(s, CrownLayer.CANOPY, AgeClass.POLE_STAGE), s.id());
-			assertEquals(dry ? 0.5 : 0.0, ProceduralTreeFeature.marcescentShare(s, CrownLayer.SUBCANOPY, AgeClass.MATURE), s.id());
-			assertEquals(dry ? 0.25 : 0.0, ProceduralTreeFeature.marcescentShare(s, CrownLayer.CANOPY, AgeClass.OLD_GROWTH), s.id());
+			boolean oak = s == Species.OAK;
+			assertEquals(dry ? oak ? 0.5 : 0.75 : 0.0, ProceduralTreeFeature.marcescentChance(s, CrownLayer.CANOPY, AgeClass.POLE_STAGE),
+					s.id());
+			assertEquals(dry ? oak ? 0.4 : 0.6 : 0.0, ProceduralTreeFeature.marcescentShare(s, CrownLayer.CANOPY, AgeClass.POLE_STAGE),
+					s.id());
+			assertEquals(dry ? oak ? 0.25 : 0.5 : 0.0, ProceduralTreeFeature.marcescentChance(s, CrownLayer.SUBCANOPY, AgeClass.MATURE),
+					s.id());
+			assertEquals(dry ? 0.3 : 0.0, ProceduralTreeFeature.marcescentShare(s, CrownLayer.SUBCANOPY, AgeClass.MATURE), s.id());
+			boolean beech = s == Species.BEECH;
+			assertEquals(beech ? 0.25 : 0.0, ProceduralTreeFeature.marcescentChance(s, CrownLayer.CANOPY, AgeClass.OLD_GROWTH), s.id());
+			assertEquals(beech ? 0.15 : 0.0, ProceduralTreeFeature.marcescentShare(s, CrownLayer.CANOPY, AgeClass.MATURE), s.id());
 			BlockState leaf = ProceduralTreeFeature.leaves(s, 2);
 			assertEquals(dry, leaf.hasProperty(MarcescentLeavesBlock.MARCESCENT), s.id());
 			assertTrue(!MarcescentLeavesBlock.marcescent(leaf), s.id());
 		}
+	}
+
+	/**
+	 * Step Z2: the roll of a tree is a pure function of the seed and the trunk base, spread evenly over 0-1 (so the share of
+	 * marcescent trees is the chance), and independent of the tree phase.
+	 */
+	@Test
+	void marcescenceRollIsDeterministicAndEven() {
+		int n = 0;
+		int below = 0;
+		int[] byPhase = new int[4];
+		int[] dryByPhase = new int[4];
+		for (int x = -64; x < 64; x++) {
+			for (int z = -64; z < 64; z++) {
+				double r = ProceduralTreeFeature.marcescenceRoll(20260927L, x, z);
+				assertTrue(r >= 0 && r < 1);
+				assertEquals(r, ProceduralTreeFeature.marcescenceRoll(20260927L, x, z));
+				n++;
+				int phase = ProceduralTreeFeature.phase(20260927L, x, z);
+				byPhase[phase]++;
+				if (r < 0.75) {
+					below++;
+					dryByPhase[phase]++;
+				}
+			}
+		}
+		assertEquals(0.75, below / (double) n, 0.02);
+		for (int p = 0; p < 4; p++) {
+			assertEquals(0.75, dryByPhase[p] / (double) byPhase[p], 0.04, "phase " + p);
+		}
+		assertTrue(ProceduralTreeFeature.marcescenceRoll(1L, 5, 7) != ProceduralTreeFeature.marcescenceRoll(2L, 5, 7));
+	}
+
+	/**
+	 * Step Z2: on planned young hornbeams the dry leaves are the lower 0.6 of the leaf rows of the trees whose roll is below
+	 * the chance, none on the others; about 3 of 4 trees keep them, and a birch never does.
+	 */
+	@Test
+	void dryBelowFollowsTheRollAndTheShare() {
+		long seed = 20260927L;
+		int dry = 0;
+		int n = 0;
+		for (int i = 0; i < 40; i++) {
+			int x = 17 * i - 300;
+			int z = 31 * i + 50;
+			TreeVoxels v = pl.polishforests.worldgen.tree.TreeShapePlan.plan(new pl.polishforests.worldgen.tree.TreeRequest(
+					Species.HORNBEAM, CrownLayer.CANOPY, AgeClass.POLE_STAGE, seed, x, 70, z));
+			if (v.leafCount() == 0) {
+				continue;
+			}
+			n++;
+			int lo = Integer.MAX_VALUE;
+			int hi = Integer.MIN_VALUE;
+			for (int k = 0; k < v.leafCount(); k++) {
+				lo = Math.min(lo, v.leafY(k));
+				hi = Math.max(hi, v.leafY(k));
+			}
+			int below = ProceduralTreeFeature.dryBelow(seed, v, Species.HORNBEAM, CrownLayer.CANOPY, AgeClass.POLE_STAGE);
+			boolean keeps = ProceduralTreeFeature.marcescenceRoll(seed, v.x(), v.z()) < 0.75;
+			assertEquals(keeps ? lo + (int) Math.ceil(0.6 * (hi - lo + 1)) : Integer.MIN_VALUE, below);
+			dry += keeps ? 1 : 0;
+			assertEquals(Integer.MIN_VALUE, ProceduralTreeFeature.dryBelow(seed, v, Species.BIRCH, CrownLayer.CANOPY, AgeClass.POLE_STAGE));
+		}
+		assertTrue(n >= 30 && dry >= 0.5 * n && dry <= 0.95 * n, dry + " of " + n);
 	}
 
 	/** Step V7: the phase of a tree is a pure function of the seed and the trunk base, and every phase occurs. */

@@ -64,7 +64,8 @@ import pl.polishforests.worldgen.tree.TreeVoxels;
  * species' own leaf block ({@link SpeciesLeavesBlock}) with the planner's distance and the tree's phase ({@link #phase}:
  * 0-3 from the hash of the trunk base, so every leaf of a tree turns at the same time and the trees of a stand at different
  * times; ZW-5); for oak, hornbeam and beech the marcescent leaves ({@link MarcescentLeavesBlock}) on the lower share
- * {@link #marcescentShare} of the crown (V7 review round 1).
+ * {@link #marcescentShare} of the crown (V7 review round 1) of the trees that keep their dead leaves ({@link #marcescentChance},
+ * a roll of the trunk base; step Z2).
  *
  * <p><b>Ground.</b> The trunk base needs a block below with a sturdy top face, or farmland (as vanilla saplings grow on
  * it); farmland under a placed tree turns into dirt.
@@ -87,6 +88,8 @@ public record ProceduralTreeFeature(Species species, CrownLayer layer, AgeClass 
 
 	/** Salt of the tree phase (rule ZW-2: a new field, a new salt). */
 	public static final String PHASE_SALT = "feature.tree.phase";
+	/** Salt of the roll whether a tree keeps its dead leaves over the winter (step Z2; rule ZW-2: a new field, a new salt). */
+	public static final String MARCESCENCE_SALT = "feature.tree.marcescence";
 
 	/** Block update flags of the generation, as {@link FastTreeFeature}. */
 	private static final int FLAGS = 19;
@@ -195,16 +198,66 @@ public record ProceduralTreeFeature(Species species, CrownLayer layer, AgeClass 
 		return (int) (new Noise(seed).derive(PHASE_SALT).hash(x, z) >>> 62);
 	}
 
+	/** The roll 0-1 of the tree with its trunk base at (x, z) against {@link #marcescentChance} (step Z2). */
+	public static double marcescenceRoll(long seed, int x, int z) {
+		return (new Noise(seed).derive(MARCESCENCE_SALT).hash(x, z) >>> 11) * 0x1.0p-53;
+	}
+
 	/**
-	 * The share of the crown (from its lowest leaf up) whose leaves are marcescent (V7 review round 1): none for a species
-	 * that never keeps dead leaves; for oak, hornbeam and beech the whole crown of a young tree (pole stage, also a tree
-	 * grown from a sapling), the lower half of a subcanopy tree and the lowest quarter of a canopy tree (the juvenile zone).
+	 * The chance that a tree of a species, crown layer and age class keeps dead leaves over the winter (step Z2, CP-C.2:
+	 * the bare oak-hornbeam canopy was too closed and too brown, about 17% of its broadleaf leaves marcescent). Strongest in
+	 * young hornbeams and beeches (juvenile marcescence: 3 of 4 pole-stage trees), weaker in young oaks (1 of 2), in half of
+	 * the subcanopy hornbeams and beeches and a quarter of the subcanopy oaks, in the lower crown of 1 of 4 mature canopy
+	 * beeches only; none for a species that never keeps dead leaves. A pole-stage tree includes one grown from a sapling.
 	 */
-	public static double marcescentShare(Species species, CrownLayer layer, AgeClass age) {
+	public static double marcescentChance(Species species, CrownLayer layer, AgeClass age) {
 		if (!FoliageCurve.marcescent(species)) {
 			return 0.0;
 		}
-		return age == AgeClass.POLE_STAGE ? 1.0 : layer == CrownLayer.SUBCANOPY ? 0.5 : 0.25;
+		boolean oak = species == Species.OAK;
+		if (age == AgeClass.POLE_STAGE) {
+			return oak ? 0.5 : 0.75;
+		}
+		if (layer == CrownLayer.SUBCANOPY) {
+			return oak ? 0.25 : 0.5;
+		}
+		return species == Species.BEECH ? 0.25 : 0.0;
+	}
+
+	/**
+	 * The share of the crown (from its lowest leaf up) whose leaves are marcescent on a tree that keeps its dead leaves
+	 * ({@link #marcescentChance}): V7 review round 1 had the whole crown of a young tree, the lower half of a subcanopy tree
+	 * and the lowest quarter of a canopy tree on every tree; step Z2 keeps the juvenile zone smaller: 0.6 of a young
+	 * hornbeam or beech (0.4 of a young oak), the lower 0.3 of a subcanopy tree and the lowest 0.15 of a canopy beech.
+	 */
+	public static double marcescentShare(Species species, CrownLayer layer, AgeClass age) {
+		if (marcescentChance(species, layer, age) <= 0.0) {
+			return 0.0;
+		}
+		if (age == AgeClass.POLE_STAGE) {
+			return species == Species.OAK ? 0.4 : 0.6;
+		}
+		return layer == CrownLayer.SUBCANOPY ? 0.3 : 0.15;
+	}
+
+	/**
+	 * The height (relative to the trunk base, exclusive) below which the leaves of a planned tree are marcescent, or
+	 * {@link Integer#MIN_VALUE} when none are: the lower {@link #marcescentShare} of its leaf rows if the roll of its trunk
+	 * base ({@link #marcescenceRoll}) is below {@link #marcescentChance}; a pure function of the seed and the tree.
+	 */
+	public static int dryBelow(long seed, TreeVoxels v, Species species, CrownLayer layer, AgeClass age) {
+		double share = marcescentShare(species, layer, age);
+		int leaves = v.leafCount();
+		if (share <= 0 || leaves == 0 || marcescenceRoll(seed, v.x(), v.z()) >= marcescentChance(species, layer, age)) {
+			return Integer.MIN_VALUE;
+		}
+		int lo = Integer.MAX_VALUE;
+		int hi = Integer.MIN_VALUE;
+		for (int i = 0; i < leaves; i++) {
+			lo = Math.min(lo, v.leafY(i));
+			hi = Math.max(hi, v.leafY(i));
+		}
+		return lo + (int) Math.ceil(share * (hi - lo + 1));
 	}
 
 	/**
@@ -251,17 +304,7 @@ public record ProceduralTreeFeature(Species species, CrownLayer layer, AgeClass 
 		}
 		byte[] distances = all ? null : v.leafDistances(written, placeable);
 		BlockState leaf = leaves(species, phase(level.getSeed(), v.x(), v.z()));
-		int dryBelow = Integer.MIN_VALUE;
-		double share = marcescentShare(species, layer, age);
-		if (share > 0 && leaves > 0) {
-			int lo = Integer.MAX_VALUE;
-			int hi = Integer.MIN_VALUE;
-			for (int i = 0; i < leaves; i++) {
-				lo = Math.min(lo, v.leafY(i));
-				hi = Math.max(hi, v.leafY(i));
-			}
-			dryBelow = lo + (int) Math.ceil(share * (hi - lo + 1));
-		}
+		int dryBelow = dryBelow(level.getSeed(), v, species, layer, age);
 		BlockState dry = dryBelow == Integer.MIN_VALUE ? leaf : leaf.setValue(MarcescentLeavesBlock.MARCESCENT, true);
 		int placed = 0;
 		for (int i = 0; i < leaves; i++) {

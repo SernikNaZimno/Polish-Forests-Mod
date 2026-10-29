@@ -999,12 +999,50 @@ SAPLINGS = [
 
 
 # ---------------------------------------------------------------------------------------------------- bare twigs (V13)
+def straight_run(alpha):
+    """The longest run of visible pixels along a row or a column of a tile, the tile repeated (a straight twig that
+    runs on across the block edges reads as a grid line over a crown)."""
+    vis = alpha > 0
+    best = 0
+    for a in (vis, vis.T):
+        for row in a:
+            if row.all():
+                return 2 * N
+            r = np.roll(row, -int(np.argmin(row)))        # start at an empty pixel, so a run across the edge is whole
+            run = 0
+            for v in r:
+                run = run + 1 if v else 0
+                best = max(best, run)
+    return best
+
+
+def stripes(alpha):
+    """How much of the visible pattern of a tile is one low frequency (period 4 px or more): the largest such Fourier
+    magnitude over the norm of all of them (V13 twigs 0.15-0.30; a twig crossing the tile on a slant, repeated at every
+    block, makes bands over the crown at 0.35 and more)."""
+    v = (alpha > 0).astype(float)
+    v -= v.mean()
+    f = np.abs(np.fft.fft2(v))
+    f[0, 0] = 0
+    k = np.minimum(np.arange(N), N - np.arange(N))
+    low = (k[:, None] <= N // 4) & (k[None, :] <= N // 4)
+    norm = math.sqrt(float((f ** 2).sum()))
+    return float(f[low].max()) / norm if norm > 0 else 0.0
+
+
 def twig_score(tex):
-    """Score of a twigs candidate: the spread of the visible pixels over the columns and rows (as leaves_score), plus a
-    large penalty for every lint error."""
+    """Score of a twigs candidate: the spread of the visible pixels over the columns and rows (as leaves_score), step
+    Z2 (sparser tiles): a penalty for straight runs longer than 8 px along a row or column (zigzag species only) and for
+    bands (stripes() over 0.28), both a grid or bands over a crown when the tile repeats at every block; plus a large
+    penalty for every lint error."""
+    straight = tex.params.get('zigzag', 1.0) <= 0.15     # birch and ash: straight twigs by nature, no run penalty
+
     def score(img):
         cmin, rmin, cstd, rstd = t.line_cover(img[..., 3])
         sc = max(cstd, rstd)
+        if not straight:
+            sc += 0.5 * max(0, straight_run(img[..., 3]) - 8)
+        sc += 40 * max(0.0, stripes(img[..., 3]) - 0.28)
         import lint
         sc += 10 * len(lint.lint_texture(tex.name, img, tex)[0])
         return sc
@@ -1084,16 +1122,23 @@ def twigs(tex, palettes):
 
 
 TWIG_SPECIES = [
-    # (species, twig color of the curve = the tint in the sheets, opacity, zigzag, branch length, side length, fork, note)
-    ('birch', '#b58b8f', 0.40, 0.15, (9, 15), (3, 6), 0.45,
+    # (species, twig tint of FoliageCurve = the tint in the sheets, opacity, zigzag, branch length, side length, fork, note)
+    # Step Z2 (CP-C.2: winter too dark and brown, the bare canopy too closed): the tints are the twig tints of
+    # FoliageCurve (the V13 twig haze 13 L* lighter at 0.8 of its chroma, a light gray haze as the V7 winter crowns), the
+    # gray ramp is lighter and narrower (TWIG_GRAY, smoother steps between the tones) and the target opacity 0.03-0.07
+    # lower; visible pixels V13 -> Z2: hornbeam 40 -> 33%, oak 34 -> 27%, linden 45 -> 33%, maple 38 -> 29%, beech
+    # 40 -> 38%, birch 45% and ash 36% (the same tile, the first branches already reach the target).
+    ('birch', '#d3b0b3', 0.36, 0.15, (9, 15), (3, 6), 0.45,
      'birch: dense, fine, straight purple-brown twigs (the purple haze of a birch crown in winter)'),
-    ('linden', '#aa8377', 0.36, 0.25, (8, 14), (3, 6), 0.40, 'small-leaved lime: straight reddish twigs in a dense net'),
-    ('norway_maple', '#9d8e80', 0.32, 0.25, (8, 13), (3, 5), 0.35, 'Norway maple: gray-brown twigs, opposite forks'),
-    ('ash', '#9c9c91', 0.27, 0.15, (9, 15), (2, 5), 0.25, 'ash: few coarse pale gray twigs (thick shoots, black buds)'),
-    ('hornbeam', '#959084', 0.38, 0.55, (8, 13), (3, 6), 0.45, 'hornbeam: dense gray zigzag twigs'),
-    ('beech', '#a1897e', 0.36, 0.45, (8, 14), (3, 6), 0.40, 'beech: fine gray zigzag twigs with long pointed buds'),
-    ('oak', '#9a8577', 0.32, 0.70, (7, 12), (2, 5), 0.40, 'pedunculate oak: gnarled, strongly zigzagging gray-brown twigs'),
+    ('linden', '#c8a79d', 0.32, 0.25, (8, 14), (3, 6), 0.40, 'small-leaved lime: straight reddish twigs in a dense net'),
+    ('norway_maple', '#beb1a5', 0.28, 0.25, (8, 13), (3, 5), 0.35, 'Norway maple: gray-brown twigs, opposite forks'),
+    ('ash', '#bfbfb6', 0.25, 0.15, (9, 15), (2, 5), 0.25, 'ash: few coarse pale gray twigs (thick shoots, black buds)'),
+    ('hornbeam', '#b7b3a9', 0.31, 0.55, (8, 13), (3, 6), 0.45, 'hornbeam: dense gray zigzag twigs'),
+    ('beech', '#c1aca3', 0.32, 0.45, (8, 14), (3, 6), 0.40, 'beech: fine gray zigzag twigs with long pointed buds'),
+    ('oak', '#baa89c', 0.25, 0.70, (7, 12), (2, 5), 0.40, 'pedunculate oak: gnarled, strongly zigzagging gray-brown twigs'),
 ]
+# The gray ramp of the twig tones (crossing, body, side twig, lit tip): V13 had 98-166; step Z2 126-184.
+TWIG_GRAY = (126, 184)
 
 def upper_texture(tex, palettes):
     return bark_scots_pine_upper_built(tex, palettes)[0]
@@ -1266,7 +1311,7 @@ TEXTURES = [
      for name, params, note in SAPLINGS] + [
     # Step V13 (T-D5): the bare twigs of the leafless broadleaf crowns, grayscale for the twig color of the species.
     Texture(f'{name}_twigs', 'twigs', twigs, f'{name}_twigs/1', None, tint=color, mcmeta=LEAVES_MCMETA,
-            params=dict(opacity=opacity, zigzag=zigzag, length=length, side=side, fork=fork, tip=2, gray=(98, 166), tries=24),
+            params=dict(opacity=opacity, zigzag=zigzag, length=length, side=side, fork=fork, tip=2, gray=TWIG_GRAY, tries=24),
             expect={'min_line': 2}, note=note)
     for name, color, opacity, zigzag, length, side, fork, note in TWIG_SPECIES]
 
