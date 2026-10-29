@@ -7,6 +7,7 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import java.util.EnumMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.function.Predicate;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.tags.BlockTags;
@@ -33,6 +34,7 @@ import pl.polishforests.worldgen.tree.CrownLayer;
 import pl.polishforests.worldgen.tree.SpeciesShape;
 import pl.polishforests.worldgen.tree.TreeRequest;
 import pl.polishforests.worldgen.tree.TreeShapePlan;
+import pl.polishforests.worldgen.tree.TreeSize;
 import pl.polishforests.worldgen.tree.TreeVoxels;
 
 /**
@@ -67,15 +69,20 @@ import pl.polishforests.worldgen.tree.TreeVoxels;
  * <p><b>Ground.</b> The trunk base needs a block below with a sturdy top face, or farmland (as vanilla saplings grow on
  * it); farmland under a placed tree turns into dirt.
  *
+ * <p><b>Size</b> (step S1): the optional field {@code size} ({@link TreeSize}, by default the planner's own) scales the
+ * tree; the configured features {@code polishforests:sapling/<species>/medium} and {@code …/large} of the sapling sizes
+ * ({@link pl.polishforests.block.SaplingSize}) use it.
+ *
  * @param species a species with a planner shape ({@link SpeciesShape#supported})
  */
-public record ProceduralTreeFeature(Species species, CrownLayer layer, AgeClass age) implements Feature {
+public record ProceduralTreeFeature(Species species, CrownLayer layer, AgeClass age, TreeSize size) implements Feature {
 	private static final Codec<Species> SPECIES = TreePalette.SPECIES_CODEC.validate(s -> SpeciesShape.supported(s)
 			? DataResult.success(s) : DataResult.error(() -> "no tree shape for " + s.id()));
 	public static final MapCodec<ProceduralTreeFeature> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
 			SPECIES.fieldOf("species").forGetter(ProceduralTreeFeature::species),
 			enumCodec(CrownLayer.values()).optionalFieldOf("layer", CrownLayer.CANOPY).forGetter(ProceduralTreeFeature::layer),
-			enumCodec(AgeClass.values()).optionalFieldOf("age_class", AgeClass.MATURE).forGetter(ProceduralTreeFeature::age))
+			enumCodec(AgeClass.values()).optionalFieldOf("age_class", AgeClass.MATURE).forGetter(ProceduralTreeFeature::age),
+			TreeSize.CODEC.optionalFieldOf("size", TreeSize.ONE).forGetter(ProceduralTreeFeature::size))
 			.apply(i, ProceduralTreeFeature::new));
 
 	/** Salt of the tree phase (rule ZW-2: a new field, a new salt). */
@@ -95,6 +102,14 @@ public record ProceduralTreeFeature(Species species, CrownLayer layer, AgeClass 
 		if (!SpeciesShape.supported(species)) {
 			throw new IllegalArgumentException("no tree shape for " + species);
 		}
+		if (size == null) {
+			size = TreeSize.ONE;
+		}
+	}
+
+	/** A tree of the planner's own size. */
+	public ProceduralTreeFeature(Species species, CrownLayer layer, AgeClass age) {
+		this(species, layer, age, TreeSize.ONE);
 	}
 
 	/** A codec of the lower-case names of an enum. */
@@ -140,7 +155,7 @@ public record ProceduralTreeFeature(Species species, CrownLayer layer, AgeClass 
 
 	/** The tree of this configuration with its trunk base at {@code origin} (a pure function of the seed and position). */
 	public TreeVoxels plan(long seed, BlockPos origin) {
-		return TreeShapePlan.plan(new TreeRequest(species, layer, age, seed, origin.getX(), origin.getY(), origin.getZ()));
+		return TreeShapePlan.plan(new TreeRequest(species, layer, age, size, seed, origin.getX(), origin.getY(), origin.getZ()));
 	}
 
 	/**
@@ -154,14 +169,21 @@ public record ProceduralTreeFeature(Species species, CrownLayer layer, AgeClass 
 		if (origin.getY() <= level.getMinY() || !ground(level, below)) {
 			return false;
 		}
-		TreeVoxels v = plan(level.getSeed(), origin);
+		return woodFits(plan(level.getSeed(), origin), origin, level.getMaxY(), p -> replaceable(level.getBlockState(p)));
+	}
+
+	/**
+	 * The room check of {@link #fits} on a planned tree: every wood block below {@code maxY} (exclusive) and {@code free},
+	 * the block at {@code origin} (the sapling) excepted.
+	 */
+	public static boolean woodFits(TreeVoxels v, BlockPos origin, int maxY, Predicate<BlockPos> free) {
 		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
 		for (int i = 0; i < v.woodCount(); i++) {
 			pos.set(v.x() + v.woodX(i), v.y() + v.woodY(i), v.z() + v.woodZ(i));
 			if (pos.equals(origin)) {
 				continue;
 			}
-			if (pos.getY() >= level.getMaxY() || !replaceable(level.getBlockState(pos))) {
+			if (pos.getY() >= maxY || !free.test(pos)) {
 				return false;
 			}
 		}

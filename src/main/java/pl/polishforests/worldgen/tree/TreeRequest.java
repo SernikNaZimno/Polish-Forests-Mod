@@ -23,10 +23,19 @@ import pl.polishforests.worldgen.habitat.Species;
  *                  the ground of each column, so they follow a slope; null for level ground at the trunk base
  * @param open      the open land around a tree of a forest edge (review of V9, round 1): a canopy tree carries low branches
  *                  on that side; null for none
+ * @param size      factors of the tree's size (step S1: the medium tree grown from a sapling); {@link TreeSize#ONE} for every
+ *                  tree of the world generation
  */
 public record TreeRequest(Species species, CrownLayer layer, AgeClass age, long worldSeed, int x, int y, int z,
 		@Nullable CrownTerritory territory, TreeShapePlan.@Nullable Trunks trunks, @Nullable StandMap stands,
-		TreeShapePlan.@Nullable Ground ground, TreeShapePlan.@Nullable Open open) {
+		TreeShapePlan.@Nullable Ground ground, TreeShapePlan.@Nullable Open open, TreeSize size) {
+	/** A request of the planner's own size. */
+	public TreeRequest(Species species, CrownLayer layer, AgeClass age, long worldSeed, int x, int y, int z,
+			@Nullable CrownTerritory territory, TreeShapePlan.@Nullable Trunks trunks, @Nullable StandMap stands,
+			TreeShapePlan.@Nullable Ground ground, TreeShapePlan.@Nullable Open open) {
+		this(species, layer, age, worldSeed, x, y, z, territory, trunks, stands, ground, open, TreeSize.ONE);
+	}
+
 	/** A request without open land around. */
 	public TreeRequest(Species species, CrownLayer layer, AgeClass age, long worldSeed, int x, int y, int z,
 			@Nullable CrownTerritory territory, TreeShapePlan.@Nullable Trunks trunks, @Nullable StandMap stands,
@@ -41,6 +50,9 @@ public record TreeRequest(Species species, CrownLayer layer, AgeClass age, long 
 	}
 
 	public TreeRequest {
+		if (size == null) {
+			size = TreeSize.ONE;
+		}
 		if (!SpeciesShape.supported(species)) {
 			throw new IllegalArgumentException("no tree shape for " + species);
 		}
@@ -53,6 +65,11 @@ public record TreeRequest(Species species, CrownLayer layer, AgeClass age, long 
 	/** A lone, open-grown tree without a territory. */
 	public TreeRequest(Species species, CrownLayer layer, AgeClass age, long worldSeed, int x, int y, int z) {
 		this(species, layer, age, worldSeed, x, y, z, null, null, null, null, null);
+	}
+
+	/** A lone, open-grown tree without a territory, of a size (step S1, a tree grown from a sapling). */
+	public TreeRequest(Species species, CrownLayer layer, AgeClass age, TreeSize size, long worldSeed, int x, int y, int z) {
+		this(species, layer, age, worldSeed, x, y, z, null, null, null, null, null, size);
 	}
 
 	/** Whether the tree grows alone (no territory and no stand map): an open-grown crown, no split below the canopy. */

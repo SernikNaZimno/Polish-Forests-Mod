@@ -1,0 +1,9 @@
+{
+  "type": "polishforests:procedural_tree",
+  "size": {
+    "crown": 0.81,
+    "dbh": 0.96,
+    "height": 0.81
+  },
+  "species": "hornbeam"
+}

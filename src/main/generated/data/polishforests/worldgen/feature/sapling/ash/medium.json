@@ -1,0 +1,9 @@
+{
+  "type": "polishforests:procedural_tree",
+  "size": {
+    "crown": 0.7,
+    "dbh": 0.7,
+    "height": 0.7
+  },
+  "species": "ash"
+}

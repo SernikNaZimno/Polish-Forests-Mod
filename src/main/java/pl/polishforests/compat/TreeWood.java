@@ -13,6 +13,7 @@ import net.minecraft.world.level.block.LeavesBlock;
 import net.minecraft.world.level.block.RotatedPillarBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jspecify.annotations.Nullable;
+import pl.polishforests.block.TrunkBaseCondition;
 import pl.polishforests.block.TrunkBlock;
 
 /**
@@ -45,18 +46,32 @@ public final class TreeWood {
 		BlockState state(BlockPos pos);
 	}
 
-	/** The wood of one tree and what it is made of. */
-	public record Tree(List<BlockPos> wood, int trunks, int logDrops) {
+	/**
+	 * The wood of one tree and what it is made of: {@code logDrops} blocks give a log when broken (at least one), of them
+	 * {@code bases} the base of a thin stem on the ground, which gives 1-2 logs (step S1); so the tree gives
+	 * {@code logDrops} to {@code logDrops + bases} logs.
+	 */
+	public record Tree(List<BlockPos> wood, int trunks, int logDrops, int bases) {
 		public int size() {
 			return wood.size();
 		}
 	}
 
 	private final Predicate<BlockState> log;
+	private final Predicate<BlockState> ground;
 
 	/** A wood rule; {@code log} tells the wood blocks (in the game {@code #minecraft:logs}). */
 	public TreeWood(Predicate<BlockState> log) {
+		this(log, TrunkBaseCondition::ground);
+	}
+
+	/**
+	 * A wood rule; {@code log} tells the wood blocks, {@code ground} the ground under the base of a thin stem (in the game
+	 * {@link TrunkBaseCondition#ground}).
+	 */
+	public TreeWood(Predicate<BlockState> log, Predicate<BlockState> ground) {
 		this.log = log;
+		this.ground = ground;
 	}
 
 	/** Whether a block is wood: a log, a thin trunk or a root flare. */
@@ -103,6 +118,7 @@ public final class TreeWood {
 		open.add(s0);
 		int trunks = 0;
 		int drops = 0;
+		int bases = 0;
 		while (!open.isEmpty()) {
 			BlockPos p = open.poll();
 			BlockState a = level.state(p);
@@ -115,6 +131,9 @@ public final class TreeWood {
 			}
 			if (dropsLog(a)) {
 				drops++;
+			} else if (baseLog(level, p, a)) {
+				drops++;
+				bases++;
 			}
 			for (Direction d : Direction.values()) {
 				BlockPos q = p.relative(d);
@@ -128,7 +147,7 @@ public final class TreeWood {
 				}
 			}
 		}
-		return trunks == 0 ? null : new Tree(List.copyOf(found), trunks, drops);
+		return trunks == 0 ? null : new Tree(List.copyOf(found), trunks, drops, bases);
 	}
 
 	/** The side of {@code a} on which {@code b} lies, or {@code null} when they are not face neighbors. */
@@ -158,6 +177,14 @@ public final class TreeWood {
 		}
 		int r = s.getValue(TrunkBlock.RADIUS);
 		return r >= LOG_RADIUS || r == STEM_LOG_RADIUS && s.getValue(TrunkBlock.PARENT).getAxis() == Direction.Axis.Y;
+	}
+
+	/**
+	 * Whether the wood block {@code s} at {@code pos} is the base of a thin stem on the ground, which gives 1-2 logs
+	 * (step S1, {@link TrunkBaseCondition}) though {@link #dropsLog} says sticks.
+	 */
+	public boolean baseLog(Blocks level, BlockPos pos, BlockState s) {
+		return TrunkBaseCondition.stem(s) && ground.test(level.state(pos.below()));
 	}
 
 	/** Least radius of a thin trunk that gives a log, px (G1-b). */

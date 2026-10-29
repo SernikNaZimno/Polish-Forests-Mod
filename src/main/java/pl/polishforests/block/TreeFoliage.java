@@ -55,6 +55,11 @@ public enum TreeFoliage {
 		return "sapling/" + species.id();
 	}
 
+	/** The configured feature of a size of the sapling's tree (step S1): {@code polishforests:sapling/<species>[/<size>]}. */
+	public String featurePath(SaplingSize size) {
+		return size.featurePath(species.id());
+	}
+
 	/** Needle-leaved: the Scots pine and the Norway spruce. */
 	public boolean conifer() {
 		return this == SCOTS_PINE || this == SPRUCE;

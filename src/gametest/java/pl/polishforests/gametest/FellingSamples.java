@@ -115,6 +115,8 @@ final class FellingSamples {
 		final BlockPos hit;
 		final Set<BlockPos> wood;
 		final int logDrops;
+		/** Bases of thin stems on the ground among the log-giving blocks: each gives 1-2 logs (step S1). */
+		final int bases;
 		final int[] inner;
 		final Map<BlockPos, BlockState> before = new HashMap<>();
 		final Set<BlockPos> neighborLeaves = new HashSet<>();
@@ -137,6 +139,7 @@ final class FellingSamples {
 			this.hit = hit;
 			this.wood = new HashSet<>(tree.wood());
 			this.logDrops = tree.logDrops();
+			this.bases = tree.bases();
 			int[] b = {Integer.MAX_VALUE, Integer.MAX_VALUE, Integer.MAX_VALUE, Integer.MIN_VALUE, Integer.MIN_VALUE, Integer.MIN_VALUE};
 			for (BlockPos p : wood) {
 				b[0] = Math.min(b[0], p.getX());
@@ -150,8 +153,9 @@ final class FellingSamples {
 		}
 
 		String line() {
-			return String.format(Locale.ROOT, "%s: wood %d, removed %d, %.1f ms; drops: logs %d (expected %d), sticks %d (%d-%d), other %d; "
-					+ "axe damage %d; leaves %d, cut-off leaves gone after %s ticks%s%s", name, wood.size(), removed, ms, logs, logDrops, sticks,
+			return String.format(Locale.ROOT, "%s: wood %d, removed %d, %.1f ms; drops: logs %d (expected %s), sticks %d (%d-%d), other %d; "
+					+ "axe damage %d; leaves %d, cut-off leaves gone after %s ticks%s%s", name, wood.size(), removed, ms, logs, bases == 0
+					? Integer.toString(logDrops) : logDrops + "-" + (logDrops + bases), sticks,
 					minSticks, maxSticks, otherItems, durability, leavesBefore, leafTicks < 0 ? "never" : Integer.toString(leafTicks),
 					notes.isEmpty() ? "" : "; " + String.join("; ", notes), problems.isEmpty() ? "" : "; PROBLEMS: " + String.join("; ",
 					problems));
@@ -525,8 +529,9 @@ final class FellingSamples {
 				f.problems.add(String.format(Locale.ROOT, "not felled whole: %d of %d wood blocks left (leaves around the top wood: %d)",
 						f.wood.size() - f.removed, f.wood.size(), topLeaves(level, f.wood)));
 			}
-			if (f.removed == f.wood.size() && f.logs != f.logDrops) {
-				f.problems.add("logs dropped " + f.logs + ", expected " + f.logDrops);
+			if (f.removed == f.wood.size() && (f.logs < f.logDrops || f.logs > f.logDrops + f.bases)) {
+				f.problems.add("logs dropped " + f.logs + ", expected " + (f.bases == 0 ? Integer.toString(f.logDrops)
+						: f.logDrops + "-" + (f.logDrops + f.bases)));
 			}
 			if (f.removed == f.wood.size() && (f.sticks < f.minSticks || f.sticks > f.maxSticks)) {
 				f.problems.add("sticks " + f.sticks + " outside " + f.minSticks + "-" + f.maxSticks);
@@ -632,13 +637,13 @@ final class FellingSamples {
 				&& !(s.getBlock() instanceof LeavesBlock);
 	}
 
-	/** Sticks a felled tree may drop: radius 2 off the stem 1-2, twigs 0-1. */
+	/** Sticks a felled tree may drop: radius 2 off the stem 1-2, twigs 0-1 (a stem base on the ground gives logs, S1). */
 	private static int[] sticks(ServerLevel level, Set<BlockPos> wood) {
 		int min = 0;
 		int max = 0;
 		for (BlockPos p : wood) {
 			BlockState s = level.getBlockState(p);
-			if (!(s.getBlock() instanceof TrunkBlock) || TreeWood.dropsLog(s)) {
+			if (!(s.getBlock() instanceof TrunkBlock) || TreeWood.dropsLog(s) || TreeWood.GAME.baseLog(level::getBlockState, p, s)) {
 				continue;
 			}
 			if (s.getValue(TrunkBlock.RADIUS) == TrunkBlock.MIN_RADIUS) {
@@ -739,7 +744,7 @@ final class FellingSamples {
 
 	// ------------------------------------------------------------------ helpers
 
-	private static void setUp(TestSingleplayerContext sp) {
+	static void setUp(TestSingleplayerContext sp) {
 		sp.getServer().runCommand("gamerule advance_time false");
 		sp.getServer().runCommand("gamerule advance_weather false");
 		sp.getServer().runCommand("gamerule spawn_mobs false");
@@ -760,11 +765,11 @@ final class FellingSamples {
 	}
 
 	/** Puts the (flying, survival) player at a place. */
-	private static void stand(TestSingleplayerContext sp, double x, double y, double z) {
+	static void stand(TestSingleplayerContext sp, double x, double y, double z) {
 		sp.getServer().runCommand(String.format(Locale.ROOT, "tp @a %.2f %.2f %.2f", x, y, z));
 	}
 
-	private static void hideHud(ClientGameTestContext context) {
+	static void hideHud(ClientGameTestContext context) {
 		context.runOnClient(mc -> {
 			if (!mc.gui.hud.isHidden()) {
 				mc.gui.hud.toggle();

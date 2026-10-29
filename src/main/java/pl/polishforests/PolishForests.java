@@ -24,6 +24,7 @@ public final class PolishForests implements ModInitializer {
 	@Override
 	public void onInitialize() {
 		ModBlocks.register();
+		pl.polishforests.block.TrunkBaseCondition.register();
 		PolishForestsWorldgen.register();
 		PolishForestsCommands.register();
 		Seasons.init();

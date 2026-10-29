@@ -20,6 +20,7 @@ import net.minecraft.world.level.storage.loot.providers.number.ints.ContextIntPr
 import pl.polishforests.block.ModBlocks;
 import pl.polishforests.block.TreeFoliage;
 import pl.polishforests.block.TreeTrunk;
+import pl.polishforests.block.TrunkBaseCondition;
 import pl.polishforests.block.TrunkBlock;
 
 /**
@@ -28,8 +29,10 @@ import pl.polishforests.block.TrunkBlock;
  * the closest vanilla log until the species has its own), radius 2 (a branch up to 25 cm) 1-2 sticks and radius 1 (a
  * twig) 0-1 stick. Step G1 (tree-felling mods, decisions G1-e and G1-f): an upright segment of radius 2 (parent below or
  * above: the stem of a young tree, which had given no log at all) gives a log too, and a twig at most one stick, so a
- * felled crown of 200-300 blocks does not shower hundreds of sticks. {@code pl.polishforests.compat.TreeWood#dropsLog}
- * follows these rules.
+ * felled crown of 200-300 blocks does not shower hundreds of sticks. Step S1 (variant 3 of G1-j, decision CP-C.1): the
+ * base of a thin stem (radius 1, parent below, on the ground: {@link TrunkBaseCondition}) gives 1-2 logs, so the small tree
+ * grown from a sapling yields renewable wood. {@code pl.polishforests.compat.TreeWood#dropsLog} and
+ * {@code TreeWood#baseLog} follow these rules.
  */
 final class ModBlockLoot extends FabricBlockLootSubProvider {
 	/** Largest radius that gives sticks, px (an upright segment of this radius gives a log, G1-e). */
@@ -88,10 +91,13 @@ final class ModBlockLoot extends FabricBlockLootSubProvider {
 	}
 
 	/**
-	 * A thin trunk (or a root flare) with the loot of a trunk: itself with silk touch, 0-1 stick for a twig, 1-2 sticks for
-	 * a branch of radius 2 that is not upright, else the log.
+	 * A thin trunk (or a root flare) with the loot of a trunk: itself with silk touch, 1-2 logs for the base of a thin stem
+	 * on the ground (S1), 0-1 stick for a twig, 1-2 sticks for a branch of radius 2 that is not upright, else the log.
 	 */
 	private void trunk(TrunkBlock block, TreeTrunk t) {
+		LootPoolEntryContainer.Builder<?> base = ((LootPoolEntryContainer.Builder<?>) applyExplosionDecay(block,
+				LootItem.lootTableItem(t.log()).apply(SetItemCountFunction.setCount(ContextIntProviders.between(1, 2)))))
+				.when(TrunkBaseCondition.trunkBase());
 		LootPoolEntryContainer.Builder<?> twig = ((LootPoolEntryContainer.Builder<?>) applyExplosionDecay(block,
 				LootItem.lootTableItem(Items.STICK).apply(SetItemCountFunction.setCount(ContextIntProviders.between(0, 1)))))
 				.when(radius(block, TrunkBlock.MIN_RADIUS));
@@ -108,7 +114,8 @@ final class ModBlockLoot extends FabricBlockLootSubProvider {
 		LootPoolEntryContainer.Builder<?> log = (LootPoolEntryContainer.Builder<?>) applyExplosionCondition(block,
 				LootItem.lootTableItem(t.log()));
 		add(block, LootTable.lootTable().withPool(LootPool.lootPool().setRolls(ContextIntProviders.exactly(1))
-				.add(LootItem.lootTableItem(block).when(hasSilkTouch()).otherwise(twig).otherwise(sticks).otherwise(log))));
+				.add(LootItem.lootTableItem(block).when(hasSilkTouch()).otherwise(base).otherwise(twig).otherwise(sticks)
+						.otherwise(log))));
 	}
 
 	private void lite() {

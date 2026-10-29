@@ -90,6 +90,8 @@ import pl.polishforests.worldgen.surface.ChunkSurface;
  * {@code -Psites=samples} builds the sample board of the thin trunks instead (step V2, {@link TrunkSamples}).
  * {@code -Psites=trees} plants the board of the tree planner instead (step V6, {@link TreeSamples}).
  * {@code -Psites=leaves} builds the board of the species leaves, saplings and the LITE pine set (step V7, {@link LeafSamples}).
+ * {@code -Psites=saplings} grows the saplings of every species in their three sizes, forced and with bone meal, checks the
+ * distribution and the fallback and fells one tree of each size (step S1, {@link SaplingSamples}).
  * {@code -Psites=seasons} shoots the forests in the sub-seasons and checks the herb phases, the bare twigs, the falling
  * leaves and the bilberry fruit with its catch-up (step V13, {@link SeasonSamples}).
  * {@code -Psites=deadwood} builds the board of the dead wood planner and shoots its objects in the worlds (step V11,
@@ -183,6 +185,10 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 		}
 		if (only.equals("felling")) {
 			FellingSamples.run(context);
+			return;
+		}
+		if (only.equals("saplings")) {
+			SaplingSamples.run(context);
 			return;
 		}
 		boolean screenshots = !only.equals("none");

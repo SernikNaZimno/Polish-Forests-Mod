@@ -42,6 +42,10 @@ public final class FellingCompat {
 	public static final LongAdder TREE_HARVESTER_TREES = new LongAdder();
 	/** Leaf clearings of Tree Harvester left to the leaves' own fall. */
 	public static final LongAdder TREE_HARVESTER_LEAF_SKIPS = new LongAdder();
+	/** Tree parts FallingTree broke with their own position known to the loot ({@link #fellingPart}; step S1). */
+	public static final LongAdder FALLING_TREE_PARTS = new LongAdder();
+	/** The tree part a felling mod is breaking in this thread (step S1), or null. */
+	private static final ThreadLocal<@Nullable BlockPos> FELLING_PART = new ThreadLocal<>();
 
 	private FellingCompat() {
 	}
@@ -82,6 +86,26 @@ public final class FellingCompat {
 		}
 		FALLING_TREE_STEPS.increment();
 		return d != null && w.linked(a, d, b);
+	}
+
+	/**
+	 * Step S1: the position of the tree part a felling mod is breaking in this thread, or {@code null} outside such a
+	 * break. FallingTree drops the loot of every part at the hit block when {@code spawnItemsAtBreakPoint} is on (the
+	 * recommended configuration), so the loot origin is not the part's position; the base condition of the trunk tables
+	 * ({@link pl.polishforests.block.TrunkBaseCondition}) reads the part's own position here.
+	 */
+	public static @Nullable BlockPos fellingPart() {
+		return FELLING_PART.get();
+	}
+
+	/** FallingTree hook: the part at {@code rawPos} (a {@link BlockPos}) is broken now; {@code null} ends the part. */
+	public static void fellingPart(@Nullable Object rawPos) {
+		if (rawPos instanceof BlockPos p) {
+			FELLING_PART.set(p.immutable());
+			FALLING_TREE_PARTS.increment();
+		} else {
+			FELLING_PART.remove();
+		}
 	}
 
 	/** Tree Harvester: the wood to break of the tree at {@code pos}, or {@code null} for the mod's own rules. */

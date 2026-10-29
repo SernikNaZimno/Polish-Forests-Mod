@@ -41,6 +41,7 @@ import pl.polishforests.PolishForests;
 import pl.polishforests.block.MarcescentLeavesBlock;
 import pl.polishforests.block.ModBlocks;
 import pl.polishforests.block.SpeciesLeavesBlock;
+import pl.polishforests.block.SaplingSize;
 import pl.polishforests.block.SpeciesSaplingBlock;
 import pl.polishforests.block.TreeFoliage;
 import pl.polishforests.client.ClientSeasonPhase;
@@ -69,8 +70,8 @@ import pl.polishforests.worldgen.tree.TreeVoxels;
  * change with the season (no double seasoning by SS). Screenshots: every swatch, the tree rows and the sapling trees.
  * <li><b>Fast</b> graphics mode (MID_SUMMER): the species leaves are leaves ({@code instanceof LeavesBlock}) and their
  * screen is as cut out or as opaque as the vanilla oak screen in the same renderer.
- * <li><b>Saplings</b>: every sapling grows (two {@code advanceTree}) into exactly the tree of its configured feature
- * {@code polishforests:sapling/<species>} (every planned wood block in place; the young oak, hornbeam and beech with all
+ * <li><b>Saplings</b>: every sapling grows (one {@code advanceTree} to stage 1, then the small size forced, step S1) into
+ * exactly the tree of its configured feature {@code polishforests:sapling/<species>} (every planned wood block in place; the young oak, hornbeam and beech with all
  * leaves marcescent, the others with none); a sapling under a stone block takes no bone meal and does not grow, a sapling
  * on farmland grows and leaves dirt; leaves and saplings are compostable, the pots hold their saplings.
  * <li><b>LITE pine</b>: the tags (planks, logs that burn, leaves, saplings) are loaded, an axe strips the log keeping its
@@ -220,7 +221,11 @@ final class LeafSamples {
 			if (level.getBlockState(pos).getValue(SaplingBlock.STAGE) != 1) {
 				fail("%s sapling did not reach stage 1", all[i].species().id());
 			}
-			sapling.advanceTree(level, pos, level.getBlockState(pos), level.getRandom());
+			// The small tree (step S1: the size is forced; the sapling board of -Psites=saplings checks the random sizes).
+			SaplingSize size = sapling.grow(level, pos, level.getBlockState(pos), level.getRandom(), SaplingSize.SMALL);
+			if (size != SaplingSize.SMALL) {
+				fail("%s sapling grew %s instead of the small tree", all[i].species().id(), size);
+			}
 			Feature feature = level.registryAccess().lookupOrThrow(Registries.FEATURE).getValueOrThrow(sapling.feature());
 			if (!(feature instanceof ProceduralTreeFeature tree)) {
 				fail("%s: %s is not a procedural tree", all[i].species().id(), sapling.feature().identifier());

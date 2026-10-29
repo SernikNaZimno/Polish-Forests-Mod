@@ -38,6 +38,7 @@ import net.minecraft.world.level.levelgen.placement.PlacedFeature;
 import net.minecraft.world.level.levelgen.placement.RarityFilter;
 import net.minecraft.world.level.levelgen.placement.SurfaceRelativeThresholdFilter;
 import pl.polishforests.PolishForests;
+import pl.polishforests.block.SaplingSize;
 import pl.polishforests.block.TreeFoliage;
 import pl.polishforests.worldgen.feature.ProceduralTreeFeature;
 import pl.polishforests.worldgen.tree.AgeClass;
@@ -85,10 +86,14 @@ final class ModWorldgen {
 				case AQUATIC_PLANTS -> new PlantLayerFeature(d, ModVegetation.aquaticPlants(placedFeatures));
 			});
 		}
-		// Step V7: the trees the saplings grow into, a pole-stage canopy tree of the planner in its open-grown form (a lone
-		// tree, no territory), apart from tree/<species> (a lone mature tree, step V9; decision V7-a).
+		// Step V7: the trees the saplings grow into, a canopy tree of the planner in its open-grown form (a lone tree, no
+		// territory), apart from tree/<species> (a lone mature tree, step V9; decision V7-a). Step S1: one feature per size
+		// of the sapling's tree (SaplingSize); the small one keeps the path of V7, sapling/<species>.
 		for (TreeFoliage f : TreeFoliage.values()) {
-			context.register(feature(f.featurePath()), new ProceduralTreeFeature(f.species(), CrownLayer.CANOPY, AgeClass.POLE_STAGE));
+			for (SaplingSize s : SaplingSize.values()) {
+				context.register(feature(f.featurePath(s)), new ProceduralTreeFeature(f.species(), CrownLayer.CANOPY, s.age(),
+						s.factors(f.species())));
+			}
 		}
 	}
 

@@ -4,6 +4,7 @@
 	"plugin": "pl.polishforests.compat.FellingMixinPlugin",
 	"compatibilityLevel": "JAVA_25",
 	"mixins": [
+		"FallingTreeBreakMixin",
 		"FallingTreeBuilderMixin",
 		"TreeHarvesterLeavesMixin",
 		"TreeHarvesterProcessingMixin"

@@ -1,0 +1,9 @@
+{
+  "type": "polishforests:procedural_tree",
+  "size": {
+    "crown": 0.85,
+    "dbh": 0.85,
+    "height": 0.85
+  },
+  "species": "spruce"
+}

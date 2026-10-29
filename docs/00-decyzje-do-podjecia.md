@@ -630,3 +630,18 @@ Materiały: arkusze zrzutów z gry na `a03990f` (pory roku, runo i mchy, martwe 
 | T8-c | Gleba w `soilPlaces` (DP-80) | Para (plan podzol, świat `grass_block`) dopuszczona do **25%** sprawdzonych kolumn miejsca (murawa pod runem lasu mieszanego i grądu, V12/V13); liczba w raporcie. Właściwsze: oczekiwanie z tej samej reguły co ficzer (DP-80). |
 | T8-d | Wzorzec `-PviewCheck` | **Adaptacyjny** (domyślny): klatki próbne co ok. 1 s (20 ticków), wzorzec = pierwsza klatka niezmieniona przez **W = 5 s** przy bezczynnym widoku (serwer: pełne chunki w kwadracie wokół kamery do granicy stożka i brak pracy silnika światła; klient: pusta kolejka kompilacji, stożek zbudowany, brak pracy światła); bezpiecznik `-PviewCheckSeconds` (60). Flagi: `-PviewCheckFixed` (dawny stały 60 s), `-PviewCheckCalibrate` (klatki co 1 s przez cały bezpiecznik do `build/view-check/calibration.tsv`, analiza `tools/dev/view_calibration.py`), `-PviewCheckWindow=<s>` (W), `-PviewCheckIdle=cone` (bez kolejki dalekich sekcji; domyślnie ścisłe). W = max(5 s, 2 × najdłuższa przerwa) — z danych 5 s. |
 | T8-e | Czat w kadrze `habitats_f3` (DP-72) | `clearMessages(false)` przed kadrem. |
+
+### G.28 Drobne wybory kroku S1 (domyślne, do potwierdzenia przy CP-D; 2026-10-29)
+
+Krok S1 (decyzja CP-C.1: drzewo z sadzonki w losowym rozmiarze). Projekt: `docs/04-pionowy-wycinek.md`, „Projekt S1”; wyniki z gry: „Stan po S1” (etap 2).
+
+| # | Wybór | Wartość i powód |
+|---|---|---|
+| S1-a | Udziały rozmiarów | **małe 25%, średnie 55%, duże 20%** (propozycja z CP-C.1), losowane z `RandomSource` wzrostu. Kształt drzewa danego rozmiaru jak dotąd jest czystą funkcją ziarna i pozycji. |
+| S1-b | Klasy planera | małe = drągowina `POLE_STAGE` (bez zmian od V7); średnie i duże = drzewo dojrzałe `MATURE`, wolnostojące (otwarta korona), pomniejszone czynnikami `TreeSize` (nowe pole `size` ficzera `procedural_tree`); bez starodrzewu. |
+| S1-c | Wysokości i grubość | duże: wysokość dojrzała gatunku, najwyżej **23** bloki przed rozrzutem ±10% (z liśćmi 20–28), pierśnica ≥ **28 cm** (smukłe brzoza i grab dawały inaczej 3 kłody); średnie: wysokość w połowie między drągowiną a dużym (16–24), pierśnica ≥ **24 cm** (pień ≥ 2 px u podstawy). Korona skalowana jak wysokość. |
+| S1-d | Fallback | wylosowany rozmiar → mniejszy, gdy drewno drzewa się nie mieści; nigdy większy; mączka kostna, gdy mieści się małe (przypadek „mieści się średnie, a małe nie” — mączka odrzucona, losowy tick może dać średnie). |
+| S1-e | Łup podstawy pnia (wariant 3 z G1-j) | **Podstawa każdego cienkiego pnia promienia 1** z rodzicem w dół na `#minecraft:supports_vegetation` daje **1–2 kłody** (warunek `polishforests:trunk_base`, bez nowej właściwości bloku, PW-11) — także młode drzewa odnowienia i pędy krzewów na cienkich pniach w świecie (każdy pęd krzewu na gruncie). Alternatywa: tylko drzewa z sadzonek (wymaga nowej właściwości bloku albo zapisu w chunku). |
+| S1-f | FallingTree z łupem w miejscu cięcia | Pozycja części drzewa z mixina na lambdzie trybu natychmiastowego (`InstantaneousTreeBreakingHandler`, tryb domyślny i paczki). W trybach z animacją (`FALLING_ANIMATION`, `SHIFT_DOWN`) przy `spawnItemsAtBreakPoint` pozycją łupu jest miejsce cięcia: podstawa daje kłody tylko wtedy, gdy blok pod miejscem cięcia jest gruntem — przy cięciu u podstawy każdy pionowy odcinek promienia 1 dostałby 1–2 kłody. Do sprawdzenia w etapie 2, jeśli mod jest w tych trybach używany. |
+| S1-g | Stare zapisy | blok sadzonki bez zmian (migawka rejestru bez zmian), stary ficzer `sapling/<gatunek>` = małe; sadzonka ze starego świata rośnie w losowym rozmiarze. |
+| S1-h | Wymiana `LeafSamples` | tablica liści wymusza małe drzewo (dawny test drągowiny z sadzonki); rozmiary losowe sprawdza nowa tablica `saplings`. |

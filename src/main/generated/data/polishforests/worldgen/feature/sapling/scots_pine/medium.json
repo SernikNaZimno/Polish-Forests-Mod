@@ -1,0 +1,9 @@
+{
+  "type": "polishforests:procedural_tree",
+  "size": {
+    "crown": 0.8,
+    "dbh": 0.8,
+    "height": 0.8
+  },
+  "species": "scots_pine"
+}

@@ -1,0 +1,9 @@
+{
+  "type": "polishforests:procedural_tree",
+  "size": {
+    "crown": 0.68,
+    "dbh": 0.68,
+    "height": 0.68
+  },
+  "species": "beech"
+}

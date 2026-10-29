@@ -443,9 +443,11 @@ public final class TreeShapePlan {
 			double jd = range(0.85, 1.15);
 			double jr = range(0.85, 1.15);
 			double jc = range(0.92, 1.08);
-			double height = shape.height().get(age) * jh;
-			double dbh = shape.dbh().get(age) * jd;
-			double crownR = shape.crownRadius().get(age) * jr;
+			// Step S1: the size factors of the request (1 for every tree of the world generation) after the random draws.
+			TreeSize ts = r.size();
+			double height = shape.height().get(age) * jh * ts.height();
+			double dbh = shape.dbh().get(age) * jd * ts.dbh();
+			double crownR = shape.crownRadius().get(age) * jr * ts.crown();
 			double ratio = Math.min(0.85, shape.crownRatio().get(age) * jc);
 			profile = shape.profile();
 			oldPine = shape.archetype() == SpeciesShape.Archetype.PINE && age == AgeClass.OLD_GROWTH

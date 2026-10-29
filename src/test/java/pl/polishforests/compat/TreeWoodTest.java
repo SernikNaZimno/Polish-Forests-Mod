@@ -62,7 +62,8 @@ class TreeWoodTest {
 	static void bootstrap() {
 		GameRegistries.bootstrap();
 		wood = new TreeWood(s -> s.getBlock() instanceof TrunkBlock && s.getBlock() != ModBlocks.treeRoot()
-				|| s.getBlock() instanceof RotatedPillarBlock && s.getBlock() != Blocks.QUARTZ_PILLAR);
+				|| s.getBlock() instanceof RotatedPillarBlock && s.getBlock() != Blocks.QUARTZ_PILLAR,
+				s -> s.is(Blocks.DIRT) || s.is(Blocks.GRASS_BLOCK));
 	}
 
 	/** A world of a map: air where nothing was written, grass below {@link #GROUND}. */
@@ -167,17 +168,22 @@ class TreeWoodTest {
 					assertEquals(expected, component(w, base), name);
 					assertEquals(expected, component(w, top), name + " from the top");
 					int drops = 0;
+					int bases = 0;
 					int full = 0;
 					Set<Block> barks = new HashSet<>();
 					for (BlockPos p : expected) {
 						BlockState b = w.state(p);
 						assertTrue(wood.wood(b), name + ": " + b);
-						drops += TreeWood.dropsLog(b) ? 1 : 0;
+						drops += TreeWood.dropsLog(b) || wood.baseLog(w, p, b) ? 1 : 0;
+						bases += !TreeWood.dropsLog(b) && wood.baseLog(w, p, b) ? 1 : 0;
 						full += b.getBlock() instanceof TrunkBlock ? 0 : 1;
 						barks.add(b.getBlock());
 					}
 					TreeWood.Tree t = wood.of(w, base);
 					assertEquals(drops, t.logDrops(), name);
+					assertEquals(bases, t.bases(), name);
+					// Step S1: a tree with a trunk of 1 px at the base (the pole stage) has its base on the ground.
+					assertEquals(v.radius(0) == TrunkBlock.MIN_RADIUS ? 1 : 0, bases, name + " stem bases");
 					assertEquals(expected.size() - full, t.trunks(), name);
 					if (s == Species.SCOTS_PINE && age == AgeClass.OLD_GROWTH && layer == CrownLayer.CANOPY) {
 						for (TreeTrunk bark : List.of(TreeTrunk.SCOTS_PINE, TreeTrunk.SCOTS_PINE_TRANSITION,
@@ -358,6 +364,61 @@ class TreeWoodTest {
 	}
 
 	/**
+	 * Step S1: the tree of every size grown from a sapling (the configured features {@code sapling/<species>[/medium|/large]})
+	 * gives renewable wood when felled whole: the small tree (the pole stage, a trunk of 1 px) 1-2 logs from its stem base
+	 * on the ground and nothing else, the medium and large trees logs from their thicker trunk (G1-e), at least
+	 * {@value #MEDIUM_LOGS} and {@value #LARGE_LOGS}; the tree found from the base is all its wood.
+	 */
+	@Test
+	void saplingTreesOfEverySizeGiveLogs() throws IOException {
+		StringBuilder report = new StringBuilder("# Step S1: logs of the trees grown from saplings (felled whole), 12 trees per size%n".formatted());
+		for (Species s : SpeciesShape.species()) {
+			for (pl.polishforests.block.SaplingSize size : pl.polishforests.block.SaplingSize.values()) {
+				int min = Integer.MAX_VALUE;
+				int max = 0;
+				int sticksMax = 0;
+				for (int k = 0; k < 12; k++) {
+					World w = new World();
+					TreeVoxels v = TreeShapePlan.plan(new TreeRequest(s, CrownLayer.CANOPY, size.age(), size.factors(s), SEED,
+							k * 97 - 500, GROUND, k * 61 - 300));
+					Set<BlockPos> written = w.tree(v, s);
+					BlockPos base = new BlockPos(v.x(), v.y(), v.z());
+					TreeWood.Tree t = wood.of(w, base);
+					String name = s.id() + " " + size + " #" + k;
+					assertNotNull(t, name);
+					assertEquals(written, new HashSet<>(t.wood()), name);
+					int sticks = 0;
+					for (BlockPos p : t.wood()) {
+						BlockState b = w.state(p);
+						if (!TreeWood.dropsLog(b) && !wood.baseLog(w, p, b)) {
+							sticks += b.getValue(TrunkBlock.RADIUS) == TrunkBlock.MIN_RADIUS ? 1 : 2;
+						}
+					}
+					switch (size) {
+						case SMALL -> {
+							assertEquals(1, t.bases(), name + ": stem bases");
+							assertEquals(1, t.logDrops(), name + ": log-giving blocks");
+						}
+						case MEDIUM -> assertTrue(t.bases() == 0 && t.logDrops() >= MEDIUM_LOGS, name + ": " + t.logDrops() + " logs");
+						case LARGE -> assertTrue(t.bases() == 0 && t.logDrops() >= LARGE_LOGS, name + ": " + t.logDrops() + " logs");
+					}
+					min = Math.min(min, t.logDrops());
+					max = Math.max(max, t.logDrops() + t.bases());
+					sticksMax = Math.max(sticksMax, sticks);
+				}
+				report.append(String.format(Locale.ROOT, "%-13s %-6s logs %2d-%2d, sticks at most %3d%n", s.id(), size, min, max,
+						sticksMax));
+			}
+		}
+		Files.createDirectories(Path.of("build"));
+		Files.writeString(Path.of("build/sapling-loot.txt"), report);
+	}
+
+	/** Least logs of a medium and a large tree grown from a sapling (step S1). */
+	private static final int MEDIUM_LOGS = 3;
+	private static final int LARGE_LOGS = 5;
+
+	/**
 	 * {@link TreeWood#dropsLog} (Tree Harvester's log count) follows the generated loot tables of every trunk and root
 	 * flare: for each radius and parent the first entry after silk touch whose condition holds is the log exactly when
 	 * {@code dropsLog} says so (G1-e), and a twig gives at most one stick (G1-f).
@@ -379,6 +440,12 @@ class TreeWoodTest {
 		JsonObject table = JsonParser.parseString(Files.readString(file, StandardCharsets.UTF_8)).getAsJsonObject();
 		com.google.gson.JsonArray children = table.getAsJsonArray("pools").get(0).getAsJsonObject().getAsJsonArray("entries").get(0)
 				.getAsJsonObject().getAsJsonArray("children");
+		// Step S1: right after silk touch, the base of a stem on the ground gives 1-2 logs of the trunk's log.
+		JsonObject base = children.get(1).getAsJsonObject();
+		assertEquals("polishforests:trunk_base", base.getAsJsonObject("condition").get("type").getAsString(), file.getFileName()
+				+ ": no stem base entry after silk touch");
+		assertTrue(!base.get("name").getAsString().equals("minecraft:stick") && base.toString().contains("\"max\":2")
+				&& base.toString().contains("\"min\":1"), file.getFileName() + ": the stem base gives not 1-2 logs: " + base);
 		for (int r = TrunkBlock.MIN_RADIUS; r <= TrunkBlock.MAX_RADIUS; r++) {
 			for (Direction d : Direction.values()) {
 				BlockState state = block.state(r, d);
@@ -417,6 +484,8 @@ class TreeWoodTest {
 						&& (!st.has("parent") || st.get("parent").getAsString().equals(d.getSerializedName()));
 			}
 			case "minecraft:survives_explosion" -> true;
+			// Step S1: the base of a stem on the ground (checked apart, checkBase); a block on its own is not one.
+			case "polishforests:trunk_base" -> false;
 			default -> throw new AssertionError("unexpected loot condition " + c);
 		};
 	}

@@ -1,0 +1,9 @@
+{
+  "type": "polishforests:procedural_tree",
+  "size": {
+    "crown": 0.76,
+    "dbh": 0.76,
+    "height": 0.76
+  },
+  "species": "linden"
+}
