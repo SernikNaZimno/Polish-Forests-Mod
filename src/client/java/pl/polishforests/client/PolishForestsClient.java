@@ -12,6 +12,8 @@ public final class PolishForestsClient implements ClientModInitializer {
 		ClientGroundPlants.register();
 		// Step V13: the seasonal models (bare twigs, the phases of the herb layer).
 		ClientSeasonModels.register();
+		// Step O2: buried roots draw nothing.
+		BuriedRootModel.register();
 		// Step S9: the habitat in the F3 overlay.
 		HabitatDebugEntry.register();
 	}

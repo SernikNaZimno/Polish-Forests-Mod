@@ -40,7 +40,8 @@ import pl.polishforests.worldgen.landscape.Noise;
  * the lower x, then z), so the roots of two trees never share a block and the result does not depend on the order in
  * which the trees are written. A cell whose side faces a lower column (a bank, a step of the ground; the planner knows the
  * ground of the columns) is rooted dirt instead of a root ({@link RootVoxels#EXPOSED}). About {@value #DIRT_SHARE} of the soil cells next to a root
- * become rooted dirt.
+ * become rooted dirt (step O2: {@value #LEGACY_DIRT_SHARE} before; the cells of the lower share are a subset of those of
+ * the higher one, and nothing else of the plan depends on the share).
  *
  * <p><b>Window.</b> Flares lie within {@value #FLARE_LENGTH} blocks of the trunk, roots within the disc of
  * {@value #REACH} blocks: inside the 3 × 3 chunks around the trunk's chunk.
@@ -70,8 +71,19 @@ public final class RootPlan {
 	public static final int MAX_DEPTH = 6;
 	/** Largest difference of the ground of a root's column from the trunk's ground, blocks. */
 	public static final int MAX_STEP = 6;
-	/** Share of the soil cells next to a root that become rooted dirt. */
-	public static final double DIRT_SHARE = 0.3;
+	/**
+	 * Share of the soil cells next to a root that become rooted dirt (step O2 of docs/04-pionowy-wycinek.md, decision
+	 * CP-C.3: 0.15, before 0.3, {@link #LEGACY_DIRT_SHARE}). The only change of the generation's result in step O2.
+	 */
+	public static final double DIRT_SHARE = 0.15;
+	/** The share of rooted dirt before step O2 (I1 … J2). */
+	public static final double LEGACY_DIRT_SHARE = 0.3;
+	/**
+	 * System property that sets the share for a whole run (test switch of step O2: {@code -ProotedDirtShare=0.3} of the
+	 * game tests compares the generation with a run before O2 block by block); read once.
+	 */
+	public static final String DIRT_SHARE_PROPERTY = "polishforests.rootedDirtShare";
+	private static final double SHARE = dirtShare(System.getProperty(DIRT_SHARE_PROPERTY));
 
 	/** Root habit of a species [S]. */
 	record Habit(int flaresMin, int flaresMax, int flareLength, int lateralsMin, int lateralsMax, double spread,
@@ -138,7 +150,28 @@ public final class RootPlan {
 
 	/** Plans the roots of the request (thread-local working arrays). */
 	public static RootVoxels plan(Request request) {
-		return WORKSPACE.get().plan(request);
+		return WORKSPACE.get().plan(request, SHARE);
+	}
+
+	/** Plans the roots of the request with another share of rooted dirt (tests of step O2). */
+	static RootVoxels plan(Request request, double dirtShare) {
+		return WORKSPACE.get().plan(request, dirtShare);
+	}
+
+	/** The share of rooted dirt of this run: {@link #DIRT_SHARE}, or the value of {@link #DIRT_SHARE_PROPERTY}. */
+	public static double dirtShare() {
+		return SHARE;
+	}
+
+	static double dirtShare(String property) {
+		if (property == null || property.isBlank()) {
+			return DIRT_SHARE;
+		}
+		double v = Double.parseDouble(property.trim());
+		if (!(v >= 0 && v <= 1)) {
+			throw new IllegalArgumentException(DIRT_SHARE_PROPERTY + " must lie in [0, 1]: " + property);
+		}
+		return v;
 	}
 
 	/** Whether a species has a root habit (the species of the tree planner). */
@@ -257,9 +290,11 @@ public final class RootPlan {
 		private int top0;
 		private Random rnd;
 		private long cellSeed;
+		private double dirtShare;
 
-		RootVoxels plan(Request r) {
+		RootVoxels plan(Request r, double share) {
 			request = r;
+			dirtShare = share;
 			if (++current == 0) {
 				Arrays.fill(stamp, 0);
 				Arrays.fill(columnStamp, 0);
@@ -830,7 +865,7 @@ public final class RootPlan {
 					int nx = x + s[0];
 					int ny = dy + s[1];
 					int nz = z + s[2];
-					if (!inBox(nx, ny, nz) || !inDisc(nx, nz) || at(nx, ny, nz) != NONE || cellUnit(nx, ny, nz, 0xD127L) >= DIRT_SHARE) {
+					if (!inBox(nx, ny, nz) || !inDisc(nx, nz) || at(nx, ny, nz) != NONE || cellUnit(nx, ny, nz, 0xD127L) >= dirtShare) {
 						continue;
 					}
 					int top = top(nx, nz);

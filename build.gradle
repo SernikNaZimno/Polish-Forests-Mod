@@ -624,6 +624,19 @@ tasks.named('runClientGameTest') {
 		jvmArgs "-Dpolishforests.caveBiomes=${project.property('caveBiomes')}"
 	}
 	jvmArgs "-Dpolishforests.caveBiomes.out=${layout.buildDirectory.dir('cave_biomes').get().asFile.absolutePath}"
+	// Step O2: -ProotedDirtShare=0.3 restores the share of rooted dirt of before O2 (the only change of the generation in
+	// O2), so a run can be compared block by block with a run before O2 (-Pgametest=determinism); -PsculkFastPath=off
+	// runs vanilla's sculk spreading without the equivalent fast path; -PfloorCulling=off draws the moss layers of the
+	// pine forest floor and the buried roots as before O2 (A/B of the frame rate in one build).
+	if (project.hasProperty('rootedDirtShare')) {
+		jvmArgs "-Dpolishforests.rootedDirtShare=${project.property('rootedDirtShare')}"
+	}
+	if (project.hasProperty('sculkFastPath')) {
+		jvmArgs "-Dpolishforests.sculkFastPath=${project.property('sculkFastPath')}"
+	}
+	if (project.hasProperty('floorCulling')) {
+		jvmArgs "-Dpolishforests.floorCulling=${project.property('floorCulling')}"
+	}
 	// Review round 1 of V13: -PperfSeason=<sub-season> sets the date of the flights of -Pgametest=performance -Psites=slice.
 	if (project.hasProperty('perfSeason')) {
 		jvmArgs "-Dpolishforests.perfSeason=${project.property('perfSeason')}"

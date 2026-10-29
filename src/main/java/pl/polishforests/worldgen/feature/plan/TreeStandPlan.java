@@ -515,6 +515,14 @@ public final class TreeStandPlan {
 			return pattern.rank(gx, gz, pattern.hash(gx, gz));
 		}
 
+		/** {@link #rank} without the memo of step O2 (tests). */
+		double rankUncached(int x, int z) {
+			Pattern pattern = pattern();
+			int gx = Math.floorDiv(x, CELL);
+			int gz = Math.floorDiv(z, CELL);
+			return pattern.rankUncached(gx, gz, pattern.hash(gx, gz));
+		}
+
 		/**
 		 * Whether the kept candidate at column (x, z) surely gets no tree under every rule whose chance is at most
 		 * {@code chance}, whatever its habitat code: its draw is at or above {@code chance} or it stands in a gap of the
@@ -624,6 +632,26 @@ public final class TreeStandPlan {
 				slots.setOpaque(slot(gx, gz), cell(gx, gz) | (kept ? 2 : 0) | 1);
 			}
 		}
+
+		/**
+		 * Step O2: the rank values of candidates ({@link Pattern#rank}), direct-mapped by the cell in {@value #RANK_BITS}
+		 * bits. An entry is an immutable record (final fields), so a thread that reads an entry another thread has just
+		 * written sees it whole; the rank is a pure function of the seed, the cell and its hash, all three part of the key.
+		 */
+		private static final int RANK_BITS = 16;
+		private final RankEntry[] ranks = new RankEntry[1 << RANK_BITS];
+
+		@Nullable RankEntry rank(int gx, int gz) {
+			return ranks[(int) (Noise.mix(gx * 0xC2B2_AE3D_27D4_EB4FL + gz * 0x9E37_79B9_7F4A_7C15L) >>> (64 - RANK_BITS))];
+		}
+
+		void putRank(RankEntry e) {
+			ranks[(int) (Noise.mix(e.gx() * 0xC2B2_AE3D_27D4_EB4FL + e.gz() * 0x9E37_79B9_7F4A_7C15L) >>> (64 - RANK_BITS))] = e;
+		}
+	}
+
+	/** A memoized rank value of the candidate of cell (gx, gz) with hash h (step O2). */
+	private record RankEntry(int gx, int gz, long h, double rank) {
 	}
 
 	/**
@@ -706,6 +734,17 @@ public final class TreeStandPlan {
 		 * candidates with the highest draws of their neighborhood get the highest values.
 		 */
 		double rank(int gx, int gz, long h) {
+			RankEntry e = table.rank(gx, gz);
+			if (e != null && e.gx() == gx && e.gz() == gz && e.h() == h) {
+				return e.rank();
+			}
+			double r = rankUncached(gx, gz, h);
+			table.putRank(new RankEntry(gx, gz, h, r));
+			return r;
+		}
+
+		/** The rank value computed without the memo of step O2 ({@link KeptTable#rank}). */
+		double rankUncached(int gx, int gz, long h) {
 			int x = gx * CELL + offsetX(h);
 			int z = gz * CELL + offsetZ(h);
 			double d = unit(Noise.mix(h ^ DRAW_SALT));

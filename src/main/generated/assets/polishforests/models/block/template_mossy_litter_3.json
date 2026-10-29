@@ -3,15 +3,6 @@
   "elements": [
     {
       "faces": {
-        "down": {
-          "texture": "#texture",
-          "uv": [
-            8,
-            16,
-            16,
-            8
-          ]
-        },
         "up": {
           "texture": "#texture",
           "uv": [

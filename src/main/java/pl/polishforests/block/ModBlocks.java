@@ -204,15 +204,17 @@ public final class ModBlocks {
 		bilberries = Registry.register(BuiltInRegistries.ITEM, ResourceKey.create(Registries.ITEM, PolishForests.id(BILBERRIES)),
 				new Item(new Item.Properties().setId(ResourceKey.create(Registries.ITEM, PolishForests.id(BILBERRIES)))
 						.food(BILBERRY_FOOD).compostable(ContextIntProviders.COMPOSTABLE_LOW)));
+		// Step O2: the dwarf shrub and the litter have no collision through their classes, not noCollision(), which also
+		// turns off the occlusion of their moss layer (FloorCulling).
 		for (GroundPlant g : GroundPlant.values()) {
 			Block block = switch (g.kind()) {
 				case BERRY_SHRUB -> block(g.id(), p -> new BerryShrubBlock(ModBlocks::bilberries, p), BlockBehaviour.Properties.of()
-						.mapColor(MapColor.PLANT).replaceable().noCollision().randomTicks().instabreak().sound(SoundType.GRASS).ignitedByLava()
+						.mapColor(MapColor.PLANT).replaceable().randomTicks().instabreak().sound(SoundType.GRASS).ignitedByLava()
 						.pushReaction(PushReaction.POPPED));
 				case SEASONAL -> block(g.id(), p -> new SeasonalPlantBlock(g, p), BlockBehaviour.Properties.of().mapColor(MapColor.PLANT)
 						.noCollision().sound(SoundType.PINK_PETALS).pushReaction(PushReaction.POPPED));
 				case COVER -> block(g.id(), GroundCoverBlock::new, BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_BROWN)
-						.replaceable().noCollision().sound(SoundType.LEAF_LITTER).pushReaction(PushReaction.POPPED));
+						.replaceable().sound(SoundType.LEAF_LITTER).pushReaction(PushReaction.POPPED));
 				case TALL -> block(g.id(), DoublePlantBlock::new, BlockBehaviour.Properties.of().mapColor(MapColor.PLANT)
 						.replaceable().noCollision().instabreak().sound(SoundType.GRASS).offsetType(BlockBehaviour.OffsetType.XZ)
 						.ignitedByLava().pushReaction(PushReaction.POPPED));

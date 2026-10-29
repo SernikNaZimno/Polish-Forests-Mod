@@ -26,6 +26,7 @@ import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import pl.polishforests.season.BerrySeason;
 import pl.polishforests.season.GroundPhases;
@@ -61,6 +62,18 @@ public class BerryShrubBlock extends VegetationBlock implements BonemealableBloc
 	@Override
 	protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
 		return SHAPE;
+	}
+
+	/** No collision (step O2: instead of noCollision() in the properties, which also turns off the occlusion). */
+	@Override
+	protected VoxelShape getCollisionShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
+		return Shapes.empty();
+	}
+
+	/** Step O2: the moss layer of a mossy plant occludes like a carpet ({@link FloorCulling}); nothing else does. */
+	@Override
+	protected VoxelShape getOcclusionShape(BlockState state) {
+		return FloorCulling.plantOcclusion(state.getValue(MOSSY));
 	}
 
 	@Override

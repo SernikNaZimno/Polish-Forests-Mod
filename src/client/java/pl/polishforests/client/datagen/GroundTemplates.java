@@ -15,7 +15,8 @@ import pl.polishforests.PolishForests;
  * Model templates of the herb layer (step V12): the berries of a dwarf shrub as a cross of two planes along the block's
  * axes ({@value #BERRIES}: the vanilla cross of the shrub lies on the diagonals, so the two crosses never lie in one
  * plane and do not fight in the depth buffer), and the litter segments over a moss carpet ({@link #mossyLitter}: the
- * planes of vanilla's leaf litter templates, one pixel higher, over the vanilla moss carpet; PW-7). Not tinted. Round 1
+ * planes of vanilla's leaf litter templates, one pixel higher, over the vanilla moss carpet; PW-7; since step O2 without
+ * the face down, hidden by the moss layer 0.25 px under it). Not tinted. Round 1
  * of the V12 review: the variants of the tinted shrub cross ({@link #shrubCross}: the planes turned by 22.5° or on the
  * diagonals, shifted by 1–2 px, some shorter, the texture mirrored), so a carpet of dwarf shrubs is no grid of identical
  * crosses.
@@ -193,10 +194,8 @@ final class GroundTemplates implements DataProvider {
 		up.add("uv", vector(new double[] {p[0], p[1], p[2], p[3]}));
 		up.addProperty("texture", "#texture");
 		faces.add("up", up);
-		JsonObject down = new JsonObject();
-		down.add("uv", vector(new double[] {p[0], p[3], p[2], p[1]}));
-		down.addProperty("texture", "#texture");
-		faces.add("down", down);
+		// Step O2: no face down. Under the plane lies the moss layer 0.25 px lower (its opaque top at 1 px), so the bottom of
+		// the plane could only be seen edgewise through that gap; vanilla's litter lies over bare ground and keeps its own.
 		e.add("faces", faces);
 		JsonArray elements = new JsonArray();
 		elements.add(e);

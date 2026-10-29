@@ -187,11 +187,54 @@ public final class ForestStandMap implements StandMap {
 	private record StandEntry(long key, Stand stand) {
 	}
 
+	/**
+	 * The sites of the 5 × 5 grid cells around one cell (position and weight, in the order of {@link #computeStand}'s
+	 * loop), the last ones of a thread. Step O2: neighboring columns that miss the stand cache mostly fall into the same
+	 * cell, and the 75 hashes of the sites were about half of {@code computeStand}; the values are the same expressions of
+	 * the same cells, so the stand is the same.
+	 */
+	private static final class Sites {
+		int gx;
+		int gz;
+		boolean valid;
+		final double[] cx = new double[25];
+		final double[] cz = new double[25];
+		final double[] weight = new double[25];
+	}
+
+	private final ThreadLocal<Sites> sites = ThreadLocal.withInitial(Sites::new);
+
+	private Sites sites(int gx, int gz) {
+		Sites s = sites.get();
+		if (s.valid && s.gx == gx && s.gz == gz) {
+			return s;
+		}
+		for (int i = gx - 2; i <= gx + 2; i++) {
+			for (int j = gz - 2; j <= gz + 2; j++) {
+				int k = (i - gx + 2) * 5 + j - gz + 2;
+				s.cx[k] = (i + cells.unit(i, j, SITE_X)) * spacing;
+				s.cz[k] = (j + cells.unit(i, j, SITE_Z)) * spacing;
+				s.weight[k] = WEIGHT * spacing * cells.unit(i, j, SITE_WEIGHT);
+			}
+		}
+		s.gx = gx;
+		s.gz = gz;
+		s.valid = true;
+		return s;
+	}
+
+	/** The stand of column (x, z) computed without the caches (tests of steps O1 and O2). */
+	Stand standUncached(int x, int z) {
+		sites.get().valid = false;
+		return computeStand(x, z);
+	}
+
 	private Stand computeStand(int x, int z) {
 		double px = x + MEANDER * k * cells.fbm(x, z, MEANDER_WAVELENGTH * k, 2, 0.5);
 		double pz = z + MEANDER * k * cells.fbm(x + 7_919.0, z - 4_201.0, MEANDER_WAVELENGTH * k, 2, 0.5);
 		int gx = (int) Math.floor(px / spacing);
 		int gz = (int) Math.floor(pz / spacing);
+		Sites sites = sites(gx, gz);
 		double best = Double.MAX_VALUE;
 		double second = Double.MAX_VALUE;
 		int bx = 0;
@@ -200,9 +243,10 @@ public final class ForestStandMap implements StandMap {
 		int sz = 0;
 		for (int i = gx - 2; i <= gx + 2; i++) {
 			for (int j = gz - 2; j <= gz + 2; j++) {
-				double cx = (i + cells.unit(i, j, SITE_X)) * spacing;
-				double cz = (j + cells.unit(i, j, SITE_Z)) * spacing;
-				double d = Math.sqrt((px - cx) * (px - cx) + (pz - cz) * (pz - cz)) - WEIGHT * spacing * cells.unit(i, j, SITE_WEIGHT);
+				int k = (i - gx + 2) * 5 + j - gz + 2;
+				double cx = sites.cx[k];
+				double cz = sites.cz[k];
+				double d = Math.sqrt((px - cx) * (px - cx) + (pz - cz) * (pz - cz)) - sites.weight[k];
 				if (d < best) {
 					second = best;
 					sx = bx;

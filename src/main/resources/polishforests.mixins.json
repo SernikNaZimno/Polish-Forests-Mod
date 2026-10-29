@@ -10,6 +10,8 @@
 		"ChunkGeneratorFeatureOrderMixin",
 		"ChunkGeneratorStructureMixin",
 		"FlowerBlockMixin",
+		"MultifaceSpreaderMixin",
+		"SculkVeinSpreaderConfigMixin",
 		"StructureCheckMixin"
 	],
 	"injectors": {

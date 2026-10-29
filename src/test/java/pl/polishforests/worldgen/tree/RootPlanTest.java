@@ -68,6 +68,54 @@ class RootPlanTest {
 		}
 	}
 
+	/**
+	 * Step O2: the share of rooted dirt (0.3 → 0.15) is the only change of the plan: flares and roots are the same, and the
+	 * rooted dirt of the lower share is a subset of that of the higher one, about half of it.
+	 */
+	@Test
+	void lowerDirtShareKeepsTheRestOfThePlan() {
+		TreeShapePlan.Ground g = RootPlanTest::wavy;
+		assertEquals(RootPlan.DIRT_SHARE, RootPlan.dirtShare(), "share of this run");
+		assertEquals(RootPlan.LEGACY_DIRT_SHARE, RootPlan.dirtShare("0.3"));
+		long legacyDirt = 0;
+		long dirt = 0;
+		for (Species s : SPECIES) {
+			for (AgeClass age : AgeClass.values()) {
+				for (int k = 0; k < 8; k++) {
+					RootPlan.Request r = request(s, age, 83 * k - 250 + s.ordinal(), 47 * k + 5, g, null, 2 + k % 6);
+					RootVoxels before = RootPlan.plan(r, RootPlan.LEGACY_DIRT_SHARE);
+					RootVoxels now = RootPlan.plan(r);
+					String what = s + " " + age + " " + k;
+					assertEquals(before.flareCount(), now.flareCount(), what);
+					for (int i = 0; i < now.flareCount(); i++) {
+						assertEquals(List.of(before.flareX(i), before.flareY(i), before.flareZ(i), before.flareRadius(i),
+								before.flareParent(i), before.flareParentIndex(i)), List.of(now.flareX(i), now.flareY(i),
+								now.flareZ(i), now.flareRadius(i), now.flareParent(i), now.flareParentIndex(i)), what);
+					}
+					assertEquals(before.rootCount(), now.rootCount(), what);
+					for (int i = 0; i < now.rootCount(); i++) {
+						assertEquals(List.of(before.rootX(i), before.rootY(i), before.rootZ(i), before.rootRadius(i),
+								before.rootParent(i), before.rootParentIndex(i), before.rootKind(i)), List.of(now.rootX(i),
+								now.rootY(i), now.rootZ(i), now.rootRadius(i), now.rootParent(i), now.rootParentIndex(i),
+								now.rootKind(i)), what);
+					}
+					Set<Long> old = new HashSet<>();
+					for (int i = 0; i < before.dirtCount(); i++) {
+						old.add(key(before.dirtX(i), before.dirtY(i), before.dirtZ(i)));
+					}
+					for (int i = 0; i < now.dirtCount(); i++) {
+						assertTrue(old.contains(key(now.dirtX(i), now.dirtY(i), now.dirtZ(i))), what + ": new rooted dirt cell");
+					}
+					legacyDirt += before.dirtCount();
+					dirt += now.dirtCount();
+				}
+			}
+		}
+		assertTrue(legacyDirt > 500, "rooted dirt planned before O2: " + legacyDirt);
+		double ratio = (double) dirt / legacyDirt;
+		assertTrue(ratio > 0.4 && ratio < 0.6, "rooted dirt after / before O2: " + ratio);
+	}
+
 	@Test
 	void chainsRadiiCoverAndWindow() {
 		TreeShapePlan.Ground g = RootPlanTest::wavy;
