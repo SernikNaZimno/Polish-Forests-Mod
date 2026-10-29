@@ -48,7 +48,8 @@ import pl.polishforests.worldgen.tree.TreeVoxels;
  * The sizes of the trees grown from the saplings of the mod (step S1 of docs/04-pionowy-wycinek.md, decision CP-C.1;
  * {@code -Pgametest=slice -Psites=saplings}, optionally with {@code -PtreeFelling=fallingtree|treeharvester}). On the flat
  * test world, for every species of the slice, a row of saplings with the size forced ({@value #FORCED} of each size, small,
- * medium, large from west to east) and a grid of {@value #RANDOM} saplings fed bone meal until they grow (the size drawn by
+ * medium, large from west to east) and, east of it and out of its view, a grid of {@value #RANDOM} saplings fed bone meal
+ * until they grow (the size drawn by
  * the sapling itself). Checked:
  * <ul>
  * <li>every grown tree is exactly the planner's tree of one size (every wood block of the configured feature
@@ -74,8 +75,11 @@ final class SaplingSamples {
 	/** Distance of the trees (a large crown reaches about 8 blocks), of the species rows. */
 	private static final int STEP = 20;
 	private static final int ROW = 140;
-	/** Distance from the forced row to the random grid. */
-	private static final int GRID_Z = 30;
+	/**
+	 * x of the random grid's west column: east of the forced row (x 0 to 100), so the grid stays out of the side view of the
+	 * row (S1 stage 2: with the grid south of the row its first trees stood in front of the camera).
+	 */
+	private static final int GRID_X = 160;
 	/** Most bone meal fed to one sapling. */
 	private static final int MAX_MEAL = 96;
 	/** Ticks to wait for Tree Harvester's replanting. */
@@ -110,7 +114,7 @@ final class SaplingSamples {
 			for (int i = 0; i < foliage.length; i++) {
 				TreeFoliage f = foliage[i];
 				int z0 = i * ROW;
-				FellingSamples.stand(sp, 50.5, y + 30, z0 + 0.5);
+				FellingSamples.stand(sp, (GRID_X + 100) / 2.0 + 0.5, y + 30, z0 + 0.5);
 				context.waitTicks(40);
 				List<Grown> grown = sp.getServer().computeOnServer(s -> grow(s.overworld(), f, y, z0, problems));
 				all.addAll(grown);
@@ -118,12 +122,12 @@ final class SaplingSamples {
 					lines.add(line(g));
 				}
 				context.waitTicks(20);
-				// The forced row from the south (small, medium, large from left to right), the random grid from the south-west and
-				// above.
+				// The forced row from the south (small, medium, large from left to right), the random grid from about 26 blocks
+				// south-west of its south-west tree and above, facing its center.
 				view(context, sp, "saplings_" + f.species().id() + "_sizes", (SaplingSize.values().length * FORCED - 1) * STEP / 2.0 + 0.5,
 						y + 9, z0 + 46.5, 180, 4);
-				view(context, sp, "saplings_" + f.species().id() + "_random", -25.5, y + 30, z0 + GRID_Z + RANDOM / RANDOM_COLUMNS * STEP + 25.5,
-						225, 25);
+				view(context, sp, "saplings_" + f.species().id() + "_random", GRID_X - 17.5, y + 24,
+						z0 + (RANDOM / RANDOM_COLUMNS - 1) * STEP + 18.5, 235, 22);
 			}
 			lines.addAll(distribution(all, problems));
 			lines.addAll(sp.getServer().computeOnServer(s -> fallback(s.overworld(), y, foliage.length * ROW, problems)));
@@ -183,7 +187,7 @@ final class SaplingSamples {
 			}
 		}
 		for (int k = 0; k < RANDOM; k++) {
-			BlockPos pos = new BlockPos((k % RANDOM_COLUMNS) * STEP, y, z0 + GRID_Z + (k / RANDOM_COLUMNS) * STEP);
+			BlockPos pos = new BlockPos(GRID_X + (k % RANDOM_COLUMNS) * STEP, y, z0 + (k / RANDOM_COLUMNS) * STEP);
 			level.setBlock(pos, sapling.defaultBlockState(), 3);
 			int meal = 0;
 			while (meal < MAX_MEAL && level.getBlockState(pos).is(sapling)) {
