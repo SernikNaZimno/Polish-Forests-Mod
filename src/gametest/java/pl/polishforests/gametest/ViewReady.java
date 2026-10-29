@@ -138,6 +138,8 @@ final class ViewReady {
 	private static boolean cloudsOff;
 	/** The singleplayer context of the latest wait, for the server side of the adaptive check (callers of {@link #take} pass none). */
 	private static TestSingleplayerContext lastSingleplayer;
+	/** Whether the latest wait was for a horizon frame ({@link #beforeShotHorizon}): the idle check then uses the whole-render-distance cone. */
+	private static boolean lastHorizon;
 
 	private ViewReady() {
 	}
@@ -226,6 +228,7 @@ final class ViewReady {
 			int legacySeconds, int minSeconds, boolean horizon, int marginTicks) {
 		long t0 = System.nanoTime();
 		lastSingleplayer = sp;
+		lastHorizon = horizon;
 		if (CHECK && !cloudsOff) {
 			context.runOnClient(mc -> mc.options.cloudStatus().set(CloudStatus.OFF));
 			cloudsOff = true;
@@ -488,7 +491,10 @@ final class ViewReady {
 	}
 
 	private static Idle idle(ClientGameTestContext context, double aspect) {
-		ClientState c = context.computeOnClient(mc -> new ClientState(probe(mc, aspect, false), mc.level != null
+		// A horizon frame (T8 review, round 1): the cone reaches the whole render distance, so far chunks that the server has
+		// but the client has not received yet ("missing") keep the view from being idle.
+		boolean horizon = lastHorizon;
+		ClientState c = context.computeOnClient(mc -> new ClientState(probe(mc, aspect, horizon), mc.level != null
 				&& mc.level.getLightEngine().hasLightWork(), mc.options.getEffectiveRenderDistance()));
 		Probe p = c.probe();
 		boolean server = true;
