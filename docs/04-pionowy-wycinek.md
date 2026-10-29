@@ -2919,6 +2919,68 @@ Tolerancja: udział w granicach 0,5–2 × wanilia albo ±1,5 punktu procentoweg
 
 **Do etapu 2:** gametest `cave_biomes` w obu skalach (kadry, `/locate`, las przed i po), regresje `caves`, `habitats`, `determinism`, `ui`, pomiar FEATURES wobec J1 (przebieg kontrolny; pełne A/B, gdy dodatek > 5%), ocena kadrów, „Stan po J2”, BRIEF, pełny zestaw testów.
 
+## Stan po J2 (2026-10-29, etap 2: gra, poprawki, pomiary)
+
+Etap 2 kroku J2: przebiegi w grze (`cave_biomes`, `caves`, `habitats`, `determinism`, `ui`), poprawki, ocena kadrów, pomiar A/B (CP-C.4a), profil JFR i pełny zestaw testów. Drobne wybory: `docs/00` G.31 (J2-a … J2-o z etapu 1, J2-p … J2-u z etapu 2). Kadry i arkusze: `docs/wycinek/jaskinie_biomy/` (liczby pomiarów: `ab_j2.txt`). Czekanie na kadry adaptacyjne (`ViewReady`: gotowość widoku po 1,5–4,5 s i krótki zapas; bez stałych 60 s, bez `-PviewWait=fixed` i `-PviewCheck`). Kryteria „Ukończony, gdy” spełnione poza progami wydajności PW-10 w REAL (niżej, pytanie do użytkownika).
+
+**Poprawki etapu 2:**
+- **Struktury w teście `cave_biomes`**: `/locate structure` nie znajdował niczego, bo świat testowy ma struktury wyłączone (domyślne ustawienie budowniczego światów testów); test włącza je jak `habitats`. W grze: starożytne miasto REAL 195 bloków od lasu (81 elementów, pierwszy w głębokim mroku), GAMEPLAY 394 bloki (76 elementów, głęboki mrok); kopalnie 218 / 36 bloków; komnaty prób 815 / 209 bloków; twierdza 1252 bloki (raport). `/locate structure minecraft:ancient_city` jako polecenie podaje te same miejsca.
+- **Las przed i po** (`cave_biomes`): różnice z przebiegu etapu 1 (dirt ↔ grass, stany liści i roślin runa, zmiany pod powierzchnią) nie pochodziły z J2: losowe ticki (rozrost trawy), właściwości sezonowe i kolejność dekoracji na granicach chunków między dwoma osobno generowanymi światami (w jednym z przebiegów pośrednich różniło się całe drzewo). Teraz bez losowych ticków, właściwości sezonowe w wartości neutralnej (ZW-5), obszar 5 × 5 chunków dekorowany pierwszy i w stałej kolejności jak w `determinism`, porównanie od wierzchu kolumny w górę, grunt 2–8 bloków niżej tylko w raporcie (J2-s). Wynik: REAL 0 zmian; GAMEPLAY 4 dozwolone (glina i woda bujnej jaskini na dnie wejścia jaskini), 0 zmian roślinności; pod powierzchnią (raport) 8 × ruda węgla → kamień (bariera jeziora lawy) i 12 × kamień → glina (glina z dripleafami). Kadr z oczu przed i po: `las_przed_po.png`, identyczny.
+- **Jezioro lawy pod ziemią** (J2-p, `polishforests:lake_clearance`): reguła wanilii „≥ 5 bloków pod dnem” na całym obrysie jeziora; jezioro przy stoku nie otwiera gruntu pod lasem.
+- **Kłoda M2 nad wejściem jaskini** (J2-q, `polishforests:cave_opening`): usterka J1 ujawniona w J2 — test `caves` szukał „lasu” po biomie na Y 200, który w REAL jest teraz jaskiniowy, więc miejsce przesunęło się na (−66, −109); tam wanilijna zwalona kłoda M2 (`fallen_tree`, przerwa do 2 bloków) leżała nad wejściem jaskini, także z `-PcaveBiomes=off`. Zwalone drzewa M2 nie powstają bliżej niż 10 bloków od kolumny otwartej przez jaskinię; w tym miejscu po poprawce 0 kłód nad wejściami. Test `caves` wybiera las po siedlisku na szczycie świata (znów (0, 0) jak w J1).
+- **Lawa na Y ≥ 0** (J2-r): jeziora lawy i źródła lawy wanilii (J2-j) leżą na każdej wysokości jak w wanilii; błąd testu `caves` to teraz lawa szumu (ta sama lawa w kolumnie bazowej generatora). We wszystkich 10 miejscach lawa szumu na Y ≥ 0: 0; lawa ficzerów 0–122 bloków (najwięcej w lesie GAMEPLAY).
+- **Kadry** (J2-u): F3 z widocznym interfejsem (biom `minecraft:lush_caves`, siedlisko kolumny w wierszu „Habitat”); biom sprawdzany w miejscu kamery; kadr biomu i struktury tam, gdzie widać najwięcej jego bloków (mech i pnącza, nacieki, siarka, sculk; tory i belki kopalni, cegły głębokiego łupka miasta); loch = spawner na bruku (nie spawner pająków w kopalni).
+
+**Gametest `cave_biomes`** (ziarno 20260927, las nad bujną jaskinią (512, −512) w obu skalach; PASS):
+
+| | REAL | GAMEPLAY |
+|---|---|---|
+| `/locate biome` bujne / naciekowe / siarkowe / głęboki mrok | 0 / 32 / 577 / 0 bloków, 9–19 ms | 0 / 32 / 577 / 231 bloków, 9–22 ms |
+| `getBiome` w znalezionym punkcie | wszystkie zgodne | siarkowe: naciekowe (rozmycie wanilii na granicy komórki; kadr i pasy w biomie siarkowym obok) |
+| struktury (`/locate structure`) | miasto 195, kopalnia 218, komnaty 815, twierdza 1252 bloków | miasto 394, kopalnia 36, komnaty 209, twierdza 1252 bloków |
+| spawny | bujne: aksolotl (także ryby tropikalne, kałamarnice); mrok: brak; siarkowe: `sulfur_cube` | bujne: aksolotl; mrok: brak |
+| woda lub lawa w głębokim mroku (49³ wokół punktu) | 1072 bloki (źródła wody i lawy z listy biomu, jak w wanilii; akwifery suche) | 0 |
+| pasy siarki i cynobru | 19 004 bloki | 17 787 bloków |
+| las przed / po (268 800 bloków od wierzchu w górę) | 0 zmian | 4 dozwolone, 0 roślinności |
+
+Kadry (`arkusz_realistic.png`, `arkusz_gameplay.png`): bujne — mech, pnącza z jagodami, azalie, trawa, glina z wodą; naciekowe — bloki dripstone i stalaktyty; siarkowe — pasy siarki i cynobru (w kadrach bez prostej krawędzi pasów na granicy chunka, J2-k); głęboki mrok — sculk, czujniki, shriekery; miasto — ulice i budynki z cegieł głębokiego łupka w mroku (jasne plamy w górze kadru to granica zasięgu widzenia klienta w wielkiej komorze, nie dziury); kopalnia — tory i belki; geoda; loch ze skrzynią; F3. Wodospady w mieście to źródła wody z listy ficzerów głębokiego mroku wanilii.
+
+**Inne gametesty**: `caves` PASS w obu skalach po poprawkach (0 styków z wodą powierzchni, 0 pni i innych bloków nad otwartymi wierzchami w 10 miejscach, lawa szumu na Y ≥ 0: 0). Przebieg uruchamiacza przed poprawkami etapu 2 (drzewo `1e50f24`): `habitats` PASS (36 biomów siedlisk + 4 jaskiniowe; klasyfikacja BIOMES na chunk REAL 0,20/0,17 ms, GAMEPLAY 0,23 ms — tylko raport), `determinism` bez paczki PASS (kolejność stała 0 z 16 384 kolumn; dowolna: teren identyczny, dekoracja 0,93% kolumn `oak_hornbeam` jak dotąd), `ui` PASS (mixin kolejności ficzerów działa). Poprawki etapu 2 zmieniają tylko rozmieszczenie jezior lawy i kłód M2 w światach z jaskiniami (filtry bez losowania) oraz testy.
+
+**Pomiar A/B** (CP-C.4a; uruchamiacz, spokojna maszyna, baza M2 `pl-m2-baseline`; J2 = etap 1, J1 = J2 z `-PcaveBiomes=off`, bez jaskiń = `-Pcaves=off`; liczby `ab_j2.txt`). Dodatek FEATURES J2 wobec J1 w przebiegu kontrolnym +28% (> 5%), więc pełne A/B:
+
+| chunki na sekundę z C2ME (`-PloadOnly`, mediana 2 przebiegów) | M2 | J2 | J1 | bez jaskiń | J2 / M2 | J2 / J1 |
+|---|---|---|---|---|---|---|
+| grąd REAL `oak_hornbeam_1` | 143,4 | 77,2 | 93,3 | 105,1 | **0,54** | 0,83 |
+| bór REAL `fresh_pine_1` | 189,6 | 71,7 | 120,1 | 135,0 | **0,38** | 0,60 |
+| grąd GAMEPLAY | 210,3 | 128,6 | 139,6 | 145,4 | **0,61** | 0,92 |
+| bór GAMEPLAY | 204,1 | 129,8 | 138,6 | 151,7 | **0,64** | 0,94 |
+| wszystkie (mediana) | 195,7 | 102,9 | 129,5 | 140,7 | **0,53** | 0,79 |
+
+| etapy (`stages -Psites=slice`, 20 obszarów, mediana i zakres) | M2 | J2 | J1 | bez jaskiń |
+|---|---|---|---|---|
+| FEATURES, ms na chunk | 4,80 | **10,45** (7,8–31,4) | 8,18 | 7,00 |
+| LIGHT, ms na chunk | 6,74 | 11,87 (10,4–20,5) | 10,47 | 8,84 |
+| cały chunk, ms | 17,18 | 31,59 (26,8–**60,5**) | 27,57 | 21,41 |
+| dekoracja (`applyBiomeDecoration`) REAL, ms na chunk | 2,3–2,7 | 5,1–**24,5** | 4,0–5,3 | 4,0–5,3 |
+| dekoracja GAMEPLAY, ms na chunk | 2,2–2,9 | 4,6–6,6 | 4,3–5,6 | 4,2–5,3 |
+
+FPS z paczką (przeloty, 1 przebieg): J2 / M2 0,78–1,20, mediana 0,90; poniżej 0,8 tylko przelot nad okapem boru REAL (0,78, tak samo w J1 i bez jaskiń — koszt lasu, do O2). Koszt biomów J2 (J2 − J1): FEATURES +2,3 ms w medianie, w REAL do +20 ms; cały chunk +4,0 ms w medianie; chunki na sekundę −20%. Koszt jaskiń (J2 − bez jaskiń): cały chunk +10,2 ms. Jaskinie wanilii dla porównania (`CaveCostTest`): szum nadświata z jaskiniami 4,30 ms, bez 2,42 ms na chunk; Polska REAL nizina 3,60 ms, góry 7,48 ms, GAMEPLAY nizina 1,58 ms, góry 5,07 ms (szum i carvery). Po poprawkach etapu 2 (ta sama sesja co wariant niżej) chunki na sekundę bez zmiany: REAL 77,2 / 68,8, GAMEPLAY 123,2 / 127,6.
+
+**Przyczyna (profil JFR `stages -Psites=slice -Pprofile`, 18 847 próbek):** łaty sculku głębokiego mroku (`SculkPatchFeature`, ficzer wanilii `sculk_patch_deep_dark`: 256 prób na chunk, rozrost ładunkami przez `MultifaceSpreader`) — 17,6% wszystkich próbek i 56% próbek dekoracji (drzewostan 5,1%, rudy 3,3%). W GAMEPLAY głęboki mrok leży jak pod równinami wanilii (kilkadziesiąt bloków przy dnie), a w REAL nizina leży ok. 200 bloków wyżej, więc pod nią głęboki mrok wypełnia słup od ok. Y 60 do dna w miejscach niskiej erozji, gdzie są też największe jaskinie J1 (udział jaskiń 160+ bloków pod wierzchem ok. 33%) — jak pod górami wanilii. Udział mroku według głębokości pod wierzchem jest w tolerancji wanilii (`CaveBiomesTest`, „Projekt J2”). Wariant próbny „poziom głębokości mroku najwyżej Y 128” (mrok tylko od ok. Y 0 w dół; kod usunięty po pomiarze): dekoracja REAL 8–21 ms wobec 5–25 ms, chunki na sekundę REAL 66,7 / 76,5 wobec 77,2 / 68,8 w tej samej sesji — bez wyraźnego zysku (koszt idzie za dużymi jaskiniami przy dnie, nie za wysokością mroku). Tanich optymalizacji bez zmiany wyniku po naszej stronie profil nie pokazuje: klasyfikacja biomów jaskiniowych ok. 0,1 ms na chunk, filtr biomu 1,3% próbek, reszta to algorytm wanilii.
+
+**Progi PW-10 w świecie z jaskiniami (CP-C.4a):** FPS z paczką ≥ 0,8 × spełniony (mediana 0,90; jeden przelot 0,78 jak bez jaskiń); LIGHT ≤ 12 ms w medianie spełniony (11,9), ≤ 1,75 × o włos przekroczony (1,76 ×); **cały chunk ≤ 48 ms niespełniony w 4 z 20 obszarów (bory REAL w trybach N i D: 51,7–60,5 ms)**; **FEATURES ≤ 2,0 × i ≤ 10 ms niespełnione (2,18 ×, 10,45 ms; REAL do 31 ms)**; **chunki na sekundę z C2ME ≥ 0,7 × niespełnione (0,53; REAL 0,38–0,54, GAMEPLAY 0,61–0,64)**. GAMEPLAY jest blisko J1 (dekoracja +0,3–1 ms), problemem jest REAL. Warianty B3 — pytanie do użytkownika (G.31 J2-t):
+- **(a) zostawić głęboki mrok jak w wanilii i przenieść koszt do O2** z zadaniem: szybsza ścieżka rozrostu sculku przy generacji z tym samym wynikiem (odczyty bloków przez `WorldGenRegion` w `MultifaceSpreader` to większość czasu) i próg O2 mierzony z jaskiniami; zysk niepewny, świat bez zmian;
+- **(b) mniej łat sculku w głębokim mroku REAL** (np. liczba prób łat proporcjonalna do grubości mroku w słupie wanilii) — REAL odbiega od wanilii (mniej sculku pod nizinami), zysk duży;
+- **(c) głęboki mrok w REAL tylko przy dnie jak pod równinami wanilii** (poziom głębokości ≤ ok. Y 80) — zmierzony wariant Y 128 nie pomógł, więc wątpliwy.
+Rekomendacja: (a) z progiem O2, a (b) jako zapas, jeśli O2 nie dojdzie do celu.
+
+**Kryteria „Ukończony, gdy”** (§3 J2): testy rozmieszczenia biomów jaskiniowych wobec wanilii (`CaveBiomesTest`, obie skale, etap 1) PASS; kadry w obu skalach (bujne, naciekowe, siarkowe, głęboki mrok z miastem, geoda, loch, kopalnia, F3, las przed i po) — są; struktury przez `/locate` i w grze (miasto w mroku, kopalnia, komnaty, twierdza) PASS; pomiar kosztu FEATURES wobec J1 — zrobiony (pełne A/B, progi wyżej). Las nad biomami jaskiniowymi bez zmian (PASS), spawny jak w wanilii (aksolotl w bujnych, brak w mroku), zgodność starych zapisów (biomy i struktury jaskiniowe tylko w światach z jaskiniami, `canStart`, J2-g), migawka rejestru bez zmian, złoty test bez zmian.
+
+**Odstępstwa:** progi wydajności PW-10 w REAL niespełnione (wyżej, decyzja użytkownika); `vegetation`, `present_day` i determinizm z C2ME nie uruchamiane w J2 (do przebiegu zbiorczego przed CP-D); po poprawkach etapu 2 nie powtarzano `habitats`, `determinism` i `ui` (poprawki to dwa filtry rozmieszczenia bez losowania i zmiany testów).
+
+**Testy kroku (etap 2):** gametesty `cave_biomes` (PASS, 3 min 25 s), `caves` (PASS, 6 min 27 s), `caves -Pscales=realistic` w miejscu (−66, −109) przed poprawką (FAIL: kłoda, także z `-PcaveBiomes=off`) i po niej (PASS), `habitats`, `determinism`, `ui` (PASS, uruchamiacz), A/B wyżej, profil JFR, `fastTest`, `BiomeJsonTest`, `FeatureOrderTest`, `FeatureOrderIndexTest`, `RegistrySnapshotTest`, pełny zestaw `tools/dev/run-tests test` (PASS, 1240 s, drzewo `239be68e20e1`; od commitu różni się tylko tym wpisem wyniku).
+
 ## Do kroku porządkowego (lista drobiazgów z recenzji)
 
 Lista założona w V10 według decyzji użytkownika z 2026-10-21 (`docs/00` F, P4): drobiazgi widoczne tylko na zbliżeniach albo w pomiarach bez wpływu na grę nie są poprawiane od razu, tylko trafiają tutaj; zbiorczy krok porządkowy na końcu kamienia milowego przegląda listę i poprawia, co warto. Każdy wpis: krok, w którym powstał, opis, gdzie szukać, propozycja. Wpis usuwamy (albo przekreślamy z commitem), gdy jest zrobiony.

@@ -58,8 +58,10 @@ import pl.polishforests.worldgen.chunk.PolandScale;
  * <li>checks: the spawns of the lush caves have the axolotl, the deep dark has none; the deep dark around the city has no
  * water or lava of the aquifers (counted); the sulfur caves have bands of sulfur and cinnabar;</li>
  * <li>the forest over a lush cave before and after: the same world again with {@code -Dpolishforests.caveBiomes=off}
- * (set by the test for the second world), the surface blocks of 5 × 5 chunks compared block by block (expected: only the
- * azaleas over the lush caves with their rooted dirt, and the sulfur springs), and the same frame from the eyes.</li>
+ * (set by the test for the second world), the 5 × 5 chunks decorated first and in a fixed order in both worlds, then
+ * compared block by block from the top block of each column up (expected: only the azaleas over the lush caves with
+ * their rooted dirt, the sulfur springs and the decorations of a cave biome on the floor of a cave entrance; the ground
+ * 2–8 blocks below is reported only), and the same frame from the eyes.</li>
  * </ol>
  * Report {@code build/cave_biomes/<scale>.txt}, log lines {@code [cave_biomes]}, frames {@code cave_biomes_<scale>_*}.
  */
@@ -492,7 +494,12 @@ public final class CaveBiomesClientGameTest implements FabricClientGameTest {
 				key.identifier().getPath(), chunk.toShortString(), box, start.getPieces().size(), biome));
 		BoundingBox first = start.getPieces().getFirst().getBoundingBox();
 		BlockPos at = new BlockPos(first.getCenter().getX(), first.minY() + 2, first.getCenter().getZ());
-		return spot(level, at, 20, p -> box.isInside(p), List.of());
+		// The frame shows the structure's own blocks (the mineshaft's box also holds the caves it crosses).
+		List<Block> markers = key == BuiltinStructures.MINESHAFT
+				? List.of(Blocks.RAIL, Blocks.OAK_PLANKS, Blocks.OAK_FENCE, Blocks.DARK_OAK_PLANKS, Blocks.DARK_OAK_FENCE)
+				: List.of(Blocks.DEEPSLATE_BRICKS, Blocks.DEEPSLATE_TILES, Blocks.REINFORCED_DEEPSLATE, Blocks.SCULK_SHRIEKER,
+						Blocks.POLISHED_DEEPSLATE);
+		return spot(level, at, 20, p -> box.isInside(p), markers);
 	}
 
 	private static boolean dungeonFloor(BlockState s) {
@@ -596,6 +603,17 @@ public final class CaveBiomesClientGameTest implements FabricClientGameTest {
 		BlockPos.MutableBlockPos at = new BlockPos.MutableBlockPos();
 		int cx0 = forest[0] >> 4;
 		int cz0 = forest[1] >> 4;
+		// As the fixed order of the determinism test: the terrain, then the decoration one chunk at a time in raster order
+		// (the 5 × 5 chunks and the ring their light needs), so every chunk is decorated after the same neighbors in both
+		// worlds; decoration across chunk borders depends on that order.
+		for (net.minecraft.world.level.chunk.status.ChunkStatus status : List.of(
+				net.minecraft.world.level.chunk.status.ChunkStatus.TERRAIN, net.minecraft.world.level.chunk.status.ChunkStatus.FEATURES)) {
+			for (int cx = cx0 - 3; cx <= cx0 + 3; cx++) {
+				for (int cz = cz0 - 3; cz <= cz0 + 3; cz++) {
+					level.getChunkSource().getChunk(cx, cz, status, true);
+				}
+			}
+		}
 		for (int cx = cx0 - 2; cx <= cx0 + 2; cx++) {
 			for (int cz = cz0 - 2; cz <= cz0 + 2; cz++) {
 				level.getChunk(cx, cz);
@@ -606,7 +624,8 @@ public final class CaveBiomesClientGameTest implements FabricClientGameTest {
 				int top = level.getChunkSource().getGenerator().getBaseHeight(x, z, Heightmap.Types.WORLD_SURFACE_WG, level,
 						level.getChunkSource().randomState());
 				for (int y = top - 8; y <= top + 40; y++) {
-					BlockState s = level.getBlockState(at.set(x, y, z));
+					// Rule ZW-5 (step V13): the seasonal properties at their neutral value, as in the determinism test.
+					BlockState s = pl.polishforests.season.SeasonalProperties.neutral(level.getBlockState(at.set(x, y, z)));
 					blocks.put((y >= top - 1 ? "S " : "U ") + x + " " + y + " " + z, Block.getId(s));
 				}
 			}
@@ -617,11 +636,9 @@ public final class CaveBiomesClientGameTest implements FabricClientGameTest {
 	/**
 	 * Differences of the surface before and after: FAIL when a block of the forest (the top block of a column and above)
 	 * outside {@link #SURFACE_ALLOWED} changed; the changes of the ground below are listed (report only). A change between
-	 * two blocks of the vegetation ({@link #vegetation}: a leaf state, a plant overwritten by a moss carpet of a
-	 * neighboring tree) is the order of generation of the decoration across chunk borders, which differs between two
-	 * worlds (the free order of the {@code determinism} test: up to 0.006% of the blocks of its windows); up to
-	 * {@link #ORDER_SHARE} of the forest blocks they are only counted, more of them fail as an unexpected change (a shift
-	 * of the feature seeds, J2-h, would change thousands).
+	 * two blocks of the vegetation ({@link #vegetation}: a leaf state, a tree or plant of a neighboring chunk) is counted
+	 * apart, as the order of the decoration across chunk borders would cause it; {@link #surface} decorates in a fixed
+	 * order, so it must be 0 as well (a shift of the feature seeds, J2-h, would change thousands).
 	 */
 	private static String compare(Map<String, Integer> before, Map<String, Integer> after) {
 		Map<String, Integer> pairs = new TreeMap<>();
@@ -663,15 +680,11 @@ public final class CaveBiomesClientGameTest implements FabricClientGameTest {
 			}
 			pairs.merge(pair + (allowed ? "" : "(!)"), 1, Integer::sum);
 		}
-		boolean tooMuchOrder = order > ORDER_SHARE * forest;
-		String text = String.format(Locale.ROOT, "%d of %d forest blocks changed, %d unexpected, %d of the vegetation by the order "
-				+ "of generation (at most %.0f): %s%s; ground below (report only): %s", changed, forest, unexpected, order,
-				ORDER_SHARE * forest, pairs, where.isEmpty() ? "" : " " + where, ground);
-		return unexpected > 0 || tooMuchOrder ? "FAIL " + text : text;
+		String text = String.format(Locale.ROOT, "%d of %d forest blocks changed, %d unexpected, %d of the vegetation (order of "
+				+ "generation?): %s%s; ground below (report only): %s", changed, forest, unexpected, order, pairs,
+				where.isEmpty() ? "" : " " + where, ground);
+		return unexpected > 0 || order > 0 ? "FAIL " + text : text;
 	}
-
-	/** Share of the forest blocks whose vegetation may differ by the order of generation (0.01%). */
-	private static final double ORDER_SHARE = 1e-4;
 
 	/**
 	 * A block of the vegetation over the ground: air, leaves, logs and trunks, or a block without a full collision box
