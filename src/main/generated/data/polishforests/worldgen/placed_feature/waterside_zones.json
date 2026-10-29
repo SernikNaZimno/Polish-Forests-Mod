@@ -2,6 +2,9 @@
   "feature": "polishforests:waterside_zones",
   "placement": [
     {
+      "type": "polishforests:top_of_world"
+    },
+    {
       "type": "minecraft:biome"
     }
   ]

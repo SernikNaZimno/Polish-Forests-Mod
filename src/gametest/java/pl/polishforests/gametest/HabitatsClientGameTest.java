@@ -172,8 +172,18 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 		// Throws on a "Feature order cycle".
 		gen.validate();
 		int n = 0;
+		int caves = 0;
 		for (Holder<Biome> biome : gen.getBiomeSource().possibleBiomes()) {
 			String id = biome.getRegisteredName();
+			// Step J2: the vanilla cave biomes are possible biomes of every Poland source (placed only in worlds with caves),
+			// without a climate profile (the Polish climate is the surface's).
+			if (biome.unwrapKey().map(pl.polishforests.worldgen.cave.CaveBiomes.KEYS::contains).orElse(false)) {
+				if (BiomeClimateAccess.climate(biome.value()) != null) {
+					throw new AssertionError("Cave biome with a climate profile: " + id);
+				}
+				caves++;
+				continue;
+			}
 			if (!id.startsWith(PolishForests.MOD_ID + ":")) {
 				throw new AssertionError("Biome from outside the mod in the biome source: " + id);
 			}
@@ -182,11 +192,12 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 			}
 			n++;
 		}
-		if (n != HabitatBiome.values().length) {
-			throw new AssertionError("The biome source has " + n + " biomes instead of " + HabitatBiome.values().length);
+		if (n != HabitatBiome.values().length || caves != pl.polishforests.worldgen.cave.CaveBiomes.KEYS.size()) {
+			throw new AssertionError("The biome source has " + n + " habitat biomes instead of " + HabitatBiome.values().length
+					+ " and " + caves + " cave biomes");
 		}
 		return "generator.validate() passed; biome source with " + n + " biomes polishforests:*, all with a climate profile, "
-				+ "settings " + gen.settings();
+				+ "and " + caves + " vanilla cave biomes, settings " + gen.settings();
 	}
 
 	/**
@@ -543,8 +554,12 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 			int ground = level.getHeight(Heightmap.Types.WORLD_SURFACE, p[0], p[1]);
 			String expected = PolishForests.id(HabitatBiome.of(p[2]).id()).toString();
 			for (int y : new int[] {ground, ground + 40, level.getMinY() + 8}) {
-				String actual = level.getBiome(new BlockPos(p[0], y, p[1])).getRegisteredName();
-				if (!actual.equals(expected)) {
+				Holder<Biome> holder = level.getBiome(new BlockPos(p[0], y, p[1]));
+				String actual = holder.getRegisteredName();
+				// Step J2: deep below the ground of a world with caves, a vanilla cave biome may take the habitat's place.
+				boolean cave = y < ground && holder.unwrapKey().map(pl.polishforests.worldgen.cave.CaveBiomes.KEYS::contains)
+						.orElse(false) && ((PolandChunkGenerator) level.getChunkSource().getGenerator()).settings().caves();
+				if (!actual.equals(expected) && !cave) {
 					throw new AssertionError(String.format(Locale.ROOT, "getBiome at (%d, %d, %d) is %s, the classifier says %s",
 							p[0], y, p[1], actual, expected));
 				}

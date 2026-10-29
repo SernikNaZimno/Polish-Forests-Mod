@@ -11,7 +11,8 @@ import pl.polishforests.worldgen.habitat.HabitatBiome;
  * source (datagen writes the biome JSONs from it, {@code FeatureOrderTest} checks them). The only element that differs
  * between biomes is the bone meal carrier at the end of step 9. Vanilla placed features are referenced by id, ours are
  * never inline. Removed from the vanilla lists: lava lakes on the surface, {@code spring_water}, {@code spring_lava},
- * {@code underwater_magma} and {@code glow_lichen} (§8.1).
+ * {@code underwater_magma} and {@code glow_lichen} (§8.1); since step J2 the underground ones come back in worlds with
+ * caves ({@link CaveFeature}).
  */
 public final class BiomeDecoration {
 	/** Number of decoration steps ({@code GenerationStep.Decoration}). */
@@ -24,6 +25,38 @@ public final class BiomeDecoration {
 
 	/** Lava lakes only below Y 0 (decision M2-4). */
 	public static final String DEEP_LAVA_LAKE = PolishForests.id("deep_lava_lake").toString();
+
+	/**
+	 * The vanilla underground features of the worlds with caves (step J2): the vanilla configured features with the vanilla
+	 * placement behind the filter {@code polishforests:caves} (no effect in a world without caves), each in the step and
+	 * after the features of the vanilla list it comes from: the underground lava lakes (step 1), the fossils of the
+	 * vanilla swamps and deserts (step 3, only under the wetlands and dunes), the magma under the water of flooded caves
+	 * (step 6), the water and lava springs (step 8, only underground) and the glow lichen (step 9, before the bone meal
+	 * carrier). The path prefix {@code cave/} keeps them after the features of before J2 ({@code FeatureOrder}).
+	 */
+	public enum CaveFeature {
+		LAKE_LAVA_UNDERGROUND(1), FOSSIL_UPPER(3), FOSSIL_LOWER(3), UNDERWATER_MAGMA(6), SPRING_WATER(8), SPRING_LAVA(8),
+		GLOW_LICHEN(VEGETATION_STEP);
+
+		private final int step;
+
+		CaveFeature(int step) {
+			this.step = step;
+		}
+
+		public int step() {
+			return step;
+		}
+
+		/** Path of the placed feature, e.g. {@code cave/glow_lichen}. */
+		public String path() {
+			return FeatureOrder.CAVE_PREFIX + name().toLowerCase(Locale.ROOT);
+		}
+
+		public String id() {
+			return PolishForests.id(path()).toString();
+		}
+	}
 
 	/**
 	 * Ores of step 6 in the vanilla order, without {@code underwater_magma} and (from step S8) without the vanilla disks
@@ -78,6 +111,9 @@ public final class BiomeDecoration {
 		steps.get(6).addAll(ORES);
 		for (Dispatcher d : Dispatcher.values()) {
 			steps.get(VEGETATION_STEP).add(d.id());
+		}
+		for (CaveFeature f : CaveFeature.values()) {
+			steps.get(f.step()).add(f.id());
 		}
 		steps.get(VEGETATION_STEP).add(boneMealCarrier(biome));
 		steps.get(10).add("minecraft:freeze_top_layer");

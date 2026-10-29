@@ -24,7 +24,8 @@
 			"pl.polishforests.gametest.SliceClientGameTest",
 			"pl.polishforests.gametest.RenderProbesClientGameTest",
 			"pl.polishforests.gametest.LooseCoverClientGameTest",
-			"pl.polishforests.gametest.CavesClientGameTest"
+			"pl.polishforests.gametest.CavesClientGameTest",
+			"pl.polishforests.gametest.CaveBiomesClientGameTest"
 		]
 	},
 	"mixins": [

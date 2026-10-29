@@ -69,7 +69,16 @@ class FeatureOrderTest {
 				assertEquals(reference, withoutCarrier, b.id() + ": the lists differ from the other biomes");
 			}
 		}
-		List<String> dispatchers = reference.get(BiomeDecoration.VEGETATION_STEP);
+		// Step J2: the underground features of the worlds with caves (polishforests:cave/*) follow the features of before.
+		List<String> dispatchers = reference.get(BiomeDecoration.VEGETATION_STEP).stream()
+				.filter(id -> !id.startsWith("polishforests:cave/")).toList();
+		for (BiomeDecoration.CaveFeature f : BiomeDecoration.CaveFeature.values()) {
+			List<String> step = reference.get(f.step());
+			assertTrue(step.contains(f.id()), f.id() + " missing in step " + f.step());
+			for (int i = step.indexOf(f.id()) + 1; i < step.size(); i++) {
+				assertTrue(step.get(i).startsWith("polishforests:cave/"), f.id() + " before " + step.get(i));
+			}
+		}
 		assertEquals(List.of("polishforests:tree_stand", "polishforests:deadwood", "polishforests:understory",
 				"polishforests:waterside_zones", "polishforests:ground_layer", "polishforests:aquatic_plants"), dispatchers);
 	}

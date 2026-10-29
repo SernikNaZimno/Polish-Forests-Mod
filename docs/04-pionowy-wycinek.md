@@ -2887,6 +2887,37 @@ Jaskinie nie zmieniają FPS (z jaskiniami i bez w granicach ±1,5%); dwa przelot
 - Testy rund: gametest `caves` w obu skalach PASS, `fastTest` PASS, pełny zestaw `tools/dev/run-tests test` PASS (1107 s, drzewo `5a134406a5aa`). Od commitu drzewo różni się tylko tym wpisem.
 - Status J1 bez zmian: zrobione z odstępstwem. Na decyzje użytkownika czekają J1-r (chunki na sekundę z jaskiniami 0,61–0,68 × M2) i J1-q (C2ME a determinizm). O2 nie startuje przed J1-r.
 
+## Projekt J2 (2026-10-29, etap 1: biomy jaskiniowe i struktury — kod, testy jednostkowe, gametest)
+
+Decyzja CP-C.4 (`docs/00` G.26), ciąg dalszy J1: biomy jaskiniowe, ich ozdoby i podziemne struktury jak w wanilii, tylko w światach z jaskiniami. Drobne wybory: `docs/00` G.31 (J2-a … J2-o). Przebiegi w grze, pomiary i ocena kadrów: etap 2 („Stan po J2”).
+
+**Zrobione (kod):**
+- `worldgen/cave/CaveBiomes`: wybór biomu jaskiniowego wanilii (bujne, naciekowe, siarkowe — nowe w 26.3 — i głęboki mrok) dokładnie regułą wanilii: punkty parametrów czterech biomów z presetu nadświata (`MultiNoiseBiomeSourceParameterList`), biomy powierzchni wanilii pokrywają całą przestrzeń klimatu na głębokości 0 i 1, więc ich odległość to sam człon głębokości `min(d², (d − 1)²)`; zgodność z listą wanilii 19 993 z 20 000 celów (`CaveBiomesTest`). Klimat = funkcje gęstości wanilii po id (`overworld/vegetation`, `continents`, `erosion`, `ridges`; temperatura nie gra roli) skompilowane przez `RandomState` świata; kontynentalność przemapowana na jej rozkład pod lądem wanilii (kwantyle, J2-c). Głębokość = (poziom − Y) / 128 do 2,5, poziom = wierzch modelu wygładzony siatką 64 bloków + własna rzeźba 48 bloków (sól `cave_biomes.relief`, J2-d); nigdy bliżej niż 16 bloków od wierzchu kolumny i tylko poniżej Y 256 (zanik od Y 224; J2-e).
+- `PolandBiomeSource`: możliwe biomy = 36 siedlisk + 4 biomy jaskiniowe wanilii (zawsze; umieszcza je tylko świat z jaskiniami); rozwiązywacze z Y (pamięć kolumn z klimatem i poziomem, siatka wierzchów w pamięci wątku), `/locate biome` dla biomów jaskiniowych w kolejności Y wanilii, `columnBiome` (siedlisko kolumny).
+- `PolandChunkGenerator`: `caveBiomes(registries, randomState)` (wiązanie w `createState`, `createBiomes`, `createStructures`), `createBiomes` wpisuje biomy jaskiniowe do sekcji poniżej Y 256 (licznik `CAVE_BIOME_CELLS`), `fill` nakłada pasy siarki i cynobru (`SulfurBands`, reguła materiałów wanilii `overworld/sulfur_cave_bands`) w skale planu w biomie siarkowym, dekoracja czyta biomy sekcji poniżej Y 256 (`ChunkGeneratorDecorationMixin`), struktura tylko biomów jaskiniowych (starożytne miasto) nie startuje i nie jest szukana w świecie bez jaskiń (`canStart`).
+- Akwifery: wykluczenie głębokiego mroku jak w wanilii (`deepDarkRegion`: erozja < −0,225 i głębokość > 0,9) z głębokością biomów (`ColumnField.BIOME_DEPTH`).
+- Kolejność ficzerów (`FeatureOrder` + `ChunkGeneratorFeatureOrderMixin`): sortowanie wanilii wszystkich możliwych biomów przesunęłoby ficzery siedlisk (jeziora lawy, głazy narzutowe, ruda miedzi) na inne indeksy i ziarna; teraz w każdym kroku najpierw ficzery siedlisk sprzed J2 w dawnej kolejności, potem reszta — świat bez jaskiń i las bez zmian (`FeatureOrderIndexTest`).
+- Dyspozytorzy roślinności (`tree_stand`, warstwy kolumn) z modyfikatorem `polishforests:top_of_world`: filtr biomu czyta biom na szczycie kolumny (u dołu świata może być głęboki mrok bez dyspozytorów; inaczej cały las chunka by zniknął).
+- Ficzery podziemne wanilii w biomach siedlisk (`BiomeDecoration.CaveFeature`, `polishforests:cave/*` z bramką `polishforests:caves`): jeziora lawy pod ziemią (Y 0 … szczyt), skamieliny pod mokradłami i wydmami, magma pod wodą zalanych jaskiń, źródła wody i lawy (tylko ≥ 8 bloków pod wierzchem), świecące porosty. Biomy jaskiniowe mają własne ozdoby wanilii (mech, azalie z korzeniami, bluszcz, spore blossom, glina z dripleafami, nacieki, sculk, czujniki i shriekery) z list wanilii.
+- Struktury: starożytne miasta przez biom głębokiego mroku (tag wanilii), kopalnie, komnaty prób i twierdze jak dotąd (tagi M2) z biomami jaskiniowymi z tagów wanilii; lochy i geody już były (M2).
+- Diagnostyka: `-PcaveBiomes=off` (`-Dpolishforests.caveBiomes=off`): jaskinie J1 bez biomów i ficzerów J2.
+- Gametest `cave_biomes` (`CaveBiomesClientGameTest`, tylko po nazwie): `/locate` czterech biomów i czterech struktur, kadry w biomach, mieście, geodzie, lochu, kopalni, F3 w bujnych, spawn (aksolotl, brak w mroku), woda w mroku, pasy siarki, las nad bujną jaskinią przed i po (ten sam świat z `-Dpolishforests.caveBiomes=off`, porównanie bloków), raport `build/cave_biomes/<skala>.txt`. `habitats`: możliwe biomy i biom pod ziemią dopuszczają biomy jaskiniowe.
+
+**Testy jednostkowe (etap 1, ziarno 20260927):**
+- `CaveBiomesTest` (`slow`): zgodność wyboru z listą wanilii (≥ 99,9%), udział biomów według głębokości pod wierzchem i długość płatów (serie wzdłuż X na jednym poziomie, 24 linie po 4 km) wobec lądu wanilii:
+
+| głębokość (bloki) | 16–47 | 48–95 | 96–159 | 160–255 | płat (bloki) |
+|---|---|---|---|---|---|
+| bujne: wanilia / REAL / GAMEPLAY | 2,4 / 1,9 / 3,1% | 8,4 / 5,2 / 7,1% | 0,7 / 0,4 / 0,6% | 0 | 48 / 45 / 54 |
+| naciekowe | 14,9 / 9,4 / 15,3% | 26,5 / 18,8 / 24,2% | 7,3 / 3,9 / 4,7% | 0 | 63 / 85 / 79 |
+| siarkowe | 1,3 / 1,0 / 1,4% | 3,8 / 2,2 / 3,1% | 0,6 / 0,2 / 0,3% | 0 | 71 / 57 / 56 |
+| głęboki mrok | 0 | 0 | 7,7 / 7,7 / 8,1% | 71,9 / 42,1 / 37,2% | (za mało serii) |
+
+Tolerancja: udział w granicach 0,5–2 × wanilia albo ±1,5 punktu procentowego, płaty 0,5–2 ×. Głęboki mrok 160+ wanilii dotyczy tylko kolumn wysokiego terenu (poniżej równin wanilii świat się kończy), stąd jego większy udział.
+- `FeatureOrderIndexTest`: indeksy ficzerów siedlisk bez zmian przy biomach jaskiniowych wśród możliwych (sortowanie wanilii by je przesunęło); `FeatureOrderTest`: ficzery `cave/*` na końcu swoich kroków.
+
+**Do etapu 2:** gametest `cave_biomes` w obu skalach (kadry, `/locate`, las przed i po), regresje `caves`, `habitats`, `determinism`, `ui`, pomiar FEATURES wobec J1 (przebieg kontrolny; pełne A/B, gdy dodatek > 5%), ocena kadrów, „Stan po J2”, BRIEF, pełny zestaw testów.
+
 ## Do kroku porządkowego (lista drobiazgów z recenzji)
 
 Lista założona w V10 według decyzji użytkownika z 2026-10-21 (`docs/00` F, P4): drobiazgi widoczne tylko na zbliżeniach albo w pomiarach bez wpływu na grę nie są poprawiane od razu, tylko trafiają tutaj; zbiorczy krok porządkowy na końcu kamienia milowego przegląda listę i poprawia, co warto. Każdy wpis: krok, w którym powstał, opis, gdzie szukać, propozycja. Wpis usuwamy (albo przekreślamy z commitem), gdy jest zrobiony.

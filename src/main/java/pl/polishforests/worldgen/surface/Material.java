@@ -95,7 +95,10 @@ public enum Material {
 	// Caves (step J1 of docs/04-pionowy-wycinek.md): lava of the deep aquifers and the sandstone of a sand ceiling, as the
 	// vanilla rule "overworld/sand_or_sandstone_if_ceiling" (a gravel ceiling turns into stone).
 	LAVA,
-	SANDSTONE;
+	SANDSTONE,
+	// Cave biomes (step J2): the bands of the vanilla rule "overworld/sulfur_cave_bands" in the rock of the sulfur caves.
+	SULFUR,
+	CINNABAR;
 
 	private static final Material[] VALUES = values();
 	/** Number of diagnostic colors of each kind. */

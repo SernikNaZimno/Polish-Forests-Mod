@@ -155,6 +155,10 @@ public final class ModFeatures {
 		Registry.register(BuiltInRegistries.FEATURE_TYPE, PolishForests.id("procedural_tree"), ProceduralTreeFeature.CODEC);
 		Registry.register(BuiltInRegistries.FEATURE_TYPE, PolishForests.id("procedural_deadwood"), DeadwoodFeature.CODEC);
 		Registry.register(BuiltInRegistries.PLACEMENT_MODIFIER_TYPE, PolishForests.id("habitat"), HabitatFilter.CODEC);
+		// Step J2: the gate of the underground features of the worlds with caves and the biome check of the dispatchers above
+		// the cave biomes.
+		Registry.register(BuiltInRegistries.PLACEMENT_MODIFIER_TYPE, PolishForests.id("caves"), CavesFilter.CODEC);
+		Registry.register(BuiltInRegistries.PLACEMENT_MODIFIER_TYPE, PolishForests.id("top_of_world"), TopOfWorldPlacement.CODEC);
 		Registry.register(BuiltInRegistries.TRUNK_PLACER_TYPE, PolishForests.id("clump"), ClumpTrunkPlacer.TYPE);
 	}
 

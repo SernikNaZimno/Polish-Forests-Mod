@@ -7,6 +7,7 @@
 		"BiomeTemperatureMixin",
 		"BiomeFreezeMixin",
 		"ChunkGeneratorDecorationMixin",
+		"ChunkGeneratorFeatureOrderMixin",
 		"ChunkGeneratorStructureMixin",
 		"FlowerBlockMixin",
 		"StructureCheckMixin"

@@ -7,6 +7,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.HolderGetter;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.BootstrapContext;
+import net.minecraft.data.worldgen.features.CaveFeatures;
 import net.minecraft.data.worldgen.features.MiscOverworldFeatures;
 import net.minecraft.data.worldgen.placement.PlacementUtils;
 import net.minecraft.resources.Identifier;
@@ -15,6 +16,7 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.ARGB;
 import net.minecraft.util.Mth;
 import net.minecraft.util.valueproviders.ConstantInt;
+import net.minecraft.util.valueproviders.UniformInt;
 import net.minecraft.world.attribute.BackgroundMusic;
 import net.minecraft.world.attribute.EnvironmentAttributes;
 import net.minecraft.world.entity.EntityTypes;
@@ -29,12 +31,14 @@ import net.minecraft.world.level.levelgen.blockpredicates.BlockPredicate;
 import net.minecraft.world.level.levelgen.carver.WorldCarver;
 import net.minecraft.world.level.levelgen.feature.Feature;
 import net.minecraft.world.level.levelgen.heightproviders.UniformHeight;
+import net.minecraft.world.level.levelgen.heightproviders.VeryBiasedToBottomHeight;
 import net.minecraft.world.level.levelgen.placement.BiomeFilter;
 import net.minecraft.world.level.levelgen.placement.CountPlacement;
 import net.minecraft.world.level.levelgen.placement.EnvironmentScanPlacement;
 import net.minecraft.world.level.levelgen.placement.HeightRangePlacement;
 import net.minecraft.world.level.levelgen.placement.InSquarePlacement;
 import net.minecraft.world.level.levelgen.placement.PlacedFeature;
+import net.minecraft.world.level.levelgen.placement.PlacementModifier;
 import net.minecraft.world.level.levelgen.placement.RarityFilter;
 import net.minecraft.world.level.levelgen.placement.SurfaceRelativeThresholdFilter;
 import pl.polishforests.PolishForests;
@@ -45,6 +49,8 @@ import pl.polishforests.worldgen.tree.AgeClass;
 import pl.polishforests.worldgen.tree.CrownLayer;
 import pl.polishforests.worldgen.chunk.ModBiomeKeys;
 import pl.polishforests.worldgen.feature.BiomeDecoration;
+import pl.polishforests.worldgen.feature.CavesFilter;
+import pl.polishforests.worldgen.feature.TopOfWorldPlacement;
 import pl.polishforests.worldgen.feature.HabitatFilter;
 import pl.polishforests.worldgen.feature.PlantLayerFeature;
 import pl.polishforests.worldgen.feature.TreeStandFeature;
@@ -142,9 +148,13 @@ final class ModWorldgen {
 						new HabitatFilter(new HabitatCondition(List.of(), List.of(), List.of(), List.of(), ModVegetation.ERRATIC_SOILS),
 								ModVegetation.ERRATIC_MAX_MOUNTAIN_INFLUENCE),
 						BiomeFilter.biome())));
+		// The dispatchers read the biome of their column at the top of the world (step J2): at the chunk origin, the world
+		// bottom, it can be a cave biome without them.
 		for (BiomeDecoration.Dispatcher d : BiomeDecoration.Dispatcher.values()) {
-			context.register(placed(d.path()), new PlacedFeature(features.getOrThrow(feature(d.path())), List.of(BiomeFilter.biome())));
+			context.register(placed(d.path()), new PlacedFeature(features.getOrThrow(feature(d.path())),
+					List.of(TopOfWorldPlacement.INSTANCE, BiomeFilter.biome())));
 		}
+		caveFeatures(context, features);
 		// Lava lakes only below Y 0 (decision M2-4, §8.1): the vanilla underground lava lake with a lower height range.
 		context.register(placed("deep_lava_lake"), new PlacedFeature(features.getOrThrow(MiscOverworldFeatures.LAKE_LAVA), List.of(
 				RarityFilter.onAverageOnceEvery(9),
@@ -162,6 +172,74 @@ final class ModWorldgen {
 					List.of(CountPlacement.of(ConstantInt.of(0)), BiomeFilter.biome())));
 		}
 	}
+
+	/**
+	 * The vanilla underground features of the worlds with caves (step J2, {@link BiomeDecoration.CaveFeature}): the vanilla
+	 * configured feature and placement, behind the gate {@code polishforests:caves}. Two differences: the springs only 8
+	 * blocks or more below the surface (vanilla also lets them break out of banks and slopes, which would change the
+	 * surface of the forest), and the fossils only under the wetlands and dunes (vanilla: swamps, mangroves, deserts).
+	 */
+	private static void caveFeatures(BootstrapContext<PlacedFeature> context, HolderGetter<Feature> features) {
+		HabitatFilter fossilHabitats = new HabitatFilter(new HabitatCondition(FOSSIL_HABITATS, List.of(), List.of(), List.of(),
+				List.of()));
+		for (BiomeDecoration.CaveFeature f : BiomeDecoration.CaveFeature.values()) {
+			List<PlacementModifier> placement = new ArrayList<>();
+			placement.add(CavesFilter.INSTANCE);
+			ResourceKey<Feature> feature = switch (f) {
+				case LAKE_LAVA_UNDERGROUND -> {
+					placement.addAll(List.of(RarityFilter.onAverageOnceEvery(9), InSquarePlacement.spread(),
+							HeightRangePlacement.of(UniformHeight.of(VerticalAnchor.absolute(0), VerticalAnchor.top())),
+							EnvironmentScanPlacement.scanningFor(Direction.DOWN, BlockPredicate.allOf(
+									BlockPredicate.not(BlockPredicate.ONLY_IN_AIR_PREDICATE),
+									BlockPredicate.insideWorld(new BlockPos(0, -5, 0))), 32),
+							SurfaceRelativeThresholdFilter.of(Heightmap.Types.OCEAN_FLOOR_WG, Integer.MIN_VALUE, -5)));
+					yield MiscOverworldFeatures.LAKE_LAVA;
+				}
+				case FOSSIL_UPPER -> {
+					placement.addAll(List.of(RarityFilter.onAverageOnceEvery(64), InSquarePlacement.spread(),
+							HeightRangePlacement.uniform(VerticalAnchor.absolute(0), VerticalAnchor.top()), fossilHabitats));
+					yield CaveFeatures.FOSSIL_COAL;
+				}
+				case FOSSIL_LOWER -> {
+					placement.addAll(List.of(RarityFilter.onAverageOnceEvery(64), InSquarePlacement.spread(),
+							HeightRangePlacement.uniform(VerticalAnchor.bottom(), VerticalAnchor.absolute(-8)), fossilHabitats));
+					yield CaveFeatures.FOSSIL_DIAMONDS;
+				}
+				case UNDERWATER_MAGMA -> {
+					placement.addAll(List.of(CountPlacement.of(UniformInt.of(44, 52)), InSquarePlacement.spread(),
+							PlacementUtils.RANGE_BOTTOM_TO_MAX_TERRAIN_HEIGHT,
+							SurfaceRelativeThresholdFilter.of(Heightmap.Types.OCEAN_FLOOR_WG, Integer.MIN_VALUE, -2)));
+					yield CaveFeatures.UNDERWATER_MAGMA;
+				}
+				case SPRING_WATER -> {
+					placement.addAll(List.of(CountPlacement.of(25), InSquarePlacement.spread(),
+							HeightRangePlacement.uniform(VerticalAnchor.bottom(), VerticalAnchor.absolute(192)),
+							SurfaceRelativeThresholdFilter.of(Heightmap.Types.OCEAN_FLOOR_WG, Integer.MIN_VALUE, -SPRING_DEPTH)));
+					yield MiscOverworldFeatures.SPRING_WATER;
+				}
+				case SPRING_LAVA -> {
+					placement.addAll(List.of(CountPlacement.of(20), InSquarePlacement.spread(),
+							HeightRangePlacement.of(VeryBiasedToBottomHeight.of(VerticalAnchor.bottom(), VerticalAnchor.belowTop(8), 8)),
+							SurfaceRelativeThresholdFilter.of(Heightmap.Types.OCEAN_FLOOR_WG, Integer.MIN_VALUE, -SPRING_DEPTH)));
+					yield MiscOverworldFeatures.SPRING_LAVA_OVERWORLD;
+				}
+				case GLOW_LICHEN -> {
+					placement.addAll(List.of(CountPlacement.of(UniformInt.of(104, 157)),
+							PlacementUtils.RANGE_BOTTOM_TO_MAX_TERRAIN_HEIGHT, InSquarePlacement.spread(),
+							SurfaceRelativeThresholdFilter.of(Heightmap.Types.OCEAN_FLOOR_WG, Integer.MIN_VALUE, -13)));
+					yield CaveFeatures.GLOW_LICHEN;
+				}
+			};
+			placement.add(BiomeFilter.biome());
+			context.register(placed(f.path()), new PlacedFeature(features.getOrThrow(feature), List.copyOf(placement)));
+		}
+	}
+
+	/** Least depth of a spring below the top of the ground (step J2). */
+	static final int SPRING_DEPTH = 8;
+	/** Habitats over the fossils (step J2): the wetlands and the dunes, as the vanilla swamps and deserts. */
+	static final List<HabitatBiome> FOSSIL_HABITATS = List.of(HabitatBiome.ALDER_CARR, HabitatBiome.BOG_WOODLAND,
+			HabitatBiome.RAISED_BOG, HabitatBiome.FEN, HabitatBiome.REEDBED, HabitatBiome.WHITE_DUNE, HabitatBiome.GRAY_DUNE);
 
 	// ------------------------------------------------------------------ biomes
 

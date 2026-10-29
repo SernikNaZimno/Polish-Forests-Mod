@@ -520,12 +520,17 @@ tasks.register('generateArt', ArtTask) {
 	outputs.upToDateWhen { false }
 }
 
-// Choosing in-game tests: ./gradlew runClientGameTest -Pgametest=performance|stages|views|climate|ui|habitats|vegetation|present_day|determinism|ecotones|slice|probes|cover|caves|all
+// Choosing in-game tests: ./gradlew runClientGameTest -Pgametest=performance|stages|views|climate|ui|habitats|vegetation|present_day|determinism|ecotones|slice|probes|cover|caves|cave_biomes|all
 // (cover: only by name; step K1, the thin and the realistic loose cover in pits down to Y 0 in a sandy lowland, a till
 // lowland and a valley floor, with a survey of cover, ores, voids and side faces; -Pscales=realistic|gameplay)
 // (caves: only by name; step J1, the caves of a lowland forest, a river valley, the mountains and the sea coast in each
 // scale: survey against the surface plans, slices to build/caves/, shots of the cave kinds and windows cut into the ground;
 // -Pcaves=off creates the worlds of any game test without caves)
+// (cave_biomes: only by name; step J2, the vanilla cave biomes and underground structures in each scale: /locate of the
+// four cave biomes and of the ancient city, mineshaft, trial chambers and stronghold, frames inside them, a geode, a monster
+// room, F3 in the lush caves, spawns, and the forest over the lush caves before and after (the same world with
+// -Dpolishforests.caveBiomes=off); report build/cave_biomes/<scale>.txt; -PcaveBiomes=off creates the worlds of any game
+// test with the caves of J1 alone)
 // (probes: only by name; the render trials of step V3 with probe blocks that exist only in this run, -Psites=board|rebuild
 // picks a part; combine with -Poptimization (with -PnoNvidium: plain Sodium) and -PnoSeasons; results in
 // build/probes/<vanilla|sodium|sodium_nvidium>_<ss|noss>.txt)
@@ -613,6 +618,12 @@ tasks.named('runClientGameTest') {
 	if (project.hasProperty('caves')) {
 		jvmArgs "-Dpolishforests.caves=${project.property('caves')}"
 	}
+	// Step J2: -PcaveBiomes=off gives the worlds with caves the caves of J1 alone (no cave biomes, no underground features of
+	// J2), for a comparison of the cost and the surface.
+	if (project.hasProperty('caveBiomes')) {
+		jvmArgs "-Dpolishforests.caveBiomes=${project.property('caveBiomes')}"
+	}
+	jvmArgs "-Dpolishforests.caveBiomes.out=${layout.buildDirectory.dir('cave_biomes').get().asFile.absolutePath}"
 	// Review round 1 of V13: -PperfSeason=<sub-season> sets the date of the flights of -Pgametest=performance -Psites=slice.
 	if (project.hasProperty('perfSeason')) {
 		jvmArgs "-Dpolishforests.perfSeason=${project.property('perfSeason')}"

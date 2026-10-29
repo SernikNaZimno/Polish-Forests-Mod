@@ -2,6 +2,9 @@
   "feature": "polishforests:aquatic_plants",
   "placement": [
     {
+      "type": "polishforests:top_of_world"
+    },
+    {
       "type": "minecraft:biome"
     }
   ]

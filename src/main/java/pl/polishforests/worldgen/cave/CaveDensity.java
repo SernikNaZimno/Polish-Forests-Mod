@@ -1,6 +1,7 @@
 package pl.polishforests.worldgen.cave;
 
 import net.minecraft.core.HolderGetter;
+import net.minecraft.world.level.biome.OverworldBiomeBuilder;
 import net.minecraft.world.level.levelgen.Aquifer;
 import net.minecraft.world.level.levelgen.NoiseRouterData;
 import net.minecraft.world.level.levelgen.Noises;
@@ -110,12 +111,22 @@ public final class CaveDensity {
 
 	/**
 	 * The vanilla overworld aquifers ({@code NoiseRouterData.overworldAquifers}: barrier, floodedness, spread and lava
-	 * noises by id) over the Poland surface: the preliminary surface level is the model top ({@link ColumnField#LEVEL}),
-	 * and nothing is excluded (vanilla keeps the deep dark dry; the deep dark of the caves is step J2).
+	 * noises by id) over the Poland surface: the preliminary surface level is the model top ({@link ColumnField#LEVEL}).
+	 * The exclusion is the vanilla one ({@code OverworldBiomeBuilder.deepDarkRegion}: no water or lava where the erosion is
+	 * below -0.225 and the depth above 0.9, so the deep dark stays dry; step J2) with the depth of the cave biomes
+	 * ({@link ColumnField#BIOME_DEPTH}) instead of the vanilla terrain depth; without the cave biomes
+	 * ({@code deepDarkDry} false, the diagnostic switch of {@link CaveBiomes#enabledFromSystem}) nothing is excluded, as in J1.
 	 */
-	public static Aquifer.Config aquifers(HolderGetter<DensityFunction> functions, HolderGetter<NormalNoise> noises) {
+	public static Aquifer.Config aquifers(HolderGetter<DensityFunction> functions, HolderGetter<NormalNoise> noises,
+			boolean deepDarkDry) {
 		Aquifer.Config vanilla = NoiseRouterData.overworldAquifers(functions, noises, NoiseRouterData.OVERWORLD_FUNCTIONS);
+		if (!deepDarkDry) {
+			return new Aquifer.Config(vanilla.barrierNoise(), vanilla.fluidLevelFloodednessNoise(), vanilla.fluidLevelSpreadNoise(),
+					vanilla.lavaNoise(), DensityFunctions.constant(-1.0F), ColumnField.LEVEL);
+		}
+		DensityFunction exclusion = OverworldBiomeBuilder.deepDarkRegion(
+				NoiseRouterData.getFunction(functions, NoiseRouterData.OVERWORLD_FUNCTIONS.erosion()), ColumnField.BIOME_DEPTH);
 		return new Aquifer.Config(vanilla.barrierNoise(), vanilla.fluidLevelFloodednessNoise(), vanilla.fluidLevelSpreadNoise(),
-				vanilla.lavaNoise(), DensityFunctions.constant(-1.0F), ColumnField.LEVEL);
+				vanilla.lavaNoise(), exclusion, ColumnField.LEVEL);
 	}
 }

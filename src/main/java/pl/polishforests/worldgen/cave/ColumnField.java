@@ -12,6 +12,7 @@ import net.minecraft.world.level.levelgen.densityfunction.DensityVolume;
 import net.minecraft.world.level.levelgen.densityfunction.DfRewriteRule;
 import net.minecraft.world.level.levelgen.densityfunction.SamplerContext;
 import net.minecraft.world.level.levelgen.densityfunction.generator.ConstantFunction;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Density functions of the caves (step J1) that read the terrain of the "Poland" generator instead of vanilla terrain
@@ -29,7 +30,13 @@ public enum ColumnField implements DensityFunction {
 	 */
 	DEPTH("surface_depth"),
 	/** The vanilla aquifer's preliminary surface level: Y of the top block of the model column. */
-	LEVEL("surface_level");
+	LEVEL("surface_level"),
+	/**
+	 * The vanilla depth parameter of the cave biomes (step J2, {@link CaveBiomes#depth}): blocks below their level (the
+	 * smoothed model top with the relief, {@link CaveBiomes.Relief#level}) / 128, capped; for the aquifer exclusion of the
+	 * deep dark, so it follows the same depth as the biome.
+	 */
+	BIOME_DEPTH("biome_depth");
 
 	private final ContextKey<DensitySampler> key;
 	private final MapCodec<ColumnField> codec = MapCodec.unit(this);
@@ -46,7 +53,8 @@ public enum ColumnField implements DensityFunction {
 	@Override
 	public DensitySampler compileSampler(DensityFunction.CompileContext context) {
 		// Without a bound sampler the point counts as deep underground (never used by the generator, which always binds).
-		return new ContextBoundSampler(key, new ConstantFunction.Sampler(this == DEPTH ? 1000.0F : 0.0F));
+		return new ContextBoundSampler(key, new ConstantFunction.Sampler(this == DEPTH ? 1000.0F
+				: this == BIOME_DEPTH ? CaveBiomes.MAX_DEPTH : 0.0F));
 	}
 
 	@Override
@@ -61,7 +69,7 @@ public enum ColumnField implements DensityFunction {
 
 	@Override
 	public @DensityFunction.Axes int domainAxes() {
-		return this == DEPTH ? ALL_AXES : AXIS_X | AXIS_Z;
+		return this == LEVEL ? AXIS_X | AXIS_Z : ALL_AXES;
 	}
 
 	@Override
@@ -71,22 +79,36 @@ public enum ColumnField implements DensityFunction {
 
 	/** The sampler of {@link #DEPTH} for the model tops of {@code columns}. */
 	static DensitySampler depth(PolandCaves.Columns columns) {
-		return new Sampler(columns, true);
+		return new Sampler(columns, DEPTH);
 	}
 
 	/** The sampler of {@link #LEVEL} for the model tops of {@code columns}. */
 	static DensitySampler level(PolandCaves.Columns columns) {
-		return new Sampler(columns, false);
+		return new Sampler(columns, LEVEL);
 	}
 
-	private record Sampler(PolandCaves.Columns columns, boolean depth) implements DensitySampler {
+	/** The sampler of {@link #BIOME_DEPTH} for the model tops of {@code columns} and the relief {@code relief}. */
+	static DensitySampler biomeDepth(PolandCaves.Columns columns, CaveBiomes.Relief relief) {
+		return new Sampler(columns, BIOME_DEPTH, relief);
+	}
+
+	private record Sampler(PolandCaves.Columns columns, ColumnField field, CaveBiomes.@Nullable Relief relief)
+			implements DensitySampler {
+		Sampler(PolandCaves.Columns columns, ColumnField field) {
+			this(columns, field, null);
+		}
+
+		private float top(int x, int z) {
+			return field == BIOME_DEPTH ? relief.level(columns::top, x, z) : columns.top(x, z);
+		}
+
 		@Override
 		public void sampleVolume(SamplerContext context, DensityBuffer outputBuffer, DensityVolume volume) {
 			for (int z = 0; z < volume.sizeZ(); z++) {
 				int blockZ = volume.blockZ(z);
 				for (int x = 0; x < volume.sizeX(); x++) {
 					int blockX = volume.blockX(x);
-					int top = columns.top(blockX, blockZ);
+					float top = top(blockX, blockZ);
 					int base = volume.indexUnchecked(x, 0, z);
 					for (int y = 0; y < volume.sizeY(); y++) {
 						outputBuffer.set(base + y, value(top, volume.blockY(y)));
@@ -97,11 +119,15 @@ public enum ColumnField implements DensityFunction {
 
 		@Override
 		public float sampleValue(SamplerContext context, int blockX, int blockY, int blockZ) {
-			return value(columns.top(blockX, blockZ), blockY);
+			return value(top(blockX, blockZ), blockY);
 		}
 
-		private float value(int top, int y) {
-			return depth ? CaveDensity.SLOPE_PER_BLOCK * (top + 1 - y) : top;
+		private float value(float top, int y) {
+			return switch (field) {
+				case DEPTH -> CaveDensity.SLOPE_PER_BLOCK * (top + 1 - y);
+				case LEVEL -> top;
+				case BIOME_DEPTH -> CaveBiomes.depth(top, y);
+			};
 		}
 	}
 }

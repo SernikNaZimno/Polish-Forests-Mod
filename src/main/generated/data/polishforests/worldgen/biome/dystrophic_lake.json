@@ -86,7 +86,8 @@
   "features": [
     [],
     [
-      "polishforests:deep_lava_lake"
+      "polishforests:deep_lava_lake",
+      "polishforests:cave/lake_lava_underground"
     ],
     [
       "minecraft:amethyst_geode",
@@ -94,7 +95,9 @@
     ],
     [
       "minecraft:monster_room",
-      "minecraft:monster_room_deep"
+      "minecraft:monster_room_deep",
+      "polishforests:cave/fossil_upper",
+      "polishforests:cave/fossil_lower"
     ],
     [],
     [],
@@ -123,10 +126,14 @@
       "minecraft:ore_diamond_buried",
       "minecraft:ore_lapis",
       "minecraft:ore_lapis_buried",
-      "minecraft:ore_copper"
+      "minecraft:ore_copper",
+      "polishforests:cave/underwater_magma"
     ],
     [],
-    [],
+    [
+      "polishforests:cave/spring_water",
+      "polishforests:cave/spring_lava"
+    ],
     [
       "polishforests:tree_stand",
       "polishforests:deadwood",
@@ -134,6 +141,7 @@
       "polishforests:waterside_zones",
       "polishforests:ground_layer",
       "polishforests:aquatic_plants",
+      "polishforests:cave/glow_lichen",
       "polishforests:bone_meal/wetland"
     ],
     [

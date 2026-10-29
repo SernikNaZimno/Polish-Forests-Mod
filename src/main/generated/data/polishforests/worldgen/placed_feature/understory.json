@@ -2,6 +2,9 @@
   "feature": "polishforests:understory",
   "placement": [
     {
+      "type": "polishforests:top_of_world"
+    },
+    {
       "type": "minecraft:biome"
     }
   ]

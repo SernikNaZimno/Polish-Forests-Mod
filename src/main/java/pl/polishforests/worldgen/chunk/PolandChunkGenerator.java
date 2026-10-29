@@ -56,8 +56,10 @@ import net.minecraft.world.level.levelgen.structure.TerrainAdjustment;
 import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
 import org.jspecify.annotations.Nullable;
 import pl.polishforests.climate.ClimateBinding;
+import pl.polishforests.worldgen.cave.CaveBiomes;
 import pl.polishforests.worldgen.cave.CaveCarving;
 import pl.polishforests.worldgen.cave.PolandCaves;
+import pl.polishforests.worldgen.cave.SulfurBands;
 import pl.polishforests.worldgen.feature.ModFeatures;
 import pl.polishforests.worldgen.habitat.HabitatClassifier;
 import pl.polishforests.worldgen.landscape.ColumnSample;
@@ -205,6 +207,40 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 		}
 	}
 
+	/** The cave biomes of the world (step J2) and the random state they were compiled for; null without caves. */
+	private volatile @Nullable CaveBiomes caveBiomes;
+	private volatile @Nullable RandomState caveBiomesState;
+
+	/**
+	 * The cave biomes of the world (step J2) when the settings have caves (and the diagnostic switch
+	 * {@link CaveBiomes#enabledFromSystem} does not turn them off): compiled once for the world's random state from
+	 * {@code registries}, or from the registries of the running server when the caller has none, and bound to the biome
+	 * source. Null without caves, and null while no registries are known.
+	 */
+	public @Nullable CaveBiomes caveBiomes(net.minecraft.core.HolderLookup.@Nullable Provider registries, RandomState randomState) {
+		if (!settings.caves() || !CaveBiomes.enabledFromSystem()) {
+			return null;
+		}
+		CaveBiomes c = caveBiomes;
+		if (c != null && caveBiomesState == randomState) {
+			return c;
+		}
+		net.minecraft.core.HolderLookup.Provider r = registries != null ? registries : PolandCaves.serverRegistries();
+		if (r == null) {
+			return null;
+		}
+		synchronized (this) {
+			if (caveBiomes == null || caveBiomesState != randomState) {
+				caveBiomes = CaveBiomes.create(r, randomState);
+				caveBiomesState = randomState;
+				if (biomeSource instanceof PolandBiomeSource source) {
+					source.bindCaves(caveBiomes);
+				}
+			}
+			return caveBiomes;
+		}
+	}
+
 	/** Whether the world is in the "present-day Poland" mode (PRESENT_DAY). */
 	public boolean presentDay() {
 		return settings.mode() == HabitatClassifier.Mode.PRESENT_DAY;
@@ -230,6 +266,20 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 	 * {@code has_structure/village_taiga} are forests, so there are no taiga villages; round 2 of the S8 review).
 	 */
 	boolean canStart(Holder<Structure> structure) {
+		if (!settings.caves() || !CaveBiomes.enabledFromSystem()) {
+			// Step J2: a structure only of the cave biomes (the ancient city of the deep dark) needs a world with caves.
+			boolean onlyCaves = true;
+			for (Holder<Biome> biome : structure.value().biomes()) {
+				if (!(biomeSource instanceof PolandBiomeSource source && source.isCaveBiome(biome))
+						&& biomeSource.possibleBiomes().contains(biome)) {
+					onlyCaves = false;
+					break;
+				}
+			}
+			if (onlyCaves) {
+				return false;
+			}
+		}
 		if (!presentDay() || !structure.is(StructureTags.VILLAGE)) {
 			return true;
 		}
@@ -252,7 +302,7 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 	@Override
 	public @Nullable Pair<BlockPos, Holder<Structure>> findNearestMapStructure(ServerLevel level, HolderSet<Structure> wantedStructures,
 			BlockPos pos, int maxSearchRadius, boolean createReference) {
-		if (presentDay()) {
+		{
 			List<Holder<Structure>> kept = new ArrayList<>();
 			boolean dropped = false;
 			for (Holder<Structure> structure : wantedStructures) {
@@ -279,6 +329,7 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 			net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager structureTemplateManager,
 			net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> level) {
 		caves(registryAccess);
+		caveBiomes(registryAccess, state.randomState());
 		super.createStructures(registryAccess, state, structureManager, centerChunk, structureTemplateManager, level);
 	}
 
@@ -291,6 +342,8 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 	public ChunkGeneratorStructureState createState(HolderLookup<StructureSet> structureSets, RandomState randomState,
 			long legacyLevelSeed) {
 		model(randomState.seed());
+		// The cave biomes (step J2) before the first structure or biome query, when the server registries are known.
+		caveBiomes(null, randomState);
 		// The climate profile (temperature from meters) must be attached before generation, because
 		// freeze_top_layer already places snow and ice.
 		ClimateBinding.attach(biomeSource.possibleBiomes(), vertical);
@@ -298,9 +351,10 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 	}
 
 	/**
-	 * Biomes of the chunk. With the mod's biome source the biome does not depend on Y (Z2), so the 16 columns are
+	 * Biomes of the chunk. With the mod's biome source the habitat does not depend on Y (Z2), so the 16 columns are
 	 * classified once ({@code createResolverForChunk}), written into one section's biome container, and every section
-	 * gets a copy of it, instead of the vanilla 64 writes per section (about 8400 in the realistic scale). The time is
+	 * gets a copy of it, instead of the vanilla 64 writes per section (about 8400 in the realistic scale). In a world with
+	 * caves (step J2) a section below Y {@link CaveBiomes#MAX_Y} also gets the cave biomes of its quart cells. The time is
 	 * counted in {@link #BIOME_NANOS}, the classification alone in {@link #BIOME_CLASSIFY_NANOS} (budget §3.6: at most
 	 * 0.2 ms per chunk).
 	 */
@@ -311,6 +365,7 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 		if (!(biomeSource instanceof PolandBiomeSource source)) {
 			return super.createBiomes(randomState, blender, structureManager, protoChunk);
 		}
+		CaveBiomes caveBiomes = caveBiomes(structureManager.registryAccess(), randomState);
 		return CompletableFuture.supplyAsync(() -> {
 			long t0 = System.nanoTime();
 			ChunkPos pos = protoChunk.getPos();
@@ -321,17 +376,37 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 			long t1 = System.nanoTime();
 			LevelChunkSection[] sections = protoChunk.getSections();
 			PalettedContainer<Holder<Biome>> column = sections[0].getBiomes().recreate();
+			// The habitat of each column: its biome at the top of the world, above every cave biome.
+			int topQuart = QuartPos.fromBlock(protoChunk.getMaxY());
 			for (int x = 0; x < 4; x++) {
 				for (int z = 0; z < 4; z++) {
-					Holder<Biome> biome = resolver.getNoiseBiome(quartX + x, 0, quartZ + z);
+					Holder<Biome> biome = resolver.getNoiseBiome(quartX + x, topQuart, quartZ + z);
 					for (int y = 0; y < 4; y++) {
 						column.getAndSetUnchecked(x, y, z, biome);
 					}
 				}
 			}
+			long caveCells = 0;
 			for (int i = 0; i < sections.length; i++) {
-				sections[i] = new LevelChunkSection(sections[i].getStates(), column.copy());
+				PalettedContainer<Holder<Biome>> biomes = column.copy();
+				int y0 = protoChunk.getSectionYFromSectionIndex(i) << 4;
+				if (caveBiomes != null && y0 < CaveBiomes.MAX_Y) {
+					int quartY = QuartPos.fromBlock(y0);
+					for (int y = 0; y < 4; y++) {
+						for (int x = 0; x < 4; x++) {
+							for (int z = 0; z < 4; z++) {
+								Holder<Biome> biome = resolver.getNoiseBiome(quartX + x, quartY + y, quartZ + z);
+								if (biome != column.get(x, y, z)) {
+									biomes.getAndSetUnchecked(x, y, z, biome);
+									caveCells++;
+								}
+							}
+						}
+					}
+				}
+				sections[i] = new LevelChunkSection(sections[i].getStates(), biomes);
 			}
+			CAVE_BIOME_CELLS.add(caveCells);
 			long t2 = System.nanoTime();
 			BIOME_CLASSIFY_NANOS.add(t1 - t0);
 			BIOME_NANOS.add(t2 - t0);
@@ -340,6 +415,9 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 		}, Util.backgroundExecutor().forName("polishforests_createBiomes"));
 	}
 
+	/** Quart cells that got a cave biome (step J2; diagnostics). */
+	public static final java.util.concurrent.atomic.LongAdder CAVE_BIOME_CELLS = new java.util.concurrent.atomic.LongAdder();
+
 	@Override
 	public CompletableFuture<ChunkAccess> buildTerrain(ChunkAccess chunk, Blender blender, RandomState randomState,
 			StructureManager structureManager, BiomeManager biomeManager, @Nullable WorldGenRegion carverBiomeRegion,
@@ -347,8 +425,10 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 		LandscapeModel m = model(randomState.seed());
 		HabitatClassifier k = classifier(randomState.seed());
 		PolandCaves c = caves(structureManager.registryAccess());
+		SulfurBands bands = c != null && caveBiomes(structureManager.registryAccess(), randomState) != null
+				&& biomeSource instanceof PolandBiomeSource source ? SulfurBands.of(source, randomState) : null;
 		return CompletableFuture.supplyAsync(() -> {
-			fill(chunk, m, k, structureManager, randomState, c);
+			fill(chunk, m, k, structureManager, randomState, c, bands);
 			return chunk;
 		}, Util.backgroundExecutor().forName("polishforests_buildTerrain"));
 	}
@@ -368,7 +448,10 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 			StructureManager structureManager) {
 		long t0 = System.nanoTime();
 		boolean columnBiomes = biomeSource instanceof PolandBiomeSource;
-		COLUMN_BIOMES.set(columnBiomes);
+		// Sections whose biomes the decoration reads: one (every section holds the same column habitats), and with the cave
+		// biomes of step J2 every section below Y CaveBiomes.MAX_Y.
+		COLUMN_BIOME_SECTIONS.set(!columnBiomes ? 0 : ((PolandBiomeSource) biomeSource).caves() == null ? 1
+				: chunk.getSectionIndex(CaveBiomes.MAX_Y - 1) + 1);
 		try {
 			if (columnBiomes) {
 				blendSoil(level, chunk);
@@ -376,7 +459,7 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 			super.applyBiomeDecoration(level, chunk, structureManager);
 		} finally {
 			if (columnBiomes) {
-				COLUMN_BIOMES.set(false);
+				COLUMN_BIOME_SECTIONS.set(0);
 			}
 		}
 		DECORATION_NANOS.add(System.nanoTime() - t0);
@@ -429,15 +512,16 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 	public static final java.util.concurrent.atomic.LongAdder SOIL_BLENDED = new java.util.concurrent.atomic.LongAdder();
 
 	/**
-	 * Whether the decoration running on this thread is of a chunk whose sections all hold the same column biomes
-	 * ({@link PolandBiomeSource}: {@link #createBiomes} copies them into every section), so the decoration reads the
-	 * biomes of one section ({@code ChunkGeneratorDecorationMixin}, R11).
+	 * How many of the lowest sections hold every biome of the chunk whose decoration runs on this thread, or 0 for the
+	 * vanilla loop over all sections. With {@link PolandBiomeSource} every section holds the same column habitats
+	 * ({@link #createBiomes} copies them), so the decoration reads the biomes of one section ({@code ChunkGeneratorDecorationMixin},
+	 * R11); with the cave biomes (step J2) also the sections below Y {@link CaveBiomes#MAX_Y}, the only ones that can hold them.
 	 */
-	private static final ThreadLocal<Boolean> COLUMN_BIOMES = ThreadLocal.withInitial(() -> false);
+	private static final ThreadLocal<Integer> COLUMN_BIOME_SECTIONS = ThreadLocal.withInitial(() -> 0);
 
-	/** See {@link #COLUMN_BIOMES}. */
-	public static boolean decoratingColumnBiomes() {
-		return COLUMN_BIOMES.get();
+	/** See {@link #COLUMN_BIOME_SECTIONS}. */
+	public static int decoratingColumnBiomeSections() {
+		return COLUMN_BIOME_SECTIONS.get();
 	}
 
 	public static final java.util.concurrent.atomic.LongAdder CHUNKS = new java.util.concurrent.atomic.LongAdder();
@@ -462,7 +546,7 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 	private static final int AIR_ID = Material.AIR.ordinal();
 
 	private void fill(ChunkAccess chunk, LandscapeModel m, HabitatClassifier classifier, StructureManager structureManager,
-			RandomState randomState, @Nullable PolandCaves caves) {
+			RandomState randomState, @Nullable PolandCaves caves, @Nullable SulfurBands bands) {
 		long t0 = System.nanoTime();
 		ChunkPos pos = chunk.getPos();
 		int minX = pos.getMinBlockX();
@@ -502,13 +586,16 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 		int[] ids = new int[4096];
 		int[] slots = new int[MATERIALS];
 		int[] rock = surface.rockBounds();
+		// The rock bands of the sulfur caves (step J2), per section, or null where the chunk has none.
+		SulfurBands.Chunk sulfur = bands == null ? null : bands.chunk(chunk);
 		try {
 			for (int idx = bottomSection; idx <= topSection; idx++) {
 				int y0 = chunk.getSectionYFromSectionIndex(idx) << 4;
 				byte[] cave = carving == null ? null : carving.section((y0 - minY) >> 4);
 				// Deep sections wholly in one rock kind: the same single-value palette as below, without 4096 material calls.
 				Material uniformRock = ChunkSurface.uniformRock(y0, rock);
-				if (uniformRock != null && cave == null) {
+				boolean banded = sulfur != null && sulfur.section(idx);
+				if (uniformRock != null && cave == null && !banded) {
 					chunkSections[idx] = new LevelChunkSection(new PalettedContainer<>(states[uniformRock.ordinal()], BLOCK_STRATEGY),
 							sections[idx - bottomSection].getBiomes());
 					continue;
@@ -526,6 +613,9 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 						int k = (dy << 8) | column;
 						int material = cave != null && cave[k] != 0 ? cave[k] - 1
 								: rockId >= 0 ? rockId : surface.material(i, y0 + dy).ordinal();
+						if (banded) {
+							material = sulfur.material(i >> 4, y0 + dy, i & 15, material);
+						}
 						buffer[k] = material;
 						if (first < 0) {
 							first = material;

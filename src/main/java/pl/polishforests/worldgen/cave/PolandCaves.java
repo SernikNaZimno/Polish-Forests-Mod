@@ -104,7 +104,7 @@ public final class PolandCaves {
 		List<Holder<WorldCarver>> list = List.of(carvers.getOrThrow(Carvers.CAVE), carvers.getOrThrow(Carvers.CAVE_EXTRA_UNDERGROUND),
 				carvers.getOrThrow(Carvers.CANYON));
 		return new PolandCaves(CaveDensity.build(functions, noises, vertical.minY(), vertical.maxY()),
-				CaveDensity.aquifers(functions, noises), list, vertical.seaLevelY());
+				CaveDensity.aquifers(functions, noises, CaveBiomes.enabledFromSystem()), list, vertical.seaLevelY());
 	}
 
 	/** Registries of the running server (bound when it starts), for the generator calls that get no registries. */
@@ -165,7 +165,8 @@ public final class PolandCaves {
 		try {
 			ContextMap.Builder fields = ContextMap.builder()
 					.set(ColumnField.DEPTH.key(), ColumnField.depth(columns))
-					.set(ColumnField.LEVEL.key(), ColumnField.level(columns));
+					.set(ColumnField.LEVEL.key(), ColumnField.level(columns))
+					.set(ColumnField.BIOME_DEPTH.key(), ColumnField.biomeDepth(columns, CaveBiomes.Relief.of(randomState.seed())));
 			if (beardifier != null) {
 				fields.set(Beardifier.CONTEXT_KEY, beardifier);
 			}
@@ -396,7 +397,9 @@ public final class PolandCaves {
 		DensityBufferPool pool = randomState.acquireDensityBufferPool();
 		try {
 			ContextMap fields = ContextMap.builder().set(ColumnField.DEPTH.key(), ColumnField.depth(columns))
-					.set(ColumnField.LEVEL.key(), ColumnField.level(columns)).build();
+					.set(ColumnField.LEVEL.key(), ColumnField.level(columns))
+					.set(ColumnField.BIOME_DEPTH.key(), ColumnField.biomeDepth(columns, CaveBiomes.Relief.of(randomState.seed())))
+					.build();
 			SamplerContext context = SamplerContext.builder().setUserFields(fields).useBufferArena(pool).enableCaches().build();
 			DensitySamplerSet samplers = randomState.samplersWithContext(context);
 			DensityVolume volume = new DensityVolume(1, hi - lo + 1, 1, x, lo, z);
