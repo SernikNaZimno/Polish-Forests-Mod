@@ -18,6 +18,8 @@ import pl.polishforests.worldgen.surface.ChunkSurface;
 @Tag("cost")
 class CaveCostTest {
 	private static final int CHUNKS = 64;
+	/** Keeps the counted blocks alive (no dead code in the timed loop). */
+	static long sink;
 
 	@Test
 	void reportCostPerChunk() {
@@ -62,6 +64,70 @@ class CaveCostTest {
 						median(plan), median(noise), median(carvers), runs, CHUNKS, carved / CHUNKS);
 			}
 		}
+	}
+
+	/**
+	 * For comparison, the caves of a vanilla overworld (decision CP-C.4a): the noise of 64 chunks with the vanilla final
+	 * density and with the same density without the caves (the sloped cheese), both through the aquifer, and the three
+	 * vanilla carvers; ms per chunk, medians.
+	 */
+	@Test
+	void reportVanillaCaveCost() {
+		int runs = Integer.getInteger("polishforests.cost.runs", 7);
+		var r = CaveFixture.registries();
+		var functions = r.lookupOrThrow(net.minecraft.core.registries.Registries.DENSITY_FUNCTION);
+		var holder = r.lookupOrThrow(net.minecraft.core.registries.Registries.NOISE_SETTINGS)
+				.getOrThrow(net.minecraft.world.level.levelgen.NoiseGeneratorSettings.OVERWORLD);
+		var settings = holder.value();
+		var random = net.minecraft.world.level.levelgen.RandomState.create(r.lookupOrThrow(net.minecraft.core.registries.Registries.NOISE),
+				CaveFixture.SEED, settings);
+		var terrain = net.minecraft.world.level.levelgen.NoiseRouterData.postProcess(
+				net.minecraft.world.level.levelgen.NoiseRouterData.slideOverworld(false, net.minecraft.world.level.levelgen.NoiseRouterData
+						.getFunction(functions, net.minecraft.world.level.levelgen.NoiseRouterData.OVERWORLD_FUNCTIONS.slopedCheese())), 4, 8);
+		var lava = new net.minecraft.world.level.levelgen.Aquifer.FluidStatus(-54,
+				net.minecraft.world.level.block.Blocks.LAVA.defaultBlockState());
+		var sea = new net.minecraft.world.level.levelgen.Aquifer.FluidStatus(63,
+				net.minecraft.world.level.block.Blocks.WATER.defaultBlockState());
+		net.minecraft.world.level.levelgen.Aquifer.FluidPicker fluids = (x, y, z) -> y < -54 ? lava : sea;
+		double[] full = new double[runs];
+		double[] bare = new double[runs];
+		for (int run = 0; run < runs; run++) {
+			for (int pass = 0; pass < 2; pass++) {
+				var function = pass == 0 ? settings.noiseRouter().finalDensity() : terrain;
+				long t0 = System.nanoTime();
+				long solid = 0;
+				for (int k = 0; k < CHUNKS; k++) {
+					ChunkPos pos = new ChunkPos(200 + (k & 7), -300 + (k >> 3));
+					var volume = new net.minecraft.world.level.levelgen.densityfunction.DensityVolume(16, 384, 16, pos.getMinBlockX(), -64,
+							pos.getMinBlockZ());
+					try (var chunk = new net.minecraft.world.level.levelgen.NoiseChunk(random, null, settings, fluids,
+							net.minecraft.world.level.levelgen.blending.Blender.empty(), volume);
+							var d = chunk.cachingSamplers().get(function).sampleVolume(volume)) {
+						var aquifer = chunk.aquifer();
+						for (int z = 0; z < 16; z++) {
+							for (int x = 0; x < 16; x++) {
+								for (int y = 0; y < 384; y++) {
+									if (aquifer.computeSubstance(pos.getMinBlockX() + x, y - 64, pos.getMinBlockZ() + z,
+											d.get(volume.indexUnchecked(x, y, z))) == null) {
+										solid++;
+									}
+								}
+							}
+						}
+					}
+				}
+				double ms = (System.nanoTime() - t0) / 1e6 / CHUNKS;
+				sink += solid;
+				if (pass == 0) {
+					full[run] = ms;
+				} else {
+					bare[run] = ms;
+				}
+			}
+		}
+		System.out.printf(Locale.ROOT, "[cave cost] vanilla overworld: noise with caves %.3f ms, without caves %.3f ms per chunk "
+				+ "(medians of %d rounds of %d chunks; the vanilla carvers are not in the noise)%n", median(full), median(bare), runs,
+				CHUNKS);
 	}
 
 	private static double median(double[] v) {

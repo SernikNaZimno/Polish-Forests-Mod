@@ -294,6 +294,8 @@ public final class PerformanceClientGameTest implements FabricClientGameTest {
 		long chunks0 = PolandChunkGenerator.CHUNKS.sum();
 		long classify0 = PolandChunkGenerator.CLASSIFY_NANOS.sum();
 		long surface0 = PolandChunkGenerator.SURFACE_NANOS.sum();
+		long caves0 = pl.polishforests.worldgen.cave.PolandCaves.NANOS.sum();
+		long caveChunks0 = pl.polishforests.worldgen.cave.PolandCaves.CHUNKS.sum();
 		StringBuilder sb = new StringBuilder();
 		for (ChunkStatus stage : stages) {
 			long t0 = System.nanoTime();
@@ -316,6 +318,15 @@ public final class PerformanceClientGameTest implements FabricClientGameTest {
 		} else {
 			PolishForests.LOG.warn("[performance] {}: area was already generated, measurement invalid", name);
 		}
+		logCaves(name, caves0, caveChunks0);
+	}
+
+	/** Step J1: the time of the caves in the fill since the counters' start values (0 chunks: a world without caves). */
+	private static void logCaves(String name, long nanos0, long chunks0) {
+		long c = pl.polishforests.worldgen.cave.PolandCaves.CHUNKS.sum() - chunks0;
+		PolishForests.LOG.info(String.format(Locale.ROOT, "[performance] %s: caves in the fill %.3f ms/chunk over %d chunks "
+				+ "(%.0f noise and %.0f carver blocks carved in all)", name, c == 0 ? 0.0 : (pl.polishforests.worldgen.cave.PolandCaves.NANOS.sum() - nanos0) / 1e6 / c, c,
+				(double) pl.polishforests.worldgen.cave.PolandCaves.NOISE_BLOCKS.sum(), (double) pl.polishforests.worldgen.cave.PolandCaves.CARVER_BLOCKS.sum()));
 	}
 
 	/**
@@ -364,6 +375,8 @@ public final class PerformanceClientGameTest implements FabricClientGameTest {
 			layer0[d.ordinal() * 3 + 2] = st.placed.sum();
 		}
 		long surface0 = PolandChunkGenerator.SURFACE_NANOS.sum();
+		long caves0 = pl.polishforests.worldgen.cave.PolandCaves.NANOS.sum();
+		long caveChunks0 = pl.polishforests.worldgen.cave.PolandCaves.CHUNKS.sum();
 		long packed0 = PolandChunkGenerator.PACKED_SECTIONS.sum();
 		long fallbacks0 = PolandChunkGenerator.PACK_FALLBACKS.sum();
 		long outside0 = pl.polishforests.worldgen.surface.SurfaceBuilder.OUTSIDE_SAMPLES.sum();
@@ -440,6 +453,7 @@ public final class PerformanceClientGameTest implements FabricClientGameTest {
 		} else if (name.startsWith("poland")) {
 			PolishForests.LOG.warn("[performance] {}: area was already generated, measurement invalid", name);
 		}
+		logCaves(name, caves0, caveChunks0);
 	}
 
 	private static void configure(WorldCreationUiState ui, ResourceKey<WorldPreset> preset, boolean presentDay) {
