@@ -3029,6 +3029,10 @@ W łatach sculku: `SculkVeinSpreaderConfig.stateCanBeReplaced` 39% (najpierw czy
 
 **Oczekiwania (do sprawdzenia w etapie 2, szacunki):** łaty sculku −25–40% czasu (w REAL dekoracja do −10–20%), drzewostan −1–2%, chunki na sekundę z C2ME REAL +5–10%, GAMEPLAY +1–3%. Przy J2 0,38–0,54 × M2 w REAL i 0,61–0,64 w GAMEPLAY cel 0,75 z jaskiniami najpewniej nie zostanie osiągnięty bez zmiany wyniku jaskiń albo łat sculku — wtedy warianty B3 dla użytkownika (handoff etapu 2). FPS: dno boru ok. 40–55% mniej czworokątów w kolumnach z omszoną borówką i igliwiem, korzenie zakopane 0; okap boru REAL 0,78–0,79 × M2 powinien przekroczyć 0,8.
 
+**Determinizm między zestawami modów (decyzja J1-q, G.32; wybory G.33 O2-i):** porównanie terenu z drugim zestawem modów jest raportem z tolerancją kilku bloków (`gametest/TerrainBlocks`, obok haszy plik terenu blok po bloku; limity 16 bloków terenu i 32 kolumny po dekoracji na obszar), a porównanie w obrębie zestawu zostaje ścisłe. Sprawdzenie w grze — etap 2.
+
+**Dwa progi testów po jaskiniach (G.33 O2-j):** przebiegi etapu 2 pokazały, że `slice -Psites=plots` i `roots` nie przechodzą od J1, także na bazie kroku `7c64a1d`; progi poprawione, kadry `plots` i GAMEPLAY `roots` do uzupełnienia w etapie 2.
+
 **Testy etapu 1:** `fastTest` PASS, `checkDatagen` PASS (przegenerowane tylko `template_mossy_litter_1…4`), `RootPlanTest` (8), `StandMapCacheTest` (2), `RankMemoTest`, `FloorCullingTest` (2), `SculkFastPathTest` PASS. Migawka rejestru bez zmian (właściwości bloków te same). Bez gametestów i pomiarów (etap 2).
 
 ## Do kroku porządkowego (lista drobiazgów z recenzji)

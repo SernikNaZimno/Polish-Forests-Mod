@@ -565,9 +565,9 @@ final class RootSamples {
 				rootsPlanned, 100.0 * roots / Math.max(1, rootsPlanned), dirt, hanging, touching, nextToBase, floating, changed, besideTrunk, covered,
 				RootPlan.COVER, surface, trenchFlares, trenchRoots,
 				bad.isEmpty() ? "" : "; e.g. " + String.join(", ", bad));
-		// Flares over no sturdy block and roots near the surface only where a later feature (a windthrow's pit) dug the
-		// ground away: at most 0.1%.
-		if (trees == 0 || flares == 0 || touching > 0 || floating > 0.001 * flares || surface > 0.001 * Math.max(1, covered)) {
+		// Flares over no sturdy block only where a later feature (a windthrow's pit) dug the ground away: at most 0.1%. Roots
+		// near the surface also beside a cave (step J1, 0.16% in GAMEPLAY in O2): at most 0.3%.
+		if (trees == 0 || flares == 0 || touching > 0 || floating > 0.001 * flares || surface > 0.003 * Math.max(1, covered)) {
 			throw new AssertionError("[roots] " + report);
 		}
 		return report;

@@ -591,13 +591,10 @@ tasks.named('runClientGameTest') {
 		jvmArgs '-Dpolishforests.timings.reportOnly=true'
 	}
 	// Determinism test (step S10, -Pgametest=determinism): column hashes go to build/determinism/<plain|optimization>.txt;
-	// -PdeterminismReference=<file> compares the run with a file of a run with the other mod set (with or without -Poptimization).
+	// next to them <label>_terrain.txt.gz, the terrain block by block. -PdeterminismReference=<file> compares the run with such
+	// a file (the block-by-block file next to it, same name): the same mod set exactly, the other mod set (with or without
+	// -Poptimization) as a report with a tolerance of a few blocks (decision J1-q, docs/00 G.32).
 	jvmArgs "-Dpolishforests.determinism.out=${layout.buildDirectory.dir('determinism').get().asFile.absolutePath}"
-	// Step J1 diagnostics: -PdeterminismDump="realistic natural 0;gameplay natural 0" writes the terrain of these areas block
-	// by block (build/determinism/<label>_dump_<area>.txt) for a diff between two mod sets.
-	if (project.hasProperty('determinismDump')) {
-		jvmArgs "-Dpolishforests.determinism.dump=${project.property('determinismDump')}"
-	}
 	if (project.hasProperty('determinismReference')) {
 		jvmArgs "-Dpolishforests.determinism.reference=${file(project.property('determinismReference')).absolutePath}"
 	}

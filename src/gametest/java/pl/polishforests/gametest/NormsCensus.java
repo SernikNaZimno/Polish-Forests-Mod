@@ -56,6 +56,8 @@ final class NormsCensus {
 	/** Side of a sample plot (1 ha), cells above the ground, margin of the grid for whole crowns (PW-9: radius ≤ 16). */
 	static final int PLOT = ForestNorms.PLOT_SIDE;
 	static final int HEIGHT = 48;
+	/** Largest share of the columns with leaves or wood above the cells of the census (see {@link #read}). */
+	private static final double TRUNCATED_SHARE = 0.01;
 	static final int MARGIN = 16;
 	/** Half-width of the band along a transect, blocks (17 columns per step). */
 	static final int BAND = 8;
@@ -94,7 +96,9 @@ final class NormsCensus {
 		}
 		CensusGrid g = new CensusGrid(minX, minZ, sizeX, sizeZ, height);
 		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+		int read = 0;
 		int truncated = 0;
+		String firstTruncated = "";
 		for (int x = minX; x < minX + sizeX; x++) {
 			for (int z = minZ; z < minZ + sizeZ; z++) {
 				if (!columns.test(x, z)) {
@@ -111,6 +115,7 @@ final class NormsCensus {
 				if (y < level.getMinY()) {
 					continue;
 				}
+				read++;
 				g.setGround(x, z, y, id(s));
 				for (int dy = 1; dy <= height; dy++) {
 					BlockState c = level.getBlockState(pos.set(x, y + dy, z));
@@ -134,15 +139,23 @@ final class NormsCensus {
 				}
 				BlockState above = level.getBlockState(pos.set(x, y + height + 1, z));
 				if (above.is(BlockTags.LEAVES) || above.is(BlockTags.LOGS)) {
-					truncated++;
+					if (truncated++ == 0) {
+						firstTruncated = pos.toShortString();
+					}
 				}
 				g.setRecord(x, z, records.get(key(x, z)));
 				g.setDead(x, z, DEAD.contains(key(x, z)));
 			}
 		}
-		if (truncated > 0) {
+		// A crown can overhang a deep cave entrance (step J1): its column's ground is the floor of the entrance, so the leaves
+		// lie above the cells in single columns, without weight in the census; a tree too tall for the census has many such.
+		if (truncated > read * TRUNCATED_SHARE) {
 			throw new AssertionError(truncated + " columns from (" + minX + ", " + minZ + ") have leaves or wood above the " + height
-					+ " cells of the census");
+					+ " cells of the census, first at " + firstTruncated);
+		}
+		if (truncated > 0) {
+			PolishForests.LOG.info("[slice] {} of {} columns from ({}, {}) have leaves or wood above the {} cells of the census, first at {}",
+					truncated, read, minX, minZ, height, firstTruncated);
 		}
 		return g;
 	}

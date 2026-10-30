@@ -1,6 +1,10 @@
 package pl.polishforests.gametest;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -14,6 +18,8 @@ import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.locks.LockSupport;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -68,8 +74,11 @@ import pl.polishforests.worldgen.chunk.PolandScale;
  *
  * <p>The column hashes go to {@code polishforests.determinism.out} ({@code build/determinism/<plain|optimization>.txt});
  * with {@code -PdeterminismReference=<file>} the run also compares itself with a file written by a run with the other
- * mod set (the optimization pack with C2ME, {@code -Poptimization}, or without it): terrain and the fixed-order decorated
- * columns of every area exactly. Runs when {@code -Dpolishforests.gametest} is
+ * mod set (the optimization pack with C2ME, {@code -Poptimization}, or without it). A reference of the same mod set is
+ * compared exactly, terrain and the fixed-order decorated columns of every area. Between two mod sets (user decision J1-q,
+ * {@code docs/00} G.32: the optimizations of C2ME are not bit-exact) the comparison is a report with a tolerance of a few
+ * blocks ({@link TerrainBlocks}): it counts the differing terrain blocks from the block-by-block files
+ * {@code <label>_terrain.txt.gz}, which every run writes next to its hashes. Runs when {@code -Dpolishforests.gametest} is
  * {@code determinism} or {@code all}; {@code -Pscales} limits the scales.
  */
 public final class DeterminismClientGameTest implements FabricClientGameTest {
@@ -105,6 +114,8 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 	private static final Map<BlockState, Long> STATE_HASHES = new IdentityHashMap<>();
 	/** State numbers of this run for the decoration window (server thread only). */
 	private static final Map<BlockState, Integer> STATE_IDS = new IdentityHashMap<>();
+	/** Texts of block states for the block-by-block terrain (server thread only). */
+	private static final Map<BlockState, String> STATE_TEXTS = new IdentityHashMap<>();
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
@@ -120,6 +131,35 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 		PolishForests.LOG.info("[determinism] mod set: {} ({} mods)", label, FabricLoader.getInstance().getAllMods().size());
 		List<String> out = new ArrayList<>();
 		List<String> failures = new ArrayList<>();
+		String dir = System.getProperty("polishforests.determinism.out", "");
+		Path blocksFile = dir.isBlank() ? null : Path.of(dir, TerrainBlocks.blocksFileName(label));
+		try (BufferedWriter blocks = blocksFile == null ? null : gzipWriter(blocksFile)) {
+			worlds(context, scales, tolerance, blocks, out, failures);
+		} catch (IOException e) {
+			throw new AssertionError("Cannot write the terrain block by block", e);
+		}
+		if (!dir.isBlank()) {
+			try {
+				Path file = Path.of(dir, label + ".txt");
+				Files.createDirectories(file.getParent());
+				Files.write(file, out, StandardCharsets.UTF_8);
+				PolishForests.LOG.info("[determinism] column hashes written to {}", file);
+			} catch (IOException e) {
+				throw new AssertionError("Cannot write the determinism file", e);
+			}
+		}
+		String reference = System.getProperty("polishforests.determinism.reference", "");
+		if (!reference.isBlank()) {
+			compareWithReference(Path.of(reference), out, blocksFile, label, failures);
+		}
+		if (!failures.isEmpty()) {
+			throw new AssertionError("Determinism: " + String.join("; ", failures));
+		}
+	}
+
+	/** Generates the worlds of the test and compares them with each other; the hashes go to {@code out}. */
+	private static void worlds(ClientGameTestContext context, String scales, double tolerance, BufferedWriter blocks,
+			List<String> out, List<String> failures) {
 		for (PolandScale scale : PolandScale.values()) {
 			if (!scales.isBlank() && !scales.contains(scale.getSerializedName())) {
 				continue;
@@ -144,8 +184,8 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 							Area terrain = fixedOrder ? sp.getServer().computeOnServer(s -> terrain(s.overworld(), ox, oz))
 									: terrainConcurrently(sp, ox, oz, (long) w * 31 + a);
 							String areaKey = scale.getSerializedName() + " " + (presentDay ? "present_day" : "natural") + " " + a;
-							if (w == 0 && DUMP.contains(areaKey)) {
-								sp.getServer().runOnServer(s -> dump(s.overworld(), ox, oz, label, areaKey));
+							if (w == 0 && blocks != null) {
+								sp.getServer().runOnServer(s -> writeTerrain(s.overworld(), ox, oz, areaKey, terrain.terrainHash(), blocks));
 							}
 							if (fixedOrder) {
 								sp.getServer().runOnServer(s -> decorateInOrder(s.overworld(), ox, oz));
@@ -178,67 +218,50 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 				}
 			}
 		}
-		String dir = System.getProperty("polishforests.determinism.out", "");
-		if (!dir.isBlank()) {
-			try {
-				Path file = Path.of(dir, label + ".txt");
-				Files.createDirectories(file.getParent());
-				Files.write(file, out, StandardCharsets.UTF_8);
-				PolishForests.LOG.info("[determinism] column hashes written to {}", file);
-			} catch (IOException e) {
-				throw new AssertionError("Cannot write the determinism file", e);
-			}
-		}
-		String reference = System.getProperty("polishforests.determinism.reference", "");
-		if (!reference.isBlank()) {
-			compareWithReference(Path.of(reference), out, label, failures);
-		}
-		if (!failures.isEmpty()) {
-			throw new AssertionError("Determinism: " + String.join("; ", failures));
-		}
+	}
+
+	private static BufferedWriter gzipWriter(Path file) throws IOException {
+		Files.createDirectories(file.getParent());
+		return new BufferedWriter(new OutputStreamWriter(new GZIPOutputStream(Files.newOutputStream(file)), StandardCharsets.UTF_8));
+	}
+
+	private static BufferedReader gzipReader(Path file) throws IOException {
+		return new BufferedReader(new InputStreamReader(new GZIPInputStream(Files.newInputStream(file)), StandardCharsets.UTF_8));
 	}
 
 	/**
-	 * Areas whose terrain (after TERRAIN, before FEATURES, the fixed-order world 1) is written block by block for a diff
-	 * between two mod sets ({@code -PdeterminismDump="realistic natural 0;gameplay natural 0"}; step J1 diagnostics):
-	 * {@code <out>/<label>_dump_<area>.txt}, one line per column with its runs of equal blocks.
+	 * The terrain of the area (after TERRAIN, before FEATURES, the fixed-order world 1) block by block, for the report of
+	 * differences between two mod sets ({@link TerrainBlocks}; {@code zcat} gives a text fit for a diff).
 	 */
-	private static final java.util.Set<String> DUMP = java.util.Set.of(
-			System.getProperty("polishforests.determinism.dump", "").split(";")).stream().filter(t -> !t.isBlank())
-			.collect(java.util.stream.Collectors.toUnmodifiableSet());
-
-	private static void dump(ServerLevel level, int ox, int oz, String label, String areaKey) {
-		List<String> lines = new ArrayList<>();
+	private static void writeTerrain(ServerLevel level, int ox, int oz, String areaKey, long terrainHash, BufferedWriter out) {
 		var source = level.getChunkSource();
-		for (int cx = 0; cx < SIZE; cx++) {
-			for (int cz = 0; cz < SIZE; cz++) {
-				ChunkAccess chunk = source.getChunk(ox + cx, oz + cz, ChunkStatus.TERRAIN, true);
-				for (int x = 0; x < 16; x++) {
-					for (int z = 0; z < 16; z++) {
-						StringBuilder sb = new StringBuilder();
-						sb.append(((ox + cx) << 4) + x).append(' ').append(((oz + cz) << 4) + z);
-						String last = null;
-						net.minecraft.core.BlockPos.MutableBlockPos at = new net.minecraft.core.BlockPos.MutableBlockPos();
-						for (int y = chunk.getMinY(); y <= chunk.getMaxY(); y++) {
-							String st = chunk.getBlockState(at.set(x, y, z)).toString();
-							if (!st.equals(last)) {
-								sb.append(' ').append(y).append(':').append(st.replace(' ', '_'));
-								last = st;
+		var at = new net.minecraft.core.BlockPos.MutableBlockPos();
+		StringBuilder sb = new StringBuilder();
+		try {
+			out.write(TerrainBlocks.header(areaKey, terrainHash, level.getMinY(), level.getMaxY()));
+			out.write('\n');
+			for (int cx = 0; cx < SIZE; cx++) {
+				for (int cz = 0; cz < SIZE; cz++) {
+					ChunkAccess chunk = source.getChunk(ox + cx, oz + cz, ChunkStatus.TERRAIN, true);
+					for (int x = 0; x < 16; x++) {
+						for (int z = 0; z < 16; z++) {
+							sb.setLength(0);
+							sb.append(((ox + cx) << 4) + x).append(' ').append(((oz + cz) << 4) + z);
+							BlockState last = null;
+							for (int y = level.getMinY(); y <= level.getMaxY(); y++) {
+								BlockState state = SeasonalProperties.neutral(chunk.getBlockState(at.set(x, y, z)));
+								if (state != last) {
+									sb.append(' ').append(y).append(':').append(STATE_TEXTS.computeIfAbsent(state, st -> st.toString().replace(' ', '_')));
+									last = state;
+								}
 							}
+							out.append(sb).append('\n');
 						}
-						lines.add(sb.toString());
 					}
 				}
 			}
-		}
-		String dir = System.getProperty("polishforests.determinism.out", "");
-		try {
-			Path file = Path.of(dir.isBlank() ? "." : dir, label + "_dump_" + areaKey.replace(' ', '_') + ".txt");
-			Files.createDirectories(file.getParent());
-			Files.write(file, lines, StandardCharsets.UTF_8);
-			PolishForests.LOG.info("[determinism] terrain of {} written to {}", areaKey, file);
 		} catch (IOException e) {
-			throw new AssertionError("Cannot write the determinism dump", e);
+			throw new AssertionError("Cannot write the terrain of " + areaKey, e);
 		}
 	}
 
@@ -457,8 +480,11 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 		return n;
 	}
 
-	/** Comparison with a file written by a run with the other mod set (with or without the optimization pack). */
-	private static void compareWithReference(Path file, List<String> out, String label, List<String> failures) {
+	/**
+	 * Comparison with a file written by another run: exact with the same mod set, and between two mod sets (decision J1-q) a
+	 * report of the differing blocks that fails only above the tolerance of {@link TerrainBlocks}.
+	 */
+	private static void compareWithReference(Path file, List<String> out, Path blocksFile, String label, List<String> failures) {
 		Map<String, String> ref = new HashMap<>();
 		try {
 			for (String line : Files.readAllLines(file, StandardCharsets.UTF_8)) {
@@ -468,6 +494,13 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 		} catch (IOException e) {
 			throw new AssertionError("Cannot read the determinism reference " + file, e);
 		}
+		String refName = file.getFileName().toString();
+		boolean otherSet = TerrainBlocks.isOtherModSet(refName, label);
+		Map<String, TerrainBlocks.AreaDiff> blocks = otherSet ? blockDifferences(file, blocksFile, refName) : Map.of();
+		int areas = 0;
+		int differing = 0;
+		int worst = 0;
+		int worstColumns = 0;
 		for (String line : out) {
 			int i = line.lastIndexOf(' ');
 			String key = line.substring(0, i);
@@ -477,18 +510,56 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 				continue;
 			}
 			if (key.startsWith("terrain ")) {
+				areas++;
 				boolean same = other.equals(line.substring(i + 1));
-				PolishForests.LOG.info("[determinism] {} vs {}: {} {}", label, file.getFileName(), key, same ? "identical" : "DIFFERENT");
-				if (!same) {
-					failures.add(label + " vs " + file.getFileName() + ": " + key + " differs");
+				if (same || !otherSet) {
+					PolishForests.LOG.info("[determinism] {} vs {}: {} {}", label, refName, key, same ? "identical" : "DIFFERENT");
+					if (!same) {
+						failures.add(label + " vs " + refName + ": " + key + " differs");
+					}
+					continue;
+				}
+				differing++;
+				TerrainBlocks.AreaDiff diff = blocks.get(key.substring("terrain ".length()));
+				if (diff == null || !diff.referenceHash().equals(other)) {
+					failures.add(label + " vs " + refName + ": " + key + " differs and the block-by-block file next to the reference "
+							+ (diff == null ? "does not have it" : "is from another run"));
+					continue;
+				}
+				worst = Math.max(worst, diff.blocks());
+				PolishForests.LOG.info("[determinism] {} vs {}: {} {}", label, refName, key, diff.report());
+				if (!diff.withinTolerance()) {
+					failures.add(label + " vs " + refName + ": " + key + " " + diff.report());
 				}
 			} else {
 				Diff d = Diff.of(Area.parseHex(line.substring(i + 1)), Area.parseHex(other));
-				PolishForests.LOG.info("[determinism] {} vs {}: {} {}", label, file.getFileName(), key, d);
-				if (d.count > 0) {
-					failures.add(label + " vs " + file.getFileName() + ": " + key + " " + d);
+				PolishForests.LOG.info("[determinism] {} vs {}: {} {}", label, refName, key, d);
+				if (otherSet) {
+					worstColumns = Math.max(worstColumns, d.count);
+				}
+				if (d.count > (otherSet ? TerrainBlocks.DECORATED_TOLERANCE_COLUMNS : 0)) {
+					failures.add(label + " vs " + refName + ": " + key + " " + d);
 				}
 			}
+		}
+		if (otherSet) {
+			PolishForests.LOG.info(String.format(Locale.ROOT, "[determinism] mod sets report, %s vs %s: terrain of %d of %d areas differs, "
+					+ "at most %d blocks per area (limit %d); decorated at most %d columns per area (limit %d)", label, refName, differing,
+					areas, worst, TerrainBlocks.TERRAIN_TOLERANCE_BLOCKS, worstColumns, TerrainBlocks.DECORATED_TOLERANCE_COLUMNS));
+		}
+	}
+
+	/** Differing blocks against the block-by-block file next to the reference; empty if that file is missing. */
+	private static Map<String, TerrainBlocks.AreaDiff> blockDifferences(Path reference, Path ours, String refName) {
+		Path theirs = reference.resolveSibling(TerrainBlocks.blocksFileName(refName.substring(0, refName.length() - ".txt".length())));
+		if (ours == null || !Files.exists(theirs)) {
+			PolishForests.LOG.warn("[determinism] no block-by-block file {}: differing terrain cannot be counted", theirs);
+			return Map.of();
+		}
+		try (BufferedReader a = gzipReader(ours); BufferedReader b = gzipReader(theirs)) {
+			return TerrainBlocks.compare(a, b);
+		} catch (IOException e) {
+			throw new AssertionError("Cannot compare the terrain with " + theirs, e);
 		}
 	}
 
