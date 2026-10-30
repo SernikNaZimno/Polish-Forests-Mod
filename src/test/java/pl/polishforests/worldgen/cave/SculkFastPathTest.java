@@ -14,7 +14,7 @@ import pl.polishforests.block.GameRegistries;
  * Step O2: the early answer of the sculk fast path ({@link SculkFastPath#cannotHold}) is a sufficient condition of
  * vanilla's answer false for every block state: the last branch of {@code SculkVeinSpreaderConfig.stateCanBeReplaced} is
  * "replaceable, air, the vein block or a water source", and every other branch answers false. (The game test
- * {@code determinism} compares whole worlds with and without the fast path, {@code -PsculkFastPath=off}.)
+ * {@code determinism} with {@code -ProotedDirtShare=0.3} compared whole worlds with the build before the fast path.)
  */
 class SculkFastPathTest {
 	@BeforeAll

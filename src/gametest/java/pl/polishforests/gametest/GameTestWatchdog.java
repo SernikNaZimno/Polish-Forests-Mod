@@ -54,6 +54,7 @@ public final class GameTestWatchdog implements ClientModInitializer {
 	private static final String TASK_FRAME = "runTaskOnThisThread";
 	/** The client starting the integrated server of a new or loaded world (no ticks while the server starts). */
 	private static final String LOAD_FRAME = "doWorldLoad";
+	private static final String SAVE_FRAME = "stopServer";
 
 	@Override
 	public void onInitializeClient() {
@@ -156,7 +157,8 @@ public final class GameTestWatchdog implements ClientModInitializer {
 
 		/**
 		 * The test work running without ticks, or null: the test thread running, a test task on another thread, or the client
-		 * loading a world (the server starting; about 3 s in the seasons runs, longer with a heavier world or mod set).
+		 * loading a world (the server starting; about 3 s in the seasons runs, longer with a heavier world or mod set), or
+		 * the server saving at the close of a world (over 20 s after a census of thousands of new chunks, step O2).
 		 */
 		private static String testWork(Thread test) {
 			if (test.getState() == Thread.State.RUNNABLE) {
@@ -169,6 +171,9 @@ public final class GameTestWatchdog implements ClientModInitializer {
 					}
 					if (f.getMethodName().equals(LOAD_FRAME) && f.getClassName().equals("net.minecraft.client.Minecraft")) {
 						return "world loading";
+					}
+					if (f.getMethodName().equals(SAVE_FRAME) && f.getClassName().equals("net.minecraft.server.MinecraftServer")) {
+						return "world saving";
 					}
 				}
 			}
