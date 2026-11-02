@@ -766,3 +766,14 @@ Krok L1 (DP-107, DP-115: powtarzalność ściółki). Projekt: `docs/04-pionowy-
 | L1-g | Kontakt z obiektem zostaje zależny od kolejności | Roślina na miejscu obiektu sąsiada, grunt pod nią, kołnierz mchu przy roślinie dwublokowej i ściółka kłody zależą od kolejności jak sam obiekt (opisane w `TreeMoss` już w V12); usunięcie wymagałoby planu obiektów sąsiadów w warstwie runa — poza zakresem |
 | L1-h | Pełne kolumny na żądanie | `-PdeterminismDeep`: zapis i porównanie pełnych kolumn obu światów kolejności dowolnej (pary bloków pod oknem); domyślnie wyłączone (pliki po kilka MB, dłuższy przebieg) |
 
+
+### G.36 Decyzje użytkownika po grze w 0.3.0-dev.1 (2026-11-02)
+
+| # | Sprawa | Decyzja użytkownika |
+|---|---|---|
+| U-1 | Recenzje wizualne | **Bez recenzji wizualnych robionych przez agentów** (bez recenzenta wizualnego i bez oceny wyglądu ze zrzutów). Wysiłek idzie w nowe funkcje. Po każdym kroku lista „Do sprawdzenia w grze” dla użytkownika (gdzie pójść, co wpisać, czego oczekiwać) i paczka `.mrpack` do zagrania. Zastępuje recenzje wizualne z zasad pracy (B1, T3) |
+| U-2 | Cieńsze pnie | **Tylko siekiera:** siekiera zwęża postawiony pień o 1 px (do promienia 1) i pozwala okorować pień każdego promienia, także najcieńszy (nowe bloki okorowanych pni) |
+| U-3 | Świat wanilii | **Nowy typ świata „Default + Polish Forests”:** teren i biomy wanilii, ale zwykłe biomy leśne wanilii są zastąpione odpowiednimi lasami moda. Typ świata „Polska” bez zmian. Zmienia A6 (dotąd tylko własny preset) |
+| U-4 | Typy lasów | Nowa struktura lasu (planer drzewostanu, drzewa proceduralne, runo, martwe drewno, korzenie) ma objąć **wszystkie typy lasów** moda, nie tylko grąd i bór świeży wycinka |
+| U-5 | Tatry | **Tatry w obu skalach** (najpierw GAMEPLAY, potem REAL): granit i wapień, regle, kosodrzewina, hale, piętro turni, stawy, limba. Reszta terenu Polski i istniejące obszary złotego testu bez zmian, Tatry jako nowy obszar. Przyspiesza część M5 |
+| U-6 | Kolejność | L1 (dokończenie bez recenzji wizualnej) → pnie (U-2, hitboxy) → typ świata wanilii (U-3) → pozostałe lasy (U-4) → Tatry (U-5). Przebieg zbiorczy przed CP-D (PZ) odłożony |
