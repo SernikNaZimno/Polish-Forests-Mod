@@ -126,6 +126,75 @@ final class TerrainBlocks {
 
 	/** The number of blocks of two lines of one column that differ; the first ones go to {@code first}. */
 	static int diffColumn(String ours, String theirs, int maxY, List<Block> first) {
+		int[] count = new int[1];
+		visitColumn(ours, theirs, maxY, (x, y, z, sp, sq) -> {
+			count[0]++;
+			if (first.size() < REPORTED_BLOCKS) {
+				first.add(new Block(x, y, z, sp, sq));
+			}
+		});
+		return count[0];
+	}
+
+	/** A differing block of a column: world position and the states of the two files. */
+	interface BlockVisitor {
+		void block(int x, int y, int z, String ours, String theirs);
+	}
+
+	/** A differing block of two files: area key and index in the file, column index within the area, position, states. */
+	interface ColumnVisitor {
+		void block(String areaKey, int area, int column, int x, int y, int z, String ours, String theirs);
+	}
+
+	/**
+	 * Visits every differing block of two block-by-block files with the same areas and columns in the same order (step L1:
+	 * the full columns of two worlds of one run).
+	 */
+	static void compareColumns(BufferedReader ours, BufferedReader theirs, ColumnVisitor visitor) throws IOException {
+		String a = ours.readLine();
+		String b = theirs.readLine();
+		int area = -1;
+		String key = null;
+		int maxY = 0;
+		int column = 0;
+		while (a != null) {
+			if (b == null) {
+				throw new IOException("The second file is shorter");
+			}
+			if (a.startsWith(AREA)) {
+				String[] head = header(a);
+				if (!b.startsWith(AREA) || !header(b)[0].equals(head[0])) {
+					throw new IOException("Different areas: " + a + " and " + b);
+				}
+				area++;
+				key = head[0];
+				maxY = Integer.parseInt(head[3]);
+				column = 0;
+			} else {
+				if (!a.equals(b)) {
+					String k = key;
+					int ar = area;
+					int c = column;
+					visitColumn(a, b, maxY, (x, y, z, sp, sq) -> visitor.block(k, ar, c, x, y, z, sp, sq));
+				}
+				column++;
+			}
+			a = ours.readLine();
+			b = theirs.readLine();
+		}
+	}
+
+	/** The block id of a state text of these files ({@code Block{minecraft:stone}[...]} → {@code stone}). */
+	static String blockId(String state) {
+		int open = state.indexOf('{');
+		int close = state.indexOf('}');
+		String id = open >= 0 && close > open ? state.substring(open + 1, close) : state;
+		int colon = id.indexOf(':');
+		return colon >= 0 ? id.substring(colon + 1) : id;
+	}
+
+	/** Visits the blocks of two lines of one column that differ. */
+	static void visitColumn(String ours, String theirs, int maxY, BlockVisitor visitor) {
 		String[] p = ours.split(" ");
 		String[] q = theirs.split(" ");
 		if (!p[0].equals(q[0]) || !p[1].equals(q[1])) {
@@ -139,7 +208,6 @@ final class TerrainBlocks {
 		if (y != bottom(q[j])) {
 			throw new IllegalArgumentException("Column " + x + " " + z + " starts at different heights");
 		}
-		int count = 0;
 		while (y <= maxY) {
 			int endP = i + 1 < p.length ? bottom(p[i + 1]) : maxY + 1;
 			int endQ = j + 1 < q.length ? bottom(q[j + 1]) : maxY + 1;
@@ -148,17 +216,13 @@ final class TerrainBlocks {
 			String sq = state(q[j]);
 			if (!sp.equals(sq)) {
 				for (int k = y; k < end; k++) {
-					count++;
-					if (first.size() < REPORTED_BLOCKS) {
-						first.add(new Block(x, k, z, sp, sq));
-					}
+					visitor.block(x, k, z, sp, sq);
 				}
 			}
 			y = end;
 			i += end == endP ? 1 : 0;
 			j += end == endQ ? 1 : 0;
 		}
-		return count;
 	}
 
 	private static int bottom(String run) {

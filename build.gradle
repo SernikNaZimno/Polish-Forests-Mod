@@ -598,6 +598,12 @@ tasks.named('runClientGameTest') {
 	if (project.hasProperty('determinismReference')) {
 		jvmArgs "-Dpolishforests.determinism.reference=${file(project.property('determinismReference')).absolutePath}"
 	}
+	// Step L1: <label>_window_diff.txt lists the differing window blocks of the free and the reversed order by kind;
+	// -PdeterminismDeep also writes the full columns of the two free-order worlds (<label>_full_*_w3|w4.txt.gz) and reports
+	// the differing blocks under the window by pairs.
+	if (project.hasProperty('determinismDeep')) {
+		jvmArgs '-Dpolishforests.determinism.deep=true'
+	}
 	// Norms card of step V4 (-Pgametest=slice): the census of the plots and transects, build/norms/karta-norm.csv.
 	jvmArgs "-Dpolishforests.norms.out=${layout.buildDirectory.dir('norms').get().asFile.absolutePath}"
 	// Render trials of step V3 (-Pgametest=probes): the measured colors, shares and frame times of each run.
@@ -633,6 +639,11 @@ tasks.named('runClientGameTest') {
 	}
 	if (project.hasProperty('floorCulling')) {
 		jvmArgs "-Dpolishforests.floorCulling=${project.property('floorCulling')}"
+	}
+	// Step L1: -PdecorationRandom=chunk draws the plants of the column layers and the placeholder trees from one random
+	// source per chunk, as before L1 (DP-107: the floor depended on the order of the chunks), for a comparison in one build.
+	if (project.hasProperty('decorationRandom')) {
+		jvmArgs "-Dpolishforests.decorationRandom=${project.property('decorationRandom')}"
 	}
 	// Review round 1 of V13: -PperfSeason=<sub-season> sets the date of the flights of -Pgametest=performance -Psites=slice.
 	if (project.hasProperty('perfSeason')) {

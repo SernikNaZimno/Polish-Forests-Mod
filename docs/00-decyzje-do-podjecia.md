@@ -751,3 +751,18 @@ Krok O2 (decyzje CP-C.3, CP-C.4a i J1-r: rezerwy generacji, geometria dna boru i
 | # | Pytanie | Decyzja użytkownika |
 |---|---|---|
 | J2-t (O2-k) | Cele generacji w świecie z jaskiniami niespełnione po O2 (chunki na sekundę z C2ME 0,43–0,63 × M2, w powtórce recenzji 0,44–0,63; cały chunk REAL do 52,6 ms; FEATURES i LIGHT w REAL ponad budżetem) | **(a′)** Świat bez zmian: jaskinie, biomy jaskiniowe i sculk jak w wanilii, bez upraszczania. **Norma lasu** PW-10 (chunki na sekundę z C2ME ≥ 0,7 × M2, cel 0,75; FEATURES ≤ 2,0 × i ≤ 10 ms; LIGHT ≤ 1,75 × i ≤ 12 ms; cały chunk ≤ 48 ms) jest mierzona w świecie **bez jaskiń** (`-Pcaves=off`) wobec M2; spełniona po O2 (0,71–0,78). W świecie **z jaskiniami** obowiązuje **strażnik regresji**: chunki na sekundę z C2ME REAL ≥ 0,4 × M2 i GAMEPLAY ≥ 0,55 × M2; budżety etapów i całego chunka z jaskiniami tylko raportowane. FPS z paczką ≥ 0,8 × M2 dalej mierzony w świecie z jaskiniami (tak gra gracz). Zastępuje CP-C.4a w części dotyczącej progów generacji. Dalsza optymalizacja bez zmiany wyniku (wariant (d)) nie jest zlecona |
+### G.35 Drobne wybory kroku L1 (domyślne, do potwierdzenia przy CP-D; 2026-11-02)
+
+Krok L1 (DP-107, DP-115: powtarzalność ściółki). Projekt: `docs/04-pionowy-wycinek.md`, „Projekt L1”; wyniki z gry: „Stan po L1” (etap 2).
+
+| # | Wybór | Wartość i powód |
+|---|---|---|
+| L1-a | Losowanie roślin warstw kolumnowych z położenia | Źródło losowe każdej rośliny z (ziarno, kolumna, sól warstwy ^ nowa sól `DecorationRandom.PLANT_SALT`) zamiast jednego źródła na chunk: wynik nie zależy od tego, którą roślinę zajął wcześniej obiekt sąsiedniego chunka. Plan bez zmian; zmiana wyniku w nowych chunkach: kierunki igliwia, ściółki i kwietników, wysokości roślin blokowych, kształty krzewów wanilii |
+| L1-b | Drzewa zastępcze tak samo | Źródło drzewa wanilii z jego kolumny (nowa sól `TREE_SALT`): zmienia kształty drzew zastępczych poza lasami wycinka w nowych chunkach, położenia i gatunki bez zmian; ta sama usterka (pominięte drzewo zmieniało dalsze) |
+| L1-c | Stare zapisy | Bez migracji: stare chunki zostają, na granicy ze starymi bez szwu (zmieniają się tylko właściwości pojedynczych obiektów zapisywanych w całości przez swój chunk) |
+| L1-d | Przełącznik `-PdecorationRandom=chunk` | Losowanie sprzed L1 w tym samym buildzie (test usterki i poprawki); domyślnie `position` |
+| L1-e | Piąty świat testu `determinism` | Kolejność odwrócona (odwrócony raster): deterministycznie odwraca kolejność na każdej granicy chunków, więc wykrywa zależność od kolejności także bez C2ME; koszt ok. +25% czasu testu |
+| L1-f | Dno lasu ściśle, reszta z tolerancją | `floor_free` (rośliny, ściółka, dywany i powietrze ponad 2 bloki od obiektu, od innej różnicy i od brzegu obszaru) = 0; tolerancja zostaje dla rud, sculku i jaskiń pod ziemią, wierzchu gruntu, obiektów na granicach chunków (drzewa, kłody, skały — jak w wanilii) i dna w kontakcie z nimi. Progi udziału bez zmian (0,5% / 8%), odwrócona kolejność tymczasowo 8% do pierwszego pomiaru |
+| L1-g | Kontakt z obiektem zostaje zależny od kolejności | Roślina na miejscu obiektu sąsiada, grunt pod nią, kołnierz mchu przy roślinie dwublokowej i ściółka kłody zależą od kolejności jak sam obiekt (opisane w `TreeMoss` już w V12); usunięcie wymagałoby planu obiektów sąsiadów w warstwie runa — poza zakresem |
+| L1-h | Pełne kolumny na żądanie | `-PdeterminismDeep`: zapis i porównanie pełnych kolumn obu światów kolejności dowolnej (pary bloków pod oknem); domyślnie wyłączone (pliki po kilka MB, dłuższy przebieg) |
+

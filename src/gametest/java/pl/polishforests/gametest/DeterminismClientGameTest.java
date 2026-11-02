@@ -70,7 +70,24 @@ import pl.polishforests.worldgen.chunk.PolandScale;
  * the most frequent pairs of differing blocks, the distance of the differing columns from the nearest chunk border and the groups of differing columns (8-connected) that do not
  * reach within {@link #BORDER_BAND} blocks of a border (a whole tree, or the leaf distances around a log that crosses the
  * border, can differ deeper inside the chunk).</li>
+ * <li>"reversed order" (world 5, step L1 of docs/04-pionowy-wycinek.md): the area and its ring brought to FEATURES one
+ * chunk at a time in the reversed raster order, so at every chunk border the other chunk of the pair comes first than in
+ * world 1; compared with world 1 like the free order (the worst order for the objects that cross a border, with the
+ * limit {@link #REVERSED_ORDER_TOLERANCE} for them).</li>
  * </ul>
+ *
+ * <p><b>Forest floor exactly in any order (step L1, DP-107 and DP-115).</b> In the free and the reversed order the
+ * differing blocks of the window are sorted by kind ({@link WindowDiff}): the floor layers (litter, herbs, mosses,
+ * bilberry) away from every object must be identical ({@link WindowDiff.Kind#FLOOR_FREE}: limit 0, with and without the
+ * optimization pack), because since L1 every plant draws from a random source of its own position
+ * ({@code DecorationRandom}); the share limits above apply only to the rest: vanilla features under the ground (ores,
+ * sculk, caves), the top ground block, the objects that cross chunk borders and the floor blocks within
+ * {@link WindowDiff#CONTACT} blocks of such an object. The differing blocks above the ground of these comparisons go to
+ * {@code <label>_window_diff.txt} next to the hashes (position, kind and both states; with {@code -PdecorationRandom=chunk},
+ * the draws of before L1, the free floor differences of DP-107 show there). With {@code -PdeterminismDeep} the full
+ * columns of the two free-order worlds are also written block by block ({@code <label>_full_<scale>_<mode>_w3|w4.txt.gz})
+ * and compared, by the pairs of differing blocks under the window (the question of the review of J2: which blocks deep
+ * under the ground differ between free orders).
  *
  * <p>The column hashes go to {@code polishforests.determinism.out} ({@code build/determinism/<plain|optimization>.txt});
  * with {@code -PdeterminismReference=<file>} the run also compares itself with a file written by a run with the other
@@ -105,6 +122,22 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 	 */
 	static final double FREE_ORDER_TOLERANCE_PLAIN = 0.005;
 	static final double FREE_ORDER_TOLERANCE_OPTIMIZATION = 0.08;
+	/**
+	 * Largest share of decoration-window blocks that may differ between the raster and the reversed order (step L1): every
+	 * object that crosses a chunk border meets the other order, so the limit of the optimization pack is taken for both
+	 * mod sets until the first runs give a measured one (the floor away from objects is exact anyway).
+	 */
+	static final double REVERSED_ORDER_TOLERANCE = FREE_ORDER_TOLERANCE_OPTIMIZATION;
+	/** Most differing blocks above the ground written to the window file per comparison and area. */
+	static final int WINDOW_DUMP_LIMIT = 4000;
+
+	/** Comparison modes: exact (fixed order), order (free or reversed: exact floor, a share limit for the rest), report only. */
+	private enum Mode {
+		EXACT, ORDER, REPORT
+	}
+
+	/** Worlds per scale and mode: two in the fixed order, two in the free order, one in the reversed order. */
+	private static final int WORLDS = 5;
 	/** Ring of chunks around a free-order area that is also requested at TERRAIN (concurrent generation of the neighbors). */
 	static final int TERRAIN_RING = 1;
 	/** Height of the decoration window of a column (blocks) and its part below the terrain ground. */
@@ -133,8 +166,11 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 		List<String> failures = new ArrayList<>();
 		String dir = System.getProperty("polishforests.determinism.out", "");
 		Path blocksFile = dir.isBlank() ? null : Path.of(dir, TerrainBlocks.blocksFileName(label));
-		try (BufferedWriter blocks = blocksFile == null ? null : gzipWriter(blocksFile)) {
-			worlds(context, scales, tolerance, blocks, out, failures);
+		Path windowFile = dir.isBlank() ? null : Path.of(dir, label + "_window_diff.txt");
+		boolean deep = Boolean.getBoolean("polishforests.determinism.deep") && !dir.isBlank();
+		try (BufferedWriter blocks = blocksFile == null ? null : gzipWriter(blocksFile);
+				BufferedWriter windowDump = windowFile == null ? null : Files.newBufferedWriter(windowFile, StandardCharsets.UTF_8)) {
+			worlds(context, scales, tolerance, blocks, windowDump, deep ? Path.of(dir) : null, label, out, failures);
 		} catch (IOException e) {
 			throw new AssertionError("Cannot write the terrain block by block", e);
 		}
@@ -159,7 +195,7 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 
 	/** Generates the worlds of the test and compares them with each other; the hashes go to {@code out}. */
 	private static void worlds(ClientGameTestContext context, String scales, double tolerance, BufferedWriter blocks,
-			List<String> out, List<String> failures) {
+			BufferedWriter windowDump, Path deepDir, String label, List<String> out, List<String> failures) {
 		for (PolandScale scale : PolandScale.values()) {
 			if (!scales.isBlank() && !scales.contains(scale.getSerializedName())) {
 				continue;
@@ -169,9 +205,19 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 			int[][] areas = scale == PolandScale.REALISTIC ? AREAS_REAL : AREAS_GAMEPLAY;
 			for (boolean presentDay : new boolean[] {false, true}) {
 				String name = scale.getSerializedName() + (presentDay ? " present_day" : " natural");
-				Area[][] worlds = new Area[4][];
-				for (int w = 0; w < 4; w++) {
-					boolean fixedOrder = w < 2;
+				Area[][] worlds = new Area[WORLDS][];
+				String fileKey = scale.getSerializedName() + "_" + (presentDay ? "present_day" : "natural");
+				for (int w = 0; w < WORLDS; w++) {
+					boolean fixedOrder = w < 2 || w == 4;
+					boolean reversed = w == 4;
+					Path deepFile = deepDir != null && (w == 2 || w == 3)
+							? deepDir.resolve(label + "_full_" + fileKey + "_w" + (w + 1) + ".txt.gz") : null;
+					BufferedWriter full;
+					try {
+						full = deepFile == null ? null : gzipWriter(deepFile);
+					} catch (IOException e) {
+						throw new AssertionError("Cannot write " + deepFile, e);
+					}
 					try (TestSingleplayerContext sp = context.worldBuilder()
 							.adjustSettings(ui -> select(ui, preset, presentDay)).create()) {
 						sp.getServer().runCommand("gamerule spawn_mobs false");
@@ -188,7 +234,7 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 								sp.getServer().runOnServer(s -> writeTerrain(s.overworld(), ox, oz, areaKey, terrain.terrainHash(), blocks));
 							}
 							if (fixedOrder) {
-								sp.getServer().runOnServer(s -> decorateInOrder(s.overworld(), ox, oz));
+								sp.getServer().runOnServer(s -> decorateInOrder(s.overworld(), ox, oz, reversed));
 							} else {
 								// Off the server thread getChunkFuture only queues the request, so all 64 chunks are generated at
 								// once by the generation threads (on the server thread it would wait for each chunk in turn).
@@ -200,21 +246,40 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 								}
 							}
 							worlds[w][a] = sp.getServer().computeOnServer(s -> decorated(s.overworld(), ox, oz, terrain));
+							if (full != null) {
+								sp.getServer().runOnServer(s -> writeTerrain(s.overworld(), ox, oz, areaKey, 0, full));
+							}
 						}
 						PolishForests.LOG.info(String.format(Locale.ROOT, "[determinism] %s: world %d (%s order) generated in %.1f s",
-								name, w + 1, fixedOrder ? "fixed" : "free", (System.nanoTime() - t0) / 1e9));
+								name, w + 1, reversed ? "reversed" : fixedOrder ? "fixed" : "free", (System.nanoTime() - t0) / 1e9));
+					} finally {
+						if (full != null) {
+							try {
+								full.close();
+							} catch (IOException e) {
+								throw new AssertionError("Cannot write " + deepFile, e);
+							}
+						}
 					}
 				}
 				for (int a = 0; a < areas.length; a++) {
 					String key = scale.getSerializedName() + " " + (presentDay ? "present_day" : "natural") + " " + a;
+					int[] corner = areas[a];
 					PolishForests.LOG.info("[determinism] {}", compare(name + " / " + AREA_NAMES[a] + ", fixed order",
-							worlds[0][a], worlds[1][a], true, tolerance, failures));
+							worlds[0][a], worlds[1][a], Mode.EXACT, tolerance, corner, windowDump, failures));
 					PolishForests.LOG.info("[determinism] {}", compare(name + " / " + AREA_NAMES[a] + ", free order",
-							worlds[2][a], worlds[3][a], false, tolerance, failures));
+							worlds[2][a], worlds[3][a], Mode.ORDER, tolerance, corner, windowDump, failures));
+					PolishForests.LOG.info("[determinism] {}", compare(name + " / " + AREA_NAMES[a] + ", fixed against reversed order",
+							worlds[0][a], worlds[4][a], Mode.ORDER, REVERSED_ORDER_TOLERANCE, corner, windowDump, failures));
 					PolishForests.LOG.info("[determinism] {}", compare(name + " / " + AREA_NAMES[a] + ", fixed against free order "
-							+ "(terrain exactly, decoration report only)", worlds[0][a], worlds[2][a], null, tolerance, failures));
+							+ "(terrain exactly, decoration report only)", worlds[0][a], worlds[2][a], Mode.REPORT, tolerance, corner,
+							windowDump, failures));
 					out.add("terrain " + key + " " + Long.toHexString(worlds[0][a].terrainHash()));
 					out.add("decorated " + key + " " + worlds[0][a].decoratedHex());
+				}
+				if (deepDir != null) {
+					deepReport(name, deepDir.resolve(label + "_full_" + fileKey + "_w3.txt.gz"),
+							deepDir.resolve(label + "_full_" + fileKey + "_w4.txt.gz"), worlds[2]);
 				}
 			}
 		}
@@ -328,11 +393,14 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 
 	/**
 	 * Decoration in a fixed order: the area and its ring of neighbors (which light needs decorated) brought to FEATURES one
-	 * chunk at a time in raster order, so every chunk is decorated after the same neighbors in every world.
+	 * chunk at a time in raster order, so every chunk is decorated after the same neighbors in every world; {@code reversed}
+	 * the raster order backwards (step L1), so every chunk border meets the other order.
 	 */
-	private static void decorateInOrder(ServerLevel level, int ox, int oz) {
-		for (int cx = -1; cx <= SIZE; cx++) {
-			for (int cz = -1; cz <= SIZE; cz++) {
+	private static void decorateInOrder(ServerLevel level, int ox, int oz, boolean reversed) {
+		for (int i = -1; i <= SIZE; i++) {
+			for (int j = -1; j <= SIZE; j++) {
+				int cx = reversed ? SIZE - 1 - i : i;
+				int cz = reversed ? SIZE - 1 - j : j;
 				level.getChunkSource().getChunk(ox + cx, oz + cz, ChunkStatus.FEATURES, true);
 			}
 		}
@@ -413,8 +481,12 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 		return z ^ (z >>> 31);
 	}
 
-	/** Terrain exactly; decorated columns exactly in the fixed order, within the tolerance in the free order, null: report only. */
-	private static String compare(String name, Area x, Area y, Boolean exact, double tolerance, List<String> failures) {
+	/**
+	 * Terrain exactly; decorated columns exactly in the fixed order; in the free and the reversed order the floor away from
+	 * objects exactly and the rest of the window within the tolerance (step L1); report only.
+	 */
+	private static String compare(String name, Area x, Area y, Mode mode, double tolerance, int[] corner, BufferedWriter windowDump,
+			List<String> failures) {
 		int terrainDiff = differing(x.terrain, y.terrain);
 		Diff d = Diff.of(x.decorated, y.decorated);
 		int blocks = 0;
@@ -437,7 +509,11 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 				}
 			}
 		}
-		double blockShare = nonAir == 0 ? 0 : (double) blocks / nonAir;
+		WindowDiff.Result kinds = mode == Mode.EXACT ? null
+				: WindowDiff.of(x.window, y.window, x.ground, classes(states), SIZE, WINDOW, WINDOW_BELOW, WINDOW_DUMP_LIMIT);
+		int free = kinds == null ? 0 : kinds.count(WindowDiff.Kind.FLOOR_FREE);
+		// The share limit applies to everything but the free floor differences, which have their own limit 0 (step L1).
+		double blockShare = nonAir == 0 ? 0 : (double) (blocks - free) / nonAir;
 		double chunkShare = 0;
 		for (int c = 0; c < chunkBlocks.length; c++) {
 			chunkShare = Math.max(chunkShare, chunkNonAir[c] == 0 ? 0 : (double) chunkBlocks[c] / chunkNonAir[c]);
@@ -446,16 +522,149 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 		pairs.entrySet().stream().sorted((p, q) -> q.getValue() - p.getValue()).limit(4)
 				.forEach(e -> top.append(top.isEmpty() ? "" : ", ").append(e.getKey()).append(' ').append(e.getValue()));
 		String result = String.format(Locale.ROOT, "%s: terrain before FEATURES %d of %d columns differ; decorated %s; blocks of "
-				+ "the decoration window: %d of %d non-air differ (%.3f%%, worst chunk %.2f%%; most frequent: %s)", name, terrainDiff,
-				x.terrain.length, d, blocks, nonAir, 100 * blockShare, 100 * chunkShare, top);
+				+ "the decoration window: %d of %d non-air differ (%.3f%% without the free floor, worst chunk %.2f%%; most frequent: %s)",
+				name, terrainDiff, x.terrain.length, d, blocks, nonAir, 100 * blockShare, 100 * chunkShare, top);
+		if (kinds != null) {
+			result += "; by kind: " + kindReport(kinds, states);
+			dumpWindow(windowDump, name, corner, kinds, states);
+		}
 		if (terrainDiff > 0) {
 			failures.add(name + ": terrain differs in " + terrainDiff + " columns");
 		}
-		if (exact != null && (exact ? d.count > 0 : blockShare > tolerance)) {
+		if (mode == Mode.EXACT && d.count > 0 || mode == Mode.ORDER && blockShare > tolerance) {
 			failures.add(String.format(Locale.ROOT, "%s: decorated %s, %.3f%% of the window blocks (limit %s)", name, d,
-					100 * blockShare, exact ? "0" : String.format(Locale.ROOT, "%.1f%%", 100 * tolerance)));
+					100 * blockShare, mode == Mode.EXACT ? "0" : String.format(Locale.ROOT, "%.1f%%", 100 * tolerance)));
+		}
+		if (mode == Mode.ORDER && free > 0) {
+			failures.add(String.format(Locale.ROOT, "%s: %d blocks of the forest floor away from objects differ (limit 0; %s)", name,
+					free, kindReport(kinds, states)));
 		}
 		return result;
+	}
+
+	/**
+	 * Class of each state number of this run for {@link WindowDiff}: wood, leaves and the mod's trunk blocks (trunks, root
+	 * flares, roots) are objects; plants, litters and carpets are the floor.
+	 */
+	private static byte[] classes(Map<Integer, BlockState> states) {
+		byte[] c = new byte[STATE_IDS.size()];
+		for (int id = 0; id < c.length; id++) {
+			BlockState st = states.get(id);
+			c[id] = st == null ? WindowDiff.OTHER : windowClass(st);
+		}
+		return c;
+	}
+
+	static byte windowClass(BlockState st) {
+		net.minecraft.world.level.block.Block block = st.getBlock();
+		if (st.isAir()) {
+			return WindowDiff.AIR;
+		}
+		if (st.is(net.minecraft.tags.BlockTags.LOGS) || st.is(net.minecraft.tags.BlockTags.LEAVES)
+				|| block instanceof pl.polishforests.block.TrunkBlock) {
+			return WindowDiff.OBJECT;
+		}
+		if (block instanceof net.minecraft.world.level.block.VegetationBlock || block instanceof net.minecraft.world.level.block.CarpetBlock
+				|| block instanceof net.minecraft.world.level.block.BigDripleafBlock
+				|| block instanceof net.minecraft.world.level.block.BigDripleafStemBlock
+				|| block instanceof net.minecraft.world.level.block.SugarCaneBlock || st.is(net.minecraft.tags.BlockTags.REPLACEABLE)) {
+			return WindowDiff.FLOOR;
+		}
+		return WindowDiff.OTHER;
+	}
+
+	/** Counts by kind, with the most frequent pairs of the free floor differences. */
+	private static String kindReport(WindowDiff.Result kinds, Map<Integer, BlockState> states) {
+		StringBuilder sb = new StringBuilder();
+		for (WindowDiff.Kind k : WindowDiff.Kind.values()) {
+			sb.append(sb.isEmpty() ? "" : ", ").append(k.name().toLowerCase(Locale.ROOT)).append(' ').append(kinds.count(k));
+		}
+		Map<String, Integer> pairs = new HashMap<>();
+		for (WindowDiff.Block b : kinds.blocks()) {
+			if (b.kind() == WindowDiff.Kind.FLOOR_FREE) {
+				pairs.merge(stateName(states.get(b.ours())) + "/" + stateName(states.get(b.theirs())), 1, Integer::sum);
+			}
+		}
+		if (!pairs.isEmpty()) {
+			sb.append(" (free floor:");
+			pairs.entrySet().stream().sorted((p, q) -> q.getValue() - p.getValue()).limit(4)
+					.forEach(e -> sb.append(' ').append(e.getKey()).append(' ').append(e.getValue()));
+			sb.append(')');
+		}
+		return sb.toString();
+	}
+
+	/** Block id without the namespace with its properties (the facing of a litter shows here). */
+	private static String stateName(BlockState state) {
+		if (state == null) {
+			return "?";
+		}
+		String text = state.toString();
+		int brace = text.indexOf('{');
+		int colon = text.indexOf(':', Math.max(brace, 0));
+		return (colon >= 0 ? text.substring(colon + 1) : text).replace("}", "").replace(' ', '_');
+	}
+
+	/** The differing blocks above the ground of one comparison (world coordinates, kind, both states). */
+	private static void dumpWindow(BufferedWriter out, String name, int[] corner, WindowDiff.Result kinds,
+			Map<Integer, BlockState> states) {
+		if (out == null) {
+			return;
+		}
+		try {
+			out.write("# " + name + ": " + kinds.blocks().size() + " blocks above the underground (x y z kind first second)\n");
+			for (WindowDiff.Block b : kinds.blocks()) {
+				out.write((corner[0] + b.x()) + " " + b.y() + " " + (corner[1] + b.z()) + " " + b.kind().name().toLowerCase(Locale.ROOT)
+						+ " " + stateName(states.get(b.ours())) + " " + stateName(states.get(b.theirs())) + "\n");
+			}
+			out.flush();
+		} catch (IOException e) {
+			throw new AssertionError("Cannot write the window differences", e);
+		}
+	}
+
+	/**
+	 * Report of the full columns of the two free-order worlds (with {@code -PdeterminismDeep}, the question of the review of
+	 * J2): per area the differing blocks under the decoration window, above it and in it, the columns with a difference
+	 * under the window and the most frequent pairs of differing blocks under it.
+	 */
+	private static void deepReport(String name, Path first, Path second, Area[] areas) {
+		Map<String, int[]> perArea = new java.util.LinkedHashMap<>();
+		Map<String, Map<String, Integer>> pairs = new HashMap<>();
+		Map<String, boolean[]> deepColumns = new HashMap<>();
+		try (BufferedReader a = gzipReader(first); BufferedReader b = gzipReader(second)) {
+			TerrainBlocks.compareColumns(a, b, (areaKey, area, column, x, yy, z, ours, theirs) -> {
+				int ground = areas[area].ground()[column];
+				int[] counts = perArea.computeIfAbsent(areaKey, k -> new int[4]);
+				if (yy < ground - WINDOW_BELOW) {
+					counts[0]++;
+					deepColumns.computeIfAbsent(areaKey, k -> new boolean[SIZE * SIZE * 256])[column] = true;
+					pairs.computeIfAbsent(areaKey, k -> new HashMap<>()).merge(TerrainBlocks.blockId(ours) + "/"
+							+ TerrainBlocks.blockId(theirs), 1, Integer::sum);
+				} else if (yy < ground - WINDOW_BELOW + WINDOW) {
+					counts[1]++;
+				} else {
+					counts[2]++;
+				}
+			});
+		} catch (IOException e) {
+			throw new AssertionError("Cannot compare " + first + " with " + second, e);
+		}
+		perArea.forEach((key, counts) -> {
+			boolean[] cols = deepColumns.get(key);
+			int n = 0;
+			if (cols != null) {
+				for (boolean c : cols) {
+					n += c ? 1 : 0;
+				}
+			}
+			StringBuilder top = new StringBuilder();
+			pairs.getOrDefault(key, Map.of()).entrySet().stream().sorted((p, q) -> q.getValue() - p.getValue()).limit(8)
+					.forEach(e -> top.append(top.isEmpty() ? "" : ", ").append(e.getKey()).append(' ').append(e.getValue()));
+			PolishForests.LOG.info(String.format(Locale.ROOT, "[determinism] %s / area %s, free order, full columns: under the window %d "
+					+ "blocks in %d columns (%.2f%%), in the window %d, above it %d; under the window most frequent: %s", name, key,
+					counts[0], n, 100.0 * n / (SIZE * SIZE * 256), counts[1], counts[2], top));
+		});
 	}
 
 	/** Block id without the namespace, with the properties that differ most often (leaf distance, waterlogging). */

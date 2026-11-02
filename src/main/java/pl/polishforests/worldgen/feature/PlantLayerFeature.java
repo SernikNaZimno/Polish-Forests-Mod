@@ -44,8 +44,15 @@ import pl.polishforests.worldgen.feature.plan.TreeStandPlan;
  * plant's height range (1: the leaf on the ground; not the vanilla random height of 2–5), a block with a height above 1
  * is a column (sugar cane as reed). Both halves of a double plant out of water are marked for the post-processing of the
  * chunk, which removes a half whose other half or ground a later feature of a neighbor replaced (a fallen tree, a crown,
- * a sand disk). A feature plant (shrubs, fallen trees) is a placed feature with its own filters, placed with the layer's
- * random source from (world seed, chunk, layer salt).
+ * a sand disk). A feature plant (shrubs, fallen trees) is a placed feature with its own filters.
+ *
+ * <p>The random values of a plant (the facing of a litter or a flower bed, the height of a block plant, a feature plant's
+ * own draws) come from a random source seeded for that plant alone from (world seed, column, layer salt,
+ * {@link DecorationRandom#PLANT_SALT}; step L1 of docs/04-pionowy-wycinek.md, DP-107 and DP-115). Before L1 they came from one source
+ * per chunk drawn plant after plant, so a plant whose place a neighbor chunk's object (a root flare, a log, a moss carpet)
+ * had taken first was skipped without its draws and every later plant of the chunk got other values: the facings of
+ * whole litter patches changed with the order in which the chunk and its neighbors were decorated.
+ * {@link DecorationRandom#CHUNK_SEQUENCE} restores that sequence (test switch).
  */
 public final class PlantLayerFeature implements Feature {
 	private static final Map<BiomeDecoration.Dispatcher, MapCodec<PlantLayerFeature>> CODECS = new EnumMap<>(
@@ -216,9 +223,15 @@ public final class PlantLayerFeature implements Feature {
 				pos.z(), salt)));
 		int placed = 0;
 		BlockPos.MutableBlockPos at = new BlockPos.MutableBlockPos();
+		boolean positional = !DecorationRandom.CHUNK_SEQUENCE;
 		for (int p : planned) {
 			int column = ColumnPlan.column(p);
 			PlantPalette.Plant plant = plants.get(ColumnPlan.plant(p));
+			if (positional) {
+				// Step L1: the draws of this plant depend on its column only, not on the plants before it in the chunk.
+				random.setSeed(DecorationRandom.plantSeed(level.getSeed(), pos.getMinBlockX() + (column >> 4),
+						pos.getMinBlockZ() + (column & 15), salt));
+			}
 			int piece = habitats.pieceDistance(column);
 			if (piece == 0 || piece <= FEATURE_GAP && plant.feature().isPresent()) {
 				// Round 1 of the S8 review: nothing on the footprint of a structure piece (moss carpet on the floor

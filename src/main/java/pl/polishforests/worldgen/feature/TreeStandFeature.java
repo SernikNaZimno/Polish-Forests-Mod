@@ -45,8 +45,10 @@ import pl.polishforests.worldgen.tree.TreeVoxels;
  * palette ({@link TreePalette}, JSON: rules by biome, zone, forest site type and association). The plan is a pure
  * function ({@link TreeStandPlan}) with the chunk's range ramp ({@link SpeciesRamp}, from O and P of the chunk), the gap
  * noise and, from step V9 of docs/04-pionowy-wycinek.md, the stand map of the world ({@link ForestStandMap}) and the
- * crown territories ({@link CrownTerritories}); the dispatcher has its own random source from (world seed, chunk, layer
- * salt), so features of other mods do not shift it.
+ * crown territories ({@link CrownTerritories}); the placeholder trees draw from a random source of their own, seeded from
+ * (world seed, trunk column, {@link DecorationRandom#TREE_SALT}; step L1 of docs/04-pionowy-wycinek.md), so neither features of
+ * other mods nor a tree skipped because a neighbor chunk had taken its place shift the draws of the other trees (before
+ * L1: one source per chunk from (world seed, chunk, layer salt), drawn tree after tree; {@link DecorationRandom}).
  *
  * <p><b>Placeholder trees</b> ({@code polishforests:tree_substitute/<species>}, decision PW-3): placed features placed on
  * the top ground block, or on the bottom of shallow water for willows and alders, at least {@value #BUILDING_GAP} blocks
@@ -358,6 +360,9 @@ public final class TreeStandFeature implements Feature {
 				if (habitats.buildingDistance(column) <= BUILDING_GAP || habitats.pieceDistance(column) <= PIECE_GAP) {
 					// A structure nearby (round 1 of the S8 review): no trunk on a street, no crown in a house.
 					continue;
+				}
+				if (!DecorationRandom.CHUNK_SEQUENCE) {
+					treeRandom.setSeed(DecorationRandom.seed(worldSeed, x, z, DecorationRandom.TREE_SALT));
 				}
 				FastTreeFeature.COUNTS.set(substitute);
 				try {
