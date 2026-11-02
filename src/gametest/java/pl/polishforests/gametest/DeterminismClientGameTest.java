@@ -124,10 +124,11 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 	static final double FREE_ORDER_TOLERANCE_OPTIMIZATION = 0.08;
 	/**
 	 * Largest share of decoration-window blocks that may differ between the raster and the reversed order (step L1): every
-	 * object that crosses a chunk border meets the other order, so the limit of the optimization pack is taken for both
-	 * mod sets until the first runs give a measured one (the floor away from objects is exact anyway).
+	 * object that crosses a chunk border meets the other order. Measured in the second stage of L1 (both mod sets give the
+	 * same share, the reversed order is one thread): at most 2.26% of the area (GAMEPLAY N river; the forests of the slice
+	 * up to 1.42%, the Beskids 1.04%), so the limit is about twice that (the floor away from objects is exact anyway).
 	 */
-	static final double REVERSED_ORDER_TOLERANCE = FREE_ORDER_TOLERANCE_OPTIMIZATION;
+	static final double REVERSED_ORDER_TOLERANCE = 0.05;
 	/** Most differing blocks above the ground written to the window file per comparison and area. */
 	static final int WINDOW_DUMP_LIMIT = 4000;
 
@@ -543,8 +544,8 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 	}
 
 	/**
-	 * Class of each state number of this run for {@link WindowDiff}: wood, leaves and the mod's trunk blocks (trunks, root
-	 * flares, roots) are objects; plants, litters and carpets are the floor.
+	 * Class of each state number of this run for {@link WindowDiff}: wood, leaves, the vines that hang from the leaves and
+	 * the mod's trunk blocks (trunks, root flares, roots) are objects; plants, litters and carpets are the floor.
 	 */
 	private static byte[] classes(Map<Integer, BlockState> states) {
 		byte[] c = new byte[STATE_IDS.size()];
@@ -560,8 +561,12 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 		if (st.isAir()) {
 			return WindowDiff.AIR;
 		}
+		// A vine (in the tag replaceable) is a part of the placeholder tree whose leave_vine decorator hangs it from the
+		// crown, from beside a leaf down to 4 blocks lower: it follows its crown and stops at whatever it meets, like a crown at a
+		// chunk border (second stage of L1: in the river area the only free-floor differences were vines and the plants
+		// they met).
 		if (st.is(net.minecraft.tags.BlockTags.LOGS) || st.is(net.minecraft.tags.BlockTags.LEAVES)
-				|| block instanceof pl.polishforests.block.TrunkBlock) {
+				|| block instanceof pl.polishforests.block.TrunkBlock || st.is(net.minecraft.world.level.block.Blocks.VINE)) {
 			return WindowDiff.OBJECT;
 		}
 		if (block instanceof net.minecraft.world.level.block.VegetationBlock || block instanceof net.minecraft.world.level.block.CarpetBlock

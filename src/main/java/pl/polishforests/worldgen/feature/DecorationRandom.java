@@ -28,6 +28,14 @@ public final class DecorationRandom {
 	public static final long PLANT_SALT = 0x2F8C_61D4_A95B_E317L;
 	/** Salt of the random source of a placeholder tree ({@code feature.tree.position_random}, a new salt of step L1). */
 	public static final long TREE_SALT = 0x61E3_9A0F_D47C_2B85L;
+	/**
+	 * Salt of the random source of the hanging vines of one leaf of a placeholder tree ({@code feature.tree.leaf_vine},
+	 * a new salt of the second stage of step L1): the vanilla {@code leave_vine} decorator draws leaf after leaf from the
+	 * tree's source, so a leaf that a neighbor chunk's object had displaced shifted the vines of the whole crown.
+	 */
+	public static final long VINE_SALT = 0x3B7E_C519_08F2_A6D3L;
+	/** Odd multiplier that spreads the height of a leaf over the salt (the golden ratio of 64 bits). */
+	private static final long HEIGHT_MIX = 0x9E37_79B9_7F4A_7C15L;
 
 	private DecorationRandom() {
 	}
@@ -46,6 +54,11 @@ public final class DecorationRandom {
 	/** Seed of the random source of the plant of a layer with the salt {@code layerSalt} at world column (x, z). */
 	public static long plantSeed(long worldSeed, int x, int z, long layerSalt) {
 		return seed(worldSeed, x, z, layerSalt ^ PLANT_SALT);
+	}
+
+	/** Seed of the random source of the vines of the leaf at world position (x, y, z) (a pure function). */
+	public static long leafSeed(long worldSeed, int x, int y, int z) {
+		return seed(worldSeed, x, z, VINE_SALT + y * HEIGHT_MIX);
 	}
 
 	/** Seed of the random source of the object at world column (x, z) with this salt (a pure function). */

@@ -34,6 +34,24 @@ class DecorationRandomTest {
 		assertFalse(old.contains(DecorationRandom.PLANT_SALT));
 		assertFalse(old.contains(DecorationRandom.TREE_SALT));
 		assertNotEquals(DecorationRandom.PLANT_SALT, DecorationRandom.TREE_SALT);
+		assertFalse(old.contains(DecorationRandom.VINE_SALT));
+		assertEquals(3, Set.of(DecorationRandom.PLANT_SALT, DecorationRandom.TREE_SALT, DecorationRandom.VINE_SALT).size());
+	}
+
+	/** The vines of a leaf draw from its own position: the same in every crown, different for another height or column. */
+	@Test
+	void leafSeedIsAPureFunctionOfThePosition() {
+		long s = DecorationRandom.leafSeed(WORLD, 40, 80, -3);
+		assertEquals(s, DecorationRandom.leafSeed(WORLD, 40, 80, -3));
+		assertNotEquals(s, DecorationRandom.leafSeed(WORLD, 40, 81, -3));
+		assertNotEquals(s, DecorationRandom.leafSeed(WORLD, 41, 80, -3));
+		assertNotEquals(s, DecorationRandom.leafSeed(WORLD, 40, 80, -2));
+		assertNotEquals(s, DecorationRandom.leafSeed(WORLD + 1, 40, 80, -3));
+		Set<Long> column = new HashSet<>();
+		for (int y = -64; y < 320; y++) {
+			column.add(DecorationRandom.leafSeed(WORLD, 40, y, -3));
+		}
+		assertEquals(384, column.size(), "every height of a column draws differently");
 	}
 
 	/**

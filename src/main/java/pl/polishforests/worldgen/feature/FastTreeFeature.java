@@ -18,9 +18,12 @@ import net.minecraft.world.level.block.VineBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.chunk.ChunkGenerator;
+import net.minecraft.world.level.levelgen.WorldgenRandom;
+import net.minecraft.world.level.levelgen.XoroshiroRandomSource;
 import net.minecraft.world.level.levelgen.feature.Feature;
 import net.minecraft.world.level.levelgen.feature.TreeFeature;
 import net.minecraft.world.level.levelgen.feature.foliageplacers.FoliagePlacer;
+import net.minecraft.world.level.levelgen.feature.treedecorators.LeaveVineDecorator;
 import net.minecraft.world.level.levelgen.feature.treedecorators.TreeDecorator;
 
 /**
@@ -113,11 +116,36 @@ public record FastTreeFeature(TreeFeature tree) implements Feature {
 					level.getChunk(pos).markPosForPostProcessing(pos);
 				}
 			};
-			TreeDecorator.Context context = new TreeDecorator.Context(level, decorationSetter, random, new HashSet<>(logs),
-					new HashSet<>(kept), Set.of());
-			tree.decorators().forEach(d -> d.place(context));
+			Set<BlockPos> logSet = new HashSet<>(logs);
+			TreeDecorator.Context context = new TreeDecorator.Context(level, decorationSetter, random, logSet, new HashSet<>(kept),
+					Set.of());
+			for (TreeDecorator d : tree.decorators()) {
+				if (d instanceof LeaveVineDecorator && !DecorationRandom.CHUNK_SEQUENCE) {
+					leafByLeaf(level, d, decorationSetter, logSet, kept);
+				} else {
+					d.place(context);
+				}
+			}
 		}
 		return true;
+	}
+
+	/**
+	 * Runs a leaf decorator once per leaf with a random source of the leaf's own position (second stage of step L1 of
+	 * docs/04-pionowy-wycinek.md): the vanilla {@code leave_vine} draws leaf after leaf from one source, so a leaf that a
+	 * neighbor chunk's object had displaced (or that decayed with a cut leaf path) shifted the vines of the whole crown,
+	 * and the hanging vines then differed down to the forest floor depending on the order of the chunks. Each leaf's vines
+	 * are now a function of the world seed and the leaf position; only the vines of a leaf that is itself displaced, and a
+	 * strand that meets a block of a neighbor, still depend on the order (contact with an object, decision L1-g).
+	 */
+	private static void leafByLeaf(WorldGenLevel level, TreeDecorator decorator, BiConsumer<BlockPos, BlockState> setter,
+			Set<BlockPos> logs, List<BlockPos> leaves) {
+		WorldgenRandom leafRandom = new WorldgenRandom(new XoroshiroRandomSource(0L));
+		long seed = level.getSeed();
+		for (BlockPos leaf : leaves) {
+			leafRandom.setSeed(DecorationRandom.leafSeed(seed, leaf.getX(), leaf.getY(), leaf.getZ()));
+			decorator.place(new TreeDecorator.Context(level, setter, leafRandom, logs, Set.of(leaf), Set.of()));
+		}
 	}
 
 	/**

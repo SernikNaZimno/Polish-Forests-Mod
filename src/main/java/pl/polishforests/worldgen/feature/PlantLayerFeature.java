@@ -321,9 +321,11 @@ public final class PlantLayerFeature implements Feature {
 		// A feature plant (dead wood, a shrub) may also take the place of a moss carpet of the trunk bases (TreeMoss, step
 		// V12: written with the trees, before these layers; without this the dead wood of the oak-hornbeam forest lost
 		// about a tenth of its objects), as the trees' wood does.
+		// A block plant also takes the place of a hanging vine of a placeholder tree ({@link #open}, second stage of step L1).
+		boolean feature = plant.feature().isPresent();
 		if (underwater ? !isWaterSource(here, level.getFluidState(at))
-				: !(here.isAir() || plant.feature().isPresent() && (here.is(Blocks.MOSS_CARPET)
-						|| here.is(pl.polishforests.block.ModBlocks.forestMossCarpet())))) {
+				: !(feature ? here.isAir() || here.is(Blocks.MOSS_CARPET) || here.is(pl.polishforests.block.ModBlocks.forestMossCarpet())
+						: open(here))) {
 			return false;
 		}
 		BlockPos pos = at.immutable();
@@ -347,7 +349,7 @@ public final class PlantLayerFeature implements Feature {
 			Direction facing = state.getValue(BlockStateProperties.HORIZONTAL_FACING);
 			BlockPos.MutableBlockPos up = pos.mutable();
 			int stems = 0;
-			while (stems < height - 1 && level.getBlockState(up.move(Direction.UP)).isAir()) {
+			while (stems < height - 1 && open(level.getBlockState(up.move(Direction.UP)))) {
 				stems++;
 			}
 			up.set(pos);
@@ -365,7 +367,7 @@ public final class PlantLayerFeature implements Feature {
 			// Tall seagrass holds water in both halves, so its upper half needs water too (in air it would be a new water
 			// source above the surface, which spills); a waterloggable plant may stand with its upper half in air or water.
 			boolean free = block instanceof TallSeagrassBlock ? isWaterSource(upper, level.getFluidState(above))
-					: upper.isAir() || state.hasProperty(BlockStateProperties.WATERLOGGED) && isWaterSource(upper, level.getFluidState(above));
+					: open(upper) || state.hasProperty(BlockStateProperties.WATERLOGGED) && isWaterSource(upper, level.getFluidState(above));
 			if (!free || !state.canSurvive(level, pos)) {
 				return false;
 			}
@@ -392,7 +394,7 @@ public final class PlantLayerFeature implements Feature {
 		BlockPos.MutableBlockPos up = pos.mutable();
 		for (int k = 1; k < height; k++) {
 			up.move(Direction.UP);
-			if (!level.getBlockState(up).isAir()) {
+			if (!open(level.getBlockState(up))) {
 				break;
 			}
 			level.setBlock(up, state, Block.UPDATE_CLIENTS);
@@ -404,6 +406,17 @@ public final class PlantLayerFeature implements Feature {
 	private static int height(PlantPalette.Plant plant, RandomSource random) {
 		return plant.minHeight() + (plant.maxHeight() > plant.minHeight()
 				? random.nextInt(plant.maxHeight() - plant.minHeight() + 1) : 0);
+	}
+
+	/**
+	 * Whether a block plant may take this place: air, or a hanging vine (second stage of step L1 of
+	 * docs/04-pionowy-wycinek.md). The vines of a placeholder tree ({@code leave_vine}) hang down until they meet a block;
+	 * when the tree belongs to a neighbor chunk, a vine decorated first took the place of the plant, and a plant placed
+	 * first stopped the vine above it, so the forest floor under the crown depended on the order of the chunks. A plant
+	 * that replaces the vine's lowest blocks leaves the same vine above it as a vine that met the plant, in both orders.
+	 */
+	static boolean open(BlockState state) {
+		return state.isAir() || state.is(Blocks.VINE);
 	}
 
 	private static boolean isWaterSource(BlockState state, FluidState fluid) {

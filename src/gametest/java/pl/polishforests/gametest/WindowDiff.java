@@ -10,7 +10,7 @@ import java.util.List;
  * <p>The window of a column holds {@code window} blocks from {@code below} blocks under its terrain ground (the top
  * terrain block is offset {@code below − 1}); a block is given as a state number, and {@code classes} gives the class of
  * each state number ({@link #AIR}, {@link #FLOOR}: a plant, a litter or a carpet of the forest floor, {@link #OBJECT}: wood,
- * leaves, a trunk, a root flare or a root, {@link #OTHER}: anything else). A differing block is of one kind:
+ * leaves, a hanging vine, a trunk, a root flare or a root, {@link #OTHER}: anything else). A differing block is of one kind:
  * <ul>
  * <li>{@link Kind#UNDERGROUND}: below the top terrain block (vanilla ores, sculk and caves, roots in the soil);</li>
  * <li>{@link Kind#GROUND}: the top terrain block (the ground under a plant, a vanilla disk of sand or clay);</li>
