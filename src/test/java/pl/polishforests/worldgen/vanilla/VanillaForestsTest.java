@@ -57,6 +57,50 @@ class VanillaForestsTest {
 		return out;
 	}
 
+	/**
+	 * The vanilla block ids of a block tag, nested tags expanded, every copy on the class path merged (the mod's generated
+	 * tags shadow the jar's, as for the biome tags).
+	 */
+	static Set<String> blockTag(String name) {
+		Set<String> out = new LinkedHashSet<>();
+		String path = "data/minecraft/tags/block/" + name + ".json";
+		try {
+			var urls = VanillaForestsTest.class.getClassLoader().getResources(path);
+			while (urls.hasMoreElements()) {
+				try (var reader = new InputStreamReader(urls.nextElement().openStream(), StandardCharsets.UTF_8)) {
+					for (JsonElement e : JsonParser.parseReader(reader).getAsJsonObject().getAsJsonArray("values")) {
+						String id = e.isJsonObject() ? e.getAsJsonObject().get("id").getAsString() : e.getAsString();
+						if (id.startsWith("#minecraft:")) {
+							out.addAll(blockTag(id.substring("#minecraft:".length())));
+						} else if (id.startsWith("minecraft:")) {
+							out.add(id.substring("minecraft:".length()));
+						}
+					}
+				}
+			}
+		} catch (IOException e) {
+			throw new AssertionError(e);
+		}
+		assertFalse(out.isEmpty(), "vanilla block tag " + name);
+		return out;
+	}
+
+	/**
+	 * The soil tag of the blocked mask holds the tops of the vanilla surface of forests (round 1 of stage 2 of W1: with
+	 * {@code #minecraft:dirt}, which in 26.3 no longer holds the grass block, every forest column was blocked).
+	 */
+	@Test
+	void theSoilTagHoldsTheVanillaForestTops() {
+		assertEquals("substrate_overworld", VanillaForestWorld.SOIL_TAG.location().getPath());
+		Set<String> soil = blockTag(VanillaForestWorld.SOIL_TAG.location().getPath());
+		for (String top : java.util.List.of("grass_block", "podzol", "dirt", "coarse_dirt", "rooted_dirt", "mud", "moss_block")) {
+			assertTrue(soil.contains(top), top + " in " + soil);
+		}
+		for (String rock : java.util.List.of("stone", "snow_block", "ice", "packed_ice", "calcite")) {
+			assertFalse(soil.contains(rock), rock + " in " + soil);
+		}
+	}
+
 	@Test
 	void everyVanillaForestIsReplacedOrKeptOnPurpose() {
 		Set<String> overworld = tag("is_overworld");

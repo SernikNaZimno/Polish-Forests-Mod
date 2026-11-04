@@ -11,12 +11,14 @@ import net.minecraft.core.QuartPos;
 import net.minecraft.tags.BiomeTags;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.FluidTags;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.StructureManager;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeManager;
 import net.minecraft.world.level.biome.BiomeResolver;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
@@ -53,7 +55,7 @@ import pl.polishforests.worldgen.tree.ForestStandMap;
  * {@code WORLD_SURFACE_WG} on a water block), the code of the column's biome (the biome the biome filter of the features
  * reads there: the vanilla zoom of the noise biomes at the top block, {@link VanillaForests}), the vegetation mask of the
  * structure pieces and the blocked columns (a vanilla biome, a slope of at least {@link #STEEP} blocks to a neighbor in the
- * chunk, a top that is not soil, sand or gravel). The dry columns of a habitat biome with a grass top get the top of the
+ * chunk, a top that is not soil ({@link #SOIL_TAG}), sand or gravel). The dry columns of a habitat biome with a grass top get the top of the
  * biome's soil (podzol in the pine forests, the litter of the beech forest, muck in the alder carr; the soil patches of
  * {@link SurfaceBuilder#soilTop}). The values are pure functions of the world seed and the chunk's own terrain, so they do
  * not depend on the order in which chunks are generated.
@@ -266,13 +268,21 @@ public final class VanillaForestWorld implements ForestWorld {
 		return h;
 	}
 
+	/**
+	 * The ground blocks of the vegetation besides sand and gravel: in 26.3 {@code #minecraft:dirt} holds only dirt, coarse
+	 * dirt and rooted dirt, the grass block, podzol and mycelium are {@code #minecraft:grass_blocks}, and
+	 * {@code #minecraft:substrate_overworld} joins them with mud and moss (round 1 of stage 2 of W1: with {@code #dirt} every
+	 * grass column was blocked).
+	 */
+	public static final TagKey<Block> SOIL_TAG = BlockTags.SUBSTRATE_OVERWORLD;
+
 	/** Whether a top block carries vegetation: soil, sand or gravel (not rock, ice or snow). */
-	static boolean soil(BlockState state) {
-		return state.is(BlockTags.DIRT) || state.is(BlockTags.SAND) || state.is(Blocks.GRAVEL);
+	public static boolean soil(BlockState state) {
+		return state.is(SOIL_TAG) || state.is(BlockTags.SAND) || state.is(Blocks.GRAVEL);
 	}
 
 	/** Whether column i differs by at least {@link #STEEP} blocks from a neighbor column of the chunk. */
-	static boolean steep(short[] tops, int i) {
+	public static boolean steep(short[] tops, int i) {
 		int x = i >> 4;
 		int z = i & 15;
 		int t = tops[i];
