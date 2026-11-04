@@ -782,3 +782,12 @@ Krok L1 (DP-107, DP-115: powtarzalność ściółki). Projekt: `docs/04-pionowy-
 | U-4 | Typy lasów | Nowa struktura lasu (planer drzewostanu, drzewa proceduralne, runo, martwe drewno, korzenie) ma objąć **wszystkie typy lasów** moda, nie tylko grąd i bór świeży wycinka |
 | U-5 | Tatry | **Tatry w obu skalach** (najpierw GAMEPLAY, potem REAL): granit i wapień, regle, kosodrzewina, hale, piętro turni, stawy, limba. Reszta terenu Polski i istniejące obszary złotego testu bez zmian, Tatry jako nowy obszar. Przyspiesza część M5 |
 | U-6 | Kolejność | L1 (dokończenie bez recenzji wizualnej) → pnie (U-2, hitboxy) → typ świata wanilii (U-3) → pozostałe lasy (U-4) → Tatry (U-5). Przebieg zbiorczy przed CP-D (PZ) odłożony |
+
+
+### G.37 Decyzje użytkownika o testach, deskach i listach kontrolnych (2026-11-04)
+
+| Nr | Sprawa | Decyzja |
+|---|---|---|
+| U-7 | Mapa testów | Testy dobierane według tego, czego zmiana dotyka (`docs/mapa-testow.md`, `tools/dev/test_plan.py`): w trakcie kroku tylko testy obszarów zmiany, na koniec kroku jeden pełny przebieg. Powtarzalność świata sprawdzana blokami (`determinism`), nie zrzutami; zrzuty tylko przy zmianach renderu i tylko dla tablicy, której dotyczą; recenzenci nie powtarzają gier |
+| U-8 | Deski | Deski każdego rodzaju drewna mają **dokładnie strukturę tekstury desek wanilii**, ze zmienionym kolorem i nieco zmienioną fakturą drewna. Sposób domyślny (do potwierdzenia): tekstura liczona w kliencie przy wczytywaniu zasobów z tekstury desek wanilii z gry użytkownika (przemapowanie kolorów na paletę gatunku i drobna zmiana słojów), bez kopii pikseli wanilii w repo i w jarze (zasada zasobów z BRIEF). Gatunki bez odpowiednika w wanilii (jesion, buk, grab, lipa, klon, sosna) dostają własne kłody i deski oraz schody, płytę, płot, furtkę, przycisk i płytę naciskową; drzwi, klapy, tabliczki i łodzie później |
+| U-9 | Listy kontrolne | Miejsca w listach „Do sprawdzenia w grze” wskazywane komendą `/polishforests find …`, nie stałymi współrzędnymi |
