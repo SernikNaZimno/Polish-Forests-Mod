@@ -95,6 +95,30 @@ final class ModBlockModels extends FabricModelProvider {
 		};
 	}
 
+	/**
+	 * The side of a stripped trunk (step P1): the own stripped wood of {@code tools/art} (the Scots pine shares the side of its
+	 * stripped log), the vanilla stripped logs of spruce and birch by id (D2, as their barks; default choice P1-e).
+	 */
+	static Identifier strippedSide(pl.polishforests.block.StrippedTrunk t) {
+		return switch (t) {
+			case SCOTS_PINE -> own("stripped_scots_pine_log");
+			case SPRUCE -> vanilla("stripped_spruce_log");
+			case BIRCH -> vanilla("stripped_birch_log");
+			default -> own(t.id());
+		};
+	}
+
+	/** The end of a stripped trunk: the top of the stripped log it drops ({@link pl.polishforests.block.StrippedTrunk#log()}). */
+	static Identifier strippedEnd(pl.polishforests.block.StrippedTrunk t) {
+		return switch (t) {
+			case SCOTS_PINE -> own("stripped_scots_pine_log_top");
+			case SPRUCE -> vanilla("stripped_spruce_log_top");
+			case BIRCH -> vanilla("stripped_birch_log_top");
+			case OAK, LINDEN, ASH, NORWAY_MAPLE -> vanilla("stripped_oak_log_top");
+			case HORNBEAM, BEECH -> vanilla("stripped_pale_oak_log_top");
+		};
+	}
+
 	@Override
 	public void generateBlockStateModels(BlockModelGenerators gen) {
 		for (TreeTrunk t : TreeTrunk.values()) {
@@ -106,6 +130,10 @@ final class ModBlockModels extends FabricModelProvider {
 			flare(gen, f);
 		}
 		trunk(gen, ModBlocks.treeRoot(), List.of(own("tree_root_bark")), vanilla("oak_log_top"));
+		// Step P1: the stripped trunks (the trunk templates with the stripped wood and the top of the stripped log they drop).
+		for (pl.polishforests.block.StrippedTrunk t : pl.polishforests.block.StrippedTrunk.values()) {
+			trunk(gen, ModBlocks.stripped(t), List.of(strippedSide(t)), strippedEnd(t));
+		}
 		// Step V7: the LITE Scots pine set (the log side is the lower pine bark, as the thin trunk).
 		Material bark = new Material(own("scots_pine_bark"));
 		gen.new WoodProvider(TextureMapping.column(bark, new Material(own("scots_pine_log_top")))).logWithHorizontal(ModBlocks.pineLog())

@@ -39,7 +39,9 @@ import pl.polishforests.PolishForests;
  * (b): log, wood, stripped log, stripped wood and planks, the log and the wood stripped with an axe; step I1: the root
  * flares of the species {@link RootFlare} and the underground root {@value #TREE_ROOT}; step V12: the herb layer and
  * litter {@link GroundPlant} and the fruit item {@value #BILBERRIES}; round 1 of the V12 review: the forest moss carpet
- * {@value #FOREST_MOSS_CARPET} and the mossy podzol {@value #MOSSY_PODZOL}). The ids, properties
+ * {@value #FOREST_MOSS_CARPET} and the mossy podzol {@value #MOSSY_PODZOL}; step P1: the stripped thin trunks
+ * {@link StrippedTrunk}, made by stripping a trunk with an axe, and the thinning of trunks with a sneaking axe
+ * {@link TrunkAxe}). The ids, properties
  * and property values go into the saved worlds; {@code RegistrySnapshotTest} compares them with
  * {@code src/test/resources/registry_snapshot.txt} and they are frozen after checkpoint CP-B (PW-11, ZW-4).
  */
@@ -57,6 +59,8 @@ public final class ModBlocks {
 	/** Round 1 of the V12 review: the own moss carpet and the podzol under feather moss. */
 	private static Block forestMossCarpet;
 	private static Block mossyPodzol;
+	/** Step P1: the stripped thin trunks. */
+	private static final Map<StrippedTrunk, TrunkBlock> STRIPPED = new EnumMap<>(StrippedTrunk.class);
 	/** Hardness and blast resistance of the underground root: as vanilla mangrove roots, quicker than a log. */
 	private static final float ROOT_STRENGTH = 0.7F;
 	/** Every block of the mod in registration order. */
@@ -104,9 +108,17 @@ public final class ModBlocks {
 			fire.add(b, 60, 100);
 		}
 		fire.add(forestMossCarpet, 60, 100);
-		// Axe stripping of the full log and wood, keeping the axis (the thin trunks are not stripped until M3).
+		for (TrunkBlock b : STRIPPED.values()) {
+			fire.add(b, IGNITE_ODDS, BURN_ODDS);
+		}
+		// Axe stripping of the full log and wood, keeping the axis; step P1: of every thin trunk into the stripped trunk of
+		// its species, keeping the radius, the parent and the water (all four pine barks give the one stripped pine trunk).
 		BlockTransformerHelper.registerStripping(pineLog, new CopyPropertiesProvider(strippedPineLog));
 		BlockTransformerHelper.registerStripping(pineWood, new CopyPropertiesProvider(strippedPineWood));
+		for (TreeTrunk t : TreeTrunk.values()) {
+			BlockTransformerHelper.registerStripping(TRUNKS.get(t), new CopyPropertiesProvider(STRIPPED.get(StrippedTrunk.of(t))));
+		}
+		TrunkAxe.register();
 		CreativeModeTabEvents.modifyOutputEvent(CreativeModeTabs.NATURAL_BLOCKS).register(out -> {
 			Item previous = Items.PALE_OAK_LOG;
 			for (TrunkBlock b : TRUNKS.values()) {
@@ -120,6 +132,11 @@ public final class ModBlocks {
 				previous = b.asItem();
 			}
 			out.insertAfter(previous, treeRoot);
+			previous = treeRoot.asItem();
+			for (TrunkBlock b : STRIPPED.values()) {
+				out.insertAfter(previous, b);
+				previous = b.asItem();
+			}
 			previous = Items.PALE_OAK_LEAVES;
 			for (SpeciesLeavesBlock b : LEAVES.values()) {
 				out.insertAfter(previous, b);
@@ -241,6 +258,13 @@ public final class ModBlocks {
 		mossyPodzol = block(MOSSY_PODZOL, Block::new, BlockBehaviour.Properties.of().mapColor(MapColor.PODZOL).strength(0.5F)
 				.sound(SoundType.MOSS));
 		item(MOSSY_PODZOL, mossyPodzol, new Item.Properties());
+		// Step P1, registered after the blocks of V12: the stripped thin trunks (the properties of a trunk, PW-11).
+		for (StrippedTrunk t : StrippedTrunk.values()) {
+			TrunkBlock block = (TrunkBlock) block(t.id(), TrunkBlock::new, BlockBehaviour.Properties.of().mapColor(t.mapColor())
+					.instrument(NoteBlockInstrument.BASS).strength(STRENGTH).sound(SoundType.WOOD).ignitedByLava());
+			item(t.id(), block, woodFuel());
+			STRIPPED.put(t, block);
+		}
 	}
 
 	/** Block and item path of the own moss carpet (round 1 of the V12 review). */
@@ -293,6 +317,15 @@ public final class ModBlocks {
 	}
 
 	/** The root flare of a species (step I1). */
+	/** Step P1: the stripped trunk of a species. */
+	public static TrunkBlock stripped(StrippedTrunk t) {
+		return registered(STRIPPED.get(t));
+	}
+
+	public static Map<StrippedTrunk, TrunkBlock> strippedTrunks() {
+		return Collections.unmodifiableMap(STRIPPED);
+	}
+
 	public static RootFlareBlock flare(RootFlare f) {
 		return registered(FLARES.get(f));
 	}

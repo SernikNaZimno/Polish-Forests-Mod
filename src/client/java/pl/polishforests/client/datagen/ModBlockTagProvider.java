@@ -101,6 +101,14 @@ final class ModBlockTagProvider {
 				builder(BlockTags.MINEABLE_WITH_AXE).add(key);
 			}
 			builder(BlockTags.MINEABLE_WITH_AXE).add(key(ModBlocks.treeRoot()));
+			// Step P1: a stripped trunk as vanilla's stripped logs: in the species' log tag (so in #logs: leaves keep, felling
+			// mods follow it, fuel), not a natural log.
+			for (pl.polishforests.block.StrippedTrunk t : pl.polishforests.block.StrippedTrunk.values()) {
+				ResourceKey<Block> key = key(ModBlocks.stripped(t));
+				builder(species.get(t.species())).add(key);
+				builder(TRUNKS).add(key);
+				builder(BlockTags.MINEABLE_WITH_AXE).add(key);
+			}
 			species.forEach((s, tag) -> builder(vanillaParent(s).block()).addTag(tag));
 			for (Block b : java.util.List.of(ModBlocks.pineLog(), ModBlocks.pineWood(), ModBlocks.strippedPineLog(),
 					ModBlocks.strippedPineWood())) {

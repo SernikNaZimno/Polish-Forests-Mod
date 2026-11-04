@@ -6,6 +6,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.ScheduledTickAccess;
 import net.minecraft.world.level.block.Block;
@@ -37,12 +38,12 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  * and the face of the block, which is exactly where a gap would be without the reach. Children come from any side on
  * their own, so a block knows neither its children nor their radii and the models are static JSON
  * ({@code template_trunk_r1…r7}, made by the datagen). The core of the block (a cube of the radius around the center)
- * fills the elbow when the trunk turns. The reach outside the block is visual only. The shape for collision, the outline
- * and ray casts is a prism of the radius through the whole block along the parent axis ({@link #shape}): a trunk block
- * shows its own lower half and, through the reach of its child, the upper half, and only a block-long shape lets the
- * crosshair hit every visible part of a straight trunk (with the core and the own half only, 8 − r px of every segment
- * could be seen but not targeted; V2 review). A tip or an elbow is thus 8 − r px longer than drawn, as many thin vanilla
- * blocks are.
+ * fills the elbow when the trunk turns. The reach outside the block is visual only. Until step P1 the shape for
+ * collision, the outline and ray casts was a prism of the radius through the whole block along the parent axis
+ * ({@link #shape}), so a tip or an elbow was 8 − r px longer than drawn. Since P1 the outline and the collision in a
+ * world follow the drawing: the core, the own half arm and the half arms of the children that are there
+ * ({@link TrunkShapes}, read from the neighbors); the state cache of vanilla (light, occlusion, face support, the solidity
+ * of the heightmaps) and world generation keep the prism, so they are unchanged.
  *
  * <p>The shape is not a full block, so the trunk lets the sky light through (no shade, light dampening 0, 1 when
  * waterlogged) and does not hide the faces of its neighbors. It is in {@code #minecraft:logs} through the species tags,
@@ -89,9 +90,44 @@ public class TrunkBlock extends Block implements SimpleWaterloggedBlock {
 		return defaultBlockState().setValue(RADIUS, Math.clamp(radius, MIN_RADIUS, MAX_RADIUS)).setValue(PARENT, parent);
 	}
 
+	/**
+	 * The outline (crosshair, ray casts): in a world the drawn trunk with its children (step P1, {@link TrunkShapes}),
+	 * elsewhere (the state cache with an empty block getter, world generation in chunk regions) the prism as before P1.
+	 */
 	@Override
 	protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
+		if (level instanceof Level && liveShape()) {
+			return TrunkShapes.outline(state, level, pos);
+		}
 		return shapeOf(state.getValue(PARENT), state.getValue(RADIUS));
+	}
+
+	/** Collision with entities: in a world the drawn trunk without the lying twigs of radius 1 (P1), elsewhere the prism. */
+	@Override
+	protected VoxelShape getCollisionShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
+		if (level instanceof Level && liveShape()) {
+			return TrunkShapes.collision(state, level, pos);
+		}
+		return shapeOf(state.getValue(PARENT), state.getValue(RADIUS));
+	}
+
+	/** Support of torches, snow and the like: the prism as before P1, wherever it is asked (the face support of the cache). */
+	@Override
+	protected VoxelShape getBlockSupportShape(BlockState state, BlockGetter level, BlockPos pos) {
+		return shapeOf(state.getValue(PARENT), state.getValue(RADIUS));
+	}
+
+	/** Whether the shape in a world follows the drawing with the children (P1); the root flares keep their own shapes. */
+	protected boolean liveShape() {
+		return true;
+	}
+
+	/**
+	 * Whether this trunk, as a child, draws its half arm of its radius into its parent (P1: part of the parent's outline);
+	 * a lying root flare draws its fin instead.
+	 */
+	protected boolean drawsArm(BlockState state) {
+		return true;
 	}
 
 	/** The shape of a state of this block (step I1: a root flare lowers its horizontal segments). */

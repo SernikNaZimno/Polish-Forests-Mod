@@ -978,6 +978,22 @@ PINE_LOG_TOP = dict(colors=['#8e5c36', '#a06c41', '#b27f4e', '#c39963', '#d1ab74
                     late=0.62, heart=4.4, bark=True, tries=32)
 PINE_STRIPPED_TOP = dict(PINE_LOG_TOP, colors=['#8e5c36', '#a06c41', '#b27f4e', '#c39963', '#d1ab74', '#bf9763'],
                          bark=False)
+# Step P1: the stripped thin trunks of the broadleaves: the bare wood under the bark, four close tones (dark to light) of
+# a fine vertical grain, no resin streak; colors of the wood as described in forestry wood keys (no texture copied).
+STRIPPED_TRUNKS = [
+    ('oak', ['#a8865a', '#b08e61', '#b89668', '#bf9e70'], {'luma': (130, 160), 'hue': (28, 40)},
+     'stripped pedunculate oak trunk: light yellowish-brown wood with a fine vertical grain'),
+    ('hornbeam', ['#c0b89f', '#c9c1a9', '#d1cab2', '#d9d2bb'], {'luma': (175, 210), 'hue': (35, 55)},
+     'stripped hornbeam trunk: whitish gray wood, almost without grain'),
+    ('linden', ['#c8b48a', '#d0bd93', '#d8c59c', '#dfcda5'], {'luma': (170, 205), 'hue': (32, 48)},
+     'stripped small-leaved linden trunk: soft pale yellowish-white wood'),
+    ('beech', ['#ba8f6e', '#c39877', '#cca181', '#d4aa8a'], {'luma': (145, 180), 'hue': (18, 32)},
+     'stripped European beech trunk: pale reddish-brown wood'),
+    ('ash', ['#c3af89', '#ccb893', '#d5c19c', '#dcc8a4'], {'luma': (165, 200), 'hue': (30, 46)},
+     'stripped European ash trunk: light cream wood with a faint brownish grain'),
+    ('norway_maple', ['#d0c1a0', '#d6c7a6', '#dbcdad', '#e0d3b4'], {'luma': (180, 215), 'hue': (32, 50)},
+     'stripped Norway maple trunk: creamy white wood'),
+]
 SAPLING_SHAPE = dict(top=4, zigzag=0.2, shoots=3, shoot_gap=3, shoot_len=(2, 4), leaf_from=2, leaf_every=3, tries=64)
 SAPLINGS = [
     ('scots_pine', dict(SAPLING_SHAPE, leaf='pine', shoots=0, top=3, zigzag=0.0, tuft_at=5, whorl_at=9, rays=13,
@@ -1328,6 +1344,10 @@ TEXTURES = [
     Texture('stripped_scots_pine_log_top', 'end', wood.log_end, 'stripped_scots_pine_log_top/1', None,
             params=PINE_STRIPPED_TOP, expect={'luma': (130, 170)},
             note='stripped Scots pine log top: the rings of the log top with a pale wood border'),
+    # Step P1: the bare wood of the stripped thin trunks (pine, spruce and birch take their stripped logs; tools/art/wood.py).
+] + [Texture(f'stripped_{name}_trunk', 'stripped', wood.stripped_side, f'stripped_{name}_trunk/1', None,
+             params=dict(colors=colors, streak=0, tries=64), expect=expect, palette_use=None, note=note)
+     for name, colors, expect, note in STRIPPED_TRUNKS] + [
 ] + [Texture(f'{name}_sapling', 'sapling', wood.sapling, f'{name}_sapling/1', None, params=params, note=note)
      for name, params, note in SAPLINGS] + [
     # Step V13 (T-D5): the bare twigs of the leafless broadleaf crowns, grayscale for the twig color of the species.

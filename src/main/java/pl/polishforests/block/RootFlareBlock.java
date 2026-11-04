@@ -77,6 +77,18 @@ public final class RootFlareBlock extends TrunkBlock {
 		return flareShape(parent, radius);
 	}
 
+	/** A flare keeps its fin or prism in a world too (step P1 changes only the trunks). */
+	@Override
+	protected boolean liveShape() {
+		return false;
+	}
+
+	/** A lying flare draws its fin, not an arm, into the trunk base; an upright one is a thin trunk. */
+	@Override
+	protected boolean drawsArm(net.minecraft.world.level.block.state.BlockState state) {
+		return state.getValue(PARENT).getAxis() == Direction.Axis.Y;
+	}
+
 	/**
 	 * A flare placed by a player against the side of a block lies with stage 2 (a fin from 10 px down to 5 px); against
 	 * the top of the ground (parent down) it stands as a thin trunk.

@@ -1,0 +1,7 @@
+{
+  "parent": "polishforests:block/template_trunk_r6",
+  "textures": {
+    "bark": "minecraft:block/stripped_birch_log",
+    "end": "minecraft:block/stripped_birch_log_top"
+  }
+}

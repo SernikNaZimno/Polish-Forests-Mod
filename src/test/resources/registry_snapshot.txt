@@ -177,10 +177,46 @@ block polishforests:spruce_trunk states=84 default=parent=down,radius=4,waterlog
   property parent: down up north south west east
   property radius: 1 2 3 4 5 6 7
   property waterlogged: true false
+block polishforests:stripped_ash_trunk states=84 default=parent=down,radius=4,waterlogged=false
+  property parent: down up north south west east
+  property radius: 1 2 3 4 5 6 7
+  property waterlogged: true false
+block polishforests:stripped_beech_trunk states=84 default=parent=down,radius=4,waterlogged=false
+  property parent: down up north south west east
+  property radius: 1 2 3 4 5 6 7
+  property waterlogged: true false
+block polishforests:stripped_birch_trunk states=84 default=parent=down,radius=4,waterlogged=false
+  property parent: down up north south west east
+  property radius: 1 2 3 4 5 6 7
+  property waterlogged: true false
+block polishforests:stripped_hornbeam_trunk states=84 default=parent=down,radius=4,waterlogged=false
+  property parent: down up north south west east
+  property radius: 1 2 3 4 5 6 7
+  property waterlogged: true false
+block polishforests:stripped_linden_trunk states=84 default=parent=down,radius=4,waterlogged=false
+  property parent: down up north south west east
+  property radius: 1 2 3 4 5 6 7
+  property waterlogged: true false
+block polishforests:stripped_norway_maple_trunk states=84 default=parent=down,radius=4,waterlogged=false
+  property parent: down up north south west east
+  property radius: 1 2 3 4 5 6 7
+  property waterlogged: true false
+block polishforests:stripped_oak_trunk states=84 default=parent=down,radius=4,waterlogged=false
+  property parent: down up north south west east
+  property radius: 1 2 3 4 5 6 7
+  property waterlogged: true false
 block polishforests:stripped_scots_pine_log states=3 default=axis=y
   property axis: x y z
+block polishforests:stripped_scots_pine_trunk states=84 default=parent=down,radius=4,waterlogged=false
+  property parent: down up north south west east
+  property radius: 1 2 3 4 5 6 7
+  property waterlogged: true false
 block polishforests:stripped_scots_pine_wood states=3 default=axis=y
   property axis: x y z
+block polishforests:stripped_spruce_trunk states=84 default=parent=down,radius=4,waterlogged=false
+  property parent: down up north south west east
+  property radius: 1 2 3 4 5 6 7
+  property waterlogged: true false
 block polishforests:tree_root states=84 default=parent=down,radius=4,waterlogged=false
   property parent: down up north south west east
   property radius: 1 2 3 4 5 6 7
@@ -237,7 +273,16 @@ item polishforests:spruce_leaves block=polishforests:spruce_leaves
 item polishforests:spruce_root_flare block=polishforests:spruce_root_flare
 item polishforests:spruce_sapling block=polishforests:spruce_sapling
 item polishforests:spruce_trunk block=polishforests:spruce_trunk
+item polishforests:stripped_ash_trunk block=polishforests:stripped_ash_trunk
+item polishforests:stripped_beech_trunk block=polishforests:stripped_beech_trunk
+item polishforests:stripped_birch_trunk block=polishforests:stripped_birch_trunk
+item polishforests:stripped_hornbeam_trunk block=polishforests:stripped_hornbeam_trunk
+item polishforests:stripped_linden_trunk block=polishforests:stripped_linden_trunk
+item polishforests:stripped_norway_maple_trunk block=polishforests:stripped_norway_maple_trunk
+item polishforests:stripped_oak_trunk block=polishforests:stripped_oak_trunk
 item polishforests:stripped_scots_pine_log block=polishforests:stripped_scots_pine_log
+item polishforests:stripped_scots_pine_trunk block=polishforests:stripped_scots_pine_trunk
 item polishforests:stripped_scots_pine_wood block=polishforests:stripped_scots_pine_wood
+item polishforests:stripped_spruce_trunk block=polishforests:stripped_spruce_trunk
 item polishforests:tree_root block=polishforests:tree_root
 item polishforests:wood_anemone block=polishforests:wood_anemone

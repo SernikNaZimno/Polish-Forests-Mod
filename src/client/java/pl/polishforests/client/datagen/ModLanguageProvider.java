@@ -223,6 +223,10 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 			builder.add(ModBlocks.flare(f), polish ? f.polishName() : f.englishName());
 		}
 		builder.add(ModBlocks.treeRoot(), polish ? "Korzeń drzewa" : "Tree Root");
+		// Step P1: the stripped trunks.
+		for (pl.polishforests.block.StrippedTrunk t : pl.polishforests.block.StrippedTrunk.values()) {
+			builder.add(ModBlocks.stripped(t), polish ? t.polishName() : t.englishName());
+		}
 		// Step V12: the herb layer, the litter and the bilberry fruit.
 		for (pl.polishforests.block.GroundPlant g : pl.polishforests.block.GroundPlant.values()) {
 			builder.add(ModBlocks.ground(g), switch (g) {

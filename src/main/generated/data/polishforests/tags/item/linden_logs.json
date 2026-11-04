@@ -1,6 +1,7 @@
 {
   "values": [
     "polishforests:linden_trunk",
-    "polishforests:linden_root_flare"
+    "polishforests:linden_root_flare",
+    "polishforests:stripped_linden_trunk"
   ]
 }

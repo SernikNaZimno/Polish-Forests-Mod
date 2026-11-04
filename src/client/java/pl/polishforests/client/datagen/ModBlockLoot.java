@@ -45,12 +45,16 @@ final class ModBlockLoot extends FabricBlockLootSubProvider {
 	@Override
 	public void generate() {
 		for (TreeTrunk t : TreeTrunk.values()) {
-			trunk(ModBlocks.trunk(t), t);
+			trunk(ModBlocks.trunk(t), t.log());
+		}
+		// Step P1: a stripped trunk as a trunk, with the stripped log of the species.
+		for (pl.polishforests.block.StrippedTrunk t : pl.polishforests.block.StrippedTrunk.values()) {
+			trunk(ModBlocks.stripped(t), t.log());
 		}
 		// Step I1: a root flare as the trunk of its species; the underground root gives itself with silk touch, else 1-2
 		// sticks.
 		for (pl.polishforests.block.RootFlare f : pl.polishforests.block.RootFlare.values()) {
-			trunk(ModBlocks.flare(f), f.trunk());
+			trunk(ModBlocks.flare(f), f.trunk().log());
 		}
 		TrunkBlock root = ModBlocks.treeRoot();
 		LootPoolEntryContainer.Builder<?> rootSticks = (LootPoolEntryContainer.Builder<?>) applyExplosionDecay(root,
@@ -94,9 +98,9 @@ final class ModBlockLoot extends FabricBlockLootSubProvider {
 	 * A thin trunk (or a root flare) with the loot of a trunk: itself with silk touch, 1-2 logs for the base of a thin stem
 	 * on the ground (S1), 0-1 stick for a twig, 1-2 sticks for a branch of radius 2 that is not upright, else the log.
 	 */
-	private void trunk(TrunkBlock block, TreeTrunk t) {
+	private void trunk(TrunkBlock block, Block logBlock) {
 		LootPoolEntryContainer.Builder<?> base = ((LootPoolEntryContainer.Builder<?>) applyExplosionDecay(block,
-				LootItem.lootTableItem(t.log()).apply(SetItemCountFunction.setCount(ContextIntProviders.between(1, 2)))))
+				LootItem.lootTableItem(logBlock).apply(SetItemCountFunction.setCount(ContextIntProviders.between(1, 2)))))
 				.when(TrunkBaseCondition.trunkBase());
 		LootPoolEntryContainer.Builder<?> twig = ((LootPoolEntryContainer.Builder<?>) applyExplosionDecay(block,
 				LootItem.lootTableItem(Items.STICK).apply(SetItemCountFunction.setCount(ContextIntProviders.between(0, 1)))))
@@ -112,7 +116,7 @@ final class ModBlockLoot extends FabricBlockLootSubProvider {
 				LootItem.lootTableItem(Items.STICK).apply(SetItemCountFunction.setCount(ContextIntProviders.between(1, 2)))))
 				.when(branch);
 		LootPoolEntryContainer.Builder<?> log = (LootPoolEntryContainer.Builder<?>) applyExplosionCondition(block,
-				LootItem.lootTableItem(t.log()));
+				LootItem.lootTableItem(logBlock));
 		add(block, LootTable.lootTable().withPool(LootPool.lootPool().setRolls(ContextIntProviders.exactly(1))
 				.add(LootItem.lootTableItem(block).when(hasSilkTouch()).otherwise(base).otherwise(twig).otherwise(sticks)
 						.otherwise(log))));
