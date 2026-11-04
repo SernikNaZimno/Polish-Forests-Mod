@@ -816,7 +816,7 @@ Krok P1 (G.36 U-2: cieńsze pnie siekierą, okorowane pnie, hitboxy pni). Projek
 
 ### G.39 Drobne wybory kroku P2 (domyślne, do potwierdzenia przy CP-D; 2026-11-04)
 
-Krok P2 (G.37 U-8: deski każdego rodzaju drewna o strukturze desek wanilii, własne drewno gatunków bez odpowiednika w wanilii). Projekt: `docs/04-pionowy-wycinek.md`, „Projekt P2”; wyniki z gry: „Stan po P2” (etap 2).
+Krok P2 (G.37 U-8: deski każdego rodzaju drewna o strukturze desek wanilii, własne drewno gatunków bez odpowiednika w wanilii). Projekt: `docs/04-pionowy-wycinek.md`, „Projekt P2”; wyniki z gry: „Stan po P2”.
 
 | # | Wybór | Wartość i powód |
 |---|---|---|
@@ -832,3 +832,4 @@ Krok P2 (G.37 U-8: deski każdego rodzaju drewna o strukturze desek wanilii, wł
 | P2-j | Zakładka twórcza | Budulec po bladym dębie w kolejności wanilii (kłoda, drewno, okorowane, deski, schody, płyta, płot, furtka, płyta naciskowa, przycisk), sosna pierwsza; kłody także w naturalnych po pniach |
 | P2-k | Rozmiary bazy | Tekstura bazy innego rozmiaru (np. 32 px z paczki) daje deski tego rozmiaru; pasek klatek animacji — pierwszą klatkę |
 | P2-l | Gametest | `slice -Psites=planks` (`PlankSamples`, bez świata, liczbowo): każda tekstura desek w atlasie, nie brakująca, wyliczona z bazy (nie awaryjna), te same piksele co ponowne wyliczenie; każdy stan każdego bloku zestawów ma model, cząstki nie są brakującą teksturą; bez zrzutów (G.36 U-1) |
+| P2-m | Paczka zasobów z własnymi deskami moda | Gdy więcej niż jedna paczka ma `textures/block/<drewno>_planks.png` (`getResourceStack` > 1: tekstura awaryjna moda i paczka), nie liczymy nic i zostaje tekstura paczki (najwyższa w stosie). Sprawdzone w etapie 2: w środowisku dev zasoby moda są w stosie raz, wszystkie 6 tekstur wyliczone z bazy wanilii (`planks`: „derived from vanilla”, 0 pominięć), więc porównanie `sourcePackId()` niepotrzebne. Kanały pikseli: `NativeImage#getPixels` i `setPixel` w 26.3 są w ARGB (sprawdzone w kodzie bajtowym), tak jak `PlanksTexture` |
