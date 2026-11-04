@@ -253,8 +253,9 @@ final class TrunkSamples {
 			throw new AssertionError("The registry of the game differs from " + file + ":\n" + String.join("\n", diff));
 		}
 		int mod = RegistrySnapshot.stateCount();
-		return String.format(Locale.ROOT, "registry equals the snapshot (%d lines); block states of the mod %d (%d trunk blocks × 84), "
-				+ "of the game %d", now.size() - 1, mod, ModBlocks.trunks().size(), Block.BLOCK_STATE_REGISTRY.size());
+		return String.format(Locale.ROOT, "registry equals the snapshot (%d lines); block states of the mod %d (%d trunk and %d stripped trunk blocks "
+				+ "× 84), of the game %d", now.size() - 1, mod, ModBlocks.trunks().size(), ModBlocks.strippedTrunks().size(),
+				Block.BLOCK_STATE_REGISTRY.size());
 	}
 
 	/** Every trunk state has its own model (not the missing model) and a bark particle sprite. */

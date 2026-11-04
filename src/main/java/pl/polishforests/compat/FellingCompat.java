@@ -7,10 +7,14 @@ import java.util.concurrent.atomic.LongAdder;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jspecify.annotations.Nullable;
 import pl.polishforests.PolishForests;
+import pl.polishforests.block.TrunkBlock;
 
 /**
  * Compatibility with the tree-felling mods (step G1 of docs/04-pionowy-wycinek.md): FallingTree and Tree Harvester. Both
@@ -29,6 +33,10 @@ import pl.polishforests.PolishForests;
  * the neighbors' crowns that are not within 2 blocks of wood. The hooks give it the tree of the parent graph, its count
  * of log-giving blocks (the slowdown per log of the mod) and leave the leaves of this mod's species to their own fall.</li>
  * </ul>
+ * Both mods leave stripped logs standing by their name (FallingTree: an id path starting with {@code stripped},
+ * Tree Harvester: a name containing "stripped" in the player's language), as vanilla's stripped logs are mostly the
+ * player's builds. The stripped thin trunks of this mod (step P1) are the wood of a standing tree the player stripped, so
+ * the hooks take them as logs ({@link #ownTrunk}, {@link #strippedTrunks}); the mods' own deny lists still apply.
  * Without a hit block of this mod's trees (vanilla trees, other mods) the mods work as without this mod.
  */
 public final class FellingCompat {
@@ -48,6 +56,28 @@ public final class FellingCompat {
 	private static final ThreadLocal<@Nullable BlockPos> FELLING_PART = new ThreadLocal<>();
 
 	private FellingCompat() {
+	}
+
+	/**
+	 * Step P1: whether a block is a thin trunk or root flare of this mod in {@code #minecraft:logs}, stripped or not; the
+	 * felling mods take it as a log whatever its name.
+	 */
+	public static boolean ownTrunk(@Nullable Object rawBlock) {
+		return rawBlock instanceof TrunkBlock b && b.defaultBlockState().is(BlockTags.LOGS);
+	}
+
+	/**
+	 * Step P1: the stripped thin trunks of this mod in {@code #minecraft:logs} (id path {@code stripped_*}), which
+	 * FallingTree leaves out of its default logs by the name; read with the tags bound.
+	 */
+	public static List<Block> strippedTrunks() {
+		List<Block> out = new ArrayList<>();
+		for (Block b : BuiltInRegistries.BLOCK) {
+			if (ownTrunk(b) && BuiltInRegistries.BLOCK.getKey(b).getPath().startsWith("stripped_")) {
+				out.add(b);
+			}
+		}
+		return out;
 	}
 
 	/** Logs which felling mods are present (at start-up). */

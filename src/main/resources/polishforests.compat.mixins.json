@@ -6,7 +6,9 @@
 	"mixins": [
 		"FallingTreeBreakMixin",
 		"FallingTreeBuilderMixin",
+		"FallingTreeLogsMixin",
 		"TreeHarvesterLeavesMixin",
+		"TreeHarvesterLogMixin",
 		"TreeHarvesterProcessingMixin"
 	],
 	"injectors": {
