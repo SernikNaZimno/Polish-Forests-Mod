@@ -62,6 +62,23 @@ public record HabitatInfo(Habitat habitat, double dgw, double oceanicity, double
 				PolandClimate.celsius(t), classifier.mode(), trees);
 	}
 
+	/**
+	 * Step W1: the habitat of a column of a habitat biome in the world type "Default + Polish Forests": its code, no
+	 * groundwater model (DGW 0), O and P of that world, the vanilla temperature of the biome at the position.
+	 */
+	public static HabitatInfo vanilla(ServerLevel level, int code, int x, int y, int z) {
+		Habitat h = Habitat.of(code);
+		net.minecraft.core.BlockPos pos = new net.minecraft.core.BlockPos(x, y, z);
+		float t = level.getBiome(pos).value().getBaseTemperature();
+		List<Species> trees = level.registryAccess().lookupOrThrow(Registries.FEATURE)
+				.getOptional(ResourceKey.create(Registries.FEATURE, PolishForests.id("tree_stand")))
+				.filter(TreeStandFeature.class::isInstance).map(f -> ((TreeStandFeature) f).palette().species(code))
+				.orElse(List.of());
+		return new HabitatInfo(h, 0, pl.polishforests.worldgen.vanilla.VanillaForests.OCEANICITY,
+				pl.polishforests.worldgen.vanilla.VanillaForests.MOUNTAIN_INFLUENCE, PolandClimate.celsius(t),
+				HabitatClassifier.Mode.NATURAL, trees);
+	}
+
 	/** The second line of {@code here} (lang {@code polishforests.command.here_habitat}). */
 	public Component line() {
 		Habitat h = habitat;

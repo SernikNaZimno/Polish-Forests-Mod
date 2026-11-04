@@ -19,7 +19,7 @@ import net.minecraft.world.level.levelgen.feature.Feature;
 import net.minecraft.world.level.levelgen.placement.PlacedFeature;
 import org.jspecify.annotations.Nullable;
 import pl.polishforests.worldgen.chunk.ChunkHabitats;
-import pl.polishforests.worldgen.chunk.PolandChunkGenerator;
+import pl.polishforests.worldgen.chunk.ForestWorld;
 import pl.polishforests.worldgen.feature.config.TreePalette;
 import pl.polishforests.worldgen.feature.plan.Ecotone;
 import pl.polishforests.worldgen.feature.plan.ForestBlend;
@@ -124,12 +124,14 @@ public final class TreeStandFeature implements Feature {
 	public static final long TWIN_SALT = 0x7B1C_4E2A_95D3L;
 	/** Placeholder trees planted as their planner twin near the forests of the slice (step Z1, diagnostics). */
 	public static final java.util.concurrent.atomic.LongAdder TWINS = new java.util.concurrent.atomic.LongAdder();
+	/** Planned trees on a blocked column of the world type "Default + Polish Forests" (step W1, diagnostics). */
+	public static final java.util.concurrent.atomic.LongAdder SKIPPED_BLOCKED = new java.util.concurrent.atomic.LongAdder();
 	private final TreeStandPlan.Palette plan;
 	private volatile @Nullable Noises noises;
 
 	/** The noises, the stand map and the crown territories of a world seed, scale and managed share. */
-	private record Noises(long seed, double k, double managedShare, Noise ramp, Noise gaps, ForestStandMap stands,
-			CrownTerritories crowns) {
+	private record Noises(long seed, long standSeed, double k, double managedShare, Noise ramp, Noise gaps,
+			ForestStandMap stands, CrownTerritories crowns) {
 	}
 
 	/** Per thread: the crown territories session of the last world (memo of the candidate pattern and sites). */
@@ -222,12 +224,13 @@ public final class TreeStandFeature implements Feature {
 		}
 	}
 
-	private Noises noises(long seed, double k, double managedShare) {
+	private Noises noises(long seed, long standSeed, double k, double managedShare) {
 		Noises n = noises;
-		if (n == null || n.seed() != seed || n.k() != k || n.managedShare() != managedShare) {
+		if (n == null || n.seed() != seed || n.standSeed() != standSeed || n.k() != k || n.managedShare() != managedShare) {
 			Noise root = new Noise(seed);
-			ForestStandMap stands = new ForestStandMap(seed, k, managedShare);
-			n = new Noises(seed, k, managedShare, root.derive(RAMP_SALT), root.derive(GAP_SALT), stands,
+			// Step W1: the stand map of the world type "Default + Polish Forests" has its own seed (ForestWorld.standSeed).
+			ForestStandMap stands = new ForestStandMap(standSeed, k, managedShare);
+			n = new Noises(seed, standSeed, k, managedShare, root.derive(RAMP_SALT), root.derive(GAP_SALT), stands,
 					new CrownTerritories(seed, stands));
 			noises = n;
 		}
@@ -299,18 +302,21 @@ public final class TreeStandFeature implements Feature {
 		ChunkPos pos = chunk.getPos();
 		double k = 1;
 		double managedShare = 0.85;
-		if (generator instanceof PolandChunkGenerator poland) {
-			k = poland.settings().scale().landscape().local();
-			managedShare = poland.settings().managedForestShare();
+		long standSeed = level.getSeed();
+		ForestWorld world = ForestWorld.of(generator);
+		if (world != null) {
+			k = world.localScale();
+			managedShare = world.managedForestShare();
+			standSeed = world.standSeed(level.getSeed());
 		}
-		Noises n = noises(level.getSeed(), k, managedShare);
+		Noises n = noises(level.getSeed(), standSeed, k, managedShare);
 		float[] ramp = SpeciesRamp.factors(habitats.oceanicity(), habitats.mountainInfluence(), n.ramp(),
 				pos.getMiddleBlockX(), pos.getMiddleBlockZ(), k);
 		long seed = TreeStandPlan.seed(level.getSeed(), pos.x(), pos.z(), TreeStandPlan.SALT);
 		// Ecotones (rule Z10, step S8b): each candidate takes the rule of a column across the border within the belt of the
 		// pair, so composition and density change in a ramp.
 		ChunkEcotones ecotones = ChunkEcotones.of(level, chunk, habitats, k,
-				generator instanceof PolandChunkGenerator poland ? poland.forestBlend(level.getSeed()) : null);
+				world != null ? world.forestBlend(level.getSeed()) : null);
 		int[] codes = ecotones.trees();
 		TreeStandPlan.Stand stand = new TreeStandPlan.Stand(ramp, n.gaps(), k, n.stands(), n.crowns());
 		int[] planned = TreeStandPlan.of(codes, VegetationColumns.waterDepth(habitats), plan, level.getSeed(), pos.x(), pos.z(),
@@ -355,6 +361,11 @@ public final class TreeStandFeature implements Feature {
 				tree = twin;
 				proc = procedural[twin];
 				TWINS.increment();
+			}
+			if (habitats.blocked(column)) {
+				// Step W1: a column of a vanilla biome, too steep or without soil in the world type "Default + Polish Forests".
+				SKIPPED_BLOCKED.increment();
+				continue;
 			}
 			if (proc == null) {
 				if (habitats.buildingDistance(column) <= BUILDING_GAP || habitats.pieceDistance(column) <= PIECE_GAP) {
@@ -507,7 +518,8 @@ public final class TreeStandFeature implements Feature {
 				return TreeShapePlan.Ground.UNKNOWN;
 			}
 			int i = ChunkHabitats.index(x & 15, z & 15);
-			return h.hasWater(i) || h.pieceDistance(i) <= PIECE_GAP || h.caveOpened(i) ? TreeShapePlan.Ground.UNKNOWN : h.top()[i];
+			return h.hasWater(i) || h.pieceDistance(i) <= PIECE_GAP || h.caveOpened(i) || h.blocked(i) ? TreeShapePlan.Ground.UNKNOWN
+					: h.top()[i];
 		}
 
 		/** Whether world column (x, z) is in the structure mask of the crowns (by a building or on a piece). */

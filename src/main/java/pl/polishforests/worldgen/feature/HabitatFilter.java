@@ -44,6 +44,7 @@ public record HabitatFilter(HabitatCondition condition, float maxMountainInfluen
 		ChunkAccess chunk = context.getLevel().getChunk(origin.getX() >> 4, origin.getZ() >> 4);
 		ChunkHabitats habitats = ModFeatures.habitats(chunk, context.generator(), context.getLevel().getSeed());
 		return habitats != null && habitats.mountainInfluence() <= maxMountainInfluence
+				&& !habitats.blocked(ChunkHabitats.index(origin.getX() & 15, origin.getZ() & 15))
 				&& match.matches(habitats.code(origin.getX() & 15, origin.getZ() & 15));
 	}
 

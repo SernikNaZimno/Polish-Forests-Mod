@@ -2,6 +2,7 @@
   "replace": false,
   "values": [
     "polishforests:poland",
-    "polishforests:poland_gameplay"
+    "polishforests:poland_gameplay",
+    "polishforests:default_polish_forests"
   ]
 }

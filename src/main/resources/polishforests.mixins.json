@@ -9,8 +9,10 @@
 		"ChunkGeneratorDecorationMixin",
 		"ChunkGeneratorFeatureOrderMixin",
 		"ChunkGeneratorStructureMixin",
+		"ChunkGeneratorVanillaForestsMixin",
 		"FlowerBlockMixin",
 		"MultifaceSpreaderMixin",
+		"NoiseBasedChunkGeneratorMixin",
 		"SculkVeinSpreaderConfigMixin",
 		"StructureCheckMixin"
 	],

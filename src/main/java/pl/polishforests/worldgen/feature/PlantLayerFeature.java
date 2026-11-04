@@ -27,7 +27,7 @@ import net.minecraft.world.level.levelgen.feature.Feature;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.material.Fluids;
 import pl.polishforests.worldgen.chunk.ChunkHabitats;
-import pl.polishforests.worldgen.chunk.PolandChunkGenerator;
+import pl.polishforests.worldgen.chunk.ForestWorld;
 import pl.polishforests.worldgen.feature.config.PlantPalette;
 import pl.polishforests.worldgen.feature.plan.ColumnPlan;
 import pl.polishforests.worldgen.feature.plan.Ecotone;
@@ -208,9 +208,9 @@ public final class PlantLayerFeature implements Feature {
 			// the belt of the pair, and the mantle and fringe of the forest edges (shared by the layers of the chunk; the
 			// waterside zones and the aquatic plants follow the water, whose borders are sharp). The understory sees the
 			// mantle, the ground layer the fringe.
-			double k = generator instanceof PolandChunkGenerator poland ? poland.settings().scale().landscape().local() : 1;
-			ChunkEcotones e = ChunkEcotones.of(level, chunk, habitats, k,
-					generator instanceof PolandChunkGenerator poland ? poland.forestBlend(level.getSeed()) : null);
+			ForestWorld world = ForestWorld.of(generator);
+			double k = world != null ? world.localScale() : 1;
+			ChunkEcotones e = ChunkEcotones.of(level, chunk, habitats, k, world != null ? world.forestBlend(level.getSeed()) : null);
 			boolean groundLayer = dispatcher == BiomeDecoration.Dispatcher.GROUND_LAYER;
 			columns = columns.with(groundLayer ? e.ground() : e.plants(),
 					edges ? groundLayer ? e.groundEdges() : e.shrubEdges() : null);
@@ -233,7 +233,7 @@ public final class PlantLayerFeature implements Feature {
 						pos.getMinBlockZ() + (column & 15), salt));
 			}
 			int piece = habitats.pieceDistance(column);
-			if (piece == 0 || piece <= FEATURE_GAP && plant.feature().isPresent()) {
+			if (piece == 0 || piece <= FEATURE_GAP && plant.feature().isPresent() || habitats.blocked(column)) {
 				// Round 1 of the S8 review: nothing on the footprint of a structure piece (moss carpet on the floor
 				// planks of a house), no shrub or fallen tree reaching into it.
 				continue;
@@ -271,7 +271,7 @@ public final class PlantLayerFeature implements Feature {
 	private void groundOfColumns(WorldGenLevel level, ChunkHabitats habitats, ColumnPlan.Columns columns, ChunkPos pos,
 			BlockPos.MutableBlockPos at) {
 		for (int column = 0; column < 256; column++) {
-			if (habitats.pieceDistance(column) == 0) {
+			if (habitats.pieceDistance(column) == 0 || habitats.blocked(column)) {
 				continue;
 			}
 			int r = plan.ruleFor(columns.codes()[column], columns.waterDepth()[column], columns.ground()[column], columns.side()[column],

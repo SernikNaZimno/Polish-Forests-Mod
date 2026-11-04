@@ -833,3 +833,46 @@ Krok P2 (G.37 U-8: deski każdego rodzaju drewna o strukturze desek wanilii, wł
 | P2-k | Rozmiary bazy | Tekstura bazy innego rozmiaru (np. 32 px z paczki) daje deski tego rozmiaru; pasek klatek animacji — pierwszą klatkę |
 | P2-l | Gametest | `slice -Psites=planks` (`PlankSamples`, bez świata, liczbowo): każda tekstura desek w atlasie, nie brakująca, wyliczona z bazy (nie awaryjna), te same piksele co ponowne wyliczenie; każdy stan każdego bloku zestawów ma model, cząstki nie są brakującą teksturą; bez zrzutów (G.36 U-1) |
 | P2-m | Paczka zasobów z własnymi deskami moda | Gdy więcej niż jedna paczka ma `textures/block/<drewno>_planks.png` (`getResourceStack` > 1: tekstura awaryjna moda i paczka), nie liczymy nic i zostaje tekstura paczki (najwyższa w stosie). Sprawdzone w etapie 2: w środowisku dev zasoby moda są w stosie raz, wszystkie 6 tekstur wyliczone z bazy wanilii (`planks`: „derived from vanilla”, 0 pominięć), więc porównanie `sourcePackId()` niepotrzebne. Kanały pikseli: `NativeImage#getPixels` i `setPixel` w 26.3 są w ARGB (sprawdzone w kodzie bajtowym), tak jak `PlanksTexture` |
+
+### G.40 Drobne wybory kroku W1 (domyślne, do potwierdzenia przy CP-D; 2026-11-04)
+
+Krok W1 (G.36 U-3: typ świata „Default + Polish Forests” / „Domyślny + polskie lasy”; nie mylić z pasem W1b). Projekt: `docs/04-pionowy-wycinek.md`, „Projekt W1”; wyniki z gry: „Stan po W1”. Spis biomów leśnych wanilii 26.3 (tagi `is_forest`, `is_taiga`, `is_jungle` z jaru gry oraz bagna i lasy wietrzne) i ich zastępstwa:
+
+| Biom wanilii | Las moda | Powód |
+|---|---|---|
+| `forest` | `oak_hornbeam_forest` (grąd) | zwykły las liściasty z dębem i brzozą; las wycinka z drzewami planera |
+| `flower_forest` | `oak_hornbeam_forest` | las liściasty z bogatym runem — grąd z zawilcem i przylaszczką |
+| `birch_forest` | `mixed_forest` (LMśw) | brzoza z domieszką; las mieszany wycinka |
+| `old_growth_birch_forest` | `mixed_forest` | jak wyżej |
+| `dark_forest` | `lowland_beech_forest` (buczyna niżowa) | zwarty, ciemny las liściasty |
+| `taiga` | `mixed_pine_forest` (BMśw) | świerk z sosną — bór mieszany z NE Polski |
+| `old_growth_pine_taiga` | `fresh_pine_forest` (Bśw) | stary bór sosnowy z mszystym dnem; las wycinka |
+| `old_growth_spruce_taiga` | `montane_spruce_forest` (świerczyna górska) | stary bór świerkowy |
+| `snowy_taiga` | `montane_spruce_forest` | zimny bór świerkowy (bez śniegu, W1-o) |
+| `windswept_forest` | `montane_beech_forest` (buczyna karpacka) | las na zboczach gór z bukiem, jodłą i świerkiem |
+| `swamp` | `alder_carr` (ols) | podmokły las liściasty |
+| `jungle`, `sparse_jungle`, `bamboo_jungle`, `mangrove_swamp` | — (wanilia) | tropikalne, bez odpowiednika |
+| `pale_garden`, `cherry_grove`, `grove` | — (wanilia) | bez odpowiednika w Polsce (blady ogród, wiśnie, zaśnieżony gaj) |
+| `dappled_forest` (26.3) | — (wanilia) | jesienny las topolowy z dala od rzek; topole moda rosną tylko w łęgu wierzbowo-topolowym |
+
+Drzewa planera (pełna struktura lasu) mają cztery lasy wycinka (grąd, LMśw, BMśw, Bśw); buczyny, świerczyna i ols mają do kroku F zastępstwa M2 z ich palet (G.36 U-4).
+
+| # | Wybór | Wartość i powód |
+|---|---|---|
+| W1-a | Zastąpione biomy | Tabela wyżej (`worldgen/vanilla/VanillaForests.REPLACEMENTS`, `KEPT`); test `VanillaForestsTest` pilnuje, że każdy las wanilii z tagów jaru jest albo zastąpiony, albo na liście zostawionych |
+| W1-b | Źródło biomów | `polishforests:vanilla_forests` (`VanillaForestsBiomeSource`) owija źródło wanilii (`multi_noise`, preset `overworld`) i podmienia tylko zwrócony biom; klimat, teren, jaskinie, biomy jaskiniowe i wszystkie inne biomy zostają, więc lasy moda leżą tam, gdzie lasy wanilii. `/locate biome`, struktury (po tagach biomów, które już mają nasze biomy) i chunki widzą te same biomy |
+| W1-c | Preset | `polishforests:default_polish_forests`: generator `minecraft:noise` z ustawieniami `minecraft:overworld`, Nether i End wanilii; w tagu `#minecraft:normal` po presetach „Polska” (przycisk „Typ świata”). Istniejące światy Default bez zmian (generator zapisany w `level.dat`, mixiny działają tylko przy naszym źródle) |
+| W1-d | Kod siedliska kolumny leśnej | Kanoniczny kod biomu: bez strefy, świeży typ siedliskowy lasu (jak `ForestBlend`: Bśw, BMśw, LMśw, Lśw; świerczyna Bg, buczyna karpacka LG, ols Ol), zespół typowy, gleba biomu (`Soil.forBiome`) i flagi zasięgu gatunków: grab w grądzie, LMśw i buczynie, buk w buczynach, świerk w BMśw i lasach górskich, jodła w lasach górskich |
+| W1-e | O i P | Stałe: oceaniczność O = 0,45, wpływ gór P = 0,65 — rampa zasięgu (`SpeciesRamp`) pełna dla każdej flagi, więc gatunki wybierają flagi; bez głazów narzutowych (wymagają P ≤ 0,3) |
+| W1-f | Kolumny obce | Kolumna biomu wanilii ma kod „obcy” tylko dla skrajów lasu (ekotony): ląd → łąka, rzeka → rzeka, ocean → morze, plaża i kamienisty brzeg → plaża (tagi `is_river`, `is_ocean`, `is_beach`, bez nich nazwa) |
+| W1-g | Kolumny zablokowane | Maska `blocked` w `ChunkHabitats` (nowe pole, brak = nic zablokowane, światy „Polska” bez zmian): mod nic nie stawia na kolumnie obcej, bez gruntu (wierzch nie z `#dirt`, `#sand` ani żwir — skała, lód, śnieg) i stromej (różnica ≥ 4 bloki do sąsiada w chunku); drzewostan, runo, martwe drewno, filtry siedlisk pomijają je |
+| W1-h | Skala i solenie | Skala GAMEPLAY (k = 0,5, `LandscapeScale.GAMEPLAY.local()`), udział lasu gospodarczego 0,85 (D9). Mapa wydzieleń z ziarna pochodnego z nową solą `vanilla_forests.stands`, szum gleb z solą `vanilla_forests.soil`; żadna stara sól nie zmieniona |
+| W1-i | Wierzch gleby | Na suchych, niezablokowanych kolumnach lasu z darnią i dalej niż 1 blok od elementów struktur wierzch darni zastąpiony wierzchem gleby siedliska (`SurfaceBuilder.soilTop`: bielica, omszona bielica, butwina …) i zmieszany na granicach chunków jak w świecie „Polska” (`blendSoil`, bez wody, struktur i kolumn zablokowanych); niżej grunt wanilii |
+| W1-j | Kiedy powstają siedliska | Na końcu etapu TERRAIN (mixin na przyszłości `NoiseBasedChunkGenerator#buildTerrain`), z map wysokości wanilii (`OCEAN_FLOOR_WG`, woda z `WORLD_SURFACE_WG`) i biomu z przybliżeniem `BiomeManager` jak `level.getBiome`; przed dekoracją sąsiadów, więc niezależne od kolejności chunków. Usuwane w `spawnOriginalMobs` jak w świecie „Polska”. Brak załącznika (np. stary proto-chunk) = mod nic nie stawia w tym chunku (bez przeliczania) |
+| W1-k | Struktury | Maska roślinności z elementów struktur bez „brody” (`StructureGround.mask`; teren pod strukturą wyrównała już broda wanilii); wioski tajgi w borach, rezydencje w grądzie i buczynie, chatka wiedźmy w olsie — przez istniejące tagi `has_structure` |
+| W1-l | Start dyspozytorów | `TopOfWorldPlacement` w tym typie świata startuje z pierwszej kolumny lasu w chunku na jej wierzchu, więc filtr biomu czyta biom kolumny lasu (dyspozytory stoją w liście ficzerów biomów moda); chunk bez kolumny lasu — nic |
+| W1-m | Jaskinie | Podziemne ficzery biomów moda (J2) włączone (`caveFeatures` = prawda, świat wanilii ma jaskinie). Kolejność ficzerów: zwykłe sortowanie wanilii biomów wanilii i moda razem bez cyklu (`VanillaFeatureOrderTest`); indeksy ficzerów moda w tym świecie inne niż w świecie „Polska” (inny typ świata, deterministyczne) |
+| W1-n | Komendy | `/polishforests find biome <las>` — siatka 384 bloków do 150 km po biomie powierzchni źródła (sondowanie na Y 256); biomy nieobecne w tym typie świata — komunikat z listą lasów moda; `find` celów: tylko morze, rzeka, plaża (biomy wanilii); strefy i cele krajobrazu — komunikat „tylko w świecie Polska”; `/polishforests here` — biom, typ siedliskowy, gleba, O i P tego świata, temperatura biomu, drzewa palety, tryb naturalny; `/locate biome polishforests:<las>` — wanilia |
+| W1-o | Klimat i śnieg | Bez profili klimatu (`ClimateBinding` tylko w świecie „Polska”, wymagają skali pionowej Polski): biomy moda mają temperaturę bazową 0,7, więc `snowy_taiga` → świerczyna i lasy górskie na szczytach wanilii nie mają śniegu poza zimą Serene Seasons. Pory roku (Serene Seasons, wygląd sezonowy klienta V13) działają jak w świecie „Polska”. Do decyzji przy CP-D: profil klimatu z wysokości wanilii |
+| W1-p | Spawny | Z biomu moda (jego `natural_mob_spawns`); dynie, jagody, jeziora lawy na powierzchni i inne ficzery biomów wanilii w zastąpionych lasach znikają (biomy moda ich nie mają) |
+| W1-q | Nazwa i podpowiedź | „Default + Polish Forests” / „Domyślny + polskie lasy” (`generator.polishforests.default_polish_forests`), podpowiedź przycisku „Typ świata” (`.info`, mixin `client/mixin/WorldTypeHintMixin`): teren, jaskinie, struktury i inne biomy wanilii, lasy wanilii zastąpione lasami moda |

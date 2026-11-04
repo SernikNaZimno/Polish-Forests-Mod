@@ -22,7 +22,7 @@ import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.levelgen.feature.Feature;
 import org.jspecify.annotations.Nullable;
 import pl.polishforests.worldgen.chunk.ChunkHabitats;
-import pl.polishforests.worldgen.chunk.PolandChunkGenerator;
+import pl.polishforests.worldgen.chunk.ForestWorld;
 import pl.polishforests.worldgen.feature.config.TreePalette;
 import pl.polishforests.worldgen.habitat.Species;
 import pl.polishforests.worldgen.landscape.Noise;
@@ -102,8 +102,8 @@ public record DeadwoodFeature(Species species, boolean stump) implements Feature
 		long seed = level.getSeed();
 		int x = origin.getX();
 		int z = origin.getZ();
-		StandMap stands = generator instanceof PolandChunkGenerator poland ? poland.standMap(seed)
-				: StandMap.uniform(AgeClass.MATURE, true);
+		ForestWorld world = ForestWorld.of(generator);
+		StandMap stands = world != null ? world.standMap(seed) : StandMap.uniform(AgeClass.MATURE, true);
 		Ground ground = new Ground(level, level.getChunk(x >> 4, z >> 4), generator, seed);
 		if (ground.top(x, z) != origin.getY() - 1) {
 			SKIPPED_BASE.increment();
@@ -266,7 +266,7 @@ public record DeadwoodFeature(Species species, boolean stump) implements Feature
 				return UNKNOWN;
 			}
 			int i = ChunkHabitats.index(x & 15, z & 15);
-			if (h.hasWater(i) || h.pieceDistance(i) <= PIECE_GAP || h.caveOpened(i)) {
+			if (h.hasWater(i) || h.pieceDistance(i) <= PIECE_GAP || h.caveOpened(i) || h.blocked(i)) {
 				// No wood over water, by structures or over a top that a cave entrance took away (step J1).
 				return UNKNOWN;
 			}

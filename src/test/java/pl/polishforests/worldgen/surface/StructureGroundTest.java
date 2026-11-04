@@ -26,6 +26,24 @@ class StructureGroundTest {
 	}
 
 	@Test
+	void maskWithoutTheBeardForTheVanillaTerrain() {
+		short[] tops = new short[256];
+		java.util.Arrays.fill(tops, (short) 70);
+		assertNull(StructureGround.mask(tops, List.of(), 0, 0));
+		// A path piece at local x 3..5, z 3..5 and a house far above the surface (it does not reach it).
+		StructureGround.Piece path = new StructureGround.Piece(3, 69, 3, 5, 70, 5, 70, false, false);
+		StructureGround.Piece floating = new StructureGround.Piece(0, 140, 0, 15, 150, 15, 140, false, true);
+		byte[] mask = StructureGround.mask(tops, List.of(path, floating), 0, 0);
+		assertEquals(0, StructureGround.any(mask[index(4, 4)]));
+		assertEquals(3, StructureGround.any(mask[index(0, 0)]));
+		assertEquals(10, StructureGround.any(mask[index(15, 4)]));
+		assertEquals(StructureGround.FAR, StructureGround.building(mask[index(4, 4)]));
+		// The chunk origin shifts the pieces (world coordinates).
+		byte[] shifted = StructureGround.mask(tops, List.of(new StructureGround.Piece(19, 69, 3, 21, 70, 5, 70, false, true)), 16, 0);
+		assertEquals(0, StructureGround.building(shifted[index(4, 4)]));
+	}
+
+	@Test
 	void noPiecesNoMask() {
 		assertNull(StructureGround.apply(slope(), List.of(), 0, 0));
 	}

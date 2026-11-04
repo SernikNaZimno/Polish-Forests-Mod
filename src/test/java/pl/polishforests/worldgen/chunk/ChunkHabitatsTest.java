@@ -39,6 +39,27 @@ class ChunkHabitatsTest {
 	}
 
 	@Test
+	void blockedMaskRoundTripsAndIsAbsentBeforeStepW1() {
+		long[] blocked = new long[4];
+		blocked[1] = 1L << 5;
+		ChunkHabitats h = habitats(ChunkHabitats.NO_CAVES);
+		ChunkHabitats withBlocked = new ChunkHabitats(h.codes(), h.top(), h.water(), h.oceanicity(), h.mountainInfluence(),
+				h.structures(), h.caveOpened(), blocked);
+		JsonObject json = ChunkHabitats.CODEC.encodeStart(JsonOps.INSTANCE, withBlocked).getOrThrow().getAsJsonObject();
+		ChunkHabitats back = ChunkHabitats.CODEC.parse(JsonOps.INSTANCE, json).getOrThrow();
+		assertArrayEquals(blocked, back.blocked());
+		assertTrue(back.blocked(64 + 5));
+		assertFalse(back.blocked(5));
+		json.remove("blocked");
+		ChunkHabitats old = ChunkHabitats.CODEC.parse(JsonOps.INSTANCE, json).getOrThrow();
+		assertArrayEquals(ChunkHabitats.NONE_BLOCKED, old.blocked());
+		assertArrayEquals(ChunkHabitats.NONE_BLOCKED, h.blocked());
+		for (int i = 0; i < 256; i++) {
+			assertFalse(old.blocked(i));
+		}
+	}
+
+	@Test
 	void attachmentsSavedBeforeTheCavesHaveNoOpenedTops() {
 		JsonObject json = ChunkHabitats.CODEC.encodeStart(JsonOps.INSTANCE, habitats(new long[] {1, 2, 3, 4})).getOrThrow()
 				.getAsJsonObject();

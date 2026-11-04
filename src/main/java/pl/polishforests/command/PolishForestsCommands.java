@@ -268,6 +268,10 @@ public final class PolishForestsCommands {
 
 	private static int here(CommandContext<CommandSourceStack> ctx) {
 		CommandSourceStack source = ctx.getSource();
+		pl.polishforests.worldgen.vanilla.VanillaForestWorld vanilla = VanillaTargets.of(source.getLevel());
+		if (vanilla != null) {
+			return hereVanilla(source, vanilla);
+		}
 		LandscapeModel model = requireModel(source);
 		if (model == null) {
 			return 0;
@@ -291,10 +295,34 @@ public final class PolishForestsCommands {
 		return 1;
 	}
 
+	/**
+	 * Step W1: {@code here} in the world type "Default + Polish Forests": the surface biome of the column, and for a habitat
+	 * biome the habitat line (its canonical code, O and P of that world, the trees of the stand rule).
+	 */
+	private static int hereVanilla(CommandSourceStack source, pl.polishforests.worldgen.vanilla.VanillaForestWorld world) {
+		Vec3 pos = source.getPosition();
+		int x = (int) Math.floor(pos.x);
+		int z = (int) Math.floor(pos.z);
+		var biome = source.getLevel().getBiome(net.minecraft.core.BlockPos.containing(pos));
+		String id = biome.unwrapKey().map(k -> k.identifier().toString()).orElse("?");
+		source.sendSuccess(() -> Component.translatable("polishforests.command.vanilla_here",
+				Component.literal(id).withStyle(ChatFormatting.GREEN)), false);
+		int code = world.code(biome);
+		if (pl.polishforests.worldgen.vanilla.VanillaForestWorld.forest(code)) {
+			HabitatInfo info = HabitatInfo.vanilla(source.getLevel(), code, x, (int) Math.floor(pos.y), z);
+			source.sendSuccess(info::line, false);
+		}
+		return 1;
+	}
+
 	// ------------------------------------------------------------------ search
 
 	private static int find(CommandContext<CommandSourceStack> ctx) {
 		CommandSourceStack source = ctx.getSource();
+		pl.polishforests.worldgen.vanilla.VanillaForestWorld vanilla = VanillaTargets.of(source.getLevel());
+		if (vanilla != null) {
+			return findVanilla(source, vanilla, StringArgumentType.getString(ctx, "target").toUpperCase(Locale.ROOT));
+		}
 		LandscapeModel model = requireModel(source);
 		if (model == null) {
 			return 0;
@@ -317,9 +345,34 @@ public final class PolishForestsCommands {
 		return 1;
 	}
 
+	/** Step W1: {@code find <target>} in the world type "Default + Polish Forests" (sea, river, beach). */
+	private static int findVanilla(CommandSourceStack source, pl.polishforests.worldgen.vanilla.VanillaForestWorld world, String arg) {
+		Target target;
+		try {
+			target = Target.valueOf(arg);
+		} catch (IllegalArgumentException e) {
+			source.sendFailure(Component.translatable("polishforests.command.unknown_target", arg.toLowerCase(Locale.ROOT)));
+			return 0;
+		}
+		IntPredicate test = VanillaTargets.target(target);
+		if (test == null) {
+			source.sendFailure(Component.translatable("polishforests.command.vanilla_no_target", target.displayName()));
+			return 0;
+		}
+		Vec3 origin = source.getPosition();
+		source.sendSuccess(() -> Component.translatable("polishforests.command.searching", target.displayName()), false);
+		runSearch(source, origin, cancelled -> VanillaTargets.locate(world, test, origin.x, origin.z, cancelled),
+				VanillaTargets.radius(), target.displayName());
+		return 1;
+	}
+
 	/** Step S9: {@code find biome <id>}. */
 	private static int findBiome(CommandContext<CommandSourceStack> ctx) {
 		CommandSourceStack source = ctx.getSource();
+		pl.polishforests.worldgen.vanilla.VanillaForestWorld vanilla = VanillaTargets.of(source.getLevel());
+		if (vanilla != null) {
+			return findBiomeVanilla(source, vanilla, StringArgumentType.getString(ctx, "biome").toLowerCase(Locale.ROOT));
+		}
 		HabitatTargets.World world = requireWorld(source);
 		if (world == null) {
 			return 0;
@@ -342,9 +395,34 @@ public final class PolishForestsCommands {
 		return 1;
 	}
 
+	/** Step W1: {@code find biome <id>} in the world type "Default + Polish Forests". */
+	private static int findBiomeVanilla(CommandSourceStack source, pl.polishforests.worldgen.vanilla.VanillaForestWorld world,
+			String arg) {
+		HabitatBiome biome = HabitatBiome.byId(arg);
+		if (biome == null) {
+			source.sendFailure(Component.translatable("polishforests.command.unknown_biome", arg));
+			return 0;
+		}
+		Component name = biomeName(biome);
+		IntPredicate test = VanillaTargets.biome(biome);
+		if (test == null) {
+			source.sendFailure(Component.translatable("polishforests.command.vanilla_absent", name, VanillaTargets.presentIds()));
+			return 0;
+		}
+		Vec3 origin = source.getPosition();
+		source.sendSuccess(() -> Component.translatable("polishforests.command.searching", name), false);
+		runSearch(source, origin, cancelled -> VanillaTargets.locate(world, test, origin.x, origin.z, cancelled),
+				VanillaTargets.radius(), name);
+		return 1;
+	}
+
 	/** Step S9: {@code find zone <id>}. */
 	private static int findZone(CommandContext<CommandSourceStack> ctx) {
 		CommandSourceStack source = ctx.getSource();
+		if (VanillaTargets.of(source.getLevel()) != null) {
+			source.sendFailure(Component.translatable("polishforests.command.vanilla_no_zones"));
+			return 0;
+		}
 		HabitatTargets.World world = requireWorld(source);
 		if (world == null) {
 			return 0;

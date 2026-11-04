@@ -520,7 +520,7 @@ tasks.register('generateArt', ArtTask) {
 	outputs.upToDateWhen { false }
 }
 
-// Choosing in-game tests: ./gradlew runClientGameTest -Pgametest=performance|stages|views|climate|ui|habitats|vegetation|present_day|determinism|ecotones|slice|probes|cover|caves|cave_biomes|all
+// Choosing in-game tests: ./gradlew runClientGameTest -Pgametest=performance|stages|views|climate|ui|habitats|vegetation|present_day|determinism|ecotones|slice|probes|cover|caves|cave_biomes|vanilla_forests|all
 // (cover: only by name; step K1, the thin and the realistic loose cover in pits down to Y 0 in a sandy lowland, a till
 // lowland and a valley floor, with a survey of cover, ores, voids and side faces; -Pscales=realistic|gameplay)
 // (caves: only by name; step J1, the caves of a lowland forest, a river valley, the mountains and the sea coast in each
@@ -531,6 +531,10 @@ tasks.register('generateArt', ArtTask) {
 // room, F3 in the lush caves, spawns, and the forest over the lush caves before and after (the same world with
 // -Dpolishforests.caveBiomes=off); report build/cave_biomes/<scale>.txt; -PcaveBiomes=off creates the worlds of any game
 // test with the caves of J1 alone)
+// (vanilla_forests: only by name; step W1, the world type "Default + Polish Forests": a census of the surface biomes,
+// /locate biome of the habitat biomes, /polishforests find and here, trunks in the oak-hornbeam and the fresh pine forest
+// and none far from the forests, the same chunks in two orders; -Psites=load instead measures the load of new terrain
+// against vanilla Default with the same seed (with -Poptimization: C2ME); report build/vanilla_forests/)
 // (probes: only by name; the render trials of step V3 with probe blocks that exist only in this run, -Psites=board|rebuild
 // picks a part; combine with -Poptimization (with -PnoNvidium: plain Sodium) and -PnoSeasons; results in
 // build/probes/<vanilla|sodium|sodium_nvidium>_<ss|noss>.txt)
@@ -594,6 +598,7 @@ tasks.named('runClientGameTest') {
 	// next to them <label>_terrain.txt.gz, the terrain block by block. -PdeterminismReference=<file> compares the run with such
 	// a file (the block-by-block file next to it, same name): the same mod set exactly, the other mod set (with or without
 	// -Poptimization) as a report with a tolerance of a few blocks (decision J1-q, docs/00 G.32).
+	jvmArgs "-Dpolishforests.vanillaForests.out=${layout.buildDirectory.dir('vanilla_forests').get().asFile.absolutePath}"
 	jvmArgs "-Dpolishforests.determinism.out=${layout.buildDirectory.dir('determinism').get().asFile.absolutePath}"
 	if (project.hasProperty('determinismReference')) {
 		jvmArgs "-Dpolishforests.determinism.reference=${file(project.property('determinismReference')).absolutePath}"

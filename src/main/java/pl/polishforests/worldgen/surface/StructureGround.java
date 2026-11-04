@@ -119,6 +119,35 @@ public final class StructureGround {
 		return mask;
 	}
 
+	/**
+	 * The vegetation mask of the pieces without the beard (step W1: on the vanilla terrain the vanilla beardifier has
+	 * already adapted the ground), for the columns with these tops (index {@code x * 16 + z}); null without pieces.
+	 */
+	public static byte[] mask(short[] tops, List<Piece> pieces, int minX, int minZ) {
+		if (pieces.isEmpty()) {
+			return null;
+		}
+		byte[] mask = new byte[256];
+		for (int i = 0; i < 256; i++) {
+			int x = minX + (i >> 4);
+			int z = minZ + (i & 15);
+			int building = FAR;
+			int any = FAR;
+			for (Piece p : pieces) {
+				if (p.building && !reachesSurface(p, tops[i])) {
+					continue;
+				}
+				int d = Math.max(Math.max(0, Math.max(p.minX - x, x - p.maxX)), Math.max(0, Math.max(p.minZ - z, z - p.maxZ)));
+				any = Math.min(any, d);
+				if (p.building) {
+					building = Math.min(building, d);
+				}
+			}
+			mask[i] = (byte) (building << 4 | any);
+		}
+		return mask;
+	}
+
 	/** Whether the box of the piece reaches the surface of a column with the given top (for the mask). */
 	static boolean reachesSurface(Piece p, int top) {
 		return p.maxY >= top - MASK_BELOW && p.minY <= top + MASK_ABOVE;

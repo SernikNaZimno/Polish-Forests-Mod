@@ -7,7 +7,8 @@
 		"FallingParticlesLeavesBlockMixin",
 		"ModelBlockRendererMixin",
 		"SpriteSourcesMixin",
-		"WorldCreationUiStateMixin"
+		"WorldCreationUiStateMixin",
+		"WorldTypeHintMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

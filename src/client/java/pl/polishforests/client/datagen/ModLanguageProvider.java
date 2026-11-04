@@ -294,6 +294,11 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 	private static void english(TranslationBuilder b) {
 		b.add("generator.polishforests.poland", "Poland (1:1 Scale)");
 		b.add("generator.polishforests.poland_gameplay", "Poland (Gameplay Scale)");
+		// Step W1: the world type "Default + Polish Forests" and its hint under the world type button.
+		b.add("generator.polishforests.default_polish_forests", "Default + Polish Forests");
+		b.add("generator.polishforests.default_polish_forests.info", "The vanilla terrain, caves, structures and biomes, "
+				+ "but the vanilla forests, taigas and swamps are replaced by the forests of Polish Forests: oak-hornbeam, "
+				+ "beech, mixed and pine forests, montane spruce and beech forests, alder carrs.");
 		b.add("polishforests.options.title", "Poland World Customization");
 		b.add("polishforests.options.scale", "Scale");
 		b.add("polishforests.options.scale.realistic", "Real (1:1)");
@@ -336,6 +341,11 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		b.add("polishforests.command.not_found", "No %s found within %s km");
 		b.add("polishforests.command.here", "Here: %s, ground at %s m above sea level, substrate: %s, water: %s, landforms: %s");
 		b.add("polishforests.command.not_poland", "This command only works in a Poland world");
+		b.add("polishforests.command.vanilla_absent", "%s does not grow in the world type Default + Polish Forests; "
+				+ "its forests here: %s");
+		b.add("polishforests.command.vanilla_no_zones", "Zones are only in a Poland world");
+		b.add("polishforests.command.vanilla_no_target", "%s: only in a Poland world; in this world type: sea, river, beach");
+		b.add("polishforests.command.vanilla_here", "Biome: %s (Default + Polish Forests)");
 		b.add("polishforests.command.unknown_target", "Unknown target: %s. Use /polishforests list to see all targets");
 		b.add("polishforests.command.elevation_range", "terrain at %s–%s m above sea level");
 		b.add("polishforests.command.highest_name", "highest point within %s km");
@@ -362,6 +372,10 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 	private static void polish(TranslationBuilder b) {
 		b.add("generator.polishforests.poland", "Polska (skala 1:1)");
 		b.add("generator.polishforests.poland_gameplay", "Polska (skala rozgrywki)");
+		b.add("generator.polishforests.default_polish_forests", "Domyślny + polskie lasy");
+		b.add("generator.polishforests.default_polish_forests.info", "Teren, jaskinie, budowle i biomy jak w zwykłym "
+				+ "Minecrafcie, ale zwykłe lasy, tajgi i bagna zastępują lasy Polish Forests: grądy, buczyny, lasy "
+				+ "mieszane i bory, górskie świerczyny i buczyny, olsy.");
 		b.add("polishforests.options.title", "Opcje generowania: Polska");
 		b.add("polishforests.options.scale", "Skala");
 		b.add("polishforests.options.scale.realistic", "Rzeczywista (1:1)");
@@ -402,6 +416,11 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		b.add("polishforests.command.not_found", "Nie znaleziono: %s w promieniu %s km");
 		b.add("polishforests.command.here", "Tutaj: %s, grunt %s m n.p.m., podłoże %s, wody: %s, formy: %s");
 		b.add("polishforests.command.not_poland", "Ta komenda działa tylko w świecie typu Polska");
+		b.add("polishforests.command.vanilla_absent", "%s nie rośnie w świecie typu Domyślny + polskie lasy; "
+				+ "lasy moda w nim: %s");
+		b.add("polishforests.command.vanilla_no_zones", "Strefy są tylko w świecie typu Polska");
+		b.add("polishforests.command.vanilla_no_target", "%s: tylko w świecie typu Polska; w tym typie świata: sea, river, beach");
+		b.add("polishforests.command.vanilla_here", "Biom: %s (Domyślny + polskie lasy)");
 		b.add("polishforests.command.unknown_target", "Nieznany cel: %s. Lista celów: /polishforests list");
 		b.add("polishforests.command.elevation_range", "teren %s–%s m n.p.m.");
 		b.add("polishforests.command.highest_name", "najwyższy punkt w promieniu %s km");

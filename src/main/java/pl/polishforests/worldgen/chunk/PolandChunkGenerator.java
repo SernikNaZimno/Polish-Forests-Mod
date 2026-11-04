@@ -75,7 +75,7 @@ import pl.polishforests.worldgen.surface.SurfaceBuilder;
  * (docs/01-architektura.md, section 3.1). It fills columns with blocks without computing 3D density,
  * which at a height of 3056 blocks is many times cheaper than the vanilla generator.
  */
-public final class PolandChunkGenerator extends ChunkGenerator {
+public final class PolandChunkGenerator extends ChunkGenerator implements ForestWorld {
 	/** The settings are always written; a world without them is an M1 world ({@link PolandSettings#GENERATOR_FIELD}). */
 	public static final MapCodec<PolandChunkGenerator> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
 			BiomeSource.CODEC.fieldOf("biome_source").forGetter(ChunkGenerator::getBiomeSource),
@@ -145,6 +145,7 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 	 * The stand map of the world (step V9; shared by the dead wood of step V11): managed or natural stands and their age
 	 * classes for the world seed, the scale and the managed share of the settings.
 	 */
+	@Override
 	public pl.polishforests.worldgen.tree.ForestStandMap standMap(long seed) {
 		pl.polishforests.worldgen.tree.ForestStandMap m = standMap;
 		double k = settings.scale().landscape().local();
@@ -161,6 +162,7 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 	 * The wide blend of the forests of the vertical slice for the world seed (step Z1 of docs/04-pionowy-wycinek.md): the
 	 * habitat lattice from this generator's landscape model and classifier, shared by the decoration of all chunks.
 	 */
+	@Override
 	public pl.polishforests.worldgen.feature.plan.ForestBlend forestBlend(long seed) {
 		pl.polishforests.worldgen.feature.plan.ForestBlend b = forestBlend;
 		if (b != null && b.worldSeed() == seed) {
@@ -172,6 +174,27 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 				(x, z) -> k.classify(m.sample(x, z), x, z));
 		forestBlend = b;
 		return b;
+	}
+
+	@Override
+	public double localScale() {
+		return settings.scale().landscape().local();
+	}
+
+	@Override
+	public double managedForestShare() {
+		return settings.managedForestShare();
+	}
+
+	/** The world seed: the stand map of a "Poland" world is the one of before step W1. */
+	@Override
+	public long standSeed(long worldSeed) {
+		return worldSeed;
+	}
+
+	@Override
+	public boolean caveFeatures() {
+		return settings.caves() && CaveBiomes.enabledFromSystem();
 	}
 
 	/** Habitat classifier for the world seed (the same instance the biome source uses). */
@@ -786,7 +809,7 @@ public final class PolandChunkGenerator extends ChunkGenerator {
 	 * that are not pool elements are buildings; the beard adapts the ground under them when the structure's terrain
 	 * adaptation is {@code beard_thin} or {@code beard_box} (the terrain-matching streets follow the ground anyway).
 	 */
-	private static List<StructureGround.Piece> structurePieces(StructureManager structureManager, ChunkPos pos) {
+	public static List<StructureGround.Piece> structurePieces(StructureManager structureManager, ChunkPos pos) {
 		List<StructureStart> starts = structureManager.startsForStructure(pos.x(), pos.z(), s -> true);
 		if (starts.isEmpty()) {
 			return List.of();

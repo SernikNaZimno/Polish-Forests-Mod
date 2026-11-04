@@ -26,15 +26,20 @@ import pl.polishforests.worldgen.habitat.HabitatBiome;
  *                     {@link #NO_STRUCTURES}
  * @param caveOpened   the columns whose top ground block a cave entrance took away (step J1), one bit per column
  *                     (4 longs), or {@link #NO_CAVES}; the planners of wood on the ground treat their ground as unknown
+ * @param blocked      the columns on which the mod places no vegetation (step W1, the world type "Default + Polish
+ *                     Forests": a vanilla biome, a slope too steep or a top without soil), one bit per column (4 longs), or
+ *                     {@link #NONE_BLOCKED}; their codes still tell the forest edges what lies beyond them
  */
 public record ChunkHabitats(int[] codes, short[] top, short[] water, float oceanicity, float mountainInfluence,
-		byte[] structures, long[] caveOpened) {
+		byte[] structures, long[] caveOpened, long[] blocked) {
 	/** {@link #water} of a column without water. */
 	public static final short NO_WATER = Short.MIN_VALUE;
 	/** {@link #structures} of a chunk without structure pieces nearby: every distance is the cap 15. */
 	public static final byte[] NO_STRUCTURES = noStructures();
 	/** {@link #caveOpened} of a chunk without opened tops (no caves, or none reaching the surface). */
 	public static final long[] NO_CAVES = new long[4];
+	/** {@link #blocked} of a chunk without blocked columns (every chunk of a "Poland" world). */
+	public static final long[] NONE_BLOCKED = new long[4];
 
 	private static byte[] noStructures() {
 		byte[] b = new byte[256];
@@ -55,11 +60,18 @@ public record ChunkHabitats(int[] codes, short[] top, short[] water, float ocean
 					.optionalFieldOf("structures", NO_STRUCTURES).forGetter(ChunkHabitats::structures),
 			// Since step J1; missing in attachments saved before it (no caves).
 			Codec.LONG_STREAM.xmap(st -> opened(st.toArray()), java.util.Arrays::stream)
-					.optionalFieldOf("cave_opened", NO_CAVES).forGetter(ChunkHabitats::caveOpened)
+					.optionalFieldOf("cave_opened", NO_CAVES).forGetter(ChunkHabitats::caveOpened),
+			// Since step W1; missing in attachments saved before it (nothing blocked).
+			Codec.LONG_STREAM.xmap(st -> blockedBits(st.toArray()), java.util.Arrays::stream)
+					.optionalFieldOf("blocked", NONE_BLOCKED).forGetter(ChunkHabitats::blocked)
 	).apply(i, ChunkHabitats::unpack));
 
 	private static long[] opened(long[] values) {
 		return values.length == 4 ? values : NO_CAVES;
+	}
+
+	private static long[] blockedBits(long[] values) {
+		return values.length == 4 ? values : NONE_BLOCKED;
 	}
 
 	private static byte[] bytes(java.nio.ByteBuffer buffer) {
@@ -85,7 +97,7 @@ public record ChunkHabitats(int[] codes, short[] top, short[] water, float ocean
 	public static final java.util.concurrent.atomic.LongAdder LOADED = new java.util.concurrent.atomic.LongAdder();
 
 	private static ChunkHabitats unpack(int[] codes, int[] levels, float oceanicity, float mountainInfluence, byte[] structures,
-			long[] caveOpened) {
+			long[] caveOpened, long[] blocked) {
 		LOADED.increment();
 		short[] top = new short[256];
 		short[] water = new short[256];
@@ -93,14 +105,20 @@ public record ChunkHabitats(int[] codes, short[] top, short[] water, float ocean
 			top[k] = (short) (levels[k] >> 16);
 			water[k] = (short) levels[k];
 		}
-		return new ChunkHabitats(codes, top, water, oceanicity, mountainInfluence, structures, caveOpened);
+		return new ChunkHabitats(codes, top, water, oceanicity, mountainInfluence, structures, caveOpened, blocked);
 	}
 
 	public ChunkHabitats {
 		if (codes.length != 256 || top.length != 256 || water.length != 256 || structures.length != 256
-				|| caveOpened.length != 4) {
+				|| caveOpened.length != 4 || blocked.length != 4) {
 			throw new IllegalArgumentException("ChunkHabitats needs 256 columns");
 		}
+	}
+
+	/** Habitats without blocked columns (a "Poland" world). */
+	public ChunkHabitats(int[] codes, short[] top, short[] water, float oceanicity, float mountainInfluence, byte[] structures,
+			long[] caveOpened) {
+		this(codes, top, water, oceanicity, mountainInfluence, structures, caveOpened, NONE_BLOCKED);
 	}
 
 	/** Index of the column with local coordinates (x, z). */
@@ -139,6 +157,11 @@ public record ChunkHabitats(int[] codes, short[] top, short[] water, float ocean
 			}
 		}
 		return false;
+	}
+
+	/** Whether the mod places no vegetation on the column (step W1, {@link #blocked}). */
+	public boolean blocked(int index) {
+		return (blocked[index >> 6] >>> (index & 63) & 1L) != 0;
 	}
 
 	/** Whether the column is covered by water (the water surface is above the top ground block). */
