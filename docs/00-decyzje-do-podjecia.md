@@ -791,3 +791,23 @@ Krok L1 (DP-107, DP-115: powtarzalność ściółki). Projekt: `docs/04-pionowy-
 | U-7 | Mapa testów | Testy dobierane według tego, czego zmiana dotyka (`docs/mapa-testow.md`, `tools/dev/test_plan.py`): w trakcie kroku tylko testy obszarów zmiany, na koniec kroku jeden pełny przebieg. Powtarzalność świata sprawdzana blokami (`determinism`), nie zrzutami; zrzuty tylko przy zmianach renderu i tylko dla tablicy, której dotyczą; recenzenci nie powtarzają gier |
 | U-8 | Deski | Deski każdego rodzaju drewna mają **dokładnie strukturę tekstury desek wanilii**, ze zmienionym kolorem i nieco zmienioną fakturą drewna. Sposób domyślny (do potwierdzenia): tekstura liczona w kliencie przy wczytywaniu zasobów z tekstury desek wanilii z gry użytkownika (przemapowanie kolorów na paletę gatunku i drobna zmiana słojów), bez kopii pikseli wanilii w repo i w jarze (zasada zasobów z BRIEF). Gatunki bez odpowiednika w wanilii (jesion, buk, grab, lipa, klon, sosna) dostają własne kłody i deski oraz schody, płytę, płot, furtkę, przycisk i płytę naciskową; drzwi, klapy, tabliczki i łodzie później |
 | U-9 | Listy kontrolne | Miejsca w listach „Do sprawdzenia w grze” wskazywane komendą `/polishforests find …`, nie stałymi współrzędnymi |
+
+### G.38 Drobne wybory kroku P1 (domyślne, do potwierdzenia przy CP-D; 2026-11-04)
+
+Krok P1 (G.36 U-2: cieńsze pnie siekierą, okorowane pnie, hitboxy pni). Projekt: `docs/04-pionowy-wycinek.md`, „Projekt P1”; wyniki z gry: „Stan po P1” (etap 2).
+
+| # | Wybór | Wartość i powód |
+|---|---|---|
+| P1-a | Gest siekiery | PPM siekierą = okorowanie (jak wanilia), PPM siekierą ze skradaniem = zwężenie o 1 px. Nie koliduje z korowaniem wanilii ani ze stawianiem bloków z drugiej ręki (zwężanie tylko, gdy w używanej ręce jest siekiera) |
+| P1-b | Jeden okorowany pień na gatunek | Cztery kory sosny (dolna, dwie przejściowe, „lustro”) przykrywają to samo drewno, więc wszystkie dają `stripped_scots_pine_trunk`; 9 nowych bloków zamiast 12 |
+| P1-c | Promień 1 i skradanie | Zwężanie na promieniu 1 nic nie robi (nie przechodzi do okorowania), żeby seria kliknięć nie okorowała pnia niespodziewanie |
+| P1-d | Łup okorowanego pnia | Jak pnia (G1-b, G1-e, S1), ale okorowana kłoda: sosna — własna, świerk i brzoza — wanilii, dąb, lipa, jesion, klon — `stripped_oak_log`, grab i buk — `stripped_pale_oak_log` (do własnego drewna, U-8) |
+| P1-e | Tekstury | Własne boki z `tools/art` dla dębu, grabu, lipy, buka, jesionu i klonu (kolory drewna, gładkie, bez wanilii); sosna — bok okorowanej kłody sosny; świerk i brzoza — okorowane kłody wanilii po id (jak ich kora, D2); końce — wierzch okorowanej kłody, którą pień daje, po id |
+| P1-f | Zwężanie bez łupu | Zwężanie nie daje wiórów ani patyków; nie dotyczy nabiegów i `tree_root`, które też nie są korowane |
+| P1-g | Kształt według sąsiadów tylko w świecie | Obrys i kolizja z sąsiadów tylko w `Level` (celownik, ruch istot, promienie); pamięć stanów wanilii, regiony generacji i wsparcie ścian (pochodnie, śnieg) zostają przy graniastosłupie sprzed P1, więc światło, mapy wysokości i wynik generacji bez zmian. Mody podmieniające kod kolizji mogą brać kształt z pamięci stanów (wtedy kolizja jak przed P1) |
+| P1-h | Kolizja | Jak obrys, bez leżących gałązek o promieniu 1 (2 × 2 px wśród liści, jak cienkie rośliny wanilii); pionowe łodygi o promieniu 1 kolidują; na gałęzi od promienia 2 można stanąć |
+| P1-i | Dziecko w obrysie | Sąsiad `TrunkBlock`, którego `parent` wskazuje ten blok, z połową ramienia swoim promieniem (także grubszy od rodzica po zwężeniu); leżący nabieg nie (rysuje płetwę); sąsiad w niewczytanym chunku = brak dziecka |
+| P1-j | Tabela kształtów | Klucz 24 bity (promień, rodzic, promień dziecka z każdej strony), tabela bezpośrednio mapowana 8192 wpisów: odczyt bez alokacji, budowa przy pierwszym użyciu klucza |
+| P1-k | Dźwięk i klient | Dźwięk korowania wanilii (`item.axe.strip`) odtwarzany przez serwer dla wszystkich; klient nie przewiduje zmiany (wysyła użycie i macha ręką) |
+| P1-l | Tagi | Okorowane pnie w tagu gatunku (więc `#logs`: liście nie usychają, mody do ścinania idą po nich, paliwo, węgiel drzewny) i `polishforests:trunks`, nie w `#overworld_natural_logs` (jak okorowane kłody wanilii) |
+| P1-m | Gametest | `slice -Psites=axe` (`AxeSamples`): wszystkie pnie i promienie, przygoda, hitboxy w świecie serwera, ścięcie okorowanego drzewa ręcznie albo modem (`-PtreeFelling=…`); bez zrzutów (wygląd sprawdza użytkownik) |
