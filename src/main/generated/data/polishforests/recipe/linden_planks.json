@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "building",
+  "group": "planks",
+  "ingredients": [
+    "#polishforests:linden_full_logs"
+  ],
+  "result": {
+    "count": 4,
+    "id": "polishforests:linden_planks"
+  }
+}

@@ -6,6 +6,7 @@
 		"DebugScreenEntryListMixin",
 		"FallingParticlesLeavesBlockMixin",
 		"ModelBlockRendererMixin",
+		"SpriteSourcesMixin",
 		"WorldCreationUiStateMixin"
 	],
 	"injectors": {

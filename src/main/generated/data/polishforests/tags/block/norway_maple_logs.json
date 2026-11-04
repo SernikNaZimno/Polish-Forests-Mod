@@ -2,6 +2,7 @@
   "values": [
     "polishforests:norway_maple_trunk",
     "polishforests:norway_maple_root_flare",
-    "polishforests:stripped_norway_maple_trunk"
+    "polishforests:stripped_norway_maple_trunk",
+    "#polishforests:norway_maple_full_logs"
   ]
 }

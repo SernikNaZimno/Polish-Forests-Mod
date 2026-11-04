@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/slab",
+  "textures": {
+    "bottom": "polishforests:block/beech_planks",
+    "side": "polishforests:block/beech_planks",
+    "top": "polishforests:block/beech_planks"
+  }
+}

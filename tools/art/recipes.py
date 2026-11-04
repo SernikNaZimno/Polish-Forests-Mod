@@ -994,6 +994,38 @@ STRIPPED_TRUNKS = [
     ('norway_maple', ['#d0c1a0', '#d6c7a6', '#dbcdad', '#e0d3b4'], {'luma': (180, 215), 'hue': (32, 50)},
      'stripped Norway maple trunk: creamy white wood'),
 ]
+# Step P2 (decision U-8): the own wood sets of hornbeam, linden, beech, ash and Norway maple. Planks: the fallback texture
+# (the game derives the planks from the vanilla planks of the user's game, pl.polishforests.block.PlanksTexture; this
+# texture shows only when that base cannot be read) and the palette of the derived texture, five tones dark to light;
+# the colors must equal pl.polishforests.block.WoodSet (WoodSetTest). Log tops: rings of a wood without a colored
+# heartwood (only beech and ash with a slightly darker core), the border the bark of the species' trunk (log) or the bare
+# wood (stripped log). Colors of the woods as described in forestry wood keys (no texture copied).
+WOOD_PLANKS = [
+    ('hornbeam', ['#8f8672', '#aea58f', '#bdb49d', '#c9c0a9', '#d4ccb5'],
+     'hornbeam planks: whitish gray, an even fine texture almost without grain'),
+    ('linden', ['#97835e', '#b7a37c', '#c4b089', '#cfbc95', '#d9c7a0'],
+     'small-leaved linden planks: soft pale yellowish white wood, very uniform'),
+    ('beech', ['#8c6248', '#ad8264', '#bb8f70', '#c69a7b', '#d0a585'],
+     'European beech planks: pale reddish-brown wood with a fine grain'),
+    ('ash', ['#8f7b58', '#b19c76', '#bfaa83', '#cbb68f', '#d6c29b'],
+     'European ash planks: light cream wood with a pronounced grain'),
+    ('norway_maple', ['#9c8770', '#bea891', '#cab59d', '#d4c0a8', '#ddcab2'],
+     'Norway maple planks: creamy white wood with a faint pink cast'),
+]
+# (name, pith, heartwood late and early, sapwood late and early, two bark tones, heart radius px, ring width px, note)
+WOOD_LOG_TOPS = [
+    ('hornbeam', ['#9a9078', '#b4ab93', '#c4bca5', '#bcb39b', '#cdc5ae', '#7d7a73', '#98948c'], 2.0, 1.7,
+     'hornbeam log top: whitish gray wood with fine close rings, the gray bark border'),
+    ('linden', ['#a08c66', '#bba980', '#cab88f', '#c2b088', '#d2c098', '#7b6f59', '#968a72'], 2.0, 2.0,
+     'small-leaved linden log top: pale yellowish wood with faint rings, the gray-brown bark border'),
+    ('beech', ['#94694e', '#b08668', '#c09577', '#b88e70', '#c99f80', '#7a7d5e', '#98977a'], 3.0, 1.8,
+     'European beech log top: pale reddish-brown wood with a slightly darker core, the smooth gray bark border'),
+    ('ash', ['#8f7b58', '#a8936d', '#bba782', '#c0ac87', '#d0bc97', '#7a766a', '#948f82'], 3.5, 2.3,
+     'European ash log top: light cream wood with distinct rings and a light brown core, the furrowed bark border'),
+    ('norway_maple', ['#a39072', '#c0ac8f', '#cdba9d', '#c6b396', '#d6c4a8', '#7a766a', '#948f82'], 2.0, 1.9,
+     'Norway maple log top: creamy wood with fine rings, the gray bark border'),
+]
+STRIPPED_TRUNK_COLORS = {name: colors for name, colors, _expect, _note in STRIPPED_TRUNKS}
 SAPLING_SHAPE = dict(top=4, zigzag=0.2, shoots=3, shoot_gap=3, shoot_len=(2, 4), leaf_from=2, leaf_every=3, tries=64)
 SAPLINGS = [
     ('scots_pine', dict(SAPLING_SHAPE, leaf='pine', shoots=0, top=3, zigzag=0.0, tuft_at=5, whorl_at=9, rays=13,
@@ -1348,6 +1380,17 @@ TEXTURES = [
 ] + [Texture(f'stripped_{name}_trunk', 'stripped', wood.stripped_side, f'stripped_{name}_trunk/1', None,
              params=dict(colors=colors, streak=0, tries=64), expect=expect, palette_use=None, note=note)
      for name, colors, expect, note in STRIPPED_TRUNKS] + [
+] + [Texture(f'{name}_planks', 'planks', wood.planks, f'{name}_planks/1', None, params=dict(colors=colors, tries=64),
+             palette_use=None, note=note)
+     for name, colors, note in WOOD_PLANKS] + [
+] + [Texture(f'{name}_log_top', 'end', wood.log_end, f'{name}_log_top/1', None,
+             params=dict(colors=colors, ring=ring, late=0.62, heart=heart, bark=True, tries=32), note=note)
+     for name, colors, heart, ring, note in WOOD_LOG_TOPS] + [
+] + [Texture(f'stripped_{name}_log_top', 'end', wood.log_end, f'stripped_{name}_log_top/1', None,
+             params=dict(colors=colors[:5] + [STRIPPED_TRUNK_COLORS[name][1]], ring=ring, late=0.62, heart=heart, bark=False,
+                         tries=32), note='stripped ' + note.split(', the ')[0].replace(' log top', ' log top') + ', a bare wood border')
+     for name, colors, heart, ring, note in WOOD_LOG_TOPS] + [
+
 ] + [Texture(f'{name}_sapling', 'sapling', wood.sapling, f'{name}_sapling/1', None, params=params, note=note)
      for name, params, note in SAPLINGS] + [
     # Step V13 (T-D5): the bare twigs of the leafless broadleaf crowns, grayscale for the twig color of the species.

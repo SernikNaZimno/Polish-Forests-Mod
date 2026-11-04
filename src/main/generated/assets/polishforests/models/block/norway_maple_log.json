@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/cube_column",
+  "textures": {
+    "end": "polishforests:block/norway_maple_log_top",
+    "side": "polishforests:block/broadleaf_bark"
+  }
+}

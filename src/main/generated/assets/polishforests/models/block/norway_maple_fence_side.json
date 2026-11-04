@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/fence_side",
+  "textures": {
+    "texture": "polishforests:block/norway_maple_planks"
+  }
+}

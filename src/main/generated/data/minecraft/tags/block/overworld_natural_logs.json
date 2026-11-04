@@ -21,6 +21,11 @@
     "polishforests:beech_root_flare",
     "polishforests:ash_root_flare",
     "polishforests:norway_maple_root_flare",
-    "polishforests:scots_pine_log"
+    "polishforests:scots_pine_log",
+    "polishforests:hornbeam_log",
+    "polishforests:linden_log",
+    "polishforests:beech_log",
+    "polishforests:ash_log",
+    "polishforests:norway_maple_log"
   ]
 }

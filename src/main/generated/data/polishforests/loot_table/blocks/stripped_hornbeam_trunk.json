@@ -29,7 +29,7 @@
                   "type": "minecraft:explosion_decay"
                 }
               ],
-              "name": "minecraft:stripped_pale_oak_log"
+              "name": "polishforests:stripped_hornbeam_log"
             },
             {
               "type": "minecraft:item",
@@ -114,7 +114,7 @@
               "condition": {
                 "type": "minecraft:survives_explosion"
               },
-              "name": "minecraft:stripped_pale_oak_log"
+              "name": "polishforests:stripped_hornbeam_log"
             }
           ]
         }

@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/inner_stairs",
+  "textures": {
+    "bottom": "polishforests:block/hornbeam_planks",
+    "side": "polishforests:block/hornbeam_planks",
+    "top": "polishforests:block/hornbeam_planks"
+  }
+}

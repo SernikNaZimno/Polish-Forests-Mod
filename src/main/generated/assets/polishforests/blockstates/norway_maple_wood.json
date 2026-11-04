@@ -1,0 +1,16 @@
+{
+  "variants": {
+    "axis=x": {
+      "model": "polishforests:block/norway_maple_wood",
+      "x": 90,
+      "y": 90
+    },
+    "axis=y": {
+      "model": "polishforests:block/norway_maple_wood"
+    },
+    "axis=z": {
+      "model": "polishforests:block/norway_maple_wood",
+      "x": 90
+    }
+  }
+}

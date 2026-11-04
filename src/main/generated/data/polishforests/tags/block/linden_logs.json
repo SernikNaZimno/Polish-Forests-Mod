@@ -2,6 +2,7 @@
   "values": [
     "polishforests:linden_trunk",
     "polishforests:linden_root_flare",
-    "polishforests:stripped_linden_trunk"
+    "polishforests:stripped_linden_trunk",
+    "#polishforests:linden_full_logs"
   ]
 }

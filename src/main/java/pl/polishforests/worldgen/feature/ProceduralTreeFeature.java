@@ -60,7 +60,7 @@ import pl.polishforests.worldgen.tree.TreeVoxels;
  *
  * <p><b>Blocks.</b> Radius 1–7 px: the {@code TrunkBlock} of the species with its parent direction (the Scots pine with
  * its lower bark, the two blocks of the transition zone and the "mirror"); a full log ({@link TreeVoxels#FULL}): the
- * log of {@link TreeTrunk#log()} (vanilla, or the LITE Scots pine log) with the axis of its parent. Leaves (step V7): the
+ * log of {@link TreeTrunk#fullLog()} (vanilla, or the LITE Scots pine log) with the axis of its parent. Leaves (step V7): the
  * species' own leaf block ({@link SpeciesLeavesBlock}) with the planner's distance and the tree's phase ({@link #phase}:
  * 0-3 from the hash of the trunk base, so every leaf of a tree turns at the same time and the trees of a stand at different
  * times; ZW-5); for oak, hornbeam and beech the marcescent leaves ({@link MarcescentLeavesBlock}) on the lower share
@@ -352,7 +352,7 @@ public record ProceduralTreeFeature(Species species, CrownLayer layer, AgeClass 
 	}
 
 	/**
-	 * A wood block: a thin trunk of radius 1–7 px or, for {@link TreeVoxels#FULL}, the log of {@link TreeTrunk#log()} (vanilla,
+	 * A wood block: a thin trunk of radius 1–7 px or, for {@link TreeVoxels#FULL}, the log of {@link TreeTrunk#fullLog()} (vanilla,
 	 * or the LITE Scots pine log) along the parent axis.
 	 */
 	public static BlockState wood(Species species, int bark, int radius, Direction parent) {
@@ -362,7 +362,8 @@ public record ProceduralTreeFeature(Species species, CrownLayer layer, AgeClass 
 		}
 		TreeTrunk t = trunk(species, bark);
 		if (radius >= TreeVoxels.FULL) {
-			Block log = t.log();
+			Block log = t.fullLog();
+
 			BlockState s = log.defaultBlockState();
 			return s.hasProperty(RotatedPillarBlock.AXIS) ? s.setValue(RotatedPillarBlock.AXIS, parent.getAxis()) : s;
 		}

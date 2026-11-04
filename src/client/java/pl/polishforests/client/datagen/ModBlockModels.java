@@ -32,6 +32,8 @@ import pl.polishforests.block.ModBlocks;
 import pl.polishforests.block.TreeFoliage;
 import pl.polishforests.block.TreeTrunk;
 import pl.polishforests.block.TrunkBlock;
+import pl.polishforests.block.WoodBlocks;
+import pl.polishforests.block.WoodSet;
 import pl.polishforests.season.FoliageCurve;
 
 /**
@@ -83,16 +85,27 @@ final class ModBlockModels extends FabricModelProvider {
 
 	/**
 	 * The end (rings) of a branch tip or a cut trunk: the top of the log the trunk drops ({@link TreeTrunk#log()}): the
-	 * own Scots pine log top (step V7), the others by id; own ends for every diameter are M3 (docs/04 §1.2).
+	 * own Scots pine log top (step V7) and, since step P2, the own log tops of the wood sets; spruce, birch and oak by id;
+	 * own ends for every diameter are M3 (docs/04 §1.2).
 	 */
 	static Identifier end(TreeTrunk t) {
 		return switch (t) {
 			case SCOTS_PINE, SCOTS_PINE_UPPER, SCOTS_PINE_TRANSITION, SCOTS_PINE_TRANSITION_UPPER -> own("scots_pine_log_top");
 			case SPRUCE -> vanilla("spruce_log_top");
 			case BIRCH -> vanilla("birch_log_top");
-			case OAK, LINDEN, ASH, NORWAY_MAPLE -> vanilla("oak_log_top");
-			case HORNBEAM, BEECH -> vanilla("pale_oak_log_top");
+			case OAK -> vanilla("oak_log_top");
+			case HORNBEAM, LINDEN, BEECH, ASH, NORWAY_MAPLE -> own(woodOf(t).prefix() + "_log_top");
 		};
+	}
+
+	/** The wood set of a broadleaf trunk with its own wood (step P2). */
+	private static WoodSet woodOf(TreeTrunk t) {
+		for (WoodSet w : WoodSet.values()) {
+			if (w.species() == t.species()) {
+				return w;
+			}
+		}
+		throw new IllegalArgumentException("no wood set for " + t);
 	}
 
 	/**
@@ -114,8 +127,8 @@ final class ModBlockModels extends FabricModelProvider {
 			case SCOTS_PINE -> own("stripped_scots_pine_log_top");
 			case SPRUCE -> vanilla("stripped_spruce_log_top");
 			case BIRCH -> vanilla("stripped_birch_log_top");
-			case OAK, LINDEN, ASH, NORWAY_MAPLE -> vanilla("stripped_oak_log_top");
-			case HORNBEAM, BEECH -> vanilla("stripped_pale_oak_log_top");
+			case OAK -> vanilla("stripped_oak_log_top");
+			case HORNBEAM, LINDEN, BEECH, ASH, NORWAY_MAPLE -> own("stripped_" + woodOf(t.trunk()).prefix() + "_log_top");
 		};
 	}
 
@@ -134,14 +147,19 @@ final class ModBlockModels extends FabricModelProvider {
 		for (pl.polishforests.block.StrippedTrunk t : pl.polishforests.block.StrippedTrunk.values()) {
 			trunk(gen, ModBlocks.stripped(t), List.of(strippedSide(t)), strippedEnd(t));
 		}
-		// Step V7: the LITE Scots pine set (the log side is the lower pine bark, as the thin trunk).
-		Material bark = new Material(own("scots_pine_bark"));
-		gen.new WoodProvider(TextureMapping.column(bark, new Material(own("scots_pine_log_top")))).logWithHorizontal(ModBlocks.pineLog())
-				.wood(ModBlocks.pineWood());
-		gen.new WoodProvider(TextureMapping.column(new Material(own("stripped_scots_pine_log")),
-				new Material(own("stripped_scots_pine_log_top")))).logWithHorizontal(ModBlocks.strippedPineLog())
-				.wood(ModBlocks.strippedPineWood());
-		gen.createTrivialCube(ModBlocks.pinePlanks());
+		// Step V7: the LITE Scots pine set; step P2: the wood sets of the other species. The log side is the first bark of
+		// the species' thin trunk, the stripped side the side of its stripped trunk, the tops the own log tops; the planks
+		// texture (polishforests:block/<wood>_planks) is derived in the client from the vanilla planks (DerivedPlanksSource),
+		// the products of the planks are vanilla's family models.
+		for (WoodSet set : WoodSet.values()) {
+			WoodBlocks w = ModBlocks.wood(set);
+			Material bark = new Material(barks(set.trunk()).getFirst());
+			gen.new WoodProvider(TextureMapping.column(bark, new Material(end(set.trunk())))).logWithHorizontal(w.log()).wood(w.wood());
+			gen.new WoodProvider(TextureMapping.column(new Material(strippedSide(set.stripped())),
+					new Material(strippedEnd(set.stripped())))).logWithHorizontal(w.strippedLog()).wood(w.strippedWood());
+			gen.family(w.planks()).generateFor(ModWoodFamilies.family(set));
+		}
+
 		for (TreeFoliage f : TreeFoliage.values()) {
 			leaves(gen, f);
 			sapling(gen, f);

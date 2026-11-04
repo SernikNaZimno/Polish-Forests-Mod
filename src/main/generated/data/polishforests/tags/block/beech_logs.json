@@ -2,6 +2,7 @@
   "values": [
     "polishforests:beech_trunk",
     "polishforests:beech_root_flare",
-    "polishforests:stripped_beech_trunk"
+    "polishforests:stripped_beech_trunk",
+    "#polishforests:beech_full_logs"
   ]
 }

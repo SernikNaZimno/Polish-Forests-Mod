@@ -1,0 +1,13 @@
+{
+  "variants": {
+    "type=bottom": {
+      "model": "polishforests:block/beech_slab"
+    },
+    "type=double": {
+      "model": "polishforests:block/beech_planks"
+    },
+    "type=top": {
+      "model": "polishforests:block/beech_slab_top"
+    }
+  }
+}

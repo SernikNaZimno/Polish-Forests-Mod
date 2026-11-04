@@ -22,6 +22,9 @@ import pl.polishforests.block.ModBlocks;
 import pl.polishforests.block.GroundPlant;
 import pl.polishforests.block.TreeFoliage;
 import pl.polishforests.block.TreeTrunk;
+import pl.polishforests.block.WoodBlocks;
+import pl.polishforests.block.WoodSet;
+
 import pl.polishforests.worldgen.habitat.Species;
 
 /**
@@ -41,6 +44,11 @@ import pl.polishforests.worldgen.habitat.Species;
  * {@code #mineable/axe}, the planks in {@code #planks}; the leaves of the species in {@code #leaves} (and through it
  * {@code #mineable/hoe}, {@code #sword_efficient} …), the saplings in {@code #saplings}, the potted saplings in
  * {@code #flower_pots}.
+ * <p>Step P2: every wood set ({@link WoodSet}) as the pine's: the four pillars in {@code #polishforests:<wood>_full_logs},
+ * part of the species tag, the log in {@code #overworld_natural_logs}, the planks in {@code #planks}, the products in
+ * vanilla's wood tags ({@code #wooden_stairs}, {@code #wooden_slabs}, {@code #wooden_fences}, {@code #fence_gates},
+ * {@code #wooden_pressure_plates}, {@code #wooden_buttons}; through them in {@code #mineable/axe}, {@code #stairs} …),
+ * blocks and items.
  */
 final class ModBlockTagProvider {
 	static final TagKey<Block> TRUNKS = TagKey.create(Registries.BLOCK, PolishForests.id("trunks"));
@@ -70,6 +78,11 @@ final class ModBlockTagProvider {
 			case SPRUCE -> BlockItemTags.SPRUCE_LOGS;
 			default -> BlockItemTags.LOGS_THAT_BURN;
 		};
+	}
+
+	/** Step P2: the full blocks of a wood set that make planks ({@code polishforests:<wood>_full_logs}). */
+	static TagKey<Block> fullLogs(WoodSet set) {
+		return set == WoodSet.SCOTS_PINE ? PINE_FULL_LOGS : TagKey.create(Registries.BLOCK, PolishForests.id(set.prefix() + "_full_logs"));
 	}
 
 	static TagKey<Item> item(TagKey<Block> block) {
@@ -110,15 +123,23 @@ final class ModBlockTagProvider {
 				builder(BlockTags.MINEABLE_WITH_AXE).add(key);
 			}
 			species.forEach((s, tag) -> builder(vanillaParent(s).block()).addTag(tag));
-			for (Block b : java.util.List.of(ModBlocks.pineLog(), ModBlocks.pineWood(), ModBlocks.strippedPineLog(),
-					ModBlocks.strippedPineWood())) {
-				builder(PINE_FULL_LOGS).add(key(b));
-				builder(BlockTags.MINEABLE_WITH_AXE).add(key(b));
+			for (WoodSet set : WoodSet.values()) {
+				WoodBlocks w = ModBlocks.wood(set);
+				for (Block b : w.fullLogs()) {
+					builder(fullLogs(set)).add(key(b));
+					builder(BlockTags.MINEABLE_WITH_AXE).add(key(b));
+				}
+				builder(species.get(set.species())).addTag(fullLogs(set));
+				builder(BlockTags.OVERWORLD_NATURAL_LOGS).add(key(w.log()));
+				builder(BlockItemTags.PLANKS.block()).add(key(w.planks()));
+				builder(BlockTags.MINEABLE_WITH_AXE).add(key(w.planks()));
+				builder(BlockItemTags.WOODEN_STAIRS.block()).add(key(w.stairs()));
+				builder(BlockItemTags.WOODEN_SLABS.block()).add(key(w.slab()));
+				builder(BlockItemTags.WOODEN_FENCES.block()).add(key(w.fence()));
+				builder(BlockItemTags.FENCE_GATES.block()).add(key(w.fenceGate()));
+				builder(BlockItemTags.WOODEN_PRESSURE_PLATES.block()).add(key(w.pressurePlate()));
+				builder(BlockItemTags.WOODEN_BUTTONS.block()).add(key(w.button()));
 			}
-			builder(species.get(Species.SCOTS_PINE)).addTag(PINE_FULL_LOGS);
-			builder(BlockTags.OVERWORLD_NATURAL_LOGS).add(key(ModBlocks.pineLog()));
-			builder(BlockItemTags.PLANKS.block()).add(key(ModBlocks.pinePlanks()));
-			builder(BlockTags.MINEABLE_WITH_AXE).add(key(ModBlocks.pinePlanks()));
 			for (TreeFoliage f : TreeFoliage.values()) {
 				builder(BlockItemTags.LEAVES.block()).add(key(ModBlocks.leaves(f)));
 				builder(BlockItemTags.SAPLINGS.block()).add(key(ModBlocks.sapling(f)));
@@ -176,8 +197,14 @@ final class ModBlockTagProvider {
 				builder(BlockItemTags.LOGS_THAT_BURN.item()).addTag(item(tag));
 			});
 			copy(TRUNKS, item(TRUNKS));
-			copy(PINE_FULL_LOGS, item(PINE_FULL_LOGS));
+			for (WoodSet set : WoodSet.values()) {
+				copy(fullLogs(set), item(fullLogs(set)));
+			}
 			copy(BlockItemTags.PLANKS.block(), BlockItemTags.PLANKS.item());
+			for (var t : List.of(BlockItemTags.WOODEN_STAIRS, BlockItemTags.WOODEN_SLABS, BlockItemTags.WOODEN_FENCES,
+					BlockItemTags.FENCE_GATES, BlockItemTags.WOODEN_PRESSURE_PLATES, BlockItemTags.WOODEN_BUTTONS)) {
+				copy(t.block(), t.item());
+			}
 			copy(BlockItemTags.LEAVES.block(), BlockItemTags.LEAVES.item());
 			copy(BlockItemTags.SAPLINGS.block(), BlockItemTags.SAPLINGS.item());
 			// Step V12: the geophytes are flowers, the bilberry fruit fox food.

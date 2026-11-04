@@ -2,6 +2,7 @@
   "values": [
     "polishforests:hornbeam_trunk",
     "polishforests:hornbeam_root_flare",
-    "polishforests:stripped_hornbeam_trunk"
+    "polishforests:stripped_hornbeam_trunk",
+    "#polishforests:hornbeam_full_logs"
   ]
 }

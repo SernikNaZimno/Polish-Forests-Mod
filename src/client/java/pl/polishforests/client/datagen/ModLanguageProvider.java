@@ -213,11 +213,30 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 			builder.add(ModBlocks.potted(f), polish ? "Sadzonka " + f.polishGenitive() + " w doniczce" : "Potted " + f.englishName()
 					+ " Sapling");
 		}
-		builder.add(ModBlocks.pineLog(), polish ? "Kłoda sosnowa" : "Scots Pine Log");
-		builder.add(ModBlocks.pineWood(), polish ? "Drewno sosnowe" : "Scots Pine Wood");
-		builder.add(ModBlocks.strippedPineLog(), polish ? "Okorowana kłoda sosnowa" : "Stripped Scots Pine Log");
-		builder.add(ModBlocks.strippedPineWood(), polish ? "Okorowane drewno sosnowe" : "Stripped Scots Pine Wood");
-		builder.add(ModBlocks.pinePlanks(), polish ? "Deski sosnowe" : "Scots Pine Planks");
+		// Step P2: the wood sets (the pine's LITE blocks of V7 kept their names): the Polish adjective after the noun, as the
+		// pine's ("Kłoda sosnowa", "Deski grabowe", "Płot klonowy").
+		for (pl.polishforests.block.WoodSet set : pl.polishforests.block.WoodSet.values()) {
+			pl.polishforests.block.WoodBlocks w = ModBlocks.wood(set);
+			String en = set.englishName();
+			String m = set.polishStem() + "y";
+			String f = set.polishStem() + "a";
+			String n = set.polishStem() + "e";
+			builder.add(w.log(), polish ? "Kłoda " + f : en + " Log");
+			builder.add(w.wood(), polish ? "Drewno " + n : en + " Wood");
+			builder.add(w.strippedLog(), polish ? "Okorowana kłoda " + f : "Stripped " + en + " Log");
+			builder.add(w.strippedWood(), polish ? "Okorowane drewno " + n : "Stripped " + en + " Wood");
+			builder.add(w.planks(), polish ? "Deski " + n : en + " Planks");
+			builder.add(w.stairs(), polish ? "Schody " + n : en + " Stairs");
+			builder.add(w.slab(), polish ? "Płyta " + f : en + " Slab");
+			builder.add(w.fence(), polish ? "Płot " + m : en + " Fence");
+			builder.add(w.fenceGate(), polish ? "Furtka " + f : en + " Fence Gate");
+			builder.add(w.pressurePlate(), polish ? "Płyta naciskowa " + f : en + " Pressure Plate");
+			builder.add(w.button(), polish ? "Przycisk " + m : en + " Button");
+			if (set != pl.polishforests.block.WoodSet.SCOTS_PINE) {
+				builder.add(tagKey(ModBlockTagProvider.fullLogs(set).location().getPath()), polish ? "Kłody " + n : en + " Logs");
+			}
+		}
+
 		// Step I1: root flares and the underground root.
 		for (pl.polishforests.block.RootFlare f : pl.polishforests.block.RootFlare.values()) {
 			builder.add(ModBlocks.flare(f), polish ? f.polishName() : f.englishName());

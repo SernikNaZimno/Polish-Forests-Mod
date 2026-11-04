@@ -94,8 +94,15 @@ class RegistrySnapshotTest {
 			assertEquals(ModBlocks.trunk(t.trunk()).getStateDefinition().getProperties(), b.getStateDefinition().getProperties(), t.id());
 			assertEquals(b, ((net.minecraft.world.item.BlockItem) b.asItem()).getBlock(), t.id());
 		}
+		// Step P2: + the products of the pine planks (stairs 80 = facing 4 × half 2 × shape 5 × waterlogged; slab 6 = type 3 ×
+		// waterlogged; fence 32 = 4 sides × waterlogged; fence gate 32 = facing 4 × in wall × open × powered; pressure plate 2;
+		// button 24 = face 3 × facing 4 × powered) and 5 whole wood sets (+ log, wood, stripped log and wood of 3 axes, planks).
+		int products = 80 + 6 + 32 + 32 + 2 + 24;
+		int woods = products + (WoodSet.values().length - 1) * (4 * 3 + 1 + products);
+		assertEquals(WoodSet.values().length, ModBlocks.woodSets().size());
 		assertEquals(84 * TreeTrunk.values().length + foliage * (112 + 2 + 1) + marcescent * 112 + 4 * 3 + 1
-				+ 84 * (RootFlare.values().length + 1) + ground + review + 84 * StrippedTrunk.values().length, RegistrySnapshot.stateCount());
+				+ 84 * (RootFlare.values().length + 1) + ground + review + 84 * StrippedTrunk.values().length + woods,
+				RegistrySnapshot.stateCount());
 	}
 
 	/**

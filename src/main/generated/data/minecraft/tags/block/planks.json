@@ -1,5 +1,10 @@
 {
   "values": [
-    "polishforests:scots_pine_planks"
+    "polishforests:scots_pine_planks",
+    "polishforests:hornbeam_planks",
+    "polishforests:linden_planks",
+    "polishforests:beech_planks",
+    "polishforests:ash_planks",
+    "polishforests:norway_maple_planks"
   ]
 }

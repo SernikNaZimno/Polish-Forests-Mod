@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/cube_column",
+  "textures": {
+    "end": "polishforests:block/stripped_beech_trunk",
+    "side": "polishforests:block/stripped_beech_trunk"
+  }
+}

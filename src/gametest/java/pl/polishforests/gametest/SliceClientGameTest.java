@@ -98,6 +98,8 @@ import pl.polishforests.worldgen.surface.ChunkSurface;
  * {@link DeadwoodSamples}).
  * {@code -Psites=roots} builds the board of the roots and shoots the trunk bases, flares and a trench in the worlds (step
  * I1, {@link RootSamples}).
+ * {@code -Psites=planks} checks the derived planks of the wood sets in the block atlas and the models of the wood sets (step
+ * P2, {@link PlankSamples}).
  * {@code -Psites=axe} strips and thins every trunk block at every radius with the axe, checks the hitboxes and fells
  * stripped trees (step P1, {@link AxeSamples}).
  */
@@ -195,6 +197,10 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 		}
 		if (only.equals("axe")) {
 			AxeSamples.run(context);
+			return;
+		}
+		if (only.equals("planks")) {
+			PlankSamples.run(context);
 			return;
 		}
 		boolean screenshots = !only.equals("none");

@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/outer_stairs",
+  "textures": {
+    "bottom": "polishforests:block/norway_maple_planks",
+    "side": "polishforests:block/norway_maple_planks",
+    "top": "polishforests:block/norway_maple_planks"
+  }
+}

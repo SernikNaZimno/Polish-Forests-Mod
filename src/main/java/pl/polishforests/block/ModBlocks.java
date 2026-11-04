@@ -20,12 +20,20 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.ButtonBlock;
+import net.minecraft.world.level.block.FenceBlock;
+import net.minecraft.world.level.block.FenceGateBlock;
+import net.minecraft.world.level.block.PressurePlateBlock;
+import net.minecraft.world.level.block.SlabBlock;
+import net.minecraft.world.level.block.StairBlock;
 import net.minecraft.world.level.block.CarpetBlock;
 import net.minecraft.world.level.block.DoublePlantBlock;
 import net.minecraft.world.level.block.FlowerPotBlock;
 import net.minecraft.world.level.block.RotatedPillarBlock;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.block.state.properties.BlockSetType;
+import net.minecraft.world.level.block.state.properties.WoodType;
 import net.minecraft.world.level.block.state.properties.NoteBlockInstrument;
 import net.minecraft.world.level.levelgen.feature.stateproviders.CopyPropertiesProvider;
 import net.minecraft.world.level.material.MapColor;
@@ -41,7 +49,8 @@ import pl.polishforests.PolishForests;
  * litter {@link GroundPlant} and the fruit item {@value #BILBERRIES}; round 1 of the V12 review: the forest moss carpet
  * {@value #FOREST_MOSS_CARPET} and the mossy podzol {@value #MOSSY_PODZOL}; step P1: the stripped thin trunks
  * {@link StrippedTrunk}, made by stripping a trunk with an axe, and the thinning of trunks with a sneaking axe
- * {@link TrunkAxe}). The ids, properties
+ * {@link TrunkAxe}; step P2: the own wood sets {@link WoodSet} of hornbeam, linden, beech, ash and Norway maple and the
+ * products of the planks of every set, the Scots pine's too, {@link WoodBlocks}). The ids, properties
  * and property values go into the saved worlds; {@code RegistrySnapshotTest} compares them with
  * {@code src/test/resources/registry_snapshot.txt} and they are frozen after checkpoint CP-B (PW-11, ZW-4).
  */
@@ -61,6 +70,8 @@ public final class ModBlocks {
 	private static Block mossyPodzol;
 	/** Step P1: the stripped thin trunks. */
 	private static final Map<StrippedTrunk, TrunkBlock> STRIPPED = new EnumMap<>(StrippedTrunk.class);
+	/** Step P2: the wood sets (the Scots pine's with the LITE blocks of V7). */
+	private static final Map<WoodSet, WoodBlocks> WOODS = new EnumMap<>(WoodSet.class);
 	/** Hardness and blast resistance of the underground root: as vanilla mangrove roots, quicker than a log. */
 	private static final float ROOT_STRENGTH = 0.7F;
 	/** Every block of the mod in registration order. */
@@ -99,10 +110,16 @@ public final class ModBlocks {
 		for (SpeciesLeavesBlock b : LEAVES.values()) {
 			fire.add(b, 30, 60);
 		}
-		for (Block b : List.of(pineLog, pineWood, strippedPineLog, strippedPineWood)) {
-			fire.add(b, IGNITE_ODDS, BURN_ODDS);
+		// Step P2: every wood set as vanilla's wood (FireBlock: logs and wood 5 / 5; planks, slabs, stairs, fences and fence
+		// gates 5 / 20; buttons and pressure plates do not burn).
+		for (WoodBlocks w : WOODS.values()) {
+			for (Block b : w.fullLogs()) {
+				fire.add(b, IGNITE_ODDS, BURN_ODDS);
+			}
+			for (Block b : List.of(w.planks(), w.stairs(), w.slab(), w.fence(), w.fenceGate())) {
+				fire.add(b, 5, 20);
+			}
 		}
-		fire.add(pinePlanks, 5, 20);
 		// Step V12: the herb layer as vanilla plants (FireBlock: grass and flowers 60 / 100, leaf litter 60 / 100).
 		for (Block b : GROUND.values()) {
 			fire.add(b, 60, 100);
@@ -113,8 +130,11 @@ public final class ModBlocks {
 		}
 		// Axe stripping of the full log and wood, keeping the axis; step P1: of every thin trunk into the stripped trunk of
 		// its species, keeping the radius, the parent and the water (all four pine barks give the one stripped pine trunk).
-		BlockTransformerHelper.registerStripping(pineLog, new CopyPropertiesProvider(strippedPineLog));
-		BlockTransformerHelper.registerStripping(pineWood, new CopyPropertiesProvider(strippedPineWood));
+		// Step P2: the log and wood of every wood set (the Scots pine's since V7).
+		for (WoodBlocks w : WOODS.values()) {
+			BlockTransformerHelper.registerStripping(w.log(), new CopyPropertiesProvider(w.strippedLog()));
+			BlockTransformerHelper.registerStripping(w.wood(), new CopyPropertiesProvider(w.strippedWood()));
+		}
 		for (TreeTrunk t : TreeTrunk.values()) {
 			BlockTransformerHelper.registerStripping(TRUNKS.get(t), new CopyPropertiesProvider(STRIPPED.get(StrippedTrunk.of(t))));
 		}
@@ -125,8 +145,10 @@ public final class ModBlocks {
 				out.insertAfter(previous, b);
 				previous = b.asItem();
 			}
-			out.insertAfter(previous, pineLog);
-			previous = pineLog.asItem();
+			for (WoodBlocks w : WOODS.values()) {
+				out.insertAfter(previous, w.log());
+				previous = w.log().asItem();
+			}
 			for (RootFlareBlock b : FLARES.values()) {
 				out.insertAfter(previous, b);
 				previous = b.asItem();
@@ -160,9 +182,11 @@ public final class ModBlocks {
 				out.insertAfter(Items.SWEET_BERRIES, bilberries));
 		CreativeModeTabEvents.modifyOutputEvent(CreativeModeTabs.BUILDING_BLOCKS).register(out -> {
 			Item previous = Items.PALE_OAK_BUTTON;
-			for (Block b : List.of(pineLog, pineWood, strippedPineLog, strippedPineWood, pinePlanks)) {
-				out.insertAfter(previous, b);
-				previous = b.asItem();
+			for (WoodBlocks w : WOODS.values()) {
+				for (Block b : w.all()) {
+					out.insertAfter(previous, b);
+					previous = b.asItem();
+				}
 			}
 		});
 	}
@@ -265,7 +289,77 @@ public final class ModBlocks {
 			item(t.id(), block, woodFuel());
 			STRIPPED.put(t, block);
 		}
+		// Step P2, registered after the blocks of P1: the products of the Scots pine planks, then the wood sets of the other
+		// species (the order of WoodSet).
+		WOODS.put(WoodSet.SCOTS_PINE, products(WoodSet.SCOTS_PINE, pineLog, pineWood, strippedPineLog, strippedPineWood, pinePlanks));
+		for (WoodSet w : WoodSet.values()) {
+			if (w != WoodSet.SCOTS_PINE) {
+				WOODS.put(w, woodSet(w));
+			}
+		}
 	}
+
+	/**
+	 * Step P2: the four pillars and the planks of a wood set with the properties of vanilla's (the map colors of the bark
+	 * of {@link WoodSet#trunk()} and of the bare wood of {@link WoodSet#stripped()}), then the products of the planks.
+	 */
+	private static WoodBlocks woodSet(WoodSet w) {
+		MapColor bare = w.stripped().mapColor();
+		MapColor bark = w.trunk().mapColor();
+		String p = w.prefix();
+		Block log = block(p + "_log", RotatedPillarBlock::new, Blocks.logProperties(bare, bark, SoundType.WOOD));
+		item(p + "_log", log, woodFuel());
+		Block wood = block(p + "_wood", RotatedPillarBlock::new, BlockBehaviour.Properties.of().mapColor(bark)
+				.instrument(NoteBlockInstrument.BASS).strength(STRENGTH).sound(SoundType.WOOD).ignitedByLava());
+		item(p + "_wood", wood, woodFuel());
+		Block strippedLog = block("stripped_" + p + "_log", RotatedPillarBlock::new, Blocks.logProperties(bare, bare, SoundType.WOOD));
+		item("stripped_" + p + "_log", strippedLog, woodFuel());
+		Block strippedWood = block("stripped_" + p + "_wood", RotatedPillarBlock::new, BlockBehaviour.Properties.of().mapColor(bare)
+				.instrument(NoteBlockInstrument.BASS).strength(STRENGTH).sound(SoundType.WOOD).ignitedByLava());
+		item("stripped_" + p + "_wood", strippedWood, woodFuel());
+		Block planks = block(w.planksId(), Block::new, BlockBehaviour.Properties.of().mapColor(bare)
+				.instrument(NoteBlockInstrument.BASS).strength(2.0F, 3.0F).sound(SoundType.WOOD).ignitedByLava());
+		item(w.planksId(), planks, woodFuel());
+		return products(w, log, wood, strippedLog, strippedWood, planks);
+	}
+
+	/**
+	 * Step P2: stairs, slab, fence, fence gate, pressure plate and button of the planks, each with the properties of vanilla's
+	 * oak one (hardness, sound, collision, the view blocking of stairs and slabs) in the map color of the planks, the oak
+	 * block set and wood type (the sounds of the gate, the plate and the button; the button stays pressed 30 ticks), and the
+	 * fuel of vanilla's items.
+	 */
+	private static WoodBlocks products(WoodSet w, Block log, Block wood, Block strippedLog, Block strippedWood, Block planks) {
+		MapColor color = planks.defaultMapColor();
+		String p = w.prefix();
+		Block stairs = block(p + "_stairs", q -> new StairBlock(planks.defaultBlockState(), q),
+				BlockBehaviour.Properties.ofFullCopy(Blocks.OAK_STAIRS).mapColor(color));
+		item(p + "_stairs", stairs, woodFuel());
+		Block slab = block(p + "_slab", SlabBlock::new, BlockBehaviour.Properties.ofFullCopy(Blocks.OAK_SLAB).mapColor(color));
+		item(p + "_slab", slab, new Item.Properties().cookingFuel(ContextIntProviders.COOKING_TIME_WOOD_SLABS));
+		Block fence = block(p + "_fence", FenceBlock::new, BlockBehaviour.Properties.ofFullCopy(Blocks.OAK_FENCE).mapColor(color));
+		item(p + "_fence", fence, woodFuel());
+		Block gate = block(p + "_fence_gate", q -> new FenceGateBlock(WoodType.OAK, q),
+				BlockBehaviour.Properties.ofFullCopy(Blocks.OAK_FENCE_GATE).mapColor(color));
+		item(p + "_fence_gate", gate, woodFuel());
+		Block plate = block(p + "_pressure_plate", q -> new PressurePlateBlock(BlockSetType.OAK, q),
+				BlockBehaviour.Properties.ofFullCopy(Blocks.OAK_PRESSURE_PLATE).mapColor(color));
+		item(p + "_pressure_plate", plate, woodFuel());
+		Block button = block(p + "_button", q -> new ButtonBlock(BlockSetType.OAK, 30, q),
+				BlockBehaviour.Properties.ofFullCopy(Blocks.OAK_BUTTON));
+		item(p + "_button", button, new Item.Properties().cookingFuel(ContextIntProviders.COOKING_TIME_WOOD_ITEMS_EXTRA_SMALL));
+		return new WoodBlocks(log, wood, strippedLog, strippedWood, planks, stairs, slab, fence, gate, plate, button);
+	}
+
+	/** Step P2: the blocks of a wood set. */
+	public static WoodBlocks wood(WoodSet w) {
+		return registered(WOODS.get(w));
+	}
+
+	public static Map<WoodSet, WoodBlocks> woodSets() {
+		return Collections.unmodifiableMap(WOODS);
+	}
+
 
 	/** Block and item path of the own moss carpet (round 1 of the V12 review). */
 	public static final String FOREST_MOSS_CARPET = "forest_moss_carpet";

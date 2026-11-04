@@ -83,11 +83,31 @@ public enum TreeTrunk {
 	}
 
 	/**
-	 * The log dropped by a trunk of radius ≥ 3: the vanilla log of oak, birch and spruce (D2), the Scots pine log of the
-	 * LITE set (step V7, D1 b); for the others the closest vanilla log until their own wood comes (M3): the gray barks of
-	 * hornbeam and beech give the pale oak log, linden, ash and maple the oak log.
+	 * The log dropped by a trunk of radius ≥ 3 (and 1-2 of them by a stem base, S1): the vanilla log of oak, birch and
+	 * spruce (D2), the Scots pine log of the LITE set (step V7, D1 b) and, since step P2 (U-8), the own log of the wood set
+	 * of hornbeam, linden, beech, ash and Norway maple ({@link WoodSet}).
 	 */
 	public Block log() {
+		return switch (this) {
+			case SCOTS_PINE, SCOTS_PINE_UPPER, SCOTS_PINE_TRANSITION, SCOTS_PINE_TRANSITION_UPPER -> ModBlocks.pineLog();
+			case SPRUCE -> Blocks.SPRUCE_LOG;
+			case BIRCH -> Blocks.BIRCH_LOG;
+			case OAK -> Blocks.OAK_LOG;
+			case HORNBEAM -> ModBlocks.wood(WoodSet.HORNBEAM).log();
+			case LINDEN -> ModBlocks.wood(WoodSet.LINDEN).log();
+			case BEECH -> ModBlocks.wood(WoodSet.BEECH).log();
+			case ASH -> ModBlocks.wood(WoodSet.ASH).log();
+			case NORWAY_MAPLE -> ModBlocks.wood(WoodSet.NORWAY_MAPLE).log();
+		};
+	}
+
+	/**
+	 * The full log the tree planner writes for the thickest parts of a trunk ({@code TreeVoxels.FULL}, from 8 px): the log
+	 * of {@link #log()} before step P2 — the vanilla log, the pale oak log for the gray barks of hornbeam and beech, the oak
+	 * log for linden, ash and maple. Kept by P2 (default choice P2-c) so the generated world stays block for block the same;
+	 * the own logs of the wood sets come into the generation with the new forest structure (step F).
+	 */
+	public Block fullLog() {
 		return switch (this) {
 			case SCOTS_PINE, SCOTS_PINE_UPPER, SCOTS_PINE_TRANSITION, SCOTS_PINE_TRANSITION_UPPER -> ModBlocks.pineLog();
 			case SPRUCE -> Blocks.SPRUCE_LOG;
@@ -96,4 +116,5 @@ public enum TreeTrunk {
 			case HORNBEAM, BEECH -> Blocks.PALE_OAK_LOG;
 		};
 	}
+
 }

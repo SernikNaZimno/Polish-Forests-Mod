@@ -1,0 +1,14 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "redstone",
+  "group": "wooden_pressure_plate",
+  "key": {
+    "#": "polishforests:norway_maple_planks"
+  },
+  "pattern": [
+    "##"
+  ],
+  "result": {
+    "id": "polishforests:norway_maple_pressure_plate"
+  }
+}

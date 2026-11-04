@@ -1,35 +1,95 @@
 # Blocks, properties, values and items of polishforests that go into saved worlds (PW-11). Regenerate on purpose: ./gradlew test --tests '*RegistrySnapshotTest*' -PwriteRegistrySnapshot
+block polishforests:ash_button states=24 default=face=wall,facing=north,powered=false
+  property face: floor wall ceiling
+  property facing: north south west east
+  property powered: true false
+block polishforests:ash_fence states=32 default=east=false,north=false,south=false,waterlogged=false,west=false
+  property east: true false
+  property north: true false
+  property south: true false
+  property waterlogged: true false
+  property west: true false
+block polishforests:ash_fence_gate states=32 default=facing=north,in_wall=false,open=false,powered=false
+  property facing: north south west east
+  property in_wall: true false
+  property open: true false
+  property powered: true false
 block polishforests:ash_leaves states=112 default=distance=7,persistent=false,phase=0,waterlogged=false
   property distance: 1 2 3 4 5 6 7
   property persistent: true false
   property phase: 0 1 2 3
   property waterlogged: true false
+block polishforests:ash_log states=3 default=axis=y
+  property axis: x y z
+block polishforests:ash_planks states=1 default=
+block polishforests:ash_pressure_plate states=2 default=powered=false
+  property powered: true false
 block polishforests:ash_root_flare states=84 default=parent=down,radius=4,waterlogged=false
   property parent: down up north south west east
   property radius: 1 2 3 4 5 6 7
   property waterlogged: true false
 block polishforests:ash_sapling states=2 default=stage=0
   property stage: 0 1
+block polishforests:ash_slab states=6 default=type=bottom,waterlogged=false
+  property type: top bottom double
+  property waterlogged: true false
+block polishforests:ash_stairs states=80 default=facing=north,half=bottom,shape=straight,waterlogged=false
+  property facing: north south west east
+  property half: top bottom
+  property shape: straight inner_left inner_right outer_left outer_right
+  property waterlogged: true false
 block polishforests:ash_trunk states=84 default=parent=down,radius=4,waterlogged=false
   property parent: down up north south west east
   property radius: 1 2 3 4 5 6 7
   property waterlogged: true false
+block polishforests:ash_wood states=3 default=axis=y
+  property axis: x y z
+block polishforests:beech_button states=24 default=face=wall,facing=north,powered=false
+  property face: floor wall ceiling
+  property facing: north south west east
+  property powered: true false
+block polishforests:beech_fence states=32 default=east=false,north=false,south=false,waterlogged=false,west=false
+  property east: true false
+  property north: true false
+  property south: true false
+  property waterlogged: true false
+  property west: true false
+block polishforests:beech_fence_gate states=32 default=facing=north,in_wall=false,open=false,powered=false
+  property facing: north south west east
+  property in_wall: true false
+  property open: true false
+  property powered: true false
 block polishforests:beech_leaves states=224 default=distance=7,marcescent=false,persistent=false,phase=0,waterlogged=false
   property distance: 1 2 3 4 5 6 7
   property marcescent: true false
   property persistent: true false
   property phase: 0 1 2 3
   property waterlogged: true false
+block polishforests:beech_log states=3 default=axis=y
+  property axis: x y z
+block polishforests:beech_planks states=1 default=
+block polishforests:beech_pressure_plate states=2 default=powered=false
+  property powered: true false
 block polishforests:beech_root_flare states=84 default=parent=down,radius=4,waterlogged=false
   property parent: down up north south west east
   property radius: 1 2 3 4 5 6 7
   property waterlogged: true false
 block polishforests:beech_sapling states=2 default=stage=0
   property stage: 0 1
+block polishforests:beech_slab states=6 default=type=bottom,waterlogged=false
+  property type: top bottom double
+  property waterlogged: true false
+block polishforests:beech_stairs states=80 default=facing=north,half=bottom,shape=straight,waterlogged=false
+  property facing: north south west east
+  property half: top bottom
+  property shape: straight inner_left inner_right outer_left outer_right
+  property waterlogged: true false
 block polishforests:beech_trunk states=84 default=parent=down,radius=4,waterlogged=false
   property parent: down up north south west east
   property radius: 1 2 3 4 5 6 7
   property waterlogged: true false
+block polishforests:beech_wood states=3 default=axis=y
+  property axis: x y z
 block polishforests:bilberry states=4 default=berries=false,mossy=false
   property berries: true false
   property mossy: true false
@@ -54,57 +114,147 @@ block polishforests:forest_moss_carpet states=1 default=
 block polishforests:hepatica states=16 default=facing=north,flower_amount=1
   property facing: north south west east
   property flower_amount: 1 2 3 4
+block polishforests:hornbeam_button states=24 default=face=wall,facing=north,powered=false
+  property face: floor wall ceiling
+  property facing: north south west east
+  property powered: true false
+block polishforests:hornbeam_fence states=32 default=east=false,north=false,south=false,waterlogged=false,west=false
+  property east: true false
+  property north: true false
+  property south: true false
+  property waterlogged: true false
+  property west: true false
+block polishforests:hornbeam_fence_gate states=32 default=facing=north,in_wall=false,open=false,powered=false
+  property facing: north south west east
+  property in_wall: true false
+  property open: true false
+  property powered: true false
 block polishforests:hornbeam_leaves states=224 default=distance=7,marcescent=false,persistent=false,phase=0,waterlogged=false
   property distance: 1 2 3 4 5 6 7
   property marcescent: true false
   property persistent: true false
   property phase: 0 1 2 3
   property waterlogged: true false
+block polishforests:hornbeam_log states=3 default=axis=y
+  property axis: x y z
+block polishforests:hornbeam_planks states=1 default=
+block polishforests:hornbeam_pressure_plate states=2 default=powered=false
+  property powered: true false
 block polishforests:hornbeam_root_flare states=84 default=parent=down,radius=4,waterlogged=false
   property parent: down up north south west east
   property radius: 1 2 3 4 5 6 7
   property waterlogged: true false
 block polishforests:hornbeam_sapling states=2 default=stage=0
   property stage: 0 1
+block polishforests:hornbeam_slab states=6 default=type=bottom,waterlogged=false
+  property type: top bottom double
+  property waterlogged: true false
+block polishforests:hornbeam_stairs states=80 default=facing=north,half=bottom,shape=straight,waterlogged=false
+  property facing: north south west east
+  property half: top bottom
+  property shape: straight inner_left inner_right outer_left outer_right
+  property waterlogged: true false
 block polishforests:hornbeam_trunk states=84 default=parent=down,radius=4,waterlogged=false
   property parent: down up north south west east
   property radius: 1 2 3 4 5 6 7
   property waterlogged: true false
+block polishforests:hornbeam_wood states=3 default=axis=y
+  property axis: x y z
+block polishforests:linden_button states=24 default=face=wall,facing=north,powered=false
+  property face: floor wall ceiling
+  property facing: north south west east
+  property powered: true false
+block polishforests:linden_fence states=32 default=east=false,north=false,south=false,waterlogged=false,west=false
+  property east: true false
+  property north: true false
+  property south: true false
+  property waterlogged: true false
+  property west: true false
+block polishforests:linden_fence_gate states=32 default=facing=north,in_wall=false,open=false,powered=false
+  property facing: north south west east
+  property in_wall: true false
+  property open: true false
+  property powered: true false
 block polishforests:linden_leaves states=112 default=distance=7,persistent=false,phase=0,waterlogged=false
   property distance: 1 2 3 4 5 6 7
   property persistent: true false
   property phase: 0 1 2 3
   property waterlogged: true false
+block polishforests:linden_log states=3 default=axis=y
+  property axis: x y z
+block polishforests:linden_planks states=1 default=
+block polishforests:linden_pressure_plate states=2 default=powered=false
+  property powered: true false
 block polishforests:linden_root_flare states=84 default=parent=down,radius=4,waterlogged=false
   property parent: down up north south west east
   property radius: 1 2 3 4 5 6 7
   property waterlogged: true false
 block polishforests:linden_sapling states=2 default=stage=0
   property stage: 0 1
+block polishforests:linden_slab states=6 default=type=bottom,waterlogged=false
+  property type: top bottom double
+  property waterlogged: true false
+block polishforests:linden_stairs states=80 default=facing=north,half=bottom,shape=straight,waterlogged=false
+  property facing: north south west east
+  property half: top bottom
+  property shape: straight inner_left inner_right outer_left outer_right
+  property waterlogged: true false
 block polishforests:linden_trunk states=84 default=parent=down,radius=4,waterlogged=false
   property parent: down up north south west east
   property radius: 1 2 3 4 5 6 7
   property waterlogged: true false
+block polishforests:linden_wood states=3 default=axis=y
+  property axis: x y z
 block polishforests:mossy_podzol states=1 default=
 block polishforests:needle_litter states=32 default=facing=north,mossy=false,segment_amount=1
   property facing: north south west east
   property mossy: true false
   property segment_amount: 1 2 3 4
+block polishforests:norway_maple_button states=24 default=face=wall,facing=north,powered=false
+  property face: floor wall ceiling
+  property facing: north south west east
+  property powered: true false
+block polishforests:norway_maple_fence states=32 default=east=false,north=false,south=false,waterlogged=false,west=false
+  property east: true false
+  property north: true false
+  property south: true false
+  property waterlogged: true false
+  property west: true false
+block polishforests:norway_maple_fence_gate states=32 default=facing=north,in_wall=false,open=false,powered=false
+  property facing: north south west east
+  property in_wall: true false
+  property open: true false
+  property powered: true false
 block polishforests:norway_maple_leaves states=112 default=distance=7,persistent=false,phase=0,waterlogged=false
   property distance: 1 2 3 4 5 6 7
   property persistent: true false
   property phase: 0 1 2 3
   property waterlogged: true false
+block polishforests:norway_maple_log states=3 default=axis=y
+  property axis: x y z
+block polishforests:norway_maple_planks states=1 default=
+block polishforests:norway_maple_pressure_plate states=2 default=powered=false
+  property powered: true false
 block polishforests:norway_maple_root_flare states=84 default=parent=down,radius=4,waterlogged=false
   property parent: down up north south west east
   property radius: 1 2 3 4 5 6 7
   property waterlogged: true false
 block polishforests:norway_maple_sapling states=2 default=stage=0
   property stage: 0 1
+block polishforests:norway_maple_slab states=6 default=type=bottom,waterlogged=false
+  property type: top bottom double
+  property waterlogged: true false
+block polishforests:norway_maple_stairs states=80 default=facing=north,half=bottom,shape=straight,waterlogged=false
+  property facing: north south west east
+  property half: top bottom
+  property shape: straight inner_left inner_right outer_left outer_right
+  property waterlogged: true false
 block polishforests:norway_maple_trunk states=84 default=parent=down,radius=4,waterlogged=false
   property parent: down up north south west east
   property radius: 1 2 3 4 5 6 7
   property waterlogged: true false
+block polishforests:norway_maple_wood states=3 default=axis=y
+  property axis: x y z
 block polishforests:oak_leaves states=224 default=distance=7,marcescent=false,persistent=false,phase=0,waterlogged=false
   property distance: 1 2 3 4 5 6 7
   property marcescent: true false
@@ -130,6 +280,21 @@ block polishforests:potted_norway_maple_sapling states=1 default=
 block polishforests:potted_oak_sapling states=1 default=
 block polishforests:potted_scots_pine_sapling states=1 default=
 block polishforests:potted_spruce_sapling states=1 default=
+block polishforests:scots_pine_button states=24 default=face=wall,facing=north,powered=false
+  property face: floor wall ceiling
+  property facing: north south west east
+  property powered: true false
+block polishforests:scots_pine_fence states=32 default=east=false,north=false,south=false,waterlogged=false,west=false
+  property east: true false
+  property north: true false
+  property south: true false
+  property waterlogged: true false
+  property west: true false
+block polishforests:scots_pine_fence_gate states=32 default=facing=north,in_wall=false,open=false,powered=false
+  property facing: north south west east
+  property in_wall: true false
+  property open: true false
+  property powered: true false
 block polishforests:scots_pine_leaves states=112 default=distance=7,persistent=false,phase=0,waterlogged=false
   property distance: 1 2 3 4 5 6 7
   property persistent: true false
@@ -138,12 +303,22 @@ block polishforests:scots_pine_leaves states=112 default=distance=7,persistent=f
 block polishforests:scots_pine_log states=3 default=axis=y
   property axis: x y z
 block polishforests:scots_pine_planks states=1 default=
+block polishforests:scots_pine_pressure_plate states=2 default=powered=false
+  property powered: true false
 block polishforests:scots_pine_root_flare states=84 default=parent=down,radius=4,waterlogged=false
   property parent: down up north south west east
   property radius: 1 2 3 4 5 6 7
   property waterlogged: true false
 block polishforests:scots_pine_sapling states=2 default=stage=0
   property stage: 0 1
+block polishforests:scots_pine_slab states=6 default=type=bottom,waterlogged=false
+  property type: top bottom double
+  property waterlogged: true false
+block polishforests:scots_pine_stairs states=80 default=facing=north,half=bottom,shape=straight,waterlogged=false
+  property facing: north south west east
+  property half: top bottom
+  property shape: straight inner_left inner_right outer_left outer_right
+  property waterlogged: true false
 block polishforests:scots_pine_transition_trunk states=84 default=parent=down,radius=4,waterlogged=false
   property parent: down up north south west east
   property radius: 1 2 3 4 5 6 7
@@ -177,30 +352,50 @@ block polishforests:spruce_trunk states=84 default=parent=down,radius=4,waterlog
   property parent: down up north south west east
   property radius: 1 2 3 4 5 6 7
   property waterlogged: true false
+block polishforests:stripped_ash_log states=3 default=axis=y
+  property axis: x y z
 block polishforests:stripped_ash_trunk states=84 default=parent=down,radius=4,waterlogged=false
   property parent: down up north south west east
   property radius: 1 2 3 4 5 6 7
   property waterlogged: true false
+block polishforests:stripped_ash_wood states=3 default=axis=y
+  property axis: x y z
+block polishforests:stripped_beech_log states=3 default=axis=y
+  property axis: x y z
 block polishforests:stripped_beech_trunk states=84 default=parent=down,radius=4,waterlogged=false
   property parent: down up north south west east
   property radius: 1 2 3 4 5 6 7
   property waterlogged: true false
+block polishforests:stripped_beech_wood states=3 default=axis=y
+  property axis: x y z
 block polishforests:stripped_birch_trunk states=84 default=parent=down,radius=4,waterlogged=false
   property parent: down up north south west east
   property radius: 1 2 3 4 5 6 7
   property waterlogged: true false
+block polishforests:stripped_hornbeam_log states=3 default=axis=y
+  property axis: x y z
 block polishforests:stripped_hornbeam_trunk states=84 default=parent=down,radius=4,waterlogged=false
   property parent: down up north south west east
   property radius: 1 2 3 4 5 6 7
   property waterlogged: true false
+block polishforests:stripped_hornbeam_wood states=3 default=axis=y
+  property axis: x y z
+block polishforests:stripped_linden_log states=3 default=axis=y
+  property axis: x y z
 block polishforests:stripped_linden_trunk states=84 default=parent=down,radius=4,waterlogged=false
   property parent: down up north south west east
   property radius: 1 2 3 4 5 6 7
   property waterlogged: true false
+block polishforests:stripped_linden_wood states=3 default=axis=y
+  property axis: x y z
+block polishforests:stripped_norway_maple_log states=3 default=axis=y
+  property axis: x y z
 block polishforests:stripped_norway_maple_trunk states=84 default=parent=down,radius=4,waterlogged=false
   property parent: down up north south west east
   property radius: 1 2 3 4 5 6 7
   property waterlogged: true false
+block polishforests:stripped_norway_maple_wood states=3 default=axis=y
+  property axis: x y z
 block polishforests:stripped_oak_trunk states=84 default=parent=down,radius=4,waterlogged=false
   property parent: down up north south west east
   property radius: 1 2 3 4 5 6 7
@@ -224,14 +419,32 @@ block polishforests:tree_root states=84 default=parent=down,radius=4,waterlogged
 block polishforests:wood_anemone states=16 default=facing=north,flower_amount=1
   property facing: north south west east
   property flower_amount: 1 2 3 4
+item polishforests:ash_button block=polishforests:ash_button
+item polishforests:ash_fence block=polishforests:ash_fence
+item polishforests:ash_fence_gate block=polishforests:ash_fence_gate
 item polishforests:ash_leaves block=polishforests:ash_leaves
+item polishforests:ash_log block=polishforests:ash_log
+item polishforests:ash_planks block=polishforests:ash_planks
+item polishforests:ash_pressure_plate block=polishforests:ash_pressure_plate
 item polishforests:ash_root_flare block=polishforests:ash_root_flare
 item polishforests:ash_sapling block=polishforests:ash_sapling
+item polishforests:ash_slab block=polishforests:ash_slab
+item polishforests:ash_stairs block=polishforests:ash_stairs
 item polishforests:ash_trunk block=polishforests:ash_trunk
+item polishforests:ash_wood block=polishforests:ash_wood
+item polishforests:beech_button block=polishforests:beech_button
+item polishforests:beech_fence block=polishforests:beech_fence
+item polishforests:beech_fence_gate block=polishforests:beech_fence_gate
 item polishforests:beech_leaves block=polishforests:beech_leaves
+item polishforests:beech_log block=polishforests:beech_log
+item polishforests:beech_planks block=polishforests:beech_planks
+item polishforests:beech_pressure_plate block=polishforests:beech_pressure_plate
 item polishforests:beech_root_flare block=polishforests:beech_root_flare
 item polishforests:beech_sapling block=polishforests:beech_sapling
+item polishforests:beech_slab block=polishforests:beech_slab
+item polishforests:beech_stairs block=polishforests:beech_stairs
 item polishforests:beech_trunk block=polishforests:beech_trunk
+item polishforests:beech_wood block=polishforests:beech_wood
 item polishforests:bilberries
 item polishforests:bilberry block=polishforests:bilberry
 item polishforests:birch_leaves block=polishforests:birch_leaves
@@ -241,29 +454,62 @@ item polishforests:birch_trunk block=polishforests:birch_trunk
 item polishforests:bracken block=polishforests:bracken
 item polishforests:forest_moss_carpet block=polishforests:forest_moss_carpet
 item polishforests:hepatica block=polishforests:hepatica
+item polishforests:hornbeam_button block=polishforests:hornbeam_button
+item polishforests:hornbeam_fence block=polishforests:hornbeam_fence
+item polishforests:hornbeam_fence_gate block=polishforests:hornbeam_fence_gate
 item polishforests:hornbeam_leaves block=polishforests:hornbeam_leaves
+item polishforests:hornbeam_log block=polishforests:hornbeam_log
+item polishforests:hornbeam_planks block=polishforests:hornbeam_planks
+item polishforests:hornbeam_pressure_plate block=polishforests:hornbeam_pressure_plate
 item polishforests:hornbeam_root_flare block=polishforests:hornbeam_root_flare
 item polishforests:hornbeam_sapling block=polishforests:hornbeam_sapling
+item polishforests:hornbeam_slab block=polishforests:hornbeam_slab
+item polishforests:hornbeam_stairs block=polishforests:hornbeam_stairs
 item polishforests:hornbeam_trunk block=polishforests:hornbeam_trunk
+item polishforests:hornbeam_wood block=polishforests:hornbeam_wood
+item polishforests:linden_button block=polishforests:linden_button
+item polishforests:linden_fence block=polishforests:linden_fence
+item polishforests:linden_fence_gate block=polishforests:linden_fence_gate
 item polishforests:linden_leaves block=polishforests:linden_leaves
+item polishforests:linden_log block=polishforests:linden_log
+item polishforests:linden_planks block=polishforests:linden_planks
+item polishforests:linden_pressure_plate block=polishforests:linden_pressure_plate
 item polishforests:linden_root_flare block=polishforests:linden_root_flare
 item polishforests:linden_sapling block=polishforests:linden_sapling
+item polishforests:linden_slab block=polishforests:linden_slab
+item polishforests:linden_stairs block=polishforests:linden_stairs
 item polishforests:linden_trunk block=polishforests:linden_trunk
+item polishforests:linden_wood block=polishforests:linden_wood
 item polishforests:mossy_podzol block=polishforests:mossy_podzol
 item polishforests:needle_litter block=polishforests:needle_litter
+item polishforests:norway_maple_button block=polishforests:norway_maple_button
+item polishforests:norway_maple_fence block=polishforests:norway_maple_fence
+item polishforests:norway_maple_fence_gate block=polishforests:norway_maple_fence_gate
 item polishforests:norway_maple_leaves block=polishforests:norway_maple_leaves
+item polishforests:norway_maple_log block=polishforests:norway_maple_log
+item polishforests:norway_maple_planks block=polishforests:norway_maple_planks
+item polishforests:norway_maple_pressure_plate block=polishforests:norway_maple_pressure_plate
 item polishforests:norway_maple_root_flare block=polishforests:norway_maple_root_flare
 item polishforests:norway_maple_sapling block=polishforests:norway_maple_sapling
+item polishforests:norway_maple_slab block=polishforests:norway_maple_slab
+item polishforests:norway_maple_stairs block=polishforests:norway_maple_stairs
 item polishforests:norway_maple_trunk block=polishforests:norway_maple_trunk
+item polishforests:norway_maple_wood block=polishforests:norway_maple_wood
 item polishforests:oak_leaves block=polishforests:oak_leaves
 item polishforests:oak_root_flare block=polishforests:oak_root_flare
 item polishforests:oak_sapling block=polishforests:oak_sapling
 item polishforests:oak_trunk block=polishforests:oak_trunk
+item polishforests:scots_pine_button block=polishforests:scots_pine_button
+item polishforests:scots_pine_fence block=polishforests:scots_pine_fence
+item polishforests:scots_pine_fence_gate block=polishforests:scots_pine_fence_gate
 item polishforests:scots_pine_leaves block=polishforests:scots_pine_leaves
 item polishforests:scots_pine_log block=polishforests:scots_pine_log
 item polishforests:scots_pine_planks block=polishforests:scots_pine_planks
+item polishforests:scots_pine_pressure_plate block=polishforests:scots_pine_pressure_plate
 item polishforests:scots_pine_root_flare block=polishforests:scots_pine_root_flare
 item polishforests:scots_pine_sapling block=polishforests:scots_pine_sapling
+item polishforests:scots_pine_slab block=polishforests:scots_pine_slab
+item polishforests:scots_pine_stairs block=polishforests:scots_pine_stairs
 item polishforests:scots_pine_transition_trunk block=polishforests:scots_pine_transition_trunk
 item polishforests:scots_pine_transition_upper_trunk block=polishforests:scots_pine_transition_upper_trunk
 item polishforests:scots_pine_trunk block=polishforests:scots_pine_trunk
@@ -273,12 +519,22 @@ item polishforests:spruce_leaves block=polishforests:spruce_leaves
 item polishforests:spruce_root_flare block=polishforests:spruce_root_flare
 item polishforests:spruce_sapling block=polishforests:spruce_sapling
 item polishforests:spruce_trunk block=polishforests:spruce_trunk
+item polishforests:stripped_ash_log block=polishforests:stripped_ash_log
 item polishforests:stripped_ash_trunk block=polishforests:stripped_ash_trunk
+item polishforests:stripped_ash_wood block=polishforests:stripped_ash_wood
+item polishforests:stripped_beech_log block=polishforests:stripped_beech_log
 item polishforests:stripped_beech_trunk block=polishforests:stripped_beech_trunk
+item polishforests:stripped_beech_wood block=polishforests:stripped_beech_wood
 item polishforests:stripped_birch_trunk block=polishforests:stripped_birch_trunk
+item polishforests:stripped_hornbeam_log block=polishforests:stripped_hornbeam_log
 item polishforests:stripped_hornbeam_trunk block=polishforests:stripped_hornbeam_trunk
+item polishforests:stripped_hornbeam_wood block=polishforests:stripped_hornbeam_wood
+item polishforests:stripped_linden_log block=polishforests:stripped_linden_log
 item polishforests:stripped_linden_trunk block=polishforests:stripped_linden_trunk
+item polishforests:stripped_linden_wood block=polishforests:stripped_linden_wood
+item polishforests:stripped_norway_maple_log block=polishforests:stripped_norway_maple_log
 item polishforests:stripped_norway_maple_trunk block=polishforests:stripped_norway_maple_trunk
+item polishforests:stripped_norway_maple_wood block=polishforests:stripped_norway_maple_wood
 item polishforests:stripped_oak_trunk block=polishforests:stripped_oak_trunk
 item polishforests:stripped_scots_pine_log block=polishforests:stripped_scots_pine_log
 item polishforests:stripped_scots_pine_trunk block=polishforests:stripped_scots_pine_trunk

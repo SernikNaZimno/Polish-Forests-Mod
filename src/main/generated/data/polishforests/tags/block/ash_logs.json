@@ -2,6 +2,7 @@
   "values": [
     "polishforests:ash_trunk",
     "polishforests:ash_root_flare",
-    "polishforests:stripped_ash_trunk"
+    "polishforests:stripped_ash_trunk",
+    "#polishforests:ash_full_logs"
   ]
 }

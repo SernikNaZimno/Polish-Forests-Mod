@@ -1,0 +1,13 @@
+{
+  "variants": {
+    "type=bottom": {
+      "model": "polishforests:block/ash_slab"
+    },
+    "type=double": {
+      "model": "polishforests:block/ash_planks"
+    },
+    "type=top": {
+      "model": "polishforests:block/ash_slab_top"
+    }
+  }
+}

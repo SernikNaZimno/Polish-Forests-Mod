@@ -15,8 +15,8 @@ import pl.polishforests.worldgen.habitat.Species;
  * at the end.
  *
  * <p>Loot as a trunk, with the stripped log of the species ({@link #log()}) where the trunk gives its log (default choice
- * P1-d): the own stripped Scots pine log, vanilla's stripped spruce and birch logs (D2), and for the others the stripped
- * counterpart of the closest vanilla log of {@link TreeTrunk#log()} until their own wood comes (U-8).
+ * P1-d): the own stripped Scots pine log, vanilla's stripped spruce and birch logs (D2), the stripped oak log, and since
+ * step P2 (U-8) the own stripped log of the wood set of hornbeam, linden, beech, ash and Norway maple ({@link WoodSet}).
  */
 public enum StrippedTrunk {
 	SCOTS_PINE(TreeTrunk.SCOTS_PINE, MapColor.WOOD),
@@ -69,8 +69,13 @@ public enum StrippedTrunk {
 			case SCOTS_PINE -> ModBlocks.strippedPineLog();
 			case SPRUCE -> Blocks.STRIPPED_SPRUCE_LOG;
 			case BIRCH -> Blocks.STRIPPED_BIRCH_LOG;
-			case OAK, LINDEN, ASH, NORWAY_MAPLE -> Blocks.STRIPPED_OAK_LOG;
-			case HORNBEAM, BEECH -> Blocks.STRIPPED_PALE_OAK_LOG;
+			case OAK -> Blocks.STRIPPED_OAK_LOG;
+			case HORNBEAM -> ModBlocks.wood(WoodSet.HORNBEAM).strippedLog();
+			case LINDEN -> ModBlocks.wood(WoodSet.LINDEN).strippedLog();
+			case BEECH -> ModBlocks.wood(WoodSet.BEECH).strippedLog();
+			case ASH -> ModBlocks.wood(WoodSet.ASH).strippedLog();
+			case NORWAY_MAPLE -> ModBlocks.wood(WoodSet.NORWAY_MAPLE).strippedLog();
+
 		};
 	}
 

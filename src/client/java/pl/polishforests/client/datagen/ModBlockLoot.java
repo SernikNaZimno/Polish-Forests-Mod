@@ -125,10 +125,17 @@ final class ModBlockLoot extends FabricBlockLootSubProvider {
 	private void lite() {
 		// Step V7: the LITE Scots pine set drops itself; the leaves as vanilla leaves (shears or silk touch: the leaves,
 		// else the sapling with vanilla's chances and sticks); a sapling itself, a pot its sapling and the pot.
-		for (Block b : java.util.List.of(ModBlocks.pineLog(), ModBlocks.pineWood(), ModBlocks.strippedPineLog(),
-				ModBlocks.strippedPineWood(), ModBlocks.pinePlanks())) {
-			dropSelf(b);
+		// Step P2: every block of the wood sets (the pine's LITE blocks of V7 too) drops itself, a slab one or two (double).
+		for (pl.polishforests.block.WoodBlocks w : ModBlocks.woodSets().values()) {
+			for (Block b : w.all()) {
+				if (b == w.slab()) {
+					add(b, createSlabItemTable(b));
+				} else {
+					dropSelf(b);
+				}
+			}
 		}
+
 		for (TreeFoliage f : TreeFoliage.values()) {
 			add(ModBlocks.leaves(f), createLeavesDrops(ModBlocks.leaves(f), ModBlocks.sapling(f), NORMAL_LEAVES_SAPLING_CHANCES));
 			dropSelf(ModBlocks.sapling(f));

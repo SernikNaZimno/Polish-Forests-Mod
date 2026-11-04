@@ -61,7 +61,7 @@ class ProceduralTreeStatesTest {
 				}
 			}
 			BlockState log = ProceduralTreeFeature.wood(s, TreeVoxels.LOWER, TreeVoxels.FULL, Direction.WEST);
-			assertSame(ProceduralTreeFeature.trunk(s, TreeVoxels.LOWER).log(), log.getBlock());
+			assertSame(ProceduralTreeFeature.trunk(s, TreeVoxels.LOWER).fullLog(), log.getBlock());
 			assertEquals(Direction.Axis.X, log.getValue(RotatedPillarBlock.AXIS));
 			for (int phase = 0; phase < 4; phase++) {
 				BlockState leaf = ProceduralTreeFeature.leaves(s, phase);

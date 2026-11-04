@@ -1,0 +1,13 @@
+{
+  "variants": {
+    "type=bottom": {
+      "model": "polishforests:block/linden_slab"
+    },
+    "type=double": {
+      "model": "polishforests:block/linden_planks"
+    },
+    "type=top": {
+      "model": "polishforests:block/linden_slab_top"
+    }
+  }
+}

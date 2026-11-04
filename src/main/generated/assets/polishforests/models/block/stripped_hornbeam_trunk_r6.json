@@ -2,6 +2,6 @@
   "parent": "polishforests:block/template_trunk_r6",
   "textures": {
     "bark": "polishforests:block/stripped_hornbeam_trunk",
-    "end": "minecraft:block/stripped_pale_oak_log_top"
+    "end": "polishforests:block/stripped_hornbeam_log_top"
   }
 }
