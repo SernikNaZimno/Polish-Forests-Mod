@@ -29,6 +29,9 @@ import pl.polishforests.worldgen.habitat.HabitatBiome;
  * function of the source's biome, so {@code /locate biome}, the structures (by the biome tags, which hold the habitat
  * biomes) and the chunks see the same biomes.
  *
+ * <p>The carvers (caves and canyons) of a source chunk are those of the vanilla biome before the swap
+ * ({@link #carverBiome}, mixin {@code NoiseBasedChunkGeneratorMixin}), so the carved terrain is vanilla too.
+ *
  * <p>The source also carries the forests of that world ({@link #world()}: the chunk habitats from the vanilla terrain,
  * the stand map, the blend of the slice forests).
  */
@@ -117,8 +120,7 @@ public final class VanillaForestsBiomeSource extends BiomeSource {
 
 	@Override
 	public BiomeResolver createResolver(Climate.Sampler sampler) {
-		BiomeResolver inner = source.createResolver(sampler);
-		return (qx, qy, qz) -> swap(inner.getNoiseBiome(qx, qy, qz));
+		return new SwappedResolver(this, source.createResolver(sampler));
 	}
 
 	@Override
@@ -126,7 +128,28 @@ public final class VanillaForestsBiomeSource extends BiomeSource {
 			int quartSizeX, int quartSizeY, int quartSizeZ) {
 		BiomeResolver inner = source.createResolverForChunk(sampler, minQuartX, minQuartY, minQuartZ, quartSizeX, quartSizeY,
 				quartSizeZ);
-		return (qx, qy, qz) -> swap(inner.getNoiseBiome(qx, qy, qz));
+		return new SwappedResolver(this, inner);
+	}
+
+	/**
+	 * A resolver of this source: the biome of the wrapped source's resolver, swapped. The carvers of a chunk are those of
+	 * the unswapped (vanilla) biome ({@link #carverBiome}).
+	 */
+	public record SwappedResolver(VanillaForestsBiomeSource owner, BiomeResolver inner) implements BiomeResolver {
+		@Override
+		public Holder<Biome> getNoiseBiome(int quartX, int quartY, int quartZ) {
+			return owner.swap(inner.getNoiseBiome(quartX, quartY, quartZ));
+		}
+	}
+
+	/**
+	 * The biome whose carvers a source chunk uses (round 1 of the W1 review): for a resolver of this source the vanilla biome
+	 * before the swap, so the replaced forests keep the caves and canyons of the vanilla forests (the habitat biomes carry no
+	 * carvers, the "Poland" world has its own list); for any other resolver its own biome.
+	 */
+	public static Holder<Biome> carverBiome(BiomeResolver resolver, int quartX, int quartY, int quartZ) {
+		BiomeResolver r = resolver instanceof SwappedResolver swapped ? swapped.inner() : resolver;
+		return r.getNoiseBiome(quartX, quartY, quartZ);
 	}
 
 	@Override

@@ -101,6 +101,40 @@ class VanillaForestsTest {
 		}
 	}
 
+	/** The carvers of a biome JSON on the class path (the game jar's or the mod's generated one). */
+	static Set<String> carvers(String namespace, String path) {
+		String file = "/data/" + namespace + "/worldgen/biome/" + path + ".json";
+		var url = VanillaForestsTest.class.getResource(file);
+		assertNotNull(url, file);
+		Set<String> out = new LinkedHashSet<>();
+		try (var reader = new InputStreamReader(url.openStream(), StandardCharsets.UTF_8)) {
+			JsonElement carvers = JsonParser.parseReader(reader).getAsJsonObject().get("carvers");
+			if (carvers != null && carvers.isJsonArray()) {
+				carvers.getAsJsonArray().forEach(e -> out.add(e.getAsString()));
+			} else if (carvers != null) {
+				out.add(carvers.getAsString());
+			}
+		} catch (IOException e) {
+			throw new AssertionError(e);
+		}
+		return out;
+	}
+
+	/**
+	 * Why the carver lookup of that world type takes the vanilla biome before the swap (round 1 of the W1 review): every
+	 * replaced vanilla forest carries the vanilla caves and canyons, while the habitat biomes carry no carvers (the "Poland"
+	 * world has its own list), so with the swapped biome the forests would lose their caves and canyons.
+	 */
+	@Test
+	void theReplacedForestsCarryTheCarversTheHabitatBiomesLack() {
+		for (var e : VanillaForests.REPLACEMENTS.entrySet()) {
+			Set<String> vanilla = carvers("minecraft", e.getKey());
+			assertTrue(vanilla.containsAll(Set.of("minecraft:cave", "minecraft:cave_extra_underground", "minecraft:canyon")),
+					e.getKey() + ": " + vanilla);
+			assertTrue(carvers("polishforests", e.getValue().id()).isEmpty(), e.getValue().id() + " carries carvers");
+		}
+	}
+
 	@Test
 	void everyVanillaForestIsReplacedOrKeptOnPurpose() {
 		Set<String> overworld = tag("is_overworld");
