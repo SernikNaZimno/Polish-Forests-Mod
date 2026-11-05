@@ -3830,6 +3830,12 @@ Przegląd: 1 usterka blokująca, 4 poważne, 2 drobne (drobne na liście „Do k
 
 **KF po rundzie 1.** KF-1, KF-2 (poza F2-x, F2-p do CP-D), KF-4, KF-5: jak w „Stan po F2”. KF-3: spełnione (teren identyczny, „elsewhere” 0 w każdym obszarze, `floor_free` olsu 0). KF-6: bez zmian (pomiar etapu 1; DP-134). KF-7: pełny zestaw PASS, dokumentacja (ta sekcja, G.43 F2-v′ i F2-y, BRIEF).
 
+## Runda 2 poprawek po przeglądzie F2 (2026-11-05)
+
+Przegląd: 0 usterek blokujących i poważnych, 2 drobne — obie sprawdzone i prawdziwe, obie to powtórki wpisów, które runda 1 już dopisała do listy „Do kroku porządkowego”: KF-6 olsu zmierzone tylko na kodzie etapu 1 (= DP-134, sprawdzić przy zbiorczym pomiarze przed CP-D) i brak testu ścięcia olszy wielopniowej w całości przez FallingTree i Tree Harvester (= DP-135, olsza z odroślami na tablicy `felling`). Bez nowych wpisów i bez poprawek kodu (próg z 2026-10-21); bez nowych wyborów domyślnych w `docs/00`. Bez oceny wyglądu (G.36 U-1).
+
+**Przebiegi rundy 2.** `test_plan.py c77a070`: 0 zmienionych plików kodu, bez testów obszarów; wyniki gier z rundy 1 (kod `5bf7006`) obowiązują. Commit końcowy „F2 review fixes, round 2” po pełnym `tools/dev/run-tests test` na drzewie z tą sekcją (wynik w `handoff/F2/results.md`). KF bez zmian wobec rundy 1.
+
 ## Do kroku porządkowego (lista drobiazgów z recenzji)
 
 Lista założona w V10 według decyzji użytkownika z 2026-10-21 (`docs/00` F, P4): drobiazgi widoczne tylko na zbliżeniach albo w pomiarach bez wpływu na grę nie są poprawiane od razu, tylko trafiają tutaj; zbiorczy krok porządkowy na końcu kamienia milowego przegląda listę i poprawia, co warto. Każdy wpis: krok, w którym powstał, opis, gdzie szukać, propozycja. Wpis usuwamy (albo przekreślamy z commitem), gdy jest zrobiony.
