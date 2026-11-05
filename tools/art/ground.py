@@ -49,6 +49,51 @@ HEPATICA_LEAVES = [
     ['01100', '12210', '41131', '04430'],
     ['041', '121', '134'],
 ]
+# Step F1 (the herb layer of the lowland beech forest, docs/04 §3 "Kroki F"): sweet woodruff (whorls of six to eight
+# narrow leaves, a star from above; loose clusters of tiny white four-petalled flowers), hairy wood-rush (tufts of
+# narrow grass-like leaves, the tips often dry; small brown flower clusters with pale stamens), wood sorrel (trefoils of
+# three heart-shaped leaflets; white flowers with lilac veins and a yellow centre) and coralroot (Cardamine bulbifera:
+# pinnate leaves along a stem; pale lilac four-petalled flowers).
+WOODRUFF_FLOWERS = [
+    ['11', '21'],
+    ['010', '121', '020'],
+    ['11', '12'],
+]
+WOODRUFF_LEAVES = [
+    ['01110', '13211', '12121', '11231', '01110'],
+    ['0110', '1321', '1231', '0110'],
+    ['0110', '1211', '1131', '0130'],
+]
+WOOD_RUSH_FLOWERS = [
+    ['11', '23'],
+    ['010', '132', '020'],
+    ['12', '21'],
+]
+WOOD_RUSH_LEAVES = [
+    ['41014', '11211', '01310', '11211', '10101'],
+    ['4114', '1221', '0331', '1111'],
+    ['01410', '11211', '01310', '11011'],
+]
+SORREL_FLOWERS = [
+    ['010', '131', '020'],
+    ['0110', '1312', '0220'],
+    ['11', '32'],
+]
+SORREL_LEAVES = [
+    ['11011', '12121', '11311', '01310', '00100'],
+    ['1101', '1221', '1131', '0110'],
+    ['0110', '1211', '1311', '0330'],
+]
+CORALROOT_FLOWERS = [
+    ['010', '131', '010'],
+    ['11', '32'],
+    ['010', '132', '020'],
+]
+CORALROOT_LEAVES = [
+    ['11011', '12121', '11311', '12121', '01310'],
+    ['1121', '1231', '1321', '0131'],
+    ['121', '131', '121'],
+]
 
 
 def _place(val, sprite, x0, y0, mapping, box):
@@ -68,7 +113,8 @@ def _place(val, sprite, x0, y0, mapping, box):
 
 
 def flower_bed(tex, palettes):
-    """A flower bed of a spring geophyte (wood anemone or liverleaf): in each 8 x 8 quadrant (one segment of the bed)
+    """A flower bed of a herb of the forest floor (wood anemone, liverleaf; step F1: sweet woodruff, hairy wood-rush, wood
+    sorrel, coralroot): in each 8 x 8 quadrant (one segment of the bed)
     leaf whorls until p['leaf_cover'] of it is green and p['flowers'] flowers over them; the colors p['colors'] are
     0-2 leaves (shade, body, light), 3 an old leaf (liverleaf), 4-5 tepals (shade, body), 6 the centre, 7 the pale lit
     leaf right around a flower. Flowers keep

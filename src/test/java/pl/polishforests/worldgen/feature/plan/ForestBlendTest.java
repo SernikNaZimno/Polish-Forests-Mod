@@ -294,7 +294,7 @@ class ForestBlendTest {
 
 	@Test
 	void paletteTransitionsOfTheSliceTransectsAreWithinTheNorm() throws IOException {
-		List<HabitatBiome> sequence = List.of(ForestBlend.FORESTS);
+		List<HabitatBiome> sequence = List.of(ForestBlend.TRANSECT);
 		List<Line> lines = transects();
 		assertEquals(2, lines.size(), "a transect per scale");
 		StringBuilder report = new StringBuilder();
@@ -340,5 +340,42 @@ class ForestBlendTest {
 			s.append(s.isEmpty() ? "" : " / ").append(String.format(Locale.ROOT, "%.1f", v));
 		}
 		return s.toString();
+	}
+
+	/**
+	 * Step F1: the lowland beech forest is a forest of the blend; it blends with the oak-hornbeam, the mixed and the mixed
+	 * pine-oak forest, not with the fresh pine forest (that pair keeps the ramp of Ecotone); the forests of the transect
+	 * keep their indices and all blend with each other, and the beech forest is no longer a neighbor taken over.
+	 */
+	@Test
+	void beechForestBlendsWithItsNeighborsOfStepF1() {
+		assertEquals(List.of(HabitatBiome.FRESH_PINE_FOREST, HabitatBiome.MIXED_PINE_FOREST, HabitatBiome.MIXED_FOREST,
+				HabitatBiome.OAK_HORNBEAM_FOREST), List.of(ForestBlend.TRANSECT));
+		assertEquals(HabitatBiome.LOWLAND_BEECH_FOREST, ForestBlend.FORESTS[ForestBlend.BEECH]);
+		assertEquals(ForestBlend.FORESTS.length + 1, ForestBlend.SHARES);
+		for (int a = 0; a < 4; a++) {
+			for (int b = 0; b < 4; b++) {
+				assertEquals(a != b, ForestBlend.blends(a, b), a + " " + b);
+			}
+		}
+		assertTrue(ForestBlend.blends(ForestBlend.BEECH, 3) && ForestBlend.blends(2, ForestBlend.BEECH)
+				&& ForestBlend.blends(ForestBlend.BEECH, 1));
+		assertTrue(!ForestBlend.blends(ForestBlend.BEECH, 0) && !ForestBlend.blends(0, ForestBlend.BEECH));
+		int beech = EcotoneTest.code(HabitatBiome.LOWLAND_BEECH_FOREST, Zone.NONE);
+		assertTrue(!ForestBlend.takenOver(beech));
+		assertEquals(5, ForestBlend.member(beech));
+		// A beech column with every forest at hand never draws the fresh pine forest; a fresh pine column never the beech.
+		float[] s = {0.2F, 0.2F, 0.2F, 0.2F, 0.2F, 0};
+		for (int i = 0; i < 1000; i++) {
+			double v = i / 1000.0;
+			assertNotEquals(HabitatBiome.FRESH_PINE_FOREST, Habitat.biome(ForestBlend.pick(beech, s, v)));
+			assertNotEquals(HabitatBiome.LOWLAND_BEECH_FOREST, Habitat.biome(ForestBlend.pick(FRESH, s, v)));
+		}
+		// Far from the beech forest (its share 0) the normalization of a forest of the transect is the sum of step Z1.
+		float[] far = {0.1F, 0.3F, 0.15F, 0.05F, 0, 0.4F};
+		assertEquals(Math.max(ForestBlend.MIN_TOTAL, far[0] + far[1] + far[2] + far[3]), ForestBlend.pickTotal(1, far));
+		// The canonical code of the beech forest is its fertile form.
+		assertEquals(pl.polishforests.worldgen.habitat.ForestSiteType.FRESH_BROADLEAVED,
+				Habitat.siteType(ForestBlend.code(beech, ForestBlend.BEECH)));
 	}
 }

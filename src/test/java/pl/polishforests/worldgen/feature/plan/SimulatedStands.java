@@ -16,6 +16,7 @@ import pl.polishforests.worldgen.tree.CrownTerritories;
 import pl.polishforests.worldgen.tree.CrownTerritory;
 import pl.polishforests.worldgen.tree.ForestStandMap;
 import pl.polishforests.worldgen.tree.StandMap;
+import pl.polishforests.worldgen.tree.StandProfile;
 import pl.polishforests.worldgen.tree.TreeRequest;
 import pl.polishforests.worldgen.tree.TreeShapePlan;
 import pl.polishforests.worldgen.tree.TreeVoxels;
@@ -46,6 +47,14 @@ final class SimulatedStands {
 
 	/** A stand map of one stand everywhere, with the canopy gaps of the world's stand map when natural. */
 	static StandMap stand(AgeClass age, boolean natural) {
+		return stand(StandProfile.DEFAULT, age, natural);
+	}
+
+	/**
+	 * A stand map of one stand everywhere with the gaps of a stand profile (step F1): the canopy gaps of the world's stand
+	 * map when natural, the regeneration nests of the profile when managed.
+	 */
+	static StandMap stand(StandProfile profile, AgeClass age, boolean natural) {
 		ForestStandMap world = new ForestStandMap(SEED, 1, 0.85);
 		return new StandMap() {
 			@Override
@@ -60,19 +69,28 @@ final class SimulatedStands {
 
 			@Override
 			public boolean canopyGap(int x, int z) {
-				return natural && world.rawGapDepth(x, z, age) > 0;
+				return gapDepth(x, z) > 0;
 			}
 
 			@Override
 			public double gapDepth(int x, int z) {
-				return natural ? Math.max(0, world.rawGapDepth(x, z, age)) : 0;
+				return Math.max(0, world.rawGapDepth(x, z, age, natural, profile));
 			}
 		};
 	}
 
 	/** Plans the procedural trees of chunks 0 … chunks − 1 (both axes) of a uniform stand of the biome on level ground. */
 	static void plant(HabitatBiome biome, boolean natural, AgeClass age, int chunks, Sink sink) {
-		plant(biome, natural, age, chunks, Species.FLAG_HORNBEAM, (x, z) -> GROUND, sink);
+		plant(biome, ForestSiteType.NONE, natural, age, chunks, sink);
+	}
+
+	/**
+	 * {@link #plant(HabitatBiome, boolean, AgeClass, int, Sink)} on a forest site type (step F1: the fertile and the acid
+	 * beech forest) with the biome's stand profile; the beech forest within the beech range.
+	 */
+	static void plant(HabitatBiome biome, ForestSiteType site, boolean natural, AgeClass age, int chunks, Sink sink) {
+		int ranges = Species.FLAG_HORNBEAM | (biome == HabitatBiome.LOWLAND_BEECH_FOREST ? Species.FLAG_BEECH : 0);
+		plant(biome, site, natural, age, chunks, ranges, (x, z) -> GROUND, sink);
 	}
 
 	/** Rolling ground: {@link #GROUND} ± amplitude blocks, a wavelength of 40 blocks. */
@@ -87,9 +105,14 @@ final class SimulatedStands {
 	 */
 	static void plant(HabitatBiome biome, boolean natural, AgeClass age, int chunks, int ranges, TreeShapePlan.Ground ground,
 			Sink sink) {
-		int code = Habitat.pack(biome, Zone.NONE, ForestSiteType.NONE, Association.TYPICAL, LandCover.forBiome(biome),
+		plant(biome, ForestSiteType.NONE, natural, age, chunks, ranges, ground, sink);
+	}
+
+	static void plant(HabitatBiome biome, ForestSiteType site, boolean natural, AgeClass age, int chunks, int ranges,
+			TreeShapePlan.Ground ground, Sink sink) {
+		int code = Habitat.pack(biome, Zone.NONE, site, Association.TYPICAL, LandCover.forBiome(biome),
 				ranges, Soil.forBiome(biome, Zone.NONE));
-		StandMap map = stand(age, natural);
+		StandMap map = stand(StandProfile.of(biome), age, natural);
 		CrownTerritories crowns = new CrownTerritories(SEED, map);
 		TreeStandPlan.Stand stand = new TreeStandPlan.Stand(RAMP, new Noise(SEED).derive("feature.tree_stand.gaps"), 1, map, crowns);
 		int[] codes = new int[256];

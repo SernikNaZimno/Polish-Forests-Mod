@@ -929,25 +929,271 @@
       "biomes": [
         "lowland_beech_forest"
       ],
+      "site_types": [
+        "fresh_mixed_broadleaved"
+      ],
+      "stand": {
+        "gap_chance": 0.8,
+        "gap_regeneration": [
+          {
+            "range_ramp": false,
+            "species": "beech",
+            "tree": "polishforests:tree/beech",
+            "weight": 650
+          },
+          {
+            "species": "birch",
+            "tree": "polishforests:tree/birch",
+            "weight": 150
+          },
+          {
+            "species": "rowan",
+            "tree": "polishforests:tree_substitute/rowan_thin",
+            "weight": 100
+          },
+          {
+            "species": "oak",
+            "tree": "polishforests:tree/oak",
+            "weight": 100
+          }
+        ],
+        "managed_canopy": [
+          {
+            "range_ramp": false,
+            "species": "beech",
+            "tree": "polishforests:tree/beech",
+            "weight": 870
+          },
+          {
+            "species": "oak",
+            "tree": "polishforests:tree/oak",
+            "weight": 90
+          },
+          {
+            "species": "scots_pine",
+            "tree": "polishforests:tree/scots_pine",
+            "weight": 20
+          },
+          {
+            "species": "birch",
+            "tree": "polishforests:tree/birch",
+            "weight": 20
+          }
+        ],
+        "managed_chance": [
+          0.9,
+          0.72,
+          0.62
+        ],
+        "natural_chance": [
+          0.95,
+          0.95,
+          0.95
+        ],
+        "regeneration": [
+          {
+            "range_ramp": false,
+            "species": "beech",
+            "tree": "polishforests:tree/beech",
+            "weight": 850
+          },
+          {
+            "species": "rowan",
+            "tree": "polishforests:tree_substitute/rowan_thin",
+            "weight": 150
+          }
+        ],
+        "subcanopy": [
+          {
+            "range_ramp": false,
+            "species": "beech",
+            "tree": "polishforests:tree/beech",
+            "weight": 800
+          },
+          {
+            "alternative": {
+              "species": "birch",
+              "tree": "polishforests:tree/birch"
+            },
+            "species": "hornbeam",
+            "tree": "polishforests:tree/hornbeam",
+            "weight": 100
+          },
+          {
+            "species": "birch",
+            "tree": "polishforests:tree/birch",
+            "weight": 100
+          }
+        ],
+        "subcanopy_chance": 0.35
+      },
       "trees": [
         {
           "range_ramp": false,
           "species": "beech",
-          "tree": "polishforests:tree_substitute/beech",
-          "weight": 850
+          "tree": "polishforests:tree/beech",
+          "weight": 820
         },
         {
           "species": "oak",
-          "tree": "polishforests:tree_substitute/oak",
-          "weight": 100
+          "tree": "polishforests:tree/oak",
+          "weight": 120
         },
         {
-          "species": "sycamore_maple",
-          "tree": "polishforests:tree_substitute/sycamore_maple",
-          "weight": 50
+          "species": "scots_pine",
+          "tree": "polishforests:tree/scots_pine",
+          "weight": 30
+        },
+        {
+          "species": "birch",
+          "tree": "polishforests:tree/birch",
+          "weight": 30
         }
       ],
-      "trees_per_chunk": 7.0
+      "trees_per_chunk": 12.0
+    },
+    {
+      "biomes": [
+        "lowland_beech_forest"
+      ],
+      "stand": {
+        "gap_chance": 0.8,
+        "gap_regeneration": [
+          {
+            "range_ramp": false,
+            "species": "beech",
+            "tree": "polishforests:tree/beech",
+            "weight": 650
+          },
+          {
+            "species": "ash",
+            "tree": "polishforests:tree/ash",
+            "weight": 100
+          },
+          {
+            "species": "norway_maple",
+            "tree": "polishforests:tree/norway_maple",
+            "weight": 100
+          },
+          {
+            "species": "hazel",
+            "tree": "polishforests:shrub/hazel_thin",
+            "weight": 150
+          }
+        ],
+        "managed_canopy": [
+          {
+            "range_ramp": false,
+            "species": "beech",
+            "tree": "polishforests:tree/beech",
+            "weight": 860
+          },
+          {
+            "species": "oak",
+            "tree": "polishforests:tree/oak",
+            "weight": 60
+          },
+          {
+            "species": "ash",
+            "tree": "polishforests:tree/ash",
+            "weight": 25
+          },
+          {
+            "species": "norway_maple",
+            "tree": "polishforests:tree/norway_maple",
+            "weight": 30
+          },
+          {
+            "species": "linden",
+            "tree": "polishforests:tree/linden",
+            "weight": 25
+          }
+        ],
+        "managed_chance": [
+          0.9,
+          0.72,
+          0.62
+        ],
+        "natural_chance": [
+          0.95,
+          0.95,
+          0.95
+        ],
+        "regeneration": [
+          {
+            "range_ramp": false,
+            "species": "beech",
+            "tree": "polishforests:tree/beech",
+            "weight": 800
+          },
+          {
+            "species": "norway_maple",
+            "tree": "polishforests:tree/norway_maple",
+            "weight": 100
+          },
+          {
+            "alternative": {
+              "species": "linden",
+              "tree": "polishforests:tree/linden"
+            },
+            "species": "hornbeam",
+            "tree": "polishforests:tree/hornbeam",
+            "weight": 100
+          }
+        ],
+        "subcanopy": [
+          {
+            "range_ramp": false,
+            "species": "beech",
+            "tree": "polishforests:tree/beech",
+            "weight": 600
+          },
+          {
+            "alternative": {
+              "species": "linden",
+              "tree": "polishforests:tree/linden"
+            },
+            "species": "hornbeam",
+            "tree": "polishforests:tree/hornbeam",
+            "weight": 250
+          },
+          {
+            "species": "linden",
+            "tree": "polishforests:tree/linden",
+            "weight": 150
+          }
+        ],
+        "subcanopy_chance": 0.35
+      },
+      "trees": [
+        {
+          "range_ramp": false,
+          "species": "beech",
+          "tree": "polishforests:tree/beech",
+          "weight": 800
+        },
+        {
+          "species": "oak",
+          "tree": "polishforests:tree/oak",
+          "weight": 70
+        },
+        {
+          "species": "ash",
+          "tree": "polishforests:tree/ash",
+          "weight": 40
+        },
+        {
+          "species": "norway_maple",
+          "tree": "polishforests:tree/norway_maple",
+          "weight": 45
+        },
+        {
+          "species": "linden",
+          "tree": "polishforests:tree/linden",
+          "weight": 45
+        }
+      ],
+      "trees_per_chunk": 12.0
     },
     {
       "biomes": [

@@ -152,7 +152,7 @@ public final class TreeStandFeature implements Feature {
 						rule(r.condition().match(), r.treesPerChunk(), st.subcanopy()),
 						rule(r.condition().match(), r.treesPerChunk(), st.regeneration()),
 						rule(r.condition().match(), r.treesPerChunk(), st.gapRegeneration()),
-						chances(st.managedChance()), chances(st.naturalChance()), st.gapChance()));
+						chances(st.managedChance()), chances(st.naturalChance()), st.gapChance(), st.subcanopyChance()));
 			}
 			rules.add(rule);
 		}
@@ -224,12 +224,15 @@ public final class TreeStandFeature implements Feature {
 		}
 	}
 
-	private Noises noises(long seed, long standSeed, double k, double managedShare) {
+	private Noises noises(long seed, long standSeed, double k, double managedShare, @Nullable ForestWorld world) {
 		Noises n = noises;
-		if (n == null || n.seed() != seed || n.standSeed() != standSeed || n.k() != k || n.managedShare() != managedShare) {
+		// Step F1: the world's stand map (its stand profiles by forest from the world's blend), else one of the default profile.
+		ForestStandMap worldStands = world != null ? world.standMap(seed) : null;
+		if (n == null || n.seed() != seed || n.standSeed() != standSeed || n.k() != k || n.managedShare() != managedShare
+				|| worldStands != null && n.stands() != worldStands) {
 			Noise root = new Noise(seed);
 			// Step W1: the stand map of the world type "Default + Polish Forests" has its own seed (ForestWorld.standSeed).
-			ForestStandMap stands = new ForestStandMap(standSeed, k, managedShare);
+			ForestStandMap stands = worldStands != null ? worldStands : new ForestStandMap(standSeed, k, managedShare);
 			n = new Noises(seed, standSeed, k, managedShare, root.derive(RAMP_SALT), root.derive(GAP_SALT), stands,
 					new CrownTerritories(seed, stands));
 			noises = n;
@@ -309,7 +312,7 @@ public final class TreeStandFeature implements Feature {
 			managedShare = world.managedForestShare();
 			standSeed = world.standSeed(level.getSeed());
 		}
-		Noises n = noises(level.getSeed(), standSeed, k, managedShare);
+		Noises n = noises(level.getSeed(), standSeed, k, managedShare, world);
 		float[] ramp = SpeciesRamp.factors(habitats.oceanicity(), habitats.mountainInfluence(), n.ramp(),
 				pos.getMiddleBlockX(), pos.getMiddleBlockZ(), k);
 		long seed = TreeStandPlan.seed(level.getSeed(), pos.x(), pos.z(), TreeStandPlan.SALT);

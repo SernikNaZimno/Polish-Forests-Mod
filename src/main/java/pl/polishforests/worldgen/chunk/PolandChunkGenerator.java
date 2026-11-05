@@ -153,7 +153,8 @@ public final class PolandChunkGenerator extends ChunkGenerator implements Forest
 		if (m != null && m.matches(seed, k, managed)) {
 			return m;
 		}
-		m = new pl.polishforests.worldgen.tree.ForestStandMap(seed, k, managed);
+		// Step F1: the stand profiles by forest from the world's blend lattice (a pure function of the world).
+		m = new pl.polishforests.worldgen.tree.ForestStandMap(seed, k, managed, forestBlend(seed).standProfiles());
 		standMap = m;
 		return m;
 	}

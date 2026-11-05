@@ -148,7 +148,8 @@ public final class VanillaForestWorld implements ForestWorld {
 		if (m != null && m.matches(s, localScale(), managedForestShare())) {
 			return m;
 		}
-		m = new ForestStandMap(s, localScale(), managedForestShare());
+		// Step F1: the stand profiles by forest from the world's blend lattice (a pure function of the world).
+		m = new ForestStandMap(s, localScale(), managedForestShare(), forestBlend(worldSeed).standProfiles());
 		standMap = m;
 		return m;
 	}

@@ -1156,8 +1156,9 @@
       "biomes": [
         "lowland_beech_forest"
       ],
-      "coverage": 0.85,
-      "patch": 4,
+      "coverage": 0.97,
+      "patch": 5,
+      "patch_shape": "blobs",
       "plants": [
         {
           "block": {
@@ -1167,7 +1168,7 @@
               "segment_amount": "2"
             }
           },
-          "weight": 28
+          "weight": 21
         },
         {
           "block": {
@@ -1177,7 +1178,7 @@
               "segment_amount": "3"
             }
           },
-          "weight": 28
+          "weight": 21
         },
         {
           "block": {
@@ -1187,11 +1188,259 @@
               "segment_amount": "4"
             }
           },
-          "weight": 29
+          "weight": 22
+        },
+        {
+          "block": {
+            "id": "polishforests:hairy_wood_rush",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "2"
+            }
+          },
+          "weight": 3
+        },
+        {
+          "block": {
+            "id": "polishforests:hairy_wood_rush",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "3"
+            }
+          },
+          "weight": 3
+        },
+        {
+          "block": {
+            "id": "polishforests:hairy_wood_rush",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "4"
+            }
+          },
+          "weight": 4
+        },
+        {
+          "block": {
+            "id": "polishforests:wood_sorrel",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "2"
+            }
+          },
+          "weight": 1
+        },
+        {
+          "block": {
+            "id": "polishforests:wood_sorrel",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "3"
+            }
+          },
+          "weight": 1
+        },
+        {
+          "block": {
+            "id": "polishforests:wood_sorrel",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "4"
+            }
+          },
+          "weight": 3
+        },
+        {
+          "block": "polishforests:bilberry",
+          "weight": 6
         },
         {
           "block": "minecraft:fern",
           "weight": 2
+        },
+        {
+          "block": "minecraft:short_grass",
+          "weight": 3
+        }
+      ],
+      "scattered": [
+        {
+          "block": "polishforests:forest_moss_carpet",
+          "weight": 7
+        }
+      ],
+      "site_types": [
+        "fresh_mixed_broadleaved"
+      ]
+    },
+    {
+      "biomes": [
+        "lowland_beech_forest"
+      ],
+      "coverage": 0.97,
+      "patch": 5,
+      "patch_shape": "blobs",
+      "plant_ground": "minecraft:grass_block",
+      "plants": [
+        {
+          "block": {
+            "id": "minecraft:leaf_litter",
+            "properties": {
+              "facing": "north",
+              "segment_amount": "2"
+            }
+          },
+          "weight": 20
+        },
+        {
+          "block": {
+            "id": "minecraft:leaf_litter",
+            "properties": {
+              "facing": "north",
+              "segment_amount": "3"
+            }
+          },
+          "weight": 20
+        },
+        {
+          "block": {
+            "id": "minecraft:leaf_litter",
+            "properties": {
+              "facing": "north",
+              "segment_amount": "4"
+            }
+          },
+          "weight": 22
+        },
+        {
+          "block": {
+            "id": "polishforests:sweet_woodruff",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "2"
+            }
+          },
+          "weight": 4
+        },
+        {
+          "block": {
+            "id": "polishforests:sweet_woodruff",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "3"
+            }
+          },
+          "weight": 4
+        },
+        {
+          "block": {
+            "id": "polishforests:sweet_woodruff",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "4"
+            }
+          },
+          "weight": 4
+        },
+        {
+          "block": {
+            "id": "polishforests:wood_anemone",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "2"
+            }
+          },
+          "weight": 2
+        },
+        {
+          "block": {
+            "id": "polishforests:wood_anemone",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "3"
+            }
+          },
+          "weight": 2
+        },
+        {
+          "block": {
+            "id": "polishforests:wood_anemone",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "4"
+            }
+          },
+          "weight": 4
+        },
+        {
+          "block": {
+            "id": "polishforests:coralroot",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "2"
+            }
+          },
+          "weight": 1
+        },
+        {
+          "block": {
+            "id": "polishforests:coralroot",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "3"
+            }
+          },
+          "weight": 1
+        },
+        {
+          "block": {
+            "id": "polishforests:coralroot",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "4"
+            }
+          },
+          "weight": 2
+        },
+        {
+          "block": {
+            "id": "polishforests:wood_sorrel",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "2"
+            }
+          },
+          "weight": 2
+        },
+        {
+          "block": {
+            "id": "polishforests:wood_sorrel",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "3"
+            }
+          },
+          "weight": 2
+        },
+        {
+          "block": {
+            "id": "polishforests:wood_sorrel",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "4"
+            }
+          },
+          "weight": 2
+        },
+        {
+          "block": "minecraft:fern",
+          "weight": 2
+        }
+      ],
+      "scattered": [
+        {
+          "block": "polishforests:forest_moss_carpet",
+          "weight": 3
         }
       ]
     },

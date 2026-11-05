@@ -25,8 +25,8 @@ class ForestNormsTest {
 			assertTrue(n.min() <= n.max(), n.metric());
 			assertTrue(n.tolerance() == ForestNorms.TOLERANCE || n.tolerance() == ForestNorms.TOLERANCE_WIDE
 					|| n.metric().equals(ForestNorms.TRANSECT_ORDER), n.metric());
-			String key = n.metric() + " " + n.forest() + " " + n.aspect() + " " + n.age();
-			assertTrue(seen.add(key), "one norm per metric, forest, aspect and age: " + key);
+			String key = n.metric() + " " + n.forest() + " " + n.aspect() + " " + n.age() + " " + n.site();
+			assertTrue(seen.add(key), "one norm per metric, forest, aspect, age and site: " + key);
 		}
 		for (String key : ForestNorms.COMPOSITION_KEYS) {
 			assertTrue(ForestNorms.METRICS.containsKey(ForestNorms.COMPOSITION + key), key);
@@ -49,6 +49,32 @@ class ForestNormsTest {
 		assertRange(2, 2, ForestNorms.DEADWOOD_PER_CHUNK, Forest.OAK_HORNBEAM_NATURAL, null, null);
 		assertEquals(ForestNorms.TOLERANCE_WIDE, ForestNorms.of(ForestNorms.GAP_SHARE, Forest.OAK_HORNBEAM_NATURAL, null, null).orElseThrow()
 				.tolerance());
+	}
+
+	@Test
+	void beechForestCardOfStepF1() {
+		for (Forest f : new Forest[] {Forest.LOWLAND_BEECH_NATURAL, Forest.LOWLAND_BEECH_MANAGED}) {
+			assertRange(70, 100, ForestNorms.COMPOSITION + "beech", f, null, null);
+			assertRange(80, 95, ForestNorms.CANOPY, f, null, null);
+			assertRange(0, 15, ForestNorms.UNDERSTORY, f, null, null);
+			assertRange(0, 30, ForestNorms.MOSS, f, null, null);
+			Norm fertile = ForestNorms.of(ForestNorms.HERBS_SPRING, f, null, null, ForestNorms.Site.FERTILE).orElseThrow();
+			assertEquals(20, fertile.min(), 1e-9);
+			assertEquals(70, fertile.max(), 1e-9);
+			Norm acid = ForestNorms.of(ForestNorms.HERBS_SPRING, f, null, null, ForestNorms.Site.ACID).orElseThrow();
+			assertEquals(5, acid.min(), 1e-9);
+			assertEquals(40, acid.max(), 1e-9);
+			// A plot of unknown form takes the union.
+			assertRange(5, 70, ForestNorms.HERBS_SPRING, f, null, null);
+			assertTrue(ForestNorms.of(ForestNorms.TRANSECT_ORDER, f, null, null).isEmpty(), "the beech forest is off the transect");
+		}
+		assertEquals(Forest.LOWLAND_BEECH_MANAGED, Forest.of(pl.polishforests.worldgen.habitat.HabitatBiome.LOWLAND_BEECH_FOREST, false));
+		assertEquals(Forest.OAK_HORNBEAM_NATURAL, Forest.of(pl.polishforests.worldgen.habitat.HabitatBiome.OAK_HORNBEAM_FOREST, true));
+		assertRange(2, 2, ForestNorms.DEADWOOD_PER_CHUNK, Forest.LOWLAND_BEECH_NATURAL, null, null);
+		assertRange(1, 2, ForestNorms.STUMPS_PER_CHUNK, Forest.LOWLAND_BEECH_MANAGED, null, null);
+		assertRange(6, 12, ForestNorms.TREES_PER_CHUNK, Forest.LOWLAND_BEECH_NATURAL, null, AgeClass.OLD_GROWTH);
+		assertRange(7, 15, ForestNorms.TREES_PER_CHUNK, Forest.LOWLAND_BEECH_MANAGED, null, null);
+		assertRange(9, 12, ForestNorms.TREES_PER_CHUNK, Forest.LOWLAND_BEECH_MANAGED, null, AgeClass.MATURE);
 	}
 
 	private static void assertRange(double min, double max, String metric, Forest forest, Aspect aspect, AgeClass age) {

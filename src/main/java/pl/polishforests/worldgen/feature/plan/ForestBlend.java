@@ -11,27 +11,30 @@ import pl.polishforests.worldgen.habitat.Zone;
 import pl.polishforests.worldgen.landscape.Noise;
 
 /**
- * Wide ecotones of the forests of the vertical slice (step Z1 of docs/04-pionowy-wycinek.md, decision CP-B.1, rule Z10):
- * between the zonal forests of the lowland sequence of fertility ({@link #FORESTS}: fresh pine forest, mixed pine-oak
- * forest, mixed forest and oak-hornbeam forest) the palettes of the tree stand, the understory and the ground layer change
- * over a belt of about {@value #RADIUS} m·k instead of the ramp of {@link Ecotone}, which can only reach
- * {@value Ecotone#REACH} blocks (the codes of the chunk's 8 neighbors; in the realistic scale the composition changed over
- * about 25 m, at the lower bound of the norm N15 of 20–100 m).
+ * Wide ecotones of the forests with the trees of the tree planner (step Z1 of docs/04-pionowy-wycinek.md, decision CP-B.1,
+ * rule Z10; step F1: any forest of {@link #FORESTS}): between the zonal forests of the lowland sequence of fertility of the
+ * vertical slice ({@link #TRANSECT}: fresh pine forest, mixed pine-oak forest, mixed forest and oak-hornbeam forest) and
+ * the forests the steps F add (step F1: the lowland beech forest) the palettes of the tree stand, the understory and the
+ * ground layer change over a belt of about {@value #RADIUS} m·k instead of the ramp of {@link Ecotone}, which can only
+ * reach {@value Ecotone#REACH} blocks (the codes of the chunk's 8 neighbors; in the realistic scale the composition changed
+ * over about 25 m, at the lower bound of the norm N15 of 20–100 m). Only the pairs of {@link #blends} mix in the belt; the
+ * other pairs of these forests (step F1: the beech forest and the fresh pine forest) keep the ramp of {@link Ecotone}.
  *
  * <p><b>Share field.</b> The habitat of the world is sampled on a lattice of {@value #SPACING} m·k (the classifier on a
  * sample of the landscape model, the same pure function the chunks are filled with; memoized in a table shared by all
- * threads, {@link Lattice}). At each lattice point the share of each of the four forests is the kernel-weighted share of
+ * threads, {@link Lattice}). At each lattice point the share of each of the forests is the kernel-weighted share of
  * the lattice points of that forest (without a zone) within {@value #RADIUS} m·k, with the weight (1 − d²/R²)²; between
  * the lattice points the shares are interpolated bilinearly. At a straight border between two of the forests the share of
  * the other side falls smoothly from 50% at the border to 0 at R (10–90% of the change over about 0.94 R), and it follows
  * the true shape of the border, so the belt has no straight line where the border has none; the column is moved by the
  * meander of {@link Ecotone} before the field is read.
  *
- * <p><b>Mixing.</b> A column whose ecotone code ({@link Ecotone#effective}) is one of the four forests without a zone
- * draws a uniform value v (its own hash per layer, in patches for the ground layer) and takes the canonical code of
- * another forest b ({@link #code}) when v falls into b's share; the shares are normalized by the forests' sum (at least
- * {@value #MIN_TOTAL}), so the composition is continuous across a border between two forests: on both sides a column has
- * the other forest's palette with the share of the field. The pairs of the four forests do not mix in the ramp of
+ * <p><b>Mixing.</b> A column whose ecotone code ({@link Ecotone#effective}) is one of the forests without a zone draws a
+ * uniform value v (its own hash per layer, in patches for the ground layer) and takes the canonical code of another forest
+ * b it blends with ({@link #code}, {@link #blends}) when v falls into b's share; the shares are normalized by the sum of
+ * the column's forest and its partners (at least {@value #MIN_TOTAL}, {@link #pickTotal}), so the composition is
+ * continuous across a border between two forests: on both sides a column has the other forest's palette with the share of
+ * the field. The blending pairs do not mix in the ramp of
  * {@link Ecotone} when a region carries a blend ({@link Ecotone.Region#withBlend}); their soils still do (layer SOIL, the
  * sharp substrate border of N15 stays sharp in the top blocks).
  *
@@ -39,9 +42,26 @@ import pl.polishforests.worldgen.landscape.Noise;
  * order in which chunks are decorated, and a neighbor's tree code stays provable ({@link Ecotone#provableTrees}).
  */
 public final class ForestBlend {
-	/** The forests of the blend: the zonal forests of the slice transect Bśw → BMśw → LMśw → grąd (docs/04 §6, N15). */
+	/**
+	 * The forests of the blend, the forests with the trees of the tree planner (step F1): the zonal forests of the slice
+	 * transect Bśw → BMśw → LMśw → grąd (docs/04 §6, N15; {@link #TRANSECT}, their indices 0–3 kept), then the forests of
+	 * the steps F in their order (F1: the lowland beech forest). Each step F appends its forests here, takes them off
+	 * {@link #NEIGHBORS} and names their pairs in {@link #BLENDS}.
+	 */
 	public static final HabitatBiome[] FORESTS = {HabitatBiome.FRESH_PINE_FOREST, HabitatBiome.MIXED_PINE_FOREST,
-			HabitatBiome.MIXED_FOREST, HabitatBiome.OAK_HORNBEAM_FOREST};
+			HabitatBiome.MIXED_FOREST, HabitatBiome.OAK_HORNBEAM_FOREST, HabitatBiome.LOWLAND_BEECH_FOREST};
+	/** The forests of the slice transect, the first four of {@link #FORESTS} (norm N15, {@code TransectPalettes}). */
+	public static final HabitatBiome[] TRANSECT = java.util.Arrays.copyOf(FORESTS, 4);
+	/** Index of the lowland beech forest in {@link #FORESTS} (step F1). */
+	public static final int BEECH = 4;
+	/**
+	 * Pairs of {@link #FORESTS} that mix in the blend's belt (bit b of entry a); the other pairs meet in the ramp of
+	 * {@link Ecotone}. The four forests of the transect all blend with each other (step Z1); the lowland beech forest (step
+	 * F1, rule Z10) with the oak-hornbeam, the mixed and the mixed pine-oak forest (its neighbors on the fertile and the
+	 * moderately fertile sites), not with the fresh pine forest (a sharp change of the site, the ramp).
+	 */
+	private static final int[] BLENDS = pairs(new int[][] {{0, 1}, {0, 2}, {0, 3}, {1, 2}, {1, 3}, {2, 3}, {BEECH, 3},
+			{BEECH, 2}, {BEECH, 1}});
 	/** Radius of the kernel (m·k). */
 	public static final double RADIUS = 48;
 	/** Spacing of the lattice (m·k); in blocks at least 2. */
@@ -51,12 +71,13 @@ public final class ForestBlend {
 	/** Salt of the draws of the blend (a new field, a new salt), mixed with each layer's ecotone salt. */
 	public static final long DRAW_SALT = 0x2B1E_7D5F_0C39L;
 	/**
-	 * Lowland woodlands next to the forests of the slice whose trees the slice forests take over near them (trees only,
-	 * {@link #takeover}): pine forests of other sites, bog woodland, alder carr, floodplain forests, lowland beech forest.
+	 * Lowland woodlands next to the forests of {@link #FORESTS} whose trees those forests take over near them (trees only,
+	 * {@link #takeover}): pine forests of other sites, bog woodland, alder carr, floodplain forests (the lowland beech
+	 * forest until step F1, now a forest of the blend).
 	 */
 	private static final long NEIGHBORS = bits(HabitatBiome.DRY_PINE_FOREST, HabitatBiome.MOIST_PINE_FOREST,
 			HabitatBiome.COASTAL_PINE_FOREST, HabitatBiome.BOG_WOODLAND, HabitatBiome.ALDER_CARR, HabitatBiome.ASH_ALDER_FOREST,
-			HabitatBiome.ELM_ASH_FOREST, HabitatBiome.WILLOW_POPLAR_FOREST, HabitatBiome.LOWLAND_BEECH_FOREST);
+			HabitatBiome.ELM_ASH_FOREST, HabitatBiome.WILLOW_POPLAR_FOREST);
 	/**
 	 * Share of the slice forests among the land without a zone within the radius ({@link #takeover}) at which the takeover
 	 * starts, and at which it is complete (smoothstep between).
@@ -65,10 +86,33 @@ public final class ForestBlend {
 	public static final double TAKEOVER_TO = 0.85;
 	/** Least sum of the slice forests' shares for a takeover (some slice forest within the radius). */
 	public static final double TAKEOVER_MIN = 0.001;
-	/** Number of shares of the field: the four forests, then the other land without a zone. */
-	public static final int SHARES = 5;
+	/** Number of shares of the field: the forests of {@link #FORESTS}, then the other land without a zone. */
+	public static final int SHARES = FORESTS.length + 1;
+	/** Index of the share of the other land without a zone. */
+	public static final int OTHER = FORESTS.length;
 	/** Salt of the draw of the takeover (a new field, a new salt), mixed with the tree layer's ecotone salt. */
 	public static final long TAKEOVER_SALT = 0x4F2D_A61C_83E5L;
+
+	private static int[] pairs(int[][] pairs) {
+		int[] out = new int[FORESTS.length];
+		for (int[] p : pairs) {
+			out[p[0]] |= 1 << p[1];
+			out[p[1]] |= 1 << p[0];
+		}
+		return out;
+	}
+
+	/** Whether forests a and b (indices into {@link #FORESTS}) mix in the blend's belt. */
+	public static boolean blends(int a, int b) {
+		return a != b && (BLENDS[a] >>> b & 1) != 0;
+	}
+
+	/** Whether two codes are two different forests of {@link #FORESTS} without a zone that mix in the blend's belt. */
+	public static boolean blendsCodes(int own, int other) {
+		int a = member(own) - 1;
+		int b = member(other) - 1;
+		return a >= 0 && b >= 0 && blends(a, b);
+	}
 
 	private static long bits(HabitatBiome... biomes) {
 		long m = 0;
@@ -83,9 +127,9 @@ public final class ForestBlend {
 	/** Kernel sums of lattice nodes computed (not found in the shared node table; diagnostics of the slice test). */
 	public static final java.util.concurrent.atomic.LongAdder NODES = new java.util.concurrent.atomic.LongAdder();
 
-	/** Forest site type of each forest's canonical code. */
+	/** Forest site type of each forest's canonical code (the lowland beech forest: its fertile form, Galio-Fagetum). */
 	private static final ForestSiteType[] SITES = {ForestSiteType.FRESH_CONIFEROUS, ForestSiteType.FRESH_MIXED_CONIFEROUS,
-			ForestSiteType.FRESH_MIXED_BROADLEAVED, ForestSiteType.FRESH_BROADLEAVED};
+			ForestSiteType.FRESH_MIXED_BROADLEAVED, ForestSiteType.FRESH_BROADLEAVED, ForestSiteType.FRESH_BROADLEAVED};
 	private static final byte[] MEMBER = new byte[64];
 
 	static {
@@ -170,7 +214,7 @@ public final class ForestBlend {
 		return radius;
 	}
 
-	/** Index (1–4) of the code's biome among {@link #FORESTS} when the code has no zone, else 0 (also for -1). */
+	/** Index (1–n) of the code's biome among {@link #FORESTS} when the code has no zone, else 0 (also for -1). */
 	public static int member(int code) {
 		if (code == Ecotone.UNKNOWN || Habitat.zone(code) != Zone.NONE) {
 			return 0;
@@ -179,9 +223,9 @@ public final class ForestBlend {
 	}
 
 	/**
-	 * The canonical code of forest {@code b} (0–3) at a column of code {@code base}: the forest with its fresh site type,
-	 * the typical association, its soil and the range flags of the column (the palettes of the four forests match only
-	 * their biome).
+	 * The canonical code of forest {@code b} (an index into {@link #FORESTS}) at a column of code {@code base}: the forest
+	 * with its fresh site type, the typical association, its soil and the range flags of the column (the palettes of the
+	 * forests of the transect match only their biome; the lowland beech forest's canonical code is its fertile form).
 	 */
 	public static int code(int base, int b) {
 		HabitatBiome biome = FORESTS[b];
@@ -191,8 +235,8 @@ public final class ForestBlend {
 
 	/**
 	 * Category of lattice point (i, j), the column (i·s + s/2, j·s + s/2) for the spacing s (the centers of the lattice's
-	 * cells, so a border between two columns lies halfway between two points): the forest's index 1–4, 5 for other land
-	 * without a zone, 0 for water and the zones (memoized).
+	 * cells, so a border between two columns lies halfway between two points): the forest's index 1–n of {@link #FORESTS},
+	 * n + 1 for other land without a zone, 0 for water and the zones (memoized).
 	 */
 	int category(int i, int j) {
 		int c = lattice.get(i, j);
@@ -201,7 +245,7 @@ public final class ForestBlend {
 			int code = sampler.code(i * spacing + half, j * spacing + half);
 			c = member(code);
 			if (c == 0 && Habitat.zone(code) == Zone.NONE && Habitat.cover(code) != LandCover.WATER) {
-				c = 5;
+				c = OTHER + 1;
 			}
 			SAMPLES.increment();
 			lattice.put(i, j, c);
@@ -210,31 +254,18 @@ public final class ForestBlend {
 	}
 
 	/**
-	 * Shares of the four forests and of the other land without a zone at lattice point (i, j) (out[0..4], the kernel sum
-	 * over the lattice).
+	 * Shares of the forests and of the other land without a zone at lattice point (i, j) (out[0..{@link #OTHER}], the
+	 * kernel sum over the lattice; each share summed in the order of the stencil, the same floats as before step F1).
 	 */
 	void node(int i, int j, float[] out, int offset) {
-		float a = 0;
-		float b = 0;
-		float c = 0;
-		float d = 0;
-		float e = 0;
+		float[] sum = new float[SHARES];
 		for (int s = 0; s < stencilW.length; s++) {
-			switch (category(i + stencilI[s], j + stencilJ[s])) {
-				case 1 -> a += stencilW[s];
-				case 2 -> b += stencilW[s];
-				case 3 -> c += stencilW[s];
-				case 4 -> d += stencilW[s];
-				case 5 -> e += stencilW[s];
-				default -> {
-				}
+			int c = category(i + stencilI[s], j + stencilJ[s]);
+			if (c > 0) {
+				sum[c - 1] += stencilW[s];
 			}
 		}
-		out[offset] = a;
-		out[offset + 1] = b;
-		out[offset + 2] = c;
-		out[offset + 3] = d;
-		out[offset + 4] = e;
+		System.arraycopy(sum, 0, out, offset, SHARES);
 	}
 
 	/**
@@ -252,11 +283,24 @@ public final class ForestBlend {
 			nodes.put(new Nodes.Node(i, j, out, offset));
 			return;
 		}
-		out[offset] = e.a;
-		out[offset + 1] = e.b;
-		out[offset + 2] = e.c;
-		out[offset + 3] = e.d;
-		out[offset + 4] = e.e;
+		System.arraycopy(e.s, 0, out, offset, SHARES);
+	}
+
+	/**
+	 * The forest of {@link #FORESTS} at the lattice point nearest to world (x, z) (its category, memoized), or null for
+	 * other land, water and the zones.
+	 */
+	public @org.jspecify.annotations.Nullable HabitatBiome forestAt(int x, int z) {
+		int c = category(Math.floorDiv(x, spacing), Math.floorDiv(z, spacing));
+		return c >= 1 && c <= FORESTS.length ? FORESTS[c - 1] : null;
+	}
+
+	/**
+	 * The stand profiles of the world's stand map (step F1, {@link pl.polishforests.worldgen.tree.StandProfile}): the
+	 * profile of the forest at the nearest lattice point ({@link #forestAt}), a pure function of the world.
+	 */
+	public pl.polishforests.worldgen.tree.StandProfile.Field standProfiles() {
+		return (x, z) -> pl.polishforests.worldgen.tree.StandProfile.of(forestAt(x, z));
 	}
 
 	/** Number of lattice points in the kernel's stencil. */
@@ -266,17 +310,18 @@ public final class ForestBlend {
 
 	/**
 	 * The blended code of a column: {@code code} its ecotone code (a member, {@link #member}), {@code s} the shares of the
-	 * four forests at the column (moved by the meander), {@code v} the column's draw in [0, 1).
+	 * forests at the column (moved by the meander), {@code v} the column's draw in [0, 1). The column takes a partner of its
+	 * forest ({@link #blends}) with the partner's share over {@link #pickTotal}.
 	 */
 	static int pick(int code, float[] s, double v) {
 		int a = member(code) - 1;
 		if (a < 0) {
 			return code;
 		}
-		double total = Math.max(MIN_TOTAL, s[0] + s[1] + s[2] + s[3]);
+		double total = pickTotal(a, s);
 		double acc = 0;
-		for (int b = 0; b < 4; b++) {
-			if (b == a) {
+		for (int b = 0; b < FORESTS.length; b++) {
+			if (!blends(a, b)) {
 				continue;
 			}
 			acc += s[b] / total;
@@ -288,7 +333,31 @@ public final class ForestBlend {
 	}
 
 	/**
-	 * Whether the slice forests take over the trees of a column of this code near them ({@link #takeover}): a lowland
+	 * The sum the shares of a column of forest a are normalized by in {@link #pick}: the shares of a and of its partners
+	 * ({@link #blends}) summed as floats in the order of {@link #FORESTS} (a forest of the transect far from the beech
+	 * forest: the sum of step Z1 plus a share 0), at least {@value #MIN_TOTAL}.
+	 */
+	public static double pickTotal(int a, float[] s) {
+		float sum = 0;
+		for (int b = 0; b < FORESTS.length; b++) {
+			if (b == a || blends(a, b)) {
+				sum += s[b];
+			}
+		}
+		return Math.max(MIN_TOTAL, sum);
+	}
+
+	/** Sum of the shares of all forests of {@link #FORESTS} (floats, in their order). */
+	public static float forestTotal(float[] s) {
+		float sum = 0;
+		for (int b = 0; b < FORESTS.length; b++) {
+			sum += s[b];
+		}
+		return sum;
+	}
+
+	/**
+	 * Whether the forests of the blend take over the trees of a column of this code near them ({@link #takeover}): a lowland
 	 * woodland of {@link #NEIGHBORS} without a zone or in a spring area (a stream's ash-alder belt in an oak-hornbeam forest).
 	 */
 	public static boolean takenOver(int code) {
@@ -309,11 +378,11 @@ public final class ForestBlend {
 	 * its edge, falling inside) keeps its own trees.
 	 */
 	static int takeover(int code, float[] s, double v) {
-		double total = s[0] + s[1] + s[2] + s[3];
+		double total = forestTotal(s);
 		if (total < TAKEOVER_MIN) {
 			return code;
 		}
-		double q = total / (total + s[4]);
+		double q = total / (total + s[OTHER]);
 		double t = Math.clamp((q - TAKEOVER_FROM) / (TAKEOVER_TO - TAKEOVER_FROM), 0, 1);
 		double p = t * t * (3 - 2 * t);
 		if (!(v < p)) {
@@ -322,7 +391,7 @@ public final class ForestBlend {
 		double u = v / p * total;
 		double acc = 0;
 		int last = 0;
-		for (int b = 0; b < 4; b++) {
+		for (int b = 0; b < FORESTS.length; b++) {
 			if (s[b] <= 0) {
 				continue;
 			}
@@ -384,7 +453,7 @@ public final class ForestBlend {
 			done = new boolean[n * n];
 		}
 
-		/** The shares of the four forests and of the other land without a zone at world (x, z), into {@code out[0..4]}. */
+		/** The shares of the forests and of the other land without a zone at world (x, z), into {@code out[0..OTHER]}. */
 		public void at(int x, int z, float[] out) {
 			int half = spacing / 2;
 			int i = Math.floorDiv(x - half, spacing);
@@ -402,11 +471,11 @@ public final class ForestBlend {
 			}
 		}
 
-		/** Sum of the four forests' shares at world (x, z) (how close the forests of the slice are). */
+		/** Sum of the forests' shares at world (x, z) (how close the forests with the planner trees are). */
 		public float total(int x, int z) {
 			float[] s = new float[SHARES];
 			at(x, z, s);
-			return s[0] + s[1] + s[2] + s[3];
+			return forestTotal(s);
 		}
 
 		private int node(int i, int j) {
@@ -437,20 +506,12 @@ public final class ForestBlend {
 		static final class Node {
 			final int i;
 			final int j;
-			final float a;
-			final float b;
-			final float c;
-			final float d;
-			final float e;
+			final float[] s;
 
 			Node(int i, int j, float[] s, int offset) {
 				this.i = i;
 				this.j = j;
-				this.a = s[offset];
-				this.b = s[offset + 1];
-				this.c = s[offset + 2];
-				this.d = s[offset + 3];
-				this.e = s[offset + 4];
+				this.s = java.util.Arrays.copyOfRange(s, offset, offset + SHARES);
 			}
 		}
 
@@ -477,6 +538,8 @@ public final class ForestBlend {
 		private static final int BITS = 17;
 		private static final int COORD_BITS = 26;
 		private static final long COORD_MASK = (1L << COORD_BITS) - 1;
+		/** Bits 1–6 of an entry hold the category (up to 62 forests; bits 7–11 stay free). */
+		private static final int CATEGORY_MASK = 63;
 		private final AtomicLongArray slots = new AtomicLongArray(1 << BITS);
 
 		private static boolean fits(int g) {
@@ -499,7 +562,7 @@ public final class ForestBlend {
 			if ((e & 1) == 0 || (e & ~0xFFFL) != cell(i, j)) {
 				return -1;
 			}
-			return (int) (e >>> 1 & 7);
+			return (int) (e >>> 1 & CATEGORY_MASK);
 		}
 
 		void put(int i, int j, int category) {

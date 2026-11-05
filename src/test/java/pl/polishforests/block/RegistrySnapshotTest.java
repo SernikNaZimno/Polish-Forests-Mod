@@ -83,7 +83,8 @@ class RegistrySnapshotTest {
 		// Step V12: + the herb layer: bilberry 4 (berries × mossy), wood anemone and liverleaf 16 each (facing 4 × flowers
 		// 4), needle litter 32 (facing 4 × segments 4 × mossy), bracken 2 (half).
 		assertEquals(GroundPlant.values().length, ModBlocks.groundPlants().size());
-		int ground = 4 + 16 + 16 + 32 + 2;
+		// Step F1: + sweet woodruff, hairy wood-rush, wood sorrel and coralroot, flower beds of 16 states each.
+		int ground = 4 + 16 + 16 + 32 + 2 + 4 * 16;
 		// Round 1 of the V12 review: + the forest moss carpet and the mossy podzol, one state each.
 		int review = 2;
 		// Step P1: + 9 stripped trunks (one per species), thin trunks of 84 states each, with the properties of the trunks.

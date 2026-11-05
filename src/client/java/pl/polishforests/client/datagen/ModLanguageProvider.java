@@ -254,6 +254,10 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 				case HEPATICA -> polish ? "Przylaszczka pospolita" : "Liverleaf";
 				case NEEDLE_LITTER -> polish ? "Igliwie sosnowe" : "Pine Needle Litter";
 				case BRACKEN -> polish ? "Orlica pospolita" : "Bracken";
+				case SWEET_WOODRUFF -> polish ? "Marzanka wonna" : "Sweet Woodruff";
+				case HAIRY_WOOD_RUSH -> polish ? "Kosmatka owłosiona" : "Hairy Wood-rush";
+				case WOOD_SORREL -> polish ? "Szczawik zajęczy" : "Wood Sorrel";
+				case CORALROOT -> polish ? "Żywiec cebulkowy" : "Coralroot";
 			});
 		}
 		builder.add(ModBlocks.bilberries(), polish ? "Czarne jagody" : "Bilberries");

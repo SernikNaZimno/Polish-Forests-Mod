@@ -94,13 +94,18 @@ public final class TransectPalettes {
 						ground[step][b]++;
 					}
 					int own = region.at(i >> 4, i & 15);
-					if (blend != null && ForestBlend.member(own) > 0 && sequence.equals(List.of(ForestBlend.FORESTS))) {
+					if (blend != null && ForestBlend.member(own) > 0 && sequence.contains(Habitat.biome(own))) {
 						region.blendField().at((cx << 4) + (i >> 4) + warp[2 * i], (cz << 4) + (i & 15) + warp[2 * i + 1], shares);
-						double total = Math.max(ForestBlend.MIN_TOTAL, shares[0] + shares[1] + shares[2] + shares[3]);
 						int m = ForestBlend.member(own) - 1;
+						double total = ForestBlend.pickTotal(m, shares);
+						double away = 0;
+						for (int f = 0; f < ForestBlend.FORESTS.length; f++) {
+							away += ForestBlend.blends(m, f) ? shares[f] / total : 0;
+						}
 						for (int f = 0; f < forests; f++) {
 							// The column keeps its own forest with the rest of the share (as ForestBlend.pick draws).
-							expected[step][f] += f == m ? 1 - (total - shares[m]) / total : shares[f] / total;
+							int fb = java.util.Arrays.asList(ForestBlend.FORESTS).indexOf(sequence.get(f));
+							expected[step][f] += fb == m ? 1 - away : fb >= 0 && ForestBlend.blends(m, fb) ? shares[fb] / total : 0;
 						}
 						expectedColumns[step]++;
 					}

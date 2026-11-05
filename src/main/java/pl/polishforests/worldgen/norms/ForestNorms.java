@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.Optional;
 import org.jspecify.annotations.Nullable;
 import pl.polishforests.season.SubSeason;
+import pl.polishforests.worldgen.habitat.HabitatBiome;
 import pl.polishforests.worldgen.tree.AgeClass;
 
 /**
@@ -44,23 +45,68 @@ public final class ForestNorms {
 	/** Square meters of a hectare (one column is 1 m² in both scales for the tree and ground layers). */
 	public static final double HECTARE = 10_000;
 
-	/** The forests of the card: the columns of §6. */
+	/**
+	 * The forests of the card: the columns of §6, a forest of the tree planner in its natural or managed stands (step F1:
+	 * the lowland beech forest appended; each step F appends its forest's columns).
+	 */
 	public enum Forest {
-		OAK_HORNBEAM_NATURAL("grąd naturalny"),
-		OAK_HORNBEAM_MANAGED("grąd gospodarczy"),
-		FRESH_PINE_MANAGED("bór świeży gospodarczy"),
-		FRESH_PINE_NATURAL("bór naturalny");
+		OAK_HORNBEAM_NATURAL("grąd naturalny", HabitatBiome.OAK_HORNBEAM_FOREST, true),
+		OAK_HORNBEAM_MANAGED("grąd gospodarczy", HabitatBiome.OAK_HORNBEAM_FOREST, false),
+		FRESH_PINE_MANAGED("bór świeży gospodarczy", HabitatBiome.FRESH_PINE_FOREST, false),
+		FRESH_PINE_NATURAL("bór naturalny", HabitatBiome.FRESH_PINE_FOREST, true),
+		LOWLAND_BEECH_NATURAL("buczyna naturalna", HabitatBiome.LOWLAND_BEECH_FOREST, true),
+		LOWLAND_BEECH_MANAGED("buczyna gospodarcza", HabitatBiome.LOWLAND_BEECH_FOREST, false);
 
 		private final String polishName;
+		private final HabitatBiome biome;
+		private final boolean natural;
 
-		Forest(String polishName) {
+		Forest(String polishName, HabitatBiome biome, boolean natural) {
 			this.polishName = polishName;
+			this.biome = biome;
+			this.natural = natural;
 		}
 
 		/** The column name of the card in docs/04 §6. */
 		public String polishName() {
 			return polishName;
 		}
+
+		/** The habitat biome of the column. */
+		public HabitatBiome biome() {
+			return biome;
+		}
+
+		/** Whether the column is the forest's natural stands (else its managed ones). */
+		public boolean natural() {
+			return natural;
+		}
+
+		/** Whether the forest lies on the transect of the slice (N15). */
+		public boolean transect() {
+			return biome == HabitatBiome.OAK_HORNBEAM_FOREST || biome == HabitatBiome.FRESH_PINE_FOREST;
+		}
+
+		/** The column of a forest and stand, or null when the card has none. */
+		public static @Nullable Forest of(HabitatBiome biome, boolean natural) {
+			for (Forest f : values()) {
+				if (f.biome == biome && f.natural == natural) {
+					return f;
+				}
+			}
+			return null;
+		}
+	}
+
+	/**
+	 * Site variant of a forest for the norms that differ by it (step F1: the herb layer of the fertile and of the acid
+	 * beech forest, N8); a lookup without a site (null) takes the norm without one.
+	 */
+	public enum Site {
+		/** The fertile form (e.g. Galio odorati-Fagetum, site type Lśw). */
+		FERTILE,
+		/** The acid form (e.g. Luzulo pilosae-Fagetum, site type LMśw). */
+		ACID
 	}
 
 	/** Aspect of the year for the norms that change with it (the herb layer, N8). */
@@ -179,9 +225,15 @@ public final class ForestNorms {
 	 * @param aspect    aspect of the year it holds for, or null for all
 	 * @param age       age class of the stand it holds for, or null for all
 	 * @param source    source of the numbers (as in §6)
+	 * @param site      site variant it holds for, or null for all (step F1)
 	 */
 	public record Norm(String metric, Forest forest, double min, double max, double tolerance, @Nullable Aspect aspect,
-			@Nullable AgeClass age, String source) {
+			@Nullable AgeClass age, String source, @Nullable Site site) {
+		public Norm(String metric, Forest forest, double min, double max, double tolerance, @Nullable Aspect aspect,
+				@Nullable AgeClass age, String source) {
+			this(metric, forest, min, max, tolerance, aspect, age, source, null);
+		}
+
 		/** Lowest accepted value with the tolerance. */
 		public double low() {
 			return min * (1 - tolerance);
@@ -363,12 +415,61 @@ public final class ForestNorms {
 		wide(DEADWOOD_VOLUME, fpm, 5, 11, managedDeadwood);
 		wide(DEADWOOD_PER_CHUNK, fpn, 1, 1, deadwood + " (Taborz)");
 		wide(DEADWOOD_VOLUME, fpn, 50, 80, deadwood + " (Taborz)");
-		// N15 transect: the same for every forest of the card (the transect crosses all four).
+		beechCard();
+		// N15 transect: the same for every forest of the transect (the transect crosses all four).
 		for (Forest f : Forest.values()) {
+			if (!f.transect()) {
+				continue;
+			}
 			norm(TRANSITION_WIDTH, f, 20, 100, "[Ź Stefańska 2007; S]");
 			norm(PALETTE_WIDTH, f, 20, 100, "[Ź Stefańska 2007; S]");
 			NORMS.add(new Norm(TRANSECT_ORDER, f, 1, 1, 0, null, null, "[Ź Stefańska 2007]"));
 		}
+	}
+
+	/**
+	 * The card of the lowland beech forest (step F1, docs/04 §6): L 06 §3.6 (Luzulo pilosae-Fagetum and Galio odorati-
+	 * Fagetum: a1 beech 70–100%, closure 80–95%, b 0–10/0–15%, c 5–40% acid and 20–70% fertile, d 5–30% acid and 0–10%
+	 * fertile), the dead wood of L 06 §4.3 (natural stands at the level of the reserves as the natural oak-hornbeam forest
+	 * of V11, managed ones the WISL mean of the broadleaved lowland sites, 17 m³/ha with the stumps) [S where noted].
+	 */
+	private static void beechCard() {
+		String card = "[L 06 §3.6]";
+		String deadwood = "[L 06 §4.3; PW-5 b; S]";
+		String managedDeadwood = "[Ź WISL 2010–2014; L 06 §4.3; S]";
+		for (Forest f : new Forest[] {Forest.LOWLAND_BEECH_NATURAL, Forest.LOWLAND_BEECH_MANAGED}) {
+			boolean natural = f.natural();
+			// N1 trunks per chunk: the old beeches stand wide (200-350 trees per ha of 7 cm and more in the beech reserves of
+			// Pomerania, 5-9 per chunk); managed stands thin out with age as the managed pine forest [S].
+			if (natural) {
+				norm(TREES_PER_CHUNK, f, 6, 12, "[L 06 §3.6; S]");
+			} else {
+				norm(TREES_PER_CHUNK, f, 7, 15, "[L 06 §3.6; S]");
+				norm(TREES_PER_CHUNK, f, AgeClass.POLE_STAGE, 12, 15, "[L 06 §3.6; S]");
+				norm(TREES_PER_CHUNK, f, AgeClass.MATURE, 9, 12, "[L 06 §3.6; S]");
+				norm(TREES_PER_CHUNK, f, AgeClass.OLD_GROWTH, 7, 10, "[L 06 §3.6; S]");
+			}
+			// N3 the beech in a1, N4 closure, N7 the shrub layer (b 0–10% acid, 0–15% fertile), N9 the mosses.
+			norm(COMPOSITION + "beech", f, 70, 100, card);
+			norm(CANOPY, f, 80, 95, card);
+			norm(UNDERSTORY, f, 0, 15, card);
+			norm(MOSS, f, 0, 30, card);
+			// N8 the herb layer: the fertile form in spring 20–70% (woodruff, anemone, wood sorrel), the acid one 5–40% all
+			// year (hairy wood rush, wood sorrel, bilberry in patches); a plot of unknown form: the union.
+			NORMS.add(new Norm(HERBS_SPRING, f, 20, 70, TOLERANCE, null, null, card, Site.FERTILE));
+			NORMS.add(new Norm(HERBS_SPRING, f, 5, 40, TOLERANCE, null, null, card, Site.ACID));
+			NORMS.add(new Norm(HERBS, f, 5, 40, TOLERANCE, null, null, card, Site.ACID));
+			norm(HERBS_SPRING, f, 5, 70, card + " [S: żyzna lub kwaśna]");
+		}
+		Forest bkn = Forest.LOWLAND_BEECH_NATURAL;
+		Forest bkm = Forest.LOWLAND_BEECH_MANAGED;
+		// N10 dead wood.
+		wide(DEADWOOD_PER_CHUNK, bkn, 2, 2, deadwood);
+		wide(DEADWOOD_VOLUME, bkn, 80, 150, deadwood);
+		wide(COARSE_PIECES, bkn, 5, Double.POSITIVE_INFINITY, deadwood);
+		wide(PIECES_PER_CHUNK, bkm, 0.25, 0.25, managedDeadwood);
+		wide(STUMPS_PER_CHUNK, bkm, 1, 2, managedDeadwood);
+		wide(DEADWOOD_VOLUME, bkm, 10, 17, managedDeadwood);
 	}
 
 	private static void norm(String metric, Forest forest, double min, double max, String source) {
@@ -398,6 +499,12 @@ public final class ForestNorms {
 	 * another or an unknown aspect.
 	 */
 	public static Optional<Norm> of(String metric, Forest forest, @Nullable Aspect aspect, @Nullable AgeClass age) {
+		return of(metric, forest, aspect, age, null);
+	}
+
+	/** {@link #of(String, Forest, Aspect, AgeClass)} for a plot of a known site variant (step F1; null: unknown). */
+	public static Optional<Norm> of(String metric, Forest forest, @Nullable Aspect aspect, @Nullable AgeClass age,
+			@Nullable Site site) {
 		Norm general = null;
 		for (Norm n : NORMS) {
 			if (!n.metric().equals(metric) || n.forest() != forest) {
@@ -405,10 +512,11 @@ public final class ForestNorms {
 			}
 			boolean aspectOk = n.aspect() == null || n.aspect() == aspect;
 			boolean ageOk = n.age() == null || n.age() == age;
-			if (!aspectOk || !ageOk) {
+			boolean siteOk = n.site() == null || n.site() == site;
+			if (!aspectOk || !ageOk || !siteOk) {
 				continue;
 			}
-			if (n.aspect() != null || n.age() != null) {
+			if (n.aspect() != null || n.age() != null || n.site() != null) {
 				return Optional.of(n);
 			}
 			general = n;

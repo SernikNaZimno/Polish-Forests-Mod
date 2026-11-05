@@ -228,12 +228,13 @@ final class ModVegetation {
 				.add(Species.SYCAMORE_MAPLE, 500).add(Species.BEECH, 300).add(Species.ASH, 100).add(Species.FIR, 100);
 		t.rule(HabitatCondition.biomes(DRY_PINE_FOREST), 7).add(Species.SCOTS_PINE, 665)
 				.add(Species.SCOTS_PINE, ModTrees.SCOTS_PINE_LOW, 285).add(Species.BIRCH, 50);
-		// The forests of the vertical slice (step V9 of docs/04-pionowy-wycinek.md, PW-3): procedural trees in the layered
+		// The forests with the trees of the tree planner (the vertical slice, step V9 of docs/04-pionowy-wycinek.md, PW-3,
+		// and the forests of the steps F): procedural trees in the layered
 		// stand of the stand map (canopy, managed canopy, subcanopy, regeneration under the canopy and in canopy gaps) with
 		// the chance of a candidate to grow a tree by stand (managed, natural: pole stage, mature, old growth; in a gap),
 		// calibrated with the norms card (§6: N1 trunks per chunk, N2 layers, N3 composition). Fresh pine forest: pine with
 		// birch, spruce in the subcanopy in the north-east (range flag; elsewhere oak), the pine regenerates only in gaps.
-		t.slice(HabitatCondition.biomes(FRESH_PINE_FOREST), 11).add(Species.SCOTS_PINE, 850).add(Species.BIRCH, 120)
+		t.planned(HabitatCondition.biomes(FRESH_PINE_FOREST), 11).add(Species.SCOTS_PINE, 850).add(Species.BIRCH, 120)
 				.add(Species.SPRUCE, 30)
 				.managed().add(Species.SCOTS_PINE, 880).add(Species.BIRCH, 100).add(Species.SPRUCE, 20)
 				.subcanopy().alt(Species.SPRUCE, 600, Species.OAK).add(Species.BIRCH, 200).add(Species.OAK, 200)
@@ -247,7 +248,7 @@ final class ModVegetation {
 		t.rule(HabitatCondition.biomes(BOG_WOODLAND), 6).add(Species.SCOTS_PINE, ModTrees.SCOTS_PINE_LOW, 700)
 				.add(Species.BIRCH, 300);
 		// The belt between them (PW-3): mixed pine-oak and mixed forest with the trees of the slice.
-		t.slice(HabitatCondition.biomes(MIXED_PINE_FOREST), 10).add(Species.SCOTS_PINE, 550).add(Species.OAK, 250)
+		t.planned(HabitatCondition.biomes(MIXED_PINE_FOREST), 10).add(Species.SCOTS_PINE, 550).add(Species.OAK, 250)
 				.add(Species.BIRCH, 100).alt(Species.BEECH, 100, Species.SPRUCE)
 				.managed().add(Species.SCOTS_PINE, 650).add(Species.OAK, 200).add(Species.BIRCH, 80).alt(Species.BEECH, 70, Species.SPRUCE)
 				.subcanopy().add(Species.OAK, 400).add(Species.BIRCH, 200).alt(Species.SPRUCE, 300, Species.OAK)
@@ -256,7 +257,7 @@ final class ModVegetation {
 				.add(Species.BIRCH, 100).add(Species.HAZEL, 100)
 				.gapRegeneration().add(Species.SCOTS_PINE, 400).add(Species.BIRCH, 300).add(Species.OAK, 300)
 				.chances(new float[] {0.90F, 0.68F, 0.58F}, new float[] {0.85F, 0.85F, 0.85F}, 0.7F);
-		t.slice(HabitatCondition.biomes(MIXED_FOREST), 9).add(Species.OAK, 400).add(Species.SCOTS_PINE, 300)
+		t.planned(HabitatCondition.biomes(MIXED_FOREST), 9).add(Species.OAK, 400).add(Species.SCOTS_PINE, 300)
 				.alt(Species.BEECH, 150, Species.SPRUCE).alt(Species.HORNBEAM, 100, Species.LINDEN).add(Species.BIRCH, 50)
 				.managed().add(Species.OAK, 350).add(Species.SCOTS_PINE, 400).alt(Species.BEECH, 120, Species.SPRUCE)
 				.alt(Species.HORNBEAM, 80, Species.LINDEN).add(Species.BIRCH, 50)
@@ -270,7 +271,7 @@ final class ModVegetation {
 		// tree of Tilio-Carpinetum, about a fifth of the a1 trunks), maple and ash, beech in the west and spruce in the
 		// north-east by their range flags; a2 hornbeam with linden), managed ones dominated by oak; regeneration of hornbeam
 		// and linden, hazel denser in the gaps; no oak in the regeneration (N6).
-		t.slice(HabitatCondition.biomes(OAK_HORNBEAM_FOREST), 12).add(Species.OAK, 300).add(Species.LINDEN, 180)
+		t.planned(HabitatCondition.biomes(OAK_HORNBEAM_FOREST), 12).add(Species.OAK, 300).add(Species.LINDEN, 180)
 				.add(Species.NORWAY_MAPLE, 60).add(Species.ASH, 60).add(Species.BEECH, 150).add(Species.SPRUCE, 130)
 				.alt(Species.HORNBEAM, 160, Species.LINDEN)
 				.managed().add(Species.OAK, 650).add(Species.LINDEN, 120).add(Species.NORWAY_MAPLE, 40).add(Species.ASH, 40)
@@ -281,10 +282,32 @@ final class ModVegetation {
 				.gapRegeneration().alt(Species.HORNBEAM, 350, Species.LINDEN).add(Species.LINDEN, 250).add(Species.NORWAY_MAPLE, 100)
 				.add(Species.ASH, 100).add(Species.HAZEL, 150)
 				.chances(new float[] {0.85F, 0.72F, 0.62F}, new float[] {1.0F, 1.0F, 1.0F}, 0.9F);
-		// Beech forests: the biome already lies within the beech range (O, P), so beech keeps its full weight there (with
-		// the ramp a beech forest at the range edge had 40% oak, S7 review).
-		t.rule(HabitatCondition.biomes(LOWLAND_BEECH_FOREST), 7).full(Species.BEECH, 850).add(Species.OAK, 100)
-				.add(Species.SYCAMORE_MAPLE, 50);
+		// Lowland beech forest (step F1, docs/04 §6 card of the beech forest, research/06 §4.3): a1 beech 70–100% (the
+		// biome already lies within the beech range, O and P, so beech keeps its full weight there; with the ramp a beech
+		// forest at the range edge had 40% oak, S7 review), a weak a2 (the subcanopy at a third of the chance: the beech
+		// shades it out), beech regenerating under the canopy and in the gaps of the fallen trees and the nests of the managed
+		// stands (the stand map's beech profile), managed stands single-storied with fewer admixtures. The acid beech forest
+		// (Luzulo pilosae-Fagetum, the moderately fertile site) with oak, pine and birch; the fertile one (Galio odorati-
+		// Fagetum) with oak, ash, Norway maple and linden (sycamore from step F3). The chances stay at or below the highest
+		// ones of the slice forests (TreeStandPlan.surelyTreeless is habitat-free, so a higher chance would move the crown
+		// markers of the slice forests too).
+		t.planned(HabitatCondition.biomes(LOWLAND_BEECH_FOREST).withSiteTypes(ForestSiteType.FRESH_MIXED_BROADLEAVED), 12)
+				.full(Species.BEECH, 820).add(Species.OAK, 120).add(Species.SCOTS_PINE, 30).add(Species.BIRCH, 30)
+				.managed().full(Species.BEECH, 870).add(Species.OAK, 90).add(Species.SCOTS_PINE, 20).add(Species.BIRCH, 20)
+				.subcanopy().full(Species.BEECH, 800).alt(Species.HORNBEAM, 100, Species.BIRCH).add(Species.BIRCH, 100)
+				.regeneration().full(Species.BEECH, 850).add(Species.ROWAN, 150)
+				.gapRegeneration().full(Species.BEECH, 650).add(Species.BIRCH, 150).add(Species.ROWAN, 100).add(Species.OAK, 100)
+				.chances(new float[] {0.90F, 0.72F, 0.62F}, new float[] {0.95F, 0.95F, 0.95F}, 0.8F).subcanopyChance(0.35F);
+		t.planned(HabitatCondition.biomes(LOWLAND_BEECH_FOREST), 12)
+				.full(Species.BEECH, 800).add(Species.OAK, 70).add(Species.ASH, 40).add(Species.NORWAY_MAPLE, 45)
+				.add(Species.LINDEN, 45)
+				.managed().full(Species.BEECH, 860).add(Species.OAK, 60).add(Species.ASH, 25).add(Species.NORWAY_MAPLE, 30)
+				.add(Species.LINDEN, 25)
+				.subcanopy().full(Species.BEECH, 600).alt(Species.HORNBEAM, 250, Species.LINDEN).add(Species.LINDEN, 150)
+				.regeneration().full(Species.BEECH, 800).add(Species.NORWAY_MAPLE, 100).alt(Species.HORNBEAM, 100, Species.LINDEN)
+				.gapRegeneration().full(Species.BEECH, 650).add(Species.ASH, 100).add(Species.NORWAY_MAPLE, 100)
+				.add(Species.HAZEL, 150)
+				.chances(new float[] {0.90F, 0.72F, 0.62F}, new float[] {0.95F, 0.95F, 0.95F}, 0.8F).subcanopyChance(0.35F);
 		t.rule(HabitatCondition.biomes(ALDER_CARR), 9).add(Species.BLACK_ALDER, 850, 1).add(Species.BIRCH, 100)
 				.add(Species.ASH, 50);
 		t.rule(HabitatCondition.biomes(ASH_ALDER_FOREST), 9).add(Species.BLACK_ALDER, 550, 1).add(Species.ASH, 300)
@@ -313,7 +336,7 @@ final class ModVegetation {
 
 	/**
 	 * Builder of the tree palette rules: a {@link #rule} with the placeholder trees of M2 ({@code tree_substitute/}, PW-3),
-	 * or a {@link #slice} rule with the procedural trees ({@code tree/<species>} where the species has a planner shape) and
+	 * or a {@link #planned} rule with the procedural trees ({@code tree/<species>} where the species has a planner shape) and
 	 * the layered stand, whose lists follow {@link #managed}, {@link #subcanopy}, {@link #regeneration} and
 	 * {@link #gapRegeneration}.
 	 */
@@ -322,7 +345,8 @@ final class ModVegetation {
 		private final List<TreePalette.Rule> rules = new ArrayList<>();
 		private HabitatCondition condition;
 		private float perChunk;
-		private boolean slice;
+		private boolean planned;
+		private float subcanopyChance;
 		private List<TreePalette.Entry> entries;
 		private List<TreePalette.Entry> managed;
 		private List<TreePalette.Entry> subcanopy;
@@ -341,16 +365,17 @@ final class ModVegetation {
 			flush();
 			this.condition = condition;
 			this.perChunk = perChunk;
-			this.slice = false;
+			this.planned = false;
 			this.entries = new ArrayList<>();
 			this.target = entries;
 			return this;
 		}
 
-		/** A rule of the vertical slice: procedural trees in a layered stand (step V9). */
-		Trees slice(HabitatCondition condition, float perChunk) {
+		/** A rule of the tree planner: procedural trees in a layered stand (the slice forests of step V9, the steps F). */
+		Trees planned(HabitatCondition condition, float perChunk) {
 			rule(condition, perChunk);
-			slice = true;
+			planned = true;
+			subcanopyChance = 1;
 			managed = new ArrayList<>();
 			subcanopy = new ArrayList<>();
 			regeneration = new ArrayList<>();
@@ -378,6 +403,12 @@ final class ModVegetation {
 			return this;
 		}
 
+		/** Factor on the chance of the subcanopy's candidates (step F1: a weak a2 layer). */
+		Trees subcanopyChance(float factor) {
+			subcanopyChance = factor;
+			return this;
+		}
+
 		Trees chances(float[] managed, float[] natural, float gap) {
 			managedChance = managed;
 			naturalChance = natural;
@@ -385,9 +416,9 @@ final class ModVegetation {
 			return this;
 		}
 
-		/** The feature path of a species in this rule: the procedural tree in a slice rule, else the placeholder. */
+		/** The feature path of a species in this rule: the procedural tree in a planned rule, else the placeholder. */
 		private String path(Species s) {
-			return !slice ? s.substitutePath() : SpeciesShape.supported(s) ? s.path() : ModTrees.SLICE.getOrDefault(s, s.substitutePath());
+			return !planned ? s.substitutePath() : SpeciesShape.supported(s) ? s.path() : ModTrees.SLICE.getOrDefault(s, s.substitutePath());
 		}
 
 		Trees add(Species s, int weight) {
@@ -426,9 +457,9 @@ final class ModVegetation {
 		private void flush() {
 			if (condition != null) {
 				Optional<TreePalette.Stand> stand = Optional.empty();
-				if (slice) {
+				if (planned) {
 					stand = Optional.of(new TreePalette.Stand(List.copyOf(managed), List.copyOf(subcanopy), List.copyOf(regeneration),
-							List.copyOf(gapRegeneration), floats(managedChance), floats(naturalChance), gapChance));
+							List.copyOf(gapRegeneration), floats(managedChance), floats(naturalChance), gapChance, subcanopyChance));
 				}
 				rules.add(new TreePalette.Rule(condition, perChunk, List.copyOf(entries), stand));
 				condition = null;
@@ -555,6 +586,26 @@ final class ModVegetation {
 		return bed(ModBlocks.ground(GroundPlant.HEPATICA), weight);
 	}
 
+	/** Sweet woodruff beds of 2–4 whorls (step F1). */
+	private static Plant[] sweetWoodruff(int weight) {
+		return bed(ModBlocks.ground(GroundPlant.SWEET_WOODRUFF), weight);
+	}
+
+	/** Hairy wood-rush tufts of 2–4 (step F1). */
+	private static Plant[] hairyWoodRush(int weight) {
+		return bed(ModBlocks.ground(GroundPlant.HAIRY_WOOD_RUSH), weight);
+	}
+
+	/** Wood sorrel beds of 2–4 trefoil clumps (step F1). */
+	private static Plant[] woodSorrel(int weight) {
+		return bed(ModBlocks.ground(GroundPlant.WOOD_SORREL), weight);
+	}
+
+	/** Coralroot beds of 2–4 shoots (step F1). */
+	private static Plant[] coralroot(int weight) {
+		return bed(ModBlocks.ground(GroundPlant.CORALROOT), weight);
+	}
+
 	/** Bracken, two blocks (step V12). */
 	private static Plant bracken(int weight) {
 		return Plant.block(ModBlocks.ground(GroundPlant.BRACKEN).defaultBlockState(), weight);
@@ -584,7 +635,8 @@ final class ModVegetation {
 	}
 
 	/**
-	 * Deadwood (§8.2). The forests of the slice (step V11, decision PW-5 b): the dead trees of the dead wood planner as a
+	 * Deadwood (§8.2). The forests of the tree planner (the slice, step V11, decision PW-5 b; the steps F): the dead trees
+	 * of the dead wood planner as a
 	 * natural stand has them (reserves) and the stumps of a managed stand, by species weight; at each pick the stand map
 	 * decides ({@code DeadwoodFeature}: no stumps in a natural stand, an eighth of the dead trees in a managed one). The
 	 * other forests: the M2 fallen trees of the stand's species, 0.15–0.5 per chunk.
@@ -592,29 +644,34 @@ final class ModVegetation {
 	static PlantPalette deadwood(HolderGetter<PlacedFeature> placed) {
 		Layer l = new Layer(placed);
 		// Oak-hornbeam forest: about 2 dead wood objects per chunk in a natural stand (BPN), 1-2 stumps in a managed one.
-		l.land(biomes(OAK_HORNBEAM_FOREST), perChunk(SLICE_DEAD_TREES[0] + SLICE_STUMPS), 1,
+		l.land(biomes(OAK_HORNBEAM_FOREST), deadwoodCoverage(OAK_HORNBEAM_FOREST), 1,
 				l.feature(deadwood(Species.OAK), 8), l.feature(deadwood(Species.HORNBEAM), 6), l.feature(deadwood(Species.LINDEN), 4),
-				l.feature(deadwood(Species.ASH), 2), l.feature(stump(Species.OAK), stumpWeight(0, 20, 0.72)),
-				l.feature(stump(Species.HORNBEAM), stumpWeight(0, 20, 0.14)), l.feature(stump(Species.LINDEN), stumpWeight(0, 20, 0.1)),
-				l.feature(stump(Species.ASH), stumpWeight(0, 20, 0.04)));
+				l.feature(deadwood(Species.ASH), 2), l.feature(stump(Species.OAK), stumpWeight(OAK_HORNBEAM_FOREST, 20, 0.72)),
+				l.feature(stump(Species.HORNBEAM), stumpWeight(OAK_HORNBEAM_FOREST, 20, 0.14)), l.feature(stump(Species.LINDEN), stumpWeight(OAK_HORNBEAM_FOREST, 20, 0.1)),
+				l.feature(stump(Species.ASH), stumpWeight(OAK_HORNBEAM_FOREST, 20, 0.04)));
 		// Fresh pine forest: about 1 per chunk in a natural stand (Taborz), 1-2 stumps in a managed one.
-		l.land(biomes(FRESH_PINE_FOREST), perChunk(SLICE_DEAD_TREES[1] + SLICE_STUMPS), 1,
+		l.land(biomes(FRESH_PINE_FOREST), deadwoodCoverage(FRESH_PINE_FOREST), 1,
 				l.feature(deadwood(Species.SCOTS_PINE), 9), l.feature(deadwood(Species.BIRCH), 1),
-				l.feature(stump(Species.SCOTS_PINE), stumpWeight(1, 10, 0.94)), l.feature(stump(Species.BIRCH), stumpWeight(1, 10, 0.06)));
+				l.feature(stump(Species.SCOTS_PINE), stumpWeight(FRESH_PINE_FOREST, 10, 0.94)), l.feature(stump(Species.BIRCH), stumpWeight(FRESH_PINE_FOREST, 10, 0.06)));
 		// Mixed pine and mixed forests between them (no norms; between the two).
-		l.land(biomes(MIXED_PINE_FOREST), perChunk(SLICE_DEAD_TREES[2] + SLICE_STUMPS), 1,
+		l.land(biomes(MIXED_PINE_FOREST), deadwoodCoverage(MIXED_PINE_FOREST), 1,
 				l.feature(deadwood(Species.SCOTS_PINE), 7), l.feature(deadwood(Species.OAK), 3),
-				l.feature(stump(Species.SCOTS_PINE), stumpWeight(2, 10, 0.8)), l.feature(stump(Species.OAK), stumpWeight(2, 10, 0.2)));
-		l.land(biomes(MIXED_FOREST), perChunk(SLICE_DEAD_TREES[3] + SLICE_STUMPS), 1, l.feature(deadwood(Species.OAK), 5),
+				l.feature(stump(Species.SCOTS_PINE), stumpWeight(MIXED_PINE_FOREST, 10, 0.8)), l.feature(stump(Species.OAK), stumpWeight(MIXED_PINE_FOREST, 10, 0.2)));
+		l.land(biomes(MIXED_FOREST), deadwoodCoverage(MIXED_FOREST), 1, l.feature(deadwood(Species.OAK), 5),
 				l.feature(deadwood(Species.SCOTS_PINE), 3), l.feature(deadwood(Species.BEECH), 2),
-				l.feature(stump(Species.SCOTS_PINE), stumpWeight(3, 10, 0.5)), l.feature(stump(Species.OAK), stumpWeight(3, 10, 0.4)),
-				l.feature(stump(Species.BEECH), stumpWeight(3, 10, 0.1)));
+				l.feature(stump(Species.SCOTS_PINE), stumpWeight(MIXED_FOREST, 10, 0.5)), l.feature(stump(Species.OAK), stumpWeight(MIXED_FOREST, 10, 0.4)),
+				l.feature(stump(Species.BEECH), stumpWeight(MIXED_FOREST, 10, 0.1)));
 		l.land(biomes(DRY_PINE_FOREST, COASTAL_PINE_FOREST, MOIST_PINE_FOREST), perChunk(0.3), 1,
 				l.feature(deadwoodSubstitute(Species.SCOTS_PINE), 9), l.feature(deadwoodSubstitute(Species.BIRCH), 1));
 		l.land(biomes(BOG_WOODLAND), perChunk(0.25), 1, l.feature(deadwoodSubstitute(Species.BIRCH), 6),
 				l.feature(deadwoodSubstitute(Species.SCOTS_PINE), 4));
-		l.land(biomes(LOWLAND_BEECH_FOREST), perChunk(0.5), 1, l.feature(deadwoodSubstitute(Species.BEECH), 9),
-				l.feature(deadwoodSubstitute(Species.OAK), 1));
+		// Lowland beech forest (step F1, docs/04 §6 N10): the natural stands at the level of the reserves (L 06 §4.3, as the
+		// natural oak-hornbeam forest), the managed ones by the WISL means; the beech with its admixtures.
+		l.land(biomes(LOWLAND_BEECH_FOREST), deadwoodCoverage(LOWLAND_BEECH_FOREST), 1, l.feature(deadwood(Species.BEECH), 16),
+				l.feature(deadwood(Species.OAK), 2), l.feature(deadwood(Species.ASH), 1), l.feature(deadwood(Species.NORWAY_MAPLE), 1),
+				l.feature(stump(Species.BEECH), stumpWeight(LOWLAND_BEECH_FOREST, 20, 0.85)),
+				l.feature(stump(Species.OAK), stumpWeight(LOWLAND_BEECH_FOREST, 20, 0.1)),
+				l.feature(stump(Species.ASH), stumpWeight(LOWLAND_BEECH_FOREST, 20, 0.05)));
 		l.land(biomes(MONTANE_BEECH_FOREST), perChunk(0.5), 1, l.feature(deadwoodSubstitute(Species.BEECH), 8),
 				l.feature(deadwoodSubstitute(Species.FIR), 2));
 		l.land(biomes(UPLAND_FIR_FOREST), perChunk(0.45), 1, l.feature(deadwoodSubstitute(Species.FIR), 6),
@@ -634,20 +691,35 @@ final class ModVegetation {
 	}
 
 	/**
-	 * Dead tree picks per chunk of the palettes of the slice forests as a natural stand has them (oak-hornbeam, fresh pine,
-	 * mixed pine and mixed forest), calibrated so the census of a natural stand counts the norms of N10 (a broken tree is
-	 * two objects; step V11, {@code StandCensusSimulationTest}) [S].
+	 * Dead tree picks per chunk of the palettes of the forests of the tree planner as a natural stand has them (the slice:
+	 * oak-hornbeam, fresh pine, mixed pine and mixed forest; step F1: the lowland beech forest), calibrated so the census of
+	 * a natural stand counts the norms of N10 (a broken tree is two objects; step V11, {@code StandCensusSimulationTest})
+	 * [S]. Each step F adds its forest.
 	 */
-	static final double[] SLICE_DEAD_TREES = {2.1, 0.92, 1.3, 1.7};
-	/** Stumps per chunk of a managed stand of the slice forests (WISL: 30-80 per ha, 1-2 per chunk) [S]. */
-	static final double SLICE_STUMPS = 1.5;
+	static final Map<HabitatBiome, Double> DEAD_TREES = Map.of(OAK_HORNBEAM_FOREST, 2.1, FRESH_PINE_FOREST, 0.92,
+			MIXED_PINE_FOREST, 1.3, MIXED_FOREST, 1.7, LOWLAND_BEECH_FOREST, 1.8);
+	/** Stumps per chunk of a managed stand of the forests of the tree planner (WISL: 30-80 per ha, 1-2 per chunk) [S]. */
+	static final double STUMPS = 1.5;
+
+	/** Coverage of a dead wood rule of a forest of the tree planner: its dead trees and its stumps per chunk. */
+	private static float deadwoodCoverage(HabitatBiome forest) {
+		return perChunk(deadTrees(forest) + STUMPS);
+	}
+
+	private static double deadTrees(HabitatBiome forest) {
+		Double n = DEAD_TREES.get(forest);
+		if (n == null) {
+			throw new IllegalArgumentException("no dead trees per chunk for " + forest);
+		}
+		return n;
+	}
 
 	/**
 	 * Weight of a species' stumps in a palette whose dead trees weigh {@code deadWeight} in all: the stumps of the forest
-	 * ({@link #SLICE_STUMPS}) against its dead trees ({@link #SLICE_DEAD_TREES}) times the species' share of the stumps.
+	 * ({@link #STUMPS}) against its dead trees ({@link #DEAD_TREES}) times the species' share of the stumps.
 	 */
-	private static int stumpWeight(int forest, int deadWeight, double share) {
-		return Math.max(1, (int) Math.round(deadWeight * SLICE_STUMPS / SLICE_DEAD_TREES[forest] * share));
+	private static int stumpWeight(HabitatBiome forest, int deadWeight, double share) {
+		return Math.max(1, (int) Math.round(deadWeight * STUMPS / deadTrees(forest) * share));
 	}
 
 	/** Coverage of a column for a mean number per chunk. */
@@ -674,7 +746,11 @@ final class ModVegetation {
 		l.edge(biomes(FRESH_PINE_FOREST, MIXED_PINE_FOREST), Ecotone.Edge.MANTLE, 0.3F, 1,
 				l.feature(ModTrees.SLICE.get(Species.JUNIPER), 2), l.feature(ModTrees.HAZEL_MANTLE, 1),
 				l.feature(ModTrees.SLICE.get(Species.ALDER_BUCKTHORN), 1));
-		l.edge(biomes(ELM_ASH_FOREST, LOWLAND_BEECH_FOREST, UPLAND_FIR_FOREST, MONTANE_BEECH_FOREST), Ecotone.Edge.MANTLE, 0.06F,
+		// Lowland beech forest (step F1): a narrow mantle of the thin-stemmed hazels of the slice (the beech shades its edge;
+		// the forests of the tree planner without the M2 shrubs at their edges).
+		l.edge(biomes(LOWLAND_BEECH_FOREST), Ecotone.Edge.MANTLE, 0.2F, 1, l.feature(ModTrees.HAZEL_MANTLE, 1),
+				l.feature(ModTrees.SLICE.get(Species.HAZEL), 2));
+		l.edge(biomes(ELM_ASH_FOREST, UPLAND_FIR_FOREST, MONTANE_BEECH_FOREST), Ecotone.Edge.MANTLE, 0.06F,
 				1, l.feature(Species.HAZEL.path(), 1));
 		l.edge(biomes(DRY_PINE_FOREST, COASTAL_PINE_FOREST, MOIST_PINE_FOREST, MONTANE_SPRUCE_FOREST), Ecotone.Edge.MANTLE, 0.05F,
 				1, l.feature(Species.JUNIPER.path(), 1));
@@ -768,7 +844,8 @@ final class ModVegetation {
 	 * Ground layer (§8.6, §4.6): zones of tall herbs first, then one rule per biome. Cover in percent of the columns
 	 * (coverage × weight share): pine forests moss carpet 30–70% (fresh) and pale moss carpet as lichens 50–80% (dry),
 	 * dwarf shrubs 20–40%, bilberry, bracken 5–15% (mixed coniferous); oak-hornbeam forest leaf litter 30–60%, spring
-	 * geophytes 10–30%, lily of the valley 3%, ferns 5%, grass at most 10%; beech forest leaf litter 70–90%; alder carr and
+	 * geophytes 10–30%, lily of the valley 3%, ferns 5%, grass at most 10%; lowland beech forest leaf litter 60–90% with its
+	 * own herb layer (step F1); alder carr and
 	 * floodplain forests tall grass and large fern 60–90%; heath heather; meadows grass and flowers; alpine grassland grass
 	 * and dwarf shrubs. The forests of the vertical slice (fresh and mixed coniferous, mixed and oak-hornbeam forests) have
 	 * the own herb layer blocks and rounded patches of step V12 (docs/04 §6 N8, N9), with the shares at their rules.
@@ -866,7 +943,17 @@ final class ModVegetation {
 		// transect belt reaches the podzol patches of the mixed forest's soil (round 2 of the V12 review).
 		l.blobs(biomes(OAK_HORNBEAM_FOREST), 0.98F, 5, cat(anemone(44), hepatica(10), b(Blocks.LILY_OF_THE_VALLEY, 4),
 				fern.withWeight(11), grass.withWeight(9), litter(9)), cat(forestMoss.withWeight(2)), Blocks.GRASS_BLOCK.defaultBlockState());
-		l.land(biomes(LOWLAND_BEECH_FOREST), 0.85F, 4, cat(litter(85), fern.withWeight(2)));
+		// Lowland beech forest (step F1, docs/04 §6 N8, N9; L 06 §3.6): the beech leaf litter in rounded patches on about
+		// two thirds of the rule's columns (60–90%, the "buczyna naga" where the herb layer is thin), the herb layer between
+		// them; the moss in small cushions scattered per column (more at the bases of the trunks, TreeMoss). The acid beech
+		// forest (Luzulo pilosae-Fagetum): hairy wood-rush, wood sorrel, bilberry in patches, wavy hair-grass as short grass
+		// and ferns, about a quarter of the columns, more moss; the fertile one (Galio odorati-Fagetum): sweet woodruff,
+		// wood anemone, coralroot and wood sorrel, about a third of the columns in spring, on the turf of the mull.
+		l.blobs(biomes(LOWLAND_BEECH_FOREST).withSiteTypes(ForestSiteType.FRESH_MIXED_BROADLEAVED), 0.97F, 5,
+				cat(litter(64), hairyWoodRush(10), woodSorrel(5), bilberry(6, false), fern.withWeight(2), grass.withWeight(3)),
+				cat(forestMoss.withWeight(7)), null);
+		l.blobs(biomes(LOWLAND_BEECH_FOREST), 0.97F, 5, cat(litter(62), sweetWoodruff(12), anemone(8), coralroot(4), woodSorrel(6),
+				fern.withWeight(2)), cat(forestMoss.withWeight(3)), Blocks.GRASS_BLOCK.defaultBlockState());
 		l.land(biomes(MONTANE_BEECH_FOREST), 0.85F, 4, cat(litter(75), fern.withWeight(6), bed(Blocks.WILDFLOWERS, 3)));
 		l.land(biomes(UPLAND_FIR_FOREST), 0.8F, 4, cat(litter(40), moss.withWeight(20), fern.withWeight(12),
 				bed(Blocks.WILDFLOWERS, 4)));

@@ -10,6 +10,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
+import pl.polishforests.worldgen.habitat.ForestSiteType;
 import pl.polishforests.worldgen.habitat.HabitatBiome;
 import pl.polishforests.worldgen.habitat.Species;
 import pl.polishforests.worldgen.norms.CensusGrid;
@@ -38,7 +39,7 @@ class StandCensusSimulationTest {
 	private static final String[] KEYS = {ForestNorms.TREES_PER_CHUNK, ForestNorms.A1_PER_CHUNK, ForestNorms.A2_PER_CHUNK,
 			ForestNorms.A1_HEIGHT, ForestNorms.A2_HEIGHT, ForestNorms.A2_SHARE, ForestNorms.COMPOSITION + "oak",
 			ForestNorms.COMPOSITION + "linden", ForestNorms.COMPOSITION + "maple_ash", ForestNorms.COMPOSITION + "scots_pine",
-			ForestNorms.COMPOSITION + "birch", ForestNorms.COMPOSITION + "hornbeam", ForestNorms.CANOPY, ForestNorms.GAP_SHARE, ForestNorms.GAP_DIAMETER,
+			ForestNorms.COMPOSITION + "birch", ForestNorms.COMPOSITION + "hornbeam", ForestNorms.COMPOSITION + "beech", ForestNorms.CANOPY, ForestNorms.GAP_SHARE, ForestNorms.GAP_DIAMETER,
 			ForestNorms.REGENERATION_RATIO, ForestNorms.OAK_REGENERATION, ForestNorms.PINE_REGENERATION_UNDER_CANOPY,
 			ForestNorms.TOP_HEIGHT, ForestNorms.BARE_WOOD, ForestNorms.EXPOSED_WOOD, ForestNorms.BARE_ARMS,
 			ForestNorms.DEADWOOD_PER_CHUNK, ForestNorms.PIECES_PER_CHUNK, ForestNorms.LOGS_PER_CHUNK, ForestNorms.SNAGS_PER_CHUNK,
@@ -47,18 +48,27 @@ class StandCensusSimulationTest {
 	@Test
 	void reportNormsOfSimulatedStands() {
 		String only = System.getProperty("polishforests.slice.calibrate.only", "");
-		for (HabitatBiome biome : List.of(HabitatBiome.OAK_HORNBEAM_FOREST, HabitatBiome.FRESH_PINE_FOREST)) {
-			for (boolean natural : new boolean[] {true, false}) {
+		// Step F1: every column of the card (a forest of the tree planner, natural or managed); the beech forest in its
+		// fertile and acid forms (forest site types Lśw and LMśw).
+		for (ForestNorms.Forest forest : ForestNorms.Forest.values()) {
+			HabitatBiome biome = forest.biome();
+			boolean natural = forest.natural();
+			ForestSiteType[] sites = biome == HabitatBiome.LOWLAND_BEECH_FOREST
+					? new ForestSiteType[] {ForestSiteType.FRESH_BROADLEAVED, ForestSiteType.FRESH_MIXED_BROADLEAVED}
+					: new ForestSiteType[] {ForestSiteType.NONE};
+			for (ForestSiteType site : sites) {
 				for (AgeClass age : AgeClass.values()) {
 					if (only.isBlank() || only.contains(biome.id() + (natural ? ":natural" : ":managed"))) {
-						report(biome, natural, age);
+						report(forest, site, age);
 					}
 				}
 			}
 		}
 	}
 
-	private static void report(HabitatBiome biome, boolean natural, AgeClass age) {
+	private static void report(ForestNorms.Forest forest, ForestSiteType site, AgeClass age) {
+		HabitatBiome biome = forest.biome();
+		boolean natural = forest.natural();
 		int side = CHUNKS * 16;
 		CensusGrid grid = new CensusGrid(0, 0, side, side, 48);
 		for (int x = 0; x < side; x++) {
@@ -66,13 +76,12 @@ class StandCensusSimulationTest {
 				grid.setGround(x, z, GROUND, "minecraft:grass_block");
 			}
 		}
-		SimulatedStands.plant(biome, natural, age, CHUNKS, (vox, species, layer) -> write(grid, vox, species));
+		SimulatedStands.plant(biome, site, natural, age, CHUNKS, (vox, species, layer) -> write(grid, vox, species));
 		// Step V11: the dead wood of the generated palette, as the dead wood layer and DeadwoodFeature place it.
-		deadwood(grid, biome, SimulatedStands.stand(age, natural), side);
+		deadwood(grid, biome, SimulatedStands.stand(pl.polishforests.worldgen.tree.StandProfile.of(biome), age, natural), side);
 		ForestCensus.Census census = ForestCensus.of(grid);
-		ForestNorms.Forest forest = biome == HabitatBiome.OAK_HORNBEAM_FOREST
-				? natural ? ForestNorms.Forest.OAK_HORNBEAM_NATURAL : ForestNorms.Forest.OAK_HORNBEAM_MANAGED
-				: natural ? ForestNorms.Forest.FRESH_PINE_NATURAL : ForestNorms.Forest.FRESH_PINE_MANAGED;
+		ForestNorms.Site variant = site == ForestSiteType.FRESH_BROADLEAVED ? ForestNorms.Site.FERTILE
+				: site == ForestSiteType.FRESH_MIXED_BROADLEAVED ? ForestNorms.Site.ACID : null;
 		Map<String, List<Double>> values = new LinkedHashMap<>();
 		for (int px = 16; px + 100 <= side - 16; px += 40) {
 			for (int pz = 16; pz + 100 <= side - 16; pz += 40) {
@@ -89,13 +98,14 @@ class StandCensusSimulationTest {
 			double max = v.stream().mapToDouble(Double::doubleValue).filter(d -> !Double.isNaN(d)).max().orElse(Double.NaN);
 			double mean = v.stream().mapToDouble(Double::doubleValue).filter(d -> !Double.isNaN(d) && !Double.isInfinite(d)).average()
 					.orElse(Double.NaN);
-			Optional<ForestNorms.Norm> norm = ForestNorms.of(k, forest, ForestNorms.Aspect.SUMMER, age);
+			Optional<ForestNorms.Norm> norm = ForestNorms.of(k, forest, ForestNorms.Aspect.SUMMER, age, variant);
 			long out = norm.map(n -> v.stream().filter(d -> ForestNorms.verdict(d, n) == ForestNorms.Verdict.OUT).count()).orElse(0L);
 			sb.append(String.format(Locale.ROOT, "%n    %-36s %7s..%7s mean %7s%s", k, ForestNorms.number(min), ForestNorms.number(max),
 					ForestNorms.number(mean), norm.map(n -> "  norm " + n.range() + (out > 0 ? "  OUT on " + out + " of " + v.size() : ""))
 							.orElse("")));
 		}
-		System.out.printf(Locale.ROOT, "[calibrate] %s %s %s:%s%n", biome.id(), natural ? "natural" : "managed", age, sb);
+		System.out.printf(Locale.ROOT, "[calibrate] %s%s %s %s:%s%n", biome.id(), site == ForestSiteType.NONE ? ""
+				: " " + site.name().toLowerCase(Locale.ROOT), natural ? "natural" : "managed", age, sb);
 	}
 
 	/**

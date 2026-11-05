@@ -309,6 +309,12 @@ tasks.withType(Test).configureEach {
 		systemProperty 'polishforests.slice.calibrate.only', project.findProperty('calibrateOnly') ?: ''
 		outputs.upToDateWhen { false }
 	}
+	// -PwriteF1Equality: SliceEqualityTest writes the hashes of the slice forests far from the beech forest (step F1) to
+	// src/test/resources/f1_slice_equality.txt instead of comparing (only with the build before F1).
+	if (project.hasProperty('writeF1Equality')) {
+		systemProperty 'polishforests.f1.equality.write', file('src/test/resources/f1_slice_equality.txt').absolutePath
+		outputs.upToDateWhen { false }
+	}
 	// -PsliceReport: SliceSitesTest prints the biome and association shares of every place (for docs/04).
 	if (project.hasProperty('sliceReport')) {
 		systemProperty 'polishforests.slice.report', 'true'

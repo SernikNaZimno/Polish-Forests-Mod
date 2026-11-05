@@ -26,6 +26,16 @@ import pl.polishforests.block.GroundPlant;
  * of April ({@value #LILY_SHOOTS}), the white bells in May ({@value #LILY_FLOWERS} … {@value #LILY_FLOWERS_END}), leaves
  * through the summer, yellow in September ({@link #lilyColor}) and gone from October ({@value #LILY_GONE}) to the end of
  * April: it dies back to its rhizome ({@link #lilyOfTheValley}).
+ * <li><b>Sweet woodruff</b> (step F1): shoots in the 1st decade of April ({@value #WOODRUFF_SHOOTS}), white in May
+ * ({@value #WOODRUFF_FLOWERS} … {@value #WOODRUFF_FLOWERS_END}), leaves through the summer and gone from the end of
+ * October ({@value #WOODRUFF_GONE}) until April;
+ * <li><b>Hairy wood-rush</b> (step F1): evergreen tufts, flowering from the 2nd decade of April to the end of May
+ * ({@value #WOOD_RUSH_FLOWERS} … {@value #WOOD_RUSH_FLOWERS_END});
+ * <li><b>Wood sorrel</b> (step F1): evergreen trefoils (they overwinter), flowering from mid-April to the end of May
+ * ({@value #SORREL_FLOWERS} … {@value #SORREL_FLOWERS_END});
+ * <li><b>Coralroot</b> (step F1, a spring geophyte): shoots from mid-April ({@value #CORALROOT_SHOOTS}), flowering from
+ * the end of April to the 2nd decade of May ({@value #CORALROOT_FLOWERS} … {@value #CORALROOT_FLOWERS_END}), leaves
+ * until mid-June and gone from then ({@value #CORALROOT_GONE}) until the next April.
  * </ul>
  */
 public final class GroundPhases {
@@ -53,6 +63,18 @@ public final class GroundPhases {
 	static final double LILY_FLOWERS = 6.2;
 	static final double LILY_FLOWERS_END = 8.8;
 	static final double LILY_GONE = 20.7;
+	static final double WOODRUFF_SHOOTS = 3.0;
+	static final double WOODRUFF_FLOWERS = 6.0;
+	static final double WOODRUFF_FLOWERS_END = 9.0;
+	static final double WOODRUFF_GONE = 23.5;
+	static final double WOOD_RUSH_FLOWERS = 4.0;
+	static final double WOOD_RUSH_FLOWERS_END = 9.0;
+	static final double SORREL_FLOWERS = 4.5;
+	static final double SORREL_FLOWERS_END = 9.0;
+	static final double CORALROOT_SHOOTS = 4.5;
+	static final double CORALROOT_FLOWERS = 5.5;
+	static final double CORALROOT_FLOWERS_END = 7.8;
+	static final double CORALROOT_GONE = 11.5;
 
 	/** Keys of a tint curve: position, target color, weight of the target over the raw grass color. */
 	private record Key(double at, int target, double weight) {
@@ -93,6 +115,12 @@ public final class GroundPhases {
 					: at >= ANEMONE_SHOOTS && at < ANEMONE_GONE ? Look.LEAVES : Look.NONE;
 			case HEPATICA -> at >= HEPATICA_FLOWERS && at < HEPATICA_FLOWERS_END ? Look.FULL : Look.LEAVES;
 			case BILBERRY -> at >= BILBERRY_FLOWERS && at < BILBERRY_FLOWERS_END ? Look.FLOWERING : Look.FULL;
+			case SWEET_WOODRUFF -> at >= WOODRUFF_FLOWERS && at < WOODRUFF_FLOWERS_END ? Look.FULL
+					: at >= WOODRUFF_SHOOTS && at < WOODRUFF_GONE ? Look.LEAVES : Look.NONE;
+			case HAIRY_WOOD_RUSH -> at >= WOOD_RUSH_FLOWERS && at < WOOD_RUSH_FLOWERS_END ? Look.FULL : Look.LEAVES;
+			case WOOD_SORREL -> at >= SORREL_FLOWERS && at < SORREL_FLOWERS_END ? Look.FULL : Look.LEAVES;
+			case CORALROOT -> at >= CORALROOT_FLOWERS && at < CORALROOT_FLOWERS_END ? Look.FULL
+					: at >= CORALROOT_SHOOTS && at < CORALROOT_GONE ? Look.LEAVES : Look.NONE;
 			default -> Look.FULL;
 		};
 	}

@@ -157,8 +157,10 @@ public final class VanillaForestsClientGameTest implements FabricClientGameTest 
 			report.append("determinism area around ").append(oakHornbeam).append('\n');
 			BlockPos center = oakHornbeam != null ? oakHornbeam : new BlockPos(3072, 64, 3072);
 			first = sp.getServer().computeOnServer(s -> order(s.overworld(), center, false));
-			// 3. The areas of the two slice forests.
-			for (HabitatBiome b : List.of(HabitatBiome.OAK_HORNBEAM_FOREST, HabitatBiome.FRESH_PINE_FOREST)) {
+			// 3. The areas of the forests of the tree planner in W1 (the two slice forests; step F1: the lowland beech forest,
+			// dark_forest in W1).
+			for (HabitatBiome b : List.of(HabitatBiome.OAK_HORNBEAM_FOREST, HabitatBiome.FRESH_PINE_FOREST,
+					HabitatBiome.LOWLAND_BEECH_FOREST)) {
 				BlockPos at = located.get(b);
 				if (at == null) {
 					continue;
@@ -443,6 +445,21 @@ public final class VanillaForestsClientGameTest implements FabricClientGameTest 
 				forestColumns += forest[i] ? 1 : 0;
 			}
 		}
+		// Step F1 (KF-1): the deep columns of the biome, at least DEEP·k blocks from a column of another biome (a summed table
+		// of the other columns), with the planner's trunks (mod logs at the base) and the vanilla logs standing as trunks.
+		int deepReach = (int) Math.round(DEEP * world(level).localScale());
+		int[] other = new int[(size + 1) * (size + 1)];
+		ResourceKey<Biome> own = ModBiomeKeys.key(biome);
+		for (int dx = 0; dx < size; dx++) {
+			for (int dz = 0; dz < size; dz++) {
+				boolean mine = level.getBiome(new BlockPos(origin[0] + dx, ground[dx * size + dz], origin[1] + dz)).is(own);
+				other[(dx + 1) * (size + 1) + dz + 1] = (mine ? 0 : 1) + other[dx * (size + 1) + dz + 1]
+						+ other[(dx + 1) * (size + 1) + dz] - other[dx * (size + 1) + dz];
+			}
+		}
+		int deepColumns = 0;
+		int deepTrunks = 0;
+		int deepVanilla = 0;
 		int trunks = 0;
 		int edgeTrunks = 0;
 		int farColumns = 0;
@@ -456,6 +473,12 @@ public final class VanillaForestsClientGameTest implements FabricClientGameTest 
 				int z = origin[1] + dz;
 				BlockState base = level.getBlockState(p.set(x, ground[i], z));
 				boolean trunk = mod(base) && base.is(BlockTags.LOGS);
+				if (deep(other, size, dx, dz, deepReach)) {
+					deepColumns++;
+					deepTrunks += trunk ? 1 : 0;
+					deepVanilla += !mod(base) && base.is(BlockTags.LOGS) && level.getBlockState(p.set(x, ground[i] + 1, z)).is(BlockTags.LOGS)
+							&& level.getBlockState(p.set(x, ground[i] + 2, z)).is(BlockTags.LOGS) ? 1 : 0;
+				}
 				if (forest[i]) {
 					trunks += trunk ? 1 : 0;
 					continue;
@@ -487,6 +510,19 @@ public final class VanillaForestsClientGameTest implements FabricClientGameTest 
 				holder.getRegisteredName(), creatureTypes);
 		report.append(line).append('\n');
 		PolishForests.LOG.info("[vanilla_forests] " + line);
+		String deepLine = String.format(Locale.ROOT, "%s deep (>= %d blocks from another biome): %d columns, planner trunks %d "
+				+ "(%.1f per chunk, N1 envelope %.1f-%.1f), vanilla log trunks %d", biome.id(), deepReach, deepColumns, deepTrunks,
+				deepColumns == 0 ? 0 : 256.0 * deepTrunks / deepColumns, DEEP_N1_LOW, DEEP_N1_HIGH, deepVanilla);
+		report.append(deepLine).append('\n');
+		PolishForests.LOG.info("[vanilla_forests] KF-1 " + deepLine);
+		if (deepVanilla > 0) {
+			failures.add(biome.id() + ": " + deepVanilla + " vanilla log trunks deep in the forest (KF-1)");
+		}
+		double deepPerChunk = deepColumns == 0 ? 0 : 256.0 * deepTrunks / deepColumns;
+		if (deepColumns >= DEEP_MIN_COLUMNS && (deepPerChunk < DEEP_N1_LOW || deepPerChunk > DEEP_N1_HIGH)) {
+			failures.add(String.format(Locale.ROOT, "%s: %.1f planner trunks per chunk deep in the forest, outside the N1 envelope "
+					+ "(KF-1)", biome.id(), deepPerChunk));
+		}
 		if (forestColumns > 2000 && trunks == 0) {
 			failures.add(biome.id() + ": no trunk of the mod on " + forestColumns + " forest columns");
 		}
@@ -496,6 +532,27 @@ public final class VanillaForestsClientGameTest implements FabricClientGameTest 
 		if (creatures == 0) {
 			failures.add(biome.id() + ": no creature spawns");
 		}
+	}
+
+	/** Least distance of a deep column from a column of another biome (KF-1 of step F1), m·k. */
+	private static final int DEEP = 48;
+	/** The N1 envelope of the slice forests' census in {@code habitats} (living trees per chunk with the tolerances). */
+	private static final double DEEP_N1_LOW = 6.4;
+	private static final double DEEP_N1_HIGH = 19.2;
+	/** Least deep columns for the N1 check (the vanilla-log check holds on any number). */
+	private static final int DEEP_MIN_COLUMNS = 1024;
+
+	/** Whether the square of {@code reach} blocks around column (dx, dz) lies inside the area and holds only own columns. */
+	private static boolean deep(int[] other, int size, int dx, int dz, int reach) {
+		int x0 = dx - reach;
+		int z0 = dz - reach;
+		int x1 = dx + reach + 1;
+		int z1 = dz + reach + 1;
+		if (x0 < 0 || z0 < 0 || x1 > size || z1 > size) {
+			return false;
+		}
+		int w = size + 1;
+		return other[x1 * w + z1] - other[x0 * w + z1] - other[x1 * w + z0] + other[x0 * w + z0] == 0;
 	}
 
 	/** Whether no forest column lies within {@link #MARGIN} blocks of column (dx, dz) of the area (inside the area). */

@@ -1,6 +1,7 @@
 package pl.polishforests.gametest;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -35,7 +36,7 @@ import pl.polishforests.PolishForests;
  * <li>{@link #woodAndLeaves}: wood and leaves of a generated area by block tags (both builds count the same way);</li>
  * <li>{@link #memoryAndStates}: the used heap after a full garbage collection and the number of block states;</li>
  * <li>{@link #flights} ({@code -Pgametest=performance -Psites=slice}): in the oak-hornbeam and the fresh pine forest of
- * each scale, the load of new terrain around a teleport (chunks per second, the C2ME budget with {@code -Poptimization};
+ * each scale and, from step F1, in the lowland beech forest ({@link #BEECH_SITE}), the load of new terrain around a teleport (chunks per second, the C2ME budget with {@code -Poptimization};
  * only this with {@code -PloadOnly}, step O1) and a fixed camera flight: {@value #FLIGHT_POINTS} points on a circle of {@value #ORBIT_RADIUS} blocks around the place,
  * above the canopy and at eye level, with a full turn of the camera at each (frames per second and the render time of
  * each frame);</li>
@@ -127,15 +128,30 @@ final class ForestPerformance {
 
 	// ------------------------------------------------------------------ load and flight
 
-	/** The load and flight measurements in the oak-hornbeam and the fresh pine forest of the world (natural mode). */
+	/**
+	 * Step F1 (KF-6): the place of the lowland beech forest of the flights, per scale (realistic, gameplay): the plot
+	 * {@code lowland_beech_natural_1} of {@code src/test/resources/slice_plots.txt}, written here as numbers, since the M2
+	 * baseline (git tag {@code m2-baseline-r1}) runs this file without that table ({@code SlicePlotsTest} checks that they
+	 * agree).
+	 */
+	static final int[][] BEECH_SITE = {{-7793, -9133}, {-2004, -3609}};
+
+	/**
+	 * The load and flight measurements in the oak-hornbeam and the fresh pine forest of the world (natural mode) and, from
+	 * step F1, in the lowland beech forest ({@link #BEECH_SITE}).
+	 */
 	static void flights(ClientGameTestContext context, TestSingleplayerContext sp, String name, boolean real) {
 		register();
+		List<Object[]> places = new java.util.ArrayList<>();
 		for (SliceSites.Place p : SliceSites.of(real, false)) {
-			if (!p.name().equals("oak_hornbeam_1") && !p.name().equals("fresh_pine_1")) {
-				continue;
+			if (p.name().equals("oak_hornbeam_1") || p.name().equals("fresh_pine_1")) {
+				places.add(new Object[] {p.name(), p.middle()});
 			}
-			int[] m = p.middle();
-			String label = name + " / " + p.name();
+		}
+		places.add(new Object[] {"lowland_beech_1", BEECH_SITE[real ? 0 : 1]});
+		for (Object[] place : places) {
+			int[] m = (int[]) place[1];
+			String label = name + " / " + place[0];
 			int ground = sp.getServer().computeOnServer(s -> surface(s.overworld(), m[0], m[1]));
 			// New terrain: the client gets the chunks around a teleport (chunks per second; with C2ME the budget of PW-10).
 			// Counted around the target, since the client keeps the old chunks for a while. The camera looks straight up

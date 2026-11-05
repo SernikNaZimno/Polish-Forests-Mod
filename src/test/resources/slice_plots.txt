@@ -13,6 +13,10 @@ realistic managed mature fresh_pine_managed_mature fresh_pine_forest -2857 -1968
 realistic managed old_growth fresh_pine_managed_old_growth fresh_pine_forest -2259 4944
 realistic managed pole_stage oak_hornbeam_managed_pole_stage oak_hornbeam_forest -322 -1490
 realistic natural pole_stage oak_hornbeam_natural_pole_stage oak_hornbeam_forest 524 -1151
+realistic natural any lowland_beech_natural_1 lowland_beech_forest -7793 -9133
+realistic natural any lowland_beech_natural_2 lowland_beech_forest 40787 8501
+realistic managed any lowland_beech_managed_1 lowland_beech_forest -1184 -1568
+realistic managed any lowland_beech_managed_2 lowland_beech_forest -1084 -1728
 gameplay natural any oak_hornbeam_natural_1 oak_hornbeam_forest -1785 886
 gameplay natural any oak_hornbeam_natural_2 oak_hornbeam_forest 1750 4061
 gameplay managed any oak_hornbeam_managed_1 oak_hornbeam_forest -1825 746
@@ -23,3 +27,7 @@ gameplay managed pole_stage fresh_pine_managed_pole_stage fresh_pine_forest -227
 gameplay managed mature fresh_pine_managed_mature fresh_pine_forest -1738 1519
 gameplay managed old_growth fresh_pine_managed_old_growth fresh_pine_forest -1695 -1303
 gameplay managed pole_stage oak_hornbeam_managed_pole_stage oak_hornbeam_forest -1425 1026
+gameplay natural any lowland_beech_natural_1 lowland_beech_forest -2004 -3609
+gameplay natural any lowland_beech_natural_2 lowland_beech_forest -4167 4636
+gameplay managed any lowland_beech_managed_1 lowland_beech_forest 1217 3133
+gameplay managed any lowland_beech_managed_2 lowland_beech_forest -1884 -3369

@@ -132,7 +132,9 @@ public final class CrownTerritories {
 	public Site site(int x, int z) {
 		AgeClass age = stands.ageClass(x, z);
 		boolean natural = stands.natural(x, z);
-		boolean gap = natural && stands.canopyGap(x, z);
+		// A canopy gap of a natural stand or a regeneration nest of a managed one (step F1; a stand map without nests: only
+		// the natural stands have gaps).
+		boolean gap = stands.canopyGap(x, z);
 		CrownLayer layer;
 		if (gap) {
 			layer = CrownLayer.REGENERATION;

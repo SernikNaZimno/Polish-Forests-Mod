@@ -110,7 +110,13 @@ block polishforests:birch_trunk states=84 default=parent=down,radius=4,waterlogg
   property waterlogged: true false
 block polishforests:bracken states=2 default=half=lower
   property half: upper lower
+block polishforests:coralroot states=16 default=facing=north,flower_amount=1
+  property facing: north south west east
+  property flower_amount: 1 2 3 4
 block polishforests:forest_moss_carpet states=1 default=
+block polishforests:hairy_wood_rush states=16 default=facing=north,flower_amount=1
+  property facing: north south west east
+  property flower_amount: 1 2 3 4
 block polishforests:hepatica states=16 default=facing=north,flower_amount=1
   property facing: north south west east
   property flower_amount: 1 2 3 4
@@ -412,11 +418,17 @@ block polishforests:stripped_spruce_trunk states=84 default=parent=down,radius=4
   property parent: down up north south west east
   property radius: 1 2 3 4 5 6 7
   property waterlogged: true false
+block polishforests:sweet_woodruff states=16 default=facing=north,flower_amount=1
+  property facing: north south west east
+  property flower_amount: 1 2 3 4
 block polishforests:tree_root states=84 default=parent=down,radius=4,waterlogged=false
   property parent: down up north south west east
   property radius: 1 2 3 4 5 6 7
   property waterlogged: true false
 block polishforests:wood_anemone states=16 default=facing=north,flower_amount=1
+  property facing: north south west east
+  property flower_amount: 1 2 3 4
+block polishforests:wood_sorrel states=16 default=facing=north,flower_amount=1
   property facing: north south west east
   property flower_amount: 1 2 3 4
 item polishforests:ash_button block=polishforests:ash_button
@@ -452,7 +464,9 @@ item polishforests:birch_root_flare block=polishforests:birch_root_flare
 item polishforests:birch_sapling block=polishforests:birch_sapling
 item polishforests:birch_trunk block=polishforests:birch_trunk
 item polishforests:bracken block=polishforests:bracken
+item polishforests:coralroot block=polishforests:coralroot
 item polishforests:forest_moss_carpet block=polishforests:forest_moss_carpet
+item polishforests:hairy_wood_rush block=polishforests:hairy_wood_rush
 item polishforests:hepatica block=polishforests:hepatica
 item polishforests:hornbeam_button block=polishforests:hornbeam_button
 item polishforests:hornbeam_fence block=polishforests:hornbeam_fence
@@ -540,5 +554,7 @@ item polishforests:stripped_scots_pine_log block=polishforests:stripped_scots_pi
 item polishforests:stripped_scots_pine_trunk block=polishforests:stripped_scots_pine_trunk
 item polishforests:stripped_scots_pine_wood block=polishforests:stripped_scots_pine_wood
 item polishforests:stripped_spruce_trunk block=polishforests:stripped_spruce_trunk
+item polishforests:sweet_woodruff block=polishforests:sweet_woodruff
 item polishforests:tree_root block=polishforests:tree_root
 item polishforests:wood_anemone block=polishforests:wood_anemone
+item polishforests:wood_sorrel block=polishforests:wood_sorrel

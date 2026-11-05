@@ -22,7 +22,15 @@ public enum GroundPlant {
 	/** Scots pine needle litter: a rust-brown mat of 1–4 segments. */
 	NEEDLE_LITTER(Kind.COVER),
 	/** Bracken (Pteridium aquilinum): two blocks, the indicator of the mixed coniferous forest. */
-	BRACKEN(Kind.TALL);
+	BRACKEN(Kind.TALL),
+	/** Sweet woodruff (Galium odoratum): star-like leaf whorls of the fertile beech forest, white in May (step F1). */
+	SWEET_WOODRUFF(Kind.SEASONAL),
+	/** Hairy wood-rush (Luzula pilosa): evergreen tufts of the acid beech forest, flowering in April and May (step F1). */
+	HAIRY_WOOD_RUSH(Kind.SEASONAL),
+	/** Wood sorrel (Oxalis acetosella): trefoils of the beech and spruce forests, white flowers in April and May (step F1). */
+	WOOD_SORREL(Kind.SEASONAL),
+	/** Coralroot (Cardamine bulbifera): a spring geophyte of the fertile beech forest, lilac in May (step F1). */
+	CORALROOT(Kind.SEASONAL);
 
 	/** The block family of an entry. */
 	public enum Kind {

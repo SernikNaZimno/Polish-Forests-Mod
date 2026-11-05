@@ -539,7 +539,7 @@ Każdy krok F jest ukończony dopiero, gdy oprócz własnych kryteriów spełnia
 ### F1. Buczyna niżowa i drzewostan planera w każdym lesie (A, 1–1,5 dnia; G.36 U-4)
 
 - **Zakres:** (1) **mechanizmy dla każdego lasu**, bez zmiany wyniku w lasach wycinka z dala od nowych lasów: reguła drzewostanu z piętrami (`ModVegetation.Trees.slice`: okap, okap gospodarczy, podokap, odnowienie pod okapem i w lukach, szanse według stanu) dla dowolnego biomu; parametry wydzieleń `ForestStandMap` (udział lasu naturalnego D9, klasy wieku, luki, wielkość wydzieleń) w tabeli według typu lasu zamiast stałych wycinka; `ForestBlend.FORESTS` jako lista lasów z drzewami planera (każdy krok F dopisuje swoje, `NEIGHBORS` je traci); martwe drewno i pniaki (`SLICE_DEAD_TREES`, `SLICE_STUMPS`) oraz karta norm (`worldgen/norms/ForestNorms`, `CensusTestPlot`, `SlicePlotsTest -PfindSlicePlots`, `StandCensusSimulationTest -PcalibrateOnly`) dla dowolnego lasu; spis w gametestach `habitats` i `vanilla_forests`: pnie planera i kłody wanilii w głębi każdego lasu; test palety (KF-1); (2) **buczyna niżowa** (`lowland_beech_forest`, w W1 `dark_forest`): a1 buk 70–100% z domieszką dębu, jesionu, klonu zwyczajnego i lipy (jawor od F3), a2 słabe; las naturalny z lukami po pojedynczych drzewach i grupach, odnowienie buka w lukach; gospodarczy jednopiętrowy z gniazdami odnowienia; zwarcie 80–95%; (3) runo, mchy, ściółka: ściółka liściowa 60–90% kolumn płatami `BLOBS`, nowe rośliny rodzin `GroundPlant` z fazami `GroundPhases` (domyślnie 4: marzanka wonna, kosmatka owłosiona, szczawik zajęczy, żywiec cebulkowy), borówka płatami w buczynie kwaśnej, mchy 0–30%, `TreeMoss` u pni; (4) martwe drewno buka (kłody, złomy, wykroty, posusz) na poziomie rezerwatów w lesie naturalnym, pniaki w gospodarczym (PW-5 b, WISL), nabiegi buka; (5) przejścia: buczyna w `ForestBlend` z grądem, LMśw i BMśw, z innymi lasami rampa `Ecotone`; (6) karta norm buczyny niżowej w §6 (`docs/research/06` §3.6, §4.3, §6.2).
-- **Ukończony, gdy:** KF-1 … KF-4, KF-6, KF-7 (KF-5 tylko dla nowych roślin runa); dodatkowo test równości: dekoracja lasów wycinka z dala od buczyny (dalej niż promień `ForestBlend` i zasięg koron) identyczna z buildem sprzed F1 (JUnit na planie drzewostanu i w spisie `determinism`). **Stan: do zrobienia.**
+- **Ukończony, gdy:** KF-1 … KF-4, KF-6, KF-7 (KF-5 tylko dla nowych roślin runa); dodatkowo test równości: dekoracja lasów wycinka z dala od buczyny (dalej niż promień `ForestBlend` i zasięg koron) identyczna z buildem sprzed F1 (JUnit na planie drzewostanu i w spisie `determinism`). **Stan: etap 1 zrobiony (2026-11-05, „Projekt F1”), etap 2 (przebiegi w grze) do zrobienia.**
 - **Ryzyko:** wysokie (uogólnienie reguł może przestawić lasy wycinka; zwarty okap buczyny podnosi LIGHT).
 
 ### F2. Olsy i łęg jesionowo-olszowy (A, 1,5–2 dnia)
@@ -680,6 +680,19 @@ Mierzona w `slice` (V4) na powierzchniach 1 ha (100 × 100 bloków ≈ 39 chunk�
 | N10 | martwe drewno (obiekty na chunk) | ok. 2 (PW-5 b) albo 0,5 (a) | ok. 0,25 martwego drzewa (kłody i posusz) + 1–2 pniaki [S, V11-a] | ok. 0,1 kłody i 1–2 pniaki | ok. 1 (b) albo 0,4 (a) | [Ź GIOŚ; Mróz i Pawlaczyk; Piętka] |
 | N12 | geofity grądu | widoczne Early–Late Spring, szczyt Mid Spring, 0 od Early Summer | jw. | — | — | [Ź Rawlik 2021] |
 | N15 | transekt Bśw → BMśw → LMśw → grąd | kolejność wskaźników zachowana, przejście 20–100 m (REAL) przy ostrej granicy podłoża, bez prostej linii | | | | [Ź Stefańska; S] |
+
+**Buczyna niżowa (krok F1; kolumny `ForestNorms` `LOWLAND_BEECH_NATURAL`, `LOWLAND_BEECH_MANAGED`).** Te same miary i tolerancje; powierzchnie próbne `lowland_beech_*` w `slice_plots.txt`. Forma kwaśna (LMśw, Luzulo pilosae-Fagetum) i żyzna (Lśw, Galio odorati-Fagetum) różnią się w N8 (kwalifikator `Site` według typu siedliskowego środka powierzchni).
+
+| # | Miara | Buczyna naturalna | Buczyna gospodarcza | Źródło |
+|---|---|---|---|---|
+| N1 | pnie na chunk (wszystkie piętra) | 6–12 (stare buki stoją rzadko: 200–350 drzew/ha ≥ 7 cm, 5–9 na chunk) | drągowina 12–15, dojrzały 9–12, starodrzew 7–10 (ogólnie 7–15) | [L 06 §3.6; S] |
+| N3 | skład a1 (udział pni) | Bk 70–100; domieszki Db, Js, Kl, Lp (żyzna), Db, So, Brz (kwaśna) | jw. | [L 06 §3.6] |
+| N4 | zwarcie | 80–95% | 80–95% | [L 06 §3.6] |
+| N5 | luki (opis, bez normy liczbowej) | po przewrocie pojedynczych drzew i grup, 10–40 m, z podrostem buka | gniazda odnowieniowe 20–30 m w drzewostanach dojrzałych i starych | [L 06 §4.3; S] |
+| N7 | podszyt | 0–15% (kwaśna 0–10%) | 0–15% | [L 06 §3.6] |
+| N8 | runo | żyzna wiosną 20–70% (marzanka, zawilec, żywiec, szczawik); kwaśna 5–40% wiosną i przez rok (kosmatka, szczawik, borówka płatami); forma nieznana 5–70% [S] | jw. | [L 06 §3.6] |
+| N9 | mchy | 0–30% | 0–30% | [L 06 §3.6] |
+| N10 | martwe drewno | ok. 2 obiekty na chunk (PW-5 b), 80–150 m³/ha, ≥ 5 grubych kawałków na ha | ok. 0,25 kawałka + 1–2 pniaki na chunk, 10–17 m³/ha | [L 06 §4.3; Ź WISL 2010–2014; S] |
 
 Odstępstwa celowe, jawnie w karcie: gęstość fauny ×20–50 (PW-15), żaba w rozmiarze wanilii, brak pierśnicy jako miary (dokładność ±15%), N11, N13, N14, N16 i N17 z planu „wierność” poza kartą (forma śmierci i okap sprawdzane na zrzutach, gleby i mrowiska poza wycinkiem, fauna w gametest `fauna`).
 
@@ -3450,6 +3463,91 @@ Drobne wybory: `docs/00` G.40 (W1-a … W1-q z etapu 1, W1-r … W1-u z etapu 2)
 Bez pomiaru czasu (carvery wanilii to koszt wanilii; zmiana dotyczy jednego wywołania na chunk źródłowy).
 
 **Drobne z przeglądu** (nie poprawiane, próg z 2026-10-21): DP-122 (rozkład struktur z tagów świata „Polska”: rezydencje i wioski równinne w dawnych lasach, warianty wilka i lisa tajgi), DP-123 (podziemne ficzery zastępców: bez szmaragdów i rudy zainfekowanej w buczynie karpackiej, bez dysków piasku, gliny i żwiru, dodatkowe skamieniałości i głębokie jeziora lawy), DP-124 (W1-g nieaktualne wobec W1-r, liczba lasów w opublikowanym commicie i BRIEF), DP-125 (dolna granica gęstości pni w `vanilla_forests`) — wszystkie potwierdzone (tagi i JSON-y biomów w `src/main/generated`).
+
+## Projekt F1 (2026-11-05, etap 1: kod, dane, tekstury, testy jednostkowe)
+
+Krok F1 planu „Kroki F” (§3, G.41, decyzja użytkownika G.36 U-4): mechanizmy drzewostanu planera dla dowolnego lasu i pierwszy nowy las z pełną strukturą — buczyna niżowa (`lowland_beech_forest`; w typie świata W1 zastępuje `dark_forest`). Drobne wybory: `docs/00` G.42 (F1-a … F1-n, domyślne, do potwierdzenia przy CP-D). Wyniki z gry: „Stan po F1” (etap 2).
+
+**Mechanizmy dla każdego lasu.**
+
+- *Reguła drzewostanu.* `ModVegetation.Trees.planned` (dawniej `slice`) to reguła z piętrami dla dowolnego biomu i typu siedliskowego: okap, okap gospodarczy, podokap, odnowienie pod okapem i w lukach, szanse według stanu. Nowe pole palety `subcanopy_chance` (`TreePalette.Stand`) jest opcjonalne: domyślnie 1 i pomijane w JSON, więc palety wycinka są bajt w bajt bez zmian. Pole mnoży szansę drzewa podokapu (`TreeStandPlan.Layers.subcanopyFactor`).
+- *Parametry wydzieleń według lasu.* `tree/StandProfile` trzyma:
+  - udział lasu naturalnego (mnożnik D9);
+  - klasy wieku lasu gospodarczego i naturalnego;
+  - łączenie komórek;
+  - szanse luk według klasy wieku, skupiska i średnice luk;
+  - gniazda odnowieniowe lasu gospodarczego.
+
+  `DEFAULT` to stałe `ForestStandMap` sprzed F1.
+
+  Mapa wydzieleń nie zależy od siedliska (ZW-2). Wydzielenie bierze profil lasu w punkcie siatki wydzielenia, a luka lub gniazdo w swoim środku. Profil daje czysta funkcja świata `StandProfile.Field`, w świecie siatka kategorii `ForestBlend.forestAt`.
+
+  W lasach wycinka losowanie luk się nie zmienia. Wynik losowania obecności porównuje się z najwyższą szansą wszystkich profili, a profil czyta się tylko wtedy, gdy wynik jest poniżej niej. Gniazda lasu gospodarczego wchodzą przez `ForestStandMap.gapDepth`; terytoria koron biorą lukę z `stands.canopyGap`.
+- *Ograniczenie szans.* Szanse drzew buczyny są nie wyższe niż najwyższe szanse lasów wycinka. `TreeStandPlan.surelyTreeless` nie zna siedliska, więc wyższa szansa przestawiłaby znaczniki koron wycinka (test równości).
+- *Przejścia.* `ForestBlend.FORESTS` to lasy z drzewami planera: cztery lasy transektu i buczyna (`BEECH` = 4). `TRANSECT`, czyli pierwsze cztery, służy N15 i sekwencji transektu.
+
+  Macierz par `BLENDS` obejmuje wszystkie pary transektu i buczynę z grądem, LMśw i BMśw. Z Bśw i z pozostałymi lasami buczyna ma rampę `Ecotone` (`ForestBlend.blendsCodes`). `NEIGHBORS` traci buczynę.
+
+  Węzły pola trzymają `float[]`, maska kategorii ma 6 bitów. Suma udziałów w `pick` (`pickTotal`) idzie w kolejności indeksów, więc z dala od buczyny wynik jest identyczny.
+- *Martwe drewno.* Tabela `DEAD_TREES` według lasu (buczyna 1,8 martwego drzewa na chunk) i wspólne `STUMPS` 1,5. Reguły `deadwood/beech`: buk 16, dąb 2, jesion 1, klon 1. Reguły `stump/beech`: buk 0,85, dąb 0,1, jesion 0,05.
+- *Karta norm.*
+  - `ForestNorms.Forest` ma biom i stan (`Forest.of(biome, natural)`); kolumny buczyny są dopisane na końcu.
+  - Kwalifikator `ForestNorms.Site` (FERTILE, ACID) rozdziela N8. Powierzchnia o nieznanej formie bierze sumę przedziałów.
+  - `NormsCensus` wybiera formę po typie siedliskowym kolumny środka.
+  - `StandCensusSimulationTest` i `SimulatedStands` liczą każdy las karty, buczynę w obu formach.
+  - `SlicePlotsTest -PfindSlicePlots` dopisuje dwie powierzchnie naturalne i dwie gospodarcze lasów kroków F (`F_FORESTS`) w obu skalach. Szuka ich wokół miejsc lasu najbliższych pierścieniom punktów startu; powierzchnie wycinka zostają na miejscu.
+  - Powierzchnie buczyny mogą leżeć w dowolnej formie (bez progu `TYPICAL`, bo forma kwaśna to `ACIDOPHILOUS`).
+- *KF-1, spis w głębi lasów planera.*
+  - `habitats`: kolumny z udziałem własnego lasu w polu `ForestBlend` ≥ 0,999. Warunki: 0 pni z kłód wanilii, pnie planera na chunk w obwiedni N1 6,4–19,2 (od 1024 kolumn).
+  - `vanilla_forests`: obszar buczyny dopisany do obszarów grądu i Bśw. Kolumny ≥ 48 m·k od kolumny innego biomu dają linię `KF-1` z tymi samymi progami.
+  - JUnit `PlannerPalettesTest`. Biomy z regułą planera to dokładnie `ForestBlend.FORESTS`. Ich reguły czterech palet nie mają `tree_substitute/` ani `deadwood_substitute/`; wyjątek to cienki jarząb `rowan_thin` do F6 (G.41 F-i). Każdy z tych lasów ma `deadwood/` i `stump/`.
+- *Test równości.* `SliceEqualityTest` porównuje z `src/test/resources/f1_slice_equality.txt`, zapisanym buildem sprzed F1 przez `-PwriteF1Equality`. Plan drzewostanu, luki, wydzielenia i palety lasów wycinka z dala od buczyny są identyczne.
+- *KF-6.* `ForestPerformance.BEECH_SITE` to powierzchnia `lowland_beech_natural_1` obu skal, wpisana liczbami, bo baza M2 nie ma tabeli; `SlicePlotsTest` sprawdza zgodność. Jest trzecim miejscem przelotu `-Psites=slice`. Plik skopiowano do worktree `pl-m2-baseline`.
+
+**Buczyna niżowa.**
+
+- *Okap (a1).* Wagi w formie kwaśnej (LMśw, Luzulo pilosae-Fagetum): buk 820, dąb 120, sosna 30, brzoza 30. W formie żyznej (Lśw, Galio odorati-Fagetum): buk 800, dąb 70, jesion 40, klon 45, lipa 45.
+- *Podokap i odnowienie.* Podokap jest słaby (`subcanopy_chance` 0,35). Pod okapem i w lukach odnawia się buk, w formie żyznej z klonem i grabem, a w lukach także z jesionem i leszczyną.
+- *Profil `StandProfile.BEECH`, las naturalny.* Luki po przewrocie pojedynczych drzew i grup:
+  - częstsze niż w lasach wycinka: 0,12 / 0,42 / 0,50 według klasy wieku;
+  - często podwójne (skupisko 0,5);
+  - 10–40 m, mediana 20 m.
+- *Profil `StandProfile.BEECH`, las gospodarczy.* Jest jednopiętrowy, z gniazdami odnowieniowymi 0 / 0,16 / 0,30 (mediana 24 m) w drzewostanach dojrzałych i starych.
+- *Udział naturalny i klasy wieku* są jak w wycinku.
+- *Skraj.* Płaszcz skraju ma leszczynę; buczyna ma własną regułę skraju zamiast wspólnej z łęgiem wiązowo-jesionowym.
+- *Nabiegi i mchy.* Nabiegi buka (I1) i mchy u podstaw pni (`TreeMoss`, szanse lasów liściastych) przychodzą z drzew planera jak w grądzie.
+
+**Runo.**
+
+- *Ściółka.* `leaf_litter` leży w płatach BLOBS; cel to 60–90% kolumn.
+- *Nowe rośliny.* Cztery nowe rośliny `GroundPlant` są dopisane na końcu (SEASONAL, fazy V13 w `GroundPhases`):
+  - marzanka wonna `sweet_woodruff`;
+  - kosmatka owłosiona `hairy_wood_rush`, zimozielona;
+  - szczawik zajęczy `wood_sorrel`, zimozielony;
+  - żywiec cebulkowy `coralroot`, geofit wiosenny w `ForestCensus.SPRING_GEOPHYTES`.
+- *Forma kwaśna.* Ściółka, kosmatka, szczawik i borówka w płatach.
+- *Forma żyzna.* Ściółka, marzanka, zawilec, żywiec i szczawik.
+- *Mchy.* `forest_moss` rozproszony w kolumnach (3–7%) oraz przy pniach.
+- *Tekstury.* Osiem nowych z `tools/art` (`ground.py`, `recipes.py`); `lint.py` i `check.py` PASS.
+- *Migawka rejestru.* Świadomie przegenerowana: +4 bloki po 16 stanów i 4 przedmioty, bez innych zmian.
+
+**Stare światy.** Zmienia się tylko dekoracja nowych chunków buczyny, jej pasa przejścia i zasięgu koron. Zapisane chunki zostają bez migracji, więc na granicy starych i nowych chunków drzewa M2 buczyny mogą stać obok drzew planera. Teren się nie zmienia.
+
+**Symulacja karty** (`-PcalibrateSlice -PcalibrateOnly=lowland_beech_forest:natural,lowland_beech_forest:managed`, 49 próbek na wiersz):
+
+- *N1, las naturalny:* drągowina 12,0, dojrzały i starodrzew 7,0 (norma 6–12).
+- *N1, las gospodarczy:* 14,3 / 9,9 / 7,9 (normy 12–15 / 9–12 / 7–10).
+- *N3:* buk 79–89%.
+- *N4:* 86–95%.
+- *N10, las naturalny:* 2,0 obiektu na chunk, 141–153 m³/ha (2 z 49 próbek poza tolerancją).
+- *N10, las gospodarczy:* 0,25 kawałka i 1,5 pniaka na chunk; objętość 7,7–8,8 m³/ha w drągowinie i drzewostanie dojrzałym oraz 22,4 m³/ha w starodrzewie, wobec 10–17. Do sprawdzenia w grze w etapie 2; jeśli się potwierdzi, odstępstwo do CP-D.
+
+**Testy (etap 1).**
+
+- Kompilacja `main`, `test`, `gametest`.
+- `tools/dev/run-tests --reuse fastTest`.
+- Klasy zmian: `ForestBlendTest`, `StandMapTest`, `SliceStandTest`, `GroundLayerPlanTest`, `DeadwoodPlanTest`, `RegistrySnapshotTest`, `EcotoneSharpnessTest`, `EcotoneTest`, `PlannerPalettesTest`, `SliceEqualityTest`, `ForestNormsTest`, `ForestCensusTest`, `SlicePlotsTest`, `GroundPhasesTest`, `BiomeJsonTest`.
+- Wyniki w „Stan po F1”, przebiegi gry według `python tools/dev/test_plan.py c33a916`.
 
 ## Do kroku porządkowego (lista drobiazgów z recenzji)
 

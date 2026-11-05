@@ -154,6 +154,29 @@ class GroundPhasesTest {
 		}
 	}
 
+	/**
+	 * Step F1, the herbs of the beech forest: sweet woodruff white in May, leaves in summer, gone in winter; hairy wood-rush
+	 * and wood sorrel evergreen, flowering in late spring; coralroot a spring geophyte, in flower in early May, gone in
+	 * summer and before mid-April.
+	 */
+	@Test
+	void herbsOfTheBeechForestOfStepF1() {
+		assertEquals(1.0, shares(GroundPlant.SWEET_WOODRUFF, step(SubSeason.LATE_SPRING, 1)).get(Look.FULL), 1e-9, "woodruff in May");
+		assertEquals(1.0, shares(GroundPlant.SWEET_WOODRUFF, step(SubSeason.MID_SUMMER, 1)).get(Look.LEAVES), 1e-9, "woodruff in July");
+		assertEquals(1.0, shares(GroundPlant.SWEET_WOODRUFF, step(SubSeason.EARLY_WINTER, 1)).get(Look.NONE), 1e-9, "woodruff in XII");
+		assertEquals(1.0, shares(GroundPlant.SWEET_WOODRUFF, step(SubSeason.EARLY_SPRING, 0)).get(Look.NONE), 1e-9, "woodruff in III");
+		for (GroundPlant evergreen : new GroundPlant[] {GroundPlant.HAIRY_WOOD_RUSH, GroundPlant.WOOD_SORREL}) {
+			assertEquals(1.0, shares(evergreen, step(SubSeason.LATE_SPRING, 0)).get(Look.FULL), 1e-9, evergreen + " in May");
+			assertEquals(1.0, shares(evergreen, step(SubSeason.MID_WINTER, 1)).get(Look.LEAVES), 1e-9, evergreen + " in winter");
+			for (int step = 0; step < SeasonPhase.STEPS; step++) {
+				assertEquals(0.0, shares(evergreen, step).get(Look.NONE), 1e-9, evergreen + " step " + step);
+			}
+		}
+		assertEquals(1.0, shares(GroundPlant.CORALROOT, step(SubSeason.LATE_SPRING, 0)).get(Look.FULL), 1e-9, "coralroot in May");
+		assertEquals(1.0, shares(GroundPlant.CORALROOT, step(SubSeason.MID_SUMMER, 1)).get(Look.NONE), 1e-9, "coralroot in July");
+		assertEquals(1.0, shares(GroundPlant.CORALROOT, step(SubSeason.EARLY_SPRING, 2)).get(Look.NONE), 1e-9, "coralroot in March");
+	}
+
 	@Test
 	void shiftsAreSpreadEvenly() {
 		Map<Double, Integer> counts = new java.util.TreeMap<>();

@@ -15,6 +15,7 @@ import net.minecraft.commands.CommandSource;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.QuartPos;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
@@ -277,6 +278,14 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 	private static final double SLICE_N1_LOW = 6.4;
 	private static final double SLICE_N1_HIGH = 19.2;
 	private static final int SLICE_MIN_COLUMNS = 2048;
+	/**
+	 * Step F1 (KF-1): a column deep in a forest of the planner holds the forest's whole share of the blend field
+	 * ({@code ForestBlend.Field}, at least {@value #DEEP_SHARE}: no belt of a neighbor reaches it); deep columns must have
+	 * no trunk of vanilla logs, and their planner trunks per chunk lie within the N1 envelope (from
+	 * {@value #DEEP_MIN_COLUMNS} deep columns).
+	 */
+	private static final float DEEP_SHARE = 0.999F;
+	private static final int DEEP_MIN_COLUMNS = 1024;
 
 	/**
 	 * Census of the tree stand: 5 × 5 full chunks around each census site and the first three places of the biome
@@ -296,6 +305,12 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 		long[] trunks = new long[n];
 		long[] sliceColumns = new long[n];
 		long[] sliceTrunks = new long[n];
+		long[] deepColumns = new long[n];
+		long[] deepTrunks = new long[n];
+		long[] deepVanilla = new long[n];
+		ForestBlend blend = gen.forestBlend(seed);
+		List<HabitatBiome> plannerForests = List.of(ForestBlend.FORESTS);
+		float[] shares = new float[ForestBlend.FORESTS.length + 1];
 		long grassBeach = 0;
 		long beachColumns = 0;
 		long sandForest = 0;
@@ -312,6 +327,7 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 			}
 			ChunkSurface[][] plans = new ChunkSurface[5][5];
 			int[][][] planCodes = new int[5][5][256];
+			ForestBlend.Field[][] fields = new ForestBlend.Field[5][5];
 			for (int cx = 0; cx < 5; cx++) {
 				for (int cz = 0; cz < 5; cz++) {
 					plans[cx][cz] = gen.surface(new net.minecraft.world.level.ChunkPos(cx0 + cx, cz0 + cz), level.getMinY(),
@@ -333,6 +349,19 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 					if (SLICE_FORESTS.contains(b)) {
 						sliceColumns[b.ordinal()]++;
 						sliceTrunks[b.ordinal()] += trunk ? 1 : 0;
+						ForestBlend.Field field = fields[(x >> 4) - cx0][(z >> 4) - cz0];
+						if (field == null) {
+							field = blend.field(x >> 4, z >> 4);
+							fields[(x >> 4) - cx0][(z >> 4) - cz0] = field;
+						}
+						field.at(x, z, shares);
+						if (shares[plannerForests.indexOf(b)] >= DEEP_SHARE) {
+							boolean vanilla = trunk && !BuiltInRegistries.BLOCK.getKey(level.getBlockState(new BlockPos(x, top + 1, z))
+									.getBlock()).getNamespace().equals(PolishForests.MOD_ID);
+							deepColumns[b.ordinal()]++;
+							deepTrunks[b.ordinal()] += trunk && !vanilla ? 1 : 0;
+							deepVanilla[b.ordinal()] += vanilla ? 1 : 0;
+						}
 					} else {
 						expected[b.ordinal()] += stand.treesPerChunk(code) / 256.0;
 						trunks[b.ordinal()] += trunk ? 1 : 0;
@@ -377,6 +406,22 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 			if (columns >= SLICE_MIN_COLUMNS && (perChunk < SLICE_N1_LOW || perChunk > SLICE_N1_HIGH)) {
 				failures.add(String.format(Locale.ROOT, "%s %.1f trunks per chunk outside the N1 envelope %.1f-%.1f", b.id(), perChunk,
 						SLICE_N1_LOW, SLICE_N1_HIGH));
+			}
+		}
+		report.append(" KF-1 deep in the forests of the planner (planner trunks per chunk, vanilla log trunks):");
+		for (HabitatBiome b : ForestBlend.FORESTS) {
+			long columns = deepColumns[b.ordinal()];
+			if (columns == 0) {
+				continue;
+			}
+			double perChunk = 256.0 * deepTrunks[b.ordinal()] / columns;
+			report.append(String.format(Locale.ROOT, " %s %.1f, %d (%d columns);", b.id(), perChunk, deepVanilla[b.ordinal()], columns));
+			if (deepVanilla[b.ordinal()] > 0) {
+				failures.add(String.format(Locale.ROOT, "%s %d vanilla log trunks deep in the forest (KF-1)", b.id(), deepVanilla[b.ordinal()]));
+			}
+			if (columns >= DEEP_MIN_COLUMNS && (perChunk < SLICE_N1_LOW || perChunk > SLICE_N1_HIGH)) {
+				failures.add(String.format(Locale.ROOT, "%s %.1f planner trunks per chunk deep in the forest outside the N1 envelope "
+						+ "(KF-1)", b.id(), perChunk));
 			}
 		}
 		if (!failures.isEmpty()) {

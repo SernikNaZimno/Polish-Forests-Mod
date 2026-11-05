@@ -159,14 +159,34 @@
       "biomes": [
         "lowland_beech_forest"
       ],
-      "coverage": 0.001953125,
+      "coverage": 0.012890625,
       "plants": [
         {
-          "feature": "polishforests:deadwood_substitute/beech",
-          "weight": 9
+          "feature": "polishforests:deadwood/beech",
+          "weight": 16
         },
         {
-          "feature": "polishforests:deadwood_substitute/oak",
+          "feature": "polishforests:deadwood/oak",
+          "weight": 2
+        },
+        {
+          "feature": "polishforests:deadwood/ash",
+          "weight": 1
+        },
+        {
+          "feature": "polishforests:deadwood/norway_maple",
+          "weight": 1
+        },
+        {
+          "feature": "polishforests:stump/beech",
+          "weight": 14
+        },
+        {
+          "feature": "polishforests:stump/oak",
+          "weight": 2
+        },
+        {
+          "feature": "polishforests:stump/ash",
           "weight": 1
         }
       ]

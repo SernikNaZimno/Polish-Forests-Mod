@@ -338,7 +338,8 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 							last = shot(context, sp, c, prefix + "_" + c.name(), last);
 						}
 					}
-					// The sample plots of the norms card by stand (step V9): natural and managed stands of both forests.
+					// The sample plots of the norms card by stand (step V9): natural and managed stands of the slice forests (step F1:
+					// and of the lowland beech forest).
 					if (names.isEmpty() || names.contains("plots")) {
 						for (SlicePlots.Plot plot : SlicePlots.of(real)) {
 							NormsCensus.Context ctx = new NormsCensus.Context(scale, mode, plot.name(), season, aspect);

@@ -128,12 +128,14 @@ public final class ForestCensus {
 	public static final Set<String> BILBERRY_PLANTS = Set.of("minecraft:bush", "polishforests:bilberry");
 	/** The herb layer of step V12 (own blocks, decision PW-6). */
 	public static final Set<String> OWN_HERB_PLANTS = Set.of("polishforests:bilberry", "polishforests:wood_anemone",
-			"polishforests:hepatica", "polishforests:bracken");
+			"polishforests:hepatica", "polishforests:bracken", "polishforests:sweet_woodruff", "polishforests:hairy_wood_rush",
+			"polishforests:wood_sorrel", "polishforests:coralroot");
 	/**
 	 * Spring geophytes: part of the herb layer in spring only (the client shows nothing from early summer, PW-8 (a), N12);
-	 * liverleaf keeps its leaves all year.
+	 * liverleaf keeps its leaves all year. Step F1: the coralroot (gone from mid-June); the sweet woodruff keeps its leaves
+	 * through the summer, the hairy wood-rush and the wood sorrel all year.
 	 */
-	public static final Set<String> SPRING_GEOPHYTES = Set.of("polishforests:wood_anemone");
+	public static final Set<String> SPRING_GEOPHYTES = Set.of("polishforests:wood_anemone", "polishforests:coralroot");
 	/** Needle litter (step V12): neither herb layer nor leaf litter (the leaf litter is the indicator of the transect). */
 	public static final Set<String> NEEDLE_LITTER_PLANTS = Set.of("polishforests:needle_litter");
 	/** Mosses and lichens (layer d) standing on the ground. */

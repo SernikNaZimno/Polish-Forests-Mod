@@ -126,9 +126,11 @@ public record TreePalette(List<Rule> rules) {
 	 *                        old growth)
 	 * @param naturalChance   the same in a natural stand
 	 * @param gapChance       chance in a canopy gap
+	 * @param subcanopyChance factor on the chance of a candidate of the subcanopy (step F1: a weak a2 layer, the lowland
+	 *                        beech forest; 1, the default, leaves the field out of the JSON)
 	 */
 	public record Stand(List<Entry> managedCanopy, List<Entry> subcanopy, List<Entry> regeneration, List<Entry> gapRegeneration,
-			List<Float> managedChance, List<Float> naturalChance, float gapChance) {
+			List<Float> managedChance, List<Float> naturalChance, float gapChance, float subcanopyChance) {
 		private static final Codec<List<Float>> CHANCES = Codec.floatRange(0, 1).listOf(3, 3);
 		public static final Codec<Stand> CODEC = RecordCodecBuilder.create(i -> i.group(
 				Entry.CODEC.listOf().optionalFieldOf("managed_canopy", List.of()).forGetter(Stand::managedCanopy),
@@ -137,7 +139,8 @@ public record TreePalette(List<Rule> rules) {
 				Entry.CODEC.listOf().fieldOf("gap_regeneration").forGetter(Stand::gapRegeneration),
 				CHANCES.fieldOf("managed_chance").forGetter(Stand::managedChance),
 				CHANCES.fieldOf("natural_chance").forGetter(Stand::naturalChance),
-				Codec.floatRange(0, 1).fieldOf("gap_chance").forGetter(Stand::gapChance)
+				Codec.floatRange(0, 1).fieldOf("gap_chance").forGetter(Stand::gapChance),
+				Codec.floatRange(0, 1).optionalFieldOf("subcanopy_chance", 1.0F).forGetter(Stand::subcanopyChance)
 		).apply(i, Stand::new));
 	}
 

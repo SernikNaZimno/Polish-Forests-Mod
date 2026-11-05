@@ -122,13 +122,24 @@ public final class TreeStandPlan {
 	 * @param managed         chance by age class ({@link AgeClass} ordinal) in a managed stand
 	 * @param natural         chance by age class in a natural stand
 	 * @param gap             chance in a canopy gap
+	 * @param subcanopyFactor factor on the chance of a candidate of the subcanopy (step F1: a weak a2 layer; 1 for the
+	 *                        forests of the slice)
 	 */
 	public record Layers(@Nullable Rule managedCanopy, Rule subcanopy, Rule regeneration, Rule gapRegeneration, double[] managed,
-			double[] natural, double gap) {
+			double[] natural, double gap, double subcanopyFactor) {
 		public Layers {
 			if (managed.length != 3 || natural.length != 3) {
 				throw new IllegalArgumentException("one chance per age class");
 			}
+			if (!(subcanopyFactor >= 0 && subcanopyFactor <= 1)) {
+				throw new IllegalArgumentException("subcanopy factor " + subcanopyFactor);
+			}
+		}
+
+		/** Layers with the full chance of the subcanopy. */
+		public Layers(@Nullable Rule managedCanopy, Rule subcanopy, Rule regeneration, Rule gapRegeneration, double[] managed,
+				double[] natural, double gap) {
+			this(managedCanopy, subcanopy, regeneration, gapRegeneration, managed, natural, gap, 1);
 		}
 
 		/** Chance of a candidate of a stand (or in a canopy gap) to grow a tree. */
@@ -410,10 +421,14 @@ public final class TreeStandPlan {
 			boolean natural = site != null ? site.natural() : stand.map() != null && stand.map().natural(x, z);
 			AgeClass age = site != null ? site.age() : stand.map() != null ? stand.map().ageClass(x, z) : AgeClass.MATURE;
 			boolean gap = site != null && site.gap();
-			if (pattern.rank(gx, gz, h) >= layers.chance(natural, age, gap)) {
+			CrownLayer layer = site == null ? CrownLayer.CANOPY : site.layer();
+			double chance = layers.chance(natural, age, gap);
+			if (layer == CrownLayer.SUBCANOPY && layers.subcanopyFactor() != 1) {
+				chance *= layers.subcanopyFactor();
+			}
+			if (pattern.rank(gx, gz, h) >= chance) {
 				return -1;
 			}
-			CrownLayer layer = site == null ? CrownLayer.CANOPY : site.layer();
 			list = switch (layer) {
 				case CANOPY -> natural || layers.managedCanopy() == null ? rule : layers.managedCanopy();
 				case SUBCANOPY -> layers.subcanopy();

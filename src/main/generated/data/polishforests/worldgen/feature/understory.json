@@ -70,8 +70,26 @@
     },
     {
       "biomes": [
+        "lowland_beech_forest"
+      ],
+      "coverage": 0.2,
+      "edges": [
+        "mantle"
+      ],
+      "plants": [
+        {
+          "feature": "polishforests:shrub/hazel_mantle_thin",
+          "weight": 1
+        },
+        {
+          "feature": "polishforests:shrub/hazel_thin",
+          "weight": 2
+        }
+      ]
+    },
+    {
+      "biomes": [
         "elm_ash_forest",
-        "lowland_beech_forest",
         "upland_fir_forest",
         "montane_beech_forest"
       ],

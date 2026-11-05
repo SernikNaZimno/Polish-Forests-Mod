@@ -32,6 +32,13 @@ import pl.polishforests.worldgen.landscape.Noise;
  * hold; {@code StandCensusSimulationTest} reports the census of the gaps (N5 of the norms card). Gaps are tree-sized,
  * so they keep their size in blocks in both scales, like the trees (PW-12).
  *
+ * <p><b>Profiles by forest</b> (step F1): the shares, the stand size, the gaps and the regeneration nests of managed
+ * stands come from a {@link StandProfile} by forest, read from a pure function of the world ({@link StandProfile.Field}):
+ * a stand takes the profile at its site point (only when some profile differs from the default in its stands), a gap or
+ * a nest the profile at its center (only when the cell's presence draw is below the highest chance of any profile). The
+ * default profile is the stand map of the build before F1, so the stands of the slice forests do not change away from
+ * the forests with their own profile. The constants below are those of the default profile.
+ *
  * <p>Salts (rule ZW-2): {@value #CELLS_SALT} (sites, weights, meander, ramp), {@value #AGE_SALT}, {@value #NATURAL_SALT}
  * and {@value #GAP_SALT} (the regular gap grid of V9 under {@code feature.stand.canopy_gaps} is gone; its salt is not
  * reused). Thread-safe; the only state is the cache of {@link #stand} (step O1), which never changes an answer.
@@ -60,12 +67,12 @@ public final class ForestStandMap implements StandMap {
 	public static final double RAMP_MAX = 6;
 	public static final double RAMP_LEAST = 1.5;
 	/** Shares of the age classes (pole stage, mature, old growth) of managed and natural stands [S]. */
-	static final double[] MANAGED_AGES = {0.20, 0.58, 0.22};
-	static final double[] NATURAL_AGES = {0.10, 0.35, 0.55};
+	static final double[] MANAGED_AGES = StandProfile.DEFAULT.managedAges();
+	static final double[] NATURAL_AGES = StandProfile.DEFAULT.naturalAges();
 	/** Side of a gap cell (blocks, 1:1 in both scales). */
 	public static final int GAP_CELL = 64;
 	/** Chance of a gap in a cell by the age class of the column (pole stage, mature, old growth) [S]. */
-	static final double[] GAP_CHANCE = {0.09, 0.32, 0.36};
+	static final double[] GAP_CHANCE = StandProfile.DEFAULT.gapChance();
 	/** Chance of a second, smaller gap next to the first (a cluster). */
 	public static final double CLUSTER_CHANCE = 0.4;
 	/** Planned gap diameters (blocks): log-normal median and spread, bounds. */
@@ -111,6 +118,24 @@ public final class ForestStandMap implements StandMap {
 	 * @param managedShare share of managed forests (D9), 0–1
 	 */
 	public ForestStandMap(long worldSeed, double k, double managedShare) {
+		this(worldSeed, k, managedShare, StandProfile.Field.uniform(StandProfile.DEFAULT));
+	}
+
+	/**
+	 * @param worldSeed    the world seed
+	 * @param k            the scale's k ({@code LandscapeScale#local}: 1 realistic, 0.5 gameplay)
+	 * @param managedShare share of managed forests (D9), 0–1
+	 * @param profiles     the stand profile of a world column (step F1; a pure function of the world)
+	 */
+	public ForestStandMap(long worldSeed, double k, double managedShare, StandProfile.Field profiles) {
+		this.profiles = profiles;
+		this.standsVary = java.util.Arrays.stream(StandProfile.ALL).anyMatch(StandProfile::standsDiffer);
+		for (int a = 0; a < 3; a++) {
+			for (StandProfile p : StandProfile.ALL) {
+				gapChanceMax[a] = Math.max(gapChanceMax[a], p.gapChance()[a]);
+				nestChanceMax[a] = Math.max(nestChanceMax[a], p.nestChance()[a]);
+			}
+		}
 		Noise root = new Noise(worldSeed);
 		this.cells = root.derive(CELLS_SALT);
 		this.ages = root.derive(AGE_SALT);
@@ -125,6 +150,39 @@ public final class ForestStandMap implements StandMap {
 
 	private final long worldSeed;
 	private final double managedShare;
+	private final StandProfile.Field profiles;
+	/** Whether some profile differs from the default in its stands (else a stand needs no profile lookup). */
+	private final boolean standsVary;
+	/** Highest gap and nest chance by age class over all profiles (below it a cell looks its profile up). */
+	private final double[] gapChanceMax = new double[3];
+	private final double[] nestChanceMax = new double[3];
+	private static final int PROFILE_CACHE_BITS = 12;
+	/** Profiles of the gap cells and of the stand sites (direct-mapped, immutable entries, as {@link #stand}). */
+	private final ProfileEntry[] profileCache = new ProfileEntry[1 << PROFILE_CACHE_BITS];
+
+	private record ProfileEntry(long key, StandProfile profile) {
+	}
+
+	/** The profile of gap cell (i, j) (kind 0, at its center cx, cz) or of stand site (i, j) (kind 1), memoized. */
+	private StandProfile profile(int kind, int i, int j, double px, double pz) {
+		long key = ((long) i << 32 | j & 0xFFFF_FFFFL) ^ (kind == 0 ? 0 : 0x5DEE_CE66_D1CE_4E5BL);
+		int slot = (int) (Noise.mix(key) >>> (64 - PROFILE_CACHE_BITS));
+		ProfileEntry e = profileCache[slot];
+		if (e != null && e.key() == key) {
+			return e.profile();
+		}
+		StandProfile p = profiles.at((int) Math.floor(px), (int) Math.floor(pz));
+		profileCache[slot] = new ProfileEntry(key, p);
+		return p;
+	}
+
+	/** The profile of the stand whose own site is grid cell (i, j) (the profile at its site point). */
+	public StandProfile siteProfile(int i, int j) {
+		if (!standsVary) {
+			return StandProfile.DEFAULT;
+		}
+		return profile(1, i, j, (i + cells.unit(i, j, SITE_X)) * spacing, (j + cells.unit(i, j, SITE_Z)) * spacing);
+	}
 
 	/** Whether this map is the one of a world seed, scale and managed share. */
 	public boolean matches(long worldSeed, double k, double managedShare) {
@@ -159,10 +217,17 @@ public final class ForestStandMap implements StandMap {
 		return gapDepth(x, z) > 0;
 	}
 
+	/**
+	 * Depth of column (x, z) inside a canopy gap of its natural stand or a regeneration nest of its managed stand (step
+	 * F1; blocks, positive inside; a managed stand without a nest there: 0).
+	 */
 	@Override
 	public double gapDepth(int x, int z) {
 		Stand stand = stand(x, z);
-		return stand.natural() ? rawGapDepth(x, z, stand.age()) : 0;
+		if (stand.natural()) {
+			return rawGapDepth(x, z, stand.age());
+		}
+		return nestChanceMax[stand.age().ordinal()] > 0 ? Math.max(0, rawDepth(x, z, stand.age(), false, null)) : 0;
 	}
 
 	/**
@@ -278,10 +343,11 @@ public final class ForestStandMap implements StandMap {
 	public Stand site(int i, int j) {
 		for (int step = 0; step < MERGE_STEPS; step++) {
 			double u = cells.unit(i, j, MERGE);
-			if (u >= MERGE_CHANCE) {
+			double merge = siteProfile(i, j).mergeChance();
+			if (u >= merge) {
 				break;
 			}
-			if (u < MERGE_CHANCE / 2) {
+			if (u < merge / 2) {
 				i++;
 			} else {
 				j++;
@@ -292,8 +358,9 @@ public final class ForestStandMap implements StandMap {
 
 	/** The stand whose own site is grid cell (i, j). */
 	public Stand root(int i, int j) {
-		boolean natural = naturals.unit(i, j, 1) < naturalShare;
-		double[] shares = natural ? NATURAL_AGES : MANAGED_AGES;
+		StandProfile p = siteProfile(i, j);
+		boolean natural = naturals.unit(i, j, 1) < (p.naturalFactor() == 1 ? naturalShare : naturalShare * p.naturalFactor());
+		double[] shares = natural ? p.naturalAges() : p.managedAges();
 		double u = ages.unit(i, j, natural ? 2 : 1);
 		AgeClass age = u < shares[0] ? AgeClass.POLE_STAGE : u < shares[0] + shares[1] ? AgeClass.MATURE : AgeClass.OLD_GROWTH;
 		return new Stand(i, j, age, natural);
@@ -311,24 +378,36 @@ public final class ForestStandMap implements StandMap {
 	 * those of the old growth, so a gap is cut at a border of two age classes only where it loses its place.
 	 */
 	public double rawGapDepth(int x, int z, AgeClass age) {
+		return rawDepth(x, z, age, true, null);
+	}
+
+	/**
+	 * {@link #rawGapDepth} with one profile for all cells instead of the world's (the census simulation of a forest,
+	 * {@code StandCensusSimulationTest}); {@code natural} false: the regeneration nests of a managed stand.
+	 */
+	public double rawGapDepth(int x, int z, AgeClass age, boolean natural, StandProfile profile) {
+		return rawDepth(x, z, age, natural, profile);
+	}
+
+	private double rawDepth(int x, int z, AgeClass age, boolean natural, @org.jspecify.annotations.Nullable StandProfile fixed) {
 		int gx = Math.floorDiv(x, GAP_CELL);
 		int gz = Math.floorDiv(z, GAP_CELL);
-		double chance = GAP_CHANCE[age.ordinal()];
 		double depth = -Double.MAX_VALUE;
 		for (int i = gx - 1; i <= gx + 1; i++) {
 			for (int j = gz - 1; j <= gz + 1; j++) {
-				depth = Math.max(depth, gapDepthOf(i, j, x, z, chance));
+				depth = Math.max(depth, gapDepthOf(i, j, x, z, age.ordinal(), natural, fixed));
 			}
 		}
 		return depth;
 	}
 
 	/**
-	 * Depth of column (x, z) inside the gaps of gap cell (i, j) when a cell holds a gap with the chance {@code chance}
-	 * ({@code -Double.MAX_VALUE} without a gap or far).
+	 * Depth of column (x, z) inside the gaps of gap cell (i, j) (natural) or its nest (managed) for age class a, with
+	 * the profile of the cell's center or a fixed one ({@code -Double.MAX_VALUE} without a gap or far).
 	 */
-	double gapDepthOf(int i, int j, int x, int z, double chance) {
-		if (gaps.unit(i, j, GAP_PRESENT) >= chance) {
+	double gapDepthOf(int i, int j, int x, int z, int a, boolean natural, @org.jspecify.annotations.Nullable StandProfile fixed) {
+		double present = gaps.unit(i, j, GAP_PRESENT);
+		if (present >= (fixed != null ? chance(fixed, natural, a) : natural ? gapChanceMax[a] : nestChanceMax[a])) {
 			return -Double.MAX_VALUE;
 		}
 		double cx = (i + gaps.unit(i, j, GAP_X)) * GAP_CELL;
@@ -338,11 +417,16 @@ public final class ForestStandMap implements StandMap {
 		if (dx * dx + dz * dz > GAP_REACH * GAP_REACH) {
 			return -Double.MAX_VALUE;
 		}
-		double first = diameter(gaps.unit(i, j, GAP_SIZE));
+		StandProfile p = fixed != null ? fixed : profile(0, i, j, cx, cz);
+		if (present >= chance(p, natural, a)) {
+			return -Double.MAX_VALUE;
+		}
+		double median = natural ? p.gapMedian() : p.nestMedian();
+		double first = diameter(p, median, gaps.unit(i, j, GAP_SIZE));
 		double depth = ellipse(i, j, 0, dx, dz, first / 2);
-		if (gaps.unit(i, j, GAP_SECOND) < CLUSTER_CHANCE) {
+		if (gaps.unit(i, j, GAP_SECOND) < p.clusterChance()) {
 			// A smaller gap next to the first one: its center near the first one's outline, so the two touch or overlap.
-			double second = Math.min(first, diameter(0.5 * gaps.unit(i, j, GAP_SECOND_SIZE)));
+			double second = Math.min(first, diameter(p, median, 0.5 * gaps.unit(i, j, GAP_SECOND_SIZE)));
 			double angle = 2 * Math.PI * gaps.unit(i, j, GAP_SECOND_PLACE);
 			double off = 0.5 * (first + second) * 0.75;
 			depth = Math.max(depth, ellipse(i, j, 1, dx - off * Math.cos(angle), dz - off * Math.sin(angle), second / 2));
@@ -350,10 +434,19 @@ public final class ForestStandMap implements StandMap {
 		return depth;
 	}
 
-	/** A planned gap diameter from a uniform number: log-normal, bounded. */
+	private static double chance(StandProfile p, boolean natural, int a) {
+		return natural ? p.gapChance()[a] : p.nestChance()[a];
+	}
+
+	/** A planned gap diameter from a uniform number: log-normal, bounded (the default profile). */
 	static double diameter(double u) {
+		return diameter(StandProfile.DEFAULT, GAP_MEDIAN, u);
+	}
+
+	/** A planned gap or nest diameter of a profile from a uniform number: log-normal around {@code median}, bounded. */
+	static double diameter(StandProfile p, double median, double u) {
 		double n = inverseNormal(Math.clamp(u, 1e-6, 1 - 1e-6));
-		return Math.clamp(GAP_MEDIAN * Math.exp(GAP_SIGMA * n), GAP_MIN, GAP_MAX);
+		return Math.clamp(median * Math.exp(p.gapSigma() * n), p.gapMin(), p.gapMax());
 	}
 
 	/** Depth inside an elongated, wavy gap of mean radius {@code radius} at the offset (dx, dz) from its center. */

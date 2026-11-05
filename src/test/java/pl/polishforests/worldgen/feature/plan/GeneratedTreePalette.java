@@ -33,7 +33,8 @@ final class GeneratedTreePalette {
 						s.has("managed_canopy") ? rule(match, perChunk, s.getAsJsonArray("managed_canopy")) : null,
 						rule(match, perChunk, s.getAsJsonArray("subcanopy")), rule(match, perChunk, s.getAsJsonArray("regeneration")),
 						rule(match, perChunk, s.getAsJsonArray("gap_regeneration")), chances(s.getAsJsonArray("managed_chance")),
-						chances(s.getAsJsonArray("natural_chance")), s.get("gap_chance").getAsFloat()));
+						chances(s.getAsJsonArray("natural_chance")), s.get("gap_chance").getAsFloat(),
+						s.has("subcanopy_chance") ? s.get("subcanopy_chance").getAsFloat() : 1));
 			}
 			rules.add(rule);
 		}

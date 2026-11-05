@@ -899,3 +899,24 @@ Plan: `docs/04-pionowy-wycinek.md` §3 „Kroki F” (spis typów lasów, zestaw
 | F-i | Jarząb | Od F6 jarząb planera zastępuje cienki zastępnik `rowan_thin` (pień buka) we wszystkich lasach, także w lasach wycinka; karta wycinka sprawdzana ponownie |
 | F-j | Kosodrzewina | F6 robi krzew planera i biom kosodrzewiny Beskidów (dziś prawie nieobecny w spisie), Tatry (TT) biorą go gotowy |
 | F-k | Runo | Nowe rośliny w rodzinach `GroundPlant` (V12) z fazami V13, domyślnie 3–7 na krok (spis w opisie kroku); bloki wanilii zostają tam, gdzie pasują (paproć, trawa, ściółka liściowa), z odwołaniem po id; chrobotek i wrzos zastępują `pale_moss_carpet` i `pink_petals` w borach i na wrzosowisku (F4) |
+
+### G.42 Drobne wybory kroku F1 (domyślne, do potwierdzenia przy CP-D; 2026-11-05)
+
+Krok: `docs/04-pionowy-wycinek.md` „Projekt F1”; plan kroków F w G.41.
+
+| # | Wybór | Wartość i powód |
+|---|---|---|
+| F1-a | Parametry wydzieleń według lasu | Rekord `tree/StandProfile` (udział naturalny, klasy wieku, łączenie komórek, luki, gniazda); profil wydzielenia z punktu jego siatki, luki i gniazda z jego środka (pole `ForestBlend.forestAt`). Mapa wydzieleń zostaje wolna od siedlisk (ZW-2), a lasy wycinka mają profil `DEFAULT` = stałe sprzed F1 |
+| F1-b | Profil buczyny | Luki lasu naturalnego 0,12 / 0,42 / 0,50 według klasy wieku (wycinek 0,09 / 0,32 / 0,36), skupisko 0,5, 10–40 m, mediana 20 m; gniazda lasu gospodarczego 0 / 0,16 / 0,30, mediana 24 m; udział naturalny, klasy wieku i wielkość wydzieleń jak w wycinku [S]. Buczyna naturalna ma więcej luk po pojedynczych drzewach i grupach; gospodarcza to rębnia gniazdowa |
+| F1-c | Szanse drzew buczyny | Gospodarcza 0,90 / 0,72 / 0,62, naturalna 0,95 we wszystkich klasach, luki 0,8. Nie wyżej niż najwyższe szanse lasów wycinka: `TreeStandPlan.surelyTreeless` nie zna siedliska, więc wyższa szansa przestawiłaby znaczniki koron w lasach wycinka (test równości) |
+| F1-d | Słabe a2 | Nowe pole palety `subcanopy_chance` 0,35 (mnożnik szansy drzewa podokapu; domyślnie 1, pomijane w JSON) |
+| F1-e | Przejścia buczyny | Mieszanie palet `ForestBlend` z grądem, LMśw i BMśw (wspólne siedliska żyzne i średnio żyzne); z Bśw i z innymi lasami rampa `Ecotone` |
+| F1-f | N1 buczyny | Naturalna 6–12, gospodarcza 7–15, według wieku 12–15 / 9–12 / 7–10 (stare buki stoją rzadko: 200–350 drzew/ha ≥ 7 cm) [S]. W symulacji naturalna dojrzała i stara 7,0, gospodarcza 14,3 / 9,9 / 7,9 |
+| F1-g | N8 według formy | Kwalifikator `ForestNorms.Site` (żyzna wiosną 20–70%, kwaśna 5–40%) po typie siedliskowym kolumny środka powierzchni; powierzchnia nieznanej formy: 5–70% [S] |
+| F1-h | Martwe drewno buczyny | 1,8 martwego drzewa na chunk lasu naturalnego (w symulacji 2,0 obiektu, 141–153 m³/ha); `deadwood/beech` buk 16 : dąb 2 : jesion 1 : klon 1, pniaki buk 0,85, dąb 0,1, jesion 0,05; wspólne 1,5 pniaka na chunk lasu gospodarczego |
+| F1-i | Nowe rośliny runa | Marzanka wonna, kosmatka owłosiona, szczawik zajęczy, żywiec cebulkowy (4, rodzina `GroundPlant` SEASONAL); kosmatka i szczawik zimozielone, żywiec geofit wiosenny (kwitnie koniec IV – połowa V, znika od połowy VI); marzanka kwitnie V, znika od końca X |
+| F1-j | Palety runa | Płaty BLOBS 0,97, płat 5; kwaśna: ściółka 64, kosmatka 10, szczawik 5, borówka 6, paproć 2, trawa 3, mech rozproszony 7; żyzna: ściółka 62, marzanka 12, zawilec 8, żywiec 4, szczawik 6, paproć 2, mech 3 [S] |
+| F1-k | Cienki jarząb | Test palet planera dopuszcza `tree_substitute/rowan_thin` (cienki jarząb wycinka na pniu buka) do F6 (G.41 F-i) |
+| F1-l | Powierzchnie próbne lasów F | Dwie naturalne i dwie gospodarcze na skalę, bez wymogu formy typowej (forma kwaśna buczyny to `ACIDOPHILOUS`), szukane wokół miejsc lasu najbliższych pierścieniom punktów startu (REAL 30 pierścieni co 1,5 km: buczyna naturalna REAL leży dopiero ok. 12 i 42 km od środka); dopisane za powierzchniami wycinka |
+| F1-m | Głębia lasu KF-1 | `vanilla_forests`: ≥ 48 m·k od kolumny innego biomu (tablica sum na obszarze 8 × 8 chunków); `habitats`: udział własnego lasu w polu `ForestBlend` ≥ 0,999; próg N1 jak spis lasów wycinka 6,4–19,2 pni na chunk, od 1024 kolumn |
+| F1-n | Miejsce KF-6 | Powierzchnia `lowland_beech_natural_1` obu skal jako stała `ForestPerformance.BEECH_SITE` (baza M2 nie ma tabeli powierzchni) |

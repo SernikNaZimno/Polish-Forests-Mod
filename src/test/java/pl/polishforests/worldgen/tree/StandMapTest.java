@@ -243,4 +243,55 @@ class StandMapTest {
 	private static double q(List<Double> sorted, double p) {
 		return sorted.get((int) Math.min(sorted.size() - 1, Math.floor(p * sorted.size())));
 	}
+
+	/**
+	 * Step F1: the stand profiles by forest. A map with the default profile everywhere is the map of the build before F1;
+	 * a map with the beech profile everywhere keeps the stands (the same natural share and ages) and has more and smaller
+	 * gaps in its natural stands and regeneration nests in its managed mature and old stands (none in the pole stage).
+	 */
+	@Test
+	void standProfilesOfStepF1() {
+		ForestStandMap plain = new ForestStandMap(SEED, 1, 0.85);
+		ForestStandMap uniform = new ForestStandMap(SEED, 1, 0.85, StandProfile.Field.uniform(StandProfile.DEFAULT));
+		ForestStandMap beech = new ForestStandMap(SEED, 1, 0.85, StandProfile.Field.uniform(StandProfile.BEECH));
+		int nests = 0;
+		int managedMature = 0;
+		int poleNests = 0;
+		for (int x = 0; x < 2_000; x += 3) {
+			for (int z = 0; z < 2_000; z += 5) {
+				assertEquals(plain.stand(x, z), uniform.stand(x, z));
+				assertEquals(plain.gapDepth(x, z), uniform.gapDepth(x, z));
+				assertEquals(plain.stand(x, z), beech.stand(x, z), "the beech profile keeps the stands");
+				ForestStandMap.Stand s = beech.stand(x, z);
+				if (!s.natural()) {
+					assertEquals(0.0, plain.gapDepth(x, z), "no gaps in the managed stands of the default profile");
+					boolean nest = beech.canopyGap(x, z);
+					if (s.age() == AgeClass.POLE_STAGE) {
+						poleNests += nest ? 1 : 0;
+					} else {
+						managedMature++;
+						nests += nest ? 1 : 0;
+					}
+				}
+			}
+		}
+		assertEquals(0, poleNests, "no nests in the pole stage");
+		double share = (double) nests / managedMature;
+		assertTrue(share > 0.01 && share < 0.12, "share of the managed mature and old beech stands in nests: " + share);
+		// Natural gaps: more of them, smaller.
+		int beechGaps = 0;
+		int defaultGaps = 0;
+		for (int x = 0; x < 3_000; x += 2) {
+			for (int z = 0; z < 1_000; z += 2) {
+				beechGaps += beech.rawGapDepth(x, z, AgeClass.OLD_GROWTH, true, StandProfile.BEECH) > 0 ? 1 : 0;
+				defaultGaps += plain.rawGapDepth(x, z, AgeClass.OLD_GROWTH) > 0 ? 1 : 0;
+			}
+		}
+		double beechShare = beechGaps / 750_000.0;
+		assertTrue(beechShare > 0.02 && beechShare < 0.15, "gap share of the old beech forest: " + beechShare);
+		assertTrue(defaultGaps > 0);
+		assertEquals(StandProfile.BEECH, StandProfile.of(pl.polishforests.worldgen.habitat.HabitatBiome.LOWLAND_BEECH_FOREST));
+		assertEquals(StandProfile.DEFAULT, StandProfile.of(pl.polishforests.worldgen.habitat.HabitatBiome.OAK_HORNBEAM_FOREST));
+		assertEquals(StandProfile.DEFAULT, StandProfile.of(null));
+	}
 }

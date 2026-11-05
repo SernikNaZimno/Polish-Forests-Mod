@@ -323,9 +323,9 @@ public final class Ecotone {
 	private static final int MATRIX = 256;
 
 	private static int pairInfo(int own, int other, Layer layer, double k, boolean blended) {
-		if (blended && layer != Layer.SOIL && ForestBlend.member(own) != ForestBlend.member(other) && ForestBlend.member(own) > 0
-				&& ForestBlend.member(other) > 0) {
-			// Two forests of the wide blend (step Z1): they mix in the blend's belt, not in this ramp.
+		if (blended && layer != Layer.SOIL && ForestBlend.blendsCodes(own, other)) {
+			// Two forests of the wide blend that blend with each other (steps Z1, F1): they mix in the blend's belt, not in
+			// this ramp (the other pairs of its forests, such as the beech and the fresh pine forest, keep the ramp).
 			return KNOWN;
 		}
 		return halfWidthBlocks(own, other, layer, k) | (sticky(own, other, layer) ? STICKY : 0)

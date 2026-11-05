@@ -344,10 +344,27 @@ final class NormsCensus {
 	 * (step V9; until V9 by the vegetation mode, decision V4-g).
 	 */
 	static Forest forest(String biome, boolean natural) {
-		return switch (biome) {
-			case "oak_hornbeam_forest" -> natural ? Forest.OAK_HORNBEAM_NATURAL : Forest.OAK_HORNBEAM_MANAGED;
-			case "fresh_pine_forest" -> natural ? Forest.FRESH_PINE_NATURAL : Forest.FRESH_PINE_MANAGED;
-			default -> throw new AssertionError("No column of the card for " + biome);
+		// Step F1: any forest of the card (ForestNorms.Forest names its biome and stand).
+		Forest f = Forest.of(pl.polishforests.worldgen.habitat.HabitatBiome.byId(biome), natural);
+		if (f == null) {
+			throw new AssertionError("No column of the card for " + biome);
+		}
+		return f;
+	}
+
+	/**
+	 * The site variant of a plot for the norms that differ by it (step F1: the fertile and the acid beech forest, N8): by
+	 * the forest site type of the habitat code at the plot's center (null: unknown, the norm without a site).
+	 */
+	static ForestNorms.@org.jspecify.annotations.Nullable Site site(ServerLevel level, int x, int z) {
+		if (!(level.getChunkSource().getGenerator() instanceof pl.polishforests.worldgen.chunk.PolandChunkGenerator gen)) {
+			return null;
+		}
+		int code = gen.classifier(level.getSeed()).classify(gen.model(level.getSeed()).sample(x, z), x, z);
+		return switch (pl.polishforests.worldgen.habitat.Habitat.siteType(code)) {
+			case FRESH_BROADLEAVED -> ForestNorms.Site.FERTILE;
+			case FRESH_MIXED_BROADLEAVED -> ForestNorms.Site.ACID;
+			default -> null;
 		};
 	}
 
@@ -399,6 +416,7 @@ final class NormsCensus {
 		// STAND_SHARE of the plot's forest columns (a natural stand has no stumps and about 8 times the dead trees of a managed
 		// one, so a mixed plot fits neither norm); the share is reported and a mixed plot's N10 rows are not judged.
 		double share = standShare(level, g, area, forest);
+		ForestNorms.Site site = forest.biome() == pl.polishforests.worldgen.habitat.HabitatBiome.LOWLAND_BEECH_FOREST ? site(level, x, z) : null;
 		boolean mixed = share < STAND_SHARE;
 		rows.add(row(c, forest, STAND_SHARE_METRIC, "", share, null, ForestNorms.Verdict.NONE));
 		PolishForests.LOG.info(String.format(Locale.ROOT, "[slice] %s: share of the plot's forest columns in the %s stand %.3f%s",
@@ -407,7 +425,7 @@ final class NormsCensus {
 		int tolerance = 0;
 		int out = 0;
 		for (Map.Entry<String, Double> e : values.entrySet()) {
-			Optional<Norm> norm = ForestNorms.of(e.getKey(), forest, c.aspect(), age);
+			Optional<Norm> norm = ForestNorms.of(e.getKey(), forest, c.aspect(), age, site);
 			ForestNorms.Verdict v = mixed && e.getKey().startsWith("N10.") ? ForestNorms.Verdict.NONE
 					: norm.map(n -> ForestNorms.verdict(e.getValue(), n)).orElse(ForestNorms.Verdict.NONE);
 			in += v == ForestNorms.Verdict.IN ? 1 : 0;
@@ -460,7 +478,7 @@ final class NormsCensus {
 		logBareArms(g, census, area, c.place());
 		List<String> outside = new ArrayList<>();
 		for (Map.Entry<String, Double> e : values.entrySet()) {
-			Optional<Norm> norm = ForestNorms.of(e.getKey(), forest, c.aspect(), age);
+			Optional<Norm> norm = ForestNorms.of(e.getKey(), forest, c.aspect(), age, site);
 			if (norm.isPresent() && ForestNorms.verdict(e.getValue(), norm.get()) == ForestNorms.Verdict.OUT) {
 				outside.add(e.getKey() + " " + ForestNorms.number(e.getValue()) + " (" + norm.get().range() + ")");
 			}
@@ -641,7 +659,7 @@ final class NormsCensus {
 			return 1;
 		}
 		pl.polishforests.worldgen.tree.ForestStandMap stands = poland.standMap(level.getSeed());
-		boolean natural = forest == Forest.OAK_HORNBEAM_NATURAL || forest == Forest.FRESH_PINE_NATURAL;
+		boolean natural = forest.natural();
 		int all = 0;
 		int same = 0;
 		for (int col = 0; col < area.length; col++) {
