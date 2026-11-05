@@ -215,7 +215,7 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 				for (int w = 0; w < WORLDS; w++) {
 					boolean fixedOrder = w < 2 || w == 4;
 					boolean reversed = w == 4;
-					Path deepFile = deepDir != null && (w == 2 || w == 3)
+					Path deepFile = deepDir != null && (w == 0 || w == 2 || w == 3)
 							? deepDir.resolve(label + "_full_" + fileKey + "_w" + (w + 1) + ".txt.gz") : null;
 					BufferedWriter full;
 					try {
@@ -458,7 +458,12 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 
 	/**
 	 * Runs the chunk's post-processing (the shape updates of its marked positions, as when it first ticks near a player) and
-	 * counts the blocks it changed by pair of states.
+	 * counts the blocks it changed by pair of states. Review of F1, round 2 (DP-129): as {@code LevelChunk#postProcessGeneration}
+	 * but without its fluid ticks. A marked fluid (an aquifer or a spring at a cave wall) would flow one step here, and with
+	 * the optimization pack the same step leaves air (45 of the 51 differing columns of the Beskids REAL area, all a single
+	 * flowing water or lava block); fluid flow is the work of the ticking world, which goes on after this, not of the
+	 * generation compared here. The marked positions are then cleared and the vanilla method runs for the rest (the pending
+	 * block entities).
 	 */
 	private static void postProcess(ServerLevel level, net.minecraft.world.level.chunk.LevelChunk chunk, Map<String, Integer> changed) {
 		Map<net.minecraft.core.BlockPos, BlockState> before = new HashMap<>();
@@ -472,6 +477,24 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 						chunk.getSectionYFromSectionIndex(s), chunk.getPos());
 				before.put(p, chunk.getBlockState(p));
 			}
+		}
+		for (int s = 0; s < lists.length; s++) {
+			if (lists[s] == null) {
+				continue;
+			}
+			for (short packed : lists[s]) {
+				net.minecraft.core.BlockPos p = net.minecraft.world.level.chunk.ProtoChunk.unpackOffsetCoordinates(packed,
+						chunk.getSectionYFromSectionIndex(s), chunk.getPos());
+				BlockState state = chunk.getBlockState(p);
+				if (state.getBlock() instanceof net.minecraft.world.level.block.LiquidBlock) {
+					continue;
+				}
+				BlockState updated = net.minecraft.world.level.block.Block.updateFromNeighbourShapes(state, level, p);
+				if (updated != state) {
+					level.setBlock(p, updated, 276);
+				}
+			}
+			lists[s].clear();
 		}
 		chunk.postProcessGeneration(level);
 		before.forEach((p, state) -> {

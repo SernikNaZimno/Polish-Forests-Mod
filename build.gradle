@@ -611,7 +611,8 @@ tasks.named('runClientGameTest') {
 	}
 	// Step L1: <label>_window_diff.txt lists the differing window blocks of the free and the reversed order by kind;
 	// -PdeterminismDeep also writes the full columns of the two free-order worlds (<label>_full_*_w3|w4.txt.gz) and reports
-	// the differing blocks under the window by pairs.
+	// the differing blocks under the window by pairs; with it world 1 (fixed order, post-processed) goes to <label>_full_*_w1.txt.gz,
+	// for a block-by-block diff between two mod sets (review of F1, round 2, DP-129).
 	if (project.hasProperty('determinismDeep')) {
 		jvmArgs '-Dpolishforests.determinism.deep=true'
 	}
