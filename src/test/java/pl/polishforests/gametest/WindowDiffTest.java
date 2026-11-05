@@ -60,6 +60,21 @@ class WindowDiffTest {
 	}
 
 	@Test
+	void floorNearAStructurePieceIsContact() {
+		// Stage 2 of step F3: a village patch of ferns written from the neighbor chunk, only in one order of the chunks.
+		int[][] w = flat();
+		int i = column(8, 8) * WINDOW + BELOW;
+		w[0][i] = 2;
+		w[1][i] = 3;
+		boolean[] structure = new boolean[256];
+		assertEquals(1, WindowDiff.of(w[0], w[1], w[2], structure, CLASSES, SIZE, WINDOW, BELOW, 100).count(WindowDiff.Kind.FLOOR_FREE));
+		structure[column(8, 8)] = true;
+		WindowDiff.Result r = WindowDiff.of(w[0], w[1], w[2], structure, CLASSES, SIZE, WINDOW, BELOW, 100);
+		assertEquals(0, r.count(WindowDiff.Kind.FLOOR_FREE));
+		assertEquals(1, r.count(WindowDiff.Kind.FLOOR_CONTACT));
+	}
+
+	@Test
 	void objectThreeBlocksAwayDoesNotExplain() {
 		int[][] w = flat();
 		w[0][column(8, 8) * WINDOW + BELOW] = 2;

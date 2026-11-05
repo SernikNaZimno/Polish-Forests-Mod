@@ -551,7 +551,7 @@ Każdy krok F jest ukończony dopiero, gdy oprócz własnych kryteriów spełnia
 ### F3. Jedlina wyżynna, buczyna karpacka i jaworzyny (A, 1,5–2 dnia)
 
 - **Zakres:** (1) nowe gatunki z ZG: **jodła** (archetyp iglasty: prosta kolumna, poziome piętra gałęzi, płaski wierzchołek „bocianie gniazdo” starych drzew, ciemne igły z jaśniejszym spodem) i **jawor** (szeroka korona jak klon, jaśniejsza łuszcząca się kora); (2) **jedlina wyżynna** (`upland_fir_forest`): jodła 50–90% z sosną, bukiem, świerkiem i dębem, wielopiętrowa, gęsty podrost jodły; **buczyna karpacka** (`montane_beech_forest`, w W1 `windswept_forest`): buk z jodłą 10–40%, świerkiem i jaworem, wariant jaworzyny (`Association.SYCAMORE_RAVINE_FOREST`: jawor 50–90%); jawor 0–5% dopisany do buczyny niżowej (zmiana F1 tylko w nowych chunkach); (3) runo: nowe rośliny (domyślnie 3: żywiec gruczołowaty, kosmatka gajowa, miesiącznica trwała) i rośliny z F1 (marzanka, szczawik), borówka, mchy jedliny 30–70%; (4) martwe drewno jodły, buka i jawora, nabiegi; (5) przejścia z buczyną niżową, grądem, LMśw i BMśw w `ForestBlend`, z lasami górskimi rampa; (6) karta norm jedliny, buczyny karpackiej i jaworzyny.
-- **Ukończony, gdy:** KF-1 … KF-7; w `vanilla_forests` buczyna karpacka z pniami planera (strome kolumny W1-g zablokowane — liczba pni na 1000 kolumn niezablokowanych). **Stan: do zrobienia.**
+- **Ukończony, gdy:** KF-1 … KF-7; w `vanilla_forests` buczyna karpacka z pniami planera (strome kolumny W1-g zablokowane — liczba pni na 1000 kolumn niezablokowanych). **Stan (2026-11-05): zrobione z odstępstwem („Projekt F3”, „Stan po F3”, G.44): jedlina i buczyna karpacka (także W1 `windswept_forest`, 51,3 pnia planera na 1000 kolumn niezablokowanych) z jaworzyną z drzewostanem planera w obu skalach, jodła i jawor z ZG; KF-1 (po F3-o: bloki wsi poza głębią lasu), KF-3 … KF-7 spełnione (`determinism` wobec referencji F2: teren identyczny, poza lasami kroku 0 różnic; KF-6 jedliny 0,73 / 0,74 × M2), ścinanie jodły i jaworu w całości; KF-2 poza N7 i N10 lasów gospodarczych (F3-p) i jaworzyną bez powierzchni (F3-s) — do CP-D; z C2ME znana jaskinia DP-128, `present_day` z jaskiniami DP-126, KF-6 GAMEPLAY lasów wycinka poniżej 0,7 do F7 (DP-136).**
 - **Ryzyko:** wysokie (nowy archetyp iglasty w planerze; strome stoki gór).
 
 ### F4. Bory suche, wilgotne, bagienne i bażynowe, brzeziny bagienne, wrzosowiska i torfowiska (A, 1–1,5 dnia)
@@ -3891,6 +3891,73 @@ Krok F3 planu „Kroki F” (§3, G.41): jedlina wyżynna (`upland_fir_forest`) 
 - `tools/dev/run-tests --reuse fastTest`.
 - Wyniki i przebiegi gry w „Stan po F3”, według `python tools/dev/test_plan.py 62f8115`.
 
+## Stan po F3 (2026-11-05, etap 2: przebiegi w grze, poprawki, bez recenzji wizualnej)
+
+Drobne wybory: `docs/00` G.44 (F3-a … F3-n z etapu 1, F3-o … F3-s z etapu 2). Zgodnie z G.36 U-1 bez oceny wyglądu ze zrzutów: dowody to spisy KF-1 w `habitats` i `vanilla_forests`, karta norm z gry, porównania bloków w `determinism`, tablice i testy jednostkowe. Wygląd jedliny, buczyny karpackiej i jaworzyny sprawdza użytkownik według listy „Do sprawdzenia w grze” (raport kroku). Baza kroku: `62f8115`; commity `828b09f` (etap 1, WIP) i końcowy „F3: done, …” (etap 2).
+
+**Wynik w skrócie.** Jedlina wyżynna i buczyna karpacka rosną z drzewostanu planera w obu skalach i obu trybach, buczyna także w W1 (dawny `windswept_forest`). W głębi obu lasów 0 kłód wanilii jako pni drzew lasu, drzewa planera w obwiedni N1 (12,5–13,5 na chunk). Jodła i jawor ścinane w całości przez FallingTree i Tree Harvester; tablice próbek, liści, sadzonek, nabiegów, martwego drewna, desek i siekiery bez brakujących modeli. Świat „Polska” poza lasami kroku i ich pasami bez zmian (KF-3), teren identyczny. Odstępstwa do CP-D: karta jedliny i buczyny gospodarczej (N7, N10; F3-p), jaworzyna bez powierzchni karty (F3-s), jaskinia z C2ME w obszarze buczyny niżowej (DP-128) i `present_day` z jaskiniami (DP-126), jak w F1 i F2.
+
+**Od etapu 1 do etapu 2.** Przebiegi na kodzie `828b09f` dały dwie porażki, obie przy wsi tajgowej w GAMEPLAY obok powierzchni `upland_fir_natural_1` (F3-o). Kod generacji bez zmian w etapie 2.
+
+- *`determinism`*, obszar `upland_fir` GAMEPLAY, kolejność stała wobec odwróconej: `floor_free` 2 (limit 0), dwie paprocie wanilii zamiast szczawika i igliwia moda w chunku (109, 237). Sonda w kliencie (usunięta przed commitem) pokazała, że plan runa, `Ecotone`, `ForestBlend` i `ChunkEcotones` są czyste (te same wyniki w każdej kolejności), a paprocie wpisuje element dekoracji wsi (`FeaturePoolElement` → `SimpleBlockFeature`, łata paproci) z sąsiedniego chunka (108, 237), gdy ten jest dekorowany przed (109, 237); runo moda nie nadpisuje rośliny, która już stoi. Zależność od kolejności jest wanilii. Test: nowy `gametest/StructureReach` (kawałki startów obszaru z marginesem jednego chunka, zasięg 8 bloków), `WindowDiff` liczy różnicę dna w tych kolumnach jako `floor_contact`; test jednostkowy `WindowDiffTest.floorNearAStructurePieceIsContact`. Pierwsza wersja poprawki z maską roślin chunka (`ChunkHabitats.pieceDistance`) nie wystarczyła: jednoblokowy element startu z sąsiedniego chunka nie odwołuje się do chunka, do którego pisze. Druga, bez wysokości, brała też kawałki kopalń głęboko pod lasem (głębia jedliny GAMEPLAY spadła z 12 800 do 6325 kolumn, lasu mieszanego z 5472 do 4482), więc zasięg liczy się w trzech wymiarach od dna lasu.
+- *`habitats`* GAMEPLAY: 1 „kłoda wanilii w głębi jedliny” — `spruce_log` w (1735, 201, 3803), kolumna bez strefy, 11 bloków od tamtej łaty: świerk dekoracji tej samej wsi. Kolumny w zasięgu `StructureReach` nie należą już do głębi lasu (drzewa wsi są wanilii, jak budynki).
+
+**Przebiegi (`-PtimingsReportOnly`, mapa testów `test_plan.py 62f8115`; kod `828b09f`, po zmianie testów ponownie tylko przebiegi z porażką).**
+
+| Przebieg | Wynik |
+|---|---|
+| `vanilla_forests` (W1) | PASS. Buczyna karpacka (`windswept_forest`, obszar (2432, −2672), 59 z 64 punktów siatki w biomie): w głębi 4122 suchych kolumn, **13,5 pnia planera na chunk**, 0 kłód wanilii; **51,3 pnia na 1000 kolumn niezablokowanych** (746 z 14 538; F3-k, F3-q). Grąd 30,1, Bśw 53,2, buczyna niżowa 22,6, ols 45,6 na 1000 kolumn; 1 znana kłoda wanilii buczyny niżowej 3 bloki od lasu mieszanego (M2) |
+| `habitats` (obie skale) | Kod etapu 1: REAL PASS (KF-1 w głębi jedliny 13,2 pnia na chunk w 11 006 kolumnach, buczyny 12,5 w 3738, 0 kłód wanilii); GAMEPLAY FAIL na 1 świerku wsi (jedlina 12,8, buczyna 12,3, po 12 800 kolumn). Po F3-o obie skale PASS: REAL bez zmian (bez struktur w głębi), GAMEPLAY jedlina **13,5** (11 596 kolumn), buczyna **12,9** (11 874), 0 kłód wanilii; głębia pozostałych lasów bez zmian (las mieszany 5472, buczyna niżowa 11 471 kolumn) |
+| `determinism -PdeterminismStepZones` (bez optymalizacji, wobec referencji F2 `handoff/F2/determinism_ref/`) | Kod etapu 1: teren identyczny we wszystkich 24 wpisach, poza lasami kroków F i ich pasami 0 różnic; porażka tylko na 2 paprociach wsi (wyżej); REAL bez `floor_free`. GAMEPLAY po F3-o **PASS**: `floor_free` 0 we wszystkich 42 porównaniach, poza lasami kroków F 0 różnic; `upland_fir` stała wobec odwróconej: `floor_contact` 109 (z tymi 2 paprociami), 0 `floor_free` |
+| `determinism -Poptimization` (C2ME, kod etapu 1) | FAIL tylko na znanych: jaskinia DP-128 w obszarze buczyny niżowej GAMEPLAY (3259 bloków w 833 kolumnach, dekoracja 2280 kolumn tego obszaru) i te same 2 paprocie wsi; obszar `upland_fir` identyczny w obu skalach i trybach. Kopia referencji dla F4: `handoff/F3/determinism_ref/` (`plain.txt`, `plain_terrain.txt.gz`) |
+| `slice -Psites=none` (karta norm z gry) | PASS, `HABITAT_MISS` 0. Buczyna niżowa 10 wierszy `out` (jak po F1 i F2), pozostałe lasy wycinka i F2 131 (= 115 po F1 + 16 olsu z F2): **bez nowych wierszy poza normą** poza jedliną i buczyną karpacką. Karta tych lasów niżej; plik `handoff/F3/karta-norm.f3.csv` |
+| `vegetation` | PASS, `HABITAT_MISS` 0 (REAL 8153, GAMEPLAY 7827 chunków) |
+| `ecotones`, `slice -Psites=seasons` | PASS |
+| `present_day` | `-Pcaves=off` PASS; z jaskiniami tylko znana wieś GAMEPLAY (4089, −3980): 11 kolumn podłogi wisi (DP-126) |
+| `slice -Psites=samples`, `leaves`, `saplings`, `deadwood`, `roots`, `planks`, `axe` | PASS (7 przebiegów), 0 brakujących modeli i chunków |
+| `slice -Psites=felling -PtreeFelling=fallingtree` i `treeharvester` | PASS: stara jodła 381 z 381 bloków drewna, stary jawor 187 z 187, łup kłód zgodny z oczekiwanym |
+| KF-6 (cicha maszyna, C2ME `-Pcaves=off`, wobec `m2-baseline`, bez powtórek) | tabela niżej |
+| `WindowDiffTest`, `compileGametestJava` (etap 2) | PASS |
+| pełny zestaw `tools/dev/run-tests test` | etap 1 PASS (1236 s); po etapie 2 **PASS** (1254 s, drzewo `622add170dc8`, przed wpisaniem tego wyniku do dokumentów) |
+
+**KF-6 (chunki na sekundę z C2ME bez jaskiń; iloraz F3 / M2).**
+
+| Miejsce | „Polska” REAL | GAMEPLAY |
+|---|---|---|
+| `upland_fir_1` (`upland_fir_natural_1`) | 118,7 / 162,4 = **0,731** | 135,0 / 183,4 = **0,736** |
+| `alder_carr_1` | 133,1 / 170,1 = 0,782 | 179,9 / 238,1 = 0,756 |
+| `oak_hornbeam_1` | 100,8 / 140,8 = 0,716 | 143,7 / 212,6 = 0,676 |
+| `fresh_pine_1` | 139,0 / 181,8 = 0,765 | 143,3 / 209,8 = 0,683 |
+| `lowland_beech_1` | 124,6 / 177,4 = 0,702 | 139,7 / 206,9 = 0,675 |
+
+Jedlina powyżej 0,7 × M2 w obu skalach. Grąd, Bśw i buczyna niżowa w GAMEPLAY 0,675–0,683 (po F1/F2 0,71–0,72): na listę F7 (F3-r, DP-136), bez optymalizacji w F3.
+
+**Karta jedliny i buczyny karpackiej z gry** (`slice -Psites=none`; REAL po 2 powierzchnie naturalne i gospodarcze obu lasów, GAMEPLAY 1 + 2 jedliny i 2 + 2 buczyny; 326 wierszy z normą: 260 w normie, 42 w tolerancji, 24 poza):
+
+| Miara | Jedlina naturalna | Jedlina gospodarcza | Buczyna naturalna | Buczyna gospodarcza |
+|---|---|---|---|---|
+| N1 drzewa na chunk | 8,1–9,6 | 9,3–11,6 | 6,3–8,0 | 10,4–15,4 (2 tol.) |
+| N3 skład | jodła 68–73% | jodła 49–70% (2 tol.) | buk 59–69%, jodła 16–36%, `maple_ash` 0–12,6% | buk 63–69%, jodła 16–28%, `maple_ash` 5–7% |
+| N4 zwarcie | 72–89% | 70–81% (2 tol.) | 73–90% | 88–92% |
+| N7 podszyt i podrost | 16,6–24,1% (2 tol.) | **11,5–14,1%, poza** | 11,9–17,2% | 4,1–7,6% (4 tol.) |
+| N8 runo (lato / wiosna) | 30–33% | 28–36% | 15–24% / 25–35% | 17–18% / 35–40% |
+| N9 mchy | 31–53% | 34–71% (2 tol.) | 9–15% | 10–17% |
+| N10 martwe drewno | 2,15–2,34 obiektu (tol.), 122–153 m³/ha | **0,33–0,41 kawałka, poza**; pniaki 1,1–1,7; 11–21 m³/ha | 1,89–3,02 obiektu (**2 poza**, GAMEPLAY), 95–178 m³/ha | kawałki 0,13–0,54 (**4 poza**), 3,1–15,0 m³/ha (**2 poza**); pniaki 1,3–1,6 |
+
+Poza normą tylko N7 i N10 jedliny gospodarczej, N10 buczyny gospodarczej (jak buczyna niżowa gospodarcza, DP-131) i liczba obiektów martwego drewna jednej powierzchni buczyny naturalnej GAMEPLAY — F3-p, do CP-D, bez strojenia. Jaworzyna bez powierzchni (F3-s, DP-137). Kontrola bez normy: 4 bloki „gołych ramion” na `upland_fir_natural_1` REAL w `present_day` (DP-138).
+
+**KF w skrócie.**
+
+- KF-1: spełnione (po F3-o kolumny przy kawałkach wsi poza głębią; W1 51,3 pnia na 1000 kolumn niezablokowanych).
+- KF-2: spełnione poza F3-p (do CP-D); lasy wycinka, buczyna niżowa i lasy F2 bez nowych wierszy `out`.
+- KF-3: spełnione (teren identyczny wobec F2, poza lasami kroku 0 różnic; z C2ME tylko DP-128).
+- KF-4: `ForestBlendTest`, `EcotoneTest`, `ecotones`, `vegetation` (`HABITAT_MISS` 0) PASS; `present_day` PASS bez jaskiń, z jaskiniami DP-126.
+- KF-5: spełnione (7 tablic i ścinanie PASS; `checkDatagen`, `checkArt`, `lint.py`, `RegistrySnapshotTest` z etapu 1; etap 2 bez nowych bloków).
+- KF-6: wykonane (jedlina 0,73 / 0,74 × M2; GAMEPLAY lasów wycinka poniżej 0,7 → F7).
+- KF-7: „Projekt F3”, „Stan po F3”, G.44, BRIEF, lista „Do sprawdzenia w grze” w raporcie kroku.
+
+**Uwagi.** Wieś tajgowa w trybie naturalnym GAMEPLAY stoi w jedlinie przy powierzchni `upland_fir_natural_1` (1706, 3775); jej łaty paproci i świerki wanilii w lesie planera to zachowanie wanilii (struktury mają pierwszeństwo, F3-o), do oceny w grze. Referencja determinizmu dla F4: `handoff/F3/determinism_ref/`.
+
 ## Do kroku porządkowego (lista drobiazgów z recenzji)
 
 Lista założona w V10 według decyzji użytkownika z 2026-10-21 (`docs/00` F, P4): drobiazgi widoczne tylko na zbliżeniach albo w pomiarach bez wpływu na grę nie są poprawiane od razu, tylko trafiają tutaj; zbiorczy krok porządkowy na końcu kamienia milowego przegląda listę i poprawia, co warto. Każdy wpis: krok, w którym powstał, opis, gdzie szukać, propozycja. Wpis usuwamy (albo przekreślamy z commitem), gdy jest zrobiony.
@@ -4028,3 +4095,6 @@ Lista założona w V10 według decyzji użytkownika z 2026-10-21 (`docs/00` F, P
 | DP-133 | F1 (przegląd) | Opublikowany commit `f3dd7c9` nie ma pustej linii po tytule (`git log --oneline` pokazuje całą treść); kosmetyka, bez poprawiania (bez amend) | historia git | Nic poza tą notą; w kolejnych commitach pusta linia po tytule |
 | DP-134 | F2 (przegląd, runda 1) | KF-6 zmierzone tylko na kodzie etapu 1 (`51852a7`); etap 2 podniósł szanse drzew olsu naturalnego (0,78 → 0,95, podokap 0,4 → 0,6), podszyt do 7 i martwe drzewa do 2,5 na chunk. Ols 0,77 / 0,81 × M2 ma mały zapas nad progiem 0,7 | KF-6, `PerformanceClientGameTest` (miejsca `alder_carr_*`) | Sprawdzić chunki na sekundę olsu na kodzie po F2 przy zbiorczym pomiarze przed CP-D |
 | DP-135 | F2 (przegląd, runda 1) | Tablica `felling` sadzi drzewa samotne bez odrośli, więc ścięcie olszy wielopniowej w całości przez FallingTree i Tree Harvester (pęd odroślowy po poziomym łączu rodzica, `TreeWood.linked`) nie ma testu; 30% olsz drzewostanu ma odrośla | `SliceClientGameTest` (tablica `felling`) | Dodać jedną olszę z odroślami (żądanie warstwy drzewostanu z wymuszonym losowaniem odrośli) |
+| DP-136 | F3 (etap 2) | KF-6 GAMEPLAY w przebiegu F3: grąd 0,676, Bśw 0,683, buczyna niżowa 0,675 × M2 (próg 0,7; po F1/F2 0,71–0,72; REAL 0,70–0,78, jedlina 0,73 / 0,74) — koszt lasów planera narasta z każdym krokiem F | KF-6, `PerformanceClientGameTest`, F3-r | Tanie optymalizacje bez zmiany wyniku i pomiar zbiorczy w F7 (PW-10); do tego czasu bez progu na lasach wycinka |
+| DP-137 | F3 (etap 2) | Jaworzyna (`Site.RAVINE`) bez powierzchni karty w grze: powierzchnie buczyny karpackiej nie trafiają na wąskie stoki jaworzyny, normy jaworzyny sprawdza tylko symulacja | `src/test/resources/slice_plots.txt`, `SlicePlotsTest`, F3-s | Dodać powierzchnię jaworzyny (szukanie po asocjacji kodu zamiast po biomie) albo przyjąć symulację przy CP-D |
+| DP-138 | F3 (etap 2) | `upland_fir_natural_1` REAL w `present_day`: 4 bloki „gołych ramion” (kontrola `X.bare_arms_per_chunk`, bez normy; w trybie naturalnym 0) przy (46427, 428–430, 15664) i (46521, 411, 15728) | `NormsCensus`, korony jodły | Sprawdzić w grze gałęzie starej jodły w tych miejscach; poprawić kształt, jeśli to ramię bez igieł |

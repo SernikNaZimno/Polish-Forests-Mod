@@ -20,7 +20,9 @@ import java.util.List;
  * (Chebyshev distance, in 3D) of an object in either generation or of another kind of difference: a plant whose place a
  * neighbor's object took, the moss collar of a trunk or the litter of a log, which depend on the order as the object
  * does; also every floor difference within {@link #CONTACT} blocks of the area's edge, whose objects outside the area
- * are not compared;</li>
+ * are not compared, and (stage 2 of step F3) every floor difference in a column near a vanilla structure piece, whose
+ * feature elements (the fern and grass patches of a village) spread into the neighbor chunks and meet its floor in the
+ * order of the chunks, as in vanilla;</li>
  * <li>{@link Kind#FLOOR_FREE}: any other difference of the floor: the floor layers away from every object, which are a
  * pure function of the world seed, the position and the settings since step L1 and must be identical in any order.</li>
  * </ul>
@@ -62,6 +64,15 @@ final class WindowDiff {
 	 * @param limit   most differing blocks above the ground kept in the result
 	 */
 	static Result of(int[] a, int[] b, int[] ground, byte[] classes, int size, int window, int below, int limit) {
+		return of(a, b, ground, null, classes, size, window, below, limit);
+	}
+
+	/**
+	 * As {@link #of(int[], int[], int[], byte[], int, int, int, int)}; {@code structure} (or null) marks the columns near a
+	 * vanilla structure piece, where a floor difference counts as {@link Kind#FLOOR_CONTACT} (stage 2 of step F3).
+	 */
+	static Result of(int[] a, int[] b, int[] ground, boolean @org.jspecify.annotations.Nullable [] structure, byte[] classes,
+			int size, int window, int below, int limit) {
 		int side = size * 16;
 		int columns = ground.length;
 		// Positions that explain a floor difference nearby: an object on either side, or a difference of another kind.
@@ -93,8 +104,8 @@ final class WindowDiff {
 				} else if (source[i]) {
 					kind = Kind.OBJECT;
 				} else {
-					kind = near(source, ground, columnAt, c, ground[c] - below + k, size, window, below) ? Kind.FLOOR_CONTACT
-							: Kind.FLOOR_FREE;
+					kind = structure != null && structure[c] || near(source, ground, columnAt, c, ground[c] - below + k, size, window,
+							below) ? Kind.FLOOR_CONTACT : Kind.FLOOR_FREE;
 				}
 				counts[kind.ordinal()]++;
 				if (kind != Kind.UNDERGROUND && blocks.size() < limit) {

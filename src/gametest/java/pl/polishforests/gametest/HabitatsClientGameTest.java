@@ -282,7 +282,8 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 	 * Step F1 (KF-1): a column deep in a forest of the planner holds the forest's whole share of the blend field
 	 * ({@code ForestBlend.Field}, at least {@value #DEEP_SHARE}: no belt of a neighbor reaches it); deep columns must have
 	 * no trunk of vanilla logs, and their planner trunks per chunk lie within the N1 envelope (from
-	 * {@value #DEEP_MIN_COLUMNS} deep columns).
+	 * {@value #DEEP_MIN_COLUMNS} deep columns). Since stage 2 of F3 a column within {@link StructureReach#REACH} of a
+	 * structure piece is not deep: the trees of a village's decoration are vanilla's.
 	 */
 	private static final float DEEP_SHARE = 0.999F;
 	private static final int DEEP_MIN_COLUMNS = 1024;
@@ -308,6 +309,8 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 		long[] deepColumns = new long[n];
 		long[] deepTrunks = new long[n];
 		long[] deepVanilla = new long[n];
+		// Stage 2 of F3: where the vanilla log trunks deep in a forest stand (position, block and zone of the column).
+		List<String> deepVanillaAt = new ArrayList<>();
 		ForestBlend blend = gen.forestBlend(seed);
 		List<HabitatBiome> plannerForests = List.of(ForestBlend.FORESTS);
 		float[] shares = new float[ForestBlend.FORESTS.length + 1];
@@ -337,6 +340,8 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 			ChunkSurface[][] plans = new ChunkSurface[5][5];
 			int[][][] planCodes = new int[5][5][256];
 			ForestBlend.Field[][] fields = new ForestBlend.Field[5][5];
+			// Stage 2 of F3: the trees of a village's decoration (vanilla spruces of a taiga village) are the structure's.
+			StructureReach reach = StructureReach.of(level, cx0, cz0, cx0 + 4, cz0 + 4);
 			for (int cx = 0; cx < 5; cx++) {
 				for (int cz = 0; cz < 5; cz++) {
 					plans[cx][cz] = gen.surface(new net.minecraft.world.level.ChunkPos(cx0 + cx, cz0 + cz), level.getMinY(),
@@ -367,12 +372,17 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 							fields[(x >> 4) - cx0][(z >> 4) - cz0] = field;
 						}
 						field.at(x, z, shares);
-						if (shares[plannerForests.indexOf(b)] >= DEEP_SHARE) {
+						if (shares[plannerForests.indexOf(b)] >= DEEP_SHARE && !reach.near(x, top + 1, z)) {
 							boolean vanilla = trunk && !BuiltInRegistries.BLOCK.getKey(level.getBlockState(new BlockPos(x, top + 1, z))
 									.getBlock()).getNamespace().equals(PolishForests.MOD_ID);
 							deepColumns[b.ordinal()]++;
 							deepTrunks[b.ordinal()] += tree && !vanilla ? 1 : 0;
 							deepVanilla[b.ordinal()] += vanilla ? 1 : 0;
+							if (vanilla && deepVanillaAt.size() < 16) {
+								deepVanillaAt.add(String.format(Locale.ROOT, "%s at (%d, %d, %d) %s zone %s", b.id(), x, top + 1, z,
+										BuiltInRegistries.BLOCK.getKey(level.getBlockState(new BlockPos(x, top + 1, z)).getBlock()),
+										Habitat.zone(code)));
+							}
 						}
 					} else {
 						expected[b.ordinal()] += stand.treesPerChunk(code) / 256.0;
@@ -419,6 +429,9 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 				failures.add(String.format(Locale.ROOT, "%s %.1f trunks per chunk outside the N1 envelope %.1f-%.1f", b.id(), perChunk,
 						SLICE_N1_LOW, SLICE_N1_HIGH));
 			}
+		}
+		if (!deepVanillaAt.isEmpty()) {
+			PolishForests.LOG.info("[habitats] KF-1 vanilla log trunks deep in a forest: {}", deepVanillaAt);
 		}
 		report.append(" KF-1 deep in the forests of the planner (planner trunks per chunk, vanilla log trunks):");
 		for (HabitatBiome b : ForestBlend.FORESTS) {

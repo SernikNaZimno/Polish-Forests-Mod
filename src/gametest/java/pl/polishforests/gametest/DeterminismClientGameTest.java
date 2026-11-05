@@ -428,6 +428,7 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 	private static Area decorated(ServerLevel level, int ox, int oz, Area terrain) {
 		long[] decorated = new long[SIZE * SIZE * 256];
 		int[] window = new int[decorated.length * WINDOW];
+		boolean[] structure = new boolean[decorated.length];
 		var pos = new net.minecraft.core.BlockPos.MutableBlockPos();
 		Map<String, Integer> changed = new java.util.TreeMap<>();
 		for (int cx = 0; cx < SIZE; cx++) {
@@ -457,7 +458,14 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 		if (!changed.isEmpty()) {
 			pl.polishforests.PolishForests.LOG.info("[determinism] post-processing at chunk {} {}: changed blocks {}", ox, oz, changed);
 		}
-		return new Area(terrain.terrain(), terrain.ground(), decorated, window);
+		// Stage 2 of F3: the columns near a structure piece (StructureReach), whose floor is the structure's.
+		StructureReach reach = StructureReach.of(level, ox, oz, ox + SIZE - 1, oz + SIZE - 1);
+		for (int i = 0; i < structure.length && !reach.isEmpty(); i++) {
+			int c = i & 255;
+			int chunk = i >> 8;
+			structure[i] = reach.near((ox + chunk / SIZE) * 16 + (c >> 4), terrain.ground()[i], (oz + chunk % SIZE) * 16 + (c & 15));
+		}
+		return new Area(terrain.terrain(), terrain.ground(), decorated, window, structure);
 	}
 
 	/**
@@ -583,7 +591,8 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 			}
 		}
 		WindowDiff.Result kinds = mode == Mode.EXACT ? null
-				: WindowDiff.of(x.window, y.window, x.ground, classes(states), SIZE, WINDOW, WINDOW_BELOW, WINDOW_DUMP_LIMIT);
+				: WindowDiff.of(x.window, y.window, x.ground, structureEither(x, y), classes(states), SIZE, WINDOW, WINDOW_BELOW,
+						WINDOW_DUMP_LIMIT);
 		int free = kinds == null ? 0 : kinds.count(WindowDiff.Kind.FLOOR_FREE);
 		// The share limit applies to everything but the free floor differences, which have their own limit 0 (step L1).
 		double blockShare = nonAir == 0 ? 0 : (double) (blocks - free) / nonAir;
@@ -648,6 +657,18 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 			return WindowDiff.FLOOR;
 		}
 		return WindowDiff.OTHER;
+	}
+
+	/** The columns near a structure piece in either generation (the pieces are the same; null when unknown). */
+	private static boolean @org.jspecify.annotations.Nullable [] structureEither(Area x, Area y) {
+		if (x.structure() == null || y.structure() == null) {
+			return x.structure() != null ? x.structure() : y.structure();
+		}
+		boolean[] out = new boolean[x.structure().length];
+		for (int i = 0; i < out.length; i++) {
+			out[i] = x.structure()[i] || y.structure()[i];
+		}
+		return out;
 	}
 
 	/** Counts by kind, with the most frequent pairs of the free floor differences. */
@@ -982,7 +1003,11 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 	}
 
 	/** Column hashes of one area: terrain before FEATURES and the full chunks, index (chunk x · 8 + chunk z) · 256 + x · 16 + z. */
-	private record Area(long[] terrain, int[] ground, long[] decorated, int[] window) {
+	private record Area(long[] terrain, int[] ground, long[] decorated, int[] window, boolean[] structure) {
+		Area(long[] terrain, int[] ground, long[] decorated, int[] window) {
+			this(terrain, ground, decorated, window, null);
+		}
+
 		long terrainHash() {
 			long h = 0;
 			for (long v : terrain) {
