@@ -198,7 +198,7 @@
       "biomes": [
         "alder_carr"
       ],
-      "coverage": 0.92,
+      "coverage": 0.97,
       "patch": 5,
       "patch_shape": "blobs",
       "plants": [
@@ -263,7 +263,7 @@
       "biomes": [
         "alder_carr"
       ],
-      "coverage": 0.9,
+      "coverage": 0.97,
       "patch": 5,
       "patch_shape": "blobs",
       "plants": [
@@ -333,17 +333,17 @@
       "biomes": [
         "ash_alder_forest"
       ],
-      "coverage": 0.95,
+      "coverage": 0.98,
       "patch": 5,
       "patch_shape": "blobs",
       "plants": [
         {
           "block": "polishforests:nettle",
-          "weight": 20
+          "weight": 24
         },
         {
           "block": "polishforests:tussock_sedge",
-          "weight": 14
+          "weight": 16
         },
         {
           "block": {
@@ -353,7 +353,7 @@
               "flower_amount": "2"
             }
           },
-          "weight": 3
+          "weight": 1
         },
         {
           "block": {
@@ -363,7 +363,7 @@
               "flower_amount": "3"
             }
           },
-          "weight": 3
+          "weight": 1
         },
         {
           "block": {
@@ -373,7 +373,7 @@
               "flower_amount": "4"
             }
           },
-          "weight": 3
+          "weight": 2
         },
         {
           "block": {
@@ -383,7 +383,7 @@
               "flower_amount": "2"
             }
           },
-          "weight": 4
+          "weight": 1
         },
         {
           "block": {
@@ -393,7 +393,7 @@
               "flower_amount": "3"
             }
           },
-          "weight": 4
+          "weight": 1
         },
         {
           "block": {
@@ -403,23 +403,19 @@
               "flower_amount": "4"
             }
           },
-          "weight": 4
+          "weight": 2
         },
         {
           "block": "polishforests:marsh_fern",
-          "weight": 4
-        },
-        {
-          "block": "minecraft:fern",
-          "weight": 8
-        },
-        {
-          "block": "minecraft:short_grass",
           "weight": 6
         },
         {
+          "block": "minecraft:fern",
+          "weight": 12
+        },
+        {
           "block": "minecraft:tall_grass",
-          "weight": 5
+          "weight": 6
         },
         {
           "block": {

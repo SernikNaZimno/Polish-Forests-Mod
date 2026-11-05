@@ -355,9 +355,12 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 					int code = planCodes[(x >> 4) - cx0][(z >> 4) - cz0][column];
 					HabitatBiome b = Habitat.biome(code);
 					boolean trunk = trunk(level, x, top, z);
+					// Step F2 (stage 2): the forests of the planner count trees as N1 does, not the coppice stems of a
+					// stool, the root flares and the stems of the shrubs (TreeBases).
+					boolean tree = trunk && TreeBases.tree(level, new BlockPos(x, top + 1, z));
 					if (SLICE_FORESTS.contains(b)) {
 						sliceColumns[b.ordinal()]++;
-						sliceTrunks[b.ordinal()] += trunk ? 1 : 0;
+						sliceTrunks[b.ordinal()] += tree ? 1 : 0;
 						ForestBlend.Field field = fields[(x >> 4) - cx0][(z >> 4) - cz0];
 						if (field == null) {
 							field = blend.field(x >> 4, z >> 4);
@@ -368,7 +371,7 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 							boolean vanilla = trunk && !BuiltInRegistries.BLOCK.getKey(level.getBlockState(new BlockPos(x, top + 1, z))
 									.getBlock()).getNamespace().equals(PolishForests.MOD_ID);
 							deepColumns[b.ordinal()]++;
-							deepTrunks[b.ordinal()] += trunk && !vanilla ? 1 : 0;
+							deepTrunks[b.ordinal()] += tree && !vanilla ? 1 : 0;
 							deepVanilla[b.ordinal()] += vanilla ? 1 : 0;
 						}
 					} else {

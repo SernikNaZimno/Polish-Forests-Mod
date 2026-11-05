@@ -491,7 +491,9 @@ public final class VanillaForestsClientGameTest implements FabricClientGameTest 
 				int x = origin[0] + dx;
 				int z = origin[1] + dz;
 				BlockState base = level.getBlockState(p.set(x, ground[i], z));
-				boolean trunk = mod(base) && base.is(BlockTags.LOGS);
+				// Step F2 (stage 2): trees as N1 counts them, not the coppice stems of a stool, the root flares and the
+				// stems of the shrubs (TreeBases).
+				boolean trunk = mod(base) && base.is(BlockTags.LOGS) && TreeBases.tree(level, new BlockPos(x, ground[i], z));
 				boolean underWater = !level.getFluidState(p.set(x, ground[i], z)).isEmpty();
 				boolean vanillaTrunk = !mod(base) && base.is(BlockTags.LOGS) && level.getBlockState(p.set(x, ground[i] + 1, z)).is(BlockTags.LOGS)
 						&& level.getBlockState(p.set(x, ground[i] + 2, z)).is(BlockTags.LOGS);

@@ -239,7 +239,7 @@
       "biomes": [
         "alder_carr"
       ],
-      "coverage": 0.012109375,
+      "coverage": 0.015625,
       "plants": [
         {
           "feature": "polishforests:deadwood/black_alder",
@@ -255,11 +255,11 @@
         },
         {
           "feature": "polishforests:stump/black_alder",
-          "weight": 17
+          "weight": 11
         },
         {
           "feature": "polishforests:stump/birch",
-          "weight": 2
+          "weight": 1
         },
         {
           "feature": "polishforests:stump/ash",

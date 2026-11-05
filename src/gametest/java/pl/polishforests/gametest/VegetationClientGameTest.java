@@ -354,8 +354,10 @@ public final class VegetationClientGameTest implements FabricClientGameTest {
 			return Cover.SHRUB;
 		}
 		Block block = above.getBlock();
+		// Step F2 (stage 2): the herbs of the mod's HERB family (SeasonalHerbBlock: the nettle, the yellow iris, the tussock
+		// sedge and the marsh fern, 0.5-1.5 m, one block high) are the tall herbs of the waterside of §4.6.
 		if (block instanceof DoublePlantBlock || block instanceof BigDripleafBlock || block instanceof BigDripleafStemBlock
-				|| above.is(Blocks.SUGAR_CANE)) {
+				|| above.is(Blocks.SUGAR_CANE) || block instanceof pl.polishforests.block.SeasonalHerbBlock) {
 			return Cover.TALL;
 		}
 		if (above.is(Blocks.BUSH) || above.is(Blocks.FIREFLY_BUSH) || above.is(Blocks.SWEET_BERRY_BUSH)) {

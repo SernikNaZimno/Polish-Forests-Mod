@@ -1239,14 +1239,14 @@
           }
         ],
         "managed_chance": [
-          0.85,
-          0.65,
-          0.55
+          0.88,
+          0.7,
+          0.6
         ],
         "natural_chance": [
-          0.75,
-          0.75,
-          0.75
+          0.92,
+          0.92,
+          0.92
         ],
         "regeneration": [
           {
@@ -1277,7 +1277,7 @@
             "weight": 500
           }
         ],
-        "subcanopy_chance": 0.4
+        "subcanopy_chance": 0.6
       },
       "trees": [
         {
@@ -1339,14 +1339,14 @@
           }
         ],
         "managed_chance": [
-          0.85,
-          0.65,
-          0.55
+          0.88,
+          0.7,
+          0.6
         ],
         "natural_chance": [
-          0.78,
-          0.78,
-          0.78
+          0.95,
+          0.95,
+          0.95
         ],
         "regeneration": [
           {
@@ -1382,7 +1382,7 @@
             "weight": 350
           }
         ],
-        "subcanopy_chance": 0.4
+        "subcanopy_chance": 0.6
       },
       "trees": [
         {

@@ -115,7 +115,7 @@
         "alder_carr",
         "ash_alder_forest"
       ],
-      "coverage": 0.55,
+      "coverage": 0.8,
       "medium": "shore",
       "patch": 3,
       "plants": [
@@ -200,7 +200,7 @@
         "alder_carr",
         "ash_alder_forest"
       ],
-      "coverage": 0.55,
+      "coverage": 0.8,
       "medium": "puddle_shore",
       "patch": 3,
       "plants": [
