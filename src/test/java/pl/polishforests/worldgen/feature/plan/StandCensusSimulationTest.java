@@ -10,6 +10,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
+import pl.polishforests.worldgen.habitat.Association;
 import pl.polishforests.worldgen.habitat.ForestSiteType;
 import pl.polishforests.worldgen.habitat.HabitatBiome;
 import pl.polishforests.worldgen.habitat.Species;
@@ -40,7 +41,7 @@ class StandCensusSimulationTest {
 			ForestNorms.A1_HEIGHT, ForestNorms.A2_HEIGHT, ForestNorms.A2_SHARE, ForestNorms.COMPOSITION + "oak",
 			ForestNorms.COMPOSITION + "linden", ForestNorms.COMPOSITION + "maple_ash", ForestNorms.COMPOSITION + "scots_pine",
 			ForestNorms.COMPOSITION + "birch", ForestNorms.COMPOSITION + "hornbeam", ForestNorms.COMPOSITION + "beech",
-			ForestNorms.COMPOSITION + "black_alder", ForestNorms.COMPOSITION + "elm", ForestNorms.UNDERSTORY, ForestNorms.CANOPY, ForestNorms.GAP_SHARE, ForestNorms.GAP_DIAMETER,
+			ForestNorms.COMPOSITION + "black_alder", ForestNorms.COMPOSITION + "elm", ForestNorms.COMPOSITION + "fir", ForestNorms.UNDERSTORY, ForestNorms.CANOPY, ForestNorms.GAP_SHARE, ForestNorms.GAP_DIAMETER,
 			ForestNorms.REGENERATION_RATIO, ForestNorms.OAK_REGENERATION, ForestNorms.PINE_REGENERATION_UNDER_CANOPY,
 			ForestNorms.TOP_HEIGHT, ForestNorms.BARE_WOOD, ForestNorms.EXPOSED_WOOD, ForestNorms.BARE_ARMS,
 			ForestNorms.DEADWOOD_PER_CHUNK, ForestNorms.PIECES_PER_CHUNK, ForestNorms.LOGS_PER_CHUNK, ForestNorms.SNAGS_PER_CHUNK,
@@ -59,18 +60,28 @@ class StandCensusSimulationTest {
 					? new ForestSiteType[] {ForestSiteType.FRESH_BROADLEAVED, ForestSiteType.FRESH_MIXED_BROADLEAVED}
 					: biome == HabitatBiome.ALDER_CARR
 							? new ForestSiteType[] {ForestSiteType.ALDER_SWAMP, ForestSiteType.BOGGY_MIXED_BROADLEAVED}
-							: new ForestSiteType[] {ForestSiteType.NONE};
-			for (ForestSiteType site : sites) {
+							// Step F3: the poor and the mesotrophic fir forest (BMwyż, LMwyż), the fertile, the acid and the
+							// ravine form of the Carpathian beech forest (LG typical, LMG acidophilous, LG ravine).
+							: biome == HabitatBiome.UPLAND_FIR_FOREST
+									? new ForestSiteType[] {ForestSiteType.UPLAND_MIXED_CONIFEROUS, ForestSiteType.UPLAND_MIXED_BROADLEAVED}
+									: biome == HabitatBiome.MONTANE_BEECH_FOREST
+											? new ForestSiteType[] {ForestSiteType.MOUNTAIN_BROADLEAVED, ForestSiteType.MOUNTAIN_MIXED_BROADLEAVED,
+													ForestSiteType.MOUNTAIN_BROADLEAVED}
+											: new ForestSiteType[] {ForestSiteType.NONE};
+			for (int i = 0; i < sites.length; i++) {
+				ForestSiteType site = sites[i];
+				Association association = biome != HabitatBiome.MONTANE_BEECH_FOREST ? Association.TYPICAL
+						: i == 1 ? Association.ACIDOPHILOUS : i == 2 ? Association.SYCAMORE_RAVINE_FOREST : Association.TYPICAL;
 				for (AgeClass age : AgeClass.values()) {
 					if (only.isBlank() || only.contains(biome.id() + (natural ? ":natural" : ":managed"))) {
-						report(forest, site, age);
+						report(forest, site, association, age);
 					}
 				}
 			}
 		}
 	}
 
-	private static void report(ForestNorms.Forest forest, ForestSiteType site, AgeClass age) {
+	private static void report(ForestNorms.Forest forest, ForestSiteType site, Association association, AgeClass age) {
 		HabitatBiome biome = forest.biome();
 		boolean natural = forest.natural();
 		int side = CHUNKS * 16;
@@ -80,12 +91,13 @@ class StandCensusSimulationTest {
 				grid.setGround(x, z, GROUND, "minecraft:grass_block");
 			}
 		}
-		SimulatedStands.plant(biome, site, natural, age, CHUNKS, (vox, species, layer) -> write(grid, vox, species));
+		SimulatedStands.plant(biome, site, association, natural, age, CHUNKS, (vox, species, layer) -> write(grid, vox, species));
 		// Step V11: the dead wood of the generated palette, as the dead wood layer and DeadwoodFeature place it.
 		deadwood(grid, biome, SimulatedStands.stand(pl.polishforests.worldgen.tree.StandProfile.of(biome), age, natural), side);
 		ForestCensus.Census census = ForestCensus.of(grid);
-		ForestNorms.Site variant = site == ForestSiteType.FRESH_BROADLEAVED ? ForestNorms.Site.FERTILE
-				: site == ForestSiteType.FRESH_MIXED_BROADLEAVED ? ForestNorms.Site.ACID : null;
+		ForestNorms.Site variant = ForestNorms.siteOf(pl.polishforests.worldgen.habitat.Habitat.pack(biome,
+				pl.polishforests.worldgen.habitat.Zone.NONE, site, association, pl.polishforests.worldgen.habitat.LandCover.FOREST, 0,
+				pl.polishforests.worldgen.habitat.Soil.forBiome(biome, pl.polishforests.worldgen.habitat.Zone.NONE)));
 		Map<String, List<Double>> values = new LinkedHashMap<>();
 		for (int px = 16; px + 100 <= side - 16; px += 40) {
 			for (int pz = 16; pz + 100 <= side - 16; pz += 40) {
@@ -108,8 +120,9 @@ class StandCensusSimulationTest {
 					ForestNorms.number(mean), norm.map(n -> "  norm " + n.range() + (out > 0 ? "  OUT on " + out + " of " + v.size() : ""))
 							.orElse("")));
 		}
-		System.out.printf(Locale.ROOT, "[calibrate] %s%s %s %s:%s%n", biome.id(), site == ForestSiteType.NONE ? ""
-				: " " + site.name().toLowerCase(Locale.ROOT), natural ? "natural" : "managed", age, sb);
+		System.out.printf(Locale.ROOT, "[calibrate] %s%s%s %s %s:%s%n", biome.id(), site == ForestSiteType.NONE ? ""
+				: " " + site.name().toLowerCase(Locale.ROOT), association == Association.TYPICAL ? ""
+						: " " + association.name().toLowerCase(Locale.ROOT), natural ? "natural" : "managed", age, sb);
 	}
 
 	/**

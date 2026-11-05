@@ -823,13 +823,22 @@ def pine_twig(rng, val, p, twigs=None):
         for side in (-1, 1):
             if rng.random() > p['fill']:
                 continue
-            b = a + side * rng.uniform(0.6, 0.9)
+            if p.get('flat'):
+                # Step F3, the silver fir: the needles stand out almost at a right angle in two flat rows (a spray), short
+                # and blunt; the tip of one row shows the pale underside (tone 5, the two white bands).
+                b = a + side * rng.uniform(1.25, 1.55)
+            else:
+                b = a + side * rng.uniform(0.6, 0.9)
             ndx, ndy = math.cos(b), math.sin(b)
             light = -(ndx + ndy) / math.sqrt(2)
             shade = 4 if light > 0.5 else (3 if light > -0.3 else 2)
             ln = rng.integers(*p['needle'])
             for k in range(1, ln + 1):
-                put(val, math.floor(x + ndx * k), math.floor(y + ndy * k), shade + (1 if k == ln and shade < 4 else 0))
+                if p.get('flat'):
+                    tone = 5 if k == ln and side > 0 else min(shade, 3)
+                else:
+                    tone = shade + (1 if k == ln and shade < 4 else 0)
+                put(val, math.floor(x + ndx * k), math.floor(y + ndy * k), tone)
 
 
 def leaves_needles(tex, palettes):
@@ -971,6 +980,17 @@ ALDER_EXPECT = {'luma': (56, 80), 'dark': 0.05, 'grain': 1.5, 'distinct': (('lin
 ELM = dict(lines=4, amp=1.2, wave=3, jitter=0.6, plate=(4, 8), cross='diag', band=3, furrow_tone=0, deep=0,
            face_split=0.5, lums=(64, 78, 86, 98, 108, 112), right_tone=2, sat=0.14, hue=34, tries=48)
 ELM_EXPECT = {'luma': (80, 100), 'dark': 0.05, 'grain': 2.0, 'distinct': (('oak_bark', 6), ('black_alder_bark', 8))}
+# Step F3: the silver fir, a smooth cool light gray with shallow cracks into small flat plates (the old fir's bark,
+# rather than the resin blisters of the young bole); the sycamore maple, gray-brown flaking in larger irregular plates
+# that leave lighter warm patches (lighter and warmer than the Norway maple's substitute bark).
+FIR = dict(lines=6, amp=0.6, wave=3, jitter=0.5, plate=(3, 6), cross='full', band=3, furrow_tone=0, deep=0,
+           face_split=0.5, lums=(86, 98, 106, 116, 126, 132), right_tone=2, sat=0.05, hue=215, tries=48)
+FIR_EXPECT = {'luma': (96, 122), 'dark': 0.05, 'grain': 1.5,
+              'distinct': (('hornbeam_bark', 6), ('broadleaf_bark', 6), ('linden_bark', 6))}
+SYCAMORE = dict(lines=6, amp=0.6, wave=3, jitter=0.5, plate=(4, 8), cross='full', band=3, furrow_tone=0, deep=0,
+                face_split=0.5, lums=(108, 118, 124, 132, 140, 145), right_tone=2, sat=0.17, hue=28, tries=48)
+SYCAMORE_EXPECT = {'luma': (112, 142), 'dark': 0.05, 'grain': 1.5,
+                   'distinct': (('broadleaf_bark', 6), ('fir_bark', 6), ('elm_bark', 8))}
 # Step I1 (roots): the bark of the underground roots, one for every species (tree_root). Roots in the soil have a thin,
 # smooth brown bark with fine shallow fissures, warmer and smoother than the trunks (CP-A: smooth textures): the
 # furrowed recipe with shallow fissures only and small luma steps.
@@ -1006,6 +1026,11 @@ STRIPPED_TRUNKS = [
      'stripped black alder trunk: the orange-red wood of a fresh cut alder'),
     ('elm', ['#b39572', '#bb9d7a', '#c3a582', '#caad8a'], {'luma': (145, 180), 'hue': (26, 40)},
      'stripped elm trunk: light brown sapwood with a fine vertical grain'),
+    # Step F3.
+    ('fir', ['#d2c2a5', '#d8c8ac', '#ded0b4', '#e3d6bb'], {'luma': (180, 215), 'hue': (30, 48)},
+     'stripped silver fir trunk: white to pale yellowish wood with a faint pink cast'),
+    ('sycamore_maple', ['#dbd0ba', '#e0d5c0', '#e4dac6', '#e9dfcc'], {'luma': (190, 228), 'hue': (32, 54)},
+     'stripped sycamore maple trunk: white to creamy wood with a silky sheen'),
 ]
 # Step P2 (decision U-8): the own wood sets of hornbeam, linden, beech, ash and Norway maple. Planks: the fallback texture
 # (the game derives the planks from the vanilla planks of the user's game, pl.polishforests.block.PlanksTexture; this
@@ -1029,6 +1054,11 @@ WOOD_PLANKS = [
      'black alder planks: pale reddish-brown wood, even and soft'),
     ('elm', ['#6f5238', '#8f6e4f', '#9e7c5b', '#ab8966', '#b89672'],
      'elm planks: brown heartwood with a coarse wavy grain'),
+    # Step F3.
+    ('fir', ['#9a8a72', '#bcac90', '#c8b99c', '#d2c4a8', '#dccfb4'],
+     'silver fir planks: white to pale yellowish softwood, distinct latewood lines'),
+    ('sycamore_maple', ['#a39582', '#c5b8a4', '#d1c5b1', '#dacfbc', '#e2d8c6'],
+     'sycamore maple planks: the lightest wood, white to creamy with a fine even grain'),
 ]
 # (name, pith, heartwood late and early, sapwood late and early, two bark tones, heart radius px, ring width px, note)
 WOOD_LOG_TOPS = [
@@ -1047,6 +1077,11 @@ WOOD_LOG_TOPS = [
      'black alder log top: reddish wood without a colored heartwood, faint rings, the dark bark border'),
     ('elm', ['#5e4430', '#7a5a40', '#8e6c4e', '#a68660', '#b8976f', '#5f5a52', '#78726a'], 4.0, 2.2,
      'elm log top: a dark brown heartwood, light brown sapwood, distinct rings, the furrowed bark border'),
+    # Step F3.
+    ('fir', ['#a8977a', '#c0ae90', '#cebd9f', '#c8b799', '#d6c6a8', '#6c6e70', '#86888a'], 2.0, 2.4,
+     'silver fir log top: pale wood without a colored heartwood, wide rings with dark latewood, the gray bark border'),
+    ('sycamore_maple', ['#ad9f88', '#c8bba4', '#d4c8b2', '#cdc0aa', '#ddd2bd', '#77706a', '#928a82'], 2.0, 1.9,
+     'sycamore maple log top: white creamy wood with fine faint rings, the gray-brown bark border'),
 ]
 STRIPPED_TRUNK_COLORS = {name: colors for name, colors, _expect, _note in STRIPPED_TRUNKS}
 SAPLING_SHAPE = dict(top=4, zigzag=0.2, shoots=3, shoot_gap=3, shoot_len=(2, 4), leaf_from=2, leaf_every=3, tries=64)
@@ -1072,6 +1107,12 @@ SAPLINGS = [
      'young elm: ovate pointed leaves, one side longer at the base'),
     ('bird_cherry', dict(SAPLING_SHAPE, leaf='bird_cherry', leaf_every=2, colors=['#4c3e3a', '#6a5650', '#3a6a2a', '#4b8034', '#62983f']),
      'young bird cherry: narrow pointed leaves on a dark red-brown stem'),
+    # Step F3.
+    ('fir', dict(SAPLING_SHAPE, leaf='fir', shoots=0, top=2, zigzag=0.0, tier_gap=3,
+                 colors=['#5e554c', '#766c62', '#2e5236', '#3b6844', '#5a8664']),
+     'young silver fir: a gray stem with flat horizontal tiers of dark needles, the pale undersides at their edges'),
+    ('sycamore_maple', dict(SAPLING_SHAPE, leaf='sycamore', leaf_every=2, colors=['#5e5446', '#7e7262', '#2e5c26', '#3d7230', '#55893f']),
+     'young sycamore maple: large five-lobed dark green leaves on a gray-brown stem'),
 ]
 
 
@@ -1233,6 +1274,9 @@ TWIG_SPECIES = [
      'black alder: straight purple-brown twigs with stalked buds (the catkins of the late winter)'),
     ('elm', '#bbafa4', 0.24, 0.45, (8, 14), (3, 6), 0.45, 'elm: fine zigzag twigs in two rows, a herringbone'),
     ('bird_cherry', '#c4b4aa', 0.26, 0.30, (7, 12), (2, 5), 0.35, 'bird cherry: slender red-brown twigs (a light haze), long pointed buds'),
+    # Step F3.
+    ('sycamore_maple', '#b4aba0', 0.27, 0.25, (8, 13), (3, 5), 0.40,
+     'sycamore maple: stout gray-brown twigs, opposite forks, green buds'),
 ]
 # The gray ramp of the twig tones (crossing, body, side twig, lit tip): V13 had 98-166; step Z2 126-184.
 TWIG_GRAY = (126, 184)
@@ -1241,7 +1285,7 @@ TWIG_GRAY = (126, 184)
 # twig_score per percentage point over it, and the seeds tried rise from 24 to TWIG_TRIES (the sparser tiles need more
 # to find one without an empty line); visible pixels hornbeam 33 -> 29%, linden 33 -> 29%, beech 38 -> 30%. Oak (27%:
 # a sparser oak tile came out in diagonal bands), birch, ash and maple keep their tiles.
-TWIG_TRIES = {'hornbeam': 96, 'linden': 96, 'beech': 96, 'bird_cherry': 96}
+TWIG_TRIES = {'hornbeam': 96, 'linden': 96, 'beech': 96, 'bird_cherry': 96, 'sycamore_maple': 96}
 TWIG_MAX_VISIBLE = {'hornbeam': 0.25, 'linden': 0.25, 'beech': 0.26}
 
 def upper_texture(tex, palettes):
@@ -1328,6 +1372,18 @@ TEXTURES = [
             note='elm: gray-brown, long deep furrows between corky ridges'),
     Texture('elm_bark_2', 'bark', bark_furrowed, 'elm_bark_2/1', 'oak_bark', variant_of='elm_bark', params=ELM,
             expect=ELM_EXPECT, palette_use='as elm_bark', note='second variant of the elm bark, same edge rows'),
+    # Step F3: the silver fir (two variants) and the sycamore maple (two).
+    Texture('fir_bark', 'bark', bark_furrowed, 'fir_bark/1', 'linden_bark', params=FIR, expect=FIR_EXPECT,
+            palette_use='hue of the linden bark photo, made paler, grayer and cooler by the recipe',
+            note='silver fir: smooth cool light gray, shallow cracks into small flat plates'),
+    Texture('fir_bark_2', 'bark', bark_furrowed, 'fir_bark_2/1', 'linden_bark', variant_of='fir_bark', params=FIR,
+            expect=FIR_EXPECT, palette_use='as fir_bark', note='second variant of the fir bark, same edge rows'),
+    Texture('sycamore_maple_bark', 'bark', bark_furrowed, 'sycamore_maple_bark/1', 'linden_bark', params=SYCAMORE,
+            expect=SYCAMORE_EXPECT, palette_use='hue of the linden bark photo, made paler and warmer by the recipe',
+            note='sycamore maple: gray-brown, flaking in large irregular plates with lighter warm patches'),
+    Texture('sycamore_maple_bark_2', 'bark', bark_furrowed, 'sycamore_maple_bark_2/1', 'linden_bark',
+            variant_of='sycamore_maple_bark', params=SYCAMORE, expect=SYCAMORE_EXPECT, palette_use='as sycamore_maple_bark',
+            note='second variant of the sycamore maple bark, same edge rows'),
     Texture('tree_root_bark', 'bark', bark_furrowed, 'tree_root_bark/1', 'oak_bark', params=ROOT, expect=ROOT_EXPECT,
             palette_use='hue of the oak bark photo, made warmer and smoother by the recipe',
             note='underground roots of every species (step I1): thin smooth brown bark with fine shallow fissures'),
@@ -1340,6 +1396,14 @@ TEXTURES = [
                  'color #7c996d is a gray green (Lab chroma 27, hue 133; V7 review round 1: less teal, more chroma than '
                  'the first #7f9c86), turning a yellower olive #8a9670 in winter; the palette photo gave a yellow olive '
                  '(#8e9963, hue 72) in warm light'),
+    Texture('fir_leaves', 'leaves', leaves_needles, 'fir_leaves/1', None,
+            tint='#4f8758', mcmeta=LEAVES_MCMETA,
+            params=dict(opacity=0.66, twig=(4, 7), fill=0.85, needle=(1, 3), grays=(98, 110, 120, 132, 150), twig_axes=True,
+                        flat=True, candidates=6, tries=32),
+            expect={'min_line': 6},
+            note='silver fir (step F3): flat sprays of short blunt needles in two rows along level twigs, grayscale for '
+                 'the needle color of the curve (#4f8758, darker and bluer than the spruce); the pale tone 5 marks the '
+                 'two white bands of the needle undersides seen at the edges of the sprays'),
     Texture('broadleaf_leaves', 'leaves', leaves_broadleaf, 'broadleaf_leaves/1', None, tint='foliage',
             mcmeta=LEAVES_MCMETA, params=dict(opacity=0.63, gray=(107, 211), candidates=6, tries=32),
             expect={'min_line': 7},
@@ -1442,6 +1506,35 @@ TEXTURES = [
             params=dict(form='stems', count=3, top=1, node=3, leaf=2, flowers=0,
                         colors=['#2f5222', '#3a6229', '#487432', '#45583a']),
             note='stinging nettle without flowers (step F2, spring and autumn)'),
+    # Step F3: the herb layer of the fir and the Carpathian beech forests: the glandular toothwort and the white wood-rush
+    # as flower beds (the toothwort a spring geophyte, the wood-rush evergreen), the perennial honesty of the sycamore
+    # ravines as a one-block cross with baked colors.
+    Texture('glandular_toothwort', 'plant', ground.flower_bed, 'glandular_toothwort/1', None,
+            params=dict(leaves=ground.TOOTHWORT_LEAVES, flower_sprites=ground.TOOTHWORT_FLOWERS, leaf_cover=0.55, flowers=2, halo=((1, 7),),
+                        colors=['#3f5d30', '#4a6c37', '#5a7c42', '#56603a', '#8c6a96', '#a585ad', '#c2b48c', '#6c8c55']),
+            note='glandular toothwort (Dentaria glandulosa, step F3, the Carpathian beech forest): three-parted toothed leaves, nodding purple-violet flowers (April, May)'),
+    Texture('glandular_toothwort_leaves', 'plant', ground.flower_bed, 'glandular_toothwort/1', None,
+            params=dict(leaves=ground.TOOTHWORT_LEAVES, flower_sprites=ground.TOOTHWORT_FLOWERS, leaf_cover=0.55, flowers=2, halo=((1, 7),),
+                        drop_flowers=True,
+                        colors=['#45633a', '#507140', '#5e7f48', '#56603a', '#8c6a96', '#a585ad', '#c2b48c', '#70905a']),
+            note='glandular toothwort after the flowering (step F3, until early June): the same three-parted leaves, no flowers'),
+    Texture('white_wood_rush', 'plant', ground.flower_bed, 'white_wood_rush/1', None,
+            params=dict(leaves=ground.WHITE_WOOD_RUSH_LEAVES, flower_sprites=ground.WHITE_WOOD_RUSH_FLOWERS, leaf_cover=0.55, flowers=2, halo=((1, 7),),
+                        colors=['#4c6634', '#55713a', '#627e44', '#6c6e48', '#8e8c74', '#9c9a84', '#a6a48e', '#6c864e']),
+            note='white wood-rush tufts (Luzula luzuloides, step F3, the acid Carpathian beech and the fir forests): narrow hairy leaves, loose whitish flower clusters (June, July)'),
+    Texture('white_wood_rush_leaves', 'plant', ground.flower_bed, 'white_wood_rush/1', None,
+            params=dict(leaves=ground.WHITE_WOOD_RUSH_LEAVES, flower_sprites=ground.WHITE_WOOD_RUSH_FLOWERS, leaf_cover=0.55, flowers=2, halo=((1, 7),),
+                        drop_flowers=True,
+                        colors=['#4c6634', '#55713a', '#627e44', '#6c6e48', '#8e8c74', '#9c9a84', '#a6a48e', '#6c864e']),
+            note='white wood-rush outside the flowering (step F3): the same evergreen tufts, no flowers'),
+    Texture('perennial_honesty', 'plant', ground.herb, 'perennial_honesty/1', None,
+            params=dict(form='stems', count=4, top=1, node=3, leaf=3, flowers=6,
+                        colors=['#2f5424', '#3b662c', '#4a7836', '#45583a', '#7c6a86', '#8c789a', '#9c88aa']),
+            note='perennial honesty (Lunaria rediviva, step F3, the sycamore ravines): upright stems with broad heart-shaped toothed leaves, pale lilac flowers (May, June)'),
+    Texture('perennial_honesty_leaves', 'plant', ground.herb, 'perennial_honesty/1', None,
+            params=dict(form='stems', count=4, top=1, node=3, leaf=3, flowers=0,
+                        colors=['#2f5424', '#3b662c', '#4a7836', '#45583a']),
+            note='perennial honesty without flowers (step F3, spring and from July: the leaves, the pods hidden among them)'),
     Texture('forest_flower_stem', 'plant', ground.flower_stem, 'forest_flower_stem/1', None, tint='grass',
             params=dict(gray=(118, 150)),
             note='stem of the flower beds (column 0, rows 4-7 in game), grayscale for the grass tint'),

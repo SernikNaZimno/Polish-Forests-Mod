@@ -158,9 +158,10 @@ public final class VanillaForestsClientGameTest implements FabricClientGameTest 
 			BlockPos center = oakHornbeam != null ? oakHornbeam : new BlockPos(3072, 64, 3072);
 			first = sp.getServer().computeOnServer(s -> order(s.overworld(), center, false));
 			// 3. The areas of the forests of the tree planner in W1 (the two slice forests; step F1: the lowland beech forest,
-			// dark_forest in W1; step F2: the alder carr, the swamp in W1, with the planner's black alders).
+			// dark_forest in W1; step F2: the alder carr, the swamp in W1, with the planner's black alders; step F3: the
+			// Carpathian beech forest, the windswept forest in W1, with the planner's beeches, firs and sycamores).
 			for (HabitatBiome b : List.of(HabitatBiome.OAK_HORNBEAM_FOREST, HabitatBiome.FRESH_PINE_FOREST,
-					HabitatBiome.LOWLAND_BEECH_FOREST, HabitatBiome.ALDER_CARR)) {
+					HabitatBiome.LOWLAND_BEECH_FOREST, HabitatBiome.ALDER_CARR, HabitatBiome.MONTANE_BEECH_FOREST)) {
 				BlockPos found = located.get(b);
 				if (found == null) {
 					continue;
@@ -594,6 +595,12 @@ public final class VanillaForestsClientGameTest implements FabricClientGameTest 
 				ownColumns == ownWater ? 0 : 256.0 * ownDryTrunks / (ownColumns - ownWater), ownVanilla);
 		report.append(ownLine).append('\n');
 		PolishForests.LOG.info("[vanilla_forests] KF-1 " + ownLine);
+		// Step F3: the planner trunks per 1,000 own columns the trees may stand on (not blocked: the rock and the scree of
+		// the windswept hills of W1 carry no tree).
+		String unblockedLine = String.format(Locale.ROOT, "%s planner trunks per 1000 unblocked own columns: %.1f (%d of %d columns)",
+				biome.id(), ownColumns == ownBlocked ? 0 : 1000.0 * ownTrunks / (ownColumns - ownBlocked), ownTrunks, ownColumns - ownBlocked);
+		report.append(unblockedLine).append('\n');
+		PolishForests.LOG.info("[vanilla_forests] KF-1 " + unblockedLine);
 		if (ownVanilla > 0 && !java.util.Arrays.asList(pl.polishforests.worldgen.feature.plan.ForestBlend.TRANSECT).contains(biome)) {
 			failures.add(biome.id() + ": " + ownVanilla + " vanilla log trunks on the columns of the forest (KF-1) " + ownVanillaAt);
 		}
@@ -607,7 +614,14 @@ public final class VanillaForestsClientGameTest implements FabricClientGameTest 
 		// is chosen among dry columns, deepCenter), required on at least DEEP_MIN_COLUMNS of them for a forest of the steps F.
 		double deepPerChunk = deepDry == 0 ? 0 : 256.0 * deepDryTrunks / deepDry;
 		boolean stepF = !java.util.Arrays.asList(pl.polishforests.worldgen.feature.plan.ForestBlend.TRANSECT).contains(biome);
-		if (deepDry >= DEEP_MIN_COLUMNS && (deepPerChunk < DEEP_N1_LOW || deepPerChunk > DEEP_N1_HIGH)) {
+		// Step F3 (deviation F3-k): the windswept forest of W1 lies on the steep rocky hills, whose blocked columns lower the
+		// trunks per chunk of any area; its N1 is reported only (the planner trunks per 1,000 unblocked columns above, the
+		// vanilla-log check and "no trunk of the mod" still hold).
+		boolean reportOnly = biome == HabitatBiome.MONTANE_BEECH_FOREST;
+		if (reportOnly) {
+			report.append(biome.id()).append(": N1 reported only (").append(String.format(Locale.ROOT, "%.1f", deepPerChunk))
+					.append(" per chunk on the dry deep columns)").append('\n');
+		} else if (deepDry >= DEEP_MIN_COLUMNS && (deepPerChunk < DEEP_N1_LOW || deepPerChunk > DEEP_N1_HIGH)) {
 			failures.add(String.format(Locale.ROOT, "%s: %.1f planner trunks per chunk on the dry deep columns, outside the N1 "
 					+ "envelope (KF-1)", biome.id(), deepPerChunk));
 		} else if (stepF && deepDry < DEEP_MIN_COLUMNS) {

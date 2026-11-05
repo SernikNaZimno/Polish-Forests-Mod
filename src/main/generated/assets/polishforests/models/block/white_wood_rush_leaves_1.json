@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/flowerbed_1",
+  "textures": {
+    "flowerbed": "polishforests:block/white_wood_rush_leaves",
+    "stem": "polishforests:block/forest_flower_stem"
+  }
+}

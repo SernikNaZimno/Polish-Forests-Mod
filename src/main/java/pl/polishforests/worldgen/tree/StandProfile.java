@@ -64,8 +64,24 @@ public record StandProfile(double naturalFactor, double[] managedAges, double[] 
 	 */
 	public static final StandProfile ASH_ALDER = new StandProfile(1.0, DEFAULT.managedAges, DEFAULT.naturalAges,
 			ForestStandMap.MERGE_CHANCE, new double[] {0.10, 0.35, 0.45}, 0.45, 18, 0.4, 8, 36, new double[] {0, 0, 0}, 0);
+	/**
+	 * The upland fir forest (step F3; research/06 §3.8, §4.3): natural stands of the selection structure, opened by the
+	 * fall of single firs and of small groups (the fir dieback; gaps of mostly 8–25 m, the fir regenerates under the
+	 * canopy, so the gaps stay small); managed stands of the shelterwood and selection cutting with regeneration nests of
+	 * about 15–25 m (the fir regenerates in shade, the nests smaller than the beech's). The natural share and the ages are
+	 * those of the slice (as the beech forest's, default choice F2-e).
+	 */
+	public static final StandProfile FIR = new StandProfile(1.0, DEFAULT.managedAges, DEFAULT.naturalAges,
+			ForestStandMap.MERGE_CHANCE, new double[] {0.10, 0.35, 0.45}, 0.4, 14, 0.4, 6, 30, new double[] {0, 0.12, 0.25}, 20);
+	/**
+	 * The Carpathian beech forest (step F3; research/06 §3.3, §4.3): natural stands opened by the fall of single beeches
+	 * and firs and of small groups (the windthrows of the slopes; gaps of mostly 10–30 m, often two together); managed
+	 * stands of the shelterwood and group cutting with regeneration nests of about 20–25 m.
+	 */
+	public static final StandProfile MONTANE_BEECH = new StandProfile(1.0, DEFAULT.managedAges, DEFAULT.naturalAges,
+			ForestStandMap.MERGE_CHANCE, new double[] {0.10, 0.38, 0.48}, 0.45, 18, 0.4, 8, 36, new double[] {0, 0.14, 0.28}, 22);
 	/** All profiles of the table (the gap process draws against the highest chance of any of them). */
-	static final StandProfile[] ALL = {DEFAULT, BEECH, ALDER_CARR, ASH_ALDER};
+	static final StandProfile[] ALL = {DEFAULT, BEECH, ALDER_CARR, ASH_ALDER, FIR, MONTANE_BEECH};
 
 	public StandProfile {
 		if (managedAges.length != 3 || naturalAges.length != 3 || gapChance.length != 3 || nestChance.length != 3) {
@@ -85,6 +101,8 @@ public record StandProfile(double naturalFactor, double[] managedAges, double[] 
 			case LOWLAND_BEECH_FOREST -> BEECH;
 			case ALDER_CARR -> ALDER_CARR;
 			case ASH_ALDER_FOREST -> ASH_ALDER;
+			case UPLAND_FIR_FOREST -> FIR;
+			case MONTANE_BEECH_FOREST -> MONTANE_BEECH;
 			default -> DEFAULT;
 		};
 	}

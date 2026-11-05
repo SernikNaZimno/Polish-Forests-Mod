@@ -638,7 +638,8 @@ class TreeShapePlanTest {
 		StringBuilder report = new StringBuilder("[tree shape] conifer tops, trees with an empty leaf row in the top four of 100"
 				+ " (alone / stand form)\n");
 		int spruceGaps = 0;
-		for (Species s : List.of(Species.SPRUCE, Species.SCOTS_PINE)) {
+		int firGaps = 0;
+		for (Species s : List.of(Species.SPRUCE, Species.SCOTS_PINE, Species.FIR)) {
 			for (AgeClass age : AgeClass.values()) {
 				int[] gaps = new int[2];
 				for (int form = 0; form < 2; form++) {
@@ -670,10 +671,15 @@ class TreeShapePlanTest {
 				if (s == Species.SPRUCE) {
 					spruceGaps += gaps[0] + gaps[1];
 				}
+				if (s == Species.FIR) {
+					firGaps += gaps[0] + gaps[1];
+				}
 			}
 		}
 		System.out.print(report);
 		assertEquals(0, spruceGaps, "spruces with an empty leaf row in their top");
+		// Step F3: the fir's top is a column of needles too, the flat top of the old canopy firs included.
+		assertEquals(0, firGaps, "firs with an empty leaf row in their top");
 	}
 
 	private static int lowestLeaf(TreeVoxels v) {
@@ -775,6 +781,65 @@ class TreeShapePlanTest {
 						broad.id() + " wider than " + narrow.id());
 			}
 		}
+	}
+
+	/**
+	 * Step F3 (docs/04 "Projekt F3"): the silver fir is a straight column with horizontal tiers of branches (its branches
+	 * stand out flat from the trunk, the spruce's droop), and an old canopy fir has the flat "stork's nest" top: the top
+	 * rows of its crown are wider than a mature fir's and an old spruce's pointed top.
+	 */
+	@Test
+	void firsHaveHorizontalTiersAndOldFirsAFlatTop() {
+		double firFlat = horizontalShare(Species.FIR, AgeClass.MATURE);
+		double spruceFlat = horizontalShare(Species.SPRUCE, AgeClass.MATURE);
+		double oldFirTop = topWidth(Species.FIR, AgeClass.OLD_GROWTH);
+		double matureFirTop = topWidth(Species.FIR, AgeClass.MATURE);
+		double oldSpruceTop = topWidth(Species.SPRUCE, AgeClass.OLD_GROWTH);
+		System.out.printf(Locale.ROOT, "[tree shape] horizontal share of the branch wood: fir %.2f, spruce %.2f; top width (top 3 rows):"
+				+ " old fir %.2f, mature fir %.2f, old spruce %.2f%n", firFlat, spruceFlat, oldFirTop, matureFirTop, oldSpruceTop);
+		assertTrue(firFlat > spruceFlat + 0.05, "fir branches flatter than the spruce's: " + firFlat + " / " + spruceFlat);
+		assertTrue(oldFirTop > matureFirTop + 0.5, "old fir top flatter than a mature fir's: " + oldFirTop + " / " + matureFirTop);
+		assertTrue(oldFirTop > oldSpruceTop + 0.5, "old fir top flatter than an old spruce's: " + oldFirTop + " / " + oldSpruceTop);
+	}
+
+	/** Share of the wood off the trunk column whose parent is horizontal, 40 canopy trees in the stand form. */
+	private static double horizontalShare(Species s, AgeClass age) {
+		int flat = 0;
+		int all = 0;
+		for (int k = 0; k < 40; k++) {
+			TreeVoxels v = TreeShapePlan.plan(new TreeRequest(s, CrownLayer.CANOPY, age, SEED, 311 * k - 9000, 64, 23 * k + 7, null, null,
+					StandMap.uniform(age, true)));
+			for (int i = 1; i < v.woodCount(); i++) {
+				if (v.woodX(i) == 0 && v.woodZ(i) == 0) {
+					continue;
+				}
+				all++;
+				flat += v.parent(i) >= TreeVoxels.NORTH ? 1 : 0;
+			}
+		}
+		return (double) flat / Math.max(1, all);
+	}
+
+	/** Mean of the largest horizontal reach of the leaves in the top three leaf rows, 40 canopy trees in the stand form. */
+	private static double topWidth(Species s, AgeClass age) {
+		double sum = 0;
+		int n = 40;
+		for (int k = 0; k < n; k++) {
+			TreeVoxels v = TreeShapePlan.plan(new TreeRequest(s, CrownLayer.CANOPY, age, SEED, 311 * k - 9000, 64, 23 * k + 7, null, null,
+					StandMap.uniform(age, true)));
+			int top = Integer.MIN_VALUE;
+			for (int i = 0; i < v.leafCount(); i++) {
+				top = Math.max(top, v.leafY(i));
+			}
+			double w = 0;
+			for (int i = 0; i < v.leafCount(); i++) {
+				if (v.leafY(i) > top - 3) {
+					w = Math.max(w, Math.hypot(v.leafX(i), v.leafZ(i)));
+				}
+			}
+			sum += w;
+		}
+		return sum / n;
 	}
 
 	/**

@@ -31,7 +31,11 @@ public enum StrippedTrunk {
 	/** Step F2: black alder, the bare wood orange-red when fresh, pale reddish brown. */
 	BLACK_ALDER(TreeTrunk.BLACK_ALDER, MapColor.TERRACOTTA_ORANGE),
 	/** Step F2: elm, light brown sapwood. */
-	ELM(TreeTrunk.ELM, MapColor.WOOD);
+	ELM(TreeTrunk.ELM, MapColor.WOOD),
+	/** Step F3: silver fir, white to pale yellow-pink wood without a colored heartwood. */
+	FIR(TreeTrunk.FIR, MapColor.TERRACOTTA_WHITE),
+	/** Step F3: sycamore maple, white to creamy wood with a silky sheen. */
+	SYCAMORE_MAPLE(TreeTrunk.SYCAMORE_MAPLE, MapColor.SAND);
 
 	private final TreeTrunk trunk;
 	private final MapColor mapColor;
@@ -81,6 +85,8 @@ public enum StrippedTrunk {
 			case NORWAY_MAPLE -> ModBlocks.wood(WoodSet.NORWAY_MAPLE).strippedLog();
 			case BLACK_ALDER -> ModBlocks.wood(WoodSet.BLACK_ALDER).strippedLog();
 			case ELM -> ModBlocks.wood(WoodSet.ELM).strippedLog();
+			case FIR -> ModBlocks.wood(WoodSet.FIR).strippedLog();
+			case SYCAMORE_MAPLE -> ModBlocks.wood(WoodSet.SYCAMORE_MAPLE).strippedLog();
 		};
 	}
 

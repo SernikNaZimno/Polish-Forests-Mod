@@ -41,7 +41,19 @@ public enum GroundPlant {
 	/** Marsh fern (Thelypteris palustris): the fern of the alder carr, fronds from May to October (step F2). */
 	MARSH_FERN(Kind.HERB),
 	/** Stinging nettle (Urtica dioica): the nitrophilous herb of the ash-alder and alder forests, flowering in summer (step F2). */
-	NETTLE(Kind.HERB);
+	NETTLE(Kind.HERB),
+	/**
+	 * Glandular toothwort (Dentaria glandulosa = Cardamine glanduligera): the spring geophyte of the Carpathian beech forest
+	 * (Dentario glandulosae-Fagetum), nodding purple flowers in April and May, gone from June (step F3).
+	 */
+	GLANDULAR_TOOTHWORT(Kind.SEASONAL),
+	/**
+	 * White wood-rush (Luzula luzuloides): evergreen tufts of the acid Carpathian beech forest (Luzulo luzuloidis-Fagetum) and
+	 * the fir forests, whitish flowers in June and July (step F3).
+	 */
+	WHITE_WOOD_RUSH(Kind.SEASONAL),
+	/** Perennial honesty (Lunaria rediviva): the tall herb of the sycamore ravines (Lunario-Aceretum), lilac in May and June (step F3). */
+	PERENNIAL_HONESTY(Kind.HERB);
 
 	/**
 	 * The block family of an entry (not saved: the order may change). Step F2: {@link #HERB}, a single-block cross plant

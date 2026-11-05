@@ -28,7 +28,11 @@ public enum TreeFoliage {
 	/** Step F2. */
 	ELM(Species.ELM, "Elm", "wiązu"),
 	/** Step F2: the leaves and sapling of the bird cherry shrub (its sapling grows into the shrub, not a planner tree). */
-	BIRD_CHERRY(Species.BIRD_CHERRY, "Bird Cherry", "czeremchy zwyczajnej");
+	BIRD_CHERRY(Species.BIRD_CHERRY, "Bird Cherry", "czeremchy zwyczajnej"),
+	/** Step F3: the needles of the silver fir (evergreen, dark green above with two pale bands below). */
+	FIR(Species.FIR, "Silver Fir", "jodły pospolitej"),
+	/** Step F3. */
+	SYCAMORE_MAPLE(Species.SYCAMORE_MAPLE, "Sycamore Maple", "jaworu");
 
 	private final Species species;
 	private final String englishName;
@@ -71,9 +75,9 @@ public enum TreeFoliage {
 		return species.shrub();
 	}
 
-	/** Needle-leaved: the Scots pine and the Norway spruce. */
+	/** Needle-leaved: the Scots pine, the Norway spruce and (step F3) the silver fir. */
 	public boolean conifer() {
-		return this == SCOTS_PINE || this == SPRUCE;
+		return this == SCOTS_PINE || this == SPRUCE || this == FIR;
 	}
 
 	/** Keeps dead leaves over the winter on young trees and lower crowns: oak, hornbeam, beech ({@link MarcescentLeavesBlock}). */

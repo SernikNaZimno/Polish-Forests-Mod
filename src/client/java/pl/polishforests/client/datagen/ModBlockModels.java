@@ -83,6 +83,10 @@ final class ModBlockModels extends FabricModelProvider {
 			// Step F2: the own barks of the black alder (fissured into plates in old age) and the elm (furrowed).
 			case BLACK_ALDER -> List.of(own("black_alder_bark"), own("black_alder_bark_2"), own("black_alder_bark_3"));
 			case ELM -> List.of(own("elm_bark"), own("elm_bark_2"));
+			// Step F3: the smooth gray fir bark with resin blisters (cracked into flat plates in old age) and the sycamore's
+			// flaking plates.
+			case FIR -> List.of(own("fir_bark"), own("fir_bark_2"));
+			case SYCAMORE_MAPLE -> List.of(own("sycamore_maple_bark"), own("sycamore_maple_bark_2"));
 		};
 	}
 
@@ -97,7 +101,7 @@ final class ModBlockModels extends FabricModelProvider {
 			case SPRUCE -> vanilla("spruce_log_top");
 			case BIRCH -> vanilla("birch_log_top");
 			case OAK -> vanilla("oak_log_top");
-			case HORNBEAM, LINDEN, BEECH, ASH, NORWAY_MAPLE, BLACK_ALDER, ELM -> own(woodOf(t).prefix() + "_log_top");
+			case HORNBEAM, LINDEN, BEECH, ASH, NORWAY_MAPLE, BLACK_ALDER, ELM, FIR, SYCAMORE_MAPLE -> own(woodOf(t).prefix() + "_log_top");
 		};
 	}
 
@@ -131,7 +135,8 @@ final class ModBlockModels extends FabricModelProvider {
 			case SPRUCE -> vanilla("stripped_spruce_log_top");
 			case BIRCH -> vanilla("stripped_birch_log_top");
 			case OAK -> vanilla("stripped_oak_log_top");
-			case HORNBEAM, LINDEN, BEECH, ASH, NORWAY_MAPLE, BLACK_ALDER, ELM -> own("stripped_" + woodOf(t.trunk()).prefix() + "_log_top");
+			case HORNBEAM, LINDEN, BEECH, ASH, NORWAY_MAPLE, BLACK_ALDER, ELM, FIR, SYCAMORE_MAPLE ->
+					own("stripped_" + woodOf(t.trunk()).prefix() + "_log_top");
 		};
 	}
 
@@ -322,6 +327,8 @@ final class ModBlockModels extends FabricModelProvider {
 			case SCOTS_PINE -> own("scots_pine_leaves");
 			case SPRUCE -> vanilla("spruce_leaves");
 			case BIRCH -> vanilla("birch_leaves");
+			// Step F3: the fir's own needles (dark green flat needles in two rows, the pale bands of the underside).
+			case FIR -> own("fir_leaves");
 			default -> own("broadleaf_leaves");
 		};
 	}

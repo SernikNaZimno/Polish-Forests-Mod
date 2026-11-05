@@ -52,9 +52,20 @@ class SlicePlotsTest {
 	/** Least distance between two plots, blocks. */
 	static final int MIN_APART = 130;
 	static final double MANAGED_SHARE = 0.85;
-	/** The forests of the planner of the steps F with plots of their own (step F1: the lowland beech forest; step F2: the alder carr and the ash-alder forest). */
+	/**
+	 * The forests of the planner of the steps F with plots of their own (step F1: the lowland beech forest; step F2: the
+	 * alder carr and the ash-alder forest; step F3: the upland fir forest and the Carpathian beech forest).
+	 */
 	static final List<HabitatBiome> F_FORESTS = List.of(HabitatBiome.LOWLAND_BEECH_FOREST, HabitatBiome.ALDER_CARR,
-			HabitatBiome.ASH_ALDER_FOREST);
+			HabitatBiome.ASH_ALDER_FOREST, HabitatBiome.UPLAND_FIR_FOREST, HabitatBiome.MONTANE_BEECH_FOREST);
+	/** The forests of {@link #F_FORESTS} whose origins of the search ring their nearest place to the center (step F3). */
+	static final java.util.Set<HabitatBiome> AROUND_FIRST_HIT = java.util.EnumSet.of(HabitatBiome.UPLAND_FIR_FOREST,
+			HabitatBiome.MONTANE_BEECH_FOREST);
+	/**
+	 * The kinds of plots of the forests of the steps F of which the search finds one plot only (step F3): in the gameplay
+	 * scale the natural stands of the upland fir forest around its 5 places hold one square of 98% of the forest.
+	 */
+	static final java.util.Set<String> F_SINGLE = java.util.Set.of("gameplay upland_fir_forest natural");
 	/**
 	 * The kinds of plots of the forests of the steps F that the search does not find ("scale biome natural|managed"; step
 	 * F2). In the gameplay scale the alder carr is a mosaic of small patches along the streams and the hollows: of 32
@@ -70,9 +81,14 @@ class SlicePlotsTest {
 	 */
 	static final double MIN_BIOME_PATCHY = 0.90;
 
-	/** Least share of the plot's lattice in its biome, in each vegetation mode. */
+	/**
+	 * Least share of the plot's lattice in its biome, in each vegetation mode (step F3: also the Carpathian beech forest of
+	 * the realistic scale, a belt of the slopes broken by the cold aspects of the spruce forest and the gullies, whose
+	 * squares of 98% the search does not find).
+	 */
 	static double minBiome(LandscapeScale scale, HabitatBiome biome) {
-		return scale == LandscapeScale.GAMEPLAY && biome == HabitatBiome.ALDER_CARR ? MIN_BIOME_PATCHY : MIN_BIOME;
+		return scale == LandscapeScale.GAMEPLAY && biome == HabitatBiome.ALDER_CARR
+				|| scale == LandscapeScale.REALISTIC && biome == HabitatBiome.MONTANE_BEECH_FOREST ? MIN_BIOME_PATCHY : MIN_BIOME;
 	}
 
 	/** A plot: scale, stand kind (natural or managed), age class (null: any), name, biome, center. */
@@ -173,7 +189,7 @@ class SlicePlotsTest {
 			for (HabitatBiome f : F_FORESTS) {
 				for (boolean natural : new boolean[] {true, false}) {
 					String kind = scale.id() + " " + f.id() + (natural ? " natural" : " managed");
-					assertEquals(F_MISSING.contains(kind) ? 0 : 2, count(here, f, natural, null), kind);
+					assertEquals(F_MISSING.contains(kind) ? 0 : F_SINGLE.contains(kind) ? 1 : 2, count(here, f, natural, null), kind);
 				}
 			}
 			for (int i = 0; i < here.size(); i++) {
@@ -213,6 +229,22 @@ class SlicePlotsTest {
 		for (LandscapeScale scale : List.of(LandscapeScale.REALISTIC, LandscapeScale.GAMEPLAY)) {
 			String name = scale == LandscapeScale.REALISTIC ? "alder_carr_natural_1" : "alder_carr_managed_1";
 			Plot p = read().stream().filter(q -> q.scale() == scale && q.name().equals(name)).findFirst().orElseThrow();
+			expected.append(scale == LandscapeScale.REALISTIC ? "" : ", ").append("{").append(p.x()).append(", ").append(p.z()).append("}");
+		}
+		expected.append("};");
+		assertTrue(source.contains(expected), "ForestPerformance has no " + expected);
+	}
+
+	/**
+	 * Step F3 (KF-6): the place of the upland fir forest in the flights of {@code ForestPerformance} ({@code FIR_SITE}) is
+	 * the plot {@code upland_fir_natural_1} of each scale.
+	 */
+	@Test
+	void flightsOfThePerformanceTestUseTheFirPlot() throws IOException {
+		String source = Files.readString(Path.of("src/gametest/java/pl/polishforests/gametest/ForestPerformance.java"));
+		StringBuilder expected = new StringBuilder("FIR_SITE = {");
+		for (LandscapeScale scale : List.of(LandscapeScale.REALISTIC, LandscapeScale.GAMEPLAY)) {
+			Plot p = read().stream().filter(q -> q.scale() == scale && q.name().equals("upland_fir_natural_1")).findFirst().orElseThrow();
 			expected.append(scale == LandscapeScale.REALISTIC ? "" : ", ").append("{").append(p.x()).append(", ").append(p.z()).append("}");
 		}
 		expected.append("};");
@@ -405,10 +437,25 @@ class SlicePlotsTest {
 	private static List<int[]> origins(HabitatTargets.World presentDay, HabitatBiome biome, LandscapeScale scale) {
 		double step = scale == LandscapeScale.REALISTIC ? 1_500 : 400;
 		List<int[]> out = new ArrayList<>();
-		for (int ring = 0; ring <= (scale == LandscapeScale.REALISTIC ? 30 : 12); ring++) {
+		// Step F3: the upland and mountain forests lie far from the center of the world (the uplands and the Carpathians),
+		// where each search of the rings around the center is a long lattice search; their rings lie around the forest's
+		// nearest place to the center instead (the same spacing, 8 or 4 rings), so the searches stay short.
+		double cx = 0;
+		double cz = 0;
+		if (AROUND_FIRST_HIT.contains(biome)) {
+			double[] first = HabitatTargets.locate(presentDay, biome, 0, 0, () -> false);
+			if (first != null) {
+				cx = first[0];
+				cz = first[1];
+			}
+		}
+		int rings = AROUND_FIRST_HIT.contains(biome) ? scale == LandscapeScale.REALISTIC ? 8 : 4
+				: scale == LandscapeScale.REALISTIC ? 30 : 12;
+		for (int ring = 0; ring <= rings; ring++) {
 			for (int k = 0; k < (ring == 0 ? 1 : 8); k++) {
 				double a = Math.PI / 4 * k + ring * 0.37;
-				double[] hit = HabitatTargets.locate(presentDay, biome, ring * step * Math.cos(a), ring * step * Math.sin(a), () -> false);
+				double[] hit = HabitatTargets.locate(presentDay, biome, cx + ring * step * Math.cos(a), cz + ring * step * Math.sin(a),
+						() -> false);
 				if (hit != null && out.stream().allMatch(o -> Math.hypot(o[0] - hit[0], o[1] - hit[1]) >= 600)) {
 					out.add(new int[] {(int) Math.round(hit[0]), (int) Math.round(hit[1])});
 				}

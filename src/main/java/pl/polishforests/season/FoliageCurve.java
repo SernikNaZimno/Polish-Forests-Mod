@@ -81,6 +81,9 @@ public final class FoliageCurve {
 	static {
 		CONIFERS.put(Species.SCOTS_PINE, new Needles(0x7C996D, 0x8A9670));
 		CONIFERS.put(Species.SPRUCE, new Needles(0x619961, darken(0x619961, CONIFER_WINTER_DARKENING)));
+		// Step F3: the silver fir, evergreen, a darker and bluer green than the spruce (the pale bands of the underside are
+		// in its texture), darkening a little in winter like the spruce.
+		CONIFERS.put(Species.FIR, new Needles(0x4F8758, darken(0x4F8758, CONIFER_WINTER_DARKENING)));
 		//               leaf-out, young, summer cast, autumn keys (position, target, weight; weight 0 = summer), bare at,
 		//               twig haze, twig tint, marcescent brown (0: none)
 		// Step V13 (CP-B: "in late spring a few oaks, hornbeams and beeches are still brown", "in mid-autumn most crowns are
@@ -113,6 +116,11 @@ public final class FoliageCurve {
 				0x9A8A7E, 0xBBAFA4, 0);
 		broadleaf(Species.BIRD_CHERRY, 4.0, 0xB8DA62, 0x46962E, keys(19.6, 0, 0, 21.0, 0xD8B83A, 0.8, 22.2, 0xC9783A, 0.8),
 				23.2, 0x9E8A80, 0xC4B4AA, 0);
+		// Step F3 (docs/research 08): the sycamore maple leafs out at the end of April, a little after the Norway maple, its
+		// summer green a deep, slightly bluish green (darker than the Norway maple's); in October its leaves turn a dull
+		// yellow to brown (no orange of the Norway maple) and fall by the end of the month in the mountains.
+		broadleaf(Species.SYCAMORE_MAPLE, 5.5, 0xACD25C, 0x2A9060,
+				keys(20.4, 0, 0, 21.8, 0xC8AE3E, 0.8, 22.9, 0xA27A34, 0.85), 23.6, 0x948A7E, 0xB4ABA0, 0);
 	}
 
 	private FoliageCurve() {

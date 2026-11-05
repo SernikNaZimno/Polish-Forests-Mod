@@ -3836,6 +3836,61 @@ Przegląd: 0 usterek blokujących i poważnych, 2 drobne — obie sprawdzone i p
 
 **Przebiegi rundy 2.** `test_plan.py c77a070`: 0 zmienionych plików kodu, bez testów obszarów; wyniki gier z rundy 1 (kod `5bf7006`) obowiązują. Commit końcowy „F2 review fixes, round 2” po pełnym `tools/dev/run-tests test` na drzewie z tą sekcją (wynik w `handoff/F2/results.md`). KF bez zmian wobec rundy 1.
 
+## Projekt F3 (2026-11-05, etap 1: kod, dane, tekstury, testy jednostkowe)
+
+Krok F3 planu „Kroki F” (§3, G.41): jedlina wyżynna (`upland_fir_forest`) i buczyna karpacka (`montane_beech_forest`, w W1 `windswept_forest`) z wariantem jaworzyny z drzewami planera, dwa nowe gatunki i trzy nowe rośliny runa. Drobne wybory: `docs/00` G.44 (F3-a … F3-n, domyślne, do potwierdzenia przy CP-D). Wyniki z gry: „Stan po F3” (etap 2).
+
+**Nowe gatunki (pełny zestaw ZG, G.41 F-c).**
+
+- *Jodła pospolita* (`FIR`, nowy archetyp `SpeciesShape.Archetype.FIR` na końcu): prosta kolumna (wysokość 15 / 28 / 33 bloki, pierśnica 14 / 40 / 62 cm), gałęzie poziomo w okółkach po 4 (kąt 90° / 78°, lekko wzniesione końce zamiast zwisających świerka), rzadziej przestawione okółki (0,15 zamiast 0,35), płaskie pędy igieł wzdłuż gałęzi (kolumna igieł świerka z V6, runda 2, w wierzchołku). Stara jodła okapu (`OLD_GROWTH`, `CANOPY`, bez losowania) ma płaski wierzchołek „bocianie gniazdo”: bez szpica, szersza korona (× 1,12), gałęzie górnej części prawie poziome (80–88°), szeroka kępa igieł na szczycie (F3-a). Test `TreeShapePlanTest.firsHaveHorizontalTiersAndOldFirsAFlatTop`: udział drewna gałęzi z poziomym rodzicem jodła 1,00, świerk 0,93; szerokość trzech górnych rzędów liści stara jodła 5,0, dojrzała 1,0, stary świerk 1,0. Wierzchołek jodły (także płaski) bez pustego rzędu liści (`conifersTopsAreColumnsOfNeedles` z jodłą). Szara gładka kora (`fir_bark` 1–2), ciemne igły z jaśniejszymi pasami spodu (`fir_leaves`, płaskie gałązki, barwa `0x4F8758`, zimą ciemniejsza jak świerk).
+- *Jawor* (`SYCAMORE_MAPLE`): wysoki pień i szeroka, wysoko sklepiona korona jak klon zwyczajny, większa i gęstsza (archetyp BROAD, 15 / 27 / 31 bloków, pierśnica 13 / 42 / 66 cm). Jaśniejsza, łuszcząca się płatami kora (`sycamore_maple_bark` 1–2). Liście od końca IV, latem głęboka, lekko niebieskawa zieleń (`0x2A9060`, ΔE ≥ 6 od każdego gatunku), w X matowożółte do brązowych, bez pomarańczu klonu (F3-c); zimą gałązki.
+- Oba gatunki mają: pień, okorowany pień, nabieg (`RootPlan`: jodła głęboki system sercowy z korzeniem palowym, jawor sercowy z korzeniami pionowymi w piargu), liście z fazą i krzywą `FoliageCurve`, sadzonkę w trzech rozmiarach, doniczkę, własne drewno P2 (deski, okorowane drewno, receptury; deski jodły z `spruce_planks`, jaworu z `oak_planks`), łup `trunk_base`, ścinanie przez FallingTree i Tree Harvester (tagi), kształt planera, `deadwood/` i `stump/`. W generacji piszą własne kłody (F2-d).
+- *Tekstury:* 24 nowe pliki z `tools/art` (`recipes.py`, `wood.py` z sadzonką jodły w piętrach, `ground.py`), `lint.py` PASS, CREDITS.
+- *Migawka rejestru:* świadomie przegenerowana (`-PwriteRegistrySnapshot`), 150 linii dopisanych, 0 usuniętych.
+
+**Jedlina wyżynna** (Abietetum polonicum, Galio-Abietetum; uboga Vaccinio-Abietetum).
+
+- *Okap* (reguła ogólna, LMwyż i Lwyż): jodła 720 (pełna waga: biom leży w zasięgu jodły), buk 120 i świerk 70 według flag zasięgu (gdzie indziej jodła), sosna 50, dąb 40; gospodarczy jodła 680, buk 90, świerk 90, sosna 100, dąb 40. Wielopiętrowa: a2 jodła 700, buk 200, grab 100 (`subcanopy_chance` 0,7); gęste odnowienie jodły pod okapem (jodła 800, buk 150, leszczyna 50) i w lukach (jodła 600, buk 150, brzoza, jarząb, leszczyna). Szanse 0,90 / 0,72 / 0,62, naturalny 0,95, luki 0,9.
+- *Jedlina uboga* (BMwyż, `UPLAND_MIXED_CONIFEROUS`): jodła 600, sosna 260, świerk 100 (gdzie brak flagi świerka: sosna), dąb 40; gospodarczy z większym udziałem sosny (340).
+- *Profil wydzieleń* `StandProfile.FIR`: luki 0,10 / 0,35 / 0,45, skupisko 0,4, 6–30 m, mediana 14 m (jodła odnawia się w cieniu, luki małe); gniazda w gospodarczym 0 / 0,12 / 0,25, mediana 20 m (rębnie przerębowe i częściowe).
+
+**Buczyna karpacka** (Dentario glandulosae-Fagetum; kwaśna Luzulo luzuloidis-Fagetum) **z jaworzyną** (Lunario-Aceretum).
+
+- *Typowa* (LG): buk 650 i jodła 220 (pełne wagi), świerk 50 według flagi (gdzie indziej jodła), jawor 80; gospodarczy buk 640, jodła 180, świerk 120, jawor 60. a2 słabsze (`subcanopy_chance` 0,45), odnowienie buka i jodły z jaworem. Szanse 0,90 / 0,72 / 0,62, naturalny 0,95, luki 0,8.
+- *Kwaśna* (`Association.ACIDOPHILOUS`): buk 650, jodła 250, świerk 80, jarząb 20; jawor tylko w lukach.
+- *Jaworzyna* (`Association.SYCAMORE_RAVINE_FOREST`, strome stoki NE niższej części regla): jawor 620, buk 180, jesion 120, jodła 80; szanse 0,88 / 0,70 / 0,60, naturalny 0,92.
+- Reguły zastępują reguły M2 obu biomów i jaworzyny (drzewa planera zamiast drzew zastępczych).
+- *Profil* `StandProfile.MONTANE_BEECH`: luki 0,10 / 0,38 / 0,48, skupisko 0,45, 8–36 m, mediana 18 m; gniazda 0 / 0,14 / 0,28, mediana 22 m.
+- *Jawor w buczynie niżowej* (F3-d): żyzna buczyna niżowa (Galio odorati-Fagetum) dostaje jawor 30 w okapie, 20 w gospodarczym, 40 w odnowieniu i 50 w lukach (0–5% a1). Wagi reguły się zmieniają, więc nowe chunki tej buczyny losują też inne gatunki tych samych drzew; buczyna kwaśna bez zmian, teren bez zmian, stare chunki bez zmian.
+
+**Runo i mchy.**
+
+- *Nowe rośliny* (F3-b; `GroundPlant` na końcu, fazy V13 w `GroundPhases`, `ForestCensus.OWN_HERB_PLANTS`): żywiec gruczołowaty (SEASONAL, geofit wiosenny: pędy od końca III, kwiaty IV–V, znika w lipcu; `SPRING_GEOPHYTES`), kosmatka gajowa (SEASONAL, kępy zielone cały rok, kwiaty V–VI), miesiącznica trwała (HERB, 1 blok: liście IV–XI, bladoliliowe kwiaty V–VI).
+- *Buczyna typowa:* płaty BLOBS 0,97 — ściółka 44, żywiec 20, marzanka 8, szczawik 8, paproć 4, zawilec 4, mech leśny rozproszony (N8 wiosną 30–80%, latem 10–50%).
+- *Buczyna kwaśna:* ściółka 52, kosmatka gajowa 14, borówka 8 (płaty), szczawik 6, paproć 4, żywiec 3.
+- *Jaworzyna:* miesiącznica 22, duża paproć wanilii 14 (za nerecznicę i wietlicę), paproć 12, szczawik 8, żywiec 6, ściółka 10, pokrzywa 4; darń pod roślinami.
+- *Jedlina:* mszysta ściółka (`mossFloor`: jeden segment igliwia nad mchem) 24, szczawik 14, borówka 10 płatami, paproć 9 i duża paproć 3 (nerecznice, F3-e), kosmatka 5, marzanka 4, igliwie 8, mech leśny w poduszkach 14 (N9 30–70%). Jedlina uboga: więcej borówki (24, z mchem) i mchu (30), mszysty grunt na kolumnach bielicy reguły.
+- *Podszyt:* jedlina 2 krzewy na chunk (leszczyna i jarząb wycinka, cienkie), buczyna 1,5 (bez bzu koralowego: brak bloku, F3-f); płaszcz skraju obu lasów leszczyna (`HAZEL_MANTLE`, cienka) i jarząb zamiast leszczyny M2.
+
+**Martwe drewno** (F3-g): 2,0 (jedlina) i 2,2 (buczyna karpacka) martwego drzewa na chunk lasu naturalnego (`DEAD_TREES`), pniaki w gospodarczym (`STUMPS`). Jedlina: jodła 14, buk 3, sosna 2, świerk 1; buczyna: buk 13, jodła 5, świerk 1, jawor 1; jaworzyna: jawor 11, buk 5, jesion 3, jodła 1. Formy jodły 0,35 / 0,35 / 0,12 / 0,18 (kłoda, posusz, złom, wywrot; zamieranie jodły na stojąco), jaworu 0,50 / 0,20 / 0,18 / 0,12; posusz jodły 0,5–0,9 wysokości jak świerk, igliwie martwych jodeł jak u świerka (`DeadwoodPlan.conifer`).
+
+**Przejścia** (F3-h): `ForestBlend.FORESTS` ma jedlinę (indeks 7, kod kanoniczny LMwyż) i buczynę karpacką (8, LG typowa). Pary `BLENDS`: jedlina z buczyną niżową, grądem, LMśw i BMśw; buczyna karpacka z buczyną niżową, jedliną i grądem. Jedlina z Bśw, oba lasy z olsem i OlJ, a lasy górskie ze świerczyną i halą (spoza `FORESTS`) w rampie `Ecotone`. `SHARES` 10. Lasy wycinka i buczyna z dala od nowych lasów bez zmian (nowe udziały tam zerowe, suma w `pick` w kolejności indeksów); lasy wycinka przy jedlinie biorą jej kod w pasie przejścia (zamierzone, jak w F1 i F2).
+
+**Karta norm** (F3-i): kolumny jedliny i buczyny karpackiej, naturalne i gospodarcze. Jedlina: N1 8–18 pni na chunk [S], N3 jodła 50–90%, N4 70–95%, N7 20–50% (podrost jodły), N8 20–60% latem i wiosną [S], N9 30–70%, N10 2,0 obiektu i 80–150 m³/ha w naturalnym. Buczyna: N1 6–12 / 7–15 [S], N3 buk 50–90%, jodła 10–40%, jawor (grupa `maple_ash`) 5–15% w żyznej; N4 70–95%, N7 5–30%, N8 wiosną 30–80% i latem 10–50% (żyzna), 10–50% (kwaśna); N9 0–20% [S]; N10 2,2 obiektu i 100–200 m³/ha. Jaworzyna jako wariant `ForestNorms.Site.RAVINE` (z asocjacji kodu, `ForestNorms.siteOf`): N3 `maple_ash` 55–95%, buk 5–40%, jodła 0–20%, N8 50–90%. Nowy klucz składu `fir`. `NormsCensus.site` i `StandCensusSimulationTest` (formy jedliny i buczyny, asocjacje) przez `ForestNorms.siteOf`.
+
+**Powierzchnie i KF-6:** `src/test/resources/slice_plots.txt` + 15 powierzchni (`-PfindSlicePlots`): REAL po 4 jedliny (`upland_fir_natural_1` (46472, 15684), `_2` (46446, 17838), `managed_1` (46572, 16144), `_2` (46732, 15944)) i buczyny karpackiej (`montane_beech_natural_1` (46311, 17880), `_2` (46543, 18539), `managed_1` (46443, 18139), `_2` (46503, 18019)); GAMEPLAY 3 jedliny (`natural_1` (1706, 3775), `managed_1` (1866, 3715), `managed_2` (2601, 2567); drugiej naturalnej brak, `SlicePlotsTest.F_SINGLE`) i 4 buczyny (`natural_1` (3897, 2692), `_2` (4217, 2092), `managed_1` (3227, 2035), `_2` (3287, 2155)). Szukanie lasów F3 (`SlicePlotsTest.AROUND_FIRST_HIT`) zaczyna od pierwszego trafienia `locate` od (0, 0) i obchodzi wokół niego 8 (REAL) albo 4 (GAMEPLAY) pierścienie, zamiast 30/12 pierścieni wokół środka (lasy górskie leżą w REAL 46–49 km od środka; pełne szukanie było zbyt długie). Buczyna karpacka REAL z progiem biomu 0,90 (`MIN_BIOME_PATCHY`, jak ols GAMEPLAY): pas stoków przerywany zimnymi wystawami świerczyny i jarami nie ma kwadratów 98%. Miejsce KF-6: `ForestPerformance.FIR_SITE` = `upland_fir_natural_1` obu skal (`upland_fir_1` w przelocie `-Psites=slice`), test `flightsOfThePerformanceTestUseTheFirPlot`; `DeterminismClientGameTest` ma siódmy obszar `upland_fir` (narożnik 64 bloki przed tą powierzchnią).
+
+**Gametesty** (do etapu 2): `vanilla_forests` z obszarem buczyny karpackiej (`windswept_forest`) i linią „planner trunks per 1000 unblocked own columns” (strome skały W1-g zablokowane); N1 buczyny tylko w raporcie (odstępstwo F3-k); `habitats` liczy KF-1 na pierwszych powierzchniach lasów kroków F, więc też jedliny i buczyny; `determinism` dostaje obszar `upland_fir` (`upland_fir_natural_1`); `performance -Psites=slice` miejsce `upland_fir_1` (`ForestPerformance.FIR_SITE`, skopiowane do `pl-m2-baseline`); tablice próbek pni, ścinania, nabiegów, martwego drewna, liści i sadzonek z jodłą i jaworem.
+
+**Stare światy.** Zmienia się dekoracja nowych chunków jedliny, buczyny karpackiej z jaworzyną, ich pasa przejścia i zasięgu koron oraz żyznej buczyny niżowej (jawor, F3-d); teren bez zmian.
+
+**Testy (etap 1).**
+
+- Kompilacja `main`, `client`, `test`, `gametest`; `runDatagen`; `checkDatagen`; `checkArt`.
+- Klasy zmian: `RegistrySnapshotTest`, `WoodSetTest`, `PlanksTextureTest`, `TrunkOutlineTest`, `TreeShapePlanTest` (nowy test jodły), `RootPlanTest`, `DeadwoodPlanTest`, `GroundLayerPlanTest`, `ForestBlendTest` (nowy test par F3), `*season*` (`FoliageCurveTest`), `ForestNormsTest` (karta F3), `ForestCensusTest`, `SlicePlotsTest`, `SliceStandTest`, `ProceduralTreeStatesTest`.
+- `tools/dev/run-tests --reuse fastTest`.
+- Wyniki i przebiegi gry w „Stan po F3”, według `python tools/dev/test_plan.py 62f8115`.
+
 ## Do kroku porządkowego (lista drobiazgów z recenzji)
 
 Lista założona w V10 według decyzji użytkownika z 2026-10-21 (`docs/00` F, P4): drobiazgi widoczne tylko na zbliżeniach albo w pomiarach bez wpływu na grę nie są poprawiane od razu, tylko trafiają tutaj; zbiorczy krok porządkowy na końcu kamienia milowego przegląda listę i poprawia, co warto. Każdy wpis: krok, w którym powstał, opis, gdzie szukać, propozycja. Wpis usuwamy (albo przekreślamy z commitem), gdy jest zrobiony.

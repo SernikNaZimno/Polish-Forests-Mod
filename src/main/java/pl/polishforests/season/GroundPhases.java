@@ -46,7 +46,15 @@ import pl.polishforests.block.GroundPlant;
  * <li><b>Marsh fern</b> (step F2): fronds from mid-May ({@value #FERN_SHOOTS}), yellow-brown dying fronds from mid-October
  * ({@value #FERN_YELLOW}, the leaves model) and gone from November ({@value #FERN_GONE});
  * <li><b>Stinging nettle</b> (step F2): shoots from mid-April ({@value #NETTLE_SHOOTS}), the hanging flower tassels in July
- * and August ({@value #NETTLE_FLOWERS} … {@value #NETTLE_FLOWERS_END}), gone from November ({@value #NETTLE_GONE}).
+ * and August ({@value #NETTLE_FLOWERS} … {@value #NETTLE_FLOWERS_END}), gone from November ({@value #NETTLE_GONE});
+ * <li><b>Glandular toothwort</b> (step F3, a spring geophyte of the Carpathian beech forest): shoots from late March
+ * ({@value #TOOTHWORT_SHOOTS}), purple flowers from mid-April to mid-May ({@value #TOOTHWORT_FLOWERS} …
+ * {@value #TOOTHWORT_FLOWERS_END}), leaves until mid-June and gone from then ({@value #TOOTHWORT_GONE}) until March;
+ * <li><b>White wood-rush</b> (step F3): evergreen tufts, the whitish flower clusters in June and July
+ * ({@value #WHITE_WOOD_RUSH_FLOWERS} … {@value #WHITE_WOOD_RUSH_FLOWERS_END});
+ * <li><b>Perennial honesty</b> (step F3, the sycamore ravines): shoots from early April ({@value #HONESTY_SHOOTS}), lilac
+ * flowers from mid-May to the end of June ({@value #HONESTY_FLOWERS} … {@value #HONESTY_FLOWERS_END}), leaves and pods
+ * through the autumn, gone from November ({@value #HONESTY_GONE}).
  * </ul>
  */
 public final class GroundPhases {
@@ -103,6 +111,16 @@ public final class GroundPhases {
 	static final double NETTLE_FLOWERS = 12.0;
 	static final double NETTLE_FLOWERS_END = 18.0;
 	static final double NETTLE_GONE = 24.5;
+	static final double TOOTHWORT_SHOOTS = 2.5;
+	static final double TOOTHWORT_FLOWERS = 4.2;
+	static final double TOOTHWORT_FLOWERS_END = 7.5;
+	static final double TOOTHWORT_GONE = 10.5;
+	static final double WHITE_WOOD_RUSH_FLOWERS = 9.0;
+	static final double WHITE_WOOD_RUSH_FLOWERS_END = 15.0;
+	static final double HONESTY_SHOOTS = 3.0;
+	static final double HONESTY_FLOWERS = 7.5;
+	static final double HONESTY_FLOWERS_END = 12.0;
+	static final double HONESTY_GONE = 24.5;
 
 	/** Keys of a tint curve: position, target color, weight of the target over the raw grass color. */
 	private record Key(double at, int target, double weight) {
@@ -159,6 +177,11 @@ public final class GroundPhases {
 					: at >= FERN_YELLOW && at < FERN_GONE ? Look.LEAVES : Look.NONE;
 			case NETTLE -> at >= NETTLE_FLOWERS && at < NETTLE_FLOWERS_END ? Look.FULL
 					: at >= NETTLE_SHOOTS && at < NETTLE_GONE ? Look.LEAVES : Look.NONE;
+			case GLANDULAR_TOOTHWORT -> at >= TOOTHWORT_FLOWERS && at < TOOTHWORT_FLOWERS_END ? Look.FULL
+					: at >= TOOTHWORT_SHOOTS && at < TOOTHWORT_GONE ? Look.LEAVES : Look.NONE;
+			case WHITE_WOOD_RUSH -> at >= WHITE_WOOD_RUSH_FLOWERS && at < WHITE_WOOD_RUSH_FLOWERS_END ? Look.FULL : Look.LEAVES;
+			case PERENNIAL_HONESTY -> at >= HONESTY_FLOWERS && at < HONESTY_FLOWERS_END ? Look.FULL
+					: at >= HONESTY_SHOOTS && at < HONESTY_GONE ? Look.LEAVES : Look.NONE;
 			default -> Look.FULL;
 		};
 	}

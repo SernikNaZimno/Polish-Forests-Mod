@@ -1,0 +1,12 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "polishforests:block/sycamore_maple_leaves",
+    "tints": [
+      {
+        "type": "minecraft:constant",
+        "value": -12999876
+      }
+    ]
+  }
+}

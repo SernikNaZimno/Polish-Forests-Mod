@@ -354,18 +354,15 @@ final class NormsCensus {
 
 	/**
 	 * The site variant of a plot for the norms that differ by it (step F1: the fertile and the acid beech forest, N8): by
-	 * the forest site type of the habitat code at the plot's center (null: unknown, the norm without a site).
+	 * the forest site type of the habitat code at the plot's center (null: unknown, the norm without a site); step F3: the
+	 * fertile and the acid Carpathian beech forest (LG and LMG), its sycamore ravine forest by the association.
 	 */
 	static ForestNorms.@org.jspecify.annotations.Nullable Site site(ServerLevel level, int x, int z) {
 		if (!(level.getChunkSource().getGenerator() instanceof pl.polishforests.worldgen.chunk.PolandChunkGenerator gen)) {
 			return null;
 		}
 		int code = gen.classifier(level.getSeed()).classify(gen.model(level.getSeed()).sample(x, z), x, z);
-		return switch (pl.polishforests.worldgen.habitat.Habitat.siteType(code)) {
-			case FRESH_BROADLEAVED -> ForestNorms.Site.FERTILE;
-			case FRESH_MIXED_BROADLEAVED -> ForestNorms.Site.ACID;
-			default -> null;
-		};
+		return ForestNorms.siteOf(code);
 	}
 
 	/**
@@ -416,7 +413,8 @@ final class NormsCensus {
 		// STAND_SHARE of the plot's forest columns (a natural stand has no stumps and about 8 times the dead trees of a managed
 		// one, so a mixed plot fits neither norm); the share is reported and a mixed plot's N10 rows are not judged.
 		double share = standShare(level, g, area, forest);
-		ForestNorms.Site site = forest.biome() == pl.polishforests.worldgen.habitat.HabitatBiome.LOWLAND_BEECH_FOREST ? site(level, x, z) : null;
+		ForestNorms.Site site = forest.biome() == pl.polishforests.worldgen.habitat.HabitatBiome.LOWLAND_BEECH_FOREST
+				|| forest.biome() == pl.polishforests.worldgen.habitat.HabitatBiome.MONTANE_BEECH_FOREST ? site(level, x, z) : null;
 		boolean mixed = share < STAND_SHARE;
 		rows.add(row(c, forest, STAND_SHARE_METRIC, "", share, null, ForestNorms.Verdict.NONE));
 		PolishForests.LOG.info(String.format(Locale.ROOT, "[slice] %s: share of the plot's forest columns in the %s stand %.3f%s",

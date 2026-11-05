@@ -205,6 +205,8 @@ SAPLING_LEAVES = {
     'alder': [["2002", "2112", "2111", "1113", "0130"], ["202", "211", "113", "010"]],
     'elm': [["0020", "0211", "2111", "2113", "1130", "0100"], ["020", "211", "211", "113", "010"]],
     'bird_cherry': [["020", "211", "211", "113", "010"], ["02", "21", "11", "13", "01"]],
+    # Step F3: the sycamore maple, large five-lobed leaves (broader than the Norway maple's sprite, blunter lobes).
+    'sycamore': [["0202020", "2111112", "0211120", "3111113", "0031300"], ["02020", "21112", "31113", "00300"]],
 }
 
 
@@ -259,6 +261,8 @@ def sapling(tex, palettes):
             side = -side
         if kind == 'pine':
             pine_fan(rng, val, stem, p)
+        elif kind == 'fir':
+            fir_tiers(rng, val, stem, p)
         elif kind == 'ash':
             ash_leaves(rng, val, tips, p)
         else:
@@ -308,6 +312,38 @@ def pine_fan(rng, val, stem, p):
                 needle(x, y, tone)
     fan(cx, cy, p['rays'], p['ray_len'], p['spread'], 1.0)
     fan(cx, cy + p['whorl_at'] - p['tuft_at'], p['rays'] - 3, p['ray_len'] - 2, p['spread'] + 0.3, 0.6)
+
+
+def fir_tiers(rng, val, stem, p):
+    """Young silver fir (step F3): a gray stem (stem tones) with flat horizontal tiers of short dark needle rays every
+    p['tier_gap'] rows from the top down, each tier longer than the one above (a narrow cone), the rays on both sides
+    level; the needle tones dark at the stem (3), mid along the ray (4) and the pale underside (5) on the row below the
+    outer half of each ray (the two white bands of the fir needle). The leader top keeps a small tuft."""
+    tx, ty = stem[-1][0], stem[-1][1]
+
+    def needle(x, y, tone):
+        if 1 <= x <= N - 2 and 0 <= y < N and val[y, x] in (0, 3, 4):
+            val[y, x] = max(val[y, x], tone)
+
+    def underside(x, y):
+        if 1 <= x <= N - 2 and 0 <= y < N and val[y, x] == 0:
+            val[y, x] = 5
+
+    needle(tx, ty - 1, 4)
+    needle(tx - 1, ty, 4)
+    needle(tx + 1, ty, 4)
+    k = 0
+    for y in range(ty + 2, N - 3, p['tier_gap']):
+        sx = [s for s in stem if s[1] == y][0][0]
+        length = min(6, 2 + k + int(rng.integers(0, 2)))
+        for side in (-1, 1):
+            ln = length - int(rng.integers(0, 2))
+            for s in range(1, ln + 1):
+                x = sx + side * s
+                needle(x, y, 3 if s == 1 else 4)
+                if s > ln // 2:
+                    underside(x, y + 1)
+        k += 1
 
 
 def ash_leaves(rng, val, tips, p):

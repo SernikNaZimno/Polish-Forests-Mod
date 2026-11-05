@@ -73,7 +73,12 @@ public final class DeadwoodPlan {
 
 	/** Share of the dead tree picks a managed stand keeps for a species. */
 	public static double managedKeep(Species species) {
-		return species == Species.SCOTS_PINE || species == Species.SPRUCE ? MANAGED_KEEP_CONIFER : MANAGED_KEEP;
+		return conifer(species) ? MANAGED_KEEP_CONIFER : MANAGED_KEEP;
+	}
+
+	/** The needle-leaved species of the dead wood: the Scots pine, the spruce and (step F3) the fir. */
+	static boolean conifer(Species species) {
+		return species == Species.SCOTS_PINE || species == Species.SPRUCE || species == Species.FIR;
 	}
 	/**
 	 * Least share of a log's length resting on the ground: no air below (§3 V11, stricter after the review of V11, round
@@ -110,6 +115,10 @@ public final class DeadwoodPlan {
 			// disease.
 			case BLACK_ALDER -> new double[] {0.45, 0.25, 0.20, 0.10};
 			case ELM -> new double[] {0.35, 0.40, 0.15, 0.10};
+			// Step F3: the fir dies standing (the fir dieback, the bark beetles of the weakened trees) and is thrown by the
+			// mountain winds less often than the spruce (its tap root); the sycamore mostly falls whole on the scree.
+			case FIR -> new double[] {0.35, 0.35, 0.12, 0.18};
+			case SYCAMORE_MAPLE -> new double[] {0.50, 0.20, 0.18, 0.12};
 			default -> new double[] {0.60, 0.15, 0.15, 0.10};
 		};
 	}
@@ -145,7 +154,7 @@ public final class DeadwoodPlan {
 	 * suppressed trees out before they die, so the dead wood left there (the WISL volumes per piece) is of canopy trees.
 	 */
 	public static CrownLayer layer(long worldSeed, Species species, boolean natural, int x, int z) {
-		double canopy = natural ? species == Species.SCOTS_PINE || species == Species.SPRUCE ? 0.8 : 0.5 : 0.7;
+		double canopy = natural ? conifer(species) ? 0.8 : 0.5 : 0.7;
 		return noise(worldSeed).unit(x, z, 3) < canopy ? CrownLayer.CANOPY : CrownLayer.SUBCANOPY;
 	}
 
@@ -261,7 +270,7 @@ public final class DeadwoodPlan {
 			// Oaks and ashes break above the crown base, among their limbs.
 			case OAK -> new double[] {0.6, 0.85};
 			case SCOTS_PINE -> new double[] {0.35, 0.8};
-			case SPRUCE -> new double[] {0.5, 0.9};
+			case SPRUCE, FIR -> new double[] {0.5, 0.9};
 			case BIRCH -> new double[] {0.25, 0.5};
 			case ASH -> new double[] {0.6, 0.85};
 			case ELM -> new double[] {0.5, 0.8};
@@ -273,13 +282,13 @@ public final class DeadwoodPlan {
 		// Limbs of a dead tree: oaks and ashes keep their thick limbs, the others shorter ones, pines only stubs, spruces
 		// many short dry branches.
 		int keepRadius = switch (r.species()) {
-			case SCOTS_PINE, SPRUCE -> 1;
+			case SCOTS_PINE, SPRUCE, FIR -> 1;
 			default -> 2;
 		};
 		int maxDepth = switch (r.species()) {
 			case OAK -> 6;
 			case ASH -> 4;
-			case SPRUCE -> 2;
+			case SPRUCE, FIR -> 2;
 			case SCOTS_PINE, BIRCH -> 1;
 			default -> 3;
 		};
@@ -291,7 +300,7 @@ public final class DeadwoodPlan {
 		// Conifers: of each whorl only some dry stubs stay (a cross of opposite stubs reads as a telegraph pole).
 		double stubChance = switch (r.species()) {
 			case SCOTS_PINE -> 0.3;
-			case SPRUCE -> 0.55;
+			case SPRUCE, FIR -> 0.55;
 			default -> 1;
 		};
 		int[] kept = new int[s.tree.woodCount()];
@@ -492,7 +501,7 @@ public final class DeadwoodPlan {
 		}
 		boolean fromBase = rnd.next() < 0.35;
 		int from = fromBase ? 0 : Math.min(thick - MIN_LOG, (int) ((0.15 + 0.35 * rnd.next()) * thick));
-		boolean conifer = r.species() == Species.SCOTS_PINE || r.species() == Species.SPRUCE;
+		boolean conifer = conifer(r.species());
 		// Natural broad-leaved stands: fragments of a stem; natural pine forests longer pieces; managed stands mostly whole
 		// stems left lying (windfalls, crowns of the fellings), the WISL volume per piece [S].
 		double share = !r.natural() ? 0.8 + 0.2 * rnd.next() : conifer ? 0.55 + 0.45 * rnd.next() : 0.3 + 0.45 * rnd.next();
@@ -552,7 +561,7 @@ public final class DeadwoodPlan {
 		int prev = parentIndex;
 		int[] placedAt = new int[t.woodCount()];
 		Arrays.fill(placedAt, -1);
-		boolean conifer = r.species() == Species.SCOTS_PINE || r.species() == Species.SPRUCE;
+		boolean conifer = conifer(r.species());
 		for (int k = 0; k < count; k++) {
 			int node = s.chain[from + k];
 			int a = start + k;

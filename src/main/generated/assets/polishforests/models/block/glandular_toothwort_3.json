@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/flowerbed_3",
+  "textures": {
+    "flowerbed": "polishforests:block/glandular_toothwort",
+    "stem": "polishforests:block/forest_flower_stem"
+  }
+}

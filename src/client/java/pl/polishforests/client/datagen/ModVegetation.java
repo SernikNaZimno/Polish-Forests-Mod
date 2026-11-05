@@ -224,8 +224,6 @@ final class ModVegetation {
 				.add(Species.SCOTS_PINE, ModTrees.SCOTS_PINE_LOW, 900).add(Species.BIRCH, 100);
 		t.rule(HabitatCondition.biomes(BOG_WOODLAND).withSiteTypes(ForestSiteType.BOGGY_MIXED_CONIFEROUS), 6)
 				.add(Species.BIRCH, 800).add(Species.SCOTS_PINE, ModTrees.SCOTS_PINE_LOW, 200);
-		t.rule(HabitatCondition.biomes(MONTANE_BEECH_FOREST).withAssociations(Association.SYCAMORE_RAVINE_FOREST), 8)
-				.add(Species.SYCAMORE_MAPLE, 500).add(Species.BEECH, 300).add(Species.ASH, 100).add(Species.FIR, 100);
 		t.rule(HabitatCondition.biomes(DRY_PINE_FOREST), 7).add(Species.SCOTS_PINE, 665)
 				.add(Species.SCOTS_PINE, ModTrees.SCOTS_PINE_LOW, 285).add(Species.BIRCH, 50);
 		// The forests with the trees of the tree planner (the vertical slice, step V9 of docs/04-pionowy-wycinek.md, PW-3,
@@ -288,7 +286,9 @@ final class ModVegetation {
 		// shades it out), beech regenerating under the canopy and in the gaps of the fallen trees and the nests of the managed
 		// stands (the stand map's beech profile), managed stands single-storied with fewer admixtures. The acid beech forest
 		// (Luzulo pilosae-Fagetum, the moderately fertile site) with oak, pine and birch; the fertile one (Galio odorati-
-		// Fagetum) with oak, ash, Norway maple and linden (sycamore from step F3). The chances stay at or below the highest
+		// Fagetum) with oak, ash, Norway maple and linden, since step F3 also the sycamore maple (0-5% of a1, docs/04
+		// "Projekt F3": the weights of the fertile form's rule change, so its new chunks draw other species of the same
+		// trees; the acid form is unchanged). The chances stay at or below the highest
 		// ones of the slice forests (TreeStandPlan.surelyTreeless is habitat-free, so a higher chance would move the crown
 		// markers of the slice forests too).
 		t.planned(HabitatCondition.biomes(LOWLAND_BEECH_FOREST).withSiteTypes(ForestSiteType.FRESH_MIXED_BROADLEAVED), 12)
@@ -300,13 +300,14 @@ final class ModVegetation {
 				.chances(new float[] {0.90F, 0.72F, 0.62F}, new float[] {0.95F, 0.95F, 0.95F}, 0.8F).subcanopyChance(0.35F);
 		t.planned(HabitatCondition.biomes(LOWLAND_BEECH_FOREST), 12)
 				.full(Species.BEECH, 800).add(Species.OAK, 70).add(Species.ASH, 40).add(Species.NORWAY_MAPLE, 45)
-				.add(Species.LINDEN, 45)
+				.add(Species.LINDEN, 45).add(Species.SYCAMORE_MAPLE, 30)
 				.managed().full(Species.BEECH, 860).add(Species.OAK, 60).add(Species.ASH, 25).add(Species.NORWAY_MAPLE, 30)
-				.add(Species.LINDEN, 25)
+				.add(Species.LINDEN, 25).add(Species.SYCAMORE_MAPLE, 20)
 				.subcanopy().full(Species.BEECH, 600).alt(Species.HORNBEAM, 250, Species.LINDEN).add(Species.LINDEN, 150)
 				.regeneration().full(Species.BEECH, 800).add(Species.NORWAY_MAPLE, 100).alt(Species.HORNBEAM, 100, Species.LINDEN)
+				.add(Species.SYCAMORE_MAPLE, 40)
 				.gapRegeneration().full(Species.BEECH, 650).add(Species.ASH, 100).add(Species.NORWAY_MAPLE, 100)
-				.add(Species.HAZEL, 150)
+				.add(Species.HAZEL, 150).add(Species.SYCAMORE_MAPLE, 50)
 				.chances(new float[] {0.90F, 0.72F, 0.62F}, new float[] {0.95F, 0.95F, 0.95F}, 0.8F).subcanopyChance(0.35F);
 		// Step F2 (docs/04 "Projekt F2", research/06 §4.5-4.6, research 08). Alder carr (Ribeso nigri-Alnetum on the
 		// eutrophic peat, Ol): a1 black alder 80-100% with birch and some ash on the drier tussocks, a weak a2 of alder and
@@ -349,10 +350,66 @@ final class ModVegetation {
 		t.rule(HabitatCondition.biomes(WILLOW_POPLAR_FOREST), 7).add(Species.WHITE_WILLOW, 700, 2).add(Species.POPLAR, 300);
 		t.rule(HabitatCondition.biomes(ELM_ASH_FOREST), 8).add(Species.OAK, 350).add(Species.ASH, 300).add(Species.ELM, 250)
 				.add(Species.NORWAY_MAPLE, 50).add(Species.LINDEN, 50);
-		t.rule(HabitatCondition.biomes(UPLAND_FIR_FOREST), 10).add(Species.FIR, 500).add(Species.BEECH, 250)
-				.add(Species.OAK, 150).add(Species.SCOTS_PINE, 100);
-		t.rule(HabitatCondition.biomes(MONTANE_BEECH_FOREST), 8).full(Species.BEECH, 700).add(Species.FIR, 200)
-				.add(Species.SPRUCE, 50).add(Species.SYCAMORE_MAPLE, 50);
+		// Step F3 (docs/04 "Projekt F3", research/06 §3.3, §3.6, §3.8, §4.3, §9). Upland fir forest: a1 fir 50-90% (the
+		// biome lies within the fir range, so the fir keeps its full weight), a many-storied stand (a2 of fir with beech,
+		// the selection forest of the natural stands) and a dense regeneration of fir under the canopy and in the gaps
+		// (20-50%). The poor form (Vaccinio-Abietetum, the upland mixed coniferous site) with Scots pine and spruce, the
+		// mesotrophic and fertile ones (Abietetum polonicum, Galio-Abietetum) with beech, spruce, pine and oak; beech and
+		// spruce by their range flags (else fir), the oak outside the slice of the beech forest's oak. Managed stands with
+		// more pine (the planted pine of the uplands) and regeneration nests (the stand map's fir profile).
+		t.planned(HabitatCondition.biomes(UPLAND_FIR_FOREST).withSiteTypes(ForestSiteType.UPLAND_MIXED_CONIFEROUS), 11)
+				.full(Species.FIR, 600).add(Species.SCOTS_PINE, 260).alt(Species.SPRUCE, 100, Species.SCOTS_PINE)
+				.add(Species.OAK, 40)
+				.managed().full(Species.FIR, 540).add(Species.SCOTS_PINE, 340).alt(Species.SPRUCE, 90, Species.SCOTS_PINE)
+				.add(Species.OAK, 30)
+				.subcanopy().full(Species.FIR, 800).alt(Species.SPRUCE, 120, Species.FIR).alt(Species.BEECH, 80, Species.FIR)
+				.regeneration().full(Species.FIR, 750).alt(Species.SPRUCE, 100, Species.FIR).add(Species.ROWAN, 150)
+				.gapRegeneration().full(Species.FIR, 550).add(Species.SCOTS_PINE, 150).add(Species.BIRCH, 150)
+				.add(Species.ROWAN, 150)
+				.chances(new float[] {0.90F, 0.72F, 0.62F}, new float[] {0.95F, 0.95F, 0.95F}, 0.9F).subcanopyChance(0.7F);
+		t.planned(HabitatCondition.biomes(UPLAND_FIR_FOREST), 11)
+				.full(Species.FIR, 720).alt(Species.BEECH, 120, Species.FIR).alt(Species.SPRUCE, 70, Species.FIR)
+				.add(Species.SCOTS_PINE, 50).add(Species.OAK, 40)
+				.managed().full(Species.FIR, 680).alt(Species.BEECH, 90, Species.FIR).alt(Species.SPRUCE, 90, Species.FIR)
+				.add(Species.SCOTS_PINE, 100).add(Species.OAK, 40)
+				.subcanopy().full(Species.FIR, 700).alt(Species.BEECH, 200, Species.FIR).alt(Species.HORNBEAM, 100, Species.FIR)
+				.regeneration().full(Species.FIR, 800).alt(Species.BEECH, 150, Species.FIR).add(Species.HAZEL, 50)
+				.gapRegeneration().full(Species.FIR, 600).alt(Species.BEECH, 150, Species.FIR).add(Species.BIRCH, 100)
+				.add(Species.ROWAN, 100).add(Species.HAZEL, 50)
+				.chances(new float[] {0.90F, 0.72F, 0.62F}, new float[] {0.95F, 0.95F, 0.95F}, 0.9F).subcanopyChance(0.7F);
+		// Carpathian beech forest of the lower montane belt: a1 beech 50-90% with fir 10-40%, spruce 0-20% (by its range
+		// flag, else fir) and sycamore 5-15%; a weaker a2 of beech and fir, the regeneration of beech and fir under the
+		// canopy (the understory 5-30%), the gaps of the fallen beeches and firs in the natural stands. The fertile Dentario
+		// glandulosae-Fagetum (the typical association), the acid Luzulo luzuloidis-Fagetum with more fir and spruce and no
+		// sycamore, and on the steep north-east slopes of the lower part the sycamore ravine forest (Lunario-Aceretum:
+		// sycamore 50-90% with beech, ash and fir). In W1 the old windswept forest (the canonical code: the typical form).
+		t.planned(HabitatCondition.biomes(MONTANE_BEECH_FOREST).withAssociations(Association.SYCAMORE_RAVINE_FOREST), 10)
+				.add(Species.SYCAMORE_MAPLE, 620).full(Species.BEECH, 180).add(Species.ASH, 120).full(Species.FIR, 80)
+				.managed().add(Species.SYCAMORE_MAPLE, 600).full(Species.BEECH, 220).add(Species.ASH, 100).full(Species.FIR, 80)
+				.subcanopy().add(Species.SYCAMORE_MAPLE, 500).full(Species.BEECH, 300).add(Species.ASH, 200)
+				.regeneration().add(Species.SYCAMORE_MAPLE, 500).add(Species.ASH, 200).full(Species.BEECH, 200)
+				.add(Species.HAZEL, 100)
+				.gapRegeneration().add(Species.SYCAMORE_MAPLE, 600).add(Species.ASH, 250).add(Species.HAZEL, 150)
+				.chances(new float[] {0.88F, 0.70F, 0.60F}, new float[] {0.92F, 0.92F, 0.92F}, 0.8F).subcanopyChance(0.5F);
+		t.planned(HabitatCondition.biomes(MONTANE_BEECH_FOREST).withAssociations(Association.ACIDOPHILOUS), 11)
+				.full(Species.BEECH, 650).full(Species.FIR, 250).alt(Species.SPRUCE, 80, Species.FIR).add(Species.ROWAN, 20)
+				.managed().full(Species.BEECH, 620).full(Species.FIR, 220).alt(Species.SPRUCE, 150, Species.FIR)
+				.add(Species.ROWAN, 10)
+				.subcanopy().full(Species.BEECH, 500).full(Species.FIR, 400).alt(Species.SPRUCE, 100, Species.FIR)
+				.regeneration().full(Species.BEECH, 500).full(Species.FIR, 400).add(Species.ROWAN, 100)
+				.gapRegeneration().full(Species.BEECH, 450).full(Species.FIR, 250).add(Species.ROWAN, 150).add(Species.BIRCH, 100)
+				.add(Species.SYCAMORE_MAPLE, 50)
+				.chances(new float[] {0.90F, 0.72F, 0.62F}, new float[] {0.95F, 0.95F, 0.95F}, 0.8F).subcanopyChance(0.45F);
+		t.planned(HabitatCondition.biomes(MONTANE_BEECH_FOREST), 11)
+				.full(Species.BEECH, 650).full(Species.FIR, 220).alt(Species.SPRUCE, 50, Species.FIR).add(Species.SYCAMORE_MAPLE, 80)
+				.managed().full(Species.BEECH, 640).full(Species.FIR, 180).alt(Species.SPRUCE, 120, Species.FIR)
+				.add(Species.SYCAMORE_MAPLE, 60)
+				.subcanopy().full(Species.BEECH, 550).full(Species.FIR, 350).add(Species.SYCAMORE_MAPLE, 100)
+				.regeneration().full(Species.BEECH, 550).full(Species.FIR, 300).add(Species.SYCAMORE_MAPLE, 100)
+				.add(Species.ROWAN, 50)
+				.gapRegeneration().full(Species.BEECH, 450).full(Species.FIR, 200).add(Species.SYCAMORE_MAPLE, 200)
+				.add(Species.ROWAN, 100).add(Species.HAZEL, 50)
+				.chances(new float[] {0.90F, 0.72F, 0.62F}, new float[] {0.95F, 0.95F, 0.95F}, 0.8F).subcanopyChance(0.45F);
 		// Mountains: 3% of the spruces are mega spruces (§8.4).
 		t.rule(HabitatCondition.biomes(MONTANE_SPRUCE_FOREST), 12).add(Species.SPRUCE, 873).add(Species.SPRUCE, ModTrees.SPRUCE_MEGA, 27)
 				.add(Species.ROWAN, 100);
@@ -640,6 +697,16 @@ final class ModVegetation {
 		return bed(ModBlocks.ground(GroundPlant.CORALROOT), weight);
 	}
 
+	/** Glandular toothwort beds of 2–4 shoots (step F3). */
+	private static Plant[] toothwort(int weight) {
+		return bed(ModBlocks.ground(GroundPlant.GLANDULAR_TOOTHWORT), weight);
+	}
+
+	/** White wood-rush tufts of 2–4 (step F3). */
+	private static Plant[] whiteWoodRush(int weight) {
+		return bed(ModBlocks.ground(GroundPlant.WHITE_WOOD_RUSH), weight);
+	}
+
 	/** Marsh marigold rosettes of 2–4 (step F2). */
 	private static Plant[] marigold(int weight) {
 		return bed(ModBlocks.ground(GroundPlant.MARSH_MARIGOLD), weight);
@@ -716,10 +783,26 @@ final class ModVegetation {
 				l.feature(stump(Species.BEECH), stumpWeight(LOWLAND_BEECH_FOREST, 20, 0.85)),
 				l.feature(stump(Species.OAK), stumpWeight(LOWLAND_BEECH_FOREST, 20, 0.1)),
 				l.feature(stump(Species.ASH), stumpWeight(LOWLAND_BEECH_FOREST, 20, 0.05)));
-		l.land(biomes(MONTANE_BEECH_FOREST), perChunk(0.5), 1, l.feature(deadwoodSubstitute(Species.BEECH), 8),
-				l.feature(deadwoodSubstitute(Species.FIR), 2));
-		l.land(biomes(UPLAND_FIR_FOREST), perChunk(0.45), 1, l.feature(deadwoodSubstitute(Species.FIR), 6),
-				l.feature(deadwoodSubstitute(Species.BEECH), 4));
+		// Step F3 (docs/04 "Projekt F3", N10): the upland fir forest with its firs (dying standing in the fir dieback,
+		// broken and thrown), some beech, pine and spruce; the Carpathian beech forest with beech and fir (the natural
+		// mountain beech forests hold much dead wood, L 06 §4.3), the sycamore ravine forest with sycamore, beech and ash;
+		// the stumps of the managed stands by the same shares.
+		l.land(biomes(UPLAND_FIR_FOREST), deadwoodCoverage(UPLAND_FIR_FOREST), 1, l.feature(deadwood(Species.FIR), 14),
+				l.feature(deadwood(Species.BEECH), 3), l.feature(deadwood(Species.SCOTS_PINE), 2), l.feature(deadwood(Species.SPRUCE), 1),
+				l.feature(stump(Species.FIR), stumpWeight(UPLAND_FIR_FOREST, 20, 0.75)),
+				l.feature(stump(Species.SCOTS_PINE), stumpWeight(UPLAND_FIR_FOREST, 20, 0.15)),
+				l.feature(stump(Species.BEECH), stumpWeight(UPLAND_FIR_FOREST, 20, 0.1)));
+		l.land(biomes(MONTANE_BEECH_FOREST).withAssociations(Association.SYCAMORE_RAVINE_FOREST), deadwoodCoverage(MONTANE_BEECH_FOREST),
+				1, l.feature(deadwood(Species.SYCAMORE_MAPLE), 11), l.feature(deadwood(Species.BEECH), 5),
+				l.feature(deadwood(Species.ASH), 3), l.feature(deadwood(Species.FIR), 1),
+				l.feature(stump(Species.SYCAMORE_MAPLE), stumpWeight(MONTANE_BEECH_FOREST, 20, 0.6)),
+				l.feature(stump(Species.BEECH), stumpWeight(MONTANE_BEECH_FOREST, 20, 0.3)),
+				l.feature(stump(Species.ASH), stumpWeight(MONTANE_BEECH_FOREST, 20, 0.1)));
+		l.land(biomes(MONTANE_BEECH_FOREST), deadwoodCoverage(MONTANE_BEECH_FOREST), 1, l.feature(deadwood(Species.BEECH), 13),
+				l.feature(deadwood(Species.FIR), 5), l.feature(deadwood(Species.SPRUCE), 1), l.feature(deadwood(Species.SYCAMORE_MAPLE), 1),
+				l.feature(stump(Species.BEECH), stumpWeight(MONTANE_BEECH_FOREST, 20, 0.65)),
+				l.feature(stump(Species.FIR), stumpWeight(MONTANE_BEECH_FOREST, 20, 0.25)),
+				l.feature(stump(Species.SPRUCE), stumpWeight(MONTANE_BEECH_FOREST, 20, 0.1)));
 		l.land(biomes(MONTANE_SPRUCE_FOREST), perChunk(0.5), 1, l.feature(deadwoodSubstitute(Species.SPRUCE), 1));
 		// Step F2 (docs/04 "Projekt F2", N10): the alder carr with its alders and birches (the soft wood breaks and rots
 		// fast in the wet), the ash-alder forest with the alders, the ashes of the ash dieback and the elms of the Dutch elm
@@ -750,7 +833,8 @@ final class ModVegetation {
 	 * [S]. Each step F adds its forest.
 	 */
 	static final Map<HabitatBiome, Double> DEAD_TREES = Map.of(OAK_HORNBEAM_FOREST, 2.1, FRESH_PINE_FOREST, 0.92,
-			MIXED_PINE_FOREST, 1.3, MIXED_FOREST, 1.7, LOWLAND_BEECH_FOREST, 1.8, ALDER_CARR, 2.5, ASH_ALDER_FOREST, 1.8);
+			MIXED_PINE_FOREST, 1.3, MIXED_FOREST, 1.7, LOWLAND_BEECH_FOREST, 1.8, ALDER_CARR, 2.5, ASH_ALDER_FOREST, 1.8,
+			UPLAND_FIR_FOREST, 2.0, MONTANE_BEECH_FOREST, 2.2);
 	/** Stumps per chunk of a managed stand of the forests of the tree planner (WISL: 30-80 per ha, 1-2 per chunk) [S]. */
 	static final double STUMPS = 1.5;
 
@@ -803,8 +887,11 @@ final class ModVegetation {
 		// the forests of the tree planner without the M2 shrubs at their edges).
 		l.edge(biomes(LOWLAND_BEECH_FOREST), Ecotone.Edge.MANTLE, 0.2F, 1, l.feature(ModTrees.HAZEL_MANTLE, 1),
 				l.feature(ModTrees.SLICE.get(Species.HAZEL), 2));
-		l.edge(biomes(ELM_ASH_FOREST, UPLAND_FIR_FOREST, MONTANE_BEECH_FOREST), Ecotone.Edge.MANTLE, 0.06F,
-				1, l.feature(Species.HAZEL.path(), 1));
+		l.edge(biomes(ELM_ASH_FOREST), Ecotone.Edge.MANTLE, 0.06F, 1, l.feature(Species.HAZEL.path(), 1));
+		// Step F3: the mantles of the fir and the Carpathian beech forests, the thin-stemmed hazels and rowans of the slice
+		// (the forests of the tree planner without the M2 shrubs at their edges).
+		l.edge(biomes(UPLAND_FIR_FOREST, MONTANE_BEECH_FOREST), Ecotone.Edge.MANTLE, 0.2F, 1, l.feature(ModTrees.HAZEL_MANTLE, 1),
+				l.feature(ModTrees.SLICE.get(Species.HAZEL), 2), l.feature(ModTrees.SLICE.get(Species.ROWAN), 1));
 		l.edge(biomes(DRY_PINE_FOREST, COASTAL_PINE_FOREST, MOIST_PINE_FOREST, MONTANE_SPRUCE_FOREST), Ecotone.Edge.MANTLE, 0.05F,
 				1, l.feature(Species.JUNIPER.path(), 1));
 		// Step F2: the mantles of the alder forests of the tree planner, the thin-stemmed shrubs of the slice: bird cherry and
@@ -830,7 +917,12 @@ final class ModVegetation {
 				l.feature(ModTrees.SLICE.get(Species.JUNIPER), 1));
 		l.land(biomes(OAK_HORNBEAM_FOREST), perChunk(3), 1, l.feature(ModTrees.SLICE.get(Species.HAZEL), 1));
 		l.land(biomes(ELM_ASH_FOREST), perChunk(3), 1, l.feature(Species.HAZEL.path(), 1));
-		l.land(biomes(UPLAND_FIR_FOREST), perChunk(1), 1, l.feature(Species.HAZEL.path(), 1));
+		// Step F3 (N7): the fir forest's shrub layer is mostly its own regeneration (the planner trees); a few thin hazels
+		// and rowans; the Carpathian beech forest the same (the red-berried elder of its shrub layer has no block yet).
+		l.land(biomes(UPLAND_FIR_FOREST), perChunk(2), 1, l.feature(ModTrees.SLICE.get(Species.HAZEL), 2),
+				l.feature(ModTrees.SLICE.get(Species.ROWAN), 1));
+		l.land(biomes(MONTANE_BEECH_FOREST), perChunk(1.5), 1, l.feature(ModTrees.SLICE.get(Species.HAZEL), 1),
+				l.feature(ModTrees.SLICE.get(Species.ROWAN), 1));
 		// Step F2 (N7: the shrub layer 20-50%): the ash-alder forest with the bird cherry (Pruno-Fraxinetum) and some hazel;
 		// the alder carr: no hazel on waterlogged peat, the alder buckthorn, the bird cherry on the tussocks and the gray
 		// willow (Salix cinerea) as the M2 osier.
@@ -1043,9 +1135,29 @@ final class ModVegetation {
 				cat(forestMoss.withWeight(7)), null);
 		l.blobs(biomes(LOWLAND_BEECH_FOREST), 0.97F, 5, cat(litter(62), sweetWoodruff(12), anemone(8), coralroot(4), woodSorrel(6),
 				fern.withWeight(2)), cat(forestMoss.withWeight(3)), Blocks.GRASS_BLOCK.defaultBlockState());
-		l.land(biomes(MONTANE_BEECH_FOREST), 0.85F, 4, cat(litter(75), fern.withWeight(6), bed(Blocks.WILDFLOWERS, 3)));
-		l.land(biomes(UPLAND_FIR_FOREST), 0.8F, 4, cat(litter(40), moss.withWeight(20), fern.withWeight(12),
-				bed(Blocks.WILDFLOWERS, 4)));
+		// Step F3 (docs/04 "Projekt F3", L 06 §3.3, §3.6, §3.8; N8, N9). The Carpathian beech forest: the fertile Dentario
+		// glandulosae-Fagetum with the glandular toothwort carpets in spring (30-80% with the woodruff and the wood sorrel;
+		// in summer 10-50%), the beech leaf litter between them; the acid Luzulo luzuloidis-Fagetum with the white
+		// wood-rush, the wood sorrel and the bilberry in patches; the sycamore ravine forest a tall-herb layer of the
+		// perennial honesty and the ferns (the vanilla large fern for the shield and lady ferns) on the scree, nettle and
+		// wood sorrel. The upland fir forest: mosses 30-70% (the feather moss floor under one segment of the fir needle
+		// litter, the own forest moss in cushions), the wood sorrel, the bilberry in patches 10-40%, the ferns (the buckler
+		// ferns as the vanilla fern and large fern), the white wood-rush; the poor form with more bilberry and moss on
+		// mossy podzol, the fertile one (Galio-Abietetum) with the sweet woodruff.
+		l.blobs(biomes(MONTANE_BEECH_FOREST).withAssociations(Association.SYCAMORE_RAVINE_FOREST), 0.97F, 5,
+				cat(herb(GroundPlant.PERENNIAL_HONESTY, 22), largeFern.withWeight(14), fern.withWeight(12), woodSorrel(8),
+						toothwort(6), litter(10), herb(GroundPlant.NETTLE, 4)),
+				cat(forestMoss.withWeight(8)), Blocks.GRASS_BLOCK.defaultBlockState());
+		l.blobs(biomes(MONTANE_BEECH_FOREST).withAssociations(Association.ACIDOPHILOUS), 0.97F, 5,
+				cat(litter(52), whiteWoodRush(14), woodSorrel(6), bilberry(8, false), fern.withWeight(4), toothwort(3)),
+				cat(forestMoss.withWeight(8)), null);
+		l.blobs(biomes(MONTANE_BEECH_FOREST), 0.97F, 5, cat(litter(44), toothwort(20), sweetWoodruff(8), woodSorrel(8),
+				fern.withWeight(4), anemone(4)), cat(forestMoss.withWeight(4)), Blocks.GRASS_BLOCK.defaultBlockState());
+		l.blobs(biomes(UPLAND_FIR_FOREST).withSiteTypes(ForestSiteType.UPLAND_MIXED_CONIFEROUS), 0.95F, 5,
+				cat(mossFloor(30), bilberry(24, true), needles(10, true), woodSorrel(6), fern.withWeight(6), whiteWoodRush(6)),
+				cat(forestMoss.withWeight(12)), ModBlocks.mossyPodzol().defaultBlockState(), true);
+		l.blobs(biomes(UPLAND_FIR_FOREST), 0.95F, 5, cat(mossFloor(24), woodSorrel(14), bilberry(10, false), fern.withWeight(9),
+				largeFern.withWeight(3), whiteWoodRush(5), sweetWoodruff(4), needles(8, false)), cat(forestMoss.withWeight(14)), null);
 		l.land(biomes(MONTANE_SPRUCE_FOREST).withAssociations(Association.GULLY_TALL_HERBS), 0.8F, 3,
 				tallGrass.withWeight(50), largeFern.withWeight(30));
 		l.land(biomes(MONTANE_SPRUCE_FOREST), 0.85F, 4, moss.withWeight(45), fern.withWeight(15), bush.withWeight(20),

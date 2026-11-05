@@ -193,33 +193,112 @@
     },
     {
       "biomes": [
-        "montane_beech_forest"
+        "upland_fir_forest"
       ],
-      "coverage": 0.001953125,
+      "coverage": 0.013671875,
       "plants": [
         {
-          "feature": "polishforests:deadwood_substitute/beech",
-          "weight": 8
+          "feature": "polishforests:deadwood/fir",
+          "weight": 14
         },
         {
-          "feature": "polishforests:deadwood_substitute/fir",
+          "feature": "polishforests:deadwood/beech",
+          "weight": 3
+        },
+        {
+          "feature": "polishforests:deadwood/scots_pine",
+          "weight": 2
+        },
+        {
+          "feature": "polishforests:deadwood/spruce",
+          "weight": 1
+        },
+        {
+          "feature": "polishforests:stump/fir",
+          "weight": 11
+        },
+        {
+          "feature": "polishforests:stump/scots_pine",
+          "weight": 2
+        },
+        {
+          "feature": "polishforests:stump/beech",
           "weight": 2
         }
       ]
     },
     {
-      "biomes": [
-        "upland_fir_forest"
+      "associations": [
+        "sycamore_ravine_forest"
       ],
-      "coverage": 0.0017578125,
+      "biomes": [
+        "montane_beech_forest"
+      ],
+      "coverage": 0.014453125,
       "plants": [
         {
-          "feature": "polishforests:deadwood_substitute/fir",
-          "weight": 6
+          "feature": "polishforests:deadwood/sycamore_maple",
+          "weight": 11
         },
         {
-          "feature": "polishforests:deadwood_substitute/beech",
+          "feature": "polishforests:deadwood/beech",
+          "weight": 5
+        },
+        {
+          "feature": "polishforests:deadwood/ash",
+          "weight": 3
+        },
+        {
+          "feature": "polishforests:deadwood/fir",
+          "weight": 1
+        },
+        {
+          "feature": "polishforests:stump/sycamore_maple",
+          "weight": 8
+        },
+        {
+          "feature": "polishforests:stump/beech",
           "weight": 4
+        },
+        {
+          "feature": "polishforests:stump/ash",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "montane_beech_forest"
+      ],
+      "coverage": 0.014453125,
+      "plants": [
+        {
+          "feature": "polishforests:deadwood/beech",
+          "weight": 13
+        },
+        {
+          "feature": "polishforests:deadwood/fir",
+          "weight": 5
+        },
+        {
+          "feature": "polishforests:deadwood/spruce",
+          "weight": 1
+        },
+        {
+          "feature": "polishforests:deadwood/sycamore_maple",
+          "weight": 1
+        },
+        {
+          "feature": "polishforests:stump/beech",
+          "weight": 9
+        },
+        {
+          "feature": "polishforests:stump/fir",
+          "weight": 3
+        },
+        {
+          "feature": "polishforests:stump/spruce",
+          "weight": 1
         }
       ]
     },

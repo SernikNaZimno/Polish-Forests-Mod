@@ -264,6 +264,9 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 				case TUSSOCK_SEDGE -> polish ? "Turzyca kępowa" : "Tussock Sedge";
 				case MARSH_FERN -> polish ? "Zachylnik błotny" : "Marsh Fern";
 				case NETTLE -> polish ? "Pokrzywa zwyczajna" : "Stinging Nettle";
+				case GLANDULAR_TOOTHWORT -> polish ? "Żywiec gruczołowaty" : "Glandular Toothwort";
+				case WHITE_WOOD_RUSH -> polish ? "Kosmatka gajowa" : "White Wood-rush";
+				case PERENNIAL_HONESTY -> polish ? "Miesiącznica trwała" : "Perennial Honesty";
 			});
 		}
 		builder.add(ModBlocks.bilberries(), polish ? "Czarne jagody" : "Bilberries");

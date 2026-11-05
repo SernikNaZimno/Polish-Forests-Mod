@@ -54,7 +54,19 @@ public record SpeciesShape(Archetype archetype, ByAge height, ByAge dbh, ByAge c
 		 * Broad-leaved trees: a bole up to the crown base, then a leader with lateral branches (linden, hornbeam, beech,
 		 * maple, ash) or a fork into thick limbs close to the axis (oak).
 		 */
-		BROAD
+		BROAD,
+		/**
+		 * Silver fir (step F3): a straight column, regular horizontal tiers of whorl branches with flat sprays of needles
+		 * along them and slightly upturned tips, a narrow column of needles at the top (the spruce's spire) while the tree
+		 * grows; an old canopy fir stops growing in height and its top flattens into the "stork's nest" of nearly equally
+		 * long top branches.
+		 */
+		FIR;
+
+		/** Needle-leaved (the whorl skeleton of {@code TreeShapePlan}): the pine, the spruce and the fir. */
+		public boolean conifer() {
+			return this == PINE || this == SPRUCE || this == FIR;
+		}
 	}
 
 	/** A value for each age class. */
@@ -136,6 +148,18 @@ public record SpeciesShape(Archetype archetype, ByAge height, ByAge dbh, ByAge c
 		SHAPES.put(Species.ELM, new SpeciesShape(Archetype.BROAD, new ByAge(14, 26, 30), new ByAge(12, 44, 72),
 				new ByAge(0.5F, 0.52F, 0.55F), new ByAge(2.4F, 4.8F, 6.0F), new Profile(0.55F, 0.6F, 0.5F, 2.4F), 0.6F,
 				1.0F, 1, 66, 38, 0.12F, 3, 2.2F, 1.8F, 0.88F, 0.4F, 2.4F, 0.82F, 0.06F));
+		// Step F3. Silver fir (a1 of the upland fir forest, an admixture of the Carpathian beech forest: 30-40 m, a straight
+		// column, a cone of horizontal tiers in youth, the flat top of the old trees; research/06 §3.3, §9): the cone of the
+		// young and mature fir (the "stork's nest" of the old canopy fir in TreeShapePlan), horizontal branches with flat
+		// sprays and a slight upturn of the tips, regular whorls of four to five.
+		SHAPES.put(Species.FIR, new SpeciesShape(Archetype.FIR, new ByAge(15, 28, 33), new ByAge(14, 40, 62),
+				new ByAge(0.62F, 0.52F, 0.44F), new ByAge(2.0F, 3.0F, 3.6F), new Profile(1, 0, 0.08F, 1), 0.2F, 1.05F, 4, 90,
+				78, 0.06F, 0, 1.35F, 0.85F, 0.92F, 0, 2.2F, 0.8F, 0.4F));
+		// Sycamore maple (a1 of the sycamore ravine forest, an admixture of the Carpathian beech forest: a tall bole and a
+		// broad, high-domed crown like the Norway maple's but larger and denser, 25-35 m).
+		SHAPES.put(Species.SYCAMORE_MAPLE, new SpeciesShape(Archetype.BROAD, new ByAge(15, 27, 31), new ByAge(13, 42, 66),
+				new ByAge(0.58F, 0.6F, 0.6F), new ByAge(2.2F, 4.4F, 5.4F), new Profile(0.65F, 0.5F, 0.45F, 2.2F), 0.5F,
+				0.9F, 1, 64, 36, 0.1F, 0, 2.3F, 2.0F, 0.9F, 0.4F, 2.4F, 0.84F, 0.05F));
 	}
 
 	/**

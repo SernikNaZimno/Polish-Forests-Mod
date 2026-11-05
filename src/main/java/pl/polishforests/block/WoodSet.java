@@ -40,7 +40,16 @@ public enum WoodSet {
 			new int[] {0x8a5a40, 0xab7a5c, 0xb98868, 0xc49473, 0xcea07e}, 0.80, 1),
 	/** Elm (step F2): a brown heartwood with a lighter sapwood, a coarse, ring-porous and wavy grain. */
 	ELM("elm", TreeTrunk.ELM, StrippedTrunk.ELM, "Elm", "wiązow", "oak_planks",
-			new int[] {0x6f5238, 0x8f6e4f, 0x9e7c5b, 0xab8966, 0xb89672}, 1.20, 1);
+			new int[] {0x6f5238, 0x8f6e4f, 0x9e7c5b, 0xab8966, 0xb89672}, 1.20, 1),
+	/**
+	 * Silver fir (step F3, softwood): white to pale yellowish with a faint pink cast, no colored heartwood, a distinct
+	 * grain of the latewood and a few knots; vanilla's conifer planks as the base.
+	 */
+	FIR("fir", TreeTrunk.FIR, StrippedTrunk.FIR, "Fir", "jodłow", "spruce_planks",
+			new int[] {0x9a8a72, 0xbcac90, 0xc8b99c, 0xd2c4a8, 0xdccfb4}, 1.00, 2),
+	/** Sycamore maple (step F3): white to creamy, the lightest wood of the mod, a fine even grain with a silky sheen. */
+	SYCAMORE_MAPLE("sycamore_maple", TreeTrunk.SYCAMORE_MAPLE, StrippedTrunk.SYCAMORE_MAPLE, "Sycamore", "jaworow", "oak_planks",
+			new int[] {0xa39582, 0xc5b8a4, 0xd1c5b1, 0xdacfbc, 0xe2d8c6}, 0.75, 0);
 
 	private final String prefix;
 	private final TreeTrunk trunk;

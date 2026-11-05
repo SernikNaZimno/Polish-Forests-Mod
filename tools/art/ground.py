@@ -109,6 +109,31 @@ MARIGOLD_LEAVES = [
 ]
 
 
+# Step F3: glandular toothwort (Dentaria glandulosa: whorls of three-parted, toothed leaves high on the stem; nodding
+# purple-violet four-petalled flowers in a short raceme) and white wood-rush (Luzula luzuloides: tufts of narrow, hairy
+# grass-like leaves; loose clusters of small whitish flowers on thin stalks).
+TOOTHWORT_FLOWERS = [
+    ['010', '132', '010'],
+    ['11', '23'],
+    ['0110', '1321', '0110'],
+]
+TOOTHWORT_LEAVES = [
+    ['10101', '12121', '01310', '11211', '10001'],
+    ['1011', '1231', '0131', '1101'],
+    ['101', '131', '121'],
+]
+WHITE_WOOD_RUSH_FLOWERS = [
+    ['101', '020', '101'],
+    ['11', '21'],
+    ['010', '121', '010'],
+]
+WHITE_WOOD_RUSH_LEAVES = [
+    ['10101', '11211', '01310', '11211', '01010'],
+    ['1011', '1221', '0131', '1101'],
+    ['01010', '11211', '01310', '10101'],
+]
+
+
 def _place(val, sprite, x0, y0, mapping, box):
     """Stamps a sprite (rows of digits) at (x0, y0) inside box = (x_lo, y_lo, x_hi, y_hi) (exclusive), writing
     mapping[ch] where the sprite has ch != '0'; returns the pixels written."""

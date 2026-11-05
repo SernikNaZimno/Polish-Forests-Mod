@@ -89,8 +89,20 @@ final class SimulatedStands {
 	 * beech forest) with the biome's stand profile; the beech forest within the beech range.
 	 */
 	static void plant(HabitatBiome biome, ForestSiteType site, boolean natural, AgeClass age, int chunks, Sink sink) {
-		int ranges = Species.FLAG_HORNBEAM | (biome == HabitatBiome.LOWLAND_BEECH_FOREST ? Species.FLAG_BEECH : 0);
-		plant(biome, site, natural, age, chunks, ranges, (x, z) -> GROUND, sink);
+		plant(biome, site, Association.TYPICAL, natural, age, chunks, sink);
+	}
+
+	/**
+	 * As {@link #plant(HabitatBiome, ForestSiteType, boolean, AgeClass, int, Sink)} in an association (step F3: the acid
+	 * Carpathian beech forest and its sycamore ravine forest); the mountain forests within the ranges of the beech, the
+	 * fir and the spruce.
+	 */
+	static void plant(HabitatBiome biome, ForestSiteType site, Association association, boolean natural, AgeClass age, int chunks,
+			Sink sink) {
+		boolean mountain = biome == HabitatBiome.UPLAND_FIR_FOREST || biome == HabitatBiome.MONTANE_BEECH_FOREST;
+		int ranges = Species.FLAG_HORNBEAM | (biome == HabitatBiome.LOWLAND_BEECH_FOREST ? Species.FLAG_BEECH : 0)
+				| (mountain ? Species.FLAG_BEECH | Species.FLAG_FIR | Species.FLAG_SPRUCE : 0);
+		plant(biome, site, association, natural, age, chunks, ranges, (x, z) -> GROUND, sink);
 	}
 
 	/** Rolling ground: {@link #GROUND} ± amplitude blocks, a wavelength of 40 blocks. */
@@ -110,7 +122,12 @@ final class SimulatedStands {
 
 	static void plant(HabitatBiome biome, ForestSiteType site, boolean natural, AgeClass age, int chunks, int ranges,
 			TreeShapePlan.Ground ground, Sink sink) {
-		int code = Habitat.pack(biome, Zone.NONE, site, Association.TYPICAL, LandCover.forBiome(biome),
+		plant(biome, site, Association.TYPICAL, natural, age, chunks, ranges, ground, sink);
+	}
+
+	static void plant(HabitatBiome biome, ForestSiteType site, Association association, boolean natural, AgeClass age, int chunks,
+			int ranges, TreeShapePlan.Ground ground, Sink sink) {
+		int code = Habitat.pack(biome, Zone.NONE, site, association, LandCover.forBiome(biome),
 				ranges, Soil.forBiome(biome, Zone.NONE));
 		StandMap map = stand(StandProfile.of(biome), age, natural);
 		CrownTerritories crowns = new CrownTerritories(SEED, map);

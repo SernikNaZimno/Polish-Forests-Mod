@@ -212,37 +212,6 @@
       "trees_per_chunk": 6.0
     },
     {
-      "associations": [
-        "sycamore_ravine_forest"
-      ],
-      "biomes": [
-        "montane_beech_forest"
-      ],
-      "trees": [
-        {
-          "species": "sycamore_maple",
-          "tree": "polishforests:tree_substitute/sycamore_maple",
-          "weight": 500
-        },
-        {
-          "species": "beech",
-          "tree": "polishforests:tree_substitute/beech",
-          "weight": 300
-        },
-        {
-          "species": "ash",
-          "tree": "polishforests:tree_substitute/ash",
-          "weight": 100
-        },
-        {
-          "species": "fir",
-          "tree": "polishforests:tree_substitute/fir",
-          "weight": 100
-        }
-      ],
-      "trees_per_chunk": 8.0
-    },
-    {
       "biomes": [
         "dry_pine_forest"
       ],
@@ -1079,6 +1048,11 @@
             "species": "hazel",
             "tree": "polishforests:shrub/hazel_thin",
             "weight": 150
+          },
+          {
+            "species": "sycamore_maple",
+            "tree": "polishforests:tree/sycamore_maple",
+            "weight": 50
           }
         ],
         "managed_canopy": [
@@ -1107,6 +1081,11 @@
             "species": "linden",
             "tree": "polishforests:tree/linden",
             "weight": 25
+          },
+          {
+            "species": "sycamore_maple",
+            "tree": "polishforests:tree/sycamore_maple",
+            "weight": 20
           }
         ],
         "managed_chance": [
@@ -1139,6 +1118,11 @@
             "species": "hornbeam",
             "tree": "polishforests:tree/hornbeam",
             "weight": 100
+          },
+          {
+            "species": "sycamore_maple",
+            "tree": "polishforests:tree/sycamore_maple",
+            "weight": 40
           }
         ],
         "subcanopy": [
@@ -1191,6 +1175,11 @@
           "species": "linden",
           "tree": "polishforests:tree/linden",
           "weight": 45
+        },
+        {
+          "species": "sycamore_maple",
+          "tree": "polishforests:tree/sycamore_maple",
+          "weight": 30
         }
       ],
       "trees_per_chunk": 12.0
@@ -1611,58 +1600,748 @@
       "biomes": [
         "upland_fir_forest"
       ],
+      "site_types": [
+        "upland_mixed_coniferous"
+      ],
+      "stand": {
+        "gap_chance": 0.9,
+        "gap_regeneration": [
+          {
+            "range_ramp": false,
+            "species": "fir",
+            "tree": "polishforests:tree/fir",
+            "weight": 550
+          },
+          {
+            "species": "scots_pine",
+            "tree": "polishforests:tree/scots_pine",
+            "weight": 150
+          },
+          {
+            "species": "birch",
+            "tree": "polishforests:tree/birch",
+            "weight": 150
+          },
+          {
+            "species": "rowan",
+            "tree": "polishforests:tree_substitute/rowan_thin",
+            "weight": 150
+          }
+        ],
+        "managed_canopy": [
+          {
+            "range_ramp": false,
+            "species": "fir",
+            "tree": "polishforests:tree/fir",
+            "weight": 540
+          },
+          {
+            "species": "scots_pine",
+            "tree": "polishforests:tree/scots_pine",
+            "weight": 340
+          },
+          {
+            "alternative": {
+              "species": "scots_pine",
+              "tree": "polishforests:tree/scots_pine"
+            },
+            "species": "spruce",
+            "tree": "polishforests:tree/spruce",
+            "weight": 90
+          },
+          {
+            "species": "oak",
+            "tree": "polishforests:tree/oak",
+            "weight": 30
+          }
+        ],
+        "managed_chance": [
+          0.9,
+          0.72,
+          0.62
+        ],
+        "natural_chance": [
+          0.95,
+          0.95,
+          0.95
+        ],
+        "regeneration": [
+          {
+            "range_ramp": false,
+            "species": "fir",
+            "tree": "polishforests:tree/fir",
+            "weight": 750
+          },
+          {
+            "alternative": {
+              "species": "fir",
+              "tree": "polishforests:tree/fir"
+            },
+            "species": "spruce",
+            "tree": "polishforests:tree/spruce",
+            "weight": 100
+          },
+          {
+            "species": "rowan",
+            "tree": "polishforests:tree_substitute/rowan_thin",
+            "weight": 150
+          }
+        ],
+        "subcanopy": [
+          {
+            "range_ramp": false,
+            "species": "fir",
+            "tree": "polishforests:tree/fir",
+            "weight": 800
+          },
+          {
+            "alternative": {
+              "species": "fir",
+              "tree": "polishforests:tree/fir"
+            },
+            "species": "spruce",
+            "tree": "polishforests:tree/spruce",
+            "weight": 120
+          },
+          {
+            "alternative": {
+              "species": "fir",
+              "tree": "polishforests:tree/fir"
+            },
+            "species": "beech",
+            "tree": "polishforests:tree/beech",
+            "weight": 80
+          }
+        ],
+        "subcanopy_chance": 0.7
+      },
       "trees": [
         {
+          "range_ramp": false,
           "species": "fir",
-          "tree": "polishforests:tree_substitute/fir",
-          "weight": 500
-        },
-        {
-          "species": "beech",
-          "tree": "polishforests:tree_substitute/beech",
-          "weight": 250
-        },
-        {
-          "species": "oak",
-          "tree": "polishforests:tree_substitute/oak",
-          "weight": 150
+          "tree": "polishforests:tree/fir",
+          "weight": 600
         },
         {
           "species": "scots_pine",
-          "tree": "polishforests:tree_substitute/scots_pine",
+          "tree": "polishforests:tree/scots_pine",
+          "weight": 260
+        },
+        {
+          "alternative": {
+            "species": "scots_pine",
+            "tree": "polishforests:tree/scots_pine"
+          },
+          "species": "spruce",
+          "tree": "polishforests:tree/spruce",
           "weight": 100
+        },
+        {
+          "species": "oak",
+          "tree": "polishforests:tree/oak",
+          "weight": 40
+        }
+      ],
+      "trees_per_chunk": 11.0
+    },
+    {
+      "biomes": [
+        "upland_fir_forest"
+      ],
+      "stand": {
+        "gap_chance": 0.9,
+        "gap_regeneration": [
+          {
+            "range_ramp": false,
+            "species": "fir",
+            "tree": "polishforests:tree/fir",
+            "weight": 600
+          },
+          {
+            "alternative": {
+              "species": "fir",
+              "tree": "polishforests:tree/fir"
+            },
+            "species": "beech",
+            "tree": "polishforests:tree/beech",
+            "weight": 150
+          },
+          {
+            "species": "birch",
+            "tree": "polishforests:tree/birch",
+            "weight": 100
+          },
+          {
+            "species": "rowan",
+            "tree": "polishforests:tree_substitute/rowan_thin",
+            "weight": 100
+          },
+          {
+            "species": "hazel",
+            "tree": "polishforests:shrub/hazel_thin",
+            "weight": 50
+          }
+        ],
+        "managed_canopy": [
+          {
+            "range_ramp": false,
+            "species": "fir",
+            "tree": "polishforests:tree/fir",
+            "weight": 680
+          },
+          {
+            "alternative": {
+              "species": "fir",
+              "tree": "polishforests:tree/fir"
+            },
+            "species": "beech",
+            "tree": "polishforests:tree/beech",
+            "weight": 90
+          },
+          {
+            "alternative": {
+              "species": "fir",
+              "tree": "polishforests:tree/fir"
+            },
+            "species": "spruce",
+            "tree": "polishforests:tree/spruce",
+            "weight": 90
+          },
+          {
+            "species": "scots_pine",
+            "tree": "polishforests:tree/scots_pine",
+            "weight": 100
+          },
+          {
+            "species": "oak",
+            "tree": "polishforests:tree/oak",
+            "weight": 40
+          }
+        ],
+        "managed_chance": [
+          0.9,
+          0.72,
+          0.62
+        ],
+        "natural_chance": [
+          0.95,
+          0.95,
+          0.95
+        ],
+        "regeneration": [
+          {
+            "range_ramp": false,
+            "species": "fir",
+            "tree": "polishforests:tree/fir",
+            "weight": 800
+          },
+          {
+            "alternative": {
+              "species": "fir",
+              "tree": "polishforests:tree/fir"
+            },
+            "species": "beech",
+            "tree": "polishforests:tree/beech",
+            "weight": 150
+          },
+          {
+            "species": "hazel",
+            "tree": "polishforests:shrub/hazel_thin",
+            "weight": 50
+          }
+        ],
+        "subcanopy": [
+          {
+            "range_ramp": false,
+            "species": "fir",
+            "tree": "polishforests:tree/fir",
+            "weight": 700
+          },
+          {
+            "alternative": {
+              "species": "fir",
+              "tree": "polishforests:tree/fir"
+            },
+            "species": "beech",
+            "tree": "polishforests:tree/beech",
+            "weight": 200
+          },
+          {
+            "alternative": {
+              "species": "fir",
+              "tree": "polishforests:tree/fir"
+            },
+            "species": "hornbeam",
+            "tree": "polishforests:tree/hornbeam",
+            "weight": 100
+          }
+        ],
+        "subcanopy_chance": 0.7
+      },
+      "trees": [
+        {
+          "range_ramp": false,
+          "species": "fir",
+          "tree": "polishforests:tree/fir",
+          "weight": 720
+        },
+        {
+          "alternative": {
+            "species": "fir",
+            "tree": "polishforests:tree/fir"
+          },
+          "species": "beech",
+          "tree": "polishforests:tree/beech",
+          "weight": 120
+        },
+        {
+          "alternative": {
+            "species": "fir",
+            "tree": "polishforests:tree/fir"
+          },
+          "species": "spruce",
+          "tree": "polishforests:tree/spruce",
+          "weight": 70
+        },
+        {
+          "species": "scots_pine",
+          "tree": "polishforests:tree/scots_pine",
+          "weight": 50
+        },
+        {
+          "species": "oak",
+          "tree": "polishforests:tree/oak",
+          "weight": 40
+        }
+      ],
+      "trees_per_chunk": 11.0
+    },
+    {
+      "associations": [
+        "sycamore_ravine_forest"
+      ],
+      "biomes": [
+        "montane_beech_forest"
+      ],
+      "stand": {
+        "gap_chance": 0.8,
+        "gap_regeneration": [
+          {
+            "species": "sycamore_maple",
+            "tree": "polishforests:tree/sycamore_maple",
+            "weight": 600
+          },
+          {
+            "species": "ash",
+            "tree": "polishforests:tree/ash",
+            "weight": 250
+          },
+          {
+            "species": "hazel",
+            "tree": "polishforests:shrub/hazel_thin",
+            "weight": 150
+          }
+        ],
+        "managed_canopy": [
+          {
+            "species": "sycamore_maple",
+            "tree": "polishforests:tree/sycamore_maple",
+            "weight": 600
+          },
+          {
+            "range_ramp": false,
+            "species": "beech",
+            "tree": "polishforests:tree/beech",
+            "weight": 220
+          },
+          {
+            "species": "ash",
+            "tree": "polishforests:tree/ash",
+            "weight": 100
+          },
+          {
+            "range_ramp": false,
+            "species": "fir",
+            "tree": "polishforests:tree/fir",
+            "weight": 80
+          }
+        ],
+        "managed_chance": [
+          0.88,
+          0.7,
+          0.6
+        ],
+        "natural_chance": [
+          0.92,
+          0.92,
+          0.92
+        ],
+        "regeneration": [
+          {
+            "species": "sycamore_maple",
+            "tree": "polishforests:tree/sycamore_maple",
+            "weight": 500
+          },
+          {
+            "species": "ash",
+            "tree": "polishforests:tree/ash",
+            "weight": 200
+          },
+          {
+            "range_ramp": false,
+            "species": "beech",
+            "tree": "polishforests:tree/beech",
+            "weight": 200
+          },
+          {
+            "species": "hazel",
+            "tree": "polishforests:shrub/hazel_thin",
+            "weight": 100
+          }
+        ],
+        "subcanopy": [
+          {
+            "species": "sycamore_maple",
+            "tree": "polishforests:tree/sycamore_maple",
+            "weight": 500
+          },
+          {
+            "range_ramp": false,
+            "species": "beech",
+            "tree": "polishforests:tree/beech",
+            "weight": 300
+          },
+          {
+            "species": "ash",
+            "tree": "polishforests:tree/ash",
+            "weight": 200
+          }
+        ],
+        "subcanopy_chance": 0.5
+      },
+      "trees": [
+        {
+          "species": "sycamore_maple",
+          "tree": "polishforests:tree/sycamore_maple",
+          "weight": 620
+        },
+        {
+          "range_ramp": false,
+          "species": "beech",
+          "tree": "polishforests:tree/beech",
+          "weight": 180
+        },
+        {
+          "species": "ash",
+          "tree": "polishforests:tree/ash",
+          "weight": 120
+        },
+        {
+          "range_ramp": false,
+          "species": "fir",
+          "tree": "polishforests:tree/fir",
+          "weight": 80
         }
       ],
       "trees_per_chunk": 10.0
     },
     {
+      "associations": [
+        "acidophilous"
+      ],
       "biomes": [
         "montane_beech_forest"
       ],
+      "stand": {
+        "gap_chance": 0.8,
+        "gap_regeneration": [
+          {
+            "range_ramp": false,
+            "species": "beech",
+            "tree": "polishforests:tree/beech",
+            "weight": 450
+          },
+          {
+            "range_ramp": false,
+            "species": "fir",
+            "tree": "polishforests:tree/fir",
+            "weight": 250
+          },
+          {
+            "species": "rowan",
+            "tree": "polishforests:tree_substitute/rowan_thin",
+            "weight": 150
+          },
+          {
+            "species": "birch",
+            "tree": "polishforests:tree/birch",
+            "weight": 100
+          },
+          {
+            "species": "sycamore_maple",
+            "tree": "polishforests:tree/sycamore_maple",
+            "weight": 50
+          }
+        ],
+        "managed_canopy": [
+          {
+            "range_ramp": false,
+            "species": "beech",
+            "tree": "polishforests:tree/beech",
+            "weight": 620
+          },
+          {
+            "range_ramp": false,
+            "species": "fir",
+            "tree": "polishforests:tree/fir",
+            "weight": 220
+          },
+          {
+            "alternative": {
+              "species": "fir",
+              "tree": "polishforests:tree/fir"
+            },
+            "species": "spruce",
+            "tree": "polishforests:tree/spruce",
+            "weight": 150
+          },
+          {
+            "species": "rowan",
+            "tree": "polishforests:tree_substitute/rowan_thin",
+            "weight": 10
+          }
+        ],
+        "managed_chance": [
+          0.9,
+          0.72,
+          0.62
+        ],
+        "natural_chance": [
+          0.95,
+          0.95,
+          0.95
+        ],
+        "regeneration": [
+          {
+            "range_ramp": false,
+            "species": "beech",
+            "tree": "polishforests:tree/beech",
+            "weight": 500
+          },
+          {
+            "range_ramp": false,
+            "species": "fir",
+            "tree": "polishforests:tree/fir",
+            "weight": 400
+          },
+          {
+            "species": "rowan",
+            "tree": "polishforests:tree_substitute/rowan_thin",
+            "weight": 100
+          }
+        ],
+        "subcanopy": [
+          {
+            "range_ramp": false,
+            "species": "beech",
+            "tree": "polishforests:tree/beech",
+            "weight": 500
+          },
+          {
+            "range_ramp": false,
+            "species": "fir",
+            "tree": "polishforests:tree/fir",
+            "weight": 400
+          },
+          {
+            "alternative": {
+              "species": "fir",
+              "tree": "polishforests:tree/fir"
+            },
+            "species": "spruce",
+            "tree": "polishforests:tree/spruce",
+            "weight": 100
+          }
+        ],
+        "subcanopy_chance": 0.45
+      },
       "trees": [
         {
           "range_ramp": false,
           "species": "beech",
-          "tree": "polishforests:tree_substitute/beech",
-          "weight": 700
+          "tree": "polishforests:tree/beech",
+          "weight": 650
         },
         {
+          "range_ramp": false,
           "species": "fir",
-          "tree": "polishforests:tree_substitute/fir",
-          "weight": 200
+          "tree": "polishforests:tree/fir",
+          "weight": 250
         },
         {
+          "alternative": {
+            "species": "fir",
+            "tree": "polishforests:tree/fir"
+          },
           "species": "spruce",
-          "tree": "polishforests:tree_substitute/spruce",
+          "tree": "polishforests:tree/spruce",
+          "weight": 80
+        },
+        {
+          "species": "rowan",
+          "tree": "polishforests:tree_substitute/rowan_thin",
+          "weight": 20
+        }
+      ],
+      "trees_per_chunk": 11.0
+    },
+    {
+      "biomes": [
+        "montane_beech_forest"
+      ],
+      "stand": {
+        "gap_chance": 0.8,
+        "gap_regeneration": [
+          {
+            "range_ramp": false,
+            "species": "beech",
+            "tree": "polishforests:tree/beech",
+            "weight": 450
+          },
+          {
+            "range_ramp": false,
+            "species": "fir",
+            "tree": "polishforests:tree/fir",
+            "weight": 200
+          },
+          {
+            "species": "sycamore_maple",
+            "tree": "polishforests:tree/sycamore_maple",
+            "weight": 200
+          },
+          {
+            "species": "rowan",
+            "tree": "polishforests:tree_substitute/rowan_thin",
+            "weight": 100
+          },
+          {
+            "species": "hazel",
+            "tree": "polishforests:shrub/hazel_thin",
+            "weight": 50
+          }
+        ],
+        "managed_canopy": [
+          {
+            "range_ramp": false,
+            "species": "beech",
+            "tree": "polishforests:tree/beech",
+            "weight": 640
+          },
+          {
+            "range_ramp": false,
+            "species": "fir",
+            "tree": "polishforests:tree/fir",
+            "weight": 180
+          },
+          {
+            "alternative": {
+              "species": "fir",
+              "tree": "polishforests:tree/fir"
+            },
+            "species": "spruce",
+            "tree": "polishforests:tree/spruce",
+            "weight": 120
+          },
+          {
+            "species": "sycamore_maple",
+            "tree": "polishforests:tree/sycamore_maple",
+            "weight": 60
+          }
+        ],
+        "managed_chance": [
+          0.9,
+          0.72,
+          0.62
+        ],
+        "natural_chance": [
+          0.95,
+          0.95,
+          0.95
+        ],
+        "regeneration": [
+          {
+            "range_ramp": false,
+            "species": "beech",
+            "tree": "polishforests:tree/beech",
+            "weight": 550
+          },
+          {
+            "range_ramp": false,
+            "species": "fir",
+            "tree": "polishforests:tree/fir",
+            "weight": 300
+          },
+          {
+            "species": "sycamore_maple",
+            "tree": "polishforests:tree/sycamore_maple",
+            "weight": 100
+          },
+          {
+            "species": "rowan",
+            "tree": "polishforests:tree_substitute/rowan_thin",
+            "weight": 50
+          }
+        ],
+        "subcanopy": [
+          {
+            "range_ramp": false,
+            "species": "beech",
+            "tree": "polishforests:tree/beech",
+            "weight": 550
+          },
+          {
+            "range_ramp": false,
+            "species": "fir",
+            "tree": "polishforests:tree/fir",
+            "weight": 350
+          },
+          {
+            "species": "sycamore_maple",
+            "tree": "polishforests:tree/sycamore_maple",
+            "weight": 100
+          }
+        ],
+        "subcanopy_chance": 0.45
+      },
+      "trees": [
+        {
+          "range_ramp": false,
+          "species": "beech",
+          "tree": "polishforests:tree/beech",
+          "weight": 650
+        },
+        {
+          "range_ramp": false,
+          "species": "fir",
+          "tree": "polishforests:tree/fir",
+          "weight": 220
+        },
+        {
+          "alternative": {
+            "species": "fir",
+            "tree": "polishforests:tree/fir"
+          },
+          "species": "spruce",
+          "tree": "polishforests:tree/spruce",
           "weight": 50
         },
         {
           "species": "sycamore_maple",
-          "tree": "polishforests:tree_substitute/sycamore_maple",
-          "weight": 50
+          "tree": "polishforests:tree/sycamore_maple",
+          "weight": 80
         }
       ],
-      "trees_per_chunk": 8.0
+      "trees_per_chunk": 11.0
     },
     {
       "biomes": [

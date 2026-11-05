@@ -22,7 +22,11 @@ public enum RootFlare {
 	/** Step F2. */
 	BLACK_ALDER(TreeTrunk.BLACK_ALDER),
 	/** Step F2: the elm's buttresses (Ulmus laevis builds plank buttresses on wet ground). */
-	ELM(TreeTrunk.ELM);
+	ELM(TreeTrunk.ELM),
+	/** Step F3: the fir's buttresses (a deep heart and tap root system with strong flares on the mountain slopes). */
+	FIR(TreeTrunk.FIR),
+	/** Step F3: the sycamore maple's flares (a heart root system that holds the scree of the ravines). */
+	SYCAMORE_MAPLE(TreeTrunk.SYCAMORE_MAPLE);
 
 	private final TreeTrunk trunk;
 

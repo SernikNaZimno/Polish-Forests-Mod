@@ -59,7 +59,11 @@ public final class ForestNorms {
 		ALDER_CARR_NATURAL("ols naturalny", HabitatBiome.ALDER_CARR, true),
 		ALDER_CARR_MANAGED("ols gospodarczy", HabitatBiome.ALDER_CARR, false),
 		ASH_ALDER_NATURAL("łęg jesionowo-olszowy naturalny", HabitatBiome.ASH_ALDER_FOREST, true),
-		ASH_ALDER_MANAGED("łęg jesionowo-olszowy gospodarczy", HabitatBiome.ASH_ALDER_FOREST, false);
+		ASH_ALDER_MANAGED("łęg jesionowo-olszowy gospodarczy", HabitatBiome.ASH_ALDER_FOREST, false),
+		UPLAND_FIR_NATURAL("jedlina naturalna", HabitatBiome.UPLAND_FIR_FOREST, true),
+		UPLAND_FIR_MANAGED("jedlina gospodarcza", HabitatBiome.UPLAND_FIR_FOREST, false),
+		MONTANE_BEECH_NATURAL("buczyna karpacka naturalna", HabitatBiome.MONTANE_BEECH_FOREST, true),
+		MONTANE_BEECH_MANAGED("buczyna karpacka gospodarcza", HabitatBiome.MONTANE_BEECH_FOREST, false);
 
 		private final String polishName;
 		private final HabitatBiome biome;
@@ -110,7 +114,25 @@ public final class ForestNorms {
 		/** The fertile form (e.g. Galio odorati-Fagetum, site type Lśw). */
 		FERTILE,
 		/** The acid form (e.g. Luzulo pilosae-Fagetum, site type LMśw). */
-		ACID
+		ACID,
+		/** Step F3: the sycamore ravine forest of the Carpathian beech forest (Lunario-Aceretum, its association). */
+		RAVINE
+	}
+
+	/**
+	 * The site variant of a habitat code (the norms that differ by it): the fertile and the acid lowland and Carpathian
+	 * beech forest by the forest site type (Lśw and LMśw, LG and LMG), the sycamore ravine forest by its association; else
+	 * null (the norm without a site).
+	 */
+	public static @Nullable Site siteOf(int code) {
+		if (pl.polishforests.worldgen.habitat.Habitat.association(code) == pl.polishforests.worldgen.habitat.Association.SYCAMORE_RAVINE_FOREST) {
+			return Site.RAVINE;
+		}
+		return switch (pl.polishforests.worldgen.habitat.Habitat.siteType(code)) {
+			case FRESH_BROADLEAVED, MOUNTAIN_BROADLEAVED -> Site.FERTILE;
+			case FRESH_MIXED_BROADLEAVED, MOUNTAIN_MIXED_BROADLEAVED -> Site.ACID;
+			default -> null;
+		};
 	}
 
 	/** Aspect of the year for the norms that change with it (the herb layer, N8). */
@@ -216,7 +238,7 @@ public final class ForestNorms {
 			"oak", List.of("oak", "sessile_oak"));
 	/** Composition keys of the card ({@code N3.<key>}): groups of {@link #GROUPS} or species ids, then {@code other}. */
 	public static final List<String> COMPOSITION_KEYS = List.of("oak", "linden", "maple_ash", "hornbeam", "spruce", "beech",
-			"scots_pine", "birch", "black_alder", "elm", "other");
+			"scots_pine", "birch", "black_alder", "elm", "fir", "other");
 
 	/**
 	 * A norm of the card.
@@ -291,6 +313,7 @@ public final class ForestNorms {
 		METRICS.put(COMPOSITION + "birch", "birch share of a1 trunks, %");
 		METRICS.put(COMPOSITION + "black_alder", "black alder share of a1 trunks, %");
 		METRICS.put(COMPOSITION + "elm", "elm share of a1 trunks, %");
+		METRICS.put(COMPOSITION + "fir", "silver fir share of a1 trunks, %");
 		METRICS.put(COMPOSITION + "other", "other or unknown species share of a1 trunks, %");
 		METRICS.put(CANOPY, "canopy closure: columns with leaves more than 2 blocks up, %");
 		METRICS.put(GAP_SHARE, "plot area in canopy gaps, %");
@@ -423,6 +446,7 @@ public final class ForestNorms {
 		wide(DEADWOOD_VOLUME, fpn, 50, 80, deadwood + " (Taborz)");
 		beechCard();
 		alderCard();
+		mountainCard();
 		// N15 transect: the same for every forest of the transect (the transect crosses all four).
 		for (Forest f : Forest.values()) {
 			if (!f.transect()) {
@@ -521,6 +545,70 @@ public final class ForestNorms {
 			wide(PIECES_PER_CHUNK, f, 0.2, 0.25, managedDeadwood);
 			wide(STUMPS_PER_CHUNK, f, 1, 2, managedDeadwood);
 			wide(DEADWOOD_VOLUME, f, 8, 16, managedDeadwood);
+		}
+	}
+
+	/**
+	 * The card of the upland fir forest and the Carpathian beech forest with its sycamore ravine forest (step F3, docs/04
+	 * "Projekt F3"): L 06 §3.3, §3.6, §3.8 and §4.3 (Abietetum polonicum and Galio-Abietetum: a1 fir 50–90% with beech,
+	 * spruce and pine, a many-storied stand, closure 70–95%, b of the fir regeneration 20–50%, c 20–60%, d 30–70%;
+	 * Dentario glandulosae-Fagetum: a1 beech 50–90% with fir 10–40% and sycamore 5–15%, closure 70–95%, b 5–30%, c in
+	 * spring 30–80% and in summer 10–50%; Luzulo luzuloidis-Fagetum: c 10–50%; Lunario-Aceretum: a1 sycamore 50–90%, c
+	 * 50–90%), the dead wood of the natural mountain forests (the Carpathian reserves, 100–200 m³/ha) and of the managed
+	 * ones (the WISL mean of the mountain sites) [S where noted].
+	 */
+	private static void mountainCard() {
+		String card = "[L 06 §3.3, §3.6, §3.8]";
+		String deadwood = "[L 06 §4.3; PW-5 b; S]";
+		String managedDeadwood = "[Ź WISL 2010–2014; L 06 §4.3; S]";
+		for (Forest f : new Forest[] {Forest.UPLAND_FIR_NATURAL, Forest.UPLAND_FIR_MANAGED}) {
+			// N1 trunks per chunk: the many-storied fir stands are dense (300-600 trees per ha of 7 cm and more) [S].
+			norm(TREES_PER_CHUNK, f, 8, 18, card + " [S]");
+			norm(COMPOSITION + "fir", f, 50, 90, card);
+			norm(CANOPY, f, 70, 95, card);
+			// N7 the shrub layer of the fir regeneration (the fir regenerates densely under its own canopy).
+			norm(UNDERSTORY, f, 20, 50, card);
+			norm(HERBS, f, 20, 60, card + " [S]");
+			norm(HERBS_SPRING, f, 20, 60, card + " [S]");
+			norm(MOSS, f, 30, 70, card);
+		}
+		for (Forest f : new Forest[] {Forest.MONTANE_BEECH_NATURAL, Forest.MONTANE_BEECH_MANAGED}) {
+			if (f.natural()) {
+				norm(TREES_PER_CHUNK, f, 6, 12, card + " [S]");
+			} else {
+				norm(TREES_PER_CHUNK, f, 7, 15, card + " [S]");
+			}
+			// N3: the beech with fir and sycamore; the ravine forest of the sycamore (the maples and the ash, its group).
+			norm(COMPOSITION + "beech", f, 50, 90, card);
+			NORMS.add(new Norm(COMPOSITION + "beech", f, 5, 40, TOLERANCE, null, null, card + " [S]", Site.RAVINE));
+			norm(COMPOSITION + "fir", f, 10, 40, card);
+			NORMS.add(new Norm(COMPOSITION + "fir", f, 0, 20, TOLERANCE, null, null, card + " [S]", Site.RAVINE));
+			norm(COMPOSITION + "maple_ash", f, 0, 15, card + " [S: żyzna lub kwaśna]");
+			NORMS.add(new Norm(COMPOSITION + "maple_ash", f, 5, 15, TOLERANCE, null, null, card, Site.FERTILE));
+			NORMS.add(new Norm(COMPOSITION + "maple_ash", f, 55, 95, TOLERANCE, null, null, card, Site.RAVINE));
+			norm(CANOPY, f, 70, 95, card);
+			norm(UNDERSTORY, f, 5, 30, card);
+			norm(MOSS, f, 0, 20, card + " [S]");
+			// N8 the herb layer: the fertile form's toothwort carpets in spring, the acid form's wood-rush all year, the
+			// ravine's tall herbs; a plot of unknown form: the union.
+			NORMS.add(new Norm(HERBS_SPRING, f, 30, 80, TOLERANCE, null, null, card, Site.FERTILE));
+			NORMS.add(new Norm(HERBS, f, 10, 50, TOLERANCE, null, null, card, Site.FERTILE));
+			NORMS.add(new Norm(HERBS_SPRING, f, 10, 50, TOLERANCE, null, null, card, Site.ACID));
+			NORMS.add(new Norm(HERBS, f, 10, 50, TOLERANCE, null, null, card, Site.ACID));
+			NORMS.add(new Norm(HERBS_SPRING, f, 50, 90, TOLERANCE, null, null, card, Site.RAVINE));
+			NORMS.add(new Norm(HERBS, f, 50, 90, TOLERANCE, null, null, card, Site.RAVINE));
+			norm(HERBS_SPRING, f, 10, 90, card + " [S: każda postać]");
+		}
+		// N10 dead wood.
+		wide(DEADWOOD_PER_CHUNK, Forest.UPLAND_FIR_NATURAL, 2, 2, deadwood);
+		wide(DEADWOOD_VOLUME, Forest.UPLAND_FIR_NATURAL, 80, 150, deadwood);
+		wide(DEADWOOD_PER_CHUNK, Forest.MONTANE_BEECH_NATURAL, 2.2, 2.2, deadwood);
+		wide(DEADWOOD_VOLUME, Forest.MONTANE_BEECH_NATURAL, 100, 200, deadwood);
+		wide(COARSE_PIECES, Forest.MONTANE_BEECH_NATURAL, 5, Double.POSITIVE_INFINITY, deadwood);
+		for (Forest f : new Forest[] {Forest.UPLAND_FIR_MANAGED, Forest.MONTANE_BEECH_MANAGED}) {
+			wide(PIECES_PER_CHUNK, f, 0.25, 0.25, managedDeadwood);
+			wide(STUMPS_PER_CHUNK, f, 1, 2, managedDeadwood);
+			wide(DEADWOOD_VOLUME, f, 10, 20, managedDeadwood);
 		}
 	}
 

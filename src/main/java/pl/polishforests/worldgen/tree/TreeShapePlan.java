@@ -421,6 +421,8 @@ public final class TreeShapePlan {
 		private SpeciesShape.Profile profile;
 		private boolean edge;
 		private boolean oldPine;
+		/** Step F3: an old canopy fir, whose top has stopped growing and flattened ("stork's nest"). */
+		private boolean oldFir;
 		/** Height from which the spruce's leader is a spire without branches (infinite for other trees). */
 		private double spireFrom;
 		private int gridX0;
@@ -473,6 +475,14 @@ public final class TreeShapePlan {
 				ratio = range(0.22, 0.27);
 				crownR *= 1.3;
 				profile = new SpeciesShape.Profile(0.75F, 0.7F, 0.6F, 3.0F);
+			}
+			// Step F3: the old canopy fir, a column of tiers with a flat top (the "stork's nest"): the top branches nearly as
+			// long as the widest ones. No random draw, so the other draws of the tree stay in their order.
+			oldFir = shape.archetype() == SpeciesShape.Archetype.FIR && age == AgeClass.OLD_GROWTH
+					&& r.layer() == CrownLayer.CANOPY;
+			if (oldFir) {
+				crownR *= 1.12;
+				profile = new SpeciesShape.Profile(0.8F, 0.4F, 0.82F, 3.0F);
 			}
 			if (r.openGrown() && r.layer() == CrownLayer.CANOPY) {
 				ratio = Math.min(0.8, ratio + OPEN_RATIO);
@@ -833,7 +843,7 @@ public final class TreeShapePlan {
 		private void skeleton() {
 			int trunkTop = trunk();
 			switch (shape.archetype()) {
-				case PINE, SPRUCE -> conifer();
+				case PINE, SPRUCE, FIR -> conifer();
 				case SLENDER -> slender();
 				case BROAD -> broad(trunkTop);
 			}
@@ -923,7 +933,7 @@ public final class TreeShapePlan {
 			if (skirtBins == 0) {
 				return;
 			}
-			boolean conifer = shape.archetype() == SpeciesShape.Archetype.PINE || shape.archetype() == SpeciesShape.Archetype.SPRUCE;
+			boolean conifer = shape.archetype().conifer();
 			double y = Math.max(2, SKIRT_FROM * size.height()) + range(0, 1);
 			double end = size.crownBase() - 0.5;
 			while (y < end) {
@@ -938,7 +948,7 @@ public final class TreeShapePlan {
 				double azimuth = 2 * Math.PI * (bin + range(-0.4, 0.4)) / AZIMUTH_BINS;
 				int at = trunkNode(Math.floor(y));
 				if (conifer) {
-					branch(at, azimuth, size.crownRadius() * range(0.7, 1.0), 0, shape.archetype() == SpeciesShape.Archetype.SPRUCE);
+					branch(at, azimuth, size.crownRadius() * range(0.7, 1.0), 0, shape.archetype());
 				} else {
 					lateral(at, azimuth, 0, Double.NaN);
 				}
@@ -958,7 +968,7 @@ public final class TreeShapePlan {
 			double phi = range(0, 2 * Math.PI);
 			double lean = shape.lean() * range(0.3, 1.0);
 			double wobble = 0.12 * next();
-			if (shape.archetype() == SpeciesShape.Archetype.PINE || shape.archetype() == SpeciesShape.Archetype.SPRUCE) {
+			if (shape.archetype().conifer()) {
 				// A conifer's leader stays in its column: a jog of the thin top reads as a step (review of V6).
 				lean = Math.min(lean, 0.42);
 				wobble = 0;
@@ -986,8 +996,14 @@ public final class TreeShapePlan {
 					break;
 				}
 			}
-			spireFrom = shape.archetype() == SpeciesShape.Archetype.SPRUCE && top > 8 ? top - 2.2 : Double.POSITIVE_INFINITY;
-			if (!forks() && spireFrom == Double.POSITIVE_INFINITY) {
+			// Step F3: the growing fir has the spruce's spire too (a column of needles); the old fir's top is flat.
+			boolean spire = shape.archetype() == SpeciesShape.Archetype.SPRUCE
+					|| shape.archetype() == SpeciesShape.Archetype.FIR && !oldFir;
+			spireFrom = spire && top > 8 ? top - 2.2 : Double.POSITIVE_INFINITY;
+			if (oldFir) {
+				// The flat "nest" on the old fir's top: a wide, low cluster over the last whorl.
+				leafAt(parent, leafH * 1.5, leafV * 0.7);
+			} else if (!forks() && spireFrom == Double.POSITIVE_INFINITY) {
 				// (The spruce's spire gets its needles in foliage(): a cross around each of its blocks.)
 				leafAt(parent, leafH * 0.85, leafV * 1.2);
 			}
@@ -1081,9 +1097,13 @@ public final class TreeShapePlan {
 			return Math.min(135, degrees);
 		}
 
-		/** Pine and spruce: whorls of branches from the crown base to the top, rotated by the golden angle. */
+		/**
+		 * Pine, spruce and (step F3) fir: whorls of branches from the crown base to the top, rotated by the golden angle;
+		 * the fir's whorls more regular (fewer staggered branches), so its horizontal tiers read from a distance.
+		 */
 		private void conifer() {
-			boolean spruce = shape.archetype() == SpeciesShape.Archetype.SPRUCE;
+			SpeciesShape.Archetype kind = shape.archetype();
+			boolean pine = kind == SpeciesShape.Archetype.PINE;
 			double phase = range(0, 2 * Math.PI);
 			double y = size.crownBase();
 			// The spruce's spire: its top two blocks without branches (a tree taller than 8 blocks).
@@ -1095,19 +1115,19 @@ public final class TreeShapePlan {
 				int k = oldPine ? 2 + (next() < 0.45 ? 1 : 0)
 						: shape.perWhorl() + (next() < 0.35 ? 1 : 0) - (next() < 0.3 ? 1 : 0);
 				phase += GOLDEN + range(-0.3, 0.3);
-				if (!spruce && t >= 0.4 && nLeafH[at] <= 0) {
+				if (pine && t >= 0.4 && nLeafH[at] <= 0) {
 					// Needles around the pine's leader in the upper crown: no bare candelabra of leader and branch bases.
 					leafAt(at, leafH * 0.6, leafV * 0.7);
 				}
 				for (int j = 0; j < k; j++) {
 					double azimuth = phase + j * 2 * Math.PI / k + range(-0.4, 0.4);
 					int from = at;
-					if (next() < 0.35 && ay + 1 < end) {
+					if (next() < (kind == SpeciesShape.Archetype.FIR ? 0.15 : 0.35) && ay + 1 < end) {
 						// Staggered whorls: some branches a block higher.
 						from = trunkNode(ay + 1);
 					}
 					double length = envelope(ny[from], azimuth) * range(0.72, 1.1);
-					branch(from, azimuth, length, t, spruce);
+					branch(from, azimuth, length, t, kind);
 				}
 				y = ay + shape.spacing() * (oldPine ? 1.4 : 1) * range(0.85, 1.15);
 				if (Math.floor(y) <= ay) {
@@ -1119,9 +1139,12 @@ public final class TreeShapePlan {
 		/**
 		 * A conifer branch from trunk node {@code at}: a curve of horizontal length {@code length}; the pine's tip turns
 		 * up and carries tufts along its outer half, the spruce's droops (the lowest whorls most) with needles along all
+		 * of it, the fir's (step F3) stays horizontal with a slight upturn of the tip and flat sprays of needles along all
 		 * of it. A short one leaves only a cluster at the trunk.
 		 */
-		private void branch(int at, double azimuth, double length, double t, boolean spruce) {
+		private void branch(int at, double azimuth, double length, double t, SpeciesShape.Archetype kind) {
+			boolean spruce = kind == SpeciesShape.Archetype.SPRUCE;
+			boolean fir = kind == SpeciesShape.Archetype.FIR;
 			double c = StrictMath.cos(azimuth);
 			double s = StrictMath.sin(azimuth);
 			length = fit(nx[at], nz[at], c, s, length, 0.6 * leafH);
@@ -1133,7 +1156,14 @@ public final class TreeShapePlan {
 			}
 			double a0 = lerp(t, shape.angleLow(), shape.angleHigh()) + range(-5, 5);
 			double a1;
-			if (spruce) {
+			if (fir) {
+				// Horizontal tiers: the branch leaves the trunk at about a right angle and its tip turns up a little; the
+				// old fir's top branches spread flat (the "nest").
+				if (oldFir && t > 0.6) {
+					a0 = range(80, 88);
+				}
+				a1 = a0 - shape.bend() * 110 * range(0.7, 1.3);
+			} else if (spruce) {
 				// Droop: up to about 55 degrees at the crown base (one to two blocks of sag spread along the branch), little
 				// in the middle, the top branches slightly ascending (bend is negative).
 				a1 = a0 + -shape.bend() * 220 * StrictMath.pow(1 - t, 1.5) * range(0.6, 1.3) - 8 * t;
@@ -1151,13 +1181,21 @@ public final class TreeShapePlan {
 			if (oldPine) {
 				// Separate flat tufts at the ends of the limbs.
 				leafAt(tip, leafH * scale * 1.15, leafV * 0.7);
+			} else if (fir) {
+				// A flat spray at the tip.
+				leafAt(tip, leafH * scale * 1.05, leafV * 0.8);
 			} else {
 				leafAt(tip, leafH * scale, leafV);
 			}
 			int n = curveCount;
 			for (int i = 0; i < n - 1; i++) {
 				int node = curveNodes[i];
-				if (spruce) {
+				if (fir) {
+					// Flat sprays along the fir branch (the needles in two rows): wide and low.
+					if (i >= 1) {
+						leafAt(node, leafH * 0.75, leafV * 0.65);
+					}
+				} else if (spruce) {
 					// Needles along the spruce branch.
 					if (i >= 1) {
 						leafAt(node, leafH * 0.7, leafV * 0.8);
@@ -1886,8 +1924,7 @@ public final class TreeShapePlan {
 
 		/** A broad-leaved canopy tree of a stand: its stem is sleeved and its upturned tips at the top must be covered. */
 		private boolean stemSleeves() {
-			return request.layer() == CrownLayer.CANOPY && request.territory() != null && shape.archetype() != SpeciesShape.Archetype.PINE
-					&& shape.archetype() != SpeciesShape.Archetype.SPRUCE;
+			return request.layer() == CrownLayer.CANOPY && request.territory() != null && !shape.archetype().conifer();
 		}
 
 		/** Whether (x, y, z) is open to one of its four sides ({@link #openSide(int, int, int, int, int)}). */
@@ -2407,8 +2444,7 @@ public final class TreeShapePlan {
 		 */
 		private boolean sparse(int height, TreeVoxels voxels) {
 			return request.layer() == CrownLayer.CANOPY && request.territory() != null && height >= SUPPRESSED_HEIGHT
-					&& shape.archetype() != SpeciesShape.Archetype.PINE && shape.archetype() != SpeciesShape.Archetype.SPRUCE
-					&& CrownCover.of(voxels).sparseCrown();
+					&& !shape.archetype().conifer() && CrownCover.of(voxels).sparseCrown();
 		}
 	}
 }

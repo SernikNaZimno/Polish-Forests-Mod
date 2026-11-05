@@ -107,13 +107,15 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 	 * step F1: the plot lowland_beech_natural_1 ({@code slice_plots.txt}), the chunk orders in the lowland beech forest (a
 	 * reference from a build before F1 has no entry for it: no comparison with the reference there); step F2: the plot
 	 * alder_carr_natural_1 (realistic) or alder_carr_managed_1 (gameplay, no natural carr plot there), the same for a
-	 * reference from before F2.
+	 * reference from before F2; step F3: the plot upland_fir_natural_1 of each scale, the same for a reference from before
+	 * F3.
 	 */
 	private static final int[][] AREAS_REAL = {{-19_484 - 64, 11_253 - 64}, {154_834 - 64, 1_058_738 - 64}, {438 - 64, -730 - 64},
-			{-699 - 64, 1_924 - 64}, {-7_793 - 64, -9_133 - 64}, {2_339 - 64, 29_627 - 64}};
+			{-699 - 64, 1_924 - 64}, {-7_793 - 64, -9_133 - 64}, {2_339 - 64, 29_627 - 64}, {46_472 - 64, 15_684 - 64}};
 	private static final int[][] AREAS_GAMEPLAY = {{-1_851 - 64, 6_022 - 64}, {27_609 - 64, 3_254 - 64}, {-1_785 - 64, 886 - 64},
-			{-1_195 - 64, -583 - 64}, {-2_004 - 64, -3_609 - 64}, {-5_971 - 64, 1_387 - 64}};
-	private static final String[] AREA_NAMES = {"river", "beskids", "oak_hornbeam", "fresh_pine", "lowland_beech", "alder_carr"};
+			{-1_195 - 64, -583 - 64}, {-2_004 - 64, -3_609 - 64}, {-5_971 - 64, 1_387 - 64}, {1_706 - 64, 3_775 - 64}};
+	private static final String[] AREA_NAMES = {"river", "beskids", "oak_hornbeam", "fresh_pine", "lowland_beech", "alder_carr",
+			"upland_fir"};
 	private static final int SIZE = 8;
 	/** Distance from a chunk border (0 = edge column) used in the report of groups of differing columns. */
 	static final int BORDER_BAND = 3;

@@ -105,6 +105,11 @@ public final class RootPlan {
 			// written by TreeMoss); elm, a heart root system with buttresses and sinkers in the floodplain.
 			case BLACK_ALDER -> new Habit(3, 5, 2, 5, 7, 0.75, 2, 3, 0, false);
 			case ELM -> new Habit(4, 6, 3, 4, 6, 0.85, 3, 4, 3, true);
+			// Step F3: the fir, a deep heart and tap root system (the most windfirm conifer of the mountains) with strong
+			// flares on the slopes; the sycamore, a heart root system with sinkers that anchors it in the scree of the
+			// ravines.
+			case FIR -> new Habit(4, 6, 3, 5, 7, 0.9, 3, 5, 4, true);
+			case SYCAMORE_MAPLE -> new Habit(4, 6, 3, 5, 7, 0.8, 3, 4, 2, true);
 			default -> throw new IllegalArgumentException("no root habit for " + species);
 		};
 	}

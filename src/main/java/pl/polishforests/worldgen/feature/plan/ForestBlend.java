@@ -45,12 +45,14 @@ public final class ForestBlend {
 	/**
 	 * The forests of the blend, the forests with the trees of the tree planner (step F1): the zonal forests of the slice
 	 * transect Bśw → BMśw → LMśw → grąd (docs/04 §6, N15; {@link #TRANSECT}, their indices 0–3 kept), then the forests of
-	 * the steps F in their order (F1: the lowland beech forest; F2: the alder carr and the ash-alder forest). Each step F
+	 * the steps F in their order (F1: the lowland beech forest; F2: the alder carr and the ash-alder forest; F3: the
+	 * upland fir forest and the Carpathian beech forest). Each step F
 	 * appends its forests here, takes them off {@link #NEIGHBORS} and names their pairs in {@link #BLENDS}.
 	 */
 	public static final HabitatBiome[] FORESTS = {HabitatBiome.FRESH_PINE_FOREST, HabitatBiome.MIXED_PINE_FOREST,
 			HabitatBiome.MIXED_FOREST, HabitatBiome.OAK_HORNBEAM_FOREST, HabitatBiome.LOWLAND_BEECH_FOREST,
-			HabitatBiome.ALDER_CARR, HabitatBiome.ASH_ALDER_FOREST};
+			HabitatBiome.ALDER_CARR, HabitatBiome.ASH_ALDER_FOREST, HabitatBiome.UPLAND_FIR_FOREST,
+			HabitatBiome.MONTANE_BEECH_FOREST};
 	/** The forests of the slice transect, the first four of {@link #FORESTS} (norm N15, {@code TransectPalettes}). */
 	public static final HabitatBiome[] TRANSECT = java.util.Arrays.copyOf(FORESTS, 4);
 	/** Index of the lowland beech forest in {@link #FORESTS} (step F1). */
@@ -58,6 +60,9 @@ public final class ForestBlend {
 	/** Indices of the alder carr and the ash-alder forest in {@link #FORESTS} (step F2). */
 	public static final int ALDER_CARR = 5;
 	public static final int ASH_ALDER = 6;
+	/** Indices of the upland fir forest and the Carpathian (montane) beech forest in {@link #FORESTS} (step F3). */
+	public static final int UPLAND_FIR = 7;
+	public static final int MONTANE_BEECH = 8;
 	/**
 	 * Pairs of {@link #FORESTS} that mix in the blend's belt (bit b of entry a); the other pairs meet in the ramp of
 	 * {@link Ecotone}. The four forests of the transect all blend with each other (step Z1); the lowland beech forest (step
@@ -66,11 +71,16 @@ public final class ForestBlend {
 	 * carr with the ash-alder forest and the forests of the transect around the wet hollows (the alder and the birch pass
 	 * into the pine and oak forests over the belt, rule Z10: only the edge of the water stays sharp), the ash-alder forest
 	 * with the alder carr, the mixed pine-oak, the mixed and the oak-hornbeam forest and the beech forest of the stream
-	 * valleys; the carr and the beech forest, and the ash-alder and the fresh pine forest, meet in the ramp.
+	 * valleys; the carr and the beech forest, and the ash-alder and the fresh pine forest, meet in the ramp. Step F3: the
+	 * upland fir forest with the lowland beech forest, the oak-hornbeam, the mixed and the mixed pine-oak forest (the fir
+	 * passes into them on the uplands, its northern range edge), the Carpathian beech forest with the lowland beech forest,
+	 * the fir forest and the oak-hornbeam forest of the foothills; the fir forest and the fresh pine forest, and the
+	 * mountain forests with the montane spruce forest and the alpine meadows (not forests of the blend), meet in the ramp.
 	 */
 	private static final int[] BLENDS = pairs(new int[][] {{0, 1}, {0, 2}, {0, 3}, {1, 2}, {1, 3}, {2, 3}, {BEECH, 3},
 			{BEECH, 2}, {BEECH, 1}, {ALDER_CARR, ASH_ALDER}, {ALDER_CARR, 0}, {ALDER_CARR, 1}, {ALDER_CARR, 2}, {ALDER_CARR, 3},
-			{ASH_ALDER, 1}, {ASH_ALDER, 2}, {ASH_ALDER, 3}, {ASH_ALDER, BEECH}});
+			{ASH_ALDER, 1}, {ASH_ALDER, 2}, {ASH_ALDER, 3}, {ASH_ALDER, BEECH}, {UPLAND_FIR, BEECH}, {UPLAND_FIR, 3},
+			{UPLAND_FIR, 2}, {UPLAND_FIR, 1}, {MONTANE_BEECH, BEECH}, {MONTANE_BEECH, UPLAND_FIR}, {MONTANE_BEECH, 3}});
 	/** Radius of the kernel (m·k). */
 	public static final double RADIUS = 48;
 	/** Spacing of the lattice (m·k); in blocks at least 2. */
@@ -138,11 +148,13 @@ public final class ForestBlend {
 
 	/**
 	 * Forest site type of each forest's canonical code (the lowland beech forest: its fertile form, Galio-Fagetum; the
-	 * alder carr: the eutrophic Ribeso-Alnetum, Ol; the ash-alder forest: OlJ).
+	 * alder carr: the eutrophic Ribeso-Alnetum, Ol; the ash-alder forest: OlJ; step F3: the upland fir forest its
+	 * mesotrophic Abietetum polonicum, LMwyż, and the Carpathian beech forest its fertile Dentario glandulosae-Fagetum, LG).
 	 */
 	private static final ForestSiteType[] SITES = {ForestSiteType.FRESH_CONIFEROUS, ForestSiteType.FRESH_MIXED_CONIFEROUS,
 			ForestSiteType.FRESH_MIXED_BROADLEAVED, ForestSiteType.FRESH_BROADLEAVED, ForestSiteType.FRESH_BROADLEAVED,
-			ForestSiteType.ALDER_SWAMP, ForestSiteType.ASH_ALDER_SWAMP};
+			ForestSiteType.ALDER_SWAMP, ForestSiteType.ASH_ALDER_SWAMP, ForestSiteType.UPLAND_MIXED_BROADLEAVED,
+			ForestSiteType.MOUNTAIN_BROADLEAVED};
 	private static final byte[] MEMBER = new byte[64];
 
 	static {

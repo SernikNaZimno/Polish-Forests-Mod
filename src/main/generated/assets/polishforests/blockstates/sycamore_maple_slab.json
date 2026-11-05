@@ -1,0 +1,13 @@
+{
+  "variants": {
+    "type=bottom": {
+      "model": "polishforests:block/sycamore_maple_slab"
+    },
+    "type=double": {
+      "model": "polishforests:block/sycamore_maple_planks"
+    },
+    "type=top": {
+      "model": "polishforests:block/sycamore_maple_slab_top"
+    }
+  }
+}

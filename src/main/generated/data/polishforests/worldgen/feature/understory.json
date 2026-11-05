@@ -89,9 +89,7 @@
     },
     {
       "biomes": [
-        "elm_ash_forest",
-        "upland_fir_forest",
-        "montane_beech_forest"
+        "elm_ash_forest"
       ],
       "coverage": 0.06,
       "edges": [
@@ -100,6 +98,30 @@
       "plants": [
         {
           "feature": "polishforests:shrub/hazel",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "upland_fir_forest",
+        "montane_beech_forest"
+      ],
+      "coverage": 0.2,
+      "edges": [
+        "mantle"
+      ],
+      "plants": [
+        {
+          "feature": "polishforests:shrub/hazel_mantle_thin",
+          "weight": 1
+        },
+        {
+          "feature": "polishforests:shrub/hazel_thin",
+          "weight": 2
+        },
+        {
+          "feature": "polishforests:tree_substitute/rowan_thin",
           "weight": 1
         }
       ]
@@ -319,10 +341,30 @@
       "biomes": [
         "upland_fir_forest"
       ],
-      "coverage": 0.00390625,
+      "coverage": 0.0078125,
       "plants": [
         {
-          "feature": "polishforests:shrub/hazel",
+          "feature": "polishforests:shrub/hazel_thin",
+          "weight": 2
+        },
+        {
+          "feature": "polishforests:tree_substitute/rowan_thin",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "montane_beech_forest"
+      ],
+      "coverage": 0.005859375,
+      "plants": [
+        {
+          "feature": "polishforests:shrub/hazel_thin",
+          "weight": 1
+        },
+        {
+          "feature": "polishforests:tree_substitute/rowan_thin",
           "weight": 1
         }
       ]

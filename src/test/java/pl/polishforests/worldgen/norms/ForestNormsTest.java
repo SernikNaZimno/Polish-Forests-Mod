@@ -102,6 +102,62 @@ class ForestNormsTest {
 		assertRange(1, 2, ForestNorms.STUMPS_PER_CHUNK, Forest.ASH_ALDER_MANAGED, null, null);
 	}
 
+	/**
+	 * Step F3: the card of the upland fir forest and the Carpathian beech forest with its sycamore ravine forest (docs/04
+	 * "Projekt F3", N1, N3, N4, N7–N10), the site variant of a habitat code.
+	 */
+	@Test
+	void mountainCardOfStepF3() {
+		for (Forest f : new Forest[] {Forest.UPLAND_FIR_NATURAL, Forest.UPLAND_FIR_MANAGED}) {
+			assertRange(50, 90, ForestNorms.COMPOSITION + "fir", f, null, null);
+			assertRange(70, 95, ForestNorms.CANOPY, f, null, null);
+			assertRange(20, 50, ForestNorms.UNDERSTORY, f, null, null);
+			assertRange(30, 70, ForestNorms.MOSS, f, null, null);
+			assertTrue(ForestNorms.of(ForestNorms.TREES_PER_CHUNK, f, null, null).isPresent());
+			assertTrue(ForestNorms.of(ForestNorms.HERBS, f, Aspect.SUMMER, null).isPresent());
+			assertTrue(ForestNorms.of(ForestNorms.HERBS_SPRING, f, Aspect.SPRING, null).isPresent());
+			assertTrue(ForestNorms.of(ForestNorms.TRANSECT_ORDER, f, null, null).isEmpty(), "the fir forest is off the transect");
+		}
+		for (Forest f : new Forest[] {Forest.MONTANE_BEECH_NATURAL, Forest.MONTANE_BEECH_MANAGED}) {
+			assertRange(50, 90, ForestNorms.COMPOSITION + "beech", f, null, null);
+			assertRange(10, 40, ForestNorms.COMPOSITION + "fir", f, null, null);
+			assertRange(70, 95, ForestNorms.CANOPY, f, null, null);
+			assertRange(5, 30, ForestNorms.UNDERSTORY, f, null, null);
+			Norm sycamore = ForestNorms.of(ForestNorms.COMPOSITION + "maple_ash", f, null, null, ForestNorms.Site.FERTILE).orElseThrow();
+			assertEquals(5, sycamore.min(), 1e-9);
+			assertEquals(15, sycamore.max(), 1e-9);
+			Norm ravine = ForestNorms.of(ForestNorms.COMPOSITION + "maple_ash", f, null, null, ForestNorms.Site.RAVINE).orElseThrow();
+			assertEquals(55, ravine.min(), 1e-9);
+			assertEquals(ForestNorms.Site.RAVINE, ForestNorms.of(ForestNorms.COMPOSITION + "beech", f, null, null, ForestNorms.Site.RAVINE)
+					.orElseThrow().site());
+			Norm spring = ForestNorms.of(ForestNorms.HERBS_SPRING, f, null, null, ForestNorms.Site.FERTILE).orElseThrow();
+			assertEquals(30, spring.min(), 1e-9);
+			assertEquals(80, spring.max(), 1e-9);
+			Norm summer = ForestNorms.of(ForestNorms.HERBS, f, null, null, ForestNorms.Site.FERTILE).orElseThrow();
+			assertEquals(10, summer.min(), 1e-9);
+			assertEquals(50, summer.max(), 1e-9);
+			// A plot of unknown form takes the union.
+			assertRange(10, 90, ForestNorms.HERBS_SPRING, f, null, null);
+		}
+		assertRange(2, 2, ForestNorms.DEADWOOD_PER_CHUNK, Forest.UPLAND_FIR_NATURAL, null, null);
+		assertRange(2.2, 2.2, ForestNorms.DEADWOOD_PER_CHUNK, Forest.MONTANE_BEECH_NATURAL, null, null);
+		assertRange(1, 2, ForestNorms.STUMPS_PER_CHUNK, Forest.MONTANE_BEECH_MANAGED, null, null);
+		assertEquals(Forest.UPLAND_FIR_NATURAL, Forest.of(pl.polishforests.worldgen.habitat.HabitatBiome.UPLAND_FIR_FOREST, true));
+		assertEquals(Forest.MONTANE_BEECH_MANAGED, Forest.of(pl.polishforests.worldgen.habitat.HabitatBiome.MONTANE_BEECH_FOREST, false));
+		// The site variant of a code: the association of the ravine before the site type.
+		java.util.function.BiFunction<pl.polishforests.worldgen.habitat.ForestSiteType, pl.polishforests.worldgen.habitat.Association,
+				ForestNorms.Site> site = (t, a) -> ForestNorms.siteOf(pl.polishforests.worldgen.habitat.Habitat.pack(
+						pl.polishforests.worldgen.habitat.HabitatBiome.MONTANE_BEECH_FOREST, pl.polishforests.worldgen.habitat.Zone.NONE, t, a,
+						pl.polishforests.worldgen.habitat.LandCover.FOREST, 0, pl.polishforests.worldgen.habitat.Soil.forBiome(
+								pl.polishforests.worldgen.habitat.HabitatBiome.MONTANE_BEECH_FOREST, pl.polishforests.worldgen.habitat.Zone.NONE)));
+		assertEquals(ForestNorms.Site.FERTILE, site.apply(pl.polishforests.worldgen.habitat.ForestSiteType.MOUNTAIN_BROADLEAVED,
+				pl.polishforests.worldgen.habitat.Association.TYPICAL));
+		assertEquals(ForestNorms.Site.ACID, site.apply(pl.polishforests.worldgen.habitat.ForestSiteType.MOUNTAIN_MIXED_BROADLEAVED,
+				pl.polishforests.worldgen.habitat.Association.ACIDOPHILOUS));
+		assertEquals(ForestNorms.Site.RAVINE, site.apply(pl.polishforests.worldgen.habitat.ForestSiteType.MOUNTAIN_BROADLEAVED,
+				pl.polishforests.worldgen.habitat.Association.SYCAMORE_RAVINE_FOREST));
+	}
+
 	private static void assertRange(double min, double max, String metric, Forest forest, Aspect aspect, AgeClass age) {
 		Norm n = ForestNorms.of(metric, forest, aspect, age).orElseThrow(() -> new AssertionError("no norm " + metric + " " + forest));
 		assertEquals(min, n.min(), 1e-9, metric);

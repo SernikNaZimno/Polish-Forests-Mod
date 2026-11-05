@@ -86,7 +86,9 @@ class RegistrySnapshotTest {
 		// Step F1: + sweet woodruff, hairy wood-rush, wood sorrel and coralroot, flower beds of 16 states each.
 		// Step F2: + the marsh marigold, a flower bed of 16 states, and the iris, the tussock sedge, the marsh fern and the
 		// nettle, herbs of one state each.
-		int ground = 4 + 16 + 16 + 32 + 2 + 4 * 16 + 16 + 4;
+		// Step F3: + the glandular toothwort and the white wood-rush, flower beds of 16 states each, and the perennial
+		// honesty, a herb of one state.
+		int ground = 4 + 16 + 16 + 32 + 2 + 4 * 16 + 16 + 4 + 2 * 16 + 1;
 		// Round 1 of the V12 review: + the forest moss carpet and the mossy podzol, one state each.
 		int review = 2;
 		// Step P1: + 9 stripped trunks (one per species), thin trunks of 84 states each, with the properties of the trunks.

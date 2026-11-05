@@ -130,13 +130,15 @@ public final class ForestCensus {
 	public static final Set<String> OWN_HERB_PLANTS = Set.of("polishforests:bilberry", "polishforests:wood_anemone",
 			"polishforests:hepatica", "polishforests:bracken", "polishforests:sweet_woodruff", "polishforests:hairy_wood_rush",
 			"polishforests:wood_sorrel", "polishforests:coralroot", "polishforests:marsh_marigold", "polishforests:yellow_iris",
-			"polishforests:tussock_sedge", "polishforests:marsh_fern", "polishforests:nettle");
+			"polishforests:tussock_sedge", "polishforests:marsh_fern", "polishforests:nettle",
+			"polishforests:glandular_toothwort", "polishforests:white_wood_rush", "polishforests:perennial_honesty");
 	/**
 	 * Spring geophytes: part of the herb layer in spring only (the client shows nothing from early summer, PW-8 (a), N12);
 	 * liverleaf keeps its leaves all year. Step F1: the coralroot (gone from mid-June); the sweet woodruff keeps its leaves
 	 * through the summer, the hairy wood-rush and the wood sorrel all year.
 	 */
-	public static final Set<String> SPRING_GEOPHYTES = Set.of("polishforests:wood_anemone", "polishforests:coralroot");
+	public static final Set<String> SPRING_GEOPHYTES = Set.of("polishforests:wood_anemone", "polishforests:coralroot",
+			"polishforests:glandular_toothwort");
 	/** Needle litter (step V12): neither herb layer nor leaf litter (the leaf litter is the indicator of the transect). */
 	public static final Set<String> NEEDLE_LITTER_PLANTS = Set.of("polishforests:needle_litter");
 	/** Mosses and lichens (layer d) standing on the ground. */
