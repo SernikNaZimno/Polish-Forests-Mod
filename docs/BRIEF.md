@@ -1,6 +1,6 @@
 # Brief projektu „Polish Forests” (dla agentów)
 
-Stan: 2026-11-02. Krótki punkt wejścia: przeczytaj to zamiast całych planów; szczegóły w dokumentach z ostatniej sekcji. Pełna dawna wersja briefu z opisami wszystkich kroków: `docs/historia-stanu.md`.
+Stan: 2026-11-05. Krótki punkt wejścia: przeczytaj to zamiast całych planów; szczegóły w dokumentach z ostatniej sekcji. Pełna dawna wersja briefu z opisami wszystkich kroków: `docs/historia-stanu.md`.
 
 ## Czym jest projekt
 
@@ -15,6 +15,7 @@ Mod Fabric do Minecrafta 26.3 (Java 25, Loom, Gradle 9.7, JDK z `gradle.properti
 - **P1 zrobione** (2026-11-04, `docs/04` „Projekt P1”, „Stan po P1”, G.38): okorowane pnie `stripped_<gatunek>_trunk` (9), zwężanie pnia siekierą ze skradaniem, obrys i kolizja pni według rysunku (`block/TrunkShapes`, tylko w świecie, generacja bez zmian); mody do ścinania ścinają też okorowane drzewa (P1-n); gametest `slice -Psites=axe`.
 - **P2 zrobione** (2026-11-04, `docs/04` „Projekt P2”, „Stan po P2”, G.39): deski sosny, grabu, lipy, buka, jesionu i klonu liczone w kliencie z desek wanilii z gry użytkownika (źródło atlasu `polishforests:derived_planks`, bez pikseli wanilii w repo i jarze, awaryjnie `tools/art`); pięć gatunków z własnym drewnem (kłoda, drewno, okorowane, deski, schody, płyta, płot, furtka, płyta naciskowa, przycisk), sosna z wyrobami; łup pni daje własne kłody, generacja bez zmian (`fullLog`); gametest `slice -Psites=planks`.
 - **W1 zrobione** (2026-11-04, `docs/04` „Projekt W1”, „Stan po W1”, G.40): typ świata „Default + Polish Forests” / „Domyślny + polskie lasy” — teren, jaskinie, struktury i biomy wanilii, 11 lasów wanilii zastąpionych 7 lasami moda (źródło biomów `polishforests:vanilla_forests`, siedliska z map wysokości wanilii na końcu TERRAIN, maska `blocked`, grunt `#substrate_overworld`); drzewa planera w czterech lasach wycinka, pozostałe na zastępstwach M2 do kroku F; świat „Polska” bez zmian (`determinism`); gametest `vanilla_forests`; runda 1 przeglądu: jaskinie carverów i wąwozy wanilii pod lasami moda (carvery z biomu przed podmianą, W1-v), drobiazgi DP-122 … DP-125.
+- **Plan kroków F** (2026-11-05, `docs/04` §3 „Kroki F”, §4.1, `docs/00` G.41): nowa struktura lasu we wszystkich lasach moda, kolejno F1 buczyna niżowa (i mechanizmy dla każdego lasu), F2 olsy i OlJ, F3 jedlina i buczyna karpacka, F4 pozostałe bory i torfowiska, F5 łęgi rzeczne i wikliny, F6 świerczyna, olszyna górska i kosodrzewina, F7 drzewa poza lasem, przejścia i pełny A/B; potem TT.
 - Tor sarny **V8** gotowy na gałęzi `slice-fauna` (model i kalibracja GeckoLib, runda 1 poprawek), **wstrzymany przez użytkownika, nie scalać**.
 
 ## Konwencje
