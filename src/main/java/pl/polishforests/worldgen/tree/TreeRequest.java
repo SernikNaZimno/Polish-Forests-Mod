@@ -89,6 +89,11 @@ public record TreeRequest(Species species, CrownLayer layer, AgeClass age, long 
 		return top == TreeShapePlan.Ground.UNKNOWN ? 0 : top + 1 - y;
 	}
 
+	/** Whether world column (x, z) holds water above its ground ({@link TreeShapePlan.Ground#water}); false when unknown. */
+	public boolean water(int wx, int wz) {
+		return ground != null && ground.water(wx, wz);
+	}
+
 	/** Age class of the stand at column (x, z): from the stand map, or the request's own. */
 	public AgeClass ageAt(int wx, int wz) {
 		return stands == null ? age : stands.ageClass(wx, wz);

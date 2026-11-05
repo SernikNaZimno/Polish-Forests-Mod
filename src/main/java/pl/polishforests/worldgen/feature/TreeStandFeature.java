@@ -435,7 +435,7 @@ public final class TreeStandFeature implements Feature {
 			// A young cohort in a canopy gap; elsewhere the trees have the age class of their stand.
 			AgeClass age = layer == CrownLayer.REGENERATION && n.stands().canopyGap(x, z) ? AgeClass.POLE_STAGE : standAge;
 			TreeRequest request = new TreeRequest(proc.species(), layer, age, level.getSeed(), x, at.getY(), z, territory,
-					session.session().trunks(), n.stands(), a::top, open);
+					session.session().trunks(), n.stands(), a, open);
 			long planStart = System.nanoTime();
 			TreeVoxels voxels = TreeShapePlan.plan(request);
 			PLAN_NANOS.add(System.nanoTime() - planStart);
@@ -484,7 +484,7 @@ public final class TreeStandFeature implements Feature {
 	}
 
 	/** The habitats of the chunk being decorated and of its 8 neighbors (null where missing), by world column. */
-	private static final class Around {
+	private static final class Around implements TreeShapePlan.Ground {
 		private final int chunkX;
 		private final int chunkZ;
 		private final ChunkHabitats[] habitats = new ChunkHabitats[9];
@@ -511,9 +511,17 @@ public final class TreeStandFeature implements Feature {
 		}
 
 		/** Y of the top ground block of world column (x, z), or {@link TreeShapePlan.Ground#UNKNOWN}. */
-		int top(int x, int z) {
+		@Override
+		public int top(int x, int z) {
 			ChunkHabitats h = at(x, z);
 			return h == null ? TreeShapePlan.Ground.UNKNOWN : h.top()[ChunkHabitats.index(x & 15, z & 15)];
+		}
+
+		/** Whether world column (x, z) holds water (review of F2, round 1: no stem of a stool there). */
+		@Override
+		public boolean water(int x, int z) {
+			ChunkHabitats h = at(x, z);
+			return h != null && h.hasWater(ChunkHabitats.index(x & 15, z & 15));
 		}
 
 		/**

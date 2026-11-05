@@ -271,6 +271,7 @@ public final class VegetationClientGameTest implements FabricClientGameTest {
 			long bare = 0;
 			long cattails = 0;
 			long shallow = 0;
+			long herbs = 0;
 			long zoneLand = 0;
 			long river = 0;
 			java.util.Map<String, Integer> byZone = new java.util.TreeMap<>();
@@ -302,6 +303,10 @@ public final class VegetationClientGameTest implements FabricClientGameTest {
 						}
 						Cover cover = cover(level, x, plan.top(i), z);
 						counts[cover.ordinal()]++;
+						if (cover == Cover.TALL && level.getBlockState(new BlockPos(x, plan.top(i) + 1, z)).getBlock()
+								instanceof pl.polishforests.block.SeasonalHerbBlock) {
+							herbs++;
+						}
 						land++;
 						zoneLand += DENSE_ZONES.contains(zone) ? 1 : 0;
 						byZone.merge(zone == Zone.NONE ? biome.id() : zone.id(), 1, Integer::sum);
@@ -320,6 +325,10 @@ public final class VegetationClientGameTest implements FabricClientGameTest {
 			double tall = (double) (counts[Cover.TREE.ordinal()] + counts[Cover.SHRUB.ordinal()] + counts[Cover.TALL.ordinal()])
 					/ Math.max(1, land);
 			double bareShare = (double) bare / Math.max(1, bareCounted);
+			// Review of F2, round 1: the one-block herbs of the family HERB separately, so the tall share reads with and
+			// without them (G.43 F2-v′, a decision of the user at CP-D).
+			report.append(String.format(Locale.ROOT, " %s: one-block herbs (HERB) %.1f%%, together without them %.1f%%;",
+					names[t], 100.0 * herbs / Math.max(1, land), 100 * (tall - (double) herbs / Math.max(1, land))));
 			report.append(String.format(Locale.ROOT, " %s at (%d, %d): %d land columns (%d of the waterside zones) %s, %d "
 					+ "columns of river water, trees %.1f%%, shrubs %.1f%%, tall plants %.1f%% (together %.1f%%), dwarf shrubs "
 					+ "%.1f%%, short grass and small flowers %.1f%%, other %.1f%%, bare %.1f%% (without bars, tops %s); cattail on %d of %d "

@@ -204,15 +204,15 @@
       "plants": [
         {
           "block": "minecraft:moss_carpet",
-          "weight": 34
+          "weight": 20
         },
         {
           "block": "polishforests:tussock_sedge",
-          "weight": 22
+          "weight": 30
         },
         {
           "block": "polishforests:marsh_fern",
-          "weight": 16
+          "weight": 22
         },
         {
           "block": {

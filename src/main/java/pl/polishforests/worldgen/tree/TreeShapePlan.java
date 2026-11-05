@@ -266,6 +266,14 @@ public final class TreeShapePlan {
 		/** Y of the top ground block of world column (x, z), or {@link #UNKNOWN}. */
 		int top(int x, int z);
 
+		/**
+		 * Whether world column (x, z) holds water above its ground (review of F2, round 1: no stem of a stool stands in a
+		 * puddle or a stream); false by default and where unknown.
+		 */
+		default boolean water(int x, int z) {
+			return false;
+		}
+
 		int UNKNOWN = Integer.MIN_VALUE;
 	}
 
@@ -864,7 +872,7 @@ public final class TreeShapePlan {
 				int dx = Math.abs(c) >= Math.abs(sn) ? (int) Math.signum(c) : 0;
 				int dz = dx == 0 ? (int) Math.signum(sn) : 0;
 				int side = col(dx, dz);
-				if (side == used || !woodAt(dx, dz)) {
+				if (side == used || !woodAt(dx, dz) || !stoolGround(dx, dz)) {
 					continue;
 				}
 				used = side;
@@ -890,6 +898,18 @@ public final class TreeShapePlan {
 				azimuth = laterals(first, parent, azimuth, a);
 			}
 			stoolEnd = nodes;
+		}
+
+		/**
+		 * Whether a stem of a stool may rise at column (dx, dz) beside the trunk (review of F2, round 1): its ground at the
+		 * height of the trunk's ground and no water there, so the stem neither floats above a lower column (a stream bank,
+		 * the micro-relief of a carr, a slope) nor stands in a puddle; a side of higher ground is skipped too, since the
+		 * stem's base would be buried and its link to the trunk lost.
+		 */
+		private boolean stoolGround(int dx, int dz) {
+			int x = request.x() + dx;
+			int z = request.z() + dz;
+			return request.groundShift(x, z) == 0 && !request.water(x, z);
 		}
 
 		/**

@@ -240,11 +240,20 @@ class GroundLayerPlanTest {
 			"minecraft:oxeye_daisy", "minecraft:cornflower", "minecraft:azure_bluet", "minecraft:allium",
 			"minecraft:lily_of_the_valley", "minecraft:wildflowers", "minecraft:pink_petals");
 	/**
-	 * The biomes and zones of the density rule (§4.6). The alder carr and the ash-alder forest left the list in step F2:
-	 * forests of the tree planner since then, their herb layer of sedges, ferns, iris and nettle (one-block plants of the
-	 * family {@code HERB}) is checked by the norms card (N8), as the beech forest's.
+	 * The herbs of the mod's family {@code HERB} (step F2: the nettle, the yellow iris, the tussock sedge and the marsh
+	 * fern, 0.5-1.5 m in nature, one block high), counted as tall plants of §4.6 as in the game test
+	 * ({@code VegetationClientGameTest#cover}); review of F2, round 1: a reading of the rule for the user at CP-D (G.43
+	 * F2-v′).
 	 */
-	private static final List<HabitatBiome> DENSE_BIOMES = List.of(HabitatBiome.WILLOW_POPLAR_FOREST, HabitatBiome.ELM_ASH_FOREST, HabitatBiome.GRAY_ALDER_FOREST,
+	private static final Set<String> HERBS = java.util.Arrays.stream(pl.polishforests.block.GroundPlant.values())
+			.filter(g -> g.kind() == pl.polishforests.block.GroundPlant.Kind.HERB).map(g -> "polishforests:" + g.id())
+			.collect(java.util.stream.Collectors.toUnmodifiableSet());
+	/**
+	 * The biomes and zones of the density rule (§4.6). The alder carr and the ash-alder forest stay on the list in step F2
+	 * (review of F2, round 1), with their herbs of the family {@code HERB} as tall plants ({@link #HERBS}).
+	 */
+	private static final List<HabitatBiome> DENSE_BIOMES = List.of(HabitatBiome.ALDER_CARR, HabitatBiome.ASH_ALDER_FOREST,
+			HabitatBiome.WILLOW_POPLAR_FOREST, HabitatBiome.ELM_ASH_FOREST, HabitatBiome.GRAY_ALDER_FOREST,
 			HabitatBiome.WILLOW_SCRUB, HabitatBiome.REEDBED);
 	private static final List<Zone> DENSE_ZONES = List.of(Zone.WILLOW_SCRUB, Zone.HERB_FRINGE, Zone.TALL_HERBS,
 			Zone.MONTANE_TALL_HERBS, Zone.SHORE_REEDBED, Zone.WILLOW_CARR, Zone.RIVERSIDE_WILLOWS, Zone.SPRING_AREA);
@@ -625,17 +634,27 @@ class GroundLayerPlanTest {
 		throw new AssertionError("no ground layer rule for " + b.id());
 	}
 
+	/**
+	 * Checks the first land rule of biome b and zone z, and before it every rule of the same biome and zone restricted to
+	 * some forest site types (review of F2, round 1: the sphagnum carr), which take those columns first.
+	 */
 	private static void check(JsonArray rules, HabitatBiome b, Zone z, List<String> report) {
-		JsonObject rule = null;
+		boolean found = false;
 		for (JsonElement e : rules) {
 			JsonObject r = e.getAsJsonObject();
 			String medium = r.has("medium") ? r.get("medium").getAsString() : "land";
 			if (medium.equals("land") && contains(r, "biomes", b.id()) && contains(r, "zones", z.id())) {
-				rule = r;
-				break;
+				checkRule(r, b, z, report);
+				if (!r.has("site_types")) {
+					found = true;
+					break;
+				}
 			}
 		}
-		assertTrue(rule != null, "no ground layer rule for " + b.id() + " / " + z.id());
+		assertTrue(found, "no ground layer rule for " + b.id() + " / " + z.id());
+	}
+
+	private static void checkRule(JsonObject rule, HabitatBiome b, Zone z, List<String> report) {
 		double coverage = rule.get("coverage").getAsDouble();
 		double all = 0;
 		double small = 0;
@@ -647,17 +666,18 @@ class GroundLayerPlanTest {
 			String block = p.has("block") ? blockName(p.get("block")) : "feature";
 			if (SMALL.contains(block)) {
 				small += w;
-			} else if (TALL.contains(block) || block.equals("feature")) {
+			} else if (TALL.contains(block) || HERBS.contains(block) || block.equals("feature")) {
 				tall += w;
 			}
 		}
 		double s = coverage * small / all;
 		double t = coverage * tall / all;
 		double bare = 1 - coverage;
-		report.add(String.format(Locale.ROOT, "%s/%s %.2f %.2f %.2f", b.id(), z.id(), s, t, bare));
-		assertTrue(s <= 0.10, b.id() + "/" + z.id() + ": short grass and small flowers " + s);
-		assertTrue(t >= 0.60, b.id() + "/" + z.id() + ": tall plants and shrubs " + t);
-		assertTrue(bare <= 0.25, b.id() + "/" + z.id() + ": bare ground " + bare);
+		String where = b.id() + "/" + z.id() + (rule.has("site_types") ? "/" + rule.get("site_types") : "");
+		report.add(String.format(Locale.ROOT, "%s %.2f %.2f %.2f", where, s, t, bare));
+		assertTrue(s <= 0.10, where + ": short grass and small flowers " + s);
+		assertTrue(t >= 0.60, where + ": tall plants and shrubs " + t);
+		assertTrue(bare <= 0.25, where + ": bare ground " + bare);
 	}
 
 	private static String blockName(JsonElement block) {

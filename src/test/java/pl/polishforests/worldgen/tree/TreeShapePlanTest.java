@@ -1,6 +1,7 @@
 package pl.polishforests.worldgen.tree;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -805,6 +806,50 @@ class TreeShapePlanTest {
 				assertEquals(0, lone, s.id() + " " + layer + " lone");
 			}
 		}
+	}
+
+	/**
+	 * Review of F2, round 1: a stem of a stool rises only from a side column whose ground is at the height of the trunk's
+	 * ground and holds no water, so no stem floats above the lower ground of a stream bank, a carr hummock or a slope, and
+	 * none stands in a puddle. On level dry ground the share of stools is unchanged.
+	 */
+	@Test
+	void stoolStemsStandOnLevelDryGroundOnly() {
+		int n = 400;
+		int level = 0;
+		for (int k = 0; k < n; k++) {
+			int x = 37 * k - 7000;
+			int z = 101 * k + 13;
+			TreeShapePlan.Ground flat = (gx, gz) -> 63;
+			TreeShapePlan.Ground hummock = (gx, gz) -> gx == x && gz == z ? 63 : 62;
+			TreeShapePlan.Ground puddles = new TreeShapePlan.Ground() {
+				@Override
+				public int top(int gx, int gz) {
+					return 63;
+				}
+
+				@Override
+				public boolean water(int gx, int gz) {
+					return gx != x || gz != z;
+				}
+			};
+			level += stool(alder(x, z, flat)) ? 1 : 0;
+			assertFalse(stool(alder(x, z, hummock)), "a stem above lower ground at " + x + ", " + z);
+			assertFalse(stool(alder(x, z, puddles)), "a stem in water at " + x + ", " + z);
+			TreeVoxels low = alder(x, z, hummock);
+			for (int i = 1; i < low.woodCount(); i++) {
+				if (low.woodY(i) <= 1 && (low.woodX(i) != 0 || low.woodZ(i) != 0) && low.parent(i) == TreeVoxels.DOWN) {
+					fail("vertical wood beside the trunk base above lower ground at " + x + ", " + z);
+				}
+			}
+		}
+		double share = (double) level / n;
+		assertTrue(share >= 0.2 && share <= 0.4, "stools on level ground " + share);
+	}
+
+	private static TreeVoxels alder(int x, int z, TreeShapePlan.Ground ground) {
+		return TreeShapePlan.plan(new TreeRequest(Species.BLACK_ALDER, CrownLayer.CANOPY, AgeClass.MATURE, SEED, x, 64, z, null,
+				null, StandMap.uniform(AgeClass.MATURE, true), ground));
 	}
 
 	/**

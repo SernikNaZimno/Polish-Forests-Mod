@@ -959,9 +959,11 @@ final class ModVegetation {
 		// a white spring flower of the same stands), the enchanter's nightshade as the vanilla fern. Stage 2 of F2: the herb
 		// layer of the card (N8) was 40-55% in the game, so the patches cover more; the short grass and fewer flower beds
 		// of the ash-alder forest, since the density rule of docs/03 §4.6 (short grass and small flowers at most 10% of the
-		// floodplain forests) failed on its stream banks (24% and 18%).
-		l.blobs(biomes(ALDER_CARR).withSiteTypes(ForestSiteType.BOGGY_MIXED_BROADLEAVED), 0.97F, 5, cat(moss.withWeight(34),
-				herb(GroundPlant.TUSSOCK_SEDGE, 22), herb(GroundPlant.MARSH_FERN, 16), marigold(4), fern.withWeight(4)),
+		// floodplain forests) failed on its stream banks (24% and 18%). Review of F2, round 1: the alder forests are back
+		// in the palette check of §4.6 (GroundLayerPlanTest), so the sphagnum carr has less moss and more sedges and marsh
+		// fern (herbs 63% of the columns, before 46%).
+		l.blobs(biomes(ALDER_CARR).withSiteTypes(ForestSiteType.BOGGY_MIXED_BROADLEAVED), 0.97F, 5, cat(moss.withWeight(20),
+				herb(GroundPlant.TUSSOCK_SEDGE, 30), herb(GroundPlant.MARSH_FERN, 22), marigold(4), fern.withWeight(4)),
 				cat(forestMoss.withWeight(6)), null);
 		l.blobs(biomes(ALDER_CARR), 0.97F, 5, cat(herb(GroundPlant.TUSSOCK_SEDGE, 26), herb(GroundPlant.MARSH_FERN, 18),
 				herb(GroundPlant.YELLOW_IRIS, 8), marigold(7), herb(GroundPlant.NETTLE, 7), tallGrass.withWeight(6),
