@@ -182,6 +182,71 @@ class SlicePlotsTest {
 		assertTrue(source.contains(expected), "ForestPerformance has no " + expected);
 	}
 
+	/**
+	 * Step F1 (the equality of the norms card): no plot and no place of the slice forests (and no transect) lies within
+	 * {@code SliceEqualityTest.FAR} blocks of a column of a forest of the steps F in either vegetation mode, so the rows of
+	 * the slice card in {@code slice -Psites=none} are those of the build before F1 (the stand plan there is unchanged,
+	 * {@code SliceEqualityTest}; the decoration away from the beech forest is unchanged, {@code determinism}).
+	 */
+	/**
+	 * The plots of the slice nearer to a forest of the steps F than {@code SliceEqualityTest.FAR}, checked in the game
+	 * instead: GAMEPLAY {@code fresh_pine_managed_old_growth} lies 80 blocks (natural mode) and 96 blocks (present-day
+	 * mode) from the lowland beech forest, and its 84 rows of the norms card of step F1 are those of the card after L1
+	 * ({@code docs/wycinek/karta-norm-l1.csv}). It must stay at least {@value #NEAR_LEAST} blocks away.
+	 */
+	static final java.util.Set<String> NEAR_STEP_F = java.util.Set.of(
+			"gameplay managed old_growth fresh_pine_managed_old_growth fresh_pine_forest -1695 -1303");
+	static final int NEAR_LEAST = 64;
+
+	@Test
+	@Tag("slow")
+	void slicePlotsAndPlacesLieFarFromTheForestsOfTheStepsF() throws IOException {
+		int far = 176; // SliceEqualityTest.FAR
+		List<String> near = new ArrayList<>();
+		List<int[]> lines = new ArrayList<>();
+		List<String> names = new ArrayList<>();
+		List<LandscapeScale> scales = new ArrayList<>();
+		for (Plot p : read()) {
+			if (!F_FORESTS.contains(p.biome())) {
+				lines.add(new int[] {p.x(), p.z(), p.x(), p.z()});
+				names.add(p.line());
+				scales.add(p.scale());
+			}
+		}
+		for (SliceSitesTest.Place p : SliceSitesTest.read()) {
+			if (p.transect() || !F_FORESTS.contains(p.biome())) {
+				lines.add(new int[] {p.x(), p.z(), p.transect() ? p.x2() : p.x(), p.transect() ? p.z2() : p.z()});
+				names.add(p.scale().id() + " " + p.name());
+				scales.add(p.scale());
+			}
+		}
+		for (HabitatClassifier.Mode mode : HabitatClassifier.Mode.values()) {
+			java.util.Map<LandscapeScale, HabitatTargets.World> worlds = new java.util.HashMap<>();
+			for (int i = 0; i < lines.size(); i++) {
+				int[] l = lines.get(i);
+				var w = worlds.computeIfAbsent(scales.get(i), sc -> PolishForestsCommandsTest.world(sc, mode));
+				int reach = far + 50;
+				int steps = (int) Math.ceil(Math.hypot(l[2] - l[0], l[3] - l[1]) / 8) + 1;
+				int side = 2 * reach / 4 + 1;
+				// The least Chebyshev distance of a column of a forest of the steps F from the plot's square (the line).
+				int nearest = java.util.stream.IntStream.range(0, steps * side * side).parallel().map(k -> {
+					int s = k / (side * side);
+					double t = steps == 1 ? 0 : (double) s / (steps - 1);
+					int dx = -reach + 4 * ((k % (side * side)) / side);
+					int dz = -reach + 4 * (k % side);
+					int x = (int) Math.round(l[0] + (l[2] - l[0]) * t) + dx;
+					int z = (int) Math.round(l[1] + (l[3] - l[1]) * t) + dz;
+					return F_FORESTS.contains(pl.polishforests.worldgen.habitat.Habitat.biome(w.code(x, z)))
+							? Math.max(0, Math.max(Math.abs(dx), Math.abs(dz)) - 50) : Integer.MAX_VALUE;
+				}).min().orElse(Integer.MAX_VALUE);
+				if (nearest <= (NEAR_STEP_F.contains(names.get(i)) ? NEAR_LEAST : far)) {
+					near.add(mode + " " + names.get(i) + ": a column of a forest of the steps F " + nearest + " blocks from the square");
+				}
+			}
+		}
+		assertTrue(near.isEmpty(), String.join(System.lineSeparator(), near));
+	}
+
 	private static long count(List<Plot> plots, HabitatBiome biome, boolean natural, AgeClass age) {
 		return plots.stream().filter(p -> p.biome() == biome && p.natural() == natural && p.age() == age).count();
 	}

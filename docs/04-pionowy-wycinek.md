@@ -539,7 +539,7 @@ Każdy krok F jest ukończony dopiero, gdy oprócz własnych kryteriów spełnia
 ### F1. Buczyna niżowa i drzewostan planera w każdym lesie (A, 1–1,5 dnia; G.36 U-4)
 
 - **Zakres:** (1) **mechanizmy dla każdego lasu**, bez zmiany wyniku w lasach wycinka z dala od nowych lasów: reguła drzewostanu z piętrami (`ModVegetation.Trees.slice`: okap, okap gospodarczy, podokap, odnowienie pod okapem i w lukach, szanse według stanu) dla dowolnego biomu; parametry wydzieleń `ForestStandMap` (udział lasu naturalnego D9, klasy wieku, luki, wielkość wydzieleń) w tabeli według typu lasu zamiast stałych wycinka; `ForestBlend.FORESTS` jako lista lasów z drzewami planera (każdy krok F dopisuje swoje, `NEIGHBORS` je traci); martwe drewno i pniaki (`SLICE_DEAD_TREES`, `SLICE_STUMPS`) oraz karta norm (`worldgen/norms/ForestNorms`, `CensusTestPlot`, `SlicePlotsTest -PfindSlicePlots`, `StandCensusSimulationTest -PcalibrateOnly`) dla dowolnego lasu; spis w gametestach `habitats` i `vanilla_forests`: pnie planera i kłody wanilii w głębi każdego lasu; test palety (KF-1); (2) **buczyna niżowa** (`lowland_beech_forest`, w W1 `dark_forest`): a1 buk 70–100% z domieszką dębu, jesionu, klonu zwyczajnego i lipy (jawor od F3), a2 słabe; las naturalny z lukami po pojedynczych drzewach i grupach, odnowienie buka w lukach; gospodarczy jednopiętrowy z gniazdami odnowienia; zwarcie 80–95%; (3) runo, mchy, ściółka: ściółka liściowa 60–90% kolumn płatami `BLOBS`, nowe rośliny rodzin `GroundPlant` z fazami `GroundPhases` (domyślnie 4: marzanka wonna, kosmatka owłosiona, szczawik zajęczy, żywiec cebulkowy), borówka płatami w buczynie kwaśnej, mchy 0–30%, `TreeMoss` u pni; (4) martwe drewno buka (kłody, złomy, wykroty, posusz) na poziomie rezerwatów w lesie naturalnym, pniaki w gospodarczym (PW-5 b, WISL), nabiegi buka; (5) przejścia: buczyna w `ForestBlend` z grądem, LMśw i BMśw, z innymi lasami rampa `Ecotone`; (6) karta norm buczyny niżowej w §6 (`docs/research/06` §3.6, §4.3, §6.2).
-- **Ukończony, gdy:** KF-1 … KF-4, KF-6, KF-7 (KF-5 tylko dla nowych roślin runa); dodatkowo test równości: dekoracja lasów wycinka z dala od buczyny (dalej niż promień `ForestBlend` i zasięg koron) identyczna z buildem sprzed F1 (JUnit na planie drzewostanu i w spisie `determinism`). **Stan: etap 1 zrobiony (2026-11-05, „Projekt F1”), etap 2 (przebiegi w grze) do zrobienia.**
+- **Ukończony, gdy:** KF-1 … KF-4, KF-6, KF-7 (KF-5 tylko dla nowych roślin runa); dodatkowo test równości: dekoracja lasów wycinka z dala od buczyny (dalej niż promień `ForestBlend` i zasięg koron) identyczna z buildem sprzed F1 (JUnit na planie drzewostanu i w spisie `determinism`). **Stan (2026-11-05): zrobione z odstępstwem („Projekt F1”, „Stan po F1”): buczyna z drzewostanem planera w obu skalach i W1, KF-1, KF-2 (poza N10 lasu gospodarczego, F1-o) i KF-6 spełnione; KF-3 niespełnione w nowym obszarze buczyny (`floor_free` 2–4 bloki zależne od kolejności chunków, DP-127) i KF-4 (`present_day` z jaskiniami, wada sprzed F1, DP-126) — do decyzji użytkownika.**
 - **Ryzyko:** wysokie (uogólnienie reguł może przestawić lasy wycinka; zwarty okap buczyny podnosi LIGHT).
 
 ### F2. Olsy i łęg jesionowo-olszowy (A, 1,5–2 dnia)
@@ -574,7 +574,7 @@ Każdy krok F jest ukończony dopiero, gdy oprócz własnych kryteriów spełnia
 
 ### F7. Drzewa poza lasem, skraje i przejścia wszystkich lasów, karta norm i pomiar A/B (A, 1,5–2 dnia)
 
-- **Zakres:** (1) drzewa poza lasem z planera: łąki (pojedyncze drzewa wolnostojące o szerokich koronach i niskich gałęziach: dąb, lipa, brzoza, wierzba), szpalery trybu D (`Zone.TREE_ROW`), olsze przy jeziorze (`Zone.SHORE_ALDERS`), sosny na wydmie szarej; (2) skraje wszystkich lasów z płaszczem (krzewy palety lasu, drzewa z gałęziami do ziemi) i okrajkiem, także w W1 przy biomach wanilii (kolumny obce jak łąka, W1-f); (3) `ForestBlend` dla wszystkich par sąsiednich lasów, bez przejmowania drzew (`NEIGHBORS` pusty); (4) zastępstwa M2 usunięte ze wszystkich palet, ficzery `tree_substitute/` i `deadwood_substitute/` bez odwołań usunięte z datagenu (chunki ich nie zapisują); (5) karta norm całości (`docs/wycinek/karta-norm-f7.md`: wszystkie lasy, obie skale i tryby); (6) pełny pomiar A/B według progów G.34 (PW-10): miejsca czterech lasów wycinka i po jednym lesie z kroków F1–F6 w obu skalach, M2 (`m2-baseline-r1`), build sprzed F1 i F7 naprzemiennie (ABBA) na spokojnej maszynie; bez jaskiń (`-Pcaves=off`): chunki na sekundę z C2ME ≥ 0,7 × M2, FEATURES ≤ 2,0 × i ≤ 10 ms, LIGHT ≤ 1,75 × i ≤ 12 ms, cały chunk ≤ 48 ms; z jaskiniami strażnik REAL ≥ 0,4 ×, GAMEPLAY ≥ 0,55 ×; FPS w przelocie z paczką ≥ 0,8 × M2 (przeloty także przez buczynę, ols i świerczynę); lista z KF-6 kroków F1–F6 rozliczona.
+- **Zakres:** (1) drzewa poza lasem z planera: łąki (pojedyncze drzewa wolnostojące o szerokich koronach i niskich gałęziach: dąb, lipa, brzoza, wierzba), szpalery trybu D (`Zone.TREE_ROW`), olsze przy jeziorze (`Zone.SHORE_ALDERS`), sosny na wydmie szarej; (2) skraje wszystkich lasów z płaszczem (krzewy palety lasu, drzewa z gałęziami do ziemi) i okrajkiem, także w W1 przy biomach wanilii (kolumny obce jak łąka, W1-f); (3) `ForestBlend` dla wszystkich par sąsiednich lasów, bez przejmowania drzew (`NEIGHBORS` pusty); (4) zastępstwa M2 usunięte ze wszystkich palet, ficzery `tree_substitute/` i `deadwood_substitute/` bez odwołań usunięte z datagenu (chunki ich nie zapisują); (5) karta norm całości (`docs/wycinek/karta-norm-f7.md`: wszystkie lasy, obie skale i tryby); (6) pełny pomiar A/B według progów G.34 (PW-10): miejsca czterech lasów wycinka i po jednym lesie z kroków F1–F6 w obu skalach, M2 (`m2-baseline-r1`), build sprzed F1 i F7 naprzemiennie (ABBA) na spokojnej maszynie; bez jaskiń (`-Pcaves=off`): chunki na sekundę z C2ME ≥ 0,7 × M2, FEATURES ≤ 2,0 × i ≤ 10 ms, LIGHT ≤ 1,75 × i ≤ 12 ms, cały chunk ≤ 48 ms; z jaskiniami strażnik REAL ≥ 0,4 ×, GAMEPLAY ≥ 0,55 ×; FPS w przelocie z paczką ≥ 0,8 × M2 (przeloty także przez buczynę, ols i świerczynę); lista z KF-6 kroków F1–F6 rozliczona (F1: `fresh_pine_1` świata „Polska” REAL 0,68 × M2, „Stan po F1”).
 - **Ukończony, gdy:** KF-1 … KF-5, KF-7; żaden las moda nie ma zastępstw M2 (test palet wszystkich biomów); progi PW-10 spełnione albo — po tanich optymalizacjach bez zmiany wyniku — warianty B3 dla użytkownika; tabele `docs/wycinek/f7/ab_f7.md`. **Stan: do zrobienia.**
 - **Ryzyko:** wysokie (budżety: wszystkie lasy z drzewami planera; skraje w W1).
 
@@ -3550,6 +3550,94 @@ Krok F1 planu „Kroki F” (§3, G.41, decyzja użytkownika G.36 U-4): mechaniz
 - Klasy zmian: `ForestBlendTest`, `StandMapTest`, `SliceStandTest`, `GroundLayerPlanTest`, `DeadwoodPlanTest`, `RegistrySnapshotTest`, `EcotoneSharpnessTest`, `EcotoneTest`, `PlannerPalettesTest`, `SliceEqualityTest`, `ForestNormsTest`, `ForestCensusTest`, `SlicePlotsTest`, `GroundPhasesTest`, `BiomeJsonTest`.
 - Wyniki w „Stan po F1”, przebiegi gry według `python tools/dev/test_plan.py c33a916`.
 
+## Stan po F1 (2026-11-05, etap 2: przebiegi w grze, bez recenzji wizualnej)
+
+Drobne wybory: `docs/00` G.42 (F1-a … F1-n z etapu 1, F1-o … F1-y z etapu 2). Zgodnie z G.36 U-1 bez oceny wyglądu ze zrzutów: dowody to spisy KF-1 w `habitats` i `vanilla_forests`, karta norm z gry, porównania bloków w `determinism` i testy jednostkowe. Wygląd buczyny sprawdza użytkownik według listy „Do sprawdzenia w grze” (raport kroku). Baza kroku: `c33a916`; commity `a56915c`, `374d3b7` (etap 1) i commit końcowy.
+
+**Wynik w skrócie.** Buczyna niżowa rośnie z drzewostanu planera w obu skalach, obu trybach i w W1. Pnie planera w głębi lasu mieszczą się w obwiedni N1, kłód wanilii jako pni jest 0. Karta buczyny jest w normie albo tolerancji poza N10 lasu gospodarczego (F1-o). Świat „Polska” poza buczyną się nie zmienił: 16 dawnych obszarów `determinism` ma 0 różnic wobec referencji sprzed F1, a karta wycinka ma 0 zmian werdyktu. **Dwa kryteria nie są spełnione:**
+- KF-3: w nowym obszarze `lowland_beech` 2–4 bloki dna z dala od obiektów zależą od kolejności chunków (DP-127, F1-w).
+- KF-4: `present_day` z jaskiniami zawodzi w GAMEPLAY (wada sprzed F1, DP-126).
+
+Z C2ME teren obszaru buczyny GAMEPLAY różni się jedną jaskinią (DP-128). Wszystkie trzy sprawy są do decyzji użytkownika.
+
+**Zmiany etapu 2 (tylko testy i dokumentacja; kod moda bez zmian).**
+
+- *`vanilla_forests`.* Obszar spisu lasu spoza transektu leży w najgłębszej części lasu (F1-p). Nowa linia `own columns` liczy wszystkie kolumny biomu (F1-q): zablokowane, przy strukturach, inne siedlisko w chunku, średnią wysokość gruntu, kolumny pod wodą, pnie planera na chunk ogółem i na suchych kolumnach. Kłoda wanilii jako pień na kolumnie lasu kroku F to błąd.
+- *`habitats`.* Do obszarów spisu dochodzą powierzchnie `_1` lasów kroków F (F1-r).
+- *`determinism`.* Piąty obszar `lowland_beech` (F1-s).
+- *`present_day`.* Przykłady wiszących kolumn podłogi wsi.
+- *`SlicePlotsTest`.* Nowy test (`slow`): każda powierzchnia próbna i każde miejsce wycinka (`SliceSitesTest`, transekty) leży dalej niż 176 bloków (zasięg testu równości) od kolumny lasu kroku F. Jedyny wyjątek to F1-t, z minimum 64 bloki.
+
+**Przebiegi (`-PtimingsReportOnly`, mapa testów `test_plan.py c33a916`).**
+
+| Przebieg | Wynik |
+|---|---|
+| `habitats` (obie skale) | PASS. KF-1 buczyny w głębi (udział lasu ≥ 0,999): REAL 10,0 pnia planera na chunk na 9413 kolumnach, GAMEPLAY 11,1 na 11 471 (obwiednia N1 6,4–19,2), 0 kłód wanilii. Spis buczyny: REAL 10,0 (12 717 kolumn), GAMEPLAY 11,2 (12 800). Lasy wycinka w obwiedni N1: las mieszany 12,1 / 11,0, grąd 13,3 / 14,0; w głębi las mieszany 12,7 / 10,9, grąd 15,1 / 13,5 |
+| `vanilla_forests` (W1; po zmianach liczników) | PASS. Linie `own columns`: grąd 6684 kolumny, 475 pni (18,2 na chunk, 26,3 na suchych), 0 kłód wanilii; Bśw 5230, 438 (21,4; 25,8), 0. Buczyna (obszar (2672, 1232) z punktu `/locate` (1248, 2240); 25 z 64 punktów siatki w biomie): 6535 kolumn, z tego **6159 pod wodą** (średni grunt Y 52), 0 zablokowanych, 0 przy strukturach, 0 innego siedliska. Pnie planera: 28 (1,1 na chunk ogółem, **19,1 na chunk suchych kolumn**), 0 kłód wanilii. Kolumn głębi buczyny 0 (płat `dark_forest` bez kolumny ≥ 48 m·k od innego biomu, F1-q); grąd w głębi 255 kolumn, 24,1 na chunk; Bśw 70 kolumn, 18,3. Determinizm dwóch kolejności: teren 0, dekoracja 189 kolumn (2,95%) jak w W1 |
+| `determinism` z `-PdeterminismStepZones` wobec `plain.txt` sprzed F1 | **FAIL** (7 min 53 s), tylko w nowym obszarze buczyny. Kolejność stała wobec odwróconej: `floor_free` 2 bloki w REAL N i D, 4 w GAMEPLAY N i D; kolejność dowolna REAL D: 4 bloki (DP-127). 16 dawnych obszarów: teren identyczny, dekoracja wobec referencji 0 różnic („elsewhere 0 of 16384”; strefy F i B puste), `floor_free` 0 w obu kolejnościach. Obszar `lowland_beech` nie ma referencji (ostrzeżenie, F1-s); kolejność stała: 0 różnic, różnice kolejności odwróconej 1,07% (REAL) i 0,58% (GAMEPLAY) okna |
+| `determinism -Poptimization` (C2ME) wobec referencji z tego kodu | **FAIL**. Te same bloki `floor_free` buczyny (C2ME niczego nie dokłada). GAMEPLAY N i D, obszar buczyny: 3259 bloków terenu w 833 kolumnach (limit J1-q 16). Pod ziemią na Y −32 … −24 z C2ME jest powietrze, bez paczki łupek: jaskinia w 7 grupach (DP-128). Dekoracja tego obszaru różni się w 2280 kolumnach (limit 32), wtórnie przez tę jaskinię. Dawne obszary w tolerancji: teren ≤ 9 bloków |
+| `present_day` (GAMEPLAY, z jaskiniami) | **FAIL**: wieś (4089, −3980), 11 kolumn podłogi wisi 3 bloki nad powietrzem na Y 122 (DP-126, F1-u). Z `-Pcaves=off` PASS; REAL i tryb N PASS |
+| `ecotones`, `vegetation` | PASS; `HABITAT_MISS` 0 z 8154 i 0 z 7894, 0 liści do opadnięcia |
+| `slice -Psites=none` (karta norm z gry) | PASS (`HABITAT_MISS` 0). Wobec `docs/wycinek/karta-norm-l1.csv`: 1764 wspólne wiersze, 1553 identyczne, **0 zmian werdyktu** (73 wiersze `out` w obu), największa różnica 0,64 m³/ha (rozrzut przebiegu, DP-118). Powierzchnia F1-t (80 bloków od buczyny) równa w 84 z 84 wierszy |
+| `slice -Psites=seasons` | PASS (fazy nowych roślin runa) |
+| KF-6: `slice` z C2ME, `-Pcaves=off`, spokojna maszyna, wobec M2 (`m2-baseline-r1`) | chunki na sekundę (tabela niżej); FEATURES buczyny niezmierzone |
+| `compileGametestJava`, `SlicePlotsTest` (5, 1 pominięty), `run-tests --reuse fastTest` | PASS |
+| pełny zestaw `tools/dev/run-tests test` (ze złotym testem terenu) | PASS (drzewo `6e4ccdd5949b`, 1064 s; potem zmiany tylko w `docs/`) |
+
+**KF-6 (jeden przebieg kontrolny, chunki na sekundę z C2ME bez jaskiń; iloraz F1 / M2).**
+
+| Miejsce | „Polska” REAL | GAMEPLAY |
+|---|---|---|
+| `oak_hornbeam_1` | 115,0 / 146,9 = 0,78 | 165,6 / 219,1 = 0,76 |
+| `fresh_pine_1` | 137,1 / 201,7 = **0,68** | 161,9 / 208,3 = 0,78 |
+| `lowland_beech_natural_1` | 143,9 / 195,5 = 0,74 | 159,6 / 211,1 = 0,76 |
+
+`fresh_pine_1` REAL < 0,7 × M2 jest na liście do F7 (zakres (6) F7). To miejsce boru, z dala od buczyny, z generacją identyczną z buildem sprzed F1, więc to rozrzut jednego przebiegu (O2: 0,71–0,78), a nie koszt buczyny. Buczyna 0,74–0,76 ×.
+
+**Karta buczyny z gry** (`slice -Psites=none`, 4 powierzchnie naturalne i 4 gospodarcze na skalę i tryb, 672 wiersze: 124 w normie, 14 w tolerancji, 10 poza):
+
+| Miara | Naturalna | Gospodarcza |
+|---|---|---|
+| N1 drzewa na chunk | 6,9–11,4 (w normie) | 9,8–14,0 (w normie) |
+| N3 udział buka | 76–84% (w normie) | 86–88% (w normie) |
+| N4 zwarcie okapu | 78–89% (6 w normie, 2 w tolerancji) | 93–95% (w normie) |
+| N7 podszyt | 1,2–13,3% (w normie) | 1,6–4,3% (w normie) |
+| N8 runo wiosną | 19–27% (w normie) | 22–27% (w normie) |
+| N9 mech | 7,5–13,7% (w normie) | 9,3–12,5% (w normie) |
+| N10 martwe drewno | obiekty 1,7–2,3 na chunk (tolerancja), objętość 87–133 m³/ha (w normie), gruby posusz 31–41 na ha (w normie) | kawałki 0,13–0,31 na chunk (2 w tolerancji, 6 poza), objętość 5,2–12,9 m³/ha (2 w normie, 2 w tolerancji, 4 poza), pniaki 1,2–1,6 (w normie) |
+
+Ściółka liściowa pokrywa 48–55% kolumn (bez normy w karcie; cel projektu 60–90%). Część pokrywy zabiera runo i mech w płatach. Bez strojenia w F1 (F1-y, do CP-D).
+
+**KF-1 w W1: buczyna prawie bez drzew w spisie — przyczyna to woda, nie usterka.** Pierwsze przebiegi dawały 28 pni na 6535 kolumnach buczyny (1,1 na chunk) wobec 18,2 w grądzie. Liczniki diagnostyczne wykluczyły kolejne przyczyny:
+- maska `blocked`: 0;
+- struktury: 0;
+- inne siedlisko w chunku: 0;
+- biom powierzchni wobec biomu przy gruncie: zgodne.
+
+Średni grunt jest jednak na Y 52, a 6159 z 6535 kolumn (94%) leży pod wodą. Obszar w najgłębszej części płatu `dark_forest` to w tym seedzie głównie dno jeziora albo zalewiska, na którym biom przy dnie to wciąż buczyna. Na 376 suchych kolumnach jest 19,1 pnia planera na chunk, przy górnej granicy obwiedni N1. Grąd i Bśw mają 31% i 17% kolumn pod wodą, a na suchych 26,3 i 25,8 pnia na chunk. Bez zmiany kodu moda; wybór obszaru bez kolumn wody to drobiazg F1-v.
+
+**Zależność dna buczyny od kolejności chunków (DP-127, F1-w).** Różnice dotyczą 2–4 bloków na obszar 16 384 kolumn:
+- ten sam blok `leaf_litter` w innym kierunku (`south`/`west`);
+- roślina wobec powietrza (`sweet_woodruff`, `wood_anemone`, `coralroot`);
+- roślina wobec dywanu mchu wanilii (`wood_sorrel`/`moss_carpet`, `wood_anemone`/`moss_carpet`).
+
+W sąsiedztwie (zrzut `plain_window_diff.txt`) leżą rzędy różnic `floor_contact` `leaf_litter`/`moss_carpet` wzdłuż kłód. Kłody są w obu kolejnościach, a różni się pokrywa obok nich. Na tej podstawie przyczyna to wyścig dwóch zapisów przez granicę chunka:
+- pokrywa martwego drewna (`DeadwoodFeature.write`: mech albo ściółka obok kłody, tylko na powietrzu) wobec warstwy runa sąsiedniego chunka (roślina tylko na powietrzu): wygrywa ten, kto pisze pierwszy;
+- dół wykrotu (`dig`: usuwa roślinę nad dołem) wobec rośliny posadzonej przed dołem albo po nim.
+
+W lasach wycinka ten sam mechanizm daje tylko różnice `floor_contact` (pokrywa leży przy drewnie). W buczynie (więcej kłód i wykrotów: 1,8 martwego drzewa na chunk) zdarza się pokrywa albo dół dalej niż 2 bloki od zapisanego drewna, np. gdy łańcuch kłody urywa się na niezastępowalnym bloku, a pokrywa planu zostaje. Przyczyna nie jest potwierdzona blok po bloku. Poprawka (pokrywa i dół niezależne od kolejności, np. pokrywa zastępuje roślinę warstwy, a roślina nie staje w dole) zmienia wspólny `DeadwoodFeature`, więc i nowe chunki lasów wycinka. Krok F tego nie może (KF-3), więc w F1 bez poprawki; decyzja użytkownika (DP-127).
+
+**Odstępstwa:**
+- KF-3 `floor_free` w buczynie (DP-127, F1-w);
+- KF-4 `present_day` z jaskiniami (DP-126, F1-u, sprzed F1);
+- teren z C2ME w obszarze buczyny GAMEPLAY ponad tolerancję J1-q (DP-128, F1-x; jaskinie sprzed F1);
+- N10 lasu gospodarczego poniżej normy (F1-o);
+- ściółka 48–55% zamiast 60–90% (F1-y);
+- buczyna w W1 bez kolumn głębi, więc N1 tylko w raporcie (F1-q, F1-v);
+- FEATURES buczyny w KF-6 niezmierzone.
+
+**Stare światy, zapis, rejestr.** Bez zmian wobec „Projektu F1”: tylko nowe chunki buczyny, jej pasa i zasięgu koron; teren nietknięty (złoty test terenu w pełnym zestawie, 16 dawnych obszarów `determinism` z terenem identycznym); migawka rejestru z etapu 1 (+4 bloki, +4 przedmioty); sole i stałe enumów bez zmian.
+
 ## Do kroku porządkowego (lista drobiazgów z recenzji)
 
 Lista założona w V10 według decyzji użytkownika z 2026-10-21 (`docs/00` F, P4): drobiazgi widoczne tylko na zbliżeniach albo w pomiarach bez wpływu na grę nie są poprawiane od razu, tylko trafiają tutaj; zbiorczy krok porządkowy na końcu kamienia milowego przegląda listę i poprawia, co warto. Każdy wpis: krok, w którym powstał, opis, gdzie szukać, propozycja. Wpis usuwamy (albo przekreślamy z commitem), gdy jest zrobiony.
@@ -3677,3 +3765,6 @@ Lista założona w V10 według decyzji użytkownika z 2026-10-21 (`docs/00` F, P
 | DP-123 | W1 (runda 1) | Podziemne ficzery biomów siedlisk są ze świata „Polska”, nie z zastąpionych biomów wanilii: `montane_beech_forest` (za `windswept_forest`) bez `ore_emerald` i `ore_infested`; żaden zastępca bez `disk_sand`, `disk_clay`, `disk_gravel`; za to skamieniałości (lasy wanilii poza bagnem ich nie mają) i dodatkowe `polishforests:deep_lava_lake` (Y −54…0, bez filtra jaskiń) obok `cave/lake_lava_underground` — więcej głębokich jezior lawy. W1-p mówi tylko o ficzerach powierzchni | `src/main/generated/data/polishforests/worldgen/biome/*.json`, G.40 W1-p | Dopisać w W1-p jako znane różnice albo dać biomom siedlisk brakujące ficzery wanilii za filtrem „tylko świat wanilii” bez losowania (jak `CavesFilter`), żeby świat „Polska” się nie zmienił |
 | DP-124 | W1 (runda 1) | W1-g nadal podaje test gruntu `#dirt`, `#sand` albo żwir, a kod używa `#minecraft:substrate_overworld` + piasek, żwir (W1-r). Opublikowany commit `5e4a896` mówi „11 lasów → 7 biomów siedlisk”, a `REPLACEMENTS` daje 8 (grąd, las mieszany, buczyna niżowa, BMśw, Bśw, świerczyna, buczyna karpacka, ols; tak też BRIEF) — commit zostaje | `docs/00` G.40 W1-g, `docs/BRIEF.md` | W1-g: odesłać do W1-r; BRIEF: „8 lasami moda” |
 | DP-125 | W1 (runda 1) | Kryterium pni w `vanilla_forests` zawodzi tylko przy 0 pni na > 2000 kolumnach lasu; duży spadek gęstości (np. znów większość kolumn błędnie zablokowana) przejdzie. Zmierzone 76,5 i 90,2 pni na 1000 kolumn są tylko w raporcie | `VanillaForestsClientGameTest.area` | Dolna granica na las, np. ≥ 30 pni na 1000 kolumn lasu (z pomiaru) |
+| DP-126 | F1 (etap 2) | `present_day` z jaskiniami (domyślnie od J1) zawodzi w GAMEPLAY na wsi (4089, −3980): 11 kolumn podłogi domów (`plains_small_house_1`, `plains_small_farm_1`, latarnia) na Y 122 wisi 3 bloki nad powietrzem; ten sam przebieg z `-Pcaves=off` PASS, REAL i tryb N PASS. Nie przez F1 (teren i jaskinie bez zmian, wieś ze startu struktury); `present_day` nie był uruchamiany z jaskiniami od J1 (DP-97, DP-103) | `PresentDayClientGameTest.villageCheck` (przykłady wiszących kolumn od F1), `PolandCaves.carve` (szum z brodą struktur, potem carvery wanilii bez brody) | Sprawdzić, czy to carver (wanilia też wycina pod wsiami), czy szum jaskiń; poprawić w osobnym kroku jaskiń (zmienia teren, więc nie w krokach F) albo dopuścić w teście jak w wanilii |
+| DP-127 | F1 (etap 2) | `determinism`, obszar `lowland_beech`: 2–4 bloki dna z dala od obiektów (`floor_free`, limit 0) zależą od kolejności chunków (stała wobec odwróconej REAL i GAMEPLAY, dowolna REAL D): ten sam `leaf_litter` w innym kierunku, roślina wobec powietrza albo wobec `moss_carpet`. Najpewniej wyścig pokrywy martwego drewna (tylko na powietrzu) i dołu wykrotu (`dig` usuwa roślinę) z warstwą runa sąsiedniego chunka, przy pokrywie albo dole dalej niż 2 bloki od zapisanego drewna; nie potwierdzone blok po bloku | `DeadwoodFeature.write` (pokrywa, `dig`), `PlantLayerFeature.place`, zrzut `build/determinism/plain_window_diff.txt` | Pokrywa i dół niezależne od kolejności (pokrywa zastępuje roślinę warstwy, roślina nie staje w dole) we wszystkich lasach z nową referencją `determinism` — w osobnym kroku albo w F7, bo zmienia nowe chunki lasów wycinka; albo dopuścić w teście kilka bloków `floor_free` w lasach kroków F |
+| DP-128 | F1 (etap 2) | `determinism -Poptimization`, obszar `lowland_beech` GAMEPLAY (N i D): teren z C2ME różni się od przebiegu bez paczki w 3259 blokach w 833 kolumnach (limit J1-q 16): na Y −32 … −24 z C2ME powietrze, bez paczki łupek, czyli inna jaskinia (7 grup); dekoracja 2280 kolumn wtórnie. F1 nie zmienia terenu (16 dawnych obszarów w tolerancji, złoty test) | `PolandCaves`, porównanie terenu J1-q w `DeterminismClientGameTest` | Sprawdzić, który carver albo szum jaskiń różni się z C2ME (ziarno carvera, kolejność), w kroku jaskiń; do tego czasu tolerancja J1-q nie obejmuje tego obszaru |

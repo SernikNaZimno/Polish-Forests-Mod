@@ -317,6 +317,15 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 		long forestColumns = 0;
 		List<int[]> sites = new ArrayList<>(List.of(real ? CENSUS_REAL : CENSUS_GAMEPLAY));
 		sites.addAll(places.subList(0, Math.min(3, places.size())));
+		// Step F1 (KF-1): the first natural and the first managed sample plot of each forest of the steps F (outside the
+		// slice transect), whose forests the fixed sites and the places may miss (the beech forest is rare near the center).
+		List<HabitatBiome> transect = List.of(ForestBlend.TRANSECT);
+		for (SlicePlots.Plot plot : SlicePlots.of(real)) {
+			HabitatBiome b = HabitatBiome.byId(plot.biome());
+			if (b != null && plannerForests.contains(b) && !transect.contains(b) && plot.name().endsWith("_1")) {
+				sites.add(new int[] {plot.x(), plot.z()});
+			}
+		}
 		for (int[] site : sites) {
 			int cx0 = (site[0] >> 4) - 2;
 			int cz0 = (site[1] >> 4) - 2;

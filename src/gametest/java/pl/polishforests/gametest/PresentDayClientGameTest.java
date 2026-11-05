@@ -503,6 +503,9 @@ public final class PresentDayClientGameTest implements FabricClientGameTest {
 						}
 						maxGap = Math.max(maxGap, gap);
 						hanging += gap >= 2 ? 1 : 0;
+						if (gap >= 2) {
+							example(examples, level, "floor hanging " + gap + " blocks", x, y0, z);
+						}
 					}
 					int roof = Integer.MIN_VALUE;
 					for (int y = b.maxY(); y > y0 + 1; y--) {

@@ -161,10 +161,14 @@ public final class VanillaForestsClientGameTest implements FabricClientGameTest 
 			// dark_forest in W1).
 			for (HabitatBiome b : List.of(HabitatBiome.OAK_HORNBEAM_FOREST, HabitatBiome.FRESH_PINE_FOREST,
 					HabitatBiome.LOWLAND_BEECH_FOREST)) {
-				BlockPos at = located.get(b);
-				if (at == null) {
+				BlockPos found = located.get(b);
+				if (found == null) {
 					continue;
 				}
+				// A forest of the steps F: the area around its deepest part near the located column (the located column is
+				// the forest's edge, whose area of 8 chunks may hold no deep column at all, KF-1).
+				BlockPos at = java.util.Arrays.asList(pl.polishforests.worldgen.feature.plan.ForestBlend.TRANSECT).contains(b) ? found
+						: sp.getServer().computeOnServer(s -> deepCenter(s.overworld(), b, found));
 				sp.getServer().runOnServer(s -> area(s.overworld(), b, at, report, failures));
 			}
 			report.append(String.format(Locale.ROOT, "counters: habitats attached %d, soil tops %d, soil blended %d, trees %d, "
@@ -449,10 +453,12 @@ public final class VanillaForestsClientGameTest implements FabricClientGameTest 
 		// of the other columns), with the planner's trunks (mod logs at the base) and the vanilla logs standing as trunks.
 		int deepReach = (int) Math.round(DEEP * world(level).localScale());
 		int[] other = new int[(size + 1) * (size + 1)];
+		boolean[] ownColumn = new boolean[size * size];
 		ResourceKey<Biome> own = ModBiomeKeys.key(biome);
 		for (int dx = 0; dx < size; dx++) {
 			for (int dz = 0; dz < size; dz++) {
 				boolean mine = level.getBiome(new BlockPos(origin[0] + dx, ground[dx * size + dz], origin[1] + dz)).is(own);
+				ownColumn[dx * size + dz] = mine;
 				other[(dx + 1) * (size + 1) + dz + 1] = (mine ? 0 : 1) + other[dx * (size + 1) + dz + 1]
 						+ other[(dx + 1) * (size + 1) + dz] - other[dx * (size + 1) + dz];
 			}
@@ -460,6 +466,15 @@ public final class VanillaForestsClientGameTest implements FabricClientGameTest 
 		int deepColumns = 0;
 		int deepTrunks = 0;
 		int deepVanilla = 0;
+		int ownColumns = 0;
+		int ownTrunks = 0;
+		int ownVanilla = 0;
+		int ownBlocked = 0;
+		int ownBuilding = 0;
+		int ownOtherHabitat = 0;
+		long ownGroundY = 0;
+		int ownWater = 0;
+		int ownDryTrunks = 0;
 		int trunks = 0;
 		int edgeTrunks = 0;
 		int farColumns = 0;
@@ -473,11 +488,28 @@ public final class VanillaForestsClientGameTest implements FabricClientGameTest 
 				int z = origin[1] + dz;
 				BlockState base = level.getBlockState(p.set(x, ground[i], z));
 				boolean trunk = mod(base) && base.is(BlockTags.LOGS);
+				boolean vanillaTrunk = !mod(base) && base.is(BlockTags.LOGS) && level.getBlockState(p.set(x, ground[i] + 1, z)).is(BlockTags.LOGS)
+						&& level.getBlockState(p.set(x, ground[i] + 2, z)).is(BlockTags.LOGS);
+				if (ownColumn[i]) {
+					ownColumns++;
+					ownTrunks += trunk ? 1 : 0;
+					ownVanilla += vanillaTrunk ? 1 : 0;
+					ownGroundY += ground[i];
+					boolean wet = !level.getFluidState(p.set(x, ground[i], z)).isEmpty();
+					ownWater += wet ? 1 : 0;
+					ownDryTrunks += trunk && !wet ? 1 : 0;
+					ChunkHabitats habitats = level.getChunk(x >> 4, z >> 4).getAttached(ModFeatures.CHUNK_HABITATS);
+					if (habitats != null) {
+						int column = ChunkHabitats.index(x & 15, z & 15);
+						ownBlocked += habitats.blocked(column) ? 1 : 0;
+						ownBuilding += habitats.pieceDistance(column) < 15 ? 1 : 0;
+						ownOtherHabitat += habitats.biome(x & 15, z & 15) != biome ? 1 : 0;
+					}
+				}
 				if (deep(other, size, dx, dz, deepReach)) {
 					deepColumns++;
 					deepTrunks += trunk ? 1 : 0;
-					deepVanilla += !mod(base) && base.is(BlockTags.LOGS) && level.getBlockState(p.set(x, ground[i] + 1, z)).is(BlockTags.LOGS)
-							&& level.getBlockState(p.set(x, ground[i] + 2, z)).is(BlockTags.LOGS) ? 1 : 0;
+					deepVanilla += vanillaTrunk ? 1 : 0;
 				}
 				if (forest[i]) {
 					trunks += trunk ? 1 : 0;
@@ -518,6 +550,19 @@ public final class VanillaForestsClientGameTest implements FabricClientGameTest 
 		if (deepVanilla > 0) {
 			failures.add(biome.id() + ": " + deepVanilla + " vanilla log trunks deep in the forest (KF-1)");
 		}
+		// Step F1 (KF-1 in W1): the replaced vanilla forests of a step F (dark_forest for the beech forest) come in patches
+		// among other forests, often with no deep column at all; all columns of the biome then carry the check of the
+		// vanilla logs (a vanilla tree stands on a column of its own biome), the planner trunks per chunk are reported.
+		String ownLine = String.format(Locale.ROOT, "%s own columns: %d (blocked %d, near a structure piece %d, another "
+				+ "habitat in the chunk habitats %d, mean ground y %.0f, under water %d), planner trunks %d (%.1f per chunk, %.1f per chunk "
+				+ "of the dry columns), vanilla log trunks %d", biome.id(), ownColumns, ownBlocked, ownBuilding, ownOtherHabitat,
+				ownColumns == 0 ? 0 : (double) ownGroundY / ownColumns, ownWater, ownTrunks, ownColumns == 0 ? 0 : 256.0 * ownTrunks / ownColumns,
+				ownColumns == ownWater ? 0 : 256.0 * ownDryTrunks / (ownColumns - ownWater), ownVanilla);
+		report.append(ownLine).append('\n');
+		PolishForests.LOG.info("[vanilla_forests] KF-1 " + ownLine);
+		if (ownVanilla > 0 && !java.util.Arrays.asList(pl.polishforests.worldgen.feature.plan.ForestBlend.TRANSECT).contains(biome)) {
+			failures.add(biome.id() + ": " + ownVanilla + " vanilla log trunks on the columns of the forest (KF-1)");
+		}
 		double deepPerChunk = deepColumns == 0 ? 0 : 256.0 * deepTrunks / deepColumns;
 		if (deepColumns >= DEEP_MIN_COLUMNS && (deepPerChunk < DEEP_N1_LOW || deepPerChunk > DEEP_N1_HIGH)) {
 			failures.add(String.format(Locale.ROOT, "%s: %.1f planner trunks per chunk deep in the forest, outside the N1 envelope "
@@ -532,6 +577,50 @@ public final class VanillaForestsClientGameTest implements FabricClientGameTest 
 		if (creatures == 0) {
 			failures.add(biome.id() + ": no creature spawns");
 		}
+	}
+
+	/** Half side of the square searched for the deepest part of a forest of the steps F (blocks) and its lattice step. */
+	private static final int DEEP_SEARCH = 1536;
+	private static final int DEEP_STEP = 16;
+
+	/**
+	 * The center of the census area of a forest of the steps F (step F1, KF-1): of the squares of the area's size centered
+	 * on a lattice of {@value #DEEP_STEP} blocks within {@value #DEEP_SEARCH} blocks of the located column, the one with
+	 * the most surface columns of the biome (first in raster order on a tie; the surface biomes of {@link VanillaForestWorld},
+	 * no chunk generated).
+	 */
+	private static BlockPos deepCenter(ServerLevel level, HabitatBiome biome, BlockPos found) {
+		ResourceKey<Biome> own = ModBiomeKeys.key(biome);
+		VanillaForestWorld w = world(level);
+		int half = CENSUS_CHUNKS * 8 / DEEP_STEP;
+		int n = 2 * (DEEP_SEARCH / DEEP_STEP + half) + 1;
+		int x0 = found.getX() - (DEEP_SEARCH / DEEP_STEP + half) * DEEP_STEP;
+		int z0 = found.getZ() - (DEEP_SEARCH / DEEP_STEP + half) * DEEP_STEP;
+		int[] sum = new int[(n + 1) * (n + 1)];
+		for (int i = 0; i < n; i++) {
+			for (int j = 0; j < n; j++) {
+				int mine = w.surfaceBiome(x0 + i * DEEP_STEP, z0 + j * DEEP_STEP).is(own) ? 1 : 0;
+				sum[(i + 1) * (n + 1) + j + 1] = mine + sum[i * (n + 1) + j + 1] + sum[(i + 1) * (n + 1) + j] - sum[i * (n + 1) + j];
+			}
+		}
+		int best = -1;
+		BlockPos center = found;
+		for (int i = half; i < n - half; i++) {
+			for (int j = half; j < n - half; j++) {
+				int a = i - half;
+				int b = j - half;
+				int c = i + half;
+				int d = j + half;
+				int count = sum[c * (n + 1) + d] - sum[a * (n + 1) + d] - sum[c * (n + 1) + b] + sum[a * (n + 1) + b];
+				if (count > best) {
+					best = count;
+					center = new BlockPos(x0 + i * DEEP_STEP, found.getY(), z0 + j * DEEP_STEP);
+				}
+			}
+		}
+		PolishForests.LOG.info("[vanilla_forests] KF-1 {}: census area around ({}, {}), {} of {} lattice columns of the biome "
+				+ "(located at ({}, {}))", biome.id(), center.getX(), center.getZ(), best, 4 * half * half, found.getX(), found.getZ());
+		return center;
 	}
 
 	/** Least distance of a deep column from a column of another biome (KF-1 of step F1), m·k. */
