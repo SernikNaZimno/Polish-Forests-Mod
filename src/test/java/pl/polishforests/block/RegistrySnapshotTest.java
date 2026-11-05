@@ -84,7 +84,9 @@ class RegistrySnapshotTest {
 		// 4), needle litter 32 (facing 4 × segments 4 × mossy), bracken 2 (half).
 		assertEquals(GroundPlant.values().length, ModBlocks.groundPlants().size());
 		// Step F1: + sweet woodruff, hairy wood-rush, wood sorrel and coralroot, flower beds of 16 states each.
-		int ground = 4 + 16 + 16 + 32 + 2 + 4 * 16;
+		// Step F2: + the marsh marigold, a flower bed of 16 states, and the iris, the tussock sedge, the marsh fern and the
+		// nettle, herbs of one state each.
+		int ground = 4 + 16 + 16 + 32 + 2 + 4 * 16 + 16 + 4;
 		// Round 1 of the V12 review: + the forest moss carpet and the mossy podzol, one state each.
 		int review = 2;
 		// Step P1: + 9 stripped trunks (one per species), thin trunks of 84 states each, with the properties of the trunks.
@@ -122,6 +124,7 @@ class RegistrySnapshotTest {
 				case SEASONAL -> SeasonalPlantBlock.class;
 				case COVER -> GroundCoverBlock.class;
 				case TALL -> net.minecraft.world.level.block.DoublePlantBlock.class;
+				case HERB -> pl.polishforests.block.SeasonalHerbBlock.class;
 			};
 			assertTrue(family.isInstance(b), g.id() + " is a " + family.getSimpleName());
 			if (g.mossy()) {

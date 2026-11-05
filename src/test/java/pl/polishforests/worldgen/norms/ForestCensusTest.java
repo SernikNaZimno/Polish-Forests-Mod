@@ -214,7 +214,10 @@ class ForestCensusTest {
 		assertEquals("maple_ash", ForestCensus.compositionKey(Species.ASH));
 		assertEquals("maple_ash", ForestCensus.compositionKey(Species.SYCAMORE_MAPLE));
 		assertEquals("linden", ForestCensus.compositionKey(Species.LINDEN));
-		assertEquals("other", ForestCensus.compositionKey(Species.ELM));
+		// Step F2: the elm and the black alder have keys of their own (the norms of the ash-alder forest and the carr).
+		assertEquals("elm", ForestCensus.compositionKey(Species.ELM));
+		assertEquals("black_alder", ForestCensus.compositionKey(Species.BLACK_ALDER));
+		assertEquals("other", ForestCensus.compositionKey(Species.GRAY_ALDER));
 		assertEquals("other", ForestCensus.compositionKey(null));
 	}
 

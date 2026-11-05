@@ -259,6 +259,9 @@ public final class ModBlocks {
 				case TALL -> block(g.id(), DoublePlantBlock::new, BlockBehaviour.Properties.of().mapColor(MapColor.PLANT)
 						.replaceable().noCollision().instabreak().sound(SoundType.GRASS).offsetType(BlockBehaviour.OffsetType.XZ)
 						.ignitedByLava().pushReaction(PushReaction.POPPED));
+				case HERB -> block(g.id(), p -> new SeasonalHerbBlock(g, p), BlockBehaviour.Properties.of().mapColor(MapColor.PLANT)
+						.replaceable().noCollision().instabreak().sound(SoundType.GRASS).offsetType(BlockBehaviour.OffsetType.XZ)
+						.ignitedByLava().pushReaction(PushReaction.POPPED));
 			};
 			Item.Properties props = new Item.Properties().compostable(g.kind() == GroundPlant.Kind.TALL
 					? ContextIntProviders.COMPOSTABLE_MEDIUM : ContextIntProviders.COMPOSTABLE_LOW);

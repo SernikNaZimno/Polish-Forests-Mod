@@ -55,7 +55,11 @@ public final class ForestNorms {
 		FRESH_PINE_MANAGED("bór świeży gospodarczy", HabitatBiome.FRESH_PINE_FOREST, false),
 		FRESH_PINE_NATURAL("bór naturalny", HabitatBiome.FRESH_PINE_FOREST, true),
 		LOWLAND_BEECH_NATURAL("buczyna naturalna", HabitatBiome.LOWLAND_BEECH_FOREST, true),
-		LOWLAND_BEECH_MANAGED("buczyna gospodarcza", HabitatBiome.LOWLAND_BEECH_FOREST, false);
+		LOWLAND_BEECH_MANAGED("buczyna gospodarcza", HabitatBiome.LOWLAND_BEECH_FOREST, false),
+		ALDER_CARR_NATURAL("ols naturalny", HabitatBiome.ALDER_CARR, true),
+		ALDER_CARR_MANAGED("ols gospodarczy", HabitatBiome.ALDER_CARR, false),
+		ASH_ALDER_NATURAL("łęg jesionowo-olszowy naturalny", HabitatBiome.ASH_ALDER_FOREST, true),
+		ASH_ALDER_MANAGED("łęg jesionowo-olszowy gospodarczy", HabitatBiome.ASH_ALDER_FOREST, false);
 
 		private final String polishName;
 		private final HabitatBiome biome;
@@ -212,7 +216,7 @@ public final class ForestNorms {
 			"oak", List.of("oak", "sessile_oak"));
 	/** Composition keys of the card ({@code N3.<key>}): groups of {@link #GROUPS} or species ids, then {@code other}. */
 	public static final List<String> COMPOSITION_KEYS = List.of("oak", "linden", "maple_ash", "hornbeam", "spruce", "beech",
-			"scots_pine", "birch", "other");
+			"scots_pine", "birch", "black_alder", "elm", "other");
 
 	/**
 	 * A norm of the card.
@@ -285,6 +289,8 @@ public final class ForestNorms {
 		METRICS.put(COMPOSITION + "beech", "beech share of a1 trunks, %");
 		METRICS.put(COMPOSITION + "scots_pine", "Scots pine share of a1 trunks, %");
 		METRICS.put(COMPOSITION + "birch", "birch share of a1 trunks, %");
+		METRICS.put(COMPOSITION + "black_alder", "black alder share of a1 trunks, %");
+		METRICS.put(COMPOSITION + "elm", "elm share of a1 trunks, %");
 		METRICS.put(COMPOSITION + "other", "other or unknown species share of a1 trunks, %");
 		METRICS.put(CANOPY, "canopy closure: columns with leaves more than 2 blocks up, %");
 		METRICS.put(GAP_SHARE, "plot area in canopy gaps, %");
@@ -416,6 +422,7 @@ public final class ForestNorms {
 		wide(DEADWOOD_PER_CHUNK, fpn, 1, 1, deadwood + " (Taborz)");
 		wide(DEADWOOD_VOLUME, fpn, 50, 80, deadwood + " (Taborz)");
 		beechCard();
+		alderCard();
 		// N15 transect: the same for every forest of the transect (the transect crosses all four).
 		for (Forest f : Forest.values()) {
 			if (!f.transect()) {
@@ -470,6 +477,51 @@ public final class ForestNorms {
 		wide(PIECES_PER_CHUNK, bkm, 0.25, 0.25, managedDeadwood);
 		wide(STUMPS_PER_CHUNK, bkm, 1, 2, managedDeadwood);
 		wide(DEADWOOD_VOLUME, bkm, 10, 17, managedDeadwood);
+	}
+
+	/**
+	 * The card of the alder carr and the ash-alder forest (step F2, docs/04 "Projekt F2"): L 06 §4.5–4.6 and research 08
+	 * (Ribeso nigri-Alnetum: a1 black alder 80–100%, closure 60–80%, b 20–50%, c 60–90%; Fraxino-Alnetum: a1 alder
+	 * 50–90% with ash 10–40%, closure 70–90%, b 20–50% with the bird cherry, c 70–100%; mosses on the tussocks and logs),
+	 * the dead wood as the other broadleaved forests of the planner [S where noted].
+	 */
+	private static void alderCard() {
+		String card = "[L 06 §4.5–4.6; L 08]";
+		String deadwood = "[L 06 §4.3; PW-5 b; S]";
+		String managedDeadwood = "[Ź WISL 2010–2014; S]";
+		Forest[] carr = {Forest.ALDER_CARR_NATURAL, Forest.ALDER_CARR_MANAGED};
+		Forest[] ash = {Forest.ASH_ALDER_NATURAL, Forest.ASH_ALDER_MANAGED};
+		for (Forest f : carr) {
+			// N1 trunks per chunk: 400-800 trees per ha of the alder carr [S].
+			norm(TREES_PER_CHUNK, f, 8, 16, card + " [S]");
+			norm(COMPOSITION + "black_alder", f, 80, 100, card);
+			norm(CANOPY, f, 60, 80, card);
+			norm(UNDERSTORY, f, 20, 50, card);
+			norm(HERBS, f, 60, 90, card);
+			norm(HERBS_SPRING, f, 60, 90, card);
+			norm(MOSS, f, 10, 40, card + " [S]");
+		}
+		for (Forest f : ash) {
+			norm(TREES_PER_CHUNK, f, 8, 16, card + " [S]");
+			norm(COMPOSITION + "black_alder", f, 50, 90, card);
+			// The ash in the group of the maples and the ash (no maple in the ash-alder forest).
+			norm(COMPOSITION + "maple_ash", f, 10, 40, card);
+			norm(CANOPY, f, 70, 90, card);
+			norm(UNDERSTORY, f, 20, 50, card);
+			norm(HERBS, f, 70, 100, card);
+			norm(HERBS_SPRING, f, 70, 100, card);
+			norm(MOSS, f, 5, 20, card + " [S]");
+		}
+		// N10 dead wood.
+		wide(DEADWOOD_PER_CHUNK, Forest.ALDER_CARR_NATURAL, 1.6, 1.6, deadwood);
+		wide(DEADWOOD_VOLUME, Forest.ALDER_CARR_NATURAL, 60, 120, deadwood);
+		wide(DEADWOOD_PER_CHUNK, Forest.ASH_ALDER_NATURAL, 1.8, 1.8, deadwood);
+		wide(DEADWOOD_VOLUME, Forest.ASH_ALDER_NATURAL, 70, 140, deadwood);
+		for (Forest f : new Forest[] {Forest.ALDER_CARR_MANAGED, Forest.ASH_ALDER_MANAGED}) {
+			wide(PIECES_PER_CHUNK, f, 0.2, 0.25, managedDeadwood);
+			wide(STUMPS_PER_CHUNK, f, 1, 2, managedDeadwood);
+			wide(DEADWOOD_VOLUME, f, 8, 16, managedDeadwood);
+		}
 	}
 
 	private static void norm(String metric, Forest forest, double min, double max, String source) {

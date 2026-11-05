@@ -106,6 +106,10 @@ public final class DeadwoodPlan {
 			case SPRUCE -> new double[] {0.30, 0.30, 0.05, 0.35};
 			case BIRCH -> new double[] {0.40, 0.20, 0.35, 0.05};
 			case NORWAY_MAPLE -> new double[] {0.55, 0.20, 0.15, 0.10};
+			// Step F2: the soft alder wood breaks and rots standing in the wet carr; elms die standing of the Dutch elm
+			// disease.
+			case BLACK_ALDER -> new double[] {0.45, 0.25, 0.20, 0.10};
+			case ELM -> new double[] {0.35, 0.40, 0.15, 0.10};
 			default -> new double[] {0.60, 0.15, 0.15, 0.10};
 		};
 	}
@@ -260,6 +264,7 @@ public final class DeadwoodPlan {
 			case SPRUCE -> new double[] {0.5, 0.9};
 			case BIRCH -> new double[] {0.25, 0.5};
 			case ASH -> new double[] {0.6, 0.85};
+			case ELM -> new double[] {0.5, 0.8};
 			default -> new double[] {0.3, 0.65};
 		};
 		double frac = range[0] + (range[1] - range[0]) * rnd.next();

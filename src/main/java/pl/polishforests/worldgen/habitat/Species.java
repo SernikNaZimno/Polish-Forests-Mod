@@ -35,7 +35,9 @@ public enum Species {
 	JUNIPER("juniper", true, -1),
 	IVY("ivy", true, -1),
 	/** Alder buckthorn, Frangula alnus (the shrub layer of the pine forests, step V9). */
-	ALDER_BUCKTHORN("alder_buckthorn", true, -1);
+	ALDER_BUCKTHORN("alder_buckthorn", true, -1),
+	/** Bird cherry, Prunus padus (the shrub layer and a2 of the ash-alder and alder forests, step F2). */
+	BIRD_CHERRY("bird_cherry", true, -1);
 
 	/** Species flags in the habitat code: bit 0 beech, 1 fir, 2 native spruce, 3 hornbeam. */
 	public static final int FLAG_BEECH = 1;

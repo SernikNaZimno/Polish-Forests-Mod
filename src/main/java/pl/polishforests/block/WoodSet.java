@@ -34,7 +34,13 @@ public enum WoodSet {
 			new int[] {0x8f7b58, 0xb19c76, 0xbfaa83, 0xcbb68f, 0xd6c29b}, 1.15, 0),
 	/** Norway maple: creamy white with a faint pink cast, a fine even grain. */
 	NORWAY_MAPLE("norway_maple", TreeTrunk.NORWAY_MAPLE, StrippedTrunk.NORWAY_MAPLE, "Norway Maple", "klonow", "oak_planks",
-			new int[] {0x9c8770, 0xbea891, 0xcab59d, 0xd4c0a8, 0xddcab2}, 0.85, 1);
+			new int[] {0x9c8770, 0xbea891, 0xcab59d, 0xd4c0a8, 0xddcab2}, 0.85, 1),
+	/** Black alder (step F2): pale reddish brown to orange-brown, soft, an even fine texture without a heartwood. */
+	BLACK_ALDER("black_alder", TreeTrunk.BLACK_ALDER, StrippedTrunk.BLACK_ALDER, "Alder", "olchow", "oak_planks",
+			new int[] {0x8a5a40, 0xab7a5c, 0xb98868, 0xc49473, 0xcea07e}, 0.80, 1),
+	/** Elm (step F2): a brown heartwood with a lighter sapwood, a coarse, ring-porous and wavy grain. */
+	ELM("elm", TreeTrunk.ELM, StrippedTrunk.ELM, "Elm", "wiązow", "oak_planks",
+			new int[] {0x6f5238, 0x8f6e4f, 0x9e7c5b, 0xab8966, 0xb89672}, 1.20, 1);
 
 	private final String prefix;
 	private final TreeTrunk trunk;

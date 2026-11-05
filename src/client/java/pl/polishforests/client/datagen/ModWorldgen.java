@@ -98,6 +98,10 @@ final class ModWorldgen {
 		// territory), apart from tree/<species> (a lone mature tree, step V9; decision V7-a). Step S1: one feature per size
 		// of the sapling's tree (SaplingSize); the small one keeps the path of V7, sapling/<species>.
 		for (TreeFoliage f : TreeFoliage.values()) {
+			if (f.shrub()) {
+				// Step F2: the sapling of a shrub (the bird cherry) grows into the shrub (ModTrees).
+				continue;
+			}
 			for (SaplingSize s : SaplingSize.values()) {
 				context.register(feature(f.featurePath(s)), new ProceduralTreeFeature(f.species(), CrownLayer.CANOPY, s.age(),
 						s.factors(f.species())));

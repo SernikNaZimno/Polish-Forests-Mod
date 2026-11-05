@@ -179,6 +179,65 @@ public final class TreeMoss {
 		return 0;
 	}
 
+	/** Tussock cells written (diagnostics for the game tests, step F2). */
+	public static final LongAdder TUSSOCKS = new LongAdder();
+	/** Salt of the tussock draws ({@code feature.ground.tussock}, a new salt of step F2, ZW-2). */
+	static final long TUSSOCK_SALT = 0x3B9F_0C27_D16A_E845L;
+	/** Chance of a tussock cell at a trunk corner (the four cells beside the trunk walls always are one). */
+	static final double TUSSOCK_CORNER = 0.5;
+	/** Chance of the moss carpet on a tussock cell, else of the tussock sedge (and else nothing). */
+	static final double TUSSOCK_MOSS = 0.6;
+	static final double TUSSOCK_SEDGE = 0.6;
+
+	/**
+	 * Step F2: the tussock at the base of a black alder of a natural stand of the alder carr (written before the moss of
+	 * {@link #write}): the free cells beside the trunk walls and some at its corners, at the level of the trunk base and
+	 * over the sturdy top of soil, become rooted dirt (a raised base of soil and roots, the wood and the flares of the
+	 * tree untouched), each covered with the forest moss carpet or the tussock sedge. A decoration of the tree, not a
+	 * change of the terrain: the ground of the column below stays as it is. The draws come from a hash of the world seed
+	 * and the cell, so the tussock is a pure function of the tree; neighboring alders write the same blocks into a shared
+	 * cell. Returns the tussock cells written.
+	 */
+	public static int tussock(WorldGenLevel level, int x, int y, int z, long worldSeed) {
+		BlockPos.MutableBlockPos at = new BlockPos.MutableBlockPos();
+		BlockPos.MutableBlockPos below = new BlockPos.MutableBlockPos();
+		BlockState rooted = Blocks.ROOTED_DIRT.defaultBlockState();
+		BlockState moss = ModBlocks.forestMossCarpet().defaultBlockState();
+		BlockState sedge = ModBlocks.ground(pl.polishforests.block.GroundPlant.TUSSOCK_SEDGE).defaultBlockState();
+		int written = 0;
+		for (int dx = -1; dx <= 1; dx++) {
+			for (int dz = -1; dz <= 1; dz++) {
+				if (dx == 0 && dz == 0 || dx != 0 && dz != 0 && unit(worldSeed, x + dx, z + dz, TUSSOCK_SALT) >= TUSSOCK_CORNER) {
+					continue;
+				}
+				at.set(x + dx, y, z + dz);
+				below.setWithOffset(at, Direction.DOWN);
+				BlockState ground = level.getBlockState(below);
+				if (!free(level.getBlockState(at)) || !ground.is(BlockTags.DIRT) || !ground.isFaceSturdy(level, below, Direction.UP)) {
+					continue;
+				}
+				level.setBlock(at, rooted, 2);
+				written++;
+				at.move(Direction.UP);
+				if (!level.getBlockState(at).isAir()) {
+					continue;
+				}
+				double u = unit(worldSeed, x + dx, z + dz, TUSSOCK_SALT + 1);
+				if (u < TUSSOCK_MOSS) {
+					level.setBlock(at, moss, 2);
+				} else if ((u - TUSSOCK_MOSS) / (1 - TUSSOCK_MOSS) < TUSSOCK_SEDGE) {
+					level.setBlock(at, sedge, 2);
+				}
+			}
+		}
+		TUSSOCKS.add(written);
+		return written;
+	}
+
+	private static double unit(long worldSeed, int x, int z, long salt) {
+		return (Noise.mix(worldSeed ^ Noise.mix(x * 0x9E37_79B9_7F4A_7C15L + z * 0xC2B2_AE3D_27D4_EB4FL + salt)) >>> 11) * 0x1.0p-53;
+	}
+
 	/** Air or a single-block plant that trees replace (not leaves, not a double plant, no fluid; the own moss carpet too). */
 	private static boolean free(BlockState s) {
 		return s.isAir() || s.is(BlockTags.REPLACEABLE_BY_TREES) && !s.is(BlockTags.LEAVES)

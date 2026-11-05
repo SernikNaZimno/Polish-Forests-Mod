@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/button",
+  "textures": {
+    "texture": "polishforests:block/black_alder_planks"
+  }
+}

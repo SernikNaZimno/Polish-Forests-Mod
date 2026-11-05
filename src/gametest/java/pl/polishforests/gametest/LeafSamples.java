@@ -188,7 +188,10 @@ final class LeafSamples {
 					level.setBlock(new BlockPos(x0 + 4, y0 + y, SWATCH_Z + 8), leaf.setValue(MarcescentLeavesBlock.MARCESCENT, true), 2);
 				}
 			}
-			ProceduralTreeFeature f = new ProceduralTreeFeature(all[i].species(), CrownLayer.CANOPY, AgeClass.MATURE);
+			// Step F2: a shrub (the bird cherry) as the large shrub of its sapling, not a tree of the planner.
+			Feature f = all[i].shrub() ? level.registryAccess().lookupOrThrow(Registries.FEATURE).getValueOrThrow(
+					ModBlocks.sapling(all[i]).feature(SaplingSize.LARGE))
+					: new ProceduralTreeFeature(all[i].species(), CrownLayer.CANOPY, AgeClass.MATURE);
 			if (!f.place(level, level.getChunkSource().getGenerator(), level.getRandom(), new BlockPos(i * TREE_STEP, y0, TREE_Z))) {
 				fail("mature %s tree not placed", all[i].species().id());
 			}
@@ -227,6 +230,14 @@ final class LeafSamples {
 				fail("%s sapling grew %s instead of the small tree", all[i].species().id(), size);
 			}
 			Feature feature = level.registryAccess().lookupOrThrow(Registries.FEATURE).getValueOrThrow(sapling.feature());
+			if (all[i].shrub()) {
+				// Step F2: the sapling of a shrub grows into the shrub (a vanilla tree feature of thin stems).
+				if (!(level.getBlockState(pos).getBlock() instanceof pl.polishforests.block.TrunkBlock)) {
+					fail("%s sapling grew no shrub stem (%s)", all[i].species().id(), level.getBlockState(pos));
+				}
+				grown++;
+				continue;
+			}
 			if (!(feature instanceof ProceduralTreeFeature tree)) {
 				fail("%s: %s is not a procedural tree", all[i].species().id(), sapling.feature().identifier());
 				continue;

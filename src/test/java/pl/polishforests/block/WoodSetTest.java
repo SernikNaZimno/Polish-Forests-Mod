@@ -79,10 +79,15 @@ class WoodSetTest {
 			assertSame(ModBlocks.wood(set).log(), set.trunk().log(), set.toString());
 			assertSame(ModBlocks.wood(set).strippedLog(), set.stripped().log(), set.toString());
 			assertEquals(set.species(), set.stripped().species());
-			// The generation writes the vanilla full logs as before P2 (P2-c).
+			// The generation writes the vanilla full logs as before P2 (P2-c); the species of step F2, which had no
+			// generation before, write their own logs (F2-d).
 			Block full = ProceduralTreeFeature.wood(set.species(), TreeVoxels.LOWER, TreeVoxels.FULL, net.minecraft.core.Direction.UP).getBlock();
 			assertSame(set.trunk().fullLog(), full);
-			assertNotSame(ModBlocks.wood(set).log(), full);
+			if (set == WoodSet.BLACK_ALDER || set == WoodSet.ELM) {
+				assertSame(ModBlocks.wood(set).log(), full, set.toString());
+			} else {
+				assertNotSame(ModBlocks.wood(set).log(), full);
+			}
 		}
 		assertSame(Blocks.PALE_OAK_LOG, TreeTrunk.HORNBEAM.fullLog());
 		assertSame(Blocks.OAK_LOG, TreeTrunk.ASH.fullLog());

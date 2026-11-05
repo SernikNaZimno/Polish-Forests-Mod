@@ -239,15 +239,31 @@
       "biomes": [
         "alder_carr"
       ],
-      "coverage": 0.0013671875,
+      "coverage": 0.012109375,
       "plants": [
         {
-          "feature": "polishforests:deadwood_substitute/black_alder",
-          "weight": 8
+          "feature": "polishforests:deadwood/black_alder",
+          "weight": 14
         },
         {
-          "feature": "polishforests:deadwood_substitute/birch",
+          "feature": "polishforests:deadwood/birch",
+          "weight": 4
+        },
+        {
+          "feature": "polishforests:deadwood/ash",
           "weight": 2
+        },
+        {
+          "feature": "polishforests:stump/black_alder",
+          "weight": 17
+        },
+        {
+          "feature": "polishforests:stump/birch",
+          "weight": 2
+        },
+        {
+          "feature": "polishforests:stump/ash",
+          "weight": 1
         }
       ]
     },
@@ -255,15 +271,31 @@
       "biomes": [
         "ash_alder_forest"
       ],
-      "coverage": 0.001171875,
+      "coverage": 0.012890625,
       "plants": [
         {
-          "feature": "polishforests:deadwood_substitute/black_alder",
+          "feature": "polishforests:deadwood/black_alder",
+          "weight": 10
+        },
+        {
+          "feature": "polishforests:deadwood/ash",
           "weight": 7
         },
         {
-          "feature": "polishforests:deadwood_substitute/oak",
+          "feature": "polishforests:deadwood/elm",
           "weight": 3
+        },
+        {
+          "feature": "polishforests:stump/black_alder",
+          "weight": 12
+        },
+        {
+          "feature": "polishforests:stump/ash",
+          "weight": 4
+        },
+        {
+          "feature": "polishforests:stump/elm",
+          "weight": 1
         }
       ]
     },

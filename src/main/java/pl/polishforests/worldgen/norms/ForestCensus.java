@@ -129,7 +129,8 @@ public final class ForestCensus {
 	/** The herb layer of step V12 (own blocks, decision PW-6). */
 	public static final Set<String> OWN_HERB_PLANTS = Set.of("polishforests:bilberry", "polishforests:wood_anemone",
 			"polishforests:hepatica", "polishforests:bracken", "polishforests:sweet_woodruff", "polishforests:hairy_wood_rush",
-			"polishforests:wood_sorrel", "polishforests:coralroot");
+			"polishforests:wood_sorrel", "polishforests:coralroot", "polishforests:marsh_marigold", "polishforests:yellow_iris",
+			"polishforests:tussock_sedge", "polishforests:marsh_fern", "polishforests:nettle");
 	/**
 	 * Spring geophytes: part of the herb layer in spring only (the client shows nothing from early summer, PW-8 (a), N12);
 	 * liverleaf keeps its leaves all year. Step F1: the coralroot (gone from mid-June); the sweet woodruff keeps its leaves

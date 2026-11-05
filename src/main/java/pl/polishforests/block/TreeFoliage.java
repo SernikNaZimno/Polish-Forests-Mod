@@ -22,7 +22,13 @@ public enum TreeFoliage {
 	LINDEN(Species.LINDEN, "Small-leaved Linden", "lipy drobnolistnej"),
 	BEECH(Species.BEECH, "European Beech", "buka zwyczajnego"),
 	ASH(Species.ASH, "European Ash", "jesionu wyniosłego"),
-	NORWAY_MAPLE(Species.NORWAY_MAPLE, "Norway Maple", "klonu zwyczajnego");
+	NORWAY_MAPLE(Species.NORWAY_MAPLE, "Norway Maple", "klonu zwyczajnego"),
+	/** Step F2. */
+	BLACK_ALDER(Species.BLACK_ALDER, "Black Alder", "olszy czarnej"),
+	/** Step F2. */
+	ELM(Species.ELM, "Elm", "wiązu"),
+	/** Step F2: the leaves and sapling of the bird cherry shrub (its sapling grows into the shrub, not a planner tree). */
+	BIRD_CHERRY(Species.BIRD_CHERRY, "Bird Cherry", "czeremchy zwyczajnej");
 
 	private final Species species;
 	private final String englishName;
@@ -58,6 +64,11 @@ public enum TreeFoliage {
 	/** The configured feature of a size of the sapling's tree (step S1): {@code polishforests:sapling/<species>[/<size>]}. */
 	public String featurePath(SaplingSize size) {
 		return size.featurePath(species.id());
+	}
+
+	/** A shrub (step F2: the bird cherry): its sapling grows into the shrub's feature, not a tree of the planner. */
+	public boolean shrub() {
+		return species.shrub();
 	}
 
 	/** Needle-leaved: the Scots pine and the Norway spruce. */

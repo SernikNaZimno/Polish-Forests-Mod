@@ -97,7 +97,10 @@ class FoliageCurveTest {
 
 	@Test
 	void everySliceSpeciesHasACurve() {
-		assertEquals(SpeciesShape.species(), FoliageCurve.species());
+		// The planner's trees and, from step F2, the bird cherry (a shrub of the slice with leaves in phases).
+		List<Species> expected = new ArrayList<>(SpeciesShape.species());
+		expected.add(Species.BIRD_CHERRY);
+		assertEquals(expected, new ArrayList<>(FoliageCurve.species()));
 		for (Species s : FoliageCurve.species()) {
 			for (int step = 0; step < SeasonPhase.STEPS; step++) {
 				for (int p = 0; p < FoliageCurve.PHASES; p++) {

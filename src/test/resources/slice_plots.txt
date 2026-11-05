@@ -17,6 +17,14 @@ realistic natural any lowland_beech_natural_1 lowland_beech_forest -7793 -9133
 realistic natural any lowland_beech_natural_2 lowland_beech_forest 40787 8501
 realistic managed any lowland_beech_managed_1 lowland_beech_forest -1184 -1568
 realistic managed any lowland_beech_managed_2 lowland_beech_forest -1084 -1728
+realistic natural any alder_carr_natural_1 alder_carr 2339 29627
+realistic natural any alder_carr_natural_2 alder_carr -26609 14052
+realistic managed any alder_carr_managed_1 alder_carr 8581 675
+realistic managed any alder_carr_managed_2 alder_carr 8861 635
+realistic natural any ash_alder_natural_1 ash_alder_forest 7917 1191
+realistic natural any ash_alder_natural_2 ash_alder_forest 7997 971
+realistic managed any ash_alder_managed_1 ash_alder_forest 8137 571
+realistic managed any ash_alder_managed_2 ash_alder_forest 8237 471
 gameplay natural any oak_hornbeam_natural_1 oak_hornbeam_forest -1785 886
 gameplay natural any oak_hornbeam_natural_2 oak_hornbeam_forest 1750 4061
 gameplay managed any oak_hornbeam_managed_1 oak_hornbeam_forest -1825 746
@@ -31,3 +39,5 @@ gameplay natural any lowland_beech_natural_1 lowland_beech_forest -2004 -3609
 gameplay natural any lowland_beech_natural_2 lowland_beech_forest -4167 4636
 gameplay managed any lowland_beech_managed_1 lowland_beech_forest 1217 3133
 gameplay managed any lowland_beech_managed_2 lowland_beech_forest -1884 -3369
+gameplay managed any alder_carr_managed_1 alder_carr -5971 1387
+gameplay managed any alder_carr_managed_2 alder_carr -5122 -2648

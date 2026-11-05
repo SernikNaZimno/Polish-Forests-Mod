@@ -79,7 +79,7 @@ final class ModTrees {
 	static final List<Species> PROCEDURAL = TREES.stream().filter(SpeciesShape::supported).toList();
 	/** Species with a shrub feature (ivy is a climber, from M4). */
 	static final List<Species> SHRUBS = List.of(Species.DWARF_MOUNTAIN_PINE, Species.OSIER, Species.HAZEL, Species.JUNIPER,
-			Species.ALDER_BUCKTHORN);
+			Species.ALDER_BUCKTHORN, Species.BIRD_CHERRY);
 	/** Tree variants picked by the palettes. */
 	static final String SCOTS_PINE_LOW = "tree_substitute/scots_pine_low";
 	static final String SPRUCE_STUNTED = "tree_substitute/spruce_stunted";
@@ -98,7 +98,8 @@ final class ModTrees {
 	 * keep their placeholders.
 	 */
 	static final Map<Species, String> SLICE = Map.of(Species.HAZEL, "shrub/hazel_thin", Species.JUNIPER, "shrub/juniper_thin",
-			Species.ALDER_BUCKTHORN, "shrub/alder_buckthorn_thin", Species.ROWAN, "tree_substitute/rowan_thin");
+			Species.ALDER_BUCKTHORN, "shrub/alder_buckthorn_thin", Species.ROWAN, "tree_substitute/rowan_thin",
+			Species.BIRD_CHERRY, "shrub/bird_cherry_thin");
 	/** The taller hazel of the forest mantle of the slice (shrubs of 3-5 blocks along the forest edge). */
 	static final String HAZEL_MANTLE = "shrub/hazel_mantle_thin";
 
@@ -163,6 +164,18 @@ final class ModTrees {
 		// bottom row (no flat ceiling of leaves at head height).
 		register(context, key(SLICE.get(Species.ROWAN)), thinShrub(TreeTrunk.BEECH, 2, new StraightTrunkPlacer(5, 1, 0),
 				Blocks.OAK_LEAVES, new FancyFoliagePlacer(ConstantInt.of(1), ConstantInt.of(0), 3), soil));
+		// Step F2: the bird cherry of the shrub layer and a2 of the alder forests, a tall shrub of 5-7 blocks of two or three
+		// thin stems (the dark bark of the black alder) with a loose crown of its own leaves (phase and leaf curve).
+		register(context, key(SLICE.get(Species.BIRD_CHERRY)), birdCherry(5, 2, 2, soil));
+		// Its sapling grows into a smaller or a larger shrub of the same form (step S1: three sizes).
+		for (pl.polishforests.block.SaplingSize z : pl.polishforests.block.SaplingSize.values()) {
+			int[] h = switch (z) {
+				case SMALL -> new int[] {3, 1, 1};
+				case MEDIUM -> new int[] {4, 2, 2};
+				case LARGE -> new int[] {6, 2, 2};
+			};
+			register(context, key(pl.polishforests.block.TreeFoliage.BIRD_CHERRY.featurePath(z)), birdCherry(h[0], h[1], h[2], soil));
+		}
 		register(context, key(OAK_FANCY), fancy(Blocks.OAK_LOG, soil));
 		register(context, key(OAK_SMALL), blob(Blocks.OAK_LOG, Blocks.OAK_LEAVES, 4, 2, 0, 2, soil));
 		register(context, key(BIRCH_SMALL), blob(Blocks.BIRCH_LOG, Blocks.BIRCH_LEAVES, 5, 2, 0, 2, soil));
@@ -263,8 +276,18 @@ final class ModTrees {
 			// Alder buckthorn (step V9, the shrub layer of the pine forests): 1-2 dark stems and a loose crown of radius 2.
 			case ALDER_BUCKTHORN -> bush(Blocks.DARK_OAK_LOG, new StraightTrunkPlacer(1, 1, 0), Blocks.DARK_OAK_LEAVES,
 					new BushFoliagePlacer(ConstantInt.of(2), ConstantInt.of(1), 2), soil);
+			// Bird cherry (step F2): the placeholder of the forests outside the slice, 2-3 logs with a crown of radius 2.
+			case BIRD_CHERRY -> bush(Blocks.DARK_OAK_LOG, new StraightTrunkPlacer(2, 1, 0), Blocks.OAK_LEAVES,
+					new BushFoliagePlacer(ConstantInt.of(2), ConstantInt.of(1), 2), soil);
 			default -> throw new IllegalArgumentException("not a shrub: " + species);
 		};
+	}
+
+	/** The bird cherry of step F2: {@code stems} side stems of a stem of {@code base} + 0…{@code rand} blocks. */
+	private static TreeFeature birdCherry(int base, int rand, int stems, Holder<BlockStateProvider> soil) {
+		return thinShrub(TreeTrunk.BLACK_ALDER, 1, new ClumpTrunkPlacer(base, rand, 0, stems),
+				ModBlocks.leaves(pl.polishforests.block.TreeFoliage.BIRD_CHERRY),
+				new FancyFoliagePlacer(ConstantInt.of(2), ConstantInt.of(0), 3), soil);
 	}
 
 	/** A placeholder of the slice on a thin stem: the thin trunk block of radius {@code radius} px, growing up. */

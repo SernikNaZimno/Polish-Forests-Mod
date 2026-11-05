@@ -1,0 +1,13 @@
+{
+  "variants": {
+    "type=bottom": {
+      "model": "polishforests:block/black_alder_slab"
+    },
+    "type=double": {
+      "model": "polishforests:block/black_alder_planks"
+    },
+    "type=top": {
+      "model": "polishforests:block/black_alder_slab_top"
+    }
+  }
+}

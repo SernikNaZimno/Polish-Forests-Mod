@@ -18,7 +18,11 @@ public enum RootFlare {
 	LINDEN(TreeTrunk.LINDEN),
 	BEECH(TreeTrunk.BEECH),
 	ASH(TreeTrunk.ASH),
-	NORWAY_MAPLE(TreeTrunk.NORWAY_MAPLE);
+	NORWAY_MAPLE(TreeTrunk.NORWAY_MAPLE),
+	/** Step F2. */
+	BLACK_ALDER(TreeTrunk.BLACK_ALDER),
+	/** Step F2: the elm's buttresses (Ulmus laevis builds plank buttresses on wet ground). */
+	ELM(TreeTrunk.ELM);
 
 	private final TreeTrunk trunk;
 

@@ -87,6 +87,11 @@ public final class TreeShapePlan {
 	 * so their bottoms made a flat ceiling of leaves just above head height across the view.
 	 */
 	public static final String LOWER_SHORT_SALT = "feature.tree.layers.lower_short";
+	/**
+	 * Salt of the stool draw ({@code feature.tree.stool}, a new salt of step F2, ZW-2): whether a tree grows as several
+	 * stems from one stool ({@link SpeciesShape#stoolChance}).
+	 */
+	public static final long STOOL_SALT = 0x7A1D_3C55_9E0B_42F1L;
 	/** Largest horizontal distance of a block from the trunk column: the write window of 3 × 3 chunks. */
 	public static final int REACH = CrownTerritories.MAX_REACH;
 	/** Largest height of a block above the trunk base (exclusive). */
@@ -345,6 +350,9 @@ public final class TreeShapePlan {
 		private int skirtBins;
 		private int skirtFirst;
 		private int skirtEnd;
+		/** Nodes of the coppice stems of a stool ({@link #stool}), whose limbs rise from the base through the lower layers. */
+		private int stoolFirst;
+		private int stoolEnd;
 		// Skeleton nodes; a node stands for the segment from its parent to it.
 		private int nodes;
 		private float[] nx = new float[256];
@@ -823,6 +831,65 @@ public final class TreeShapePlan {
 			}
 			skirt();
 			stubs();
+			stool();
+		}
+
+		/**
+		 * Step F2: the coppice stems of a tree on a stool ({@link SpeciesShape#stoolChance}; the black alder of a stand,
+		 * not a lone tree or the regeneration): one or two more stems beside the trunk base, each from a one-block jog at
+		 * the base along an axis, then upright to 75-92% of the height with one more jog outwards on the way (the stems of
+		 * a stool part slightly), with lateral branches above the crown base and a leaf cluster at the top. The draw of
+		 * the stool comes from its own salt and the stems' draws after every other one, so a tree without a stool is
+		 * unchanged.
+		 */
+		private void stool() {
+			stoolFirst = nodes;
+			stoolEnd = nodes;
+			double chance = SpeciesShape.stoolChance(request.species());
+			if (chance <= 0 || request.openGrown() || request.layer() == CrownLayer.REGENERATION) {
+				return;
+			}
+			double u = (noise.hash(request.x(), request.z(), STOOL_SALT) >>> 11) * 0x1.0p-53;
+			if (u >= chance) {
+				return;
+			}
+			int stems = u < 0.35 * chance ? 2 : 1;
+			double phase = range(0, 2 * Math.PI);
+			double azimuth = range(0, 2 * Math.PI);
+			int used = -1;
+			for (int j = 0; j < stems; j++) {
+				double a = phase + j * Math.PI * range(0.8, 1.2);
+				double c = StrictMath.cos(a);
+				double sn = StrictMath.sin(a);
+				int dx = Math.abs(c) >= Math.abs(sn) ? (int) Math.signum(c) : 0;
+				int dz = dx == 0 ? (int) Math.signum(sn) : 0;
+				int side = col(dx, dz);
+				if (side == used || !woodAt(dx, dz)) {
+					continue;
+				}
+				used = side;
+				int first = nodes;
+				double x = dx;
+				double z = dz;
+				int parent = node(0, x, 0, z, LIMB);
+				double end = Math.max(2, top * range(0.75, 0.92));
+				double jogAt = range(3, 6);
+				boolean jogged = false;
+				double y = 0;
+				while (y < end) {
+					y = Math.min(y + 1, end);
+					parent = node(parent, x, y, z, LIMB);
+					if (!jogged && y >= jogAt && y < end && woodAt(x + dx, z + dz)) {
+						x += dx;
+						z += dz;
+						parent = node(parent, x, y, z, LIMB);
+						jogged = true;
+					}
+				}
+				leafAt(parent, leafH * 0.85, leafV * 1.1);
+				azimuth = laterals(first, parent, azimuth, a);
+			}
+			stoolEnd = nodes;
 		}
 
 		/**
@@ -1492,6 +1559,10 @@ public final class TreeShapePlan {
 			}
 			if (i >= skirtFirst && i < skirtEnd && Math.max(Math.abs(x), Math.abs(z)) <= 2) {
 				// A low branch of an edge tree leaves the trunk below the layer's surface, like a dry stub.
+				return true;
+			}
+			if (nKind[i] == LIMB && i >= stoolFirst && i < stoolEnd) {
+				// A coppice stem of a stool rises from the base like the trunk (step F2).
 				return true;
 			}
 			return nKind[i] == TRUNK || nKind[i] == STUB || y >= floorY[c];

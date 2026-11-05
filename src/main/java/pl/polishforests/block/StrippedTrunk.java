@@ -27,7 +27,11 @@ public enum StrippedTrunk {
 	LINDEN(TreeTrunk.LINDEN, MapColor.SAND),
 	BEECH(TreeTrunk.BEECH, MapColor.TERRACOTTA_WHITE),
 	ASH(TreeTrunk.ASH, MapColor.SAND),
-	NORWAY_MAPLE(TreeTrunk.NORWAY_MAPLE, MapColor.SAND);
+	NORWAY_MAPLE(TreeTrunk.NORWAY_MAPLE, MapColor.SAND),
+	/** Step F2: black alder, the bare wood orange-red when fresh, pale reddish brown. */
+	BLACK_ALDER(TreeTrunk.BLACK_ALDER, MapColor.TERRACOTTA_ORANGE),
+	/** Step F2: elm, light brown sapwood. */
+	ELM(TreeTrunk.ELM, MapColor.WOOD);
 
 	private final TreeTrunk trunk;
 	private final MapColor mapColor;
@@ -75,7 +79,8 @@ public enum StrippedTrunk {
 			case BEECH -> ModBlocks.wood(WoodSet.BEECH).strippedLog();
 			case ASH -> ModBlocks.wood(WoodSet.ASH).strippedLog();
 			case NORWAY_MAPLE -> ModBlocks.wood(WoodSet.NORWAY_MAPLE).strippedLog();
-
+			case BLACK_ALDER -> ModBlocks.wood(WoodSet.BLACK_ALDER).strippedLog();
+			case ELM -> ModBlocks.wood(WoodSet.ELM).strippedLog();
 		};
 	}
 

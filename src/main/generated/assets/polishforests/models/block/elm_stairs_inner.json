@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/inner_stairs",
+  "textures": {
+    "bottom": "polishforests:block/elm_planks",
+    "side": "polishforests:block/elm_planks",
+    "top": "polishforests:block/elm_planks"
+  }
+}

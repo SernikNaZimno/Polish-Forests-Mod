@@ -45,23 +45,32 @@ public final class ForestBlend {
 	/**
 	 * The forests of the blend, the forests with the trees of the tree planner (step F1): the zonal forests of the slice
 	 * transect Bśw → BMśw → LMśw → grąd (docs/04 §6, N15; {@link #TRANSECT}, their indices 0–3 kept), then the forests of
-	 * the steps F in their order (F1: the lowland beech forest). Each step F appends its forests here, takes them off
-	 * {@link #NEIGHBORS} and names their pairs in {@link #BLENDS}.
+	 * the steps F in their order (F1: the lowland beech forest; F2: the alder carr and the ash-alder forest). Each step F
+	 * appends its forests here, takes them off {@link #NEIGHBORS} and names their pairs in {@link #BLENDS}.
 	 */
 	public static final HabitatBiome[] FORESTS = {HabitatBiome.FRESH_PINE_FOREST, HabitatBiome.MIXED_PINE_FOREST,
-			HabitatBiome.MIXED_FOREST, HabitatBiome.OAK_HORNBEAM_FOREST, HabitatBiome.LOWLAND_BEECH_FOREST};
+			HabitatBiome.MIXED_FOREST, HabitatBiome.OAK_HORNBEAM_FOREST, HabitatBiome.LOWLAND_BEECH_FOREST,
+			HabitatBiome.ALDER_CARR, HabitatBiome.ASH_ALDER_FOREST};
 	/** The forests of the slice transect, the first four of {@link #FORESTS} (norm N15, {@code TransectPalettes}). */
 	public static final HabitatBiome[] TRANSECT = java.util.Arrays.copyOf(FORESTS, 4);
 	/** Index of the lowland beech forest in {@link #FORESTS} (step F1). */
 	public static final int BEECH = 4;
+	/** Indices of the alder carr and the ash-alder forest in {@link #FORESTS} (step F2). */
+	public static final int ALDER_CARR = 5;
+	public static final int ASH_ALDER = 6;
 	/**
 	 * Pairs of {@link #FORESTS} that mix in the blend's belt (bit b of entry a); the other pairs meet in the ramp of
 	 * {@link Ecotone}. The four forests of the transect all blend with each other (step Z1); the lowland beech forest (step
 	 * F1, rule Z10) with the oak-hornbeam, the mixed and the mixed pine-oak forest (its neighbors on the fertile and the
-	 * moderately fertile sites), not with the fresh pine forest (a sharp change of the site, the ramp).
+	 * moderately fertile sites), not with the fresh pine forest (a sharp change of the site, the ramp). Step F2: the alder
+	 * carr with the ash-alder forest and the forests of the transect around the wet hollows (the alder and the birch pass
+	 * into the pine and oak forests over the belt, rule Z10: only the edge of the water stays sharp), the ash-alder forest
+	 * with the alder carr, the mixed pine-oak, the mixed and the oak-hornbeam forest and the beech forest of the stream
+	 * valleys; the carr and the beech forest, and the ash-alder and the fresh pine forest, meet in the ramp.
 	 */
 	private static final int[] BLENDS = pairs(new int[][] {{0, 1}, {0, 2}, {0, 3}, {1, 2}, {1, 3}, {2, 3}, {BEECH, 3},
-			{BEECH, 2}, {BEECH, 1}});
+			{BEECH, 2}, {BEECH, 1}, {ALDER_CARR, ASH_ALDER}, {ALDER_CARR, 0}, {ALDER_CARR, 1}, {ALDER_CARR, 2}, {ALDER_CARR, 3},
+			{ASH_ALDER, 1}, {ASH_ALDER, 2}, {ASH_ALDER, 3}, {ASH_ALDER, BEECH}});
 	/** Radius of the kernel (m·k). */
 	public static final double RADIUS = 48;
 	/** Spacing of the lattice (m·k); in blocks at least 2. */
@@ -72,12 +81,12 @@ public final class ForestBlend {
 	public static final long DRAW_SALT = 0x2B1E_7D5F_0C39L;
 	/**
 	 * Lowland woodlands next to the forests of {@link #FORESTS} whose trees those forests take over near them (trees only,
-	 * {@link #takeover}): pine forests of other sites, bog woodland, alder carr, floodplain forests (the lowland beech
-	 * forest until step F1, now a forest of the blend).
+	 * {@link #takeover}): pine forests of other sites, bog woodland, floodplain forests (the lowland beech forest until
+	 * step F1, the alder carr and the ash-alder forest until step F2, now forests of the blend).
 	 */
 	private static final long NEIGHBORS = bits(HabitatBiome.DRY_PINE_FOREST, HabitatBiome.MOIST_PINE_FOREST,
-			HabitatBiome.COASTAL_PINE_FOREST, HabitatBiome.BOG_WOODLAND, HabitatBiome.ALDER_CARR, HabitatBiome.ASH_ALDER_FOREST,
-			HabitatBiome.ELM_ASH_FOREST, HabitatBiome.WILLOW_POPLAR_FOREST);
+			HabitatBiome.COASTAL_PINE_FOREST, HabitatBiome.BOG_WOODLAND, HabitatBiome.ELM_ASH_FOREST,
+			HabitatBiome.WILLOW_POPLAR_FOREST);
 	/**
 	 * Share of the slice forests among the land without a zone within the radius ({@link #takeover}) at which the takeover
 	 * starts, and at which it is complete (smoothstep between).
@@ -127,9 +136,13 @@ public final class ForestBlend {
 	/** Kernel sums of lattice nodes computed (not found in the shared node table; diagnostics of the slice test). */
 	public static final java.util.concurrent.atomic.LongAdder NODES = new java.util.concurrent.atomic.LongAdder();
 
-	/** Forest site type of each forest's canonical code (the lowland beech forest: its fertile form, Galio-Fagetum). */
+	/**
+	 * Forest site type of each forest's canonical code (the lowland beech forest: its fertile form, Galio-Fagetum; the
+	 * alder carr: the eutrophic Ribeso-Alnetum, Ol; the ash-alder forest: OlJ).
+	 */
 	private static final ForestSiteType[] SITES = {ForestSiteType.FRESH_CONIFEROUS, ForestSiteType.FRESH_MIXED_CONIFEROUS,
-			ForestSiteType.FRESH_MIXED_BROADLEAVED, ForestSiteType.FRESH_BROADLEAVED, ForestSiteType.FRESH_BROADLEAVED};
+			ForestSiteType.FRESH_MIXED_BROADLEAVED, ForestSiteType.FRESH_BROADLEAVED, ForestSiteType.FRESH_BROADLEAVED,
+			ForestSiteType.ALDER_SWAMP, ForestSiteType.ASH_ALDER_SWAMP};
 	private static final byte[] MEMBER = new byte[64];
 
 	static {

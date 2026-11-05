@@ -545,7 +545,7 @@ Każdy krok F jest ukończony dopiero, gdy oprócz własnych kryteriów spełnia
 ### F2. Olsy i łęg jesionowo-olszowy (A, 1,5–2 dnia)
 
 - **Zakres:** (1) nowe gatunki z ZG: **olsza czarna** (prosty pień, wąska jajowata korona; w olsie 20–40% drzew wielopniowych z odrośli na kępie) i **wiąz** (szeroka korona, też podokap łęgu; jeden gatunek `ELM`), krzew **czeremcha** (nowa stała `BIRD_CHERRY` na końcu `Species`, cienkie pędy jak leszczyna V9, liście z fazą); (2) **ols** (`alder_carr`, w W1 `swamp`): olsza z brzozą i jesionem, las naturalny z kępami u pni (podniesione podstawy z ziemi ukorzenionej, mchu i korzeni `RootPlan`, bez zmiany terenu), gospodarczy jednowiekowy; **łęg jesionowo-olszowy** (`ash_alder_forest`): olsza, jesion, wiąz, świerk (NE), a2 i podszyt czeremchy; (3) runo i mchy: nowe rośliny (domyślnie 5: knieć błotna, kosaciec żółty, turzyca kępowa, nerecznica błotna, pokrzywa), rośliny dolinek przy wodzie i kałużach mikroreliefu, rośliny kęp przy pniach, czartawa i gwiazdnica w OlJ przez rośliny wanilii albo nowe (wybór w G); (4) martwe drewno olszy, jesionu i wiązu, nabiegi i kępy korzeniowe; (5) przejścia: ols i OlJ w `ForestBlend` z sąsiednimi lasami planera, ostry tylko brzeg wody; w W1 drzewa na lądzie i przy brzegu (kolumny z wodą zablokowane, W1-g — zapis odstępstwa); (6) karta norm olsu i OlJ.
-- **Ukończony, gdy:** KF-1 … KF-7; w `vanilla_forests` ols (`swamp`) z pniami olszy planera; olsza i wiąz ścinane w całości przez FallingTree i Tree Harvester. **Stan: do zrobienia.**
+- **Ukończony, gdy:** KF-1 … KF-7; w `vanilla_forests` ols (`swamp`) z pniami olszy planera; olsza i wiąz ścinane w całości przez FallingTree i Tree Harvester. **Stan: etap 1 zrobiony (2026-11-05, „Projekt F2”), etap 2 (gra) do zrobienia.**
 - **Ryzyko:** wysokie (nowe gatunki: rejestr, datagen, klient; drzewa przy wodzie i w kałużach).
 
 ### F3. Jedlina wyżynna, buczyna karpacka i jaworzyny (A, 1,5–2 dnia)
@@ -3683,6 +3683,57 @@ Poprawka (tylko test): `postProcess` w `DeterminismClientGameTest` robi to, co `
 Wspólna zmiana `DeadwoodFeature` i `PlantLayerFeature` z rundy 1 jest więc sprawdzona także z C2ME: w obszarach lasów wycinka i buczyny dekoracja między zestawami modów różni się tylko tam, gdzie różni się teren (J1-q), oraz w jaskini DP-128.
 
 **Stan F1 po rundzie 2:** KF-1 spełnione (także w W1); KF-3 spełnione bez paczki, a z C2ME we wszystkich obszarach poza jaskinią DP-128 (sprzed F1, teren); KF-4 nadal DP-126. DP-129 zamknięte. Świat bez zmian w tej rundzie (zmienił się tylko test i jego referencja).
+
+## Projekt F2 (2026-11-05, etap 1: kod, dane, tekstury, testy jednostkowe)
+
+Krok F2 planu „Kroki F” (§3, G.41): ols (`alder_carr`; w typie świata W1 zastępuje `swamp`) i łęg jesionowo-olszowy (`ash_alder_forest`, OlJ) z drzewami planera, trzy nowe gatunki i pięć nowych roślin runa. Drobne wybory: `docs/00` G.43 (F2-a … F2-o, domyślne, do potwierdzenia przy CP-D). Wyniki z gry: „Stan po F2” (etap 2).
+
+**Nowe gatunki (pełny zestaw ZG, G.41 F-c).**
+
+- *Olsza czarna* (`BLACK_ALDER`): prosty pień, wąska jajowata korona (archetyp BROAD, wysokość 14 / 24 / 27 bloków, pierśnica 11 / 32 / 46 cm według klasy wieku, bez konarów). W drzewostanie 30% drzew na odroślach: 1–2 dodatkowe pędy od podstawy (`TreeShapePlan.stool`, nowa sól `feature.tree.stool`, F2-f); pędy rosną od podstawy przez niższe piętra jak pień (wyjątek od dolnej powierzchni podziału warstwy, jak niskie gałęzie skraju). Test `TreeShapePlanTest.blackAldersOfAStandGrowOnStools`: 28% olsz okapu i podokapu, 0 olsz samotnych, odnowienia i innych gatunków. Ciemna, spękana kora (`black_alder_bark` 1–3).
+- *Wiąz* (`ELM`): szeroka korona z trzema wznoszącymi się konarami, także w podokapie OlJ; szara kora w podłużnych bruzdach (`elm_bark` 1–2).
+- Oba gatunki mają: pień, okorowany pień, nabieg (`RootPlan`: olsza płytko, bez korzenia palowego; wiąz głębiej, z korzeniem palowym i korzeniami pionowymi), liście z fazą i krzywą `FoliageCurve`, gałązki zimowe, sadzonkę w trzech rozmiarach, doniczkę, własne drewno P2 (deski, okorowane drewno, receptury), łup `trunk_base`, ścinanie przez FallingTree i Tree Harvester, kształt planera, `deadwood/` i `stump/`. W generacji piszą własne kłody (F2-d).
+- *Czeremcha* (`BIRD_CHERRY`, nowa stała na końcu `Species`): krzew o cienkich pędach jak leszczyna wycinka (`shrub/bird_cherry_thin`, pędy z pnia olszy, F2-a), liście z fazą i krzywą, sadzonka wyrastająca w krzew w trzech rozmiarach, łup patyki.
+- *Tekstury:* 111 nowych plików z `tools/art` (`recipes.py`, `wood.py`, `ground.py`: kora, okorowane, deski, czoła kłód, sadzonki, gałązki, rośliny runa), `lint.py` PASS, CREDITS.
+- *Migawka rejestru:* świadomie przegenerowana, tylko dopisane bloki i przedmioty.
+
+**Ols** (Ribeso nigri-Alnetum, typ Ol).
+
+- *Okap:* olsza 880, brzoza 80, jesion 40; gospodarczy olsza 930, brzoza 50, jesion 20 (jednowiekowy jak każde wydzielenie). a2 olsza i brzoza (`subcanopy_chance` 0,4), odnowienie olszy i brzozy z kruszyną i czeremchą. Otwarty okap: szanse 0,85 / 0,65 / 0,55 w gospodarczym, 0,78 w naturalnym (N4 60–80%).
+- *Ols torfowcowy* (Sphagno squarrosi-Alnetum, typ `BOGGY_MIXED_BROADLEAVED`): olsza 800, brzoza 170, sosna 30; torfowce jako dywan mchu wanilii do F4 (F2-i).
+- *Kępy u pni* (F2-g): olsze okapu w olsie naturalnym stoją na kępach — ziemia ukorzeniona w wolnych komórkach obok pnia, na niej mech albo turzyca kępowa (`TreeMoss.tussock`); teren bez zmian.
+- *Profil wydzieleń* `StandProfile.ALDER_CARR`: luki 0,10 / 0,30 / 0,40, mediana 16 m, bez gniazd; udział naturalny i klasy wieku jak w wycinku (F2-e).
+
+**Łęg jesionowo-olszowy** (Fraxino-Alnetum, OlJ).
+
+- *Okap:* olsza 620, jesion 250, wiąz 70, świerk 60 tam, gdzie flaga zasięgu świerka (NE), gdzie indziej olsza; gospodarczy olsza 700, jesion 220, wiąz 40, świerk 40. a2 wiąz, olsza, jesion (`subcanopy_chance` 0,6). Odnowienie: jesion, olsza, wiąz, czeremcha 300, leszczyna; w lukach także brzoza. Szanse 0,88 / 0,70 / 0,60, naturalny 0,90 (N4 70–90%).
+- *Podszyt* (N7 20–50%): czeremcha 4 : leszczyna 1, 7 krzewów na chunk; płaszcz skraju czeremcha, leszczyna, wiklina.
+- *Profil* `StandProfile.ASH_ALDER`: luki 0,10 / 0,35 / 0,45 (zamieranie jesionu, choroba wiązów), mediana 18 m.
+- *Pas źródliskowy* OlJ (strefa `SPRING_AREA` w grądzie) dostaje drzewa planera OlJ z reguły biomu zamiast drzew wycinka (F2-j).
+
+**Runo i mchy.**
+
+- *Nowe rośliny* (F2-b; `GroundPlant` na końcu, fazy V13 w `GroundPhases`, `ForestCensus.OWN_HERB_PLANTS`): knieć błotna (SEASONAL), kosaciec żółty, turzyca kępowa, zachylnik błotny, pokrzywa (nowa rodzina `HERB`, blok `SeasonalHerbBlock`; turzyca zielona cały rok, pozostałe znikają od listopada).
+- *Ols:* płaty BLOBS 0,9 — turzyca 26, zachylnik 18, kosaciec 8, knieć 7, pokrzywa 7 (suche kępy), wysoka trawa 6, krzak świetlików 2; mech w kolumnach i na kępach.
+- *OlJ:* płaty 0,95 — pokrzywa 20, turzyca 14, zawilec 12 (także za gwiazdnicę gajową), knieć 9, paproć 8 i trawa 6 (za czartawę, F2-c), wysoka trawa 5, zachylnik 4, ściółka 4.
+- *Dolinki:* przy wodzie (`SHORE`) i przy kałużach mikroreliefu (`PUDDLE_SHORE`) obu lasów kosaciec 6, knieć 5, turzyca 3 (przy wodzie także trzcina 4), szansa 0,55, przed regułami trzciny.
+
+**Martwe drewno** (F2-m): 1,6 (ols) i 1,8 (OlJ) martwego drzewa na chunk lasu naturalnego; `deadwood/` ols olsza 14 : brzoza 4 : jesion 2, OlJ olsza 10 : jesion 7 : wiąz 3; pniaki według tych samych udziałów; formy olszy (miękkie drewno łamie się i butwieje na stojąco) i wiązu (zamiera na stojąco).
+
+**Przejścia** (F2-j): `ForestBlend.FORESTS` ma ols (indeks 5) i OlJ (6). Pary `BLENDS`: ols z OlJ i z czterema lasami transektu, OlJ z olsem, BMśw, LMśw, grądem i buczyną; ols z buczyną i OlJ z Bśw w rampie `Ecotone`. Ostry zostaje tylko brzeg wody (woda nie należy do pola). Ols i OlJ zdjęte z `NEIGHBORS`. Suma udziałów w `pick` idzie w kolejności indeksów, a nowe udziały z dala od olsu i OlJ są zerami, więc wynik lasów wycinka i buczyny tam się nie zmienia. W W1 kolumny z wodą zostają zablokowane (W1-g, odstępstwo F2-k).
+
+**Karta norm** (F2-n): kolumny olsu i OlJ, naturalne i gospodarcze — N1, N3 (`black_alder`, w OlJ jesion w grupie `maple_ash`), N4, N7, N8 (także wiosną), N9, N10. Klucze składu `black_alder` i `elm`. Powierzchnie próbne olsu i OlJ (dwie naturalne i dwie gospodarcze na skalę) dopisane przez `SlicePlotsTest -PfindSlicePlots` (`F_FORESTS`); w skali rozgrywki ols to mozaika małych płatów wzdłuż strumieni i obniżeń (powierzchnie tylko gospodarcze, z ≥ 90% olsu), a OlJ pas dolin strumieni węższy od powierzchni (bez powierzchni; `F_MISSING`, `MIN_BIOME_PATCHY`, F2-p). Miejsce KF-6 `ForestPerformance.ALDER_SITE`: REAL `alder_carr_natural_1`, GAMEPLAY `alder_carr_managed_1` (F2-o).
+
+**Gametesty** (do etapu 2): `vanilla_forests` z obszarem olsu (`swamp`) i jego pniami planera (KF-1, przy < 1024 suchych kolumnach tylko raport); `habitats` liczy KF-1 na pierwszych powierzchniach lasów kroków F (`slice_plots.txt`), więc także olsu i OlJ; `determinism` dostaje obszar `alder_carr` (`alder_carr_natural_1`); tablice próbek pni, ścinania, nabiegów, martwego drewna, liści i sadzonek z olszą, wiązem i czeremchą.
+
+**Stare światy.** Zmienia się tylko dekoracja nowych chunków olsu, OlJ, ich pasa przejścia i zasięgu koron; teren bez zmian. Ols i OlJ graniczą z lasami wycinka wzdłuż strumieni i obniżeń, więc 41 powierzchni i miejsc wycinka leży bliżej niż 176 bloków (F2-r); `SlicePlotsTest` wymaga odległości tylko od buczyny, a wiersze karty tych powierzchni porównuje się w grze z kartą po F1.
+
+**Testy (etap 1).**
+
+- Kompilacja `main`, `client`, `test`, `gametest`; `runDatagen`.
+- Klasy zmian: `RegistrySnapshotTest`, `WoodSetTest`, `PlanksTextureTest`, `TrunkOutlineTest`, `TreeShapePlanTest` (nowy test odrośli olszy), `RootPlanTest`, `DeadwoodPlanTest`, `GroundLayerPlanTest`, `ForestBlendTest` (nowy test par F2), `*season*`, `ForestNormsTest` (karta olsu), `PlannerPalettesTest`, `SliceEqualityTest`, `SlicePlotsTest`.
+- `tools/dev/run-tests --reuse fastTest`.
+- Wyniki i przebiegi gry w „Stan po F2”, według `python tools/dev/test_plan.py 1b58fe9`.
 
 ## Do kroku porządkowego (lista drobiazgów z recenzji)
 

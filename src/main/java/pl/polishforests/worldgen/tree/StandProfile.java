@@ -49,8 +49,23 @@ public record StandProfile(double naturalFactor, double[] managedAges, double[] 
 	 */
 	public static final StandProfile BEECH = new StandProfile(1.0, DEFAULT.managedAges, DEFAULT.naturalAges,
 			ForestStandMap.MERGE_CHANCE, new double[] {0.12, 0.42, 0.50}, 0.5, 20, 0.4, 10, 40, new double[] {0, 0.16, 0.30}, 24);
+	/**
+	 * The alder carr (step F2; research/06 §4.6): managed stands even-aged alder stands (every stand has one age class),
+	 * natural stands open by the fall of single alders and small groups on the soft peat (gaps of mostly 8–25 m, often two
+	 * together); no regeneration nests. The natural share and the ages are those of the slice (as the beech forest's): a
+	 * stand reaches far beyond its site point, so other ages would change the stands of the neighboring forests outside
+	 * the blend belt (default choice F2-e).
+	 */
+	public static final StandProfile ALDER_CARR = new StandProfile(1.0, DEFAULT.managedAges, DEFAULT.naturalAges,
+			ForestStandMap.MERGE_CHANCE, new double[] {0.10, 0.30, 0.40}, 0.4, 16, 0.4, 8, 32, new double[] {0, 0, 0}, 0);
+	/**
+	 * The ash-alder forest (step F2): managed stands as the carr's; natural stands with more and larger gaps (the ash
+	 * dieback, the Dutch elm disease); no regeneration nests.
+	 */
+	public static final StandProfile ASH_ALDER = new StandProfile(1.0, DEFAULT.managedAges, DEFAULT.naturalAges,
+			ForestStandMap.MERGE_CHANCE, new double[] {0.10, 0.35, 0.45}, 0.45, 18, 0.4, 8, 36, new double[] {0, 0, 0}, 0);
 	/** All profiles of the table (the gap process draws against the highest chance of any of them). */
-	static final StandProfile[] ALL = {DEFAULT, BEECH};
+	static final StandProfile[] ALL = {DEFAULT, BEECH, ALDER_CARR, ASH_ALDER};
 
 	public StandProfile {
 		if (managedAges.length != 3 || naturalAges.length != 3 || gapChance.length != 3 || nestChance.length != 3) {
@@ -68,6 +83,8 @@ public record StandProfile(double naturalFactor, double[] managedAges, double[] 
 		}
 		return switch (biome) {
 			case LOWLAND_BEECH_FOREST -> BEECH;
+			case ALDER_CARR -> ALDER_CARR;
+			case ASH_ALDER_FOREST -> ASH_ALDER;
 			default -> DEFAULT;
 		};
 	}

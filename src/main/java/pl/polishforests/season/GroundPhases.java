@@ -36,6 +36,17 @@ import pl.polishforests.block.GroundPlant;
  * <li><b>Coralroot</b> (step F1, a spring geophyte): shoots from mid-April ({@value #CORALROOT_SHOOTS}), flowering from
  * the end of April to the 2nd decade of May ({@value #CORALROOT_FLOWERS} … {@value #CORALROOT_FLOWERS_END}), leaves
  * until mid-June and gone from then ({@value #CORALROOT_GONE}) until the next April.
+ * <li><b>Marsh marigold</b> (step F2, the hollows of the alder forests): leaves from mid-March ({@value #MARIGOLD_SHOOTS}),
+ * yellow from the end of March to mid-May ({@value #MARIGOLD_FLOWERS} … {@value #MARIGOLD_FLOWERS_END}), leaves through
+ * the summer and gone from November ({@value #MARIGOLD_GONE});
+ * <li><b>Yellow iris</b> (step F2): sword leaves from mid-April ({@value #IRIS_SHOOTS}), yellow flowers from the end of
+ * May through June ({@value #IRIS_FLOWERS} … {@value #IRIS_FLOWERS_END}), gone from November ({@value #IRIS_GONE});
+ * <li><b>Tussock sedge</b> (step F2): the tussock stays all year, with its spikes in May and June
+ * ({@value #SEDGE_FLOWERS} … {@value #SEDGE_FLOWERS_END});
+ * <li><b>Marsh fern</b> (step F2): fronds from mid-May ({@value #FERN_SHOOTS}), yellow-brown dying fronds from mid-October
+ * ({@value #FERN_YELLOW}, the leaves model) and gone from November ({@value #FERN_GONE});
+ * <li><b>Stinging nettle</b> (step F2): shoots from mid-April ({@value #NETTLE_SHOOTS}), the hanging flower tassels in July
+ * and August ({@value #NETTLE_FLOWERS} … {@value #NETTLE_FLOWERS_END}), gone from November ({@value #NETTLE_GONE}).
  * </ul>
  */
 public final class GroundPhases {
@@ -75,6 +86,23 @@ public final class GroundPhases {
 	static final double CORALROOT_FLOWERS = 5.5;
 	static final double CORALROOT_FLOWERS_END = 7.8;
 	static final double CORALROOT_GONE = 11.5;
+	static final double MARIGOLD_SHOOTS = 1.5;
+	static final double MARIGOLD_FLOWERS = 2.8;
+	static final double MARIGOLD_FLOWERS_END = 7.5;
+	static final double MARIGOLD_GONE = 24.5;
+	static final double IRIS_SHOOTS = 4.5;
+	static final double IRIS_FLOWERS = 8.5;
+	static final double IRIS_FLOWERS_END = 12.0;
+	static final double IRIS_GONE = 24.5;
+	static final double SEDGE_FLOWERS = 6.0;
+	static final double SEDGE_FLOWERS_END = 10.0;
+	static final double FERN_SHOOTS = 7.5;
+	static final double FERN_YELLOW = 22.5;
+	static final double FERN_GONE = 24.5;
+	static final double NETTLE_SHOOTS = 4.5;
+	static final double NETTLE_FLOWERS = 12.0;
+	static final double NETTLE_FLOWERS_END = 18.0;
+	static final double NETTLE_GONE = 24.5;
 
 	/** Keys of a tint curve: position, target color, weight of the target over the raw grass color. */
 	private record Key(double at, int target, double weight) {
@@ -121,6 +149,16 @@ public final class GroundPhases {
 			case WOOD_SORREL -> at >= SORREL_FLOWERS && at < SORREL_FLOWERS_END ? Look.FULL : Look.LEAVES;
 			case CORALROOT -> at >= CORALROOT_FLOWERS && at < CORALROOT_FLOWERS_END ? Look.FULL
 					: at >= CORALROOT_SHOOTS && at < CORALROOT_GONE ? Look.LEAVES : Look.NONE;
+			case MARSH_MARIGOLD -> at >= MARIGOLD_FLOWERS && at < MARIGOLD_FLOWERS_END ? Look.FULL
+					: at >= MARIGOLD_SHOOTS && at < MARIGOLD_GONE ? Look.LEAVES : Look.NONE;
+			case YELLOW_IRIS -> at >= IRIS_FLOWERS && at < IRIS_FLOWERS_END ? Look.FULL
+					: at >= IRIS_SHOOTS && at < IRIS_GONE ? Look.LEAVES : Look.NONE;
+			case TUSSOCK_SEDGE -> at >= SEDGE_FLOWERS && at < SEDGE_FLOWERS_END ? Look.FULL : Look.LEAVES;
+			// The marsh fern has no flowers: its full model are the green fronds, the leaves model the dying ones.
+			case MARSH_FERN -> at >= FERN_SHOOTS && at < FERN_YELLOW ? Look.FULL
+					: at >= FERN_YELLOW && at < FERN_GONE ? Look.LEAVES : Look.NONE;
+			case NETTLE -> at >= NETTLE_FLOWERS && at < NETTLE_FLOWERS_END ? Look.FULL
+					: at >= NETTLE_SHOOTS && at < NETTLE_GONE ? Look.LEAVES : Look.NONE;
 			default -> Look.FULL;
 		};
 	}

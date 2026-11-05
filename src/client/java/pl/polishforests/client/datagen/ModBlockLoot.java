@@ -90,6 +90,8 @@ final class ModBlockLoot extends FabricBlockLootSubProvider {
 				}
 				case SEASONAL, COVER -> add(block, createSegmentedBlockDrops(block));
 				case TALL -> add(block, createDoublePlantShearsDrop(block));
+				// Step F2: a herb as vanilla's short grass (itself with shears only).
+				case HERB -> add(block, createShearsOnlyDrop(block));
 			}
 		}
 	}

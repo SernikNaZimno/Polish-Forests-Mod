@@ -42,7 +42,7 @@ class ProceduralTreeStatesTest {
 				JsonParser.parseString("{\"species\": \"scots_pine\"}")).getOrThrow();
 		assertEquals(new ProceduralTreeFeature(Species.SCOTS_PINE, CrownLayer.CANOPY, AgeClass.MATURE), d);
 		// A species without a planner shape and an unknown layer are errors.
-		assertTrue(ProceduralTreeFeature.CODEC.codec().parse(JsonOps.INSTANCE, JsonParser.parseString("{\"species\": \"elm\"}"))
+		assertTrue(ProceduralTreeFeature.CODEC.codec().parse(JsonOps.INSTANCE, JsonParser.parseString("{\"species\": \"gray_alder\"}"))
 				.isError());
 		assertTrue(ProceduralTreeFeature.CODEC.codec().parse(JsonOps.INSTANCE,
 				JsonParser.parseString("{\"species\": \"oak\", \"layer\": \"emergent\"}")).isError());

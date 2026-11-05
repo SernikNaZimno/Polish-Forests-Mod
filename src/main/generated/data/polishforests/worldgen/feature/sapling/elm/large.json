@@ -1,0 +1,9 @@
+{
+  "type": "polishforests:procedural_tree",
+  "size": {
+    "crown": 0.88,
+    "dbh": 0.88,
+    "height": 0.88
+  },
+  "species": "elm"
+}

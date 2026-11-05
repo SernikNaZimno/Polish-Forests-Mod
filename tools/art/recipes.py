@@ -963,6 +963,14 @@ BEECH = dict(lichen=2, scars=1, algae=0.06, lums=(146, 156, 165, 174, 186), sat=
              algae_sat=0.13, algae_hue_shift=28, streak=0.5, band=3, tries=48)
 BEECH_VARIANT = dict(BEECH, scars=0, lichen=3, lock=1)
 BEECH_EXPECT = {'luma': (150, 172), 'dark': 0.0, 'grain': 1.2, 'std': 18}
+# Step F2: the black alder, dark gray-brown with a purple cast, in old age broken by fissures across and along into
+# small, almost square plates; the elm, gray-brown with long deep furrows and corky ridges, grayer than the oak.
+ALDER = dict(lines=5, amp=0.9, wave=3, jitter=0.6, plate=(2, 4), cross='full', band=3, furrow_tone=0, deep=0,
+             face_split=0.5, lums=(52, 60, 66, 74, 82, 86), right_tone=2, sat=0.16, hue=12, tries=48)
+ALDER_EXPECT = {'luma': (56, 80), 'dark': 0.05, 'grain': 1.5, 'distinct': (('linden_bark', 8), ('oak_bark', 8))}
+ELM = dict(lines=4, amp=1.2, wave=3, jitter=0.6, plate=(4, 8), cross='diag', band=3, furrow_tone=0, deep=0,
+           face_split=0.5, lums=(64, 78, 86, 98, 108, 112), right_tone=2, sat=0.14, hue=34, tries=48)
+ELM_EXPECT = {'luma': (80, 100), 'dark': 0.05, 'grain': 2.0, 'distinct': (('oak_bark', 6), ('black_alder_bark', 8))}
 # Step I1 (roots): the bark of the underground roots, one for every species (tree_root). Roots in the soil have a thin,
 # smooth brown bark with fine shallow fissures, warmer and smoother than the trunks (CP-A: smooth textures): the
 # furrowed recipe with shallow fissures only and small luma steps.
@@ -993,6 +1001,11 @@ STRIPPED_TRUNKS = [
      'stripped European ash trunk: light cream wood with a faint brownish grain'),
     ('norway_maple', ['#d0c1a0', '#d6c7a6', '#dbcdad', '#e0d3b4'], {'luma': (180, 215), 'hue': (32, 50)},
      'stripped Norway maple trunk: creamy white wood'),
+    # Step F2.
+    ('black_alder', ['#c08a64', '#c8936c', '#d09c75', '#d7a57e'], {'luma': (140, 175), 'hue': (18, 32)},
+     'stripped black alder trunk: the orange-red wood of a fresh cut alder'),
+    ('elm', ['#b39572', '#bb9d7a', '#c3a582', '#caad8a'], {'luma': (145, 180), 'hue': (26, 40)},
+     'stripped elm trunk: light brown sapwood with a fine vertical grain'),
 ]
 # Step P2 (decision U-8): the own wood sets of hornbeam, linden, beech, ash and Norway maple. Planks: the fallback texture
 # (the game derives the planks from the vanilla planks of the user's game, pl.polishforests.block.PlanksTexture; this
@@ -1011,6 +1024,11 @@ WOOD_PLANKS = [
      'European ash planks: light cream wood with a pronounced grain'),
     ('norway_maple', ['#9c8770', '#bea891', '#cab59d', '#d4c0a8', '#ddcab2'],
      'Norway maple planks: creamy white wood with a faint pink cast'),
+    # Step F2.
+    ('black_alder', ['#8a5a40', '#ab7a5c', '#b98868', '#c49473', '#cea07e'],
+     'black alder planks: pale reddish-brown wood, even and soft'),
+    ('elm', ['#6f5238', '#8f6e4f', '#9e7c5b', '#ab8966', '#b89672'],
+     'elm planks: brown heartwood with a coarse wavy grain'),
 ]
 # (name, pith, heartwood late and early, sapwood late and early, two bark tones, heart radius px, ring width px, note)
 WOOD_LOG_TOPS = [
@@ -1024,6 +1042,11 @@ WOOD_LOG_TOPS = [
      'European ash log top: light cream wood with distinct rings and a light brown core, the furrowed bark border'),
     ('norway_maple', ['#a39072', '#c0ac8f', '#cdba9d', '#c6b396', '#d6c4a8', '#7a766a', '#948f82'], 2.0, 1.9,
      'Norway maple log top: creamy wood with fine rings, the gray bark border'),
+    # Step F2.
+    ('black_alder', ['#9a6448', '#b07a5a', '#c08a68', '#b8825f', '#c99472', '#4e4844', '#66605a'], 2.0, 2.0,
+     'black alder log top: reddish wood without a colored heartwood, faint rings, the dark bark border'),
+    ('elm', ['#5e4430', '#7a5a40', '#8e6c4e', '#a68660', '#b8976f', '#5f5a52', '#78726a'], 4.0, 2.2,
+     'elm log top: a dark brown heartwood, light brown sapwood, distinct rings, the furrowed bark border'),
 ]
 STRIPPED_TRUNK_COLORS = {name: colors for name, colors, _expect, _note in STRIPPED_TRUNKS}
 SAPLING_SHAPE = dict(top=4, zigzag=0.2, shoots=3, shoot_gap=3, shoot_len=(2, 4), leaf_from=2, leaf_every=3, tries=64)
@@ -1042,6 +1065,13 @@ SAPLINGS = [
      'young ash: pinnate leaves with pairs of leaflets, darker greens than before (V7 review round 1: the first was pale)'),
     ('norway_maple', dict(SAPLING_SHAPE, leaf='maple', leaf_every=2, colors=['#5f4e3a', '#806a4c', '#386a28', '#4a8034', '#5f9642']),
      'young Norway maple: palmate lobed leaves'),
+    # Step F2.
+    ('black_alder', dict(SAPLING_SHAPE, leaf='alder', leaf_every=2, colors=['#4e4440', '#6b5f58', '#2f5a26', '#3f7031', '#55893f']),
+     'young black alder: round dark green leaves with a notched tip on a dark stem'),
+    ('elm', dict(SAPLING_SHAPE, leaf='elm', leaf_every=2, colors=['#5a4c3e', '#7a6a58', '#365f26', '#467531', '#5b8b3e']),
+     'young elm: ovate pointed leaves, one side longer at the base'),
+    ('bird_cherry', dict(SAPLING_SHAPE, leaf='bird_cherry', leaf_every=2, colors=['#4c3e3a', '#6a5650', '#3a6a2a', '#4b8034', '#62983f']),
+     'young bird cherry: narrow pointed leaves on a dark red-brown stem'),
 ]
 
 
@@ -1198,6 +1228,11 @@ TWIG_SPECIES = [
     ('hornbeam', '#b7b3a9', 0.21, 0.55, (8, 13), (3, 6), 0.45, 'hornbeam: dense gray zigzag twigs'),
     ('beech', '#c1aca3', 0.23, 0.45, (8, 14), (3, 6), 0.40, 'beech: fine gray zigzag twigs with long pointed buds'),
     ('oak', '#baa89c', 0.25, 0.70, (7, 12), (2, 5), 0.40, 'pedunculate oak: gnarled, strongly zigzagging gray-brown twigs'),
+    # Step F2.
+    ('black_alder', '#a88c80', 0.24, 0.20, (8, 14), (3, 5), 0.35,
+     'black alder: straight purple-brown twigs with stalked buds (the catkins of the late winter)'),
+    ('elm', '#bbafa4', 0.24, 0.45, (8, 14), (3, 6), 0.45, 'elm: fine zigzag twigs in two rows, a herringbone'),
+    ('bird_cherry', '#c4b4aa', 0.26, 0.30, (7, 12), (2, 5), 0.35, 'bird cherry: slender red-brown twigs (a light haze), long pointed buds'),
 ]
 # The gray ramp of the twig tones (crossing, body, side twig, lit tip): V13 had 98-166; step Z2 126-184.
 TWIG_GRAY = (126, 184)
@@ -1206,7 +1241,7 @@ TWIG_GRAY = (126, 184)
 # twig_score per percentage point over it, and the seeds tried rise from 24 to TWIG_TRIES (the sparser tiles need more
 # to find one without an empty line); visible pixels hornbeam 33 -> 29%, linden 33 -> 29%, beech 38 -> 30%. Oak (27%:
 # a sparser oak tile came out in diagonal bands), birch, ash and maple keep their tiles.
-TWIG_TRIES = {'hornbeam': 96, 'linden': 96, 'beech': 96}
+TWIG_TRIES = {'hornbeam': 96, 'linden': 96, 'beech': 96, 'bird_cherry': 96}
 TWIG_MAX_VISIBLE = {'hornbeam': 0.25, 'linden': 0.25, 'beech': 0.26}
 
 def upper_texture(tex, palettes):
@@ -1278,6 +1313,21 @@ TEXTURES = [
     Texture('beech_bark_3', 'bark', bark_beech, 'beech_bark_3/1', 'beech_bark', variant_of='beech_bark',
             params=BEECH_VARIANT, expect=BEECH_EXPECT,
             note='third variant of the beech bark, same edge rows, no branch scar (V1b review round 1)'),
+    # Step F2: the black alder (three variants) and the elm (two).
+    Texture('black_alder_bark', 'bark', bark_furrowed, 'black_alder_bark/1', 'linden_bark', params=ALDER,
+            expect=ALDER_EXPECT, palette_use='hue of the linden bark photo, made darker and redder by the recipe',
+            note='black alder: dark gray-brown, broken into small almost square plates'),
+    Texture('black_alder_bark_2', 'bark', bark_furrowed, 'black_alder_bark_2/1', 'linden_bark', variant_of='black_alder_bark',
+            params=ALDER, expect=ALDER_EXPECT, palette_use='as black_alder_bark',
+            note='second variant of the black alder bark, same edge rows'),
+    Texture('black_alder_bark_3', 'bark', bark_furrowed, 'black_alder_bark_3/1', 'linden_bark', variant_of='black_alder_bark',
+            params=ALDER, expect=ALDER_EXPECT, palette_use='as black_alder_bark',
+            note='third variant of the black alder bark, same edge rows'),
+    Texture('elm_bark', 'bark', bark_furrowed, 'elm_bark/1', 'oak_bark', params=ELM, expect=ELM_EXPECT,
+            palette_use='hue of the oak bark photo, made grayer by the recipe',
+            note='elm: gray-brown, long deep furrows between corky ridges'),
+    Texture('elm_bark_2', 'bark', bark_furrowed, 'elm_bark_2/1', 'oak_bark', variant_of='elm_bark', params=ELM,
+            expect=ELM_EXPECT, palette_use='as elm_bark', note='second variant of the elm bark, same edge rows'),
     Texture('tree_root_bark', 'bark', bark_furrowed, 'tree_root_bark/1', 'oak_bark', params=ROOT, expect=ROOT_EXPECT,
             palette_use='hue of the oak bark photo, made warmer and smoother by the recipe',
             note='underground roots of every species (step I1): thin smooth brown bark with fine shallow fissures'),
@@ -1348,6 +1398,50 @@ TEXTURES = [
                         drop_flowers=True,
                         colors=['#4a6534', '#53723a', '#617f44', '#56603a', '#9c88a1', '#b09bb3', '#b5ab82', '#729059']),
             note='coralroot after the flowering (step F1, until mid-June): the same pinnate leaves, no flowers'),
+    # Step F2: the herb layer of the alder forests (tools/art/ground.py): the marsh marigold as a flower bed, the iris,
+    # the tussock sedge, the marsh fern and the nettle as one-block crosses with baked colors, each with its leaves-only
+    # texture of the season (the fern: its fronds turned yellow-brown in autumn).
+    Texture('marsh_marigold', 'plant', ground.flower_bed, 'marsh_marigold/1', None,
+            params=dict(leaves=ground.MARIGOLD_LEAVES, flower_sprites=ground.MARIGOLD_FLOWERS, leaf_cover=0.65, flowers=2, halo=((1, 7),),
+                        colors=['#3e6e2e', '#4a7c36', '#5a8e40', '#56603a', '#b4962c', '#cfae34', '#a8922e', '#7aa042']),
+            note='marsh marigold (step F2, the hollows of the alder forests): rosettes of round glossy dark green leaves, golden yellow five-petalled flowers (April, May)'),
+    Texture('marsh_marigold_leaves', 'plant', ground.flower_bed, 'marsh_marigold/1', None,
+            params=dict(leaves=ground.MARIGOLD_LEAVES, flower_sprites=ground.MARIGOLD_FLOWERS, leaf_cover=0.65, flowers=2, halo=((1, 7),),
+                        drop_flowers=True,
+                        colors=['#3e6e2e', '#4a7c36', '#5a8e40', '#56603a', '#b4962c', '#cfae34', '#a8922e', '#6a9440']),
+            note='marsh marigold after the flowering (step F2): the same round leaves, no flowers'),
+    Texture('yellow_iris', 'plant', ground.herb, 'yellow_iris/1', None,
+            params=dict(form='blades', count=6, spread=2.2, top=3, flowers=2,
+                        colors=['#3d6a3a', '#4a7c44', '#5a8e50', '#56603a', '#c8a020', '#dcb52c', '#e8c84a']),
+            note='yellow iris (step F2, by the water of the alder carr): a fan of gray-green sword leaves, a yellow flower on a stalk (June)'),
+    Texture('yellow_iris_leaves', 'plant', ground.herb, 'yellow_iris/1', None,
+            params=dict(form='blades', count=6, spread=2.2, top=3, flowers=0,
+                        colors=['#3d6a3a', '#4a7c44', '#5a8e50', '#56603a']),
+            note='yellow iris outside the flowering (step F2): the same sword leaves'),
+    Texture('tussock_sedge', 'plant', ground.herb, 'tussock_sedge/1', None,
+            params=dict(form='tuft', count=12, reach=(3, 6), height=(8, 12), arch=0.75, flowers=2,
+                        colors=['#465e30', '#526c37', '#617b40', '#6a6440', '#5e4a32', '#74603e', '#8a7650']),
+            note='tussock sedge (step F2, the tussocks of the alder forests): a dense tuft of narrow arching leaves, brown spikes on thin stalks (May, June)'),
+    Texture('tussock_sedge_leaves', 'plant', ground.herb, 'tussock_sedge/1', None,
+            params=dict(form='tuft', count=12, reach=(3, 6), height=(8, 12), arch=0.75, flowers=0,
+                        colors=['#4c6232', '#58703a', '#677e44', '#6a6440']),
+            note='tussock sedge outside the flowering (step F2): the same tuft, green into the winter'),
+    Texture('marsh_fern', 'plant', ground.herb, 'marsh_fern/1', None,
+            params=dict(form='fronds', count=3, spread=2.0, top=2, pinna=3,
+                        colors=['#3f6e2c', '#4c8034', '#5c923e', '#56603a']),
+            note='marsh fern (step F2, the alder carr): a few erect fronds of a fresh green, pinnae in pairs'),
+    Texture('marsh_fern_leaves', 'plant', ground.herb, 'marsh_fern/1', None,
+            params=dict(form='fronds', count=3, spread=2.0, top=2, pinna=3,
+                        colors=['#8a6e34', '#9e803c', '#b09246', '#6a5a3a']),
+            note='marsh fern in autumn (step F2, from late September): the same fronds turned yellow-brown'),
+    Texture('nettle', 'plant', ground.herb, 'nettle/1', None,
+            params=dict(form='stems', count=3, top=1, node=3, leaf=2, flowers=3,
+                        colors=['#2f5222', '#3a6229', '#487432', '#45583a', '#6a7e3e', '#7d9248', '#8ea456']),
+            note='stinging nettle (step F2, the ash-alder forest): upright stems with opposite pointed dark leaves, drooping green flower strands (summer)'),
+    Texture('nettle_leaves', 'plant', ground.herb, 'nettle/1', None,
+            params=dict(form='stems', count=3, top=1, node=3, leaf=2, flowers=0,
+                        colors=['#2f5222', '#3a6229', '#487432', '#45583a']),
+            note='stinging nettle without flowers (step F2, spring and autumn)'),
     Texture('forest_flower_stem', 'plant', ground.flower_stem, 'forest_flower_stem/1', None, tint='grass',
             params=dict(gray=(118, 150)),
             note='stem of the flower beds (column 0, rows 4-7 in game), grayscale for the grass tint'),

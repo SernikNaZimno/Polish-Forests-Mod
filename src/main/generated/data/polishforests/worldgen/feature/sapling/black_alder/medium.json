@@ -1,0 +1,9 @@
+{
+  "type": "polishforests:procedural_tree",
+  "size": {
+    "crown": 0.77,
+    "dbh": 0.77,
+    "height": 0.77
+  },
+  "species": "black_alder"
+}

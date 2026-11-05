@@ -112,6 +112,61 @@
     },
     {
       "biomes": [
+        "alder_carr",
+        "ash_alder_forest"
+      ],
+      "coverage": 0.55,
+      "medium": "shore",
+      "patch": 3,
+      "plants": [
+        {
+          "block": "polishforests:yellow_iris",
+          "weight": 6
+        },
+        {
+          "block": {
+            "id": "polishforests:marsh_marigold",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "2"
+            }
+          },
+          "weight": 1
+        },
+        {
+          "block": {
+            "id": "polishforests:marsh_marigold",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "3"
+            }
+          },
+          "weight": 1
+        },
+        {
+          "block": {
+            "id": "polishforests:marsh_marigold",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "4"
+            }
+          },
+          "weight": 3
+        },
+        {
+          "block": "polishforests:tussock_sedge",
+          "weight": 3
+        },
+        {
+          "block": "minecraft:sugar_cane",
+          "max_height": 4,
+          "min_height": 2,
+          "weight": 4
+        }
+      ]
+    },
+    {
+      "biomes": [
         "river",
         "lake",
         "lagoon",
@@ -137,6 +192,55 @@
           "max_height": 4,
           "min_height": 2,
           "weight": 1
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "alder_carr",
+        "ash_alder_forest"
+      ],
+      "coverage": 0.55,
+      "medium": "puddle_shore",
+      "patch": 3,
+      "plants": [
+        {
+          "block": "polishforests:yellow_iris",
+          "weight": 6
+        },
+        {
+          "block": {
+            "id": "polishforests:marsh_marigold",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "2"
+            }
+          },
+          "weight": 1
+        },
+        {
+          "block": {
+            "id": "polishforests:marsh_marigold",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "3"
+            }
+          },
+          "weight": 1
+        },
+        {
+          "block": {
+            "id": "polishforests:marsh_marigold",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "4"
+            }
+          },
+          "weight": 3
+        },
+        {
+          "block": "polishforests:tussock_sedge",
+          "weight": 3
         }
       ]
     },

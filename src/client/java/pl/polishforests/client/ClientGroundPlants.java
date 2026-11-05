@@ -44,7 +44,7 @@ public final class ClientGroundPlants {
 				case SEASONAL -> BlockColorRegistry.register(List.of(BlockTintSources.constant(-1), BlockTintSources.grass()),
 						ModBlocks.ground(g));
 				case TALL -> BlockColorRegistry.register(List.of(new SeasonalGrass(true)), ModBlocks.ground(g));
-				case COVER -> {
+				case COVER, HERB -> {
 				}
 			}
 		}

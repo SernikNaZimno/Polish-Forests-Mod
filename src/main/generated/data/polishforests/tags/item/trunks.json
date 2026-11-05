@@ -12,6 +12,8 @@
     "polishforests:norway_maple_trunk",
     "polishforests:scots_pine_transition_trunk",
     "polishforests:scots_pine_transition_upper_trunk",
+    "polishforests:black_alder_trunk",
+    "polishforests:elm_trunk",
     "polishforests:scots_pine_root_flare",
     "polishforests:spruce_root_flare",
     "polishforests:birch_root_flare",
@@ -21,6 +23,8 @@
     "polishforests:beech_root_flare",
     "polishforests:ash_root_flare",
     "polishforests:norway_maple_root_flare",
+    "polishforests:black_alder_root_flare",
+    "polishforests:elm_root_flare",
     "polishforests:stripped_scots_pine_trunk",
     "polishforests:stripped_spruce_trunk",
     "polishforests:stripped_birch_trunk",
@@ -29,6 +33,8 @@
     "polishforests:stripped_linden_trunk",
     "polishforests:stripped_beech_trunk",
     "polishforests:stripped_ash_trunk",
-    "polishforests:stripped_norway_maple_trunk"
+    "polishforests:stripped_norway_maple_trunk",
+    "polishforests:stripped_black_alder_trunk",
+    "polishforests:stripped_elm_trunk"
   ]
 }

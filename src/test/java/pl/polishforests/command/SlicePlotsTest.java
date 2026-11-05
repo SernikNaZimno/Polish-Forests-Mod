@@ -52,8 +52,28 @@ class SlicePlotsTest {
 	/** Least distance between two plots, blocks. */
 	static final int MIN_APART = 130;
 	static final double MANAGED_SHARE = 0.85;
-	/** The forests of the planner of the steps F with plots of their own (step F1: the lowland beech forest). */
-	static final List<HabitatBiome> F_FORESTS = List.of(HabitatBiome.LOWLAND_BEECH_FOREST);
+	/** The forests of the planner of the steps F with plots of their own (step F1: the lowland beech forest; step F2: the alder carr and the ash-alder forest). */
+	static final List<HabitatBiome> F_FORESTS = List.of(HabitatBiome.LOWLAND_BEECH_FOREST, HabitatBiome.ALDER_CARR,
+			HabitatBiome.ASH_ALDER_FOREST);
+	/**
+	 * The kinds of plots of the forests of the steps F that the search does not find ("scale biome natural|managed"; step
+	 * F2). In the gameplay scale the alder carr is a mosaic of small patches along the streams and the hollows: of 32
+	 * places of the forest (61 × 61 grid points of 20 blocks around each) no point with 80% of the carr in its square in
+	 * both modes lies in natural stands. The ash-alder forest there is a belt of the stream valleys narrower than a plot:
+	 * no square of 33 places holds 90% of it. The card shows these in the realistic scale only.
+	 */
+	static final java.util.Set<String> F_MISSING = java.util.Set.of("gameplay alder_carr natural", "gameplay ash_alder_forest natural",
+			"gameplay ash_alder_forest managed");
+	/**
+	 * Least share of the plot's lattice in its biome for the managed alder carr of the gameplay scale (step F2), whose
+	 * largest patches hold 90-99% of a square of 100 blocks (no square of 98% in managed stands).
+	 */
+	static final double MIN_BIOME_PATCHY = 0.90;
+
+	/** Least share of the plot's lattice in its biome, in each vegetation mode. */
+	static double minBiome(LandscapeScale scale, HabitatBiome biome) {
+		return scale == LandscapeScale.GAMEPLAY && biome == HabitatBiome.ALDER_CARR ? MIN_BIOME_PATCHY : MIN_BIOME;
+	}
 
 	/** A plot: scale, stand kind (natural or managed), age class (null: any), name, biome, center. */
 	record Plot(LandscapeScale scale, boolean natural, AgeClass age, String name, HabitatBiome biome, int x, int z) {
@@ -107,7 +127,7 @@ class SlicePlotsTest {
 				return mode + ": " + problem;
 			}
 			double biome = SliceSitesTest.shares(w, p.biome(), p.x(), p.z())[0];
-			if (biome < MIN_BIOME) {
+			if (biome < minBiome(p.scale(), p.biome())) {
 				return String.format(Locale.ROOT, "%s: %s only %.1f%% of the square", mode, p.biome().id(), 100 * biome);
 			}
 		}
@@ -116,14 +136,11 @@ class SlicePlotsTest {
 
 	/**
 	 * {@link SliceSitesTest#siteProblem}, except for the forests of {@link #F_FORESTS}: their plots may lie in any form of
-	 * the forest (the acid and the fertile beech forest have norms of their own, step F1), so only the biome share counts.
+	 * the forest (the acid and the fertile beech forest have norms of their own, step F1), so only the biome share counts
+	 * ({@link #minBiome}, checked by the caller).
 	 */
 	static String siteProblem(HabitatTargets.World w, HabitatBiome biome, int x, int z) {
-		if (!F_FORESTS.contains(biome)) {
-			return SliceSitesTest.siteProblem(w, biome, x, z);
-		}
-		double share = SliceSitesTest.shares(w, biome, x, z)[0];
-		return share >= SliceSitesTest.MIN_SHARE ? null : String.format(Locale.ROOT, "%s only %.1f%% of the square", biome.id(), 100 * share);
+		return F_FORESTS.contains(biome) ? null : SliceSitesTest.siteProblem(w, biome, x, z);
 	}
 
 	@Test
@@ -154,8 +171,10 @@ class SlicePlotsTest {
 			assertEquals(scale == LandscapeScale.REALISTIC ? 1 : 0, count(here, HabitatBiome.OAK_HORNBEAM_FOREST, true, AgeClass.POLE_STAGE),
 					scale.id());
 			for (HabitatBiome f : F_FORESTS) {
-				assertEquals(2, count(here, f, true, null), scale.id() + " natural " + f.id());
-				assertEquals(2, count(here, f, false, null), scale.id() + " managed " + f.id());
+				for (boolean natural : new boolean[] {true, false}) {
+					String kind = scale.id() + " " + f.id() + (natural ? " natural" : " managed");
+					assertEquals(F_MISSING.contains(kind) ? 0 : 2, count(here, f, natural, null), kind);
+				}
 			}
 			for (int i = 0; i < here.size(); i++) {
 				for (int j = i + 1; j < here.size(); j++) {
@@ -183,6 +202,24 @@ class SlicePlotsTest {
 	}
 
 	/**
+	 * Step F2 (KF-6): the place of the alder carr in the flights of {@code ForestPerformance} ({@code ALDER_SITE}) is the
+	 * plot {@code alder_carr_natural_1} of the realistic scale and {@code alder_carr_managed_1} of the gameplay scale
+	 * (which has no natural carr plot, {@link #F_MISSING}).
+	 */
+	@Test
+	void flightsOfThePerformanceTestUseTheCarrPlot() throws IOException {
+		String source = Files.readString(Path.of("src/gametest/java/pl/polishforests/gametest/ForestPerformance.java"));
+		StringBuilder expected = new StringBuilder("ALDER_SITE = {");
+		for (LandscapeScale scale : List.of(LandscapeScale.REALISTIC, LandscapeScale.GAMEPLAY)) {
+			String name = scale == LandscapeScale.REALISTIC ? "alder_carr_natural_1" : "alder_carr_managed_1";
+			Plot p = read().stream().filter(q -> q.scale() == scale && q.name().equals(name)).findFirst().orElseThrow();
+			expected.append(scale == LandscapeScale.REALISTIC ? "" : ", ").append("{").append(p.x()).append(", ").append(p.z()).append("}");
+		}
+		expected.append("};");
+		assertTrue(source.contains(expected), "ForestPerformance has no " + expected);
+	}
+
+	/**
 	 * Step F1 (the equality of the norms card): no plot and no place of the slice forests (and no transect) lies within
 	 * {@code SliceEqualityTest.FAR} blocks of a column of a forest of the steps F in either vegetation mode, so the rows of
 	 * the slice card in {@code slice -Psites=none} are those of the build before F1 (the stand plan there is unchanged,
@@ -194,6 +231,14 @@ class SlicePlotsTest {
 	 * mode) from the lowland beech forest, and its 84 rows of the norms card of step F1 are those of the card after L1
 	 * ({@code docs/wycinek/karta-norm-l1.csv}). It must stay at least {@value #NEAR_LEAST} blocks away.
 	 */
+	/**
+	 * The forests of the steps F whose distance from the slice plots and places is required ({@link #NEAR_STEP_F}): the
+	 * lowland beech forest of step F1. The alder carr and the ash-alder forest of step F2 border the slice forests along
+	 * every stream and hollow (the carr is the alder belt of the lakes and the valleys, the ash-alder forest the spring
+	 * belts in the oak-hornbeam forest), so many slice plots lie within the reach; their distances are reported only, and the
+	 * rows of the card of those plots are compared with the card of step F1 in the game (stage 2 of F2).
+	 */
+	static final java.util.Set<HabitatBiome> F_FAR = java.util.EnumSet.of(HabitatBiome.LOWLAND_BEECH_FOREST);
 	static final java.util.Set<String> NEAR_STEP_F = java.util.Set.of(
 			"gameplay managed old_growth fresh_pine_managed_old_growth fresh_pine_forest -1695 -1303");
 	static final int NEAR_LEAST = 64;
@@ -206,6 +251,7 @@ class SlicePlotsTest {
 		List<int[]> lines = new ArrayList<>();
 		List<String> names = new ArrayList<>();
 		List<LandscapeScale> scales = new ArrayList<>();
+		int reportedNear = 0;
 		for (Plot p : read()) {
 			if (!F_FORESTS.contains(p.biome())) {
 				lines.add(new int[] {p.x(), p.z(), p.x(), p.z()});
@@ -228,22 +274,33 @@ class SlicePlotsTest {
 				int reach = far + 50;
 				int steps = (int) Math.ceil(Math.hypot(l[2] - l[0], l[3] - l[1]) / 8) + 1;
 				int side = 2 * reach / 4 + 1;
-				// The least Chebyshev distance of a column of a forest of the steps F from the plot's square (the line).
-				int nearest = java.util.stream.IntStream.range(0, steps * side * side).parallel().map(k -> {
+				// The least Chebyshev distance of a column of a forest of the steps F from the plot's square (the line): the
+				// forests checked (step F1) and those reported (step F2) in one pass, packed as checked * 2^20 + reported.
+				long packed = java.util.stream.IntStream.range(0, steps * side * side).parallel().mapToLong(k -> {
 					int s = k / (side * side);
 					double t = steps == 1 ? 0 : (double) s / (steps - 1);
 					int dx = -reach + 4 * ((k % (side * side)) / side);
 					int dz = -reach + 4 * (k % side);
 					int x = (int) Math.round(l[0] + (l[2] - l[0]) * t) + dx;
 					int z = (int) Math.round(l[1] + (l[3] - l[1]) * t) + dz;
-					return F_FORESTS.contains(pl.polishforests.worldgen.habitat.Habitat.biome(w.code(x, z)))
-							? Math.max(0, Math.max(Math.abs(dx), Math.abs(dz)) - 50) : Integer.MAX_VALUE;
-				}).min().orElse(Integer.MAX_VALUE);
+					HabitatBiome b = pl.polishforests.worldgen.habitat.Habitat.biome(w.code(x, z));
+					long d = Math.max(0, Math.max(Math.abs(dx), Math.abs(dz)) - 50);
+					long none = (1L << 20) - 1;
+					return (F_FAR.contains(b) ? d : none) << 20 | (F_FORESTS.contains(b) && !F_FAR.contains(b) ? d : none);
+				}).reduce((a, b) -> Math.min(a >>> 20, b >>> 20) << 20 | Math.min(a & 0xFFFFF, b & 0xFFFFF)).orElse(-1L);
+				int nearest = packed < 0 || (packed >>> 20) == 0xFFFFF ? Integer.MAX_VALUE : (int) (packed >>> 20);
+				int reported = packed < 0 || (packed & 0xFFFFF) == 0xFFFFF ? Integer.MAX_VALUE : (int) (packed & 0xFFFFF);
 				if (nearest <= (NEAR_STEP_F.contains(names.get(i)) ? NEAR_LEAST : far)) {
 					near.add(mode + " " + names.get(i) + ": a column of a forest of the steps F " + nearest + " blocks from the square");
 				}
+				if (reported <= far) {
+					System.out.println("[plots] near step F2: " + mode + " " + names.get(i) + ": " + reported + " blocks");
+					reportedNear++;
+				}
 			}
 		}
+		System.out.println("[plots] slice plots and places within " + far + " blocks of the alder carr or the ash-alder forest: "
+				+ reportedNear + " (step F2, reported; their rows of the card are compared in the game)");
 		assertTrue(near.isEmpty(), String.join(System.lineSeparator(), near));
 	}
 
@@ -314,9 +371,21 @@ class SlicePlotsTest {
 				String prefix = biome.id().replace("_forest", "");
 				List<int[]> from = origins(presentDay, biome, scale);
 				for (boolean wantNatural : new boolean[] {true, false}) {
+					if (F_MISSING.contains(scale.id() + " " + biome.id() + (wantNatural ? " natural" : " managed"))) {
+						System.out.println("[plots] " + scale.id() + " " + biome.id() + (wantNatural ? " natural" : " managed")
+								+ ": none (F_MISSING)");
+						continue;
+					}
 					for (int n = 1; n <= 2; n++) {
 						String name = prefix + (wantNatural ? "_natural_" : "_managed_") + n;
-						int[] at = searchAround(map, natural, presentDay, biome, wantNatural, from, chosen, scale);
+						int[] at;
+						try {
+							at = searchAround(map, natural, presentDay, biome, wantNatural, from, chosen, scale);
+						} catch (AssertionError e) {
+							// Written without the plot; the check of the table names the kind missing outside F_MISSING.
+							System.out.println("[plots] missing " + scale.id() + " " + name + ": " + e.getMessage());
+							break;
+						}
 						Plot p = new Plot(scale, wantNatural, null, name, biome, at[0], at[1]);
 						chosen.add(p);
 						lines.add(p.line());
@@ -353,7 +422,7 @@ class SlicePlotsTest {
 			HabitatBiome biome, boolean wantNatural, List<int[]> origins, List<Plot> chosen, LandscapeScale scale) {
 		int rings = scale == LandscapeScale.REALISTIC ? 60 : 30;
 		for (int[] origin : origins) {
-			int[] at = search(map, natural, presentDay, biome, wantNatural, null, origin, chosen, rings);
+			int[] at = search(map, natural, presentDay, biome, wantNatural, null, origin, chosen, scale, rings);
 			if (at != null) {
 				return at;
 			}
@@ -365,7 +434,8 @@ class SlicePlotsTest {
 	/** The nearest plot center to the origin (on a grid of 20 blocks, in rings) that passes the checks. */
 	private static int[] search(ForestStandMap map, HabitatTargets.World natural, HabitatTargets.World presentDay, HabitatBiome biome,
 			boolean wantNatural, AgeClass age, int[] origin, List<Plot> chosen, LandscapeScale scale) {
-		int[] at = search(map, natural, presentDay, biome, wantNatural, age, origin, chosen, scale == LandscapeScale.REALISTIC ? 300 : 120);
+		int[] at = search(map, natural, presentDay, biome, wantNatural, age, origin, chosen, scale,
+				scale == LandscapeScale.REALISTIC ? 300 : 120);
 		if (at == null) {
 			throw new AssertionError("no plot of " + biome.id() + (wantNatural ? " natural" : " managed " + age) + " near " + origin[0]
 					+ ", " + origin[1]);
@@ -375,7 +445,7 @@ class SlicePlotsTest {
 
 	/** {@link #search} within the given rings; null when none passes. */
 	private static int[] search(ForestStandMap map, HabitatTargets.World natural, HabitatTargets.World presentDay, HabitatBiome biome,
-			boolean wantNatural, AgeClass age, int[] origin, List<Plot> chosen, int rings) {
+			boolean wantNatural, AgeClass age, int[] origin, List<Plot> chosen, LandscapeScale scale, int rings) {
 		int step = 20;
 		for (int r = 0; r <= rings; r++) {
 			for (int a = -r; a <= r; a++) {
@@ -394,8 +464,8 @@ class SlicePlotsTest {
 						continue;
 					}
 					if (siteProblem(natural, biome, x, z) == null && siteProblem(presentDay, biome, x, z) == null
-							&& SliceSitesTest.shares(natural, biome, x, z)[0] >= MIN_BIOME
-							&& SliceSitesTest.shares(presentDay, biome, x, z)[0] >= MIN_BIOME) {
+							&& SliceSitesTest.shares(natural, biome, x, z)[0] >= minBiome(scale, biome)
+							&& SliceSitesTest.shares(presentDay, biome, x, z)[0] >= minBiome(scale, biome)) {
 						return new int[] {x, z};
 					}
 				}

@@ -308,10 +308,41 @@ final class ModVegetation {
 				.gapRegeneration().full(Species.BEECH, 650).add(Species.ASH, 100).add(Species.NORWAY_MAPLE, 100)
 				.add(Species.HAZEL, 150)
 				.chances(new float[] {0.90F, 0.72F, 0.62F}, new float[] {0.95F, 0.95F, 0.95F}, 0.8F).subcanopyChance(0.35F);
-		t.rule(HabitatCondition.biomes(ALDER_CARR), 9).add(Species.BLACK_ALDER, 850, 1).add(Species.BIRCH, 100)
-				.add(Species.ASH, 50);
-		t.rule(HabitatCondition.biomes(ASH_ALDER_FOREST), 9).add(Species.BLACK_ALDER, 550, 1).add(Species.ASH, 300)
-				.add(Species.ELM, 100).add(Species.BIRCH, 50);
+		// Step F2 (docs/04 "Projekt F2", research/06 §4.5-4.6, research 08). Alder carr (Ribeso nigri-Alnetum on the
+		// eutrophic peat, Ol): a1 black alder 80-100% with birch and some ash on the drier tussocks, a weak a2 of alder and
+		// birch, an open canopy (N4 60-80%), the alder regenerating on the tussocks and in the gaps with birch and alder
+		// buckthorn; managed stands an even-aged alder stand (the stand map's carr profile). The sphagnum carr (Sphagno
+		// squarrosi-Alnetum on the poorer peat, the boggy mixed broadleaved site type) with more birch and some pine.
+		t.planned(HabitatCondition.biomes(ALDER_CARR).withSiteTypes(ForestSiteType.BOGGY_MIXED_BROADLEAVED), 9)
+				.add(Species.BLACK_ALDER, 800).add(Species.BIRCH, 170).add(Species.SCOTS_PINE, 30)
+				.managed().add(Species.BLACK_ALDER, 860).add(Species.BIRCH, 130).add(Species.SCOTS_PINE, 10)
+				.subcanopy().add(Species.BLACK_ALDER, 500).add(Species.BIRCH, 500)
+				.regeneration().add(Species.BLACK_ALDER, 350).add(Species.BIRCH, 350).add(Species.ALDER_BUCKTHORN, 300)
+				.gapRegeneration().add(Species.BLACK_ALDER, 400).add(Species.BIRCH, 400).add(Species.ALDER_BUCKTHORN, 200)
+				.chances(new float[] {0.85F, 0.65F, 0.55F}, new float[] {0.75F, 0.75F, 0.75F}, 0.6F).subcanopyChance(0.4F);
+		t.planned(HabitatCondition.biomes(ALDER_CARR), 9)
+				.add(Species.BLACK_ALDER, 880).add(Species.BIRCH, 80).add(Species.ASH, 40)
+				.managed().add(Species.BLACK_ALDER, 930).add(Species.BIRCH, 50).add(Species.ASH, 20)
+				.subcanopy().add(Species.BLACK_ALDER, 650).add(Species.BIRCH, 350)
+				.regeneration().add(Species.BLACK_ALDER, 450).add(Species.BIRCH, 200).add(Species.ALDER_BUCKTHORN, 200)
+				.add(Species.BIRD_CHERRY, 150)
+				.gapRegeneration().add(Species.BLACK_ALDER, 550).add(Species.BIRCH, 300).add(Species.ALDER_BUCKTHORN, 150)
+				.chances(new float[] {0.85F, 0.65F, 0.55F}, new float[] {0.78F, 0.78F, 0.78F}, 0.6F).subcanopyChance(0.4F);
+		// Ash-alder floodplain forest (Fraxino-Alnetum, OlJ): a1 black alder 50-90% with ash 10-40%, elm and, in the
+		// north-east by its range flag, spruce (elsewhere alder); a2 of elm, alder and ash, a closed canopy (N4 70-90%); the
+		// bird cherry in the shrub layer (20-50%, the understory and the regeneration) with hazel; the ash regenerating
+		// well in the gaps of the ash dieback.
+		t.planned(HabitatCondition.biomes(ASH_ALDER_FOREST), 10)
+				.add(Species.BLACK_ALDER, 620).add(Species.ASH, 250).add(Species.ELM, 70).alt(Species.SPRUCE, 60, Species.BLACK_ALDER)
+				.managed().add(Species.BLACK_ALDER, 700).add(Species.ASH, 220).add(Species.ELM, 40)
+				.alt(Species.SPRUCE, 40, Species.BLACK_ALDER)
+				.subcanopy().add(Species.ELM, 400).add(Species.BLACK_ALDER, 300).add(Species.ASH, 200)
+				.alt(Species.SPRUCE, 100, Species.ELM)
+				.regeneration().add(Species.ASH, 250).add(Species.BLACK_ALDER, 200).add(Species.ELM, 150)
+				.add(Species.BIRD_CHERRY, 300).add(Species.HAZEL, 100)
+				.gapRegeneration().add(Species.BLACK_ALDER, 300).add(Species.ASH, 250).add(Species.BIRD_CHERRY, 250)
+				.add(Species.ELM, 100).add(Species.BIRCH, 100)
+				.chances(new float[] {0.88F, 0.70F, 0.60F}, new float[] {0.90F, 0.90F, 0.90F}, 0.8F).subcanopyChance(0.6F);
 		t.rule(HabitatCondition.biomes(WILLOW_POPLAR_FOREST), 7).add(Species.WHITE_WILLOW, 700, 2).add(Species.POPLAR, 300);
 		t.rule(HabitatCondition.biomes(ELM_ASH_FOREST), 8).add(Species.OAK, 350).add(Species.ASH, 300).add(Species.ELM, 250)
 				.add(Species.NORWAY_MAPLE, 50).add(Species.LINDEN, 50);
@@ -606,6 +637,16 @@ final class ModVegetation {
 		return bed(ModBlocks.ground(GroundPlant.CORALROOT), weight);
 	}
 
+	/** Marsh marigold rosettes of 2–4 (step F2). */
+	private static Plant[] marigold(int weight) {
+		return bed(ModBlocks.ground(GroundPlant.MARSH_MARIGOLD), weight);
+	}
+
+	/** A herb of one block of step F2 (iris, tussock sedge, marsh fern, nettle). */
+	private static Plant herb(GroundPlant g, int weight) {
+		return Plant.block(ModBlocks.ground(g).defaultBlockState(), weight);
+	}
+
 	/** Bracken, two blocks (step V12). */
 	private static Plant bracken(int weight) {
 		return Plant.block(ModBlocks.ground(GroundPlant.BRACKEN).defaultBlockState(), weight);
@@ -677,10 +718,19 @@ final class ModVegetation {
 		l.land(biomes(UPLAND_FIR_FOREST), perChunk(0.45), 1, l.feature(deadwoodSubstitute(Species.FIR), 6),
 				l.feature(deadwoodSubstitute(Species.BEECH), 4));
 		l.land(biomes(MONTANE_SPRUCE_FOREST), perChunk(0.5), 1, l.feature(deadwoodSubstitute(Species.SPRUCE), 1));
-		l.land(biomes(ALDER_CARR), perChunk(0.35), 1, l.feature(deadwoodSubstitute(Species.BLACK_ALDER), 8),
-				l.feature(deadwoodSubstitute(Species.BIRCH), 2));
-		l.land(biomes(ASH_ALDER_FOREST), perChunk(0.3), 1, l.feature(deadwoodSubstitute(Species.BLACK_ALDER), 7),
-				l.feature(deadwoodSubstitute(Species.OAK), 3));
+		// Step F2 (docs/04 "Projekt F2", N10): the alder carr with its alders and birches (the soft wood breaks and rots
+		// fast in the wet), the ash-alder forest with the alders, the ashes of the ash dieback and the elms of the Dutch elm
+		// disease; the stumps of the managed alder stands.
+		l.land(biomes(ALDER_CARR), deadwoodCoverage(ALDER_CARR), 1, l.feature(deadwood(Species.BLACK_ALDER), 14),
+				l.feature(deadwood(Species.BIRCH), 4), l.feature(deadwood(Species.ASH), 2),
+				l.feature(stump(Species.BLACK_ALDER), stumpWeight(ALDER_CARR, 20, 0.9)),
+				l.feature(stump(Species.BIRCH), stumpWeight(ALDER_CARR, 20, 0.08)),
+				l.feature(stump(Species.ASH), stumpWeight(ALDER_CARR, 20, 0.02)));
+		l.land(biomes(ASH_ALDER_FOREST), deadwoodCoverage(ASH_ALDER_FOREST), 1, l.feature(deadwood(Species.BLACK_ALDER), 10),
+				l.feature(deadwood(Species.ASH), 7), l.feature(deadwood(Species.ELM), 3),
+				l.feature(stump(Species.BLACK_ALDER), stumpWeight(ASH_ALDER_FOREST, 20, 0.7)),
+				l.feature(stump(Species.ASH), stumpWeight(ASH_ALDER_FOREST, 20, 0.25)),
+				l.feature(stump(Species.ELM), stumpWeight(ASH_ALDER_FOREST, 20, 0.05)));
 		// Gray alder forest: the gray bark of its gray alders (pale oak, §8.4), some spruce.
 		l.land(biomes(GRAY_ALDER_FOREST), perChunk(0.3), 1, l.feature(deadwoodSubstitute(Species.GRAY_ALDER), 8),
 				l.feature(deadwoodSubstitute(Species.SPRUCE), 2));
@@ -697,7 +747,7 @@ final class ModVegetation {
 	 * [S]. Each step F adds its forest.
 	 */
 	static final Map<HabitatBiome, Double> DEAD_TREES = Map.of(OAK_HORNBEAM_FOREST, 2.1, FRESH_PINE_FOREST, 0.92,
-			MIXED_PINE_FOREST, 1.3, MIXED_FOREST, 1.7, LOWLAND_BEECH_FOREST, 1.8);
+			MIXED_PINE_FOREST, 1.3, MIXED_FOREST, 1.7, LOWLAND_BEECH_FOREST, 1.8, ALDER_CARR, 1.6, ASH_ALDER_FOREST, 1.8);
 	/** Stumps per chunk of a managed stand of the forests of the tree planner (WISL: 30-80 per ha, 1-2 per chunk) [S]. */
 	static final double STUMPS = 1.5;
 
@@ -754,9 +804,15 @@ final class ModVegetation {
 				1, l.feature(Species.HAZEL.path(), 1));
 		l.edge(biomes(DRY_PINE_FOREST, COASTAL_PINE_FOREST, MOIST_PINE_FOREST, MONTANE_SPRUCE_FOREST), Ecotone.Edge.MANTLE, 0.05F,
 				1, l.feature(Species.JUNIPER.path(), 1));
-		l.edge(biomes(ASH_ALDER_FOREST, GRAY_ALDER_FOREST), Ecotone.Edge.MANTLE, 0.06F, 1, l.feature(Species.OSIER.path(), 3),
+		// Step F2: the mantles of the alder forests of the tree planner, the thin-stemmed shrubs of the slice: bird cherry and
+		// hazel by the ash-alder forest, alder buckthorn and the gray willow (the M2 osier) by the alder carr.
+		l.edge(biomes(ASH_ALDER_FOREST), Ecotone.Edge.MANTLE, 0.25F, 1, l.feature(ModTrees.SLICE.get(Species.BIRD_CHERRY), 2),
+				l.feature(ModTrees.SLICE.get(Species.HAZEL), 1), l.feature(Species.OSIER.path(), 1));
+		l.edge(biomes(ALDER_CARR), Ecotone.Edge.MANTLE, 0.2F, 1, l.feature(ModTrees.SLICE.get(Species.ALDER_BUCKTHORN), 2),
+				l.feature(Species.OSIER.path(), 1));
+		l.edge(biomes(GRAY_ALDER_FOREST), Ecotone.Edge.MANTLE, 0.06F, 1, l.feature(Species.OSIER.path(), 3),
 				l.feature(Species.HAZEL.path(), 1));
-		l.edge(biomes(ALDER_CARR, WILLOW_POPLAR_FOREST), Ecotone.Edge.MANTLE, 0.06F, 1, l.feature(Species.OSIER.path(), 1));
+		l.edge(biomes(WILLOW_POPLAR_FOREST), Ecotone.Edge.MANTLE, 0.06F, 1, l.feature(Species.OSIER.path(), 1));
 		l.edge(biomes(BOG_WOODLAND), Ecotone.Edge.MANTLE, 0.02F, 1, l.feature(ModTrees.SCOTS_PINE_LOW, 2),
 				l.feature(Species.BIRCH.substitutePath(), 1));
 		// About 13 dwarf pines of 21–37 columns each per chunk: the crowns cover about 70% of the ground.
@@ -771,9 +827,14 @@ final class ModVegetation {
 				l.feature(ModTrees.SLICE.get(Species.JUNIPER), 1));
 		l.land(biomes(OAK_HORNBEAM_FOREST), perChunk(3), 1, l.feature(ModTrees.SLICE.get(Species.HAZEL), 1));
 		l.land(biomes(ELM_ASH_FOREST), perChunk(3), 1, l.feature(Species.HAZEL.path(), 1));
-		l.land(biomes(ASH_ALDER_FOREST, UPLAND_FIR_FOREST), perChunk(1), 1, l.feature(Species.HAZEL.path(), 1));
-		// Alder carr: no hazel on waterlogged peat; gray willow (Salix cinerea) as an osier.
-		l.land(biomes(ALDER_CARR), perChunk(1.5), 1, l.feature(Species.OSIER.path(), 1));
+		l.land(biomes(UPLAND_FIR_FOREST), perChunk(1), 1, l.feature(Species.HAZEL.path(), 1));
+		// Step F2 (N7: the shrub layer 20-50%): the ash-alder forest with the bird cherry (Pruno-Fraxinetum) and some hazel;
+		// the alder carr: no hazel on waterlogged peat, the alder buckthorn, the bird cherry on the tussocks and the gray
+		// willow (Salix cinerea) as the M2 osier.
+		l.land(biomes(ASH_ALDER_FOREST), perChunk(7), 1, l.feature(ModTrees.SLICE.get(Species.BIRD_CHERRY), 4),
+				l.feature(ModTrees.SLICE.get(Species.HAZEL), 1));
+		l.land(biomes(ALDER_CARR), perChunk(6), 1, l.feature(ModTrees.SLICE.get(Species.ALDER_BUCKTHORN), 3),
+				l.feature(ModTrees.SLICE.get(Species.BIRD_CHERRY), 1), l.feature(Species.OSIER.path(), 1));
 		// Gray dune: creeping willow as an osier.
 		l.land(biomes(GRAY_DUNE), 0.01F, 3, l.feature(Species.OSIER.path(), 1));
 		return l.palette();
@@ -809,9 +870,14 @@ final class ModVegetation {
 		l.rule(biomes(REEDBED).withZones(), Medium.SHORE, 1, 64, List.of(), 0.75F, 3, reed);
 		l.rule(HabitatCondition.zones(Zone.SHORE_REEDBED, Zone.WILLOW_SCRUB, Zone.HERB_FRINGE, Zone.TALL_HERBS, Zone.WILLOW_CARR)
 				.withBiomes(lowland), Medium.SHORE, 1, 64, List.of(), 0.7F, 3, reed);
+		// Step F2: the hollows of the alder forests, by the water and the puddles of the micro-relief: the yellow iris and the
+		// marsh marigold with some sedge, by the water also the reed (before the reed rules of the eutrophic waters).
+		Plant[] hollow = cat(herb(GroundPlant.YELLOW_IRIS, 6), marigold(5), herb(GroundPlant.TUSSOCK_SEDGE, 3));
+		l.rule(biomes(ALDER_CARR, ASH_ALDER_FOREST), Medium.SHORE, 1, 64, List.of(), 0.55F, 3, cat(hollow, reed.withWeight(4)));
 		l.rule(biomes(reedBanks), Medium.SHORE, 1, 64, List.of(), 0.5F, 3, reed);
 		// Puddles of the micro-relief: reed only here and there (the herb layer of an alder carr is mostly sedges, ferns
 		// and iris: the ground layer's tall grass and large fern), more in the reedbed biome.
+		l.rule(biomes(ALDER_CARR, ASH_ALDER_FOREST), Medium.PUDDLE_SHORE, 1, 64, List.of(), 0.55F, 3, hollow);
 		l.rule(biomes(REEDBED), Medium.PUDDLE_SHORE, 1, 64, List.of(), 0.4F, 3, reed);
 		l.rule(biomes(FEN, WET_MEADOW), Medium.PUDDLE_SHORE, 1, 64, List.of(), 0.15F, 3, reed);
 		l.rule(biomes(reedBanks), Medium.PUDDLE_SHORE, 1, 64, List.of(), 0.1F, 3, reed);
@@ -880,9 +946,24 @@ final class ModVegetation {
 		// of the S8b review).
 		l.edge(biomes(RAISED_BOG), Ecotone.Edge.FRINGE, 0.75F, 3, cat(bush.withWeight(45), moss.withWeight(15),
 				bed(Blocks.PINK_PETALS, 10)));
-		l.land(biomes(ALDER_CARR), 0.88F, 3, tallGrass.withWeight(40), largeFern.withWeight(30), fern.withWeight(12),
-				bush.withWeight(8), b(Blocks.FIREFLY_BUSH, 3), grass.withWeight(4));
-		l.land(biomes(ASH_ALDER_FOREST, GRAY_ALDER_FOREST), 0.88F, 3, tallGrass.withWeight(40), largeFern.withWeight(30),
+		// Step F2 (docs/04 "Projekt F2", N8 60-90% and 70-100%, N9): the own herb layer of the alder forests in rounded
+		// patches. The alder carr (Ribeso nigri-Alnetum): the sedges of the tussocks (Carex elongata, C. elata), the marsh
+		// fern, the yellow iris and the marsh marigold (more of them by the water and the puddles, the waterside zones), the
+		// nettle on the drier tussocks, the reed grass as tall grass; moss in cushions scattered per column (on the tussocks,
+		// TreeMoss). The sphagnum carr (Sphagno squarrosi-Alnetum, the boggy mixed broadleaved site type): the sphagnum as
+		// the vanilla moss carpet (own sphagnum from step F4), sedges and the marsh fern. The ash-alder forest (Fraxino-
+		// Alnetum): the nettle, the sedges (Carex remota), the marsh marigold, the wood anemone (also for the wood stitchwort,
+		// a white spring flower of the same stands), the enchanter's nightshade as the vanilla fern and short grass.
+		l.blobs(biomes(ALDER_CARR).withSiteTypes(ForestSiteType.BOGGY_MIXED_BROADLEAVED), 0.92F, 5, cat(moss.withWeight(34),
+				herb(GroundPlant.TUSSOCK_SEDGE, 22), herb(GroundPlant.MARSH_FERN, 16), marigold(4), fern.withWeight(4)),
+				cat(forestMoss.withWeight(6)), null);
+		l.blobs(biomes(ALDER_CARR), 0.9F, 5, cat(herb(GroundPlant.TUSSOCK_SEDGE, 26), herb(GroundPlant.MARSH_FERN, 18),
+				herb(GroundPlant.YELLOW_IRIS, 8), marigold(7), herb(GroundPlant.NETTLE, 7), tallGrass.withWeight(6),
+				b(Blocks.FIREFLY_BUSH, 2)), cat(forestMoss.withWeight(8)), null);
+		l.blobs(biomes(ASH_ALDER_FOREST), 0.95F, 5, cat(herb(GroundPlant.NETTLE, 20), herb(GroundPlant.TUSSOCK_SEDGE, 14),
+				marigold(9), anemone(12), herb(GroundPlant.MARSH_FERN, 4), fern.withWeight(8), grass.withWeight(6),
+				tallGrass.withWeight(5), litter(4)), cat(forestMoss.withWeight(4)), null);
+		l.land(biomes(GRAY_ALDER_FOREST), 0.88F, 3, tallGrass.withWeight(40), largeFern.withWeight(30),
 				fern.withWeight(12), bush.withWeight(10), grass.withWeight(3));
 		l.land(biomes(WILLOW_POPLAR_FOREST), 0.86F, 3, tallGrass.withWeight(55), largeFern.withWeight(20), bush.withWeight(12),
 				fern.withWeight(5), grass.withWeight(4));

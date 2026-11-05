@@ -458,6 +458,12 @@ public final class TreeStandFeature implements Feature {
 					RootVoxels roots = RootPlan.plan(new RootPlan.Request(proc.species(), layer, age, level.getSeed(), x, at.getY(), z,
 							voxels.radius(0), a::rootGround, session.session().trunks(), session.session().rootKinds()));
 					TreeRoots.Written w = TreeRoots.write(level, roots, proc.species());
+					// Step F2: the tussock at the base of an alder of a natural stand of the alder carr.
+					if (proc.species() == pl.polishforests.worldgen.habitat.Species.BLACK_ALDER && layer == CrownLayer.CANOPY
+							&& pl.polishforests.worldgen.habitat.Habitat.biome(codes[column])
+									== pl.polishforests.worldgen.habitat.HabitatBiome.ALDER_CARR && n.stands().natural(x, z)) {
+						TreeMoss.tussock(level, x, at.getY(), z, level.getSeed());
+					}
 					// Step V12: moss at the trunk base and along the flares.
 					TreeMoss.write(level, roots, w, pl.polishforests.worldgen.habitat.Habitat.biome(codes[column]), level.getSeed());
 					TreeRoots.NANOS.add(System.nanoTime() - rootStart);

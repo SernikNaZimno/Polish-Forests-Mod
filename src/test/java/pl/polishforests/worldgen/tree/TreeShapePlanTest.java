@@ -776,6 +776,51 @@ class TreeShapePlanTest {
 		}
 	}
 
+	/**
+	 * Step F2: a black alder of a stand grows on a stool with one or two more stems in about 30% of the trees
+	 * ({@link SpeciesShape#stoolChance}); no other species, no lone alder and no alder of the regeneration does. A stem of
+	 * a stool is vertical wood beside the trunk column low above the base.
+	 */
+	@Test
+	void blackAldersOfAStandGrowOnStools() {
+		int n = 400;
+		for (Species s : List.of(Species.BLACK_ALDER, Species.ELM, Species.BIRCH)) {
+			for (CrownLayer layer : List.of(CrownLayer.CANOPY, CrownLayer.SUBCANOPY, CrownLayer.REGENERATION)) {
+				int stools = 0;
+				int lone = 0;
+				for (int k = 0; k < n; k++) {
+					int x = 37 * k - 7000;
+					int z = 101 * k + 13;
+					stools += stool(TreeShapePlan.plan(new TreeRequest(s, layer, AgeClass.MATURE, SEED, x, 64, z, null, null,
+							StandMap.uniform(AgeClass.MATURE, true)))) ? 1 : 0;
+					lone += stool(TreeShapePlan.plan(new TreeRequest(s, layer, AgeClass.MATURE, SEED, x, 64, z, null, null, null))) ? 1 : 0;
+				}
+				double share = (double) stools / n;
+				System.out.printf(Locale.ROOT, "[tree shape] %s %s: %.2f on stools (lone %d)%n", s.id(), layer, share, lone);
+				if (s == Species.BLACK_ALDER && layer != CrownLayer.REGENERATION) {
+					assertTrue(share >= 0.2 && share <= 0.4, s.id() + " " + layer + " stools " + share);
+				} else {
+					assertEquals(0, stools, s.id() + " " + layer);
+				}
+				assertEquals(0, lone, s.id() + " " + layer + " lone");
+			}
+		}
+	}
+
+	/**
+	 * Whether the tree has a column of vertical wood beside its trunk column from 1 to 3 blocks above the base (a stem of a
+	 * stool; a low branch of a young tree is not vertical over three blocks).
+	 */
+	private static boolean stool(TreeVoxels v) {
+		Map<Long, Integer> rise = new HashMap<>();
+		for (int i = 1; i < v.woodCount(); i++) {
+			if (v.woodY(i) >= 1 && v.woodY(i) <= 3 && (v.woodX(i) != 0 || v.woodZ(i) != 0) && v.parent(i) == TreeVoxels.DOWN) {
+				rise.merge(((long) v.woodX(i) << 32) ^ (v.woodZ(i) & 0xFFFF_FFFFL), 1, Integer::sum);
+			}
+		}
+		return rise.containsValue(3);
+	}
+
 	@Test
 	void reportBlocksPerTree() {
 		StringBuilder report = new StringBuilder("[tree shape] mean wood + leaves per tree (40 columns)\n");

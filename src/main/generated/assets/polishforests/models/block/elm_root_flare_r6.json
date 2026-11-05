@@ -1,0 +1,7 @@
+{
+  "parent": "polishforests:block/template_trunk_r6",
+  "textures": {
+    "bark": "polishforests:block/elm_bark",
+    "end": "polishforests:block/elm_log_top"
+  }
+}

@@ -104,6 +104,15 @@ public final class FoliageCurve {
 				0xD6A478);
 		broadleaf(Species.OAK, 6.1, 0xC2C86A, 0x60773C,
 				keys(22.0, 0, 0, 23.6, 0xB89238, 0.75, 25.1, 0x8C6A30, 0.85), 26.6, 0x9A8577, 0xBAA89C, 0xBF976F);
+		// Step F2 (docs/research 08): the black alder leafs out in early May and drops its leaves green, only dulled, at the
+		// end of October and in November (the purple haze of its catkins in late winter); the elm leafs out in May and
+		// turns yellow in October; the bird cherry leafs out first of all (mid-April), yellow to orange from late September.
+		broadleaf(Species.BLACK_ALDER, 5.6, 0xA8CC58, 0x30704A, keys(23.0, 0, 0, 24.2, 0x5E7A3A, 0.4), 24.8, 0x8E6E5E,
+				0xA88C80, 0);
+		broadleaf(Species.ELM, 6.0, 0xB4D45A, 0x4E8A44, keys(21.0, 0, 0, 22.4, 0xD8BC3A, 0.85, 23.4, 0xC8A034, 0.85), 24.0,
+				0x9A8A7E, 0xBBAFA4, 0);
+		broadleaf(Species.BIRD_CHERRY, 4.0, 0xB8DA62, 0x46962E, keys(19.6, 0, 0, 21.0, 0xD8B83A, 0.8, 22.2, 0xC9783A, 0.8),
+				23.2, 0x9E8A80, 0xC4B4AA, 0);
 	}
 
 	private FoliageCurve() {

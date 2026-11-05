@@ -39,7 +39,8 @@ class StandCensusSimulationTest {
 	private static final String[] KEYS = {ForestNorms.TREES_PER_CHUNK, ForestNorms.A1_PER_CHUNK, ForestNorms.A2_PER_CHUNK,
 			ForestNorms.A1_HEIGHT, ForestNorms.A2_HEIGHT, ForestNorms.A2_SHARE, ForestNorms.COMPOSITION + "oak",
 			ForestNorms.COMPOSITION + "linden", ForestNorms.COMPOSITION + "maple_ash", ForestNorms.COMPOSITION + "scots_pine",
-			ForestNorms.COMPOSITION + "birch", ForestNorms.COMPOSITION + "hornbeam", ForestNorms.COMPOSITION + "beech", ForestNorms.CANOPY, ForestNorms.GAP_SHARE, ForestNorms.GAP_DIAMETER,
+			ForestNorms.COMPOSITION + "birch", ForestNorms.COMPOSITION + "hornbeam", ForestNorms.COMPOSITION + "beech",
+			ForestNorms.COMPOSITION + "black_alder", ForestNorms.COMPOSITION + "elm", ForestNorms.UNDERSTORY, ForestNorms.CANOPY, ForestNorms.GAP_SHARE, ForestNorms.GAP_DIAMETER,
 			ForestNorms.REGENERATION_RATIO, ForestNorms.OAK_REGENERATION, ForestNorms.PINE_REGENERATION_UNDER_CANOPY,
 			ForestNorms.TOP_HEIGHT, ForestNorms.BARE_WOOD, ForestNorms.EXPOSED_WOOD, ForestNorms.BARE_ARMS,
 			ForestNorms.DEADWOOD_PER_CHUNK, ForestNorms.PIECES_PER_CHUNK, ForestNorms.LOGS_PER_CHUNK, ForestNorms.SNAGS_PER_CHUNK,
@@ -53,9 +54,12 @@ class StandCensusSimulationTest {
 		for (ForestNorms.Forest forest : ForestNorms.Forest.values()) {
 			HabitatBiome biome = forest.biome();
 			boolean natural = forest.natural();
+			// Step F2: the alder carr in its eutrophic and its sphagnum form (Ol and LMb).
 			ForestSiteType[] sites = biome == HabitatBiome.LOWLAND_BEECH_FOREST
 					? new ForestSiteType[] {ForestSiteType.FRESH_BROADLEAVED, ForestSiteType.FRESH_MIXED_BROADLEAVED}
-					: new ForestSiteType[] {ForestSiteType.NONE};
+					: biome == HabitatBiome.ALDER_CARR
+							? new ForestSiteType[] {ForestSiteType.ALDER_SWAMP, ForestSiteType.BOGGY_MIXED_BROADLEAVED}
+							: new ForestSiteType[] {ForestSiteType.NONE};
 			for (ForestSiteType site : sites) {
 				for (AgeClass age : AgeClass.values()) {
 					if (only.isBlank() || only.contains(biome.id() + (natural ? ":natural" : ":managed"))) {

@@ -198,38 +198,269 @@
       "biomes": [
         "alder_carr"
       ],
-      "coverage": 0.88,
-      "patch": 3,
+      "coverage": 0.92,
+      "patch": 5,
+      "patch_shape": "blobs",
       "plants": [
         {
-          "block": "minecraft:tall_grass",
-          "weight": 40
+          "block": "minecraft:moss_carpet",
+          "weight": 34
         },
         {
-          "block": "minecraft:large_fern",
-          "weight": 30
+          "block": "polishforests:tussock_sedge",
+          "weight": 22
+        },
+        {
+          "block": "polishforests:marsh_fern",
+          "weight": 16
+        },
+        {
+          "block": {
+            "id": "polishforests:marsh_marigold",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "2"
+            }
+          },
+          "weight": 1
+        },
+        {
+          "block": {
+            "id": "polishforests:marsh_marigold",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "3"
+            }
+          },
+          "weight": 1
+        },
+        {
+          "block": {
+            "id": "polishforests:marsh_marigold",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "4"
+            }
+          },
+          "weight": 2
         },
         {
           "block": "minecraft:fern",
-          "weight": 12
+          "weight": 4
+        }
+      ],
+      "scattered": [
+        {
+          "block": "polishforests:forest_moss_carpet",
+          "weight": 6
+        }
+      ],
+      "site_types": [
+        "boggy_mixed_broadleaved"
+      ]
+    },
+    {
+      "biomes": [
+        "alder_carr"
+      ],
+      "coverage": 0.9,
+      "patch": 5,
+      "patch_shape": "blobs",
+      "plants": [
+        {
+          "block": "polishforests:tussock_sedge",
+          "weight": 26
         },
         {
-          "block": "minecraft:bush",
+          "block": "polishforests:marsh_fern",
+          "weight": 18
+        },
+        {
+          "block": "polishforests:yellow_iris",
           "weight": 8
         },
         {
-          "block": "minecraft:firefly_bush",
+          "block": {
+            "id": "polishforests:marsh_marigold",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "2"
+            }
+          },
+          "weight": 2
+        },
+        {
+          "block": {
+            "id": "polishforests:marsh_marigold",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "3"
+            }
+          },
+          "weight": 2
+        },
+        {
+          "block": {
+            "id": "polishforests:marsh_marigold",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "4"
+            }
+          },
           "weight": 3
         },
         {
+          "block": "polishforests:nettle",
+          "weight": 7
+        },
+        {
+          "block": "minecraft:tall_grass",
+          "weight": 6
+        },
+        {
+          "block": "minecraft:firefly_bush",
+          "weight": 2
+        }
+      ],
+      "scattered": [
+        {
+          "block": "polishforests:forest_moss_carpet",
+          "weight": 8
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "ash_alder_forest"
+      ],
+      "coverage": 0.95,
+      "patch": 5,
+      "patch_shape": "blobs",
+      "plants": [
+        {
+          "block": "polishforests:nettle",
+          "weight": 20
+        },
+        {
+          "block": "polishforests:tussock_sedge",
+          "weight": 14
+        },
+        {
+          "block": {
+            "id": "polishforests:marsh_marigold",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "2"
+            }
+          },
+          "weight": 3
+        },
+        {
+          "block": {
+            "id": "polishforests:marsh_marigold",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "3"
+            }
+          },
+          "weight": 3
+        },
+        {
+          "block": {
+            "id": "polishforests:marsh_marigold",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "4"
+            }
+          },
+          "weight": 3
+        },
+        {
+          "block": {
+            "id": "polishforests:wood_anemone",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "2"
+            }
+          },
+          "weight": 4
+        },
+        {
+          "block": {
+            "id": "polishforests:wood_anemone",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "3"
+            }
+          },
+          "weight": 4
+        },
+        {
+          "block": {
+            "id": "polishforests:wood_anemone",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "4"
+            }
+          },
+          "weight": 4
+        },
+        {
+          "block": "polishforests:marsh_fern",
+          "weight": 4
+        },
+        {
+          "block": "minecraft:fern",
+          "weight": 8
+        },
+        {
           "block": "minecraft:short_grass",
+          "weight": 6
+        },
+        {
+          "block": "minecraft:tall_grass",
+          "weight": 5
+        },
+        {
+          "block": {
+            "id": "minecraft:leaf_litter",
+            "properties": {
+              "facing": "north",
+              "segment_amount": "2"
+            }
+          },
+          "weight": 1
+        },
+        {
+          "block": {
+            "id": "minecraft:leaf_litter",
+            "properties": {
+              "facing": "north",
+              "segment_amount": "3"
+            }
+          },
+          "weight": 1
+        },
+        {
+          "block": {
+            "id": "minecraft:leaf_litter",
+            "properties": {
+              "facing": "north",
+              "segment_amount": "4"
+            }
+          },
+          "weight": 2
+        }
+      ],
+      "scattered": [
+        {
+          "block": "polishforests:forest_moss_carpet",
           "weight": 4
         }
       ]
     },
     {
       "biomes": [
-        "ash_alder_forest",
         "gray_alder_forest"
       ],
       "coverage": 0.88,

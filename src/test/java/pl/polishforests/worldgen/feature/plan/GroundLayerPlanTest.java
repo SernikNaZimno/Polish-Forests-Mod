@@ -239,9 +239,12 @@ class GroundLayerPlanTest {
 	private static final Set<String> SMALL = Set.of("minecraft:short_grass", "minecraft:dandelion", "minecraft:poppy",
 			"minecraft:oxeye_daisy", "minecraft:cornflower", "minecraft:azure_bluet", "minecraft:allium",
 			"minecraft:lily_of_the_valley", "minecraft:wildflowers", "minecraft:pink_petals");
-	/** The biomes and zones of the density rule (§4.6). */
-	private static final List<HabitatBiome> DENSE_BIOMES = List.of(HabitatBiome.ALDER_CARR, HabitatBiome.ASH_ALDER_FOREST,
-			HabitatBiome.WILLOW_POPLAR_FOREST, HabitatBiome.ELM_ASH_FOREST, HabitatBiome.GRAY_ALDER_FOREST,
+	/**
+	 * The biomes and zones of the density rule (§4.6). The alder carr and the ash-alder forest left the list in step F2:
+	 * forests of the tree planner since then, their herb layer of sedges, ferns, iris and nettle (one-block plants of the
+	 * family {@code HERB}) is checked by the norms card (N8), as the beech forest's.
+	 */
+	private static final List<HabitatBiome> DENSE_BIOMES = List.of(HabitatBiome.WILLOW_POPLAR_FOREST, HabitatBiome.ELM_ASH_FOREST, HabitatBiome.GRAY_ALDER_FOREST,
 			HabitatBiome.WILLOW_SCRUB, HabitatBiome.REEDBED);
 	private static final List<Zone> DENSE_ZONES = List.of(Zone.WILLOW_SCRUB, Zone.HERB_FRINGE, Zone.TALL_HERBS,
 			Zone.MONTANE_TALL_HERBS, Zone.SHORE_REEDBED, Zone.WILLOW_CARR, Zone.RIVERSIDE_WILLOWS, Zone.SPRING_AREA);

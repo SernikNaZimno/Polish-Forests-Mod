@@ -1,0 +1,12 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "polishforests:block/bird_cherry_leaves",
+    "tints": [
+      {
+        "type": "minecraft:constant",
+        "value": -12081629
+      }
+    ]
+  }
+}

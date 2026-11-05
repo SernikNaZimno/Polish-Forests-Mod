@@ -101,6 +101,10 @@ public final class RootPlan {
 			case SPRUCE -> new Habit(4, 6, 4, 6, 8, 1.0, 2, 2, 0, false);
 			case SCOTS_PINE -> new Habit(0, 3, 1, 3, 5, 0.75, 3, 3, 5, false);
 			case BIRCH -> new Habit(0, 3, 1, 4, 5, 0.65, 2, 3, 0, false);
+			// Step F2: black alder, a shallow heart root system in wet soil with short flares (the tussock at its base is
+			// written by TreeMoss); elm, a heart root system with buttresses and sinkers in the floodplain.
+			case BLACK_ALDER -> new Habit(3, 5, 2, 5, 7, 0.75, 2, 3, 0, false);
+			case ELM -> new Habit(4, 6, 3, 4, 6, 0.85, 3, 4, 3, true);
 			default -> throw new IllegalArgumentException("no root habit for " + species);
 		};
 	}

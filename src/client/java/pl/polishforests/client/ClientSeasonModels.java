@@ -67,6 +67,11 @@ public final class ClientSeasonModels {
 		return PolishForests.id("block/" + plant.id() + "_leaves_" + k);
 	}
 
+	/** The model id of the leaves (no flowers) of a herb of step F2 (datagen writes it). */
+	public static Identifier herbLeaves(GroundPlant plant) {
+		return PolishForests.id("block/" + plant.id() + "_leaves");
+	}
+
 	/** The model id of the bilberry flowers (datagen writes it). */
 	public static Identifier flowers(GroundPlant plant) {
 		return PolishForests.id("block/" + plant.id() + "_flowers");
@@ -194,6 +199,15 @@ public final class ClientSeasonModels {
 						case LEAVES -> 1;
 						default -> SeasonalModel.Look.BASE;
 					}, List.of(new SeasonalModel.Alternative(s -> bedLeaves(g, s), false, false, false)), deps);
+				}
+				if (g.kind() == GroundPlant.Kind.HERB) {
+					// Step F2: the herb in flower (the base model), with its leaves only, or nothing while withdrawn.
+					List<Variant> leaves = List.of(new Variant(herbLeaves(g)));
+					return new SeasonalModel.Root(model, (s, pos) -> switch (GroundPhases.look(g, step(), pos.getX(), pos.getZ())) {
+						case NONE -> SeasonalModel.Look.NOTHING;
+						case LEAVES -> 1;
+						default -> SeasonalModel.Look.BASE;
+					}, List.of(new SeasonalModel.Alternative(s -> leaves, false, false, false)), leaves);
 				}
 				if (g.kind() == GroundPlant.Kind.BERRY_SHRUB) {
 					List<Variant> flowers = List.of(new Variant(flowers(g)));

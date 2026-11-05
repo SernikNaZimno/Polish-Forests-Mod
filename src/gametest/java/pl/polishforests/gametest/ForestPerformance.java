@@ -36,7 +36,7 @@ import pl.polishforests.PolishForests;
  * <li>{@link #woodAndLeaves}: wood and leaves of a generated area by block tags (both builds count the same way);</li>
  * <li>{@link #memoryAndStates}: the used heap after a full garbage collection and the number of block states;</li>
  * <li>{@link #flights} ({@code -Pgametest=performance -Psites=slice}): in the oak-hornbeam and the fresh pine forest of
- * each scale and, from step F1, in the lowland beech forest ({@link #BEECH_SITE}), the load of new terrain around a teleport (chunks per second, the C2ME budget with {@code -Poptimization};
+ * each scale and, from step F1, in the lowland beech forest ({@link #BEECH_SITE}) and, from step F2, in the alder carr ({@link #ALDER_SITE}), the load of new terrain around a teleport (chunks per second, the C2ME budget with {@code -Poptimization};
  * only this with {@code -PloadOnly}, step O1) and a fixed camera flight: {@value #FLIGHT_POINTS} points on a circle of {@value #ORBIT_RADIUS} blocks around the place,
  * above the canopy and at eye level, with a full turn of the camera at each (frames per second and the render time of
  * each frame);</li>
@@ -135,10 +135,16 @@ final class ForestPerformance {
 	 * agree).
 	 */
 	static final int[][] BEECH_SITE = {{-7793, -9133}, {-2004, -3609}};
+	/**
+	 * Step F2 (KF-6): the place of the alder carr of the flights, per scale: the plot {@code alder_carr_natural_1} of the
+	 * realistic scale and {@code alder_carr_managed_1} of the gameplay one (no natural carr plot there), written as numbers
+	 * as {@link #BEECH_SITE}.
+	 */
+	static final int[][] ALDER_SITE = {{2339, 29627}, {-5971, 1387}};
 
 	/**
 	 * The load and flight measurements in the oak-hornbeam and the fresh pine forest of the world (natural mode) and, from
-	 * step F1, in the lowland beech forest ({@link #BEECH_SITE}).
+	 * step F1, in the lowland beech forest ({@link #BEECH_SITE}), from step F2 in the alder carr ({@link #ALDER_SITE}).
 	 */
 	static void flights(ClientGameTestContext context, TestSingleplayerContext sp, String name, boolean real) {
 		register();
@@ -149,6 +155,7 @@ final class ForestPerformance {
 			}
 		}
 		places.add(new Object[] {"lowland_beech_1", BEECH_SITE[real ? 0 : 1]});
+		places.add(new Object[] {"alder_carr_1", ALDER_SITE[real ? 0 : 1]});
 		for (Object[] place : places) {
 			int[] m = (int[]) place[1];
 			String label = name + " / " + place[0];

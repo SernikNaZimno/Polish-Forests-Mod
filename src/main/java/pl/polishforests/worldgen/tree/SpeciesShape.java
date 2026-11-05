@@ -125,6 +125,27 @@ public record SpeciesShape(Archetype archetype, ByAge height, ByAge dbh, ByAge c
 		SHAPES.put(Species.ASH, new SpeciesShape(Archetype.BROAD, new ByAge(16, 28, 32), new ByAge(13, 42, 60),
 				new ByAge(0.42F, 0.45F, 0.48F), new ByAge(2.0F, 3.8F, 4.8F), new Profile(0.5F, 0.6F, 0.45F, 2.2F), 0.5F,
 				1.6F, 1, 50, 26, 0.12F, 0, 2.5F, 2.1F, 0.8F, 0.4F, 2.4F, 0.82F, 0.06F));
+		// Step F2. Black alder (a1 of the alder carr and the ash-alder forest: a straight bole with a leader to the top, a
+		// narrow ovate crown of short, nearly horizontal branches; 20-28 m, docs/research 08); multi-stem on a stool in the
+		// stands ({@link #stoolChance}).
+		SHAPES.put(Species.BLACK_ALDER, new SpeciesShape(Archetype.BROAD, new ByAge(14, 24, 27), new ByAge(11, 32, 46),
+				new ByAge(0.5F, 0.5F, 0.52F), new ByAge(1.8F, 2.9F, 3.6F), new Profile(0.7F, 0.35F, 0.15F, 1.4F), 0.4F,
+				0.75F, 1, 72, 44, 0.04F, 0, 1.9F, 1.7F, 0.9F, 0.2F, 2.4F, 0.84F, 0.1F));
+		// Elm (field and fluttering elm of the ash-alder forest, also in its subcanopy: a fork into a few ascending limbs
+		// and a broad, rounded crown, a buttressed base).
+		SHAPES.put(Species.ELM, new SpeciesShape(Archetype.BROAD, new ByAge(14, 26, 30), new ByAge(12, 44, 72),
+				new ByAge(0.5F, 0.52F, 0.55F), new ByAge(2.4F, 4.8F, 6.0F), new Profile(0.55F, 0.6F, 0.5F, 2.4F), 0.6F,
+				1.0F, 1, 66, 38, 0.12F, 3, 2.2F, 1.8F, 0.88F, 0.4F, 2.4F, 0.82F, 0.06F));
+	}
+
+	/**
+	 * Step F2: the chance that a tree of a stand (not a lone tree, not the regeneration) of the species grows as two or
+	 * three stems from one stool, the coppice shoots of an alder after a cut or a dieback (20-40% of the alders of the
+	 * carr, docs/04 "Projekt F2"); 0 for every other species. Drawn from a hash of its own salt, so the other draws of
+	 * the tree stay as they are.
+	 */
+	public static double stoolChance(Species species) {
+		return species == Species.BLACK_ALDER ? 0.3 : 0;
 	}
 
 	/** The shape of a species of the slice, or null when the planner has none (species outside the slice). */

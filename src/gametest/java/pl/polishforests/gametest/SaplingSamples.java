@@ -110,7 +110,8 @@ final class SaplingSamples {
 			FellingSamples.hideHud(context);
 			int y = sp.getServer().computeOnServer(s -> s.overworld().getHeight(Heightmap.Types.MOTION_BLOCKING, 0, 0));
 			List<Grown> all = new ArrayList<>();
-			TreeFoliage[] foliage = TreeFoliage.values();
+			// Step F2: the trees of the planner (the sapling of a shrub, the bird cherry, grows into a vanilla tree feature).
+			TreeFoliage[] foliage = trees();
 			for (int i = 0; i < foliage.length; i++) {
 				TreeFoliage f = foliage[i];
 				int z0 = i * ROW;
@@ -261,7 +262,7 @@ final class SaplingSamples {
 		List<String> out = new ArrayList<>();
 		Map<SaplingSize, Integer> total = new EnumMap<>(SaplingSize.class);
 		int n = 0;
-		for (TreeFoliage f : TreeFoliage.values()) {
+		for (TreeFoliage f : trees()) {
 			Map<SaplingSize, Integer> c = new EnumMap<>(SaplingSize.class);
 			int meal = 0;
 			int k = 0;
@@ -295,10 +296,15 @@ final class SaplingSamples {
 		return out;
 	}
 
+	/** The species whose saplings grow trees of the planner (not the shrubs, step F2). */
+	private static TreeFoliage[] trees() {
+		return java.util.Arrays.stream(TreeFoliage.values()).filter(f -> !f.shrub()).toArray(TreeFoliage[]::new);
+	}
+
 	/** The fallback under a ceiling (on the server): a large draw grows the small tree; no room for the trunk, no growth. */
 	private static List<String> fallback(ServerLevel level, int y, int z, List<String> problems) {
 		List<String> out = new ArrayList<>();
-		TreeFoliage[] all = TreeFoliage.values();
+		TreeFoliage[] all = trees();
 		for (int i = 0; i < all.length; i++) {
 			SpeciesSaplingBlock sapling = ModBlocks.sapling(all[i]);
 			BlockPos pos = new BlockPos(i * STEP, y, z);

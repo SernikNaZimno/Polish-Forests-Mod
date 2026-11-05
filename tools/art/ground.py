@@ -95,6 +95,19 @@ CORALROOT_LEAVES = [
     ['121', '131', '121'],
 ]
 
+# Step F2: marsh marigold (Caltha palustris): rosettes of round, glossy, kidney-shaped leaves; golden yellow flowers of
+# five petals, 2-4 cm (one 3 x 3 px cross from above).
+MARIGOLD_FLOWERS = [
+    ['010', '131', '020'],
+    ['11', '32'],
+    ['0110', '1312', '0220'],
+]
+MARIGOLD_LEAVES = [
+    ['01110', '12211', '12111', '11131', '01310'],
+    ['0110', '1221', '1131', '0130'],
+    ['011', '121', '131'],
+]
+
 
 def _place(val, sprite, x0, y0, mapping, box):
     """Stamps a sprite (rows of digits) at (x0, y0) inside box = (x_lo, y_lo, x_hi, y_hi) (exclusive), writing
@@ -342,3 +355,119 @@ def forest_moss(tex, palettes):
     v = t.fbm(rng, 2, 8, 8, 0.6) + p['grain'] * t.value_noise(rng, 16, 16)
     idx = t.quantize(v, len(p['colors']))
     return t.paint(idx, [t.hex_to_rgb(c) for c in p['colors']])
+
+
+def herb(tex, palettes):
+    """A herb of one block of the alder forests (step F2, the cross model of vanilla's flowers, not tinted, the colors
+    baked in): seen from the side, the ground at the bottom row. p['form']: 'blades' (yellow iris: a fan of sword leaves
+    from the base, the flowers on a stalk among them), 'tuft' (tussock sedge: a dense tuft of narrow arching leaves, the
+    brown spikes on thin stalks above it), 'fronds' (marsh fern: a few erect fronds, pinnae in pairs shortening to the
+    tip) or 'stems' (stinging nettle: upright stems with opposite pointed leaves, the drooping green flower strands from
+    the upper leaf axils). The colors p['colors']: 0-2 leaves (shade, body, light), 3 stem or leaf base, 4-6 the flower
+    (shade, body, light; p['flowers'] of them, 0 for the leaves-only texture of the season). Steps between neighbours are
+    small: a flower sits in a ring of the lit leaf tone (CP-A)."""
+    p = tex.params
+    rng = t.Rng(tex.seed)
+    val = np.full((N, N), -1, int)
+    form = p['form']
+
+    def put(x, y, tone, over=True):
+        if 0 <= x < N and 0 <= y < N and (over or val[y, x] < 0):
+            val[y, x] = tone
+
+    tops = []
+    if form == 'blades':
+        k = p['count']
+        for i in range(k):
+            bx = 6 + (i % 4)
+            lean = (i - (k - 1) / 2) * p['spread'] + rng.integers(-1, 2) * 0.4
+            ty = p['top'] + rng.integers(0, 4)
+            tone = 2 if lean < 0 else 0 if i % 3 == 2 else 1
+            for y in range(N - 1, ty - 1, -1):
+                f = (N - 1 - y) / max(N - 1 - ty, 1)
+                x = int(round(bx + lean * f ** 1.4))
+                put(x, y, tone if y > ty else 1)
+                if y > N - 4:
+                    put(x + (1 if lean >= 0 else -1), y, 3, over=False)
+    elif form == 'tuft':
+        k = p['count']
+        for i in range(k):
+            side = -1 if i % 2 == 0 else 1
+            reach = p['reach'][0] + rng.integers(0, p['reach'][1] - p['reach'][0] + 1)
+            height = p['height'][0] + rng.integers(0, p['height'][1] - p['height'][0] + 1)
+            bx = 7 + rng.integers(0, 2)
+            tone = 2 if side < 0 else (0 if i % 4 == 3 else 1)
+            steps = height + reach
+            for s in range(steps + 1):
+                f = s / steps
+                x = int(round(bx + side * reach * f ** 1.8))
+                y = int(round(N - 1 - height * np.sin(f * np.pi * p['arch'])))
+                put(x, max(y, 0), tone)
+            put(bx, N - 1, 3)
+            put(bx + side, N - 1, 3, over=False)
+    elif form == 'fronds':
+        for i in range(p['count']):
+            bx = 5 + 3 * i + rng.integers(0, 2)
+            lean = (i - (p['count'] - 1) / 2) * p['spread']
+            ty = p['top'] + rng.integers(0, 3)
+            for y in range(N - 1, ty - 1, -1):
+                f = (N - 1 - y) / max(N - 1 - ty, 1)
+                x = int(round(bx + lean * f))
+                put(x, y, 3 if y > N - 4 else 1)
+                if y <= N - 4 and (y - ty) % 2 == 1:
+                    length = max(1, int(round(p['pinna'] * (1 - 0.7 * (1 - f)) * (1.0 - 0.5 * f) + 0.5)))
+                    for s in range(1, length + 1):
+                        put(x - s, y, 2, over=False)
+                        put(x + s, y, 0 if s == length else 1, over=False)
+    else:  # stems
+        for i in range(p['count']):
+            bx = 4 + 4 * i + rng.integers(0, 2)
+            ty = p['top'] + rng.integers(0, 3)
+            for y in range(N - 1, ty - 1, -1):
+                put(bx, y, 3)
+            for y in range(ty + 1, N - 2, p['node']):
+                f = (y - ty) / max(N - 1 - ty, 1)
+                length = 1 + int(round(p['leaf'] * min(1.0, 0.4 + f)))
+                for side in (-1, 1):
+                    for s in range(1, length + 1):
+                        put(bx + side * s, y - (1 if s == length else 0), 2 if side < 0 else 1, over=False)
+                        if s < length:
+                            put(bx + side * s, y + 1, 0, over=False)
+                tops.append((bx, y))
+    flowers = p.get('flowers', 0)
+    placed = 0
+    if form == 'blades':
+        for _ in range(flowers):
+            x0 = 5 + rng.integers(0, 5)
+            y0 = p['top'] - 1 + rng.integers(0, 2)
+            for y in range(y0 + 2, N - 3):
+                put(x0 + 1, y, 3)
+            for dy in range(-1, 4):
+                for dx in range(-1, 4):
+                    if val[min(max(y0 + dy, 0), N - 1), min(max(x0 + dx, 0), N - 1)] in (0, 1):
+                        put(x0 + dx, y0 + dy, 2)
+            for dx, dy, tone in ((0, 0, 5), (1, 0, 6), (2, 0, 5), (0, 1, 5), (1, 1, 6), (2, 1, 4), (1, 2, 4)):
+                put(x0 + dx, y0 + dy, tone)
+            placed += 1
+    elif form == 'tuft':
+        for _ in range(flowers):
+            x0 = 4 + rng.integers(0, 8)
+            y0 = 1 + rng.integers(0, 3)
+            for y in range(y0 + 3, N - 4):
+                put(x0, y, 3)
+            for dy, tone in ((0, 6), (1, 6), (2, 5), (3, 4)):
+                put(x0, y0 + dy, tone)
+                put(x0 + 1, y0 + dy, 4 if dy >= 2 else 5)
+            placed += 1
+    elif form == 'stems' and tops:
+        upper = [tp for tp in tops if tp[1] < N // 2 + 1]
+        for _ in range(min(flowers, len(upper))):
+            bx, y = upper[rng.integers(0, len(upper))]
+            side = rng.choice([-1, 1])
+            for s in range(1, 4):
+                put(bx + side * s, y + s - 1 if s > 1 else y, 5 if s < 3 else 4)
+                put(bx + side * s, y + s, 4, over=False)
+            placed += 1
+    alpha = np.where(val >= 0, 255, 0).astype(np.uint8)
+    colors = [t.hex_to_rgb(c) for c in p['colors']]
+    return t.paint(np.clip(val, 0, len(colors) - 1), colors, alpha)

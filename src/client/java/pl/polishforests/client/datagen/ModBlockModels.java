@@ -80,6 +80,9 @@ final class ModBlockModels extends FabricModelProvider {
 			case BEECH -> List.of(own("beech_bark"), own("beech_bark_2"), own("beech_bark_3"));
 			// The shared substitute bark of the broad-crowned archetype (§1.1).
 			case ASH, NORWAY_MAPLE -> List.of(own("broadleaf_bark"));
+			// Step F2: the own barks of the black alder (fissured into plates in old age) and the elm (furrowed).
+			case BLACK_ALDER -> List.of(own("black_alder_bark"), own("black_alder_bark_2"), own("black_alder_bark_3"));
+			case ELM -> List.of(own("elm_bark"), own("elm_bark_2"));
 		};
 	}
 
@@ -94,7 +97,7 @@ final class ModBlockModels extends FabricModelProvider {
 			case SPRUCE -> vanilla("spruce_log_top");
 			case BIRCH -> vanilla("birch_log_top");
 			case OAK -> vanilla("oak_log_top");
-			case HORNBEAM, LINDEN, BEECH, ASH, NORWAY_MAPLE -> own(woodOf(t).prefix() + "_log_top");
+			case HORNBEAM, LINDEN, BEECH, ASH, NORWAY_MAPLE, BLACK_ALDER, ELM -> own(woodOf(t).prefix() + "_log_top");
 		};
 	}
 
@@ -128,7 +131,7 @@ final class ModBlockModels extends FabricModelProvider {
 			case SPRUCE -> vanilla("stripped_spruce_log_top");
 			case BIRCH -> vanilla("stripped_birch_log_top");
 			case OAK -> vanilla("stripped_oak_log_top");
-			case HORNBEAM, LINDEN, BEECH, ASH, NORWAY_MAPLE -> own("stripped_" + woodOf(t.trunk()).prefix() + "_log_top");
+			case HORNBEAM, LINDEN, BEECH, ASH, NORWAY_MAPLE, BLACK_ALDER, ELM -> own("stripped_" + woodOf(t.trunk()).prefix() + "_log_top");
 		};
 	}
 
@@ -292,6 +295,14 @@ final class ModBlockModels extends FabricModelProvider {
 				gen.registerSimpleFlatItemModel(block);
 			}
 			case TALL -> gen.createTintedDoublePlant(block);
+			// Step F2: an untinted cross as vanilla's flowers with the texture <id> (in flower), and the cross
+			// block/<id>_leaves with <id>_leaves (leaves only), a seasonal alternative of the client.
+			case HERB -> {
+				gen.createCrossBlock(block, BlockModelGenerators.PlantType.NOT_TINTED, TextureMapping.cross(new Material(own(g.id()))));
+				ModelTemplates.CROSS.create(pl.polishforests.client.ClientSeasonModels.herbLeaves(g),
+						TextureMapping.cross(new Material(own(g.id() + "_leaves"))), gen.modelOutput);
+				gen.registerSimpleFlatItemModel(block);
+			}
 		}
 	}
 

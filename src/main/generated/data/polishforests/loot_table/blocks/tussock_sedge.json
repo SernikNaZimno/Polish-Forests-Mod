@@ -1,0 +1,15 @@
+{
+  "type": "minecraft:block",
+  "pools": [
+    {
+      "condition": "minecraft:tool/can_shear",
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "polishforests:tussock_sedge"
+        }
+      ],
+      "rolls": 1
+    }
+  ]
+}

@@ -77,6 +77,31 @@ class ForestNormsTest {
 		assertRange(9, 12, ForestNorms.TREES_PER_CHUNK, Forest.LOWLAND_BEECH_MANAGED, null, AgeClass.MATURE);
 	}
 
+	/** Step F2: the card of the alder carr and the ash-alder forest (docs/04 "Projekt F2", N1, N3, N4, N7–N10). */
+	@Test
+	void alderCardOfStepF2() {
+		for (Forest f : new Forest[] {Forest.ALDER_CARR_NATURAL, Forest.ALDER_CARR_MANAGED}) {
+			assertRange(80, 100, ForestNorms.COMPOSITION + "black_alder", f, null, null);
+			assertRange(60, 80, ForestNorms.CANOPY, f, null, null);
+			assertRange(20, 50, ForestNorms.UNDERSTORY, f, null, null);
+			assertRange(60, 90, ForestNorms.HERBS, f, null, null);
+			assertTrue(ForestNorms.of(ForestNorms.TREES_PER_CHUNK, f, null, null).isPresent());
+			assertTrue(ForestNorms.of(ForestNorms.MOSS, f, null, null).isPresent());
+			assertTrue(ForestNorms.of(ForestNorms.TRANSECT_ORDER, f, null, null).isEmpty(), "the carr is off the transect");
+		}
+		for (Forest f : new Forest[] {Forest.ASH_ALDER_NATURAL, Forest.ASH_ALDER_MANAGED}) {
+			assertRange(50, 90, ForestNorms.COMPOSITION + "black_alder", f, null, null);
+			assertRange(10, 40, ForestNorms.COMPOSITION + "maple_ash", f, null, null);
+			assertRange(70, 90, ForestNorms.CANOPY, f, null, null);
+			assertRange(20, 50, ForestNorms.UNDERSTORY, f, null, null);
+			assertRange(70, 100, ForestNorms.HERBS, f, null, null);
+		}
+		assertEquals(Forest.ALDER_CARR_NATURAL, Forest.of(pl.polishforests.worldgen.habitat.HabitatBiome.ALDER_CARR, true));
+		assertEquals(Forest.ASH_ALDER_MANAGED, Forest.of(pl.polishforests.worldgen.habitat.HabitatBiome.ASH_ALDER_FOREST, false));
+		assertTrue(ForestNorms.of(ForestNorms.DEADWOOD_PER_CHUNK, Forest.ALDER_CARR_NATURAL, null, null).isPresent());
+		assertRange(1, 2, ForestNorms.STUMPS_PER_CHUNK, Forest.ASH_ALDER_MANAGED, null, null);
+	}
+
 	private static void assertRange(double min, double max, String metric, Forest forest, Aspect aspect, AgeClass age) {
 		Norm n = ForestNorms.of(metric, forest, aspect, age).orElseThrow(() -> new AssertionError("no norm " + metric + " " + forest));
 		assertEquals(min, n.min(), 1e-9, metric);

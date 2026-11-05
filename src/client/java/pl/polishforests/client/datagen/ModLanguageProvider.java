@@ -168,6 +168,7 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		SPECIES.put("juniper", new String[] {"juniper", "jałowiec"});
 		SPECIES.put("ivy", new String[] {"ivy", "bluszcz"});
 		SPECIES.put("alder_buckthorn", new String[] {"alder buckthorn", "kruszyna pospolita"});
+		SPECIES.put("bird_cherry", new String[] {"bird cherry", "czeremcha zwyczajna"});
 	}
 
 	private final boolean polish;
@@ -258,6 +259,11 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 				case HAIRY_WOOD_RUSH -> polish ? "Kosmatka owłosiona" : "Hairy Wood-rush";
 				case WOOD_SORREL -> polish ? "Szczawik zajęczy" : "Wood Sorrel";
 				case CORALROOT -> polish ? "Żywiec cebulkowy" : "Coralroot";
+				case MARSH_MARIGOLD -> polish ? "Knieć błotna" : "Marsh Marigold";
+				case YELLOW_IRIS -> polish ? "Kosaciec żółty" : "Yellow Iris";
+				case TUSSOCK_SEDGE -> polish ? "Turzyca kępowa" : "Tussock Sedge";
+				case MARSH_FERN -> polish ? "Zachylnik błotny" : "Marsh Fern";
+				case NETTLE -> polish ? "Pokrzywa zwyczajna" : "Stinging Nettle";
 			});
 		}
 		builder.add(ModBlocks.bilberries(), polish ? "Czarne jagody" : "Bilberries");

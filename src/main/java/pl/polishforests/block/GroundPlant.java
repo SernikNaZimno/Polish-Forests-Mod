@@ -9,7 +9,8 @@ import java.util.Locale;
  * of PW-8 and the mossy underside of PW-7), {@link SeasonalPlantBlock} (a spring geophyte in beds of 1–4 like vanilla
  * wildflowers: the stem under the grass tint, the flower without it; the phases of the year are drawn by the client,
  * PW-8 (a), step V13), {@link GroundCoverBlock} (a litter of 1–4 segments like vanilla leaf litter, not tinted, with the
- * mossy underside) and a tall fern of two blocks (vanilla {@code DoublePlantBlock}; green, brown from mid-autumn in V13).
+ * mossy underside), a tall fern of two blocks (vanilla {@code DoublePlantBlock}; green, brown from mid-autumn in V13) and,
+ * since step F2, a herb of one block as a cross ({@link SeasonalHerbBlock}: sedges, iris, ferns, nettle).
  * The ids go into saved worlds and are frozen (PW-11): new constants only at the end.
  */
 public enum GroundPlant {
@@ -30,11 +31,24 @@ public enum GroundPlant {
 	/** Wood sorrel (Oxalis acetosella): trefoils of the beech and spruce forests, white flowers in April and May (step F1). */
 	WOOD_SORREL(Kind.SEASONAL),
 	/** Coralroot (Cardamine bulbifera): a spring geophyte of the fertile beech forest, lilac in May (step F1). */
-	CORALROOT(Kind.SEASONAL);
+	CORALROOT(Kind.SEASONAL),
+	/** Marsh marigold (Caltha palustris): rosettes of round glossy leaves in the hollows of the alder forests, yellow in April and May (step F2). */
+	MARSH_MARIGOLD(Kind.SEASONAL),
+	/** Yellow iris (Iris pseudacorus): sword leaves by the water of the alder carr, yellow flowers in June (step F2). */
+	YELLOW_IRIS(Kind.HERB),
+	/** Tussock sedge (Carex elata, C. elongata, C. remota): the tussocks of the alder forests, spikes in May and June (step F2). */
+	TUSSOCK_SEDGE(Kind.HERB),
+	/** Marsh fern (Thelypteris palustris): the fern of the alder carr, fronds from May to October (step F2). */
+	MARSH_FERN(Kind.HERB),
+	/** Stinging nettle (Urtica dioica): the nitrophilous herb of the ash-alder and alder forests, flowering in summer (step F2). */
+	NETTLE(Kind.HERB);
 
-	/** The block family of an entry. */
+	/**
+	 * The block family of an entry (not saved: the order may change). Step F2: {@link #HERB}, a single-block cross plant
+	 * of the size of vanilla's short grass with baked colors (not tinted) and the seasonal looks of {@link SeasonalHerbBlock}.
+	 */
 	public enum Kind {
-		BERRY_SHRUB, SEASONAL, COVER, TALL
+		BERRY_SHRUB, SEASONAL, COVER, TALL, HERB
 	}
 
 	private final Kind kind;
