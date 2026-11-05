@@ -545,7 +545,7 @@ Każdy krok F jest ukończony dopiero, gdy oprócz własnych kryteriów spełnia
 ### F2. Olsy i łęg jesionowo-olszowy (A, 1,5–2 dnia)
 
 - **Zakres:** (1) nowe gatunki z ZG: **olsza czarna** (prosty pień, wąska jajowata korona; w olsie 20–40% drzew wielopniowych z odrośli na kępie) i **wiąz** (szeroka korona, też podokap łęgu; jeden gatunek `ELM`), krzew **czeremcha** (nowa stała `BIRD_CHERRY` na końcu `Species`, cienkie pędy jak leszczyna V9, liście z fazą); (2) **ols** (`alder_carr`, w W1 `swamp`): olsza z brzozą i jesionem, las naturalny z kępami u pni (podniesione podstawy z ziemi ukorzenionej, mchu i korzeni `RootPlan`, bez zmiany terenu), gospodarczy jednowiekowy; **łęg jesionowo-olszowy** (`ash_alder_forest`): olsza, jesion, wiąz, świerk (NE), a2 i podszyt czeremchy; (3) runo i mchy: nowe rośliny (domyślnie 5: knieć błotna, kosaciec żółty, turzyca kępowa, nerecznica błotna, pokrzywa), rośliny dolinek przy wodzie i kałużach mikroreliefu, rośliny kęp przy pniach, czartawa i gwiazdnica w OlJ przez rośliny wanilii albo nowe (wybór w G); (4) martwe drewno olszy, jesionu i wiązu, nabiegi i kępy korzeniowe; (5) przejścia: ols i OlJ w `ForestBlend` z sąsiednimi lasami planera, ostry tylko brzeg wody; w W1 drzewa na lądzie i przy brzegu (kolumny z wodą zablokowane, W1-g — zapis odstępstwa); (6) karta norm olsu i OlJ.
-- **Ukończony, gdy:** KF-1 … KF-7; w `vanilla_forests` ols (`swamp`) z pniami olszy planera; olsza i wiąz ścinane w całości przez FallingTree i Tree Harvester. **Stan: etap 1 zrobiony (2026-11-05, „Projekt F2”), etap 2 (gra) do zrobienia.**
+- **Ukończony, gdy:** KF-1 … KF-7; w `vanilla_forests` ols (`swamp`) z pniami olszy planera; olsza i wiąz ścinane w całości przez FallingTree i Tree Harvester. **Stan (2026-11-05): zrobione z odstępstwem („Projekt F2”, „Stan po F2”, G.43): ols (także W1 `swamp`) i OlJ z drzewostanem planera w obu skalach, olsza, wiąz i czeremcha z ZG; KF-1 (spis drzew, F2-t), KF-3 … KF-7 spełnione, ścinanie olszy i wiązu FallingTree i Tree Harvester w całości; KF-2 poza N8, N9 i N10 olsu (F2-x) i powierzchniami GAMEPLAY (F2-p) — do CP-D; z C2ME znana jaskinia buczyny (DP-128), `present_day` z jaskiniami DP-126.**
 - **Ryzyko:** wysokie (nowe gatunki: rejestr, datagen, klient; drzewa przy wodzie i w kałużach).
 
 ### F3. Jedlina wyżynna, buczyna karpacka i jaworzyny (A, 1,5–2 dnia)
@@ -3686,7 +3686,7 @@ Wspólna zmiana `DeadwoodFeature` i `PlantLayerFeature` z rundy 1 jest więc spr
 
 ## Projekt F2 (2026-11-05, etap 1: kod, dane, tekstury, testy jednostkowe)
 
-Krok F2 planu „Kroki F” (§3, G.41): ols (`alder_carr`; w typie świata W1 zastępuje `swamp`) i łęg jesionowo-olszowy (`ash_alder_forest`, OlJ) z drzewami planera, trzy nowe gatunki i pięć nowych roślin runa. Drobne wybory: `docs/00` G.43 (F2-a … F2-o, domyślne, do potwierdzenia przy CP-D). Wyniki z gry: „Stan po F2” (etap 2).
+Krok F2 planu „Kroki F” (§3, G.41): ols (`alder_carr`; w typie świata W1 zastępuje `swamp`) i łęg jesionowo-olszowy (`ash_alder_forest`, OlJ) z drzewami planera, trzy nowe gatunki i pięć nowych roślin runa. Drobne wybory: `docs/00` G.43 (F2-a … F2-o, domyślne, do potwierdzenia przy CP-D). Wyniki z gry: „Stan po F2” (etap 2). Liczby szans olsu, martwego drewna olsu, runa OlJ i dolinek poniżej są z etapu 1; etap 2 je zmienił (F2-u, F2-v, „Stan po F2”).
 
 **Nowe gatunki (pełny zestaw ZG, G.41 F-c).**
 
@@ -3734,6 +3734,75 @@ Krok F2 planu „Kroki F” (§3, G.41): ols (`alder_carr`; w typie świata W1 z
 - Klasy zmian: `RegistrySnapshotTest`, `WoodSetTest`, `PlanksTextureTest`, `TrunkOutlineTest`, `TreeShapePlanTest` (nowy test odrośli olszy), `RootPlanTest`, `DeadwoodPlanTest`, `GroundLayerPlanTest`, `ForestBlendTest` (nowy test par F2), `*season*`, `ForestNormsTest` (karta olsu), `PlannerPalettesTest`, `SliceEqualityTest`, `SlicePlotsTest`.
 - `tools/dev/run-tests --reuse fastTest`.
 - Wyniki i przebiegi gry w „Stan po F2”, według `python tools/dev/test_plan.py 1b58fe9`.
+
+## Stan po F2 (2026-11-05, etap 2: przebiegi w grze, poprawki, bez recenzji wizualnej)
+
+Drobne wybory: `docs/00` G.43 (F2-a … F2-s z etapu 1, F2-t … F2-x z etapu 2). Zgodnie z G.36 U-1 bez oceny wyglądu ze zrzutów: dowody to spisy KF-1 w `habitats` i `vanilla_forests`, karta norm z gry, porównania bloków w `determinism`, reguła gęstości w `vegetation` i testy jednostkowe. Wygląd olsu i łęgu sprawdza użytkownik według listy „Do sprawdzenia w grze” (raport kroku). Baza kroku: `1b58fe9`; commity `51852a7` (etap 1), `21ce339` (WIP etapu 2) i końcowy „F2: done”.
+
+**Wynik w skrócie.** Ols i łęg jesionowo-olszowy rosną z drzewostanu planera w obu skalach i obu trybach, ols także w W1 (dawny `swamp`). W głębi obu lasów 0 kłód wanilii jako pni, drzewa planera (po F2-t liczone jako drzewa, nie pędy) w obwiedni N1. Olsza i wiąz ścinane w całości przez FallingTree i Tree Harvester; tablice próbek, liści, sadzonek, nabiegów, martwego drewna, siekiery i desek bez brakujących modeli. Świat „Polska” poza lasami kroku i ich pasami bez zmian (KF-3). Odstępstwa do CP-D: karta olsu N8, N9 i N10 (F2-x), powierzchnie GAMEPLAY (F2-p), jaskinia z C2ME w obszarze buczyny (DP-128, jak w F1) i `present_day` z jaskiniami (DP-126, jak w F1).
+
+**Od etapu 1 do etapu 2.** Pierwsze przebiegi (kod `51852a7`) dały 5 porażek: `vanilla_forests` (ols W1 21,8 „pnia” na chunk przy obwiedni 6,4–19,2), `habitats` (OlJ 25,4, w głębi 24,1), `determinism` z C2ME (DP-128), `vegetation` i `present_day` (reguła §4.6 na brzegach strumieni z OlJ: małe rośliny 24% i 18%, wysokie 44% i 41%). Przyczyny i poprawki:
+
+- *Spis liczył pędy, nie drzewa* (F2-t). OlJ: czeremcha ma 3 pędy po 5–7 bloków, więc 6,5 krzewu na chunk dawało ok. 15 „pni”; ols: pędy odroślowe, krzewy i (w `vanilla_forests`) nabiegi. Nowy `gametest/TreeBases`; spis lasów M2 bez zmian.
+- *Ols naturalny za rzadki* (F2-u): karta z gry 5,0 drzewa na chunk przy N1 8–16. Wyższe szanse okapu i podokapu, więcej podszytu i martwego drewna.
+- *Runo OlJ „łąkowe”* (F2-v, F2-w): zawilec, knieć i krótka trawa z palety OlJ oraz — w wąskim pasie OlJ przy strumieniu — runo grądu z szerokiego mieszania (`ForestBlend`). Paleta OlJ z większym udziałem pokrzywy, turzyc i paproci; biom §4.6 nie bierze w mieszaniu runa lasu spoza §4.6 (`Ecotone.effective`, jak w rampach od S8b); rodzina `HERB` liczy się w `vegetation` jako wysokie byliny.
+- Przy okazji `habitats` pokazał 7 kolumn olsu z darnią sąsiada zamiast błota (to samo mieszanie runa); po F2-w 0.
+
+**Przebiegi (`-PtimingsReportOnly`, mapa testów `test_plan.py 1b58fe9`; gametesty po ostatniej zmianie kodu ich obszaru).**
+
+| Przebieg | Wynik |
+|---|---|
+| `vanilla_forests` (W1) | PASS. Ols (obszar (2272, −3232) z punktu `/locate` (2272, −2976), 59 z 64 punktów siatki w biomie): 15 651 kolumn biomu, 1105 pod wodą, średni grunt Y 67; w głębi 5070 suchych kolumn, **11,4 drzewa planera na chunk**, 0 kłód wanilii; na wszystkich kolumnach 11,7 (12,6 na suchych). Grąd 7,7 / 11,1 na suchych (przed F2-t 18,2 / 26,3), Bśw 13,6 / 16,3, buczyna 10,8 na suchych kolumnach biomu (17,7); 0 kłód wanilii poza znaną 1 przy granicy |
+| `habitats` (obie skale) | PASS. KF-1 w głębi: ols REAL 10,8 (4589 kolumn), GAMEPLAY 11,0 (4459); OlJ REAL 11,5 (4236), w GAMEPLAY za mało kolumn głębi (spis 8,1 na 2086 kolumnach, F2-p); 0 kłód wanilii. Spis lasów planera REAL / GAMEPLAY: las mieszany 10,9 / 9,9, grąd 10,6 / 10,8, buczyna 9,9 / 11,2, ols 11,1 / 10,7, OlJ 11,9 / 8,1. Gleba miejsc olsu i OlJ 75/75, 157/157, 221/221, 221/221; `revisit` 0 z 919 i 0 z 914 |
+| `vegetation` | PASS. Mały strumień REAL (800, −4304; 2711 kolumn OlJ): małe rośliny **5,5%**, wysokie 71,4%, goły grunt 5,7%; GAMEPLAY (−1400, −296; 1133 kolumny OlJ): 5,0%, 67,5%, 7,0%; `HABITAT_MISS` 0 z 8078; liście do opadnięcia 0,001% (próg 0,1%) |
+| `present_day` | `-Pcaves=off` PASS. Z jaskiniami (przebieg etapu 2 przed F2-w) reguła §4.6 już spełniona, porażka tylko na znanej wsi GAMEPLAY (4089, −3980): 11 kolumn podłogi wisi (DP-126, F1-u) |
+| `ecotones` | PASS (etap 1 i po F2-w) |
+| `slice -Psites=none` (karta norm z gry) | PASS. Wiersze `out` poza olsem i OlJ: **115, jak w karcie po F1** (F2-r: powierzchnie wycinka w pasie olsu bez nowych wierszy poza normą). Karta olsu i OlJ niżej |
+| `determinism -PdeterminismStepZones` (bez optymalizacji, kod etapu 2, wobec referencji F1 `determinism_ref_r2`) | **przebieg niedokończony** w sesji etapu 2: 12 obszarów REAL (natural i present_day, w tym ols) — teren przed FEATURES 0 różnic, dekoracja w stałej kolejności 0 różnic, w wolnej kolejności 0 bloków (podłoga wolna 0); porównanie z referencją i obszary GAMEPLAY nie zakończone — do powtórzenia przed CP-D |
+| `determinism -Poptimization` (C2ME; kod `51852a7`, referencja z tego kodu) | **FAIL** tylko na znanej jaskini DP-128 w obszarze buczyny GAMEPLAY (3259 bloków w 833 kolumnach, jak w F1). Nowy obszar olsu: REAL 1 blok, GAMEPLAY identyczny (w limitach J1-q). Nie powtarzane po etapie 2 (zmiany tylko w paletach i runie olsu i OlJ; jaskinia buczyny bez zmian) |
+| `slice -Psites=samples`, `leaves`, `saplings`, `deadwood`, `roots`, `planks`, `axe` (kod `51852a7`; etap 2 nie zmienił bloków ani modeli) | PASS (7 przebiegów). `leaves`: sadzonki olszy (13 bloków, 28 drewna, 91 liści, 0 brakujących) i wiązu (14, 28, 105, 0), czeremcha wyrasta w krzew; barwy liści olszy, wiązu i czeremchy w każdym podsezonie (olsza zielona do późnej jesieni, wiąz i czeremcha od późnej jesieni gałązki) |
+| `slice -Psites=felling -PtreeFelling=fallingtree` i `treeharvester` | PASS. Olsza (tyczkowina, drzewostan dojrzały, starodrzew: 39, 91, 144 bloki drewna) i wiąz (38, 191, 140) ścięte w całości, łup kłód zgodny z oczekiwanym |
+| `slice -Psites=seasons` | PASS (fazy knieci, kosaćca, turzycy kępowej, zachylnika, pokrzywy; liście nowych gatunków) |
+| KF-6 (kod `51852a7`, spokojna maszyna, C2ME `-Pcaves=off`, wobec `m2-baseline-r1`) | tabela niżej, bez progu |
+| `run-tests --reuse fastTest`, klasy zmian (`EcotoneTest`, `EcotoneSharpnessTest`, `EcotoneProvableTest`, `ForestBlendTest`, `SliceEqualityTest`, `GroundLayerPlanTest`, `PlannerPalettesTest`, `ForestNormsTest`, `BiomeJsonTest`), `checkDatagen`, `compileGametestJava` | PASS |
+| pełny zestaw `tools/dev/run-tests test` | nie uruchomiony po etapie 2 (do uruchomienia przed commitem „F2: done”) |
+
+**KF-6 (jeden przebieg kontrolny na kodzie etapu 1, chunki na sekundę z C2ME bez jaskiń; iloraz F2 / M2).**
+
+| Miejsce | „Polska” REAL | GAMEPLAY |
+|---|---|---|
+| `alder_carr_1` (REAL `alder_carr_natural_1`, GAMEPLAY `alder_carr_managed_1`) | 140,4 / 182,4 = 0,77 | 191,8 / 237,5 = 0,81 |
+| `oak_hornbeam_1` | 101,1 / 142,7 = 0,71 | 158,3 / 220,3 = 0,72 |
+| `fresh_pine_1` | 142,1 / 191,7 = 0,74 | 154,1 / 214,9 = 0,72 |
+| `lowland_beech_1` | 141,4 / 192,2 = 0,74 | 155,0 / 219,4 = 0,71 |
+
+Żadna wartość poniżej 0,7 × M2. Wpływ etapu 2 (szanse olsu wyżej o ok. 20%) niezmierzony (bez drugiego pomiaru, decyzja z 2026-10-27).
+
+**Karta olsu i OlJ z gry** (`slice -Psites=none`, lato; REAL po 2 powierzchnie naturalne i gospodarcze obu lasów, GAMEPLAY 2 powierzchnie olsu gospodarczego, F2-p; 200 wierszy obu lasów we wszystkich porach i trybach: 106 w normie, 58 w tolerancji, 36 poza):
+
+| Miara | Ols naturalny | Ols gospodarczy | OlJ naturalny | OlJ gospodarczy |
+|---|---|---|---|---|
+| N1 drzewa na chunk (8–16) | 7,0–7,5 tol. | 8,0–8,5 | 8,7–9,8 | 9,9–10,4 |
+| N3 olsza (ols 80–100, OlJ 50–90) | 74–89 | 82–92 | 65–69 (jesion 21–25) | 69–73 (jesion 23–24) |
+| N4 zwarcie (60–80 / 70–90) | 71 | 67–79 | 75–83 | 84–88 |
+| N7 podszyt (20–50) | 18,7 tol. | 16,8–19,8 tol. | 37–39 | 30–31 |
+| N8 runo (60–90 / 70–100) | 41–56, **poza** / tol. | 44–45, **poza** | 58–59 tol. | 59–62 tol. |
+| N9 mchy (10–40 / 5–20) | 7,4 **poza** / 24,9 | 25–27 | 8,5–9,3 | 9,0–9,1 |
+| N10 martwe drewno | 1,5–1,7 obiektu tol.; 31–39 m³/ha **poza** (60–120) | 2,4–7,7 m³/ha (8–16), poza / tol. | 1,7–1,9 obiektu tol.; 75–76 m³/ha | 3,7–6,9 m³/ha, poza / tol. |
+
+Poza normą i tolerancją: N8 olsu, N9 jednej powierzchni olsu naturalnego, N10 objętość olsu naturalnego i obu lasów gospodarczych (jak buczyna gospodarcza, F1-o) — F2-x, do CP-D. Przed poprawkami etapu 2: ols naturalny N1 5,0–5,1 (poza), gospodarczy 7,3–7,8 (tol.), N10 ols naturalny 0,9–1,0 obiektu (poza); OlJ N8 50–55 (poza).
+
+**KF w skrócie.**
+
+- KF-1: spełnione (OlJ w GAMEPLAY bez głębi lasu ≥ 1024 kolumn, F2-p).
+- KF-2: spełnione poza F2-x (do CP-D); karta lasów wycinka i buczyny bez nowych wierszy `out`.
+- KF-3: częściowo potwierdzone (obszary REAL etapu 2 powtarzalne, teren bez zmian; porównanie z referencją F1 i GAMEPLAY do powtórzenia).
+- KF-4: `ForestBlendTest`, `EcotoneTest`, `EcotoneSharpnessTest`, `ecotones`, `vegetation` (liście do opadnięcia 0,001%, `HABITAT_MISS` 0) PASS; `present_day` PASS bez jaskiń, z jaskiniami DP-126.
+- KF-5: spełnione (tablice, ścinanie; `checkDatagen`, `checkArt`, `lint.py`, `RegistrySnapshotTest` z etapu 1; etap 2 bez nowych bloków).
+- KF-6: wykonane (ols 0,77 / 0,81 × M2).
+- KF-7: „Projekt F2”, „Stan po F2”, G.43, BRIEF, lista „Do sprawdzenia w grze” w raporcie kroku.
+
+**Uwagi.** Odrośla olszy na stoku i ich styk z nabiegiem i kępą (handoff etapu 1, pkt 4) sprawdza tylko tablica `roots` (PASS) — na liście do sprawdzenia w grze. Tablica ścinania sadzi drzewa samotne, bez odrośli; pęd odroślowy wyrasta z podstawy pnia (graf rodziców), więc mod ścinania powinien go ściąć z drzewem — do sprawdzenia w grze. Referencja determinizmu dla F3: do zapisania w `handoff/F2/determinism_ref/` z pełnego przebiegu etapu 2 (nie wykonane).
 
 ## Do kroku porządkowego (lista drobiazgów z recenzji)
 

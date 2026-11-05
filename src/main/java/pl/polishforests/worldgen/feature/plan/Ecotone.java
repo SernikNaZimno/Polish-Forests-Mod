@@ -769,7 +769,11 @@ public final class Ecotone {
 			}
 			if (shares != null && ForestBlend.member(code) > 0) {
 				region.blendField().at(x0 + x + wx, z0 + z + wz, shares);
-				code = ForestBlend.pick(code, shares, ForestBlend.draw(worldSeed, salt, x0 + x, z0 + z, patch));
+				int picked = ForestBlend.pick(code, shares, ForestBlend.draw(worldSeed, salt, x0 + x, z0 + z, patch));
+				// Step F2 (stage 2): a biome of §4.6 (the alder carr and the ash-alder forest of the blend) keeps its plants
+				// and its plant ground in the blend as in the ramps (DENSE): only the other forest takes its plants, so the
+				// tall herbs of a narrow stream belt are not replaced by the flower beds of the oak-hornbeam forest.
+				code = layer == Layer.PLANTS && dense(code) && !dense(picked) ? code : picked;
 			} else if (shares != null && layer == Layer.TREES && ForestBlend.takenOver(code)) {
 				region.blendField().at(x0 + x + wx, z0 + z + wz, shares);
 				code = ForestBlend.takeover(code, shares, ForestBlend.draw(worldSeed, salt ^ ForestBlend.TAKEOVER_SALT, x0 + x, z0 + z, 1));
