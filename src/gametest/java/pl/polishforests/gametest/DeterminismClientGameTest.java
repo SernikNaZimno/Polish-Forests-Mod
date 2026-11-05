@@ -40,6 +40,7 @@ import pl.polishforests.PolishForests;
 import pl.polishforests.client.screen.PolandPresetEditor;
 import pl.polishforests.season.SeasonalProperties;
 import pl.polishforests.worldgen.chunk.PolandChunkGenerator;
+import pl.polishforests.worldgen.feature.plan.ForestBlend;
 import pl.polishforests.worldgen.chunk.PolandScale;
 
 /**
@@ -207,6 +208,7 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 			for (boolean presentDay : new boolean[] {false, true}) {
 				String name = scale.getSerializedName() + (presentDay ? " present_day" : " natural");
 				Area[][] worlds = new Area[WORLDS][];
+				char[][] zones = new char[areas.length][];
 				String fileKey = scale.getSerializedName() + "_" + (presentDay ? "present_day" : "natural");
 				for (int w = 0; w < WORLDS; w++) {
 					boolean fixedOrder = w < 2 || w == 4;
@@ -247,6 +249,10 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 								}
 							}
 							worlds[w][a] = sp.getServer().computeOnServer(s -> decorated(s.overworld(), ox, oz, terrain));
+							if (w == 0) {
+								int ai = a;
+								zones[a] = sp.getServer().computeOnServer(s -> stepZones(s.overworld(), ox, oz, worlds[0][ai]));
+							}
 							if (full != null) {
 								sp.getServer().runOnServer(s -> writeTerrain(s.overworld(), ox, oz, areaKey, 0, full));
 							}
@@ -277,6 +283,7 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 							windowDump, failures));
 					out.add("terrain " + key + " " + Long.toHexString(worlds[0][a].terrainHash()));
 					out.add("decorated " + key + " " + worlds[0][a].decoratedHex());
+					out.add(STEP_ZONE + key + " " + new String(zones[a]));
 				}
 				if (deepDir != null) {
 					deepReport(name, deepDir.resolve(label + "_full_" + fileKey + "_w3.txt.gz"),
@@ -715,10 +722,39 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 		int differing = 0;
 		int worst = 0;
 		int worstColumns = 0;
+		Map<String, String> zones = new HashMap<>();
+		for (String line : out) {
+			if (line.startsWith(STEP_ZONE)) {
+				int i = line.lastIndexOf(' ');
+				zones.put(line.substring(STEP_ZONE.length(), i), line.substring(i + 1));
+			}
+		}
 		for (String line : out) {
 			int i = line.lastIndexOf(' ');
 			String key = line.substring(0, i);
+			if (key.startsWith(STEP_ZONE)) {
+				continue;
+			}
 			String other = ref.get(key);
+			if (key.startsWith("decorated ") && other != null && zones.containsKey(key.substring("decorated ".length()))) {
+				long[] ours = Area.parseHex(line.substring(i + 1));
+				long[] theirs = Area.parseHex(other);
+				String zone = zones.get(key.substring("decorated ".length()));
+				PolishForests.LOG.info("[determinism] {} vs {}: {} differences by zone of the steps F: {}", label, refName, key,
+						zoneReport(ours, theirs, zone));
+				if (Boolean.getBoolean("polishforests.determinism.stepZones") && !otherSet) {
+					// KF-3: against the build before a step F the decoration may differ only in the zones of its forests.
+					int elsewhere = 0;
+					for (int c = 0; c < ours.length && c < zone.length(); c++) {
+						elsewhere += zone.charAt(c) == '.' && ours[c] != theirs[c] ? 1 : 0;
+					}
+					if (elsewhere > 0) {
+						failures.add(label + " vs " + refName + ": " + key + " differs in " + elsewhere
+								+ " columns away from the forests of the steps F (KF-3)");
+					}
+					continue;
+				}
+			}
 			if (other == null) {
 				PolishForests.LOG.warn("[determinism] reference {} has no entry {}", file, key);
 				continue;
@@ -761,6 +797,92 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 					+ "at most %d blocks per area (limit %d); decorated at most %d columns per area (limit %d)", label, refName, differing,
 					areas, worst, TerrainBlocks.TERRAIN_TOLERANCE_BLOCKS, worstColumns, TerrainBlocks.DECORATED_TOLERANCE_COLUMNS));
 		}
+	}
+
+	/**
+	 * Prefix of the lines of the zones of the forests of the steps F (KF-3, step F1): per column of an area of the fixed-order
+	 * world 1 {@code F} in such a forest (the forests of {@link ForestBlend#FORESTS} after the transect, the step's own and
+	 * the earlier steps'), {@code B} in their belt ({@code ForestBlend} share above 0) or within {@value #STEP_REACH} blocks
+	 * of an F or B column inside the area (the ramp of {@code Ecotone}, the crowns), {@code .} elsewhere. Not compared; the
+	 * comparison with a reference of the build before the step reports the differing decorated columns by zone.
+	 */
+	private static final String STEP_ZONE = "stepzone ";
+	private static final int STEP_REACH = pl.polishforests.worldgen.feature.plan.Ecotone.REACH
+			+ pl.polishforests.worldgen.feature.plan.Ecotone.WARP + 16;
+
+	/** The zones of the forests of the steps F of an area (see {@link #STEP_ZONE}). */
+	private static char[] stepZones(ServerLevel level, int ox, int oz, Area area) {
+		int side = SIZE * 16;
+		char[] zone = new char[SIZE * SIZE * 256];
+		java.util.Arrays.fill(zone, '.');
+		if (!(level.getChunkSource().getGenerator() instanceof PolandChunkGenerator gen)) {
+			return zone;
+		}
+		ForestBlend blend = gen.forestBlend(level.getSeed());
+		int transect = ForestBlend.TRANSECT.length;
+		float[] s = new float[ForestBlend.FORESTS.length + 1];
+		boolean[] near = new boolean[side * side];
+		for (int cx = 0; cx < SIZE; cx++) {
+			for (int cz = 0; cz < SIZE; cz++) {
+				ForestBlend.Field field = blend.field(ox + cx, oz + cz);
+				for (int x = 0; x < 16; x++) {
+					for (int z = 0; z < 16; z++) {
+						int i = (cx * SIZE + cz) * 256 + x * 16 + z;
+						int wx = ((ox + cx) << 4) + x;
+						int wz = ((oz + cz) << 4) + z;
+						var biome = level.getBiome(new net.minecraft.core.BlockPos(wx, area.ground()[i], wz));
+						boolean own = false;
+						for (int b = transect; b < ForestBlend.FORESTS.length; b++) {
+							own |= biome.is(pl.polishforests.worldgen.chunk.ModBiomeKeys.key(ForestBlend.FORESTS[b]));
+						}
+						field.at(wx, wz, s);
+						boolean belt = false;
+						for (int b = transect; b < ForestBlend.FORESTS.length; b++) {
+							belt |= s[b] > 0;
+						}
+						zone[i] = own ? 'F' : belt ? 'B' : '.';
+						near[(cx * 16 + x) * side + cz * 16 + z] = own || belt;
+					}
+				}
+			}
+		}
+		// Within STEP_REACH (Chebyshev) of an F or B column: a summed table of the near columns.
+		int w = side + 1;
+		int[] sum = new int[w * w];
+		for (int x = 0; x < side; x++) {
+			for (int z = 0; z < side; z++) {
+				sum[(x + 1) * w + z + 1] = (near[x * side + z] ? 1 : 0) + sum[x * w + z + 1] + sum[(x + 1) * w + z] - sum[x * w + z];
+			}
+		}
+		for (int x = 0; x < side; x++) {
+			for (int z = 0; z < side; z++) {
+				int i = ((x >> 4) * SIZE + (z >> 4)) * 256 + (x & 15) * 16 + (z & 15);
+				if (zone[i] != '.') {
+					continue;
+				}
+				int x0 = Math.max(0, x - STEP_REACH);
+				int z0 = Math.max(0, z - STEP_REACH);
+				int x1 = Math.min(side, x + STEP_REACH + 1);
+				int z1 = Math.min(side, z + STEP_REACH + 1);
+				if (sum[x1 * w + z1] - sum[x0 * w + z1] - sum[x1 * w + z0] + sum[x0 * w + z0] > 0) {
+					zone[i] = 'B';
+				}
+			}
+		}
+		return zone;
+	}
+
+	/** Differing decorated columns by zone of the steps F (in the forests, in their belt and reach, elsewhere). */
+	private static String zoneReport(long[] ours, long[] theirs, String zones) {
+		int[] differ = new int[3];
+		int[] columns = new int[3];
+		for (int i = 0; i < ours.length && i < zones.length(); i++) {
+			int z = zones.charAt(i) == 'F' ? 0 : zones.charAt(i) == 'B' ? 1 : 2;
+			columns[z]++;
+			differ[z] += ours[i] != theirs[i] ? 1 : 0;
+		}
+		return String.format(Locale.ROOT, "in the forests %d of %d, in their belt and reach %d of %d, elsewhere %d of %d", differ[0],
+				columns[0], differ[1], columns[1], differ[2], columns[2]);
 	}
 
 	/** Differing blocks against the block-by-block file next to the reference; empty if that file is missing. */

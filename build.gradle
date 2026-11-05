@@ -615,6 +615,11 @@ tasks.named('runClientGameTest') {
 	if (project.hasProperty('determinismDeep')) {
 		jvmArgs '-Dpolishforests.determinism.deep=true'
 	}
+	// KF-3 of the steps F: -PdeterminismStepZones compares with a reference of the build before the step and lets the
+	// decorated columns differ only in the forests of the steps F, their belts and reach (reported by zone; elsewhere exact).
+	if (project.hasProperty('determinismStepZones')) {
+		jvmArgs '-Dpolishforests.determinism.stepZones=true'
+	}
 	// Norms card of step V4 (-Pgametest=slice): the census of the plots and transects, build/norms/karta-norm.csv.
 	jvmArgs "-Dpolishforests.norms.out=${layout.buildDirectory.dir('norms').get().asFile.absolutePath}"
 	// Render trials of step V3 (-Pgametest=probes): the measured colors, shares and frame times of each run.
