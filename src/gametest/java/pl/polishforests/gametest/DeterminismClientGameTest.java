@@ -417,7 +417,7 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 	}
 
 	/**
-	 * The full chunks of the area (light and post-processing included): one hash per column, and the blocks of the
+	 * The full chunks of the area (light and post-processing included, the post-processing run here): one hash per column, and the blocks of the
 	 * decoration window ({@link #WINDOW_BELOW} below to {@link #WINDOW} − {@link #WINDOW_BELOW} above the terrain ground) as
 	 * state numbers of this run, for the share of differing blocks.
 	 */
@@ -425,9 +425,16 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 		long[] decorated = new long[SIZE * SIZE * 256];
 		int[] window = new int[decorated.length * WINDOW];
 		var pos = new net.minecraft.core.BlockPos.MutableBlockPos();
+		Map<String, Integer> changed = new java.util.TreeMap<>();
 		for (int cx = 0; cx < SIZE; cx++) {
 			for (int cz = 0; cz < SIZE; cz++) {
 				ChunkAccess chunk = level.getChunkSource().getChunk(ox + cx, oz + cz, ChunkStatus.FULL, true);
+				// Review of F1, round 1 (DP-127): the post-processing a chunk gets when it first ticks near a player (shape
+				// updates of the marked positions: a floor plant left on a neighbor's erratic boulder goes, as the upper half of
+				// a double plant without its lower half) runs here, so the blocks compared are the ones a player sees.
+				if (chunk instanceof net.minecraft.world.level.chunk.LevelChunk full) {
+					postProcess(level, full, changed);
+				}
 				int offset = (cx * SIZE + cz) * 256;
 				hashColumns(chunk, decorated, offset);
 				for (int x = 0; x < 16; x++) {
@@ -443,7 +450,36 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 				}
 			}
 		}
+		if (!changed.isEmpty()) {
+			pl.polishforests.PolishForests.LOG.info("[determinism] post-processing at chunk {} {}: changed blocks {}", ox, oz, changed);
+		}
 		return new Area(terrain.terrain(), terrain.ground(), decorated, window);
+	}
+
+	/**
+	 * Runs the chunk's post-processing (the shape updates of its marked positions, as when it first ticks near a player) and
+	 * counts the blocks it changed by pair of states.
+	 */
+	private static void postProcess(ServerLevel level, net.minecraft.world.level.chunk.LevelChunk chunk, Map<String, Integer> changed) {
+		Map<net.minecraft.core.BlockPos, BlockState> before = new HashMap<>();
+		it.unimi.dsi.fastutil.shorts.ShortList[] lists = chunk.getPostProcessing();
+		for (int s = 0; s < lists.length; s++) {
+			if (lists[s] == null) {
+				continue;
+			}
+			for (short packed : lists[s]) {
+				net.minecraft.core.BlockPos p = net.minecraft.world.level.chunk.ProtoChunk.unpackOffsetCoordinates(packed,
+						chunk.getSectionYFromSectionIndex(s), chunk.getPos());
+				before.put(p, chunk.getBlockState(p));
+			}
+		}
+		chunk.postProcessGeneration(level);
+		before.forEach((p, state) -> {
+			BlockState now = chunk.getBlockState(p);
+			if (now != state) {
+				changed.merge(blockName(state) + ">" + blockName(now), 1, Integer::sum);
+			}
+		});
 	}
 
 	/** One hash per column of all its blocks, bottom to top (an air-only section adds one marker instead of 4096 reads). */
@@ -628,7 +664,9 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 		try {
 			out.write("# " + name + ": " + kinds.blocks().size() + " blocks above the underground (x y z kind first second)\n");
 			for (WindowDiff.Block b : kinds.blocks()) {
-				out.write((corner[0] + b.x()) + " " + b.y() + " " + (corner[1] + b.z()) + " " + b.kind().name().toLowerCase(Locale.ROOT)
+				// Review of F1, round 1: the area starts at the chunk of its corner (the corners are not chunk-aligned).
+				out.write(((corner[0] >> 4 << 4) + b.x()) + " " + b.y() + " " + ((corner[1] >> 4 << 4) + b.z()) + " "
+						+ b.kind().name().toLowerCase(Locale.ROOT)
 						+ " " + stateName(states.get(b.ours())) + " " + stateName(states.get(b.theirs())) + "\n");
 			}
 			out.flush();

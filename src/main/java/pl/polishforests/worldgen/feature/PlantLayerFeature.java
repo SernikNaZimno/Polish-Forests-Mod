@@ -391,6 +391,13 @@ public final class PlantLayerFeature implements Feature {
 		}
 		int height = height(plant, random);
 		level.setBlock(pos, state, Block.UPDATE_CLIENTS);
+		if (height == 1 && level.getFluidState(pos).isEmpty()) {
+			// Review of F1, round 1 (DP-127): a neighbor chunk decorated later can still change the block under the plant (a
+			// glacial erratic, the vanilla block blob, sinks its lowest blocks into the ground), and a plant placed after that
+			// change fails canSurvive above; the post-processing of the chunk removes a plant that cannot stand where it
+			// ended up, so the floor is the same in any order of the chunks.
+			level.getChunk(pos).markPosForPostProcessing(pos);
+		}
 		BlockPos.MutableBlockPos up = pos.mutable();
 		for (int k = 1; k < height; k++) {
 			up.move(Direction.UP);

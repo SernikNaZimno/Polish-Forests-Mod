@@ -466,9 +466,13 @@ public final class VanillaForestsClientGameTest implements FabricClientGameTest 
 		int deepColumns = 0;
 		int deepTrunks = 0;
 		int deepVanilla = 0;
+		int deepDry = 0;
+		int deepDryTrunks = 0;
 		int ownColumns = 0;
 		int ownTrunks = 0;
 		int ownVanilla = 0;
+		List<String> ownVanillaAt = new ArrayList<>();
+		int ownVanillaNear = 0;
 		int ownBlocked = 0;
 		int ownBuilding = 0;
 		int ownOtherHabitat = 0;
@@ -488,16 +492,41 @@ public final class VanillaForestsClientGameTest implements FabricClientGameTest 
 				int z = origin[1] + dz;
 				BlockState base = level.getBlockState(p.set(x, ground[i], z));
 				boolean trunk = mod(base) && base.is(BlockTags.LOGS);
+				boolean underWater = !level.getFluidState(p.set(x, ground[i], z)).isEmpty();
 				boolean vanillaTrunk = !mod(base) && base.is(BlockTags.LOGS) && level.getBlockState(p.set(x, ground[i] + 1, z)).is(BlockTags.LOGS)
 						&& level.getBlockState(p.set(x, ground[i] + 2, z)).is(BlockTags.LOGS);
 				if (ownColumn[i]) {
 					ownColumns++;
 					ownTrunks += trunk ? 1 : 0;
-					ownVanilla += vanillaTrunk ? 1 : 0;
+					if (vanillaTrunk) {
+						// Review of F1, round 1: how far the trunk stands from a column of another biome, and that biome. Within
+						// EDGE_MARGIN blocks the trunk can belong to the neighbor forest (the M2 substitutes of the forests not yet
+						// on the planner are vanilla logs; their palette reaches across the border in the ecotone belt, rule Z10),
+						// so it is reported, not a failure; deeper it is.
+						int edge = 0;
+						while (edge < 16 && deep(other, size, dx, dz, edge)) {
+							edge++;
+						}
+						String neighbor = "?";
+						for (int ex = Math.max(0, dx - edge); ex <= Math.min(size - 1, dx + edge) && neighbor.equals("?"); ex++) {
+							for (int ez = Math.max(0, dz - edge); ez <= Math.min(size - 1, dz + edge); ez++) {
+								if (!ownColumn[ex * size + ez]) {
+									neighbor = level.getBiome(new BlockPos(origin[0] + ex, ground[ex * size + ez], origin[1] + ez)).getRegisteredName();
+									break;
+								}
+							}
+						}
+						boolean near = edge <= EDGE_MARGIN;
+						ownVanilla += near ? 0 : 1;
+						ownVanillaNear += near ? 1 : 0;
+						if (ownVanillaAt.size() < 6) {
+							ownVanillaAt.add(String.format(Locale.ROOT, "%s at (%d, %d, %d), %s within %d blocks", BuiltInRegistries.BLOCK
+									.getKey(base.getBlock()), x, ground[i], z, neighbor, edge));
+						}
+					}
 					ownGroundY += ground[i];
-					boolean wet = !level.getFluidState(p.set(x, ground[i], z)).isEmpty();
-					ownWater += wet ? 1 : 0;
-					ownDryTrunks += trunk && !wet ? 1 : 0;
+					ownWater += underWater ? 1 : 0;
+					ownDryTrunks += trunk && !underWater ? 1 : 0;
 					ChunkHabitats habitats = level.getChunk(x >> 4, z >> 4).getAttached(ModFeatures.CHUNK_HABITATS);
 					if (habitats != null) {
 						int column = ChunkHabitats.index(x & 15, z & 15);
@@ -510,6 +539,8 @@ public final class VanillaForestsClientGameTest implements FabricClientGameTest 
 					deepColumns++;
 					deepTrunks += trunk ? 1 : 0;
 					deepVanilla += vanillaTrunk ? 1 : 0;
+					deepDry += underWater ? 0 : 1;
+					deepDryTrunks += trunk && !underWater ? 1 : 0;
 				}
 				if (forest[i]) {
 					trunks += trunk ? 1 : 0;
@@ -543,8 +574,9 @@ public final class VanillaForestsClientGameTest implements FabricClientGameTest 
 		report.append(line).append('\n');
 		PolishForests.LOG.info("[vanilla_forests] " + line);
 		String deepLine = String.format(Locale.ROOT, "%s deep (>= %d blocks from another biome): %d columns, planner trunks %d "
-				+ "(%.1f per chunk, N1 envelope %.1f-%.1f), vanilla log trunks %d", biome.id(), deepReach, deepColumns, deepTrunks,
-				deepColumns == 0 ? 0 : 256.0 * deepTrunks / deepColumns, DEEP_N1_LOW, DEEP_N1_HIGH, deepVanilla);
+				+ "(%.1f per chunk); dry deep columns %d, planner trunks on them %d (%.1f per chunk, N1 envelope %.1f-%.1f); vanilla "
+				+ "log trunks %d", biome.id(), deepReach, deepColumns, deepTrunks, deepColumns == 0 ? 0 : 256.0 * deepTrunks / deepColumns,
+				deepDry, deepDryTrunks, deepDry == 0 ? 0 : 256.0 * deepDryTrunks / deepDry, DEEP_N1_LOW, DEEP_N1_HIGH, deepVanilla);
 		report.append(deepLine).append('\n');
 		PolishForests.LOG.info("[vanilla_forests] KF-1 " + deepLine);
 		if (deepVanilla > 0) {
@@ -561,12 +593,38 @@ public final class VanillaForestsClientGameTest implements FabricClientGameTest 
 		report.append(ownLine).append('\n');
 		PolishForests.LOG.info("[vanilla_forests] KF-1 " + ownLine);
 		if (ownVanilla > 0 && !java.util.Arrays.asList(pl.polishforests.worldgen.feature.plan.ForestBlend.TRANSECT).contains(biome)) {
-			failures.add(biome.id() + ": " + ownVanilla + " vanilla log trunks on the columns of the forest (KF-1)");
+			failures.add(biome.id() + ": " + ownVanilla + " vanilla log trunks on the columns of the forest (KF-1) " + ownVanillaAt);
 		}
-		double deepPerChunk = deepColumns == 0 ? 0 : 256.0 * deepTrunks / deepColumns;
-		if (deepColumns >= DEEP_MIN_COLUMNS && (deepPerChunk < DEEP_N1_LOW || deepPerChunk > DEEP_N1_HIGH)) {
-			failures.add(String.format(Locale.ROOT, "%s: %.1f planner trunks per chunk deep in the forest, outside the N1 envelope "
-					+ "(KF-1)", biome.id(), deepPerChunk));
+		if (!ownVanillaAt.isEmpty()) {
+			String trunksAt = String.format(Locale.ROOT, "%s vanilla log trunks on own columns: %d more than %d blocks from another biome, %d "
+					+ "within (the neighbor forest's M2 substitutes): %s", biome.id(), ownVanilla, EDGE_MARGIN, ownVanillaNear, ownVanillaAt);
+			report.append(trunksAt).append('\n');
+			PolishForests.LOG.info("[vanilla_forests] KF-1 " + trunksAt);
+		}
+		// Review of F1, round 1: N1 on the dry deep columns (no tree stands under water; the census area of a step-F forest
+		// is chosen among dry columns, deepCenter), required on at least DEEP_MIN_COLUMNS of them for a forest of the steps F.
+		double deepPerChunk = deepDry == 0 ? 0 : 256.0 * deepDryTrunks / deepDry;
+		boolean stepF = !java.util.Arrays.asList(pl.polishforests.worldgen.feature.plan.ForestBlend.TRANSECT).contains(biome);
+		if (deepDry >= DEEP_MIN_COLUMNS && (deepPerChunk < DEEP_N1_LOW || deepPerChunk > DEEP_N1_HIGH)) {
+			failures.add(String.format(Locale.ROOT, "%s: %.1f planner trunks per chunk on the dry deep columns, outside the N1 "
+					+ "envelope (KF-1)", biome.id(), deepPerChunk));
+		} else if (stepF && deepDry < DEEP_MIN_COLUMNS) {
+			// The replaced vanilla forests of W1 come in small patches (dark_forest for the beech forest: no column of the census
+			// area 48 m·k from another biome): N1 then on the dry columns of the biome, at least DEEP_MIN_COLUMNS of them.
+			int ownDry = ownColumns - ownWater;
+			double ownPerChunk = ownDry == 0 ? 0 : 256.0 * ownDryTrunks / ownDry;
+			String n1 = String.format(Locale.ROOT, "%s N1 on the dry columns of the biome (dry deep columns %d < %d): %d columns, "
+					+ "%.1f planner trunks per chunk (N1 envelope %.1f-%.1f)", biome.id(), deepDry, DEEP_MIN_COLUMNS, ownDry, ownPerChunk,
+					DEEP_N1_LOW, DEEP_N1_HIGH);
+			report.append(n1).append('\n');
+			PolishForests.LOG.info("[vanilla_forests] KF-1 " + n1);
+			if (ownDry < DEEP_MIN_COLUMNS) {
+				failures.add(String.format(Locale.ROOT, "%s: only %d dry columns of the biome in the census area, N1 not shown (KF-1)",
+						biome.id(), ownDry));
+			} else if (ownPerChunk < DEEP_N1_LOW || ownPerChunk > DEEP_N1_HIGH) {
+				failures.add(String.format(Locale.ROOT, "%s: %.1f planner trunks per chunk on the dry columns of the biome, outside "
+						+ "the N1 envelope (KF-1)", biome.id(), ownPerChunk));
+			}
 		}
 		if (forestColumns > 2000 && trunks == 0) {
 			failures.add(biome.id() + ": no trunk of the mod on " + forestColumns + " forest columns");
@@ -586,12 +644,17 @@ public final class VanillaForestsClientGameTest implements FabricClientGameTest 
 	/**
 	 * The center of the census area of a forest of the steps F (step F1, KF-1): of the squares of the area's size centered
 	 * on a lattice of {@value #DEEP_STEP} blocks within {@value #DEEP_SEARCH} blocks of the located column, the one with
-	 * the most surface columns of the biome (first in raster order on a tie; the surface biomes of {@link VanillaForestWorld},
-	 * no chunk generated).
+	 * the most dry surface columns of the biome (first in raster order on a tie; the surface biomes of
+	 * {@link VanillaForestWorld} and the noise heights of the generator, no chunk generated). Review of F1, round 1: a
+	 * lattice column counts only when its ground is not under water (the ocean floor height equals the world surface
+	 * height), because the deepest part of a dark_forest patch can be the floor of a lake whose biome at the bottom is still
+	 * the forest's.
 	 */
 	private static BlockPos deepCenter(ServerLevel level, HabitatBiome biome, BlockPos found) {
 		ResourceKey<Biome> own = ModBiomeKeys.key(biome);
 		VanillaForestWorld w = world(level);
+		var gen = level.getChunkSource().getGenerator();
+		var randomState = level.getChunkSource().randomState();
 		int half = CENSUS_CHUNKS * 8 / DEEP_STEP;
 		int n = 2 * (DEEP_SEARCH / DEEP_STEP + half) + 1;
 		int x0 = found.getX() - (DEEP_SEARCH / DEEP_STEP + half) * DEEP_STEP;
@@ -599,7 +662,10 @@ public final class VanillaForestsClientGameTest implements FabricClientGameTest 
 		int[] sum = new int[(n + 1) * (n + 1)];
 		for (int i = 0; i < n; i++) {
 			for (int j = 0; j < n; j++) {
-				int mine = w.surfaceBiome(x0 + i * DEEP_STEP, z0 + j * DEEP_STEP).is(own) ? 1 : 0;
+				int x = x0 + i * DEEP_STEP;
+				int z = z0 + j * DEEP_STEP;
+				int mine = w.surfaceBiome(x, z).is(own) && gen.getBaseHeight(x, z, Heightmap.Types.OCEAN_FLOOR_WG, level, randomState)
+						== gen.getBaseHeight(x, z, Heightmap.Types.WORLD_SURFACE_WG, level, randomState) ? 1 : 0;
 				sum[(i + 1) * (n + 1) + j + 1] = mine + sum[i * (n + 1) + j + 1] + sum[(i + 1) * (n + 1) + j] - sum[i * (n + 1) + j];
 			}
 		}
@@ -618,7 +684,7 @@ public final class VanillaForestsClientGameTest implements FabricClientGameTest 
 				}
 			}
 		}
-		PolishForests.LOG.info("[vanilla_forests] KF-1 {}: census area around ({}, {}), {} of {} lattice columns of the biome "
+		PolishForests.LOG.info("[vanilla_forests] KF-1 {}: census area around ({}, {}), {} of {} lattice columns of the biome, dry "
 				+ "(located at ({}, {}))", biome.id(), center.getX(), center.getZ(), best, 4 * half * half, found.getX(), found.getZ());
 		return center;
 	}
@@ -630,6 +696,8 @@ public final class VanillaForestsClientGameTest implements FabricClientGameTest 
 	private static final double DEEP_N1_HIGH = 19.2;
 	/** Least deep columns for the N1 check (the vanilla-log check holds on any number). */
 	private static final int DEEP_MIN_COLUMNS = 1024;
+	/** Distance from another biome within which a vanilla log trunk on an own column is reported, not a failure (blocks). */
+	private static final int EDGE_MARGIN = 8;
 
 	/** Whether the square of {@code reach} blocks around column (dx, dz) lies inside the area and holds only own columns. */
 	private static boolean deep(int[] other, int size, int dx, int dz, int reach) {

@@ -564,7 +564,7 @@ public final class DeadwoodPlan {
 				double h = rnd.next();
 				if (h < 0.4) {
 					byte type = conifer ? h < 0.32 ? COVER_MOSS : COVER_LITTER : h < 0.24 ? COVER_LITTER : COVER_MOSS;
-					b.cover(a * f[0] + side * l[0], a * f[2] + side * l[2], type);
+					b.cover(a * f[0] + side * l[0], a * f[2] + side * l[2], type, at);
 				}
 			}
 		}
@@ -858,6 +858,7 @@ public final class DeadwoodPlan {
 		private int pits;
 		private int[] cover = new int[16];
 		private byte[] coverType = new byte[16];
+		private int[] coverWood = new int[16];
 		private int covers;
 		private final java.util.HashSet<Integer> taken = new java.util.HashSet<>();
 
@@ -926,8 +927,11 @@ public final class DeadwoodPlan {
 			pit[pits++] = TreeVoxels.pack(dx, depth, dz);
 		}
 
-		/** Cover at the ground level of the base (only where the ground of the column is the base's ground). */
-		void cover(int dx, int dz, byte type) {
+		/**
+		 * Cover at the ground level of the base (only where the ground of the column is the base's ground), beside the wood
+		 * block {@code woodIndex} (review of F1, round 1: the cover is written only when that block is).
+		 */
+		void cover(int dx, int dz, byte type, int woodIndex) {
 			int top = r.ground().top(r.x() + dx, r.z() + dz);
 			if (top == TreeShapePlan.Ground.UNKNOWN || top != r.y() - 1 || taken.contains(TreeVoxels.pack(dx, 0, dz))) {
 				return;
@@ -940,8 +944,10 @@ public final class DeadwoodPlan {
 			if (covers == cover.length) {
 				cover = Arrays.copyOf(cover, covers * 2);
 				coverType = Arrays.copyOf(coverType, covers * 2);
+				coverWood = Arrays.copyOf(coverWood, covers * 2);
 			}
 			cover[covers] = TreeVoxels.pack(dx, 0, dz);
+			coverWood[covers] = woodIndex;
 			coverType[covers++] = type;
 		}
 
@@ -951,6 +957,7 @@ public final class DeadwoodPlan {
 			for (int i = 0; i < covers; i++) {
 				if (!taken.contains(cover[i])) {
 					cover[kept] = cover[i];
+					coverWood[kept] = coverWood[i];
 					coverType[kept++] = coverType[i];
 				}
 			}
@@ -959,7 +966,8 @@ public final class DeadwoodPlan {
 					Arrays.copyOf(parent, woods), Arrays.copyOf(parentIndex, woods), Arrays.copyOf(bark, woods), new int[0], new byte[0],
 					woods == 0 ? 0 : 1);
 			return new DeadwoodVoxels(r.kind(), r.species(), dir, t, Arrays.copyOf(soil, soils), Arrays.copyOf(soilType, soils),
-					Arrays.copyOf(pit, pits), Arrays.copyOf(cover, covers), Arrays.copyOf(coverType, covers));
+					Arrays.copyOf(pit, pits), Arrays.copyOf(cover, covers), Arrays.copyOf(coverType, covers),
+					Arrays.copyOf(coverWood, covers));
 		}
 	}
 }

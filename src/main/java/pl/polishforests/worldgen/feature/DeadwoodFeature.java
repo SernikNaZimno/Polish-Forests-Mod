@@ -51,7 +51,7 @@ import pl.polishforests.worldgen.tree.TreeVoxels;
  * unknown ground, so no wood lies there. Wood goes where the world holds air or a block trees replace, in the planner's
  * order from the root (a block whose parent could not be written is left out with its descendants), the soil of a root
  * plate on air or plants, a pit only in natural ground with nothing standing on it, moss carpet or leaf litter on free
- * ground beside the lying wood. Nothing of this changes the terrain model or the habitats (the golden test is unaffected).
+ * ground beside the lying wood that was written (review of F1, round 1: none beside the unwritten rest of a cut chain). Nothing of this changes the terrain model or the habitats (the golden test is unaffected).
  */
 public record DeadwoodFeature(Species species, boolean stump) implements Feature {
 	private static final Codec<Species> SPECIES = TreePalette.SPECIES_CODEC.validate(s -> SpeciesShape.supported(s)
@@ -134,7 +134,6 @@ public record DeadwoodFeature(Species species, boolean stump) implements Feature
 	public static int write(WorldGenLevel level, DeadwoodVoxels v) {
 		TreeVoxels t = v.wood();
 		int n = t.woodCount();
-		boolean[] written = new boolean[n];
 		int count = 0;
 		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
 		if (n == 0 || t.y() >= level.getMaxY() || !replaceable(level.getBlockState(pos.set(t.x() + t.woodX(0), t.y() + t.woodY(0),
@@ -142,21 +141,24 @@ public record DeadwoodFeature(Species species, boolean stump) implements Feature
 			return 0;
 		}
 		// The pit of a windthrow before the wood: the roots on the plate's underside hang over it (review of V11, round 1).
+		// It is dug only when the root (the stem base at the plate) is written, which the check above makes sure of: the wood
+		// lies at and above the base level, the pit below it, so digging does not change which wood blocks are free.
 		for (int p : v.pit()) {
 			dig(level, t.x() + v.x(p), t.y() - 1, t.z() + v.z(p), v.y(p), pos);
 		}
+		// Which wood blocks are free is read before any is written: the object has one block per position, so this is the
+		// order of writing them one by one.
+		boolean[] written = v.writable(i -> {
+			pos.set(t.x() + t.woodX(i), t.y() + t.woodY(i), t.z() + t.woodZ(i));
+			return pos.getY() < level.getMaxY() && replaceable(level.getBlockState(pos));
+		});
 		for (int i = 0; i < n; i++) {
-			int p = t.parentIndex(i);
-			if (p >= 0 && !written[p]) {
+			if (!written[i]) {
 				continue;
 			}
 			pos.set(t.x() + t.woodX(i), t.y() + t.woodY(i), t.z() + t.woodZ(i));
-			if (pos.getY() >= level.getMaxY() || !replaceable(level.getBlockState(pos))) {
-				continue;
-			}
 			level.setBlock(pos, ProceduralTreeFeature.wood(v.species(), t.bark(i), t.radius(i), Direction.from3DDataValue(t.parent(i))),
 					FLAGS);
-			written[i] = true;
 			count++;
 		}
 		if (count == 0) {
@@ -174,7 +176,8 @@ public record DeadwoodFeature(Species species, boolean stump) implements Feature
 		for (int i = 0; i < v.cover().length; i++) {
 			int c = v.cover()[i];
 			pos.set(t.x() + v.x(c), t.y(), t.z() + v.z(c));
-			if (!level.getBlockState(pos).isAir()) {
+			// Review of F1, round 1 (DP-127): only beside written wood, so that a cut chain leaves no cover on the free floor.
+			if (!v.coverKept(i, written) || !level.getBlockState(pos).isAir()) {
 				continue;
 			}
 			long h = Noise.mix(seed ^ Noise.key(pos.getX(), pos.getZ(), 0x0C0E_A11DL));

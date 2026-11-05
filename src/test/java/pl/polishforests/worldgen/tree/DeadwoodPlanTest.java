@@ -181,6 +181,59 @@ class DeadwoodPlanTest {
 		}
 	}
 
+	/**
+	 * Review of F1, round 1 (DP-127): a log whose chain is cut at a taken block (a neighbor chunk's tree written first)
+	 * keeps no moss or litter beside the unwritten rest: every kept cover block lies beside a written stem block, so the
+	 * cover never lands on the free forest floor away from the wood, whatever the order of the chunks.
+	 */
+	@Test
+	void coverOnlyBesideWrittenWoodOfACutLog() {
+		int cut = 0;
+		int dropped = 0;
+		for (Species s : List.of(Species.BEECH, Species.OAK, Species.SCOTS_PINE)) {
+			for (DeadwoodPlan.Kind kind : List.of(DeadwoodPlan.Kind.LOG, DeadwoodPlan.Kind.WINDTHROW)) {
+				for (int k = 0; k < 6; k++) {
+					DeadwoodVoxels v = plan(s, kind, AgeClass.OLD_GROWTH, true, 4 + 2 * k, 6 + k, flat());
+					int[] stem = v.lyingStem();
+					if (stem.length < 4) {
+						continue;
+					}
+					TreeVoxels t = v.wood();
+					assertEquals(v.cover().length, v.coverWood().length);
+					// Nothing taken: every cover block is kept.
+					boolean[] all = v.writable(i -> true);
+					for (int i = 0; i < v.cover().length; i++) {
+						assertTrue(v.coverKept(i, all));
+					}
+					// The chain taken at its middle block.
+					int blocked = stem[stem.length / 2];
+					boolean[] written = v.writable(i -> i != blocked);
+					assertFalse(written[blocked]);
+					assertFalse(written[stem[stem.length - 1]], "the rest of the chain after the taken block is left out");
+					cut++;
+					for (int i = 0; i < v.cover().length; i++) {
+						int c = v.cover()[i];
+						int w = v.coverWood()[i];
+						// The cover lies beside its stem block (one block across the fall direction).
+						assertEquals(1, Math.abs(v.x(c) - t.woodX(w)) + Math.abs(v.z(c) - t.woodZ(w)));
+						if (!v.coverKept(i, written)) {
+							dropped++;
+							continue;
+						}
+						boolean beside = false;
+						for (int j = 0; j < t.woodCount() && !beside; j++) {
+							beside = written[j] && Math.max(Math.abs(v.x(c) - t.woodX(j)), Math.abs(v.z(c) - t.woodZ(j))) <= 1
+									&& t.woodY(j) <= 1;
+						}
+						assertTrue(beside, "kept cover beside written wood: " + s + " " + kind);
+					}
+				}
+			}
+		}
+		assertTrue(cut > 10, "cut logs " + cut);
+		assertTrue(dropped > 0, "cover dropped beside the unwritten rest");
+	}
+
 	@Test
 	void nothingInUnknownColumns() {
 		// A stream across the window (x 10-12 unknown) and the window's edge.
