@@ -114,16 +114,20 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 	 * floodplain forest of {@code ForestPerformance.FLOOD_SITE} (realistic: the plot elm_ash_natural_1; gameplay: a place of
 	 * the willow-poplar and the elm-ash forest, no plot there), the same for a reference from before F5; step F6: the
 	 * montane spruce forest of {@code ForestPerformance.MONTANE_SITE} (realistic: a place of the forest in the natural mode,
-	 * no plot there; gameplay: the plot montane_spruce_managed_1), the same for a reference from before F6.
+	 * no plot there; gameplay: the plot montane_spruce_managed_1), the same for a reference from before F6; review of F6,
+	 * round 1: the lower edge of the dwarf pine scrub with the timberline and the montane spruce forest below it (the
+	 * creeping dwarf pine of the planner at the chunk borders; corners found with seed {@value #SEED} on the habitat
+	 * model, realistic: 180 of 256 sampled columns dwarf pine scrub, 68 of them in the timberline zone, 76 montane spruce;
+	 * gameplay: 133, 23 and 123), the same for a reference from before that round.
 	 */
 	private static final int[][] AREAS_REAL = {{-19_484 - 64, 11_253 - 64}, {154_834 - 64, 1_058_738 - 64}, {438 - 64, -730 - 64},
 			{-699 - 64, 1_924 - 64}, {-7_793 - 64, -9_133 - 64}, {2_339 - 64, 29_627 - 64}, {46_472 - 64, 15_684 - 64},
-			{-2_507 - 64, 5_061 - 64}, {-2_140 - 64, 10_559 - 64}, {75_072 - 64, 73_120 - 64}};
+			{-2_507 - 64, 5_061 - 64}, {-2_140 - 64, 10_559 - 64}, {75_072 - 64, 73_120 - 64}, {97_137, 1_034_797}};
 	private static final int[][] AREAS_GAMEPLAY = {{-1_851 - 64, 6_022 - 64}, {27_609 - 64, 3_254 - 64}, {-1_785 - 64, 886 - 64},
 			{-1_195 - 64, -583 - 64}, {-2_004 - 64, -3_609 - 64}, {-5_971 - 64, 1_387 - 64}, {1_706 - 64, 3_775 - 64},
-			{-1_640 - 40, 864 - 64}, {-2_044 - 64, -5_087 - 64}, {3_488 - 64, 22_644 - 64}};
+			{-1_640 - 40, 864 - 64}, {-2_044 - 64, -5_087 - 64}, {3_488 - 64, 22_644 - 64}, {7_238, -33_628}};
 	private static final String[] AREA_NAMES = {"river", "beskids", "oak_hornbeam", "fresh_pine", "lowland_beech", "alder_carr",
-			"upland_fir", "bog_woodland", "floodplain", "montane_spruce"};
+			"upland_fir", "bog_woodland", "floodplain", "montane_spruce", "dwarf_pine"};
 	private static final int SIZE = 8;
 	/** Distance from a chunk border (0 = edge column) used in the report of groups of differing columns. */
 	static final int BORDER_BAND = 3;

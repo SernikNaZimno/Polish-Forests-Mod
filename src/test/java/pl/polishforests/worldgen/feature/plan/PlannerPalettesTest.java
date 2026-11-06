@@ -76,4 +76,31 @@ class PlannerPalettesTest {
 			assertTrue(deadwood && stumps, b.id());
 		}
 	}
+
+	/**
+	 * Review of F6, round 1: the first understory rule of a column decides it, so the dense dwarf pine of the dwarf pine
+	 * scrub (coverage 0.05) comes before the sparse patches of the timberline zone (0.015), which would otherwise thin out
+	 * the scrub's columns of that zone (its lower edge).
+	 */
+	@Test
+	void dwarfPineScrubRuleComesBeforeTheTimberlineRule() {
+		int scrub = -1;
+		int timberline = -1;
+		int n = 0;
+		for (JsonElement e : EcotoneSharpnessTest.rules("understory")) {
+			JsonObject r = e.getAsJsonObject();
+			if (!r.has("edges")) {
+				if (scrub < 0 && r.has("biomes") && r.getAsJsonArray("biomes").toString().contains("\"dwarf_pine_scrub\"")) {
+					scrub = n;
+					assertEquals(0.05, r.get("coverage").getAsDouble(), 1e-6, "coverage of the first dwarf pine scrub rule");
+				}
+				if (timberline < 0 && r.has("zones") && r.getAsJsonArray("zones").toString().contains("\"timberline\"")) {
+					timberline = n;
+				}
+			}
+			n++;
+		}
+		assertTrue(scrub >= 0 && timberline >= 0, "both rules exist: " + scrub + ", " + timberline);
+		assertTrue(scrub < timberline, "dwarf pine scrub rule " + scrub + " before the timberline rule " + timberline);
+	}
 }

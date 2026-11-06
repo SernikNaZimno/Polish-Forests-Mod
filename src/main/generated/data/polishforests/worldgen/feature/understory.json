@@ -300,18 +300,6 @@
       ]
     },
     {
-      "coverage": 0.015,
-      "plants": [
-        {
-          "feature": "polishforests:shrub/dwarf_mountain_pine",
-          "weight": 1
-        }
-      ],
-      "zones": [
-        "timberline"
-      ]
-    },
-    {
       "biomes": [
         "dwarf_pine_scrub"
       ],
@@ -321,6 +309,18 @@
           "feature": "polishforests:shrub/dwarf_mountain_pine",
           "weight": 1
         }
+      ]
+    },
+    {
+      "coverage": 0.015,
+      "plants": [
+        {
+          "feature": "polishforests:shrub/dwarf_mountain_pine",
+          "weight": 1
+        }
+      ],
+      "zones": [
+        "timberline"
       ]
     },
     {

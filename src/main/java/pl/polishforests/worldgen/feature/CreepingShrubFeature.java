@@ -5,6 +5,7 @@ import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.server.level.WorldGenRegion;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
@@ -22,9 +23,14 @@ import pl.polishforests.worldgen.tree.TreeVoxels;
 /**
  * Feature type {@code polishforests:creeping_shrub} (step F6 of docs/04-pionowy-wycinek.md): one creeping shrub of
  * {@link CreepingShrubPlan} (the dwarf mountain pine of the dwarf pine scrub, the timberline and its saplings) with its
- * base at the origin, which must be free with ground below. The ground of the shrub's columns comes from the world
- * around the base (the first free block above a block with a sturdy top within {@value #REACH} blocks up or down; a
- * column whose top is water, leaves or wood is unknown, so a stem stops there), and the writer is the one of the tree
+ * base at the origin, which must be free with ground below. In world generation the ground of the shrub's columns comes
+ * from the chunk habitats of the decorated chunk and its eight neighbors ({@link DeadwoodFeature.Ground}: the top
+ * ground block, unknown on water, by structure pieces and over a top opened by a cave; review of F6, round 1: so the
+ * plan is a pure function of the seed and the position and does not depend on which neighbor chunk was decorated first,
+ * ZW-1), and a column more than {@value #REACH} blocks above or below the base is unknown. For a sapling (a level that
+ * is not a generation region) and in a world without habitats it comes from the world around the base (the first free
+ * block above a block with a sturdy top within {@value #REACH} blocks up or down; a column whose top is water, leaves
+ * or wood is unknown). A stem stops at an unknown column. The writer is the one of the tree
  * planner ({@link ProceduralTreeFeature#writeCounted}: wood on air or blocks trees replace, leaves never on another
  * tree's leaves, leaf distances from the wood that exists).
  *
@@ -56,7 +62,18 @@ public record CreepingShrubFeature(Species species, float size) implements Featu
 		if (origin.getY() <= level.getMinY() || !free(level.getBlockState(origin)) || !ProceduralTreeFeature.ground(level, below)) {
 			return false;
 		}
-		TreeVoxels v = plan(level, origin);
+		TreeVoxels v;
+		if (level instanceof WorldGenRegion && ModFeatures.habitats(level.getChunk(origin.getX() >> 4, origin.getZ() >> 4),
+				generator, level.getSeed()) != null) {
+			DeadwoodFeature.Ground habitats = new DeadwoodFeature.Ground(level,
+					level.getChunk(origin.getX() >> 4, origin.getZ() >> 4), generator, level.getSeed());
+			if (habitats.top(origin.getX(), origin.getZ()) != below.getY()) {
+				return false;
+			}
+			v = plan(level.getSeed(), origin, CreepingShrubPlan.Ground.ofTops(habitats, origin.getX(), origin.getY(), origin.getZ(), REACH));
+		} else {
+			v = plan(level, origin);
+		}
 		if (ProceduralTreeFeature.writeCounted(level, v, species, CrownLayer.REGENERATION, AgeClass.MATURE) >>> 32 == 0) {
 			return false;
 		}
@@ -64,7 +81,12 @@ public record CreepingShrubFeature(Species species, float size) implements Featu
 		return true;
 	}
 
-	/** The shrub at {@code origin} on the ground of the world (a pure function of the seed, the position and the ground). */
+	/** The shrub at {@code origin} on the given ground (a pure function of the seed, the position and the ground). */
+	TreeVoxels plan(long seed, BlockPos origin, CreepingShrubPlan.Ground ground) {
+		return CreepingShrubPlan.plan(new CreepingShrubPlan.Request(seed, origin.getX(), origin.getY(), origin.getZ(), size, ground));
+	}
+
+	/** The shrub at {@code origin} on the ground of the world (a sapling: the player may have changed the ground). */
 	public TreeVoxels plan(WorldGenLevel level, BlockPos origin) {
 		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
 		int ox = origin.getX();

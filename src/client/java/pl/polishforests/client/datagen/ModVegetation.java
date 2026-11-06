@@ -1196,12 +1196,14 @@ final class ModVegetation {
 		// Step F4: the low crooked pines and birches of the planner at the edge of the bog woodland.
 		l.edge(biomes(BOG_WOODLAND), Ecotone.Edge.MANTLE, 0.02F, 1, l.feature(ModTrees.form(Species.SCOTS_PINE, TreeForm.Kind.STUNTED), 2),
 				l.feature(ModTrees.form(Species.BIRCH, TreeForm.Kind.STUNTED), 1));
-		// Step F6: the patches of the dwarf mountain pine at the timberline, among the dwarf spruces (the zone's columns
-		// of every biome: the upper edge of the montane spruce forest and the lower edge of the dwarf pine belt).
-		l.land(HabitatCondition.zones(Zone.TIMBERLINE), 0.015F, 1, l.feature(Species.DWARF_MOUNTAIN_PINE.path(), 1));
 		// About 13 dwarf pines per chunk (step F6: the creeping shrubs of the own planner, about 15-40 columns each; with
-		// their overlaps the crowns cover about 50-80% of the ground, Pinetum mugo carpaticum).
+		// their overlaps the crowns cover about 50-80% of the ground, Pinetum mugo carpaticum). Before the timberline rule
+		// (review of F6, round 1): the first rule decides a column, and the dwarf pine scrub's columns of the timberline
+		// zone (its lower edge) keep the dense scrub instead of the sparse patches.
 		l.land(biomes(DWARF_PINE_SCRUB), 0.05F, 1, l.feature(Species.DWARF_MOUNTAIN_PINE.path(), 1));
+		// Step F6: the patches of the dwarf mountain pine at the timberline, among the dwarf spruces (the zone's columns
+		// of the other biomes, above all the upper edge of the montane spruce forest).
+		l.land(HabitatCondition.zones(Zone.TIMBERLINE), 0.015F, 1, l.feature(Species.DWARF_MOUNTAIN_PINE.path(), 1));
 		l.land(biomes(HEATH), 0.01F, 3, l.feature(Species.JUNIPER.path(), 1));
 		// Step F4 (N7): juniper 0-5% in the dry pine forest, the alder buckthorn (10-30%) in the moist one, a few in the bog
 		// woodland, juniper and rowan in the coastal pine forest; the thin-stemmed shrubs of the slice.

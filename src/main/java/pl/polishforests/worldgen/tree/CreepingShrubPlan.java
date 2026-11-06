@@ -52,6 +52,23 @@ public final class CreepingShrubPlan {
 
 		/** Flat ground: every column level with the base. */
 		Ground FLAT = (dx, dz) -> 0;
+
+		/**
+		 * The ground over the top ground blocks of world columns (in world generation those of the chunk habitats; review
+		 * of F6, round 1: so the plan does not depend on the blocks other features have already written, ZW-1): the free
+		 * block over the top relative to the base at (x, y, z), unknown where {@code tops} does not know the column or it
+		 * lies more than {@code reach} blocks above or below the base.
+		 */
+		static Ground ofTops(TreeShapePlan.Ground tops, int x, int y, int z, int reach) {
+			return (dx, dz) -> {
+				int top = tops.top(x + dx, z + dz);
+				if (top == TreeShapePlan.Ground.UNKNOWN) {
+					return UNKNOWN;
+				}
+				int free = top + 1 - y;
+				return Math.abs(free) > reach ? UNKNOWN : free;
+			};
+		}
 	}
 
 	/**
