@@ -329,6 +329,11 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 				sites.add(new int[] {plot.x(), plot.z()});
 			}
 		}
+		if (!real) {
+			// Step F5: the gameplay scale has no plot of a floodplain forest (F_MISSING); the place of both of them of the
+			// KF-6 flights instead.
+			sites.add(ForestPerformance.FLOOD_SITE[1]);
+		}
 		for (int[] site : sites) {
 			int cx0 = (site[0] >> 4) - 2;
 			int cz0 = (site[1] >> 4) - 2;
