@@ -18,7 +18,7 @@ real -21 -2 11ed445174190559
 real -21 -1 88da8e2314c2dc4c
 real -21 0 ac0c08d9ee74b2ab
 real -21 1 6278a7685dfe7f6b
-real -21 2 5a62514e38ae51f4
+real -21 2 cb484362b9530bad
 real -21 3 f1cb95c39da5a1c4
 real -21 4 12ba11c531b90844
 real -21 5 8b71fefa337c0a1b
@@ -29,7 +29,7 @@ real -20 -3 216ee24e1d6cd384
 real -20 -2 c01b534f9e86d994
 real -20 -1 27c5e24be334d66b
 real -20 0 e0108714b5df5a85
-real -20 1 4a6f34bbf8a4e575
+real -20 1 c6bf0f542eb522e3
 real -20 2 563f3b4e200fdbd3
 real -20 3 7ab9d69e0f151030
 real -20 4 14ea83e74d012998
@@ -42,8 +42,8 @@ real -19 -2 bc56ce70904d0a64
 real -19 -1 e51a9734b1d5e904
 real -19 0 91ebeb3f76e11092
 real -19 1 9ca4cfc4abc77a92
-real -19 2 aa39df5f345b81c6
-real -19 3 eeadfe2fd40df923
+real -19 2 b100297db9a1ec29
+real -19 3 cf7e7e2448824290
 real -19 4 a94c6ca92bfda0ab
 real -19 5 5de303d170b7d07b
 real -18 -6 101f73cf19d97ee0
@@ -65,14 +65,14 @@ real -17 -3 ace9c3d0b38f55ed
 real -17 -2 0d6ed715d29c1315
 real -17 -1 0000000064f51f6b
 real -17 0 064bb978e06a180f
-real -17 1 59e4162196a14df9
+real -17 1 54e83e82eeb8baf0
 real -17 2 9065abae76f5d67c
 real -17 3 4aee3ccc021485f7
 real -17 4 11571f46709cd87e
-real -17 5 2f6f51c875e91464
+real -17 5 8a77210b110c1dcb
 real -16 -6 8fdc9d771d66c906
-real -16 -5 33229afb51f23bce
-real -16 -4 045febc91cff4006
+real -16 -5 5e015e1200df880d
+real -16 -4 85c0bdfa3c2c107f
 real -16 -3 508417679b821e49
 real -16 -2 ffffffffe484aa62
 real -16 -1 67470669f1e244e6
@@ -88,7 +88,7 @@ real -15 -4 e8596aaacca2fd42
 real -15 -3 ffffffffedbebb39
 real -15 -2 6651352c449a945c
 real -15 -1 04959d865bf0850c
-real -15 0 70b9b488672611bb
+real -15 0 8a839ec60006608a
 real -15 1 458dc856bf6cc31c
 real -15 2 f6e9e5c2044056ac
 real -15 3 3eec3b2a744ff58d
@@ -96,9 +96,9 @@ real -15 4 330089483f8115ed
 real -15 5 1b494e794dca4d6b
 real -14 -6 5679a20307f9b2b5
 real -14 -5 7f7217f7f0750cac
-real -14 -4 4a12aaa092a013a7
+real -14 -4 ff432b120c57da80
 real -14 -3 745a30f2ea06a60b
-real -14 -2 8e1c97694bcb9e94
+real -14 -2 3eb4a328929d487b
 real -14 -1 3aa9788870ec589f
 real -14 0 76e213c1193a8f16
 real -14 1 95961f5d9bdbff2b
@@ -145,12 +145,12 @@ gameplay -22 5 b21f9752737c20fb
 gameplay -21 -6 a39b13024dc21166
 gameplay -21 -5 93c11d8d8c457f3c
 gameplay -21 -4 0a492181aca66bff
-gameplay -21 -3 b5e5afecc23f6420
+gameplay -21 -3 8548830cf7a51687
 gameplay -21 -2 c63ba90d66db1cf9
 gameplay -21 -1 a3f6d04ff546dfd0
 gameplay -21 0 4411f09cefcfe296
 gameplay -21 1 d7b299e53eac5ab0
-gameplay -21 2 941505b3d1d1f219
+gameplay -21 2 d7f2a28fe41c034b
 gameplay -21 3 e3b02e7150048299
 gameplay -21 4 faa7f085e8c36014
 gameplay -21 5 255ae1993d1490ff
@@ -158,7 +158,7 @@ gameplay -20 -6 5a28a7a0ba3cd1b0
 gameplay -20 -5 beb3a1ce7f3caa59
 gameplay -20 -4 50cd8e0ecd5dbc72
 gameplay -20 -3 1f354410ce0203df
-gameplay -20 -2 1f5b6d5451df3c6f
+gameplay -20 -2 285ddfe65338520c
 gameplay -20 -1 7181d45a561a021b
 gameplay -20 0 ee3b0f5400abef3f
 gameplay -20 1 afe4f90bc99a8413
@@ -169,7 +169,7 @@ gameplay -20 5 f4b7bda8bd4ed94b
 gameplay -19 -6 3f359d25c975160b
 gameplay -19 -5 cc09c0a1d9e29bba
 gameplay -19 -4 c586fd2c805c3571
-gameplay -19 -3 0831c40a622a8ba9
+gameplay -19 -3 4c7f1f6848eabcdc
 gameplay -19 -2 d1d2ade5d832d1d7
 gameplay -19 -1 207732808addb5c1
 gameplay -19 0 ba1fc9dbacefef97
@@ -178,7 +178,7 @@ gameplay -19 2 ffffffffd1cd46ec
 gameplay -19 3 b953902abde06e3e
 gameplay -19 4 fdd1d2987cd61ddd
 gameplay -19 5 ea24b59c9ade02d1
-gameplay -18 -6 28067fc85a86ff05
+gameplay -18 -6 03692038e0eadc88
 gameplay -18 -5 dacdd13be32d711c
 gameplay -18 -4 e6b13f88d5024346
 gameplay -18 -3 dad8fe017cb53232
@@ -192,12 +192,12 @@ gameplay -18 4 51f693347f2b3b6f
 gameplay -18 5 22139df3dcba0f78
 gameplay -17 -6 0ac3de01b771891e
 gameplay -17 -5 58220b5190be70cb
-gameplay -17 -4 07a6f73d8b25067b
+gameplay -17 -4 2b2a5bd26d3bbcb4
 gameplay -17 -3 2cfed3a3cc6a88e0
 gameplay -17 -2 327a4ca6439c7a29
 gameplay -17 -1 bf727f6cb1a754b7
 gameplay -17 0 84f6e2edaca2cbf0
-gameplay -17 1 738f61090e27174a
+gameplay -17 1 1ebfd5b9866cca7b
 gameplay -17 2 139bafe03ae8513f
 gameplay -17 3 691f3973ce9349e8
 gameplay -17 4 7f22ea789dcc8451
@@ -215,7 +215,7 @@ gameplay -16 3 fccf6acfd4268a6f
 gameplay -16 4 9c080300c60e2bab
 gameplay -16 5 17c141618cfdbb22
 gameplay -15 -6 c25f40e09ffac06f
-gameplay -15 -5 d44302ee51b1dee8
+gameplay -15 -5 f0cf00ee4176e69b
 gameplay -15 -4 dad868bf82d9b7af
 gameplay -15 -3 13a26af6cdc4c591
 gameplay -15 -2 12cf0cf7272e3377
@@ -230,17 +230,17 @@ gameplay -14 -6 01c66a6a82b261bb
 gameplay -14 -5 c3a689f0486503d9
 gameplay -14 -4 bb0a639f27ad453b
 gameplay -14 -3 1660417a7c108b25
-gameplay -14 -2 c09691757db3b7e1
+gameplay -14 -2 836a69d92fa9042e
 gameplay -14 -1 0eb96047550be8b1
 gameplay -14 0 af05610f2a5f0aaf
 gameplay -14 1 1a2e42b7f86591b1
 gameplay -14 2 2eaebe33db738a8f
 gameplay -14 3 c5f7d96abc93c56c
 gameplay -14 4 b33ce2292b976c22
-gameplay -14 5 ba44956005276cb5
+gameplay -14 5 46211a8d94ce6841
 gameplay -13 -6 e430ad3bb292877d
-gameplay -13 -5 388c87b7444630df
-gameplay -13 -4 c72df109fa95b029
+gameplay -13 -5 79c8389fb60d0b55
+gameplay -13 -4 7ad6a8e18778f8c8
 gameplay -13 -3 711477120c1a22d2
 gameplay -13 -2 639f594c6b2fd64b
 gameplay -13 -1 148390fc78736fa4
@@ -249,7 +249,7 @@ gameplay -13 1 57ec780a916b5a1e
 gameplay -13 2 98c87a28fec27658
 gameplay -13 3 602d84a8a98ea34f
 gameplay -13 4 57bd18f7b02fd839
-gameplay -13 5 e545e2d8f3724e3c
+gameplay -13 5 0ef648cf1ffeef0a
 gameplay -12 -6 193ea3ee734a3959
 gameplay -12 -5 65d1218c706c254e
 gameplay -12 -4 b92b68aefa6a9549
@@ -262,9 +262,9 @@ gameplay -12 2 e77211ff50ca5598
 gameplay -12 3 be432d5b4336a473
 gameplay -12 4 714052eaa42e363d
 gameplay -12 5 e42bb0230f052ecc
-rule tree_stand fresh_pine_forest #1 dc6a5309
-rule tree_stand mixed_pine_forest #1 c78e67b7
-rule tree_stand mixed_forest #1 bafd632b
+rule tree_stand fresh_pine_forest #1 5a5b8818
+rule tree_stand mixed_pine_forest #1 5a10c386
+rule tree_stand mixed_forest #1 b9c9767c
 rule tree_stand oak_hornbeam_forest #1 1751a9eb
 rule deadwood oak_hornbeam_forest #1 21505ff0
 rule deadwood fresh_pine_forest #1 9add5910
@@ -272,7 +272,7 @@ rule deadwood mixed_pine_forest #1 e24d8321
 rule deadwood mixed_forest #1 02490e21
 rule understory mixed_forest+oak_hornbeam_forest #1 356ffa14
 rule understory fresh_pine_forest+mixed_pine_forest #1 bb856732
-rule understory fresh_pine_forest #1 53c4d497
+rule understory fresh_pine_forest #1 4a3d5b06
 rule understory mixed_forest+mixed_pine_forest #1 1670abec
 rule understory oak_hornbeam_forest #1 8c514330
 rule ground_layer fresh_pine_forest #1 4abf67a3

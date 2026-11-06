@@ -31,6 +31,7 @@ import pl.polishforests.worldgen.tree.AgeClass;
 import pl.polishforests.worldgen.tree.CrownLayer;
 import pl.polishforests.worldgen.tree.DeadwoodPlan;
 import pl.polishforests.worldgen.tree.DeadwoodVoxels;
+import pl.polishforests.worldgen.tree.SpeciesShape;
 import pl.polishforests.worldgen.tree.TreeShapePlan;
 import pl.polishforests.worldgen.tree.TreeVoxels;
 
@@ -131,6 +132,13 @@ final class DeadwoodSamples {
 				DeadwoodVoxels v = DeadwoodPlan.plan(new DeadwoodPlan.Request(species.get(s), kinds[k], CrownLayer.CANOPY,
 						stump ? AgeClass.MATURE : AgeClass.OLD_GROWTH, !stump, level.getSeed(), x, y, z, ground));
 				if (v.empty()) {
+					// Step F6: the rowan grows as a tree of the subcanopy (SpeciesShape.understory) and its thin stem gives no
+					// lying log of 2 px; its empty plans leave a gap on the board (DeadwoodPlanTest does not count them either).
+					if (SpeciesShape.understory(species.get(s))) {
+						report.append(String.format(Locale.ROOT, " %s %s: empty (understory);", species.get(s).id(),
+								kinds[k].name().toLowerCase(Locale.ROOT)));
+						continue;
+					}
 					throw new AssertionError("[deadwood] empty plan on the board: " + kinds[k] + " of " + species.get(s));
 				}
 				DeadwoodFeature.write(level, v);

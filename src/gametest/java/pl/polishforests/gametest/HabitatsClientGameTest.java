@@ -822,12 +822,28 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 			int opened = 0;
 			int ceilings = 0;
 			int sphagnum = 0;
+			int mossy = 0;
+			int shrubColumns = 0;
+			int shrubCovered = 0;
 			Map<String, Integer> blocks = new java.util.TreeMap<>();
 			for (int i = 0; i < 256; i++) {
 				if (Habitat.biome(codes[i]) != biome || plan.wet(i)) {
 					continue;
 				}
 				BlockPos ground = new BlockPos(pos.getMinBlockX() + (i >> 4), plan.top(i), pos.getMinBlockZ() + (i & 15));
+				if (biome == HabitatBiome.DWARF_PINE_SCRUB) {
+					// Step F6 (KF-2, N7 of the dwarf pine scrub, a forest without a plot of the card): the share of the
+					// columns of the place under the needles of the creeping dwarf pine (up to 6 blocks over the ground),
+					// reported only. One chunk, decorated without all its neighbors: a shrub of a neighbor may be missing.
+					shrubColumns++;
+					for (int dy = 1; dy <= 6; dy++) {
+						if (level.getBlockState(ground.above(dy)).is(pl.polishforests.block.ModBlocks.leaves(
+								pl.polishforests.block.TreeFoliage.DWARF_MOUNTAIN_PINE))) {
+							shrubCovered++;
+							break;
+						}
+					}
+				}
 				net.minecraft.world.level.block.state.BlockState above = level.getBlockState(ground.above());
 				if (above.is(BlockTags.LOGS)) {
 					continue;
@@ -877,6 +893,15 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 					blocks.merge(plan.topMaterial(i).id().substring("minecraft:".length()) + "->sphagnum_block", 1, Integer::sum);
 					continue;
 				}
+				if (expected == net.minecraft.world.level.block.Blocks.PODZOL && actual.is(pl.polishforests.block.ModBlocks.mossyPodzol())
+						&& !solidAbove) {
+					// Step F6: the podzol under a plant ground rule of the mossy podzol (the bilberry and moss patches of the
+					// montane spruce forest, as of the pine forests since V12) turns into that block (PlantLayerFeature.turns).
+					// Only this one pair; reported per place.
+					mossy++;
+					blocks.merge("podzol->mossy_podzol", 1, Integer::sum);
+					continue;
+				}
 				// No exemption for the vanilla disks of sand, clay and gravel: S8 removed them from step 6.
 				if (!actual.is(expected) || solidAbove) {
 					mismatched++;
@@ -897,7 +922,10 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 					checked - mismatched - erratics, checked, blocks, erratics > 0 ? ", " + erratics + " under an erratic" : "",
 					blended > 0 ? ", " + blended + " of a soil across a border" : "") + (turf > 0 ? ", " + turf + " turf over podzol" : "")
 					+ (opened > 0 ? ", " + opened + " opened by a cave" : "") + (ceilings > 0 ? ", " + ceilings + " cave ceilings" : "")
-					+ (sphagnum > 0 ? ", " + sphagnum + " sphagnum over the bog moss" : ""));
+					+ (sphagnum > 0 ? ", " + sphagnum + " sphagnum over the bog moss" : "")
+					+ (mossy > 0 ? ", " + mossy + " mossy podzol under the plants" : "")
+					+ (shrubColumns > 0 ? String.format(Locale.ROOT, ", dwarf pine cover %.1f%% of %d columns",
+							100.0 * shrubCovered / shrubColumns, shrubColumns) : ""));
 		}
 		if (!failures.isEmpty()) {
 			throw new AssertionError("Ground blocks differ from the surface plan: " + failures + "; " + report);

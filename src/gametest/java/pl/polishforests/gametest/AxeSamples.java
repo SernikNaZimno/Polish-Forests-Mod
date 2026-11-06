@@ -89,7 +89,9 @@ final class AxeSamples {
 		try (TestSingleplayerContext sp = context.worldBuilder().create()) {
 			FellingSamples.setUp(sp);
 			int y = sp.getServer().computeOnServer(s -> s.overworld().getHeight(Heightmap.Types.MOTION_BLOCKING, 0, 0));
-			FellingSamples.stand(sp, 20.5, y + 6, -6.5);
+			// In the middle of the rows (one per trunk block, 2 STEP apart): with 20 trunks since F6 the last rows lay
+			// 8 chunks from a player at the first one, and the drops of their far end were no longer counted.
+			FellingSamples.stand(sp, 20.5, y + 6, STEP * (TreeTrunk.values().length - 1) + 0.5);
 			context.waitTicks(40);
 			lines.addAll(sp.getServer().computeOnServer(s -> axe(s, y, problems)));
 			context.waitTicks(10);

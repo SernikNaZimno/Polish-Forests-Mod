@@ -48,6 +48,13 @@ import pl.polishforests.worldgen.tree.TreeVoxels;
  * hashed per chunk. The hashes of the build before F1 are in {@code src/test/resources/f1_slice_equality.txt}
  * ({@code -Dpolishforests.f1.equality.write=<file>} writes them). The palette rules of the generated tree stand, dead
  * wood, understory and ground layer palettes that name a slice forest and not the beech forest are hashed too.
+ *
+ * <p>Step F6 (choice F-i, docs/00 G.47 F6-t): the planner rowan of the subcanopy replaced the thin placeholder
+ * {@code tree_substitute/rowan_thin} also in the slice forests, so the file was rewritten once by the F6 build. Before
+ * that, exactly the 24 chunks (11 realistic, 13 gameplay) whose tree stand plans a rowan and the 4 palette rules that
+ * named the placeholder (tree stand of the fresh pine, mixed pine and mixed forest, understory of the fresh pine forest)
+ * differed from the build before F1; every chunk without a rowan was still equal. Since then the file guards the slice
+ * forests against any other change.
  */
 @Tag("slow")
 class SliceEqualityTest {
