@@ -165,7 +165,8 @@ final class SimulatedStands {
 					CrownTerritory territory = session.territory(x, z, v);
 					AgeClass treeAge = layer == CrownLayer.REGENERATION && map.canopyGap(x, z) ? AgeClass.POLE_STAGE : age;
 					TreeVoxels vox = TreeShapePlan.plan(new TreeRequest(species, layer, treeAge, SEED, x, ground.top(x, z) + 1, z, territory,
-							session::candidate, map, ground));
+							session::candidate, map, ground, null, pl.polishforests.worldgen.tree.TreeSize.ONE,
+							pl.polishforests.worldgen.tree.TreeForm.of(GENERATED.forms.get(t))));
 					if (vox.woodCount() == 0) {
 						// Like the game (TreeStandFeature): a suppressed canopy tree is not planted.
 						SUPPRESSED.incrementAndGet();

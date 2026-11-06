@@ -328,6 +328,21 @@ public final class LandscapeModel {
 		return c / Math.max(g, 1e-12);
 	}
 
+	/**
+	 * The direction away from the sea at a column (step F4 of docs/04-pionowy-wycinek.md: the lee side of the banner crowns of
+	 * the coastal wind belt), as the azimuth of the gradient of the land-sea field (radians, x = cos, z = sin): the field
+	 * rises inland. Sampled as {@link #coastDistance} samples it; NaN where the field is flat.
+	 */
+	public double leeAzimuth(double x, double z) {
+		double e = Math.max(20.0, 400.0 * zs);
+		double gx = seaField(x + e, z) - seaField(x - e, z);
+		double gz = seaField(x, z + e) - seaField(x, z - e);
+		if (Math.abs(gx) < 1e-15 && Math.abs(gz) < 1e-15) {
+			return Double.NaN;
+		}
+		return StrictMath.atan2(gz, gx);
+	}
+
 	/** Beach width in meters. */
 	private double beachWidth() {
 		return 60.0 * local;

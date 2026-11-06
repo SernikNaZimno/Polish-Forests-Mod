@@ -301,6 +301,8 @@ tasks.withType(Test).configureEach {
 	if (project.hasProperty('findSlicePlots')) {
 		systemProperty 'polishforests.slice.plots.find', 'true'
 		systemProperty 'polishforests.slice.plots.file', file('src/test/resources/slice_plots.txt').absolutePath
+		// Step F4: -PfindSlicePlotsKeep keeps the plots of the table and searches only the forests without plots.
+		systemProperty 'polishforests.slice.plots.keep', project.hasProperty('findSlicePlotsKeep') ? 'true' : 'false'
 		outputs.upToDateWhen { false }
 	}
 	// -PcalibrateSlice: StandCensusSimulationTest prints the norms of simulated stands of the slice (step V9; a report).

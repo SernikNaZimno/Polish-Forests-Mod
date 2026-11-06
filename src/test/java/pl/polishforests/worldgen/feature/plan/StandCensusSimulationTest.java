@@ -67,7 +67,10 @@ class StandCensusSimulationTest {
 									: biome == HabitatBiome.MONTANE_BEECH_FOREST
 											? new ForestSiteType[] {ForestSiteType.MOUNTAIN_BROADLEAVED, ForestSiteType.MOUNTAIN_MIXED_BROADLEAVED,
 													ForestSiteType.MOUNTAIN_BROADLEAVED}
-											: new ForestSiteType[] {ForestSiteType.NONE};
+											// Step F4: the pine bog woodland and the birch bog woodland (Bb, BMb).
+											: biome == HabitatBiome.BOG_WOODLAND
+													? new ForestSiteType[] {ForestSiteType.BOGGY_CONIFEROUS, ForestSiteType.BOGGY_MIXED_CONIFEROUS}
+													: new ForestSiteType[] {ForestSiteType.NONE};
 			for (int i = 0; i < sites.length; i++) {
 				ForestSiteType site = sites[i];
 				Association association = biome != HabitatBiome.MONTANE_BEECH_FOREST ? Association.TYPICAL

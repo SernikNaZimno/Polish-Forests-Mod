@@ -25,10 +25,20 @@ import pl.polishforests.worldgen.habitat.Species;
  *                  on that side; null for none
  * @param size      factors of the tree's size (step S1: the medium tree grown from a sapling); {@link TreeSize#ONE} for every
  *                  tree of the world generation
+ * @param form      the growth form of the tree by its site (step F4: the low pine of a bog, the thin pine of the dry pine
+ *                  forest, the banner crown of the coast, the birch of several stems); {@link TreeForm#NORMAL}, the default,
+ *                  for every tree before step F4
  */
 public record TreeRequest(Species species, CrownLayer layer, AgeClass age, long worldSeed, int x, int y, int z,
 		@Nullable CrownTerritory territory, TreeShapePlan.@Nullable Trunks trunks, @Nullable StandMap stands,
-		TreeShapePlan.@Nullable Ground ground, TreeShapePlan.@Nullable Open open, TreeSize size) {
+		TreeShapePlan.@Nullable Ground ground, TreeShapePlan.@Nullable Open open, TreeSize size, TreeForm form) {
+	/** A request of the default form (every tree before step F4). */
+	public TreeRequest(Species species, CrownLayer layer, AgeClass age, long worldSeed, int x, int y, int z,
+			@Nullable CrownTerritory territory, TreeShapePlan.@Nullable Trunks trunks, @Nullable StandMap stands,
+			TreeShapePlan.@Nullable Ground ground, TreeShapePlan.@Nullable Open open, TreeSize size) {
+		this(species, layer, age, worldSeed, x, y, z, territory, trunks, stands, ground, open, size, TreeForm.NORMAL);
+	}
+
 	/** A request of the planner's own size. */
 	public TreeRequest(Species species, CrownLayer layer, AgeClass age, long worldSeed, int x, int y, int z,
 			@Nullable CrownTerritory territory, TreeShapePlan.@Nullable Trunks trunks, @Nullable StandMap stands,
@@ -53,6 +63,9 @@ public record TreeRequest(Species species, CrownLayer layer, AgeClass age, long 
 		if (size == null) {
 			size = TreeSize.ONE;
 		}
+		if (form == null) {
+			form = TreeForm.NORMAL;
+		}
 		if (!SpeciesShape.supported(species)) {
 			throw new IllegalArgumentException("no tree shape for " + species);
 		}
@@ -70,6 +83,17 @@ public record TreeRequest(Species species, CrownLayer layer, AgeClass age, long 
 	/** A lone, open-grown tree without a territory, of a size (step S1, a tree grown from a sapling). */
 	public TreeRequest(Species species, CrownLayer layer, AgeClass age, TreeSize size, long worldSeed, int x, int y, int z) {
 		this(species, layer, age, worldSeed, x, y, z, null, null, null, null, null, size);
+	}
+
+	/** A lone, open-grown tree without a territory, of a size and a form (step F4: a lone tree of a bog or a heath). */
+	public TreeRequest(Species species, CrownLayer layer, AgeClass age, TreeSize size, TreeForm form, long worldSeed, int x, int y,
+			int z) {
+		this(species, layer, age, worldSeed, x, y, z, null, null, null, null, null, size, form);
+	}
+
+	/** This request with another form (step F4). */
+	public TreeRequest withForm(TreeForm f) {
+		return new TreeRequest(species, layer, age, worldSeed, x, y, z, territory, trunks, stands, ground, open, size, f);
 	}
 
 	/** Whether the tree grows alone (no territory and no stand map): an open-grown crown, no split below the canopy. */

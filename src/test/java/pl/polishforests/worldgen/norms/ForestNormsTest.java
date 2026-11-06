@@ -103,6 +103,55 @@ class ForestNormsTest {
 	}
 
 	/**
+	 * Step F4: the card of the four pine forests and the birch bog woodland (docs/04 "Projekt F4", N1, N3, N4, N7–N10): N9
+	 * as the lichens of the dry pine forest and the sphagnum of the bog woodland, the birch bog woodland as the site variant
+	 * of the boggy mixed coniferous site type.
+	 */
+	@Test
+	void pineCardOfStepF4() {
+		for (boolean natural : new boolean[] {true, false}) {
+			Forest dry = Forest.of(pl.polishforests.worldgen.habitat.HabitatBiome.DRY_PINE_FOREST, natural);
+			Forest moist = Forest.of(pl.polishforests.worldgen.habitat.HabitatBiome.MOIST_PINE_FOREST, natural);
+			Forest bog = Forest.of(pl.polishforests.worldgen.habitat.HabitatBiome.BOG_WOODLAND, natural);
+			Forest coastal = Forest.of(pl.polishforests.worldgen.habitat.HabitatBiome.COASTAL_PINE_FOREST, natural);
+			assertEquals(natural, dry.natural());
+			assertRange(90, 100, ForestNorms.COMPOSITION + "scots_pine", dry, null, null);
+			assertRange(40, 60, ForestNorms.CANOPY, dry, null, null);
+			assertRange(60, 90, ForestNorms.MOSS, dry, null, null);
+			assertRange(70, 90, ForestNorms.COMPOSITION + "scots_pine", moist, null, null);
+			assertRange(10, 30, ForestNorms.COMPOSITION + "birch", moist, null, null);
+			assertRange(60, 90, ForestNorms.COMPOSITION + "scots_pine", bog, null, null);
+			assertRange(30, 60, ForestNorms.CANOPY, bog, null, null);
+			assertRange(80, 100, ForestNorms.MOSS, bog, null, null);
+			Norm birch = ForestNorms.of(ForestNorms.COMPOSITION + "birch", bog, null, null, ForestNorms.Site.BIRCH_BOG).orElseThrow();
+			assertEquals(60, birch.min(), 1e-9);
+			assertEquals(90, birch.max(), 1e-9);
+			Norm pine = ForestNorms.of(ForestNorms.COMPOSITION + "scots_pine", bog, null, null, ForestNorms.Site.BIRCH_BOG).orElseThrow();
+			assertEquals(10, pine.min(), 1e-9);
+			assertEquals(40, pine.max(), 1e-9);
+			assertRange(70, 90, ForestNorms.COMPOSITION + "scots_pine", coastal, null, null);
+			for (Forest f : new Forest[] {dry, moist, bog, coastal}) {
+				for (String key : new String[] {ForestNorms.TREES_PER_CHUNK, ForestNorms.UNDERSTORY, ForestNorms.HERBS}) {
+					assertTrue(ForestNorms.of(key, f, Aspect.SUMMER, null).isPresent(), key + " " + f);
+				}
+				assertTrue(ForestNorms.of(ForestNorms.TRANSECT_ORDER, f, null, null).isEmpty(), f + " is off the transect");
+				if (!natural) {
+					assertRange(1, 2, ForestNorms.STUMPS_PER_CHUNK, f, null, null);
+				}
+			}
+		}
+		assertRange(0.9, 0.9, ForestNorms.DEADWOOD_PER_CHUNK, Forest.DRY_PINE_NATURAL, null, null);
+		assertRange(1.2, 1.2, ForestNorms.DEADWOOD_PER_CHUNK, Forest.BOG_WOODLAND_NATURAL, null, null);
+		java.util.function.Function<pl.polishforests.worldgen.habitat.ForestSiteType, ForestNorms.Site> site = t -> ForestNorms.siteOf(
+				pl.polishforests.worldgen.habitat.Habitat.pack(pl.polishforests.worldgen.habitat.HabitatBiome.BOG_WOODLAND,
+						pl.polishforests.worldgen.habitat.Zone.NONE, t, pl.polishforests.worldgen.habitat.Association.TYPICAL,
+						pl.polishforests.worldgen.habitat.LandCover.FOREST, 0, pl.polishforests.worldgen.habitat.Soil.forBiome(
+								pl.polishforests.worldgen.habitat.HabitatBiome.BOG_WOODLAND, pl.polishforests.worldgen.habitat.Zone.NONE)));
+		assertEquals(ForestNorms.Site.BIRCH_BOG, site.apply(pl.polishforests.worldgen.habitat.ForestSiteType.BOGGY_MIXED_CONIFEROUS));
+		assertEquals(null, site.apply(pl.polishforests.worldgen.habitat.ForestSiteType.BOGGY_CONIFEROUS));
+	}
+
+	/**
 	 * Step F3: the card of the upland fir forest and the Carpathian beech forest with its sycamore ravine forest (docs/04
 	 * "Projekt F3", N1, N3, N4, N7–N10), the site variant of a habitat code.
 	 */

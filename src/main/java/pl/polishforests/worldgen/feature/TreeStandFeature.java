@@ -35,6 +35,7 @@ import pl.polishforests.worldgen.tree.CrownTerritory;
 import pl.polishforests.worldgen.tree.ForestStandMap;
 import pl.polishforests.worldgen.tree.RootPlan;
 import pl.polishforests.worldgen.tree.RootVoxels;
+import pl.polishforests.worldgen.tree.TreeForm;
 import pl.polishforests.worldgen.tree.TreeRequest;
 import pl.polishforests.worldgen.tree.TreeShapePlan;
 import pl.polishforests.worldgen.tree.TreeVoxels;
@@ -266,7 +267,8 @@ public final class TreeStandFeature implements Feature {
 					continue;
 				}
 				for (int j = 0; j < p.length; j++) {
-					if (p[j] != null && p[j].species() == species.get(i)) {
+					// Step F4: the twin is the tree of the species' default form (the forms of the bogs come earlier in the list).
+					if (p[j] != null && p[j].species() == species.get(i) && p[j].form() == TreeForm.Kind.NORMAL) {
 						t[i] = j;
 						break;
 					}
@@ -350,6 +352,9 @@ public final class TreeStandFeature implements Feature {
 			return known == 1;
 		};
 		long[] substitute = new long[2];
+		// Step F4: the lee side of the coast at the chunk (the banner crowns of the wind belt; NaN: none), on first use.
+		double lee = Double.NaN;
+		boolean leeKnown = false;
 		for (int p : planned) {
 			int column = TreeStandPlan.column(p);
 			int tree = TreeStandPlan.tree(p);
@@ -434,8 +439,16 @@ public final class TreeStandFeature implements Feature {
 			AgeClass standAge = n.stands().ageClass(x, z);
 			// A young cohort in a canopy gap; elsewhere the trees have the age class of their stand.
 			AgeClass age = layer == CrownLayer.REGENERATION && n.stands().canopyGap(x, z) ? AgeClass.POLE_STAGE : standAge;
+			TreeForm form = TreeForm.of(proc.form());
+			if (proc.form() == TreeForm.Kind.WINDSWEPT) {
+				if (!leeKnown) {
+					lee = world != null ? world.leeAzimuth(level.getSeed(), pos.getMiddleBlockX(), pos.getMiddleBlockZ()) : Double.NaN;
+					leeKnown = true;
+				}
+				form = Double.isNaN(lee) ? form : form.toward(lee);
+			}
 			TreeRequest request = new TreeRequest(proc.species(), layer, age, level.getSeed(), x, at.getY(), z, territory,
-					session.session().trunks(), n.stands(), a, open);
+					session.session().trunks(), n.stands(), a, open, pl.polishforests.worldgen.tree.TreeSize.ONE, form);
 			long planStart = System.nanoTime();
 			TreeVoxels voxels = TreeShapePlan.plan(request);
 			PLAN_NANOS.add(System.nanoTime() - planStart);
@@ -456,7 +469,9 @@ public final class TreeStandFeature implements Feature {
 					// Step I1: the root flares and the roots in the soil, after the tree (its trunk base is written).
 					long rootStart = System.nanoTime();
 					RootVoxels roots = RootPlan.plan(new RootPlan.Request(proc.species(), layer, age, level.getSeed(), x, at.getY(), z,
-							voxels.radius(0), a::rootGround, session.session().trunks(), session.session().rootKinds()));
+							voxels.radius(0), a::rootGround, session.session().trunks(), session.session().rootKinds(),
+							// Step F4: the shallow roots of the trees on the peat of a bog.
+							pl.polishforests.worldgen.habitat.Habitat.soil(codes[column]) == pl.polishforests.worldgen.habitat.Soil.BOG_PEAT));
 					TreeRoots.Written w = TreeRoots.write(level, roots, proc.species());
 					// Step F2: the tussock at the base of an alder of a natural stand of the alder carr.
 					if (proc.species() == pl.polishforests.worldgen.habitat.Species.BLACK_ALDER && layer == CrownLayer.CANOPY

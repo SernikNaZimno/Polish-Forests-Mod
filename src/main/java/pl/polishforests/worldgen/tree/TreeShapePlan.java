@@ -92,6 +92,8 @@ public final class TreeShapePlan {
 	 * stems from one stool ({@link SpeciesShape#stoolChance}).
 	 */
 	public static final long STOOL_SALT = 0x7A1D_3C55_9E0B_42F1L;
+	/** Salt of the lean of a tree of a growth form ({@link TreeForm}; a new salt of step F4, ZW-2). */
+	public static final long FORM_SALT = 0x3E5B_91C7_0D24_6AF8L;
 	/** Largest horizontal distance of a block from the trunk column: the write window of 3 × 3 chunks. */
 	public static final int REACH = CrownTerritories.MAX_REACH;
 	/** Largest height of a block above the trunk base (exclusive). */
@@ -425,6 +427,12 @@ public final class TreeShapePlan {
 		private boolean oldFir;
 		/** Height from which the spruce's leader is a spire without branches (infinite for other trees). */
 		private double spireFrom;
+		/** Step F4: the growth form of the request, the scale of its split surfaces and the lee side of a banner crown. */
+		private TreeForm.Kind form = TreeForm.Kind.NORMAL;
+		private double splitScale = 1;
+		private boolean banner;
+		private double leeX;
+		private double leeZ;
 		private int gridX0;
 		private int gridZ0;
 
@@ -436,6 +444,11 @@ public final class TreeShapePlan {
 		private void begin(TreeRequest r) {
 			request = r;
 			shape = SpeciesShape.of(r.species());
+			form = r.form().kind();
+			splitScale = form.split();
+			banner = form.windward() > 0 && r.layer() != CrownLayer.REGENERATION;
+			leeX = StrictMath.cos(r.form().leeAzimuth());
+			leeZ = StrictMath.sin(r.form().leeAzimuth());
 			if (noise == null || noiseSeed != r.worldSeed()) {
 				Noise world = new Noise(r.worldSeed());
 				noise = world.derive(SALT);
@@ -466,6 +479,13 @@ public final class TreeShapePlan {
 			double height = shape.height().get(age) * jh * ts.height();
 			double dbh = shape.dbh().get(age) * jd * ts.dbh();
 			double crownR = shape.crownRadius().get(age) * jr * ts.crown();
+			// Step F4: the growth form by the site (TreeForm; NORMAL, the default, changes nothing), after the random draws.
+			boolean formed = form != TreeForm.Kind.NORMAL && r.layer() != CrownLayer.REGENERATION;
+			if (formed) {
+				height *= form.height();
+				dbh *= form.dbh();
+				crownR *= form.crown();
+			}
 			double ratio = Math.min(0.85, shape.crownRatio().get(age) * jc);
 			profile = shape.profile();
 			oldPine = shape.archetype() == SpeciesShape.Archetype.PINE && age == AgeClass.OLD_GROWTH
@@ -483,6 +503,9 @@ public final class TreeShapePlan {
 			if (oldFir) {
 				crownR *= 1.12;
 				profile = new SpeciesShape.Profile(0.8F, 0.4F, 0.82F, 3.0F);
+			}
+			if (formed && r.layer() == CrownLayer.CANOPY) {
+				ratio = Math.min(0.85, ratio + form.ratio());
 			}
 			if (r.openGrown() && r.layer() == CrownLayer.CANOPY) {
 				ratio = Math.min(0.8, ratio + OPEN_RATIO);
@@ -568,7 +591,7 @@ public final class TreeShapePlan {
 			int x = request.x() + dx;
 			int z = request.z() + dz;
 			int shift = request.groundShift(x, z);
-			if (request.stands() != null) {
+			if (request.stands() != null && splitScale == 1) {
 				long key = (long) x << 32 | z & 0xFFFF_FFFFL;
 				int slot = (int) (Noise.mix(key) >>> (64 - SPLIT_BITS));
 				long v;
@@ -602,8 +625,14 @@ public final class TreeShapePlan {
 			double w2 = bilinear(lowerGrid[i], lowerGrid[i + GRID_SIDE], lowerGrid[i + 1], lowerGrid[i + GRID_SIDE + 1], fx, fz);
 			AgeClass age = request.ageAt(x, z);
 			int lower = lowerSplit(age, w2 + lowerShortWave(lowerShortNoise, x, z));
+			int upper = upperSplit(age, w1 + shortWave(shortNoise, x, z), lower);
+			if (splitScale != 1) {
+				// Step F4: the surfaces of a stand of a low form (a bog, the coast) scaled with its trees (not memoized).
+				lower = Math.max(2, (int) Math.round(lower * splitScale));
+				upper = Math.max(lower + 2, (int) Math.round(upper * splitScale));
+			}
 			out[1] = lower;
-			out[0] = upperSplit(age, w1 + shortWave(shortNoise, x, z), lower);
+			out[0] = upper;
 		}
 
 		private final int[] splitTmp = new int[2];
@@ -706,6 +735,16 @@ public final class TreeShapePlan {
 					}
 				});
 			}
+			if (banner) {
+				// Step F4: the banner crown of the coastal wind belt: no leaves more than a block to the windward side.
+				for (int dz = -REACH; dz <= REACH; dz++) {
+					for (int dx = -REACH; dx <= REACH; dx++) {
+						if (-(dx * leeX + dz * leeZ) > 1.0) {
+							leafColumn[col(dx, dz)] = false;
+						}
+					}
+				}
+			}
 			woodColumn[col(0, 0)] = true;
 			leafColumn[col(0, 0)] = true;
 			// The branches keep one block inside the leaf columns (review of V9, round 2): a branch along the edge of the
@@ -802,6 +841,11 @@ public final class TreeShapePlan {
 				double free = reachAt(azimuth) / Math.max(1, size.crownRadius());
 				e *= 1 + 0.3 * Math.clamp((free - 1.2) / 0.8, 0, 1);
 			}
+			if (banner) {
+				// Step F4: the banner crown, short towards the sea, long on the lee side.
+				double lee = 0.5 + 0.5 * (StrictMath.cos(azimuth) * leeX + StrictMath.sin(azimuth) * leeZ);
+				e *= form.windward() + (1.15 - form.windward()) * lee;
+			}
 			return e;
 		}
 
@@ -863,7 +907,7 @@ public final class TreeShapePlan {
 		private void stool() {
 			stoolFirst = nodes;
 			stoolEnd = nodes;
-			double chance = SpeciesShape.stoolChance(request.species());
+			double chance = Math.max(SpeciesShape.stoolChance(request.species()), form.stool());
 			if (chance <= 0 || request.openGrown() || request.layer() == CrownLayer.REGENERATION) {
 				return;
 			}
@@ -974,6 +1018,16 @@ public final class TreeShapePlan {
 				wobble = 0;
 			}
 			double phase = range(0, 2 * Math.PI);
+			if (form.lean() > 0 && request.layer() != CrownLayer.REGENERATION) {
+				// Step F4: the crooked trunk of a bog or the coast (a hash of the tree, no draw: the other draws keep their
+				// order); the windswept one leans away from the sea.
+				double u = cellUnit(0, 0, 0, FORM_SALT);
+				lean = Math.min(form.lean() * (0.55 + 0.45 * u), Math.max(1, 0.12 * top));
+				wobble = form.wobble();
+				if (banner) {
+					phi = request.form().leeAzimuth();
+				}
+			}
 			double end = forks() ? size.crownBase() + 0.15 * crownLength : top;
 			int count = (int) Math.ceil(end);
 			for (int attempt = 0; attempt < 2; attempt++) {

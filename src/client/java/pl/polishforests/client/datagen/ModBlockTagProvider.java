@@ -181,6 +181,17 @@ final class ModBlockTagProvider {
 					BlockTags.TURNS_INTO_DIRT_PATH, BlockTags.OVERRIDES_MUSHROOM_LIGHT_REQUIREMENT)) {
 				builder(t).add(mossyPodzol);
 			}
+			// Step F4: the sphagnum carpet as the own moss carpet, the sphagnum block as the vanilla moss block (the moss
+			// blocks: plants and saplings grow on it, a tree trunk does not replace it, a hoe breaks it fast).
+			ResourceKey<Block> sphagnum = key(ModBlocks.sphagnumCarpet());
+			builder(BlockTags.REPLACEABLE_BY_TREES).add(sphagnum);
+			builder(BlockTags.MINEABLE_WITH_HOE).add(sphagnum);
+			builder(BlockTags.COMBINATION_STEP_SOUND_BLOCKS).add(sphagnum);
+			ResourceKey<Block> sphagnumBlock = key(ModBlocks.sphagnumBlock());
+			for (TagKey<Block> t : List.of(BlockTags.MOSS_BLOCKS, BlockTags.MINEABLE_WITH_HOE,
+					BlockTags.VALID_SPAWN)) {
+				builder(t).add(sphagnumBlock);
+			}
 		}
 	}
 

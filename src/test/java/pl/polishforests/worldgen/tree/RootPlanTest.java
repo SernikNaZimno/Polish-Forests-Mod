@@ -333,6 +333,36 @@ class RootPlanTest {
 	}
 
 	/**
+	 * Step F4: on the peat of a bog the pine grows no taproot and every root stays right under the cover
+	 * ({@link RootPlan#COVER}); the request on mineral soil is the plan of before step F4 (the flag is off by default).
+	 */
+	@Test
+	void treesOnPeatHaveShallowRoots() {
+		TreeShapePlan.Ground flat = (x, z) -> 63;
+		int deepMineral = 0;
+		for (int k = 0; k < 30; k++) {
+			for (Species s : List.of(Species.SCOTS_PINE, Species.BIRCH)) {
+				RootPlan.Request mineral = request(s, AgeClass.OLD_GROWTH, 29 * k, 13 * k, flat, null, 6);
+				assertEquals(RootPlan.plan(mineral), RootPlan.plan(new RootPlan.Request(s, CrownLayer.CANOPY, AgeClass.OLD_GROWTH, SEED,
+						29 * k, 64, 13 * k, 6, flat, null, null, false)), s + ": the default request");
+				RootVoxels peat = RootPlan.plan(new RootPlan.Request(s, CrownLayer.CANOPY, AgeClass.OLD_GROWTH, SEED, 29 * k, 64, 13 * k,
+						6, flat, null, null, true));
+				for (int i = 0; i < peat.rootCount(); i++) {
+					assertTrue(peat.rootY(i) >= -(RootPlan.COVER + 2), s + " on peat: a root " + -peat.rootY(i) + " blocks deep");
+				}
+				RootVoxels m = RootPlan.plan(mineral);
+				for (int i = 0; i < m.rootCount(); i++) {
+					if (m.rootY(i) < -(RootPlan.COVER + 2)) {
+						deepMineral++;
+						break;
+					}
+				}
+			}
+		}
+		assertTrue(deepMineral > 10, "trees on mineral soil with a deep root (the pine's taproot): " + deepMineral);
+	}
+
+	/**
 	 * A wall of the ground: on a ledge 4 blocks above a lower terrace, the root cells at the wall turn into rooted dirt; no
 	 * root in unknown columns (water).
 	 */

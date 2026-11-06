@@ -123,19 +123,77 @@
     },
     {
       "biomes": [
-        "dry_pine_forest",
-        "coastal_pine_forest",
-        "moist_pine_forest"
+        "dry_pine_forest"
       ],
-      "coverage": 0.001171875,
+      "coverage": 0.009375,
       "plants": [
         {
-          "feature": "polishforests:deadwood_substitute/scots_pine",
-          "weight": 9
+          "feature": "polishforests:deadwood/scots_pine/slender",
+          "weight": 19
         },
         {
-          "feature": "polishforests:deadwood_substitute/birch",
+          "feature": "polishforests:deadwood/birch",
           "weight": 1
+        },
+        {
+          "feature": "polishforests:stump/scots_pine/slender",
+          "weight": 33
+        },
+        {
+          "feature": "polishforests:stump/birch",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "moist_pine_forest"
+      ],
+      "coverage": 0.01015625,
+      "plants": [
+        {
+          "feature": "polishforests:deadwood/scots_pine",
+          "weight": 15
+        },
+        {
+          "feature": "polishforests:deadwood/birch",
+          "weight": 4
+        },
+        {
+          "feature": "polishforests:deadwood/spruce",
+          "weight": 1
+        },
+        {
+          "feature": "polishforests:stump/scots_pine",
+          "weight": 23
+        },
+        {
+          "feature": "polishforests:stump/birch",
+          "weight": 4
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "coastal_pine_forest"
+      ],
+      "coverage": 0.009765625,
+      "plants": [
+        {
+          "feature": "polishforests:deadwood/scots_pine",
+          "weight": 17
+        },
+        {
+          "feature": "polishforests:deadwood/birch",
+          "weight": 3
+        },
+        {
+          "feature": "polishforests:stump/scots_pine",
+          "weight": 27
+        },
+        {
+          "feature": "polishforests:stump/birch",
+          "weight": 3
         }
       ]
     },
@@ -143,15 +201,50 @@
       "biomes": [
         "bog_woodland"
       ],
-      "coverage": 9.765625E-4,
+      "coverage": 0.010546875,
       "plants": [
         {
-          "feature": "polishforests:deadwood_substitute/birch",
+          "feature": "polishforests:deadwood/birch/stunted",
+          "weight": 14
+        },
+        {
+          "feature": "polishforests:deadwood/scots_pine/stunted",
           "weight": 6
         },
         {
-          "feature": "polishforests:deadwood_substitute/scots_pine",
-          "weight": 4
+          "feature": "polishforests:stump/birch/stunted",
+          "weight": 18
+        },
+        {
+          "feature": "polishforests:stump/scots_pine/stunted",
+          "weight": 8
+        }
+      ],
+      "site_types": [
+        "boggy_mixed_coniferous"
+      ]
+    },
+    {
+      "biomes": [
+        "bog_woodland"
+      ],
+      "coverage": 0.010546875,
+      "plants": [
+        {
+          "feature": "polishforests:deadwood/scots_pine/stunted",
+          "weight": 14
+        },
+        {
+          "feature": "polishforests:deadwood/birch/stunted",
+          "weight": 6
+        },
+        {
+          "feature": "polishforests:stump/scots_pine/stunted",
+          "weight": 20
+        },
+        {
+          "feature": "polishforests:stump/birch/stunted",
+          "weight": 5
         }
       ]
     },

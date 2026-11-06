@@ -131,11 +131,31 @@ public final class DeadwoodPlan {
 	 * ({@link #MANAGED_KEEP}).
 	 */
 	public static @Nullable Kind deadTree(long worldSeed, Species species, boolean natural, int x, int z) {
+		return deadTree(worldSeed, species, TreeForm.Kind.NORMAL, natural, x, z);
+	}
+
+	/**
+	 * Step F4: the ways of dying of a natural stand of a growth form [S after research/06 §3.1]: the thin pines of the dry
+	 * pine forest die standing (the snags of the Cladonio-Pinetum: drought, the pine weevils and the bark beetles of the
+	 * weakened trees; few windthrows on the deep sand), the low pines and birches of a bog stand dead a long time and fall
+	 * into the sphagnum (few windthrows: their shallow roots on peat lift a small plate); null: the species' own.
+	 */
+	private static double @Nullable [] naturalForms(TreeForm.Kind form) {
+		return switch (form) {
+			case SLENDER -> new double[] {0.25, 0.50, 0.20, 0.05};
+			case STUNTED, MULTI_STEM -> new double[] {0.45, 0.35, 0.15, 0.05};
+			default -> null;
+		};
+	}
+
+	/** {@link #deadTree} of a tree of a growth form (step F4). */
+	public static @Nullable Kind deadTree(long worldSeed, Species species, TreeForm.Kind form, boolean natural, int x, int z) {
 		Noise n = noise(worldSeed);
 		if (!natural && n.unit(x, z, 1) >= managedKeep(species)) {
 			return null;
 		}
-		double[] forms = natural ? naturalForms(species) : MANAGED_FORMS;
+		double[] own = naturalForms(form);
+		double[] forms = natural ? own != null ? own : naturalForms(species) : MANAGED_FORMS;
 		double u = n.unit(x, z, 2);
 		Kind[] kinds = {Kind.LOG, Kind.SNAG, Kind.BROKEN, Kind.WINDTHROW};
 		for (int i = 0; i < forms.length; i++) {
@@ -167,13 +187,19 @@ public final class DeadwoodPlan {
 	 */
 	public static @Nullable Request request(long worldSeed, Species species, boolean stump, StandMap stands, int x, int y, int z,
 			TreeShapePlan.Ground ground) {
+		return request(worldSeed, species, TreeForm.Kind.NORMAL, stump, stands, x, y, z, ground);
+	}
+
+	/** {@link #request} of a tree of a growth form (step F4). */
+	public static @Nullable Request request(long worldSeed, Species species, TreeForm.Kind form, boolean stump, StandMap stands,
+			int x, int y, int z, TreeShapePlan.Ground ground) {
 		boolean natural = stands.natural(x, z);
-		Kind kind = stump ? natural ? null : Kind.STUMP : deadTree(worldSeed, species, natural, x, z);
+		Kind kind = stump ? natural ? null : Kind.STUMP : deadTree(worldSeed, species, form, natural, x, z);
 		if (kind == null) {
 			return null;
 		}
 		CrownLayer layer = kind == Kind.STUMP ? CrownLayer.CANOPY : layer(worldSeed, species, natural, x, z);
-		return new Request(species, kind, layer, deadAge(stands.ageClass(x, z), natural), natural, worldSeed, x, y, z, ground);
+		return new Request(species, kind, layer, deadAge(stands.ageClass(x, z), natural), natural, worldSeed, x, y, z, ground, form);
 	}
 
 	/**
@@ -203,13 +229,24 @@ public final class DeadwoodPlan {
 	 * @param y       Y of the base: the block above the ground of (x, z)
 	 * @param z       world column of the base
 	 * @param ground  the ground of the columns around ({@link TreeShapePlan.Ground#UNKNOWN} where nothing may go)
+	 * @param form    the growth form of the tree that died (step F4: the low dead pines and birches of a bog woodland);
+	 *                {@link TreeForm.Kind#NORMAL} for the dead wood before step F4
 	 */
 	public record Request(Species species, Kind kind, CrownLayer layer, AgeClass age, boolean natural, long worldSeed, int x,
-			int y, int z, TreeShapePlan.Ground ground) {
+			int y, int z, TreeShapePlan.Ground ground, TreeForm.Kind form) {
 		public Request {
 			if (!SpeciesShape.supported(species)) {
 				throw new IllegalArgumentException("no tree shape for " + species);
 			}
+			if (form == null) {
+				form = TreeForm.Kind.NORMAL;
+			}
+		}
+
+		/** A request of a tree of the default form (the dead wood before step F4). */
+		public Request(Species species, Kind kind, CrownLayer layer, AgeClass age, boolean natural, long worldSeed, int x, int y,
+				int z, TreeShapePlan.Ground ground) {
+			this(species, kind, layer, age, natural, worldSeed, x, y, z, ground, TreeForm.Kind.NORMAL);
 		}
 	}
 
@@ -224,7 +261,7 @@ public final class DeadwoodPlan {
 			// the dead tree is one of the canopy (review of V11, round 1: about a third of the logs of managed mature pine
 			// stands and a quarter of those of hornbeams were lost this way).
 			return planOnce(new Request(r.species(), r.kind(), CrownLayer.CANOPY, r.age(), r.natural(), r.worldSeed(), r.x(), r.y(),
-					r.z(), r.ground()));
+					r.z(), r.ground(), r.form()));
 		}
 		return v;
 	}
@@ -237,7 +274,7 @@ public final class DeadwoodPlan {
 			return b.build(-1);
 		}
 		TreeVoxels tree = TreeShapePlan.plan(new TreeRequest(r.species(), r.layer(), r.age(), r.worldSeed(), r.x(), r.y(), r.z(),
-				null, null, StandMap.uniform(r.age(), r.natural())));
+				null, null, StandMap.uniform(r.age(), r.natural()), null, null, TreeSize.ONE, TreeForm.of(r.form())));
 		if (tree.woodCount() == 0) {
 			return b.build(-1);
 		}
@@ -260,7 +297,7 @@ public final class DeadwoodPlan {
 		SpeciesShape shape = SpeciesShape.of(r.species());
 		// A felled tree of the stand, a little thinner than the mean (thinnings take the smaller trees), with the swell
 		// of the stem base.
-		double dbh = shape.dbh().get(r.age()) * (0.7 + 0.4 * rnd.next());
+		double dbh = shape.dbh().get(r.age()) * (0.7 + 0.4 * rnd.next()) * r.form().dbh();
 		int radius = Math.clamp((int) Math.round(dbh * 0.08 * 1.15), 2, 7);
 		b.wood(0, 0, 0, radius, TreeVoxels.DOWN, -1, TreeVoxels.LOWER);
 	}

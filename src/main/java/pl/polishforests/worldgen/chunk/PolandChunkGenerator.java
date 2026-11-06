@@ -198,6 +198,12 @@ public final class PolandChunkGenerator extends ChunkGenerator implements Forest
 		return settings.caves() && CaveBiomes.enabledFromSystem();
 	}
 
+	/** Step F4: from the land-sea field of the landscape model (no new samples of the terrain). */
+	@Override
+	public double leeAzimuth(long worldSeed, int x, int z) {
+		return model(worldSeed).leeAzimuth(x, z);
+	}
+
 	/** Habitat classifier for the world seed (the same instance the biome source uses). */
 	public HabitatClassifier classifier(long seed) {
 		model(seed);

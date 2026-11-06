@@ -129,8 +129,40 @@
     {
       "biomes": [
         "dry_pine_forest",
-        "coastal_pine_forest",
-        "moist_pine_forest",
+        "coastal_pine_forest"
+      ],
+      "coverage": 0.05,
+      "edges": [
+        "mantle"
+      ],
+      "plants": [
+        {
+          "feature": "polishforests:shrub/juniper_thin",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "moist_pine_forest"
+      ],
+      "coverage": 0.08,
+      "edges": [
+        "mantle"
+      ],
+      "plants": [
+        {
+          "feature": "polishforests:shrub/juniper_thin",
+          "weight": 1
+        },
+        {
+          "feature": "polishforests:shrub/alder_buckthorn_thin",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "biomes": [
         "montane_spruce_forest"
       ],
       "coverage": 0.05,
@@ -230,11 +262,11 @@
       ],
       "plants": [
         {
-          "feature": "polishforests:tree_substitute/scots_pine_low",
+          "feature": "polishforests:tree/scots_pine/stunted",
           "weight": 2
         },
         {
-          "feature": "polishforests:tree_substitute/birch",
+          "feature": "polishforests:tree/birch/stunted",
           "weight": 1
         }
       ]
@@ -271,7 +303,51 @@
       "coverage": 0.00390625,
       "plants": [
         {
-          "feature": "polishforests:shrub/juniper",
+          "feature": "polishforests:shrub/juniper_thin",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "moist_pine_forest"
+      ],
+      "coverage": 0.015625,
+      "plants": [
+        {
+          "feature": "polishforests:shrub/alder_buckthorn_thin",
+          "weight": 3
+        },
+        {
+          "feature": "polishforests:shrub/juniper_thin",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "bog_woodland"
+      ],
+      "coverage": 0.00390625,
+      "plants": [
+        {
+          "feature": "polishforests:shrub/alder_buckthorn_thin",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "coastal_pine_forest"
+      ],
+      "coverage": 0.005859375,
+      "plants": [
+        {
+          "feature": "polishforests:shrub/juniper_thin",
+          "weight": 2
+        },
+        {
+          "feature": "polishforests:tree_substitute/rowan_thin",
           "weight": 1
         }
       ]

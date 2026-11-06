@@ -54,9 +54,10 @@ class SliceStandTest {
 				? new int[] {code(HabitatBiome.OAK_HORNBEAM_FOREST), code(HabitatBiome.MIXED_FOREST), code(HabitatBiome.MIXED_PINE_FOREST),
 						code(HabitatBiome.FRESH_PINE_FOREST)}
 				// Forests of the M2 placeholders (the willow-poplar forest in place of the alder carr, a forest of the planner
-				// since step F2).
-				: new int[] {code(HabitatBiome.ELM_ASH_FOREST), code(HabitatBiome.WILLOW_POPLAR_FOREST), code(HabitatBiome.DRY_PINE_FOREST),
-						code(HabitatBiome.MOIST_PINE_FOREST)};
+				// since step F2; the montane spruce forest and the gray alder forest in place of the dry and the moist pine
+				// forest, forests of the planner since step F4).
+				: new int[] {code(HabitatBiome.ELM_ASH_FOREST), code(HabitatBiome.WILLOW_POPLAR_FOREST),
+						code(HabitatBiome.MONTANE_SPRUCE_FOREST), code(HabitatBiome.GRAY_ALDER_FOREST)};
 		int meadow = code(HabitatBiome.HAY_MEADOW);
 		int fringe = EcotoneTest.code(HabitatBiome.HAY_MEADOW, Zone.HERB_FRINGE);
 		int lake = code(HabitatBiome.LAKE);

@@ -160,9 +160,15 @@ block polishforests:black_alder_trunk states=84 default=parent=down,radius=4,wat
   property waterlogged: true false
 block polishforests:black_alder_wood states=3 default=axis=y
   property axis: x y z
+block polishforests:bog_bilberry states=4 default=berries=false,mossy=false
+  property berries: true false
+  property mossy: true false
 block polishforests:bracken states=2 default=half=lower
   property half: upper lower
 block polishforests:coralroot states=16 default=facing=north,flower_amount=1
+  property facing: north south west east
+  property flower_amount: 1 2 3 4
+block polishforests:crowberry states=16 default=facing=north,flower_amount=1
   property facing: north south west east
   property flower_amount: 1 2 3 4
 block polishforests:elm_button states=24 default=face=wall,facing=north,powered=false
@@ -262,6 +268,9 @@ block polishforests:glandular_toothwort states=16 default=facing=north,flower_am
 block polishforests:hairy_wood_rush states=16 default=facing=north,flower_amount=1
   property facing: north south west east
   property flower_amount: 1 2 3 4
+block polishforests:heather states=16 default=facing=north,flower_amount=1
+  property facing: north south west east
+  property flower_amount: 1 2 3 4
 block polishforests:hepatica states=16 default=facing=north,flower_amount=1
   property facing: north south west east
   property flower_amount: 1 2 3 4
@@ -311,6 +320,7 @@ block polishforests:hornbeam_trunk states=84 default=parent=down,radius=4,waterl
   property waterlogged: true false
 block polishforests:hornbeam_wood states=3 default=axis=y
   property axis: x y z
+block polishforests:labrador_tea states=1 default=
 block polishforests:linden_button states=24 default=face=wall,facing=north,powered=false
   property face: floor wall ceiling
   property facing: north south west east
@@ -442,6 +452,11 @@ block polishforests:potted_oak_sapling states=1 default=
 block polishforests:potted_scots_pine_sapling states=1 default=
 block polishforests:potted_spruce_sapling states=1 default=
 block polishforests:potted_sycamore_maple_sapling states=1 default=
+block polishforests:purple_moor_grass states=1 default=
+block polishforests:reindeer_lichen states=32 default=facing=north,mossy=false,segment_amount=1
+  property facing: north south west east
+  property mossy: true false
+  property segment_amount: 1 2 3 4
 block polishforests:scots_pine_button states=24 default=face=wall,facing=north,powered=false
   property face: floor wall ceiling
   property facing: north south west east
@@ -499,6 +514,8 @@ block polishforests:scots_pine_upper_trunk states=84 default=parent=down,radius=
   property waterlogged: true false
 block polishforests:scots_pine_wood states=3 default=axis=y
   property axis: x y z
+block polishforests:sphagnum_block states=1 default=
+block polishforests:sphagnum_carpet states=1 default=
 block polishforests:spruce_leaves states=112 default=distance=7,persistent=false,phase=0,waterlogged=false
   property distance: 1 2 3 4 5 6 7
   property persistent: true false
@@ -716,8 +733,10 @@ item polishforests:black_alder_slab block=polishforests:black_alder_slab
 item polishforests:black_alder_stairs block=polishforests:black_alder_stairs
 item polishforests:black_alder_trunk block=polishforests:black_alder_trunk
 item polishforests:black_alder_wood block=polishforests:black_alder_wood
+item polishforests:bog_bilberry block=polishforests:bog_bilberry
 item polishforests:bracken block=polishforests:bracken
 item polishforests:coralroot block=polishforests:coralroot
+item polishforests:crowberry block=polishforests:crowberry
 item polishforests:elm_button block=polishforests:elm_button
 item polishforests:elm_fence block=polishforests:elm_fence
 item polishforests:elm_fence_gate block=polishforests:elm_fence_gate
@@ -747,6 +766,7 @@ item polishforests:fir_wood block=polishforests:fir_wood
 item polishforests:forest_moss_carpet block=polishforests:forest_moss_carpet
 item polishforests:glandular_toothwort block=polishforests:glandular_toothwort
 item polishforests:hairy_wood_rush block=polishforests:hairy_wood_rush
+item polishforests:heather block=polishforests:heather
 item polishforests:hepatica block=polishforests:hepatica
 item polishforests:hornbeam_button block=polishforests:hornbeam_button
 item polishforests:hornbeam_fence block=polishforests:hornbeam_fence
@@ -761,6 +781,7 @@ item polishforests:hornbeam_slab block=polishforests:hornbeam_slab
 item polishforests:hornbeam_stairs block=polishforests:hornbeam_stairs
 item polishforests:hornbeam_trunk block=polishforests:hornbeam_trunk
 item polishforests:hornbeam_wood block=polishforests:hornbeam_wood
+item polishforests:labrador_tea block=polishforests:labrador_tea
 item polishforests:linden_button block=polishforests:linden_button
 item polishforests:linden_fence block=polishforests:linden_fence
 item polishforests:linden_fence_gate block=polishforests:linden_fence_gate
@@ -797,6 +818,8 @@ item polishforests:oak_root_flare block=polishforests:oak_root_flare
 item polishforests:oak_sapling block=polishforests:oak_sapling
 item polishforests:oak_trunk block=polishforests:oak_trunk
 item polishforests:perennial_honesty block=polishforests:perennial_honesty
+item polishforests:purple_moor_grass block=polishforests:purple_moor_grass
+item polishforests:reindeer_lichen block=polishforests:reindeer_lichen
 item polishforests:scots_pine_button block=polishforests:scots_pine_button
 item polishforests:scots_pine_fence block=polishforests:scots_pine_fence
 item polishforests:scots_pine_fence_gate block=polishforests:scots_pine_fence_gate
@@ -813,6 +836,8 @@ item polishforests:scots_pine_transition_upper_trunk block=polishforests:scots_p
 item polishforests:scots_pine_trunk block=polishforests:scots_pine_trunk
 item polishforests:scots_pine_upper_trunk block=polishforests:scots_pine_upper_trunk
 item polishforests:scots_pine_wood block=polishforests:scots_pine_wood
+item polishforests:sphagnum_block block=polishforests:sphagnum_block
+item polishforests:sphagnum_carpet block=polishforests:sphagnum_carpet
 item polishforests:spruce_leaves block=polishforests:spruce_leaves
 item polishforests:spruce_root_flare block=polishforests:spruce_root_flare
 item polishforests:spruce_sapling block=polishforests:spruce_sapling

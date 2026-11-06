@@ -977,6 +977,85 @@ class TreeShapePlanTest {
 		return (int) (k >>> 21 & 0x1FFFFF) - (1 << 20);
 	}
 
+	/**
+	 * Step F4: the checksum of the trees of every species, layer and age class ({@link #lone}) planned with the default
+	 * form ({@link TreeForm#NORMAL}), computed with the build before step F4 (base c062c7d): the new form parameter of the
+	 * request leaves every tree of the slice and the earlier steps as it was.
+	 */
+	private static final long PRE_F4_CHECKSUM = -6592224795635035856L;
+
+	@Test
+	void theDefaultFormKeepsTheTreesOfTheEarlierSteps() {
+		long h = 17;
+		for (TreeRequest r : lone(4)) {
+			TreeVoxels v = TreeShapePlan.plan(r);
+			h = h * 1_000_003L + v.hashCode();
+			h = h * 31 + Float.floatToIntBits(v.height()) + 7L * v.parentIndex(Math.max(0, v.woodCount() - 1));
+		}
+		assertEquals(PRE_F4_CHECKSUM, h);
+	}
+
+	/**
+	 * Step F4: the growth forms of the pine and the birch. The low crooked pine of a bog is about half as tall as the pine
+	 * of a fresh forest, the thin pine of a dry forest about three quarters of it, the windswept pine of the coast low with
+	 * its crown on the lee side (east here), and the birch of the birch bog woodland grows on stools of two or three stems
+	 * in more than half of the trees.
+	 */
+	@Test
+	void growthFormsOfPineAndBirch() {
+		int n = 200;
+		StandMap stand = StandMap.uniform(AgeClass.MATURE, true);
+		Map<TreeForm.Kind, double[]> pine = new java.util.EnumMap<>(TreeForm.Kind.class);
+		for (TreeForm.Kind kind : List.of(TreeForm.Kind.NORMAL, TreeForm.Kind.STUNTED, TreeForm.Kind.SLENDER, TreeForm.Kind.WINDSWEPT)) {
+			double top = 0;
+			double lee = 0;
+			int trees = 0;
+			for (int k = 0; k < n; k++) {
+				TreeVoxels v = TreeShapePlan.plan(new TreeRequest(Species.SCOTS_PINE, CrownLayer.CANOPY, AgeClass.MATURE, SEED, 37 * k - 7000,
+						64, 101 * k + 13, null, null, stand, null, null, TreeSize.ONE, TreeForm.of(kind)));
+				if (v.woodCount() == 0 || v.leafCount() == 0) {
+					continue;
+				}
+				int high = 0;
+				for (int i = 0; i < v.woodCount(); i++) {
+					high = Math.max(high, v.woodY(i));
+				}
+				double east = 0;
+				for (int i = 0; i < v.leafCount(); i++) {
+					east += v.leafX(i);
+				}
+				top += high;
+				lee += east / v.leafCount();
+				trees++;
+			}
+			pine.put(kind, new double[] {top / trees, lee / trees});
+			System.out.printf(Locale.ROOT, "[tree shape] scots_pine %s: top %.1f, leaf centroid x %.2f (%d trees)%n", kind.id(), top / trees,
+					lee / trees, trees);
+		}
+		double normal = pine.get(TreeForm.Kind.NORMAL)[0];
+		double stunted = pine.get(TreeForm.Kind.STUNTED)[0] / normal;
+		double slender = pine.get(TreeForm.Kind.SLENDER)[0] / normal;
+		double windswept = pine.get(TreeForm.Kind.WINDSWEPT)[0] / normal;
+		assertTrue(stunted >= 0.35 && stunted <= 0.7, "stunted pine " + stunted);
+		assertTrue(slender >= 0.6 && slender <= 0.85, "slender pine " + slender);
+		assertTrue(windswept >= 0.35 && windswept <= 0.7, "windswept pine " + windswept);
+		assertTrue(pine.get(TreeForm.Kind.WINDSWEPT)[1] > pine.get(TreeForm.Kind.NORMAL)[1] + 0.8,
+				"banner crown on the lee side " + pine.get(TreeForm.Kind.WINDSWEPT)[1]);
+		int stools = 0;
+		int normalStools = 0;
+		for (int k = 0; k < n; k++) {
+			int x = 37 * k - 7000;
+			int z = 101 * k + 13;
+			stools += stool(TreeShapePlan.plan(new TreeRequest(Species.BIRCH, CrownLayer.CANOPY, AgeClass.MATURE, SEED, x, 64, z, null, null,
+					stand, null, null, TreeSize.ONE, TreeForm.of(TreeForm.Kind.MULTI_STEM)))) ? 1 : 0;
+			normalStools += stool(TreeShapePlan.plan(new TreeRequest(Species.BIRCH, CrownLayer.CANOPY, AgeClass.MATURE, SEED, x, 64, z, null,
+					null, stand))) ? 1 : 0;
+		}
+		System.out.printf(Locale.ROOT, "[tree shape] birch multi_stem: %.2f on stools (normal %d)%n", (double) stools / n, normalStools);
+		assertTrue(stools >= n / 2, "multi-stem birches " + stools);
+		assertEquals(0, normalStools);
+	}
+
 	private static int z(long k) {
 		return (int) (k & 0x1FFFFF) - (1 << 20);
 	}

@@ -36,6 +36,14 @@ public interface ForestWorld {
 	boolean caveFeatures();
 
 	/**
+	 * The direction away from the sea at world column (x, z) (step F4: the lee side of the banner crowns of the coastal wind
+	 * belt; radians, x = cos, z = sin), or NaN where the world has no coast model (the trees then lean to their own side).
+	 */
+	default double leeAzimuth(long worldSeed, int x, int z) {
+		return Double.NaN;
+	}
+
+	/**
 	 * Whether this is the world type "Default + Polish Forests": the chunk habitats come from the vanilla terrain, the
 	 * dispatchers run from a forest column ({@code TopOfWorldPlacement}) and missing habitats are not recomputed.
 	 */

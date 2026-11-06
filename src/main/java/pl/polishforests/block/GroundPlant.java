@@ -53,7 +53,23 @@ public enum GroundPlant {
 	 */
 	WHITE_WOOD_RUSH(Kind.SEASONAL),
 	/** Perennial honesty (Lunaria rediviva): the tall herb of the sycamore ravines (Lunario-Aceretum), lilac in May and June (step F3). */
-	PERENNIAL_HONESTY(Kind.HERB);
+	PERENNIAL_HONESTY(Kind.HERB),
+	/**
+	 * Reindeer lichen (Cladonia rangiferina, C. arbuscula, C. mitis): the gray-white cushions of the dry pine forest
+	 * (Cladonio-Pinetum, 60–90% of the floor) and the heath, a litter of 1–4 segments (step F4; the {@code pale_moss_carpet}
+	 * of M2).
+	 */
+	REINDEER_LICHEN(Kind.COVER),
+	/** Heather (Calluna vulgaris): the evergreen dwarf shrub of the heath and the dry pine forest, purple in August and September (step F4; the {@code pink_petals} of M2). */
+	HEATHER(Kind.SEASONAL),
+	/** Crowberry (Empetrum nigrum): the evergreen mats of the coastal pine forest (Empetro nigri-Pinetum) and the raised bog, black berries from July (step F4). */
+	CROWBERRY(Kind.SEASONAL),
+	/** Bog bilberry (Vaccinium uliginosum): the blue-green dwarf shrub of the bog woodland, a dwarf shrub of the bilberry's family (step F4). */
+	BOG_BILBERRY(Kind.BERRY_SHRUB),
+	/** Labrador tea (Rhododendron tomentosum = Ledum palustre): the aromatic shrub of the bog woodland, white umbels in May and June (step F4). */
+	LABRADOR_TEA(Kind.HERB),
+	/** Purple moor-grass (Molinia caerulea): the tussocks of the moist pine forest (Molinio-Pinetum), the purple panicles from July (step F4). */
+	PURPLE_MOOR_GRASS(Kind.HERB);
 
 	/**
 	 * The block family of an entry (not saved: the order may change). Step F2: {@link #HERB}, a single-block cross plant

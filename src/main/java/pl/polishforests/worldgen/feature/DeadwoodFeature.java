@@ -31,6 +31,7 @@ import pl.polishforests.worldgen.tree.DeadwoodPlan;
 import pl.polishforests.worldgen.tree.DeadwoodVoxels;
 import pl.polishforests.worldgen.tree.SpeciesShape;
 import pl.polishforests.worldgen.tree.StandMap;
+import pl.polishforests.worldgen.tree.TreeForm;
 import pl.polishforests.worldgen.tree.TreeShapePlan;
 import pl.polishforests.worldgen.tree.TreeVoxels;
 
@@ -53,12 +54,14 @@ import pl.polishforests.worldgen.tree.TreeVoxels;
  * plate on air or plants, a pit only in natural ground with nothing standing on it, moss carpet or leaf litter on free
  * ground beside the lying wood that was written (review of F1, round 1: none beside the unwritten rest of a cut chain). Nothing of this changes the terrain model or the habitats (the golden test is unaffected).
  */
-public record DeadwoodFeature(Species species, boolean stump) implements Feature {
+public record DeadwoodFeature(Species species, boolean stump, TreeForm.Kind form) implements Feature {
 	private static final Codec<Species> SPECIES = TreePalette.SPECIES_CODEC.validate(s -> SpeciesShape.supported(s)
 			? DataResult.success(s) : DataResult.error(() -> "no tree shape for " + s.id()));
 	public static final MapCodec<DeadwoodFeature> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
 			SPECIES.fieldOf("species").forGetter(DeadwoodFeature::species),
-			Codec.BOOL.optionalFieldOf("stump", false).forGetter(DeadwoodFeature::stump))
+			Codec.BOOL.optionalFieldOf("stump", false).forGetter(DeadwoodFeature::stump),
+			// Step F4: the growth form of the tree that died (deadwood/<species>/<form>: the low dead trees of a bog woodland).
+			TreeForm.KIND_CODEC.optionalFieldOf("form", TreeForm.Kind.NORMAL).forGetter(DeadwoodFeature::form))
 			.apply(i, DeadwoodFeature::new));
 
 	/** Block update flags of the generation, as the trees. */
@@ -87,6 +90,14 @@ public record DeadwoodFeature(Species species, boolean stump) implements Feature
 		if (!SpeciesShape.supported(species)) {
 			throw new IllegalArgumentException("no tree shape for " + species);
 		}
+		if (form == null) {
+			form = TreeForm.Kind.NORMAL;
+		}
+	}
+
+	/** A dead tree or a stump of the default form (before step F4). */
+	public DeadwoodFeature(Species species, boolean stump) {
+		this(species, stump, TreeForm.Kind.NORMAL);
 	}
 
 	@Override
@@ -109,7 +120,7 @@ public record DeadwoodFeature(Species species, boolean stump) implements Feature
 			SKIPPED_BASE.increment();
 			return false;
 		}
-		DeadwoodPlan.Request request = DeadwoodPlan.request(seed, species, stump, stands, x, origin.getY(), z, ground);
+		DeadwoodPlan.Request request = DeadwoodPlan.request(seed, species, form, stump, stands, x, origin.getY(), z, ground);
 		if (request == null) {
 			NOT_KEPT.increment();
 			return false;
@@ -119,7 +130,7 @@ public record DeadwoodFeature(Species species, boolean stump) implements Feature
 			EMPTY.increment();
 			return false;
 		}
-		if (write(level, v) == 0) {
+		if (write(level, v, form == TreeForm.Kind.STUNTED) == 0) {
 			UNWRITTEN.increment();
 			return false;
 		}
@@ -132,6 +143,14 @@ public record DeadwoodFeature(Species species, boolean stump) implements Feature
 	 * Writes a planned object (see the class comment); returns the wood blocks written.
 	 */
 	public static int write(WorldGenLevel level, DeadwoodVoxels v) {
+		return write(level, v, false);
+	}
+
+	/**
+	 * {@link #write(WorldGenLevel, DeadwoodVoxels)}; step F4: with {@code sphagnum} (the low dead trees of the bog woodland)
+	 * the moss beside the lying wood is the sphagnum carpet, so the logs lie in the sphagnum.
+	 */
+	public static int write(WorldGenLevel level, DeadwoodVoxels v, boolean sphagnum) {
 		TreeVoxels t = v.wood();
 		int n = t.woodCount();
 		int count = 0;
@@ -181,7 +200,8 @@ public record DeadwoodFeature(Species species, boolean stump) implements Feature
 				continue;
 			}
 			long h = Noise.mix(seed ^ Noise.key(pos.getX(), pos.getZ(), 0x0C0E_A11DL));
-			BlockState state = v.coverType()[i] == DeadwoodPlan.COVER_MOSS ? Blocks.MOSS_CARPET.defaultBlockState()
+			BlockState state = v.coverType()[i] == DeadwoodPlan.COVER_MOSS
+					? sphagnum ? pl.polishforests.block.ModBlocks.sphagnumCarpet().defaultBlockState() : Blocks.MOSS_CARPET.defaultBlockState()
 					: Blocks.LEAF_LITTER.defaultBlockState().setValue(BlockStateProperties.SEGMENT_AMOUNT, 1 + (int) ((h >>> 8) & 3))
 							.setValue(BlockStateProperties.HORIZONTAL_FACING, Direction.from2DDataValue((int) ((h >>> 12) & 3)));
 			if (state.canSurvive(level, pos)) {

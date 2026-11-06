@@ -124,6 +124,8 @@ final class ModWorldgen {
 		trees.add(ModTrees.HAZEL_MANTLE);
 		// Step V9: the procedural trees (the tree stand calls their planner itself; placed alone they need a sapling's ground).
 		ModTrees.PROCEDURAL.forEach(s -> trees.add(s.path()));
+		// Step F4: the growth forms by site.
+		ModTrees.FORMS.forEach(f -> trees.add(ModTrees.form(f.getKey(), f.getValue())));
 		for (String path : trees) {
 			context.register(placed(path), new PlacedFeature(features.getOrThrow(ModTrees.key(path)), ModTrees.placement(path)));
 		}
@@ -140,6 +142,11 @@ final class ModWorldgen {
 		ModVegetation.PROCEDURAL_DEADWOOD.forEach(s -> {
 			deadwood.add(ModVegetation.deadwood(s));
 			deadwood.add(ModVegetation.stump(s));
+		});
+		// Step F4: the dead trees and the stumps of the growth forms.
+		ModVegetation.DEADWOOD_FORMS.forEach(f -> {
+			deadwood.add(ModVegetation.deadwood(f.getKey(), f.getValue()));
+			deadwood.add(ModVegetation.stump(f.getKey(), f.getValue()));
 		});
 		for (String path : deadwood) {
 			context.register(placed(path), new PlacedFeature(features.getOrThrow(ModTrees.key(path)),

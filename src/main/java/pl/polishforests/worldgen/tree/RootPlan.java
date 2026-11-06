@@ -90,6 +90,17 @@ public final class RootPlan {
 			int lateralDepth, int depth, int tap, boolean sinkers) {
 	}
 
+	/**
+	 * Step F4: the root habit on the peat of a bog [S after research/06 §3.1]: the water table stands a few decimeters under
+	 * the sphagnum, so the pine grows no taproot and the roots of every species spread right under the cover of the peat
+	 * ({@link #COVER}; a shallow plate: the trees of a bog woodland lean and fall with a small, flat root plate). The number and the reach of
+	 * the laterals stay those of the species (the windthrows of the dead wood turn up the same laterals).
+	 */
+	static Habit onPeat(Habit h) {
+		return new Habit(h.flaresMin(), h.flaresMax(), h.flareLength(), h.lateralsMin(), h.lateralsMax(), h.spread(),
+				Math.min(h.lateralDepth(), COVER), Math.min(h.depth(), COVER + 1), 0, false);
+	}
+
 	static Habit habit(Species species) {
 		return switch (species) {
 			case OAK -> new Habit(4, 6, 3, 4, 6, 0.8, 3, 5, 4, true);
@@ -122,9 +133,17 @@ public final class RootPlan {
 	 * @param ground the top ground block of the columns around, {@link TreeShapePlan.Ground#UNKNOWN} where no root may go
 	 *               (water, structures, beyond the write window)
 	 * @param trunks the trunk candidates around (the kept candidates of the M2 pattern), or null for a lone tree
+	 * @param peat   whether the tree stands on the peat of a bog (step F4: the shallow roots of the pines and birches of a
+	 *               bog woodland and a raised bog, {@link #onPeat}); false for every tree before step F4
 	 */
 	public record Request(Species species, CrownLayer layer, AgeClass age, long worldSeed, int x, int y, int z, int baseRadius,
-			TreeShapePlan.Ground ground, TreeShapePlan.@Nullable Trunks trunks, @Nullable Kinds kinds) {
+			TreeShapePlan.Ground ground, TreeShapePlan.@Nullable Trunks trunks, @Nullable Kinds kinds, boolean peat) {
+		/** A request of a tree on mineral soil (every tree before step F4). */
+		public Request(Species species, CrownLayer layer, AgeClass age, long worldSeed, int x, int y, int z, int baseRadius,
+				TreeShapePlan.Ground ground, TreeShapePlan.@Nullable Trunks trunks, @Nullable Kinds kinds) {
+			this(species, layer, age, worldSeed, x, y, z, baseRadius, ground, trunks, kinds, false);
+		}
+
 		/** A request whose candidates all count as trees with flares (the most careful rule). */
 		public Request(Species species, CrownLayer layer, AgeClass age, long worldSeed, int x, int y, int z, int baseRadius,
 				TreeShapePlan.Ground ground, TreeShapePlan.@Nullable Trunks trunks) {
@@ -323,7 +342,7 @@ public final class RootPlan {
 			rnd = new Random(h);
 			cellSeed = Noise.mix(h ^ 0x2545F4914F6CDD1DL);
 			candidates(r);
-			Habit habit = habit(r.species());
+			Habit habit = r.peat() ? onPeat(habit(r.species())) : habit(r.species());
 			int base = Math.min(r.baseRadius(), 7);
 			flares(habit, base);
 			underground(habit, base);

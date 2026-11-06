@@ -557,7 +557,7 @@ Każdy krok F jest ukończony dopiero, gdy oprócz własnych kryteriów spełnia
 ### F4. Bory suche, wilgotne, bagienne i bażynowe, brzeziny bagienne, wrzosowiska i torfowiska (A, 1–1,5 dnia)
 
 - **Zakres:** (1) bez nowych gatunków drzew; formy sosny i brzozy w planerze według siedliska: sosna niska i krzywa (bór bagienny, torfowisko), cienka (bór suchy), w pasie wiatrowym boru bażynowego niska z koroną sztandarową od strony morza (`Association.WINDSWEPT`, `STUNTED`), brzozy wielopniowe w brzezinie bagiennej (`ForestSiteType.BOGGY_MIXED_CONIFEROUS`) — nowy parametr żądania drzewa z wartością domyślną, przy której drzewa wycinka są identyczne; zastępstwa `SCOTS_PINE_LOW` z palet znikają; (2) drzewostan planera w `moist_pine_forest`, `bog_woodland`, `dry_pine_forest`, `coastal_pine_forest` i pojedyncze drzewa planera na `heath` i `raised_bog`; (3) runo, mchy, porosty: nowe bloki (domyślnie do 7: chrobotek zamiast `pale_moss_carpet`, wrzos zamiast `pink_petals`, bażyna, torfowiec jako blok gruntu i dywan, bagno zwyczajne, borówka bagienna w rodzinie borówki, trzęślica w kępach), też na wrzosowisku i torfowisku wysokim; (4) martwe drewno (posusz w borze suchym, niskie martwe sosny i brzozy w borze bagiennym, kłody w torfowcach), płytkie korzenie na torfie; (5) przejścia z Bśw, BMśw i olsem w `ForestBlend`; (6) karta norm czterech borów i brzeziny bagiennej (N9 jako porosty w borze suchym, torfowce w bagiennym).
-- **Ukończony, gdy:** KF-1 … KF-7 (KF-5 dla nowych bloków runa; W1: tylko regresja `vanilla_forests`, jeśli `test_plan.py` ją wypisze, bo tych lasów nie ma w W1); drzewa wycinka identyczne przy domyślnej wartości nowego parametru (`TreeShapePlanTest`). **Stan: do zrobienia.**
+- **Ukończony, gdy:** KF-1 … KF-7 (KF-5 dla nowych bloków runa; W1: tylko regresja `vanilla_forests`, jeśli `test_plan.py` ją wypisze, bo tych lasów nie ma w W1); drzewa wycinka identyczne przy domyślnej wartości nowego parametru (`TreeShapePlanTest`). **Stan (2026-11-05): etap 1 zrobiony („Projekt F4”, G.45): cztery bory, brzezina bagienna, wrzosowisko i torfowisko z drzewami planera, formy sosny i brzozy (`TreeForm`, domyślna identyczna), 8 bloków runa; przebiegi gry w etapie 2.**
 - **Ryzyko:** średnie (bez nowych gatunków; nowe bloki runa, zmiana planera z wartością domyślną).
 
 ### F5. Łęgi wiązowo-jesionowe i wierzbowo-topolowe, wikliny (A, 1,5–2 dnia)
@@ -3957,6 +3957,58 @@ Poza normą tylko N7 i N10 jedliny gospodarczej, N10 buczyny gospodarczej (jak b
 - KF-7: „Projekt F3”, „Stan po F3”, G.44, BRIEF, lista „Do sprawdzenia w grze” w raporcie kroku.
 
 **Uwagi.** Wieś tajgowa w trybie naturalnym GAMEPLAY stoi w jedlinie przy powierzchni `upland_fir_natural_1` (1706, 3775); jej łaty paproci i świerki wanilii w lesie planera to zachowanie wanilii (struktury mają pierwszeństwo, F3-o), do oceny w grze. Referencja determinizmu dla F4: `handoff/F3/determinism_ref/`.
+
+## Projekt F4 (2026-11-05, etap 1: kod, dane, tekstury, testy jednostkowe)
+
+Krok F4 planu „Kroki F” (§3, G.41): bory suchy (`dry_pine_forest`), wilgotny (`moist_pine_forest`), bagienny z brzeziną bagienną (`bog_woodland`) i bażynowy (`coastal_pine_forest`) z drzewami planera, pojedyncze drzewa planera na wrzosowisku (`heath`) i torfowisku wysokim (`raised_bog`). Bez nowych gatunków drzew: formy sosny i brzozy według siedliska. Drobne wybory: `docs/00` G.45 (F4-a … F4-p, domyślne, do potwierdzenia przy CP-D). Wyniki z gry: „Stan po F4” (etap 2).
+
+**Formy drzew** (F4-a … F4-c).
+
+- *Nowy parametr żądania drzewa* `TreeRequest.form` (`TreeForm`: `NORMAL`, `STUNTED`, `SLENDER`, `WINDSWEPT`, `MULTI_STEM`), domyślnie `NORMAL`. Forma skaluje allometrię gatunku po losowaniach planera (wysokość, pierśnica, promień korony, udział korony, pochylenie i falowanie pnia, szansa odroślowa, korona sztandarowa), więc kolejność losowań drzewa zostaje; powierzchnie podziału pięter w drzewostanie skalują się z formą (niski okap boru bagiennego trzyma koronę nad podziałem). Przy `NORMAL` drzewa wycinka i kroków F1–F3 są identyczne: `TreeShapePlanTest.theDefaultFormKeepsTheTreesOfTheEarlierSteps` (suma kontrolna drzew wszystkich gatunków, pięter i klas wieku, policzona buildem `c062c7d`).
+- *Sosna niska i krzywa* (`STUNTED`, bór bagienny i torfowisko: Vaccinio uliginosi-Pinetum 6–15 m): w teście 11,0 bloku wobec 22,1 sosny świeżej, długa korona, pochylony i wygięty pień; tak samo niska brzoza boru bagiennego.
+- *Sosna cienka* (`SLENDER`, bór suchy: Cladonio-Pinetum 10–18 m): 15,6 bloku, wąska korona.
+- *Sosna wiatrowa* (`WINDSWEPT`, pas wiatrowy boru bażynowego: `Association.STUNTED` i `WINDSWEPT`): 10,6 bloku, pochylona od morza, korona sztandarowa (strona nawietrzna 0,3 obwiedni, środek liści 1,4 bloku po stronie zawietrznej). Kierunek z gradientu pola morza (`LandscapeModel.leeAzimuth`, `ForestWorld.leeAzimuth`; raz na chunk, bez nowych próbek terenu).
+- *Brzoza wielopniowa* (`MULTI_STEM`, brzezina bagienna `BOGGY_MIXED_CONIFEROUS`, Vaccinio uliginosi-Betuletum pubescentis): 2–3 pnie z jednej karpy (odrośla olszy z F2) w 67% drzew, niższa.
+- Test `TreeShapePlanTest.growthFormsOfPineAndBirch`. Formy jako ficzery `tree/scots_pine/{stunted,slender,windswept}` i `tree/birch/{stunted,multi_stem}` (F4-b); `SCOTS_PINE_LOW` znika z palet (ficzer bez odwołań do F7).
+
+**Drzewostany planera** (F4-e; reguły z piętrami, profil wydzieleń `StandProfile.DEFAULT`).
+
+- *Bór suchy:* sosna cienka 970, brzoza 30 (So 90–100%), 7 drzew na chunk, szanse 0,85 / 0,62 / 0,52, naturalny 0,70 (zwarcie 40–60%); podokap rzadki (0,25), odnowienie sosny z jałowcem.
+- *Bór wilgotny:* sosna 760, brzoza 180, świerk 60 według flagi zasięgu (NE; gdzie indziej brzoza), 10 na chunk; podokap świerka i brzozy (0,6), odnowienie z kruszyną.
+- *Bór bagienny:* sosna niska 780, brzoza niska 220, 6 na chunk, szanse 0,75 / 0,60 / 0,50, naturalny 0,65 (zwarcie 30–60%). *Brzezina bagienna* (BMb): brzoza wielopniowa 760, sosna niska 240, 7 na chunk.
+- *Bór bażynowy:* sosna 820, brzoza 180, 9 na chunk; w pasie wiatrowym sosna wiatrowa 860, brzoza niska 140, 6 na chunk.
+- *Wrzosowisko i torfowisko wysokie* (F4-f): pojedyncze drzewa planera (0,5 i 0,3 na chunk) w regułach bez pięter.
+- Test palet (`PlannerPalettesTest`, KF-1): reguły czterech borów bez `tree_substitute/` (poza cienkimi krzewami podszytu) i `deadwood_substitute/`.
+
+**Runo, mchy, porosty** (F4-g … F4-k, F4-p).
+
+- *Nowe bloki* (8; `GroundPlant` na końcu, fazy V13 w `GroundPhases`, `ForestCensus`): chrobotek reniferowy (COVER), wrzos i bażyna (SEASONAL), borówka bagienna (BERRY_SHRUB), bagno zwyczajne i trzęślica modra (HERB), dywan torfowca i blok torfowca (grunt roślin). Test `GroundPhasesTest.plantsOfThePineForestsAndBogsOfStepF4`.
+- *Bór suchy:* płaty 0,9 — chrobotek 60, wrzos 15, mszysta ściółka i igliwie 15, rozproszone suche trawy (N9 jako porosty).
+- *Bór wilgotny:* trzęślica 30, borówka 20 (z mchem), mszyste igliwie 24, torfowiec 14, rozproszone bagno i paproć; mszysty grunt.
+- *Bór bagienny:* bagno 30, borówka bagienna 25, torfowiec 15, wrzos, borówka; brzezina: borówka bagienna 25, torfowiec 20, trzęślica 15, bagno 15, paproć; grunt z bloku torfowca na wszystkich kolumnach reguły (N9 jako torfowce).
+- *Bór bażynowy:* bażyna 34, igliwie 26, borówka 14, wrzos 8, chrobotek 6; mszysty grunt.
+- *Wrzosowisko:* wrzos 40, chrobotek 12, bażyna, trawy; okrajek z chrobotkiem moda (wspólny z wydmą szarą, F4-j). *Torfowisko wysokie:* torfowiec, wrzos, bażyna, borówka bagienna na bloku torfowca.
+- `GroundLayerPlanTest.noSweetBerryBushes`: krzewinki borów wilgotnego i bagiennego to rośliny moda (borówka, borówka bagienna, wrzos, bażyna, bagno), bez `minecraft:bush`, 0,2–0,6 kolumn.
+- *Podszyt i płaszcz:* jałowiec (Bs, bażynowy), kruszyna i jałowiec (Bw), kruszyna (Bb), niska sosna i brzoza w płaszczu boru bagiennego.
+- *Tekstury:* 13 nowych plików z `tools/art` (`recipes.py`, `ground.py`: sprite'y wrzosu i bażyny), `lint.py` PASS, `checkArt` PASS.
+- *Migawka rejestru:* świadomie przegenerowana (`-PwriteRegistrySnapshot`), 25 linii dopisanych, 0 usuniętych (8 bloków, 72 stany, 8 przedmiotów).
+
+**Martwe drewno i korzenie** (F4-l, F4-m): martwe drzewa na chunk lasu naturalnego 0,9 / 1,1 / 1,2 / 1,0 (Bs / Bw / Bb / bażynowy), pniaki w gospodarczym. Posusz w borze suchym (formy martwej sosny cienkiej: 50% posuszu), niskie martwe sosny i brzozy w borze bagiennym (`deadwood/<gatunek>/stunted`, rozmiary formy), kłody form niskich pod dywanem torfowca. `DeadwoodPlan.Request.form`, `DeadwoodFeature` z polem `form`. Płytkie korzenie na torfie: `RootPlan.Request.peat` z gleby `BOG_PEAT` kodu kolumny (`RootPlanTest.treesOnPeatHaveShallowRoots`).
+
+**Przejścia** (F4-n): `ForestBlend.FORESTS` + 4 bory (indeksy 9–12), `SHARES` 14; pary z Bśw, BMśw, olsem, borem bagiennym i suchym; wrzosowisko, torfowisko i wydma w rampie `Ecotone`. Test `ForestBlendTest.pineForestsAndBogWoodlandBlendWithTheirNeighborsOfStepF4`. Bśw i BMśw wycinka przy nowych borach biorą ich kod w pasie przejścia (zamierzone, jak w F1–F3).
+
+**Karta norm** (F4-o): kolumny `DRY_PINE`, `MOIST_PINE`, `BOG_WOODLAND`, `COASTAL_PINE` (naturalne i gospodarcze), N1, N3, N4, N7, N8, N9, N10; brzezina bagienna jako forma `ForestNorms.Site.BIRCH_BOG` (z typu siedliska BMb, `ForestNorms.siteOf`). `StandCensusSimulationTest` z formami drzew palety (`GeneratedTreePalette.forms`) i obiema formami boru bagiennego.
+
+**Powierzchnie i KF-6** (F4-q): `src/test/resources/slice_plots.txt` + 19 powierzchni (`-PfindSlicePlots -PfindSlicePlotsKeep`: powierzchnie z tabeli zostają, szukane są tylko lasy bez powierzchni w danej skali, w tej samej kolejności). REAL: bór suchy `dry_pine_natural_1` (−62263, −1883), `_2` (−70286, −6405), `managed_1` (−61032, 340), `_2` (−61978, −146); bór bagienny `bog_woodland_natural_1` (−2507, 5061), `_2` (8252, 7199), `managed_1` (8634, 1338), `_2` (7632, 6899); bór bażynowy `coastal_pine_natural_1` (−232815, −134607), `_2` (−232675, −134647), `managed_1` (−232795, −134467), `_2` (−232955, −134747). GAMEPLAY: bór suchy `managed_1` (−1132, −348), `_2` (−1999, −333); bór bagienny `natural_1` (−1640, 864) (`F_SINGLE`); bór bażynowy `natural_1` (−4932, −2515), `_2` (−4049, −3241), `managed_1` (−4672, −2815), `_2` (−4952, −2655). Bez powierzchni (`F_MISSING`): bór wilgotny w obu skalach (pas zagłębień i skrajów torfowisk węższy niż powierzchnia: brak kwadratu 90% wokół 40 i 5 miejsc), naturalny bór suchy GAMEPLAY i gospodarczy bór bagienny GAMEPLAY — te kolumny karty sprawdza tylko `StandCensusSimulationTest`. Bór suchy i wilgotny obu skal oraz bór bagienny GAMEPLAY z progiem biomu 0,90 (`MIN_BIOME_PATCHY`, `SlicePlotsTest.PATCHY_PINE`): mozaika w Bśw, kwadraty 98% się nie trafiają. Szukanie wszystkich borów wokół pierwszego trafienia (`AROUND_FIRST_HIT`): pierścienie wokół środka zajęły ponad godzinę na sam bór suchy REAL. Miejsce KF-6: `ForestPerformance.BOG_SITE` = `bog_woodland_natural_1` obu skal (`bog_woodland_1` w przelocie `-Psites=slice`; bór suchy nie ma naturalnej powierzchni GAMEPLAY, a REAL leży 62 km od środka), test `flightsOfThePerformanceTestUseTheBogPlot`, plik skopiowany do `pl-m2-baseline`; `DeterminismClientGameTest` ma ósmy obszar `bog_woodland` (narożnik 64 bloki przed tą powierzchnią). `SliceStandTest` (reguły M2 bez drzew planera) bierze świerczynę i olszynę górską zamiast borów suchego i wilgotnego.
+
+**Stare światy.** Zmienia się dekoracja nowych chunków czterech borów, wrzosowiska, torfowiska wysokiego, okrajka wydmy szarej (F4-j), pasów przejścia i zasięgu koron; teren bez zmian.
+
+**Testy (etap 1).**
+
+- Kompilacja `main`, `client`, `test`, `gametest`; `runDatagen`; `checkDatagen`; `checkArt`.
+- Klasy zmian: `TreeShapePlanTest` (suma kontrolna formy domyślnej, formy), `StandMapTest`, `GroundLayerPlanTest`, `DeadwoodPlanTest`, `RootPlanTest`, `ForestBlendTest`, `EcotoneSharpnessTest`, `RegistrySnapshotTest`, `PlannerPalettesTest`, `StandCrownCoverTest`, `SlicePlotsTest`, `SliceStandTest`, `SliceStandWriteTest`, `SliceEqualityTest`, `ForestNormsTest` (nowy test karty F4), `ForestCensusTest`, `ProceduralTreeStatesTest`, `GoldenTerrainTest`, `*season*`.
+- `tools/dev/run-tests --reuse fastTest`.
+- Wyniki i przebiegi gry w „Stan po F4”, według `python tools/dev/test_plan.py c062c7d`.
 
 ## Do kroku porządkowego (lista drobiazgów z recenzji)
 

@@ -54,7 +54,17 @@ import pl.polishforests.block.GroundPlant;
  * ({@value #WHITE_WOOD_RUSH_FLOWERS} … {@value #WHITE_WOOD_RUSH_FLOWERS_END});
  * <li><b>Perennial honesty</b> (step F3, the sycamore ravines): shoots from early April ({@value #HONESTY_SHOOTS}), lilac
  * flowers from mid-May to the end of June ({@value #HONESTY_FLOWERS} … {@value #HONESTY_FLOWERS_END}), leaves and pods
- * through the autumn, gone from November ({@value #HONESTY_GONE}).
+ * through the autumn, gone from November ({@value #HONESTY_GONE});
+ * <li><b>Heather</b> (step F4): evergreen, purple from mid-August to the end of September ({@value #HEATHER_FLOWERS} …
+ * {@value #HEATHER_FLOWERS_END});
+ * <li><b>Crowberry</b> (step F4): evergreen mats, the black berries from mid-July to November ({@value #CROWBERRY_FRUIT} …
+ * {@value #CROWBERRY_FRUIT_END}, the full model);
+ * <li><b>Bog bilberry</b> (step F4): as the bilberry, flowering in May;
+ * <li><b>Labrador tea</b> (step F4): evergreen, the white umbels from the end of May to the end of June
+ * ({@value #LEDUM_FLOWERS} … {@value #LEDUM_FLOWERS_END});
+ * <li><b>Purple moor-grass</b> (step F4): shoots from the end of April ({@value #MOLINIA_SHOOTS}), the panicles from July
+ * to the end of September ({@value #MOLINIA_FLOWERS} … {@value #MOLINIA_FLOWERS_END}), the straw-colored tussock through the
+ * autumn, gone (flattened) from the end of November ({@value #MOLINIA_GONE}) until May.
  * </ul>
  */
 public final class GroundPhases {
@@ -121,6 +131,16 @@ public final class GroundPhases {
 	static final double HONESTY_FLOWERS = 7.5;
 	static final double HONESTY_FLOWERS_END = 12.0;
 	static final double HONESTY_GONE = 24.5;
+	static final double HEATHER_FLOWERS = 15.5;
+	static final double HEATHER_FLOWERS_END = 21.5;
+	static final double CROWBERRY_FRUIT = 12.5;
+	static final double CROWBERRY_FRUIT_END = 24.5;
+	static final double LEDUM_FLOWERS = 8.0;
+	static final double LEDUM_FLOWERS_END = 11.5;
+	static final double MOLINIA_SHOOTS = 5.0;
+	static final double MOLINIA_FLOWERS = 12.0;
+	static final double MOLINIA_FLOWERS_END = 21.0;
+	static final double MOLINIA_GONE = 27.0;
 
 	/** Keys of a tint curve: position, target color, weight of the target over the raw grass color. */
 	private record Key(double at, int target, double weight) {
@@ -182,6 +202,15 @@ public final class GroundPhases {
 			case WHITE_WOOD_RUSH -> at >= WHITE_WOOD_RUSH_FLOWERS && at < WHITE_WOOD_RUSH_FLOWERS_END ? Look.FULL : Look.LEAVES;
 			case PERENNIAL_HONESTY -> at >= HONESTY_FLOWERS && at < HONESTY_FLOWERS_END ? Look.FULL
 					: at >= HONESTY_SHOOTS && at < HONESTY_GONE ? Look.LEAVES : Look.NONE;
+			// Step F4: the evergreen dwarf shrubs (heather in flower, crowberry with its black berries) and Labrador tea keep
+			// their leaves all year; the bog bilberry flowers as the bilberry; the purple moor-grass dies back in winter (its
+			// straw lies flat under the snow: nothing drawn) and stands with its panicles from July.
+			case HEATHER -> at >= HEATHER_FLOWERS && at < HEATHER_FLOWERS_END ? Look.FULL : Look.LEAVES;
+			case CROWBERRY -> at >= CROWBERRY_FRUIT && at < CROWBERRY_FRUIT_END ? Look.FULL : Look.LEAVES;
+			case BOG_BILBERRY -> at >= BILBERRY_FLOWERS && at < BILBERRY_FLOWERS_END ? Look.FLOWERING : Look.FULL;
+			case LABRADOR_TEA -> at >= LEDUM_FLOWERS && at < LEDUM_FLOWERS_END ? Look.FULL : Look.LEAVES;
+			case PURPLE_MOOR_GRASS -> at >= MOLINIA_FLOWERS && at < MOLINIA_FLOWERS_END ? Look.FULL
+					: at >= MOLINIA_SHOOTS && at < MOLINIA_GONE ? Look.LEAVES : Look.NONE;
 			default -> Look.FULL;
 		};
 	}

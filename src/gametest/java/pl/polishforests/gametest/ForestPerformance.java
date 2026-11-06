@@ -36,7 +36,7 @@ import pl.polishforests.PolishForests;
  * <li>{@link #woodAndLeaves}: wood and leaves of a generated area by block tags (both builds count the same way);</li>
  * <li>{@link #memoryAndStates}: the used heap after a full garbage collection and the number of block states;</li>
  * <li>{@link #flights} ({@code -Pgametest=performance -Psites=slice}): in the oak-hornbeam and the fresh pine forest of
- * each scale and, from step F1, in the lowland beech forest ({@link #BEECH_SITE}), from step F2 in the alder carr ({@link #ALDER_SITE}) and, from step F3, in the upland fir forest ({@link #FIR_SITE}), the load of new terrain around a teleport (chunks per second, the C2ME budget with {@code -Poptimization};
+ * each scale and, from step F1, in the lowland beech forest ({@link #BEECH_SITE}), from step F2 in the alder carr ({@link #ALDER_SITE}), from step F3 in the upland fir forest ({@link #FIR_SITE}) and, from step F4, in the bog woodland ({@link #BOG_SITE}), the load of new terrain around a teleport (chunks per second, the C2ME budget with {@code -Poptimization};
  * only this with {@code -PloadOnly}, step O1) and a fixed camera flight: {@value #FLIGHT_POINTS} points on a circle of {@value #ORBIT_RADIUS} blocks around the place,
  * above the canopy and at eye level, with a full turn of the camera at each (frames per second and the render time of
  * each frame);</li>
@@ -146,11 +146,16 @@ final class ForestPerformance {
 	 * of each scale, written as numbers as {@link #BEECH_SITE}.
 	 */
 	static final int[][] FIR_SITE = {{46472, 15684}, {1706, 3775}};
+	/**
+	 * Step F4 (KF-6): the place of the bog woodland of the flights, per scale: the plot {@code bog_woodland_natural_1} of
+	 * each scale, written as numbers as {@link #BEECH_SITE}.
+	 */
+	static final int[][] BOG_SITE = {{-2507, 5061}, {-1640, 864}};
 
 	/**
 	 * The load and flight measurements in the oak-hornbeam and the fresh pine forest of the world (natural mode) and, from
 	 * step F1, in the lowland beech forest ({@link #BEECH_SITE}), from step F2 in the alder carr ({@link #ALDER_SITE}), from
-	 * step F3 in the upland fir forest ({@link #FIR_SITE}).
+	 * step F3 in the upland fir forest ({@link #FIR_SITE}), from step F4 in the bog woodland ({@link #BOG_SITE}).
 	 */
 	static void flights(ClientGameTestContext context, TestSingleplayerContext sp, String name, boolean real) {
 		register();
@@ -163,6 +168,7 @@ final class ForestPerformance {
 		places.add(new Object[] {"lowland_beech_1", BEECH_SITE[real ? 0 : 1]});
 		places.add(new Object[] {"alder_carr_1", ALDER_SITE[real ? 0 : 1]});
 		places.add(new Object[] {"upland_fir_1", FIR_SITE[real ? 0 : 1]});
+		places.add(new Object[] {"bog_woodland_1", BOG_SITE[real ? 0 : 1]});
 		for (Object[] place : places) {
 			int[] m = (int[]) place[1];
 			String label = name + " / " + place[0];

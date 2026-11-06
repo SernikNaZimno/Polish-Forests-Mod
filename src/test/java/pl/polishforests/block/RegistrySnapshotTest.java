@@ -91,6 +91,10 @@ class RegistrySnapshotTest {
 		int ground = 4 + 16 + 16 + 32 + 2 + 4 * 16 + 16 + 4 + 2 * 16 + 1;
 		// Round 1 of the V12 review: + the forest moss carpet and the mossy podzol, one state each.
 		int review = 2;
+		// Step F4: + the bog bilberry 4 (berries × mossy), the heather and the crowberry, flower beds of 16 states each, the
+		// reindeer lichen 32 (facing 4 × segments 4 × mossy), the Labrador tea and the purple moor-grass, herbs of one state
+		// each, and the sphagnum carpet and block, one state each.
+		int pineForests = 4 + 2 * 16 + 32 + 2 + 2;
 		// Step P1: + 9 stripped trunks (one per species), thin trunks of 84 states each, with the properties of the trunks.
 		assertEquals(StrippedTrunk.values().length, ModBlocks.strippedTrunks().size());
 		for (StrippedTrunk t : StrippedTrunk.values()) {
@@ -106,7 +110,7 @@ class RegistrySnapshotTest {
 		int woods = products + (WoodSet.values().length - 1) * (4 * 3 + 1 + products);
 		assertEquals(WoodSet.values().length, ModBlocks.woodSets().size());
 		assertEquals(84 * TreeTrunk.values().length + foliage * (112 + 2 + 1) + marcescent * 112 + 4 * 3 + 1
-				+ 84 * (RootFlare.values().length + 1) + ground + review + 84 * StrippedTrunk.values().length + woods,
+				+ 84 * (RootFlare.values().length + 1) + ground + review + pineForests + 84 * StrippedTrunk.values().length + woods,
 				RegistrySnapshot.stateCount());
 	}
 

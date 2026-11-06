@@ -1,0 +1,21 @@
+{
+  "variants": {
+    "": [
+      {
+        "model": "polishforests:block/sphagnum_block"
+      },
+      {
+        "model": "polishforests:block/sphagnum_block",
+        "y": 90
+      },
+      {
+        "model": "polishforests:block/sphagnum_block",
+        "y": 180
+      },
+      {
+        "model": "polishforests:block/sphagnum_block",
+        "y": 270
+      }
+    ]
+  }
+}

@@ -195,6 +195,24 @@ final class ModBlockModels extends FabricModelProvider {
 				BlockModelGenerators.plainModel(podzol).with(BlockModelGenerators.Y_ROT_180),
 				BlockModelGenerators.plainModel(podzol).with(BlockModelGenerators.Y_ROT_270))));
 		gen.registerSimpleItemModel(ModBlocks.mossyPodzol(), podzol);
+		// Step F4: the sphagnum carpet (the carpet model with the own sphagnum texture, four turns) and the sphagnum block (a
+		// cube of the same texture, four turns of the top).
+		Identifier sphagnumLayer = new ModelTemplate(Optional.of(Identifier.withDefaultNamespace("block/carpet")), Optional.empty(),
+				TextureSlot.WOOL).create(PolishForests.id("block/sphagnum_layer"), new TextureMapping().put(TextureSlot.WOOL,
+						new Material(own("sphagnum"))), gen.modelOutput);
+		gen.blockStateOutput.accept(MultiVariantGenerator.dispatch(ModBlocks.sphagnumCarpet(), turns(sphagnumLayer)));
+		gen.registerSimpleItemModel(ModBlocks.sphagnumCarpet(), sphagnumLayer);
+		Identifier sphagnumCube = ModelTemplates.CUBE_ALL.create(ModBlocks.sphagnumBlock(), TextureMapping.cube(new Material(own("sphagnum"))),
+				gen.modelOutput);
+		gen.blockStateOutput.accept(MultiVariantGenerator.dispatch(ModBlocks.sphagnumBlock(), turns(sphagnumCube)));
+		gen.registerSimpleItemModel(ModBlocks.sphagnumBlock(), sphagnumCube);
+	}
+
+	/** A model in four turns about the vertical, drawn at random per position. */
+	private static MultiVariant turns(Identifier m) {
+		return BlockModelGenerators.variants(BlockModelGenerators.plainModel(m), BlockModelGenerators.plainModel(m).with(BlockModelGenerators.Y_ROT_90),
+				BlockModelGenerators.plainModel(m).with(BlockModelGenerators.Y_ROT_180),
+				BlockModelGenerators.plainModel(m).with(BlockModelGenerators.Y_ROT_270));
 	}
 
 	/**

@@ -63,7 +63,15 @@ public final class ForestNorms {
 		UPLAND_FIR_NATURAL("jedlina naturalna", HabitatBiome.UPLAND_FIR_FOREST, true),
 		UPLAND_FIR_MANAGED("jedlina gospodarcza", HabitatBiome.UPLAND_FIR_FOREST, false),
 		MONTANE_BEECH_NATURAL("buczyna karpacka naturalna", HabitatBiome.MONTANE_BEECH_FOREST, true),
-		MONTANE_BEECH_MANAGED("buczyna karpacka gospodarcza", HabitatBiome.MONTANE_BEECH_FOREST, false);
+		MONTANE_BEECH_MANAGED("buczyna karpacka gospodarcza", HabitatBiome.MONTANE_BEECH_FOREST, false),
+		DRY_PINE_NATURAL("bór suchy naturalny", HabitatBiome.DRY_PINE_FOREST, true),
+		DRY_PINE_MANAGED("bór suchy gospodarczy", HabitatBiome.DRY_PINE_FOREST, false),
+		MOIST_PINE_NATURAL("bór wilgotny naturalny", HabitatBiome.MOIST_PINE_FOREST, true),
+		MOIST_PINE_MANAGED("bór wilgotny gospodarczy", HabitatBiome.MOIST_PINE_FOREST, false),
+		BOG_WOODLAND_NATURAL("bór bagienny naturalny", HabitatBiome.BOG_WOODLAND, true),
+		BOG_WOODLAND_MANAGED("bór bagienny gospodarczy", HabitatBiome.BOG_WOODLAND, false),
+		COASTAL_PINE_NATURAL("bór bażynowy naturalny", HabitatBiome.COASTAL_PINE_FOREST, true),
+		COASTAL_PINE_MANAGED("bór bażynowy gospodarczy", HabitatBiome.COASTAL_PINE_FOREST, false);
 
 		private final String polishName;
 		private final HabitatBiome biome;
@@ -116,17 +124,24 @@ public final class ForestNorms {
 		/** The acid form (e.g. Luzulo pilosae-Fagetum, site type LMśw). */
 		ACID,
 		/** Step F3: the sycamore ravine forest of the Carpathian beech forest (Lunario-Aceretum, its association). */
-		RAVINE
+		RAVINE,
+		/** Step F4: the birch bog woodland (Vaccinio uliginosi-Betuletum pubescentis, the boggy mixed coniferous site type). */
+		BIRCH_BOG
 	}
 
 	/**
 	 * The site variant of a habitat code (the norms that differ by it): the fertile and the acid lowland and Carpathian
-	 * beech forest by the forest site type (Lśw and LMśw, LG and LMG), the sycamore ravine forest by its association; else
+	 * beech forest by the forest site type (Lśw and LMśw, LG and LMG), the sycamore ravine forest by its association, the
+	 * birch bog woodland by its site type (BMb, step F4); else
 	 * null (the norm without a site).
 	 */
 	public static @Nullable Site siteOf(int code) {
 		if (pl.polishforests.worldgen.habitat.Habitat.association(code) == pl.polishforests.worldgen.habitat.Association.SYCAMORE_RAVINE_FOREST) {
 			return Site.RAVINE;
+		}
+		if (pl.polishforests.worldgen.habitat.Habitat.biome(code) == HabitatBiome.BOG_WOODLAND
+				&& pl.polishforests.worldgen.habitat.Habitat.siteType(code) == pl.polishforests.worldgen.habitat.ForestSiteType.BOGGY_MIXED_CONIFEROUS) {
+			return Site.BIRCH_BOG;
 		}
 		return switch (pl.polishforests.worldgen.habitat.Habitat.siteType(code)) {
 			case FRESH_BROADLEAVED, MOUNTAIN_BROADLEAVED -> Site.FERTILE;
@@ -447,6 +462,7 @@ public final class ForestNorms {
 		beechCard();
 		alderCard();
 		mountainCard();
+		pineCard();
 		// N15 transect: the same for every forest of the transect (the transect crosses all four).
 		for (Forest f : Forest.values()) {
 			if (!f.transect()) {
@@ -609,6 +625,77 @@ public final class ForestNorms {
 			wide(PIECES_PER_CHUNK, f, 0.25, 0.25, managedDeadwood);
 			wide(STUMPS_PER_CHUNK, f, 1, 2, managedDeadwood);
 			wide(DEADWOOD_VOLUME, f, 10, 20, managedDeadwood);
+		}
+	}
+
+	/**
+	 * The card of the pine forests and the bog woodland (step F4, docs/04 "Projekt F4"): L 06 §3.1-3.2 and §4.1
+	 * (Cladonio-Pinetum: a1 pine 90–100% of 10–18 m, closure 40–60%, b juniper 0–5%, c heather and cowberry 10–40%, d the
+	 * lichens 60–90%; Molinio-Pinetum: pine 70–90%, downy birch 10–30%, spruce in the north-east, b the alder buckthorn
+	 * 10–30%, c the purple moor-grass in tussocks 40–80%, d with the sphagnum of the hollows 50–80%; Vaccinio uliginosi-
+	 * Pinetum: low crooked pines 60–90% of 6–15 m, birch 10–30%, closure 30–60%, c Labrador tea 20–60% and bog bilberry
+	 * 20–50%, d the sphagnum 80–100%; its birch form Vaccinio uliginosi-Betuletum: birch 60–90%; Empetro nigri-Pinetum:
+	 * pine 70–90% with birch, the crowberry dominant), N9 counts the lichens of the dry pine forest and the sphagnum of the
+	 * bog woodland (ForestCensus.MOSS_PLANTS, MOSS_GROUNDS), the dead wood as the natural fresh pine forest (Taborz) and the
+	 * WISL means of the managed pine stands [S where noted].
+	 */
+	private static void pineCard() {
+		String card = "[L 06 §3.1–3.2, §4.1]";
+		String deadwood = "[L 06 §4.3; Taborz; PW-5 b; S]";
+		String managedDeadwood = "[Ź WISL 2010–2014; S]";
+		for (Forest f : new Forest[] {Forest.DRY_PINE_NATURAL, Forest.DRY_PINE_MANAGED}) {
+			// N1: the thin pines of the poorest sand stand as densely as those of the fresh pine forest, their crowns narrow [S].
+			norm(TREES_PER_CHUNK, f, 8, 16, card + " [S]");
+			norm(COMPOSITION + "scots_pine", f, 90, 100, card);
+			norm(CANOPY, f, 40, 60, card);
+			norm(UNDERSTORY, f, 0, 5, card);
+			norm(HERBS, f, 10, 40, card);
+			norm(MOSS, f, 60, 90, card + " (porosty)");
+		}
+		for (Forest f : new Forest[] {Forest.MOIST_PINE_NATURAL, Forest.MOIST_PINE_MANAGED}) {
+			norm(TREES_PER_CHUNK, f, 8, 16, card + " [S]");
+			norm(COMPOSITION + "scots_pine", f, 70, 90, card);
+			norm(COMPOSITION + "birch", f, 10, 30, card);
+			norm(CANOPY, f, 60, 80, card + " [S]");
+			norm(UNDERSTORY, f, 10, 30, card);
+			norm(HERBS, f, 40, 80, card);
+			norm(MOSS, f, 50, 80, card);
+		}
+		for (Forest f : new Forest[] {Forest.BOG_WOODLAND_NATURAL, Forest.BOG_WOODLAND_MANAGED}) {
+			// N1: the low trees of the bog stand open [S]; the birch form by its site variant.
+			norm(TREES_PER_CHUNK, f, 6, 14, card + " [S]");
+			norm(COMPOSITION + "scots_pine", f, 60, 90, card);
+			NORMS.add(new Norm(COMPOSITION + "scots_pine", f, 10, 40, TOLERANCE, null, null, card + " [S]", Site.BIRCH_BOG));
+			norm(COMPOSITION + "birch", f, 10, 30, card);
+			NORMS.add(new Norm(COMPOSITION + "birch", f, 60, 90, TOLERANCE, null, null, card, Site.BIRCH_BOG));
+			norm(CANOPY, f, 30, 60, card);
+			norm(UNDERSTORY, f, 0, 20, card + " [S]");
+			norm(HERBS, f, 40, 80, card);
+			norm(MOSS, f, 80, 100, card + " (torfowce)");
+		}
+		for (Forest f : new Forest[] {Forest.COASTAL_PINE_NATURAL, Forest.COASTAL_PINE_MANAGED}) {
+			norm(TREES_PER_CHUNK, f, 8, 16, card + " [S]");
+			norm(COMPOSITION + "scots_pine", f, 70, 90, card);
+			norm(COMPOSITION + "birch", f, 5, 30, card + " [S]");
+			norm(CANOPY, f, 50, 80, card + " [S]");
+			norm(UNDERSTORY, f, 0, 15, card + " [S]");
+			norm(HERBS, f, 40, 80, card);
+			norm(MOSS, f, 30, 70, card + " [S]");
+		}
+		// N10 dead wood.
+		wide(DEADWOOD_PER_CHUNK, Forest.DRY_PINE_NATURAL, 0.9, 0.9, deadwood);
+		wide(DEADWOOD_VOLUME, Forest.DRY_PINE_NATURAL, 20, 50, deadwood);
+		wide(DEADWOOD_PER_CHUNK, Forest.MOIST_PINE_NATURAL, 1.1, 1.1, deadwood);
+		wide(DEADWOOD_VOLUME, Forest.MOIST_PINE_NATURAL, 40, 80, deadwood);
+		wide(DEADWOOD_PER_CHUNK, Forest.BOG_WOODLAND_NATURAL, 1.2, 1.2, deadwood);
+		wide(DEADWOOD_VOLUME, Forest.BOG_WOODLAND_NATURAL, 15, 45, deadwood);
+		wide(DEADWOOD_PER_CHUNK, Forest.COASTAL_PINE_NATURAL, 1, 1, deadwood);
+		wide(DEADWOOD_VOLUME, Forest.COASTAL_PINE_NATURAL, 30, 70, deadwood);
+		for (Forest f : new Forest[] {Forest.DRY_PINE_MANAGED, Forest.MOIST_PINE_MANAGED, Forest.BOG_WOODLAND_MANAGED,
+				Forest.COASTAL_PINE_MANAGED}) {
+			wide(PIECES_PER_CHUNK, f, 0.1, 0.25, managedDeadwood);
+			wide(STUMPS_PER_CHUNK, f, 1, 2, managedDeadwood);
+			wide(DEADWOOD_VOLUME, f, 3, 11, managedDeadwood);
 		}
 	}
 

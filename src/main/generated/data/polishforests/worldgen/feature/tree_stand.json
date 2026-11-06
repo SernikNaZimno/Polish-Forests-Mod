@@ -176,19 +176,86 @@
       "biomes": [
         "coastal_pine_forest"
       ],
+      "stand": {
+        "gap_chance": 0.6,
+        "gap_regeneration": [
+          {
+            "species": "scots_pine",
+            "tree": "polishforests:tree/scots_pine",
+            "weight": 700
+          },
+          {
+            "species": "birch",
+            "tree": "polishforests:tree/birch",
+            "weight": 300
+          }
+        ],
+        "managed_canopy": [
+          {
+            "species": "scots_pine",
+            "tree": "polishforests:tree/scots_pine/windswept",
+            "weight": 900
+          },
+          {
+            "species": "birch",
+            "tree": "polishforests:tree/birch/stunted",
+            "weight": 100
+          }
+        ],
+        "managed_chance": [
+          0.85,
+          0.65,
+          0.55
+        ],
+        "natural_chance": [
+          0.75,
+          0.75,
+          0.75
+        ],
+        "regeneration": [
+          {
+            "species": "scots_pine",
+            "tree": "polishforests:tree/scots_pine",
+            "weight": 400
+          },
+          {
+            "species": "birch",
+            "tree": "polishforests:tree/birch",
+            "weight": 300
+          },
+          {
+            "species": "juniper",
+            "tree": "polishforests:shrub/juniper_thin",
+            "weight": 300
+          }
+        ],
+        "subcanopy": [
+          {
+            "species": "scots_pine",
+            "tree": "polishforests:tree/scots_pine/windswept",
+            "weight": 600
+          },
+          {
+            "species": "birch",
+            "tree": "polishforests:tree/birch/stunted",
+            "weight": 400
+          }
+        ],
+        "subcanopy_chance": 0.3
+      },
       "trees": [
         {
           "species": "scots_pine",
-          "tree": "polishforests:tree_substitute/scots_pine_low",
-          "weight": 900
+          "tree": "polishforests:tree/scots_pine/windswept",
+          "weight": 860
         },
         {
           "species": "birch",
-          "tree": "polishforests:tree_substitute/birch",
-          "weight": 100
+          "tree": "polishforests:tree/birch/stunted",
+          "weight": 140
         }
       ],
-      "trees_per_chunk": 5.0
+      "trees_per_chunk": 6.0
     },
     {
       "biomes": [
@@ -197,39 +264,168 @@
       "site_types": [
         "boggy_mixed_coniferous"
       ],
+      "stand": {
+        "gap_chance": 0.5,
+        "gap_regeneration": [
+          {
+            "species": "birch",
+            "tree": "polishforests:tree/birch",
+            "weight": 700
+          },
+          {
+            "species": "scots_pine",
+            "tree": "polishforests:tree/scots_pine",
+            "weight": 300
+          }
+        ],
+        "managed_canopy": [
+          {
+            "species": "birch",
+            "tree": "polishforests:tree/birch/multi_stem",
+            "weight": 720
+          },
+          {
+            "species": "scots_pine",
+            "tree": "polishforests:tree/scots_pine/stunted",
+            "weight": 280
+          }
+        ],
+        "managed_chance": [
+          0.8,
+          0.62,
+          0.52
+        ],
+        "natural_chance": [
+          0.7,
+          0.7,
+          0.7
+        ],
+        "regeneration": [
+          {
+            "species": "birch",
+            "tree": "polishforests:tree/birch",
+            "weight": 500
+          },
+          {
+            "species": "alder_buckthorn",
+            "tree": "polishforests:shrub/alder_buckthorn_thin",
+            "weight": 300
+          },
+          {
+            "species": "scots_pine",
+            "tree": "polishforests:tree/scots_pine",
+            "weight": 200
+          }
+        ],
+        "subcanopy": [
+          {
+            "species": "birch",
+            "tree": "polishforests:tree/birch/stunted",
+            "weight": 700
+          },
+          {
+            "species": "scots_pine",
+            "tree": "polishforests:tree/scots_pine/stunted",
+            "weight": 300
+          }
+        ],
+        "subcanopy_chance": 0.3
+      },
       "trees": [
         {
           "species": "birch",
-          "tree": "polishforests:tree_substitute/birch",
-          "weight": 800
+          "tree": "polishforests:tree/birch/multi_stem",
+          "weight": 760
         },
         {
           "species": "scots_pine",
-          "tree": "polishforests:tree_substitute/scots_pine_low",
-          "weight": 200
+          "tree": "polishforests:tree/scots_pine/stunted",
+          "weight": 240
         }
       ],
-      "trees_per_chunk": 6.0
+      "trees_per_chunk": 7.0
     },
     {
       "biomes": [
         "dry_pine_forest"
       ],
+      "stand": {
+        "gap_chance": 0.6,
+        "gap_regeneration": [
+          {
+            "species": "scots_pine",
+            "tree": "polishforests:tree/scots_pine",
+            "weight": 800
+          },
+          {
+            "species": "birch",
+            "tree": "polishforests:tree/birch",
+            "weight": 200
+          }
+        ],
+        "managed_canopy": [
+          {
+            "species": "scots_pine",
+            "tree": "polishforests:tree/scots_pine/slender",
+            "weight": 985
+          },
+          {
+            "species": "birch",
+            "tree": "polishforests:tree/birch",
+            "weight": 15
+          }
+        ],
+        "managed_chance": [
+          0.85,
+          0.62,
+          0.52
+        ],
+        "natural_chance": [
+          0.7,
+          0.7,
+          0.7
+        ],
+        "regeneration": [
+          {
+            "species": "scots_pine",
+            "tree": "polishforests:tree/scots_pine",
+            "weight": 500
+          },
+          {
+            "species": "juniper",
+            "tree": "polishforests:shrub/juniper_thin",
+            "weight": 300
+          },
+          {
+            "species": "birch",
+            "tree": "polishforests:tree/birch",
+            "weight": 200
+          }
+        ],
+        "subcanopy": [
+          {
+            "species": "scots_pine",
+            "tree": "polishforests:tree/scots_pine/slender",
+            "weight": 800
+          },
+          {
+            "species": "birch",
+            "tree": "polishforests:tree/birch",
+            "weight": 200
+          }
+        ],
+        "subcanopy_chance": 0.25
+      },
       "trees": [
         {
           "species": "scots_pine",
-          "tree": "polishforests:tree_substitute/scots_pine",
-          "weight": 665
-        },
-        {
-          "species": "scots_pine",
-          "tree": "polishforests:tree_substitute/scots_pine_low",
-          "weight": 285
+          "tree": "polishforests:tree/scots_pine/slender",
+          "weight": 970
         },
         {
           "species": "birch",
-          "tree": "polishforests:tree_substitute/birch",
-          "weight": 50
+          "tree": "polishforests:tree/birch",
+          "weight": 30
         }
       ],
       "trees_per_chunk": 7.0
@@ -350,16 +546,88 @@
       "biomes": [
         "coastal_pine_forest"
       ],
+      "stand": {
+        "gap_chance": 0.6,
+        "gap_regeneration": [
+          {
+            "species": "scots_pine",
+            "tree": "polishforests:tree/scots_pine",
+            "weight": 600
+          },
+          {
+            "species": "birch",
+            "tree": "polishforests:tree/birch",
+            "weight": 400
+          }
+        ],
+        "managed_canopy": [
+          {
+            "species": "scots_pine",
+            "tree": "polishforests:tree/scots_pine",
+            "weight": 870
+          },
+          {
+            "species": "birch",
+            "tree": "polishforests:tree/birch",
+            "weight": 130
+          }
+        ],
+        "managed_chance": [
+          0.9,
+          0.68,
+          0.58
+        ],
+        "natural_chance": [
+          0.78,
+          0.78,
+          0.78
+        ],
+        "regeneration": [
+          {
+            "species": "birch",
+            "tree": "polishforests:tree/birch",
+            "weight": 350
+          },
+          {
+            "species": "scots_pine",
+            "tree": "polishforests:tree/scots_pine",
+            "weight": 300
+          },
+          {
+            "species": "juniper",
+            "tree": "polishforests:shrub/juniper_thin",
+            "weight": 200
+          },
+          {
+            "species": "rowan",
+            "tree": "polishforests:tree_substitute/rowan_thin",
+            "weight": 150
+          }
+        ],
+        "subcanopy": [
+          {
+            "species": "birch",
+            "tree": "polishforests:tree/birch",
+            "weight": 600
+          },
+          {
+            "species": "scots_pine",
+            "tree": "polishforests:tree/scots_pine",
+            "weight": 400
+          }
+        ],
+        "subcanopy_chance": 0.4
+      },
       "trees": [
         {
           "species": "scots_pine",
-          "tree": "polishforests:tree_substitute/scots_pine",
-          "weight": 900
+          "tree": "polishforests:tree/scots_pine",
+          "weight": 820
         },
         {
           "species": "birch",
-          "tree": "polishforests:tree_substitute/birch",
-          "weight": 100
+          "tree": "polishforests:tree/birch",
+          "weight": 180
         }
       ],
       "trees_per_chunk": 9.0
@@ -368,21 +636,119 @@
       "biomes": [
         "moist_pine_forest"
       ],
+      "stand": {
+        "gap_chance": 0.6,
+        "gap_regeneration": [
+          {
+            "species": "scots_pine",
+            "tree": "polishforests:tree/scots_pine",
+            "weight": 500
+          },
+          {
+            "species": "birch",
+            "tree": "polishforests:tree/birch",
+            "weight": 500
+          }
+        ],
+        "managed_canopy": [
+          {
+            "species": "scots_pine",
+            "tree": "polishforests:tree/scots_pine",
+            "weight": 820
+          },
+          {
+            "species": "birch",
+            "tree": "polishforests:tree/birch",
+            "weight": 150
+          },
+          {
+            "alternative": {
+              "species": "birch",
+              "tree": "polishforests:tree/birch"
+            },
+            "species": "spruce",
+            "tree": "polishforests:tree/spruce",
+            "weight": 30
+          }
+        ],
+        "managed_chance": [
+          0.92,
+          0.7,
+          0.6
+        ],
+        "natural_chance": [
+          0.8,
+          0.8,
+          0.8
+        ],
+        "regeneration": [
+          {
+            "species": "alder_buckthorn",
+            "tree": "polishforests:shrub/alder_buckthorn_thin",
+            "weight": 350
+          },
+          {
+            "species": "birch",
+            "tree": "polishforests:tree/birch",
+            "weight": 250
+          },
+          {
+            "alternative": {
+              "species": "birch",
+              "tree": "polishforests:tree/birch"
+            },
+            "species": "spruce",
+            "tree": "polishforests:tree/spruce",
+            "weight": 250
+          },
+          {
+            "species": "rowan",
+            "tree": "polishforests:tree_substitute/rowan_thin",
+            "weight": 150
+          }
+        ],
+        "subcanopy": [
+          {
+            "alternative": {
+              "species": "birch",
+              "tree": "polishforests:tree/birch"
+            },
+            "species": "spruce",
+            "tree": "polishforests:tree/spruce",
+            "weight": 500
+          },
+          {
+            "species": "birch",
+            "tree": "polishforests:tree/birch",
+            "weight": 400
+          },
+          {
+            "species": "scots_pine",
+            "tree": "polishforests:tree/scots_pine",
+            "weight": 100
+          }
+        ],
+        "subcanopy_chance": 0.6
+      },
       "trees": [
         {
           "species": "scots_pine",
-          "tree": "polishforests:tree_substitute/scots_pine",
-          "weight": 650
+          "tree": "polishforests:tree/scots_pine",
+          "weight": 760
         },
         {
           "species": "birch",
-          "tree": "polishforests:tree_substitute/birch",
-          "weight": 250
+          "tree": "polishforests:tree/birch",
+          "weight": 180
         },
         {
+          "alternative": {
+            "species": "birch",
+            "tree": "polishforests:tree/birch"
+          },
           "species": "spruce",
-          "tree": "polishforests:tree_substitute/spruce",
-          "weight": 100
+          "tree": "polishforests:tree/spruce",
+          "weight": 60
         }
       ],
       "trees_per_chunk": 10.0
@@ -391,16 +757,83 @@
       "biomes": [
         "bog_woodland"
       ],
+      "stand": {
+        "gap_chance": 0.5,
+        "gap_regeneration": [
+          {
+            "species": "scots_pine",
+            "tree": "polishforests:tree/scots_pine",
+            "weight": 600
+          },
+          {
+            "species": "birch",
+            "tree": "polishforests:tree/birch",
+            "weight": 400
+          }
+        ],
+        "managed_canopy": [
+          {
+            "species": "scots_pine",
+            "tree": "polishforests:tree/scots_pine/stunted",
+            "weight": 820
+          },
+          {
+            "species": "birch",
+            "tree": "polishforests:tree/birch/stunted",
+            "weight": 180
+          }
+        ],
+        "managed_chance": [
+          0.75,
+          0.6,
+          0.5
+        ],
+        "natural_chance": [
+          0.65,
+          0.65,
+          0.65
+        ],
+        "regeneration": [
+          {
+            "species": "scots_pine",
+            "tree": "polishforests:tree/scots_pine",
+            "weight": 400
+          },
+          {
+            "species": "birch",
+            "tree": "polishforests:tree/birch",
+            "weight": 400
+          },
+          {
+            "species": "alder_buckthorn",
+            "tree": "polishforests:shrub/alder_buckthorn_thin",
+            "weight": 200
+          }
+        ],
+        "subcanopy": [
+          {
+            "species": "scots_pine",
+            "tree": "polishforests:tree/scots_pine/stunted",
+            "weight": 500
+          },
+          {
+            "species": "birch",
+            "tree": "polishforests:tree/birch/stunted",
+            "weight": 500
+          }
+        ],
+        "subcanopy_chance": 0.3
+      },
       "trees": [
         {
           "species": "scots_pine",
-          "tree": "polishforests:tree_substitute/scots_pine_low",
-          "weight": 700
+          "tree": "polishforests:tree/scots_pine/stunted",
+          "weight": 780
         },
         {
           "species": "birch",
-          "tree": "polishforests:tree_substitute/birch",
-          "weight": 300
+          "tree": "polishforests:tree/birch/stunted",
+          "weight": 220
         }
       ],
       "trees_per_chunk": 6.0
@@ -2416,7 +2849,7 @@
       "trees": [
         {
           "species": "scots_pine",
-          "tree": "polishforests:tree_substitute/scots_pine_low",
+          "tree": "polishforests:tree/scots_pine/stunted",
           "weight": 1000
         }
       ],
@@ -2429,12 +2862,12 @@
       "trees": [
         {
           "species": "scots_pine",
-          "tree": "polishforests:tree_substitute/scots_pine",
+          "tree": "polishforests:tree/scots_pine",
           "weight": 600
         },
         {
           "species": "birch",
-          "tree": "polishforests:tree_substitute/birch",
+          "tree": "polishforests:tree/birch",
           "weight": 400
         }
       ],

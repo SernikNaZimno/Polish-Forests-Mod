@@ -1,0 +1,98 @@
+{
+  "multipart": [
+    {
+      "apply": [
+        {
+          "model": "polishforests:block/bog_bilberry"
+        },
+        {
+          "model": "polishforests:block/bog_bilberry",
+          "y": 90
+        },
+        {
+          "model": "polishforests:block/bog_bilberry",
+          "y": 180
+        },
+        {
+          "model": "polishforests:block/bog_bilberry",
+          "y": 270
+        },
+        {
+          "model": "polishforests:block/bog_bilberry_1"
+        },
+        {
+          "model": "polishforests:block/bog_bilberry_1",
+          "y": 90
+        },
+        {
+          "model": "polishforests:block/bog_bilberry_1",
+          "y": 180
+        },
+        {
+          "model": "polishforests:block/bog_bilberry_1",
+          "y": 270
+        },
+        {
+          "model": "polishforests:block/bog_bilberry_2"
+        },
+        {
+          "model": "polishforests:block/bog_bilberry_2",
+          "y": 90
+        },
+        {
+          "model": "polishforests:block/bog_bilberry_2",
+          "y": 180
+        },
+        {
+          "model": "polishforests:block/bog_bilberry_2",
+          "y": 270
+        },
+        {
+          "model": "polishforests:block/bog_bilberry_3"
+        },
+        {
+          "model": "polishforests:block/bog_bilberry_3",
+          "y": 90
+        },
+        {
+          "model": "polishforests:block/bog_bilberry_3",
+          "y": 180
+        },
+        {
+          "model": "polishforests:block/bog_bilberry_3",
+          "y": 270
+        }
+      ]
+    },
+    {
+      "apply": {
+        "model": "polishforests:block/bog_bilberry_berries"
+      },
+      "when": {
+        "berries": "true"
+      }
+    },
+    {
+      "apply": [
+        {
+          "model": "polishforests:block/forest_moss_layer"
+        },
+        {
+          "model": "polishforests:block/forest_moss_layer",
+          "y": 90
+        },
+        {
+          "model": "polishforests:block/forest_moss_layer",
+          "y": 180
+        },
+        {
+          "model": "polishforests:block/forest_moss_layer",
+          "y": 270
+        }
+      ],
+      "when": {
+        "mossy": "true"
+      }
+    }
+  ]
+}

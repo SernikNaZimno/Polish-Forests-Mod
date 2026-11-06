@@ -374,14 +374,14 @@ class ForestBlendTest {
 		assertTrue(!ForestBlend.takenOver(beech));
 		assertEquals(5, ForestBlend.member(beech));
 		// A beech column with every forest at hand never draws the fresh pine forest; a fresh pine column never the beech.
-		float[] s = {0.2F, 0.2F, 0.2F, 0.2F, 0.2F, 0, 0, 0, 0, 0};
+		float[] s = {0.2F, 0.2F, 0.2F, 0.2F, 0.2F, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 		for (int i = 0; i < 1000; i++) {
 			double v = i / 1000.0;
 			assertNotEquals(HabitatBiome.FRESH_PINE_FOREST, Habitat.biome(ForestBlend.pick(beech, s, v)));
 			assertNotEquals(HabitatBiome.LOWLAND_BEECH_FOREST, Habitat.biome(ForestBlend.pick(FRESH, s, v)));
 		}
 		// Far from the beech forest (its share 0) the normalization of a forest of the transect is the sum of step Z1.
-		float[] far = {0.1F, 0.3F, 0.15F, 0.05F, 0, 0, 0, 0, 0, 0.4F};
+		float[] far = {0.1F, 0.3F, 0.15F, 0.05F, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.4F};
 		assertEquals(Math.max(ForestBlend.MIN_TOTAL, far[0] + far[1] + far[2] + far[3]), ForestBlend.pickTotal(1, far));
 		// The canonical code of the beech forest is its fertile form.
 		assertEquals(pl.polishforests.worldgen.habitat.ForestSiteType.FRESH_BROADLEAVED,
@@ -397,8 +397,8 @@ class ForestBlendTest {
 	void alderForestsBlendWithTheirNeighborsOfStepF2() {
 		assertEquals(HabitatBiome.ALDER_CARR, ForestBlend.FORESTS[ForestBlend.ALDER_CARR]);
 		assertEquals(HabitatBiome.ASH_ALDER_FOREST, ForestBlend.FORESTS[ForestBlend.ASH_ALDER]);
-		// Step F3 appended two forests (their shares after the ash-alder forest's).
-		assertEquals(10, ForestBlend.SHARES);
+		// Steps F3 and F4 appended two and four forests (their shares after the ash-alder forest's).
+		assertEquals(14, ForestBlend.SHARES);
 		for (int b = 0; b < 4; b++) {
 			assertTrue(ForestBlend.blends(ForestBlend.ALDER_CARR, b) && ForestBlend.blends(b, ForestBlend.ALDER_CARR), "carr " + b);
 			assertEquals(b != 0, ForestBlend.blends(ForestBlend.ASH_ALDER, b), "ash-alder " + b);
@@ -417,14 +417,14 @@ class ForestBlendTest {
 		assertEquals(pl.polishforests.worldgen.habitat.ForestSiteType.ASH_ALDER_SWAMP,
 				Habitat.siteType(ForestBlend.code(ashAlder, ForestBlend.ASH_ALDER)));
 		// A carr column with every forest at hand never draws the beech forest; an ash-alder column never the fresh pine forest.
-		float[] s = {0.1F, 0.1F, 0.1F, 0.1F, 0.2F, 0.2F, 0.2F, 0, 0, 0};
+		float[] s = {0.1F, 0.1F, 0.1F, 0.1F, 0.2F, 0.2F, 0.2F, 0, 0, 0, 0, 0, 0, 0};
 		for (int i = 0; i < 1000; i++) {
 			double v = i / 1000.0;
 			assertNotEquals(HabitatBiome.LOWLAND_BEECH_FOREST, Habitat.biome(ForestBlend.pick(carr, s, v)));
 			assertNotEquals(HabitatBiome.FRESH_PINE_FOREST, Habitat.biome(ForestBlend.pick(ashAlder, s, v)));
 		}
 		// Far from the alder forests (their shares 0) the beech forest's normalization is the one of step F1.
-		float[] far = {0, 0.3F, 0.15F, 0.05F, 0.4F, 0, 0, 0, 0, 0.1F};
+		float[] far = {0, 0.3F, 0.15F, 0.05F, 0.4F, 0, 0, 0, 0, 0, 0, 0, 0, 0.1F};
 		assertEquals(Math.max(ForestBlend.MIN_TOTAL, far[1] + far[2] + far[3] + far[4]), ForestBlend.pickTotal(ForestBlend.BEECH, far));
 	}
 
@@ -464,7 +464,7 @@ class ForestBlendTest {
 		assertEquals(pl.polishforests.worldgen.habitat.Association.TYPICAL, Habitat.association(ForestBlend.code(montaneCode, montane)));
 		// With every forest at hand a Carpathian beech column never draws the pine or alder forests, a fir column never
 		// the fresh pine or the alder forests, and the lowland beech forest's column may draw both mountain forests.
-		float[] s = {0.1F, 0.1F, 0.1F, 0.1F, 0.1F, 0.1F, 0.1F, 0.15F, 0.15F, 0};
+		float[] s = {0.1F, 0.1F, 0.1F, 0.1F, 0.1F, 0.1F, 0.1F, 0.15F, 0.15F, 0, 0, 0, 0, 0};
 		boolean beechDrawsFir = false;
 		boolean beechDrawsMontane = false;
 		int lowland = EcotoneTest.code(HabitatBiome.LOWLAND_BEECH_FOREST, Zone.NONE);
@@ -481,7 +481,55 @@ class ForestBlendTest {
 		}
 		assertTrue(beechDrawsFir && beechDrawsMontane);
 		// Far from the mountain forests (their shares 0) the lowland beech forest's normalization is the one of step F1.
-		float[] far = {0, 0.3F, 0.15F, 0.05F, 0.4F, 0, 0, 0, 0, 0.1F};
+		float[] far = {0, 0.3F, 0.15F, 0.05F, 0.4F, 0, 0, 0, 0, 0, 0, 0, 0, 0.1F};
 		assertEquals(Math.max(ForestBlend.MIN_TOTAL, far[1] + far[2] + far[3] + far[4]), ForestBlend.pickTotal(ForestBlend.BEECH, far));
+	}
+
+	/**
+	 * Step F4 (docs/04 "Projekt F4"): the dry, the moist pine forest, the bog woodland and the coastal pine forest are
+	 * forests of the blend after the Carpathian beech forest, no longer neighbors taken over; the dry pine forest blends
+	 * with the fresh and the mixed pine-oak forest, the moist one with them, the alder carr and the bog woodland, the bog
+	 * woodland with the fresh pine forest and the alder carr, the coastal pine forest with the fresh and the mixed pine-oak
+	 * forest, the bog woodland and the dry pine forest; with the broadleaved and the mountain forests they meet in the ramp.
+	 */
+	@Test
+	void pineForestsAndBogWoodlandBlendWithTheirNeighborsOfStepF4() {
+		assertEquals(List.of(HabitatBiome.DRY_PINE_FOREST, HabitatBiome.MOIST_PINE_FOREST, HabitatBiome.BOG_WOODLAND,
+				HabitatBiome.COASTAL_PINE_FOREST), List.of(ForestBlend.FORESTS[ForestBlend.DRY_PINE], ForestBlend.FORESTS[ForestBlend.MOIST_PINE],
+						ForestBlend.FORESTS[ForestBlend.BOG_WOODLAND], ForestBlend.FORESTS[ForestBlend.COASTAL_PINE]));
+		int[][] pairs = {{ForestBlend.DRY_PINE, 0}, {ForestBlend.DRY_PINE, 1}, {ForestBlend.MOIST_PINE, 0}, {ForestBlend.MOIST_PINE, 1},
+				{ForestBlend.MOIST_PINE, ForestBlend.ALDER_CARR}, {ForestBlend.MOIST_PINE, ForestBlend.BOG_WOODLAND},
+				{ForestBlend.BOG_WOODLAND, 0}, {ForestBlend.BOG_WOODLAND, ForestBlend.ALDER_CARR}, {ForestBlend.COASTAL_PINE, 0},
+				{ForestBlend.COASTAL_PINE, 1}, {ForestBlend.COASTAL_PINE, ForestBlend.BOG_WOODLAND},
+				{ForestBlend.COASTAL_PINE, ForestBlend.DRY_PINE}};
+		java.util.Set<String> expected = new java.util.HashSet<>();
+		for (int[] p : pairs) {
+			expected.add(Math.min(p[0], p[1]) + "-" + Math.max(p[0], p[1]));
+		}
+		for (int a = ForestBlend.DRY_PINE; a <= ForestBlend.COASTAL_PINE; a++) {
+			for (int b = 0; b < ForestBlend.FORESTS.length; b++) {
+				boolean pair = expected.contains(Math.min(a, b) + "-" + Math.max(a, b));
+				assertEquals(pair, ForestBlend.blends(a, b), a + " " + b);
+				assertEquals(pair, ForestBlend.blends(b, a), b + " " + a);
+			}
+		}
+		pl.polishforests.worldgen.habitat.ForestSiteType[] sites = {pl.polishforests.worldgen.habitat.ForestSiteType.DRY_CONIFEROUS,
+				pl.polishforests.worldgen.habitat.ForestSiteType.MOIST_CONIFEROUS, pl.polishforests.worldgen.habitat.ForestSiteType.BOGGY_CONIFEROUS,
+				pl.polishforests.worldgen.habitat.ForestSiteType.FRESH_CONIFEROUS};
+		for (int f = ForestBlend.DRY_PINE; f <= ForestBlend.COASTAL_PINE; f++) {
+			int code = EcotoneTest.code(ForestBlend.FORESTS[f], Zone.NONE);
+			assertTrue(!ForestBlend.takenOver(code), ForestBlend.FORESTS[f] + " taken over");
+			assertEquals(f + 1, ForestBlend.member(code));
+			assertEquals(sites[f - ForestBlend.DRY_PINE], Habitat.siteType(ForestBlend.code(code, f)));
+		}
+		// A dry pine column with every forest at hand draws only itself and its partners.
+		float[] s = new float[ForestBlend.SHARES];
+		java.util.Arrays.fill(s, 0, ForestBlend.FORESTS.length, 1F / ForestBlend.FORESTS.length);
+		int dry = EcotoneTest.code(HabitatBiome.DRY_PINE_FOREST, Zone.NONE);
+		for (int i = 0; i < 1000; i++) {
+			HabitatBiome d = Habitat.biome(ForestBlend.pick(dry, s, i / 1000.0));
+			assertTrue(d == HabitatBiome.DRY_PINE_FOREST || d == HabitatBiome.FRESH_PINE_FOREST || d == HabitatBiome.MIXED_PINE_FOREST
+					|| d == HabitatBiome.COASTAL_PINE_FOREST, "dry drew " + d);
+		}
 	}
 }

@@ -32,6 +32,7 @@ import pl.polishforests.worldgen.habitat.Species;
 import pl.polishforests.worldgen.tree.AgeClass;
 import pl.polishforests.worldgen.tree.CrownLayer;
 import pl.polishforests.worldgen.tree.SpeciesShape;
+import pl.polishforests.worldgen.tree.TreeForm;
 import pl.polishforests.worldgen.tree.TreeRequest;
 import pl.polishforests.worldgen.tree.TreeShapePlan;
 import pl.polishforests.worldgen.tree.TreeSize;
@@ -74,16 +75,23 @@ import pl.polishforests.worldgen.tree.TreeVoxels;
  * tree; the configured features {@code polishforests:sapling/<species>/medium} and {@code …/large} of the sapling sizes
  * ({@link pl.polishforests.block.SaplingSize}) use it.
  *
+ * <p><b>Form</b> (step F4): the optional field {@code form} ({@link TreeForm.Kind}, by default {@code normal}, left out of the
+ * JSON) is the growth form of the tree by its site: the configured features {@code polishforests:tree/<species>/<form>}
+ * of the bogs, the dry and the coastal pine forests. The tree stand passes it to the planner with the lee side of the
+ * coast ({@link TreeForm#toward}).
+ *
  * @param species a species with a planner shape ({@link SpeciesShape#supported})
  */
-public record ProceduralTreeFeature(Species species, CrownLayer layer, AgeClass age, TreeSize size) implements Feature {
+public record ProceduralTreeFeature(Species species, CrownLayer layer, AgeClass age, TreeSize size, TreeForm.Kind form)
+		implements Feature {
 	private static final Codec<Species> SPECIES = TreePalette.SPECIES_CODEC.validate(s -> SpeciesShape.supported(s)
 			? DataResult.success(s) : DataResult.error(() -> "no tree shape for " + s.id()));
 	public static final MapCodec<ProceduralTreeFeature> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
 			SPECIES.fieldOf("species").forGetter(ProceduralTreeFeature::species),
 			enumCodec(CrownLayer.values()).optionalFieldOf("layer", CrownLayer.CANOPY).forGetter(ProceduralTreeFeature::layer),
 			enumCodec(AgeClass.values()).optionalFieldOf("age_class", AgeClass.MATURE).forGetter(ProceduralTreeFeature::age),
-			TreeSize.CODEC.optionalFieldOf("size", TreeSize.ONE).forGetter(ProceduralTreeFeature::size))
+			TreeSize.CODEC.optionalFieldOf("size", TreeSize.ONE).forGetter(ProceduralTreeFeature::size),
+			TreeForm.KIND_CODEC.optionalFieldOf("form", TreeForm.Kind.NORMAL).forGetter(ProceduralTreeFeature::form))
 			.apply(i, ProceduralTreeFeature::new));
 
 	/** Salt of the tree phase (rule ZW-2: a new field, a new salt). */
@@ -108,6 +116,14 @@ public record ProceduralTreeFeature(Species species, CrownLayer layer, AgeClass 
 		if (size == null) {
 			size = TreeSize.ONE;
 		}
+		if (form == null) {
+			form = TreeForm.Kind.NORMAL;
+		}
+	}
+
+	/** A tree of a size and the default form. */
+	public ProceduralTreeFeature(Species species, CrownLayer layer, AgeClass age, TreeSize size) {
+		this(species, layer, age, size, TreeForm.Kind.NORMAL);
 	}
 
 	/** A tree of the planner's own size. */
@@ -158,7 +174,8 @@ public record ProceduralTreeFeature(Species species, CrownLayer layer, AgeClass 
 
 	/** The tree of this configuration with its trunk base at {@code origin} (a pure function of the seed and position). */
 	public TreeVoxels plan(long seed, BlockPos origin) {
-		return TreeShapePlan.plan(new TreeRequest(species, layer, age, size, seed, origin.getX(), origin.getY(), origin.getZ()));
+		return TreeShapePlan.plan(new TreeRequest(species, layer, age, size, TreeForm.of(form), seed, origin.getX(), origin.getY(),
+				origin.getZ()));
 	}
 
 	/**

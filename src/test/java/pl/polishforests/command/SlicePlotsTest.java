@@ -54,18 +54,27 @@ class SlicePlotsTest {
 	static final double MANAGED_SHARE = 0.85;
 	/**
 	 * The forests of the planner of the steps F with plots of their own (step F1: the lowland beech forest; step F2: the
-	 * alder carr and the ash-alder forest; step F3: the upland fir forest and the Carpathian beech forest).
+	 * alder carr and the ash-alder forest; step F3: the upland fir forest and the Carpathian beech forest; step F4: the dry,
+	 * the moist, the bog and the coastal pine forest).
 	 */
 	static final List<HabitatBiome> F_FORESTS = List.of(HabitatBiome.LOWLAND_BEECH_FOREST, HabitatBiome.ALDER_CARR,
-			HabitatBiome.ASH_ALDER_FOREST, HabitatBiome.UPLAND_FIR_FOREST, HabitatBiome.MONTANE_BEECH_FOREST);
-	/** The forests of {@link #F_FORESTS} whose origins of the search ring their nearest place to the center (step F3). */
+			HabitatBiome.ASH_ALDER_FOREST, HabitatBiome.UPLAND_FIR_FOREST, HabitatBiome.MONTANE_BEECH_FOREST,
+			HabitatBiome.DRY_PINE_FOREST, HabitatBiome.MOIST_PINE_FOREST, HabitatBiome.BOG_WOODLAND, HabitatBiome.COASTAL_PINE_FOREST);
+	/**
+	 * The forests of {@link #F_FORESTS} whose origins of the search ring their nearest place to the center (step F3; step
+	 * F4: the four pine forests, whose rings around the center took over an hour for the dry pine forest of the realistic
+	 * scale alone).
+	 */
 	static final java.util.Set<HabitatBiome> AROUND_FIRST_HIT = java.util.EnumSet.of(HabitatBiome.UPLAND_FIR_FOREST,
-			HabitatBiome.MONTANE_BEECH_FOREST);
+			HabitatBiome.MONTANE_BEECH_FOREST, HabitatBiome.DRY_PINE_FOREST, HabitatBiome.MOIST_PINE_FOREST, HabitatBiome.BOG_WOODLAND,
+			HabitatBiome.COASTAL_PINE_FOREST);
 	/**
 	 * The kinds of plots of the forests of the steps F of which the search finds one plot only (step F3): in the gameplay
 	 * scale the natural stands of the upland fir forest around its 5 places hold one square of 98% of the forest.
 	 */
-	static final java.util.Set<String> F_SINGLE = java.util.Set.of("gameplay upland_fir_forest natural");
+	static final java.util.Set<String> F_SINGLE = java.util.Set.of("gameplay upland_fir_forest natural",
+			// Step F4: one square of 98% of the bog woodland in natural stands around its 6 places of the gameplay scale.
+			"gameplay bog_woodland natural");
 	/**
 	 * The kinds of plots of the forests of the steps F that the search does not find ("scale biome natural|managed"; step
 	 * F2). In the gameplay scale the alder carr is a mosaic of small patches along the streams and the hollows: of 32
@@ -74,7 +83,12 @@ class SlicePlotsTest {
 	 * no square of 33 places holds 90% of it. The card shows these in the realistic scale only.
 	 */
 	static final java.util.Set<String> F_MISSING = java.util.Set.of("gameplay alder_carr natural", "gameplay ash_alder_forest natural",
-			"gameplay ash_alder_forest managed");
+			"gameplay ash_alder_forest managed",
+			// Step F4: the moist pine forest is a belt of the moist hollows and the edges of the bogs narrower than a plot in
+			// both scales (no square of 90% around 40 and 5 places); the gameplay dry pine forest has no natural square of 90%
+			// and the gameplay bog woodland no managed one. The card shows these by StandCensusSimulationTest only.
+			"realistic moist_pine_forest natural", "realistic moist_pine_forest managed", "gameplay moist_pine_forest natural",
+			"gameplay moist_pine_forest managed", "gameplay dry_pine_forest natural", "gameplay bog_woodland managed");
 	/**
 	 * Least share of the plot's lattice in its biome for the managed alder carr of the gameplay scale (step F2), whose
 	 * largest patches hold 90-99% of a square of 100 blocks (no square of 98% in managed stands).
@@ -88,8 +102,17 @@ class SlicePlotsTest {
 	 */
 	static double minBiome(LandscapeScale scale, HabitatBiome biome) {
 		return scale == LandscapeScale.GAMEPLAY && biome == HabitatBiome.ALDER_CARR
-				|| scale == LandscapeScale.REALISTIC && biome == HabitatBiome.MONTANE_BEECH_FOREST ? MIN_BIOME_PATCHY : MIN_BIOME;
+				|| scale == LandscapeScale.REALISTIC && biome == HabitatBiome.MONTANE_BEECH_FOREST || PATCHY_PINE.contains(biome)
+				|| scale == LandscapeScale.GAMEPLAY && biome == HabitatBiome.BOG_WOODLAND ? MIN_BIOME_PATCHY : MIN_BIOME;
 	}
+
+	/**
+	 * Step F4: the dry and the moist pine forest are mosaics in the fresh pine forest (the dry sand of the dune ridges and
+	 * the outwash crests, the moist hollows), whose squares of 98% the search does not find around their places in either
+	 * scale; the bog woodland of the gameplay scale likewise (one natural plot of 98%).
+	 */
+	static final java.util.Set<HabitatBiome> PATCHY_PINE = java.util.EnumSet.of(HabitatBiome.DRY_PINE_FOREST,
+			HabitatBiome.MOIST_PINE_FOREST);
 
 	/** A plot: scale, stand kind (natural or managed), age class (null: any), name, biome, center. */
 	record Plot(LandscapeScale scale, boolean natural, AgeClass age, String name, HabitatBiome biome, int x, int z) {
@@ -252,6 +275,22 @@ class SlicePlotsTest {
 	}
 
 	/**
+	 * Step F4 (KF-6): the place of the bog woodland in the flights of {@code ForestPerformance} ({@code BOG_SITE})
+	 * is the plot {@code bog_woodland_natural_1} of each scale.
+	 */
+	@Test
+	void flightsOfThePerformanceTestUseTheBogPlot() throws IOException {
+		String source = Files.readString(Path.of("src/gametest/java/pl/polishforests/gametest/ForestPerformance.java"));
+		StringBuilder expected = new StringBuilder("BOG_SITE = {");
+		for (LandscapeScale scale : List.of(LandscapeScale.REALISTIC, LandscapeScale.GAMEPLAY)) {
+			Plot p = read().stream().filter(q -> q.scale() == scale && q.name().equals("bog_woodland_natural_1")).findFirst().orElseThrow();
+			expected.append(scale == LandscapeScale.REALISTIC ? "" : ", ").append("{").append(p.x()).append(", ").append(p.z()).append("}");
+		}
+		expected.append("};");
+		assertTrue(source.contains(expected), "ForestPerformance has no " + expected);
+	}
+
+	/**
 	 * Step F1 (the equality of the norms card): no plot and no place of the slice forests (and no transect) lies within
 	 * {@code SliceEqualityTest.FAR} blocks of a column of a forest of the steps F in either vegetation mode, so the rows of
 	 * the slice card in {@code slice -Psites=none} are those of the build before F1 (the stand plan there is unchanged,
@@ -350,9 +389,13 @@ class SlicePlotsTest {
 		lines.add("# 85%. Written by ./gradlew test --tests '*SlicePlotsTest*' -PfindSlicePlots, checked by SlicePlotsTest, read by");
 		lines.add("# the in-game test -Pgametest=slice. Columns: scale, stand kind, age class (any or the class of a plot of one");
 		lines.add("# age class), name, biome and the center x z of a 100 x 100 block square of the biome in stands of that kind.");
+		// Step F4 (-PfindSlicePlotsKeep): the plots of the table are kept, and only the forests without a plot in a scale are
+		// searched (in the same order, so the result is that of a full search: a search sees the plots chosen before it).
+		List<Plot> kept = Boolean.getBoolean("polishforests.slice.plots.keep") ? read() : List.of();
 		for (LandscapeScale scale : List.of(LandscapeScale.REALISTIC, LandscapeScale.GAMEPLAY)) {
 			List<SliceSitesTest.Place> sites = SliceSitesTest.read().stream().filter(p -> p.scale() == scale && !p.transect()).toList();
 			List<Plot> chosen = new ArrayList<>();
+			List<Plot> keptHere = kept.stream().filter(p -> p.scale() == scale).toList();
 			ForestStandMap map = new ForestStandMap(PolishForestsCommandsTest.SEED, scale.local(), MANAGED_SHARE);
 			HabitatTargets.World natural = PolishForestsCommandsTest.world(scale, HabitatClassifier.Mode.NATURAL);
 			HabitatTargets.World presentDay = PolishForestsCommandsTest.world(scale, HabitatClassifier.Mode.PRESENT_DAY);
@@ -373,7 +416,9 @@ class SlicePlotsTest {
 				int k = 0;
 				for (Object[] w : wanted) {
 					int[] origin = origins.get(k++ % origins.size());
-					int[] at = search(map, natural, presentDay, biome, (Boolean) w[0], (AgeClass) w[1], origin, chosen, scale);
+					Plot old = keptHere.stream().filter(q -> q.name().equals(w[2])).findFirst().orElse(null);
+					int[] at = old != null ? new int[] {old.x(), old.z()}
+							: search(map, natural, presentDay, biome, (Boolean) w[0], (AgeClass) w[1], origin, chosen, scale);
 					Plot p = new Plot(scale, (Boolean) w[0], (AgeClass) w[1], (String) w[2], biome, at[0], at[1]);
 					chosen.add(p);
 					lines.add(p.line());
@@ -389,8 +434,11 @@ class SlicePlotsTest {
 			int k = 0;
 			for (boolean wantNatural : scale == LandscapeScale.REALISTIC ? new boolean[] {false, true} : new boolean[] {false}) {
 				String name = "oak_hornbeam_" + (wantNatural ? "natural" : "managed") + "_pole_stage";
-				int[] at = search(map, natural, presentDay, HabitatBiome.OAK_HORNBEAM_FOREST, wantNatural, AgeClass.POLE_STAGE,
-						origins.get(k++ % origins.size()), chosen, scale);
+				Plot old = keptHere.stream().filter(q -> q.name().equals(name)).findFirst().orElse(null);
+				int[] origin = origins.get(k++ % origins.size());
+				int[] at = old != null ? new int[] {old.x(), old.z()}
+						: search(map, natural, presentDay, HabitatBiome.OAK_HORNBEAM_FOREST, wantNatural, AgeClass.POLE_STAGE, origin, chosen,
+								scale);
 				Plot p = new Plot(scale, wantNatural, AgeClass.POLE_STAGE, name, HabitatBiome.OAK_HORNBEAM_FOREST, at[0], at[1]);
 				chosen.add(p);
 				lines.add(p.line());
@@ -401,6 +449,15 @@ class SlicePlotsTest {
 			// place with a plot of the kind winning.
 			for (HabitatBiome biome : F_FORESTS) {
 				String prefix = biome.id().replace("_forest", "");
+				List<Plot> keptForest = keptHere.stream().filter(q -> q.biome() == biome).toList();
+				if (!keptForest.isEmpty()) {
+					for (Plot p : keptForest) {
+						chosen.add(p);
+						lines.add(p.line());
+						System.out.println("[plots] kept " + p.line());
+					}
+					continue;
+				}
 				List<int[]> from = origins(presentDay, biome, scale);
 				for (boolean wantNatural : new boolean[] {true, false}) {
 					if (F_MISSING.contains(scale.id() + " " + biome.id() + (wantNatural ? " natural" : " managed"))) {

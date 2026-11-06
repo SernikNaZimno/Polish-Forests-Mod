@@ -281,6 +281,10 @@ class GroundLayerPlanTest {
 	 * Decision M2-13: bilberry is the vanilla {@code bush} until its own block in M4; no generated vegetation palette places
 	 * sweet berry bushes, which slow and hurt the player (7–10% of the pine forest columns before).
 	 */
+	/** The own dwarf shrubs of the pine forests and the bogs (step F4). */
+	private static final java.util.Set<String> DWARF_SHRUBS = java.util.Set.of("polishforests:bilberry", "polishforests:bog_bilberry",
+			"polishforests:heather", "polishforests:crowberry", "polishforests:labrador_tea");
+
 	@Test
 	void noSweetBerryBushes() {
 		for (String palette : List.of("ground_layer", "waterside_zones", "understory", "deadwood", "aquatic_plants")) {
@@ -294,7 +298,9 @@ class GroundLayerPlanTest {
 		JsonArray rules = BiomeJsonTest.json(BiomeJsonTest.GENERATED.resolve(
 				"data/polishforests/worldgen/feature/ground_layer.json")).getAsJsonArray("rules");
 		// The dwarf shrub share of the pine forests stays (the former sweet berry weight went to the bush; the fresh pine
-		// forest has the own bilberry since step V12, slicePalettesMeetTheNorms).
+		// forest has the own bilberry since step V12, slicePalettesMeetTheNorms). Step F4: the moist pine forest and the bog
+		// woodland have their own dwarf shrubs (the bilberry, the bog bilberry, the heather, the crowberry and Labrador tea)
+		// in place of the M2 bush.
 		for (HabitatBiome b : List.of(HabitatBiome.BOG_WOODLAND, HabitatBiome.MOIST_PINE_FOREST)) {
 			JsonObject rule = null;
 			for (JsonElement e : rules) {
@@ -312,12 +318,14 @@ class GroundLayerPlanTest {
 				JsonObject p = e.getAsJsonObject();
 				double w = p.get("weight").getAsDouble();
 				all += w;
-				if (p.has("block") && blockName(p.get("block")).equals("minecraft:bush")) {
+				String name = p.has("block") ? blockName(p.get("block")) : "";
+				assertFalse(name.equals("minecraft:bush"), b.id() + ": the M2 bush in place of the own dwarf shrubs");
+				if (DWARF_SHRUBS.contains(name)) {
 					bush += w;
 				}
 			}
 			double share = rule.get("coverage").getAsDouble() * bush / all;
-			assertTrue(share >= 0.2 && share <= 0.4, b.id() + ": dwarf shrubs " + share);
+			assertTrue(share >= 0.2 && share <= 0.6, b.id() + ": dwarf shrubs " + share);
 		}
 	}
 

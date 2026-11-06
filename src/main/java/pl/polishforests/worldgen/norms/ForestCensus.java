@@ -131,7 +131,9 @@ public final class ForestCensus {
 			"polishforests:hepatica", "polishforests:bracken", "polishforests:sweet_woodruff", "polishforests:hairy_wood_rush",
 			"polishforests:wood_sorrel", "polishforests:coralroot", "polishforests:marsh_marigold", "polishforests:yellow_iris",
 			"polishforests:tussock_sedge", "polishforests:marsh_fern", "polishforests:nettle",
-			"polishforests:glandular_toothwort", "polishforests:white_wood_rush", "polishforests:perennial_honesty");
+			"polishforests:glandular_toothwort", "polishforests:white_wood_rush", "polishforests:perennial_honesty",
+			"polishforests:heather", "polishforests:crowberry", "polishforests:bog_bilberry", "polishforests:labrador_tea",
+			"polishforests:purple_moor_grass");
 	/**
 	 * Spring geophytes: part of the herb layer in spring only (the client shows nothing from early summer, PW-8 (a), N12);
 	 * liverleaf keeps its leaves all year. Step F1: the coralroot (gone from mid-June); the sweet woodruff keeps its leaves
@@ -141,11 +143,15 @@ public final class ForestCensus {
 			"polishforests:glandular_toothwort");
 	/** Needle litter (step V12): neither herb layer nor leaf litter (the leaf litter is the indicator of the transect). */
 	public static final Set<String> NEEDLE_LITTER_PLANTS = Set.of("polishforests:needle_litter");
-	/** Mosses and lichens (layer d) standing on the ground. */
+	/**
+	 * Mosses and lichens (layer d) standing on the ground. Step F4: the reindeer lichen (N9 of the dry pine forest counts its
+	 * lichens) and the sphagnum carpet (N9 of the bog woodland counts its sphagnum).
+	 */
 	public static final Set<String> MOSS_PLANTS = Set.of("minecraft:moss_carpet", "minecraft:pale_moss_carpet",
-			"polishforests:forest_moss_carpet");
-	/** Ground blocks that are moss. */
-	public static final Set<String> MOSS_GROUNDS = Set.of("minecraft:moss_block", "polishforests:mossy_podzol");
+			"polishforests:forest_moss_carpet", "polishforests:reindeer_lichen", "polishforests:sphagnum_carpet");
+	/** Ground blocks that are moss (step F4: the sphagnum block). */
+	public static final Set<String> MOSS_GROUNDS = Set.of("minecraft:moss_block", "polishforests:mossy_podzol",
+			"polishforests:sphagnum_block");
 	/** Leaf litter (not a plant layer; an indicator of the broadleaved forests on the transect). */
 	public static final Set<String> LITTER_PLANTS = Set.of("minecraft:leaf_litter");
 	/** Known blocks on the ground that are none of the layers (mushrooms, snow, a shrub of the fringe). */

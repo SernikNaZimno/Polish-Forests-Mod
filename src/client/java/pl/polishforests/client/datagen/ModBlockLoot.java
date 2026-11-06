@@ -67,6 +67,9 @@ final class ModBlockLoot extends FabricBlockLootSubProvider {
 		// vanilla podzol).
 		dropSelf(ModBlocks.forestMossCarpet());
 		add(ModBlocks.mossyPodzol(), b -> createSingleItemTableWithSilkTouch(b, net.minecraft.world.level.block.Blocks.DIRT));
+		// Step F4: the sphagnum carpet and block give themselves (as the vanilla moss carpet and block).
+		dropSelf(ModBlocks.sphagnumCarpet());
+		dropSelf(ModBlocks.sphagnumBlock());
 	}
 
 	/**

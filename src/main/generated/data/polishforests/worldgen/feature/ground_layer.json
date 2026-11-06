@@ -105,8 +105,26 @@
           "weight": 10
         },
         {
-          "block": "minecraft:pale_moss_carpet",
-          "weight": 10
+          "block": {
+            "id": "polishforests:reindeer_lichen",
+            "properties": {
+              "facing": "north",
+              "mossy": "false",
+              "segment_amount": "3"
+            }
+          },
+          "weight": 3
+        },
+        {
+          "block": {
+            "id": "polishforests:reindeer_lichen",
+            "properties": {
+              "facing": "north",
+              "mossy": "false",
+              "segment_amount": "4"
+            }
+          },
+          "weight": 7
         },
         {
           "block": "minecraft:short_grass",
@@ -155,16 +173,20 @@
       "patch": 3,
       "plants": [
         {
-          "block": "minecraft:bush",
-          "weight": 45
+          "block": "polishforests:bog_bilberry",
+          "weight": 25
         },
         {
-          "block": "minecraft:moss_carpet",
+          "block": "polishforests:labrador_tea",
+          "weight": 20
+        },
+        {
+          "block": "polishforests:sphagnum_carpet",
           "weight": 15
         },
         {
           "block": {
-            "id": "minecraft:pink_petals",
+            "id": "polishforests:heather",
             "properties": {
               "facing": "north",
               "flower_amount": "2"
@@ -174,7 +196,7 @@
         },
         {
           "block": {
-            "id": "minecraft:pink_petals",
+            "id": "polishforests:heather",
             "properties": {
               "facing": "north",
               "flower_amount": "3"
@@ -184,7 +206,7 @@
         },
         {
           "block": {
-            "id": "minecraft:pink_petals",
+            "id": "polishforests:heather",
             "properties": {
               "facing": "north",
               "flower_amount": "4"
@@ -769,7 +791,7 @@
       "plants": [
         {
           "block": {
-            "id": "minecraft:pink_petals",
+            "id": "polishforests:heather",
             "properties": {
               "facing": "north",
               "flower_amount": "2"
@@ -779,7 +801,7 @@
         },
         {
           "block": {
-            "id": "minecraft:pink_petals",
+            "id": "polishforests:heather",
             "properties": {
               "facing": "north",
               "flower_amount": "3"
@@ -789,7 +811,7 @@
         },
         {
           "block": {
-            "id": "minecraft:pink_petals",
+            "id": "polishforests:heather",
             "properties": {
               "facing": "north",
               "flower_amount": "4"
@@ -798,8 +820,26 @@
           "weight": 14
         },
         {
-          "block": "minecraft:pale_moss_carpet",
-          "weight": 12
+          "block": {
+            "id": "polishforests:reindeer_lichen",
+            "properties": {
+              "facing": "north",
+              "mossy": "false",
+              "segment_amount": "3"
+            }
+          },
+          "weight": 4
+        },
+        {
+          "block": {
+            "id": "polishforests:reindeer_lichen",
+            "properties": {
+              "facing": "north",
+              "mossy": "false",
+              "segment_amount": "4"
+            }
+          },
+          "weight": 8
         },
         {
           "block": "minecraft:short_grass",
@@ -810,8 +850,34 @@
           "weight": 8
         },
         {
-          "block": "minecraft:bush",
-          "weight": 5
+          "block": {
+            "id": "polishforests:crowberry",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "2"
+            }
+          },
+          "weight": 1
+        },
+        {
+          "block": {
+            "id": "polishforests:crowberry",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "3"
+            }
+          },
+          "weight": 1
+        },
+        {
+          "block": {
+            "id": "polishforests:crowberry",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "4"
+            }
+          },
+          "weight": 3
         }
       ]
     },
@@ -819,20 +885,49 @@
       "biomes": [
         "raised_bog"
       ],
-      "coverage": 0.5,
+      "coverage": 0.6,
       "patch": 3,
+      "patch_shape": "blobs",
+      "plant_ground": "polishforests:sphagnum_block",
+      "plant_ground_columns": true,
       "plants": [
         {
-          "block": "minecraft:bush",
-          "weight": 31
-        },
-        {
-          "block": "minecraft:short_grass",
-          "weight": 10
+          "block": "polishforests:sphagnum_carpet",
+          "weight": 20
         },
         {
           "block": {
-            "id": "minecraft:pink_petals",
+            "id": "polishforests:heather",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "2"
+            }
+          },
+          "weight": 4
+        },
+        {
+          "block": {
+            "id": "polishforests:heather",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "3"
+            }
+          },
+          "weight": 4
+        },
+        {
+          "block": {
+            "id": "polishforests:heather",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "4"
+            }
+          },
+          "weight": 4
+        },
+        {
+          "block": {
+            "id": "polishforests:crowberry",
             "properties": {
               "facing": "north",
               "flower_amount": "2"
@@ -842,7 +937,7 @@
         },
         {
           "block": {
-            "id": "minecraft:pink_petals",
+            "id": "polishforests:crowberry",
             "properties": {
               "facing": "north",
               "flower_amount": "3"
@@ -852,13 +947,21 @@
         },
         {
           "block": {
-            "id": "minecraft:pink_petals",
+            "id": "polishforests:crowberry",
             "properties": {
               "facing": "north",
               "flower_amount": "4"
             }
           },
           "weight": 4
+        },
+        {
+          "block": "polishforests:bog_bilberry",
+          "weight": 6
+        },
+        {
+          "block": "minecraft:short_grass",
+          "weight": 10
         }
       ]
     },
@@ -866,19 +969,91 @@
       "biomes": [
         "bog_woodland"
       ],
-      "coverage": 0.85,
+      "coverage": 0.9,
       "patch": 4,
+      "patch_shape": "blobs",
+      "plant_ground": "polishforests:sphagnum_block",
+      "plant_ground_columns": true,
       "plants": [
         {
-          "block": "minecraft:moss_carpet",
-          "weight": 45
+          "block": "polishforests:bog_bilberry",
+          "weight": 25
         },
         {
-          "block": "minecraft:bush",
-          "weight": 35
+          "block": "polishforests:purple_moor_grass",
+          "weight": 15
+        },
+        {
+          "block": "polishforests:labrador_tea",
+          "weight": 15
+        },
+        {
+          "block": "polishforests:sphagnum_carpet",
+          "weight": 20
         },
         {
           "block": "minecraft:fern",
+          "weight": 5
+        }
+      ],
+      "site_types": [
+        "boggy_mixed_coniferous"
+      ]
+    },
+    {
+      "biomes": [
+        "bog_woodland"
+      ],
+      "coverage": 0.9,
+      "patch": 4,
+      "patch_shape": "blobs",
+      "plant_ground": "polishforests:sphagnum_block",
+      "plant_ground_columns": true,
+      "plants": [
+        {
+          "block": "polishforests:labrador_tea",
+          "weight": 30
+        },
+        {
+          "block": "polishforests:bog_bilberry",
+          "weight": 25
+        },
+        {
+          "block": "polishforests:sphagnum_carpet",
+          "weight": 15
+        },
+        {
+          "block": {
+            "id": "polishforests:heather",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "2"
+            }
+          },
+          "weight": 1
+        },
+        {
+          "block": {
+            "id": "polishforests:heather",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "3"
+            }
+          },
+          "weight": 1
+        },
+        {
+          "block": {
+            "id": "polishforests:heather",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "4"
+            }
+          },
+          "weight": 3
+        },
+        {
+          "block": "polishforests:bilberry",
           "weight": 5
         }
       ]
@@ -887,21 +1062,111 @@
       "biomes": [
         "dry_pine_forest"
       ],
-      "coverage": 0.75,
+      "coverage": 0.9,
       "patch": 4,
       "patch_shape": "blobs",
       "plants": [
         {
-          "block": "minecraft:pale_moss_carpet",
-          "weight": 55
+          "block": {
+            "id": "polishforests:reindeer_lichen",
+            "properties": {
+              "facing": "north",
+              "mossy": "false",
+              "segment_amount": "3"
+            }
+          },
+          "weight": 20
         },
         {
-          "block": "minecraft:bush",
-          "weight": 17
+          "block": {
+            "id": "polishforests:reindeer_lichen",
+            "properties": {
+              "facing": "north",
+              "mossy": "false",
+              "segment_amount": "4"
+            }
+          },
+          "weight": 40
         },
+        {
+          "block": {
+            "id": "polishforests:heather",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "2"
+            }
+          },
+          "weight": 5
+        },
+        {
+          "block": {
+            "id": "polishforests:heather",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "3"
+            }
+          },
+          "weight": 5
+        },
+        {
+          "block": {
+            "id": "polishforests:heather",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "4"
+            }
+          },
+          "weight": 5
+        },
+        {
+          "block": {
+            "id": "polishforests:needle_litter",
+            "properties": {
+              "facing": "north",
+              "mossy": "true",
+              "segment_amount": "1"
+            }
+          },
+          "weight": 8
+        },
+        {
+          "block": {
+            "id": "polishforests:needle_litter",
+            "properties": {
+              "facing": "north",
+              "mossy": "false",
+              "segment_amount": "2"
+            }
+          },
+          "weight": 2
+        },
+        {
+          "block": {
+            "id": "polishforests:needle_litter",
+            "properties": {
+              "facing": "north",
+              "mossy": "false",
+              "segment_amount": "3"
+            }
+          },
+          "weight": 2
+        },
+        {
+          "block": {
+            "id": "polishforests:needle_litter",
+            "properties": {
+              "facing": "north",
+              "mossy": "false",
+              "segment_amount": "4"
+            }
+          },
+          "weight": 3
+        }
+      ],
+      "scattered": [
         {
           "block": "minecraft:short_dry_grass",
-          "weight": 8
+          "weight": 5
         }
       ]
     },
@@ -988,20 +1253,152 @@
       "biomes": [
         "coastal_pine_forest"
       ],
-      "coverage": 0.8,
-      "patch": 4,
+      "coverage": 0.95,
+      "patch": 5,
+      "patch_shape": "blobs",
+      "plant_ground": "polishforests:mossy_podzol",
       "plants": [
         {
-          "block": "minecraft:moss_carpet",
-          "weight": 35
+          "block": {
+            "id": "polishforests:crowberry",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "2"
+            }
+          },
+          "weight": 11
         },
         {
-          "block": "minecraft:bush",
-          "weight": 35
+          "block": {
+            "id": "polishforests:crowberry",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "3"
+            }
+          },
+          "weight": 11
         },
         {
-          "block": "minecraft:pale_moss_carpet",
-          "weight": 10
+          "block": {
+            "id": "polishforests:crowberry",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "4"
+            }
+          },
+          "weight": 12
+        },
+        {
+          "block": {
+            "id": "polishforests:bilberry",
+            "properties": {
+              "berries": "false",
+              "mossy": "true"
+            }
+          },
+          "weight": 14
+        },
+        {
+          "block": {
+            "id": "polishforests:needle_litter",
+            "properties": {
+              "facing": "north",
+              "mossy": "true",
+              "segment_amount": "1"
+            }
+          },
+          "weight": 18
+        },
+        {
+          "block": {
+            "id": "polishforests:heather",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "2"
+            }
+          },
+          "weight": 2
+        },
+        {
+          "block": {
+            "id": "polishforests:heather",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "3"
+            }
+          },
+          "weight": 2
+        },
+        {
+          "block": {
+            "id": "polishforests:heather",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "4"
+            }
+          },
+          "weight": 4
+        },
+        {
+          "block": {
+            "id": "polishforests:reindeer_lichen",
+            "properties": {
+              "facing": "north",
+              "mossy": "false",
+              "segment_amount": "3"
+            }
+          },
+          "weight": 2
+        },
+        {
+          "block": {
+            "id": "polishforests:reindeer_lichen",
+            "properties": {
+              "facing": "north",
+              "mossy": "false",
+              "segment_amount": "4"
+            }
+          },
+          "weight": 4
+        },
+        {
+          "block": {
+            "id": "polishforests:needle_litter",
+            "properties": {
+              "facing": "north",
+              "mossy": "true",
+              "segment_amount": "2"
+            }
+          },
+          "weight": 2
+        },
+        {
+          "block": {
+            "id": "polishforests:needle_litter",
+            "properties": {
+              "facing": "north",
+              "mossy": "true",
+              "segment_amount": "3"
+            }
+          },
+          "weight": 2
+        },
+        {
+          "block": {
+            "id": "polishforests:needle_litter",
+            "properties": {
+              "facing": "north",
+              "mossy": "true",
+              "segment_amount": "4"
+            }
+          },
+          "weight": 4
+        }
+      ],
+      "scattered": [
+        {
+          "block": "minecraft:short_grass",
+          "weight": 2
         }
       ]
     },
@@ -1009,23 +1406,85 @@
       "biomes": [
         "moist_pine_forest"
       ],
-      "coverage": 0.9,
-      "patch": 4,
+      "coverage": 0.97,
+      "patch": 5,
+      "patch_shape": "blobs",
+      "plant_ground": "polishforests:mossy_podzol",
       "plants": [
         {
-          "block": "minecraft:moss_carpet",
-          "weight": 50
+          "block": "polishforests:purple_moor_grass",
+          "weight": 30
         },
         {
-          "block": "minecraft:bush",
-          "weight": 25
+          "block": {
+            "id": "polishforests:bilberry",
+            "properties": {
+              "berries": "false",
+              "mossy": "true"
+            }
+          },
+          "weight": 20
+        },
+        {
+          "block": {
+            "id": "polishforests:needle_litter",
+            "properties": {
+              "facing": "north",
+              "mossy": "true",
+              "segment_amount": "1"
+            }
+          },
+          "weight": 18
+        },
+        {
+          "block": "polishforests:sphagnum_carpet",
+          "weight": 14
+        },
+        {
+          "block": {
+            "id": "polishforests:needle_litter",
+            "properties": {
+              "facing": "north",
+              "mossy": "true",
+              "segment_amount": "2"
+            }
+          },
+          "weight": 2
+        },
+        {
+          "block": {
+            "id": "polishforests:needle_litter",
+            "properties": {
+              "facing": "north",
+              "mossy": "true",
+              "segment_amount": "3"
+            }
+          },
+          "weight": 2
+        },
+        {
+          "block": {
+            "id": "polishforests:needle_litter",
+            "properties": {
+              "facing": "north",
+              "mossy": "true",
+              "segment_amount": "4"
+            }
+          },
+          "weight": 2
+        }
+      ],
+      "scattered": [
+        {
+          "block": "polishforests:labrador_tea",
+          "weight": 3
         },
         {
           "block": "minecraft:fern",
-          "weight": 12
+          "weight": 2
         },
         {
-          "block": "minecraft:large_fern",
+          "block": "polishforests:bog_bilberry",
           "weight": 3
         }
       ]

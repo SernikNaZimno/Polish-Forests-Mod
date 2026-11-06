@@ -250,7 +250,7 @@ public final class PlantLayerFeature implements Feature {
 					// rule (the mossy podzol in the pine forests, the turf in the mixed forest): on bare podzol the plants
 					// and their patches read as orange plates (CP-B).
 					at.move(Direction.DOWN);
-					if (level.getBlockState(at).is(Blocks.PODZOL)) {
+					if (turns(level.getBlockState(at), ground)) {
 						level.setBlock(at, ground, Block.UPDATE_CLIENTS);
 					}
 				}
@@ -280,10 +280,19 @@ public final class PlantLayerFeature implements Feature {
 				continue;
 			}
 			at.set(pos.getMinBlockX() + (column >> 4), habitats.top()[column], pos.getMinBlockZ() + (column & 15));
-			if (level.getBlockState(at).is(Blocks.PODZOL)) {
+			if (turns(level.getBlockState(at), plantGround[r])) {
 				level.setBlock(at, plantGround[r], Block.UPDATE_CLIENTS);
 			}
 		}
+	}
+
+	/**
+	 * Whether the ground block {@code here} turns into the plant ground of a rule: the podzol (rounds 1 and 2 of the V12
+	 * review); step F4: the moss block of the bog peat into the sphagnum block (only for that plant ground, so the moss
+	 * blocks under the other rules stay).
+	 */
+	private static boolean turns(BlockState here, BlockState ground) {
+		return here.is(Blocks.PODZOL) || here.is(Blocks.MOSS_BLOCK) && ground.is(pl.polishforests.block.ModBlocks.sphagnumBlock());
 	}
 
 	/** The ground block of the rule of a column for its placed plant, or null when the ground stays. */

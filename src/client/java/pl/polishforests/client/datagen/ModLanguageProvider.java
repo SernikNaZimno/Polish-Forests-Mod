@@ -267,11 +267,19 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 				case GLANDULAR_TOOTHWORT -> polish ? "Żywiec gruczołowaty" : "Glandular Toothwort";
 				case WHITE_WOOD_RUSH -> polish ? "Kosmatka gajowa" : "White Wood-rush";
 				case PERENNIAL_HONESTY -> polish ? "Miesiącznica trwała" : "Perennial Honesty";
+				case REINDEER_LICHEN -> polish ? "Chrobotek reniferowy" : "Reindeer Lichen";
+				case HEATHER -> polish ? "Wrzos zwyczajny" : "Heather";
+				case CROWBERRY -> polish ? "Bażyna czarna" : "Crowberry";
+				case BOG_BILBERRY -> polish ? "Borówka bagienna" : "Bog Bilberry";
+				case LABRADOR_TEA -> polish ? "Bagno zwyczajne" : "Labrador Tea";
+				case PURPLE_MOOR_GRASS -> polish ? "Trzęślica modra" : "Purple Moor-grass";
 			});
 		}
 		builder.add(ModBlocks.bilberries(), polish ? "Czarne jagody" : "Bilberries");
 		builder.add(ModBlocks.forestMossCarpet(), polish ? "Dywan mchu leśnego" : "Forest Moss Carpet");
 		builder.add(ModBlocks.mossyPodzol(), polish ? "Omszona bielica" : "Mossy Podzol");
+		builder.add(ModBlocks.sphagnumCarpet(), polish ? "Dywan torfowców" : "Sphagnum Carpet");
+		builder.add(ModBlocks.sphagnumBlock(), polish ? "Torfowiec" : "Sphagnum Block");
 		builder.add(tagKey(ModBlockTagProvider.PINE_FULL_LOGS.location().getPath()), polish ? "Kłody sosnowe" : "Scots Pine Logs");
 		// Item tags (recipe viewers show their names): a species tag is named after the first trunk of the species.
 		Map<Species, TreeTrunk> first = new LinkedHashMap<>();

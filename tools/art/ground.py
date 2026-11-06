@@ -134,6 +134,30 @@ WHITE_WOOD_RUSH_LEAVES = [
 ]
 
 
+# Step F4: heather (Calluna vulgaris: dense twigs of tiny scale-like leaves, dark bronze-green, and short spikes of small
+# pink-purple bells in late summer) and crowberry (Empetrum nigrum: prostrate mats of needle-like rolled leaves, dark
+# glossy green, and round black berries from July).
+HEATHER_FLOWERS = [
+    ['01', '13', '12'],
+    ['010', '131', '020'],
+    ['11', '32'],
+]
+HEATHER_LEAVES = [
+    ['10101', '01210', '11311', '01210', '10101'],
+    ['1010', '0121', '1131', '0110'],
+    ['101', '131', '010'],
+]
+CROWBERRY_BERRIES = [
+    ['13', '12'],
+    ['31', '21'],
+]
+CROWBERRY_LEAVES = [
+    ['01110', '11211', '12311', '11211', '01110'],
+    ['0110', '1211', '1131', '0110'],
+    ['111', '121', '131'],
+]
+
+
 def _place(val, sprite, x0, y0, mapping, box):
     """Stamps a sprite (rows of digits) at (x0, y0) inside box = (x_lo, y_lo, x_hi, y_hi) (exclusive), writing
     mapping[ch] where the sprite has ch != '0'; returns the pixels written."""

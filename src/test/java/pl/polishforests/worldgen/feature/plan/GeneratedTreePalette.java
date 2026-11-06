@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import pl.polishforests.worldgen.habitat.Species;
+import pl.polishforests.worldgen.tree.TreeForm;
 
 /**
  * The tree palette of the generated data ({@code tree_stand.json}) as the tree stand resolves it for planning
@@ -19,6 +20,8 @@ final class GeneratedTreePalette {
 	final List<String> trees = new ArrayList<>();
 	/** Species of each tree index. */
 	final List<Species> species = new ArrayList<>();
+	/** Growth form of each tree index (step F4: {@code polishforests:tree/<species>/<form>}; NORMAL otherwise). */
+	final List<TreeForm.Kind> forms = new ArrayList<>();
 
 	private GeneratedTreePalette() {
 		List<TreeStandPlan.Rule> rules = new ArrayList<>();
@@ -87,9 +90,27 @@ final class GeneratedTreePalette {
 		if (t < 0) {
 			trees.add(id);
 			species.add(s);
+			forms.add(form(id));
 			t = trees.size() - 1;
 		}
 		return t;
+	}
+
+	private static TreeForm.Kind form(String id) {
+		String prefix = "polishforests:tree/";
+		if (id.startsWith(prefix)) {
+			String rest = id.substring(prefix.length());
+			int slash = rest.indexOf('/');
+			if (slash > 0) {
+				String name = rest.substring(slash + 1);
+				for (TreeForm.Kind k : TreeForm.Kind.values()) {
+					if (k.id().equals(name)) {
+						return k;
+					}
+				}
+			}
+		}
+		return TreeForm.Kind.NORMAL;
 	}
 
 	private static Species species(String id) {

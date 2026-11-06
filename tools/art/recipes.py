@@ -1535,6 +1535,68 @@ TEXTURES = [
             params=dict(form='stems', count=4, top=1, node=3, leaf=3, flowers=0,
                         colors=['#2f5424', '#3b662c', '#4a7836', '#45583a']),
             note='perennial honesty without flowers (step F3, spring and from July: the leaves, the pods hidden among them)'),
+    # Step F4: the ground layer of the pine forests, the bogs and the heath: the reindeer lichen as a litter of the vanilla
+    # leaf litter templates (the moss mat generator in its pale gray-green tones), heather and crowberry as flower beds
+    # (evergreen; the purple bells of the heather and the black berries of the crowberry in the full texture), the bog
+    # bilberry as the cross of the bilberry with its own berries and bells, Labrador tea and the purple moor-grass as
+    # one-block crosses with baked colors, and the sphagnum of the carpet and the ground block.
+    Texture('reindeer_lichen', 'plant', ground.forest_moss, 'reindeer_lichen/1', None,
+            params=dict(grain=2.0, colors=['#9aa292', '#a2aa99', '#aab1a0', '#b2b8a8', '#b9bfaf']),
+            note='reindeer lichen (Cladonia rangiferina, C. arbuscula; step F4, the dry pine forest and the heath): a mat of '
+                 'pale gray-white, slightly green branched cushions, tileable, not tinted'),
+    Texture('heather', 'plant', ground.flower_bed, 'heather/1', None,
+            params=dict(leaves=ground.HEATHER_LEAVES, flower_sprites=ground.HEATHER_FLOWERS, leaf_cover=0.7, flowers=3, halo=((1, 7),),
+                        colors=['#3e4e2f', '#485a35', '#53663b', '#5a5038', '#8e5a7c', '#a36a8e', '#b77ea0', '#5f7244']),
+            note='heather (Calluna vulgaris, step F4, the heath and the dry pine forest): dense twigs of tiny bronze-green '
+                 'scale leaves, short spikes of pink-purple bells (August, September)'),
+    Texture('heather_leaves', 'plant', ground.flower_bed, 'heather/1', None,
+            params=dict(leaves=ground.HEATHER_LEAVES, flower_sprites=ground.HEATHER_FLOWERS, leaf_cover=0.7, flowers=3, halo=((1, 7),),
+                        drop_flowers=True,
+                        colors=['#3e4e2f', '#485a35', '#53663b', '#5a5038', '#8e5a7c', '#a36a8e', '#b77ea0', '#5f7244']),
+            note='heather outside the flowering (step F4): the same evergreen twigs, no flowers'),
+    Texture('crowberry', 'plant', ground.flower_bed, 'crowberry/1', None,
+            params=dict(leaves=ground.CROWBERRY_LEAVES, flower_sprites=ground.CROWBERRY_BERRIES, leaf_cover=0.75, flowers=2, halo=((1, 7),),
+                        colors=['#344c2c', '#3a5531', '#406036', '#4a4a34', '#34343c', '#3e3e48', '#525462', '#3a5530']),
+            note='crowberry (Empetrum nigrum, step F4, the coastal pine forest and the raised bog): prostrate mats of dark '
+                 'glossy needle-like leaves, round black berries with a gray gloss (from July)'),
+    Texture('crowberry_leaves', 'plant', ground.flower_bed, 'crowberry/1', None,
+            params=dict(leaves=ground.CROWBERRY_LEAVES, flower_sprites=ground.CROWBERRY_BERRIES, leaf_cover=0.75, flowers=2, halo=((1, 7),),
+                        drop_flowers=True,
+                        colors=['#344c2c', '#3a5531', '#406036', '#4a4a34', '#34343c', '#3e3e48', '#525462', '#3a5530']),
+            note='crowberry without berries (step F4): the same evergreen mats'),
+    Texture('bog_bilberry', 'plant', plant_bilberry, 'bog_bilberry/1', None, tint='grass',
+            params=dict(stems=7, top=8, leafiness=0.7, zigzag=0.45, gray=(100, 176)),
+            note='bog bilberry dwarf shrub (Vaccinium uliginosum, step F4, the bog woodland): woodier, more branched and a '
+                 'little taller than the bilberry, cross model, grayscale for the grass tint'),
+    Texture('bog_bilberry_berries', 'plant', ground.berries, 'bog_bilberry_berries/1', None,
+            params=dict(count=5, rows=(9, 14), colors=['#2a3450', '#33405e', '#3c4a6c', '#4a5878']),
+            note='bog bilberry fruit (step F4): blue berries with a heavy frosty bloom, paler than the bilberry'),
+    Texture('bog_bilberry_flowers', 'plant', ground.bells, 'bog_bilberry_flowers/1', None,
+            params=dict(count=3, columns=((2, 4), (11, 13)), rows=(9, 12), colors=['#b09a92', '#d0b4b0', '#b8b490']),
+            expect={'colors': (3, 3), 'min_color_pixels': 1},
+            note='bog bilberry flowers (step F4, May): small nodding white-pink bells on the sides of the plant'),
+    Texture('labrador_tea', 'plant', ground.herb, 'labrador_tea/1', None,
+            params=dict(form='stems', count=3, top=1, node=3, leaf=2, flowers=3,
+                        colors=['#34482a', '#405832', '#4c663a', '#5a5a3c', '#8e9682', '#a0a692', '#b0b4a2']),
+            note='Labrador tea (Rhododendron tomentosum, step F4, the bog woodland): upright woody stems with narrow dark '
+                 'leathery leaves, rust-felted beneath, white umbels at the tips (May, June)'),
+    Texture('labrador_tea_leaves', 'plant', ground.herb, 'labrador_tea/1', None,
+            params=dict(form='stems', count=3, top=1, node=3, leaf=2, flowers=0,
+                        colors=['#34482a', '#405832', '#4c663a', '#5a5a3c']),
+            note='Labrador tea outside the flowering (step F4): the same evergreen stems'),
+    Texture('purple_moor_grass', 'plant', ground.herb, 'purple_moor_grass/1', None,
+            params=dict(form='tuft', count=14, reach=(3, 7), height=(9, 13), arch=0.6, flowers=3,
+                        colors=['#4c6436', '#58723c', '#668244', '#7a7448', '#4e3e58', '#604c6c', '#745e7e']),
+            note='purple moor-grass (Molinia caerulea, step F4, the moist pine forest): a dense tussock of gray-green leaves, '
+                 'narrow dark purple panicles on long stalks (July to September)'),
+    Texture('purple_moor_grass_leaves', 'plant', ground.herb, 'purple_moor_grass/1', None,
+            params=dict(form='tuft', count=14, reach=(3, 7), height=(9, 13), arch=0.6, flowers=0,
+                        colors=['#5a6c3c', '#687a44', '#76884c', '#7a7448']),
+            note='purple moor-grass without panicles (step F4, May, June and the autumn): the same tussock'),
+    Texture('sphagnum', 'plant', ground.forest_moss, 'sphagnum/1', None,
+            params=dict(grain=1.2, colors=['#768638', '#7d8e3d', '#849542', '#8b9c47', '#92a24c']),
+            note='sphagnum (Sphagnum spp., step F4, the bogs): a tileable mat of soft yellow-green star-shaped heads, '
+                 'brighter and yellower than the feather moss, for the carpet and the ground block'),
     Texture('forest_flower_stem', 'plant', ground.flower_stem, 'forest_flower_stem/1', None, tint='grass',
             params=dict(gray=(118, 150)),
             note='stem of the flower beds (column 0, rows 4-7 in game), grayscale for the grass tint'),

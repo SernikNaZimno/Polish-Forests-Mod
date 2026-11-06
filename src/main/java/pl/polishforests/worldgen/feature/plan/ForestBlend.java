@@ -46,13 +46,15 @@ public final class ForestBlend {
 	 * The forests of the blend, the forests with the trees of the tree planner (step F1): the zonal forests of the slice
 	 * transect Bśw → BMśw → LMśw → grąd (docs/04 §6, N15; {@link #TRANSECT}, their indices 0–3 kept), then the forests of
 	 * the steps F in their order (F1: the lowland beech forest; F2: the alder carr and the ash-alder forest; F3: the
-	 * upland fir forest and the Carpathian beech forest). Each step F
+	 * upland fir forest and the Carpathian beech forest; F4: the dry, the moist pine forest, the bog woodland and the
+	 * coastal pine forest). Each step F
 	 * appends its forests here, takes them off {@link #NEIGHBORS} and names their pairs in {@link #BLENDS}.
 	 */
 	public static final HabitatBiome[] FORESTS = {HabitatBiome.FRESH_PINE_FOREST, HabitatBiome.MIXED_PINE_FOREST,
 			HabitatBiome.MIXED_FOREST, HabitatBiome.OAK_HORNBEAM_FOREST, HabitatBiome.LOWLAND_BEECH_FOREST,
 			HabitatBiome.ALDER_CARR, HabitatBiome.ASH_ALDER_FOREST, HabitatBiome.UPLAND_FIR_FOREST,
-			HabitatBiome.MONTANE_BEECH_FOREST};
+			HabitatBiome.MONTANE_BEECH_FOREST, HabitatBiome.DRY_PINE_FOREST, HabitatBiome.MOIST_PINE_FOREST,
+			HabitatBiome.BOG_WOODLAND, HabitatBiome.COASTAL_PINE_FOREST};
 	/** The forests of the slice transect, the first four of {@link #FORESTS} (norm N15, {@code TransectPalettes}). */
 	public static final HabitatBiome[] TRANSECT = java.util.Arrays.copyOf(FORESTS, 4);
 	/** Index of the lowland beech forest in {@link #FORESTS} (step F1). */
@@ -63,6 +65,11 @@ public final class ForestBlend {
 	/** Indices of the upland fir forest and the Carpathian (montane) beech forest in {@link #FORESTS} (step F3). */
 	public static final int UPLAND_FIR = 7;
 	public static final int MONTANE_BEECH = 8;
+	/** Indices of the dry and the moist pine forest, the bog woodland and the coastal pine forest in {@link #FORESTS} (step F4). */
+	public static final int DRY_PINE = 9;
+	public static final int MOIST_PINE = 10;
+	public static final int BOG_WOODLAND = 11;
+	public static final int COASTAL_PINE = 12;
 	/**
 	 * Pairs of {@link #FORESTS} that mix in the blend's belt (bit b of entry a); the other pairs meet in the ramp of
 	 * {@link Ecotone}. The four forests of the transect all blend with each other (step Z1); the lowland beech forest (step
@@ -76,11 +83,19 @@ public final class ForestBlend {
 	 * passes into them on the uplands, its northern range edge), the Carpathian beech forest with the lowland beech forest,
 	 * the fir forest and the oak-hornbeam forest of the foothills; the fir forest and the fresh pine forest, and the
 	 * mountain forests with the montane spruce forest and the alpine meadows (not forests of the blend), meet in the ramp.
+	 * Step F4: the dry pine forest with the fresh and the mixed pine-oak forest (the poorer and drier sand), the moist pine
+	 * forest with them, the alder carr and the bog woodland (the wetter sites of the same poor sand), the bog woodland with
+	 * the fresh pine forest and the alder carr, the coastal pine forest with the fresh and the mixed pine-oak forest, the
+	 * bog woodland and the dry pine forest (the coastal belt behind the dunes); the heath, the raised bog and the gray dune
+	 * (no forests of the blend) meet them in the ramp.
 	 */
 	private static final int[] BLENDS = pairs(new int[][] {{0, 1}, {0, 2}, {0, 3}, {1, 2}, {1, 3}, {2, 3}, {BEECH, 3},
 			{BEECH, 2}, {BEECH, 1}, {ALDER_CARR, ASH_ALDER}, {ALDER_CARR, 0}, {ALDER_CARR, 1}, {ALDER_CARR, 2}, {ALDER_CARR, 3},
 			{ASH_ALDER, 1}, {ASH_ALDER, 2}, {ASH_ALDER, 3}, {ASH_ALDER, BEECH}, {UPLAND_FIR, BEECH}, {UPLAND_FIR, 3},
-			{UPLAND_FIR, 2}, {UPLAND_FIR, 1}, {MONTANE_BEECH, BEECH}, {MONTANE_BEECH, UPLAND_FIR}, {MONTANE_BEECH, 3}});
+			{UPLAND_FIR, 2}, {UPLAND_FIR, 1}, {MONTANE_BEECH, BEECH}, {MONTANE_BEECH, UPLAND_FIR}, {MONTANE_BEECH, 3},
+			{DRY_PINE, 0}, {DRY_PINE, 1}, {MOIST_PINE, 0}, {MOIST_PINE, 1}, {MOIST_PINE, ALDER_CARR}, {MOIST_PINE, BOG_WOODLAND},
+			{BOG_WOODLAND, 0}, {BOG_WOODLAND, ALDER_CARR}, {COASTAL_PINE, 0}, {COASTAL_PINE, 1}, {COASTAL_PINE, BOG_WOODLAND},
+			{COASTAL_PINE, DRY_PINE}});
 	/** Radius of the kernel (m·k). */
 	public static final double RADIUS = 48;
 	/** Spacing of the lattice (m·k); in blocks at least 2. */
@@ -91,12 +106,10 @@ public final class ForestBlend {
 	public static final long DRAW_SALT = 0x2B1E_7D5F_0C39L;
 	/**
 	 * Lowland woodlands next to the forests of {@link #FORESTS} whose trees those forests take over near them (trees only,
-	 * {@link #takeover}): pine forests of other sites, bog woodland, floodplain forests (the lowland beech forest until
-	 * step F1, the alder carr and the ash-alder forest until step F2, now forests of the blend).
+	 * {@link #takeover}): floodplain forests (the lowland beech forest until step F1, the alder carr and the ash-alder
+	 * forest until step F2, the pine forests of other sites and the bog woodland until step F4, now forests of the blend).
 	 */
-	private static final long NEIGHBORS = bits(HabitatBiome.DRY_PINE_FOREST, HabitatBiome.MOIST_PINE_FOREST,
-			HabitatBiome.COASTAL_PINE_FOREST, HabitatBiome.BOG_WOODLAND, HabitatBiome.ELM_ASH_FOREST,
-			HabitatBiome.WILLOW_POPLAR_FOREST);
+	private static final long NEIGHBORS = bits(HabitatBiome.ELM_ASH_FOREST, HabitatBiome.WILLOW_POPLAR_FOREST);
 	/**
 	 * Share of the slice forests among the land without a zone within the radius ({@link #takeover}) at which the takeover
 	 * starts, and at which it is complete (smoothstep between).
@@ -149,12 +162,15 @@ public final class ForestBlend {
 	/**
 	 * Forest site type of each forest's canonical code (the lowland beech forest: its fertile form, Galio-Fagetum; the
 	 * alder carr: the eutrophic Ribeso-Alnetum, Ol; the ash-alder forest: OlJ; step F3: the upland fir forest its
-	 * mesotrophic Abietetum polonicum, LMwyż, and the Carpathian beech forest its fertile Dentario glandulosae-Fagetum, LG).
+	 * mesotrophic Abietetum polonicum, LMwyż, and the Carpathian beech forest its fertile Dentario glandulosae-Fagetum, LG;
+	 * step F4: the dry pine forest Bs, the moist pine forest Bw, the bog woodland its pine form Bb, the coastal pine forest
+	 * behind the wind belt Bśw).
 	 */
 	private static final ForestSiteType[] SITES = {ForestSiteType.FRESH_CONIFEROUS, ForestSiteType.FRESH_MIXED_CONIFEROUS,
 			ForestSiteType.FRESH_MIXED_BROADLEAVED, ForestSiteType.FRESH_BROADLEAVED, ForestSiteType.FRESH_BROADLEAVED,
 			ForestSiteType.ALDER_SWAMP, ForestSiteType.ASH_ALDER_SWAMP, ForestSiteType.UPLAND_MIXED_BROADLEAVED,
-			ForestSiteType.MOUNTAIN_BROADLEAVED};
+			ForestSiteType.MOUNTAIN_BROADLEAVED, ForestSiteType.DRY_CONIFEROUS, ForestSiteType.MOIST_CONIFEROUS,
+			ForestSiteType.BOGGY_CONIFEROUS, ForestSiteType.FRESH_CONIFEROUS};
 	private static final byte[] MEMBER = new byte[64];
 
 	static {

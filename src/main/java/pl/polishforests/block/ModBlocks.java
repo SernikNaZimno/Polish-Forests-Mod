@@ -68,6 +68,9 @@ public final class ModBlocks {
 	/** Round 1 of the V12 review: the own moss carpet and the podzol under feather moss. */
 	private static Block forestMossCarpet;
 	private static Block mossyPodzol;
+	/** Step F4: the sphagnum of the bogs, a carpet and a ground block. */
+	private static Block sphagnumCarpet;
+	private static Block sphagnumBlock;
 	/** Step P1: the stripped thin trunks. */
 	private static final Map<StrippedTrunk, TrunkBlock> STRIPPED = new EnumMap<>(StrippedTrunk.class);
 	/** Step P2: the wood sets (the Scots pine's with the LITE blocks of V7). */
@@ -300,6 +303,15 @@ public final class ModBlocks {
 				WOODS.put(w, woodSet(w));
 			}
 		}
+		// Step F4, registered after the wood sets: the sphagnum of the bog woodland, the moist pine forest's hollows and the
+		// raised bog, a carpet over the peat and the ground block of the peat's living top (the plant layer turns the vanilla
+		// moss block of the bog peat into it; the terrain keeps its moss block).
+		sphagnumCarpet = block(SPHAGNUM_CARPET, CarpetBlock::new, BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_LIGHT_GREEN)
+				.strength(0.1F).sound(SoundType.MOSS_CARPET).pushReaction(PushReaction.POPPED));
+		item(SPHAGNUM_CARPET, sphagnumCarpet, new Item.Properties().compostable(ContextIntProviders.COMPOSTABLE_LOW));
+		sphagnumBlock = block(SPHAGNUM_BLOCK, Block::new, BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_LIGHT_GREEN)
+				.strength(0.1F).sound(SoundType.MOSS));
+		item(SPHAGNUM_BLOCK, sphagnumBlock, new Item.Properties().compostable(ContextIntProviders.COMPOSTABLE_MEDIUM));
 	}
 
 	/**
@@ -368,6 +380,19 @@ public final class ModBlocks {
 	public static final String FOREST_MOSS_CARPET = "forest_moss_carpet";
 	/** Block and item path of the podzol under feather moss (round 1 of the V12 review). */
 	public static final String MOSSY_PODZOL = "mossy_podzol";
+	/** Block and item paths of the sphagnum (step F4). */
+	public static final String SPHAGNUM_CARPET = "sphagnum_carpet";
+	public static final String SPHAGNUM_BLOCK = "sphagnum_block";
+
+	/** The sphagnum carpet over the peat of the bogs (step F4). */
+	public static Block sphagnumCarpet() {
+		return registered(sphagnumCarpet);
+	}
+
+	/** The sphagnum ground block, the living top of the peat (step F4). */
+	public static Block sphagnumBlock() {
+		return registered(sphagnumBlock);
+	}
 
 	/** The own moss carpet: the feather moss of the forest floor (round 1 of the V12 review). */
 	public static Block forestMossCarpet() {

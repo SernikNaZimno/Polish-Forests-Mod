@@ -177,6 +177,26 @@ class GroundPhasesTest {
 		assertEquals(1.0, shares(GroundPlant.CORALROOT, step(SubSeason.EARLY_SPRING, 2)).get(Look.NONE), 1e-9, "coralroot in March");
 	}
 
+	/** Step F4: the plants of the pine forests, the bogs and the heath. */
+	@Test
+	void plantsOfThePineForestsAndBogsOfStepF4() {
+		assertEquals(1.0, shares(GroundPlant.HEATHER, step(SubSeason.EARLY_AUTUMN, 1)).get(Look.FULL), 1e-9, "heather in IX");
+		assertEquals(1.0, shares(GroundPlant.HEATHER, step(SubSeason.MID_SUMMER, 0)).get(Look.LEAVES), 1e-9, "heather in VII");
+		assertEquals(1.0, shares(GroundPlant.CROWBERRY, step(SubSeason.MID_SUMMER, 2)).get(Look.FULL), 1e-9, "crowberry fruit");
+		assertEquals(1.0, shares(GroundPlant.CROWBERRY, step(SubSeason.MID_SPRING, 1)).get(Look.LEAVES), 1e-9);
+		assertEquals(1.0, shares(GroundPlant.LABRADOR_TEA, step(SubSeason.EARLY_SUMMER, 0)).get(Look.FULL), 1e-9, "ledum in VI");
+		assertEquals(1.0, shares(GroundPlant.BOG_BILBERRY, step(SubSeason.LATE_SPRING, 1)).get(Look.FLOWERING), 1e-9);
+		assertEquals(1.0, shares(GroundPlant.PURPLE_MOOR_GRASS, step(SubSeason.MID_SUMMER, 1)).get(Look.FULL), 1e-9, "panicles");
+		assertEquals(1.0, shares(GroundPlant.PURPLE_MOOR_GRASS, step(SubSeason.LATE_SPRING, 1)).get(Look.LEAVES), 1e-9);
+		assertEquals(1.0, shares(GroundPlant.PURPLE_MOOR_GRASS, step(SubSeason.MID_WINTER, 1)).get(Look.NONE), 1e-9);
+		for (SubSeason sub : SubSeason.values()) {
+			for (GroundPlant evergreen : new GroundPlant[] {GroundPlant.HEATHER, GroundPlant.CROWBERRY, GroundPlant.LABRADOR_TEA,
+					GroundPlant.BOG_BILBERRY, GroundPlant.REINDEER_LICHEN}) {
+				assertEquals(0.0, shares(evergreen, step(sub, 1)).get(Look.NONE), 1e-9, evergreen + " " + sub);
+			}
+		}
+	}
+
 	@Test
 	void shiftsAreSpreadEvenly() {
 		Map<Double, Integer> counts = new java.util.TreeMap<>();

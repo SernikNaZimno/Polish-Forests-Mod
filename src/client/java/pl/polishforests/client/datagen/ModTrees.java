@@ -53,6 +53,7 @@ import pl.polishforests.worldgen.habitat.Species;
 import pl.polishforests.worldgen.tree.AgeClass;
 import pl.polishforests.worldgen.tree.CrownLayer;
 import pl.polishforests.worldgen.tree.SpeciesShape;
+import pl.polishforests.worldgen.tree.TreeForm;
 
 /**
  * Tree and shrub features (docs/03-m2-biomy.md §8.4, decision PW-3 of docs/04-pionowy-wycinek.md). The placeholders of
@@ -80,7 +81,21 @@ final class ModTrees {
 	/** Species with a shrub feature (ivy is a climber, from M4). */
 	static final List<Species> SHRUBS = List.of(Species.DWARF_MOUNTAIN_PINE, Species.OSIER, Species.HAZEL, Species.JUNIPER,
 			Species.ALDER_BUCKTHORN, Species.BIRD_CHERRY);
-	/** Tree variants picked by the palettes. */
+	/**
+	 * Step F4: the growth forms of the planner's trees by site ({@link TreeForm}), {@code tree/<species>/<form>}: the low
+	 * crooked pine and birch of the bogs, the thin pine of the dry pine forest, the windswept pine of the coastal wind belt
+	 * and the birch of several stems of the birch bog woodland.
+	 */
+	static final List<Map.Entry<Species, TreeForm.Kind>> FORMS = List.of(Map.entry(Species.SCOTS_PINE, TreeForm.Kind.STUNTED),
+			Map.entry(Species.SCOTS_PINE, TreeForm.Kind.SLENDER), Map.entry(Species.SCOTS_PINE, TreeForm.Kind.WINDSWEPT),
+			Map.entry(Species.BIRCH, TreeForm.Kind.STUNTED), Map.entry(Species.BIRCH, TreeForm.Kind.MULTI_STEM));
+
+	/** The feature path of a growth form of a species ({@code tree/<species>/<form>}; the default form: {@code tree/<species>}). */
+	static String form(Species s, TreeForm.Kind form) {
+		return form == TreeForm.Kind.NORMAL ? s.path() : s.path() + "/" + form.id();
+	}
+
+	/** Tree variants picked by the palettes (step F4: the stunted Scots pine is no longer picked; its feature stays). */
 	static final String SCOTS_PINE_LOW = "tree_substitute/scots_pine_low";
 	static final String SPRUCE_STUNTED = "tree_substitute/spruce_stunted";
 	static final String SPRUCE_MEGA = "tree_substitute/spruce_mega";
@@ -130,6 +145,11 @@ final class ModTrees {
 		// Step V9: the procedural trees of the target keys (a lone mature canopy tree; the tree stand plans its trees itself).
 		for (Species s : PROCEDURAL) {
 			context.register(key(s.path()), new ProceduralTreeFeature(s, CrownLayer.CANOPY, AgeClass.MATURE));
+		}
+		// Step F4: the growth forms by site.
+		for (Map.Entry<Species, TreeForm.Kind> f : FORMS) {
+			context.register(key(form(f.getKey(), f.getValue())), new ProceduralTreeFeature(f.getKey(), CrownLayer.CANOPY, AgeClass.MATURE,
+					pl.polishforests.worldgen.tree.TreeSize.ONE, f.getValue()));
 		}
 		// Stunted Scots pine (bog woodland, raised bog, the low share of the dry pine forest and the wind belt): 3+2.
 		register(context, key(SCOTS_PINE_LOW), builder(Blocks.SPRUCE_LOG, new StraightTrunkPlacer(3, 2, 0), Blocks.SPRUCE_LEAVES,
@@ -200,7 +220,8 @@ final class ModTrees {
 					BlockPredicate.wouldSurvive(Blocks.OAK_SAPLING),
 					BlockPredicate.matchesBlocks(new Vec3i(0, -1, 0), List.of(Blocks.SAND, Blocks.GRAVEL)))));
 		}
-		if (path.equals(Species.SCOTS_PINE.substitutePath()) || path.equals(SCOTS_PINE_LOW)) {
+		if (path.equals(Species.SCOTS_PINE.substitutePath()) || path.equals(SCOTS_PINE_LOW)
+				|| path.startsWith(Species.SCOTS_PINE.path() + "/")) {
 			// Scots pine also on sand: it invades the gray dunes and stands at the edge of the coastal pine forest on bare
 			// sand (round 1 of the S8b review; without this the tree ecotone ended at the sand). The sand under the trunk
 			// becomes dirt (the vanilla soil provider).

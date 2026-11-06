@@ -51,6 +51,7 @@ import pl.polishforests.worldgen.habitat.HabitatBiome;
 import pl.polishforests.worldgen.habitat.Soil;
 import pl.polishforests.worldgen.habitat.Species;
 import pl.polishforests.worldgen.tree.SpeciesShape;
+import pl.polishforests.worldgen.tree.TreeForm;
 import pl.polishforests.worldgen.habitat.Zone;
 
 /**
@@ -95,6 +96,22 @@ final class ModVegetation {
 		return "deadwood/" + s.id();
 	}
 
+	/**
+	 * Step F4: the dead trees and the stumps of the growth forms ({@code deadwood/<species>/<form>},
+	 * {@code stump/<species>/<form>}): the snags of the thin pines of the dry pine forest, the low dead pines and birches
+	 * of the bog woodland.
+	 */
+	static final List<Map.Entry<Species, TreeForm.Kind>> DEADWOOD_FORMS = List.of(Map.entry(Species.SCOTS_PINE, TreeForm.Kind.SLENDER),
+			Map.entry(Species.SCOTS_PINE, TreeForm.Kind.STUNTED), Map.entry(Species.BIRCH, TreeForm.Kind.STUNTED));
+
+	static String deadwood(Species s, TreeForm.Kind form) {
+		return deadwood(s) + "/" + form.id();
+	}
+
+	static String stump(Species s, TreeForm.Kind form) {
+		return stump(s) + "/" + form.id();
+	}
+
 	static String deadwoodSubstitute(Species s) {
 		return "deadwood_substitute/" + s.id();
 	}
@@ -126,6 +143,10 @@ final class ModVegetation {
 		for (Species s : PROCEDURAL_DEADWOOD) {
 			context.register(ModTrees.key(deadwood(s)), new DeadwoodFeature(s, false));
 			context.register(ModTrees.key(stump(s)), new DeadwoodFeature(s, true));
+		}
+		for (Map.Entry<Species, TreeForm.Kind> f : DEADWOOD_FORMS) {
+			context.register(ModTrees.key(deadwood(f.getKey(), f.getValue())), new DeadwoodFeature(f.getKey(), false, f.getValue()));
+			context.register(ModTrees.key(stump(f.getKey(), f.getValue())), new DeadwoodFeature(f.getKey(), true, f.getValue()));
 		}
 		// Step V12: wood anemone and liverleaf (own blocks) besides the wildflowers (yellow anemone) and lily of the valley.
 		context.register(ModTrees.key(flowers("forest")), flowers(List.of(
@@ -220,12 +241,34 @@ final class ModVegetation {
 				.add(Species.SPRUCE, 582).add(Species.SPRUCE, ModTrees.SPRUCE_MEGA, 18).add(Species.FIR, 300).add(Species.ROWAN, 100);
 		t.rule(HabitatCondition.biomes(MONTANE_SPRUCE_FOREST).withAssociations(Association.GULLY_TALL_HERBS), 3)
 				.add(Species.SPRUCE, 700).add(Species.ROWAN, 300);
-		t.rule(HabitatCondition.biomes(COASTAL_PINE_FOREST).withAssociations(Association.STUNTED, Association.WINDSWEPT), 5)
-				.add(Species.SCOTS_PINE, ModTrees.SCOTS_PINE_LOW, 900).add(Species.BIRCH, 100);
-		t.rule(HabitatCondition.biomes(BOG_WOODLAND).withSiteTypes(ForestSiteType.BOGGY_MIXED_CONIFEROUS), 6)
-				.add(Species.BIRCH, 800).add(Species.SCOTS_PINE, ModTrees.SCOTS_PINE_LOW, 200);
-		t.rule(HabitatCondition.biomes(DRY_PINE_FOREST), 7).add(Species.SCOTS_PINE, 665)
-				.add(Species.SCOTS_PINE, ModTrees.SCOTS_PINE_LOW, 285).add(Species.BIRCH, 50);
+		// Step F4 (docs/04 "Projekt F4", research/06 §3.1-3.2, §4.1): the pine forests and the bog woodland with the trees
+		// of the planner in their growth forms by site (TreeForm). The wind belt of the coastal pine forest (Empetro nigri-
+		// Pinetum, the associations STUNTED and WINDSWEPT of the coast): low pines leaning away from the sea with banner
+		// crowns (5-15 m) and low birches, an open stand. The birch bog woodland (Vaccinio uliginosi-Betuletum pubescentis,
+		// the boggy mixed coniferous site type): downy birch 60-90%, often of two or three stems, with low pines. The dry
+		// pine forest (Cladonio-Pinetum): thin pines of 10-18 m (90-100%), an open canopy (40-60%), juniper in the
+		// regeneration. The chances stay at or below those of the slice forests (TreeStandPlan.surelyTreeless).
+		t.planned(HabitatCondition.biomes(COASTAL_PINE_FOREST).withAssociations(Association.STUNTED, Association.WINDSWEPT), 6)
+				.form(Species.SCOTS_PINE, TreeForm.Kind.WINDSWEPT, 860).form(Species.BIRCH, TreeForm.Kind.STUNTED, 140)
+				.managed().form(Species.SCOTS_PINE, TreeForm.Kind.WINDSWEPT, 900).form(Species.BIRCH, TreeForm.Kind.STUNTED, 100)
+				.subcanopy().form(Species.SCOTS_PINE, TreeForm.Kind.WINDSWEPT, 600).form(Species.BIRCH, TreeForm.Kind.STUNTED, 400)
+				.regeneration().add(Species.SCOTS_PINE, 400).add(Species.BIRCH, 300).add(Species.JUNIPER, 300)
+				.gapRegeneration().add(Species.SCOTS_PINE, 700).add(Species.BIRCH, 300)
+				.chances(new float[] {0.85F, 0.65F, 0.55F}, new float[] {0.75F, 0.75F, 0.75F}, 0.6F).subcanopyChance(0.3F);
+		t.planned(HabitatCondition.biomes(BOG_WOODLAND).withSiteTypes(ForestSiteType.BOGGY_MIXED_CONIFEROUS), 7)
+				.form(Species.BIRCH, TreeForm.Kind.MULTI_STEM, 760).form(Species.SCOTS_PINE, TreeForm.Kind.STUNTED, 240)
+				.managed().form(Species.BIRCH, TreeForm.Kind.MULTI_STEM, 720).form(Species.SCOTS_PINE, TreeForm.Kind.STUNTED, 280)
+				.subcanopy().form(Species.BIRCH, TreeForm.Kind.STUNTED, 700).form(Species.SCOTS_PINE, TreeForm.Kind.STUNTED, 300)
+				.regeneration().add(Species.BIRCH, 500).add(Species.ALDER_BUCKTHORN, 300).add(Species.SCOTS_PINE, 200)
+				.gapRegeneration().add(Species.BIRCH, 700).add(Species.SCOTS_PINE, 300)
+				.chances(new float[] {0.80F, 0.62F, 0.52F}, new float[] {0.70F, 0.70F, 0.70F}, 0.5F).subcanopyChance(0.3F);
+		t.planned(HabitatCondition.biomes(DRY_PINE_FOREST), 7).form(Species.SCOTS_PINE, TreeForm.Kind.SLENDER, 970)
+				.add(Species.BIRCH, 30)
+				.managed().form(Species.SCOTS_PINE, TreeForm.Kind.SLENDER, 985).add(Species.BIRCH, 15)
+				.subcanopy().form(Species.SCOTS_PINE, TreeForm.Kind.SLENDER, 800).add(Species.BIRCH, 200)
+				.regeneration().add(Species.SCOTS_PINE, 500).add(Species.JUNIPER, 300).add(Species.BIRCH, 200)
+				.gapRegeneration().add(Species.SCOTS_PINE, 800).add(Species.BIRCH, 200)
+				.chances(new float[] {0.85F, 0.62F, 0.52F}, new float[] {0.70F, 0.70F, 0.70F}, 0.6F).subcanopyChance(0.25F);
 		// The forests with the trees of the tree planner (the vertical slice, step V9 of docs/04-pionowy-wycinek.md, PW-3,
 		// and the forests of the steps F): procedural trees in the layered
 		// stand of the stand map (canopy, managed canopy, subcanopy, regeneration under the canopy and in canopy gaps) with
@@ -240,11 +283,31 @@ final class ModVegetation {
 				.add(Species.BIRCH, 150)
 				.gapRegeneration().add(Species.SCOTS_PINE, 600).add(Species.BIRCH, 400)
 				.chances(new float[] {0.93F, 0.70F, 0.60F}, new float[] {0.80F, 0.80F, 0.80F}, 0.6F);
-		t.rule(HabitatCondition.biomes(COASTAL_PINE_FOREST), 9).add(Species.SCOTS_PINE, 900).add(Species.BIRCH, 100);
-		t.rule(HabitatCondition.biomes(MOIST_PINE_FOREST), 10).add(Species.SCOTS_PINE, 650).add(Species.BIRCH, 250)
-				.add(Species.SPRUCE, 100);
-		t.rule(HabitatCondition.biomes(BOG_WOODLAND), 6).add(Species.SCOTS_PINE, ModTrees.SCOTS_PINE_LOW, 700)
-				.add(Species.BIRCH, 300);
+		// Step F4: the coastal pine forest behind the wind belt (pine 70-90% with birch), the moist pine forest (Molinio-
+		// Pinetum: pine 70-90%, downy birch 10-30%, spruce in the north-east by its range flag, else birch; the alder
+		// buckthorn in the shrub layer and the regeneration) and the pine bog woodland (Vaccinio uliginosi-Pinetum: low,
+		// crooked pines 60-90% of 6-15 m with low birches, closure 30-60%).
+		t.planned(HabitatCondition.biomes(COASTAL_PINE_FOREST), 9).add(Species.SCOTS_PINE, 820).add(Species.BIRCH, 180)
+				.managed().add(Species.SCOTS_PINE, 870).add(Species.BIRCH, 130)
+				.subcanopy().add(Species.BIRCH, 600).add(Species.SCOTS_PINE, 400)
+				.regeneration().add(Species.BIRCH, 350).add(Species.SCOTS_PINE, 300).add(Species.JUNIPER, 200).add(Species.ROWAN, 150)
+				.gapRegeneration().add(Species.SCOTS_PINE, 600).add(Species.BIRCH, 400)
+				.chances(new float[] {0.90F, 0.68F, 0.58F}, new float[] {0.78F, 0.78F, 0.78F}, 0.6F).subcanopyChance(0.4F);
+		t.planned(HabitatCondition.biomes(MOIST_PINE_FOREST), 10).add(Species.SCOTS_PINE, 760).add(Species.BIRCH, 180)
+				.alt(Species.SPRUCE, 60, Species.BIRCH)
+				.managed().add(Species.SCOTS_PINE, 820).add(Species.BIRCH, 150).alt(Species.SPRUCE, 30, Species.BIRCH)
+				.subcanopy().alt(Species.SPRUCE, 500, Species.BIRCH).add(Species.BIRCH, 400).add(Species.SCOTS_PINE, 100)
+				.regeneration().add(Species.ALDER_BUCKTHORN, 350).add(Species.BIRCH, 250).alt(Species.SPRUCE, 250, Species.BIRCH)
+				.add(Species.ROWAN, 150)
+				.gapRegeneration().add(Species.SCOTS_PINE, 500).add(Species.BIRCH, 500)
+				.chances(new float[] {0.92F, 0.70F, 0.60F}, new float[] {0.80F, 0.80F, 0.80F}, 0.6F).subcanopyChance(0.6F);
+		t.planned(HabitatCondition.biomes(BOG_WOODLAND), 6).form(Species.SCOTS_PINE, TreeForm.Kind.STUNTED, 780)
+				.form(Species.BIRCH, TreeForm.Kind.STUNTED, 220)
+				.managed().form(Species.SCOTS_PINE, TreeForm.Kind.STUNTED, 820).form(Species.BIRCH, TreeForm.Kind.STUNTED, 180)
+				.subcanopy().form(Species.SCOTS_PINE, TreeForm.Kind.STUNTED, 500).form(Species.BIRCH, TreeForm.Kind.STUNTED, 500)
+				.regeneration().add(Species.SCOTS_PINE, 400).add(Species.BIRCH, 400).add(Species.ALDER_BUCKTHORN, 200)
+				.gapRegeneration().add(Species.SCOTS_PINE, 600).add(Species.BIRCH, 400)
+				.chances(new float[] {0.75F, 0.60F, 0.50F}, new float[] {0.65F, 0.65F, 0.65F}, 0.5F).subcanopyChance(0.3F);
 		// The belt between them (PW-3): mixed pine-oak and mixed forest with the trees of the slice.
 		t.planned(HabitatCondition.biomes(MIXED_PINE_FOREST), 10).add(Species.SCOTS_PINE, 550).add(Species.OAK, 250)
 				.add(Species.BIRCH, 100).alt(Species.BEECH, 100, Species.SPRUCE)
@@ -417,8 +480,13 @@ final class ModVegetation {
 				.add(Species.SPRUCE, 100).add(Species.WHITE_WILLOW, 50, 1);
 		// Dwarf pine scrub: no trees but one stunted spruce per chunk (the shrubs come from the understory).
 		t.rule(HabitatCondition.biomes(DWARF_PINE_SCRUB), 1).add(Species.SPRUCE, ModTrees.SPRUCE_STUNTED, 1000);
-		t.rule(HabitatCondition.biomes(RAISED_BOG), 0.3F).add(Species.SCOTS_PINE, ModTrees.SCOTS_PINE_LOW, 1000);
-		t.rule(HabitatCondition.biomes(HEATH), 0.5F).add(Species.SCOTS_PINE, 600).add(Species.BIRCH, 400);
+		// Step F4: the lone trees of the raised bog (the low crooked pine of the planner) and of the heath (pine and birch of
+		// the planner, open-grown at the edges of the open land; the juniper comes from the understory): a rule without a
+		// layered stand, the canopy trees of the M2 pattern.
+		t.rule(HabitatCondition.biomes(RAISED_BOG), 0.3F).add(Species.SCOTS_PINE, ModTrees.form(Species.SCOTS_PINE, TreeForm.Kind.STUNTED),
+				1000);
+		t.rule(HabitatCondition.biomes(HEATH), 0.5F).add(Species.SCOTS_PINE, Species.SCOTS_PINE.path(), 600)
+				.add(Species.BIRCH, Species.BIRCH.path(), 400);
 		t.rule(HabitatCondition.biomes(WET_MEADOW), 0.1F).add(Species.BLACK_ALDER, 600).add(Species.WHITE_WILLOW, 400);
 		t.rule(HabitatCondition.biomes(HAY_MEADOW), 0.1F).add(Species.OAK, 500).add(Species.BIRCH, 300).add(Species.LINDEN, 200);
 		t.rule(HabitatCondition.biomes(GRAY_DUNE), 0.125F).add(Species.SCOTS_PINE, 1000);
@@ -533,6 +601,11 @@ final class ModVegetation {
 			target.add(new TreePalette.Entry(s, tree(path(s)), weight,
 					Optional.of(new TreePalette.Alternative(alternative, tree(path(alternative)))), 0));
 			return this;
+		}
+
+		/** Step F4: a tree of the planner in a growth form by site ({@code tree/<species>/<form>}). */
+		Trees form(Species s, TreeForm.Kind form, int weight) {
+			return add(s, ModTrees.form(s, form), weight, 0);
 		}
 
 		/** A species with its full weight, without the range ramp (a biome that already lies within its range). */
@@ -717,6 +790,28 @@ final class ModVegetation {
 		return Plant.block(ModBlocks.ground(g).defaultBlockState(), weight);
 	}
 
+	/** Step F4: reindeer lichen of 3–4 segments (the own block for the pale moss carpet of M2). */
+	private static Plant[] lichen(int weight) {
+		BlockState s = ModBlocks.ground(GroundPlant.REINDEER_LICHEN).defaultBlockState();
+		return new Plant[] {Plant.block(s.setValue(LeafLitterBlock.AMOUNT, 3), weight / 3),
+				Plant.block(s.setValue(LeafLitterBlock.AMOUNT, 4), weight - weight / 3)};
+	}
+
+	/** Step F4: heather of 2–4 tufts (the own block for the pink petals of M2). */
+	private static Plant[] heather(int weight) {
+		return bed(ModBlocks.ground(GroundPlant.HEATHER), weight);
+	}
+
+	/** Step F4: crowberry mats of 2–4. */
+	private static Plant[] crowberry(int weight) {
+		return bed(ModBlocks.ground(GroundPlant.CROWBERRY), weight);
+	}
+
+	/** Step F4: the bog bilberry, without the mossy underside (it stands on the sphagnum). */
+	private static Plant bogBilberry(int weight) {
+		return Plant.block(ModBlocks.ground(GroundPlant.BOG_BILBERRY).defaultBlockState(), weight);
+	}
+
 	/** Bracken, two blocks (step V12). */
 	private static Plant bracken(int weight) {
 		return Plant.block(ModBlocks.ground(GroundPlant.BRACKEN).defaultBlockState(), weight);
@@ -772,10 +867,30 @@ final class ModVegetation {
 				l.feature(deadwood(Species.SCOTS_PINE), 3), l.feature(deadwood(Species.BEECH), 2),
 				l.feature(stump(Species.SCOTS_PINE), stumpWeight(MIXED_FOREST, 10, 0.5)), l.feature(stump(Species.OAK), stumpWeight(MIXED_FOREST, 10, 0.4)),
 				l.feature(stump(Species.BEECH), stumpWeight(MIXED_FOREST, 10, 0.1)));
-		l.land(biomes(DRY_PINE_FOREST, COASTAL_PINE_FOREST, MOIST_PINE_FOREST), perChunk(0.3), 1,
-				l.feature(deadwoodSubstitute(Species.SCOTS_PINE), 9), l.feature(deadwoodSubstitute(Species.BIRCH), 1));
-		l.land(biomes(BOG_WOODLAND), perChunk(0.25), 1, l.feature(deadwoodSubstitute(Species.BIRCH), 6),
-				l.feature(deadwoodSubstitute(Species.SCOTS_PINE), 4));
+		// Step F4 (docs/04 "Projekt F4", N10): the dry pine forest with the snags of its thin pines (deadwood/scots_pine/
+		// slender: most of them die standing), the moist and the coastal pine forests with the logs and snags of pine and
+		// birch, the bog woodland with the low dead pines and birches (deadwood/<species>/stunted) standing and fallen into
+		// the sphagnum; the stumps of the managed stands by the same shares.
+		l.land(biomes(DRY_PINE_FOREST), deadwoodCoverage(DRY_PINE_FOREST), 1,
+				l.feature(deadwood(Species.SCOTS_PINE, TreeForm.Kind.SLENDER), 19), l.feature(deadwood(Species.BIRCH), 1),
+				l.feature(stump(Species.SCOTS_PINE, TreeForm.Kind.SLENDER), stumpWeight(DRY_PINE_FOREST, 20, 0.98)),
+				l.feature(stump(Species.BIRCH), stumpWeight(DRY_PINE_FOREST, 20, 0.02)));
+		l.land(biomes(MOIST_PINE_FOREST), deadwoodCoverage(MOIST_PINE_FOREST), 1, l.feature(deadwood(Species.SCOTS_PINE), 15),
+				l.feature(deadwood(Species.BIRCH), 4), l.feature(deadwood(Species.SPRUCE), 1),
+				l.feature(stump(Species.SCOTS_PINE), stumpWeight(MOIST_PINE_FOREST, 20, 0.85)),
+				l.feature(stump(Species.BIRCH), stumpWeight(MOIST_PINE_FOREST, 20, 0.15)));
+		l.land(biomes(COASTAL_PINE_FOREST), deadwoodCoverage(COASTAL_PINE_FOREST), 1, l.feature(deadwood(Species.SCOTS_PINE), 17),
+				l.feature(deadwood(Species.BIRCH), 3),
+				l.feature(stump(Species.SCOTS_PINE), stumpWeight(COASTAL_PINE_FOREST, 20, 0.9)),
+				l.feature(stump(Species.BIRCH), stumpWeight(COASTAL_PINE_FOREST, 20, 0.1)));
+		l.land(biomes(BOG_WOODLAND).withSiteTypes(ForestSiteType.BOGGY_MIXED_CONIFEROUS), deadwoodCoverage(BOG_WOODLAND), 1,
+				l.feature(deadwood(Species.BIRCH, TreeForm.Kind.STUNTED), 14), l.feature(deadwood(Species.SCOTS_PINE, TreeForm.Kind.STUNTED), 6),
+				l.feature(stump(Species.BIRCH, TreeForm.Kind.STUNTED), stumpWeight(BOG_WOODLAND, 20, 0.7)),
+				l.feature(stump(Species.SCOTS_PINE, TreeForm.Kind.STUNTED), stumpWeight(BOG_WOODLAND, 20, 0.3)));
+		l.land(biomes(BOG_WOODLAND), deadwoodCoverage(BOG_WOODLAND), 1, l.feature(deadwood(Species.SCOTS_PINE, TreeForm.Kind.STUNTED), 14),
+				l.feature(deadwood(Species.BIRCH, TreeForm.Kind.STUNTED), 6),
+				l.feature(stump(Species.SCOTS_PINE, TreeForm.Kind.STUNTED), stumpWeight(BOG_WOODLAND, 20, 0.8)),
+				l.feature(stump(Species.BIRCH, TreeForm.Kind.STUNTED), stumpWeight(BOG_WOODLAND, 20, 0.2)));
 		// Lowland beech forest (step F1, docs/04 §6 N10): the natural stands at the level of the reserves (L 06 §4.3, as the
 		// natural oak-hornbeam forest), the managed ones by the WISL means; the beech with its admixtures.
 		l.land(biomes(LOWLAND_BEECH_FOREST), deadwoodCoverage(LOWLAND_BEECH_FOREST), 1, l.feature(deadwood(Species.BEECH), 16),
@@ -832,9 +947,14 @@ final class ModVegetation {
 	 * a natural stand counts the norms of N10 (a broken tree is two objects; step V11, {@code StandCensusSimulationTest})
 	 * [S]. Each step F adds its forest.
 	 */
-	static final Map<HabitatBiome, Double> DEAD_TREES = Map.of(OAK_HORNBEAM_FOREST, 2.1, FRESH_PINE_FOREST, 0.92,
-			MIXED_PINE_FOREST, 1.3, MIXED_FOREST, 1.7, LOWLAND_BEECH_FOREST, 1.8, ALDER_CARR, 2.5, ASH_ALDER_FOREST, 1.8,
-			UPLAND_FIR_FOREST, 2.0, MONTANE_BEECH_FOREST, 2.2);
+	static final Map<HabitatBiome, Double> DEAD_TREES = Map.ofEntries(Map.entry(OAK_HORNBEAM_FOREST, 2.1),
+			Map.entry(FRESH_PINE_FOREST, 0.92), Map.entry(MIXED_PINE_FOREST, 1.3), Map.entry(MIXED_FOREST, 1.7),
+			Map.entry(LOWLAND_BEECH_FOREST, 1.8), Map.entry(ALDER_CARR, 2.5), Map.entry(ASH_ALDER_FOREST, 1.8),
+			Map.entry(UPLAND_FIR_FOREST, 2.0), Map.entry(MONTANE_BEECH_FOREST, 2.2),
+			// Step F4: the pine forests about as the natural fresh pine forest (Taborz), the bog woodland a little more (its
+			// short-lived birches and the pines dying in the wet years) [S].
+			Map.entry(DRY_PINE_FOREST, 0.9), Map.entry(MOIST_PINE_FOREST, 1.1), Map.entry(COASTAL_PINE_FOREST, 1.0),
+			Map.entry(BOG_WOODLAND, 1.2));
 	/** Stumps per chunk of a managed stand of the forests of the tree planner (WISL: 30-80 per ha, 1-2 per chunk) [S]. */
 	static final double STUMPS = 1.5;
 
@@ -892,8 +1012,12 @@ final class ModVegetation {
 		// (the forests of the tree planner without the M2 shrubs at their edges).
 		l.edge(biomes(UPLAND_FIR_FOREST, MONTANE_BEECH_FOREST), Ecotone.Edge.MANTLE, 0.2F, 1, l.feature(ModTrees.HAZEL_MANTLE, 1),
 				l.feature(ModTrees.SLICE.get(Species.HAZEL), 2), l.feature(ModTrees.SLICE.get(Species.ROWAN), 1));
-		l.edge(biomes(DRY_PINE_FOREST, COASTAL_PINE_FOREST, MOIST_PINE_FOREST, MONTANE_SPRUCE_FOREST), Ecotone.Edge.MANTLE, 0.05F,
-				1, l.feature(Species.JUNIPER.path(), 1));
+		// Step F4: the pine forests of the planner with the thin-stemmed juniper of the slice at their edges (the moist one
+		// also with the alder buckthorn).
+		l.edge(biomes(DRY_PINE_FOREST, COASTAL_PINE_FOREST), Ecotone.Edge.MANTLE, 0.05F, 1, l.feature(ModTrees.SLICE.get(Species.JUNIPER), 1));
+		l.edge(biomes(MOIST_PINE_FOREST), Ecotone.Edge.MANTLE, 0.08F, 1, l.feature(ModTrees.SLICE.get(Species.JUNIPER), 1),
+				l.feature(ModTrees.SLICE.get(Species.ALDER_BUCKTHORN), 1));
+		l.edge(biomes(MONTANE_SPRUCE_FOREST), Ecotone.Edge.MANTLE, 0.05F, 1, l.feature(Species.JUNIPER.path(), 1));
 		// Step F2: the mantles of the alder forests of the tree planner, the thin-stemmed shrubs of the slice: bird cherry and
 		// hazel by the ash-alder forest, alder buckthorn and the gray willow (the M2 osier) by the alder carr.
 		l.edge(biomes(ASH_ALDER_FOREST), Ecotone.Edge.MANTLE, 0.25F, 1, l.feature(ModTrees.SLICE.get(Species.BIRD_CHERRY), 2),
@@ -903,12 +1027,20 @@ final class ModVegetation {
 		l.edge(biomes(GRAY_ALDER_FOREST), Ecotone.Edge.MANTLE, 0.06F, 1, l.feature(Species.OSIER.path(), 3),
 				l.feature(Species.HAZEL.path(), 1));
 		l.edge(biomes(WILLOW_POPLAR_FOREST), Ecotone.Edge.MANTLE, 0.06F, 1, l.feature(Species.OSIER.path(), 1));
-		l.edge(biomes(BOG_WOODLAND), Ecotone.Edge.MANTLE, 0.02F, 1, l.feature(ModTrees.SCOTS_PINE_LOW, 2),
-				l.feature(Species.BIRCH.substitutePath(), 1));
+		// Step F4: the low crooked pines and birches of the planner at the edge of the bog woodland.
+		l.edge(biomes(BOG_WOODLAND), Ecotone.Edge.MANTLE, 0.02F, 1, l.feature(ModTrees.form(Species.SCOTS_PINE, TreeForm.Kind.STUNTED), 2),
+				l.feature(ModTrees.form(Species.BIRCH, TreeForm.Kind.STUNTED), 1));
 		// About 13 dwarf pines of 21–37 columns each per chunk: the crowns cover about 70% of the ground.
 		l.land(biomes(DWARF_PINE_SCRUB), 0.05F, 1, l.feature(Species.DWARF_MOUNTAIN_PINE.path(), 1));
 		l.land(biomes(HEATH), 0.01F, 3, l.feature(Species.JUNIPER.path(), 1));
-		l.land(biomes(DRY_PINE_FOREST), perChunk(1), 1, l.feature(Species.JUNIPER.path(), 1));
+		// Step F4 (N7): juniper 0-5% in the dry pine forest, the alder buckthorn (10-30%) in the moist one, a few in the bog
+		// woodland, juniper and rowan in the coastal pine forest; the thin-stemmed shrubs of the slice.
+		l.land(biomes(DRY_PINE_FOREST), perChunk(1), 1, l.feature(ModTrees.SLICE.get(Species.JUNIPER), 1));
+		l.land(biomes(MOIST_PINE_FOREST), perChunk(4), 1, l.feature(ModTrees.SLICE.get(Species.ALDER_BUCKTHORN), 3),
+				l.feature(ModTrees.SLICE.get(Species.JUNIPER), 1));
+		l.land(biomes(BOG_WOODLAND), perChunk(1), 1, l.feature(ModTrees.SLICE.get(Species.ALDER_BUCKTHORN), 1));
+		l.land(biomes(COASTAL_PINE_FOREST), perChunk(1.5), 1, l.feature(ModTrees.SLICE.get(Species.JUNIPER), 2),
+				l.feature(ModTrees.SLICE.get(Species.ROWAN), 1));
 		// Fresh pine forest (step V9, N7: shrub layer 5-30%): juniper, alder buckthorn and rowan.
 		// The slice (review of V9, round 1): the thin-stemmed placeholders.
 		l.land(biomes(FRESH_PINE_FOREST), perChunk(5), 1, l.feature(ModTrees.SLICE.get(Species.JUNIPER), 2),
@@ -1022,7 +1154,8 @@ final class ModVegetation {
 		// The own moss carpet of the broadleaved forests of the slice (round 1 of the V12 review: the vanilla one read as
 		// yellow-olive rugs); the other habitats keep the vanilla moss until M4.
 		Plant forestMoss = b(ModBlocks.forestMossCarpet(), 1);
-		Plant lichen = b(Blocks.PALE_MOSS_CARPET, 1);
+		// Step F4: the own sphagnum carpet of the bogs (the reindeer lichen replaces the pale moss carpet of M2).
+		Plant sphagnum = b(ModBlocks.sphagnumCarpet(), 1);
 		Plant dryGrass = b(Blocks.SHORT_DRY_GRASS, 1);
 		l.land(HabitatCondition.zones(Zone.HERB_FRINGE, Zone.TALL_HERBS, Zone.MONTANE_TALL_HERBS, Zone.WILLOW_SCRUB,
 				Zone.WILLOW_CARR, Zone.SPRING_AREA, Zone.SHORE_REEDBED, Zone.RIVERSIDE_WILLOWS, Zone.GRAVEL_BAR, Zone.POINT_BAR),
@@ -1033,14 +1166,14 @@ final class ModVegetation {
 		l.edge(biomes(HAY_MEADOW, ARABLE_LAND, ALPINE_GRASSLAND), Ecotone.Edge.FRINGE, 0.85F, 3, tallGrass.withWeight(45),
 				largeFern.withWeight(10), fern.withWeight(8), bush.withWeight(8), b(Blocks.OXEYE_DAISY, 5), b(Blocks.ROSE_BUSH, 3),
 				grass.withWeight(6));
-		l.edge(biomes(HEATH, GRAY_DUNE), Ecotone.Edge.FRINGE, 0.75F, 3, bush.withWeight(30), b(Blocks.TALL_DRY_GRASS, 20),
-				dryGrass.withWeight(15), tallGrass.withWeight(10), lichen.withWeight(10), grass.withWeight(5));
+		l.edge(biomes(HEATH, GRAY_DUNE), Ecotone.Edge.FRINGE, 0.75F, 3, cat(bush.withWeight(30), b(Blocks.TALL_DRY_GRASS, 20),
+				dryGrass.withWeight(15), tallGrass.withWeight(10), lichen(10), grass.withWeight(5)));
 		l.edge(biomes(WET_MEADOW, FEN, REEDBED), Ecotone.Edge.FRINGE, 0.85F, 3, tallGrass.withWeight(50),
 				largeFern.withWeight(20), fern.withWeight(10), bush.withWeight(8));
 		// The raised bog at the bog woodland: dwarf shrubs (marsh Labrador tea, bog bilberry, heather) on peat moss (round 1
-		// of the S8b review).
-		l.edge(biomes(RAISED_BOG), Ecotone.Edge.FRINGE, 0.75F, 3, cat(bush.withWeight(45), moss.withWeight(15),
-				bed(Blocks.PINK_PETALS, 10)));
+		// of the S8b review; step F4: the own blocks).
+		l.edge(biomes(RAISED_BOG), Ecotone.Edge.FRINGE, 0.75F, 3, cat(bogBilberry(25), herb(GroundPlant.LABRADOR_TEA, 20),
+				sphagnum.withWeight(15), heather(10)));
 		// Step F2 (docs/04 "Projekt F2", N8 60-90% and 70-100%, N9): the own herb layer of the alder forests in rounded
 		// patches. The alder carr (Ribeso nigri-Alnetum): the sedges of the tussocks (Carex elongata, C. elata), the marsh
 		// fern, the yellow iris and the marsh marigold (more of them by the water and the puddles, the waterside zones), the
@@ -1080,15 +1213,27 @@ final class ModVegetation {
 		// Fallow field (M2, fields with crops in M8): stubble as short dry grass, some grass, poppy and cornflower.
 		l.land(biomes(ARABLE_LAND), 0.45F, 2, dryGrass.withWeight(24), grass.withWeight(12), b(Blocks.POPPY, 4),
 				b(Blocks.CORNFLOWER, 4));
-		l.land(biomes(HEATH), 0.75F, 4, cat(bed(Blocks.PINK_PETALS, 40), lichen.withWeight(12), grass.withWeight(15),
-				dryGrass.withWeight(8), bush.withWeight(5)));
-		l.land(biomes(RAISED_BOG), 0.5F, 3, cat(bush.withWeight(31), grass.withWeight(10),
-				bed(Blocks.PINK_PETALS, 10)));
-		l.land(biomes(BOG_WOODLAND), 0.85F, 4, moss.withWeight(45), bush.withWeight(35), fern.withWeight(5));
-		// Dry pine forest: lichen, dwarf shrubs and dry grass in rounded patches with the bare sand and podzol scattered per
-		// column (round 2 of the V12 review: its square M2 cells read as grey and orange plates in the mixed coniferous
-		// forest of the gameplay transect, and the palette reaches it within the ecotone belt).
-		l.blobs(biomes(DRY_PINE_FOREST), 0.75F, 4, lichen.withWeight(55), bush.withWeight(17), dryGrass.withWeight(8));
+		// Step F4 (docs/04 "Projekt F4"): the heath of heather (the own block for the pink petals of M2) with the reindeer
+		// lichen, grasses and crowberry; the raised bog of sphagnum carpets, heather, crowberry, bog bilberry and the cotton
+		// grass as short grass, on the sphagnum ground (the moss block of the bog peat under every column of the rule turns
+		// into the sphagnum block).
+		l.land(biomes(HEATH), 0.75F, 4, cat(heather(40), lichen(12), grass.withWeight(15), dryGrass.withWeight(8), crowberry(5)));
+		l.blobs(biomes(RAISED_BOG), 0.6F, 3, cat(sphagnum.withWeight(20), heather(12), crowberry(10), bogBilberry(6),
+				grass.withWeight(10)), new Plant[0], ModBlocks.sphagnumBlock().defaultBlockState(), true);
+		// Step F4: the bog woodland (Vaccinio uliginosi-Pinetum, N8 40-80%: Labrador tea 20-60%, bog bilberry 20-50%; N9
+		// sphagnum 80-100%): the dwarf shrubs in rounded patches over the sphagnum ground (every column of the rule) with
+		// sphagnum carpets; the birch bog woodland with the purple moor-grass and more bog bilberry.
+		l.blobs(biomes(BOG_WOODLAND).withSiteTypes(ForestSiteType.BOGGY_MIXED_CONIFEROUS), 0.9F, 4, cat(bogBilberry(25),
+				herb(GroundPlant.PURPLE_MOOR_GRASS, 15), herb(GroundPlant.LABRADOR_TEA, 15), sphagnum.withWeight(20),
+				fern.withWeight(5)), new Plant[0], ModBlocks.sphagnumBlock().defaultBlockState(), true);
+		l.blobs(biomes(BOG_WOODLAND), 0.9F, 4, cat(herb(GroundPlant.LABRADOR_TEA, 30), bogBilberry(25), sphagnum.withWeight(15),
+				heather(5), bilberry(5, false)), new Plant[0], ModBlocks.sphagnumBlock().defaultBlockState(), true);
+		// Dry pine forest (step F4, Cladonio-Pinetum: N9 lichens 60-90%, N8 heather and cowberry 10-40%): the reindeer
+		// lichen in rounded patches with heather, some moss floor and needles, dry grass and the bare sand and podzol
+		// scattered per column (round 2 of the V12 review: its square M2 cells read as grey and orange plates in the mixed
+		// coniferous forest of the gameplay transect, and the palette reaches it within the ecotone belt).
+		l.blobs(biomes(DRY_PINE_FOREST), 0.9F, 4, cat(lichen(60), heather(15), mossFloor(8), needles(7, false)),
+				cat(dryGrass.withWeight(5)), null);
 		// The forests of the vertical slice (step V12, docs/04 §6 N8 and N9, decisions PW-6 and PW-7): own blocks, rounded
 		// patches (no square patches of litter and bare ground, CP-B), the ground nearly covered; the palette shares below are
 		// before the trees (the census measures about 0.87 of them in the pine forest, 0.7 in the oak-hornbeam forest).
@@ -1099,9 +1244,16 @@ final class ModVegetation {
 		// as orange squares); moss with the mossy underside about 91% of the columns, the herb layer about 54%.
 		l.blobs(biomes(FRESH_PINE_FOREST), 0.97F, 6, cat(bilberry(48, true), mossFloor(26), needles(17, true)),
 				cat(fern.withWeight(2), grass.withWeight(2), bracken(2)), ModBlocks.mossyPodzol().defaultBlockState());
-		l.land(biomes(COASTAL_PINE_FOREST), 0.8F, 4, moss.withWeight(35), bush.withWeight(35), lichen.withWeight(10));
-		l.land(biomes(MOIST_PINE_FOREST), 0.9F, 4, moss.withWeight(50), bush.withWeight(25), fern.withWeight(12),
-				largeFern.withWeight(3));
+		// Step F4: the coastal pine forest (Empetro nigri-Pinetum): the crowberry dominant with bilberry, heather, the moss
+		// floor and some lichen; the moist pine forest (Molinio-Pinetum, N8: the purple moor-grass in tussocks 40-80%, N9
+		// 50-80% with the sphagnum of the hollows): moor-grass, bilberry over moss, the moss floor and the sphagnum in
+		// rounded patches, Labrador tea, bog bilberry and ferns scattered per column; the plants without a mossy underside on
+		// the mossy podzol (as the fresh pine forest).
+		l.blobs(biomes(COASTAL_PINE_FOREST), 0.95F, 5, cat(crowberry(34), bilberry(14, true), mossFloor(18), heather(8), lichen(6),
+				needles(8, true)), cat(grass.withWeight(2)), ModBlocks.mossyPodzol().defaultBlockState());
+		l.blobs(biomes(MOIST_PINE_FOREST), 0.97F, 5, cat(herb(GroundPlant.PURPLE_MOOR_GRASS, 30), bilberry(20, true), mossFloor(18),
+				sphagnum.withWeight(14), needles(6, true)), cat(herb(GroundPlant.LABRADOR_TEA, 3), fern.withWeight(2), bogBilberry(3)),
+				ModBlocks.mossyPodzol().defaultBlockState());
 		// Mixed coniferous forest: less moss, leaf litter of the oaks, bracken as its indicator (about 10%, in stands whose
 		// fronds hide the ground); the bilberry over moss, fern, grass and the oak litter scattered per column on the
 		// mossy podzol (round 1 of the V12 review), the bracken stands on the mossy podzol too (round 2: its stands on the
@@ -1167,7 +1319,7 @@ final class ModVegetation {
 		l.land(biomes(ALPINE_GRASSLAND), 0.8F, 3, grass.withWeight(60), bush.withWeight(12), b(Blocks.AZURE_BLUET, 3),
 				b(Blocks.ALLIUM, 2), fern.withWeight(3));
 		l.land(biomes(WHITE_DUNE), 0.25F, 3, b(Blocks.TALL_DRY_GRASS, 5), dryGrass.withWeight(5));
-		l.land(biomes(GRAY_DUNE), 0.55F, 3, dryGrass.withWeight(25), lichen.withWeight(25), bush.withWeight(10),
+		l.land(biomes(GRAY_DUNE), 0.55F, 3, dryGrass.withWeight(25), b(Blocks.PALE_MOSS_CARPET, 25), bush.withWeight(10),
 				grass.withWeight(15));
 		return l.palette();
 	}
