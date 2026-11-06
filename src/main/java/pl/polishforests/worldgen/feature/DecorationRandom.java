@@ -34,6 +34,11 @@ public final class DecorationRandom {
 	 * tree's source, so a leaf that a neighbor chunk's object had displaced shifted the vines of the whole crown.
 	 */
 	public static final long VINE_SALT = 0x3B7E_C519_08F2_A6D3L;
+	/**
+	 * Salt of the hop on the trunks and shrubs of the floodplain forests ({@code feature.tree.hop}, a new salt of step F5,
+	 * {@link TreeHop}, {@link HopDecorator}): the draws of a tree's strands and of a shrub block's sides.
+	 */
+	public static final long HOP_SALT = 0x7A4D_E2B1_96C0_358FL;
 	/** Odd multiplier that spreads the height of a leaf over the salt (the golden ratio of 64 bits). */
 	private static final long HEIGHT_MIX = 0x9E37_79B9_7F4A_7C15L;
 

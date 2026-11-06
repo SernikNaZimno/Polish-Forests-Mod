@@ -49,7 +49,13 @@ public enum WoodSet {
 			new int[] {0x9a8a72, 0xbcac90, 0xc8b99c, 0xd2c4a8, 0xdccfb4}, 1.00, 2),
 	/** Sycamore maple (step F3): white to creamy, the lightest wood of the mod, a fine even grain with a silky sheen. */
 	SYCAMORE_MAPLE("sycamore_maple", TreeTrunk.SYCAMORE_MAPLE, StrippedTrunk.SYCAMORE_MAPLE, "Sycamore", "jaworow", "oak_planks",
-			new int[] {0xa39582, 0xc5b8a4, 0xd1c5b1, 0xdacfbc, 0xe2d8c6}, 0.75, 0);
+			new int[] {0xa39582, 0xc5b8a4, 0xd1c5b1, 0xdacfbc, 0xe2d8c6}, 0.75, 0),
+	/**
+	 * White willow (step F5): a light, soft wood, pinkish white sapwood around a pale reddish brown heartwood, a fine even
+	 * grain. The poplar keeps the vanilla poplar wood of 26.3 (D2, U-8).
+	 */
+	WHITE_WILLOW("white_willow", TreeTrunk.WHITE_WILLOW, StrippedTrunk.WHITE_WILLOW, "Willow", "wierzbow", "oak_planks",
+			new int[] {0x9a7f6c, 0xbaa08c, 0xc6ad99, 0xd0b8a4, 0xdac3b0}, 0.80, 1);
 
 	private final String prefix;
 	private final TreeTrunk trunk;

@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/cross",
+  "textures": {
+    "cross": "polishforests:block/white_willow_sapling"
+  }
+}

@@ -45,6 +45,12 @@ realistic natural any coastal_pine_natural_1 coastal_pine_forest -232815 -134607
 realistic natural any coastal_pine_natural_2 coastal_pine_forest -232675 -134647
 realistic managed any coastal_pine_managed_1 coastal_pine_forest -232795 -134467
 realistic managed any coastal_pine_managed_2 coastal_pine_forest -232955 -134747
+realistic natural any elm_ash_natural_1 elm_ash_forest -2140 10559
+realistic natural any elm_ash_natural_2 elm_ash_forest -2120 10719
+realistic managed any elm_ash_managed_1 elm_ash_forest -3264 3672
+realistic managed any elm_ash_managed_2 elm_ash_forest -10421 -4937
+realistic managed any willow_poplar_managed_1 willow_poplar_forest -11720 -9601
+realistic managed any willow_poplar_managed_2 willow_poplar_forest -11960 -9821
 gameplay natural any oak_hornbeam_natural_1 oak_hornbeam_forest -1785 886
 gameplay natural any oak_hornbeam_natural_2 oak_hornbeam_forest 1750 4061
 gameplay managed any oak_hornbeam_managed_1 oak_hornbeam_forest -1825 746

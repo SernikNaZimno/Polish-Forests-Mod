@@ -114,9 +114,12 @@ final class ModTrees {
 	 */
 	static final Map<Species, String> SLICE = Map.of(Species.HAZEL, "shrub/hazel_thin", Species.JUNIPER, "shrub/juniper_thin",
 			Species.ALDER_BUCKTHORN, "shrub/alder_buckthorn_thin", Species.ROWAN, "tree_substitute/rowan_thin",
-			Species.BIRD_CHERRY, "shrub/bird_cherry_thin");
+			Species.BIRD_CHERRY, "shrub/bird_cherry_thin", Species.OSIER, "shrub/osier_thin");
 	/** The taller hazel of the forest mantle of the slice (shrubs of 3-5 blocks along the forest edge). */
 	static final String HAZEL_MANTLE = "shrub/hazel_mantle_thin";
+	/** Step F5: the osier and the bird cherry with hop ({@link pl.polishforests.worldgen.feature.HopDecorator}). */
+	static final String OSIER_HOP = "shrub/osier_hop_thin";
+	static final String BIRD_CHERRY_HOP = "shrub/bird_cherry_hop_thin";
 
 	private ModTrees() {
 	}
@@ -195,6 +198,20 @@ final class ModTrees {
 				case LARGE -> new int[] {6, 2, 2};
 			};
 			register(context, key(pl.polishforests.block.TreeFoliage.BIRD_CHERRY.featurePath(z)), birdCherry(h[0], h[1], h[2], soil));
+		}
+		register(context, key(BIRD_CHERRY_HOP), hop(birdCherry(5, 2, 2, soil), 0.6F, 0.14F));
+		// Step F5: the osier of the floodplain forests and of the osier scrub: a dense clump of straight shoots of 3-6 blocks
+		// (up to three side stems around the main one, the pale bark of the white willow's thin trunk) with slender crowns of
+		// its own narrow leaves down the shoots (phase and leaf curve); with hop on part of the clumps of the floodplain.
+		register(context, key(SLICE.get(Species.OSIER)), osier(3, 2, 3, soil));
+		register(context, key(OSIER_HOP), hop(osier(3, 2, 3, soil), 0.5F, 0.16F));
+		for (pl.polishforests.block.SaplingSize z : pl.polishforests.block.SaplingSize.values()) {
+			int[] h = switch (z) {
+				case SMALL -> new int[] {2, 0, 1};
+				case MEDIUM -> new int[] {2, 1, 2};
+				case LARGE -> new int[] {4, 2, 3};
+			};
+			register(context, key(pl.polishforests.block.TreeFoliage.OSIER.featurePath(z)), osier(h[0], h[1], h[2], soil));
 		}
 		register(context, key(OAK_FANCY), fancy(Blocks.OAK_LOG, soil));
 		register(context, key(OAK_SMALL), blob(Blocks.OAK_LOG, Blocks.OAK_LEAVES, 4, 2, 0, 2, soil));
@@ -309,6 +326,20 @@ final class ModTrees {
 		return thinShrub(TreeTrunk.BLACK_ALDER, 1, new ClumpTrunkPlacer(base, rand, 0, stems),
 				ModBlocks.leaves(pl.polishforests.block.TreeFoliage.BIRD_CHERRY),
 				new FancyFoliagePlacer(ConstantInt.of(2), ConstantInt.of(0), 3), soil);
+	}
+
+	/** The osier of step F5: {@code stems} side shoots of a shoot of {@code base} + 0…{@code rand} blocks. */
+	private static TreeFeature osier(int base, int rand, int stems, Holder<BlockStateProvider> soil) {
+		return thinShrub(TreeTrunk.WHITE_WILLOW, 1, new ClumpTrunkPlacer(base, rand, 0, stems),
+				ModBlocks.leaves(pl.polishforests.block.TreeFoliage.OSIER),
+				new FancyFoliagePlacer(ConstantInt.of(1), ConstantInt.of(0), 3), soil);
+	}
+
+	/** A shrub with the hop decorator of step F5 (the same shape). */
+	private static TreeFeature hop(TreeFeature shrub, float shrubChance, float probability) {
+		return new TreeFeature(shrub.trunkProvider(), shrub.trunkPlacer(), shrub.foliageProvider(), shrub.foliagePlacer(),
+				shrub.rootPlacer(), shrub.minimumSize(), List.of(new pl.polishforests.worldgen.feature.HopDecorator(shrubChance,
+						probability)), shrub.ignoreVines(), shrub.belowTrunkProvider());
 	}
 
 	/** A placeholder of the slice on a thin stem: the thin trunk block of radius {@code radius} px, growing up. */

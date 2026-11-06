@@ -488,18 +488,69 @@
       ]
     },
     {
+      "associations": [
+        "populetum_albae"
+      ],
       "biomes": [
         "willow_poplar_forest"
       ],
-      "coverage": 0.0013671875,
+      "coverage": 0.0109375,
       "plants": [
         {
-          "feature": "polishforests:deadwood_substitute/poplar",
+          "feature": "polishforests:deadwood/poplar",
+          "weight": 11
+        },
+        {
+          "feature": "polishforests:deadwood/white_willow",
+          "weight": 6
+        },
+        {
+          "feature": "polishforests:deadwood/elm",
+          "weight": 3
+        },
+        {
+          "feature": "polishforests:stump/poplar",
+          "weight": 16
+        },
+        {
+          "feature": "polishforests:stump/white_willow",
           "weight": 5
         },
         {
-          "feature": "polishforests:deadwood_substitute/white_willow",
+          "feature": "polishforests:stump/elm",
+          "weight": 2
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "willow_poplar_forest"
+      ],
+      "coverage": 0.0109375,
+      "plants": [
+        {
+          "feature": "polishforests:deadwood/white_willow",
+          "weight": 14
+        },
+        {
+          "feature": "polishforests:deadwood/poplar",
           "weight": 5
+        },
+        {
+          "feature": "polishforests:deadwood/black_alder",
+          "weight": 1
+        },
+        {
+          "feature": "polishforests:stump/white_willow",
+          "weight": 12
+        },
+        {
+          "feature": "polishforests:stump/poplar",
+          "weight": 10
+        },
+        {
+          "feature": "polishforests:stump/black_alder",
+          "weight": 1
         }
       ]
     },
@@ -507,10 +558,42 @@
       "biomes": [
         "elm_ash_forest"
       ],
-      "coverage": 0.001171875,
+      "coverage": 0.01171875,
       "plants": [
         {
-          "feature": "polishforests:deadwood_substitute/oak",
+          "feature": "polishforests:deadwood/ash",
+          "weight": 7
+        },
+        {
+          "feature": "polishforests:deadwood/elm",
+          "weight": 6
+        },
+        {
+          "feature": "polishforests:deadwood/oak",
+          "weight": 5
+        },
+        {
+          "feature": "polishforests:deadwood/norway_maple",
+          "weight": 1
+        },
+        {
+          "feature": "polishforests:deadwood/linden",
+          "weight": 1
+        },
+        {
+          "feature": "polishforests:stump/oak",
+          "weight": 9
+        },
+        {
+          "feature": "polishforests:stump/ash",
+          "weight": 7
+        },
+        {
+          "feature": "polishforests:stump/elm",
+          "weight": 3
+        },
+        {
+          "feature": "polishforests:stump/norway_maple",
           "weight": 1
         }
       ]

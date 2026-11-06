@@ -157,6 +157,30 @@ CROWBERRY_LEAVES = [
     ['111', '121', '131'],
 ]
 
+# Step F5: the herb layer of the floodplain forests: the lesser celandine (Ficaria verna: rosettes of heart-shaped glossy
+# dark green leaves; glossy golden yellow star flowers of 8-12 petals, 2-3 cm, March-April) and the wild garlic (Allium
+# ursinum: two broad elliptic bright green leaves from the ground; white star flowers in a loose umbel, April-May).
+CELANDINE_FLOWERS = [
+    ['010', '131', '020'],
+    ['0110', '1312', '0220'],
+    ['11', '32'],
+]
+CELANDINE_LEAVES = [
+    ['01010', '11211', '12111', '11131', '01310'],
+    ['1010', '1211', '1131', '0130'],
+    ['101', '121', '131'],
+]
+GARLIC_FLOWERS = [
+    ['121', '232', '121'],
+    ['0120', '1312', '0210'],
+    ['12', '23'],
+]
+GARLIC_LEAVES = [
+    ['00110', '01211', '12110', '11310', '01300'],
+    ['01100', '11210', '01311', '00131'],
+    ['0110', '1211', '1131', '0310'],
+]
+
 
 def _place(val, sprite, x0, y0, mapping, box):
     """Stamps a sprite (rows of digits) at (x0, y0) inside box = (x_lo, y_lo, x_hi, y_hi) (exclusive), writing
@@ -517,6 +541,61 @@ def herb(tex, palettes):
                 put(bx + side * s, y + s - 1 if s > 1 else y, 5 if s < 3 else 4)
                 put(bx + side * s, y + s, 4, over=False)
             placed += 1
+    alpha = np.where(val >= 0, 255, 0).astype(np.uint8)
+    colors = [t.hex_to_rgb(c) for c in p['colors']]
+    return t.paint(np.clip(val, 0, len(colors) - 1), colors, alpha)
+
+
+def climber(tex, palettes):
+    """The hop of the floodplain forests (step F5, Humulus lupulus; the plane of vanilla's vine model by id, seen from the
+    side of the trunk it climbs, not tinted, the colors baked in): p['stems'] stems twining up the whole tile in a slow
+    wave (the hop winds clockwise round its support), with opposite three- to five-lobed rough leaves at every
+    p['node'] pixels and, with p['cones'] > 0, the pale green cones (2 x 3 px) hanging from the upper leaf axils (August,
+    September). The tile repeats up the trunk, so a stem leaves the top where it enters the bottom. The colors
+    p['colors']: 0-2 leaves (shade, body, light), 3 stem, 4-6 cone (shade, body, light)."""
+    p = tex.params
+    rng = t.Rng(tex.seed)
+    val = np.full((N, N), -1, int)
+
+    def put(x, y, tone, over=True):
+        x, y = x % N, y % N
+        if over or val[y, x] < 0:
+            val[y, x] = tone
+
+    lobes = [['010', '121', '111', '010'], ['0110', '1211', '1111', '0130'], ['101', '121', '131'],
+             ['01010', '11211', '11111', '01310']]
+    leaf_map = {'1': 1, '2': 2, '3': 0}
+    nodes = []
+    for i in range(p['stems']):
+        x0 = 3 + i * (N // p['stems']) + rng.integers(0, 2)
+        phase = rng.uniform(0, 2 * np.pi)
+        last = None
+        for y in range(N - 1, -1, -1):
+            # one full wave over the tile height, so the stem joins itself across the top and bottom edges
+            x = int(round(x0 + p['amp'] * np.sin(2 * np.pi * (N - 1 - y) / N + phase)))
+            put(x, y, 3)
+            if last is not None and abs(x - last) > 1:
+                put((x + last) // 2, y, 3)
+            last = x
+            if (y + i * 3) % p['node'] == 0:
+                nodes.append((x, y))
+    for x, y in nodes:
+        for side in (-1, 1):
+            spr = lobes[rng.integers(0, len(lobes))]
+            w = len(spr[0])
+            x1 = x + 1 if side > 0 else x - w
+            for dy, row in enumerate(spr):
+                for dx, ch in enumerate(row):
+                    if ch != '0':
+                        put(x1 + dx, y - 1 + dy, leaf_map[ch], over=False)
+    if p.get('cones', 0):
+        upper = [n for n in nodes]
+        for _ in range(p['cones']):
+            x, y = upper[rng.integers(0, len(upper))]
+            side = rng.choice([-1, 1])
+            cx = x + 2 * side
+            for dx, dy, tone in ((0, 0, 6), (1, 0, 6), (0, 1, 5), (1, 1, 5), (0, 2, 4), (1, 2, 4)):
+                put(cx + dx, y + 1 + dy, tone)
     alpha = np.where(val >= 0, 255, 0).astype(np.uint8)
     colors = [t.hex_to_rgb(c) for c in p['colors']]
     return t.paint(np.clip(val, 0, len(colors) - 1), colors, alpha)

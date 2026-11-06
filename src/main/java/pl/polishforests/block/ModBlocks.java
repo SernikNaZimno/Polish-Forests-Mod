@@ -265,6 +265,10 @@ public final class ModBlocks {
 				case HERB -> block(g.id(), p -> new SeasonalHerbBlock(g, p), BlockBehaviour.Properties.of().mapColor(MapColor.PLANT)
 						.replaceable().noCollision().instabreak().sound(SoundType.GRASS).offsetType(BlockBehaviour.OffsetType.XZ)
 						.ignitedByLava().pushReaction(PushReaction.POPPED));
+				// Step F5: the hop, a climber on trunks and shrubs as vanilla's vine.
+				case CLIMBER -> block(g.id(), p -> new ClimberBlock(g, p), BlockBehaviour.Properties.of().mapColor(MapColor.PLANT)
+						.replaceable().noCollision().strength(0.2F).sound(SoundType.VINE).ignitedByLava()
+						.pushReaction(PushReaction.POPPED));
 			};
 			Item.Properties props = new Item.Properties().compostable(g.kind() == GroundPlant.Kind.TALL
 					? ContextIntProviders.COMPOSTABLE_MEDIUM : ContextIntProviders.COMPOSTABLE_LOW);

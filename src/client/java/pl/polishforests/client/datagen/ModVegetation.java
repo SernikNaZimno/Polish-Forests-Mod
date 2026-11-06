@@ -231,12 +231,26 @@ final class ModVegetation {
 	static TreePalette treePalette(HolderGetter<PlacedFeature> placed) {
 		Trees t = new Trees(placed);
 		t.rule(HabitatCondition.zones(TREELESS_ZONES.toArray(Zone[]::new)), 0);
-		t.rule(HabitatCondition.zones(Zone.RIVERSIDE_WILLOWS), 6).add(Species.WHITE_WILLOW, 800, 1).add(Species.BLACK_ALDER, 200, 1);
+		// Step F5: the riverside willows and alders are trees of the planner (lone canopy trees of the zone, no stand rule;
+		// the planner writes no trunk on a water column, so they grow on the bank).
+		t.rule(HabitatCondition.zones(Zone.RIVERSIDE_WILLOWS), 6).add(Species.WHITE_WILLOW, Species.WHITE_WILLOW.path(), 800, 1)
+				.add(Species.BLACK_ALDER, Species.BLACK_ALDER.path(), 200, 1);
 		t.rule(HabitatCondition.zones(Zone.SHORE_ALDERS), 8).add(Species.BLACK_ALDER, 700, 1).add(Species.BIRCH, 300);
 		t.rule(HabitatCondition.zones(Zone.TREE_ROW), 8).add(Species.BLACK_ALDER, 1000, 1);
 		t.rule(HabitatCondition.zones(Zone.TIMBERLINE), 4).add(Species.SPRUCE, ModTrees.SPRUCE_STUNTED, 900).add(Species.ROWAN, 100);
-		t.rule(HabitatCondition.biomes(WILLOW_POPLAR_FOREST).withAssociations(Association.POPULETUM_ALBAE), 7)
-				.add(Species.WHITE_WILLOW, 400, 2).add(Species.POPLAR, 600);
+		// Step F5 (docs/04 "Projekt F5", research/06 §4.5): the white poplar forest (Populetum albae, on the higher and drier
+		// bars of the willow-poplar forest): a1 poplar 30-70% with white willow, elm, ash and alder; a2 of elm, willow and
+		// maple; the osier and the bird cherry in the regeneration; the managed stands with more poplar (the plantations).
+		t.planned(HabitatCondition.biomes(WILLOW_POPLAR_FOREST).withAssociations(Association.POPULETUM_ALBAE), 7)
+				.add(Species.POPLAR, 450).add(Species.WHITE_WILLOW, 350, 2).add(Species.ELM, 100).add(Species.ASH, 50)
+				.add(Species.BLACK_ALDER, 50)
+				.managed().add(Species.POPLAR, 650).add(Species.WHITE_WILLOW, 200, 2).add(Species.ELM, 80).add(Species.ASH, 70)
+				.subcanopy().add(Species.ELM, 400).add(Species.WHITE_WILLOW, 300).add(Species.BLACK_ALDER, 150)
+				.add(Species.NORWAY_MAPLE, 150)
+				.regeneration().add(Species.OSIER, 250).add(Species.BIRD_CHERRY, 250).add(Species.ELM, 150).add(Species.POPLAR, 150)
+				.add(Species.WHITE_WILLOW, 100).add(Species.HAZEL, 100)
+				.gapRegeneration().add(Species.POPLAR, 350).add(Species.WHITE_WILLOW, 250).add(Species.OSIER, 200).add(Species.ELM, 200)
+				.chances(new float[] {0.85F, 0.65F, 0.55F}, new float[] {0.82F, 0.82F, 0.82F}, 0.7F).subcanopyChance(0.4F);
 		t.rule(HabitatCondition.biomes(MONTANE_SPRUCE_FOREST).withAssociations(Association.ABIETI_PICEETUM), 12)
 				.add(Species.SPRUCE, 582).add(Species.SPRUCE, ModTrees.SPRUCE_MEGA, 18).add(Species.FIR, 300).add(Species.ROWAN, 100);
 		t.rule(HabitatCondition.biomes(MONTANE_SPRUCE_FOREST).withAssociations(Association.GULLY_TALL_HERBS), 3)
@@ -410,9 +424,34 @@ final class ModVegetation {
 				.gapRegeneration().add(Species.BLACK_ALDER, 300).add(Species.ASH, 250).add(Species.BIRD_CHERRY, 250)
 				.add(Species.ELM, 100).add(Species.BIRCH, 100)
 				.chances(new float[] {0.88F, 0.70F, 0.60F}, new float[] {0.90F, 0.90F, 0.90F}, 0.8F).subcanopyChance(0.6F);
-		t.rule(HabitatCondition.biomes(WILLOW_POPLAR_FOREST), 7).add(Species.WHITE_WILLOW, 700, 2).add(Species.POPLAR, 300);
-		t.rule(HabitatCondition.biomes(ELM_ASH_FOREST), 8).add(Species.OAK, 350).add(Species.ASH, 300).add(Species.ELM, 250)
-				.add(Species.NORWAY_MAPLE, 50).add(Species.LINDEN, 50);
+		// Step F5 (docs/04 "Projekt F5", research/06 §4.5, §9). The willow-poplar forest (Salicetum albae, the lowest terrace
+		// flooded every year): a1 white willow 50-80% (leaning and forked trunks) with poplar, alder and elm; an open canopy
+		// (N4 50-70%) and a weak a2 of willow, alder and elm; the osier, the young willows and the bird cherry in the
+		// regeneration and the gaps; the managed stands with more poplar.
+		t.planned(HabitatCondition.biomes(WILLOW_POPLAR_FOREST), 7)
+				.add(Species.WHITE_WILLOW, 650, 2).add(Species.POPLAR, 250).add(Species.BLACK_ALDER, 60).add(Species.ELM, 40)
+				.managed().add(Species.WHITE_WILLOW, 450, 2).add(Species.POPLAR, 450).add(Species.BLACK_ALDER, 60).add(Species.ELM, 40)
+				.subcanopy().add(Species.WHITE_WILLOW, 500).add(Species.BLACK_ALDER, 250).add(Species.ELM, 250)
+				.regeneration().add(Species.OSIER, 400).add(Species.WHITE_WILLOW, 200).add(Species.BIRD_CHERRY, 200)
+				.add(Species.POPLAR, 100).add(Species.ELM, 100)
+				.gapRegeneration().add(Species.WHITE_WILLOW, 300).add(Species.OSIER, 300).add(Species.POPLAR, 250)
+				.add(Species.BLACK_ALDER, 150)
+				.chances(new float[] {0.85F, 0.65F, 0.55F}, new float[] {0.80F, 0.80F, 0.80F}, 0.7F).subcanopyChance(0.4F);
+		// The elm-ash forest (Ficario-Ulmetum, the higher terrace flooded only in some years): a1 oak 20-50%, ash 20-50% and
+		// elm 10-40% with Norway maple and linden, a many-storied stand with an a2 of elm, maple and linden; the shrub layer
+		// of bird cherry and hazel (20-60%; the elder and the dogwood have no block yet, decision F5-d), the elm and the ash
+		// regenerating in the gaps of the Dutch elm disease and the ash dieback.
+		t.planned(HabitatCondition.biomes(ELM_ASH_FOREST), 10)
+				.add(Species.OAK, 330).add(Species.ASH, 300).add(Species.ELM, 220).add(Species.NORWAY_MAPLE, 80).add(Species.LINDEN, 70)
+				.managed().add(Species.OAK, 450).add(Species.ASH, 300).add(Species.ELM, 120).add(Species.NORWAY_MAPLE, 70)
+				.add(Species.LINDEN, 60)
+				.subcanopy().add(Species.ELM, 450).add(Species.NORWAY_MAPLE, 200).add(Species.LINDEN, 150)
+				.alt(Species.HORNBEAM, 100, Species.LINDEN).add(Species.ASH, 100)
+				.regeneration().add(Species.BIRD_CHERRY, 300).add(Species.ELM, 200).add(Species.HAZEL, 200).add(Species.ASH, 150)
+				.add(Species.NORWAY_MAPLE, 150)
+				.gapRegeneration().add(Species.ASH, 250).add(Species.BIRD_CHERRY, 250).add(Species.ELM, 200).add(Species.NORWAY_MAPLE, 150)
+				.add(Species.HAZEL, 150)
+				.chances(new float[] {0.88F, 0.70F, 0.60F}, new float[] {0.90F, 0.90F, 0.90F}, 0.8F).subcanopyChance(0.6F);
 		// Step F3 (docs/04 "Projekt F3", research/06 §3.3, §3.6, §3.8, §4.3, §9). Upland fir forest: a1 fir 50-90% (the
 		// biome lies within the fir range, so the fir keeps its full weight), a many-storied stand (a2 of fir with beech,
 		// the selection forest of the natural stands) and a dense regeneration of fir under the canopy and in the gaps
@@ -785,6 +824,16 @@ final class ModVegetation {
 		return bed(ModBlocks.ground(GroundPlant.MARSH_MARIGOLD), weight);
 	}
 
+	/** Lesser celandine tufts of 2–4 plants (step F5). */
+	private static Plant[] celandine(int weight) {
+		return bed(ModBlocks.ground(GroundPlant.LESSER_CELANDINE), weight);
+	}
+
+	/** Wild garlic tufts of 2–4 plants (step F5). */
+	private static Plant[] garlic(int weight) {
+		return bed(ModBlocks.ground(GroundPlant.WILD_GARLIC), weight);
+	}
+
 	/** A herb of one block of step F2 (iris, tussock sedge, marsh fern, nettle). */
 	private static Plant herb(GroundPlant g, int weight) {
 		return Plant.block(ModBlocks.ground(g).defaultBlockState(), weight);
@@ -935,9 +984,27 @@ final class ModVegetation {
 		// Gray alder forest: the gray bark of its gray alders (pale oak, §8.4), some spruce.
 		l.land(biomes(GRAY_ALDER_FOREST), perChunk(0.3), 1, l.feature(deadwoodSubstitute(Species.GRAY_ALDER), 8),
 				l.feature(deadwoodSubstitute(Species.SPRUCE), 2));
-		l.land(biomes(WILLOW_POPLAR_FOREST), perChunk(0.35), 1, l.feature(deadwoodSubstitute(Species.POPLAR), 5),
-				l.feature(deadwoodSubstitute(Species.WHITE_WILLOW), 5));
-		l.land(biomes(ELM_ASH_FOREST), perChunk(0.3), 1, l.feature(deadwoodSubstitute(Species.OAK), 1));
+		// Step F5 (docs/04 "Projekt F5", N10): the willow-poplar forest with its willows (the brittle old willows break and
+		// are thrown by the floods, a quarter of the dead willows uprooted) and poplars, the white poplar forest with more
+		// poplar; the elm-ash forest with oak, ash (the ash dieback) and elm (the Dutch elm disease: dying standing, the
+		// flares of the dead elms); the stumps of the managed stands by the same shares.
+		l.land(biomes(WILLOW_POPLAR_FOREST).withAssociations(Association.POPULETUM_ALBAE), deadwoodCoverage(WILLOW_POPLAR_FOREST), 1,
+				l.feature(deadwood(Species.POPLAR), 11), l.feature(deadwood(Species.WHITE_WILLOW), 6), l.feature(deadwood(Species.ELM), 3),
+				l.feature(stump(Species.POPLAR), stumpWeight(WILLOW_POPLAR_FOREST, 20, 0.7)),
+				l.feature(stump(Species.WHITE_WILLOW), stumpWeight(WILLOW_POPLAR_FOREST, 20, 0.2)),
+				l.feature(stump(Species.ELM), stumpWeight(WILLOW_POPLAR_FOREST, 20, 0.1)));
+		l.land(biomes(WILLOW_POPLAR_FOREST), deadwoodCoverage(WILLOW_POPLAR_FOREST), 1, l.feature(deadwood(Species.WHITE_WILLOW), 14),
+				l.feature(deadwood(Species.POPLAR), 5), l.feature(deadwood(Species.BLACK_ALDER), 1),
+				l.feature(stump(Species.WHITE_WILLOW), stumpWeight(WILLOW_POPLAR_FOREST, 20, 0.5)),
+				l.feature(stump(Species.POPLAR), stumpWeight(WILLOW_POPLAR_FOREST, 20, 0.45)),
+				l.feature(stump(Species.BLACK_ALDER), stumpWeight(WILLOW_POPLAR_FOREST, 20, 0.05)));
+		l.land(biomes(ELM_ASH_FOREST), deadwoodCoverage(ELM_ASH_FOREST), 1, l.feature(deadwood(Species.ASH), 7),
+				l.feature(deadwood(Species.ELM), 6), l.feature(deadwood(Species.OAK), 5), l.feature(deadwood(Species.NORWAY_MAPLE), 1),
+				l.feature(deadwood(Species.LINDEN), 1),
+				l.feature(stump(Species.OAK), stumpWeight(ELM_ASH_FOREST, 20, 0.45)),
+				l.feature(stump(Species.ASH), stumpWeight(ELM_ASH_FOREST, 20, 0.35)),
+				l.feature(stump(Species.ELM), stumpWeight(ELM_ASH_FOREST, 20, 0.15)),
+				l.feature(stump(Species.NORWAY_MAPLE), stumpWeight(ELM_ASH_FOREST, 20, 0.05)));
 		return l.palette();
 	}
 
@@ -954,7 +1021,10 @@ final class ModVegetation {
 			// Step F4: the pine forests about as the natural fresh pine forest (Taborz), the bog woodland a little more (its
 			// short-lived birches and the pines dying in the wet years) [S].
 			Map.entry(DRY_PINE_FOREST, 0.9), Map.entry(MOIST_PINE_FOREST, 1.1), Map.entry(COASTAL_PINE_FOREST, 1.0),
-			Map.entry(BOG_WOODLAND, 1.2));
+			Map.entry(BOG_WOODLAND, 1.2),
+			// Step F5: the elm-ash forest about as the ash-alder forest, the willow-poplar forest more (the short-lived,
+			// brittle willows and poplars, the floods) [S].
+			Map.entry(ELM_ASH_FOREST, 1.5), Map.entry(WILLOW_POPLAR_FOREST, 1.3));
 	/** Stumps per chunk of a managed stand of the forests of the tree planner (WISL: 30-80 per ha, 1-2 per chunk) [S]. */
 	static final double STUMPS = 1.5;
 
@@ -1007,7 +1077,6 @@ final class ModVegetation {
 		// the forests of the tree planner without the M2 shrubs at their edges).
 		l.edge(biomes(LOWLAND_BEECH_FOREST), Ecotone.Edge.MANTLE, 0.2F, 1, l.feature(ModTrees.HAZEL_MANTLE, 1),
 				l.feature(ModTrees.SLICE.get(Species.HAZEL), 2));
-		l.edge(biomes(ELM_ASH_FOREST), Ecotone.Edge.MANTLE, 0.06F, 1, l.feature(Species.HAZEL.path(), 1));
 		// Step F3: the mantles of the fir and the Carpathian beech forests, the thin-stemmed hazels and rowans of the slice
 		// (the forests of the tree planner without the M2 shrubs at their edges).
 		l.edge(biomes(UPLAND_FIR_FOREST, MONTANE_BEECH_FOREST), Ecotone.Edge.MANTLE, 0.2F, 1, l.feature(ModTrees.HAZEL_MANTLE, 1),
@@ -1020,13 +1089,20 @@ final class ModVegetation {
 		l.edge(biomes(MONTANE_SPRUCE_FOREST), Ecotone.Edge.MANTLE, 0.05F, 1, l.feature(Species.JUNIPER.path(), 1));
 		// Step F2: the mantles of the alder forests of the tree planner, the thin-stemmed shrubs of the slice: bird cherry and
 		// hazel by the ash-alder forest, alder buckthorn and the gray willow (the M2 osier) by the alder carr.
+		// Step F5: the osier of these mantles is the own osier (choice F2-h).
 		l.edge(biomes(ASH_ALDER_FOREST), Ecotone.Edge.MANTLE, 0.25F, 1, l.feature(ModTrees.SLICE.get(Species.BIRD_CHERRY), 2),
-				l.feature(ModTrees.SLICE.get(Species.HAZEL), 1), l.feature(Species.OSIER.path(), 1));
+				l.feature(ModTrees.SLICE.get(Species.HAZEL), 1), l.feature(ModTrees.SLICE.get(Species.OSIER), 1));
 		l.edge(biomes(ALDER_CARR), Ecotone.Edge.MANTLE, 0.2F, 1, l.feature(ModTrees.SLICE.get(Species.ALDER_BUCKTHORN), 2),
-				l.feature(Species.OSIER.path(), 1));
+				l.feature(ModTrees.SLICE.get(Species.OSIER), 1));
+		// Step F5: the mantles of the floodplain forests of the planner, the thin-stemmed shrubs: bird cherry and hazel (the
+		// elder, the dogwood and the hawthorn have no block yet, decision F5-d) by the elm-ash forest, the osier with and
+		// without hop and the bird cherry by the willow-poplar forest.
+		l.edge(biomes(ELM_ASH_FOREST), Ecotone.Edge.MANTLE, 0.25F, 1, l.feature(ModTrees.SLICE.get(Species.BIRD_CHERRY), 2),
+				l.feature(ModTrees.BIRD_CHERRY_HOP, 1), l.feature(ModTrees.HAZEL_MANTLE, 1), l.feature(ModTrees.SLICE.get(Species.HAZEL), 1));
 		l.edge(biomes(GRAY_ALDER_FOREST), Ecotone.Edge.MANTLE, 0.06F, 1, l.feature(Species.OSIER.path(), 3),
 				l.feature(Species.HAZEL.path(), 1));
-		l.edge(biomes(WILLOW_POPLAR_FOREST), Ecotone.Edge.MANTLE, 0.06F, 1, l.feature(Species.OSIER.path(), 1));
+		l.edge(biomes(WILLOW_POPLAR_FOREST), Ecotone.Edge.MANTLE, 0.25F, 1, l.feature(ModTrees.SLICE.get(Species.OSIER), 3),
+				l.feature(ModTrees.OSIER_HOP, 1), l.feature(ModTrees.SLICE.get(Species.BIRD_CHERRY), 1));
 		// Step F4: the low crooked pines and birches of the planner at the edge of the bog woodland.
 		l.edge(biomes(BOG_WOODLAND), Ecotone.Edge.MANTLE, 0.02F, 1, l.feature(ModTrees.form(Species.SCOTS_PINE, TreeForm.Kind.STUNTED), 2),
 				l.feature(ModTrees.form(Species.BIRCH, TreeForm.Kind.STUNTED), 1));
@@ -1048,7 +1124,13 @@ final class ModVegetation {
 		l.land(biomes(MIXED_PINE_FOREST, MIXED_FOREST), perChunk(1.5), 1, l.feature(ModTrees.SLICE.get(Species.HAZEL), 2),
 				l.feature(ModTrees.SLICE.get(Species.JUNIPER), 1));
 		l.land(biomes(OAK_HORNBEAM_FOREST), perChunk(3), 1, l.feature(ModTrees.SLICE.get(Species.HAZEL), 1));
-		l.land(biomes(ELM_ASH_FOREST), perChunk(3), 1, l.feature(Species.HAZEL.path(), 1));
+		// Step F5 (N7: the shrub layer 20-60%): the elm-ash forest with the bird cherry, part of it with hop, and the hazel
+		// (for the elder and the dogwood too, decision F5-d); the willow-poplar forest with the osier (Salix viminalis, S.
+		// triandra), part of it with hop, and the bird cherry.
+		l.land(biomes(ELM_ASH_FOREST), perChunk(8), 1, l.feature(ModTrees.SLICE.get(Species.BIRD_CHERRY), 3),
+				l.feature(ModTrees.BIRD_CHERRY_HOP, 1), l.feature(ModTrees.SLICE.get(Species.HAZEL), 2));
+		l.land(biomes(WILLOW_POPLAR_FOREST), perChunk(6), 1, l.feature(ModTrees.SLICE.get(Species.OSIER), 3),
+				l.feature(ModTrees.OSIER_HOP, 1), l.feature(ModTrees.SLICE.get(Species.BIRD_CHERRY), 1));
 		// Step F3 (N7): the fir forest's shrub layer is mostly its own regeneration (the planner trees); a few thin hazels
 		// and rowans; the Carpathian beech forest the same (the red-berried elder of its shrub layer has no block yet).
 		l.land(biomes(UPLAND_FIR_FOREST), perChunk(2), 1, l.feature(ModTrees.SLICE.get(Species.HAZEL), 2),
@@ -1061,7 +1143,7 @@ final class ModVegetation {
 		l.land(biomes(ASH_ALDER_FOREST), perChunk(7), 1, l.feature(ModTrees.SLICE.get(Species.BIRD_CHERRY), 4),
 				l.feature(ModTrees.SLICE.get(Species.HAZEL), 1));
 		l.land(biomes(ALDER_CARR), perChunk(7), 1, l.feature(ModTrees.SLICE.get(Species.ALDER_BUCKTHORN), 3),
-				l.feature(ModTrees.SLICE.get(Species.BIRD_CHERRY), 1), l.feature(Species.OSIER.path(), 1));
+				l.feature(ModTrees.SLICE.get(Species.BIRD_CHERRY), 1), l.feature(ModTrees.SLICE.get(Species.OSIER), 1));
 		// Gray dune: creeping willow as an osier.
 		l.land(biomes(GRAY_DUNE), 0.01F, 3, l.feature(Species.OSIER.path(), 1));
 		return l.palette();
@@ -1111,9 +1193,13 @@ final class ModVegetation {
 		Plant osier = l.feature(Species.OSIER.path(), 9);
 		Plant firefly = b(Blocks.FIREFLY_BUSH, 1);
 		// 16% of the columns (S7 review: with 11% the crowns covered 71-78% of the willow scrub in the realistic scale and
-		// 62% in the narrower scrub of the gameplay scale; §8.5: 80-100%).
-		l.land(HabitatCondition.zones(Zone.WILLOW_SCRUB), 0.16F, 2, osier, firefly);
-		l.land(biomes(WILLOW_SCRUB).withZones(Zone.NONE), 0.16F, 2, osier, firefly);
+		// 62% in the narrower scrub of the gameplay scale; §8.5: 80-100%). Step F5: the own osier (Salicetum triandro-
+		// viminalis), part of it with hop, at 18% of the columns (its clump of slender crowns covers a little less ground
+		// than the round M2 bush); the willow carr, the point bars and the gravel bars keep the M2 osier until F6/F7.
+		Plant ownOsier = l.feature(ModTrees.SLICE.get(Species.OSIER), 7);
+		Plant hopOsier = l.feature(ModTrees.OSIER_HOP, 2);
+		l.land(HabitatCondition.zones(Zone.WILLOW_SCRUB), 0.18F, 2, ownOsier, hopOsier, firefly);
+		l.land(biomes(WILLOW_SCRUB).withZones(Zone.NONE), 0.18F, 2, ownOsier, hopOsier, firefly);
 		l.land(HabitatCondition.zones(Zone.WILLOW_CARR), 0.08F, 2, osier, firefly);
 		l.land(HabitatCondition.zones(Zone.POINT_BAR), 0.02F, 1, osier);
 		Plant butterbur = Plant.column(Blocks.BIG_DRIPLEAF.defaultBlockState(), 1, 2, 1);
@@ -1157,6 +1243,10 @@ final class ModVegetation {
 		// Step F4: the own sphagnum carpet of the bogs (the reindeer lichen replaces the pale moss carpet of M2).
 		Plant sphagnum = b(ModBlocks.sphagnumCarpet(), 1);
 		Plant dryGrass = b(Blocks.SHORT_DRY_GRASS, 1);
+		// Step F5: the osier scrub and the riverside willows with their own tall herbs (the reed canary grass and the nettle,
+		// N8 70-100%) with tall grass and some hop-free bush.
+		l.land(HabitatCondition.zones(Zone.WILLOW_SCRUB, Zone.RIVERSIDE_WILLOWS), 0.88F, 3, cat(herb(GroundPlant.REED_CANARY_GRASS, 34),
+				herb(GroundPlant.NETTLE, 18), tallGrass.withWeight(30), largeFern.withWeight(8), bush.withWeight(6)));
 		l.land(HabitatCondition.zones(Zone.HERB_FRINGE, Zone.TALL_HERBS, Zone.MONTANE_TALL_HERBS, Zone.WILLOW_SCRUB,
 				Zone.WILLOW_CARR, Zone.SPRING_AREA, Zone.SHORE_REEDBED, Zone.RIVERSIDE_WILLOWS, Zone.GRAVEL_BAR, Zone.POINT_BAR),
 				0.85F, 3, tallGrass.withWeight(55), largeFern.withWeight(25), bush.withWeight(10), fern.withWeight(10));
@@ -1198,12 +1288,22 @@ final class ModVegetation {
 				litter(4)), cat(forestMoss.withWeight(4)), null);
 		l.land(biomes(GRAY_ALDER_FOREST), 0.88F, 3, tallGrass.withWeight(40), largeFern.withWeight(30),
 				fern.withWeight(12), bush.withWeight(10), grass.withWeight(3));
-		l.land(biomes(WILLOW_POPLAR_FOREST), 0.86F, 3, tallGrass.withWeight(55), largeFern.withWeight(20), bush.withWeight(12),
-				fern.withWeight(5), grass.withWeight(4));
-		l.land(biomes(ELM_ASH_FOREST), 0.88F, 3, cat(tallGrass.withWeight(45), largeFern.withWeight(25), fern.withWeight(8),
-				litter(10), bed(Blocks.WILDFLOWERS, 4), grass.withWeight(2)));
+		// Step F5 (docs/04 "Projekt F5", N8 70-100%, N9): the own herb layer of the floodplain forests in rounded patches.
+		// The willow-poplar forest (Salicetum albae): the nettle and the reed canary grass of the flood deposits dominant, the
+		// lesser celandine in spring, sedges and tall grass, no moss on the floor the floods cover with silt. The elm-ash forest
+		// (Ficario-Ulmetum): the lesser celandine carpets in spring (the name-giving Ficaria), the wild garlic in patches, the
+		// wood anemone, then the nettle in summer, ferns and the leaf litter; moss in small cushions scattered per column.
+		l.blobs(biomes(WILLOW_POPLAR_FOREST), 0.98F, 5, cat(herb(GroundPlant.NETTLE, 28), herb(GroundPlant.REED_CANARY_GRASS, 26),
+				celandine(6), herb(GroundPlant.TUSSOCK_SEDGE, 4), tallGrass.withWeight(8), largeFern.withWeight(4)),
+				cat(fern.withWeight(3)), null);
+		// The tall herbs (the nettle, tall grass and large fern) keep to the density rule of §4.6 (at least 60%); the spring
+		// geophytes fill the rest of the patches.
+		l.blobs(biomes(ELM_ASH_FOREST), 0.97F, 5, cat(herb(GroundPlant.NETTLE, 32), tallGrass.withWeight(10),
+				largeFern.withWeight(12), celandine(14), garlic(8), anemone(3), fern.withWeight(2), litter(3)),
+				cat(forestMoss.withWeight(3)), null);
 		l.land(biomes(REEDBED), 0.85F, 3, tallGrass.withWeight(80), largeFern.withWeight(10), grass.withWeight(5));
-		l.land(biomes(WILLOW_SCRUB), 0.8F, 3, tallGrass.withWeight(55), largeFern.withWeight(20), bush.withWeight(10));
+		l.land(biomes(WILLOW_SCRUB), 0.88F, 3, cat(herb(GroundPlant.REED_CANARY_GRASS, 34), herb(GroundPlant.NETTLE, 18),
+				tallGrass.withWeight(30), largeFern.withWeight(8), bush.withWeight(6)));
 		l.land(biomes(FEN), 0.75F, 3, tallGrass.withWeight(40), grass.withWeight(25), fern.withWeight(10), moss.withWeight(10),
 				b(Blocks.ALLIUM, 3));
 		l.land(biomes(WET_MEADOW), 0.85F, 3, tallGrass.withWeight(35), grass.withWeight(35), b(Blocks.ALLIUM, 4),

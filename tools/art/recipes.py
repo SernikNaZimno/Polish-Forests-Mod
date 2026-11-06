@@ -765,6 +765,18 @@ BROADLEAF_SPRITES = [
     ["021", "211", "113", "03"],
     ["0021", "2113", "130"],
 ]
+# Step F5: the white willow and the osier: long narrow lanceolate leaves hanging at angles (the silvery underside is in
+# the color curve of the species, FoliageCurve).
+WILLOW_SPRITES = [
+    ["2", "1", "1", "3"],
+    ["21", "01", "01", "03"],
+    ["20", "11", "01", "03"],
+    ["2100", "0110", "0013"],
+    ["0012", "0110", "3100"],
+    ["211", "0013"],
+    ["02", "21", "10", "30"],
+    ["2", "1", "1", "1", "3"],
+]
 
 
 def leaves_score(tex):
@@ -793,7 +805,8 @@ def leaves_broadleaf(tex, palettes):
     def build(seed):
         rng = t.Rng(seed)
         tone = t.fbm(rng, 2, 4, 4)
-        val = t.stamp(rng, BROADLEAF_SPRITES, p['opacity'], tone_field=tone, candidates=p.get('candidates', 1))
+        val = t.stamp(rng, p.get('sprites', BROADLEAF_SPRITES), p['opacity'], tone_field=tone,
+                      candidates=p.get('candidates', 1))
         alpha = np.where(val > 0, 255, 0).astype(np.uint8)
         idx = np.clip(val - 1, 0, 4)
         return t.paint(idx, t.gray_ramp(5, *p['gray']), alpha), None
@@ -994,6 +1007,12 @@ SYCAMORE_EXPECT = {'luma': (112, 142), 'dark': 0.05, 'grain': 1.5,
 # Step I1 (roots): the bark of the underground roots, one for every species (tree_root). Roots in the soil have a thin,
 # smooth brown bark with fine shallow fissures, warmer and smoother than the trunks (CP-A: smooth textures): the
 # furrowed recipe with shallow fissures only and small luma steps.
+# Step F5: the white willow, gray-brown with deep furrows crossing in a net of long narrow ridges (deeper and grayer
+# than the elm, without the oak's warm brown). The poplar takes the vanilla poplar log by id (decision F5-a).
+WILLOW = dict(lines=5, amp=1.5, wave=2, jitter=0.7, plate=(5, 10), cross='diag', band=3, furrow_tone=0, deep=0,
+              face_split=0.5, lums=(88, 100, 110, 120, 130, 136), right_tone=2, sat=0.07, hue=45, tries=48)
+WILLOW_EXPECT = {'luma': (100, 130), 'dark': 0.08, 'grain': 2.0,
+                 'distinct': (('elm_bark', 6), ('oak_bark', 6), ('black_alder_bark', 8), ('fir_bark', 4))}
 ROOT = dict(lines=5, amp=1.2, wave=3, jitter=0.5, plate=(4, 8), cross='diag', band=3, furrow_tone=1, deep=0,
             face_split=0.5, lums=(68, 79, 86, 93, 99, 103), right_tone=3, sat=0.36, hue=22, tries=48)
 ROOT_EXPECT = {'luma': (80, 100), 'dark': 0.02, 'grain': 1.5, 'distinct': (('oak_bark', 6), ('linden_bark', 8))}
@@ -1031,6 +1050,9 @@ STRIPPED_TRUNKS = [
      'stripped silver fir trunk: white to pale yellowish wood with a faint pink cast'),
     ('sycamore_maple', ['#dbd0ba', '#e0d5c0', '#e4dac6', '#e9dfcc'], {'luma': (190, 228), 'hue': (32, 54)},
      'stripped sycamore maple trunk: white to creamy wood with a silky sheen'),
+    # Step F5.
+    ('white_willow', ['#c9b29e', '#d0b9a6', '#d7c1ae', '#ddc8b6'], {'luma': (170, 210), 'hue': (18, 36)},
+     'stripped white willow trunk: the pinkish white wood of a fresh cut willow'),
 ]
 # Step P2 (decision U-8): the own wood sets of hornbeam, linden, beech, ash and Norway maple. Planks: the fallback texture
 # (the game derives the planks from the vanilla planks of the user's game, pl.polishforests.block.PlanksTexture; this
@@ -1059,6 +1081,9 @@ WOOD_PLANKS = [
      'silver fir planks: white to pale yellowish softwood, distinct latewood lines'),
     ('sycamore_maple', ['#a39582', '#c5b8a4', '#d1c5b1', '#dacfbc', '#e2d8c6'],
      'sycamore maple planks: the lightest wood, white to creamy with a fine even grain'),
+    # Step F5 (the poplar takes the vanilla poplar wood set, decision F5-a).
+    ('white_willow', ['#9a7f6c', '#baa08c', '#c6ad99', '#d0b8a4', '#dac3b0'],
+     'white willow planks: soft light pinkish-brown wood, even and fine'),
 ]
 # (name, pith, heartwood late and early, sapwood late and early, two bark tones, heart radius px, ring width px, note)
 WOOD_LOG_TOPS = [
@@ -1082,6 +1107,9 @@ WOOD_LOG_TOPS = [
      'silver fir log top: pale wood without a colored heartwood, wide rings with dark latewood, the gray bark border'),
     ('sycamore_maple', ['#ad9f88', '#c8bba4', '#d4c8b2', '#cdc0aa', '#ddd2bd', '#77706a', '#928a82'], 2.0, 1.9,
      'sycamore maple log top: white creamy wood with fine faint rings, the gray-brown bark border'),
+    # Step F5.
+    ('white_willow', ['#9c7e6a', '#b0927e', '#c0a28e', '#c6ad99', '#d4bca8', '#6e665c', '#887f74'], 3.0, 2.4,
+     'white willow log top: a light reddish-brown core in pinkish white sapwood, wide faint rings, the furrowed bark border'),
 ]
 STRIPPED_TRUNK_COLORS = {name: colors for name, colors, _expect, _note in STRIPPED_TRUNKS}
 SAPLING_SHAPE = dict(top=4, zigzag=0.2, shoots=3, shoot_gap=3, shoot_len=(2, 4), leaf_from=2, leaf_every=3, tries=64)
@@ -1113,6 +1141,16 @@ SAPLINGS = [
      'young silver fir: a gray stem with flat horizontal tiers of dark needles, the pale undersides at their edges'),
     ('sycamore_maple', dict(SAPLING_SHAPE, leaf='sycamore', leaf_every=2, colors=['#5e5446', '#7e7262', '#2e5c26', '#3d7230', '#55893f']),
      'young sycamore maple: large five-lobed dark green leaves on a gray-brown stem'),
+    # Step F5.
+    ('white_willow', dict(SAPLING_SHAPE, leaf='willow', leaf_every=2, zigzag=0.1,
+                          colors=['#6a6440', '#8c8450', '#5a7a5c', '#6e8e6c', '#8ca88a']),
+     'young white willow: narrow lanceolate silvery green leaves on a yellow-olive stem'),
+    ('poplar', dict(SAPLING_SHAPE, leaf='poplar', leaf_every=2, zigzag=0.0, shoot_len=(2, 3),
+                    colors=['#5e5a50', '#7e786c', '#2e5a22', '#3e702c', '#558838']),
+     'young poplar: broad ovate pointed glossy leaves on a straight gray stem'),
+    ('osier', dict(SAPLING_SHAPE, leaf='willow', leaf_every=2, zigzag=0.0, shoots=4, shoot_gap=2,
+                   colors=['#6e5a3c', '#907848', '#4e7258', '#628668', '#7e9e82']),
+     'young osier: straight yellow-brown rods with long narrow gray-green leaves'),
 ]
 
 
@@ -1277,6 +1315,11 @@ TWIG_SPECIES = [
     # Step F3.
     ('sycamore_maple', '#b4aba0', 0.27, 0.25, (8, 13), (3, 5), 0.40,
      'sycamore maple: stout gray-brown twigs, opposite forks, green buds'),
+    # Step F5.
+    ('white_willow', '#bebcb2', 0.27, 0.15, (9, 15), (3, 6), 0.40,
+     'white willow: long slender yellow-olive shoots, straight and flexible'),
+    ('poplar', '#bbb4a9', 0.24, 0.20, (8, 14), (3, 5), 0.35, 'poplar: stout gray-brown shoots with large pointed buds'),
+    ('osier', '#c2b6a0', 0.27, 0.10, (10, 16), (3, 5), 0.25, 'osier: long straight yellow-brown rods, few forks'),
 ]
 # The gray ramp of the twig tones (crossing, body, side twig, lit tip): V13 had 98-166; step Z2 126-184.
 TWIG_GRAY = (126, 184)
@@ -1285,7 +1328,8 @@ TWIG_GRAY = (126, 184)
 # twig_score per percentage point over it, and the seeds tried rise from 24 to TWIG_TRIES (the sparser tiles need more
 # to find one without an empty line); visible pixels hornbeam 33 -> 29%, linden 33 -> 29%, beech 38 -> 30%. Oak (27%:
 # a sparser oak tile came out in diagonal bands), birch, ash and maple keep their tiles.
-TWIG_TRIES = {'hornbeam': 96, 'linden': 96, 'beech': 96, 'bird_cherry': 96, 'sycamore_maple': 96}
+TWIG_TRIES = {'hornbeam': 96, 'linden': 96, 'beech': 96, 'bird_cherry': 96, 'sycamore_maple': 96, 'white_willow': 96,
+              'poplar': 96, 'osier': 96}
 TWIG_MAX_VISIBLE = {'hornbeam': 0.25, 'linden': 0.25, 'beech': 0.26}
 
 def upper_texture(tex, palettes):
@@ -1372,6 +1416,13 @@ TEXTURES = [
             note='elm: gray-brown, long deep furrows between corky ridges'),
     Texture('elm_bark_2', 'bark', bark_furrowed, 'elm_bark_2/1', 'oak_bark', variant_of='elm_bark', params=ELM,
             expect=ELM_EXPECT, palette_use='as elm_bark', note='second variant of the elm bark, same edge rows'),
+    # Step F5: the white willow (two variants).
+    Texture('white_willow_bark', 'bark', bark_furrowed, 'white_willow_bark/1', 'oak_bark', params=WILLOW,
+            expect=WILLOW_EXPECT, palette_use='hue of the oak bark photo, made grayer and darker by the recipe',
+            note='white willow: gray-brown, deep furrows crossing in a net of long narrow ridges'),
+    Texture('white_willow_bark_2', 'bark', bark_furrowed, 'white_willow_bark_2/1', 'oak_bark', variant_of='white_willow_bark',
+            params=WILLOW, expect=WILLOW_EXPECT, palette_use='as white_willow_bark',
+            note='second variant of the white willow bark, same edge rows'),
     # Step F3: the silver fir (two variants) and the sycamore maple (two).
     Texture('fir_bark', 'bark', bark_furrowed, 'fir_bark/1', 'linden_bark', params=FIR, expect=FIR_EXPECT,
             palette_use='hue of the linden bark photo, made paler, grayer and cooler by the recipe',
@@ -1410,6 +1461,12 @@ TEXTURES = [
             note='broadleaf leaves for the foliage tint and the species color curves (B6, V7); clumps spread over '
                  'the rows and columns (every one at least 7 of 16 pixels, V3 review round 1); the gray ramp moved '
                  'up by 7 (V7 review round 1: mean as vanilla oak_leaves, the same local contrast)'),
+    # Step F5: the narrow leaves of the white willow and the osier (the poplar takes broadleaf_leaves).
+    Texture('willow_leaves', 'leaves', leaves_broadleaf, 'willow_leaves/1', None, tint='foliage',
+            mcmeta=LEAVES_MCMETA, params=dict(opacity=0.6, gray=(112, 214), candidates=6, tries=32, sprites=WILLOW_SPRITES),
+            expect={'min_line': 7},
+            note='white willow and osier leaves for the foliage tint and the species color curves (step F5): long narrow '
+                 'lanceolate leaves hanging at angles, a looser crown than the broadleaf tile'),
     Texture('bilberry', 'plant', plant_bilberry, 'bilberry/2', 'bilberry', tint='grass',
             params=dict(stems=8, top=9, leafiness=0.75, zigzag=0.3, gray=(92, 180)),
             note='bilberry dwarf shrub, cross model, grayscale for the grass tint'),
@@ -1535,6 +1592,43 @@ TEXTURES = [
             params=dict(form='stems', count=4, top=1, node=3, leaf=3, flowers=0,
                         colors=['#2f5424', '#3b662c', '#4a7836', '#45583a']),
             note='perennial honesty without flowers (step F3, spring and from July: the leaves, the pods hidden among them)'),
+    # Step F5: the herb layer of the floodplain forests (tools/art/ground.py): the reed canary grass as a one-block cross
+    # with baked colors, the lesser celandine and the wild garlic as flower beds (spring geophytes, flowering and leaves
+    # only), the hop as a plane on the trunk (vanilla's vine model by id), with and without its cones.
+    Texture('reed_canary_grass', 'plant', ground.herb, 'reed_canary_grass/1', None,
+            params=dict(form='tuft', count=10, reach=(2, 5), height=(10, 14), arch=0.6, flowers=3,
+                        colors=['#4b6a3c', '#577846', '#668852', '#6a6440', '#6a5a62', '#827078', '#9a8a8a']),
+            note='reed canary grass (Phalaris arundinacea, step F5, the willow-poplar forest and the osier scrub): tall gray-green leaves, purplish panicles turning straw (June, July)'),
+    Texture('reed_canary_grass_leaves', 'plant', ground.herb, 'reed_canary_grass/1', None,
+            params=dict(form='tuft', count=10, reach=(2, 5), height=(10, 14), arch=0.6, flowers=0,
+                        colors=['#4b6a3c', '#577846', '#668852', '#6a6440']),
+            note='reed canary grass outside the flowering (step F5): the same tuft'),
+    Texture('lesser_celandine', 'plant', ground.flower_bed, 'lesser_celandine/1', None,
+            params=dict(leaves=ground.CELANDINE_LEAVES, flower_sprites=ground.CELANDINE_FLOWERS, leaf_cover=0.7, flowers=2, halo=((1, 7),),
+                        colors=['#3a6a2c', '#467a34', '#56883e', '#56603a', '#b89a28', '#d0b030', '#a8902e', '#7a9a44']),
+            note='lesser celandine (Ficaria verna, step F5, the elm-ash forest): rosettes of glossy heart-shaped dark green leaves, golden yellow star flowers (March, April)'),
+    Texture('lesser_celandine_leaves', 'plant', ground.flower_bed, 'lesser_celandine/1', None,
+            params=dict(leaves=ground.CELANDINE_LEAVES, flower_sprites=ground.CELANDINE_FLOWERS, leaf_cover=0.7, flowers=2, halo=((1, 7),),
+                        drop_flowers=True,
+                        colors=['#3e6c2e', '#487a36', '#56883e', '#56603a', '#b89a28', '#d0b030', '#a8902e', '#68903e']),
+            note='lesser celandine after the flowering (step F5, until it withdraws in May): the same leaves, no flowers'),
+    Texture('wild_garlic', 'plant', ground.flower_bed, 'wild_garlic/1', None,
+            params=dict(leaves=ground.GARLIC_LEAVES, flower_sprites=ground.GARLIC_FLOWERS, leaf_cover=0.7, flowers=2, halo=((1, 7),),
+                        colors=['#3c7230', '#488238', '#589442', '#56603a', '#98a690', '#b4bcaa', '#a8aa84', '#80aa60']),
+            note='wild garlic (Allium ursinum, step F5, the elm-ash forest): broad elliptic bright green leaves, white star flowers in loose umbels (April, May)'),
+    Texture('wild_garlic_leaves', 'plant', ground.flower_bed, 'wild_garlic/1', None,
+            params=dict(leaves=ground.GARLIC_LEAVES, flower_sprites=ground.GARLIC_FLOWERS, leaf_cover=0.7, flowers=2, halo=((1, 7),),
+                        drop_flowers=True,
+                        colors=['#3c7230', '#488238', '#589442', '#56603a', '#98a690', '#b4bcaa', '#a8aa84', '#6a9a4e']),
+            note='wild garlic outside the flowering (step F5, until it withdraws in June): the same broad leaves'),
+    Texture('hop', 'plant', ground.climber, 'hop/1', None,
+            params=dict(stems=2, amp=1.6, node=4, cones=4,
+                        colors=['#365e26', '#426e2e', '#527e38', '#4a5a2e', '#86a04e', '#9cb65e', '#b2c874']),
+            note='common hop (Humulus lupulus, step F5, on the trunks of the floodplain forests): twining stems, rough three- to five-lobed leaves, pale green cones (August, September)'),
+    Texture('hop_leaves', 'plant', ground.climber, 'hop/1', None,
+            params=dict(stems=2, amp=1.6, node=4, cones=0,
+                        colors=['#365e26', '#426e2e', '#527e38', '#4a5a2e']),
+            note='common hop without cones (step F5, May to July)'),
     # Step F4: the ground layer of the pine forests, the bogs and the heath: the reindeer lichen as a litter of the vanilla
     # leaf litter templates (the moss mat generator in its pale gray-green tones), heather and crowberry as flower beds
     # (evergreen; the purple bells of the heather and the black berries of the crowberry in the full texture), the bog

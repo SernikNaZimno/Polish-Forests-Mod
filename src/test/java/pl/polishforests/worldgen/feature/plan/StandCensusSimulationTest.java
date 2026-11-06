@@ -41,7 +41,8 @@ class StandCensusSimulationTest {
 			ForestNorms.A1_HEIGHT, ForestNorms.A2_HEIGHT, ForestNorms.A2_SHARE, ForestNorms.COMPOSITION + "oak",
 			ForestNorms.COMPOSITION + "linden", ForestNorms.COMPOSITION + "maple_ash", ForestNorms.COMPOSITION + "scots_pine",
 			ForestNorms.COMPOSITION + "birch", ForestNorms.COMPOSITION + "hornbeam", ForestNorms.COMPOSITION + "beech",
-			ForestNorms.COMPOSITION + "black_alder", ForestNorms.COMPOSITION + "elm", ForestNorms.COMPOSITION + "fir", ForestNorms.UNDERSTORY, ForestNorms.CANOPY, ForestNorms.GAP_SHARE, ForestNorms.GAP_DIAMETER,
+			ForestNorms.COMPOSITION + "black_alder", ForestNorms.COMPOSITION + "elm", ForestNorms.COMPOSITION + "fir",
+			ForestNorms.COMPOSITION + "white_willow", ForestNorms.COMPOSITION + "poplar", ForestNorms.UNDERSTORY, ForestNorms.CANOPY, ForestNorms.GAP_SHARE, ForestNorms.GAP_DIAMETER,
 			ForestNorms.REGENERATION_RATIO, ForestNorms.OAK_REGENERATION, ForestNorms.PINE_REGENERATION_UNDER_CANOPY,
 			ForestNorms.TOP_HEIGHT, ForestNorms.BARE_WOOD, ForestNorms.EXPOSED_WOOD, ForestNorms.BARE_ARMS,
 			ForestNorms.DEADWOOD_PER_CHUNK, ForestNorms.PIECES_PER_CHUNK, ForestNorms.LOGS_PER_CHUNK, ForestNorms.SNAGS_PER_CHUNK,
@@ -55,6 +56,10 @@ class StandCensusSimulationTest {
 		for (ForestNorms.Forest forest : ForestNorms.Forest.values()) {
 			HabitatBiome biome = forest.biome();
 			boolean natural = forest.natural();
+			if (biome.group() != HabitatBiome.Group.FOREST) {
+				// Step F5: the osier scrub is no stand of the planner (its shrubs are a plant layer).
+				continue;
+			}
 			// Step F2: the alder carr in its eutrophic and its sphagnum form (Ol and LMb).
 			ForestSiteType[] sites = biome == HabitatBiome.LOWLAND_BEECH_FOREST
 					? new ForestSiteType[] {ForestSiteType.FRESH_BROADLEAVED, ForestSiteType.FRESH_MIXED_BROADLEAVED}
@@ -70,11 +75,15 @@ class StandCensusSimulationTest {
 											// Step F4: the pine bog woodland and the birch bog woodland (Bb, BMb).
 											: biome == HabitatBiome.BOG_WOODLAND
 													? new ForestSiteType[] {ForestSiteType.BOGGY_CONIFEROUS, ForestSiteType.BOGGY_MIXED_CONIFEROUS}
-													: new ForestSiteType[] {ForestSiteType.NONE};
+													// Step F5: the willow forest and the white poplar forest (Populetum albae).
+													: biome == HabitatBiome.WILLOW_POPLAR_FOREST
+															? new ForestSiteType[] {ForestSiteType.NONE, ForestSiteType.NONE}
+															: new ForestSiteType[] {ForestSiteType.NONE};
 			for (int i = 0; i < sites.length; i++) {
 				ForestSiteType site = sites[i];
-				Association association = biome != HabitatBiome.MONTANE_BEECH_FOREST ? Association.TYPICAL
-						: i == 1 ? Association.ACIDOPHILOUS : i == 2 ? Association.SYCAMORE_RAVINE_FOREST : Association.TYPICAL;
+				Association association = biome == HabitatBiome.WILLOW_POPLAR_FOREST && i == 1 ? Association.POPULETUM_ALBAE
+						: biome != HabitatBiome.MONTANE_BEECH_FOREST ? Association.TYPICAL
+								: i == 1 ? Association.ACIDOPHILOUS : i == 2 ? Association.SYCAMORE_RAVINE_FOREST : Association.TYPICAL;
 				for (AgeClass age : AgeClass.values()) {
 					if (only.isBlank() || only.contains(biome.id() + (natural ? ":natural" : ":managed"))) {
 						report(forest, site, association, age);

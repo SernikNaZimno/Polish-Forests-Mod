@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=east": {
+      "model": "polishforests:block/hop",
+      "y": 90
+    },
+    "facing=north": {
+      "model": "polishforests:block/hop"
+    },
+    "facing=south": {
+      "model": "polishforests:block/hop",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "polishforests:block/hop",
+      "y": 270
+    }
+  }
+}

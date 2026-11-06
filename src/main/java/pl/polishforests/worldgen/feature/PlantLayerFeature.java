@@ -430,9 +430,10 @@ public final class PlantLayerFeature implements Feature {
 	 * when the tree belongs to a neighbor chunk, a vine decorated first took the place of the plant, and a plant placed
 	 * first stopped the vine above it, so the forest floor under the crown depended on the order of the chunks. A plant
 	 * that replaces the vine's lowest blocks leaves the same vine above it as a vine that met the plant, in both orders.
+	 * Step F5: the hop on trunks and shrubs likewise (it goes only on air, so a plant takes its place in both orders).
 	 */
 	static boolean open(BlockState state) {
-		return state.isAir() || state.is(Blocks.VINE);
+		return state.isAir() || state.is(Blocks.VINE) || state.getBlock() instanceof pl.polishforests.block.ClimberBlock;
 	}
 
 	private static boolean isWaterSource(BlockState state, FluidState fluid) {

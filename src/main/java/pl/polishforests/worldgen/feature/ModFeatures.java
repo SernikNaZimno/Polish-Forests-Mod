@@ -162,6 +162,8 @@ public final class ModFeatures {
 		Registry.register(BuiltInRegistries.PLACEMENT_MODIFIER_TYPE, PolishForests.id("lake_clearance"), LakeClearanceFilter.CODEC);
 		Registry.register(BuiltInRegistries.PLACEMENT_MODIFIER_TYPE, PolishForests.id("cave_opening"), CaveOpeningFilter.CODEC);
 		Registry.register(BuiltInRegistries.TRUNK_PLACER_TYPE, PolishForests.id("clump"), ClumpTrunkPlacer.TYPE);
+		// Step F5: the hop on the shrubs of the floodplain forests.
+		Registry.register(BuiltInRegistries.TREE_DECORATOR_TYPE, PolishForests.id("hop"), HopDecorator.TYPE);
 	}
 
 	/**

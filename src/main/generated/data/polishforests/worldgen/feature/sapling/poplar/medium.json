@@ -1,0 +1,9 @@
+{
+  "type": "polishforests:procedural_tree",
+  "size": {
+    "crown": 0.63,
+    "dbh": 0.63,
+    "height": 0.63
+  },
+  "species": "poplar"
+}

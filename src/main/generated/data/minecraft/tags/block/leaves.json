@@ -13,6 +13,9 @@
     "polishforests:elm_leaves",
     "polishforests:bird_cherry_leaves",
     "polishforests:fir_leaves",
-    "polishforests:sycamore_maple_leaves"
+    "polishforests:sycamore_maple_leaves",
+    "polishforests:white_willow_leaves",
+    "polishforests:poplar_leaves",
+    "polishforests:osier_leaves"
   ]
 }

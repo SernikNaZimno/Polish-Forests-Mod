@@ -71,7 +71,13 @@ public final class ForestNorms {
 		BOG_WOODLAND_NATURAL("bór bagienny naturalny", HabitatBiome.BOG_WOODLAND, true),
 		BOG_WOODLAND_MANAGED("bór bagienny gospodarczy", HabitatBiome.BOG_WOODLAND, false),
 		COASTAL_PINE_NATURAL("bór bażynowy naturalny", HabitatBiome.COASTAL_PINE_FOREST, true),
-		COASTAL_PINE_MANAGED("bór bażynowy gospodarczy", HabitatBiome.COASTAL_PINE_FOREST, false);
+		COASTAL_PINE_MANAGED("bór bażynowy gospodarczy", HabitatBiome.COASTAL_PINE_FOREST, false),
+		ELM_ASH_NATURAL("łęg wiązowo-jesionowy naturalny", HabitatBiome.ELM_ASH_FOREST, true),
+		ELM_ASH_MANAGED("łęg wiązowo-jesionowy gospodarczy", HabitatBiome.ELM_ASH_FOREST, false),
+		WILLOW_POPLAR_NATURAL("łęg wierzbowo-topolowy naturalny", HabitatBiome.WILLOW_POPLAR_FOREST, true),
+		WILLOW_POPLAR_MANAGED("łęg wierzbowo-topolowy gospodarczy", HabitatBiome.WILLOW_POPLAR_FOREST, false),
+		/** Step F5: the osier scrub, no forest (one column for its natural and managed stands, {@link #of}). */
+		WILLOW_SCRUB("wiklina nadrzeczna", HabitatBiome.WILLOW_SCRUB, true);
 
 		private final String polishName;
 		private final HabitatBiome biome;
@@ -103,14 +109,21 @@ public final class ForestNorms {
 			return biome == HabitatBiome.OAK_HORNBEAM_FOREST || biome == HabitatBiome.FRESH_PINE_FOREST;
 		}
 
-		/** The column of a forest and stand, or null when the card has none. */
+		/**
+		 * The column of a forest and stand, or null when the card has none; a biome that is no forest (step F5: the osier
+		 * scrub) has one column for both stands.
+		 */
 		public static @Nullable Forest of(HabitatBiome biome, boolean natural) {
+			Forest any = null;
 			for (Forest f : values()) {
 				if (f.biome == biome && f.natural == natural) {
 					return f;
 				}
+				if (f.biome == biome) {
+					any = f;
+				}
 			}
-			return null;
+			return any != null && biome.group() != HabitatBiome.Group.FOREST ? any : null;
 		}
 	}
 
@@ -126,7 +139,9 @@ public final class ForestNorms {
 		/** Step F3: the sycamore ravine forest of the Carpathian beech forest (Lunario-Aceretum, its association). */
 		RAVINE,
 		/** Step F4: the birch bog woodland (Vaccinio uliginosi-Betuletum pubescentis, the boggy mixed coniferous site type). */
-		BIRCH_BOG
+		BIRCH_BOG,
+		/** Step F5: the white poplar forest of the willow-poplar forest (Populetum albae, its association). */
+		POPLAR
 	}
 
 	/**
@@ -138,6 +153,9 @@ public final class ForestNorms {
 	public static @Nullable Site siteOf(int code) {
 		if (pl.polishforests.worldgen.habitat.Habitat.association(code) == pl.polishforests.worldgen.habitat.Association.SYCAMORE_RAVINE_FOREST) {
 			return Site.RAVINE;
+		}
+		if (pl.polishforests.worldgen.habitat.Habitat.association(code) == pl.polishforests.worldgen.habitat.Association.POPULETUM_ALBAE) {
+			return Site.POPLAR;
 		}
 		if (pl.polishforests.worldgen.habitat.Habitat.biome(code) == HabitatBiome.BOG_WOODLAND
 				&& pl.polishforests.worldgen.habitat.Habitat.siteType(code) == pl.polishforests.worldgen.habitat.ForestSiteType.BOGGY_MIXED_CONIFEROUS) {
@@ -253,7 +271,7 @@ public final class ForestNorms {
 			"oak", List.of("oak", "sessile_oak"));
 	/** Composition keys of the card ({@code N3.<key>}): groups of {@link #GROUPS} or species ids, then {@code other}. */
 	public static final List<String> COMPOSITION_KEYS = List.of("oak", "linden", "maple_ash", "hornbeam", "spruce", "beech",
-			"scots_pine", "birch", "black_alder", "elm", "fir", "other");
+			"scots_pine", "birch", "black_alder", "elm", "fir", "white_willow", "poplar", "other");
 
 	/**
 	 * A norm of the card.
@@ -329,6 +347,8 @@ public final class ForestNorms {
 		METRICS.put(COMPOSITION + "black_alder", "black alder share of a1 trunks, %");
 		METRICS.put(COMPOSITION + "elm", "elm share of a1 trunks, %");
 		METRICS.put(COMPOSITION + "fir", "silver fir share of a1 trunks, %");
+		METRICS.put(COMPOSITION + "white_willow", "white willow share of a1 trunks, %");
+		METRICS.put(COMPOSITION + "poplar", "poplar share of a1 trunks, %");
 		METRICS.put(COMPOSITION + "other", "other or unknown species share of a1 trunks, %");
 		METRICS.put(CANOPY, "canopy closure: columns with leaves more than 2 blocks up, %");
 		METRICS.put(GAP_SHARE, "plot area in canopy gaps, %");
@@ -463,6 +483,7 @@ public final class ForestNorms {
 		alderCard();
 		mountainCard();
 		pineCard();
+		floodplainCard();
 		// N15 transect: the same for every forest of the transect (the transect crosses all four).
 		for (Forest f : Forest.values()) {
 			if (!f.transect()) {
@@ -696,6 +717,74 @@ public final class ForestNorms {
 			wide(PIECES_PER_CHUNK, f, 0.1, 0.25, managedDeadwood);
 			wide(STUMPS_PER_CHUNK, f, 1, 2, managedDeadwood);
 			wide(DEADWOOD_VOLUME, f, 3, 11, managedDeadwood);
+		}
+	}
+
+	/**
+	 * The card of the floodplain forests and the osier scrub (step F5, docs/04 "Projekt F5"): L 06 §4.5 (Salicetum albae:
+	 * a1 white willow 50–80% with poplar, closure 50–70%, b of the osier and the young willows 10–40%, c of the nettle and
+	 * the reed canary grass 70–100%, mosses scarce on the silt; Populetum albae: a1 poplar 30–70%; Ficario-Ulmetum: a1 oak
+	 * 20–50%, ash 20–50% and elm 10–40% with maple and linden, closure 70–90%, b of the bird cherry, the elder and the
+	 * dogwood 20–60%, c in spring the lesser celandine carpets 70–100%, in summer the nettle 50–90%; Salicetum
+	 * triandro-viminalis: the osier 80–100%, research 08), the dead wood of the natural floodplain forests as the ash-alder
+	 * forest's, more in the willow forest (the brittle willows, the floods), and the WISL means of the managed stands [S where
+	 * noted].
+	 */
+	private static void floodplainCard() {
+		String card = "[L 06 §4.5]";
+		String deadwood = "[L 06 §4.3; PW-5 b; S]";
+		String managedDeadwood = "[Ź WISL 2010–2014; S]";
+		for (Forest f : new Forest[] {Forest.ELM_ASH_NATURAL, Forest.ELM_ASH_MANAGED}) {
+			norm(TREES_PER_CHUNK, f, 8, 16, card + " [S]");
+			norm(COMPOSITION + "oak", f, 20, 50, card);
+			// The ash with the maples (their group); the card's ash 20–50% and some maple.
+			norm(COMPOSITION + "maple_ash", f, 20, 55, card + " [S: z klonem]");
+			norm(COMPOSITION + "elm", f, 10, 40, card);
+			norm(CANOPY, f, 70, 90, card);
+			norm(UNDERSTORY, f, 20, 60, card);
+			norm(HERBS_SPRING, f, 70, 100, card);
+			norm(HERBS, f, 50, 90, card + " [S]");
+			norm(MOSS, f, 0, 15, card + " [S]");
+		}
+		for (Forest f : new Forest[] {Forest.WILLOW_POPLAR_NATURAL, Forest.WILLOW_POPLAR_MANAGED}) {
+			boolean natural = f == Forest.WILLOW_POPLAR_NATURAL;
+			// N1: the large crowns of the old willows and poplars stand far apart [S]; the even-aged managed pole stage denser.
+			norm(TREES_PER_CHUNK, f, 4, natural ? 10 : 14, card + " [S]");
+			if (natural) {
+				norm(COMPOSITION + "white_willow", f, 50, 80, card);
+				NORMS.add(new Norm(COMPOSITION + "white_willow", f, 10, 40, TOLERANCE, null, null, card + " [S]", Site.POPLAR));
+				norm(COMPOSITION + "poplar", f, 10, 40, card + " [S]");
+				NORMS.add(new Norm(COMPOSITION + "poplar", f, 30, 70, TOLERANCE, null, null, card, Site.POPLAR));
+				norm(CANOPY, f, 50, 70, card);
+			} else {
+				// The managed floodplain stands are mostly poplar plantings: the taller even-aged poplars hold the a1, the
+				// willows stay in the a2; a closed canopy of the planted rows [S].
+				norm(COMPOSITION + "white_willow", f, 0, 60, card + " [S: gospodarcze]");
+				NORMS.add(new Norm(COMPOSITION + "white_willow", f, 0, 40, TOLERANCE, null, null, card + " [S: gospodarcze]", Site.POPLAR));
+				norm(COMPOSITION + "poplar", f, 30, 95, card + " [S: gospodarcze]");
+				NORMS.add(new Norm(COMPOSITION + "poplar", f, 50, 95, TOLERANCE, null, null, card + " [S: gospodarcze]", Site.POPLAR));
+				norm(CANOPY, f, 60, 95, card + " [S: gospodarcze]");
+			}
+			norm(UNDERSTORY, f, 10, 40, card);
+			norm(HERBS, f, 70, 100, card);
+			norm(HERBS_SPRING, f, 70, 100, card);
+			norm(MOSS, f, 0, 10, card + " [S]");
+		}
+		// The osier scrub: the shrub cover of the osier (b), few trees, the tall herbs under it.
+		norm(UNDERSTORY, Forest.WILLOW_SCRUB, 80, 100, card + " [L 08]");
+		norm(TREES_PER_CHUNK, Forest.WILLOW_SCRUB, 0, 2, card + " [S]");
+		norm(HERBS, Forest.WILLOW_SCRUB, 40, 90, card + " [S]");
+		// N10 dead wood.
+		// The large oaks, ashes and old willows give much volume per object: fewer objects than the ash-alder forest for a
+		// similar or larger volume [S].
+		wide(DEADWOOD_PER_CHUNK, Forest.ELM_ASH_NATURAL, 1.5, 1.5, deadwood);
+		wide(DEADWOOD_VOLUME, Forest.ELM_ASH_NATURAL, 90, 170, deadwood);
+		wide(DEADWOOD_PER_CHUNK, Forest.WILLOW_POPLAR_NATURAL, 1.3, 1.3, deadwood);
+		wide(DEADWOOD_VOLUME, Forest.WILLOW_POPLAR_NATURAL, 100, 220, deadwood);
+		for (Forest f : new Forest[] {Forest.ELM_ASH_MANAGED, Forest.WILLOW_POPLAR_MANAGED}) {
+			wide(PIECES_PER_CHUNK, f, 0.2, 0.25, managedDeadwood);
+			wide(STUMPS_PER_CHUNK, f, 1, 2, managedDeadwood);
+			wide(DEADWOOD_VOLUME, f, 8, 16, managedDeadwood);
 		}
 	}
 

@@ -35,7 +35,11 @@ public enum StrippedTrunk {
 	/** Step F3: silver fir, white to pale yellow-pink wood without a colored heartwood. */
 	FIR(TreeTrunk.FIR, MapColor.TERRACOTTA_WHITE),
 	/** Step F3: sycamore maple, white to creamy wood with a silky sheen. */
-	SYCAMORE_MAPLE(TreeTrunk.SYCAMORE_MAPLE, MapColor.SAND);
+	SYCAMORE_MAPLE(TreeTrunk.SYCAMORE_MAPLE, MapColor.SAND),
+	/** Step F5: white willow, pinkish white sapwood, a soft light wood. */
+	WHITE_WILLOW(TreeTrunk.WHITE_WILLOW, MapColor.TERRACOTTA_WHITE),
+	/** Step F5: poplar, white to pale gray-brown soft wood. */
+	POPLAR(TreeTrunk.POPLAR, MapColor.SAND);
 
 	private final TreeTrunk trunk;
 	private final MapColor mapColor;
@@ -87,6 +91,8 @@ public enum StrippedTrunk {
 			case ELM -> ModBlocks.wood(WoodSet.ELM).strippedLog();
 			case FIR -> ModBlocks.wood(WoodSet.FIR).strippedLog();
 			case SYCAMORE_MAPLE -> ModBlocks.wood(WoodSet.SYCAMORE_MAPLE).strippedLog();
+			case WHITE_WILLOW -> ModBlocks.wood(WoodSet.WHITE_WILLOW).strippedLog();
+			case POPLAR -> Blocks.STRIPPED_POPLAR_LOG;
 		};
 	}
 

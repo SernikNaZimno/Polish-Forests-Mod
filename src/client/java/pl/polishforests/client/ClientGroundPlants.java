@@ -44,6 +44,8 @@ public final class ClientGroundPlants {
 				case SEASONAL -> BlockColorRegistry.register(List.of(BlockTintSources.constant(-1), BlockTintSources.grass()),
 						ModBlocks.ground(g));
 				case TALL -> BlockColorRegistry.register(List.of(new SeasonalGrass(true)), ModBlocks.ground(g));
+				// Step F5: the vanilla vine model has tint index 0; the hop keeps the colors of its texture.
+				case CLIMBER -> BlockColorRegistry.register(List.of(BlockTintSources.constant(-1)), ModBlocks.ground(g));
 				case COVER, HERB -> {
 				}
 			}

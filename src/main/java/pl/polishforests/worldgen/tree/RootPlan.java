@@ -121,6 +121,11 @@ public final class RootPlan {
 			// ravines.
 			case FIR -> new Habit(4, 6, 3, 5, 7, 0.9, 3, 5, 4, true);
 			case SYCAMORE_MAPLE -> new Habit(4, 6, 3, 5, 7, 0.8, 3, 4, 2, true);
+			// Step F5: the white willow, a broad and shallow heart root system on the wet alluvium (the willows of the banks
+			// are thrown by the floods with a flat plate); the poplar, large flares at the base of the old trees and long,
+			// shallow laterals with sinkers.
+			case WHITE_WILLOW -> new Habit(4, 6, 3, 5, 7, 0.9, 2, 3, 0, false);
+			case POPLAR -> new Habit(5, 7, 4, 5, 7, 1.0, 2, 4, 2, true);
 			default -> throw new IllegalArgumentException("no root habit for " + species);
 		};
 	}

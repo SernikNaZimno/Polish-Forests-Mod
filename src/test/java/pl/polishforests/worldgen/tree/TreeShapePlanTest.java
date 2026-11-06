@@ -988,6 +988,10 @@ class TreeShapePlanTest {
 	void theDefaultFormKeepsTheTreesOfTheEarlierSteps() {
 		long h = 17;
 		for (TreeRequest r : lone(4)) {
+			if (r.species() == Species.WHITE_WILLOW || r.species() == Species.POPLAR) {
+				// Step F5: the new species come last in lone(), after the draws of the earlier ones.
+				continue;
+			}
 			TreeVoxels v = TreeShapePlan.plan(r);
 			h = h * 1_000_003L + v.hashCode();
 			h = h * 31 + Float.floatToIntBits(v.height()) + 7L * v.parentIndex(Math.max(0, v.woodCount() - 1));

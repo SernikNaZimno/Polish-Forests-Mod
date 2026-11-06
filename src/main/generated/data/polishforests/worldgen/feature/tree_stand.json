@@ -28,13 +28,13 @@
         {
           "max_water_depth": 1,
           "species": "white_willow",
-          "tree": "polishforests:tree_substitute/white_willow",
+          "tree": "polishforests:tree/white_willow",
           "weight": 800
         },
         {
           "max_water_depth": 1,
           "species": "black_alder",
-          "tree": "polishforests:tree_substitute/black_alder",
+          "tree": "polishforests:tree/black_alder",
           "weight": 200
         }
       ],
@@ -101,17 +101,145 @@
       "biomes": [
         "willow_poplar_forest"
       ],
+      "stand": {
+        "gap_chance": 0.7,
+        "gap_regeneration": [
+          {
+            "species": "poplar",
+            "tree": "polishforests:tree/poplar",
+            "weight": 350
+          },
+          {
+            "species": "white_willow",
+            "tree": "polishforests:tree/white_willow",
+            "weight": 250
+          },
+          {
+            "species": "osier",
+            "tree": "polishforests:shrub/osier_thin",
+            "weight": 200
+          },
+          {
+            "species": "elm",
+            "tree": "polishforests:tree/elm",
+            "weight": 200
+          }
+        ],
+        "managed_canopy": [
+          {
+            "species": "poplar",
+            "tree": "polishforests:tree/poplar",
+            "weight": 650
+          },
+          {
+            "max_water_depth": 2,
+            "species": "white_willow",
+            "tree": "polishforests:tree/white_willow",
+            "weight": 200
+          },
+          {
+            "species": "elm",
+            "tree": "polishforests:tree/elm",
+            "weight": 80
+          },
+          {
+            "species": "ash",
+            "tree": "polishforests:tree/ash",
+            "weight": 70
+          }
+        ],
+        "managed_chance": [
+          0.85,
+          0.65,
+          0.55
+        ],
+        "natural_chance": [
+          0.82,
+          0.82,
+          0.82
+        ],
+        "regeneration": [
+          {
+            "species": "osier",
+            "tree": "polishforests:shrub/osier_thin",
+            "weight": 250
+          },
+          {
+            "species": "bird_cherry",
+            "tree": "polishforests:shrub/bird_cherry_thin",
+            "weight": 250
+          },
+          {
+            "species": "elm",
+            "tree": "polishforests:tree/elm",
+            "weight": 150
+          },
+          {
+            "species": "poplar",
+            "tree": "polishforests:tree/poplar",
+            "weight": 150
+          },
+          {
+            "species": "white_willow",
+            "tree": "polishforests:tree/white_willow",
+            "weight": 100
+          },
+          {
+            "species": "hazel",
+            "tree": "polishforests:shrub/hazel_thin",
+            "weight": 100
+          }
+        ],
+        "subcanopy": [
+          {
+            "species": "elm",
+            "tree": "polishforests:tree/elm",
+            "weight": 400
+          },
+          {
+            "species": "white_willow",
+            "tree": "polishforests:tree/white_willow",
+            "weight": 300
+          },
+          {
+            "species": "black_alder",
+            "tree": "polishforests:tree/black_alder",
+            "weight": 150
+          },
+          {
+            "species": "norway_maple",
+            "tree": "polishforests:tree/norway_maple",
+            "weight": 150
+          }
+        ],
+        "subcanopy_chance": 0.4
+      },
       "trees": [
+        {
+          "species": "poplar",
+          "tree": "polishforests:tree/poplar",
+          "weight": 450
+        },
         {
           "max_water_depth": 2,
           "species": "white_willow",
-          "tree": "polishforests:tree_substitute/white_willow",
-          "weight": 400
+          "tree": "polishforests:tree/white_willow",
+          "weight": 350
         },
         {
-          "species": "poplar",
-          "tree": "polishforests:tree_substitute/poplar",
-          "weight": 600
+          "species": "elm",
+          "tree": "polishforests:tree/elm",
+          "weight": 100
+        },
+        {
+          "species": "ash",
+          "tree": "polishforests:tree/ash",
+          "weight": 50
+        },
+        {
+          "species": "black_alder",
+          "tree": "polishforests:tree/black_alder",
+          "weight": 50
         }
       ],
       "trees_per_chunk": 7.0
@@ -1981,17 +2109,130 @@
       "biomes": [
         "willow_poplar_forest"
       ],
+      "stand": {
+        "gap_chance": 0.7,
+        "gap_regeneration": [
+          {
+            "species": "white_willow",
+            "tree": "polishforests:tree/white_willow",
+            "weight": 300
+          },
+          {
+            "species": "osier",
+            "tree": "polishforests:shrub/osier_thin",
+            "weight": 300
+          },
+          {
+            "species": "poplar",
+            "tree": "polishforests:tree/poplar",
+            "weight": 250
+          },
+          {
+            "species": "black_alder",
+            "tree": "polishforests:tree/black_alder",
+            "weight": 150
+          }
+        ],
+        "managed_canopy": [
+          {
+            "max_water_depth": 2,
+            "species": "white_willow",
+            "tree": "polishforests:tree/white_willow",
+            "weight": 450
+          },
+          {
+            "species": "poplar",
+            "tree": "polishforests:tree/poplar",
+            "weight": 450
+          },
+          {
+            "species": "black_alder",
+            "tree": "polishforests:tree/black_alder",
+            "weight": 60
+          },
+          {
+            "species": "elm",
+            "tree": "polishforests:tree/elm",
+            "weight": 40
+          }
+        ],
+        "managed_chance": [
+          0.85,
+          0.65,
+          0.55
+        ],
+        "natural_chance": [
+          0.8,
+          0.8,
+          0.8
+        ],
+        "regeneration": [
+          {
+            "species": "osier",
+            "tree": "polishforests:shrub/osier_thin",
+            "weight": 400
+          },
+          {
+            "species": "white_willow",
+            "tree": "polishforests:tree/white_willow",
+            "weight": 200
+          },
+          {
+            "species": "bird_cherry",
+            "tree": "polishforests:shrub/bird_cherry_thin",
+            "weight": 200
+          },
+          {
+            "species": "poplar",
+            "tree": "polishforests:tree/poplar",
+            "weight": 100
+          },
+          {
+            "species": "elm",
+            "tree": "polishforests:tree/elm",
+            "weight": 100
+          }
+        ],
+        "subcanopy": [
+          {
+            "species": "white_willow",
+            "tree": "polishforests:tree/white_willow",
+            "weight": 500
+          },
+          {
+            "species": "black_alder",
+            "tree": "polishforests:tree/black_alder",
+            "weight": 250
+          },
+          {
+            "species": "elm",
+            "tree": "polishforests:tree/elm",
+            "weight": 250
+          }
+        ],
+        "subcanopy_chance": 0.4
+      },
       "trees": [
         {
           "max_water_depth": 2,
           "species": "white_willow",
-          "tree": "polishforests:tree_substitute/white_willow",
-          "weight": 700
+          "tree": "polishforests:tree/white_willow",
+          "weight": 650
         },
         {
           "species": "poplar",
-          "tree": "polishforests:tree_substitute/poplar",
-          "weight": 300
+          "tree": "polishforests:tree/poplar",
+          "weight": 250
+        },
+        {
+          "species": "black_alder",
+          "tree": "polishforests:tree/black_alder",
+          "weight": 60
+        },
+        {
+          "species": "elm",
+          "tree": "polishforests:tree/elm",
+          "weight": 40
         }
       ],
       "trees_per_chunk": 7.0
@@ -2000,34 +2241,160 @@
       "biomes": [
         "elm_ash_forest"
       ],
+      "stand": {
+        "gap_chance": 0.8,
+        "gap_regeneration": [
+          {
+            "species": "ash",
+            "tree": "polishforests:tree/ash",
+            "weight": 250
+          },
+          {
+            "species": "bird_cherry",
+            "tree": "polishforests:shrub/bird_cherry_thin",
+            "weight": 250
+          },
+          {
+            "species": "elm",
+            "tree": "polishforests:tree/elm",
+            "weight": 200
+          },
+          {
+            "species": "norway_maple",
+            "tree": "polishforests:tree/norway_maple",
+            "weight": 150
+          },
+          {
+            "species": "hazel",
+            "tree": "polishforests:shrub/hazel_thin",
+            "weight": 150
+          }
+        ],
+        "managed_canopy": [
+          {
+            "species": "oak",
+            "tree": "polishforests:tree/oak",
+            "weight": 450
+          },
+          {
+            "species": "ash",
+            "tree": "polishforests:tree/ash",
+            "weight": 300
+          },
+          {
+            "species": "elm",
+            "tree": "polishforests:tree/elm",
+            "weight": 120
+          },
+          {
+            "species": "norway_maple",
+            "tree": "polishforests:tree/norway_maple",
+            "weight": 70
+          },
+          {
+            "species": "linden",
+            "tree": "polishforests:tree/linden",
+            "weight": 60
+          }
+        ],
+        "managed_chance": [
+          0.88,
+          0.7,
+          0.6
+        ],
+        "natural_chance": [
+          0.9,
+          0.9,
+          0.9
+        ],
+        "regeneration": [
+          {
+            "species": "bird_cherry",
+            "tree": "polishforests:shrub/bird_cherry_thin",
+            "weight": 300
+          },
+          {
+            "species": "elm",
+            "tree": "polishforests:tree/elm",
+            "weight": 200
+          },
+          {
+            "species": "hazel",
+            "tree": "polishforests:shrub/hazel_thin",
+            "weight": 200
+          },
+          {
+            "species": "ash",
+            "tree": "polishforests:tree/ash",
+            "weight": 150
+          },
+          {
+            "species": "norway_maple",
+            "tree": "polishforests:tree/norway_maple",
+            "weight": 150
+          }
+        ],
+        "subcanopy": [
+          {
+            "species": "elm",
+            "tree": "polishforests:tree/elm",
+            "weight": 450
+          },
+          {
+            "species": "norway_maple",
+            "tree": "polishforests:tree/norway_maple",
+            "weight": 200
+          },
+          {
+            "species": "linden",
+            "tree": "polishforests:tree/linden",
+            "weight": 150
+          },
+          {
+            "alternative": {
+              "species": "linden",
+              "tree": "polishforests:tree/linden"
+            },
+            "species": "hornbeam",
+            "tree": "polishforests:tree/hornbeam",
+            "weight": 100
+          },
+          {
+            "species": "ash",
+            "tree": "polishforests:tree/ash",
+            "weight": 100
+          }
+        ],
+        "subcanopy_chance": 0.6
+      },
       "trees": [
         {
           "species": "oak",
-          "tree": "polishforests:tree_substitute/oak",
-          "weight": 350
+          "tree": "polishforests:tree/oak",
+          "weight": 330
         },
         {
           "species": "ash",
-          "tree": "polishforests:tree_substitute/ash",
+          "tree": "polishforests:tree/ash",
           "weight": 300
         },
         {
           "species": "elm",
-          "tree": "polishforests:tree_substitute/elm",
-          "weight": 250
+          "tree": "polishforests:tree/elm",
+          "weight": 220
         },
         {
           "species": "norway_maple",
-          "tree": "polishforests:tree_substitute/norway_maple",
-          "weight": 50
+          "tree": "polishforests:tree/norway_maple",
+          "weight": 80
         },
         {
           "species": "linden",
-          "tree": "polishforests:tree_substitute/linden",
-          "weight": 50
+          "tree": "polishforests:tree/linden",
+          "weight": 70
         }
       ],
-      "trees_per_chunk": 8.0
+      "trees_per_chunk": 10.0
     },
     {
       "biomes": [

@@ -115,6 +115,8 @@ public final class TreeShapePlan {
 	 * 13–16 blocks tall in the pole stage, 21–28 when mature and 23–32 in old growth.
 	 */
 	private static final double[] STAND_TOP = {14, 25, 29};
+	/** Step F5: how far from the trunk column the limbs of a low fork may stand below the floor of their layer, blocks. */
+	private static final int LOW_FORK_REACH = 4;
 	/** Mean height of the split surfaces as a share of the stand top height [S], to be calibrated with N2 in V9. */
 	private static final double UPPER_SHARE = 0.44;
 	private static final double LOWER_SHARE = 0.2;
@@ -430,6 +432,10 @@ public final class TreeShapePlan {
 		/** Step F4: the growth form of the request, the scale of its split surfaces and the lee side of a banner crown. */
 		private TreeForm.Kind form = TreeForm.Kind.NORMAL;
 		private double splitScale = 1;
+		/** Step F5: the low fork of the species ({@link SpeciesShape#lowFork}). */
+		private boolean lowFork;
+		/** The height the lean of the trunk is measured over (the tree's top, or the fork of a low fork). */
+		private double leanTop;
 		private boolean banner;
 		private double leeX;
 		private double leeZ;
@@ -446,6 +452,7 @@ public final class TreeShapePlan {
 			shape = SpeciesShape.of(r.species());
 			form = r.form().kind();
 			splitScale = form.split();
+			lowFork = SpeciesShape.lowFork(r.species());
 			banner = form.windward() > 0 && r.layer() != CrownLayer.REGENERATION;
 			leeX = StrictMath.cos(r.form().leeAzimuth());
 			leeZ = StrictMath.sin(r.form().leeAzimuth());
@@ -1029,6 +1036,14 @@ public final class TreeShapePlan {
 				}
 			}
 			double end = forks() ? size.crownBase() + 0.15 * crownLength : top;
+			if (lowFork && forks()) {
+				// Step F5: the low fork stays below its crown, but not under the floor of its layer in a stand (a fork
+				// below it left the limbs no room: the tree had no leaves).
+				end = Math.max(end, Math.min(top - 4, floorAt(0, 0) + 1));
+			}
+			// Step F5: the bole of a low fork leans over its own length (the leaning willows of the banks), the others over
+			// the height of the tree.
+			leanTop = lowFork && forks() ? end : top;
 			int count = (int) Math.ceil(end);
 			for (int attempt = 0; attempt < 2; attempt++) {
 				boolean ok = true;
@@ -1065,12 +1080,12 @@ public final class TreeShapePlan {
 		}
 
 		private double trunkX(double y, double phi, double lean, double wobble, double phase) {
-			double u = y / Math.max(1, top);
+			double u = y / Math.max(1, leanTop);
 			return lean * u * Math.sqrt(u) * StrictMath.cos(phi) - wobble * StrictMath.sin(y * 0.45 + phase) * StrictMath.sin(phi);
 		}
 
 		private double trunkZ(double y, double phi, double lean, double wobble, double phase) {
-			double u = y / Math.max(1, top);
+			double u = y / Math.max(1, leanTop);
 			return lean * u * Math.sqrt(u) * StrictMath.sin(phi) + wobble * StrictMath.sin(y * 0.45 + phase) * StrictMath.cos(phi);
 		}
 
@@ -1675,6 +1690,11 @@ public final class TreeShapePlan {
 			}
 			if (nKind[i] == LIMB && i >= stoolFirst && i < stoolEnd) {
 				// A coppice stem of a stool rises from the base like the trunk (step F2).
+				return true;
+			}
+			if (lowFork && nKind[i] == LIMB && Math.max(Math.abs(x), Math.abs(z)) <= LOW_FORK_REACH) {
+				// Step F5: the thick limbs of a low fork (the white willow) rise through the layer below next to the trunk,
+				// as the trunk itself; their crown keeps to the layer.
 				return true;
 			}
 			return nKind[i] == TRUNK || nKind[i] == STUB || y >= floorY[c];

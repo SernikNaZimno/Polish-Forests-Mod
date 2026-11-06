@@ -273,6 +273,10 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 				case BOG_BILBERRY -> polish ? "Borówka bagienna" : "Bog Bilberry";
 				case LABRADOR_TEA -> polish ? "Bagno zwyczajne" : "Labrador Tea";
 				case PURPLE_MOOR_GRASS -> polish ? "Trzęślica modra" : "Purple Moor-grass";
+				case REED_CANARY_GRASS -> polish ? "Mozga trzcinowata" : "Reed Canary-grass";
+				case LESSER_CELANDINE -> polish ? "Ziarnopłon wiosenny" : "Lesser Celandine";
+				case WILD_GARLIC -> polish ? "Czosnek niedźwiedzi" : "Wild Garlic";
+				case HOP -> polish ? "Chmiel zwyczajny" : "Common Hop";
 			});
 		}
 		builder.add(ModBlocks.bilberries(), polish ? "Czarne jagody" : "Bilberries");

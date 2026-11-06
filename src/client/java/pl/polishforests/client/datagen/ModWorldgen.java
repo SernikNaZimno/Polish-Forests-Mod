@@ -122,6 +122,9 @@ final class ModWorldgen {
 		// The thin-stemmed placeholders of the slice (review of V9, round 1).
 		trees.addAll(new java.util.TreeSet<>(ModTrees.SLICE.values()));
 		trees.add(ModTrees.HAZEL_MANTLE);
+		// Step F5: the shrubs with hop.
+		trees.add(ModTrees.OSIER_HOP);
+		trees.add(ModTrees.BIRD_CHERRY_HOP);
 		// Step V9: the procedural trees (the tree stand calls their planner itself; placed alone they need a sapling's ground).
 		ModTrees.PROCEDURAL.forEach(s -> trees.add(s.path()));
 		// Step F4: the growth forms by site.

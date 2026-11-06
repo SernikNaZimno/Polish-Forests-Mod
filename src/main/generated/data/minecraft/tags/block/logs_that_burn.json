@@ -9,6 +9,8 @@
     "#polishforests:black_alder_logs",
     "#polishforests:elm_logs",
     "#polishforests:fir_logs",
-    "#polishforests:sycamore_maple_logs"
+    "#polishforests:sycamore_maple_logs",
+    "#polishforests:white_willow_logs",
+    "#polishforests:poplar_logs"
   ]
 }

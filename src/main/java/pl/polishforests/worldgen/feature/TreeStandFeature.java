@@ -485,6 +485,9 @@ public final class TreeStandFeature implements Feature {
 					TreeRoots.TREES.increment();
 					ModFeatures.rootsPlaced(proc.species(), roots, w);
 				}
+				// Step F5: the hop on the trunks of the floodplain forests (only on air, after the tree, its roots and moss).
+				TreeHop.write(level, voxels, pl.polishforests.worldgen.habitat.Habitat.biome(codes[column]),
+						pl.polishforests.worldgen.habitat.Habitat.zone(codes[column]));
 			} else {
 				SKIPPED_WRITE.increment();
 			}

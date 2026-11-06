@@ -1,0 +1,125 @@
+{
+  "type": "minecraft:block",
+  "pools": [
+    {
+      "entries": [
+        {
+          "type": "minecraft:alternatives",
+          "children": [
+            {
+              "type": "minecraft:item",
+              "condition": "minecraft:tool/can_silk_touch",
+              "name": "polishforests:poplar_root_flare"
+            },
+            {
+              "type": "minecraft:item",
+              "condition": {
+                "type": "polishforests:trunk_base"
+              },
+              "modifier": [
+                {
+                  "type": "minecraft:set_count",
+                  "count": {
+                    "type": "minecraft:uniform",
+                    "max": 2,
+                    "min": 1
+                  }
+                },
+                {
+                  "type": "minecraft:explosion_decay"
+                }
+              ],
+              "name": "minecraft:poplar_log"
+            },
+            {
+              "type": "minecraft:item",
+              "condition": {
+                "type": "minecraft:match_block",
+                "blocks": "polishforests:poplar_root_flare",
+                "state": {
+                  "radius": "1"
+                }
+              },
+              "modifier": [
+                {
+                  "type": "minecraft:set_count",
+                  "count": {
+                    "type": "minecraft:uniform",
+                    "max": 1,
+                    "min": 0
+                  }
+                },
+                {
+                  "type": "minecraft:explosion_decay"
+                }
+              ],
+              "name": "minecraft:stick"
+            },
+            {
+              "type": "minecraft:item",
+              "condition": {
+                "type": "minecraft:any_of",
+                "terms": [
+                  {
+                    "type": "minecraft:match_block",
+                    "blocks": "polishforests:poplar_root_flare",
+                    "state": {
+                      "parent": "north",
+                      "radius": "2"
+                    }
+                  },
+                  {
+                    "type": "minecraft:match_block",
+                    "blocks": "polishforests:poplar_root_flare",
+                    "state": {
+                      "parent": "east",
+                      "radius": "2"
+                    }
+                  },
+                  {
+                    "type": "minecraft:match_block",
+                    "blocks": "polishforests:poplar_root_flare",
+                    "state": {
+                      "parent": "south",
+                      "radius": "2"
+                    }
+                  },
+                  {
+                    "type": "minecraft:match_block",
+                    "blocks": "polishforests:poplar_root_flare",
+                    "state": {
+                      "parent": "west",
+                      "radius": "2"
+                    }
+                  }
+                ]
+              },
+              "modifier": [
+                {
+                  "type": "minecraft:set_count",
+                  "count": {
+                    "type": "minecraft:uniform",
+                    "max": 2,
+                    "min": 1
+                  }
+                },
+                {
+                  "type": "minecraft:explosion_decay"
+                }
+              ],
+              "name": "minecraft:stick"
+            },
+            {
+              "type": "minecraft:item",
+              "condition": {
+                "type": "minecraft:survives_explosion"
+              },
+              "name": "minecraft:poplar_log"
+            }
+          ]
+        }
+      ],
+      "rolls": 1
+    }
+  ]
+}

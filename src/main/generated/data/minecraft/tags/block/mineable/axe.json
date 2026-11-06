@@ -16,6 +16,8 @@
     "polishforests:elm_trunk",
     "polishforests:fir_trunk",
     "polishforests:sycamore_maple_trunk",
+    "polishforests:white_willow_trunk",
+    "polishforests:poplar_trunk",
     "polishforests:scots_pine_root_flare",
     "polishforests:spruce_root_flare",
     "polishforests:birch_root_flare",
@@ -29,6 +31,8 @@
     "polishforests:elm_root_flare",
     "polishforests:fir_root_flare",
     "polishforests:sycamore_maple_root_flare",
+    "polishforests:white_willow_root_flare",
+    "polishforests:poplar_root_flare",
     "polishforests:tree_root",
     "polishforests:stripped_scots_pine_trunk",
     "polishforests:stripped_spruce_trunk",
@@ -43,6 +47,8 @@
     "polishforests:stripped_elm_trunk",
     "polishforests:stripped_fir_trunk",
     "polishforests:stripped_sycamore_maple_trunk",
+    "polishforests:stripped_white_willow_trunk",
+    "polishforests:stripped_poplar_trunk",
     "polishforests:scots_pine_log",
     "polishforests:scots_pine_wood",
     "polishforests:stripped_scots_pine_log",
@@ -92,6 +98,11 @@
     "polishforests:sycamore_maple_wood",
     "polishforests:stripped_sycamore_maple_log",
     "polishforests:stripped_sycamore_maple_wood",
-    "polishforests:sycamore_maple_planks"
+    "polishforests:sycamore_maple_planks",
+    "polishforests:white_willow_log",
+    "polishforests:white_willow_wood",
+    "polishforests:stripped_white_willow_log",
+    "polishforests:stripped_white_willow_wood",
+    "polishforests:white_willow_planks"
   ]
 }

@@ -308,12 +308,16 @@
       ]
     },
     {
-      "coverage": 0.16,
+      "coverage": 0.18,
       "patch": 2,
       "plants": [
         {
-          "feature": "polishforests:shrub/osier",
-          "weight": 9
+          "feature": "polishforests:shrub/osier_thin",
+          "weight": 7
+        },
+        {
+          "feature": "polishforests:shrub/osier_hop_thin",
+          "weight": 2
         },
         {
           "block": "minecraft:firefly_bush",
@@ -328,12 +332,16 @@
       "biomes": [
         "willow_scrub"
       ],
-      "coverage": 0.16,
+      "coverage": 0.18,
       "patch": 2,
       "plants": [
         {
-          "feature": "polishforests:shrub/osier",
-          "weight": 9
+          "feature": "polishforests:shrub/osier_thin",
+          "weight": 7
+        },
+        {
+          "feature": "polishforests:shrub/osier_hop_thin",
+          "weight": 2
         },
         {
           "block": "minecraft:firefly_bush",

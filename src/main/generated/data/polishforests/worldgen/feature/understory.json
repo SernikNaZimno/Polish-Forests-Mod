@@ -89,21 +89,6 @@
     },
     {
       "biomes": [
-        "elm_ash_forest"
-      ],
-      "coverage": 0.06,
-      "edges": [
-        "mantle"
-      ],
-      "plants": [
-        {
-          "feature": "polishforests:shrub/hazel",
-          "weight": 1
-        }
-      ]
-    },
-    {
-      "biomes": [
         "upland_fir_forest",
         "montane_beech_forest"
       ],
@@ -194,7 +179,7 @@
           "weight": 1
         },
         {
-          "feature": "polishforests:shrub/osier",
+          "feature": "polishforests:shrub/osier_thin",
           "weight": 1
         }
       ]
@@ -213,7 +198,34 @@
           "weight": 2
         },
         {
-          "feature": "polishforests:shrub/osier",
+          "feature": "polishforests:shrub/osier_thin",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "elm_ash_forest"
+      ],
+      "coverage": 0.25,
+      "edges": [
+        "mantle"
+      ],
+      "plants": [
+        {
+          "feature": "polishforests:shrub/bird_cherry_thin",
+          "weight": 2
+        },
+        {
+          "feature": "polishforests:shrub/bird_cherry_hop_thin",
+          "weight": 1
+        },
+        {
+          "feature": "polishforests:shrub/hazel_mantle_thin",
+          "weight": 1
+        },
+        {
+          "feature": "polishforests:shrub/hazel_thin",
           "weight": 1
         }
       ]
@@ -241,13 +253,21 @@
       "biomes": [
         "willow_poplar_forest"
       ],
-      "coverage": 0.06,
+      "coverage": 0.25,
       "edges": [
         "mantle"
       ],
       "plants": [
         {
-          "feature": "polishforests:shrub/osier",
+          "feature": "polishforests:shrub/osier_thin",
+          "weight": 3
+        },
+        {
+          "feature": "polishforests:shrub/osier_hop_thin",
+          "weight": 1
+        },
+        {
+          "feature": "polishforests:shrub/bird_cherry_thin",
           "weight": 1
         }
       ]
@@ -405,10 +425,38 @@
       "biomes": [
         "elm_ash_forest"
       ],
-      "coverage": 0.01171875,
+      "coverage": 0.03125,
       "plants": [
         {
-          "feature": "polishforests:shrub/hazel",
+          "feature": "polishforests:shrub/bird_cherry_thin",
+          "weight": 3
+        },
+        {
+          "feature": "polishforests:shrub/bird_cherry_hop_thin",
+          "weight": 1
+        },
+        {
+          "feature": "polishforests:shrub/hazel_thin",
+          "weight": 2
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "willow_poplar_forest"
+      ],
+      "coverage": 0.0234375,
+      "plants": [
+        {
+          "feature": "polishforests:shrub/osier_thin",
+          "weight": 3
+        },
+        {
+          "feature": "polishforests:shrub/osier_hop_thin",
+          "weight": 1
+        },
+        {
+          "feature": "polishforests:shrub/bird_cherry_thin",
           "weight": 1
         }
       ]
@@ -476,7 +524,7 @@
           "weight": 1
         },
         {
-          "feature": "polishforests:shrub/osier",
+          "feature": "polishforests:shrub/osier_thin",
           "weight": 1
         }
       ]

@@ -55,11 +55,12 @@ class SlicePlotsTest {
 	/**
 	 * The forests of the planner of the steps F with plots of their own (step F1: the lowland beech forest; step F2: the
 	 * alder carr and the ash-alder forest; step F3: the upland fir forest and the Carpathian beech forest; step F4: the dry,
-	 * the moist, the bog and the coastal pine forest).
+	 * the moist, the bog and the coastal pine forest; step F5: the elm-ash and the willow-poplar floodplain forest).
 	 */
 	static final List<HabitatBiome> F_FORESTS = List.of(HabitatBiome.LOWLAND_BEECH_FOREST, HabitatBiome.ALDER_CARR,
 			HabitatBiome.ASH_ALDER_FOREST, HabitatBiome.UPLAND_FIR_FOREST, HabitatBiome.MONTANE_BEECH_FOREST,
-			HabitatBiome.DRY_PINE_FOREST, HabitatBiome.MOIST_PINE_FOREST, HabitatBiome.BOG_WOODLAND, HabitatBiome.COASTAL_PINE_FOREST);
+			HabitatBiome.DRY_PINE_FOREST, HabitatBiome.MOIST_PINE_FOREST, HabitatBiome.BOG_WOODLAND, HabitatBiome.COASTAL_PINE_FOREST,
+			HabitatBiome.ELM_ASH_FOREST, HabitatBiome.WILLOW_POPLAR_FOREST);
 	/**
 	 * The forests of {@link #F_FORESTS} whose origins of the search ring their nearest place to the center (step F3; step
 	 * F4: the four pine forests, whose rings around the center took over an hour for the dry pine forest of the realistic
@@ -67,7 +68,7 @@ class SlicePlotsTest {
 	 */
 	static final java.util.Set<HabitatBiome> AROUND_FIRST_HIT = java.util.EnumSet.of(HabitatBiome.UPLAND_FIR_FOREST,
 			HabitatBiome.MONTANE_BEECH_FOREST, HabitatBiome.DRY_PINE_FOREST, HabitatBiome.MOIST_PINE_FOREST, HabitatBiome.BOG_WOODLAND,
-			HabitatBiome.COASTAL_PINE_FOREST);
+			HabitatBiome.COASTAL_PINE_FOREST, HabitatBiome.ELM_ASH_FOREST, HabitatBiome.WILLOW_POPLAR_FOREST);
 	/**
 	 * The kinds of plots of the forests of the steps F of which the search finds one plot only (step F3): in the gameplay
 	 * scale the natural stands of the upland fir forest around its 5 places hold one square of 98% of the forest.
@@ -88,7 +89,13 @@ class SlicePlotsTest {
 			// both scales (no square of 90% around 40 and 5 places); the gameplay dry pine forest has no natural square of 90%
 			// and the gameplay bog woodland no managed one. The card shows these by StandCensusSimulationTest only.
 			"realistic moist_pine_forest natural", "realistic moist_pine_forest managed", "gameplay moist_pine_forest natural",
-			"gameplay moist_pine_forest managed", "gameplay dry_pine_forest natural", "gameplay bog_woodland managed");
+			"gameplay moist_pine_forest managed", "gameplay dry_pine_forest natural", "gameplay bog_woodland managed",
+			// Step F5: the floodplain forests are belts along the rivers; in the gameplay scale no square of 90% of either lies
+			// around their 3 and 5 places (the willow-poplar and the elm-ash forest share the floodplain there, 44% and 46% of
+			// the best square), and the natural willow-poplar forest of the realistic scale, the narrowest belt at the water,
+			// has none around 13 places. The card shows these by StandCensusSimulationTest only.
+			"realistic willow_poplar_forest natural", "gameplay elm_ash_forest natural", "gameplay elm_ash_forest managed",
+			"gameplay willow_poplar_forest natural", "gameplay willow_poplar_forest managed");
 	/**
 	 * Least share of the plot's lattice in its biome for the managed alder carr of the gameplay scale (step F2), whose
 	 * largest patches hold 90-99% of a square of 100 blocks (no square of 98% in managed stands).
@@ -287,6 +294,20 @@ class SlicePlotsTest {
 			expected.append(scale == LandscapeScale.REALISTIC ? "" : ", ").append("{").append(p.x()).append(", ").append(p.z()).append("}");
 		}
 		expected.append("};");
+		assertTrue(source.contains(expected), "ForestPerformance has no " + expected);
+	}
+
+	/**
+	 * Step F5 (KF-6): the place of the floodplain forest in the flights of {@code ForestPerformance} ({@code FLOOD_SITE}) is
+	 * the plot {@code elm_ash_natural_1} of the realistic scale; the gameplay scale has no plot of a floodplain forest
+	 * ({@link #F_MISSING}), its place there is a place of the forest written in the source.
+	 */
+	@Test
+	void flightsOfThePerformanceTestUseTheFloodplainPlot() throws IOException {
+		String source = Files.readString(Path.of("src/gametest/java/pl/polishforests/gametest/ForestPerformance.java"));
+		Plot p = read().stream().filter(q -> q.scale() == LandscapeScale.REALISTIC && q.name().equals("elm_ash_natural_1")).findFirst()
+				.orElseThrow();
+		String expected = "FLOOD_SITE = {{" + p.x() + ", " + p.z() + "}, {";
 		assertTrue(source.contains(expected), "ForestPerformance has no " + expected);
 	}
 

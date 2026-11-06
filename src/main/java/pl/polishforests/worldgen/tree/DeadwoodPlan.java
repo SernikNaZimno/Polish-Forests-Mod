@@ -119,6 +119,10 @@ public final class DeadwoodPlan {
 			// mountain winds less often than the spruce (its tap root); the sycamore mostly falls whole on the scree.
 			case FIR -> new double[] {0.35, 0.35, 0.12, 0.18};
 			case SYCAMORE_MAPLE -> new double[] {0.50, 0.20, 0.18, 0.12};
+			// Step F5: the soft, brittle willow wood breaks and the willows of the banks are thrown by the floods and the
+			// wind on the wet alluvium (the uprooted willows of the floodplain); the poplar breaks or falls whole.
+			case WHITE_WILLOW -> new double[] {0.35, 0.10, 0.27, 0.28};
+			case POPLAR -> new double[] {0.45, 0.18, 0.25, 0.12};
 			default -> new double[] {0.60, 0.15, 0.15, 0.10};
 		};
 	}
@@ -311,6 +315,9 @@ public final class DeadwoodPlan {
 			case BIRCH -> new double[] {0.25, 0.5};
 			case ASH -> new double[] {0.6, 0.85};
 			case ELM -> new double[] {0.5, 0.8};
+			// Step F5: the brittle willow breaks low, at its fork; the poplar along its long bole.
+			case WHITE_WILLOW -> new double[] {0.2, 0.5};
+			case POPLAR -> new double[] {0.35, 0.7};
 			default -> new double[] {0.3, 0.65};
 		};
 		double frac = range[0] + (range[1] - range[0]) * rnd.next();
@@ -646,6 +653,11 @@ public final class DeadwoodPlan {
 			int pdir = dirOf(pv[1] * f[0] + pb * l[0], -pa, pv[1] * f[2] + pb * l[2]);
 			if (up < 0 || up == 0 && (pdir == TreeVoxels.UP || pdir == TreeVoxels.DOWN)
 					|| s.chainPos[p] < 0 && pdir != heading[p]) {
+				continue;
+			}
+			if (up == 0 && bl == 0 && SpeciesShape.lowFork(r.species())) {
+				// Step F5: a limb of the low fork (the white willow) turned onto the line of the stem would run on past the
+				// fitted length, over ground it was not fitted to; it breaks off at the fork.
 				continue;
 			}
 			int at = b.woodGrounded(along * f[0] + bl * l[0], up, along * f[2] + bl * l[2], Math.min(7, t.radius(i)), pdir,

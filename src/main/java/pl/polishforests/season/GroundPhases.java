@@ -65,6 +65,17 @@ import pl.polishforests.block.GroundPlant;
  * <li><b>Purple moor-grass</b> (step F4): shoots from the end of April ({@value #MOLINIA_SHOOTS}), the panicles from July
  * to the end of September ({@value #MOLINIA_FLOWERS} … {@value #MOLINIA_FLOWERS_END}), the straw-colored tussock through the
  * autumn, gone (flattened) from the end of November ({@value #MOLINIA_GONE}) until May.
+ * <li><b>Reed canary grass</b> (step F5): shoots from the 2nd decade of April ({@value #PHALARIS_SHOOTS}), the pale panicles
+ * from mid-June to the end of July ({@value #PHALARIS_FLOWERS} … {@value #PHALARIS_FLOWERS_END}), the straw until the end of
+ * November ({@value #PHALARIS_GONE});
+ * <li><b>Lesser celandine</b> (step F5, a spring geophyte): leaves from early March, the yellow stars from the 3rd decade of
+ * March to the 2nd decade of April ({@value #CELANDINE_FLOWERS} … {@value #CELANDINE_FLOWERS_END}), gone from the 1st decade
+ * of June ({@value #CELANDINE_GONE});
+ * <li><b>Wild garlic</b> (step F5): leaves from mid-March, the white umbels from the 3rd decade of April to the 2nd decade of
+ * May ({@value #GARLIC_FLOWERS} … {@value #GARLIC_FLOWERS_END}), gone from mid-June ({@value #GARLIC_GONE});
+ * <li><b>Hop</b> (step F5, a climber): the bine from mid-April ({@value #HOP_SHOOTS}), the cones from mid-August to the end of
+ * September ({@value #HOP_CONES} … {@value #HOP_CONES_END}), the yellowing leaves until it dies back in November
+ * ({@value #HOP_GONE}).
  * </ul>
  */
 public final class GroundPhases {
@@ -141,6 +152,22 @@ public final class GroundPhases {
 	static final double MOLINIA_FLOWERS = 12.0;
 	static final double MOLINIA_FLOWERS_END = 21.0;
 	static final double MOLINIA_GONE = 27.0;
+	static final double PHALARIS_SHOOTS = 4.0;
+	static final double PHALARIS_FLOWERS = 9.5;
+	static final double PHALARIS_FLOWERS_END = 15.0;
+	static final double PHALARIS_GONE = 26.5;
+	static final double CELANDINE_SHOOTS = 0.5;
+	static final double CELANDINE_FLOWERS = 2.0;
+	static final double CELANDINE_FLOWERS_END = 5.5;
+	static final double CELANDINE_GONE = 9.0;
+	static final double GARLIC_SHOOTS = 1.5;
+	static final double GARLIC_FLOWERS = 5.0;
+	static final double GARLIC_FLOWERS_END = 8.5;
+	static final double GARLIC_GONE = 10.5;
+	static final double HOP_SHOOTS = 4.5;
+	static final double HOP_CONES = 17.0;
+	static final double HOP_CONES_END = 22.0;
+	static final double HOP_GONE = 24.5;
 
 	/** Keys of a tint curve: position, target color, weight of the target over the raw grass color. */
 	private record Key(double at, int target, double weight) {
@@ -211,6 +238,18 @@ public final class GroundPhases {
 			case LABRADOR_TEA -> at >= LEDUM_FLOWERS && at < LEDUM_FLOWERS_END ? Look.FULL : Look.LEAVES;
 			case PURPLE_MOOR_GRASS -> at >= MOLINIA_FLOWERS && at < MOLINIA_FLOWERS_END ? Look.FULL
 					: at >= MOLINIA_SHOOTS && at < MOLINIA_GONE ? Look.LEAVES : Look.NONE;
+			// Step F5: the reed canary grass with its panicles in June and July, its straw until late November; the lesser
+			// celandine and the wild garlic, the spring geophytes of the elm-ash floodplain forest (gone in June under the
+			// closed canopy); the hop, a bine from mid-April, its cones (the full model) from mid-August to September, dying
+			// back in November.
+			case REED_CANARY_GRASS -> at >= PHALARIS_FLOWERS && at < PHALARIS_FLOWERS_END ? Look.FULL
+					: at >= PHALARIS_SHOOTS && at < PHALARIS_GONE ? Look.LEAVES : Look.NONE;
+			case LESSER_CELANDINE -> at >= CELANDINE_FLOWERS && at < CELANDINE_FLOWERS_END ? Look.FULL
+					: at >= CELANDINE_SHOOTS && at < CELANDINE_GONE ? Look.LEAVES : Look.NONE;
+			case WILD_GARLIC -> at >= GARLIC_FLOWERS && at < GARLIC_FLOWERS_END ? Look.FULL
+					: at >= GARLIC_SHOOTS && at < GARLIC_GONE ? Look.LEAVES : Look.NONE;
+			case HOP -> at >= HOP_CONES && at < HOP_CONES_END ? Look.FULL
+					: at >= HOP_SHOOTS && at < HOP_GONE ? Look.LEAVES : Look.NONE;
 			default -> Look.FULL;
 		};
 	}

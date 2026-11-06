@@ -133,14 +133,16 @@ public final class ForestCensus {
 			"polishforests:tussock_sedge", "polishforests:marsh_fern", "polishforests:nettle",
 			"polishforests:glandular_toothwort", "polishforests:white_wood_rush", "polishforests:perennial_honesty",
 			"polishforests:heather", "polishforests:crowberry", "polishforests:bog_bilberry", "polishforests:labrador_tea",
-			"polishforests:purple_moor_grass");
+			"polishforests:purple_moor_grass", "polishforests:reed_canary_grass", "polishforests:lesser_celandine",
+			"polishforests:wild_garlic");
 	/**
 	 * Spring geophytes: part of the herb layer in spring only (the client shows nothing from early summer, PW-8 (a), N12);
 	 * liverleaf keeps its leaves all year. Step F1: the coralroot (gone from mid-June); the sweet woodruff keeps its leaves
-	 * through the summer, the hairy wood-rush and the wood sorrel all year.
+	 * through the summer, the hairy wood-rush and the wood sorrel all year. Step F5: the lesser celandine (gone from
+	 * late May) and the wild garlic (gone from late June).
 	 */
 	public static final Set<String> SPRING_GEOPHYTES = Set.of("polishforests:wood_anemone", "polishforests:coralroot",
-			"polishforests:glandular_toothwort");
+			"polishforests:glandular_toothwort", "polishforests:lesser_celandine", "polishforests:wild_garlic");
 	/** Needle litter (step V12): neither herb layer nor leaf litter (the leaf litter is the indicator of the transect). */
 	public static final Set<String> NEEDLE_LITTER_PLANTS = Set.of("polishforests:needle_litter");
 	/**
@@ -156,7 +158,7 @@ public final class ForestCensus {
 	public static final Set<String> LITTER_PLANTS = Set.of("minecraft:leaf_litter");
 	/** Known blocks on the ground that are none of the layers (mushrooms, snow, a shrub of the fringe). */
 	public static final Set<String> OTHER_PLANTS = Set.of("minecraft:brown_mushroom", "minecraft:red_mushroom", "minecraft:snow",
-			"minecraft:rose_bush", "minecraft:dead_bush", "minecraft:vine");
+			"minecraft:rose_bush", "minecraft:dead_bush", "minecraft:vine", "polishforests:hop");
 	/** Conifers among the tree species (ids). */
 	public static final Set<String> CONIFERS = Set.of("scots_pine", "spruce", "fir", "larch", "yew");
 

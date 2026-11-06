@@ -207,6 +207,10 @@ SAPLING_LEAVES = {
     'bird_cherry': [["020", "211", "211", "113", "010"], ["02", "21", "11", "13", "01"]],
     # Step F3: the sycamore maple, large five-lobed leaves (broader than the Norway maple's sprite, blunter lobes).
     'sycamore': [["0202020", "2111112", "0211120", "3111113", "0031300"], ["02020", "21112", "31113", "00300"]],
+    # Step F5: the white willow and the osier long and narrow, lanceolate; the poplar broadly ovate to triangular with a
+    # pointed tip.
+    'willow': [["02", "21", "11", "11", "13", "01"], ["2", "1", "1", "3"], ["020", "211", "011", "013", "001"]],
+    'poplar': [["00200", "02110", "21111", "21113", "01130", "00100"], ["020", "211", "211", "113", "010"]],
 }
 
 

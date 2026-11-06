@@ -1,0 +1,12 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "polishforests:block/poplar_leaves",
+    "tints": [
+      {
+        "type": "minecraft:constant",
+        "value": -13006820
+      }
+    ]
+  }
+}

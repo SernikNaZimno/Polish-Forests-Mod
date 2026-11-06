@@ -163,6 +163,11 @@ final class ModBlockTagProvider {
 				if (g.kind() == GroundPlant.Kind.SEASONAL || g.kind() == GroundPlant.Kind.COVER) {
 					builder(BlockTags.INSIDE_STEP_SOUND_BLOCKS).add(key);
 				}
+				// Step F5: the hop as vanilla's vine (climbable, a sword cuts it fast).
+				if (g.kind() == GroundPlant.Kind.CLIMBER) {
+					builder(BlockTags.CLIMBABLE).add(key);
+					builder(BlockTags.SWORD_EFFICIENT).add(key);
+				}
 			}
 			builder(SUMMER_CROPS).add(key(ModBlocks.ground(GroundPlant.BILBERRY)));
 			// The moss carpets at the trunk bases (TreeMoss, step V12) give way to wood as the pale moss carpet does in

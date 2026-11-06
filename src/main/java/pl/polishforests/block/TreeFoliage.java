@@ -32,7 +32,13 @@ public enum TreeFoliage {
 	/** Step F3: the needles of the silver fir (evergreen, dark green above with two pale bands below). */
 	FIR(Species.FIR, "Silver Fir", "jodły pospolitej"),
 	/** Step F3. */
-	SYCAMORE_MAPLE(Species.SYCAMORE_MAPLE, "Sycamore Maple", "jaworu");
+	SYCAMORE_MAPLE(Species.SYCAMORE_MAPLE, "Sycamore Maple", "jaworu"),
+	/** Step F5: narrow lanceolate leaves, silvery white beneath (the silky hairs of Salix alba). */
+	WHITE_WILLOW(Species.WHITE_WILLOW, "White Willow", "wierzby białej"),
+	/** Step F5: the triangular to rhombic leaves of the floodplain poplar (one species until M3). */
+	POPLAR(Species.POPLAR, "Poplar", "topoli"),
+	/** Step F5: the leaves and sapling of the osier shrub (Salix viminalis, S. triandra; its sapling grows into the shrub). */
+	OSIER(Species.OSIER, "Osier", "wikliny");
 
 	private final Species species;
 	private final String englishName;

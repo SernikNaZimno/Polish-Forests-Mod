@@ -563,7 +563,7 @@ Każdy krok F jest ukończony dopiero, gdy oprócz własnych kryteriów spełnia
 ### F5. Łęgi wiązowo-jesionowe i wierzbowo-topolowe, wikliny (A, 1,5–2 dnia)
 
 - **Zakres:** (1) nowe gatunki z ZG: **wierzba biała** (gruby, pochylony albo rozwidlony pień, szeroka korona, wąskie srebrzyste liście) i **topola** (jeden gatunek `POPLAR`: wysoka, 25–40 m, szeroka korona; topola biała i czarna rozdzielone dopiero w M3); krzew **wiklina** (`OSIER`: gęste, proste pędy 2–6 m) w paletach podszytu i w `willow_scrub` (pokrycie 80–100%); (2) **łęg wiązowo-jesionowy** (`elm_ash_forest`): dąb, jesion, wiąz (z F2), klon, lipa, a2 wiąz, podszyt czeremchy; **łęg wierzbowo-topolowy** (`willow_poplar_forest`, wariant `Association.POPULETUM_ALBAE`); drzewa strefy `Zone.RIVERSIDE_WILLOWS` (wierzba, olsza) z planera; (3) runo: nowe rośliny (domyślnie 4: mozga trzcinowata, ziarnopłon wiosenny, czosnek niedźwiedzi, chmiel jako pnącze na pniach i krzewach z fazami) i pokrzywa z F2; (4) martwe drewno (kłody, wywrócone wierzby), nabiegi topoli i wiązu; (5) przejścia z OlJ, olsem, grądem i wiklinami, ostry tylko brzeg wody; (6) karta norm obu łęgów i wiklin (pokrycie krzewów).
-- **Ukończony, gdy:** KF-1 … KF-7 (W1: tylko regresja); chmiel i inne pnącza nie zajmują miejsca liści i roślin (zasada L1). **Stan: do zrobienia.**
+- **Ukończony, gdy:** KF-1 … KF-7 (W1: tylko regresja); chmiel i inne pnącza nie zajmują miejsca liści i roślin (zasada L1). **Stan (2026-11-06): etap 1 zrobiony („Projekt F5”, G.46): wierzba biała, topola i wiklina z ZG, oba łęgi i wierzby nadrzeczne z drzewami planera, 4 rośliny runa z chmielem według zasady L1, `ForestBlend` z 15 lasami, karta obu łęgów i wiklin; przebiegi w grze w etapie 2.**
 - **Ryzyko:** wysokie (nowe gatunki, pnącze z fazami; drzewa przy wodzie).
 
 ### F6. Świerczyna górska, olszyna górska, granica lasu i kosodrzewina (A, 1,5–2 dnia)
@@ -4091,6 +4091,64 @@ Symulacja nie sadzi krzewów podszytu (kruszyna boru wilgotnego jest w regule kr
 - KF-5: spełnione (tablice `samples`, `deadwood`, `roots` PASS; `checkDatagen`, `checkArt`, `lint.py`, `RegistrySnapshotTest`, testy `*season*` z etapu 1; `slice -Psites=seasons` PASS).
 - KF-6: wykonane (bór bagienny 0,83 / 0,75 × M2).
 - KF-7: „Projekt F4”, „Stan po F4”, G.45, BRIEF, lista „Do sprawdzenia w grze” w raporcie kroku.
+
+## Projekt F5 (2026-11-06, etap 1: kod, dane, tekstury, testy jednostkowe)
+
+Krok F5 planu „Kroki F” (§3, G.41): łęg wiązowo-jesionowy (`elm_ash_forest`, Ficario-Ulmetum) i łęg wierzbowo-topolowy (`willow_poplar_forest`, Salicetum albae, wariant `Association.POPULETUM_ALBAE`) z drzewami planera, drzewa planera w strefie `Zone.RIVERSIDE_WILLOWS`, własna wiklina w biomie i strefie wiklin (`willow_scrub`). Nowe gatunki z ZG: wierzba biała (`WHITE_WILLOW`) i topola (`POPLAR`), krzew wiklina (`OSIER`). Drobne wybory: `docs/00` G.46 (F5-a … F5-q, domyślne, do potwierdzenia przy CP-D). Wyniki z gry: „Stan po F5” (etap 2).
+
+**Gatunki** (F5-a … F5-c, F5-h, F5-l, F5-m).
+
+- *Wierzba biała:* pełny zestaw ZG — pień (`white_willow_trunk`), okorowany pień, nabieg, liście z fazami, sadzonka w 3 rozmiarach, doniczka, gałązki; własne drewno P2 (`WoodSet`: kłoda, drewno, okorowane, deski, schody, płyta, płot, furtka, płyta naciskowa, przycisk; różowawobiałe deski). Kształt: największe pochylenie z liściastych (3,8), niskie widlenie na 3 konary (`SpeciesShape.lowFork`, tylko wierzba), szeroka korona (udział 0,60 / 0,58 / 0,56), 25% wierzb drzewostanu na karpie 2–3 pni. Pochylenie mierzone na długości pnia do widlenia (`TreeShapePlan.leanTop`), więc pień wyraźnie się kładzie, a korona nie odjeżdża od karpy.
+- *Wierzba w drzewostanie:* widlenie leży najniżej blok nad powierzchnią podziału pięter, a konary widlenia mogą stać do 4 bloków od osi pnia poniżej podziału (`TreeShapePlan.LOW_FORK_REACH`). Bez tego konary widlenia pod podziałem były ucinane: 1–5% wierzb drzewostanu stało bez liści (próba 400 drzew po poprawce: 0).
+- *Topola:* 18 / 31 / 36 m, przewodnik do wierzchołka z długimi wznoszącymi się bocznymi (bez widlenia, `limbs` 0). Drewno topoli wanilii 26.3 po id (`poplar_log`, wyroby wanilii; F5-a); własne: cienki pień, okorowany pień, nabieg, liście z fazami, sadzonka, gałązki.
+- *Sadzonki:* małe drzewo z sadzonki ma najwyżej 16 bloków wysokości tyczkowiny (`SaplingSize.SMALL_HEIGHT`); średnie leży w połowie między nim a dużym. Tylko topola ma wyższą tyczkowinę (18), więc jej trzy rozmiary sadzonki zostają rozróżnialne; gatunki wcześniejszych kroków bez zmian (`SaplingSizeTest`).
+- *Wiklina* (`OSIER`, krzew): liście z fazami, sadzonka w 3 rozmiarach, łup patyków, pnie wierzby białej; własna wiklina rośnie tylko na gruncie sadzonki, więc wiklina M2 (`shrub/osier`) zostaje na łachach piasku i żwiru, w łozowisku, na wydmie szarej i w olszynie górskiej (F5-h).
+- *Barwy* (krzywa liści, lato na pół z barwą biomu): wierzba #93b09a (srebrzysta), topola #2a5a20, wiklina #5a7c70; ΔE ≥ 6 od wszystkich gatunków (`FoliageCurveTest`). Mgła gałązek bez liści: wierzba #9c9a8e, topola #9a9286, wiklina #a49680.
+- *Martwe drewno i ścinka:* `DeadwoodPlan` z posuszem wierzby (złom na 0,2–0,5 wysokości) i topoli (0,35–0,7); konar niskiego widlenia, który po obróceniu leżałby na linii pnia, odłamuje się. Ścinka, okorowanie i korzenie z mechanizmów P1 i F1 (tablice `felling`, `deadwood`, `roots`, `trunks` z oboma gatunkami).
+- Suma kontrolna drzew wcześniejszych gatunków (`TreeShapePlanTest`) bez zmian: wierzba i topola pominięte w pętli, inne gatunki nie mają niskiego widlenia.
+
+**Drzewostany planera** (F5-i; profil wydzieleń `StandProfile.FLOODPLAIN`: luki 0,11 / 0,38 / 0,48, w granicach maksimów tabeli, więc luki innych lasów bez zmian).
+
+- *Łęg wiązowo-jesionowy* (10 drzew na chunk): dąb 330, jesion 300, wiąz 220, klon 80, lipa 70 (gospodarczy: dąb 450, jesion 300, wiąz 120, klon 70); a2 wiąz, klon, lipa; odnowienie czeremchy, wiązu, leszczyny i jesionu. Podszyt i płaszcz z czeremchy (część z chmielem) i leszczyny, bez bzu i derenia (brak bloków, F5-d).
+- *Łęg wierzbowo-topolowy* (7 na chunk): wierzba 650 (karpy), topola 250, olsza 60, wiąz 40 (gospodarczy: wierzba 450, topola 450); słabe a2 wierzby, olszy i wiązu; odnowienie wikliny, wierzby i czeremchy.
+- *Populetum albae* (7 na chunk): topola 450, wierzba 350, wiąz 100, jesion 50 (gospodarczy: topola 650); wyższa topola trzyma a1, więc w symulacji topola 56–60%, wierzba 14–22%.
+- *Wierzby nadrzeczne* (`RIVERSIDE_WILLOWS`): wierzba 800, olsza 200 w regule bez pięter (pojedyncze drzewa strefy); planer nie pisze pnia na kolumnie wody.
+- *Wikliny* (biom i strefa `WILLOW_SCRUB`): 0,18 kolumn krzewów — wiklina 7, wiklina z chmielem 2, krzew świetlików 1; własna wiklina także w płaszczach OlJ i olsu oraz w podszycie olsu (zamiast M2, F2-h).
+- Test palet (`PlannerPalettesTest`, KF-1): reguły obu łęgów bez `tree_substitute/` i `deadwood_substitute/`.
+
+**Chmiel** (F5-e; zasada L1).
+
+- Blok `ClimberBlock` (rodzaj `GroundPlant.Kind.CLIMBER`, na końcu enuma): płaszczyzna pnącza ku podporze (`facing`), model pnącza wanilii po id, na pniu o promieniu co najmniej 5 px, kłodzie albo liściach; bez kolizji, można się wspinać, łup tylko nożycami. Fazy V13: pędy od kroku 4,5, szyszki 17,0–22,0, znika od 24,5 (zimą bez modelu i obrysu).
+- *Na pniach* (`TreeHop`, sól `DecorationRandom.HOP_SALT`, nowa): drzewo z chmielem z szansą 0,4 (wierzby nadrzeczne), 0,35 (łęg wierzbowo-topolowy, wikliny), 0,22 (łęg wiązowo-jesionowy); na każdej stronie pnia pasmo 0 albo 2–9 bloków od podstawy (35% stron gołych). *Na krzewach* (`HopDecorator`, warianty `shrub/osier_hop_thin`, `shrub/bird_cherry_hop_thin`): krzew z chmielem 0,5 / 0,6, strona bloku liści 0,16 / 0,14.
+- Zasada L1: losowania tylko z pozycji (bez stanu generatora), chmiel tylko w powietrzu, w tagach `replaceable_by_trees` i `replaceable`, więc nie zajmuje miejsca liści, pni ani roślin; `PlantLayerFeature` traktuje go jako otwarty dla warstw roślin; w `determinism` liczony jako obiekt (jak pnącza wanilii). Test `FloodplainStepF5Test.hopStrandsArePureAndBounded`, `hopGrowsOnlyInTheFloodplain`.
+
+**Runo** (F5-j; 4 bloki `GroundPlant` na końcu, fazy V13 w `GroundPhases`, `ForestCensus`).
+
+- Mozga trzcinowata (HERB, 1 blok, wiechy 9,5–15,0, znika od 26,5), ziarnopłon wiosenny (SEASONAL: kwiaty 2,0–5,5, znika od 9,0), czosnek niedźwiedzi (SEASONAL: kwiaty 5,0–8,5, znika od 10,5), chmiel.
+- *Łęg wiązowo-jesionowy* (płaty 0,97): pokrzywa 32, trawa wysoka 10, paproć wielka 12, ziarnopłon 14, czosnek 8, zawilec 3, paproć 2, ściółka 3, rozproszony mech; rośliny wysokie §4.6 62% (≥ 60%).
+- *Łęg wierzbowo-topolowy* (0,98): pokrzywa 28, mozga 26, ziarnopłon 6, turzyca 4, trawa 8, paproć wielka 4. *Wikliny i wierzby nadrzeczne* (0,88): mozga 34, pokrzywa 18, trawa wysoka 30, paproć wielka 8, `bush` 6.
+- Test `FloodplainStepF5Test.herbsOfTheFloodplainOfStepF5`, `GroundPhasesTest`, `GroundLayerPlanTest`.
+
+**Martwe drewno** (F5-k): martwe drzewa na chunk lasu naturalnego 1,5 (Lł wiązowo-jesionowy: jesion, wiąz, dąb, klon) i 1,3 (Lł wierzbowo-topolowy: wierzba 14, topola 5, olsza 1; Populetum: topola 11, wierzba 6, wiąz 3) [S]. Mniej obiektów niż w OlJ (1,8), bo duże dęby, jesiony i stare wierzby mają dużą miąższość: przy pierwszych wartościach 1,9 i 2,4 symulacja dawała 180 i 340 m³/ha, po zmianie 140–146 i 190–208 m³/ha. Formy wierzby: kłoda 0,35, posusz 0,10, złom 0,27, wywrot 0,28 (wywrócone wierzby); topoli 0,45 / 0,18 / 0,25 / 0,12. Nabiegi topoli i wiązu z `RootPlan`; pniaki w gospodarczych według składu.
+
+**Przejścia** (F5-f, F5-g, F5-n): `ForestBlend.FORESTS` + łęg wiązowo-jesionowy (13) i wierzbowo-topolowy (14), `SHARES` 16. Pary: Lł wiązowo-jesionowy z OlJ, olsem, grądem, LMśw i Lł wierzbowo-topolowym; Lł wierzbowo-topolowy z OlJ, olsem i grądem. Woda bez przejścia: ostry tylko brzeg wody. Wikliny (nieleśne) spotykają łęgi w rampie `Ecotone`. `NEIGHBORS` jest od F5 pusty: żaden las nie bierze już kodu sąsiada. Test `ForestBlendTest`.
+
+**Karta norm** (F5-o): kolumny `ELM_ASH`, `WILLOW_POPLAR` (naturalne i gospodarcze) i `WILLOW_SCRUB` (jedna dla obu trybów: `Forest.of` nieleśnego biomu). Normy N1, N3, N4, N7, N8 (wiosna i lato), N9, N10 według L 06 §4.5; łęg wierzbowo-topolowy gospodarczy jako nasadzenia topoli [S]: N3 topola 30–95%, wierzba 0–60%, N4 60–95%, N1 4–14 (równowiekowa tyczkowina gęstsza), bo w symulacji wyższe równowiekowe topole biorą a1 (topola 80%, wierzba 4–5% przy palecie 450 / 450); N10 naturalnych: Lł wiązowo-jesionowy 1,5 obiektu, 90–170 m³/ha, Lł wierzbowo-topolowy 1,3 obiektu, 100–220 m³/ha [S]; Populetum albae jako forma `ForestNorms.Site.POPLAR` (z asocjacji kodu, `ForestNorms.siteOf`, w `NormsCensus` dla powierzchni łęgu wierzbowo-topolowego). Nowe klucze składu `white_willow`, `poplar` przed `other`. `StandCensusSimulationTest` pomija wikliny (bez drzewostanu planera), liczy skład `white_willow` i `poplar` i ma Populetum albae jako drugą formę łęgu wierzbowo-topolowego; test `FloodplainStepF5Test.floodplainCardOfStepF5`. Symulacja (`-PcalibrateSlice`, etap 1) poza normą: N7 wszędzie (symulacja nie sadzi krzewów podszytu, jak w F4), N4 starodrzewu łęgu wierzbowo-topolowego naturalnego 80–82% (50–70) na części powierzchni, N10 objętość gospodarczych starodrzewi 24–28 m³/ha (8–16), N3 wiązu gospodarczego Lł wiązowo-jesionowego 10% na granicy — do etapu 2 i CP-D.
+
+**Powierzchnie i KF-6** (F5-q): `slice_plots.txt` + 6 powierzchni (`-PfindSlicePlots -PfindSlicePlotsKeep`). REAL: `elm_ash_natural_1` (−2140, 10559), `_2` (−2120, 10719), `elm_ash_managed_1` (−3264, 3672), `_2` (−10421, −4937); `willow_poplar_managed_1` (−11720, −9601), `_2` (−11960, −9821). Bez powierzchni (`F_MISSING`): naturalny łęg wierzbowo-topolowy REAL (najwęższy pas przy wodzie: brak kwadratu 90% wokół 13 miejsc) i oba łęgi GAMEPLAY w obu trybach (pasy wzdłuż rzek węższe niż powierzchnia; najlepszy kwadrat 128 bloków ma 44% Lł wiązowo-jesionowego i 46% wierzbowo-topolowego) — te kolumny karty sprawdza tylko `StandCensusSimulationTest`. Miejsce KF-6: `ForestPerformance.FLOOD_SITE` = REAL `elm_ash_natural_1`, GAMEPLAY (−2044, −5087) (miejsce obu łęgów, 90% łęgów w kwadracie 128 bloków); `floodplain_1` w przelocie `-Psites=slice`, test `SlicePlotsTest.flightsOfThePerformanceTestUseTheFloodplainPlot`, plik skopiowany do `pl-m2-baseline`. `DeterminismClientGameTest` ma dziewiąty obszar `floodplain` (narożnik 64 bloki przed tymi miejscami); strefa `H` obejmuje też wikliny i strefy `WILLOW_SCRUB` i `RIVERSIDE_WILLOWS` (F5-p), bo F5 zmienia dekorację wzdłuż wszystkich rzek. Gametesty tablic (`felling`, `deadwood`, `roots`, `trunks`) mają wierzbę i topolę.
+
+**Tekstury** (F5-m): 25 plików z `tools/art` (`recipes.py`, `ground.py`: nowy generator pnącza `climber`, sprite'y ziarnopłonu i czosnku; `wood.py`: sprite'y liści sadzonek): liście wierzby (wąskie lancetowate sprite'y, też wiklina; topola z `broadleaf_leaves`), kora wierzby (2 warianty), okorowany pień, czoła, deski, sadzonki trzech gatunków, gałązki, mozga, ziarnopłon, czosnek i chmiel z wariantami bez kwiatów; `lint.py` 167 tekstur PASS, `checkArt` PASS, `CREDITS.md` przegenerowany.
+
+**Migawka rejestru:** świadomie przegenerowana, 118 linii dopisanych, 0 usuniętych (30 bloków, 27 przedmiotów).
+
+**Stare światy.** Zmienia się dekoracja nowych chunków obu łęgów, wiklin, strefy wierzb nadrzecznych i wiklin wzdłuż wszystkich rzek, pasów przejścia, zasięgu koron oraz płaszczy i podszytu OlJ i olsu (własna wiklina, czeremcha z chmielem); teren bez zmian.
+
+**Testy (etap 1).**
+
+- Kompilacja `main`, `client`, `test`, `gametest`; `runDatagen`; `checkDatagen`; `checkArt`; `lint.py`.
+- Nowy `FloodplainStepF5Test` (chmiel: czystość i granice pasm, tylko w łęgach i wiklinach; pochylenie wierzby i wysokość topoli; runo; karta). Zmienione: `TreeShapePlanTest` (pętla sumy kontrolnej bez nowych gatunków), `WoodSetTest`, `FoliageCurveTest`, `ForestBlendTest`, `StandCensusSimulationTest`, `RegistrySnapshotTest`, `SlicePlotsTest` (`F_MISSING`, KF-6). Dotknięte zmianą, bez zmian kodu testu: `SaplingSizeTest`, `DeadwoodPlanTest`, `RootPlanTest`, `GroundPhasesTest`, `GroundLayerPlanTest`, `PlannerPalettesTest`, `ForestNormsTest`, `GoldenTerrainTest`.
+- `tools/dev/run-tests --reuse fastTest` PASS.
+- Wyniki i przebiegi gry w „Stan po F5”, według `python tools/dev/test_plan.py 6205f6f`.
 
 ## Do kroku porządkowego (lista drobiazgów z recenzji)
 

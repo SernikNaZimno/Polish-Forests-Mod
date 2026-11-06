@@ -80,8 +80,16 @@ public record StandProfile(double naturalFactor, double[] managedAges, double[] 
 	 */
 	public static final StandProfile MONTANE_BEECH = new StandProfile(1.0, DEFAULT.managedAges, DEFAULT.naturalAges,
 			ForestStandMap.MERGE_CHANCE, new double[] {0.10, 0.38, 0.48}, 0.45, 18, 0.4, 8, 36, new double[] {0, 0.14, 0.28}, 22);
+	/**
+	 * The elm-ash and the willow-poplar floodplain forest (step F5; research/06 §4.5): natural stands opened by the fall of
+	 * old willows and poplars, the floods and the Dutch elm disease (gaps of mostly 10–30 m, often two together, more of
+	 * them than in the alder forests); managed stands without regeneration nests (clear cuts and plantings of the floodplain).
+	 * The gap chances stay within those of the table, so the gap draws of the other forests do not change.
+	 */
+	public static final StandProfile FLOODPLAIN = new StandProfile(1.0, DEFAULT.managedAges, DEFAULT.naturalAges,
+			ForestStandMap.MERGE_CHANCE, new double[] {0.11, 0.38, 0.48}, 0.5, 18, 0.4, 8, 36, new double[] {0, 0, 0}, 0);
 	/** All profiles of the table (the gap process draws against the highest chance of any of them). */
-	static final StandProfile[] ALL = {DEFAULT, BEECH, ALDER_CARR, ASH_ALDER, FIR, MONTANE_BEECH};
+	static final StandProfile[] ALL = {DEFAULT, BEECH, ALDER_CARR, ASH_ALDER, FIR, MONTANE_BEECH, FLOODPLAIN};
 
 	public StandProfile {
 		if (managedAges.length != 3 || naturalAges.length != 3 || gapChance.length != 3 || nestChance.length != 3) {
@@ -103,6 +111,7 @@ public record StandProfile(double naturalFactor, double[] managedAges, double[] 
 			case ASH_ALDER_FOREST -> ASH_ALDER;
 			case UPLAND_FIR_FOREST -> FIR;
 			case MONTANE_BEECH_FOREST -> MONTANE_BEECH;
+			case ELM_ASH_FOREST, WILLOW_POPLAR_FOREST -> FLOODPLAIN;
 			default -> DEFAULT;
 		};
 	}

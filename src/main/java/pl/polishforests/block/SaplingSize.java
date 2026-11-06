@@ -42,6 +42,11 @@ public enum SaplingSize {
 	 * one of a stand, and the slender birch and hornbeam would otherwise give hardly more logs than the medium tree.
 	 */
 	public static final int LARGE_DBH = 28;
+	/**
+	 * Largest pole-stage height of a small tree, blocks (step F5): a species whose pole stage is taller (the poplar, 18 m)
+	 * grows its small tree scaled down to it, so the three sizes stay apart; no species of the earlier steps is taller.
+	 */
+	public static final int SMALL_HEIGHT = 16;
 
 	private static final SaplingSize[] VALUES = values();
 	private static final int TOTAL;
@@ -71,18 +76,26 @@ public enum SaplingSize {
 
 	/**
 	 * The size factors of the planner's tree of a species (see the class comment), rounded to hundredths: the small tree
-	 * {@link TreeSize#ONE}; the large one the mature height capped at {@value #LARGE_HEIGHT} blocks, trunk and crown by the
+	 * {@link TreeSize#ONE} (step F5: height and crown scaled to {@value #SMALL_HEIGHT} blocks for a taller pole stage); the large one the mature height capped at {@value #LARGE_HEIGHT} blocks, trunk and crown by the
 	 * same factor, the trunk at least {@value #LARGE_DBH} cm; the medium one half way in height between the pole stage and the large tree, the crown by the same
 	 * factor, the trunk at least {@value #MEDIUM_DBH} cm.
 	 */
 	public TreeSize factors(Species species) {
 		SpeciesShape shape = SpeciesShape.of(species);
-		if (this == SMALL || shape == null) {
+		if (shape == null) {
 			return TreeSize.ONE;
+		}
+		double pole = Math.min(shape.height().pole(), SMALL_HEIGHT);
+		if (this == SMALL) {
+			if (pole >= shape.height().pole()) {
+				return TreeSize.ONE;
+			}
+			float h = round(pole / shape.height().pole());
+			return new TreeSize(h, 1, h);
 		}
 		double mature = shape.height().mature();
 		double large = Math.min(mature, LARGE_HEIGHT);
-		double height = this == LARGE ? large : (shape.height().pole() + large) / 2;
+		double height = this == LARGE ? large : (pole + large) / 2;
 		float h = round(height / mature);
 		double least = this == LARGE ? LARGE_DBH : MEDIUM_DBH;
 		float dbh = round(Math.max(h * shape.dbh().mature(), least) / shape.dbh().mature());

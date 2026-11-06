@@ -1,0 +1,7 @@
+{
+  "parent": "polishforests:block/template_trunk_inventory",
+  "textures": {
+    "bark": "polishforests:block/stripped_white_willow_trunk",
+    "end": "polishforests:block/stripped_white_willow_log_top"
+  }
+}

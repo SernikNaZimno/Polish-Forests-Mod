@@ -26,7 +26,11 @@ public enum RootFlare {
 	/** Step F3: the fir's buttresses (a deep heart and tap root system with strong flares on the mountain slopes). */
 	FIR(TreeTrunk.FIR),
 	/** Step F3: the sycamore maple's flares (a heart root system that holds the scree of the ravines). */
-	SYCAMORE_MAPLE(TreeTrunk.SYCAMORE_MAPLE);
+	SYCAMORE_MAPLE(TreeTrunk.SYCAMORE_MAPLE),
+	/** Step F5: the white willow's flares (a broad, shallow heart root system on the wet alluvium). */
+	WHITE_WILLOW(TreeTrunk.WHITE_WILLOW),
+	/** Step F5: the poplar's buttresses (the large flares of the old floodplain poplars). */
+	POPLAR(TreeTrunk.POPLAR);
 
 	private final TreeTrunk trunk;
 

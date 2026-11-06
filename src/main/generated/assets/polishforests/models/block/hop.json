@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/vine",
+  "textures": {
+    "vine": "polishforests:block/hop"
+  }
+}

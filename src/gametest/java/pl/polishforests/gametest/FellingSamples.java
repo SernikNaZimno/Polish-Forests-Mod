@@ -226,7 +226,9 @@ final class FellingSamples {
 
 	private static List<Species> species() {
 		return List.of(Species.OAK, Species.BEECH, Species.LINDEN, Species.HORNBEAM, Species.NORWAY_MAPLE, Species.ASH,
-				Species.SPRUCE, Species.SCOTS_PINE, Species.BIRCH, Species.BLACK_ALDER, Species.ELM, Species.FIR, Species.SYCAMORE_MAPLE);
+				Species.SPRUCE, Species.SCOTS_PINE, Species.BIRCH, Species.BLACK_ALDER, Species.ELM, Species.FIR, Species.SYCAMORE_MAPLE,
+				// Step F5.
+				Species.WHITE_WILLOW, Species.POPLAR);
 	}
 
 	/** A board cell as built: the tree to fell, its neighbor, the dead wood beside it. */

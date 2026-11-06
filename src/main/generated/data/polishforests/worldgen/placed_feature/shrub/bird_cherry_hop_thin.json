@@ -1,0 +1,12 @@
+{
+  "feature": "polishforests:shrub/bird_cherry_hop_thin",
+  "placement": [
+    {
+      "type": "minecraft:block_predicate_filter",
+      "predicate": {
+        "type": "minecraft:would_survive",
+        "state": "minecraft:oak_sapling"
+      }
+    }
+  ]
+}

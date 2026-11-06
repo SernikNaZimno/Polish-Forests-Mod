@@ -160,6 +160,20 @@ public record SpeciesShape(Archetype archetype, ByAge height, ByAge dbh, ByAge c
 		SHAPES.put(Species.SYCAMORE_MAPLE, new SpeciesShape(Archetype.BROAD, new ByAge(15, 27, 31), new ByAge(13, 42, 66),
 				new ByAge(0.58F, 0.6F, 0.6F), new ByAge(2.2F, 4.4F, 5.4F), new Profile(0.65F, 0.5F, 0.45F, 2.2F), 0.5F,
 				0.9F, 1, 64, 36, 0.1F, 0, 2.3F, 2.0F, 0.9F, 0.4F, 2.4F, 0.84F, 0.05F));
+		// Step F5 (docs/research 06 §3.9, §9). White willow (a1 of the willow floodplain forest, Salicetum albae: 15-25 m, a
+		// stout, short bole, often leaning towards the water or forked low into a few thick ascending limbs, a broad, loose,
+		// rounded crown with hanging tips): the largest lean of the broad-leaved trees, a fork into three limbs, a thick
+		// trunk for its height; 25% of the willows of a stand grow as two or three stems from the base (stoolChance).
+		SHAPES.put(Species.WHITE_WILLOW, new SpeciesShape(Archetype.BROAD, new ByAge(12, 20, 23), new ByAge(14, 58, 95),
+				new ByAge(0.6F, 0.58F, 0.56F), new ByAge(2.6F, 5.2F, 6.6F), new Profile(0.7F, 0.45F, 0.5F, 2.2F), 3.8F,
+				0.9F, 1, 64, 34, -0.12F, 3, 2.2F, 1.8F, 0.86F, 0.35F, 2.4F, 0.8F, 0.08F));
+		// Poplar (one species until M3 for the white and the black poplar of the floodplain forests, Populetum albae: 25-40 m,
+		// the tallest broad-leaved tree of the lowlands, a long straight bole and a broad, high crown of a few thick ascending
+		// limbs; the planner's leader to the top with long ascending laterals, the limbs of the old poplar in the
+		// laterals).
+		SHAPES.put(Species.POPLAR, new SpeciesShape(Archetype.BROAD, new ByAge(18, 31, 36), new ByAge(16, 55, 90),
+				new ByAge(0.5F, 0.52F, 0.55F), new ByAge(2.6F, 5.4F, 7.0F), new Profile(0.6F, 0.55F, 0.45F, 2.4F), 0.6F,
+				1.2F, 1, 60, 30, 0.08F, 0, 2.3F, 2.0F, 0.86F, 0.45F, 2.4F, 0.82F, 0.06F));
 	}
 
 	/**
@@ -169,7 +183,17 @@ public record SpeciesShape(Archetype archetype, ByAge height, ByAge dbh, ByAge c
 	 * the tree stay as they are.
 	 */
 	public static double stoolChance(Species species) {
-		return species == Species.BLACK_ALDER ? 0.3 : 0;
+		// Step F5: the white willow, often of two or three stems from the base (old pollards and coppice shoots on the banks).
+		return species == Species.BLACK_ALDER ? 0.3 : species == Species.WHITE_WILLOW ? 0.25 : 0;
+	}
+
+	/**
+	 * Step F5: whether the species forks low into its thick limbs, below the floor of the canopy layer of a stand (the white
+	 * willow: a short bole and a fork at a third of its height); the limbs of the fork may then stand below that floor next
+	 * to the trunk. False for every species of the earlier steps, so their trees stay as they were.
+	 */
+	public static boolean lowFork(Species species) {
+		return species == Species.WHITE_WILLOW;
 	}
 
 	/** The shape of a species of the slice, or null when the planner has none (species outside the slice). */

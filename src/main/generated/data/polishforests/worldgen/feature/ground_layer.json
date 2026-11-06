@@ -2,6 +2,36 @@
   "type": "polishforests:ground_layer",
   "rules": [
     {
+      "coverage": 0.88,
+      "patch": 3,
+      "plants": [
+        {
+          "block": "polishforests:reed_canary_grass",
+          "weight": 34
+        },
+        {
+          "block": "polishforests:nettle",
+          "weight": 18
+        },
+        {
+          "block": "minecraft:tall_grass",
+          "weight": 30
+        },
+        {
+          "block": "minecraft:large_fern",
+          "weight": 8
+        },
+        {
+          "block": "minecraft:bush",
+          "weight": 6
+        }
+      ],
+      "zones": [
+        "willow_scrub",
+        "riverside_willows"
+      ]
+    },
+    {
       "coverage": 0.85,
       "patch": 3,
       "plants": [
@@ -510,28 +540,65 @@
       "biomes": [
         "willow_poplar_forest"
       ],
-      "coverage": 0.86,
-      "patch": 3,
+      "coverage": 0.98,
+      "patch": 5,
+      "patch_shape": "blobs",
       "plants": [
         {
+          "block": "polishforests:nettle",
+          "weight": 28
+        },
+        {
+          "block": "polishforests:reed_canary_grass",
+          "weight": 26
+        },
+        {
+          "block": {
+            "id": "polishforests:lesser_celandine",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "2"
+            }
+          },
+          "weight": 2
+        },
+        {
+          "block": {
+            "id": "polishforests:lesser_celandine",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "3"
+            }
+          },
+          "weight": 2
+        },
+        {
+          "block": {
+            "id": "polishforests:lesser_celandine",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "4"
+            }
+          },
+          "weight": 2
+        },
+        {
+          "block": "polishforests:tussock_sedge",
+          "weight": 4
+        },
+        {
           "block": "minecraft:tall_grass",
-          "weight": 55
+          "weight": 8
         },
         {
           "block": "minecraft:large_fern",
-          "weight": 20
-        },
-        {
-          "block": "minecraft:bush",
-          "weight": 12
-        },
+          "weight": 4
+        }
+      ],
+      "scattered": [
         {
           "block": "minecraft:fern",
-          "weight": 5
-        },
-        {
-          "block": "minecraft:short_grass",
-          "weight": 4
+          "weight": 3
         }
       ]
     },
@@ -539,54 +606,85 @@
       "biomes": [
         "elm_ash_forest"
       ],
-      "coverage": 0.88,
-      "patch": 3,
+      "coverage": 0.97,
+      "patch": 5,
+      "patch_shape": "blobs",
       "plants": [
         {
+          "block": "polishforests:nettle",
+          "weight": 32
+        },
+        {
           "block": "minecraft:tall_grass",
-          "weight": 45
+          "weight": 10
         },
         {
           "block": "minecraft:large_fern",
-          "weight": 25
-        },
-        {
-          "block": "minecraft:fern",
-          "weight": 8
+          "weight": 12
         },
         {
           "block": {
-            "id": "minecraft:leaf_litter",
+            "id": "polishforests:lesser_celandine",
             "properties": {
               "facing": "north",
-              "segment_amount": "2"
-            }
-          },
-          "weight": 3
-        },
-        {
-          "block": {
-            "id": "minecraft:leaf_litter",
-            "properties": {
-              "facing": "north",
-              "segment_amount": "3"
-            }
-          },
-          "weight": 3
-        },
-        {
-          "block": {
-            "id": "minecraft:leaf_litter",
-            "properties": {
-              "facing": "north",
-              "segment_amount": "4"
+              "flower_amount": "2"
             }
           },
           "weight": 4
         },
         {
           "block": {
-            "id": "minecraft:wildflowers",
+            "id": "polishforests:lesser_celandine",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "3"
+            }
+          },
+          "weight": 4
+        },
+        {
+          "block": {
+            "id": "polishforests:lesser_celandine",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "4"
+            }
+          },
+          "weight": 6
+        },
+        {
+          "block": {
+            "id": "polishforests:wild_garlic",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "2"
+            }
+          },
+          "weight": 2
+        },
+        {
+          "block": {
+            "id": "polishforests:wild_garlic",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "3"
+            }
+          },
+          "weight": 2
+        },
+        {
+          "block": {
+            "id": "polishforests:wild_garlic",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "4"
+            }
+          },
+          "weight": 4
+        },
+        {
+          "block": {
+            "id": "polishforests:wood_anemone",
             "properties": {
               "facing": "north",
               "flower_amount": "2"
@@ -596,7 +694,7 @@
         },
         {
           "block": {
-            "id": "minecraft:wildflowers",
+            "id": "polishforests:wood_anemone",
             "properties": {
               "facing": "north",
               "flower_amount": "3"
@@ -606,17 +704,53 @@
         },
         {
           "block": {
-            "id": "minecraft:wildflowers",
+            "id": "polishforests:wood_anemone",
             "properties": {
               "facing": "north",
               "flower_amount": "4"
             }
           },
+          "weight": 1
+        },
+        {
+          "block": "minecraft:fern",
           "weight": 2
         },
         {
-          "block": "minecraft:short_grass",
-          "weight": 2
+          "block": {
+            "id": "minecraft:leaf_litter",
+            "properties": {
+              "facing": "north",
+              "segment_amount": "2"
+            }
+          },
+          "weight": 1
+        },
+        {
+          "block": {
+            "id": "minecraft:leaf_litter",
+            "properties": {
+              "facing": "north",
+              "segment_amount": "3"
+            }
+          },
+          "weight": 1
+        },
+        {
+          "block": {
+            "id": "minecraft:leaf_litter",
+            "properties": {
+              "facing": "north",
+              "segment_amount": "4"
+            }
+          },
+          "weight": 1
+        }
+      ],
+      "scattered": [
+        {
+          "block": "polishforests:forest_moss_carpet",
+          "weight": 3
         }
       ]
     },
@@ -645,20 +779,28 @@
       "biomes": [
         "willow_scrub"
       ],
-      "coverage": 0.8,
+      "coverage": 0.88,
       "patch": 3,
       "plants": [
         {
+          "block": "polishforests:reed_canary_grass",
+          "weight": 34
+        },
+        {
+          "block": "polishforests:nettle",
+          "weight": 18
+        },
+        {
           "block": "minecraft:tall_grass",
-          "weight": 55
+          "weight": 30
         },
         {
           "block": "minecraft:large_fern",
-          "weight": 20
+          "weight": 8
         },
         {
           "block": "minecraft:bush",
-          "weight": 10
+          "weight": 6
         }
       ]
     },

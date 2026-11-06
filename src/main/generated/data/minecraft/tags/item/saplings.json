@@ -13,6 +13,9 @@
     "polishforests:elm_sapling",
     "polishforests:bird_cherry_sapling",
     "polishforests:fir_sapling",
-    "polishforests:sycamore_maple_sapling"
+    "polishforests:sycamore_maple_sapling",
+    "polishforests:white_willow_sapling",
+    "polishforests:poplar_sapling",
+    "polishforests:osier_sapling"
   ]
 }

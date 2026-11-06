@@ -121,6 +121,17 @@ public final class FoliageCurve {
 		// yellow to brown (no orange of the Norway maple) and fall by the end of the month in the mountains.
 		broadleaf(Species.SYCAMORE_MAPLE, 5.5, 0xACD25C, 0x2A9060,
 				keys(20.4, 0, 0, 21.8, 0xC8AE3E, 0.8, 22.9, 0xA27A34, 0.85), 23.6, 0x948A7E, 0xB4ABA0, 0);
+		// Step F5 (docs/research 08): the white willow leafs out early (the 3rd decade of April, with the birch), its summer
+		// crown a silvery gray green (the silky undersides of the narrow leaves), green long into the autumn, pale yellow
+		// late in October and bare in November; the floodplain poplar leafs out at the end of April, a deep glossy green,
+		// golden yellow in October; the osier leafs out first of the willows (mid-April), gray green, yellowish in
+		// late October. The twig hazes: the willow's yellow-olive shoots, the poplar's gray-brown, the osier's long
+		// yellow-brown rods.
+		broadleaf(Species.WHITE_WILLOW, 4.6, 0xC0DA74, 0x93B09A, keys(22.4, 0, 0, 23.8, 0xC8C048, 0.7), 24.6, 0x9C9A8E,
+				0xBEBCB2, 0);
+		broadleaf(Species.POPLAR, 5.3, 0xB6D45E, 0x2A5A20, keys(21.0, 0, 0, 22.4, 0xE0C23A, 0.85, 23.2, 0xD8A836, 0.85), 23.8,
+				0x9A9286, 0xBBB4A9, 0);
+		broadleaf(Species.OSIER, 4.4, 0xBCD86E, 0x5A7C70, keys(22.0, 0, 0, 23.4, 0xC8B840, 0.75), 24.2, 0xA49680, 0xC2B6A0, 0);
 	}
 
 	private FoliageCurve() {

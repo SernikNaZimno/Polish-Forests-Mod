@@ -10,7 +10,8 @@ import java.util.Locale;
  * wildflowers: the stem under the grass tint, the flower without it; the phases of the year are drawn by the client,
  * PW-8 (a), step V13), {@link GroundCoverBlock} (a litter of 1–4 segments like vanilla leaf litter, not tinted, with the
  * mossy underside), a tall fern of two blocks (vanilla {@code DoublePlantBlock}; green, brown from mid-autumn in V13) and,
- * since step F2, a herb of one block as a cross ({@link SeasonalHerbBlock}: sedges, iris, ferns, nettle).
+ * since step F2, a herb of one block as a cross ({@link SeasonalHerbBlock}: sedges, iris, ferns, nettle) and, since step F5,
+ * a climber on a trunk or a shrub ({@link ClimberBlock}: the hop).
  * The ids go into saved worlds and are frozen (PW-11): new constants only at the end.
  */
 public enum GroundPlant {
@@ -69,14 +70,37 @@ public enum GroundPlant {
 	/** Labrador tea (Rhododendron tomentosum = Ledum palustre): the aromatic shrub of the bog woodland, white umbels in May and June (step F4). */
 	LABRADOR_TEA(Kind.HERB),
 	/** Purple moor-grass (Molinia caerulea): the tussocks of the moist pine forest (Molinio-Pinetum), the purple panicles from July (step F4). */
-	PURPLE_MOOR_GRASS(Kind.HERB);
+	PURPLE_MOOR_GRASS(Kind.HERB),
+	/**
+	 * Reed canary grass (Phalaris arundinacea): the tall grass of the willow floodplain forests, the osier scrub and the
+	 * banks (Phalaridetum), the pale panicles in June and July, straw from late autumn (step F5).
+	 */
+	REED_CANARY_GRASS(Kind.HERB),
+	/**
+	 * Lesser celandine (Ficaria verna): the spring carpets of the elm-ash floodplain forest (Ficario-Ulmetum), glossy
+	 * yellow stars in March and April, gone in June (step F5).
+	 */
+	LESSER_CELANDINE(Kind.SEASONAL),
+	/**
+	 * Wild garlic (Allium ursinum): the dense spring carpets of the fertile floodplain and beech forests, white umbels in
+	 * late April and May, gone in June (step F5).
+	 */
+	WILD_GARLIC(Kind.SEASONAL),
+	/**
+	 * Hop (Humulus lupulus): the climber of the floodplain forests and the osier scrub on trunks and shrubs, a bine with
+	 * three-lobed leaves from April, the pale green cones in August and September, dying back to its rootstock in November
+	 * (step F5; {@link Kind#CLIMBER}).
+	 */
+	HOP(Kind.CLIMBER);
 
 	/**
 	 * The block family of an entry (not saved: the order may change). Step F2: {@link #HERB}, a single-block cross plant
 	 * of the size of vanilla's short grass with baked colors (not tinted) and the seasonal looks of {@link SeasonalHerbBlock}.
+	 * Step F5: {@link #CLIMBER}, a climber on the side of a trunk, a log or leaves ({@link ClimberBlock}: a plane on one face
+	 * like vanilla's vine, baked colors, the seasonal looks of the herbs).
 	 */
 	public enum Kind {
-		BERRY_SHRUB, SEASONAL, COVER, TALL, HERB
+		BERRY_SHRUB, SEASONAL, COVER, TALL, HERB, CLIMBER
 	}
 
 	private final Kind kind;

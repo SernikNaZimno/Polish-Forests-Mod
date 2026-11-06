@@ -47,14 +47,15 @@ public final class ForestBlend {
 	 * transect Bśw → BMśw → LMśw → grąd (docs/04 §6, N15; {@link #TRANSECT}, their indices 0–3 kept), then the forests of
 	 * the steps F in their order (F1: the lowland beech forest; F2: the alder carr and the ash-alder forest; F3: the
 	 * upland fir forest and the Carpathian beech forest; F4: the dry, the moist pine forest, the bog woodland and the
-	 * coastal pine forest). Each step F
+	 * coastal pine forest; F5: the elm-ash and the willow-poplar floodplain forest). Each step F
 	 * appends its forests here, takes them off {@link #NEIGHBORS} and names their pairs in {@link #BLENDS}.
 	 */
 	public static final HabitatBiome[] FORESTS = {HabitatBiome.FRESH_PINE_FOREST, HabitatBiome.MIXED_PINE_FOREST,
 			HabitatBiome.MIXED_FOREST, HabitatBiome.OAK_HORNBEAM_FOREST, HabitatBiome.LOWLAND_BEECH_FOREST,
 			HabitatBiome.ALDER_CARR, HabitatBiome.ASH_ALDER_FOREST, HabitatBiome.UPLAND_FIR_FOREST,
 			HabitatBiome.MONTANE_BEECH_FOREST, HabitatBiome.DRY_PINE_FOREST, HabitatBiome.MOIST_PINE_FOREST,
-			HabitatBiome.BOG_WOODLAND, HabitatBiome.COASTAL_PINE_FOREST};
+			HabitatBiome.BOG_WOODLAND, HabitatBiome.COASTAL_PINE_FOREST, HabitatBiome.ELM_ASH_FOREST,
+			HabitatBiome.WILLOW_POPLAR_FOREST};
 	/** The forests of the slice transect, the first four of {@link #FORESTS} (norm N15, {@code TransectPalettes}). */
 	public static final HabitatBiome[] TRANSECT = java.util.Arrays.copyOf(FORESTS, 4);
 	/** Index of the lowland beech forest in {@link #FORESTS} (step F1). */
@@ -70,6 +71,9 @@ public final class ForestBlend {
 	public static final int MOIST_PINE = 10;
 	public static final int BOG_WOODLAND = 11;
 	public static final int COASTAL_PINE = 12;
+	/** Indices of the elm-ash and the willow-poplar floodplain forest in {@link #FORESTS} (step F5). */
+	public static final int ELM_ASH = 13;
+	public static final int WILLOW_POPLAR = 14;
 	/**
 	 * Pairs of {@link #FORESTS} that mix in the blend's belt (bit b of entry a); the other pairs meet in the ramp of
 	 * {@link Ecotone}. The four forests of the transect all blend with each other (step Z1); the lowland beech forest (step
@@ -87,7 +91,11 @@ public final class ForestBlend {
 	 * forest with them, the alder carr and the bog woodland (the wetter sites of the same poor sand), the bog woodland with
 	 * the fresh pine forest and the alder carr, the coastal pine forest with the fresh and the mixed pine-oak forest, the
 	 * bog woodland and the dry pine forest (the coastal belt behind the dunes); the heath, the raised bog and the gray dune
-	 * (no forests of the blend) meet them in the ramp.
+	 * (no forests of the blend) meet them in the ramp. Step F5: the elm-ash forest with the ash-alder forest, the alder carr,
+	 * the oak-hornbeam and the mixed forest (the higher terrace of the valley floor passes into the grąd) and the
+	 * willow-poplar forest, the willow-poplar forest with the ash-alder forest, the alder carr and the oak-hornbeam forest
+	 * (rule Z10: only the edge of the water stays sharp); the osier scrub (not a forest of the planner, mostly a waterside
+	 * zone) meets them in the ramp of {@link Ecotone} (decision F5-f).
 	 */
 	private static final int[] BLENDS = pairs(new int[][] {{0, 1}, {0, 2}, {0, 3}, {1, 2}, {1, 3}, {2, 3}, {BEECH, 3},
 			{BEECH, 2}, {BEECH, 1}, {ALDER_CARR, ASH_ALDER}, {ALDER_CARR, 0}, {ALDER_CARR, 1}, {ALDER_CARR, 2}, {ALDER_CARR, 3},
@@ -95,7 +103,8 @@ public final class ForestBlend {
 			{UPLAND_FIR, 2}, {UPLAND_FIR, 1}, {MONTANE_BEECH, BEECH}, {MONTANE_BEECH, UPLAND_FIR}, {MONTANE_BEECH, 3},
 			{DRY_PINE, 0}, {DRY_PINE, 1}, {MOIST_PINE, 0}, {MOIST_PINE, 1}, {MOIST_PINE, ALDER_CARR}, {MOIST_PINE, BOG_WOODLAND},
 			{BOG_WOODLAND, 0}, {BOG_WOODLAND, ALDER_CARR}, {COASTAL_PINE, 0}, {COASTAL_PINE, 1}, {COASTAL_PINE, BOG_WOODLAND},
-			{COASTAL_PINE, DRY_PINE}});
+			{COASTAL_PINE, DRY_PINE}, {ELM_ASH, ASH_ALDER}, {ELM_ASH, ALDER_CARR}, {ELM_ASH, 3}, {ELM_ASH, 2},
+			{ELM_ASH, WILLOW_POPLAR}, {WILLOW_POPLAR, ASH_ALDER}, {WILLOW_POPLAR, ALDER_CARR}, {WILLOW_POPLAR, 3}});
 	/** Radius of the kernel (m·k). */
 	public static final double RADIUS = 48;
 	/** Spacing of the lattice (m·k); in blocks at least 2. */
@@ -107,9 +116,10 @@ public final class ForestBlend {
 	/**
 	 * Lowland woodlands next to the forests of {@link #FORESTS} whose trees those forests take over near them (trees only,
 	 * {@link #takeover}): floodplain forests (the lowland beech forest until step F1, the alder carr and the ash-alder
-	 * forest until step F2, the pine forests of other sites and the bog woodland until step F4, now forests of the blend).
+	 * forest until step F2, the pine forests of other sites and the bog woodland until step F4, the elm-ash and the
+	 * willow-poplar forest until step F5, now forests of the blend; since F5 none is left).
 	 */
-	private static final long NEIGHBORS = bits(HabitatBiome.ELM_ASH_FOREST, HabitatBiome.WILLOW_POPLAR_FOREST);
+	private static final long NEIGHBORS = bits();
 	/**
 	 * Share of the slice forests among the land without a zone within the radius ({@link #takeover}) at which the takeover
 	 * starts, and at which it is complete (smoothstep between).
@@ -164,13 +174,13 @@ public final class ForestBlend {
 	 * alder carr: the eutrophic Ribeso-Alnetum, Ol; the ash-alder forest: OlJ; step F3: the upland fir forest its
 	 * mesotrophic Abietetum polonicum, LMwyż, and the Carpathian beech forest its fertile Dentario glandulosae-Fagetum, LG;
 	 * step F4: the dry pine forest Bs, the moist pine forest Bw, the bog woodland its pine form Bb, the coastal pine forest
-	 * behind the wind belt Bśw).
+	 * behind the wind belt Bśw; step F5: both floodplain forests Lł).
 	 */
 	private static final ForestSiteType[] SITES = {ForestSiteType.FRESH_CONIFEROUS, ForestSiteType.FRESH_MIXED_CONIFEROUS,
 			ForestSiteType.FRESH_MIXED_BROADLEAVED, ForestSiteType.FRESH_BROADLEAVED, ForestSiteType.FRESH_BROADLEAVED,
 			ForestSiteType.ALDER_SWAMP, ForestSiteType.ASH_ALDER_SWAMP, ForestSiteType.UPLAND_MIXED_BROADLEAVED,
 			ForestSiteType.MOUNTAIN_BROADLEAVED, ForestSiteType.DRY_CONIFEROUS, ForestSiteType.MOIST_CONIFEROUS,
-			ForestSiteType.BOGGY_CONIFEROUS, ForestSiteType.FRESH_CONIFEROUS};
+			ForestSiteType.BOGGY_CONIFEROUS, ForestSiteType.FRESH_CONIFEROUS, ForestSiteType.RIPARIAN, ForestSiteType.RIPARIAN};
 	private static final byte[] MEMBER = new byte[64];
 
 	static {

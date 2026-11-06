@@ -87,6 +87,10 @@ final class ModBlockModels extends FabricModelProvider {
 			// flaking plates.
 			case FIR -> List.of(own("fir_bark"), own("fir_bark_2"));
 			case SYCAMORE_MAPLE -> List.of(own("sycamore_maple_bark"), own("sycamore_maple_bark_2"));
+			// Step F5: the own white willow bark (deep crossing furrows), the poplar's vanilla bark by id (D2, the vanilla
+			// poplar wood; decision F5-a).
+			case WHITE_WILLOW -> List.of(own("white_willow_bark"), own("white_willow_bark_2"));
+			case POPLAR -> List.of(vanilla("poplar_log"));
 		};
 	}
 
@@ -101,7 +105,9 @@ final class ModBlockModels extends FabricModelProvider {
 			case SPRUCE -> vanilla("spruce_log_top");
 			case BIRCH -> vanilla("birch_log_top");
 			case OAK -> vanilla("oak_log_top");
-			case HORNBEAM, LINDEN, BEECH, ASH, NORWAY_MAPLE, BLACK_ALDER, ELM, FIR, SYCAMORE_MAPLE -> own(woodOf(t).prefix() + "_log_top");
+			case POPLAR -> vanilla("poplar_log_top");
+			case HORNBEAM, LINDEN, BEECH, ASH, NORWAY_MAPLE, BLACK_ALDER, ELM, FIR, SYCAMORE_MAPLE, WHITE_WILLOW ->
+					own(woodOf(t).prefix() + "_log_top");
 		};
 	}
 
@@ -124,6 +130,7 @@ final class ModBlockModels extends FabricModelProvider {
 			case SCOTS_PINE -> own("stripped_scots_pine_log");
 			case SPRUCE -> vanilla("stripped_spruce_log");
 			case BIRCH -> vanilla("stripped_birch_log");
+			case POPLAR -> vanilla("stripped_poplar_log");
 			default -> own(t.id());
 		};
 	}
@@ -135,7 +142,8 @@ final class ModBlockModels extends FabricModelProvider {
 			case SPRUCE -> vanilla("stripped_spruce_log_top");
 			case BIRCH -> vanilla("stripped_birch_log_top");
 			case OAK -> vanilla("stripped_oak_log_top");
-			case HORNBEAM, LINDEN, BEECH, ASH, NORWAY_MAPLE, BLACK_ALDER, ELM, FIR, SYCAMORE_MAPLE ->
+			case POPLAR -> vanilla("stripped_poplar_log_top");
+			case HORNBEAM, LINDEN, BEECH, ASH, NORWAY_MAPLE, BLACK_ALDER, ELM, FIR, SYCAMORE_MAPLE, WHITE_WILLOW ->
 					own("stripped_" + woodOf(t.trunk()).prefix() + "_log_top");
 		};
 	}
@@ -326,8 +334,23 @@ final class ModBlockModels extends FabricModelProvider {
 						TextureMapping.cross(new Material(own(g.id() + "_leaves"))), gen.modelOutput);
 				gen.registerSimpleFlatItemModel(block);
 			}
+			// Step F5: the climber as vanilla's vine (the vanilla plane model by id, on the north face, turned to the
+			// support) with the texture <id> (with cones), and block/<id>_leaves with <id>_leaves (leaves only), a seasonal
+			// alternative of the client.
+			case CLIMBER -> {
+				ModelTemplate plane = new ModelTemplate(Optional.of(Identifier.withDefaultNamespace("block/vine")), Optional.empty(), VINE);
+				Identifier cones = plane.create(block, new TextureMapping().put(VINE, new Material(own(g.id()))), gen.modelOutput);
+				plane.create(pl.polishforests.client.ClientSeasonModels.herbLeaves(g), new TextureMapping().put(VINE,
+						new Material(own(g.id() + "_leaves"))), gen.modelOutput);
+				gen.blockStateOutput.accept(MultiVariantGenerator.dispatch(block, BlockModelGenerators.plainVariant(cones))
+						.with(PropertyDispatch.modify(pl.polishforests.block.ClimberBlock.FACING).generate(ModBlockModels::facing)));
+				gen.registerSimpleFlatItemModel(block);
+			}
 		}
 	}
+
+	/** The texture slot of vanilla's vine model. */
+	static final TextureSlot VINE = TextureSlot.create("vine");
 
 	/** Rotation of a segment model drawn facing north, as vanilla's segmented blocks. */
 	private static VariantMutator facing(Direction d) {
@@ -347,6 +370,8 @@ final class ModBlockModels extends FabricModelProvider {
 			case BIRCH -> vanilla("birch_leaves");
 			// Step F3: the fir's own needles (dark green flat needles in two rows, the pale bands of the underside).
 			case FIR -> own("fir_leaves");
+			// Step F5: the narrow lanceolate leaves of the white willow and the osier (silvery undersides).
+			case WHITE_WILLOW, OSIER -> own("willow_leaves");
 			default -> own("broadleaf_leaves");
 		};
 	}

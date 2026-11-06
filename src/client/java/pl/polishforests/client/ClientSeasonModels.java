@@ -209,6 +209,16 @@ public final class ClientSeasonModels {
 						default -> SeasonalModel.Look.BASE;
 					}, List.of(new SeasonalModel.Alternative(s -> leaves, false, false, false)), leaves);
 				}
+				if (g.kind() == GroundPlant.Kind.CLIMBER) {
+					// Step F5: the climber with cones (the base model), with its leaves only, or nothing while withdrawn; the
+					// leaves plane turned to the support as the base.
+					return new SeasonalModel.Root(model, (s, pos) -> switch (GroundPhases.look(g, step(), pos.getX(), pos.getZ())) {
+						case NONE -> SeasonalModel.Look.NOTHING;
+						case LEAVES -> 1;
+						default -> SeasonalModel.Look.BASE;
+					}, List.of(new SeasonalModel.Alternative(s -> climberLeaves(g, s), false, false, false)),
+							List.of(new Variant(herbLeaves(g))));
+				}
 				if (g.kind() == GroundPlant.Kind.BERRY_SHRUB) {
 					List<Variant> flowers = List.of(new Variant(flowers(g)));
 					// Review round 1 of V13: only the fertile plants flower (the others neither flower nor fruit).
@@ -229,6 +239,17 @@ public final class ClientSeasonModels {
 			out.add(new Variant(twigs(f)).withXRot(t[0]).withYRot(t[1]));
 		}
 		return List.copyOf(out);
+	}
+
+	/** The leaves plane of a climber state, turned to its support (as the base model). */
+	private static List<Variant> climberLeaves(GroundPlant g, BlockState s) {
+		Quadrant turn = switch (s.getValue(pl.polishforests.block.ClimberBlock.FACING)) {
+			case EAST -> Quadrant.R90;
+			case SOUTH -> Quadrant.R180;
+			case WEST -> Quadrant.R270;
+			default -> Quadrant.R0;
+		};
+		return List.of(new Variant(herbLeaves(g)).withYRot(turn));
 	}
 
 	/** The leaves models of a flower bed state: models 1 … amount, turned as the bed faces (as vanilla's segmented beds). */

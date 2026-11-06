@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/cube_column",
+  "textures": {
+    "end": "polishforests:block/white_willow_log_top",
+    "side": "polishforests:block/white_willow_bark"
+  }
+}
