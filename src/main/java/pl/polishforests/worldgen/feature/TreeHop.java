@@ -27,7 +27,8 @@ import pl.polishforests.worldgen.tree.TreeVoxels;
  * <p>A hop block goes only on air (never in place of a leaf, a plant or wood), and it is in the tags the trees and the
  * plants replace (the column layers count it as open, {@link PlantLayerFeature}), so an object written before or after it
  * in any order of the chunks ends the same, except where a neighbor's object already stood in the cell (contact with an
- * object, decision L1-g).
+ * object, decision L1-g). Each hop block is marked for the chunk's post-processing, so one whose support a later object
+ * replaced goes at the first tick (round 1 of the F5 review).
  */
 public final class TreeHop {
 	/** Hop blocks written on trunks (diagnostics for the game tests). */
@@ -107,6 +108,10 @@ public final class TreeHop {
 				at.setWithOffset(stem, side);
 				if (level.getBlockState(at).isAir()) {
 					level.setBlock(at, hop.setValue(ClimberBlock.FACING, side.getOpposite()), 2);
+					// Round 1 of the F5 review: a neighbor's object written later in another order of the chunks can take the
+					// support's place (contact, L1-g); the shape update of the chunk's first tick then drops a hop left
+					// without support, as vanilla's post-processing does for a plant.
+					level.getChunk(at).markPosForPostProcessing(at);
 					placed++;
 				}
 			}
@@ -118,14 +123,16 @@ public final class TreeHop {
 	/**
 	 * Hop on a shrub of the placeholder trees ({@link HopDecorator}): each leaf or stem block with a free side draws from
 	 * its own position whether a hop block hangs on that side ({@code chance}), only on air and only below the top of the
-	 * shrub, so the hop wraps the shrub's sides.
+	 * shrub, so the hop wraps the shrub's sides. Round 1 of the F5 review: only a block that holds a climber
+	 * ({@code support}, {@link ClimberBlock#support}: leaves, not the thin shoots of radius 1 px) carries hop, so every
+	 * written hop block survives ({@link ClimberBlock#canSurvive}) and none floats beside a thin shoot.
 	 */
-	static void decorate(long worldSeed, Iterable<BlockPos> blocks, int topY, double chance, Predicate<BlockPos> air,
-			BiConsumer<BlockPos, BlockState> setter) {
+	static void decorate(long worldSeed, Iterable<BlockPos> blocks, int topY, double chance, Predicate<BlockPos> support,
+			Predicate<BlockPos> air, BiConsumer<BlockPos, BlockState> setter) {
 		BlockState hop = ModBlocks.ground(GroundPlant.HOP).defaultBlockState();
 		BlockPos.MutableBlockPos at = new BlockPos.MutableBlockPos();
 		for (BlockPos b : blocks) {
-			if (b.getY() >= topY) {
+			if (b.getY() >= topY || !support.test(b)) {
 				continue;
 			}
 			for (Direction side : Direction.Plane.HORIZONTAL) {

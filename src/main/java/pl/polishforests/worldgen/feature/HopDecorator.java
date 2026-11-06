@@ -8,6 +8,7 @@ import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.levelgen.feature.treedecorators.TreeDecorator;
 import net.minecraft.world.level.levelgen.feature.treedecorators.TreeDecoratorType;
+import pl.polishforests.block.ClimberBlock;
 
 /**
  * The hop on a shrub of the floodplain forests and the osier scrub (step F5 of docs/04-pionowy-wycinek.md, the shrub
@@ -15,7 +16,8 @@ import net.minecraft.world.level.levelgen.feature.treedecorators.TreeDecoratorTy
  * column of its lowest stem, then each side of a stem or leaf block below the crown top takes a hop block with the chance
  * {@code probability} drawn from the block's own position ({@link TreeHop#decorate}, salt
  * {@link DecorationRandom#HOP_SALT}): as the hanging vines of step L1, a function of the world seed and the positions, not
- * of the shrub's random source. The hop goes only on air.
+ * of the shrub's random source. The hop goes only on air and only beside a block that holds it ({@link ClimberBlock#support}:
+ * the leaves; the shoots of radius 1 px do not, round 1 of the F5 review).
  */
 public final class HopDecorator extends TreeDecorator {
 	public static final MapCodec<HopDecorator> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
@@ -58,7 +60,11 @@ public final class HopDecorator extends TreeDecorator {
 		}
 		List<BlockPos> blocks = new ArrayList<>(context.logs());
 		blocks.addAll(context.leaves());
-		TreeHop.decorate(seed, blocks, top == Integer.MIN_VALUE ? Integer.MAX_VALUE : top, probability, context::isAir,
-				context::setBlock);
+		TreeHop.decorate(seed, blocks, top == Integer.MIN_VALUE ? Integer.MAX_VALUE : top, probability,
+				p -> context.checkBlock(p, ClimberBlock::support), context::isAir, (p, state) -> {
+					context.setBlock(p, state);
+					// Round 1 of the F5 review: dropped at the chunk's first tick if a later object takes its support's place.
+					context.level().getChunk(p).markPosForPostProcessing(p);
+				});
 	}
 }

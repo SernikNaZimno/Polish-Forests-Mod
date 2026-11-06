@@ -161,6 +161,8 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 	private static final Map<BlockState, Long> STATE_HASHES = new IdentityHashMap<>();
 	/** State numbers of this run for the decoration window (server thread only). */
 	private static final Map<BlockState, Integer> STATE_IDS = new IdentityHashMap<>();
+	/** Hop blocks in the compared windows whose support does not hold them (round 1 of the F5 review: must be 0). */
+	private static final java.util.concurrent.atomic.AtomicLong UNSUPPORTED_CLIMBERS = new java.util.concurrent.atomic.AtomicLong();
 	/** Texts of block states for the block-by-block terrain (server thread only). */
 	private static final Map<BlockState, String> STATE_TEXTS = new IdentityHashMap<>();
 
@@ -178,6 +180,7 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 		PolishForests.LOG.info("[determinism] mod set: {} ({} mods)", label, FabricLoader.getInstance().getAllMods().size());
 		List<String> out = new ArrayList<>();
 		List<String> failures = new ArrayList<>();
+		UNSUPPORTED_CLIMBERS.set(0);
 		String dir = System.getProperty("polishforests.determinism.out", "");
 		Path blocksFile = dir.isBlank() ? null : Path.of(dir, TerrainBlocks.blocksFileName(label));
 		Path windowFile = dir.isBlank() ? null : Path.of(dir, label + "_window_diff.txt");
@@ -201,6 +204,10 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 		String reference = System.getProperty("polishforests.determinism.reference", "");
 		if (!reference.isBlank()) {
 			compareWithReference(Path.of(reference), out, blocksFile, label, failures);
+		}
+		PolishForests.LOG.info("[determinism] hop blocks without support in the windows: {}", UNSUPPORTED_CLIMBERS.get());
+		if (UNSUPPORTED_CLIMBERS.get() > 0) {
+			failures.add(UNSUPPORTED_CLIMBERS.get() + " hop blocks without support (round 1 of the F5 review)");
 		}
 		if (!failures.isEmpty()) {
 			throw new AssertionError("Determinism: " + String.join("; ", failures));
@@ -437,6 +444,7 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 		boolean[] structure = new boolean[decorated.length];
 		var pos = new net.minecraft.core.BlockPos.MutableBlockPos();
 		Map<String, Integer> changed = new java.util.TreeMap<>();
+		int unsupported = 0;
 		for (int cx = 0; cx < SIZE; cx++) {
 			for (int cz = 0; cz < SIZE; cz++) {
 				ChunkAccess chunk = level.getChunkSource().getChunk(ox + cx, oz + cz, ChunkStatus.FULL, true);
@@ -456,10 +464,19 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 							// Rule ZW-5 (step V13): the seasonal properties (the bilberry fruit) at their neutral value.
 							BlockState state = SeasonalProperties.neutral(chunk.getBlockState(pos.set(x, y0 + k, z)));
 							window[i * WINDOW + k] = STATE_IDS.computeIfAbsent(state, st -> STATE_IDS.size());
+							// Round 1 of the F5 review: every hop the generation wrote holds on its support.
+							if (state.getBlock() instanceof pl.polishforests.block.ClimberBlock && !state.canSurvive(level,
+									new net.minecraft.core.BlockPos((ox + cx) * 16 + x, y0 + k, (oz + cz) * 16 + z))) {
+								unsupported++;
+							}
 						}
 					}
 				}
 			}
+		}
+		if (unsupported > 0) {
+			pl.polishforests.PolishForests.LOG.info("[determinism] hop without support at chunk {} {}: {}", ox, oz, unsupported);
+			UNSUPPORTED_CLIMBERS.addAndGet(unsupported);
 		}
 		if (!changed.isEmpty()) {
 			pl.polishforests.PolishForests.LOG.info("[determinism] post-processing at chunk {} {}: changed blocks {}", ox, oz, changed);

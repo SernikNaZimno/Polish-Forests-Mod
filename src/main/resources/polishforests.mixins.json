@@ -11,6 +11,7 @@
 		"ChunkGeneratorStructureMixin",
 		"ChunkGeneratorVanillaForestsMixin",
 		"FlowerBlockMixin",
+		"LivingEntityClimbableMixin",
 		"MultifaceSpreaderMixin",
 		"NoiseBasedChunkGeneratorMixin",
 		"SculkVeinSpreaderConfigMixin",

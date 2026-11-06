@@ -33,7 +33,8 @@ import pl.polishforests.season.SeasonPhase;
  * ({@link TrunkBlock} of radius at least {@value #MIN_TRUNK_RADIUS} px, whose bark lies within a few pixels of the plane), a
  * log or leaves, and drops when the support goes. The season is drawn by the client as for the herbs (PW-8 (a):
  * {@link GroundPhases#look} — with its cones, leaves only or nothing); while it has died back (from November to April) it
- * has no outline and a block placed there replaces it (rule R12).
+ * has no outline, does not hold a climbing entity (round 1 of the F5 review, {@code LivingEntityClimbableMixin}) and a
+ * block placed there replaces it (rule R12).
  *
  * <p>World generation writes it only on air (the trees and the plants take its place in either order: it is in the tags
  * {@code minecraft:replaceable_by_trees} and {@code minecraft:replaceable}, and the column layers treat it as open), so

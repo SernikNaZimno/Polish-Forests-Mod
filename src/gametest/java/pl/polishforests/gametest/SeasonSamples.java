@@ -26,6 +26,7 @@ import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.presets.WorldPreset;
 import pl.polishforests.PolishForests;
 import pl.polishforests.block.BerryShrubBlock;
+import pl.polishforests.block.ClimberBlock;
 import pl.polishforests.block.GroundPlant;
 import pl.polishforests.block.MarcescentLeavesBlock;
 import pl.polishforests.block.ModBlocks;
@@ -167,6 +168,7 @@ final class SeasonSamples {
 				rawColors(context, grad, sub);
 				herbs(context, sp, grad, sub);
 				lilies(context, sp, grad, sub);
+				hopClimb(sp, grad, sub);
 				twigs(context, grad, sub);
 				if (!seasons || sub == SubSeason.LATE_SPRING || sub == SubSeason.LATE_AUTUMN || sub == SubSeason.MID_WINTER) {
 					fastRig(context, sp, rig, sub, p + name + "_", scale);
@@ -458,6 +460,39 @@ final class SeasonSamples {
 	 * {@link GroundPhases#lilyOfTheValley}): the looks on the client, nothing drawn from October to April, and the outline
 	 * of a withdrawn one empty on the client and on the server.
 	 */
+	/**
+	 * Round 1 of the F5 review: a hop on a log holds a climbing entity only while it stands; withdrawn (November to April)
+	 * it is no ladder ({@code LivingEntityClimbableMixin}). The probe is an armor stand (a living entity, not spawned) in a
+	 * hop cell built for the check deep under the camera and taken down at once, so the shots do not change.
+	 */
+	private void hopClimb(TestSingleplayerContext sp, SliceCameras.Camera cam, SubSeason sub) {
+		boolean[] r = sp.getServer().computeOnServer(s -> {
+			ServerLevel level = s.overworld();
+			BlockPos log = new BlockPos(cam.x(), level.getMinY() + 8, cam.z());
+			BlockPos cell = log.east();
+			BlockState oldLog = level.getBlockState(log);
+			BlockState oldCell = level.getBlockState(cell);
+			ClimberBlock hop = (ClimberBlock) ModBlocks.ground(GroundPlant.HOP);
+			level.setBlock(log, Blocks.OAK_LOG.defaultBlockState(), 2 | 16);
+			level.setBlock(cell, hop.defaultBlockState().setValue(ClimberBlock.FACING, net.minecraft.core.Direction.WEST), 2 | 16);
+			try {
+				var probe = new net.minecraft.world.entity.decoration.ArmorStand(level, cell.getX() + 0.5, cell.getY(),
+						cell.getZ() + 0.5);
+				return new boolean[] {probe.onClimbable(), hop.withdrawn(level, cell)};
+			} finally {
+				level.setBlock(cell, oldCell, 2 | 16);
+				level.setBlock(log, oldLog, 2 | 16);
+			}
+		});
+		result("%s hop: withdrawn %s, climbable %s", sub, r[1], r[0]);
+		if (r[0] == r[1]) {
+			fail("%s: hop %s but %s", sub, r[1] ? "withdrawn" : "standing", r[0] ? "climbable" : "not climbable");
+		}
+		if (sub == SubSeason.MID_WINTER && !r[1] || sub == SubSeason.MID_SUMMER && r[1]) {
+			fail("%s: hop withdrawn %s", sub, r[1]);
+		}
+	}
+
 	private void lilies(ClientGameTestContext context, TestSingleplayerContext sp, SliceCameras.Camera cam, SubSeason sub) {
 		int[] counts = context.computeOnClient(mc -> {
 			int[] c = new int[GroundPhases.Look.values().length + 1];
