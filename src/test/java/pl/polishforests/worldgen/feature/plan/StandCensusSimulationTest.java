@@ -169,9 +169,13 @@ class StandCensusSimulationTest {
 				}
 				String path = paths.get(k);
 				boolean stump = path.startsWith("stump/");
-				String id = path.substring(path.indexOf('/') + 1);
-				Species species = java.util.Arrays.stream(Species.values()).filter(s -> s.id().equals(id)).findFirst().orElseThrow();
-				DeadwoodPlan.Request r = DeadwoodPlan.request(SimulatedStands.SEED, species, stump, stands, x, GROUND + 1, z, ground);
+				// Step F4 (stage 2): the forms of the dead trees and stumps, deadwood/<species>/<form>.
+				String[] parts = path.substring(path.indexOf('/') + 1).split("/");
+				Species species = java.util.Arrays.stream(Species.values()).filter(s -> s.id().equals(parts[0])).findFirst().orElseThrow();
+				pl.polishforests.worldgen.tree.TreeForm.Kind form = parts.length > 1
+						? pl.polishforests.worldgen.tree.TreeForm.Kind.valueOf(parts[1].toUpperCase(Locale.ROOT))
+						: pl.polishforests.worldgen.tree.TreeForm.Kind.NORMAL;
+				DeadwoodPlan.Request r = DeadwoodPlan.request(SimulatedStands.SEED, species, form, stump, stands, x, GROUND + 1, z, ground);
 				if (r != null) {
 					DeadwoodGrid.write(grid, DeadwoodPlan.plan(r));
 				}

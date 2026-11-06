@@ -799,6 +799,7 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 			int turf = 0;
 			int opened = 0;
 			int ceilings = 0;
+			int sphagnum = 0;
 			Map<String, Integer> blocks = new java.util.TreeMap<>();
 			for (int i = 0; i < 256; i++) {
 				if (Habitat.biome(codes[i]) != biome || plan.wet(i)) {
@@ -847,6 +848,13 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 					turf++;
 					continue;
 				}
+				if (expected == net.minecraft.world.level.block.Blocks.MOSS_BLOCK && actual.is(pl.polishforests.block.ModBlocks.sphagnumBlock())) {
+					// Step F4: the moss block of the bog peat under a plant ground rule of the sphagnum block (raised bog, bog
+					// woodland) turns into that block (PlantLayerFeature.turns). Only this one pair; reported per place.
+					sphagnum++;
+					blocks.merge(plan.topMaterial(i).id().substring("minecraft:".length()) + "->sphagnum_block", 1, Integer::sum);
+					continue;
+				}
 				// No exemption for the vanilla disks of sand, clay and gravel: S8 removed them from step 6.
 				if (!actual.is(expected) || solidAbove) {
 					mismatched++;
@@ -866,7 +874,8 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 			report.append(String.format(Locale.ROOT, " %s (%d, %d) %s: %d/%d %s%s%s;", SOIL_NAMES[p], x0, z0, biome.id(),
 					checked - mismatched - erratics, checked, blocks, erratics > 0 ? ", " + erratics + " under an erratic" : "",
 					blended > 0 ? ", " + blended + " of a soil across a border" : "") + (turf > 0 ? ", " + turf + " turf over podzol" : "")
-					+ (opened > 0 ? ", " + opened + " opened by a cave" : "") + (ceilings > 0 ? ", " + ceilings + " cave ceilings" : ""));
+					+ (opened > 0 ? ", " + opened + " opened by a cave" : "") + (ceilings > 0 ? ", " + ceilings + " cave ceilings" : "")
+					+ (sphagnum > 0 ? ", " + sphagnum + " sphagnum over the bog moss" : ""));
 		}
 		if (!failures.isEmpty()) {
 			throw new AssertionError("Ground blocks differ from the surface plan: " + failures + "; " + report);

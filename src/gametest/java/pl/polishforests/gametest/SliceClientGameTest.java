@@ -290,6 +290,7 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 						testPlot[0] = true;
 					}
 					long[] before = counters();
+					int baseline = loadedChunks(sp);
 					int[] last = null;
 					for (SliceSites.Place p : places) {
 						String prefix = "slice_" + scale + "_" + mode + "_" + p.name();
@@ -314,6 +315,7 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 									census)));
 						}
 						PolishForests.LOG.info("[slice] {} {} norms card, {}", scale, mode, census);
+						releaseChunks(context, sp, baseline);
 						if (!screenshots) {
 							continue;
 						}
@@ -352,6 +354,7 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 							norms.addAll(sp.getServer().computeOnServer(s -> NormsCensus.plot(s.overworld(), ctx, forest, stand.age(), plot.x(),
 									plot.z(), records, census)));
 							PolishForests.LOG.info("[slice] {} {} norms card, {}", scale, mode, census);
+							releaseChunks(context, sp, baseline);
 							// Views of the plots (review of V9, round 1), in the natural mode only (the slice forests look the same
 							// in both modes): chosen in each run from the world, as the plots are.
 							if (screenshots && !presentDay) {
@@ -373,6 +376,45 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 				}
 			}
 		}
+	}
+
+	/** Chunks loaded beyond the world start above which {@link #releaseChunks} lets the server unload the visited ones. */
+	private static final int RELEASE_ABOVE = 3000;
+	/** Chunks beyond the world start {@link #releaseChunks} waits for. */
+	private static final int RELEASE_TO = 1000;
+	/** Most ticks {@link #releaseChunks} waits, and ticks without fewer loaded chunks after which it stops. */
+	private static final int RELEASE_MAX_TICKS = 600;
+	private static final int RELEASE_STALL_TICKS = 100;
+
+	private static int loadedChunks(TestSingleplayerContext sp) {
+		return sp.getServer().computeOnServer(s -> s.overworld().getChunkSource().getLoadedChunksCount());
+	}
+
+	/**
+	 * Step F4 (stage 2): the census of a plot loads its chunks on the server thread with short tickets, and without
+	 * screenshots the next census follows at once, so the server hardly ticks and does not unload them. With the 43
+	 * realistic plots of step F4 (8227 chunks in one world) the heap ran out while the world was saved. When more than
+	 * {@link #RELEASE_ABOVE} chunks beyond those of the world start ({@code baseline}) are loaded, the client waits until
+	 * the server has unloaded (and saved) the chunks of the plots it has left; the census reads the same blocks either way
+	 * (a pure function of the world generation).
+	 */
+	private static void releaseChunks(ClientGameTestContext context, TestSingleplayerContext sp, int baseline) {
+		int loaded = loadedChunks(sp);
+		if (loaded <= baseline + RELEASE_ABOVE) {
+			return;
+		}
+		int from = loaded;
+		int best = loaded;
+		int stall = 0;
+		int t = 0;
+		while (t < RELEASE_MAX_TICKS && loaded > baseline + RELEASE_TO && stall < RELEASE_STALL_TICKS) {
+			context.waitTicks(10);
+			t += 10;
+			loaded = loadedChunks(sp);
+			stall = loaded < best ? 0 : stall + 10;
+			best = Math.min(best, loaded);
+		}
+		PolishForests.LOG.info("[slice] released chunks: {} -> {} loaded in {} ticks (world start {})", from, loaded, t, baseline);
 	}
 
 	/** The stand map of the world (the seed, the scale's k and the managed share of its settings). */

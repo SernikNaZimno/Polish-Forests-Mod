@@ -108,14 +108,16 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 	 * reference from a build before F1 has no entry for it: no comparison with the reference there); step F2: the plot
 	 * alder_carr_natural_1 (realistic) or alder_carr_managed_1 (gameplay, no natural carr plot there), the same for a
 	 * reference from before F2; step F3: the plot upland_fir_natural_1 of each scale, the same for a reference from before
-	 * F3; step F4: the plot bog_woodland_natural_1 of each scale, the same for a reference from before F4.
+	 * F3; step F4: the plot bog_woodland_natural_1 of each scale, the same for a reference from before F4 (gameplay: the
+	 * corner 40 blocks west of the plot, not 64, so 3 chunks lie between it and the oak_hornbeam area: the full chunks of
+	 * that area decorate their neighbors 2 chunks out, which reached the bog area before its terrain hash).
 	 */
 	private static final int[][] AREAS_REAL = {{-19_484 - 64, 11_253 - 64}, {154_834 - 64, 1_058_738 - 64}, {438 - 64, -730 - 64},
 			{-699 - 64, 1_924 - 64}, {-7_793 - 64, -9_133 - 64}, {2_339 - 64, 29_627 - 64}, {46_472 - 64, 15_684 - 64},
 			{-2_507 - 64, 5_061 - 64}};
 	private static final int[][] AREAS_GAMEPLAY = {{-1_851 - 64, 6_022 - 64}, {27_609 - 64, 3_254 - 64}, {-1_785 - 64, 886 - 64},
 			{-1_195 - 64, -583 - 64}, {-2_004 - 64, -3_609 - 64}, {-5_971 - 64, 1_387 - 64}, {1_706 - 64, 3_775 - 64},
-			{-1_640 - 64, 864 - 64}};
+			{-1_640 - 40, 864 - 64}};
 	private static final String[] AREA_NAMES = {"river", "beskids", "oak_hornbeam", "fresh_pine", "lowland_beech", "alder_carr",
 			"upland_fir", "bog_woodland"};
 	private static final int SIZE = 8;
@@ -893,12 +895,20 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 	 * Prefix of the lines of the zones of the forests of the steps F (KF-3, step F1): per column of an area of the fixed-order
 	 * world 1 {@code F} in such a forest (the forests of {@link ForestBlend#FORESTS} after the transect, the step's own and
 	 * the earlier steps'), {@code B} in their belt ({@code ForestBlend} share above 0) or within {@value #STEP_REACH} blocks
-	 * of an F or B column inside the area (the ramp of {@code Ecotone}, the crowns), {@code .} elsewhere. Not compared; the
-	 * comparison with a reference of the build before the step reports the differing decorated columns by zone.
+	 * of an F or B column inside the area (the ramp of {@code Ecotone}, the crowns); step F4: {@code H} on the open habitats
+	 * whose decoration a step F changed ({@link #STEP_OPEN}: the single planner trees and the plants of the heath and the
+	 * raised bog, the fringe the heath shares with the gray dune) or within {@value #STEP_REACH} blocks of them; {@code .}
+	 * elsewhere. Not compared; the comparison with a reference of the build before the step reports the differing decorated
+	 * columns by zone.
 	 */
 	private static final String STEP_ZONE = "stepzone ";
 	private static final int STEP_REACH = pl.polishforests.worldgen.feature.plan.Ecotone.REACH
 			+ pl.polishforests.worldgen.feature.plan.Ecotone.WARP + 16;
+
+	/** Step F4: the open habitats whose decoration a step F changed (zone {@code H} of {@link #STEP_ZONE}). */
+	private static final pl.polishforests.worldgen.habitat.HabitatBiome[] STEP_OPEN = {
+			pl.polishforests.worldgen.habitat.HabitatBiome.HEATH, pl.polishforests.worldgen.habitat.HabitatBiome.RAISED_BOG,
+			pl.polishforests.worldgen.habitat.HabitatBiome.GRAY_DUNE};
 
 	/** The zones of the forests of the steps F of an area (see {@link #STEP_ZONE}). */
 	private static char[] stepZones(ServerLevel level, int ox, int oz, Area area) {
@@ -912,6 +922,7 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 		int transect = ForestBlend.TRANSECT.length;
 		float[] s = new float[ForestBlend.FORESTS.length + 1];
 		boolean[] near = new boolean[side * side];
+		boolean[] open = new boolean[side * side];
 		for (int cx = 0; cx < SIZE; cx++) {
 			for (int cz = 0; cz < SIZE; cz++) {
 				ForestBlend.Field field = blend.field(ox + cx, oz + cz);
@@ -932,16 +943,27 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 						}
 						zone[i] = own ? 'F' : belt ? 'B' : '.';
 						near[(cx * 16 + x) * side + cz * 16 + z] = own || belt;
+						for (var o : STEP_OPEN) {
+							open[(cx * 16 + x) * side + cz * 16 + z] |= biome.is(pl.polishforests.worldgen.chunk.ModBiomeKeys.key(o));
+						}
 					}
 				}
 			}
 		}
-		// Within STEP_REACH (Chebyshev) of an F or B column: a summed table of the near columns.
+		// Within STEP_REACH (Chebyshev) of an F or B column: a summed table of the near columns; then the same for H.
+		reach(zone, near, 'B');
+		reach(zone, open, 'H');
+		return zone;
+	}
+
+	/** Marks with {@code mark} the {@code .} columns of a zone within {@link #STEP_REACH} (Chebyshev) of a flagged column. */
+	private static void reach(char[] zone, boolean[] flagged, char mark) {
+		int side = SIZE * 16;
 		int w = side + 1;
 		int[] sum = new int[w * w];
 		for (int x = 0; x < side; x++) {
 			for (int z = 0; z < side; z++) {
-				sum[(x + 1) * w + z + 1] = (near[x * side + z] ? 1 : 0) + sum[x * w + z + 1] + sum[(x + 1) * w + z] - sum[x * w + z];
+				sum[(x + 1) * w + z + 1] = (flagged[x * side + z] ? 1 : 0) + sum[x * w + z + 1] + sum[(x + 1) * w + z] - sum[x * w + z];
 			}
 		}
 		for (int x = 0; x < side; x++) {
@@ -955,24 +977,28 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 				int x1 = Math.min(side, x + STEP_REACH + 1);
 				int z1 = Math.min(side, z + STEP_REACH + 1);
 				if (sum[x1 * w + z1] - sum[x0 * w + z1] - sum[x1 * w + z0] + sum[x0 * w + z0] > 0) {
-					zone[i] = 'B';
+					zone[i] = mark;
 				}
 			}
 		}
-		return zone;
 	}
 
-	/** Differing decorated columns by zone of the steps F (in the forests, in their belt and reach, elsewhere). */
+	/**
+	 * Differing decorated columns by zone of the steps F (in the forests, in their belt and reach, on the open habitats of
+	 * step F4 and their reach, elsewhere).
+	 */
 	private static String zoneReport(long[] ours, long[] theirs, String zones) {
-		int[] differ = new int[3];
-		int[] columns = new int[3];
+		int[] differ = new int[4];
+		int[] columns = new int[4];
 		for (int i = 0; i < ours.length && i < zones.length(); i++) {
-			int z = zones.charAt(i) == 'F' ? 0 : zones.charAt(i) == 'B' ? 1 : 2;
+			char c = zones.charAt(i);
+			int z = c == 'F' ? 0 : c == 'B' ? 1 : c == 'H' ? 2 : 3;
 			columns[z]++;
 			differ[z] += ours[i] != theirs[i] ? 1 : 0;
 		}
-		return String.format(Locale.ROOT, "in the forests %d of %d, in their belt and reach %d of %d, elsewhere %d of %d", differ[0],
-				columns[0], differ[1], columns[1], differ[2], columns[2]);
+		return String.format(Locale.ROOT, "in the forests %d of %d, in their belt and reach %d of %d, on the heath, raised bog and "
+				+ "gray dune and their reach %d of %d, elsewhere %d of %d", differ[0], columns[0], differ[1], columns[1], differ[2],
+				columns[2], differ[3], columns[3]);
 	}
 
 	/** Differing blocks against the block-by-block file next to the reference; empty if that file is missing. */

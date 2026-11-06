@@ -557,7 +557,7 @@ Każdy krok F jest ukończony dopiero, gdy oprócz własnych kryteriów spełnia
 ### F4. Bory suche, wilgotne, bagienne i bażynowe, brzeziny bagienne, wrzosowiska i torfowiska (A, 1–1,5 dnia)
 
 - **Zakres:** (1) bez nowych gatunków drzew; formy sosny i brzozy w planerze według siedliska: sosna niska i krzywa (bór bagienny, torfowisko), cienka (bór suchy), w pasie wiatrowym boru bażynowego niska z koroną sztandarową od strony morza (`Association.WINDSWEPT`, `STUNTED`), brzozy wielopniowe w brzezinie bagiennej (`ForestSiteType.BOGGY_MIXED_CONIFEROUS`) — nowy parametr żądania drzewa z wartością domyślną, przy której drzewa wycinka są identyczne; zastępstwa `SCOTS_PINE_LOW` z palet znikają; (2) drzewostan planera w `moist_pine_forest`, `bog_woodland`, `dry_pine_forest`, `coastal_pine_forest` i pojedyncze drzewa planera na `heath` i `raised_bog`; (3) runo, mchy, porosty: nowe bloki (domyślnie do 7: chrobotek zamiast `pale_moss_carpet`, wrzos zamiast `pink_petals`, bażyna, torfowiec jako blok gruntu i dywan, bagno zwyczajne, borówka bagienna w rodzinie borówki, trzęślica w kępach), też na wrzosowisku i torfowisku wysokim; (4) martwe drewno (posusz w borze suchym, niskie martwe sosny i brzozy w borze bagiennym, kłody w torfowcach), płytkie korzenie na torfie; (5) przejścia z Bśw, BMśw i olsem w `ForestBlend`; (6) karta norm czterech borów i brzeziny bagiennej (N9 jako porosty w borze suchym, torfowce w bagiennym).
-- **Ukończony, gdy:** KF-1 … KF-7 (KF-5 dla nowych bloków runa; W1: tylko regresja `vanilla_forests`, jeśli `test_plan.py` ją wypisze, bo tych lasów nie ma w W1); drzewa wycinka identyczne przy domyślnej wartości nowego parametru (`TreeShapePlanTest`). **Stan (2026-11-05): etap 1 zrobiony („Projekt F4”, G.45): cztery bory, brzezina bagienna, wrzosowisko i torfowisko z drzewami planera, formy sosny i brzozy (`TreeForm`, domyślna identyczna), 8 bloków runa; przebiegi gry w etapie 2.**
+- **Ukończony, gdy:** KF-1 … KF-7 (KF-5 dla nowych bloków runa; W1: tylko regresja `vanilla_forests`, jeśli `test_plan.py` ją wypisze, bo tych lasów nie ma w W1); drzewa wycinka identyczne przy domyślnej wartości nowego parametru (`TreeShapePlanTest`). **Stan (2026-11-06): zrobione z odstępstwem („Projekt F4”, „Stan po F4”, G.45): cztery bory, brzezina bagienna, wrzosowisko i torfowisko z drzewami planera, formy sosny i brzozy (`TreeForm`, domyślna identyczna), 8 bloków runa; KF-1 (bór suchy, bagienny, bażynowy: 0 kłód wanilii, 6,8–10,8 pnia planera na chunk), KF-3 … KF-7 spełnione (`determinism` wobec F3: teren identyczny, poza strefami kroków F i otwartych siedlisk F4 0 różnic; KF-6 boru bagiennego 0,83 / 0,75 × M2); KF-2 poza F4-w i F4-x, bór wilgotny bez powierzchni (tylko symulacja, F4-q), powierzchnie boru bagiennego tylko w formie brzeziny (F4-v) — do CP-D; z C2ME znana jaskinia DP-128, `present_day` z jaskiniami DP-126.**
 - **Ryzyko:** średnie (bez nowych gatunków; nowe bloki runa, zmiana planera z wartością domyślną).
 
 ### F5. Łęgi wiązowo-jesionowe i wierzbowo-topolowe, wikliny (A, 1,5–2 dnia)
@@ -3999,7 +3999,7 @@ Krok F4 planu „Kroki F” (§3, G.41): bory suchy (`dry_pine_forest`), wilgotn
 
 **Karta norm** (F4-o): kolumny `DRY_PINE`, `MOIST_PINE`, `BOG_WOODLAND`, `COASTAL_PINE` (naturalne i gospodarcze), N1, N3, N4, N7, N8, N9, N10; brzezina bagienna jako forma `ForestNorms.Site.BIRCH_BOG` (z typu siedliska BMb, `ForestNorms.siteOf`). `StandCensusSimulationTest` z formami drzew palety (`GeneratedTreePalette.forms`) i obiema formami boru bagiennego.
 
-**Powierzchnie i KF-6** (F4-q): `src/test/resources/slice_plots.txt` + 19 powierzchni (`-PfindSlicePlots -PfindSlicePlotsKeep`: powierzchnie z tabeli zostają, szukane są tylko lasy bez powierzchni w danej skali, w tej samej kolejności). REAL: bór suchy `dry_pine_natural_1` (−62263, −1883), `_2` (−70286, −6405), `managed_1` (−61032, 340), `_2` (−61978, −146); bór bagienny `bog_woodland_natural_1` (−2507, 5061), `_2` (8252, 7199), `managed_1` (8634, 1338), `_2` (7632, 6899); bór bażynowy `coastal_pine_natural_1` (−232815, −134607), `_2` (−232675, −134647), `managed_1` (−232795, −134467), `_2` (−232955, −134747). GAMEPLAY: bór suchy `managed_1` (−1132, −348), `_2` (−1999, −333); bór bagienny `natural_1` (−1640, 864) (`F_SINGLE`); bór bażynowy `natural_1` (−4932, −2515), `_2` (−4049, −3241), `managed_1` (−4672, −2815), `_2` (−4952, −2655). Bez powierzchni (`F_MISSING`): bór wilgotny w obu skalach (pas zagłębień i skrajów torfowisk węższy niż powierzchnia: brak kwadratu 90% wokół 40 i 5 miejsc), naturalny bór suchy GAMEPLAY i gospodarczy bór bagienny GAMEPLAY — te kolumny karty sprawdza tylko `StandCensusSimulationTest`. Bór suchy i wilgotny obu skal oraz bór bagienny GAMEPLAY z progiem biomu 0,90 (`MIN_BIOME_PATCHY`, `SlicePlotsTest.PATCHY_PINE`): mozaika w Bśw, kwadraty 98% się nie trafiają. Szukanie wszystkich borów wokół pierwszego trafienia (`AROUND_FIRST_HIT`): pierścienie wokół środka zajęły ponad godzinę na sam bór suchy REAL. Miejsce KF-6: `ForestPerformance.BOG_SITE` = `bog_woodland_natural_1` obu skal (`bog_woodland_1` w przelocie `-Psites=slice`; bór suchy nie ma naturalnej powierzchni GAMEPLAY, a REAL leży 62 km od środka), test `flightsOfThePerformanceTestUseTheBogPlot`, plik skopiowany do `pl-m2-baseline`; `DeterminismClientGameTest` ma ósmy obszar `bog_woodland` (narożnik 64 bloki przed tą powierzchnią). `SliceStandTest` (reguły M2 bez drzew planera) bierze świerczynę i olszynę górską zamiast borów suchego i wilgotnego.
+**Powierzchnie i KF-6** (F4-q): `src/test/resources/slice_plots.txt` + 19 powierzchni (`-PfindSlicePlots -PfindSlicePlotsKeep`: powierzchnie z tabeli zostają, szukane są tylko lasy bez powierzchni w danej skali, w tej samej kolejności). REAL: bór suchy `dry_pine_natural_1` (−62263, −1883), `_2` (−70286, −6405), `managed_1` (−61032, 340), `_2` (−61978, −146); bór bagienny `bog_woodland_natural_1` (−2507, 5061), `_2` (8252, 7199), `managed_1` (8634, 1338), `_2` (7632, 6899); bór bażynowy `coastal_pine_natural_1` (−232815, −134607), `_2` (−232675, −134647), `managed_1` (−232795, −134467), `_2` (−232955, −134747). GAMEPLAY: bór suchy `managed_1` (−1132, −348), `_2` (−1999, −333); bór bagienny `natural_1` (−1640, 864) (`F_SINGLE`); bór bażynowy `natural_1` (−4932, −2515), `_2` (−4049, −3241), `managed_1` (−4672, −2815), `_2` (−4952, −2655). Bez powierzchni (`F_MISSING`): bór wilgotny w obu skalach (pas zagłębień i skrajów torfowisk węższy niż powierzchnia: brak kwadratu 90% wokół 40 i 5 miejsc), naturalny bór suchy GAMEPLAY i gospodarczy bór bagienny GAMEPLAY — te kolumny karty sprawdza tylko `StandCensusSimulationTest`. Bór suchy i wilgotny obu skal oraz bór bagienny GAMEPLAY z progiem biomu 0,90 (`MIN_BIOME_PATCHY`, `SlicePlotsTest.PATCHY_PINE`): mozaika w Bśw, kwadraty 98% się nie trafiają. Szukanie wszystkich borów wokół pierwszego trafienia (`AROUND_FIRST_HIT`): pierścienie wokół środka zajęły ponad godzinę na sam bór suchy REAL. Miejsce KF-6: `ForestPerformance.BOG_SITE` = `bog_woodland_natural_1` obu skal (`bog_woodland_1` w przelocie `-Psites=slice`; bór suchy nie ma naturalnej powierzchni GAMEPLAY, a REAL leży 62 km od środka), test `flightsOfThePerformanceTestUseTheBogPlot`, plik skopiowany do `pl-m2-baseline`; `DeterminismClientGameTest` ma ósmy obszar `bog_woodland` (narożnik 64 bloki przed tą powierzchnią; w etapie 2 GAMEPLAY 40 bloków, F4-r). `SliceStandTest` (reguły M2 bez drzew planera) bierze świerczynę i olszynę górską zamiast borów suchego i wilgotnego.
 
 **Stare światy.** Zmienia się dekoracja nowych chunków czterech borów, wrzosowiska, torfowiska wysokiego, okrajka wydmy szarej (F4-j), pasów przejścia i zasięgu koron; teren bez zmian.
 
@@ -4009,6 +4009,88 @@ Krok F4 planu „Kroki F” (§3, G.41): bory suchy (`dry_pine_forest`), wilgotn
 - Klasy zmian: `TreeShapePlanTest` (suma kontrolna formy domyślnej, formy), `StandMapTest`, `GroundLayerPlanTest`, `DeadwoodPlanTest`, `RootPlanTest`, `ForestBlendTest`, `EcotoneSharpnessTest`, `RegistrySnapshotTest`, `PlannerPalettesTest`, `StandCrownCoverTest`, `SlicePlotsTest`, `SliceStandTest`, `SliceStandWriteTest`, `SliceEqualityTest`, `ForestNormsTest` (nowy test karty F4), `ForestCensusTest`, `ProceduralTreeStatesTest`, `GoldenTerrainTest`, `*season*`.
 - `tools/dev/run-tests --reuse fastTest`.
 - Wyniki i przebiegi gry w „Stan po F4”, według `python tools/dev/test_plan.py c062c7d`.
+
+## Stan po F4 (2026-11-06, etap 2: przebiegi w grze, poprawki testów, bez recenzji wizualnej)
+
+Drobne wybory: `docs/00` G.45 (F4-a … F4-q z etapu 1, F4-r … F4-x z etapu 2). Zgodnie z G.36 U-1 bez oceny wyglądu ze zrzutów: dowody to spisy KF-1 w `habitats` i `vanilla_forests`, karta norm z gry i z symulacji, porównania bloków w `determinism`, tablice i testy jednostkowe. Wygląd borów, brzeziny bagiennej, wrzosowiska i torfowiska sprawdza użytkownik według listy „Do sprawdzenia w grze” (raport kroku). Baza kroku: `c062c7d`; commity `3ac7dd7` (etap 1, WIP) i końcowy „F4: done, …” (etap 2).
+
+**Wynik w skrócie.** Bory suchy, bagienny (z brzeziną bagienną) i bażynowy rosną z drzewostanu planera w obu skalach i obu trybach; w głębi 0 kłód wanilii jako pni drzew lasu, 6,8–10,8 drzewa planera na chunk. Bór wilgotny ma drzewa planera, ale nie ma powierzchni karty ani głębi spisu KF-1 (pas za wąski, F4-q), więc jego kartę sprawdza tylko symulacja. Formy drzew przy wartości domyślnej nie zmieniają drzew wcześniejszych kroków (`TreeShapePlanTest`; spis `determinism`: poza strefami kroków F 0 różnic). Teren identyczny. Tablice próbek, martwego drewna i korzeni bez brakujących modeli. Odstępstwa do CP-D: część karty (N1, N10, N9 boru bażynowego gospodarczego; F4-w), bór wilgotny bez powierzchni (F4-q), wszystkie powierzchnie boru bagiennego w formie brzeziny (F4-v), jedna kłoda mniej na powierzchni `fresh_pine_2` REAL (F4-x), `present_day` z jaskiniami (DP-126) i jaskinia z C2ME w obszarze buczyny niżowej (DP-128), jak w F1–F3.
+
+**Od etapu 1 do etapu 2.** Przebiegi na kodzie `3ac7dd7` dały trzy porażki testów i jedno przerwanie; wszystkie to usterki testów, kod generacji w etapie 2 bez zmian.
+
+- *`determinism`*, GAMEPLAY: „Chunk −107, 50 was decorated before the terrain hash”. Nowy obszar `bog_woodland` (narożnik 64 bloki przed powierzchnią `bog_woodland_natural_1`, chunk −107) leżał chunk od obszaru `oak_hornbeam` (chunki −116 … −109), a pełne chunki obszaru dekorują sąsiadów do 2 chunków dalej. Narożnik GAMEPLAY przesunięty na 40 bloków przed powierzchnią (chunk −105, 3 chunki odstępu; F4-r); obszar REAL bez zmian.
+- *`determinism` wobec referencji F3*, REAL D, obszar `fresh_pine`: 95 kolumn różnicy poza strefami lasów kroków F (KF-3). W trybie D `ForestCover` zamienia wylesiony Bśw na wrzosowisko, a wrzosowisko dostało w F4 drzewa planera i runo moda (wrzos, chrobotek). Nowa strefa `H` spisu stref: wrzosowisko, torfowisko wysokie i wydma szara (okrajek wspólny z wrzosowiskiem, F4-j) z zasięgiem jak strefa `B`; poza `F`, `B` i `H` nadal 0 różnic (F4-s).
+- *`habitats`*: „Ground blocks differ from the surface plan: raised_bog … sphagnum_block instead of moss_block”. To zamierzona zamiana bloku mchu torfu (`BOG_PEAT`) w blok torfowca pod regułą runa z gruntem torfowca (F4-i). Test przyjmuje tylko tę jedną parę i podaje jej liczbę (REAL 117 ze 144, GAMEPLAY 42 z 72 kolumn torfowiska; F4-t).
+- *`slice -Psites=none`*: `OutOfMemoryError` przy zapisie świata REAL. Bez zrzutów spis kolejnych powierzchni idzie na wątku serwera bez przerw, więc serwer nie odładowuje chunków (REAL N: 8227 chunków w jednym świecie, po F3 6288). Nowe `SliceClientGameTest.releaseChunks`: gdy załadowanych jest o ponad 3000 chunków więcej niż na starcie świata, klient czeka, aż serwer je odładuje (10–110 ticków); spis czyta te same bloki (F4-u).
+- *Karta norm w grze*: spis powierzchni boru bagiennego brał normy formy sosnowej (Bb), a wszystkie powierzchnie leżą w brzezinie bagiennej (BMb, brzoza 77–89%). `NormsCensus` bierze teraz formę `Site.BIRCH_BOG` z kodu środka powierzchni, jak dla buczyn (F4-v).
+- *Symulacja* (`StandCensusSimulationTest -PcalibrateSlice`): przerywała się na ficzerach martwego drewna z formą (`deadwood/scots_pine/stunted`); czyta teraz formę ze ścieżki.
+
+**Przebiegi (`-PtimingsReportOnly`, mapa testów `test_plan.py c062c7d`; kod generacji `3ac7dd7`, po zmianach testów ponownie tylko przebiegi z porażką).**
+
+| Przebieg | Wynik |
+|---|---|
+| `vanilla_forests` (W1, tylko regresja) | PASS. Wiersze KF-1 identyczne z przebiegiem F3 (w głębi grąd 9,0 pnia planera na chunk, Bśw 18,3, buczyna niżowa 10,8, ols 11,0, buczyna karpacka 13,5; 0 kłód wanilii). Borów F4 nie ma w W1 |
+| `habitats` (obie skale) | Po F4-t **PASS**. KF-1 w głębi (pnie planera na chunk / kłody wanilii): REAL bór suchy 7,6 / 0 (2585 kolumn), bagienny 10,6 / 0 (5749), bażynowy 8,9 / 0 (11 705); GAMEPLAY suchy 8,3 / 0 (3924), bagienny 6,8 / 0 (5765), bażynowy 10,8 / 0 (12 637). Bór wilgotny bez głębi (REAL 42 kolumny w spisie). Głębia lasów wcześniejszych kroków bez zmian (np. jedlina 13,2 / 13,5, buczyna karpacka 12,5 / 12,8) |
+| `determinism -PdeterminismStepZones` (bez optymalizacji, wobec referencji F3 `handoff/F3/determinism_ref/`) | Po F4-r i F4-s **PASS**. Teren identyczny we wszystkich 28 wpisach z referencją. Poza strefami `F`, `B` i `H` 0 różnic we wszystkich obszarach i trybach; strefa `H` tylko REAL D `fresh_pine` (95 z 12 596 kolumn); w strefach F i B GAMEPLAY: rzeka 86, grąd 7 + 198, ols 384 + 6 kolumn (bory i ich pasy w obszarach). Nowy obszar `bog_woodland`: kolejność stała dokładnie, `floor_free` 0 we wszystkich porównaniach, stała wobec odwróconej 0,02–0,03% (REAL) i 0,25–0,30% (GAMEPLAY) bloków okna. Referencja dla F5: `handoff/F4/determinism_ref/` |
+| `determinism -Poptimization` (C2ME, wobec referencji z tego kodu) | FAIL tylko na znanej jaskini DP-128 w obszarze buczyny niżowej GAMEPLAY (3259 bloków w 833 kolumnach, dekoracja 2280 kolumn); pozostałe obszary w limitach, `bog_woodland` obu skal identyczny w kolejności stałej |
+| `slice -Psites=none` (karta norm z gry) | Po F4-u i F4-v **PASS**, `HABITAT_MISS` 0. Powierzchnie F4: 350 wierszy z normą — 250 w normie, 54 w tolerancji, 46 poza (tabela niżej). Pozostałe lasy: 157 wierszy `out` (po F3 155); nowe tylko `N10.volume` `fresh_pine_2` REAL N i D, 2,11 m³/ha przy tolerancji od 3,5 (po F3 4,24: jedna kłoda mniej na powierzchni z 4,8% kolumn innego biomu, F4-x). Plik `handoff/F4/karta-norm.f4.csv` |
+| `StandCensusSimulationTest -PcalibrateSlice` (bór wilgotny, bór bagienny obu form) | Raport (tabela niżej) |
+| `vegetation` | PASS, `HABITAT_MISS` 0 (REAL 8158, GAMEPLAY 7849 chunków) |
+| `ecotones`, `slice -Psites=seasons` | PASS |
+| `present_day` | z jaskiniami tylko znana wieś GAMEPLAY (4089, −3980): 11 kolumn podłogi wisi (DP-126); `-Pcaves=off` **PASS** |
+| `slice -Psites=samples`, `deadwood`, `roots` | PASS (3 przebiegi), 0 brakujących modeli i tekstur; zrzuty tylko zapisane |
+| KF-6 (cicha maszyna, C2ME `-Pcaves=off`, wobec `m2-baseline`, jeden przebieg) | tabela niżej |
+| `compileGametestJava`, klasy zmienionych testów | PASS |
+| pełny zestaw `tools/dev/run-tests test` | **PASS** (1207 s, drzewo `816439cdcba9`, przed wpisaniem tego wyniku do dokumentów) |
+
+**KF-6 (chunki na sekundę z C2ME bez jaskiń; iloraz F4 / M2; kod `3ac7dd7`).**
+
+| Miejsce | „Polska” REAL | GAMEPLAY |
+|---|---|---|
+| `bog_woodland_1` (`bog_woodland_natural_1`) | 149,9 / 180,5 = **0,83** | 227,0 / 303,9 = **0,75** |
+| `upland_fir_1` | 0,79 | 0,74 |
+| `alder_carr_1` | 0,74 | 0,67 |
+| `oak_hornbeam_1` | 0,73 | 0,72 |
+| `fresh_pine_1` | 0,75 | 0,72 |
+| `lowland_beech_1` | 0,68 | 0,71 |
+
+Bór bagienny powyżej 0,7 × M2 w obu skalach. Poniżej 0,7: buczyna niżowa REAL 0,68 i ols GAMEPLAY 0,67 — na listę F7 (DP-136), bez optymalizacji w F4.
+
+**Karta borów z gry** (`slice -Psites=none`; REAL po 2 powierzchnie naturalne i gospodarcze boru suchego, bagiennego i bażynowego, GAMEPLAY 2 gospodarcze boru suchego, 1 naturalna boru bagiennego i 2 + 2 boru bażynowego; tryby N i D; boru wilgotnego brak):
+
+| Miara | Bór suchy nat. | Bór suchy gosp. | Brzezina bagienna nat. | Brzezina bagienna gosp. | Bór bażynowy nat. | Bór bażynowy gosp. |
+|---|---|---|---|---|---|---|
+| N1 drzewa na chunk | **6,1, poza** (8–16) | 6,9–9,4 (6 tol.) | 4,5–7,9 (**4 poza**, 6–14) | 8,2–10,3 | 6,0–9,3 (**4 poza**) | 9,9–14,0 |
+| N3 skład | sosna 95–98% | sosna 97–99% | brzoza 77–87%, sosna 13–23% | brzoza 80–89%, sosna 7–19% (**2 poza**) | sosna 77–83%, brzoza 17–23% | sosna 84–93% (2 tol.), brzoza 6–15% |
+| N4 zwarcie | 38–40% (2 tol.) | 53–56% | 42–45% | 54–60% | 49–61% (2 tol.) | 62–71% |
+| N7 podszyt | 4,3–6,1% (**2 poza**, 0–5) | 2,9–4,7% | 4,1–7,3% | 3,4–4,1% | 2,6–5,4% | 1,3–3,6% |
+| N8 runo | 20–21% | 16–20% | 54–61% | 56–58% | 50–53% | 52–59% |
+| N9 porosty / torfowce / mchy | **porosty** 57–62% (2 tol.) | porosty 56–62% (5 tol.) | **torfowce** 88–93% | torfowce 87–91% | 78–82% (tol., 30–70 [S]) | 81–86% (**4 poza**) |
+| N10 martwe drewno | 0,84–1,35 obiektu (**2 poza**), 11–20 m³/ha (**2 poza**) | kawałki 0,13–0,29, pniaki 1,4–2,1, 1,6–4,9 m³/ha (**2 poza**) | 0,55–0,85 obiektu (**4 poza**), 4,4–6,9 m³/ha (**6 poza**, 15–45) | kawałki 0,05–0,13 (**2 poza**), 0,25–0,52 m³/ha (**4 poza**, 3–11) | 1,13–1,48 obiektu (**4 poza**, 1), 37–61 m³/ha | 0,15–0,28 kawałka, 2,7–7,0 m³/ha |
+
+N9 boru suchego liczy chrobotek jako porosty, N9 boru bagiennego torfowiec (dywan i blok gruntu) — oba w normie albo tolerancji. Poza normą (F4-w, do CP-D, bez strojenia): N1 boru suchego naturalnego i części powierzchni brzeziny i boru bażynowego naturalnego (rzadszy okap niż szacunek [S]), N10 boru bagiennego (niskie drzewa mają mało objętości; normy [S]), N9 boru bażynowego gospodarczego (norma 30–70 [S] niższa niż mchy z bażyną), N7 jednej powierzchni boru suchego, N3 sosny jednej powierzchni brzeziny gospodarczej.
+
+**Symulacja** (`StandCensusSimulationTest`, 49 drzewostanów na klasę wieku; średnie dla drągowiny / drzewostanu dojrzałego / starodrzewu):
+
+| Las | N1 | N3 | N4 | N7 | N10 |
+|---|---|---|---|---|---|
+| Bór wilgotny nat. | 10,9 / 8,3 / 8,2 (starsze 3–4 z 49 poza) | sosna 75–76%, brzoza 24–25% | 54 / 59 / 70% | **0,7–2,5%, poza** (10–30) | 1,25–1,27 obiektu, 68–73 m³/ha |
+| Bór wilgotny gosp. | 14,9 / 10,5 / 8,5 | sosna 82%, brzoza 17–18% | 68 / 74 / 78% | **0–1,4%, poza** | 0,24 kawałka, 5–14 m³/ha |
+| Bór bagienny (Bb) nat. | 8,6 / 5,3 / 4,9 | sosna 77–78%, brzoza 22–23% | 33–43% | 0–2,4% | 1,15 obiektu, 12–13 m³/ha |
+| Bór bagienny (Bb) gosp. | 11,9 / 8,9 / 6,9 | sosna 82%, brzoza 18% | 48–62% | 0–1,5% | 0,09–0,22 kawałka, **0,35–2,4 m³/ha** |
+| Brzezina bagienna (BMb) nat. / gosp. | 8,6 / 4,9 / 4,3 i 12,7 / 8,8 / 7,0 | brzoza 73–80%, sosna 21–27% | 38–65% | 0,7–5,6% | jak Bb |
+
+Symulacja nie sadzi krzewów podszytu (kruszyna boru wilgotnego jest w regule krzewów, nie w drzewostanie), więc N7 boru wilgotnego jest w niej zaniżony; runa i mchów (N8, N9) nie liczy. Bór bagienny w formie sosnowej (Bb) ma skład w normie, ale tylko w symulacji — w grze nie ma jego powierzchni (F4-v).
+
+**KF w skrócie.**
+
+- KF-1: spełnione dla boru suchego, bagiennego i bażynowego w obu skalach (0 kłód wanilii, pnie planera 6,8–10,8 na chunk); bór wilgotny bez głębi spisu (F4-q). Test palet bez `SCOTS_PINE_LOW` i zastępstw M2 (poza cienkimi krzewami podszytu).
+- KF-2: karta z gry i z symulacji; odstępstwa F4-w i F4-x do CP-D; bór wilgotny tylko w symulacji.
+- KF-3: spełnione (teren identyczny wobec F3; poza strefami lasów kroków F i otwartych siedlisk F4 0 różnic; z C2ME tylko DP-128); migawka rejestru z etapu 1 (+25 linii, 0 usuniętych).
+- KF-4: `ForestBlendTest`, `EcotoneSharpnessTest`, `ecotones`, `vegetation` (`HABITAT_MISS` 0) PASS; `present_day` z jaskiniami DP-126.
+- KF-5: spełnione (tablice `samples`, `deadwood`, `roots` PASS; `checkDatagen`, `checkArt`, `lint.py`, `RegistrySnapshotTest`, testy `*season*` z etapu 1; `slice -Psites=seasons` PASS).
+- KF-6: wykonane (bór bagienny 0,83 / 0,75 × M2).
+- KF-7: „Projekt F4”, „Stan po F4”, G.45, BRIEF, lista „Do sprawdzenia w grze” w raporcie kroku.
 
 ## Do kroku porządkowego (lista drobiazgów z recenzji)
 
