@@ -48,7 +48,8 @@ public final class ForestBlend {
 	 * the steps F in their order (F1: the lowland beech forest; F2: the alder carr and the ash-alder forest; F3: the
 	 * upland fir forest and the Carpathian beech forest; F4: the dry, the moist pine forest, the bog woodland and the
 	 * coastal pine forest; F5: the elm-ash and the willow-poplar floodplain forest). Each step F
-	 * appends its forests here, takes them off {@link #NEIGHBORS} and names their pairs in {@link #BLENDS}.
+	 * appended its forests here (steps F1-F5 also took them off the takeover list of step Z1, removed in step F7); since
+	 * step F7 every pair blends ({@link #BLENDS}).
 	 */
 	public static final HabitatBiome[] FORESTS = {HabitatBiome.FRESH_PINE_FOREST, HabitatBiome.MIXED_PINE_FOREST,
 			HabitatBiome.MIXED_FOREST, HabitatBiome.OAK_HORNBEAM_FOREST, HabitatBiome.LOWLAND_BEECH_FOREST,
@@ -80,42 +81,14 @@ public final class ForestBlend {
 	public static final int GRAY_ALDER = 16;
 	public static final int DWARF_PINE = 17;
 	/**
-	 * Pairs of {@link #FORESTS} that mix in the blend's belt (bit b of entry a); the other pairs meet in the ramp of
-	 * {@link Ecotone}. The four forests of the transect all blend with each other (step Z1); the lowland beech forest (step
-	 * F1, rule Z10) with the oak-hornbeam, the mixed and the mixed pine-oak forest (its neighbors on the fertile and the
-	 * moderately fertile sites), not with the fresh pine forest (a sharp change of the site, the ramp). Step F2: the alder
-	 * carr with the ash-alder forest and the forests of the transect around the wet hollows (the alder and the birch pass
-	 * into the pine and oak forests over the belt, rule Z10: only the edge of the water stays sharp), the ash-alder forest
-	 * with the alder carr, the mixed pine-oak, the mixed and the oak-hornbeam forest and the beech forest of the stream
-	 * valleys; the carr and the beech forest, and the ash-alder and the fresh pine forest, meet in the ramp. Step F3: the
-	 * upland fir forest with the lowland beech forest, the oak-hornbeam, the mixed and the mixed pine-oak forest (the fir
-	 * passes into them on the uplands, its northern range edge), the Carpathian beech forest with the lowland beech forest,
-	 * the fir forest and the oak-hornbeam forest of the foothills; the fir forest and the fresh pine forest, and the
-	 * mountain forests with the montane spruce forest and the alpine meadows (not forests of the blend), meet in the ramp.
-	 * Step F4: the dry pine forest with the fresh and the mixed pine-oak forest (the poorer and drier sand), the moist pine
-	 * forest with them, the alder carr and the bog woodland (the wetter sites of the same poor sand), the bog woodland with
-	 * the fresh pine forest and the alder carr, the coastal pine forest with the fresh and the mixed pine-oak forest, the
-	 * bog woodland and the dry pine forest (the coastal belt behind the dunes); the heath, the raised bog and the gray dune
-	 * (no forests of the blend) meet them in the ramp. Step F5: the elm-ash forest with the ash-alder forest, the alder carr,
-	 * the oak-hornbeam and the mixed forest (the higher terrace of the valley floor passes into the grąd) and the
-	 * willow-poplar forest, the willow-poplar forest with the ash-alder forest, the alder carr and the oak-hornbeam forest
-	 * (rule Z10: only the edge of the water stays sharp); the osier scrub (not a forest of the planner, mostly a waterside
-	 * zone) meets them in the ramp of {@link Ecotone} (decision F5-f). Step F6: the montane spruce forest with the
-	 * Carpathian beech forest and the fir forest (the fir-spruce forest of the lower part of the upper montane belt passes
-	 * into them) and with the dwarf pine scrub (the timberline: the dwarf spruces among the dwarf pine), the gray alder
-	 * forest with the montane spruce forest, the Carpathian beech forest and the ash-alder forest (the stream valleys);
-	 * the alpine grassland (not a forest of the blend) meets them in the ramp.
+	 * Pairs of {@link #FORESTS} that mix in the blend's belt (bit b of entry a). Steps Z1 to F6 named the pairs of
+	 * neighbors on related sites (the transect, then each step's forests with theirs) and let the other pairs meet in the
+	 * ramp of {@link Ecotone}; step F7 (docs/04 "Projekt F7", rule Z10) blends every pair, so any two forests that meet
+	 * change over the belt of about {@value #RADIUS} m·k, also across a sharp change of the site (beech and fresh pine
+	 * forest, fir and fresh pine forest, carr and beech forest). The open land, the scrub and the waterside zones meet the
+	 * forests in the ramp, and the water edge stays sharp.
 	 */
-	private static final int[] BLENDS = pairs(new int[][] {{0, 1}, {0, 2}, {0, 3}, {1, 2}, {1, 3}, {2, 3}, {BEECH, 3},
-			{BEECH, 2}, {BEECH, 1}, {ALDER_CARR, ASH_ALDER}, {ALDER_CARR, 0}, {ALDER_CARR, 1}, {ALDER_CARR, 2}, {ALDER_CARR, 3},
-			{ASH_ALDER, 1}, {ASH_ALDER, 2}, {ASH_ALDER, 3}, {ASH_ALDER, BEECH}, {UPLAND_FIR, BEECH}, {UPLAND_FIR, 3},
-			{UPLAND_FIR, 2}, {UPLAND_FIR, 1}, {MONTANE_BEECH, BEECH}, {MONTANE_BEECH, UPLAND_FIR}, {MONTANE_BEECH, 3},
-			{DRY_PINE, 0}, {DRY_PINE, 1}, {MOIST_PINE, 0}, {MOIST_PINE, 1}, {MOIST_PINE, ALDER_CARR}, {MOIST_PINE, BOG_WOODLAND},
-			{BOG_WOODLAND, 0}, {BOG_WOODLAND, ALDER_CARR}, {COASTAL_PINE, 0}, {COASTAL_PINE, 1}, {COASTAL_PINE, BOG_WOODLAND},
-			{COASTAL_PINE, DRY_PINE}, {ELM_ASH, ASH_ALDER}, {ELM_ASH, ALDER_CARR}, {ELM_ASH, 3}, {ELM_ASH, 2},
-			{ELM_ASH, WILLOW_POPLAR}, {WILLOW_POPLAR, ASH_ALDER}, {WILLOW_POPLAR, ALDER_CARR}, {WILLOW_POPLAR, 3},
-			{MONTANE_SPRUCE, MONTANE_BEECH}, {MONTANE_SPRUCE, UPLAND_FIR}, {MONTANE_SPRUCE, DWARF_PINE}, {GRAY_ALDER, MONTANE_SPRUCE},
-			{GRAY_ALDER, MONTANE_BEECH}, {GRAY_ALDER, ASH_ALDER}});
+	private static final int[] BLENDS = allPairs();
 	/** Radius of the kernel (m·k). */
 	public static final double RADIUS = 48;
 	/** Spacing of the lattice (m·k); in blocks at least 2. */
@@ -124,33 +97,21 @@ public final class ForestBlend {
 	public static final double MIN_TOTAL = 0.5;
 	/** Salt of the draws of the blend (a new field, a new salt), mixed with each layer's ecotone salt. */
 	public static final long DRAW_SALT = 0x2B1E_7D5F_0C39L;
-	/**
-	 * Lowland woodlands next to the forests of {@link #FORESTS} whose trees those forests take over near them (trees only,
-	 * {@link #takeover}): floodplain forests (the lowland beech forest until step F1, the alder carr and the ash-alder
-	 * forest until step F2, the pine forests of other sites and the bog woodland until step F4, the elm-ash and the
-	 * willow-poplar forest until step F5, now forests of the blend; since F5 none is left).
+	/*
+	 * Steps Z1 to F5 had a takeover: the forests of the blend took over the trees of the lowland woodlands next to them that
+	 * were not yet forests of the planner (NEIGHBORS, with the salt 0x4F2D_A61C_83E5L); since step F5 none was left, and
+	 * step F7 removed the mechanism (docs/04 "Projekt F7"; the result is unchanged, the list was empty).
 	 */
-	private static final long NEIGHBORS = bits();
-	/**
-	 * Share of the slice forests among the land without a zone within the radius ({@link #takeover}) at which the takeover
-	 * starts, and at which it is complete (smoothstep between).
-	 */
-	public static final double TAKEOVER_FROM = 0.55;
-	public static final double TAKEOVER_TO = 0.85;
-	/** Least sum of the slice forests' shares for a takeover (some slice forest within the radius). */
-	public static final double TAKEOVER_MIN = 0.001;
 	/** Number of shares of the field: the forests of {@link #FORESTS}, then the other land without a zone. */
 	public static final int SHARES = FORESTS.length + 1;
 	/** Index of the share of the other land without a zone. */
 	public static final int OTHER = FORESTS.length;
-	/** Salt of the draw of the takeover (a new field, a new salt), mixed with the tree layer's ecotone salt. */
-	public static final long TAKEOVER_SALT = 0x4F2D_A61C_83E5L;
 
-	private static int[] pairs(int[][] pairs) {
+	/** Step F7: every pair of {@link #FORESTS} blends (the forests that never meet have no share in each other's belt). */
+	private static int[] allPairs() {
 		int[] out = new int[FORESTS.length];
-		for (int[] p : pairs) {
-			out[p[0]] |= 1 << p[1];
-			out[p[1]] |= 1 << p[0];
+		for (int a = 0; a < FORESTS.length; a++) {
+			out[a] = (1 << FORESTS.length) - 1 & ~(1 << a);
 		}
 		return out;
 	}
@@ -165,14 +126,6 @@ public final class ForestBlend {
 		int a = member(own) - 1;
 		int b = member(other) - 1;
 		return a >= 0 && b >= 0 && blends(a, b);
-	}
-
-	private static long bits(HabitatBiome... biomes) {
-		long m = 0;
-		for (HabitatBiome b : biomes) {
-			m |= 1L << b.ordinal();
-		}
-		return m;
 	}
 
 	/** Lattice points classified (samples of the landscape model, the blend's cost; diagnostics of the slice test). */
@@ -418,54 +371,6 @@ public final class ForestBlend {
 			sum += s[b];
 		}
 		return sum;
-	}
-
-	/**
-	 * Whether the forests of the blend take over the trees of a column of this code near them ({@link #takeover}): a lowland
-	 * woodland of {@link #NEIGHBORS} without a zone or in a spring area (a stream's ash-alder belt in an oak-hornbeam forest).
-	 */
-	public static boolean takenOver(int code) {
-		if (code == Ecotone.UNKNOWN || member(code) > 0 || (NEIGHBORS >>> (code & 63) & 1) == 0) {
-			return false;
-		}
-		Zone z = Habitat.zone(code);
-		return z == Zone.NONE || z == Zone.SPRING_AREA;
-	}
-
-	/**
-	 * The tree code of a column of a neighboring woodland ({@link #takenOver}) near the slice forests (step Z1, decision
-	 * CP-B.1: no band of the M2 placeholder trees next to the planner trees). q is the share of the slice forests among
-	 * the land without a zone within the radius (water and zones such as the spring area itself do not count); with the
-	 * chance smoothstep of q between {@value #TAKEOVER_FROM} and {@value #TAKEOVER_TO} the column takes the canonical code
-	 * of one of the slice forests by their shares. A stream's spring-area belt or a patch surrounded by the slice forests
-	 * (q near 1) grows their trees, however wide it is within the radius; a large woodland next to them (q about 0.5 at
-	 * its edge, falling inside) keeps its own trees.
-	 */
-	static int takeover(int code, float[] s, double v) {
-		double total = forestTotal(s);
-		if (total < TAKEOVER_MIN) {
-			return code;
-		}
-		double q = total / (total + s[OTHER]);
-		double t = Math.clamp((q - TAKEOVER_FROM) / (TAKEOVER_TO - TAKEOVER_FROM), 0, 1);
-		double p = t * t * (3 - 2 * t);
-		if (!(v < p)) {
-			return code;
-		}
-		double u = v / p * total;
-		double acc = 0;
-		int last = 0;
-		for (int b = 0; b < FORESTS.length; b++) {
-			if (s[b] <= 0) {
-				continue;
-			}
-			last = b;
-			acc += s[b];
-			if (u < acc) {
-				return code(code, b);
-			}
-		}
-		return code(code, last);
 	}
 
 	/**

@@ -357,7 +357,7 @@
       "patch": 2,
       "plants": [
         {
-          "feature": "polishforests:shrub/osier",
+          "feature": "polishforests:shrub/osier_bar_thin",
           "weight": 9
         },
         {
@@ -373,7 +373,7 @@
       "coverage": 0.02,
       "plants": [
         {
-          "feature": "polishforests:shrub/osier",
+          "feature": "polishforests:shrub/osier_bar_thin",
           "weight": 9
         }
       ],
@@ -401,7 +401,7 @@
       "coverage": 0.05,
       "plants": [
         {
-          "feature": "polishforests:shrub/osier",
+          "feature": "polishforests:shrub/osier_bar_thin",
           "weight": 9
         }
       ],

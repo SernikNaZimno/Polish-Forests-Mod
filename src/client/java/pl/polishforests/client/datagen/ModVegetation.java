@@ -15,7 +15,6 @@ import net.minecraft.data.worldgen.BootstrapContext;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.util.random.WeightedList;
-import net.minecraft.util.valueproviders.UniformInt;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.FlowerBedBlock;
@@ -24,14 +23,10 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
 import net.minecraft.world.level.levelgen.blockpredicates.BlockPredicate;
 import net.minecraft.world.level.levelgen.feature.BlockBlobFeature;
-import net.minecraft.world.level.levelgen.feature.FallenTreeFeature;
 import net.minecraft.world.level.levelgen.feature.Feature;
 import net.minecraft.world.level.levelgen.feature.SimpleBlockFeature;
 import net.minecraft.world.level.levelgen.feature.WeightedRandomSelectorFeature;
-import net.minecraft.world.level.levelgen.feature.stateproviders.BlockStateProvider;
 import net.minecraft.world.level.levelgen.feature.stateproviders.WeightedStateProvider;
-import net.minecraft.world.level.levelgen.feature.treedecorators.AttachedToLogsDecorator;
-import net.minecraft.world.level.levelgen.feature.treedecorators.TrunkVineDecorator;
 import net.minecraft.world.level.levelgen.placement.PlacedFeature;
 import pl.polishforests.block.BerryShrubBlock;
 import pl.polishforests.block.GroundCoverBlock;
@@ -79,19 +74,15 @@ final class ModVegetation {
 			Zone.CLIFF_FACE, Zone.CLIFF_TOP);
 
 	/**
-	 * Species of the M2 fallen trees (vanilla logs), {@code polishforests:deadwood_substitute/<species>} since step V11
-	 * (decision PW-3 b for dead wood: the forests outside the slice keep them).
-	 */
-	static final List<Species> DEADWOOD = List.of(Species.SCOTS_PINE, Species.SPRUCE, Species.FIR, Species.BIRCH, Species.OAK,
-			Species.BEECH, Species.HORNBEAM, Species.BLACK_ALDER, Species.POPLAR, Species.WHITE_WILLOW, Species.GRAY_ALDER);
-
-	/**
 	 * Species of the dead wood of the dead wood planner (step V11): every species with a planner shape,
 	 * {@code polishforests:deadwood/<species>} (a dead tree) and {@code polishforests:stump/<species>}.
 	 */
 	static final List<Species> PROCEDURAL_DEADWOOD = List.copyOf(SpeciesShape.species());
 
-	/** A dead tree of the dead wood planner (step V11; until V11 the vanilla fallen tree, now {@link #deadwoodSubstitute}). */
+	/**
+	 * A dead tree of the dead wood planner (step V11; until V11 the vanilla fallen tree of M2, then
+	 * {@code deadwood_substitute/<species>} of the forests outside the slice, removed in step F7 with no palette left).
+	 */
 	static String deadwood(Species s) {
 		return "deadwood/" + s.id();
 	}
@@ -112,10 +103,6 @@ final class ModVegetation {
 
 	static String stump(Species s, TreeForm.Kind form) {
 		return stump(s) + "/" + form.id();
-	}
-
-	static String deadwoodSubstitute(Species s) {
-		return "deadwood_substitute/" + s.id();
 	}
 
 	/** A stump of the dead wood planner (managed stands, step V11). */
@@ -139,9 +126,6 @@ final class ModVegetation {
 	// ------------------------------------------------------------------ small features
 
 	static void features(BootstrapContext<Feature> context, HolderGetter<PlacedFeature> placed) {
-		for (Species s : DEADWOOD) {
-			context.register(ModTrees.key(deadwoodSubstitute(s)), fallen(s));
-		}
 		for (Species s : PROCEDURAL_DEADWOOD) {
 			context.register(ModTrees.key(deadwood(s)), new DeadwoodFeature(s, false));
 			context.register(ModTrees.key(stump(s)), new DeadwoodFeature(s, true));
@@ -199,28 +183,6 @@ final class ModVegetation {
 		return out.build();
 	}
 
-	/** A fallen tree of the species' bark (§8.2): a stump and a log of 4–9 blocks, rarely with mushrooms. */
-	private static FallenTreeFeature fallen(Species s) {
-		Block log = switch (s) {
-			case SCOTS_PINE, SPRUCE -> Blocks.SPRUCE_LOG;
-			case FIR, BEECH, HORNBEAM, GRAY_ALDER -> Blocks.PALE_OAK_LOG;
-			case BIRCH -> Blocks.BIRCH_LOG;
-			case BLACK_ALDER -> Blocks.DARK_OAK_LOG;
-			case POPLAR -> Blocks.POPLAR_LOG;
-			default -> Blocks.OAK_LOG;
-		};
-		int min = s == Species.SPRUCE || s == Species.FIR || s == Species.SCOTS_PINE || s == Species.BEECH ? 5 : 4;
-		int max = s == Species.SPRUCE || s == Species.FIR || s == Species.SCOTS_PINE || s == Species.BEECH ? 9 : 7;
-		FallenTreeFeature.Builder b = FallenTreeFeature.builder(BlockStateProvider.of(log), UniformInt.of(min, max))
-				.logDecorator(new AttachedToLogsDecorator(0.05F, Holder.direct(new WeightedStateProvider(WeightedList.<BlockState>builder()
-						.add(Blocks.BROWN_MUSHROOM.defaultBlockState(), 2).add(Blocks.RED_MUSHROOM.defaultBlockState(), 1))),
-						List.of(Direction.UP)));
-		if (s == Species.OAK || s == Species.WHITE_WILLOW) {
-			b.stumpDecorator(TrunkVineDecorator.INSTANCE);
-		}
-		return b.build();
-	}
-
 	// ------------------------------------------------------------------ tree stand (§8.5)
 
 	/**
@@ -237,8 +199,11 @@ final class ModVegetation {
 		// the planner writes no trunk on a water column, so they grow on the bank).
 		t.rule(HabitatCondition.zones(Zone.RIVERSIDE_WILLOWS), 6).add(Species.WHITE_WILLOW, Species.WHITE_WILLOW.path(), 800, 1)
 				.add(Species.BLACK_ALDER, Species.BLACK_ALDER.path(), 200, 1);
+		// Step F7 (docs/04 "Projekt F7"): the trees outside the forest are trees of the planner (lone trees of the zone or the
+		// biome, no stand rule) in place of the M2 placeholders: the black alders and some birches on the shore of a lobelia
+		// lake, the row of alders with a few white willows along a stream of the PRESENT_DAY mode (Zone.TREE_ROW).
 		t.rule(HabitatCondition.zones(Zone.SHORE_ALDERS), 8).add(Species.BLACK_ALDER, 700, 1).add(Species.BIRCH, 300);
-		t.rule(HabitatCondition.zones(Zone.TREE_ROW), 8).add(Species.BLACK_ALDER, 1000, 1);
+		t.rule(HabitatCondition.zones(Zone.TREE_ROW), 8).add(Species.BLACK_ALDER, 850, 1).add(Species.WHITE_WILLOW, 150, 1);
 		// Step F6: the dwarf spruces of the planner and the low rowans at the timberline (lone trees of the zone, no stand
 		// rule), in place of the vanilla stunted spruce.
 		t.rule(HabitatCondition.zones(Zone.TIMBERLINE), 4).add(Species.SPRUCE, ModTrees.form(Species.SPRUCE, TreeForm.Kind.DWARF), 900)
@@ -584,17 +549,26 @@ final class ModVegetation {
 				1000);
 		t.rule(HabitatCondition.biomes(HEATH), 0.5F).add(Species.SCOTS_PINE, Species.SCOTS_PINE.path(), 600)
 				.add(Species.BIRCH, Species.BIRCH.path(), 400);
-		t.rule(HabitatCondition.biomes(WET_MEADOW), 0.1F).add(Species.BLACK_ALDER, 600).add(Species.WHITE_WILLOW, 400);
-		t.rule(HabitatCondition.biomes(HAY_MEADOW), 0.1F).add(Species.OAK, 500).add(Species.BIRCH, 300).add(Species.LINDEN, 200);
-		t.rule(HabitatCondition.biomes(GRAY_DUNE), 0.125F).add(Species.SCOTS_PINE, 1000);
+		// Step F7: the lone open-grown trees of the meadows (TreeForm.Kind.SOLITARY: broad crowns, low branches; at least
+		// mature, TreeStandFeature): oak, linden, birch and white willow on the hay meadow, willow and black alder on the wet
+		// meadow; the pines of the planner invading the gray dune, low and with banner crowns away from the sea (the form of
+		// the coastal wind belt) and some of the plain form behind the dune.
+		t.rule(HabitatCondition.biomes(WET_MEADOW), 0.1F).form(Species.WHITE_WILLOW, TreeForm.Kind.SOLITARY, 500)
+				.add(Species.BLACK_ALDER, 500);
+		t.rule(HabitatCondition.biomes(HAY_MEADOW), 0.1F).form(Species.OAK, TreeForm.Kind.SOLITARY, 450)
+				.form(Species.LINDEN, TreeForm.Kind.SOLITARY, 250).form(Species.BIRCH, TreeForm.Kind.SOLITARY, 200)
+				.form(Species.WHITE_WILLOW, TreeForm.Kind.SOLITARY, 100);
+		t.rule(HabitatCondition.biomes(GRAY_DUNE), 0.125F).form(Species.SCOTS_PINE, TreeForm.Kind.WINDSWEPT, 750)
+				.add(Species.SCOTS_PINE, 250);
 		return new TreePalette(t.rules());
 	}
 
 	/**
-	 * Builder of the tree palette rules: a {@link #rule} with the placeholder trees of M2 ({@code tree_substitute/}, PW-3),
-	 * or a {@link #planned} rule with the procedural trees ({@code tree/<species>} where the species has a planner shape) and
-	 * the layered stand, whose lists follow {@link #managed}, {@link #subcanopy}, {@link #regeneration} and
-	 * {@link #gapRegeneration}.
+	 * Builder of the tree palette rules: a {@link #rule} of lone trees (the zones and the open land) or a {@link #planned}
+	 * rule with the layered stand, whose lists follow {@link #managed}, {@link #subcanopy}, {@link #regeneration} and
+	 * {@link #gapRegeneration}; both with the procedural trees of the planner ({@code tree/<species>}) and the thin-stemmed
+	 * shrubs ({@link ModTrees#SLICE}). Until step F7 a plain rule had the placeholder trees of M2 ({@code tree_substitute/},
+	 * PW-3).
 	 */
 	private static final class Trees {
 		private final HolderGetter<PlacedFeature> placed;
@@ -672,9 +646,16 @@ final class ModVegetation {
 			return this;
 		}
 
-		/** The feature path of a species in this rule: the procedural tree in a planned rule, else the placeholder. */
+		/** The feature path of a species: the procedural tree, or the thin-stemmed shrub (step F7: no placeholder of M2). */
 		private String path(Species s) {
-			return !planned ? s.substitutePath() : SpeciesShape.supported(s) ? s.path() : ModTrees.SLICE.getOrDefault(s, s.substitutePath());
+			if (SpeciesShape.supported(s)) {
+				return s.path();
+			}
+			String shrub = ModTrees.SLICE.get(s);
+			if (shrub == null) {
+				throw new IllegalArgumentException("no tree of the planner and no shrub for " + s);
+			}
+			return shrub;
 		}
 
 		Trees add(Species s, int weight) {
@@ -1204,7 +1185,8 @@ final class ModVegetation {
 		// Step F6: the patches of the dwarf mountain pine at the timberline, among the dwarf spruces (the zone's columns
 		// of the other biomes, above all the upper edge of the montane spruce forest).
 		l.land(HabitatCondition.zones(Zone.TIMBERLINE), 0.015F, 1, l.feature(Species.DWARF_MOUNTAIN_PINE.path(), 1));
-		l.land(biomes(HEATH), 0.01F, 3, l.feature(Species.JUNIPER.path(), 1));
+		// Step F7: the thin-stemmed juniper of the forests in place of the M2 bush.
+		l.land(biomes(HEATH), 0.01F, 3, l.feature(ModTrees.SLICE.get(Species.JUNIPER), 1));
 		// Step F4 (N7): juniper 0-5% in the dry pine forest, the alder buckthorn (10-30%) in the moist one, a few in the bog
 		// woodland, juniper and rowan in the coastal pine forest; the thin-stemmed shrubs of the slice.
 		l.land(biomes(DRY_PINE_FOREST), perChunk(1), 1, l.feature(ModTrees.SLICE.get(Species.JUNIPER), 1));
@@ -1247,8 +1229,8 @@ final class ModVegetation {
 				l.feature(ModTrees.SLICE.get(Species.HAZEL), 1));
 		l.land(biomes(ALDER_CARR), perChunk(8), 1, l.feature(ModTrees.SLICE.get(Species.ALDER_BUCKTHORN), 3),
 				l.feature(ModTrees.SLICE.get(Species.BIRD_CHERRY), 1), l.feature(ModTrees.SLICE.get(Species.OSIER), 1));
-		// Gray dune: creeping willow as an osier.
-		l.land(biomes(GRAY_DUNE), 0.01F, 3, l.feature(Species.OSIER.path(), 1));
+		// Gray dune: creeping willow as an osier (step F7: the own osier of the bars, which also grows on the sand).
+		l.land(biomes(GRAY_DUNE), 0.01F, 3, l.feature(ModTrees.OSIER_BAR, 1));
 		return l.palette();
 	}
 
@@ -1293,12 +1275,13 @@ final class ModVegetation {
 		l.rule(biomes(REEDBED), Medium.PUDDLE_SHORE, 1, 64, List.of(), 0.4F, 3, reed);
 		l.rule(biomes(FEN, WET_MEADOW), Medium.PUDDLE_SHORE, 1, 64, List.of(), 0.15F, 3, reed);
 		l.rule(biomes(reedBanks), Medium.PUDDLE_SHORE, 1, 64, List.of(), 0.1F, 3, reed);
-		Plant osier = l.feature(Species.OSIER.path(), 9);
+		// Step F7: the own osier of the bars (also on their sand and gravel) in place of the M2 osier.
+		Plant osier = l.feature(ModTrees.OSIER_BAR, 9);
 		Plant firefly = b(Blocks.FIREFLY_BUSH, 1);
 		// 16% of the columns (S7 review: with 11% the crowns covered 71-78% of the willow scrub in the realistic scale and
 		// 62% in the narrower scrub of the gameplay scale; §8.5: 80-100%). Step F5: the own osier (Salicetum triandro-
 		// viminalis), part of it with hop, at 18% of the columns (its clump of slender crowns covers a little less ground
-		// than the round M2 bush); the willow carr, the point bars and the gravel bars keep the M2 osier until F6/F7.
+		// than the round M2 bush); the willow carr, the point bars and the gravel bars kept the M2 osier until F7.
 		Plant ownOsier = l.feature(ModTrees.SLICE.get(Species.OSIER), 7);
 		Plant hopOsier = l.feature(ModTrees.OSIER_HOP, 2);
 		l.land(HabitatCondition.zones(Zone.WILLOW_SCRUB), 0.18F, 2, ownOsier, hopOsier, firefly);

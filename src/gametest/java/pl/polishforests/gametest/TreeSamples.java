@@ -8,21 +8,14 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.Holder;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.tags.BlockTags;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LeavesBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.levelgen.Heightmap;
-import net.minecraft.world.level.levelgen.XoroshiroRandomSource;
-import net.minecraft.world.level.levelgen.placement.PlacedFeature;
-import pl.polishforests.block.TrunkBlock;
 import pl.polishforests.PolishForests;
 import pl.polishforests.season.SubSeason;
 import pl.polishforests.worldgen.feature.ProceduralTreeFeature;
@@ -63,9 +56,6 @@ final class TreeSamples {
 	/** Origins of the stands (x, relative to the board) and their extent of 3 chunks. */
 	private static final int PINE_STAND_X = 96;
 	private static final int GRAD_STAND_X = 176;
-	/** Origin (x) of the ecotone of procedural trees and vanilla substitutes (risk R5), its share of substitutes. */
-	private static final int ECOTONE_X = 272;
-	private static final double SUBSTITUTES = 0.3;
 	/** Most bare crown wood open to the side per tree ({@link CrownCover}): lone trees and the two stands. */
 	private static final double MAX_BARE_LONE = 0.6;
 	private static final double MAX_BARE_STAND = 0.5;
@@ -191,7 +181,7 @@ final class TreeSamples {
 		}
 		String first = check(level, placed, true);
 		PolishForests.LOG.info("[trees] planted: {}", first);
-		PolishForests.LOG.info("[trees] ecotone: {}", ecotone(level, generator, x0 + ECOTONE_X, y, z0));
+		// Step F7: the ecotone of procedural trees and the vanilla substitutes of M2 (risk R5) is gone with the substitutes.
 		PolishForests.LOG.info("[trees] obstacles: {}", obstacles(level, blocked, x0 + OBSTACLE_X, y, z0));
 		return new int[] {x0, y, z0};
 	}
@@ -218,105 +208,6 @@ final class TreeSamples {
 				}
 			}
 		}
-	}
-
-	/**
-	 * Risk R5 (docs/04 §8, decision V5-h): an oak-hornbeam stand of 3 × 3 chunks where {@value #SUBSTITUTES} of the
-	 * candidates grow the vanilla substitute of M2 ({@code polishforests:tree_substitute/oak}, which ignores the crown territories)
-	 * and the others procedural trees with their territories, written once with the procedural trees first and once with
-	 * the substitutes first (the area cleared in between, each substitute with the same random source). Reports the blocks
-	 * that differ between the two orders by kind, for the record of risk R5 (no assertion): leaves (the leaves written
-	 * last win) and wood where a branch of a substitute, which ignores the territories, meets procedural wood (the vanilla
-	 * trunk placer overwrites logs, a procedural block is not written over a log, so its parts above stay out).
-	 */
-	private static String ecotone(ServerLevel level, ChunkGenerator generator, int x, int y, int z) {
-		Holder<PlacedFeature> oak = level.registryAccess().lookupOrThrow(Registries.PLACED_FEATURE)
-				.getOrThrow(ResourceKey.create(Registries.PLACED_FEATURE, PolishForests.id("tree_substitute/oak")));
-		StandMap map = StandMap.uniform(AgeClass.OLD_GROWTH, true);
-		CrownTerritories.Session s = new CrownTerritories(level.getSeed(), map).session();
-		List<CrownTerritory> all = new ArrayList<>();
-		for (int cx = (x >> 4); cx < (x >> 4) + 3; cx++) {
-			for (int cz = (z >> 4); cz < (z >> 4) + 3; cz++) {
-				all.addAll(s.chunk(cx, cz, null));
-			}
-		}
-		int x1 = x - 16;
-		int z1 = z - 16;
-		int sx = 80;
-		int sy = 44;
-		int sz = 80;
-		BlockState[][] runs = new BlockState[2][];
-		int substitutes = 0;
-		for (int order = 0; order < 2; order++) {
-			BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
-			for (int i = 0; i < sx; i++) {
-				for (int j = 0; j < sy; j++) {
-					for (int k = 0; k < sz; k++) {
-						level.setBlock(pos.set(x1 + i, y + j, z1 + k), Blocks.AIR.defaultBlockState(), Block.UPDATE_CLIENTS | 16);
-					}
-				}
-			}
-			substitutes = 0;
-			for (int pass = 0; pass < 2; pass++) {
-				boolean vanilla = (pass == 0) == (order == 1);
-				for (CrownTerritory t : all) {
-					long h = pl.polishforests.worldgen.landscape.Noise.mix(pl.polishforests.worldgen.landscape.Noise.key(t.x(), t.z(), 91));
-					boolean substitute = (h >>> 11) * 0x1.0p-53 < SUBSTITUTES;
-					if (substitute != vanilla) {
-						continue;
-					}
-					if (substitute) {
-						substitutes++;
-						oak.value().place(level, generator, new XoroshiroRandomSource(h), new BlockPos(t.x(), y, t.z()));
-					} else {
-						Species sp = species(true, t.layer(), t.x(), t.z());
-						ProceduralTreeFeature.write(level, TreeShapePlan.plan(new TreeRequest(sp, t.layer(), AgeClass.OLD_GROWTH,
-								level.getSeed(), t.x(), y, t.z(), t, s::candidate, map)), sp, t.layer(), AgeClass.OLD_GROWTH);
-					}
-				}
-			}
-			BlockState[] snap = new BlockState[sx * sy * sz];
-			for (int i = 0; i < sx; i++) {
-				for (int j = 0; j < sy; j++) {
-					for (int k = 0; k < sz; k++) {
-						snap[(i * sy + j) * sz + k] = level.getBlockState(pos.set(x1 + i, y + j, z1 + k));
-					}
-				}
-			}
-			runs[order] = snap;
-		}
-		int trunkLog = 0;
-		int trunk = 0;
-		int log = 0;
-		int leaves = 0;
-		int other = 0;
-		int blocks = 0;
-		for (int i = 0; i < runs[0].length; i++) {
-			BlockState a = runs[0][i];
-			BlockState b = runs[1][i];
-			if (!a.isAir() || !b.isAir()) {
-				blocks++;
-			}
-			if (a == b) {
-				continue;
-			}
-			boolean ta = a.getBlock() instanceof TrunkBlock;
-			boolean tb = b.getBlock() instanceof TrunkBlock;
-			if ((ta && b.is(BlockTags.LOGS) && !tb) || (tb && a.is(BlockTags.LOGS) && !ta)) {
-				trunkLog++;
-			} else if (ta || tb) {
-				trunk++;
-			} else if (a.is(BlockTags.LOGS) || b.is(BlockTags.LOGS)) {
-				log++;
-			} else if (a.getBlock() instanceof LeavesBlock || b.getBlock() instanceof LeavesBlock) {
-				leaves++;
-			} else {
-				other++;
-			}
-		}
-		return String.format(Locale.ROOT, "%d candidates, %d vanilla substitutes; %d blocks, differing between the orders: %d "
-				+ "procedural against vanilla wood, %d procedural wood against air or leaves (the parts above a blocked block), "
-				+ "%d vanilla wood, %d leaves, %d other", all.size(), substitutes, blocks, trunkLog, trunk, log, leaves, other);
 	}
 
 	/**

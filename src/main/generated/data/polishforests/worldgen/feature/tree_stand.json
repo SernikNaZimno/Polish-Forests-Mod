@@ -48,12 +48,12 @@
         {
           "max_water_depth": 1,
           "species": "black_alder",
-          "tree": "polishforests:tree_substitute/black_alder",
+          "tree": "polishforests:tree/black_alder",
           "weight": 700
         },
         {
           "species": "birch",
-          "tree": "polishforests:tree_substitute/birch",
+          "tree": "polishforests:tree/birch",
           "weight": 300
         }
       ],
@@ -67,8 +67,14 @@
         {
           "max_water_depth": 1,
           "species": "black_alder",
-          "tree": "polishforests:tree_substitute/black_alder",
-          "weight": 1000
+          "tree": "polishforests:tree/black_alder",
+          "weight": 850
+        },
+        {
+          "max_water_depth": 1,
+          "species": "white_willow",
+          "tree": "polishforests:tree/white_willow",
+          "weight": 150
         }
       ],
       "trees_per_chunk": 8.0,
@@ -3706,14 +3712,14 @@
       ],
       "trees": [
         {
-          "species": "black_alder",
-          "tree": "polishforests:tree_substitute/black_alder",
-          "weight": 600
+          "species": "white_willow",
+          "tree": "polishforests:tree/white_willow/solitary",
+          "weight": 500
         },
         {
-          "species": "white_willow",
-          "tree": "polishforests:tree_substitute/white_willow",
-          "weight": 400
+          "species": "black_alder",
+          "tree": "polishforests:tree/black_alder",
+          "weight": 500
         }
       ],
       "trees_per_chunk": 0.1
@@ -3725,18 +3731,23 @@
       "trees": [
         {
           "species": "oak",
-          "tree": "polishforests:tree_substitute/oak",
-          "weight": 500
-        },
-        {
-          "species": "birch",
-          "tree": "polishforests:tree_substitute/birch",
-          "weight": 300
+          "tree": "polishforests:tree/oak/solitary",
+          "weight": 450
         },
         {
           "species": "linden",
-          "tree": "polishforests:tree_substitute/linden",
+          "tree": "polishforests:tree/linden/solitary",
+          "weight": 250
+        },
+        {
+          "species": "birch",
+          "tree": "polishforests:tree/birch/solitary",
           "weight": 200
+        },
+        {
+          "species": "white_willow",
+          "tree": "polishforests:tree/white_willow/solitary",
+          "weight": 100
         }
       ],
       "trees_per_chunk": 0.1
@@ -3748,8 +3759,13 @@
       "trees": [
         {
           "species": "scots_pine",
-          "tree": "polishforests:tree_substitute/scots_pine",
-          "weight": 1000
+          "tree": "polishforests:tree/scots_pine/windswept",
+          "weight": 750
+        },
+        {
+          "species": "scots_pine",
+          "tree": "polishforests:tree/scots_pine",
+          "weight": 250
         }
       ],
       "trees_per_chunk": 0.125

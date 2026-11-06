@@ -49,7 +49,6 @@ import pl.polishforests.worldgen.tree.AgeClass;
 import pl.polishforests.worldgen.tree.CrownLayer;
 import pl.polishforests.worldgen.chunk.ModBiomeKeys;
 import pl.polishforests.worldgen.feature.BiomeDecoration;
-import pl.polishforests.worldgen.feature.CaveOpeningFilter;
 import pl.polishforests.worldgen.feature.CavesFilter;
 import pl.polishforests.worldgen.feature.LakeClearanceFilter;
 import pl.polishforests.worldgen.feature.TopOfWorldPlacement;
@@ -58,7 +57,6 @@ import pl.polishforests.worldgen.feature.PlantLayerFeature;
 import pl.polishforests.worldgen.feature.TreeStandFeature;
 import pl.polishforests.worldgen.feature.config.HabitatCondition;
 import pl.polishforests.worldgen.habitat.HabitatBiome;
-import pl.polishforests.worldgen.habitat.Species;
 
 /**
  * Bootstrap of the mod's worldgen registries for datagen (docs/03-m2-biomy.md §8, §10): the 36 biomes from
@@ -113,20 +111,18 @@ final class ModWorldgen {
 
 	static void placedFeatures(BootstrapContext<PlacedFeature> context) {
 		HolderGetter<Feature> features = context.lookup(Registries.FEATURE);
-		// Trees, shrubs and the variants of the palettes: only where a sapling would survive (§8.4; osiers also on the sand
-		// and gravel of bars); no biome filter (a sub-feature of a palette).
+		// Trees and shrubs of the palettes: only where a sapling would survive (§8.4; osiers also on the sand and gravel of
+		// bars); no biome filter (a sub-feature of a palette). Step F7: without the placeholder trees of M2.
 		List<String> trees = new ArrayList<>();
-		ModTrees.TREES.forEach(s -> trees.add(s.substitutePath()));
 		ModTrees.SHRUBS.forEach(s -> trees.add(s.path()));
-		trees.addAll(ModTrees.VARIANTS);
 		// The thin-stemmed placeholders of the slice (review of V9, round 1).
 		trees.addAll(new java.util.TreeSet<>(ModTrees.SLICE.values()));
 		trees.add(ModTrees.HAZEL_MANTLE);
-		// Step F6: the rowan placeholder up to F5, kept registered.
-		trees.add(ModTrees.ROWAN_THIN);
 		// Step F5: the shrubs with hop.
 		trees.add(ModTrees.OSIER_HOP);
 		trees.add(ModTrees.BIRD_CHERRY_HOP);
+		// Step F7: the own osier of the bars.
+		trees.add(ModTrees.OSIER_BAR);
 		// Step V9: the procedural trees (the tree stand calls their planner itself; placed alone they need a sapling's ground).
 		ModTrees.PROCEDURAL.forEach(s -> trees.add(s.path()));
 		// Step F4: the growth forms by site.
@@ -134,15 +130,12 @@ final class ModWorldgen {
 		for (String path : trees) {
 			context.register(placed(path), new PlacedFeature(features.getOrThrow(ModTrees.key(path)), ModTrees.placement(path)));
 		}
-		// The shapes inside the oak and birch selectors and the erratic stones inside theirs: no filter.
-		for (String path : ModTrees.SHAPES) {
-			context.register(placed(path), new PlacedFeature(features.getOrThrow(ModTrees.key(path)), List.of()));
-		}
+		// The erratic stones inside their selector: no filter.
 		for (String stone : ModVegetation.ERRATICS) {
 			String path = ModVegetation.erratic(stone);
 			context.register(placed(path), new PlacedFeature(features.getOrThrow(ModTrees.key(path)), List.of()));
 		}
-		// Fallen trees of M2, dead trees and stumps of the slice (step V11): where a sapling would survive.
+		// Dead trees and stumps of the dead wood planner (step V11): where a sapling would survive.
 		List<String> deadwood = new ArrayList<>();
 		ModVegetation.PROCEDURAL_DEADWOOD.forEach(s -> {
 			deadwood.add(ModVegetation.deadwood(s));
@@ -156,12 +149,6 @@ final class ModWorldgen {
 		for (String path : deadwood) {
 			context.register(placed(path), new PlacedFeature(features.getOrThrow(ModTrees.key(path)),
 					List.of(PlacementUtils.filteredByBlockSurvival(Blocks.OAK_SAPLING))));
-		}
-		// The vanilla fallen log of M2 bridges gaps of up to 2 blocks, so not beside a cave entrance (step J2).
-		for (Species s : ModVegetation.DEADWOOD) {
-			String path = ModVegetation.deadwoodSubstitute(s);
-			context.register(placed(path), new PlacedFeature(features.getOrThrow(ModTrees.key(path)),
-					List.of(PlacementUtils.filteredByBlockSurvival(Blocks.OAK_SAPLING), CaveOpeningFilter.INSTANCE)));
 		}
 		// Glacial erratics (step 2, §8.1): once in 6 chunks, on the young glacial till and sands (soils of the habitat
 		// code), never in water (the blob needs ground below).

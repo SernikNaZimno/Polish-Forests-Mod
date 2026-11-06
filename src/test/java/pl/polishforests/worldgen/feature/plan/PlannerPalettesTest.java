@@ -10,6 +10,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
+import pl.polishforests.worldgen.BiomeJsonTest;
 import pl.polishforests.worldgen.habitat.HabitatBiome;
 
 /**
@@ -102,5 +103,39 @@ class PlannerPalettesTest {
 		}
 		assertTrue(scrub >= 0 && timberline >= 0, "both rules exist: " + scrub + ", " + timberline);
 		assertTrue(scrub < timberline, "dwarf pine scrub rule " + scrub + " before the timberline rule " + timberline);
+	}
+
+	/**
+	 * Step F7 (docs/04 "Projekt F7"): no generated palette names a placeholder of M2 any more, in any rule, also outside the
+	 * forests (the trees of the meadows, the shore alders, the tree rows and the dunes, the osier of the waterside zones,
+	 * the juniper of the heath): no {@code tree_substitute/} tree, no {@code deadwood_substitute/} fallen tree, none of the
+	 * shrubs of M2 (kept registered for the saplings, unused in the world), and the configured and placed features of the
+	 * substitutes are no longer generated.
+	 */
+	@Test
+	void noPaletteNamesAPlaceholderOfM2SinceStepF7() throws java.io.IOException {
+		List<String> shrubs = List.of("shrub/osier", "shrub/hazel", "shrub/juniper", "shrub/alder_buckthorn", "shrub/bird_cherry");
+		List<String> found = new ArrayList<>();
+		for (String palette : List.of("tree_stand", "deadwood", "understory", "ground_layer", "waterside_zones", "aquatic_plants")) {
+			String text = java.nio.file.Files.readString(BiomeJsonTest.GENERATED.resolve("data/polishforests/worldgen/feature/" + palette
+					+ ".json"));
+			for (String path : List.of("tree_substitute/", "deadwood_substitute/")) {
+				if (text.contains("polishforests:" + path)) {
+					found.add(palette + ": " + path);
+				}
+			}
+			for (String path : shrubs) {
+				if (text.contains("\"polishforests:" + path + "\"")) {
+					found.add(palette + ": " + path);
+				}
+			}
+		}
+		assertEquals(List.of(), found, "placeholders of M2 in the generated palettes");
+		for (String kind : List.of("feature", "placed_feature")) {
+			for (String dir : List.of("tree_substitute", "deadwood_substitute")) {
+				java.nio.file.Path d = BiomeJsonTest.GENERATED.resolve("data/polishforests/worldgen/" + kind + "/" + dir);
+				assertTrue(!java.nio.file.Files.exists(d), "still generated: " + d);
+			}
+		}
 	}
 }

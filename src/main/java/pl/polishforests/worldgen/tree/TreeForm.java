@@ -20,7 +20,8 @@ import java.util.Locale;
  * <li>{@link Kind#MULTI_STEM}: the downy birch of the birch bog woodland (Vaccinio uliginosi-Betuletum pubescentis), often
  * with two or three stems from one stool (the stool of the alder, step F2) and lower than in a fresh forest;</li>
  * <li>{@link Kind#MONTANE} (step F6): the narrow "candle" spruce of the montane spruce forest;</li>
- * <li>{@link Kind#DWARF} (step F6): the dwarf spruce of the timberline and of the dwarf pine scrub.</li>
+ * <li>{@link Kind#DWARF} (step F6): the dwarf spruce of the timberline and of the dwarf pine scrub;</li>
+ * <li>{@link Kind#SOLITARY} (step F7): the lone, open-grown tree of the meadows with a broad crown and low branches.</li>
  * </ul>
  * In a stand the layer split surfaces scale with the form ({@link Kind#split}), so the low canopy of a bog keeps its
  * crown above the split; the trees of a stand with one form see the same surfaces.
@@ -57,7 +58,13 @@ public record TreeForm(Kind kind, float leeAzimuth) {
 		 * Step F6: the dwarf spruce of the timberline and the dwarf pine scrub (5-12 m at the timberline, lower among the
 		 * dwarf pine), a crooked, short trunk with a crown nearly to the ground.
 		 */
-		DWARF(0.36F, 0.5F, 0.72F, 0.3F, 0.36F, 0.7F, 0.3F, 0, 0);
+		DWARF(0.36F, 0.5F, 0.72F, 0.3F, 0.36F, 0.7F, 0.3F, 0, 0),
+		/**
+		 * Step F7: the lone tree of the meadows, the open-grown oak, linden, birch and willow outside the forest: a little
+		 * lower and thicker than in a stand, a broad crown with its lowest branches near the ground (the split surfaces at
+		 * half their height, so the crown is not cut at the height of a stand's subcanopy).
+		 */
+		SOLITARY(0.9F, 1.2F, 1.2F, 0.25F, 0.5F, 0, 0, 0, 0);
 
 		private final float height;
 		private final float dbh;

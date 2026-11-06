@@ -55,6 +55,11 @@ import pl.polishforests.worldgen.tree.TreeVoxels;
  * named the placeholder (tree stand of the fresh pine, mixed pine and mixed forest, understory of the fresh pine forest)
  * differed from the build before F1; every chunk without a rowan was still equal. Since then the file guards the slice
  * forests against any other change.
+ *
+ * <p>Step F7 (docs/00 G.48 F7-l): the lone trees of the hay meadow of this world are trees of the planner (form
+ * {@code SOLITARY}) instead of the M2 placeholders, so the file was rewritten once more by the F7 build. Before that,
+ * exactly the 5 chunks (1 realistic, 4 gameplay) whose plan has a meadow tree differed; every palette rule and every
+ * chunk of the slice forests without a meadow tree was equal.
  */
 @Tag("slow")
 class SliceEqualityTest {

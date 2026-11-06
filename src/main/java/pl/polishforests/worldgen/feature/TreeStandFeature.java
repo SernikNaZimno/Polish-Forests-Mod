@@ -439,6 +439,11 @@ public final class TreeStandFeature implements Feature {
 			AgeClass standAge = n.stands().ageClass(x, z);
 			// A young cohort in a canopy gap; elsewhere the trees have the age class of their stand.
 			AgeClass age = layer == CrownLayer.REGENERATION && n.stands().canopyGap(x, z) ? AgeClass.POLE_STAGE : standAge;
+			if (proc.form() == TreeForm.Kind.SOLITARY && age == AgeClass.POLE_STAGE) {
+				// Step F7: a lone tree of the meadows is at least mature (the age class of the stand map has no meaning on
+				// the open land; no draw, so the other trees keep theirs).
+				age = AgeClass.MATURE;
+			}
 			TreeForm form = TreeForm.of(proc.form());
 			if (proc.form() == TreeForm.Kind.WINDSWEPT) {
 				if (!leeKnown) {

@@ -746,7 +746,7 @@ public final class Ecotone {
 		int[] out = region.own();
 		boolean blended = region.blend() != null && layer != Layer.SOIL;
 		boolean uniform = region.uniform();
-		if (uniform && (!blended || ForestBlend.member(out[0]) == 0 && !(layer == Layer.TREES && ForestBlend.takenOver(out[0])))) {
+		if (uniform && (!blended || ForestBlend.member(out[0]) == 0)) {
 			return out;
 		}
 		long seed = Noise.mix(worldSeed ^ Noise.mix(salt ^ 0xEC07_0E5AL));
@@ -774,9 +774,6 @@ public final class Ecotone {
 				// and its plant ground in the blend as in the ramps (DENSE): only the other forest takes its plants, so the
 				// tall herbs of a narrow stream belt are not replaced by the flower beds of the oak-hornbeam forest.
 				code = layer == Layer.PLANTS && dense(code) && !dense(picked) ? code : picked;
-			} else if (shares != null && layer == Layer.TREES && ForestBlend.takenOver(code)) {
-				region.blendField().at(x0 + x + wx, z0 + z + wz, shares);
-				code = ForestBlend.takeover(code, shares, ForestBlend.draw(worldSeed, salt ^ ForestBlend.TAKEOVER_SALT, x0 + x, z0 + z, 1));
 			}
 			out[i] = code;
 		}
@@ -875,10 +872,6 @@ public final class Ecotone {
 			float[] shares = new float[ForestBlend.SHARES];
 			region.blendField().at(worldX + w[0], worldZ + w[1], shares);
 			code = ForestBlend.pick(code, shares, ForestBlend.draw(worldSeed, salt, worldX, worldZ, 1));
-		} else if (region.blend() != null && ForestBlend.takenOver(code)) {
-			float[] shares = new float[ForestBlend.SHARES];
-			region.blendField().at(worldX + w[0], worldZ + w[1], shares);
-			code = ForestBlend.takeover(code, shares, ForestBlend.draw(worldSeed, salt ^ ForestBlend.TAKEOVER_SALT, worldX, worldZ, 1));
 		}
 		return code;
 	}

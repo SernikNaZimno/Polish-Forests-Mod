@@ -25,7 +25,7 @@ import pl.polishforests.worldgen.tree.CrownTerritory;
 import pl.polishforests.worldgen.tree.ForestStandMap;
 
 /**
- * The tree stand of the vertical slice (step V9 of docs/04-pionowy-wycinek.md) with the generated palette: the M2 rules
+ * The tree stand of the vertical slice (step V9 of docs/04-pionowy-wycinek.md) with the generated palette: the lone-tree rules
  * give the same trees with the stand map as without it (the other biomes keep their decoration); the decision of one
  * candidate ({@link TreeStandPlan.Candidates#decide}) is the plan's; the layered rules follow the chances of their
  * stands, the species lists of the layers and the gaps (the pine regenerates only in gaps, no oak in the regeneration of
@@ -53,9 +53,9 @@ class SliceStandTest {
 		int[] forests = slice
 				? new int[] {code(HabitatBiome.OAK_HORNBEAM_FOREST), code(HabitatBiome.MIXED_FOREST), code(HabitatBiome.MIXED_PINE_FOREST),
 						code(HabitatBiome.FRESH_PINE_FOREST)}
-				// Trees of the M2 placeholders. Up to step F5 these were forests (last the montane spruce and the gray alder
-				// forest); since step F6 every forest is a forest of the planner, so the M2 trees left are the zones of the
-				// trees outside the forest (the shore alders of the lakes and the tree rows, step F7) in their biomes.
+				// Lone trees outside the forest (plain rules without layers). Up to step F5 these were the M2 placeholders of
+				// forests, in step F6 those of the zones of the trees outside the forest; since step F7 the shore alders, the
+				// tree rows and the meadows have trees of the planner (lone, open-grown).
 				: new int[] {EcotoneTest.code(HabitatBiome.WET_MEADOW, Zone.SHORE_ALDERS), EcotoneTest.code(HabitatBiome.HAY_MEADOW, Zone.TREE_ROW),
 						EcotoneTest.code(HabitatBiome.HAY_MEADOW, Zone.TREE_ROW), EcotoneTest.code(HabitatBiome.WET_MEADOW, Zone.SHORE_ALDERS)};
 		int meadow = code(HabitatBiome.HAY_MEADOW);
@@ -87,7 +87,7 @@ class SliceStandTest {
 	}
 
 	@Test
-	void m2RulesGiveTheSameTreesWithTheStandMap() {
+	void loneTreeRulesGiveTheSameTreesWithTheStandMap() {
 		for (double k : new double[] {1.0, 0.5}) {
 			IntBinaryOperator world = world(k, false);
 			int trees = 0;
@@ -100,7 +100,7 @@ class SliceStandTest {
 					for (int i = 0; i < with.length; i++) {
 						assertEquals(TreeStandPlan.column(without[i]), TreeStandPlan.column(with[i]));
 						assertEquals(TreeStandPlan.tree(without[i]), TreeStandPlan.tree(with[i]));
-						assertTrue(!GENERATED.procedural(TreeStandPlan.tree(with[i])), "a placeholder tree outside the slice");
+						assertTrue(GENERATED.procedural(TreeStandPlan.tree(with[i])), "a tree of the planner outside the forest (step F7)");
 					}
 					trees += with.length;
 				}

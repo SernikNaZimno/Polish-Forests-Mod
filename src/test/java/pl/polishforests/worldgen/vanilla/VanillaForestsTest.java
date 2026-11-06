@@ -17,6 +17,7 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
+import pl.polishforests.worldgen.feature.plan.Ecotone;
 import pl.polishforests.worldgen.feature.plan.SpeciesRamp;
 import pl.polishforests.worldgen.habitat.ForestSiteType;
 import pl.polishforests.worldgen.habitat.Habitat;
@@ -236,5 +237,54 @@ class VanillaForestsTest {
 		assertTrue(VanillaForestWorld.steep(tops, i));
 		assertTrue(VanillaForestWorld.steep(tops, east));
 		assertFalse(VanillaForestWorld.steep(tops, 0));
+	}
+
+	/**
+	 * Step F7 (W1-f): a forest of the mod next to a foreign land column (vanilla plains) has a forest edge as next to a
+	 * meadow: the mantle on the forest's side (and the first meter of the land, whose shrub code is the forest's) and the
+	 * fringe on the land, in both scales; next to a foreign river, sea or beach column the forest has no mantle (no open
+	 * land). The foreign columns themselves stay blocked in the world (the gametest {@code vanilla_forests} counts mod blocks
+	 * on them far from the forests).
+	 */
+	@Test
+	void aForestNextToForeignLandHasAMantleAndAFringe() {
+		int land = VanillaForests.foreignCode(VanillaForests.Foreign.LAND);
+		assertTrue(Ecotone.openLand(land), "foreign land is open land at the edges");
+		for (HabitatBiome forest : new HabitatBiome[] {HabitatBiome.OAK_HORNBEAM_FOREST, HabitatBiome.FRESH_PINE_FOREST,
+				HabitatBiome.MONTANE_SPRUCE_FOREST}) {
+			int f = VanillaForests.code(forest);
+			for (double k : new double[] {1, 0.5}) {
+				int[] mantle = new int[2];
+				int[] fringe = new int[2];
+				for (VanillaForests.Foreign kind : new VanillaForests.Foreign[] {VanillaForests.Foreign.LAND, VanillaForests.Foreign.RIVER}) {
+					int other = VanillaForests.foreignCode(kind);
+					int[][] chunks = new int[9][];
+					for (int c = 0; c < 9; c++) {
+						int dx = c / 3 - 1;
+						chunks[c] = new int[256];
+						for (int i = 0; i < 256; i++) {
+							int x = (dx << 4) + (i >> 4);
+							chunks[c][i] = x < 8 ? f : other;
+						}
+					}
+					Ecotone.Region r = Ecotone.Region.of(0, 0, chunks, k);
+					int[] shrubCodes = r.own();
+					int[] groundCodes = r.own();
+					Ecotone.Edges edges = Ecotone.edges(r, null, shrubCodes, groundCodes);
+					int at = kind == VanillaForests.Foreign.LAND ? 0 : 1;
+					for (int i = 0; i < 256; i++) {
+						mantle[at] += edges.shrubs()[i] == Ecotone.Edge.MANTLE.ordinal() ? 1 : 0;
+						fringe[at] += edges.ground()[i] == Ecotone.Edge.FRINGE.ordinal() ? 1 : 0;
+						if (kind == VanillaForests.Foreign.LAND && edges.shrubs()[i] == Ecotone.Edge.MANTLE.ordinal()) {
+							assertEquals(f, shrubCodes[i], forest.id() + ": a mantle column takes the forest's code");
+						}
+					}
+				}
+				String at = forest.id() + " k " + k;
+				assertTrue(mantle[0] >= 16 * Math.max(Ecotone.MANTLE_MIN, Ecotone.MANTLE * k), at + ": mantle " + mantle[0]);
+				assertTrue(fringe[0] >= 16 * Math.max(Ecotone.FRINGE_MIN, Ecotone.FRINGE * k), at + ": fringe " + fringe[0]);
+				assertEquals(0, mantle[1], at + ": no mantle at a foreign river");
+			}
+		}
 	}
 }

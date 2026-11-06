@@ -331,7 +331,7 @@
       "patch": 3,
       "plants": [
         {
-          "feature": "polishforests:shrub/juniper",
+          "feature": "polishforests:shrub/juniper_thin",
           "weight": 1
         }
       ]
@@ -589,7 +589,7 @@
       "patch": 3,
       "plants": [
         {
-          "feature": "polishforests:shrub/osier",
+          "feature": "polishforests:shrub/osier_bar_thin",
           "weight": 1
         }
       ]
