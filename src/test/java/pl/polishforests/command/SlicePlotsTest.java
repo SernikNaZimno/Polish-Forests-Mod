@@ -55,12 +55,15 @@ class SlicePlotsTest {
 	/**
 	 * The forests of the planner of the steps F with plots of their own (step F1: the lowland beech forest; step F2: the
 	 * alder carr and the ash-alder forest; step F3: the upland fir forest and the Carpathian beech forest; step F4: the dry,
-	 * the moist, the bog and the coastal pine forest; step F5: the elm-ash and the willow-poplar floodplain forest).
+	 * the moist, the bog and the coastal pine forest; step F5: the elm-ash and the willow-poplar floodplain forest; step F6: the
+	 * montane spruce forest and the gray alder forest; the dwarf pine scrub has no managed column and its card is checked
+	 * by StandCensusSimulationTest).
 	 */
 	static final List<HabitatBiome> F_FORESTS = List.of(HabitatBiome.LOWLAND_BEECH_FOREST, HabitatBiome.ALDER_CARR,
 			HabitatBiome.ASH_ALDER_FOREST, HabitatBiome.UPLAND_FIR_FOREST, HabitatBiome.MONTANE_BEECH_FOREST,
 			HabitatBiome.DRY_PINE_FOREST, HabitatBiome.MOIST_PINE_FOREST, HabitatBiome.BOG_WOODLAND, HabitatBiome.COASTAL_PINE_FOREST,
-			HabitatBiome.ELM_ASH_FOREST, HabitatBiome.WILLOW_POPLAR_FOREST);
+			HabitatBiome.ELM_ASH_FOREST, HabitatBiome.WILLOW_POPLAR_FOREST,
+			HabitatBiome.MONTANE_SPRUCE_FOREST, HabitatBiome.GRAY_ALDER_FOREST);
 	/**
 	 * The forests of {@link #F_FORESTS} whose origins of the search ring their nearest place to the center (step F3; step
 	 * F4: the four pine forests, whose rings around the center took over an hour for the dry pine forest of the realistic
@@ -68,7 +71,8 @@ class SlicePlotsTest {
 	 */
 	static final java.util.Set<HabitatBiome> AROUND_FIRST_HIT = java.util.EnumSet.of(HabitatBiome.UPLAND_FIR_FOREST,
 			HabitatBiome.MONTANE_BEECH_FOREST, HabitatBiome.DRY_PINE_FOREST, HabitatBiome.MOIST_PINE_FOREST, HabitatBiome.BOG_WOODLAND,
-			HabitatBiome.COASTAL_PINE_FOREST, HabitatBiome.ELM_ASH_FOREST, HabitatBiome.WILLOW_POPLAR_FOREST);
+			HabitatBiome.COASTAL_PINE_FOREST, HabitatBiome.ELM_ASH_FOREST, HabitatBiome.WILLOW_POPLAR_FOREST,
+			HabitatBiome.MONTANE_SPRUCE_FOREST, HabitatBiome.GRAY_ALDER_FOREST);
 	/**
 	 * The kinds of plots of the forests of the steps F of which the search finds one plot only (step F3): in the gameplay
 	 * scale the natural stands of the upland fir forest around its 5 places hold one square of 98% of the forest.
@@ -95,7 +99,14 @@ class SlicePlotsTest {
 			// the best square), and the natural willow-poplar forest of the realistic scale, the narrowest belt at the water,
 			// has none around 13 places. The card shows these by StandCensusSimulationTest only.
 			"realistic willow_poplar_forest natural", "gameplay elm_ash_forest natural", "gameplay elm_ash_forest managed",
-			"gameplay willow_poplar_forest natural", "gameplay willow_poplar_forest managed");
+			"gameplay willow_poplar_forest natural", "gameplay willow_poplar_forest managed",
+			// Step F6: the montane spruce forest is a belt of the highest Beskid ridges broken by the gullies, the beech forest
+			// and the timberline (no square of 98% around its 8 places of the realistic scale; in the gameplay scale two managed
+			// plots around its 2 places, no natural one); the gray alder forest is a belt of the mountain streams narrower than
+			// a plot (none around 47 and 6 places). The card shows these by StandCensusSimulationTest only.
+			"realistic montane_spruce_forest natural", "realistic montane_spruce_forest managed",
+			"gameplay montane_spruce_forest natural", "realistic gray_alder_forest natural", "realistic gray_alder_forest managed",
+			"gameplay gray_alder_forest natural", "gameplay gray_alder_forest managed");
 	/**
 	 * Least share of the plot's lattice in its biome for the managed alder carr of the gameplay scale (step F2), whose
 	 * largest patches hold 90-99% of a square of 100 blocks (no square of 98% in managed stands).
@@ -309,6 +320,20 @@ class SlicePlotsTest {
 				.orElseThrow();
 		String expected = "FLOOD_SITE = {{" + p.x() + ", " + p.z() + "}, {";
 		assertTrue(source.contains(expected), "ForestPerformance has no " + expected);
+	}
+
+	/**
+	 * Step F6 (KF-6): the place of the montane spruce forest in the flights of {@code ForestPerformance}
+	 * ({@code MONTANE_SITE}) is, in the gameplay scale, the plot {@code montane_spruce_managed_1}; the realistic scale has no
+	 * plot of the forest ({@link #F_MISSING}), its place there is a place of the forest written in the source.
+	 */
+	@Test
+	void flightsOfThePerformanceTestUseTheMontaneSprucePlot() throws IOException {
+		String source = Files.readString(Path.of("src/gametest/java/pl/polishforests/gametest/ForestPerformance.java"));
+		Plot p = read().stream().filter(q -> q.scale() == LandscapeScale.GAMEPLAY && q.name().equals("montane_spruce_managed_1"))
+				.findFirst().orElseThrow();
+		String expected = "}, {" + p.x() + ", " + p.z() + "}};";
+		assertTrue(source.contains("MONTANE_SITE = {{") && source.contains(expected), "ForestPerformance has no MONTANE_SITE ending " + expected);
 	}
 
 	/**

@@ -168,6 +168,22 @@ public final class GroundPhases {
 	static final double HOP_CONES = 17.0;
 	static final double HOP_CONES_END = 22.0;
 	static final double HOP_GONE = 24.5;
+	/** Step F6: the alpine coltsfoot in flower (mid-June to late July in the mountains), evergreen. */
+	static final double COLTSFOOT_FLOWERS = 10.5;
+	static final double COLTSFOOT_FLOWERS_END = 14.5;
+	/** Step F6: the hairy small-reed (shoots from early May in the mountains, panicles July-August, straw to late November). */
+	static final double SMALL_REED_SHOOTS = 6.0;
+	static final double SMALL_REED_FLOWERS = 12.5;
+	static final double SMALL_REED_FLOWERS_END = 18.5;
+	static final double SMALL_REED_GONE = 26.5;
+	/** Step F6: the alpine lady fern (fronds from late May, brown from mid-September, gone in late October). */
+	static final double LADY_FERN_SHOOTS = 8.5;
+	static final double LADY_FERN_YELLOW = 19.5;
+	static final double LADY_FERN_GONE = 23.5;
+	/** Step F6: the butterbur, its flower spikes in March and April, then the large leaves until October. */
+	static final double BUTTERBUR_FLOWERS = 1.5;
+	static final double BUTTERBUR_FLOWERS_END = 5.0;
+	static final double BUTTERBUR_GONE = 23.5;
 
 	/** Keys of a tint curve: position, target color, weight of the target over the raw grass color. */
 	private record Key(double at, int target, double weight) {
@@ -250,6 +266,16 @@ public final class GroundPhases {
 					: at >= GARLIC_SHOOTS && at < GARLIC_GONE ? Look.LEAVES : Look.NONE;
 			case HOP -> at >= HOP_CONES && at < HOP_CONES_END ? Look.FULL
 					: at >= HOP_SHOOTS && at < HOP_GONE ? Look.LEAVES : Look.NONE;
+			// Step F6: the evergreen alpine coltsfoot in flower in June and July; the hairy small-reed with its panicles in
+			// July and August; the alpine lady fern green (the full model) from late May, brown from mid-September (the
+			// leaves model); the butterbur in flower (the full model) in March and April, then its leaves until October.
+			case ALPINE_COLTSFOOT -> at >= COLTSFOOT_FLOWERS && at < COLTSFOOT_FLOWERS_END ? Look.FULL : Look.LEAVES;
+			case HAIRY_SMALL_REED -> at >= SMALL_REED_FLOWERS && at < SMALL_REED_FLOWERS_END ? Look.FULL
+					: at >= SMALL_REED_SHOOTS && at < SMALL_REED_GONE ? Look.LEAVES : Look.NONE;
+			case ALPINE_LADY_FERN -> at >= LADY_FERN_SHOOTS && at < LADY_FERN_YELLOW ? Look.FULL
+					: at >= LADY_FERN_YELLOW && at < LADY_FERN_GONE ? Look.LEAVES : Look.NONE;
+			case BUTTERBUR -> at >= BUTTERBUR_FLOWERS && at < BUTTERBUR_FLOWERS_END ? Look.FULL
+					: at >= BUTTERBUR_FLOWERS_END && at < BUTTERBUR_GONE ? Look.LEAVES : Look.NONE;
 			default -> Look.FULL;
 		};
 	}

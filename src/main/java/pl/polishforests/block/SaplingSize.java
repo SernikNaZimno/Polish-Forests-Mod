@@ -47,6 +47,12 @@ public enum SaplingSize {
 	 * grows its small tree scaled down to it, so the three sizes stay apart; no species of the earlier steps is taller.
 	 */
 	public static final int SMALL_HEIGHT = 16;
+	/**
+	 * Least height of a large tree above the small tree's pole stage, blocks (step F6): a small species whose mature height
+	 * is close to its pole stage (the rowan, 7 and 11 m) grows its large tree a little taller than its mature one (an
+	 * open-grown tree), so the three sizes stay apart; every species of the earlier steps is 6 blocks or more taller.
+	 */
+	public static final int LARGE_GAIN = 6;
 
 	private static final SaplingSize[] VALUES = values();
 	private static final int TOTAL;
@@ -94,7 +100,7 @@ public enum SaplingSize {
 			return new TreeSize(h, 1, h);
 		}
 		double mature = shape.height().mature();
-		double large = Math.min(mature, LARGE_HEIGHT);
+		double large = Math.min(Math.max(mature, pole + LARGE_GAIN), LARGE_HEIGHT);
 		double height = this == LARGE ? large : (pole + large) / 2;
 		float h = round(height / mature);
 		double least = this == LARGE ? LARGE_DBH : MEDIUM_DBH;

@@ -396,14 +396,81 @@
       ]
     },
     {
+      "associations": [
+        "abieti_piceetum"
+      ],
       "biomes": [
         "montane_spruce_forest"
       ],
-      "coverage": 0.001953125,
+      "coverage": 0.015625,
       "plants": [
         {
-          "feature": "polishforests:deadwood_substitute/spruce",
+          "feature": "polishforests:deadwood/spruce/montane",
+          "weight": 13
+        },
+        {
+          "feature": "polishforests:deadwood/fir",
+          "weight": 6
+        },
+        {
+          "feature": "polishforests:deadwood/rowan",
           "weight": 1
+        },
+        {
+          "feature": "polishforests:stump/spruce/montane",
+          "weight": 8
+        },
+        {
+          "feature": "polishforests:stump/fir",
+          "weight": 4
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "montane_spruce_forest"
+      ],
+      "coverage": 0.015625,
+      "plants": [
+        {
+          "feature": "polishforests:deadwood/spruce/montane",
+          "weight": 18
+        },
+        {
+          "feature": "polishforests:deadwood/rowan",
+          "weight": 2
+        },
+        {
+          "feature": "polishforests:stump/spruce/montane",
+          "weight": 11
+        },
+        {
+          "feature": "polishforests:stump/rowan",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "dwarf_pine_scrub"
+      ],
+      "coverage": 0.007421875,
+      "plants": [
+        {
+          "feature": "polishforests:deadwood/spruce/dwarf",
+          "weight": 7
+        },
+        {
+          "feature": "polishforests:deadwood/rowan",
+          "weight": 3
+        },
+        {
+          "feature": "polishforests:stump/spruce/dwarf",
+          "weight": 26
+        },
+        {
+          "feature": "polishforests:stump/rowan",
+          "weight": 11
         }
       ]
     },
@@ -475,14 +542,30 @@
       "biomes": [
         "gray_alder_forest"
       ],
-      "coverage": 0.001171875,
+      "coverage": 0.011328125,
       "plants": [
         {
-          "feature": "polishforests:deadwood_substitute/gray_alder",
-          "weight": 8
+          "feature": "polishforests:deadwood/gray_alder",
+          "weight": 15
         },
         {
-          "feature": "polishforests:deadwood_substitute/spruce",
+          "feature": "polishforests:deadwood/ash",
+          "weight": 3
+        },
+        {
+          "feature": "polishforests:deadwood/spruce",
+          "weight": 2
+        },
+        {
+          "feature": "polishforests:stump/gray_alder",
+          "weight": 16
+        },
+        {
+          "feature": "polishforests:stump/spruce",
+          "weight": 3
+        },
+        {
+          "feature": "polishforests:stump/ash",
           "weight": 2
         }
       ]

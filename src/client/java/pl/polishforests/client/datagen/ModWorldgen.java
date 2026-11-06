@@ -122,6 +122,8 @@ final class ModWorldgen {
 		// The thin-stemmed placeholders of the slice (review of V9, round 1).
 		trees.addAll(new java.util.TreeSet<>(ModTrees.SLICE.values()));
 		trees.add(ModTrees.HAZEL_MANTLE);
+		// Step F6: the rowan placeholder up to F5, kept registered.
+		trees.add(ModTrees.ROWAN_THIN);
 		// Step F5: the shrubs with hop.
 		trees.add(ModTrees.OSIER_HOP);
 		trees.add(ModTrees.BIRD_CHERRY_HOP);

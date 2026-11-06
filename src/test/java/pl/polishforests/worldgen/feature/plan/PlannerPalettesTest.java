@@ -16,9 +16,9 @@ import pl.polishforests.worldgen.habitat.HabitatBiome;
  * The palettes of the forests of the tree planner (step F1 of docs/04-pionowy-wycinek.md, "Kroki F"): a biome with a
  * layered rule of the tree planner in the generated tree stand palette has no placeholder of M2 in any of the generated
  * palettes of the tree stand, the dead wood, the understory and the ground layer ({@code tree_substitute/} trees,
- * {@code deadwood_substitute/} fallen trees; the thin small trees of the slice, {@code ModTrees.SLICE}, such as
- * {@code tree_substitute/rowan_thin}, are the slice's own), and every forest of {@link ForestBlend#FORESTS} has such a
- * rule.
+ * {@code deadwood_substitute/} fallen trees; step F6: the thin rowan of the slice, {@code tree_substitute/rowan_thin},
+ * the last placeholder of the slice under that prefix, is the own rowan of the planner), and every forest of
+ * {@link ForestBlend#FORESTS} has such a rule.
  */
 class PlannerPalettesTest {
 	private static final List<String> PALETTES = List.of("tree_stand", "deadwood", "understory", "ground_layer");
@@ -51,7 +51,7 @@ class PlannerPalettesTest {
 				for (JsonElement b : r.getAsJsonArray("biomes")) {
 					named |= planner.contains(HabitatBiome.byId(b.getAsString()));
 				}
-				String text = r.toString().replaceAll("tree_substitute/[a-z_]+_thin", "");
+				String text = r.toString();
 				if (named && (text.contains("tree_substitute/") || text.contains("deadwood_substitute/"))) {
 					found.add(palette + " rule " + n + " " + r.getAsJsonArray("biomes"));
 				}

@@ -10,6 +10,8 @@
     "polishforests:elm_button",
     "polishforests:fir_button",
     "polishforests:sycamore_maple_button",
-    "polishforests:white_willow_button"
+    "polishforests:white_willow_button",
+    "polishforests:gray_alder_button",
+    "polishforests:rowan_button"
   ]
 }

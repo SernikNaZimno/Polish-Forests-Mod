@@ -431,7 +431,7 @@
       "biomes": [
         "gray_alder_forest"
       ],
-      "coverage": 0.12,
+      "coverage": 0.3,
       "grounds": [
         "dirt",
         "mud"
@@ -439,8 +439,7 @@
       "patch": 3,
       "plants": [
         {
-          "block": "minecraft:big_dripleaf",
-          "max_height": 2,
+          "block": "polishforests:butterbur",
           "weight": 1
         }
       ]

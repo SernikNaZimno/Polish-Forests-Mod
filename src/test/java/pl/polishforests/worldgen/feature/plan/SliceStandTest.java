@@ -53,12 +53,11 @@ class SliceStandTest {
 		int[] forests = slice
 				? new int[] {code(HabitatBiome.OAK_HORNBEAM_FOREST), code(HabitatBiome.MIXED_FOREST), code(HabitatBiome.MIXED_PINE_FOREST),
 						code(HabitatBiome.FRESH_PINE_FOREST)}
-				// Forests of the M2 placeholders (the willow-poplar forest in place of the alder carr, a forest of the planner
-				// since step F2; the montane spruce forest and the gray alder forest in place of the dry and the moist pine
-				// forest, forests of the planner since step F4; since step F5 the elm-ash and the willow-poplar forest are
-				// forests of the planner too, so the two forests of step F6 stand twice).
-				: new int[] {code(HabitatBiome.MONTANE_SPRUCE_FOREST), code(HabitatBiome.GRAY_ALDER_FOREST),
-						code(HabitatBiome.GRAY_ALDER_FOREST), code(HabitatBiome.MONTANE_SPRUCE_FOREST)};
+				// Trees of the M2 placeholders. Up to step F5 these were forests (last the montane spruce and the gray alder
+				// forest); since step F6 every forest is a forest of the planner, so the M2 trees left are the zones of the
+				// trees outside the forest (the shore alders of the lakes and the tree rows, step F7) in their biomes.
+				: new int[] {EcotoneTest.code(HabitatBiome.WET_MEADOW, Zone.SHORE_ALDERS), EcotoneTest.code(HabitatBiome.HAY_MEADOW, Zone.TREE_ROW),
+						EcotoneTest.code(HabitatBiome.HAY_MEADOW, Zone.TREE_ROW), EcotoneTest.code(HabitatBiome.WET_MEADOW, Zone.SHORE_ALDERS)};
 		int meadow = code(HabitatBiome.HAY_MEADOW);
 		int fringe = EcotoneTest.code(HabitatBiome.HAY_MEADOW, Zone.HERB_FRINGE);
 		int lake = code(HabitatBiome.LAKE);

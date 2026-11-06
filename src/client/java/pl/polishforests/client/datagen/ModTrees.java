@@ -88,7 +88,11 @@ final class ModTrees {
 	 */
 	static final List<Map.Entry<Species, TreeForm.Kind>> FORMS = List.of(Map.entry(Species.SCOTS_PINE, TreeForm.Kind.STUNTED),
 			Map.entry(Species.SCOTS_PINE, TreeForm.Kind.SLENDER), Map.entry(Species.SCOTS_PINE, TreeForm.Kind.WINDSWEPT),
-			Map.entry(Species.BIRCH, TreeForm.Kind.STUNTED), Map.entry(Species.BIRCH, TreeForm.Kind.MULTI_STEM));
+			Map.entry(Species.BIRCH, TreeForm.Kind.STUNTED), Map.entry(Species.BIRCH, TreeForm.Kind.MULTI_STEM),
+			// Step F6: the narrow candle spruce of the montane spruce forest, the dwarf spruce and the low rowan of the
+			// timberline and of the dwarf pine scrub.
+			Map.entry(Species.SPRUCE, TreeForm.Kind.MONTANE), Map.entry(Species.SPRUCE, TreeForm.Kind.DWARF),
+			Map.entry(Species.ROWAN, TreeForm.Kind.DWARF));
 
 	/** The feature path of a growth form of a species ({@code tree/<species>/<form>}; the default form: {@code tree/<species>}). */
 	static String form(Species s, TreeForm.Kind form) {
@@ -113,8 +117,19 @@ final class ModTrees {
 	 * keep their placeholders.
 	 */
 	static final Map<Species, String> SLICE = Map.of(Species.HAZEL, "shrub/hazel_thin", Species.JUNIPER, "shrub/juniper_thin",
-			Species.ALDER_BUCKTHORN, "shrub/alder_buckthorn_thin", Species.ROWAN, "tree_substitute/rowan_thin",
+			Species.ALDER_BUCKTHORN, "shrub/alder_buckthorn_thin", Species.ROWAN, ModTrees.ROWAN_UNDERSTORY,
 			Species.BIRD_CHERRY, "shrub/bird_cherry_thin", Species.OSIER, "shrub/osier_thin");
+	/**
+	 * Step F6 (choice F6-a): the own rowan of the planner in the shrub layer and the mantles of all forests in place of the
+	 * thin-stemmed placeholder of the slice ({@link #ROWAN_THIN}, no longer in the palettes): a lone tree of the lower tree layer
+	 * (a2, about 0.62 of the canopy rowan's height: 6-8 blocks), its own trunk, leaves and fruit.
+	 */
+	static final String ROWAN_UNDERSTORY = "tree/rowan_understory";
+	/** The rowan placeholder up to step F5, kept registered (existing ids unchanged) but no longer in the palettes. */
+	static final String ROWAN_THIN = "tree_substitute/rowan_thin";
+	/** Step F6: the sizes of the dwarf mountain pine a sapling grows into (the creeping shrub planner's size factor). */
+	static final Map<pl.polishforests.block.SaplingSize, Float> DWARF_PINE_SAPLING = Map.of(pl.polishforests.block.SaplingSize.SMALL,
+			0.5F, pl.polishforests.block.SaplingSize.MEDIUM, 0.8F, pl.polishforests.block.SaplingSize.LARGE, 1.2F);
 	/** The taller hazel of the forest mantle of the slice (shrubs of 3-5 blocks along the forest edge). */
 	static final String HAZEL_MANTLE = "shrub/hazel_mantle_thin";
 	/** Step F5: the osier and the bird cherry with hop ({@link pl.polishforests.worldgen.feature.HopDecorator}). */
@@ -183,10 +198,17 @@ final class ModTrees {
 		// slender crown of radius 1 down to the ground (four rows from the top of the stem), as the open, upright shrub is.
 		register(context, key(SLICE.get(Species.ALDER_BUCKTHORN)), thinShrub(TreeTrunk.LINDEN, 1, new ClumpTrunkPlacer(3, 1, 0, 1),
 				Blocks.JUNGLE_LEAVES, new FancyFoliagePlacer(ConstantInt.of(1), ConstantInt.of(0), 3), soil));
-		// Rowan: a small tree of 5-6 blocks on a thin smooth gray stem (the bark of the beech), a round crown narrow at its
-		// bottom row (no flat ceiling of leaves at head height).
-		register(context, key(SLICE.get(Species.ROWAN)), thinShrub(TreeTrunk.BEECH, 2, new StraightTrunkPlacer(5, 1, 0),
+		// Rowan up to step F5: a small tree of 5-6 blocks on a thin smooth gray stem (the bark of the beech), a round crown
+		// narrow at its bottom row; kept registered, unused since step F6.
+		register(context, key(ROWAN_THIN), thinShrub(TreeTrunk.BEECH, 2, new StraightTrunkPlacer(5, 1, 0),
 				Blocks.OAK_LEAVES, new FancyFoliagePlacer(ConstantInt.of(1), ConstantInt.of(0), 3), soil));
+		// Step F6: the own rowan of the shrub layer and the mantles, a tree of the lower tree layer.
+		context.register(key(ROWAN_UNDERSTORY), new ProceduralTreeFeature(Species.ROWAN, CrownLayer.SUBCANOPY, AgeClass.MATURE));
+		// Step F6: the dwarf mountain pine's sapling grows into a creeping shrub of its size.
+		for (Map.Entry<pl.polishforests.block.SaplingSize, Float> z : DWARF_PINE_SAPLING.entrySet()) {
+			context.register(key(pl.polishforests.block.TreeFoliage.DWARF_MOUNTAIN_PINE.featurePath(z.getKey())),
+					new pl.polishforests.worldgen.feature.CreepingShrubFeature(Species.DWARF_MOUNTAIN_PINE, z.getValue()));
+		}
 		// Step F2: the bird cherry of the shrub layer and a2 of the alder forests, a tall shrub of 5-7 blocks of two or three
 		// thin stems (the dark bark of the black alder) with a loose crown of its own leaves (phase and leaf curve).
 		register(context, key(SLICE.get(Species.BIRD_CHERRY)), birdCherry(5, 2, 2, soil));
@@ -296,11 +318,11 @@ final class ModTrees {
 	}
 
 	/** Shrubs (§8.4): one or two logs with a bush crown. */
-	private static TreeFeature shrub(Species species, Holder<BlockStateProvider> soil) {
+	private static Feature shrub(Species species, Holder<BlockStateProvider> soil) {
 		return switch (species) {
-			// Dwarf mountain pine: one log, a wide low crown of radius 2-3 (spruce bark and needles).
-			case DWARF_MOUNTAIN_PINE -> bush(Blocks.SPRUCE_LOG, new StraightTrunkPlacer(1, 0, 0), Blocks.SPRUCE_LEAVES,
-					new BushFoliagePlacer(UniformInt.of(2, 3), ConstantInt.of(1), 2), soil);
+			// Dwarf mountain pine (step F6, choice F6-b): the creeping shrub of the own planner, stems along the slope with
+			// raised ends and a blanket of its own needles (CreepingShrubPlan), in place of the M2 bush.
+			case DWARF_MOUNTAIN_PINE -> new pl.polishforests.worldgen.feature.CreepingShrubFeature(Species.DWARF_MOUNTAIN_PINE, 1);
 			// Osier (riverside willows): 1-2 logs, a crown of radius 2.
 			case OSIER -> bush(Blocks.OAK_LOG, new StraightTrunkPlacer(1, 1, 0), Blocks.OAK_LEAVES,
 					new BushFoliagePlacer(ConstantInt.of(2), ConstantInt.of(1), 2), soil);

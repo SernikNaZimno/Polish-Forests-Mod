@@ -511,28 +511,69 @@
       "biomes": [
         "gray_alder_forest"
       ],
-      "coverage": 0.88,
-      "patch": 3,
+      "coverage": 0.95,
+      "patch": 5,
+      "patch_shape": "blobs",
       "plants": [
         {
+          "block": "polishforests:butterbur",
+          "weight": 28
+        },
+        {
+          "block": "polishforests:nettle",
+          "weight": 16
+        },
+        {
           "block": "minecraft:tall_grass",
-          "weight": 40
+          "weight": 14
         },
         {
           "block": "minecraft:large_fern",
-          "weight": 30
-        },
-        {
-          "block": "minecraft:fern",
-          "weight": 12
-        },
-        {
-          "block": "minecraft:bush",
           "weight": 10
         },
         {
-          "block": "minecraft:short_grass",
+          "block": "minecraft:fern",
+          "weight": 8
+        },
+        {
+          "block": {
+            "id": "polishforests:marsh_marigold",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "2"
+            }
+          },
+          "weight": 1
+        },
+        {
+          "block": {
+            "id": "polishforests:marsh_marigold",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "3"
+            }
+          },
+          "weight": 1
+        },
+        {
+          "block": {
+            "id": "polishforests:marsh_marigold",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "4"
+            }
+          },
           "weight": 3
+        },
+        {
+          "block": "polishforests:tussock_sedge",
+          "weight": 4
+        }
+      ],
+      "scattered": [
+        {
+          "block": "polishforests:forest_moss_carpet",
+          "weight": 4
         }
       ]
     },
@@ -3024,16 +3065,65 @@
       "biomes": [
         "montane_spruce_forest"
       ],
-      "coverage": 0.8,
-      "patch": 3,
+      "coverage": 0.95,
+      "patch": 5,
+      "patch_shape": "blobs",
       "plants": [
         {
-          "block": "minecraft:tall_grass",
-          "weight": 50
+          "block": "polishforests:alpine_lady_fern",
+          "weight": 34
         },
         {
           "block": "minecraft:large_fern",
-          "weight": 30
+          "weight": 12
+        },
+        {
+          "block": "polishforests:hairy_small_reed",
+          "weight": 10
+        },
+        {
+          "block": "minecraft:tall_grass",
+          "weight": 10
+        },
+        {
+          "block": {
+            "id": "polishforests:wood_sorrel",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "2"
+            }
+          },
+          "weight": 2
+        },
+        {
+          "block": {
+            "id": "polishforests:wood_sorrel",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "3"
+            }
+          },
+          "weight": 2
+        },
+        {
+          "block": {
+            "id": "polishforests:wood_sorrel",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "4"
+            }
+          },
+          "weight": 4
+        },
+        {
+          "block": "minecraft:fern",
+          "weight": 6
+        }
+      ],
+      "scattered": [
+        {
+          "block": "polishforests:forest_moss_carpet",
+          "weight": 10
         }
       ]
     },
@@ -3041,24 +3131,139 @@
       "biomes": [
         "montane_spruce_forest"
       ],
-      "coverage": 0.85,
-      "patch": 4,
+      "coverage": 0.97,
+      "patch": 5,
+      "patch_shape": "blobs",
+      "plant_ground": "polishforests:mossy_podzol",
+      "plant_ground_columns": true,
       "plants": [
         {
-          "block": "minecraft:moss_carpet",
-          "weight": 45
+          "block": {
+            "id": "polishforests:needle_litter",
+            "properties": {
+              "facing": "north",
+              "mossy": "true",
+              "segment_amount": "1"
+            }
+          },
+          "weight": 32
+        },
+        {
+          "block": {
+            "id": "polishforests:bilberry",
+            "properties": {
+              "berries": "false",
+              "mossy": "true"
+            }
+          },
+          "weight": 30
+        },
+        {
+          "block": "polishforests:hairy_small_reed",
+          "weight": 10
+        },
+        {
+          "block": {
+            "id": "polishforests:alpine_coltsfoot",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "2"
+            }
+          },
+          "weight": 2
+        },
+        {
+          "block": {
+            "id": "polishforests:alpine_coltsfoot",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "3"
+            }
+          },
+          "weight": 2
+        },
+        {
+          "block": {
+            "id": "polishforests:alpine_coltsfoot",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "4"
+            }
+          },
+          "weight": 2
+        },
+        {
+          "block": {
+            "id": "polishforests:wood_sorrel",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "2"
+            }
+          },
+          "weight": 1
+        },
+        {
+          "block": {
+            "id": "polishforests:wood_sorrel",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "3"
+            }
+          },
+          "weight": 1
+        },
+        {
+          "block": {
+            "id": "polishforests:wood_sorrel",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "4"
+            }
+          },
+          "weight": 2
         },
         {
           "block": "minecraft:fern",
-          "weight": 15
+          "weight": 3
         },
         {
-          "block": "minecraft:bush",
-          "weight": 20
+          "block": {
+            "id": "polishforests:needle_litter",
+            "properties": {
+              "facing": "north",
+              "mossy": "true",
+              "segment_amount": "2"
+            }
+          },
+          "weight": 1
         },
         {
-          "block": "minecraft:large_fern",
-          "weight": 5
+          "block": {
+            "id": "polishforests:needle_litter",
+            "properties": {
+              "facing": "north",
+              "mossy": "true",
+              "segment_amount": "3"
+            }
+          },
+          "weight": 1
+        },
+        {
+          "block": {
+            "id": "polishforests:needle_litter",
+            "properties": {
+              "facing": "north",
+              "mossy": "true",
+              "segment_amount": "4"
+            }
+          },
+          "weight": 1
+        }
+      ],
+      "scattered": [
+        {
+          "block": "polishforests:forest_moss_carpet",
+          "weight": 12
         }
       ]
     },
@@ -3066,23 +3271,101 @@
       "biomes": [
         "dwarf_pine_scrub"
       ],
-      "coverage": 0.6,
-      "patch": 3,
+      "coverage": 0.9,
+      "patch": 4,
+      "patch_shape": "blobs",
+      "plant_ground": "polishforests:mossy_podzol",
+      "plant_ground_columns": true,
       "plants": [
         {
-          "block": "minecraft:moss_carpet",
-          "weight": 25
+          "block": {
+            "id": "polishforests:bilberry",
+            "properties": {
+              "berries": "false",
+              "mossy": "true"
+            }
+          },
+          "weight": 28
         },
         {
-          "block": "minecraft:bush",
+          "block": {
+            "id": "polishforests:needle_litter",
+            "properties": {
+              "facing": "north",
+              "mossy": "true",
+              "segment_amount": "1"
+            }
+          },
           "weight": 20
         },
         {
-          "block": "minecraft:fern",
-          "weight": 8
+          "block": "polishforests:hairy_small_reed",
+          "weight": 14
         },
         {
-          "block": "minecraft:short_grass",
+          "block": {
+            "id": "polishforests:crowberry",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "2"
+            }
+          },
+          "weight": 3
+        },
+        {
+          "block": {
+            "id": "polishforests:crowberry",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "3"
+            }
+          },
+          "weight": 3
+        },
+        {
+          "block": {
+            "id": "polishforests:crowberry",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "4"
+            }
+          },
+          "weight": 4
+        },
+        {
+          "block": {
+            "id": "polishforests:alpine_coltsfoot",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "2"
+            }
+          },
+          "weight": 2
+        },
+        {
+          "block": {
+            "id": "polishforests:alpine_coltsfoot",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "3"
+            }
+          },
+          "weight": 2
+        },
+        {
+          "block": {
+            "id": "polishforests:alpine_coltsfoot",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "4"
+            }
+          },
+          "weight": 4
+        }
+      ],
+      "scattered": [
+        {
+          "block": "polishforests:forest_moss_carpet",
           "weight": 10
         }
       ]

@@ -30,7 +30,11 @@ public enum RootFlare {
 	/** Step F5: the white willow's flares (a broad, shallow heart root system on the wet alluvium). */
 	WHITE_WILLOW(TreeTrunk.WHITE_WILLOW),
 	/** Step F5: the poplar's buttresses (the large flares of the old floodplain poplars). */
-	POPLAR(TreeTrunk.POPLAR);
+	POPLAR(TreeTrunk.POPLAR),
+	/** Step F6: the gray alder's low flares (a shallow, wide root system with root suckers on the gravel of mountain streams). */
+	GRAY_ALDER(TreeTrunk.GRAY_ALDER),
+	/** Step F6: the rowan's small flares (a shallow heart root system, often over a stone or a rotten log). */
+	ROWAN(TreeTrunk.ROWAN);
 
 	private final TreeTrunk trunk;
 

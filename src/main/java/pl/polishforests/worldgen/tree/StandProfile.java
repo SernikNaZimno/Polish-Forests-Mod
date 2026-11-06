@@ -88,8 +88,18 @@ public record StandProfile(double naturalFactor, double[] managedAges, double[] 
 	 */
 	public static final StandProfile FLOODPLAIN = new StandProfile(1.0, DEFAULT.managedAges, DEFAULT.naturalAges,
 			ForestStandMap.MERGE_CHANCE, new double[] {0.11, 0.38, 0.48}, 0.5, 18, 0.4, 8, 36, new double[] {0, 0, 0}, 0);
+	/**
+	 * The montane spruce forest (step F6; research/06 §3.5, §4.4): the natural stands of the upper montane belt open in
+	 * clumps (the "rotten" structure of the high spruce stands, closure 50-80%: the windthrows and the bark beetle throw
+	 * groups of spruces on their shallow plate roots, gaps of mostly 10-35 m, very often two or three together); managed
+	 * stands of the clear and strip cuttings with regeneration nests of about 20 m. The gap chances stay within those of
+	 * the table, so the gap draws of the other forests do not change. The gray alder forest takes the ash-alder profile,
+	 * the dwarf pine scrub the default.
+	 */
+	public static final StandProfile MONTANE_SPRUCE = new StandProfile(1.0, DEFAULT.managedAges, DEFAULT.naturalAges,
+			ForestStandMap.MERGE_CHANCE, new double[] {0.12, 0.42, 0.50}, 0.7, 20, 0.45, 10, 40, new double[] {0, 0.10, 0.20}, 20);
 	/** All profiles of the table (the gap process draws against the highest chance of any of them). */
-	static final StandProfile[] ALL = {DEFAULT, BEECH, ALDER_CARR, ASH_ALDER, FIR, MONTANE_BEECH, FLOODPLAIN};
+	static final StandProfile[] ALL = {DEFAULT, BEECH, ALDER_CARR, ASH_ALDER, FIR, MONTANE_BEECH, FLOODPLAIN, MONTANE_SPRUCE};
 
 	public StandProfile {
 		if (managedAges.length != 3 || naturalAges.length != 3 || gapChance.length != 3 || nestChance.length != 3) {
@@ -112,6 +122,8 @@ public record StandProfile(double naturalFactor, double[] managedAges, double[] 
 			case UPLAND_FIR_FOREST -> FIR;
 			case MONTANE_BEECH_FOREST -> MONTANE_BEECH;
 			case ELM_ASH_FOREST, WILLOW_POPLAR_FOREST -> FLOODPLAIN;
+			case MONTANE_SPRUCE_FOREST -> MONTANE_SPRUCE;
+			case GRAY_ALDER_FOREST -> ASH_ALDER;
 			default -> DEFAULT;
 		};
 	}

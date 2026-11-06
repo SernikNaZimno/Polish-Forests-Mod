@@ -361,6 +361,11 @@ public record ProceduralTreeFeature(Species species, CrownLayer layer, AgeClass 
 				default -> TreeTrunk.SCOTS_PINE;
 			};
 		}
+		if (species == Species.DWARF_MOUNTAIN_PINE) {
+			// Step F6: the stems of the creeping dwarf pine on the thin trunk of the spruce (a dark, scaly gray-brown bark; the
+			// shrubs of the steps F have no trunk block of their own, docs/04 ZG).
+			return TreeTrunk.SPRUCE;
+		}
 		TreeTrunk t = TRUNKS.get(species);
 		if (t == null) {
 			throw new IllegalArgumentException("no trunk block for " + species);

@@ -108,7 +108,9 @@ final class DeadwoodSamples {
 		return List.of(Species.OAK, Species.HORNBEAM, Species.LINDEN, Species.ASH, Species.NORWAY_MAPLE, Species.BEECH,
 				Species.SCOTS_PINE, Species.SPRUCE, Species.BIRCH, Species.BLACK_ALDER, Species.ELM, Species.FIR, Species.SYCAMORE_MAPLE,
 				// Step F5.
-				Species.WHITE_WILLOW, Species.POPLAR);
+				Species.WHITE_WILLOW, Species.POPLAR,
+				// Step F6.
+				Species.GRAY_ALDER, Species.ROWAN);
 	}
 
 	/** Builds the board on the server, adding the plans to {@code plans}; returns its origin (x, y, z). */

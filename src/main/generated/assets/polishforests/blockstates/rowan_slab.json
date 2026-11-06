@@ -1,0 +1,13 @@
+{
+  "variants": {
+    "type=bottom": {
+      "model": "polishforests:block/rowan_slab"
+    },
+    "type=double": {
+      "model": "polishforests:block/rowan_planks"
+    },
+    "type=top": {
+      "model": "polishforests:block/rowan_slab_top"
+    }
+  }
+}

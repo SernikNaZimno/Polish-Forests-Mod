@@ -10,6 +10,8 @@
     "polishforests:elm_fence",
     "polishforests:fir_fence",
     "polishforests:sycamore_maple_fence",
-    "polishforests:white_willow_fence"
+    "polishforests:white_willow_fence",
+    "polishforests:gray_alder_fence",
+    "polishforests:rowan_fence"
   ]
 }

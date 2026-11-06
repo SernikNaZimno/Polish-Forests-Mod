@@ -39,7 +39,11 @@ public enum StrippedTrunk {
 	/** Step F5: white willow, pinkish white sapwood, a soft light wood. */
 	WHITE_WILLOW(TreeTrunk.WHITE_WILLOW, MapColor.TERRACOTTA_WHITE),
 	/** Step F5: poplar, white to pale gray-brown soft wood. */
-	POPLAR(TreeTrunk.POPLAR, MapColor.SAND);
+	POPLAR(TreeTrunk.POPLAR, MapColor.SAND),
+	/** Step F6: gray alder, white sapwood turning orange-red in the air, then a pale reddish brown. */
+	GRAY_ALDER(TreeTrunk.GRAY_ALDER, MapColor.TERRACOTTA_ORANGE),
+	/** Step F6: rowan, a reddish white sapwood around a light reddish brown heartwood. */
+	ROWAN(TreeTrunk.ROWAN, MapColor.TERRACOTTA_PINK);
 
 	private final TreeTrunk trunk;
 	private final MapColor mapColor;
@@ -93,6 +97,8 @@ public enum StrippedTrunk {
 			case SYCAMORE_MAPLE -> ModBlocks.wood(WoodSet.SYCAMORE_MAPLE).strippedLog();
 			case WHITE_WILLOW -> ModBlocks.wood(WoodSet.WHITE_WILLOW).strippedLog();
 			case POPLAR -> Blocks.STRIPPED_POPLAR_LOG;
+			case GRAY_ALDER -> ModBlocks.wood(WoodSet.GRAY_ALDER).strippedLog();
+			case ROWAN -> ModBlocks.wood(WoodSet.ROWAN).strippedLog();
 		};
 	}
 

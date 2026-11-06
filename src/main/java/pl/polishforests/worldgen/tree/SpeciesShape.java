@@ -174,6 +174,19 @@ public record SpeciesShape(Archetype archetype, ByAge height, ByAge dbh, ByAge c
 		SHAPES.put(Species.POPLAR, new SpeciesShape(Archetype.BROAD, new ByAge(18, 31, 36), new ByAge(16, 55, 90),
 				new ByAge(0.5F, 0.52F, 0.55F), new ByAge(2.6F, 5.4F, 7.0F), new Profile(0.6F, 0.55F, 0.45F, 2.4F), 0.6F,
 				1.2F, 1, 60, 30, 0.08F, 0, 2.3F, 2.0F, 0.86F, 0.45F, 2.4F, 0.82F, 0.06F));
+		// Step F6 (docs/research 06 §3.9, §9). Gray alder (a1 of the gray alder forest, Alnetum incanae: 12-20 m, up to 25,
+		// dbh 15-30 cm, a slender straight stem with a leader to the top and a narrow ovate crown of short ascending branches,
+		// 5-8 m long and 3-5 m wide): narrower and lower than the black alder, often of two or three stems from the stool
+		// and the root suckers (stoolChance).
+		SHAPES.put(Species.GRAY_ALDER, new SpeciesShape(Archetype.BROAD, new ByAge(11, 17, 20), new ByAge(9, 24, 34),
+				new ByAge(0.52F, 0.5F, 0.52F), new ByAge(1.5F, 2.2F, 2.7F), new Profile(0.7F, 0.38F, 0.15F, 1.4F), 0.5F,
+				0.7F, 1, 64, 36, 0.06F, 0, 1.8F, 1.6F, 0.88F, 0.15F, 2.4F, 0.84F, 0.12F));
+		// Rowan (an admixture of the montane spruce forest, the timberline, the dwarf pine scrub and the regeneration of the
+		// pine and mixed forests: 8-15 m, up to 20, dbh 15-30 cm, a short bole and a loose, rounded to ovate crown of a few
+		// ascending branches, 5-8 m long and 3-5 m wide, the pinnate leaves at the shoot ends).
+		SHAPES.put(Species.ROWAN, new SpeciesShape(Archetype.BROAD, new ByAge(7, 11, 14), new ByAge(8, 20, 30),
+				new ByAge(0.6F, 0.6F, 0.62F), new ByAge(1.4F, 2.2F, 2.8F), new Profile(0.65F, 0.45F, 0.35F, 1.8F), 0.6F,
+				0.8F, 1, 56, 30, 0.08F, 0, 1.9F, 1.6F, 0.8F, 0.2F, 2.4F, 0.84F, 0.06F));
 	}
 
 	/**
@@ -184,7 +197,8 @@ public record SpeciesShape(Archetype archetype, ByAge height, ByAge dbh, ByAge c
 	 */
 	public static double stoolChance(Species species) {
 		// Step F5: the white willow, often of two or three stems from the base (old pollards and coppice shoots on the banks).
-		return species == Species.BLACK_ALDER ? 0.3 : species == Species.WHITE_WILLOW ? 0.25 : 0;
+		// Step F6: the gray alder, of two or three stems from the stool and its root suckers in a third of the trees.
+		return species == Species.BLACK_ALDER ? 0.3 : species == Species.WHITE_WILLOW ? 0.25 : species == Species.GRAY_ALDER ? 0.35 : 0;
 	}
 
 	/**
@@ -194,6 +208,16 @@ public record SpeciesShape(Archetype archetype, ByAge height, ByAge dbh, ByAge c
 	 */
 	public static boolean lowFork(Species species) {
 		return species == Species.WHITE_WILLOW;
+	}
+
+	/**
+	 * Step F6: whether the species is a tree of the lower layers that never reaches the canopy's floor in a stand (the
+	 * rowan, 7-14 m): a canopy request of it in a stand is planned as a tree of the subcanopy ({@link TreeShapePlan}), so
+	 * its crown keeps to the subcanopy's split surfaces instead of being cut away; a lone tree keeps its own crown. False
+	 * for every species of the earlier steps.
+	 */
+	public static boolean understory(Species species) {
+		return species == Species.ROWAN;
 	}
 
 	/** The shape of a species of the slice, or null when the planner has none (species outside the slice). */

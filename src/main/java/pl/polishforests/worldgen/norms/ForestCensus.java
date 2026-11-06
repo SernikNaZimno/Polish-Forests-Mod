@@ -134,7 +134,8 @@ public final class ForestCensus {
 			"polishforests:glandular_toothwort", "polishforests:white_wood_rush", "polishforests:perennial_honesty",
 			"polishforests:heather", "polishforests:crowberry", "polishforests:bog_bilberry", "polishforests:labrador_tea",
 			"polishforests:purple_moor_grass", "polishforests:reed_canary_grass", "polishforests:lesser_celandine",
-			"polishforests:wild_garlic");
+			"polishforests:wild_garlic", "polishforests:alpine_coltsfoot", "polishforests:hairy_small_reed",
+			"polishforests:alpine_lady_fern", "polishforests:butterbur");
 	/**
 	 * Spring geophytes: part of the herb layer in spring only (the client shows nothing from early summer, PW-8 (a), N12);
 	 * liverleaf keeps its leaves all year. Step F1: the coralroot (gone from mid-June); the sweet woodruff keeps its leaves

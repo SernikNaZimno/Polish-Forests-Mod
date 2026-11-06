@@ -38,7 +38,16 @@ public enum TreeFoliage {
 	/** Step F5: the triangular to rhombic leaves of the floodplain poplar (one species until M3). */
 	POPLAR(Species.POPLAR, "Poplar", "topoli"),
 	/** Step F5: the leaves and sapling of the osier shrub (Salix viminalis, S. triandra; its sapling grows into the shrub). */
-	OSIER(Species.OSIER, "Osier", "wikliny");
+	OSIER(Species.OSIER, "Osier", "wikliny"),
+	/** Step F6: the dull, gray green, lobed-serrate leaves of the gray alder, gray and hairy beneath. */
+	GRAY_ALDER(Species.GRAY_ALDER, "Gray Alder", "olszy szarej"),
+	/** Step F6: the pinnate leaves of the rowan (11-19 leaflets) and, from August, its orange-red fruit clusters. */
+	ROWAN(Species.ROWAN, "Rowan", "jarzębu pospolitego"),
+	/**
+	 * Step F6: the needles of the dwarf mountain pine (in pairs, 3-8 cm, dark green, dense tufts at the raised shoot ends);
+	 * the leaves and sapling of the creeping shrub (its sapling grows into the shrub).
+	 */
+	DWARF_MOUNTAIN_PINE(Species.DWARF_MOUNTAIN_PINE, "Dwarf Mountain Pine", "kosodrzewiny");
 
 	private final Species species;
 	private final String englishName;
@@ -81,9 +90,9 @@ public enum TreeFoliage {
 		return species.shrub();
 	}
 
-	/** Needle-leaved: the Scots pine, the Norway spruce and (step F3) the silver fir. */
+	/** Needle-leaved: the Scots pine, the Norway spruce, (step F3) the silver fir and (step F6) the dwarf mountain pine. */
 	public boolean conifer() {
-		return this == SCOTS_PINE || this == SPRUCE || this == FIR;
+		return this == SCOTS_PINE || this == SPRUCE || this == FIR || this == DWARF_MOUNTAIN_PINE;
 	}
 
 	/** Keeps dead leaves over the winter on young trees and lower crowns: oak, hornbeam, beech ({@link MarcescentLeavesBlock}). */

@@ -77,7 +77,13 @@ public final class ForestNorms {
 		WILLOW_POPLAR_NATURAL("łęg wierzbowo-topolowy naturalny", HabitatBiome.WILLOW_POPLAR_FOREST, true),
 		WILLOW_POPLAR_MANAGED("łęg wierzbowo-topolowy gospodarczy", HabitatBiome.WILLOW_POPLAR_FOREST, false),
 		/** Step F5: the osier scrub, no forest (one column for its natural and managed stands, {@link #of}). */
-		WILLOW_SCRUB("wiklina nadrzeczna", HabitatBiome.WILLOW_SCRUB, true);
+		WILLOW_SCRUB("wiklina nadrzeczna", HabitatBiome.WILLOW_SCRUB, true),
+		MONTANE_SPRUCE_NATURAL("świerczyna górska naturalna", HabitatBiome.MONTANE_SPRUCE_FOREST, true),
+		MONTANE_SPRUCE_MANAGED("świerczyna górska gospodarcza", HabitatBiome.MONTANE_SPRUCE_FOREST, false),
+		GRAY_ALDER_NATURAL("olszynka górska naturalna", HabitatBiome.GRAY_ALDER_FOREST, true),
+		GRAY_ALDER_MANAGED("olszynka górska gospodarcza", HabitatBiome.GRAY_ALDER_FOREST, false),
+		/** Step F6: the dwarf pine scrub, its natural stands only (no managed column: the belt is protected, choice F6-g). */
+		DWARF_PINE_NATURAL("kosodrzewina", HabitatBiome.DWARF_PINE_SCRUB, true);
 
 		private final String polishName;
 		private final HabitatBiome biome;
@@ -141,7 +147,9 @@ public final class ForestNorms {
 		/** Step F4: the birch bog woodland (Vaccinio uliginosi-Betuletum pubescentis, the boggy mixed coniferous site type). */
 		BIRCH_BOG,
 		/** Step F5: the white poplar forest of the willow-poplar forest (Populetum albae, its association). */
-		POPLAR
+		POPLAR,
+		/** Step F6: the fir-spruce forest of the montane spruce forest (Abieti-Piceetum montanum, its association). */
+		FIR_SPRUCE
 	}
 
 	/**
@@ -156,6 +164,9 @@ public final class ForestNorms {
 		}
 		if (pl.polishforests.worldgen.habitat.Habitat.association(code) == pl.polishforests.worldgen.habitat.Association.POPULETUM_ALBAE) {
 			return Site.POPLAR;
+		}
+		if (pl.polishforests.worldgen.habitat.Habitat.association(code) == pl.polishforests.worldgen.habitat.Association.ABIETI_PICEETUM) {
+			return Site.FIR_SPRUCE;
 		}
 		if (pl.polishforests.worldgen.habitat.Habitat.biome(code) == HabitatBiome.BOG_WOODLAND
 				&& pl.polishforests.worldgen.habitat.Habitat.siteType(code) == pl.polishforests.worldgen.habitat.ForestSiteType.BOGGY_MIXED_CONIFEROUS) {
@@ -271,7 +282,7 @@ public final class ForestNorms {
 			"oak", List.of("oak", "sessile_oak"));
 	/** Composition keys of the card ({@code N3.<key>}): groups of {@link #GROUPS} or species ids, then {@code other}. */
 	public static final List<String> COMPOSITION_KEYS = List.of("oak", "linden", "maple_ash", "hornbeam", "spruce", "beech",
-			"scots_pine", "birch", "black_alder", "elm", "fir", "white_willow", "poplar", "other");
+			"scots_pine", "birch", "black_alder", "elm", "fir", "white_willow", "poplar", "gray_alder", "rowan", "other");
 
 	/**
 	 * A norm of the card.
@@ -349,6 +360,8 @@ public final class ForestNorms {
 		METRICS.put(COMPOSITION + "fir", "silver fir share of a1 trunks, %");
 		METRICS.put(COMPOSITION + "white_willow", "white willow share of a1 trunks, %");
 		METRICS.put(COMPOSITION + "poplar", "poplar share of a1 trunks, %");
+		METRICS.put(COMPOSITION + "gray_alder", "gray alder share of a1 trunks, %");
+		METRICS.put(COMPOSITION + "rowan", "rowan share of a1 trunks, %");
 		METRICS.put(COMPOSITION + "other", "other or unknown species share of a1 trunks, %");
 		METRICS.put(CANOPY, "canopy closure: columns with leaves more than 2 blocks up, %");
 		METRICS.put(GAP_SHARE, "plot area in canopy gaps, %");
@@ -484,6 +497,7 @@ public final class ForestNorms {
 		mountainCard();
 		pineCard();
 		floodplainCard();
+		montaneSpruceCard();
 		// N15 transect: the same for every forest of the transect (the transect crosses all four).
 		for (Forest f : Forest.values()) {
 			if (!f.transect()) {
@@ -786,6 +800,67 @@ public final class ForestNorms {
 			wide(STUMPS_PER_CHUNK, f, 1, 2, managedDeadwood);
 			wide(DEADWOOD_VOLUME, f, 8, 16, managedDeadwood);
 		}
+	}
+
+	/**
+	 * The card of the montane spruce forest, the gray alder forest and the dwarf pine scrub (step F6, docs/04 "Projekt
+	 * F6"): L 06 §3.4-3.5 and §4.4 (Plagiothecio-Piceetum: a1 spruce 90–100% of narrow crowns in clumps, rowan, closure
+	 * 50–80%, b 0–10% (rowan and the spruce's regeneration), c the bilberry 20–60% with the hairy small-reed, d mosses
+	 * 60–95%; Abieti-Piceetum montanum: fir 20–50%; Alnetum incanae: a1 gray alder 60–100% with ash and spruce, closure
+	 * 60–85%, b 10–40%, c the butterbur and the tall herbs 70–100%; Pinetum mugo carpaticum: the dwarf pine 50–90% as the
+	 * shrub layer b, a few dwarf spruces and rowans, c the bilberry and the small-reed), the dead wood of the natural
+	 * Carpathian spruce forests (the windthrows and the bark beetle, 100–300 m³/ha) and of the managed ones (the WISL mean of
+	 * the mountain sites) [S where noted].
+	 */
+	private static void montaneSpruceCard() {
+		String card = "[L 06 §3.4–3.5, §4.4]";
+		String deadwood = "[L 06 §4.3; PW-5 b; S]";
+		String managedDeadwood = "[Ź WISL 2010–2014; L 06 §4.3; S]";
+		for (Forest f : new Forest[] {Forest.MONTANE_SPRUCE_NATURAL, Forest.MONTANE_SPRUCE_MANAGED}) {
+			boolean natural = f.natural();
+			// N1: the narrow candle spruces stand dense in their clumps, with the windthrow gaps between them [S].
+			norm(TREES_PER_CHUNK, f, natural ? 6 : 8, natural ? 14 : 16, card + " [S]");
+			norm(COMPOSITION + "spruce", f, 80, 100, card);
+			NORMS.add(new Norm(COMPOSITION + "spruce", f, 45, 80, TOLERANCE, null, null, card, Site.FIR_SPRUCE));
+			NORMS.add(new Norm(COMPOSITION + "fir", f, 20, 50, TOLERANCE, null, null, card, Site.FIR_SPRUCE));
+			norm(COMPOSITION + "rowan", f, 0, 15, card + " [S]");
+			norm(CANOPY, f, natural ? 50 : 60, natural ? 80 : 90, card + (natural ? "" : " [S: gospodarcze]"));
+			norm(UNDERSTORY, f, 0, 15, card + " [S]");
+			norm(HERBS, f, 40, 90, card + " [S]");
+			norm(BILBERRY, f, 20, 60, card);
+			norm(MOSS, f, 60, 95, card);
+		}
+		wide(GAP_SHARE, Forest.MONTANE_SPRUCE_NATURAL, 5, 20, card + " [S]");
+		for (Forest f : new Forest[] {Forest.GRAY_ALDER_NATURAL, Forest.GRAY_ALDER_MANAGED}) {
+			norm(TREES_PER_CHUNK, f, 8, 16, card + " [S]");
+			norm(COMPOSITION + "gray_alder", f, 60, 100, card);
+			norm(CANOPY, f, 60, 85, card);
+			norm(UNDERSTORY, f, 10, 40, card);
+			norm(HERBS, f, 70, 100, card);
+			norm(HERBS_SPRING, f, 60, 100, card + " [S]");
+			norm(MOSS, f, 0, 15, card + " [S]");
+		}
+		// The dwarf pine scrub: the cover of the creeping shrubs (b), a few low trees, the dwarf shrubs and mosses under it.
+		Forest dp = Forest.DWARF_PINE_NATURAL;
+		norm(UNDERSTORY, dp, 50, 90, card);
+		norm(TREES_PER_CHUNK, dp, 0, 3, card + " [S]");
+		norm(HERBS, dp, 20, 70, card + " [S]");
+		norm(BILBERRY, dp, 10, 50, card + " [S]");
+		norm(MOSS, dp, 20, 70, card + " [S]");
+		// N10 dead wood.
+		wide(DEADWOOD_PER_CHUNK, Forest.MONTANE_SPRUCE_NATURAL, 2.5, 2.5, deadwood);
+		wide(DEADWOOD_VOLUME, Forest.MONTANE_SPRUCE_NATURAL, 100, 250, deadwood);
+		wide(COARSE_PIECES, Forest.MONTANE_SPRUCE_NATURAL, 5, Double.POSITIVE_INFINITY, deadwood);
+		wide(DEADWOOD_PER_CHUNK, Forest.GRAY_ALDER_NATURAL, 1.4, 1.4, deadwood);
+		wide(DEADWOOD_VOLUME, Forest.GRAY_ALDER_NATURAL, 40, 100, deadwood);
+		// The managed spruce stands keep more pieces (the windthrows left after the salvage), the managed gray alder stands
+		// less volume (small, soft wood) [S].
+		wide(PIECES_PER_CHUNK, Forest.MONTANE_SPRUCE_MANAGED, 0.2, 0.5, managedDeadwood);
+		wide(STUMPS_PER_CHUNK, Forest.MONTANE_SPRUCE_MANAGED, 1, 2, managedDeadwood);
+		wide(DEADWOOD_VOLUME, Forest.MONTANE_SPRUCE_MANAGED, 5, 20, managedDeadwood);
+		wide(PIECES_PER_CHUNK, Forest.GRAY_ALDER_MANAGED, 0.15, 0.3, managedDeadwood);
+		wide(STUMPS_PER_CHUNK, Forest.GRAY_ALDER_MANAGED, 1, 2, managedDeadwood);
+		wide(DEADWOOD_VOLUME, Forest.GRAY_ALDER_MANAGED, 2, 12, managedDeadwood);
 	}
 
 	private static void norm(String metric, Forest forest, double min, double max, String source) {

@@ -1,0 +1,6 @@
+{
+  "parent": "polishforests:block/template_fruit_overlay",
+  "textures": {
+    "all": "polishforests:block/rowan_fruit"
+  }
+}

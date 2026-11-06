@@ -1,4 +1,8 @@
 # Blocks, properties, values and items of polishforests that go into saved worlds (PW-11). Regenerate on purpose: ./gradlew test --tests '*RegistrySnapshotTest*' -PwriteRegistrySnapshot
+block polishforests:alpine_coltsfoot states=16 default=facing=north,flower_amount=1
+  property facing: north south west east
+  property flower_amount: 1 2 3 4
+block polishforests:alpine_lady_fern states=1 default=
 block polishforests:ash_button states=24 default=face=wall,facing=north,powered=false
   property face: floor wall ceiling
   property facing: north south west east
@@ -165,12 +169,20 @@ block polishforests:bog_bilberry states=4 default=berries=false,mossy=false
   property mossy: true false
 block polishforests:bracken states=2 default=half=lower
   property half: upper lower
+block polishforests:butterbur states=1 default=
 block polishforests:coralroot states=16 default=facing=north,flower_amount=1
   property facing: north south west east
   property flower_amount: 1 2 3 4
 block polishforests:crowberry states=16 default=facing=north,flower_amount=1
   property facing: north south west east
   property flower_amount: 1 2 3 4
+block polishforests:dwarf_mountain_pine_leaves states=112 default=distance=7,persistent=false,phase=0,waterlogged=false
+  property distance: 1 2 3 4 5 6 7
+  property persistent: true false
+  property phase: 0 1 2 3
+  property waterlogged: true false
+block polishforests:dwarf_mountain_pine_sapling states=2 default=stage=0
+  property stage: 0 1
 block polishforests:elm_button states=24 default=face=wall,facing=north,powered=false
   property face: floor wall ceiling
   property facing: north south west east
@@ -265,6 +277,52 @@ block polishforests:forest_moss_carpet states=1 default=
 block polishforests:glandular_toothwort states=16 default=facing=north,flower_amount=1
   property facing: north south west east
   property flower_amount: 1 2 3 4
+block polishforests:gray_alder_button states=24 default=face=wall,facing=north,powered=false
+  property face: floor wall ceiling
+  property facing: north south west east
+  property powered: true false
+block polishforests:gray_alder_fence states=32 default=east=false,north=false,south=false,waterlogged=false,west=false
+  property east: true false
+  property north: true false
+  property south: true false
+  property waterlogged: true false
+  property west: true false
+block polishforests:gray_alder_fence_gate states=32 default=facing=north,in_wall=false,open=false,powered=false
+  property facing: north south west east
+  property in_wall: true false
+  property open: true false
+  property powered: true false
+block polishforests:gray_alder_leaves states=112 default=distance=7,persistent=false,phase=0,waterlogged=false
+  property distance: 1 2 3 4 5 6 7
+  property persistent: true false
+  property phase: 0 1 2 3
+  property waterlogged: true false
+block polishforests:gray_alder_log states=3 default=axis=y
+  property axis: x y z
+block polishforests:gray_alder_planks states=1 default=
+block polishforests:gray_alder_pressure_plate states=2 default=powered=false
+  property powered: true false
+block polishforests:gray_alder_root_flare states=84 default=parent=down,radius=4,waterlogged=false
+  property parent: down up north south west east
+  property radius: 1 2 3 4 5 6 7
+  property waterlogged: true false
+block polishforests:gray_alder_sapling states=2 default=stage=0
+  property stage: 0 1
+block polishforests:gray_alder_slab states=6 default=type=bottom,waterlogged=false
+  property type: top bottom double
+  property waterlogged: true false
+block polishforests:gray_alder_stairs states=80 default=facing=north,half=bottom,shape=straight,waterlogged=false
+  property facing: north south west east
+  property half: top bottom
+  property shape: straight inner_left inner_right outer_left outer_right
+  property waterlogged: true false
+block polishforests:gray_alder_trunk states=84 default=parent=down,radius=4,waterlogged=false
+  property parent: down up north south west east
+  property radius: 1 2 3 4 5 6 7
+  property waterlogged: true false
+block polishforests:gray_alder_wood states=3 default=axis=y
+  property axis: x y z
+block polishforests:hairy_small_reed states=1 default=
 block polishforests:hairy_wood_rush states=16 default=facing=north,flower_amount=1
   property facing: north south west east
   property flower_amount: 1 2 3 4
@@ -470,14 +528,17 @@ block polishforests:potted_beech_sapling states=1 default=
 block polishforests:potted_birch_sapling states=1 default=
 block polishforests:potted_bird_cherry_sapling states=1 default=
 block polishforests:potted_black_alder_sapling states=1 default=
+block polishforests:potted_dwarf_mountain_pine_sapling states=1 default=
 block polishforests:potted_elm_sapling states=1 default=
 block polishforests:potted_fir_sapling states=1 default=
+block polishforests:potted_gray_alder_sapling states=1 default=
 block polishforests:potted_hornbeam_sapling states=1 default=
 block polishforests:potted_linden_sapling states=1 default=
 block polishforests:potted_norway_maple_sapling states=1 default=
 block polishforests:potted_oak_sapling states=1 default=
 block polishforests:potted_osier_sapling states=1 default=
 block polishforests:potted_poplar_sapling states=1 default=
+block polishforests:potted_rowan_sapling states=1 default=
 block polishforests:potted_scots_pine_sapling states=1 default=
 block polishforests:potted_spruce_sapling states=1 default=
 block polishforests:potted_sycamore_maple_sapling states=1 default=
@@ -488,6 +549,51 @@ block polishforests:reindeer_lichen states=32 default=facing=north,mossy=false,s
   property facing: north south west east
   property mossy: true false
   property segment_amount: 1 2 3 4
+block polishforests:rowan_button states=24 default=face=wall,facing=north,powered=false
+  property face: floor wall ceiling
+  property facing: north south west east
+  property powered: true false
+block polishforests:rowan_fence states=32 default=east=false,north=false,south=false,waterlogged=false,west=false
+  property east: true false
+  property north: true false
+  property south: true false
+  property waterlogged: true false
+  property west: true false
+block polishforests:rowan_fence_gate states=32 default=facing=north,in_wall=false,open=false,powered=false
+  property facing: north south west east
+  property in_wall: true false
+  property open: true false
+  property powered: true false
+block polishforests:rowan_leaves states=112 default=distance=7,persistent=false,phase=0,waterlogged=false
+  property distance: 1 2 3 4 5 6 7
+  property persistent: true false
+  property phase: 0 1 2 3
+  property waterlogged: true false
+block polishforests:rowan_log states=3 default=axis=y
+  property axis: x y z
+block polishforests:rowan_planks states=1 default=
+block polishforests:rowan_pressure_plate states=2 default=powered=false
+  property powered: true false
+block polishforests:rowan_root_flare states=84 default=parent=down,radius=4,waterlogged=false
+  property parent: down up north south west east
+  property radius: 1 2 3 4 5 6 7
+  property waterlogged: true false
+block polishforests:rowan_sapling states=2 default=stage=0
+  property stage: 0 1
+block polishforests:rowan_slab states=6 default=type=bottom,waterlogged=false
+  property type: top bottom double
+  property waterlogged: true false
+block polishforests:rowan_stairs states=80 default=facing=north,half=bottom,shape=straight,waterlogged=false
+  property facing: north south west east
+  property half: top bottom
+  property shape: straight inner_left inner_right outer_left outer_right
+  property waterlogged: true false
+block polishforests:rowan_trunk states=84 default=parent=down,radius=4,waterlogged=false
+  property parent: down up north south west east
+  property radius: 1 2 3 4 5 6 7
+  property waterlogged: true false
+block polishforests:rowan_wood states=3 default=axis=y
+  property axis: x y z
 block polishforests:scots_pine_button states=24 default=face=wall,facing=north,powered=false
   property face: floor wall ceiling
   property facing: north south west east
@@ -606,6 +712,14 @@ block polishforests:stripped_fir_trunk states=84 default=parent=down,radius=4,wa
   property waterlogged: true false
 block polishforests:stripped_fir_wood states=3 default=axis=y
   property axis: x y z
+block polishforests:stripped_gray_alder_log states=3 default=axis=y
+  property axis: x y z
+block polishforests:stripped_gray_alder_trunk states=84 default=parent=down,radius=4,waterlogged=false
+  property parent: down up north south west east
+  property radius: 1 2 3 4 5 6 7
+  property waterlogged: true false
+block polishforests:stripped_gray_alder_wood states=3 default=axis=y
+  property axis: x y z
 block polishforests:stripped_hornbeam_log states=3 default=axis=y
   property axis: x y z
 block polishforests:stripped_hornbeam_trunk states=84 default=parent=down,radius=4,waterlogged=false
@@ -638,6 +752,14 @@ block polishforests:stripped_poplar_trunk states=84 default=parent=down,radius=4
   property parent: down up north south west east
   property radius: 1 2 3 4 5 6 7
   property waterlogged: true false
+block polishforests:stripped_rowan_log states=3 default=axis=y
+  property axis: x y z
+block polishforests:stripped_rowan_trunk states=84 default=parent=down,radius=4,waterlogged=false
+  property parent: down up north south west east
+  property radius: 1 2 3 4 5 6 7
+  property waterlogged: true false
+block polishforests:stripped_rowan_wood states=3 default=axis=y
+  property axis: x y z
 block polishforests:stripped_scots_pine_log states=3 default=axis=y
   property axis: x y z
 block polishforests:stripped_scots_pine_trunk states=84 default=parent=down,radius=4,waterlogged=false
@@ -777,6 +899,8 @@ block polishforests:wood_sorrel states=16 default=facing=north,flower_amount=1
   property facing: north south west east
   property flower_amount: 1 2 3 4
 block polishforests:yellow_iris states=1 default=
+item polishforests:alpine_coltsfoot block=polishforests:alpine_coltsfoot
+item polishforests:alpine_lady_fern block=polishforests:alpine_lady_fern
 item polishforests:ash_button block=polishforests:ash_button
 item polishforests:ash_fence block=polishforests:ash_fence
 item polishforests:ash_fence_gate block=polishforests:ash_fence_gate
@@ -826,8 +950,11 @@ item polishforests:black_alder_trunk block=polishforests:black_alder_trunk
 item polishforests:black_alder_wood block=polishforests:black_alder_wood
 item polishforests:bog_bilberry block=polishforests:bog_bilberry
 item polishforests:bracken block=polishforests:bracken
+item polishforests:butterbur block=polishforests:butterbur
 item polishforests:coralroot block=polishforests:coralroot
 item polishforests:crowberry block=polishforests:crowberry
+item polishforests:dwarf_mountain_pine_leaves block=polishforests:dwarf_mountain_pine_leaves
+item polishforests:dwarf_mountain_pine_sapling block=polishforests:dwarf_mountain_pine_sapling
 item polishforests:elm_button block=polishforests:elm_button
 item polishforests:elm_fence block=polishforests:elm_fence
 item polishforests:elm_fence_gate block=polishforests:elm_fence_gate
@@ -856,6 +983,20 @@ item polishforests:fir_trunk block=polishforests:fir_trunk
 item polishforests:fir_wood block=polishforests:fir_wood
 item polishforests:forest_moss_carpet block=polishforests:forest_moss_carpet
 item polishforests:glandular_toothwort block=polishforests:glandular_toothwort
+item polishforests:gray_alder_button block=polishforests:gray_alder_button
+item polishforests:gray_alder_fence block=polishforests:gray_alder_fence
+item polishforests:gray_alder_fence_gate block=polishforests:gray_alder_fence_gate
+item polishforests:gray_alder_leaves block=polishforests:gray_alder_leaves
+item polishforests:gray_alder_log block=polishforests:gray_alder_log
+item polishforests:gray_alder_planks block=polishforests:gray_alder_planks
+item polishforests:gray_alder_pressure_plate block=polishforests:gray_alder_pressure_plate
+item polishforests:gray_alder_root_flare block=polishforests:gray_alder_root_flare
+item polishforests:gray_alder_sapling block=polishforests:gray_alder_sapling
+item polishforests:gray_alder_slab block=polishforests:gray_alder_slab
+item polishforests:gray_alder_stairs block=polishforests:gray_alder_stairs
+item polishforests:gray_alder_trunk block=polishforests:gray_alder_trunk
+item polishforests:gray_alder_wood block=polishforests:gray_alder_wood
+item polishforests:hairy_small_reed block=polishforests:hairy_small_reed
 item polishforests:hairy_wood_rush block=polishforests:hairy_wood_rush
 item polishforests:heather block=polishforests:heather
 item polishforests:hepatica block=polishforests:hepatica
@@ -920,6 +1061,19 @@ item polishforests:poplar_trunk block=polishforests:poplar_trunk
 item polishforests:purple_moor_grass block=polishforests:purple_moor_grass
 item polishforests:reed_canary_grass block=polishforests:reed_canary_grass
 item polishforests:reindeer_lichen block=polishforests:reindeer_lichen
+item polishforests:rowan_button block=polishforests:rowan_button
+item polishforests:rowan_fence block=polishforests:rowan_fence
+item polishforests:rowan_fence_gate block=polishforests:rowan_fence_gate
+item polishforests:rowan_leaves block=polishforests:rowan_leaves
+item polishforests:rowan_log block=polishforests:rowan_log
+item polishforests:rowan_planks block=polishforests:rowan_planks
+item polishforests:rowan_pressure_plate block=polishforests:rowan_pressure_plate
+item polishforests:rowan_root_flare block=polishforests:rowan_root_flare
+item polishforests:rowan_sapling block=polishforests:rowan_sapling
+item polishforests:rowan_slab block=polishforests:rowan_slab
+item polishforests:rowan_stairs block=polishforests:rowan_stairs
+item polishforests:rowan_trunk block=polishforests:rowan_trunk
+item polishforests:rowan_wood block=polishforests:rowan_wood
 item polishforests:scots_pine_button block=polishforests:scots_pine_button
 item polishforests:scots_pine_fence block=polishforests:scots_pine_fence
 item polishforests:scots_pine_fence_gate block=polishforests:scots_pine_fence_gate
@@ -958,6 +1112,9 @@ item polishforests:stripped_elm_wood block=polishforests:stripped_elm_wood
 item polishforests:stripped_fir_log block=polishforests:stripped_fir_log
 item polishforests:stripped_fir_trunk block=polishforests:stripped_fir_trunk
 item polishforests:stripped_fir_wood block=polishforests:stripped_fir_wood
+item polishforests:stripped_gray_alder_log block=polishforests:stripped_gray_alder_log
+item polishforests:stripped_gray_alder_trunk block=polishforests:stripped_gray_alder_trunk
+item polishforests:stripped_gray_alder_wood block=polishforests:stripped_gray_alder_wood
 item polishforests:stripped_hornbeam_log block=polishforests:stripped_hornbeam_log
 item polishforests:stripped_hornbeam_trunk block=polishforests:stripped_hornbeam_trunk
 item polishforests:stripped_hornbeam_wood block=polishforests:stripped_hornbeam_wood
@@ -969,6 +1126,9 @@ item polishforests:stripped_norway_maple_trunk block=polishforests:stripped_norw
 item polishforests:stripped_norway_maple_wood block=polishforests:stripped_norway_maple_wood
 item polishforests:stripped_oak_trunk block=polishforests:stripped_oak_trunk
 item polishforests:stripped_poplar_trunk block=polishforests:stripped_poplar_trunk
+item polishforests:stripped_rowan_log block=polishforests:stripped_rowan_log
+item polishforests:stripped_rowan_trunk block=polishforests:stripped_rowan_trunk
+item polishforests:stripped_rowan_wood block=polishforests:stripped_rowan_wood
 item polishforests:stripped_scots_pine_log block=polishforests:stripped_scots_pine_log
 item polishforests:stripped_scots_pine_trunk block=polishforests:stripped_scots_pine_trunk
 item polishforests:stripped_scots_pine_wood block=polishforests:stripped_scots_pine_wood

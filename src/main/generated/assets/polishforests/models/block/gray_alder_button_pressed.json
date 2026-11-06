@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/button_pressed",
+  "textures": {
+    "texture": "polishforests:block/gray_alder_planks"
+  }
+}

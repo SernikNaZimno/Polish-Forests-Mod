@@ -81,3 +81,5 @@ gameplay natural any coastal_pine_natural_1 coastal_pine_forest -4932 -2515
 gameplay natural any coastal_pine_natural_2 coastal_pine_forest -4049 -3241
 gameplay managed any coastal_pine_managed_1 coastal_pine_forest -4672 -2815
 gameplay managed any coastal_pine_managed_2 coastal_pine_forest -4952 -2655
+gameplay managed any montane_spruce_managed_1 montane_spruce_forest 3488 22644
+gameplay managed any montane_spruce_managed_2 montane_spruce_forest 3608 22564

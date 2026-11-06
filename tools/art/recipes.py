@@ -777,6 +777,15 @@ WILLOW_SPRITES = [
     ["02", "21", "10", "30"],
     ["2", "1", "1", "1", "3"],
 ]
+# Step F6: the rowan, pinnate leaves of many narrow leaflets in pairs along a rachis (seen from above and at angles).
+ROWAN_SPRITES = [
+    ["221", "111", "211", "113"],
+    ["2210", "1111", "0211", "0113"],
+    ["0221", "1111", "2111", "1130"],
+    ["21", "11", "21", "13"],
+    ["2211", "1113"],
+    ["221", "111", "111", "113"],
+]
 
 
 def leaves_score(tex):
@@ -985,6 +994,17 @@ BEECH = dict(lichen=2, scars=1, algae=0.06, lums=(146, 156, 165, 174, 186), sat=
              algae_sat=0.13, algae_hue_shift=28, streak=0.5, band=3, tries=48)
 BEECH_VARIANT = dict(BEECH, scars=0, lichen=3, lock=1)
 BEECH_EXPECT = {'luma': (150, 172), 'dark': 0.0, 'grain': 1.2, 'std': 18}
+# Step F6: the gray alder, smooth light silver gray all its life (a cooler, paler gray than the beech, no moustache
+# scars, gray lichen, hardly any green algae), and the rowan, smooth shining gray with a brown cast, darker than the
+# gray alder (the beech recipe; the transverse lenticels as a stronger streak).
+GRAY_ALDER = dict(BEECH, lichen=3, scars=0, algae=0.02, lums=(136, 146, 154, 162, 172), sat=0.04, hue_shift=-6,
+                  algae_lum=140, algae_sat=0.06, streak=0.3)
+GRAY_ALDER_VARIANT = dict(GRAY_ALDER, lichen=2, lock=1)
+GRAY_ALDER_EXPECT = {'luma': (136, 162), 'dark': 0.0, 'grain': 1.2, 'std': 18}
+ROWAN = dict(BEECH, lichen=1, scars=0, algae=0.03, lums=(104, 114, 122, 130, 142), sat=0.11, hue_shift=8,
+             algae_lum=118, algae_sat=0.08, streak=0.7)
+ROWAN_VARIANT = dict(ROWAN, lichen=2, lock=1)
+ROWAN_EXPECT = {'luma': (104, 132), 'dark': 0.0, 'grain': 1.2, 'std': 18}
 # Step F2: the black alder, dark gray-brown with a purple cast, in old age broken by fissures across and along into
 # small, almost square plates; the elm, gray-brown with long deep furrows and corky ridges, grayer than the oak.
 ALDER = dict(lines=5, amp=0.9, wave=3, jitter=0.6, plate=(2, 4), cross='full', band=3, furrow_tone=0, deep=0,
@@ -1053,6 +1073,11 @@ STRIPPED_TRUNKS = [
     # Step F5.
     ('white_willow', ['#c9b29e', '#d0b9a6', '#d7c1ae', '#ddc8b6'], {'luma': (170, 210), 'hue': (18, 36)},
      'stripped white willow trunk: the pinkish white wood of a fresh cut willow'),
+    # Step F6.
+    ('gray_alder', ['#c08a68', '#c8946f', '#cf9d78', '#d6a680'], {'luma': (140, 185), 'hue': (14, 32)},
+     'stripped gray alder trunk: the orange-red wood of a fresh cut alder'),
+    ('rowan', ['#c9a491', '#d0ac99', '#d6b4a2', '#dcbcab'], {'luma': (160, 200), 'hue': (10, 30)},
+     'stripped rowan trunk: reddish white sapwood'),
 ]
 # Step P2 (decision U-8): the own wood sets of hornbeam, linden, beech, ash and Norway maple. Planks: the fallback texture
 # (the game derives the planks from the vanilla planks of the user's game, pl.polishforests.block.PlanksTexture; this
@@ -1084,6 +1109,11 @@ WOOD_PLANKS = [
     # Step F5 (the poplar takes the vanilla poplar wood set, decision F5-a).
     ('white_willow', ['#9a7f6c', '#baa08c', '#c6ad99', '#d0b8a4', '#dac3b0'],
      'white willow planks: soft light pinkish-brown wood, even and fine'),
+    # Step F6.
+    ('gray_alder', ['#8f6650', '#b08670', '#bc937c', '#c6a088', '#d0ad96'],
+     'gray alder planks: soft pale reddish-brown wood, even and fine'),
+    ('rowan', ['#8a6556', '#ab8470', '#b8917c', '#c29e88', '#cca994'],
+     'rowan planks: hard dense light reddish-brown wood, fine grain'),
 ]
 # (name, pith, heartwood late and early, sapwood late and early, two bark tones, heart radius px, ring width px, note)
 WOOD_LOG_TOPS = [
@@ -1110,6 +1140,11 @@ WOOD_LOG_TOPS = [
     # Step F5.
     ('white_willow', ['#9c7e6a', '#b0927e', '#c0a28e', '#c6ad99', '#d4bca8', '#6e665c', '#887f74'], 3.0, 2.4,
      'white willow log top: a light reddish-brown core in pinkish white sapwood, wide faint rings, the furrowed bark border'),
+    # Step F6.
+    ('gray_alder', ['#9c6c52', '#b07c60', '#bc8a6c', '#c49272', '#d0a080', '#9a9a96', '#b2b2ae'], 2.0, 1.8,
+     'gray alder log top: pale orange-brown wood without a heartwood, fine rings, the smooth light gray bark border'),
+    ('rowan', ['#8a5a48', '#9e6a56', '#ae7a64', '#c09e8a', '#ccaa96', '#7e7670', '#968e88'], 3.0, 1.6,
+     'rowan log top: a light reddish-brown heartwood in reddish white sapwood, fine rings, the gray bark border'),
 ]
 STRIPPED_TRUNK_COLORS = {name: colors for name, colors, _expect, _note in STRIPPED_TRUNKS}
 SAPLING_SHAPE = dict(top=4, zigzag=0.2, shoots=3, shoot_gap=3, shoot_len=(2, 4), leaf_from=2, leaf_every=3, tries=64)
@@ -1151,6 +1186,16 @@ SAPLINGS = [
     ('osier', dict(SAPLING_SHAPE, leaf='willow', leaf_every=2, zigzag=0.0, shoots=4, shoot_gap=2,
                    colors=['#6e5a3c', '#907848', '#4e7258', '#628668', '#7e9e82']),
      'young osier: straight yellow-brown rods with long narrow gray-green leaves'),
+    # Step F6.
+    ('gray_alder', dict(SAPLING_SHAPE, leaf='gray_alder', leaf_every=2, zigzag=0.1,
+                        colors=['#6e6c68', '#8e8c86', '#3c5434', '#4c6640', '#647a56']),
+     'young gray alder: dull gray-green ovate pointed leaves on a smooth light gray stem'),
+    ('rowan', dict(SAPLING_SHAPE, leaf='ash', shoots=3, shoot_gap=2,
+                   colors=['#5e544e', '#7e746c', '#2e6a22', '#3f8030', '#58983e']),
+     'young rowan: pinnate leaves of many narrow toothed leaflets on a gray stem'),
+    ('dwarf_mountain_pine', dict(SAPLING_SHAPE, leaf='pine', shoots=0, top=3, zigzag=0.0, tuft_at=5, whorl_at=9, rays=13,
+                                 ray_len=6, spread=1.25, colors=['#4a4440', '#6a625a', '#2c4a30', '#3c5e3e', '#5a7a54']),
+     'young dwarf mountain pine: a crooked dark stem under a dense dark green tuft of short paired needles'),
 ]
 
 
@@ -1320,6 +1365,9 @@ TWIG_SPECIES = [
      'white willow: long slender yellow-olive shoots, straight and flexible'),
     ('poplar', '#bbb4a9', 0.24, 0.20, (8, 14), (3, 5), 0.35, 'poplar: stout gray-brown shoots with large pointed buds'),
     ('osier', '#c2b6a0', 0.27, 0.10, (10, 16), (3, 5), 0.25, 'osier: long straight yellow-brown rods, few forks'),
+    # Step F6.
+    ('gray_alder', '#b6aca8', 0.27, 0.20, (8, 13), (3, 5), 0.40, 'gray alder: gray twigs with stalked buds and catkins'),
+    ('rowan', '#b8a69c', 0.24, 0.20, (7, 12), (3, 5), 0.35, 'rowan: stout gray-brown shoots with large dark violet buds'),
 ]
 # The gray ramp of the twig tones (crossing, body, side twig, lit tip): V13 had 98-166; step Z2 126-184.
 TWIG_GRAY = (126, 184)
@@ -1329,7 +1377,7 @@ TWIG_GRAY = (126, 184)
 # to find one without an empty line); visible pixels hornbeam 33 -> 29%, linden 33 -> 29%, beech 38 -> 30%. Oak (27%:
 # a sparser oak tile came out in diagonal bands), birch, ash and maple keep their tiles.
 TWIG_TRIES = {'hornbeam': 96, 'linden': 96, 'beech': 96, 'bird_cherry': 96, 'sycamore_maple': 96, 'white_willow': 96,
-              'poplar': 96, 'osier': 96}
+              'poplar': 96, 'osier': 96, 'gray_alder': 96, 'rowan': 96}
 TWIG_MAX_VISIBLE = {'hornbeam': 0.25, 'linden': 0.25, 'beech': 0.26}
 
 def upper_texture(tex, palettes):
@@ -1423,6 +1471,19 @@ TEXTURES = [
     Texture('white_willow_bark_2', 'bark', bark_furrowed, 'white_willow_bark_2/1', 'oak_bark', variant_of='white_willow_bark',
             params=WILLOW, expect=WILLOW_EXPECT, palette_use='as white_willow_bark',
             note='second variant of the white willow bark, same edge rows'),
+    # Step F6: the gray alder and the rowan (two variants each), smooth barks of the beech recipe.
+    Texture('gray_alder_bark', 'bark', bark_beech, 'gray_alder_bark/1', 'beech_bark', params=GRAY_ALDER,
+            expect=GRAY_ALDER_EXPECT, palette_use='hue of the beech bark photo, made paler and cooler by the recipe',
+            note='gray alder: smooth light silver gray, small lenticels, gray lichen'),
+    Texture('gray_alder_bark_2', 'bark', bark_beech, 'gray_alder_bark_2/1', 'beech_bark', variant_of='gray_alder_bark',
+            params=GRAY_ALDER_VARIANT, expect=GRAY_ALDER_EXPECT, palette_use='as gray_alder_bark',
+            note='second variant of the gray alder bark, same edge rows'),
+    Texture('rowan_bark', 'bark', bark_beech, 'rowan_bark/1', 'beech_bark', params=ROWAN, expect=ROWAN_EXPECT,
+            palette_use='hue of the beech bark photo, made darker and browner by the recipe',
+            note='rowan: smooth shining gray with a brown cast, faint transverse lenticels'),
+    Texture('rowan_bark_2', 'bark', bark_beech, 'rowan_bark_2/1', 'beech_bark', variant_of='rowan_bark',
+            params=ROWAN_VARIANT, expect=ROWAN_EXPECT, palette_use='as rowan_bark',
+            note='second variant of the rowan bark, same edge rows'),
     # Step F3: the silver fir (two variants) and the sycamore maple (two).
     Texture('fir_bark', 'bark', bark_furrowed, 'fir_bark/1', 'linden_bark', params=FIR, expect=FIR_EXPECT,
             palette_use='hue of the linden bark photo, made paler, grayer and cooler by the recipe',
@@ -1455,6 +1516,20 @@ TEXTURES = [
             note='silver fir (step F3): flat sprays of short blunt needles in two rows along level twigs, grayscale for '
                  'the needle color of the curve (#4f8758, darker and bluer than the spruce); the pale tone 5 marks the '
                  'two white bands of the needle undersides seen at the edges of the sprays'),
+    # Step F6: the dwarf mountain pine, dense short paired needles in tufts at the shoot ends (darker and denser than
+    # the Scots pine), and the rowan's pinnate leaves.
+    Texture('dwarf_mountain_pine_leaves', 'leaves', leaves_needles, 'dwarf_mountain_pine_leaves/1', 'scots_pine_needles',
+            tint='#3e6e4a', mcmeta=LEAVES_MCMETA,
+            params=dict(opacity=0.64, twig=(3, 5), fill=0.8, needle=(1, 3), grays=(96, 118, 136, 152, 170), twig_axes=True,
+                        candidates=6, tries=32),
+            expect={'min_line': 6},
+            note='dwarf mountain pine (step F6): dense tufts of short stiff paired needles, grayscale for the needle color '
+                 'of the curve (#3e6e4a, a dark dull green)'),
+    Texture('rowan_leaves', 'leaves', leaves_broadleaf, 'rowan_leaves/1', None, tint='foliage',
+            mcmeta=LEAVES_MCMETA, params=dict(opacity=0.6, gray=(124, 204), candidates=6, tries=32, sprites=ROWAN_SPRITES),
+            expect={'min_line': 7},
+            note='rowan leaves for the foliage tint and the species color curve (step F6): pinnate leaves of narrow '
+                 'leaflets in pairs, a looser crown than the broadleaf tile'),
     Texture('broadleaf_leaves', 'leaves', leaves_broadleaf, 'broadleaf_leaves/1', None, tint='foliage',
             mcmeta=LEAVES_MCMETA, params=dict(opacity=0.63, gray=(107, 211), candidates=6, tries=32),
             expect={'min_line': 7},
@@ -1629,6 +1704,47 @@ TEXTURES = [
             params=dict(stems=2, amp=1.6, node=4, cones=0,
                         colors=['#365e26', '#426e2e', '#527e38', '#4a5a2e']),
             note='common hop without cones (step F5, May to July)'),
+    # Step F6: the herb layer of the montane spruce forest and the gray alder forest: the alpine coltsfoot as a flower
+    # bed (evergreen rosettes, small kidney-shaped leathery leaves), the hairy small-reed as a
+    # tuft, the alpine lady fern as fronds, the butterbur as stems (its pink flower spikes in March and April, before its
+    # large leaves).
+    Texture('alpine_coltsfoot', 'plant', ground.flower_bed, 'alpine_coltsfoot/1', None,
+            params=dict(leaves=ground.COLTSFOOT_LEAVES, flower_sprites=ground.HEPATICA_FLOWERS, leaf_cover=0.6, flowers=2, halo=((1, 7),),
+                        colors=['#2c4e26', '#365c2c', '#446a34', '#4a5034', '#6a3a62', '#8a4c80', '#5a3a4e', '#56783e']),
+            note='alpine coltsfoot (Homogyne alpina, step F6, the montane spruce forest): rosettes of small round '
+                 'leathery dark green leaves, purple flower heads on short stalks (June, July)'),
+    Texture('alpine_coltsfoot_leaves', 'plant', ground.flower_bed, 'alpine_coltsfoot/1', None,
+            params=dict(leaves=ground.COLTSFOOT_LEAVES, flower_sprites=ground.HEPATICA_FLOWERS, leaf_cover=0.6, flowers=2, halo=((1, 7),),
+                        drop_flowers=True,
+                        colors=['#2c4e26', '#365c2c', '#446a34', '#4a5034', '#6a3a62', '#8a4c80', '#5a3a4e', '#4e6c38']),
+            note='alpine coltsfoot outside the flowering (step F6): the same evergreen rosettes'),
+    Texture('hairy_small_reed', 'plant', ground.herb, 'hairy_small_reed/1', None,
+            params=dict(form='tuft', count=12, reach=(3, 6), height=(9, 13), arch=0.6, flowers=3,
+                        colors=['#5a7038', '#667c40', '#748a48', '#7a7444', '#7a6a50', '#94826a', '#ac9c82']),
+            note='hairy small-reed (Calamagrostis villosa, step F6, the montane spruce forest): a loose tuft of soft '
+                 'arching yellow-green leaves, pale brownish panicles (July, August)'),
+    Texture('hairy_small_reed_leaves', 'plant', ground.herb, 'hairy_small_reed/1', None,
+            params=dict(form='tuft', count=12, reach=(3, 6), height=(9, 13), arch=0.6, flowers=0,
+                        colors=['#5a7038', '#667c40', '#748a48', '#7a7444']),
+            note='hairy small-reed without panicles (step F6, May, June and the autumn)'),
+    Texture('alpine_lady_fern', 'plant', ground.herb, 'alpine_lady_fern/1', None,
+            params=dict(form='fronds', count=3, spread=2.4, top=1, pinna=4,
+                        colors=['#3a6a2a', '#487c32', '#58903c', '#4e5a36']),
+            note='alpine lady fern (Athyrium distentifolium, step F6, the gullies of the montane spruce forest): erect '
+                 'finely divided fronds of a fresh green, long pinnae'),
+    Texture('alpine_lady_fern_leaves', 'plant', ground.herb, 'alpine_lady_fern/1', None,
+            params=dict(form='fronds', count=3, spread=2.4, top=1, pinna=4,
+                        colors=['#8a7034', '#9c823e', '#ae9448', '#6a5a3a']),
+            note='alpine lady fern in autumn (step F6, from mid-September): the same fronds turned yellow-brown'),
+    Texture('butterbur', 'plant', ground.herb, 'butterbur/1', None,
+            params=dict(form='stems', count=3, top=2, node=3, leaf=1, flowers=9,
+                        colors=['#4a6a34', '#587a3c', '#688a46', '#8a6a6e', '#a05a7a', '#bc7090', '#d68ca8']),
+            note='butterbur (Petasites hybridus, step F6, the gray alder forest): stout reddish flower stalks with dense '
+                 'pink spikes and small leaves (March, April)'),
+    Texture('butterbur_leaves', 'plant', ground.herb, 'butterbur/1', None,
+            params=dict(form='stems', count=3, top=1, node=3, leaf=4, flowers=0,
+                        colors=['#2e5a24', '#3a6a2c', '#4a7c36', '#4a5a34']),
+            note='butterbur leaves (step F6, May to October): very large rounded heart-shaped leaves on long stalks'),
     # Step F4: the ground layer of the pine forests, the bogs and the heath: the reindeer lichen as a litter of the vanilla
     # leaf litter templates (the moss mat generator in its pale gray-green tones), heather and crowberry as flower beds
     # (evergreen; the purple bells of the heather and the black berries of the crowberry in the full texture), the bog
@@ -1712,6 +1828,15 @@ TEXTURES = [
             params=dict(count=5, rows=(10, 14), colors=['#272b45', '#2f3656', '#384166', '#454f78']),
             note='bilberry fruit, overlay of the bilberry cross model in its berries state (not tinted): blue-black '
                  'berries with a frosty blue bloom'),
+    # Step F6: the rowan's fruit clusters, an overlay of its leaf block (not tinted): orange unripe in August, scarlet
+    # from September.
+    Texture('rowan_fruit_unripe', 'plant', ground.berries, 'rowan_fruit_unripe/1', None,
+            params=dict(count=7, rows=(1, 14), colors=['#c0661e', '#cc7224', '#d47e2a', '#de9038']),
+            note='rowan fruit in August (step F6): clusters of small orange berries, overlay of the rowan leaves'),
+    Texture('rowan_fruit', 'plant', ground.berries, 'rowan_fruit/1', None,
+            params=dict(count=7, rows=(1, 14), colors=['#a8301c', '#b83a20', '#c44424', '#d4583a']),
+            note='ripe rowan fruit (step F6, September and October): clusters of small scarlet berries, overlay of the '
+                 'rowan leaves'),
     Texture('forest_moss', 'plant', ground.forest_moss, 'forest_moss/1', None,
             params=dict(grain=2.0, colors=['#3e4f2c', '#465a31', '#4f6436', '#586e3b', '#62783f']),
             note='feather moss mat of the pine forests under the bilberry and the needles (the mossy states, PW-7): '

@@ -91,6 +91,9 @@ final class ModBlockModels extends FabricModelProvider {
 			// poplar wood; decision F5-a).
 			case WHITE_WILLOW -> List.of(own("white_willow_bark"), own("white_willow_bark_2"));
 			case POPLAR -> List.of(vanilla("poplar_log"));
+			// Step F6: the smooth light gray bark of the gray alder and the shining gray bark of the rowan.
+			case GRAY_ALDER -> List.of(own("gray_alder_bark"), own("gray_alder_bark_2"));
+			case ROWAN -> List.of(own("rowan_bark"), own("rowan_bark_2"));
 		};
 	}
 
@@ -106,7 +109,7 @@ final class ModBlockModels extends FabricModelProvider {
 			case BIRCH -> vanilla("birch_log_top");
 			case OAK -> vanilla("oak_log_top");
 			case POPLAR -> vanilla("poplar_log_top");
-			case HORNBEAM, LINDEN, BEECH, ASH, NORWAY_MAPLE, BLACK_ALDER, ELM, FIR, SYCAMORE_MAPLE, WHITE_WILLOW ->
+			case HORNBEAM, LINDEN, BEECH, ASH, NORWAY_MAPLE, BLACK_ALDER, ELM, FIR, SYCAMORE_MAPLE, WHITE_WILLOW, GRAY_ALDER, ROWAN ->
 					own(woodOf(t).prefix() + "_log_top");
 		};
 	}
@@ -143,7 +146,7 @@ final class ModBlockModels extends FabricModelProvider {
 			case BIRCH -> vanilla("stripped_birch_log_top");
 			case OAK -> vanilla("stripped_oak_log_top");
 			case POPLAR -> vanilla("stripped_poplar_log_top");
-			case HORNBEAM, LINDEN, BEECH, ASH, NORWAY_MAPLE, BLACK_ALDER, ELM, FIR, SYCAMORE_MAPLE, WHITE_WILLOW ->
+			case HORNBEAM, LINDEN, BEECH, ASH, NORWAY_MAPLE, BLACK_ALDER, ELM, FIR, SYCAMORE_MAPLE, WHITE_WILLOW, GRAY_ALDER, ROWAN ->
 					own("stripped_" + woodOf(t.trunk()).prefix() + "_log_top");
 		};
 	}
@@ -372,6 +375,9 @@ final class ModBlockModels extends FabricModelProvider {
 			case FIR -> own("fir_leaves");
 			// Step F5: the narrow lanceolate leaves of the white willow and the osier (silvery undersides).
 			case WHITE_WILLOW, OSIER -> own("willow_leaves");
+			// Step F6: the rowan's pinnate leaves and the dwarf mountain pine's dense needles.
+			case ROWAN -> own("rowan_leaves");
+			case DWARF_MOUNTAIN_PINE -> own("dwarf_mountain_pine_leaves");
 			default -> own("broadleaf_leaves");
 		};
 	}
@@ -402,6 +408,14 @@ final class ModBlockModels extends FabricModelProvider {
 			new ModelTemplate(Optional.of(PolishForests.id(GroundTemplates.TWIGS)), Optional.empty(), TextureSlot.ALL)
 					.create(pl.polishforests.client.ClientSeasonModels.twigs(f), TextureMapping.cube(new Material(own(f.species().id()
 							+ "_twigs"))), gen.modelOutput);
+		}
+		if (f == TreeFoliage.ROWAN) {
+			// Step F6: the rowan's fruit clusters over its leaves, unripe and ripe (seasonal alternatives of the client).
+			ModelTemplate fruit = new ModelTemplate(Optional.of(PolishForests.id(GroundTemplates.FRUIT)), Optional.empty(), TextureSlot.ALL);
+			for (boolean ripe : new boolean[] {false, true}) {
+				fruit.create(pl.polishforests.client.ClientSeasonModels.fruit(f, ripe), TextureMapping.cube(new Material(own(f.species().id()
+						+ (ripe ? "_fruit" : "_fruit_unripe")))), gen.modelOutput);
+			}
 		}
 	}
 

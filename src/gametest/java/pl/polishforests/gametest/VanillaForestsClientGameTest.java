@@ -159,9 +159,11 @@ public final class VanillaForestsClientGameTest implements FabricClientGameTest 
 			first = sp.getServer().computeOnServer(s -> order(s.overworld(), center, false));
 			// 3. The areas of the forests of the tree planner in W1 (the two slice forests; step F1: the lowland beech forest,
 			// dark_forest in W1; step F2: the alder carr, the swamp in W1, with the planner's black alders; step F3: the
-			// Carpathian beech forest, the windswept forest in W1, with the planner's beeches, firs and sycamores).
+			// Carpathian beech forest, the windswept forest in W1, with the planner's beeches, firs and sycamores; step F6: the
+			// montane spruce forest, the old growth spruce taiga and the snowy taiga in W1, with the planner's candle spruces).
 			for (HabitatBiome b : List.of(HabitatBiome.OAK_HORNBEAM_FOREST, HabitatBiome.FRESH_PINE_FOREST,
-					HabitatBiome.LOWLAND_BEECH_FOREST, HabitatBiome.ALDER_CARR, HabitatBiome.MONTANE_BEECH_FOREST)) {
+					HabitatBiome.LOWLAND_BEECH_FOREST, HabitatBiome.ALDER_CARR, HabitatBiome.MONTANE_BEECH_FOREST,
+					HabitatBiome.MONTANE_SPRUCE_FOREST)) {
 				BlockPos found = located.get(b);
 				if (found == null) {
 					continue;

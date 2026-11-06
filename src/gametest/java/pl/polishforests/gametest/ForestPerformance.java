@@ -36,7 +36,7 @@ import pl.polishforests.PolishForests;
  * <li>{@link #woodAndLeaves}: wood and leaves of a generated area by block tags (both builds count the same way);</li>
  * <li>{@link #memoryAndStates}: the used heap after a full garbage collection and the number of block states;</li>
  * <li>{@link #flights} ({@code -Pgametest=performance -Psites=slice}): in the oak-hornbeam and the fresh pine forest of
- * each scale and, from step F1, in the lowland beech forest ({@link #BEECH_SITE}), from step F2 in the alder carr ({@link #ALDER_SITE}), from step F3 in the upland fir forest ({@link #FIR_SITE}), from step F4 in the bog woodland ({@link #BOG_SITE}) and, from step F5, in the floodplain forest ({@link #FLOOD_SITE}), the load of new terrain around a teleport (chunks per second, the C2ME budget with {@code -Poptimization};
+ * each scale and, from step F1, in the lowland beech forest ({@link #BEECH_SITE}), from step F2 in the alder carr ({@link #ALDER_SITE}), from step F3 in the upland fir forest ({@link #FIR_SITE}), from step F4 in the bog woodland ({@link #BOG_SITE}), from step F5 in the floodplain forest ({@link #FLOOD_SITE}) and, from step F6, in the montane spruce forest ({@link #MONTANE_SITE}), the load of new terrain around a teleport (chunks per second, the C2ME budget with {@code -Poptimization};
  * only this with {@code -PloadOnly}, step O1) and a fixed camera flight: {@value #FLIGHT_POINTS} points on a circle of {@value #ORBIT_RADIUS} blocks around the place,
  * above the canopy and at eye level, with a full turn of the camera at each (frames per second and the render time of
  * each frame);</li>
@@ -158,12 +158,20 @@ final class ForestPerformance {
 	 * the willow-poplar forest, written as numbers as {@link #BEECH_SITE}.
 	 */
 	static final int[][] FLOOD_SITE = {{-2140, 10559}, {-2044, -5087}};
+	/**
+	 * Step F6 (KF-6): the place of the montane spruce forest of the flights, per scale: in the realistic scale (no plot of
+	 * the forest there: its belt on the highest Beskid ridges holds no square of 98% in both modes) the place whose
+	 * 100-block square is wholly montane spruce forest in the natural mode, about 104 km south-east of the center; in the
+	 * gameplay scale the plot {@code montane_spruce_managed_1} (no natural plot there), written as numbers as
+	 * {@link #BEECH_SITE}.
+	 */
+	static final int[][] MONTANE_SITE = {{75072, 73120}, {3488, 22644}};
 
 	/**
 	 * The load and flight measurements in the oak-hornbeam and the fresh pine forest of the world (natural mode) and, from
 	 * step F1, in the lowland beech forest ({@link #BEECH_SITE}), from step F2 in the alder carr ({@link #ALDER_SITE}), from
 	 * step F3 in the upland fir forest ({@link #FIR_SITE}), from step F4 in the bog woodland ({@link #BOG_SITE}), from step
-	 * F5 in the floodplain forest ({@link #FLOOD_SITE}).
+	 * F5 in the floodplain forest ({@link #FLOOD_SITE}), from step F6 in the montane spruce forest ({@link #MONTANE_SITE}).
 	 */
 	static void flights(ClientGameTestContext context, TestSingleplayerContext sp, String name, boolean real) {
 		register();
@@ -178,6 +186,7 @@ final class ForestPerformance {
 		places.add(new Object[] {"upland_fir_1", FIR_SITE[real ? 0 : 1]});
 		places.add(new Object[] {"bog_woodland_1", BOG_SITE[real ? 0 : 1]});
 		places.add(new Object[] {"floodplain_1", FLOOD_SITE[real ? 0 : 1]});
+		places.add(new Object[] {"montane_spruce_1", MONTANE_SITE[real ? 0 : 1]});
 		for (Object[] place : places) {
 			int[] m = (int[]) place[1];
 			String label = name + " / " + place[0];

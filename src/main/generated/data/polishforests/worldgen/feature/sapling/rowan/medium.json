@@ -1,0 +1,9 @@
+{
+  "type": "polishforests:procedural_tree",
+  "size": {
+    "crown": 0.91,
+    "dbh": 1.2,
+    "height": 0.91
+  },
+  "species": "rowan"
+}

@@ -30,6 +30,14 @@ final class GroundTemplates implements DataProvider {
 	static final String TWIGS = "block/template_twigs";
 	/** Model id of the berries cross. */
 	static final String BERRIES = "block/template_berries_cross";
+	/**
+	 * Model id of the fruit over a leaf block (step F6: the rowan's fruit clusters, a seasonal alternative over its
+	 * leaves): a cube {@value #FRUIT_INSET} px larger than the block on every side (so its faces never lie in the leaves'
+	 * planes), not tinted, without culling against the neighbors, textures {@code all}.
+	 */
+	static final String FRUIT = "block/template_fruit_overlay";
+	/** How far the fruit cube stands out of the block, px. */
+	static final double FRUIT_INSET = 0.1;
 	/** Height of the litter planes over the moss carpet, px (vanilla leaf litter: 0.25 over the ground). */
 	static final double MOSSY_LITTER_Y = 1.25;
 
@@ -62,6 +70,7 @@ final class GroundTemplates implements DataProvider {
 		List<CompletableFuture<?>> out = new ArrayList<>();
 		out.add(DataProvider.saveStable(cache, berries(), models.json(PolishForests.id(BERRIES))));
 		out.add(DataProvider.saveStable(cache, twigs(), models.json(PolishForests.id(TWIGS))));
+		out.add(DataProvider.saveStable(cache, fruit(), models.json(PolishForests.id(FRUIT))));
 		for (int k = 1; k <= SHRUB_VARIANTS; k++) {
 			out.add(DataProvider.saveStable(cache, shrub(SHRUB[k - 1]), models.json(PolishForests.id(shrubCross(k)))));
 		}
@@ -112,6 +121,31 @@ final class GroundTemplates implements DataProvider {
 		e.add("from", vector(new double[] {0, 0, 0}));
 		e.add("to", vector(new double[] {16, 16, 16}));
 		e.addProperty("shade", false);
+		e.add("faces", faces);
+		JsonArray elements = new JsonArray();
+		elements.add(e);
+		JsonObject m = new JsonObject();
+		m.addProperty("parent", "minecraft:block/block");
+		m.addProperty("ambientocclusion", false);
+		JsonObject textures = new JsonObject();
+		textures.addProperty("particle", "#all");
+		m.add("textures", textures);
+		m.add("elements", elements);
+		return m;
+	}
+
+	/** The fruit cube over a leaf block (see {@link #FRUIT}). */
+	private static JsonObject fruit() {
+		JsonObject faces = new JsonObject();
+		for (String side : new String[] {"down", "up", "north", "south", "west", "east"}) {
+			JsonObject f = new JsonObject();
+			f.add("uv", vector(new double[] {0, 0, 16, 16}));
+			f.addProperty("texture", "#all");
+			faces.add(side, f);
+		}
+		JsonObject e = new JsonObject();
+		e.add("from", vector(new double[] {-FRUIT_INSET, -FRUIT_INSET, -FRUIT_INSET}));
+		e.add("to", vector(new double[] {16 + FRUIT_INSET, 16 + FRUIT_INSET, 16 + FRUIT_INSET}));
 		e.add("faces", faces);
 		JsonArray elements = new JsonArray();
 		elements.add(e);

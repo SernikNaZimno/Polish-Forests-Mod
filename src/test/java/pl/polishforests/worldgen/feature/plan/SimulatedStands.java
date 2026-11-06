@@ -95,11 +95,12 @@ final class SimulatedStands {
 	/**
 	 * As {@link #plant(HabitatBiome, ForestSiteType, boolean, AgeClass, int, Sink)} in an association (step F3: the acid
 	 * Carpathian beech forest and its sycamore ravine forest); the mountain forests within the ranges of the beech, the
-	 * fir and the spruce.
+	 * fir and the spruce (step F6: also the montane spruce forest, the gray alder forest and the dwarf pine scrub).
 	 */
 	static void plant(HabitatBiome biome, ForestSiteType site, Association association, boolean natural, AgeClass age, int chunks,
 			Sink sink) {
-		boolean mountain = biome == HabitatBiome.UPLAND_FIR_FOREST || biome == HabitatBiome.MONTANE_BEECH_FOREST;
+		boolean mountain = biome == HabitatBiome.UPLAND_FIR_FOREST || biome == HabitatBiome.MONTANE_BEECH_FOREST
+				|| biome == HabitatBiome.MONTANE_SPRUCE_FOREST || biome == HabitatBiome.GRAY_ALDER_FOREST || biome == HabitatBiome.DWARF_PINE_SCRUB;
 		int ranges = Species.FLAG_HORNBEAM | (biome == HabitatBiome.LOWLAND_BEECH_FOREST ? Species.FLAG_BEECH : 0)
 				| (mountain ? Species.FLAG_BEECH | Species.FLAG_FIR | Species.FLAG_SPRUCE : 0);
 		plant(biome, site, association, natural, age, chunks, ranges, (x, z) -> GROUND, sink);

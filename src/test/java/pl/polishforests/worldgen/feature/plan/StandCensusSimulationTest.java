@@ -42,7 +42,8 @@ class StandCensusSimulationTest {
 			ForestNorms.COMPOSITION + "linden", ForestNorms.COMPOSITION + "maple_ash", ForestNorms.COMPOSITION + "scots_pine",
 			ForestNorms.COMPOSITION + "birch", ForestNorms.COMPOSITION + "hornbeam", ForestNorms.COMPOSITION + "beech",
 			ForestNorms.COMPOSITION + "black_alder", ForestNorms.COMPOSITION + "elm", ForestNorms.COMPOSITION + "fir",
-			ForestNorms.COMPOSITION + "white_willow", ForestNorms.COMPOSITION + "poplar", ForestNorms.UNDERSTORY, ForestNorms.CANOPY, ForestNorms.GAP_SHARE, ForestNorms.GAP_DIAMETER,
+			ForestNorms.COMPOSITION + "white_willow", ForestNorms.COMPOSITION + "poplar", ForestNorms.COMPOSITION + "spruce",
+			ForestNorms.COMPOSITION + "gray_alder", ForestNorms.COMPOSITION + "rowan", ForestNorms.UNDERSTORY, ForestNorms.CANOPY, ForestNorms.GAP_SHARE, ForestNorms.GAP_DIAMETER,
 			ForestNorms.REGENERATION_RATIO, ForestNorms.OAK_REGENERATION, ForestNorms.PINE_REGENERATION_UNDER_CANOPY,
 			ForestNorms.TOP_HEIGHT, ForestNorms.BARE_WOOD, ForestNorms.EXPOSED_WOOD, ForestNorms.BARE_ARMS,
 			ForestNorms.DEADWOOD_PER_CHUNK, ForestNorms.PIECES_PER_CHUNK, ForestNorms.LOGS_PER_CHUNK, ForestNorms.SNAGS_PER_CHUNK,
@@ -76,12 +77,14 @@ class StandCensusSimulationTest {
 											: biome == HabitatBiome.BOG_WOODLAND
 													? new ForestSiteType[] {ForestSiteType.BOGGY_CONIFEROUS, ForestSiteType.BOGGY_MIXED_CONIFEROUS}
 													// Step F5: the willow forest and the white poplar forest (Populetum albae).
-													: biome == HabitatBiome.WILLOW_POPLAR_FOREST
+													// Step F6: the montane spruce forest in its typical and its fir form (Abieti-Piceetum).
+													: biome == HabitatBiome.WILLOW_POPLAR_FOREST || biome == HabitatBiome.MONTANE_SPRUCE_FOREST
 															? new ForestSiteType[] {ForestSiteType.NONE, ForestSiteType.NONE}
 															: new ForestSiteType[] {ForestSiteType.NONE};
 			for (int i = 0; i < sites.length; i++) {
 				ForestSiteType site = sites[i];
 				Association association = biome == HabitatBiome.WILLOW_POPLAR_FOREST && i == 1 ? Association.POPULETUM_ALBAE
+						: biome == HabitatBiome.MONTANE_SPRUCE_FOREST && i == 1 ? Association.ABIETI_PICEETUM
 						: biome != HabitatBiome.MONTANE_BEECH_FOREST ? Association.TYPICAL
 								: i == 1 ? Association.ACIDOPHILOUS : i == 2 ? Association.SYCAMORE_RAVINE_FOREST : Association.TYPICAL;
 				for (AgeClass age : AgeClass.values()) {

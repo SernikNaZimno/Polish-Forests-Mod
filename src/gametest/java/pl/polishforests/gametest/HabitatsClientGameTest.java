@@ -338,6 +338,10 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 			// Step F5: the gameplay scale has no plot of a floodplain forest (F_MISSING); the place of both of them of the
 			// KF-6 flights instead.
 			sites.add(ForestPerformance.FLOOD_SITE[1]);
+		} else {
+			// Step F6: the realistic scale has no plot of the montane spruce forest (F_MISSING); the place of the KF-6
+			// flights instead.
+			sites.add(ForestPerformance.MONTANE_SITE[0]);
 		}
 		for (int[] site : sites) {
 			int cx0 = (site[0] >> 4) - 2;

@@ -18,6 +18,8 @@
     "polishforests:sycamore_maple_trunk",
     "polishforests:white_willow_trunk",
     "polishforests:poplar_trunk",
+    "polishforests:gray_alder_trunk",
+    "polishforests:rowan_trunk",
     "polishforests:scots_pine_root_flare",
     "polishforests:spruce_root_flare",
     "polishforests:birch_root_flare",
@@ -33,6 +35,8 @@
     "polishforests:sycamore_maple_root_flare",
     "polishforests:white_willow_root_flare",
     "polishforests:poplar_root_flare",
+    "polishforests:gray_alder_root_flare",
+    "polishforests:rowan_root_flare",
     "polishforests:scots_pine_log",
     "polishforests:hornbeam_log",
     "polishforests:linden_log",
@@ -43,6 +47,8 @@
     "polishforests:elm_log",
     "polishforests:fir_log",
     "polishforests:sycamore_maple_log",
-    "polishforests:white_willow_log"
+    "polishforests:white_willow_log",
+    "polishforests:gray_alder_log",
+    "polishforests:rowan_log"
   ]
 }

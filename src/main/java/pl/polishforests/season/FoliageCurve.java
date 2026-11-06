@@ -84,6 +84,9 @@ public final class FoliageCurve {
 		// Step F3: the silver fir, evergreen, a darker and bluer green than the spruce (the pale bands of the underside are
 		// in its texture), darkening a little in winter like the spruce.
 		CONIFERS.put(Species.FIR, new Needles(0x4F8758, darken(0x4F8758, CONIFER_WINTER_DARKENING)));
+		// Step F6: the dwarf mountain pine, a dark, dull green (darker than the Scots pine, less blue than the fir), a
+		// little yellower and darker under the winter snow.
+		CONIFERS.put(Species.DWARF_MOUNTAIN_PINE, new Needles(0x3E6E4A, darken(0x46704A, CONIFER_WINTER_DARKENING)));
 		//               leaf-out, young, summer cast, autumn keys (position, target, weight; weight 0 = summer), bare at,
 		//               twig haze, twig tint, marcescent brown (0: none)
 		// Step V13 (CP-B: "in late spring a few oaks, hornbeams and beeches are still brown", "in mid-autumn most crowns are
@@ -132,6 +135,15 @@ public final class FoliageCurve {
 		broadleaf(Species.POPLAR, 5.3, 0xB6D45E, 0x2A5A20, keys(21.0, 0, 0, 22.4, 0xE0C23A, 0.85, 23.2, 0xD8A836, 0.85), 23.8,
 				0x9A9286, 0xBBB4A9, 0);
 		broadleaf(Species.OSIER, 4.4, 0xBCD86E, 0x5A7C70, keys(22.0, 0, 0, 23.4, 0xC8B840, 0.75), 24.2, 0xA49680, 0xC2B6A0, 0);
+		// Step F6 (docs/research 08): the gray alder leafs out in the 3rd decade of April, a dull dark gray green (the gray,
+		// hairy undersides), and like the black alder drops its leaves still green, only dulled, at the end of October;
+		// the rowan leafs out early (mid-April), a fresh mid green, and turns early, yellow-orange to red from mid-September
+		// (in the mountains), bare in the 2nd decade of October. Twig hazes: the gray alder's gray with the purple of its
+		// catkins, the rowan's gray-brown with the large dark violet buds.
+		broadleaf(Species.GRAY_ALDER, 5.0, 0xA8CA62, 0x404A40, keys(22.6, 0, 0, 23.8, 0x6A7A44, 0.4), 24.4, 0x968A86,
+				0xB6ACA8, 0);
+		broadleaf(Species.ROWAN, 4.5, 0xB4D864, 0x36AE22, keys(19.6, 0, 0, 20.8, 0xD8A03A, 0.8, 21.8, 0xC8502E, 0.85), 22.6,
+				0x968276, 0xB8A69C, 0);
 	}
 
 	private FoliageCurve() {

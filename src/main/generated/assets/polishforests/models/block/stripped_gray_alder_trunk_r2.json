@@ -1,0 +1,7 @@
+{
+  "parent": "polishforests:block/template_trunk_r2",
+  "textures": {
+    "bark": "polishforests:block/stripped_gray_alder_trunk",
+    "end": "polishforests:block/stripped_gray_alder_log_top"
+  }
+}

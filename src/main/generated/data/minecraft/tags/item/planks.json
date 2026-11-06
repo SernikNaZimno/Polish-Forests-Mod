@@ -10,6 +10,8 @@
     "polishforests:elm_planks",
     "polishforests:fir_planks",
     "polishforests:sycamore_maple_planks",
-    "polishforests:white_willow_planks"
+    "polishforests:white_willow_planks",
+    "polishforests:gray_alder_planks",
+    "polishforests:rowan_planks"
   ]
 }

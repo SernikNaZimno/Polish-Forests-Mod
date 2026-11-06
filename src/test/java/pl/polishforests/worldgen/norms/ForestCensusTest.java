@@ -219,7 +219,10 @@ class ForestCensusTest {
 		assertEquals("black_alder", ForestCensus.compositionKey(Species.BLACK_ALDER));
 		// Step F3: the fir has its own key (the fir forest's and the Carpathian beech forest's norms).
 		assertEquals("fir", ForestCensus.compositionKey(Species.FIR));
-		assertEquals("other", ForestCensus.compositionKey(Species.GRAY_ALDER));
+		// Step F6: the gray alder and the rowan too (the card of the gray alder and the montane spruce forest).
+		assertEquals("gray_alder", ForestCensus.compositionKey(Species.GRAY_ALDER));
+		assertEquals("rowan", ForestCensus.compositionKey(Species.ROWAN));
+		assertEquals("other", ForestCensus.compositionKey(Species.LARCH));
 		assertEquals("other", ForestCensus.compositionKey(null));
 	}
 

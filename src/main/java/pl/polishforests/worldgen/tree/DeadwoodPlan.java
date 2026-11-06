@@ -123,6 +123,10 @@ public final class DeadwoodPlan {
 			// wind on the wet alluvium (the uprooted willows of the floodplain); the poplar breaks or falls whole.
 			case WHITE_WILLOW -> new double[] {0.35, 0.10, 0.27, 0.28};
 			case POPLAR -> new double[] {0.45, 0.18, 0.25, 0.12};
+			// Step F6: the gray alder, short-lived, breaks and rots standing on the gravel bars and is thrown by the floods
+			// of the mountain streams; the rowan breaks under the snow and falls whole.
+			case GRAY_ALDER -> new double[] {0.40, 0.25, 0.22, 0.13};
+			case ROWAN -> new double[] {0.50, 0.15, 0.25, 0.10};
 			default -> new double[] {0.60, 0.15, 0.15, 0.10};
 		};
 	}
@@ -148,6 +152,11 @@ public final class DeadwoodPlan {
 		return switch (form) {
 			case SLENDER -> new double[] {0.25, 0.50, 0.20, 0.05};
 			case STUNTED, MULTI_STEM -> new double[] {0.45, 0.35, 0.15, 0.05};
+			// Step F6: the montane spruce forest, where the windthrows are the main way of dying (the shallow plate roots on
+			// the thin, stony soil of the slopes, the autumn and winter storms; research/06 §3.3) besides the bark beetle
+			// snags; the dwarf spruces of the timberline and of the dwarf pine scrub die standing and break under the snow.
+			case MONTANE -> new double[] {0.22, 0.28, 0.05, 0.45};
+			case DWARF -> new double[] {0.35, 0.40, 0.20, 0.05};
 			default -> null;
 		};
 	}

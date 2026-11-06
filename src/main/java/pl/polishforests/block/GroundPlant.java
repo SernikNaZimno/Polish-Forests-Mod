@@ -91,7 +91,27 @@ public enum GroundPlant {
 	 * three-lobed leaves from April, the pale green cones in August and September, dying back to its rootstock in November
 	 * (step F5; {@link Kind#CLIMBER}).
 	 */
-	HOP(Kind.CLIMBER);
+	HOP(Kind.CLIMBER),
+	/**
+	 * Alpine coltsfoot (Homogyne alpina): the evergreen rosettes of small round leathery leaves of the montane spruce forest
+	 * (Plagiothecio-Piceetum) and the dwarf pine scrub, purple flower heads in June and July (step F6).
+	 */
+	ALPINE_COLTSFOOT(Kind.SEASONAL),
+	/**
+	 * Hairy small-reed (Calamagrostis villosa): the loose, soft grass of the montane spruce forest and its gaps, often in
+	 * large patches, pale panicles in July and August, straw until it lies under the snow (step F6).
+	 */
+	HAIRY_SMALL_REED(Kind.HERB),
+	/**
+	 * Alpine lady fern (Athyrium distentifolium): the fern of the gullies and the moist slopes of the upper montane belt
+	 * (the gully tall herbs, Athyrietum distentifolii), fronds from late May, brown from mid-September (step F6).
+	 */
+	ALPINE_LADY_FERN(Kind.HERB),
+	/**
+	 * Butterbur (Petasites hybridus): the carpets of huge leaves of the gray alder forest along the mountain streams
+	 * (Alnetum incanae), the pink flower spikes in March and April before the leaves (step F6).
+	 */
+	BUTTERBUR(Kind.HERB);
 
 	/**
 	 * The block family of an entry (not saved: the order may change). Step F2: {@link #HERB}, a single-block cross plant

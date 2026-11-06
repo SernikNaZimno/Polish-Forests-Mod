@@ -10,6 +10,8 @@
     "polishforests:elm_slab",
     "polishforests:fir_slab",
     "polishforests:sycamore_maple_slab",
-    "polishforests:white_willow_slab"
+    "polishforests:white_willow_slab",
+    "polishforests:gray_alder_slab",
+    "polishforests:rowan_slab"
   ]
 }

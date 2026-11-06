@@ -91,6 +91,11 @@ public record TreeRequest(Species species, CrownLayer layer, AgeClass age, long 
 		this(species, layer, age, worldSeed, x, y, z, null, null, null, null, null, size, form);
 	}
 
+	/** This request in another layer (step F6: the understory species in a canopy place, {@link SpeciesShape#understory}). */
+	public TreeRequest withLayer(CrownLayer l) {
+		return new TreeRequest(species, l, age, worldSeed, x, y, z, territory, trunks, stands, ground, open, size, form);
+	}
+
 	/** This request with another form (step F4). */
 	public TreeRequest withForm(TreeForm f) {
 		return new TreeRequest(species, layer, age, worldSeed, x, y, z, territory, trunks, stands, ground, open, size, f);

@@ -345,14 +345,14 @@ class ForestBlendTest {
 		assertTrue(!ForestBlend.takenOver(beech));
 		assertEquals(5, ForestBlend.member(beech));
 		// A beech column with every forest at hand never draws the fresh pine forest; a fresh pine column never the beech.
-		float[] s = {0.2F, 0.2F, 0.2F, 0.2F, 0.2F, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+		float[] s = {0.2F, 0.2F, 0.2F, 0.2F, 0.2F, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 		for (int i = 0; i < 1000; i++) {
 			double v = i / 1000.0;
 			assertNotEquals(HabitatBiome.FRESH_PINE_FOREST, Habitat.biome(ForestBlend.pick(beech, s, v)));
 			assertNotEquals(HabitatBiome.LOWLAND_BEECH_FOREST, Habitat.biome(ForestBlend.pick(FRESH, s, v)));
 		}
 		// Far from the beech forest (its share 0) the normalization of a forest of the transect is the sum of step Z1.
-		float[] far = {0.1F, 0.3F, 0.15F, 0.05F, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.4F};
+		float[] far = {0.1F, 0.3F, 0.15F, 0.05F, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.4F};
 		assertEquals(Math.max(ForestBlend.MIN_TOTAL, far[0] + far[1] + far[2] + far[3]), ForestBlend.pickTotal(1, far));
 		// The canonical code of the beech forest is its fertile form.
 		assertEquals(pl.polishforests.worldgen.habitat.ForestSiteType.FRESH_BROADLEAVED,
@@ -368,8 +368,8 @@ class ForestBlendTest {
 	void alderForestsBlendWithTheirNeighborsOfStepF2() {
 		assertEquals(HabitatBiome.ALDER_CARR, ForestBlend.FORESTS[ForestBlend.ALDER_CARR]);
 		assertEquals(HabitatBiome.ASH_ALDER_FOREST, ForestBlend.FORESTS[ForestBlend.ASH_ALDER]);
-		// Steps F3, F4 and F5 appended two, four and two forests (their shares after the ash-alder forest's).
-		assertEquals(16, ForestBlend.SHARES);
+		// Steps F3, F4, F5 and F6 appended two, four, two and three forests (their shares after the ash-alder forest's).
+		assertEquals(19, ForestBlend.SHARES);
 		for (int b = 0; b < 4; b++) {
 			assertTrue(ForestBlend.blends(ForestBlend.ALDER_CARR, b) && ForestBlend.blends(b, ForestBlend.ALDER_CARR), "carr " + b);
 			assertEquals(b != 0, ForestBlend.blends(ForestBlend.ASH_ALDER, b), "ash-alder " + b);
@@ -388,14 +388,14 @@ class ForestBlendTest {
 		assertEquals(pl.polishforests.worldgen.habitat.ForestSiteType.ASH_ALDER_SWAMP,
 				Habitat.siteType(ForestBlend.code(ashAlder, ForestBlend.ASH_ALDER)));
 		// A carr column with every forest at hand never draws the beech forest; an ash-alder column never the fresh pine forest.
-		float[] s = {0.1F, 0.1F, 0.1F, 0.1F, 0.2F, 0.2F, 0.2F, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+		float[] s = {0.1F, 0.1F, 0.1F, 0.1F, 0.2F, 0.2F, 0.2F, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 		for (int i = 0; i < 1000; i++) {
 			double v = i / 1000.0;
 			assertNotEquals(HabitatBiome.LOWLAND_BEECH_FOREST, Habitat.biome(ForestBlend.pick(carr, s, v)));
 			assertNotEquals(HabitatBiome.FRESH_PINE_FOREST, Habitat.biome(ForestBlend.pick(ashAlder, s, v)));
 		}
 		// Far from the alder forests (their shares 0) the beech forest's normalization is the one of step F1.
-		float[] far = {0, 0.3F, 0.15F, 0.05F, 0.4F, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.1F};
+		float[] far = {0, 0.3F, 0.15F, 0.05F, 0.4F, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.1F};
 		assertEquals(Math.max(ForestBlend.MIN_TOTAL, far[1] + far[2] + far[3] + far[4]), ForestBlend.pickTotal(ForestBlend.BEECH, far));
 	}
 
@@ -435,7 +435,7 @@ class ForestBlendTest {
 		assertEquals(pl.polishforests.worldgen.habitat.Association.TYPICAL, Habitat.association(ForestBlend.code(montaneCode, montane)));
 		// With every forest at hand a Carpathian beech column never draws the pine or alder forests, a fir column never
 		// the fresh pine or the alder forests, and the lowland beech forest's column may draw both mountain forests.
-		float[] s = {0.1F, 0.1F, 0.1F, 0.1F, 0.1F, 0.1F, 0.1F, 0.15F, 0.15F, 0, 0, 0, 0, 0, 0, 0};
+		float[] s = {0.1F, 0.1F, 0.1F, 0.1F, 0.1F, 0.1F, 0.1F, 0.15F, 0.15F, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 		boolean beechDrawsFir = false;
 		boolean beechDrawsMontane = false;
 		int lowland = EcotoneTest.code(HabitatBiome.LOWLAND_BEECH_FOREST, Zone.NONE);
@@ -452,7 +452,7 @@ class ForestBlendTest {
 		}
 		assertTrue(beechDrawsFir && beechDrawsMontane);
 		// Far from the mountain forests (their shares 0) the lowland beech forest's normalization is the one of step F1.
-		float[] far = {0, 0.3F, 0.15F, 0.05F, 0.4F, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.1F};
+		float[] far = {0, 0.3F, 0.15F, 0.05F, 0.4F, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.1F};
 		assertEquals(Math.max(ForestBlend.MIN_TOTAL, far[1] + far[2] + far[3] + far[4]), ForestBlend.pickTotal(ForestBlend.BEECH, far));
 	}
 
@@ -544,6 +544,48 @@ class ForestBlendTest {
 			HabitatBiome d = Habitat.biome(ForestBlend.pick(willow, s, i / 1000.0));
 			assertTrue(d == HabitatBiome.WILLOW_POPLAR_FOREST || d == HabitatBiome.ELM_ASH_FOREST || d == HabitatBiome.ASH_ALDER_FOREST
 					|| d == HabitatBiome.ALDER_CARR || d == HabitatBiome.OAK_HORNBEAM_FOREST, "willow-poplar drew " + d);
+		}
+	}
+
+	/**
+	 * Step F6 (docs/04 "Projekt F6"): the montane spruce forest, the gray alder forest and the dwarf pine scrub are forests
+	 * of the blend after the willow-poplar forest; the montane spruce forest blends with the Carpathian beech forest, the fir
+	 * forest and the dwarf pine scrub, the gray alder forest with the montane spruce, the Carpathian beech and the
+	 * ash-alder forest; their canonical codes are the poor mountain coniferous site (BG), the mountain riparian site (LłG)
+	 * and the subalpine scrub; the alpine grassland is no forest of the blend.
+	 */
+	@Test
+	void mountainForestsBlendWithTheirNeighborsOfStepF6() {
+		assertEquals(List.of(HabitatBiome.MONTANE_SPRUCE_FOREST, HabitatBiome.GRAY_ALDER_FOREST, HabitatBiome.DWARF_PINE_SCRUB),
+				List.of(ForestBlend.FORESTS[ForestBlend.MONTANE_SPRUCE], ForestBlend.FORESTS[ForestBlend.GRAY_ALDER],
+						ForestBlend.FORESTS[ForestBlend.DWARF_PINE]));
+		int[][] pairs = {{ForestBlend.MONTANE_SPRUCE, ForestBlend.MONTANE_BEECH}, {ForestBlend.MONTANE_SPRUCE, ForestBlend.UPLAND_FIR},
+				{ForestBlend.MONTANE_SPRUCE, ForestBlend.DWARF_PINE}, {ForestBlend.GRAY_ALDER, ForestBlend.MONTANE_SPRUCE},
+				{ForestBlend.GRAY_ALDER, ForestBlend.MONTANE_BEECH}, {ForestBlend.GRAY_ALDER, ForestBlend.ASH_ALDER}};
+		java.util.Set<String> expected = new java.util.HashSet<>();
+		for (int[] p : pairs) {
+			expected.add(Math.min(p[0], p[1]) + "-" + Math.max(p[0], p[1]));
+		}
+		pl.polishforests.worldgen.habitat.ForestSiteType[] sites = {pl.polishforests.worldgen.habitat.ForestSiteType.MOUNTAIN_CONIFEROUS,
+				pl.polishforests.worldgen.habitat.ForestSiteType.MOUNTAIN_RIPARIAN, pl.polishforests.worldgen.habitat.ForestSiteType.SUBALPINE_SCRUB};
+		for (int a = ForestBlend.MONTANE_SPRUCE; a <= ForestBlend.DWARF_PINE; a++) {
+			for (int b = 0; b < ForestBlend.FORESTS.length; b++) {
+				boolean pair = expected.contains(Math.min(a, b) + "-" + Math.max(a, b));
+				assertEquals(pair, ForestBlend.blends(a, b), a + " " + b);
+				assertEquals(pair, ForestBlend.blends(b, a), b + " " + a);
+			}
+			int code = EcotoneTest.code(ForestBlend.FORESTS[a], Zone.NONE);
+			assertEquals(a + 1, ForestBlend.member(code));
+			assertEquals(sites[a - ForestBlend.MONTANE_SPRUCE], Habitat.siteType(ForestBlend.code(code, a)));
+		}
+		assertEquals(0, ForestBlend.member(EcotoneTest.code(HabitatBiome.ALPINE_GRASSLAND, Zone.NONE)));
+		// A dwarf pine column with every forest at hand draws only itself and the montane spruce forest.
+		float[] s = new float[ForestBlend.SHARES];
+		java.util.Arrays.fill(s, 0, ForestBlend.FORESTS.length, 1F / ForestBlend.FORESTS.length);
+		int dwarf = EcotoneTest.code(HabitatBiome.DWARF_PINE_SCRUB, Zone.NONE);
+		for (int i = 0; i < 1000; i++) {
+			HabitatBiome d = Habitat.biome(ForestBlend.pick(dwarf, s, i / 1000.0));
+			assertTrue(d == HabitatBiome.DWARF_PINE_SCRUB || d == HabitatBiome.MONTANE_SPRUCE_FOREST, "dwarf pine drew " + d);
 		}
 	}
 }

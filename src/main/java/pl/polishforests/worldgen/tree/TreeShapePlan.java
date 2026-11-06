@@ -684,6 +684,10 @@ public final class TreeShapePlan {
 		// ------------------------------------------------------------------ plan
 
 		TreeVoxels plan(TreeRequest r) {
+			if (r.layer() == CrownLayer.CANOPY && !r.openGrown() && SpeciesShape.understory(r.species())) {
+				// Step F6: the rowan in a canopy place of a stand grows as a tree of the subcanopy.
+				r = r.withLayer(CrownLayer.SUBCANOPY);
+			}
 			begin(r);
 			if (++current == 0) {
 				Arrays.fill(stamp, 0);

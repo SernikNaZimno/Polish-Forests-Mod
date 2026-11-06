@@ -98,6 +98,10 @@ class RegistrySnapshotTest {
 		// Step F5: + the reed canary grass, a herb of one state, the lesser celandine and the wild garlic, flower beds of 16
 		// states each, and the hop, a climber of 4 states (facing).
 		int floodplain = 1 + 2 * 16 + 4;
+		// Step F6: + the alpine coltsfoot, a flower bed of 16 states, and the hairy small-reed, the alpine lady fern and the
+		// butterbur, herbs of one state each (the trunks, leaves, saplings, flares, stripped trunks and wood sets of the gray
+		// alder and the rowan, the leaves and sapling of the dwarf mountain pine, are counted by their tables above).
+		int montane = 16 + 3;
 		// Step P1: + 9 stripped trunks (one per species), thin trunks of 84 states each, with the properties of the trunks.
 		assertEquals(StrippedTrunk.values().length, ModBlocks.strippedTrunks().size());
 		for (StrippedTrunk t : StrippedTrunk.values()) {
@@ -113,7 +117,7 @@ class RegistrySnapshotTest {
 		int woods = products + (WoodSet.values().length - 1) * (4 * 3 + 1 + products);
 		assertEquals(WoodSet.values().length, ModBlocks.woodSets().size());
 		assertEquals(84 * TreeTrunk.values().length + foliage * (112 + 2 + 1) + marcescent * 112 + 4 * 3 + 1
-				+ 84 * (RootFlare.values().length + 1) + ground + review + pineForests + floodplain + 84 * StrippedTrunk.values().length + woods,
+				+ 84 * (RootFlare.values().length + 1) + ground + review + pineForests + floodplain + montane + 84 * StrippedTrunk.values().length + woods,
 				RegistrySnapshot.stateCount());
 	}
 

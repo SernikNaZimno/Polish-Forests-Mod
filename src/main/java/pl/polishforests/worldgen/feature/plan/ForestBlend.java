@@ -55,7 +55,8 @@ public final class ForestBlend {
 			HabitatBiome.ALDER_CARR, HabitatBiome.ASH_ALDER_FOREST, HabitatBiome.UPLAND_FIR_FOREST,
 			HabitatBiome.MONTANE_BEECH_FOREST, HabitatBiome.DRY_PINE_FOREST, HabitatBiome.MOIST_PINE_FOREST,
 			HabitatBiome.BOG_WOODLAND, HabitatBiome.COASTAL_PINE_FOREST, HabitatBiome.ELM_ASH_FOREST,
-			HabitatBiome.WILLOW_POPLAR_FOREST};
+			HabitatBiome.WILLOW_POPLAR_FOREST, HabitatBiome.MONTANE_SPRUCE_FOREST, HabitatBiome.GRAY_ALDER_FOREST,
+			HabitatBiome.DWARF_PINE_SCRUB};
 	/** The forests of the slice transect, the first four of {@link #FORESTS} (norm N15, {@code TransectPalettes}). */
 	public static final HabitatBiome[] TRANSECT = java.util.Arrays.copyOf(FORESTS, 4);
 	/** Index of the lowland beech forest in {@link #FORESTS} (step F1). */
@@ -74,6 +75,10 @@ public final class ForestBlend {
 	/** Indices of the elm-ash and the willow-poplar floodplain forest in {@link #FORESTS} (step F5). */
 	public static final int ELM_ASH = 13;
 	public static final int WILLOW_POPLAR = 14;
+	/** Indices of the montane spruce forest, the gray alder forest and the dwarf pine scrub in {@link #FORESTS} (step F6). */
+	public static final int MONTANE_SPRUCE = 15;
+	public static final int GRAY_ALDER = 16;
+	public static final int DWARF_PINE = 17;
 	/**
 	 * Pairs of {@link #FORESTS} that mix in the blend's belt (bit b of entry a); the other pairs meet in the ramp of
 	 * {@link Ecotone}. The four forests of the transect all blend with each other (step Z1); the lowland beech forest (step
@@ -95,7 +100,11 @@ public final class ForestBlend {
 	 * the oak-hornbeam and the mixed forest (the higher terrace of the valley floor passes into the grąd) and the
 	 * willow-poplar forest, the willow-poplar forest with the ash-alder forest, the alder carr and the oak-hornbeam forest
 	 * (rule Z10: only the edge of the water stays sharp); the osier scrub (not a forest of the planner, mostly a waterside
-	 * zone) meets them in the ramp of {@link Ecotone} (decision F5-f).
+	 * zone) meets them in the ramp of {@link Ecotone} (decision F5-f). Step F6: the montane spruce forest with the
+	 * Carpathian beech forest and the fir forest (the fir-spruce forest of the lower part of the upper montane belt passes
+	 * into them) and with the dwarf pine scrub (the timberline: the dwarf spruces among the dwarf pine), the gray alder
+	 * forest with the montane spruce forest, the Carpathian beech forest and the ash-alder forest (the stream valleys);
+	 * the alpine grassland (not a forest of the blend) meets them in the ramp.
 	 */
 	private static final int[] BLENDS = pairs(new int[][] {{0, 1}, {0, 2}, {0, 3}, {1, 2}, {1, 3}, {2, 3}, {BEECH, 3},
 			{BEECH, 2}, {BEECH, 1}, {ALDER_CARR, ASH_ALDER}, {ALDER_CARR, 0}, {ALDER_CARR, 1}, {ALDER_CARR, 2}, {ALDER_CARR, 3},
@@ -104,7 +113,9 @@ public final class ForestBlend {
 			{DRY_PINE, 0}, {DRY_PINE, 1}, {MOIST_PINE, 0}, {MOIST_PINE, 1}, {MOIST_PINE, ALDER_CARR}, {MOIST_PINE, BOG_WOODLAND},
 			{BOG_WOODLAND, 0}, {BOG_WOODLAND, ALDER_CARR}, {COASTAL_PINE, 0}, {COASTAL_PINE, 1}, {COASTAL_PINE, BOG_WOODLAND},
 			{COASTAL_PINE, DRY_PINE}, {ELM_ASH, ASH_ALDER}, {ELM_ASH, ALDER_CARR}, {ELM_ASH, 3}, {ELM_ASH, 2},
-			{ELM_ASH, WILLOW_POPLAR}, {WILLOW_POPLAR, ASH_ALDER}, {WILLOW_POPLAR, ALDER_CARR}, {WILLOW_POPLAR, 3}});
+			{ELM_ASH, WILLOW_POPLAR}, {WILLOW_POPLAR, ASH_ALDER}, {WILLOW_POPLAR, ALDER_CARR}, {WILLOW_POPLAR, 3},
+			{MONTANE_SPRUCE, MONTANE_BEECH}, {MONTANE_SPRUCE, UPLAND_FIR}, {MONTANE_SPRUCE, DWARF_PINE}, {GRAY_ALDER, MONTANE_SPRUCE},
+			{GRAY_ALDER, MONTANE_BEECH}, {GRAY_ALDER, ASH_ALDER}});
 	/** Radius of the kernel (m·k). */
 	public static final double RADIUS = 48;
 	/** Spacing of the lattice (m·k); in blocks at least 2. */
@@ -174,13 +185,15 @@ public final class ForestBlend {
 	 * alder carr: the eutrophic Ribeso-Alnetum, Ol; the ash-alder forest: OlJ; step F3: the upland fir forest its
 	 * mesotrophic Abietetum polonicum, LMwyż, and the Carpathian beech forest its fertile Dentario glandulosae-Fagetum, LG;
 	 * step F4: the dry pine forest Bs, the moist pine forest Bw, the bog woodland its pine form Bb, the coastal pine forest
-	 * behind the wind belt Bśw; step F5: both floodplain forests Lł).
+	 * behind the wind belt Bśw; step F5: both floodplain forests Lł; step F6: the montane spruce forest its poor
+	 * Plagiothecio-Piceetum, BG, the gray alder forest LłG and the dwarf pine scrub its subalpine site).
 	 */
 	private static final ForestSiteType[] SITES = {ForestSiteType.FRESH_CONIFEROUS, ForestSiteType.FRESH_MIXED_CONIFEROUS,
 			ForestSiteType.FRESH_MIXED_BROADLEAVED, ForestSiteType.FRESH_BROADLEAVED, ForestSiteType.FRESH_BROADLEAVED,
 			ForestSiteType.ALDER_SWAMP, ForestSiteType.ASH_ALDER_SWAMP, ForestSiteType.UPLAND_MIXED_BROADLEAVED,
 			ForestSiteType.MOUNTAIN_BROADLEAVED, ForestSiteType.DRY_CONIFEROUS, ForestSiteType.MOIST_CONIFEROUS,
-			ForestSiteType.BOGGY_CONIFEROUS, ForestSiteType.FRESH_CONIFEROUS, ForestSiteType.RIPARIAN, ForestSiteType.RIPARIAN};
+			ForestSiteType.BOGGY_CONIFEROUS, ForestSiteType.FRESH_CONIFEROUS, ForestSiteType.RIPARIAN, ForestSiteType.RIPARIAN,
+			ForestSiteType.MOUNTAIN_CONIFEROUS, ForestSiteType.MOUNTAIN_RIPARIAN, ForestSiteType.SUBALPINE_SCRUB};
 	private static final byte[] MEMBER = new byte[64];
 
 	static {

@@ -62,6 +62,11 @@ public final class ClientSeasonModels {
 		return PolishForests.id("block/" + f.species().id() + "_twigs");
 	}
 
+	/** The model id of the fruit clusters over the leaves of a species (step F6: the rowan; datagen writes it). */
+	public static Identifier fruit(TreeFoliage f, boolean ripe) {
+		return PolishForests.id("block/" + f.species().id() + (ripe ? "_fruit" : "_fruit_unripe"));
+	}
+
 	/** The model id of the leaves (no flowers) of a flower bed of {@code k} plants (1–4; datagen writes them). */
 	public static Identifier bedLeaves(GroundPlant plant, int k) {
 		return PolishForests.id("block/" + plant.id() + "_leaves_" + k);
@@ -162,6 +167,30 @@ public final class ClientSeasonModels {
 				List<Variant> twigs = twigVariants(vanilla);
 				return new SeasonalModel.Root(model, (s, pos) -> vanillaLeafless(s, pos) ? 1 : SeasonalModel.Look.BASE,
 						List.of(new SeasonalModel.Alternative(s -> twigs, true, false, true)), twigs);
+			}
+			if (block instanceof SpeciesLeavesBlock leaves && pl.polishforests.season.TreeFruit.fruiting(leaves.foliage().species())) {
+				// Step F6: the rowan, its bare twigs in winter and its fruit clusters over the leaves of the bearing positions,
+				// orange in August, scarlet from September (TreeFruit).
+				TreeFoliage f = leaves.foliage();
+				List<Variant> twigs = twigVariants(f);
+				List<Variant> unripe = List.of(new Variant(fruit(f, false)));
+				List<Variant> ripe = List.of(new Variant(fruit(f, true)));
+				List<Variant> deps = new ArrayList<>(twigs);
+				deps.addAll(unripe);
+				deps.addAll(ripe);
+				return new SeasonalModel.Root(model, (s, pos) -> {
+					if (leafless(s)) {
+						return 1;
+					}
+					return switch (pl.polishforests.season.TreeFruit.look(f.species(), step(), s.getValue(SpeciesLeavesBlock.PHASE),
+							pos.getX(), pos.getY(), pos.getZ())) {
+						case UNRIPE -> 2;
+						case RIPE -> 3;
+						default -> SeasonalModel.Look.BASE;
+					};
+				}, List.of(new SeasonalModel.Alternative(s -> twigs, true, false, true),
+						new SeasonalModel.Alternative(s -> unripe, false, true, false),
+						new SeasonalModel.Alternative(s -> ripe, false, true, false)), List.copyOf(deps));
 			}
 			if (block instanceof SpeciesLeavesBlock leaves && !leaves.foliage().conifer()) {
 				List<Variant> twigs = twigVariants(leaves.foliage());

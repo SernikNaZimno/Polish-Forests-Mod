@@ -399,7 +399,9 @@ class TreeWoodTest {
 							assertEquals(1, t.bases(), name + ": stem bases");
 							assertEquals(1, t.logDrops(), name + ": log-giving blocks");
 						}
-						case MEDIUM -> assertTrue(t.bases() == 0 && t.logDrops() >= MEDIUM_LOGS, name + ": " + t.logDrops() + " logs");
+						// Step F6: the small rowan (a medium tree of 10-12 blocks) gives one log less.
+						case MEDIUM -> assertTrue(t.bases() == 0 && t.logDrops() >= (s == Species.ROWAN ? MEDIUM_LOGS - 1 : MEDIUM_LOGS),
+								name + ": " + t.logDrops() + " logs");
 						case LARGE -> assertTrue(t.bases() == 0 && t.logDrops() >= LARGE_LOGS, name + ": " + t.logDrops() + " logs");
 					}
 					min = Math.min(min, t.logDrops());

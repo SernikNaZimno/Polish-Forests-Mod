@@ -55,7 +55,16 @@ public enum WoodSet {
 	 * grain. The poplar keeps the vanilla poplar wood of 26.3 (D2, U-8).
 	 */
 	WHITE_WILLOW("white_willow", TreeTrunk.WHITE_WILLOW, StrippedTrunk.WHITE_WILLOW, "Willow", "wierzbow", "oak_planks",
-			new int[] {0x9a7f6c, 0xbaa08c, 0xc6ad99, 0xd0b8a4, 0xdac3b0}, 0.80, 1);
+			new int[] {0x9a7f6c, 0xbaa08c, 0xc6ad99, 0xd0b8a4, 0xdac3b0}, 0.80, 1),
+	/**
+	 * Gray alder (step F6): a soft, light wood, pale reddish brown after cutting (as the black alder, a little lighter), a
+	 * fine even grain without a visible heartwood.
+	 */
+	GRAY_ALDER("gray_alder", TreeTrunk.GRAY_ALDER, StrippedTrunk.GRAY_ALDER, "Gray Alder", "olszow", "oak_planks",
+			new int[] {0x8f6650, 0xb08670, 0xbc937c, 0xc6a088, 0xd0ad96}, 0.85, 1),
+	/** Rowan (step F6): a hard, dense wood, reddish white sapwood around a light reddish brown heartwood, a fine grain. */
+	ROWAN("rowan", TreeTrunk.ROWAN, StrippedTrunk.ROWAN, "Rowan", "jarzębow", "oak_planks",
+			new int[] {0x8a6556, 0xab8470, 0xb8917c, 0xc29e88, 0xcca994}, 0.95, 2);
 
 	private final String prefix;
 	private final TreeTrunk trunk;

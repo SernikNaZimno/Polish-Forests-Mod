@@ -126,6 +126,12 @@ public final class RootPlan {
 			// shallow laterals with sinkers.
 			case WHITE_WILLOW -> new Habit(4, 6, 3, 5, 7, 0.9, 2, 3, 0, false);
 			case POPLAR -> new Habit(5, 7, 4, 5, 7, 1.0, 2, 4, 2, true);
+			// Step F6: the gray alder, a shallow, wide root system on the gravel of the mountain streams with short flares
+			// (its root suckers are the stool shoots of the planner); the rowan, a shallow heart root system with small
+			// flares. The spruce keeps its shallow plate of step I1 (laterals 2 blocks deep, no taproot), the windthrows of
+			// the montane spruce forest.
+			case GRAY_ALDER -> new Habit(2, 4, 2, 5, 7, 0.8, 2, 3, 0, false);
+			case ROWAN -> new Habit(2, 4, 1, 4, 6, 0.7, 2, 3, 0, false);
 			default -> throw new IllegalArgumentException("no root habit for " + species);
 		};
 	}

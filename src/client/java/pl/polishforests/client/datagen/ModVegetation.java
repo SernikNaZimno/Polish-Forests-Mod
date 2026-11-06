@@ -102,7 +102,9 @@ final class ModVegetation {
 	 * of the bog woodland.
 	 */
 	static final List<Map.Entry<Species, TreeForm.Kind>> DEADWOOD_FORMS = List.of(Map.entry(Species.SCOTS_PINE, TreeForm.Kind.SLENDER),
-			Map.entry(Species.SCOTS_PINE, TreeForm.Kind.STUNTED), Map.entry(Species.BIRCH, TreeForm.Kind.STUNTED));
+			Map.entry(Species.SCOTS_PINE, TreeForm.Kind.STUNTED), Map.entry(Species.BIRCH, TreeForm.Kind.STUNTED),
+			// Step F6: the candle spruces of the montane spruce forest (the windthrows), the dwarf spruces of the timberline.
+			Map.entry(Species.SPRUCE, TreeForm.Kind.MONTANE), Map.entry(Species.SPRUCE, TreeForm.Kind.DWARF));
 
 	static String deadwood(Species s, TreeForm.Kind form) {
 		return deadwood(s) + "/" + form.id();
@@ -237,7 +239,10 @@ final class ModVegetation {
 				.add(Species.BLACK_ALDER, Species.BLACK_ALDER.path(), 200, 1);
 		t.rule(HabitatCondition.zones(Zone.SHORE_ALDERS), 8).add(Species.BLACK_ALDER, 700, 1).add(Species.BIRCH, 300);
 		t.rule(HabitatCondition.zones(Zone.TREE_ROW), 8).add(Species.BLACK_ALDER, 1000, 1);
-		t.rule(HabitatCondition.zones(Zone.TIMBERLINE), 4).add(Species.SPRUCE, ModTrees.SPRUCE_STUNTED, 900).add(Species.ROWAN, 100);
+		// Step F6: the dwarf spruces of the planner and the low rowans at the timberline (lone trees of the zone, no stand
+		// rule), in place of the vanilla stunted spruce.
+		t.rule(HabitatCondition.zones(Zone.TIMBERLINE), 4).add(Species.SPRUCE, ModTrees.form(Species.SPRUCE, TreeForm.Kind.DWARF), 900)
+				.add(Species.ROWAN, ModTrees.form(Species.ROWAN, TreeForm.Kind.DWARF), 100);
 		// Step F5 (docs/04 "Projekt F5", research/06 §4.5): the white poplar forest (Populetum albae, on the higher and drier
 		// bars of the willow-poplar forest): a1 poplar 30-70% with white willow, elm, ash and alder; a2 of elm, willow and
 		// maple; the osier and the bird cherry in the regeneration; the managed stands with more poplar (the plantations).
@@ -251,10 +256,32 @@ final class ModVegetation {
 				.add(Species.WHITE_WILLOW, 100).add(Species.HAZEL, 100)
 				.gapRegeneration().add(Species.POPLAR, 350).add(Species.WHITE_WILLOW, 250).add(Species.OSIER, 200).add(Species.ELM, 200)
 				.chances(new float[] {0.85F, 0.65F, 0.55F}, new float[] {0.82F, 0.82F, 0.82F}, 0.7F).subcanopyChance(0.4F);
-		t.rule(HabitatCondition.biomes(MONTANE_SPRUCE_FOREST).withAssociations(Association.ABIETI_PICEETUM), 12)
-				.add(Species.SPRUCE, 582).add(Species.SPRUCE, ModTrees.SPRUCE_MEGA, 18).add(Species.FIR, 300).add(Species.ROWAN, 100);
-		t.rule(HabitatCondition.biomes(MONTANE_SPRUCE_FOREST).withAssociations(Association.GULLY_TALL_HERBS), 3)
-				.add(Species.SPRUCE, 700).add(Species.ROWAN, 300);
+		// Step F6 (docs/04 "Projekt F6", research/06 §3.4-3.5, §4.4). The montane fir-spruce forest (Abieti-Piceetum
+		// montanum, the lower part of the upper montane belt): a1 the narrow candle spruce of the mountains with fir 20-50%
+		// (the biome lies within the fir and beech ranges: full weights), some beech and rowan and a few old spruces of the
+		// lowland form (the broad old trees in place of the vanilla mega spruce); a2 and the regeneration of fir and spruce
+		// with rowan. The gully tall herbs (Athyrietum distentifolii, Adenostylion): an open stand of spruce, rowan and
+		// sycamore over the ferns and the tall herbs.
+		t.planned(HabitatCondition.biomes(MONTANE_SPRUCE_FOREST).withAssociations(Association.ABIETI_PICEETUM), 12)
+				.form(Species.SPRUCE, TreeForm.Kind.MONTANE, 520).add(Species.SPRUCE, 30).full(Species.FIR, 300)
+				.full(Species.BEECH, 100).add(Species.ROWAN, 50)
+				.managed().form(Species.SPRUCE, TreeForm.Kind.MONTANE, 650).add(Species.SPRUCE, 30).full(Species.FIR, 250)
+				.full(Species.BEECH, 50).add(Species.ROWAN, 20)
+				.subcanopy().full(Species.FIR, 450).form(Species.SPRUCE, TreeForm.Kind.MONTANE, 350).full(Species.BEECH, 100)
+				.add(Species.ROWAN, 100)
+				.regeneration().full(Species.FIR, 400).form(Species.SPRUCE, TreeForm.Kind.MONTANE, 350).add(Species.ROWAN, 200)
+				.full(Species.BEECH, 50)
+				.gapRegeneration().form(Species.SPRUCE, TreeForm.Kind.MONTANE, 400).full(Species.FIR, 250).add(Species.ROWAN, 250)
+				.add(Species.SYCAMORE_MAPLE, 100)
+				.chances(new float[] {0.90F, 0.72F, 0.62F}, new float[] {0.85F, 0.85F, 0.85F}, 0.7F).subcanopyChance(0.5F);
+		t.planned(HabitatCondition.biomes(MONTANE_SPRUCE_FOREST).withAssociations(Association.GULLY_TALL_HERBS), 6)
+				.form(Species.SPRUCE, TreeForm.Kind.MONTANE, 600).add(Species.ROWAN, 250).add(Species.SYCAMORE_MAPLE, 150)
+				.managed().form(Species.SPRUCE, TreeForm.Kind.MONTANE, 700).add(Species.ROWAN, 200).add(Species.SYCAMORE_MAPLE, 100)
+				.subcanopy().add(Species.ROWAN, 500).form(Species.SPRUCE, TreeForm.Kind.MONTANE, 400).add(Species.SYCAMORE_MAPLE, 100)
+				.regeneration().add(Species.ROWAN, 500).form(Species.SPRUCE, TreeForm.Kind.MONTANE, 400).add(Species.SYCAMORE_MAPLE, 100)
+				.gapRegeneration().add(Species.ROWAN, 500).form(Species.SPRUCE, TreeForm.Kind.MONTANE, 400)
+				.add(Species.SYCAMORE_MAPLE, 100)
+				.chances(new float[] {0.70F, 0.55F, 0.45F}, new float[] {0.55F, 0.55F, 0.55F}, 0.4F).subcanopyChance(0.4F);
 		// Step F4 (docs/04 "Projekt F4", research/06 §3.1-3.2, §4.1): the pine forests and the bog woodland with the trees
 		// of the planner in their growth forms by site (TreeForm). The wind belt of the coastal pine forest (Empetro nigri-
 		// Pinetum, the associations STUNTED and WINDSWEPT of the coast): low pines leaning away from the sea with banner
@@ -512,13 +539,44 @@ final class ModVegetation {
 				.gapRegeneration().full(Species.BEECH, 450).full(Species.FIR, 200).add(Species.SYCAMORE_MAPLE, 200)
 				.add(Species.ROWAN, 100).add(Species.HAZEL, 50)
 				.chances(new float[] {0.90F, 0.72F, 0.62F}, new float[] {0.95F, 0.95F, 0.95F}, 0.8F).subcanopyChance(0.45F);
-		// Mountains: 3% of the spruces are mega spruces (§8.4).
-		t.rule(HabitatCondition.biomes(MONTANE_SPRUCE_FOREST), 12).add(Species.SPRUCE, 873).add(Species.SPRUCE, ModTrees.SPRUCE_MEGA, 27)
-				.add(Species.ROWAN, 100);
-		t.rule(HabitatCondition.biomes(GRAY_ALDER_FOREST), 8).add(Species.GRAY_ALDER, 700, 1).add(Species.ASH, 150)
-				.add(Species.SPRUCE, 100).add(Species.WHITE_WILLOW, 50, 1);
+		// Step F6 (docs/04 "Projekt F6", research/06 §3.5, §4.4). The montane spruce forest (Plagiothecio-Piceetum, the
+		// upper montane belt): a1 the narrow candle spruce of the mountains 90-100% in clumps (the "rotten" structure of the
+		// high stands, closure 50-80%: the stand map's montane spruce profile with frequent clustered windthrow gaps), a few
+		// old spruces of the lowland form and rowan about 10%; a weak a2 of spruce and rowan; the spruce and the rowan in
+		// the regeneration, more of the rowan and some birch in the gaps. Managed stands: the even-aged spruce plantings.
+		t.planned(HabitatCondition.biomes(MONTANE_SPRUCE_FOREST), 12).form(Species.SPRUCE, TreeForm.Kind.MONTANE, 840)
+				.add(Species.SPRUCE, 60).add(Species.ROWAN, 100)
+				.managed().form(Species.SPRUCE, TreeForm.Kind.MONTANE, 900).add(Species.SPRUCE, 50).add(Species.ROWAN, 50)
+				.subcanopy().form(Species.SPRUCE, TreeForm.Kind.MONTANE, 600).add(Species.ROWAN, 400)
+				.regeneration().form(Species.SPRUCE, TreeForm.Kind.MONTANE, 650).add(Species.ROWAN, 300).add(Species.BIRCH, 50)
+				.gapRegeneration().form(Species.SPRUCE, TreeForm.Kind.MONTANE, 500).add(Species.ROWAN, 350).add(Species.BIRCH, 150)
+				// The narrow crowns close less than the broad ones: high chances keep the closure at 50-80% (simulation).
+				.chances(new float[] {0.95F, 0.85F, 0.78F}, new float[] {0.95F, 0.95F, 0.95F}, 0.6F).subcanopyChance(0.45F);
+		// The gray alder forest (Alnetum incanae, along the mountain streams and on the gravel terraces): a1 gray alder
+		// 60-100% (also on the wet banks) with ash, spruce, sycamore and some white willow; a2 of gray alder, sycamore and
+		// ash; the bird cherry and the osier in the regeneration and the gaps. Managed stands: more spruce.
+		t.planned(HabitatCondition.biomes(GRAY_ALDER_FOREST), 8).add(Species.GRAY_ALDER, 700, 1).add(Species.ASH, 120)
+				.add(Species.SPRUCE, 80).add(Species.SYCAMORE_MAPLE, 60).add(Species.WHITE_WILLOW, 40, 1)
+				// Managed: the even-aged alder stands (coppice) without the spruce, which as the taller tree would take the a1
+				// of a mature stand (simulation: gray alder 15-57% of a1 with 14% spruce in the palette).
+				.managed().add(Species.GRAY_ALDER, 820, 1).add(Species.ASH, 120).add(Species.SYCAMORE_MAPLE, 60)
+				.subcanopy().add(Species.GRAY_ALDER, 550).add(Species.SYCAMORE_MAPLE, 200).add(Species.ASH, 150).add(Species.SPRUCE, 100)
+				.regeneration().add(Species.GRAY_ALDER, 350).add(Species.BIRD_CHERRY, 250).add(Species.OSIER, 150).add(Species.ASH, 150)
+				.add(Species.SYCAMORE_MAPLE, 100)
+				.gapRegeneration().add(Species.GRAY_ALDER, 500).add(Species.OSIER, 200).add(Species.BIRD_CHERRY, 150).add(Species.ASH, 150)
+				.chances(new float[] {0.88F, 0.70F, 0.60F}, new float[] {0.88F, 0.88F, 0.88F}, 0.7F).subcanopyChance(0.5F);
 		// Dwarf pine scrub: no trees but one stunted spruce per chunk (the shrubs come from the understory).
-		t.rule(HabitatCondition.biomes(DWARF_PINE_SCRUB), 1).add(Species.SPRUCE, ModTrees.SPRUCE_STUNTED, 1000);
+		// Step F6: the dwarf spruces and the rowans of the planner (the rowan in a canopy place grows as a tree of the
+		// subcanopy, SpeciesShape.understory), an open stand in the dwarf pine (the creeping shrubs of the understory are the
+		// cover, N7 of its card).
+		t.planned(HabitatCondition.biomes(DWARF_PINE_SCRUB), 1.5F).form(Species.SPRUCE, TreeForm.Kind.DWARF, 700)
+				.add(Species.ROWAN, 300)
+				.managed().form(Species.SPRUCE, TreeForm.Kind.DWARF, 700).add(Species.ROWAN, 300)
+				.subcanopy().add(Species.ROWAN, 600).form(Species.SPRUCE, TreeForm.Kind.DWARF, 400)
+				.regeneration().add(Species.SPRUCE, 500).add(Species.ROWAN, 500)
+				.gapRegeneration().add(Species.SPRUCE, 500).add(Species.ROWAN, 500)
+				// Low chances: 0-3 trees per chunk (N1 of the card; the simulation gave 5-8 at 0.6).
+				.chances(new float[] {0.25F, 0.22F, 0.20F}, new float[] {0.22F, 0.22F, 0.22F}, 0.3F).subcanopyChance(0.15F);
 		// Step F4: the lone trees of the raised bog (the low crooked pine of the planner) and of the heath (pine and birch of
 		// the planner, open-grown at the edges of the open land; the juniper comes from the understory): a rule without a
 		// layered stand, the canopy trees of the M2 pattern.
@@ -851,6 +909,11 @@ final class ModVegetation {
 		return bed(ModBlocks.ground(GroundPlant.HEATHER), weight);
 	}
 
+	/** Step F6: alpine coltsfoot rosettes of 2–4. */
+	private static Plant[] coltsfoot(int weight) {
+		return bed(ModBlocks.ground(GroundPlant.ALPINE_COLTSFOOT), weight);
+	}
+
 	/** Step F4: crowberry mats of 2–4. */
 	private static Plant[] crowberry(int weight) {
 		return bed(ModBlocks.ground(GroundPlant.CROWBERRY), weight);
@@ -967,7 +1030,23 @@ final class ModVegetation {
 				l.feature(stump(Species.BEECH), stumpWeight(MONTANE_BEECH_FOREST, 20, 0.65)),
 				l.feature(stump(Species.FIR), stumpWeight(MONTANE_BEECH_FOREST, 20, 0.25)),
 				l.feature(stump(Species.SPRUCE), stumpWeight(MONTANE_BEECH_FOREST, 20, 0.1)));
-		l.land(biomes(MONTANE_SPRUCE_FOREST), perChunk(0.5), 1, l.feature(deadwoodSubstitute(Species.SPRUCE), 1));
+		// Step F6 (docs/04 "Projekt F6", N10): the montane spruce forest with its candle spruces (the windthrows and the
+		// bark beetle: many uprooted and broken spruces on the shallow plate roots, standing dead spruces; the natural
+		// stands of the Carpathians hold much dead wood) and some rowan, the fir-spruce forest with fir too; the dwarf pine
+		// scrub with its dwarf spruces and rowans; the stumps of the managed stands by the same shares.
+		l.land(biomes(MONTANE_SPRUCE_FOREST).withAssociations(Association.ABIETI_PICEETUM), deadwoodCoverage(MONTANE_SPRUCE_FOREST), 1,
+				l.feature(deadwood(Species.SPRUCE, TreeForm.Kind.MONTANE), 13), l.feature(deadwood(Species.FIR), 6),
+				l.feature(deadwood(Species.ROWAN), 1),
+				l.feature(stump(Species.SPRUCE, TreeForm.Kind.MONTANE), stumpWeight(MONTANE_SPRUCE_FOREST, 20, 0.7)),
+				l.feature(stump(Species.FIR), stumpWeight(MONTANE_SPRUCE_FOREST, 20, 0.3)));
+		l.land(biomes(MONTANE_SPRUCE_FOREST), deadwoodCoverage(MONTANE_SPRUCE_FOREST), 1,
+				l.feature(deadwood(Species.SPRUCE, TreeForm.Kind.MONTANE), 18), l.feature(deadwood(Species.ROWAN), 2),
+				l.feature(stump(Species.SPRUCE, TreeForm.Kind.MONTANE), stumpWeight(MONTANE_SPRUCE_FOREST, 20, 0.95)),
+				l.feature(stump(Species.ROWAN), stumpWeight(MONTANE_SPRUCE_FOREST, 20, 0.05)));
+		l.land(biomes(DWARF_PINE_SCRUB), deadwoodCoverage(DWARF_PINE_SCRUB), 1,
+				l.feature(deadwood(Species.SPRUCE, TreeForm.Kind.DWARF), 7), l.feature(deadwood(Species.ROWAN), 3),
+				l.feature(stump(Species.SPRUCE, TreeForm.Kind.DWARF), stumpWeight(DWARF_PINE_SCRUB, 10, 0.7)),
+				l.feature(stump(Species.ROWAN), stumpWeight(DWARF_PINE_SCRUB, 10, 0.3)));
 		// Step F2 (docs/04 "Projekt F2", N10): the alder carr with its alders and birches (the soft wood breaks and rots
 		// fast in the wet), the ash-alder forest with the alders, the ashes of the ash dieback and the elms of the Dutch elm
 		// disease; the stumps of the managed alder stands.
@@ -981,9 +1060,13 @@ final class ModVegetation {
 				l.feature(stump(Species.BLACK_ALDER), stumpWeight(ASH_ALDER_FOREST, 20, 0.7)),
 				l.feature(stump(Species.ASH), stumpWeight(ASH_ALDER_FOREST, 20, 0.25)),
 				l.feature(stump(Species.ELM), stumpWeight(ASH_ALDER_FOREST, 20, 0.05)));
-		// Gray alder forest: the gray bark of its gray alders (pale oak, §8.4), some spruce.
-		l.land(biomes(GRAY_ALDER_FOREST), perChunk(0.3), 1, l.feature(deadwoodSubstitute(Species.GRAY_ALDER), 8),
-				l.feature(deadwoodSubstitute(Species.SPRUCE), 2));
+		// Step F6: the gray alder forest with its short-lived gray alders (broken by the floods and the snow), some ash and
+		// spruce; the stumps of the managed stands.
+		l.land(biomes(GRAY_ALDER_FOREST), deadwoodCoverage(GRAY_ALDER_FOREST), 1, l.feature(deadwood(Species.GRAY_ALDER), 15),
+				l.feature(deadwood(Species.ASH), 3), l.feature(deadwood(Species.SPRUCE), 2),
+				l.feature(stump(Species.GRAY_ALDER), stumpWeight(GRAY_ALDER_FOREST, 20, 0.75)),
+				l.feature(stump(Species.SPRUCE), stumpWeight(GRAY_ALDER_FOREST, 20, 0.15)),
+				l.feature(stump(Species.ASH), stumpWeight(GRAY_ALDER_FOREST, 20, 0.1)));
 		// Step F5 (docs/04 "Projekt F5", N10): the willow-poplar forest with its willows (the brittle old willows break and
 		// are thrown by the floods, a quarter of the dead willows uprooted) and poplars, the white poplar forest with more
 		// poplar; the elm-ash forest with oak, ash (the ash dieback) and elm (the Dutch elm disease: dying standing, the
@@ -1024,7 +1107,11 @@ final class ModVegetation {
 			Map.entry(BOG_WOODLAND, 1.2),
 			// Step F5: the elm-ash forest about as the ash-alder forest, the willow-poplar forest more (the short-lived,
 			// brittle willows and poplars, the floods) [S].
-			Map.entry(ELM_ASH_FOREST, 1.5), Map.entry(WILLOW_POPLAR_FOREST, 1.3));
+			Map.entry(ELM_ASH_FOREST, 1.5), Map.entry(WILLOW_POPLAR_FOREST, 1.3),
+			// Step F6: the montane spruce forest with the windthrows and the bark beetle (the natural Carpathian spruce
+			// forests: 100-300 m3/ha), the gray alder forest of the short-lived alders, the dwarf pine scrub with its few
+			// trees [S].
+			Map.entry(MONTANE_SPRUCE_FOREST, 2.5), Map.entry(GRAY_ALDER_FOREST, 1.4), Map.entry(DWARF_PINE_SCRUB, 0.4));
 	/** Stumps per chunk of a managed stand of the forests of the tree planner (WISL: 30-80 per ha, 1-2 per chunk) [S]. */
 	static final double STUMPS = 1.5;
 
@@ -1086,7 +1173,9 @@ final class ModVegetation {
 		l.edge(biomes(DRY_PINE_FOREST, COASTAL_PINE_FOREST), Ecotone.Edge.MANTLE, 0.05F, 1, l.feature(ModTrees.SLICE.get(Species.JUNIPER), 1));
 		l.edge(biomes(MOIST_PINE_FOREST), Ecotone.Edge.MANTLE, 0.08F, 1, l.feature(ModTrees.SLICE.get(Species.JUNIPER), 1),
 				l.feature(ModTrees.SLICE.get(Species.ALDER_BUCKTHORN), 1));
-		l.edge(biomes(MONTANE_SPRUCE_FOREST), Ecotone.Edge.MANTLE, 0.05F, 1, l.feature(Species.JUNIPER.path(), 1));
+		// Step F6: the montane spruce forest with the thin-stemmed juniper and the own rowan at its edges.
+		l.edge(biomes(MONTANE_SPRUCE_FOREST), Ecotone.Edge.MANTLE, 0.06F, 1, l.feature(ModTrees.SLICE.get(Species.JUNIPER), 2),
+				l.feature(ModTrees.SLICE.get(Species.ROWAN), 1));
 		// Step F2: the mantles of the alder forests of the tree planner, the thin-stemmed shrubs of the slice: bird cherry and
 		// hazel by the ash-alder forest, alder buckthorn and the gray willow (the M2 osier) by the alder carr.
 		// Step F5: the osier of these mantles is the own osier (choice F2-h).
@@ -1099,14 +1188,19 @@ final class ModVegetation {
 		// without hop and the bird cherry by the willow-poplar forest.
 		l.edge(biomes(ELM_ASH_FOREST), Ecotone.Edge.MANTLE, 0.25F, 1, l.feature(ModTrees.SLICE.get(Species.BIRD_CHERRY), 2),
 				l.feature(ModTrees.BIRD_CHERRY_HOP, 1), l.feature(ModTrees.HAZEL_MANTLE, 1), l.feature(ModTrees.SLICE.get(Species.HAZEL), 1));
-		l.edge(biomes(GRAY_ALDER_FOREST), Ecotone.Edge.MANTLE, 0.06F, 1, l.feature(Species.OSIER.path(), 3),
-				l.feature(Species.HAZEL.path(), 1));
+		// Step F6: the own osier and the thin-stemmed hazel and bird cherry at the edges of the gray alder forest.
+		l.edge(biomes(GRAY_ALDER_FOREST), Ecotone.Edge.MANTLE, 0.2F, 1, l.feature(ModTrees.SLICE.get(Species.OSIER), 3),
+				l.feature(ModTrees.SLICE.get(Species.HAZEL), 1), l.feature(ModTrees.SLICE.get(Species.BIRD_CHERRY), 1));
 		l.edge(biomes(WILLOW_POPLAR_FOREST), Ecotone.Edge.MANTLE, 0.25F, 1, l.feature(ModTrees.SLICE.get(Species.OSIER), 3),
 				l.feature(ModTrees.OSIER_HOP, 1), l.feature(ModTrees.SLICE.get(Species.BIRD_CHERRY), 1));
 		// Step F4: the low crooked pines and birches of the planner at the edge of the bog woodland.
 		l.edge(biomes(BOG_WOODLAND), Ecotone.Edge.MANTLE, 0.02F, 1, l.feature(ModTrees.form(Species.SCOTS_PINE, TreeForm.Kind.STUNTED), 2),
 				l.feature(ModTrees.form(Species.BIRCH, TreeForm.Kind.STUNTED), 1));
-		// About 13 dwarf pines of 21–37 columns each per chunk: the crowns cover about 70% of the ground.
+		// Step F6: the patches of the dwarf mountain pine at the timberline, among the dwarf spruces (the zone's columns
+		// of every biome: the upper edge of the montane spruce forest and the lower edge of the dwarf pine belt).
+		l.land(HabitatCondition.zones(Zone.TIMBERLINE), 0.015F, 1, l.feature(Species.DWARF_MOUNTAIN_PINE.path(), 1));
+		// About 13 dwarf pines per chunk (step F6: the creeping shrubs of the own planner, about 15-40 columns each; with
+		// their overlaps the crowns cover about 50-80% of the ground, Pinetum mugo carpaticum).
 		l.land(biomes(DWARF_PINE_SCRUB), 0.05F, 1, l.feature(Species.DWARF_MOUNTAIN_PINE.path(), 1));
 		l.land(biomes(HEATH), 0.01F, 3, l.feature(Species.JUNIPER.path(), 1));
 		// Step F4 (N7): juniper 0-5% in the dry pine forest, the alder buckthorn (10-30%) in the moist one, a few in the bog
@@ -1137,6 +1231,11 @@ final class ModVegetation {
 				l.feature(ModTrees.SLICE.get(Species.ROWAN), 1));
 		l.land(biomes(MONTANE_BEECH_FOREST), perChunk(1.5), 1, l.feature(ModTrees.SLICE.get(Species.HAZEL), 1),
 				l.feature(ModTrees.SLICE.get(Species.ROWAN), 1));
+		// Step F6 (N7: the shrub layer of the montane spruce forest 0-10%, mostly the rowan and the spruce's own
+		// regeneration): a few rowans; the gray alder forest (10-40%) with the bird cherry, the osier and some hazel.
+		l.land(biomes(MONTANE_SPRUCE_FOREST), perChunk(1), 1, l.feature(ModTrees.SLICE.get(Species.ROWAN), 1));
+		l.land(biomes(GRAY_ALDER_FOREST), perChunk(5), 1, l.feature(ModTrees.SLICE.get(Species.BIRD_CHERRY), 3),
+				l.feature(ModTrees.SLICE.get(Species.OSIER), 2), l.feature(ModTrees.SLICE.get(Species.HAZEL), 1));
 		// Step F2 (N7: the shrub layer 20-50%): the ash-alder forest with the bird cherry (Pruno-Fraxinetum) and some hazel;
 		// the alder carr: no hazel on waterlogged peat, the alder buckthorn, the bird cherry on the tussocks and the gray
 		// willow (Salix cinerea) as the M2 osier. Stage 2 of F5: the own osier of step F5 in its place (choice F5-h) has
@@ -1208,7 +1307,8 @@ final class ModVegetation {
 		l.land(HabitatCondition.zones(Zone.GRAVEL_BAR), List.of(Ground.DIRT), 0.5F, 1, butterbur);
 		l.land(HabitatCondition.zones(Zone.GRAVEL_BAR), 0.05F, 1, osier);
 		l.land(HabitatCondition.zones(Zone.MONTANE_TALL_HERBS), List.of(Ground.DIRT, Ground.MUD), 0.3F, 3, butterbur);
-		l.land(biomes(GRAY_ALDER_FOREST), List.of(Ground.DIRT, Ground.MUD), 0.12F, 3, butterbur);
+		// Step F6: the own butterbur (Petasites hybridus) along the streams of the gray alder forest.
+		l.land(biomes(GRAY_ALDER_FOREST), List.of(Ground.DIRT, Ground.MUD), 0.3F, 3, herb(GroundPlant.BUTTERBUR, 1));
 		l.land(biomes(ASH_ALDER_FOREST), List.of(Ground.DIRT, Ground.MUD), 0.04F, 3, butterbur);
 		// Beach wrack in a line at the seaward edge of the strandline (2 blocks), sea rocket and sea sandwort as sparse
 		// dry grass behind it.
@@ -1288,8 +1388,12 @@ final class ModVegetation {
 		l.blobs(biomes(ASH_ALDER_FOREST), 0.98F, 5, cat(herb(GroundPlant.NETTLE, 24), herb(GroundPlant.TUSSOCK_SEDGE, 16),
 				marigold(4), anemone(4), herb(GroundPlant.MARSH_FERN, 6), fern.withWeight(12), tallGrass.withWeight(6),
 				litter(4)), cat(forestMoss.withWeight(4)), null);
-		l.land(biomes(GRAY_ALDER_FOREST), 0.88F, 3, tallGrass.withWeight(40), largeFern.withWeight(30),
-				fern.withWeight(12), bush.withWeight(10), grass.withWeight(3));
+		// Step F6 (docs/04 "Projekt F6", research/06 §4.4, N8 70-100%): the gray alder forest (Alnetum incanae), the
+		// butterbur carpets by the streams with the nettle, the tall grass (Chaerophyllum hirsutum, Stellaria nemorum as
+		// the tall herbs of M2), the ferns and the marsh marigold.
+		l.blobs(biomes(GRAY_ALDER_FOREST), 0.95F, 5, cat(herb(GroundPlant.BUTTERBUR, 28), herb(GroundPlant.NETTLE, 16),
+				tallGrass.withWeight(14), largeFern.withWeight(10), fern.withWeight(8), marigold(5), herb(GroundPlant.TUSSOCK_SEDGE, 4)),
+				cat(forestMoss.withWeight(4)), null);
 		// Step F5 (docs/04 "Projekt F5", N8 70-100%, N9): the own herb layer of the floodplain forests in rounded patches.
 		// The willow-poplar forest (Salicetum albae): the nettle and the reed canary grass of the flood deposits dominant, the
 		// lesser celandine in spring, sedges and tall grass, no moss on the floor the floods cover with silt. The elm-ash forest
@@ -1412,12 +1516,23 @@ final class ModVegetation {
 				cat(forestMoss.withWeight(12)), ModBlocks.mossyPodzol().defaultBlockState(), true);
 		l.blobs(biomes(UPLAND_FIR_FOREST), 0.95F, 5, cat(mossFloor(24), woodSorrel(14), bilberry(10, false), fern.withWeight(9),
 				largeFern.withWeight(3), whiteWoodRush(5), sweetWoodruff(4), needles(8, false)), cat(forestMoss.withWeight(14)), null);
-		l.land(biomes(MONTANE_SPRUCE_FOREST).withAssociations(Association.GULLY_TALL_HERBS), 0.8F, 3,
-				tallGrass.withWeight(50), largeFern.withWeight(30));
-		l.land(biomes(MONTANE_SPRUCE_FOREST), 0.85F, 4, moss.withWeight(45), fern.withWeight(15), bush.withWeight(20),
-				largeFern.withWeight(5));
-		l.land(biomes(DWARF_PINE_SCRUB), 0.6F, 3, moss.withWeight(25), bush.withWeight(20), fern.withWeight(8),
-				grass.withWeight(10));
+		// Step F6 (docs/04 "Projekt F6", research/06 §3.5, §4.4; N8, N9). The montane spruce forest (Plagiothecio-
+		// Piceetum): mosses 60-95% (the feather moss floor under one segment of needle litter, the own forest moss in
+		// cushions), the bilberry 20-60% on mossy podzol, the hairy small-reed in patches (more in the gaps), the alpine
+		// coltsfoot, the wood sorrel and the ferns. The gully tall herbs (Athyrietum distentifolii): the alpine lady fern
+		// dominant with the large fern, the small-reed and the tall herbs. The dwarf pine scrub (Pinetum mugo): bilberry,
+		// moss, the crowberry, the small-reed and the coltsfoot between the creeping shrubs.
+		l.blobs(biomes(MONTANE_SPRUCE_FOREST).withAssociations(Association.GULLY_TALL_HERBS), 0.95F, 5,
+				cat(herb(GroundPlant.ALPINE_LADY_FERN, 34), largeFern.withWeight(12), herb(GroundPlant.HAIRY_SMALL_REED, 10),
+						tallGrass.withWeight(10), woodSorrel(8), fern.withWeight(6)),
+				cat(forestMoss.withWeight(10)), null);
+		l.blobs(biomes(MONTANE_SPRUCE_FOREST), 0.97F, 5,
+				cat(mossFloor(32), bilberry(30, true), herb(GroundPlant.HAIRY_SMALL_REED, 10), coltsfoot(6), woodSorrel(4),
+						fern.withWeight(3), needles(3, true)),
+				cat(forestMoss.withWeight(12)), ModBlocks.mossyPodzol().defaultBlockState(), true);
+		l.blobs(biomes(DWARF_PINE_SCRUB), 0.9F, 4,
+				cat(bilberry(28, true), mossFloor(20), herb(GroundPlant.HAIRY_SMALL_REED, 14), crowberry(10), coltsfoot(8)),
+				cat(forestMoss.withWeight(10)), ModBlocks.mossyPodzol().defaultBlockState(), true);
 		l.land(biomes(ALPINE_GRASSLAND), 0.8F, 3, grass.withWeight(60), bush.withWeight(12), b(Blocks.AZURE_BLUET, 3),
 				b(Blocks.ALLIUM, 2), fern.withWeight(3));
 		l.land(biomes(WHITE_DUNE), 0.25F, 3, b(Blocks.TALL_DRY_GRASS, 5), dryGrass.withWeight(5));

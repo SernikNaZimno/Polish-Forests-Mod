@@ -109,6 +109,15 @@ MARIGOLD_LEAVES = [
 ]
 
 
+# Step F6: alpine coltsfoot (Homogyne alpina: small kidney-shaped leathery leaves, glossy dark green, the older ones
+# dull, in flat rosettes; the purple flower heads drawn with the liverleaf's flower sprites).
+COLTSFOOT_LEAVES = [
+    ['01110', '12211', '12131', '13331', '04440'],
+    ['0110', '1241', '1331', '0440'],
+    ['041', '121', '134'],
+]
+
+
 # Step F3: glandular toothwort (Dentaria glandulosa: whorls of three-parted, toothed leaves high on the stem; nodding
 # purple-violet four-petalled flowers in a short raceme) and white wood-rush (Luzula luzuloides: tufts of narrow, hairy
 # grass-like leaves; loose clusters of small whitish flowers on thin stalks).

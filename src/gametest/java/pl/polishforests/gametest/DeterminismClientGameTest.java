@@ -112,16 +112,18 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 	 * corner 40 blocks west of the plot, not 64, so 3 chunks lie between it and the oak_hornbeam area: the full chunks of
 	 * that area decorate their neighbors 2 chunks out, which reached the bog area before its terrain hash); step F5: the
 	 * floodplain forest of {@code ForestPerformance.FLOOD_SITE} (realistic: the plot elm_ash_natural_1; gameplay: a place of
-	 * the willow-poplar and the elm-ash forest, no plot there), the same for a reference from before F5.
+	 * the willow-poplar and the elm-ash forest, no plot there), the same for a reference from before F5; step F6: the
+	 * montane spruce forest of {@code ForestPerformance.MONTANE_SITE} (realistic: a place of the forest in the natural mode,
+	 * no plot there; gameplay: the plot montane_spruce_managed_1), the same for a reference from before F6.
 	 */
 	private static final int[][] AREAS_REAL = {{-19_484 - 64, 11_253 - 64}, {154_834 - 64, 1_058_738 - 64}, {438 - 64, -730 - 64},
 			{-699 - 64, 1_924 - 64}, {-7_793 - 64, -9_133 - 64}, {2_339 - 64, 29_627 - 64}, {46_472 - 64, 15_684 - 64},
-			{-2_507 - 64, 5_061 - 64}, {-2_140 - 64, 10_559 - 64}};
+			{-2_507 - 64, 5_061 - 64}, {-2_140 - 64, 10_559 - 64}, {75_072 - 64, 73_120 - 64}};
 	private static final int[][] AREAS_GAMEPLAY = {{-1_851 - 64, 6_022 - 64}, {27_609 - 64, 3_254 - 64}, {-1_785 - 64, 886 - 64},
 			{-1_195 - 64, -583 - 64}, {-2_004 - 64, -3_609 - 64}, {-5_971 - 64, 1_387 - 64}, {1_706 - 64, 3_775 - 64},
-			{-1_640 - 40, 864 - 64}, {-2_044 - 64, -5_087 - 64}};
+			{-1_640 - 40, 864 - 64}, {-2_044 - 64, -5_087 - 64}, {3_488 - 64, 22_644 - 64}};
 	private static final String[] AREA_NAMES = {"river", "beskids", "oak_hornbeam", "fresh_pine", "lowland_beech", "alder_carr",
-			"upland_fir", "bog_woodland", "floodplain"};
+			"upland_fir", "bog_woodland", "floodplain", "montane_spruce"};
 	private static final int SIZE = 8;
 	/** Distance from a chunk border (0 = edge column) used in the report of groups of differing columns. */
 	static final int BORDER_BAND = 3;
@@ -918,8 +920,10 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 	 * of an F or B column inside the area (the ramp of {@code Ecotone}, the crowns); step F4: {@code H} on the open habitats
 	 * whose decoration a step F changed ({@link #STEP_OPEN}: the single planner trees and the plants of the heath and the
 	 * raised bog, the fringe the heath shares with the gray dune; step F5: the osier scrub and the zones of the riverside
-	 * willows and the osier scrub along the rivers, {@link #STEP_OPEN_ZONES}) or within {@value #STEP_REACH} blocks of them; {@code .}
-	 * elsewhere. Not compared; the comparison with a reference of the build before the step reports the differing decorated
+	 * willows and the osier scrub along the rivers, {@link #STEP_OPEN_ZONES}; step F6: the timberline) or within
+	 * {@value #STEP_REACH} blocks of them; step F6: {@code R} in the forests of the transect (the slice forests, whose
+	 * understory and mantles have the planner's rowan of step F6 in place of the thin placeholder) or within
+	 * {@value #STEP_REACH} blocks of them; {@code .} elsewhere. Not compared; the comparison with a reference of the build before the step reports the differing decorated
 	 * columns by zone.
 	 */
 	private static final String STEP_ZONE = "stepzone ";
@@ -935,10 +939,12 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 			pl.polishforests.worldgen.habitat.HabitatBiome.GRAY_DUNE, pl.polishforests.worldgen.habitat.HabitatBiome.WILLOW_SCRUB};
 	/**
 	 * Step F5: the waterside zones whose decoration step F5 changed (zone {@code H}): the osier scrub of the banks and the
-	 * riverside willows (trees of the planner with hop, the tall herbs).
+	 * riverside willows (trees of the planner with hop, the tall herbs); step F6: the timberline (the planner's dwarf
+	 * spruces and rowans, the patches of dwarf pine).
 	 */
 	private static final pl.polishforests.worldgen.habitat.Zone[] STEP_OPEN_ZONES = {
-			pl.polishforests.worldgen.habitat.Zone.WILLOW_SCRUB, pl.polishforests.worldgen.habitat.Zone.RIVERSIDE_WILLOWS};
+			pl.polishforests.worldgen.habitat.Zone.WILLOW_SCRUB, pl.polishforests.worldgen.habitat.Zone.RIVERSIDE_WILLOWS,
+			pl.polishforests.worldgen.habitat.Zone.TIMBERLINE};
 
 	/** The zones of the forests of the steps F of an area (see {@link #STEP_ZONE}). */
 	private static char[] stepZones(ServerLevel level, int ox, int oz, Area area) {
@@ -955,6 +961,7 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 		float[] s = new float[ForestBlend.FORESTS.length + 1];
 		boolean[] near = new boolean[side * side];
 		boolean[] open = new boolean[side * side];
+		boolean[] slice = new boolean[side * side];
 		for (int cx = 0; cx < SIZE; cx++) {
 			for (int cz = 0; cz < SIZE; cz++) {
 				ForestBlend.Field field = blend.field(ox + cx, oz + cz);
@@ -974,6 +981,9 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 							belt |= s[b] > 0;
 						}
 						zone[i] = own ? 'F' : belt ? 'B' : '.';
+						for (int b = 0; b < transect; b++) {
+							slice[(cx * 16 + x) * side + cz * 16 + z] |= biome.is(pl.polishforests.worldgen.chunk.ModBiomeKeys.key(ForestBlend.FORESTS[b]));
+						}
 						near[(cx * 16 + x) * side + cz * 16 + z] = own || belt;
 						for (var o : STEP_OPEN) {
 							open[(cx * 16 + x) * side + cz * 16 + z] |= biome.is(pl.polishforests.worldgen.chunk.ModBiomeKeys.key(o));
@@ -989,6 +999,8 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 		// Within STEP_REACH (Chebyshev) of an F or B column: a summed table of the near columns; then the same for H.
 		reach(zone, near, 'B');
 		reach(zone, open, 'H');
+		// Step F6: the rowan of the planner in the slice forests (and the reach of its crowns).
+		reach(zone, slice, 'R');
 		return zone;
 	}
 
@@ -1024,17 +1036,18 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 	 * step F4 and their reach, elsewhere).
 	 */
 	private static String zoneReport(long[] ours, long[] theirs, String zones) {
-		int[] differ = new int[4];
-		int[] columns = new int[4];
+		int[] differ = new int[5];
+		int[] columns = new int[5];
 		for (int i = 0; i < ours.length && i < zones.length(); i++) {
 			char c = zones.charAt(i);
-			int z = c == 'F' ? 0 : c == 'B' ? 1 : c == 'H' ? 2 : 3;
+			int z = c == 'F' ? 0 : c == 'B' ? 1 : c == 'H' ? 2 : c == 'R' ? 4 : 3;
 			columns[z]++;
 			differ[z] += ours[i] != theirs[i] ? 1 : 0;
 		}
 		return String.format(Locale.ROOT, "in the forests %d of %d, in their belt and reach %d of %d, on the heath, raised bog, "
-				+ "gray dune, osier scrub and riverside willows and their reach %d of %d, elsewhere %d of %d", differ[0], columns[0], differ[1], columns[1], differ[2],
-				columns[2], differ[3], columns[3]);
+				+ "gray dune, osier scrub, riverside willows and timberline and their reach %d of %d, in the slice forests (the rowan of "
+				+ "step F6) and their reach %d of %d, elsewhere %d of %d", differ[0], columns[0], differ[1], columns[1], differ[2],
+				columns[2], differ[4], columns[4], differ[3], columns[3]);
 	}
 
 	/** Differing blocks against the block-by-block file next to the reference; empty if that file is missing. */

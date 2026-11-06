@@ -400,8 +400,14 @@ class TreeShapePlanTest {
 				int lower = TreeShapePlan.split(SEED, CrownLayer.REGENERATION, r.ageAt(x, z), x, z);
 				String at = (w ? "wood" : "leaf") + " at " + y + " (split " + lower + "/" + upper + ") in " + r;
 				// The trunk and the dry stubs (within two columns of the trunk base: lean and stubs) pass the surface below their layer.
-				boolean trunk = w && Math.max(Math.abs(x - r.x()), Math.abs(z - r.z())) <= 2;
-				switch (r.layer()) {
+				// Step F5: the low fork of the white willow, its limbs below the floor of the canopy next to the trunk (step
+				// F6: the gray alder before it in lone() moved the willows to other places, where a limb reaches 4 columns).
+				int reach = SpeciesShape.lowFork(r.species()) ? 4 : 2;
+				boolean trunk = w && Math.max(Math.abs(x - r.x()), Math.abs(z - r.z())) <= reach;
+				// Step F6: the rowan in a canopy place of a stand grows as a tree of the subcanopy.
+				CrownLayer layer = r.layer() == CrownLayer.CANOPY && !r.openGrown() && SpeciesShape.understory(r.species())
+						? CrownLayer.SUBCANOPY : r.layer();
+				switch (layer) {
 					case CANOPY -> assertTrue(r.openGrown() || y >= upper || trunk, at);
 					case SUBCANOPY -> assertTrue(y < upper && (y >= lower || trunk), at);
 					case REGENERATION -> assertTrue(y < lower, at);
@@ -988,8 +994,10 @@ class TreeShapePlanTest {
 	void theDefaultFormKeepsTheTreesOfTheEarlierSteps() {
 		long h = 17;
 		for (TreeRequest r : lone(4)) {
-			if (r.species() == Species.WHITE_WILLOW || r.species() == Species.POPLAR) {
-				// Step F5: the new species come last in lone(), after the draws of the earlier ones.
+			if (r.species() == Species.WHITE_WILLOW || r.species() == Species.POPLAR || r.species() == Species.GRAY_ALDER
+					|| r.species() == Species.ROWAN) {
+				// Steps F5 and F6: the new species come after the earlier ones in lone() (the gray alder after the black
+				// alder, the last species of the checksum before it), so the draws of the earlier ones stay.
 				continue;
 			}
 			TreeVoxels v = TreeShapePlan.plan(r);

@@ -18,7 +18,9 @@ import java.util.Locale;
  * leaning away from the sea, with a banner crown: its branches on the windward side short and bare, the crown on the lee
  * side ({@link #leeAzimuth}, from the coast model);</li>
  * <li>{@link Kind#MULTI_STEM}: the downy birch of the birch bog woodland (Vaccinio uliginosi-Betuletum pubescentis), often
- * with two or three stems from one stool (the stool of the alder, step F2) and lower than in a fresh forest.</li>
+ * with two or three stems from one stool (the stool of the alder, step F2) and lower than in a fresh forest;</li>
+ * <li>{@link Kind#MONTANE} (step F6): the narrow "candle" spruce of the montane spruce forest;</li>
+ * <li>{@link Kind#DWARF} (step F6): the dwarf spruce of the timberline and of the dwarf pine scrub.</li>
  * </ul>
  * In a stand the layer split surfaces scale with the form ({@link Kind#split}), so the low canopy of a bog keeps its
  * crown above the split; the trees of a stand with one form see the same surfaces.
@@ -45,7 +47,17 @@ public record TreeForm(Kind kind, float leeAzimuth) {
 		/** The low pine of the coastal wind belt with a banner crown on the lee side (5-15 m). */
 		WINDSWEPT(0.5F, 0.75F, 1.0F, 0.18F, 0.5F, 1.4F, 0.15F, 0, 0.3F),
 		/** The birch of the birch bog woodland, often of several stems. */
-		MULTI_STEM(0.78F, 0.6F, 0.85F, 0.08F, 0.78F, 0.5F, 0.2F, 0.7F, 0);
+		MULTI_STEM(0.78F, 0.6F, 0.85F, 0.08F, 0.78F, 0.5F, 0.2F, 0.7F, 0),
+		/**
+		 * Step F6: the spruce of the upper montane belt (Plagiothecio-Piceetum, 15-25 m), a slender "candle" with a narrow
+		 * crown down to low on the trunk.
+		 */
+		MONTANE(0.82F, 0.86F, 0.62F, 0.12F, 0.82F, 0, 0, 0, 0),
+		/**
+		 * Step F6: the dwarf spruce of the timberline and the dwarf pine scrub (5-12 m at the timberline, lower among the
+		 * dwarf pine), a crooked, short trunk with a crown nearly to the ground.
+		 */
+		DWARF(0.36F, 0.5F, 0.72F, 0.3F, 0.36F, 0.7F, 0.3F, 0, 0);
 
 		private final float height;
 		private final float dbh;

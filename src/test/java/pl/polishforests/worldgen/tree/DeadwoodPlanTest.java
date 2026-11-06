@@ -60,7 +60,10 @@ class DeadwoodPlanTest {
 						DeadwoodVoxels v = plan(s, kind, age, true, x, z, flat());
 						plans++;
 						if (v.empty()) {
-							empty.merge(kind, 1, Integer::sum);
+							// Step F6: the thin stem of the rowan (a tree of the subcanopy in a stand) gives no log of 2 px.
+							if (!SpeciesShape.understory(s)) {
+								empty.merge(kind, 1, Integer::sum);
+							}
 							continue;
 						}
 						checkWood(v, flat());

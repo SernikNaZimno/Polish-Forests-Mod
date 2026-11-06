@@ -416,11 +416,13 @@ final class NormsCensus {
 		// one, so a mixed plot fits neither norm); the share is reported and a mixed plot's N10 rows are not judged.
 		double share = standShare(level, g, area, forest);
 		// Step F4 (stage 2): also the birch bog woodland (BMb) of the bog woodland, whose composition norms differ; step F5:
-		// the white poplar forest (Populetum albae) of the willow-poplar forest.
+		// the white poplar forest (Populetum albae) of the willow-poplar forest; step F6: the fir-spruce forest (Abieti-
+		// Piceetum) of the montane spruce forest.
 		ForestNorms.Site site = forest.biome() == pl.polishforests.worldgen.habitat.HabitatBiome.LOWLAND_BEECH_FOREST
 				|| forest.biome() == pl.polishforests.worldgen.habitat.HabitatBiome.MONTANE_BEECH_FOREST
 				|| forest.biome() == pl.polishforests.worldgen.habitat.HabitatBiome.BOG_WOODLAND
-				|| forest.biome() == pl.polishforests.worldgen.habitat.HabitatBiome.WILLOW_POPLAR_FOREST ? site(level, x, z) : null;
+				|| forest.biome() == pl.polishforests.worldgen.habitat.HabitatBiome.WILLOW_POPLAR_FOREST
+				|| forest.biome() == pl.polishforests.worldgen.habitat.HabitatBiome.MONTANE_SPRUCE_FOREST ? site(level, x, z) : null;
 		boolean mixed = share < STAND_SHARE;
 		rows.add(row(c, forest, STAND_SHARE_METRIC, "", share, null, ForestNorms.Verdict.NONE));
 		PolishForests.LOG.info(String.format(Locale.ROOT, "[slice] %s: share of the plot's forest columns in the %s stand %.3f%s",
