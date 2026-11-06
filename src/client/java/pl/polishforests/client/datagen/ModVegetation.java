@@ -1139,10 +1139,12 @@ final class ModVegetation {
 				l.feature(ModTrees.SLICE.get(Species.ROWAN), 1));
 		// Step F2 (N7: the shrub layer 20-50%): the ash-alder forest with the bird cherry (Pruno-Fraxinetum) and some hazel;
 		// the alder carr: no hazel on waterlogged peat, the alder buckthorn, the bird cherry on the tussocks and the gray
-		// willow (Salix cinerea) as the M2 osier.
+		// willow (Salix cinerea) as the M2 osier. Stage 2 of F5: the own osier of step F5 in its place (choice F5-h) has
+		// narrower stems than the M2 osier, the shrub layer of the alder carr fell from 17-20% to 15-18% of the card (N7
+		// 20-50%, tolerance from 16%), so the alder carr has a shrub more per chunk (choice F5-r).
 		l.land(biomes(ASH_ALDER_FOREST), perChunk(7), 1, l.feature(ModTrees.SLICE.get(Species.BIRD_CHERRY), 4),
 				l.feature(ModTrees.SLICE.get(Species.HAZEL), 1));
-		l.land(biomes(ALDER_CARR), perChunk(7), 1, l.feature(ModTrees.SLICE.get(Species.ALDER_BUCKTHORN), 3),
+		l.land(biomes(ALDER_CARR), perChunk(8), 1, l.feature(ModTrees.SLICE.get(Species.ALDER_BUCKTHORN), 3),
 				l.feature(ModTrees.SLICE.get(Species.BIRD_CHERRY), 1), l.feature(ModTrees.SLICE.get(Species.OSIER), 1));
 		// Gray dune: creeping willow as an osier.
 		l.land(biomes(GRAY_DUNE), 0.01F, 3, l.feature(Species.OSIER.path(), 1));

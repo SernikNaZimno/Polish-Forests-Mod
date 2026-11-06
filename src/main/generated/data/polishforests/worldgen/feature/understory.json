@@ -513,7 +513,7 @@
       "biomes": [
         "alder_carr"
       ],
-      "coverage": 0.02734375,
+      "coverage": 0.03125,
       "plants": [
         {
           "feature": "polishforests:shrub/alder_buckthorn_thin",

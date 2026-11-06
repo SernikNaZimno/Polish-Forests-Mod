@@ -22,7 +22,10 @@ import java.util.List;
  * does; also every floor difference within {@link #CONTACT} blocks of the area's edge, whose objects outside the area
  * are not compared, and (stage 2 of step F3) every floor difference in a column near a vanilla structure piece, whose
  * feature elements (the fern and grass patches of a village) spread into the neighbor chunks and meet its floor in the
- * order of the chunks, as in vanilla;</li>
+ * order of the chunks, as in vanilla; and (stage 2 of step F5) a floor difference right above a contact difference of
+ * its column, the upper part of a tall plant (the upper half of a tall grass, a dripleaf stem, a cane) whose lowest block a
+ * neighbor's object or a ground difference explains: the plant stands or not as a whole, so its upper half, three
+ * blocks above the ground difference, is no free floor;</li>
  * <li>{@link Kind#FLOOR_FREE}: any other difference of the floor: the floor layers away from every object, which are a
  * pure function of the world seed, the position and the settings since step L1 and must be identical in any order.</li>
  * </ul>
@@ -91,9 +94,12 @@ final class WindowDiff {
 			columnAt[gx(c, size) * side + gz(c, size)] = c;
 		}
 		for (int c = 0; c < columns; c++) {
+			// Whether the block below in this column is a contact difference (the lower part of a tall plant, stage 2 of F5).
+			boolean contactBelow = false;
 			for (int k = 0; k < window; k++) {
 				int i = c * window + k;
 				if (a[i] == b[i]) {
+					contactBelow = false;
 					continue;
 				}
 				Kind kind;
@@ -104,9 +110,10 @@ final class WindowDiff {
 				} else if (source[i]) {
 					kind = Kind.OBJECT;
 				} else {
-					kind = structure != null && structure[c] || near(source, ground, columnAt, c, ground[c] - below + k, size, window,
-							below) ? Kind.FLOOR_CONTACT : Kind.FLOOR_FREE;
+					kind = structure != null && structure[c] || contactBelow || near(source, ground, columnAt, c, ground[c] - below + k,
+							size, window, below) ? Kind.FLOOR_CONTACT : Kind.FLOOR_FREE;
 				}
+				contactBelow = kind == Kind.FLOOR_CONTACT;
 				counts[kind.ordinal()]++;
 				if (kind != Kind.UNDERGROUND && blocks.size() < limit) {
 					blocks.add(new Block(gx(c, size), ground[c] - below + k, gz(c, size), k, kind, a[i], b[i]));

@@ -111,6 +111,27 @@ class WindowDiffTest {
 	}
 
 	@Test
+	void upperPartOfATallPlantFollowsItsLowerPart() {
+		// Stage 2 of F5: a tall grass of two blocks only in the second world, its lower half 2 blocks above a ground
+		// difference of the next column (a vanilla clay disk), its upper half 3 blocks above it.
+		int[][] w = flat();
+		w[1][column(8, 9) * WINDOW + BELOW - 1] = 0;
+		w[1][column(8, 8) * WINDOW + BELOW + 1] = 2;
+		w[1][column(8, 8) * WINDOW + BELOW + 2] = 3;
+		WindowDiff.Result r = diff(w);
+		assertEquals(1, r.count(WindowDiff.Kind.GROUND));
+		assertEquals(2, r.count(WindowDiff.Kind.FLOOR_CONTACT));
+		assertEquals(0, r.count(WindowDiff.Kind.FLOOR_FREE));
+		// A floor difference above a block that is the same in both worlds is not a part of that plant.
+		int[][] v = flat();
+		v[1][column(8, 9) * WINDOW + BELOW - 1] = 0;
+		v[0][column(8, 8) * WINDOW + BELOW + 1] = 2;
+		v[1][column(8, 8) * WINDOW + BELOW + 1] = 2;
+		v[1][column(8, 8) * WINDOW + BELOW + 2] = 3;
+		assertEquals(1, diff(v).count(WindowDiff.Kind.FLOOR_FREE));
+	}
+
+	@Test
 	void floorAtTheEdgeOfTheAreaIsContact() {
 		int[][] w = flat();
 		w[0][column(1, 8) * WINDOW + BELOW] = 2;

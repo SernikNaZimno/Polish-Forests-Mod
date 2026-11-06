@@ -309,6 +309,11 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 		long[] deepColumns = new long[n];
 		long[] deepTrunks = new long[n];
 		long[] deepVanilla = new long[n];
+		// Stage 2 of F5: the vanilla log trunks in all columns of a forest of the planner (report; the narrow belts of the
+		// willow-poplar forest have no deep columns), and the stems of the planner trees the census of the other habitats
+		// does not count as trees (TreeBases: the coppice stems of the riverside willows, their root flares).
+		long[] sliceVanilla = new long[n];
+		long[] stems = new long[n];
 		// Stage 2 of F3: where the vanilla log trunks deep in a forest stand (position, block and zone of the column).
 		List<String> deepVanillaAt = new ArrayList<>();
 		ForestBlend blend = gen.forestBlend(seed);
@@ -371,6 +376,8 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 					if (SLICE_FORESTS.contains(b)) {
 						sliceColumns[b.ordinal()]++;
 						sliceTrunks[b.ordinal()] += tree ? 1 : 0;
+						sliceVanilla[b.ordinal()] += trunk && !BuiltInRegistries.BLOCK.getKey(level.getBlockState(new BlockPos(x, top + 1, z))
+								.getBlock()).getNamespace().equals(PolishForests.MOD_ID) ? 1 : 0;
 						ForestBlend.Field field = fields[(x >> 4) - cx0][(z >> 4) - cz0];
 						if (field == null) {
 							field = blend.field(x >> 4, z >> 4);
@@ -391,7 +398,11 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 						}
 					} else {
 						expected[b.ordinal()] += stand.treesPerChunk(code) / 256.0;
-						trunks[b.ordinal()] += trunk ? 1 : 0;
+						// Stage 2 of F5: the trees of the planner outside its forests (the riverside willows of step F5 in the
+						// gray alder forest and the meadows) count as N1 does, as in the forests of the planner (TreeBases);
+						// the placeholder trees of vanilla logs count as before.
+						trunks[b.ordinal()] += tree ? 1 : 0;
+						stems[b.ordinal()] += trunk && !tree ? 1 : 0;
 					}
 					net.minecraft.world.level.block.state.BlockState ground = level.getBlockState(new BlockPos(x, top, z));
 					if (b == HabitatBiome.BEACH || b == HabitatBiome.WHITE_DUNE) {
@@ -417,7 +428,8 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 			if (e < 1 && t == 0) {
 				continue;
 			}
-			report.append(String.format(Locale.ROOT, " %s %d / %.1f;", b.id(), t, e));
+			report.append(String.format(Locale.ROOT, " %s %d / %.1f%s;", b.id(), t, e,
+					stems[b.ordinal()] > 0 ? String.format(Locale.ROOT, " (%d stems not trees)", stems[b.ordinal()]) : ""));
 			if (e >= CENSUS_MIN_EXPECTED && Math.abs(t - e) > CENSUS_TOLERANCE * e) {
 				failures.add(String.format(Locale.ROOT, "%s %d trunks instead of %.1f", b.id(), t, e));
 			}
@@ -429,7 +441,8 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 				continue;
 			}
 			double perChunk = 256.0 * sliceTrunks[b.ordinal()] / columns;
-			report.append(String.format(Locale.ROOT, " %s %.1f (%d columns);", b.id(), perChunk, columns));
+			report.append(String.format(Locale.ROOT, " %s %.1f (%d columns, %d vanilla log trunks);", b.id(), perChunk, columns,
+					sliceVanilla[b.ordinal()]));
 			if (columns >= SLICE_MIN_COLUMNS && (perChunk < SLICE_N1_LOW || perChunk > SLICE_N1_HIGH)) {
 				failures.add(String.format(Locale.ROOT, "%s %.1f trunks per chunk outside the N1 envelope %.1f-%.1f", b.id(), perChunk,
 						SLICE_N1_LOW, SLICE_N1_HIGH));

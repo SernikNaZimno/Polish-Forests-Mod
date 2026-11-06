@@ -563,7 +563,7 @@ Każdy krok F jest ukończony dopiero, gdy oprócz własnych kryteriów spełnia
 ### F5. Łęgi wiązowo-jesionowe i wierzbowo-topolowe, wikliny (A, 1,5–2 dnia)
 
 - **Zakres:** (1) nowe gatunki z ZG: **wierzba biała** (gruby, pochylony albo rozwidlony pień, szeroka korona, wąskie srebrzyste liście) i **topola** (jeden gatunek `POPLAR`: wysoka, 25–40 m, szeroka korona; topola biała i czarna rozdzielone dopiero w M3); krzew **wiklina** (`OSIER`: gęste, proste pędy 2–6 m) w paletach podszytu i w `willow_scrub` (pokrycie 80–100%); (2) **łęg wiązowo-jesionowy** (`elm_ash_forest`): dąb, jesion, wiąz (z F2), klon, lipa, a2 wiąz, podszyt czeremchy; **łęg wierzbowo-topolowy** (`willow_poplar_forest`, wariant `Association.POPULETUM_ALBAE`); drzewa strefy `Zone.RIVERSIDE_WILLOWS` (wierzba, olsza) z planera; (3) runo: nowe rośliny (domyślnie 4: mozga trzcinowata, ziarnopłon wiosenny, czosnek niedźwiedzi, chmiel jako pnącze na pniach i krzewach z fazami) i pokrzywa z F2; (4) martwe drewno (kłody, wywrócone wierzby), nabiegi topoli i wiązu; (5) przejścia z OlJ, olsem, grądem i wiklinami, ostry tylko brzeg wody; (6) karta norm obu łęgów i wiklin (pokrycie krzewów).
-- **Ukończony, gdy:** KF-1 … KF-7 (W1: tylko regresja); chmiel i inne pnącza nie zajmują miejsca liści i roślin (zasada L1). **Stan (2026-11-06): etap 1 zrobiony („Projekt F5”, G.46): wierzba biała, topola i wiklina z ZG, oba łęgi i wierzby nadrzeczne z drzewami planera, 4 rośliny runa z chmielem według zasady L1, `ForestBlend` z 15 lasami, karta obu łęgów i wiklin; przebiegi w grze w etapie 2.**
+- **Ukończony, gdy:** KF-1 … KF-7 (W1: tylko regresja); chmiel i inne pnącza nie zajmują miejsca liści i roślin (zasada L1). **Stan (2026-11-06): zrobione z odstępstwem („Projekt F5”, „Stan po F5”, G.46): wierzba biała, topola i wiklina z ZG (wierzbę i topolę FallingTree i Tree Harvester ścinają w całości), oba łęgi i wierzby nadrzeczne z drzewami planera, 4 rośliny runa z chmielem według zasady L1 (`determinism`: `floor_free` 0, chmiel nie zajmuje miejsca liści i roślin), `ForestBlend` z 15 lasami; KF-1 (Lł wiązowo-jesionowy w głębi 10,4 drzewa planera na chunk, 0 kłód wanilii; Lł wierzbowo-topolowy bez głębi, F5-w), KF-3 … KF-7 spełnione (`determinism` wobec F4: teren identyczny, poza strefami kroków F i `H` 0 różnic; KF-6 łęgów 0,735 / 0,765 × M2); KF-2 poza N8 i N10 Lł wiązowo-jesionowego (F5-v), łęgi GAMEPLAY i wikliny bez powierzchni (F5-q, F5-w) — do CP-D; z C2ME DP-128 i komnata prób DP-139, `present_day` z jaskiniami DP-126.**
 - **Ryzyko:** wysokie (nowe gatunki, pnącze z fazami; drzewa przy wodzie).
 
 ### F6. Świerczyna górska, olszyna górska, granica lasu i kosodrzewina (A, 1,5–2 dnia)
@@ -4150,6 +4150,75 @@ Krok F5 planu „Kroki F” (§3, G.41): łęg wiązowo-jesionowy (`elm_ash_fore
 - `tools/dev/run-tests --reuse fastTest` PASS.
 - Wyniki i przebiegi gry w „Stan po F5”, według `python tools/dev/test_plan.py 6205f6f`.
 
+## Stan po F5 (2026-11-06, etap 2: przebiegi w grze, poprawki, bez recenzji wizualnej)
+
+Drobne wybory: `docs/00` G.46 (F5-a … F5-q z etapu 1, F5-r … F5-x z etapu 2). Zgodnie z G.36 U-1 bez oceny wyglądu ze zrzutów: dowody to spisy KF-1 w `habitats` i `vanilla_forests`, karta norm z gry i z symulacji, porównania bloków w `determinism`, tablice i testy jednostkowe. Wygląd łęgów, wiklin, wierzb nadrzecznych i chmielu sprawdza użytkownik według listy „Do sprawdzenia w grze” (raport kroku). Baza kroku: `6205f6f`; commity `9c17d7d`, `5530d9e` (etap 1, WIP) i końcowy „F5: done, …” (etap 2).
+
+**Wynik w skrócie.** Oba łęgi i wierzby nadrzeczne rosną z drzewostanu planera w obu skalach i obu trybach. Lł wiązowo-jesionowy ma 10,4 (REAL) i 8,9 (GAMEPLAY) drzewa planera na chunk, w głębi REAL 10,4 i 0 kłód wanilii. Lł wierzbowo-topolowy ma 9,7 i 7,3 drzewa na chunk, bez kolumn w głębi (F5-w). Chmiel jest zgodny z zasadą L1: w `determinism` `floor_free` 0 we wszystkich obszarach, także w nowym obszarze łęgów. Teren identyczny; poza strefami lasów kroków F, ich pasami i strefą `H` (wikliny, wierzby nadrzeczne) 0 różnic wobec F4. Wierzbę i topolę FallingTree i Tree Harvester ścinają w całości. Tablice bez brakujących modeli. Odstępstwa do CP-D: N8 i N10 gospodarczego Lł wiązowo-jesionowego (F5-v), łęg wierzbowo-topolowy bez głębi i wikliny bez powierzchni karty (F5-w), łęgi GAMEPLAY tylko w symulacji (F5-q), z C2ME komnata prób w obszarze łęgów (DP-139), `present_day` z jaskiniami (DP-126) i jaskinia z C2ME w obszarze buczyny (DP-128), jak w F1–F4.
+
+**Od etapu 1 do etapu 2.** Przebiegi na kodzie `5530d9e` dały trzy porażki testów i jedną regresję karty olsu.
+
+- *`determinism`*, GAMEPLAY, obszar `floodplain`: `floor_free` 1 (`air/tall_grass[half=upper]` w (−2108, 35, −5104)). Porównanie okien blok po bloku: krążek gliny wanilii (różnica gruntu zależna od kolejności chunków) zmienia trawę wysoką obok; jej dolna połowa jest różnicą kontaktu, górna leży 3 bloki nad gruntem. `WindowDiff` liczy teraz różnicę tuż nad różnicą kontaktu tej samej kolumny jako kontakt (F5-s). Chmiel nie miał udziału w tej różnicy.
+- *`habitats`*: olszyna górska 267 „pni” wobec 160,8 z palety. To wierzby nadrzeczne planera na karpach i ich nabiegi. Spis siedlisk spoza lasów planera liczy drzewa jak N1 (`TreeBases`, F5-t): 158 / 160,8, jak po F4.
+- *Pełny zestaw*: `SliceStandTest.m2RulesGiveTheSameTreesWithTheStandMap` brał łęgi jako lasy M2 (F5-u).
+- *Karta olsu*: własna wiklina (F5-h) dała mniej podszytu, N7 olsu 15,0–15,6% poza tolerancją w 6 wierszach. Ols ma krzew więcej na chunk (F5-r), N7 16,7–19,5%.
+- Raport uruchamiacza mówił, że tablica `felling` nie ścina wierzby i topoli. Tak nie jest: tablica gatunków (`board`) ścina wierzbę i topolę we wszystkich klasach wieku (liczby niżej). Tylko miejsca w lesie to grąd i Bśw.
+
+**Przebiegi (`-PtimingsReportOnly`, mapa testów `test_plan.py 6205f6f`; po zmianach etapu 2 ponownie `determinism`, `habitats`, `vanilla_forests` i `slice -Psites=none`).**
+
+| Przebieg | Wynik |
+|---|---|
+| `vanilla_forests` (W1, tylko regresja; łęgów nie ma w W1) | PASS (przed F5-r i po). KF-1 jak po F4: w głębi grąd 9,0 pnia planera na chunk, Bśw 18,3, ols 11,0, buczyna karpacka 13,5; 0 kłód wanilii |
+| `habitats` (obie skale) | Po F5-t **PASS**. Lasy planera w obwiedni N1 6,4–19,2: REAL Lł wiązowo-jesionowy 10,4 (12 817 kolumn, 0 kłód wanilii), wierzbowo-topolowy 9,7 (12 106, 1 kłoda wanilii poza głębią); GAMEPLAY 8,9 (3808, 0) i 7,3 (8198, 0). KF-1 w głębi: REAL Lł wiązowo-jesionowy 10,4 / 0 (1132 kolumny); GAMEPLAY 21 kolumn (poniżej progu 1024); Lł wierzbowo-topolowy bez głębi (F5-w). Olszyna górska REAL 158 / 160,8, GAMEPLAY 117 / 126,2. Odwiedziny: `HABITAT_MISS` 0 z 919 i z 914 chunków |
+| `determinism -PdeterminismStepZones -PdeterminismDeep` (bez optymalizacji, wobec referencji F4 `handoff/F4/determinism_ref/`) | Po F5-s **PASS**. Teren identyczny we wszystkich 32 wpisach z referencją. Poza strefami `F`, `B` i `H` 0 różnic we wszystkich obszarach i trybach. Strefa `H`: GAMEPLAY D obszar rzeki 2486 z 14 938 kolumn (wikliny i wierzby nadrzeczne). Strefa `F` olsu: REAL 1161, GAMEPLAY 1471 kolumn (podszyt i płaszcz z własną wikliną, F5-r). Nowy obszar `floodplain`: kolejność stała dokładnie, `floor_free` 0 we wszystkich porównaniach. Referencja dla F6: `handoff/F5/determinism_ref/` |
+| `determinism -Poptimization -PdeterminismDeep` (C2ME, wobec referencji z tego kodu) | FAIL na znanej jaskini DP-128 (buczyna GAMEPLAY: 3259 bloków terenu, 2280 kolumn dekoracji) i na nowym DP-139. W obszarze `floodplain` REAL różni się 519 kolumn dekoracji (limit 32); cała różnica to komnata prób wanilii pod ziemią, która stoi tylko z C2ME (F5-x). Teren różni się w 5 blokach (J1-q). `floor_free` 0. Pozostałe obszary w limitach (≤ 11 kolumn) |
+| `slice -Psites=none` (karta norm z gry) | PASS, `HABITAT_MISS` 0. Powierzchnie F5: 136 wierszy z normą — 99 w normie, 22 w tolerancji, 15 poza (wszystkie w Lł wiązowo-jesionowym, F5-v). Pozostałe lasy: 203 wiersze `out`, jak po F4 (po F5-r bez nowych). Plik `handoff/F5/karta-norm.f5s2.csv` (przed F5-r: `karta-norm.f5.csv`) |
+| `slice -Psites=samples`, `leaves`, `saplings`, `planks`, `trunks`, `axe`, `deadwood`, `roots` | PASS (kod etapu 1), 0 brakujących modeli i tekstur; zrzuty tylko zapisane, bez oceny |
+| `slice -Psites=felling -PtreeFelling=fallingtree` i `treeharvester` | PASS: po 71 ścięć, 0 z problemami. Wierzba: tyczkowina 44 bloki drewna, drzewo dojrzałe 142, starodrzew 172; topola: 56, 200 i 244. Drewno usunięte w całości, kłody zgodne z oczekiwanymi, 0 innych zmienionych bloków. Bez `-PtreeFelling` przebieg kończy się EXIT 1, bo parametr jest wymagany (środowisko) |
+| `ecotones`, `vegetation`, `slice -Psites=seasons` | PASS (kod etapu 1); `vegetation` `HABITAT_MISS` 0 (REAL 8166, GAMEPLAY 7833 chunków) |
+| `present_day` | z jaskiniami tylko znana wieś GAMEPLAY (4089, −3980), DP-126 |
+| KF-6 (cicha maszyna, C2ME `-Pcaves=off`, wobec `m2-baseline`, jeden przebieg, kod etapu 1) | tabela niżej |
+| `fastTest` (`run-tests --reuse`), `SliceStandTest`, `WindowDiffTest`, `compileGametestJava`, `checkDatagen` | PASS |
+| pełny zestaw `tools/dev/run-tests test` | **PASS** (1113 s, 531 testów, 4 pominięte; drzewo `373476110919`, przed wpisaniem tego wyniku do dokumentów) |
+
+**KF-6 (chunki na sekundę z C2ME bez jaskiń; iloraz F5 / M2; kod `5530d9e`).**
+
+| Miejsce | „Polska” REAL | GAMEPLAY |
+|---|---|---|
+| `floodplain_1` (REAL `elm_ash_natural_1`, GAMEPLAY miejsce obu łęgów) | 134,9 / 183,5 = **0,735** | 156,5 / 204,5 = **0,765** |
+| `oak_hornbeam_1` | 0,710 | 0,716 |
+| `fresh_pine_1` | 0,767 | 0,717 |
+| `lowland_beech_1` | 0,729 | 0,731 |
+| `alder_carr_1` | 0,761 | 0,723 |
+| `upland_fir_1` | 0,770 | 0,760 |
+| `bog_woodland_1` | 0,824 | 0,742 |
+
+Wszystkie miejsca są powyżej 0,7 × M2 (cicha maszyna, jeden przebieg). Zmiana F5-r dodaje tylko jeden krzew na chunk olsu.
+
+**Karta łęgów z gry** (`slice -Psites=none`; REAL po 2 powierzchnie naturalne i gospodarcze Lł wiązowo-jesionowego i 2 gospodarcze Lł wierzbowo-topolowego, tryby N i D; GAMEPLAY i naturalny Lł wierzbowo-topolowy bez powierzchni, F5-q):
+
+| Miara | Lł wiązowo-jesionowy nat. | Lł wiązowo-jesionowy gosp. | Lł wierzbowo-topolowy gosp. (nasadzenia topoli [S]) |
+|---|---|---|---|
+| N1 drzewa na chunk | 8,7–9,1 | 10,0–10,2 | 8,8–11,0 |
+| N3 skład | dąb 33–34%, jesion i klony 34–37%, wiąz 21–24% | dąb 42–45%, jesion i klony 36–40%, wiąz 9,7–11,5% (2 tol.) | topola 79–85%, wierzba 3–12% |
+| N4 zwarcie | 85–86% | 90% | 79–83% |
+| N7 podszyt | 39,9–40,9% | 37,9–39,0% | 19,9–20,8% |
+| N8 runo latem / wiosną | **35,6–37,5 / 52,5–53,0%, poza** | 38,0–42,7 / 56,0–59,1% (**3 poza**) | 66,1–67,9 (tol.) / 72,5–72,8% |
+| N9 mchy | 7,0–7,4% | 7,5–7,6% | 5,4–6,2% |
+| N10 martwe drewno | 1,51–1,84 obiektu (tol.), 100–135 m³/ha | kawałki 0,13–0,23, 1,4–8,0 m³/ha (**`elm_ash_managed_2` poza**) | kawałki 0,19–0,24, 7,1–7,9 m³/ha (tol.) |
+
+**Symulacja** (`StandCensusSimulationTest -PcalibrateSlice`, etap 1; liczby w „Projekt F5”). Naturalny Lł wierzbowo-topolowy i oba łęgi GAMEPLAY sprawdza tylko symulacja: wierzba 62–65%, topola 25–27%; w Populetum topola 56–60%. Poza normą w symulacji: N7 (symulacja nie sadzi krzewów), N4 starodrzewu Lł wierzbowo-topolowego naturalnego 80–82% (norma 50–70) i N10 gospodarczych starodrzewi 24–28 m³/ha (8–16) — do CP-D.
+
+**KF w skrócie.**
+
+- KF-1: spełnione dla Lł wiązowo-jesionowego (REAL 10,4 drzewa planera na chunk w głębi i 0 kłód wanilii; w GAMEPLAY za mało kolumn w głębi, 8,9 na chunk w spisie). Lł wierzbowo-topolowy przez test palet i spis wszystkich kolumn (F5-w). Test palet: reguły łęgów i strefy `RIVERSIDE_WILLOWS` bez `tree_substitute/` i `deadwood_substitute/`.
+- KF-2: karta z gry (REAL) i z symulacji; odstępstwa F5-v, F5-w, F5-q do CP-D. Karta lasów wcześniejszych kroków bez nowych wierszy poza normą (po F5-r).
+- KF-3: spełnione. Teren identyczny wobec F4; poza strefami `F`, `B`, `H` 0 różnic; chmiel `floor_free` 0; z C2ME DP-128 i DP-139, oba poza lasem. Migawka rejestru z etapu 1 (+118 linii, 0 usuniętych). Stare sole bez zmian, nowa sól `HOP_SALT`.
+- KF-4: `ForestBlendTest`, `ecotones`, `vegetation` (`HABITAT_MISS` 0) PASS; ostry tylko brzeg wody; `present_day` z jaskiniami DP-126.
+- KF-5: spełnione. Tablice `samples`, `leaves`, `saplings`, `planks`, `trunks`, `axe`, `deadwood`, `roots` PASS; FallingTree i Tree Harvester ścinają wierzbę i topolę w całości; `checkDatagen`, `checkArt`, `lint.py`, `RegistrySnapshotTest`, `WoodSetTest` i testy `*season*` z etapu 1.
+- KF-6: wykonane (łęgi 0,735 / 0,765 × M2).
+- KF-7: „Projekt F5”, „Stan po F5”, G.46, BRIEF, lista „Do sprawdzenia w grze” w raporcie kroku.
+
 ## Do kroku porządkowego (lista drobiazgów z recenzji)
 
 Lista założona w V10 według decyzji użytkownika z 2026-10-21 (`docs/00` F, P4): drobiazgi widoczne tylko na zbliżeniach albo w pomiarach bez wpływu na grę nie są poprawiane od razu, tylko trafiają tutaj; zbiorczy krok porządkowy na końcu kamienia milowego przegląda listę i poprawia, co warto. Każdy wpis: krok, w którym powstał, opis, gdzie szukać, propozycja. Wpis usuwamy (albo przekreślamy z commitem), gdy jest zrobiony.
@@ -4290,3 +4359,4 @@ Lista założona w V10 według decyzji użytkownika z 2026-10-21 (`docs/00` F, P
 | DP-136 | F3 (etap 2) | KF-6 GAMEPLAY w przebiegu F3: grąd 0,676, Bśw 0,683, buczyna niżowa 0,675 × M2 (próg 0,7; po F1/F2 0,71–0,72; REAL 0,70–0,78, jedlina 0,73 / 0,74) — koszt lasów planera narasta z każdym krokiem F | KF-6, `PerformanceClientGameTest`, F3-r | Tanie optymalizacje bez zmiany wyniku i pomiar zbiorczy w F7 (PW-10); do tego czasu bez progu na lasach wycinka |
 | DP-137 | F3 (etap 2) | Jaworzyna (`Site.RAVINE`) bez powierzchni karty w grze: powierzchnie buczyny karpackiej nie trafiają na wąskie stoki jaworzyny, normy jaworzyny sprawdza tylko symulacja | `src/test/resources/slice_plots.txt`, `SlicePlotsTest`, F3-s | Dodać powierzchnię jaworzyny (szukanie po asocjacji kodu zamiast po biomie) albo przyjąć symulację przy CP-D |
 | DP-138 | F3 (etap 2) | `upland_fir_natural_1` REAL w `present_day`: 4 bloki „gołych ramion” (kontrola `X.bare_arms_per_chunk`, bez normy; w trybie naturalnym 0) przy (46427, 428–430, 15664) i (46521, 411, 15728) | `NormsCensus`, korony jodły | Sprawdzić w grze gałęzie starej jodły w tych miejscach; poprawić kształt, jeśli to ramię bez igieł |
+| DP-139 | F5 (etap 2) | Z C2ME (`-Poptimization`) w obszarze `floodplain` REAL `determinism` stoi komnata prób wanilii (519 kolumn, głęboko pod ziemią), bez paczki jej nie ma; teren w limicie J1-q (5 bloków). Wpływ zestawu modów na struktury wanilii, nie lasu (F5-x) | `DeterminismClientGameTest` (porównanie zestawów modów), struktury wanilii z C2ME | Sprawdzić start struktury `trial_chambers` z C2ME i bez; jeśli to zachowanie C2ME, wyłączyć kolumny w zasięgu elementów struktur z limitu dekoracji między zestawami modów (jak przy wsiach, F3-o) |
