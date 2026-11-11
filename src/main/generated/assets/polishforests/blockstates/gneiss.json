@@ -1,0 +1,21 @@
+{
+  "variants": {
+    "": [
+      {
+        "model": "polishforests:block/gneiss"
+      },
+      {
+        "model": "polishforests:block/gneiss",
+        "y": 90
+      },
+      {
+        "model": "polishforests:block/gneiss",
+        "y": 180
+      },
+      {
+        "model": "polishforests:block/gneiss",
+        "y": 270
+      }
+    ]
+  }
+}

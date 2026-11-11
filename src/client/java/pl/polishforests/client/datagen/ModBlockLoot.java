@@ -70,6 +70,10 @@ final class ModBlockLoot extends FabricBlockLootSubProvider {
 		// Step F4: the sphagnum carpet and block give themselves (as the vanilla moss carpet and block).
 		dropSelf(ModBlocks.sphagnumCarpet());
 		dropSelf(ModBlocks.sphagnumBlock());
+		// Step TT1: the Tatra rocks give themselves (with any pickaxe, as the properties require the tool).
+		for (net.minecraft.world.level.block.Block b : ModBlocks.tatraRocks()) {
+			dropSelf(b);
+		}
 	}
 
 	/**

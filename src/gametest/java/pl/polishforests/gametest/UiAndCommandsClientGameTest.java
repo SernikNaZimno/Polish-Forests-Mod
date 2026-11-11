@@ -92,6 +92,11 @@ public final class UiAndCommandsClientGameTest implements FabricClientGameTest {
 			if (editor == null) {
 				throw new AssertionError("World type " + preset.identifier() + " has no options editor");
 			}
+			// Step TT1: the gameplay preset has the Tatras, the realistic one not (until step TT5).
+			if (ui.getSettings().selectedDimensions().overworld() instanceof PolandChunkGenerator g
+					&& g.settings().tatra() != (expected == PolandScale.GAMEPLAY)) {
+				throw new AssertionError(preset.identifier() + ": the preset has tatra " + g.settings().tatra());
+			}
 			mc.gui.setScreen(editor.createEditScreen(screen, ui.getSettings()));
 		});
 		context.waitForScreen(PolandWorldOptionsScreen.class);
@@ -111,6 +116,10 @@ public final class UiAndCommandsClientGameTest implements FabricClientGameTest {
 		context.clickScreenButton("polishforests.options.loose_cover");
 		// Step J1: the presets start with the caves on; the switch turns them off.
 		context.clickScreenButton("polishforests.options.caves");
+		// Step TT1: the Tatra switch turns them off in the gameplay scale (inactive in the realistic one).
+		if (expected == PolandScale.GAMEPLAY) {
+			context.clickScreenButton("polishforests.options.tatra");
+		}
 		context.waitTicks(2);
 		context.takeScreenshot(screenshot + "_present_day");
 		context.clickScreenButton("gui.done");
@@ -131,6 +140,9 @@ public final class UiAndCommandsClientGameTest implements FabricClientGameTest {
 			}
 			if (gen.settings().caves()) {
 				return "the caves switch did not turn the caves off: " + gen.settings();
+			}
+			if (gen.settings().tatra()) {
+				return "the Tatra switch did not turn the Tatras off: " + gen.settings();
 			}
 			LevelStem stem = dims.dimensions().get(LevelStem.OVERWORLD);
 			if (!stem.type().is(expected.dimensionType())) {

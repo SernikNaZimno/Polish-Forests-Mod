@@ -98,7 +98,12 @@ public enum Material {
 	SANDSTONE,
 	// Cave biomes (step J2): the bands of the vanilla rule "overworld/sulfur_cave_bands" in the rock of the sulfur caves.
 	SULFUR,
-	CINNABAR;
+	CINNABAR,
+	// Step TT1: the rocks of the Tatra massif, the mod's own blocks (polishforests:*, see id()).
+	TATRA_GRANITE,
+	GNEISS,
+	LIMESTONE,
+	DOLOMITE;
 
 	private static final Material[] VALUES = values();
 	/** Number of diagnostic colors of each kind. */
@@ -106,7 +111,26 @@ public enum Material {
 
 	/** Block id, e.g. {@code minecraft:grass_block}. */
 	public String id() {
-		return "minecraft:" + name().toLowerCase(Locale.ROOT);
+		return (isTatraRock() ? "polishforests:" : "minecraft:") + name().toLowerCase(Locale.ROOT);
+	}
+
+	/** Whether the block is a rock of the Tatra massif (step TT1), a block of the mod. */
+	public boolean isTatraRock() {
+		return this == TATRA_GRANITE || this == GNEISS || this == LIMESTONE || this == DOLOMITE;
+	}
+
+	/** Step TT1: the rock block of a Tatra bedrock substrate (granite, crystalline, limestone, dolomite), else null. */
+	public static Material tatraRock(pl.polishforests.worldgen.landscape.Substrate rock) {
+		if (rock == null) {
+			return null;
+		}
+		return switch (rock) {
+			case GRANITE -> TATRA_GRANITE;
+			case CRYSTALLINE -> GNEISS;
+			case LIMESTONE -> LIMESTONE;
+			case DOLOMITE -> DOLOMITE;
+			default -> null;
+		};
 	}
 
 	public static Material of(int ordinal) {

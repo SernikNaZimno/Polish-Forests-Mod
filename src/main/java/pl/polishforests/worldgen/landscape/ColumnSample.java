@@ -48,7 +48,8 @@ public record ColumnSample(double surface, int waterLevel, WaterKind waterKind, 
 	 *                         to 0 at the edge of the coastal belt (B + D + 2000k); region types are blended with weight
 	 *                         1 − wCoastland (macroregions have no COASTLAND type, so this field does not come from Blend)
 	 * @param landformBits     {@link Landform#bit()} bits of the landforms already recognised in {@code sample}: INLAND_DUNES,
-	 *                         END_MORAINE, RIDGE, MOUNTAIN_VALLEY, BEACH, COASTAL_DUNES, CLIFF, HEADWATERS
+	 *                         END_MORAINE, RIDGE, MOUNTAIN_VALLEY, BEACH, COASTAL_DUNES, CLIFF, HEADWATERS, and in the Tatras
+	 *                         (step TT1) CIRQUE and U_VALLEY
 	 * @param convexity        local convexity (m): short-wave relief components (undulation and dunes of the outwash plain,
 	 *                         hummocks and ridges of the plateau, fine relief of the plain, gullies and roughness of the flysch)
 	 *                         weighted by the macroregion weights; positive on knolls, negative in hollows
@@ -79,11 +80,29 @@ public record ColumnSample(double surface, int waterLevel, WaterKind waterKind, 
 	 *                         (90 east +X, 180 south +Z, 270 west −X); NaN on flat terrain
 	 * @param beachWidth       width of the sandy beach (m from the shoreline) at this place of the coast (step K8b2: it varies
 	 *                         along a low shore, 60 m·k on a cliff); NaN outside the belt 25 km·meso from the sea
+	 * @param wTatra           step TT1: weight of the Tatra massif with its foot ({@link LandscapeType#TATRA}), already
+	 *                         included in {@code wBeskids} (the classifier sees the Tatras as mountains, with the belts of
+	 *                         the Beskids until TT3); 0 outside the Tatra complex and in worlds without the Tatras
+	 * @param wPodhale         step TT1: weight of the Podhale ({@link LandscapeType#PODHALE}), already included in
+	 *                         {@code wFoothills}; 0 outside the Tatra complex
+	 * @param tatraPart        step TT1: part of the Tatra complex, {@link TatraPart#NONE} outside it
+	 * @param rock             step TT1: solid rock of the Tatra massif (granite, crystalline rocks, limestone, dolomite) under
+	 *                         the cover, or null for the stone of the rest of the world
 	 */
 	public record Terrain(double rawSurface, double coastD, double wOutwashPlain, double wMorainePlateau, double wOldGlacialPlain,
 			double wFoothills, double wBeskids, double wCoastland, int landformBits, double convexity, double duneHeight, double ridgeProfile,
 			double massif, double summit, double cliffHeight, double lowShore, double bareSandWidth, double sandiness, double sBar,
-			double slope, double aspect, double beachWidth) {
+			double slope, double aspect, double beachWidth, double wTatra, double wPodhale, TatraPart tatraPart, Substrate rock) {
+		/** Relief outside the Tatra complex (the fields before step TT1). */
+		public Terrain(double rawSurface, double coastD, double wOutwashPlain, double wMorainePlateau, double wOldGlacialPlain,
+				double wFoothills, double wBeskids, double wCoastland, int landformBits, double convexity, double duneHeight,
+				double ridgeProfile, double massif, double summit, double cliffHeight, double lowShore, double bareSandWidth,
+				double sandiness, double sBar, double slope, double aspect, double beachWidth) {
+			this(rawSurface, coastD, wOutwashPlain, wMorainePlateau, wOldGlacialPlain, wFoothills, wBeskids, wCoastland, landformBits,
+					convexity, duneHeight, ridgeProfile, massif, summit, cliffHeight, lowShore, bareSandWidth, sandiness, sBar, slope,
+					aspect, beachWidth, 0, 0, TatraPart.NONE, null);
+		}
+
 		/** Whether {@code sample} recognised the landform (only the landforms listed for {@code landformBits}). */
 		public boolean has(Landform landform) {
 			return (landformBits & landform.bit()) != 0;

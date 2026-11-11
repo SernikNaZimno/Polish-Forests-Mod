@@ -253,6 +253,7 @@ public final class SurfaceBuilder {
 			out.bedrockTop[i] = minY + (int) (Noise.mix(wx * 341873128712L + wz * 132897987541L) >>> 62);
 			out.deepRockY[i] = deepRockY + ((wx * 31 + wz * 17) & 7);
 			out.substrate[i] = (byte) s.substrate().ordinal();
+			out.rock[i] = Material.tatraRock(s.terrain().rock());
 			out.bandOffset[i] = (wx >> 5) - (wz >> 6);
 			out.gravelPatch[i] = s.substrate() == Substrate.RIVERBED && DETAIL.at(wx, wz, 7) > 0.15;
 		}

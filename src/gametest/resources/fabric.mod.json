@@ -26,7 +26,8 @@
 			"pl.polishforests.gametest.LooseCoverClientGameTest",
 			"pl.polishforests.gametest.CavesClientGameTest",
 			"pl.polishforests.gametest.CaveBiomesClientGameTest",
-			"pl.polishforests.gametest.VanillaForestsClientGameTest"
+			"pl.polishforests.gametest.VanillaForestsClientGameTest",
+			"pl.polishforests.gametest.TatraClientGameTest"
 		]
 	},
 	"mixins": [

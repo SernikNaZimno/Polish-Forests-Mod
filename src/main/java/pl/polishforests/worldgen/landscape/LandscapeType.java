@@ -19,7 +19,15 @@ public enum LandscapeType {
 	/** Coastland: beach, coastal dunes, cliff or spit with a lagoon. */
 	COASTLAND(Belt.LOWLAND, Substrate.SAND),
 	/** Sea (Baltic): shallow shelf with a sandy bottom. */
-	SEA(Belt.SEA, Substrate.SAND);
+	SEA(Belt.SEA, Substrate.SAND),
+	/**
+	 * Tatra massif with its foot (step TT1): not a macroregion type, but the weight of the Tatra complex
+	 * ({@code TatraField}) laid over the region blend in the column sample; in the habitat classifier a part of the
+	 * mountain weight (with BESKIDS).
+	 */
+	TATRA(Belt.MOUNTAINS, Substrate.FLYSCH),
+	/** Podhale (step TT1): the Sub-Tatra Trough, the Gubałówka-type foothills and the basin; with FOOTHILLS in the classifier. */
+	PODHALE(Belt.FOOTHILLS, Substrate.FLYSCH);
 
 	public enum Belt {
 		SEA, LOWLAND, FOOTHILLS, MOUNTAINS
@@ -49,8 +57,13 @@ public enum LandscapeType {
 		return this == OUTWASH_PLAIN || this == MORAINE_PLATEAU;
 	}
 
-	/** Whether the type is assigned to macroregion cells (rather than following from the sea coast). */
+	/** Whether the type is assigned to macroregion cells (rather than following from the sea coast or the Tatra complex). */
 	public boolean isRegionType() {
-		return this != COASTLAND && this != SEA;
+		return this != COASTLAND && this != SEA && !isTatra();
+	}
+
+	/** Whether the type belongs to the Tatra complex (step TT1). */
+	public boolean isTatra() {
+		return this == TATRA || this == PODHALE;
 	}
 }

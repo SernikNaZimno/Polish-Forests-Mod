@@ -27,7 +27,7 @@ class PolandSettingsTest {
 	void defaultIsWrittenInFull() {
 		JsonObject json = encode(PolandSettings.DEFAULT);
 		for (String field : new String[] {"scale", "region_scale", "agriculture", "managed_forest_share", "alien_species",
-				"version", "cover_in_blocks", "loose_cover", "caves"}) {
+				"version", "cover_in_blocks", "loose_cover", "caves", "tatra"}) {
 			assertTrue(json.has(field), "missing " + field + " in " + json);
 		}
 		assertEquals(PolandSettings.CURRENT_VERSION, json.get("version").getAsInt());
@@ -117,8 +117,32 @@ class PolandSettingsTest {
 				assertEquals(LooseCover.THIN, read.looseCover(), preset);
 				assertTrue(read.coverInBlocks(), preset);
 				assertTrue(read.caves(), preset + ": new worlds have caves (step J1)");
+				// Step TT1: the Tatras are on in the gameplay preset and off in the realistic one (until step TT5).
+				assertEquals(preset.equals("poland_gameplay"), read.tatra(), preset + ": tatra");
+				assertTrue(settings.has("tatra"), preset + ": the tatra field is written");
 			}
 		}
+	}
+
+	/**
+	 * Step TT1: the "tatra" switch is written and read back; a world saved before TT1 (no "tatra" field) stays without
+	 * the Tatras, so its new chunks match the old ones.
+	 */
+	@Test
+	void tatraSwitchIsSavedAndMissingMeansOff() {
+		assertFalse(PolandSettings.DEFAULT.tatra());
+		assertFalse(PolandSettings.LEGACY_M1.tatra());
+		assertFalse(decode("{}").tatra());
+		assertFalse(decode("{\"version\": 2, \"scale\": \"gameplay\", \"caves\": true}").tatra());
+		assertFalse(encode(PolandSettings.DEFAULT).get("tatra").getAsBoolean());
+		PolandSettings gameplay = PolandSettings.DEFAULT.withScale(PolandScale.GAMEPLAY).withTatra(true);
+		JsonObject saved = encode(gameplay);
+		assertTrue(saved.get("tatra").getAsBoolean());
+		assertEquals(gameplay, decode(saved.toString()));
+		assertEquals(PolandSettings.DEFAULT.withScale(PolandScale.GAMEPLAY), gameplay.withTatra(false));
+		// The other switches keep the Tatra setting.
+		assertTrue(gameplay.withCaves(false).withAgriculture(true).withLooseCover(LooseCover.REALISTIC).tatra());
+		assertTrue(decode("{\"version\": 2, \"tatra\": true}").tatra());
 	}
 
 	@Test
@@ -126,7 +150,7 @@ class PolandSettingsTest {
 		var field = PolandSettings.GENERATOR_FIELD.codec();
 		JsonObject json = field.encodeStart(JsonOps.INSTANCE, PolandSettings.DEFAULT).getOrThrow().getAsJsonObject();
 		assertTrue(json.has("settings"), "the default settings are left out: " + json);
-		assertEquals(9, json.getAsJsonObject("settings").size());
+		assertEquals(10, json.getAsJsonObject("settings").size());
 		assertEquals(PolandSettings.DEFAULT, field.parse(JsonOps.INSTANCE, json).getOrThrow());
 		assertEquals(PolandSettings.LEGACY_M1, field.parse(JsonOps.INSTANCE, new JsonObject()).getOrThrow());
 	}

@@ -4566,6 +4566,101 @@ Przegląd: 1 sprawa ważna (A/B `load` bez dopasowanych warunków), 4 drobne. Be
 
 Przegląd: 0 spraw blokujących i ważnych, 4 drobne — wszystkie sprawdzone (w `docs/04`, `docs/00` G.48, `karta-norm-f7.md`) i prawdziwe, a każda to powtórka wpisu, który runda 1 już dopisała do listy „Do kroku porządkowego”: niezrobione badanie luki runa łęgów (= DP-143, w odstępstwach „Stan po F7”, termin: krok porządkowy, najpóźniej CP-D), lista lasów bez powierzchni w KF-2 i F7-r bez boru wilgotnego oraz karta bez nagłówka (= DP-152), F7-c „reguły M2 bez zmian” mimo wierzby białej 150 w `TREE_ROW` (= DP-153), obszar `dwarf_pine` z C2ME tylko z hipotezą (= DP-151, potwierdzić `-PdeterminismDeep` w kroku jaskiń albo następnym kroku generacji). Bez nowych wpisów i bez poprawek (próg z 2026-10-21), bez nowych wyborów domyślnych w `docs/00`. Fałszywych alarmów nie było. Kod bez zmian; pełny zestaw `tools/dev/run-tests test` przed commitem rundy.
 
+## Projekt TT1 (2026-11-11, etap 1: kod, dane, tekstury, testy jednostkowe)
+
+Krok TT1 planu „Kroki TT” (§3): Tatry w skali GAMEPLAY. Obejmuje rozmieszczenie, rzeźbę główną, skały, Podhale, ustawienie świata `tatra`, komendy, złoty obszar Tatr, gametest `tatra` i obszar Tatr w `determinism`. Przebiegi w grze, pomiar KT-6 i „Stan po TT1” należą do etapu 2. Drobne wybory TT1-a … TT1-l opisano niżej; do `docs/00` G.50 wpisze je etap 2.
+
+**Ustawienie świata (TT1-a).** `PolandSettings` dostaje nowe pole na końcu rekordu: `tatra`. Pole jest zawsze zapisywane, a brak pola znaczy `false`, więc stare światy i ich nowe chunki zostają bez Tatr i bez szwu. `DEFAULT` i `LEGACY_M1` mają `false`. Preset `poland_gameplay` ma `"tatra": true`, a preset `poland` ma `false` (REAL dopiero w TT5). W „Dostosuj” (`PolandWorldOptionsScreen`) przyciski jaskiń i Tatr dzielą jeden rząd po pół szerokości. Przycisk Tatr działa tylko w GAMEPLAY; w REAL jest wyszarzony z podpowiedzią (en_us, pl_pl). Po powrocie do GAMEPLAY przycisk wraca do poprzedniego stanu (domyślnie włączony). `PolandChunkGenerator` buduje `LandscapeModel(seed, scale, regionScale, tatra)`, a dotychczasowe konstruktory znaczą „bez Tatr”.
+
+**Rozmieszczenie** (`landscape/TatraField`, nowe sole `mountain.tatra`, `mountain.tatra.relief`, `mountain.tatra.geology`; TT1-b).
+
+- Siatka: jeden kandydat na komórkę o boku 213 km·k (64 km w GAMEPLAY), z prawdopodobieństwem 0,7.
+- Kotwica to środek kotliny Podhala na osi pasma. Wybiera się ją z siatki 24 × 24 punktów w środkowej połowie komórki, przesuniętej szumem komórki. Brane są punkty z polem gór ≥ 0,9 i wagą Beskidów ≥ 0,98, a pasmo musi ciągnąć się wzdłuż masywu (pole ≥ 0,7 w odległości ± 0,45 L). Punkty sprawdza się w kolejności losowanej z komórki, najwyżej 64.
+- Masyw leży z boku kotwicy, po wylosowanej stronie pasma, a gdy się tam nie mieści, po drugiej.
+- Masyw właściwy (od grani głównej do podnóży) trzyma się co najmniej 6,5 km·k od brzegu morza.
+- Zasięg Tatr nie styka się z zasięgiem żadnego wielkiego masywu M2-8.
+- Pas gór GAMEPLAY leży zwykle 4–12 km od brzegu, więc kompleks bliższy niż 16 km·k jest oznaczany jako „przybrzeżny”. Jego waga wygasa ku brzegowi (smoothstep 1,5–6 km·k odległości od brzegu). Tatry nakłada się po `shapeCoast`, bo ściskanie rzeźby przy brzegu spłaszczało masyw.
+- W pudle 600 × 600 km leży 17 masywów (ziarno 20260927) i 15 (ziarno 4). Najbliższe od środka: A 91 km, B 108 km, ziarno 4 53 km. Najwyższe szczyty: 2509, 2475 i 2486 m (Y 691, 684, 687), a w drugich masywach 2503, 2503 i 2467 m.
+
+**Rzeźba** (w metrach; wymiary poziome razy `mountainSpacing` 0,3; TT1-c).
+
+- Masyw ma 13,5–18 × 4,5 km. Pas od grani do środka kotliny ma 4,2 km, a cały kompleks z zanikami do 14,8 km od środka grani.
+- Grań główna jest łukiem wygiętym ku Podhalu, pofalowanym szumem (bez prostej linii). Przełęcze leżą tam, gdzie spotykają się głowy dolin obu stron: obniżenie 330 m w Tatrach Zachodnich i 190 m w Wysokich.
+- Doliny poprzeczne mają odstęp 900 m ± 12%, na każdą stronę osobno. Profil jest U-kształtny: płaskie dno o szerokości 4,5–10,5% odstępu, ściany `1 − (1 − p)²` i progi (podwójne schodki). Między dolinami biegną granie boczne. W Tatrach Wysokich bywają doliny zawieszone (45% grani bocznych, 150–220 m nad dnem).
+- Kotły w głowach dolin to misy nadgłębione na 25–45 m. Mają je 75% dolin Zachodnich i 90% Wysokich.
+- Tatry Zachodnie mają kopulaste grzbiety około 2060 ± 150 m. Tatry Wysokie mają grań 2360 ± 60 m i szczyt docelowy 2462–2518 m. Tatry Bielskie mają około 2020 m. Końce masywu opadają do 1450 m.
+- Regle to grzbiet wapienny 1360 ± 110 m przy podnóżu od strony Podhala. Grzbiet typu Giewontu sięga 1885 m i stoi nad dolinami regli, które go omijają.
+- Za reglami leży Rów Podtatrzański (880 ± 55 m), dalej pogórze typu Gubałowskiego (do 1060 ± 40 m) i kotlina Podhala (640 ± 45 m). Od strony południowej jest podnóże (950 m), które wygasa w Beskidy.
+- Granice części falują szumem (Z10).
+
+**Rzeki** (`RiverNetwork`; TT1-d).
+
+- W świecie z Tatrami są dwie sieci. Sieć bazowa liczy po terenie bez Tatr (`landElevationBase`). Sieć z Tatrami liczy od nowa tylko węzły, do których zasięg Tatr zbliża się na mniej niż 2 odstępy rzędu (`LOCAL_MARGIN`). Pozostałe węzły, wraz z odpływem, zlewnią, poziomem, jeziorem bezodpływowym i odcinkiem, bierze z sieci bazowej, więc rzeki daleko od Tatr są bit w bit te same.
+- Rdzeń dla rzek to rdzeń wielkiego masywu (`GM_CORE`) oraz rdzeń masywu Tatr (górny masyw i granie boczne, `core > 0,3`). W rdzeniu nie ma źródeł ani przepływu w poprzek.
+- W masywie właściwym rodzą się tylko potoki rzędu 1.
+- Na ścieżce przez Tatry poziom rzeki ma dopuszczalny spadek do 0,8 (`TATRA_MAX_SLOPE`) i dolne ograniczenie liniowe z terenu, więc potoki schodzą dnami dolin zamiast ciąć kaniony.
+- Kolumny ścięte o ponad 30 m (pomiar z etapu 1): Wysokie 11–15%, Zachodnie 7–8%, kotlina 11–21%, pogórze 62–72% (przecinają je rzeki z masywu); o ponad 300 m około 1–2%.
+
+**Skały i bloki** (TT1-e).
+
+- Cztery nowe `Substrate` na końcu enuma: `GRANITE`, `CRYSTALLINE`, `LIMESTONE`, `DOLOMITE`. Mapa skał: granit w Wysokich; gnejs w Zachodnich, z wapienną pokrywą wierchową na stokach północnych; wapień w Bielskich i reglach; dolomit w niższych reglach. Skała jest polem `Terrain.rock`, nie podłożem kolumny (`substrate` zostaje fliszem gleby).
+- Cztery bloki: `tatra_granite` (szary; granit wanilii jest różowy), `gneiss`, `limestone`, `dolomite`. Mają właściwości kamienia (1,5 / 6, kilof), dropią same siebie, a ich kolory mapy to STONE, COLOR_GRAY, TERRACOTTA_WHITE i QUARTZ. Leżą w zakładce bloków naturalnych.
+- Bloki są w tagach `base_stone_overworld` (a przez niego w dripstone, moss, sculk, lush, azalea), `stone_ore_replaceables` i `mineable/pickaxe`, a jako przedmioty w `stone_tool_materials` i `stone_crafting_materials`. Rudy i jaskinie J1 działają w nich jak w kamieniu.
+- `Material` ma na końcu cztery nowe stałe z id moda. `ChunkSurface` wypełnia bryłę kolumny skałą kolumny (`rock[]`). Chunk ze skałą Tatr nie dostaje skrótu `uniformRock`. Nad skałą leży pokrywa zwietrzeliny: do 2 bloków ziemi, głębiej żwir.
+- Tekstury z `tools/art` (rodzaj `rock`: kafelkowany, nieprzezroczysty, progi kontrastu z mediany 10 kamieni wanilii) mają nowe przepisy na końcu `recipes.py`. Lint przechodzi dla 200 tekstur, `checkArt` też.
+- Migawka rejestru jest przepisana świadomie (`-PwriteRegistrySnapshot`): +4 bloki i +4 przedmioty. Istniejące id i właściwości bez zmian.
+
+**Roślinność (TT1-f).** Tymczasowo Tatry przechodzą przez piętra Beskidów. Kotlina Podhala i pogórze mają typ `PODHALE`, który rzeki i siedliska traktują jak pogórze. Masyw ma typ `TATRA`, traktowany jak Beskidy z piętrami według wysokości. Własne piętra Tatr przyjdą w TT3.
+
+**Komendy (TT1-g).**
+
+- Cele `tatra`, `high_tatra`, `western_tatra`, `podhale`, `cirque`, `u_valley` są na końcu `Target`, w `list` i w en/pl.
+- Szukanie idzie po masywach w zasięgu szerokiej fazy (300 km GAMEPLAY), w kolejności odległości ich środków. W każdym masywie przeszukuje się pierścienie od środka grani do jego zasięgu, z krokiem 60 m, a dla kotła i U-doliny 24 m.
+- W świecie bez Tatr komenda odpowiada „ten świat nie ma Tatr”.
+- `elevation` od 1800 m szuka najpierw w Tatrach.
+- `here` dopisuje linię „Tatry: część, skała, m n.p.m. (Y)”.
+
+**Testy (etap 1).**
+
+- `PolandSettingsTest` sprawdza 10 pól i pole `tatra` w obu presetach. Brak pola daje `false`, a `withTatra` się zachowuje. `UiAndCommandsClientGameTest` sprawdza przełącznik Tatr. `RegistrySnapshotTest` liczy 4 nowe stany.
+- `TatraReliefTest` (bez tagu `slow`, około 8 s) bada po 2 najbliższe masywy ziaren A, B i 4:
+  - szczyt 2450–2530 m i ≤ Y 720, wysokości skończone;
+  - szczyty pasów co odstęp doliny: Zachodnie w 1900–2250 m (100%), Wysokie w 2300–2530 m (86–100%);
+  - regiel: mediana 1117–1121 m, Giewont 1877–1884 m;
+  - Rów: mediana 885–890 m; pogórze: do 1079–1080 m; kotlina: mediana 641–655 m;
+  - U-doliny: stosunek szerokości na 10% i 50% głębokości 0,51–0,52 (V-dolina daje 0,2), szerokość dna do głębokości 0,33–0,40, nachylenie ścian między 10% a 50% głębokości 2,3–2,7 m na metr (mediany);
+  - kotły w głowach 72–90% dolin, a dno co najmniej 800 m pod granią w 94–100% dolin (mediana 1137–1242 m);
+  - brak prostych granic: najmniejsze odchylenie od prostej na 3 km to dla krawędzi regli 44–75 m, obrysu 24–77 m i skały 42–50 m; odchylenie standardowe granicy Zachodnie/Wysokie 90–161 m;
+  - najbardziej strome miejsce całego kompleksu z zanikami, łącznie z przejściem Tatry → Podhale → Beskidy: 6,0–7,3 m na metr w odstępie 0,5 m, przy 3,2–4,9 w starym terenie; próg testu to 10.
+- W etapie 1 test znalazł i usunął pięć uskoków (TT1-h): NaN w progach dolin (ujemna potęga), skok 40–70 m na linii grani poza końcami masywu, skok do 220 m na początku dolin zawieszonych, skok szerokości dna przy przełączeniu kotła i niepełny grzbiet Giewontu.
+- `TatraIsolationTest` (`slow`, KT-1, około 60 s) dla ziaren A i B:
+  - 4094 i 4462 punktów poza kwadratem wpływu (zasięg 14,8 km + 4 odstępy rzędu 3 = 26,8 km): 0 różnic próbki, opisu i kodu siedliska;
+  - zmiana sięga najdalej 23,8 i 22,0 km od środka grani (rzeki);
+  - złoty plik M2 w GAMEPLAY z Tatrami: 42 łaty porównane, 0 zmian, 0 łat w zasięgu.
+- `GoldenTatraTest` (`slow`) czyta nowy plik `golden_terrain_tatra.txt`, nadpisywany tylko flagą `-PwriteGoldenTatra`. Ma zestawy GAMEPLAY A i B po 6 łat 16 × 16: `granite_ridge`, `cirque`, `regle_limestone`, `western_tatra`, `podhale`, `beskid_transition`. Hasze obejmują pola M2 i dodatkowo część oraz skałę. Każda łata ma też cel sprawdzany przy porównaniu.
+- `GoldenTerrainTest -PgoldenStrict` przechodzi bez zmian, bo zestawy M2 liczy bez Tatr.
+- `PolishForestsCommandsTest`: cele Tatr są szukane w świecie z Tatrami dla ziaren A i 4, a w świecie bez Tatr nie znajdują nic.
+- Gametest `-Pgametest=tatra` (`TatraClientGameTest`, tylko z nazwy) daje sam raport liczbowy `build/tatra/report.txt`. Zawiera cele `find` z odległością i czasem, chunki łat zestawu A wobec modelu (górny blok, bloki skał tam i tylko tam, gdzie model ma skałę, najwyższy blok ≤ Y 720) oraz wczytanie 81 chunków przy grani.
+- `determinism`: obszar `tatra` (grań granitowa zestawu A, tylko GAMEPLAY) i strefa `T` raportu różnic (wpływ kompleksu: zasięg i margines rzek).
+- `ForestPerformance`: miejsce `tatra_high_1` (GAMEPLAY) dla KT-6.
+- `tools/dev/test_plan.py` ma obszar `tatra`, opisany w `docs/mapa-testow.md` (punkt 9).
+- Przebiegi w grze opisze „Stan po TT1” według `python tools/dev/test_plan.py 0defc56`.
+
+**Drobne wybory TT1-a … TT1-l** (do `docs/00` G.50 w etapie 2):
+
+- (a) `tatra` tylko w GAMEPLAY, a w REAL przycisk wyszarzony.
+- (b) Tatry nakładane po `shapeCoast`, z zanikiem ku brzegowi kompleksów przybrzeżnych.
+- (c) Kotwica z siatki 24 × 24 punktów w miejsce losowych prób; obie strony pasma.
+- (d) Sieć bazowa rzek i węzły lokalne (`LOCAL_MARGIN` 2), spadek 0,8 i ograniczenie liniowe w Tatrach, w masywie tylko źródła rzędu 1.
+- (e) Granit tatrzański szary; nazwy bloków `tatra_granite`, `gneiss`, `limestone`, `dolomite`; dolomit w niższych reglach.
+- (f) Roślinność przez piętra Beskidów do TT3; Podhale jako pogórze.
+- (g) Szukanie celów Tatr po masywach w miejsce siatki wokół gracza.
+- (h) Pięć poprawek ciągłości rzeźby: progi `stair` ≥ 0, mieszanie podnóży na linii grani, wejście dolin zawieszonych od `HANG_IN` 0,17, siła kotła zamiast przełącznika, Giewont ponad dolinami regli; do tego grań Wysokich 2360 ± 60 m zamiast 2330 ± 80 m.
+- (i) Kwadrat wpływu: zasięg plus 4 odstępy rzędu 3 sieci rzek; ta sama granica w strefie `T`.
+- (j) Szczyty liczone na pasach o szerokości odstępu doliny (pas zawsze obejmuje szczyt między przełęczami). Próg „w zakresie” to ≥ 75% pasów, bo pas na granicy Zachodnie/Wysokie bywa szczytem przejściowym.
+- (k) Złoty plik Tatr z własną flagą `-PwriteGoldenTatra` i własnymi haszami (pola M2, część, skała).
+- (l) Gametest `tatra` bez zrzutów, sam raport liczbowy.
+
 ## Do kroku porządkowego (lista drobiazgów z recenzji)
 
 Lista założona w V10 według decyzji użytkownika z 2026-10-21 (`docs/00` F, P4): drobiazgi widoczne tylko na zbliżeniach albo w pomiarach bez wpływu na grę nie są poprawiane od razu, tylko trafiają tutaj; zbiorczy krok porządkowy na końcu kamienia milowego przegląda listę i poprawia, co warto. Każdy wpis: krok, w którym powstał, opis, gdzie szukać, propozycja. Wpis usuwamy (albo przekreślamy z commitem), gdy jest zrobiony.

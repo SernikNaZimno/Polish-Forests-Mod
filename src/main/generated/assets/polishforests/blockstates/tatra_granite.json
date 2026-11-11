@@ -1,0 +1,21 @@
+{
+  "variants": {
+    "": [
+      {
+        "model": "polishforests:block/tatra_granite"
+      },
+      {
+        "model": "polishforests:block/tatra_granite",
+        "y": 90
+      },
+      {
+        "model": "polishforests:block/tatra_granite",
+        "y": 180
+      },
+      {
+        "model": "polishforests:block/tatra_granite",
+        "y": 270
+      }
+    ]
+  }
+}

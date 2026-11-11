@@ -197,6 +197,14 @@ final class ModBlockTagProvider {
 					BlockTags.VALID_SPAWN)) {
 				builder(t).add(sphagnumBlock);
 			}
+			// Step TT1: the Tatra rocks as the vanilla overworld stones (granite, diorite, andesite): the base stone of the
+			// overworld (caves, dripstone, moss, sculk, lush caves and the other tags built on it), the ore host rock, a pickaxe.
+			for (Block b : ModBlocks.tatraRocks()) {
+				for (TagKey<Block> t : List.of(BlockTags.BASE_STONE_OVERWORLD, BlockTags.STONE_ORE_REPLACEABLES,
+						BlockTags.MINEABLE_WITH_PICKAXE)) {
+					builder(t).add(key(b));
+				}
+			}
 		}
 	}
 
@@ -227,6 +235,12 @@ final class ModBlockTagProvider {
 			copy(BlockItemTags.FLOWERS.block(), BlockItemTags.FLOWERS.item());
 			builder(ItemTags.FOX_FOOD).add(BuiltInRegistries.ITEM.getResourceKey(ModBlocks.bilberries()).orElseThrow());
 			copy(SUMMER_CROPS, item(SUMMER_CROPS));
+			// Step TT1: the Tatra rocks make stone tools and the stone recipes (furnace, stone cutter) as cobblestone.
+			for (Block b : ModBlocks.tatraRocks()) {
+				for (TagKey<net.minecraft.world.item.Item> t : List.of(ItemTags.STONE_TOOL_MATERIALS, ItemTags.STONE_CRAFTING_MATERIALS)) {
+					builder(t).add(BuiltInRegistries.ITEM.getResourceKey(b.asItem()).orElseThrow());
+				}
+			}
 		}
 	}
 

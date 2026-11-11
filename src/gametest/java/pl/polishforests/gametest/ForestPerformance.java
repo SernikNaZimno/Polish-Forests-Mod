@@ -166,6 +166,12 @@ final class ForestPerformance {
 	 * {@link #BEECH_SITE}.
 	 */
 	static final int[][] MONTANE_SITE = {{75072, 73120}, {3488, 22644}};
+	/**
+	 * Step TT1 (KT-6): the granite ridge of the High Tatras of the golden Tatra file ({@code golden_terrain_tatra.txt}, set
+	 * GAMEPLAY A: the massif nearest the origin, 91 km away), only in the gameplay scale (the realistic scale has no Tatras
+	 * until TT5). The load there measures the cost of the highest terrain (summits up to Y 691) and the Tatra rocks.
+	 */
+	static final int[] TATRA_HIGH_SITE = {-24423, 87771};
 
 	/**
 	 * The load and flight measurements in the oak-hornbeam and the fresh pine forest of the world (natural mode) and, from
@@ -187,6 +193,9 @@ final class ForestPerformance {
 		places.add(new Object[] {"bog_woodland_1", BOG_SITE[real ? 0 : 1]});
 		places.add(new Object[] {"floodplain_1", FLOOD_SITE[real ? 0 : 1]});
 		places.add(new Object[] {"montane_spruce_1", MONTANE_SITE[real ? 0 : 1]});
+		if (!real) {
+			places.add(new Object[] {"tatra_high_1", TATRA_HIGH_SITE});
+		}
 		for (Object[] place : places) {
 			int[] m = (int[]) place[1];
 			String label = name + " / " + place[0];

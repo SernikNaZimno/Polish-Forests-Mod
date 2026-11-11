@@ -16,7 +16,8 @@
           "alien_species": true,
           "cover_in_blocks": true,
           "loose_cover": "thin",
-          "caves": true
+          "caves": true,
+          "tatra": false
         }
       }
     },

@@ -116,8 +116,12 @@ class RegistrySnapshotTest {
 		int products = 80 + 6 + 32 + 32 + 2 + 24;
 		int woods = products + (WoodSet.values().length - 1) * (4 * 3 + 1 + products);
 		assertEquals(WoodSet.values().length, ModBlocks.woodSets().size());
+		// Step TT1: + the 4 Tatra rocks (granite, gneiss, limestone, dolomite), one state each.
+		int tatra = ModBlocks.TATRA_ROCKS.size();
+		assertEquals(4, ModBlocks.tatraRocks().size());
 		assertEquals(84 * TreeTrunk.values().length + foliage * (112 + 2 + 1) + marcescent * 112 + 4 * 3 + 1
-				+ 84 * (RootFlare.values().length + 1) + ground + review + pineForests + floodplain + montane + 84 * StrippedTrunk.values().length + woods,
+				+ 84 * (RootFlare.values().length + 1) + ground + review + pineForests + floodplain + montane + 84 * StrippedTrunk.values().length + woods
+				+ tatra,
 				RegistrySnapshot.stateCount());
 	}
 

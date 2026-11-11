@@ -118,16 +118,22 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 	 * round 1: the lower edge of the dwarf pine scrub with the timberline and the montane spruce forest below it (the
 	 * creeping dwarf pine of the planner at the chunk borders; corners found with seed {@value #SEED} on the habitat
 	 * model, realistic: 180 of 256 sampled columns dwarf pine scrub, 68 of them in the timberline zone, 76 montane spruce;
-	 * gameplay: 133, 23 and 123), the same for a reference from before that round.
+	 * gameplay: 133, 23 and 123), the same for a reference from before that round; step TT1 (gameplay only, the realistic
+	 * scale has no Tatras until TT5): the granite ridge of the High Tatras of the golden Tatra file
+	 * ({@code golden_terrain_tatra.txt}, the massif nearest the origin, 91 km away), the same for a reference from before
+	 * TT1. The other areas lie at most 34 km from the origin, outside the influence of every Tatra complex (KT-1,
+	 * {@code TatraIsolationTest}), so the Tatras on in the gameplay preset change none of them.
 	 */
 	private static final int[][] AREAS_REAL = {{-19_484 - 64, 11_253 - 64}, {154_834 - 64, 1_058_738 - 64}, {438 - 64, -730 - 64},
 			{-699 - 64, 1_924 - 64}, {-7_793 - 64, -9_133 - 64}, {2_339 - 64, 29_627 - 64}, {46_472 - 64, 15_684 - 64},
 			{-2_507 - 64, 5_061 - 64}, {-2_140 - 64, 10_559 - 64}, {75_072 - 64, 73_120 - 64}, {97_137, 1_034_797}};
 	private static final int[][] AREAS_GAMEPLAY = {{-1_851 - 64, 6_022 - 64}, {27_609 - 64, 3_254 - 64}, {-1_785 - 64, 886 - 64},
 			{-1_195 - 64, -583 - 64}, {-2_004 - 64, -3_609 - 64}, {-5_971 - 64, 1_387 - 64}, {1_706 - 64, 3_775 - 64},
-			{-1_640 - 40, 864 - 64}, {-2_044 - 64, -5_087 - 64}, {3_488 - 64, 22_644 - 64}, {7_238, -33_628}};
+			{-1_640 - 40, 864 - 64}, {-2_044 - 64, -5_087 - 64}, {3_488 - 64, 22_644 - 64}, {7_238, -33_628},
+			{-24_423 - 64, 87_771 - 64}};
+	/** Names of the areas; the last ones only in the gameplay scale (AREAS_REAL is shorter). */
 	private static final String[] AREA_NAMES = {"river", "beskids", "oak_hornbeam", "fresh_pine", "lowland_beech", "alder_carr",
-			"upland_fir", "bog_woodland", "floodplain", "montane_spruce", "dwarf_pine"};
+			"upland_fir", "bog_woodland", "floodplain", "montane_spruce", "dwarf_pine", "tatra"};
 	private static final int SIZE = 8;
 	/** Distance from a chunk border (0 = edge column) used in the report of groups of differing columns. */
 	static final int BORDER_BAND = 3;
@@ -930,10 +936,15 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 	 * {@value #STEP_REACH} blocks of them; step F7: {@code M} on the habitats with trees outside the forest and the osier of
 	 * the bars ({@link #STEP_OUTSIDE}, {@link #STEP_OUTSIDE_ZONES}: the single trees of the meadows, the tree rows of mode D,
 	 * the alders on the lake shores, the osier of the point and gravel bars and the willow carr) or within
-	 * {@value #STEP_REACH} blocks of them; {@code .} elsewhere. Not compared; the comparison with a reference of the build before the step reports the differing decorated
+	 * {@value #STEP_REACH} blocks of them; step TT1: {@code T} in the influence of a Tatra complex; {@code .} elsewhere. Not compared; the comparison with a reference of the build before the step reports the differing decorated
 	 * columns by zone.
 	 */
 	private static final String STEP_ZONE = "stepzone ";
+	/**
+	 * Step TT1: the river margin of zone {@code T} in meters per unit of {@code LandscapeScale.meso} (4 order-3 node spacings
+	 * of 20 km, as {@code TatraIsolationTest.RIVER_MARGIN}).
+	 */
+	private static final double TATRA_RIVER_MARGIN = 4 * 20_000;
 	private static final int STEP_REACH = pl.polishforests.worldgen.feature.plan.Ecotone.REACH
 			+ pl.polishforests.worldgen.feature.plan.Ecotone.WARP + 16;
 
@@ -1029,6 +1040,21 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 		reach(zone, slice, 'R');
 		// Step F7: the trees outside the forest (and the reach of their crowns) and the osier of the bars.
 		reach(zone, outside, 'M');
+		// Step TT1: the influence of a Tatra complex (its reach and the river margin of TatraIsolationTest).
+		double margin = TATRA_RIVER_MARGIN * model.scale().meso();
+		for (int cx = 0; cx < SIZE; cx++) {
+			for (int cz = 0; cz < SIZE; cz++) {
+				int wx = (ox + cx) << 4;
+				int wz = (oz + cz) << 4;
+				if (!model.tatraNear(wx - margin, wz - margin, wx + 16 + margin, wz + 16 + margin)) {
+					continue;
+				}
+				for (int c = 0; c < 256; c++) {
+					int i = (cx * SIZE + cz) * 256 + c;
+					zone[i] = zone[i] == '.' ? 'T' : zone[i];
+				}
+			}
+		}
 		return zone;
 	}
 
@@ -1064,19 +1090,20 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 	 * step F4 and their reach, in the slice forests, outside the forest of step F7, elsewhere).
 	 */
 	private static String zoneReport(long[] ours, long[] theirs, String zones) {
-		int[] differ = new int[6];
-		int[] columns = new int[6];
+		int[] differ = new int[7];
+		int[] columns = new int[7];
 		for (int i = 0; i < ours.length && i < zones.length(); i++) {
 			char c = zones.charAt(i);
-			int z = c == 'F' ? 0 : c == 'B' ? 1 : c == 'H' ? 2 : c == 'R' ? 4 : c == 'M' ? 5 : 3;
+			int z = c == 'F' ? 0 : c == 'B' ? 1 : c == 'H' ? 2 : c == 'R' ? 4 : c == 'M' ? 5 : c == 'T' ? 6 : 3;
 			columns[z]++;
 			differ[z] += ours[i] != theirs[i] ? 1 : 0;
 		}
 		return String.format(Locale.ROOT, "in the forests %d of %d, in their belt and reach %d of %d, on the heath, raised bog, "
 				+ "gray dune, osier scrub, riverside willows and timberline and their reach %d of %d, in the slice forests (the rowan of "
 				+ "step F6) and their reach %d of %d, on the meadows, tree rows, lake shore alders and bars (step F7) and their reach "
-				+ "%d of %d, elsewhere %d of %d", differ[0], columns[0], differ[1], columns[1], differ[2], columns[2], differ[4],
-				columns[4], differ[5], columns[5], differ[3], columns[3]);
+				+ "%d of %d, in the influence of a Tatra complex (step TT1) %d of %d, elsewhere %d of %d", differ[0], columns[0],
+				differ[1], columns[1], differ[2], columns[2], differ[4], columns[4], differ[5], columns[5], differ[6], columns[6],
+				differ[3], columns[3]);
 	}
 
 	/** Differing blocks against the block-by-block file next to the reference; empty if that file is missing. */

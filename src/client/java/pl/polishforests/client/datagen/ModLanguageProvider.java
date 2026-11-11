@@ -2,12 +2,14 @@ package pl.polishforests.client.datagen;
 
 import java.util.Arrays;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
 import net.fabricmc.fabric.api.datagen.v1.FabricPackOutput;
 import net.fabricmc.fabric.api.datagen.v1.provider.FabricLanguageProvider;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.core.HolderLookup;
 import pl.polishforests.block.ModBlocks;
 import pl.polishforests.block.TreeFoliage;
@@ -46,6 +48,13 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		TARGETS.put("moraine_plateau", new String[] {"moraine plateau", "wysoczyzna morenowa"});
 		TARGETS.put("mountain_pass", new String[] {"mountain pass", "przełęcz"});
 		TARGETS.put("mountain_valley", new String[] {"mountain valley", "dolina górska"});
+		// Step TT1: the Tatra complexes.
+		TARGETS.put("tatra", new String[] {"Tatra Mountains", "Tatry"});
+		TARGETS.put("high_tatra", new String[] {"High Tatras", "Tatry Wysokie"});
+		TARGETS.put("western_tatra", new String[] {"Western Tatras", "Tatry Zachodnie"});
+		TARGETS.put("podhale", new String[] {"Podhale basin", "Kotlina Podhalańska"});
+		TARGETS.put("cirque", new String[] {"glacial cirque", "kocioł polodowcowy"});
+		TARGETS.put("u_valley", new String[] {"U-shaped glacial valley", "dolina polodowcowa (U)"});
 		TARGETS.put("old_glacial_plain", new String[] {"old glacial plain", "równina staroglacjalna"});
 		TARGETS.put("outwash_plain", new String[] {"outwash plain", "sandr"});
 		TARGETS.put("oxbow_lake", new String[] {"oxbow lake", "starorzecze"});
@@ -288,6 +297,12 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		builder.add(ModBlocks.mossyPodzol(), polish ? "Omszona bielica" : "Mossy Podzol");
 		builder.add(ModBlocks.sphagnumCarpet(), polish ? "Dywan torfowców" : "Sphagnum Carpet");
 		builder.add(ModBlocks.sphagnumBlock(), polish ? "Torfowiec" : "Sphagnum Block");
+		// Step TT1: the Tatra rocks.
+		List<Block> rocks = ModBlocks.tatraRocks();
+		builder.add(rocks.get(0), polish ? "Granit tatrzański" : "Tatra Granite");
+		builder.add(rocks.get(1), polish ? "Gnejs" : "Gneiss");
+		builder.add(rocks.get(2), polish ? "Wapień" : "Limestone");
+		builder.add(rocks.get(3), polish ? "Dolomit" : "Dolomite");
 		builder.add(tagKey(ModBlockTagProvider.PINE_FULL_LOGS.location().getPath()), polish ? "Kłody sosnowe" : "Scots Pine Logs");
 		// Item tags (recipe viewers show their names): a species tag is named after the first trunk of the species.
 		Map<Species, TreeTrunk> first = new LinkedHashMap<>();
@@ -359,6 +374,13 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 				+ "a rock floor above the caves.");
 		b.add("polishforests.options.caves.off.tooltip", "Solid ground without caves, as in worlds made before this "
 				+ "option.");
+		b.add("polishforests.options.tatra", "Tatras");
+		b.add("polishforests.options.tatra.on.tooltip", "The Tatra Mountains rise here and there deep in the mountain belt: "
+				+ "granite ridges up to about 2500 m, glacial valleys and cirques, limestone foothills, and the Podhale basin "
+				+ "at their foot.");
+		b.add("polishforests.options.tatra.off.tooltip", "Only the Beskids, as in worlds made before this option.");
+		b.add("polishforests.options.tatra.realistic.tooltip", "The Tatras need the gameplay scale for now; the "
+				+ "realistic scale gets them later.");
 		b.add("polishforests.options.landscape.natural.tooltip", "The forest that would grow without people, on almost the "
 				+ "whole land.");
 		b.add("polishforests.options.landscape.today.tooltip", "About 30% forest, mostly pine forests on sand, with meadows "
@@ -384,6 +406,22 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		b.add("polishforests.kind.water", "Water and wetlands");
 		b.add("polishforests.kind.coast", "Coast");
 		b.add("polishforests.kind.landform", "Landforms");
+		b.add("polishforests.kind.tatra", "Tatras");
+		b.add("polishforests.command.no_tatra", "This world has no Tatras (the Tatras option was off when it was created)");
+		b.add("polishforests.command.here_tatra", "Tatras: %s, rock: %s, %s m above sea level (Y %s)");
+		b.add("polishforests.tatra_rock.none", "flysch and stone");
+		b.add("polishforests.tatra_rock.granite", "granite");
+		b.add("polishforests.tatra_rock.crystalline", "gneiss (crystalline core)");
+		b.add("polishforests.tatra_rock.limestone", "limestone");
+		b.add("polishforests.tatra_rock.dolomite", "dolomite");
+		b.add("polishforests.tatra_part.western_tatra", "Western Tatras");
+		b.add("polishforests.tatra_part.high_tatra", "High Tatras");
+		b.add("polishforests.tatra_part.belianske_tatra", "Belianske Tatras");
+		b.add("polishforests.tatra_part.regle", "the regle (limestone foothills)");
+		b.add("polishforests.tatra_part.subtatra_trough", "Sub-Tatra Trough");
+		b.add("polishforests.tatra_part.gubalowka_foothills", "Gubałówka foothills");
+		b.add("polishforests.tatra_part.podhale_basin", "Podhale basin");
+		b.add("polishforests.tatra_part.south_foot", "southern foot of the Tatras");
 		b.add("polishforests.kind.biome", "Biomes (find biome)");
 		b.add("polishforests.kind.zone", "Zones (find zone)");
 		b.add("polishforests.command.unknown_biome", "Unknown biome: %s. Use /polishforests list to see all biomes");
@@ -435,6 +473,12 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 				+ "zostaje skalne dno.");
 		b.add("polishforests.options.caves.off.tooltip", "Lity grunt bez jaskiń, jak w światach utworzonych przed tą "
 				+ "opcją.");
+		b.add("polishforests.options.tatra", "Tatry");
+		b.add("polishforests.options.tatra.on.tooltip", "Tu i ówdzie w głębi pasa gór wznoszą się Tatry: granitowe granie "
+				+ "do ok. 2500 m, doliny polodowcowe i kotły, wapienne regle, a u ich stóp Kotlina Podhalańska.");
+		b.add("polishforests.options.tatra.off.tooltip", "Tylko Beskidy, jak w światach utworzonych przed tą opcją.");
+		b.add("polishforests.options.tatra.realistic.tooltip", "Na razie Tatry są tylko w skali przyjaznej grze; skala "
+				+ "realistyczna dostanie je później.");
 		b.add("polishforests.options.landscape.natural.tooltip", "Las, który rósłby bez ludzi, prawie na całym lądzie.");
 		b.add("polishforests.options.landscape.today.tooltip", "Ok. 30% lasów, głównie bory na piaskach, łąki i pola "
 				+ "odłogowane; brzegi rzek zostają zarośnięte.");
@@ -459,6 +503,22 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		b.add("polishforests.kind.water", "Wody i mokradła");
 		b.add("polishforests.kind.coast", "Wybrzeże morskie");
 		b.add("polishforests.kind.landform", "Formy terenu");
+		b.add("polishforests.kind.tatra", "Tatry");
+		b.add("polishforests.command.no_tatra", "Ten świat nie ma Tatr (opcja Tatry była wyłączona przy jego tworzeniu)");
+		b.add("polishforests.command.here_tatra", "Tatry: %s, skała: %s, %s m n.p.m. (Y %s)");
+		b.add("polishforests.tatra_rock.none", "flisz i kamień");
+		b.add("polishforests.tatra_rock.granite", "granit");
+		b.add("polishforests.tatra_rock.crystalline", "gnejs (trzon krystaliczny)");
+		b.add("polishforests.tatra_rock.limestone", "wapień");
+		b.add("polishforests.tatra_rock.dolomite", "dolomit");
+		b.add("polishforests.tatra_part.western_tatra", "Tatry Zachodnie");
+		b.add("polishforests.tatra_part.high_tatra", "Tatry Wysokie");
+		b.add("polishforests.tatra_part.belianske_tatra", "Tatry Bielskie");
+		b.add("polishforests.tatra_part.regle", "regle (wapienne pogórze Tatr)");
+		b.add("polishforests.tatra_part.subtatra_trough", "Rów Podtatrzański");
+		b.add("polishforests.tatra_part.gubalowka_foothills", "Pogórze Gubałowskie");
+		b.add("polishforests.tatra_part.podhale_basin", "Kotlina Podhalańska");
+		b.add("polishforests.tatra_part.south_foot", "południowe podnóże Tatr");
 		b.add("polishforests.kind.biome", "Biomy (find biome)");
 		b.add("polishforests.kind.zone", "Strefy (find zone)");
 		b.add("polishforests.command.unknown_biome", "Nieznany biom: %s. Lista biomów: /polishforests list");

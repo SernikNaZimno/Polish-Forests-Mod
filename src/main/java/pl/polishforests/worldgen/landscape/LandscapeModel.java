@@ -82,6 +82,11 @@ public final class LandscapeModel {
 	/** Sandiness of the deposit (M2, habitats). */
 	private final Noise habitatSandiness;
 	private final RiverNetwork rivers;
+	/**
+	 * Step TT1: the Tatra complexes ({@link TatraField}), or null in a world without the Tatras (the setting {@code tatra}):
+	 * then the model is the one from before TT1, bit for bit.
+	 */
+	private final TatraField tatra;
 	/** Cached grids (M2, S3): smoothed terrain with slope and aspect, and the regional fields O, P. */
 	private final CoarseTerrainField coarse;
 	/** Highest terrain within 3 km·mspace (a large massif in the altitudinal belts, E12). */
@@ -171,10 +176,21 @@ public final class LandscapeModel {
 	}
 
 	/**
+	 * Model without the Tatras (the worlds from before step TT1 and every test that does not ask for them).
+	 *
 	 * @param scale       horizontal landscape scale
 	 * @param regionScale region size multiplier from the slider in the world options
 	 */
 	public LandscapeModel(long seed, LandscapeScale scale, double regionScale) {
+		this(seed, scale, regionScale, false);
+	}
+
+	/**
+	 * @param scale       horizontal landscape scale
+	 * @param regionScale region size multiplier from the slider in the world options
+	 * @param tatra       step TT1: the Tatra complexes (the world setting {@code tatra}); false gives the model from before TT1
+	 */
+	public LandscapeModel(long seed, LandscapeScale scale, double regionScale, boolean tatra) {
 		if (!(regionScale > 0.01 && regionScale <= 4.0)) {
 			throw new IllegalArgumentException("regionScale out of range (0.01, 4]: " + regionScale);
 		}
@@ -223,7 +239,12 @@ public final class LandscapeModel {
 		this.greatMassifReach = Math.sqrt(GM_REACH2) * greatMassifRa;
 		// New M2 noises only via "habitat.*": derived seeds are independent, so the terrain does not change.
 		this.habitatSandiness = root.derive("habitat.piask");
-		this.rivers = new RiverNetwork(this, root.derive("rivers"), scale);
+		// Step TT1: the Tatras with new seeds only ("mountain.tatra*"). The river network of a world with the Tatras computes
+		// its own nodes only near a complex and takes every other node from a network on the terrain without the Tatras, so
+		// the rivers far from the Tatras do not change (their widths, levels and courses depend on the whole catchment).
+		this.tatra = tatra ? new TatraField(this, root, scale, zs) : null;
+		RiverNetwork base = new RiverNetwork(this, root.derive("rivers"), scale, null, true);
+		this.rivers = tatra ? new RiverNetwork(this, root.derive("rivers"), scale, base, false) : base;
 		this.coarse = new CoarseTerrainField(this, 32.0 * local);
 		this.peaks = new PeakField(this, 3_000 * mspace, 62.5 * mspace, 4);
 		this.regional = new RegionalField(this, root.derive("habitat.prowincje"), zs);
@@ -1126,6 +1147,25 @@ public final class LandscapeModel {
 		return blend(x, z).typeWeights();
 	}
 
+	/**
+	 * Step TT1: type weights with the Tatra complex ({@code base} false): the region weights scaled by 1 − weight of the
+	 * complex, plus its TATRA and PODHALE weights. With {@code base} or outside the complexes the weights of the blend.
+	 */
+	double[] typeWeights(double x, double z, boolean base) {
+		double[] w = typeWeights(x, z);
+		TatraField.Column c = base || tatra == null ? null : tatra.column(x, z);
+		if (c == null) {
+			return w;
+		}
+		double[] out = new double[w.length];
+		for (int i = 0; i < w.length; i++) {
+			out[i] = (1 - c.weight) * w[i];
+		}
+		out[LandscapeType.TATRA.ordinal()] += c.tatra;
+		out[LandscapeType.PODHALE.ordinal()] += c.podhale;
+		return out;
+	}
+
 	// ------------------------------------------------------------------ L2: relief
 
 	/** Ground height of a cell without waters, in meters a.s.l. */
@@ -1168,6 +1208,8 @@ public final class LandscapeModel {
 		double foothillsProfile = Double.NaN;
 		double beskidsWeight = -1;
 		double beskidsProfile = Double.NaN;
+		/** Step TT1: the Tatra column of the point, or null outside every complex (and without the Tatras). */
+		TatraField.Column tatra;
 
 		void flysch(LandscapeType type, double w, double profile) {
 			if (type == LandscapeType.FOOTHILLS) {
@@ -1195,7 +1237,8 @@ public final class LandscapeModel {
 			case OLD_GLACIAL_PLAIN -> plainElevation(x, z, o, w);
 			case FOOTHILLS -> foothillElevation(c, x, z, o, w, gm);
 			case BESKIDS -> mountainElevation(c, x, z, o, w, gm);
-			case COASTLAND, SEA -> lowlandBaseline(x, z);
+			// The Tatra types are never cell types (TatraField lays them over the blend).
+			case COASTLAND, SEA, TATRA, PODHALE -> lowlandBaseline(x, z);
 		};
 	}
 
@@ -1668,6 +1711,10 @@ public final class LandscapeModel {
 
 	// ------------------------------------------------------------------ sampling
 
+	/**
+	 * Height of the blended cells (without the Tatras: step TT1 lays them over the terrain after {@link #shapeCoast}, see
+	 * {@link #tatraOver}).
+	 */
 	private double elevation(Blend b, double x, double z) {
 		double[] gm = greatMassifFor(b, x, z);
 		double h = 0;
@@ -1687,6 +1734,29 @@ public final class LandscapeModel {
 		return h;
 	}
 
+	/**
+	 * Step TT1: the Tatra complex over the terrain {@code h} after {@link #shapeCoast} (the complex fades out before the
+	 * shore, so the coastal band never flattens it): h + weight · (height − h). With {@code o} the column is recorded and
+	 * the components of the old terrain are scaled down by the weight.
+	 */
+	private double tatraOver(double h, double x, double z, ReliefParts o) {
+		if (tatra == null) {
+			return h;
+		}
+		TatraField.Column c = tatra.column(x, z);
+		if (o != null) {
+			o.tatra = c;
+		}
+		if (c == null) {
+			return h;
+		}
+		if (o != null) {
+			o.convexity *= 1 - c.weight;
+			o.massif = Math.max(o.massif, c.tatra);
+		}
+		return h + c.weight * (c.height - h);
+	}
+
 	/** Regional fields O and P at a point, without a full sample (regional map preview and tests). */
 	ColumnSample.Region region(double x, double z) {
 		return regional.sample(x, z);
@@ -1694,6 +1764,11 @@ public final class LandscapeModel {
 
 	/** Ground height after blending the cells and shaping the coast, still without rivers and lakes. */
 	public double landElevation(double x, double z) {
+		return tatraOver(landElevationBase(x, z), x, z, null);
+	}
+
+	/** Step TT1: {@link #landElevation} without the Tatras (the river network on the terrain of a world without them). */
+	double landElevationBase(double x, double z) {
 		Blend b = blend(x, z);
 		return shapeCoast(elevation(b, x, z), coastDistance(x, z), x, z, cliffShore(x, z, b));
 	}
@@ -1706,15 +1781,26 @@ public final class LandscapeModel {
 		double coastD = coastDistance(x, z);
 		double cliff = coastD < 25_000 * meso ? cliffShore(x, z, b) : 0;
 		double surface = shapeCoast(raw, coastD, x, z, cliff);
+		if (tatra != null) {
+			// Step TT1: the Tatra complex over the shaped terrain (and over the raw height of the record).
+			double shaped = tatraOver(surface, x, z, parts);
+			if (parts.tatra != null) {
+				raw += parts.tatra.weight * (parts.tatra.height - raw);
+			}
+			surface = shaped;
+		}
 		double rawSurface = surface;
 		// K8b2: width of the sandy beach of the column (it varies along a low shore), for the landforms and habitats.
 		double sandBeach = coastD >= 0 && coastD < 25_000 * meso ? sandBeach(x, z, coastD, cliff) : Double.NaN;
-		LandscapeType dominant = b.dominant();
-		double lowland = b.weight(LandscapeType.OUTWASH_PLAIN) + b.weight(LandscapeType.MORAINE_PLATEAU)
-				+ b.weight(LandscapeType.OLD_GLACIAL_PLAIN);
-		double young = b.weight(LandscapeType.OUTWASH_PLAIN) + b.weight(LandscapeType.MORAINE_PLATEAU);
-		double foothills = b.weight(LandscapeType.FOOTHILLS);
-		double mountains = b.weight(LandscapeType.BESKIDS);
+		// Step TT1: the weights of the Tatra complex replace part of the region weights (keep = the share left to them).
+		TatraField.Column tc = parts.tatra;
+		double keep = tc == null ? 1 : 1 - tc.weight;
+		LandscapeType dominant = tc == null ? b.dominant() : tatraDominant(b, tc);
+		double lowland = keep * (b.weight(LandscapeType.OUTWASH_PLAIN) + b.weight(LandscapeType.MORAINE_PLATEAU)
+				+ b.weight(LandscapeType.OLD_GLACIAL_PLAIN));
+		double young = keep * (b.weight(LandscapeType.OUTWASH_PLAIN) + b.weight(LandscapeType.MORAINE_PLATEAU));
+		double foothills = keep * b.weight(LandscapeType.FOOTHILLS) + (tc == null ? 0 : tc.podhale);
+		double mountains = keep * b.weight(LandscapeType.BESKIDS) + (tc == null ? 0 : tc.tatra);
 
 		Substrate substrate = dominant.defaultSubstrate();
 		int water = ColumnSample.NO_WATER;
@@ -1742,7 +1828,7 @@ public final class LandscapeModel {
 		}
 
 		// Valleys and channels of the river network, and sink lakes.
-		RiverNetwork.RiverHit r = rivers.query(x, z, surface, lowland + b.weight(LandscapeType.COASTLAND), foothills,
+		RiverNetwork.RiverHit r = rivers.query(x, z, surface, lowland + keep * b.weight(LandscapeType.COASTLAND), foothills,
 				mountains);
 		surface = r.terrain();
 		boolean inSinkLake = r.lakeLevel() != ColumnSample.NO_WATER && r.lakeShore() < 0;
@@ -1911,8 +1997,10 @@ public final class LandscapeModel {
 		if (dominant == LandscapeType.MORAINE_PLATEAU && parts.moraineRidgeHeight > 25) {
 			landformBits |= Landform.END_MORAINE.bit();
 		}
-		if (dominant == LandscapeType.FOOTHILLS || dominant == LandscapeType.BESKIDS) {
-			double p0 = dominant == LandscapeType.FOOTHILLS ? parts.foothillsProfile : parts.beskidsProfile;
+		if (dominant == LandscapeType.FOOTHILLS || dominant == LandscapeType.BESKIDS
+				|| dominant == LandscapeType.TATRA && !Double.isNaN(parts.tatra.profile)) {
+			double p0 = dominant == LandscapeType.FOOTHILLS ? parts.foothillsProfile : dominant == LandscapeType.BESKIDS
+					? parts.beskidsProfile : parts.tatra.profile;
 			if (p0 > 0.9) {
 				landformBits |= Landform.RIDGE.bit();
 			}
@@ -1920,7 +2008,29 @@ public final class LandscapeModel {
 				landformBits |= Landform.MOUNTAIN_VALLEY.bit();
 			}
 		}
+		// Step TT1: cirques and U-shaped valleys of the Tatra massif, where the complex outweighs the old terrain.
+		if (parts.tatra != null && parts.tatra.weight > 0.5) {
+			landformBits |= parts.tatra.landforms;
+		}
 		return landformBits;
+	}
+
+	/**
+	 * Step TT1: the dominant type with the weights of the Tatra complex (TATRA, PODHALE) over the region weights scaled by
+	 * 1 − weight (the same order of the types as {@link Blend#dominant} on a tie).
+	 */
+	private static LandscapeType tatraDominant(Blend b, TatraField.Column tc) {
+		double keep = 1 - tc.weight;
+		LandscapeType best = TYPES[0];
+		double bw = -1;
+		for (LandscapeType t : TYPES) {
+			double w = t == LandscapeType.TATRA ? tc.tatra : t == LandscapeType.PODHALE ? tc.podhale : keep * b.weight(t);
+			if (w > bw) {
+				bw = w;
+				best = t;
+			}
+		}
+		return best;
 	}
 
 	/**
@@ -1947,11 +2057,28 @@ public final class LandscapeModel {
 			case BESKIDS -> parts.beskidsProfile;
 			default -> parts.beskidsWeight > parts.foothillsWeight ? parts.beskidsProfile : parts.foothillsProfile;
 		};
-		return new ColumnSample.Terrain(rawSurface, coastD, b.weight(LandscapeType.OUTWASH_PLAIN),
-				b.weight(LandscapeType.MORAINE_PLATEAU), b.weight(LandscapeType.OLD_GLACIAL_PLAIN),
-				b.weight(LandscapeType.FOOTHILLS), b.weight(LandscapeType.BESKIDS), coastBand, landformBits, parts.convexity * coastScale,
-				parts.duneHeight * coastScale,
-				ridgeProfile, parts.massif, summit, cliffHeight, low, bare, sandiness, g.sBar(), g.slope(), g.aspect(), sandBeach);
+		TatraField.Column tc = parts.tatra;
+		if (tc == null) {
+			return new ColumnSample.Terrain(rawSurface, coastD, b.weight(LandscapeType.OUTWASH_PLAIN),
+					b.weight(LandscapeType.MORAINE_PLATEAU), b.weight(LandscapeType.OLD_GLACIAL_PLAIN),
+					b.weight(LandscapeType.FOOTHILLS), b.weight(LandscapeType.BESKIDS), coastBand, landformBits,
+					parts.convexity * coastScale, parts.duneHeight * coastScale,
+					ridgeProfile, parts.massif, summit, cliffHeight, low, bare, sandiness, g.sBar(), g.slope(), g.aspect(), sandBeach);
+		}
+		// Step TT1: the Tatra weights over the region weights; the TATRA weight goes with the Beskids, the PODHALE weight with
+		// the foothills (the classifier sees the complex as mountains). The valley profile of the massif where it dominates.
+		double keep = 1 - tc.weight;
+		if (dominant.isTatra() || Double.isNaN(ridgeProfile)) {
+			double p = Double.isNaN(tc.profile) ? ridgeProfile : tc.profile;
+			ridgeProfile = Double.isNaN(p) ? 0.5 : p;
+		}
+		boolean own = tc.weight > 0.5;
+		return new ColumnSample.Terrain(rawSurface, coastD, keep * b.weight(LandscapeType.OUTWASH_PLAIN),
+				keep * b.weight(LandscapeType.MORAINE_PLATEAU), keep * b.weight(LandscapeType.OLD_GLACIAL_PLAIN),
+				keep * b.weight(LandscapeType.FOOTHILLS) + tc.podhale, keep * b.weight(LandscapeType.BESKIDS) + tc.tatra, coastBand,
+				landformBits, parts.convexity * coastScale, parts.duneHeight * coastScale, ridgeProfile, parts.massif, summit,
+				cliffHeight, low, bare, sandiness, g.sBar(), g.slope(), g.aspect(), sandBeach, tc.tatra, tc.podhale,
+				own ? tc.part : TatraPart.NONE, own ? tc.rock : null);
 	}
 
 	/** Sandiness of the deposit 0–1: quantile of a noise with a 2 km·k wavelength, so the share of sands is a simple threshold. */
@@ -2048,7 +2175,9 @@ public final class LandscapeModel {
 			}
 		}
 
-		if (type == LandscapeType.FOOTHILLS || type == LandscapeType.BESKIDS) {
+		if (type.isTatra()) {
+			tatraForms(x, z, s, f);
+		} else if (type == LandscapeType.FOOTHILLS || type == LandscapeType.BESKIDS) {
 			Blend b = blend(x, z);
 			Cell cell = null;
 			double best = -1;
@@ -2078,6 +2207,128 @@ public final class LandscapeModel {
 			}
 		}
 		return new Description(s, f);
+	}
+
+	/**
+	 * Step TT1: summits, passes and belts of the Tatra complex in the terrain description: a summit is a local maximum of a
+	 * ridge, a pass the saddle of the main ridge between two valley heads; the belts by the nominal boundary of the Beskids
+	 * (until step TT3) in the TATRA type.
+	 */
+	private void tatraForms(double x, double z, ColumnSample s, Set<Landform> f) {
+		TatraField.Column c = tatra == null ? null : tatra.column(x, z);
+		if (c == null) {
+			return;
+		}
+		if (c.pass) {
+			f.add(Landform.MOUNTAIN_PASS);
+		}
+		if (!Double.isNaN(c.profile) && c.profile > 0.75 && isLocalMaximum(x, z, s.surface(),
+				0.06 * TatraField.VALLEY_SPACING * mspace)) {
+			f.add(Landform.SUMMIT);
+		}
+		if (s.type() == LandscapeType.TATRA) {
+			f.add(AltitudinalBelts.isUpperMontane(s.surface()) ? Landform.UPPER_MONTANE : Landform.LOWER_MONTANE);
+		}
+	}
+
+	// ------------------------------------------------------------------ Tatras (step TT1)
+
+	/**
+	 * Tatra massif (step TT1): the middle of its main ridge (x, z), the anchor (the middle of the Podhale basin), the unit
+	 * vector (cos, sin) across the range towards Podhale, the half length of the main ridge and the target summit height.
+	 */
+	public record Tatra(double x, double z, double anchorX, double anchorZ, double cos, double sin, double halfLength,
+			double targetSummit, double reach) {
+	}
+
+	/** Whether the model has the Tatras (the world setting {@code tatra}). */
+	public boolean hasTatra() {
+		return tatra != null;
+	}
+
+	/** Tatra massifs with the middle of the main ridge in the box (empty without the Tatras). */
+	public List<Tatra> tatras(double minX, double minZ, double maxX, double maxZ) {
+		if (tatra == null) {
+			return List.of();
+		}
+		List<Tatra> out = new ArrayList<>();
+		for (TatraField.Massif m : tatra.massifs(minX, minZ, maxX, maxZ)) {
+			out.add(new Tatra(m.x(), m.z(), m.anchorX(), m.anchorZ(), m.cos(), m.sin(), m.halfLength(), m.summit(), m.reach()));
+		}
+		return out;
+	}
+
+	/** Largest distance from the middle of the main ridge at which a Tatra complex changes the terrain (m); 0 without them. */
+	public double tatraReach() {
+		return tatra == null ? 0 : tatra.maxReach();
+	}
+
+	/** Grid spacing of the Tatra candidates (m); 0 without the Tatras. */
+	public double tatraSpacing() {
+		return tatra == null ? 0 : tatra.spacing();
+	}
+
+	/** Whether the reach of any Tatra complex can intersect the box (false without the Tatras). */
+	public boolean tatraNear(double minX, double minZ, double maxX, double maxZ) {
+		return tatra != null && tatra.near(minX, minZ, maxX, maxZ);
+	}
+
+	/** Part of the Tatra complex at a point where the complex outweighs the old terrain, else {@link TatraPart#NONE}. */
+	public TatraPart tatraPart(double x, double z) {
+		TatraField.Column c = tatra == null ? null : tatra.column(x, z);
+		return c == null || c.weight <= 0.5 ? TatraPart.NONE : c.part;
+	}
+
+	/** Share of a Tatra massif proper at a point (0 outside them and without the Tatras): only first-order streams rise there. */
+	double tatraMassifShare(double x, double z) {
+		TatraField.Column c = tatra == null ? null : tatra.column(x, z);
+		return c == null ? 0 : c.massifShare;
+	}
+
+	/** Weight of a Tatra complex at a point (0 outside them and without the Tatras). */
+	double tatraWeight(double x, double z) {
+		TatraField.Column c = tatra == null ? null : tatra.column(x, z);
+		return c == null ? 0 : c.weight;
+	}
+
+	/** The river network (tests). */
+	RiverNetwork rivers() {
+		return rivers;
+	}
+
+	/** The Tatra column at a point (tests and tools), or null. */
+	TatraField.Column tatraColumn(double x, double z) {
+		return tatra == null ? null : tatra.column(x, z);
+	}
+
+	/**
+	 * Core of a massif for the river network at a point: the core of a large massif (M2-8) and, in the network of a world
+	 * with the Tatras ({@code base} false), the core of a Tatra massif (step TT1): no springs and no flow across it.
+	 */
+	boolean riverCore(double x, double z, boolean base) {
+		if (greatMassifCore(x, z)) {
+			return true;
+		}
+		if (base || tatra == null) {
+			return false;
+		}
+		TatraField.Column c = tatra.column(x, z);
+		return c != null && c.core > TatraField.CORE;
+	}
+
+	/** Whether a core of {@link #riverCore} can intersect the box. */
+	boolean riverCoreNear(double minX, double minZ, double maxX, double maxZ, boolean base) {
+		return greatMassifNear(minX, minZ, maxX, maxZ) || !base && tatraNear(minX, minZ, maxX, maxZ);
+	}
+
+	/** Strength of the core of {@link #riverCore} (the larger of the large massif and the Tatra core strengths). */
+	double riverCoreStrength(double x, double z, boolean base) {
+		double g = greatMassifStrength(x, z);
+		if (base || tatra == null) {
+			return g;
+		}
+		TatraField.Column c = tatra.column(x, z);
+		return c == null ? g : Math.max(g, c.core);
 	}
 
 	/** Whether the point is higher than 16 points on a circle of radius r and 8 on a circle of radius r/2. */

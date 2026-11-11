@@ -3,7 +3,9 @@ package pl.polishforests.command;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import pl.polishforests.worldgen.habitat.Calibration;
@@ -24,14 +26,39 @@ import pl.polishforests.worldgen.landscape.LandscapeScale;
 class PolishForestsCommandsTest {
 	static final long SEED = 20260927L;
 
+	/** Step TT1: the targets of the Tatra complexes (found only in a world with the Tatras). */
+	static final Set<PolishForestsCommands.Target> TATRA_TARGETS = EnumSet.of(PolishForestsCommands.Target.TATRA,
+			PolishForestsCommands.Target.HIGH_TATRA, PolishForestsCommands.Target.WESTERN_TATRA, PolishForestsCommands.Target.PODHALE,
+			PolishForestsCommands.Target.CIRQUE, PolishForestsCommands.Target.U_VALLEY);
+
 	static HabitatTargets.World world(LandscapeScale scale, HabitatClassifier.Mode mode) {
-		LandscapeModel m = new LandscapeModel(SEED, scale, 1.0);
-		return new HabitatTargets.World(m, new HabitatClassifier(SEED, m, mode));
+		return world(SEED, scale, mode, false);
+	}
+
+	static HabitatTargets.World world(long seed, LandscapeScale scale, HabitatClassifier.Mode mode, boolean tatra) {
+		LandscapeModel m = new LandscapeModel(seed, scale, 1.0, tatra);
+		return new HabitatTargets.World(m, new HabitatClassifier(seed, m, mode));
 	}
 
 	@Test
 	void everyTargetIsFoundInGameplayScale() {
-		assertFound(world(LandscapeScale.GAMEPLAY, HabitatClassifier.Mode.NATURAL), List.of(PolishForestsCommands.Target.values()));
+		// The old targets in a world without the Tatras (as before step TT1), the Tatra targets in one with them.
+		assertFound(world(LandscapeScale.GAMEPLAY, HabitatClassifier.Mode.NATURAL), List.of(PolishForestsCommands.Target.values())
+				.stream().filter(t -> !TATRA_TARGETS.contains(t)).toList());
+		assertFound(world(SEED, LandscapeScale.GAMEPLAY, HabitatClassifier.Mode.NATURAL, true), List.copyOf(TATRA_TARGETS));
+	}
+
+	/**
+	 * Step TT1: the Tatra targets are found for a second seed too (the one with the nearest massif among the probed
+	 * seeds), and none in a world without the Tatras.
+	 */
+	@Test
+	void tatraTargetsAreFoundOnlyWithTheTatras() {
+		assertFound(world(4L, LandscapeScale.GAMEPLAY, HabitatClassifier.Mode.NATURAL, true), List.copyOf(TATRA_TARGETS));
+		HabitatTargets.World without = world(LandscapeScale.GAMEPLAY, HabitatClassifier.Mode.NATURAL);
+		for (PolishForestsCommands.Target t : TATRA_TARGETS) {
+			assertTrue(PolishForestsCommands.locate(without, t, 0, 0) == null, t.id() + " found in a world without the Tatras");
+		}
 	}
 
 	@Test

@@ -69,13 +69,13 @@ LEAF_OPACITY = (0.55, 0.70)
 COLORS = (4, 9)
 MIN_COLOR_PIXELS = 4
 ISOLATED_MAX = {'bark': 0.10, 'leaves': 0.30, 'plant': 1.0, 'planks': 0.30, 'stripped': 0.25, 'end': 0.30, 'sapling': 1.0,
-                'twigs': 0.30}
+                'twigs': 0.30, 'rock': 0.30}
 # Kinds that tile on a wall (seam check both ways) and kinds that must be fully opaque.
-TILED = ('bark', 'leaves', 'planks', 'stripped', 'twigs')
+TILED = ('bark', 'leaves', 'planks', 'stripped', 'twigs', 'rock')
 # Bare twigs (step V13): the share of visible pixels of a leafless crown block (vanilla has no bare crowns; a crown of
 # 3-4 blocks then shows about 70-85% of twigs against the sky, as a crown seen through in winter).
 TWIG_OPACITY = (0.24, 0.45)
-OPAQUE = ('planks', 'stripped', 'end')
+OPAQUE = ('planks', 'stripped', 'end', 'rock')
 DARK = 50
 # Local contrast (step V1b, checkpoint CP-A: "the textures look a bit too sharp"; texlib.local_contrast): the largest
 # mean and 90th percentile of the luma steps between neighbouring pixels and the largest share of dark one-pixel lines.
@@ -99,7 +99,12 @@ CONTRAST = {'bark': (13.1, 32.6, 0.031), 'leaves': (28.3, 60.9, 0.162), 'plant':
             'planks': (15.3, 42.0, 0.17), 'stripped': (6.8, 15.2, 0.01), 'end': (17.9, 55.8, 0.059),
             'sapling': (23.6, 48.9, 0.054),
             # Step V13: bare twigs, no vanilla counterpart; the caps of the leaves (a crown texture under the tint).
-            'twigs': (28.3, 60.9, 0.162)}
+            'twigs': (28.3, 60.9, 0.162),
+            # Step TT1: the rocks of the Tatra massif, measured the same way on the 10 natural vanilla 26.3 stones (stone,
+            # granite, diorite, andesite, tuff, calcite, deepslate, cobblestone, smooth basalt, dripstone block): mean
+            # 9.8-34.4 (median 17.2), p90 23.0-70.6 (median 38.6), lines 0.4-21.5% (median 5.5%), isolated pixels 13-56%
+            # (median 23%). The caps are the medians (CP-A: smoother), the isolated share the cap of the leaves (30%).
+            'rock': (17.2, 38.6, 0.055)}
 # The jump across a block edge between two different textures of one trunk (expect 'below' / 'above') may be at most
 # this many times the mean step between neighbouring rows inside them (V1b review round 1: the first transition bark
 # had jumps 3-4 times the inner steps, a straight line around the trunk).

@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Optional;
 import net.fabricmc.fabric.api.client.datagen.v1.provider.FabricModelProvider;
 import net.fabricmc.fabric.api.datagen.v1.FabricPackOutput;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.client.data.models.BlockModelGenerators;
 import net.minecraft.client.data.models.ItemModelGenerators;
 import net.minecraft.client.data.models.MultiVariant;
@@ -217,6 +218,13 @@ final class ModBlockModels extends FabricModelProvider {
 				gen.modelOutput);
 		gen.blockStateOutput.accept(MultiVariantGenerator.dispatch(ModBlocks.sphagnumBlock(), turns(sphagnumCube)));
 		gen.registerSimpleItemModel(ModBlocks.sphagnumBlock(), sphagnumCube);
+		// Step TT1: the Tatra rocks, a cube of the own texture in four turns of the top (as vanilla stone).
+		for (Block b : ModBlocks.tatraRocks()) {
+			String path = BuiltInRegistries.BLOCK.getKey(b).getPath();
+			Identifier cube = ModelTemplates.CUBE_ALL.create(b, TextureMapping.cube(new Material(own(path))), gen.modelOutput);
+			gen.blockStateOutput.accept(MultiVariantGenerator.dispatch(b, turns(cube)));
+			gen.registerSimpleItemModel(b, cube);
+		}
 	}
 
 	/** A model in four turns about the vertical, drawn at random per position. */

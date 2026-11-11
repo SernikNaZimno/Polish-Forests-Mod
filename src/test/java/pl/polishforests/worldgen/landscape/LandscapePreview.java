@@ -251,6 +251,8 @@ public final class LandscapePreview {
 			case BESKIDS -> 0x6E5A48;
 			case COASTLAND -> 0xEEE2B0;
 			case SEA -> 0x2A5A8A;
+			case TATRA -> 0x8C8C90;
+			case PODHALE -> 0x9DA86A;
 		};
 	}
 

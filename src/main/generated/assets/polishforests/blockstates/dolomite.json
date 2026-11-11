@@ -1,0 +1,21 @@
+{
+  "variants": {
+    "": [
+      {
+        "model": "polishforests:block/dolomite"
+      },
+      {
+        "model": "polishforests:block/dolomite",
+        "y": 90
+      },
+      {
+        "model": "polishforests:block/dolomite",
+        "y": 180
+      },
+      {
+        "model": "polishforests:block/dolomite",
+        "y": 270
+      }
+    ]
+  }
+}

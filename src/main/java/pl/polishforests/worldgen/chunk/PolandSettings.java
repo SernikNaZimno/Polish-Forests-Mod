@@ -35,23 +35,26 @@ import pl.polishforests.worldgen.habitat.HabitatClassifier;
  * @param caves              the vanilla caves (step J1: noise caves, carvers, aquifers) under the terrain: on in new
  *                           worlds of both scales; missing in worlds created before J1, which stay without caves, so
  *                           their new chunks match the old ones without a seam
+ * @param tatra              the Tatra massifs with Podhale (step TT1, docs/04-pionowy-wycinek.md §3 "Kroki TT"): on in new
+ *                           worlds of the gameplay scale, off in the realistic scale until step TT5; missing in worlds
+ *                           created before TT1, which stay without the Tatras, so their new chunks match the old ones
  */
 public record PolandSettings(PolandScale scale, double regionScale, boolean agriculture, double managedForestShare,
-		boolean alienSpecies, int version, boolean coverInBlocks, LooseCover looseCover, boolean caves) {
+		boolean alienSpecies, int version, boolean coverInBlocks, LooseCover looseCover, boolean caves, boolean tatra) {
 	/** Version of the presets and of new worlds: M2 (habitat biomes). */
 	public static final int CURRENT_VERSION = 2;
 	/** Version of worlds created before the field existed (M1). */
 	public static final int LEGACY_VERSION = 1;
 
 	public static final PolandSettings DEFAULT = new PolandSettings(PolandScale.REALISTIC, 1.0, false, 0.85, true,
-			CURRENT_VERSION, true, LooseCover.THIN, true);
+			CURRENT_VERSION, true, LooseCover.THIN, true, false);
 
 	/**
 	 * Settings of an M1 world saved without a {@code settings} object: in M1 the codec left out settings equal to the M1
 	 * default (realistic scale, "present-day Poland" mode).
 	 */
 	public static final PolandSettings LEGACY_M1 = new PolandSettings(PolandScale.REALISTIC, 1.0, true, 0.85, true,
-			LEGACY_VERSION, false, LooseCover.REALISTIC, false);
+			LEGACY_VERSION, false, LooseCover.REALISTIC, false, false);
 
 	public static final Codec<PolandSettings> CODEC = RecordCodecBuilder.create(i -> i.group(
 			PolandScale.CODEC.optionalFieldOf("scale").forGetter(s -> Optional.of(s.scale())),
@@ -63,7 +66,8 @@ public record PolandSettings(PolandScale scale, double regionScale, boolean agri
 			Codec.intRange(1, 1_000).optionalFieldOf("version").forGetter(s -> Optional.of(s.version())),
 			Codec.BOOL.optionalFieldOf("cover_in_blocks").forGetter(s -> Optional.of(s.coverInBlocks())),
 			LooseCover.CODEC.optionalFieldOf("loose_cover").forGetter(s -> Optional.of(s.looseCover())),
-			Codec.BOOL.optionalFieldOf("caves").forGetter(s -> Optional.of(s.caves()))
+			Codec.BOOL.optionalFieldOf("caves").forGetter(s -> Optional.of(s.caves())),
+			Codec.BOOL.optionalFieldOf("tatra").forGetter(s -> Optional.of(s.tatra()))
 	).apply(i, PolandSettings::decode));
 
 	/**
@@ -76,34 +80,42 @@ public record PolandSettings(PolandScale scale, double regionScale, boolean agri
 
 	private static PolandSettings decode(Optional<PolandScale> scale, Optional<Double> regionScale,
 			Optional<Boolean> agriculture, Optional<Double> managedForestShare, Optional<Boolean> alienSpecies,
-			Optional<Integer> version, Optional<Boolean> coverInBlocks, Optional<LooseCover> looseCover, Optional<Boolean> caves) {
+			Optional<Integer> version, Optional<Boolean> coverInBlocks, Optional<LooseCover> looseCover, Optional<Boolean> caves,
+			Optional<Boolean> tatra) {
 		int v = version.orElse(LEGACY_VERSION);
 		return new PolandSettings(scale.orElse(PolandScale.REALISTIC), regionScale.orElse(1.0),
 				agriculture.orElse(v < 2), managedForestShare.orElse(0.85), alienSpecies.orElse(true), v,
-				coverInBlocks.orElse(false), looseCover.orElse(LooseCover.REALISTIC), caves.orElse(false));
+				coverInBlocks.orElse(false), looseCover.orElse(LooseCover.REALISTIC), caves.orElse(false),
+				tatra.orElse(false));
 	}
 
 	public PolandSettings withScale(PolandScale newScale) {
 		return new PolandSettings(newScale, regionScale, agriculture, managedForestShare, alienSpecies, version,
-				coverInBlocks, looseCover, caves);
+				coverInBlocks, looseCover, caves, tatra);
 	}
 
 	/** The same settings in the "present-day Poland" mode ({@code true}) or the natural-vegetation mode. */
 	public PolandSettings withAgriculture(boolean presentDay) {
 		return new PolandSettings(scale, regionScale, presentDay, managedForestShare, alienSpecies, version, coverInBlocks,
-				looseCover, caves);
+				looseCover, caves, tatra);
 	}
 
 	/** The same settings with the given loose cover in the lowland (step K1). */
 	public PolandSettings withLooseCover(LooseCover cover) {
 		return new PolandSettings(scale, regionScale, agriculture, managedForestShare, alienSpecies, version, coverInBlocks,
-				cover, caves);
+				cover, caves, tatra);
 	}
 
 	/** The same settings with or without the vanilla caves (step J1). */
 	public PolandSettings withCaves(boolean on) {
 		return new PolandSettings(scale, regionScale, agriculture, managedForestShare, alienSpecies, version, coverInBlocks,
-				looseCover, on);
+				looseCover, on, tatra);
+	}
+
+	/** The same settings with or without the Tatras (step TT1). */
+	public PolandSettings withTatra(boolean on) {
+		return new PolandSettings(scale, regionScale, agriculture, managedForestShare, alienSpecies, version, coverInBlocks,
+				looseCover, caves, on);
 	}
 
 	/** Vegetation mode of the habitat classifier: "present-day Poland" or natural vegetation. */

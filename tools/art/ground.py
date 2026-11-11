@@ -608,3 +608,36 @@ def climber(tex, palettes):
     alpha = np.where(val >= 0, 255, 0).astype(np.uint8)
     colors = [t.hex_to_rgb(c) for c in p['colors']]
     return t.paint(np.clip(val, 0, len(colors) - 1), colors, alpha)
+
+
+def rock(tex, palettes):
+    """The rocks of the Tatra massif (step TT1), tileable and opaque, as smooth as the vanilla stones (lint kind 'rock':
+    the medians of the 10 natural vanilla 26.3 stones). p['form']: 'granite' (the gray granite of the High Tatras: an even
+    light gray mass with sparse dark mica and light feldspar grains of one or two pixels), 'gneiss' (the crystalline core
+    of the Western Tatras: darker gray foliation, gently wavy bands along the block), 'limestone' (the regle and the
+    Belianske Tatras: a pale cream-gray, almost even, faint cloudy patches) or 'dolomite' (a beige-gray, finer sugary
+    grain). The colors p['colors'], darkest first; the grains use the darkest and the lightest tone."""
+    p = tex.params
+    rng = t.Rng(tex.seed)
+    n = len(p['colors'])
+    form = p['form']
+    ys, xs = np.mgrid[0:N, 0:N].astype(np.float64)
+    if form == 'gneiss':
+        warp = 2.2 * (t.value_noise(rng, 4, 2) - 0.5)
+        band = 0.5 + 0.5 * np.sin(2 * np.pi * (ys + warp) * p['bands'] / N)
+        v = 0.55 * band + 0.3 * t.fbm(rng, 2, 4, 4, 0.6) + p['grain'] * t.value_noise(rng, 16, 16)
+    elif form == 'limestone':
+        v = t.fbm(rng, 3, 2, 2, 0.5) + p['grain'] * t.value_noise(rng, 16, 16)
+    else:
+        v = t.fbm(rng, 2, 4, 4, 0.6) + p['grain'] * t.value_noise(rng, 16, 16)
+    # Inner tones only for the mass; the darkest and the lightest tone are the grains (or a thin share of the mass).
+    shares = p.get('shares')
+    idx = t.quantize(v, n, shares)
+    idx = t.majority(idx, 1)
+    for tone, count in ((0, p.get('dark', 0)), (n - 1, p.get('light', 0))):
+        for _ in range(count):
+            x, y = rng.integers(0, N), rng.integers(0, N)
+            idx[y, x] = tone
+            if rng.random() < 0.4:
+                idx[y, (x + 1) % N] = tone
+    return t.paint(idx, [t.hex_to_rgb(c) for c in p['colors']])

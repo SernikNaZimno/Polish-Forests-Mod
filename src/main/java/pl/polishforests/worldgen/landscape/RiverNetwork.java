@@ -33,6 +33,14 @@ final class RiverNetwork {
 
 	private final LandscapeModel model;
 	private final Noise noise;
+	/**
+	 * Step TT1: in a world with the Tatras the network on the terrain without them; the nodes far from every complex
+	 * ({@link #local}) are taken from it whole (node, outflow, catchment, level, segment, sink lake), so the rivers there
+	 * are those of a world without the Tatras. Null in that network itself and in a world without the Tatras.
+	 */
+	private final RiverNetwork base;
+	/** Whether this network runs on the terrain without the Tatras ({@link LandscapeModel#landElevationBase}). */
+	private final boolean baseTerrain;
 	/** Node spacing for orders 1–3 (index = order). */
 	private final double[] spacing = new double[4];
 	private static final double[] BASE_SPACING = {1, 1_250, 5_000, 20_000};
@@ -1171,7 +1179,7 @@ final class RiverNetwork {
 
 	/** K8b1: whether (x, z) is lagoon water of {@link LandscapeModel#landElevation} (land side of the coast, below 0 m). */
 	private boolean lagoonWater(double x, double z) {
-		return model.lagoonStrength(x, z) > 0 && model.coastDistance(x, z) >= 0 && model.landElevation(x, z) < 0;
+		return model.lagoonStrength(x, z) > 0 && model.coastDistance(x, z) >= 0 && land(x, z) < 0;
 	}
 
 	/**
@@ -1281,8 +1289,19 @@ final class RiverNetwork {
 	}
 
 	RiverNetwork(LandscapeModel model, Noise noise, LandscapeScale scale) {
+		this(model, noise, scale, null, true);
+	}
+
+	/**
+	 * @param base        step TT1: the network of the same world without the Tatras whose nodes far from them this network
+	 *                    reuses, or null
+	 * @param baseTerrain whether this network runs on the terrain without the Tatras (no Tatra cores)
+	 */
+	RiverNetwork(LandscapeModel model, Noise noise, LandscapeScale scale, RiverNetwork base, boolean baseTerrain) {
 		this.model = model;
 		this.noise = noise;
+		this.base = base;
+		this.baseTerrain = baseTerrain;
 		this.meso = scale.meso();
 		this.spacing[3] = 20_000 * scale.meso();
 		this.spacing[2] = 5_000 * Math.max(scale.meso(), 0.2);
@@ -1294,6 +1313,43 @@ final class RiverNetwork {
 	}
 
 	// ------------------------------------------------------------------ nodes and drainage
+
+	/**
+	 * Step TT1: the largest slope of the water level between two nodes in a Tatra complex (all orders; outside the
+	 * complexes 0.004, 0.03 and 0.15 for orders 3, 2 and 1). The complex stands 500–2000 m above the old terrain within a
+	 * few kilometers (the Podhale basin at 580–700 m next to a lowland at about 150 m in the gameplay scale), so with the
+	 * old limits its rivers would cut canyons hundreds of meters deep through the basin and the valley floors; they are
+	 * mountain streams there (the real Tatra streams fall 5–15%, the gameplay scale shortens the distances about 3 times).
+	 */
+	static final double TATRA_MAX_SLOPE = 0.8;
+
+	/** Margin around the reach of a Tatra complex, in node spacings of the order, within which a node is {@link #local}. */
+	static final double LOCAL_MARGIN = 2.0;
+
+	/** Ground height for the network: with or without the Tatras ({@link #baseTerrain}). */
+	private double land(double x, double z) {
+		return baseTerrain ? model.landElevationBase(x, z) : model.landElevation(x, z);
+	}
+
+	/**
+	 * Step TT1: whether the node is computed by this network (true without a {@link #base}), i.e. whether a Tatra complex
+	 * can reach within {@link #LOCAL_MARGIN} spacings of it; otherwise the node and everything about it come from the base.
+	 */
+	private boolean local(int order, long i, long j) {
+		if (base == null) {
+			return true;
+		}
+		double a = spacing[order];
+		double x = (i + 0.2 + 0.6 * noise.unit(i, j, 10 + order)) * a;
+		double z = (j + 0.2 + 0.6 * noise.unit(i, j, 20 + order)) * a;
+		double m = LOCAL_MARGIN * a;
+		return model.tatraNear(x - m, z - m, x + m, z + m);
+	}
+
+	/** Whether the node lies in a massif core (no springs, no outflow across it); see {@link LandscapeModel#riverCore}. */
+	private boolean core(double x, double z) {
+		return model.riverCore(x, z, baseTerrain);
+	}
 
 	private static long key(int order, long i, long j) {
 		return Noise.key(i, j, 100 + order);
@@ -1312,21 +1368,25 @@ final class RiverNetwork {
 		if (n != null) {
 			return n;
 		}
+		if (!local(order, i, j)) {
+			return base.node(order, i, j);
+		}
 		double a = spacing[order];
 		double x = (i + 0.2 + 0.6 * noise.unit(i, j, 10 + order)) * a;
 		double z = (j + 0.2 + 0.6 * noise.unit(i, j, 20 + order)) * a;
-		double land = model.landElevation(x, z);
+		double land = land(x, z);
 		double r = 0.3 * a;
 		double route = land;
 		for (int q = 0; q < 4; q++) {
 			double ang = q * Math.PI / 2 + 0.4;
-			route += model.landElevation(x + r * Math.cos(ang), z + r * Math.sin(ang));
+			route += land(x + r * Math.cos(ang), z + r * Math.sin(ang));
 		}
 		route /= 5;
 		boolean sea = model.coastDistance(x, z) < 0;
-		double[] w = model.typeWeights(x, z);
-		n = new Node(order, i, j, x, z, route, land, sea, w[LandscapeType.BESKIDS.ordinal()],
-				w[LandscapeType.FOOTHILLS.ordinal()]);
+		// Step TT1: the Tatra weights count as mountains (TATRA) and foothills (PODHALE); 0 without the Tatras.
+		double[] w = model.typeWeights(x, z, baseTerrain);
+		n = new Node(order, i, j, x, z, route, land, sea, w[LandscapeType.BESKIDS.ordinal()] + w[LandscapeType.TATRA.ordinal()],
+				w[LandscapeType.FOOTHILLS.ordinal()] + w[LandscapeType.PODHALE.ordinal()]);
 		put(nodes, k, n);
 		return n;
 	}
@@ -1338,6 +1398,9 @@ final class RiverNetwork {
 		if (cached != null) {
 			return cached;
 		}
+		if (!local(n.order, n.i, n.j)) {
+			return base.link(n);
+		}
 		Link result;
 		if (n.sea) {
 			result = new Link(SEA, n.i, n.j, n.x, n.z, null, 0);
@@ -1346,7 +1409,8 @@ final class RiverNetwork {
 			// (otherwise a river cuts a canyon up to 1000 m deep through the dome). When no lower node can be reached
 			// around the core, the node drains to the lower node whose path crosses the core least, so no new sink
 			// lakes appear (the old rule there could cross the summit).
-			boolean strict = !model.greatMassifCore(n.x, n.z);
+			// Step TT1: the same rule for the core of a Tatra massif (in the network of a world with the Tatras).
+			boolean strict = !core(n.x, n.z);
 			Node best = lowestNeighbor(n, 1, strict);
 			if (best == null) {
 				// Gorge: a lower node in a farther ring.
@@ -1419,7 +1483,7 @@ final class RiverNetwork {
 					int parts = massifPathParts(n.x, n.z, m.x, m.z);
 					for (int q = 1; q < parts; q++) {
 						double f = (double) q / parts;
-						g = Math.max(g, model.greatMassifStrength(n.x + (m.x - n.x) * f, n.z + (m.z - n.z) * f));
+						g = Math.max(g, model.riverCoreStrength(n.x + (m.x - n.x) * f, n.z + (m.z - n.z) * f, baseTerrain));
 					}
 					if (best == null || g < bestG || g == bestG && m.route < best.route) {
 						best = m;
@@ -1437,13 +1501,13 @@ final class RiverNetwork {
 	 * realistic scale) cannot step over the core, which is only about 1.2 Rc wide across the range.
 	 */
 	private boolean crossesMassifCore(double x0, double z0, double x1, double z1) {
-		if (!model.greatMassifNear(Math.min(x0, x1), Math.min(z0, z1), Math.max(x0, x1), Math.max(z0, z1))) {
+		if (!model.riverCoreNear(Math.min(x0, x1), Math.min(z0, z1), Math.max(x0, x1), Math.max(z0, z1), baseTerrain)) {
 			return false;
 		}
 		int parts = massifPathParts(x0, z0, x1, z1);
 		for (int q = 1; q < parts; q++) {
 			double f = (double) q / parts;
-			if (model.greatMassifCore(x0 + (x1 - x0) * f, z0 + (z1 - z0) * f)) {
+			if (core(x0 + (x1 - x0) * f, z0 + (z1 - z0) * f)) {
 				return true;
 			}
 		}
@@ -1511,12 +1575,19 @@ final class RiverNetwork {
 
 	/** Whether a spring rises at the node: streams mainly in the mountains and foothills, rivers and large rivers everywhere. */
 	boolean isSpring(Node n) {
+		if (!local(n.order, n.i, n.j)) {
+			return base.isSpring(n);
+		}
 		if (n.sea) {
 			return false;
 		}
 		// No springs on the core of a large massif (M2-8): a stream rising there would start hundreds of meters below
 		// the dome (the level of a node is limited by the slope from the node downstream) and cut the summit.
-		if (model.greatMassifCore(n.x, n.z)) {
+		if (core(n.x, n.z)) {
+			return false;
+		}
+		// Step TT1: in a Tatra massif only first-order streams rise (the larger rivers come from Podhale and the foot).
+		if (n.order > 1 && !baseTerrain && model.tatraMassifShare(n.x, n.z) > 0.5) {
 			return false;
 		}
 		if (n.order > 1) {
@@ -1532,6 +1603,9 @@ final class RiverNetwork {
 		Integer cached = areas.get(k);
 		if (cached != null) {
 			return cached;
+		}
+		if (!local(n.order, n.i, n.j)) {
+			return base.area(n);
 		}
 		int a = isSpring(n) ? 1 : 0;
 		for (int di = -1; di <= 1; di++) {
@@ -1552,6 +1626,9 @@ final class RiverNetwork {
 
 	/** Sink lake of the node (or null if the node has an outflow). */
 	SinkLake sinkLake(Node n) {
+		if (!local(n.order, n.i, n.j)) {
+			return base.sinkLake(n);
+		}
 		if (link(n).kind != SINK) {
 			return null;
 		}
@@ -1562,10 +1639,10 @@ final class RiverNetwork {
 		}
 		double a = spacing[n.order];
 		double radius = Math.clamp(0.12 * a * Math.sqrt(Math.max(1, area(n))), 25 * valleyScale, 0.4 * a);
-		double min = model.landElevation(n.x, n.z);
+		double min = land(n.x, n.z);
 		for (int q = 0; q < 16; q++) {
 			double ang = q * Math.PI / 8;
-			min = Math.min(min, model.landElevation(n.x + 1.3 * radius * Math.cos(ang), n.z + 1.3 * radius * Math.sin(ang)));
+			min = Math.min(min, land(n.x + 1.3 * radius * Math.cos(ang), n.z + 1.3 * radius * Math.sin(ang)));
 		}
 		int level = (int) Math.floor(min) - 1;
 		double depth = 2 + 8 * noise.unit(n.i, n.j, 81 + n.order);
@@ -1580,6 +1657,9 @@ final class RiverNetwork {
 		Double cached = levels.get(k);
 		if (cached != null) {
 			return cached;
+		}
+		if (!local(n.order, n.i, n.j)) {
+			return base.level(n);
 		}
 		Link l = link(n);
 		double incision = switch (n.order) {
@@ -1609,9 +1689,30 @@ final class RiverNetwork {
 			double len = Math.hypot(l.tx - n.x, l.tz - n.z);
 			// Lowest terrain on the way to the target: a watercourse cannot flow above a depression (e.g. a lagoon).
 			double pathLand = n.land;
+			// Step TT1: the largest Tatra weight on the way (only the network of a world with the Tatras), and the bound of
+			// a level falling linearly to the target below the terrain at every point of the way.
+			double tw = baseTerrain ? 0 : model.tatraWeight(n.x, n.z);
+			double linear = n.land - incision;
 			for (int q = 1; q <= 7; q++) {
 				double f = q / 8.0;
-				pathLand = Math.min(pathLand, model.landElevation(n.x + (l.tx - n.x) * f, n.z + (l.tz - n.z) * f));
+				double px = n.x + (l.tx - n.x) * f;
+				double pz = n.z + (l.tz - n.z) * f;
+				double h = land(px, pz);
+				pathLand = Math.min(pathLand, h);
+				if (!baseTerrain) {
+					tw = Math.max(tw, model.tatraWeight(px, pz));
+					linear = Math.min(linear, (h - incision - down * f) / (1 - f));
+				}
+			}
+			if (!baseTerrain) {
+				tw = Math.max(tw, model.tatraWeight(l.tx, l.tz));
+			}
+			if (tw > 0) {
+				// The Tatra complex stands on a step of hundreds of meters above the old terrain (the basin at 580–700 m
+				// next to a lowland at about 150 m): the lowest point of the whole way would put the water of the basin at
+				// the level of that lowland (canyons 500 m deep through the basin); the level falls along the way instead.
+				maxSlope += (TATRA_MAX_SLOPE - maxSlope) * tw;
+				pathLand = linear + incision;
 			}
 			lvl = Math.max(down + 1e-4 * len + 0.01, Math.min(pathLand - incision, down + maxSlope * len));
 		}
@@ -1709,6 +1810,9 @@ final class RiverNetwork {
 		if (cached != null) {
 			return cached == EMPTY ? null : cached;
 		}
+		if (!local(order, i, j)) {
+			return base.segment(order, i, j);
+		}
 		Node n = node(order, i, j);
 		Segment s = null;
 		Link l = link(n);
@@ -1733,9 +1837,9 @@ final class RiverNetwork {
 		// mouth of a tributary on a segment ending in a sink lake moved by 3 km, and with it an order 3 segment of 85 km
 		// by up to 1 km), and the exact projection of step K4b no longer turns the bend into cliffs
 		// (docs/m2/poprawka-geometrii.md, K4).
-		boolean sinkEnd = down0 != null && link(down0).kind == SINK && model.greatMassifNear(
+		boolean sinkEnd = down0 != null && link(down0).kind == SINK && model.riverCoreNear(
 				Math.min(n.x, down0.x) - spacing[n.order], Math.min(n.z, down0.z) - spacing[n.order],
-				Math.max(n.x, down0.x) + spacing[n.order], Math.max(n.z, down0.z) + spacing[n.order]);
+				Math.max(n.x, down0.x) + spacing[n.order], Math.max(n.z, down0.z) + spacing[n.order], baseTerrain);
 		double[] t1 = down0 != null && !sinkEnd ? tangent(down0) : new double[] {(x1 - n.x) / len, (z1 - n.z) / len};
 		double level0 = level(n);
 		double width0 = width(n);

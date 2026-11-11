@@ -180,6 +180,8 @@ class GoldenTerrainTest {
 				case BESKIDS -> "BESKIDY";
 				case COASTLAND -> "POBRZEZE";
 				case SEA -> "MORZE";
+				// Step TT1: no M1 name (the Tatra types are new); the golden Tatra file hashes the English names.
+				case TATRA, PODHALE -> t.name();
 			};
 		}
 
@@ -429,12 +431,14 @@ class GoldenTerrainTest {
 			}
 		}
 		for (LandscapeType t : LandscapeType.values()) {
-			if (!types.contains(t.name())) {
+			// Step TT1: the Tatra types occur only in a world with the Tatras (GoldenTatraTest), never in these sets.
+			if (!t.isTatra() && !types.contains(t.name())) {
 				out.add(new TargetIssue(TargetIssue.COVERAGE, key + ": missing type " + t + " in the column set " + types));
 			}
 		}
 		for (Substrate s : Substrate.values()) {
-			if (!substrates.contains(s.name())) {
+			// Step TT1: the Tatra bedrock is a field of the terrain record (Terrain.rock), never the substrate of a column.
+			if (!s.isTatraRock() && !substrates.contains(s.name())) {
 				out.add(new TargetIssue(TargetIssue.COVERAGE, key + ": missing substrate " + s + " in the column set " + substrates));
 			}
 		}
@@ -540,11 +544,11 @@ class GoldenTerrainTest {
 
 	// ---------------------------------------------------------------- reading and writing the golden file
 
-	private static boolean exists(String resource) {
+	static boolean exists(String resource) {
 		return GoldenTerrainTest.class.getResource(resource) != null;
 	}
 
-	private static Map<String, GoldenSet> read(String resource) throws IOException {
+	static Map<String, GoldenSet> read(String resource) throws IOException {
 		Map<String, GoldenSet> sets = new LinkedHashMap<>();
 		try (InputStream in = GoldenTerrainTest.class.getResourceAsStream(resource)) {
 			if (in == null) {

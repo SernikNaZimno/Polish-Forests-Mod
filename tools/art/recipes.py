@@ -1903,7 +1903,29 @@ TEXTURES = [
             params=dict(opacity=opacity, zigzag=zigzag, length=length, side=side, fork=fork, tip=2, gray=TWIG_GRAY, tries=TWIG_TRIES.get(name, 24),
                         max_visible=TWIG_MAX_VISIBLE.get(name, 1.0)),
             expect={'min_line': 2}, note=note)
-    for name, color, opacity, zigzag, length, side, fork, note in TWIG_SPECIES]
+    for name, color, opacity, zigzag, length, side, fork, note in TWIG_SPECIES] + [
+    # Step TT1: the rocks of the Tatra massif (cube blocks, not tinted). Own palettes after field photographs of the rocks
+    # (no vanilla stone texture is copied or traced): the High Tatra granite is light gray, the gneiss darker and banded,
+    # the limestone pale cream-gray, the dolomite beige-gray and sugary.
+    Texture('tatra_granite', 'rock', ground.rock, 'tatra_granite/1', None,
+            params=dict(form='granite', grain=0.35, dark=5, light=6,
+                        colors=['#717274', '#868785', '#8e8f8c', '#969693', '#9e9d99', '#b3b1ab']),
+            note='gray granite of the High Tatras (step TT1): an even light gray mass with sparse dark mica and light '
+                 'feldspar grains'),
+    Texture('gneiss', 'rock', ground.rock, 'gneiss/1', None,
+            params=dict(form='gneiss', bands=3, grain=0.25,
+                        colors=['#5e5e60', '#6a6a6b', '#767675', '#828180', '#8f8d8a']),
+            note='gneiss of the crystalline core of the Western Tatras (step TT1): gray foliation in gently wavy bands'),
+    Texture('limestone', 'rock', ground.rock, 'limestone/1', None,
+            params=dict(form='limestone', grain=0.3, dark=4,
+                        colors=['#9e9a8f', '#b2aea2', '#bbb7ab', '#c4c0b4', '#cdc9bd']),
+            note='limestone of the regle and the Belianske Tatras (step TT1): pale cream-gray, almost even, faint '
+                 'cloudy patches'),
+    Texture('dolomite', 'rock', ground.rock, 'dolomite/1', None,
+            params=dict(form='dolomite', grain=0.5, light=4,
+                        colors=['#9d9587', '#a59d8f', '#ada597', '#b5ad9f', '#c1baac']),
+            note='dolomite of the regle (step TT1): beige-gray with a fine sugary grain'),
+]
 
 TEXTURES_BY_NAME = {tx.name: tx for tx in TEXTURES}
 # The painter of each plated bark (a variant rebuilds its base with the base's own painter, so it gets the structure

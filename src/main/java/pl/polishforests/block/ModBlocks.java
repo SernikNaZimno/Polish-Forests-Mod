@@ -71,6 +71,8 @@ public final class ModBlocks {
 	/** Step F4: the sphagnum of the bogs, a carpet and a ground block. */
 	private static Block sphagnumCarpet;
 	private static Block sphagnumBlock;
+	/** Step TT1: the rocks of the Tatra massif, in the order of {@link #TATRA_ROCKS}. */
+	private static final List<Block> TATRA_ROCK_BLOCKS = new ArrayList<>();
 	/** Step P1: the stripped thin trunks. */
 	private static final Map<StrippedTrunk, TrunkBlock> STRIPPED = new EnumMap<>(StrippedTrunk.class);
 	/** Step P2: the wood sets (the Scots pine's with the LITE blocks of V7). */
@@ -180,6 +182,12 @@ public final class ModBlocks {
 			}
 			out.insertAfter(Items.MOSS_CARPET, forestMossCarpet);
 			out.insertAfter(Items.PODZOL, mossyPodzol);
+			// Step TT1: the Tatra rocks after the vanilla deepslate.
+			previous = Items.DEEPSLATE;
+			for (Block b : TATRA_ROCK_BLOCKS) {
+				out.insertAfter(previous, b);
+				previous = b.asItem();
+			}
 		});
 		CreativeModeTabEvents.modifyOutputEvent(CreativeModeTabs.FOOD_AND_DRINKS).register(out ->
 				out.insertAfter(Items.SWEET_BERRIES, bilberries));
@@ -316,6 +324,16 @@ public final class ModBlocks {
 		sphagnumBlock = block(SPHAGNUM_BLOCK, Block::new, BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_LIGHT_GREEN)
 				.strength(0.1F).sound(SoundType.MOSS));
 		item(SPHAGNUM_BLOCK, sphagnumBlock, new Item.Properties().compostable(ContextIntProviders.COMPOSTABLE_MEDIUM));
+		// Step TT1, registered after the sphagnum: the rocks of the Tatra massif, with the properties of vanilla stone
+		// (hardness, blast resistance, a pickaxe for the drop) in their own map colors; each drops itself.
+		MapColor[] rockColors = {MapColor.STONE, MapColor.COLOR_GRAY, MapColor.TERRACOTTA_WHITE, MapColor.QUARTZ};
+		for (int r = 0; r < TATRA_ROCKS.size(); r++) {
+			String id = TATRA_ROCKS.get(r);
+			Block b = block(id, Block::new, BlockBehaviour.Properties.of().mapColor(rockColors[r])
+					.instrument(NoteBlockInstrument.BASEDRUM).requiresCorrectToolForDrops().strength(1.5F, 6.0F));
+			item(id, b, new Item.Properties());
+			TATRA_ROCK_BLOCKS.add(b);
+		}
 	}
 
 	/**
@@ -387,6 +405,21 @@ public final class ModBlocks {
 	/** Block and item paths of the sphagnum (step F4). */
 	public static final String SPHAGNUM_CARPET = "sphagnum_carpet";
 	public static final String SPHAGNUM_BLOCK = "sphagnum_block";
+
+	/**
+	 * Block and item paths of the Tatra rocks (step TT1): the gray granite of the High Tatras, the gneiss of the crystalline
+	 * core of the Western Tatras, the limestone and the dolomite of the regle and the Belianske Tatras.
+	 */
+	public static final String TATRA_GRANITE = "tatra_granite";
+	public static final String GNEISS = "gneiss";
+	public static final String LIMESTONE = "limestone";
+	public static final String DOLOMITE = "dolomite";
+	public static final List<String> TATRA_ROCKS = List.of(TATRA_GRANITE, GNEISS, LIMESTONE, DOLOMITE);
+
+	/** The Tatra rock blocks (step TT1), in the order of {@link #TATRA_ROCKS}. */
+	public static List<Block> tatraRocks() {
+		return Collections.unmodifiableList(registered(TATRA_ROCK_BLOCKS.isEmpty() ? null : TATRA_ROCK_BLOCKS));
+	}
 
 	/** The sphagnum carpet over the peat of the bogs (step F4). */
 	public static Block sphagnumCarpet() {

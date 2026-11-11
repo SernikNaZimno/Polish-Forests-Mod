@@ -1,0 +1,21 @@
+{
+  "variants": {
+    "": [
+      {
+        "model": "polishforests:block/limestone"
+      },
+      {
+        "model": "polishforests:block/limestone",
+        "y": 90
+      },
+      {
+        "model": "polishforests:block/limestone",
+        "y": 180
+      },
+      {
+        "model": "polishforests:block/limestone",
+        "y": 270
+      }
+    ]
+  }
+}

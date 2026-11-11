@@ -46,11 +46,15 @@ public enum Landform {
 	CLIFF,
 	COASTAL_DUNES,
 	/** Coastal lagoon or coastal lake behind a spit. */
-	LAGOON;
+	LAGOON,
+	/** Glacial cirque at the head of a Tatra valley: an overdeepened bowl under the headwall (step TT1; water in TT2). */
+	CIRQUE,
+	/** Floor of a U-shaped glacial valley of the Tatras (step TT1). */
+	U_VALLEY;
 
 	/** Landforms recognised in {@link LandscapeModel#sample} (without extra samples), in a fixed order. */
 	public static final List<Landform> FROM_SAMPLE = List.of(INLAND_DUNES, END_MORAINE, RIDGE, MOUNTAIN_VALLEY, BEACH,
-			COASTAL_DUNES, CLIFF, HEADWATERS);
+			COASTAL_DUNES, CLIFF, HEADWATERS, CIRQUE, U_VALLEY);
 
 	/** Bit of the landform in {@link ColumnSample.Terrain#landformBits()} (there are fewer than 32 landforms). */
 	public int bit() {

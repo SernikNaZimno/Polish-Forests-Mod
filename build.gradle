@@ -262,6 +262,12 @@ tasks.withType(Test).configureEach {
 				: file('src/test/resources/golden_terrain_m2.txt').absolutePath
 		outputs.upToDateWhen { false }
 	}
+	// Step TT1: -PwriteGoldenTatra writes the golden file of the Tatra complexes (GoldenTatraTest) anew, searching its
+	// patches again, to src/test/resources/golden_terrain_tatra.txt (only on purpose, like -PwriteGolden).
+	if (project.hasProperty('writeGoldenTatra')) {
+		systemProperty 'polishforests.golden.tatra.write', file('src/test/resources/golden_terrain_tatra.txt').absolutePath
+		outputs.upToDateWhen { false }
+	}
 	if (project.hasProperty('goldenKeepCenters')) {
 		systemProperty 'polishforests.golden.keepCenters', 'true'
 	}
@@ -530,7 +536,10 @@ tasks.register('generateArt', ArtTask) {
 	outputs.upToDateWhen { false }
 }
 
-// Choosing in-game tests: ./gradlew runClientGameTest -Pgametest=performance|stages|views|climate|ui|habitats|vegetation|present_day|determinism|ecotones|slice|probes|cover|caves|cave_biomes|vanilla_forests|all
+// Choosing in-game tests: ./gradlew runClientGameTest -Pgametest=performance|stages|views|climate|ui|habitats|vegetation|present_day|determinism|ecotones|slice|probes|cover|caves|cave_biomes|vanilla_forests|tatra|all
+// (tatra: only by name; step TT1, the Tatra complexes of the gameplay preset: the Tatra targets of find, the chunks of the
+// patches of golden_terrain_tatra.txt against the model (top block, rock blocks, highest block below Y 720) and a load of
+// 81 chunks by the granite ridge; numbers only, report build/tatra/report.txt)
 // (cover: only by name; step K1, the thin and the realistic loose cover in pits down to Y 0 in a sandy lowland, a till
 // lowland and a valley floor, with a survey of cover, ores, voids and side faces; -Pscales=realistic|gameplay)
 // (caves: only by name; step J1, the caves of a lowland forest, a river valley, the mountains and the sea coast in each
@@ -673,6 +682,8 @@ tasks.named('runClientGameTest') {
 	jvmArgs "-Dpolishforests.leaves.out=${layout.buildDirectory.dir('leaves').get().asFile.absolutePath}"
 	// Step G1: the results of -Pgametest=slice -Psites=felling (with -PtreeFelling=fallingtree|treeharvester).
 	jvmArgs "-Dpolishforests.felling.out=${layout.buildDirectory.dir('felling').get().asFile.absolutePath}"
+	// Step TT1: the report of -Pgametest=tatra (build/tatra/report.txt).
+	jvmArgs "-Dpolishforests.tatra.out=${layout.buildDirectory.dir('tatra').get().asFile.absolutePath}"
 	// Step J1: the slices of -Pgametest=caves.
 	jvmArgs "-Dpolishforests.caves.out=${layout.buildDirectory.dir('caves').get().asFile.absolutePath}"
 	// Step V13: the results of -Pgametest=slice -Psites=seasons.

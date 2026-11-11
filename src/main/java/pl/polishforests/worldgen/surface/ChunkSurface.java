@@ -39,6 +39,8 @@ public final class ChunkSurface {
 	final int[] bandOffset = new int[256];
 	/** Gravel patch in the upper channel deposit (old {@code DETAIL} rule). */
 	final boolean[] gravelPatch = new boolean[256];
+	/** Step TT1: the rock of the Tatra massif in the column above the deepslate, or null (stone and flysch). */
+	final Material[] rock = new Material[256];
 
 	ChunkSurface() {
 	}
@@ -114,6 +116,9 @@ public final class ChunkSurface {
 		if (y < deepRockY[i]) {
 			return Material.DEEPSLATE;
 		}
+		if (rock[i] != null) {
+			return rock[i];
+		}
 		if (substrate[i] == Substrate.FLYSCH.ordinal()) {
 			// Flysch layering: beds of sandstone and shale, slightly tilted.
 			return Math.floorMod(y + bandOffset[i], 9) < 3 ? Material.ANDESITE : Material.STONE;
@@ -123,7 +128,7 @@ public final class ChunkSurface {
 
 	/**
 	 * Bounds of the rock of the whole chunk for {@link #uniformRock}: the highest bedrock top, the lowest rock top, the lowest
-	 * and highest deepslate limit, and 1 when some column has flysch. Computed once per chunk after the plan is final (the
+	 * and highest deepslate limit, and 1 when some column has flysch or a Tatra rock (step TT1). Computed once per chunk after the plan is final (the
 	 * beard of {@link StructureGround} may move tops and rock tops).
 	 */
 	public int[] rockBounds() {
@@ -137,7 +142,7 @@ public final class ChunkSurface {
 			minRock = Math.min(minRock, rockTop[i]);
 			minDeep = Math.min(minDeep, deepRockY[i]);
 			maxDeep = Math.max(maxDeep, deepRockY[i]);
-			if (substrate[i] == Substrate.FLYSCH.ordinal()) {
+			if (substrate[i] == Substrate.FLYSCH.ordinal() || rock[i] != null) {
 				flysch = 1;
 			}
 		}
@@ -174,6 +179,9 @@ public final class ChunkSurface {
 			case ALLUVIUM -> depth < 4 ? Material.DIRT : Material.SAND;
 			case GLACIAL_TILL -> depth < 3 ? Material.DIRT : Material.CLAY;
 			case FLYSCH -> depth < 2 ? Material.DIRT : Material.COARSE_DIRT;
+			// Step TT1: the bedrock substrates of the Tatras are never the deposit of a column (the column keeps its flysch
+			// cover and gets the rock in ChunkSurface.rock); weathered rock under the soil if one ever is.
+			case GRANITE, CRYSTALLINE, LIMESTONE, DOLOMITE -> depth < 2 ? Material.DIRT : Material.GRAVEL;
 		};
 	}
 

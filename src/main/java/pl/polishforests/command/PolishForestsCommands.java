@@ -44,6 +44,7 @@ import pl.polishforests.worldgen.landscape.LandscapeScale;
 import pl.polishforests.worldgen.landscape.LandscapeType;
 import pl.polishforests.worldgen.landscape.Landform;
 import pl.polishforests.worldgen.landscape.Substrate;
+import pl.polishforests.worldgen.landscape.TatraPart;
 import pl.polishforests.worldgen.landscape.WaterKind;
 
 /**
@@ -65,7 +66,9 @@ public final class PolishForestsCommands {
 
 	/** Target kind: landscape type, belt, water, coast or landform. */
 	private enum Kind {
-		LANDSCAPE, BELT, WATER, COAST, LANDFORM
+		LANDSCAPE, BELT, WATER, COAST, LANDFORM,
+		/** Step TT1: the parts of the Tatra complexes, searched around the Tatra massifs ({@link #searchTatra}). */
+		TATRA
 	}
 
 	/**
@@ -117,7 +120,14 @@ public final class PolishForestsCommands {
 		RIDGE(Kind.LANDFORM, true, true, d -> d.forms().contains(Landform.RIDGE)),
 		SUMMIT(Kind.LANDFORM, true, true, d -> d.forms().contains(Landform.SUMMIT)),
 		MOUNTAIN_PASS(Kind.LANDFORM, true, true, d -> d.forms().contains(Landform.MOUNTAIN_PASS)),
-		MOUNTAIN_VALLEY(Kind.LANDFORM, true, true, d -> d.forms().contains(Landform.MOUNTAIN_VALLEY));
+		MOUNTAIN_VALLEY(Kind.LANDFORM, true, true, d -> d.forms().contains(Landform.MOUNTAIN_VALLEY)),
+		// Step TT1: the Tatra complexes (only in a world with the Tatras), searched around the Tatra massifs.
+		TATRA(Kind.TATRA, false, false, d -> d.sample().type() == LandscapeType.TATRA),
+		HIGH_TATRA(Kind.TATRA, false, false, d -> d.sample().terrain().tatraPart().high()),
+		WESTERN_TATRA(Kind.TATRA, false, false, d -> d.sample().terrain().tatraPart() == TatraPart.WESTERN_TATRA),
+		PODHALE(Kind.TATRA, false, false, d -> d.sample().terrain().tatraPart() == TatraPart.PODHALE_BASIN),
+		CIRQUE(Kind.TATRA, true, false, d -> d.sample().terrain().has(Landform.CIRQUE)),
+		U_VALLEY(Kind.TATRA, true, false, d -> d.sample().terrain().has(Landform.U_VALLEY));
 
 		final Kind kind;
 		final boolean fine;
@@ -285,6 +295,17 @@ public final class PolishForestsCommands {
 		source.sendSuccess(() -> Component.translatable("polishforests.command.here",
 				s.type().name().toLowerCase(Locale.ROOT), String.format(Locale.ROOT, "%.1f", s.surface()),
 				s.substrate().name().toLowerCase(Locale.ROOT), water, forms), false);
+		// Step TT1: in a Tatra complex the part, the rock and the height in meters and in blocks.
+		TatraPart part = s.terrain().tatraPart();
+		if (part != TatraPart.NONE) {
+			Substrate rock = s.terrain().rock();
+			int y = generator(source).vertical().topBlockY(s.surface());
+			source.sendSuccess(() -> Component.translatable("polishforests.command.here_tatra",
+					Component.translatable("polishforests.tatra_part." + part.name().toLowerCase(Locale.ROOT)),
+					rock == null ? Component.translatable("polishforests.tatra_rock.none")
+							: Component.translatable("polishforests.tatra_rock." + rock.name().toLowerCase(Locale.ROOT)),
+					String.format(Locale.ROOT, "%.0f", s.surface()), y), false);
+		}
 		// Step S9: the second line, the habitat of the column (biome, STL, association, zone, soil, DGW, O, P, T and the
 		// trees of the stand, the pale-bark stand-ins marked as placeholders until M3).
 		HabitatInfo info = HabitatInfo.of(source.getLevel(), (int) Math.floor(pos.x), (int) Math.floor(pos.y),
@@ -339,7 +360,12 @@ public final class PolishForestsCommands {
 		Vec3 origin = source.getPosition();
 		source.sendSuccess(() -> Component.translatable("polishforests.command.searching", target.displayName()), false);
 		double[][] phases = phases(model, target.fine);
-		double radius = target.coastal ? coastalRadius(model) : phases[phases.length - 1][1];
+		if (target.kind == Kind.TATRA && !model.hasTatra()) {
+			source.sendFailure(Component.translatable("polishforests.command.no_tatra"));
+			return 0;
+		}
+		double radius = target.coastal ? coastalRadius(model) : target.kind == Kind.TATRA ? tatraRadius(model)
+				: phases[phases.length - 1][1];
 		runSearch(source, origin, cancelled -> locate(world, target, origin.x, origin.z, cancelled), radius,
 				target.displayName());
 		return 1;
@@ -483,8 +509,47 @@ public final class PolishForestsCommands {
 	static double[] locate(HabitatTargets.World world, Target target, double ox, double oz, BooleanSupplier cancelled) {
 		Predicate<double[]> test = p -> matches(world, target, p);
 		LandscapeModel model = world.model();
+		if (target.kind == Kind.TATRA) {
+			return searchTatra(model, test, ox, oz, target.fine ? TATRA_FINE_STEP : TATRA_STEP, cancelled);
+		}
 		return target.coastal ? searchCoastal(model, test, ox, oz, cancelled)
 				: search(phases(model, target.fine), test, ox, oz, cancelled);
+	}
+
+	/** Step TT1: lattice spacing of the search around a Tatra massif (m), for the cirques and U-shaped valleys. */
+	static final double TATRA_STEP = 60;
+	static final double TATRA_FINE_STEP = 24;
+	/** Step TT1: {@code elevation} searches the Tatra massifs first from this lower bound (above the Beskids, m). */
+	static final int TATRA_ELEVATION = 1_800;
+
+	/** Step TT1: largest distance of a Tatra massif searched by the Tatra targets (m): the radius of the wide search. */
+	static double tatraRadius(LandscapeModel model) {
+		double[][] p = phases(model, false);
+		return p[p.length - 1][1];
+	}
+
+	/**
+	 * Step TT1: the Tatra massifs within {@link #tatraRadius} in the order of the distance of their centers from the
+	 * player, each searched in rings around its center (the middle of the main ridge) up to its reach; the first hit
+	 * (the one nearest that center in the nearest massif with one) or null. A massif is rare (one per cell of about
+	 * 64 km in the gameplay scale), so a lattice around the player would need a fine spacing over hundreds of kilometers.
+	 */
+	static double[] searchTatra(LandscapeModel model, Predicate<double[]> test, double ox, double oz, double step,
+			BooleanSupplier cancelled) {
+		double r = tatraRadius(model);
+		List<LandscapeModel.Tatra> massifs = new java.util.ArrayList<>(model.tatras(ox - r, oz - r, ox + r, oz + r));
+		massifs.removeIf(t -> Math.hypot(t.x() - ox, t.z() - oz) > r);
+		massifs.sort(java.util.Comparator.comparingDouble(t -> Math.hypot(t.x() - ox, t.z() - oz)));
+		for (LandscapeModel.Tatra t : massifs) {
+			if (cancelled.getAsBoolean()) {
+				return null;
+			}
+			double[] hit = search(new double[][] {{step, t.reach()}}, test, t.x(), t.z(), cancelled);
+			if (hit != null) {
+				return hit;
+			}
+		}
+		return null;
 	}
 
 	/**
@@ -599,8 +664,13 @@ public final class PolishForestsCommands {
 			ColumnSample s = model.sample(p[0], p[1]);
 			return !s.hasWater() && s.surface() >= lo && s.surface() <= hi;
 		};
-		runSearch(source, origin, cancelled -> search(phases, test, origin.x, origin.z, cancelled), phases[phases.length - 1][1],
-				name);
+		// Step TT1: heights above the Beskids are searched in the Tatra massifs first (their crests are a few hundred
+		// meters wide, which the wide lattice of 500 m misses), then on the wide lattice.
+		boolean tatra = model.hasTatra() && lo >= TATRA_ELEVATION;
+		runSearch(source, origin, cancelled -> {
+			double[] hit = tatra ? searchTatra(model, test, origin.x, origin.z, TATRA_FINE_STEP, cancelled) : null;
+			return hit != null ? hit : search(phases, test, origin.x, origin.z, cancelled);
+		}, phases[phases.length - 1][1], name);
 		return 1;
 	}
 
