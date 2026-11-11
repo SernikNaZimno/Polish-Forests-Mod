@@ -71,7 +71,14 @@ public final class HabitatTargets {
 		 * dwarf pine, alpine grassland and the timberline need a large massif ({@code AltitudinalBelts.largeMassif}); in
 		 * the realistic scale of the test seed the nearest one lies about 1040 km away.
 		 */
-		MASSIF
+		MASSIF,
+		/**
+		 * Step TT2: around the Tatra massifs only, as the Tatra targets of {@code find} ({@code searchTatra} with the fine
+		 * lattice of 24 m): the bare rock, the scree and the snow patches occur only on the rock of the Tatras, and a
+		 * massif is rare (one per cell of about 64 km), so the wide lattice from a lowland origin would run past the
+		 * time limit of the command (stage 2 of TT2: over 60 s from the origin of the test seed, about 91 km away).
+		 */
+		TATRA
 	}
 
 	private HabitatTargets() {
@@ -99,6 +106,11 @@ public final class HabitatTargets {
 	 * slopes, not on a valley floor (S9: 0 of about 125 000 banks around the nearest large massif and none within 100 km
 	 * of the test origin; a classifier change waits for the user's decision, docs/03-m2-biomy.md §11.1).
 	 */
+	/** Step TT2: whether the zone occurs only in the Tatras (found only in a world with the Tatras). */
+	public static boolean tatraOnly(Zone zone) {
+		return plan(zone) == Plan.TATRA;
+	}
+
 	public static boolean occurs(Zone zone, LandscapeScale scale) {
 		return zone != Zone.MONTANE_TALL_HERBS || scale == LandscapeScale.REALISTIC;
 	}
@@ -119,6 +131,7 @@ public final class HabitatTargets {
 			case STRANDLINE, EMBRYO_DUNE, CLIFF_FACE, CLIFF_TOP -> Plan.COAST;
 			case MONTANE_TALL_HERBS -> Plan.WATERCOURSE;
 			case TIMBERLINE -> Plan.MASSIF;
+			case BARE_ROCK, SCREE, SNOW_PATCH -> Plan.TATRA;
 			default -> Plan.WIDE;
 		};
 	}
@@ -169,6 +182,7 @@ public final class HabitatTargets {
 			case WATERCOURSE -> watercoursePhases(world).getLast().radius();
 			case WIDE, HIGH_MOUNTAINS -> widePhases(world).getLast().radius();
 			case MASSIF -> massifRadius(world);
+			case TATRA -> PolishForestsCommands.tatraRadius(world.model());
 		};
 	}
 
@@ -186,6 +200,8 @@ public final class HabitatTargets {
 					p -> Transect.fromBank(world, p, bankBand(world), transect(world), test),
 					ox, oz, cancelled);
 			case MASSIF -> aroundMassifs(world, highFrom, test, ox, oz, cancelled);
+			case TATRA -> model.hasTatra() ? PolishForestsCommands.searchTatra(model,
+					p -> test.test(world.code(p[0], p[1])), ox, oz, PolishForestsCommands.TATRA_FINE_STEP, cancelled) : null;
 		};
 	}
 

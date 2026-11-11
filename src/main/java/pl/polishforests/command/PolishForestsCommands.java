@@ -475,6 +475,10 @@ public final class PolishForestsCommands {
 			source.sendFailure(Component.translatable("polishforests.command.not_in_scale", name));
 			return 0;
 		}
+		if (HabitatTargets.tatraOnly(zone) && !world.model().hasTatra()) {
+			source.sendFailure(Component.translatable("polishforests.command.no_tatra"));
+			return 0;
+		}
 		Vec3 origin = source.getPosition();
 		source.sendSuccess(() -> Component.translatable("polishforests.command.searching", name), false);
 		runSearch(source, origin, cancelled -> HabitatTargets.locate(world, zone, origin.x, origin.z, cancelled),

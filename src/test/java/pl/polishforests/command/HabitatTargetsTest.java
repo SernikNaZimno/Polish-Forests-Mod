@@ -46,6 +46,10 @@ class HabitatTargetsTest {
 	static void assertEverythingFound(LandscapeScale scale) {
 		HabitatTargets.World natural = PolishForestsCommandsTest.world(scale, HabitatClassifier.Mode.NATURAL);
 		HabitatTargets.World presentDay = PolishForestsCommandsTest.world(scale, HabitatClassifier.Mode.PRESENT_DAY);
+		// Step TT2: the zones of the Tatra rock (bare rock, scree, snow patches) only in a world with the Tatras, searched
+		// around its massifs; in the gameplay scale, as the Tatra targets of PolishForestsCommandsTest.
+		HabitatTargets.World tatra = PolishForestsCommandsTest.world(PolishForestsCommandsTest.SEED, scale,
+				HabitatClassifier.Mode.NATURAL, true);
 		List<String> missing = new ArrayList<>();
 		long total = System.nanoTime();
 		for (HabitatBiome b : HabitatBiome.values()) {
@@ -62,7 +66,17 @@ class HabitatTargetsTest {
 				System.out.println(scale.id() + " zone " + z.id() + ": does not occur in this scale");
 				continue;
 			}
-			HabitatTargets.World w = HabitatTargets.occurs(z, HabitatClassifier.Mode.NATURAL) ? natural : presentDay;
+			if (HabitatTargets.tatraOnly(z)) {
+				if (HabitatTargets.locate(natural, z, 0, 0, () -> false) != null) {
+					missing.add("zone " + z.id() + " found without the Tatras");
+				}
+				if (scale != LandscapeScale.GAMEPLAY) {
+					System.out.println(scale.id() + " zone " + z.id() + ": Tatra zone, searched in the gameplay scale");
+					continue;
+				}
+			}
+			HabitatTargets.World w = HabitatTargets.tatraOnly(z) ? tatra
+					: HabitatTargets.occurs(z, HabitatClassifier.Mode.NATURAL) ? natural : presentDay;
 			long t0 = System.nanoTime();
 			double[] p = HabitatTargets.locate(w, z, 0, 0, () -> false);
 			report(scale, "zone " + z.id(), w, p, t0);

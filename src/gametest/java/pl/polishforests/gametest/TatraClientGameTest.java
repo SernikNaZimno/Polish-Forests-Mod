@@ -27,6 +27,7 @@ import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.presets.WorldPreset;
 import pl.polishforests.PolishForests;
+import pl.polishforests.command.HabitatTargets;
 import pl.polishforests.command.PolishForestsCommands;
 import pl.polishforests.worldgen.chunk.PolandChunkGenerator;
 import pl.polishforests.worldgen.chunk.VerticalScale;
@@ -158,8 +159,8 @@ public final class TatraClientGameTest implements FabricClientGameTest {
 			census.forEach((part, rocks) -> report.add("rock blocks of " + part + ": " + rocks));
 			surface.forEach((rock, tops) -> report.add("top blocks on " + rock + ": " + tops));
 			// Step TT2: the snow patch keeps its snow through the summer (Serene Seasons melts only snow layers and ice).
-			double[] snow = sp.getServer().computeOnServer(s -> PolishForestsCommands.locate(model(s.overworld()),
-					PolishForestsCommands.Target.SNOW_PATCH, 0, 0));
+			double[] snow = sp.getServer().computeOnServer(s -> PolishForestsCommands.locate(
+					HabitatTargets.World.of(s.overworld()), PolishForestsCommands.Target.SNOW_PATCH, 0, 0));
 			if (snow == null) {
 				failures.add("find snow_patch: none");
 			} else {
@@ -207,13 +208,15 @@ public final class TatraClientGameTest implements FabricClientGameTest {
 	/** The Tatra targets of {@code find}, from the origin. */
 	private static void targets(MinecraftServer server, List<String> report, List<String> failures) {
 		LandscapeModel m = model(server.overworld());
+		// The snow patch is a habitat zone: the targets are searched with the world's classifier, as the command does.
+		HabitatTargets.World world = HabitatTargets.World.of(server.overworld());
 		for (PolishForestsCommands.Target t : new PolishForestsCommands.Target[] {PolishForestsCommands.Target.TATRA,
 				PolishForestsCommands.Target.HIGH_TATRA, PolishForestsCommands.Target.WESTERN_TATRA,
 				PolishForestsCommands.Target.PODHALE, PolishForestsCommands.Target.CIRQUE, PolishForestsCommands.Target.U_VALLEY,
 				PolishForestsCommands.Target.TARN, PolishForestsCommands.Target.PINNACLE, PolishForestsCommands.Target.GULLY,
 				PolishForestsCommands.Target.SCREE, PolishForestsCommands.Target.MORAINE, PolishForestsCommands.Target.SNOW_PATCH}) {
 			long start = System.nanoTime();
-			double[] p = PolishForestsCommands.locate(m, t, 0, 0);
+			double[] p = PolishForestsCommands.locate(world, t, 0, 0);
 			double ms = (System.nanoTime() - start) / 1e6;
 			if (p == null) {
 				failures.add("find " + t.id() + ": none");
