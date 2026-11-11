@@ -505,9 +505,10 @@ public final class VanillaForestsClientGameTest implements FabricClientGameTest 
 					ownTrunks += trunk ? 1 : 0;
 					if (vanillaTrunk) {
 						// Review of F1, round 1: how far the trunk stands from a column of another biome, and that biome. Within
-						// EDGE_MARGIN blocks the trunk can belong to the neighbor forest (the M2 substitutes of the forests not yet
-						// on the planner are vanilla logs; their palette reaches across the border in the ecotone belt, rule Z10),
-						// so it is reported, not a failure; deeper it is.
+						// EDGE_MARGIN blocks the trunk can belong to the neighbor forest (until step F7 the M2 substitutes of the
+						// forests not yet on the planner, which are vanilla logs; since step F7 a thick trunk of the planner whose
+						// full log is the vanilla log, P2-c: oak, linden, ash, Norway maple, spruce, birch, poplar; the palette
+						// reaches across the border in the ecotone belt, rule Z10), so it is reported, not a failure; deeper it is.
 						int edge = 0;
 						while (edge < 16 && deep(other, size, dx, dz, edge)) {
 							edge++;
@@ -608,7 +609,7 @@ public final class VanillaForestsClientGameTest implements FabricClientGameTest 
 		}
 		if (!ownVanillaAt.isEmpty()) {
 			String trunksAt = String.format(Locale.ROOT, "%s vanilla log trunks on own columns: %d more than %d blocks from another biome, %d "
-					+ "within (the neighbor forest's M2 substitutes): %s", biome.id(), ownVanilla, EDGE_MARGIN, ownVanillaNear, ownVanillaAt);
+					+ "within (the neighbor forest's trees: the vanilla full log of a thick planner trunk, P2-c): %s", biome.id(), ownVanilla, EDGE_MARGIN, ownVanillaNear, ownVanillaAt);
 			report.append(trunksAt).append('\n');
 			PolishForests.LOG.info("[vanilla_forests] KF-1 " + trunksAt);
 		}

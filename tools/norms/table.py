@@ -15,8 +15,22 @@ import sys
 MARK = {'in': '✓', 'tolerance': '≈', 'out': '✗', 'none': ''}
 SCALE = {'realistic': 'REAL', 'gameplay': 'GAME'}
 MODE = {'natural': 'N', 'present_day': 'D'}
+# Step F7: every forest with sample plots (the forests of the slice and of the steps F1-F6); a forest without a plot
+# in the census (natural montane spruce forest, montane gray alder forest, dwarf pine scrub, ravine forest, osier
+# scrub) has no table here (its card comes from the simulation, docs/04 "Stan po F6").
 FORESTS = [('oak_hornbeam', 'Grąd', 'oak_hornbeam_natural', 'oak_hornbeam_managed'),
-           ('fresh_pine', 'Bór świeży', 'fresh_pine_natural', 'fresh_pine_managed')]
+           ('fresh_pine', 'Bór świeży', 'fresh_pine_natural', 'fresh_pine_managed'),
+           ('dry_pine', 'Bór suchy (F4)', 'dry_pine_natural', 'dry_pine_managed'),
+           ('coastal_pine', 'Nadmorski bór bażynowy (F4)', 'coastal_pine_natural', 'coastal_pine_managed'),
+           ('bog_woodland', 'Bór bagienny (F4)', 'bog_woodland_natural', 'bog_woodland_managed'),
+           ('lowland_beech', 'Buczyna niżowa (F1)', 'lowland_beech_natural', 'lowland_beech_managed'),
+           ('alder_carr', 'Ols (F2)', 'alder_carr_natural', 'alder_carr_managed'),
+           ('ash_alder', 'Łęg jesionowo-olszowy (F2)', 'ash_alder_natural', 'ash_alder_managed'),
+           ('willow_poplar', 'Łęg wierzbowo-topolowy (F5)', 'willow_poplar_natural', 'willow_poplar_managed'),
+           ('elm_ash', 'Łęg wiązowo-jesionowy (F5)', 'elm_ash_natural', 'elm_ash_managed'),
+           ('upland_fir', 'Wyżynna jedlina i buczyna (F3)', 'upland_fir_natural', 'upland_fir_managed'),
+           ('montane_beech', 'Buczyna karpacka (F3)', 'montane_beech_natural', 'montane_beech_managed'),
+           ('montane_spruce', 'Świerczyna górska (F6)', 'montane_spruce_natural', 'montane_spruce_managed')]
 SEQUENCE = {'fresh_pine_forest': 'Bśw', 'mixed_pine_forest': 'BMśw', 'mixed_forest': 'LMśw', 'oak_hornbeam_forest': 'grąd'}
 
 
@@ -72,6 +86,25 @@ def plots(rows, out):
             values = [cell(by[c + (m,)]) if c + (m,) in by else '' for c in columns]
             out.write(f"| `{m}` | {norm.get((natural, m), '')} | {norm.get((managed, m), '')} | " + ' | '.join(values) + ' |\n')
 
+
+
+def summary(rows, out):
+    """Step F7: per forest the number of cells in the norm, in the tolerance and out of it, and the indicators out of
+    the tolerance with their worlds (scale, mode, plot)."""
+    out.write('\n**Podsumowanie** (liczba komórek: ✓ w normie, ≈ w tolerancji, ✗ poza nią; miary poza tolerancją z '
+              'powierzchniami)\n\n')
+    out.write('| Las | ✓ | ≈ | ✗ | Poza tolerancją |\n|---|---|---|---|---|\n')
+    for prefix, title, _, _ in FORESTS:
+        mine = [r for r in rows if r['place'].startswith(prefix) and not r['part']]
+        if not mine:
+            continue
+        count = {k: sum(1 for r in mine if r['verdict'] == k) for k in ('in', 'tolerance', 'out')}
+        bad = {}
+        for r in mine:
+            if r['verdict'] == 'out':
+                bad.setdefault(r['metric'], []).append(f"{SCALE[r['scale']]} {MODE[r['mode']]} {label(r['place'], r['forest'])}")
+        text = '; '.join(f"`{m}` ({', '.join(v)})" for m, v in bad.items()) or '—'
+        out.write(f"| {title} | {count['in']} | {count['tolerance']} | {count['out']} | {text} |\n")
 
 
 # Kinds of the palette transitions (step Z1).
@@ -131,6 +164,7 @@ def main(argv):
     buf = io.StringIO()
     seasons = sorted({r['season'] for r in rows})
     buf.write(f"Pora roku przy pomiarze: {', '.join(seasons)}.\n")
+    summary(rows, buf)
     plots(rows, buf)
     transects(rows, buf)
     if target:
