@@ -87,6 +87,8 @@ public final class LandscapeModel {
 	 * then the model is the one from before TT1, bit for bit.
 	 */
 	private final TatraField tatra;
+	/** Step TT2: the tarns of the Tatra massifs with their outlet brooks, or null without the Tatras. */
+	private final TatraWaters tatraWaters;
 	/** Cached grids (M2, S3): smoothed terrain with slope and aspect, and the regional fields O, P. */
 	private final CoarseTerrainField coarse;
 	/** Highest terrain within 3 km·mspace (a large massif in the altitudinal belts, E12). */
@@ -245,6 +247,7 @@ public final class LandscapeModel {
 		this.tatra = tatra ? new TatraField(this, root, scale, zs) : null;
 		RiverNetwork base = new RiverNetwork(this, root.derive("rivers"), scale, null, true);
 		this.rivers = tatra ? new RiverNetwork(this, root.derive("rivers"), scale, base, false) : base;
+		this.tatraWaters = tatra ? new TatraWaters(this, this.tatra) : null;
 		this.coarse = new CoarseTerrainField(this, 32.0 * local);
 		this.peaks = new PeakField(this, 3_000 * mspace, 62.5 * mspace, 4);
 		this.regional = new RegionalField(this, root.derive("habitat.prowincje"), zs);
@@ -1773,6 +1776,29 @@ public final class LandscapeModel {
 		return shapeCoast(elevation(b, x, z), coastDistance(x, z), x, z, cliffShore(x, z, b));
 	}
 
+	/**
+	 * Step TT2: the river network at a point as {@link #sample} queries it (the terrain of the column before the rivers with
+	 * the weights of the types), for the brooks of the tarns ({@link TatraWaters}), which never call {@link #sample}.
+	 */
+	RiverNetwork.RiverHit riverProbe(double x, double z) {
+		Blend b = blend(x, z);
+		ReliefParts parts = new ReliefParts();
+		double raw = elevation(b, x, z, parts);
+		double coastD = coastDistance(x, z);
+		double cliff = coastD < 25_000 * meso ? cliffShore(x, z, b) : 0;
+		double surface = tatraOver(shapeCoast(raw, coastD, x, z, cliff), x, z, parts);
+		if (coastD >= 0 && surface < DELTA_TOP && coastD < lagoonBand() + 2 * deltaExtentMax()) {
+			surface = lagoonDelta(x, z, surface);
+		}
+		TatraField.Column tc = parts.tatra;
+		double keep = tc == null ? 1 : 1 - tc.weight;
+		double lowland = keep * (b.weight(LandscapeType.OUTWASH_PLAIN) + b.weight(LandscapeType.MORAINE_PLATEAU)
+				+ b.weight(LandscapeType.OLD_GLACIAL_PLAIN));
+		double foothills = keep * b.weight(LandscapeType.FOOTHILLS) + (tc == null ? 0 : tc.podhale);
+		double mountains = keep * b.weight(LandscapeType.BESKIDS) + (tc == null ? 0 : tc.tatra);
+		return rivers.query(x, z, surface, lowland + keep * b.weight(LandscapeType.COASTLAND), foothills, mountains);
+	}
+
 	/** Full column sample: relief, waters, substrate. */
 	public ColumnSample sample(double x, double z) {
 		Blend b = blend(x, z);
@@ -1948,6 +1974,42 @@ public final class LandscapeModel {
 			}
 		}
 
+		// Step TT2: the tarns of the Tatras with their rings, sills and outlet brooks (closed basins, see TatraWaters).
+		TatraWaters.Hit th = tatraWaters == null || tc == null ? null : tatraWaters.hit(tc);
+		if (th != null) {
+			if (th.inRing() && kind != WaterKind.NONE) {
+				// Never water at two levels side by side: the basin and its ring take the column (TatraWaters keeps the
+				// basins off the river channels, so this is the rare edge of a river floor).
+				water = ColumnSample.NO_WATER;
+				kind = WaterKind.NONE;
+			}
+			if (kind == WaterKind.NONE) {
+				// Beside other water (a river) neither the shore wall nor a brook changes the ground.
+				double depth = th.brookLevel == ColumnSample.NO_WATER ? 0
+						: TatraWaters.BROOK_DEPTH / TatraField.blocksPerMeter(th.brookLevel);
+				surface = th.surface(surface, depth);
+			}
+			if (th.inBasin()) {
+				if (surface < th.tarn.level()) {
+					water = th.tarn.level();
+					kind = WaterKind.TARN;
+					substrate = Substrate.RIVERBED;
+				}
+			} else if (kind == WaterKind.NONE && !th.inRing() && th.brookChannel && surface < th.brookLevel) {
+				water = th.brookLevel;
+				kind = WaterKind.RIVER;
+				substrate = Substrate.RIVERBED;
+			}
+			if (th.tarn != null && th.beltDistance < standingShore) {
+				standingShore = th.beltDistance;
+				standingLevel = th.tarn.level();
+				standingKind = ColumnSample.StandingWaterKind.TARN;
+				standingOmbrotrophic = false;
+				standingId = th.tarn.id();
+				standingRadius = Math.sqrt(th.tarn.aq() * th.tarn.bu());
+			}
+		}
+
 		double cover = switch (dominant.belt()) {
 			case SEA, LOWLAND -> 40.0 + 60.0 * (0.5 + 0.5 * relief.at(x, z, 20_000 * meso));
 			case FOOTHILLS -> 3.0 + 4.0 * (0.5 + 0.5 * relief.at(x, z, 800));
@@ -1960,6 +2022,9 @@ public final class LandscapeModel {
 						standingOmbrotrophic, standingId, standingRadius, r.floorChannelDist(), r.floorChannelWidth(),
 						r.floorChannelLevel(), r.floorChannelGradient(), r.softChannelLevel(), r.floorFine());
 		int landformBits = forms(r, parts, dominant, surface, rawSurface, coastD, sandBeach, water);
+		if (kind == WaterKind.TARN) {
+			landformBits |= Landform.TARN.bit();
+		}
 		// Large massif (E12): highest terrain within 3 km·mspace, only where the altitudinal belts need it.
 		double summit = mountains > 0 && surface >= AltitudinalBelts.SUMMIT_FROM ? peaks.sample(x, z) : 0;
 		return new ColumnSample(surface, water, kind, dominant, substrate, cover,
@@ -2291,9 +2356,64 @@ public final class LandscapeModel {
 		return c == null ? 0 : c.weight;
 	}
 
+	/**
+	 * Step TT2: a tarn of a Tatra massif: the center of its basin, its level (m a.s.l.), whether it has an outlet brook,
+	 * whether it lies behind a moraine (else in a cirque bowl) and is the Morskie Oko type, the semi-axes of its basin
+	 * (across and along the valley, m), the id of its standing water and whether its brook joins the river network or the
+	 * next tarn.
+	 */
+	public record TatraTarn(double x, double z, int level, boolean outlet, boolean moraine, boolean morskie, double across,
+			double along, long id, boolean joined) {
+	}
+
+	/** Step TT2: the tarns of the Tatra massifs with the middle of the main ridge in the box (empty without the Tatras). */
+	public List<TatraTarn> tatraTarns(double minX, double minZ, double maxX, double maxZ) {
+		if (tatraWaters == null) {
+			return List.of();
+		}
+		List<TatraTarn> out = new ArrayList<>();
+		for (TatraField.Massif m : tatra.massifs(minX, minZ, maxX, maxZ)) {
+			for (TatraWaters.Tarn t : tatraWaters.tarns(m)) {
+				out.add(new TatraTarn(t.x(), t.z(), t.level(), t.outlet(), t.moraine(), t.morskie(), t.aq(), t.bu(), t.id(),
+						t.outlet() && t.brook().joined()));
+			}
+		}
+		return out;
+	}
+
+	/**
+	 * Step TT2: strength of the sharp relief of a Tatra massif at a point 0–1 (pinnacles and the walls of gullies; 0 outside
+	 * them), where the terrain may be steeper than the smooth massif.
+	 */
+	public double tatraSharp(double x, double z) {
+		TatraField.Column c = tatra == null ? null : tatra.column(x, z);
+		return c == null || c.weight <= 0.5 ? 0 : c.sharp;
+	}
+
+	/** Step TT2: whether a point lies on the bedrock of a Tatra massif (granite, gneiss, limestone, dolomite). */
+	public boolean tatraRock(double x, double z) {
+		TatraField.Column c = tatra == null ? null : tatra.column(x, z);
+		return c != null && c.weight > 0.5 && c.rock != null;
+	}
+
+	/** Step TT2: the Tatra column of the point with its fine relief (heights of the scree cone, moraine, gully cut). */
+	public double[] tatraFine(double x, double z) {
+		TatraField.Column c = tatra == null ? null : tatra.column(x, z);
+		return c == null ? new double[5] : new double[] {c.spike, c.scree, c.moraine, c.gully, c.sharp};
+	}
+
 	/** The river network (tests). */
 	RiverNetwork rivers() {
 		return rivers;
+	}
+
+	/** Step TT2: the Tatra field and the tarns (tests), or null without the Tatras. */
+	TatraField tatraField() {
+		return tatra;
+	}
+
+	TatraWaters tatraWaters() {
+		return tatraWaters;
 	}
 
 	/** The Tatra column at a point (tests and tools), or null. */

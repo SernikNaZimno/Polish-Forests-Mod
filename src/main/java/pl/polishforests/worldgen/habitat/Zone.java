@@ -53,7 +53,13 @@ public enum Zone {
 	/** The last meters below the timberline: stunted spruces. */
 	TIMBERLINE,
 	/** PRESENT_DAY mode: a row of alders along a class B watercourse. */
-	TREE_ROW;
+	TREE_ROW,
+	/** Step TT2: bare rock of the Tatra walls, ridges and pinnacles (no soil, no vegetation). */
+	BARE_ROCK,
+	/** Step TT2: Tatra scree (a scree cone at a gully mouth): loose rock debris without soil. */
+	SCREE,
+	/** Step TT2: a snow patch in a north-facing gully or cirque high in the Tatras, lasting through the summer. */
+	SNOW_PATCH;
 
 	private static final Zone[] VALUES = values();
 

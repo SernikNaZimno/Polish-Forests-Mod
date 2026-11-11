@@ -1,5 +1,8 @@
 {
   "values": [
-    "polishforests:mossy_podzol"
+    "polishforests:mossy_podzol",
+    "polishforests:granite_scree",
+    "polishforests:limestone_scree",
+    "polishforests:rendzina"
   ]
 }

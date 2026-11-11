@@ -482,6 +482,8 @@ class HabitatClassifierTest {
 		missingBiomes.removeAll(synthBiomes);
 		Set<Zone> missingZones = EnumSet.copyOf(onlySynthZones);
 		missingZones.removeAll(synthZones);
+		// Step TT2: the zones of the Tatra rocks occur only in a world with the Tatras (TatraFormsTest.tatraSurfaceZones).
+		missingZones.removeAll(EnumSet.of(Zone.BARE_ROCK, Zone.SCREE, Zone.SNOW_PATCH));
 		assertTrue(missingBiomes.isEmpty(), "unreachable biomes: " + missingBiomes);
 		assertTrue(missingZones.isEmpty(), "unreachable zones: " + missingZones);
 		// The 64 clusters in the world (without synthetic samples) must contain most biomes; the rare ones are the high

@@ -487,6 +487,10 @@ class TatraReliefTest {
 			double v = -vHalf + fv * 2 * vHalf;
 			double x = TatraSurvey.x(t, u, v);
 			double z = TatraSurvey.z(t, u, v);
+			// Step TT2: the pinnacles and the gully walls are the sharp relief (KT-4: steep on purpose, TatraFormsTest).
+			if (m.tatraSharp(x, z) > 0 || m.tatraSharp(x + d, z) > 0 || m.tatraSharp(x, z + d) > 0) {
+				return 0;
+			}
 			double h = m.landElevation(x, z);
 			return Math.max(Math.abs(m.landElevation(x + d, z) - h), Math.abs(m.landElevation(x, z + d) - h)) / d;
 		}).max().orElse(0);

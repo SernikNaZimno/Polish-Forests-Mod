@@ -201,7 +201,9 @@ public record ColumnSample(double surface, int waterLevel, WaterKind waterKind, 
 		/** Peat-filled kettle (without water). */
 		KETTLE_BOG,
 		/** Oxbow lake on the valley floor. */
-		OXBOW_LAKE
+		OXBOW_LAKE,
+		/** Step TT2: a Tatra tarn. */
+		TARN
 	}
 
 	/**

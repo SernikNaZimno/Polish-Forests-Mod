@@ -219,7 +219,7 @@ final class ModBlockModels extends FabricModelProvider {
 		gen.blockStateOutput.accept(MultiVariantGenerator.dispatch(ModBlocks.sphagnumBlock(), turns(sphagnumCube)));
 		gen.registerSimpleItemModel(ModBlocks.sphagnumBlock(), sphagnumCube);
 		// Step TT1: the Tatra rocks, a cube of the own texture in four turns of the top (as vanilla stone).
-		for (Block b : ModBlocks.tatraRocks()) {
+		for (Block b : java.util.stream.Stream.concat(ModBlocks.tatraRocks().stream(), ModBlocks.tatraSurface().stream()).toList()) {
 			String path = BuiltInRegistries.BLOCK.getKey(b).getPath();
 			Identifier cube = ModelTemplates.CUBE_ALL.create(b, TextureMapping.cube(new Material(own(path))), gen.modelOutput);
 			gen.blockStateOutput.accept(MultiVariantGenerator.dispatch(b, turns(cube)));

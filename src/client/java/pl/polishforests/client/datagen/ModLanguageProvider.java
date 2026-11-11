@@ -55,6 +55,13 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		TARGETS.put("podhale", new String[] {"Podhale basin", "Kotlina Podhalańska"});
 		TARGETS.put("cirque", new String[] {"glacial cirque", "kocioł polodowcowy"});
 		TARGETS.put("u_valley", new String[] {"U-shaped glacial valley", "dolina polodowcowa (U)"});
+		// Step TT2: the tarns and the fine relief of the Tatras.
+		TARGETS.put("tarn", new String[] {"tarn (mountain lake)", "staw tatrzański"});
+		TARGETS.put("pinnacle", new String[] {"rock pinnacle", "turnia"});
+		TARGETS.put("gully", new String[] {"gully", "żleb"});
+		TARGETS.put("scree", new String[] {"scree cone", "stożek piargowy"});
+		TARGETS.put("moraine", new String[] {"moraine", "morena"});
+		TARGETS.put("snow_patch", new String[] {"perennial snow patch", "płat wieloletniego śniegu"});
 		TARGETS.put("old_glacial_plain", new String[] {"old glacial plain", "równina staroglacjalna"});
 		TARGETS.put("outwash_plain", new String[] {"outwash plain", "sandr"});
 		TARGETS.put("oxbow_lake", new String[] {"oxbow lake", "starorzecze"});
@@ -104,6 +111,10 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		ZONES.put("cliff_top", new String[] {"cliff top scrub", "zarośla na krawędzi klifu"});
 		ZONES.put("timberline", new String[] {"timberline", "górna granica lasu"});
 		ZONES.put("tree_row", new String[] {"row of alders along a stream", "szpaler olszy nad ciekiem"});
+		// Step TT2: the surface of the Tatras.
+		ZONES.put("bare_rock", new String[] {"bare rock", "naga skała"});
+		ZONES.put("scree", new String[] {"scree", "piarg"});
+		ZONES.put("snow_patch", new String[] {"perennial snow patch", "płat wieloletniego śniegu"});
 
 		ASSOCIATIONS.put("typical", new String[] {"typical", "postać typowa"});
 		ASSOCIATIONS.put("salicetum_albae", new String[] {"white willow forest (Salicetum albae)", "łęg wierzbowy (Salicetum albae)"});
@@ -150,6 +161,11 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		SOILS.put("dystrophic_lake_bed", new String[] {"dystrophic lake bed", "dno jeziora dystroficznego"});
 		SOILS.put("sea_bed", new String[] {"sea bed", "dno morza"});
 		SOILS.put("lagoon_bed", new String[] {"lagoon bed", "dno zalewu"});
+		// Step TT2: the soils and the loose cover of the Tatras.
+		SOILS.put("rendzina", new String[] {"rendzina", "rędzina"});
+		SOILS.put("granite_scree", new String[] {"granite scree", "rumosz granitowy"});
+		SOILS.put("limestone_scree", new String[] {"limestone scree", "rumosz wapienny"});
+		SOILS.put("snow", new String[] {"perennial snow", "wieloletni śnieg"});
 
 		SPECIES.put("scots_pine", new String[] {"Scots pine", "sosna zwyczajna"});
 		SPECIES.put("spruce", new String[] {"Norway spruce", "świerk pospolity"});
@@ -303,6 +319,11 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		builder.add(rocks.get(1), polish ? "Gnejs" : "Gneiss");
 		builder.add(rocks.get(2), polish ? "Wapień" : "Limestone");
 		builder.add(rocks.get(3), polish ? "Dolomit" : "Dolomite");
+		// Step TT2: the Tatra surface.
+		List<Block> surface = ModBlocks.tatraSurface();
+		builder.add(surface.get(0), polish ? "Rumosz granitowy" : "Granite Scree");
+		builder.add(surface.get(1), polish ? "Rumosz wapienny" : "Limestone Scree");
+		builder.add(surface.get(2), polish ? "Rędzina" : "Rendzina");
 		builder.add(tagKey(ModBlockTagProvider.PINE_FULL_LOGS.location().getPath()), polish ? "Kłody sosnowe" : "Scots Pine Logs");
 		// Item tags (recipe viewers show their names): a species tag is named after the first trunk of the species.
 		Map<Species, TreeTrunk> first = new LinkedHashMap<>();

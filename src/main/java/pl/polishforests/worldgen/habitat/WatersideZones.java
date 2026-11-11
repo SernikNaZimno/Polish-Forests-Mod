@@ -347,6 +347,10 @@ final class WatersideZones {
 		double h = c.H - w.shoreLevel() - 1;
 		Substrate sub = c.substrate;
 		ColumnSample.StandingWaterKind kind = w.standingWaterKind();
+		if (kind == ColumnSample.StandingWaterKind.TARN) {
+			// Step TT2: no reedbeds, alder carrs or shore zones by the Tatra tarns (their shores follow the belts).
+			return HabitatClassifier.Result.NONE;
+		}
 		if (kind == ColumnSample.StandingWaterKind.KETTLE_BOG) {
 			double radius = w.standingWaterRadius();
 			boolean large = radius > Calibration.KETTLE_BOG_RADIUS_K * k;

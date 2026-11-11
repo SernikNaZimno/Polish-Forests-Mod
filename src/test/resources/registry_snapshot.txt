@@ -279,6 +279,7 @@ block polishforests:glandular_toothwort states=16 default=facing=north,flower_am
   property facing: north south west east
   property flower_amount: 1 2 3 4
 block polishforests:gneiss states=1 default=
+block polishforests:granite_scree states=1 default=
 block polishforests:gray_alder_button states=24 default=face=wall,facing=north,powered=false
   property face: floor wall ceiling
   property facing: north south west east
@@ -387,6 +388,7 @@ block polishforests:lesser_celandine states=16 default=facing=north,flower_amoun
   property facing: north south west east
   property flower_amount: 1 2 3 4
 block polishforests:limestone states=1 default=
+block polishforests:limestone_scree states=1 default=
 block polishforests:linden_button states=24 default=face=wall,facing=north,powered=false
   property face: floor wall ceiling
   property facing: north south west east
@@ -552,6 +554,7 @@ block polishforests:reindeer_lichen states=32 default=facing=north,mossy=false,s
   property facing: north south west east
   property mossy: true false
   property segment_amount: 1 2 3 4
+block polishforests:rendzina states=1 default=
 block polishforests:rowan_button states=24 default=face=wall,facing=north,powered=false
   property face: floor wall ceiling
   property facing: north south west east
@@ -989,6 +992,7 @@ item polishforests:fir_wood block=polishforests:fir_wood
 item polishforests:forest_moss_carpet block=polishforests:forest_moss_carpet
 item polishforests:glandular_toothwort block=polishforests:glandular_toothwort
 item polishforests:gneiss block=polishforests:gneiss
+item polishforests:granite_scree block=polishforests:granite_scree
 item polishforests:gray_alder_button block=polishforests:gray_alder_button
 item polishforests:gray_alder_fence block=polishforests:gray_alder_fence
 item polishforests:gray_alder_fence_gate block=polishforests:gray_alder_fence_gate
@@ -1023,6 +1027,7 @@ item polishforests:hornbeam_wood block=polishforests:hornbeam_wood
 item polishforests:labrador_tea block=polishforests:labrador_tea
 item polishforests:lesser_celandine block=polishforests:lesser_celandine
 item polishforests:limestone block=polishforests:limestone
+item polishforests:limestone_scree block=polishforests:limestone_scree
 item polishforests:linden_button block=polishforests:linden_button
 item polishforests:linden_fence block=polishforests:linden_fence
 item polishforests:linden_fence_gate block=polishforests:linden_fence_gate
@@ -1068,6 +1073,7 @@ item polishforests:poplar_trunk block=polishforests:poplar_trunk
 item polishforests:purple_moor_grass block=polishforests:purple_moor_grass
 item polishforests:reed_canary_grass block=polishforests:reed_canary_grass
 item polishforests:reindeer_lichen block=polishforests:reindeer_lichen
+item polishforests:rendzina block=polishforests:rendzina
 item polishforests:rowan_button block=polishforests:rowan_button
 item polishforests:rowan_fence block=polishforests:rowan_fence
 item polishforests:rowan_fence_gate block=polishforests:rowan_fence_gate

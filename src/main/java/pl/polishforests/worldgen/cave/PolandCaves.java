@@ -77,6 +77,14 @@ public final class PolandCaves {
 		int top(int x, int z);
 
 		int water(int x, int z);
+
+		/**
+		 * Step TT2: whether the caves of the column hold no water above the sea level (the Tatra rocks: the aquifers of
+		 * vanilla would leave water in the walls of the cirques and leak it out of their faces and into the tarns).
+		 */
+		default boolean dryAbove(int x, int z) {
+			return false;
+		}
 	}
 
 	private final DensityFunction density;
@@ -160,6 +168,10 @@ public final class PolandCaves {
 		}
 		highest = Math.min(highest, maxY);
 		int[] guard = guards(surface, columns, edgeNear, minX, minZ);
+		boolean[] dry = new boolean[256];
+		for (int i = 0; i < 256; i++) {
+			dry[i] = columns.dryAbove(minX + (i >> 4), minZ + (i & 15));
+		}
 		CaveCarving out = new CaveCarving(minY, maxY - minY + 1);
 		DensityBufferPool pool = randomState.acquireDensityBufferPool();
 		try {
@@ -191,7 +203,7 @@ public final class PolandCaves {
 								if (d > 0.0F || !carvable(surface.material(i, y))) {
 									continue;
 								}
-								BlockState state = aquifer.computeSubstance(minX + x, y, minZ + z, d);
+								BlockState state = dry(aquifer.computeSubstance(minX + x, y, minZ + z, d), dry[i], y);
 								if (state != null) {
 									put(out, aquifer, state, i, minX + x, y, minZ + z);
 									noise++;
@@ -203,7 +215,7 @@ public final class PolandCaves {
 			}
 			NOISE_BLOCKS.add(noise);
 			if (carverContext != null) {
-				CARVER_BLOCKS.add(carvers(pos, out, surface, top, guard, aquifer, randomState, carverContext, highest));
+				CARVER_BLOCKS.add(carvers(pos, out, surface, top, guard, dry, aquifer, randomState, carverContext, highest));
 			}
 		} finally {
 			randomState.releaseDensityBufferPool(pool);
@@ -212,6 +224,11 @@ public final class PolandCaves {
 		NANOS.add(System.nanoTime() - t0);
 		CHUNKS.increment();
 		return out;
+	}
+
+	/** Step TT2: air instead of the water of an aquifer above the sea level in a dry column ({@link Columns#dryAbove}). */
+	private @Nullable BlockState dry(@Nullable BlockState state, boolean dry, int y) {
+		return dry && y >= seaLevel && state != null && state.is(Blocks.WATER) ? Blocks.AIR.defaultBlockState() : state;
 	}
 
 	private static void put(CaveCarving out, Aquifer aquifer, BlockState state, int i, int x, int y, int z) {
@@ -282,7 +299,7 @@ public final class PolandCaves {
 	 * the chunks within 8 chunks, seeded as vanilla by the world seed, its index and the source chunk; the carved blocks
 	 * get the substance of the aquifer at density 0 (air, water, lava or a barrier), as {@code applyCarvingMask}.
 	 */
-	private int carvers(ChunkPos pos, CaveCarving out, ChunkSurface surface, int[] top, int[] guard, Aquifer aquifer,
+	private int carvers(ChunkPos pos, CaveCarving out, ChunkSurface surface, int[] top, int[] guard, boolean[] dry, Aquifer aquifer,
 			RandomState randomState, WorldGenerationContext context, int highest) {
 		int maskTop = Math.min(context.getMinGenY() + context.getGenDepth() - 1 - 7, highest);
 		if (maskTop <= context.getMinGenY() + 1) {
@@ -319,7 +336,7 @@ public final class PolandCaves {
 				if (!carvable(m != null ? m : surface.material(i, y))) {
 					continue;
 				}
-				BlockState state = aquifer.computeSubstance(minX + x, y, minZ + z, 0.0);
+				BlockState state = dry(aquifer.computeSubstance(minX + x, y, minZ + z, 0.0), dry[i], y);
 				if (state != null) {
 					put(out, aquifer, state, i, minX + x, y, minZ + z);
 					count[0]++;
@@ -404,11 +421,12 @@ public final class PolandCaves {
 			DensitySamplerSet samplers = randomState.samplersWithContext(context);
 			DensityVolume volume = new DensityVolume(1, hi - lo + 1, 1, x, lo, z);
 			Aquifer aquifer = aquifers.create(samplers, randomState.getOrCreateRandomFactory(AQUIFER_RANDOM), volume, fluids);
+			boolean dry = columns.dryAbove(x, z);
 			try (ScopedDensityBuffer buffer = samplers.get(density).sampleVolume(volume)) {
 				for (int y = top; y >= lo; y--) {
 					float d = buffer.get(volume.indexUnchecked(0, y - lo, 0));
 					if (d <= 0.0F) {
-						states[y - lo] = aquifer.computeSubstance(x, y, z, d);
+						states[y - lo] = dry(aquifer.computeSubstance(x, y, z, d), dry, y);
 					}
 				}
 			}

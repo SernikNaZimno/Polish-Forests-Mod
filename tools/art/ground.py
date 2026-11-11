@@ -622,6 +622,30 @@ def rock(tex, palettes):
     n = len(p['colors'])
     form = p['form']
     ys, xs = np.mgrid[0:N, 0:N].astype(np.float64)
+    if form == 'scree':
+        # Step TT2: angular clasts of a scree (Worley cells), each of one inner tone with a lighter upper edge, parted by
+        # soft gaps one tone darker than the clast (no dark one-pixel lines).
+        f1, f2, cell = t.worley(rng, p['clasts'])
+        inner = np.array([rng.integers(1, n) for _ in range(p['clasts'])])
+        idx = inner[cell]
+        lit = (f2 - f1 > p['gap']) & (t.roll(cell, 1, 0) != cell)
+        idx = np.where(lit, np.minimum(idx + 1, n - 1), idx)
+        gap = f2 - f1 < p['gap']
+        idx = np.where(gap, np.maximum(idx - 1, 0), idx)
+        for _ in range(p.get('dark', 0)):
+            x, y = rng.integers(0, N), rng.integers(0, N)
+            idx[y, x] = 0
+        return t.paint(idx, [t.hex_to_rgb(c) for c in p['colors']])
+    if form == 'rendzina':
+        # Step TT2: the black humus of the rendzina, crumbly (fine noise in the dark tones), with sparse pale flecks of
+        # limestone (the lightest tone).
+        v = 0.6 * t.fbm(rng, 2, 4, 4, 0.6) + p['grain'] * t.value_noise(rng, 16, 16)
+        idx = t.quantize(v, n - 1, p.get('shares'))
+        idx = t.majority(idx, 1)
+        for _ in range(p.get('light', 0)):
+            x, y = rng.integers(0, N), rng.integers(0, N)
+            idx[y, x] = n - 1
+        return t.paint(idx, [t.hex_to_rgb(c) for c in p['colors']])
     if form == 'gneiss':
         warp = 2.2 * (t.value_noise(rng, 4, 2) - 0.5)
         band = 0.5 + 0.5 * np.sin(2 * np.pi * (ys + warp) * p['bands'] / N)

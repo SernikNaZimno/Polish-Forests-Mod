@@ -1,0 +1,21 @@
+{
+  "variants": {
+    "": [
+      {
+        "model": "polishforests:block/rendzina"
+      },
+      {
+        "model": "polishforests:block/rendzina",
+        "y": 90
+      },
+      {
+        "model": "polishforests:block/rendzina",
+        "y": 180
+      },
+      {
+        "model": "polishforests:block/rendzina",
+        "y": 270
+      }
+    ]
+  }
+}

@@ -127,6 +127,13 @@ public final class SoilBlocks {
 			case STREAM_BED -> profile(Material.GRAVEL);
 			case LAKE_BED, DYSTROPHIC_LAKE_BED, LAGOON_BED -> profile(Material.MUD);
 			case SEA_BED -> profile(Material.SAND);
+			// Step TT2: the Tatra soils. Rendzina: turf with patches of the bare black humus and coarse dirt, the humus over
+			// limestone scree; the scree and the perennial snow without soil.
+			case RENDZINA -> profile(q1 < 0.55 ? Material.GRASS_BLOCK : q1 < 0.85 ? Material.RENDZINA : Material.COARSE_DIRT,
+					Material.RENDZINA, 1, Material.LIMESTONE_SCREE, 1);
+			case GRANITE_SCREE -> profile(Material.GRANITE_SCREE, Material.GRANITE_SCREE, 2);
+			case LIMESTONE_SCREE -> profile(Material.LIMESTONE_SCREE, Material.LIMESTONE_SCREE, 2);
+			case SNOW -> profile(Material.SNOW_BLOCK, Material.SNOW_BLOCK, 1, Material.GRAVEL, 1);
 		};
 	}
 

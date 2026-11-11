@@ -88,7 +88,7 @@ final class BankShelf {
 	/** Standing water that the shelf follows: lakes, kettle ponds and oxbow lakes with a water level. */
 	private static boolean standing(ColumnSample.Waters w) {
 		return switch (w.standingWaterKind()) {
-			case TUNNEL_VALLEY_LAKE, SINK_LAKE, KETTLE_POND, OXBOW_LAKE -> w.shoreLevel() != ColumnSample.NO_WATER;
+			case TUNNEL_VALLEY_LAKE, SINK_LAKE, KETTLE_POND, OXBOW_LAKE, TARN -> w.shoreLevel() != ColumnSample.NO_WATER;
 			default -> false;
 		};
 	}

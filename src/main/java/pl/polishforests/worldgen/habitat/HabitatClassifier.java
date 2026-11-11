@@ -117,6 +117,8 @@ public final class HabitatClassifier {
 		Column c = new Column(this, s, x, z);
 		int w = OpenWater.classify(c);
 		if (w == Result.NONE) {
+			// Step TT2: the bare rock, scree and snow of the Tatras (a zone only; the biome comes from the next steps).
+			w = TatraZones.classify(c);
 			w = Result.further(w, Coast.classify(c));
 			if (Result.biome(w) == null) {
 				w = Result.further(w, WatersideZones.classify(c));
@@ -139,7 +141,12 @@ public final class HabitatClassifier {
 			biome = openLand;
 		}
 		int flags = biome.isForest() || siteType != ForestSiteType.NONE ? SpeciesRanges.flags(c, siteType) : 0;
-		return Habitat.pack(biome, zone, siteType, association, LandCover.forBiome(biome), flags, Soil.forBiome(biome, zone));
+		Soil soil = Soil.forBiome(biome, zone);
+		Substrate rock = c.t.rock();
+		if (rock == Substrate.LIMESTONE || rock == Substrate.DOLOMITE) {
+			soil = soil.onLimestone();
+		}
+		return Habitat.pack(biome, zone, siteType, association, LandCover.forBiome(biome), flags, soil);
 	}
 
 	/** Habitat of the column as a record (commands, preview, tests). */

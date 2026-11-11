@@ -136,7 +136,13 @@ class TatraRiverTest {
 			ColumnSample s = m.sample(x, z);
 			ColumnSample sx = m.sample(x + d, z);
 			ColumnSample sz = m.sample(x, z + d);
-			double step = Math.max(Math.abs(sx.surface() - s.surface()), Math.abs(sz.surface() - s.surface())) / d;
+			// Step TT2: the sharp relief (pinnacles, gully walls) is steep on purpose (TatraReliefTest, TatraFormsTest).
+			boolean sharp = m.tatraSharp(x, z) > 0 || m.tatraSharp(x + d, z) > 0 || m.tatraSharp(x, z + d) > 0;
+			// And the shore walls of the tarns (a basin cut into a cirque floor under its headwall).
+			for (ColumnSample c : new ColumnSample[] {s, sx, sz}) {
+				sharp |= c.waters().standingWaterKind() == ColumnSample.StandingWaterKind.TARN && c.waters().s() < TatraWaters.BELT;
+			}
+			double step = sharp ? 0 : Math.max(Math.abs(sx.surface() - s.surface()), Math.abs(sz.surface() - s.surface())) / d;
 			double water = 0;
 			double pairs = 0;
 			for (ColumnSample n : new ColumnSample[] {sx, sz}) {

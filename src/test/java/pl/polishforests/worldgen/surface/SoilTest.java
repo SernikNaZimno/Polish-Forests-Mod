@@ -40,7 +40,9 @@ class SoilTest {
 		assertTrue(supports.contains("minecraft:grass_block") && supports.contains("minecraft:mud")
 				&& supports.contains("minecraft:moss_block") && supports.contains("minecraft:podzol"), supports.toString());
 		// Exceptions of §7.4: point bars and gravel bars, and the beach and dune zones (strandline, embryo dune).
-		Set<Zone> bars = EnumSet.of(Zone.POINT_BAR, Zone.GRAVEL_BAR, Zone.STRANDLINE, Zone.EMBRYO_DUNE);
+		// Step TT2: the scree and the snow patches of the Tatras carry no plants either.
+		Set<Zone> bars = EnumSet.of(Zone.POINT_BAR, Zone.GRAVEL_BAR, Zone.STRANDLINE, Zone.EMBRYO_DUNE, Zone.SCREE,
+				Zone.SNOW_PATCH);
 		List<String> failures = new ArrayList<>();
 		int checked = 0;
 		for (HabitatBiome biome : HabitatBiome.values()) {
@@ -51,14 +53,16 @@ class SoilTest {
 				if (bars.contains(zone)) {
 					continue;
 				}
-				Soil soil = Soil.forBiome(biome, zone);
-				for (double q1 = 0; q1 < 1; q1 += 0.05) {
-					for (double q2 = 0; q2 < 1; q2 += 0.05) {
-						for (double lowShore : new double[] {0, 1}) {
-							Material top = SoilBlocks.top(SoilBlocks.dry(soil, zone, biome, q1, q2, lowShore));
-							checked++;
-							if (!supports.contains(top.id())) {
-								failures.add(biome.id() + "/" + zone.id() + "/" + soil + " -> " + top.id());
+				// Step TT2: and the same soil on the Tatra limestone (rendzina).
+				for (Soil soil : new Soil[] {Soil.forBiome(biome, zone), Soil.forBiome(biome, zone).onLimestone()}) {
+					for (double q1 = 0; q1 < 1; q1 += 0.05) {
+						for (double q2 = 0; q2 < 1; q2 += 0.05) {
+							for (double lowShore : new double[] {0, 1}) {
+								Material top = SoilBlocks.top(SoilBlocks.dry(soil, zone, biome, q1, q2, lowShore));
+								checked++;
+								if (!supports.contains(top.id())) {
+									failures.add(biome.id() + "/" + zone.id() + "/" + soil + " -> " + top.id());
+								}
 							}
 						}
 					}

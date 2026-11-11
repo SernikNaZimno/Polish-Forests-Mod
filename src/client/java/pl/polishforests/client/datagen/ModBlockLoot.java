@@ -74,6 +74,10 @@ final class ModBlockLoot extends FabricBlockLootSubProvider {
 		for (net.minecraft.world.level.block.Block b : ModBlocks.tatraRocks()) {
 			dropSelf(b);
 		}
+		// Step TT2: the scree and the rendzina give themselves.
+		for (net.minecraft.world.level.block.Block b : ModBlocks.tatraSurface()) {
+			dropSelf(b);
+		}
 	}
 
 	/**

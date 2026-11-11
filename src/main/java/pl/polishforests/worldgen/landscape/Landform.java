@@ -50,11 +50,21 @@ public enum Landform {
 	/** Glacial cirque at the head of a Tatra valley: an overdeepened bowl under the headwall (step TT1; water in TT2). */
 	CIRQUE,
 	/** Floor of a U-shaped glacial valley of the Tatras (step TT1). */
-	U_VALLEY;
+	U_VALLEY,
+	/** Step TT2: a Tatra tarn (the water of the tarn). */
+	TARN,
+	/** Step TT2: a granite pinnacle or a tooth of a sharp ridge in the High Tatras. */
+	PINNACLE,
+	/** Step TT2: a gully (żleb), a chute 30–45° steep in a valley or cirque wall. */
+	GULLY,
+	/** Step TT2: a scree cone at the mouth of a gully, 30–35° steep. */
+	SCREE,
+	/** Step TT2: a frontal or lateral moraine in a Tatra valley. */
+	MORAINE;
 
 	/** Landforms recognised in {@link LandscapeModel#sample} (without extra samples), in a fixed order. */
 	public static final List<Landform> FROM_SAMPLE = List.of(INLAND_DUNES, END_MORAINE, RIDGE, MOUNTAIN_VALLEY, BEACH,
-			COASTAL_DUNES, CLIFF, HEADWATERS, CIRQUE, U_VALLEY);
+			COASTAL_DUNES, CLIFF, HEADWATERS, CIRQUE, U_VALLEY, TARN, PINNACLE, GULLY, SCREE, MORAINE);
 
 	/** Bit of the landform in {@link ColumnSample.Terrain#landformBits()} (there are fewer than 32 landforms). */
 	public int bit() {

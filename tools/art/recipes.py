@@ -1925,6 +1925,20 @@ TEXTURES = [
             params=dict(form='dolomite', grain=0.5, light=4,
                         colors=['#9d9587', '#a59d8f', '#ada597', '#b5ad9f', '#c1baac']),
             note='dolomite of the regle (step TT1): beige-gray with a fine sugary grain'),
+    # Step TT2: the surface of the Tatras: the scree of the granite and of the limestone (angular clasts in the tones of
+    # their rocks, own palettes) and the rendzina, the black humus soil of the limestone with pale flecks.
+    Texture('granite_scree', 'rock', ground.rock, 'granite_scree/1', None,
+            params=dict(form='scree', clasts=14, gap=0.9, dark=5,
+                        colors=['#5f6062', '#727375', '#828381', '#8f908d', '#9c9b97', '#aaa8a2']),
+            note='granite scree of the High Tatras (step TT2): angular gray clasts with lighter upper edges'),
+    Texture('limestone_scree', 'rock', ground.rock, 'limestone_scree/1', None,
+            params=dict(form='scree', clasts=16, gap=0.9, dark=5,
+                        colors=['#8b877b', '#9f9b8f', '#aeaa9e', '#bab6aa', '#c5c1b5', '#d0ccc0']),
+            note='limestone scree (step TT2): pale cream-gray angular clasts'),
+    Texture('rendzina', 'rock', ground.rock, 'rendzina/1', None,
+            params=dict(form='rendzina', grain=0.35, light=7,
+                        colors=['#221d19', '#2b2521', '#342d28', '#3d352f', '#9a9487']),
+            note='rendzina of the limestone (step TT2): crumbly black humus with sparse pale limestone flecks'),
 ]
 
 TEXTURES_BY_NAME = {tx.name: tx for tx in TEXTURES}

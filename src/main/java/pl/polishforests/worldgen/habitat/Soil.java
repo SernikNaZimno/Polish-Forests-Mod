@@ -30,7 +30,15 @@ public enum Soil {
 	LAKE_BED,
 	DYSTROPHIC_LAKE_BED,
 	SEA_BED,
-	LAGOON_BED;
+	LAGOON_BED,
+	/** Step TT2: rendzina, the thin humus soil on the Tatra limestone and dolomite. */
+	RENDZINA,
+	/** Step TT2: granite (and gneiss) scree without soil. */
+	GRANITE_SCREE,
+	/** Step TT2: limestone (and dolomite) scree without soil. */
+	LIMESTONE_SCREE,
+	/** Step TT2: a perennial snow patch. */
+	SNOW;
 
 	private static final Soil[] VALUES = values();
 
@@ -65,10 +73,30 @@ public enum Soil {
 			case EMBRYO_DUNE -> {
 				return DUNE_SAND;
 			}
+			// Step TT2: the scree of the Tatras (granite; HabitatClassifier makes it limestone scree on the limestone) and the
+			// snow patches. Bare rock keeps the soil of its biome in the code; the surface shows the rock (SurfaceBuilder).
+			case SCREE -> {
+				return GRANITE_SCREE;
+			}
+			case SNOW_PATCH -> {
+				return SNOW;
+			}
 			default -> {
 				return defaultForBiome(b);
 			}
 		}
+	}
+
+	/**
+	 * Step TT2: the soil on the Tatra limestone and dolomite: rendzina instead of the mountain soils of the silicate rocks
+	 * (ranker, podzol, brown soils), limestone scree instead of granite scree.
+	 */
+	public Soil onLimestone() {
+		return switch (this) {
+			case RANKER, MOUNTAIN_PODZOL, MOUNTAIN_BROWN_SOIL, ACID_BROWN_SOIL -> RENDZINA;
+			case GRANITE_SCREE -> LIMESTONE_SCREE;
+			default -> this;
+		};
 	}
 
 	private static Soil defaultForBiome(HabitatBiome b) {

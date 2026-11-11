@@ -426,7 +426,8 @@ class GoldenTerrainTest {
 			}
 		}
 		for (WaterKind k : WaterKind.values()) {
-			if (!kinds.contains(k.name())) {
+			// Step TT2: the tarns occur only in a world with the Tatras (GoldenTatraTest, TatraFormsTest).
+			if (k != WaterKind.TARN && !kinds.contains(k.name())) {
 				out.add(new TargetIssue(TargetIssue.COVERAGE, key + ": missing water " + k + " in the column set " + kinds));
 			}
 		}

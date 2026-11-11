@@ -73,6 +73,8 @@ public final class ModBlocks {
 	private static Block sphagnumBlock;
 	/** Step TT1: the rocks of the Tatra massif, in the order of {@link #TATRA_ROCKS}. */
 	private static final List<Block> TATRA_ROCK_BLOCKS = new ArrayList<>();
+	/** Step TT2: the surface blocks of the Tatras, in the order of {@link #TATRA_SURFACE}. */
+	private static final List<Block> TATRA_SURFACE_BLOCKS = new ArrayList<>();
 	/** Step P1: the stripped thin trunks. */
 	private static final Map<StrippedTrunk, TrunkBlock> STRIPPED = new EnumMap<>(StrippedTrunk.class);
 	/** Step P2: the wood sets (the Scots pine's with the LITE blocks of V7). */
@@ -185,6 +187,12 @@ public final class ModBlocks {
 			// Step TT1: the Tatra rocks after the vanilla deepslate.
 			previous = Items.DEEPSLATE;
 			for (Block b : TATRA_ROCK_BLOCKS) {
+				out.insertAfter(previous, b);
+				previous = b.asItem();
+			}
+			// Step TT2: the Tatra scree and the rendzina after the vanilla gravel.
+			previous = Items.GRAVEL;
+			for (Block b : TATRA_SURFACE_BLOCKS) {
 				out.insertAfter(previous, b);
 				previous = b.asItem();
 			}
@@ -334,6 +342,21 @@ public final class ModBlocks {
 			item(id, b, new Item.Properties());
 			TATRA_ROCK_BLOCKS.add(b);
 		}
+		// Step TT2, registered after the rocks: the scree of the granite and the limestone (loose but not falling, so the
+		// cones keep their slopes: as vanilla gravel without the fall, a shovel) and the rendzina, the black soil of the
+		// limestone (as vanilla dirt).
+		BlockBehaviour.Properties scree = BlockBehaviour.Properties.of().instrument(NoteBlockInstrument.SNARE).strength(0.6F)
+				.sound(SoundType.GRAVEL);
+		Block[] surface = {
+				block(GRANITE_SCREE, Block::new, scree.mapColor(MapColor.STONE)),
+				block(LIMESTONE_SCREE, Block::new, BlockBehaviour.Properties.of().instrument(NoteBlockInstrument.SNARE).strength(0.6F)
+						.sound(SoundType.GRAVEL).mapColor(MapColor.TERRACOTTA_WHITE)),
+				block(RENDZINA, Block::new, BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_BLACK).strength(0.5F)
+						.sound(SoundType.GRAVEL))};
+		for (int s = 0; s < surface.length; s++) {
+			item(TATRA_SURFACE.get(s), surface[s], new Item.Properties());
+			TATRA_SURFACE_BLOCKS.add(surface[s]);
+		}
 	}
 
 	/**
@@ -415,6 +438,17 @@ public final class ModBlocks {
 	public static final String LIMESTONE = "limestone";
 	public static final String DOLOMITE = "dolomite";
 	public static final List<String> TATRA_ROCKS = List.of(TATRA_GRANITE, GNEISS, LIMESTONE, DOLOMITE);
+
+	/** Block and item paths of the surface of the Tatras (step TT2): the granite and limestone scree, the rendzina. */
+	public static final String GRANITE_SCREE = "granite_scree";
+	public static final String LIMESTONE_SCREE = "limestone_scree";
+	public static final String RENDZINA = "rendzina";
+	public static final List<String> TATRA_SURFACE = List.of(GRANITE_SCREE, LIMESTONE_SCREE, RENDZINA);
+
+	/** The Tatra surface blocks (step TT2), in the order of {@link #TATRA_SURFACE}. */
+	public static List<Block> tatraSurface() {
+		return Collections.unmodifiableList(registered(TATRA_SURFACE_BLOCKS.isEmpty() ? null : TATRA_SURFACE_BLOCKS));
+	}
 
 	/** The Tatra rock blocks (step TT1), in the order of {@link #TATRA_ROCKS}. */
 	public static List<Block> tatraRocks() {

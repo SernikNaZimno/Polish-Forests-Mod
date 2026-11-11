@@ -29,7 +29,9 @@ class PolishForestsCommandsTest {
 	/** Step TT1: the targets of the Tatra complexes (found only in a world with the Tatras). */
 	static final Set<PolishForestsCommands.Target> TATRA_TARGETS = EnumSet.of(PolishForestsCommands.Target.TATRA,
 			PolishForestsCommands.Target.HIGH_TATRA, PolishForestsCommands.Target.WESTERN_TATRA, PolishForestsCommands.Target.PODHALE,
-			PolishForestsCommands.Target.CIRQUE, PolishForestsCommands.Target.U_VALLEY);
+			PolishForestsCommands.Target.CIRQUE, PolishForestsCommands.Target.U_VALLEY, PolishForestsCommands.Target.TARN,
+			PolishForestsCommands.Target.PINNACLE, PolishForestsCommands.Target.GULLY, PolishForestsCommands.Target.SCREE,
+			PolishForestsCommands.Target.MORAINE, PolishForestsCommands.Target.SNOW_PATCH);
 
 	static HabitatTargets.World world(LandscapeScale scale, HabitatClassifier.Mode mode) {
 		return world(SEED, scale, mode, false);

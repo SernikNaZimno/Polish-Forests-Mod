@@ -205,6 +205,10 @@ final class ModBlockTagProvider {
 					builder(t).add(key(b));
 				}
 			}
+			// Step TT2: the scree with a shovel; the rendzina as dirt (plants, saplings and tilling take it, with a shovel).
+			List<Block> surface = ModBlocks.tatraSurface();
+			builder(BlockTags.MINEABLE_WITH_SHOVEL).add(key(surface.get(0))).add(key(surface.get(1))).add(key(surface.get(2)));
+			builder(BlockTags.DIRT).add(key(surface.get(2)));
 		}
 	}
 

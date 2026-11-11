@@ -4740,6 +4740,63 @@ Drobne wybory: `docs/00` G.50 (TT1-a … TT1-l z etapu 1, TT1-m … TT1-t z etap
 11. „Dostosuj” w skali REAL: przycisk Tatr wyszarzony z podpowiedzią; po powrocie do GAMEPLAY wraca jego poprzedni stan; ekran mieści się w oknie 854 × 480.
 12. Stary świat (zapisany przed TT1): nowe chunki bez Tatr i bez szwu na granicy ze starymi chunkami.
 
+## Projekt TT2 (2026-11-11, etap 1: kod, dane, tekstury, testy jednostkowe)
+
+Krok TT2 planu „Kroki TT” (§3): formy polodowcowe i skalne Tatr w GAMEPLAY. Obejmuje stawy z potokami, drobną rzeźbę (turnie, żleby, stożki piargowe, moreny, ściany kotłów), powierzchnię (goła skała, rumosz, rędzina, płaty śniegu, głazy), wodę jaskiń pod Tatrami, sześć nowych celów `find`, przegenerowany `golden_terrain_tatra.txt` i rozszerzony gametest `tatra`. Przebiegi w grze, pomiar KT-6 i „Stan po TT2” należą do etapu 2; drobne wybory TT2-a … TT2-k do `docs/00` G.51 wpisze etap 2. Baza kroku: `4e27817`.
+
+**Stawy (`landscape/TatraWaters`, TT2-a).**
+
+- Nowe stałe na końcu enumów: `WaterKind.TARN` (`isLake()` je obejmuje, więc `BankShelf` daje stawom rampę i ochronę jak jeziorom) i `ColumnSample.StandingWaterKind.TARN`.
+- Staw to elipsa w układzie doliny (q w poprzek osi, un od grani głównej), z poziomem w pełnych metrach. Misa jest **wycięta** w dnie: `dno = poziom − głębokość·(1 − r²)`, a woda leży wszędzie w elipsie, gdzie grunt jest niżej niż poziom. Wokół elipsy jest pierścień 3 m z gruntem co najmniej 0,5 m nad poziomem. Za pierścieniem ściana brzegu (3 m/m, stromiejąca co 8 m) i zewnętrzny stok wału (1,5 m/m), gdzie teren opada.
+- Każda kolumna wody ma więc czterech sąsiadów: wodę tego samego stawu na tym samym poziomie albo grunt co najmniej na poziomie. Misa jest zamknięta z konstrukcji, niezależnie od gruntu w środku. Pomiar pierwszy (pierwotne podejście „naturalna misa”, poziom pod najniższym punktem obrzeża) dawał 7 stawów na masyw, bo misy kotłów TT1 nie są zamknięte w `landElevation`; stąd wycięcie (TT2-b).
+- Brzeg stawu jest jednym z trzech miejsc, gdzie wolno ostro (KT-4): `TatraRiverTest` pomija pas 40 m wokół stawów przy skoku powierzchni.
+- Stawy nie biorą rzek: misa z pierścieniem, która zbliża się do koryta sieci rzek TT1, odpada (`dry`). W pierścieniu woda rzeki ustępuje stawowi.
+- Stawy liczą się z `landElevation` i `riverProbe` (nowa metoda `LandscapeModel`: zapytanie sieci rzek tak jak w `sample`), nigdy z `sample`, i są w `DirectCache` na dolinę.
+
+**Rozmieszczenie stawów (TT2-c).** Na dolinę najwyżej dwa: w kotle (gdy dolina ma kocioł; losowanie solą 61 z udziałem lerp(udział Tatr Wysokich, 0,5, 0,9); półosie 0,5·0,17 odstępu × 0,5·0,075 szerokości strony; poziom z gruntu 0,6 półosi w dół doliny, najwyżej 6 m nad najniższym punktem obrzeża; głębokość 2,5–4 bloku) i za moreną czołową (solą 63 z lerp(udział, 0,3, 0,65); poziom 2–4 m pod grzbietem moreny; misa od wewnętrznej stopy w górę doliny do gruntu ≥ poziom + 1, najmniej 120 m·k, najwyżej 400 m·k; głębokość 2–3,5 bloku). Wycięcie głębsze niż 30 m w środku misy odpada. Gdy misy obu stawów doliny (z pierścieniami i pasem 2 × 40 m) by się stykały, zostaje staw za moreną. **Morskie Oko:** dolina od strony Podhala przy najwyższym szczycie zawsze ma morenę (45 m) i staw za nią (szerokość 1,6 półszerokości dna, do 1200 m·k, głębokość 6 bloków). Wynik (`TatraFormsTest`): 28–37 stawów na masyw (10–14 za morenami) w sześciu masywach ziaren A, B i 4, największy zawsze typu Morskiego Oka (175–224 × 231–259 m).
+
+**Potoki (TT2-d).**
+
+- Odpływ ma staw z wylosowanym odpływem (solą 62: 60% w kotle; 65: 80% za moreną; Morskie Oko zawsze). Próg (sill) to rowek na poziomie stawu, szeroki na 3 m, w pierścieniu po stronie doliny.
+- Potok biegnie osią doliny krokami po 0,5 m. Poziom to bieżące minimum z (podłoga gruntu − 1 m), nigdy niżej niż woda, do której wpada. Kończy się w korycie sieci rzek TT1 (do którego skręca, gdy jest bliżej niż 30 m) albo w pierścieniu niższego stawu.
+- Spadek między krokami najwyżej 2 m (wymóg `TatraRiverTest`: woda sąsiadów różni się o ≤ 2 m), więc od ujścia w górę potok jest wcinany niżej. Gdzie wcięcie przekroczyłoby 12 m pod gruntem (stromy próg doliny, ściana wciętej rzeki, wysoki grunt przy progu), woda potoku kończy się zamkniętym oczkiem nad progiem (dalej „pod piargiem”). Potok krótszy niż 20 m albo bez wody w dole doliny: staw bez odpływu.
+- Koryto ma zaokrąglony przekrój (głębokość 1,2 bloku), brzegi 3 m spadające do wody 5 m/m (wąwóz bez uskoku), koniec zamyka brzeg na poziomie ostatniego kroku.
+- Wynik: 4–18 odpływów na masyw, 2–15 łączy się z siecią rzek albo z niższym stawem. Większość stawów nie ma odpływu, bo próg ich misy po osi doliny leży wyżej niż poziom (wycięcie w dnie kotła). Otwarte dla etapu 2: wyprowadzić odpływ przez najniższy punkt obrzeża zamiast osią.
+
+**Drobna rzeźba (`TatraField.fineRelief`, sole `place` 31–60, nowe przesunięcia szumu `relief`; TT2-e).**
+
+- Moreny czołowe (łuk wypukły w dół doliny z ramionami) i boczne, 18–40 m nad dnem (Morskie Oko 45 m), w dolinach wylosowanych solą 31 z lerp(udział, 0,45, 0,8).
+- Żleby w obu ścianach co 220 m·k wzdłuż ściany (pofalowane szumem), szerokie na 18–28 m·k, w oknie od kotła do dolnej doliny na skale. Dno żlebu jest prostą 34–42° w blokach od 2 m nad dnem doliny, głęboką do 26 m.
+- Stożki piargowe u wylotów (31–35° w blokach, zawsze co najmniej 2° łagodniej niż dno żlebu), wypełniają dolną część żlebu.
+- Turnie i zęby grani w Tatrach Wysokich na grani głównej (co 110 m·k, 25–60 m) i na graniach bocznych (co 140 m·k, 15–45 m), nigdy ponad szczyt docelowy.
+- Ściana kotła stromieje (krzywa `xh^1,6` w udziale 0,85 w Tatrach Wysokich), bez zmiany tam, gdzie kotła nie ma.
+- Wszystkie formy wygasają do zera na brzegach (bez skoku); ostre są tylko turnie i ściany żlebów (`Column.sharp`, `LandscapeModel.tatraSharp`), które `TatraReliefTest` i `TatraRiverTest` pomijają przy skoku wysokości (do 14,7 m na metr w turniach, reszta ≤ 7,3).
+- Nowe bity form (na końcu `Landform`, 30 z 32): `TARN`, `PINNACLE`, `GULLY`, `SCREE`, `MORAINE`.
+- Nachylenia w blokach (`TatraFormsTest`, mediany, trzy ziarna): dna żlebów 35,7–36,2°, stożki 31,8–33,1°, turnie 52,9–54,4°; stożek u 54–71% wylotów żlebów.
+
+**Powierzchnia (TT2-f … TT2-h).**
+
+- Nowe bloki (po skałach TT1, migawka rejestru świadomie +3 stany): `granite_scree`, `limestone_scree` (niespadające, jak żwir bez spadania, łopata) i `rendzina` (jak ziemia, w `#minecraft:dirt`, więc rośliny i drzewa ją biorą). Tekstury z `tools/art` (nowe formy `scree`: kanciaste okruchy z jaśniejszym górnym brzegiem i miękkimi szczelinami, `rendzina`: czarny próchniczny gruz z jasnymi plamkami wapienia); lint „rock” przechodzi. Śnieg to `minecraft:snow_block` po id; Serene Seasons topi tylko warstwy śniegu i lód, więc płaty trwają przez lato.
+- Nowe strefy na końcu `Zone` (29 z 32): `BARE_ROCK`, `SCREE`, `SNOW_PATCH`; gleby na końcu `Soil`: `RENDZINA`, `GRANITE_SCREE`, `LIMESTONE_SCREE`, `SNOW`. Nowy krok klasyfikatora `TatraZones` zaraz po wodach (tylko strefa, biom z dalszych kroków), tylko na skale Tatr:
+  - `SNOW_PATCH`: żleb lub kocioł, ekspozycja do 50° od północy, wysokość > 1700 ± 60 m, w płatach o udziale 0,35–0,8 rosnącym z wysokością;
+  - `SCREE`: forma `SCREE`;
+  - `BARE_ROCK`: turnia, nachylenie w blokach > 48 ± 6° albo powyżej 2250 ± 80 m w płatach 60%.
+  - Na wapieniu i dolomicie gleba przechodzi w rędzinę (ranker, bielica górska, gleby brunatne → `RENDZINA`; rumosz → wapienny).
+- `SurfaceBuilder`: goła skała (wierzch = blok skały) w strefie `BARE_ROCK` i na każdej suchej kolumnie skały ze stopniem ≥ 3 bloków do najniższego sąsiada (poza rumoszem i śniegiem); głazy dna doliny jako plamy skały w murawie (nowe pole szumu `BOULDERS`, dno doliny U i moreny). Głazy stojące nad gruntem zostają dla TT6 (TT2-i).
+- Spis (`TatraFormsTest.tatraSurfaceZones`, siatka 12 m, ziarno A): goła skała 20 tys. kolumn na granicie, rumosz 450–580 na granicie i gnejsie, 110–200 wapienny, śnieg 250–630, rędzina 28–47 tys. tylko na wapieniu i dolomicie; 0 śniegu poza swoimi miejscami, 0 rędziny poza wapieniem, 0 rankera i bielicy na wapieniu.
+- Mapy stawów: `OpenWater` daje stawom biom `LAKE` bez stref (bez szuwarów; ich pas dadzą piętra TT3), `WatersideZones` nie daje im stref brzegu, dno jest kamieniste jak potoku.
+
+**Jaskinie (TT2-j).** `PolandCaves.Columns.dryAbove`: w kolumnach na skale Tatr woda warstw wodonośnych wanilii powyżej poziomu morza staje się powietrzem (w wypełnieniu, w żłobieniu i w `column` dla `getBaseColumn`), więc w ścianach kotłów nie ma wody jaskiń wyciekającej z lic. Pod stawami działa ochrona J1 (`WATER_ROOF`: 4 bloki pod dnem każdej wody i jej sąsiadów), stawy też.
+
+**Komendy (TT2-k).** Cele na końcu `Target` (rodzaj Tatry, `list` bez nowej linii): `tarn`, `pinnacle`, `gully`, `scree`, `moraine` (formy próbki, siatka 24 m wokół masywu) i `snow_patch` (strefa siedliska). `here` pokazuje nowe formy po nazwie. Język en/pl dla celów, stref, gleb i bloków.
+
+**Złote pliki i testy.**
+
+- `golden_terrain_tatra.txt` przegenerowany świadomie (`-PwriteGoldenTatra`). Zestaw A: łata `granite_ridge` przeniesiona przez wyszukiwanie z (−24 423, 87 771) na (−24 456, 87 894) (turnie zmieniły najlepsze miejsce; gametest `tatra` ma nowe współrzędne), zmienione łaty `cirque` (staw) i `western_tatra` (żleby, stożki), pola surface, waterLevel, waterKind, substrate, coverDepth, blocks; bez zmian `regle_limestone`, `podhale`, `beskid_transition` oraz pola type, tatraPart, rock. Zestaw B: zmienione `granite_ridge`, `western_tatra`, pola surface i blocks.
+- `golden_terrain_m2.txt` bez zmian (`-PgoldenStrict`); `GoldenTerrainTest` nie wymaga wody `TARN` w zestawach M2 (jak typów Tatr w TT1). `TatraIsolationTest` bez zmian (0 różnic poza zasięgiem).
+- Nowy `TatraFormsTest`: stawy na masyw, zamknięte misy (skan 1 m pasa brzegu wszystkich stawów najbliższego masywu trzech ziaren: 340–440 tys. kolumn wody, 0 przecieków, 0 wody wiszącej, potoki monotoniczne), nachylenia i stożki, strefy i gleby.
+- Gametest `tatra`: cele TT2, spis wody 6 największych stawów na blokach (przecieki, woda wisząca), spis wierzchów według skały na transektach, histogram nachyleń w `build/tatra/slopes.txt`, płat śniegu po `/season set mid_summer`. Miejsca `tatra_high_1` (`ForestPerformance`) i obszar `tatra` determinizmu zostają na starym środku łaty (−24 423, 87 771): to nadal grań granitu, a pomiar KT-6 i referencja determinizmu TT1 zostają porównywalne.
+
 ## Do kroku porządkowego (lista drobiazgów z recenzji)
 
 Lista założona w V10 według decyzji użytkownika z 2026-10-21 (`docs/00` F, P4): drobiazgi widoczne tylko na zbliżeniach albo w pomiarach bez wpływu na grę nie są poprawiane od razu, tylko trafiają tutaj; zbiorczy krok porządkowy na końcu kamienia milowego przegląda listę i poprawia, co warto. Każdy wpis: krok, w którym powstał, opis, gdzie szukać, propozycja. Wpis usuwamy (albo przekreślamy z commitem), gdy jest zrobiony.

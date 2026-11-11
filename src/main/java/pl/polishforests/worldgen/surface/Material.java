@@ -103,7 +103,13 @@ public enum Material {
 	TATRA_GRANITE,
 	GNEISS,
 	LIMESTONE,
-	DOLOMITE;
+	DOLOMITE,
+	// Step TT2: the surface of the Tatras: the scree blocks and the rendzina of the mod, the vanilla snow block of the snow
+	// patches.
+	GRANITE_SCREE,
+	LIMESTONE_SCREE,
+	RENDZINA,
+	SNOW_BLOCK;
 
 	private static final Material[] VALUES = values();
 	/** Number of diagnostic colors of each kind. */
@@ -111,7 +117,12 @@ public enum Material {
 
 	/** Block id, e.g. {@code minecraft:grass_block}. */
 	public String id() {
-		return (isTatraRock() ? "polishforests:" : "minecraft:") + name().toLowerCase(Locale.ROOT);
+		return (isModBlock() ? "polishforests:" : "minecraft:") + name().toLowerCase(Locale.ROOT);
+	}
+
+	/** Whether the block is a block of the mod: the Tatra rocks (step TT1), the scree and the rendzina (step TT2). */
+	public boolean isModBlock() {
+		return isTatraRock() || this == GRANITE_SCREE || this == LIMESTONE_SCREE || this == RENDZINA;
 	}
 
 	/** Whether the block is a rock of the Tatra massif (step TT1), a block of the mod. */

@@ -127,7 +127,14 @@ public final class PolishForestsCommands {
 		WESTERN_TATRA(Kind.TATRA, false, false, d -> d.sample().terrain().tatraPart() == TatraPart.WESTERN_TATRA),
 		PODHALE(Kind.TATRA, false, false, d -> d.sample().terrain().tatraPart() == TatraPart.PODHALE_BASIN),
 		CIRQUE(Kind.TATRA, true, false, d -> d.sample().terrain().has(Landform.CIRQUE)),
-		U_VALLEY(Kind.TATRA, true, false, d -> d.sample().terrain().has(Landform.U_VALLEY));
+		U_VALLEY(Kind.TATRA, true, false, d -> d.sample().terrain().has(Landform.U_VALLEY)),
+		// Step TT2: the tarns and the fine relief of the Tatras, and the perennial snow patches (a habitat zone).
+		TARN(Kind.TATRA, true, false, d -> d.sample().waterKind() == WaterKind.TARN),
+		PINNACLE(Kind.TATRA, true, false, d -> d.sample().terrain().has(Landform.PINNACLE)),
+		GULLY(Kind.TATRA, true, false, d -> d.sample().terrain().has(Landform.GULLY)),
+		SCREE(Kind.TATRA, true, false, d -> d.sample().terrain().has(Landform.SCREE)),
+		MORAINE(Kind.TATRA, true, false, d -> d.sample().terrain().has(Landform.MORAINE)),
+		SNOW_PATCH(Kind.TATRA, code -> Habitat.zone(code) == Zone.SNOW_PATCH, true);
 
 		final Kind kind;
 		final boolean fine;

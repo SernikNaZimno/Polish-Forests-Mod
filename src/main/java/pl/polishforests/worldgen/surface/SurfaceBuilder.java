@@ -50,6 +50,11 @@ public final class SurfaceBuilder {
 	static final double SOIL_MINOR_WAVELENGTH = 5;
 	/** Noise for small gravel patches of the channel deposit; independent of the world seed (as before S6). */
 	private static final Noise DETAIL = new Noise(0x5EED_DE7A_11L);
+	/** Step TT2: the boulders of the Tatra valley floors, a new noise field with its own seed. */
+	private static final Noise BOULDERS = new Noise(0x5EED_B0_1D_E25L);
+	/** Step TT2: the share of the boulder noise (its top) that shows a boulder on a valley floor, and its wavelength. */
+	static final double BOULDER_FROM = 0.72;
+	static final double BOULDER_WAVELENGTH = 2.5;
 	private static final WaterKind[] KINDS = WaterKind.values();
 	/** Least loose cover of a dry column in blocks: its soil top block. */
 	static final int MIN_SOIL = 1;
@@ -301,6 +306,13 @@ public final class SurfaceBuilder {
 				int rock = Math.min(out.top[i] - cover, w.lowestNeighborTop(i, out) - 1);
 				out.rockTop[i] = Math.max(out.rockTop[i], rock);
 			}
+			if (out.rock[i] != null && !w.wet(i) && (flags & (ChunkSurface.PUDDLE | ChunkSurface.PUDDLE_MUD)) == 0
+					&& (bareRock(Habitat.zone(code), out.top[i] - w.lowestNeighborTop(i, out)) || boulder(s, wx, wz))) {
+				// Step TT2: the bare Tatra rock on the walls, pinnacles and ridges (the zone) and on every face of a step
+				// of BARE_DROP blocks or more (a wall too steep for soil), never on the scree and snow; and the boulders
+				// of the valley floors.
+				out.rockTop[i] = out.top[i];
+			}
 			if (debug) {
 				Zone zone = Habitat.zone(code);
 				Material paint = zone != Zone.NONE ? Material.zoneColor(zone.ordinal() - 1)
@@ -325,12 +337,33 @@ public final class SurfaceBuilder {
 		return out;
 	}
 
+	/** Step TT2: a step to the lowest neighbor (blocks) from which a dry column on the Tatra rock shows the rock. */
+	static final int BARE_DROP = 3;
+
+	/**
+	 * Step TT2: a boulder lying in the floor of a Tatra valley (U-shaped valley floor, also the moraines): spots of one to a
+	 * few blocks of the rock in the turf.
+	 */
+	static boolean boulder(ColumnSample s, int wx, int wz) {
+		ColumnSample.Terrain t = s.terrain();
+		return (t.has(pl.polishforests.worldgen.landscape.Landform.U_VALLEY) && t.has(pl.polishforests.worldgen.landscape.Landform.MOUNTAIN_VALLEY)
+				|| t.has(pl.polishforests.worldgen.landscape.Landform.MORAINE))
+				&& BOULDERS.at(wx, wz, BOULDER_WAVELENGTH) > BOULDER_FROM;
+	}
+
+	/** Step TT2: whether a dry column on the Tatra rock shows the bare rock. */
+	static boolean bareRock(Zone zone, int drop) {
+		return zone == Zone.BARE_ROCK || drop >= BARE_DROP && zone != Zone.SCREE && zone != Zone.SNOW_PATCH;
+	}
+
 	/** Bed kind of a water column. */
 	private static SoilBlocks.Bed bed(ColumnSample s, int code) {
 		HabitatBiome biome = Habitat.biome(code);
 		return switch (s.waterKind()) {
 			case RIVER -> biome == HabitatBiome.STREAM ? SoilBlocks.Bed.STREAM : SoilBlocks.Bed.CHANNEL;
 			case SEA -> biome == HabitatBiome.LAGOON ? SoilBlocks.Bed.LAGOON : SoilBlocks.Bed.SEA;
+			// Step TT2: the bed of a Tatra tarn is stony, as a mountain stream's.
+			case TARN -> SoilBlocks.Bed.STREAM;
 			default -> biome == HabitatBiome.DYSTROPHIC_LAKE ? SoilBlocks.Bed.DYSTROPHIC_LAKE : SoilBlocks.Bed.LAKE;
 		};
 	}

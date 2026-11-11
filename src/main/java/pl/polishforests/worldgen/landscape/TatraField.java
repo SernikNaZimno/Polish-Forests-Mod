@@ -85,6 +85,39 @@ final class TatraField {
 	static final double COAST_FADE0 = 1_500;
 	static final double COAST_FADE1 = 6_000;
 
+	// Step TT2: the fine relief, sizes in "real" meters times mspace, heights in meters.
+	/** Gullies: spacing along the valley wall, half width, the floor slope range (degrees in blocks). */
+	static final double GULLY_SPACING = 220;
+	static final double GULLY_HALF_WIDTH = 18;
+	static final double GULLY_SLOPE_LO = 34;
+	static final double GULLY_SLOPE_HI = 42;
+	/** Scree cones: the apex up the gully (real m) and the slope range of the cone surface (degrees in blocks). */
+	static final double CONE_APEX = 60;
+	static final double CONE_SLOPE_LO = 31;
+	static final double CONE_SLOPE_HI = 35;
+	/** Pinnacles: cell spacing along the main and the side ridges, the radius (real m). */
+	static final double PIN_MAIN = 110;
+	static final double PIN_SIDE = 140;
+	static final double PIN_RADIUS = 16;
+	/** Moraines: half width of the ridge, reach of the arms up the valley, length of the lateral moraines (real m). */
+	static final double MORAINE_HALF_WIDTH = 55;
+	static final double MORAINE_ARC = 150;
+	static final double MORAINE_LATERAL = 500;
+	/** Least heights (m) of the landform bits of the fine relief. */
+	static final double PINNACLE_FORM = 4;
+	static final double GULLY_FORM = 2;
+	static final double SCREE_FORM = 1;
+	static final double MORAINE_FORM = 3;
+
+	/**
+	 * Step TT2: blocks per meter of height at {@code h} m a.s.l. in the gameplay scale (the derivative of
+	 * {@code VerticalScale.GAMEPLAY}, 1.89 · m^0.742): the slopes of the gullies and the scree cones are given in blocks, as
+	 * the player sees them. The Tatras are gameplay-only until step TT5.
+	 */
+	static double blocksPerMeter(double h) {
+		return 1.89 * 0.742 * Math.pow(Math.max(h, 100.0), -0.258);
+	}
+
 	/** Tatra massif of one grid cell. */
 	record Massif(long i, long j, double anchorX, double anchorZ, double x, double z, double cos, double sin,
 			double halfLength, double wn, double ws, double summit, double west, double spacing, double phaseN,
@@ -139,6 +172,25 @@ final class TatraField {
 		/** Floor of a hanging valley. */
 		boolean hanging;
 		Massif massif;
+		// Step TT2: the valley-local frame of the column on the massif (valley j of its side, q m across from the valley
+		// axis, un from the main ridge to the foot) for the tarns and their brooks; un is NaN off the massif proper.
+		boolean north;
+		long valley;
+		double q;
+		double un = Double.NaN;
+		/** Half width of the valley floor at the column (m). */
+		double floorHalf;
+		/**
+		 * Step TT2: strength of the sharp relief 0–1 (pinnacles, the walls of gullies): the only places, with the rock walls
+		 * and the tarn shores, where the relief may be steeper than the smooth massif (rule Z10, KT-4).
+		 */
+		double sharp;
+		/** Step TT2: height of the pinnacle, of the scree cone over the ground under it and of the moraine (m). */
+		double spike;
+		double scree;
+		double moraine;
+		/** Step TT2: depth of the gully cut (m). */
+		double gully;
 	}
 
 	private final LandscapeModel model;
@@ -169,6 +221,16 @@ final class TatraField {
 
 	double spacing() {
 		return spacing;
+	}
+
+	/** Step TT2: the horizontal scale of the mountains (mountain spacing). */
+	double k() {
+		return k;
+	}
+
+	/** Step TT2: a uniform draw 0–1 of the placement noise for the key (i, j) and a salt (for {@link TatraWaters}). */
+	double draw(long i, long j, int salt) {
+		return place.unit(i, j, salt);
 	}
 
 	/** Largest distance from the center of a massif (the middle of its main ridge) at which it changes the terrain. */
@@ -385,6 +447,35 @@ final class TatraField {
 		return c + (1_450 - c) * end;
 	}
 
+	/** The arc of the main ridge towards the Podhale with its warp at the point (x, z) with the along coordinate v (m). */
+	private double bow(Massif m, double x, double z, double v) {
+		double sv = v / m.halfLength();
+		return BOW * k * (1 - Math.min(1.0, sv * sv)) + RIDGE_WARP * k * relief.at(x + 9_999, z - 9_999, 9_000 * k);
+	}
+
+	/**
+	 * Step TT2: the world point {x, z} of the valley-local point (valley {@code j} of the side, {@code q} m across from its
+	 * axis, at {@code un} from the main ridge), the inverse of {@link #column}'s frame: a fixed-point iteration of the warps
+	 * (their wavelengths are hundreds of meters or more, so six rounds are exact to well below a meter).
+	 */
+	double[] world(Massif m, boolean north, long j, double q, double un) {
+		double width = north ? m.wn() : m.ws();
+		double phase = north ? m.phaseN() : m.phaseS();
+		double d = m.spacing();
+		double u = (north ? 1 : -1) * un * width;
+		double target = (j + q / d - phase) * d;
+		double v = target;
+		double x = m.worldX(u, v);
+		double z = m.worldZ(u, v);
+		for (int it = 0; it < 8; it++) {
+			v = target - 0.22 * d * relief.at(x - 777, z + 555, 1.6 * d);
+			double u0 = u + bow(m, x, z, v);
+			x = m.worldX(u0, v);
+			z = m.worldZ(u0, v);
+		}
+		return new double[] {x, z};
+	}
+
 	/** Valley coordinate φ on one side at a point (the valley axes at integer φ). */
 	private double phi(Massif m, double v, double x, double z, double phase) {
 		double d = m.spacing();
@@ -402,8 +493,7 @@ final class TatraField {
 		double v = m.v(x, z);
 		double half = m.halfLength();
 		double sv = v / half;
-		double bow = BOW * k * (1 - Math.min(1.0, sv * sv)) + RIDGE_WARP * k * relief.at(x + 9_999, z - 9_999, 9_000 * k);
-		double u = u0 - bow;
+		double u = u0 - bow(m, x, z, v);
 		double edge = EDGE * k * relief.at(x - 4_321, z + 1_234, 4_000 * k);
 		double basinEdge = m.wn() + (TROUGH + FOOTHILLS + SLOPE + BASIN) * k;
 		double wa = 1 - Noise.smoothstep(half + FADE_END0 * k, half + FADE_END1 * k, Math.abs(v) + edge);
@@ -451,6 +541,256 @@ final class TatraField {
 			c.part = north ? TatraPart.SUBTATRA_TROUGH : TatraPart.SOUTH_FOOT;
 		}
 		return c;
+	}
+
+	// ------------------------------------------------------------------ fine relief (step TT2)
+
+	/** Step TT2: a frontal moraine of a valley with its arms and lateral moraines (un of the crest on the axis, sizes in m). */
+	record Moraine(double unM, double height, double halfWidth, double arc, double lateral, boolean morskie) {
+	}
+
+	/** Step TT2: the share of the High Tatras at the axis of valley j of a side, constant over the valley. */
+	double valleyHigh(Massif m, boolean north, long j) {
+		double phase = north ? m.phaseN() : m.phaseS();
+		double v = (j - phase) * m.spacing();
+		return highShare(Math.clamp(m.west() * v / m.halfLength(), -1.0, 1.0));
+	}
+
+	/** Step TT2: un of the cirque floor of valley j (constant over the valley). */
+	double valleyCirque(Massif m, boolean north, long j) {
+		long vi = m.i() * 4_096 + j;
+		long vj = m.j() * 2 + (north ? 0 : 1);
+		return Noise.lerp(valleyHigh(m, north, j), 0.15, 0.11) + 0.03 * (place.unit(vi, vj, 23) - 0.5) + 0.055;
+	}
+
+	/** Step TT2: whether valley j of a side has a cirque (the TT1 draw at the valley's share of the High Tatras). */
+	boolean valleyHasCirque(Massif m, boolean north, long j) {
+		long vi = m.i() * 4_096 + j;
+		long vj = m.j() * 2 + (north ? 0 : 1);
+		return Noise.lerp(valleyHigh(m, north, j), 0.75, 0.9) - place.unit(vi, vj, 21) > 0.02;
+	}
+
+	/**
+	 * Step TT2: the valley on the Podhale side next to the highest summit holds the largest tarn, of the Morskie Oko type
+	 * (a tarn dammed by a high moraine).
+	 */
+	boolean morskie(Massif m, boolean north, long j) {
+		if (!north) {
+			return false;
+		}
+		double v = m.peakT() * m.west() * m.halfLength();
+		return j == (long) Math.floor(v / m.spacing() + m.phaseN() + 0.5);
+	}
+
+	/** Step TT2: the moraine of valley j of a side, or null. */
+	Moraine moraine(Massif m, boolean north, long j) {
+		long vi = m.i() * 4_096 + j;
+		long vj = m.j() * 2 + (north ? 0 : 1);
+		boolean morskie = morskie(m, north, j);
+		double high = valleyHigh(m, north, j);
+		if (!morskie && place.unit(vi, vj, 31) >= Noise.lerp(high, 0.45, 0.8)) {
+			return null;
+		}
+		double unC = valleyCirque(m, north, j);
+		double unM = morskie ? unC + 0.25 : unC + 0.11 + 0.2 * place.unit(vi, vj, 32);
+		double height = morskie ? 45 : 18 + 22 * place.unit(vi, vj, 33);
+		return new Moraine(unM, height, (MORAINE_HALF_WIDTH + 25 * place.unit(vi, vj, 34)) * k,
+				(MORAINE_ARC + 120 * place.unit(vi, vj, 35)) * k, (MORAINE_LATERAL + 400 * place.unit(vi, vj, 36)) * k, morskie);
+	}
+
+	/** Step TT2: height of the moraine over the valley floor at the valley-local point (m), 0 off it. */
+	static double moraineHeight(Moraine mo, double q, double un, double width, double fw) {
+		double a = (un - mo.unM()) * width;
+		double front = 0;
+		double qq = q / (1.3 * fw);
+		if (Math.abs(qq) < 1.25) {
+			// The crest is an arc convex down the valley; its arms curve up along the floor edges.
+			double aRel = a + mo.arc() * Math.min(1.0, qq * qq);
+			front = mo.height() * bump(aRel, 0, mo.halfWidth()) * (1 - Noise.smoothstep(0.95, 1.25, Math.abs(qq)));
+		}
+		double lat = 0;
+		double lq = Math.abs(q) - 1.05 * fw;
+		if (Math.abs(lq) < 0.8 * mo.halfWidth()) {
+			lat = 0.55 * mo.height() * bump(lq, 0, 0.8 * mo.halfWidth())
+					* Noise.smoothstep(-mo.arc() - mo.lateral(), -mo.arc() - 0.6 * mo.lateral(), a)
+					* (1 - Noise.smoothstep(-0.6 * mo.arc(), 0, a));
+		}
+		return Math.max(front, lat);
+	}
+
+	/**
+	 * Step TT2: a gully of a valley wall: the center along the wall (m from the main ridge), the half width (m), the floor
+	 * slope (degrees in blocks), the largest depth (m), the cone apex up the gully from the floor edge (m) and the slope of
+	 * the cone (degrees in blocks).
+	 */
+	record Gully(double center, double halfWidth, double slope, double depth, double apex, double coneSlope) {
+	}
+
+	/** Step TT2: the gully n of the wall {@code sigma} (±1, the side of the axis) of valley j, or null where there is none. */
+	Gully gully(Massif m, boolean north, long j, int sigma, long n) {
+		long gi = (m.i() * 4_096 + j) * 65_537 + n;
+		long gj = (m.j() * 2 + (north ? 0 : 1)) * 2 + (sigma > 0 ? 1 : 0);
+		double high = valleyHigh(m, north, j);
+		if (place.unit(gi, gj, 41) >= Noise.lerp(high, 0.4, 0.75)) {
+			return null;
+		}
+		double sg = GULLY_SPACING * k;
+		return new Gully((n + 0.5 + 0.5 * (place.unit(gi, gj, 42) - 0.5)) * sg, (GULLY_HALF_WIDTH + 10 * place.unit(gi, gj, 43)) * k,
+				GULLY_SLOPE_LO + (GULLY_SLOPE_HI - GULLY_SLOPE_LO) * place.unit(gi, gj, 44),
+				(12 + 14 * place.unit(gi, gj, 45)) * Noise.lerp(high, 0.6, 1.0), (CONE_APEX + 50 * place.unit(gi, gj, 46)) * k,
+				// The cone lies gentler than the gully floor, so it fills the lower gully and spreads from its mouth.
+				Math.min(CONE_SLOPE_LO + (CONE_SLOPE_HI - CONE_SLOPE_LO) * place.unit(gi, gj, 47),
+						GULLY_SLOPE_LO + (GULLY_SLOPE_HI - GULLY_SLOPE_LO) * place.unit(gi, gj, 44) - 2));
+	}
+
+	/** Step TT2: the along-wall coordinate of the gullies at a point (m from the main ridge, warped by noise, Z10). */
+	double gullyAlong(double x, double z, double un, double width) {
+		double sg = GULLY_SPACING * k;
+		return un * width + 0.3 * sg * relief.at(x + 4_242, z - 2_424, 2.5 * sg);
+	}
+
+	/** Step TT2: the window of the gullies along a valley (from the cirque to the lower valley, on the rocky massif). */
+	static double gullyWindow(double un, double unC, double rockW) {
+		return Noise.smoothstep(0.75 * unC, 1.15 * unC, un) * (1 - Noise.smoothstep(0.6, 0.78, un)) * rockW;
+	}
+
+	/** Step TT2: a pinnacle (tower) profile of height {@code hp} and radius {@code r} at distance {@code dist}. */
+	private static double tower(double hp, double r, double dist) {
+		return dist >= r ? 0 : hp * (1 - Noise.smoothstep(0.1, 1.0, dist / r));
+	}
+
+	/** Step TT2: a pinnacle cell of the main ridge: its center {v, u} (u signed, towards the Podhale), radius, height; or null. */
+	double[] mainPinnacle(Massif m, long n) {
+		long pi = m.i() * 1_000_003L + n;
+		if (place.unit(pi, m.j(), 51) >= 0.55) {
+			return null;
+		}
+		double cell = PIN_MAIN * k;
+		double r = PIN_RADIUS * k * (1 + 0.6 * place.unit(pi, m.j(), 53));
+		return new double[] {(n + 0.5 + 0.6 * (place.unit(pi, m.j(), 52) - 0.5)) * cell, 0.4 * r * (place.unit(pi, m.j(), 54) - 0.5), r,
+				25 + 35 * place.unit(pi, m.j(), 55)};
+	}
+
+	/**
+	 * Step TT2: a pinnacle cell of the side ridge {@code rk} (2j ± 1 between valleys j and j ± 1 of a side): its center {along
+	 * the ridge m from the main ridge, offset from the ridge line}, radius, height; or null.
+	 */
+	double[] sidePinnacle(Massif m, boolean north, long rk, long n) {
+		long pi = (m.i() * 4_096 + rk) * 65_537 + n;
+		long rj = m.j() * 2 + (north ? 0 : 1);
+		if (place.unit(pi, rj, 56) >= 0.45) {
+			return null;
+		}
+		double cell = PIN_SIDE * k;
+		double r = PIN_RADIUS * k * (1 + 0.6 * place.unit(pi, rj, 58));
+		return new double[] {(n + 0.5 + 0.6 * (place.unit(pi, rj, 57) - 0.5)) * cell, 0.4 * r * (place.unit(pi, rj, 59) - 0.5), r,
+				15 + 30 * place.unit(pi, rj, 60)};
+	}
+
+	/**
+	 * Step TT2: the fine relief of the massif at a column of valley j: frontal and lateral moraines on the valley floor,
+	 * gullies cut in the walls (their floor a straight line 32–42° steep in blocks), scree cones at the gully mouths (31–35°
+	 * in blocks, filling the lower gully), and the pinnacles and teeth of the High Tatra ridges. Every feature is drawn per
+	 * valley, wall or ridge cell from the seed and fades to nothing at its edge, so the relief has no step; only the walls
+	 * of the gullies and the pinnacles are steep (the sharp relief, {@link Column#sharp}).
+	 */
+	private double fineRelief(Massif m, Column c, double x, double z, double v, double un, boolean north, double high, long j,
+			double q, double fw, double fl, double rg, double h, double rockW) {
+		double width = north ? m.wn() : m.ws();
+		double d = m.spacing();
+		double hd = d / 2;
+		double h0 = h;
+		// Moraines on the floor (the walls above them stay).
+		Moraine mo = moraine(m, north, j);
+		if (mo != null) {
+			double mor = moraineHeight(mo, q, un, width, fw);
+			if (mor > 0) {
+				h = Math.max(h, fl + mor);
+				c.moraine = h - h0;
+			}
+		}
+		// Gullies and scree cones, from both walls (a cone may reach over the floor axis).
+		double window = gullyWindow(un, valleyCirque(m, north, j), rockW);
+		double cut = 0;
+		double cone = 0;
+		if (window > 0) {
+			double along = gullyAlong(x, z, un, width);
+			long n0 = (long) Math.floor(along / (GULLY_SPACING * k));
+			for (int sigma = -1; sigma <= 1; sigma += 2) {
+				double s = sigma * q - fw;
+				if (s < -40 * k) {
+					continue;
+				}
+				// The gully fades out under the side ridge (the next valley begins there).
+				double top = 1 - Noise.smoothstep(hd - fw - 60 * k, hd - fw - 15 * k, s);
+				for (long n = n0 - 1; n <= n0 + 1; n++) {
+					Gully g = gully(m, north, j, sigma, n);
+					if (g == null) {
+						continue;
+					}
+					double da = Math.abs(along - g.center());
+					double t = Math.tan(Math.toRadians(g.slope())) / blocksPerMeter(fl + 200);
+					if (s >= 0 && da < g.halfWidth()) {
+						double depth = h - (fl + 2 + t * s);
+						if (depth > 0) {
+							double fade = 1 - Noise.smoothstep(0.7 * g.depth(), g.depth(), depth);
+							cut = Math.max(cut, depth * bump(da, 0, g.halfWidth()) * fade * window * top);
+						}
+					}
+					// The cone: its apex on the gully floor line, its apron spreading over the valley floor below the mouth.
+					double apexH = fl + 2 + t * g.apex();
+					double coneW = window * top;
+					if (coneW > 0) {
+						double tc = Math.tan(Math.toRadians(g.coneSlope())) / blocksPerMeter(fl + 100);
+						double cs = apexH - tc * Math.hypot(da, s - g.apex());
+						cone = Math.max(cone, coneW * (cs - fl));
+					}
+				}
+			}
+		}
+		h -= cut;
+		c.gully = cut;
+		if (cone > 0 && fl + cone > h) {
+			c.scree = fl + cone - h;
+			h = fl + cone;
+		}
+		// Pinnacles and teeth of the High Tatra ridges (granite), on the main ridge and on the side ridges.
+		double hp = Noise.smoothstep(0.5, 0.85, high) * rockW * (1 - Noise.smoothstep(0.5, 0.62, un));
+		double spike = 0;
+		if (hp > 0) {
+			double r0 = PIN_RADIUS * k;
+			double across = un * width;
+			if (across < 3 * r0) {
+				double us = (north ? 1 : -1) * across;
+				long p0 = (long) Math.floor(v / (PIN_MAIN * k));
+				for (long n = p0 - 1; n <= p0 + 1; n++) {
+					double[] p = mainPinnacle(m, n);
+					if (p != null) {
+						spike = Math.max(spike, tower(p[3], p[2], Math.hypot(v - p[0], us - p[1])));
+					}
+				}
+			}
+			double toRidge = hd - Math.abs(q);
+			if (toRidge < 3 * r0 && un > 0.04) {
+				long rk = 2 * j + (q > 0 ? 1 : -1);
+				long p0 = (long) Math.floor(across / (PIN_SIDE * k));
+				for (long n = p0 - 1; n <= p0 + 1; n++) {
+					double[] p = sidePinnacle(m, north, rk, n);
+					if (p != null) {
+						spike = Math.max(spike, tower(p[3], p[2], Math.hypot(across - p[0], toRidge - p[1])));
+					}
+				}
+			}
+			spike *= hp;
+		}
+		if (spike > 0) {
+			// The pinnacles never raise the massif over its target summit.
+			double hs = Math.min(h + spike, Math.max(h, m.summit() + ROUGH));
+			c.spike = hs - h;
+			h = hs;
+		}
+		c.sharp = Math.max(Noise.smoothstep(0.2, 1.0, c.spike), Noise.smoothstep(0.2, 1.0, cut));
+		return h;
 	}
 
 	/** North of the massif: the trough, the Gubałówka-type foothills, the slope and the basin. */
@@ -516,7 +856,11 @@ final class TatraField {
 		double mouth = foot;
 		double fl;
 		if (un < uc) {
-			fl = cf + (crestEff - cf) * Math.pow((uc - un) / uc, 1.6);
+			// Step TT2: the headwall of a High Tatra cirque is a rock wall, steepest in its middle (an S-curve instead of the
+			// concave curve of TT1; both 0 at the cirque floor and 1 at the crest, so the wall meets both without a step).
+			double xh = (uc - un) / uc;
+			double wallW = 0.85 * Noise.smoothstep(0.5, 0.85, high) * cirque;
+			fl = cf + (crestEff - cf) * Noise.lerp(wallW, Math.pow(xh, 1.6), Noise.smoothstep(0.08, 0.7, xh));
 		} else {
 			double xs = Math.clamp(1 - (un - uc) / (1 - uc), 0.0, 1.0);
 			fl = mouth + (cf - mouth) * Math.pow(stair(xs), 1.35);
@@ -581,6 +925,14 @@ final class TatraField {
 				}
 			}
 		}
+		// Step TT2: the fine relief (moraines, gullies, scree cones, pinnacles) and the valley-local frame of the column.
+		double rockW = ms * (1 - Noise.smoothstep(0.96, 1.0, un + 0.03 * geology.at(x + 50, z, 800 * this.k)));
+		c.north = north;
+		c.valley = j;
+		c.q = q;
+		c.un = un;
+		c.floorHalf = fw;
+		h = fineRelief(m, c, x, z, v, un, north, high, j, q, fw, fl, rg, h, rockW);
 		c.profile = wall * ms + 0.5 * (1 - ms);
 		// Landforms of the massif.
 		if (ms > 0.5) {
@@ -589,12 +941,24 @@ final class TatraField {
 			} else if (Math.abs(q) < fw * 1.15 && un > unC + 0.08 && un < 0.98) {
 				c.landforms |= Landform.U_VALLEY.bit();
 			}
+			if (c.spike > PINNACLE_FORM) {
+				c.landforms |= Landform.PINNACLE.bit();
+			}
+			if (c.gully > GULLY_FORM) {
+				c.landforms |= Landform.GULLY.bit();
+			}
+			if (c.scree > SCREE_FORM) {
+				c.landforms |= Landform.SCREE.bit();
+			}
+			if (c.moraine > MORAINE_FORM) {
+				c.landforms |= Landform.MORAINE.bit();
+			}
 		}
 		double ridge = Noise.smoothstep(0.6, 0.85, wall) * (1 - Noise.smoothstep(0.9, 1.0, un));
 		c.core = c.weight * ms * Math.max(1 - Noise.smoothstep(0.45, 0.62, un), ridge);
 		c.massifShare = c.weight * ms * (1 - Noise.smoothstep(0.92, 1.02, un));
 		// Parts and rock (boundaries warped by noise, Z10).
-		boolean rocky = ms * (1 - Noise.smoothstep(0.96, 1.0, un + 0.03 * geology.at(x + 50, z, 800 * this.k))) > 0.5;
+		boolean rocky = rockW > 0.5;
 		if (north && un > 0.66 + 0.05 * geology.at(x, z - 77, 1_500 * this.k)) {
 			c.part = TatraPart.REGLE;
 			if (rocky) {
