@@ -623,7 +623,7 @@ Każdy krok TT jest ukończony dopiero, gdy oprócz własnych kryteriów spełni
 ### TT2. Formy polodowcowe i skalne GAMEPLAY: stawy, turnie, żleby, piargi, śnieg (A, 1,5–2 dnia)
 
 - **Zakres:** (1) stawy w misach kotłów i za wałami moren (`WaterKind.TARN`, poziom wody na staw, odpływ potokiem przez próg albo bez odpływu nad wypełnionym progiem), w masywie GAMEPLAY 15–40 stawów, największy typu Morskiego Oka; (2) turnie i ostre granie granitowe (zęby grani, iglice), ściany kotłów, żleby (rynny w ścianach i stokach 30–45°), stożki piargowe u wylotów żlebów i pod ścianami (30–35°), moreny czołowe i boczne, progi dolinne; (3) powierzchnia (`surface/SurfaceBuilder`, `SoilBlocks`): goła skała na ścianach i graniach (nachylenie ponad próg), rumosz piargowy z nowych bloków (granitowy i wapienny, niespadający), cienkie gleby (ranker i bielica na granicie, rędzina na wapieniu — nowy blok gleby z `tools/art` albo istniejące bloki, wybór w G), płaty śniegu w żlebach i kotłach o ekspozycji N powyżej ok. 1700 m (bloki śniegu wanilii po id, trwałe przez lato, nie zmieniane przez SS), głazy w dnach dolin; (4) jaskinie J1 pod Tatrami: bez wody jaskiń w ścianach i bez przecieku do stawów; (5) komendy: cele `tarn`, `pinnacle`, `gully`, `scree`, `moraine`, `snow_patch`; (6) `golden_terrain_tatra.txt` przegenerowany z opisem, gametest `tatra`: stawy (każda kolumna wody z brzegiem co najmniej na poziomie wody, 0 wody wiszącej), spis skał, rumoszu i śniegu, rozkład nachyleń.
-- **Ukończony, gdy:** KT-1 … KT-7; ≥ 15 stawów w masywie GAMEPLAY każdego ziarna testowego, 0 przecieków i 0 wody wiszącej (JUnit na modelu i gametest na blokach); stożki piargowe u ≥ 50% wylotów żlebów (spis); turnie i żleby w spisie (udział kolumn, nachylenia w raporcie); płaty śniegu tylko w kolumnach N powyżej progu, po `/season set mid_summer` nadal na miejscu; gleby i skały zgodne z podłożem (spis według `Substrate`).
+- **Ukończony, gdy:** KT-1 … KT-7; ≥ 15 stawów w masywie GAMEPLAY każdego ziarna testowego, 0 przecieków i 0 wody wiszącej (JUnit na modelu i gametest na blokach); stożki piargowe u ≥ 50% wylotów żlebów (spis); turnie i żleby w spisie (udział kolumn, nachylenia w raporcie); płaty śniegu tylko w kolumnach N powyżej progu, po `/season set mid_summer` nadal na miejscu; gleby i skały zgodne z podłożem (spis według `Substrate`). **Stan (2026-11-11): zrobione z odstępstwem („Projekt TT2”, „Stan po TT2”, G.51): 28–37 stawów na masyw (w grze 37, największy typu Morskiego Oka), 0 przecieków i 0 wody wiszącej w modelu i w grze, stożki u 54–71% wylotów żlebów, mediany nachyleń: żleby 35,7–36,2°, stożki 31,8–33,1°, turnie 52,9–54,4°; śnieg tylko na stokach N powyżej 1700 ± 60 m, po `/season set mid_summer` na miejscu; rędzina tylko na wapieniu i dolomicie; KT-1 … KT-7 spełnione (KT-6 opis: 1,43 × bez jaskiń, 1,03 × z jaskiniami); odstępstwo: mało odpływów (4–18 na masyw, połączonych 2–15; TT2-o do decyzji), głazy jako plamy skały (TT2-i).**
 - **Ryzyko:** wysokie (woda, teren, powierzchnia).
 
 ### TT3. Piętra roślinności Tatr GAMEPLAY: `BeltProfile`, hale, piętro turni, rośliny wysokogórskie (A, 1,5–2 dnia)
@@ -4796,6 +4796,92 @@ Krok TT2 planu „Kroki TT” (§3): formy polodowcowe i skalne Tatr w GAMEPLAY.
 - `golden_terrain_m2.txt` bez zmian (`-PgoldenStrict`); `GoldenTerrainTest` nie wymaga wody `TARN` w zestawach M2 (jak typów Tatr w TT1). `TatraIsolationTest` bez zmian (0 różnic poza zasięgiem).
 - Nowy `TatraFormsTest`: stawy na masyw, zamknięte misy (skan 1 m pasa brzegu wszystkich stawów najbliższego masywu trzech ziaren: 340–440 tys. kolumn wody, 0 przecieków, 0 wody wiszącej, potoki monotoniczne), nachylenia i stożki, strefy i gleby.
 - Gametest `tatra`: cele TT2, spis wody 6 największych stawów na blokach (przecieki, woda wisząca), spis wierzchów według skały na transektach, histogram nachyleń w `build/tatra/slopes.txt`, płat śniegu po `/season set mid_summer`. Miejsca `tatra_high_1` (`ForestPerformance`) i obszar `tatra` determinizmu zostają na starym środku łaty (−24 423, 87 771): to nadal grań granitu, a pomiar KT-6 i referencja determinizmu TT1 zostają porównywalne.
+
+## Stan po TT2 (2026-11-11, etap 2: przebiegi w grze, poprawki, bez recenzji wizualnej)
+
+Drobne wybory: `docs/00` G.51 (TT2-a … TT2-k z etapu 1, TT2-l … TT2-p z etapu 2). Zgodnie z G.36 U-1 bez oceny wyglądu ze zrzutów: dowody to raport liczbowy gametestu `tatra`, porównania bloków w `determinism`, karta norm z gry, spisy `habitats` i `vanilla_forests` oraz testy jednostkowe. Baza kroku: `4e27817`; commity `9c1e1c6` (etap 1, WIP), `4e9831b` (poprawki etapu 2, WIP) i końcowy „TT2: done, …”. Przebiegi według `python tools/dev/test_plan.py 4e27817` (obszary unit, terrain, tatra, generation, norms, caves, vanilla_world, blocks, datagen, ui, render, art, gametest_code); surowe wyniki w `handoff/TT2/results.md`.
+
+**Wynik w skrócie.** Stawy, drobna rzeźba, rumosz, rędzina i płaty śniegu działają w grze. Masyw ziarna 20260927 ma 37 stawów (18 z odpływem, 14 za morenami). Sześć największych sprawdzono blok po bloku: 0 przecieków i 0 wody wiszącej. Płat śniegu zostaje po `/season set mid_summer`. Pierwsze przebiegi etapu 2 ujawniły dwa błędy, oba w wyszukiwaniu, nie w generacji: gametest `tatra` szukał `snow_patch` (strefa siedliska) bez klasyfikatora, a `find zone scree` i `find zone snow_patch` szukały szeroką siatką od środka świata i przekraczały 60 s komendy. Oba poprawione (TT2-l, TT2-m). Generacja świata w etapie 2 się nie zmieniła, więc `determinism`, karta norm, `caves`, `vanilla_forests` i KT-6 z kodu etapu 1 obowiązują. **Do decyzji użytkownika (TT2-o):** większość stawów nie ma odpływu, a część potoków kończy się oczkiem zamiast w rzece TT1.
+
+**Przebiegi (`-PtimingsReportOnly` poza KT-6, jeden klient gry naraz; druga praca z klientem gry nie działała).**
+
+| Przebieg | Wynik |
+|---|---|
+| testy jednostkowe Tatr i bloków (`TatraFormsTest`, `TatraReliefTest`, `TatraRiverTest`, `RegistrySnapshotTest`, `SoilTest`, `HabitatClassifierTest`, `PolishForestsCommandsTest`, `checkDatagen`, `compileGametestJava`) | PASS (z `cleanTest` 2 min 23 s; `TatraFormsTest` 48 s); liczby niżej |
+| `tatra` (pierwszy, kod etapu 1) | FAIL w teście: `IllegalArgumentException` „The target snow_patch needs the habitat classifier” przed raportem (TT2-m) |
+| `tatra` (po poprawce) | PASS (287 s); szczegóły niżej |
+| `ui` (pierwszy) | FAIL: `find zone scree` i `find zone snow_patch` przerwane po 60 s (szeroka siatka od środka, masyw 91 km; TT2-l); 12 celów Tatr znalezionych w 0,1–0,4 s |
+| `ui` (po poprawce) | PASS (90 s); `find zone bare_rock`, `scree`, `snow_patch` po 0,1 s, 91,2–91,6 km |
+| `determinism -PdeterminismStepZones` wobec referencji `4e27817` (zbudowanej z worktree bazy) | oczekiwany FAIL tylko w obszarze `tatra` (20 min 29 s). Stare obszary: teren identyczny we wszystkich 44 wpisach referencji, poza strefą `T` 0 różnic. Obszar `tatra`: teren inny (celowa zmiana), dekoracja inna w 16 184 z 16 384 kolumn, wszystkie w strefie `T`. Kolejność chunków w `tatra`: teren 0 z 16 384 kolumn w kolejności stałej, wolnej i odwróconej; dekoracja przy stałej 0, przy wolnej 1217 (N) i 854 (D), przy odwróconej 15 337 kolumn (TT1: 1756 / 512 / 15 562; drzewa przy granicach chunków, L1) |
+| `determinism -Poptimization` (C2ME) | FAIL jak w TT1: 32 z 46 obszarów, najwyżej 3259 bloków na obszar, dekoracja najwyżej 14 747 kolumn (TT1: 32 / 3259 / 14 732); te same obszary (DP-128, DP-139, DP-144, DP-151, DP-154) |
+| `slice -Psites=none` (karta norm z gry) | PASS; różnice wartości w 5 miejscach (`coastal_pine_managed_2`, `coastal_pine_natural_2`, `dry_pine_managed_1`, `montane_beech_natural_1`, `oak_hornbeam_natural_1`) o 0,02–1,2, te same miejsca i rząd wielkości co w TT1. To rozrzut kolejności chunków (TT2-n, jak TT1-s) |
+| `caves` | PASS |
+| `cave_biomes` (z planu `--end`, brakowało go w `runs.md`) | PASS (207 s), struktury i biomy jaskiń w obu skalach |
+| `vanilla_forests` (W1) | PASS (1 min 53 s) |
+| `habitats` | PASS (16 min 21 s), spis wierzchów i pnie lasów w obwiedni w obu skalach |
+| KT-6: `performance` z C2ME, `tatra_high_1` obok `montane_spruce_1` (kod etapu 1, spokojna maszyna: GPU 22%, CPU 2–9%) | bez jaskiń 184,6 wobec 129,2 chunków/s (1,43 ×; TT1 204,2, −9,6%), z jaskiniami 85,2 wobec 82,4 (1,03 ×; TT1 91,2, −6,6%); opis bez progu |
+| `HabitatTargetsTest`, `PolishForestsCommandsTest` (po poprawce TT2-l) | PASS (55 s); strefy Tatr w świecie z Tatrami 91,2–91,6 km w 9–354 ms, w świecie bez Tatr brak |
+| `fastTest` (`run-tests --reuse`) | PASS (280 s, drzewo `929f827ebd94`) |
+| pełny zestaw `tools/dev/run-tests test` | PASS (1025 s, drzewo `9eb68ddd2fec`, 562 testy w 108 klasach, 4 pominięte, 0 niezaliczonych; po `test_plan.py 4e27817 --end`; potem zmiany tylko w `docs/`) |
+
+**Testy jednostkowe (`TatraFormsTest`, ziarna 20260927, −7316550294015845337 i 4, po 2 masywy).** Stawy na masyw 28–37, największy zawsze typu Morskiego Oka. Odpływy 4–18 (próg ≥ 3), połączone z rzeką TT1 albo niższym stawem 2–15 (próg ≥ 1). Skan 1-metrowego pasa brzegu: 340–442 tys. kolumn wody, 0 przecieków, 0 wody wiszącej. Mediany nachyleń w blokach: dna żlebów 35,7 / 35,9 / 36,2°, stożki 31,8 / 33,1 / 32,2°, turnie 53,8 / 54,4 / 52,9°. Stożek piargowy u 308 z 431, 264 z 432 i 236 z 435 wylotów żlebów (54–71%).
+
+**Gametest `tatra` po poprawce** (`build/tatra/report.txt`, `build/tatra/slopes.txt`; ziarno 20260927, preset GAMEPLAY).
+
+- Cele `find` od środka (12): `tatra` 91 308 m (376 ms), `tarn` 91 365 m, `pinnacle` 91 050 m (2260 m n.p.m.), `gully` 91 544 m, `scree` 91 562 m, `moraine` 90 942 m (1506 m), `snow_patch` 91 365 m (1849 m); cele TT2 w 2–16 ms.
+- Łaty zestawu A (nowy środek `granite_ridge` (−24 456, 87 894)): grunt poza modelem 0 z 256 kolumn na każdej łacie, 0 kolumn skały bez swojego bloku, 0 bloków skały bez skały w modelu. Wierzchy: grań 13 × granit tatrzański (goła skała), kocioł 71 × `snow_block`, regiel wapienny 93 × `rendzina`.
+- Szczyt: 2520,1 m, wierzch modelu i gruntu Y 693, najwyższy blok chunku Y 693 (≤ 720).
+- Stawy masywu: 37 (18 z odpływem, 14 za moreną). Sześć największych: typ Morskiego Oka 175 × 231 m, poziom 1594 m (Y 511), bez odpływu; pięć stawów w kotłach 170 × 175 m, 1619–1861 m, z odpływem. Każdy ma 14 736–34 649 kolumn wody, **0 przecieków, 0 wody wiszącej**. Kolumny „wody w modelu bez wody w grze” (408–4383 na staw) to kolumny, w których wierzch gruntu modelu wypada w tym samym bloku co lustro (woda płytsza niż blok). Próba na modelu daje dokładnie 4383 i 408 takich kolumn (Morskie Oko 2857 wobec 2831 w grze), więc to nie są przecieki.
+- Nachylenia w blokach (siatka 16 m nad masywem, przedziały po 10°): turnie 70 ze 107 punktów ≥ 50° (najczęściej 50–60°), żleby 173 z 320 w 30–40° i 231 w 30–50°, rumosz 323 z 658 w 30–40° i 508 w 20–40°, moreny najczęściej 20–30°, reszta masywu najczęściej 0–10°.
+- Spis wierzchów transektów według skały: na granicie goła skała (10) i `snow_block` (1) obok murawy; rędzina tylko na wapieniu i dolomicie; 0 rędziny na granicie, gnejsie i fliszu.
+- Płat śniegu (−24 708, 87 961): `snow_block` przed i po `/season set mid_summer` i 200 tickach przy `random_tick_speed 300`, czyli Serene Seasons go nie topi.
+- Spis skał jak w TT1 (568 × granit, 304 × gnejs, 258 × wapień, 6 × dolomit, 5 × wapień Bielskich).
+
+**Poprawki etapu 2.**
+
+- *Gametest `tatra`* (TT2-m): cele Tatr szukane przez `HabitatTargets.World` z klasyfikatorem świata, tak jak komenda.
+- *`find zone` dla stref Tatr* (TT2-l): `bare_rock`, `scree` i `snow_patch` mają nowy plan `HabitatTargets.Plan.TATRA` (pierścienie co 24 m wokół masywów w kolejności odległości, jak cele Tatr); w świecie bez Tatr komunikat „ten świat nie ma Tatr”. `HabitatTargetsTest` szuka ich w świecie z Tatrami i sprawdza, że bez Tatr ich nie ma (w REAL, gdzie Tatr jeszcze nie ma, tylko to drugie).
+- *Bez zmian:* generacja świata, `golden_terrain_tatra.txt`, złoty plik M2, migawka rejestru.
+
+**KT i kryteria TT2.**
+
+- KT-1 (zgodność): spełnione. `golden_terrain_m2.txt` bez zmian przy obu wartościach flagi (`-PgoldenStrict`, `TatraIsolationTest`: 0 różnic poza zasięgiem). `golden_terrain_tatra.txt` przegenerowany świadomie w etapie 1 (opis diffu w „Projekt TT2”: łata `granite_ridge` przeniesiona, zmienione łaty `cirque` i `western_tatra`, bez zmian `regle_limestone`, `podhale`, `beskid_transition`). Sole tylko nowe (`place` 31–67, pole `BOULDERS`). Nowe stałe na końcu `WaterKind`, `StandingWaterKind`, `Landform` (30 z 32 bitów), `Zone` (29 z 32), `Soil`, `Material`, `Target`. Migawka rejestru +3 bloki i +3 przedmioty (świadomie).
+- KT-2 (lasy i karta poza Tatrami): spełnione. Karta norm bez zmian werdyktów (rozrzut wartości jak w TT1), `vanilla_forests` PASS, `habitats` PASS, `SlicePlotsTest` w pełnym zestawie; `determinism` dowodzi blokami, że poza strefą `T` świat jest ten sam.
+- KT-3 (determinizm): teren w obszarze `tatra` identyczny w trzech kolejnościach chunków; poza strefą `T` 0 różnic wobec `4e27817`. Nowa pamięć (`DirectCache` dolin w `TatraWaters`) liczy się z czystej funkcji współrzędnych, więc nie zależy od kolejności. Z C2ME bez regresji wobec TT1.
+- KT-4 (przejścia Z10): ostre są tylko turnie, ściany żlebów i brzeg stawu (`TatraReliefTest` i `TatraRiverTest` pomijają tylko je). Granice gleb, rumoszu i śniegu idą w płatach (szum), goła skała przy progu nachylenia z rozrzutem ± 6°.
+- KT-5 (gametest `tatra`): spełnione dla TT2 (stawy, wierzchy według skały, śnieg latem, histogram nachyleń). Udziały pięter dojdą w TT3.
+- KT-6 (wydajność): jeden przebieg kontrolny (wyżej). Generacja w Tatrach jest o 7–10% wolniejsza niż w TT1, ale nadal nie wolniejsza niż w świerczynie Beskidów.
+- KT-7: „Projekt TT2”, ten wpis, stan w opisie kroku, BRIEF, G.51, lista „Do sprawdzenia w grze”; pełny `run-tests test` (PASS, 562 testy).
+- Kryteria TT2:
+  - ≥ 15 stawów w masywie każdego ziarna testowego: 28–37 w modelu, 37 w grze;
+  - 0 przecieków i 0 wody wiszącej: w modelu skan całego pasa brzegu, w grze 6 największych stawów;
+  - stożki u 54–71% wylotów (≥ 50%);
+  - turnie i żleby w spisie z nachyleniami (wyżej);
+  - płaty śniegu tylko w kolumnach N powyżej 1700 ± 60 m (`TatraFormsTest`: 0 śniegu poza swoimi miejscami), po lecie na miejscu (gametest);
+  - gleby i skały zgodne z podłożem: 0 rędziny poza wapieniem i dolomitem, 0 rankera i bielicy na wapieniu, 0 obcych skał;
+  - `checkDatagen`, `checkArt` (203 tekstury), lint, `RegistrySnapshotTest` PASS;
+  - jaskinie pod Tatrami bez wody warstw wodonośnych nad poziomem morza: w kodzie; `caves` i `cave_biomes` PASS poza Tatrami; w Tatrach na liście „w grze”.
+
+**Odstępstwa:**
+
+- Odpływy stawów: 4–18 na masyw, z nich 2–15 łączy się z rzeką TT1 lub niższym stawem. Potok, który musiałby wciąć się ponad 12 m, kończy się oczkiem, a typ Morskiego Oka w masywie ziarna 20260927 nie ma odpływu (TT2-o, do decyzji).
+- Głazy to plamy skały w murawie, głazy stojące zostają na TT6 (TT2-i).
+- `determinism`, karta norm, `caves`, `vanilla_forests` i KT-6 przeszły na kodzie etapu 1 (etap 2 zmienia tylko wyszukiwanie komend i test).
+- Gametest `caves` nie ma miejsca w Tatrach: woda jaskiń w ścianach kotłów sprawdzona tylko w kodzie i na liście „w grze”.
+
+**Do sprawdzenia w grze** (nowy świat „Polska”, skala GAMEPLAY, Tatry włączone w „Dostosuj”; dla ziarna 20260927 masyw ok. 91 km od środka):
+
+1. `/polishforests find tarn` i kliknięcie podpowiedzi `/tp`: lustro stawu płaskie, brzeg dookoła co najmniej na poziomie wody, nic nie wycieka; obejść staw po pierścieniu brzegu.
+2. Przy stawie z odpływem przejść wzdłuż potoku: schodzi stopniami najwyżej po 2 bloki i kończy się w rzece doliny, w niższym stawie albo w zamkniętym oczku (bez wody wiszącej na końcu). Czy brak odpływu u większości stawów przeszkadza (TT2-o).
+3. `/polishforests find pinnacle`: turnie i zęby grani strome, z gołego granitu.
+4. `/polishforests find gully` i `/polishforests find scree`: żleb jako rynna w ścianie, u wylotu stożek rumoszu `granite_scree`; wykopać rumosz łopatą — blok nie spada.
+5. `/polishforests find moraine`: wał moreny w dnie doliny, za nim staw; na dnie doliny plamy skały w murawie (głazy).
+6. `/polishforests find snow_patch`: płat bloków śniegu w żlebie lub kotle na stoku północnym. Potem `/season set mid_summer` i kilka minut gry (albo na chwilę `/gamerule random_tick_speed 300`, potem z powrotem 3): śnieg zostaje.
+7. `/polishforests here` na rumoszu: strefa „rumosz” i gleba rumoszu. Na wapieniu regli `here` pokazuje rędzinę, a w wierzchu murawę i czarną rędzinę.
+8. `/polishforests find zone bare_rock`, `find zone scree`, `find zone snow_patch`: odpowiedź w ułamku sekundy; w świecie bez Tatr komunikat „ten świat nie ma Tatr”.
+9. Wejście do jaskini w ścianie kotła lub pod granią: brak wody wyciekającej ze ścian i do stawów.
+10. Tekstury nowych bloków (`granite_scree`, `limestone_scree`, `rendzina`) w świecie i w zakładce przedmiotów (wygląd, gładkość).
+11. Stary świat albo świat bez Tatr: teren, jaskinie i lasy jak dotąd.
 
 ## Do kroku porządkowego (lista drobiazgów z recenzji)
 
