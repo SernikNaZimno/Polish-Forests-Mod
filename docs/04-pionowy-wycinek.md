@@ -4475,6 +4475,10 @@ Przegląd: 1 sprawa ważna (A/B `load` bez dopasowanych warunków), 4 drobne. Be
 - **Drobne** (bez poprawek, łagodniejszy próg z 2026-10-21): DP-143 (badanie luki runa łęgów zaplanowane na F7 nie zrobione; dopisane do odstępstw „Stan po F7”, termin: krok porządkowy, najpóźniej CP-D), DP-151 (hipoteza bez potwierdzenia blokami; nota przy wpisie), nowe DP-152 (lista lasów bez powierzchni w KF-2 i F7-r bez boru wilgotnego, karta bez nagłówka) i DP-153 (F7-c: `TREE_ROW` dostał wierzbę białą 150) na liście „Do kroku porządkowego”.
 - **Testy:** zmiany tylko w dokumentach (`test_plan.py 4288907 --end`: bez testów); powtórka `load` jak wyżej; pełny zestaw `tools/dev/run-tests test` PASS (Gradle: `test` aktualne wobec przebiegu 545 testów z etapu 2, ten sam kod).
 
+## Runda 2 poprawek po przeglądzie F7 (2026-11-11)
+
+Przegląd: 0 spraw blokujących i ważnych, 4 drobne — wszystkie sprawdzone (w `docs/04`, `docs/00` G.48, `karta-norm-f7.md`) i prawdziwe, a każda to powtórka wpisu, który runda 1 już dopisała do listy „Do kroku porządkowego”: niezrobione badanie luki runa łęgów (= DP-143, w odstępstwach „Stan po F7”, termin: krok porządkowy, najpóźniej CP-D), lista lasów bez powierzchni w KF-2 i F7-r bez boru wilgotnego oraz karta bez nagłówka (= DP-152), F7-c „reguły M2 bez zmian” mimo wierzby białej 150 w `TREE_ROW` (= DP-153), obszar `dwarf_pine` z C2ME tylko z hipotezą (= DP-151, potwierdzić `-PdeterminismDeep` w kroku jaskiń albo następnym kroku generacji). Bez nowych wpisów i bez poprawek (próg z 2026-10-21), bez nowych wyborów domyślnych w `docs/00`. Fałszywych alarmów nie było. Kod bez zmian; pełny zestaw `tools/dev/run-tests test` przed commitem rundy.
+
 ## Do kroku porządkowego (lista drobiazgów z recenzji)
 
 Lista założona w V10 według decyzji użytkownika z 2026-10-21 (`docs/00` F, P4): drobiazgi widoczne tylko na zbliżeniach albo w pomiarach bez wpływu na grę nie są poprawiane od razu, tylko trafiają tutaj; zbiorczy krok porządkowy na końcu kamienia milowego przegląda listę i poprawia, co warto. Każdy wpis: krok, w którym powstał, opis, gdzie szukać, propozycja. Wpis usuwamy (albo przekreślamy z commitem), gdy jest zrobiony.
