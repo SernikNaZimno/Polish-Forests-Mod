@@ -292,7 +292,7 @@ final class SeasonSamples {
 					for (int dy = -8; dy <= 32; dy++) {
 						at.set(cam.x() + dx, cam.y() + dy, cam.z() + dz);
 						BlockState s = mc.level.getBlockState(at);
-						if (s.getBlock() instanceof SpeciesLeavesBlock leaves && !leaves.foliage().conifer()) {
+						if (s.getBlock() instanceof SpeciesLeavesBlock leaves && !leaves.foliage().evergreen()) {
 							boolean dry = MarcescentLeavesBlock.marcescent(s);
 							boolean bare = ClientSeasonModels.leafless(s);
 							n[dry ? 2 : 0]++;
@@ -803,7 +803,7 @@ final class SeasonSamples {
 					if (MarcescentLeavesBlock.marcescent(st)) {
 						dry = true;
 						dryBlocks++;
-					} else if (st.getBlock() instanceof SpeciesLeavesBlock sl && sl.foliage().conifer()) {
+					} else if (st.getBlock() instanceof SpeciesLeavesBlock sl && sl.foliage().evergreen()) {
 						needles = true;
 					}
 				} else {

@@ -130,7 +130,8 @@ final class SimulatedStands {
 			int ranges, TreeShapePlan.Ground ground, Sink sink) {
 		int code = Habitat.pack(biome, Zone.NONE, site, association, LandCover.forBiome(biome),
 				ranges, Soil.forBiome(biome, Zone.NONE));
-		StandMap map = stand(StandProfile.of(biome), age, natural);
+		// Step TT4: the stand profile of the stone pine forest variant.
+		StandMap map = stand(StandProfile.of(biome, association), age, natural);
 		CrownTerritories crowns = new CrownTerritories(SEED, map);
 		TreeStandPlan.Stand stand = new TreeStandPlan.Stand(RAMP, new Noise(SEED).derive("feature.tree_stand.gaps"), 1, map, crowns);
 		int[] codes = new int[256];

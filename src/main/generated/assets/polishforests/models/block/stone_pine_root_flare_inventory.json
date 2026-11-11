@@ -1,0 +1,7 @@
+{
+  "parent": "polishforests:block/template_trunk_inventory",
+  "textures": {
+    "bark": "polishforests:block/stone_pine_bark",
+    "end": "polishforests:block/stone_pine_log_top"
+  }
+}

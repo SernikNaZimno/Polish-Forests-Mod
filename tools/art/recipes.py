@@ -1005,6 +1005,17 @@ ROWAN = dict(BEECH, lichen=1, scars=0, algae=0.03, lums=(104, 114, 122, 130, 142
              algae_lum=118, algae_sat=0.08, streak=0.7)
 ROWAN_VARIANT = dict(ROWAN, lichen=2, lock=1)
 ROWAN_EXPECT = {'luma': (104, 132), 'dark': 0.0, 'grain': 1.2, 'std': 18}
+# Step TT4: the Swiss stone pine, gray to gray-brown, shallowly fissured into small scaly plates with a reddish tint in the
+# cracks (the smooth light gray young bark with resin blisters only on the thin stems); the European larch, thick and deeply
+# fissured into long plates, gray-brown on the ridges and red-brown in the furrows (darker and redder than the oak).
+STONE_PINE = dict(lines=5, amp=0.8, wave=3, jitter=0.6, plate=(3, 6), cross='full', band=3, furrow_tone=0, deep=0,
+                  face_split=0.5, lums=(78, 90, 100, 110, 120, 126), right_tone=2, sat=0.10, hue=20, tries=48)
+STONE_PINE_EXPECT = {'luma': (86, 116), 'dark': 0.05, 'grain': 1.5,
+                     'distinct': (('fir_bark', 4), ('linden_bark', 6))}
+LARCH = dict(lines=4, amp=1.2, wave=3, jitter=0.6, plate=(5, 9), cross='diag', band=3, furrow_tone=0, deep=0,
+             face_split=0.5, lums=(66, 78, 86, 96, 106, 112), right_tone=2, sat=0.27, hue=14, tries=48)
+LARCH_EXPECT = {'luma': (76, 104), 'dark': 0.08, 'grain': 2.0,
+                'distinct': (('oak_bark', 6), ('elm_bark', 6))}
 # Step F2: the black alder, dark gray-brown with a purple cast, in old age broken by fissures across and along into
 # small, almost square plates; the elm, gray-brown with long deep furrows and corky ridges, grayer than the oak.
 ALDER = dict(lines=5, amp=0.9, wave=3, jitter=0.6, plate=(2, 4), cross='full', band=3, furrow_tone=0, deep=0,
@@ -1078,6 +1089,11 @@ STRIPPED_TRUNKS = [
      'stripped gray alder trunk: the orange-red wood of a fresh cut alder'),
     ('rowan', ['#c9a491', '#d0ac99', '#d6b4a2', '#dcbcab'], {'luma': (160, 200), 'hue': (10, 30)},
      'stripped rowan trunk: reddish white sapwood'),
+    # Step TT4.
+    ('stone_pine', ['#d4b494', '#dabb9c', '#e0c3a4', '#e5caac'], {'luma': (175, 210), 'hue': (22, 38)},
+     'stripped Swiss stone pine trunk: light yellowish-pink sapwood, a fine even grain'),
+    ('larch', ['#c8946a', '#cf9c72', '#d6a47a', '#dcac83'], {'luma': (145, 185), 'hue': (18, 34)},
+     'stripped larch trunk: a narrow yellowish sapwood over the red-brown heartwood'),
 ]
 # Step P2 (decision U-8): the own wood sets of hornbeam, linden, beech, ash and Norway maple. Planks: the fallback texture
 # (the game derives the planks from the vanilla planks of the user's game, pl.polishforests.block.PlanksTexture; this
@@ -1114,6 +1130,11 @@ WOOD_PLANKS = [
      'gray alder planks: soft pale reddish-brown wood, even and fine'),
     ('rowan', ['#8a6556', '#ab8470', '#b8917c', '#c29e88', '#cca994'],
      'rowan planks: hard dense light reddish-brown wood, fine grain'),
+    # Step TT4.
+    ('stone_pine', ['#936548', '#b68a66', '#c49872', '#cea57e', '#d8b28b'],
+     'stone pine planks: soft light yellowish-pink wood with a reddish heartwood and many dark knots'),
+    ('larch', ['#7e4a2e', '#a26a44', '#b0784e', '#bc8558', '#c89262'],
+     'larch planks: hard resinous red-brown wood with a sharply marked grain'),
 ]
 # (name, pith, heartwood late and early, sapwood late and early, two bark tones, heart radius px, ring width px, note)
 WOOD_LOG_TOPS = [
@@ -1145,6 +1166,13 @@ WOOD_LOG_TOPS = [
      'gray alder log top: pale orange-brown wood without a heartwood, fine rings, the smooth light gray bark border'),
     ('rowan', ['#8a5a48', '#9e6a56', '#ae7a64', '#c09e8a', '#ccaa96', '#7e7670', '#968e88'], 3.0, 1.6,
      'rowan log top: a light reddish-brown heartwood in reddish white sapwood, fine rings, the gray bark border'),
+    # Step TT4.
+    ('stone_pine', ['#9a6a4c', '#b0805e', '#c49a76', '#cfa983', '#dab894', '#6e6660', '#8a817a'], 3.0, 1.4,
+     'stone pine log top: a pale reddish-brown heartwood in light sapwood, very fine rings of the slow growth, the gray '
+     'bark border'),
+    ('larch', ['#8a5434', '#9c6442', '#ae7550', '#c09468', '#cca476', '#6e5a4e', '#86705f'], 4.0, 2.4,
+     'larch log top: a large red-brown heartwood in a narrow yellowish sapwood, sharp rings, the thick red-brown bark '
+     'border'),
 ]
 STRIPPED_TRUNK_COLORS = {name: colors for name, colors, _expect, _note in STRIPPED_TRUNKS}
 SAPLING_SHAPE = dict(top=4, zigzag=0.2, shoots=3, shoot_gap=3, shoot_len=(2, 4), leaf_from=2, leaf_every=3, tries=64)
@@ -1196,6 +1224,13 @@ SAPLINGS = [
     ('dwarf_mountain_pine', dict(SAPLING_SHAPE, leaf='pine', shoots=0, top=3, zigzag=0.0, tuft_at=5, whorl_at=9, rays=13,
                                  ray_len=6, spread=1.25, colors=['#4a4440', '#6a625a', '#2c4a30', '#3c5e3e', '#5a7a54']),
      'young dwarf mountain pine: a crooked dark stem under a dense dark green tuft of short paired needles'),
+    # Step TT4.
+    ('stone_pine', dict(SAPLING_SHAPE, leaf='pine', shoots=0, top=3, zigzag=0.0, tuft_at=5, whorl_at=9, rays=15,
+                        ray_len=7, spread=1.2, colors=['#5a5650', '#7a746c', '#2c4a42', '#3c5e54', '#5a7c70']),
+     'young Swiss stone pine: a straight gray stem under a dense blue-green brush of long needles in fives'),
+    ('larch', dict(SAPLING_SHAPE, leaf='fir', shoots=0, top=2, zigzag=0.0, tier_gap=3,
+                   colors=['#6e5a46', '#8e765e', '#4e7a2e', '#64943a', '#86b04e']),
+     'young European larch: a slender yellow-brown stem with loose tiers of soft light green needle clusters'),
 ]
 
 
@@ -1368,6 +1403,9 @@ TWIG_SPECIES = [
     # Step F6.
     ('gray_alder', '#b6aca8', 0.27, 0.20, (8, 13), (3, 5), 0.40, 'gray alder: gray twigs with stalked buds and catkins'),
     ('rowan', '#b8a69c', 0.24, 0.20, (7, 12), (3, 5), 0.35, 'rowan: stout gray-brown shoots with large dark violet buds'),
+    # Step TT4: the larch, the only conifer of the leafless window.
+    ('larch', '#d0c6b4', 0.24, 0.15, (8, 14), (2, 4), 0.30,
+     'larch: slender yellowish gray-brown shoots set with the knobs of the short shoots'),
 ]
 # The gray ramp of the twig tones (crossing, body, side twig, lit tip): V13 had 98-166; step Z2 126-184.
 TWIG_GRAY = (126, 184)
@@ -1377,7 +1415,7 @@ TWIG_GRAY = (126, 184)
 # to find one without an empty line); visible pixels hornbeam 33 -> 29%, linden 33 -> 29%, beech 38 -> 30%. Oak (27%:
 # a sparser oak tile came out in diagonal bands), birch, ash and maple keep their tiles.
 TWIG_TRIES = {'hornbeam': 96, 'linden': 96, 'beech': 96, 'bird_cherry': 96, 'sycamore_maple': 96, 'white_willow': 96,
-              'poplar': 96, 'osier': 96, 'gray_alder': 96, 'rowan': 96}
+              'poplar': 96, 'osier': 96, 'gray_alder': 96, 'rowan': 96, 'larch': 96}
 TWIG_MAX_VISIBLE = {'hornbeam': 0.25, 'linden': 0.25, 'beech': 0.26}
 
 def upper_texture(tex, palettes):
@@ -1496,6 +1534,18 @@ TEXTURES = [
     Texture('sycamore_maple_bark_2', 'bark', bark_furrowed, 'sycamore_maple_bark_2/1', 'linden_bark',
             variant_of='sycamore_maple_bark', params=SYCAMORE, expect=SYCAMORE_EXPECT, palette_use='as sycamore_maple_bark',
             note='second variant of the sycamore maple bark, same edge rows'),
+    # Step TT4: the Swiss stone pine and the European larch (two variants each).
+    Texture('stone_pine_bark', 'bark', bark_furrowed, 'stone_pine_bark/1', 'linden_bark', params=STONE_PINE,
+            expect=STONE_PINE_EXPECT, palette_use='hue of the linden bark photo, made grayer and redder by the recipe',
+            note='Swiss stone pine: gray-brown, shallowly fissured into small scaly plates, reddish in the cracks'),
+    Texture('stone_pine_bark_2', 'bark', bark_furrowed, 'stone_pine_bark_2/1', 'linden_bark', variant_of='stone_pine_bark',
+            params=STONE_PINE, expect=STONE_PINE_EXPECT, palette_use='as stone_pine_bark',
+            note='second variant of the stone pine bark, same edge rows'),
+    Texture('larch_bark', 'bark', bark_furrowed, 'larch_bark/1', 'oak_bark', params=LARCH, expect=LARCH_EXPECT,
+            palette_use='hue of the oak bark photo, made darker and redder by the recipe',
+            note='European larch: thick bark deeply fissured into long gray-brown plates, red-brown in the furrows'),
+    Texture('larch_bark_2', 'bark', bark_furrowed, 'larch_bark_2/1', 'oak_bark', variant_of='larch_bark', params=LARCH,
+            expect=LARCH_EXPECT, palette_use='as larch_bark', note='second variant of the larch bark, same edge rows'),
     Texture('tree_root_bark', 'bark', bark_furrowed, 'tree_root_bark/1', 'oak_bark', params=ROOT, expect=ROOT_EXPECT,
             palette_use='hue of the oak bark photo, made warmer and smoother by the recipe',
             note='underground roots of every species (step I1): thin smooth brown bark with fine shallow fissures'),
@@ -1525,6 +1575,22 @@ TEXTURES = [
             expect={'min_line': 6},
             note='dwarf mountain pine (step F6): dense tufts of short stiff paired needles, grayscale for the needle color '
                  'of the curve (#3e6e4a, a dark dull green)'),
+    # Step TT4: the Swiss stone pine, dense brush-like tufts of long stiff needles in fives (bluer and longer than the
+    # dwarf pine's), and the European larch, soft short needles in light clusters on the short shoots (a broadleaf curve
+    # of FoliageCurve: light green, golden in autumn, shed for the winter).
+    Texture('stone_pine_leaves', 'leaves', leaves_needles, 'stone_pine_leaves/1', 'scots_pine_needles',
+            tint='#4a7a68', mcmeta=LEAVES_MCMETA,
+            params=dict(opacity=0.68, twig=(3, 5), fill=0.86, needle=(2, 4), grays=(96, 118, 136, 154, 174), twig_axes=True,
+                        candidates=6, tries=32),
+            expect={'min_line': 6},
+            note='Swiss stone pine (step TT4): dense brushes of long stiff needles in fives, grayscale for the needle color '
+                 'of the curve (#4a7a68, a dark blue-green with the gray-blue sheen of the stomatal bands)'),
+    Texture('larch_leaves', 'leaves', leaves_needles, 'larch_leaves/1', None, tint='foliage', mcmeta=LEAVES_MCMETA,
+            params=dict(opacity=0.58, twig=(3, 6), fill=0.7, needle=(1, 3), grays=(116, 136, 152, 168, 186), twig_axes=True,
+                        candidates=6, tries=32),
+            expect={'min_line': 6},
+            note='European larch (step TT4): soft short needles in light clusters on the short shoots along thin twigs, '
+                 'grayscale for the species color curve (light green, golden in autumn)'),
     Texture('rowan_leaves', 'leaves', leaves_broadleaf, 'rowan_leaves/1', None, tint='foliage',
             mcmeta=LEAVES_MCMETA, params=dict(opacity=0.6, gray=(124, 204), candidates=6, tries=32, sprites=ROWAN_SPRITES),
             expect={'min_line': 7},

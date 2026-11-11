@@ -98,12 +98,12 @@ class FoliageCurveTest {
 	@Test
 	void everySliceSpeciesHasACurve() {
 		// The planner's trees and, from step F2, the bird cherry (a shrub of the slice with leaves in phases); from step F5
-		// the osier; from step F6 the dwarf mountain pine (the creeping shrub).
-		List<Species> expected = new ArrayList<>(SpeciesShape.species());
+		// the osier; from step F6 the dwarf mountain pine (the creeping shrub). Step TT4: in the order of the species.
+		java.util.Set<Species> expected = java.util.EnumSet.copyOf(SpeciesShape.species());
 		expected.add(Species.DWARF_MOUNTAIN_PINE);
 		expected.add(Species.OSIER);
 		expected.add(Species.BIRD_CHERRY);
-		assertEquals(expected, new ArrayList<>(FoliageCurve.species()));
+		assertEquals(new ArrayList<>(expected), new ArrayList<>(FoliageCurve.species()));
 		for (Species s : FoliageCurve.species()) {
 			for (int step = 0; step < SeasonPhase.STEPS; step++) {
 				for (int p = 0; p < FoliageCurve.PHASES; p++) {

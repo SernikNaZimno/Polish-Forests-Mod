@@ -61,11 +61,21 @@ public record SpeciesShape(Archetype archetype, ByAge height, ByAge dbh, ByAge c
 		 * grows; an old canopy fir stops growing in height and its top flattens into the "stork's nest" of nearly equally
 		 * long top branches.
 		 */
-		FIR;
+		FIR,
+		/**
+		 * Swiss stone pine (step TT4): a dense column of whorls from low on the stem to a rounded top, short ascending
+		 * branches with upturned tips and dense brush-like tufts of long needles along their outer two thirds; no spire.
+		 */
+		STONE_PINE,
+		/**
+		 * European larch (step TT4): a loose, open cone of widely spaced whorls, horizontal branches sagging gently with the
+		 * short-shoot clusters of soft needles in a sparse, light foliage and hanging branchlets along them.
+		 */
+		LARCH;
 
-		/** Needle-leaved (the whorl skeleton of {@code TreeShapePlan}): the pine, the spruce and the fir. */
+		/** Needle-leaved (the whorl skeleton of {@code TreeShapePlan}): the pine, the spruce, the fir, the stone pine and the larch. */
 		public boolean conifer() {
-			return this == PINE || this == SPRUCE || this == FIR;
+			return this == PINE || this == SPRUCE || this == FIR || this == STONE_PINE || this == LARCH;
 		}
 	}
 
@@ -187,6 +197,21 @@ public record SpeciesShape(Archetype archetype, ByAge height, ByAge dbh, ByAge c
 		SHAPES.put(Species.ROWAN, new SpeciesShape(Archetype.BROAD, new ByAge(7, 11, 14), new ByAge(8, 20, 30),
 				new ByAge(0.6F, 0.6F, 0.62F), new ByAge(1.4F, 2.2F, 2.8F), new Profile(0.65F, 0.45F, 0.35F, 1.8F), 0.6F,
 				0.8F, 1, 56, 30, 0.08F, 0, 1.9F, 1.6F, 0.8F, 0.2F, 2.4F, 0.84F, 0.06F));
+		// Step TT4 (docs/research 06 §3.10, §9). Swiss stone pine (a1 of the spruce-stone pine forest of the upper Tatra
+		// regiel, Pino cembrae-Piceetum: 10-15 m, up to 20, dbh 30-60 cm, up to 1 m and more in old trees of 300-600 years,
+		// a dense crown 6-10 m long and 4-6 m wide, conical in youth, cylindrical with a rounded top later; a slow-growing,
+		// windfirm tree of the timberline): a long crown from low on the stem, many short ascending branches in close whorls
+		// of five with upturned tips, dense tufts; thick for its height.
+		SHAPES.put(Species.STONE_PINE, new SpeciesShape(Archetype.STONE_PINE, new ByAge(9, 15, 18), new ByAge(14, 42, 75),
+				new ByAge(0.75F, 0.68F, 0.6F), new ByAge(1.5F, 2.3F, 2.9F), new Profile(0.85F, 0.3F, 0.45F, 2.2F), 0.3F,
+				0.85F, 5, 72, 48, 0.14F, 0, 1.45F, 1.2F, 0.92F, 0, 2.2F, 0.75F, 0.25F));
+		// European larch (an admixture of the Tatra regiel on the sunny slopes and of the spruce-stone pine forest: 25-35 m,
+		// dbh 40-70 cm, a loose conical crown 8-12 m long and 5-7 m wide with a closure of only 30-45%, a straight stem,
+		// light-demanding, self-pruning high; research/06 §9): widely spaced whorls of three to four horizontal branches,
+		// gently sagging, a sparse foliage of small clusters (fill) with hanging branchlets.
+		SHAPES.put(Species.LARCH, new SpeciesShape(Archetype.LARCH, new ByAge(15, 28, 32), new ByAge(14, 42, 62),
+				new ByAge(0.55F, 0.46F, 0.42F), new ByAge(1.8F, 2.9F, 3.4F), new Profile(1, 0, 0.08F, 1.1F), 0.3F, 1.3F, 3,
+				95, 70, -0.2F, 0, 1.2F, 0.85F, 0.62F, 0, 2.2F, 0.78F, 0.4F));
 	}
 
 	/**
@@ -218,6 +243,16 @@ public record SpeciesShape(Archetype archetype, ByAge height, ByAge dbh, ByAge c
 	 */
 	public static boolean understory(Species species) {
 		return species == Species.ROWAN;
+	}
+
+	/**
+	 * Step TT4: whether a canopy tree of the species keeps a long crown down into the subcanopy's height in a stand (the
+	 * Swiss stone pine, 10-20 m with a crown from low on the stem in the loose stand of the timberline): its crown takes the
+	 * lower split surface as its floor instead of the upper one, as the open-land side of an edge tree does. False for
+	 * every species of the earlier steps, so their trees stay as they were.
+	 */
+	public static boolean longCrown(Species species) {
+		return species == Species.STONE_PINE;
 	}
 
 	/** The shape of a species of the slice, or null when the planner has none (species outside the slice). */

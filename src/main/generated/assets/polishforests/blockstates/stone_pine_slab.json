@@ -1,0 +1,13 @@
+{
+  "variants": {
+    "type=bottom": {
+      "model": "polishforests:block/stone_pine_slab"
+    },
+    "type=double": {
+      "model": "polishforests:block/stone_pine_planks"
+    },
+    "type=top": {
+      "model": "polishforests:block/stone_pine_slab_top"
+    }
+  }
+}

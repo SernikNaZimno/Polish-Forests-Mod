@@ -87,6 +87,9 @@ public final class FoliageCurve {
 		// Step F6: the dwarf mountain pine, a dark, dull green (darker than the Scots pine, less blue than the fir), a
 		// little yellower and darker under the winter snow.
 		CONIFERS.put(Species.DWARF_MOUNTAIN_PINE, new Needles(0x3E6E4A, darken(0x46704A, CONIFER_WINTER_DARKENING)));
+		// Step TT4: the Swiss stone pine, evergreen, a dark blue-green (the white stomatal bands of the inner sides of its
+		// long needles give the dense tufts a gray-blue sheen), darkening a little in winter.
+		CONIFERS.put(Species.STONE_PINE, new Needles(0x4A7A68, darken(0x4A7A68, CONIFER_WINTER_DARKENING)));
 		//               leaf-out, young, summer cast, autumn keys (position, target, weight; weight 0 = summer), bare at,
 		//               twig haze, twig tint, marcescent brown (0: none)
 		// Step V13 (CP-B: "in late spring a few oaks, hornbeams and beeches are still brown", "in mid-autumn most crowns are
@@ -144,6 +147,13 @@ public final class FoliageCurve {
 				0xB6ACA8, 0);
 		broadleaf(Species.ROWAN, 4.5, 0xB4D864, 0x36AE22, keys(19.6, 0, 0, 20.8, 0xD8A03A, 0.8, 21.8, 0xC8502E, 0.85), 22.6,
 				0x968276, 0xB8A69C, 0);
+		// Step TT4 (docs/research 08): the European larch, the only conifer that sheds its needles. It flushes in the Tatras
+		// at the end of April and in early May (a bright, light yellow-green of the young needle clusters), keeps a light,
+		// fresh green through the summer, turns golden yellow from the end of September in the mountains (full in the 2nd
+		// decade of X), then a deeper ochre, and is bare in the 1st decade of XI; its bare crown shows the yellowish gray-brown
+		// twigs with the knobs of the short shoots (the leafless window of the broadleaf species, steps V13 and Z2).
+		broadleaf(Species.LARCH, 5.9, 0xC2E070, 0x94D08C, keys(20.6, 0, 0, 21.6, 0xE2B83A, 0.85, 22.8, 0xD49A30, 0.9), 23.6,
+				0xB0A088, 0xD0C6B4, 0);
 	}
 
 	private FoliageCurve() {

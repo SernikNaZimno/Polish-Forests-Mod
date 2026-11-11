@@ -76,9 +76,13 @@ public final class DeadwoodPlan {
 		return conifer(species) ? MANAGED_KEEP_CONIFER : MANAGED_KEEP;
 	}
 
-	/** The needle-leaved species of the dead wood: the Scots pine, the spruce and (step F3) the fir. */
+	/**
+	 * The needle-leaved species of the dead wood: the Scots pine, the spruce, (step F3) the fir and (step TT4) the stone pine
+	 * and the larch.
+	 */
 	static boolean conifer(Species species) {
-		return species == Species.SCOTS_PINE || species == Species.SPRUCE || species == Species.FIR;
+		return species == Species.SCOTS_PINE || species == Species.SPRUCE || species == Species.FIR
+				|| species == Species.STONE_PINE || species == Species.LARCH;
 	}
 	/**
 	 * Least share of a log's length resting on the ground: no air below (§3 V11, stricter after the review of V11, round
@@ -127,6 +131,11 @@ public final class DeadwoodPlan {
 			// of the mountain streams; the rowan breaks under the snow and falls whole.
 			case GRAY_ALDER -> new double[] {0.40, 0.25, 0.22, 0.13};
 			case ROWAN -> new double[] {0.50, 0.15, 0.25, 0.10};
+			// Step TT4: the stone pine, windfirm and of a resinous, slowly rotting wood, dies standing (old snags and broken
+			// tops of the timberline, lightning and snow break) and is rarely thrown; the larch, deep-rooted too, dies
+			// standing or breaks and its durable logs lie long.
+			case STONE_PINE -> new double[] {0.30, 0.38, 0.25, 0.07};
+			case LARCH -> new double[] {0.40, 0.30, 0.20, 0.10};
 			default -> new double[] {0.60, 0.15, 0.15, 0.10};
 		};
 	}
@@ -320,7 +329,9 @@ public final class DeadwoodPlan {
 			// Oaks and ashes break above the crown base, among their limbs.
 			case OAK -> new double[] {0.6, 0.85};
 			case SCOTS_PINE -> new double[] {0.35, 0.8};
-			case SPRUCE, FIR -> new double[] {0.5, 0.9};
+			case SPRUCE, FIR, LARCH -> new double[] {0.5, 0.9};
+			// Step TT4: the stone pine's broken tops of the snow and the wind, low in its long crown.
+			case STONE_PINE -> new double[] {0.35, 0.75};
 			case BIRCH -> new double[] {0.25, 0.5};
 			case ASH -> new double[] {0.6, 0.85};
 			case ELM -> new double[] {0.5, 0.8};
@@ -335,13 +346,13 @@ public final class DeadwoodPlan {
 		// Limbs of a dead tree: oaks and ashes keep their thick limbs, the others shorter ones, pines only stubs, spruces
 		// many short dry branches.
 		int keepRadius = switch (r.species()) {
-			case SCOTS_PINE, SPRUCE, FIR -> 1;
+			case SCOTS_PINE, SPRUCE, FIR, STONE_PINE, LARCH -> 1;
 			default -> 2;
 		};
 		int maxDepth = switch (r.species()) {
 			case OAK -> 6;
 			case ASH -> 4;
-			case SPRUCE, FIR -> 2;
+			case SPRUCE, FIR, STONE_PINE, LARCH -> 2;
 			case SCOTS_PINE, BIRCH -> 1;
 			default -> 3;
 		};
@@ -353,7 +364,7 @@ public final class DeadwoodPlan {
 		// Conifers: of each whorl only some dry stubs stay (a cross of opposite stubs reads as a telegraph pole).
 		double stubChance = switch (r.species()) {
 			case SCOTS_PINE -> 0.3;
-			case SPRUCE, FIR -> 0.55;
+			case SPRUCE, FIR, STONE_PINE, LARCH -> 0.55;
 			default -> 1;
 		};
 		int[] kept = new int[s.tree.woodCount()];

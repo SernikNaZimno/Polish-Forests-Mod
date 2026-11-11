@@ -408,7 +408,9 @@ class TreeShapePlanTest {
 				CrownLayer layer = r.layer() == CrownLayer.CANOPY && !r.openGrown() && SpeciesShape.understory(r.species())
 						? CrownLayer.SUBCANOPY : r.layer();
 				switch (layer) {
-					case CANOPY -> assertTrue(r.openGrown() || y >= upper || trunk, at);
+					// Step TT4: the long crown of the stone pine reaches down to the lower split surface.
+					case CANOPY -> assertTrue(r.openGrown() || y >= (SpeciesShape.longCrown(r.species()) ? Math.max(1, lower) : upper)
+							|| trunk, at);
 					case SUBCANOPY -> assertTrue(y < upper && (y >= lower || trunk), at);
 					case REGENERATION -> assertTrue(y < lower, at);
 				}
@@ -995,8 +997,8 @@ class TreeShapePlanTest {
 		long h = 17;
 		for (TreeRequest r : lone(4)) {
 			if (r.species() == Species.WHITE_WILLOW || r.species() == Species.POPLAR || r.species() == Species.GRAY_ALDER
-					|| r.species() == Species.ROWAN) {
-				// Steps F5 and F6: the new species come after the earlier ones in lone() (the gray alder after the black
+					|| r.species() == Species.ROWAN || r.species() == Species.STONE_PINE || r.species() == Species.LARCH) {
+				// Steps F5, F6 and TT4: the new species come after the earlier ones in lone() (the gray alder after the black
 				// alder, the last species of the checksum before it), so the draws of the earlier ones stay.
 				continue;
 			}

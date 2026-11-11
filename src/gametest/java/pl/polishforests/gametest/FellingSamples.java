@@ -230,7 +230,7 @@ final class FellingSamples {
 				// Step F5.
 				Species.WHITE_WILLOW, Species.POPLAR,
 				// Step F6.
-				Species.GRAY_ALDER, Species.ROWAN);
+				Species.GRAY_ALDER, Species.ROWAN, Species.STONE_PINE, Species.LARCH);
 	}
 
 	/** A board cell as built: the tree to fell, its neighbor, the dead wood beside it. */

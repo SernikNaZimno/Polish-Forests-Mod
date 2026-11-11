@@ -98,7 +98,7 @@ public final class ClientSeasonModels {
 
 	private static TreeFoliage foliage(Species species) {
 		for (TreeFoliage f : TreeFoliage.values()) {
-			if (f.species() == species && !f.conifer()) {
+			if (f.species() == species && !f.evergreen()) {
 				return f;
 			}
 		}
@@ -129,7 +129,7 @@ public final class ClientSeasonModels {
 
 	/** Whether a block state shows its bare twigs now (leaves of a broadleaf species in their leafless window). */
 	public static boolean leafless(BlockState state) {
-		return state.getBlock() instanceof SpeciesLeavesBlock leaves && !leaves.foliage().conifer()
+		return state.getBlock() instanceof SpeciesLeavesBlock leaves && !leaves.foliage().evergreen()
 				&& FoliageCurve.leafless(leaves.foliage().species(), step(), state.getValue(SpeciesLeavesBlock.PHASE),
 						MarcescentLeavesBlock.marcescent(state));
 	}
@@ -192,7 +192,7 @@ public final class ClientSeasonModels {
 						new SeasonalModel.Alternative(s -> unripe, false, true, false),
 						new SeasonalModel.Alternative(s -> ripe, false, true, false)), List.copyOf(deps));
 			}
-			if (block instanceof SpeciesLeavesBlock leaves && !leaves.foliage().conifer()) {
+			if (block instanceof SpeciesLeavesBlock leaves && !leaves.foliage().evergreen()) {
 				List<Variant> twigs = twigVariants(leaves.foliage());
 				return new SeasonalModel.Root(model, (s, pos) -> leafless(s) ? 1 : SeasonalModel.Look.BASE,
 						List.of(new SeasonalModel.Alternative(s -> twigs, true, false, true)), twigs);

@@ -222,7 +222,10 @@ class ForestCensusTest {
 		// Step F6: the gray alder and the rowan too (the card of the gray alder and the montane spruce forest).
 		assertEquals("gray_alder", ForestCensus.compositionKey(Species.GRAY_ALDER));
 		assertEquals("rowan", ForestCensus.compositionKey(Species.ROWAN));
-		assertEquals("other", ForestCensus.compositionKey(Species.LARCH));
+		// Step TT4: the stone pine and the larch (the card of the spruce-stone pine forest); the yew stays "other".
+		assertEquals("stone_pine", ForestCensus.compositionKey(Species.STONE_PINE));
+		assertEquals("larch", ForestCensus.compositionKey(Species.LARCH));
+		assertEquals("other", ForestCensus.compositionKey(Species.YEW));
 		assertEquals("other", ForestCensus.compositionKey(null));
 	}
 

@@ -47,7 +47,14 @@ public enum TreeFoliage {
 	 * Step F6: the needles of the dwarf mountain pine (in pairs, 3-8 cm, dark green, dense tufts at the raised shoot ends);
 	 * the leaves and sapling of the creeping shrub (its sapling grows into the shrub).
 	 */
-	DWARF_MOUNTAIN_PINE(Species.DWARF_MOUNTAIN_PINE, "Dwarf Mountain Pine", "kosodrzewiny");
+	DWARF_MOUNTAIN_PINE(Species.DWARF_MOUNTAIN_PINE, "Dwarf Mountain Pine", "kosodrzewiny"),
+	/** Step TT4: the needles of the Swiss stone pine (in fives, 5-12 cm, stiff, dark blue-green, dense brush-like tufts). */
+	STONE_PINE(Species.STONE_PINE, "Stone Pine", "limby"),
+	/**
+	 * Step TT4: the needles of the European larch (soft, 2-3 cm, in clusters of 20-40 on short shoots), light green in
+	 * spring, golden yellow in autumn, shed for the winter (the bare twigs of the leafless window).
+	 */
+	LARCH(Species.LARCH, "Larch", "modrzewia europejskiego");
 
 	private final Species species;
 	private final String englishName;
@@ -90,9 +97,21 @@ public enum TreeFoliage {
 		return species.shrub();
 	}
 
-	/** Needle-leaved: the Scots pine, the Norway spruce, (step F3) the silver fir and (step F6) the dwarf mountain pine. */
+	/**
+	 * Needle-leaved: the Scots pine, the Norway spruce, (step F3) the silver fir, (step F6) the dwarf mountain pine and
+	 * (step TT4) the Swiss stone pine and the European larch.
+	 */
 	public boolean conifer() {
-		return this == SCOTS_PINE || this == SPRUCE || this == FIR || this == DWARF_MOUNTAIN_PINE;
+		return this == SCOTS_PINE || this == SPRUCE || this == FIR || this == DWARF_MOUNTAIN_PINE || this == STONE_PINE
+				|| this == LARCH;
+	}
+
+	/**
+	 * Keeps its needles through the winter: every conifer except the larch (step TT4), which sheds them and shows its bare
+	 * twigs in the leafless window like a broadleaf tree.
+	 */
+	public boolean evergreen() {
+		return conifer() && this != LARCH;
 	}
 
 	/** Keeps dead leaves over the winter on young trees and lower crowns: oak, hornbeam, beech ({@link MarcescentLeavesBlock}). */

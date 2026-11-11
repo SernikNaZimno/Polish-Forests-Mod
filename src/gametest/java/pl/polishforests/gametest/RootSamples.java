@@ -104,7 +104,7 @@ final class RootSamples {
 				// Step F5.
 				Species.WHITE_WILLOW, Species.POPLAR,
 				// Step F6.
-				Species.GRAY_ALDER, Species.ROWAN);
+				Species.GRAY_ALDER, Species.ROWAN, Species.STONE_PINE, Species.LARCH);
 	}
 
 	/** A view of the board: a name and a camera (feet position, yaw, pitch). */

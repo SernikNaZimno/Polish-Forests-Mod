@@ -647,7 +647,9 @@ public final class TreeShapePlan {
 		/** Lowest block of the tree's layer at the column (dx, dz). */
 		private int floorAt(int dx, int dz) {
 			return switch (request.layer()) {
-				case CANOPY -> request.openGrown() ? 0 : splitsAt(dx, dz, splitTmp)[0];
+				// Step TT4: the long crown of a canopy stone pine reaches down to the lower split surface.
+				case CANOPY -> request.openGrown() ? 0 : SpeciesShape.longCrown(request.species())
+						? Math.max(1, splitsAt(dx, dz, splitTmp)[1]) : splitsAt(dx, dz, splitTmp)[0];
 				case SUBCANOPY -> splitsAt(dx, dz, splitTmp)[1];
 				case REGENERATION -> 0;
 			};
@@ -898,7 +900,7 @@ public final class TreeShapePlan {
 		private void skeleton() {
 			int trunkTop = trunk();
 			switch (shape.archetype()) {
-				case PINE, SPRUCE, FIR -> conifer();
+				case PINE, SPRUCE, FIR, STONE_PINE, LARCH -> conifer();
 				case SLENDER -> slender();
 				case BROAD -> broad(trunkTop);
 			}
@@ -1176,7 +1178,8 @@ public final class TreeShapePlan {
 		 */
 		private void conifer() {
 			SpeciesShape.Archetype kind = shape.archetype();
-			boolean pine = kind == SpeciesShape.Archetype.PINE;
+			// Step TT4: the stone pine's leader is clad in needles in its upper crown as the Scots pine's.
+			boolean pine = kind == SpeciesShape.Archetype.PINE || kind == SpeciesShape.Archetype.STONE_PINE;
 			double phase = range(0, 2 * Math.PI);
 			double y = size.crownBase();
 			// The spruce's spire: its top two blocks without branches (a tree taller than 8 blocks).
@@ -1218,6 +1221,8 @@ public final class TreeShapePlan {
 		private void branch(int at, double azimuth, double length, double t, SpeciesShape.Archetype kind) {
 			boolean spruce = kind == SpeciesShape.Archetype.SPRUCE;
 			boolean fir = kind == SpeciesShape.Archetype.FIR;
+			boolean stonePine = kind == SpeciesShape.Archetype.STONE_PINE;
+			boolean larch = kind == SpeciesShape.Archetype.LARCH;
 			double c = StrictMath.cos(azimuth);
 			double s = StrictMath.sin(azimuth);
 			length = fit(nx[at], nz[at], c, s, length, 0.6 * leafH);
@@ -1236,6 +1241,10 @@ public final class TreeShapePlan {
 					a0 = range(80, 88);
 				}
 				a1 = a0 - shape.bend() * 110 * range(0.7, 1.3);
+			} else if (larch) {
+				// Step TT4: the larch's branches leave the trunk about horizontally and sag gently towards the tip, the
+				// lowest most (bend is negative), the top ones ascending.
+				a1 = a0 + -shape.bend() * 160 * StrictMath.pow(1 - t, 1.2) * range(0.7, 1.3) - 10 * t;
 			} else if (spruce) {
 				// Droop: up to about 55 degrees at the crown base (one to two blocks of sag spread along the branch), little
 				// in the middle, the top branches slightly ascending (bend is negative).
@@ -1257,6 +1266,16 @@ public final class TreeShapePlan {
 			} else if (fir) {
 				// A flat spray at the tip.
 				leafAt(tip, leafH * scale * 1.05, leafV * 0.8);
+			} else if (stonePine) {
+				// Step TT4: the stone pine's dense brush at the upturned tip.
+				leafAt(tip, leafH * scale * 1.1, leafV * 1.05);
+			} else if (larch) {
+				// Step TT4: a small, light cluster at the larch's tip, with its hanging end.
+				leafAt(tip, leafH * scale * 0.9, leafV * 0.9);
+				if (length >= 2) {
+					int hang = node(tip, nx[tip], ny[tip] - 1.0, nz[tip], TWIG);
+					leafAt(hang, leafH * 0.6, leafV * 1.0);
+				}
 			} else {
 				leafAt(tip, leafH * scale, leafV);
 			}
@@ -1272,6 +1291,21 @@ public final class TreeShapePlan {
 					// Needles along the spruce branch.
 					if (i >= 1) {
 						leafAt(node, leafH * 0.7, leafV * 0.8);
+					}
+				} else if (stonePine) {
+					// Step TT4: the stone pine's dense tufts along the outer two thirds of the shoot (a short one all along).
+					if (i >= (n <= 3 ? 0 : n * 0.3)) {
+						leafAt(node, leafH * 0.8, leafV * 0.85);
+					}
+				} else if (larch) {
+					// Step TT4: the larch's sparse clusters on every other node and, from the middle of a long branch, a
+					// hanging branchlet with its own small cluster under some of them.
+					if (i >= 1 && i % 2 == 1) {
+						leafAt(node, leafH * 0.6, leafV * 0.6);
+						if (n >= 4 && i >= n / 2 && next() < 0.5) {
+							int hang = node(node, nx[node], ny[node] - 1.0, nz[node], TWIG);
+							leafAt(hang, leafH * 0.5, leafV * 0.9);
+						}
 					}
 				} else if (i >= (n <= 3 ? 0 : n * 0.45)) {
 					// The pine's tufts cover the outer half of the shoot (a short one all along), so no bare elbow shows.
@@ -1852,7 +1886,8 @@ public final class TreeShapePlan {
 				cy += range(-0.4, 0.4);
 				cluster(cx, cy, cz, h, v, hollow);
 			}
-			boolean pine = shape.archetype() == SpeciesShape.Archetype.PINE;
+			// Step TT4: the stone pine's leader as the Scots pine's (a leaf around its top block).
+			boolean pine = shape.archetype() == SpeciesShape.Archetype.PINE || shape.archetype() == SpeciesShape.Archetype.STONE_PINE;
 			if (spireFrom < top || pine && !forks()) {
 				// The spruce's spire is a narrow column of needles, not a bare stick with a tuft (review of V6, round 2): a
 				// leaf on the four sides of each leader block and of the short shoots of the highest whorl, whose own small
@@ -1884,7 +1919,8 @@ public final class TreeShapePlan {
 		 * above each thin live shoot, one below each branch block (round 2) and a sleeve of leaves along the shoots of the upper crown.
 		 */
 		private void cover() {
-			boolean pine = shape.archetype() == SpeciesShape.Archetype.PINE;
+			// Step TT4: the stone pine's leader sleeved as the Scots pine's.
+			boolean pine = shape.archetype() == SpeciesShape.Archetype.PINE || shape.archetype() == SpeciesShape.Archetype.STONE_PINE;
 			// Shoots are covered: a leaf right above every thin branch block of the crown, so no bare branch tops the
 			// crown seen from above. Round 2: the branches at any radius (the thick base of a pine's whorl branch lay bare on
 			// the crowns seen from 30 m) and also below the crown base; the thin trunk and limbs only within the crown.

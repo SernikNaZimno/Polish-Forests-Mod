@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/cube_column",
+  "textures": {
+    "end": "polishforests:block/larch_bark",
+    "side": "polishforests:block/larch_bark"
+  }
+}

@@ -206,6 +206,11 @@ final class ModVegetation {
 		t.rule(HabitatCondition.zones(Zone.TREE_ROW), 8).add(Species.BLACK_ALDER, 850, 1).add(Species.WHITE_WILLOW, 150, 1);
 		// Step F6: the dwarf spruces of the planner and the low rowans at the timberline (lone trees of the zone, no stand
 		// rule), in place of the vanilla stunted spruce.
+		// Step TT4: on the Tatra granite and gneiss the stone pine stands at the timberline with the dwarf spruces.
+		t.rule(HabitatCondition.zones(Zone.TIMBERLINE).withAssociations(Association.PINO_CEMBRAE_PICEETUM), 4)
+				.add(Species.STONE_PINE, Species.STONE_PINE.path(), 450)
+				.add(Species.SPRUCE, ModTrees.form(Species.SPRUCE, TreeForm.Kind.DWARF), 450)
+				.add(Species.ROWAN, ModTrees.form(Species.ROWAN, TreeForm.Kind.DWARF), 100);
 		t.rule(HabitatCondition.zones(Zone.TIMBERLINE), 4).add(Species.SPRUCE, ModTrees.form(Species.SPRUCE, TreeForm.Kind.DWARF), 900)
 				.add(Species.ROWAN, ModTrees.form(Species.ROWAN, TreeForm.Kind.DWARF), 100);
 		// Step F5 (docs/04 "Projekt F5", research/06 §4.5): the white poplar forest (Populetum albae, on the higher and drier
@@ -247,6 +252,38 @@ final class ModVegetation {
 				.gapRegeneration().add(Species.ROWAN, 500).form(Species.SPRUCE, TreeForm.Kind.MONTANE, 400)
 				.add(Species.SYCAMORE_MAPLE, 100)
 				.chances(new float[] {0.70F, 0.55F, 0.45F}, new float[] {0.55F, 0.55F, 0.55F}, 0.4F).subcanopyChance(0.4F);
+		// Step TT4 (docs/04 "Projekt TT4", research/06 §3.5, §5.1). The spruce-stone pine forest of the upper part of the
+		// upper Tatra regiel on granite and gneiss (Pino cembrae-Piceetum): a1 the candle spruce 40-60% with the stone pine
+		// 20-40% (lower than the spruce, in the a1 and the a2 of the loose clumps), the larch 5-20% and the rowan; the
+		// stone pine in the regeneration too (the nutcracker's caches). All of it lies in the Tatra National Park (no
+		// managed stands, the managed palette only for the form of the rule).
+		t.planned(HabitatCondition.biomes(MONTANE_SPRUCE_FOREST).withAssociations(Association.PINO_CEMBRAE_PICEETUM), 10)
+				.form(Species.SPRUCE, TreeForm.Kind.MONTANE, 440).add(Species.STONE_PINE, 400).add(Species.LARCH, 110)
+				.add(Species.ROWAN, 50)
+				.managed().form(Species.SPRUCE, TreeForm.Kind.MONTANE, 440).add(Species.STONE_PINE, 400).add(Species.LARCH, 110)
+				.add(Species.ROWAN, 50)
+				.subcanopy().add(Species.STONE_PINE, 420).form(Species.SPRUCE, TreeForm.Kind.MONTANE, 300).add(Species.ROWAN, 280)
+				.regeneration().form(Species.SPRUCE, TreeForm.Kind.MONTANE, 400).add(Species.STONE_PINE, 250).add(Species.ROWAN, 300)
+				.add(Species.LARCH, 50)
+				.gapRegeneration().form(Species.SPRUCE, TreeForm.Kind.MONTANE, 350).add(Species.ROWAN, 300).add(Species.STONE_PINE, 200)
+				.add(Species.LARCH, 150)
+				// A loose stand of clumps (closure 40-70%).
+				.chances(new float[] {0.85F, 0.75F, 0.68F}, new float[] {0.80F, 0.80F, 0.80F}, 0.6F).subcanopyChance(0.45F);
+		// The Tatra regiel on granite and gneiss on the sunny slopes: the fir-spruce forest of the lower regiel (the fir and
+		// the beech only within their ranges: full weights, none in the upper regiel) and the spruce forest of the upper
+		// regiel, both with the larch (about 15%); the larch also in the gaps (a light-demanding pioneer).
+		t.planned(HabitatCondition.biomes(MONTANE_SPRUCE_FOREST).withAssociations(Association.LARCH_SLOPE), 12)
+				.form(Species.SPRUCE, TreeForm.Kind.MONTANE, 600).full(Species.FIR, 220).add(Species.LARCH, 160)
+				.full(Species.BEECH, 40).add(Species.ROWAN, 60)
+				.managed().form(Species.SPRUCE, TreeForm.Kind.MONTANE, 700).full(Species.FIR, 150).add(Species.LARCH, 150)
+				.add(Species.ROWAN, 30)
+				.subcanopy().full(Species.FIR, 350).form(Species.SPRUCE, TreeForm.Kind.MONTANE, 350).add(Species.ROWAN, 150)
+				.add(Species.LARCH, 50)
+				.regeneration().form(Species.SPRUCE, TreeForm.Kind.MONTANE, 400).full(Species.FIR, 250).add(Species.ROWAN, 200)
+				.add(Species.LARCH, 100)
+				.gapRegeneration().form(Species.SPRUCE, TreeForm.Kind.MONTANE, 350).add(Species.LARCH, 250).add(Species.ROWAN, 250)
+				.add(Species.BIRCH, 100)
+				.chances(new float[] {0.90F, 0.72F, 0.62F}, new float[] {0.85F, 0.85F, 0.85F}, 0.7F).subcanopyChance(0.5F);
 		// Step F4 (docs/04 "Projekt F4", research/06 §3.1-3.2, §4.1): the pine forests and the bog woodland with the trees
 		// of the planner in their growth forms by site (TreeForm). The wind belt of the coastal pine forest (Empetro nigri-
 		// Pinetum, the associations STUNTED and WINDSWEPT of the coast): low pines leaning away from the sea with banner
@@ -534,6 +571,15 @@ final class ModVegetation {
 		// Step F6: the dwarf spruces and the rowans of the planner (the rowan in a canopy place grows as a tree of the
 		// subcanopy, SpeciesShape.understory), an open stand in the dwarf pine (the creeping shrubs of the understory are the
 		// cover, N7 of its card).
+		// Step TT4: the lower part of the dwarf pine on the Tatra granite and gneiss, with single stone pines over the dwarf
+		// pines (the old, often broken and multi-topped stone pines of the krummholz) and a few dwarf spruces and rowans.
+		t.planned(HabitatCondition.biomes(DWARF_PINE_SCRUB).withAssociations(Association.PINO_CEMBRAE_PICEETUM), 1.5F)
+				.add(Species.STONE_PINE, 550).form(Species.SPRUCE, TreeForm.Kind.DWARF, 300).add(Species.ROWAN, 150)
+				.managed().add(Species.STONE_PINE, 550).form(Species.SPRUCE, TreeForm.Kind.DWARF, 300).add(Species.ROWAN, 150)
+				.subcanopy().add(Species.ROWAN, 500).add(Species.STONE_PINE, 300).form(Species.SPRUCE, TreeForm.Kind.DWARF, 200)
+				.regeneration().add(Species.STONE_PINE, 400).add(Species.SPRUCE, 300).add(Species.ROWAN, 300)
+				.gapRegeneration().add(Species.STONE_PINE, 400).add(Species.SPRUCE, 300).add(Species.ROWAN, 300)
+				.chances(new float[] {0.25F, 0.22F, 0.20F}, new float[] {0.22F, 0.22F, 0.22F}, 0.3F).subcanopyChance(0.15F);
 		t.planned(HabitatCondition.biomes(DWARF_PINE_SCRUB), 1.5F).form(Species.SPRUCE, TreeForm.Kind.DWARF, 700)
 				.add(Species.ROWAN, 300)
 				.managed().form(Species.SPRUCE, TreeForm.Kind.DWARF, 700).add(Species.ROWAN, 300)
@@ -1043,10 +1089,30 @@ final class ModVegetation {
 				l.feature(deadwood(Species.ROWAN), 1),
 				l.feature(stump(Species.SPRUCE, TreeForm.Kind.MONTANE), stumpWeight(MONTANE_SPRUCE_FOREST, 20, 0.7)),
 				l.feature(stump(Species.FIR), stumpWeight(MONTANE_SPRUCE_FOREST, 20, 0.3)));
+		// Step TT4: the spruce-stone pine forest with its snags and broken stone pines (the resinous wood rots slowly) and a
+		// few larches; the larch slopes of the regiel with their larches and firs; the dwarf pine with its stone pines.
+		l.land(biomes(MONTANE_SPRUCE_FOREST).withAssociations(Association.PINO_CEMBRAE_PICEETUM), deadwoodCoverage(MONTANE_SPRUCE_FOREST), 1,
+				l.feature(deadwood(Species.SPRUCE, TreeForm.Kind.MONTANE), 10), l.feature(deadwood(Species.STONE_PINE), 6),
+				l.feature(deadwood(Species.LARCH), 2), l.feature(deadwood(Species.ROWAN), 1),
+				l.feature(stump(Species.SPRUCE, TreeForm.Kind.MONTANE), stumpWeight(MONTANE_SPRUCE_FOREST, 20, 0.55)),
+				l.feature(stump(Species.STONE_PINE), stumpWeight(MONTANE_SPRUCE_FOREST, 20, 0.35)),
+				l.feature(stump(Species.LARCH), stumpWeight(MONTANE_SPRUCE_FOREST, 20, 0.1)));
+		l.land(biomes(MONTANE_SPRUCE_FOREST).withAssociations(Association.LARCH_SLOPE), deadwoodCoverage(MONTANE_SPRUCE_FOREST), 1,
+				l.feature(deadwood(Species.SPRUCE, TreeForm.Kind.MONTANE), 12), l.feature(deadwood(Species.FIR), 4),
+				l.feature(deadwood(Species.LARCH), 3), l.feature(deadwood(Species.ROWAN), 1),
+				l.feature(stump(Species.SPRUCE, TreeForm.Kind.MONTANE), stumpWeight(MONTANE_SPRUCE_FOREST, 20, 0.65)),
+				l.feature(stump(Species.FIR), stumpWeight(MONTANE_SPRUCE_FOREST, 20, 0.2)),
+				l.feature(stump(Species.LARCH), stumpWeight(MONTANE_SPRUCE_FOREST, 20, 0.15)));
 		l.land(biomes(MONTANE_SPRUCE_FOREST), deadwoodCoverage(MONTANE_SPRUCE_FOREST), 1,
 				l.feature(deadwood(Species.SPRUCE, TreeForm.Kind.MONTANE), 18), l.feature(deadwood(Species.ROWAN), 2),
 				l.feature(stump(Species.SPRUCE, TreeForm.Kind.MONTANE), stumpWeight(MONTANE_SPRUCE_FOREST, 20, 0.95)),
 				l.feature(stump(Species.ROWAN), stumpWeight(MONTANE_SPRUCE_FOREST, 20, 0.05)));
+		l.land(biomes(DWARF_PINE_SCRUB).withAssociations(Association.PINO_CEMBRAE_PICEETUM), deadwoodCoverage(DWARF_PINE_SCRUB), 1,
+				l.feature(deadwood(Species.STONE_PINE), 4), l.feature(deadwood(Species.SPRUCE, TreeForm.Kind.DWARF), 4),
+				l.feature(deadwood(Species.ROWAN), 2),
+				l.feature(stump(Species.STONE_PINE), stumpWeight(DWARF_PINE_SCRUB, 10, 0.5)),
+				l.feature(stump(Species.SPRUCE, TreeForm.Kind.DWARF), stumpWeight(DWARF_PINE_SCRUB, 10, 0.3)),
+				l.feature(stump(Species.ROWAN), stumpWeight(DWARF_PINE_SCRUB, 10, 0.2)));
 		l.land(biomes(DWARF_PINE_SCRUB), deadwoodCoverage(DWARF_PINE_SCRUB), 1,
 				l.feature(deadwood(Species.SPRUCE, TreeForm.Kind.DWARF), 7), l.feature(deadwood(Species.ROWAN), 3),
 				l.feature(stump(Species.SPRUCE, TreeForm.Kind.DWARF), stumpWeight(DWARF_PINE_SCRUB, 10, 0.7)),

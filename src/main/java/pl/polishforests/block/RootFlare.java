@@ -34,7 +34,11 @@ public enum RootFlare {
 	/** Step F6: the gray alder's low flares (a shallow, wide root system with root suckers on the gravel of mountain streams). */
 	GRAY_ALDER(TreeTrunk.GRAY_ALDER),
 	/** Step F6: the rowan's small flares (a shallow heart root system, often over a stone or a rotten log). */
-	ROWAN(TreeTrunk.ROWAN);
+	ROWAN(TreeTrunk.ROWAN),
+	/** Step TT4: the stone pine's flares (a deep anchoring root system wedged into the cracks of the granite). */
+	STONE_PINE(TreeTrunk.STONE_PINE),
+	/** Step TT4: the larch's buttresses (a deep heart root system, a windfirm tree of the slopes). */
+	LARCH(TreeTrunk.LARCH);
 
 	private final TreeTrunk trunk;
 

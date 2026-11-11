@@ -43,7 +43,11 @@ public enum StrippedTrunk {
 	/** Step F6: gray alder, white sapwood turning orange-red in the air, then a pale reddish brown. */
 	GRAY_ALDER(TreeTrunk.GRAY_ALDER, MapColor.TERRACOTTA_ORANGE),
 	/** Step F6: rowan, a reddish white sapwood around a light reddish brown heartwood. */
-	ROWAN(TreeTrunk.ROWAN, MapColor.TERRACOTTA_PINK);
+	ROWAN(TreeTrunk.ROWAN, MapColor.TERRACOTTA_PINK),
+	/** Step TT4: Swiss stone pine, a light yellowish to pinkish white sapwood around a pale reddish brown heartwood. */
+	STONE_PINE(TreeTrunk.STONE_PINE, MapColor.TERRACOTTA_WHITE),
+	/** Step TT4: European larch, a narrow yellowish sapwood around a red-brown heartwood. */
+	LARCH(TreeTrunk.LARCH, MapColor.TERRACOTTA_ORANGE);
 
 	private final TreeTrunk trunk;
 	private final MapColor mapColor;
@@ -99,6 +103,8 @@ public enum StrippedTrunk {
 			case POPLAR -> Blocks.STRIPPED_POPLAR_LOG;
 			case GRAY_ALDER -> ModBlocks.wood(WoodSet.GRAY_ALDER).strippedLog();
 			case ROWAN -> ModBlocks.wood(WoodSet.ROWAN).strippedLog();
+			case STONE_PINE -> ModBlocks.wood(WoodSet.STONE_PINE).strippedLog();
+			case LARCH -> ModBlocks.wood(WoodSet.LARCH).strippedLog();
 		};
 	}
 

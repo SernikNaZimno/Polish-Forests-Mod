@@ -172,6 +172,13 @@ final class ForestPerformance {
 	 * until TT5). The load there measures the cost of the highest terrain (summits up to Y 691) and the Tatra rocks.
 	 */
 	static final int[] TATRA_HIGH_SITE = {-24423, 87771};
+	/**
+	 * Step TT4 (KT-6): the spruce-stone pine forest of the upper regiel on the granite of the same massif (set GAMEPLAY A,
+	 * 1.2 km east of {@link #TATRA_HIGH_SITE}, surface about 1450 m; 95% of the 100-block square around it is the Pino
+	 * cembrae-Piceetum in the classifier), only in the gameplay scale. The load there measures the cost of the stone pine
+	 * and larch stands (the long crowns of the stone pine, the hanging branchlets of the larch).
+	 */
+	static final int[] TATRA_STONE_PINE_SITE = {-23268, 87636};
 
 	/**
 	 * The load and flight measurements in the oak-hornbeam and the fresh pine forest of the world (natural mode) and, from
@@ -195,6 +202,7 @@ final class ForestPerformance {
 		places.add(new Object[] {"montane_spruce_1", MONTANE_SITE[real ? 0 : 1]});
 		if (!real) {
 			places.add(new Object[] {"tatra_high_1", TATRA_HIGH_SITE});
+			places.add(new Object[] {"tatra_stone_pine_1", TATRA_STONE_PINE_SITE});
 		}
 		for (Object[] place : places) {
 			int[] m = (int[]) place[1];

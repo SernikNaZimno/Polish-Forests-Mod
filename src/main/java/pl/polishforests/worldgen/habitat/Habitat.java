@@ -63,6 +63,11 @@ public record Habitat(HabitatBiome biome, Zone zone, ForestSiteType siteType, As
 		return Association.of(code >>> B_ASSOCIATION & 31);
 	}
 
+	/** Step TT4: the code with another association (the other fields kept). */
+	public static int withAssociation(int code, Association association) {
+		return code & ~(31 << B_ASSOCIATION) | association.ordinal() << B_ASSOCIATION;
+	}
+
 	public static LandCover cover(int code) {
 		return LandCover.of(code >>> B_COVER & 3);
 	}

@@ -767,6 +767,10 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 	private static final Object[][] TATRA_HABITATS = {{HabitatBiome.MONTANE_BEECH_FOREST, null},
 			{HabitatBiome.MONTANE_SPRUCE_FOREST, pl.polishforests.worldgen.habitat.Association.ABIETI_PICEETUM},
 			{HabitatBiome.MONTANE_SPRUCE_FOREST, pl.polishforests.worldgen.habitat.Association.POLYSTICHO_PICEETUM},
+			// Step TT4: the spruce-stone pine forest (also in the dwarf pine) and the sunny larch slopes.
+			{HabitatBiome.MONTANE_SPRUCE_FOREST, pl.polishforests.worldgen.habitat.Association.PINO_CEMBRAE_PICEETUM},
+			{HabitatBiome.DWARF_PINE_SCRUB, pl.polishforests.worldgen.habitat.Association.PINO_CEMBRAE_PICEETUM},
+			{HabitatBiome.MONTANE_SPRUCE_FOREST, pl.polishforests.worldgen.habitat.Association.LARCH_SLOPE},
 			{HabitatBiome.DWARF_PINE_SCRUB, null},
 			{HabitatBiome.ALPINE_GRASSLAND, pl.polishforests.worldgen.habitat.Association.ALPINE_SILICATE},
 			{HabitatBiome.ALPINE_GRASSLAND, pl.polishforests.worldgen.habitat.Association.ALPINE_CALCAREOUS},

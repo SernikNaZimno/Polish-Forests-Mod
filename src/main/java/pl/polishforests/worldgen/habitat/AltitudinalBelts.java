@@ -189,7 +189,10 @@ public final class AltitudinalBelts {
 			// timberline, none at TIMBERLINE_ABOVE over it.
 			Zone s0 = h < limit + TIMBERLINE_ABOVE && timberlinePatch(c) > 0.5 + 0.5 * (h - limit) / TIMBERLINE_ABOVE
 					? Zone.TIMBERLINE : Zone.NONE;
-			return HabitatClassifier.Result.of(HabitatBiome.DWARF_PINE_SCRUB, s0, Association.TYPICAL);
+			// Step TT4: the lower part of the dwarf pine on granite and gneiss has single stone pines.
+			Association z = tatraRock && crystalline(rock) && h < limit + STONE_PINE_ABOVE ? Association.PINO_CEMBRAE_PICEETUM
+					: Association.TYPICAL;
+			return HabitatClassifier.Result.of(HabitatBiome.DWARF_PINE_SCRUB, s0, z);
 		}
 		double upper = BeltProfile.blend(UPPER_MONTANE, tatra.upperMontane(), s) + corr;
 		if (above(c, h, upper, BeltProfile.blend(0, tatra.montaneRamp(), s), 2)) {
@@ -197,9 +200,13 @@ public final class AltitudinalBelts {
 					? Zone.TIMBERLINE : Zone.NONE;
 			Association z;
 			if (tatraRock) {
-				// Step TT3: the gullies have the tall herbs, the limestone the Polysticho-Piceetum.
+				// Step TT3: the gullies have the tall herbs, the limestone the Polysticho-Piceetum. Step TT4: on granite and
+				// gneiss the spruce-stone pine forest in the upper part of the belt, below it the larch on the sunny slopes.
 				z = c.t.has(Landform.GULLY) ? Association.GULLY_TALL_HERBS
-						: rock == Substrate.LIMESTONE || rock == Substrate.DOLOMITE ? Association.POLYSTICHO_PICEETUM : Association.TYPICAL;
+						: rock == Substrate.LIMESTONE || rock == Substrate.DOLOMITE ? Association.POLYSTICHO_PICEETUM
+						: !crystalline(rock) ? Association.TYPICAL
+						: stonePine(c, h, limit) ? Association.PINO_CEMBRAE_PICEETUM
+						: larchSlope(c) ? Association.LARCH_SLOPE : Association.TYPICAL;
 			} else {
 				double p0 = c.t.ridgeProfile();
 				z = !Double.isNaN(p0) && p0 < GULLY_RIDGE ? Association.GULLY_TALL_HERBS : Association.TYPICAL;
@@ -211,6 +218,10 @@ public final class AltitudinalBelts {
 		double aspectOffset = c.aspect();
 		if (h >= BeltProfile.blend(LOWER_MONTANE, tatra.lowerMontane(), s) + corr) {
 			if (tatraRock) {
+				// Step TT4: the fir-spruce forest of the granite and gneiss with larch on the sunny slopes.
+				if (crystalline(rock) && larchSlope(c)) {
+					return HabitatClassifier.Result.of(HabitatBiome.MONTANE_SPRUCE_FOREST, Zone.NONE, Association.LARCH_SLOPE);
+				}
 				return tatraForest(rock, poor);
 			}
 			boolean abieti = onRidge && poor || aspectOffset < 0 && h > ABIETI_N
@@ -256,6 +267,43 @@ public final class AltitudinalBelts {
 					poor ? Association.ACIDOPHILOUS : Association.TYPICAL);
 		}
 		return HabitatClassifier.Result.of(HabitatBiome.MONTANE_SPRUCE_FOREST, Zone.NONE, Association.ABIETI_PICEETUM);
+	}
+
+	/** Step TT4: depth (m) below the timberline from which the spruce-stone pine forest grows on granite and gneiss. */
+	static final double STONE_PINE_BELOW = 125;
+	/** Step TT4: half-width (m) of the mosaic of the lower border of the spruce-stone pine forest (Z10). */
+	static final double STONE_PINE_RAMP = 40;
+	/** Step TT4: height (m) over the timberline up to which the dwarf pine on granite and gneiss has single stone pines. */
+	static final double STONE_PINE_ABOVE = 150;
+	/** Step TT4: least {@code Column.aspect()} (the cosine of the aspect from south) of a larch slope: within 60° of south. */
+	static final double LARCH_ASPECT = 0.5;
+	/** Step TT4: share of the sunny slopes in larch patches, and the patch wavelength (m·k). */
+	static final double LARCH_SHARE = 0.45;
+	static final double LARCH_PATCHES = 120;
+
+	/** Step TT4: the crystalline rocks of the Tatras, granite and gneiss (the stone pine and the larch series). */
+	static boolean crystalline(Substrate rock) {
+		return rock == Substrate.GRANITE || rock == Substrate.CRYSTALLINE;
+	}
+
+	/**
+	 * Step TT4: whether a column of the upper montane belt at elevation {@code h} lies in the spruce-stone pine forest
+	 * (research/06 §3.5: Pino cembrae-Piceetum on the granite of the High Tatras, about 1400-1550 m): from
+	 * {@value #STONE_PINE_BELOW} m below the timberline {@code limit} (corrected) up, the border a mosaic of the Tatra noise
+	 * (layer 5) {@value #STONE_PINE_RAMP} m to each side.
+	 */
+	static boolean stonePine(HabitatClassifier.Column c, double h, double limit) {
+		double from = limit - STONE_PINE_BELOW;
+		return h >= from - STONE_PINE_RAMP
+				&& (h >= from + STONE_PINE_RAMP || tatraMosaic(c, 5) < 0.5 + (h - from) / (2 * STONE_PINE_RAMP));
+	}
+
+	/**
+	 * Step TT4: whether a column of the Tatra regiel lies in a larch patch: a sunny slope (within 60° of south) and a patch
+	 * of the Tatra noise (layer 6, {@value #LARCH_PATCHES} m·k) with the share {@value #LARCH_SHARE}.
+	 */
+	static boolean larchSlope(HabitatClassifier.Column c) {
+		return c.aspect() > LARCH_ASPECT && tatraPatch(c, 6, LARCH_PATCHES) < LARCH_SHARE;
 	}
 
 	/** Step TT3: snowbeds in north-facing hollows (cirques, gullies, concave ground): aspect within this many degrees of north. */

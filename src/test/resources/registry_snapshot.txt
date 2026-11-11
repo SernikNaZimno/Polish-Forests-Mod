@@ -390,6 +390,51 @@ block polishforests:hornbeam_trunk states=84 default=parent=down,radius=4,waterl
 block polishforests:hornbeam_wood states=3 default=axis=y
   property axis: x y z
 block polishforests:labrador_tea states=1 default=
+block polishforests:larch_button states=24 default=face=wall,facing=north,powered=false
+  property face: floor wall ceiling
+  property facing: north south west east
+  property powered: true false
+block polishforests:larch_fence states=32 default=east=false,north=false,south=false,waterlogged=false,west=false
+  property east: true false
+  property north: true false
+  property south: true false
+  property waterlogged: true false
+  property west: true false
+block polishforests:larch_fence_gate states=32 default=facing=north,in_wall=false,open=false,powered=false
+  property facing: north south west east
+  property in_wall: true false
+  property open: true false
+  property powered: true false
+block polishforests:larch_leaves states=112 default=distance=7,persistent=false,phase=0,waterlogged=false
+  property distance: 1 2 3 4 5 6 7
+  property persistent: true false
+  property phase: 0 1 2 3
+  property waterlogged: true false
+block polishforests:larch_log states=3 default=axis=y
+  property axis: x y z
+block polishforests:larch_planks states=1 default=
+block polishforests:larch_pressure_plate states=2 default=powered=false
+  property powered: true false
+block polishforests:larch_root_flare states=84 default=parent=down,radius=4,waterlogged=false
+  property parent: down up north south west east
+  property radius: 1 2 3 4 5 6 7
+  property waterlogged: true false
+block polishforests:larch_sapling states=2 default=stage=0
+  property stage: 0 1
+block polishforests:larch_slab states=6 default=type=bottom,waterlogged=false
+  property type: top bottom double
+  property waterlogged: true false
+block polishforests:larch_stairs states=80 default=facing=north,half=bottom,shape=straight,waterlogged=false
+  property facing: north south west east
+  property half: top bottom
+  property shape: straight inner_left inner_right outer_left outer_right
+  property waterlogged: true false
+block polishforests:larch_trunk states=84 default=parent=down,radius=4,waterlogged=false
+  property parent: down up north south west east
+  property radius: 1 2 3 4 5 6 7
+  property waterlogged: true false
+block polishforests:larch_wood states=3 default=axis=y
+  property axis: x y z
 block polishforests:least_willow states=16 default=facing=north,flower_amount=1
   property facing: north south west east
   property flower_amount: 1 2 3 4
@@ -547,6 +592,7 @@ block polishforests:potted_elm_sapling states=1 default=
 block polishforests:potted_fir_sapling states=1 default=
 block polishforests:potted_gray_alder_sapling states=1 default=
 block polishforests:potted_hornbeam_sapling states=1 default=
+block polishforests:potted_larch_sapling states=1 default=
 block polishforests:potted_linden_sapling states=1 default=
 block polishforests:potted_norway_maple_sapling states=1 default=
 block polishforests:potted_oak_sapling states=1 default=
@@ -555,6 +601,7 @@ block polishforests:potted_poplar_sapling states=1 default=
 block polishforests:potted_rowan_sapling states=1 default=
 block polishforests:potted_scots_pine_sapling states=1 default=
 block polishforests:potted_spruce_sapling states=1 default=
+block polishforests:potted_stone_pine_sapling states=1 default=
 block polishforests:potted_sycamore_maple_sapling states=1 default=
 block polishforests:potted_white_willow_sapling states=1 default=
 block polishforests:purple_moor_grass states=1 default=
@@ -687,6 +734,51 @@ block polishforests:spruce_trunk states=84 default=parent=down,radius=4,waterlog
   property parent: down up north south west east
   property radius: 1 2 3 4 5 6 7
   property waterlogged: true false
+block polishforests:stone_pine_button states=24 default=face=wall,facing=north,powered=false
+  property face: floor wall ceiling
+  property facing: north south west east
+  property powered: true false
+block polishforests:stone_pine_fence states=32 default=east=false,north=false,south=false,waterlogged=false,west=false
+  property east: true false
+  property north: true false
+  property south: true false
+  property waterlogged: true false
+  property west: true false
+block polishforests:stone_pine_fence_gate states=32 default=facing=north,in_wall=false,open=false,powered=false
+  property facing: north south west east
+  property in_wall: true false
+  property open: true false
+  property powered: true false
+block polishforests:stone_pine_leaves states=112 default=distance=7,persistent=false,phase=0,waterlogged=false
+  property distance: 1 2 3 4 5 6 7
+  property persistent: true false
+  property phase: 0 1 2 3
+  property waterlogged: true false
+block polishforests:stone_pine_log states=3 default=axis=y
+  property axis: x y z
+block polishforests:stone_pine_planks states=1 default=
+block polishforests:stone_pine_pressure_plate states=2 default=powered=false
+  property powered: true false
+block polishforests:stone_pine_root_flare states=84 default=parent=down,radius=4,waterlogged=false
+  property parent: down up north south west east
+  property radius: 1 2 3 4 5 6 7
+  property waterlogged: true false
+block polishforests:stone_pine_sapling states=2 default=stage=0
+  property stage: 0 1
+block polishforests:stone_pine_slab states=6 default=type=bottom,waterlogged=false
+  property type: top bottom double
+  property waterlogged: true false
+block polishforests:stone_pine_stairs states=80 default=facing=north,half=bottom,shape=straight,waterlogged=false
+  property facing: north south west east
+  property half: top bottom
+  property shape: straight inner_left inner_right outer_left outer_right
+  property waterlogged: true false
+block polishforests:stone_pine_trunk states=84 default=parent=down,radius=4,waterlogged=false
+  property parent: down up north south west east
+  property radius: 1 2 3 4 5 6 7
+  property waterlogged: true false
+block polishforests:stone_pine_wood states=3 default=axis=y
+  property axis: x y z
 block polishforests:stripped_ash_log states=3 default=axis=y
   property axis: x y z
 block polishforests:stripped_ash_trunk states=84 default=parent=down,radius=4,waterlogged=false
@@ -747,6 +839,14 @@ block polishforests:stripped_hornbeam_trunk states=84 default=parent=down,radius
   property waterlogged: true false
 block polishforests:stripped_hornbeam_wood states=3 default=axis=y
   property axis: x y z
+block polishforests:stripped_larch_log states=3 default=axis=y
+  property axis: x y z
+block polishforests:stripped_larch_trunk states=84 default=parent=down,radius=4,waterlogged=false
+  property parent: down up north south west east
+  property radius: 1 2 3 4 5 6 7
+  property waterlogged: true false
+block polishforests:stripped_larch_wood states=3 default=axis=y
+  property axis: x y z
 block polishforests:stripped_linden_log states=3 default=axis=y
   property axis: x y z
 block polishforests:stripped_linden_trunk states=84 default=parent=down,radius=4,waterlogged=false
@@ -791,6 +891,14 @@ block polishforests:stripped_spruce_trunk states=84 default=parent=down,radius=4
   property parent: down up north south west east
   property radius: 1 2 3 4 5 6 7
   property waterlogged: true false
+block polishforests:stripped_stone_pine_log states=3 default=axis=y
+  property axis: x y z
+block polishforests:stripped_stone_pine_trunk states=84 default=parent=down,radius=4,waterlogged=false
+  property parent: down up north south west east
+  property radius: 1 2 3 4 5 6 7
+  property waterlogged: true false
+block polishforests:stripped_stone_pine_wood states=3 default=axis=y
+  property axis: x y z
 block polishforests:stripped_sycamore_maple_log states=3 default=axis=y
   property axis: x y z
 block polishforests:stripped_sycamore_maple_trunk states=84 default=parent=down,radius=4,waterlogged=false
@@ -1044,6 +1152,19 @@ item polishforests:hornbeam_stairs block=polishforests:hornbeam_stairs
 item polishforests:hornbeam_trunk block=polishforests:hornbeam_trunk
 item polishforests:hornbeam_wood block=polishforests:hornbeam_wood
 item polishforests:labrador_tea block=polishforests:labrador_tea
+item polishforests:larch_button block=polishforests:larch_button
+item polishforests:larch_fence block=polishforests:larch_fence
+item polishforests:larch_fence_gate block=polishforests:larch_fence_gate
+item polishforests:larch_leaves block=polishforests:larch_leaves
+item polishforests:larch_log block=polishforests:larch_log
+item polishforests:larch_planks block=polishforests:larch_planks
+item polishforests:larch_pressure_plate block=polishforests:larch_pressure_plate
+item polishforests:larch_root_flare block=polishforests:larch_root_flare
+item polishforests:larch_sapling block=polishforests:larch_sapling
+item polishforests:larch_slab block=polishforests:larch_slab
+item polishforests:larch_stairs block=polishforests:larch_stairs
+item polishforests:larch_trunk block=polishforests:larch_trunk
+item polishforests:larch_wood block=polishforests:larch_wood
 item polishforests:least_willow block=polishforests:least_willow
 item polishforests:lesser_celandine block=polishforests:lesser_celandine
 item polishforests:limestone block=polishforests:limestone
@@ -1130,6 +1251,19 @@ item polishforests:spruce_leaves block=polishforests:spruce_leaves
 item polishforests:spruce_root_flare block=polishforests:spruce_root_flare
 item polishforests:spruce_sapling block=polishforests:spruce_sapling
 item polishforests:spruce_trunk block=polishforests:spruce_trunk
+item polishforests:stone_pine_button block=polishforests:stone_pine_button
+item polishforests:stone_pine_fence block=polishforests:stone_pine_fence
+item polishforests:stone_pine_fence_gate block=polishforests:stone_pine_fence_gate
+item polishforests:stone_pine_leaves block=polishforests:stone_pine_leaves
+item polishforests:stone_pine_log block=polishforests:stone_pine_log
+item polishforests:stone_pine_planks block=polishforests:stone_pine_planks
+item polishforests:stone_pine_pressure_plate block=polishforests:stone_pine_pressure_plate
+item polishforests:stone_pine_root_flare block=polishforests:stone_pine_root_flare
+item polishforests:stone_pine_sapling block=polishforests:stone_pine_sapling
+item polishforests:stone_pine_slab block=polishforests:stone_pine_slab
+item polishforests:stone_pine_stairs block=polishforests:stone_pine_stairs
+item polishforests:stone_pine_trunk block=polishforests:stone_pine_trunk
+item polishforests:stone_pine_wood block=polishforests:stone_pine_wood
 item polishforests:stripped_ash_log block=polishforests:stripped_ash_log
 item polishforests:stripped_ash_trunk block=polishforests:stripped_ash_trunk
 item polishforests:stripped_ash_wood block=polishforests:stripped_ash_wood
@@ -1152,6 +1286,9 @@ item polishforests:stripped_gray_alder_wood block=polishforests:stripped_gray_al
 item polishforests:stripped_hornbeam_log block=polishforests:stripped_hornbeam_log
 item polishforests:stripped_hornbeam_trunk block=polishforests:stripped_hornbeam_trunk
 item polishforests:stripped_hornbeam_wood block=polishforests:stripped_hornbeam_wood
+item polishforests:stripped_larch_log block=polishforests:stripped_larch_log
+item polishforests:stripped_larch_trunk block=polishforests:stripped_larch_trunk
+item polishforests:stripped_larch_wood block=polishforests:stripped_larch_wood
 item polishforests:stripped_linden_log block=polishforests:stripped_linden_log
 item polishforests:stripped_linden_trunk block=polishforests:stripped_linden_trunk
 item polishforests:stripped_linden_wood block=polishforests:stripped_linden_wood
@@ -1167,6 +1304,9 @@ item polishforests:stripped_scots_pine_log block=polishforests:stripped_scots_pi
 item polishforests:stripped_scots_pine_trunk block=polishforests:stripped_scots_pine_trunk
 item polishforests:stripped_scots_pine_wood block=polishforests:stripped_scots_pine_wood
 item polishforests:stripped_spruce_trunk block=polishforests:stripped_spruce_trunk
+item polishforests:stripped_stone_pine_log block=polishforests:stripped_stone_pine_log
+item polishforests:stripped_stone_pine_trunk block=polishforests:stripped_stone_pine_trunk
+item polishforests:stripped_stone_pine_wood block=polishforests:stripped_stone_pine_wood
 item polishforests:stripped_sycamore_maple_log block=polishforests:stripped_sycamore_maple_log
 item polishforests:stripped_sycamore_maple_trunk block=polishforests:stripped_sycamore_maple_trunk
 item polishforests:stripped_sycamore_maple_wood block=polishforests:stripped_sycamore_maple_wood

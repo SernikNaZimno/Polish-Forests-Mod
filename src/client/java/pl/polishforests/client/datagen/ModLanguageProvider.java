@@ -140,6 +140,8 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		ASSOCIATIONS.put("snowbed", new String[] {"snowbed", "wyleżysko śnieżne"});
 		ASSOCIATIONS.put("rock_grassland", new String[] {"rock grassland", "murawa naskalna"});
 		ASSOCIATIONS.put("polysticho_piceetum", new String[] {"spruce forest on limestone (Polysticho-Piceetum)", "świerczyna nawapienna (Polysticho-Piceetum)"});
+		ASSOCIATIONS.put("pino_cembrae_piceetum", new String[] {"spruce-stone pine forest (Pino cembrae-Piceetum)", "limbowa świerczyna (Pino cembrae-Piceetum)"});
+		ASSOCIATIONS.put("larch_slope", new String[] {"sunny slope with larch", "słoneczny stok z modrzewiem"});
 
 		SOILS.put("initial_podzol", new String[] {"initial podzol", "gleba bielicowa inicjalna"});
 		SOILS.put("podzol", new String[] {"podzol", "gleba bielicowa"});
@@ -199,6 +201,7 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		SPECIES.put("ivy", new String[] {"ivy", "bluszcz"});
 		SPECIES.put("alder_buckthorn", new String[] {"alder buckthorn", "kruszyna pospolita"});
 		SPECIES.put("bird_cherry", new String[] {"bird cherry", "czeremcha zwyczajna"});
+		SPECIES.put("stone_pine", new String[] {"Swiss stone pine", "limba"});
 	}
 
 	private final boolean polish;

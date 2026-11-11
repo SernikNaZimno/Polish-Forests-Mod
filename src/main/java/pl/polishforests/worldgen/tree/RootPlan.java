@@ -132,6 +132,11 @@ public final class RootPlan {
 			// the montane spruce forest.
 			case GRAY_ALDER -> new Habit(2, 4, 2, 5, 7, 0.8, 2, 3, 0, false);
 			case ROWAN -> new Habit(2, 4, 1, 4, 6, 0.7, 2, 3, 0, false);
+			// Step TT4: the stone pine, a deep anchoring root system (a short tap root, strong laterals wedged into the
+			// cracks of the granite, sinkers) with low, strong flares, the most windfirm tree of the timberline; the larch, a
+			// deep heart root system with a strong tap root and sinkers, windfirm on the slopes.
+			case STONE_PINE -> new Habit(3, 5, 2, 4, 6, 0.85, 3, 4, 3, true);
+			case LARCH -> new Habit(3, 5, 3, 4, 6, 0.85, 3, 5, 4, true);
 			default -> throw new IllegalArgumentException("no root habit for " + species);
 		};
 	}

@@ -1,0 +1,13 @@
+{
+  "variants": {
+    "type=bottom": {
+      "model": "polishforests:block/larch_slab"
+    },
+    "type=double": {
+      "model": "polishforests:block/larch_planks"
+    },
+    "type=top": {
+      "model": "polishforests:block/larch_slab_top"
+    }
+  }
+}

@@ -43,7 +43,8 @@ class StandCensusSimulationTest {
 			ForestNorms.COMPOSITION + "birch", ForestNorms.COMPOSITION + "hornbeam", ForestNorms.COMPOSITION + "beech",
 			ForestNorms.COMPOSITION + "black_alder", ForestNorms.COMPOSITION + "elm", ForestNorms.COMPOSITION + "fir",
 			ForestNorms.COMPOSITION + "white_willow", ForestNorms.COMPOSITION + "poplar", ForestNorms.COMPOSITION + "spruce",
-			ForestNorms.COMPOSITION + "gray_alder", ForestNorms.COMPOSITION + "rowan", ForestNorms.UNDERSTORY, ForestNorms.CANOPY, ForestNorms.GAP_SHARE, ForestNorms.GAP_DIAMETER,
+			ForestNorms.COMPOSITION + "gray_alder", ForestNorms.COMPOSITION + "rowan",
+			ForestNorms.COMPOSITION + "stone_pine", ForestNorms.COMPOSITION + "larch", ForestNorms.UNDERSTORY, ForestNorms.CANOPY, ForestNorms.GAP_SHARE, ForestNorms.GAP_DIAMETER,
 			ForestNorms.REGENERATION_RATIO, ForestNorms.OAK_REGENERATION, ForestNorms.PINE_REGENERATION_UNDER_CANOPY,
 			ForestNorms.TOP_HEIGHT, ForestNorms.BARE_WOOD, ForestNorms.EXPOSED_WOOD, ForestNorms.BARE_ARMS,
 			ForestNorms.DEADWOOD_PER_CHUNK, ForestNorms.PIECES_PER_CHUNK, ForestNorms.LOGS_PER_CHUNK, ForestNorms.SNAGS_PER_CHUNK,
@@ -78,13 +79,18 @@ class StandCensusSimulationTest {
 													? new ForestSiteType[] {ForestSiteType.BOGGY_CONIFEROUS, ForestSiteType.BOGGY_MIXED_CONIFEROUS}
 													// Step F5: the willow forest and the white poplar forest (Populetum albae).
 													// Step F6: the montane spruce forest in its typical and its fir form (Abieti-Piceetum).
-													: biome == HabitatBiome.WILLOW_POPLAR_FOREST || biome == HabitatBiome.MONTANE_SPRUCE_FOREST
-															? new ForestSiteType[] {ForestSiteType.NONE, ForestSiteType.NONE}
-															: new ForestSiteType[] {ForestSiteType.NONE};
+													// Step TT4: and its stone pine form (Pino cembrae-Piceetum, natural only).
+													: biome == HabitatBiome.MONTANE_SPRUCE_FOREST
+															? natural ? new ForestSiteType[] {ForestSiteType.NONE, ForestSiteType.NONE, ForestSiteType.NONE}
+																	: new ForestSiteType[] {ForestSiteType.NONE, ForestSiteType.NONE}
+															: biome == HabitatBiome.WILLOW_POPLAR_FOREST
+																	? new ForestSiteType[] {ForestSiteType.NONE, ForestSiteType.NONE}
+																	: new ForestSiteType[] {ForestSiteType.NONE};
 			for (int i = 0; i < sites.length; i++) {
 				ForestSiteType site = sites[i];
 				Association association = biome == HabitatBiome.WILLOW_POPLAR_FOREST && i == 1 ? Association.POPULETUM_ALBAE
 						: biome == HabitatBiome.MONTANE_SPRUCE_FOREST && i == 1 ? Association.ABIETI_PICEETUM
+						: biome == HabitatBiome.MONTANE_SPRUCE_FOREST && i == 2 ? Association.PINO_CEMBRAE_PICEETUM
 						: biome != HabitatBiome.MONTANE_BEECH_FOREST ? Association.TYPICAL
 								: i == 1 ? Association.ACIDOPHILOUS : i == 2 ? Association.SYCAMORE_RAVINE_FOREST : Association.TYPICAL;
 				for (AgeClass age : AgeClass.values()) {
@@ -108,7 +114,8 @@ class StandCensusSimulationTest {
 		}
 		SimulatedStands.plant(biome, site, association, natural, age, CHUNKS, (vox, species, layer) -> write(grid, vox, species));
 		// Step V11: the dead wood of the generated palette, as the dead wood layer and DeadwoodFeature place it.
-		deadwood(grid, biome, SimulatedStands.stand(pl.polishforests.worldgen.tree.StandProfile.of(biome), age, natural), side);
+		deadwood(grid, biome, association, SimulatedStands.stand(pl.polishforests.worldgen.tree.StandProfile.of(biome, association), age,
+				natural), side);
 		ForestCensus.Census census = ForestCensus.of(grid);
 		ForestNorms.Site variant = ForestNorms.siteOf(pl.polishforests.worldgen.habitat.Habitat.pack(biome,
 				pl.polishforests.worldgen.habitat.Zone.NONE, site, association, pl.polishforests.worldgen.habitat.LandCover.FOREST, 0,
@@ -146,13 +153,30 @@ class StandCensusSimulationTest {
 	 * {@link DeadwoodPlan#request} is planned and written ({@link DeadwoodGrid}).
 	 */
 	static void deadwood(CensusGrid grid, HabitatBiome biome, StandMap stands, int side) {
+		deadwood(grid, biome, Association.TYPICAL, stands, side);
+	}
+
+	/**
+	 * As {@link #deadwood(CensusGrid, HabitatBiome, StandMap, int)} for an association: step TT4, the rule of the stone pine
+	 * forest (the first rule of the biome with the association) when the association has one, else the last rule of the
+	 * biome as before.
+	 */
+	static void deadwood(CensusGrid grid, HabitatBiome biome, Association association, StandMap stands, int side) {
 		JsonObject rule = null;
+		JsonObject own = null;
 		for (JsonElement e : EcotoneSharpnessTest.rules("deadwood")) {
 			for (JsonElement b : e.getAsJsonObject().getAsJsonArray("biomes")) {
 				if (b.getAsString().equals(biome.id())) {
 					rule = e.getAsJsonObject();
+					if (own == null && association == Association.PINO_CEMBRAE_PICEETUM && rule.has("associations")
+							&& rule.getAsJsonArray("associations").toString().contains(association.name().toLowerCase(Locale.ROOT))) {
+						own = rule;
+					}
 				}
 			}
+		}
+		if (own != null) {
+			rule = own;
 		}
 		if (rule == null) {
 			throw new AssertionError("no dead wood rule for " + biome.id());

@@ -5068,6 +5068,103 @@ Drobne wybory: `docs/00` G.52 (TT3-a … TT3-l z etapu 1, TT3-m … TT3-q z etap
 10. Przejście z Podhala do Tatr: piętra i lasy zmieniają się płynnie, bez prostej linii.
 11. Stary świat albo świat bez Tatr: piętra Beskidów, lasy i hale jak dotąd.
 
+## Projekt TT4 (2026-11-11, etap 1: kod, dane, tekstury, testy jednostkowe)
+
+Krok TT4 planu „Kroki TT” (§3): limba i modrzew europejski, limbowa świerczyna (Pino cembrae-Piceetum) na granicie i gnejsie górnej części regla górnego Tatr oraz modrzew na słonecznych stokach obu regli. Obejmuje dwa nowe gatunki z pełnym zestawem bloków i tekstur, dwa zespoły, palety, wariant `StandProfile` i `ForestBlend`, zasięgi `SpeciesRanges`, kartę norm i testy. Przebiegi w grze, pomiar KT-6 i „Stan po TT4” należą do etapu 2; wybory TT4-a … TT4-j do `docs/00` G.53 wpisze etap 2. Baza kroku: `2812939`.
+
+**Gatunki i bloki (TT4-b, TT4-e, TT4-g).**
+
+- `Species.STONE_PINE` na końcu enumu (`LARCH` istniał od M1 bez bloków). Oba dostają pełny zestaw: `WoodSet` (kłoda, drewno, okorowane, deski, schody, płyta, płot, furtka, przycisk, płyta naciskowa), `TreeTrunk`, `StrippedTrunk`, `RootFlare`, `TreeFoliage`, sadzonka (trzy wielkości) i sadzonka w doniczce. Migawka rejestru świadomie +140 linii (same dopisane).
+- Barwy: limba szara do szarobrązowej, płytko spękana w drobne łuski z rdzawym odcieniem w szczelinach, igły w piątkach ciemne niebieskozielone (`0x4A7A68`, zimą przyciemnione jak inne iglaste); modrzew grubo i głęboko spękany, szarobrązowy na grzbietach i czerwonobrązowy w bruzdach, drewno czerwonobrązowe.
+- Modrzew jest jedynym iglastym, który zrzuca igły: w `FoliageCurve` ma krzywą liściastą (jasnozielony od kroku 5,9, złoty od 21,6, opadanie 22,8–23,6, bezlistne okno z szarożółtą mgiełką gałązek). `TreeFoliage.evergreen()` (iglaste bez modrzewia) zastępuje `conifer()` tam, gdzie chodzi o zimozieloność: modele gałązek, `ClientSeasonModels`, gametest `SeasonSamples`.
+- Sęki desek obu gatunków = 1 (przy ≥ 2 `PlanksTextureTest` nie wykrywa styków na nowych paletach, TT4-g).
+
+**Pokroje (`SpeciesShape`, `TreeShapePlan`, TT4-e).**
+
+- Limba: niższa od świerka (szczyt 9–18 bloków według wieku, model 14,2 wobec świerka 26,2), gęsta, długa korona szeroka u dołu (promień 2,2), pędzle igieł na końcach i wzdłuż zewnętrznych węzłów gałęzi. `SpeciesShape.longCrown`: dno warstwy koron schodzi do dolnego podziału (bez tego korona była ścinana do 54 liści; teraz 142).
+- Modrzew: wysoki (szczyt 15–32 według wieku, model 27,4), smukły, luźna stożkowa korona (promień 1,8) z gałęziami opadającymi łukiem i zwisającymi gałązkami (krótkopędy: kępki na co drugim węźle).
+- Martwe drewno (`DeadwoodPlan`): limba częściej zostaje jako złom i posusz (wiatroodporna, zamiera stojąc), modrzew jak świerk; korzenie (`RootPlan`) obu głębokie i kotwiczące (gleby szkieletowe).
+
+**Zespoły (`AltitudinalBelts`, TT4-a, TT4-f).** Tylko na skale Tatr (`Substrate.isTatraRock`) i tylko na granicie i gnejsie (wapień i dolomit bez limby i modrzewia):
+
+- `PINO_CEMBRAE_PICEETUM` w reglu górnym od 125 m poniżej granicy lasu, z mozaiką ±40 m (warstwa 5 szumu `habitat.tatra.mosaic`); żleby zostają przy ziołoroślach, wapień przy Polysticho-Piceetum.
+- Ten sam zespół w kosodrzewinie do 150 m nad granicą lasu (pojedyncze limby w kosówce).
+- `LARCH_SLOPE`: stoki o ekspozycji południowej (ekspozycja > 0,5, czyli do 60° od południa) w płatach 45% (warstwa 6 tego samego szumu, skala 120 m) w obu reglach; w reglu dolnym przed regułą `tatraForest`.
+- Bez nowej soli szumu: nowe warstwy to przesunięcia istniejącego pola. `Association` +2 (25 z 32), stałe na końcu. Poza skałą Tatr kod siedliska bez zmian.
+
+**Zasięgi (`SpeciesRanges`, TT4-j).** `TATRA_ONLY` = limba i modrzew; oba występują tylko w paletach zespołów `TATRA_ASSOCIATIONS` (oraz w regule strefy granicy lasu z tym zespołem). Modrzew poza Tatrami (Sudety, Góry Świętokrzyskie, nasadzenia) zostaje na później.
+
+**Palety (`ModVegetation`, przed regułami ogólnymi).**
+
+| Reguła | Drzewostan | Na chunk |
+|---|---|---|
+| świerczyna + Pino cembrae-Piceetum | a1 świerk (postać górska) 440, limba 400, modrzew 110, jarząb 50; a2 limba 420, świerk 300, jarząb 280; odnowienie świerk, jarząb, limba (orzechówka), modrzew w lukach | 10 |
+| świerczyna + słoneczny stok | świerk 600, jodła 220 i buk 40 (pełne wagi, czyli tylko w ich zasięgu), modrzew 160, jarząb 60; modrzew i brzoza w lukach | 12 |
+| kosodrzewina + Pino cembrae-Piceetum | limba 550, karłowy świerk 300, jarząb 150 (szanse kosodrzewiny) | 1,5 |
+| strefa granicy lasu + Pino cembrae-Piceetum | limba 450, karłowy świerk 450, jarząb 100 | 4 |
+
+Szanse limbowej świerczyny niższe niż w świerczynie (zwarcie 40–70%, luźne kępy). Martwe drewno: osobne reguły dla obu zespołów i kosodrzewiny z limbą (świerk górski, limba, modrzew, pniaki). Runo bez nowych reguł: pasują reguły ogólne świerczyny i kosodrzewiny (TT4-h).
+
+**Wariant drzewostanu (TT4-c, TT4-d).**
+
+- `StandProfile.STONE_PINE`: luki mniejsze i rzadsze niż w świerczynie (zwykle 8–30 m, często po dwie), bez gniazd odnowienia (park narodowy, tylko lasy naturalne); szanse w granicach tablicy, więc `ALL` nie podnosi maksimów i inne lasy losują jak dotąd. `StandProfile.of(biome, association)`.
+- `ForestBlend`: bit 7 wpisu kraty (`STONE_PINE_VARIANT`) dla punktu świerczyny w limbowej świerczynie; `standProfiles()` daje dla niego profil limbowy. `partner(base, b)`: kolumna z limbowej świerczyny dziedziczy zespół, gdy partnerem mieszania jest świerczyna albo kosodrzewina (seria limbowa przechodzi przez granicę lasu), każda inna kolumna dostaje kod kanoniczny jak dotąd. `SHARES` bez zmian.
+
+**Karta norm (`ForestNorms`, TT4-c).** Wariant siedliska `Site.STONE_PINE` lasu `MONTANE_SPRUCE_NATURAL` (tylko naturalny), L 06 §3.5, §5.1:
+
+| Norma | Zakres |
+|---|---|
+| N1 drzew na chunk | 5–13 |
+| N3 świerk / limba / modrzew / jarząb | 40–60 / 20–40 / 5–20 / 0–15% |
+| N4 zwarcie | 40–70% |
+| N7 podszyt | 0–20% |
+| zioła / borówka / mchy | 40–90 / 20–60 / 50–95% |
+| N10 obiektów na chunk / objętość / grube | 2,5 / 60–200 / ≥ 3 (szeroka tolerancja) |
+
+`ForestNorms.COMPOSITION_KEYS` i `ForestCensus` znają `stone_pine` i `larch` (modrzew do tej pory szedł do „other”).
+
+Kalibracja (`StandCensusSimulationTest -PcalibrateSlice -PcalibrateOnly=montane_spruce_forest:natural`, 49 przebiegów na klasę wieku), średnie:
+
+| Klasa | N1 | świerk | limba | modrzew | zwarcie | N10 obiekty / objętość |
+|---|---|---|---|---|---|---|
+| tyczkowina | 10,6 | 51,4 | 36,7 | 11,9 | 50,9 | 2,34 / 151 |
+| drzewostan dojrzały | 7,5 | 57,2 | 28,9 | 13,9 | 54,3 | 2,40 / 160 |
+| starodrzew | 7,4 | 49,0 | 39,6 | 11,4 | 60,9 | 2,38 / 161 |
+
+Średnie wszystkich klas mieszczą się w karcie. Pojedyncze przebiegi wychodzą poza nią: limba w drzewostanie dojrzałym 14 z 49 (zakres 11–54%), w starodrzewie 7 z 49 (średnia 39,6% przy górnej granicy). Pierwsza wersja palety (świerk 470, limba 340, tyczkowina modrzewia 17) dawała limbę 11,9 / 20,3 / 32,1% i świerk 70% w tyczkowinie. Przy tyczkowinie 17 modrzew wchodził w młodym drzewostanie do a1 przed limbą; przy 15 zostaje częściej w a2. Do oceny w etapie 2 (`slice` nie ma Tatr, więc karta całości tego wariantu nie liczy).
+
+**Komendy i nazwy.** Nazwy gatunków, zespołów i bloków en i pl (limba, modrzew europejski, limbowa świerczyna, słoneczny stok z modrzewiem). `find biome montane_spruce_forest` i `here` pokazują zespół; nowych biomów ani stref nie ma.
+
+**Testy.**
+
+- `TatraStonePineStepTT4Test`:
+  - pokroje: limba niższa od świerka (szczyt 9–20), modrzew co najmniej 0,9 wysokości świerka;
+  - bloki nowych gatunków, `evergreen()`;
+  - modrzew złocieje i zrzuca igły;
+  - limba i modrzew tylko w paletach zespołów Tatr (`tree_stand.json`, `deadwood.json`);
+  - zespoły na siatce 24 m masywu ziarna A:
+    - limbowa świerczyna 7585 kolumn, kosodrzewina z limbą 9295, słoneczne stoki 3836;
+    - las na skale krystalicznej 1440–1520 m w 87% limbowy;
+    - 0 kolumn serii poza skałą krystaliczną, poniżej 700 m albo (limbowa świerczyna) poniżej 1200 m;
+    - 0 kolumn serii przy wTatra ≤ 0,3;
+  - `ForestBlend.partner` zachowuje serię;
+  - karta norm.
+- Zmienione: `FoliageCurveTest`, `ForestCensusTest`, `WoodSetTest`, `ProceduralTreeStatesTest` (gatunek bez bloków: cis zamiast modrzewia), `StandCensusSimulationTest` (wariant limbowy świerczyny), `TreeShapePlanTest` (długa korona limby schodzi do dolnego podziału; nowe gatunki poza sumą kontrolną wcześniejszych kroków, która się nie zmienia), migawka rejestru, tekstury (`tools/art`: 235 tekstur, lint przechodzi). `SaplingSizeTest`: tyczkowina modrzewia 15 bloków (przy 17 mała sadzonka po skalowaniu do 16 miała z wierzchołkiem 18 bloków, tylko 2 mniej od średniej).
+- Gametesty: listy gatunków `DeadwoodSamples`, `FellingSamples`, `RootSamples`, `TrunkSamples`. Miejsce KT-6 `tatra_stone_pine_1` (−23 268, 87 636) w `ForestPerformance`: 1,2 km na wschód od `tatra_high_1`, 95% kwadratu 100 bloków to limbowa świerczyna.
+
+Wybory domyślne (do G.53):
+
+- (a) Limbowa świerczyna od 125 m pod granicą lasu (mozaika ±40 m), w kosodrzewinie do +150 m; modrzew na stokach do 60° od południa w płatach 45%; wszystko tylko na granicie i gnejsie.
+- (b) Modrzew z krzywą liściastą w `FoliageCurve`, rozdział `evergreen()` i `conifer()`.
+- (c) Karta tylko dla lasu naturalnego (park), wariant siedliska `STONE_PINE`.
+- (d) `ForestBlend`: dziedziczenie zespołu przez partnera i bit wariantu w kracie, `SHARES` bez zmian.
+- (e) Długa korona limby do dolnego podziału.
+- (f) Bez nowej soli: warstwy 5 i 6 `habitat.tatra.mosaic`.
+- (g) Sęki desek 1.
+- (h) Bez własnego runa.
+- (i) Limba w strefie granicy lasu.
+- (j) Modrzew tylko w Tatrach (przez palety), inne zasięgi później.
+
 ## Do kroku porządkowego (lista drobiazgów z recenzji)
 
 Lista założona w V10 według decyzji użytkownika z 2026-10-21 (`docs/00` F, P4): drobiazgi widoczne tylko na zbliżeniach albo w pomiarach bez wpływu na grę nie są poprawiane od razu, tylko trafiają tutaj; zbiorczy krok porządkowy na końcu kamienia milowego przegląda listę i poprawia, co warto. Każdy wpis: krok, w którym powstał, opis, gdzie szukać, propozycja. Wpis usuwamy (albo przekreślamy z commitem), gdy jest zrobiony.

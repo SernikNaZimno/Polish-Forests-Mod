@@ -98,8 +98,19 @@ public record StandProfile(double naturalFactor, double[] managedAges, double[] 
 	 */
 	public static final StandProfile MONTANE_SPRUCE = new StandProfile(1.0, DEFAULT.managedAges, DEFAULT.naturalAges,
 			ForestStandMap.MERGE_CHANCE, new double[] {0.12, 0.42, 0.50}, 0.7, 20, 0.45, 10, 40, new double[] {0, 0.10, 0.20}, 20);
+	/**
+	 * The spruce-stone pine forest of the Tatras (step TT4; research/06 §3.5): the variant of the montane spruce forest of
+	 * {@code ForestBlend} where its lattice point lies in the Pino cembrae-Piceetum. A loose stand of clumps whose gaps are
+	 * smaller and fewer than in the spruce forest (the windfirm, slowly dying stone pines, the larch in the gaps: mostly
+	 * 8-30 m, often two together); no managed stands (the Tatra National Park), so no regeneration nests. The ages and the
+	 * size of the stands are those of the slice, and the gap chances stay within those of the table, so the stands and the
+	 * gap draws of the other forests do not change.
+	 */
+	public static final StandProfile STONE_PINE = new StandProfile(1.0, DEFAULT.managedAges, DEFAULT.naturalAges,
+			ForestStandMap.MERGE_CHANCE, new double[] {0.10, 0.36, 0.44}, 0.6, 16, 0.45, 8, 32, new double[] {0, 0, 0}, 0);
 	/** All profiles of the table (the gap process draws against the highest chance of any of them). */
-	static final StandProfile[] ALL = {DEFAULT, BEECH, ALDER_CARR, ASH_ALDER, FIR, MONTANE_BEECH, FLOODPLAIN, MONTANE_SPRUCE};
+	static final StandProfile[] ALL = {DEFAULT, BEECH, ALDER_CARR, ASH_ALDER, FIR, MONTANE_BEECH, FLOODPLAIN, MONTANE_SPRUCE,
+			STONE_PINE};
 
 	public StandProfile {
 		if (managedAges.length != 3 || naturalAges.length != 3 || gapChance.length != 3 || nestChance.length != 3) {
@@ -126,6 +137,17 @@ public record StandProfile(double naturalFactor, double[] managedAges, double[] 
 			case GRAY_ALDER_FOREST -> ASH_ALDER;
 			default -> DEFAULT;
 		};
+	}
+
+	/**
+	 * Step TT4: the profile of a forest of an association: the spruce-stone pine forest variant of the montane spruce forest
+	 * ({@link #STONE_PINE}), else {@link #of(HabitatBiome)}.
+	 */
+	public static StandProfile of(@Nullable HabitatBiome biome, pl.polishforests.worldgen.habitat.Association association) {
+		if (biome == HabitatBiome.MONTANE_SPRUCE_FOREST && association == pl.polishforests.worldgen.habitat.Association.PINO_CEMBRAE_PICEETUM) {
+			return STONE_PINE;
+		}
+		return of(biome);
 	}
 
 	/** Whether the stands themselves (natural share, ages, size) differ from {@link #DEFAULT} (not only the gaps). */

@@ -37,7 +37,9 @@ public enum Species {
 	/** Alder buckthorn, Frangula alnus (the shrub layer of the pine forests, step V9). */
 	ALDER_BUCKTHORN("alder_buckthorn", true, -1),
 	/** Bird cherry, Prunus padus (the shrub layer and a2 of the ash-alder and alder forests, step F2). */
-	BIRD_CHERRY("bird_cherry", true, -1);
+	BIRD_CHERRY("bird_cherry", true, -1),
+	/** Swiss stone pine, Pinus cembra (the spruce-stone pine forest of the upper Tatra regiel and single trees in the dwarf pine, step TT4). */
+	STONE_PINE("stone_pine", false, -1);
 
 	/** Species flags in the habitat code: bit 0 beech, 1 fir, 2 native spruce, 3 hornbeam. */
 	public static final int FLAG_BEECH = 1;

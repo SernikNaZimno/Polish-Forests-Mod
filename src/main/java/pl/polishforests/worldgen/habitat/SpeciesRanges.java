@@ -54,6 +54,22 @@ public final class SpeciesRanges {
 				&& h <= Calibration.LARCH_H_TO;
 	}
 
+	/**
+	 * Step TT4: the species of the Tatras only: the Swiss stone pine (its whole Polish range) and, for now, the European
+	 * larch (its range of the fir forests of the uplands, {@link #larch}, comes with those forests). Their trees grow only
+	 * in the palettes of the Tatra associations ({@link #TATRA_ASSOCIATIONS}), which the classifier gives only on the Tatra
+	 * granite and gneiss, so none of them grows outside the Tatras.
+	 */
+	public static final java.util.Set<Species> TATRA_ONLY = java.util.EnumSet.of(Species.STONE_PINE, Species.LARCH);
+	/** Step TT4: the associations of the stone pine and the larch, given only on the Tatra granite and gneiss. */
+	public static final java.util.Set<Association> TATRA_ASSOCIATIONS = java.util.EnumSet.of(Association.PINO_CEMBRAE_PICEETUM,
+			Association.LARCH_SLOPE);
+
+	/** Step TT4: whether a species grows only in the Tatras ({@link #TATRA_ONLY}). */
+	public static boolean tatraOnly(Species species) {
+		return TATRA_ONLY.contains(species);
+	}
+
 	/** Ivy: O ≥ 0.45 or P ≥ 0.50 (used from M4). */
 	public static boolean ivy(double o, double p) {
 		return o >= Calibration.IVY_O || p >= Calibration.IVY_P;

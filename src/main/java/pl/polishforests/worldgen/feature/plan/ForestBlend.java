@@ -251,24 +251,54 @@ public final class ForestBlend {
 	}
 
 	/**
+	 * Step TT4: the code a column of code {@code base} takes for its partner forest {@code b} in {@link #pick}: the
+	 * canonical code ({@link #code}), except in the stone pine series of the Tatras (Z10: the spruce-stone pine forest and
+	 * the dwarf pine with stone pines blend into each other and keep their stone pines across the belt): a column of the
+	 * series takes the montane spruce forest and the dwarf pine scrub with the series' association. Every other column
+	 * (no association of the series outside the Tatra granite and gneiss) takes the canonical code as before the step.
+	 */
+	public static int partner(int base, int b) {
+		int code = code(base, b);
+		if (Habitat.association(base) == Association.PINO_CEMBRAE_PICEETUM && (b == MONTANE_SPRUCE || b == DWARF_PINE)) {
+			return Habitat.withAssociation(code, Association.PINO_CEMBRAE_PICEETUM);
+		}
+		return code;
+	}
+
+	/**
 	 * Category of lattice point (i, j), the column (i·s + s/2, j·s + s/2) for the spacing s (the centers of the lattice's
 	 * cells, so a border between two columns lies halfway between two points): the forest's index 1–n of {@link #FORESTS},
 	 * n + 1 for other land without a zone, 0 for water and the zones (memoized).
 	 */
 	int category(int i, int j) {
-		int c = lattice.get(i, j);
-		if (c < 0) {
+		return entry(i, j) & Lattice.CATEGORY_MASK;
+	}
+
+	/**
+	 * The lattice entry of point (i, j): its category ({@link #category}) and, in bit 7 ({@link #STONE_PINE_VARIANT}, step
+	 * TT4), whether the point is the spruce-stone pine forest variant of the montane spruce forest (memoized).
+	 */
+	private int entry(int i, int j) {
+		int e = lattice.get(i, j);
+		if (e < 0) {
 			int half = spacing / 2;
 			int code = sampler.code(i * spacing + half, j * spacing + half);
-			c = member(code);
+			int c = member(code);
 			if (c == 0 && Habitat.zone(code) == Zone.NONE && Habitat.cover(code) != LandCover.WATER) {
 				c = OTHER + 1;
 			}
+			e = c;
+			if (c == MONTANE_SPRUCE + 1 && Habitat.association(code) == Association.PINO_CEMBRAE_PICEETUM) {
+				e |= STONE_PINE_VARIANT;
+			}
 			SAMPLES.increment();
-			lattice.put(i, j, c);
+			lattice.put(i, j, e);
 		}
-		return c;
+		return e;
 	}
+
+	/** Step TT4: the bit of a lattice entry that marks the spruce-stone pine forest variant of the montane spruce forest. */
+	static final int STONE_PINE_VARIANT = 1 << 6;
 
 	/**
 	 * Shares of the forests and of the other land without a zone at lattice point (i, j) (out[0..{@link #OTHER}], the
@@ -317,7 +347,15 @@ public final class ForestBlend {
 	 * profile of the forest at the nearest lattice point ({@link #forestAt}), a pure function of the world.
 	 */
 	public pl.polishforests.worldgen.tree.StandProfile.Field standProfiles() {
-		return (x, z) -> pl.polishforests.worldgen.tree.StandProfile.of(forestAt(x, z));
+		return (x, z) -> {
+			// Step TT4: the spruce-stone pine forest variant of the montane spruce forest has its own profile.
+			int e = entry(Math.floorDiv(x, spacing), Math.floorDiv(z, spacing));
+			if ((e & STONE_PINE_VARIANT) != 0) {
+				return pl.polishforests.worldgen.tree.StandProfile.STONE_PINE;
+			}
+			int c = e & Lattice.CATEGORY_MASK;
+			return pl.polishforests.worldgen.tree.StandProfile.of(c >= 1 && c <= FORESTS.length ? FORESTS[c - 1] : null);
+		};
 	}
 
 	/** Number of lattice points in the kernel's stencil. */
@@ -343,7 +381,7 @@ public final class ForestBlend {
 			}
 			acc += s[b] / total;
 			if (v < acc) {
-				return code(code, b);
+				return partner(code, b);
 			}
 		}
 		return code;
@@ -507,8 +545,13 @@ public final class ForestBlend {
 		private static final int BITS = 17;
 		private static final int COORD_BITS = 26;
 		private static final long COORD_MASK = (1L << COORD_BITS) - 1;
-		/** Bits 1–6 of an entry hold the category (up to 62 forests; bits 7–11 stay free). */
-		private static final int CATEGORY_MASK = 63;
+		/**
+		 * Bits 1–6 of an entry hold the category (up to 62 forests), bit 7 the stone pine variant (step TT4,
+		 * {@link #STONE_PINE_VARIANT}); bits 8–11 stay free.
+		 */
+		static final int CATEGORY_MASK = 63;
+		/** The bits of an entry's value: the category and the variant. */
+		private static final int VALUE_MASK = 127;
 		private final AtomicLongArray slots = new AtomicLongArray(1 << BITS);
 
 		private static boolean fits(int g) {
@@ -531,7 +574,7 @@ public final class ForestBlend {
 			if ((e & 1) == 0 || (e & ~0xFFFL) != cell(i, j)) {
 				return -1;
 			}
-			return (int) (e >>> 1 & CATEGORY_MASK);
+			return (int) (e >>> 1 & VALUE_MASK);
 		}
 
 		void put(int i, int j, int category) {

@@ -37,7 +37,8 @@ import pl.polishforests.worldgen.surface.ChunkSurface;
  * wide); the biome is read at the model top, not at the heightmap, because where a cave opens the top the highest ground
  * block is the cave floor, below the surface, and its biome is rightly a cave biome (such probes are counted apart);</li>
  * <li>KF-1: around the first lattice column of each Tatra forest (the Carpathian beech forest, the spruce forest, its
- * Abieti-Piceetum and Polysticho-Piceetum, the dwarf pine) deep in it (its share of the blend field at least 0.999),
+ * Abieti-Piceetum and Polysticho-Piceetum, from step TT4 its Pino cembrae-Piceetum and larch slopes, the dwarf pine)
+ * deep in it (its share of the blend field at least 0.999),
  * 5 × 5 chunks: deep columns with a vanilla log trunk 0, planner trunks per chunk reported (at least one trunk in a
  * forest with {@value #MIN_DEEP} deep columns, except the creeping dwarf pine).</li>
  * </ul>
@@ -89,7 +90,11 @@ final class TatraBelts {
 	/** The Tatra forests of the KF-1 census: biome and association (null: any). */
 	private static final Object[][] FORESTS = {{HabitatBiome.MONTANE_BEECH_FOREST, null},
 			{HabitatBiome.MONTANE_SPRUCE_FOREST, Association.TYPICAL}, {HabitatBiome.MONTANE_SPRUCE_FOREST, Association.ABIETI_PICEETUM},
-			{HabitatBiome.MONTANE_SPRUCE_FOREST, Association.POLYSTICHO_PICEETUM}, {HabitatBiome.DWARF_PINE_SCRUB, null}};
+			{HabitatBiome.MONTANE_SPRUCE_FOREST, Association.POLYSTICHO_PICEETUM},
+			// Step TT4: the spruce-stone pine forest and the sunny larch slopes of the granite.
+			{HabitatBiome.MONTANE_SPRUCE_FOREST, Association.PINO_CEMBRAE_PICEETUM},
+			{HabitatBiome.MONTANE_SPRUCE_FOREST, Association.LARCH_SLOPE},
+			{HabitatBiome.DWARF_PINE_SCRUB, null}};
 
 	/**
 	 * The belt shares of the massif and the probes of the level; returns the KF-1 sites (x, z, index into

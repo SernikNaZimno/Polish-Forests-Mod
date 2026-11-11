@@ -111,7 +111,7 @@ final class DeadwoodSamples {
 				// Step F5.
 				Species.WHITE_WILLOW, Species.POPLAR,
 				// Step F6.
-				Species.GRAY_ALDER, Species.ROWAN);
+				Species.GRAY_ALDER, Species.ROWAN, Species.STONE_PINE, Species.LARCH);
 	}
 
 	/** Builds the board on the server, adding the plans to {@code plans}; returns its origin (x, y, z). */

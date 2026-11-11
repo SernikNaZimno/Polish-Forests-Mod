@@ -55,7 +55,18 @@ public enum Association {
 	/** Step TT3: rock grasslands (murawy naskalne) of the steep slopes and the pinnacles: tufts in the crevices, lichens. */
 	ROCK_GRASSLAND,
 	/** Step TT3: the upper montane spruce forest on the Tatra limestone (Polysticho-Piceetum). */
-	POLYSTICHO_PICEETUM;
+	POLYSTICHO_PICEETUM,
+	/**
+	 * Step TT4: the stone pine series of the Tatra granite and gneiss. In the montane spruce forest the spruce-stone pine
+	 * forest of the upper part of the upper regiel (Pino cembrae-Piceetum: spruce 40-60%, stone pine 20-40%, larch 5-20%,
+	 * rowan); in the dwarf pine scrub its lower part with single stone pines among the dwarf pines.
+	 */
+	PINO_CEMBRAE_PICEETUM,
+	/**
+	 * Step TT4: the Tatra regiel on granite and gneiss on the sunny (south-facing) slopes, in patches, with the European
+	 * larch as an admixture: in the lower regiel the fir-spruce forest, in the upper regiel the spruce forest with larch.
+	 */
+	LARCH_SLOPE;
 
 	private static final Association[] VALUES = values();
 

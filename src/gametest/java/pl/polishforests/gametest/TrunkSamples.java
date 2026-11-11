@@ -667,7 +667,7 @@ final class TrunkSamples {
 		double z = b.z0() + Board.GROUND_Z0 - 3.5;
 		TreeTrunk[] dropped = {TreeTrunk.SCOTS_PINE_UPPER, TreeTrunk.BEECH, TreeTrunk.NORWAY_MAPLE, TreeTrunk.BLACK_ALDER,
 				TreeTrunk.ELM, TreeTrunk.FIR, TreeTrunk.SYCAMORE_MAPLE, TreeTrunk.WHITE_WILLOW, TreeTrunk.POPLAR,
-				TreeTrunk.GRAY_ALDER, TreeTrunk.ROWAN};
+				TreeTrunk.GRAY_ALDER, TreeTrunk.ROWAN, TreeTrunk.STONE_PINE, TreeTrunk.LARCH};
 		for (int i = 0; i < dropped.length; i++) {
 			sp.getServer().runCommand(String.format(Locale.ROOT,
 					"summon item %.2f %d %.2f {Item:{id:\"polishforests:%s\",count:1},PickupDelay:32767s}", x - 0.8 + 0.8 * i,

@@ -161,7 +161,7 @@ public final class ForestCensus {
 	public static final Set<String> OTHER_PLANTS = Set.of("minecraft:brown_mushroom", "minecraft:red_mushroom", "minecraft:snow",
 			"minecraft:rose_bush", "minecraft:dead_bush", "minecraft:vine", "polishforests:hop");
 	/** Conifers among the tree species (ids). */
-	public static final Set<String> CONIFERS = Set.of("scots_pine", "spruce", "fir", "larch", "yew");
+	public static final Set<String> CONIFERS = Set.of("scots_pine", "spruce", "fir", "larch", "yew", "stone_pine");
 
 	/** What an object is. */
 	public enum Kind {
@@ -200,7 +200,7 @@ public final class ForestCensus {
 	 */
 	public record WoodObject(Kind kind, int x, int z, int y, int height, int woodHeight, double length, double volume,
 			double diameter, int leaves, @Nullable Species species, String block) {
-		/** A conifer (Scots pine, spruce, fir, larch, yew). */
+		/** A conifer (Scots pine, spruce, fir, larch, yew, stone pine). */
 		public boolean conifer() {
 			return species != null && CONIFERS.contains(species.id());
 		}

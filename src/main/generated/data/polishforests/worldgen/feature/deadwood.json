@@ -427,6 +427,84 @@
       ]
     },
     {
+      "associations": [
+        "pino_cembrae_piceetum"
+      ],
+      "biomes": [
+        "montane_spruce_forest"
+      ],
+      "coverage": 0.015625,
+      "plants": [
+        {
+          "feature": "polishforests:deadwood/spruce/montane",
+          "weight": 10
+        },
+        {
+          "feature": "polishforests:deadwood/stone_pine",
+          "weight": 6
+        },
+        {
+          "feature": "polishforests:deadwood/larch",
+          "weight": 2
+        },
+        {
+          "feature": "polishforests:deadwood/rowan",
+          "weight": 1
+        },
+        {
+          "feature": "polishforests:stump/spruce/montane",
+          "weight": 7
+        },
+        {
+          "feature": "polishforests:stump/stone_pine",
+          "weight": 4
+        },
+        {
+          "feature": "polishforests:stump/larch",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "associations": [
+        "larch_slope"
+      ],
+      "biomes": [
+        "montane_spruce_forest"
+      ],
+      "coverage": 0.015625,
+      "plants": [
+        {
+          "feature": "polishforests:deadwood/spruce/montane",
+          "weight": 12
+        },
+        {
+          "feature": "polishforests:deadwood/fir",
+          "weight": 4
+        },
+        {
+          "feature": "polishforests:deadwood/larch",
+          "weight": 3
+        },
+        {
+          "feature": "polishforests:deadwood/rowan",
+          "weight": 1
+        },
+        {
+          "feature": "polishforests:stump/spruce/montane",
+          "weight": 8
+        },
+        {
+          "feature": "polishforests:stump/fir",
+          "weight": 2
+        },
+        {
+          "feature": "polishforests:stump/larch",
+          "weight": 2
+        }
+      ]
+    },
+    {
       "biomes": [
         "montane_spruce_forest"
       ],
@@ -447,6 +525,41 @@
         {
           "feature": "polishforests:stump/rowan",
           "weight": 1
+        }
+      ]
+    },
+    {
+      "associations": [
+        "pino_cembrae_piceetum"
+      ],
+      "biomes": [
+        "dwarf_pine_scrub"
+      ],
+      "coverage": 0.007421875,
+      "plants": [
+        {
+          "feature": "polishforests:deadwood/stone_pine",
+          "weight": 4
+        },
+        {
+          "feature": "polishforests:deadwood/spruce/dwarf",
+          "weight": 4
+        },
+        {
+          "feature": "polishforests:deadwood/rowan",
+          "weight": 2
+        },
+        {
+          "feature": "polishforests:stump/stone_pine",
+          "weight": 19
+        },
+        {
+          "feature": "polishforests:stump/spruce/dwarf",
+          "weight": 11
+        },
+        {
+          "feature": "polishforests:stump/rowan",
+          "weight": 8
         }
       ]
     },

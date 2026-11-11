@@ -84,7 +84,17 @@ public enum TreeTrunk {
 	 * Rowan (step F6): smooth, shining gray bark with transverse lenticels, a little darker than the gray alder's, shallow
 	 * longitudinal cracks only at the base of old trees.
 	 */
-	ROWAN("rowan_trunk", Species.ROWAN, MapColor.TERRACOTTA_LIGHT_GRAY, "Rowan Trunk", "Pień jarzębu pospolitego");
+	ROWAN("rowan_trunk", Species.ROWAN, MapColor.TERRACOTTA_LIGHT_GRAY, "Rowan Trunk", "Pień jarzębu pospolitego"),
+	/**
+	 * Swiss stone pine (step TT4): smooth, light gray bark with resin blisters on young stems, on old trees gray-brown,
+	 * shallowly furrowed into narrow scales with a reddish tint in the furrows.
+	 */
+	STONE_PINE("stone_pine_trunk", Species.STONE_PINE, MapColor.COLOR_GRAY, "Stone Pine Trunk", "Pień limby"),
+	/**
+	 * European larch (step TT4): thick, deeply fissured gray-brown bark of long plates, red-brown in the furrows (a fresh
+	 * scale shows the red inner bark).
+	 */
+	LARCH("larch_trunk", Species.LARCH, MapColor.TERRACOTTA_BROWN, "Larch Trunk", "Pień modrzewia europejskiego");
 
 	private final String id;
 	private final Species species;
@@ -146,6 +156,8 @@ public enum TreeTrunk {
 			case POPLAR -> Blocks.POPLAR_LOG;
 			case GRAY_ALDER -> ModBlocks.wood(WoodSet.GRAY_ALDER).log();
 			case ROWAN -> ModBlocks.wood(WoodSet.ROWAN).log();
+			case STONE_PINE -> ModBlocks.wood(WoodSet.STONE_PINE).log();
+			case LARCH -> ModBlocks.wood(WoodSet.LARCH).log();
 		};
 	}
 
@@ -154,7 +166,7 @@ public enum TreeTrunk {
 	 * of {@link #log()} before step P2 — the vanilla log, the pale oak log for the gray barks of hornbeam and beech, the oak
 	 * log for linden, ash and maple. Kept by P2 (default choice P2-c) so the generated world stays block for block the same;
 	 * the own logs of the wood sets come into the generation with the new forest structure (step F): the species of the steps
-	 * F (black alder and elm, step F2; fir and sycamore, step F3; white willow and poplar, step F5; gray alder and rowan, step F6) write their own log.
+	 * F (black alder and elm, step F2; fir and sycamore, step F3; white willow and poplar, step F5; gray alder and rowan, step F6; stone pine and larch, step TT4) write their own log.
 	 */
 	public Block fullLog() {
 		return switch (this) {
@@ -165,7 +177,7 @@ public enum TreeTrunk {
 			case HORNBEAM, BEECH -> Blocks.PALE_OAK_LOG;
 			// Step F2: the species of the steps F write their own log (P2-c: the own logs come in with the new forest
 			// structure; no generated world had these trees before).
-			case BLACK_ALDER, ELM, FIR, SYCAMORE_MAPLE, WHITE_WILLOW, POPLAR, GRAY_ALDER, ROWAN -> log();
+			case BLACK_ALDER, ELM, FIR, SYCAMORE_MAPLE, WHITE_WILLOW, POPLAR, GRAY_ALDER, ROWAN, STONE_PINE, LARCH -> log();
 		};
 	}
 

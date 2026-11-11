@@ -64,7 +64,19 @@ public enum WoodSet {
 			new int[] {0x8f6650, 0xb08670, 0xbc937c, 0xc6a088, 0xd0ad96}, 0.85, 1),
 	/** Rowan (step F6): a hard, dense wood, reddish white sapwood around a light reddish brown heartwood, a fine grain. */
 	ROWAN("rowan", TreeTrunk.ROWAN, StrippedTrunk.ROWAN, "Rowan", "jarzębow", "oak_planks",
-			new int[] {0x8a6556, 0xab8470, 0xb8917c, 0xc29e88, 0xcca994}, 0.95, 2);
+			new int[] {0x8a6556, 0xab8470, 0xb8917c, 0xc29e88, 0xcca994}, 0.95, 2),
+	/**
+	 * Swiss stone pine (step TT4): a soft, light, fragrant wood, pale yellowish pink with a light reddish brown heartwood, a
+	 * fine even grain and its typical many dark knots (the stone pine paneling of the highland houses).
+	 */
+	STONE_PINE("stone_pine", TreeTrunk.STONE_PINE, StrippedTrunk.STONE_PINE, "Stone Pine", "limbow", "spruce_planks",
+			new int[] {0x936548, 0xb68a66, 0xc49872, 0xcea57e, 0xd8b28b}, 0.90, 1),
+	/**
+	 * European larch (step TT4): a hard, resinous, durable wood, a narrow yellowish sapwood around a red-brown heartwood, a
+	 * sharply marked grain of late wood.
+	 */
+	LARCH("larch", TreeTrunk.LARCH, StrippedTrunk.LARCH, "Larch", "modrzewiow", "spruce_planks",
+			new int[] {0x7e4a2e, 0xa26a44, 0xb0784e, 0xbc8558, 0xc89262}, 1.20, 1);
 
 	private final String prefix;
 	private final TreeTrunk trunk;

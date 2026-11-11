@@ -83,6 +83,32 @@
       ]
     },
     {
+      "associations": [
+        "pino_cembrae_piceetum"
+      ],
+      "trees": [
+        {
+          "species": "stone_pine",
+          "tree": "polishforests:tree/stone_pine",
+          "weight": 450
+        },
+        {
+          "species": "spruce",
+          "tree": "polishforests:tree/spruce/dwarf",
+          "weight": 450
+        },
+        {
+          "species": "rowan",
+          "tree": "polishforests:tree/rowan/dwarf",
+          "weight": 100
+        }
+      ],
+      "trees_per_chunk": 4.0,
+      "zones": [
+        "timberline"
+      ]
+    },
+    {
       "trees": [
         {
           "species": "spruce",
@@ -509,6 +535,277 @@
         }
       ],
       "trees_per_chunk": 6.0
+    },
+    {
+      "associations": [
+        "pino_cembrae_piceetum"
+      ],
+      "biomes": [
+        "montane_spruce_forest"
+      ],
+      "stand": {
+        "gap_chance": 0.6,
+        "gap_regeneration": [
+          {
+            "species": "spruce",
+            "tree": "polishforests:tree/spruce/montane",
+            "weight": 350
+          },
+          {
+            "species": "rowan",
+            "tree": "polishforests:tree/rowan",
+            "weight": 300
+          },
+          {
+            "species": "stone_pine",
+            "tree": "polishforests:tree/stone_pine",
+            "weight": 200
+          },
+          {
+            "species": "larch",
+            "tree": "polishforests:tree/larch",
+            "weight": 150
+          }
+        ],
+        "managed_canopy": [
+          {
+            "species": "spruce",
+            "tree": "polishforests:tree/spruce/montane",
+            "weight": 440
+          },
+          {
+            "species": "stone_pine",
+            "tree": "polishforests:tree/stone_pine",
+            "weight": 400
+          },
+          {
+            "species": "larch",
+            "tree": "polishforests:tree/larch",
+            "weight": 110
+          },
+          {
+            "species": "rowan",
+            "tree": "polishforests:tree/rowan",
+            "weight": 50
+          }
+        ],
+        "managed_chance": [
+          0.85,
+          0.75,
+          0.68
+        ],
+        "natural_chance": [
+          0.8,
+          0.8,
+          0.8
+        ],
+        "regeneration": [
+          {
+            "species": "spruce",
+            "tree": "polishforests:tree/spruce/montane",
+            "weight": 400
+          },
+          {
+            "species": "stone_pine",
+            "tree": "polishforests:tree/stone_pine",
+            "weight": 250
+          },
+          {
+            "species": "rowan",
+            "tree": "polishforests:tree/rowan",
+            "weight": 300
+          },
+          {
+            "species": "larch",
+            "tree": "polishforests:tree/larch",
+            "weight": 50
+          }
+        ],
+        "subcanopy": [
+          {
+            "species": "stone_pine",
+            "tree": "polishforests:tree/stone_pine",
+            "weight": 420
+          },
+          {
+            "species": "spruce",
+            "tree": "polishforests:tree/spruce/montane",
+            "weight": 300
+          },
+          {
+            "species": "rowan",
+            "tree": "polishforests:tree/rowan",
+            "weight": 280
+          }
+        ],
+        "subcanopy_chance": 0.45
+      },
+      "trees": [
+        {
+          "species": "spruce",
+          "tree": "polishforests:tree/spruce/montane",
+          "weight": 440
+        },
+        {
+          "species": "stone_pine",
+          "tree": "polishforests:tree/stone_pine",
+          "weight": 400
+        },
+        {
+          "species": "larch",
+          "tree": "polishforests:tree/larch",
+          "weight": 110
+        },
+        {
+          "species": "rowan",
+          "tree": "polishforests:tree/rowan",
+          "weight": 50
+        }
+      ],
+      "trees_per_chunk": 10.0
+    },
+    {
+      "associations": [
+        "larch_slope"
+      ],
+      "biomes": [
+        "montane_spruce_forest"
+      ],
+      "stand": {
+        "gap_chance": 0.7,
+        "gap_regeneration": [
+          {
+            "species": "spruce",
+            "tree": "polishforests:tree/spruce/montane",
+            "weight": 350
+          },
+          {
+            "species": "larch",
+            "tree": "polishforests:tree/larch",
+            "weight": 250
+          },
+          {
+            "species": "rowan",
+            "tree": "polishforests:tree/rowan",
+            "weight": 250
+          },
+          {
+            "species": "birch",
+            "tree": "polishforests:tree/birch",
+            "weight": 100
+          }
+        ],
+        "managed_canopy": [
+          {
+            "species": "spruce",
+            "tree": "polishforests:tree/spruce/montane",
+            "weight": 700
+          },
+          {
+            "range_ramp": false,
+            "species": "fir",
+            "tree": "polishforests:tree/fir",
+            "weight": 150
+          },
+          {
+            "species": "larch",
+            "tree": "polishforests:tree/larch",
+            "weight": 150
+          },
+          {
+            "species": "rowan",
+            "tree": "polishforests:tree/rowan",
+            "weight": 30
+          }
+        ],
+        "managed_chance": [
+          0.9,
+          0.72,
+          0.62
+        ],
+        "natural_chance": [
+          0.85,
+          0.85,
+          0.85
+        ],
+        "regeneration": [
+          {
+            "species": "spruce",
+            "tree": "polishforests:tree/spruce/montane",
+            "weight": 400
+          },
+          {
+            "range_ramp": false,
+            "species": "fir",
+            "tree": "polishforests:tree/fir",
+            "weight": 250
+          },
+          {
+            "species": "rowan",
+            "tree": "polishforests:tree/rowan",
+            "weight": 200
+          },
+          {
+            "species": "larch",
+            "tree": "polishforests:tree/larch",
+            "weight": 100
+          }
+        ],
+        "subcanopy": [
+          {
+            "range_ramp": false,
+            "species": "fir",
+            "tree": "polishforests:tree/fir",
+            "weight": 350
+          },
+          {
+            "species": "spruce",
+            "tree": "polishforests:tree/spruce/montane",
+            "weight": 350
+          },
+          {
+            "species": "rowan",
+            "tree": "polishforests:tree/rowan",
+            "weight": 150
+          },
+          {
+            "species": "larch",
+            "tree": "polishforests:tree/larch",
+            "weight": 50
+          }
+        ],
+        "subcanopy_chance": 0.5
+      },
+      "trees": [
+        {
+          "species": "spruce",
+          "tree": "polishforests:tree/spruce/montane",
+          "weight": 600
+        },
+        {
+          "range_ramp": false,
+          "species": "fir",
+          "tree": "polishforests:tree/fir",
+          "weight": 220
+        },
+        {
+          "species": "larch",
+          "tree": "polishforests:tree/larch",
+          "weight": 160
+        },
+        {
+          "range_ramp": false,
+          "species": "beech",
+          "tree": "polishforests:tree/beech",
+          "weight": 40
+        },
+        {
+          "species": "rowan",
+          "tree": "polishforests:tree/rowan",
+          "weight": 60
+        }
+      ],
+      "trees_per_chunk": 12.0
     },
     {
       "associations": [
@@ -3594,6 +3891,114 @@
         }
       ],
       "trees_per_chunk": 8.0
+    },
+    {
+      "associations": [
+        "pino_cembrae_piceetum"
+      ],
+      "biomes": [
+        "dwarf_pine_scrub"
+      ],
+      "stand": {
+        "gap_chance": 0.3,
+        "gap_regeneration": [
+          {
+            "species": "stone_pine",
+            "tree": "polishforests:tree/stone_pine",
+            "weight": 400
+          },
+          {
+            "species": "spruce",
+            "tree": "polishforests:tree/spruce",
+            "weight": 300
+          },
+          {
+            "species": "rowan",
+            "tree": "polishforests:tree/rowan",
+            "weight": 300
+          }
+        ],
+        "managed_canopy": [
+          {
+            "species": "stone_pine",
+            "tree": "polishforests:tree/stone_pine",
+            "weight": 550
+          },
+          {
+            "species": "spruce",
+            "tree": "polishforests:tree/spruce/dwarf",
+            "weight": 300
+          },
+          {
+            "species": "rowan",
+            "tree": "polishforests:tree/rowan",
+            "weight": 150
+          }
+        ],
+        "managed_chance": [
+          0.25,
+          0.22,
+          0.2
+        ],
+        "natural_chance": [
+          0.22,
+          0.22,
+          0.22
+        ],
+        "regeneration": [
+          {
+            "species": "stone_pine",
+            "tree": "polishforests:tree/stone_pine",
+            "weight": 400
+          },
+          {
+            "species": "spruce",
+            "tree": "polishforests:tree/spruce",
+            "weight": 300
+          },
+          {
+            "species": "rowan",
+            "tree": "polishforests:tree/rowan",
+            "weight": 300
+          }
+        ],
+        "subcanopy": [
+          {
+            "species": "rowan",
+            "tree": "polishforests:tree/rowan",
+            "weight": 500
+          },
+          {
+            "species": "stone_pine",
+            "tree": "polishforests:tree/stone_pine",
+            "weight": 300
+          },
+          {
+            "species": "spruce",
+            "tree": "polishforests:tree/spruce/dwarf",
+            "weight": 200
+          }
+        ],
+        "subcanopy_chance": 0.15
+      },
+      "trees": [
+        {
+          "species": "stone_pine",
+          "tree": "polishforests:tree/stone_pine",
+          "weight": 550
+        },
+        {
+          "species": "spruce",
+          "tree": "polishforests:tree/spruce/dwarf",
+          "weight": 300
+        },
+        {
+          "species": "rowan",
+          "tree": "polishforests:tree/rowan",
+          "weight": 150
+        }
+      ],
+      "trees_per_chunk": 1.5
     },
     {
       "biomes": [

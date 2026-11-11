@@ -1,0 +1,7 @@
+{
+  "parent": "polishforests:block/template_trunk_r5",
+  "textures": {
+    "bark": "polishforests:block/stripped_stone_pine_trunk",
+    "end": "polishforests:block/stripped_stone_pine_log_top"
+  }
+}

@@ -95,6 +95,10 @@ final class ModBlockModels extends FabricModelProvider {
 			// Step F6: the smooth light gray bark of the gray alder and the shining gray bark of the rowan.
 			case GRAY_ALDER -> List.of(own("gray_alder_bark"), own("gray_alder_bark_2"));
 			case ROWAN -> List.of(own("rowan_bark"), own("rowan_bark_2"));
+			// Step TT4: the stone pine's gray bark with resin blisters, scaly in old age, and the larch's deeply fissured
+			// plates, red-brown in the furrows.
+			case STONE_PINE -> List.of(own("stone_pine_bark"), own("stone_pine_bark_2"));
+			case LARCH -> List.of(own("larch_bark"), own("larch_bark_2"));
 		};
 	}
 
@@ -110,7 +114,8 @@ final class ModBlockModels extends FabricModelProvider {
 			case BIRCH -> vanilla("birch_log_top");
 			case OAK -> vanilla("oak_log_top");
 			case POPLAR -> vanilla("poplar_log_top");
-			case HORNBEAM, LINDEN, BEECH, ASH, NORWAY_MAPLE, BLACK_ALDER, ELM, FIR, SYCAMORE_MAPLE, WHITE_WILLOW, GRAY_ALDER, ROWAN ->
+			case HORNBEAM, LINDEN, BEECH, ASH, NORWAY_MAPLE, BLACK_ALDER, ELM, FIR, SYCAMORE_MAPLE, WHITE_WILLOW, GRAY_ALDER, ROWAN,
+					STONE_PINE, LARCH ->
 					own(woodOf(t).prefix() + "_log_top");
 		};
 	}
@@ -147,7 +152,8 @@ final class ModBlockModels extends FabricModelProvider {
 			case BIRCH -> vanilla("stripped_birch_log_top");
 			case OAK -> vanilla("stripped_oak_log_top");
 			case POPLAR -> vanilla("stripped_poplar_log_top");
-			case HORNBEAM, LINDEN, BEECH, ASH, NORWAY_MAPLE, BLACK_ALDER, ELM, FIR, SYCAMORE_MAPLE, WHITE_WILLOW, GRAY_ALDER, ROWAN ->
+			case HORNBEAM, LINDEN, BEECH, ASH, NORWAY_MAPLE, BLACK_ALDER, ELM, FIR, SYCAMORE_MAPLE, WHITE_WILLOW, GRAY_ALDER, ROWAN,
+					STONE_PINE, LARCH ->
 					own("stripped_" + woodOf(t.trunk()).prefix() + "_log_top");
 		};
 	}
@@ -386,6 +392,9 @@ final class ModBlockModels extends FabricModelProvider {
 			// Step F6: the rowan's pinnate leaves and the dwarf mountain pine's dense needles.
 			case ROWAN -> own("rowan_leaves");
 			case DWARF_MOUNTAIN_PINE -> own("dwarf_mountain_pine_leaves");
+			// Step TT4: the stone pine's dense tufts of long blue-green needles and the larch's soft needle clusters.
+			case STONE_PINE -> own("stone_pine_leaves");
+			case LARCH -> own("larch_leaves");
 			default -> own("broadleaf_leaves");
 		};
 	}
@@ -411,8 +420,9 @@ final class ModBlockModels extends FabricModelProvider {
 		gen.blockStateOutput.accept(BlockModelGenerators.createSimpleBlock(block, BlockModelGenerators.plainVariant(model)));
 		gen.registerSimpleTintedItemModel(block, model,
 				ItemModelUtils.constantTint(0xFF000000 | FoliageCurve.summer(f.species(), FoliageCurve.DEFAULT_FOLIAGE)));
-		if (!f.conifer()) {
-			// Step V13 (T-D5): the bare twigs of the leafless crown, a seasonal alternative of the client (tint index 1).
+		if (!f.evergreen()) {
+			// Step V13 (T-D5): the bare twigs of the leafless crown, a seasonal alternative of the client (tint index 1);
+			// step TT4: also the larch, the only conifer that sheds its needles.
 			new ModelTemplate(Optional.of(PolishForests.id(GroundTemplates.TWIGS)), Optional.empty(), TextureSlot.ALL)
 					.create(pl.polishforests.client.ClientSeasonModels.twigs(f), TextureMapping.cube(new Material(own(f.species().id()
 							+ "_twigs"))), gen.modelOutput);

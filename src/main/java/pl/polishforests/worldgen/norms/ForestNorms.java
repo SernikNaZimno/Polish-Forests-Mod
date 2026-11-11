@@ -149,7 +149,12 @@ public final class ForestNorms {
 		/** Step F5: the white poplar forest of the willow-poplar forest (Populetum albae, its association). */
 		POPLAR,
 		/** Step F6: the fir-spruce forest of the montane spruce forest (Abieti-Piceetum montanum, its association). */
-		FIR_SPRUCE
+		FIR_SPRUCE,
+		/**
+		 * Step TT4: the spruce-stone pine forest of the montane spruce forest (Pino cembrae-Piceetum, its association; in the
+		 * Tatra National Park, natural only).
+		 */
+		STONE_PINE
 	}
 
 	/**
@@ -167,6 +172,10 @@ public final class ForestNorms {
 		}
 		if (pl.polishforests.worldgen.habitat.Habitat.association(code) == pl.polishforests.worldgen.habitat.Association.ABIETI_PICEETUM) {
 			return Site.FIR_SPRUCE;
+		}
+		if (pl.polishforests.worldgen.habitat.Habitat.association(code) == pl.polishforests.worldgen.habitat.Association.PINO_CEMBRAE_PICEETUM
+				&& pl.polishforests.worldgen.habitat.Habitat.biome(code) == HabitatBiome.MONTANE_SPRUCE_FOREST) {
+			return Site.STONE_PINE;
 		}
 		if (pl.polishforests.worldgen.habitat.Habitat.biome(code) == HabitatBiome.BOG_WOODLAND
 				&& pl.polishforests.worldgen.habitat.Habitat.siteType(code) == pl.polishforests.worldgen.habitat.ForestSiteType.BOGGY_MIXED_CONIFEROUS) {
@@ -282,7 +291,9 @@ public final class ForestNorms {
 			"oak", List.of("oak", "sessile_oak"));
 	/** Composition keys of the card ({@code N3.<key>}): groups of {@link #GROUPS} or species ids, then {@code other}. */
 	public static final List<String> COMPOSITION_KEYS = List.of("oak", "linden", "maple_ash", "hornbeam", "spruce", "beech",
-			"scots_pine", "birch", "black_alder", "elm", "fir", "white_willow", "poplar", "gray_alder", "rowan", "other");
+			"scots_pine", "birch", "black_alder", "elm", "fir", "white_willow", "poplar", "gray_alder", "rowan",
+			// Step TT4: the stone pine and the larch (the card of the spruce-stone pine forest).
+			"stone_pine", "larch", "other");
 
 	/**
 	 * A norm of the card.
@@ -362,6 +373,8 @@ public final class ForestNorms {
 		METRICS.put(COMPOSITION + "poplar", "poplar share of a1 trunks, %");
 		METRICS.put(COMPOSITION + "gray_alder", "gray alder share of a1 trunks, %");
 		METRICS.put(COMPOSITION + "rowan", "rowan share of a1 trunks, %");
+		METRICS.put(COMPOSITION + "stone_pine", "stone pine share of a1 trunks, %");
+		METRICS.put(COMPOSITION + "larch", "larch share of a1 trunks, %");
 		METRICS.put(COMPOSITION + "other", "other or unknown species share of a1 trunks, %");
 		METRICS.put(CANOPY, "canopy closure: columns with leaves more than 2 blocks up, %");
 		METRICS.put(GAP_SHARE, "plot area in canopy gaps, %");
@@ -498,6 +511,7 @@ public final class ForestNorms {
 		pineCard();
 		floodplainCard();
 		montaneSpruceCard();
+		stonePineCard();
 		// N15 transect: the same for every forest of the transect (the transect crosses all four).
 		for (Forest f : Forest.values()) {
 			if (!f.transect()) {
@@ -861,6 +875,36 @@ public final class ForestNorms {
 		wide(PIECES_PER_CHUNK, Forest.GRAY_ALDER_MANAGED, 0.15, 0.3, managedDeadwood);
 		wide(STUMPS_PER_CHUNK, Forest.GRAY_ALDER_MANAGED, 1, 2, managedDeadwood);
 		wide(DEADWOOD_VOLUME, Forest.GRAY_ALDER_MANAGED, 2, 12, managedDeadwood);
+	}
+
+	/**
+	 * The card of the spruce-stone pine forest of the Tatras (step TT4, docs/04 "Projekt TT4"): a site variant of the natural
+	 * montane spruce forest (the Tatra National Park, no managed stands; choice TT4-c). L 06 §3.5, §5.1 (Pino
+	 * cembrae-Piceetum: a1 spruce 40–60%, stone pine 20–40%, larch 5–20%, rowan; 15–20 m, a loose stand of clumps at the
+	 * timberline, b the rowan, the dwarf pine and the young stone pines, c the bilberry with the small-reed and the alpine
+	 * coltsfoot, d mosses), the dead wood of the natural high montane stands (the snags and broken tops of the stone pine,
+	 * the windthrows of the spruce) [S where noted].
+	 */
+	private static void stonePineCard() {
+		String card = "[L 06 §3.5, §5.1]";
+		String deadwood = "[L 06 §4.3; PW-5 b; S]";
+		Forest f = Forest.MONTANE_SPRUCE_NATURAL;
+		Site site = Site.STONE_PINE;
+		// N1: a loose stand of clumps, the stone pines smaller than the spruces [S].
+		NORMS.add(new Norm(TREES_PER_CHUNK, f, 5, 13, TOLERANCE, null, null, card + " [S]", site));
+		NORMS.add(new Norm(COMPOSITION + "spruce", f, 40, 60, TOLERANCE, null, null, card, site));
+		NORMS.add(new Norm(COMPOSITION + "stone_pine", f, 20, 40, TOLERANCE, null, null, card, site));
+		NORMS.add(new Norm(COMPOSITION + "larch", f, 5, 20, TOLERANCE, null, null, card, site));
+		NORMS.add(new Norm(COMPOSITION + "rowan", f, 0, 15, TOLERANCE, null, null, card + " [S]", site));
+		NORMS.add(new Norm(CANOPY, f, 40, 70, TOLERANCE, null, null, card + " [S]", site));
+		NORMS.add(new Norm(UNDERSTORY, f, 0, 20, TOLERANCE, null, null, card + " [S]", site));
+		NORMS.add(new Norm(HERBS, f, 40, 90, TOLERANCE, null, null, card + " [S]", site));
+		NORMS.add(new Norm(BILBERRY, f, 20, 60, TOLERANCE, null, null, card, site));
+		NORMS.add(new Norm(MOSS, f, 50, 95, TOLERANCE, null, null, card + " [S]", site));
+		// N10: less dead wood than the spruce forest (the windfirm stone pines die standing, slowly) [S].
+		NORMS.add(new Norm(DEADWOOD_PER_CHUNK, f, 2.5, 2.5, TOLERANCE_WIDE, null, null, deadwood, site));
+		NORMS.add(new Norm(DEADWOOD_VOLUME, f, 60, 200, TOLERANCE_WIDE, null, null, deadwood, site));
+		NORMS.add(new Norm(COARSE_PIECES, f, 3, Double.POSITIVE_INFINITY, TOLERANCE_WIDE, null, null, deadwood, site));
 	}
 
 	private static void norm(String metric, Forest forest, double min, double max, String source) {

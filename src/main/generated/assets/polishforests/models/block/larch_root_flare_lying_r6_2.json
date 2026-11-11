@@ -1,0 +1,7 @@
+{
+  "parent": "polishforests:block/template_root_flare_r6",
+  "textures": {
+    "bark": "polishforests:block/larch_bark_2",
+    "end": "polishforests:block/larch_log_top"
+  }
+}
