@@ -24,6 +24,10 @@ import pl.polishforests.worldgen.chunk.VerticalScale;
  * four neighbors either water of the same tarn at its level or dry ground at least at the level (no leak, no water at two
  * levels side by side); the ground under the water lies below the level (no hanging water). The brooks fall
  * monotonically and never below the water they enter.</li>
+ * <li>{@link #tarnsLieOnTheGround} (round 1 of the review of TT2): over all tarns of the massifs, the water is at most
+ * {@value #DEPTH_TOLERANCE} blocks deeper than the bed of the basin center (no basin over an incised river valley held by a
+ * wall), and at the edge of the belt the surface steps to the neighbors outside it at most {@value #EDGE_STEP} block more
+ * than the ground without the tarn does (the raise of the dam fades out, no cliff).</li>
  * <li>{@link #tatraSurfaceZones}: bare rock, scree and snow patches on the massif, the snow only on its sites, the
  * rendzina only on the limestone.</li>
  * <li>{@link #finesHaveTheirSlopes}: the slopes in blocks (gameplay vertical scale): the gully floors 30–45° (median), the
@@ -34,6 +38,9 @@ import pl.polishforests.worldgen.chunk.VerticalScale;
 class TatraFormsTest {
 	/** Massifs per seed. */
 	static final int MASSIFS = 2;
+	/** Largest water depth over the bed of the basin center (blocks) and largest extra step at the belt edge (blocks). */
+	static final double DEPTH_TOLERANCE = 3;
+	static final double EDGE_STEP = 1;
 
 	@Test
 	void everyMassifHasItsTarns() {
@@ -133,6 +140,88 @@ class TatraFormsTest {
 			assertEquals(0, hanging.get(), label + ": hanging water");
 		}
 		System.out.print(report);
+	}
+
+	@Test
+	void tarnsLieOnTheGround() {
+		VerticalScale vs = VerticalScale.GAMEPLAY;
+		StringBuilder report = new StringBuilder();
+		List<String> failures = new ArrayList<>();
+		for (long seed : TatraSurvey.SEEDS) {
+			LandscapeModel m = TatraSurvey.with(seed);
+			TatraField field = m.tatraField();
+			TatraWaters waters = m.tatraWaters();
+			for (LandscapeModel.Tatra t : TatraSurvey.nearest(seed, MASSIFS)) {
+				String label = TatraSurvey.label(seed, t);
+				List<TatraWaters.Tarn> tarns = tarns(m, t);
+				double worstDepth = Double.NEGATIVE_INFINITY;
+				double worstEdge = Double.NEGATIVE_INFINITY;
+				AtomicInteger edgePairs = new AtomicInteger();
+				String worst = "";
+				for (TatraWaters.Tarn tn : tarns) {
+					double reach = Math.max(tn.aq(), tn.bu()) * tn.ring() + TatraWaters.BELT + 2;
+					int n = (int) Math.ceil(2 * reach);
+					double bed = vs.blocksForMeters(tn.level() - tn.depth());
+					// [0] the deepest water under the bed of the center, [1] the largest extra step at the belt edge (blocks).
+					double[] r = {Double.NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY};
+					IntStream.range(0, n * n).parallel().forEach(k -> {
+						double x = Math.floor(tn.x() - reach) + 0.5 + k % n;
+						double z = Math.floor(tn.z() - reach) + 0.5 + k / n;
+						TatraField.Column c = field.column(x, z);
+						TatraWaters.Hit h = c == null ? null : waters.hit(c);
+						if (h == null || h.tarn != tn) {
+							return;
+						}
+						boolean basin = h.inBasin();
+						boolean edge = h.beltDistance >= TatraWaters.BELT - 3 && h.brookLevel == ColumnSample.NO_WATER;
+						if (!basin && !edge || basin && (k / n) % 2 + (k % n) % 2 > 0) {
+							// The basin on a 2 m grid, the edge of the belt every meter.
+							return;
+						}
+						ColumnSample s = m.sample(x, z);
+						double deeper = Double.NEGATIVE_INFINITY;
+						if (basin && s.waterKind() == WaterKind.TARN) {
+							deeper = bed - vs.blocksForMeters(s.surface());
+						}
+						double step = Double.NEGATIVE_INFINITY;
+						if (edge) {
+							double g = waters.ground(x, z);
+							for (int[] d : new int[][] {{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
+								TatraField.Column oc = field.column(x + d[0], z + d[1]);
+								TatraWaters.Hit oh = oc == null ? null : waters.hit(oc);
+								if (oh != null && (oh.tarn != null || oh.brookLevel != ColumnSample.NO_WATER)) {
+									continue;
+								}
+								ColumnSample o = m.sample(x + d[0], z + d[1]);
+								double go = waters.ground(x + d[0], z + d[1]);
+								step = Math.max(step, Math.abs(vs.blocksForMeters(s.surface()) - vs.blocksForMeters(o.surface()))
+										- Math.abs(vs.blocksForMeters(g) - vs.blocksForMeters(go)));
+								edgePairs.incrementAndGet();
+							}
+						}
+						synchronized (r) {
+							r[0] = Math.max(r[0], deeper);
+							r[1] = Math.max(r[1], step);
+						}
+					});
+					if (r[0] > worstDepth) {
+						worstDepth = r[0];
+						worst = String.format(Locale.ROOT, "tarn (%.0f, %.0f) level %d", tn.x(), tn.z(), tn.level());
+					}
+					worstEdge = Math.max(worstEdge, r[1]);
+					check(failures, r[0] <= DEPTH_TOLERANCE, String.format(Locale.ROOT, "%s: tarn (%.0f, %.0f) level %d is %.1f blocks "
+							+ "deeper than its bed", label, tn.x(), tn.z(), tn.level(), r[0]));
+					check(failures, r[1] <= EDGE_STEP, String.format(Locale.ROOT, "%s: tarn (%.0f, %.0f) level %d has a step of %.1f "
+							+ "blocks at the edge of its belt", label, tn.x(), tn.z(), tn.level(), r[1]));
+				}
+				report.append(String.format(Locale.ROOT, "%s: %d tarns, deepest water %.1f blocks under the bed of the center (%s), "
+						+ "largest extra step at the belt edge %.2f blocks over %d pairs%n", label, tarns.size(), worstDepth, worst,
+						worstEdge, edgePairs.get()));
+				check(failures, edgePairs.get() > 1_000, label + ": " + edgePairs.get() + " belt edge pairs");
+			}
+		}
+		System.out.print(report);
+		assertTrue(failures.isEmpty(), String.join("; ", failures));
 	}
 
 	@Test

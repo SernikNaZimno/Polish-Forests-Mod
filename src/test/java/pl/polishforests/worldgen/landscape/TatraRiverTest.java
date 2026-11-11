@@ -118,6 +118,16 @@ class TatraRiverTest {
 		}
 	}
 
+	/** Whether the column lies in the basin or ring of a tarn or on its shore wall ({@link TatraWaters.Hit#steepPart}). */
+	static boolean steepTarn(LandscapeModel m, double x, double z, ColumnSample s) {
+		if (s.waters().standingWaterKind() != ColumnSample.StandingWaterKind.TARN) {
+			return false;
+		}
+		TatraField.Column c = m.tatraField().column(x, z);
+		TatraWaters.Hit h = c == null ? null : m.tatraWaters().hit(c);
+		return h != null && h.steepPart(s.surface());
+	}
+
 	/**
 	 * Over the complex to the end of its fades (as {@link TatraReliefTest#maxStep}): the largest surface step 0.5 m apart
 	 * (per m), the largest water surface step between wet neighbors and the number of wet pairs.
@@ -138,10 +148,10 @@ class TatraRiverTest {
 			ColumnSample sz = m.sample(x, z + d);
 			// Step TT2: the sharp relief (pinnacles, gully walls) is steep on purpose (TatraReliefTest, TatraFormsTest).
 			boolean sharp = m.tatraSharp(x, z) > 0 || m.tatraSharp(x + d, z) > 0 || m.tatraSharp(x, z + d) > 0;
-			// And the shore walls of the tarns (a basin cut into a cirque floor under its headwall).
-			for (ColumnSample c : new ColumnSample[] {s, sx, sz}) {
-				sharp |= c.waters().standingWaterKind() == ColumnSample.StandingWaterKind.TARN && c.waters().s() < TatraWaters.BELT;
-			}
+			// And the steep parts of the tarns: the basin with its ring and the shore walls (a basin cut into a cirque floor
+			// under its headwall). The outer face of the ring and the edge of the belt are checked (round 1 of the review of
+			// TT2: the whole belt was skipped, so a step at its edge went unseen).
+			sharp |= steepTarn(m, x, z, s) || steepTarn(m, x + d, z, sx) || steepTarn(m, x, z + d, sz);
 			double step = sharp ? 0 : Math.max(Math.abs(sx.surface() - s.surface()), Math.abs(sz.surface() - s.surface())) / d;
 			double water = 0;
 			double pairs = 0;

@@ -14,7 +14,11 @@ import java.util.List;
  * meter above the level. Every water column of a tarn therefore has its four neighbors either water of the same tarn at
  * the same level or ground at least at the level: the basin is closed by construction, whatever the ground inside it.
  * The level of a cirque tarn lies a meter under the lowest point of the bowl rim, the level of a moraine tarn a few
- * meters under the moraine crest, so the ring rarely raises the ground (a low natural dam where it does).
+ * meters under the moraine crest, so the ring rarely raises the ground (a low natural dam where it does). Round 1 of the
+ * review of TT2: the levels come from the land height, but the ground of the column is the land after the incision of the
+ * rivers of TT1 ({@link #ground}); a basin over an incised valley (its ground well under the bed, or its ring and dam far
+ * above the ground) would hold the water in a tall wall, so the valley has no tarn there ({@link #onGround}). The raise of
+ * the outer face of the ring fades out to the edge of the belt, so the belt never ends in a step.
  *
  * <p>A tarn with an outlet has a sill at its level at the down-valley end of the basin (a dry notch the water reaches,
  * never crosses) and a brook below it: a channel along the valley axis whose level falls monotonically in whole meters
@@ -55,6 +59,14 @@ final class TatraWaters {
 	static final double WALL_BEND = 8;
 	/** Depth of the brook channel under its level (blocks). */
 	static final double BROOK_DEPTH = 1.2;
+	/**
+	 * Round 1 of the review of TT2: the deepest ground of the basin and its ring under the bed of its center, and the highest
+	 * raise of the outer face of the ring over the ground of the belt, for a tarn to stay (blocks at its level; deeper or
+	 * higher, the basin lies over an incised river valley and would hold its water in a wall). On the seeds of
+	 * TatraSurvey the tarns kept reach 1.9 and 4.5 blocks, those over incised valleys 3.0–97 and 5.8–101.
+	 */
+	static final double DEEPER = 2.5;
+	static final double RAISE = 5;
 
 	/** Outlet brook: the course (q across the valley axis at un0 + i·dun) and the level of each step. */
 	record Brook(double un0, double dun, double[] q, int[] level, boolean joined, boolean intoTarn) {
@@ -148,12 +160,27 @@ final class TatraWaters {
 				return level;
 			}
 			double e = tarn.edge(r);
-			s = Math.min(s, level + 0.5 + WALL * e * (1 + e / WALL_BEND));
+			s = Math.min(s, wall(e));
 			if (inRing()) {
 				return Math.max(s, level + 0.5);
 			}
 			// The outer face of the ring (where the ground falls away from the basin: a low dam; the brook rises at its foot).
-			return Math.max(s, level + 0.5 - DAM * (e - RING));
+			// Its raise fades out at DAM per meter to the edge of the belt (round 1 of the review of TT2: no step there).
+			double dam = level + 0.5 - DAM * (e - RING);
+			return dam <= s ? s : Math.min(dam, s + DAM * Math.max(0.0, BELT - e));
+		}
+
+		/** The shore wall above the basin edge at the distance e from it (m): the ground is cut down to it. */
+		private double wall(double e) {
+			return tarn.level() + 0.5 + WALL * e * (1 + e / WALL_BEND);
+		}
+
+		/**
+		 * Whether the column lies in the basin or ring of its tarn or its ground is the shore wall (the steep cut of the
+		 * basin into the ground above the level): the parts of a tarn that are steep on purpose (tests of continuity).
+		 */
+		boolean steepPart(double surface) {
+			return tarn != null && (inRing() || !sill && Math.abs(surface - wall(tarn.edge(r))) < 1e-6);
 		}
 
 		/** Whether the column is inside the basin of its tarn (its water where the ground is below the level). */
@@ -275,10 +302,10 @@ final class TatraWaters {
 			// Two basins of one valley never touch (their belts may): the moraine tarn holds the valley.
 			cirque = null;
 		}
-		if (cirque != null && dry(m, north, j, width, cirque)) {
+		if (cirque != null && dry(m, north, j, width, cirque) && onGround(m, north, j, width, cirque)) {
 			tarns.add(cirque);
 		}
-		if (moraine != null && dry(m, north, j, width, moraine)) {
+		if (moraine != null && dry(m, north, j, width, moraine) && onGround(m, north, j, width, moraine)) {
 			tarns.add(moraine);
 		}
 		if (tarns.isEmpty()) {
@@ -407,6 +434,59 @@ final class TatraWaters {
 			RiverNetwork.RiverHit r = model.riverProbe(p[0], p[1]);
 			if (r.order() > 0 && (r.inChannel() || r.channelDist() < r.channelWidth() + 2 * RING)) {
 				return false;
+			}
+		}
+		return true;
+	}
+
+	/**
+	 * The ground of a column before the tarns: the land with the valleys and channels of the river network, as
+	 * {@link LandscapeModel#sample} has it (in the Tatras no sink lakes, kettles or tunnel lakes change it).
+	 */
+	double ground(double x, double z) {
+		RiverNetwork.RiverHit r = model.riverProbe(x, z);
+		double g = r.terrain();
+		if (r.order() > 0 && !r.inChannel() && g < r.bankLevel()) {
+			g = r.bankLevel();
+		}
+		if (r.order() > 0 && r.inChannel()) {
+			g = Math.min(g, r.channelBottom());
+		}
+		return g;
+	}
+
+	/**
+	 * Round 1 of the review of TT2: whether the basin lies on the ground, not over an incised river valley. On 24 rays
+	 * the ground of the basin and of its ring lies at most {@value #DEEPER} blocks under the bed of its center, and the outer
+	 * face of the ring rises at most {@value #RAISE} blocks over the ground of the belt (its raise fades out to the edge of
+	 * the belt, see Hit#surface).
+	 */
+	private boolean onGround(TatraField.Massif m, boolean north, long j, double width, Tarn t) {
+		double bpm = TatraField.blocksPerMeter(t.level());
+		double low = t.level() - t.depth() - DEEPER / bpm;
+		double raise = RAISE / bpm;
+		double side = Math.min(t.aq(), t.bu());
+		if (ground(t.x(), t.z()) < low) {
+			return false;
+		}
+		double[] rs = {0.25, 0.5, 0.75, 1, t.ring()};
+		double[] es = {6, 14, 24, 34};
+		for (int a = 0; a < 24; a++) {
+			double th = 2 * Math.PI * a / 24;
+			double cos = Math.cos(th);
+			double sin = Math.sin(th);
+			for (double rr : rs) {
+				double[] p = field.world(m, north, j, t.aq() * rr * cos, t.un0() + t.bu() * rr * sin / width);
+				if (ground(p[0], p[1]) < low) {
+					return false;
+				}
+			}
+			for (double e : es) {
+				double rr = 1 + e / side;
+				double[] p = field.world(m, north, j, t.aq() * rr * cos, t.un0() + t.bu() * rr * sin / width);
+				if (t.level() + 0.5 - DAM * (e - RING) - ground(p[0], p[1]) > raise) {
+					return false;
+				}
 			}
 		}
 		return true;
