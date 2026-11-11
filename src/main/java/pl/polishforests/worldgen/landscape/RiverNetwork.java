@@ -3088,6 +3088,13 @@ final class RiverNetwork {
 			double level = chLevel[q];
 			// The terrain (after cutting all valleys) does not rise safely above this watercourse's water level here.
 			boolean cascade = result < level + 1.0 && result < chOwn[q] - 0.5;
+			// Step TT1 (stage 2): in a Tatra complex the level of a stream, linear between its nodes, can lie above the
+			// relief (a step of a U-valley, the bowl of a cirque): the water descends to the ground as a cascade instead of
+			// standing on a bank raised to the level (levees up to 18 m high with walls of 36 m per m). Only in the network of
+			// a world with the Tatras and in their complex, so the old terrain is unchanged.
+			if (!cascade && base != null && result < level + 1.0 && model.tatraWeight(x, z) > 0) {
+				cascade = true;
+			}
 			if (cascade) {
 				// A cascade is cut deeper than an ordinary channel, because the side of the other valley can be steep.
 				level = Math.min(level, Math.max(result - 2.5, 0));

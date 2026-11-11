@@ -3555,6 +3555,28 @@ public final class LandscapeModel {
 	 * cached per kettle, because every column in its zone checks the same conditions. An existing kettle
 	 * is ombrotrophic ({@link #KETTLE_OMBROTROPHIC}) when its shore lies further than 300 m·k from a channel.
 	 */
+	/**
+	 * Step TT1 (stage 2): whether the basin of a kettle (center and reach) meets a Tatra complex. The kettles come from the
+	 * region weights of the old terrain (moraine plateau, outwash plain) under the complex, and their level from the ring
+	 * of the terrain with the Tatras: in the steep relief the basin cut pits up to 1650 m deep with walls of 80 m per m.
+	 * Always false without the Tatras.
+	 */
+	private boolean kettleTouchesTatra(double kx, double kz, double reach) {
+		if (tatra == null || !tatra.near(kx - reach, kz - reach, kx + reach, kz + reach)) {
+			return false;
+		}
+		if (tatraWeight(kx, kz) > 0) {
+			return true;
+		}
+		for (int i = 0; i < 16; i++) {
+			double a = i * (Math.PI * 2 / 16);
+			if (tatraWeight(kx + reach * Math.cos(a), kz + reach * Math.sin(a)) > 0) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	private byte kettleState(long key, double roll, double kx, double kz, double r) {
 		Byte cached = kettleExistence.get(key);
 		if (cached != null) {
@@ -3563,7 +3585,7 @@ public final class LandscapeModel {
 		Blend cb = blend(kx, kz);
 		double chance = KETTLE_MAX_CHANCE * cb.weight(LandscapeType.MORAINE_PLATEAU)
 				+ 0.15 * cb.weight(LandscapeType.OUTWASH_PLAIN);
-		boolean exists = roll <= chance;
+		boolean exists = roll <= chance && !kettleTouchesTatra(kx, kz, 1.25 * r + KETTLE_BANK + 1);
 		boolean ombrotrophic = false;
 		if (exists) {
 			double lowland = cb.weight(LandscapeType.OUTWASH_PLAIN) + cb.weight(LandscapeType.MORAINE_PLATEAU)
@@ -3635,6 +3657,10 @@ public final class LandscapeModel {
 		int nq = c.hi - c.lo + 1;
 		float[] halves = new float[nq];
 		float[] gates = new float[nq];
+		// Step TT1 (stage 2): a lake whose basin meets a Tatra complex is absent (level 0 below). Its contour and gate come
+		// from the old young-glacial terrain under the complex and its level from the lowest ground along it with the
+		// Tatras, so in the Podhale and the foot its basin cut pits up to 250 m deep with walls of 16 m per m.
+		boolean tatraTouch = false;
 		for (int q = c.lo; q <= c.hi; q++) {
 			double x = c.xs[q];
 			double z = c.z0 + q * c.dz;
@@ -3647,6 +3673,11 @@ public final class LandscapeModel {
 			double half = gate * local * (200 + 500 * (0.5 + 0.5 * tunnel.at(x, z, 9_000 * meso)));
 			gates[q - c.lo] = (float) gate;
 			halves[q - c.lo] = (float) half;
+			if (tatra != null && !tatraTouch) {
+				double reach = (half + 1.5 * tunnelBankMax()) * Math.sqrt(1 + c.slopes[q] * c.slopes[q]);
+				tatraTouch = tatra.near(x - reach, z - reach, x + reach, z + reach) && (tatraWeight(x, z) > 0
+						|| tatraWeight(x - reach, z) > 0 || tatraWeight(x + reach, z) > 0);
+			}
 			double b0 = tunnelBoundary(k, x);
 			double b1 = tunnelBoundary(k + 1, x);
 			double edge = Math.min(z - b0, b1 - z);
@@ -3676,7 +3707,7 @@ public final class LandscapeModel {
 			int mid = (c.lo + c.hi) / 2;
 			min = landElevation(c.xs[mid], c.z0 + mid * c.dz);
 		}
-		int level = (int) Math.floor(min) - 1;
+		int level = tatraTouch ? 0 : (int) Math.floor(min) - 1;
 		double bank = Math.clamp(TUNNEL_BANK_PER_CUT * (Math.max(max, min) - (level + 1)), tunnelBank, tunnelBankMax());
 		float[] halves0 = halves.clone();
 		// K8a: distance along z to the nearest narrow node (none: the length of the trace).

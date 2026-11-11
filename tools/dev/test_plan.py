@@ -60,7 +60,7 @@ MAP = [
 TESTS = {
     'unit': (['tools/dev/run-tests --reuse fastTest'], ['tools/dev/run-tests test   # full set, once']),
     'terrain': (["./gradlew test --tests '*GoldenTerrainTest*'   # terrain unchanged unless the step says so"], []),
-    'tatra': (["./gradlew test --tests '*GoldenTatraTest*' --tests '*TatraIsolationTest*' --tests '*TatraReliefTest*'   # Tatra golden file, KT-1 isolation (step TT1)"],
+    'tatra': (["./gradlew test --tests '*GoldenTatraTest*' --tests '*TatraIsolationTest*' --tests '*TatraReliefTest*' --tests '*TatraRiverTest*'   # Tatra golden file, KT-1 isolation, relief and rivers (step TT1)"],
               ['./gradlew runClientGameTest -Pgametest=tatra   # build/tatra/report.txt']),
     'generation': (['./gradlew runClientGameTest -Pgametest=determinism   # same seed = same blocks, any chunk order'],
                    ['./gradlew runClientGameTest -Pgametest=determinism -Poptimization -PdeterminismReference=<copy>/plain.txt   # C2ME, see BRIEF']),
