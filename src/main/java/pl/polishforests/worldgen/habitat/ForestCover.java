@@ -174,7 +174,8 @@ final class ForestCover {
 				Calibration.P_DRY_CONIFEROUS, s * Calibration.P_DRY_CONIFEROUS, Calibration.P_FRESH_CONIFEROUS, s * Calibration.P_FRESH_CONIFEROUS,
 				Calibration.P_MOIST_CONIFEROUS, s * Calibration.P_MOIST_CONIFEROUS, Calibration.P_FRESH_MIXED_CONIFEROUS,
 				s * Calibration.P_FRESH_MIXED_CONIFEROUS, Calibration.P_FRESH_MIXED_BROADLEAVED, Calibration.P_MOIST_MIXED_BROADLEAVED,
-				Calibration.P_FRESH_BROADLEAVED, Calibration.P_MOIST_BROADLEAVED};
+				Calibration.P_FRESH_BROADLEAVED, Calibration.P_MOIST_BROADLEAVED, Calibration.P_TATRA_PARK,
+				Calibration.P_TATRA_PARK_FLOOR};
 		double b = values[0];
 		for (double v : values) {
 			b = greatest ? Math.max(b, v) : Math.min(b, v);
@@ -226,9 +227,25 @@ final class ForestCover {
 			case ASH_ALDER_FOREST -> c.onValleyFloor() ? Calibration.P_ASH_ALDER : dryLand(c);
 			case ALDER_CARR -> alderCarr(c);
 			case GRAY_ALDER_FOREST -> grayAlder(c);
-			case MONTANE_BEECH_FOREST, UPLAND_FIR_FOREST, MONTANE_SPRUCE_FOREST -> c.onValleyFloor() ? Calibration.P_MOUNTAIN_FLOOR : dryLand(c);
+			case MONTANE_BEECH_FOREST, UPLAND_FIR_FOREST, MONTANE_SPRUCE_FOREST -> c.onValleyFloor()
+					? park(c, Calibration.P_MOUNTAIN_FLOOR, Calibration.P_TATRA_PARK_FLOOR) : park(c, dryLand(c), Calibration.P_TATRA_PARK);
 			default -> dryLand(c);
 		};
+	}
+
+	/**
+	 * Step TT3: the Tatra massif is a national park (the PRESENT_DAY mode): its forests of the regle stay forest but for
+	 * the clearings with grazing (the hay meadows of {@link #nonForest}), P_forest {@link Calibration#P_TATRA_PARK} (on the
+	 * valley floors {@link Calibration#P_TATRA_PARK_FLOOR}: the glades of the valleys), blended in by the Tatra weight on
+	 * the massif rock (0 at 0.5, full at 0.9), so the edge of the park on the foot is a ramp.
+	 */
+	private static double park(HabitatClassifier.Column c, double p, double target) {
+		pl.polishforests.worldgen.landscape.Substrate rock = c.t.rock();
+		if (rock == null || !rock.isTatraRock()) {
+			return p;
+		}
+		double w = Noise.smoothstep(0.5, 0.9, c.t.wTatra());
+		return w <= 0 ? p : Noise.lerp(w, p, target);
 	}
 
 	/**

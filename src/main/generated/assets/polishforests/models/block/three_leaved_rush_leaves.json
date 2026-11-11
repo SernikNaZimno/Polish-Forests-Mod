@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/cross",
+  "textures": {
+    "cross": "polishforests:block/three_leaved_rush_leaves"
+  }
+}

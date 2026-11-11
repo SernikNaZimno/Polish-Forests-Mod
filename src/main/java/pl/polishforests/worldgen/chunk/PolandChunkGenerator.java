@@ -155,6 +155,11 @@ public final class PolandChunkGenerator extends ChunkGenerator implements Forest
 		}
 		// Step F1: the stand profiles by forest from the world's blend lattice (a pure function of the world).
 		m = new pl.polishforests.worldgen.tree.ForestStandMap(seed, k, managed, forestBlend(seed).standProfiles());
+		// Step TT3: the Tatras are a national park, their stands all natural (no change without the Tatras).
+		LandscapeModel model = model(seed);
+		if (model.hasTatra()) {
+			m.withPark(model::tatraPark);
+		}
 		standMap = m;
 		return m;
 	}

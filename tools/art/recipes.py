@@ -1745,6 +1745,81 @@ TEXTURES = [
             params=dict(form='stems', count=3, top=1, node=3, leaf=4, flowers=0,
                         colors=['#2e5a24', '#3a6a2c', '#4a7c36', '#4a5a34']),
             note='butterbur leaves (step F6, May to October): very large rounded heart-shaped leaves on long stalks'),
+    # Step TT3: the plants of the Tatra halas and rocks. The grasses and the rush as tufts (the three-leaved rush and the
+    # Oreochloa of the granite, the Tatra moor grass and the variegated fescue of the limestone), edelweiss, Clusius's
+    # gentian and the least willow as flower beds, the rock lichens as a mat of the moss generator in the yellow-green and
+    # gray tones of the crustose lichens.
+    Texture('three_leaved_rush', 'plant', ground.herb, 'three_leaved_rush/2', None,
+            params=dict(form='tuft', count=14, reach=(2, 5), height=(7, 10), arch=0.45, flowers=4,
+                        colors=['#4a5a2c', '#566834', '#64763c', '#6a5e3a', '#4a3a2a', '#5e4a32', '#74603e']),
+            note='three-leaved rush (Juncus trifidus, step TT3, the granite halas): a stiff tuft of wiry dark green '
+                 'leaves, small brown flower clusters near the tips (June to August)'),
+    Texture('three_leaved_rush_leaves', 'plant', ground.herb, 'three_leaved_rush/2', None,
+            params=dict(form='tuft', count=14, reach=(2, 5), height=(7, 10), arch=0.45, flowers=0,
+                        colors=['#7a4a2a', '#8c5a32', '#9e6c3c', '#6a5a3a']),
+            note='three-leaved rush outside summer (step TT3): the same tuft turned rusty red-brown, the color of the '
+                 'granite halas in autumn'),
+    Texture('two_rowed_oreochloa', 'plant', ground.herb, 'two_rowed_oreochloa/1', None,
+            params=dict(form='tuft', count=15, reach=(2, 5), height=(6, 9), arch=0.45, flowers=3,
+                        colors=['#4c6232', '#58703a', '#668044', '#6a6a40', '#3e3450', '#4e4262', '#625476']),
+            note='two-rowed Oreochloa (Oreochloa disticha, step TT3, the granite halas): a dense low tuft of narrow '
+                 'leaves, short dark violet two-rowed spikes on thin stalks (June, July)'),
+    Texture('two_rowed_oreochloa_leaves', 'plant', ground.herb, 'two_rowed_oreochloa/1', None,
+            params=dict(form='tuft', count=15, reach=(2, 5), height=(6, 9), arch=0.45, flowers=0,
+                        colors=['#5a6a38', '#667640', '#748448', '#6a6a40']),
+            note='two-rowed Oreochloa without spikes (step TT3): the same tuft'),
+    Texture('tatra_moor_grass', 'plant', ground.herb, 'tatra_moor_grass/1', None,
+            params=dict(form='tuft', count=12, reach=(3, 5), height=(7, 11), arch=0.5, flowers=3,
+                        colors=['#4a6248', '#567052', '#647e5e', '#6a7050', '#4a5068', '#5a627c', '#6e7690']),
+            note='Tatra moor grass (Sesleria tatrae, step TT3, the limestone halas): a tuft of blue-green keeled leaves, '
+                 'short dense blue-gray spikes early in the season (May, June)'),
+    Texture('tatra_moor_grass_leaves', 'plant', ground.herb, 'tatra_moor_grass/1', None,
+            params=dict(form='tuft', count=12, reach=(3, 5), height=(7, 11), arch=0.5, flowers=0,
+                        colors=['#4e6448', '#5a7252', '#68805e', '#6a7050']),
+            note='Tatra moor grass without spikes (step TT3): the same blue-green tuft'),
+    Texture('variegated_fescue', 'plant', ground.herb, 'variegated_fescue/1', None,
+            params=dict(form='tuft', count=14, reach=(3, 6), height=(8, 12), arch=0.35, flowers=3,
+                        colors=['#4c6034', '#586e3c', '#667c46', '#6e6a42', '#5a4058', '#6c506a', '#80627c']),
+            note='variegated fescue (Festuca versicolor, step TT3, the limestone halas): a firm tuft of stiff '
+                 'needle-like leaves, loose violet-tinged panicles (July, August)'),
+    Texture('variegated_fescue_leaves', 'plant', ground.herb, 'variegated_fescue/1', None,
+            params=dict(form='tuft', count=14, reach=(3, 6), height=(8, 12), arch=0.35, flowers=0,
+                        colors=['#56683a', '#627442', '#70824a', '#6e6a42']),
+            note='variegated fescue without panicles (step TT3): the same tuft'),
+    Texture('edelweiss', 'plant', ground.flower_bed, 'edelweiss/1', None,
+            params=dict(leaves=ground.EDELWEISS_LEAVES, flower_sprites=ground.EDELWEISS_FLOWERS, leaf_cover=0.6, flowers=2, halo=((1, 7),),
+                        colors=['#6c7866', '#7a8674', '#889482', '#76786a', '#a8aea0', '#bcc0b4', '#b8b48a', '#98a290']),
+            note='edelweiss (Leontopodium alpinum, step TT3, the limestone rock grasslands): rosettes of narrow gray '
+                 'woolly leaves, stars of white felted bracts around yellow-white heads (July, August)'),
+    Texture('edelweiss_leaves', 'plant', ground.flower_bed, 'edelweiss/1', None,
+            params=dict(leaves=ground.EDELWEISS_LEAVES, flower_sprites=ground.EDELWEISS_FLOWERS, leaf_cover=0.6, flowers=2, halo=((1, 7),),
+                        drop_flowers=True,
+                        colors=['#6c7866', '#7a8674', '#889482', '#76786a', '#a8aea0', '#bcc0b4', '#b8b48a', '#889482']),
+            note='edelweiss outside the flowering (step TT3): the gray woolly rosettes'),
+    Texture('clusius_gentian', 'plant', ground.flower_bed, 'clusius_gentian/1', None,
+            params=dict(leaves=ground.GENTIAN_LEAVES, flower_sprites=ground.GENTIAN_FLOWERS, leaf_cover=0.65, flowers=1, halo=((1, 7),),
+                        colors=['#2e4c28', '#385c30', '#466c38', '#4e5638', '#2a3c86', '#3a4ea6', '#6c7cb8', '#527040']),
+            note="Clusius's gentian (Gentiana clusii, step TT3, the limestone halas): flat rosettes of small leathery "
+                 'leaves, one large deep blue trumpet open to the sky (June, July)'),
+    Texture('clusius_gentian_leaves', 'plant', ground.flower_bed, 'clusius_gentian/1', None,
+            params=dict(leaves=ground.GENTIAN_LEAVES, flower_sprites=ground.GENTIAN_FLOWERS, leaf_cover=0.65, flowers=1, halo=((1, 7),),
+                        drop_flowers=True,
+                        colors=['#2e4c28', '#385c30', '#466c38', '#4e5638', '#2a3c86', '#3a4ea6', '#6c7cb8', '#466c38']),
+            note="Clusius's gentian outside the flowering (step TT3): the evergreen rosettes"),
+    Texture('least_willow', 'plant', ground.flower_bed, 'least_willow/1', None,
+            params=dict(leaves=ground.WILLOW_LEAVES, flower_sprites=ground.WILLOW_CATKINS, leaf_cover=0.7, flowers=2, halo=((1, 7),),
+                        colors=['#2e5426', '#3a662e', '#4a7a38', '#5a5a34', '#7a5a3a', '#8e6a42', '#a89a5c', '#5a8a42']),
+            note='least willow (Salix herbacea, step TT3, the snowbeds): a creeping mat of tiny round glossy leaves, '
+                 'small reddish catkins with yellow anthers (June)'),
+    Texture('least_willow_leaves', 'plant', ground.flower_bed, 'least_willow/1', None,
+            params=dict(leaves=ground.WILLOW_LEAVES, flower_sprites=ground.WILLOW_CATKINS, leaf_cover=0.7, flowers=2, halo=((1, 7),),
+                        drop_flowers=True,
+                        colors=['#2e5426', '#3a662e', '#4a7a38', '#5a5a34', '#7a5a3a', '#8e6a42', '#a89a5c', '#4a7a38']),
+            note='least willow after the catkins (step TT3, to the end of the summer): the same leaf mat'),
+    Texture('rock_lichen', 'plant', ground.forest_moss, 'rock_lichen/1', None,
+            params=dict(grain=2.0, colors=['#8e9660', '#989e6a', '#9e9e84', '#a6a68e', '#aeac94']),
+            note='rock lichens (map lichen Rhizocarpon geographicum and gray crustose lichens; step TT3, the granite and '
+                 'limestone of the Tatras): a mat of yellow-green and gray crusts, tileable, not tinted'),
     # Step F4: the ground layer of the pine forests, the bogs and the heath: the reindeer lichen as a litter of the vanilla
     # leaf litter templates (the moss mat generator in its pale gray-green tones), heather and crowberry as flower beds
     # (evergreen; the purple bells of the heather and the black berries of the crowberry in the full texture), the bog

@@ -1192,3 +1192,27 @@ Krok: `docs/04-pionowy-wycinek.md` „Projekt TT2” (etap 1, TT2-a … TT2-k) i
 | TT2-o | Odpływy stawów (do decyzji użytkownika, nie domyślne) | Odpływ biegnie osią doliny, a próg misy na osi zwykle leży wyżej niż poziom wody, więc większość stawów nie ma odpływu, a część potoków kończy się oczkiem. Rekomendacja: w TT3 poprowadzić odpływ z najniższego punktu pierścienia najstromszym spadkiem `landElevation` (nowa sól, przegenerowany złoty plik Tatr), z progiem testu ≥ 50% połączonych odpływów |
 | TT2-p | KT-6 (etap 2) | Jeden przebieg kontrolny na kodzie etapu 1 (etap 2 nie zmienia generacji, tylko wyszukiwanie komend i test); opis bez progu |
 | TT2-q | Stawy nad wciętymi dolinami (runda 1 przeglądu) | Staw odpada, gdy na 24 promieniach grunt po wcięciu rzek (`TatraWaters.ground`) leży w misie lub pierścieniu więcej niż 2,5 bloku pod dnem środka misy albo zewnętrzny stok wału wznosi się ponad 5 bloków nad grunt pasa (progi z próby: stawy zostawione do 1,9 i 4,5 bloku, stawy nad wąwozami 3,0–97 i 5,8–101). Ubywa 5 ze 190 stawów sześciu masywów testowych. Podniesienie stoku wału zanika 1,5 m na metr do krawędzi pasa 40 m. Inna możliwość: obniżyć poziom stawu do gruntu w wąwozie (staw w dnie wąwozu), odłożona |
+
+### G.52 Drobne wybory kroku TT3 (domyślne, do potwierdzenia przy CP-D; 2026-11-11)
+
+Krok: `docs/04-pionowy-wycinek.md` „Projekt TT3” (etap 1, TT3-a … TT3-l) i „Stan po TT3” (etap 2, TT3-m … TT3-q); plan kroków TT w G.49.
+
+| # | Wybór | Wartość i powód |
+|---|---|---|
+| TT3-a | Profile pięter | Rekord `habitat/BeltProfile`: `BESKIDS` = dawne stałe `AltitudinalBelts` (550, 1150, 1390, 1650 m, warunek wielkiego masywu); `TATRA` = regiel dolny od 700 m (górna granica pogórza Podhala; zadanie podawało tylko górne granice), regiel górny od 1225 m, granica lasu 1525 m, hale od 1800 m, piętro turni od 2275 m, bez warunku wielkiego masywu. Mozaika ±30 m na granicy regli i ±50 m na granicy turni |
+| TT3-b | Zespoły według skały | Bez nowej strefy, według skały kolumny (`Substrate.isTatraRock`): regiel dolny na wapieniu i dolomicie buczyna karpacka z jodłą (F3), na granicie i gnejsie Abieti-Piceetum (F6); regiel górny na wapieniu Polysticho-Piceetum; hale: wyleżyska (ekspozycja N, kocioł, żleb, wklęsłość), murawy naskalne (turnia, nachylenie > 36 ± 5°), poza tym wapienna albo granitowa |
+| TT3-c | Żyzność według skały | `Fertility.richness`: wapień i dolomit 0,35 + 0,65·r, granit i gnejs 0,25·r, z wagą smoothstep(0,5, 0,9) wagi Tatr; poza skałą Tatr bez zmian |
+| TT3-d | Park narodowy | Tryb D: udział lasu P w piętrach górskich na skale Tatr 0,93 na zboczach, 0,55 na dnach dolin (polany, dawne hale wypasowe); Podhale według reguł M2 trybu D. Wydzielenia z siedzibą w masywie właściwym (udział masywu > 0,5) zawsze naturalne, w obu trybach |
+| TT3-e | Rośliny | Osiem `GroundPlant` na końcu enumu (sit skucina, boimka dwurzędowa, sesleria tatrzańska, kostrzewa pstra jako HERB; szarotka, goryczka Clusiusa, wierzba zielna jako SEASONAL; porosty naskalne jako dywan COVER), fazy V13, tekstury z `tools/art` (nowe duszki), migawka +84 stany |
+| TT3-f | Komendy | `find biome subnival_rocks|mountain_tarn` tylko wokół masywów (w świecie bez Tatr „ten świat nie ma Tatr”); `find biome alpine_grassland|dwarf_pine_scrub` najpierw w Tatrach; `here` z linią piętra i profilu; nowych stref nie ma, więc `find zone` bez zmian |
+| TT3-g | Gleby nowych biomów | Turnie `RANKER` (na wapieniu rędzina), staw `LAKE_BED`. Na kolumnach turni poza strefą `BARE_ROCK` (ok. 40% powyżej 2250 m) wierzch daje trawę i gruboziarnistą ziemię. Do decyzji przy grze: zamiana na rumosz granitowy i wapienny |
+| TT3-h | Mianownik udziałów pięter | Bez wód, stref brzegu i den dolin (łęgi i olszyny den nie są piętrem); ten sam w JUnit i w gametescie |
+| TT3-i | Staw bez roślin wodnych | Stawy tatrzańskie są ubogie; biom wody bez palety roślin wodnych |
+| TT3-j | Brzeg stawu | Bez osobnej reguły runa: brzegi to hale, kosodrzewina albo turnie |
+| TT3-k | Przejście do Podhala (Z10) | Udział profilu Tatr s = smoothstep(0,3, 0,9) wagi Tatr, każdy próg `blend(beskids, tatra, s)` z tą samą poprawką ekspozycji i szumu; przy s = 0 wartości dokładnie beskidzkie |
+| TT3-l | Sole | Jedno nowe pole szumu z nową solą `habitat.tatra.mosaic` (warstwy przesunięciem współrzędnych); stare sole bez zmian |
+| TT3-m | Próba biomu w gametescie `tatra` (etap 2) | Biom poziomu czytany na wierzchu modelu (`VerticalScale.topBlockY`), nie na mapie wysokości `OCEAN_FLOOR`: w otworach jaskiń najwyższy blok gruntu to dno jaskini (biom jaskiniowy poniżej Y 256), a wierzch Tatr leży na Y 340–690; próby z wierzchem ściętym przez jaskinię liczone osobno |
+| TT3-n | `present_day` z jaskiniami (etap 2) | Jak F1-u: pada tylko na znanej wsi GAMEPLAY (4089, −3980), DP-126, te same liczby co od F1; bez jaskiń PASS (0 kolumn wiszących) |
+| TT3-o | Karta norm w KT-2 (etap 2) | Jak TT1-s i TT2-n: 219 wierszy `out` jak w F7, różnice wartości w 8 miejscach (także w REAL, gdzie Tatr nie ma) to rozrzut kolejności chunków; dowodem blokowym jest `determinism` (poza strefą Tatr 0 różnic wobec `ddf5cd6`) |
+| TT3-p | KT-6 (etap 2) | Jeden przebieg kontrolny na kodzie etapu 1 (etap 2 zmienia tylko testy): Tatry −3,0% / −3,2% wobec TT2, Beskidy −1,8% / −0,9%; opis bez progu |
+| TT3-q | Odpływy stawów (TT2-o) | TT3 nie zmieniał wód, więc sprawa TT2-o zostaje otwarta do decyzji użytkownika (rekomendacja bez zmian: odpływ z najniższego punktu pierścienia) |

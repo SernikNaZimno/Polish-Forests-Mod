@@ -38,8 +38,8 @@ final class OpenWater {
 			case RIVER -> HabitatClassifier.Result.of(WatersideZones.streamClass(c) == WatersideZones.StreamClass.C ? HabitatBiome.STREAM : HabitatBiome.RIVER,
 					Zone.CHANNEL, Association.TYPICAL);
 			case LAKE, KETTLE, OXBOW -> lake(c, z);
-			// Step TT2: the Tatra tarns are clear, cold lakes without reeds (their own biome comes with the belts of step TT3).
-			case TARN -> HabitatClassifier.Result.of(HabitatBiome.LAKE, Zone.NONE, Association.TYPICAL);
+			// Step TT2: the Tatra tarns are clear, cold lakes without reeds; step TT3: in their own biome.
+			case TARN -> HabitatClassifier.Result.of(HabitatBiome.MOUNTAIN_TARN, Zone.NONE, Association.TYPICAL);
 			case NONE -> HabitatClassifier.Result.NONE;
 		};
 	}

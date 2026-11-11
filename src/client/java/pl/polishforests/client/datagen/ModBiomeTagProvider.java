@@ -49,7 +49,7 @@ final class ModBiomeTagProvider extends FabricTagsProvider<Biome> {
 				LOWLAND_BEECH_FOREST);
 		List<HabitatBiome> taigaVillages = List.of(DRY_PINE_FOREST, FRESH_PINE_FOREST, COASTAL_PINE_FOREST, MOIST_PINE_FOREST,
 				MIXED_PINE_FOREST, UPLAND_FIR_FOREST, MONTANE_BEECH_FOREST);
-		STRUCTURES.put("mineshaft", concat(nonForestLand, List.of(LAGOON, LAKE, DYSTROPHIC_LAKE)));
+		STRUCTURES.put("mineshaft", concat(nonForestLand, List.of(LAGOON, LAKE, DYSTROPHIC_LAKE, MOUNTAIN_TARN)));
 		STRUCTURES.put("trial_chambers", List.of(HabitatBiome.values()));
 		STRUCTURES.put("village_plains", plainsVillages);
 		STRUCTURES.put("village_taiga", taigaVillages);
@@ -89,7 +89,7 @@ final class ModBiomeTagProvider extends FabricTagsProvider<Biome> {
 		add(vanilla("is_beach"), List.of(BEACH));
 		add(vanilla("is_ocean"), List.of(SEA));
 		add(vanilla("is_mountain"), biomes(HabitatBiome::isMountain));
-		add(vanilla("water_on_map_outlines"), List.of(LAGOON, LAKE, DYSTROPHIC_LAKE));
+		add(vanilla("water_on_map_outlines"), List.of(LAGOON, LAKE, DYSTROPHIC_LAKE, MOUNTAIN_TARN));
 		STRUCTURES.forEach((structure, biomes) -> add(vanilla("has_structure/" + structure), biomes));
 
 		// Serene Seasons (§6.3): 25% of the seasonal color change in pine and spruce forests, the dwarf pine, the raised
@@ -103,7 +103,7 @@ final class ModBiomeTagProvider extends FabricTagsProvider<Biome> {
 		add(own("waterside"), List.of(ALDER_CARR, ASH_ALDER_FOREST, WILLOW_POPLAR_FOREST, ELM_ASH_FOREST, GRAY_ALDER_FOREST, FEN,
 				REEDBED, WILLOW_SCRUB));
 		add(own("montane"), List.of(MONTANE_BEECH_FOREST, MONTANE_SPRUCE_FOREST, GRAY_ALDER_FOREST, DWARF_PINE_SCRUB,
-				ALPINE_GRASSLAND));
+				ALPINE_GRASSLAND, SUBNIVAL_ROCKS));
 	}
 
 	private void add(TagKey<Biome> tag, List<HabitatBiome> biomes) {

@@ -47,6 +47,8 @@ public final class HabitatClassifier {
 	final Noise timberline;
 	/** Mosaic of dwarf pine and spruce at the timberline and of alpine grassland and dwarf pine (round 1 of the S8b review). */
 	final Noise timberlineMosaic;
+	/** Step TT3: the mosaics and patches of the Tatra belts and associations (a new field with a new salt). */
+	final Noise tatra;
 	final ForestCover forestCover;
 
 	/**
@@ -97,6 +99,7 @@ public final class HabitatClassifier {
 		// salt "habitat.timberline.patches" is no longer used).
 		this.timberline = root.derive("habitat.timberline.clumps");
 		this.timberlineMosaic = root.derive("habitat.timberline.mosaic");
+		this.tatra = root.derive("habitat.tatra.mosaic");
 		// Step S8: the second octave of F is a new noise field with its own salt; round 1 of the S8 review: the woodlot
 		// octave and the context noise, new fields with new salts; step S8c: the short edge octave of F, a new field with a new salt.
 		this.forestCover = new ForestCover(root.derive("habitat.lesistosc"), root.derive("habitat.forest_cover.fine"),
@@ -157,6 +160,24 @@ public final class HabitatClassifier {
 	/** Depth to groundwater in the column (m), as in the classification (§3.3). */
 	public double dgw(ColumnSample s, double x, double z) {
 		return new Column(this, s, x, z).dgw();
+	}
+
+	/**
+	 * Step TT3: the altitudinal belt of the column by the thresholds of its belt profile ({@link AltitudinalBelts#belt}),
+	 * for the commands.
+	 */
+	public AltitudinalBelts.Belt belt(ColumnSample s, double x, double z) {
+		return AltitudinalBelts.belt(new Column(this, s, x, z));
+	}
+
+	/** Step TT3: the belt profile of the column: {@code beskids}, {@code tatra} or {@code blend} on the foot of the Tatras. */
+	public String beltProfile(ColumnSample s, double x, double z) {
+		return AltitudinalBelts.profile(new Column(this, s, x, z));
+	}
+
+	/** Step TT3: whether the column lies on a valley floor, as the classification sees it (the belt shares of the tests). */
+	public boolean onValleyFloor(ColumnSample s, double x, double z) {
+		return new Column(this, s, x, z).onValleyFloor();
 	}
 
 	/** Fertility of the column, as in the classification (§3.3). */

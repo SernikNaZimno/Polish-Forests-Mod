@@ -3,7 +3,8 @@ package pl.polishforests.worldgen.habitat;
 import java.util.List;
 
 /**
- * Biomes of the "Poland" world: 36 habitat groups (decision M2-A, docs/03-m2-biomy.md §2). The identifiers
+ * Biomes of the "Poland" world: 36 habitat groups (decision M2-A, docs/03-m2-biomy.md §2) and, since step TT3, the
+ * subnival rocks and the mountain tarns of the Tatras. The identifiers
  * {@code polishforests:<id>} are frozen from M2, because chunks store biomes by name. The enum order is
  * fixed (the habitat code stores {@link #ordinal()}); new biomes are appended at the end only.
  */
@@ -85,7 +86,14 @@ public enum HabitatBiome {
 	LAKE("lake", Group.WATER, "Jezioro", "Lake",
 			0.7F, 0.8F, 0x3D6E70, 0x79C05A, 0x59AE30, 0xA36D46),
 	DYSTROPHIC_LAKE("dystrophic_lake", Group.WATER, "Jezioro dystroficzne", "Dystrophic Lake",
-			0.7F, 0.9F, 0x3A3326, 0x73C158, 0x50B02F, 0xA36D46);
+			0.7F, 0.9F, 0x3A3326, 0x73C158, 0x50B02F, 0xA36D46),
+	// Step TT3 (appended: the habitat code stores the ordinal). The subnival belt of the Tatras: bare rock with lichens
+	// and rare tufts above the alpine grassland; the Tatra tarns, clear cold lakes without reeds, their water a step
+	// bluer than the mountain water of the streams (ΔE ≤ 12 to the alpine biomes, Z10).
+	SUBNIVAL_ROCKS("subnival_rocks", Group.NON_FOREST, "Piętro turni", "Subnival Rocks",
+			0.7F, 0.6F, 0x4D8090, 0x7FB862, 0x5EA738, 0xA36D46),
+	MOUNTAIN_TARN("mountain_tarn", Group.WATER, "Staw tatrzański", "Mountain Tarn",
+			0.7F, 0.8F, 0x4A8498, 0x79C05A, 0x59AE30, 0xA36D46);
 
 	/** Biome group: forest, non-forest terrestrial, water. */
 	public enum Group {
@@ -230,7 +238,7 @@ public enum HabitatBiome {
 			case DRY_PINE_FOREST, FRESH_PINE_FOREST, COASTAL_PINE_FOREST, MOIST_PINE_FOREST, MIXED_PINE_FOREST, UPLAND_FIR_FOREST,
 					MONTANE_SPRUCE_FOREST, DWARF_PINE_SCRUB -> Music.OLD_GROWTH_TAIGA;
 			case BOG_WOODLAND, ALDER_CARR, RAISED_BOG, FEN -> Music.SWAMP;
-			case ALPINE_GRASSLAND -> Music.MEADOW;
+			case ALPINE_GRASSLAND, SUBNIVAL_ROCKS -> Music.MEADOW;
 			default -> isForest() ? Music.FOREST : Music.DEFAULT;
 		};
 	}
@@ -241,9 +249,9 @@ public enum HabitatBiome {
 			case ALDER_CARR -> Spawns.WET_FOREST;
 			case WET_MEADOW, HAY_MEADOW, ARABLE_LAND, ALPINE_GRASSLAND -> Spawns.OPEN;
 			case RAISED_BOG, FEN, REEDBED -> Spawns.WETLAND;
-			case HEATH, WILLOW_SCRUB, BEACH, WHITE_DUNE, GRAY_DUNE -> Spawns.SPARSE;
+			case HEATH, WILLOW_SCRUB, BEACH, WHITE_DUNE, GRAY_DUNE, SUBNIVAL_ROCKS -> Spawns.SPARSE;
 			case RIVER, STREAM -> Spawns.RIVER;
-			case LAGOON, LAKE, DYSTROPHIC_LAKE -> Spawns.LAKE;
+			case LAGOON, LAKE, DYSTROPHIC_LAKE, MOUNTAIN_TARN -> Spawns.LAKE;
 			case SEA -> Spawns.SEA;
 			default -> Spawns.FOREST;
 		};
@@ -261,7 +269,7 @@ public enum HabitatBiome {
 	/** Bone meal carrier at the end of step 9 (§8.1). */
 	public BoneMeal boneMeal() {
 		return switch (this) {
-			case MONTANE_BEECH_FOREST, MONTANE_SPRUCE_FOREST, DWARF_PINE_SCRUB, ALPINE_GRASSLAND -> BoneMeal.MOUNTAIN;
+			case MONTANE_BEECH_FOREST, MONTANE_SPRUCE_FOREST, DWARF_PINE_SCRUB, ALPINE_GRASSLAND, SUBNIVAL_ROCKS -> BoneMeal.MOUNTAIN;
 			case BOG_WOODLAND, ALDER_CARR, ASH_ALDER_FOREST, WILLOW_POPLAR_FOREST, ELM_ASH_FOREST, GRAY_ALDER_FOREST, RAISED_BOG, FEN,
 					REEDBED, WILLOW_SCRUB, WET_MEADOW -> BoneMeal.WETLAND;
 			case HEATH, HAY_MEADOW, ARABLE_LAND, BEACH, WHITE_DUNE, GRAY_DUNE -> BoneMeal.MEADOW;
@@ -271,7 +279,8 @@ public enum HabitatBiome {
 
 	/** Montane biomes in {@code #minecraft:is_mountain} (decision M2-C: outposts, mountain portals and mineshafts, §10). */
 	public boolean isMountain() {
-		return this == MONTANE_BEECH_FOREST || this == MONTANE_SPRUCE_FOREST || this == DWARF_PINE_SCRUB || this == ALPINE_GRASSLAND;
+		return this == MONTANE_BEECH_FOREST || this == MONTANE_SPRUCE_FOREST || this == DWARF_PINE_SCRUB || this == ALPINE_GRASSLAND
+				|| this == SUBNIVAL_ROCKS;
 	}
 
 	/** Biome with the given identifier (without a namespace), or null. */

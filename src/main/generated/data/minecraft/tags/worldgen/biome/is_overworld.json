@@ -35,6 +35,8 @@
     "polishforests:river",
     "polishforests:stream",
     "polishforests:lake",
-    "polishforests:dystrophic_lake"
+    "polishforests:dystrophic_lake",
+    "polishforests:subnival_rocks",
+    "polishforests:mountain_tarn"
   ]
 }

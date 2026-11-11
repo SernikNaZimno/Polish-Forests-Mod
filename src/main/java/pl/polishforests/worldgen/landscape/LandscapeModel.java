@@ -2350,6 +2350,14 @@ public final class LandscapeModel {
 		return c == null ? 0 : c.massifShare;
 	}
 
+	/**
+	 * Step TT3: whether a point lies in the Tatra National Park, the Tatra massif proper (its share above one half;
+	 * false without the Tatras): the forests there are natural in every vegetation mode.
+	 */
+	public boolean tatraPark(double x, double z) {
+		return tatraMassifShare(x, z) > 0.5;
+	}
+
 	/** Weight of a Tatra complex at a point (0 outside them and without the Tatras). */
 	double tatraWeight(double x, double z) {
 		TatraField.Column c = tatra == null ? null : tatra.column(x, z);

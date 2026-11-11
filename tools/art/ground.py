@@ -191,6 +191,42 @@ GARLIC_LEAVES = [
 ]
 
 
+# Step TT3: the plants of the Tatra halas. Edelweiss (Leontopodium alpinum: rosettes of narrow gray woolly leaves; a
+# star of white felted bracts around the small yellow-white heads), Clusius's gentian (Gentiana clusii: flat rosettes of
+# small elliptic leathery leaves; one large deep blue trumpet, open to the sky, a pale throat) and the least willow
+# (Salix herbacea: a creeping mat of tiny round glossy leaves in pairs; small reddish catkins in June).
+EDELWEISS_FLOWERS = [
+    ['0110', '1131', '1321', '0110'],
+    ['011', '131', '122'],
+    ['0110', '1312', '0220'],
+]
+EDELWEISS_LEAVES = [
+    ['01100', '12210', '11331', '01441', '00110'],
+    ['0110', '1221', '1341', '0130'],
+    ['011', '121', '134'],
+]
+GENTIAN_FLOWERS = [
+    ['0110', '1331', '1331', '0220'],
+    ['011', '131', '122'],
+    ['0110', '1321', '0220'],
+]
+GENTIAN_LEAVES = [
+    ['01110', '12211', '12131', '11341', '04440'],
+    ['0110', '1241', '1331', '0440'],
+    ['041', '121', '134'],
+]
+WILLOW_CATKINS = [
+    ['13', '12'],
+    ['31', '21'],
+    ['13', '22'],
+]
+WILLOW_LEAVES = [
+    ['0110', '1221', '1431', '0130'],
+    ['011', '121', '134'],
+    ['110', '121', '043'],
+    ['11', '14'],
+]
+
 def _place(val, sprite, x0, y0, mapping, box):
     """Stamps a sprite (rows of digits) at (x0, y0) inside box = (x_lo, y_lo, x_hi, y_hi) (exclusive), writing
     mapping[ch] where the sprite has ch != '0'; returns the pixels written."""

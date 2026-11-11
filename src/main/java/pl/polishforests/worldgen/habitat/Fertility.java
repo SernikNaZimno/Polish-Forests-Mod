@@ -48,8 +48,7 @@ public enum Fertility {
 				return EUTROPHIC;
 			}
 		}
-		double sandiness = c.t.sandiness();
-		double r = Double.isNaN(sandiness) ? 0.5 : 1 - sandiness;
+		double r = richness(c);
 		double cum = 0;
 		double share = share(c, 0) / 100.0;
 		for (int i = 0; i < 3; i++) {
@@ -89,8 +88,7 @@ public enum Fertility {
 		if (sub == Substrate.ALLUVIUM && (c.t.has(Landform.INLAND_DUNES) ? withoutInlandDunes(c) : c.fertility()) == EUTROPHIC) {
 			return 0;
 		}
-		double sandiness = c.t.sandiness();
-		double r = Double.isNaN(sandiness) ? 0.5 : 1 - sandiness;
+		double r = richness(c);
 		double cum = 0;
 		double share = share(c, 0) / 100.0;
 		double best = 0;
@@ -111,6 +109,30 @@ public enum Fertility {
 		}
 		return best;
 	}
+
+	/**
+	 * Richness r of the column: 1 − sandiness (0.5 without it). Step TT3: on the Tatra rocks the rock decides
+	 * (docs/04 "Projekt TT3"): the limestone and the dolomite are fertile ({@value #TATRA_CALCAREOUS_FROM} + the rest of r
+	 * scaled, mostly L), the granite and the gneiss poor (r × {@value #TATRA_SILICATE_SCALE}, BM and LM); the change grows
+	 * with the Tatra weight from 0.5 to 0.9, so it fades out at the edge of the massif rock.
+	 */
+	static double richness(HabitatClassifier.Column c) {
+		double sandiness = c.t.sandiness();
+		double r = Double.isNaN(sandiness) ? 0.5 : 1 - sandiness;
+		Substrate rock = c.t.rock();
+		if (rock != null && rock.isTatraRock()) {
+			double w = Noise.smoothstep(0.5, 0.9, c.t.wTatra());
+			double rich = rock == Substrate.LIMESTONE || rock == Substrate.DOLOMITE
+					? TATRA_CALCAREOUS_FROM + (1 - TATRA_CALCAREOUS_FROM) * r : TATRA_SILICATE_SCALE * r;
+			r += w * (rich - r);
+		}
+		return r;
+	}
+
+	/** Step TT3: the least richness on the Tatra limestone and dolomite. */
+	static final double TATRA_CALCAREOUS_FROM = 0.35;
+	/** Step TT3: the factor of the richness on the Tatra granite and gneiss. */
+	static final double TATRA_SILICATE_SCALE = 0.25;
 
 	/**
 	 * Share of class {@code i} (0 B … 3 L) in %, blended with the type weights. The coastal belt on till (a high

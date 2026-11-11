@@ -197,6 +197,43 @@ class GroundPhasesTest {
 		}
 	}
 
+	/**
+	 * Step TT3: the plants of the Tatra halas (steps of about ten days from 1 March; a plant is shifted by up to a step
+	 * either way). The three-leaved rush green in summer and rusty otherwise, the grasses in flower in their windows, the
+	 * edelweiss and the least willow under the snow from late autumn to spring, the gentian evergreen, the lichens always
+	 * the same.
+	 */
+	@Test
+	void plantsOfTheTatraHalasOfStepTT3() {
+		assertEquals(1.0, shares(GroundPlant.THREE_LEAVED_RUSH, 12).get(Look.FULL), 1e-9, "rush green in July");
+		assertEquals(1.0, shares(GroundPlant.THREE_LEAVED_RUSH, 24).get(Look.LEAVES), 1e-9, "rush rusty in October");
+		assertEquals(1.0, shares(GroundPlant.THREE_LEAVED_RUSH, 5).get(Look.LEAVES), 1e-9, "rush rusty in April");
+		assertEquals(1.0, shares(GroundPlant.TWO_ROWED_OREOCHLOA, 10).get(Look.FULL), 1e-9, "Oreochloa spikes in June");
+		assertEquals(1.0, shares(GroundPlant.TWO_ROWED_OREOCHLOA, 16).get(Look.LEAVES), 1e-9);
+		assertEquals(1.0, shares(GroundPlant.TATRA_MOOR_GRASS, 8).get(Look.FULL), 1e-9, "Sesleria spikes in May");
+		assertEquals(1.0, shares(GroundPlant.TATRA_MOOR_GRASS, 14).get(Look.LEAVES), 1e-9);
+		assertEquals(1.0, shares(GroundPlant.VARIEGATED_FESCUE, 14).get(Look.FULL), 1e-9, "fescue panicles in July");
+		assertEquals(1.0, shares(GroundPlant.VARIEGATED_FESCUE, 8).get(Look.LEAVES), 1e-9);
+		assertEquals(1.0, shares(GroundPlant.EDELWEISS, 15).get(Look.FULL), 1e-9, "edelweiss in August");
+		assertEquals(1.0, shares(GroundPlant.EDELWEISS, 11).get(Look.LEAVES), 1e-9, "edelweiss rosettes in June");
+		assertEquals(1.0, shares(GroundPlant.EDELWEISS, 20).get(Look.LEAVES), 1e-9, "edelweiss rosettes in September");
+		assertEquals(1.0, shares(GroundPlant.EDELWEISS, 25).get(Look.NONE), 1e-9, "edelweiss under the snow in November");
+		assertEquals(1.0, shares(GroundPlant.EDELWEISS, 3).get(Look.NONE), 1e-9, "edelweiss under the snow in April");
+		assertEquals(1.0, shares(GroundPlant.CLUSIUS_GENTIAN, 10).get(Look.FULL), 1e-9, "gentian in June");
+		assertEquals(1.0, shares(GroundPlant.CLUSIUS_GENTIAN, 16).get(Look.LEAVES), 1e-9);
+		assertEquals(1.0, shares(GroundPlant.LEAST_WILLOW, 10).get(Look.FULL), 1e-9, "willow catkins in June");
+		assertEquals(1.0, shares(GroundPlant.LEAST_WILLOW, 15).get(Look.LEAVES), 1e-9);
+		assertEquals(1.0, shares(GroundPlant.LEAST_WILLOW, 24).get(Look.NONE), 1e-9, "willow under the snow");
+		for (int step = 0; step < SeasonPhase.STEPS; step++) {
+			assertEquals(0.0, shares(GroundPlant.CLUSIUS_GENTIAN, step).get(Look.NONE), 1e-9, "gentian step " + step);
+			assertEquals(1.0, shares(GroundPlant.ROCK_LICHEN, step).get(Look.FULL), 1e-9, "lichen step " + step);
+			for (GroundPlant g : new GroundPlant[] {GroundPlant.THREE_LEAVED_RUSH, GroundPlant.TWO_ROWED_OREOCHLOA,
+					GroundPlant.TATRA_MOOR_GRASS, GroundPlant.VARIEGATED_FESCUE}) {
+				assertEquals(0.0, shares(g, step).get(Look.NONE), 1e-9, g + " step " + step);
+			}
+		}
+	}
+
 	@Test
 	void shiftsAreSpreadEvenly() {
 		Map<Double, Integer> counts = new java.util.TreeMap<>();

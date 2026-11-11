@@ -924,6 +924,7 @@ niżej                        -> trofia L i H < 400 -> oak_hornbeam_forest; P �
 - Model Beskidów sięga ok. 1725 m, więc kosodrzewina i hala pojawią się tylko na najwyższych masywach (typ Babiej Góry i Pilska).
   - **Odstępstwo S4 (zamknięte w K2 poprawki geometrii, 2026-10-03):** teren M1 miał szczyty niższe: w REAL 1443 m (ziarno 20260927) do 1645 m (ziarno 4), w GAMEPLAY do ok. 1250 m, więc kosodrzewina i hala były tylko w REAL dla części ziaren. Wielkie masywy (M2-8) mają szczyty 1632–1723 m (REAL) i 1618–1719 m (GAMEPLAY), a test `dwarfPineOnlyOnLargeMassif` pilnuje, że kosodrzewina i hala są tylko przy szczycie ponad 1470 m (`docs/m2/poprawka-geometrii.md`, K2).
 - Profile Tatr, Karkonoszy i Bieszczad dochodzą w M5 jako kolejne `BeltProfile`.
+- **TT3 (2026-11-11, docs/04 „Projekt TT3”):** progi są rekordem `habitat/BeltProfile`. `BESKIDS` to stałe powyżej (kod siedliska identyczny, `BeltProfileBeskidsTest`), `TATRA` to regiel dolny od 700 m, regiel górny od 1225, granica lasu 1525, hale od 1800 i piętro turni (`subnival_rocks`) od 2275 m, z mozaikami ±30 m (regle) i ±50 m (turnie), bez warunku dużego masywu. Kolumna miesza oba profile udziałem s = smoothstep(0,3, 0,9, wTatra): każdy próg to `beskids + (tatra − beskids)·s`, z tą samą poprawką eks i dT; przy s = 0 wynik jest dokładnie beskidzki. Na skale Tatr zespoły zależą od skały (wapień: buczyna z jodłą, Polysticho-Piceetum, murawa wapienna; granit i gnejs: Abieti-Piceetum, murawa granitowa; wyleżyska i murawy naskalne).
 
 ### 5.2 Wybrzeże (długości × k)
 

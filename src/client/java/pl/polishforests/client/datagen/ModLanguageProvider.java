@@ -135,6 +135,11 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		ASSOCIATIONS.put("spit", new String[] {"on a spit", "na mierzei"});
 		ASSOCIATIONS.put("lobelia_lake", new String[] {"lobelia lake", "jezioro lobeliowe"});
 		ASSOCIATIONS.put("backswamp", new String[] {"backswamp", "zastoisko w dnie doliny"});
+		ASSOCIATIONS.put("alpine_silicate", new String[] {"granite alpine grassland (three-leaved rush, Oreochloa)", "murawa granitowa (sit skucina, boimka)"});
+		ASSOCIATIONS.put("alpine_calcareous", new String[] {"limestone alpine grassland (Tatra moor grass, variegated fescue)", "murawa wapienna (sesleria, kostrzewa pstra)"});
+		ASSOCIATIONS.put("snowbed", new String[] {"snowbed", "wyleżysko śnieżne"});
+		ASSOCIATIONS.put("rock_grassland", new String[] {"rock grassland", "murawa naskalna"});
+		ASSOCIATIONS.put("polysticho_piceetum", new String[] {"spruce forest on limestone (Polysticho-Piceetum)", "świerczyna nawapienna (Polysticho-Piceetum)"});
 
 		SOILS.put("initial_podzol", new String[] {"initial podzol", "gleba bielicowa inicjalna"});
 		SOILS.put("podzol", new String[] {"podzol", "gleba bielicowa"});
@@ -306,6 +311,14 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 				case HAIRY_SMALL_REED -> polish ? "Trzcinnik owłosiony" : "Hairy Small-reed";
 				case ALPINE_LADY_FERN -> polish ? "Wietlica alpejska" : "Alpine Lady Fern";
 				case BUTTERBUR -> polish ? "Lepiężnik różowy" : "Butterbur";
+				case THREE_LEAVED_RUSH -> polish ? "Sit skucina" : "Three-leaved Rush";
+				case TWO_ROWED_OREOCHLOA -> polish ? "Boimka dwurzędowa" : "Two-rowed Oreochloa";
+				case TATRA_MOOR_GRASS -> polish ? "Sesleria tatrzańska" : "Tatra Moor Grass";
+				case VARIEGATED_FESCUE -> polish ? "Kostrzewa pstra" : "Variegated Fescue";
+				case EDELWEISS -> polish ? "Szarotka alpejska" : "Edelweiss";
+				case CLUSIUS_GENTIAN -> polish ? "Goryczka Clusiusa" : "Clusius's Gentian";
+				case LEAST_WILLOW -> polish ? "Wierzba zielna" : "Least Willow";
+				case ROCK_LICHEN -> polish ? "Porosty naskalne" : "Rock Lichens";
 			});
 		}
 		builder.add(ModBlocks.bilberries(), polish ? "Czarne jagody" : "Bilberries");
@@ -430,6 +443,17 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		b.add("polishforests.kind.tatra", "Tatras");
 		b.add("polishforests.command.no_tatra", "This world has no Tatras (the Tatras option was off when it was created)");
 		b.add("polishforests.command.here_tatra", "Tatras: %s, rock: %s, %s m above sea level (Y %s)");
+		b.add("polishforests.command.here_belt", "Belt: %s (profile: %s)");
+		b.add("polishforests.belt.none", "none");
+		b.add("polishforests.belt.foothills", "foothills");
+		b.add("polishforests.belt.lower_montane", "lower montane");
+		b.add("polishforests.belt.upper_montane", "upper montane");
+		b.add("polishforests.belt.subalpine", "dwarf pine (subalpine)");
+		b.add("polishforests.belt.alpine", "alpine");
+		b.add("polishforests.belt.subnival", "subnival");
+		b.add("polishforests.belt_profile.beskids", "Beskids");
+		b.add("polishforests.belt_profile.tatra", "Tatras");
+		b.add("polishforests.belt_profile.blend", "Tatras and Podhale");
 		b.add("polishforests.tatra_rock.none", "flysch and stone");
 		b.add("polishforests.tatra_rock.granite", "granite");
 		b.add("polishforests.tatra_rock.crystalline", "gneiss (crystalline core)");
@@ -527,6 +551,17 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		b.add("polishforests.kind.tatra", "Tatry");
 		b.add("polishforests.command.no_tatra", "Ten świat nie ma Tatr (opcja Tatry była wyłączona przy jego tworzeniu)");
 		b.add("polishforests.command.here_tatra", "Tatry: %s, skała: %s, %s m n.p.m. (Y %s)");
+		b.add("polishforests.command.here_belt", "Piętro: %s (profil: %s)");
+		b.add("polishforests.belt.none", "brak");
+		b.add("polishforests.belt.foothills", "pogórze");
+		b.add("polishforests.belt.lower_montane", "regiel dolny");
+		b.add("polishforests.belt.upper_montane", "regiel górny");
+		b.add("polishforests.belt.subalpine", "piętro kosodrzewiny");
+		b.add("polishforests.belt.alpine", "piętro halne");
+		b.add("polishforests.belt.subnival", "piętro turni");
+		b.add("polishforests.belt_profile.beskids", "Beskidy");
+		b.add("polishforests.belt_profile.tatra", "Tatry");
+		b.add("polishforests.belt_profile.blend", "Tatry i Podhale");
 		b.add("polishforests.tatra_rock.none", "flisz i kamień");
 		b.add("polishforests.tatra_rock.granite", "granit");
 		b.add("polishforests.tatra_rock.crystalline", "gnejs (trzon krystaliczny)");

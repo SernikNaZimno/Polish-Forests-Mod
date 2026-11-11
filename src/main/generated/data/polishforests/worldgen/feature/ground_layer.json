@@ -3059,6 +3059,155 @@
       ]
     },
     {
+      "coverage": 0.3,
+      "patch": 3,
+      "plants": [
+        {
+          "block": {
+            "id": "polishforests:rock_lichen",
+            "properties": {
+              "facing": "north",
+              "mossy": "false",
+              "segment_amount": "2"
+            }
+          },
+          "weight": 1
+        },
+        {
+          "block": {
+            "id": "polishforests:rock_lichen",
+            "properties": {
+              "facing": "north",
+              "mossy": "false",
+              "segment_amount": "3"
+            }
+          },
+          "weight": 1
+        },
+        {
+          "block": {
+            "id": "polishforests:rock_lichen",
+            "properties": {
+              "facing": "north",
+              "mossy": "false",
+              "segment_amount": "4"
+            }
+          },
+          "weight": 1
+        }
+      ],
+      "zones": [
+        "bare_rock",
+        "scree"
+      ]
+    },
+    {
+      "associations": [
+        "polysticho_piceetum"
+      ],
+      "biomes": [
+        "montane_spruce_forest"
+      ],
+      "coverage": 0.95,
+      "patch": 5,
+      "patch_shape": "blobs",
+      "plants": [
+        {
+          "block": {
+            "id": "polishforests:needle_litter",
+            "properties": {
+              "facing": "north",
+              "mossy": "true",
+              "segment_amount": "1"
+            }
+          },
+          "weight": 26
+        },
+        {
+          "block": "minecraft:fern",
+          "weight": 14
+        },
+        {
+          "block": "minecraft:large_fern",
+          "weight": 6
+        },
+        {
+          "block": {
+            "id": "polishforests:wood_sorrel",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "2"
+            }
+          },
+          "weight": 4
+        },
+        {
+          "block": {
+            "id": "polishforests:wood_sorrel",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "3"
+            }
+          },
+          "weight": 4
+        },
+        {
+          "block": {
+            "id": "polishforests:wood_sorrel",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "4"
+            }
+          },
+          "weight": 4
+        },
+        {
+          "block": "polishforests:bilberry",
+          "weight": 10
+        },
+        {
+          "block": "polishforests:hairy_small_reed",
+          "weight": 6
+        },
+        {
+          "block": {
+            "id": "polishforests:alpine_coltsfoot",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "2"
+            }
+          },
+          "weight": 1
+        },
+        {
+          "block": {
+            "id": "polishforests:alpine_coltsfoot",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "3"
+            }
+          },
+          "weight": 1
+        },
+        {
+          "block": {
+            "id": "polishforests:alpine_coltsfoot",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "4"
+            }
+          },
+          "weight": 2
+        }
+      ],
+      "scattered": [
+        {
+          "block": "polishforests:forest_moss_carpet",
+          "weight": 14
+        }
+      ]
+    },
+    {
       "associations": [
         "gully_tall_herbs"
       ],
@@ -3367,6 +3516,430 @@
         {
           "block": "polishforests:forest_moss_carpet",
           "weight": 10
+        }
+      ]
+    },
+    {
+      "associations": [
+        "alpine_silicate"
+      ],
+      "biomes": [
+        "alpine_grassland"
+      ],
+      "coverage": 0.85,
+      "patch": 4,
+      "patch_shape": "blobs",
+      "plants": [
+        {
+          "block": "polishforests:three_leaved_rush",
+          "weight": 34
+        },
+        {
+          "block": "polishforests:two_rowed_oreochloa",
+          "weight": 22
+        },
+        {
+          "block": "minecraft:short_grass",
+          "weight": 8
+        },
+        {
+          "block": {
+            "id": "polishforests:crowberry",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "2"
+            }
+          },
+          "weight": 2
+        },
+        {
+          "block": {
+            "id": "polishforests:crowberry",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "3"
+            }
+          },
+          "weight": 2
+        },
+        {
+          "block": {
+            "id": "polishforests:crowberry",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "4"
+            }
+          },
+          "weight": 2
+        },
+        {
+          "block": "polishforests:bilberry",
+          "weight": 4
+        }
+      ],
+      "scattered": [
+        {
+          "block": {
+            "id": "polishforests:reindeer_lichen",
+            "properties": {
+              "facing": "north",
+              "mossy": "false",
+              "segment_amount": "3"
+            }
+          },
+          "weight": 2
+        },
+        {
+          "block": {
+            "id": "polishforests:reindeer_lichen",
+            "properties": {
+              "facing": "north",
+              "mossy": "false",
+              "segment_amount": "4"
+            }
+          },
+          "weight": 4
+        }
+      ]
+    },
+    {
+      "associations": [
+        "alpine_calcareous"
+      ],
+      "biomes": [
+        "alpine_grassland"
+      ],
+      "coverage": 0.85,
+      "patch": 4,
+      "patch_shape": "blobs",
+      "plants": [
+        {
+          "block": "polishforests:tatra_moor_grass",
+          "weight": 32
+        },
+        {
+          "block": "polishforests:variegated_fescue",
+          "weight": 18
+        },
+        {
+          "block": "minecraft:short_grass",
+          "weight": 6
+        },
+        {
+          "block": {
+            "id": "polishforests:clusius_gentian",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "2"
+            }
+          },
+          "weight": 2
+        },
+        {
+          "block": {
+            "id": "polishforests:clusius_gentian",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "3"
+            }
+          },
+          "weight": 2
+        },
+        {
+          "block": {
+            "id": "polishforests:clusius_gentian",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "4"
+            }
+          },
+          "weight": 2
+        },
+        {
+          "block": "minecraft:azure_bluet",
+          "weight": 2
+        }
+      ],
+      "scattered": [
+        {
+          "block": {
+            "id": "polishforests:edelweiss",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "2"
+            }
+          },
+          "weight": 1
+        },
+        {
+          "block": {
+            "id": "polishforests:edelweiss",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "3"
+            }
+          },
+          "weight": 1
+        },
+        {
+          "block": {
+            "id": "polishforests:edelweiss",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "4"
+            }
+          },
+          "weight": 2
+        }
+      ]
+    },
+    {
+      "associations": [
+        "snowbed"
+      ],
+      "biomes": [
+        "alpine_grassland"
+      ],
+      "coverage": 0.9,
+      "patch": 3,
+      "patch_shape": "blobs",
+      "plants": [
+        {
+          "block": {
+            "id": "polishforests:least_willow",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "2"
+            }
+          },
+          "weight": 11
+        },
+        {
+          "block": {
+            "id": "polishforests:least_willow",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "3"
+            }
+          },
+          "weight": 11
+        },
+        {
+          "block": {
+            "id": "polishforests:least_willow",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "4"
+            }
+          },
+          "weight": 12
+        },
+        {
+          "block": "polishforests:forest_moss_carpet",
+          "weight": 20
+        },
+        {
+          "block": "polishforests:three_leaved_rush",
+          "weight": 6
+        }
+      ],
+      "scattered": [
+        {
+          "block": "polishforests:forest_moss_carpet",
+          "weight": 6
+        }
+      ]
+    },
+    {
+      "associations": [
+        "rock_grassland"
+      ],
+      "biomes": [
+        "alpine_grassland"
+      ],
+      "coverage": 0.45,
+      "patch": 2,
+      "plants": [
+        {
+          "block": "polishforests:tatra_moor_grass",
+          "weight": 12
+        },
+        {
+          "block": "polishforests:variegated_fescue",
+          "weight": 8
+        },
+        {
+          "block": {
+            "id": "polishforests:edelweiss",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "2"
+            }
+          },
+          "weight": 1
+        },
+        {
+          "block": {
+            "id": "polishforests:edelweiss",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "3"
+            }
+          },
+          "weight": 1
+        },
+        {
+          "block": {
+            "id": "polishforests:edelweiss",
+            "properties": {
+              "facing": "north",
+              "flower_amount": "4"
+            }
+          },
+          "weight": 1
+        },
+        {
+          "block": {
+            "id": "polishforests:rock_lichen",
+            "properties": {
+              "facing": "north",
+              "mossy": "false",
+              "segment_amount": "2"
+            }
+          },
+          "weight": 3
+        },
+        {
+          "block": {
+            "id": "polishforests:rock_lichen",
+            "properties": {
+              "facing": "north",
+              "mossy": "false",
+              "segment_amount": "3"
+            }
+          },
+          "weight": 3
+        },
+        {
+          "block": {
+            "id": "polishforests:rock_lichen",
+            "properties": {
+              "facing": "north",
+              "mossy": "false",
+              "segment_amount": "4"
+            }
+          },
+          "weight": 4
+        }
+      ],
+      "soils": [
+        "rendzina"
+      ]
+    },
+    {
+      "associations": [
+        "rock_grassland"
+      ],
+      "biomes": [
+        "alpine_grassland"
+      ],
+      "coverage": 0.45,
+      "patch": 2,
+      "plants": [
+        {
+          "block": "polishforests:three_leaved_rush",
+          "weight": 10
+        },
+        {
+          "block": "polishforests:two_rowed_oreochloa",
+          "weight": 8
+        },
+        {
+          "block": {
+            "id": "polishforests:rock_lichen",
+            "properties": {
+              "facing": "north",
+              "mossy": "false",
+              "segment_amount": "2"
+            }
+          },
+          "weight": 4
+        },
+        {
+          "block": {
+            "id": "polishforests:rock_lichen",
+            "properties": {
+              "facing": "north",
+              "mossy": "false",
+              "segment_amount": "3"
+            }
+          },
+          "weight": 4
+        },
+        {
+          "block": {
+            "id": "polishforests:rock_lichen",
+            "properties": {
+              "facing": "north",
+              "mossy": "false",
+              "segment_amount": "4"
+            }
+          },
+          "weight": 4
+        }
+      ]
+    },
+    {
+      "biomes": [
+        "subnival_rocks"
+      ],
+      "coverage": 0.35,
+      "patch": 2,
+      "plants": [
+        {
+          "block": {
+            "id": "polishforests:rock_lichen",
+            "properties": {
+              "facing": "north",
+              "mossy": "false",
+              "segment_amount": "2"
+            }
+          },
+          "weight": 6
+        },
+        {
+          "block": {
+            "id": "polishforests:rock_lichen",
+            "properties": {
+              "facing": "north",
+              "mossy": "false",
+              "segment_amount": "3"
+            }
+          },
+          "weight": 6
+        },
+        {
+          "block": {
+            "id": "polishforests:rock_lichen",
+            "properties": {
+              "facing": "north",
+              "mossy": "false",
+              "segment_amount": "4"
+            }
+          },
+          "weight": 8
+        },
+        {
+          "block": "polishforests:three_leaved_rush",
+          "weight": 3
+        },
+        {
+          "block": "polishforests:two_rowed_oreochloa",
+          "weight": 2
+        },
+        {
+          "block": "polishforests:forest_moss_carpet",
+          "weight": 2
         }
       ]
     },

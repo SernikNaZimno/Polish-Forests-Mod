@@ -52,7 +52,7 @@ import pl.polishforests.worldgen.surface.SurfaceBuilder;
 
 /**
  * Habitat biomes in the game (step S5, docs/03-m2-biomy.md §3.5, §10, §12.3), in both world scales: the world starts
- * with the mod's 36 biomes, {@code generator.validate()} (feature order) passes, {@code level.getBiome} equals the
+ * with the mod's 38 biomes, {@code generator.validate()} (feature order) passes, {@code level.getBiome} equals the
  * classifier at 8 places with different biomes, F3 shows {@code polishforests:*} and the habitat line (screenshot
  * {@code habitats_f3_<scale>}), {@code /locate structure} finds a stronghold, a mineshaft and trial chambers,
  * {@code /locate biome polishforests:oak_hornbeam_forest} takes less than 2 s, the BIOMES stage takes at most 0.2 ms per
@@ -119,6 +119,9 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 				// The worst case of /locate biome: a biome absent within 6.4 km scans the whole spiral (only reported).
 				PolishForests.LOG.info("[habitats] {}: {}", name, sp.getServer().computeOnServer(
 						s -> locateTime(s, "locate biome polishforests:dwarf_pine_scrub")));
+				// Step TT3: the census of the Tatra habitats and /locate of the two Tatra biomes from the nearest massif (in
+				// the gameplay preset, which has the Tatras).
+				PolishForests.LOG.info("[habitats] {}: {}", name, sp.getServer().computeOnServer(HabitatsClientGameTest::tatraCensus));
 				boolean real = scale == PolandScale.REALISTIC;
 				waitForIdleGeneration(context, name);
 				PolishForests.LOG.info("[habitats] {}: {}", name, sp.getServer().computeOnServer(s -> biomesPerChunk(s, real)));
@@ -167,7 +170,7 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 		return gen;
 	}
 
-	/** The biome source has exactly the 36 biomes of the mod, each with a climate profile; the feature order is valid. */
+	/** The biome source has exactly the 38 biomes of the mod, each with a climate profile; the feature order is valid. */
 	private static String registry(MinecraftServer server) {
 		PolandChunkGenerator gen = generator(server);
 		// Throws on a "Feature order cycle".
@@ -738,10 +741,15 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 
 	/** Runs a locate command at the origin and checks its success message; returns the message and the time. */
 	private static String locate(MinecraftServer server, String command) {
+		return locate(server, command, new Vec3(0.5, 100, 0.5));
+	}
+
+	/** As {@link #locate(MinecraftServer, String)}, from the position {@code from} (step TT3). */
+	private static String locate(MinecraftServer server, String command, Vec3 from) {
 		List<Component> messages = new ArrayList<>();
 		long t0 = System.nanoTime();
 		server.getCommands().performPrefixedCommand(server.createCommandSourceStack().withSource(capture(messages))
-				.withLevel(server.overworld()).withPosition(new Vec3(0.5, 100, 0.5)), command);
+				.withLevel(server.overworld()).withPosition(from), command);
 		double ms = (System.nanoTime() - t0) / 1e6;
 		Component result = messages.isEmpty() ? null : messages.getFirst();
 		String key = result != null && result.getContents() instanceof TranslatableContents t ? t.getKey() : null;
@@ -753,6 +761,87 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 					LOCATE_BIOME_LIMIT_MS));
 		}
 		return String.format(Locale.ROOT, "/%s: %s (%.0f ms)", command, result.getString(), ms);
+	}
+
+	/** Step TT3: the habitats of the Tatras that the census must find in the nearest massif (biome, association or null). */
+	private static final Object[][] TATRA_HABITATS = {{HabitatBiome.MONTANE_BEECH_FOREST, null},
+			{HabitatBiome.MONTANE_SPRUCE_FOREST, pl.polishforests.worldgen.habitat.Association.ABIETI_PICEETUM},
+			{HabitatBiome.MONTANE_SPRUCE_FOREST, pl.polishforests.worldgen.habitat.Association.POLYSTICHO_PICEETUM},
+			{HabitatBiome.DWARF_PINE_SCRUB, null},
+			{HabitatBiome.ALPINE_GRASSLAND, pl.polishforests.worldgen.habitat.Association.ALPINE_SILICATE},
+			{HabitatBiome.ALPINE_GRASSLAND, pl.polishforests.worldgen.habitat.Association.ALPINE_CALCAREOUS},
+			{HabitatBiome.ALPINE_GRASSLAND, pl.polishforests.worldgen.habitat.Association.SNOWBED},
+			{HabitatBiome.ALPINE_GRASSLAND, pl.polishforests.worldgen.habitat.Association.ROCK_GRASSLAND},
+			{HabitatBiome.SUBNIVAL_ROCKS, null}, {HabitatBiome.MOUNTAIN_TARN, null}};
+
+	/**
+	 * Step TT3 (docs/04 "Projekt TT3"): the census of the habitats of the Tatra massif nearest the origin (the classifier
+	 * of the world on a 32 m lattice over the massif, every column of a Tatra weight of at least 0.5: shares of the biomes,
+	 * the associations of the alpine grassland and the spruce forest), each habitat of {@link #TATRA_HABITATS} present,
+	 * and /locate of the subnival rocks and the mountain tarn from the middle of the massif. A world without the Tatras
+	 * reports nothing.
+	 */
+	private static String tatraCensus(MinecraftServer server) {
+		PolandChunkGenerator gen = generator(server);
+		long seed = server.overworld().getSeed();
+		LandscapeModel m = gen.model(seed);
+		if (!m.hasTatra()) {
+			return "Tatra census: no Tatras in this world";
+		}
+		LandscapeModel.Tatra t = m.tatras(-300_000, -300_000, 300_000, 300_000).stream()
+				.min(java.util.Comparator.comparingDouble(a -> Math.hypot(a.x(), a.z()))).orElse(null);
+		if (t == null) {
+			throw new AssertionError("Tatra census: no massif within 300 km of the origin");
+		}
+		HabitatClassifier k = gen.classifier(seed);
+		Map<String, Integer> biomes = new java.util.TreeMap<>();
+		Map<String, Integer> associations = new java.util.TreeMap<>();
+		boolean[] found = new boolean[TATRA_HABITATS.length];
+		long columns = 0;
+		double half = 1.2 * t.halfLength();
+		double step = 32;
+		int n = (int) (2 * half / step);
+		for (int j = 0; j < n; j++) {
+			for (int i = 0; i < n; i++) {
+				double x = t.x() - half + (i + 0.5) * step;
+				double z = t.z() - half + (j + 0.5) * step;
+				ColumnSample s = m.sample(x, z);
+				if (s.terrain().wTatra() < 0.5) {
+					continue;
+				}
+				int code = k.classify(s, x, z);
+				HabitatBiome b = Habitat.biome(code);
+				pl.polishforests.worldgen.habitat.Association a = Habitat.association(code);
+				columns++;
+				biomes.merge(b.id(), 1, Integer::sum);
+				if (b == HabitatBiome.ALPINE_GRASSLAND || b == HabitatBiome.MONTANE_SPRUCE_FOREST || b == HabitatBiome.MONTANE_BEECH_FOREST) {
+					associations.merge(b.id() + "/" + a.name().toLowerCase(Locale.ROOT), 1, Integer::sum);
+				}
+				for (int h = 0; h < TATRA_HABITATS.length; h++) {
+					found[h] |= b == TATRA_HABITATS[h][0] && (TATRA_HABITATS[h][1] == null || a == TATRA_HABITATS[h][1]);
+				}
+			}
+		}
+		List<String> missing = new ArrayList<>();
+		for (int h = 0; h < TATRA_HABITATS.length; h++) {
+			if (!found[h]) {
+				missing.add(((HabitatBiome) TATRA_HABITATS[h][0]).id() + (TATRA_HABITATS[h][1] == null ? "" : "/" + TATRA_HABITATS[h][1]));
+			}
+		}
+		StringBuilder report = new StringBuilder(String.format(Locale.ROOT, "Tatra census of the massif (%.0f, %.0f), %d columns:",
+				t.x(), t.z(), columns));
+		long all = columns;
+		biomes.forEach((b, c) -> report.append(String.format(Locale.ROOT, " %s %.1f%%", b, 100.0 * c / all)));
+		report.append("; associations:");
+		associations.forEach((a, c) -> report.append(String.format(Locale.ROOT, " %s %d", a, c)));
+		if (!missing.isEmpty()) {
+			throw new AssertionError("Tatra census: no " + missing + "; " + report);
+		}
+		Vec3 from = new Vec3(t.x(), 200, t.z());
+		for (String biome : List.of("subnival_rocks", "mountain_tarn")) {
+			report.append("; ").append(locate(server, "locate biome polishforests:" + biome, from));
+		}
+		return report.toString();
 	}
 
 	// ------------------------------------------------------------------ step S6: soils, shelf, micro-relief

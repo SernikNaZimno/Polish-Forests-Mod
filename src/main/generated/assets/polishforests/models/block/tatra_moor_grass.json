@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/cross",
+  "textures": {
+    "cross": "polishforests:block/tatra_moor_grass"
+  }
+}

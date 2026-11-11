@@ -39,7 +39,23 @@ public enum Association {
 	/** Lobelia lake (oligotrophic, outwash plain). */
 	LOBELIA_LAKE,
 	/** Backswamp on the floor of a large valley. */
-	BACKSWAMP;
+	BACKSWAMP,
+	/**
+	 * Step TT3: the alpine grassland of the Tatra granite and gneiss (Oreochloo distichae-Juncetum trifidi): the
+	 * three-leaved rush, rusty in autumn, and the two-rowed oreochloa.
+	 */
+	ALPINE_SILICATE,
+	/**
+	 * Step TT3: the alpine grassland of the Tatra limestone and dolomite (Seslerion tatrae, Festucetum versicoloris): the
+	 * Tatra moor-grass, the variegated fescue, the edelweiss and the gentians.
+	 */
+	ALPINE_CALCAREOUS,
+	/** Step TT3: snowbeds (wyleżyska) in the north-facing hollows of the alpine belt: the least willow and mosses. */
+	SNOWBED,
+	/** Step TT3: rock grasslands (murawy naskalne) of the steep slopes and the pinnacles: tufts in the crevices, lichens. */
+	ROCK_GRASSLAND,
+	/** Step TT3: the upper montane spruce forest on the Tatra limestone (Polysticho-Piceetum). */
+	POLYSTICHO_PICEETUM;
 
 	private static final Association[] VALUES = values();
 

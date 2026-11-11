@@ -142,7 +142,7 @@ class PolandClimateTest {
 	}
 
 	/**
-	 * The climate tag (datagen, src/main/generated) covers exactly the 36 biomes of the mod, and the world presets
+	 * The climate tag (datagen, src/main/generated) covers exactly the 38 biomes of the mod, and the world presets
 	 * name no biomes: the biome source takes them from the registry (docs/03-m2-biomy.md §3.5).
 	 */
 	@Test

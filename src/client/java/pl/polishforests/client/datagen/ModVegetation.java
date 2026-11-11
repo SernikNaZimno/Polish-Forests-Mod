@@ -885,6 +885,29 @@ final class ModVegetation {
 				Plant.block(s.setValue(LeafLitterBlock.AMOUNT, 4), weight - weight / 3)};
 	}
 
+	/** Step TT3: crustose and foliose rock lichens of 2–4 segments. */
+	private static Plant[] rockLichen(int weight) {
+		BlockState s = ModBlocks.ground(GroundPlant.ROCK_LICHEN).defaultBlockState();
+		int w = Math.max(1, weight / 3);
+		return new Plant[] {Plant.block(s.setValue(LeafLitterBlock.AMOUNT, 2), w), Plant.block(s.setValue(LeafLitterBlock.AMOUNT, 3), w),
+				Plant.block(s.setValue(LeafLitterBlock.AMOUNT, 4), Math.max(1, weight - 2 * w))};
+	}
+
+	/** Step TT3: edelweiss tufts of 2–4. */
+	private static Plant[] edelweiss(int weight) {
+		return bed(ModBlocks.ground(GroundPlant.EDELWEISS), weight);
+	}
+
+	/** Step TT3: Clusius's gentian tufts of 2–4. */
+	private static Plant[] gentian(int weight) {
+		return bed(ModBlocks.ground(GroundPlant.CLUSIUS_GENTIAN), weight);
+	}
+
+	/** Step TT3: least willow mats of 2–4. */
+	private static Plant[] leastWillow(int weight) {
+		return bed(ModBlocks.ground(GroundPlant.LEAST_WILLOW), weight);
+	}
+
 	/** Step F4: heather of 2–4 tufts (the own block for the pink petals of M2). */
 	private static Plant[] heather(int weight) {
 		return bed(ModBlocks.ground(GroundPlant.HEATHER), weight);
@@ -1507,6 +1530,15 @@ final class ModVegetation {
 		// coltsfoot, the wood sorrel and the ferns. The gully tall herbs (Athyrietum distentifolii): the alpine lady fern
 		// dominant with the large fern, the small-reed and the tall herbs. The dwarf pine scrub (Pinetum mugo): bilberry,
 		// moss, the crowberry, the small-reed and the coltsfoot between the creeping shrubs.
+		// Step TT3 (docs/04 "Projekt TT3", research/06 §5): the Tatras. The bare rock and the scree of every belt: the
+		// crustose and foliose lichens on the stone, nothing else (the herbs need soil and fail canSurvive there).
+		l.land(HabitatCondition.zones(Zone.BARE_ROCK, Zone.SCREE), 0.3F, 3, rockLichen(1));
+		// The spruce forest on limestone (Polysticho-Piceetum): mosses on the rubble, the holly fern (the fern and the large
+		// fern), the wood sorrel, less bilberry than on the granite, the small-reed in the gaps.
+		l.blobs(biomes(MONTANE_SPRUCE_FOREST).withAssociations(Association.POLYSTICHO_PICEETUM), 0.95F, 5,
+				cat(mossFloor(26), fern.withWeight(14), largeFern.withWeight(6), woodSorrel(12), bilberry(10, false),
+						herb(GroundPlant.HAIRY_SMALL_REED, 6), coltsfoot(4)),
+				cat(forestMoss.withWeight(14)), null);
 		l.blobs(biomes(MONTANE_SPRUCE_FOREST).withAssociations(Association.GULLY_TALL_HERBS), 0.95F, 5,
 				cat(herb(GroundPlant.ALPINE_LADY_FERN, 34), largeFern.withWeight(12), herb(GroundPlant.HAIRY_SMALL_REED, 10),
 						tallGrass.withWeight(10), woodSorrel(8), fern.withWeight(6)),
@@ -1518,6 +1550,28 @@ final class ModVegetation {
 		l.blobs(biomes(DWARF_PINE_SCRUB), 0.9F, 4,
 				cat(bilberry(28, true), mossFloor(20), herb(GroundPlant.HAIRY_SMALL_REED, 14), crowberry(10), coltsfoot(8)),
 				cat(forestMoss.withWeight(10)), ModBlocks.mossyPodzol().defaultBlockState(), true);
+		// Step TT3: the halas of the Tatras. On the granite the three-leaved rush and the two-rowed Oreochloa
+		// (Oreochloo distichae-Juncetum trifidi) with crowberry and lichens; on the limestone the Tatra moor grass and the
+		// variegated fescue (Festuco versicoloris-Seslerietum) with edelweiss and Clusius's gentian; the snowbeds (Salicetum
+		// herbaceae) with the least willow in moss; the rock grasslands of the pinnacles and the steep walls in sparse tufts
+		// between the lichens. The subnival belt: lichens on the rock and rare tufts in the cracks.
+		l.blobs(biomes(ALPINE_GRASSLAND).withAssociations(Association.ALPINE_SILICATE), 0.85F, 4,
+				cat(herb(GroundPlant.THREE_LEAVED_RUSH, 34), herb(GroundPlant.TWO_ROWED_OREOCHLOA, 22), grass.withWeight(8),
+						crowberry(6), bilberry(4, false)),
+				lichen(6), null);
+		l.blobs(biomes(ALPINE_GRASSLAND).withAssociations(Association.ALPINE_CALCAREOUS), 0.85F, 4,
+				cat(herb(GroundPlant.TATRA_MOOR_GRASS, 32), herb(GroundPlant.VARIEGATED_FESCUE, 18), grass.withWeight(6),
+						gentian(6), b(Blocks.AZURE_BLUET, 2)),
+				edelweiss(4), null);
+		l.blobs(biomes(ALPINE_GRASSLAND).withAssociations(Association.SNOWBED), 0.9F, 3,
+				cat(leastWillow(34), forestMoss.withWeight(20), herb(GroundPlant.THREE_LEAVED_RUSH, 6)),
+				cat(forestMoss.withWeight(6)), null);
+		l.land(biomes(ALPINE_GRASSLAND).withAssociations(Association.ROCK_GRASSLAND).withSoils(Soil.RENDZINA), 0.45F, 2,
+				cat(herb(GroundPlant.TATRA_MOOR_GRASS, 12), herb(GroundPlant.VARIEGATED_FESCUE, 8), edelweiss(3), rockLichen(10)));
+		l.land(biomes(ALPINE_GRASSLAND).withAssociations(Association.ROCK_GRASSLAND), 0.45F, 2,
+				cat(herb(GroundPlant.THREE_LEAVED_RUSH, 10), herb(GroundPlant.TWO_ROWED_OREOCHLOA, 8), rockLichen(12)));
+		l.land(biomes(SUBNIVAL_ROCKS), 0.35F, 2, cat(rockLichen(20), herb(GroundPlant.THREE_LEAVED_RUSH, 3),
+				herb(GroundPlant.TWO_ROWED_OREOCHLOA, 2), forestMoss.withWeight(2)));
 		l.land(biomes(ALPINE_GRASSLAND), 0.8F, 3, grass.withWeight(60), bush.withWeight(12), b(Blocks.AZURE_BLUET, 3),
 				b(Blocks.ALLIUM, 2), fern.withWeight(3));
 		l.land(biomes(WHITE_DUNE), 0.25F, 3, b(Blocks.TALL_DRY_GRASS, 5), dryGrass.withWeight(5));

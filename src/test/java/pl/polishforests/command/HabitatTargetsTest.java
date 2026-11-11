@@ -53,7 +53,18 @@ class HabitatTargetsTest {
 		List<String> missing = new ArrayList<>();
 		long total = System.nanoTime();
 		for (HabitatBiome b : HabitatBiome.values()) {
-			HabitatTargets.World w = HabitatTargets.occurs(b, HabitatClassifier.Mode.NATURAL) ? natural : presentDay;
+			// Step TT3: the subnival rocks and the mountain tarn only in a world with the Tatras, as the Tatra zones.
+			if (HabitatTargets.tatraOnly(b)) {
+				if (HabitatTargets.locate(natural, b, 0, 0, () -> false) != null) {
+					missing.add("biome " + b.id() + " found without the Tatras");
+				}
+				if (scale != LandscapeScale.GAMEPLAY) {
+					System.out.println(scale.id() + " biome " + b.id() + ": Tatra biome, searched in the gameplay scale");
+					continue;
+				}
+			}
+			HabitatTargets.World w = HabitatTargets.tatraOnly(b) ? tatra
+					: HabitatTargets.occurs(b, HabitatClassifier.Mode.NATURAL) ? natural : presentDay;
 			long t0 = System.nanoTime();
 			double[] p = HabitatTargets.locate(w, b, 0, 0, () -> false);
 			report(scale, "biome " + b.id(), w, p, t0);

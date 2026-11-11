@@ -356,10 +356,55 @@ public final class ForestStandMap implements StandMap {
 		return root(i, j);
 	}
 
+	/**
+	 * Step TT3 (docs/04 "Projekt TT3"): a national park, the area whose stands are all natural (the Tatras: the Tatra
+	 * National Park in the present-day mode, no forestry there).
+	 */
+	@FunctionalInterface
+	public interface Park {
+		/** Whether the world point (x, z) lies in the park. */
+		boolean contains(double x, double z);
+	}
+
+	private @org.jspecify.annotations.Nullable Park park;
+	private final ParkEntry[] parkCache = new ParkEntry[1 << PROFILE_CACHE_BITS];
+
+	private record ParkEntry(long key, boolean park) {
+	}
+
+	/**
+	 * Step TT3: this map with the stands whose site lies in {@code park} all natural (the stands elsewhere, and the age
+	 * draws of every stand, unchanged); null: no park. Returns this map.
+	 */
+	public ForestStandMap withPark(@org.jspecify.annotations.Nullable Park park) {
+		this.park = park;
+		java.util.Arrays.fill(parkCache, null);
+		java.util.Arrays.fill(standCache, null);
+		return this;
+	}
+
+	/** Whether the site of grid cell (i, j) lies in the park, memoized. */
+	private boolean inPark(int i, int j) {
+		Park p = park;
+		if (p == null) {
+			return false;
+		}
+		long key = (long) i << 32 | j & 0xFFFF_FFFFL;
+		int slot = (int) (Noise.mix(key ^ 0x2A5B_17C3_9E04_D6F1L) >>> (64 - PROFILE_CACHE_BITS));
+		ParkEntry e = parkCache[slot];
+		if (e != null && e.key() == key) {
+			return e.park();
+		}
+		boolean in = p.contains((i + cells.unit(i, j, SITE_X)) * spacing, (j + cells.unit(i, j, SITE_Z)) * spacing);
+		parkCache[slot] = new ParkEntry(key, in);
+		return in;
+	}
+
 	/** The stand whose own site is grid cell (i, j). */
 	public Stand root(int i, int j) {
 		StandProfile p = siteProfile(i, j);
-		boolean natural = naturals.unit(i, j, 1) < (p.naturalFactor() == 1 ? naturalShare : naturalShare * p.naturalFactor());
+		boolean natural = naturals.unit(i, j, 1) < (p.naturalFactor() == 1 ? naturalShare : naturalShare * p.naturalFactor())
+				|| inPark(i, j);
 		double[] shares = natural ? p.naturalAges() : p.managedAges();
 		double u = ages.unit(i, j, natural ? 2 : 1);
 		AgeClass age = u < shares[0] ? AgeClass.POLE_STAGE : u < shares[0] + shares[1] ? AgeClass.MATURE : AgeClass.OLD_GROWTH;

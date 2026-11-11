@@ -1,6 +1,8 @@
 package pl.polishforests.worldgen.habitat;
 
 import pl.polishforests.worldgen.landscape.Landform;
+import pl.polishforests.worldgen.landscape.Noise;
+import pl.polishforests.worldgen.landscape.Substrate;
 
 /**
  * Vegetation belts of the Beskids and the Foothills (§5.1, ecology report §3, after Babia Gora). The only place
@@ -23,6 +25,16 @@ import pl.polishforests.worldgen.landscape.Landform;
  * species have their range at P ≥ 0.4–0.5, so montane beech and spruce forests lie within range by the geography
  * of the regional fields. The upland fir forest below the lower montane belt has the same conditions as the zonal
  * one ({@link HabitatClassifier#firForest}) and does not enter valley floors.
+ *
+ * <p>Step TT3 (docs/04-pionowy-wycinek.md "Projekt TT3"): the belt elevations are a {@link BeltProfile}. The constants
+ * above are {@link BeltProfile#BESKIDS}, whose codes are unchanged ({@code BeltProfileBeskidsTest}); a column of a
+ * Tatra complex blends them with {@link BeltProfile#TATRA} by its Tatra share s = smoothstep(0.3, 0.9, wTatra): every
+ * threshold is {@code blend(beskids, tatra, s)} with the same aspect and noise correction, the montane border gets a
+ * mosaic of ±30·s m and the subnival border (only at s &gt; 0) one of ±50·s m, and from s ≥ 0.5 the large massif
+ * condition no longer applies. On the Tatra rock the associations follow the rock: the lower montane belt is the
+ * Carpathian beech forest with fir on the limestone and the fir-spruce forest (Abieti-Piceetum) on the granite and the
+ * gneiss, the upper montane belt Polysticho-Piceetum on the limestone, the alpine grassland the granite or limestone
+ * grassland, the snowbeds and the rock grasslands. The new noise fields read {@code habitat.tatra.mosaic}.
  */
 public final class AltitudinalBelts {
 	private AltitudinalBelts() {
@@ -124,40 +136,83 @@ public final class AltitudinalBelts {
 		return c.t.summit() > LARGE_MASSIF;
 	}
 
-	/** Classifier step 4: belts in the mountain belt (wFoothills + wBeskids > 0.5); {@code Result.NONE} outside it and low down. */
+	/**
+	 * Step TT3: the Tatra weight of the column smoothed to the share of the {@link BeltProfile#TATRA} profile: 0 up to a
+	 * weight of {@value #TATRA_FROM} (the whole world outside the Tatra complexes and the Podhale), 1 from
+	 * {@value #TATRA_TO} (the massif), a smoothstep between them (the foot of the massif, Z10).
+	 */
+	static double tatraShare(HabitatClassifier.Column c) {
+		double w = c.t.wTatra();
+		return w <= TATRA_FROM ? 0 : Noise.smoothstep(TATRA_FROM, TATRA_TO, w);
+	}
+
+	/** Tatra weight from which the belts start to follow the Tatra profile, and the weight of the full profile. */
+	static final double TATRA_FROM = 0.3;
+	static final double TATRA_TO = 0.9;
+
+	/**
+	 * Classifier step 4: belts in the mountain belt (wFoothills + wBeskids > 0.5); {@code Result.NONE} outside it and low
+	 * down. Step TT3: the thresholds blend the {@link BeltProfile#BESKIDS} and the {@link BeltProfile#TATRA} profile by
+	 * {@link #tatraShare}; with a share of 0 every comparison is the one of before the step (the code is identical). On
+	 * the Tatra rocks the associations follow the rock ({@link #tatraForest}, {@link #alpineAssociation}).
+	 */
 	static int classify(HabitatClassifier.Column c) {
 		if (c.wMountains <= 0.5) {
 			return HabitatClassifier.Result.NONE;
 		}
 		double h = c.H;
 		double corr = correction(c);
-		boolean large = largeMassif(c);
+		double s = tatraShare(c);
+		BeltProfile tatra = BeltProfile.TATRA;
+		Substrate rock = s > 0 ? c.t.rock() : null;
+		boolean tatraRock = rock != null && rock.isTatraRock();
+		boolean large = largeMassif(c) || s >= 0.5;
 		boolean onRidge = c.t.has(Landform.RIDGE);
-		double alpine = ALPINE_THRESHOLD + corr;
+		if (s > 0) {
+			double subnival = BeltProfile.blend(BeltProfile.NO_SUBNIVAL, tatra.subnivalThreshold(), s) + corr;
+			double ramp = BeltProfile.blend(0, tatra.subnivalRamp(), s);
+			if (above(c, h, subnival, ramp, 1)) {
+				return HabitatClassifier.Result.of(HabitatBiome.SUBNIVAL_ROCKS, Zone.NONE, Association.TYPICAL);
+			}
+		}
+		double alpine = BeltProfile.blend(ALPINE_THRESHOLD, tatra.alpineThreshold(), s) + corr;
 		if (large && h >= alpine - ALPINE_RAMP && (h >= alpine + ALPINE_RAMP
 				|| mosaic(c, true) < 0.5 + (h - alpine) / (2 * ALPINE_RAMP))) {
-			return HabitatClassifier.Result.of(HabitatBiome.ALPINE_GRASSLAND, Zone.NONE, Association.TYPICAL);
+			return HabitatClassifier.Result.of(HabitatBiome.ALPINE_GRASSLAND, Zone.NONE,
+					tatraRock ? alpineAssociation(c, rock) : Association.TYPICAL);
 		}
-		double limit = TIMBERLINE + corr - (onRidge && c.slope < WINDY_RIDGE_SLOPE ? WINDY_RIDGE : 0);
+		double limit = BeltProfile.blend(TIMBERLINE, tatra.timberline(), s) + corr
+				- (onRidge && c.slope < WINDY_RIDGE_SLOPE ? WINDY_RIDGE : 0);
 		if (large && h >= limit - KRUMMHOLZ_RAMP && (h >= limit + KRUMMHOLZ_RAMP
 				|| mosaic(c, false) < 0.5 + (h - limit) / (2 * KRUMMHOLZ_RAMP))) {
 			// Stunted spruces among the dwarf pines: in all of them at the lowest dwarf pine patches, in half of them at the
 			// timberline, none at TIMBERLINE_ABOVE over it.
-			Zone s = h < limit + TIMBERLINE_ABOVE && timberlinePatch(c) > 0.5 + 0.5 * (h - limit) / TIMBERLINE_ABOVE
+			Zone s0 = h < limit + TIMBERLINE_ABOVE && timberlinePatch(c) > 0.5 + 0.5 * (h - limit) / TIMBERLINE_ABOVE
 					? Zone.TIMBERLINE : Zone.NONE;
-			return HabitatClassifier.Result.of(HabitatBiome.DWARF_PINE_SCRUB, s, Association.TYPICAL);
+			return HabitatClassifier.Result.of(HabitatBiome.DWARF_PINE_SCRUB, s0, Association.TYPICAL);
 		}
-		if (h >= UPPER_MONTANE + corr) {
-			Zone s = large && h >= limit - TIMBERLINE_RAMP && timberlinePatch(c) > (limit - h) / TIMBERLINE_RAMP
+		double upper = BeltProfile.blend(UPPER_MONTANE, tatra.upperMontane(), s) + corr;
+		if (above(c, h, upper, BeltProfile.blend(0, tatra.montaneRamp(), s), 2)) {
+			Zone s0 = large && h >= limit - TIMBERLINE_RAMP && timberlinePatch(c) > (limit - h) / TIMBERLINE_RAMP
 					? Zone.TIMBERLINE : Zone.NONE;
-			double p0 = c.t.ridgeProfile();
-			Association z = !Double.isNaN(p0) && p0 < GULLY_RIDGE ? Association.GULLY_TALL_HERBS : Association.TYPICAL;
-			return HabitatClassifier.Result.of(HabitatBiome.MONTANE_SPRUCE_FOREST, s, z);
+			Association z;
+			if (tatraRock) {
+				// Step TT3: the gullies have the tall herbs, the limestone the Polysticho-Piceetum.
+				z = c.t.has(Landform.GULLY) ? Association.GULLY_TALL_HERBS
+						: rock == Substrate.LIMESTONE || rock == Substrate.DOLOMITE ? Association.POLYSTICHO_PICEETUM : Association.TYPICAL;
+			} else {
+				double p0 = c.t.ridgeProfile();
+				z = !Double.isNaN(p0) && p0 < GULLY_RIDGE ? Association.GULLY_TALL_HERBS : Association.TYPICAL;
+			}
+			return HabitatClassifier.Result.of(HabitatBiome.MONTANE_SPRUCE_FOREST, s0, z);
 		}
 		Fertility t = c.fertility();
 		boolean poor = t == Fertility.OLIGOTROPHIC || t == Fertility.OLIGO_MESOTROPHIC;
 		double aspectOffset = c.aspect();
-		if (h >= LOWER_MONTANE + corr) {
+		if (h >= BeltProfile.blend(LOWER_MONTANE, tatra.lowerMontane(), s) + corr) {
+			if (tatraRock) {
+				return tatraForest(rock, poor);
+			}
 			boolean abieti = onRidge && poor || aspectOffset < 0 && h > ABIETI_N
 					|| c.onValleyFloor() && h > ABIETI_FLOOR && c.w.floorHalfWidth() > ABIETI_FLOOR_K * c.k;
 			if (abieti) {
@@ -175,6 +230,127 @@ public final class AltitudinalBelts {
 			return HabitatClassifier.Result.of(HabitatBiome.UPLAND_FIR_FOREST, Zone.NONE, Association.TYPICAL);
 		}
 		return HabitatClassifier.Result.NONE;
+	}
+
+	/**
+	 * Whether the column at elevation {@code h} lies in the belt above the border {@code limit} (m, corrected): with a
+	 * ramp of 0 the contour itself (the Beskids), else a mosaic of the patches of the Tatra mosaic noise ({@code layer}
+	 * separates the borders): no patch of the upper belt {@code ramp} under the border, half of the columns at it, all of
+	 * them {@code ramp} above it (step TT3, Z10).
+	 */
+	static boolean above(HabitatClassifier.Column c, double h, double limit, double ramp, int layer) {
+		if (ramp <= 0) {
+			return h >= limit;
+		}
+		return h >= limit - ramp && (h >= limit + ramp || tatraMosaic(c, layer) < 0.5 + (h - limit) / (2 * ramp));
+	}
+
+	/**
+	 * Step TT3: the lower montane belt of the Tatras by the rock (research/06 §5.1): on limestone and dolomite the
+	 * Carpathian beech forest with fir (Dentario glandulosae-Fagetum; acidophilous on the poor sites), on granite and
+	 * gneiss the fir-spruce forest (Abieti-Piceetum).
+	 */
+	static int tatraForest(Substrate rock, boolean poor) {
+		if (rock == Substrate.LIMESTONE || rock == Substrate.DOLOMITE) {
+			return HabitatClassifier.Result.of(HabitatBiome.MONTANE_BEECH_FOREST, Zone.NONE,
+					poor ? Association.ACIDOPHILOUS : Association.TYPICAL);
+		}
+		return HabitatClassifier.Result.of(HabitatBiome.MONTANE_SPRUCE_FOREST, Zone.NONE, Association.ABIETI_PICEETUM);
+	}
+
+	/** Step TT3: snowbeds in north-facing hollows (cirques, gullies, concave ground): aspect within this many degrees of north. */
+	static final double SNOWBED_ASPECT = 60;
+	/** Step TT3: concavity (m) below which a column is a hollow of a snowbed. */
+	static final double SNOWBED_CONCAVITY = 4;
+	/** Step TT3: share of the north-facing hollows in snowbed patches. */
+	static final double SNOWBED_SHARE = 0.55;
+	/** Step TT3: slope (°, in blocks in the gameplay scale) from which the alpine grassland is a rock grassland (± 5°). */
+	static final double ROCK_GRASSLAND_SLOPE = 36;
+
+	/**
+	 * Step TT3: the alpine grassland of the Tatras by the site (research/05 §5, research/06 §5.1): snowbeds in the
+	 * north-facing hollows ({@link Association#SNOWBED}), rock grasslands on the steep slopes and the pinnacles
+	 * ({@link Association#ROCK_GRASSLAND}), elsewhere the grassland of the rock: the three-leaved rush and the two-rowed
+	 * oreochloa on granite and gneiss ({@link Association#ALPINE_SILICATE}), the Tatra moor-grass, the variegated fescue,
+	 * the edelweiss and the gentians on limestone and dolomite ({@link Association#ALPINE_CALCAREOUS}).
+	 */
+	static Association alpineAssociation(HabitatClassifier.Column c, Substrate rock) {
+		double e = c.t.aspect();
+		boolean north = !Double.isNaN(e) && (e < SNOWBED_ASPECT || e > 360 - SNOWBED_ASPECT);
+		boolean hollow = (c.t.landformBits() & (Landform.CIRQUE.bit() | Landform.GULLY.bit())) != 0
+				|| c.concavity() < -SNOWBED_CONCAVITY;
+		if (north && hollow && tatraPatch(c, 3, 40) < SNOWBED_SHARE) {
+			return Association.SNOWBED;
+		}
+		if (c.t.has(Landform.PINNACLE) || c.slope > ROCK_GRASSLAND_SLOPE + 5 * tatraNoise(c, 4, 60)) {
+			return Association.ROCK_GRASSLAND;
+		}
+		return rock == Substrate.LIMESTONE || rock == Substrate.DOLOMITE ? Association.ALPINE_CALCAREOUS : Association.ALPINE_SILICATE;
+	}
+
+	/** Step TT3: uniform value 0–1 of the Tatra mosaic noise at the column (wavelength {@value #MOSAIC_WAVELENGTH} m·k). */
+	static double tatraMosaic(HabitatClassifier.Column c, int layer) {
+		return tatraPatch(c, layer, MOSAIC_WAVELENGTH);
+	}
+
+	/** Step TT3: quantile 0–1 of the Tatra noise ({@code habitat.tatra.mosaic}) at the wavelength (m·k), by layer. */
+	static double tatraPatch(HabitatClassifier.Column c, int layer, double wavelength) {
+		return pl.polishforests.worldgen.landscape.LandscapeModel.noiseQuantile(tatraNoise(c, layer, wavelength));
+	}
+
+	/** Step TT3: the Tatra noise in [−1, 1] at the wavelength (m·k), by layer. */
+	static double tatraNoise(HabitatClassifier.Column c, int layer, double wavelength) {
+		return c.classifier.tatra.at(c.x + 1_259.0 * layer, c.z - 2_087.0 * layer, wavelength * c.k);
+	}
+
+	/** Belts of a column for the commands (step TT3, {@link #belt}). */
+	public enum Belt {
+		/** Outside the mountain belt. */
+		NONE,
+		FOOTHILLS,
+		LOWER_MONTANE,
+		UPPER_MONTANE,
+		SUBALPINE,
+		ALPINE,
+		SUBNIVAL;
+
+		public String id() {
+			return name().toLowerCase(java.util.Locale.ROOT);
+		}
+	}
+
+	/**
+	 * Step TT3: the belt of the column by the thresholds of its profile with the aspect and noise correction (the middle
+	 * of each mosaic; the dwarf pine and the alpine grassland of the Beskids only on a large massif), for {@code here}.
+	 */
+	static Belt belt(HabitatClassifier.Column c) {
+		if (c.wMountains <= 0.5) {
+			return Belt.NONE;
+		}
+		double h = c.H;
+		double corr = correction(c);
+		double s = tatraShare(c);
+		BeltProfile b = BeltProfile.TATRA;
+		boolean large = largeMassif(c) || s >= 0.5;
+		if (h >= BeltProfile.blend(BeltProfile.NO_SUBNIVAL, b.subnivalThreshold(), s) + corr) {
+			return Belt.SUBNIVAL;
+		}
+		if (large && h >= BeltProfile.blend(ALPINE_THRESHOLD, b.alpineThreshold(), s) + corr) {
+			return Belt.ALPINE;
+		}
+		if (large && h >= BeltProfile.blend(TIMBERLINE, b.timberline(), s) + corr) {
+			return Belt.SUBALPINE;
+		}
+		if (h >= BeltProfile.blend(UPPER_MONTANE, b.upperMontane(), s) + corr) {
+			return Belt.UPPER_MONTANE;
+		}
+		return h >= BeltProfile.blend(LOWER_MONTANE, b.lowerMontane(), s) + corr ? Belt.LOWER_MONTANE : Belt.FOOTHILLS;
+	}
+
+	/** Step TT3: the profile of the column ({@code beskids}, {@code tatra}, or {@code blend} on the foot of the Tatras). */
+	static String profile(HabitatClassifier.Column c) {
+		double s = tatraShare(c);
+		return s <= 0 ? BeltProfile.BESKIDS.id() : s >= 1 ? BeltProfile.TATRA.id() : "blend";
 	}
 
 	/**

@@ -184,6 +184,30 @@ public final class GroundPhases {
 	static final double BUTTERBUR_FLOWERS = 1.5;
 	static final double BUTTERBUR_FLOWERS_END = 5.0;
 	static final double BUTTERBUR_GONE = 23.5;
+	/** Step TT3: the three-leaved rush, green with its flower clusters from June to mid-September, rusty the rest of the year. */
+	static final double RUSH_GREEN = 9.5;
+	static final double RUSH_RUSTY = 19.5;
+	/** Step TT3: the two-rowed oreochloa in flower in June and early July, the evergreen tufts otherwise. */
+	static final double OREOCHLOA_FLOWERS = 9.0;
+	static final double OREOCHLOA_FLOWERS_END = 13.5;
+	/** Step TT3: the Tatra moor-grass in flower from mid-May to June (the earliest grass of the limestone). */
+	static final double SESLERIA_FLOWERS = 7.0;
+	static final double SESLERIA_FLOWERS_END = 11.5;
+	/** Step TT3: the variegated fescue in flower in July and August. */
+	static final double FESCUE_FLOWERS = 12.0;
+	static final double FESCUE_FLOWERS_END = 18.0;
+	/** Step TT3: the edelweiss: rosettes from June, the woolly stars from mid-July to August, withdrawn from late October. */
+	static final double EDELWEISS_SHOOTS = 9.0;
+	static final double EDELWEISS_FLOWERS = 13.5;
+	static final double EDELWEISS_FLOWERS_END = 18.0;
+	static final double EDELWEISS_GONE = 23.0;
+	/** Step TT3: Clusius's gentian, the blue trumpets from late May to early July; the rosettes stay. */
+	static final double GENTIAN_FLOWERS = 8.5;
+	static final double GENTIAN_FLOWERS_END = 12.5;
+	/** Step TT3: the least willow under the snow until June, its catkins in June and early July, the leaves until late September. */
+	static final double WILLOW_SHOOTS = 9.0;
+	static final double WILLOW_CATKINS_END = 12.5;
+	static final double WILLOW_GONE = 21.0;
 
 	/** Keys of a tint curve: position, target color, weight of the target over the raw grass color. */
 	private record Key(double at, int target, double weight) {
@@ -276,6 +300,19 @@ public final class GroundPhases {
 					: at >= LADY_FERN_YELLOW && at < LADY_FERN_GONE ? Look.LEAVES : Look.NONE;
 			case BUTTERBUR -> at >= BUTTERBUR_FLOWERS && at < BUTTERBUR_FLOWERS_END ? Look.FULL
 					: at >= BUTTERBUR_FLOWERS_END && at < BUTTERBUR_GONE ? Look.LEAVES : Look.NONE;
+			// Step TT3: the plants of the Tatra alpine grassland. The three-leaved rush green (the full model) in summer, rusty
+			// (the leaves model) from mid-September through the winter and the spring; the grasses in flower in their
+			// months, their evergreen tufts otherwise; the edelweiss and the least willow withdrawn under the snow from
+			// late autumn to June; the gentian's rosettes all year, its trumpets in June.
+			case THREE_LEAVED_RUSH -> at >= RUSH_GREEN && at < RUSH_RUSTY ? Look.FULL : Look.LEAVES;
+			case TWO_ROWED_OREOCHLOA -> at >= OREOCHLOA_FLOWERS && at < OREOCHLOA_FLOWERS_END ? Look.FULL : Look.LEAVES;
+			case TATRA_MOOR_GRASS -> at >= SESLERIA_FLOWERS && at < SESLERIA_FLOWERS_END ? Look.FULL : Look.LEAVES;
+			case VARIEGATED_FESCUE -> at >= FESCUE_FLOWERS && at < FESCUE_FLOWERS_END ? Look.FULL : Look.LEAVES;
+			case EDELWEISS -> at >= EDELWEISS_FLOWERS && at < EDELWEISS_FLOWERS_END ? Look.FULL
+					: at >= EDELWEISS_SHOOTS && at < EDELWEISS_GONE ? Look.LEAVES : Look.NONE;
+			case CLUSIUS_GENTIAN -> at >= GENTIAN_FLOWERS && at < GENTIAN_FLOWERS_END ? Look.FULL : Look.LEAVES;
+			case LEAST_WILLOW -> at >= WILLOW_SHOOTS && at < WILLOW_CATKINS_END ? Look.FULL
+					: at >= WILLOW_CATKINS_END && at < WILLOW_GONE ? Look.LEAVES : Look.NONE;
 			default -> Look.FULL;
 		};
 	}

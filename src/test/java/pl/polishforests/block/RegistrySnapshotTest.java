@@ -119,11 +119,15 @@ class RegistrySnapshotTest {
 		// Step TT1: + the 4 Tatra rocks (granite, gneiss, limestone, dolomite), one state each.
 		// Step TT2: + the 3 Tatra surface blocks (granite and limestone scree, rendzina), one state each.
 		int tatra = ModBlocks.TATRA_ROCKS.size() + ModBlocks.TATRA_SURFACE.size();
+		// Step TT3: + the plants of the Tatras: edelweiss, Clusius's gentian and the least willow, flower beds of 16 states each,
+		// the rock lichens, a cover of 32 states (facing 4 x segments 4 x mossy), and the three-leaved rush, the two-rowed
+		// Oreochloa, the Tatra moor grass and the variegated fescue, herbs of one state each.
+		int tatraPlants = 3 * 16 + 32 + 4;
 		assertEquals(4, ModBlocks.tatraRocks().size());
 		assertEquals(3, ModBlocks.tatraSurface().size());
 		assertEquals(84 * TreeTrunk.values().length + foliage * (112 + 2 + 1) + marcescent * 112 + 4 * 3 + 1
 				+ 84 * (RootFlare.values().length + 1) + ground + review + pineForests + floodplain + montane + 84 * StrippedTrunk.values().length + woods
-				+ tatra,
+				+ tatra + tatraPlants,
 				RegistrySnapshot.stateCount());
 	}
 

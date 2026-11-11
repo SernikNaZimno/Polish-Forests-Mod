@@ -383,6 +383,11 @@ public final class Calibration {
 	public static final double P_WILLOW_POPLAR = 0.1, P_ELM_ASH = 0.08, P_ASH_ALDER = 0.09, P_ALDER_CARR = 0.1,
 			P_COASTAL_PINE = 0.9, P_MONTANE_SPRUCE = 0.9, P_MONTANE_BEECH = 0.8, P_MOUNTAIN_FLOOR = 0.15,
 			P_GRAY_ALDER = 0.09;
+	/**
+	 * Step TT3: P_forest of the forests of the Tatra national park (the PRESENT_DAY mode): the natural forest of the regle
+	 * with the clearings of the pastures (about 7%), and on the valley floors with their glades.
+	 */
+	static final double P_TATRA_PARK = 0.93, P_TATRA_PARK_FLOOR = 0.55;
 	/** Factor of P_forest of the poor sites (B, BM) outside the outwash plain (by its type weight). */
 	public static final double P_SAND_OUTSIDE_OUTWASH = 0.75;
 	/** Foothills: P_forest of a gentle slope (the steep ones by the context). */

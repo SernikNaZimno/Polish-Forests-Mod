@@ -1,0 +1,370 @@
+{
+  "multipart": [
+    {
+      "apply": {
+        "model": "polishforests:block/rock_lichen_1"
+      },
+      "when": {
+        "facing": "north",
+        "mossy": "false",
+        "segment_amount": "1"
+      }
+    },
+    {
+      "apply": {
+        "model": "polishforests:block/rock_lichen_1",
+        "y": 90
+      },
+      "when": {
+        "facing": "east",
+        "mossy": "false",
+        "segment_amount": "1"
+      }
+    },
+    {
+      "apply": {
+        "model": "polishforests:block/rock_lichen_1",
+        "y": 180
+      },
+      "when": {
+        "facing": "south",
+        "mossy": "false",
+        "segment_amount": "1"
+      }
+    },
+    {
+      "apply": {
+        "model": "polishforests:block/rock_lichen_1",
+        "y": 270
+      },
+      "when": {
+        "facing": "west",
+        "mossy": "false",
+        "segment_amount": "1"
+      }
+    },
+    {
+      "apply": {
+        "model": "polishforests:block/rock_lichen_mossy_1"
+      },
+      "when": {
+        "facing": "north",
+        "mossy": "true",
+        "segment_amount": "1"
+      }
+    },
+    {
+      "apply": {
+        "model": "polishforests:block/rock_lichen_mossy_1",
+        "y": 90
+      },
+      "when": {
+        "facing": "east",
+        "mossy": "true",
+        "segment_amount": "1"
+      }
+    },
+    {
+      "apply": {
+        "model": "polishforests:block/rock_lichen_mossy_1",
+        "y": 180
+      },
+      "when": {
+        "facing": "south",
+        "mossy": "true",
+        "segment_amount": "1"
+      }
+    },
+    {
+      "apply": {
+        "model": "polishforests:block/rock_lichen_mossy_1",
+        "y": 270
+      },
+      "when": {
+        "facing": "west",
+        "mossy": "true",
+        "segment_amount": "1"
+      }
+    },
+    {
+      "apply": {
+        "model": "polishforests:block/rock_lichen_2"
+      },
+      "when": {
+        "facing": "north",
+        "mossy": "false",
+        "segment_amount": "2|3"
+      }
+    },
+    {
+      "apply": {
+        "model": "polishforests:block/rock_lichen_2",
+        "y": 90
+      },
+      "when": {
+        "facing": "east",
+        "mossy": "false",
+        "segment_amount": "2|3"
+      }
+    },
+    {
+      "apply": {
+        "model": "polishforests:block/rock_lichen_2",
+        "y": 180
+      },
+      "when": {
+        "facing": "south",
+        "mossy": "false",
+        "segment_amount": "2|3"
+      }
+    },
+    {
+      "apply": {
+        "model": "polishforests:block/rock_lichen_2",
+        "y": 270
+      },
+      "when": {
+        "facing": "west",
+        "mossy": "false",
+        "segment_amount": "2|3"
+      }
+    },
+    {
+      "apply": {
+        "model": "polishforests:block/rock_lichen_mossy_2"
+      },
+      "when": {
+        "facing": "north",
+        "mossy": "true",
+        "segment_amount": "2|3"
+      }
+    },
+    {
+      "apply": {
+        "model": "polishforests:block/rock_lichen_mossy_2",
+        "y": 90
+      },
+      "when": {
+        "facing": "east",
+        "mossy": "true",
+        "segment_amount": "2|3"
+      }
+    },
+    {
+      "apply": {
+        "model": "polishforests:block/rock_lichen_mossy_2",
+        "y": 180
+      },
+      "when": {
+        "facing": "south",
+        "mossy": "true",
+        "segment_amount": "2|3"
+      }
+    },
+    {
+      "apply": {
+        "model": "polishforests:block/rock_lichen_mossy_2",
+        "y": 270
+      },
+      "when": {
+        "facing": "west",
+        "mossy": "true",
+        "segment_amount": "2|3"
+      }
+    },
+    {
+      "apply": {
+        "model": "polishforests:block/rock_lichen_3"
+      },
+      "when": {
+        "facing": "north",
+        "mossy": "false",
+        "segment_amount": "3"
+      }
+    },
+    {
+      "apply": {
+        "model": "polishforests:block/rock_lichen_3",
+        "y": 90
+      },
+      "when": {
+        "facing": "east",
+        "mossy": "false",
+        "segment_amount": "3"
+      }
+    },
+    {
+      "apply": {
+        "model": "polishforests:block/rock_lichen_3",
+        "y": 180
+      },
+      "when": {
+        "facing": "south",
+        "mossy": "false",
+        "segment_amount": "3"
+      }
+    },
+    {
+      "apply": {
+        "model": "polishforests:block/rock_lichen_3",
+        "y": 270
+      },
+      "when": {
+        "facing": "west",
+        "mossy": "false",
+        "segment_amount": "3"
+      }
+    },
+    {
+      "apply": {
+        "model": "polishforests:block/rock_lichen_mossy_3"
+      },
+      "when": {
+        "facing": "north",
+        "mossy": "true",
+        "segment_amount": "3"
+      }
+    },
+    {
+      "apply": {
+        "model": "polishforests:block/rock_lichen_mossy_3",
+        "y": 90
+      },
+      "when": {
+        "facing": "east",
+        "mossy": "true",
+        "segment_amount": "3"
+      }
+    },
+    {
+      "apply": {
+        "model": "polishforests:block/rock_lichen_mossy_3",
+        "y": 180
+      },
+      "when": {
+        "facing": "south",
+        "mossy": "true",
+        "segment_amount": "3"
+      }
+    },
+    {
+      "apply": {
+        "model": "polishforests:block/rock_lichen_mossy_3",
+        "y": 270
+      },
+      "when": {
+        "facing": "west",
+        "mossy": "true",
+        "segment_amount": "3"
+      }
+    },
+    {
+      "apply": {
+        "model": "polishforests:block/rock_lichen_4"
+      },
+      "when": {
+        "facing": "north",
+        "mossy": "false",
+        "segment_amount": "4"
+      }
+    },
+    {
+      "apply": {
+        "model": "polishforests:block/rock_lichen_4",
+        "y": 90
+      },
+      "when": {
+        "facing": "east",
+        "mossy": "false",
+        "segment_amount": "4"
+      }
+    },
+    {
+      "apply": {
+        "model": "polishforests:block/rock_lichen_4",
+        "y": 180
+      },
+      "when": {
+        "facing": "south",
+        "mossy": "false",
+        "segment_amount": "4"
+      }
+    },
+    {
+      "apply": {
+        "model": "polishforests:block/rock_lichen_4",
+        "y": 270
+      },
+      "when": {
+        "facing": "west",
+        "mossy": "false",
+        "segment_amount": "4"
+      }
+    },
+    {
+      "apply": {
+        "model": "polishforests:block/rock_lichen_mossy_4"
+      },
+      "when": {
+        "facing": "north",
+        "mossy": "true",
+        "segment_amount": "4"
+      }
+    },
+    {
+      "apply": {
+        "model": "polishforests:block/rock_lichen_mossy_4",
+        "y": 90
+      },
+      "when": {
+        "facing": "east",
+        "mossy": "true",
+        "segment_amount": "4"
+      }
+    },
+    {
+      "apply": {
+        "model": "polishforests:block/rock_lichen_mossy_4",
+        "y": 180
+      },
+      "when": {
+        "facing": "south",
+        "mossy": "true",
+        "segment_amount": "4"
+      }
+    },
+    {
+      "apply": {
+        "model": "polishforests:block/rock_lichen_mossy_4",
+        "y": 270
+      },
+      "when": {
+        "facing": "west",
+        "mossy": "true",
+        "segment_amount": "4"
+      }
+    },
+    {
+      "apply": [
+        {
+          "model": "polishforests:block/forest_moss_layer"
+        },
+        {
+          "model": "polishforests:block/forest_moss_layer",
+          "y": 90
+        },
+        {
+          "model": "polishforests:block/forest_moss_layer",
+          "y": 180
+        },
+        {
+          "model": "polishforests:block/forest_moss_layer",
+          "y": 270
+        }
+      ],
+      "when": {
+        "mossy": "true"
+      }
+    }
+  ]
+}

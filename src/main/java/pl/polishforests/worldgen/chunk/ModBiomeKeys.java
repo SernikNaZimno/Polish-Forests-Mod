@@ -10,7 +10,7 @@ import pl.polishforests.PolishForests;
 import pl.polishforests.worldgen.habitat.HabitatBiome;
 
 /**
- * Registry keys of the 36 biomes of the mod ({@code polishforests:<id>}, docs/03-m2-biomy.md §2), in the order of
+ * Registry keys of the 38 biomes of the mod ({@code polishforests:<id>}, docs/03-m2-biomy.md §2), in the order of
  * {@link HabitatBiome}. The paths {@code beach} and {@code river} are the same as in vanilla, but in another
  * namespace: they must not be confused with {@code Biomes.BEACH} and {@code Biomes.RIVER}.
  */

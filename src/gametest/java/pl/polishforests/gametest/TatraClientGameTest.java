@@ -38,7 +38,8 @@ import pl.polishforests.worldgen.surface.Material;
 
 /**
  * Step TT1 (docs/04-pionowy-wycinek.md, "Projekt TT1"), {@code -Pgametest=tatra} (only by name): a world of the gameplay
- * preset (the Tatras on) with the test seed. Numbers only, no screenshots:
+ * preset (the Tatras on) with the test seed. Numbers only, no screenshots (since TT3 one of the board of the new plants,
+ * {@link TatraPlantBoard}, not judged):
  * <ul>
  * <li>the Tatra targets of {@code /polishforests find} ({@code PolishForestsCommands.locate}): found, their distance and
  * the time of the search;</li>
@@ -68,11 +69,14 @@ import pl.polishforests.worldgen.surface.Material;
  * <li>step TT2: the histogram of the slopes in blocks (central differences of the model tops, 16 m grid over the massif)
  * by landform (pinnacle, gully, scree, moraine, cirque, other) in {@code build/tatra/slopes.txt};</li>
  * <li>step TT2: a snow patch ({@code find snow_patch}): a snow block at its top, still there after
- * {@code /season set mid_summer} and 200 ticks at a random tick speed of 300.</li>
+ * {@code /season set mid_summer} and 200 ticks at a random tick speed of 300;</li>
+ * <li>step TT3: the belt shares of the massif (KT-1) and KF-1 deep in the Tatra forests ({@link TatraBelts}), the board
+ * of the new plants ({@link TatraPlantBoard}).</li>
  * </ul>
  * Report: {@code build/tatra/report.txt} ({@code -Dpolishforests.tatra.out}); the test fails on a missing target, a top
  * block off the model, a column with a bedrock in the model without its rock block, a rock block without a bedrock, a
- * transect off the model, a summit out of range or a block above Y 720.
+ * transect off the model, a summit out of range or a block above Y 720, and (TT3) on a belt share below KT-1 or a vanilla
+ * log trunk deep in a Tatra forest.
  */
 public final class TatraClientGameTest implements FabricClientGameTest {
 	private static final String SEED = "20260927";
@@ -155,7 +159,16 @@ public final class TatraClientGameTest implements FabricClientGameTest {
 					context.waitTicks(SETTLE_TICKS);
 				}
 				sp.getServer().runOnServer(s -> slopes(model(s.overworld()), t, report));
+				// Step TT3: the belt shares (KT-1) and KF-1 deep in the Tatra forests, one site per server task.
+				List<int[]> sites = sp.getServer().computeOnServer(s -> TatraBelts.shares(s.overworld(), t, report, failures));
+				context.waitTicks(SETTLE_TICKS);
+				for (int[] site : sites) {
+					sp.getServer().runOnServer(s -> TatraBelts.kf1(s.overworld(), site, report, failures));
+					context.waitTicks(SETTLE_TICKS);
+				}
 			}
+			// Step TT3: the board of the new plants (models, one screenshot, no judgment).
+			TatraPlantBoard.run(context, sp, report, failures);
 			census.forEach((part, rocks) -> report.add("rock blocks of " + part + ": " + rocks));
 			surface.forEach((rock, tops) -> report.add("top blocks on " + rock + ": " + tops));
 			// Step TT2: the snow patch keeps its snow through the summer (Serene Seasons melts only snow layers and ice).

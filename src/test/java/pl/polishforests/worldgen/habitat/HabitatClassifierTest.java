@@ -51,7 +51,7 @@ class HabitatClassifierTest {
 			Habitat sd = new Habitat(b, s, siteType, z, p, f, g);
 			assertEquals(sd, Habitat.of(sd.code()));
 		}
-		assertEquals(36, HabitatBiome.values().length);
+		assertEquals(38, HabitatBiome.values().length);
 	}
 
 	@Test
@@ -60,7 +60,7 @@ class HabitatClassifierTest {
 				+ "lowland_beech_forest alder_carr ash_alder_forest willow_poplar_forest elm_ash_forest upland_fir_forest "
 				+ "montane_beech_forest montane_spruce_forest gray_alder_forest dwarf_pine_scrub raised_bog fen reedbed "
 				+ "willow_scrub heath wet_meadow hay_meadow arable_land beach white_dune gray_dune alpine_grassland sea lagoon river "
-				+ "stream lake dystrophic_lake";
+				+ "stream lake dystrophic_lake subnival_rocks mountain_tarn";
 		StringBuilder sb = new StringBuilder();
 		for (HabitatBiome b : HabitatBiome.values()) {
 			sb.append(sb.isEmpty() ? "" : " ").append(b.id());
@@ -68,7 +68,7 @@ class HabitatClassifierTest {
 		assertEquals(expected, sb.toString());
 		long forestBiomes = HabitatBiome.values().length - EnumSet.allOf(HabitatBiome.class).stream().filter(b -> !b.isForest()).count();
 		assertEquals(18, forestBiomes);
-		assertEquals(6, EnumSet.allOf(HabitatBiome.class).stream().filter(HabitatBiome::isWater).count());
+		assertEquals(7, EnumSet.allOf(HabitatBiome.class).stream().filter(HabitatBiome::isWater).count());
 	}
 
 	/** A model of another seed is refused (round 1 of the S8c review: its grids would describe another world). */
@@ -484,6 +484,8 @@ class HabitatClassifierTest {
 		missingZones.removeAll(synthZones);
 		// Step TT2: the zones of the Tatra rocks occur only in a world with the Tatras (TatraFormsTest.tatraSurfaceZones).
 		missingZones.removeAll(EnumSet.of(Zone.BARE_ROCK, Zone.SCREE, Zone.SNOW_PATCH));
+		// Step TT3: so do the subnival belt and the tarns (BeltProfileTatraTest).
+		missingBiomes.removeAll(EnumSet.of(HabitatBiome.SUBNIVAL_ROCKS, HabitatBiome.MOUNTAIN_TARN));
 		assertTrue(missingBiomes.isEmpty(), "unreachable biomes: " + missingBiomes);
 		assertTrue(missingZones.isEmpty(), "unreachable zones: " + missingZones);
 		// The 64 clusters in the world (without synthetic samples) must contain most biomes; the rare ones are the high

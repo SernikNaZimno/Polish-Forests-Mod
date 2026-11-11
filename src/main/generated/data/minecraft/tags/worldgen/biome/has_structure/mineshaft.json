@@ -12,8 +12,10 @@
     "polishforests:white_dune",
     "polishforests:gray_dune",
     "polishforests:alpine_grassland",
+    "polishforests:subnival_rocks",
     "polishforests:lagoon",
     "polishforests:lake",
-    "polishforests:dystrophic_lake"
+    "polishforests:dystrophic_lake",
+    "polishforests:mountain_tarn"
   ]
 }

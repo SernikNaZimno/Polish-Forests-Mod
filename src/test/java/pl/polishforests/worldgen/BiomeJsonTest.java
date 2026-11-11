@@ -23,7 +23,7 @@ import pl.polishforests.command.PolishForestsCommands;
 import pl.polishforests.worldgen.habitat.HabitatBiome;
 
 /**
- * The biome files from datagen (step S5, docs/03-m2-biomy.md §2, §6, §10, §12.1): exactly 36 biomes, one per
+ * The biome files from datagen (step S5, docs/03-m2-biomy.md §2, §6, §10, §12.1): exactly 38 biomes, one per
  * {@link HabitatBiome}, with the base temperature at most 0.8 (the Serene Seasons gate) and the explicit colors and
  * climate of the enum, no carvers, names in {@code en_us} and {@code pl_pl}, and presence in {@code #is_overworld},
  * {@code #has_structure/trial_chambers} and {@code #polishforests:polish_climate}. Reads {@code src/main/generated}.
@@ -71,7 +71,7 @@ public class BiomeJsonTest {
 		for (HabitatBiome b : HabitatBiome.values()) {
 			expected.add(b.id() + ".json");
 		}
-		assertEquals(36, HabitatBiome.values().length);
+		assertEquals(38, HabitatBiome.values().length);
 		assertEquals(expected, files);
 	}
 
@@ -167,7 +167,7 @@ public class BiomeJsonTest {
 		assertEquals(Set.of("polishforests:beach"), tag("minecraft", "is_beach"));
 		assertEquals(Set.of("polishforests:sea"), tag("minecraft", "is_ocean"));
 		assertEquals(Set.of("polishforests:montane_beech_forest", "polishforests:montane_spruce_forest",
-				"polishforests:dwarf_pine_scrub", "polishforests:alpine_grassland"), tag("minecraft", "is_mountain"));
+				"polishforests:dwarf_pine_scrub", "polishforests:alpine_grassland", "polishforests:subnival_rocks"), tag("minecraft", "is_mountain"));
 		// §10: neither is_hill nor is_taiga.
 		assertTrue(!Files.exists(GENERATED.resolve("data/minecraft/tags/worldgen/biome/is_hill.json")));
 		assertTrue(!Files.exists(GENERATED.resolve("data/minecraft/tags/worldgen/biome/is_taiga.json")));

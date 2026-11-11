@@ -629,7 +629,7 @@ Każdy krok TT jest ukończony dopiero, gdy oprócz własnych kryteriów spełni
 ### TT3. Piętra roślinności Tatr GAMEPLAY: `BeltProfile`, hale, piętro turni, rośliny wysokogórskie (A, 1,5–2 dnia)
 
 - **Zakres:** (1) `AltitudinalBelts` na profile `BeltProfile`: `BESKIDS` = dzisiejsze stałe (wynik identyczny), `TATRA` = regiel dolny do 1200–1250 m, regiel górny do 1500–1550, kosodrzewina do 1800, hale do 2250–2300, wyżej piętro turni (`docs/research/05` §5), poprawka ekspozycji i szumu jak w Beskidach, mozaiki S8b na granicach, bez warunku wielkiego masywu; (2) nowe biomy na końcu `HabitatBiome` (datagen, `PolandBiomeSource`, `/locate`): `subnival_rocks` (piętro turni), `mountain_tarn` (staw); hale jako `alpine_grassland` z zespołami (granitowa: sit skucina i boimka; wapienna: sesleria, kostrzewa pstra, szarotka, goryczki; wyleżyska śnieżne; murawy naskalne); regiel dolny na wapieniu: buczyna karpacka z jodłą (F3), na granicie i gnejsie: jedlina ze świerkiem (Abieti-Piceetum, F6); regiel górny: świerczyna (F6), na wapieniu wariant Polysticho-Piceetum; kosodrzewina (F6) z jarzębem i karłowym świerkiem; piętro turni: goła skała z porostami i rzadkimi kępami; (3) rośliny: nowe bloki w rodzinach `GroundPlant` z fazami V13 (domyślnie 6–8: sit skucina, boimka dwurzędowa, sesleria, kostrzewa pstra, szarotka, goryczka, mchy i porosty naskalne jako dywan), `ModVegetation`; (4) tryb D: Tatry jako park narodowy (las naturalny, polany i hale z wypasem na dawnych halach), Podhale z polami i łąkami według reguł trybu D; (5) komendy `find biome subnival_rocks`, `mountain_tarn`, `alpine_grassland`, `dwarf_pine_scrub`, `find zone …`; (6) udziały pięter w gametescie `tatra`, spis siedlisk w `habitats`.
-- **Ukończony, gdy:** KT-1 … KT-7; `BeltProfile.BESKIDS` daje kod siedliska identyczny z dzisiejszym na siatce testowej obu skal i trybów (test hasza); w Tatrach GAMEPLAY udziały pięter w pasmach wysokości zgodne z profilem (≥ 80% kolumn 1300–1450 m w reglu górnym, ≥ 70% 1600–1750 m kosodrzewina, ≥ 70% 1900–2200 m hala, ≥ 70% powyżej 2350 m piętro turni lub goła skała; poza mozaikami granic); lasy i kosodrzewina Tatr z drzewostanem planera (0 kłód wanilii, KF-1 w głębi); `/locate biome polishforests:subnival_rocks` i `mountain_tarn` działają w świecie z Tatrami; nowe bloki: `checkDatagen`, `checkArt`, lint, migawka, `*season*`.
+- **Ukończony, gdy:** KT-1 … KT-7; `BeltProfile.BESKIDS` daje kod siedliska identyczny z dzisiejszym na siatce testowej obu skal i trybów (test hasza); w Tatrach GAMEPLAY udziały pięter w pasmach wysokości zgodne z profilem (≥ 80% kolumn 1300–1450 m w reglu górnym, ≥ 70% 1600–1750 m kosodrzewina, ≥ 70% 1900–2200 m hala, ≥ 70% powyżej 2350 m piętro turni lub goła skała; poza mozaikami granic); lasy i kosodrzewina Tatr z drzewostanem planera (0 kłód wanilii, KF-1 w głębi); `/locate biome polishforests:subnival_rocks` i `mountain_tarn` działają w świecie z Tatrami; nowe bloki: `checkDatagen`, `checkArt`, lint, migawka, `*season*`. **Stan (2026-11-11): zrobione z odstępstwem („Projekt TT3”, „Stan po TT3”, G.52): `BeltProfile.BESKIDS` z haszem kodu siedliska identycznym z `ddf5cd6` (obie skale, oba tryby); udziały pięter w grze: regiel górny 99,7%, kosodrzewina 97,4%, hala 99,8%, turnie lub goła skała 99,6%; 0 kłód wanilii w głębi pięciu lasów Tatr; `/locate biome` turni 172 bloki, stawu 163 bloki; poza Tatrami 0 różnic bloków; do decyzji gleba turni (TT3-g) i regiel dolny od 700 m (TT3-a).**
 - **Ryzyko:** wysokie (klasyfikator, biomy, datagen).
 
 ### TT4. Limba i modrzew, lasy regli Tatr (A, 1,5–2 dnia)
@@ -4921,6 +4921,152 @@ Przegląd: 1 usterka blokująca i 1 poważna, obie sprawdzone i prawdziwe, popra
 
 1. Kilka razy `/polishforests find tarn` z różnych miejsc masywu, także w niższych dolinach (staw za moreną w dnie doliny) i `/polishforests find u_valley`: żaden staw nie wisi nad wąwozem rzeki w murze wody. Obejść pas ok. 40 m wokół stawu: stok wału schodzi łagodnie do terenu, bez urwiska na krawędzi.
 2. W dolinie z rzeką głęboko wciętą w dno (`/polishforests find u_valley`, iść w dół doliny wzdłuż rzeki) nie ma stawu-wieży, a woda rzeki płynie dnem wąwozu.
+
+## Projekt TT3 (2026-11-11, etap 1: kod, dane, tekstury, testy jednostkowe)
+
+Krok TT3 planu „Kroki TT” (§3): piętra roślinności Tatr w GAMEPLAY. Obejmuje profile pięter `BeltProfile`, dwa nowe biomy (piętro turni, staw tatrzański), zespoły hal i regli według skały, osiem roślin wysokogórskich, park narodowy w trybie D, linię piętra w `here` i testy (hasz Beskidów, udziały pięter, gametest `tatra`, spis Tatr w `habitats`). Przebiegi w grze, pomiar KT-6 i „Stan po TT3” należą do etapu 2; drobne wybory TT3-a … TT3-l do `docs/00` G.52 wpisze etap 2. Baza kroku: `ddf5cd6`.
+
+**Profile pięter (`habitat/BeltProfile`, TT3-a).**
+
+- Rekord `BeltProfile(id, lowerMontane, upperMontane, timberline, alpineThreshold, subnivalThreshold, montaneRamp, subnivalRamp, largeMassifOnly)`, sprawdzający kolejność progów.
+- `BESKIDS` = dotychczasowe stałe `AltitudinalBelts` (550, 1150, 1390, 1650 m, bez piętra turni, bez mozaiki regli, warunek wielkiego masywu E12).
+- `TATRA` = regiel dolny od 700 m (pogórze Podhala sięga 650–700 m), regiel górny od 1225 m, granica lasu 1525 m, hale od 1800 m, piętro turni od 2275 m. Mozaika ±30 m na granicy regli i ±50 m na granicy turni (szum o nowej soli `habitat.tatra.mosaic`, warstwy przesunięciem współrzędnych), bez warunku wielkiego masywu.
+- Udział Tatr kolumny: s = smoothstep(0,3, 0,9, wTatra); każdy próg to `blend(beskids, tatra, s)` z tą samą poprawką ekspozycji i szumu. Piętro turni sprawdzane tylko przy s > 0, warunek wielkiego masywu znika od s ≥ 0,5. Przy s = 0 każda wartość jest dokładnie beskidzka (bez arytmetyki), więc kod siedliska poza Tatrami jest identyczny.
+- `AltitudinalBelts.Belt` (NONE … SUBNIVAL) i `belt`/`profile` bez mozaik: dla `here` (linia „Piętro: … (profil: Beskidy | Tatry | Tatry i Podhale)”).
+
+**Zespoły według skały (TT3-b).** Tylko na skale Tatr (`Substrate.isTatraRock`, s > 0):
+
+- regiel dolny: na wapieniu i dolomicie buczyna karpacka (`MONTANE_BEECH_FOREST`, na ubogim siedlisku postać kwaśna) z jodłą z palety F3; na granicie i gnejsie `MONTANE_SPRUCE_FOREST` / `ABIETI_PICEETUM`;
+- regiel górny: świerczyna, na wapieniu i dolomicie nowy `POLYSTICHO_PICEETUM`, w żlebach ziołorośla `GULLY_TALL_HERBS`;
+- kosodrzewina: dotychczasowe reguły (granica lasu niżej na wietrznych grzbietach), z jarzębem i karłowym świerkiem palety F6;
+- hale (`ALPINE_GRASSLAND`): `SNOWBED` (ekspozycja do 60° od północy, kocioł, żleb albo wklęsłość, w płatach 55%), `ROCK_GRASSLAND` (turnia albo nachylenie > 36 ± 5°), poza tym `ALPINE_CALCAREOUS` na wapieniu i dolomicie, `ALPINE_SILICATE` na granicie i gnejsie;
+- piętro turni: nowy biom `SUBNIVAL_ROCKS` (gleba `RANKER`, na wapieniu rędzina; strefa `BARE_ROCK` z TT2 zostaje, więc ok. 60% kolumn powyżej 2250 m to goła skała).
+
+Nowe stałe na końcu enumów: `Association` +5 (23 z 32), `HabitatBiome` +2 (38 z 64): `subnival_rocks` (grupa nieleśna, muzyka łąki, spawny ubogie, kość jak w górach) i `mountain_tarn` (woda: `OpenWater` daje go stawom `TARN` zamiast `LAKE`, gleba `LAKE_BED`, spawny jeziora). Ekoton: piętro turni jak otwarte suche, staw jak woda. Tagi: `is_mountain` i `#polishforests:montane` + turnie, `water_on_map_outlines` i kopalnie + staw. Kolejność cech i nasiona dekoracji starych biomów bez zmian (wszystkie biomy mają te same listy cech), pliki starych biomów bez zmian.
+
+**Żyzność (TT3-c).** `Fertility.richness` na skale Tatr: wapień i dolomit dążą do 0,35 + 0,65·r, granit i gnejs do 0,25·r, z wagą smoothstep(0,5, 0,9, wTatra).
+
+**Tryb D: park narodowy (TT3-d).**
+
+- `ForestCover`: w piętrach górskich na skale Tatr udział lasu P dąży do `P_TATRA_PARK` 0,93 (zbocza) i `P_TATRA_PARK_FLOOR` 0,55 (dna dolin: polany i dawne hale wypasowe na dnach), z wagą smoothstep(0,5, 0,9, wTatra). Podhale (pogórze) zostaje przy regułach M2 trybu D (pola i łąki).
+- `ForestStandMap.withPark`: wydzielenia, których punkt siedziby leży w masywie właściwym (`LandscapeModel.tatraPark`: udział masywu > 0,5), są zawsze naturalne (w obu trybach). Losowanie klas wieku i luk bez zmian; poza Tatrami mapa jest ta sama (park tylko gdy `hasTatra`, nie w `StandProfile.ALL`, więc `standsVary` bez zmian).
+
+**Rośliny (TT3-e).** Osiem nowych `GroundPlant` na końcu enumu (rejestr świadomie +84 stany), tekstury z `tools/art` (nowe duszki szarotki, goryczki i wierzby zielnej w `ground.py`, lint przechodzi), fazy V13 w `GroundPhases`:
+
+| Roślina | Rodzina | Fazy |
+|---|---|---|
+| sit skucina (*Juncus trifidus*) | HERB | zielony od poł. czerwca do poł. września, poza tym rdzawy |
+| boimka dwurzędowa (*Oreochloa disticha*) | HERB | kłoski VI–VII |
+| sesleria tatrzańska (*Sesleria tatrae*) | HERB | kłoski V–poł. VI |
+| kostrzewa pstra (*Festuca versicolor*) | HERB | wiechy VII–VIII |
+| szarotka alpejska (*Leontopodium alpinum*) | SEASONAL | rozetki od czerwca, kwiaty VII–VIII, pod śniegiem od poł. października |
+| goryczka Clusiusa (*Gentiana clusii*) | SEASONAL | kwiaty VI–poł. VII, rozetki zimozielone |
+| wierzba zielna (*Salix herbacea*) | SEASONAL | kotki VI, liście do września, pod śniegiem |
+| porosty naskalne | COVER | bez faz |
+
+Palety runa (`ModVegetation`, przed regułami ogólnymi): goła skała i rumosz każdego piętra — porosty (30%); świerczyna nawapienna — mchy, paprocie, szczawik, mniej borówki; hala granitowa — sit i boimka z bażyną i porostami; hala wapienna — sesleria i kostrzewa z goryczką, szarotka rozproszona; wyleżyska — wierzba zielna w mchu; murawy naskalne — rzadkie kępy i porosty (na rędzinie wapienne, poza nią granitowe); piętro turni — porosty i rzadkie kępy (35%). Zioła bez gleby nie przechodzą `canSurvive` na skale, więc na skale zostają porosty. Hala Beskidów (`TYPICAL`) bez zmian; `ground_layer.json` ma tylko dopisane reguły.
+
+**Komendy (TT3-f).** `find biome subnival_rocks|mountain_tarn` szuka w Tatrach (plan `TATRA`, w świecie bez Tatr komunikat `no_tatra`), `find biome alpine_grassland|dwarf_pine_scrub` przeszukuje najpierw Tatry, gdy są w świecie (wyszukiwanie wysokogórskie `aroundMassifs`). Nowych stref nie ma, więc `find zone` bez zmian. `here` ma linię piętra i profilu; nazwy biomów, zespołów, pięter i roślin en/pl.
+
+**Testy.**
+
+- `BeltProfileBeskidsTest` (nie slow, ok. 10 s): hasz kodów siedliska siatki 3 × 72 × 72 wokół dwóch pierwszych wielkich masywów i wnętrza Beskidów, obie skale i oba tryby, świat bez Tatr; wartości zapisane na `ddf5cd6`, po przebudowie identyczne (KT-1 „test hasza”).
+- `BeltProfileTatraTest`: progi profili i `blend`; udziały pasm w najbliższym masywie ziaren A i B (siatka 24 m, bez wód, stref brzegu i den dolin): regiel górny 99,6–99,7%, kosodrzewina 97,1–98,2%, hala 99,8–99,9%, turnie lub goła skała 99,7–99,8%; wszystkie 478 stawów ziarna A mają w środku biom `mountain_tarn`.
+- `GroundPhasesTest.plantsOfTheTatraHalasOfStepTT3`, migawka rejestru, `BiomeJsonTest` (38 biomów, `is_mountain`), `HabitatClassifierTest` (identyfikatory, 7 biomów wody; turnie i staw osiągalne tylko w świecie z Tatrami).
+- Gametest `tatra` (`TatraBelts`): udziały pasm na siatce 48 m masywu (klasyfikator świata) z próbą biomu poziomu na 8 kolumnach każdego pasma; KF-1 wokół pierwszej głębokiej kolumny buczyny, świerczyny, Abieti-Piceetum, Polysticho-Piceetum i kosodrzewiny (5 × 5 chunków, 0 kłód wanilii); tablica ośmiu nowych roślin (`TatraPlantBoard`: modele wszystkich stanów, rząd czterech każdej na platformie, jeden zrzut `tatra_plants_board` bez oceny). Gametest `habitats` (GAMEPLAY ma Tatry): spis siedlisk Tatr (biomy i zespoły, każdy z dziesięciu oczekiwanych obecny) i `/locate biome` turni i stawu ze środka masywu.
+
+Wybory domyślne (do G.52):
+
+- (a) Regiel dolny Tatr od 700 m, udział profilu smoothstep(0,3, 0,9) wagi Tatr, mozaiki 30 i 50 m.
+- (b) Zespoły regli i hal według skały kolumny, bez nowej strefy.
+- (c) Żyzność według skały z wagą smoothstep(0,5, 0,9).
+- (d) Park: P 0,93 / 0,55, wszystkie wydzielenia masywu naturalne w obu trybach.
+- (e) Osiem roślin jak w tabeli; porosty jako dywan rodziny COVER.
+- (f) `find biome` hal i kosodrzewiny najpierw w Tatrach.
+- (g) Gleba turni `RANKER` (na wapieniu rędzina), staw `LAKE_BED`.
+- (h) Mianownik udziałów pięter bez wód, stref brzegu i den dolin (łęgi i olszyny nie są piętrem).
+- (i) Staw jako biom wody bez roślin wodnych (stawy tatrzańskie są ubogie).
+- (j) Brzeg stawu bez osobnej reguły runa (brzegi to hale, kosodrzewina lub turnie).
+- (k) Pas 0,3–0,9 wagi Tatr jako przejście do Podhala (Z10).
+- (l) Nowe pole szumu z nową solą `habitat.tatra.mosaic`, bez zmiany starych soli.
+
+## Stan po TT3 (2026-11-11, etap 2: przebiegi w grze, poprawki, bez recenzji wizualnej)
+
+Drobne wybory: `docs/00` G.52 (TT3-a … TT3-l z etapu 1, TT3-m … TT3-q z etapu 2). Zgodnie z G.36 U-1 nie oceniamy wyglądu ze zrzutów. Dowody to raport liczbowy gametestu `tatra`, spis `habitats`, porównania bloków w `determinism`, karta norm z gry i testy jednostkowe. Baza kroku: `ddf5cd6`. Etap 1 nie miał osobnego commitu WIP, więc cały krok wchodzi jednym commitem „TT3: done, …”. Przebiegi według `python tools/dev/test_plan.py ddf5cd6`; obszary: unit, terrain, tatra, generation, norms, vanilla_world, blocks, datagen, seasons, ui, render, art, gametest_code.
+
+**Wynik w skrócie.** Piętra Tatr działają w grze. Udziały pięter w pasmach wysokości (klasyfikator świata, siatka 48 m masywu) to 97,4–99,8%, przy progach 70–80%. Lasy Tatr rosną z drzewostanu planera: 0 kłód wanilii w głębi pięciu lasów. `/locate biome` znajduje oba nowe biomy w 5–22 ms. Poza strefą wpływu Tatr świat jest blok w blok ten sam co na `ddf5cd6`. Etap 2 poprawił dwie rzeczy, obie w testach, nie w generacji: błąd kompilacji `BeltProfileTatraTest` (literał z prawdziwym łamaniem wiersza zamiast `\n`) i próbę biomu poziomu w `TatraBelts`, która czytała biom na dnie jaskini (TT3-m).
+
+**Przebiegi (`-PtimingsReportOnly` poza KT-6, jeden klient gry naraz; druga praca z klientem gry nie działała).**
+
+| Przebieg | Wynik |
+|---|---|
+| `fastTest` (`run-tests`) | PASS (318 s, drzewo etapu 1) |
+| `BeltProfileBeskidsTest`, `BeltProfileTatraTest`, `AltitudinalBeltsTest`, `GoldenTerrainTest`, `GoldenTatraTest`, `TatraIsolationTest`, `TatraReliefTest`, `TatraRiverTest`, `TatraFormsTest`, `SlicePlotsTest`, `BiomeSharesTest`, `RegistrySnapshotTest`, `BiomeJsonTest`, `HabitatClassifierTest`, `*season*`, `checkDatagen` (3202 pliki bez zmian), `checkArt` z lintem (218 tekstur), `compileGametestJava` | PASS; `BeltProfileTatraTest.tatraHabitatsOccur` dopiero w etapie 2 (po poprawce kompilacji) PASS |
+| `tatra` (kod etapu 1) | PASS (5 min 48 s); próba biomu 28 z 32, cztery pudła `minecraft:deep_dark` (TT3-m) |
+| `tatra` (po TT3-m) | PASS (5 min 47 s); udziały pięter i KF-1 te same; próba biomu 32 z 32 (6 prób z wierzchem ściętym przez jaskinię) |
+| `habitats` | PASS (16 min 58 s); 38 biomów `polishforests:*` w obu skalach; spis Tatr i `/locate` niżej |
+| `determinism` wobec referencji `ddf5cd6` (`handoff/TT3/determinism_ref`) | PASS (20 min 39 s). Teren identyczny we wszystkich 46 wpisach (kolejność stała, wolna i odwrócona). Dekoracja: 44 z 46 obszarów bez różnic; różnią się tylko obszary `tatra` N i D, w 1159 z 16 384 kolumn, wszystkie w strefie wpływu Tatr. Chmiel bez podpory 0 |
+| `determinism -Poptimization` (C2ME) | FAIL jak w TT1 i TT2 (13 min 33 s): 32 z 46 obszarów, najwyżej 3259 bloków, dekoracja najwyżej 14 747 kolumn (TT2: 32 / 3259 / 14 747); w `tatra` 9 bloków w 8 kolumnach; te same obszary (DP-128, DP-139, DP-144, DP-151, DP-154) |
+| `slice -Psites=none` (karta norm z gry) | PASS; 219 wierszy `out` jak w `karta-norm-f7.csv`. Wartości różnią się w 8 miejscach (41 wierszy), w tym w REAL, gdzie Tatr nie ma; jeden werdykt `tolerance` → `in` (N10.volume `coastal_pine_managed_2` GAMEPLAY D, 2,92 → 4,1), dokładnie jak w TT1. To rozrzut kolejności chunków (TT3-o, jak TT1-s i TT2-n) |
+| `slice -Psites=seasons` | PASS (9 min 32 s) |
+| `ecotones` | PASS (5 min 49 s) |
+| `vegetation` | PASS (6 min 40 s); `HABITAT_MISS` 0 z 8273 (REAL) i 0 z 7804 (GAMEPLAY), 0 liści do opadnięcia |
+| `present_day` (z jaskiniami, domyślnie) | FAIL tylko na znanej wsi GAMEPLAY (4089, −3980): 11 kolumn podłogi wisi do 3 bloków nad powietrzem (DP-126, te same liczby co od F1); pnie na ulicach, liście pod dachami i rośliny na podłogach 0 |
+| `present_day -Pcaves=off` | PASS (4 min 25 s); ta sama wieś GAMEPLAY (4089, −3980): 52 budynki, 0 kolumn wiszących; udziały M2 trybu D poza Tatrami bez zmian |
+| `vanilla_forests` (W1) | PASS (1 min 52 s) |
+| `ui` | PASS (1 min 28 s); w punkcie nizinnym `here` bez linii piętra (zgodnie z oczekiwaniem), bez wyjątków |
+| KT-6: `performance` z C2ME, `tatra_high_1` obok `montane_spruce_1` (spokojna maszyna: GPU 28/4%, CPU 4/12%) | bez jaskiń 179,1 wobec 126,9 chunków/s (TT2: 184,6 / 129,2; −3,0% / −1,8%), z jaskiniami 82,5 wobec 81,7 (TT2: 85,2 / 82,4; −3,2% / −0,9%); opis bez progu |
+| pełny zestaw `tools/dev/run-tests test` (pierwszy) | FAIL: 2 z 569 testów (`HabitatTargetsTest`, `HabitatTargetsRealisticTest`: biomy tatrzańskie szukane w świecie bez Tatr; poprawka niżej) |
+| `HabitatTargetsTest`, `HabitatTargetsRealisticTest`, `PolishForestsCommandsTest` (po poprawce) | PASS (1 min 29 s) |
+| pełny zestaw `tools/dev/run-tests test` | PASS (1041 s, drzewo `02508bfaab7e`, 569 testów w 110 klasach, 4 pominięte, 0 niezaliczonych; po `test_plan.py ddf5cd6 --end`; potem zmiany tylko w `docs/`) |
+
+**Gametest `tatra`** (ziarno 20260927, preset GAMEPLAY, masyw najbliższy środka).
+
+- Udziały pięter (siatka 48 m, waga Tatr ≥ 0,9, bez wód, stref brzegu i den dolin): 1300–1450 m regiel górny 99,7% z 2764 kolumn (próg 80%), 1600–1750 m kosodrzewina 97,4% z 2891 (70%), 1900–2200 m hala 99,8% z 6806 (70%), powyżej 2350 m piętro turni lub goła skała 99,6% z 727 (70%). Mozaiki granic leżą poza pasmami (granice 1225 ± 30, 1525, 1800 i 2275 ± 50 m), więc pasma ich nie wyłączają osobno.
+- Próba biomu poziomu (8 kolumn każdego pasma, biom na wierzchu modelu): 32 z 32 jak w klasyfikatorze (próg 75%); w 6 kolumnach wierzch ścina jaskinia (przed TT3-m 4 z nich dawały `minecraft:deep_dark` z dna jaskini).
+- KF-1 (5 × 5 chunków wokół pierwszej głębokiej kolumny, udział w polu mieszania ≥ 0,999): buczyna karpacka 10,7 pnia planera na chunk (6400 głębokich kolumn), Abieti-Piceetum 10,7 (3789), Polysticho-Piceetum 12,4 (1571), świerczyna typowa 10,8 (6400), kosodrzewina 0,7 (3643; płożąca, bez pnia z trzech kłód). Kłody wanilii: 0 we wszystkich pięciu.
+- Tablica roślin: 8 roślin, 84 stany z modelami, 32 postawione, 0 problemów. Zrzut `tatra_plants_board.png` zapisany, nieoglądany (G.36).
+
+**Gametest `habitats`, spis Tatr GAMEPLAY** (masyw (−24 650, 87 918), siatka 32 m, waga Tatr ≥ 0,5, 132 033 kolumny): buczyna karpacka 37,5%, świerczyna 15,7%, hala 17,1%, kosodrzewina 9,3%, piętro turni 3,1%, staw 0,5%, grąd 6,5%, las mieszany 4,2% (Podhale na skraju). Zespoły: buczyna typowa 43 972 i kwaśna 5589, Abieti-Piceetum 8241, Polysticho-Piceetum 3631, świerczyna typowa 8811, ziołorośla żlebów 36; hala granitowa 20 905, wapienna 1205, wyleżyska 240, murawy naskalne 193. Wszystkie dziesięć oczekiwanych siedlisk jest obecnych (ten sam spis daje `BeltProfileTatraTest.tatraHabitatsOccur` na modelu). `/locate biome polishforests:subnival_rocks` ze środka masywu: 172 bloki (22 ms), `mountain_tarn`: 163 bloki (5 ms). W REAL: „ten świat nie ma Tatr”. `/locate biome polishforests:dwarf_pine_scrub` od punktu odrodzenia nic nie znajduje (masyw 91 km, poza zasięgiem `/locate`); `/polishforests find biome dwarf_pine_scrub` szuka najpierw w Tatrach (TT3-f).
+
+**Poprawki etapu 2.**
+
+- *`BeltProfileTatraTest`*: w komunikacie asercji literał `"\n"` był prawdziwym łamaniem wiersza, więc `compileTestJava` padał i pełny zestaw nie ruszał. Poprawione; test PASS.
+- *Próba biomu poziomu w `TatraBelts`* (TT3-m): próba czytała biom na wysokości mapy `OCEAN_FLOOR`. Tam, gdzie jaskinia otwiera wierzch, najwyższy blok gruntu to dno jaskini pod powierzchnią, a jego biom to słusznie biom jaskiniowy (`deep_dark` poniżej Y 256). Wierzch Tatr leży na Y 340–690, a biomy jaskiń kończą się na Y 256 (`CaveBiomes.MAX_Y`), więc przy wierzchu modelu biomu jaskiniowego być nie może. Próba czyta teraz biom na wierzchu modelu (`VerticalScale.topBlockY`), a próby z wierzchem ściętym przez jaskinię liczy osobno w raporcie.
+- *Bez zmian:* generacja świata, `golden_terrain_m2.txt`, `golden_terrain_tatra.txt`, migawka rejestru z etapu 1.
+
+**KT i kryteria TT3.**
+
+- KT-1 (zgodność): spełnione. `BeltProfileBeskidsTest`: cztery hasze kodu siedliska (obie skale, oba tryby, świat bez Tatr) na `ddf5cd6` i po przebudowie identyczne. Siatka obejmuje wnętrze Beskidów i dwa wielkie masywy, czyli mozaiki S8b, Abieti-Piceetum, jaworzynę, żleby i strefę `TIMBERLINE`. Złote pliki terenu bez zmian (`GoldenTerrainTest`, `GoldenTatraTest`, `TatraIsolationTest` PASS). Sole tylko nowe (`habitat.tatra.mosaic`). Nowe stałe na końcu `HabitatBiome` (38 z 64) i `Association` (23 z 32). Migawka rejestru przegenerowana świadomie: +8 bloków, +8 przedmiotów, +84 stany (10 121 stanów).
+- KT-2 (lasy i karta poza Tatrami): spełnione. Werdykty karty norm bez zmian (rozrzut wartości jak w TT1 i TT2), `SlicePlotsTest`, `BiomeSharesTest` (udziały M2), `vanilla_forests` i `habitats` PASS. `determinism` dowodzi blokami, że poza strefą wpływu Tatr dekoracja jest ta sama: nowe biomy i ficzery nie zmieniły kolejności ani ziaren dekoracji starych biomów. Żyzność według skały i park działają tylko na skale Tatr i w masywie (waga Tatr), więc poza Tatrami nic nie zmieniają.
+- KT-3 (determinizm): teren identyczny w trzech kolejnościach chunków; poza Tatrami 0 różnic wobec `ddf5cd6`. Z C2ME bez regresji wobec TT2.
+- KT-4 (przejścia Z10): profil przechodzi z Beskidów do Tatr w pasie wagi Tatr 0,3–0,9 (smoothstep), żyzność i park w pasie 0,5–0,9. Na granicach regli mozaika ±30 m, na granicy turni ±50 m. `ecotones` PASS, `vegetation` `HABITAT_MISS` 0.
+- KT-5 (gametest `tatra`): udziały pięter, próba biomu, KF-1 i tablica roślin (wyżej).
+- KT-6 (wydajność): jeden przebieg kontrolny (wyżej). Generacja w Tatrach jest o ok. 3% wolniejsza niż w TT2, w Beskidach o 1–2%, czyli w granicach rozrzutu pojedynczego przebiegu.
+- KT-7: „Projekt TT3”, ten wpis, stan w opisie kroku, BRIEF, G.52, uwaga o `BeltProfile` w `docs/03` §5.1, lista „Do sprawdzenia w grze”; pełny `run-tests test` (PASS, 569 testów).
+- Kryteria TT3: hasz Beskidów identyczny; udziały pięter 97,4–99,8% przy progach 70–80%; lasy i kosodrzewina Tatr z drzewostanu planera (0 kłód wanilii); `/locate biome` turni i stawu działa; `checkDatagen`, `checkArt`, lint, `RegistrySnapshotTest` i `*season*` PASS.
+
+**Odstępstwa:**
+
+- Brzeg stawu nie ma osobnej palety runa, a staw nie ma roślin wodnych (TT3-i, TT3-j).
+- Gleba turni to `RANKER` (na wapieniu rędzina). Ok. 60% kolumn powyżej 2250 m to goła skała z TT2, na reszcie wierzch daje trawę i gruboziarnistą ziemię (TT3-g, do decyzji).
+- Odpływy stawów (TT2-o) zostają jak w TT2: TT3 nie zmieniał wód.
+- `present_day` z jaskiniami pada na znanej wsi DP-126 (od F1, poza Tatrami).
+- Regiel dolny Tatr zaczyna się od 700 m (TT3-a). Zadanie podawało tylko górne granice pięter.
+
+**Do sprawdzenia w grze** (nowy świat „Polska”, skala GAMEPLAY, Tatry włączone w „Dostosuj”; dla ziarna 20260927 masyw ok. 91 km od środka):
+
+1. `/polishforests find biome subnival_rocks` i kliknięcie podpowiedzi `/tp`: piętro turni to goła skała z porostami i rzadkimi kępami situ i boimki. Czy ziemia i trawa między skałami nie wyglądają za zielono (TT3-g).
+2. Przy masywie `/locate biome polishforests:mountain_tarn` i `/tp`: staw z kamienistym dnem, bez roślin wodnych.
+3. `/polishforests elevation 1450 1600`: granica lasu. Świerczyna przechodzi w kosodrzewinę mozaiką, nie prostą linią na stałej wysokości.
+4. `/polishforests find biome alpine_grassland`, potem `/polishforests here`: zespół „murawa granitowa (sit skucina, boimka)” albo „murawa wapienna (sesleria, kostrzewa pstra)”; na granicie sit, boimka i bażyna, na wapieniu sesleria, kostrzewa, goryczka i szarotka. Znaleźć oba i porównać rośliny; hal wapiennych jest mniej, leżą na wapieniu.
+5. Na hali `/season set late_spring` i `/season set mid_autumn`: wiosną kłoski seslerii i kwiaty goryczki, jesienią rdzawy sit; szarotka i wierzba zielna znikają późną jesienią.
+6. `/polishforests here` w każdym piętrze (pogórze Podhala, regiel dolny, regiel górny, kosodrzewina, hala, turnie): linia „Piętro: … (profil: …)” i zespół w linii siedliska; na granicy z Podhalem profil „Tatry i Podhale”.
+7. Regiel dolny: na wapieniu buczyna z jodłą, na granicie jedlina ze świerkiem (`here` pokazuje zespół).
+8. Świat w trybie D (obecne lasy): w Tatrach las naturalny prawie bez przerw, polany na dnach dolin; na Podhalu pola i łąki jak w reszcie kraju.
+9. Tekstury ośmiu nowych roślin w świecie i w zakładce przedmiotów (wygląd, gładkość, czy nie przypominają wanilii).
+10. Przejście z Podhala do Tatr: piętra i lasy zmieniają się płynnie, bez prostej linii.
+11. Stary świat albo świat bez Tatr: piętra Beskidów, lasy i hale jak dotąd.
 
 ## Do kroku porządkowego (lista drobiazgów z recenzji)
 

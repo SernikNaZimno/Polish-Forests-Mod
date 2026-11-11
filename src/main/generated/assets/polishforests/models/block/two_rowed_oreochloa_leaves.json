@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/cross",
+  "textures": {
+    "cross": "polishforests:block/two_rowed_oreochloa_leaves"
+  }
+}

@@ -106,13 +106,18 @@ public final class HabitatTargets {
 	 * slopes, not on a valley floor (S9: 0 of about 125 000 banks around the nearest large massif and none within 100 km
 	 * of the test origin; a classifier change waits for the user's decision, docs/03-m2-biomy.md §11.1).
 	 */
+	public static boolean occurs(Zone zone, LandscapeScale scale) {
+		return zone != Zone.MONTANE_TALL_HERBS || scale == LandscapeScale.REALISTIC;
+	}
+
+	/** Step TT3: whether the biome occurs only in the Tatras (found only in a world with the Tatras). */
+	public static boolean tatraOnly(HabitatBiome biome) {
+		return plan(biome) == Plan.TATRA;
+	}
+
 	/** Step TT2: whether the zone occurs only in the Tatras (found only in a world with the Tatras). */
 	public static boolean tatraOnly(Zone zone) {
 		return plan(zone) == Plan.TATRA;
-	}
-
-	public static boolean occurs(Zone zone, LandscapeScale scale) {
-		return zone != Zone.MONTANE_TALL_HERBS || scale == LandscapeScale.REALISTIC;
 	}
 
 	// ------------------------------------------------------------------ plans
@@ -122,6 +127,8 @@ public final class HabitatTargets {
 			case COASTAL_PINE_FOREST, BEACH, WHITE_DUNE, GRAY_DUNE, SEA, LAGOON -> Plan.COAST;
 			case MONTANE_SPRUCE_FOREST -> Plan.HIGH_MOUNTAINS;
 			case DWARF_PINE_SCRUB, ALPINE_GRASSLAND -> Plan.MASSIF;
+			// Step TT3: the subnival rocks and the tarns occur only in the Tatras.
+			case SUBNIVAL_ROCKS, MOUNTAIN_TARN -> Plan.TATRA;
 			default -> Plan.WIDE;
 		};
 	}
@@ -213,11 +220,20 @@ public final class HabitatTargets {
 	/**
 	 * {@link Plan#MASSIF}: the large massifs within {@link #massifRadius} in the order of the distance of their centers;
 	 * around each, a lattice search from the center within the massif's reach. The first massif with a hit gives the
-	 * result (the hit nearest to its center, so not always the nearest hit to the player).
+	 * result (the hit nearest to its center, so not always the nearest hit to the player). Step TT3: in a world with the
+	 * Tatras their massifs first (their dwarf pine and alpine grassland cover whole belts), then the large massifs.
 	 */
 	private static double[] aroundMassifs(World world, double highFrom, IntPredicate test, double ox, double oz,
 			BooleanSupplier cancelled) {
 		LandscapeModel model = world.model();
+		if (model.hasTatra()) {
+			double[] hit = PolishForestsCommands.searchTatra(model,
+					p -> model.landElevation(p[0], p[1]) >= highFrom && test.test(world.code(p[0], p[1])), ox, oz,
+					PolishForestsCommands.TATRA_FINE_STEP, cancelled);
+			if (hit != null) {
+				return hit;
+			}
+		}
 		double r = massifRadius(world);
 		List<LandscapeModel.GreatMassif> massifs = new java.util.ArrayList<>(model.greatMassifs(ox - r, oz - r, ox + r, oz + r));
 		massifs.sort(java.util.Comparator.comparingDouble(g -> Math.hypot(g.x() - ox, g.z() - oz)));

@@ -34,7 +34,7 @@ import pl.polishforests.worldgen.cave.CaveBiomes;
 import pl.polishforests.worldgen.habitat.HabitatBiome;
 
 /**
- * Feature order of the "Poland" generator with the cave biomes (step J2, {@link FeatureOrder}): with the 36 habitat
+ * Feature order of the "Poland" generator with the cave biomes (step J2, {@link FeatureOrder}): with the 38 habitat
  * biomes of today (lists of {@link BiomeDecoration}) and the 4 vanilla cave biomes (their lists from the game jar), every
  * feature of the habitat biomes of before J2 keeps its index in its step, so its seed and a world without caves stay as
  * they were; the plain vanilla sort of the same biomes would move some of them (checked, so this test stays meaningful).

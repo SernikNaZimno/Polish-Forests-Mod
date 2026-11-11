@@ -313,6 +313,17 @@ public final class PolishForestsCommands {
 							: Component.translatable("polishforests.tatra_rock." + rock.name().toLowerCase(Locale.ROOT)),
 					String.format(Locale.ROOT, "%.0f", s.surface()), y), false);
 		}
+		// Step TT3: in the mountains the altitudinal belt of the column and its belt profile (Beskids, Tatras or their blend).
+		{
+			HabitatClassifier classifier = generator(source).classifier(source.getLevel().getSeed());
+			pl.polishforests.worldgen.habitat.AltitudinalBelts.Belt belt = classifier.belt(s, pos.x, pos.z);
+			if (belt != pl.polishforests.worldgen.habitat.AltitudinalBelts.Belt.NONE) {
+				String profile = classifier.beltProfile(s, pos.x, pos.z);
+				source.sendSuccess(() -> Component.translatable("polishforests.command.here_belt",
+						Component.translatable("polishforests.belt." + belt.id()),
+						Component.translatable("polishforests.belt_profile." + profile)), false);
+			}
+		}
 		// Step S9: the second line, the habitat of the column (biome, STL, association, zone, soil, DGW, O, P, T and the
 		// trees of the stand, the pale-bark stand-ins marked as placeholders until M3).
 		HabitatInfo info = HabitatInfo.of(source.getLevel(), (int) Math.floor(pos.x), (int) Math.floor(pos.y),
@@ -419,6 +430,10 @@ public final class PolishForestsCommands {
 		Component name = biomeName(biome);
 		if (!HabitatTargets.occurs(biome, world.classifier().mode())) {
 			source.sendFailure(Component.translatable("polishforests.command.not_in_mode", name, modeName(world)));
+			return 0;
+		}
+		if (HabitatTargets.tatraOnly(biome) && !world.model().hasTatra()) {
+			source.sendFailure(Component.translatable("polishforests.command.no_tatra"));
 			return 0;
 		}
 		Vec3 origin = source.getPosition();

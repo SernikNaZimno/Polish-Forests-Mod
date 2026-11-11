@@ -111,7 +111,29 @@ public enum GroundPlant {
 	 * Butterbur (Petasites hybridus): the carpets of huge leaves of the gray alder forest along the mountain streams
 	 * (Alnetum incanae), the pink flower spikes in March and April before the leaves (step F6).
 	 */
-	BUTTERBUR(Kind.HERB);
+	BUTTERBUR(Kind.HERB),
+	/**
+	 * Three-leaved rush (Juncus trifidus, sit skucina): the wiry tufts of the alpine grassland of the Tatra granite
+	 * (Oreochloo-Juncetum trifidi), brown flower clusters in summer, rusty from September ("rudzenie" of the slopes; step TT3).
+	 */
+	THREE_LEAVED_RUSH(Kind.HERB),
+	/** Two-rowed oreochloa (Oreochloa disticha, boimka dwurzędowa): low tufts of the granite grassland, purplish two-rowed spikes in June and July (step TT3). */
+	TWO_ROWED_OREOCHLOA(Kind.HERB),
+	/** Tatra moor-grass (Sesleria tatrae): the blue-green tufts of the limestone grassland, bluish spikes in May and June (step TT3). */
+	TATRA_MOOR_GRASS(Kind.HERB),
+	/** Variegated fescue (Festuca versicolor, kostrzewa pstra): the stiff tufts of the steep limestone grassland, spikes in July and August (step TT3). */
+	VARIEGATED_FESCUE(Kind.HERB),
+	/** Edelweiss (Leontopodium alpinum, szarotka alpejska): woolly gray rosettes of the limestone rocks, white woolly stars in July and August (step TT3). */
+	EDELWEISS(Kind.SEASONAL),
+	/** Clusius's gentian (Gentiana clusii, goryczka Clusiusa): leathery rosettes of the limestone grassland, large deep blue trumpets in June (step TT3). */
+	CLUSIUS_GENTIAN(Kind.SEASONAL),
+	/** Least willow (Salix herbacea, wierzba zielna): a creeping dwarf willow of the snowbeds, round glossy leaves from June to September (step TT3). */
+	LEAST_WILLOW(Kind.SEASONAL),
+	/**
+	 * Rock lichens (Rhizocarpon geographicum, Umbilicaria): the yellow-green and gray crusts on the rocks of the subnival
+	 * belt and the rock grasslands, a litter of 1–4 segments (step TT3).
+	 */
+	ROCK_LICHEN(Kind.COVER);
 
 	/**
 	 * The block family of an entry (not saved: the order may change). Step F2: {@link #HERB}, a single-block cross plant

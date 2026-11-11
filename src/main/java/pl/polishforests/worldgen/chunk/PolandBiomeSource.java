@@ -34,7 +34,7 @@ import pl.polishforests.worldgen.landscape.ColumnSample;
 import pl.polishforests.worldgen.landscape.LandscapeModel;
 
 /**
- * Biome source of the "Poland" world (docs/03-m2-biomy.md §3.5): the 36 habitat biomes of the mod
+ * Biome source of the "Poland" world (docs/03-m2-biomy.md §3.5): the 38 habitat biomes of the mod
  * ({@link HabitatBiome}), chosen per column by {@link HabitatClassifier} (Z1, Z2: the habitat depends only on the
  * column, not on the quart Y), and in worlds with caves the vanilla cave biomes below the surface ({@link CaveBiomes}, step
  * J2: lush caves, dripstone caves, sulfur caves, deep dark, chosen by the vanilla climate and the depth below the model
@@ -153,7 +153,7 @@ public final class PolandBiomeSource extends BiomeSource {
 		return CODEC;
 	}
 
-	/** The 36 habitat biomes and the 4 vanilla cave biomes, fixed from decoding, independent of the mode and the seed. */
+	/** The 38 habitat biomes and the 4 vanilla cave biomes, fixed from decoding, independent of the mode and the seed. */
 	@Override
 	protected Stream<Holder<Biome>> collectPossibleBiomes() {
 		return Stream.concat(biomes.stream(), caveBiomes.stream());
