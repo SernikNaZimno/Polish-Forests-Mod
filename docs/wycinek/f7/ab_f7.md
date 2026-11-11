@@ -1,29 +1,31 @@
 # F7: tabele A/B (PW-10, G.34)
 
-Pomiar 2026-11-10/11 na spokojnej maszynie (sterownik `run_ab_f7.sh`: warunek ciszy przed każdym przebiegiem, próbnik gier co 20 s; 0 przebiegów zakłóconych, 0 nieudanych). Buildy: **M2** = `pl-m2-baseline` (tag `m2-baseline-r1` + uprząż V10 + `ForestPerformance` z miejscami F1–F6), **przed F1** = `c33a916` (+ ta sama uprząż), **F7** = `0e5b6b0` (kod generacji etapu 2 bez zmian). Kolejność ABBA (rundy nieparzyste: baza pierwsza). Mediany: `load` i `stages` z 4 przebiegów, jaskinie, przeloty i „przed F1” z 2. Iloraz = F7 / baza. Pogrubione = poza progiem. Surowe liczby: `handoff/F7/results.md`.
+Pomiar 2026-11-10/11 (sterownik `run_ab_f7.sh`: warunek ciszy przed każdym przebiegiem, próbnik gier co 20 s; 0 przebiegów zakłóconych przez gry, 0 nieudanych); chunki na sekundę bez jaskiń powtórzone 2026-11-11 rano (`run_ab_f7_load2.sh`, przegląd F7, runda 1; tabela niżej), bo przebieg M2 r4 pierwszego pomiaru był wolny (Uwagi do metody). Buildy: **M2** = `pl-m2-baseline` (tag `m2-baseline-r1` + uprząż V10 + `ForestPerformance` z miejscami F1–F6), **przed F1** = `c33a916` (+ ta sama uprząż), **F7** = `0e5b6b0` (kod generacji etapu 2 bez zmian). Kolejność ABBA (rundy nieparzyste: baza pierwsza). Mediany: `load` (powtórka) i `stages` z 4 przebiegów, jaskinie, przeloty i „przed F1” z 2. Iloraz = F7 / baza. Pogrubione = poza progiem. Surowe liczby: `handoff/F7/results.md`.
 
 
 ## Chunki na sekundę z C2ME bez jaskiń (`-Pcaves=off`, `-PloadOnly`); próg ≥ 0,7 × M2
 
-| miejsce | M2 | F7 | iloraz |
-|---|---|---|---|
-| REAL oak_hornbeam_1 | 148,60 | 107,20 | 0,721 |
-| REAL fresh_pine_1 | 190,35 | 141,65 | 0,744 |
-| REAL lowland_beech_1 | 192,95 | 139,90 | 0,725 |
-| REAL alder_carr_1 | 189,65 | 138,15 | 0,728 |
-| REAL upland_fir_1 | 171,55 | 134,35 | 0,783 |
-| REAL bog_woodland_1 | 184,05 | 143,20 | 0,778 |
-| REAL floodplain_1 | 185,50 | 138,05 | 0,744 |
-| REAL montane_spruce_1 | 163,75 | 124,65 | 0,761 |
-| GAMEPLAY oak_hornbeam_1 | 222,50 | 155,90 | 0,701 |
-| GAMEPLAY fresh_pine_1 | 214,85 | 157,50 | 0,733 |
-| GAMEPLAY lowland_beech_1 | 215,65 | 155,10 | 0,719 |
-| GAMEPLAY alder_carr_1 | 245,30 | 180,05 | 0,734 |
-| GAMEPLAY upland_fir_1 | 192,30 | 146,90 | 0,764 |
-| GAMEPLAY bog_woodland_1 | 301,05 | 235,80 | 0,783 |
-| GAMEPLAY floodplain_1 | 218,75 | 162,10 | 0,741 |
-| GAMEPLAY montane_spruce_1 | 158,90 | 128,45 | 0,808 |
-| **min / mediana / max** | | | 0,701 / 0,743 / 0,808 |
+Powtórka 2026-11-11 rano (przegląd F7, runda 1): sterownik `handoff/F7/run_ab_f7_load2.sh`, 4 rundy ABBA M2 / F7 (`4288907`, kod generacji ten sam co w `0e5b6b0`), własny katalog dzienników `handoff/F7/ab2/`, warunek ciszy: brak gry, CPU < 20% i obciążenie GPU ≤ 5% karty (wykorzystanie × zegar / zegar maks.) w 3 próbkach z rzędu, zapis obciążenia GPU co 10 s w czasie przebiegu; 0 przebiegów zakłóconych i nieudanych. Mediany 4 przebiegów; kolumna „pierwszy pomiar” to dawny iloraz z zakłóconym przebiegiem M2 r4 (Uwagi do metody). **Wynik: 15 z 16 miejsc ≥ 0,7; REAL `lowland_beech_1` 0,698 (o 0,002 poniżej progu, w granicach rozrzutu rund).**
+
+| miejsce | M2 | F7 | iloraz | ilorazy rund (min–max) | pierwszy pomiar 2026-11-10/11 |
+|---|---|---|---|---|---|
+| REAL oak_hornbeam_1 | 148,25 | 105,85 | 0,714 | 0,698–0,733 | 0,721 |
+| REAL fresh_pine_1 | 193,45 | 142,10 | 0,735 | 0,697–0,758 | 0,744 |
+| REAL lowland_beech_1 | 195,05 | 136,05 | **0,698** | 0,683–0,739 | 0,725 |
+| REAL alder_carr_1 | 183,90 | 138,80 | 0,755 | 0,753–0,763 | 0,728 |
+| REAL upland_fir_1 | 171,25 | 127,20 | 0,743 | 0,736–0,761 | 0,783 |
+| REAL bog_woodland_1 | 184,70 | 144,40 | 0,782 | 0,753–0,797 | 0,778 |
+| REAL floodplain_1 | 183,65 | 137,20 | 0,747 | 0,726–0,761 | 0,744 |
+| REAL montane_spruce_1 | 163,15 | 123,45 | 0,757 | 0,738–0,763 | 0,761 |
+| GAMEPLAY oak_hornbeam_1 | 217,95 | 156,75 | 0,719 | 0,689–0,734 | 0,701 |
+| GAMEPLAY fresh_pine_1 | 211,50 | 155,65 | 0,736 | 0,713–0,748 | 0,733 |
+| GAMEPLAY lowland_beech_1 | 215,75 | 153,60 | 0,712 | 0,698–0,745 | 0,719 |
+| GAMEPLAY alder_carr_1 | 244,50 | 178,15 | 0,729 | 0,665–0,754 | 0,734 |
+| GAMEPLAY upland_fir_1 | 189,95 | 141,35 | 0,744 | 0,702–0,783 | 0,764 |
+| GAMEPLAY bog_woodland_1 | 315,30 | 236,30 | 0,749 | 0,722–0,801 | 0,783 |
+| GAMEPLAY floodplain_1 | 217,60 | 157,55 | 0,724 | 0,709–0,756 | 0,741 |
+| GAMEPLAY montane_spruce_1 | 178,45 | 128,35 | 0,719 | 0,701–0,726 | 0,808 |
+| **min / mediana / max** | | | 0,698 / 0,735 / 0,782 | | 0,701 / 0,743 / 0,808 |
 
 ## Strażnik z jaskiniami: chunki na sekundę z C2ME (świat z jaskiniami wobec M2 bez jaskiń); próg REAL ≥ 0,4 ×, GAMEPLAY ≥ 0,55 ×
 
@@ -45,6 +47,8 @@ Pomiar 2026-11-10/11 na spokojnej maszynie (sterownik `run_ab_f7.sh`: warunek ci
 | GAMEPLAY bog_woodland_1 | 302,50 | 207,05 | 0,684 | 235,80 | 0,59 |
 | GAMEPLAY floodplain_1 | 202,70 | 122,20 | 0,603 | 162,10 | 2,01 |
 | GAMEPLAY montane_spruce_1 | 172,35 | 82,45 | **0,478** | 128,45 | 4,34 |
+
+Iloraz liczono wobec M2 z tych samych rund jaskiń (pierwszy pomiar, 2 przebiegi M2 z 23:16–23:42). Wobec mediany 4 cichych przebiegów M2 z powtórki 2026-11-11 (wyżej): REAL 0,373–0,616 (`upland_fir_1` **0,373**, `fresh_pine_1` 0,402, pozostałe ≥ 0,450), GAMEPLAY 0,462–0,657 (`montane_spruce_1` **0,462**, `floodplain_1` 0,562, `lowland_beech_1` 0,569, pozostałe ≥ 0,587). Werdykt ten sam: niespełnione w tych samych 2 miejscach, `fresh_pine_1` REAL na granicy. Przebiegów F7 z jaskiniami nie powtarzano.
 
 ## FEATURES, ms na chunk (`stages -Psites=slice -Pcaves=off`, 20 obszarów miejsc wycinka); próg ≤ 2,0 × M2 i ≤ 10 ms
 
@@ -182,7 +186,9 @@ Pomiar 2026-11-10/11 na spokojnej maszynie (sterownik `run_ab_f7.sh`: warunek ci
 
 ## Uwagi do metody
 
-- **Przebiegi F7 rund 1–2 `load` i `stages`.** Sterownik zapisywał dziennik pod nazwą `<część>_r<n>_head.log` zarówno w parze z M2, jak i w parze z buildem przed F1, więc dzienniki F7 rund 1–2 z pary z M2 (22:37–22:47 i 23:47–23:54) zastąpiły przebiegi F7 rund 1–2 z pary z buildem przed F1 (04:04–04:32, ta sama noc, ta sama cisza maszyny, ten sam kod). Mediany F7 w `load` i `stages` są więc z 2 przebiegów pary z M2 (rundy 3–4, ABBA) i 2 przebiegów pary z buildem przed F1. Rozrzut przebiegów F7 jest mały (np. `oak_hornbeam_1` REAL 108,6 / 100,5 / 105,8 / 108,6 chunku/s), więc iloraz zmienia się najwyżej o ok. 0,01. Jaskinie i przeloty bez tej usterki.
+- **Pierwszy pomiar `load` (2026-11-10, zastąpiony powtórką).** Przebieg M2 r4 (23:10) był w każdym z 16 miejsc o 10–33% wolniejszy niż M2 r1–r3 (np. GAMEPLAY `oak_hornbeam_1` 182,8 wobec 220,9 / 224,1 / 227,7), a do tego dzienniki F7 rund 1–2 pochodziły z pary z buildem przed F1 (sterownik zapisywał `<część>_r<n>_head.log` w obu parach), więc para ABBA nie była zachowana: mediana M2 z 3 cichych i 1 wolnego przebiegu zaniżała M2 i zawyżała ilorazy (np. GAMEPLAY `montane_spruce_1` 0,808 → w powtórce 0,719, REAL `lowland_beech_1` 0,725 → 0,698). Dawny opis „iloraz ±0,01” był błędny. Przebiegi F7 obu nocy i powtórki są zgodne (np. REAL `oak_hornbeam_1` 108,6 / 100,5 / 105,8 / 108,6 w pierwszym pomiarze, 104,7–108,0 w powtórce), więc zakłócony był przebieg M2 r4, nie przebiegi F7. Przyczyny spowolnienia M2 r4 nie ustalono (gry nie było, CPU 5%).
+- **Obciążenie GPU przed przebiegiem.** Dawny sterownik logował surowe wykorzystanie GPU z `nvidia-smi` (próg < 50%); od 22:58 było to 18–23%. W powtórce zapisano też zegar i stan P: w spoczynku karta stoi w P8 przy 210 MHz (maks. 3105 MHz) i pokazuje 12–29% wykorzystania od samej aplikacji pulpitu, czyli 1–2% karty. Takie same 18–23% w pierwszym pomiarze to najpewniej ten sam spoczynek, nie stały konsument GPU (zegara wtedy nie logowano). Powtórka używa progu obciążenia ≤ 5% karty (wykorzystanie × zegar / zegar maks.) i zapisuje obciążenie w czasie przebiegu (średnio 7–12% karty, razem z klientem testu; M2 i F7 podobnie).
+- **Przebiegi F7 rund 1–2 `stages`** pochodzą z pary z buildem przed F1 (04:25–04:32, ta sama usterka nazw); etapy obu buildów szły w tym samym spoczynku GPU, a werdykt FEATURES / LIGHT ma duży zapas, więc ich nie powtarzano.
 - **Etapy** (`stages -Psites=slice`) profilują 20 obszarów miejsc wycinka (`profileSlice`; 5 miejsc × 2 skale × 2 tryby), nie miejsca lasów F1–F6; koszt lasów F1–F6 w generacji pokazują chunki na sekundę (`load`).
 - **Strażnik z jaskiniami**: M2 nie czyta `-Pcaves`, więc iloraz to F7 z jaskiniami wobec M2 w tych samych rundach (2 przebiegi). Mediana M2 z 6 przebiegów (`load` + `caves`) daje dla `upland_fir_1` REAL 0,373, dla `montane_spruce_1` GAMEPLAY 0,48: wynik nie zależy od wyboru mediany bazy.
 - **Szacunek dla buildu przed F1 z jaskiniami** (rachunek, nie pomiar: koszt jaskiń F7 w ms na chunk dodany do czasu buildu przed F1 bez jaskiń): `upland_fir_1` REAL ok. 0,43 × M2, `montane_spruce_1` GAMEPLAY ok. 0,55 × M2. Strażnik w górach był więc spełniony bez zapasu jeszcze przed krokami F; las planera kroków F3 i F6 (ok. +1,5 ms na chunk) przesuwa oba miejsca pod próg.
