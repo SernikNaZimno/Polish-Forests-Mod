@@ -333,7 +333,9 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 		List<HabitatBiome> transect = List.of(ForestBlend.TRANSECT);
 		for (SlicePlots.Plot plot : SlicePlots.of(real)) {
 			HabitatBiome b = HabitatBiome.byId(plot.biome());
-			if (b != null && plannerForests.contains(b) && !transect.contains(b) && plot.name().endsWith("_1")) {
+			// Step TT4: not the plots of the spruce-stone pine forest of the Tatras (their KF-1 is in the gametest tatra).
+			if (b != null && plannerForests.contains(b) && !transect.contains(b) && plot.name().endsWith("_1")
+					&& !plot.name().startsWith("tatra_")) {
 				sites.add(new int[] {plot.x(), plot.z()});
 			}
 		}

@@ -14,9 +14,13 @@ import java.util.Locale;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
+import pl.polishforests.worldgen.habitat.Association;
+import pl.polishforests.worldgen.habitat.Habitat;
 import pl.polishforests.worldgen.habitat.HabitatBiome;
 import pl.polishforests.worldgen.habitat.HabitatClassifier;
+import pl.polishforests.worldgen.habitat.Zone;
 import pl.polishforests.worldgen.landscape.LandscapeScale;
+import pl.polishforests.worldgen.norms.ForestNorms;
 import pl.polishforests.worldgen.tree.AgeClass;
 import pl.polishforests.worldgen.tree.ForestStandMap;
 
@@ -29,6 +33,8 @@ import pl.polishforests.worldgen.tree.ForestStandMap;
  * ({@link #F_FORESTS}, the lowland beech forest), searched around the nearest place of the forest from the first oak-hornbeam
  * and the first fresh pine site of the scale and appended after the plots of the slice, so these keep their places.
  * The table lives in {@code src/test/resources/slice_plots.txt}; {@code -Pgametest=slice} reads it.
+ * Step TT4: two natural plots of the spruce-stone pine forest of the Tatras ({@link #TATRA_PREFIX}) in the gameplay
+ * scale, searched in a world with the Tatras and appended last.
  *
  * <p>A plot is the center of a 100 × 100 block square that holds its biome as a slice site does
  * ({@link SliceSitesTest#siteProblem} in both vegetation modes, the biome on at least {@value #MIN_BIOME} of the lattice) and lies in stands of its kind on at least
@@ -172,13 +178,18 @@ class SlicePlotsTest {
 	}
 
 	static String problem(Plot p) {
+		boolean tatra = tatra(p);
 		ForestStandMap map = new ForestStandMap(PolishForestsCommandsTest.SEED, p.scale().local(), MANAGED_SHARE);
+		if (tatra) {
+			// Step TT4: the stands of the Tatra National Park are all natural, as in the game (PolandChunkGenerator).
+			map.withPark(world(p.scale(), HabitatClassifier.Mode.NATURAL, true).model()::tatraPark);
+		}
 		double share = standShare(map, p.natural(), p.age(), p.x(), p.z());
 		if (share < MIN_STAND || !p.natural() && standShare(map, false, null, p.x(), p.z()) < 1) {
 			return String.format(Locale.ROOT, "only %.1f%% of the square in its stands", 100 * share);
 		}
 		for (HabitatClassifier.Mode mode : HabitatClassifier.Mode.values()) {
-			HabitatTargets.World w = PolishForestsCommandsTest.world(p.scale(), mode);
+			HabitatTargets.World w = world(p.scale(), mode, tatra);
 			String problem = siteProblem(w, p.biome(), p.x(), p.z());
 			if (problem != null) {
 				return mode + ": " + problem;
@@ -187,8 +198,71 @@ class SlicePlotsTest {
 			if (biome < minBiome(p.scale(), p.biome())) {
 				return String.format(Locale.ROOT, "%s: %s only %.1f%% of the square", mode, p.biome().id(), 100 * biome);
 			}
+			if (tatra) {
+				problem = stonePineProblem(w, p.x(), p.z());
+				if (problem != null) {
+					return mode + ": " + problem;
+				}
+			}
 		}
 		return null;
+	}
+
+	// ------------------------------------------------------------------ the plots in the Tatras (step TT4)
+
+	/**
+	 * Step TT4 (docs/04 "Kroki TT", TT4 (5)): the plots of the spruce-stone pine forest of the Tatras (Pino
+	 * cembrae-Piceetum, the {@code STONE_PINE} site variant of the natural montane spruce forest), named with this prefix.
+	 * They lie in the gameplay scale only (the realistic scale has no Tatras until step TT5), in a world with the Tatras,
+	 * are appended after the plots of the slice and of the steps F (so these keep their places and rows) and are not
+	 * counted among the plots of the montane spruce forest of step F6 ({@link #F_MISSING}: no natural plot in the Beskids).
+	 */
+	static final String TATRA_PREFIX = "tatra_";
+	/** The origin of the search of the Tatra plots: the KT-6 site {@code tatra_stone_pine_1} of {@code ForestPerformance}. */
+	static final int[] TATRA_ORIGIN = {-23268, 87636};
+	/**
+	 * Least share of a Tatra plot's lattice in forest columns of the spruce-stone pine forest (the association, without a
+	 * zone: the in-game census counts only these, and the rock zones of step TT2, the bare rock, the screes and the gullies,
+	 * break the forest of the granite), in each vegetation mode. The best square within 4 km of the origin holds 65.8% (seed
+	 * 20260927; the zones cover a third of the series at least), so the bar is lower than {@link #MIN_BIOME}.
+	 */
+	static final double MIN_STONE_PINE = 0.60;
+	/** Rings of the search of the Tatra plots around {@link #TATRA_ORIGIN} (20 blocks apart). */
+	static final int TATRA_RINGS = 200;
+	/** Number of plots of the spruce-stone pine forest (gameplay scale, natural stands: the park has no others). */
+	static final int TATRA_PLOTS = 2;
+
+	static boolean tatra(Plot p) {
+		return p.name().startsWith(TATRA_PREFIX);
+	}
+
+	/** The world of the test seed in a scale and mode, with or without the Tatras. */
+	static HabitatTargets.World world(LandscapeScale scale, HabitatClassifier.Mode mode, boolean tatra) {
+		return tatra ? PolishForestsCommandsTest.world(PolishForestsCommandsTest.SEED, scale, mode, true)
+				: PolishForestsCommandsTest.world(scale, mode);
+	}
+
+	/** Share of the 21 × 21 lattice of the square around (x, z) in forest columns (no zone) of the spruce-stone pine forest. */
+	static double stonePineShare(HabitatTargets.World w, int x, int z) {
+		long hits = java.util.stream.IntStream.range(0, 21 * 21).parallel()
+				.map(i -> w.code(x - 50 + 5 * (i / 21), z - 50 + 5 * (i % 21)))
+				.filter(c -> Habitat.biome(c) == HabitatBiome.MONTANE_SPRUCE_FOREST && Habitat.association(c) == Association.PINO_CEMBRAE_PICEETUM
+						&& Habitat.zone(c) == Zone.NONE)
+				.count();
+		return hits / 441.0;
+	}
+
+	/**
+	 * Why a Tatra plot does not hold the spruce-stone pine forest: its center is not of the site variant (the in-game
+	 * card picks the norms by the code at the center, {@code NormsCensus.site}) or the forest covers too little of it.
+	 */
+	static String stonePineProblem(HabitatTargets.World w, int x, int z) {
+		if (ForestNorms.siteOf(w.code(x, z)) != ForestNorms.Site.STONE_PINE) {
+			return "the center is not the spruce-stone pine forest";
+		}
+		double share = stonePineShare(w, x, z);
+		return share < MIN_STONE_PINE ? String.format(Locale.ROOT, "the spruce-stone pine forest only %.1f%% of the square", 100 * share)
+				: null;
 	}
 
 	/**
@@ -216,7 +290,15 @@ class SlicePlotsTest {
 	void everyScaleHasThePlotsOfTheCard() throws IOException {
 		List<Plot> plots = read();
 		for (LandscapeScale scale : List.of(LandscapeScale.REALISTIC, LandscapeScale.GAMEPLAY)) {
-			List<Plot> here = plots.stream().filter(p -> p.scale() == scale).toList();
+			List<Plot> all = plots.stream().filter(p -> p.scale() == scale).toList();
+			// Step TT4: the Tatra plots apart (natural stands of the spruce-stone pine forest, gameplay scale only).
+			List<Plot> here = all.stream().filter(p -> !tatra(p)).toList();
+			List<Plot> inTatras = all.stream().filter(SlicePlotsTest::tatra).toList();
+			assertEquals(scale == LandscapeScale.GAMEPLAY ? TATRA_PLOTS : 0, inTatras.size(), scale.id() + " Tatra plots");
+			assertTrue(inTatras.stream().allMatch(p -> p.natural() && p.age() == null && p.biome() == HabitatBiome.MONTANE_SPRUCE_FOREST),
+					scale.id() + " Tatra plots: natural montane spruce forest of any age");
+			int firstTatra = inTatras.isEmpty() ? plots.size() : plots.indexOf(inTatras.getFirst());
+			assertTrue(plots.subList(firstTatra, plots.size()).stream().allMatch(SlicePlotsTest::tatra), "the Tatra plots come last in the table");
 			assertEquals(2, count(here, HabitatBiome.OAK_HORNBEAM_FOREST, true, null), scale.id());
 			assertEquals(2, count(here, HabitatBiome.OAK_HORNBEAM_FOREST, false, null), scale.id());
 			assertEquals(2, count(here, HabitatBiome.FRESH_PINE_FOREST, true, null), scale.id());
@@ -233,10 +315,10 @@ class SlicePlotsTest {
 					assertEquals(F_MISSING.contains(kind) ? 0 : F_SINGLE.contains(kind) ? 1 : 2, count(here, f, natural, null), kind);
 				}
 			}
-			for (int i = 0; i < here.size(); i++) {
-				for (int j = i + 1; j < here.size(); j++) {
-					assertTrue(Math.hypot(here.get(i).x() - here.get(j).x(), here.get(i).z() - here.get(j).z()) >= MIN_APART,
-							here.get(i).line() + " and " + here.get(j).line());
+			for (int i = 0; i < all.size(); i++) {
+				for (int j = i + 1; j < all.size(); j++) {
+					assertTrue(Math.hypot(all.get(i).x() - all.get(j).x(), all.get(i).z() - all.get(j).z()) >= MIN_APART,
+							all.get(i).line() + " and " + all.get(j).line());
 				}
 			}
 		}
@@ -441,7 +523,8 @@ class SlicePlotsTest {
 		for (LandscapeScale scale : List.of(LandscapeScale.REALISTIC, LandscapeScale.GAMEPLAY)) {
 			List<SliceSitesTest.Place> sites = SliceSitesTest.read().stream().filter(p -> p.scale() == scale && !p.transect()).toList();
 			List<Plot> chosen = new ArrayList<>();
-			List<Plot> keptHere = kept.stream().filter(p -> p.scale() == scale).toList();
+			// Step TT4: the Tatra plots apart (kept below, after the forests of the steps F).
+			List<Plot> keptHere = kept.stream().filter(p -> p.scale() == scale && !tatra(p)).toList();
 			ForestStandMap map = new ForestStandMap(PolishForestsCommandsTest.SEED, scale.local(), MANAGED_SHARE);
 			HabitatTargets.World natural = PolishForestsCommandsTest.world(scale, HabitatClassifier.Mode.NATURAL);
 			HabitatTargets.World presentDay = PolishForestsCommandsTest.world(scale, HabitatClassifier.Mode.PRESENT_DAY);
@@ -528,6 +611,19 @@ class SlicePlotsTest {
 					}
 				}
 			}
+			// Step TT4: the plots of the spruce-stone pine forest of the Tatras, last (gameplay scale, a world with the Tatras).
+			if (scale == LandscapeScale.GAMEPLAY) {
+				List<Plot> keptTatra = kept.stream().filter(SlicePlotsTest::tatra).toList();
+				for (int n = 1; n <= TATRA_PLOTS; n++) {
+					String name = TATRA_PREFIX + "stone_pine_natural_" + n;
+					Plot old = keptTatra.stream().filter(q -> q.name().equals(name)).findFirst().orElse(null);
+					int[] at = old != null ? new int[] {old.x(), old.z()} : searchTatra(chosen);
+					Plot p = new Plot(scale, true, null, name, HabitatBiome.MONTANE_SPRUCE_FOREST, at[0], at[1]);
+					chosen.add(p);
+					lines.add(p.line());
+					System.out.println("[plots] " + p.line());
+				}
+			}
 		}
 		Path file = Path.of(System.getProperty("polishforests.slice.plots.file"));
 		Files.writeString(file, String.join("\n", lines) + "\n", StandardCharsets.UTF_8);
@@ -591,6 +687,52 @@ class SlicePlotsTest {
 					+ ", " + origin[1]);
 		}
 		return at;
+	}
+
+	/**
+	 * Step TT4: the nearest Tatra plot center to {@link #TATRA_ORIGIN} (on a grid of 20 blocks, in {@link #TATRA_RINGS}
+	 * rings) in the spruce-stone pine forest of a world with the Tatras, in natural stands (the park), at least
+	 * {@value #MIN_APART} blocks from the plots chosen before.
+	 */
+	private static int[] searchTatra(List<Plot> chosen) {
+		LandscapeScale scale = LandscapeScale.GAMEPLAY;
+		HabitatTargets.World natural = world(scale, HabitatClassifier.Mode.NATURAL, true);
+		HabitatTargets.World presentDay = world(scale, HabitatClassifier.Mode.PRESENT_DAY, true);
+		ForestStandMap map = new ForestStandMap(PolishForestsCommandsTest.SEED, scale.local(), MANAGED_SHARE).withPark(natural.model()::tatraPark);
+		int step = 20;
+		double best = 0;
+		int[] bestAt = null;
+		for (int r = 0; r <= TATRA_RINGS; r++) {
+			for (int a = -r; a <= r; a++) {
+				for (int b = -r; b <= r; b++) {
+					if (Math.max(Math.abs(a), Math.abs(b)) != r) {
+						continue;
+					}
+					int x = TATRA_ORIGIN[0] + a * step;
+					int z = TATRA_ORIGIN[1] + b * step;
+					if (chosen.stream().anyMatch(p -> Math.hypot(p.x() - x, p.z() - z) < MIN_APART)
+							|| ForestNorms.siteOf(natural.code(x, z)) != ForestNorms.Site.STONE_PINE
+							|| ForestNorms.siteOf(presentDay.code(x, z)) != ForestNorms.Site.STONE_PINE
+							|| standShare(map, true, null, x, z) < MIN_STAND + 0.05) {
+						continue;
+					}
+					double share = Math.min(stonePineShare(natural, x, z), stonePineShare(presentDay, x, z));
+					if (share > best) {
+						best = share;
+						bestAt = new int[] {x, z};
+					}
+					if (stonePineProblem(natural, x, z) == null && stonePineProblem(presentDay, x, z) == null
+							&& SliceSitesTest.shares(natural, HabitatBiome.MONTANE_SPRUCE_FOREST, x, z)[0] >= MIN_BIOME
+							&& SliceSitesTest.shares(presentDay, HabitatBiome.MONTANE_SPRUCE_FOREST, x, z)[0] >= MIN_BIOME) {
+						System.out.printf(Locale.ROOT, "[plots] Tatra plot at %d %d: %.1f%% forest columns of the spruce-stone pine forest%n", x,
+								z, 100 * share);
+						return new int[] {x, z};
+					}
+				}
+			}
+		}
+		throw new AssertionError("no plot of the spruce-stone pine forest within " + TATRA_RINGS * 20 + " blocks of " + TATRA_ORIGIN[0] + ", "
+				+ TATRA_ORIGIN[1] + String.format(Locale.ROOT, " (best square %.1f%% at %s)", 100 * best, java.util.Arrays.toString(bestAt)));
 	}
 
 	/** {@link #search} within the given rings; null when none passes. */

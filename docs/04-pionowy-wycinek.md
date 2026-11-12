@@ -635,7 +635,7 @@ Każdy krok TT jest ukończony dopiero, gdy oprócz własnych kryteriów spełni
 ### TT4. Limba i modrzew, lasy regli Tatr (A, 1,5–2 dnia)
 
 - **Zakres:** (1) nowe gatunki z pełnym ZG (§3 „Kroki F”): **limba** (`STONE_PINE`, Pinus cembra: gęsta kolumnowa korona, pęki po 5 igieł, szyszki, własne drewno P2) i **modrzew** (`LARCH`, Larix decidua: luźna stożkowa korona, zwisające gałązki, igły jasnozielone wiosną, złote jesienią i opadające: krzywa `FoliageCurve`, okno bezlistne z gałązkami zimowymi V13 / Z2, `client/SeasonalModel`, własne drewno P2), stałe na końcu `Species`, `TreeTrunk`, `TreeFoliage`, `RootFlare`; sadzonki w trzech rozmiarach (S1), ścinanie FallingTree i Tree Harvester (G1), martwe drewno i pniaki, korzenie; (2) bór świerkowo-limbowy (Pino cembrae-Piceetum, zespół na końcu `Association`) w górnej części regla górnego na granicie (limba 20–40%, świerk 40–60%, modrzew 5–20%), limba pojedynczo w kosodrzewinie; modrzew jako domieszka regla dolnego i górnego (stoki S); (3) warianty regli Tatr w `StandProfile` i `ForestBlend`; (4) zasięg: limba tylko w Tatrach (`SpeciesRanges`), modrzew na razie tylko w Tatrach (Sudety i Świętokrzyskie — M3); (5) karta norm boru limbowego (nowe kolumny §6: symulacja `StandCensusSimulationTest -PcalibrateSlice -PcalibrateOnly=…`, powierzchnie próbne w Tatrach z `SlicePlotsTest -PfindSlicePlots`, `slice -Psites=none`).
-- **Ukończony, gdy:** KT-1 … KT-7; KF-1, KF-2 i KF-5 dla nowych gatunków i boru limbowego (tablice `slice -Psites=samples`, `leaves`, `saplings` z modami do ścinania, `axe`, `planks`: liczby, brak brakujących modeli i tekstur, bez oceny wyglądu); 0 limby poza Tatrami (test zasięgu); modrzew w kliencie jesienią w fazie złotej, zimą bez igieł (testy `*season*`); karta lasów wycinka i kroków F bez zmian.
+- **Ukończony, gdy:** KT-1 … KT-7; KF-1, KF-2 i KF-5 dla nowych gatunków i boru limbowego (tablice `slice -Psites=samples`, `leaves`, `saplings` z modami do ścinania, `axe`, `planks`: liczby, brak brakujących modeli i tekstur, bez oceny wyglądu); 0 limby poza Tatrami (test zasięgu); modrzew w kliencie jesienią w fazie złotej, zimą bez igieł (testy `*season*`); karta lasów wycinka i kroków F bez zmian. **Stan (2026-11-12): zrobione z odstępstwem („Projekt TT4”, „Stan po TT4”, G.53): limba i modrzew z pełnym zestawem bloków na wszystkich tablicach próbek (0 problemów, także z FallingTree i Tree Harvester), modrzew w grze złoty w MID_AUTUMN i z samymi gałązkami zimą; limbowa świerczyna i stok z modrzewiem z drzewostanu planera (10,7 pnia na chunk, 0 kłód wanilii); karta limbowej świerczyny na dwóch powierzchniach Tatr: limba 31,0 i 36,7%, świerk 50,7 i 53,3%, modrzew 16,9 i 7,8%, normy wariantu w normie albo tolerancji; poza Tatrami 0 różnic bloków, karta lasów wycinka i kroków F jak w F7 (rozrzut kolejności chunków); KT-6 opis: limbowa 1,45 × Beskidów bez jaskiń, 1,01 × z jaskiniami; odstępstwo: luki N5 w starodrzewie limbowym 1,35% (TT4-o, do CP-D).**
 - **Ryzyko:** wysokie (nowe gatunki, rejestr, datagen, klient).
 
 ### TT5. Tatry w skali REAL (A, 1,5–2 dnia)
@@ -780,6 +780,18 @@ Mierzona w `slice` (V4) na powierzchniach 1 ha (100 × 100 bloków ≈ 39 chunk�
 | N8 | runo | żyzna wiosną 20–70% (marzanka, zawilec, żywiec, szczawik); kwaśna 5–40% wiosną i przez rok (kosmatka, szczawik, borówka płatami); forma nieznana 5–70% [S] | jw. | [L 06 §3.6] |
 | N9 | mchy | 0–30% | 0–30% | [L 06 §3.6] |
 | N10 | martwe drewno | ok. 2 obiekty na chunk (PW-5 b), 80–150 m³/ha, ≥ 5 grubych kawałków na ha | ok. 0,25 kawałka + 1–2 pniaki na chunk, 10–17 m³/ha | [L 06 §4.3; Ź WISL 2010–2014; S] |
+
+**Limbowa świerczyna Tatr (krok TT4; wariant `Site.STONE_PINE` kolumny `ForestNorms` `MONTANE_SPRUCE_NATURAL`, Pino cembrae-Piceetum).** Tatrzański Park Narodowy: tylko drzewostan naturalny, bez kolumny gospodarczej (TT4-c). Wariant wybiera kod siedliska środka powierzchni (zespół w świerczynie). Powierzchnie próbne `tatra_stone_pine_natural_1`, `…_2` w `slice_plots.txt` (GAMEPLAY, świat z Tatrami, na końcu tabeli); REAL od TT5. Tolerancja ±20%, martwe drewno ±30% (szeroka).
+
+| # | Miara | Limbowa świerczyna naturalna | Źródło |
+|---|---|---|---|
+| N1 | pnie na chunk (wszystkie piętra) | 5–13 (luźne kępy przy granicy lasu, limby niższe od świerków) | [L 06 §3.5; S] |
+| N3 | skład a1 (udział pni) | Św 40–60, limba 20–40, Md 5–20, Jrz 0–15 | [L 06 §3.5, §5.1] |
+| N4 | zwarcie | 40–70% | [L 06 §5.1; S] |
+| N7 | podszyt | 0–20% (jarząb, kosodrzewina, młode limby) | [L 06 §5.1; S] |
+| N8 | runo | zioła 40–90%, borówka 20–60% kolumn | [L 06 §5.1; S] |
+| N9 | mchy | 50–95% | [L 06 §5.1; S] |
+| N10 | martwe drewno | ok. 2,5 obiektu na chunk, 60–200 m³/ha, ≥ 3 grube kawałki na ha (limba zamiera stojąc, świerk w wiatrołomach) | [L 06 §4.3; PW-5 b; S] |
 
 Odstępstwa celowe, jawnie w karcie: gęstość fauny ×20–50 (PW-15), żaba w rozmiarze wanilii, brak pierśnicy jako miary (dokładność ±15%), N11, N13, N14, N16 i N17 z planu „wierność” poza kartą (forma śmierci i okap sprawdzane na zrzutach, gleby i mrowiska poza wycinkiem, fauna w gametest `fauna`).
 
@@ -5131,7 +5143,7 @@ Kalibracja (`StandCensusSimulationTest -PcalibrateSlice -PcalibrateOnly=montane_
 | drzewostan dojrzały | 7,5 | 57,2 | 28,9 | 13,9 | 54,3 | 2,40 / 160 |
 | starodrzew | 7,4 | 49,0 | 39,6 | 11,4 | 60,9 | 2,38 / 161 |
 
-Średnie wszystkich klas mieszczą się w karcie. Pojedyncze przebiegi wychodzą poza nią: limba w drzewostanie dojrzałym 14 z 49 (zakres 11–54%), w starodrzewie 7 z 49 (średnia 39,6% przy górnej granicy). Pierwsza wersja palety (świerk 470, limba 340, tyczkowina modrzewia 17) dawała limbę 11,9 / 20,3 / 32,1% i świerk 70% w tyczkowinie. Przy tyczkowinie 17 modrzew wchodził w młodym drzewostanie do a1 przed limbą; przy 15 zostaje częściej w a2. Do oceny w etapie 2 (`slice` nie ma Tatr, więc karta całości tego wariantu nie liczy).
+Średnie wszystkich klas mieszczą się w karcie. Pojedyncze przebiegi wychodzą poza nią: limba w drzewostanie dojrzałym 14 z 49 (zakres 11–54%), w starodrzewie 7 z 49 (średnia 39,6% przy górnej granicy). Pierwsza wersja palety (świerk 470, limba 340, tyczkowina modrzewia 17) dawała limbę 11,9 / 20,3 / 32,1% i świerk 70% w tyczkowinie. Przy tyczkowinie 17 modrzew wchodził w młodym drzewostanie do a1 przed limbą; przy 15 zostaje częściej w a2. Ocena w etapie 2: karta z gry na dwóch powierzchniach Tatr („Stan po TT4”).
 
 **Komendy i nazwy.** Nazwy gatunków, zespołów i bloków en i pl (limba, modrzew europejski, limbowa świerczyna, słoneczny stok z modrzewiem). `find biome montane_spruce_forest` i `here` pokazują zespół; nowych biomów ani stref nie ma.
 
@@ -5164,6 +5176,103 @@ Wybory domyślne (do G.53):
 - (h) Bez własnego runa.
 - (i) Limba w strefie granicy lasu.
 - (j) Modrzew tylko w Tatrach (przez palety), inne zasięgi później.
+
+## Stan po TT4 (2026-11-12, etap 2: przebiegi w grze, powierzchnie próbne w Tatrach, bez recenzji wizualnej)
+
+Drobne wybory: `docs/00` G.53 (TT4-a … TT4-j z etapu 1, TT4-k … TT4-p z etapu 2). Zgodnie z G.36 U-1 nie oceniamy wyglądu ze zrzutów. Dowody to raporty liczbowe tablic próbek, gametest `tatra`, spis `habitats`, porównania bloków w `determinism`, karta norm z gry i testy jednostkowe. Baza kroku: `2812939`; etap 1 to commit WIP `c971b8d`. Przebiegi według `python tools/dev/test_plan.py 2812939`; obszary: unit, generation, norms, vanilla_world, blocks, datagen, seasons, render, art, gametest_code.
+
+**Wynik w skrócie.** Limba i modrzew mają pełny zestaw bloków, działają na wszystkich tablicach próbek (pnie, liście i pory roku, sadzonki trzech rozmiarów, siekiera, deski, ścinka ręczna, FallingTree i Tree Harvester, martwe drewno, korzenie) bez brakujących modeli i tekstur. Limbowa świerczyna i stoki z modrzewiem rosną z drzewostanu planera (0 kłód wanilii w głębi). Poza Tatrami świat jest blok w blok ten sam co na `2812939`. Etap 2 dodał powierzchnie próbne limbowej świerczyny w Tatrach (karta tego wariantu liczona teraz także w grze) i uruchomił tablice próbek, których etap 1 nie zaplanował (`leaves`, `saplings` z modami do ścinania, `axe`, `planks`, `felling`, `deadwood`, `roots`). Generacja świata bez zmian wobec etapu 1.
+
+**Przebiegi (`-PtimingsReportOnly` poza KT-6, jeden klient gry naraz; druga praca z klientem gry nie działała).**
+
+| Przebieg | Wynik |
+|---|---|
+| `fastTest`, `TatraStonePineStepTT4Test`, `FoliageCurveTest`, `ForestCensusTest`, `WoodSetTest`, `PlanksTextureTest`, `TrunkOutlineTest`, `*season*`, `TreeShapePlanTest`, `SaplingSizeTest`, `RegistrySnapshotTest`, `checkDatagen`, `checkArt` z lintem (235 tekstur), `compileGametestJava` | PASS (etap 1, „Projekt TT4”) |
+| `tatra` | PASS (6 min 21 s); udziały pięter 97,4–99,8%, próba biomu 32 z 32 jak w TT3; KF-1 niżej |
+| `habitats` | PASS (17 min 43 s); 38 biomów w obu skalach, spis Tatr bez `missing`; niżej |
+| `slice -Psites=samples` (bez modów, `-PtreeFelling=fallingtree`, `treeharvester`) | 3 × PASS (ok. 2 min 12 s); 1848 stanów pni z modelami, rejestr równy migawce (1353 linie) |
+| `slice -Psites=leaves` | PASS (6 min 12 s); niżej |
+| `slice -Psites=saplings` (bez modów, `fallingtree`, `treeharvester`) | 3 × PASS (4 min 33 s – 4 min 47 s); niżej |
+| `slice -Psites=axe`, `planks` | PASS (39 s, 25 s); siekiera: 0 problemów, okorowanie `stone_pine_trunk` i `larch_trunk` przy promieniu 1–7 px; deski: 0 problemów, obie tekstury desek liczone z desek wanilii (nie awaryjne) |
+| `slice -Psites=felling` (`fallingtree`, `treeharvester`) | PASS (12 min 55 s, 14 min 36 s); po 83 ścinki, 0 z problemami; niżej |
+| `slice -Psites=deadwood`, `roots` | PASS (12 min 1 s, 16 min 7 s); niżej |
+| `slice -Psites=seasons` | PASS (9 min 34 s) |
+| `determinism` wobec referencji TT3 (`handoff/TT4/determinism_ref`, `-PdeterminismStepZones`) | PASS (21 min). Teren identyczny we wszystkich 46 obszarach (kolejność stała, wolna i odwrócona); dekoracja 0 różnic wobec `plain.txt` TT3 we wszystkich 46 obszarach, także `tatra` (0 z 16 384 kolumn: obszar determinizmu Tatr leży poza granitem górnego regla i stokami S, więc nowe zespoły go nie dotykają) |
+| `determinism -Poptimization` (C2ME) | FAIL jak w TT1–TT3 (13 min 40 s): teren w 32 z 46 obszarów, najwyżej 3259 bloków, dekoracja najwyżej 14 747 kolumn, w `tatra` 9 bloków w 8 kolumnach — te same liczby co w TT3 |
+| `slice -Psites=none` (etap 1, bez powierzchni Tatr) | PASS; 219 wierszy `out` jak w F7; nowe klucze `N3.larch`, `N3.stone_pine` = 0 we wszystkich lasach wycinka i kroków F; różnice wartości w 10 miejscach (74 wiersze), rozrzut kolejności chunków (TT4-n) |
+| `SlicePlotsTest -PfindSlicePlots -PfindSlicePlotsKeep` (świat z Tatrami) | dwie powierzchnie Tatr dopisane na końcu `slice_plots.txt`, 85 starych wierszy bez zmian (TT4-k) |
+| `SlicePlotsTest` | PASS (9 testów, `findPlots` pominięty) |
+| `slice -Psites=none` (z powierzchniami Tatr) | PASS (21 min 35 s); karta limbowej świerczyny niżej; lasy wycinka i kroków F: 219 wierszy `out` jak w F7 |
+| `vanilla_forests`, `ui` | PASS (1 min 54 s, 1 min 28 s) |
+| KT-6: `performance` z C2ME (spokojna maszyna: bez procesu gry, GPU 0–5%, CPU 6%) | niżej |
+| pełny zestaw `tools/dev/run-tests test` | PASS (1069 s, drzewo `21567c833d42`, 576 testów w 111 klasach, 4 pominięte, 0 niezaliczonych; po `test_plan.py 2812939 --end`; potem zmiany tylko w `docs/`) |
+
+**Gametest `tatra`** (ziarno 20260927, GAMEPLAY). KF-1 (5 × 5 chunków wokół pierwszej głębokiej kolumny, udział w polu mieszania ≥ 0,999): limbowa świerczyna 10,7 pnia planera na chunk (5443 głębokich kolumn), stok z modrzewiem 10,7 (6400), buczyna karpacka 10,7, Abieti-Piceetum 10,7, Polysticho-Piceetum 12,4, świerczyna typowa 10,8, kosodrzewina 0,7 (płożąca). Kłody wanilii: 0 we wszystkich siedmiu. Tablica roślin: 0 problemów.
+
+**Gametest `habitats`, spis Tatr GAMEPLAY** (132 033 kolumny, siatka 32 m): buczyna karpacka 37,5%, świerczyna 15,7%, hala 17,1%, kosodrzewina 9,3%, turnie 3,1%, staw 0,5%. Zespoły świerczyny (kolumny siatki): Abieti-Piceetum 6856, limbowa świerczyna 4217, świerczyna typowa 3811, Polysticho-Piceetum 3631, stok z modrzewiem 2168, ziołorośla żlebów 36. Spis nie wypisuje zespołów kosodrzewiny, więc kosodrzewina z limbą widać tylko w JUnit (9295 kolumn siatki 24 m modelu ziarna A, `TatraStonePineStepTT4Test`). KF-1 starych lasów bez zmian, `HABITAT_MISS` 0.
+
+**Tablice próbek nowych gatunków** (liczby z logów i raportów `build/leaves`, `build/felling`, `build/axe`, `build/planks`; zrzuty zapisane, nieoglądane, G.36).
+
+- *Liście i pory roku (`leaves`):* barwa ekranu modrzewia: późna wiosna `#a5cb56` (jasnozielony), środek lata `#86be5e`, środek jesieni (krok 21) `#b1b948` (złoty), późna jesień i środek zimy same gałązki `#c7c3a7`; limba `#4a7a68` od wiosny do jesieni, zimą przyciemniona `#416b5c`. Tryb Fast: blok liści pełny, niebo przez gałązki zimowe 72,5% w Fancy i Fast (bez dziur i bez pełnych bloków). Sadzonka z mączki kostnej rośnie w drzewo planera: limba 60 bloków drewna, 95 liści, 9 bloków; modrzew 54 drewna, 55 liści, 15 bloków; 0 brakujących.
+- *Sadzonki (`saplings`, S1):* rozkład rozmiarów z 24 sadzonek: limba mała 7, średnia 13, duża 4; modrzew 4 / 13 / 7. Pod niskim sufitem duża sadzonka daje małe drzewo (limba sufit 8, modrzew 15). Ścinka ręczna, FallingTree i Tree Harvester: 0 bloków drewna zostaje, kłody limby 1–2 / 6 / 10 i modrzewia 1–2 / 10 / 15 (mała / średnia / duża), zgodnie z oczekiwaniem.
+- *Ścinka (`felling`, G1):* limba (tyczkowina, dojrzały, starodrzew) 60 / 153 / 248 bloków drewna, kłody 1 / 12 / 18; modrzew 53 / 206 / 172, kłody 2 / 22 / 26; wszystko usunięte, odcięte liście znikają po 20 tickach, FallingTree najdłuższa przerwa 53,3 ms, Tree Harvester 22,8 ms.
+- *Martwe drewno (`deadwood`):* kłoda, posusz, złom, wywrot i pniak obu gatunków na tablicy (limba 12 / 24 / 19 / 26 / 1 bloków drewna, modrzew 18 / 33 / 30 / 37 / 1).
+- *Korzenie (`roots`):* limba nabieg 5 px, 4 bloki nabiegu, 28 korzeni, 8 ziemi z korzeniami; modrzew 5 px, 8, 36, 16.
+
+**Powierzchnie próbne limbowej świerczyny (TT4-k, TT4-l).** Etap 1 liczył kartę tego wariantu tylko symulacją, bo wycinek nie miał powierzchni w Tatrach. Świat GAMEPLAY gametestu `slice` ma Tatry (preset od TT1), więc etap 2 dodał dwie naturalne powierzchnie `tatra_stone_pine_natural_1` (−23 268, 87 636; miejsce KT-6) i `tatra_stone_pine_natural_2` (−25 348, 88 036). `SlicePlotsTest` szuka ich w świecie z Tatrami wokół miejsca KT-6 i dopisuje na końcu tabeli, więc powierzchnie wycinka i kroków F zostają na miejscu (85 wierszy bez zmian). Warunki: środek w wariancie `STONE_PINE`, biom świerczyny ≥ 98% kwadratu, kolumny lasu limbowej świerczyny bez strefy ≥ 60% w obu trybach (spis w grze liczy tylko kolumny bez strefy; strefy granicy lasu, turni, piargów i żlebów zajmują co najmniej jedną trzecią serii; najlepszy kwadrat w promieniu 4 km ma 65,8%), wydzielenia parku naturalne. Pierwsza próba (próg samego zespołu 90%) dała drugą powierzchnię (−24 248, 89 796) z 52% kolumn poza lasem, przy granicy lasu; jej karta w grze miała limbę 54,8% i podszyt 24,1% (`out`), świerk 38,1% (tolerancja). Stąd próg na kolumnach bez strefy i nowe miejsce drugiej powierzchni; pierwsza zostaje w tym samym miejscu i z tymi samymi wartościami. Gametest `slice` tworzy mapę wydzieleń z parkiem Tatr (jak generator); poza Tatrami mapa ta sama. `habitats` pomija powierzchnie Tatr w KF-1 (ich KF-1 jest w gametescie `tatra`), więc jego zestaw miejsc jest taki jak przy PASS.
+
+**Karta limbowej świerczyny z gry** (`slice -Psites=none`, GAMEPLAY, oba tryby te same liczby — park; wariant `STONE_PINE`, kolumny lasu: 6704 i 7751 z 10 000).
+
+| Norma | Zakres | `tatra_stone_pine_natural_1` (drzewostan dojrzały) | `tatra_stone_pine_natural_2` (starodrzew) |
+|---|---|---|---|
+| N1 drzew na chunk | 5–13 | 5,54 in | 6,90 in |
+| N3 świerk / limba / modrzew / jarząb | 40–60 / 20–40 / 5–20 / 0–15% | 50,7 / 31,0 / 16,9 / 0 — in | 53,3 / 36,7 / 7,8 / 0 — in |
+| N4 zwarcie | 40–70% | 43,9 in | 53,5 in |
+| N7 podszyt | 0–20% | 16,0 in | 11,7 in |
+| N8 zioła / borówka | 40–90 / 20–60% | 35,6 tolerancja / 21,6 in | 38,9 tolerancja / 22,2 in |
+| N9 mchy | 50–95% | 93,8 in | 98,3 tolerancja |
+| N10 obiektów na chunk / objętość / grube na ha | 2,5 / 60–200 / ≥ 3 | 2,29 tolerancja / 123 in / 38,8 in | 2,58 tolerancja / 121 in / 46,5 in |
+| N5 luki (norma świerczyny bez wariantu) | 5–20% | 3,54 tolerancja | 1,35 **out** |
+
+Wysokość a1 22,9 i 24,6 bloku, szczyt 23,3 i 25,6, udział a2 51 i 57%. Normy karty limbowej (13 wierszy): w powierzchni 1 11 `in` i 2 `tolerance`, w powierzchni 2 10 `in` i 3 `tolerance`, 0 `out`. Poza kartą wariantu `out` jest tylko N5 (luki) powierzchni 2: norma luk świerczyny (5–20%) nie ma wariantu limbowego, a profil `StandProfile.STONE_PINE` ma luki rzadsze i mniejsze (TT4-d); luźność boru limbowego mierzy N4 (zwarcie 44–54%). Do CP-D (TT4-o). Kalibracja JUnit z etapu 1 (49 przebiegów na klasę) zgadza się z grą: limba 28,9% (dojrzały) i 39,6% (starodrzew) wobec 31,0 i 36,7% w grze.
+
+Lasy wycinka i kroków F w tym przebiegu: 219 wierszy `out` jak w F7 (razem z Tatrami 221: dwa wiersze N5 powierzchni 2 w obu trybach); różnice wartości w 9 miejscach (64 wiersze), te same miejsca co w TT1–TT3, jeden werdykt N10.volume `coastal_pine_managed_2` GAMEPLAY zamienia się `in` ↔ `tolerance` między trybami jak w TT1 i TT3 (rozrzut kolejności chunków, TT4-n); `N3.larch` i `N3.stone_pine` = 0 poza Tatrami.
+
+**KT i kryteria TT4.**
+
+- KT-1 (zgodność): spełnione. Złote pliki terenu bez zmian (`GoldenTerrainTest`, `GoldenTatraTest`, `TatraIsolationTest` w pełnym zestawie). Bez nowej soli; `ForestBlend.DRAW_SALT` i stare sole bez zmian. Nowe stałe na końcu `Species`, `TreeTrunk`, `StrippedTrunk`, `RootFlare`, `TreeFoliage`, `WoodSet`, `SpeciesShape.Archetype`, `Association` (25 z 32). Migawka rejestru świadomie +140 linii (same dopisane: bloki i przedmioty obu gatunków).
+- KT-2 (lasy i karta poza Tatrami): spełnione. 219 wierszy `out` lasów wycinka i kroków F jak w F7, różnice wartości to rozrzut kolejności chunków (TT4-n), `SlicePlotsTest` (stare powierzchnie bez zmian), `vanilla_forests` i `habitats` PASS.
+- KT-3 (determinizm): teren identyczny w trzech kolejnościach chunków; dekoracja 0 różnic wobec TT3 we wszystkich 46 obszarach. Z C2ME te same liczby co w TT3.
+- KT-4 (przejścia Z10): limbowa świerczyna zaczyna się mozaiką ±40 m, przechodzi przez granicę lasu w kosodrzewinę z limbą (dziedziczenie zespołu przez partnera `ForestBlend`), stoki z modrzewiem to płaty szumu (45%, skala 120 m) z mieszaniem `ForestBlend` na brzegach; wariant profilu drzewostanu wynika z punktu kraty, nie z linii.
+- KT-5 (gametest `tatra`): KF-1 obu nowych zespołów (wyżej).
+- KT-6 (wydajność, spokojna maszyna, chunki na sekundę z C2ME, GAMEPLAY): bez jaskiń `tatra_stone_pine_1` 187,8, `tatra_high_1` 182,8 (TT3 179,1), `montane_spruce_1` 129,3 (TT3 126,9); z jaskiniami 84,6 / 84,1 (82,5) / 83,7 (81,7). Limbowa świerczyna generuje się 1,45 × szybciej niż świerczyna Beskidów bez jaskiń i tak samo z jaskiniami (rzadszy drzewostan, krótsze limby); bez spadku wobec TT3. Opis bez progu.
+- KT-7: „Projekt TT4”, ten wpis, stan w opisie kroku, BRIEF, G.53, nowa kolumna karty w §6, lista „Do sprawdzenia w grze”; pełny `run-tests test`.
+- KF-1: limbowa świerczyna i stok z modrzewiem z drzewostanu planera, 0 kłód wanilii w głębi. KF-2: karta limbowej świerczyny w normie albo tolerancji w obu powierzchniach Tatr (0 `out` w normach wariantu) i w średnich kalibracji JUnit; poza wariantem N5 (luki) powierzchni 2 `out` (TT4-o, do CP-D). KF-5: `checkDatagen`, `checkArt`, lint, `RegistrySnapshotTest` (migawka świadomie przegenerowana), `WoodSetTest`, `PlanksTextureTest`, `TrunkOutlineTest`, `*season*` PASS; tablice `samples`, `leaves`, `saplings` (z modami do ścinania), `axe`, `planks` bez brakujących modeli i tekstur.
+- Zasięg: limba i modrzew tylko w paletach zespołów Tatr (`TatraStonePineStepTT4Test`: `tree_stand.json`, `deadwood.json`; 0 kolumn serii poza skałą krystaliczną Tatr i przy wadze Tatr ≤ 0,3); `determinism` poza Tatrami 0 różnic, więc 0 limby i modrzewia poza Tatrami w świecie. Modrzew w kliencie jesienią złoty, zimą bez igieł (`FoliageCurveTest`, `*season*`, tablica `leaves`).
+
+**Odstępstwa:**
+
+- N5 (luki) w starodrzewie limbowej świerczyny 1,35% wobec normy świerczyny 5–20% (norma bez wariantu limbowego; TT4-o, do CP-D). Pojedyncze przebiegi kalibracji JUnit wychodzą poza normę limby (14 i 7 z 49 w drzewostanie dojrzałym i starodrzewie), średnie i obie powierzchnie z gry w normie
+- Kolumny poza strefami to tylko ok. dwóch trzecich powierzchni Tatr (próg 60% zamiast 98% biomu wycinka; TT4-l).
+- Sęki desek 1 dla obu gatunków (TT4-g).
+- Karta limbowej świerczyny tylko dla lasu naturalnego i tylko w GAMEPLAY (REAL od TT5).
+- Modrzew poza Tatrami później (TT4-j).
+- `determinism` z C2ME jak w TT1–TT3 (znany obszar, nie regresja).
+- Tablica `axe` ścina okorowane drzewa tylko dębu i sosny (jak dotąd); okorowanie nowych pni sprawdza wiersz każdego pnia tej tablicy.
+
+**Do sprawdzenia w grze** (nowy świat „Polska”, skala GAMEPLAY, Tatry włączone w „Dostosuj”; dla ziarna 20260927 masyw ok. 91 km od środka):
+
+1. `/polishforests find tatra` i kliknięcie podpowiedzi `/tp`, potem `/polishforests elevation 1400 1550` na granicie (Tatry Wysokie) i `/tp`; albo `/polishforests find biome montane_spruce_forest` i `/polishforests here`, aż linia siedliska pokaże „limbowa świerczyna (Pino cembrae-Piceetum)”. Las luźny, w kępach, z polankami i skałami; limby niższe od świerków.
+2. Limba z bliska: ok. 9–18 bloków, gęsta, długa korona zaczynająca się nisko, pędzle ciemnych niebieskozielonych igieł na końcach gałęzi, szara drobnołuskowata kora. Czy nie przypomina świerka ani sosny wanilii.
+3. Modrzew z bliska (słoneczne, południowe stoki obu regli na granicie; `here` pokazuje „słoneczny stok z modrzewiem”): wysoki i smukły, luźna korona, gałęzie opadające łukiem, zwisające gałązki, jasnozielone igły, grubo spękana czerwonobrązowa kora.
+4. Przy modrzewiu `/season set mid_autumn`: igły złote, limba i świerk zielone. `/season set mid_winter`: modrzew bez igieł, same szarożółte gałązki; limba ciemniejsza, ale z igłami. Sprawdzić też w grafice Fast (bez dziur i bez pełnych bloków liści na modrzewiu zimą).
+5. Ścinka limby i modrzewia siekierą (pień się przewraca na kłody, nie zostają wiszące liście ani kawałki pnia), potem to samo z FallingTree i z Tree Harvester (paczka modów).
+6. Sadzonki limby i modrzewia z zakładki moda: posadzić kilka i nawozić mączką kostną; powinny wyrosnąć drzewa trzech wielkości (małe, średnie, duże). Sadzonka w doniczce.
+7. Deski i wyroby z drewna obu gatunków (stół warsztatowy: deski, schody, płyta, płot, furtka, przycisk, płyta naciskowa; siekierą drewno okorowane): limba jasna różowożółta, modrzew czerwonobrązowy; ikony w zakładce i nazwy po polsku.
+8. Tuż nad granicą lasu na granicie (`/polishforests elevation 1525 1675`): kosodrzewina z pojedynczymi limbami, bez prostej linii między lasem a kosówką.
+9. Przejścia: limbowa świerczyna w świerczynę niżej i w kosodrzewinę wyżej, stoki z modrzewiem w świerczynę i buczynę — płynnie, mozaiką, nie prostą linią.
+10. Na wapieniu (regiel wapienny od strony Podhala) limby i modrzewia być nie powinno; poza Tatrami (Beskidy, niziny) też nie.
+11. Martwe drewno w limbowej świerczynie: posusz i złomy limby, wywroty świerka; pniaki i kłody obu gatunków z właściwą korą.
 
 ## Do kroku porządkowego (lista drobiazgów z recenzji)
 

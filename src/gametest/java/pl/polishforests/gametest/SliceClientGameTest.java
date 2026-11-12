@@ -420,8 +420,15 @@ public final class SliceClientGameTest implements FabricClientGameTest {
 	/** The stand map of the world (the seed, the scale's k and the managed share of its settings). */
 	private static ForestStandMap stands(MinecraftServer server) {
 		PolandChunkGenerator gen = generator(server);
-		return new ForestStandMap(server.overworld().getSeed(), gen.settings().scale().landscape().local(),
+		ForestStandMap map = new ForestStandMap(server.overworld().getSeed(), gen.settings().scale().landscape().local(),
 				gen.settings().managedForestShare());
+		// Step TT4: the stands of the Tatra National Park are all natural, as in the generator (the plots of the
+		// spruce-stone pine forest); no change outside the park or in a world without the Tatras.
+		LandscapeModel model = gen.model(server.overworld().getSeed());
+		if (model.hasTatra()) {
+			map.withPark(model::tatraPark);
+		}
+		return map;
 	}
 
 	// ------------------------------------------------------------------ checks
