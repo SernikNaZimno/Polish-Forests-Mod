@@ -189,9 +189,10 @@ public final class AltitudinalBelts {
 			// timberline, none at TIMBERLINE_ABOVE over it.
 			Zone s0 = h < limit + TIMBERLINE_ABOVE && timberlinePatch(c) > 0.5 + 0.5 * (h - limit) / TIMBERLINE_ABOVE
 					? Zone.TIMBERLINE : Zone.NONE;
-			// Step TT4: the lower part of the dwarf pine on granite and gneiss has single stone pines.
-			Association z = tatraRock && crystalline(rock) && h < limit + STONE_PINE_ABOVE ? Association.PINO_CEMBRAE_PICEETUM
-					: Association.TYPICAL;
+			// Step TT4: the lower part of the dwarf pine on granite and gneiss has single stone pines; their upper limit a
+			// mosaic of the Tatra noise (layer 7) STONE_PINE_RAMP to each side (round 1 of the TT4 review, Z10).
+			Association z = tatraRock && crystalline(rock) && !above(c, h, limit + STONE_PINE_ABOVE, STONE_PINE_RAMP, 7)
+					? Association.PINO_CEMBRAE_PICEETUM : Association.TYPICAL;
 			return HabitatClassifier.Result.of(HabitatBiome.DWARF_PINE_SCRUB, s0, z);
 		}
 		double upper = BeltProfile.blend(UPPER_MONTANE, tatra.upperMontane(), s) + corr;
@@ -271,9 +272,15 @@ public final class AltitudinalBelts {
 
 	/** Step TT4: depth (m) below the timberline from which the spruce-stone pine forest grows on granite and gneiss. */
 	static final double STONE_PINE_BELOW = 125;
-	/** Step TT4: half-width (m) of the mosaic of the lower border of the spruce-stone pine forest (Z10). */
+	/**
+	 * Step TT4: half-width (m) of the mosaic of the lower border of the spruce-stone pine forest and of the upper limit of
+	 * the stone pines in the dwarf pine (Z10).
+	 */
 	static final double STONE_PINE_RAMP = 40;
-	/** Step TT4: height (m) over the timberline up to which the dwarf pine on granite and gneiss has single stone pines. */
+	/**
+	 * Step TT4: height (m) over the timberline up to which the dwarf pine on granite and gneiss has single stone pines (the
+	 * middle of the mosaic of the Tatra noise, layer 7, {@link #STONE_PINE_RAMP} to each side; round 1 of the review).
+	 */
 	static final double STONE_PINE_ABOVE = 150;
 	/** Step TT4: least {@code Column.aspect()} (the cosine of the aspect from south) of a larch slope: within 60° of south. */
 	static final double LARCH_ASPECT = 0.5;
