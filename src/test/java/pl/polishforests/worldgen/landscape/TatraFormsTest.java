@@ -12,6 +12,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import pl.polishforests.worldgen.chunk.VerticalScale;
 
 /**
@@ -42,13 +44,14 @@ class TatraFormsTest {
 	static final double DEPTH_TOLERANCE = 3;
 	static final double EDGE_STEP = 1;
 
-	@Test
-	void everyMassifHasItsTarns() {
+	@ParameterizedTest
+	@MethodSource("pl.polishforests.worldgen.landscape.TatraSurvey#scales")
+	void everyMassifHasItsTarns(LandscapeScale sc) {
 		StringBuilder report = new StringBuilder();
 		List<String> failures = new ArrayList<>();
 		for (long seed : TatraSurvey.SEEDS) {
-			LandscapeModel m = TatraSurvey.with(seed);
-			for (LandscapeModel.Tatra t : TatraSurvey.nearest(seed, MASSIFS)) {
+			LandscapeModel m = TatraSurvey.with(sc, seed);
+			for (LandscapeModel.Tatra t : TatraSurvey.nearest(sc, seed, MASSIFS)) {
 				List<TatraWaters.Tarn> tarns = tarns(m, t);
 				int outlets = 0;
 				int joined = 0;
@@ -62,7 +65,7 @@ class TatraFormsTest {
 						largest = tn;
 					}
 				}
-				String label = TatraSurvey.label(seed, t);
+				String label = TatraSurvey.label(sc, seed, t);
 				report.append(String.format(Locale.ROOT, "%s: %d tarns (%d behind moraines), %d outlets (%d joined), largest %.0f×%.0f m%s%n",
 						label, tarns.size(), moraine, outlets, joined, largest == null ? 0 : 2 * largest.aq(),
 						largest == null ? 0 : 2 * largest.bu(), largest != null && largest.morskie() ? " (Morskie Oko)" : ""));
@@ -78,13 +81,14 @@ class TatraFormsTest {
 		assertTrue(failures.isEmpty(), String.join("; ", failures));
 	}
 
-	@Test
-	void tarnBasinsAreClosed() {
+	@ParameterizedTest
+	@MethodSource("pl.polishforests.worldgen.landscape.TatraSurvey#scales")
+	void tarnBasinsAreClosed(LandscapeScale sc) {
 		StringBuilder report = new StringBuilder();
 		for (long seed : TatraSurvey.SEEDS) {
-			LandscapeModel m = TatraSurvey.with(seed);
-			LandscapeModel.Tatra t = TatraSurvey.nearest(seed, 1).get(0);
-			String label = TatraSurvey.label(seed, t);
+			LandscapeModel m = TatraSurvey.with(sc, seed);
+			LandscapeModel.Tatra t = TatraSurvey.nearest(sc, seed, 1).get(0);
+			String label = TatraSurvey.label(sc, seed, t);
 			AtomicInteger water = new AtomicInteger();
 			AtomicInteger leaks = new AtomicInteger();
 			AtomicInteger hanging = new AtomicInteger();
@@ -142,17 +146,18 @@ class TatraFormsTest {
 		System.out.print(report);
 	}
 
-	@Test
-	void tarnsLieOnTheGround() {
-		VerticalScale vs = VerticalScale.GAMEPLAY;
+	@ParameterizedTest
+	@MethodSource("pl.polishforests.worldgen.landscape.TatraSurvey#scales")
+	void tarnsLieOnTheGround(LandscapeScale sc) {
+		VerticalScale vs = TatraSurvey.vertical(sc);
 		StringBuilder report = new StringBuilder();
 		List<String> failures = new ArrayList<>();
 		for (long seed : TatraSurvey.SEEDS) {
-			LandscapeModel m = TatraSurvey.with(seed);
+			LandscapeModel m = TatraSurvey.with(sc, seed);
 			TatraField field = m.tatraField();
 			TatraWaters waters = m.tatraWaters();
-			for (LandscapeModel.Tatra t : TatraSurvey.nearest(seed, MASSIFS)) {
-				String label = TatraSurvey.label(seed, t);
+			for (LandscapeModel.Tatra t : TatraSurvey.nearest(sc, seed, MASSIFS)) {
+				String label = TatraSurvey.label(sc, seed, t);
 				List<TatraWaters.Tarn> tarns = tarns(m, t);
 				double worstDepth = Double.NEGATIVE_INFINITY;
 				double worstEdge = Double.NEGATIVE_INFINITY;
@@ -224,17 +229,18 @@ class TatraFormsTest {
 		assertTrue(failures.isEmpty(), String.join("; ", failures));
 	}
 
-	@Test
-	void finesHaveTheirSlopes() {
+	@ParameterizedTest
+	@MethodSource("pl.polishforests.worldgen.landscape.TatraSurvey#scales")
+	void finesHaveTheirSlopes(LandscapeScale sc) {
 		StringBuilder report = new StringBuilder();
 		List<String> failures = new ArrayList<>();
 		for (long seed : TatraSurvey.SEEDS) {
-			LandscapeModel m = TatraSurvey.with(seed);
-			LandscapeModel.Tatra t = TatraSurvey.nearest(seed, 1).get(0);
-			String label = TatraSurvey.label(seed, t);
+			LandscapeModel m = TatraSurvey.with(sc, seed);
+			LandscapeModel.Tatra t = TatraSurvey.nearest(sc, seed, 1).get(0);
+			String label = TatraSurvey.label(sc, seed, t);
 			TatraField field = m.tatraField();
 			double k = m.scale().mountainSpacing();
-			double step = 3;
+			double step = TatraSurvey.step(sc, 3);
 			double vHalf = 0.6 * t.halfLength();
 			double uMin = -8_000 * k;
 			double uMax = 7_000 * k;
@@ -306,17 +312,18 @@ class TatraFormsTest {
 	 * patches occur; the snow lies only on north-facing ground above {@value TatraZonesProbe#SNOW_LOW} m; the rendzina
 	 * only on limestone and dolomite, the ranker and podzol of the silicate rocks never there.
 	 */
-	@Test
-	void tatraSurfaceZones() {
+	@ParameterizedTest
+	@MethodSource("pl.polishforests.worldgen.landscape.TatraSurvey#scales")
+	void tatraSurfaceZones(LandscapeScale sc) {
 		StringBuilder report = new StringBuilder();
 		List<String> failures = new ArrayList<>();
 		for (long seed : TatraSurvey.SEEDS) {
-			LandscapeModel m = TatraSurvey.with(seed);
+			LandscapeModel m = TatraSurvey.with(sc, seed);
 			pl.polishforests.worldgen.habitat.HabitatClassifier hc = new pl.polishforests.worldgen.habitat.HabitatClassifier(seed, m,
 					pl.polishforests.worldgen.habitat.HabitatClassifier.Mode.NATURAL);
-			LandscapeModel.Tatra t = TatraSurvey.nearest(seed, 1).get(0);
-			String label = TatraSurvey.label(seed, t);
-			double step = 12;
+			LandscapeModel.Tatra t = TatraSurvey.nearest(sc, seed, 1).get(0);
+			String label = TatraSurvey.label(sc, seed, t);
+			double step = TatraSurvey.step(sc, 12);
 			double k = m.scale().mountainSpacing();
 			double uMin = -7_000 * k;
 			double uMax = 6_500 * k;
@@ -373,6 +380,95 @@ class TatraFormsTest {
 		assertTrue(failures.isEmpty(), String.join("; ", failures));
 	}
 
+	/** Step TT5: classes of the slope histogram, by the landform of the column (the first that applies). */
+	static final String[] SLOPE_CLASSES = {"pinnacle", "gully", "scree", "moraine", "cirque", "u_valley", "other", "all"};
+
+	/** Step TT5: the slope class of a Tatra column. */
+	static int slopeClass(TatraField.Column c) {
+		int f = c.landforms;
+		Landform[] order = {Landform.PINNACLE, Landform.GULLY, Landform.SCREE, Landform.MORAINE, Landform.CIRQUE, Landform.U_VALLEY};
+		for (int i = 0; i < order.length; i++) {
+			if ((f & order[i].bit()) != 0) {
+				return i;
+			}
+		}
+		return order.length;
+	}
+
+	/**
+	 * Step TT5: the histogram of the slopes in blocks over the massif proper (from the southern to the northern foot, the
+	 * inner 80% along the ridge) in both scales, by landform, on a lattice of 24 m at gameplay scale and 80 m at realistic
+	 * scale (the same number of points per form). The realistic forms are 3.33 times wider and their heights the same in
+	 * meters, but a meter above about 1200 m is 1.76 times fewer blocks in the realistic scale than at 880 m and the gameplay
+	 * curve compresses the heights 4–5 times, so the angles in blocks come out about as steep in both scales: the median and
+	 * the 90th percentile of all columns of the realistic massif within 0.7–1.4 times those of the gameplay massif of the
+	 * seed. The histogram goes to the report (docs/04 "Projekt TT5").
+	 */
+	@Test
+	void slopesInBlocks() {
+		StringBuilder report = new StringBuilder();
+		List<String> failures = new ArrayList<>();
+		for (long seed : TatraSurvey.SEEDS) {
+			double[][] p = new double[2][];
+			int si = 0;
+			for (LandscapeScale sc : new LandscapeScale[] {LandscapeScale.GAMEPLAY, LandscapeScale.REALISTIC}) {
+				LandscapeModel m = TatraSurvey.with(sc, seed);
+				LandscapeModel.Tatra t = TatraSurvey.nearest(sc, seed, 1).get(0);
+				TatraField field = m.tatraField();
+				double k = sc.mountainSpacing();
+				double step = TatraSurvey.step(sc, 24);
+				double uMin = -TatraField.WS * k;
+				double uMax = TatraField.WN * k;
+				double vHalf = 0.8 * t.halfLength();
+				int nu = (int) ((uMax - uMin) / step);
+				int nv = (int) (2 * vHalf / step);
+				int[][] hist = new int[SLOPE_CLASSES.length][10];
+				List<List<Double>> all = new ArrayList<>();
+				for (int i = 0; i < SLOPE_CLASSES.length; i++) {
+					all.add(java.util.Collections.synchronizedList(new ArrayList<>()));
+				}
+				IntStream.range(0, nu * nv).parallel().forEach(i -> {
+					double u = uMin + (i % nu + 0.5) * step;
+					double v = -vHalf + (i / nu + 0.5) * step;
+					double x = TatraSurvey.x(t, u, v);
+					double z = TatraSurvey.z(t, u, v);
+					TatraField.Column c = field.column(x, z);
+					if (c == null || c.weight < 0.99 || Double.isNaN(c.un) || m.sample(x, z).hasWater()) {
+						return;
+					}
+					double s = slope(m, x, z);
+					int cl = slopeClass(c);
+					int b = (int) Math.min(9, Math.floor(s / 10));
+					synchronized (hist) {
+						hist[cl][b]++;
+						hist[SLOPE_CLASSES.length - 1][b]++;
+					}
+					all.get(cl).add(s);
+					all.get(SLOPE_CLASSES.length - 1).add(s);
+				});
+				report.append(String.format(Locale.ROOT, "%s, slopes in blocks (columns per 10° from 0 to 90+; p50, p90):%n",
+						TatraSurvey.label(sc, seed, t)));
+				for (int cl = 0; cl < SLOPE_CLASSES.length; cl++) {
+					List<Double> a = new ArrayList<>(all.get(cl));
+					if (a.isEmpty()) {
+						continue;
+					}
+					report.append(String.format(Locale.ROOT, "   %-9s n %7d %s p50 %.1f p90 %.1f%n", SLOPE_CLASSES[cl], a.size(),
+							Arrays.toString(hist[cl]), TatraReliefTest.percentile(a, 0.5), TatraReliefTest.percentile(a, 0.9)));
+				}
+				List<Double> a = new ArrayList<>(all.get(SLOPE_CLASSES.length - 1));
+				p[si++] = new double[] {TatraReliefTest.percentile(a, 0.5), TatraReliefTest.percentile(a, 0.9)};
+			}
+			double r50 = p[1][0] / p[0][0];
+			double r90 = p[1][1] / p[0][1];
+			report.append(String.format(Locale.ROOT, "seed %d: realistic / gameplay p50 %.2f, p90 %.2f%n", seed, r50, r90));
+			check(failures, r50 >= 0.7 && r50 <= 1.4 && r90 >= 0.7 && r90 <= 1.4,
+					String.format(Locale.ROOT, "seed %d: realistic / gameplay slopes p50 %.2f, p90 %.2f", seed, r50, r90));
+		}
+		System.out.print(report);
+		assertTrue(failures.isEmpty(), String.join("; ", failures));
+	}
+
 	/** Bounds of the snow patches as the test checks them (the threshold of TatraZones less its jitter). */
 	static final class TatraZonesProbe {
 		static final double SNOW_LOW = 1_640;
@@ -392,9 +488,9 @@ class TatraFormsTest {
 		return out;
 	}
 
-	/** Slope of the land height in blocks at a point (degrees, central differences 1 m). */
+	/** Slope of the land height in blocks at a point (degrees, central differences 1 m) in the scale of the model. */
 	static double slope(LandscapeModel m, double x, double z) {
-		VerticalScale vs = VerticalScale.GAMEPLAY;
+		VerticalScale vs = TatraSurvey.vertical(m.scale());
 		double gx = vs.blocksForMeters(m.landElevation(x + 1, z)) - vs.blocksForMeters(m.landElevation(x - 1, z));
 		double gz = vs.blocksForMeters(m.landElevation(x, z + 1)) - vs.blocksForMeters(m.landElevation(x, z - 1));
 		return Math.toDegrees(Math.atan(Math.hypot(gx, gz) / 2));

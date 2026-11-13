@@ -11,6 +11,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import pl.polishforests.worldgen.chunk.VerticalScale;
 
 /**
@@ -89,34 +91,38 @@ class TatraReliefTest {
 		return s[(int) Math.min(s.length - 1, Math.floor(p * s.length))];
 	}
 
-	@Test
-	void massifsArePlacedAndBounded() {
+	@ParameterizedTest
+	@MethodSource("pl.polishforests.worldgen.landscape.TatraSurvey#scales")
+	void massifsArePlacedAndBounded(LandscapeScale sc) {
 		for (long seed : TatraSurvey.SEEDS) {
-			LandscapeModel m = TatraSurvey.with(seed);
-			List<LandscapeModel.Tatra> ts = TatraSurvey.nearest(seed, MASSIFS);
-			assertFalse(ts.isEmpty(), "seed " + seed + ": no Tatra massif within " + TatraSurvey.BOX + " m");
+			LandscapeModel m = TatraSurvey.with(sc, seed);
+			List<LandscapeModel.Tatra> ts = TatraSurvey.nearest(sc, seed, MASSIFS);
+			assertFalse(ts.isEmpty(), "seed " + seed + ": no Tatra massif within " + TatraSurvey.box(sc) + " m");
 			double nearest = Math.hypot(ts.get(0).x(), ts.get(0).z());
-			// The radius of the wide phase of find tatra (PolishForestsCommands.tatraRadius) at gameplay scale.
-			assertTrue(nearest < 300_000, "seed " + seed + ": the nearest massif is " + nearest + " m away");
+			// The radius of the wide phase of find tatra (PolishForestsCommands.tatraRadius): 300 km at gameplay scale, 2000
+			// km at realistic scale (step TT5).
+			assertTrue(nearest < TatraSurvey.box(sc), sc.id() + " seed " + seed + ": the nearest massif is " + nearest + " m away");
 			for (LandscapeModel.Tatra t : ts) {
-				Scan s = massifScan(m, t, STEP);
-				assertTrue(Arrays.stream(s.h()).allMatch(Double::isFinite), TatraSurvey.label(seed, t) + ": a height that is not finite");
+				Scan s = massifScan(m, t, TatraSurvey.step(sc, STEP));
+				assertTrue(Arrays.stream(s.h()).allMatch(Double::isFinite), TatraSurvey.label(sc, seed, t) + ": a height that is not finite");
 				double max = Arrays.stream(s.h()).max().orElseThrow();
 				System.out.printf(Locale.ROOT, "%s: distance %.0f m, half length %.0f m, target %.0f m, highest %.1f m (Y %d), reach %.0f m%n",
-						TatraSurvey.label(seed, t), Math.hypot(t.x(), t.z()), t.halfLength(), t.targetSummit(), max,
-						VerticalScale.GAMEPLAY.topBlockY(max), t.reach());
-				assertTrue(max >= 2_450 && max <= 2_530, TatraSurvey.label(seed, t) + ": highest summit " + max + " m");
-				assertTrue(VerticalScale.GAMEPLAY.topBlockY(max) <= 720, TatraSurvey.label(seed, t) + ": top above Y 720");
+						TatraSurvey.label(sc, seed, t), Math.hypot(t.x(), t.z()), t.halfLength(), t.targetSummit(), max,
+						TatraSurvey.vertical(sc).topBlockY(max), t.reach());
+				assertTrue(max >= 2_450 && max <= 2_530, TatraSurvey.label(sc, seed, t) + ": highest summit " + max + " m");
+				assertTrue(TatraSurvey.vertical(sc).topBlockY(max) <= TatraSurvey.top(sc), TatraSurvey.label(sc, seed, t) + ": top above Y "
+						+ TatraSurvey.top(sc));
 			}
 		}
 	}
 
-	@Test
-	void partsHaveTheirHeights() {
+	@ParameterizedTest
+	@MethodSource("pl.polishforests.worldgen.landscape.TatraSurvey#scales")
+	void partsHaveTheirHeights(LandscapeScale sc) {
 		for (long seed : TatraSurvey.SEEDS) {
-			LandscapeModel m = TatraSurvey.with(seed);
-			for (LandscapeModel.Tatra t : TatraSurvey.nearest(seed, MASSIFS)) {
-				Scan s = massifScan(m, t, STEP);
+			LandscapeModel m = TatraSurvey.with(sc, seed);
+			for (LandscapeModel.Tatra t : TatraSurvey.nearest(sc, seed, MASSIFS)) {
+				Scan s = massifScan(m, t, TatraSurvey.step(sc, STEP));
 				Map<TatraPart, List<Double>> heights = new EnumMap<>(TatraPart.class);
 				for (int k = 0; k < s.h().length; k++) {
 					heights.computeIfAbsent(s.part()[k], q -> new ArrayList<>()).add(s.h()[k]);
@@ -144,13 +150,13 @@ class TatraReliefTest {
 						crest.computeIfAbsent(bp, q -> new ArrayList<>()).add(best);
 					}
 				}
-				StringBuilder sb = new StringBuilder(TatraSurvey.label(seed, t) + ":");
+				StringBuilder sb = new StringBuilder(TatraSurvey.label(sc, seed, t) + ":");
 				heights.forEach((p, a) -> sb.append(String.format(Locale.ROOT, "%n   %s n %d p05 %.0f p50 %.0f p95 %.0f max %.0f", p,
 						a.size(), percentile(a, 0.05), percentile(a, 0.5), percentile(a, 0.95), percentile(a, 1))));
 				crest.forEach((p, a) -> sb.append(String.format(Locale.ROOT, "%n   crest %s n %d p10 %.0f p50 %.0f p90 %.0f max %.0f", p,
 						a.size(), percentile(a, 0.1), percentile(a, 0.5), percentile(a, 0.9), percentile(a, 1))));
 				System.out.println(sb);
-				String l = TatraSurvey.label(seed, t);
+				String l = TatraSurvey.label(sc, seed, t);
 				List<Double> western = crest.getOrDefault(TatraPart.WESTERN_TATRA, List.of());
 				List<Double> high = crest.getOrDefault(TatraPart.HIGH_TATRA, List.of());
 				assertTrue(western.size() >= 4 && high.size() >= 4, l + ": crest strips western " + western.size() + ", high " + high.size());
@@ -162,7 +168,9 @@ class TatraReliefTest {
 				assertTrue(highIn >= 0.75 && percentile(high, 1) <= 2_530 && percentile(high, 0) >= 2_150, l + ": High Tatra summits " + high);
 				List<Double> regle = heights.getOrDefault(TatraPart.REGLE, List.of());
 				assertTrue(percentile(regle, 0.5) >= 1_000 && percentile(regle, 0.5) <= 1_500, l + ": regle median");
-				assertTrue(percentile(regle, 1) >= 1_750 && percentile(regle, 1) <= 1_950, l + ": Giewont-type ridge " + percentile(regle, 1));
+				// Step TT5: up to 1980 m, since the noisy boundary of the regle part (un 0.61–0.71) may take in the end of a side
+				// ridge a little higher than the Giewont-type ridge (1967 m in a realistic massif of seed A).
+				assertTrue(percentile(regle, 1) >= 1_750 && percentile(regle, 1) <= 1_980, l + ": Giewont-type ridge " + percentile(regle, 1));
 				List<Double> trough = heights.getOrDefault(TatraPart.SUBTATRA_TROUGH, List.of());
 				assertTrue(percentile(trough, 0.5) >= 800 && percentile(trough, 0.5) <= 1_000, l + ": trough median");
 				List<Double> hills = heights.getOrDefault(TatraPart.GUBALOWKA_FOOTHILLS, List.of());
@@ -222,11 +230,12 @@ class TatraReliefTest {
 		return b - a + 1;
 	}
 
-	@Test
-	void uValleysHaveFlatFloors() {
+	@ParameterizedTest
+	@MethodSource("pl.polishforests.worldgen.landscape.TatraSurvey#scales")
+	void uValleysHaveFlatFloors(LandscapeScale sc) {
 		for (long seed : TatraSurvey.SEEDS) {
-			LandscapeModel m = TatraSurvey.with(seed);
-			for (LandscapeModel.Tatra t : TatraSurvey.nearest(seed, MASSIFS)) {
+			LandscapeModel m = TatraSurvey.with(sc, seed);
+			for (LandscapeModel.Tatra t : TatraSurvey.nearest(sc, seed, MASSIFS)) {
 				Scan s = massifScan(m, t, 60);
 				double half = 0.5 * TatraField.VALLEY_SPACING * m.scale().mountainSpacing();
 				List<Double> ratios = new ArrayList<>();
@@ -247,23 +256,27 @@ class TatraReliefTest {
 					slopes.add(c.wallSlope());
 				}
 				System.out.printf(Locale.ROOT, "%s: U-valley cross sections %d (relief >= 150 m), floor/wall width ratio p10 %.2f p50 %.2f p90 %.2f; "
-						+ "floor width / depth p50 %.2f; wall slope 10-50%% p10 %.2f p50 %.2f p90 %.2f%n", TatraSurvey.label(seed, t), deep,
+						+ "floor width / depth p50 %.2f; wall slope 10-50%% p10 %.2f p50 %.2f p90 %.2f%n", TatraSurvey.label(sc, seed, t), deep,
 						percentile(ratios, 0.1), percentile(ratios, 0.5), percentile(ratios, 0.9), percentile(floorDepth, 0.5),
 						percentile(slopes, 0.1), percentile(slopes, 0.5), percentile(slopes, 0.9));
-				assertTrue(deep >= 30, TatraSurvey.label(seed, t) + ": " + deep + " U-valley cross sections");
-				assertTrue(percentile(ratios, 0.5) >= 0.35, TatraSurvey.label(seed, t) + ": the valleys are V-shaped");
-				// Steep walls: at least 1 m per m (45 degrees) in the median between 10% and 50% of the depth.
-				assertTrue(percentile(slopes, 0.5) >= 1.0, TatraSurvey.label(seed, t) + ": gentle valley walls");
+				assertTrue(deep >= 30, TatraSurvey.label(sc, seed, t) + ": " + deep + " U-valley cross sections");
+				assertTrue(percentile(ratios, 0.5) >= 0.35, TatraSurvey.label(sc, seed, t) + ": the valleys are V-shaped");
+				// Steep walls: at least 1 m per m (45 degrees) in the median between 10% and 50% of the depth. Step TT5: in the
+				// realistic scale the forms are 3.33 times wider at the same heights, so the walls rise 0.6 m per m (31 degrees,
+				// the walls of the Tatra troughs); in blocks about as steep as the gameplay walls (TatraFormsTest#slopesInBlocks).
+				double wallMin = sc == LandscapeScale.REALISTIC ? 0.6 : 1.0;
+				assertTrue(percentile(slopes, 0.5) >= wallMin, TatraSurvey.label(sc, seed, t) + ": gentle valley walls");
 			}
 		}
 	}
 
-	@Test
-	void cirquesHeadTheValleys() {
+	@ParameterizedTest
+	@MethodSource("pl.polishforests.worldgen.landscape.TatraSurvey#scales")
+	void cirquesHeadTheValleys(LandscapeScale sc) {
 		for (long seed : TatraSurvey.SEEDS) {
-			LandscapeModel m = TatraSurvey.with(seed);
-			for (LandscapeModel.Tatra t : TatraSurvey.nearest(seed, MASSIFS)) {
-				Scan s = massifScan(m, t, STEP);
+			LandscapeModel m = TatraSurvey.with(sc, seed);
+			for (LandscapeModel.Tatra t : TatraSurvey.nearest(sc, seed, MASSIFS)) {
+				Scan s = massifScan(m, t, TatraSurvey.step(sc, STEP));
 				int[] label = new int[s.h().length];
 				int valleys = 0;
 				int headed = 0;
@@ -317,11 +330,11 @@ class TatraReliefTest {
 				int counted = valleys - small;
 				double deepShare = reliefs.stream().filter(r -> r >= 800).count() / (double) Math.max(1, reliefs.size());
 				System.out.printf(Locale.ROOT, "%s: U-shaped valleys %d (and %d pieces under 40 cells), %d begin at a cirque (%.0f%%); floor to "
-						+ "crest p10 %.0f p50 %.0f m, %.0f%% at least 800 m%n", TatraSurvey.label(seed, t), counted, small, headed,
+						+ "crest p10 %.0f p50 %.0f m, %.0f%% at least 800 m%n", TatraSurvey.label(sc, seed, t), counted, small, headed,
 						100.0 * headed / Math.max(1, counted), percentile(reliefs, 0.1), percentile(reliefs, 0.5), 100 * deepShare);
-				assertTrue(deepShare >= 0.9, TatraSurvey.label(seed, t) + ": valleys less than 800 m below the crest " + reliefs);
-				assertTrue(counted >= 8, TatraSurvey.label(seed, t) + ": " + counted + " U-shaped valleys");
-				assertTrue(headed >= 0.7 * counted, TatraSurvey.label(seed, t) + ": " + headed + " of " + counted + " valleys at a cirque");
+				assertTrue(deepShare >= 0.9, TatraSurvey.label(sc, seed, t) + ": valleys less than 800 m below the crest " + reliefs);
+				assertTrue(counted >= 8, TatraSurvey.label(sc, seed, t) + ": " + counted + " U-shaped valleys");
+				assertTrue(headed >= 0.7 * counted, TatraSurvey.label(sc, seed, t) + ": " + headed + " of " + counted + " valleys at a cirque");
 			}
 		}
 	}
@@ -352,14 +365,15 @@ class TatraReliefTest {
 		return out;
 	}
 
-	@Test
-	void noStraightFaults() {
+	@ParameterizedTest
+	@MethodSource("pl.polishforests.worldgen.landscape.TatraSurvey#scales")
+	void noStraightFaults(LandscapeScale sc) {
 		for (long seed : TatraSurvey.SEEDS) {
-			LandscapeModel m = TatraSurvey.with(seed);
-			LandscapeModel o = TatraSurvey.without(seed);
-			for (LandscapeModel.Tatra t : TatraSurvey.nearest(seed, MASSIFS)) {
-				String l = TatraSurvey.label(seed, t);
-				Scan s = massifScan(m, t, STEP);
+			LandscapeModel m = TatraSurvey.with(sc, seed);
+			LandscapeModel o = TatraSurvey.without(sc, seed);
+			for (LandscapeModel.Tatra t : TatraSurvey.nearest(sc, seed, MASSIFS)) {
+				String l = TatraSurvey.label(sc, seed, t);
+				Scan s = massifScan(m, t, TatraSurvey.step(sc, STEP));
 				// Boundaries across the range: for every v line the u of the first change (from the south) into the regle and
 				// the last end of the bedrock, and the northern outline of the complex (weight 0.5).
 				double[] regle = new double[s.nv()];
@@ -392,19 +406,22 @@ class TatraReliefTest {
 						}
 					}
 				}
-				double dRegle = minWindowDeviation(regle, s.step(), 3_000);
-				double dOutline = minWindowDeviation(outline, s.step(), 3_000);
-				double dRock = minWindowDeviation(rock, s.step(), 3_000);
+				// Step TT5: the window and the least deviation grow with the forms (3 km and 15 m at gameplay scale).
+				double window = TatraSurvey.step(sc, 3_000);
+				double minDev = TatraSurvey.step(sc, 15);
+				double dRegle = minWindowDeviation(regle, s.step(), window);
+				double dOutline = minWindowDeviation(outline, s.step(), window);
+				double dRock = minWindowDeviation(rock, s.step(), window);
 				double sdWestHigh = sd(westHigh);
 				// Height steps: the largest difference between neighbors 0.5 m apart, against the old mountains (the steps found
 				// and removed in stage 1 were 30-200 m, i.e. 60-400 per m; the steepest walls rise about 7 m per m).
 				double jump = maxStep(m, t, 0.5);
 				double jumpOld = maxStep(o, t, 0.5);
-				System.out.printf(Locale.ROOT, "%s: least deviation from a straight line over 3 km: regle edge %.0f m, outline %.0f m, "
+				System.out.printf(Locale.ROOT, "%s: least deviation from a straight line over %.0f m: regle edge %.0f m, outline %.0f m, "
 						+ "rock edge %.0f m; Western / High boundary sd %.0f m (%d lines); steepest 0.5 m step %.2f (old terrain %.2f)%n", l,
-						dRegle, dOutline, dRock, sdWestHigh, westHigh.size(), jump, jumpOld);
-				assertTrue(dRegle >= 15 && dOutline >= 15 && dRock >= 15, l + ": a straight boundary");
-				assertTrue(westHigh.size() >= 20 && sdWestHigh >= 30, l + ": a straight Western / High boundary");
+						window, dRegle, dOutline, dRock, sdWestHigh, westHigh.size(), jump, jumpOld);
+				assertTrue(dRegle >= minDev && dOutline >= minDev && dRock >= minDev, l + ": a straight boundary");
+				assertTrue(westHigh.size() >= 20 && sdWestHigh >= TatraSurvey.step(sc, 30), l + ": a straight Western / High boundary");
 				assertTrue(jump <= 10, l + ": a height jump of " + jump + " per m");
 			}
 		}

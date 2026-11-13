@@ -404,6 +404,21 @@ public final class HabitatClassifier {
 		}
 
 		/**
+		 * Step TT5: the slope in blocks, as the player sees it, for the rules of the Tatra rocks (the bare walls of
+		 * {@link TatraZones}, the rock grasslands of {@link AltitudinalBelts}): {@link #slope} in the gameplay scale (already
+		 * in blocks); in the realistic scale the slope of the model converted with the realistic curve (1:1 up to about
+		 * 880 m, 1.76 times flatter above 1500 m), so the Tatras of both scales compare the same angles in blocks. The other
+		 * rules of the realistic scale keep the slope of the model (their thresholds were set on it).
+		 */
+		double blockSlope() {
+			if (classifier.gameplay || !(slope > 0)) {
+				return slope;
+			}
+			double bpm = pl.polishforests.worldgen.landscape.LandscapeScale.realBlocksPerMeter(t.sBar());
+			return bpm == 1.0 ? slope : Math.toDegrees(Math.atan(Math.tan(Math.toRadians(slope)) * bpm));
+		}
+
+		/**
 		 * Substrate for habitats: the deposit from the sample, except for the coastal belt on a low shore. The model
 		 * gives till to every column of this belt higher than 8 m, including a high foredune and the dunes behind it,
 		 * so on a dune shore ({@code lowShore} ≥ {@link Calibration#LOW_SHORE}) such till is the sand of the beach and

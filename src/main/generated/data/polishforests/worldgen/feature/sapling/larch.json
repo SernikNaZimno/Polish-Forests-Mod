@@ -1,10 +1,5 @@
 {
   "type": "polishforests:procedural_tree",
   "age_class": "pole_stage",
-  "size": {
-    "crown": 0.94,
-    "dbh": 1.0,
-    "height": 0.94
-  },
   "species": "larch"
 }

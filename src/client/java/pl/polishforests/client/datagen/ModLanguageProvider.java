@@ -416,8 +416,6 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 				+ "granite ridges up to about 2500 m, glacial valleys and cirques, limestone foothills, and the Podhale basin "
 				+ "at their foot.");
 		b.add("polishforests.options.tatra.off.tooltip", "Only the Beskids, as in worlds made before this option.");
-		b.add("polishforests.options.tatra.realistic.tooltip", "The Tatras need the gameplay scale for now; the "
-				+ "realistic scale gets them later.");
 		b.add("polishforests.options.landscape.natural.tooltip", "The forest that would grow without people, on almost the "
 				+ "whole land.");
 		b.add("polishforests.options.landscape.today.tooltip", "About 30% forest, mostly pine forests on sand, with meadows "
@@ -525,8 +523,6 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		b.add("polishforests.options.tatra.on.tooltip", "Tu i ówdzie w głębi pasa gór wznoszą się Tatry: granitowe granie "
 				+ "do ok. 2500 m, doliny polodowcowe i kotły, wapienne regle, a u ich stóp Kotlina Podhalańska.");
 		b.add("polishforests.options.tatra.off.tooltip", "Tylko Beskidy, jak w światach utworzonych przed tą opcją.");
-		b.add("polishforests.options.tatra.realistic.tooltip", "Na razie Tatry są tylko w skali przyjaznej grze; skala "
-				+ "realistyczna dostanie je później.");
 		b.add("polishforests.options.landscape.natural.tooltip", "Las, który rósłby bez ludzi, prawie na całym lądzie.");
 		b.add("polishforests.options.landscape.today.tooltip", "Ok. 30% lasów, głównie bory na piaskach, łąki i pola "
 				+ "odłogowane; brzegi rzek zostają zarośnięte.");

@@ -6,6 +6,8 @@ import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 /**
  * Step TT1 (docs/04-pionowy-wycinek.md, "Projekt TT1"): the rivers of the Tatra complexes for the seeds of
@@ -40,21 +42,24 @@ class TatraRiverTest {
 		return w.streamOrder() > 0 && w.channelDist() <= 0.5 * w.channelWidth();
 	}
 
-	@Test
-	void noRiverOverTheMainRidge() {
+	@ParameterizedTest
+	@MethodSource("pl.polishforests.worldgen.landscape.TatraSurvey#scales")
+	void noRiverOverTheMainRidge(LandscapeScale sc) {
 		for (long seed : TatraSurvey.SEEDS) {
-			LandscapeModel m = TatraSurvey.with(seed);
+			LandscapeModel m = TatraSurvey.with(sc, seed);
 			double k = m.scale().mountainSpacing();
-			for (LandscapeModel.Tatra t : TatraSurvey.nearest(seed, MASSIFS)) {
-				String l = TatraSurvey.label(seed, t);
+			for (LandscapeModel.Tatra t : TatraSurvey.nearest(sc, seed, MASSIFS)) {
+				String l = TatraSurvey.label(sc, seed, t);
 				double half = 0.8 * t.halfLength();
-				int lines = (int) Math.floor(2 * half / 50);
+				double lineStep = TatraSurvey.step(sc, 50);
+				double grid = TatraSurvey.step(sc, 40);
+				int lines = (int) Math.floor(2 * half / lineStep);
 				AtomicInteger wet = new AtomicInteger();
 				IntStream.rangeClosed(0, lines).parallel().forEach(b -> {
-					double v = -half + b * 50;
+					double v = -half + b * lineStep;
 					double best = Double.NEGATIVE_INFINITY;
 					double bu = 0;
-					for (double u = -2_500 * k; u <= 2_500 * k; u += 10) {
+					for (double u = -2_500 * k; u <= 2_500 * k; u += TatraSurvey.step(sc, 10)) {
 						double h = m.sample(TatraSurvey.x(t, u, v), TatraSurvey.z(t, u, v)).surface();
 						if (h > best) {
 							best = h;
@@ -72,13 +77,13 @@ class TatraRiverTest {
 				double uMin = -(TatraField.WS + 1_500) * k;
 				double uMax = (TatraField.BASIN_CENTER + 1_000) * k;
 				double vHalf = t.halfLength() + 1_500 * k;
-				int nu = (int) ((uMax - uMin) / 40);
-				int nv = (int) (2 * vHalf / 40);
+				int nu = (int) ((uMax - uMin) / grid);
+				int nv = (int) (2 * vHalf / grid);
 				AtomicInteger core = new AtomicInteger();
 				AtomicInteger coreInChannel = new AtomicInteger();
 				IntStream.range(0, nu * nv).parallel().forEach(i -> {
-					double u = uMin + (i % nu) * 40;
-					double v = -vHalf + (i / nu) * 40;
+					double u = uMin + (i % nu) * grid;
+					double v = -vHalf + (i / nu) * grid;
 					double x = TatraSurvey.x(t, u, v);
 					double z = TatraSurvey.z(t, u, v);
 					if (m.riverCoreStrength(x, z, false) >= INNER_CORE) {
@@ -100,13 +105,14 @@ class TatraRiverTest {
 		}
 	}
 
-	@Test
-	void noWaterInADiscontinuity() {
+	@ParameterizedTest
+	@MethodSource("pl.polishforests.worldgen.landscape.TatraSurvey#scales")
+	void noWaterInADiscontinuity(LandscapeScale sc) {
 		for (long seed : TatraSurvey.SEEDS) {
-			LandscapeModel m = TatraSurvey.with(seed);
-			LandscapeModel o = TatraSurvey.without(seed);
-			for (LandscapeModel.Tatra t : TatraSurvey.nearest(seed, MASSIFS)) {
-				String l = TatraSurvey.label(seed, t);
+			LandscapeModel m = TatraSurvey.with(sc, seed);
+			LandscapeModel o = TatraSurvey.without(sc, seed);
+			for (LandscapeModel.Tatra t : TatraSurvey.nearest(sc, seed, MASSIFS)) {
+				String l = TatraSurvey.label(sc, seed, t);
 				double[] tatra = steps(m, t);
 				double[] old = steps(o, t);
 				System.out.printf(Locale.ROOT, "%s: steepest 0.5 m step of the surface with the rivers %.2f (old terrain %.2f); "

@@ -31,13 +31,19 @@ import org.junit.jupiter.api.Test;
  *
  * <p>{@code -PwriteGoldenTatra} searches the patches anew and writes the file (only on purpose, as {@code -PwriteGolden}
  * for the M2 file).
+ *
+ * <p>Step TT5: two more sets at realistic scale (seeds A and B, the Tatras on), with the same six targets; their lattice
+ * steps and the search lattice grow with the forms ({@link TatraSurvey#step}), so a patch covers the same part of the
+ * massif. The gameplay sets are written as before (the same lines).
  */
 @Tag("slow")
 class GoldenTatraTest {
 	static final String RESOURCE = "/golden_terrain_tatra.txt";
 	static final List<GoldenTerrainTest.SetKey> SETS = List.of(
 			new GoldenTerrainTest.SetKey(LandscapeScale.GAMEPLAY, GoldenTerrainTest.SEED_A, 1.0),
-			new GoldenTerrainTest.SetKey(LandscapeScale.GAMEPLAY, GoldenTerrainTest.SEED_B, 1.0));
+			new GoldenTerrainTest.SetKey(LandscapeScale.GAMEPLAY, GoldenTerrainTest.SEED_B, 1.0),
+			new GoldenTerrainTest.SetKey(LandscapeScale.REALISTIC, GoldenTerrainTest.SEED_A, 1.0),
+			new GoldenTerrainTest.SetKey(LandscapeScale.REALISTIC, GoldenTerrainTest.SEED_B, 1.0));
 	static final String[] FIELDS = {"surface", "waterLevel", "waterKind", "type", "substrate", "coverDepth", "blocks", "tatraPart",
 			"rock"};
 	/** Columns per patch side. */
@@ -159,8 +165,10 @@ class GoldenTatraTest {
 		double uMax = (TatraField.BASIN_CENTER + TatraField.BASIN / 2 + TatraField.FADE_NORTH) * k;
 		double vHalf = t.halfLength() + TatraField.FADE_END1 * k;
 		List<double[]> candidates = new ArrayList<>();
-		for (double u = uMin; u <= uMax; u += 90) {
-			for (double v = -vHalf; v <= vHalf; v += 90) {
+		double lattice = TatraSurvey.step(m.scale(), 90);
+		int step = (int) Math.round(TatraSurvey.step(m.scale(), target.step()));
+		for (double u = uMin; u <= uMax; u += lattice) {
+			for (double v = -vHalf; v <= vHalf; v += lattice) {
 				double x = TatraSurvey.x(t, u, v);
 				double z = TatraSurvey.z(t, u, v);
 				TatraField.Column c = m.tatraColumn(x, z);
@@ -171,7 +179,7 @@ class GoldenTatraTest {
 		}
 		candidates.sort(Comparator.comparingDouble(c -> c[2]));
 		for (double[] c : candidates) {
-			GoldenTerrainTest.Patch p = new GoldenTerrainTest.Patch(target.name(), N, Math.round(c[0]), Math.round(c[1]), target.step());
+			GoldenTerrainTest.Patch p = new GoldenTerrainTest.Patch(target.name(), N, Math.round(c[0]), Math.round(c[1]), step);
 			if (target.patch().test(GoldenTerrainTest.samples(m, List.of(p)).get(0))) {
 				return p;
 			}
@@ -181,12 +189,13 @@ class GoldenTatraTest {
 
 	private static void write(Path file) throws IOException {
 		StringBuilder sb = new StringBuilder();
-		sb.append("# Golden terrain of the Tatra complexes (step TT1, GoldenTatraTest): gameplay scale, the Tatras on.\n");
+		sb.append("# Golden terrain of the Tatra complexes (steps TT1 and TT5, GoldenTatraTest): gameplay and realistic scale, the Tatras on.\n");
 		sb.append("# patch <name> <n> <x> <z> <step> <hash>; fields: ").append(String.join(", ", FIELDS)).append('\n');
 		sb.append("# Written with -PwriteGoldenTatra; the patches lie in the massif nearest the origin of each seed.\n");
 		for (GoldenTerrainTest.SetKey k : SETS) {
 			LandscapeModel m = model(k);
-			List<LandscapeModel.Tatra> ts = new ArrayList<>(m.tatras(-TatraSurvey.BOX, -TatraSurvey.BOX, TatraSurvey.BOX, TatraSurvey.BOX));
+			double box = TatraSurvey.box(k.scale());
+			List<LandscapeModel.Tatra> ts = new ArrayList<>(m.tatras(-box, -box, box, box));
 			ts.sort(Comparator.comparingDouble(q -> Math.hypot(q.x(), q.z())));
 			LandscapeModel.Tatra t = ts.get(0);
 			List<GoldenTerrainTest.Patch> patches = new ArrayList<>();

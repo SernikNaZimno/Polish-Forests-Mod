@@ -35,13 +35,15 @@ import pl.polishforests.worldgen.chunk.PolandScale;
 import pl.polishforests.worldgen.landscape.ColumnSample;
 import pl.polishforests.worldgen.landscape.LandscapeModel;
 import pl.polishforests.worldgen.landscape.LandscapeType;
+import pl.polishforests.worldgen.landscape.TatraPart;
 import pl.polishforests.worldgen.landscape.WaterKind;
 import pl.polishforests.worldgen.surface.ChunkSurface;
 
 /**
  * Caves of step J1 (docs/04-pionowy-wycinek.md), {@code -Pgametest=caves} (only by name): in each scale
  * ({@code -Pscales}) a world of the preset (caves on) and five places: a lowland forest, a river valley, the mountains
- * and the sea coast found in the model, and the nearest start chunk of the vanilla canyon carver. In each place a survey of the generated chunks against their surface plans
+ * and the sea coast found in the model, and the nearest start chunk of the vanilla canyon carver (step TT5: in a world
+ * with the Tatras two more, the limestone regle and the granite ridge of the nearest massif). In each place a survey of the generated chunks against their surface plans
  * ({@code PolandChunkGenerator.surface}): the share of cave blocks by depth below the plan top, cave water and lava,
  * cave entrances per km², and the faults: a cave beside or under the water of the surface (a draining river, lake or sea),
  * a trunk or plant over an opened top, lava at Y 0 or higher. Then pictures: the 16 vertical slices of the place's chunk down
@@ -96,8 +98,10 @@ public final class CavesClientGameTest implements FabricClientGameTest {
 			try (TestSingleplayerContext sp = context.worldBuilder().adjustSettings(ui -> select(ui, preset)).create()) {
 				prepare(sp);
 				List<Place> places = sp.getServer().computeOnServer(CavesClientGameTest::findPlaces);
-				if (places.size() < 5) {
-					failures.add(scale.getSerializedName() + ": only " + places.size() + " of 5 places found");
+				int expected = sp.getServer().computeOnServer(s -> ((PolandChunkGenerator) s.overworld().getChunkSource().getGenerator())
+						.settings().tatra()) ? 7 : 5;
+				if (places.size() < expected) {
+					failures.add(scale.getSerializedName() + ": only " + places.size() + " of " + expected + " places found");
 				}
 				// The windows are cut only after every place was surveyed and shot: a window opens the ground, and a later place
 				// whose area covers it (the REAL river valley next to the lowland forest) would count and shoot it as a cave
@@ -164,6 +168,14 @@ public final class CavesClientGameTest implements FabricClientGameTest {
 	private static final int[] BESKIDS_GAMEPLAY = {27_609, 3_254};
 	private static final int[] CLIFF_REAL = {-181_586, -207_822};
 	private static final int[] CLIFF_GAMEPLAY = {-3_216, 6_103};
+	/**
+	 * Step TT5: start points in the Tatra massif nearest the origin of the test seed (the {@code regle_limestone} and
+	 * {@code granite_ridge} patches of {@code golden_terrain_tatra.txt}).
+	 */
+	private static final int[] TATRA_REGLE_REAL = {1_180_979, 97_864};
+	private static final int[] TATRA_REGLE_GAMEPLAY = {-23_189, 86_849};
+	private static final int[] TATRA_RIDGE_REAL = {1_177_964, 102_710};
+	private static final int[] TATRA_RIDGE_GAMEPLAY = {-24_456, 87_894};
 	/** Most model samples of one search (a bound on its time: a fresh area of the model costs up to about 1 ms a sample). */
 	private static final int MAX_SAMPLES = 40_000;
 	/** Largest distance of a search from its start point (m). */
@@ -184,6 +196,14 @@ public final class CavesClientGameTest implements FabricClientGameTest {
 		add(places, m, "sea", 2, false, real ? CLIFF_REAL : CLIFF_GAMEPLAY, (s, p) -> s.waterKind() == WaterKind.SEA
 				&& landNear(m, p));
 		canyon(places, level, m);
+		if (m.hasTatra()) {
+			// Step TT5: two places in the massif nearest the origin, a dry spot of the limestone regle and a high spot of the
+			// granite High Tatras (cave biomes reach only below Y 256, so the ridge shows the caves deep under the summits).
+			add(places, m, "tatra_regle", 2, false, real ? TATRA_REGLE_REAL : TATRA_REGLE_GAMEPLAY, (s, p) -> !s.hasWater()
+					&& m.tatraPart(p[0], p[1]) == TatraPart.REGLE && dryAround(m, p, 24));
+			add(places, m, "tatra_ridge", 2, false, real ? TATRA_RIDGE_REAL : TATRA_RIDGE_GAMEPLAY, (s, p) -> !s.hasWater()
+					&& m.tatraPart(p[0], p[1]) == TatraPart.HIGH_TATRA && s.surface() > 1800);
+		}
 		return places;
 	}
 

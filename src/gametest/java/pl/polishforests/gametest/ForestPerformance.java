@@ -168,17 +168,19 @@ final class ForestPerformance {
 	static final int[][] MONTANE_SITE = {{75072, 73120}, {3488, 22644}};
 	/**
 	 * Step TT1 (KT-6): the granite ridge of the High Tatras of the golden Tatra file ({@code golden_terrain_tatra.txt}, set
-	 * GAMEPLAY A: the massif nearest the origin, 91 km away), only in the gameplay scale (the realistic scale has no Tatras
-	 * until TT5). The load there measures the cost of the highest terrain (summits up to Y 691) and the Tatra rocks.
+	 * GAMEPLAY A: the massif nearest the origin, 91 km away). The load there measures the cost of the highest terrain
+	 * (summits up to Y 691) and the Tatra rocks. Step TT5: per scale (realistic, gameplay) as the other sites; the realistic
+	 * one is the granite ridge of set REALISTIC A (the massif 1182 km from the origin, summits up to about Y 2018).
 	 */
-	static final int[] TATRA_HIGH_SITE = {-24423, 87771};
+	static final int[][] TATRA_HIGH_SITE = {{1_177_964, 102_710}, {-24423, 87771}};
 	/**
 	 * Step TT4 (KT-6): the spruce-stone pine forest of the upper regiel on the granite of the same massif (set GAMEPLAY A,
-	 * 1.2 km east of {@link #TATRA_HIGH_SITE}, surface about 1450 m; 95% of the 100-block square around it is the Pino
-	 * cembrae-Piceetum in the classifier), only in the gameplay scale. The load there measures the cost of the stone pine
-	 * and larch stands (the long crowns of the stone pine, the hanging branchlets of the larch).
+	 * 1.2 km east of the gameplay {@link #TATRA_HIGH_SITE}, surface about 1450 m; 95% of the 100-block square around it is
+	 * the Pino cembrae-Piceetum in the classifier). The load there measures the cost of the stone pine and larch stands (the
+	 * long crowns of the stone pine, the hanging branchlets of the larch). Step TT5: per scale; the realistic one is the
+	 * plot {@code tatra_stone_pine_natural_1} of the realistic scale ({@code slice_plots.txt}).
 	 */
-	static final int[] TATRA_STONE_PINE_SITE = {-23268, 87636};
+	static final int[][] TATRA_STONE_PINE_SITE = {{1_161_343, 99_681}, {-23268, 87636}};
 
 	/**
 	 * The load and flight measurements in the oak-hornbeam and the fresh pine forest of the world (natural mode) and, from
@@ -200,10 +202,9 @@ final class ForestPerformance {
 		places.add(new Object[] {"bog_woodland_1", BOG_SITE[real ? 0 : 1]});
 		places.add(new Object[] {"floodplain_1", FLOOD_SITE[real ? 0 : 1]});
 		places.add(new Object[] {"montane_spruce_1", MONTANE_SITE[real ? 0 : 1]});
-		if (!real) {
-			places.add(new Object[] {"tatra_high_1", TATRA_HIGH_SITE});
-			places.add(new Object[] {"tatra_stone_pine_1", TATRA_STONE_PINE_SITE});
-		}
+		// Step TT5: the Tatra sites in both scales (the realistic preset has the Tatras since TT5).
+		places.add(new Object[] {"tatra_high_1", TATRA_HIGH_SITE[real ? 0 : 1]});
+		places.add(new Object[] {"tatra_stone_pine_1", TATRA_STONE_PINE_SITE[real ? 0 : 1]});
 		for (Object[] place : places) {
 			int[] m = (int[]) place[1];
 			String label = name + " / " + place[0];

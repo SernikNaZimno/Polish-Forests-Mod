@@ -38,12 +38,8 @@ public final class PolandWorldOptionsScreen extends Screen {
 	private final boolean coverInBlocks;
 	private LooseCover looseCover;
 	private boolean caves;
-	/**
-	 * Step TT1: the Tatras as chosen for the gameplay scale; the realistic scale has no Tatras until step TT5 (the switch is
-	 * inactive there and shows off), so a world switched back to the gameplay scale gets the Tatras again.
-	 */
+	/** Step TT1: the Tatras (step TT5: in both scales, the switch works in each). */
 	private boolean tatra;
-	private CycleButton<Boolean> tatraButton;
 
 	public PolandWorldOptionsScreen(Screen parent, PolandSettings current, Consumer<PolandSettings> apply) {
 		super(Component.translatable("polishforests.options.title"));
@@ -58,7 +54,7 @@ public final class PolandWorldOptionsScreen extends Screen {
 		this.coverInBlocks = current.coverInBlocks();
 		this.looseCover = current.looseCover();
 		this.caves = current.caves();
-		this.tatra = current.scale() != PolandScale.GAMEPLAY || current.tatra();
+		this.tatra = current.tatra();
 	}
 
 	@Override
@@ -80,7 +76,6 @@ public final class PolandWorldOptionsScreen extends Screen {
 						(button, value) -> {
 							scale = value;
 							regionSlider.updateMessage();
-							updateTatra();
 						}));
 
 		regionSlider = column.addChild(new ValueSlider(0.1, 2.0, regionScale, v -> Component.translatable(
@@ -116,13 +111,11 @@ public final class PolandWorldOptionsScreen extends Screen {
 						: "polishforests.options.caves.off.tooltip")))
 				.create(0, 0, half, 20, Component.translatable("polishforests.options.caves"),
 						(button, value) -> caves = value));
-		tatraButton = pair.addChild(CycleButton.onOffBuilder(scale == PolandScale.GAMEPLAY && tatra)
-				.withTooltip(v -> Tooltip.create(Component.translatable(scale != PolandScale.GAMEPLAY
-						? "polishforests.options.tatra.realistic.tooltip" : v ? "polishforests.options.tatra.on.tooltip"
+		pair.addChild(CycleButton.onOffBuilder(tatra)
+				.withTooltip(v -> Tooltip.create(Component.translatable(v ? "polishforests.options.tatra.on.tooltip"
 						: "polishforests.options.tatra.off.tooltip")))
 				.create(0, 0, WIDGET_WIDTH - SPACING - half, 20, Component.translatable("polishforests.options.tatra"),
 						(button, value) -> tatra = value));
-		updateTatra();
 
 		column.addChild(CycleButton.onOffBuilder(alienSpecies)
 				.withTooltip(v -> Tooltip.create(Component.translatable("polishforests.options.alien_species.tooltip")))
@@ -132,7 +125,7 @@ public final class PolandWorldOptionsScreen extends Screen {
 		LinearLayout footer = layout.addToFooter(LinearLayout.horizontal().spacing(8));
 		footer.addChild(Button.builder(CommonComponents.GUI_DONE, b -> {
 			apply.accept(new PolandSettings(scale, regionScale, agriculture, managedShare, alienSpecies, version,
-					coverInBlocks, looseCover, caves, scale == PolandScale.GAMEPLAY && tatra));
+					coverInBlocks, looseCover, caves, tatra));
 			onClose();
 		}).build());
 		footer.addChild(Button.builder(CommonComponents.GUI_CANCEL, b -> onClose()).build());
@@ -140,14 +133,6 @@ public final class PolandWorldOptionsScreen extends Screen {
 		repositionElements();
 	}
 
-	/** The Tatra switch works only in the gameplay scale (step TT1; the realistic Tatras come in step TT5). */
-	private void updateTatra() {
-		if (tatraButton != null) {
-			boolean gameplay = scale == PolandScale.GAMEPLAY;
-			tatraButton.active = gameplay;
-			tatraButton.setValue(gameplay && tatra);
-		}
-	}
 
 	@Override
 	protected void repositionElements() {

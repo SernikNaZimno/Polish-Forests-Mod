@@ -22,6 +22,25 @@ public record LandscapeScale(String id, double regionSize, double meso, double l
 	 */
 	public static final LandscapeScale GAMEPLAY = new LandscapeScale("gameplay", 1_400, 0.15, 0.5, 0.3, 0.2);
 
+	/** Step TT5: the knee of the realistic vertical curve ({@code PolandDimension}): its middle, softness and compression. */
+	static final double REAL_KNEE = 1_200.0;
+	static final double REAL_KNEE_SOFTNESS = 80.0;
+	static final double REAL_COMPRESSION = 1.7626;
+
+	/**
+	 * Step TT5: blocks per meter of height at {@code meters} a.s.l. in the realistic scale, the derivative of the curve of
+	 * {@code PolandDimension.blocksForMeters} (the model does not depend on Minecraft, so the constants are repeated here;
+	 * {@code LandscapeScaleTest} checks them against the dimension): 1 up to {@code REAL_KNEE − 4 · softness} (880 m), then
+	 * {@code 1 − (1 − 1 / compression) · σ((m − knee) / softness)}, about 1 / 1.76 from about 1500 m.
+	 */
+	public static double realBlocksPerMeter(double meters) {
+		if (meters <= REAL_KNEE - 4 * REAL_KNEE_SOFTNESS) {
+			return 1.0;
+		}
+		double x = (meters - REAL_KNEE) / REAL_KNEE_SOFTNESS;
+		return 1.0 - (1.0 - 1.0 / REAL_COMPRESSION) / (1.0 + Math.exp(-x));
+	}
+
 	/** Ratio of the region size to the real one; scales the zone fields (mountain ranges, glaciation). */
 	public double zone() {
 		return regionSize / REALISTIC.regionSize;

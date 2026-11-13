@@ -366,7 +366,7 @@ final class TatraWaters {
 		if (cut > MAX_CUT) {
 			return null;
 		}
-		double depth = (2.5 + 1.5 * field.draw(vi, vj, 66)) / TatraField.blocksPerMeter(level);
+		double depth = (2.5 + 1.5 * field.draw(vi, vj, 66)) * field.formScale() / field.blocksPerMeter(level);
 		return new Tarn(Noise.mix(vi * 31 + vj * 17 + 1), m, north, j, false, false, unC, aq, bu, level, depth, null, center[0],
 				center[1]);
 	}
@@ -417,7 +417,7 @@ final class TatraWaters {
 		if (cut > MAX_CUT) {
 			return null;
 		}
-		double depth = (mo.morskie() ? 6 : 2 + 1.5 * field.draw(vi, vj, 67)) / TatraField.blocksPerMeter(level);
+		double depth = (mo.morskie() ? 6 : 2 + 1.5 * field.draw(vi, vj, 67)) * field.formScale() / field.blocksPerMeter(level);
 		return new Tarn(Noise.mix(vi * 31 + vj * 17 + 2), m, north, j, true, mo.morskie(), un0, aq, bu, level, depth, null,
 				center[0], center[1]);
 	}
@@ -462,7 +462,7 @@ final class TatraWaters {
 	 * the belt, see Hit#surface).
 	 */
 	private boolean onGround(TatraField.Massif m, boolean north, long j, double width, Tarn t) {
-		double bpm = TatraField.blocksPerMeter(t.level());
+		double bpm = field.blocksPerMeter(t.level());
 		double low = t.level() - t.depth() - DEEPER / bpm;
 		double raise = RAISE / bpm;
 		double side = Math.min(t.aq(), t.bu());

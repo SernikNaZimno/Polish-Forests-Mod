@@ -85,3 +85,5 @@ gameplay managed any montane_spruce_managed_1 montane_spruce_forest 3488 22644
 gameplay managed any montane_spruce_managed_2 montane_spruce_forest 3608 22564
 gameplay natural any tatra_stone_pine_natural_1 montane_spruce_forest -23268 87636
 gameplay natural any tatra_stone_pine_natural_2 montane_spruce_forest -25348 88036
+realistic natural any tatra_stone_pine_natural_1 montane_spruce_forest 1161343 99681
+realistic natural any tatra_stone_pine_natural_2 montane_spruce_forest 1160603 98941

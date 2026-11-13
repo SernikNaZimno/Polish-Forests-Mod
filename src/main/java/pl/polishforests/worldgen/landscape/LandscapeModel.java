@@ -1986,7 +1986,7 @@ public final class LandscapeModel {
 			if (kind == WaterKind.NONE) {
 				// Beside other water (a river) neither the shore wall nor a brook changes the ground.
 				double depth = th.brookLevel == ColumnSample.NO_WATER ? 0
-						: TatraWaters.BROOK_DEPTH / TatraField.blocksPerMeter(th.brookLevel);
+						: TatraWaters.BROOK_DEPTH / tatra.blocksPerMeter(th.brookLevel);
 				surface = th.surface(surface, depth);
 			}
 			if (th.inBasin()) {

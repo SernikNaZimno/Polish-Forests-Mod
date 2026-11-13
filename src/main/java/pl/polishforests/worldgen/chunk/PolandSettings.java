@@ -36,8 +36,9 @@ import pl.polishforests.worldgen.habitat.HabitatClassifier;
  *                           worlds of both scales; missing in worlds created before J1, which stay without caves, so
  *                           their new chunks match the old ones without a seam
  * @param tatra              the Tatra massifs with Podhale (step TT1, docs/04-pionowy-wycinek.md §3 "Kroki TT"): on in new
- *                           worlds of the gameplay scale, off in the realistic scale until step TT5; missing in worlds
- *                           created before TT1, which stay without the Tatras, so their new chunks match the old ones
+ *                           worlds of the gameplay scale from step TT1 and of the realistic scale from step TT5; missing in
+ *                           worlds created before TT1, which stay without the Tatras, so their new chunks match the old
+ *                           ones; the realistic worlds created in steps TT1–TT4 saved {@code false} and stay without them
  */
 public record PolandSettings(PolandScale scale, double regionScale, boolean agriculture, double managedForestShare,
 		boolean alienSpecies, int version, boolean coverInBlocks, LooseCover looseCover, boolean caves, boolean tatra) {

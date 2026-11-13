@@ -122,16 +122,21 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 	 * scale has no Tatras until TT5): the granite ridge of the High Tatras of the golden Tatra file
 	 * ({@code golden_terrain_tatra.txt}, the massif nearest the origin, 91 km away), the same for a reference from before
 	 * TT1. The other areas lie at most 34 km from the origin, outside the influence of every Tatra complex (KT-1,
-	 * {@code TatraIsolationTest}), so the Tatras on in the gameplay preset change none of them.
+	 * {@code TatraIsolationTest}), so the Tatras on in the gameplay preset change none of them. Step TT5: the realistic
+	 * scale gets the same area (the granite ridge of set REALISTIC A of the golden Tatra file, the massif nearest the origin,
+	 * 1182 km away; a reference from before TT5 has no entry for it); its other areas lie outside the influence of every
+	 * realistic complex ({@code TatraIsolationTest#realisticTestPlacesLieOutsideTheTatras}), so the Tatras now on in the
+	 * realistic preset change none of them.
 	 */
 	private static final int[][] AREAS_REAL = {{-19_484 - 64, 11_253 - 64}, {154_834 - 64, 1_058_738 - 64}, {438 - 64, -730 - 64},
 			{-699 - 64, 1_924 - 64}, {-7_793 - 64, -9_133 - 64}, {2_339 - 64, 29_627 - 64}, {46_472 - 64, 15_684 - 64},
-			{-2_507 - 64, 5_061 - 64}, {-2_140 - 64, 10_559 - 64}, {75_072 - 64, 73_120 - 64}, {97_137, 1_034_797}};
+			{-2_507 - 64, 5_061 - 64}, {-2_140 - 64, 10_559 - 64}, {75_072 - 64, 73_120 - 64}, {97_137, 1_034_797},
+			{1_177_964 - 64, 102_710 - 64}};
 	private static final int[][] AREAS_GAMEPLAY = {{-1_851 - 64, 6_022 - 64}, {27_609 - 64, 3_254 - 64}, {-1_785 - 64, 886 - 64},
 			{-1_195 - 64, -583 - 64}, {-2_004 - 64, -3_609 - 64}, {-5_971 - 64, 1_387 - 64}, {1_706 - 64, 3_775 - 64},
 			{-1_640 - 40, 864 - 64}, {-2_044 - 64, -5_087 - 64}, {3_488 - 64, 22_644 - 64}, {7_238, -33_628},
 			{-24_423 - 64, 87_771 - 64}};
-	/** Names of the areas; the last ones only in the gameplay scale (AREAS_REAL is shorter). */
+	/** Names of the areas (step TT5: the same in both scales). */
 	private static final String[] AREA_NAMES = {"river", "beskids", "oak_hornbeam", "fresh_pine", "lowland_beech", "alder_carr",
 			"upland_fir", "bog_woodland", "floodplain", "montane_spruce", "dwarf_pine", "tatra"};
 	private static final int SIZE = 8;

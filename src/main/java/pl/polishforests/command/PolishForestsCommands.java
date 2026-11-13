@@ -548,10 +548,22 @@ public final class PolishForestsCommands {
 	/** Step TT1: {@code elevation} searches the Tatra massifs first from this lower bound (above the Beskids, m). */
 	static final int TATRA_ELEVATION = 1_800;
 
-	/** Step TT1: largest distance of a Tatra massif searched by the Tatra targets (m): the radius of the wide search. */
-	static double tatraRadius(LandscapeModel model) {
+	/**
+	 * Step TT1: largest distance of a Tatra massif searched by the Tatra targets (m): the radius of the wide search, 300 km
+	 * at gameplay scale and (step TT5) 2000 km at realistic scale, where the deep mountain belt is rare and the nearest
+	 * massifs of the test seeds lie 370–1260 km from the origin.
+	 */
+	public static double tatraRadius(LandscapeModel model) {
 		double[][] p = phases(model, false);
 		return p[p.length - 1][1];
+	}
+
+	/**
+	 * Step TT5: how many times the Tatra forms of the model are larger than those of the gameplay scale (1 there, 3.33 in
+	 * the realistic scale): the factor of the search lattice around a massif.
+	 */
+	public static double tatraFormScale(LandscapeModel model) {
+		return Math.max(1.0, model.scale().mountainSpacing() / LandscapeScale.GAMEPLAY.mountainSpacing());
 	}
 
 	/**
@@ -563,6 +575,9 @@ public final class PolishForestsCommands {
 	static double[] searchTatra(LandscapeModel model, Predicate<double[]> test, double ox, double oz, double step,
 			BooleanSupplier cancelled) {
 		double r = tatraRadius(model);
+		// Step TT5: the lattice grows with the forms (the realistic massif is 3.33 times larger than the gameplay one), so a
+		// search around a realistic massif takes as many points as around a gameplay one.
+		step *= tatraFormScale(model);
 		List<LandscapeModel.Tatra> massifs = new java.util.ArrayList<>(model.tatras(ox - r, oz - r, ox + r, oz + r));
 		massifs.removeIf(t -> Math.hypot(t.x() - ox, t.z() - oz) > r);
 		massifs.sort(java.util.Comparator.comparingDouble(t -> Math.hypot(t.x() - ox, t.z() - oz)));

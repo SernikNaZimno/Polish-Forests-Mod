@@ -11,6 +11,8 @@ import java.util.Locale;
 import java.util.concurrent.atomic.AtomicLongArray;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import pl.polishforests.worldgen.landscape.ColumnSample;
 import pl.polishforests.worldgen.landscape.LandscapeModel;
 import pl.polishforests.worldgen.landscape.LandscapeScale;
@@ -21,15 +23,45 @@ import pl.polishforests.worldgen.landscape.LandscapeScale;
  * the origin at gameplay scale (a model-side check of the {@code tatra} gametest): at 1300–1450 m at least 80% of the
  * columns in the upper montane spruce forest, at 1600–1750 m at least 70% in the dwarf pine scrub, at 1900–2200 m at
  * least 70% on the alpine grassland and above 2350 m at least 70% in the subnival belt or on bare rock. Open water, the
- * waterside zones and the valley floors are left out of the shares (a riparian forest is no belt).
+ * waterside zones and the valley floors are left out of the shares (a riparian forest is no belt). Step TT5: the same in
+ * the realistic scale (the profile works in meters; the massifs lie up to 2000 km from the origin, the lattice grows with
+ * the forms).
  */
 class BeltProfileTatraTest {
 	static final long SEED_A = 20260927L;
 	static final long SEED_B = -7_316_550_294_015_845_337L;
 	/** Half side of the box searched for massifs (m). */
 	static final double BOX = 300_000;
+	/** Step TT5: half side of the box at realistic scale (the wide radius of find tatra there). */
+	static final double BOX_REAL = 2_000_000;
 	/** Lattice step (m). */
 	static final double STEP = 24;
+
+	/** Step TT5: the scales of the parameterized tests. */
+	enum Scale {
+		GAMEPLAY(LandscapeScale.GAMEPLAY, BOX), REALISTIC(LandscapeScale.REALISTIC, BOX_REAL);
+
+		final LandscapeScale scale;
+		final double box;
+
+		Scale(LandscapeScale scale, double box) {
+			this.scale = scale;
+			this.box = box;
+		}
+
+		/** A lattice step of the gameplay tests grown with the forms (3.33 times at realistic scale). */
+		double step(double gameplayStep) {
+			return gameplayStep * scale.mountainSpacing() / LandscapeScale.GAMEPLAY.mountainSpacing();
+		}
+
+		/** The massif of the seed nearest the origin. */
+		LandscapeModel.Tatra nearest(LandscapeModel m) {
+			List<LandscapeModel.Tatra> ts = new ArrayList<>(m.tatras(-box, -box, box, box));
+			ts.sort(Comparator.comparingDouble(t -> Math.hypot(t.x(), t.z())));
+			assertTrue(!ts.isEmpty(), "no Tatras within " + box + " m");
+			return ts.get(0);
+		}
+	}
 
 	@Test
 	void tatraThresholdsInOrder() {
@@ -74,19 +106,17 @@ class BeltProfileTatraTest {
 		}
 	}
 
-	@Test
-	void tatraBeltShares() {
+	@ParameterizedTest
+	@EnumSource(Scale.class)
+	void tatraBeltShares(Scale sc) {
 		StringBuilder report = new StringBuilder();
 		AtomicLongArray all = new AtomicLongArray(2 * Band.values().length);
 		for (long seed : new long[] {SEED_A, SEED_B}) {
-			LandscapeModel m = new LandscapeModel(seed, LandscapeScale.GAMEPLAY, 1.0, true);
+			LandscapeModel m = new LandscapeModel(seed, sc.scale, 1.0, true);
 			HabitatClassifier k = new HabitatClassifier(seed, m, HabitatClassifier.Mode.NATURAL);
-			List<LandscapeModel.Tatra> ts = new ArrayList<>(m.tatras(-BOX, -BOX, BOX, BOX));
-			ts.sort(Comparator.comparingDouble(t -> Math.hypot(t.x(), t.z())));
-			assertTrue(!ts.isEmpty(), "no Tatras of seed " + seed);
-			LandscapeModel.Tatra t = ts.get(0);
-			AtomicLongArray l = shares(m, k, t);
-			report.append(String.format(Locale.ROOT, "seed %d massif (%.0f, %.0f), summit %.0f m:", seed, t.x(), t.z(),
+			LandscapeModel.Tatra t = sc.nearest(m);
+			AtomicLongArray l = shares(m, k, t, sc.step(STEP));
+			report.append(String.format(Locale.ROOT, "%s seed %d massif (%.0f, %.0f), summit %.0f m:", sc.scale.id(), seed, t.x(), t.z(),
 					t.targetSummit()));
 			for (Band b : Band.values()) {
 				long n = l.get(2 * b.ordinal());
@@ -110,13 +140,12 @@ class BeltProfileTatraTest {
 	 * The habitats of the Tatras (the census of the {@code habitats} game test on the model): every forest and grassland
 	 * association of the step occurs in the massif nearest the origin of seed A (a 32 m lattice, Tatra weight at least 0.5).
 	 */
-	@Test
-	void tatraHabitatsOccur() {
-		LandscapeModel m = new LandscapeModel(SEED_A, LandscapeScale.GAMEPLAY, 1.0, true);
+	@ParameterizedTest
+	@EnumSource(Scale.class)
+	void tatraHabitatsOccur(Scale sc) {
+		LandscapeModel m = new LandscapeModel(SEED_A, sc.scale, 1.0, true);
 		HabitatClassifier k = new HabitatClassifier(SEED_A, m, HabitatClassifier.Mode.NATURAL);
-		List<LandscapeModel.Tatra> ts = new ArrayList<>(m.tatras(-BOX, -BOX, BOX, BOX));
-		ts.sort(Comparator.comparingDouble(t -> Math.hypot(t.x(), t.z())));
-		LandscapeModel.Tatra t = ts.get(0);
+		LandscapeModel.Tatra t = sc.nearest(m);
 		Object[][] expected = {{HabitatBiome.MONTANE_BEECH_FOREST, null}, {HabitatBiome.MONTANE_SPRUCE_FOREST, Association.ABIETI_PICEETUM},
 				{HabitatBiome.MONTANE_SPRUCE_FOREST, Association.POLYSTICHO_PICEETUM}, {HabitatBiome.DWARF_PINE_SCRUB, null},
 				{HabitatBiome.ALPINE_GRASSLAND, Association.ALPINE_SILICATE}, {HabitatBiome.ALPINE_GRASSLAND, Association.ALPINE_CALCAREOUS},
@@ -124,7 +153,7 @@ class BeltProfileTatraTest {
 				{HabitatBiome.SUBNIVAL_ROCKS, null}, {HabitatBiome.MOUNTAIN_TARN, null}};
 		AtomicLongArray counts = new AtomicLongArray(expected.length);
 		double half = 1.2 * t.halfLength();
-		double step = 32;
+		double step = sc.step(32);
 		int n = (int) (2 * half / step);
 		IntStream.range(0, n).parallel().forEach(j -> {
 			for (int i = 0; i < n; i++) {
@@ -142,7 +171,7 @@ class BeltProfileTatraTest {
 				}
 			}
 		});
-		StringBuilder report = new StringBuilder("Tatra habitats (columns of a 32 m lattice):");
+		StringBuilder report = new StringBuilder(sc.scale.id() + " Tatra habitats (columns of a " + step + " m lattice):");
 		for (int h = 0; h < expected.length; h++) {
 			report.append(' ').append(((HabitatBiome) expected[h][0]).id()).append(expected[h][1] == null ? "" : "/" + expected[h][1])
 					.append(' ').append(counts.get(h)).append(';');
@@ -154,11 +183,14 @@ class BeltProfileTatraTest {
 	}
 
 	/** The tarns of the Tatras are the mountain tarn biome (and the biome occurs only there). */
-	@Test
-	void tarnsAreMountainTarns() {
-		LandscapeModel m = new LandscapeModel(SEED_A, LandscapeScale.GAMEPLAY, 1.0, true);
+	@ParameterizedTest
+	@EnumSource(Scale.class)
+	void tarnsAreMountainTarns(Scale sc) {
+		LandscapeModel m = new LandscapeModel(SEED_A, sc.scale, 1.0, true);
 		HabitatClassifier k = new HabitatClassifier(SEED_A, m, HabitatClassifier.Mode.NATURAL);
-		List<LandscapeModel.TatraTarn> tarns = m.tatraTarns(-BOX, -BOX, BOX, BOX);
+		LandscapeModel.Tatra near = sc.nearest(m);
+		double r = near.reach();
+		List<LandscapeModel.TatraTarn> tarns = m.tatraTarns(near.x() - r, near.z() - r, near.x() + r, near.z() + r);
 		assertTrue(tarns.size() >= 3, "tarns: " + tarns.size());
 		int tarn = 0;
 		for (LandscapeModel.TatraTarn t : tarns) {
@@ -167,7 +199,7 @@ class BeltProfileTatraTest {
 				tarn++;
 			}
 		}
-		System.out.printf(Locale.ROOT, "tarns %d, the mountain tarn biome at the center of %d%n", tarns.size(), tarn);
+		System.out.printf(Locale.ROOT, "%s: tarns %d, the mountain tarn biome at the center of %d%n", sc.scale.id(), tarns.size(), tarn);
 		assertTrue(tarn >= 0.9 * tarns.size(), "tarns with the mountain tarn biome: " + tarn + " of " + tarns.size());
 		assertTrue(tatraOnlyBiomes(), "tatra-only biomes");
 	}
@@ -179,15 +211,15 @@ class BeltProfileTatraTest {
 	}
 
 	/** Columns (counted, matching) per band in the box of the massif: every land column of the Tatras proper. */
-	static AtomicLongArray shares(LandscapeModel m, HabitatClassifier k, LandscapeModel.Tatra t) {
+	static AtomicLongArray shares(LandscapeModel m, HabitatClassifier k, LandscapeModel.Tatra t, double step) {
 		Band[] bands = Band.values();
 		AtomicLongArray l = new AtomicLongArray(2 * bands.length);
 		double half = 1.2 * t.halfLength();
-		int n = (int) (2 * half / STEP);
+		int n = (int) (2 * half / step);
 		IntStream.range(0, n).parallel().forEach(j -> {
 			for (int i = 0; i < n; i++) {
-				double x = t.x() - half + (i + 0.5) * STEP;
-				double z = t.z() - half + (j + 0.5) * STEP;
+				double x = t.x() - half + (i + 0.5) * step;
+				double z = t.z() - half + (j + 0.5) * step;
 				ColumnSample s = m.sample(x, z);
 				if (s.hasWater() || s.terrain().wTatra() < 0.9 || s.surface() < bands[0].from) {
 					continue;

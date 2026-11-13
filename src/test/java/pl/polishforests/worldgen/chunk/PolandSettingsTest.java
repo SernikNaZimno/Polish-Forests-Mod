@@ -117,8 +117,8 @@ class PolandSettingsTest {
 				assertEquals(LooseCover.THIN, read.looseCover(), preset);
 				assertTrue(read.coverInBlocks(), preset);
 				assertTrue(read.caves(), preset + ": new worlds have caves (step J1)");
-				// Step TT1: the Tatras are on in the gameplay preset and off in the realistic one (until step TT5).
-				assertEquals(preset.equals("poland_gameplay"), read.tatra(), preset + ": tatra");
+				// Step TT1: the Tatras are on in the gameplay preset; step TT5: also in the realistic one.
+				assertTrue(read.tatra(), preset + ": tatra");
 				assertTrue(settings.has("tatra"), preset + ": the tatra field is written");
 			}
 		}
@@ -143,6 +143,27 @@ class PolandSettingsTest {
 		// The other switches keep the Tatra setting.
 		assertTrue(gameplay.withCaves(false).withAgriculture(true).withLooseCover(LooseCover.REALISTIC).tatra());
 		assertTrue(decode("{\"version\": 2, \"tatra\": true}").tatra());
+	}
+
+	/**
+	 * Step TT5: a realistic world created in steps TT1–TT4 saved {@code "tatra": false} (the realistic preset had no Tatras
+	 * then), so it stays without them now that the preset has them; a new realistic world saves {@code true}.
+	 */
+	@Test
+	void realisticWorldsFromBeforeTT5StayWithoutTheTatras() {
+		String before = "{\"scale\": \"realistic\", \"region_scale\": 1.0, \"agriculture\": false, "
+				+ "\"managed_forest_share\": 0.85, \"alien_species\": true, \"version\": 2, \"cover_in_blocks\": true, "
+				+ "\"loose_cover\": \"thin\", \"caves\": true, \"tatra\": false}";
+		PolandSettings old = decode(before);
+		assertEquals(PolandScale.REALISTIC, old.scale());
+		assertFalse(old.tatra());
+		assertFalse(encode(old).get("tatra").getAsBoolean(), "the saved false is written back");
+		assertEquals(old, decode(encode(old).toString()));
+		PolandSettings fresh = PolandSettings.DEFAULT.withTatra(true);
+		assertTrue(decode(encode(fresh).toString()).tatra());
+		assertEquals(old, fresh.withTatra(false));
+		// A realistic world from before TT1 (no field) stays without them too.
+		assertFalse(decode("{\"version\": 2, \"scale\": \"realistic\", \"caves\": true}").tatra());
 	}
 
 	@Test

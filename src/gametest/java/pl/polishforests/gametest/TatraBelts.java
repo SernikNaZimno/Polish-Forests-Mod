@@ -12,6 +12,7 @@ import net.minecraft.tags.BlockTags;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.state.BlockState;
 import pl.polishforests.PolishForests;
+import pl.polishforests.command.PolishForestsCommands;
 import pl.polishforests.worldgen.chunk.ChunkHabitats;
 import pl.polishforests.worldgen.chunk.PolandChunkGenerator;
 import pl.polishforests.worldgen.feature.plan.ForestBlend;
@@ -117,11 +118,13 @@ final class TatraBelts {
 		List<int[]> sites = new ArrayList<>();
 		boolean[] found = new boolean[FORESTS.length];
 		double half = 1.2 * t.halfLength();
-		int n = (int) (2 * half / STEP);
+		// Step TT5: the lattice grows with the forms (160 m at realistic scale), so the census keeps its number of columns.
+		double step = STEP * PolishForestsCommands.tatraFormScale(m);
+		int n = (int) (2 * half / step);
 		for (int j = 0; j < n; j++) {
 			for (int i = 0; i < n; i++) {
-				double x = t.x() - half + (i + 0.5) * STEP;
-				double z = t.z() - half + (j + 0.5) * STEP;
+				double x = t.x() - half + (i + 0.5) * step;
+				double z = t.z() - half + (j + 0.5) * step;
 				ColumnSample s = m.sample(x, z);
 				if (s.hasWater() || s.terrain().wTatra() < 0.9) {
 					continue;

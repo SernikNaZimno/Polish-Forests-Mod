@@ -34,7 +34,7 @@ import pl.polishforests.worldgen.tree.ForestStandMap;
  * and the first fresh pine site of the scale and appended after the plots of the slice, so these keep their places.
  * The table lives in {@code src/test/resources/slice_plots.txt}; {@code -Pgametest=slice} reads it.
  * Step TT4: two natural plots of the spruce-stone pine forest of the Tatras ({@link #TATRA_PREFIX}) in the gameplay
- * scale, searched in a world with the Tatras and appended last.
+ * scale, searched in a world with the Tatras and appended last; step TT5: two more in the realistic scale, after them.
  *
  * <p>A plot is the center of a 100 × 100 block square that holds its biome as a slice site does
  * ({@link SliceSitesTest#siteProblem} in both vegetation modes, the biome on at least {@value #MIN_BIOME} of the lattice) and lies in stands of its kind on at least
@@ -213,13 +213,19 @@ class SlicePlotsTest {
 	/**
 	 * Step TT4 (docs/04 "Kroki TT", TT4 (5)): the plots of the spruce-stone pine forest of the Tatras (Pino
 	 * cembrae-Piceetum, the {@code STONE_PINE} site variant of the natural montane spruce forest), named with this prefix.
-	 * They lie in the gameplay scale only (the realistic scale has no Tatras until step TT5), in a world with the Tatras,
-	 * are appended after the plots of the slice and of the steps F (so these keep their places and rows) and are not
-	 * counted among the plots of the montane spruce forest of step F6 ({@link #F_MISSING}: no natural plot in the Beskids).
+	 * They lie in a world with the Tatras, are appended after the plots of the slice and of the steps F (so these keep
+	 * their places and rows) and are not counted among the plots of the montane spruce forest of step F6
+	 * ({@link #F_MISSING}: no natural plot in the Beskids). Step TT5: the gameplay plots first, then those of the realistic
+	 * scale (the Tatras on in new realistic worlds), last in the table.
 	 */
 	static final String TATRA_PREFIX = "tatra_";
 	/** The origin of the search of the Tatra plots: the KT-6 site {@code tatra_stone_pine_1} of {@code ForestPerformance}. */
 	static final int[] TATRA_ORIGIN = {-23268, 87636};
+	/**
+	 * Step TT5: the origin of the search of the realistic Tatra plots: the best square of the spruce-stone pine forest
+	 * (83.2% of its lattice, natural mode) on a 200 m lattice over the massif nearest the origin (1182 km away).
+	 */
+	static final int[] TATRA_ORIGIN_REAL = {1_161_343, 99_681};
 	/**
 	 * Least share of a Tatra plot's lattice in forest columns of the spruce-stone pine forest (the association, without a
 	 * zone: the in-game census counts only these, and the rock zones of step TT2, the bare rock, the screes and the gullies,
@@ -229,8 +235,13 @@ class SlicePlotsTest {
 	static final double MIN_STONE_PINE = 0.60;
 	/** Rings of the search of the Tatra plots around {@link #TATRA_ORIGIN} (20 blocks apart). */
 	static final int TATRA_RINGS = 200;
-	/** Number of plots of the spruce-stone pine forest (gameplay scale, natural stands: the park has no others). */
+	/** Number of plots of the spruce-stone pine forest per scale (natural stands: the park has no others). */
 	static final int TATRA_PLOTS = 2;
+	/**
+	 * Step TT5: least distance between the Tatra plots of a scale (blocks), so the two sample different stands (the best
+	 * realistic squares lie side by side; the gameplay plots of TT4 are 2.1 km apart).
+	 */
+	static final int TATRA_APART = 1_000;
 
 	static boolean tatra(Plot p) {
 		return p.name().startsWith(TATRA_PREFIX);
@@ -294,7 +305,11 @@ class SlicePlotsTest {
 			// Step TT4: the Tatra plots apart (natural stands of the spruce-stone pine forest, gameplay scale only).
 			List<Plot> here = all.stream().filter(p -> !tatra(p)).toList();
 			List<Plot> inTatras = all.stream().filter(SlicePlotsTest::tatra).toList();
-			assertEquals(scale == LandscapeScale.GAMEPLAY ? TATRA_PLOTS : 0, inTatras.size(), scale.id() + " Tatra plots");
+			assertEquals(TATRA_PLOTS, inTatras.size(), scale.id() + " Tatra plots");
+			for (int i = 1; i < inTatras.size(); i++) {
+				assertTrue(Math.hypot(inTatras.get(i).x() - inTatras.get(0).x(), inTatras.get(i).z() - inTatras.get(0).z()) >= TATRA_APART,
+						scale.id() + " Tatra plots too close");
+			}
 			assertTrue(inTatras.stream().allMatch(p -> p.natural() && p.age() == null && p.biome() == HabitatBiome.MONTANE_SPRUCE_FOREST),
 					scale.id() + " Tatra plots: natural montane spruce forest of any age");
 			int firstTatra = inTatras.isEmpty() ? plots.size() : plots.indexOf(inTatras.getFirst());
@@ -613,18 +628,12 @@ class SlicePlotsTest {
 			}
 			// Step TT4: the plots of the spruce-stone pine forest of the Tatras, last (gameplay scale, a world with the Tatras).
 			if (scale == LandscapeScale.GAMEPLAY) {
-				List<Plot> keptTatra = kept.stream().filter(SlicePlotsTest::tatra).toList();
-				for (int n = 1; n <= TATRA_PLOTS; n++) {
-					String name = TATRA_PREFIX + "stone_pine_natural_" + n;
-					Plot old = keptTatra.stream().filter(q -> q.name().equals(name)).findFirst().orElse(null);
-					int[] at = old != null ? new int[] {old.x(), old.z()} : searchTatra(chosen);
-					Plot p = new Plot(scale, true, null, name, HabitatBiome.MONTANE_SPRUCE_FOREST, at[0], at[1]);
-					chosen.add(p);
-					lines.add(p.line());
-					System.out.println("[plots] " + p.line());
-				}
+				tatraPlots(scale, kept, chosen, lines);
 			}
 		}
+		// Step TT5: the realistic plots of the spruce-stone pine forest after the gameplay ones (the massif lies 1182 km from
+		// the other realistic plots, so only the two of them keep apart).
+		tatraPlots(LandscapeScale.REALISTIC, kept, new ArrayList<>(), lines);
 		Path file = Path.of(System.getProperty("polishforests.slice.plots.file"));
 		Files.writeString(file, String.join("\n", lines) + "\n", StandardCharsets.UTF_8);
 	}
@@ -694,8 +703,8 @@ class SlicePlotsTest {
 	 * rings) in the spruce-stone pine forest of a world with the Tatras, in natural stands (the park), at least
 	 * {@value #MIN_APART} blocks from the plots chosen before.
 	 */
-	private static int[] searchTatra(List<Plot> chosen) {
-		LandscapeScale scale = LandscapeScale.GAMEPLAY;
+	private static int[] searchTatra(LandscapeScale scale, List<Plot> chosen) {
+		int[] origin = scale == LandscapeScale.REALISTIC ? TATRA_ORIGIN_REAL : TATRA_ORIGIN;
 		HabitatTargets.World natural = world(scale, HabitatClassifier.Mode.NATURAL, true);
 		HabitatTargets.World presentDay = world(scale, HabitatClassifier.Mode.PRESENT_DAY, true);
 		ForestStandMap map = new ForestStandMap(PolishForestsCommandsTest.SEED, scale.local(), MANAGED_SHARE).withPark(natural.model()::tatraPark);
@@ -708,9 +717,9 @@ class SlicePlotsTest {
 					if (Math.max(Math.abs(a), Math.abs(b)) != r) {
 						continue;
 					}
-					int x = TATRA_ORIGIN[0] + a * step;
-					int z = TATRA_ORIGIN[1] + b * step;
-					if (chosen.stream().anyMatch(p -> Math.hypot(p.x() - x, p.z() - z) < MIN_APART)
+					int x = origin[0] + a * step;
+					int z = origin[1] + b * step;
+					if (chosen.stream().anyMatch(p -> Math.hypot(p.x() - x, p.z() - z) < (tatra(p) ? TATRA_APART : MIN_APART))
 							|| ForestNorms.siteOf(natural.code(x, z)) != ForestNorms.Site.STONE_PINE
 							|| ForestNorms.siteOf(presentDay.code(x, z)) != ForestNorms.Site.STONE_PINE
 							|| standShare(map, true, null, x, z) < MIN_STAND + 0.05) {
@@ -731,8 +740,25 @@ class SlicePlotsTest {
 				}
 			}
 		}
-		throw new AssertionError("no plot of the spruce-stone pine forest within " + TATRA_RINGS * 20 + " blocks of " + TATRA_ORIGIN[0] + ", "
-				+ TATRA_ORIGIN[1] + String.format(Locale.ROOT, " (best square %.1f%% at %s)", 100 * best, java.util.Arrays.toString(bestAt)));
+		throw new AssertionError("no plot of the spruce-stone pine forest within " + TATRA_RINGS * 20 + " blocks of " + origin[0] + ", "
+				+ origin[1] + String.format(Locale.ROOT, " (best square %.1f%% at %s)", 100 * best, java.util.Arrays.toString(bestAt)));
+	}
+
+	/**
+	 * Step TT4 (TT5: per scale): the {@value #TATRA_PLOTS} plots of the spruce-stone pine forest of the scale, kept from the
+	 * table or searched ({@link #searchTatra}), added to the lines.
+	 */
+	static void tatraPlots(LandscapeScale scale, List<Plot> kept, List<Plot> chosen, List<String> lines) {
+		List<Plot> keptTatra = kept.stream().filter(q -> tatra(q) && q.scale() == scale).toList();
+		for (int n = 1; n <= TATRA_PLOTS; n++) {
+			String name = TATRA_PREFIX + "stone_pine_natural_" + n;
+			Plot old = keptTatra.stream().filter(q -> q.name().equals(name)).findFirst().orElse(null);
+			int[] at = old != null ? new int[] {old.x(), old.z()} : searchTatra(scale, chosen);
+			Plot p = new Plot(scale, true, null, name, HabitatBiome.MONTANE_SPRUCE_FOREST, at[0], at[1]);
+			chosen.add(p);
+			lines.add(p.line());
+			System.out.println("[plots] " + p.line());
+		}
 	}
 
 	/** {@link #search} within the given rings; null when none passes. */

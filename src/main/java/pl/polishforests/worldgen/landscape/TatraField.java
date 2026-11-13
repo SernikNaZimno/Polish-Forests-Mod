@@ -75,6 +75,13 @@ final class TatraField {
 	static final double ROUGH = 6;
 	/** Hanging valleys begin above this share of the side width (over the valley heads of every valley). */
 	static final double HANG_IN = 0.17;
+	/**
+	 * Step TT5: the hanging valleys fade in between these shares of the High Tatras (TT1: a switch at 0.5): about 150 m
+	 * along the ridge at gameplay scale and 500 m at realistic scale, so the depth of up to 220 m rises at most about
+	 * 1.5 m per m. Below 0.5 and above 0.8 the relief is that of TT1.
+	 */
+	static final double HANG_HIGH0 = 0.5;
+	static final double HANG_HIGH1 = 0.8;
 	/** Core of the massif for the river network (no springs, no flow across), as GM_CORE of the large massifs. */
 	static final double CORE = 0.3;
 	/**
@@ -112,10 +119,36 @@ final class TatraField {
 	/**
 	 * Step TT2: blocks per meter of height at {@code h} m a.s.l. in the gameplay scale (the derivative of
 	 * {@code VerticalScale.GAMEPLAY}, 1.89 · m^0.742): the slopes of the gullies and the scree cones are given in blocks, as
-	 * the player sees them. The Tatras are gameplay-only until step TT5.
+	 * the player sees them.
 	 */
-	static double blocksPerMeter(double h) {
+	static double gameplayBlocksPerMeter(double h) {
 		return 1.89 * 0.742 * Math.pow(Math.max(h, 100.0), -0.258);
+	}
+
+	/**
+	 * Step TT5: blocks per meter of height at {@code h} m a.s.l. in the scale: the gameplay derivative
+	 * ({@link #gameplayBlocksPerMeter}) or the derivative of the realistic curve of {@code PolandDimension} (1 up to about
+	 * 880 m, 1 / 1.76 above the knee at 1200 m, {@link LandscapeScale#realBlocksPerMeter}).
+	 */
+	static double blocksPerMeter(LandscapeScale scale, double h) {
+		return scale == LandscapeScale.REALISTIC ? LandscapeScale.realBlocksPerMeter(h) : gameplayBlocksPerMeter(h);
+	}
+
+	/** Step TT5: blocks per meter of height at {@code h} m a.s.l. in the scale of this field. */
+	double blocksPerMeter(double h) {
+		return blocksPerMeter(scale, h);
+	}
+
+	/** Step TT5: horizontal scale of the gameplay massif (its {@code mountainSpacing}). */
+	static final double GAMEPLAY_K = 0.3;
+
+	/**
+	 * Step TT5: how many times the horizontal sizes of the forms exceed those of the gameplay massif (1 there, 3.33 in the
+	 * realistic scale). Sizes given in blocks for the gameplay massif (the depth of a tarn) grow with it, so that their
+	 * angles in blocks stay about the same in both scales.
+	 */
+	double formScale() {
+		return Math.max(1.0, k / GAMEPLAY_K);
 	}
 
 	/** Tatra massif of one grid cell. */
@@ -197,6 +230,7 @@ final class TatraField {
 	private final Noise place;
 	private final Noise relief;
 	private final Noise geology;
+	private final LandscapeScale scale;
 	private final double k;
 	private final double spacing;
 	private final double zs;
@@ -207,6 +241,7 @@ final class TatraField {
 		this.place = root.derive("mountain.tatra");
 		this.relief = root.derive("mountain.tatra.relief");
 		this.geology = root.derive("mountain.tatra.geology");
+		this.scale = scale;
 		this.k = scale.mountainSpacing();
 		this.spacing = 213_000 * k;
 		this.zs = zs;
@@ -909,10 +944,12 @@ final class TatraField {
 		double q2 = (phiR - jr) * d;
 		long ri = m.i() * 4_096 + jr;
 		// The depth fades in above the valley heads (the same bound for every valley, uc ≤ 0.165) and out towards the
-		// middle, so the hanging valley meets the neighbouring slopes without a step.
-		if (high > 0.5 && place.unit(ri, vj, 26) < 0.45 && un > HANG_IN && un < 0.5) {
+		// middle, so the hanging valley meets the neighbouring slopes without a step. Step TT5: it also fades in over the
+		// share of the High Tatras HANG_HIGH0–HANG_HIGH1 along the ridge (TT1 switched it on at the share 0.5, a step of up
+		// to 220 m across the side ridge where the share passed 0.5; found by TatraRiverTest in a realistic massif).
+		if (high > HANG_HIGH0 && place.unit(ri, vj, 26) < 0.45 && un > HANG_IN && un < 0.5) {
 			double hangDepth = (150 + 70 * place.unit(ri, vj, 27)) * Noise.smoothstep(HANG_IN, HANG_IN + 0.1, un)
-					* (1 - Noise.smoothstep(0.3, 0.5, un));
+					* (1 - Noise.smoothstep(0.3, 0.5, un)) * Noise.smoothstep(HANG_HIGH0, HANG_HIGH1, high);
 			double hf = rg - hangDepth;
 			double fh = 0.035 * d;
 			double p2 = (Math.abs(q2) - fh) / (0.2 * d - fh);

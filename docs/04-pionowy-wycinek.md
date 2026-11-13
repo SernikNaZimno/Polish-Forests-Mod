@@ -5284,6 +5284,129 @@ Przegląd: jedna sprawa główna (prawdziwa, poprawiona) i 6 drobnych. Drobne sp
 - **Przebiegi** (`test_plan.py e18df2d --end`: unit, generation, norms; dodatkowo `tatra` według wskazówki przeglądu): pełny `run-tests test` PASS (1102 s, drzewo `120b3ca04592`, 577 testów w 112 klasach, 4 pominięte, 0 błędów). `tatra` PASS (6 min): KF-1 i udziały pięter jak w TT4 (kosodrzewina 0,7 pnia planera na chunk, 0 kłód wanilii; obszar KF-1 nie sięga górnej granicy limb). `determinism` wobec referencji TT3 PASS (20 min 39 s): teren identyczny we wszystkich 46 obszarach, dekoracja 0 różnic we wszystkich 46 (zmiana dotyczy tylko kosodrzewiny na granicie ok. 1635–1715 m, poza obszarami). `determinism -Poptimization` EXIT 1 jak w TT1–TT4 (32 z 46 obszarów, najwyżej 3259 bloków, dekoracja najwyżej 14 747 kolumn, `tatra` 9 bloków w 8 kolumnach). `slice -Psites=none` PASS (21 min 36 s): 221 wierszy `out` jak w TT4 (219 lasów wycinka i kroków F + N5 powierzchni 2 w obu trybach), karta obu powierzchni Tatr bez zmian (powierzchnie leżą w lesie, nie w kosodrzewinie); różnice wartości tylko w 4 miejscach REAL (`dry_pine_managed_1` N i D, `montane_beech_natural_1`, `oak_hornbeam_natural_1` D; REAL nie ma Tatr) bez zmiany werdyktów — znany rozrzut kolejności chunków (TT4-n). Bez pomiarów czasu (zmiana jednego warunku klasyfikatora).
 - **Dokumentacja:** KT-4 i punkty 4, 8, 12 listy „Do sprawdzenia w grze” w „Stan po TT4”, G.53 TT4-a, TT4-f, TT4-o (uwaga przeglądu o profilu luk), DP-159 … DP-163, BRIEF.
 
+## Projekt TT5 (2026-11-13, etap 1: kod, dane, testy jednostkowe)
+
+Krok TT5 planu „Kroki TT” (§3): Tatry w skali REAL. Masyw TT1–TT4 w REAL zrobiony z tego samego modelu w metrach. Formy poziome rosną z odstępem gór `mountainSpacing` (GAMEPLAY 0,3, REAL 1,0), więc masyw REAL jest 3,33 × większy (pół długości grani 23,7–26,9 km, zasięg 44–47 km). Wysokości idą krzywą `PolandDimension`: 1:1 do 880 m, kolano 1200 m, ściśnięcie 1,7626, Rysy 2499 m = Y 2000. Etap 1 obejmuje kod, dane, testy jednostkowe i fastTest. Przebiegi w grze, KT-6 i „Stan po TT5” należą do etapu 2; wybory TT5-a … TT5-j do `docs/00` G.54 wpisze etap 2. Baza kroku: `2aa471a`.
+
+**Ustawienie świata (TT5-a).**
+
+- Preset `poland` (REAL) ma teraz `"tatra": true`.
+- Światy REAL z TT1–TT4 zapisały `false` i zostają bez Tatr; światy sprzed TT1 nie mają pola i też są bez Tatr. Test: `PolandSettingsTest.realisticWorldsFromBeforeTT5StayWithoutTheTatras`.
+- `PolandSettings.DEFAULT` zostaje z `tatra = false`. To zapas kodeka i baza `CaveFixture`; nowe światy biorą wartość z presetu.
+- Przełącznik Tatr w „Dostosuj” działa w obu skalach. Zniknęła blokada skali REAL i jej podpowiedź `polishforests.options.tatra.realistic.tooltip` (en, pl).
+
+**Nachylenia w blokach (TT5-b).**
+
+- Krzywa REAL ma pochodną `LandscapeScale.realBlocksPerMeter(m)`: 1 do 880 m, potem logistycznie do 1/1,7626 = 0,567. `LandscapeScaleTest` porównuje ją z pochodną numeryczną `PolandDimension.blocksForMeters` (tolerancja 1e-5, w 870–890 m 0,01).
+- `TatraField.blocksPerMeter(h)` daje pochodną krzywej skali (GAMEPLAY 1,89·m^0,742). Używają jej:
+  - nachylenie kolumny w blokach (`HabitatClassifier.Column.blockSlope()`), z którego `TatraZones` i `AltitudinalBelts` biorą progi skał, piargów, żlebów i murawy naskalnej;
+  - głębokość stawów (`TatraWaters`, × `formScale` / bpm);
+  - głębokość potoków (`LandscapeModel`).
+- Kształty w metrach mają w REAL ściany 3,33 × łagodniejsze w metrach, ale bpm jest 4–5 × większe. Kąty w blokach wychodzą więc podobne w obu skalach, co sprawdza nowy test `TatraFormsTest.slopesInBlocks`:
+
+| Klasa | p50 REAL / GAMEPLAY | p90 REAL / GAMEPLAY |
+|---|---|---|
+| wszystkie klasy | 0,85–1,03 | 0,88–1,04 |
+
+- Mediany w REAL: żleby 34,6–35,9°, stożki piargowe 31,4–32,4°, turnie 50,7–52,2°.
+
+**Poprawka rzeźby TT1: wiszące doliny (TT5-c).**
+
+- W TT1 wiszące doliny włączały się skokiem przy udziale Tatr Wysokich 0,5 (`high > 0.5`). W GAMEPLAY różnica ginęła na krótkim odcinku. W REAL dała uskok powierzchni 420 m na jednym metrze (ziarno 4, masyw 548 145, 1 127 093).
+- Teraz głębokość wiszących dolin narasta `smoothstep(0.5, 0.8, high)` (`HANG_HIGH0`, `HANG_HIGH1`). To ok. 150 m wzdłuż grani w GAMEPLAY i 500 m w REAL, czyli do 1,5 m na metr przy głębokości do 220 m.
+- Rzeźba TT1 zmienia się tylko w pasie udziału 0,5–0,8. Łaty GAMEPLAY w `golden_terrain_tatra.txt` wyszły bez zmian (pas leży poza nimi). Gametest `tatra` GAMEPLAY w etapie 2 pokaże, czy zmieniło się coś w grze.
+
+**Wyszukiwanie i komendy (TT5-d).**
+
+- `PolishForestsCommands.tatraRadius`: 300 km w GAMEPLAY i 2000 km w REAL. Masywy REAL najbliższe początku leżą 370–1260 km od niego (ziarno A 1182 km, ziarno B 373 km, ziarno 4 1253 km).
+- `tatraFormScale(model)` = max(1, k/0,3) mnoży krok kraty szukania celów Tatr.
+- `find tatra` w REAL: 0,7–2,4 s. Wszystkie 12 celów Tatr znajduje się dla ziaren 20260927 i 4 (`PolishForestsCommandsTest.tatraTargetsAreFoundInRealisticScale`).
+
+**Izolacja (KT-1).**
+
+- Kwadrat wpływu REAL = zasięg 49 232 m + 4 odstępy rzek rzędu 3 (20 km), razem 129 km pół boku.
+- Wynik: ziarno A 8450 punktów poza kwadratami i 0 różnic, ziarno B 11 060 punktów i 0 różnic.
+- Nowy test `realisticTestPlacesLieOutsideTheTatras` (ziarno A) sprawdza dwie rzeczy:
+  - żaden kwadrat wpływu Tatr REAL nie sięga pola ±300 km wokół początku, a w nim leżą wszystkie stałe miejsca gier testowych REAL poza dwoma;
+  - te dwa dalekie miejsca w Beskidach (obszary `beskids` i `dwarf_pine` gry `determinism`, 154 834, 1 058 738 i 97 137, 1 034 797) z otoczeniem 3 km leżą poza każdym kwadratem.
+
+  Dlatego karta F7, `SlicePlotsTest`, `habitats` i `determinism` REAL poza nowymi miejscami w Tatrach nie powinny się zmienić.
+- `changeEndsWithinTheInfluenceSquare` pomija próbki w kwadracie innego masywu. Drugi masyw ziarna A leży 161 km na wschód, a wcześniej test liczył jego zmiany jako przeciek.
+- Złoty M2 z Tatrami: porównano 100 łat. W zasięgu Tatr REAL (porównywane tylko bez Tatr) są: siatka REAL B, `mountain_stream`, `beskids`, `summit` i REAL A 0,5 `great_massif`.
+
+**Wysokości (KT, wierzch).** Najwyższe szczyty modelu REAL mają 2479–2522 m (Y 1988–2012), a najwyższy możliwy 2530 m daje Y 2018. Śnieg i korony nad wierzchem sprawdzi gametest `tatra` w etapie 2: `MAX_Y_REAL = 2025`, blok nad Y 2031 = błąd.
+
+**Formy REAL (testy jednostkowe):**
+
+| Masyw | Stawy (za moreną) | Największy (Morskie Oko) | Przecieki / wiszące |
+|---|---|---|---|
+| A (1 177 537, 102 475) | 35 (15) | 559 × 784 m | 0 / 0 |
+| A, drugi (1 338 469, 136 542) | 21 (7) | 676 × 845 m | 0 / 0 |
+| B (−91 586, 362 072) | 30 (13) | 671 × 805 m | 0 / 0 |
+| 4 (548 145, 1 127 093) | 27 (10) | 741 × 845 m | 0 / 0 |
+
+- U-doliny: 29–38 na masyw, 75–86% z kotłem u wylotu, ≥ 94% co najmniej 800 m pod granią.
+- Grań bez wody (0 mokrych linii grani), skok powierzchni z rzekami do 9,2 na metr (stary teren do 9,0), skok lustra wody do 2 m.
+
+**Piętra REAL (`BeltProfileTatraTest`, parametr skali; krata 107 m).**
+
+| Masyw | regiel górny | kosodrzewina | piętro alpejskie | piętro turni |
+|---|---|---|---|---|
+| A | 99,7% | 98,3% | 99,9% | 99,6% |
+| B | 99,3% | 95,9% | 99,7% | 99,7% |
+
+- Wszystkie progi TT3 spełnione. Wszystkie siedliska Tatr występują. 35 z 35 stawów leży w biomie `mountain_tarn`.
+
+**Dane testowe.**
+
+- `golden_terrain_tatra.txt` (`-PwriteGoldenTatra`) dostał zestawy `realistic 20260927 1.0` i `realistic -7316550294015845337 1.0` z sześcioma łatami: grań granitowa, kocioł, regiel wapienny, Tatry Zachodnie, Podhale, przejście do Beskidów. Linie GAMEPLAY bez zmian.
+- `slice_plots.txt`: powierzchnie `realistic natural any tatra_stone_pine_natural_1` (1 161 343, 99 681; najlepszy kwadrat 83,2% limbowej świerczyny) i `_2` (1 160 603, 98 941, 1047 m dalej).
+- `SlicePlotsTest` szuka powierzchni Tatr w obu skalach: początek szukania REAL na masywie A, odstęp ≥ 1000 m (`TATRA_APART`; pierwsza próba dała drugą powierzchnię 141 m od pierwszej).
+
+**Testy zmienione na obie skale:**
+
+- `TatraSurvey` (masywy według skali, `step`, `vertical`, `top`);
+- `TatraReliefTest`;
+- `TatraFormsTest`;
+- `TatraRiverTest`;
+- `GoldenTatraTest`;
+- `BeltProfileTatraTest` (`@EnumSource`: udziały, siedliska, stawy);
+- `PolishForestsCommandsTest`;
+- `PolandSettingsTest`.
+
+Progi według skali (TT5-e):
+
+- Giewont ≤ 1980 m. W REAL grzbiet wapienny wychodzi 1954–1967 m; plan mówi „do ok. 1900”.
+- Najmniejsze nachylenie ściany w metrach 0,6 w REAL (GAMEPLAY 1,0), bo w blokach to ten sam kąt.
+- Okno testu prostych uskoków i odchylenia w krokach skalowanych `step(sc, …)`.
+
+`StonePineLimitTest` i `TatraStonePineStepTT4Test` zostają tylko w GAMEPLAY. Klasyfikator jest ten sam, a różni się tylko `blockSlope`. `StandCensusSimulationTest` nie zależy od skali, więc symulacja REAL = GAMEPLAY.
+
+**Gametesty (przebiegi w etapie 2):**
+
+- `tatra` w obu skalach (`-Pscales`), REAL najpierw. Preset `poland`, łaty z zestawu REAL A, `MAX_Y_REAL = 2025`.
+  - Odległości transektów × 3,33, a krok transektu, krata szczytu i nachyleń × `tatraFormScale`.
+  - Nachylenia z `VerticalScale.REAL` trafiają do `slopes_<scale>.txt`. Raport `build/tatra/report.txt` ma sekcje `=== <scale> scale`.
+  - Tablica roślin tylko w GAMEPLAY. Krata pięter `TatraBelts` × `tatraFormScale`.
+- `determinism`: obszar `tatra` REAL na grani granitowej (1 177 964, 102 710). Referencja sprzed TT5 nie ma dla niego wpisu.
+- `caves` i `cave_biomes`: w świecie z Tatrami dwa nowe miejsca `tatra_regle` (suchy regiel wapienny) i `tatra_ridge` (Tatry Wysokie > 1800 m), oczekiwane 7 miejsc zamiast 5. Biomy jaskiniowe sięgają tylko do Y 256, więc pod granią REAL leżą głęboko pod powierzchnią.
+- `ForestPerformance`: miejsca KT-6 REAL `tatra_high_1` (1 177 964, 102 710) i `tatra_stone_pine_1` (1 161 343, 99 681) obok `montane_spruce_1` REAL.
+
+**Datagen.** `runDatagen` zdjął podpowiedź skali REAL i odświeżył dwa pliki sadzonki modrzewia (`sapling/larch.json` bez `size`, `larch/medium.json` 0,68). Pliki zostały w TT4 sprzed zmiany tyczkowiny modrzewia z 17 na 15 bloków (Projekt TT4, `SaplingSizeTest`). `checkDatagen` przechodzi.
+
+Wybory domyślne (do G.54):
+
+- (a) `tatra` w presecie REAL, `DEFAULT` false.
+- (b) Pochodna krzywej skali w nachyleniach i głębokościach wody.
+- (c) Rampa wiszących dolin 0,5–0,8.
+- (d) Zasięg szukania 300 / 2000 km i krata × `tatraFormScale`.
+- (e) Progi testów według skali (Giewont 1980, ściana 0,6).
+- (f) Powierzchnie limbowe REAL 1000 m od siebie.
+- (g) Miejsca KT-6 i obszar `determinism` REAL na grani i w limbowej świerczynie masywu A.
+- (h) Miejsca jaskiń w Tatrach.
+- (i) Testy limby tylko w GAMEPLAY.
+- (j) Masywy REAL daleko od początku (najbliższy 373–1253 km dla ziaren testowych), bez przesuwania ich bliżej.
+
 ## Do kroku porządkowego (lista drobiazgów z recenzji)
 
 Lista założona w V10 według decyzji użytkownika z 2026-10-21 (`docs/00` F, P4): drobiazgi widoczne tylko na zbliżeniach albo w pomiarach bez wpływu na grę nie są poprawiane od razu, tylko trafiają tutaj; zbiorczy krok porządkowy na końcu kamienia milowego przegląda listę i poprawia, co warto. Każdy wpis: krok, w którym powstał, opis, gdzie szukać, propozycja. Wpis usuwamy (albo przekreślamy z commitem), gdy jest zrobiony.

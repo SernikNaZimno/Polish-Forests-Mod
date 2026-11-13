@@ -337,7 +337,7 @@ public final class AltitudinalBelts {
 		if (north && hollow && tatraPatch(c, 3, 40) < SNOWBED_SHARE) {
 			return Association.SNOWBED;
 		}
-		if (c.t.has(Landform.PINNACLE) || c.slope > ROCK_GRASSLAND_SLOPE + 5 * tatraNoise(c, 4, 60)) {
+		if (c.t.has(Landform.PINNACLE) || c.blockSlope() > ROCK_GRASSLAND_SLOPE + 5 * tatraNoise(c, 4, 60)) {
 			return Association.ROCK_GRASSLAND;
 		}
 		return rock == Substrate.LIMESTONE || rock == Substrate.DOLOMITE ? Association.ALPINE_CALCAREOUS : Association.ALPINE_SILICATE;

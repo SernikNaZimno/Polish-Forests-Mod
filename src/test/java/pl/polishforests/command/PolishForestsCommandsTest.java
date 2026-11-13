@@ -63,6 +63,23 @@ class PolishForestsCommandsTest {
 		}
 	}
 
+	/**
+	 * Step TT5: in the realistic scale (the Tatras on in new worlds) the Tatra targets are found for the seeds of the
+	 * criterion (20260927 and 4), within the wide radius of 2000 km ({@code tatraRadius}); the distance of
+	 * {@code find tatra} from the origin and the time of each search go to the output.
+	 */
+	@Test
+	void tatraTargetsAreFoundInRealisticScale() {
+		for (long seed : new long[] {SEED, 4L}) {
+			HabitatTargets.World w = world(seed, LandscapeScale.REALISTIC, HabitatClassifier.Mode.NATURAL, true);
+			assertFound(w, List.copyOf(TATRA_TARGETS));
+			double[] p = PolishForestsCommands.locate(w, PolishForestsCommands.Target.TATRA, 0, 0);
+			System.out.printf(java.util.Locale.ROOT, "realistic seed %d: find tatra at (%.0f, %.0f), %.0f km from the origin%n", seed,
+					p[0], p[1], Math.hypot(p[0], p[1]) / 1000);
+			assertTrue(Math.hypot(p[0], p[1]) < PolishForestsCommands.tatraRadius(w.model()));
+		}
+	}
+
 	@Test
 	void coastAndWatersAreFoundInRealisticScale() {
 		assertFound(world(LandscapeScale.REALISTIC, HabitatClassifier.Mode.NATURAL), List.of(PolishForestsCommands.Target.values()).stream()

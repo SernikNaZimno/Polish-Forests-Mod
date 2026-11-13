@@ -77,25 +77,40 @@ import pl.polishforests.worldgen.surface.Material;
  * block off the model, a column with a bedrock in the model without its rock block, a rock block without a bedrock, a
  * transect off the model, a summit out of range or a block above Y 720, and (TT3) on a belt share below KT-1 or a vanilla
  * log trunk deep in a Tatra forest.
+ *
+ * <p>Step TT5: in both scales ({@code -Pscales=realistic|gameplay}, both by default, the realistic first): a world of each
+ * preset (the Tatras on in both since TT5), the patches of the golden sets REALISTIC A and GAMEPLAY A, the highest block
+ * at most Y {@value #MAX_Y_REAL} in the realistic scale (the world ends at Y 2031) and Y {@value #MAX_Y} in the gameplay
+ * one, the lattices, the transects and the summit search grown with the forms (3.33 times at realistic scale), the wide
+ * search of the massif within {@code PolishForestsCommands.tatraRadius} (2000 km at realistic scale). The board of the
+ * plants only in the gameplay scale. The report holds both scales, the slope histograms go to
+ * {@code build/tatra/slopes_<scale>.txt}.
  */
 public final class TatraClientGameTest implements FabricClientGameTest {
 	private static final String SEED = "20260927";
 	private static final ResourceKey<WorldPreset> PRESET = ResourceKey.create(Registries.WORLD_PRESET,
 			PolishForests.id("poland_gameplay"));
+	/** Step TT5: the realistic preset. */
+	private static final ResourceKey<WorldPreset> PRESET_REAL = ResourceKey.create(Registries.WORLD_PRESET,
+			PolishForests.id("poland"));
 	/** The patches of set GAMEPLAY A of {@code golden_terrain_tatra.txt}: name, x, z. */
 	private static final Object[][] PATCHES = {{"granite_ridge", -24_456, 87_894}, {"cirque", -24_735, 87_952},
 			{"regle_limestone", -23_189, 86_849}, {"western_tatra", -24_669, 87_706}, {"podhale", -21_775, 86_238},
 			{"beskid_transition", -19_282, 84_795}};
-	/** KT-1: no block above this Y. */
+	/** Step TT5: the patches of set REALISTIC A of {@code golden_terrain_tatra.txt}: name, x, z. */
+	private static final Object[][] PATCHES_REAL = {{"granite_ridge", 1_177_964, 102_710}, {"cirque", 1_179_015, 103_290},
+			{"regle_limestone", 1_180_979, 97_864}, {"western_tatra", 1_177_031, 102_538}, {"podhale", 1_183_207, 92_583},
+			{"beskid_transition", 1_171_933, 112_403}};
+	/** KT-1: no block above this Y (gameplay scale). */
 	private static final int MAX_Y = 720;
+	/** Step TT5: no block above this Y in the realistic scale (the top of the world is Y 2031). */
+	private static final int MAX_Y_REAL = 2_025;
 	/** Depth below the top block searched for the rock block of a column with a bedrock (blocks). */
 	private static final int ROCK_DEPTH = 24;
 	/** Ticks waited after each step of the work (the generated chunks unload and save). */
 	private static final int SETTLE_TICKS = 100;
 	/** Spacing of the transect points (m). */
 	private static final double TRANSECT_STEP = 250;
-	/** Half side of the box searched for the massif nearest to the origin (m, as the wide phase of find tatra). */
-	private static final double BOX = 300_000;
 	/** Step TT2: tarns of the nearest massif in the census. */
 	private static final int TARNS = 6;
 	/** Step TT2: grid spacing of the slope histogram (m). */
@@ -112,7 +127,44 @@ public final class TatraClientGameTest implements FabricClientGameTest {
 		}
 		List<String> report = new ArrayList<>();
 		List<String> failures = new ArrayList<>();
-		try (TestSingleplayerContext sp = context.worldBuilder().adjustSettings(TatraClientGameTest::select).create()) {
+		String scales = System.getProperty("polishforests.scales", "");
+		for (boolean real : new boolean[] {true, false}) {
+			if (!scales.isBlank() && !scales.contains(real ? "realistic" : "gameplay")) {
+				continue;
+			}
+			report.add("=== " + (real ? "realistic" : "gameplay") + " scale");
+			List<String> fails = new ArrayList<>();
+			run(context, real, report, fails);
+			fails.forEach(f -> failures.add((real ? "realistic: " : "gameplay: ") + f));
+		}
+		report.add(failures.isEmpty() ? "PASS" : "FAIL: " + String.join("; ", failures));
+		String dir = System.getProperty("polishforests.tatra.out", "build/tatra");
+		try {
+			Files.createDirectories(Path.of(dir));
+			Files.write(Path.of(dir, "report.txt"), report, StandardCharsets.UTF_8);
+		} catch (IOException e) {
+			throw new java.io.UncheckedIOException(e);
+		}
+		report.forEach(l -> PolishForests.LOG.info("[tatra] {}", l));
+		if (!failures.isEmpty()) {
+			throw new AssertionError("Tatras: " + String.join("; ", failures));
+		}
+	}
+
+	/** Step TT5: the factor of the lattices and distances of the scale (1 at gameplay scale, 3.33 at realistic scale). */
+	private static double f(LandscapeModel m) {
+		return PolishForestsCommands.tatraFormScale(m);
+	}
+
+	/** Step TT5: the highest Y allowed in the scale of the level. */
+	private static int maxY(ServerLevel level) {
+		return model(level).scale() == pl.polishforests.worldgen.landscape.LandscapeScale.REALISTIC ? MAX_Y_REAL : MAX_Y;
+	}
+
+	/** The work of one scale (step TT5: the body of TT1-TT4, per scale). */
+	private static void run(ClientGameTestContext context, boolean real, List<String> report, List<String> failures) {
+		Object[][] patches = real ? PATCHES_REAL : PATCHES;
+		try (TestSingleplayerContext sp = context.worldBuilder().adjustSettings(ui -> select(ui, real)).create()) {
 			sp.getServer().runCommand("gamemode spectator @a");
 			// The work in steps with ticks between them: the chunks generated by a step (a temporary ticket each) unload and
 			// save in those ticks, so the world does not close with hundreds of chunks to save at once (the stall watchdog).
@@ -120,14 +172,14 @@ public final class TatraClientGameTest implements FabricClientGameTest {
 			Map<String, Map<String, Integer>> surface = new TreeMap<>();
 			LandscapeModel.Tatra t = sp.getServer().computeOnServer(s -> {
 				targets(s, report, failures);
-				for (Object[] p : PATCHES) {
+				for (Object[] p : patches) {
 					patch(s.overworld(), (String) p[0], (Integer) p[1], (Integer) p[2], census, report, failures);
 				}
 				// Before the summit and the transects, so none of their chunks is in the square.
-				load(s.overworld(), (Integer) PATCHES[0][1], (Integer) PATCHES[0][2], report);
+				load(s.overworld(), (Integer) patches[0][1], (Integer) patches[0][2], report);
 				LandscapeModel.Tatra n = nearest(model(s.overworld()));
 				if (n == null) {
-					failures.add("no Tatra massif within " + BOX + " m of the origin");
+					failures.add("no Tatra massif within " + PolishForestsCommands.tatraRadius(model(s.overworld())) + " m of the origin");
 				} else {
 					summit(s.overworld(), n, report, failures);
 				}
@@ -135,15 +187,17 @@ public final class TatraClientGameTest implements FabricClientGameTest {
 			});
 			context.waitTicks(SETTLE_TICKS);
 			if (t != null) {
+				// Step TT5: the distances grow with the forms (3.33 times at realistic scale).
+				double fs = real ? 1 / 0.3 : 1;
 				for (double f : new double[] {-0.5, 0, 0.5}) {
 					double v = f * t.halfLength();
 					sp.getServer().runOnServer(s -> transect(s.overworld(), t, String.format(Locale.ROOT,
-							"across at %.2f of the half length", f), -6_000, v, t.reach() + 2_000, v, census, surface, report,
-							failures));
+							"across at %.2f of the half length", f), -6_000 * fs, v, t.reach() + 2_000 * fs, v, census, surface,
+							report, failures));
 					context.waitTicks(SETTLE_TICKS);
 				}
-				sp.getServer().runOnServer(s -> transect(s.overworld(), t, "along the main ridge", 0, -t.halfLength() - 2_000, 0,
-						t.halfLength() + 2_000, census, surface, report, failures));
+				sp.getServer().runOnServer(s -> transect(s.overworld(), t, "along the main ridge", 0, -t.halfLength() - 2_000 * fs, 0,
+						t.halfLength() + 2_000 * fs, census, surface, report, failures));
 				context.waitTicks(SETTLE_TICKS);
 				// Step TT2: the tarns, one per server task with ticks between them (their chunks unload in between).
 				List<LandscapeModel.TatraTarn> tarns = sp.getServer().computeOnServer(s -> tarnsOf(model(s.overworld()), t));
@@ -167,8 +221,10 @@ public final class TatraClientGameTest implements FabricClientGameTest {
 					context.waitTicks(SETTLE_TICKS);
 				}
 			}
-			// Step TT3: the board of the new plants (models, one screenshot, no judgment).
-			TatraPlantBoard.run(context, sp, report, failures);
+			// Step TT3: the board of the new plants (models, one screenshot, no judgment); step TT5: gameplay scale only.
+			if (!real) {
+				TatraPlantBoard.run(context, sp, report, failures);
+			}
 			census.forEach((part, rocks) -> report.add("rock blocks of " + part + ": " + rocks));
 			surface.forEach((rock, tops) -> report.add("top blocks on " + rock + ": " + tops));
 			// Step TT2: the snow patch keeps its snow through the summer (Serene Seasons melts only snow layers and ice).
@@ -190,27 +246,17 @@ public final class TatraClientGameTest implements FabricClientGameTest {
 				}
 			}
 		}
-		report.add(failures.isEmpty() ? "PASS" : "FAIL: " + String.join("; ", failures));
-		String dir = System.getProperty("polishforests.tatra.out", "build/tatra");
-		try {
-			Files.createDirectories(Path.of(dir));
-			Files.write(Path.of(dir, "report.txt"), report, StandardCharsets.UTF_8);
-		} catch (IOException e) {
-			throw new java.io.UncheckedIOException(e);
-		}
-		report.forEach(l -> PolishForests.LOG.info("[tatra] {}", l));
-		if (!failures.isEmpty()) {
-			throw new AssertionError("Tatras: " + String.join("; ", failures));
-		}
 	}
 
-	private static void select(WorldCreationUiState ui) {
+	private static void select(WorldCreationUiState ui, boolean real) {
+		ResourceKey<WorldPreset> preset = real ? PRESET_REAL : PRESET;
 		ui.setSeed(SEED);
 		ui.setAllowCommands(true);
-		ui.setWorldType(ui.getNormalPresetList().stream().filter(e -> e.preset().is(PRESET)).findFirst()
-				.orElseThrow(() -> new AssertionError("Missing world type " + PRESET.identifier())));
+		ui.setWorldType(ui.getNormalPresetList().stream().filter(e -> e.preset().is(preset)).findFirst()
+				.orElseThrow(() -> new AssertionError("Missing world type " + preset.identifier())));
+		// Step TT5: the realistic preset has the Tatras on as well (new realistic worlds).
 		if (!(ui.getSettings().selectedDimensions().overworld() instanceof PolandChunkGenerator gen) || !gen.settings().tatra()) {
-			throw new AssertionError("The preset " + PRESET.identifier() + " has no Poland generator with the Tatras");
+			throw new AssertionError("The preset " + preset.identifier() + " has no Poland generator with the Tatras");
 		}
 	}
 
@@ -291,14 +337,15 @@ public final class TatraClientGameTest implements FabricClientGameTest {
 		if (rockMissing > 0 || rockStray > 0) {
 			failures.add(name + ": rock blocks off the model (" + rockMissing + " missing, " + rockStray + " stray)");
 		}
-		if (highest > MAX_Y) {
+		if (highest > maxY(level)) {
 			failures.add(name + ": a block at Y " + highest);
 		}
 	}
 
 	/** The Tatra massif nearest to the origin, or null. */
 	private static LandscapeModel.Tatra nearest(LandscapeModel m) {
-		return m.tatras(-BOX, -BOX, BOX, BOX).stream().min(Comparator.comparingDouble(t -> Math.hypot(t.x(), t.z())))
+		double box = PolishForestsCommands.tatraRadius(m);
+		return m.tatras(-box, -box, box, box).stream().min(Comparator.comparingDouble(t -> Math.hypot(t.x(), t.z())))
 				.orElse(null);
 	}
 
@@ -318,8 +365,10 @@ public final class TatraClientGameTest implements FabricClientGameTest {
 		double bx = t.x();
 		double bz = t.z();
 		double best = Double.NEGATIVE_INFINITY;
-		for (double v = -t.halfLength(); v <= t.halfLength(); v += 40) {
-			for (double u = -4_000; u <= 4_000; u += 40) {
+		double g = 40 * f(m);
+		double uh = 4_000 * f(m);
+		for (double v = -t.halfLength(); v <= t.halfLength(); v += g) {
+			for (double u = -uh; u <= uh; u += g) {
 				double h = m.sample(wx(t, u, v), wz(t, u, v)).surface();
 				if (h > best) {
 					best = h;
@@ -330,8 +379,9 @@ public final class TatraClientGameTest implements FabricClientGameTest {
 		}
 		double cx = bx;
 		double cz = bz;
-		for (int dx = -60; dx <= 60; dx += 4) {
-			for (int dz = -60; dz <= 60; dz += 4) {
+		int fine = (int) Math.ceil(60 * f(m));
+		for (int dx = -fine; dx <= fine; dx += 4) {
+			for (int dz = -fine; dz <= fine; dz += 4) {
 				double h = m.sample(Math.floor(cx) + dx, Math.floor(cz) + dz).surface();
 				if (h > best) {
 					best = h;
@@ -359,7 +409,7 @@ public final class TatraClientGameTest implements FabricClientGameTest {
 		if (gen != want) {
 			failures.add("summit: generated top ground Y " + gen + " instead of " + want);
 		}
-		if (highest > MAX_Y) {
+		if (highest > maxY(level)) {
 			failures.add("summit chunk: a block at Y " + highest);
 		}
 	}
@@ -374,7 +424,9 @@ public final class TatraClientGameTest implements FabricClientGameTest {
 		LandscapeModel m = model(level);
 		VerticalScale vs = ((PolandChunkGenerator) level.getChunkSource().getGenerator()).vertical();
 		double length = Math.hypot(u1 - u0, v1 - v0);
-		int steps = (int) Math.floor(length / TRANSECT_STEP);
+		// Step TT5: the points grow apart with the forms (833 m at realistic scale).
+		double tStep = TRANSECT_STEP * f(m);
+		int steps = (int) Math.floor(length / tStep);
 		StringBuilder profile = new StringBuilder();
 		int top = Integer.MIN_VALUE;
 		int prev = Integer.MIN_VALUE;
@@ -388,7 +440,7 @@ public final class TatraClientGameTest implements FabricClientGameTest {
 		Map<TatraPart, Integer> parts = new TreeMap<>();
 		TatraPart last = null;
 		for (int i = 0; i <= steps; i++) {
-			double d = i * TRANSECT_STEP;
+			double d = i * tStep;
 			double u = u0 + (u1 - u0) * d / length;
 			double v = v0 + (v1 - v0) * d / length;
 			int x = (int) Math.floor(wx(t, u, v));
@@ -407,7 +459,7 @@ public final class TatraClientGameTest implements FabricClientGameTest {
 			int want = vs.topBlockY(s.surface());
 			top = Math.max(top, gen);
 			if (prev != Integer.MIN_VALUE) {
-				double slope = Math.abs(gen - prev) / TRANSECT_STEP;
+				double slope = Math.abs(gen - prev) / tStep;
 				maxSlope = Math.max(maxSlope, slope);
 				sumSlope += slope;
 			}
@@ -456,7 +508,7 @@ public final class TatraClientGameTest implements FabricClientGameTest {
 		if (cut > 0.15 * dry) {
 			failures.add("transect " + name + ": " + cut + " of " + dry + " dry points cut below the model");
 		}
-		if (top > MAX_Y) {
+		if (top > maxY(level)) {
 			failures.add("transect " + name + ": a top at Y " + top);
 		}
 	}
@@ -533,14 +585,17 @@ public final class TatraClientGameTest implements FabricClientGameTest {
 	 * {@value #SLOPE_GRID} m grid over the massif, by landform, to {@code build/tatra/slopes.txt}.
 	 */
 	private static void slopes(LandscapeModel m, LandscapeModel.Tatra t, List<String> report) {
-		VerticalScale vs = VerticalScale.GAMEPLAY;
+		// Step TT5: the vertical scale of the model (the realistic curve in the realistic scale), the grid grown with the forms.
+		boolean real = m.scale() == pl.polishforests.worldgen.landscape.LandscapeScale.REALISTIC;
+		VerticalScale vs = real ? VerticalScale.REAL : VerticalScale.GAMEPLAY;
+		double grid = SLOPE_GRID * f(m);
 		String[] names = {"pinnacle", "gully", "scree", "moraine", "cirque", "other"};
 		pl.polishforests.worldgen.landscape.Landform[] forms = {pl.polishforests.worldgen.landscape.Landform.PINNACLE,
 				pl.polishforests.worldgen.landscape.Landform.GULLY, pl.polishforests.worldgen.landscape.Landform.SCREE,
 				pl.polishforests.worldgen.landscape.Landform.MORAINE, pl.polishforests.worldgen.landscape.Landform.CIRQUE};
 		int[][] hist = new int[names.length][10];
-		for (double u = -0.35 * t.reach(); u <= 0.35 * t.reach(); u += SLOPE_GRID) {
-			for (double v = -t.halfLength(); v <= t.halfLength(); v += SLOPE_GRID) {
+		for (double u = -0.35 * t.reach(); u <= 0.35 * t.reach(); u += grid) {
+			for (double v = -t.halfLength(); v <= t.halfLength(); v += grid) {
 				double x = wx(t, u, v);
 				double z = wz(t, u, v);
 				ColumnSample s = m.sample(x, z);
@@ -561,7 +616,7 @@ public final class TatraClientGameTest implements FabricClientGameTest {
 			}
 		}
 		List<String> lines = new ArrayList<>();
-		lines.add("slopes in blocks (degrees, bins of 10) by landform, " + SLOPE_GRID + " m grid over the massif");
+		lines.add("slopes in blocks (degrees, bins of 10) by landform, " + grid + " m grid over the massif (" + m.scale().id() + ")");
 		for (int k = 0; k < names.length; k++) {
 			lines.add(names[k] + ": " + java.util.Arrays.toString(hist[k]));
 		}
@@ -569,7 +624,7 @@ public final class TatraClientGameTest implements FabricClientGameTest {
 		try {
 			String dir = System.getProperty("polishforests.tatra.out", "build/tatra");
 			Files.createDirectories(Path.of(dir));
-			Files.write(Path.of(dir, "slopes.txt"), lines, StandardCharsets.UTF_8);
+			Files.write(Path.of(dir, "slopes_" + m.scale().id() + ".txt"), lines, StandardCharsets.UTF_8);
 		} catch (IOException e) {
 			throw new java.io.UncheckedIOException(e);
 		}

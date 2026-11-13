@@ -45,7 +45,7 @@ final class TatraZones {
 		if ((f & Landform.SCREE.bit()) != 0) {
 			return HabitatClassifier.Result.zone(Zone.SCREE);
 		}
-		if ((f & Landform.PINNACLE.bit()) != 0 || c.slope > BARE_SLOPE + 6 * c.jitterNoise(43, 90)
+		if ((f & Landform.PINNACLE.bit()) != 0 || c.blockSlope() > BARE_SLOPE + 6 * c.jitterNoise(43, 90)
 				|| c.H > BARE_FROM + 80 * c.jitterNoise(44, 200) && c.patchQ(45, 50) < 0.6) {
 			return HabitatClassifier.Result.zone(Zone.BARE_ROCK);
 		}
