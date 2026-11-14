@@ -87,12 +87,22 @@ public final class PerformanceClientGameTest implements FabricClientGameTest {
 		if (!stagesOnly) {
 			measure(context, "vanilla", null, false, false);
 		}
-		measure(context, "poland", POLAND, stagesOnly, false);
-		measure(context, "poland_gameplay", POLAND_GAMEPLAY, stagesOnly, false);
+		// Step TT5: -Pscales=realistic|gameplay also limits the stages mode to one scale (the KT-6 run of the realistic Tatras).
+		String scales = stagesOnly ? System.getProperty("polishforests.scales", "") : "";
+		if (!scales.equals("gameplay")) {
+			measure(context, "poland", POLAND, stagesOnly, false);
+		}
+		if (!scales.equals("realistic")) {
+			measure(context, "poland_gameplay", POLAND_GAMEPLAY, stagesOnly, false);
+		}
 		if (stagesOnly) {
 			// Step S10: the same areas in the present-day mode (forest mask, fields and meadows).
-			measure(context, "poland_present_day", POLAND, true, true);
-			measure(context, "poland_gameplay_present_day", POLAND_GAMEPLAY, true, true);
+			if (!scales.equals("gameplay")) {
+				measure(context, "poland_present_day", POLAND, true, true);
+			}
+			if (!scales.equals("realistic")) {
+				measure(context, "poland_gameplay_present_day", POLAND_GAMEPLAY, true, true);
+			}
 		}
 	}
 
@@ -266,6 +276,19 @@ public final class PerformanceClientGameTest implements FabricClientGameTest {
 			int[] m = p.middle();
 			sp.getServer().runOnServer(server -> profileSpot(server.overworld(), name + " / slice " + p.name(), (m[0] - 64) >> 4,
 					(m[1] - 64) >> 4));
+		}
+		// Step TT5 (KT-6): the whole chunk and LIGHT in the Tatras next to the montane spruce forest of the Beskids, in the
+		// natural mode of a world with the Tatras (both presets since TT5), at the places of the load measurement.
+		boolean tatra = sp.getServer().computeOnServer(server -> server.overworld().getChunkSource().getGenerator()
+				instanceof pl.polishforests.worldgen.chunk.PolandChunkGenerator g && g.settings().tatra());
+		if (!presentDay && tatra) {
+			int i = real ? 0 : 1;
+			for (Object[] place : new Object[][] {{"montane_spruce_1", ForestPerformance.MONTANE_SITE[i]},
+					{"tatra_high_1", ForestPerformance.TATRA_HIGH_SITE[i]}, {"tatra_stone_pine_1", ForestPerformance.TATRA_STONE_PINE_SITE[i]}}) {
+				int[] m = (int[]) place[1];
+				sp.getServer().runOnServer(server -> profileSpot(server.overworld(), name + " / " + place[0], (m[0] - 64) >> 4,
+						(m[1] - 64) >> 4));
+			}
 		}
 	}
 

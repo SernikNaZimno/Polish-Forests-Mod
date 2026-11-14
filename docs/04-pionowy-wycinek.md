@@ -641,7 +641,7 @@ Każdy krok TT jest ukończony dopiero, gdy oprócz własnych kryteriów spełni
 ### TT5. Tatry w skali REAL (A, 1,5–2 dnia)
 
 - **Zakres:** (1) wszystko z TT1–TT4 w REAL: wymiary poziome 1:1 (45–60 × 14–18 km), wysokości według krzywej `PolandDimension` (TT-a), szczyty 2450–2530 m z wierzchem ≤ Y 2025; kształty w metrach dobrane tak, by po ściśnięciu 1,76 × ściany, żleby, piargi i turnie miały kąty w blokach jak w GAMEPLAY (nachylenia w raporcie); stawy do ok. 35 ha, kotlina Podhala i dna dolin 1:1; (2) `tatra` domyślnie włączone w nowych światach REAL (światy REAL z TT1–TT4 zostają bez Tatr — pole zapisane `false`); (3) łaty REAL w `golden_terrain_tatra.txt`, obszar Tatr REAL w `determinism`, gametest `tatra` w obu skalach; jaskinie J1 i biomy J2 pod Tatrami REAL (głębokość, brak wody w ścianach, `caves`, `cave_biomes`), światło i mapy wysokości do Y 2031; `find tatra` w REAL w zasięgu wyszukiwania (zasięg komendy powiększony, jeśli trzeba); (4) udziały pięter i karta boru limbowego w REAL.
-- **Ukończony, gdy:** KT-1 … KT-7 w obu skalach; dla ziaren testowych masyw REAL znajdowany przez `find tatra`; żaden blok terenu, śniegu ani korony nad Y 2031 (spis maks. Y); udziały pięter REAL w progach TT3; przebieg kontrolny KT-6 w REAL opisany (z jaskiniami i bez).
+- **Ukończony, gdy:** KT-1 … KT-7 w obu skalach; dla ziaren testowych masyw REAL znajdowany przez `find tatra`; żaden blok terenu, śniegu ani korony nad Y 2031 (spis maks. Y); udziały pięter REAL w progach TT3; przebieg kontrolny KT-6 w REAL opisany (z jaskiniami i bez). **Stan (2026-11-14): zrobione z odstępstwem („Projekt TT5”, „Stan po TT5”, G.54): Tatry REAL w grze w obu skalach testów (gametest `tatra` PASS: `find tatra` 1182 km, szczyt 2504,8 m na Y 2002, najwyższy blok Y 2003, udziały pięter 98,7–99,9%, KF-1 siedmiu zespołów 0 kłód wanilii); karta limbowej świerczyny REAL na dwóch powierzchniach 10 `in`, 4 `tolerance`, 0 `out`; KT-6 REAL opisany (z C2ME 0,91–1,21 × Beskidów REAL; cały chunk grani 1,33 ×, limbowej 1,70 ×). Etap 2 poprawił dwa stare błędy: dekoracja na terenie wyżej niż ok. Y 576 bez biomu powierzchni (od J2; zmienia nowe chunki starych światów REAL, do decyzji) i mapy `MOTION_BLOCKING` przez skały Tatr (od TT1, tag `#blocks_motion`, `BlocksMotionTest`). DP-162 dalej otwarte.**
 - **Ryzyko:** wysokie (wysokość świata, koszt wysokich kolumn i światła, jaskinie pod wysokim terenem).
 
 ### TT6. Drobiazgi i struktury Tatr, integracja obu skal (A, 1–1,5 dnia)
@@ -5406,6 +5406,119 @@ Wybory domyślne (do G.54):
 - (h) Miejsca jaskiń w Tatrach.
 - (i) Testy limby tylko w GAMEPLAY.
 - (j) Masywy REAL daleko od początku (najbliższy 373–1253 km dla ziaren testowych), bez przesuwania ich bliżej.
+
+## Stan po TT5 (2026-11-14, etap 2: przebiegi w grze w obu skalach, KT-6 REAL, bez recenzji wizualnej)
+
+Drobne wybory: `docs/00` G.54 (TT5-a … TT5-j z etapu 1, TT5-k … TT5-r z etapu 2). Zgodnie z G.36 U-1 nie oceniamy wyglądu ze zrzutów. Dowody to gametest `tatra` w obu skalach, spis `habitats`, porównania bloków w `determinism`, karta norm z gry, `caves`, `cave_biomes` i testy jednostkowe. Baza kroku: `2aa471a`; etap 1 to commit WIP `86a5a6d`. Przebiegi według `python tools/dev/test_plan.py 2aa471a`.
+
+**Wynik w skrócie.** Tatry REAL generują się w grze: masyw ziarna 20260927 leży ok. 1182 km od początku, szczyt 2504,8 m stoi na Y 2002 (najwyższy blok Y 2003, świat kończy się na Y 2031), udziały pięter 98,7–99,9%, drzewostany planera we wszystkich siedmiu zespołach Tatr (0 kłód wanilii), karta limbowej świerczyny REAL na dwóch powierzchniach w normie albo tolerancji (0 `out`). Pierwsze przebiegi etapu 2 znalazły dwa stare błędy generatora, oba poprawione w tym etapie:
+
+- **Dekoracja bez biomu powierzchni na wysokim terenie (od J2, TT5-k).** `ChunkGeneratorDecorationMixin` dawał dekoracji tylko biomy sekcji poniżej Y 256 (biomy jaskiniowe J2). Pod terenem wyżej niż ok. Y 576 głębokość w tych sekcjach sięga granicy 2,5, więc wszystkie ich komórki to biomy jaskiniowe, a biomu powierzchni brakowało w części chunków albo całkiem: chunk nie dostawał drzew, roślin ani runa. Objaw: powierzchnia limbowa REAL (Y ok. 1433) bez jednego drzewa (0 zaplanowanych). Dotyczyło REAL od ok. 510 m n.p.m., także Beskidów, i GAMEPLAY w Tatrach od ok. 2000 m. Teraz zbiór obejmuje też sekcję najwyższą, która ma tylko biomy kolumny. Nowe chunki starych światów REAL na takim terenie dostaną dekorację, której brakowało (do decyzji, rekomendacja: zostawić).
+- **Mapy `MOTION_BLOCKING` przechodziły przez skały Tatr (od TT1, TT5-l).** W 26.3 ta mapa idzie tagiem `#blocks_motion_in_heightmap` (= `#blocks_motion`), a ten wymienia bloki wanilii z nazwy. Skał Tatr, piargów i bloku torfowca w nim nie było, więc w kolumnie szczytu mapa wskazywała Y 1 (REAL) i Y 191 (GAMEPLAY) zamiast granitu na Y 2002 i 693. Deszcz, śnieg i spawny szły przez granit. Nowe sprawdzenie kolumny szczytu w gametescie `tatra` (TT5-r) to wykryło. Teraz `#minecraft:blocks_motion` z datagenu ma cztery skały Tatr, oba piargi, blok torfowca i korzeń drzewa. `BlocksMotionTest` pilnuje, że każdy blok moda o pełnym kształcie kolizji jest w tym tagu (bez poprawki test wypisuje 7 bloków).
+
+Poza tym etap 2 poprawił gametesty, nie generator:
+
+- Praca w porcjach (TT5-m). Transekt REAL w jednym zadaniu serwera wczytywał ok. 88 wysokich chunków, a ich zapis przy rozładowaniu trwał ponad 21 s jednego ticku (strażnik: STALL). Cały staw w jednym zadaniu wyczerpał stertę.
+- Kryteria łat i transektów (TT5-n).
+- Spis Tatr w `habitats` w zasięgu skali (TT5-p).
+- Test presetu w `ui`, bo preset REAL ma teraz Tatry (TT5-p).
+- Diagnostyka `NormsCensus`: przy powierzchni bez drzew wypisuje liczniki planera i kolumnę środka.
+- Tryb `stages` gametestu wydajności mierzy miejsca Tatr (TT5-q).
+
+**Przebiegi (`-PtimingsReportOnly` poza KT-6, jeden klient gry naraz).**
+
+| Przebieg | Wynik |
+|---|---|
+| `fastTest`, `LandscapeScaleTest`, `GoldenTatraTest`, `TatraIsolationTest`, `TatraReliefTest`, `TatraRiverTest`, `TatraFormsTest`, `BeltProfileTatraTest`, `PolishForestsCommandsTest`, `PolandSettingsTest`, `SlicePlotsTest`, `checkDatagen`, `compileGametestJava` | PASS (etap 1, „Projekt TT5”) |
+| pierwsze przebiegi etapu 2 (przed poprawkami) | `tatra` STALL na transekcie REAL (dwa razy), potem brak sterty na stawie; `slice` FAIL: powierzchnia limbowa REAL bez drzew; `habitats` FAIL: spis szukał masywu do 300 km; `ui` FAIL: oczekiwał presetu REAL bez Tatr; `determinism`, `caves` REAL, `cave_biomes` REAL, `vanilla_forests` PASS; pierwszy KT-6 nieważny (dekoracja REAL na wysokim terenie niepełna) |
+| `BlocksMotionTest`, `RegistrySnapshotTest`, `runDatagen` (+1 plik: `data/minecraft/tags/block/blocks_motion.json`) | PASS |
+| `tatra` (obie skale, po poprawkach) | PASS (35 min 45 s); niżej |
+| `determinism` wobec referencji `2aa471a` (`-PdeterminismStepZones`) | PASS (21 min 56 s). Teren identyczny we wszystkich 23 obszarach z wpisem w referencji, także w nowym obszarze `tatra` REAL wobec siebie w trzech kolejnościach. Dekoracja: GAMEPLAY 0 różnic we wszystkich 12 obszarach, także `tatra` i `bog_woodland` (poprawka tagu nie zmienia ich bloków); REAL 0 różnic w 9 z 11, różnice w dwóch wysokich obszarach Beskidów: `montane_spruce` 3381 z 16 384 kolumn (N), 2780 (D), `dwarf_pine` 16 203 (N i D). To poprawka zbioru biomów dekoracji (TT5-k); teren bez zmian |
+| `determinism -Poptimization` (C2ME) wobec świeżego `plain.txt` | FAIL jak w TT1–TT4 (14 min 29 s): teren w 34 z 48 obszarów, najwyżej 3259 bloków, dekoracja najwyżej 14 091 kolumn (etap 1: 14 747); w `tatra` REAL 9 bloków w 9 kolumnach i dekoracja 9 kolumn, jak w etapie 1 |
+| `slice -Psites=none` | PASS (22 min 20 s); niżej |
+| `habitats` | PASS (17 min 48 s); 38 biomów w obu skalach, spis Tatr REAL i GAMEPLAY bez `missing`, `HABITAT_MISS` 0; niżej |
+| `ui`, `vanilla_forests` | PASS (1 min 30 s, 1 min 52 s). `ui`: preset REAL i GAMEPLAY z Tatrami, przełącznik Tatr w „Dostosuj” w obu skalach. `vanilla_forests`: KF-1 świerczyny 58,8 pnia planera na 1000 własnych kolumn, jak w etapie 1 |
+| `caves -Pscales=realistic`, `cave_biomes -Pscales=realistic` | PASS (4 min 35 s, 2 min). `caves`: 7 miejsc, w Tatrach `tatra_regle` (1 180 979, 97 864) i `tatra_ridge` (1 177 964, 102 710). Wszędzie 0 styków z wodą powierzchniową, 0 pni nad otwartymi stropami, lawa szumu 0. Lawa na Y ≥ 0 pochodzi z obiektów dekoracji: regiel 345, grań 272 (przed poprawką TT5-k 125, bo dekoracja grani dostaje teraz biom powierzchni). Udział jaskiń w przedziale 320+ bloków pod wierzchem: regiel 8,63%, grań 3,46% (TT5-o). Wejścia: regiel 4, grań 1. `cave_biomes`: wszystkie biomy i struktury jaskiniowe znalezione |
+| KT-6 REAL: `performance` z C2ME bez jaskiń i z jaskiniami, `stages` | na spokojnej maszynie (GPU 7–12%, CPU 1–24%, bez procesu gry, 0 zakłóceń): `performance` 3 min 26 s i 5 min 29 s, `stages` 2 min 44 s; niżej. Pierwszy pomiar etapu 2 (przed poprawką TT5-k) przeniesiony do `handoff/TT5/kt6_before_fix`, nieważny |
+| pełny zestaw `tools/dev/run-tests test`, `checkDatagen` | PASS (1356 s, drzewo `f59a017687a3`, 600 testów w 114 klasach, 4 pominięte, 0 niezaliczonych; po `test_plan.py 2aa471a --end`; `checkDatagen` bez zmian plików; potem zmiany tylko w `docs/`) |
+
+**Gametest `tatra`** (ziarno 20260927, REAL / GAMEPLAY):
+
+- `find`: wszystkie 12 celów w obu skalach. `find tatra` REAL znajduje (1 177 537, 102 475) w 1182 km, w 0,4 s; GAMEPLAY w 91 km, w 0,3 s.
+- Szczyt masywu: 2504,8 / 2520,1 m, wierzch modelu i wygenerowany Y 2002 / 693, najwyższy blok chunku Y 2003 / 694.
+- Kolumna szczytu na granicy (TT5-r): najwyższa sekcja 126 / 47 (wierzch świata Y 2031 / 767). `WORLD_SURFACE` 2003 / 694, `MOTION_BLOCKING` 2002 / 693, światło nieba 15 nad wierzchem i na szczycie świata.
+- Łaty złotych zestawów REAL A i GAMEPLAY A, po 6 w każdej skali: 0 kolumn wierzchu poza modelem, 0 brakujących i zbłąkanych bloków skał. W łacie `western_tatra` REAL 23 kolumny mają powietrze na wierzchu modelu (otwory jaskiń, limit 38), w `podhale` REAL 1. Najwyższy blok łat REAL Y 1903.
+- Transekty: punkty poza modelem w częściach Tatr 1 z 40 (−0,50), 0, 0, 0 w REAL; 0 w GAMEPLAY. Poza Tatrami 3 punkty REAL (mikrorzeźba przedpola, 1–3 bloki) i 1 GAMEPLAY. Obcięte przez jaskinie 1–6 na transekt. Najwyższy wierzch Y 1977 / 677. Spadek od grani do dna kotliny 1453–1817 / 1911–2068 m.
+- Stawy: 35 / 36 w masywie, sprawdzone po 6 największych: 0 przecieków, 0 wiszącej wody. Największy staw REAL (typ Morskiego Oka, 559 × 784 m) ma 385 843 kolumny wody.
+- Udziały pięter REAL: regiel górny 99,9%, kosodrzewina 98,7%, piętro alpejskie 99,8%, subniwalne 99,2%. GAMEPLAY: 99,7 / 97,4 / 99,8 / 99,6%. Próba biomu poziomu: 32 z 32 w obu skalach.
+- KF-1 REAL (pnie planera na chunk, 0 kłód wanilii we wszystkich): buczyna karpacka 14,9, Abieti-Piceetum 15,4, Polysticho-Piceetum 11,3, świerczyna typowa 11,6, limbowa świerczyna 11,0, kosodrzewina 1,8, stok z modrzewiem 11,9. GAMEPLAY bez zmian wobec TT4 (10,7 / 10,7 / 12,4 / 10,8 / 10,7 / 0,7 / 10,7).
+- Nachylenia w blokach (`slopes_<scale>.txt`): rozkłady REAL i GAMEPLAY podobne. Turnie mają szczyt w przedziałach 40–60° (REAL) i 50–60° (GAMEPLAY), żleby i piargi 30–40°. Wartości liczy już JUnit z etapu 1.
+- Płat śniegu leży także po środku lata. Wczytanie 81 nowych chunków na grani: 13,0 / 19,3 chunku na sekundę.
+
+**Gametest `habitats`, spis Tatr REAL** (117 999 kolumn, siatka 106,7 m = 32 m × 3,33): buczyna karpacka 53,3%, świerczyna 15,5%, hala 17,1%, kosodrzewina 9,3%, turnie 2,7%, staw 0,5%. Zespoły świerczyny (kolumny siatki): Abieti-Piceetum 5879, limbowa świerczyna 3882, świerczyna typowa 3390, Polysticho-Piceetum 3077, stok z modrzewiem 1986, ziołorośla żlebów 27. Buczyny jest więcej niż w GAMEPLAY (37,5%), a grądu i borów przedgórza mniej (grąd 0,4% wobec 6,5%, lasy mieszane i bory mieszane 0,1% wobec 6,7%). Przyczyny nie badano; piętra wysokie mają te same udziały (hala 17,1%, kosodrzewina 9,3% w obu skalach). Spis GAMEPLAY bez zmian wobec TT4.
+
+**Karta limbowej świerczyny REAL** (`slice -Psites=none`; oba tryby te same liczby, bo to park; wariant `STONE_PINE`; powierzchnie (1 161 343, 99 681) i (1 160 603, 98 941), Y ok. 1430):
+
+| Norma | Zakres | `tatra_stone_pine_natural_1` (starodrzew) | `tatra_stone_pine_natural_2` (drzewostan dojrzały) |
+|---|---|---|---|
+| N1 drzew na chunk | 5–13 | 7,48 in | 7,32 in |
+| N3 świerk / limba / modrzew / jarząb | 40–60 / 20–40 / 5–20 / 0–15% | 41,5 in / 44,7 tolerancja / 13,8 in / 0 in | 61,5 tolerancja / 26,5 in / 12,1 in / 0 in |
+| N4 zwarcie | 40–70% | 56,1 in | 44,9 in |
+| N5 luki | 5–20% | 4,32 tolerancja | 7,05 in |
+| N7 podszyt | 0–20% | 9,2 in | 13,9 in |
+| N8 zioła / borówka | 40–90 / 20–60% | 40,9 in / 21,9 in | 35,5 tolerancja / 18,4 tolerancja |
+| N9 mchy | 50–95% | 99,1 tolerancja | 94,0 in |
+| N10 obiektów na chunk / objętość / grube na ha | 2,5 / 60–200 / ≥ 3 | 3,15 tolerancja / 192 in / 64,9 in | 2,50 tolerancja / 134 in / 47,4 in |
+
+Wysokość a1 23,8 i 22,1 bloku, szczyt 24,4 i 23,0. Najwyższe drzewa to modrzewie (34–36 bloków). Werdykt wobec świerczyny naturalnej: 10 `in`, 4 `tolerance`, 0 `out` na obu powierzchniach. Limba 44,7% w starodrzewie REAL wobec 36,7% w GAMEPLAY i 39,6% w kalibracji JUnit. To jedna powierzchnia; symulacja nie zależy od skali (TT5-i). Karta GAMEPLAY obu powierzchni jak w TT4 (N5 powierzchni 2 1,35% `out`, TT4-o).
+
+Lasy wycinka i kroków F: 221 wierszy `out`, czyli 219 jak w F7 i N5 powierzchni 2 GAMEPLAY w obu trybach. Różnice wartości w 8 miejscach. Siedem to znany rozrzut kolejności chunków (TT4-n), z jedną zmianą werdyktu jak w TT1 i TT3: N10.volume `coastal_pine_managed_2` GAMEPLAY D, `tolerance` → `in`. Ósme to `montane_beech_natural_1` REAL (Beskidy, wysoki teren): po poprawce zbioru biomów dekoracji 7,24 drzewa na chunk zamiast 6,35, N10.volume 118,7 zamiast 94,6 (`tolerance` → `in`). Przebiegi przed poprawką dawały tu stale 6,35. Do chunków tej powierzchni nie trafiała część dekoracji, która powinna była trafić (TT5-k).
+
+**KT-6 REAL** (spokojna maszyna, ziarno 20260927, miejsca TT5-g; GAMEPLAY z TT4 dla porównania).
+
+| Miejsce | bez jaskiń, chunki/s (C2ME) | z jaskiniami | cały chunk, ms (`stages`, bez C2ME) | teren / jaskinie w wypełnieniu / światło / dekoracja, ms na chunk |
+|---|---|---|---|---|
+| `montane_spruce_1` REAL (Beskidy) | 122,2 | 68,9 | 53,8 | 11,6 / 6,4 / 18,8 / 14,8 |
+| `tatra_high_1` REAL (grań, Y ok. 1900) | 143,0 | 83,6 | 71,7 | 28,6 / 17,0 / 20,8 / 3,0 |
+| `tatra_stone_pine_1` REAL (Y ok. 1430) | 135,8 | 62,7 | 91,2 | 20,7 / 15,5 / 29,2 / 26,8 |
+| GAMEPLAY TT4: `tatra_high_1` / `tatra_stone_pine_1` / `montane_spruce_1` | 182,8 / 187,8 / 129,3 | 84,1 / 84,6 / 83,7 | — | — |
+
+Opis bez progu. Wczytywanie z C2ME w Tatrach REAL nie jest wolniejsze niż w Beskidach REAL: grań 1,17 × świerczyny bez jaskiń i 1,21 × z jaskiniami, limbowa świerczyna 1,11 i 0,91 ×. Rozrzut między przebiegami jest duży: pierwszy, nieważny pomiar dał grani 116,7 i 72,8. Koszt wysokich kolumn widać dopiero w pomiarze etapów bez równoległości. Etap terenu grani trwa 2,5 × dłużej niż w świerczynie Beskidów (ok. 1950 bloków skały w kolumnie od Y −64). Jaskinie w wypełnieniu kosztują 2,4–2,7 × więcej, bo jest więcej skały do drążenia pod wysokim terenem. Światło nieba do Y 2031 kosztuje tylko 1,1–1,6 × więcej. Cały chunk: grań 1,33 ×, limbowa świerczyna 1,70 × świerczyny Beskidów (dekoracja limbowej jest 1,8 × droższa przy mniejszej liczbie drzew, 8,0 wobec 11,2 na chunk; przyczyny nie mierzono). Wobec GAMEPLAY wczytywanie REAL bez jaskiń jest wolniejsze o ok. 22–28%, z jaskiniami grań tak samo szybka, a limbowa świerczyna o 26% wolniejsza.
+
+**KT i kryteria TT5.**
+
+- KT-1 (zgodność): spełnione. Złote pliki terenu (`GoldenTerrainTest`, `GoldenTatraTest` z łatami REAL dopisanymi celowo w etapie 1) i `TatraIsolationTest` w obu skalach. Bez nowej soli i bez zmian kolejności stałych. Migawka rejestru bez zmian, bo tag nie wchodzi do rejestru. Światy REAL z TT1–TT4 zostają bez Tatr (`PolandSettingsTest`). Teren starych obszarów `determinism` jest identyczny w obu skalach. Dekoracja REAL zmienia się świadomie na wysokim terenie (TT5-k).
+- KT-2 (lasy i karta poza Tatrami): spełnione z jedną świadomą zmianą. 219 wierszy `out` jak w F7, `montane_beech_natural_1` REAL lepiej obsadzona po poprawce (wyżej). `vanilla_forests` i `habitats` PASS.
+- KT-3 (determinizm): teren identyczny we wszystkich obszarach i trzech kolejnościach chunków. Obszar `tatra` REAL: 0 różnic w kolejności stałej, w swobodnej 2 kolumny (N) i 0 (D), w odwróconej 29% (jak w innych obszarach; raport). Z C2ME te same liczby co w etapie 1 i w TT4 (34 z 48 obszarów; dekoracja najwyżej 14 091 kolumn).
+- KT-4 (przejścia): bez zmian klasyfikatora poza `blockSlope` (etap 1). W REAL udziały pięter w progach TT3.
+- KT-5 (gametest `tatra` w obu skalach): PASS (wyżej).
+- KT-6: opis REAL z jaskiniami i bez (wyżej). Wczytywanie z C2ME w Tatrach REAL jest tak szybkie jak w Beskidach REAL (0,91–1,21 ×). W etapach bez C2ME cały chunk grani kosztuje 1,33 ×, a limbowej świerczyny 1,70 × świerczyny Beskidów: teren i jaskinie pod wysokim terenem 2,4–2,7 ×, światło 1,1–1,6 ×
+- KT-7: „Projekt TT5”, ten wpis, stan w opisie kroku, BRIEF, G.54, `docs/mapa-testow.md`; pełny `run-tests test`.
+- Kryteria kroku. Masyw REAL znajduje `find tatra` dla ziaren testowych (JUnit z etapu 1: 1182 i 1253 km; gametest: 1182 km). Żaden blok nad Y 2031: najwyższy blok masywu to Y 2003, łat REAL Y 1903, transektów Y 1977. Udziały pięter REAL w progach TT3. KT-6 REAL: opisany, z jaskiniami i bez.
+
+**Odstępstwa:**
+
+- Poprawka zbioru biomów dekoracji (TT5-k) zmienia nowe chunki starych światów REAL na terenie wyżej niż ok. 510 m n.p.m. (Beskidy) i GAMEPLAY w Tatrach wyżej niż ok. 2000 m. Między chunkami wygenerowanymi przed TT5 i po nim może być widać brzeg lasu. Do decyzji.
+- Poprawka tagu `#blocks_motion` (TT5-l) działa w nowych chunkach. W chunkach światów GAMEPLAY z Tatrami zapisanych przed TT5 mapy `MOTION_BLOCKING` zostają prawdopodobnie stare, aż blok w kolumnie się zmieni, bo wanilia przy wczytaniu przelicza tylko brakujące mapy. W obszarach `determinism` GAMEPLAY poprawka nie zmieniła żadnego bloku dekoracji.
+- Obszar `determinism` REAL leży na grani, nie w limbowej świerczynie (DP-162 dalej otwarte).
+- Limba w starodrzewie REAL 44,7% (tolerancja). Powierzchnia GAMEPLAY i kalibracja JUnit są w normie.
+- `determinism` z C2ME jak w TT1–TT4 (znany obszar, nie regresja).
+
+**Do sprawdzenia w grze** (nowy świat „Polska”, skala REAL, Tatry włączone domyślnie; dla ziarna 20260927 masyw ok. 1182 km od początku, więc najpierw `/polishforests find tatra` i kliknięcie podpowiedzi `/tp`; lot w trybie widza):
+
+1. `/polishforests find tatra` w nowym świecie REAL i kliknięcie podpowiedzi `/tp`. Wyszukiwanie trwa najwyżej kilka sekund, a grań jest wyraźnie wyższa od Beskidów.
+2. `/polishforests elevation 2400 2600` na granicie i `/tp`, czyli szczyt ok. Y 2000. Nad szczytem jest wolne niebo do końca świata (Y 2031), bez ucięcia i ciemnych plam światła, a ściany i turnie nie wyglądają jak rozjechane schody.
+3. Opady na skale: na granicie wysoko w Tatrach `/weather rain`, potem `/season set mid_winter`. Deszcz i śnieg mają padać na granit i piarg, nie przez nie, a śnieg ma leżeć na skale (poprawka mapy wysokości TT5-l).
+4. `/polishforests find tarn` i `/polishforests find cirque`: staw w kotle bez przecieków i wiszącej wody. Staw typu Morskiego Oka jest duży (ok. 560 × 780 m).
+5. `/polishforests find pinnacle`, `find gully` i `find scree`: turnie strome, żleby i piargi ok. 30–40°, bez pionowych uskoków (kąty w blokach jak w GAMEPLAY).
+6. Zejście doliną: `/polishforests find u_valley` i w dół doliny przez piętra (hala, kosodrzewina, limbowa świerczyna, świerczyna, buczyna). Las ma być gęsty aż do granicy lasu, bez chunków bez drzew i runa.
+7. Limbowa świerczyna REAL: `/polishforests elevation 1400 1550` na granicie i `/polishforests here`, aż linia siedliska pokaże „limbowa świerczyna”. Drzewa mają stać (przed poprawką TT5-k nie było tu żadnego), a najwyższe są modrzewie.
+8. `/polishforests find podhale`, potem przejście do Beskidów: kotlina Podhala ok. 650–750 m i płynne przejście w przedgórze.
+9. Jaskinia pod reglem: od Podhala w stronę Tatr na regiel wapienny (`here` pokazuje regiel), w trybie widza w dół do otworu jaskini. Bez wody w ścianach, bez lawy wylewającej się na zbocze.
+10. Wysokie Beskidy REAL, poza Tatrami: `/polishforests elevation 1100 1300` albo `/polishforests find biome montane_spruce_forest` blisko początku świata. Las i runo w każdym chunku, bez prostokątnych pustych pól (stary błąd dekoracji od J2, TT5-k).
+11. Stary świat REAL z TT1–TT4, jeśli jest: po wczytaniu nadal bez Tatr (`find tatra` nic nie znajduje). Na wysokim terenie nowe chunki mogą mieć gęstszy las niż chunki wygenerowane wcześniej (do decyzji).
+12. Nowy świat GAMEPLAY: `/polishforests find tatra`, potem `/polishforests elevation 2000 2400`. Hala i kosodrzewina z roślinami także powyżej 2000 m, opady na granicie jak w punkcie 3.
+13. Lot w trybie widza nad granią REAL i dla porównania nad Beskidami REAL: czy generacja nadąża i czy gra nie przycina dłużej niż w Beskidach.
 
 ## Do kroku porządkowego (lista drobiazgów z recenzji)
 

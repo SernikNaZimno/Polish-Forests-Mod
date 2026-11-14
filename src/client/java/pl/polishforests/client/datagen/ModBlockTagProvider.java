@@ -209,6 +209,15 @@ final class ModBlockTagProvider {
 			List<Block> surface = ModBlocks.tatraSurface();
 			builder(BlockTags.MINEABLE_WITH_SHOVEL).add(key(surface.get(0))).add(key(surface.get(1))).add(key(surface.get(2)));
 			builder(BlockTags.DIRT).add(key(surface.get(2)));
+			// Step TT5: the solid blocks of the mod that no vanilla tag of #blocks_motion takes (the logs, planks, leaves,
+			// dirt and grass blocks come in through their tags) block motion: the MOTION_BLOCKING heightmaps of 26.3 go by
+			// #blocks_motion_in_heightmap (= #blocks_motion), so without it rain, snow and the spawns fell through the Tatra
+			// rocks and the scree to the first vanilla block (as vanilla lists its stones, gravel, moss block and roots).
+			for (Block b : ModBlocks.tatraRocks()) {
+				builder(BlockTags.BLOCKS_MOTION).add(key(b));
+			}
+			builder(BlockTags.BLOCKS_MOTION).add(key(surface.get(0))).add(key(surface.get(1))).add(sphagnumBlock)
+					.add(key(ModBlocks.treeRoot()));
 		}
 	}
 

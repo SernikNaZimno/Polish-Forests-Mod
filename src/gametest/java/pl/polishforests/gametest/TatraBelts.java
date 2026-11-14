@@ -98,10 +98,10 @@ final class TatraBelts {
 			{HabitatBiome.DWARF_PINE_SCRUB, null}};
 
 	/**
-	 * The belt shares of the massif and the probes of the level; returns the KF-1 sites (x, z, index into
-	 * {@link #FORESTS}).
+	 * The belt shares of the massif; returns the KF-1 sites (x, z, index into {@link #FORESTS}) and the probes of the level
+	 * (step TT5: checked by the test in batches).
 	 */
-	static List<int[]> shares(ServerLevel level, LandscapeModel.Tatra t, List<String> report, List<String> failures) {
+	static Probes shares(ServerLevel level, LandscapeModel.Tatra t, List<String> report, List<String> failures) {
 		PolandChunkGenerator gen = (PolandChunkGenerator) level.getChunkSource().getGenerator();
 		long seed = level.getSeed();
 		LandscapeModel m = gen.model(seed);
@@ -173,12 +173,40 @@ final class TatraBelts {
 			}
 		}
 		report.add(line.toString());
+		for (int f = 0; f < FORESTS.length; f++) {
+			if (!found[f]) {
+				report.add("TT3 KF-1: no deep column of " + label(f) + " in the massif");
+			}
+		}
+		Probes out = new Probes(sites);
+		for (Band b : Band.values()) {
+			out.points.addAll(probes.get(b));
+		}
+		return out;
+	}
+
+	/**
+	 * Step TT5: the KF-1 sites and the probes of the level, which the test checks in batches ({@link #probe}, one server
+	 * task each with ticks between them, so the chunks of the realistic Tatras unload in between), then {@link #report}.
+	 */
+	static final class Probes {
+		final List<int[]> sites;
+		/** The probes: x, z, habitat code. */
+		final List<double[]> points = new ArrayList<>();
 		int probed = 0;
 		int same = 0;
 		int caveCut = 0;
-		StringBuilder off = new StringBuilder();
-		for (Band b : Band.values()) {
-			for (double[] p : probes.get(b)) {
+		final StringBuilder off = new StringBuilder();
+
+		Probes(List<int[]> sites) {
+			this.sites = sites;
+		}
+
+		/** The biome of the level at the probes from {@code from} (inclusive) to {@code to} (exclusive). */
+		void probe(ServerLevel level, int from, int to) {
+			PolandChunkGenerator gen = (PolandChunkGenerator) level.getChunkSource().getGenerator();
+			LandscapeModel m = gen.model(level.getSeed());
+			for (double[] p : points.subList(from, to)) {
 				int x = (int) Math.floor(p[0]);
 				int z = (int) Math.floor(p[1]);
 				level.getChunk(x >> 4, z >> 4);
@@ -195,18 +223,15 @@ final class TatraBelts {
 				}
 			}
 		}
-		report.add(String.format(Locale.ROOT, "TT3 biome of the level at the probes (at the model top; %d probes with the top cut "
-				+ "by a cave): %d of %d as the classifier%s", caveCut, same, probed,
-				off.isEmpty() ? "" : ":" + off));
-		if (probed == 0 || same < 0.75 * probed) {
-			failures.add("TT3 biome of the level at the probes: " + same + " of " + probed);
-		}
-		for (int f = 0; f < FORESTS.length; f++) {
-			if (!found[f]) {
-				report.add("TT3 KF-1: no deep column of " + label(f) + " in the massif");
+
+		void report(List<String> report, List<String> failures) {
+			report.add(String.format(Locale.ROOT, "TT3 biome of the level at the probes (at the model top; %d probes with the top cut "
+					+ "by a cave): %d of %d as the classifier%s", caveCut, same, probed,
+					off.isEmpty() ? "" : ":" + off));
+			if (probed == 0 || same < 0.75 * probed) {
+				failures.add("TT3 biome of the level at the probes: " + same + " of " + probed);
 			}
 		}
-		return sites;
 	}
 
 	static String label(int f) {

@@ -782,7 +782,7 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 
 	/**
 	 * Step TT3 (docs/04 "Projekt TT3"): the census of the habitats of the Tatra massif nearest the origin (the classifier
-	 * of the world on a 32 m lattice over the massif, every column of a Tatra weight of at least 0.5: shares of the biomes,
+	 * of the world on a 32 m lattice over the massif (step TT5: 32 m times the form scale of the Tatras), every column of a Tatra weight of at least 0.5: shares of the biomes,
 	 * the associations of the alpine grassland and the spruce forest), each habitat of {@link #TATRA_HABITATS} present,
 	 * and /locate of the subnival rocks and the mountain tarn from the middle of the massif. A world without the Tatras
 	 * reports nothing.
@@ -794,10 +794,13 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 		if (!m.hasTatra()) {
 			return "Tatra census: no Tatras in this world";
 		}
-		LandscapeModel.Tatra t = m.tatras(-300_000, -300_000, 300_000, 300_000).stream()
+		// Step TT5: the radius of find tatra (300 km in the gameplay scale, 2000 km in the realistic one, where the nearest
+		// massif of the test seed lies 1182 km from the origin).
+		double box = pl.polishforests.command.PolishForestsCommands.tatraRadius(m);
+		LandscapeModel.Tatra t = m.tatras(-box, -box, box, box).stream()
 				.min(java.util.Comparator.comparingDouble(a -> Math.hypot(a.x(), a.z()))).orElse(null);
 		if (t == null) {
-			throw new AssertionError("Tatra census: no massif within 300 km of the origin");
+			throw new AssertionError(String.format(Locale.ROOT, "Tatra census: no massif within %.0f km of the origin", box / 1000));
 		}
 		HabitatClassifier k = gen.classifier(seed);
 		Map<String, Integer> biomes = new java.util.TreeMap<>();
@@ -805,7 +808,8 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 		boolean[] found = new boolean[TATRA_HABITATS.length];
 		long columns = 0;
 		double half = 1.2 * t.halfLength();
-		double step = 32;
+		// Step TT5: the lattice grows with the forms (107 m in the realistic scale), so both censuses take as many columns.
+		double step = 32 * pl.polishforests.command.PolishForestsCommands.tatraFormScale(m);
 		int n = (int) (2 * half / step);
 		for (int j = 0; j < n; j++) {
 			for (int i = 0; i < n; i++) {

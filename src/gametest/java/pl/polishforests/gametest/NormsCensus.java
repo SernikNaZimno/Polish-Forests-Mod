@@ -375,7 +375,9 @@ final class NormsCensus {
 			StringBuilder log) {
 		int minX = x - PLOT / 2;
 		int minZ = z - PLOT / 2;
+		long[] treesBefore = treeCounters();
 		CensusGrid g = read(level, minX - MARGIN, minZ - MARGIN, PLOT + 2 * MARGIN, PLOT + 2 * MARGIN, HEIGHT, records, (a, b) -> true);
+		long[] treesAfter = treeCounters();
 		boolean[] area = ForestCensus.rectangle(g, minX, minZ, PLOT, PLOT);
 		// Step V9: the plot is its forest columns (a forest biome without a zone of the model's habitat code): a meadow, a
 		// field, a herb fringe or a shore of up to 5% of the square (the places allow it) is no canopy gap of the forest,
@@ -501,9 +503,45 @@ final class NormsCensus {
 												ForestNorms.DEADWOOD_PER_CHUNK), forest.polishName(), in, tolerance, out,
 				outside.isEmpty() ? "" : " " + outside, unknown.isEmpty() ? "" : "; plants unknown to the census " + unknown));
 		if (values.get(ForestNorms.TREES_PER_CHUNK) == 0) {
-			throw new AssertionError(c.place() + ": no trees counted in the plot of a forest");
+			// Step TT5: what the tree stand did in the chunks the census generated, and the center column.
+			long[] d = new long[treesAfter.length];
+			for (int i = 0; i < d.length; i++) {
+				d[i] = treesAfter[i] - treesBefore[i];
+			}
+			throw new AssertionError(String.format(Locale.ROOT, "%s: no trees counted in the plot of a forest (%d forest columns of "
+					+ "the square; in the chunks the census generated: %d trees placed, %d planned, skipped %d blocked, %d at structures "
+					+ "or water, %d on the trunk base, %d unwritten, %d suppressed; %s)", c.place(), withGround, d[0], d[1], d[2], d[3], d[4],
+					d[5], d[6], centerColumn(level, x, z)));
 		}
 		return rows;
+	}
+
+	/** Step TT5: the counters of the tree stand (trees placed, planned, then the skipped ones by reason). */
+	private static long[] treeCounters() {
+		return new long[] {pl.polishforests.worldgen.feature.TreeStandFeature.TREES.sum(),
+				pl.polishforests.worldgen.feature.TreeStandFeature.PLANNED.sum(),
+				pl.polishforests.worldgen.feature.TreeStandFeature.SKIPPED_BLOCKED.sum(),
+				pl.polishforests.worldgen.feature.TreeStandFeature.SKIPPED_STRUCTURE.sum(),
+				pl.polishforests.worldgen.feature.TreeStandFeature.SKIPPED_BASE.sum(),
+				pl.polishforests.worldgen.feature.TreeStandFeature.SKIPPED_WRITE.sum(),
+				pl.polishforests.worldgen.feature.TreeStandFeature.SKIPPED_SUPPRESSED.sum()};
+	}
+
+	/** Step TT5: the habitat of the center column, its model top and the generated blocks there (a plot without trees). */
+	private static String centerColumn(ServerLevel level, int x, int z) {
+		if (!(level.getChunkSource().getGenerator() instanceof pl.polishforests.worldgen.chunk.PolandChunkGenerator gen)) {
+			return "not the Poland generator";
+		}
+		pl.polishforests.worldgen.landscape.ColumnSample s = gen.model(level.getSeed()).sample(x, z);
+		int code = gen.classifier(level.getSeed()).classify(s, x, z);
+		int top = gen.vertical().topBlockY(s.surface());
+		int surface = level.getHeight(Heightmap.Types.WORLD_SURFACE, x, z) - 1;
+		return String.format(Locale.ROOT, "center (%d, %d): %s, zone %s, association %s, %.0f m, model top Y %d (%s, above %s), "
+				+ "world surface Y %d (%s), biome of the level %s", x, z, pl.polishforests.worldgen.habitat.Habitat.biome(code),
+				pl.polishforests.worldgen.habitat.Habitat.zone(code), pl.polishforests.worldgen.habitat.Habitat.association(code),
+				s.surface(), top, id(level.getBlockState(new BlockPos(x, top, z))), id(level.getBlockState(new BlockPos(x, top + 1, z))),
+				surface, id(level.getBlockState(new BlockPos(x, surface, z))),
+				level.getBiome(new BlockPos(x, top + 1, z)).getRegisteredName());
 	}
 
 	/**

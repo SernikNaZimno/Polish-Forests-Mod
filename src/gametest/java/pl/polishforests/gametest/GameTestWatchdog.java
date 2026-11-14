@@ -27,7 +27,8 @@ import pl.polishforests.PolishForests;
  * advances its phase 20 times a second, and a hang of any of the three threads (a server stuck inside its tick, a client
  * that stopped drawing, a world that does not close) stops it. Without ticks a run is still healthy while the test does its
  * own work: the test thread is running (a search, a census, a frame comparison) or the client or server thread runs a
- * test task ({@code runOnClient}, {@code computeOnServer}) or the client loads a world (the integrated server starts), and
+ * test task ({@code runOnClient}, {@code computeOnServer}) or the client loads a world (the integrated server starts) or
+ * the server saves the chunks it unloads (step TT5: those of a test task in the realistic Tatras), and
  * the process uses at least {@value #BUSY_CORES} of a core.
  * <ul>
  * <li><b>Stall</b>: no tick for {@code stallSeconds} (default {@value #STALL_SECONDS_DEFAULT}, {@code -PgametestStall=<s>})
@@ -55,6 +56,13 @@ public final class GameTestWatchdog implements ClientModInitializer {
 	/** The client starting the integrated server of a new or loaded world (no ticks while the server starts). */
 	private static final String LOAD_FRAME = "doWorldLoad";
 	private static final String SAVE_FRAME = "stopServer";
+	/**
+	 * Step TT5: the server saving the chunks it unloads within a tick ({@code ChunkMap.processUnloads}): after a server task
+	 * of a test that generated hundreds of chunks of the realistic Tatras (2000 blocks of rock in each column, sections up
+	 * to Y 2031) their copy for the save takes over 20 s of one tick.
+	 */
+	private static final String UNLOAD_FRAME = "processUnloads";
+	private static final String CHUNK_MAP = "net.minecraft.server.level.ChunkMap";
 
 	@Override
 	public void onInitializeClient() {
@@ -158,7 +166,8 @@ public final class GameTestWatchdog implements ClientModInitializer {
 		/**
 		 * The test work running without ticks, or null: the test thread running, a test task on another thread, or the client
 		 * loading a world (the server starting; about 3 s in the seasons runs, longer with a heavier world or mod set), or
-		 * the server saving at the close of a world (over 20 s after a census of thousands of new chunks, step O2).
+		 * the server saving at the close of a world (over 20 s after a census of thousands of new chunks, step O2), or (step
+		 * TT5) the server saving the chunks it unloads in a tick after a test task.
 		 */
 		private static String testWork(Thread test) {
 			if (test.getState() == Thread.State.RUNNABLE) {
@@ -174,6 +183,9 @@ public final class GameTestWatchdog implements ClientModInitializer {
 					}
 					if (f.getMethodName().equals(SAVE_FRAME) && f.getClassName().equals("net.minecraft.server.MinecraftServer")) {
 						return "world saving";
+					}
+					if (f.getMethodName().equals(UNLOAD_FRAME) && f.getClassName().equals(CHUNK_MAP)) {
+						return "unloaded chunks saving";
 					}
 				}
 			}

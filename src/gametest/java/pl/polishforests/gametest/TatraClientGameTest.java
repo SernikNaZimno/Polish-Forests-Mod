@@ -84,7 +84,11 @@ import pl.polishforests.worldgen.surface.Material;
  * one, the lattices, the transects and the summit search grown with the forms (3.33 times at realistic scale), the wide
  * search of the massif within {@code PolishForestsCommands.tatraRadius} (2000 km at realistic scale). The board of the
  * plants only in the gameplay scale. The report holds both scales, the slope histograms go to
- * {@code build/tatra/slopes_<scale>.txt}.
+ * {@code build/tatra/slopes_<scale>.txt}. Stage 2 of TT5: the transects, the tarns and the belt probes run in batches
+ * with ticks between them (the tall realistic chunks unload as they go); the summit column at the limit of the level
+ * (the top section, the WORLD_SURFACE and MOTION_BLOCKING heightmaps at least at the top ground, sky light 15 above it
+ * and at the top of the level); air at the model top of a patch counts apart as a cave cut (at most 15% of the chunk);
+ * the off share of a transect counts only its points in the Tatra parts (those of the foreland are listed apart).
  */
 public final class TatraClientGameTest implements FabricClientGameTest {
 	private static final String SEED = "20260927";
@@ -191,13 +195,12 @@ public final class TatraClientGameTest implements FabricClientGameTest {
 				double fs = real ? 1 / 0.3 : 1;
 				for (double f : new double[] {-0.5, 0, 0.5}) {
 					double v = f * t.halfLength();
-					sp.getServer().runOnServer(s -> transect(s.overworld(), t, String.format(Locale.ROOT,
-							"across at %.2f of the half length", f), -6_000 * fs, v, t.reach() + 2_000 * fs, v, census, surface,
-							report, failures));
+					transect(context, sp, t, String.format(Locale.ROOT, "across at %.2f of the half length", f), -6_000 * fs, v,
+							t.reach() + 2_000 * fs, v, census, surface, report, failures);
 					context.waitTicks(SETTLE_TICKS);
 				}
-				sp.getServer().runOnServer(s -> transect(s.overworld(), t, "along the main ridge", 0, -t.halfLength() - 2_000 * fs, 0,
-						t.halfLength() + 2_000 * fs, census, surface, report, failures));
+				transect(context, sp, t, "along the main ridge", 0, -t.halfLength() - 2_000 * fs, 0, t.halfLength() + 2_000 * fs,
+						census, surface, report, failures);
 				context.waitTicks(SETTLE_TICKS);
 				// Step TT2: the tarns, one per server task with ticks between them (their chunks unload in between).
 				List<LandscapeModel.TatraTarn> tarns = sp.getServer().computeOnServer(s -> tarnsOf(model(s.overworld()), t));
@@ -209,14 +212,21 @@ public final class TatraClientGameTest implements FabricClientGameTest {
 				}
 				for (int n = 0; n < Math.min(TARNS, tarns.size()); n++) {
 					LandscapeModel.TatraTarn tn = tarns.get(n);
-					sp.getServer().runOnServer(s -> tarn(s.overworld(), tn, report, failures));
+					tarn(context, sp, tn, report, failures);
 					context.waitTicks(SETTLE_TICKS);
 				}
 				sp.getServer().runOnServer(s -> slopes(model(s.overworld()), t, report));
 				// Step TT3: the belt shares (KT-1) and KF-1 deep in the Tatra forests, one site per server task.
-				List<int[]> sites = sp.getServer().computeOnServer(s -> TatraBelts.shares(s.overworld(), t, report, failures));
+				TatraBelts.Probes probes = sp.getServer().computeOnServer(s -> TatraBelts.shares(s.overworld(), t, report, failures));
+				// Step TT5: the probes of the level in batches (their chunks unload in between).
+				for (int i = 0; i < probes.points.size(); i += PROBE_BATCH) {
+					int from = i;
+					sp.getServer().runOnServer(s -> probes.probe(s.overworld(), from, Math.min(from + PROBE_BATCH, probes.points.size())));
+					context.waitTicks(BATCH_TICKS);
+				}
+				probes.report(report, failures);
 				context.waitTicks(SETTLE_TICKS);
-				for (int[] site : sites) {
+				for (int[] site : probes.sites) {
 					sp.getServer().runOnServer(s -> TatraBelts.kf1(s.overworld(), site, report, failures));
 					context.waitTicks(SETTLE_TICKS);
 				}
@@ -297,6 +307,7 @@ public final class TatraClientGameTest implements FabricClientGameTest {
 		LevelChunk chunk = level.getChunk(x >> 4, z >> 4);
 		double ms = (System.nanoTime() - start) / 1e6;
 		int offTop = 0;
+		int cut = 0;
 		int rockMissing = 0;
 		int rockStray = 0;
 		int highest = Integer.MIN_VALUE;
@@ -312,7 +323,10 @@ public final class TatraClientGameTest implements FabricClientGameTest {
 			// The top ground block of the model: ground there and none right above it (plants, trees, snow and air may be).
 			int top = vs.topBlockY(s.surface());
 			BlockState ground = chunk.getBlockState(at.set(wx, top, wz));
-			if (!s.hasWater() && (!ground(ground) || ground(chunk.getBlockState(at.set(wx, top + 1, wz))))) {
+			if (!s.hasWater() && ground.isAir()) {
+				// Step TT5: air at the model top, a cave opening (J1) or a carver, as in the transects.
+				cut++;
+			} else if (!s.hasWater() && (!ground(ground) || ground(chunk.getBlockState(at.set(wx, top + 1, wz))))) {
 				offTop++;
 			}
 			tops.merge(id(ground), 1, Integer::sum);
@@ -329,10 +343,13 @@ public final class TatraClientGameTest implements FabricClientGameTest {
 			}
 		}
 		report.add(String.format(Locale.ROOT, "patch %s at (%d, %d): chunk %.0f ms; parts %s; top blocks %s; top off the model %d, "
-				+ "bedrock without its rock block %d, rock block without a bedrock %d, highest block Y %d", name, x, z, ms, parts, tops,
-				offTop, rockMissing, rockStray, highest));
+				+ "air at the model top (caves) %d, bedrock without its rock block %d, rock block without a bedrock %d, highest block Y %d", name, x, z, ms, parts, tops,
+				offTop, cut, rockMissing, rockStray, highest));
 		if (offTop > 16) {
 			failures.add(name + ": " + offTop + " columns with the top block off the model");
+		}
+		if (cut > 0.15 * 256) {
+			failures.add(name + ": " + cut + " columns with air at the model top");
 		}
 		if (rockMissing > 0 || rockStray > 0) {
 			failures.add(name + ": rock blocks off the model (" + rockMissing + " missing, " + rockStray + " stray)");
@@ -412,104 +429,178 @@ public final class TatraClientGameTest implements FabricClientGameTest {
 		if (highest > maxY(level)) {
 			failures.add("summit chunk: a block at Y " + highest);
 		}
+		// Step TT5: the column at the limit of the world in light, heightmaps and sections: the top section of the level
+		// reaches its top Y (2031 in the realistic scale), the heightmaps of the summit column agree with its top ground
+		// block (or a crown or snow above it) and the sky light is full above it and at the top of the world.
+		int surfaceTop = chunk.getHeight(Heightmap.Types.WORLD_SURFACE, x & 15, z & 15);
+		int motion = chunk.getHeight(Heightmap.Types.MOTION_BLOCKING, x & 15, z & 15);
+		int skyAbove = level.getBrightness(net.minecraft.world.level.LightLayer.SKY, new BlockPos(x, surfaceTop + 1, z));
+		int skyTop = level.getBrightness(net.minecraft.world.level.LightLayer.SKY, new BlockPos(x, level.getMaxY(), z));
+		int topSection = level.getSectionYFromSectionIndex(level.getSectionsCount() - 1);
+		report.add(String.format(Locale.ROOT, "summit column at the limit: top of the level Y %d (top section %d, %d sections), "
+				+ "heightmaps WORLD_SURFACE %d, MOTION_BLOCKING %d, sky light %d above the top and %d at Y %d", level.getMaxY(),
+				topSection, level.getSectionsCount(), surfaceTop, motion, skyAbove, skyTop, level.getMaxY()));
+		if ((topSection << 4) + 15 != level.getMaxY() || surfaceTop < gen || motion < gen || surfaceTop > maxY(level)
+				|| skyAbove != 15 || skyTop != 15) {
+			failures.add(String.format(Locale.ROOT, "summit column: top section %d, heightmaps %d / %d with the top ground at Y %d, "
+					+ "sky light %d / %d", topSection, surfaceTop, motion, gen, skyAbove, skyTop));
+		}
 	}
 
+	/** Step TT5: points of a transect per server task (their chunks unload in the ticks between the tasks). */
+	private static final int TRANSECT_BATCH = 16;
+	/** Step TT5: probes of the level of the belt census per server task. */
+	private static final int PROBE_BATCH = 8;
+	/** Step TT5: ticks between the batches of a transect or a tarn. */
+	private static final int BATCH_TICKS = 40;
+
 	/**
-	 * A transect of the massif from (u0, v0) to (u1, v1) in its local frame, every 250 m: the model against the generated
-	 * top ground block, the crest, the basin floor and the slopes between the points (blocks per block).
+	 * A transect of the massif from (u0, v0) to (u1, v1) in its local frame, every 250 m (step TT5: times the form scale):
+	 * the model against the generated top ground block, the crest, the basin floor and the slopes between the points
+	 * (blocks per block). Step TT5: the points run in batches of {@value #TRANSECT_BATCH}, one server task each with ticks
+	 * between them, so the generated chunks of the realistic Tatras (sections up to Y 2031) unload as the transect goes; in
+	 * one task the save of all of them took over a minute of one tick and ran out of heap.
 	 */
-	private static void transect(ServerLevel level, LandscapeModel.Tatra t, String name, double u0, double v0, double u1,
-			double v1, Map<TatraPart, Map<String, Integer>> census, Map<String, Map<String, Integer>> surface, List<String> report,
-			List<String> failures) {
-		LandscapeModel m = model(level);
-		VerticalScale vs = ((PolandChunkGenerator) level.getChunkSource().getGenerator()).vertical();
-		double length = Math.hypot(u1 - u0, v1 - v0);
-		// Step TT5: the points grow apart with the forms (833 m at realistic scale).
-		double tStep = TRANSECT_STEP * f(m);
-		int steps = (int) Math.floor(length / tStep);
-		StringBuilder profile = new StringBuilder();
+	private static void transect(ClientGameTestContext context, TestSingleplayerContext sp, LandscapeModel.Tatra t, String name,
+			double u0, double v0, double u1, double v1, Map<TatraPart, Map<String, Integer>> census,
+			Map<String, Map<String, Integer>> surface, List<String> report, List<String> failures) {
+		Transect tr = sp.getServer().computeOnServer(s -> new Transect(model(s.overworld()), t, name, u0, v0, u1, v1));
+		for (int i = 0; i <= tr.steps; i += TRANSECT_BATCH) {
+			int from = i;
+			sp.getServer().runOnServer(s -> tr.points(s.overworld(), from, Math.min(from + TRANSECT_BATCH, tr.steps + 1), census,
+					surface));
+			context.waitTicks(BATCH_TICKS);
+		}
+		sp.getServer().runOnServer(s -> tr.finish(s.overworld(), report, failures));
+	}
+
+	/** Step TT5: the state of a transect between its batches. */
+	private static final class Transect {
+		final LandscapeModel.Tatra t;
+		final String name;
+		final double u0;
+		final double v0;
+		final double u1;
+		final double v1;
+		final double length;
+		final double tStep;
+		final int steps;
+		final StringBuilder profile = new StringBuilder();
 		int top = Integer.MIN_VALUE;
 		int prev = Integer.MIN_VALUE;
 		double maxSlope = 0;
 		double sumSlope = 0;
 		int dry = 0;
+		/** Dry points in the parts of the Tatras ({@link TatraPart#NONE} excluded), the base of the off share. */
+		int dryTatra = 0;
 		int off = 0;
+		/** Step TT5: off points outside the Tatras (the foreland of the realistic world: its micro-relief, reported). */
+		int offOutside = 0;
 		int cut = 0;
 		double crest = Double.NEGATIVE_INFINITY;
 		double basin = Double.POSITIVE_INFINITY;
-		Map<TatraPart, Integer> parts = new TreeMap<>();
+		final Map<TatraPart, Integer> parts = new TreeMap<>();
 		TatraPart last = null;
-		for (int i = 0; i <= steps; i++) {
-			double d = i * tStep;
-			double u = u0 + (u1 - u0) * d / length;
-			double v = v0 + (v1 - v0) * d / length;
-			int x = (int) Math.floor(wx(t, u, v));
-			int z = (int) Math.floor(wz(t, u, v));
-			ColumnSample s = m.sample(x, z);
-			TatraPart part = s.terrain().tatraPart();
-			parts.merge(part, 1, Integer::sum);
-			if (part == TatraPart.HIGH_TATRA || part == TatraPart.WESTERN_TATRA) {
-				crest = Math.max(crest, s.surface());
-			}
-			if (part == TatraPart.PODHALE_BASIN && !s.hasWater()) {
-				basin = Math.min(basin, s.surface());
-			}
-			LevelChunk chunk = level.getChunk(x >> 4, z >> 4);
-			int gen = groundTop(chunk, x, z, level.getMinY());
-			int want = vs.topBlockY(s.surface());
-			top = Math.max(top, gen);
-			if (prev != Integer.MIN_VALUE) {
-				double slope = Math.abs(gen - prev) / tStep;
-				maxSlope = Math.max(maxSlope, slope);
-				sumSlope += slope;
-			}
-			prev = gen;
-			if (!s.hasWater() && part != TatraPart.NONE) {
-				String bedrock = s.terrain().rock() == null ? "flysch" : s.terrain().rock().name().toLowerCase(Locale.ROOT);
-				surface.computeIfAbsent(bedrock, k -> new TreeMap<>()).merge(id(chunk.getBlockState(new BlockPos(x, gen, z))), 1,
-						Integer::sum);
-			}
-			boolean wrong = false;
-			if (!s.hasWater()) {
-				dry++;
-				if (gen < want && chunk.getBlockState(new BlockPos(x, want, z)).isAir()) {
-					// Air at the model top and the ground lower: a cave opening (J1) or a carver.
-					cut++;
-					wrong = true;
-				} else if (gen != want) {
-					off++;
-					wrong = true;
+
+		Transect(LandscapeModel m, LandscapeModel.Tatra t, String name, double u0, double v0, double u1, double v1) {
+			this.t = t;
+			this.name = name;
+			this.u0 = u0;
+			this.v0 = v0;
+			this.u1 = u1;
+			this.v1 = v1;
+			length = Math.hypot(u1 - u0, v1 - v0);
+			// Step TT5: the points grow apart with the forms (833 m at realistic scale).
+			tStep = TRANSECT_STEP * f(m);
+			steps = (int) Math.floor(length / tStep);
+		}
+
+		/** The points from {@code from} (inclusive) to {@code to} (exclusive). */
+		void points(ServerLevel level, int from, int to, Map<TatraPart, Map<String, Integer>> census,
+				Map<String, Map<String, Integer>> surface) {
+			LandscapeModel m = model(level);
+			VerticalScale vs = ((PolandChunkGenerator) level.getChunkSource().getGenerator()).vertical();
+			for (int i = from; i < to; i++) {
+				double d = i * tStep;
+				double u = u0 + (u1 - u0) * d / length;
+				double v = v0 + (v1 - v0) * d / length;
+				int x = (int) Math.floor(wx(t, u, v));
+				int z = (int) Math.floor(wz(t, u, v));
+				ColumnSample s = m.sample(x, z);
+				TatraPart part = s.terrain().tatraPart();
+				parts.merge(part, 1, Integer::sum);
+				if (part == TatraPart.HIGH_TATRA || part == TatraPart.WESTERN_TATRA) {
+					crest = Math.max(crest, s.surface());
+				}
+				if (part == TatraPart.PODHALE_BASIN && !s.hasWater()) {
+					basin = Math.min(basin, s.surface());
+				}
+				LevelChunk chunk = level.getChunk(x >> 4, z >> 4);
+				int gen = groundTop(chunk, x, z, level.getMinY());
+				int want = vs.topBlockY(s.surface());
+				top = Math.max(top, gen);
+				if (prev != Integer.MIN_VALUE) {
+					double slope = Math.abs(gen - prev) / tStep;
+					maxSlope = Math.max(maxSlope, slope);
+					sumSlope += slope;
+				}
+				prev = gen;
+				if (!s.hasWater() && part != TatraPart.NONE) {
+					String bedrock = s.terrain().rock() == null ? "flysch" : s.terrain().rock().name().toLowerCase(Locale.ROOT);
+					surface.computeIfAbsent(bedrock, k -> new TreeMap<>()).merge(id(chunk.getBlockState(new BlockPos(x, gen, z))), 1,
+							Integer::sum);
+				}
+				boolean wrong = false;
+				if (!s.hasWater()) {
+					dry++;
+					dryTatra += part != TatraPart.NONE ? 1 : 0;
+					if (gen < want && chunk.getBlockState(new BlockPos(x, want, z)).isAir()) {
+						// Air at the model top and the ground lower: a cave opening (J1) or a carver.
+						cut++;
+						wrong = true;
+					} else if (gen != want && part == TatraPart.NONE) {
+						offOutside++;
+						wrong = true;
+					} else if (gen != want) {
+						off++;
+						wrong = true;
+					}
+				}
+				String rock = rock(chunk, x, want, z, level.getMinY());
+				if (rock != null) {
+					census.computeIfAbsent(part, k -> new TreeMap<>()).merge(rock, 1, Integer::sum);
+				}
+				if (part != last) {
+					profile.append(" | ").append(part);
+					last = part;
+				}
+				profile.append(String.format(Locale.ROOT, " %.0f:%.0f/%d", d, s.surface(), gen));
+				if (wrong) {
+					// An off point: the model top, the block there and the block above it.
+					BlockPos.MutableBlockPos at = new BlockPos.MutableBlockPos();
+					profile.append(String.format(Locale.ROOT, "!%d(%s,%s;%d,%d)", want, id(chunk.getBlockState(at.set(x, want, z))),
+							id(chunk.getBlockState(at.set(x, want + 1, z))), x, z));
 				}
 			}
-			String rock = rock(chunk, x, want, z, level.getMinY());
-			if (rock != null) {
-				census.computeIfAbsent(part, k -> new TreeMap<>()).merge(rock, 1, Integer::sum);
-			}
-			if (part != last) {
-				profile.append(" | ").append(part);
-				last = part;
-			}
-			profile.append(String.format(Locale.ROOT, " %.0f:%.0f/%d", d, s.surface(), gen));
-			if (wrong) {
-				// An off point: the model top, the block there and the block above it.
-				BlockPos.MutableBlockPos at = new BlockPos.MutableBlockPos();
-				profile.append(String.format(Locale.ROOT, "!%d(%s,%s;%d,%d)", want, id(chunk.getBlockState(at.set(x, want, z))),
-						id(chunk.getBlockState(at.set(x, want + 1, z))), x, z));
-			}
 		}
-		report.add(String.format(Locale.ROOT, "transect %s (u %.0f..%.0f m, v %.0f..%.0f m): %d dry points, %d off the model, "
-				+ "%d cut lower with air at the model top (caves); highest top Y %d; crest %.0f m, basin floor %.0f m, drop %.0f m; slope between the points (blocks per block) "
-				+ "largest %.3f, mean %.3f; points by part %s", name, u0, u1, v0, v1, dry, off, cut, top, crest, basin, crest - basin,
-				maxSlope, steps > 0 ? sumSlope / steps : 0, parts));
-		report.add("  profile (distance m: model m / generated top Y):" + profile);
-		if (off > 0.03 * dry) {
-			failures.add("transect " + name + ": " + off + " of " + dry + " dry points off the model");
-		}
-		if (cut > 0.15 * dry) {
-			failures.add("transect " + name + ": " + cut + " of " + dry + " dry points cut below the model");
-		}
-		if (top > maxY(level)) {
-			failures.add("transect " + name + ": a top at Y " + top);
+
+		void finish(ServerLevel level, List<String> report, List<String> failures) {
+			report.add(String.format(Locale.ROOT, "transect %s (u %.0f..%.0f m, v %.0f..%.0f m): %d dry points (%d in the Tatras), %d off the "
+					+ "model in the Tatras and %d outside them, %d cut lower with air at the model top (caves); highest top Y %d; crest %.0f m, basin floor %.0f m, drop %.0f m; slope between the points (blocks per block) "
+					+ "largest %.3f, mean %.3f; points by part %s", name, u0, u1, v0, v1, dry, dryTatra, off, offOutside, cut, top, crest, basin, crest - basin,
+					maxSlope, steps > 0 ? sumSlope / steps : 0, parts));
+			report.add("  profile (distance m: model m / generated top Y):" + profile);
+			// Step TT5: the share of the Tatra points; the foreland (part NONE) has its own tests (golden terrain, landscape) and
+			// at the realistic scale its noise micro-relief puts single points 1 to 3 blocks off the model.
+			if (off > 0.03 * dryTatra) {
+				failures.add("transect " + name + ": " + off + " of " + dryTatra + " dry Tatra points off the model");
+			}
+			if (cut > 0.15 * dry) {
+				failures.add("transect " + name + ": " + cut + " of " + dry + " dry points cut below the model");
+			}
+			if (top > maxY(level)) {
+				failures.add("transect " + name + ": a top at Y " + top);
+			}
 		}
 	}
 
@@ -523,60 +614,102 @@ public final class TatraClientGameTest implements FabricClientGameTest {
 	/**
 	 * Step TT2: the generated water of a tarn: every column the model gives to the tarn (a box around its basin), the top
 	 * water block of each with its four neighbors on the same layer (water or a solid block, else a leak) and the block
-	 * under its lowest water block (not air, else hanging water).
+	 * under its lowest water block (not air, else hanging water). Step TT5: the box runs in strips of whole chunks, one
+	 * server task each with ticks between them ({@value #TARN_STRIP_REAL} blocks wide in the realistic scale, where the
+	 * largest tarn covers about 2000 chunks; the whole box in one task ran out of heap).
 	 */
-	private static void tarn(ServerLevel level, LandscapeModel.TatraTarn tn, List<String> report, List<String> failures) {
-		LandscapeModel m = model(level);
-		VerticalScale vs = ((PolandChunkGenerator) level.getChunkSource().getGenerator()).vertical();
-		double reach = Math.max(tn.across(), tn.along()) * 1.2 + 8;
-		int x0 = (int) Math.floor(tn.x() - reach);
-		int z0 = (int) Math.floor(tn.z() - reach);
-		int n = (int) Math.ceil(2 * reach);
+	private static void tarn(ClientGameTestContext context, TestSingleplayerContext sp, LandscapeModel.TatraTarn tn,
+			List<String> report, List<String> failures) {
+		TarnCheck c = sp.getServer().computeOnServer(s -> new TarnCheck(model(s.overworld()), tn));
+		for (int a = c.cx0; a <= c.cx1; a += c.strip) {
+			int from = a;
+			sp.getServer().runOnServer(s -> c.strip(s.overworld(), from, Math.min(from + c.strip - 1, c.cx1)));
+			context.waitTicks(BATCH_TICKS);
+		}
+		sp.getServer().runOnServer(s -> c.finish(s.overworld(), report, failures));
+	}
+
+	/** Step TT5: chunk columns of a tarn strip in the realistic scale (16 blocks each). */
+	private static final int TARN_STRIP_REAL = 2;
+	/** Step TT5: chunk columns of a tarn strip in the gameplay scale (the whole box of a gameplay tarn in one or two). */
+	private static final int TARN_STRIP_GAMEPLAY = 16;
+
+	/** Step TT5: the state of a tarn check between its strips. */
+	private static final class TarnCheck {
+		final LandscapeModel.TatraTarn tn;
+		final int x0;
+		final int z0;
+		final int n;
+		final int cx0;
+		final int cx1;
+		final int strip;
 		int water = 0;
 		int dry = 0;
 		int leaks = 0;
 		int hanging = 0;
-		List<String> examples = new ArrayList<>();
-		BlockPos.MutableBlockPos at = new BlockPos.MutableBlockPos();
-		for (int a = 0; a < n; a++) {
-			for (int b = 0; b < n; b++) {
-				int x = x0 + a;
-				int z = z0 + b;
-				ColumnSample s = m.sample(x, z);
-				if (s.waterKind() != pl.polishforests.worldgen.landscape.WaterKind.TARN) {
-					continue;
-				}
-				int y = vs.topBlockY(s.waterLevel());
-				LevelChunk chunk = level.getChunk(x >> 4, z >> 4);
-				if (!chunk.getFluidState(at.set(x, y, z)).is(net.minecraft.tags.FluidTags.WATER)) {
-					dry++;
-					continue;
-				}
-				water++;
-				for (int[] d : new int[][] {{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
-					BlockState o = level.getBlockState(at.set(x + d[0], y, z + d[1]));
-					if (!o.getFluidState().is(net.minecraft.tags.FluidTags.WATER) && !o.isSolid()) {
-						leaks++;
-						if (examples.size() < 4) {
-							examples.add(String.format(Locale.ROOT, "(%d, %d, %d) %s", x + d[0], y, z + d[1], id(o)));
+		final List<String> examples = new ArrayList<>();
+
+		TarnCheck(LandscapeModel m, LandscapeModel.TatraTarn tn) {
+			this.tn = tn;
+			double reach = Math.max(tn.across(), tn.along()) * 1.2 + 8;
+			x0 = (int) Math.floor(tn.x() - reach);
+			z0 = (int) Math.floor(tn.z() - reach);
+			n = (int) Math.ceil(2 * reach);
+			cx0 = x0 >> 4;
+			cx1 = (x0 + n - 1) >> 4;
+			strip = m.scale() == pl.polishforests.worldgen.landscape.LandscapeScale.REALISTIC ? TARN_STRIP_REAL : TARN_STRIP_GAMEPLAY;
+		}
+
+		/** The columns of the box in the chunk columns {@code from} … {@code to} (inclusive). */
+		void strip(ServerLevel level, int from, int to) {
+			LandscapeModel m = model(level);
+			VerticalScale vs = ((PolandChunkGenerator) level.getChunkSource().getGenerator()).vertical();
+			BlockPos.MutableBlockPos at = new BlockPos.MutableBlockPos();
+			int xa = Math.max(x0, from << 4);
+			int xb = Math.min(x0 + n - 1, (to << 4) + 15);
+			for (int x = xa; x <= xb; x++) {
+				for (int b = 0; b < n; b++) {
+					int z = z0 + b;
+					ColumnSample s = m.sample(x, z);
+					if (s.waterKind() != pl.polishforests.worldgen.landscape.WaterKind.TARN) {
+						continue;
+					}
+					int y = vs.topBlockY(s.waterLevel());
+					LevelChunk chunk = level.getChunk(x >> 4, z >> 4);
+					if (!chunk.getFluidState(at.set(x, y, z)).is(net.minecraft.tags.FluidTags.WATER)) {
+						dry++;
+						continue;
+					}
+					water++;
+					for (int[] d : new int[][] {{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
+						BlockState o = level.getBlockState(at.set(x + d[0], y, z + d[1]));
+						if (!o.getFluidState().is(net.minecraft.tags.FluidTags.WATER) && !o.isSolid()) {
+							leaks++;
+							if (examples.size() < 4) {
+								examples.add(String.format(Locale.ROOT, "(%d, %d, %d) %s", x + d[0], y, z + d[1], id(o)));
+							}
 						}
 					}
-				}
-				int yb = y;
-				while (yb > level.getMinY() && chunk.getFluidState(at.set(x, yb - 1, z)).is(net.minecraft.tags.FluidTags.WATER)) {
-					yb--;
-				}
-				if (chunk.getBlockState(at.set(x, yb - 1, z)).isAir()) {
-					hanging++;
+					int yb = y;
+					while (yb > level.getMinY() && chunk.getFluidState(at.set(x, yb - 1, z)).is(net.minecraft.tags.FluidTags.WATER)) {
+						yb--;
+					}
+					if (chunk.getBlockState(at.set(x, yb - 1, z)).isAir()) {
+						hanging++;
+					}
 				}
 			}
 		}
-		report.add(String.format(Locale.ROOT, "tarn %d at (%.0f, %.0f), %.0f × %.0f m, level %d m (Y %d)%s%s: %d water columns, "
-				+ "%d model water columns without water, %d leaks %s, %d hanging", tn.id(), tn.x(), tn.z(), 2 * tn.across(),
-				2 * tn.along(), tn.level(), vs.topBlockY(tn.level()), tn.morskie() ? ", Morskie Oko type" : tn.moraine() ? ", moraine"
-						: ", cirque", tn.outlet() ? ", outlet brook" : ", no outlet", water, dry, leaks, examples, hanging));
-		if (water == 0 || leaks > 0 || hanging > 0) {
-			failures.add("tarn " + tn.id() + ": " + water + " water columns, " + leaks + " leaks, " + hanging + " hanging");
+
+		void finish(ServerLevel level, List<String> report, List<String> failures) {
+			VerticalScale vs = ((PolandChunkGenerator) level.getChunkSource().getGenerator()).vertical();
+			report.add(String.format(Locale.ROOT, "tarn %d at (%.0f, %.0f), %.0f × %.0f m, level %d m (Y %d)%s%s: %d water columns, "
+					+ "%d model water columns without water, %d leaks %s, %d hanging", tn.id(), tn.x(), tn.z(), 2 * tn.across(),
+					2 * tn.along(), tn.level(), vs.topBlockY(tn.level()), tn.morskie() ? ", Morskie Oko type" : tn.moraine() ? ", moraine"
+							: ", cirque", tn.outlet() ? ", outlet brook" : ", no outlet", water, dry, leaks, examples, hanging));
+			if (water == 0 || leaks > 0 || hanging > 0) {
+				failures.add("tarn " + tn.id() + ": " + water + " water columns, " + leaks + " leaks, " + hanging + " hanging");
+			}
 		}
 	}
 
