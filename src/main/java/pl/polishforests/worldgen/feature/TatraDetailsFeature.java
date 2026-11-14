@@ -2,7 +2,9 @@ package pl.polishforests.worldgen.feature;
 
 import com.mojang.serialization.MapCodec;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.LongAdder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -28,6 +30,7 @@ import pl.polishforests.block.WoodSet;
 import pl.polishforests.worldgen.chunk.ChunkHabitats;
 import pl.polishforests.worldgen.chunk.PolandChunkGenerator;
 import pl.polishforests.worldgen.feature.tatra.BoulderPlan;
+import pl.polishforests.worldgen.feature.tatra.Cells;
 import pl.polishforests.worldgen.feature.tatra.HutPlan;
 import pl.polishforests.worldgen.feature.tatra.MouthPlan;
 import pl.polishforests.worldgen.feature.tatra.Piece;
@@ -58,9 +61,10 @@ import pl.polishforests.worldgen.landscape.Substrate;
  * some of their tops; at a block field the ground around the larger ones turns to scree.</li>
  * </ul>
  * Every random value comes from a source hashed from the world seed and the place, never from the feature's random source,
- * so the result depends on neither the order of generation nor the index of the feature in the step. Writes stay in the
- * window of the chunk and its eight neighbors (the anchors keep the extent of their kind inside it,
- * {@link TatraSites.Kind#extent()}).
+ * so the result depends on neither the order of generation nor the index of the feature in the step. Every plan and boulder
+ * writes only into the chunk that builds it (a plan that would cross the border is not built, see {@link TerrainView#writable}),
+ * so no neighbor's trees, plants or snow land in it later; the ground of the neighbors is only read (planned tops). A plan is
+ * not built where a tree trunk stands in its columns, and the plants that stood on a carved column are cleared with it.
  */
 public final class TatraDetailsFeature implements Feature {
 	public static final TatraDetailsFeature INSTANCE = new TatraDetailsFeature();
@@ -200,6 +204,7 @@ public final class TatraDetailsFeature implements Feature {
 	private static void apply(WorldGenLevel level, Region region, List<Placement> plan, Substrate rock) {
 		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
 		for (Placement p : plan) {
+			// The planners vetted the cells ({@link TerrainView#writable}); only the window of the region is checked here.
 			if (!region.inWindow(p.x(), p.z())) {
 				continue;
 			}
@@ -212,6 +217,33 @@ public final class TatraDetailsFeature implements Feature {
 				continue;
 			}
 			level.setBlock(pos, state, 2);
+		}
+		clearAbove(level, region, plan);
+	}
+
+	/**
+	 * Clears the plants, carpets and snow layers that stood over the highest cell the plan sets in a column (a carved pool, a
+	 * cut portal): they would hang in the air or lie on the water. A tree is never here (the plan did not fit where a trunk
+	 * stands, {@link TerrainView#log}); the leaves of a crown beside it are left.
+	 */
+	private static void clearAbove(WorldGenLevel level, Region region, List<Placement> plan) {
+		Map<Long, Placement> highest = new HashMap<>();
+		for (Placement p : plan) {
+			if (region.writable(p.x(), p.z())) {
+				highest.merge(Cells.pack(p.x(), 0, p.z()), p, (a, b) -> b.y() > a.y() ? b : a);
+			}
+		}
+		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+		for (Placement top : highest.values()) {
+			for (int y = top.y() + 1; y <= top.y() + 3; y++) {
+				pos.set(top.x(), y, top.z());
+				BlockState s = level.getBlockState(pos);
+				if (s.isAir() || s.is(BlockTags.LOGS) || s.is(BlockTags.LEAVES) || !s.getFluidState().isEmpty()
+						|| !(s.is(Blocks.SNOW) || s.canBeReplaced() || s.getCollisionShape(level, pos).isEmpty())) {
+					break;
+				}
+				level.setBlock(pos, Blocks.AIR.defaultBlockState(), 2);
+			}
 		}
 	}
 
@@ -456,6 +488,17 @@ public final class TatraDetailsFeature implements Feature {
 			int dx = (x >> 4) - chunkX;
 			int dz = (z >> 4) - chunkZ;
 			return dx >= -1 && dx <= 1 && dz >= -1 && dz <= 1;
+		}
+
+		/** Plans write only into the chunk of the decoration (the order of the chunks must not matter). */
+		@Override
+		public boolean writable(int x, int z) {
+			return (x >> 4) == chunkX && (z >> 4) == chunkZ;
+		}
+
+		@Override
+		public boolean log(int x, int y, int z) {
+			return state(x, y, z).is(BlockTags.LOGS);
 		}
 
 		private int index(int x, int z) {

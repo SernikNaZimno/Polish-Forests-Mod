@@ -80,8 +80,11 @@ public final class HutPlan {
 					// The door on the lower side; near the anchor; the flatter the better.
 					double score = -(hi - lo) * 10 - Math.hypot(dx, dz) + (front <= back ? 2 : 0) + WaterPlan.unit(seed, f * 97 + dx, dz);
 					if (score > bestScore) {
-						bestScore = score;
-						best = build(t, ox, oz, f, hi - lo);
+						Plan p = build(t, ox, oz, f, hi - lo);
+						if (Fit.fits(t, p.placements())) {
+							bestScore = score;
+							best = p;
+						}
 					}
 				}
 			}

@@ -22,8 +22,13 @@ import pl.polishforests.worldgen.feature.tatra.WaterPlan;
  * ({@code TatraDetailsFeature#REJECTED}) that the game test measures in a world.
  */
 class DetailPlansOnModelTest {
-	/** The model ground as a {@link TerrainView}. */
-	private record ModelGround(LandscapeModel m, VerticalScale v) implements TerrainView {
+	/** The model ground as a {@link TerrainView}; a plan may write only into the chunk (chunkX, chunkZ), as in the game. */
+	private record ModelGround(LandscapeModel m, VerticalScale v, int chunkX, int chunkZ) implements TerrainView {
+		@Override
+		public boolean writable(int x, int z) {
+			return x >> 4 == chunkX && z >> 4 == chunkZ;
+		}
+
 		@Override
 		public int top(int x, int z) {
 			return v.topBlockY(m.sample(x, z).surface());
@@ -46,7 +51,6 @@ class DetailPlansOnModelTest {
 		for (long seed : TatraSurvey.SEEDS) {
 			LandscapeModel m = TatraSurvey.with(scale, seed);
 			LandscapeModel.Tatra t = TatraSurvey.nearest(scale, seed, 1).getFirst();
-			TerrainView ground = new ModelGround(m, TatraSurvey.vertical(scale));
 			Map<TatraSites.Kind, int[]> counts = new EnumMap<>(TatraSites.Kind.class);
 			for (TatraSites.Kind kind : TatraSites.Kind.values()) {
 				int[] c = new int[2];
@@ -62,6 +66,7 @@ class DetailPlansOnModelTest {
 							continue;
 						}
 						c[0]++;
+						TerrainView ground = new ModelGround(m, TatraSurvey.vertical(scale), s.x() >> 4, s.z() >> 4);
 						boolean ok = switch (kind) {
 							case WATERFALL -> WaterPlan.waterfall(ground, s.x(), s.z(), s.seed()) != null;
 							case SPRING -> WaterPlan.spring(ground, s.x(), s.z(), s.seed()) != null;

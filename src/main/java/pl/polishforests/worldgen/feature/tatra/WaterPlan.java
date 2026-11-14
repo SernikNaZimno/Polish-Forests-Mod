@@ -63,9 +63,17 @@ public final class WaterPlan {
 			}
 		}
 		scored.sort((a, b) -> Double.compare(b.score, a.score));
-		for (int k = 0; k < Math.min(scored.size(), TRIES); k++) {
-			if (FluidSim.contained(t, scored.get(k).plan.placements())) {
-				return scored.get(k).plan;
+		// The flow model only for the candidates that fit (inside the chunk, no trunk cut), at most TRIES of them.
+		int tries = 0;
+		for (Scored s : scored) {
+			if (!Fit.fits(t, s.plan.placements())) {
+				continue;
+			}
+			if (FluidSim.contained(t, s.plan.placements())) {
+				return s.plan;
+			}
+			if (++tries >= TRIES) {
+				break;
 			}
 		}
 		return null;
@@ -77,7 +85,7 @@ public final class WaterPlan {
 	private record Scored(Plan plan, double score) {
 	}
 
-	/** The waterfall with its lip at column (lx, lz) over the drop in direction {@code d} (not yet checked with the flow model), or null. */
+	/** The waterfall with its lip at column (lx, lz) over the drop in direction {@code d} (not yet checked with {@link Fit} and the flow model), or null. */
 	static @Nullable Plan waterfallAt(TerrainView t, int lx, int lz, int d) {
 		int top = t.top(lx, lz);
 		int ox = lx + Dirs.DX[d];
@@ -194,7 +202,7 @@ public final class WaterPlan {
 				}
 				List<Placement> placements = plan.build();
 				double score = -(high - level) * 4 - 0.1 * (dx * dx + dz * dz) / REACH + unit(seed, dx, dz);
-				if (score > bestScore && FluidSim.contained(t, placements)) {
+				if (score > bestScore && Fit.fits(t, placements) && FluidSim.contained(t, placements)) {
 					bestScore = score;
 					best = new Plan(placements, x0, level, z0, 0, sources);
 				}

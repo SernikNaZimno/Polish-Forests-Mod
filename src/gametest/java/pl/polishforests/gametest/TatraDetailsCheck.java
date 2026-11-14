@@ -15,6 +15,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -208,6 +209,41 @@ final class TatraDetailsCheck {
 			case WATERFALL, SPRING -> water(context, sp, e, report, failures, label);
 			case CAVE_MOUTH -> sp.getServer().runOnServer(s -> mouth(s.overworld(), e, report, failures, label));
 			case SHEPHERD_HUT -> sp.getServer().runOnServer(s -> hut(s.overworld(), e, report, failures, label));
+		}
+		sp.getServer().runOnServer(s -> floating(s.overworld(), e, report, failures, label));
+	}
+
+	/**
+	 * What stands over and in the cells of a plan (review fixes of TT6): over the highest cell of each carved column (air or
+	 * water) no log, plant or carpet (it would hang in the air or lie on the water), and no log in any cell of the plan but
+	 * the hut's own beam: a tree cut by the plan would leave its crown floating.
+	 */
+	private static void floating(ServerLevel level, Entry e, List<String> report, List<String> failures, String label) {
+		java.util.Map<Long, Placement> highest = new java.util.HashMap<>();
+		int logs = 0;
+		BlockPos.MutableBlockPos at = new BlockPos.MutableBlockPos();
+		for (Placement p : e.plan()) {
+			highest.merge(pl.polishforests.worldgen.feature.tatra.Cells.pack(p.x(), 0, p.z()), p, (a, b) -> b.y() > a.y() ? b : a);
+			if (p.piece() != Piece.LOG && level.getBlockState(at.set(p.x(), p.y(), p.z())).is(BlockTags.LOGS)) {
+				logs++;
+			}
+		}
+		int hanging = 0;
+		for (Placement top : highest.values()) {
+			if (top.piece() != Piece.AIR && !top.piece().water()) {
+				continue;
+			}
+			BlockState above = level.getBlockState(at.set(top.x(), top.y() + 1, top.z()));
+			if (above.is(BlockTags.LOGS) || !above.isAir() && !above.is(BlockTags.LEAVES) && above.getFluidState().isEmpty()
+					&& above.getCollisionShape(level, at).isEmpty()) {
+				hanging++;
+			}
+		}
+		report.add(String.format(Locale.ROOT, "%s%s at (%d, %d, %d): %d logs in the plan cells, %d carved columns with a log or a plant above",
+				label, e.kind(), e.at().getX(), e.at().getY(), e.at().getZ(), logs, hanging));
+		if (logs > 0 || hanging > 0) {
+			failures.add(label + e.kind() + " at (" + e.at().getX() + ", " + e.at().getZ() + "): " + logs + " logs in the plan, " + hanging
+					+ " carved columns with a log or a plant above");
 		}
 	}
 

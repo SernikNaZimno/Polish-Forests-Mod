@@ -139,7 +139,8 @@ public final class MouthPlan {
 		if (cutCount < 25) {
 			return null;
 		}
-		return new Plan(use.build(), px, fy + 1, pz, d, tunnel, cutCount);
+		List<Placement> placements = use.build();
+		return Fit.fits(t, placements, true) ? new Plan(placements, px, fy + 1, pz, d, tunnel, cutCount) : null;
 	}
 
 	/** Whether the rock covers the passage at the column: {@value #ROOF} blocks over its top, also beside it. */

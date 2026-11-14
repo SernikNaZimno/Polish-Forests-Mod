@@ -1,5 +1,6 @@
 package pl.polishforests.worldgen.feature.tatra;
 
+import java.util.function.BiPredicate;
 import java.util.function.IntBinaryOperator;
 import java.util.function.Predicate;
 
@@ -11,6 +12,20 @@ final class FlatTerrain implements TerrainView {
 	private final IntBinaryOperator tops;
 	private final Predicate<long[]> hole;
 	private final Predicate<long[]> water;
+	private Predicate<long[]> logs = c -> false;
+	private BiPredicate<Integer, Integer> writable = (x, z) -> true;
+
+	/** The same ground with logs (tree trunks) in the cells the predicate accepts. */
+	FlatTerrain withLogs(Predicate<long[]> logs) {
+		this.logs = logs;
+		return this;
+	}
+
+	/** The same ground that a plan may write only into the columns the predicate accepts (the chunk of the builder). */
+	FlatTerrain writableOnly(BiPredicate<Integer, Integer> writable) {
+		this.writable = writable;
+		return this;
+	}
 
 	FlatTerrain(IntBinaryOperator tops) {
 		this(tops, c -> false, c -> false);
@@ -39,5 +54,15 @@ final class FlatTerrain implements TerrainView {
 	@Override
 	public boolean fluid(int x, int y, int z) {
 		return water.test(new long[] {x, y, z});
+	}
+
+	@Override
+	public boolean writable(int x, int z) {
+		return writable.test(x, z);
+	}
+
+	@Override
+	public boolean log(int x, int y, int z) {
+		return logs.test(new long[] {x, y, z});
 	}
 }

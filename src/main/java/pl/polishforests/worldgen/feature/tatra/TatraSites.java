@@ -28,10 +28,18 @@ public final class TatraSites {
 	/** Slope window: the model is sampled this far from the anchor (m). */
 	private static final double WINDOW = 3;
 	/**
-	 * The anchor lies this far from the edges of its chunk (blocks) at least, so a plan that reads and writes up to
-	 * {@value #EXTENT} blocks from it stays in the window of the chunk's own decoration (16 beyond its edges).
+	 * The anchor lies this far from the edges of its chunk (blocks) at least, so a plan that reads up to
+	 * {@value #EXTENT} blocks from it stays in the window of the chunk's own decoration (16 beyond its edges); a plan writes
+	 * only into the chunk of the anchor ({@link TerrainView#writable}), apart from the air of a tunnel under the ground.
 	 */
 	public static final int MARGIN = 4;
+	/**
+	 * Highest model ground (m) of a waterfall anchor. The Tatra biomes have the base temperature 0.685 to 0.7 and the lapse
+	 * rate 0.000275 per meter ({@code PolandClimate}), so water freezes above about 2000 m; {@code freeze_top_layer} would turn
+	 * the source in the notch of the lip into ice and the column below it would drain. 1850 m keeps the lip at 0.17 or more,
+	 * above the threshold 0.15 with the margin of the noise (0.011) and of the plan's reach.
+	 */
+	public static final double WATERFALL_MAX_HEIGHT = 1_850;
 	/** Greatest distance from the anchor of a block a plan of any kind reads or writes. */
 	public static final int EXTENT = MARGIN + 16;
 
@@ -142,7 +150,7 @@ public final class TatraSites {
 		double slope = blockSlope(m, x, z, height);
 		boolean carbonate = rock == Substrate.LIMESTONE || rock == Substrate.DOLOMITE;
 		boolean ok = switch (kind) {
-			case WATERFALL -> height >= 800 && height <= 2300 && slope >= 0.45 && slope <= 1.6;
+			case WATERFALL -> height >= 800 && height <= WATERFALL_MAX_HEIGHT && slope >= 0.45 && slope <= 1.6;
 			case SPRING -> carbonate && height >= 650 && height <= 1150 && slope <= 0.4;
 			case CAVE_MOUTH -> carbonate && height >= 800 && height <= 2000 && slope >= 0.8;
 			case SHEPHERD_HUT -> height >= 700 && height <= 2100 && slope <= 0.3 && openLand(codes, x, z);

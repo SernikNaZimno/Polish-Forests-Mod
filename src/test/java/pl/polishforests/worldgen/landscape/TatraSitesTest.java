@@ -13,6 +13,7 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import pl.polishforests.climate.PolandClimate;
 import pl.polishforests.worldgen.feature.tatra.TatraSites;
 
 /**
@@ -76,6 +77,27 @@ class TatraSitesTest {
 			}
 		}
 	}
+
+	@ParameterizedTest
+	@MethodSource("pl.polishforests.worldgen.landscape.TatraSurvey#scales")
+	void waterfallAnchorsLieBelowTheFreezingHeight(LandscapeScale scale) {
+		// The water of a waterfall must not freeze while the chunk generates (freeze_top_layer turns the source of the lip into ice).
+		double freezeFree = PolandClimate.SNOW_THRESHOLD + PolandClimate.NOISE_AMPLITUDE;
+		int checked = 0;
+		for (long seed : TatraSurvey.SEEDS) {
+			LandscapeModel m = TatraSurvey.with(scale, seed);
+			LandscapeModel.Tatra t = TatraSurvey.nearest(scale, seed, 1).getFirst();
+			for (TatraSites.Site s : sites(m, t, TatraSites.Kind.WATERFALL, true)) {
+				double temperature = TATRA_BASE_TEMPERATURE - PolandClimate.GRADIENT * m.sample(s.x(), s.z()).surface();
+				assertTrue(temperature >= freezeFree, "waterfall at " + s.x() + ", " + s.z() + " has T " + temperature);
+				checked++;
+			}
+		}
+		assertTrue(checked > 0, "no waterfall anchors checked");
+	}
+
+	/** The lowest base temperature of the biomes a waterfall can lie in (the gray alder forest; the others have 0.7). */
+	private static final double TATRA_BASE_TEMPERATURE = 0.685;
 
 	@Test
 	void huntsStandOnlyInThePresentDayMode() {
