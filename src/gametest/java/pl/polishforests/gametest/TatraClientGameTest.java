@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -26,11 +27,15 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.presets.WorldPreset;
+import org.jspecify.annotations.Nullable;
 import pl.polishforests.PolishForests;
 import pl.polishforests.command.HabitatTargets;
 import pl.polishforests.command.PolishForestsCommands;
 import pl.polishforests.worldgen.chunk.PolandChunkGenerator;
 import pl.polishforests.worldgen.chunk.VerticalScale;
+import pl.polishforests.worldgen.feature.TatraDetailsFeature;
+import pl.polishforests.worldgen.feature.tatra.Placement;
+import pl.polishforests.worldgen.feature.tatra.TatraSites;
 import pl.polishforests.worldgen.landscape.ColumnSample;
 import pl.polishforests.worldgen.landscape.LandscapeModel;
 import pl.polishforests.worldgen.landscape.TatraPart;
@@ -168,8 +173,46 @@ public final class TatraClientGameTest implements FabricClientGameTest {
 		return model(level).scale() == pl.polishforests.worldgen.landscape.LandscapeScale.REALISTIC ? MAX_Y_REAL : MAX_Y;
 	}
 
+	/**
+	 * Step TT6: the boulders placed in the world of the scale being tested ({x, z, radius}): a column under a boulder is
+	 * higher than the model top by design, so the checks of the top against the model leave those columns out.
+	 */
+	private static final ConcurrentLinkedQueue<int[]> BOULDERS = new ConcurrentLinkedQueue<>();
+
+	/** Whether a boulder of the details stands on the column (its footprint is the square of its radius). */
+	private static boolean underBoulder(int x, int z) {
+		for (int[] b : BOULDERS) {
+			if (Math.abs(b[0] - x) <= b[2] && Math.abs(b[1] - z) <= b[2]) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/** Records the boulders of the details (the other details are not needed here). */
+	private static final TatraDetailsFeature.Placements BOULDER_OBSERVER = new TatraDetailsFeature.Placements() {
+		@Override
+		public void placed(TatraSites.Kind kind, BlockPos at, @Nullable List<Placement> placements, int blocks) {
+		}
+
+		@Override
+		public void boulder(BlockPos at, int radius) {
+			BOULDERS.add(new int[] {at.getX(), at.getZ(), radius});
+		}
+	};
+
 	/** The work of one scale (step TT5: the body of TT1-TT4, per scale). */
 	private static void run(ClientGameTestContext context, boolean real, List<String> report, List<String> failures) {
+		BOULDERS.clear();
+		TatraDetailsFeature.OBSERVER = BOULDER_OBSERVER;
+		try {
+			runScale(context, real, report, failures);
+		} finally {
+			TatraDetailsFeature.OBSERVER = null;
+		}
+	}
+
+	private static void runScale(ClientGameTestContext context, boolean real, List<String> report, List<String> failures) {
 		Object[][] patches = real ? PATCHES_REAL : PATCHES;
 		try (TestSingleplayerContext sp = context.worldBuilder().adjustSettings(ui -> select(ui, real)).create()) {
 			sp.getServer().runCommand("gamemode spectator @a");
@@ -332,7 +375,8 @@ public final class TatraClientGameTest implements FabricClientGameTest {
 			if (!s.hasWater() && ground.isAir()) {
 				// Step TT5: air at the model top, a cave opening (J1) or a carver, as in the transects.
 				cut++;
-			} else if (!s.hasWater() && (!ground(ground) || ground(chunk.getBlockState(at.set(wx, top + 1, wz))))) {
+			} else if (!s.hasWater() && (!ground(ground) || ground(chunk.getBlockState(at.set(wx, top + 1, wz)))) && !underBoulder(wx, wz)) {
+				// Step TT6: a column under a boulder of the details is higher than the model on purpose.
 				offTop++;
 			}
 			tops.merge(id(ground), 1, Integer::sum);
@@ -571,7 +615,7 @@ public final class TatraClientGameTest implements FabricClientGameTest {
 					} else if (gen != want && part == TatraPart.NONE) {
 						offOutside++;
 						wrong = true;
-					} else if (gen != want) {
+					} else if (gen != want && !underBoulder(x, z)) {
 						off++;
 						wrong = true;
 					}

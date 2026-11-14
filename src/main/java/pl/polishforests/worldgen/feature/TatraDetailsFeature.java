@@ -1,6 +1,7 @@
 package pl.polishforests.worldgen.feature;
 
 import com.mojang.serialization.MapCodec;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.LongAdder;
 import net.minecraft.core.BlockPos;
@@ -70,6 +71,8 @@ public final class TatraDetailsFeature implements Feature {
 	private static final long BOULDER_SALT = 0x1C85_7AE4_D3F9_2B60L;
 	/** Boulder candidates per chunk. */
 	static final int CANDIDATES = 14;
+	/** Share of the boulder candidates that a forest keeps (the others are skipped: boulders are rare under the trees). */
+	static final double FOREST_SHARE = 0.25;
 	/** Lowest ground of the block fields (m): the cirque floors and above. */
 	static final double FIELD_FROM = 1_000;
 
@@ -122,15 +125,24 @@ public final class TatraDetailsFeature implements Feature {
 		Region region = new Region(level, chunk, poland, seed, h);
 		boolean presentDay = poland.presentDay();
 		boolean any = false;
-		for (TatraSites.Site site : TatraSites.inChunk(m, cx, cz, presentDay, (x, z) -> h.code((int) x & 15, (int) z & 15))) {
+		List<TatraSites.Site> sites = TatraSites.inChunk(m, cx, cz, presentDay, (x, z) -> h.code((int) x & 15, (int) z & 15));
+		for (TatraSites.Site site : sites) {
 			try {
 				any |= build(level, region, site);
 			} catch (Region.OutOfWindow e) {
 				REJECTED.increment();
 			}
 		}
+		// The anchors of the 3 x 3 chunks (the neighbors' details reach into this chunk): no boulder within their reach, so a
+		// boulder never meets a plan of another chunk and the result does not depend on which chunk went first.
+		List<TatraSites.Site> reserved = new ArrayList<>();
+		for (int dx = -1; dx <= 1; dx++) {
+			for (int dz = -1; dz <= 1; dz++) {
+				reserved.addAll(dx == 0 && dz == 0 ? sites : TatraSites.inChunk(m, cx + dx, cz + dz, presentDay, null));
+			}
+		}
 		try {
-			any |= boulders(level, region, m, seed, cx, cz, h);
+			any |= boulders(level, region, m, seed, cx, cz, h, reserved);
 		} catch (Region.OutOfWindow e) {
 			REJECTED.increment();
 		}
@@ -256,13 +268,16 @@ public final class TatraDetailsFeature implements Feature {
 
 	// ------------------------------------------------------------------ boulders
 
-	private boolean boulders(WorldGenLevel level, Region region, LandscapeModel m, long seed, int cx, int cz, ChunkHabitats h) {
+	private boolean boulders(WorldGenLevel level, Region region, LandscapeModel m, long seed, int cx, int cz, ChunkHabitats h,
+			List<TatraSites.Site> reserved) {
 		Noise field = new Noise(seed ^ FIELD_SALT);
 		boolean any = false;
 		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
 		for (int i = 0; i < CANDIDATES; i++) {
-			int lx = (int) (WaterPlan.unit(seed ^ BOULDER_SALT, cx * 64 + i, cz * 3 + 1) * 16);
-			int lz = (int) (WaterPlan.unit(seed ^ BOULDER_SALT, cx * 64 + i, cz * 3 + 2) * 16);
+			// The center is 3 to 12 blocks into the chunk: a boulder (radius at most 3) stays in its own chunk, so no chunk writes
+			// into a neighbor whose top layer (the snow on its blocks) may be done already (the order of the chunks).
+			int lx = BoulderPlan.MAX_RADIUS + (int) (WaterPlan.unit(seed ^ BOULDER_SALT, cx * 64 + i, cz * 3 + 1) * 10);
+			int lz = BoulderPlan.MAX_RADIUS + (int) (WaterPlan.unit(seed ^ BOULDER_SALT, cx * 64 + i, cz * 3 + 2) * 10);
 			int idx = ChunkHabitats.index(lx, lz);
 			if (h.hasWater(idx) || h.caveOpened(idx) || h.blocked(idx) || h.pieceDistance(idx) <= 4) {
 				continue;
@@ -273,6 +288,9 @@ public final class TatraDetailsFeature implements Feature {
 			}
 			int x = (cx << 4) + lx;
 			int z = (cz << 4) + lz;
+			if (reserved(reserved, x, z)) {
+				continue;
+			}
 			ColumnSample s = m.sample(x, z);
 			Substrate rock = s.terrain().rock();
 			if (rock == null || s.terrain().wTatra() < 0.5 || s.hasWater()) {
@@ -312,6 +330,12 @@ public final class TatraDetailsFeature implements Feature {
 			if (blockField && u >= 0.9) {
 				continue;
 			}
+			// A boulder in a forest (the carpets of its floor and its trees are measured by the norms) is rare, and there is
+			// no scree around it: the block fields and the moraines are open ground.
+			boolean forest = Habitat.biome(h.codes()[idx]).isForest();
+			if (forest && WaterPlan.unit(seed ^ BOULDER_SALT, cx * 64 + i, cz * 3 + 4) >= FOREST_SHARE) {
+				continue;
+			}
 			List<Placement> plan = BoulderPlan.boulder(seed ^ BOULDER_SALT ^ x * 31L ^ z, x, top, z, radius,
 					rock == Substrate.LIMESTONE || rock == Substrate.DOLOMITE ? 25 : 45);
 			int placed = 0;
@@ -335,8 +359,8 @@ public final class TatraDetailsFeature implements Feature {
 			if (placed == 0) {
 				continue;
 			}
-			if (blockField && radius >= 2) {
-				debris(level, region, rock, seed, x, z, radius);
+			if (blockField && radius >= 2 && !forest) {
+				debris(level, region, rock, seed, x, z, radius, cx, cz);
 			}
 			BOULDERS.increment();
 			any = true;
@@ -348,8 +372,19 @@ public final class TatraDetailsFeature implements Feature {
 		return any;
 	}
 
-	/** The ground around a large boulder of a block field turns to scree where it is soil (half of the columns within r + 2). */
-	private static void debris(WorldGenLevel level, Region region, Substrate rock, long seed, int x, int z, int radius) {
+	/** Whether the column lies within the reach of the plan of one of the anchors (and the radius of a boulder). */
+	private static boolean reserved(List<TatraSites.Site> sites, int x, int z) {
+		for (TatraSites.Site s : sites) {
+			if (Math.max(Math.abs(s.x() - x), Math.abs(s.z() - z)) <= TatraSites.EXTENT + BoulderPlan.MAX_RADIUS) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/** The ground around a large boulder of a block field turns to scree where it is soil (half of the columns within r + 2 that lie in its own chunk). */
+	private static void debris(WorldGenLevel level, Region region, Substrate rock, long seed, int x, int z, int radius, int cx,
+			int cz) {
 		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
 		BlockState scree = scree(rock).defaultBlockState();
 		int reach = radius + 2;
@@ -360,7 +395,8 @@ public final class TatraDetailsFeature implements Feature {
 				}
 				int wx = x + dx;
 				int wz = z + dz;
-				if (!region.inWindow(wx, wz) || !region.inWindow(wx - 1, wz - 1) || !region.inWindow(wx + 1, wz + 1)) {
+				// Only the columns of the boulder's own chunk (see the candidates).
+				if ((wx >> 4) != cx || (wz >> 4) != cz) {
 					continue;
 				}
 				int top = region.top(wx, wz);

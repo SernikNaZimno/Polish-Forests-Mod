@@ -447,6 +447,7 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		b.add("polishforests.kind.coast", "Coast");
 		b.add("polishforests.kind.landform", "Landforms");
 		b.add("polishforests.kind.tatra", "Tatras");
+		b.add("polishforests.kind.site", "Tatra details");
 		b.add("polishforests.command.no_tatra", "This world has no Tatras (the Tatras option was off when it was created)");
 		b.add("polishforests.command.here_tatra", "Tatras: %s, rock: %s, %s m above sea level (Y %s)");
 		b.add("polishforests.command.here_belt", "Belt: %s (profile: %s)");
@@ -554,6 +555,7 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		b.add("polishforests.kind.coast", "Wybrzeże morskie");
 		b.add("polishforests.kind.landform", "Formy terenu");
 		b.add("polishforests.kind.tatra", "Tatry");
+		b.add("polishforests.kind.site", "Szczegóły Tatr");
 		b.add("polishforests.command.no_tatra", "Ten świat nie ma Tatr (opcja Tatry była wyłączona przy jego tworzeniu)");
 		b.add("polishforests.command.here_tatra", "Tatry: %s, skała: %s, %s m n.p.m. (Y %s)");
 		b.add("polishforests.command.here_belt", "Piętro: %s (profil: %s)");

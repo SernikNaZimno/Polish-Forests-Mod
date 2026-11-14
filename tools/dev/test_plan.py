@@ -54,6 +54,7 @@ MAP = [
     ('src/test/java/pl/polishforests/worldgen/landscape/GoldenTatra', ['unit', 'tatra']),
     ('src/test/java/pl/polishforests/worldgen/landscape/Tatra', ['unit', 'tatra']),
     ('src/test/java/pl/polishforests/worldgen/feature/tatra/', ['unit', 'tatra']),
+    ('src/test/java/pl/polishforests/worldgen/landscape/DetailPlans', ['unit', 'tatra']),
     ('src/test/resources/golden_terrain_tatra', ['unit', 'tatra']),
     ('src/main/resources/', ['unit', 'mixins']),
     ('build.gradle', ['unit', 'mixins']),

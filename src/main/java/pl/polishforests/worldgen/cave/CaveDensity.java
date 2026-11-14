@@ -38,12 +38,19 @@ public final class CaveDensity {
 	 */
 	public static final float SLOPE_PER_BLOCK = 4.0F * 5.0F / 128.0F;
 	/**
-	 * Step TT6: how much of the final density the full karst ({@link ColumnField#KARST} 1) takes off: the cells of the
+	 * Step TT6: how much of the final density the full karst ({@link ColumnField#KARST} 1) takes off below the fade: the cells of the
 	 * karst rock whose density is at most this value turn to caves. The final density is the vanilla one after the squeeze
 	 * (about -1 to 1), so the cells next to a cave and the thin walls between caves open up: more and wider caves, the same
 	 * kinds of them, none outside the karst (the term is exactly 0 there).
 	 */
-	public static final float KARST_STRENGTH = 0.35F;
+	public static final float KARST_STRENGTH = 0.05F;
+	/**
+	 * Step TT6 (stage 2): the karst takes nothing off the density in the {@value #KARST_FADE_FROM} blocks under the surface
+	 * and all of it from {@value #KARST_FADE_TO} blocks down (linear in between), so the surface layer, the cave openings
+	 * and the guards of the forests above them stay as in J1 and only the rock under them gets the more and wider caves.
+	 */
+	public static final int KARST_FADE_FROM = 12;
+	public static final int KARST_FADE_TO = 36;
 	/** The vanilla lower limit of the noodle caves, 4 blocks above the vanilla world bottom. */
 	private static final int NOODLE_ABOVE_BOTTOM = 4;
 
@@ -67,8 +74,10 @@ public final class CaveDensity {
 				0.1171875F, caves);
 		DensityFunction vanilla = DensityFunctions.add(DensityFunctions.min(NoiseRouterData.postProcess(slid, 4, 8),
 				noodle(functions, noises, minY + NOODLE_ABOVE_BOTTOM, maxY)), DensityFunctions.beardifier());
-		// Step TT6: the karst of the Tatra limestone, a column-only term that is exactly 0 elsewhere.
-		return DensityFunctions.add(vanilla, ColumnField.KARST.mul(-KARST_STRENGTH));
+		// Step TT6: the karst of the Tatra limestone, a column-only term (faded in by the depth) that is exactly 0 elsewhere.
+		DensityFunction fade = DensityFunctions.clampedMap(depth, KARST_FADE_FROM * SLOPE_PER_BLOCK, KARST_FADE_TO * SLOPE_PER_BLOCK, 0.0F,
+				1.0F);
+		return DensityFunctions.add(vanilla, ColumnField.KARST.mul(fade).mul(-KARST_STRENGTH));
 	}
 
 	/**
