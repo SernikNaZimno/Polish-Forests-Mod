@@ -31,6 +31,7 @@ import org.jspecify.annotations.Nullable;
 import pl.polishforests.PolishForests;
 import pl.polishforests.command.HabitatTargets;
 import pl.polishforests.command.PolishForestsCommands;
+import pl.polishforests.worldgen.chunk.ChunkHabitats;
 import pl.polishforests.worldgen.chunk.PolandChunkGenerator;
 import pl.polishforests.worldgen.chunk.VerticalScale;
 import pl.polishforests.worldgen.feature.TatraDetailsFeature;
@@ -57,7 +58,7 @@ import pl.polishforests.worldgen.surface.Material;
  * one): 2450–2530 m, the generated top block there as in the model, no block of its chunk above Y 720;</li>
  * <li>three transects across the range (a quarter of the main ridge west of its middle, the middle, a quarter east), from
  * 6 km south of the main ridge through the regle, the trough, the foothills and the Podhale basin to 2 km beyond the
- * reach (the Beskids), and one along the main ridge 2 km past its ends, every 250 m: the height profile of the model
+ * reach (the Beskids; since TT7 over the foreland where the complex has one), and one along the main ridge 2 km past its ends, every 250 m: the height profile of the model
  * against the generated top ground block (at most 3% of the dry points off, at most 15% lower with air at the model top:
  * cave openings and carvers), the highest top, the drop from the crest
  * to the basin floor and the slopes between the points;</li>
@@ -92,7 +93,11 @@ import pl.polishforests.worldgen.surface.Material;
  * {@code build/tatra/slopes_<scale>.txt}. Stage 2 of TT5: the transects, the tarns and the belt probes run in batches
  * with ticks between them (the tall realistic chunks unload as they go); the summit column at the limit of the level
  * (the top section, the WORLD_SURFACE and MOTION_BLOCKING heightmaps at least at the top ground, sky light 15 above it
- * and at the top of the level); air at the model top of a patch counts apart as a cave cut (at most 15% of the chunk);
+ * and at the top of the level); air at the model top of a patch counts apart as a cave cut (at most 15% of the chunk;
+ * step TT7: air the chunk fill records as a cave opening of the chunk ({@code ChunkHabitats.caveOpened}, computed again
+ * with {@code PolandChunkGenerator.caveOpened}, since full chunks no longer carry the habitats), counts toward
+ * at most 15% of the columns of all patches of a scale, and other air at the model top toward at most 16 columns of a
+ * patch, as the top off the model: a vanilla cave entrance may open most of one chunk);
  * the off share of a transect counts only its points in the Tatra parts (those of the foreland are listed apart).
  */
 public final class TatraClientGameTest implements FabricClientGameTest {
@@ -105,11 +110,12 @@ public final class TatraClientGameTest implements FabricClientGameTest {
 	/** The patches of set GAMEPLAY A of {@code golden_terrain_tatra.txt}: name, x, z. */
 	private static final Object[][] PATCHES = {{"granite_ridge", -24_456, 87_894}, {"cirque", -24_735, 87_952},
 			{"regle_limestone", -23_189, 86_849}, {"western_tatra", -24_669, 87_706}, {"podhale", -21_775, 86_238},
-			{"beskid_transition", -19_282, 84_795}};
+			// Step TT7: the foreland patch; the Beskid transition moved beyond it with the rewrite of the golden file.
+			{"foreland", -19_856, 85_960}, {"beskid_transition", -24_419, 96_401}};
 	/** Step TT5: the patches of set REALISTIC A of {@code golden_terrain_tatra.txt}: name, x, z. */
 	private static final Object[][] PATCHES_REAL = {{"granite_ridge", 1_177_964, 102_710}, {"cirque", 1_179_015, 103_290},
 			{"regle_limestone", 1_180_979, 97_864}, {"western_tatra", 1_177_031, 102_538}, {"podhale", 1_183_207, 92_583},
-			{"beskid_transition", 1_171_933, 112_403}};
+			{"foreland", 1_187_535, 88_461}, {"beskid_transition", 1_171_933, 112_403}};
 	/** KT-1: no block above this Y (gameplay scale). */
 	private static final int MAX_Y = 720;
 	/** Step TT5: no block above this Y in the realistic scale (the top of the world is Y 2031). */
@@ -222,8 +228,14 @@ public final class TatraClientGameTest implements FabricClientGameTest {
 			Map<String, Map<String, Integer>> surface = new TreeMap<>();
 			LandscapeModel.Tatra t = sp.getServer().computeOnServer(s -> {
 				targets(s, report, failures);
+				int opened = 0;
 				for (Object[] p : patches) {
-					patch(s.overworld(), (String) p[0], (Integer) p[1], (Integer) p[2], census, report, failures);
+					opened += patch(s.overworld(), (String) p[0], (Integer) p[1], (Integer) p[2], census, report, failures);
+				}
+				// Step TT7: the cave openings over all patches of the scale (one entrance may open most of one chunk).
+				report.add(String.format(Locale.ROOT, "patches: %d of %d columns opened by the caves", opened, 256 * patches.length));
+				if (opened > 0.15 * 256 * patches.length) {
+					failures.add("patches: " + opened + " of " + 256 * patches.length + " columns opened by the caves");
 				}
 				// Before the summit and the transects, so none of their chunks is in the square.
 				load(s.overworld(), (Integer) patches[0][1], (Integer) patches[0][2], report);
@@ -332,7 +344,9 @@ public final class TatraClientGameTest implements FabricClientGameTest {
 				PolishForestsCommands.Target.SCREE, PolishForestsCommands.Target.MORAINE, PolishForestsCommands.Target.SNOW_PATCH,
 				// Step TT6 (the shepherd's hut only exists in the present-day mode: TatraDetailsCheck).
 				PolishForestsCommands.Target.KARST_SPRING, PolishForestsCommands.Target.CAVE_MOUTH,
-				PolishForestsCommands.Target.WATERFALL}) {
+				PolishForestsCommands.Target.WATERFALL,
+				// Step TT7: the foreland north of the Podhale and a river gorge through it.
+				PolishForestsCommands.Target.TATRA_FORELAND, PolishForestsCommands.Target.FORELAND_GORGE}) {
 			long start = System.nanoTime();
 			double[] p = PolishForestsCommands.locate(world, t, 0, 0);
 			double ms = (System.nanoTime() - start) / 1e6;
@@ -347,8 +361,12 @@ public final class TatraClientGameTest implements FabricClientGameTest {
 		}
 	}
 
-	/** The chunk of a patch against the model. */
-	private static void patch(ServerLevel level, String name, int x, int z, Map<TatraPart, Map<String, Integer>> census,
+	/**
+	 * The chunk of a patch against the model; returns the number of its columns whose model top a cave opened (the
+	 * openings of the chunk fill, {@link ChunkHabitats#caveOpened}, computed again by
+	 * {@link PolandChunkGenerator#caveOpened}).
+	 */
+	private static int patch(ServerLevel level, String name, int x, int z, Map<TatraPart, Map<String, Integer>> census,
 			List<String> report, List<String> failures) {
 		LandscapeModel m = model(level);
 		VerticalScale vs = ((PolandChunkGenerator) level.getChunkSource().getGenerator()).vertical();
@@ -357,6 +375,12 @@ public final class TatraClientGameTest implements FabricClientGameTest {
 		double ms = (System.nanoTime() - start) / 1e6;
 		int offTop = 0;
 		int cut = 0;
+		// Step TT7: air at the model top that no cave opening of the chunk explains. The habitats attachment is removed
+		// when the chunk is full (spawnOriginalMobs), so the openings are computed again exactly as the chunk fill did.
+		int unexplained = 0;
+		PolandChunkGenerator gen = (PolandChunkGenerator) level.getChunkSource().getGenerator();
+		long[] opened = gen.caveOpened(chunk.getPos(), chunk, level.getSeed(), level.getChunkSource().randomState(),
+				level.structureManager());
 		int rockMissing = 0;
 		int rockStray = 0;
 		int highest = Integer.MIN_VALUE;
@@ -375,6 +399,10 @@ public final class TatraClientGameTest implements FabricClientGameTest {
 			if (!s.hasWater() && ground.isAir()) {
 				// Step TT5: air at the model top, a cave opening (J1) or a carver, as in the transects.
 				cut++;
+				int idx = ChunkHabitats.index(i >> 4, i & 15);
+				if ((opened[idx >> 6] >>> (idx & 63) & 1L) == 0) {
+					unexplained++;
+				}
 			} else if (!s.hasWater() && (!ground(ground) || ground(chunk.getBlockState(at.set(wx, top + 1, wz)))) && !underBoulder(wx, wz)) {
 				// Step TT6: a column under a boulder of the details is higher than the model on purpose.
 				offTop++;
@@ -393,13 +421,13 @@ public final class TatraClientGameTest implements FabricClientGameTest {
 			}
 		}
 		report.add(String.format(Locale.ROOT, "patch %s at (%d, %d): chunk %.0f ms; parts %s; top blocks %s; top off the model %d, "
-				+ "air at the model top (caves) %d, bedrock without its rock block %d, rock block without a bedrock %d, highest block Y %d", name, x, z, ms, parts, tops,
-				offTop, cut, rockMissing, rockStray, highest));
+				+ "air at the model top (caves) %d (%d not a cave opening of the chunk), bedrock without its rock block %d, rock block without a bedrock %d, highest block Y %d", name, x, z, ms, parts, tops,
+				offTop, cut, unexplained, rockMissing, rockStray, highest));
 		if (offTop > 16) {
 			failures.add(name + ": " + offTop + " columns with the top block off the model");
 		}
-		if (cut > 0.15 * 256) {
-			failures.add(name + ": " + cut + " columns with air at the model top");
+		if (unexplained > 16) {
+			failures.add(name + ": " + unexplained + " columns with air at the model top and no cave opening");
 		}
 		if (rockMissing > 0 || rockStray > 0) {
 			failures.add(name + ": rock blocks off the model (" + rockMissing + " missing, " + rockStray + " stray)");
@@ -407,6 +435,7 @@ public final class TatraClientGameTest implements FabricClientGameTest {
 		if (highest > maxY(level)) {
 			failures.add(name + ": a block at Y " + highest);
 		}
+		return cut - unexplained;
 	}
 
 	/** The Tatra massif nearest to the origin, or null. */

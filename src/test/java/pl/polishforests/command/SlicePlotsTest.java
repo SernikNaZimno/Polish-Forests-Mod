@@ -194,7 +194,7 @@ class SlicePlotsTest {
 			if (problem != null) {
 				return mode + ": " + problem;
 			}
-			double biome = SliceSitesTest.shares(w, p.biome(), p.x(), p.z())[0];
+			double biome = tatra ? tatraBiomeShare(w, p.biome(), p.x(), p.z()) : SliceSitesTest.shares(w, p.biome(), p.x(), p.z())[0];
 			if (biome < minBiome(p.scale(), p.biome())) {
 				return String.format(Locale.ROOT, "%s: %s only %.1f%% of the square", mode, p.biome().id(), 100 * biome);
 			}
@@ -243,6 +243,29 @@ class SlicePlotsTest {
 	 */
 	static final int TATRA_APART = 1_000;
 
+	/**
+	 * Step TT7: the largest share of a Tatra plot's lattice that a mountain stream may take. Since TT7 the outlet brooks of
+	 * the tarns (TT2-o) run down the upper regle, and in the gameplay scale one crosses both plots of the spruce-stone pine
+	 * forest (3% and 5% of the lattice); no square of the forest within 4 km of {@link #TATRA_ORIGIN} is free of them for a
+	 * second plot. A brook is a channel through the forest, not an edge of another habitat.
+	 */
+	static final double MAX_TATRA_BROOK = 0.10;
+
+	/**
+	 * Step TT7: the share of a Tatra plot's lattice in its biome, over the columns that no mountain stream takes; 0 when a
+	 * stream takes more than {@link #MAX_TATRA_BROOK} of the lattice. Checked against {@link #minBiome} as the other plots.
+	 */
+	static double tatraBiomeShare(HabitatTargets.World w, HabitatBiome biome, int x, int z) {
+		int[] codes = java.util.stream.IntStream.range(0, 21 * 21).parallel().map(i -> w.code(x - 50 + 5 * (i / 21), z - 50 + 5 * (i % 21)))
+				.toArray();
+		long brook = java.util.stream.IntStream.of(codes).filter(c -> Habitat.biome(c) == HabitatBiome.STREAM).count();
+		if (brook > MAX_TATRA_BROOK * 21 * 21) {
+			return 0;
+		}
+		long hits = java.util.stream.IntStream.of(codes).filter(c -> Habitat.biome(c) == biome).count();
+		return hits / (21.0 * 21.0 - brook);
+	}
+
 	static boolean tatra(Plot p) {
 		return p.name().startsWith(TATRA_PREFIX);
 	}
@@ -253,14 +276,20 @@ class SlicePlotsTest {
 				: PolishForestsCommandsTest.world(scale, mode);
 	}
 
-	/** Share of the 21 × 21 lattice of the square around (x, z) in forest columns (no zone) of the spruce-stone pine forest. */
+	/**
+	 * Share of the 21 × 21 lattice of the square around (x, z) in forest columns (no zone) of the spruce-stone pine forest;
+	 * step TT7: over the columns that no mountain stream takes (a brook of {@link #MAX_TATRA_BROOK} at most, checked by
+	 * {@link #tatraBiomeShare}).
+	 */
 	static double stonePineShare(HabitatTargets.World w, int x, int z) {
-		long hits = java.util.stream.IntStream.range(0, 21 * 21).parallel()
-				.map(i -> w.code(x - 50 + 5 * (i / 21), z - 50 + 5 * (i % 21)))
+		int[] codes = java.util.stream.IntStream.range(0, 21 * 21).parallel()
+				.map(i -> w.code(x - 50 + 5 * (i / 21), z - 50 + 5 * (i % 21))).toArray();
+		long hits = java.util.stream.IntStream.of(codes)
 				.filter(c -> Habitat.biome(c) == HabitatBiome.MONTANE_SPRUCE_FOREST && Habitat.association(c) == Association.PINO_CEMBRAE_PICEETUM
 						&& Habitat.zone(c) == Zone.NONE)
 				.count();
-		return hits / 441.0;
+		long brook = java.util.stream.IntStream.of(codes).filter(c -> Habitat.biome(c) == HabitatBiome.STREAM).count();
+		return brook >= 21 * 21 ? 0 : hits / (21.0 * 21.0 - brook);
 	}
 
 	/**
@@ -731,8 +760,8 @@ class SlicePlotsTest {
 						bestAt = new int[] {x, z};
 					}
 					if (stonePineProblem(natural, x, z) == null && stonePineProblem(presentDay, x, z) == null
-							&& SliceSitesTest.shares(natural, HabitatBiome.MONTANE_SPRUCE_FOREST, x, z)[0] >= MIN_BIOME
-							&& SliceSitesTest.shares(presentDay, HabitatBiome.MONTANE_SPRUCE_FOREST, x, z)[0] >= MIN_BIOME) {
+							&& tatraBiomeShare(natural, HabitatBiome.MONTANE_SPRUCE_FOREST, x, z) >= MIN_BIOME
+							&& tatraBiomeShare(presentDay, HabitatBiome.MONTANE_SPRUCE_FOREST, x, z) >= MIN_BIOME) {
 						System.out.printf(Locale.ROOT, "[plots] Tatra plot at %d %d: %.1f%% forest columns of the spruce-stone pine forest%n", x,
 								z, 100 * share);
 						return new int[] {x, z};
