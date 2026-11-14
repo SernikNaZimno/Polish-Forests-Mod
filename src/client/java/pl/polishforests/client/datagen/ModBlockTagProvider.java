@@ -209,14 +209,18 @@ final class ModBlockTagProvider {
 			List<Block> surface = ModBlocks.tatraSurface();
 			builder(BlockTags.MINEABLE_WITH_SHOVEL).add(key(surface.get(0))).add(key(surface.get(1))).add(key(surface.get(2)));
 			builder(BlockTags.DIRT).add(key(surface.get(2)));
-			// Step TT5: the solid blocks of the mod that no vanilla tag of #blocks_motion takes (the logs, planks, leaves,
-			// dirt and grass blocks come in through their tags) block motion: the MOTION_BLOCKING heightmaps of 26.3 go by
-			// #blocks_motion_in_heightmap (= #blocks_motion), so without it rain, snow and the spawns fell through the Tatra
-			// rocks and the scree to the first vanilla block (as vanilla lists its stones, gravel, moss block and roots).
+			// Step TT5: the solid blocks of the mod that no vanilla tag of #blocks_motion_no_leaves takes (the logs, planks,
+			// dirt and grass blocks come in through their tags, the leaves through #leaves) block motion. The heightmaps of
+			// 26.3 go by #blocks_motion_in_heightmap (= #blocks_motion = #blocks_motion_no_leaves + #leaves: MOTION_BLOCKING,
+			// OCEAN_FLOOR and OCEAN_FLOOR_WG) and #blocks_motion_in_heightmap_no_leaves (= #blocks_motion_no_leaves:
+			// MOTION_BLOCKING_NO_LEAVES, the spawns), so the blocks go into #blocks_motion_no_leaves, which feeds both; without
+			// it rain, snow and the spawns fell through the Tatra rocks and the scree to the first vanilla block (as vanilla
+			// lists its stones, gravel, moss block and roots there). Review TT5 round 1: TT5 put them into #blocks_motion
+			// only, which left MOTION_BLOCKING_NO_LEAVES passing through them.
 			for (Block b : ModBlocks.tatraRocks()) {
-				builder(BlockTags.BLOCKS_MOTION).add(key(b));
+				builder(BlockTags.BLOCKS_MOTION_NO_LEAVES).add(key(b));
 			}
-			builder(BlockTags.BLOCKS_MOTION).add(key(surface.get(0))).add(key(surface.get(1))).add(sphagnumBlock)
+			builder(BlockTags.BLOCKS_MOTION_NO_LEAVES).add(key(surface.get(0))).add(key(surface.get(1))).add(sphagnumBlock)
 					.add(key(ModBlocks.treeRoot()));
 		}
 	}

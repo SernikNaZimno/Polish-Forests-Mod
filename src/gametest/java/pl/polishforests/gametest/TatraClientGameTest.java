@@ -434,16 +434,20 @@ public final class TatraClientGameTest implements FabricClientGameTest {
 		// block (or a crown or snow above it) and the sky light is full above it and at the top of the world.
 		int surfaceTop = chunk.getHeight(Heightmap.Types.WORLD_SURFACE, x & 15, z & 15);
 		int motion = chunk.getHeight(Heightmap.Types.MOTION_BLOCKING, x & 15, z & 15);
+		// Review TT5 round 1: the heightmap without leaves (spawns) goes by #blocks_motion_no_leaves.
+		int motionNoLeaves = chunk.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x & 15, z & 15);
 		int skyAbove = level.getBrightness(net.minecraft.world.level.LightLayer.SKY, new BlockPos(x, surfaceTop + 1, z));
 		int skyTop = level.getBrightness(net.minecraft.world.level.LightLayer.SKY, new BlockPos(x, level.getMaxY(), z));
 		int topSection = level.getSectionYFromSectionIndex(level.getSectionsCount() - 1);
 		report.add(String.format(Locale.ROOT, "summit column at the limit: top of the level Y %d (top section %d, %d sections), "
-				+ "heightmaps WORLD_SURFACE %d, MOTION_BLOCKING %d, sky light %d above the top and %d at Y %d", level.getMaxY(),
-				topSection, level.getSectionsCount(), surfaceTop, motion, skyAbove, skyTop, level.getMaxY()));
-		if ((topSection << 4) + 15 != level.getMaxY() || surfaceTop < gen || motion < gen || surfaceTop > maxY(level)
+				+ "heightmaps WORLD_SURFACE %d, MOTION_BLOCKING %d, MOTION_BLOCKING_NO_LEAVES %d, sky light %d above the top and "
+				+ "%d at Y %d", level.getMaxY(), topSection, level.getSectionsCount(), surfaceTop, motion, motionNoLeaves, skyAbove,
+				skyTop, level.getMaxY()));
+		if ((topSection << 4) + 15 != level.getMaxY() || surfaceTop < gen || motion < gen || motionNoLeaves < gen
+				|| surfaceTop > maxY(level)
 				|| skyAbove != 15 || skyTop != 15) {
-			failures.add(String.format(Locale.ROOT, "summit column: top section %d, heightmaps %d / %d with the top ground at Y %d, "
-					+ "sky light %d / %d", topSection, surfaceTop, motion, gen, skyAbove, skyTop));
+			failures.add(String.format(Locale.ROOT, "summit column: top section %d, heightmaps %d / %d / %d with the top ground "
+					+ "at Y %d, sky light %d / %d", topSection, surfaceTop, motion, motionNoLeaves, gen, skyAbove, skyTop));
 		}
 	}
 
