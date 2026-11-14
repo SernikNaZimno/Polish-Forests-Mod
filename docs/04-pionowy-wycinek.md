@@ -5530,7 +5530,12 @@ Przegląd: 0 usterek blokujących, 1 poważna (prawdziwa, poprawiona), 4 drobne 
 
 | Przebieg | Wynik |
 |---|---|
-%RESULTS%
+| `fastTest` (`run-tests --reuse`) | PASS (532 s) |
+| `GoldenTatraTest`, `TatraIsolationTest`, `TatraReliefTest`, `TatraRiverTest`, `BlocksMotionTest`, `RegistrySnapshotTest` | PASS; `BlocksMotionTest` przed regeneracją datagenu FAIL (7 bloków poza `#blocks_motion_no_leaves`), po niej PASS |
+| `runDatagen`, `checkDatagen`, `compileGametestJava` | PASS; datagen: `blocks_motion.json` → `blocks_motion_no_leaves.json` (te same 8 bloków), 3526 plików bez zmian w `checkDatagen` |
+| `tatra` (obie skale, `-PtimingsReportOnly`) | PASS (31 min 51 s). Kolumna szczytu REAL: `WORLD_SURFACE` 2003, `MOTION_BLOCKING` 2002, `MOTION_BLOCKING_NO_LEAVES` 2002, światło nieba 15 nad szczytem i na Y 2031; GAMEPLAY: 694 / 693 / 693, światło 15. Udziały pięter i próby jak w TT5 (REAL 99,9 / 98,7 / 99,8 / 99,2%, GAMEPLAY 99,7 / 97,4 / 99,8 / 99,6%; próby 32 z 32) |
+| `determinism` | nie powtarzany: scalony `#blocks_motion` (mapy `MOTION_BLOCKING`, `OCEAN_FLOOR`, `OCEAN_FLOOR_WG`) bez zmian, a moda generacja nie czyta `MOTION_BLOCKING_NO_LEAVES` (zmienia się tylko miejsce spawnu istot, nie bloki) |
+| pełny `run-tests test` (`test_plan.py 289538b --end`) | PASS w 1362 s (drzewo `8bc47fcede6e`: 600 testów w 114 klasach, 4 pominięte, 0 błędów) |
 
 **Do sprawdzenia w grze** (dodane przez rundę 1):
 
