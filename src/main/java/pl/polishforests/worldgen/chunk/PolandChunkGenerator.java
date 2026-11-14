@@ -752,6 +752,11 @@ public final class PolandChunkGenerator extends ChunkGenerator implements Forest
 			public boolean dryAbove(int x, int z) {
 				return m.hasTatra() && m.tatraNear(x, z, x, z) && m.tatraRock(x, z);
 			}
+
+			@Override
+			public float karst(int x, int z) {
+				return m.hasTatra() && m.tatraNear(x, z, x, z) ? (float) m.karst(x, z) : 0.0F;
+			}
 		};
 	}
 

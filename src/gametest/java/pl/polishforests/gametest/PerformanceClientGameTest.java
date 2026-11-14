@@ -284,7 +284,8 @@ public final class PerformanceClientGameTest implements FabricClientGameTest {
 		if (!presentDay && tatra) {
 			int i = real ? 0 : 1;
 			for (Object[] place : new Object[][] {{"montane_spruce_1", ForestPerformance.MONTANE_SITE[i]},
-					{"tatra_high_1", ForestPerformance.TATRA_HIGH_SITE[i]}, {"tatra_stone_pine_1", ForestPerformance.TATRA_STONE_PINE_SITE[i]}}) {
+					{"tatra_high_1", ForestPerformance.TATRA_HIGH_SITE[i]}, {"tatra_stone_pine_1", ForestPerformance.TATRA_STONE_PINE_SITE[i]},
+					{"tatra_regle_1", ForestPerformance.TATRA_REGLE_SITE[i]}}) {
 				int[] m = (int[]) place[1];
 				sp.getServer().runOnServer(server -> profileSpot(server.overworld(), name + " / " + place[0], (m[0] - 64) >> 4,
 						(m[1] - 64) >> 4));

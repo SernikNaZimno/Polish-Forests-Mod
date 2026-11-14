@@ -2404,6 +2404,22 @@ public final class LandscapeModel {
 		return c != null && c.weight > 0.5 && c.rock != null;
 	}
 
+	/**
+	 * Step TT6: the karst of the Tatra limestone and dolomite at a point, 0-1 (0 on other rock, outside the Tatra massifs
+	 * and without the Tatras): the cave density of {@code PolandCaves} is lowered by a strength times it, so the carbonate
+	 * rock of the regle holds more caves than the granite. Fades in with the weight of the complex and varies in patches
+	 * of a few hundred meters (the field {@code mountain.tatra.karst}).
+	 */
+	public double karst(double x, double z) {
+		TatraField.Column c = tatra == null ? null : tatra.column(x, z);
+		return c == null ? 0 : tatra.karst(c, x, z);
+	}
+
+	/** Step TT6: blocks per meter of the vertical scale at the height {@code h} (m) of the Tatras (their slopes in blocks). */
+	public double tatraBlocksPerMeter(double h) {
+		return TatraField.blocksPerMeter(scale, h);
+	}
+
 	/** Step TT2: the Tatra column of the point with its fine relief (heights of the scree cone, moraine, gully cut). */
 	public double[] tatraFine(double x, double z) {
 		TatraField.Column c = tatra == null ? null : tatra.column(x, z);

@@ -230,6 +230,8 @@ final class TatraField {
 	private final Noise place;
 	private final Noise relief;
 	private final Noise geology;
+	/** Step TT6: the patches of the karst of the limestone and dolomite (a new salt: no other field changes). */
+	private final Noise karst;
 	private final LandscapeScale scale;
 	private final double k;
 	private final double spacing;
@@ -241,6 +243,7 @@ final class TatraField {
 		this.place = root.derive("mountain.tatra");
 		this.relief = root.derive("mountain.tatra.relief");
 		this.geology = root.derive("mountain.tatra.geology");
+		this.karst = root.derive("mountain.tatra.karst");
 		this.scale = scale;
 		this.k = scale.mountainSpacing();
 		this.spacing = 213_000 * k;
@@ -256,6 +259,19 @@ final class TatraField {
 
 	double spacing() {
 		return spacing;
+	}
+
+	/** Step TT6: share of the karst caves of a column of the massif: the carbonate rock, fading in with the weight of the complex. */
+	double karst(Column c, double x, double z) {
+		if (c.rock != Substrate.LIMESTONE && c.rock != Substrate.DOLOMITE) {
+			return 0;
+		}
+		double w = Noise.smoothstep(0.5, 0.8, c.weight);
+		if (w <= 0) {
+			return 0;
+		}
+		double patch = Math.clamp(karst.fbm(x + 777, z - 555, 700 * k, 2, 0.5) * 1.6, -1.0, 1.0);
+		return w * (0.7 + 0.3 * patch);
 	}
 
 	/** Step TT2: the horizontal scale of the mountains (mountain spacing). */

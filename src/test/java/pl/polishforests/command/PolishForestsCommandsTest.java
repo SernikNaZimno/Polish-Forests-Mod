@@ -31,7 +31,9 @@ class PolishForestsCommandsTest {
 			PolishForestsCommands.Target.HIGH_TATRA, PolishForestsCommands.Target.WESTERN_TATRA, PolishForestsCommands.Target.PODHALE,
 			PolishForestsCommands.Target.CIRQUE, PolishForestsCommands.Target.U_VALLEY, PolishForestsCommands.Target.TARN,
 			PolishForestsCommands.Target.PINNACLE, PolishForestsCommands.Target.GULLY, PolishForestsCommands.Target.SCREE,
-			PolishForestsCommands.Target.MORAINE, PolishForestsCommands.Target.SNOW_PATCH);
+			PolishForestsCommands.Target.MORAINE, PolishForestsCommands.Target.SNOW_PATCH,
+			// Step TT6: the details of the Tatras (the shepherd's hut only in the present-day mode, see below).
+			PolishForestsCommands.Target.KARST_SPRING, PolishForestsCommands.Target.CAVE_MOUTH, PolishForestsCommands.Target.WATERFALL);
 
 	static HabitatTargets.World world(LandscapeScale scale, HabitatClassifier.Mode mode) {
 		return world(SEED, scale, mode, false);
@@ -46,7 +48,7 @@ class PolishForestsCommandsTest {
 	void everyTargetIsFoundInGameplayScale() {
 		// The old targets in a world without the Tatras (as before step TT1), the Tatra targets in one with them.
 		assertFound(world(LandscapeScale.GAMEPLAY, HabitatClassifier.Mode.NATURAL), List.of(PolishForestsCommands.Target.values())
-				.stream().filter(t -> !TATRA_TARGETS.contains(t)).toList());
+				.stream().filter(t -> !TATRA_TARGETS.contains(t) && t != PolishForestsCommands.Target.SHEPHERD_HUT).toList());
 		assertFound(world(SEED, LandscapeScale.GAMEPLAY, HabitatClassifier.Mode.NATURAL, true), List.copyOf(TATRA_TARGETS));
 	}
 
@@ -78,6 +80,23 @@ class PolishForestsCommandsTest {
 					p[0], p[1], Math.hypot(p[0], p[1]) / 1000);
 			assertTrue(Math.hypot(p[0], p[1]) < PolishForestsCommands.tatraRadius(w.model()));
 		}
+	}
+
+	/**
+	 * Step TT6: {@code find shepherd_hut} finds a hut on a hala or a glade in the present-day mode of a world with the Tatras,
+	 * in both scales, and nothing in the natural mode, where the huts are not built, nor in a world without the Tatras.
+	 */
+	@Test
+	void shepherdHutsAreFoundOnlyInThePresentDayMode() {
+		var hut = PolishForestsCommands.Target.SHEPHERD_HUT;
+		for (LandscapeScale scale : List.of(LandscapeScale.GAMEPLAY, LandscapeScale.REALISTIC)) {
+			long seed = scale == LandscapeScale.GAMEPLAY ? SEED : 4L;
+			assertFound(world(seed, scale, HabitatClassifier.Mode.PRESENT_DAY, true), List.of(hut));
+			assertTrue(PolishForestsCommands.locate(world(seed, scale, HabitatClassifier.Mode.NATURAL, true), hut, 0, 0) == null,
+					scale.id() + ": a hut in the natural mode");
+		}
+		assertTrue(PolishForestsCommands.locate(world(LandscapeScale.GAMEPLAY, HabitatClassifier.Mode.PRESENT_DAY), hut, 0, 0) == null,
+				"a hut without the Tatras");
 	}
 
 	@Test

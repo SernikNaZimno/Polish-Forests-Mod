@@ -23,6 +23,13 @@ public final class BiomeDecoration {
 	/** Glacial erratics of step 2 (§8.1). */
 	public static final String GLACIAL_ERRATICS = PolishForests.id("glacial_erratics").toString();
 
+	/**
+	 * Step TT6: the Tatra details (waterfalls, karst springs and cave mouths, boulders, shepherd huts) of step 9, behind the
+	 * dispatchers and the cave features and before the bone meal carrier. The path prefix {@code tatra/} keeps it after the
+	 * features of before TT6 ({@code FeatureOrder}). It does nothing outside the Tatras.
+	 */
+	public static final String TATRA_DETAILS = PolishForests.id(FeatureOrder.TATRA_PREFIX + "details").toString();
+
 	/** Lava lakes only below Y 0 (decision M2-4). */
 	public static final String DEEP_LAVA_LAKE = PolishForests.id("deep_lava_lake").toString();
 
@@ -115,6 +122,7 @@ public final class BiomeDecoration {
 		for (CaveFeature f : CaveFeature.values()) {
 			steps.get(f.step()).add(f.id());
 		}
+		steps.get(VEGETATION_STEP).add(TATRA_DETAILS);
 		steps.get(VEGETATION_STEP).add(boneMealCarrier(biome));
 		steps.get(10).add("minecraft:freeze_top_layer");
 		return steps.stream().<List<String>>map(List::copyOf).toList();

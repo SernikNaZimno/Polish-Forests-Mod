@@ -1,0 +1,11 @@
+{
+  "feature": "polishforests:tatra_details",
+  "placement": [
+    {
+      "type": "polishforests:top_of_world"
+    },
+    {
+      "type": "minecraft:biome"
+    }
+  ]
+}

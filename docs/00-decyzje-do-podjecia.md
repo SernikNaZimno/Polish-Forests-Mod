@@ -1264,3 +1264,21 @@ Krok: `docs/04-pionowy-wycinek.md` „Projekt TT5” (etap 1, TT5-a … TT5-j) i
 | TT5-p | Spis Tatr w `habitats` i `ui` (etap 2) | Spis Tatr w promieniu `tatraRadius` skali (300 / 2000 km), krata 32 m × `tatraFormScale`; test presetu w `ui` oczekuje Tatr w obu skalach |
 | TT5-q | KT-6 REAL (etap 2) | Tryb `stages` gametestu wydajności mierzy też miejsca Tatr (`montane_spruce_1`, `tatra_high_1`, `tatra_stone_pine_1`: cały chunk i światło) i honoruje `-Pscales`; skrypt `run_kt6b.sh` czeka na spokojną maszynę. Wynik w „Stan po TT5”, opis bez progu |
 | TT5-r | Kolumna szczytu (etap 2) | Gametest `tatra` sprawdza na najwyższym bloku masywu: najwyższą sekcję (Y 2031 w REAL, 767 w GAMEPLAY), mapy `WORLD_SURFACE` i `MOTION_BLOCKING` co najmniej na wierzchu terenu, światło nieba 15 nad wierzchem i na szczycie świata |
+
+### G.55 Drobne wybory kroku TT6 (domyślne, do potwierdzenia przy CP-D; 2026-11-14)
+
+Krok: `docs/04-pionowy-wycinek.md` „Projekt TT6” (etap 1, TT6-a … TT6-k); etap 2 dopisze TT6-l i dalsze w „Stan po TT6”. Plan kroków TT w G.49.
+
+| # | Wybór | Wartość i powód |
+|---|---|---|
+| TT6-a | Jeden ficzer na szczegóły Tatr | `polishforests:tatra/details` raz na chunk, na końcu kroku 9; kolejność ficzerów trzecią warstwą (`FeatureOrder.TATRA_PREFIX`), więc żaden istniejący ficzer nie zmienia indeksu ani ziarna (`FeatureOrderIndexTest`); poza Tatrami wraca od razu |
+| TT6-b | Losowania z haszy miejsca | Nowe sole (`TatraSites`, `BoulderPlan`, pole `decoration.tatra.block_field`), nigdy generator ficzera: wynik nie zależy od kolejności generacji ani od indeksu ficzera |
+| TT6-c | Kotwice z modelu | Krata komórek w chunkach (wodospad 24, wywierzysko 20, otwór jaskini 8, szałas 10; w REAL × 3), jedna kotwica rodzaju w komórce, 4–11 bloków od brzegów chunka (plan o zasięgu do 20 bloków mieści się w oknie 3 × 3); komendy `find` szukają tych kotwic; kotwica bez miejsca na szczegół (grunt się nie nadaje) to normalny wynik |
+| TT6-d | Grunt planów | Zapisane wierzchy kolumn (chunk i sąsiedzi), nie mapa wysokości (liczy korony drzew); drzewa i liście nie są gruntem, ficzer je wycina tam, gdzie buduje |
+| TT6-e | Wodospad | Źródło w wykuszu progu (grunt L), woda poziomu 7 w sąsiedniej komórce, spadająca woda do wyciętego jeziorka 3 × 2 (dwie warstwy źródeł); gdy spadek naturalny jest krótki, jeziorko wycięte głębiej (do 3 bloków, spadek 5–24 bloki); `FluidSim` odrzuca plan, którego woda wychodzi poza własne komórki (rozlewanie, jaskinia pod jeziorkiem, sąsiednia woda) |
+| TT6-f | Wywierzysko | Zamknięty basen 2 × 2 do 3 × 3 źródeł (dwie warstwy) na wapieniu i dolomicie, 650–1150 m, nachylenie do 0,4; bez odpływu |
+| TT6-g | Kras | Pole `mountain.tatra.karst` (nowa sól; patrz też `LandscapeModel.karst`): 0–1 na wapieniu i dolomicie, narastające z wagą kompleksu; `ColumnField.KARST` obniża końcową gęstość jaskiń o `0,35 × kras` (poza krasem składnik dokładnie 0: jaskinie poza Tatrami i na granicie bit w bit jak przedtem); siła 0,35 do strojenia w etapie 2 |
+| TT6-h | Otwory jaskiń | W stoku wapiennym i dolomitowym o nachyleniu ≥ 0,8 blok/blok: wejście na poziomie gruntu u podnóża, portal (otwarty wykop do 6 bloków), tunel 6–7 bloków i komora; cięte tylko przez skałę z litą podłogą i 2 blokami stropu, nigdy przy wodzie ani lawie |
+| TT6-i | Głazy i pola blokowe | 14 kandydatów na chunk; pole blokowe (powyżej 1000 m, landformy piargu, kotła, moreny, żlebu, doliny U, w płatach pola blokowego) 90%, morena 55%, dno doliny 25%, indziej 4% (eratyki); bryła bloku skały miejsca, porosty `rock_lichen` z TT3 (bez nowego bloku), przy dużych głazach pola gleba wokół w piarg |
+| TT6-j | Szałasy pasterskie | Tylko tryb D; A-rama z drewna modrzewiowego (P2) i belek siana z wanilii po id, 5 × 6 bloków, na `alpine_grassland` i `hay_meadow`, tylko na płaskim (różnica wysokości ≤ 3, sąsiednich ≤ 2, sucho); własny plan w kodzie, bez szablonu NBT; opcja do odcięcia przez `TatraSites.exists` |
+| TT6-k | Komendy | Cele `karst_spring`, `cave_mouth`, `waterfall`, `shepherd_hut` (ostatnie na końcu enuma), `here` pokazuje szczegół w promieniu 24 bloków; w trybie N `find shepherd_hut` odpowiada `not_in_mode` |

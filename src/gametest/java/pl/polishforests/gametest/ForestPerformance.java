@@ -181,6 +181,12 @@ final class ForestPerformance {
 	 * plot {@code tatra_stone_pine_natural_1} of the realistic scale ({@code slice_plots.txt}).
 	 */
 	static final int[][] TATRA_STONE_PINE_SITE = {{1_161_343, 99_681}, {-23268, 87636}};
+	/**
+	 * Step TT6 (KT-6): the limestone regiel of the same massif (the patch {@code regle_limestone} of the golden Tatra file,
+	 * sets REALISTIC A and GAMEPLAY A), where the karst caves and the Tatra details (springs, cave mouths, boulders) are:
+	 * the cost of the details and of the denser caves.
+	 */
+	static final int[][] TATRA_REGLE_SITE = {{1_180_979, 97_864}, {-23_189, 86_849}};
 
 	/**
 	 * The load and flight measurements in the oak-hornbeam and the fresh pine forest of the world (natural mode) and, from
@@ -205,6 +211,7 @@ final class ForestPerformance {
 		// Step TT5: the Tatra sites in both scales (the realistic preset has the Tatras since TT5).
 		places.add(new Object[] {"tatra_high_1", TATRA_HIGH_SITE[real ? 0 : 1]});
 		places.add(new Object[] {"tatra_stone_pine_1", TATRA_STONE_PINE_SITE[real ? 0 : 1]});
+		places.add(new Object[] {"tatra_regle_1", TATRA_REGLE_SITE[real ? 0 : 1]});
 		for (Object[] place : places) {
 			int[] m = (int[]) place[1];
 			String label = name + " / " + place[0];

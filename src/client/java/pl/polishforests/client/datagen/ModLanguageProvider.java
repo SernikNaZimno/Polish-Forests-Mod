@@ -60,6 +60,11 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		TARGETS.put("pinnacle", new String[] {"rock pinnacle", "turnia"});
 		TARGETS.put("gully", new String[] {"gully", "żleb"});
 		TARGETS.put("scree", new String[] {"scree cone", "stożek piargowy"});
+		// Step TT6: the details of the Tatras.
+		TARGETS.put("karst_spring", new String[] {"karst spring", "wywierzysko krasowe"});
+		TARGETS.put("cave_mouth", new String[] {"cave mouth", "otwór jaskini"});
+		TARGETS.put("waterfall", new String[] {"waterfall", "wodospad"});
+		TARGETS.put("shepherd_hut", new String[] {"shepherd's hut", "szałas pasterski"});
 		TARGETS.put("moraine", new String[] {"moraine", "morena"});
 		TARGETS.put("snow_patch", new String[] {"perennial snow patch", "płat wieloletniego śniegu"});
 		TARGETS.put("old_glacial_plain", new String[] {"old glacial plain", "równina staroglacjalna"});
@@ -445,6 +450,7 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		b.add("polishforests.command.no_tatra", "This world has no Tatras (the Tatras option was off when it was created)");
 		b.add("polishforests.command.here_tatra", "Tatras: %s, rock: %s, %s m above sea level (Y %s)");
 		b.add("polishforests.command.here_belt", "Belt: %s (profile: %s)");
+		b.add("polishforests.command.here_detail", "Tatra detail nearby: %s, %s blocks away (%s, %s)");
 		b.add("polishforests.belt.none", "none");
 		b.add("polishforests.belt.foothills", "foothills");
 		b.add("polishforests.belt.lower_montane", "lower montane");
@@ -551,6 +557,7 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		b.add("polishforests.command.no_tatra", "Ten świat nie ma Tatr (opcja Tatry była wyłączona przy jego tworzeniu)");
 		b.add("polishforests.command.here_tatra", "Tatry: %s, skała: %s, %s m n.p.m. (Y %s)");
 		b.add("polishforests.command.here_belt", "Piętro: %s (profil: %s)");
+		b.add("polishforests.command.here_detail", "Szczegół Tatr w pobliżu: %s, %s bloków stąd (%s, %s)");
 		b.add("polishforests.belt.none", "brak");
 		b.add("polishforests.belt.foothills", "pogórze");
 		b.add("polishforests.belt.lower_montane", "regiel dolny");

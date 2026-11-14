@@ -92,6 +92,8 @@ final class ModWorldgen {
 				case AQUATIC_PLANTS -> new PlantLayerFeature(d, ModVegetation.aquaticPlants(placedFeatures));
 			});
 		}
+		// Step TT6: the Tatra details, once per chunk at the end of step 9.
+		context.register(feature("tatra_details"), pl.polishforests.worldgen.feature.TatraDetailsFeature.INSTANCE);
 		// Step V7: the trees the saplings grow into, a canopy tree of the planner in its open-grown form (a lone tree, no
 		// territory), apart from tree/<species> (a lone mature tree, step V9; decision V7-a). Step S1: one feature per size
 		// of the sapling's tree (SaplingSize); the small one keeps the path of V7, sapling/<species>.
@@ -165,6 +167,10 @@ final class ModWorldgen {
 					List.of(TopOfWorldPlacement.INSTANCE, BiomeFilter.biome())));
 		}
 		caveFeatures(context, features);
+		// Step TT6: the Tatra details read the biome of their column at the top of the world, like the dispatchers.
+		context.register(placed(pl.polishforests.worldgen.feature.FeatureOrder.TATRA_PREFIX + "details"),
+				new PlacedFeature(features.getOrThrow(feature("tatra_details")),
+						List.of(TopOfWorldPlacement.INSTANCE, BiomeFilter.biome())));
 		// Lava lakes only below Y 0 (decision M2-4, §8.1): the vanilla underground lava lake with a lower height range.
 		context.register(placed("deep_lava_lake"), new PlacedFeature(features.getOrThrow(MiscOverworldFeatures.LAKE_LAVA), List.of(
 				RarityFilter.onAverageOnceEvery(9),

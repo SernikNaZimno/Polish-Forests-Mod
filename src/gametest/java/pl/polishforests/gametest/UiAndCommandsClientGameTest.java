@@ -200,7 +200,9 @@ public final class UiAndCommandsClientGameTest implements FabricClientGameTest {
 			commands.add("polishforests highest 5");
 			for (String command : commands) {
 				boolean presentDayOnly = command.endsWith(" wet_meadow") || command.endsWith(" hay_meadow")
-						|| command.endsWith(" arable_land") || command.endsWith(" tree_row");
+						|| command.endsWith(" arable_land") || command.endsWith(" tree_row")
+						// Step TT6: the huts of the Tatras are built only in the present-day mode.
+						|| command.endsWith(" shepherd_hut");
 				String expected = presentDayOnly ? "polishforests.command.not_in_mode"
 						: command.endsWith(" montane_tall_herbs") ? "polishforests.command.not_in_scale" : "polishforests.command.found";
 				search(context, server[0], command, expected, problems);
@@ -211,7 +213,8 @@ public final class UiAndCommandsClientGameTest implements FabricClientGameTest {
 			MinecraftServer[] server = new MinecraftServer[1];
 			sp.getServer().runOnServer(s -> server[0] = s);
 			for (String command : List.of("polishforests find biome wet_meadow", "polishforests find biome hay_meadow",
-					"polishforests find biome arable_land", "polishforests find zone tree_row", "polishforests find peatland")) {
+					"polishforests find biome arable_land", "polishforests find zone tree_row", "polishforests find peatland",
+					"polishforests find shepherd_hut")) {
 				search(context, server[0], command, "polishforests.command.found", problems);
 			}
 		}

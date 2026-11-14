@@ -37,6 +37,13 @@ public final class CaveDensity {
 	 * blocks below it, as under vanilla plains.
 	 */
 	public static final float SLOPE_PER_BLOCK = 4.0F * 5.0F / 128.0F;
+	/**
+	 * Step TT6: how much of the final density the full karst ({@link ColumnField#KARST} 1) takes off: the cells of the
+	 * karst rock whose density is at most this value turn to caves. The final density is the vanilla one after the squeeze
+	 * (about -1 to 1), so the cells next to a cave and the thin walls between caves open up: more and wider caves, the same
+	 * kinds of them, none outside the karst (the term is exactly 0 there).
+	 */
+	public static final float KARST_STRENGTH = 0.35F;
 	/** The vanilla lower limit of the noodle caves, 4 blocks above the vanilla world bottom. */
 	private static final int NOODLE_ABOVE_BOTTOM = 4;
 
@@ -58,8 +65,10 @@ public final class CaveDensity {
 		// The vanilla bottom slide of the overworld (NoiseRouterData.slideOverworld): solid toward the bottom 24 blocks.
 		DensityFunction slid = DensityFunctions.lerp(DensityFunctions.yClampedGradient(minY, minY + 24, 0.0F, 1.0F),
 				0.1171875F, caves);
-		return DensityFunctions.add(DensityFunctions.min(NoiseRouterData.postProcess(slid, 4, 8), noodle(functions, noises,
-				minY + NOODLE_ABOVE_BOTTOM, maxY)), DensityFunctions.beardifier());
+		DensityFunction vanilla = DensityFunctions.add(DensityFunctions.min(NoiseRouterData.postProcess(slid, 4, 8),
+				noodle(functions, noises, minY + NOODLE_ABOVE_BOTTOM, maxY)), DensityFunctions.beardifier());
+		// Step TT6: the karst of the Tatra limestone, a column-only term that is exactly 0 elsewhere.
+		return DensityFunctions.add(vanilla, ColumnField.KARST.mul(-KARST_STRENGTH));
 	}
 
 	/**

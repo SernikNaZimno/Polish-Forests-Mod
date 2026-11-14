@@ -30,6 +30,11 @@ import pl.polishforests.PolishForests;
 public final class FeatureOrder {
 	/** Path prefix of the underground features of the worlds with caves, which come after the features of before J2. */
 	public static final String CAVE_PREFIX = "cave/";
+	/**
+	 * Step TT6: path prefix of the features of the Tatra details ({@code tatra/details}), which come after the features of
+	 * before TT6 (those of before J2 and the cave ones), so none of them changes its index and seed.
+	 */
+	public static final String TATRA_PREFIX = "tatra/";
 
 	private FeatureOrder() {
 	}
@@ -40,6 +45,12 @@ public final class FeatureOrder {
 				&& k.identifier().getPath().startsWith(CAVE_PREFIX)).orElse(false);
 	}
 
+	/** Step TT6: whether the placed feature is one of the Tatra details that the habitat biomes got in step TT6. */
+	static boolean addedWithTatra(Holder<PlacedFeature> feature) {
+		return feature.unwrapKey().map(k -> k.identifier().getNamespace().equals(PolishForests.MOD_ID)
+				&& k.identifier().getPath().startsWith(TATRA_PREFIX)).orElse(false);
+	}
+
 	/**
 	 * The features per step for the possible biomes {@code biomes}, of which {@code habitats} are the habitat biomes.
 	 *
@@ -47,7 +58,28 @@ public final class FeatureOrder {
 	 */
 	public static List<FeatureSorter.StepFeatureData> build(List<Holder<Biome>> biomes, Set<Holder<Biome>> habitats,
 			Function<Holder<Biome>, List<HolderSet<PlacedFeature>>> features) {
-		return build(biomes, habitats, features, FeatureOrder::addedWithCaves);
+		return build(biomes, habitats, features, FeatureOrder::addedWithCaves, FeatureOrder::addedWithTatra);
+	}
+
+	/**
+	 * Step TT6: {@link #build(List, Set, Function, Predicate)} of the lists without the features of {@code tatra} (the
+	 * order of before TT6), then those features after all the others in their order of the vanilla sort of the full lists.
+	 */
+	public static <B> List<FeatureSorter.StepFeatureData> build(List<B> biomes, Set<B> habitats,
+			Function<B, List<HolderSet<PlacedFeature>>> features, Predicate<Holder<PlacedFeature>> added,
+			Predicate<Holder<PlacedFeature>> tatra) {
+		Function<B, List<HolderSet<PlacedFeature>>> withoutTatra = b -> {
+			List<HolderSet<PlacedFeature>> steps = new ArrayList<>();
+			for (HolderSet<PlacedFeature> step : features.apply(b)) {
+				steps.add(HolderSet.direct(step.stream().filter(f -> !tatra.test(f)).toList()));
+			}
+			return steps;
+		};
+		List<FeatureSorter.StepFeatureData> before = build(biomes, habitats, withoutTatra, added);
+		List<FeatureSorter.StepFeatureData> full = FeatureSorter.buildFeaturesPerStep(biomes, features, true);
+		return merge(before.stream().map(FeatureSorter.StepFeatureData::features).toList(),
+				full.stream().map(FeatureSorter.StepFeatureData::features).toList()).stream()
+				.map(list -> new FeatureSorter.StepFeatureData(list, Util.createIndexIdentityLookup(list))).toList();
 	}
 
 	/** {@link #build} with the test of the features that the habitat biomes got in step J2 ({@code added}). */

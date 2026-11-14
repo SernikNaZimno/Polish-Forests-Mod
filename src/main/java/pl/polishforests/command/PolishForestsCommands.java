@@ -32,6 +32,7 @@ import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
 import pl.polishforests.PolishForests;
 import pl.polishforests.worldgen.chunk.PolandChunkGenerator;
+import pl.polishforests.worldgen.feature.tatra.TatraSites;
 import pl.polishforests.worldgen.habitat.AltitudinalBelts;
 import pl.polishforests.worldgen.habitat.Calibration;
 import pl.polishforests.worldgen.habitat.Habitat;
@@ -68,7 +69,9 @@ public final class PolishForestsCommands {
 	private enum Kind {
 		LANDSCAPE, BELT, WATER, COAST, LANDFORM,
 		/** Step TT1: the parts of the Tatra complexes, searched around the Tatra massifs ({@link #searchTatra}). */
-		TATRA
+		TATRA,
+		/** Step TT6: the anchors of the Tatra details ({@link TatraSites}), searched in rings of cells around the massifs. */
+		SITE
 	}
 
 	/**
@@ -134,7 +137,13 @@ public final class PolishForestsCommands {
 		GULLY(Kind.TATRA, true, false, d -> d.sample().terrain().has(Landform.GULLY)),
 		SCREE(Kind.TATRA, true, false, d -> d.sample().terrain().has(Landform.SCREE)),
 		MORAINE(Kind.TATRA, true, false, d -> d.sample().terrain().has(Landform.MORAINE)),
-		SNOW_PATCH(Kind.TATRA, code -> Habitat.zone(code) == Zone.SNOW_PATCH, true);
+		SNOW_PATCH(Kind.TATRA, code -> Habitat.zone(code) == Zone.SNOW_PATCH, true),
+		// Step TT6: the details of the Tatras (anchors, TatraSites): a karst spring, the mouth of a cave in a limestone slope,
+		// a waterfall and (only in the present-day mode) a shepherd's hut.
+		KARST_SPRING(TatraSites.Kind.SPRING),
+		CAVE_MOUTH(TatraSites.Kind.CAVE_MOUTH),
+		WATERFALL(TatraSites.Kind.WATERFALL),
+		SHEPHERD_HUT(TatraSites.Kind.SHEPHERD_HUT);
 
 		final Kind kind;
 		final boolean fine;
@@ -143,6 +152,8 @@ public final class PolishForestsCommands {
 		final Predicate<LandscapeModel.Description> test;
 		/** Step S9: a test on the habitat code of the column instead of the terrain description (null: none). */
 		final IntPredicate habitat;
+		/** Step TT6: the kind of detail of a {@link Kind#SITE} target (null: another kind of target). */
+		final TatraSites.Kind site;
 
 		Target(Kind kind, boolean fine, boolean forms, Predicate<LandscapeModel.Description> test) {
 			this(kind, fine, forms, false, test);
@@ -155,6 +166,17 @@ public final class PolishForestsCommands {
 			this.coastal = coastal;
 			this.test = test;
 			this.habitat = null;
+			this.site = null;
+		}
+
+		Target(TatraSites.Kind site) {
+			this.kind = Kind.SITE;
+			this.fine = false;
+			this.forms = false;
+			this.coastal = false;
+			this.test = d -> false;
+			this.habitat = null;
+			this.site = site;
 		}
 
 		Target(Kind kind, IntPredicate habitat, boolean fine) {
@@ -164,6 +186,7 @@ public final class PolishForestsCommands {
 			this.coastal = false;
 			this.test = d -> false;
 			this.habitat = habitat;
+			this.site = null;
 		}
 
 		public String id() {
@@ -283,6 +306,9 @@ public final class PolishForestsCommands {
 		return Arrays.stream(Zone.values()).filter(z -> z != Zone.NONE).map(Zone::id);
 	}
 
+	/** Step TT6: how far {@code here} looks for an anchor of a Tatra detail (blocks). */
+	static final double HERE_DETAIL = 24;
+
 	private static int here(CommandContext<CommandSourceStack> ctx) {
 		CommandSourceStack source = ctx.getSource();
 		pl.polishforests.worldgen.vanilla.VanillaForestWorld vanilla = VanillaTargets.of(source.getLevel());
@@ -312,6 +338,17 @@ public final class PolishForestsCommands {
 					rock == null ? Component.translatable("polishforests.tatra_rock.none")
 							: Component.translatable("polishforests.tatra_rock." + rock.name().toLowerCase(Locale.ROOT)),
 					String.format(Locale.ROOT, "%.0f", s.surface()), y), false);
+		}
+		// Step TT6: an anchor of a Tatra detail within 24 blocks (a waterfall, a karst spring, a cave mouth, a hut).
+		if (part != TatraPart.NONE) {
+			HabitatClassifier hc = generator(source).classifier(source.getLevel().getSeed());
+			TatraSites.Site near = TatraSites.nearest(model, pos.x, pos.z, HERE_DETAIL, hc.mode() == HabitatClassifier.Mode.PRESENT_DAY,
+					(x, z) -> hc.classify(model.sample(x, z), x, z));
+			if (near != null) {
+				int distance = (int) Math.round(Math.hypot(near.x() - pos.x, near.z() - pos.z));
+				source.sendSuccess(() -> Component.translatable("polishforests.command.here_detail",
+						Component.translatable("polishforests.target." + near.kind().targetId()), distance, near.x(), near.z()), false);
+			}
 		}
 		// Step TT3: in the mountains the altitudinal belt of the column and its belt profile (Beskids, Tatras or their blend).
 		{
@@ -378,12 +415,17 @@ public final class PolishForestsCommands {
 		Vec3 origin = source.getPosition();
 		source.sendSuccess(() -> Component.translatable("polishforests.command.searching", target.displayName()), false);
 		double[][] phases = phases(model, target.fine);
-		if (target.kind == Kind.TATRA && !model.hasTatra()) {
+		if ((target.kind == Kind.TATRA || target.kind == Kind.SITE) && !model.hasTatra()) {
 			source.sendFailure(Component.translatable("polishforests.command.no_tatra"));
 			return 0;
 		}
-		double radius = target.coastal ? coastalRadius(model) : target.kind == Kind.TATRA ? tatraRadius(model)
-				: phases[phases.length - 1][1];
+		// Step TT6: the huts are built only in the present-day mode.
+		if (target.site != null && !TatraSites.exists(target.site, presentDay(world))) {
+			source.sendFailure(Component.translatable("polishforests.command.not_in_mode", target.displayName(), modeName(world)));
+			return 0;
+		}
+		double radius = target.coastal ? coastalRadius(model) : target.kind == Kind.TATRA || target.kind == Kind.SITE
+				? tatraRadius(model) : phases[phases.length - 1][1];
 		runSearch(source, origin, cancelled -> locate(world, target, origin.x, origin.z, cancelled), radius,
 				target.displayName());
 		return 1;
@@ -535,11 +577,20 @@ public final class PolishForestsCommands {
 	static double[] locate(HabitatTargets.World world, Target target, double ox, double oz, BooleanSupplier cancelled) {
 		Predicate<double[]> test = p -> matches(world, target, p);
 		LandscapeModel model = world.model();
+		if (target.kind == Kind.SITE) {
+			return TatraSites.find(model, target.site, ox, oz, tatraRadius(model), presentDay(world),
+					world.classifier() == null ? null : world::code, cancelled);
+		}
 		if (target.kind == Kind.TATRA) {
 			return searchTatra(model, test, ox, oz, target.fine ? TATRA_FINE_STEP : TATRA_STEP, cancelled);
 		}
 		return target.coastal ? searchCoastal(model, test, ox, oz, cancelled)
 				: search(phases(model, target.fine), test, ox, oz, cancelled);
+	}
+
+	/** Step TT6: whether the world is in the present-day mode (a world without a classifier counts as in it: the huts exist). */
+	private static boolean presentDay(HabitatTargets.World world) {
+		return world.classifier() == null || world.classifier().mode() == HabitatClassifier.Mode.PRESENT_DAY;
 	}
 
 	/** Step TT1: lattice spacing of the search around a Tatra massif (m), for the cirques and U-shaped valleys. */
@@ -601,6 +652,13 @@ public final class PolishForestsCommands {
 		LandscapeModel model = world.model();
 		if (target.habitat != null) {
 			return target.habitat.test(world.code(p[0], p[1]));
+		}
+		if (target.site != null) {
+			// Step TT6: p is the anchor of a detail of the kind.
+			int x = (int) Math.round(p[0]);
+			int z = (int) Math.round(p[1]);
+			return TatraSites.inChunk(model, x >> 4, z >> 4, presentDay(world), world.classifier() == null ? null : world::code).stream()
+					.anyMatch(s -> s.kind() == target.site && s.x() == x && s.z() == z);
 		}
 		boolean found = target.test.test(target.forms ? model.describe(p[0], p[1])
 				: new LandscapeModel.Description(model.sample(p[0], p[1]), EnumSet.noneOf(Landform.class)));

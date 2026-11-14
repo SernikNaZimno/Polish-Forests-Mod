@@ -36,7 +36,13 @@ public enum ColumnField implements DensityFunction {
 	 * smoothed model top with the relief, {@link CaveBiomes.Relief#level}) / 128, capped; for the aquifer exclusion of the
 	 * deep dark, so it follows the same depth as the biome.
 	 */
-	BIOME_DEPTH("biome_depth");
+	BIOME_DEPTH("biome_depth"),
+	/**
+	 * Step TT6: the karst of the Tatra limestone and dolomite 0-1 ({@link PolandCaves.Columns#karst}), 0 everywhere else:
+	 * {@link CaveDensity#KARST_STRENGTH} times it is taken off the cave density, so the rock of the regle holds more caves
+	 * than the granite. Column data only (no Y), read per chunk from an array.
+	 */
+	KARST("karst");
 
 	private final ContextKey<DensitySampler> key;
 	private final MapCodec<ColumnField> codec = MapCodec.unit(this);
@@ -69,7 +75,7 @@ public enum ColumnField implements DensityFunction {
 
 	@Override
 	public @DensityFunction.Axes int domainAxes() {
-		return this == LEVEL ? AXIS_X | AXIS_Z : ALL_AXES;
+		return this == LEVEL || this == KARST ? AXIS_X | AXIS_Z : ALL_AXES;
 	}
 
 	@Override
@@ -85,6 +91,42 @@ public enum ColumnField implements DensityFunction {
 	/** The sampler of {@link #LEVEL} for the model tops of {@code columns}. */
 	static DensitySampler level(PolandCaves.Columns columns) {
 		return new Sampler(columns, LEVEL);
+	}
+
+	/**
+	 * Step TT6: the sampler of {@link #KARST}: the values of the {@code sizeX} x {@code sizeZ} columns from ({@code minX},
+	 * {@code minZ}) (index {@code (x - minX) * sizeZ + (z - minZ)}), the columns beyond them from {@code columns}.
+	 */
+	static DensitySampler karst(float[] values, int minX, int minZ, int sizeX, int sizeZ, PolandCaves.Columns columns) {
+		return new KarstSampler(values, minX, minZ, sizeX, sizeZ, columns);
+	}
+
+	private record KarstSampler(float[] values, int minX, int minZ, int sizeX, int sizeZ, PolandCaves.Columns columns)
+			implements DensitySampler {
+		private float at(int x, int z) {
+			int dx = x - minX;
+			int dz = z - minZ;
+			return dx >= 0 && dx < sizeX && dz >= 0 && dz < sizeZ ? values[dx * sizeZ + dz] : columns.karst(x, z);
+		}
+
+		@Override
+		public void sampleVolume(SamplerContext context, DensityBuffer outputBuffer, DensityVolume volume) {
+			for (int z = 0; z < volume.sizeZ(); z++) {
+				int blockZ = volume.blockZ(z);
+				for (int x = 0; x < volume.sizeX(); x++) {
+					float k = at(volume.blockX(x), blockZ);
+					int base = volume.indexUnchecked(x, 0, z);
+					for (int y = 0; y < volume.sizeY(); y++) {
+						outputBuffer.set(base + y, k);
+					}
+				}
+			}
+		}
+
+		@Override
+		public float sampleValue(SamplerContext context, int blockX, int blockY, int blockZ) {
+			return at(blockX, blockZ);
+		}
 	}
 
 	/** The sampler of {@link #BIOME_DEPTH} for the model tops of {@code columns} and the relief {@code relief}. */
@@ -127,6 +169,7 @@ public enum ColumnField implements DensityFunction {
 				case DEPTH -> CaveDensity.SLOPE_PER_BLOCK * (top + 1 - y);
 				case LEVEL -> top;
 				case BIOME_DEPTH -> CaveBiomes.depth(top, y);
+				case KARST -> 0.0F;
 			};
 		}
 	}

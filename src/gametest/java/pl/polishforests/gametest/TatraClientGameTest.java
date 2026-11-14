@@ -139,6 +139,9 @@ public final class TatraClientGameTest implements FabricClientGameTest {
 			report.add("=== " + (real ? "realistic" : "gameplay") + " scale");
 			List<String> fails = new ArrayList<>();
 			run(context, real, report, fails);
+			// Step TT6: the details of the Tatras, in each of the two vegetation modes (a world of each).
+			TatraDetailsCheck.run(context, real, false, report, fails);
+			TatraDetailsCheck.run(context, real, true, report, fails);
 			fails.forEach(f -> failures.add((real ? "realistic: " : "gameplay: ") + f));
 		}
 		report.add(failures.isEmpty() ? "PASS" : "FAIL: " + String.join("; ", failures));
@@ -283,7 +286,10 @@ public final class TatraClientGameTest implements FabricClientGameTest {
 				PolishForestsCommands.Target.HIGH_TATRA, PolishForestsCommands.Target.WESTERN_TATRA,
 				PolishForestsCommands.Target.PODHALE, PolishForestsCommands.Target.CIRQUE, PolishForestsCommands.Target.U_VALLEY,
 				PolishForestsCommands.Target.TARN, PolishForestsCommands.Target.PINNACLE, PolishForestsCommands.Target.GULLY,
-				PolishForestsCommands.Target.SCREE, PolishForestsCommands.Target.MORAINE, PolishForestsCommands.Target.SNOW_PATCH}) {
+				PolishForestsCommands.Target.SCREE, PolishForestsCommands.Target.MORAINE, PolishForestsCommands.Target.SNOW_PATCH,
+				// Step TT6 (the shepherd's hut only exists in the present-day mode: TatraDetailsCheck).
+				PolishForestsCommands.Target.KARST_SPRING, PolishForestsCommands.Target.CAVE_MOUTH,
+				PolishForestsCommands.Target.WATERFALL}) {
 			long start = System.nanoTime();
 			double[] p = PolishForestsCommands.locate(world, t, 0, 0);
 			double ms = (System.nanoTime() - start) / 1e6;

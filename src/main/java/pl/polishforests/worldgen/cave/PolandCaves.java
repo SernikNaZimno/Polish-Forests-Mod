@@ -85,6 +85,14 @@ public final class PolandCaves {
 		default boolean dryAbove(int x, int z) {
 			return false;
 		}
+
+		/**
+		 * Step TT6: the karst of the column 0-1 (the Tatra limestone and dolomite; 0 elsewhere and in a world without the
+		 * Tatras): the cave density is lowered by {@link CaveDensity#KARST_STRENGTH} times it.
+		 */
+		default float karst(int x, int z) {
+			return 0.0F;
+		}
 	}
 
 	private final DensityFunction density;
@@ -175,8 +183,13 @@ public final class PolandCaves {
 		CaveCarving out = new CaveCarving(minY, maxY - minY + 1);
 		DensityBufferPool pool = randomState.acquireDensityBufferPool();
 		try {
+			float[] karst = new float[256];
+			for (int i = 0; i < 256; i++) {
+				karst[i] = columns.karst(minX + (i >> 4), minZ + (i & 15));
+			}
 			ContextMap.Builder fields = ContextMap.builder()
 					.set(ColumnField.DEPTH.key(), ColumnField.depth(columns))
+					.set(ColumnField.KARST.key(), ColumnField.karst(karst, minX, minZ, 16, 16, columns))
 					.set(ColumnField.LEVEL.key(), ColumnField.level(columns))
 					.set(ColumnField.BIOME_DEPTH.key(), ColumnField.biomeDepth(columns, CaveBiomes.Relief.of(randomState.seed())));
 			if (beardifier != null) {
@@ -414,6 +427,7 @@ public final class PolandCaves {
 		DensityBufferPool pool = randomState.acquireDensityBufferPool();
 		try {
 			ContextMap fields = ContextMap.builder().set(ColumnField.DEPTH.key(), ColumnField.depth(columns))
+					.set(ColumnField.KARST.key(), ColumnField.karst(new float[] {columns.karst(x, z)}, x, z, 1, 1, columns))
 					.set(ColumnField.LEVEL.key(), ColumnField.level(columns))
 					.set(ColumnField.BIOME_DEPTH.key(), ColumnField.biomeDepth(columns, CaveBiomes.Relief.of(randomState.seed())))
 					.build();

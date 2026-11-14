@@ -94,7 +94,13 @@ class FeatureOrderIndexTest {
 	}
 
 	private static List<List<String>> withoutCaveFeatures(List<List<String>> steps) {
-		return steps.stream().map(step -> step.stream().filter(id -> !id.startsWith("polishforests:cave/")).toList()).toList();
+		return steps.stream().map(step -> step.stream().filter(id -> !id.startsWith("polishforests:cave/")
+				&& !id.startsWith("polishforests:tatra/")).toList()).toList();
+	}
+
+	/** Before step TT6: without the Tatra details, with the cave features. */
+	private static List<List<String>> withoutTatraDetails(List<List<String>> steps) {
+		return steps.stream().map(step -> step.stream().filter(id -> !id.startsWith("polishforests:tatra/")).toList()).toList();
 	}
 
 	private List<List<String>> names(List<FeatureSorter.StepFeatureData> steps) {
@@ -128,7 +134,18 @@ class FeatureOrderIndexTest {
 		List<List<String>> before = names(FeatureSorter.buildFeaturesPerStep(List.copyOf(habitats),
 				b -> sets(withoutCaveFeatures(now.get(b))), false));
 		List<List<String>> after = names(FeatureOrder.build(biomes, habitats, b -> sets(now.get(b)),
+				h -> ids.get(h).startsWith("polishforests:cave/"), h -> ids.get(h).startsWith("polishforests:tatra/")));
+		// Step TT6: every feature of before TT6 (also the cave ones and those of the vanilla cave biomes) keeps its index.
+		List<List<String>> beforeTatra = names(FeatureOrder.build(biomes, habitats, b -> sets(withoutTatraDetails(now.get(b))),
 				h -> ids.get(h).startsWith("polishforests:cave/")));
+		for (int step = 0; step < beforeTatra.size(); step++) {
+			for (int i = 0; i < beforeTatra.get(step).size(); i++) {
+				assertEquals(i, after.get(step).indexOf(beforeTatra.get(step).get(i)), "step " + step + ": "
+						+ beforeTatra.get(step).get(i) + " moved by the Tatra details");
+			}
+		}
+		assertTrue(after.get(BiomeDecoration.VEGETATION_STEP).contains(BiomeDecoration.TATRA_DETAILS),
+				"the Tatra details are in the order");
 		List<List<String>> vanillaSort = names(FeatureSorter.buildFeaturesPerStep(biomes, b -> sets(now.get(b)), false));
 		boolean vanillaMoves = false;
 		for (int step = 0; step < before.size(); step++) {
