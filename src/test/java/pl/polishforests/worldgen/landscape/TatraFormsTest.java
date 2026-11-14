@@ -21,7 +21,8 @@ import pl.polishforests.worldgen.chunk.VerticalScale;
  * of {@link TatraSurvey} at gameplay scale.
  * <ul>
  * <li>{@link #everyMassifHasItsTarns}: 15–40 tarns per massif, the largest of the Morskie Oko type (behind a moraine), at
- * least three with an outlet brook, at least one brook joining the river network or the next tarn.</li>
+ * least half of them over the massifs of a scale (a third in every massif) with an outlet brook joined to the river network
+ * or to the next tarn (step TT7, TT2-o).</li>
  * <li>{@link #tarnBasinsAreClosed}: a 1 m scan of the shore band of every tarn: every water column of a tarn has each of its
  * four neighbors either water of the same tarn at its level or dry ground at least at the level (no leak, no water at two
  * levels side by side); the ground under the water lies below the level (no hanging water). The brooks fall
@@ -49,6 +50,8 @@ class TatraFormsTest {
 	void everyMassifHasItsTarns(LandscapeScale sc) {
 		StringBuilder report = new StringBuilder();
 		List<String> failures = new ArrayList<>();
+		int allTarns = 0;
+		int allJoined = 0;
 		for (long seed : TatraSurvey.SEEDS) {
 			LandscapeModel m = TatraSurvey.with(sc, seed);
 			for (LandscapeModel.Tatra t : TatraSurvey.nearest(sc, seed, MASSIFS)) {
@@ -71,12 +74,18 @@ class TatraFormsTest {
 						largest == null ? 0 : 2 * largest.bu(), largest != null && largest.morskie() ? " (Morskie Oko)" : ""));
 				check(failures, tarns.size() >= 15 && tarns.size() <= 40, label + ": " + tarns.size() + " tarns");
 				check(failures, largest.moraine(), label + ": the largest tarn is not behind a moraine");
-				// Most tarns have no outlet (their basin lies under a higher lip; TT2-d): a few brooks per massif, and some of
-				// them reach the river network (the others end in a pool above a steep step, the water under the scree).
-				check(failures, outlets >= 3, label + ": " + outlets + " outlets");
-				check(failures, joined >= 1, label + ": " + joined + " of " + outlets + " brooks join");
+				// Step TT7 (TT2-o): the outlet runs from the lowest point of the ring down to a brook or a river; over the
+				// massifs of the scale at least half the tarns drain into the river network or the next tarn (the others lie in
+				// a pit or a hollow deeper than a brook cuts, their water under the scree), at least a third in every massif.
+				check(failures, 3 * joined >= tarns.size(), label + ": " + joined + " of " + tarns.size() + " tarns joined ("
+						+ outlets + " outlets)");
+				allTarns += tarns.size();
+				allJoined += joined;
 			}
 		}
+		report.append(String.format(Locale.ROOT, "%s: %d of %d tarns joined (%.0f%%)%n", sc.id(), allJoined, allTarns,
+				100.0 * allJoined / Math.max(1, allTarns)));
+		check(failures, 2 * allJoined >= allTarns, sc.id() + ": " + allJoined + " of " + allTarns + " tarns joined");
 		System.out.print(report);
 		assertTrue(failures.isEmpty(), String.join("; ", failures));
 	}

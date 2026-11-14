@@ -143,7 +143,11 @@ public final class PolishForestsCommands {
 		KARST_SPRING(TatraSites.Kind.SPRING),
 		CAVE_MOUTH(TatraSites.Kind.CAVE_MOUTH),
 		WATERFALL(TatraSites.Kind.WATERFALL),
-		SHEPHERD_HUT(TatraSites.Kind.SHEPHERD_HUT);
+		SHEPHERD_HUT(TatraSites.Kind.SHEPHERD_HUT),
+		// Step TT7: the foreland north of the Podhale (a Gorce-type flysch ridge) and a river in a gorge through it.
+		TATRA_FORELAND(Kind.TATRA, false, false, d -> d.sample().terrain().tatraPart() == TatraPart.FORELAND),
+		FORELAND_GORGE(Kind.TATRA, true, false,
+				d -> d.sample().terrain().tatraPart() == TatraPart.FORELAND && d.sample().waterKind() == WaterKind.RIVER);
 
 		final Kind kind;
 		final boolean fine;

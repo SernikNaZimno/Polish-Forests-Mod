@@ -24,6 +24,8 @@ import pl.polishforests.worldgen.chunk.VerticalScale;
  * <li>{@link #partsHaveTheirHeights}: the crest of the Western Tatras 1900–2250 m, of the High Tatras 2300–2530 m, the
  * regle 1000–1500 m with a Giewont-type ridge up to about 1900 m, the Sub-Tatra Trough 800–1000 m, the foothills up to
  * 1000–1150 m, the Podhale basin 580–700 m.</li>
+ * <li>{@link #forelandRidgeHasItsHeights}: step TT7, the foreland ridge north of the basin 1000–1300 m, falling to the
+ * lowland.</li>
  * <li>{@link #uValleysHaveFlatFloors}: the cross profile of the U-shaped valleys: a flat floor (the floor width at 10% of
  * the depth against the width at 50%) and steep walls; the floor width against the depth in the report.</li>
  * <li>{@link #cirquesHeadTheValleys}: at least 70% of the U-shaped valleys begin at a cirque, and the floor of 90% of
@@ -179,6 +181,75 @@ class TatraReliefTest {
 				assertTrue(percentile(basin, 0.5) >= 580 && percentile(basin, 0.5) <= 700, l + ": basin median");
 			}
 		}
+	}
+
+	/**
+	 * Step TT7 (TT1-t): the foreland north of the Podhale basin of every massif that has one: the crest of its flysch ridge
+	 * (the highest foreland point of every line across the range in the inner 60% of the massif, off the gorges) 1000–1300
+	 * m a.s.l. (median, the 10th and 90th percentiles within 950–1350 m), its outer edge lower than the crest by at least
+	 * 300 m (median; it fades to the lowland) or at the old terrain where that is higher (the realistic Beskids beyond it),
+	 * Beskid type on the crest.
+	 */
+	@ParameterizedTest
+	@MethodSource("pl.polishforests.worldgen.landscape.TatraSurvey#scales")
+	void forelandRidgeHasItsHeights(LandscapeScale sc) {
+		int forelands = 0;
+		for (long seed : TatraSurvey.SEEDS) {
+			LandscapeModel m = TatraSurvey.with(sc, seed);
+			double k = sc.mountainSpacing();
+			for (LandscapeModel.Tatra t : TatraSurvey.nearest(sc, seed, MASSIFS)) {
+				TatraField.Massif ms = m.tatraField().column(t.anchorX(), t.anchorZ()).massif;
+				String l = TatraSurvey.label(sc, seed, t);
+				if (!ms.foreland()) {
+					System.out.println(l + ": no foreland");
+					continue;
+				}
+				forelands++;
+				double step = TatraSurvey.step(sc, STEP);
+				double u0 = (TatraField.BASIN_CENTER + TatraField.BASIN / 2) * k;
+				double u1 = u0 + TatraField.FORELAND * k;
+				List<Double> crest = new ArrayList<>();
+				List<Double> drop = new ArrayList<>();
+				int beskid = 0;
+				for (double v = -0.6 * t.halfLength(); v <= 0.6 * t.halfLength(); v += 10 * step) {
+					if (ms.gorgeDistance(v) < (TatraField.GORGE_FLOOR + TatraField.GORGE_WALL + TatraField.GORGE_MEANDER) * k) {
+						continue;
+					}
+					double best = -1;
+					double bestU = 0;
+					for (double u = u0; u <= u1; u += step) {
+						double x = TatraSurvey.x(t, u, v);
+						double z = TatraSurvey.z(t, u, v);
+						TatraField.Column c = m.tatraColumn(x, z);
+						if (c != null && c.part == TatraPart.FORELAND) {
+							double h = m.landElevation(x, z);
+							if (h > best) {
+								best = h;
+								bestU = u;
+							}
+						}
+					}
+					if (best < 0) {
+						continue;
+					}
+					crest.add(best);
+					double xe = TatraSurvey.x(t, u1, v);
+					double ze = TatraSurvey.z(t, u1, v);
+					// The drop to the lowland, or to the old terrain where that is higher than the foot (the REAL Beskids).
+					double edge = m.landElevation(xe, ze);
+					drop.add(edge <= m.landElevationBase(xe, ze) + 30 ? Math.max(300, best - edge) : best - edge);
+					beskid += m.sample(TatraSurvey.x(t, bestU, v), TatraSurvey.z(t, bestU, v)).type() == LandscapeType.BESKIDS ? 1 : 0;
+				}
+				System.out.printf(Locale.ROOT, "%s: foreland crest n %d p10 %.0f p50 %.0f p90 %.0f, drop to the outer edge p50 %.0f, Beskid %d%n", l,
+						crest.size(), percentile(crest, 0.1), percentile(crest, 0.5), percentile(crest, 0.9), percentile(drop, 0.5), beskid);
+				assertTrue(crest.size() >= 5, l + ": foreland crest lines " + crest.size());
+				assertTrue(percentile(crest, 0.5) >= 1_000 && percentile(crest, 0.5) <= 1_300, l + ": foreland crest median " + crest);
+				assertTrue(percentile(crest, 0.1) >= 950 && percentile(crest, 0.9) <= 1_350, l + ": foreland crest spread " + crest);
+				assertTrue(percentile(drop, 0.5) >= 300, l + ": foreland drop to the lowland " + drop);
+				assertTrue(beskid >= 0.8 * crest.size(), l + ": Beskid crest columns " + beskid + " of " + crest.size());
+			}
+		}
+		assertTrue(forelands >= 3, sc.id() + ": " + forelands + " massifs with a foreland");
 	}
 
 	/** A cross section along the range (v) through a U-shaped valley floor column: the floor and wall widths. */
@@ -437,7 +508,7 @@ class TatraReliefTest {
 			if (Math.abs(v) > 0.6 * t.halfLength()) {
 				return;
 			}
-			for (double u = TatraField.BASIN_CENTER * k; u < (TatraField.BASIN_CENTER + TatraField.BASIN + TatraField.FADE_NORTH) * k; u += 10) {
+			for (double u = TatraField.BASIN_CENTER * k; u < (TatraField.BASIN_CENTER + TatraField.BASIN + TatraField.FORELAND + TatraField.FADE_NORTH) * k; u += 10) {
 				if (m.tatraWeight(TatraSurvey.x(t, u, v), TatraSurvey.z(t, u, v)) < 0.5) {
 					out[b] = u;
 					return;
@@ -495,7 +566,7 @@ class TatraReliefTest {
 		// The whole complex to the end of its fades (the transition to the Beskids on every side).
 		double k = m.scale().mountainSpacing();
 		double uMin = -(TatraField.WS + TatraField.FADE_SOUTH1 + TatraField.EDGE) * k;
-		double uMax = (TatraField.BASIN_CENTER + TatraField.BASIN / 2 + TatraField.FADE_NORTH + TatraField.EDGE) * k;
+		double uMax = (TatraField.BASIN_CENTER + TatraField.BASIN / 2 + TatraField.FORELAND + TatraField.FADE_NORTH + TatraField.EDGE) * k;
 		double vHalf = t.halfLength() + (TatraField.FADE_END1 + TatraField.EDGE) * k;
 		return IntStream.range(0, 300_000).parallel().mapToDouble(i -> {
 			double fu = (i * 0.6180339887498949) % 1.0;
@@ -506,6 +577,11 @@ class TatraReliefTest {
 			double z = TatraSurvey.z(t, u, v);
 			// Step TT2: the pinnacles and the gully walls are the sharp relief (KT-4: steep on purpose, TatraFormsTest).
 			if (m.tatraSharp(x, z) > 0 || m.tatraSharp(x + d, z) > 0 || m.tatraSharp(x, z + d) > 0) {
+				return 0;
+			}
+			// Step TT7: the box now reaches past the foreland, where it may hold old terrain outside the complex (a coast
+			// steeper than 10 per m in a gameplay massif of seed A); that terrain is KT-1's (TatraIsolationTest).
+			if (m.tatraWeight(x, z) <= 0 && m.tatraWeight(x + d, z) <= 0 && m.tatraWeight(x, z + d) <= 0) {
 				return 0;
 			}
 			double h = m.landElevation(x, z);

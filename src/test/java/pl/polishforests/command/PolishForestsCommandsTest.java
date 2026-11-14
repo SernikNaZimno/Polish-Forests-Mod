@@ -33,7 +33,9 @@ class PolishForestsCommandsTest {
 			PolishForestsCommands.Target.PINNACLE, PolishForestsCommands.Target.GULLY, PolishForestsCommands.Target.SCREE,
 			PolishForestsCommands.Target.MORAINE, PolishForestsCommands.Target.SNOW_PATCH,
 			// Step TT6: the details of the Tatras (the shepherd's hut only in the present-day mode, see below).
-			PolishForestsCommands.Target.KARST_SPRING, PolishForestsCommands.Target.CAVE_MOUTH, PolishForestsCommands.Target.WATERFALL);
+			PolishForestsCommands.Target.KARST_SPRING, PolishForestsCommands.Target.CAVE_MOUTH, PolishForestsCommands.Target.WATERFALL,
+			// Step TT7: the foreland north of the Podhale and the gorge of a basin river through it.
+			PolishForestsCommands.Target.TATRA_FORELAND, PolishForestsCommands.Target.FORELAND_GORGE);
 
 	static HabitatTargets.World world(LandscapeScale scale, HabitatClassifier.Mode mode) {
 		return world(SEED, scale, mode, false);

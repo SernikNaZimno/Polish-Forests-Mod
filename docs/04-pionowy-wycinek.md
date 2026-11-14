@@ -651,6 +651,13 @@ Każdy krok TT jest ukończony dopiero, gdy oprócz własnych kryteriów spełni
 - **Ryzyko:** średnie (dekoracja, woda płynąca).
 - **Stan (2026-11-14): zrobione z odstępstwem („Projekt TT6”, „Stan po TT6”, G.55):** ficzer `tatra/details` w obu skalach i trybach: wodospady (0 przecieków i 0 utraconych komórek po wymuszeniu ticków płynów), wywierzyska, otwory jaskiń w stokach wapiennych i dolomitowych, głazy i pola blokowe z porostami, w trybie D szałasy na płaskim (0 w N); kras `mountain.tatra.karst` (siła 0,05 po pomiarze, zanik 12–36 bloków pod wierzchem; wapień i dolomit 99,6% kolumn z jaskinią wobec 41,8% granitu w REAL, 96,8% wobec 35,2% w GAMEPLAY); cele `find` `waterfall`, `shepherd_hut`, `karst_spring`, `cave_mouth`. `tatra`, `determinism` (poza Tatrami 0 różnic bloków, 0 w odwróconej kolejności), `caves`, `cave_biomes`, `ui`, `slice` (221 `out` jak w TT5) PASS, C2ME znany limit; KT-6 opisany w obu skalach. Odstępstwa: wodospad z wyciętym kotłem, szałasy tylko na halach i polanach, kras do potwierdzenia w grze. Etap 2 poprawił za mocny kras (0,35 → 0,05), zależność śniegu na głazach od kolejności chunków i wpływ głazów w lesie na normy runa. Przegląd, runda 1: plany tylko we własnym chunku i nigdy nad pniem, rośliny nad wyciętą kolumną czyszczone, wodospady tylko do 1850 m (zamarzanie).
 
+### TT7. Przedgórze za Podhalem i odpływy stawów (A, 1–1,5 dnia)
+
+- **Zakres:** (1) TT1-t wariant (b) w obu skalach: przedgórze na północ od kotliny Podhala (nowa stała `TatraPart.FORELAND` na końcu enuma), grzbiet fliszowy typu Gorców 1000–1300 m (REAL; GAMEPLAY według krzywej skali) z łagodnym zanikiem do niziny, lasy regla dolnego Beskidów, rzeki z Podhala przecinające je przełomami według reguł TT1; jedno celowe przepisanie `golden_terrain_tatra.txt` z opisem różnic, `golden_terrain_m2.txt` bez zmian, KT-1 bit w bit poza zasięgiem kompleksu z przedgórzem; (2) TT2-o: odpływ z najniższego punktu pierścienia brzegu najstromszym spadkiem do potoku albo rzeki TT1, nowa sól, próg testu ≥ 50% stawów z połączonym odpływem, bez uskoków i skoków poziomu wody (`TatraRiverTest`); (3) testy według mapy: `GoldenTatraTest`, `TatraIsolationTest`, `TatraReliefTest`, `TatraRiverTest`, gametest `tatra` w obu skalach, `determinism`, jeden przebieg kontrolny chunków/s w Tatrach z C2ME (tylko opis). TT3-g, TT4-o i progi wydajności F7 bez zmian do CP-D.
+- **Ukończony, gdy:** przedgórze w obu skalach (grzbiet 1000–1300 m, typ Beskidów, przełomy z rzekami), ≥ 50% stawów z połączonym odpływem, testy terenu i Tatr PASS, złoty plik Tatr przepisany raz z opisem, `golden_terrain_m2.txt` bez zmian, lista „Do sprawdzenia w grze” (przedgórze w drodze z Podhala na północ, odpływy stawów, oba przez `/polishforests find`).
+- **Ryzyko:** średnie (zmiana rzeźby północnej strony kompleksu, sieć rzek, przepisanie złotego pliku).
+- **Stan (2026-11-14): etap 1 zrobiony („Projekt TT7”, G.56); etap 2 (gametesty, determinizm, przebieg kontrolny) w toku.**
+
 ### V14. Szkielet fauny i sarna (B, 3–3,5 dnia)
 
 - **Zakres:**
@@ -731,6 +738,7 @@ Kroki TT idą po kolei w torze A (wspólne pliki `LandscapeModel`, `HabitatClass
 | 4 | TT4 | GAMEPLAY | limba, modrzew (ZG), bór limbowy, warianty regli, karta | ZG × 2 (ok. 40 bloków i przedmiotów) | `Species` 2, `Association` 1 | KT-6 | TT3 |
 | 5 | TT5 | REAL | Tatry REAL z TT1–TT4, ustawienie w nowych światach REAL | — | — | KT-6 (REAL, z jaskiniami i bez) | TT4 |
 | 6 | TT6 | obie | wodospady, głazy, pola blokowe, kras, szałasy trybu D, lista zbiorcza | 0–2 | `Target` 2 | KT-6 (obie skale) | TT5 |
+| 7 | TT7 | obie | przedgórze za Podhalem (TT1-t, wariant b), odpływy stawów (TT2-o) | — | `TatraPart` 1, `Target` 2 | przebieg kontrolny z C2ME (opis) | TT6 |
 
 Szacunek [S]: 8,5–11,5 dnia pracy agentów (tabela §3). TT4 zależy od pięter TT3 tylko w rozmieszczeniu boru limbowego, więc gatunki (ZG) można zacząć wcześniej, jeśli tor A jest wolny; TT5 bierze wszystkie mechanizmy GAMEPLAY, więc idzie po TT4.
 
@@ -5899,3 +5907,42 @@ Lista założona w V10 według decyzji użytkownika z 2026-10-21 (`docs/00` F, P
 | DP-167 | TT6 (przegląd, runda 1) | Javadoc `BiomeDecoration` mówi, że `tatra/details` działa przed nośnikiem mączki kostnej; `FeatureOrder.build` łączy wszystkie ficzery `tatra/` po wszystkich innych ficzerach kroku, więc w grze działa po nim (kolejność z listy JSON jest tylko kolejnością pliku) | `BiomeDecoration` (Javadoc), `FeatureOrder` | Poprawić komentarz |
 | DP-168 | TT6 (przegląd, runda 1) | `DetailPlansOnModelTest` żąda tylko, by przynajmniej jedna kotwica wodospadu i otworu miała plan (i pomija GAMEPLAY dla dwóch ziaren); udziały 94–100% idą do raportu, spadek np. do 20% by przeszedł | `DetailPlansOnModelTest` | Dolna granica udziału kotwic z miejscem (np. 80% na rodzaj i skalę) |
 | DP-169 | TT6 (przegląd, runda 1) | `find waterfall`, `karst_spring` i `cave_mouth` zwracają kotwicę także tam, gdzie plan odrzucił miejsce (`REJECTED`), więc `/tp` bywa bez szczegółu; lista „Do sprawdzenia w grze” dostała tylko ostrzeżenie | `TatraSites.find`, `TatraDetailsFeature.REJECTED` | Nic albo kotwice po planie na modelu (`DetailPlansOnModelTest` pokazuje udział odrzuceń) |
+
+## Projekt TT7 (2026-11-14, etap 1: kod, testy jednostkowe)
+
+Krok TT7 (§3): sprawy TT1-t (wariant b, przedgórze za Podhalem) i TT2-o (odpływy stawów) w obu skalach. Etap 1 obejmuje kod, testy jednostkowe, jedno celowe przepisanie złotego pliku Tatr i fastTest; gametesty `tatra` (obie skale), `determinism` (z C2ME i bez), `ui`, przebieg kontrolny chunków/s z C2ME i „Stan po TT7” należą do etapu 2. Wybory TT7-a … TT7-l w `docs/00` G.56. Baza kroku: `4a0c51d`. Bez nowych bloków, tekstur, zbiorowisk ani zmian migawki rejestru; nowe stałe tylko na końcach enumów (`TatraPart.FORELAND`, `Target.TATRA_FORELAND`, `Target.FORELAND_GORGE`); nowe pola szumu z nowymi solami (`mountain.tatra.foreland`, sole masywu 13–15, sole odpływów 68 i 69).
+
+**Przedgórze (`TatraField`, TT7-a … TT7-f).**
+
+- Pas za kotliną w poprzek pasma (od brzegu kotliny): podejście 1800 m, grzbiet 2400 m, stok zewnętrzny 4300 m (razy `mountainSpacing`), za nim strefa zaniku jak dawniej. Grzbiet 1150 m ± 95 m z guzami, podnóże 480 m; w spisie testów mediana grzbietu 1163–1183 m w GAMEPLAY i 1167–1177 m w REAL (p10–p90 1121–1225 m), spadek do brzegu zewnętrznego w GAMEPLAY 534–638 m; w REAL brzeg zewnętrzny leży na starym terenie Beskidów (700–1100 m), więc stok nie schodzi niżej niż on (`Column.height(old)`, bez niecek).
+- Przedgórze ma każdy kompleks, którego zasięg z przedgórzem omija duże masywy Beskidów; rozmieszczenie liczone z wymiarów TT1, więc położenie masywów, ich części i łaty złotego pliku w masywie się nie zmieniają. Spis: GAMEPLAY 6 z 6 masywów, REAL 5 z 6 (drugi masyw ziarna 4 bez przedgórza: dotknąłby dużego masywu).
+- Typ: waga Beskidów (`LandscapeModel.typeWeights`, `BESKIDS`) narasta na podejściu, więc grzbiet ma lasy regla dolnego Beskidów; `tatraDominant`, formy terenu (`RIDGE`, `MOUNTAIN_VALLEY`) i pole Beskidów `terrain()` biorą profil z kompleksu (`forelandRules`).
+- Przełomy: jeden albo dwa na masyw (dno 350 m, ściany 1400 m, wylot w kotlinie 900 m, meander 450 m, razy `mountainSpacing`), dno od dna kotliny − 12 m do podnóża − 15 m. Dno kotliny z przedgórzem: 612 m ± 12 m, rośnie o 68 m od przełomu wzdłuż pasma i o 30 m od północnego brzegu ku pogórzu (`BASIN_TILT`, `BASIN_TILT_NORTH`), więc kotlina spływa przez przełomy (pierwsza wersja bez drugiego składnika miała w REAL jezioro bezodpływowe 8 m pod sąsiednią rzeką: stopień 12,6 na m w `TatraRiverTest`).
+- Zasięg kompleksu (`maxReach`, sprawdzenie ćwierci komórki w konstruktorze) obejmuje przedgórze; `TatraIsolationTest` (KT-1) PASS: poza zasięgiem bit w bit jak bez Tatr, łaty M2 w zasięgu porównywane bez Tatr.
+
+**Odpływy stawów (`TatraWaters`, TT7-g … TT7-i).**
+
+- Odpływ zaczyna się w najniższym punkcie pierścienia brzegu na jego dolnej połowie (48 punktów, grunt z rzekami); potok idzie najstromszym spadkiem w układzie doliny (wachlarz ±60° co 4 kroki 0,5 m, wgląd 8 m, skręt ≤ 4° na krok), nigdy w stronę własnego stawu, nigdy na grunt wyżej niż 30 m nad swój poziom; ślepy zaułek go kończy. Od 30 m od koryta skręca do rzeki, ale nie pod górę (pierwsza wersja wspinała się do rzeki w przełomie za grzbietem, 300 m wcięcia). Kończy się w pierścieniu niższego stawu albo w korycie TT1; dalej jak w TT2: poziom w pełnych metrach, ≤ 2 m na krok, wcięcie ≤ `GORGE`, inaczej oczko nad progiem.
+- Gdy potok z najniższego punktu nie dochodzi do wody, próbowane są kolejne najniższe punkty (do 8, co najmniej 2 punkty pierścienia od siebie); zostaje pierwszy połączony. Losowanie odpływu: nowe sole 68 (staw kotłowy, 0,95) i 69 (morenowy, 1,0); Morskie Oko zawsze.
+- `GORGE` 30 m (było 12) i brzeg potoku 5 m (było 3): w GAMEPLAY 12 m to ok. 2,4 bloku, więc próg kotła zatrzymywał większość potoków; skarpa brzegu sięga 25 m nad potok, więc krawędź brzegu ma ≤ 5 m (najwyższy stopień powierzchni z rzekami 8,6–11,4 na m przy limicie 12, skok lustra wody ≤ 2 m).
+- Wynik (`TatraFormsTest.everyMassifHasItsTarns`, próg: ≥ 50% stawów połączonych łącznie w skali, ≥ 1/3 w każdym masywie): GAMEPLAY 101 / 185 stawów (55%; masywy 42–69%), REAL 135 / 186 (73%). Przed krokiem (TT2): 2–15 połączonych na masyw. Odrzucone podejście: zalewanie priorytetowe na kracie 2 m (wolne, 260 s na masyw REAL, i gorsze: stawy kotłowe leżą w misach, których otoczenie jest długo poniżej poziomu + 30 m).
+
+**Komendy i tłumaczenia (TT7-j).** Cele `tatra_foreland` (część `FORELAND`) i `foreland_gorge` (rzeka na przedgórzu), opis części `tatra_part.foreland`; en i pl (`runDatagen`: dwa pliki lang). `PolishForestsCommandsTest` znajduje oba cele w świecie z Tatrami (oba ziarna GAMEPLAY i REAL) i żadnego bez Tatr.
+
+**Złoty plik Tatr (TT7-k).** Przepisany raz (`-PwriteGoldenTatra`, potem `GoldenTatraTest -PgoldenStrict` PASS). Różnice w czterech zestawach (GAMEPLAY A i B, REAL A i B):
+
+- nowa łata `foreland` w każdym zestawie (GAMEPLAY krok 40 m, REAL 133 m; 70% kolumn przedgórza, połowa typu Beskidów);
+- `podhale` w tym samym miejscu, nowy hasz we wszystkich czterech (dno kotliny: 612 m ± 12 m z pochyleniem zamiast 640 m ± 45 m);
+- `beskid_transition` w GAMEPLAY przesunięta (A: (−19282, 84795) → (−24419, 96401), B: (−17845, −111596) → (−13098, −101053)): dawna łata leżała w strefie zaniku za kotliną, gdzie teraz jest przedgórze, więc wyszukiwanie wybrało przejście przy końcu masywu; w REAL bez zmian;
+- REAL A: `cirque` i `regle_limestone` w tym samym miejscu, nowy hasz (potoki odpływów z nowej trasy przechodzą przez łaty); pozostałe łaty (grań granitowa, Tatry Zachodnie, w GAMEPLAY także kocioł i regiel) bez zmian.
+
+`golden_terrain_m2.txt` i `GoldenTerrainTest` bez zmian.
+
+**Testy (etap 1).** `TatraReliefTest` (nowy `forelandRidgeHasItsHeights`; `outline`, `maxStep` i `TatraRiverTest.steps` sięgają za przedgórze; w `maxStep` stary teren poza kompleksem pominięty, bo pudełko trafiło na wybrzeże o stopniu 13,1 na m w GAMEPLAY A, poza Tatrami), `TatraRiverTest`, `TatraFormsTest`, `TatraIsolationTest`, `GoldenTerrainTest`, `GoldenTatraTest`, `PolishForestsCommandsTest`, `TatraSitesTest`, `DetailPlansOnModelTest` PASS; `runDatagen` (lang en i pl); `fastTest` (`tools/dev/run-tests --reuse`).
+
+**Do sprawdzenia w grze (etap 2 uzupełni po przebiegach).**
+
+1. `/polishforests find podhale`, potem iść na północ: za kotliną łagodne podejście na zalesiony grzbiet (ok. 1150 m, las regla dolnego Beskidów, bez kosodrzewiny i skał Tatr), za nim długi stok ku nizinie (w REAL ku starym Beskidom), bez uskoku ani zagłębienia z jeziorem u podnóża.
+2. `/polishforests find tatra_foreland`: to samo z bliska; teren ciągły na brzegu kotliny i na zewnętrznym końcu.
+3. `/polishforests find foreland_gorge`: rzeka z kotliny płynie dnem przełomu przez grzbiet (ściany po obu stronach, poziom wody opada w dół doliny bez skoków).
+4. `/polishforests find tarn`, potem obejść staw: odpływ wychodzi z najniższego miejsca brzegu (suchy próg na poziomie wody), potok spada kaskadą w dół stoku i wpada do rzeki albo niższego stawu; wcięcie potoku najwyżej ok. 30 m z łagodną skarpą (w GAMEPLAY ok. 6 bloków), bez ściany przy brzegu potoku.

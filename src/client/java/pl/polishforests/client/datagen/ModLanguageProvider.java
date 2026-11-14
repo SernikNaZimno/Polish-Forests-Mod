@@ -65,6 +65,9 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		TARGETS.put("cave_mouth", new String[] {"cave mouth", "otwór jaskini"});
 		TARGETS.put("waterfall", new String[] {"waterfall", "wodospad"});
 		TARGETS.put("shepherd_hut", new String[] {"shepherd's hut", "szałas pasterski"});
+		// Step TT7: the foreland north of the Podhale and the river gorges through it.
+		TARGETS.put("tatra_foreland", new String[] {"foreland north of the Podhale (Gorce type)", "przedgórze za Podhalem (typu Gorców)"});
+		TARGETS.put("foreland_gorge", new String[] {"river gorge through the foreland", "przełom rzeki przez przedgórze"});
 		TARGETS.put("moraine", new String[] {"moraine", "morena"});
 		TARGETS.put("snow_patch", new String[] {"perennial snow patch", "płat wieloletniego śniegu"});
 		TARGETS.put("old_glacial_plain", new String[] {"old glacial plain", "równina staroglacjalna"});
@@ -475,6 +478,7 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		b.add("polishforests.tatra_part.gubalowka_foothills", "Gubałówka foothills");
 		b.add("polishforests.tatra_part.podhale_basin", "Podhale basin");
 		b.add("polishforests.tatra_part.south_foot", "southern foot of the Tatras");
+		b.add("polishforests.tatra_part.foreland", "foreland north of the Podhale (Gorce type)");
 		b.add("polishforests.kind.biome", "Biomes (find biome)");
 		b.add("polishforests.kind.zone", "Zones (find zone)");
 		b.add("polishforests.command.unknown_biome", "Unknown biome: %s. Use /polishforests list to see all biomes");
@@ -583,6 +587,7 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		b.add("polishforests.tatra_part.gubalowka_foothills", "Pogórze Gubałowskie");
 		b.add("polishforests.tatra_part.podhale_basin", "Kotlina Podhalańska");
 		b.add("polishforests.tatra_part.south_foot", "południowe podnóże Tatr");
+		b.add("polishforests.tatra_part.foreland", "przedgórze za Podhalem (typu Gorców)");
 		b.add("polishforests.kind.biome", "Biomy (find biome)");
 		b.add("polishforests.kind.zone", "Strefy (find zone)");
 		b.add("polishforests.command.unknown_biome", "Nieznany biom: %s. Lista biomów: /polishforests list");

@@ -1152,7 +1152,8 @@ public final class LandscapeModel {
 
 	/**
 	 * Step TT1: type weights with the Tatra complex ({@code base} false): the region weights scaled by 1 − weight of the
-	 * complex, plus its TATRA and PODHALE weights. With {@code base} or outside the complexes the weights of the blend.
+	 * complex, plus its TATRA and PODHALE weights (step TT7: and the BESKIDS weight of its foreland). With {@code base} or
+	 * outside the complexes the weights of the blend.
 	 */
 	double[] typeWeights(double x, double z, boolean base) {
 		double[] w = typeWeights(x, z);
@@ -1166,6 +1167,7 @@ public final class LandscapeModel {
 		}
 		out[LandscapeType.TATRA.ordinal()] += c.tatra;
 		out[LandscapeType.PODHALE.ordinal()] += c.podhale;
+		out[LandscapeType.BESKIDS.ordinal()] += c.beskids;
 		return out;
 	}
 
@@ -1757,7 +1759,7 @@ public final class LandscapeModel {
 			o.convexity *= 1 - c.weight;
 			o.massif = Math.max(o.massif, c.tatra);
 		}
-		return h + c.weight * (c.height - h);
+		return h + c.weight * (c.height(h) - h);
 	}
 
 	/** Regional fields O and P at a point, without a full sample (regional map preview and tests). */
@@ -1795,7 +1797,7 @@ public final class LandscapeModel {
 		double lowland = keep * (b.weight(LandscapeType.OUTWASH_PLAIN) + b.weight(LandscapeType.MORAINE_PLATEAU)
 				+ b.weight(LandscapeType.OLD_GLACIAL_PLAIN));
 		double foothills = keep * b.weight(LandscapeType.FOOTHILLS) + (tc == null ? 0 : tc.podhale);
-		double mountains = keep * b.weight(LandscapeType.BESKIDS) + (tc == null ? 0 : tc.tatra);
+		double mountains = keep * b.weight(LandscapeType.BESKIDS) + (tc == null ? 0 : tc.tatra + tc.beskids);
 		return rivers.query(x, z, surface, lowland + keep * b.weight(LandscapeType.COASTLAND), foothills, mountains);
 	}
 
@@ -1811,7 +1813,7 @@ public final class LandscapeModel {
 			// Step TT1: the Tatra complex over the shaped terrain (and over the raw height of the record).
 			double shaped = tatraOver(surface, x, z, parts);
 			if (parts.tatra != null) {
-				raw += parts.tatra.weight * (parts.tatra.height - raw);
+				raw += parts.tatra.weight * (parts.tatra.height(raw) - raw);
 			}
 			surface = shaped;
 		}
@@ -1826,7 +1828,7 @@ public final class LandscapeModel {
 				+ b.weight(LandscapeType.OLD_GLACIAL_PLAIN));
 		double young = keep * (b.weight(LandscapeType.OUTWASH_PLAIN) + b.weight(LandscapeType.MORAINE_PLATEAU));
 		double foothills = keep * b.weight(LandscapeType.FOOTHILLS) + (tc == null ? 0 : tc.podhale);
-		double mountains = keep * b.weight(LandscapeType.BESKIDS) + (tc == null ? 0 : tc.tatra);
+		double mountains = keep * b.weight(LandscapeType.BESKIDS) + (tc == null ? 0 : tc.tatra + tc.beskids);
 
 		Substrate substrate = dominant.defaultSubstrate();
 		int water = ColumnSample.NO_WATER;
@@ -2065,7 +2067,7 @@ public final class LandscapeModel {
 		if (dominant == LandscapeType.FOOTHILLS || dominant == LandscapeType.BESKIDS
 				|| dominant == LandscapeType.TATRA && !Double.isNaN(parts.tatra.profile)) {
 			double p0 = dominant == LandscapeType.FOOTHILLS ? parts.foothillsProfile : dominant == LandscapeType.BESKIDS
-					? parts.beskidsProfile : parts.tatra.profile;
+					? (forelandRules(parts) ? parts.tatra.profile : parts.beskidsProfile) : parts.tatra.profile;
 			if (p0 > 0.9) {
 				landformBits |= Landform.RIDGE.bit();
 			}
@@ -2081,6 +2083,15 @@ public final class LandscapeModel {
 	}
 
 	/**
+	 * Step TT7: whether the ridge profile of the column is that of the Tatra foreland (its BESKIDS weight outweighs the
+	 * Beskids of the old terrain, and the column lies on the foreland, whose profile is set).
+	 */
+	private static boolean forelandRules(ReliefParts parts) {
+		TatraField.Column tc = parts.tatra;
+		return tc != null && tc.beskids > 0.5 && !Double.isNaN(tc.profile);
+	}
+
+	/**
 	 * Step TT1: the dominant type with the weights of the Tatra complex (TATRA, PODHALE) over the region weights scaled by
 	 * 1 − weight (the same order of the types as {@link Blend#dominant} on a tie).
 	 */
@@ -2089,7 +2100,8 @@ public final class LandscapeModel {
 		LandscapeType best = TYPES[0];
 		double bw = -1;
 		for (LandscapeType t : TYPES) {
-			double w = t == LandscapeType.TATRA ? tc.tatra : t == LandscapeType.PODHALE ? tc.podhale : keep * b.weight(t);
+			double w = t == LandscapeType.TATRA ? tc.tatra : t == LandscapeType.PODHALE ? tc.podhale
+					: keep * b.weight(t) + (t == LandscapeType.BESKIDS ? tc.beskids : 0);
 			if (w > bw) {
 				bw = w;
 				best = t;
@@ -2133,14 +2145,15 @@ public final class LandscapeModel {
 		// Step TT1: the Tatra weights over the region weights; the TATRA weight goes with the Beskids, the PODHALE weight with
 		// the foothills (the classifier sees the complex as mountains). The valley profile of the massif where it dominates.
 		double keep = 1 - tc.weight;
-		if (dominant.isTatra() || Double.isNaN(ridgeProfile)) {
+		if (dominant.isTatra() || Double.isNaN(ridgeProfile) || forelandRules(parts)) {
 			double p = Double.isNaN(tc.profile) ? ridgeProfile : tc.profile;
 			ridgeProfile = Double.isNaN(p) ? 0.5 : p;
 		}
 		boolean own = tc.weight > 0.5;
 		return new ColumnSample.Terrain(rawSurface, coastD, keep * b.weight(LandscapeType.OUTWASH_PLAIN),
 				keep * b.weight(LandscapeType.MORAINE_PLATEAU), keep * b.weight(LandscapeType.OLD_GLACIAL_PLAIN),
-				keep * b.weight(LandscapeType.FOOTHILLS) + tc.podhale, keep * b.weight(LandscapeType.BESKIDS) + tc.tatra, coastBand,
+				keep * b.weight(LandscapeType.FOOTHILLS) + tc.podhale, keep * b.weight(LandscapeType.BESKIDS) + tc.tatra + tc.beskids,
+				coastBand,
 				landformBits, parts.convexity * coastScale, parts.duneHeight * coastScale, ridgeProfile, parts.massif, summit,
 				cliffHeight, low, bare, sandiness, g.sBar(), g.slope(), g.aspect(), sandBeach, tc.tatra, tc.podhale,
 				own ? tc.part : TatraPart.NONE, own ? tc.rock : null);

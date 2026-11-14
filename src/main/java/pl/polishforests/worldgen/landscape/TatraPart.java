@@ -21,7 +21,12 @@ public enum TatraPart {
 	/** The Podhale basin (Nowy Targ type): 580–700 m. */
 	PODHALE_BASIN,
 	/** The southern foot of the massif (the other side of the main ridge). */
-	SOUTH_FOOT;
+	SOUTH_FOOT,
+	/**
+	 * Step TT7: the flysch foreland north of the Podhale basin (a Gorce-type ridge, 1000–1300 m), which closes the basin
+	 * from the north and fades gently into the lowland; the rivers of the Podhale cross it in gorges.
+	 */
+	FORELAND;
 
 	/** Whether the part belongs to the mountains proper (massif and regle), not to the foot and Podhale. */
 	public boolean massif() {

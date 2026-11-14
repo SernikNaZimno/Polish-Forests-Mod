@@ -142,7 +142,7 @@ class TatraRiverTest {
 		double k = m.scale().mountainSpacing();
 		double d = 0.5;
 		double uMin = -(TatraField.WS + TatraField.FADE_SOUTH1 + TatraField.EDGE) * k;
-		double uMax = (TatraField.BASIN_CENTER + TatraField.BASIN / 2 + TatraField.FADE_NORTH + TatraField.EDGE) * k;
+		double uMax = (TatraField.BASIN_CENTER + TatraField.BASIN / 2 + TatraField.FORELAND + TatraField.FADE_NORTH + TatraField.EDGE) * k;
 		double vHalf = t.halfLength() + (TatraField.FADE_END1 + TatraField.EDGE) * k;
 		double[][] r = IntStream.range(0, 150_000).parallel().mapToObj(i -> {
 			double fu = (i * 0.6180339887498949) % 1.0;

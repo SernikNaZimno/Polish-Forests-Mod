@@ -23,8 +23,17 @@ import java.util.List;
  * summit {@code summit}) and the Belianske Tatras (limestone). The complex fades into the old terrain with the weight
  * {@code weight}: a product of smooth edges with outlines warped by noise (Z10: no straight line, no fault).
  *
- * <p>All noises are new seeds ({@code mountain.tatra}, {@code mountain.tatra.relief}, {@code mountain.tatra.geology}),
- * so the rest of the world does not change. The class does not depend on Minecraft.
+ * <p>Step TT7 (TT1-t, variant b): north of the basin of every complex whose foreland keeps clear of the large Beskid
+ * massifs ({@code clearOfGreatMassifs} with the reach grown by {@link #FORELAND}) the foreland: a Gorce-type flysch
+ * ridge with its crest at 1000–1300 m (model meters, both scales), lower-montane Beskid type ({@link Column#beskids}),
+ * falling gently to the lowland at its outer side (never below the old terrain there: {@link Column#height(double)}).
+ * The rivers of the basin cross it in one or two gorges ({@link Massif#gorgeA}, {@link Massif#gorgeB}); the basin floor
+ * tilts gently down towards them, so the basin drains through the foreland. The placement of the complex is that of
+ * TT1 (the foreland only adds to its reach); a complex whose foreland would touch a large massif keeps the TT1 outline.
+ *
+ * <p>All noises are new seeds ({@code mountain.tatra}, {@code mountain.tatra.relief}, {@code mountain.tatra.geology},
+ * step TT7 {@code mountain.tatra.foreland}), so the rest of the world does not change. The class does not depend on
+ * Minecraft.
  */
 final class TatraField {
 	/** A candidate is drawn with this probability per grid cell. */
@@ -54,7 +63,43 @@ final class TatraField {
 	static final double BASIN = 4_000;
 	/** Main ridge to the middle of the basin (the anchor). */
 	static final double BASIN_CENTER = WN + TROUGH + FOOTHILLS + SLOPE + BASIN / 2;
-	/** Fade belts into the old terrain: from the basin edge, from the southern foot, from the massif end. */
+	/**
+	 * Step TT7 (TT1-t, variant b): the foreland north of the basin, a flysch ridge of the Gorce type: the rise from the
+	 * basin edge to the crest, the crest belt and the outer slope down to its foot, where the northern fade begins.
+	 */
+	static final double FL_RISE = 1_800;
+	static final double FL_CREST = 2_400;
+	static final double FL_OUTER = 4_300;
+	static final double FORELAND = FL_RISE + FL_CREST + FL_OUTER;
+	/** Main ridge to the outer foot of the foreland (the start of the northern fade of a complex with a foreland). */
+	static final double NORTH_EDGE = WN + TROUGH + FOOTHILLS + SLOPE + BASIN + FORELAND;
+	/** Mean crest of the foreland (m) with its spread and knobs, and the mean outer foot (m). */
+	static final double FL_CREST_H = 1_150;
+	static final double FL_CREST_SPREAD = 95;
+	static final double FL_KNOBS = 55;
+	static final double FL_FOOT_H = 480;
+	/** Further fall of the complex height beyond the outer foot, over the northern fade (m): the foreland dies out. */
+	static final double FL_TAIL = 60;
+	/**
+	 * Step TT7: the gorges of the basin rivers through the foreland: half width of the floor, width of the walls, the reach
+	 * of the cut into the basin before the mouth and the meander of the gorge axis (real m); the floor at the mouth lies
+	 * {@value #GORGE_MOUTH_DEPTH} m under the basin floor and falls along the gorge to {@value #GORGE_FOOT_DEPTH} m under
+	 * the outer foot.
+	 */
+	static final double GORGE_FLOOR = 350;
+	static final double GORGE_WALL = 1_400;
+	static final double GORGE_MOUTH = 900;
+	static final double GORGE_MEANDER = 450;
+	static final double GORGE_MOUTH_DEPTH = 12;
+	static final double GORGE_FOOT_DEPTH = 15;
+	/** Step TT7: the floor of a closed basin rises away from its gorges (m at one half length of the massif). */
+	static final double BASIN_TILT = 68;
+	/**
+	 * Step TT7: and it rises from its north edge (the gorge mouths) towards the foothills (m over the basin width), so the
+	 * rivers along the gorge axis run north without sinks (in the realistic scale a flat floor held sink lakes beside them).
+	 */
+	static final double BASIN_TILT_NORTH = 30;
+	/** Fade belts into the old terrain: from the basin edge (TT7: the outer foot of the foreland), the southern foot, the massif end. */
 	static final double FADE_NORTH = 10_000;
 	static final double FADE_SOUTH0 = 2_000;
 	static final double FADE_SOUTH1 = 10_000;
@@ -151,10 +196,27 @@ final class TatraField {
 		return Math.max(1.0, k / GAMEPLAY_K);
 	}
 
-	/** Tatra massif of one grid cell. */
+	/**
+	 * Tatra massif of one grid cell. Step TT7: {@code foreland} whether the complex has the foreland north of its basin
+	 * (every complex whose foreland keeps clear of the large Beskid massifs), {@code gorgeA} and {@code gorgeB} the along
+	 * coordinates (m from the middle of the massif) of the gorges of the basin rivers through it (NaN: none).
+	 */
 	record Massif(long i, long j, double anchorX, double anchorZ, double x, double z, double cos, double sin,
 			double halfLength, double wn, double ws, double summit, double west, double spacing, double phaseN,
-			double phaseS, double peakT, double giewontT, double reach, boolean coastal) {
+			double phaseS, double peakT, double giewontT, double reach, boolean coastal, boolean foreland, double gorgeA,
+			double gorgeB) {
+		/** Step TT7: distance along the range from the nearest gorge of the foreland (m; infinite without one). */
+		double gorgeDistance(double v) {
+			double d = Double.POSITIVE_INFINITY;
+			if (!Double.isNaN(gorgeA)) {
+				d = Math.abs(v - gorgeA);
+			}
+			if (!Double.isNaN(gorgeB)) {
+				d = Math.min(d, Math.abs(v - gorgeB));
+			}
+			return d;
+		}
+
 		/** Local coordinate across the range (towards the Podhale) of a point. */
 		double u(double px, double pz) {
 			return (px - x) * cos + (pz - z) * sin;
@@ -175,7 +237,8 @@ final class TatraField {
 		}
 	}
 
-	private static final Massif NONE = new Massif(0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, false);
+	private static final Massif NONE = new Massif(0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, false, false,
+			Double.NaN, Double.NaN);
 
 	/** Result of the field in a column ({@link #column}); null outside every complex. */
 	static final class Column {
@@ -183,9 +246,24 @@ final class TatraField {
 		double weight;
 		/** Height of the complex (m a.s.l.), before the blend. */
 		double height;
-		/** Weights of the types: TATRA and PODHALE (sum = weight). */
+		/**
+		 * Step TT7: share 0–1 of the outer side of the foreland (its outer slope and beyond), where the complex never lies
+		 * below the old terrain ({@link #height(double)}): where the old terrain is higher than the foot of the foreland
+		 * (the Beskids of the realistic scale), the foreland meets it without a closed hollow.
+		 */
+		double outer;
+		/**
+		 * Step TT7: the height of the complex over the old terrain {@code old} (before the blend): {@link #height}, raised to
+		 * the old terrain on the outer side of the foreland.
+		 */
+		double height(double old) {
+			return outer > 0 && old > height ? height + outer * (old - height) : height;
+		}
+
+		/** Weights of the types: TATRA and PODHALE, and (step TT7) BESKIDS on the foreland (sum = weight). */
 		double tatra;
 		double podhale;
+		double beskids;
 		TatraPart part = TatraPart.NONE;
 		/** Bedrock of the massif, or null (flysch). */
 		Substrate rock;
@@ -232,6 +310,8 @@ final class TatraField {
 	private final Noise geology;
 	/** Step TT6: the patches of the karst of the limestone and dolomite (a new salt: no other field changes). */
 	private final Noise karst;
+	/** Step TT7: the relief of the foreland and the meanders of its gorges (a new salt). */
+	private final Noise foreland;
 	private final LandscapeScale scale;
 	private final double k;
 	private final double spacing;
@@ -244,14 +324,18 @@ final class TatraField {
 		this.relief = root.derive("mountain.tatra.relief");
 		this.geology = root.derive("mountain.tatra.geology");
 		this.karst = root.derive("mountain.tatra.karst");
+		this.foreland = root.derive("mountain.tatra.foreland");
 		this.scale = scale;
 		this.k = scale.mountainSpacing();
 		this.spacing = 213_000 * k;
 		this.zs = zs;
 		// Only the candidate of the own cell can reach a point: the farthest point of a complex from its anchor (along: the
-		// end fade; across: the southern fade on the far side of the massif) is less than a quarter of the cell away.
+		// end fade; across: the southern fade on the far side of the massif, or step TT7 the northern fade beyond the
+		// foreland) is less than a quarter of the cell away.
 		double along = (L_MAX + FADE_END1 + EDGE) * k;
-		double across = (BASIN_CENTER + WS + FADE_SOUTH1 + EDGE + BOW + RIDGE_WARP) * k;
+		double across = Math.max(BASIN_CENTER + WS + FADE_SOUTH1, NORTH_EDGE + 0.06 * WN - BASIN_CENTER + FADE_NORTH)
+				+ EDGE + BOW + RIDGE_WARP;
+		across *= k;
 		if (Math.hypot(along, across) >= 0.25 * spacing) {
 			throw new IllegalStateException("Tatra reach exceeds a quarter of the grid cell");
 		}
@@ -284,11 +368,14 @@ final class TatraField {
 		return place.unit(i, j, salt);
 	}
 
-	/** Largest distance from the center of a massif (the middle of its main ridge) at which it changes the terrain. */
+	/**
+	 * Largest distance from the center of a massif (the middle of its main ridge) at which it changes the terrain. Step
+	 * TT7: with the foreland and the largest drawn northern width (WN + 6%).
+	 */
 	double maxReach() {
 		double along = (L_MAX + FADE_END1 + EDGE) * k;
-		double across = (WN + TROUGH + FOOTHILLS + SLOPE + BASIN + FADE_NORTH + EDGE + BOW + RIDGE_WARP) * k;
-		return Math.hypot(along, Math.max(across, (WS + FADE_SOUTH1 + EDGE + BOW + RIDGE_WARP) * k));
+		double across = (NORTH_EDGE + 0.06 * WN + FADE_NORTH + EDGE + BOW + RIDGE_WARP) * k;
+		return Math.hypot(along, Math.max(across, (WS + 0.06 * WS + FADE_SOUTH1 + EDGE + BOW + RIDGE_WARP) * k));
 	}
 
 	// ------------------------------------------------------------------ placement
@@ -361,18 +448,38 @@ final class TatraField {
 		double along = half + (FADE_END1 + EDGE) * k;
 		double north = wn + (TROUGH + FOOTHILLS + SLOPE + BASIN + FADE_NORTH + EDGE + BOW + RIDGE_WARP) * k;
 		double south = ws + (FADE_SOUTH1 + EDGE + BOW + RIDGE_WARP) * k;
+		double reach = Math.hypot(along, Math.max(north, south));
 		Massif m = new Massif(i, j, ax, az, cx, cz, cos, sin, half, wn, ws, summit, west, d, place.unit(i, j, 9),
-				place.unit(i, j, 10), peakT, giewontT, Math.hypot(along, Math.max(north, south)), false);
+				place.unit(i, j, 10), peakT, giewontT, reach, false, false, Double.NaN, Double.NaN);
 		// The massif itself (main ridge to its feet) keeps clear of the shore; the trough, Podhale and the fades may come
 		// nearer and then fade out towards it (column: the coast fade).
 		if (minCoast(m, half, wn, ws) < (COAST_FADE1 + 500) * k) {
 			return null;
 		}
-		if (minCoast(m, along, north, south) < (COAST_FADE1 + 10_000) * k) {
-			m = new Massif(i, j, ax, az, cx, cz, cos, sin, half, wn, ws, summit, west, d, place.unit(i, j, 9),
-					place.unit(i, j, 10), peakT, giewontT, m.reach(), true);
+		boolean coastal = minCoast(m, along, north, south) < (COAST_FADE1 + 10_000) * k;
+		if (!clearOfGreatMassifs(m, reach, along, north, south)) {
+			return null;
 		}
-		return clearOfGreatMassifs(m, along, north, south) ? m : null;
+		// Step TT7: the placement is that of TT1 (the extents without the foreland); the foreland is added where it keeps
+		// clear of the large Beskid massifs too, and a foreland near the shore fades out towards it as the rest.
+		double northF = north + FORELAND * k;
+		double reachF = Math.hypot(along, Math.max(northF, south));
+		boolean foreland = clearOfGreatMassifs(m, reachF, along, northF, south);
+		double gorgeA = Double.NaN;
+		double gorgeB = Double.NaN;
+		if (foreland) {
+			coastal |= minCoast(m, along, northF, south) < (COAST_FADE1 + 10_000) * k;
+			reach = reachF;
+			// One or two gorges in the middle of the foreland (the basin drains through them, BASIN_TILT).
+			if (place.unit(i, j, 13) < 0.5) {
+				gorgeA = half * (-0.5 + 0.3 * place.unit(i, j, 14));
+				gorgeB = half * (0.2 + 0.3 * place.unit(i, j, 15));
+			} else {
+				gorgeA = half * (-0.3 + 0.6 * place.unit(i, j, 14));
+			}
+		}
+		return new Massif(i, j, ax, az, cx, cz, cos, sin, half, wn, ws, summit, west, d, place.unit(i, j, 9),
+				place.unit(i, j, 10), peakT, giewontT, reach, coastal, foreland, gorgeA, gorgeB);
 	}
 
 	/**
@@ -392,9 +499,9 @@ final class TatraField {
 	}
 
 	/** Whether no large Beskid massif (M2-8) reaches into the rectangle of the complex (its reach added on every side). */
-	private boolean clearOfGreatMassifs(Massif m, double along, double north, double south) {
+	private boolean clearOfGreatMassifs(Massif m, double reach, double along, double north, double south) {
 		double gr = model.greatMassifReach();
-		double r = m.reach() + gr;
+		double r = reach + gr;
 		for (LandscapeModel.GreatMassif g : model.greatMassifs(m.x() - r, m.z() - r, m.x() + r, m.z() + r)) {
 			double u = m.u(g.x(), g.z());
 			double v = m.v(g.x(), g.z());
@@ -547,8 +654,10 @@ final class TatraField {
 		double u = u0 - bow(m, x, z, v);
 		double edge = EDGE * k * relief.at(x - 4_321, z + 1_234, 4_000 * k);
 		double basinEdge = m.wn() + (TROUGH + FOOTHILLS + SLOPE + BASIN) * k;
+		// Step TT7: with the foreland the northern fade begins at its outer foot.
+		double northEdge = basinEdge + (m.foreland() ? FORELAND * k : 0);
 		double wa = 1 - Noise.smoothstep(half + FADE_END0 * k, half + FADE_END1 * k, Math.abs(v) + edge);
-		double wn = 1 - Noise.smoothstep(basinEdge, basinEdge + FADE_NORTH * k, u + edge);
+		double wn = 1 - Noise.smoothstep(northEdge, northEdge + FADE_NORTH * k, u + edge);
 		double ws = 1 - Noise.smoothstep(m.ws() + FADE_SOUTH0 * k, m.ws() + FADE_SOUTH1 * k, -u + edge);
 		double w = wa * wn * ws;
 		if (w > 0 && m.coastal()) {
@@ -577,17 +686,20 @@ final class TatraField {
 			double foot = Noise.lerp(sideN, footS + 35 * hills, footN + 20 * hills);
 			h = massifHeight(m, c, x, z, v, t, un, north, foot, ms, tg);
 		} else if (north) {
-			h = northProfile(m, c, x, z, u, footN, hills);
+			h = northProfile(m, c, x, z, u, v, footN, hills, basinEdge, edge);
 		} else {
 			h = footS + (720 - footS) * Noise.smoothstep(m.ws(), m.ws() + FADE_SOUTH1 * k, -u) + 35 * hills;
 			c.part = TatraPart.SOUTH_FOOT;
 		}
 		h += ROUGH * relief.fbm(x, z, 160 * k, 2, 0.5);
 		c.height = h;
-		// Types: the massif with its foot is TATRA, the Podhale from the outer edge of the trough on.
+		// Types: the massif with its foot is TATRA, the Podhale from the outer edge of the trough on, and (step TT7) the
+		// foreland BESKIDS from its rise on (the flysch ridge with the belts of the Beskids; Z10: a smooth share).
 		double podhale = north ? Noise.smoothstep(m.wn() + 400 * k, m.wn() + 1_800 * k, u + 0.3 * edge) : 0;
-		c.podhale = w * podhale;
-		c.tatra = w - c.podhale;
+		double beskids = north && m.foreland() ? Noise.smoothstep(0.1 * FL_RISE * k, 0.7 * FL_RISE * k, forelandA(u, basinEdge, edge)) : 0;
+		c.beskids = w * podhale * beskids;
+		c.podhale = w * podhale - c.beskids;
+		c.tatra = w - c.podhale - c.beskids;
 		if (c.part == TatraPart.NONE) {
 			c.part = north ? TatraPart.SUBTATRA_TROUGH : TatraPart.SOUTH_FOOT;
 		}
@@ -844,11 +956,22 @@ final class TatraField {
 		return h;
 	}
 
-	/** North of the massif: the trough, the Gubałówka-type foothills, the slope and the basin. */
-	private double northProfile(Massif m, Column c, double x, double z, double u, double footN, double hills) {
+	/**
+	 * North of the massif: the trough, the Gubałówka-type foothills, the slope and the basin; step TT7: with the foreland
+	 * the basin floor rises away from the gorges ({@link #BASIN_TILT}) and the foreland closes it from the north.
+	 */
+	private double northProfile(Massif m, Column c, double x, double z, double u, double v, double footN, double hills,
+			double basinEdge, double edge) {
 		double k = this.k;
 		double a = u - m.wn();
-		double basin = 640 + 45 * relief.at(x + 1_111, z + 2_222, 30_000 * k) + 8 * hills;
+		double basin;
+		if (m.foreland()) {
+			double tilt = BASIN_TILT * Math.min(1.0, m.gorgeDistance(v) / m.halfLength())
+					+ BASIN_TILT_NORTH * Math.clamp((basinEdge - u) / (BASIN * k), 0.0, 1.0);
+			basin = basinFloor(x, z, hills) + tilt;
+		} else {
+			basin = 640 + 45 * relief.at(x + 1_111, z + 2_222, 30_000 * k) + 8 * hills;
+		}
 		double top = 1_060 + 40 * hills;
 		double foothills0 = TROUGH * k;
 		double foothillsTop = (TROUGH + 0.45 * FOOTHILLS) * k;
@@ -867,7 +990,77 @@ final class TatraField {
 			h = basin;
 			c.part = TatraPart.PODHALE_BASIN;
 		}
+		if (m.foreland()) {
+			h = foreland(m, c, x, z, v, forelandA(u, basinEdge, edge), basin, h, hills);
+		}
 		return h;
+	}
+
+	/** Step TT7: the distance past the basin edge (warped by the edge noise, Z10: the foreland foot is no straight line). */
+	private static double forelandA(double u, double basinEdge, double edge) {
+		return u - basinEdge + 0.5 * edge;
+	}
+
+	/** Step TT7: the floor of a closed basin without its tilt (m). */
+	private double basinFloor(double x, double z, double hills) {
+		return 612 + 12 * relief.at(x + 1_111, z + 2_222, 30_000 * k) + 3 * hills;
+	}
+
+	/**
+	 * Step TT7 (TT1-t, variant b): the foreland north of the basin at the distance {@code a} past its edge, over the height
+	 * {@code h} of the basin profile: a flysch ridge of the Gorce type (crest 1000–1300 m with knobs) rising from the basin,
+	 * an outer slope down to its foot at about 480 m and beyond it a further gentle fall over the northern fade; the gorges
+	 * of the basin rivers cut through it with a floor falling monotonically from under the basin floor to under the outer
+	 * foot (the river network routes the basin through them; TT1 rules for the levels and the incision).
+	 */
+	private double foreland(Massif m, Column c, double x, double z, double v, double a, double basin, double h, double hills) {
+		double k = this.k;
+		double rise = FL_RISE * k;
+		double crestEnd = (FL_RISE + FL_CREST) * k;
+		double end = FORELAND * k;
+		double crest = FL_CREST_H + FL_CREST_SPREAD * foreland.fbm(x - 1_717, z + 2_929, 6_000 * k, 2, 0.5);
+		double knobs = FL_KNOBS * foreland.fbm(x + 3_131, z - 4_141, 1_400 * k, 2, 0.5);
+		double foot = FL_FOOT_H + 40 * foreland.at(x + 5_151, z + 6_161, 9_000 * k) + 8 * hills;
+		double p;
+		double fh = h;
+		if (a > 0) {
+			if (a < rise) {
+				p = Noise.smoothstep(0, rise, a);
+				fh = basin + (crest - basin) * p;
+			} else if (a < crestEnd) {
+				p = 1;
+				fh = crest;
+			} else {
+				p = 1 - Noise.smoothstep(crestEnd, end, a);
+				double tail = foot - FL_TAIL * Noise.smoothstep(end, end + FADE_NORTH * k, a);
+				fh = tail + (crest - tail) * p;
+			}
+			fh += knobs * p;
+			c.outer = Noise.smoothstep(crestEnd, crestEnd + 0.5 * FL_OUTER * k, a);
+			if (a > 0.3 * rise) {
+				c.part = TatraPart.FORELAND;
+			}
+			c.profile = p;
+		}
+		// The gorges: the cut fades in over GORGE_MOUTH before the basin edge and continues over the fade as a valley.
+		double mouth = GORGE_MOUTH * k;
+		if (a > -mouth) {
+			double floor0 = basinFloor(x, z, hills) - GORGE_MOUTH_DEPTH;
+			double drop = Math.max(0, floor0 - (foot - GORGE_FOOT_DEPTH));
+			double floor = floor0 - drop * Math.clamp(a / end, 0.0, 1.0) - FL_TAIL * Noise.smoothstep(end, end + FADE_NORTH * k, a);
+			double gs = Noise.smoothstep(-mouth, 0, a);
+			double meander = GORGE_MEANDER * k * foreland.at(x + 7_171, z - 8_181, 4_000 * k);
+			double s = m.gorgeDistance(v + meander);
+			double wall = Noise.smoothstep(GORGE_FLOOR * k, (GORGE_FLOOR + GORGE_WALL) * k, s);
+			if (wall < 1) {
+				double cut = Math.min(fh, floor + (fh - floor) * wall);
+				fh -= (fh - cut) * gs;
+				if (a > 0) {
+					c.profile *= wall;
+				}
+			}
+		}
+		return fh;
 	}
 
 	/** The massif between the main ridge (un = 0) and its foot (un = 1) on one side. */

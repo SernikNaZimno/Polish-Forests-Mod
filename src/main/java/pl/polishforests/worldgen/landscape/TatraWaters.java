@@ -1,7 +1,10 @@
 package pl.polishforests.worldgen.landscape;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Step TT2 (docs/04-pionowy-wycinek.md, "Projekt TT2"): the tarns of the Tatra massifs and their outlet brooks.
@@ -20,12 +23,16 @@ import java.util.List;
  * above the ground) would hold the water in a tall wall, so the valley has no tarn there ({@link #onGround}). The raise of
  * the outer face of the ring fades out to the edge of the belt, so the belt never ends in a step.
  *
- * <p>A tarn with an outlet has a sill at its level at the down-valley end of the basin (a dry notch the water reaches,
- * never crosses) and a brook below it: a channel along the valley axis whose level falls monotonically in whole meters
- * with the ground (the lowest ground so far, less a meter), down to the next tarn of the valley or into the first channel
- * of the river network (TT1) it meets, bending across the valley floor to it. The brook never lies below the water it
- * enters. Its banks are kept at least at its level; along the brook the level steps down as a cascade, as the mountain
- * streams of the river network do.
+ * <p>A tarn with an outlet has a sill at its level where its bank ring is lowest (a dry notch the water reaches, never
+ * crosses) and a brook below it. Step TT7 (TT2-o): the brook leaves the ring at its lowest point on the down-valley half
+ * and runs down the steepest slope of the land (a fan of headings looked ahead every few steps, turning at most
+ * {@value #TURN} degrees a step), down to a lower tarn of the valley or into the first channel of the river network (TT1)
+ * it meets, bending to it across the floor (TT2: a channel along the valley axis from the down-valley end of the basin).
+ * Where that brook ends without reaching the water, the next lowest points of the ring are tried (at most
+ * {@value #OUTLET_TRIES}); the first brook that joins is kept. Its level falls
+ * monotonically in whole meters with the ground (the lowest ground so far, less a meter); it never lies below the water
+ * it enters. Its banks are kept at least at its level; along the brook the level steps down as a cascade, as the
+ * mountain streams of the river network do.
  *
  * <p>Everything is a pure function of the world seed: the tarns of a valley are computed once from the terrain
  * ({@link LandscapeModel#landElevation}) and the river network, never from {@link LandscapeModel#sample}, and cached.
@@ -35,17 +42,46 @@ final class TatraWaters {
 	static final double RING = 3;
 	/** Half width of the outlet sill (m). */
 	static final double SILL = 1.5;
-	/** Brook: half width of the channel, width of the bank kept at its level, step of its course along the valley (m). */
+	/**
+	 * Brook: half width of the channel, width of the bank kept at its level, step of its course along the valley (m). Step
+	 * TT7: the bank 5 m wide (3 m in TT2), so that it falls at BANK_SLOPE from 25 m above the brook, near the deepest cut
+	 * ({@link #GORGE}).
+	 */
 	static final double BROOK_HALF = 1.6;
-	static final double BROOK_BANK = 3;
+	static final double BROOK_BANK = 5;
 	/** Slope of the bank of a brook cut into the ground (m per m): a gorge with walls, no step. */
 	static final double BANK_SLOPE = 5;
 	static final double BROOK_STEP = 0.5;
-	/** Largest fall of the brook level between two steps (m) and the longest brook (steps). */
+	/** Largest fall of the brook level between two steps (m) and the longest brook (steps; times the form scale). */
 	static final int MAX_DROP = 2;
 	static final int MAX_STEPS = 6_000;
-	/** Deepest cut of a brook below the ground (m) and the shortest brook (steps). */
-	static final int GORGE = 12;
+	/**
+	 * Step TT7: the steepest descent of a brook: the headings looked ahead (degrees from the current one), the look-ahead
+	 * distance (m), the steps between two looks, the largest turn per step (degrees), the steps over which a brook never
+	 * comes back near its own course and the distance from a river channel from which it bends to it (m).
+	 */
+	static final double[] FAN = {0, -20, 20, -40, 40, -60, 60};
+	static final double LOOK = 8;
+	static final int LOOK_EVERY = 4;
+	static final double TURN = 4;
+	static final int SELF_GAP = 40;
+	static final double NEAR_RIVER = 30;
+	/**
+	 * Step TT7: the share of the cirque tarns and of the moraine tarns that try an outlet (the Morskie Oko type and every
+	 * moraine tarn always do; drawn with the new salt 68, the salt 69 of the moraine tarns kept for a share below 1).
+	 */
+	static final double OUTLET_CIRQUE = 0.95;
+	static final double OUTLET_MORAINE = 1.0;
+	/** Step TT7: the most points of the ring an outlet brook is tried from, and how far apart they are (in ring points). */
+	static final int OUTLET_TRIES = 8;
+	static final int OUTLET_GAP = 2;
+	/** Step TT7: points on the ring searched for the outlet. */
+	static final int RING_POINTS = 48;
+	/**
+	 * Deepest cut of a brook below the ground (m; step TT7: 30, 12 in TT2, so that a brook cuts a notch through the lip of
+	 * a cirque step; the descent never heads onto ground higher than that above its level) and the shortest brook (steps).
+	 */
+	static final int GORGE = 30;
 	static final int MIN_STEPS = 40;
 	/** Width of the belt around a tarn in which the columns record it as their standing water (m). */
 	static final double BELT = 40;
@@ -68,10 +104,107 @@ final class TatraWaters {
 	static final double DEEPER = 2.5;
 	static final double RAISE = 5;
 
-	/** Outlet brook: the course (q across the valley axis at un0 + i·dun) and the level of each step. */
-	record Brook(double un0, double dun, double[] q, int[] level, boolean joined, boolean intoTarn) {
+	/**
+	 * Outlet brook: the course (step TT7: the points q across the valley axis and un from the main ridge,
+	 * {@value #BROOK_STEP} m apart along the steepest descent) and the level of each step, with a lattice of the steps for
+	 * the columns.
+	 */
+	static final class Brook {
+		/** Side of the lattice cells of the steps (m): at least the half width of the channel with its bank. */
+		private static final double CELL = 7;
+		private final double[] q;
+		private final double[] un;
+		private final int[] level;
+		private final boolean joined;
+		private final boolean intoTarn;
+		private final double width;
+		private final Map<Long, int[]> cells = new HashMap<>();
+
+		Brook(double[] q, double[] un, int[] level, boolean joined, boolean intoTarn, double width) {
+			this.q = q;
+			this.un = un;
+			this.level = level;
+			this.joined = joined;
+			this.intoTarn = intoTarn;
+			this.width = width;
+			for (int i = 0; i < q.length; i++) {
+				long key = cell(q[i], un[i] * width);
+				int[] a = cells.get(key);
+				int[] b = a == null ? new int[1] : Arrays.copyOf(a, a.length + 1);
+				b[b.length - 1] = i;
+				cells.put(key, b);
+			}
+		}
+
+		private static long cell(double q, double along) {
+			return Noise.key((long) Math.floor(q / CELL), (long) Math.floor(along / CELL), 0);
+		}
+
 		int steps() {
 			return q.length;
+		}
+
+		int[] level() {
+			return level;
+		}
+
+		double[] q() {
+			return q;
+		}
+
+		double[] un() {
+			return un;
+		}
+
+		/** Whether the brook ends in the river network or a lower tarn (else in a closed pool above a steep step). */
+		boolean joined() {
+			return joined;
+		}
+
+		boolean intoTarn() {
+			return intoTarn;
+		}
+
+		/**
+		 * The step nearest the valley-local point within {@code reach} m, as {index, distance, beyond} (beyond 1 where the
+		 * point lies more than half a step past the last step, or before the first one), or null.
+		 */
+		double[] nearest(double pq, double pun, double reach) {
+			double pa = pun * width;
+			long cq = (long) Math.floor(pq / CELL);
+			long ca = (long) Math.floor(pa / CELL);
+			int best = -1;
+			double bd = reach;
+			for (long dq = -1; dq <= 1; dq++) {
+				for (long da = -1; da <= 1; da++) {
+					int[] a = cells.get(Noise.key(cq + dq, ca + da, 0));
+					if (a == null) {
+						continue;
+					}
+					for (int i : a) {
+						double d = Math.hypot(pq - q[i], pa - un[i] * width);
+						if (d < bd || d == bd && i < best) {
+							bd = d;
+							best = i;
+						}
+					}
+				}
+			}
+			if (best < 0) {
+				return null;
+			}
+			int n = q.length;
+			double beyond = 0;
+			if (n > 1 && (best == n - 1 || best == 0)) {
+				int o = best == 0 ? 1 : n - 2;
+				double tq = q[best] - q[o];
+				double ta = (un[best] - un[o]) * width;
+				double tl = Math.hypot(tq, ta);
+				if (tl > 1e-9 && ((pq - q[best]) * tq + (pa - un[best] * width) * ta) / tl > 0.5 * BROOK_STEP) {
+					beyond = 1;
+				}
+			}
+			return new double[] {best, bd, beyond};
 		}
 	}
 
@@ -81,7 +214,25 @@ final class TatraWaters {
 	 * world point of the basin center and an id constant over the tarn.
 	 */
 	record Tarn(long id, TatraField.Massif massif, boolean north, long valley, boolean moraine, boolean morskie, double un0,
-			double aq, double bu, int level, double depth, Brook brook, double x, double z) {
+			double aq, double bu, int level, double depth, Brook brook, double x, double z, double outQ, double outA) {
+		/** Step TT7: a tarn without an outlet yet (the direction outQ, outA of its outlet is set with the brook). */
+		Tarn(long id, TatraField.Massif massif, boolean north, long valley, boolean moraine, boolean morskie, double un0,
+				double aq, double bu, int level, double depth, double x, double z) {
+			this(id, massif, north, valley, moraine, morskie, un0, aq, bu, level, depth, null, x, z, Double.NaN, Double.NaN);
+		}
+
+		/**
+		 * Step TT7: whether the valley-local offset (q, a m along the valley from the basin center) at the normalized radius
+		 * r lies on the sill: in the strip {@value #SILL} m to each side of the ray from the center through the outlet,
+		 * between 0.85 of the basin edge and the outer edge of the ring.
+		 */
+		boolean onSill(double q, double a, double r) {
+			if (brook == null || r <= 0.85 || r >= ring()) {
+				return false;
+			}
+			return q * outQ + a * outA > 0 && Math.abs(q * outA - a * outQ) < SILL;
+		}
+
 		/** Normalized radius of the basin ellipse at the valley-local point (1 on its edge). */
 		double r(double q, double un, double width) {
 			return Math.hypot(q / aq, (un - un0) * width / bu);
@@ -236,23 +387,22 @@ final class TatraWaters {
 					hit.tarn = t;
 					hit.r = r;
 					hit.beltDistance = edge;
-					hit.sill = t.outlet() && Math.abs(c.q) < SILL && c.un > t.un0() && r > 0.85 && r < t.ring();
+					hit.sill = t.onSill(c.q, (c.un - t.un0()) * width, r);
 				}
 			}
 			Brook b = t.brook();
 			if (b != null) {
-				long i = Math.round((c.un - b.un0()) / b.dun());
-				// One step beyond the last: the bank closes the end of the channel (at the river or the next tarn).
-				if (i >= 0 && i <= b.steps()) {
-					int at = (int) Math.min(i, b.steps() - 1);
-					double dq = Math.abs(c.q - b.q()[at]);
-					if (dq < BROOK_HALF + BROOK_BANK) {
-						hit = hit == null ? new Hit() : hit;
-						if (hit.brookLevel == ColumnSample.NO_WATER || b.level()[at] > hit.brookLevel) {
-							hit.brookLevel = b.level()[at];
-							hit.brookChannel = i < b.steps() && dq < BROOK_HALF;
-							hit.brookQ = dq / BROOK_HALF;
-						}
+				// Step TT7: the nearest step of the course; past the last one the bank closes the end of the channel (at the
+				// river or the next tarn), before the first one lies the sill.
+				double[] near = b.nearest(c.q, c.un, BROOK_HALF + BROOK_BANK);
+				if (near != null && !(near[0] == 0 && near[2] > 0)) {
+					int at = (int) near[0];
+					double dq = near[1];
+					hit = hit == null ? new Hit() : hit;
+					if (hit.brookLevel == ColumnSample.NO_WATER || b.level()[at] > hit.brookLevel) {
+						hit.brookLevel = b.level()[at];
+						hit.brookChannel = !(at == b.steps() - 1 && near[2] > 0) && dq < BROOK_HALF;
+						hit.brookQ = dq / BROOK_HALF;
 					}
 				}
 			}
@@ -311,24 +461,50 @@ final class TatraWaters {
 		if (tarns.isEmpty()) {
 			return EMPTY;
 		}
-		// The outlet brooks, down to the next tarn or into the river network.
+		// The outlet brooks, from the lowest point of the ring down the steepest slope to a lower tarn or into the river
+		// network (step TT7, TT2-o: drawn with new salts; TT2 drew with the salts 62 and 65).
+		List<Tarn> plain = List.copyOf(tarns);
 		for (int t = 0; t < tarns.size(); t++) {
 			Tarn tn = tarns.get(t);
-			boolean outlet = tn.morskie() || field.draw(vi, vj, tn.moraine() ? 65 : 62) < (tn.moraine() ? 0.8 : 0.6);
+			boolean outlet = tn.morskie()
+					|| field.draw(vi, vj, tn.moraine() ? 69 : 68) < (tn.moraine() ? OUTLET_MORAINE : OUTLET_CIRQUE);
 			if (outlet) {
-				Brook b = brook(m, north, j, width, tn, t + 1 < tarns.size() ? tarns.get(t + 1) : null);
+				// From the lowest point of the ring; where that brook does not reach the water (it ends in a pool above a
+				// step or in a hollow), from the next lowest points (at most OUTLET_TRIES), the first that joins; else the
+				// brook of the lowest point stays (or none).
+				Brook b = null;
+				double oq = Double.NaN;
+				double oa = Double.NaN;
+				for (double theta : lowestRingPoints(m, north, j, width, tn)) {
+					double ex = tn.aq() * Math.cos(theta);
+					double ea = tn.bu() * Math.sin(theta);
+					double len = Math.hypot(ex, ea);
+					Brook tried = brook(m, north, j, width, tn, ex / len, ea / len, len, plain);
+					if (tried != null && (b == null || tried.joined())) {
+						b = tried;
+						oq = ex / len;
+						oa = ea / len;
+					}
+					if (b != null && b.joined()) {
+						break;
+					}
+				}
 				tarns.set(t, new Tarn(tn.id(), m, north, j, tn.moraine(), tn.morskie(), tn.un0(), tn.aq(), tn.bu(), tn.level(),
-						tn.depth(), b, tn.x(), tn.z()));
+						tn.depth(), b, tn.x(), tn.z(), oq, oa));
 			}
 		}
 		double unMin = Double.POSITIVE_INFINITY;
 		double unMax = Double.NEGATIVE_INFINITY;
+		double pad = (BROOK_HALF + BROOK_BANK + BROOK_STEP) / width;
 		for (Tarn t : tarns) {
 			double reach = (t.bu() + BELT + RING) / width;
 			unMin = Math.min(unMin, t.un0() - reach);
 			unMax = Math.max(unMax, t.un0() + reach);
 			if (t.brook() != null) {
-				unMax = Math.max(unMax, t.brook().un0() + (t.brook().steps() + 1) * t.brook().dun());
+				for (double un : t.brook().un()) {
+					unMin = Math.min(unMin, un - pad);
+					unMax = Math.max(unMax, un + pad);
+				}
 			}
 		}
 		return new Valley(List.copyOf(tarns), unMin, unMax);
@@ -367,7 +543,7 @@ final class TatraWaters {
 			return null;
 		}
 		double depth = (2.5 + 1.5 * field.draw(vi, vj, 66)) * field.formScale() / field.blocksPerMeter(level);
-		return new Tarn(Noise.mix(vi * 31 + vj * 17 + 1), m, north, j, false, false, unC, aq, bu, level, depth, null, center[0],
+		return new Tarn(Noise.mix(vi * 31 + vj * 17 + 1), m, north, j, false, false, unC, aq, bu, level, depth, center[0],
 				center[1]);
 	}
 
@@ -418,7 +594,7 @@ final class TatraWaters {
 			return null;
 		}
 		double depth = (mo.morskie() ? 6 : 2 + 1.5 * field.draw(vi, vj, 67)) * field.formScale() / field.blocksPerMeter(level);
-		return new Tarn(Noise.mix(vi * 31 + vj * 17 + 2), m, north, j, true, mo.morskie(), un0, aq, bu, level, depth, null,
+		return new Tarn(Noise.mix(vi * 31 + vj * 17 + 2), m, north, j, true, mo.morskie(), un0, aq, bu, level, depth,
 				center[0], center[1]);
 	}
 
@@ -444,7 +620,11 @@ final class TatraWaters {
 	 * {@link LandscapeModel#sample} has it (in the Tatras no sink lakes, kettles or tunnel lakes change it).
 	 */
 	double ground(double x, double z) {
-		RiverNetwork.RiverHit r = model.riverProbe(x, z);
+		return ground(model.riverProbe(x, z));
+	}
+
+	/** The ground of a river probe: the terrain, raised to the bank level near a channel, the bed in it. */
+	private static double ground(RiverNetwork.RiverHit r) {
 		double g = r.terrain();
 		if (r.order() > 0 && !r.inChannel() && g < r.bankLevel()) {
 			g = r.bankLevel();
@@ -504,34 +684,99 @@ final class TatraWaters {
 	}
 
 	/**
-	 * The outlet brook of the tarn: from below its ring down the valley axis to the next tarn (whose ring it enters) or to
-	 * the first channel of the river network it comes near (it bends across the floor to it), at most to the valley mouth.
+	 * Step TT7 (TT2-o): the ellipse angles of the lowest points of the outer edge of the ring of the tarn on its down-valley
+	 * half (the ground of the columns, with the rivers, on every point of {@value #RING_POINTS} around), lowest first, at
+	 * most {@value #OUTLET_TRIES} at least {@value #OUTLET_GAP} points apart: the outlet, where the water would spill, and
+	 * the next places to try.
 	 */
-	private Brook brook(TatraField.Massif m, boolean north, long j, double width, Tarn t, Tarn next) {
-		double un0 = t.un0() + (t.bu() + RING + 0.5) / width;
-		double dun = BROOK_STEP / width;
+	private double[] lowestRingPoints(TatraField.Massif m, boolean north, long j, double width, Tarn t) {
+		double rr = t.ring();
+		// Only the down-valley half of the ring: up the valley the land rises to the headwall (a lower point there is a
+		// hollow of the bowl or a river incision, never the way out).
+		int half = RING_POINTS / 2;
+		double[] g = new double[half];
+		Integer[] order = new Integer[half - 1];
+		for (int a = 1; a < half; a++) {
+			double th = 2 * Math.PI * a / RING_POINTS;
+			double[] p = field.world(m, north, j, t.aq() * rr * Math.cos(th), t.un0() + t.bu() * rr * Math.sin(th) / width);
+			g[a] = ground(p[0], p[1]);
+			order[a - 1] = a;
+		}
+		Arrays.sort(order, (x, y) -> x.equals(y) ? 0 : g[x] != g[y] ? Double.compare(g[x], g[y]) : Integer.compare(x, y));
+		double[] out = new double[OUTLET_TRIES];
+		int[] taken = new int[OUTLET_TRIES];
+		int n = 0;
+		for (int a : order) {
+			boolean far = true;
+			for (int i = 0; i < n; i++) {
+				far &= Math.abs(a - taken[i]) >= OUTLET_GAP;
+			}
+			if (far) {
+				taken[n] = a;
+				out[n++] = 2 * Math.PI * a / RING_POINTS;
+				if (n == OUTLET_TRIES) {
+					break;
+				}
+			}
+		}
+		return Arrays.copyOf(out, n);
+	}
+
+	/** The tarn of the list whose ring holds the valley-local point, or null. */
+	private static Tarn ringOf(List<Tarn> tarns, double q, double un, double width) {
+		for (Tarn o : tarns) {
+			if (o.r(q, un, width) < o.ring()) {
+				return o;
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * The outlet brook of the tarn (step TT7, TT2-o): from just outside its ring at the outlet (the unit direction
+	 * {@code dq}, {@code da} in the valley-local frame, the basin edge {@code len} m from its center there) down the
+	 * steepest slope of the land, to a lower tarn of the valley (whose ring it enters) or to the first channel of the river
+	 * network it reaches (it heads for the channel from {@value #NEAR_RIVER} m), at most to the valley mouth or the edge of
+	 * the valley frame. It never heads onto ground more than {@value #GORGE} m above its level (it would have to cut deeper);
+	 * where every heading does, it ends (a dead end). A brook that meets no water, or meets it above the tarn, leaves the
+	 * tarn without an outlet; one that would still cut more than {@value #GORGE} m into the ground (the levels fall at most
+	 * {@value #MAX_DROP} m a step) ends in a closed pool above the step.
+	 */
+	private Brook brook(TatraField.Massif m, boolean north, long j, double width, Tarn t, double dq, double da, double len,
+			List<Tarn> tarns) {
+		double q = dq * len * t.ring() + 0.5 * dq;
+		double along = t.un0() * width + da * len * t.ring() + 0.5 * da;
+		double heading = Math.atan2(da, dq);
+		double target = heading;
+		double halfValley = 0.5 * m.spacing();
+		int maxSteps = (int) Math.round(MAX_STEPS * field.formScale());
+		// Each step: q, un, the level so far, the floor of the ground less a meter, the along coordinate (m).
 		List<double[]> steps = new ArrayList<>();
+		Map<Long, List<Integer>> visited = new HashMap<>();
+		double selfReach = 2 * BROOK_HALF + BROOK_BANK;
 		int last = t.level() - 1;
-		double q = 0;
-		double target = 0;
-		boolean bending = false;
 		boolean joined = false;
 		boolean intoTarn = false;
 		int floorLevel = ColumnSample.NO_WATER;
-		for (int i = 0; i < MAX_STEPS; i++) {
-			double un = un0 + i * dun;
-			if (un > 0.97) {
+		double turn = Math.toRadians(TURN);
+		for (int i = 0; i < maxSteps; i++) {
+			double un = along / width;
+			if (un > 0.97 || un < 0 || Math.abs(q) > halfValley) {
 				break;
 			}
-			if (next != null && next.r(q, un, width) < next.ring()) {
-				joined = true;
-				intoTarn = true;
-				floorLevel = next.level();
+			Tarn other = ringOf(tarns, q, un, width);
+			if (other != null) {
+				if (other != t && other.level() < t.level()) {
+					joined = true;
+					intoTarn = true;
+					floorLevel = other.level();
+				}
 				break;
 			}
 			double[] p = field.world(m, north, j, q, un);
 			TatraField.Column c = columnAt(m, north, j, p);
-			if (c == null) {
+			// Never back near its own earlier course (water at two levels side by side).
+			if (c == null || selfNear(visited, steps, q, along, i - SELF_GAP, selfReach)) {
 				break;
 			}
 			RiverNetwork.RiverHit r = model.riverProbe(p[0], p[1]);
@@ -543,27 +788,58 @@ final class TatraWaters {
 				ground = Math.min(ground, r.channelBottom());
 			}
 			last = Math.min(last, (int) Math.floor(ground) - 1);
-			steps.add(new double[] {q, last, Math.floor(ground) - 1});
+			steps.add(new double[] {q, un, last, Math.floor(ground) - 1, along});
+			visited.computeIfAbsent(selfKey(q, along, selfReach), key -> new ArrayList<>()).add(i);
 			if (r.order() > 0 && r.inChannel()) {
 				joined = true;
 				floorLevel = r.waterLevel();
 				break;
 			}
-			if (!bending && r.order() > 0 && r.channelDist() < 30) {
-				// The river is near on the floor: find its channel across the valley and bend to it.
-				double best = Double.POSITIVE_INFINITY;
-				for (double qq = -1.4 * c.floorHalf; qq <= 1.4 * c.floorHalf; qq += 2) {
-					double[] pq = field.world(m, north, j, qq, un + 8 * dun);
-					RiverNetwork.RiverHit h = model.riverProbe(pq[0], pq[1]);
-					if (h.order() > 0 && h.channelDist() < best) {
-						best = h.channelDist();
-						target = qq;
+			if (r.order() > 0 && r.channelDist() < NEAR_RIVER) {
+				// The river is near: head for its channel.
+				double bestD = r.channelDist();
+				for (double f : FAN) {
+					double h = heading + Math.toRadians(f);
+					double[] pq = field.world(m, north, j, q + LOOK * Math.cos(h), (along + LOOK * Math.sin(h)) / width);
+					RiverNetwork.RiverHit hh = model.riverProbe(pq[0], pq[1]);
+					double d = hh.order() <= 0 ? Double.POSITIVE_INFINITY : hh.inChannel() ? -1 : hh.channelDist();
+					// Never up a wall it could not cut through (a river in a gorge below a ridge).
+					if (d < bestD && ground(hh) <= last + GORGE) {
+						bestD = d;
+						target = h;
 					}
 				}
-				bending = true;
+			} else if (i % LOOK_EVERY == 0) {
+				// The steepest descent: the lowest ground (with the river valleys, so it finds them) a look ahead among the
+				// headings of the fan, never towards its own tarn
+				// (the land of a cirque bowl falls back to the tarn beyond its ring), never into a ring and never out of the
+				// valley frame; in a hollow the least rise (over a sill the level cuts through, at most GORGE meters).
+				double lowest = Double.POSITIVE_INFINITY;
+				double own = t.r(q, un, width);
+				target = heading;
+				for (double f : FAN) {
+					double h = heading + Math.toRadians(f);
+					double lq = q + LOOK * Math.cos(h);
+					double lun = (along + LOOK * Math.sin(h)) / width;
+					if (Math.abs(lq) > halfValley || t.r(lq, lun, width) < own || ringOf(tarns, lq, lun, width) != null) {
+						continue;
+					}
+					double[] pq = field.world(m, north, j, lq, lun);
+					double g = ground(pq[0], pq[1]);
+					if (g < lowest && g <= last + GORGE) {
+						lowest = g;
+						target = h;
+					}
+				}
+				if (lowest == Double.POSITIVE_INFINITY) {
+					// A dead end: every way on rises more than it could cut through.
+					break;
+				}
 			}
-			// At most half a step across per step: the channels of two steps overlap.
-			q += Math.clamp(target - q, -0.5 * BROOK_STEP, 0.5 * BROOK_STEP);
+			double diff = Math.atan2(Math.sin(target - heading), Math.cos(target - heading));
+			heading += Math.clamp(diff, -turn, turn);
+			q += BROOK_STEP * Math.cos(heading);
+			along += BROOK_STEP * Math.sin(heading);
 		}
 		// A brook that meets no water down the valley, or meets it above the tarn, leaves the tarn without an outlet.
 		if (steps.isEmpty() || !joined || floorLevel >= t.level()) {
@@ -571,11 +847,13 @@ final class TatraWaters {
 		}
 		int n = steps.size();
 		double[] qs = new double[n];
+		double[] uns = new double[n];
 		int[] levels = new int[n];
 		for (int i = 0; i < n; i++) {
 			qs[i] = steps.get(i)[0];
+			uns[i] = steps.get(i)[1];
 			// Never below the water the brook enters (a river or the next tarn).
-			levels[i] = Math.max((int) steps.get(i)[1], floorLevel);
+			levels[i] = Math.max((int) steps.get(i)[2], floorLevel);
 		}
 		// At most MAX_DROP meters between two steps, down to at most MAX_DROP above the water it enters: from the mouth up
 		// the brook is cut lower where it would fall faster (a short gorge), never raised above the ground.
@@ -588,7 +866,7 @@ final class TatraWaters {
 		// it runs under the scree (the tarn still drains to that water). Too short a brook leaves the tarn without one.
 		int end = n;
 		for (int i = 0; i < n; i++) {
-			if (steps.get(i)[2] - levels[i] > GORGE) {
+			if (steps.get(i)[3] - levels[i] > GORGE) {
 				end = i;
 				break;
 			}
@@ -598,8 +876,37 @@ final class TatraWaters {
 				return null;
 			}
 			// The head keeps its levels (monotone, falling at most MAX_DROP per step, at most GORGE under the ground).
-			return new Brook(un0, dun, java.util.Arrays.copyOf(qs, end), java.util.Arrays.copyOf(levels, end), false, false);
+			return new Brook(Arrays.copyOf(qs, end), Arrays.copyOf(uns, end), Arrays.copyOf(levels, end), false, false, width);
 		}
-		return new Brook(un0, dun, qs, levels, joined, intoTarn);
+		return new Brook(qs, uns, levels, joined, intoTarn, width);
+	}
+
+	private static long selfKey(double q, double along, double cell) {
+		return Noise.key((long) Math.floor(q / cell), (long) Math.floor(along / cell), 1);
+	}
+
+	/** Whether a step before {@code before} of the course lies within {@code reach} m of the valley-local point. */
+	private static boolean selfNear(Map<Long, List<Integer>> visited, List<double[]> steps, double q, double along, int before,
+			double reach) {
+		if (before <= 0) {
+			return false;
+		}
+		long cq = (long) Math.floor(q / reach);
+		long ca = (long) Math.floor(along / reach);
+		for (long a = -1; a <= 1; a++) {
+			for (long b = -1; b <= 1; b++) {
+				List<Integer> l = visited.get(Noise.key(cq + a, ca + b, 1));
+				if (l == null) {
+					continue;
+				}
+				for (int i : l) {
+					double[] st = steps.get(i);
+					if (i < before && Math.hypot(q - st[0], along - st[4]) < reach) {
+						return true;
+					}
+				}
+			}
+		}
+		return false;
 	}
 }

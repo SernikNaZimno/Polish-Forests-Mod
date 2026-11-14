@@ -35,6 +35,9 @@ import org.junit.jupiter.api.Test;
  * <p>Step TT5: two more sets at realistic scale (seeds A and B, the Tatras on), with the same six targets; their lattice
  * steps and the search lattice grow with the forms ({@link TatraSurvey#step}), so a patch covers the same part of the
  * massif. The gameplay sets are written as before (the same lines).
+ *
+ * <p>Step TT7: a seventh patch on the foreland north of the Podhale basin (the Gorce-type flysch ridge, Beskid type); the
+ * file was written anew once on purpose (the foreland changes the north side of the complex and its rivers).
  */
 @Tag("slow")
 class GoldenTatraTest {
@@ -73,6 +76,10 @@ class GoldenTatraTest {
 			new Target("podhale", 12, c -> c.weight > 0.9 && c.part == TatraPart.PODHALE_BASIN,
 					a -> share(a, s -> s.terrain().tatraPart() == TatraPart.PODHALE_BASIN && s.type() == LandscapeType.PODHALE) >= 0.7,
 					"70% of the columns in the Podhale basin"),
+			new Target("foreland", 40, c -> c.weight > 0.9 && c.part == TatraPart.FORELAND && c.beskids > 0.8,
+					a -> share(a, s -> s.terrain().tatraPart() == TatraPart.FORELAND) >= 0.7
+							&& share(a, s -> s.type() == LandscapeType.BESKIDS) >= 0.5,
+					"70% of the columns on the foreland, half of them Beskid"),
 			new Target("beskid_transition", 40, c -> c.weight > 0.35 && c.weight < 0.65,
 					a -> share(a, s -> s.type().isTatra()) >= 0.15
 							&& share(a, s -> s.type() == LandscapeType.BESKIDS || s.type() == LandscapeType.FOOTHILLS) >= 0.15,
@@ -162,7 +169,7 @@ class GoldenTatraTest {
 	static GoldenTerrainTest.Patch search(LandscapeModel m, LandscapeModel.Tatra t, Target target) {
 		double k = m.scale().mountainSpacing();
 		double uMin = -(TatraField.WS + TatraField.FADE_SOUTH1) * k;
-		double uMax = (TatraField.BASIN_CENTER + TatraField.BASIN / 2 + TatraField.FADE_NORTH) * k;
+		double uMax = (TatraField.BASIN_CENTER + TatraField.BASIN / 2 + TatraField.FORELAND + TatraField.FADE_NORTH) * k;
 		double vHalf = t.halfLength() + TatraField.FADE_END1 * k;
 		List<double[]> candidates = new ArrayList<>();
 		double lattice = TatraSurvey.step(m.scale(), 90);
