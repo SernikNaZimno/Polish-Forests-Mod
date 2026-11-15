@@ -32,7 +32,7 @@ class MixinTargetsTest {
 				}
 			}
 		}
-		assertEquals(2, found);
+		assertEquals(3, found);
 	}
 
 	/** Whether {@link Biome} declares a method with the name and descriptor from {@code name(descriptor)}. */

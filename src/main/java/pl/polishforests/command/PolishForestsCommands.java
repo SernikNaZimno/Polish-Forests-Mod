@@ -387,6 +387,9 @@ public final class PolishForestsCommands {
 		String id = biome.unwrapKey().map(k -> k.identifier().toString()).orElse("?");
 		source.sendSuccess(() -> Component.translatable("polishforests.command.vanilla_here",
 				Component.literal(id).withStyle(ChatFormatting.GREEN)), false);
+		// Step C2: the temperature at the point (the column's vanilla biome, the height, the season) and its precipitation.
+		PointClimate climate = PointClimate.of(source.getLevel(), biome, net.minecraft.core.BlockPos.containing(pos));
+		source.sendSuccess(climate::line, false);
 		int code = world.code(biome);
 		if (pl.polishforests.worldgen.vanilla.VanillaForestWorld.forest(code)) {
 			HabitatInfo info = HabitatInfo.vanilla(source.getLevel(), code, x, (int) Math.floor(pos.y), z);

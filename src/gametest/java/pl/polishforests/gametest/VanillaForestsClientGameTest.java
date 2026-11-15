@@ -174,9 +174,11 @@ public final class VanillaForestsClientGameTest implements FabricClientGameTest 
 						: sp.getServer().computeOnServer(s -> deepCenter(s.overworld(), b, found));
 				sp.getServer().runOnServer(s -> area(s.overworld(), b, at, report, failures));
 			}
-			report.append(String.format(Locale.ROOT, "counters: habitats attached %d, soil tops %d, soil blended %d, trees %d, "
+			// 5. Step C2: snow and ice by the column climate, the client against the server, a chunk without the attachment.
+			VanillaSnowCheck.run(context, sp, report, failures);
+			report.append(String.format(Locale.ROOT, "counters: column climates %d, habitats attached %d, soil tops %d, soil blended %d, trees %d, "
 					+ "planned %d, skipped on blocked columns %d, at structures or water %d, on the trunk base %d, unwritten %d, "
-					+ "suppressed %d%n", VanillaForestWorld.ATTACHED.sum(),
+					+ "suppressed %d%n", pl.polishforests.climate.ColumnClimates.ATTACHED.sum(), VanillaForestWorld.ATTACHED.sum(),
 					VanillaForestWorld.SOIL_TOPS.sum(), VanillaForestWorld.SOIL_BLENDED.sum(), TreeStandFeature.TREES.sum(),
 					TreeStandFeature.PLANNED.sum(), TreeStandFeature.SKIPPED_BLOCKED.sum(), TreeStandFeature.SKIPPED_STRUCTURE.sum(),
 					TreeStandFeature.SKIPPED_BASE.sum(), TreeStandFeature.SKIPPED_WRITE.sum(),
@@ -416,7 +418,7 @@ public final class VanillaForestsClientGameTest implements FabricClientGameTest 
 	}
 
 	/** Loads the chunks of a square of {@code n} chunks around a block to FULL (TERRAIN and FEATURES first, raster order). */
-	private static int[] loadSquare(ServerLevel level, BlockPos center, int n) {
+	static int[] loadSquare(ServerLevel level, BlockPos center, int n) {
 		int cx0 = (center.getX() >> 4) - n / 2;
 		int cz0 = (center.getZ() >> 4) - n / 2;
 		for (ChunkStatus status : List.of(ChunkStatus.TERRAIN, ChunkStatus.FEATURES)) {

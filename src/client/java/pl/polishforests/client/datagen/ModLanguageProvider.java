@@ -440,6 +440,12 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		b.add("polishforests.command.vanilla_no_zones", "Zones are only in a Poland world");
 		b.add("polishforests.command.vanilla_no_target", "%s: only in a Poland world; in this world type: sea, river, beach");
 		b.add("polishforests.command.vanilla_here", "Biome: %s (Default + Polish Forests)");
+		b.add("polishforests.command.vanilla_here_climate", "Temperature here: %s (with the season %s): %s; base temperature %s, %s");
+		b.add("polishforests.command.vanilla_climate.snow", "snow");
+		b.add("polishforests.command.vanilla_climate.rain", "rain");
+		b.add("polishforests.command.vanilla_climate.column", "from the vanilla biome of this column");
+		b.add("polishforests.command.vanilla_climate.own", "the biome's own (chunk generated before the column climate)");
+		b.add("polishforests.command.vanilla_climate.vanilla", "of the vanilla biome");
 		b.add("polishforests.command.unknown_target", "Unknown target: %s. Use /polishforests list to see all targets");
 		b.add("polishforests.command.elevation_range", "terrain at %s–%s m above sea level");
 		b.add("polishforests.command.highest_name", "highest point within %s km");
@@ -549,6 +555,12 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		b.add("polishforests.command.vanilla_no_zones", "Strefy są tylko w świecie typu Polska");
 		b.add("polishforests.command.vanilla_no_target", "%s: tylko w świecie typu Polska; w tym typie świata: sea, river, beach");
 		b.add("polishforests.command.vanilla_here", "Biom: %s (Domyślny + polskie lasy)");
+		b.add("polishforests.command.vanilla_here_climate", "Temperatura tutaj: %s (z porą roku %s): %s; temperatura bazowa %s, %s");
+		b.add("polishforests.command.vanilla_climate.snow", "śnieg");
+		b.add("polishforests.command.vanilla_climate.rain", "deszcz");
+		b.add("polishforests.command.vanilla_climate.column", "z biomu wanilii tej kolumny");
+		b.add("polishforests.command.vanilla_climate.own", "własna biomu (chunk sprzed klimatu kolumn)");
+		b.add("polishforests.command.vanilla_climate.vanilla", "biomu wanilii");
 		b.add("polishforests.command.unknown_target", "Nieznany cel: %s. Lista celów: /polishforests list");
 		b.add("polishforests.command.elevation_range", "teren %s–%s m n.p.m.");
 		b.add("polishforests.command.highest_name", "najwyższy punkt w promieniu %s km");

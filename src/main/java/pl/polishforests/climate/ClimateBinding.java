@@ -14,6 +14,7 @@ import pl.polishforests.PolishForests;
 import pl.polishforests.worldgen.chunk.PolandChunkGenerator;
 import pl.polishforests.worldgen.chunk.PolandScale;
 import pl.polishforests.worldgen.chunk.VerticalScale;
+import pl.polishforests.worldgen.vanilla.VanillaForestsBiomeSource;
 
 /**
  * Attaches climate profiles ({@link BiomeClimate}) to the biomes in the {@code #polishforests:polish_climate} tag.
@@ -32,6 +33,13 @@ import pl.polishforests.worldgen.chunk.VerticalScale;
  * ({@code ClientConfigurationPacketListenerImpl.handleConfigurationFinished}), so it attaches nothing
  * on a dimension change: the profiles are already attached by the server. Profiles are removed only by
  * the recomputation after {@code TAGS_LOADED}, according to the tag contents, which are the same on both sides.
+ *
+ * <p>Step C2 (decision CP-D.11): in the world type "Default + Polish Forests" the biomes of the tag get the profile
+ * {@link BiomeClimate#vanillaColumns} instead (the column's vanilla biome with the vanilla height adjustment,
+ * {@link VanillaClimate}): the server attaches it when the overworld loads and before the first chunk is decorated
+ * ({@code VanillaForestWorld}), a client of a remote server when it enters an overworld that is not a "Poland" world
+ * ({@code ClientClimate}), and {@code TAGS_LOADED} recomputes it like the "Poland" profiles. The "Poland" profiles are
+ * unchanged.
  */
 public final class ClimateBinding {
 	public static final TagKey<Biome> POLISH_CLIMATE = TagKey.create(Registries.BIOME, PolishForests.id("polish_climate"));
@@ -40,13 +48,54 @@ public final class ClimateBinding {
 	}
 
 	public static void register() {
+		ColumnClimates.register();
 		CommonLifecycleEvents.TAGS_LOADED.register((registries, client) -> onTagsLoaded(registries));
 		ServerLevelEvents.LOAD.register((server, level) -> {
-			if (level.dimension() == Level.OVERWORLD
-					&& level.getChunkSource().getGenerator() instanceof PolandChunkGenerator generator) {
+			if (level.dimension() != Level.OVERWORLD) {
+				return;
+			}
+			if (level.getChunkSource().getGenerator() instanceof PolandChunkGenerator generator) {
 				attach(level.registryAccess(), generator.vertical());
+			} else if (level.getChunkSource().getGenerator().getBiomeSource() instanceof VanillaForestsBiomeSource) {
+				attachVanillaColumns(level.registryAccess());
+				ColumnClimates.bindServer(level);
 			}
 		});
+	}
+
+	/**
+	 * Step C2: the profile {@link BiomeClimate#vanillaColumns} for the biomes of the tag among the given ones (the biome
+	 * source's, before the first chunk of the world type "Default + Polish Forests" is decorated), without detaching any.
+	 */
+	public static int attachVanillaColumns(Iterable<Holder<Biome>> biomes) {
+		int n = 0;
+		for (Holder<Biome> holder : biomes) {
+			if (holder.is(POLISH_CLIMATE)) {
+				BiomeClimateAccess.set(holder.value(), BiomeClimate.vanillaColumns(holder.value().getBaseTemperature()));
+				n++;
+			}
+		}
+		return n;
+	}
+
+	/** Step C2: the profile {@link BiomeClimate#vanillaColumns} for the registry's biomes in the tag, detached from the others. */
+	public static int attachVanillaColumns(RegistryAccess registries) {
+		int n = 0;
+		for (Holder.Reference<Biome> holder : registries.lookupOrThrow(Registries.BIOME).listElements().toList()) {
+			if (holder.is(POLISH_CLIMATE)) {
+				BiomeClimateAccess.set(holder.value(), BiomeClimate.vanillaColumns(holder.value().getBaseTemperature()));
+				n++;
+			} else if (BiomeClimateAccess.climate(holder.value()) != null) {
+				BiomeClimateAccess.set(holder.value(), null);
+			}
+		}
+		PolishForests.LOG.debug("Climate: column profile in {} biomes (Default + Polish Forests)", n);
+		return n;
+	}
+
+	/** Step C2: the column profile for the registry's biomes in the tag without detaching others (a remote client). */
+	public static int attachVanillaColumnsWithoutDetaching(RegistryAccess registries) {
+		return attachVanillaColumns(registries.lookupOrThrow(Registries.BIOME).listElements().<Holder<Biome>>map(h -> h).toList());
 	}
 
 	/**
@@ -88,17 +137,23 @@ public final class ClimateBinding {
 				scale);
 	}
 
-	/** After tags load: if the world already has profiles, recomputes them with the same scale. */
+	/** After tags load: if the world already has profiles, recomputes them with the same scale (or kind, step C2). */
 	private static void onTagsLoaded(RegistryAccess registries) {
-		VerticalScale scale = null;
+		BiomeClimate found = null;
 		for (Holder.Reference<Biome> holder : registries.lookupOrThrow(Registries.BIOME).listElements().toList()) {
 			BiomeClimate climate = BiomeClimateAccess.climate(holder.value());
 			if (climate != null) {
-				scale = climate.scale();
+				found = climate;
 				break;
 			}
 		}
-		if (scale != null) {
+		if (found == null) {
+			return;
+		}
+		VerticalScale scale = found.scale();
+		if (found.vanillaColumns() || scale == null) {
+			attachVanillaColumns(registries);
+		} else {
 			attach(registries, scale);
 		}
 	}

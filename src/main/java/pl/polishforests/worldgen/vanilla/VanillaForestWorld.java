@@ -25,6 +25,9 @@ import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.RandomState;
 import org.jspecify.annotations.Nullable;
+import pl.polishforests.climate.ClimateBinding;
+import pl.polishforests.climate.ColumnClimate;
+import pl.polishforests.climate.ColumnClimates;
 import pl.polishforests.worldgen.chunk.ChunkHabitats;
 import pl.polishforests.worldgen.chunk.ForestWorld;
 import pl.polishforests.worldgen.chunk.LooseCover;
@@ -84,6 +87,8 @@ public final class VanillaForestWorld implements ForestWorld {
 	private volatile @Nullable Binding binding;
 	private volatile @Nullable ForestStandMap standMap;
 	private volatile @Nullable ForestBlend forestBlend;
+	/** Step C2: whether the habitat biomes got their climate profile from the first TERRAIN hook. */
+	private volatile boolean climateBound;
 
 	/** The random state of the world and what is built from its seed. */
 	private record Binding(RandomState randomState, long seed, SurfaceBuilder soil, ThreadLocal<BiomeResolver> resolvers) {
@@ -217,11 +222,29 @@ public final class VanillaForestWorld implements ForestWorld {
 
 	// ------------------------------------------------------------------ chunk habitats
 
-	/** Computes and attaches the habitats of a chunk at the end of its TERRAIN stage, and writes the soil tops. */
+	/**
+	 * Computes and attaches the habitats of a chunk at the end of its TERRAIN stage, and writes the soil tops. Step C2: a
+	 * chunk with a habitat biome on the surface also gets its column climate ({@link ColumnClimates#TYPE}: the base
+	 * temperature of each column's vanilla biome before the swap), and the habitat biomes get their climate profile before
+	 * the first chunk is decorated ({@code freeze_top_layer} reads it).
+	 */
 	public void attach(ChunkAccess chunk, RandomState randomState, StructureManager structureManager) {
 		bind(randomState);
-		chunk.setAttached(ModFeatures.CHUNK_HABITATS, habitats(chunk, structureManager, true));
+		if (!climateBound) {
+			climateBound = true;
+			ClimateBinding.attachVanillaColumns(source.possibleBiomes());
+		}
+		float[] bases = new float[256];
+		ChunkHabitats h = habitats(chunk, structureManager, true, bases);
+		chunk.setAttached(ModFeatures.CHUNK_HABITATS, h);
 		ATTACHED.increment();
+		for (int i = 0; i < 256; i++) {
+			if (forest(h.codes()[i])) {
+				chunk.setAttached(ColumnClimates.TYPE, ColumnClimate.of(bases));
+				ColumnClimates.ATTACHED.increment();
+				break;
+			}
+		}
 	}
 
 	/**
@@ -229,6 +252,15 @@ public final class VanillaForestWorld implements ForestWorld {
 	 * habitat biomes are turned into their soil.
 	 */
 	ChunkHabitats habitats(ChunkAccess chunk, StructureManager structureManager, boolean soil) {
+		return habitats(chunk, structureManager, soil, null);
+	}
+
+	/**
+	 * As {@link #habitats(ChunkAccess, StructureManager, boolean)}; with {@code bases} (256 entries) also the base
+	 * temperature of the vanilla biome of each column before the swap (step C2): the noise biome that the vanilla zoom
+	 * picks at the top block, unswapped ({@link #vanillaBase}).
+	 */
+	ChunkHabitats habitats(ChunkAccess chunk, StructureManager structureManager, boolean soil, float @Nullable [] bases) {
 		Binding b = binding();
 		ChunkPos pos = chunk.getPos();
 		int x0 = pos.getMinBlockX();
@@ -238,7 +270,8 @@ public final class VanillaForestWorld implements ForestWorld {
 		short[] water = new short[256];
 		long[] blocked = new long[4];
 		boolean anyBlocked = false;
-		BiomeManager zoom = new BiomeManager(resolver(chunk, b), BiomeManager.obfuscateSeed(b.seed()));
+		LastQuart quart = new LastQuart(resolver(chunk, b));
+		BiomeManager zoom = new BiomeManager(quart, BiomeManager.obfuscateSeed(b.seed()));
 		BlockPos.MutableBlockPos at = new BlockPos.MutableBlockPos();
 		boolean[] ground = new boolean[256];
 		for (int i = 0; i < 256; i++) {
@@ -249,7 +282,11 @@ public final class VanillaForestWorld implements ForestWorld {
 			tops[i] = (short) top;
 			water[i] = surface > top && chunk.getFluidState(at.set(x, surface, z)).is(FluidTags.WATER) ? (short) surface
 					: ChunkHabitats.NO_WATER;
-			codes[i] = code(zoom.getBiome(at.set(x, top, z)));
+			Holder<Biome> biome = zoom.getBiome(at.set(x, top, z));
+			codes[i] = code(biome);
+			if (bases != null) {
+				bases[i] = vanillaBase(biome, quart, b);
+			}
 			BlockState state = chunk.getBlockState(at.set(x, top, z));
 			ground[i] = soil(state);
 		}
@@ -289,6 +326,56 @@ public final class VanillaForestWorld implements ForestWorld {
 		int t = tops[i];
 		return x > 0 && Math.abs(t - tops[i - 16]) >= STEEP || x < 15 && Math.abs(t - tops[i + 16]) >= STEEP
 				|| z > 0 && Math.abs(t - tops[i - 1]) >= STEEP || z < 15 && Math.abs(t - tops[i + 1]) >= STEEP;
+	}
+
+	/** A resolver that remembers the quart of its last answer (the vanilla zoom asks exactly one per position). */
+	private static final class LastQuart implements BiomeResolver {
+		private final BiomeResolver inner;
+		/** Base temperatures of the unswapped vanilla biomes by quart, memoized for the chunk (step C2). */
+		final it.unimi.dsi.fastutil.longs.Long2FloatOpenHashMap unswapped = new it.unimi.dsi.fastutil.longs.Long2FloatOpenHashMap();
+		int x;
+		int y;
+		int z;
+
+		LastQuart(BiomeResolver inner) {
+			this.inner = inner;
+			unswapped.defaultReturnValue(Float.NaN);
+		}
+
+		@Override
+		public Holder<Biome> getNoiseBiome(int quartX, int quartY, int quartZ) {
+			x = quartX;
+			y = quartY;
+			z = quartZ;
+			return inner.getNoiseBiome(quartX, quartY, quartZ);
+		}
+	}
+
+	/**
+	 * Step C2: the base temperature of the vanilla biome behind a biome the zoom returned at the quart {@code q} picked: a
+	 * biome that stays has its own; a habitat biome has the one shared by every vanilla forest it replaces
+	 * ({@link VanillaForestsBiomeSource#replacedBase}), or, when they differ (the montane spruce forest: the old growth
+	 * spruce taiga 0.25 and the snowy taiga -0.5), the base temperature of the unswapped biome of the source at that quart.
+	 */
+	private float vanillaBase(Holder<Biome> biome, LastQuart q, Binding b) {
+		float shared = source.replacedBase(biome);
+		if (!Float.isNaN(shared)) {
+			return shared;
+		}
+		// The zoom picks among a few dozen quarts per chunk: one lookup of the vanilla source per quart.
+		long key = ((long) q.x & 0x1FFFFFL) << 42 | ((long) q.y & 0x1FFFFFL) << 21 | (long) q.z & 0x1FFFFFL;
+		float t = q.unswapped.get(key);
+		if (Float.isNaN(t)) {
+			t = VanillaForestsBiomeSource.carverBiome(b.resolvers().get(), q.x, q.y, q.z).value().getBaseTemperature();
+			q.unswapped.put(key, t);
+		}
+		return t;
+	}
+
+	/** Step C2: the vanilla biome of the source at the surface of column (x, z) before the swap (quart at Y 256). */
+	public Holder<Biome> vanillaSurfaceBiome(int x, int z) {
+		return VanillaForestsBiomeSource.carverBiome(binding().resolvers().get(), QuartPos.fromBlock(x),
+				QuartPos.fromBlock(SURFACE_BIOME_Y), QuartPos.fromBlock(z));
 	}
 
 	/**

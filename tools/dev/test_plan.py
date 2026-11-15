@@ -24,7 +24,7 @@ MAP = [
     ('src/main/java/pl/polishforests/worldgen/chunk/', ['unit', 'terrain', 'tatra', 'generation', 'vanilla_world']),
     ('src/main/java/pl/polishforests/worldgen/surface/', ['unit', 'terrain', 'tatra', 'generation']),
     ('src/main/java/pl/polishforests/worldgen/cave/', ['unit', 'terrain', 'tatra', 'generation', 'caves']),
-    ('src/main/java/pl/polishforests/climate/', ['unit', 'terrain', 'generation', 'seasons']),
+    ('src/main/java/pl/polishforests/climate/', ['unit', 'terrain', 'generation', 'seasons', 'vanilla_world']),
     ('src/main/resources/data/polishforests/worldgen/', ['unit', 'terrain', 'tatra', 'generation']),
     ('src/main/resources/data/polishforests/dimension_type/', ['unit', 'terrain', 'generation']),
     ('src/main/java/pl/polishforests/worldgen/feature/', ['unit', 'generation', 'norms', 'vanilla_world']),
@@ -72,7 +72,8 @@ TESTS = {
                    ['./gradlew runClientGameTest -Pgametest=determinism -Poptimization -PdeterminismReference=<copy>/plain.txt   # C2ME, see BRIEF']),
     'norms': (['./gradlew runClientGameTest -Pgametest=slice -Psites=none   # norms card, about 2 min'], []),
     'caves': (['./gradlew runClientGameTest -Pgametest=caves'], ['./gradlew runClientGameTest -Pgametest=cave_biomes']),
-    'vanilla_world': (['./gradlew runClientGameTest -Pgametest=vanilla_forests   # world type Default + Polish Forests'], []),
+    'vanilla_world': (["./gradlew test --tests '*VanillaForestsTest*' --tests '*VanillaClimateTest*'   # W1 tables, column climate (step C2)",
+                       './gradlew runClientGameTest -Pgametest=vanilla_forests   # world type Default + Polish Forests'], []),
     'blocks': (["./gradlew checkDatagen", "./gradlew test --tests '*RegistrySnapshotTest*'",
                 '# plus one game test of the changed mechanic only (e.g. slice -Psites=samples for trunks)'], []),
     'datagen': (['./gradlew checkDatagen'], []),
@@ -81,7 +82,8 @@ TESTS = {
     'mixins': (["./gradlew test --tests '*MixinTargetsTest*'"], ['./gradlew runClientGameTest -Pgametest=probes   # only for render mixins']),
     'render': (['# screenshots of the affected board only, once per round that changes rendering; never to check repeatability'], []),
     'art': (['./gradlew checkArt', 'python tools/art/lint.py'], []),
-    'gametest_code': (['./gradlew compileGametestJava   # plus the changed game test itself'], []),
+    'gametest_code': (['./gradlew compileGametestJava   # plus the changed game test itself',
+                       "./gradlew test --tests '*PerformanceThresholdsTest*'   # CP-D.5 thresholds on the F7 numbers (step C2)"], []),
 }
 ORDER = list(TESTS)
 

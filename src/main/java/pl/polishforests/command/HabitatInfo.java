@@ -64,12 +64,13 @@ public record HabitatInfo(Habitat habitat, double dgw, double oceanicity, double
 
 	/**
 	 * Step W1: the habitat of a column of a habitat biome in the world type "Default + Polish Forests": its code, no
-	 * groundwater model (DGW 0), O and P of that world, the vanilla temperature of the biome at the position.
+	 * groundwater model (DGW 0), O and P of that world, the temperature at the position (step C2: the column's vanilla
+	 * biome with the vanilla height adjustment, {@link PointClimate}).
 	 */
 	public static HabitatInfo vanilla(ServerLevel level, int code, int x, int y, int z) {
 		Habitat h = Habitat.of(code);
 		net.minecraft.core.BlockPos pos = new net.minecraft.core.BlockPos(x, y, z);
-		float t = level.getBiome(pos).value().getBaseTemperature();
+		float t = PointClimate.of(level, level.getBiome(pos), pos).temperature();
 		List<Species> trees = level.registryAccess().lookupOrThrow(Registries.FEATURE)
 				.getOptional(ResourceKey.create(Registries.FEATURE, PolishForests.id("tree_stand")))
 				.filter(TreeStandFeature.class::isInstance).map(f -> ((TreeStandFeature) f).palette().species(code))

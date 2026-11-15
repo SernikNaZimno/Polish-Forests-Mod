@@ -45,6 +45,7 @@ public final class VanillaForestsBiomeSource extends BiomeSource {
 	private final HolderGetter<Biome> biomes;
 	private final VanillaForestWorld world;
 	private volatile @Nullable Map<Holder<Biome>, Holder<Biome>> swaps;
+	private volatile @Nullable Map<Holder<Biome>, Float> replacedBases;
 
 	public VanillaForestsBiomeSource(BiomeSource source, HolderGetter<Biome> biomes) {
 		this.source = source;
@@ -101,6 +102,32 @@ public final class VanillaForestsBiomeSource extends BiomeSource {
 	public Holder<Biome> swap(Holder<Biome> biome) {
 		Holder<Biome> s = swaps().get(biome);
 		return s != null ? s : biome;
+	}
+
+	/**
+	 * Step C2: the base temperature of the vanilla biome behind a biome of this source: for a habitat biome the base
+	 * temperature shared by every vanilla forest it replaces, or NaN when they differ (the montane spruce forest replaces
+	 * the old growth spruce taiga, 0.25, and the snowy taiga, -0.5); for any other biome its own.
+	 */
+	public float replacedBase(Holder<Biome> biome) {
+		Map<Holder<Biome>, Float> m = replacedBases;
+		if (m == null) {
+			m = replacedBases(swaps());
+			replacedBases = m;
+		}
+		Float t = m.get(biome);
+		return t != null ? t : biome.value().getBaseTemperature();
+	}
+
+	/** For each replacement: the base temperature shared by the vanilla biomes it replaces, NaN when they differ. */
+	public static Map<Holder<Biome>, Float> replacedBases(Map<Holder<Biome>, Holder<Biome>> swaps) {
+		Map<Holder<Biome>, Float> m = new IdentityHashMap<>();
+		for (Map.Entry<Holder<Biome>, Holder<Biome>> e : swaps.entrySet()) {
+			float t = e.getKey().value().getBaseTemperature();
+			Float old = m.get(e.getValue());
+			m.put(e.getValue(), old == null || Float.floatToIntBits(old) == Float.floatToIntBits(t) ? t : Float.NaN);
+		}
+		return m;
 	}
 
 	/** The vanilla forests the source replaces (for the tests and the commands). */
