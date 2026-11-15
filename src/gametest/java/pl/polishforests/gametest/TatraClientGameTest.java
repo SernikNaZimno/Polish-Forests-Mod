@@ -81,7 +81,7 @@ import pl.polishforests.worldgen.surface.Material;
  * </ul>
  * Report: {@code build/tatra/report.txt} ({@code -Dpolishforests.tatra.out}); the test fails on a missing target, a top
  * block off the model, a column with a bedrock in the model without its rock block, a rock block without a bedrock, a
- * transect off the model, a summit out of range or a block above Y 720, and (TT3) on a belt share below KT-1 or a vanilla
+ * transect off the model (since the review of TT7, round 1, without the bank shelf columns next to fresh water), a summit out of range or a block above Y 720, and (TT3) on a belt share below KT-1 or a vanilla
  * log trunk deep in a Tatra forest.
  *
  * <p>Step TT5: in both scales ({@code -Pscales=realistic|gameplay}, both by default, the realistic first): a world of each
@@ -184,6 +184,26 @@ public final class TatraClientGameTest implements FabricClientGameTest {
 	 * higher than the model top by design, so the checks of the top against the model leave those columns out.
 	 */
 	private static final ConcurrentLinkedQueue<int[]> BOULDERS = new ConcurrentLinkedQueue<>();
+
+	/**
+	 * Review of TT7, round 1: the reach and the largest drop (blocks) of the bank shelf ramp ({@code BankShelf.RAMP} and
+	 * {@code BankShelf.MAX_DROP}, package-private there): a dry column within this Chebyshev distance of fresh model water
+	 * may be up to this many blocks lower than the model top on purpose.
+	 */
+	private static final int SHELF_DROP = 3;
+
+	/** Whether fresh model water (not the sea) lies within {@link #SHELF_DROP} columns (Chebyshev) of the column. */
+	private static boolean nearFreshWater(LandscapeModel m, int x, int z) {
+		for (int dx = -SHELF_DROP; dx <= SHELF_DROP; dx++) {
+			for (int dz = -SHELF_DROP; dz <= SHELF_DROP; dz++) {
+				ColumnSample s = m.sample(x + dx, z + dz);
+				if (s.hasWater() && s.waterKind() != pl.polishforests.worldgen.landscape.WaterKind.SEA) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
 
 	/** Whether a boulder of the details stands on the column (its footprint is the square of its radius). */
 	private static boolean underBoulder(int x, int z) {
@@ -579,6 +599,11 @@ public final class TatraClientGameTest implements FabricClientGameTest {
 		int off = 0;
 		/** Step TT5: off points outside the Tatras (the foreland of the realistic world: its micro-relief, reported). */
 		int offOutside = 0;
+		/**
+		 * Review of TT7, round 1: dry Tatra points lower than the model on the bank ramp of fresh model water (the shelf
+		 * lowers them on purpose; reported, not off).
+		 */
+		int shelf = 0;
 		int cut = 0;
 		double crest = Double.NEGATIVE_INFINITY;
 		double basin = Double.POSITIVE_INFINITY;
@@ -644,6 +669,9 @@ public final class TatraClientGameTest implements FabricClientGameTest {
 					} else if (gen != want && part == TatraPart.NONE) {
 						offOutside++;
 						wrong = true;
+					} else if (gen < want && want - gen <= SHELF_DROP && nearFreshWater(m, x, z)) {
+						shelf++;
+						wrong = true;
 					} else if (gen != want && !underBoulder(x, z)) {
 						off++;
 						wrong = true;
@@ -669,8 +697,8 @@ public final class TatraClientGameTest implements FabricClientGameTest {
 
 		void finish(ServerLevel level, List<String> report, List<String> failures) {
 			report.add(String.format(Locale.ROOT, "transect %s (u %.0f..%.0f m, v %.0f..%.0f m): %d dry points (%d in the Tatras), %d off the "
-					+ "model in the Tatras and %d outside them, %d cut lower with air at the model top (caves); highest top Y %d; crest %.0f m, basin floor %.0f m, drop %.0f m; slope between the points (blocks per block) "
-					+ "largest %.3f, mean %.3f; points by part %s", name, u0, u1, v0, v1, dry, dryTatra, off, offOutside, cut, top, crest, basin, crest - basin,
+					+ "model in the Tatras and %d outside them, %d lower on a bank shelf, %d cut lower with air at the model top (caves); highest top Y %d; crest %.0f m, basin floor %.0f m, drop %.0f m; slope between the points (blocks per block) "
+					+ "largest %.3f, mean %.3f; points by part %s", name, u0, u1, v0, v1, dry, dryTatra, off, offOutside, shelf, cut, top, crest, basin, crest - basin,
 					maxSlope, steps > 0 ? sumSlope / steps : 0, parts));
 			report.add("  profile (distance m: model m / generated top Y):" + profile);
 			// Step TT5: the share of the Tatra points; the foreland (part NONE) has its own tests (golden terrain, landscape) and

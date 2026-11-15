@@ -6041,7 +6041,18 @@ Poprawka (`TatraField`, `LandscapeModel`):
 
 **Przebiegi rundy:**
 
-PRZEBIEGI_RUNDY
+| Przebieg | Wynik |
+|---|---|
+| Klasy obszaru `tatra` i sąsiednie (`TatraReliefTest`, `TatraFormsTest`, `TatraIsolationTest`, `GoldenTatraTest`, `TatraSitesTest`, `PolishForestsCommandsTest`, `DetailPlansOnModelTest`, `GoldenTerrainTest`, `SlicePlotsTest`, `StonePineLimitTest`, `-PgoldenStrict`) | PASS (15 min 56 s); mediana kotliny GAMEPLAY 665–690 m (podniesienie 0), REAL 790–813 m (podniesienie 100–128 m); `golden_terrain_m2.txt` bez zmian |
+| `TatraRiverTest` (z nowym testem przełomów) | PASS; najostrzejszy stopień powierzchni z rzekami REAL 10,42, GAMEPLAY 11,35 (próg 12) |
+| `tools/dev/run-tests --reuse fastTest` | PASS (1241 s) |
+| `determinism` wobec referencji `8defa86` (wynik przebiegu etapu 2 TT7 na tym samym kodzie gry, `-PdeterminismStepZones`, `-PgametestStall=120`) | PASS (22 min 13 s): teren identyczny w 48 z 48 obszarów, dekoracja 0 różnic w każdej strefie (także „elsewhere”); obszar `tatra` leży w masywie, poza kotliną i przedgórzem |
+| `tools/dev/run-tests test` (pełny zestaw, przed poprawką gametestu) | PASS (2003 s) |
+| `tatra` obie skale, pierwszy przebieg | FAIL (41 min 16 s): REAL, przekrój −0,50: 2 z 49 suchych punktów Tatr poza modelem (próg 3%). Oba to kolumny rampy brzegowej (`BankShelf`): rzeka modelu 1–3 kolumny obok, grunt 1 i 2 bloki niżej niż model, celowo (sprawdzone na modelu). Jeden był już w TT7 (podnóże południowe), drugi przybył w kotlinie, bo rzeki kotliny biegną teraz inaczej |
+| `tatra` obie skale, drugi przebieg (gametest: kolumny rampy brzegowej, do 3 bloków niżej i do 3 kolumn od słodkiej wody modelu, liczone osobno, nie jako „poza modelem”) | **PASS** (41 min 9 s): punkty poza modelem w Tatrach REAL 0 we wszystkich przekrojach (na rampie 2 / 0 / 1), GAMEPLAY 0 / 1 / 0; łaty: wierzch poza modelem 0, otwarcia jaskiń REAL 21 z 1792 kolumn (łata `foreland` 0, było 167: przełom przesunął teren łaty), GAMEPLAY 41; cele `podhale` REAL 921 m n.p.m., `foreland_gorge` REAL 706 m, GAMEPLAY 651 m (w GAMEPLAY ten sam punkt co `tatra_foreland`, bo najbliższy punkt przedgórza leży teraz w przełomie) |
+| `determinism -Poptimization` (C2ME) wobec referencji tej rundy | FAIL jak w TT1–TT7 (znany limit J1-q, 14 min 44 s): teren różny w 34 z 48 obszarów, najwyżej 3259 bloków (jaskinie i akwifery), dekoracja najwyżej 14 091 kolumn; obszar `tatra` REAL 9 bloków w 9 kolumnach, GAMEPLAY 9 bloków w 8 kolumnach, tak jak w TT7; bez nowego mechanizmu |
+
+Pełny zestaw powtórzony po poprawce gametestu (`tools/dev/run-tests test`): PASS (1993 s). Gametest `tatra` nie był na liście `test_plan.py 8defa86` (początek rundy), był na liście `--end`. Na grę użytkownika czekano 0 min (gra nie działała przy żadnym sprawdzeniu).
 
 **Do sprawdzenia w grze (zmienione i nowe punkty rundy 1):**
 
