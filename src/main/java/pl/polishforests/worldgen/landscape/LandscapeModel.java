@@ -1741,7 +1741,8 @@ public final class LandscapeModel {
 
 	/**
 	 * Step TT1: the Tatra complex over the terrain {@code h} after {@link #shapeCoast} (the complex fades out before the
-	 * shore, so the coastal band never flattens it): h + weight · (height − h). With {@code o} the column is recorded and
+	 * shore, so the coastal band never flattens it): h + weight · (height − h), then (step TT7, review round 1) the cut of
+	 * a foreland gorge ({@link TatraField.Column#over}). With {@code o} the column is recorded and
 	 * the components of the old terrain are scaled down by the weight.
 	 */
 	private double tatraOver(double h, double x, double z, ReliefParts o) {
@@ -1759,7 +1760,7 @@ public final class LandscapeModel {
 			o.convexity *= 1 - c.weight;
 			o.massif = Math.max(o.massif, c.tatra);
 		}
-		return h + c.weight * (c.height(h) - h);
+		return c.over(h);
 	}
 
 	/** Regional fields O and P at a point, without a full sample (regional map preview and tests). */
@@ -1813,7 +1814,7 @@ public final class LandscapeModel {
 			// Step TT1: the Tatra complex over the shaped terrain (and over the raw height of the record).
 			double shaped = tatraOver(surface, x, z, parts);
 			if (parts.tatra != null) {
-				raw += parts.tatra.weight * (parts.tatra.height(raw) - raw);
+				raw = parts.tatra.over(raw);
 			}
 			surface = shaped;
 		}

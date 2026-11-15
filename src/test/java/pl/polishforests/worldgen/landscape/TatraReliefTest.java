@@ -23,7 +23,8 @@ import pl.polishforests.worldgen.chunk.VerticalScale;
  * highest summit is 2450–2530 m and below Y 720, nothing above the High Tatras.</li>
  * <li>{@link #partsHaveTheirHeights}: the crest of the Western Tatras 1900–2250 m, of the High Tatras 2300–2530 m, the
  * regle 1000–1500 m with a Giewont-type ridge up to about 1900 m, the Sub-Tatra Trough 800–1000 m, the foothills up to
- * 1000–1150 m, the Podhale basin 580–700 m.</li>
+ * 1000–1150 m, the Podhale basin 580–700 m (step TT7, review round 1: without the raise of the basin of a complex with a
+ * foreland, at most 140 m).</li>
  * <li>{@link #forelandRidgeHasItsHeights}: step TT7, the foreland ridge north of the basin 1000–1300 m, falling to the
  * lowland.</li>
  * <li>{@link #uValleysHaveFlatFloors}: the cross profile of the U-shaped valleys: a flat floor (the floor width at 10% of
@@ -177,8 +178,13 @@ class TatraReliefTest {
 				assertTrue(percentile(trough, 0.5) >= 800 && percentile(trough, 0.5) <= 1_000, l + ": trough median");
 				List<Double> hills = heights.getOrDefault(TatraPart.GUBALOWKA_FOOTHILLS, List.of());
 				assertTrue(percentile(hills, 1) >= 1_000 && percentile(hills, 1) <= 1_150, l + ": foothills top");
+				// Step TT7, review round 1 (TT7-r): the basin of a complex with a foreland is raised so that its gorges drain to
+				// their outlets (in the realistic scale over the old Beskid upland, 75–130 m); the median without the raise.
 				List<Double> basin = heights.getOrDefault(TatraPart.PODHALE_BASIN, List.of());
-				assertTrue(percentile(basin, 0.5) >= 580 && percentile(basin, 0.5) <= 700, l + ": basin median");
+				double raise = m.tatraField().column(t.anchorX(), t.anchorZ()).massif.basinRaise();
+				System.out.printf(Locale.ROOT, "   basin median %.0f m, raise %.0f m%n", percentile(basin, 0.5), raise);
+				assertTrue(raise <= 140, l + ": basin raise " + raise);
+				assertTrue(percentile(basin, 0.5) - raise >= 580 && percentile(basin, 0.5) - raise <= 700, l + ": basin median");
 			}
 		}
 	}

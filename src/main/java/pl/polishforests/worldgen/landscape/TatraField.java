@@ -83,15 +83,40 @@ final class TatraField {
 	/**
 	 * Step TT7: the gorges of the basin rivers through the foreland: half width of the floor, width of the walls, the reach
 	 * of the cut into the basin before the mouth and the meander of the gorge axis (real m); the floor at the mouth lies
-	 * {@value #GORGE_MOUTH_DEPTH} m under the basin floor and falls along the gorge to {@value #GORGE_FOOT_DEPTH} m under
-	 * the outer foot.
+	 * {@value #GORGE_MOUTH_DEPTH} m under the basin floor and falls along the gorge to its outlet ({@link #OUTLET_MIN}).
 	 */
 	static final double GORGE_FLOOR = 350;
 	static final double GORGE_WALL = 1_400;
 	static final double GORGE_MOUTH = 900;
 	static final double GORGE_MEANDER = 450;
 	static final double GORGE_MOUTH_DEPTH = 12;
-	static final double GORGE_FOOT_DEPTH = 15;
+	/** Step TT7: the floor of a closed basin (m) with the amplitudes of its noise and hills. */
+	static final double BASIN_FLOOR = 612;
+	static final double BASIN_FLOOR_NOISE = 12;
+	static final double BASIN_FLOOR_HILLS = 3;
+	/** Step TT7, review round 1: the lowest floor of a gorge at its mouth (m) before the raise of the basin. */
+	static final double MOUTH_FLOOR_MIN = BASIN_FLOOR - BASIN_FLOOR_NOISE - BASIN_FLOOR_HILLS - GORGE_MOUTH_DEPTH;
+	/**
+	 * Step TT7, review round 1 (TT7-r): the outlet of a gorge, where its floor meets the terrain beyond the foreland (the
+	 * outer slope, or the old terrain of the realistic Beskids, which the outer side of the foreland never lies below).
+	 * Searched at placement along the gorge from {@code OUTLET_MIN} to {@code OUTLET_MAX} past the basin edge in steps of
+	 * {@code OUTLET_STEP} (real m): the first point where the lowest terrain across the gorge floor lies at least
+	 * {@code OUTLET_DROP} m plus {@code OUTLET_GRADE} per model meter of the way under the gorge mouth, and no point further
+	 * on (to {@code OUTLET_MAX}, where the weight of the complex is below 0.5) lies more than {@code OUTLET_RISE} m higher
+	 * (the outlet is open: in the realistic scale the gorge goes on through the old ridges beyond a hollow of the old
+	 * terrain instead of ending in it). The gorges are placed
+	 * where that outlet asks the least of the mouth, and where no outlet lies low enough, the whole basin of the complex is
+	 * raised ({@link Massif#basinRaise}). The floor falls linearly from the mouth to the outlet and is cut into the blended
+	 * terrain ({@link Column#over}), so the gorge stays open through the northern fade; past the outlet the cut fades over
+	 * {@code OUTLET_FADE}.
+	 */
+	static final double OUTLET_MIN = FL_RISE + FL_CREST + 0.25 * FL_OUTER;
+	static final double OUTLET_MAX = FORELAND + 0.7 * TatraField.FADE_NORTH;
+	static final double OUTLET_STEP = 500;
+	static final double OUTLET_FADE = 1_000;
+	static final double OUTLET_DROP = 20;
+	static final double OUTLET_GRADE = 0.002;
+	static final double OUTLET_RISE = 5;
 	/** Step TT7: the floor of a closed basin rises away from its gorges (m at one half length of the massif). */
 	static final double BASIN_TILT = 68;
 	/**
@@ -199,12 +224,15 @@ final class TatraField {
 	/**
 	 * Tatra massif of one grid cell. Step TT7: {@code foreland} whether the complex has the foreland north of its basin
 	 * (every complex whose foreland keeps clear of the large Beskid massifs), {@code gorgeA} and {@code gorgeB} the along
-	 * coordinates (m from the middle of the massif) of the gorges of the basin rivers through it (NaN: none).
+	 * coordinates (m from the middle of the massif) of the gorges of the basin rivers through it (NaN: none); review round
+	 * 1 (TT7-r): {@code outA}, {@code outB} the distance of their outlets past the nominal basin edge (m) with the floor
+	 * {@code floorA}, {@code floorB} there (m), and {@code basinRaise} the rise of the basin floor (m) that lets the lower
+	 * gorge drain to its outlet.
 	 */
 	record Massif(long i, long j, double anchorX, double anchorZ, double x, double z, double cos, double sin,
 			double halfLength, double wn, double ws, double summit, double west, double spacing, double phaseN,
 			double phaseS, double peakT, double giewontT, double reach, boolean coastal, boolean foreland, double gorgeA,
-			double gorgeB) {
+			double gorgeB, double outA, double floorA, double outB, double floorB, double basinRaise) {
 		/** Step TT7: distance along the range from the nearest gorge of the foreland (m; infinite without one). */
 		double gorgeDistance(double v) {
 			double d = Double.POSITIVE_INFINITY;
@@ -238,7 +266,7 @@ final class TatraField {
 	}
 
 	private static final Massif NONE = new Massif(0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, false, false,
-			Double.NaN, Double.NaN);
+			Double.NaN, Double.NaN, Double.NaN, Double.NaN, Double.NaN, Double.NaN, 0);
 
 	/** Result of the field in a column ({@link #column}); null outside every complex. */
 	static final class Column {
@@ -258,6 +286,27 @@ final class TatraField {
 		 */
 		double height(double old) {
 			return outer > 0 && old > height ? height + outer * (old - height) : height;
+		}
+
+		/**
+		 * Step TT7, review round 1 (TT7-r): the floor of a foreland gorge at the column (m), the strength 0–1 of its cut,
+		 * which works after the blend, so the gorge stays open where the weight of the complex fades (0: no gorge), and the
+		 * strength 0–1 with which a hollow of the old terrain under the floor is filled up to it before the outlet (no pit
+		 * in the gorge floor).
+		 */
+		double gorgeFloor = Double.NaN;
+		double gorgeCut;
+		double gorgeFill;
+
+		/** The terrain {@code old} with the complex over it: blended by {@link #weight}, then cut (and filled) by a gorge. */
+		double over(double old) {
+			double b = old + weight * (height(old) - old);
+			if (gorgeCut > 0 && b > gorgeFloor) {
+				b = gorgeFloor + (b - gorgeFloor) * (1 - gorgeCut);
+			} else if (gorgeFill > 0 && b < gorgeFloor) {
+				b = gorgeFloor + (b - gorgeFloor) * (1 - gorgeFill);
+			}
+			return b;
 		}
 
 		/** Weights of the types: TATRA and PODHALE, and (step TT7) BESKIDS on the foreland (sum = weight). */
@@ -450,7 +499,8 @@ final class TatraField {
 		double south = ws + (FADE_SOUTH1 + EDGE + BOW + RIDGE_WARP) * k;
 		double reach = Math.hypot(along, Math.max(north, south));
 		Massif m = new Massif(i, j, ax, az, cx, cz, cos, sin, half, wn, ws, summit, west, d, place.unit(i, j, 9),
-				place.unit(i, j, 10), peakT, giewontT, reach, false, false, Double.NaN, Double.NaN);
+				place.unit(i, j, 10), peakT, giewontT, reach, false, false, Double.NaN, Double.NaN, Double.NaN, Double.NaN, Double.NaN,
+				Double.NaN, 0);
 		// The massif itself (main ridge to its feet) keeps clear of the shore; the trough, Podhale and the fades may come
 		// nearer and then fade out towards it (column: the coast fade).
 		if (minCoast(m, half, wn, ws) < (COAST_FADE1 + 500) * k) {
@@ -465,21 +515,129 @@ final class TatraField {
 		double northF = north + FORELAND * k;
 		double reachF = Math.hypot(along, Math.max(northF, south));
 		boolean foreland = clearOfGreatMassifs(m, reachF, along, northF, south);
-		double gorgeA = Double.NaN;
-		double gorgeB = Double.NaN;
 		if (foreland) {
 			coastal |= minCoast(m, along, northF, south) < (COAST_FADE1 + 10_000) * k;
 			reach = reachF;
-			// One or two gorges in the middle of the foreland (the basin drains through them, BASIN_TILT).
-			if (place.unit(i, j, 13) < 0.5) {
-				gorgeA = half * (-0.5 + 0.3 * place.unit(i, j, 14));
-				gorgeB = half * (0.2 + 0.3 * place.unit(i, j, 15));
-			} else {
-				gorgeA = half * (-0.3 + 0.6 * place.unit(i, j, 14));
+		}
+		m = new Massif(i, j, ax, az, cx, cz, cos, sin, half, wn, ws, summit, west, d, place.unit(i, j, 9),
+				place.unit(i, j, 10), peakT, giewontT, reach, coastal, foreland, Double.NaN, Double.NaN, Double.NaN, Double.NaN,
+				Double.NaN, Double.NaN, 0);
+		return foreland ? withGorges(m) : m;
+	}
+
+	/**
+	 * Step TT7, review round 1 (TT7-r): the complex {@code m} (with the foreland, still without gorges) with one or two
+	 * gorges and their outlets ({@link #OUTLET_MIN}). The candidates lie every 5% of the half length in the middle of the
+	 * foreland (±50%); a candidate asks of the mouth the lowest floor of its outlets over the search. With two gorges
+	 * (drawn from the cell seed, as in stage 1) the best candidate of each outer part (beyond ±15%) is taken, the second
+	 * only when it drains without a further raise of the basin. The search runs once per complex (the massifs are cached
+	 * per grid cell) and reads only the old terrain and the complex itself.
+	 */
+	private Massif withGorges(Massif m) {
+		double k = this.k;
+		double half = m.halfLength();
+		int nv = 21;
+		int nd = (int) Math.floor((OUTLET_MAX - OUTLET_MIN) / OUTLET_STEP) + 1;
+		double[] req = new double[nv];
+		List<List<double[]>> outlets = new ArrayList<>();
+		for (int q = 0; q < nv; q++) {
+			double g = half * (-0.5 + 0.05 * q);
+			double u0 = gorgeMouthU(m, g);
+			double[] pass = new double[nd];
+			for (int s = 0; s < nd; s++) {
+				pass[s] = passHeight(m, u0 + (OUTLET_MIN + s * OUTLET_STEP) * k, g);
+			}
+			// The outlets {distance, floor} of the candidate: the open points of the terrain.
+			List<double[]> out = new ArrayList<>();
+			double ahead = Double.NEGATIVE_INFINITY;
+			for (int s = nd - 1; s >= 0; s--) {
+				if (pass[s] + OUTLET_RISE >= ahead) {
+					out.add(new double[] {(OUTLET_MIN + s * OUTLET_STEP) * k, pass[s]});
+				}
+				ahead = Math.max(ahead, pass[s]);
+			}
+			out.sort((p, o) -> Double.compare(p[0], o[0]));
+			outlets.add(out);
+			req[q] = Double.POSITIVE_INFINITY;
+			for (double[] o : out) {
+				req[q] = Math.min(req[q], o[1] + outletDrop(o[0]));
 			}
 		}
-		return new Massif(i, j, ax, az, cx, cz, cos, sin, half, wn, ws, summit, west, d, place.unit(i, j, 9),
-				place.unit(i, j, 10), peakT, giewontT, reach, coastal, foreland, gorgeA, gorgeB);
+		int qa;
+		int qb = -1;
+		if (place.unit(m.i(), m.j(), 13) < 0.5) {
+			qa = best(req, 0, 7);
+			qb = best(req, 13, 20);
+			if (req[qb] < req[qa]) {
+				int t = qa;
+				qa = qb;
+				qb = t;
+			}
+		} else {
+			qa = best(req, 0, nv - 1);
+		}
+		double mouth = Math.max(MOUTH_FLOOR_MIN, req[qa]);
+		if (qb >= 0 && req[qb] > mouth) {
+			qb = -1;
+		}
+		double[] a = outlet(outlets.get(qa), mouth);
+		double[] b = qb < 0 ? new double[] {Double.NaN, Double.NaN} : outlet(outlets.get(qb), mouth);
+		return new Massif(m.i(), m.j(), m.anchorX(), m.anchorZ(), m.x(), m.z(), m.cos(), m.sin(), half, m.wn(), m.ws(),
+				m.summit(), m.west(), m.spacing(), m.phaseN(), m.phaseS(), m.peakT(), m.giewontT(), m.reach(), m.coastal(), true,
+				half * (-0.5 + 0.05 * qa), qb < 0 ? Double.NaN : half * (-0.5 + 0.05 * qb), a[0], a[1], b[0], b[1],
+				mouth - MOUTH_FLOOR_MIN);
+	}
+
+	/** Index of the lowest value in {@code a[from..to]} (the first on a tie). */
+	private static int best(double[] a, int from, int to) {
+		int b = from;
+		for (int q = from + 1; q <= to; q++) {
+			if (a[q] < a[b]) {
+				b = q;
+			}
+		}
+		return b;
+	}
+
+	/** Step TT7, review round 1: the nearest outlet {distance, floor} of a gorge (sorted by distance) under its mouth floor. */
+	private double[] outlet(List<double[]> outlets, double mouth) {
+		for (double[] o : outlets) {
+			if (o[1] + outletDrop(o[0]) <= mouth + 1e-9) {
+				return o;
+			}
+		}
+		throw new IllegalStateException("no outlet under the gorge mouth");
+	}
+
+	/** Step TT7, review round 1: the least fall of a gorge floor from its mouth to an outlet {@code d} m past the basin edge. */
+	private double outletDrop(double d) {
+		return OUTLET_DROP + OUTLET_GRADE * d / k;
+	}
+
+	/** Step TT7, review round 1: the u of the nominal basin edge at the gorge {@code g} (the bow without its warp). */
+	double gorgeMouthU(Massif m, double g) {
+		double sv = g / m.halfLength();
+		return m.wn() + (TROUGH + FOOTHILLS + SLOPE + BASIN) * k + BOW * k * (1 - Math.min(1.0, sv * sv));
+	}
+
+	/**
+	 * Step TT7, review round 1: the lowest terrain (the complex blended over the old terrain, without gorges) across the
+	 * floor of the gorge {@code g} at {@code u}: five points over the floor width around the meandering axis.
+	 */
+	private double passHeight(Massif m, double u, double g) {
+		double v = g;
+		for (int r = 0; r < 3; r++) {
+			v = g - GORGE_MEANDER * k * foreland.at(m.worldX(u, v) + 7_171, m.worldZ(u, v) - 8_181, 4_000 * k);
+		}
+		double low = Double.POSITIVE_INFINITY;
+		for (int q = -2; q <= 2; q++) {
+			double x = m.worldX(u, v + 0.5 * q * GORGE_FLOOR * k);
+			double z = m.worldZ(u, v + 0.5 * q * GORGE_FLOOR * k);
+			double old = model.landElevationBase(x, z);
+			Column c = column(m, x, z);
+			low = Math.min(low, c == null ? old : c.over(old));
+		}
+		return low;
 	}
 
 	/**
@@ -643,9 +801,11 @@ final class TatraField {
 	/** The column of the complex at (x, z), or null outside every complex. */
 	Column column(double x, double z) {
 		Massif m = at(x, z);
-		if (m == null) {
-			return null;
-		}
+		return m == null ? null : column(m, x, z);
+	}
+
+	/** The column of the complex {@code m} at (x, z), or null where its weight is 0. */
+	private Column column(Massif m, double x, double z) {
 		double k = this.k;
 		double u0 = m.u(x, z);
 		double v = m.v(x, z);
@@ -686,7 +846,7 @@ final class TatraField {
 			double foot = Noise.lerp(sideN, footS + 35 * hills, footN + 20 * hills);
 			h = massifHeight(m, c, x, z, v, t, un, north, foot, ms, tg);
 		} else if (north) {
-			h = northProfile(m, c, x, z, u, v, footN, hills, basinEdge, edge);
+			h = northProfile(m, c, x, z, u0, u, v, footN, hills, basinEdge, edge);
 		} else {
 			h = footS + (720 - footS) * Noise.smoothstep(m.ws(), m.ws() + FADE_SOUTH1 * k, -u) + 35 * hills;
 			c.part = TatraPart.SOUTH_FOOT;
@@ -960,15 +1120,15 @@ final class TatraField {
 	 * North of the massif: the trough, the Gubałówka-type foothills, the slope and the basin; step TT7: with the foreland
 	 * the basin floor rises away from the gorges ({@link #BASIN_TILT}) and the foreland closes it from the north.
 	 */
-	private double northProfile(Massif m, Column c, double x, double z, double u, double v, double footN, double hills,
-			double basinEdge, double edge) {
+	private double northProfile(Massif m, Column c, double x, double z, double u0, double u, double v, double footN,
+			double hills, double basinEdge, double edge) {
 		double k = this.k;
 		double a = u - m.wn();
 		double basin;
 		if (m.foreland()) {
 			double tilt = BASIN_TILT * Math.min(1.0, m.gorgeDistance(v) / m.halfLength())
 					+ BASIN_TILT_NORTH * Math.clamp((basinEdge - u) / (BASIN * k), 0.0, 1.0);
-			basin = basinFloor(x, z, hills) + tilt;
+			basin = basinFloor(x, z, hills) + m.basinRaise() + tilt;
 		} else {
 			basin = 640 + 45 * relief.at(x + 1_111, z + 2_222, 30_000 * k) + 8 * hills;
 		}
@@ -991,7 +1151,7 @@ final class TatraField {
 			c.part = TatraPart.PODHALE_BASIN;
 		}
 		if (m.foreland()) {
-			h = foreland(m, c, x, z, v, forelandA(u, basinEdge, edge), basin, h, hills);
+			h = foreland(m, c, x, z, u0, v, forelandA(u, basinEdge, edge), basin, h, hills);
 		}
 		return h;
 	}
@@ -1003,17 +1163,20 @@ final class TatraField {
 
 	/** Step TT7: the floor of a closed basin without its tilt (m). */
 	private double basinFloor(double x, double z, double hills) {
-		return 612 + 12 * relief.at(x + 1_111, z + 2_222, 30_000 * k) + 3 * hills;
+		return BASIN_FLOOR + BASIN_FLOOR_NOISE * relief.at(x + 1_111, z + 2_222, 30_000 * k) + BASIN_FLOOR_HILLS * hills;
 	}
 
 	/**
 	 * Step TT7 (TT1-t, variant b): the foreland north of the basin at the distance {@code a} past its edge, over the height
 	 * {@code h} of the basin profile: a flysch ridge of the Gorce type (crest 1000–1300 m with knobs) rising from the basin,
 	 * an outer slope down to its foot at about 480 m and beyond it a further gentle fall over the northern fade; the gorges
-	 * of the basin rivers cut through it with a floor falling monotonically from under the basin floor to under the outer
-	 * foot (the river network routes the basin through them; TT1 rules for the levels and the incision).
+	 * of the basin rivers cut through it with a floor falling monotonically from under the basin floor to their outlets
+	 * (review round 1, TT7-r: {@link #OUTLET_MIN}; the cut is recorded in the column and works after the blend, so it goes
+	 * on through the northern fade; the river network routes the basin through the gorges, TT1 rules for the levels and
+	 * the incision).
 	 */
-	private double foreland(Massif m, Column c, double x, double z, double v, double a, double basin, double h, double hills) {
+	private double foreland(Massif m, Column c, double x, double z, double u0, double v, double a, double basin, double h,
+			double hills) {
 		double k = this.k;
 		double rise = FL_RISE * k;
 		double crestEnd = (FL_RISE + FL_CREST) * k;
@@ -1042,19 +1205,24 @@ final class TatraField {
 			}
 			c.profile = p;
 		}
-		// The gorges: the cut fades in over GORGE_MOUTH before the basin edge and continues over the fade as a valley.
+		// The gorges: the cut fades in over GORGE_MOUTH before the basin edge, its floor falls linearly from the mouth to the
+		// outlet of the gorge (a straight distance d past the nominal basin edge, as in the search) and the cut fades out
+		// past the outlet (review round 1, TT7-r).
 		double mouth = GORGE_MOUTH * k;
-		if (a > -mouth) {
-			double floor0 = basinFloor(x, z, hills) - GORGE_MOUTH_DEPTH;
-			double drop = Math.max(0, floor0 - (foot - GORGE_FOOT_DEPTH));
-			double floor = floor0 - drop * Math.clamp(a / end, 0.0, 1.0) - FL_TAIL * Noise.smoothstep(end, end + FADE_NORTH * k, a);
-			double gs = Noise.smoothstep(-mouth, 0, a);
-			double meander = GORGE_MEANDER * k * foreland.at(x + 7_171, z - 8_181, 4_000 * k);
-			double s = m.gorgeDistance(v + meander);
-			double wall = Noise.smoothstep(GORGE_FLOOR * k, (GORGE_FLOOR + GORGE_WALL) * k, s);
+		if (a > -mouth && !Double.isNaN(m.gorgeA())) {
+			double sv = v + GORGE_MEANDER * k * foreland.at(x + 7_171, z - 8_181, 4_000 * k);
+			double sa = Math.abs(sv - m.gorgeA());
+			double sb = Double.isNaN(m.gorgeB()) ? Double.POSITIVE_INFINITY : Math.abs(sv - m.gorgeB());
+			boolean second = sb < sa;
+			double wall = Noise.smoothstep(GORGE_FLOOR * k, (GORGE_FLOOR + GORGE_WALL) * k, Math.min(sa, sb));
 			if (wall < 1) {
-				double cut = Math.min(fh, floor + (fh - floor) * wall);
-				fh -= (fh - cut) * gs;
+				double out = second ? m.outB() : m.outA();
+				double floorOut = second ? m.floorB() : m.floorA();
+				double d = u0 - gorgeMouthU(m, second ? m.gorgeB() : m.gorgeA());
+				double floor0 = basinFloor(x, z, hills) + m.basinRaise() - GORGE_MOUTH_DEPTH;
+				c.gorgeFloor = floor0 - (floor0 - floorOut) * Math.clamp(d / out, 0.0, 1.0);
+				c.gorgeCut = Noise.smoothstep(-mouth, 0, a) * (1 - wall) * (1 - Noise.smoothstep(out, out + OUTLET_FADE * k, d));
+				c.gorgeFill = Noise.smoothstep(0, mouth, a) * (1 - wall) * (1 - Noise.smoothstep(out - OUTLET_FADE * k, out, d));
 				if (a > 0) {
 					c.profile *= wall;
 				}

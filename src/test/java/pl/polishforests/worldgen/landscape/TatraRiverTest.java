@@ -22,7 +22,8 @@ import org.junit.jupiter.params.provider.MethodSource;
  * <li>no water in a discontinuity: the largest height step 0.5 m apart of the surface with the rivers stays at most
  * {@value #MAX_STEP} per m over the whole complex (the old mountains with their rivers reach 8.8–9.7; the defects found in
  * stage 2 of TT1 were kettle pits of 80, tunnel lake pits of 16 and stream levees of 36 per m), and the water
- * surface of neighboring wet columns 0.5 m apart differs by at most {@value #MAX_WATER_STEP} m.</li>
+ * surface of neighboring wet columns 0.5 m apart differs by at most {@value #MAX_WATER_STEP} m;</li>
+ * <li>step TT7, review round 1 (TT7-r): the gorges of the foreland drain the basin ({@link #forelandGorgesDrainTheBasin}).</li>
  * </ul>
  */
 class TatraRiverTest {
@@ -36,6 +37,10 @@ class TatraRiverTest {
 	private static final double INNER_CORE = 0.4;
 	/** Largest step of the water surface between wet neighbors 0.5 m apart (m). */
 	private static final int MAX_WATER_STEP = 2;
+	/** Step TT7, review round 1: largest rise of a gorge floor over its lowest point upstream (m). */
+	private static final double MAX_GORGE_RISE = 10;
+	/** Step TT7, review round 1: least share of the way along a gorge with a channel in it. */
+	private static final double MIN_GORGE_RIVER = 0.8;
 
 	private static boolean inChannel(ColumnSample s) {
 		ColumnSample.Waters w = s.waters();
@@ -176,5 +181,90 @@ class TatraRiverTest {
 			out[2] += a[2];
 		}
 		return out;
+	}
+
+	/**
+	 * Step TT7, review round 1 (TT7-r): every gorge of a foreland drains the basin. Along the gorge from its mouth (the
+	 * nominal basin edge, {@link TatraField#gorgeMouthU}) to the end of its cut past the outlet ({@link
+	 * TatraField#OUTLET_FADE}) or to where the weight of the complex falls below 0.5, whichever comes first (in the realistic
+	 * scale the outlets lie beyond that weight, in the gameplay scale on the outer slope, which falls on to the lowland), in
+	 * steps of 100 m (times the mountain spacing), the floor (the lowest land across the gorge floor with its meander, before
+	 * the rivers) never rises more than {@value #MAX_GORGE_RISE} m over its lowest point upstream, past the outlet over the
+	 * lowest point up to the outlet (the terrain beyond it may hold hollows under the outlet; stage 1 of TT7 rose 175 m
+	 * in one gameplay gorge and 274–393 m in every realistic one, where the outer side of the foreland was raised to the old
+	 * Beskids), and a channel lies in the gorge on at least {@value #MIN_GORGE_RIVER} of the way.
+	 */
+	@ParameterizedTest
+	@MethodSource("pl.polishforests.worldgen.landscape.TatraSurvey#scales")
+	void forelandGorgesDrainTheBasin(LandscapeScale sc) {
+		double k = sc.mountainSpacing();
+		double half = (TatraField.GORGE_FLOOR + TatraField.GORGE_MEANDER) * k;
+		int gorges = 0;
+		for (long seed : TatraSurvey.SEEDS) {
+			LandscapeModel m = TatraSurvey.with(sc, seed);
+			TatraField f = m.tatraField();
+			for (LandscapeModel.Tatra t : TatraSurvey.nearest(sc, seed, MASSIFS)) {
+				TatraField.Massif ms = f.column(t.anchorX(), t.anchorZ()).massif;
+				for (double g : new double[] {ms.gorgeA(), ms.gorgeB()}) {
+					if (Double.isNaN(g)) {
+						continue;
+					}
+					gorges++;
+					double u0 = f.gorgeMouthU(ms, g);
+					double low = Double.POSITIVE_INFINITY;
+					double rise = 0;
+					double riseAt = 0;
+					int steps = 0;
+					int river = 0;
+					double out = g == ms.gorgeA() ? ms.outA() : ms.outB();
+					double d = 0;
+					for (; d <= out + TatraField.OUTLET_FADE * k; d += 100 * k) {
+						double floor = Double.POSITIVE_INFINITY;
+						double fv = g;
+						boolean channel = false;
+						for (double dv = -half; dv <= half; dv += 25 * k) {
+							double x = ms.worldX(u0 + d, g + dv);
+							double z = ms.worldZ(u0 + d, g + dv);
+							double h = m.landElevation(x, z);
+							if (h < floor) {
+								floor = h;
+								fv = g + dv;
+							}
+							if (!channel && Math.round(dv / (25 * k)) % 2 == 0) {
+								channel = inChannel(m.sample(x, z), 50 * k);
+							}
+						}
+						TatraField.Column c = f.column(ms.worldX(u0 + d, fv), ms.worldZ(u0 + d, fv));
+						if (c == null || c.weight < 0.5) {
+							break;
+						}
+						if (floor - low > rise) {
+							rise = floor - low;
+							riseAt = d;
+						}
+						if (d <= out) {
+							low = Math.min(low, floor);
+						}
+						steps++;
+						river += channel ? 1 : 0;
+					}
+					String l = String.format(Locale.ROOT, "%s gorge %.0f (outlet %.0f m, floor %.0f m, basin raise %.0f m)",
+							TatraSurvey.label(sc, seed, t), g, g == ms.gorgeA() ? ms.outA() : ms.outB(),
+							g == ms.gorgeA() ? ms.floorA() : ms.floorB(), ms.basinRaise());
+					System.out.printf(Locale.ROOT, "%s: %.0f m to the end of the cut or w < 0.5, floor %.0f m there, largest rise %.1f m at %.0f m, channel %d of %d%n",
+							l, d, low, rise, riseAt, river, steps);
+					assertTrue(steps >= 20, l + ": gorge of " + steps + " steps");
+					assertTrue(rise <= MAX_GORGE_RISE, l + ": the floor rises " + rise + " m at " + riseAt + " m");
+					assertTrue(river >= MIN_GORGE_RIVER * steps, l + ": a channel on " + river + " of " + steps + " steps");
+				}
+			}
+		}
+		assertTrue(gorges >= 4, sc.id() + ": " + gorges + " gorges");
+	}
+
+	/** Step TT7, review round 1: whether the column lies in a channel or within {@code margin} m of one. */
+	private static boolean inChannel(ColumnSample s, double margin) {
+		ColumnSample.Waters w = s.waters();
+		return w.streamOrder() > 0 && w.channelDist() <= 0.5 * w.channelWidth() + margin;
 	}
 }
