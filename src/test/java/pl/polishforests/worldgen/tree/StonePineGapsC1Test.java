@@ -75,6 +75,36 @@ class StonePineGapsC1Test {
 	}
 
 	@Test
+	void rockOutcropsOfAGapsSizeLeaveThePlot() {
+		// Stage 2 of C1: a group of at least GAP_MIN_AREA rock columns is an outcrop (non-forest ground that ends a gap); a
+		// smaller group, a boulder, or rock touching only by a corner is not.
+		pl.polishforests.worldgen.norms.CensusGrid g = new pl.polishforests.worldgen.norms.CensusGrid(0, 0, 30, 30, 4);
+		for (int x = 0; x < 30; x++) {
+			for (int z = 0; z < 30; z++) {
+				g.setGround(x, z, 100, "polishforests:mossy_podzol");
+			}
+		}
+		int min = pl.polishforests.worldgen.norms.ForestCensus.GAP_MIN_AREA;
+		for (int i = 0; i < min; i++) {
+			g.setGround(i % 10, i / 10, 100, i % 2 == 0 ? "polishforests:tatra_granite" : "polishforests:granite_scree");
+		}
+		for (int i = 0; i < min - 1; i++) {
+			g.setGround(15 + i % 10, 15 + i / 10, 100, "polishforests:gneiss");
+		}
+		g.setGround(29, 29, 100, "minecraft:stone").setGround(28, 28, 100, "minecraft:stone");
+		boolean[] out = pl.polishforests.worldgen.norms.ForestCensus.rockOutcrops(g,
+				pl.polishforests.worldgen.norms.ForestNorms.ROCK_GROUND, min);
+		int count = 0;
+		for (boolean b : out) {
+			count += b ? 1 : 0;
+		}
+		assertEquals(min, count);
+		assertTrue(out[g.column(0, 0)] && out[g.column(9, 4)]);
+		assertTrue(!out[g.column(15, 15)] && !out[g.column(29, 29)]);
+		assertTrue(!pl.polishforests.worldgen.norms.ForestNorms.ROCK_GROUND.contains("polishforests:rendzina"));
+	}
+
+	@Test
 	void plannedOpenShareGrows() {
 		ForestStandMap world = new ForestStandMap(SEED, 1, 0.85);
 		int side = 1_536;

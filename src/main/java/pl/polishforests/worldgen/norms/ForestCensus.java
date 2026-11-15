@@ -249,6 +249,52 @@ public final class ForestCensus {
 
 	// ------------------------------------------------------------------ areas
 
+	/**
+	 * Step C1 (stage 2): the columns of the rock outcrops of the grid, groups of columns touching by a side whose ground block
+	 * is one of {@code rock}, of at least {@code minSize} columns (a single rock column or a boulder is not an outcrop).
+	 */
+	public static boolean[] rockOutcrops(CensusGrid grid, Set<String> rock, int minSize) {
+		int n = grid.sizeX() * grid.sizeZ();
+		boolean[] isRock = new boolean[n];
+		for (int c = 0; c < n; c++) {
+			String b = grid.groundBlockAt(c);
+			isRock[c] = b != null && rock.contains(b);
+		}
+		boolean[] out = new boolean[n];
+		boolean[] seen = new boolean[n];
+		int[] queue = new int[n];
+		int[][] sides = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+		for (int c = 0; c < n; c++) {
+			if (!isRock[c] || seen[c]) {
+				continue;
+			}
+			int head = 0;
+			int tail = 0;
+			queue[tail++] = c;
+			seen[c] = true;
+			while (head < tail) {
+				int a = queue[head++];
+				for (int[] sd : sides) {
+					int bx = grid.columnX(a) + sd[0];
+					int bz = grid.columnZ(a) + sd[1];
+					if (grid.contains(bx, bz)) {
+						int b = grid.column(bx, bz);
+						if (isRock[b] && !seen[b]) {
+							seen[b] = true;
+							queue[tail++] = b;
+						}
+					}
+				}
+			}
+			if (tail >= minSize) {
+				for (int k = 0; k < tail; k++) {
+					out[queue[k]] = true;
+				}
+			}
+		}
+		return out;
+	}
+
 	/** The columns of a rectangle of the grid (world coordinates; parts outside the grid are left out). */
 	public static boolean[] rectangle(CensusGrid grid, int minX, int minZ, int sizeX, int sizeZ) {
 		boolean[] area = new boolean[grid.sizeX() * grid.sizeZ()];

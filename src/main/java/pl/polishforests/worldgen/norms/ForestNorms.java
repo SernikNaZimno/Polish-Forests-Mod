@@ -915,7 +915,8 @@ public final class ForestNorms {
 	 * a fine mosaic over a quarter to a third of every square of the series, and the outlet brooks of the tarns (TT7) cross
 	 * it, so with them as edges almost no gap of the stand map could count (N5 about 2-3% for any gap profile, simulated
 	 * on the masks of the two plots of the gameplay scale; docs/04 "Projekt C1"). These columns stay outside the plot but
-	 * end no gap; every other non-forest column does, as everywhere.
+	 * end no gap; every other non-forest column does, as everywhere. Stage 2 of C1: the rock outcrops of such a plot
+	 * ({@link #ROCK_GROUND}, {@link ForestCensus#rockOutcrops}) leave it and end a gap as well.
 	 */
 	public static boolean breaksStonePineGap(int code) {
 		pl.polishforests.worldgen.habitat.HabitatBiome b = pl.polishforests.worldgen.habitat.Habitat.biome(code);
@@ -926,6 +927,17 @@ public final class ForestNorms {
 		return b.group() != pl.polishforests.worldgen.habitat.HabitatBiome.Group.FOREST
 				|| z != pl.polishforests.worldgen.habitat.Zone.NONE && z != pl.polishforests.worldgen.habitat.Zone.TIMBERLINE;
 	}
+
+	/**
+	 * Step C1 (stage 2): the ground blocks of a rock outcrop in a plot of the spruce-stone pine forest: bare rock of the
+	 * Tatras and of vanilla, and the Tatra scree. A group of at least {@link ForestCensus#GAP_MIN_AREA} such columns is
+	 * non-forest ground like a meadow (the forest of the granite slopes has outcrops of up to several hundred columns, and
+	 * with the timberline zone not ending a gap their openings would count as canopy gaps: N5 22-31% on the plots in the game
+	 * whatever the gap profile, 25% with the profile of TT4; docs/04 "Stan po C1").
+	 */
+	public static final java.util.Set<String> ROCK_GROUND = java.util.Set.of("minecraft:stone", "minecraft:granite",
+			"minecraft:andesite", "polishforests:tatra_granite", "polishforests:gneiss", "polishforests:limestone",
+			"polishforests:dolomite", "polishforests:granite_scree", "polishforests:limestone_scree");
 
 	private static void norm(String metric, Forest forest, double min, double max, String source) {
 		NORMS.add(new Norm(metric, forest, min, max, TOLERANCE, null, null, source));

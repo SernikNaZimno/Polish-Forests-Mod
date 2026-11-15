@@ -1349,3 +1349,21 @@ Plan: `docs/04-pionowy-wycinek.md` §3 „Kroki C” i §4.3. Trzy kroki w torze
 | G.58-c | Progi CP-D.5 w kodzie | Osobna klasa progów obok `ForestPerformance` (ten plik działa też na buildzie M2), test na liczbach F7; bez nowego pomiaru do V17 |
 | G.58-d | Odczyty §4.6 po C3 | Urzędowy jak F2-v′ (a) (jednoblokowe byliny `HERB` jako wysokie) i drugi bez jednoblokowych pokrzywy i kosaćca; cel mały strumień z OlJ ≥ 60% także w drugim |
 | G.58-e | Gleba piętra turni | Bez nowych bloków: rumosz granitowy i wapienny z TT2; darń kępami (pole z nową solą); gleby hali i kosodrzewiny (`RANKER`) bez zmian |
+
+### G.59 Drobne wybory kroku C1 (domyślne, do potwierdzenia; 2026-11-15)
+
+Krok: `docs/04-pionowy-wycinek.md` §3 „C1”, „Projekt C1” (etap 1, C1-a … C1-h) i „Stan po C1” (etap 2, C1-i … C1-k). Krok realizuje CP-D.8 i CP-D.9 (G.57) według G.58-a i G.58-e.
+
+| # | Wybór | Wartość i powód |
+|---|---|---|
+| C1-a | Luka komórki boru limbowego | Szanse {0,12; 0,42; 0,50} jak `MONTANE_SPRUCE` (maksimum tablicy, `gapChanceMax` bez zmian), mediana 20 m (12–36 m, sigma 0,4), druga luka obok przy 0,8 (było 16 m, 8–32 m, 0,45, 0,6) |
+| C1-b | Kępy (luki rozsiane) tylko w borze limbowym | Nowe pola rekordu `StandProfile.scattered` / `scatteredMedian` (inne profile 0); 2 luki o medianie 16 m, 14–28 m od luki komórki, pole `feature.stand.scattered_gaps` (nowa sól); drzewa stoją w kępach między kilkoma polanami zamiast jednej dużej luki |
+| C1-c | Reguła spisu N5 na powierzchniach limbowych | Kolumny strefy `TIMBERLINE` lasu i potoki (`STREAM`, `CHANNEL`) poza powierzchnią, ale nie kończą luki (`ForestNorms.breaksStonePineGap`); bez nich jako brzegów każda luka dotyka mozaiki granicy lasu (N5 ok. 0–8% przy każdym profilu). Zmiana pomiaru, nie normy; **do potwierdzenia przez użytkownika** |
+| C1-d | Kosodrzewina w lukach | `gap_regeneration` Pino cembrae-Piceetum: świerk 300, kosodrzewina 250 (krzew płożący F6), jarząb 200, limba 150, modrzew 100; inne palety świerczyny bez kosodrzewiny w lukach |
+| C1-e | Gleba piętra turni | Bez nowej stałej `Soil`: rozgałęzienie w `SoilBlocks` według biomu; `SUBNIVAL_ROCKS` z rankerem albo rędziną: rumosz granitowy / wapienny na 2 bloki, w kępie darń na bloku próchnicy na rumoszu; `BARE_ROCK`, hala, kosodrzewina i Beskidy bez zmian |
+| C1-f | Kępy darni | Pole `surface.subnival_turf` (nowa sól): szum kęp z falą 3 bloki poniżej lokalnego udziału 2–34% (fala 29); w grze 15–16% kolumn gleby, 92–94% z sąsiadem darni |
+| C1-g | Rośliny piętra turni | Sit skucina i boimka tylko na darni (`canSurvive`), porost skalny na rumoszu; udział warstwy 0,45 (było 0,35), wagi situ 8 i boimki 5 (było 3 i 2) |
+| C1-h | Z10 hala → turnie | Mozaika `TATRA` i ekoton `SoilBlend` jak dotąd, kępy darni dodatkowo rozbijają przejście |
+| C1-i | Wychodnie skalne na powierzchniach limbowych (etap 2) | Grupa co najmniej `GAP_MIN_AREA` (50) kolumn stykających się bokiem z gołą skałą albo rumoszem jako gruntem (`ForestNorms.ROCK_GROUND`, `ForestCensus.rockOutcrops`) to grunt poza lasem jak hala: wychodzi z powierzchni i kończy lukę; pojedyncza kolumna skały albo głaz zostaje w lesie. Bez tego reguła C1-c liczy otwarcia wokół wychodni granitu jako luki (N5 21–31% w grze przy profilu C1, 25% nawet przy profilu TT4); z nim N5 obu powierzchni obu skal 9,2–18,1%. Tylko powierzchnie limbowe (karta innych lasów bez zmian); **do potwierdzenia razem z C1-c** |
+| C1-j | `determinism` dla kroku zmieniającego glebę | Nowa flaga `-PdeterminismStepSoil` (z `-PdeterminismStepZones`): teren obszaru leżącego w całości w strefie `T` może różnić się od referencji tylko zamianą bloków wierzchu gleby (`TerrainBlocks.STEP_SOIL_BLOCKS`) do 3 bloków pod wierzchem kolumny; każda inna różnica terenu nadal jest błędem |
+| C1-k | Spis piętra turni na wapieniu | W obu skalach brak kolumny `SUBNIVAL_ROCKS` na wapieniu powyżej 2380 m w kracie spisu, więc spis w grze obejmuje tylko granit; rumosz wapienny sprawdzają testy jednostkowe (`SubnivalSoilC1Test`: `RENDZINA` → `limestone_scree`) i zero „rumoszu złej skały” w spisie |

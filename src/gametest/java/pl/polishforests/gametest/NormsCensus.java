@@ -393,14 +393,33 @@ final class NormsCensus {
 		ForestCensus.Census census = ForestCensus.of(g);
 		// Step C1 (CP-D.8): in a plot of the spruce-stone pine forest the stunted spruces of the timberline zone (lone trees
 		// in the forest's own upper margin, a fine mosaic in the whole series) and the mountain brooks (TT7) leave the plot
-		// but break no canopy gap; any other non-forest column does, as everywhere. N5 with the old edge rule is logged.
+		// but break no canopy gap; any other non-forest column does, as everywhere. Stage 2 of C1: a rock outcrop (at least
+		// ForestCensus.GAP_MIN_AREA side-touching columns with bare rock or scree as their ground, ForestCensus.rockOutcrops) is
+		// non-forest ground like a meadow: it leaves the plot and ends a gap, while a single rock column or a boulder stays in
+		// the forest. N5 without the outcrops and with the old edge rule is logged.
 		boolean stonePine = site(level, x, z) == ForestNorms.Site.STONE_PINE;
 		boolean[] edges = stonePine ? stonePineEdges(level, g) : nonForestColumns;
+		boolean[] plainArea = area.clone();
+		boolean[] plainEdges = edges.clone();
+		if (stonePine) {
+			// In place: area is this plot's own array, edges the fresh array of stonePineEdges.
+			boolean[] outcrops = ForestCensus.rockOutcrops(g, ForestNorms.ROCK_GROUND, ForestCensus.GAP_MIN_AREA);
+			for (int col = 0; col < area.length; col++) {
+				if (outcrops[col]) {
+					nonForest += area[col] ? 1 : 0;
+					area[col] = false;
+					edges[col] = true;
+				}
+			}
+		}
 		Map<String, Double> values = census.measure(area, edges);
 		if (stonePine) {
 			PolishForests.LOG.info(String.format(Locale.ROOT, "[slice] %s: N5 gaps %s%% (the timberline zone and the brooks no edge, "
-					+ "step C1); with every non-forest column an edge %s%%", c.place(), ForestNorms.number(values.get(ForestNorms.GAP_SHARE)),
-					ForestNorms.number(census.measure(area, nonForestColumns).get(ForestNorms.GAP_SHARE))));
+					+ "rock outcrops an edge, step C1); without the outcrops %s%%; with every non-forest column an edge %s%%", c.place(),
+					ForestNorms.number(values.get(ForestNorms.GAP_SHARE)),
+					ForestNorms.number(census.measure(plainArea, plainEdges).get(ForestNorms.GAP_SHARE)),
+					ForestNorms.number(census.measure(plainArea, nonForestColumns).get(ForestNorms.GAP_SHARE))));
+			census.measure(area, edges);
 		}
 		writeMap(g, census.canopyMap(), c.scale() + "_" + c.mode() + "_" + c.place());
 		// The canopy by the distance from the nearest chunk border (step V9, V5-i: no band of weaker cover along the borders).

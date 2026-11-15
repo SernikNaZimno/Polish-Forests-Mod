@@ -116,6 +116,89 @@ final class TerrainBlocks {
 		return result;
 	}
 
+	/**
+	 * Step C1 (KC-3): the soil top blocks a step that changes only the soil may swap in the terrain of its own zone against
+	 * the build before it (the scree and the turf clumps of the subnival belt over the ranker and rendzina of TT3).
+	 */
+	static final java.util.Set<String> STEP_SOIL_BLOCKS = java.util.Set.of("grass_block", "coarse_dirt", "dirt", "rendzina",
+			"granite_scree", "limestone_scree");
+	/** Step C1: how deep under the top of its column (the highest block that is not air) a changed soil block may lie. */
+	static final int STEP_SOIL_DEPTH = 3;
+
+	/**
+	 * Differences of one area against the build before a soil step: {@code outside} blocks that are not a swap of
+	 * {@link #STEP_SOIL_BLOCKS} within {@link #STEP_SOIL_DEPTH} of the column top; {@code pairs} the swaps (reference → this
+	 * run) by block id.
+	 */
+	record SoilDiff(int blocks, int columns, int outside, Map<String, Integer> pairs, List<Block> firstOutside, String referenceHash) {
+		String report() {
+			return String.format(Locale.ROOT, "%d blocks in %d columns differ, %d of them not a soil top swap within %d blocks of "
+					+ "the top; swaps %s; first others %s", blocks, columns, outside, STEP_SOIL_DEPTH, pairs, firstOutside);
+		}
+	}
+
+	/** Compares two block-by-block files area by area like {@link #compare}, sorting the differences for a soil step. */
+	static Map<String, SoilDiff> compareSoil(BufferedReader ours, BufferedReader theirs) throws IOException {
+		Map<String, SoilDiff> result = new LinkedHashMap<>();
+		String a = ours.readLine();
+		String b = theirs.readLine();
+		while (a != null) {
+			String[] head = header(a);
+			while (b != null && !(b.startsWith(AREA) && header(b)[0].equals(head[0]))) {
+				b = theirs.readLine();
+			}
+			if (b == null) {
+				return result;
+			}
+			String referenceHash = header(b)[1];
+			int maxY = Integer.parseInt(head[3]);
+			int[] count = new int[3];
+			Map<String, Integer> pairs = new java.util.TreeMap<>();
+			List<Block> first = new ArrayList<>();
+			a = ours.readLine();
+			b = theirs.readLine();
+			while (a != null && !a.startsWith(AREA)) {
+				if (b == null || b.startsWith(AREA)) {
+					throw new IOException("The reference has fewer columns in the area " + head[0]);
+				}
+				if (!a.equals(b)) {
+					int top = Math.max(top(a, maxY), top(b, maxY));
+					count[1]++;
+					visitColumn(a, b, maxY, (x, y, z, sp, sq) -> {
+						count[0]++;
+						String to = blockId(sp);
+						String from = blockId(sq);
+						if (STEP_SOIL_BLOCKS.contains(to) && STEP_SOIL_BLOCKS.contains(from) && y > top - STEP_SOIL_DEPTH) {
+							pairs.merge(from + "->" + to, 1, Integer::sum);
+						} else {
+							count[2]++;
+							if (first.size() < REPORTED_BLOCKS) {
+								first.add(new Block(x, y, z, sp, sq));
+							}
+						}
+					});
+				}
+				a = ours.readLine();
+				b = theirs.readLine();
+			}
+			result.put(head[0], new SoilDiff(count[0], count[1], count[2], Map.copyOf(pairs), List.copyOf(first), referenceHash));
+		}
+		return result;
+	}
+
+	/** The highest block of a column line that is not air, or the bottom of the line if it is all air. */
+	static int top(String line, int maxY) {
+		String[] p = line.split(" ");
+		int top = bottom(p[2]);
+		for (int i = 2; i < p.length; i++) {
+			String id = blockId(state(p[i]));
+			if (!id.equals("air") && !id.equals("cave_air") && !id.equals("void_air")) {
+				top = (i + 1 < p.length ? bottom(p[i + 1]) : maxY + 1) - 1;
+			}
+		}
+		return top;
+	}
+
 	private static String[] header(String line) {
 		String[] p = line.substring(AREA.length()).split("\\|");
 		if (p.length != 4) {

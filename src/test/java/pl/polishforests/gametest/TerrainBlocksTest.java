@@ -49,6 +49,34 @@ class TerrainBlocksTest {
 	}
 
 	@Test
+	void aSoilStepSortsTopSwapsFromOtherChanges() throws IOException {
+		// Step C1 (KC-3): coarse dirt and grass on the ranker become scree near the top; a changed block deeper down, or a
+		// swap of a block that is not soil, is counted apart.
+		Map<String, TerrainBlocks.SoilDiff> r = TerrainBlocks.compareSoil(
+				file(HEAD,
+						"0 0 -64:Block{minecraft:stone} 98:Block{polishforests:granite_scree} 100:Block{minecraft:air}",
+						"0 1 -64:Block{minecraft:stone} 99:Block{minecraft:grass_block} 100:Block{minecraft:air}",
+						"0 2 -64:Block{minecraft:stone} 50:Block{minecraft:air} 51:Block{minecraft:stone} 100:Block{minecraft:air}"),
+				file(HEAD,
+						"0 0 -64:Block{minecraft:stone} 98:Block{minecraft:coarse_dirt} 99:Block{minecraft:grass_block} 100:Block{minecraft:air}",
+						"0 1 -64:Block{minecraft:stone} 99:Block{minecraft:grass_block} 100:Block{minecraft:air}",
+						"0 2 -64:Block{minecraft:stone} 100:Block{minecraft:air}"));
+		TerrainBlocks.SoilDiff d = r.get("realistic natural 0");
+		assertEquals(3, d.blocks());
+		assertEquals(2, d.columns());
+		assertEquals(1, d.outside());
+		assertEquals(Map.of("coarse_dirt->granite_scree", 1, "grass_block->granite_scree", 1), d.pairs());
+		assertEquals(50, d.firstOutside().get(0).y());
+		// A soil block swapped deeper than STEP_SOIL_DEPTH under the top is not a top swap.
+		TerrainBlocks.SoilDiff deep = TerrainBlocks.compareSoil(
+				file(HEAD, "0 0 -64:Block{minecraft:stone} 90:Block{minecraft:dirt} 91:Block{minecraft:stone} 100:Block{minecraft:air}"),
+				file(HEAD, "0 0 -64:Block{minecraft:stone} 90:Block{minecraft:coarse_dirt} 91:Block{minecraft:stone} 100:Block{minecraft:air}"))
+				.get("realistic natural 0");
+		assertEquals(1, deep.outside());
+		assertEquals(99, TerrainBlocks.top("0 0 -64:Block{minecraft:stone} 100:Block{minecraft:air}", 319));
+	}
+
+	@Test
 	void identicalAreasHaveNoDifferences() throws IOException {
 		Map<String, TerrainBlocks.AreaDiff> r = TerrainBlocks.compare(file(HEAD, "0 0 -64:stone"), file(HEAD, "0 0 -64:stone"));
 		assertEquals(0, r.get("realistic natural 0").blocks());

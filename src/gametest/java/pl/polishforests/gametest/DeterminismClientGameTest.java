@@ -847,6 +847,13 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 		String refName = file.getFileName().toString();
 		boolean otherSet = TerrainBlocks.isOtherModSet(refName, label);
 		Map<String, TerrainBlocks.AreaDiff> blocks = otherSet ? blockDifferences(file, blocksFile, refName) : Map.of();
+		// Step C1 (KC-3): with -PdeterminismStepSoil a step that changes only the soil top of the Tatras (the scree and turf
+		// clumps of the subnival belt) may change the terrain of an area that lies wholly in the zone T against the build
+		// before it, but only by swaps of soil top blocks near the column top (TerrainBlocks.compareSoil); anything else
+		// fails as before.
+		boolean stepSoil = Boolean.getBoolean("polishforests.determinism.stepSoil")
+				&& Boolean.getBoolean("polishforests.determinism.stepZones") && !otherSet;
+		Map<String, TerrainBlocks.SoilDiff> soil = stepSoil ? soilDifferences(file, blocksFile, refName) : Map.of();
 		int areas = 0;
 		int differing = 0;
 		int worst = 0;
@@ -891,6 +898,21 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 			if (key.startsWith("terrain ")) {
 				areas++;
 				boolean same = other.equals(line.substring(i + 1));
+				if (!same && stepSoil) {
+					String areaKey = key.substring("terrain ".length());
+					String zone = zones.get(areaKey);
+					boolean tatra = zone != null && !zone.isEmpty() && zone.chars().allMatch(ch -> ch == 'T');
+					TerrainBlocks.SoilDiff diff = soil.get(areaKey);
+					boolean fromReference = diff != null && diff.referenceHash().equals(other);
+					PolishForests.LOG.info("[determinism] {} vs {}: {} DIFFERENT, soil step (C1): area wholly in zone T {}; {}", label,
+							refName, key, tatra, fromReference ? diff.report() : "no block-by-block comparison with this reference");
+					if (!tatra || !fromReference || diff.outside() > 0) {
+						failures.add(label + " vs " + refName + ": " + key + " differs " + (!tatra ? "outside the zone T"
+								: !fromReference ? "and the block-by-block file next to the reference is missing or from another run"
+								: "by blocks other than the soil top swaps of the step (" + diff.outside() + ")"));
+					}
+					continue;
+				}
 				if (same || !otherSet) {
 					PolishForests.LOG.info("[determinism] {} vs {}: {} {}", label, refName, key, same ? "identical" : "DIFFERENT");
 					if (!same) {
@@ -1120,6 +1142,20 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 		}
 		try (BufferedReader a = gzipReader(ours); BufferedReader b = gzipReader(theirs)) {
 			return TerrainBlocks.compare(a, b);
+		} catch (IOException e) {
+			throw new AssertionError("Cannot compare the terrain with " + theirs, e);
+		}
+	}
+
+	/** Step C1: the soil-step differences against the block-by-block file next to the reference; empty if it is missing. */
+	private static Map<String, TerrainBlocks.SoilDiff> soilDifferences(Path reference, Path ours, String refName) {
+		Path theirs = reference.resolveSibling(TerrainBlocks.blocksFileName(refName.substring(0, refName.length() - ".txt".length())));
+		if (ours == null || !Files.exists(theirs)) {
+			PolishForests.LOG.warn("[determinism] no block-by-block file {}: the soil step cannot be checked", theirs);
+			return Map.of();
+		}
+		try (BufferedReader a = gzipReader(ours); BufferedReader b = gzipReader(theirs)) {
+			return TerrainBlocks.compareSoil(a, b);
 		} catch (IOException e) {
 			throw new AssertionError("Cannot compare the terrain with " + theirs, e);
 		}
