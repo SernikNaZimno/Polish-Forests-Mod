@@ -907,6 +907,26 @@ public final class ForestNorms {
 		NORMS.add(new Norm(COARSE_PIECES, f, 3, Double.POSITIVE_INFINITY, TOLERANCE_WIDE, null, null, deadwood, site));
 	}
 
+	/**
+	 * Step C1 (CP-D.8): whether a column of habitat code {@code code} ends a canopy gap (N5) of a plot of the spruce-stone
+	 * pine forest. The census counts only the forest columns of a plot and no opening that touches a column outside the
+	 * forest (V9: an opening at the forest's edge is no gap); in the spruce-stone pine forest, which lies just below the
+	 * timberline, the timberline zone of the forest biome (the stunted spruces, lone trees of the forest's upper margin) is
+	 * a fine mosaic over a quarter to a third of every square of the series, and the outlet brooks of the tarns (TT7) cross
+	 * it, so with them as edges almost no gap of the stand map could count (N5 about 2-3% for any gap profile, simulated
+	 * on the masks of the two plots of the gameplay scale; docs/04 "Projekt C1"). These columns stay outside the plot but
+	 * end no gap; every other non-forest column does, as everywhere.
+	 */
+	public static boolean breaksStonePineGap(int code) {
+		pl.polishforests.worldgen.habitat.HabitatBiome b = pl.polishforests.worldgen.habitat.Habitat.biome(code);
+		pl.polishforests.worldgen.habitat.Zone z = pl.polishforests.worldgen.habitat.Habitat.zone(code);
+		if (b == pl.polishforests.worldgen.habitat.HabitatBiome.STREAM || z == pl.polishforests.worldgen.habitat.Zone.CHANNEL) {
+			return false;
+		}
+		return b.group() != pl.polishforests.worldgen.habitat.HabitatBiome.Group.FOREST
+				|| z != pl.polishforests.worldgen.habitat.Zone.NONE && z != pl.polishforests.worldgen.habitat.Zone.TIMBERLINE;
+	}
+
 	private static void norm(String metric, Forest forest, double min, double max, String source) {
 		NORMS.add(new Norm(metric, forest, min, max, TOLERANCE, null, null, source));
 	}

@@ -41,13 +41,22 @@ import pl.polishforests.worldgen.landscape.Noise;
  *
  * <p>Salts (rule ZW-2): {@value #CELLS_SALT} (sites, weights, meander, ramp), {@value #AGE_SALT}, {@value #NATURAL_SALT}
  * and {@value #GAP_SALT} (the regular gap grid of V9 under {@code feature.stand.canopy_gaps} is gone; its salt is not
- * reused). Thread-safe; the only state is the cache of {@link #stand} (step O1), which never changes an answer.
+ * reused); step C1: {@value #SCATTERED_SALT} (the scattered gaps of a profile, {@link StandProfile#scattered}, read only in
+ * the gap cells of such a profile, so the gaps of the other forests do not change). Thread-safe; the only state is the
+ * cache of {@link #stand} (step O1), which never changes an answer.
  */
 public final class ForestStandMap implements StandMap {
 	public static final String CELLS_SALT = "feature.stand.cells";
 	public static final String AGE_SALT = "feature.stand.age";
 	public static final String NATURAL_SALT = "feature.stand.natural";
 	public static final String GAP_SALT = "feature.stand.gap_clusters";
+	/** Step C1: the salt of the scattered gaps (a new field). */
+	public static final String SCATTERED_SALT = "feature.stand.scattered_gaps";
+	/** Step C1: most scattered gaps of a gap cell. */
+	public static final int SCATTERED_MAX = 4;
+	/** Step C1: distance of a scattered gap's center from the cell's gap center (m), from–to. */
+	static final double SCATTERED_FROM = 14;
+	static final double SCATTERED_TO = 28;
 
 	/** Spacing of the stand sites, m·k. */
 	public static final double SPACING = 240;
@@ -108,6 +117,7 @@ public final class ForestStandMap implements StandMap {
 	private final Noise ages;
 	private final Noise naturals;
 	private final Noise gaps;
+	private final Noise scatteredGaps;
 	private final double k;
 	private final double spacing;
 	private final double naturalShare;
@@ -141,6 +151,7 @@ public final class ForestStandMap implements StandMap {
 		this.ages = root.derive(AGE_SALT);
 		this.naturals = root.derive(NATURAL_SALT);
 		this.gaps = root.derive(GAP_SALT);
+		this.scatteredGaps = root.derive(SCATTERED_SALT);
 		this.k = k;
 		this.spacing = SPACING * k;
 		this.naturalShare = 1 - Math.clamp(managedShare, 0, 1);
@@ -476,6 +487,16 @@ public final class ForestStandMap implements StandMap {
 			double off = 0.5 * (first + second) * 0.75;
 			depth = Math.max(depth, ellipse(i, j, 1, dx - off * Math.cos(angle), dz - off * Math.sin(angle), second / 2));
 		}
+		if (natural) {
+			// Step C1: the scattered gaps of the cell around its first gap (a group of glades), in their own noise field.
+			for (int k = 0; k < p.scattered(); k++) {
+				long b = 16L * k;
+				double d = diameter(p, p.scatteredMedian(), scatteredGaps.unit(i, j, 1 + b));
+				double angle = 2 * Math.PI * (k + scatteredGaps.unit(i, j, 2 + b)) / p.scattered();
+				double r = SCATTERED_FROM + (SCATTERED_TO - SCATTERED_FROM) * scatteredGaps.unit(i, j, 3 + b);
+				depth = Math.max(depth, ellipse(scatteredGaps, i, j, k, dx - r * Math.cos(angle), dz - r * Math.sin(angle), d / 2));
+			}
+		}
 		return depth;
 	}
 
@@ -496,9 +517,14 @@ public final class ForestStandMap implements StandMap {
 
 	/** Depth inside an elongated, wavy gap of mean radius {@code radius} at the offset (dx, dz) from its center. */
 	private double ellipse(int i, int j, int k, double dx, double dz, double radius) {
-		long h = gaps.hash(i, j, GAP_SHAPE + 16L * k);
+		return ellipse(gaps, i, j, k, dx, dz, radius);
+	}
+
+	/** {@link #ellipse(int, int, int, double, double, double)} with the shape drawn from a noise field. */
+	private static double ellipse(Noise noise, int i, int j, int k, double dx, double dz, double radius) {
+		long h = noise.hash(i, j, GAP_SHAPE + 16L * k);
 		double axis = Math.PI * ((h >>> 48 & 0xFFFF) / 65_536.0);
-		double ratio = 1 + (GAP_ELONGATION - 1) * gaps.unit(i, j, GAP_AXIS + 16L * k);
+		double ratio = 1 + (GAP_ELONGATION - 1) * noise.unit(i, j, GAP_AXIS + 16L * k);
 		double c = Math.cos(axis);
 		double s = Math.sin(axis);
 		double u = (dx * c + dz * s) / Math.sqrt(ratio);

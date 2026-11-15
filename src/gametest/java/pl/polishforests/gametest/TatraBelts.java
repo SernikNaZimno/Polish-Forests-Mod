@@ -23,7 +23,9 @@ import pl.polishforests.worldgen.habitat.HabitatClassifier;
 import pl.polishforests.worldgen.habitat.Zone;
 import pl.polishforests.worldgen.landscape.ColumnSample;
 import pl.polishforests.worldgen.landscape.LandscapeModel;
+import pl.polishforests.worldgen.landscape.Substrate;
 import pl.polishforests.worldgen.surface.ChunkSurface;
+import pl.polishforests.worldgen.surface.Material;
 
 /**
  * Step TT3 (KT-1, docs/04-pionowy-wycinek.md "Projekt TT3"), part of {@code -Pgametest=tatra}: the belts of the Tatras in
@@ -42,6 +44,10 @@ import pl.polishforests.worldgen.surface.ChunkSurface;
  * deep in it (its share of the blend field at least 0.999),
  * 5 × 5 chunks: deep columns with a vanilla log trunk 0, planner trunks per chunk reported (at least one trunk in a
  * forest with {@value #MIN_DEEP} deep columns, except the creeping dwarf pine).</li>
+ * <li>step C1 (CP-D.9): the top of the subnival belt around the first lattice column of the subnival rocks without a zone
+ * at {@value #SUBNIVAL_FROM} m or higher on the silicate rocks and on the limestone (when the massif has one there), 5 × 5
+ * chunks ({@link #subnival}): scree of the rock, turf in clumps (at most {@value #TURF_MAX} of the soil columns, most turf
+ * columns with a turf neighbor), the bare rock of the steep faces apart; no herb off the turf and no plant over air.</li>
  * </ul>
  */
 final class TatraBelts {
@@ -51,6 +57,9 @@ final class TatraBelts {
 	static final int PROBES = 8;
 	static final float DEEP_SHARE = 0.999F;
 	static final int MIN_DEEP = 1024;
+	/** Step C1: the least elevation (m) of a site of the subnival survey, and the largest share of turf on its soil columns. */
+	static final double SUBNIVAL_FROM = 2_380;
+	static final double TURF_MAX = 0.25;
 
 	private TatraBelts() {
 	}
@@ -116,6 +125,8 @@ final class TatraBelts {
 			probes.put(b, new ArrayList<>());
 		}
 		List<int[]> sites = new ArrayList<>();
+		List<int[]> subnival = new ArrayList<>();
+		boolean[] subnivalFound = new boolean[2];
 		boolean[] found = new boolean[FORESTS.length];
 		double half = 1.2 * t.halfLength();
 		// Step TT5: the lattice grows with the forms (160 m at realistic scale), so the census keeps its number of columns.
@@ -137,6 +148,16 @@ final class TatraBelts {
 				Zone zone = Habitat.zone(code);
 				if (b.isWater() || zone.ordinal() >= Zone.CHANNEL.ordinal() && zone.ordinal() <= Zone.SHORE_ALDERS.ordinal()) {
 					continue;
+				}
+				// Step C1: a site of the subnival survey on the silicate rocks (0) and on the limestone and dolomite (1).
+				Substrate rock = s.terrain().rock();
+				if (b == HabitatBiome.SUBNIVAL_ROCKS && zone == Zone.NONE && s.surface() >= SUBNIVAL_FROM && rock != null
+						&& rock.isTatraRock()) {
+					int g = limestone(rock) ? 1 : 0;
+					if (!subnivalFound[g]) {
+						subnivalFound[g] = true;
+						subnival.add(new int[] {(int) Math.floor(x), (int) Math.floor(z), g});
+					}
 				}
 				for (int f = 0; f < FORESTS.length; f++) {
 					if (!found[f] && b == FORESTS[f][0] && (FORESTS[f][1] == null || Habitat.association(code) == FORESTS[f][1])) {
@@ -178,7 +199,11 @@ final class TatraBelts {
 				report.add("TT3 KF-1: no deep column of " + label(f) + " in the massif");
 			}
 		}
+		if (subnival.isEmpty()) {
+			failures.add("C1 subnival survey: no column of the subnival rocks without a zone at " + SUBNIVAL_FROM + " m or higher");
+		}
 		Probes out = new Probes(sites);
+		out.subnival.addAll(subnival);
 		for (Band b : Band.values()) {
 			out.points.addAll(probes.get(b));
 		}
@@ -191,6 +216,8 @@ final class TatraBelts {
 	 */
 	static final class Probes {
 		final List<int[]> sites;
+		/** Step C1: the sites of the subnival survey (x, z, 0 silicate / 1 limestone). */
+		final List<int[]> subnival = new ArrayList<>();
 		/** The probes: x, z, habitat code. */
 		final List<double[]> points = new ArrayList<>();
 		int probed = 0;
@@ -304,6 +331,136 @@ final class TatraBelts {
 		if (deep >= MIN_DEEP && planner == 0 && forest != HabitatBiome.DWARF_PINE_SCRUB) {
 			failures.add(String.format(Locale.ROOT, "TT3 KF-1 %s: no planner trunk in %d deep columns", label(site[2]), deep));
 		}
+	}
+
+	private static boolean limestone(Substrate rock) {
+		return rock == Substrate.LIMESTONE || rock == Substrate.DOLOMITE;
+	}
+
+	/**
+	 * Step C1 (CP-D.9): the top of the subnival belt around one site, 5 × 5 chunks: on the dry columns of the subnival rocks
+	 * without a zone the top block of the world at the plan's top Y (scree of the rock, turf, the bare rock of the steep
+	 * faces, air where a cave opens it, other: the soil of a neighbor taken across the soil ecotone); the turf at most
+	 * {@value #TURF_MAX} of the soil columns (scree and turf) and gathered (most turf columns have a turf neighbor), the
+	 * scree of the rock's kind, no herb off the turf and no plant over air.
+	 */
+	static void subnival(ServerLevel level, int[] site, List<String> report, List<String> failures) {
+		PolandChunkGenerator gen = (PolandChunkGenerator) level.getChunkSource().getGenerator();
+		long seed = level.getSeed();
+		LandscapeModel m = gen.model(seed);
+		int cx0 = (site[0] >> 4) - 2;
+		int cz0 = (site[1] >> 4) - 2;
+		for (int cx = cx0; cx < cx0 + 5; cx++) {
+			for (int cz = cz0; cz < cz0 + 5; cz++) {
+				level.getChunk(cx, cz);
+			}
+		}
+		java.util.Set<String> rocks = new java.util.HashSet<>();
+		for (Substrate r : Substrate.values()) {
+			Material rock = Material.tatraRock(r);
+			if (rock != null) {
+				rocks.add(rock.id());
+			}
+		}
+		String granite = Material.GRANITE_SCREE.id();
+		String limestone = Material.LIMESTONE_SCREE.id();
+		int side = 80;
+		boolean[] turf = new boolean[side * side];
+		int scree = 0;
+		int turfColumns = 0;
+		int bare = 0;
+		int cut = 0;
+		int wrongScree = 0;
+		int herbsOnTurf = 0;
+		int herbsOffTurf = 0;
+		int floating = 0;
+		Map<String, Integer> other = new java.util.TreeMap<>();
+		for (int cx = 0; cx < 5; cx++) {
+			for (int cz = 0; cz < 5; cz++) {
+				int[] codes = new int[256];
+				ChunkSurface plan = gen.surface(new ChunkPos(cx0 + cx, cz0 + cz), level.getMinY(), level.getMaxY(), seed, codes,
+						level.structureManager());
+				for (int lx = 0; lx < 16; lx++) {
+					for (int lz = 0; lz < 16; lz++) {
+						int x = (cx0 + cx) * 16 + lx;
+						int z = (cz0 + cz) * 16 + lz;
+						int column = ChunkHabitats.index(lx, lz);
+						int code = codes[column];
+						if (plan.wet(column) || Habitat.biome(code) != HabitatBiome.SUBNIVAL_ROCKS || Habitat.zone(code) != Zone.NONE) {
+							continue;
+						}
+						int top = plan.top(column);
+						BlockState ground = level.getBlockState(new BlockPos(x, top, z));
+						BlockState above = level.getBlockState(new BlockPos(x, top + 1, z));
+						String id = BuiltInRegistries.BLOCK.getKey(ground.getBlock()).toString();
+						boolean grass = ground.is(net.minecraft.world.level.block.Blocks.GRASS_BLOCK);
+						if (above.getBlock() instanceof pl.polishforests.block.SeasonalHerbBlock) {
+							herbsOnTurf += grass ? 1 : 0;
+							herbsOffTurf += grass ? 0 : 1;
+						}
+						boolean plant = above.getBlock() instanceof net.minecraft.world.level.block.VegetationBlock
+								|| above.getBlock() instanceof net.minecraft.world.level.block.LeafLitterBlock;
+						if (ground.isAir()) {
+							cut++;
+							floating += plant ? 1 : 0;
+						} else if (grass) {
+							turfColumns++;
+							turf[(cx * 16 + lx) * side + cz * 16 + lz] = true;
+						} else if (id.equals(granite) || id.equals(limestone)) {
+							scree++;
+							wrongScree += id.equals(limestone(m.sample(x, z).terrain().rock()) ? limestone : granite) ? 0 : 1;
+						} else if (rocks.contains(id)) {
+							bare++;
+						} else {
+							other.merge(id, 1, Integer::sum);
+						}
+					}
+				}
+			}
+		}
+		int gathered = 0;
+		for (int i = 0; i < turf.length; i++) {
+			if (!turf[i]) {
+				continue;
+			}
+			int a = i / side;
+			int b = i % side;
+			gathered += a > 0 && turf[i - side] || a < side - 1 && turf[i + side] || b > 0 && turf[i - 1] || b < side - 1 && turf[i + 1]
+					? 1 : 0;
+		}
+		int soil = scree + turfColumns;
+		double share = soil == 0 ? 0 : (double) turfColumns / soil;
+		double near = turfColumns == 0 ? 0 : (double) gathered / turfColumns;
+		int all = soil + bare + cut + other.values().stream().mapToInt(Integer::intValue).sum();
+		String label = site[2] == 1 ? "limestone" : "silicate";
+		report.add(String.format(Locale.ROOT, "C1 subnival top (%s) around (%d, %d): %d columns of the subnival rocks without a zone: "
+				+ "scree %d (%.1f%%), turf %d (%.1f%%; %.1f%% of the soil columns, %.1f%% of them with a turf neighbor), bare rock %d "
+				+ "(%.1f%%), cave openings %d, other %s; scree of the wrong rock %d, herbs on the turf %d, herbs off the turf %d, "
+				+ "plants over air %d", label, site[0], site[1], all, scree, pct(scree, all), turfColumns, pct(turfColumns, all),
+				100 * share, 100 * near, bare, pct(bare, all), cut, other, wrongScree, herbsOnTurf, herbsOffTurf, floating));
+		if (soil < 200) {
+			report.add("C1 subnival top (" + label + "): only " + soil + " soil columns, no verdict on the turf");
+		} else {
+			if (share > TURF_MAX || turfColumns == 0) {
+				failures.add(String.format(Locale.ROOT, "C1 subnival top (%s): turf on %.1f%% of the soil columns (0-%.0f%%)", label,
+						100 * share, 100 * TURF_MAX));
+			}
+			if (near < 0.6) {
+				failures.add(String.format(Locale.ROOT, "C1 subnival top (%s): only %.1f%% of the turf columns have a turf neighbor",
+						label, 100 * near));
+			}
+			if (scree < soil / 2) {
+				failures.add("C1 subnival top (" + label + "): scree on " + scree + " of " + soil + " soil columns");
+			}
+		}
+		if (wrongScree > 0 || herbsOffTurf > 0 || floating > 0) {
+			failures.add(String.format(Locale.ROOT, "C1 subnival top (%s): scree of the wrong rock %d, herbs off the turf %d, plants "
+					+ "over air %d", label, wrongScree, herbsOffTurf, floating));
+		}
+	}
+
+	private static double pct(int n, int all) {
+		return all == 0 ? 0 : 100.0 * n / all;
 	}
 
 	/** A trunk of logs: three vertical log blocks above the top (as the census of {@code habitats}). */

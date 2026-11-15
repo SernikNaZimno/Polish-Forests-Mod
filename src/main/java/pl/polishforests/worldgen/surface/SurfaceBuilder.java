@@ -55,6 +55,18 @@ public final class SurfaceBuilder {
 	/** Step TT2: the share of the boulder noise (its top) that shows a boulder on a valley floor, and its wavelength. */
 	static final double BOULDER_FROM = 0.72;
 	static final double BOULDER_WAVELENGTH = 2.5;
+	/**
+	 * Step C1 (CP-D.9): the turf clumps of the subnival belt. A column is turf where the clump noise (wavelength
+	 * {@value #TURF_WAVELENGTH} blocks: clumps of one to a few blocks) lies below the local share, which a second noise
+	 * (wavelength {@value #TURF_GROUP_WAVELENGTH}) moves between {@value #TURF_SHARE_MIN} and {@value #TURF_SHARE_MAX}, so
+	 * the clumps gather in groups and leave stretches of bare scree (the mean share is their mean, about 18%).
+	 */
+	static final double TURF_WAVELENGTH = 3;
+	static final double TURF_GROUP_WAVELENGTH = 29;
+	static final double TURF_SHARE_MIN = 0.02;
+	static final double TURF_SHARE_MAX = 0.34;
+	/** Step C1: the salt of the turf clump noise (a new field; the old salts stay). */
+	public static final String TURF_SALT = "surface.subnival_turf";
 	private static final WaterKind[] KINDS = WaterKind.values();
 	/** Least loose cover of a dry column in blocks: its soil top block. */
 	static final int MIN_SOIL = 1;
@@ -95,6 +107,7 @@ public final class SurfaceBuilder {
 	private final Noise soil;
 	private final Noise micro;
 	private final Noise thin;
+	private final Noise turf;
 
 	/** A builder with the realistic loose cover ({@link LooseCover#REALISTIC}, the cover of worlds from before K1). */
 	public SurfaceBuilder(long seed, VerticalScale vertical, boolean coverInBlocks, boolean debug) {
@@ -116,6 +129,22 @@ public final class SurfaceBuilder {
 		this.soil = root.derive("surface.soil");
 		this.micro = root.derive("surface.microrelief");
 		this.thin = root.derive("surface.thin_cover");
+		this.turf = root.derive(TURF_SALT);
+	}
+
+	/**
+	 * Step C1 (CP-D.9): whether the column (x, z) lies in a turf clump of the subnival belt (read only on the subnival rocks,
+	 * {@link SoilBlocks#subnival}); a pure function of the world seed and the column.
+	 */
+	public boolean subnivalTurf(int x, int z) {
+		double share = TURF_SHARE_MIN + (TURF_SHARE_MAX - TURF_SHARE_MIN)
+				* LandscapeModel.noiseQuantile(turf.at(x + 3_571.0, z - 2_203.0, TURF_GROUP_WAVELENGTH));
+		return LandscapeModel.noiseQuantile(turf.at(x, z, TURF_WAVELENGTH)) < share;
+	}
+
+	/** Step C1: the turf clump of a column of the code, read only on the subnival rocks (false elsewhere, no noise). */
+	private boolean turf(int code, int x, int z) {
+		return Habitat.biome(code) == HabitatBiome.SUBNIVAL_ROCKS && subnivalTurf(x, z);
 	}
 
 	/** Loose cover of this builder ({@code loose_cover}). */
@@ -151,7 +180,7 @@ public final class SurfaceBuilder {
 	public Material soilTop(int code, int x, int z) {
 		double q1 = LandscapeModel.noiseQuantile(soil.at(x, z, SOIL_WAVELENGTH));
 		double q2 = LandscapeModel.noiseQuantile(soil.at(x + 1_013.0, z - 517.0, SOIL_MINOR_WAVELENGTH));
-		return soilTop(code, q1, q2);
+		return soilTop(code, q1, q2, turf(code, x, z));
 	}
 
 	/**
@@ -161,13 +190,13 @@ public final class SurfaceBuilder {
 	public int soilTops(int own, int other, int x, int z) {
 		double q1 = LandscapeModel.noiseQuantile(soil.at(x, z, SOIL_WAVELENGTH));
 		double q2 = LandscapeModel.noiseQuantile(soil.at(x + 1_013.0, z - 517.0, SOIL_MINOR_WAVELENGTH));
-		Material a = soilTop(own, q1, q2);
-		Material b = soilTop(other, q1, q2);
+		Material a = soilTop(own, q1, q2, turf(own, x, z));
+		Material b = soilTop(other, q1, q2, turf(other, x, z));
 		return a == b ? -1 : a.ordinal() << 8 | b.ordinal();
 	}
 
-	private static Material soilTop(int code, double q1, double q2) {
-		return SoilBlocks.top(SoilBlocks.dry(Habitat.soil(code), Habitat.zone(code), Habitat.biome(code), q1, q2, 1));
+	private static Material soilTop(int code, double q1, double q2, boolean turf) {
+		return SoilBlocks.top(SoilBlocks.dry(Habitat.soil(code), Habitat.zone(code), Habitat.biome(code), q1, q2, turf, 1));
 	}
 
 	public VerticalScale vertical() {
@@ -289,7 +318,8 @@ public final class SurfaceBuilder {
 			} else {
 				double q1 = LandscapeModel.noiseQuantile(soil.at(wx, wz, SOIL_WAVELENGTH));
 				Soil soilType = Habitat.soil(code);
-				profile = SoilBlocks.dry(soilType, Habitat.zone(code), Habitat.biome(code), q1, q2, s.terrain().lowShore());
+				profile = SoilBlocks.dry(soilType, Habitat.zone(code), Habitat.biome(code), q1, q2, turf(code, wx, wz),
+						s.terrain().lowShore());
 				if (soilType == Soil.BOG_PEAT || soilType == Soil.FEN_PEAT) {
 					// The whole peat profile lies on the loose cover, also where the model cover is thin.
 					out.rockTop[i] = Math.min(out.rockTop[i], out.top[i] - SoilBlocks.depth(profile));

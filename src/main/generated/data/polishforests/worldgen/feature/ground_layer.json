@@ -3893,7 +3893,7 @@
       "biomes": [
         "subnival_rocks"
       ],
-      "coverage": 0.35,
+      "coverage": 0.45,
       "patch": 2,
       "plants": [
         {
@@ -3931,11 +3931,11 @@
         },
         {
           "block": "polishforests:three_leaved_rush",
-          "weight": 3
+          "weight": 8
         },
         {
           "block": "polishforests:two_rowed_oreochloa",
-          "weight": 2
+          "weight": 5
         },
         {
           "block": "polishforests:forest_moss_carpet",

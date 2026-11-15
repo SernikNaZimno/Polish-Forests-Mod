@@ -308,6 +308,11 @@ public final class TatraClientGameTest implements FabricClientGameTest {
 					sp.getServer().runOnServer(s -> TatraBelts.kf1(s.overworld(), site, report, failures));
 					context.waitTicks(SETTLE_TICKS);
 				}
+				// Step C1 (CP-D.9): the scree and the turf clumps of the subnival belt, one site per server task.
+				for (int[] site : probes.subnival) {
+					sp.getServer().runOnServer(s -> TatraBelts.subnival(s.overworld(), site, report, failures));
+					context.waitTicks(SETTLE_TICKS);
+				}
 			}
 			// Step TT3: the board of the new plants (models, one screenshot, no judgment); step TT5: gameplay scale only.
 			if (!real) {

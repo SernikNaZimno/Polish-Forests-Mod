@@ -265,8 +265,10 @@ final class ModVegetation {
 				.subcanopy().add(Species.STONE_PINE, 420).form(Species.SPRUCE, TreeForm.Kind.MONTANE, 300).add(Species.ROWAN, 280)
 				.regeneration().form(Species.SPRUCE, TreeForm.Kind.MONTANE, 400).add(Species.STONE_PINE, 250).add(Species.ROWAN, 300)
 				.add(Species.LARCH, 50)
-				.gapRegeneration().form(Species.SPRUCE, TreeForm.Kind.MONTANE, 350).add(Species.ROWAN, 300).add(Species.STONE_PINE, 200)
-				.add(Species.LARCH, 150)
+				// Step C1 (CP-D.8): the dwarf pine in the gaps of the loose stand of clumps (the creeping shrub of step F6, a
+				// placeholder of the palette placed by its own feature), with the stone pine, the spruce, the larch and the rowan.
+				.gapRegeneration().form(Species.SPRUCE, TreeForm.Kind.MONTANE, 300).add(Species.DWARF_MOUNTAIN_PINE,
+						Species.DWARF_MOUNTAIN_PINE.path(), 250).add(Species.ROWAN, 200).add(Species.STONE_PINE, 150).add(Species.LARCH, 100)
 				// A loose stand of clumps (closure 40-70%).
 				.chances(new float[] {0.85F, 0.75F, 0.68F}, new float[] {0.80F, 0.80F, 0.80F}, 0.6F).subcanopyChance(0.45F);
 		// The Tatra regiel on granite and gneiss on the sunny slopes: the fir-spruce forest of the lower regiel (the fir and
@@ -1636,8 +1638,10 @@ final class ModVegetation {
 				cat(herb(GroundPlant.TATRA_MOOR_GRASS, 12), herb(GroundPlant.VARIEGATED_FESCUE, 8), edelweiss(3), rockLichen(10)));
 		l.land(biomes(ALPINE_GRASSLAND).withAssociations(Association.ROCK_GRASSLAND), 0.45F, 2,
 				cat(herb(GroundPlant.THREE_LEAVED_RUSH, 10), herb(GroundPlant.TWO_ROWED_OREOCHLOA, 8), rockLichen(12)));
-		l.land(biomes(SUBNIVAL_ROCKS), 0.35F, 2, cat(rockLichen(20), herb(GroundPlant.THREE_LEAVED_RUSH, 3),
-				herb(GroundPlant.TWO_ROWED_OREOCHLOA, 2), forestMoss.withWeight(2)));
+		// Step C1 (CP-D.9): the subnival belt is scree with turf clumps; the rush and the Oreochloa grow only in the turf
+		// (canSurvive: #supports_vegetation), the lichens on the scree as before (the same share of the scree columns).
+		l.land(biomes(SUBNIVAL_ROCKS), 0.45F, 2, cat(rockLichen(20), herb(GroundPlant.THREE_LEAVED_RUSH, 8),
+				herb(GroundPlant.TWO_ROWED_OREOCHLOA, 5), forestMoss.withWeight(2)));
 		l.land(biomes(ALPINE_GRASSLAND), 0.8F, 3, grass.withWeight(60), bush.withWeight(12), b(Blocks.AZURE_BLUET, 3),
 				b(Blocks.ALLIUM, 2), fern.withWeight(3));
 		l.land(biomes(WHITE_DUNE), 0.25F, 3, b(Blocks.TALL_DRY_GRASS, 5), dryGrass.withWeight(5));

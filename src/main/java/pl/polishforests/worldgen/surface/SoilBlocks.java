@@ -83,9 +83,11 @@ public final class SoilBlocks {
 	 *
 	 * @param q1       uniform patch quantile 0–1 (main mixture of the top, e.g. coarse dirt and podzol)
 	 * @param q2       an independent uniform patch quantile 0–1 (minor patches, e.g. mud)
+	 * @param turf     step C1: the column lies in a turf clump of the subnival belt ({@code SurfaceBuilder.subnivalTurf}); read
+	 *                 only on the subnival rocks
 	 * @param lowShore low sea shore 0–1 of the column ({@code Terrain.lowShore}); a beach below {@link #STONY_BEACH} is stony
 	 */
-	public static int dry(Soil soil, Zone zone, HabitatBiome biome, double q1, double q2, double lowShore) {
+	public static int dry(Soil soil, Zone zone, HabitatBiome biome, double q1, double q2, boolean turf, double lowShore) {
 		return switch (soil) {
 			case INITIAL_PODZOL -> profile(q1 < INITIAL_PODZOL_COARSE ? Material.COARSE_DIRT : Material.PODZOL);
 			case PODZOL -> profile(Material.PODZOL, Material.COARSE_DIRT, 1);
@@ -114,8 +116,10 @@ public final class SoilBlocks {
 					: profile(q1 < 0.5 ? Material.COARSE_DIRT : Material.GRASS_BLOCK, Material.GRAVEL, 2);
 			case MOUNTAIN_BROWN_SOIL -> profile(q1 < 0.7 ? Material.GRASS_BLOCK : Material.COARSE_DIRT, Material.COARSE_DIRT, 1);
 			case MOUNTAIN_PODZOL -> profile(q2 < 0.2 ? Material.MOSS_BLOCK : Material.PODZOL, Material.COARSE_DIRT, 1);
-			case RANKER -> profile(q1 < 0.5 ? Material.COARSE_DIRT : Material.GRASS_BLOCK, Material.COARSE_DIRT, 1,
-					Material.GRAVEL, 1);
+			// Step C1 (CP-D.9): the subnival belt of the Tatras is scree with turf only in clumps (its ranker of the code
+			// stays, shared with the alpine grassland and the dwarf pine, whose soils do not change).
+			case RANKER -> biome == HabitatBiome.SUBNIVAL_ROCKS ? subnival(turf, Material.GRANITE_SCREE, Material.COARSE_DIRT)
+					: profile(q1 < 0.5 ? Material.COARSE_DIRT : Material.GRASS_BLOCK, Material.COARSE_DIRT, 1, Material.GRAVEL, 1);
 			case DUNE_SAND -> biome == HabitatBiome.GRAY_DUNE && q1 >= 0.6 ? profile(Material.COARSE_DIRT)
 					: profile(Material.SAND);
 			case BEACH_SAND -> lowShore < STONY_BEACH ? profile(q2 < 0.3 ? Material.SAND : Material.GRAVEL, Material.GRAVEL, 1)
@@ -129,12 +133,22 @@ public final class SoilBlocks {
 			case SEA_BED -> profile(Material.SAND);
 			// Step TT2: the Tatra soils. Rendzina: turf with patches of the bare black humus and coarse dirt, the humus over
 			// limestone scree; the scree and the perennial snow without soil.
-			case RENDZINA -> profile(q1 < 0.55 ? Material.GRASS_BLOCK : q1 < 0.85 ? Material.RENDZINA : Material.COARSE_DIRT,
-					Material.RENDZINA, 1, Material.LIMESTONE_SCREE, 1);
+			case RENDZINA -> biome == HabitatBiome.SUBNIVAL_ROCKS ? subnival(turf, Material.LIMESTONE_SCREE, Material.RENDZINA)
+					: profile(q1 < 0.55 ? Material.GRASS_BLOCK : q1 < 0.85 ? Material.RENDZINA : Material.COARSE_DIRT,
+							Material.RENDZINA, 1, Material.LIMESTONE_SCREE, 1);
 			case GRANITE_SCREE -> profile(Material.GRANITE_SCREE, Material.GRANITE_SCREE, 2);
 			case LIMESTONE_SCREE -> profile(Material.LIMESTONE_SCREE, Material.LIMESTONE_SCREE, 2);
 			case SNOW -> profile(Material.SNOW_BLOCK, Material.SNOW_BLOCK, 1, Material.GRAVEL, 1);
 		};
+	}
+
+	/**
+	 * Step C1 (CP-D.9): the top of the subnival belt outside the bare rock: the scree of the rock (granite and gneiss, or
+	 * limestone and dolomite), in a turf clump a grass block on a block of the humus of the soil (coarse dirt on the
+	 * silicate rocks, rendzina on the limestone) over the scree.
+	 */
+	static int subnival(boolean turf, Material scree, Material humus) {
+		return turf ? profile(Material.GRASS_BLOCK, humus, 1, scree, 1) : profile(scree, scree, 2);
 	}
 
 	// ------------------------------------------------------------------ water beds

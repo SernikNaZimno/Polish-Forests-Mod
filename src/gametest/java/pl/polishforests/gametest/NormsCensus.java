@@ -391,7 +391,17 @@ final class NormsCensus {
 			}
 		}
 		ForestCensus.Census census = ForestCensus.of(g);
-		Map<String, Double> values = census.measure(area, nonForestColumns);
+		// Step C1 (CP-D.8): in a plot of the spruce-stone pine forest the stunted spruces of the timberline zone (lone trees
+		// in the forest's own upper margin, a fine mosaic in the whole series) and the mountain brooks (TT7) leave the plot
+		// but break no canopy gap; any other non-forest column does, as everywhere. N5 with the old edge rule is logged.
+		boolean stonePine = site(level, x, z) == ForestNorms.Site.STONE_PINE;
+		boolean[] edges = stonePine ? stonePineEdges(level, g) : nonForestColumns;
+		Map<String, Double> values = census.measure(area, edges);
+		if (stonePine) {
+			PolishForests.LOG.info(String.format(Locale.ROOT, "[slice] %s: N5 gaps %s%% (the timberline zone and the brooks no edge, "
+					+ "step C1); with every non-forest column an edge %s%%", c.place(), ForestNorms.number(values.get(ForestNorms.GAP_SHARE)),
+					ForestNorms.number(census.measure(area, nonForestColumns).get(ForestNorms.GAP_SHARE))));
+		}
 		writeMap(g, census.canopyMap(), c.scale() + "_" + c.mode() + "_" + c.place());
 		// The canopy by the distance from the nearest chunk border (step V9, V5-i: no band of weaker cover along the borders).
 		byte[] map = census.canopyMap();
@@ -630,6 +640,25 @@ final class NormsCensus {
 		}
 		writeLines("transect_" + c.scale() + "_" + c.mode() + ".csv", profile);
 		return rows;
+	}
+
+	/**
+	 * Step C1: the columns of the grid that end a canopy gap of a plot of the spruce-stone pine forest: those of
+	 * {@link #nonForest} except the timberline zone of a forest biome (stunted spruces) and the mountain brooks.
+	 */
+	private static boolean[] stonePineEdges(ServerLevel level, CensusGrid g) {
+		boolean[] out = new boolean[g.sizeX() * g.sizeZ()];
+		if (!(level.getChunkSource().getGenerator() instanceof pl.polishforests.worldgen.chunk.PolandChunkGenerator gen)) {
+			return out;
+		}
+		pl.polishforests.worldgen.landscape.LandscapeModel m = gen.model(level.getSeed());
+		pl.polishforests.worldgen.habitat.HabitatClassifier k = gen.classifier(level.getSeed());
+		for (int c = 0; c < out.length; c++) {
+			int x = g.columnX(c);
+			int z = g.columnZ(c);
+			out[c] = ForestNorms.breaksStonePineGap(k.classify(m.sample(x, z), x, z));
+		}
+		return out;
 	}
 
 	/** The columns of the grid that are not forest by the habitat code of the world's model (a forest biome without a zone). */

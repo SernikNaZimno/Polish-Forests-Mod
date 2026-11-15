@@ -549,22 +549,27 @@
           {
             "species": "spruce",
             "tree": "polishforests:tree/spruce/montane",
-            "weight": 350
+            "weight": 300
+          },
+          {
+            "species": "dwarf_mountain_pine",
+            "tree": "polishforests:shrub/dwarf_mountain_pine",
+            "weight": 250
           },
           {
             "species": "rowan",
             "tree": "polishforests:tree/rowan",
-            "weight": 300
+            "weight": 200
           },
           {
             "species": "stone_pine",
             "tree": "polishforests:tree/stone_pine",
-            "weight": 200
+            "weight": 150
           },
           {
             "species": "larch",
             "tree": "polishforests:tree/larch",
-            "weight": 150
+            "weight": 100
           }
         ],
         "managed_canopy": [

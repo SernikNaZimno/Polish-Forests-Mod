@@ -58,7 +58,7 @@ class SoilTest {
 					for (double q1 = 0; q1 < 1; q1 += 0.05) {
 						for (double q2 = 0; q2 < 1; q2 += 0.05) {
 							for (double lowShore : new double[] {0, 1}) {
-								Material top = SoilBlocks.top(SoilBlocks.dry(soil, zone, biome, q1, q2, lowShore));
+								Material top = SoilBlocks.top(SoilBlocks.dry(soil, zone, biome, q1, q2, false, lowShore));
 								checked++;
 								if (!supports.contains(top.id())) {
 									failures.add(biome.id() + "/" + zone.id() + "/" + soil + " -> " + top.id());
@@ -78,9 +78,9 @@ class SoilTest {
 	void openSoilTops() {
 		Set<String> dry = tag("supports_dry_vegetation");
 		for (double q = 0; q < 1; q += 0.05) {
-			assertEquals(Material.SAND, SoilBlocks.top(SoilBlocks.dry(Soil.BEACH_SAND, Zone.NONE, HabitatBiome.BEACH, q, q, 1)));
-			assertEquals(Material.SAND, SoilBlocks.top(SoilBlocks.dry(Soil.DUNE_SAND, Zone.NONE, HabitatBiome.WHITE_DUNE, q, q, 1)));
-			assertTrue(dry.contains(SoilBlocks.top(SoilBlocks.dry(Soil.DUNE_SAND, Zone.NONE, HabitatBiome.GRAY_DUNE, q, q, 1)).id()));
+			assertEquals(Material.SAND, SoilBlocks.top(SoilBlocks.dry(Soil.BEACH_SAND, Zone.NONE, HabitatBiome.BEACH, q, q, false, 1)));
+			assertEquals(Material.SAND, SoilBlocks.top(SoilBlocks.dry(Soil.DUNE_SAND, Zone.NONE, HabitatBiome.WHITE_DUNE, q, q, false, 1)));
+			assertTrue(dry.contains(SoilBlocks.top(SoilBlocks.dry(Soil.DUNE_SAND, Zone.NONE, HabitatBiome.GRAY_DUNE, q, q, false, 1)).id()));
 		}
 	}
 

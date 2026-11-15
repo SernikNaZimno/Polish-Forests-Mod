@@ -29,10 +29,13 @@ import pl.polishforests.worldgen.habitat.HabitatBiome;
  * @param gapMax        largest diameter of a gap (m, at most {@value ForestStandMap#GAP_CELL})
  * @param nestChance    chance by age class of a regeneration nest in a cell (managed stands; 0: none)
  * @param nestMedian    median diameter of a nest (m; the same sigma and bounds as the gaps)
+ * @param scattered     step C1: further gaps scattered around the first one of a gap cell (a group of glades between
+ *                      clumps of trees; their own noise field, {@code ForestStandMap.SCATTERED_SALT}), 0 for none
+ * @param scatteredMedian median diameter of a scattered gap (m; the sigma and the bounds of the gaps)
  */
 public record StandProfile(double naturalFactor, double[] managedAges, double[] naturalAges, double mergeChance,
 		double[] gapChance, double clusterChance, double gapMedian, double gapSigma, double gapMin, double gapMax,
-		double[] nestChance, double nestMedian) {
+		double[] nestChance, double nestMedian, int scattered, double scatteredMedian) {
 	/**
 	 * The stand map of the forests of the vertical slice (steps V9–V11): the constants of {@link ForestStandMap} before
 	 * step F1.
@@ -100,19 +103,36 @@ public record StandProfile(double naturalFactor, double[] managedAges, double[] 
 			ForestStandMap.MERGE_CHANCE, new double[] {0.12, 0.42, 0.50}, 0.7, 20, 0.45, 10, 40, new double[] {0, 0.10, 0.20}, 20);
 	/**
 	 * The spruce-stone pine forest of the Tatras (step TT4; research/06 §3.5): the variant of the montane spruce forest of
-	 * {@code ForestBlend} where its lattice point lies in the Pino cembrae-Piceetum. A loose stand of clumps whose gaps are
-	 * smaller and fewer than in the spruce forest (the windfirm, slowly dying stone pines, the larch in the gaps: mostly
-	 * 8-30 m, often two together); no managed stands (the Tatra National Park), so no regeneration nests. The ages and the
-	 * size of the stands are those of the slice, and the gap chances stay within those of the table, so the stands and the
-	 * gap draws of the other forests do not change.
+	 * {@code ForestBlend} where its lattice point lies in the Pino cembrae-Piceetum. Step C1 (CP-D.8, decision of the user at
+	 * CP-D): a loose stand of clumps with frequent, large openings between them, where the dwarf pine grows with the young
+	 * stone pines, spruces and larches (the gap regeneration of its palette): the gaps as often as the table allows (the
+	 * chances of the montane spruce forest), of median 20 m (12-36 m), two together at 0.8, and with two more scattered gaps
+	 * of median 16 m around each (ForestStandMap: within 14-28 m of the gap's center, the profile's own clump mechanism of
+	 * new salt), so the clumps of trees stand between several small glades instead of one large one.
+	 * Before step C1 the gaps were fewer and smaller (chances 0.10 / 0.36 / 0.44, 8-32 m,
+	 * median 16 m, two together at 0.6; N5 of the old growth 1.35%, TT4-o). No managed stands (the Tatra National Park),
+	 * so no regeneration nests. The ages and the size of the stands are those of the slice, and the gap chances stay
+	 * within those of the table ({@code ForestStandMap} draws the gaps of every forest against their maximum), so the stands
+	 * and the gap draws of the other forests do not change.
 	 */
 	public static final StandProfile STONE_PINE = new StandProfile(1.0, DEFAULT.managedAges, DEFAULT.naturalAges,
-			ForestStandMap.MERGE_CHANCE, new double[] {0.10, 0.36, 0.44}, 0.6, 16, 0.45, 8, 32, new double[] {0, 0, 0}, 0);
+			ForestStandMap.MERGE_CHANCE, new double[] {0.12, 0.42, 0.50}, 0.8, 20, 0.4, 12, 36, new double[] {0, 0, 0}, 0, 2, 16);
 	/** All profiles of the table (the gap process draws against the highest chance of any of them). */
 	static final StandProfile[] ALL = {DEFAULT, BEECH, ALDER_CARR, ASH_ALDER, FIR, MONTANE_BEECH, FLOODPLAIN, MONTANE_SPRUCE,
 			STONE_PINE};
 
+	/** A profile without scattered gaps (every profile before step C1). */
+	public StandProfile(double naturalFactor, double[] managedAges, double[] naturalAges, double mergeChance, double[] gapChance,
+			double clusterChance, double gapMedian, double gapSigma, double gapMin, double gapMax, double[] nestChance,
+			double nestMedian) {
+		this(naturalFactor, managedAges, naturalAges, mergeChance, gapChance, clusterChance, gapMedian, gapSigma, gapMin, gapMax,
+				nestChance, nestMedian, 0, 0);
+	}
+
 	public StandProfile {
+		if (scattered < 0 || scattered > ForestStandMap.SCATTERED_MAX || scattered > 0 && scatteredMedian <= 0) {
+			throw new IllegalArgumentException("scattered gaps " + scattered + " of " + scatteredMedian + " m");
+		}
 		if (managedAges.length != 3 || naturalAges.length != 3 || gapChance.length != 3 || nestChance.length != 3) {
 			throw new IllegalArgumentException("three age classes");
 		}
