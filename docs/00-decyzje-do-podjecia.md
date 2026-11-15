@@ -1337,3 +1337,15 @@ Materiały: paczki 0.3.0-dev.2 … dev.19 z listami „Do sprawdzenia w grze” 
 | CP-D.10 | Wysokie byliny (F2-v′) | **Dwublokowe pokrzywa i kosaciec żółty** (postać wysoka jak duża paproć wanilii) w nowym kroku; do tego czasu (a) jak dziś |
 | CP-D.11 | Śnieg w typie świata „Default + Polish Forests” (W1-o) | **Śnieg z wysokości**: profil klimatu z wysokości terenu wanilii (śnieg w górach i tam, gdzie wanilia miała śnieg), pory roku Serene Seasons bez zmian |
 | CP-D.12 | Kopie robocze z pomiarów | Usunięte `pl-pre-f1`, `pl-pre-tt1`, `pl-pre-tt2` (2026-11-15); `pl-m2-baseline` zostaje do przebiegu zbiorczego |
+
+### G.58 Plan kroków C: poprawki po CP-D (domyślne wybory planu; 2026-11-15)
+
+Plan: `docs/04-pionowy-wycinek.md` §3 „Kroki C” i §4.3. Trzy kroki w torze A przed fauną (V14–V17): C1 (CP-D.8, CP-D.9), C2 (CP-D.11, CP-D.5), C3 (CP-D.10).
+
+| # | Wybór | Wartość i powód |
+|---|---|---|
+| G.58-a | Luki boru limbowego | Szanse luk `StandProfile.STONE_PINE` najwyżej do maksimum tablicy (`MONTANE_SPRUCE`), bo maksimum steruje losowaniem luk wszystkich lasów; więcej luk przez średnice, skupienia i ewentualnie kępy z nową solą; kosodrzewina w `gap_regeneration` palety limbowej |
+| G.58-b | Klimat świata „Default + Polish Forests” | Temperatura biomu wanilii zastąpionego przez las moda z poprawką wysokości wanilii, zapisana przy etapie TERRAIN jako trwały załącznik chunka zsynchronizowany z klientem (klient nie zna źródła biomów wanilii); chunk bez załącznika jak dziś |
+| G.58-c | Progi CP-D.5 w kodzie | Osobna klasa progów obok `ForestPerformance` (ten plik działa też na buildzie M2), test na liczbach F7; bez nowego pomiaru do V17 |
+| G.58-d | Odczyty §4.6 po C3 | Urzędowy jak F2-v′ (a) (jednoblokowe byliny `HERB` jako wysokie) i drugi bez jednoblokowych pokrzywy i kosaćca; cel mały strumień z OlJ ≥ 60% także w drugim |
+| G.58-e | Gleba piętra turni | Bez nowych bloków: rumosz granitowy i wapienny z TT2; darń kępami (pole z nową solą); gleby hali i kosodrzewiny (`RANKER`) bez zmian |
