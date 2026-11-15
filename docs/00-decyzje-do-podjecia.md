@@ -155,7 +155,7 @@ Plan: `docs/04-pionowy-wycinek.md`, **zaakceptowany przez użytkownika 2026-10-1
 | PW-12 | Rozmiar drzew w skali rozgrywki | (a) 1:1 jak w REAL, odległości planerów ×k | CP-B |
 | PW-13 | Potwory pod okapem w dzień | (a) gdy pomiar V10 pokaże problem: liście sosny i brzozy przepuszczają światło nieba | CP-B |
 | PW-14 | Fauna wycinka (dawne F4) | (b) minimum: sarna i dzik jako encje, żaba trawna jako `frog_variant`, dzięcioł, tło ptaków i skrzek sójki jako dźwięk; wiewiórka i sójka jako opcje O1, O2 | CP-D |
-| PW-15 | Zwierzęta wanilii i gęstość (dawne F1, F2) | (b) bez wilka i królika we wszystkich lasach (lis zostaje); gęstość ok. ×20–50, spawn przy generacji i naturalny kalibrowane osobno | CP-D |
+| PW-15 | Zwierzęta wanilii i gęstość (dawne F1, F2) | **PODJĘTA 2026-11-15 (CP-D.3, G.57): zwierzęta wanilii zostają**; gęstość zwierząt moda ok. ×20–50, spawn przy generacji i naturalny kalibrowane osobno | CP-D |
 | PW-16 | Pejzaż dźwiękowy | (b) według biomu, podsezonu i pory dnia | CP-D |
 | PW-17 | Kolejność względem M2 | (b) wycinek startuje od razu. Stan 2026-10-15: S8c (M2-20 d2) i jego runda 1 poprawek są już zakończone (`9f627cd`), więc osobny worktree nie jest potrzebny, a baza pomiarowa M2 (tag `m2-baseline-r1`, po rundzie 1 poprawek V0; wcześniejszy `m2-baseline` ma tę samą generację świata) jest po S8c | — |
 
@@ -1318,3 +1318,22 @@ Krok: `docs/04-pionowy-wycinek.md` „Projekt TT7” (etap 1, TT7-a … TT7-l) i
 | TT7-s | Test przełomów (przegląd, runda 1) | `TatraRiverTest.forelandGorgesDrainTheBasin`: od wylotu do końca cięcia albo wagi < 0,5 dno (najniższy grunt w poprzek) nie wznosi się > 10 m ponad najniższy punkt powyżej (za ujściem ponad najniższy punkt do ujścia), koryto w przełomie na ≥ 80% drogi; `partsHaveTheirHeights`: mediana kotliny bez podniesienia 580–700 m, podniesienie ≤ 140 m |
 | TT7-p′ | Jeziora na zewnętrznej stronie przedgórza REAL (przegląd, runda 1, do CP-D) | Po TT7-r 5177 kolumn `LAKE` w części `FORELAND` pięciu masywów REAL (było 2543; w świecie bez Tatr w tych kolumnach 1403): niecki starego terenu 6–12 km za kotliną, poza pasem przełomu, które w świecie bez Tatr spływały na południe przez dzisiejszą kotlinę. Rekomendacja: zostawić do oceny w grze; gdyby raziły, osobny krok z wypełnianiem niecek zewnętrznej strony przedgórza ku przełomowi (wymaga trzeciego przepisania złotego pliku Tatr) |
 | TT7-t | Rampa brzegowa w przekrojach gametestu `tatra` (przegląd, runda 1) | Suchy punkt przekroju najwyżej 3 bloki niżej niż model i najwyżej 3 kolumny (Chebyshev) od słodkiej wody modelu liczy się jako „na rampie brzegowej” (raport), nie „poza modelem”: `BankShelf` obniża tam brzeg celowo (zasięg `RAMP` i spadek `MAX_DROP` = 3). Powód: pierwszy przebieg rundy padł na 2 z 49 punktów REAL (próg 3%), oba na rampie przy rzece |
+
+### G.57 Punkt kontrolny CP-D (decyzje użytkownika, 2026-11-15)
+
+Materiały: paczki 0.3.0-dev.2 … dev.19 z listami „Do sprawdzenia w grze” (`.dev-handoff/sprawdz/`), wybory G.27–G.56, warianty B3 z F7 i TT1–TT7. Odpowiedzi wykonuje część 5 wycinka (`docs/04` §3, plan „Kroki C”).
+
+| # | Pytanie | Decyzja |
+|---|---|---|
+| CP-D.1 | Co dalej po lasach i Tatrach | **Fauna i dźwięk według planu**: V14 (szkielet fauny i sarna; model sarny V8 z gałęzi `slice-fauna`), V15 (dzik), V16 (pejzaż dźwiękowy, żaba trawna), potem V17 (integracja, przebieg zbiorczy, karta norm końcowa) |
+| CP-D.2 | Opcje O1–O4 | **Wszystkie cztery**: O1 wiewiórka, O2 sójka jako encja, O3 pełne zestawy drewna (drzwi, klapy, tabliczki, półki, łodzie) dla gatunków moda z własnym drewnem (sosna, jesion, buk, grab, lipa, klon), O4 mrowiska rudnicy |
+| CP-D.3 | Zwierzęta wanilii w lasach moda (PW-15) | **Zostawić wanilię**: wilk, lis i królik w lasach jak dziś (profil `Spawns.FOREST` bez zmian), żadne zwierzę wanilii nie znika. Gęstość zwierząt moda: wariant (b) PW-15 (ok. ×20–50 rzeczywistej), kalibracja w V14 |
+| CP-D.4 | Drobne wybory G.27–G.56 | **Przyjęte wszystkie** w obecnym stanie (w tym TT7-h, TT7-i, TT7-q, G.50–G.53); uwagi z gry użytkownik zgłasza osobno |
+| CP-D.5 | Progi wydajności F7 (F7-t) | **Przyjąć (a)**: osobny próg strażnika z jaskiniami dla lasów górskich (`upland_fir`, `montane_spruce`) na poziomie zmierzonym (REAL ≥ 0,35 ×, GAMEPLAY ≥ 0,45 × M2), FPS nad okapem lasów F1–F6 tylko w raporcie, REAL `lowland_beech_1` 0,698 przyjęte i sprawdzone ponownie w przebiegu zbiorczym (V17) |
+| CP-D.6 | Podniesienie Podhala REAL (TT7-r) | **Zostawić** (100–128 m, kotlina z odpływem przez przełomy) |
+| CP-D.7 | Jeziora za przedgórzem REAL (TT7-p′) i w kotlinie (TT7-p) | **Zostawić**, użytkownik oceni w grze; osobny krok tylko na jego zgłoszenie |
+| CP-D.8 | Luki boru limbowego (TT4-o) | **Więcej luk w lesie**: zmiana `StandProfile.STONE_PINE` (drzewostan luźny, w kępach, kosodrzewina w lukach), N5 starodrzewu w normie świerczyny 5–20%, bez osobnego wariantu normy |
+| CP-D.9 | Gleba piętra turni (TT3-g) | **Rumosz z kępkami**: na kolumnach turni poza `BARE_ROCK` rumosz granitowy (na wapieniu wapienny), trawa tylko kępami |
+| CP-D.10 | Wysokie byliny (F2-v′) | **Dwublokowe pokrzywa i kosaciec żółty** (postać wysoka jak duża paproć wanilii) w nowym kroku; do tego czasu (a) jak dziś |
+| CP-D.11 | Śnieg w typie świata „Default + Polish Forests” (W1-o) | **Śnieg z wysokości**: profil klimatu z wysokości terenu wanilii (śnieg w górach i tam, gdzie wanilia miała śnieg), pory roku Serene Seasons bez zmian |
+| CP-D.12 | Kopie robocze z pomiarów | Usunięte `pl-pre-f1`, `pl-pre-tt1`, `pl-pre-tt2` (2026-11-15); `pl-m2-baseline` zostaje do przebiegu zbiorczego |
