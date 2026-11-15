@@ -35,7 +35,10 @@ import pl.polishforests.worldgen.vanilla.VanillaForestsBiomeSource;
  * montane spruce forest), the former windswept forest (snow only higher up) and the oak-hornbeam forest (former forest,
  * warm). A cold dry column that can hold snow (air at the top of {@code MOTION_BLOCKING}, snow survives, block light
  * below 10) must hold it in at least {@link #SNOW_SHARE} of the columns of the former snowy taiga; a warm column never; a
- * cold water column must be frozen in at least {@link #SNOW_SHARE}.</li>
+ * cold water column must be frozen in at least {@link #SNOW_SHARE}. The cold columns left without snow are listed (leaves
+ * at the top, within one block of the snow line, samples). {@code /polishforests here} in the former snowy taiga reports
+ * the column climate and snow; a freezing probe ({@link #freezeProbe}) checks the ice rule in a cold and a warm forest
+ * column, because the census areas hold no water under a habitat biome.</li>
  * <li>The client and the server agree: the player stands in the former snowy taiga, and in a raster of points of the 3 × 3
  * chunks around him the client thread (its own chunks and their synchronized attachment) and the server thread give the
  * same column climate and the same rain or snow.</li>
@@ -73,6 +76,14 @@ final class VanillaSnowCheck {
 			failures.add(String.format(Locale.ROOT, "snow: former snowy taiga %d of %d cold dry columns with snow (needs >= %d and %.0f%%)",
 					cold.snowy, cold.coldDry, MIN_COLD_COLUMNS, 100 * SNOW_SHARE));
 		}
+		// `here` at the surface of the former snowy taiga: the temperature at the point from the column climate, snow.
+		String here = sp.getServer().computeOnServer(s -> VanillaForestsClientGameTest.commandLines(s,
+				snowy.atY(s.overworld().getHeight(Heightmap.Types.MOTION_BLOCKING, snowy.getX(), snowy.getZ())), "polishforests here"));
+		report.append("snow: here in the former snowy taiga: ").append(here).append('\n');
+		PolishForests.LOG.info("[vanilla_forests] snow: here in the former snowy taiga: " + here);
+		if (!here.contains("Temperature here") || !here.contains("from the vanilla biome of this column") || !here.contains(": snow;")) {
+			failures.add("snow: here in the former snowy taiga without the column climate and snow: " + here);
+		}
 		if (cold.formerSnowyTaiga == 0) {
 			failures.add("snow: no column with the base temperature of the snowy taiga (-0.5) in its census");
 		}
@@ -94,6 +105,10 @@ final class VanillaSnowCheck {
 		}
 		if (cold.coldWater >= 20 && cold.frozen < SNOW_SHARE * cold.coldWater) {
 			failures.add(String.format(Locale.ROOT, "snow: %d of %d cold water columns frozen", cold.frozen, cold.coldWater));
+		}
+		freezeProbe(sp, snowy, true, report, failures);
+		if (warm != null) {
+			freezeProbe(sp, warm, false, report, failures);
 		}
 		agreement(context, sp, snowy, report, failures);
 		withoutAttachment(context, sp, snowy, report, failures);
@@ -133,6 +148,15 @@ final class VanillaSnowCheck {
 		int formerSnowyTaiga;
 		int formerSnowyTaigaSnowy;
 		int withoutAttachment;
+		/**
+		 * Cold dry snowable columns without snow: with leaves at the top, and within one block of the snow line (the
+		 * temperature one block lower, 0.05 / 40 warmer, is at or above the threshold: the spring melt of Serene Seasons, which
+		 * tests the block under the snow, takes such snow away again).
+		 */
+		int missLeaves;
+		int missNearLine;
+		final StringBuilder missSamples = new StringBuilder();
+		int samples;
 
 		void add(Census c) {
 			forest += c.forest;
@@ -158,6 +182,12 @@ final class VanillaSnowCheck {
 				c.warmSnowy, c.warmLowSnowy, c.coldWater, c.frozen, c.formerSnowyTaiga, c.formerSnowyTaigaSnowy, c.withoutAttachment);
 		report.append(line).append('\n');
 		PolishForests.LOG.info("[vanilla_forests] " + line);
+		if (c.coldDry > c.snowy) {
+			String miss = String.format(Locale.ROOT, "snow:   %s cold dry columns without snow %d: leaves below %d, within one block "
+					+ "of the snow line %d; samples%s", name, c.coldDry - c.snowy, c.missLeaves, c.missNearLine, c.missSamples);
+			report.append(miss).append('\n');
+			PolishForests.LOG.info("[vanilla_forests] " + miss);
+		}
 	}
 
 	/** The census of the forest columns of {@link #CHUNKS} × {@link #CHUNKS} chunks around a column (see the class). */
@@ -205,6 +235,14 @@ final class VanillaSnowCheck {
 					}
 					c.coldDry++;
 					c.snowy += hasSnow ? 1 : 0;
+					if (!hasSnow) {
+						c.missLeaves += below.is(net.minecraft.tags.BlockTags.LEAVES) ? 1 : 0;
+						c.missNearLine += t + 0.05F / 40.0F >= PolandClimate.SNOW_THRESHOLD ? 1 : 0;
+						if (c.samples++ < 8) {
+							c.missSamples.append(String.format(Locale.ROOT, " (%d %d %d %s t=%.4f)", x, py, z,
+									net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(below.getBlock()).getPath(), t));
+						}
+					}
 					if (base == -0.5F) {
 						c.formerSnowyTaiga++;
 						c.formerSnowyTaigaSnowy += hasSnow ? 1 : 0;
@@ -219,6 +257,47 @@ final class VanillaSnowCheck {
 			}
 		}
 		return c;
+	}
+
+	/**
+	 * Ice: the census areas hold no water under a habitat biome, so the freezing rule is probed directly. In the 3 × 3
+	 * chunks around a column, the first forest column with a solid top and a cold (or warm) column temperature gets a
+	 * water source block in place of its top block for one call of {@code Biome#shouldFreeze} on the server thread (the
+	 * rule of {@code freeze_top_layer} and of the precipitation ticks); the block is restored at once. Cold: it must
+	 * freeze; warm: it must not.
+	 */
+	private static void freezeProbe(TestSingleplayerContext sp, BlockPos center, boolean cold, StringBuilder report,
+			List<String> failures) {
+		String line = sp.getServer().computeOnServer(s -> {
+			ServerLevel level = s.overworld();
+			for (int dx = -16; dx < 32; dx++) {
+				for (int dz = -16; dz < 32; dz++) {
+					int x = (center.getX() & ~15) + dx;
+					int z = (center.getZ() & ~15) + dz;
+					BlockPos top = new BlockPos(x, level.getHeight(Heightmap.Types.MOTION_BLOCKING, x, z) - 1, z);
+					BlockState was = level.getBlockState(top);
+					Holder<Biome> biome = level.getBiome(top.above());
+					BiomeClimate profile = BiomeClimateAccess.climate(biome.value());
+					if (profile == null || !profile.vanillaColumns() || !was.isSolidRender() || level.getBlockEntity(top) != null
+							|| profile.temperature(top, level.getSeaLevel()) < PolandClimate.SNOW_THRESHOLD != cold) {
+						continue;
+					}
+					level.setBlock(top, Blocks.WATER.defaultBlockState(), 2 | 16);
+					boolean freezes = biome.value().shouldFreeze(level, top, false);
+					float t = profile.temperature(top, level.getSeaLevel());
+					level.setBlock(top, was, 2 | 16);
+					return String.format(Locale.ROOT, "snow: freezing probe (%s) at (%d, %d, %d) in %s: temperature %.4f, water freezes %s",
+							cold ? "cold" : "warm", x, top.getY(), z, biome.unwrapKey().map(k -> k.identifier().getPath()).orElse("?"), t,
+							freezes) + (freezes == cold ? "" : " FAIL");
+				}
+			}
+			return "snow: freezing probe (" + (cold ? "cold" : "warm") + ") found no such forest column with a solid top FAIL";
+		});
+		report.append(line).append('\n');
+		PolishForests.LOG.info("[vanilla_forests] " + line);
+		if (line.endsWith("FAIL")) {
+			failures.add(line);
+		}
 	}
 
 	/** The points of the agreement raster: every 3rd block of the 3 × 3 chunks around a column, at the top. */

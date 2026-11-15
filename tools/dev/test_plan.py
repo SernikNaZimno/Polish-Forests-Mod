@@ -72,7 +72,7 @@ TESTS = {
                    ['./gradlew runClientGameTest -Pgametest=determinism -Poptimization -PdeterminismReference=<copy>/plain.txt   # C2ME, see BRIEF']),
     'norms': (['./gradlew runClientGameTest -Pgametest=slice -Psites=none   # norms card, about 2 min'], []),
     'caves': (['./gradlew runClientGameTest -Pgametest=caves'], ['./gradlew runClientGameTest -Pgametest=cave_biomes']),
-    'vanilla_world': (["./gradlew test --tests '*VanillaForestsTest*' --tests '*VanillaClimateTest*'   # W1 tables, column climate (step C2)",
+    'vanilla_world': (["./gradlew test --tests '*VanillaForestsTest*' --tests '*VanillaClimateTest*' --tests '*BorderFreezeTest*'   # W1 tables, column climate and border freeze (step C2)",
                        './gradlew runClientGameTest -Pgametest=vanilla_forests   # world type Default + Polish Forests'], []),
     'blocks': (["./gradlew checkDatagen", "./gradlew test --tests '*RegistrySnapshotTest*'",
                 '# plus one game test of the changed mechanic only (e.g. slice -Psites=samples for trunks)'], []),

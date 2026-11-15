@@ -176,9 +176,11 @@ public final class VanillaForestsClientGameTest implements FabricClientGameTest 
 			}
 			// 5. Step C2: snow and ice by the column climate, the client against the server, a chunk without the attachment.
 			VanillaSnowCheck.run(context, sp, report, failures);
-			report.append(String.format(Locale.ROOT, "counters: column climates %d, habitats attached %d, soil tops %d, soil blended %d, trees %d, "
+			report.append(String.format(Locale.ROOT, "counters: column climates %d, border snow %d, border ice %d, habitats attached %d, soil tops %d, soil blended %d, trees %d, "
 					+ "planned %d, skipped on blocked columns %d, at structures or water %d, on the trunk base %d, unwritten %d, "
-					+ "suppressed %d%n", pl.polishforests.climate.ColumnClimates.ATTACHED.sum(), VanillaForestWorld.ATTACHED.sum(),
+					+ "suppressed %d%n", pl.polishforests.climate.ColumnClimates.ATTACHED.sum(),
+					pl.polishforests.worldgen.vanilla.BorderFreeze.SNOW.sum(), pl.polishforests.worldgen.vanilla.BorderFreeze.ICE.sum(),
+					VanillaForestWorld.ATTACHED.sum(),
 					VanillaForestWorld.SOIL_TOPS.sum(), VanillaForestWorld.SOIL_BLENDED.sum(), TreeStandFeature.TREES.sum(),
 					TreeStandFeature.PLANNED.sum(), TreeStandFeature.SKIPPED_BLOCKED.sum(), TreeStandFeature.SKIPPED_STRUCTURE.sum(),
 					TreeStandFeature.SKIPPED_BASE.sum(), TreeStandFeature.SKIPPED_WRITE.sum(),
@@ -286,6 +288,18 @@ public final class VanillaForestsClientGameTest implements FabricClientGameTest 
 	}
 
 	private static String command(MinecraftServer server, BlockPos at, String command) {
+		List<Component> messages = messages(server, at.atY(100), command);
+		return "/" + command + ": " + (messages.isEmpty() ? "no message" : messages.getLast().getString());
+	}
+
+	/** Every message of a command run at the given block (step C2: {@code here} in a forest column, all its lines). */
+	static String commandLines(MinecraftServer server, BlockPos at, String command) {
+		List<Component> messages = messages(server, at, command);
+		return "/" + command + ": " + (messages.isEmpty() ? "no message"
+				: String.join(" | ", messages.stream().map(Component::getString).toList()));
+	}
+
+	private static List<Component> messages(MinecraftServer server, BlockPos at, String command) {
 		List<Component> messages = new ArrayList<>();
 		server.getCommands().performPrefixedCommand(server.createCommandSourceStack().withSource(new CommandSource() {
 			@Override
@@ -307,8 +321,8 @@ public final class VanillaForestsClientGameTest implements FabricClientGameTest 
 			public boolean shouldInformAdmins() {
 				return false;
 			}
-		}).withLevel(server.overworld()).withPosition(Vec3.atCenterOf(at.atY(100))), command);
-		return "/" + command + ": " + (messages.isEmpty() ? "no message" : messages.getLast().getString());
+		}).withLevel(server.overworld()).withPosition(Vec3.atCenterOf(at)), command);
+		return messages;
 	}
 
 	/**

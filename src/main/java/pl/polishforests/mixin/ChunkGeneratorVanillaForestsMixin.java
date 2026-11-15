@@ -12,6 +12,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import pl.polishforests.climate.ColumnClimates;
+import pl.polishforests.worldgen.vanilla.BorderFreeze;
 import pl.polishforests.worldgen.vanilla.VanillaForestsBiomeSource;
 
 /**
@@ -21,7 +22,9 @@ import pl.polishforests.worldgen.vanilla.VanillaForestsBiomeSource;
  *
  * <p>Step C2: during the decoration of such a chunk the thread reads the column climates of its generation region
  * ({@link ColumnClimates#decorating}), so {@code freeze_top_layer} lays snow and ice by the temperature of the column's
- * vanilla biome. A wrapper, so the mark is removed also when the decoration throws.
+ * vanilla biome. A wrapper, so the mark is removed also when the decoration throws. After the decoration the same rule
+ * covers the habitat columns of the neighbors decorated earlier ({@link BorderFreeze}: crowns of this chunk's trees over
+ * them).
  */
 @Mixin(ChunkGenerator.class)
 abstract class ChunkGeneratorVanillaForestsMixin {
@@ -35,6 +38,7 @@ abstract class ChunkGeneratorVanillaForestsMixin {
 		LevelReader previous = ColumnClimates.decorating(level);
 		try {
 			original.call(level, chunk, structureManager);
+			BorderFreeze.apply(level, chunk);
 		} finally {
 			ColumnClimates.done(previous);
 		}

@@ -850,7 +850,7 @@ Krok W1 (G.36 U-3: typ świata „Default + Polish Forests” / „Domyślny + p
 | `taiga` | `mixed_pine_forest` (BMśw) | świerk z sosną — bór mieszany z NE Polski |
 | `old_growth_pine_taiga` | `fresh_pine_forest` (Bśw) | stary bór sosnowy z mszystym dnem; las wycinka |
 | `old_growth_spruce_taiga` | `montane_spruce_forest` (świerczyna górska) | stary bór świerkowy |
-| `snowy_taiga` | `montane_spruce_forest` | zimny bór świerkowy (bez śniegu, W1-o) |
+| `snowy_taiga` | `montane_spruce_forest` | zimny bór świerkowy (śnieg z wysokości od kroku C2, CP-D.11; wcześniej bez śniegu, W1-o) |
 | `windswept_forest` | `montane_beech_forest` (buczyna karpacka) | las na zboczach gór z bukiem, jodłą i świerkiem |
 | `swamp` | `alder_carr` (ols) | podmokły las liściasty |
 | `jungle`, `sparse_jungle`, `bamboo_jungle`, `mangrove_swamp` | — (wanilia) | tropikalne, bez odpowiednika |
@@ -1369,3 +1369,23 @@ Krok: `docs/04-pionowy-wycinek.md` §3 „C1”, „Projekt C1” (etap 1, C1-a 
 | C1-i | Wychodnie skalne na powierzchniach limbowych (etap 2) | Grupa co najmniej `GAP_MIN_AREA` (50) kolumn stykających się bokiem z gołą skałą albo rumoszem jako gruntem (`ForestNorms.ROCK_GROUND`, `ForestCensus.rockOutcrops`) to grunt poza lasem jak hala: wychodzi z powierzchni i kończy lukę; pojedyncza kolumna skały albo głaz zostaje w lesie. Bez tego reguła C1-c liczy otwarcia wokół wychodni granitu jako luki (N5 21–31% w grze przy profilu C1, 25% nawet przy profilu TT4); z nim N5 obu powierzchni obu skal 9,2–18,1%. Tylko powierzchnie limbowe (karta innych lasów bez zmian); **do potwierdzenia razem z C1-c** |
 | C1-j | `determinism` dla kroku zmieniającego glebę | Nowa flaga `-PdeterminismStepSoil` (z `-PdeterminismStepZones`): teren obszaru leżącego w całości w strefie `T` może różnić się od referencji tylko zamianą bloków wierzchu gleby (`TerrainBlocks.STEP_SOIL_BLOCKS`) do 3 bloków pod wierzchem kolumny; każda inna różnica terenu nadal jest błędem |
 | C1-k | Spis piętra turni na wapieniu | W obu skalach brak kolumny `SUBNIVAL_ROCKS` na wapieniu powyżej 2380 m w kracie spisu, więc spis w grze obejmuje tylko granit; rumosz wapienny sprawdzają testy jednostkowe (`SubnivalSoilC1Test`: `RENDZINA` → `limestone_scree`) i zero „rumoszu złej skały” w spisie |
+
+### G.60 Drobne wybory kroku C2 (domyślne, do potwierdzenia; 2026-11-15)
+
+Krok: `docs/04-pionowy-wycinek.md` §3 „C2”, „Projekt C2” (etap 1, C2-a … C2-j) i „Stan po C2” (etap 2, C2-k … C2-m). Krok realizuje CP-D.11 i CP-D.5 (G.57) według G.58-b i G.58-c.
+
+| # | Wybór | Wartość i powód |
+|---|---|---|
+| C2-a | Siatka załącznika klimatu kolumn | 256 kolumn z paletą (zwykle 1 liczba, najwyżej 256 B + paleta) zamiast siatki ćwiartek 4 × 4 z G.58-b: ćwiartki bez zoomu dałyby granicę deszczu i śniegu po kracie 4 × 4 bloki (prosta linia, Z10) i inną niż w wanilii; kolumny z zoomem dają granice wanilii (odstępstwo od G.58-b) |
+| C2-b | Które chunki i punkty | Załącznik tylko w chunkach z biomem moda na wierzchu którejś kolumny; punkt biomu moda nad kolumną innego biomu wanilii (zoom na innej wysokości) bierze temperaturę bazową biomu wanilii kolumny |
+| C2-c | Pamięć temperatury wanilii | Profil kolumn zwraca temperaturę na początku `Biome#getTemperature`, z pominięciem pamięci wanilii (klient dostaje załącznik pakietem po chunku; wartość zapamiętana w tym okienku zostałaby błędna) |
+| C2-d | Dostęp z `temperature(pos)` do załącznika | Według wątku: wątek dekoracji (region generacji), wątek serwera (`getChunkNow`), wątek klienta (chunki klienta); inne wątki i chunki bez załącznika — temperatura własna biomu (jak przed C2) |
+| C2-e | Świerczyna górna | Jedyny las moda zastępujący lasy wanilii o różnych temperaturach (`old_growth_spruce_taiga` 0,25, `snowy_taiga` −0,5): temperatura biomu źródła przed podmianą w ćwiartce wybranej przez zoom; pozostałe lasy z temperatury wspólnej zastępowanych lasów |
+| C2-f | Klient zdalnego serwera | Przypina profil kolumn biomom moda w każdym nadświecie, który nie jest światem „Polska” (nie zna źródła biomów serwera) |
+| C2-g | `/polishforests here` | Linia temperatury z 3 miejscami po przecinku, z porą roku i bez, opad według temperatury z porą roku, temperatura bazowa i jej źródło; °C linii siedliska z temperatury w punkcie |
+| C2-h | Werdykty progów CP-D.5 | `ACCEPTED` tylko dla REAL `lowland_beech_1` i tylko od 0,698; etapy FEATURES, LIGHT i cały chunk też w kodzie (bez jaskiń); `REPORT` tylko dla przelotów nad okapem lasów F1–F6; `DESCRIBE` dla miejsc `tatra*`; próg górski 0,35/0,45 tylko dla `upland_fir_*` i `montane_spruce_*` |
+| C2-i | Spis śniegu w `vanilla_forests` | Zimne suche kolumny zdolne do śniegu (powietrze na wierzchu `MOTION_BLOCKING`, śnieg przeżyje, światło bloków < 10) ze śniegiem ≥ 90%, w dawnej `snowy_taiga` co najmniej 500 takich kolumn; ciepłe 0; zimna woda zamarznięta ≥ 90% przy ≥ 20 kolumnach |
+| C2-j | Stare chunki | Lód i śnieg tylko przy generacji i w tickach opadów jak w wanilii; bez dosypywania śniegu w starych chunkach (możliwy szew między starymi i nowymi chunkami starego świata W1) |
+| C2-k | Śnieg na koronach przy granicy chunka (etap 2) | Po dekoracji chunka świata „Default + Polish Forests” reguła `freeze_top_layer` jeszcze raz na kolumnach biomów moda u sąsiadów już udekorowanych, z klimatem kolumn (`BorderFreeze`), bez 2 skrajnych rzędów, do których zoom biomów nie sięga w regionie; bez tego korony chunka dekorowanego później nad sąsiadem zostają bez śniegu (cięcie wzdłuż granicy chunka, w spisie 168 i 60 kolumn); wanilia ma to cięcie, mod w tym typie świata już nie |
+| C2-l | Kolumny bez śniegu przy linii śniegu | Spis wypisuje zimne kolumny bez śniegu (liście, odległość od linii śniegu, próbki); 18 kolumn dawnego `windswept_forest` w obrębie 1 bloku od linii śniegu traci śnieg przez wiosenne topnienie Serene Seasons (sprawdza blok pod śniegiem); próg 90% bez zmian, SS bez zmian |
+| C2-m | Lód w spisie | W obszarach spisu nie ma wody pod biomem moda, więc próba zamarzania: woda stawiana na chwilę w pierwszej zimnej i pierwszej ciepłej kolumnie lasu, `shouldFreeze` musi dać prawdę w zimnej i fałsz w ciepłej; `here` w dawnej `snowy_taiga` musi pokazać klimat kolumny i śnieg |
