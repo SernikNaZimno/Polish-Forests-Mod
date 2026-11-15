@@ -150,8 +150,8 @@ final class VanillaSnowCheck {
 		int withoutAttachment;
 		/**
 		 * Cold dry snowable columns without snow: with leaves at the top, and within one block of the snow line (the
-		 * temperature one block lower, 0.05 / 40 warmer, is at or above the threshold: the spring melt of Serene Seasons, which
-		 * tests the block under the snow, takes such snow away again).
+		 * temperature one block lower, 0.05 / 40 warmer, is at or above the threshold; a pass that tests the block under the
+		 * snow spot instead of the spot itself misses exactly these columns).
 		 */
 		int missLeaves;
 		int missNearLine;

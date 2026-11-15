@@ -75,8 +75,9 @@ public final class BorderFreeze {
 			int x = x0 + (i >> 4);
 			int z = z0 + (i & 15);
 			int y = n.getHeight(Heightmap.Types.MOTION_BLOCKING, x & 15, z & 15) + 1;
-			// The cheap test first: the column's vanilla temperature at its top (a frozen column below it is colder still).
-			if (VanillaClimate.temperature(climate.base(x, z), x, y - 1, z, seaLevel) >= PolandClimate.SNOW_THRESHOLD) {
+			// The cheap test first: the column's vanilla temperature at the snow spot y, where shouldSnow tests it. The water
+			// block below (shouldFreeze) is one block lower and so never colder, so a warm snow spot rules out ice as well.
+			if (VanillaClimate.temperature(climate.base(x, z), x, y, z, seaLevel) >= PolandClimate.SNOW_THRESHOLD) {
 				continue;
 			}
 			if (!zoomInside(cx, cz, x, z)) {
