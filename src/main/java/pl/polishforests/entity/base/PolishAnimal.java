@@ -17,7 +17,6 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.tslat.smartbrainlib.api.SmartBrainOwner;
-import net.tslat.smartbrainlib.api.core.navigation.SmoothGroundNavigation;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -41,7 +40,9 @@ import org.jspecify.annotations.Nullable;
  * player and only for an animal without a name, a leash or {@code persistenceRequired}; nothing despawns closer (the
  * random despawn of vanilla's mobs after 30 s without action is left out). In 26.3 the {@code CREATURE} category is
  * persistent (vanilla spawns it only on chunk spawn every 400 ticks) and {@link Animal#removeWhenFarAway} is false: a
- * vanilla animal never despawns, so without this rule the population would only grow with exploration.
+ * vanilla animal never despawns, so without this rule the population would only grow with exploration. The animals of
+ * the spawn at generation are {@code persistenceRequired} (they belong to their chunk, as vanilla's animals do), so only
+ * those of the fauna spawner despawn.
  * </ul>
  *
  * @param <T> the species class itself (SmartBrainLib's self type)
@@ -125,23 +126,44 @@ public abstract class PolishAnimal<T extends PolishAnimal<T>> extends Animal imp
 
 	/**
 	 * The flight distance from a player: {@link AnimalProfile#fleeMin()} for a sneaking one, {@link AnimalProfile#fleeMax()}
-	 * for a sprinting one, the middle for a walking one; 0 for a player who cannot be seen as a threat (spectator, creative
-	 * flight is still a threat).
+	 * for a sprinting one, the middle for a walking one; 0 for a spectator (a creative player is still a threat). An
+	 * invisible player counts only from very close: the distance times vanilla's visibility of an invisible entity
+	 * (0.7 times its armor cover, at least 0.1), so 2-3 blocks without armor.
 	 */
 	public float fleeDistance(Player player) {
 		if (player.isSpectator()) {
 			return 0;
 		}
 		AnimalProfile p = profile();
+		float d;
 		if (player.isShiftKeyDown()) {
-			return p.fleeMin();
+			d = p.fleeMin();
+		} else {
+			d = player.isSprinting() ? p.fleeMax() : (p.fleeMin() + p.fleeMax()) / 2.0F;
 		}
-		return player.isSprinting() ? p.fleeMax() : (p.fleeMin() + p.fleeMax()) / 2.0F;
+		return player.isInvisible() ? d * 0.7F * Math.max(0.1F, player.getArmorCoverPercentage()) : d;
+	}
+
+	/** The nearest player closer than its {@link #fleeDistance}, or null ({@link FleeFromPlayers}). */
+	public @Nullable Player nearestThreat() {
+		Player best = null;
+		double bestDist = Double.MAX_VALUE;
+		for (Player p : level().players()) {
+			if (p.isSpectator() || !p.isAlive()) {
+				continue;
+			}
+			double d = distanceTo(p);
+			if (d < fleeDistance(p) && d < bestDist) {
+				best = p;
+				bestDist = d;
+			}
+		}
+		return best;
 	}
 
 	@Override
 	protected PathNavigation createNavigation(Level level) {
-		return new SmoothGroundNavigation(this, level);
+		return new ForestGroundNavigation(this, level);
 	}
 
 	// ------------------------------------------------------------------ spawn caps and despawn

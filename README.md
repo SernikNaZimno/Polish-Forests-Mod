@@ -91,6 +91,9 @@ Przycisk „Dostosuj” otwiera opcje generowania: skalę, rozmiar regionów, tr
 | `/polishforests elevation <from> <to>` | najbliższy teren o wysokości w przedziale, w m n.p.m. |
 | `/polishforests highest [radius_km]` | najwyższy punkt w okolicy |
 | `/polishforests here` | krajobraz, wysokość, podłoże, wody i formy terenu pod graczem |
+| `/polishforests fauna [radius]` | zwierzęta moda i wanilii w promieniu (domyślnie 64 bloki) według gatunku i stanu |
+
+Sarny moda pojawiają się w lasach światów „Polska” i „Default + Polish Forests” (przy generacji chunka i ze spawnera fauny wokół graczy); wyłącza je reguła gry `/gamerule polishforests:forest_fauna false` (zwierzęta wanilii zostają bez zmian).
 
 Do M2-9 komendy i cele miały polskie nazwy (`/polskielasy znajdz <cel>` itd.); zestawienie dawnych nazw jest w `docs/01-architektura.md`, sekcja 14.
 

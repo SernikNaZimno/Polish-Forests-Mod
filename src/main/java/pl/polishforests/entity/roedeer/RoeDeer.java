@@ -22,6 +22,7 @@ import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ServerLevelAccessor;
+import net.minecraft.world.level.pathfinder.PathType;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.Vec3;
@@ -29,7 +30,6 @@ import net.tslat.smartbrainlib.api.core.behaviour.base.FirstApplicableBehaviour;
 import net.tslat.smartbrainlib.api.core.behaviour.base.OneRandomBehaviour;
 import net.tslat.smartbrainlib.api.core.behaviour.custom.look.LookAtTarget;
 import net.tslat.smartbrainlib.api.core.behaviour.custom.misc.Idle;
-import net.tslat.smartbrainlib.api.core.behaviour.custom.move.AvoidEntity;
 import net.tslat.smartbrainlib.api.core.behaviour.custom.move.FloatToSurfaceOfFluid;
 import net.tslat.smartbrainlib.api.core.behaviour.custom.move.MoveToWalkTarget;
 import net.tslat.smartbrainlib.api.core.behaviour.custom.move.Panic;
@@ -42,6 +42,8 @@ import pl.polishforests.entity.base.AnimalProfile;
 import pl.polishforests.entity.base.AnimalProfile.Activity;
 import pl.polishforests.entity.base.AnimalProfile.Period;
 import pl.polishforests.entity.base.AnimalProfile.Range;
+import pl.polishforests.entity.base.FleeFromPlayers;
+import pl.polishforests.entity.base.LeaveWater;
 import pl.polishforests.entity.base.PolishAnimal;
 import pl.polishforests.entity.spawn.FaunaHabitat;
 import pl.polishforests.season.Seasons;
@@ -58,7 +60,7 @@ import pl.polishforests.worldgen.habitat.HabitatBiome;
  * {@value #TAG_WINTER_COAT}, unchanged: the registry snapshot lists them).
  *
  * <p><b>Brain</b> (SmartBrainLib): it flees from a player within {@link PolishAnimal#fleeDistance} (20 blocks sneaking, 30
- * walking, 40 sprinting) to a place 16 blocks beyond that, panics when hurt, swims up in water, and otherwise watches a
+ * walking, 40 sprinting) to 16 blocks beyond that ({@link FleeFromPlayers}, by distance, without a line of sight), panics when hurt, swims up in water, and otherwise watches a
  * player who comes close ({@code alert}), or walks, grazes or rests in turns. Its walk targets lie in its habitats (a
  * forest of weight above 0 or the forest edge), so it does not wander far into the fields; out in the open it may walk
  * anywhere, back to the forest.
@@ -118,6 +120,8 @@ public class RoeDeer extends PolishAnimal<RoeDeer> {
 
 	public RoeDeer(EntityType<? extends RoeDeer> type, Level level) {
 		super(type, level);
+		// No path through water (KFA-4: no deer in water); one that ends up in water walks out (LeaveWater).
+		setPathfindingMalus(PathType.WATER, -1.0F);
 	}
 
 	/** Weights of the habitats: all forests of the mod, less in the wet, coniferous and mountain ones (FA2 calibrates). */
@@ -233,12 +237,9 @@ public class RoeDeer extends PolishAnimal<RoeDeer> {
 
 	@Override
 	public List<? extends BehaviorControl<? super RoeDeer>> getAlwaysRunningBehaviours(RoeDeer deer) {
-		return List.of(new FloatToSurfaceOfFluid<>(),
+		return List.of(new FloatToSurfaceOfFluid<>(), new LeaveWater<RoeDeer>(1.2F),
 				new Panic<RoeDeer>().speedModifier(2.4F).whenStarting(d -> d.markFleeing(100)),
-				new AvoidEntity<RoeDeer>().avoiding(Player.class)
-						.noCloserThan((self, e) -> e instanceof Player p ? self.fleeDistance(p) : 0)
-						.runNBlocksAway((self, e) -> e instanceof Player p ? self.fleeDistance(p) + FLEE_BEYOND : FLEE_BEYOND)
-						.speedModifier(2.4F).whenStarting(d -> d.markFleeing(80)),
+				new FleeFromPlayers<RoeDeer>(2.4F, FLEE_BEYOND),
 				new LookAtTarget<>(), new MoveToWalkTarget<>());
 	}
 
@@ -258,16 +259,29 @@ public class RoeDeer extends PolishAnimal<RoeDeer> {
 
 	/** A player is within the flight distance plus {@value #ALERT_BEYOND} blocks (and the deer is not running). */
 	private static boolean playerNear(RoeDeer d) {
-		Player p = d.level().getNearestPlayer(d, PROFILE.fleeMax() + ALERT_BEYOND);
-		return p != null && !p.isSpectator() && d.distanceTo(p) < d.fleeDistance(p) + ALERT_BEYOND && !d.isFleeing();
+		if (d.isFleeing()) {
+			return false;
+		}
+		for (Player p : d.level().players()) {
+			if (!p.isSpectator() && p.isAlive() && d.distanceTo(p) < d.fleeDistance(p) + ALERT_BEYOND) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/**
 	 * Walk targets stay in the deer's habitats: a column of weight above 0 (forest or forest edge), unless the deer itself
-	 * stands where it has none (out in the fields it may walk anywhere, the next targets take it back).
+	 * stands where it has none (out in the fields it may walk anywhere, the next targets take it back); never on leaves
+	 * (the navigation does not walk on them either, {@code ForestGroundNavigation}) and never in water.
 	 */
 	private static boolean walkTargetOk(RoeDeer d, Vec3 target) {
 		Level level = d.level();
+		net.minecraft.core.BlockPos pos = net.minecraft.core.BlockPos.containing(target);
+		if (level.getBlockState(pos.below()).is(net.minecraft.tags.BlockTags.LEAVES) || !level.getFluidState(pos).isEmpty()
+				|| !level.getFluidState(pos.below()).isEmpty()) {
+			return false;
+		}
 		if (FaunaHabitat.weight(level, PROFILE, (int) Math.floor(target.x), (int) Math.floor(target.z)) > 0) {
 			return true;
 		}

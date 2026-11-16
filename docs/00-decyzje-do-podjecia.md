@@ -1457,3 +1457,30 @@ Wybory przyjęte w kroku V8 (`tools/fauna`, model sarny do samego renderu, kalib
 | V8-s | Szyja 58°, czaszka 38° pod poziomem; w `misc.alert` pysk zostaje 20° pod poziomem. Uszy kozy (18,4 px) i parostki kozła (20,2 px) wystają ponad wysokość hitboksu 1,1 bloku (17,6 px) | Prawie poziomy pysk na długiej szyi dawał wrażenie lamy albo osła. Hitbox zostaje według C2 (wanilijne moby też wystają głową i rogami ponad hitbox) |
 | V8-t | Ogon 1 × 1 × 1 px schowany w lustrze: 0,5 px za zadem, 0,25 px pod jego wierzchem, latem w kolorze sierści, zimą biały; w `misc.alert` uniesiony ok. 0,6 px nad zad. Puszenie lustra przy alarmie osobną teksturą w V14 | Raport 07: ogon 1–2 cm, „praktycznie niewidoczny”; wcześniej jasny kołek widoczny z boku |
 | V8-u | Bieg: noga daleko do przodu (40°), krótko w tył (22°), para tylna 0,15 cyklu za przednią, lewa i prawa 0,06 cyklu od siebie; dwie fazy lotu (wyciągnięta do 1,4 px, zebrana do 0,5 px), poza nimi racica na gruncie (37% klatek) | Przegląd V8: proste nogi w fazie zebranej przecinały się pod brzuchem, a żadna racica nie dotykała gruntu |
+
+### G.63 Drobne wybory kroku FA1 (domyślne, do potwierdzenia; 2026-11-16)
+
+Krok: `docs/04-pionowy-wycinek.md` §3 „FA1”, „Projekt FA1” (etap 1, FA1-a … FA1-l) i „Stan po FA1” (etap 2, FA1-m … FA1-t). Krok realizuje CP-D.1 i CP-D.3 (G.57) według G.62 (G.62-b, G.62-e, G.62-j). Wybory toru sarny V8: G.V8.
+
+| # | Wybór | Wartość i powód |
+|---|---|---|
+| FA1-a | Reguła gry | `polishforests:forest_fauna` zamiast `forestFauna` z planu, bo 26.3 przyjmuje w id reguł tylko małe litery; klucz tłumaczenia `gamerule.polishforests.forest_fauna` |
+| FA1-b | Kategoria i limit | `CREATURE`, ale `requiresCustomPersistence()` = `true` (poza limitem wanilii) i własne `checkDespawn` (powyżej 128 bloków, bez imienia, smyczy i `persistenceRequired`) |
+| FA1-c | Kolejność przy generacji | Spawn moda po spawnie wanilii w tym samym kroku generacji, więc zwierzęta wanilii są jak przed FA1 |
+| FA1-d | Sól | Nowa sól `GENERATION_SALT` = `0x5A4E_FA01_6E4E_5A17L` dla losu spawnu przy generacji; spawner w grze używa losu poziomu |
+| FA1-e | Tag gruntu | Lista z planu plus `minecraft:dirt` (odsłonięta ziemia w lukach) i rędzina moda; bez piasku (sarna bywa na wydmach tylko przechodząc) |
+| FA1-f | Skraj lasu | Przy generacji tylko w obrębie chunka (siedliska sąsiednich chunków są niedostępne); w spawnerze z 4 punktów 8 bloków od kolumny |
+| FA1-g | Siedlisko w grze | Spawner bierze biom wierzchu (`MOTION_BLOCKING_NO_LEAVES`), a nie kody ekotonu, bo te istnieją tylko w czasie generacji |
+| FA1-h | Gęstość | 0,1 sarny na ha × 30, źródło GUS (przybliżenie); kalibracja w FA2 |
+| FA1-i | Gracz spisu | Twórczy i niewidzialny, żeby sarny nie uciekały z koła pomiaru; ucieczkę sprawdza osobna próba z widocznym graczem |
+| FA1-j | Despawn w spisie | Dystans symulacji 12, żeby sarna 140 bloków od gracza była jeszcze tykana; próba stawia sarny na miejscach z predykatu spawnu i czeka 200 ticków po teleporcie (FA1-r) |
+| FA1-k | Migawka rejestru | Nagłówek sprzed V8, żeby zmiana była samym dopisaniem dwóch wierszy |
+| FA1-l | Harmonogram | Jest w profilu od FA1 (test pokrycia doby), mózg korzysta z niego od FA2 |
+| FA1-m | Zwierzęta spawnu przy generacji | `persistenceRequired` (należą do chunka jak zwierzęta wanilii z generacji, które są trwałe przez kategorię); znika tylko zwierzę ze spawnera. Bez tego sarny chunków generowanych 128–192 bloki przed graczem znikały, zanim gracz doszedł (dystans symulacji 12 > 128 bloków). Limit poziomu spawnera (`maxNearPlayer` × gracze) liczy tylko zwierzęta, które mogą zniknąć; liczba saren z generacji idzie za liczbą załadowanych chunków, więc nie rośnie przy eksploracji |
+| FA1-n | Ucieczka | Własne zachowanie `FleeFromPlayers` (odległość od gracza, bez linii wzroku) zamiast `AvoidEntity` SBL: pamięć widocznych encji wanilii wymaga linii wzroku z oczu sarny (pnie i liście lasu zasłaniają ją po kilku blokach) i używa wspólnego zasięgu celowania wanilii ustawianego przez ostatni czujnik wanilii; sarna słyszy i czuje człowieka w podszycie. Gracz niewidzialny liczy się z odległości × 0,7 × pokrycie zbroją (min. 0,1), czyli 2–3 bloki bez zbroi; FA2 może dodać linię wzroku i wiatr |
+| FA1-o | Bez chodzenia po liściach | `ForestGroundNavigation` (nawigacja SBL z ewaluatorem, który blokuje węzły nad blokiem z `#minecraft:leaves`) i cele wędrówki nie na liściach: wanilia pozwala chodzić po wierzchu liści, a sarna wchodziła na niski krzew albo koronę przy stoku (spis: 2 sarny „na liściach” przed poprawką) |
+| FA1-p | Losowanie kolumny przy generacji | Do 4 kolumn na grupę, gdy miejsce odpada (pień, krzew, woda); nowy strumień tej samej soli `GENERATION_SALT`, bloki bez zmian |
+| FA1-q | Cienki blok na wierzchu | Blok z kolizją do 0,9 bloku na szczycie mapy `MOTION_BLOCKING_NO_LEAVES` (warstwa śniegu, krzewinka) jest miejscem stóp, a gruntem blok pod nim (uogólnienie warstwy śniegu z etapu 1) |
+| FA1-r | Spis w gametescie | `gamerule spawn_mobs true` (spójne ustawienia świata testowego Fabric wyłączają je, co zatrzymywało spawn wanilii i oba spawny moda: przyczyna 0 saren w pierwszym przebiegu), teleport po wczytaniu chunka (wysokość kolumny w niewczytanym chunku to dno świata: gracz 200 bloków pod sarnami i despawn wszystkich), sarny prób na miejscach z predykatu spawnu |
+| FA1-s | `spawn_mobs` | Oba spawny moda wymagają też `spawn_mobs`, jak spawn wanilii przy generacji w 26.3 (`NaturalSpawner.spawnMobsForChunkGeneration` sprawdza tę regułę) |
+| FA1-t | Liczniki spisu | Licznik gruntów odrzuconych (`GROUND_REFUSED`): w lesie to prawie same pnie i liście (kolumny drzew) oraz skała; tag gruntu bez zmian |

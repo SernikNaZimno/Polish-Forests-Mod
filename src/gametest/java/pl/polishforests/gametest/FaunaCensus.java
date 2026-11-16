@@ -69,6 +69,8 @@ final class FaunaCensus {
 	static final int TRIPS = 8;
 	static final int TRIP_TICKS = 600;
 	private static final int CHECK_RADIUS = 160;
+	/** Ticks after a teleport before a trial places its animals (the chunks around load). */
+	private static final int TRIAL_SETTLE = 200;
 	private static final ResourceKey<WorldPreset> VANILLA = ResourceKey.create(Registries.WORLD_PRESET,
 			PolishForests.id("default_polish_forests"));
 	private static final String VANILLA_SEED = "20261104";
@@ -171,9 +173,13 @@ final class FaunaCensus {
 		}
 	}
 
-	/** Time stopped at noon, clear weather, the player creative and invisible (the deer see no threat in it). */
+	/**
+	 * Time stopped at noon, clear weather, the player creative and invisible (the deer see no threat in it), and mob
+	 * spawning on: the consistent settings of the Fabric test world builder turn {@code spawn_mobs} off, which stops
+	 * vanilla's spawns (also at chunk generation) and the fauna spawners of the mod alike.
+	 */
 	private static void prepare(TestSingleplayerContext sp, boolean fauna) {
-		for (String c : new String[] {"gamerule advance_time false", "gamerule advance_weather false", "time set 6000", "weather clear",
+		for (String c : new String[] {"gamerule spawn_mobs true", "gamerule advance_time false", "gamerule advance_weather false", "time set 6000", "weather clear",
 				"difficulty easy", "gamemode creative @a", "gamerule send_command_feedback false",
 				"gamerule polishforests:forest_fauna " + fauna, "effect give @a minecraft:invisibility infinite 0 true"}) {
 			sp.getServer().runCommand(c);
@@ -181,7 +187,12 @@ final class FaunaCensus {
 	}
 
 	private static void teleport(TestSingleplayerContext sp, int x, int z) {
-		int y = sp.getServer().computeOnServer(s -> s.overworld().getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z));
+		// Load the chunk first: the height of a column in a chunk that is not loaded is the bottom of the world, and a player
+		// teleported there stands 200 blocks under the deer (and makes every one of them despawn).
+		int y = sp.getServer().computeOnServer(s -> {
+			s.overworld().getChunk(x >> 4, z >> 4);
+			return s.overworld().getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
+		});
 		sp.getServer().runCommand(String.format(Locale.ROOT, "tp @a %d.5 %d %d.5", x, y + 1, z));
 	}
 
@@ -289,17 +300,17 @@ final class FaunaCensus {
 
 	private void despawn(TestSingleplayerContext sp, int x, int z) {
 		teleport(sp, x, z);
-		context.waitTicks(40);
+		// The previous place is far away: the chunks within 140 blocks must load (and get their simulation ticket) first.
+		context.waitTicks(TRIAL_SETTLE);
 		List<RoeDeer> deer = sp.getServer().computeOnServer(s -> {
 			ServerLevel level = s.overworld();
 			ServerPlayer p = level.players().getFirst();
 			List<RoeDeer> out = new ArrayList<>();
 			int[][] offsets = {{140, 0}, {0, 140}, {-140, 0}, {100, 0}};
 			for (int i = 0; i < offsets.length; i++) {
-				int dx = p.getBlockX() + offsets[i][0];
-				int dz = p.getBlockZ() + offsets[i][1];
 				RoeDeer d = ModEntities.roeDeer().create(level, EntitySpawnReason.COMMAND);
-				d.snapTo(dx + 0.5, level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, dx, dz), dz + 0.5, 0, 0);
+				Vec3 at = trialSpot(level, p.getBlockX() + offsets[i][0], p.getBlockZ() + offsets[i][1]);
+				d.snapTo(at.x, at.y, at.z, 0, 0);
 				if (i == 1) {
 					d.setCustomName(Component.literal("named"));
 				} else if (i == 2) {
@@ -311,13 +322,20 @@ final class FaunaCensus {
 			return out;
 		});
 		context.waitTicks(60);
+		StringBuilder why = new StringBuilder();
 		boolean[] removed = sp.getServer().computeOnServer(s -> {
+			ServerPlayer p = s.overworld().players().getFirst();
 			boolean[] r = new boolean[deer.size()];
 			for (int i = 0; i < r.length; i++) {
-				r[i] = deer.get(i).isRemoved();
+				RoeDeer d = deer.get(i);
+				r[i] = d.isRemoved();
+				why.append(String.format(Locale.ROOT, " [%.0f blocks, %s, ticking %s, health %.0f]", d.distanceTo(p),
+						d.getRemovalReason() == null ? "present" : d.getRemovalReason().name().toLowerCase(Locale.ROOT),
+						s.overworld().isPositionEntityTicking(d.blockPosition()), d.getHealth()));
 			}
 			return r;
 		});
+		line("despawn details:%s", why);
 		line("despawn: plain at 140 removed %s, named at 140 removed %s, persistent at 140 removed %s, plain at 100 removed %s",
 				removed[0], removed[1], removed[2], removed[3]);
 		if (!removed[0] || removed[1] || removed[2] || removed[3]) {
@@ -328,15 +346,14 @@ final class FaunaCensus {
 
 	private void flight(TestSingleplayerContext sp, int x, int z) {
 		teleport(sp, x, z);
-		context.waitTicks(20);
+		context.waitTicks(TRIAL_SETTLE);
 		sp.getServer().runCommand("effect clear @a minecraft:invisibility");
 		RoeDeer deer = sp.getServer().computeOnServer(s -> {
 			ServerLevel level = s.overworld();
 			ServerPlayer p = level.players().getFirst();
-			int dx = p.getBlockX() + 12;
-			int dz = p.getBlockZ();
+			Vec3 at = trialSpot(level, p.getBlockX() + 12, p.getBlockZ());
 			RoeDeer d = ModEntities.roeDeer().create(level, EntitySpawnReason.COMMAND);
-			d.snapTo(dx + 0.5, level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, dx, dz), dz + 0.5, 0, 0);
+			d.snapTo(at.x, at.y, at.z, 0, 0);
 			level.addFreshEntity(d);
 			return d;
 		});
@@ -350,13 +367,41 @@ final class FaunaCensus {
 				max[0] = Math.max(max[0], deer.distanceTo(p));
 			});
 		}
-		line("flight: a roe deer 12 blocks from a visible standing player: fleeing seen %s, largest distance %.1f in 100 ticks", fled[0],
-				max[0]);
+		String seen = sp.getServer().computeOnServer(s -> {
+			ServerPlayer p = s.overworld().players().getFirst();
+			var visible = deer.getBrain().getMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.NEAREST_VISIBLE_LIVING_ENTITIES);
+			return String.format(Locale.ROOT, "player %s seen %s, deer at %.1f %.1f %.1f, state %s, removed %s", p.gameMode().getName(),
+					visible.map(v -> v.contains(p)).orElse(false), deer.getX(), deer.getY(), deer.getZ(), deer.state().id(), deer.isRemoved());
+		});
+		line("flight: a roe deer 12 blocks from a visible standing player: fleeing seen %s, largest distance %.1f in 100 ticks; %s",
+				fled[0], max[0], seen);
 		if (!fled[0] || max[0] < 20) {
 			fail("flight: the roe deer did not flee (fleeing %s, largest distance %.1f)", fled[0], max[0]);
 		}
 		sp.getServer().runOnServer(s -> deer.discard());
 		sp.getServer().runCommand("effect give @a minecraft:invisibility infinite 0 true");
+	}
+
+	/**
+	 * A valid place of a roe deer (the predicate of the spawners, not counted) on the nearest column to the given one within
+	 * 16 blocks, so a trial animal never stands on a crown or in water; the column itself when there is none.
+	 */
+	private static Vec3 trialSpot(ServerLevel level, int x, int z) {
+		for (int r = 0; r <= 16; r++) {
+			for (int dx = -r; dx <= r; dx++) {
+				for (int dz = -r; dz <= r; dz++) {
+					if (Math.max(Math.abs(dx), Math.abs(dz)) != r) {
+						continue;
+					}
+					level.getChunk((x + dx) >> 4, (z + dz) >> 4);
+					Vec3 at = FaunaSpawner.placeUncounted(level, ModEntities.roeDeer(), x + dx, z + dz);
+					if (at != null) {
+						return at;
+					}
+				}
+			}
+		}
+		return new Vec3(x + 0.5, level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z), z + 0.5);
 	}
 
 	// ------------------------------------------------------------------ vanilla animals with and without the fauna
@@ -407,6 +452,7 @@ final class FaunaCensus {
 		FaunaSpawner.GENERATION_GROUPS.reset();
 		FaunaSpawner.SPAWNER_ANIMALS.reset();
 		FaunaSpawner.SPAWNER_GROUPS.reset();
+		FaunaSpawner.GROUND_REFUSED.clear();
 	}
 
 	private void counters(String label) {
@@ -414,9 +460,11 @@ final class FaunaCensus {
 		for (FaunaSpawner.Reason r : FaunaSpawner.Reason.values()) {
 			b.append(' ').append(r.name().toLowerCase(Locale.ROOT)).append(' ').append(FaunaSpawner.REASONS[r.ordinal()].sum());
 		}
-		line("%s spawners: at generation %d animals in %d groups, spawner %d animals in %d groups; places:%s", label,
+		Map<String, Long> refused = new TreeMap<>();
+		FaunaSpawner.GROUND_REFUSED.forEach((k, v) -> refused.put(k, v.sum()));
+		line("%s spawners: at generation %d animals in %d groups, spawner %d animals in %d groups; places:%s; ground refused %s", label,
 				FaunaSpawner.GENERATION_ANIMALS.sum(), FaunaSpawner.GENERATION_GROUPS.sum(), FaunaSpawner.SPAWNER_ANIMALS.sum(),
-				FaunaSpawner.SPAWNER_GROUPS.sum(), b);
+				FaunaSpawner.SPAWNER_GROUPS.sum(), b, refused);
 	}
 
 	private static String fmt(double[] v) {
