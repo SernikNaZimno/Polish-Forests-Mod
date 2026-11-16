@@ -13,9 +13,11 @@ import java.util.TreeSet;
 import java.util.stream.Stream;
 import net.minecraft.world.phys.Vec3;
 import org.junit.jupiter.api.Test;
+import pl.polishforests.block.GameRegistries;
 import pl.polishforests.entity.base.AnimalProfile;
 import pl.polishforests.entity.base.AnimalProfile.Activity;
 import pl.polishforests.entity.base.ForestAlarm;
+import pl.polishforests.entity.base.PolishAnimal;
 import pl.polishforests.entity.roedeer.RoeDeer;
 import pl.polishforests.entity.roedeer.RoeDeer.Antlers;
 import pl.polishforests.season.SubSeason;
@@ -26,6 +28,11 @@ import pl.polishforests.worldgen.habitat.HabitatBiome;
  * (the deer in the world are the fauna game test's behaviour trials).
  */
 class FaunaBehaviourTest {
+	static {
+		// The registries first: the profile lives in the entity class (also when this class runs alone).
+		GameRegistries.bootstrap();
+	}
+
 	private static final AnimalProfile P = RoeDeer.PROFILE;
 	/** Dawn 6:30, noon, dusk 18:30, midnight (the times of the activity trial of the game test). */
 	private static final long DAWN = 500;
@@ -79,6 +86,9 @@ class FaunaBehaviourTest {
 		// A mother with two young is a summer group of three.
 		assertTrue(P.summerGroup().contains(3));
 		assertTrue(P.youngChance() > 0 && P.youngChance() < 1);
+		// The radii of the groups nest: a lone animal that joins a group in winter is not lost at once (stage 2 fix).
+		assertTrue(PolishAnimal.MERGE_SUMMER < PolishAnimal.MERGE_WINTER && PolishAnimal.MERGE_WINTER <= PolishAnimal.LONE_WINTER
+				&& PolishAnimal.LONE_WINTER + 8 <= PolishAnimal.HERD_LOST);
 	}
 
 	@Test

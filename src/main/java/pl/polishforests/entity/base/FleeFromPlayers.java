@@ -5,7 +5,10 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.ai.behavior.declarative.MemoryCondition;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.ai.memory.WalkTarget;
+import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.ai.util.DefaultRandomPos;
+import net.minecraft.world.entity.ai.util.LandRandomPos;
+import net.minecraft.world.level.pathfinder.Path;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
 import net.tslat.smartbrainlib.api.core.behaviour.base.ExtendedBehaviour;
@@ -35,6 +38,8 @@ public class FleeFromPlayers<E extends PolishAnimal<?>> extends ExtendedBehaviou
 	private static final MemoryTest MEMORIES = MemoryTest.builder(1).usesMemories(MemoryModuleType.WALK_TARGET);
 	/** Length of one leg of the flight (blocks). */
 	private static final int LEG = 16;
+	/** Places on the ground drawn for one leg until one has a path that reaches it (step FA2). */
+	private static final int LEG_TRIES = 3;
 
 	private final float speed;
 	private final float beyond;
@@ -102,10 +107,33 @@ public class FleeFromPlayers<E extends PolishAnimal<?>> extends ExtendedBehaviou
 		if (from == null) {
 			return;
 		}
-		Vec3 away = DefaultRandomPos.getPosAway(animal, LEG, 7, from);
+		Vec3 away = legTarget(animal, from);
 		if (away != null) {
 			BrainUtil.setMemory(animal, MemoryModuleType.WALK_TARGET, new WalkTarget(away, speed, 0));
 		}
 		animal.markFleeing(40, warns);
+	}
+
+	/**
+	 * The end of the next leg (step FA2): a place on the ground away from {@code from} that the path reaches (up to
+	 * {@value #LEG_TRIES} drawn), else the first place drawn, else vanilla's place away in the air. A place in a thicket or
+	 * behind a slope the path cannot reach left the animal standing a few blocks from the threat.
+	 */
+	private static @Nullable Vec3 legTarget(PolishAnimal<?> animal, Vec3 from) {
+		Vec3 first = null;
+		for (int i = 0; i < LEG_TRIES; i++) {
+			Vec3 at = LandRandomPos.getPosAway(animal, LEG, 7, from);
+			if (at == null) {
+				continue;
+			}
+			Path path = animal.getNavigation().createPath(BlockPos.containing(at), 0);
+			if (path != null && path.canReach()) {
+				return at;
+			}
+			if (first == null) {
+				first = at;
+			}
+		}
+		return first != null ? first : DefaultRandomPos.getPosAway(animal, LEG, 7, from);
 	}
 }

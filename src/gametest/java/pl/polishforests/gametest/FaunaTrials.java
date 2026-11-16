@@ -11,10 +11,12 @@ import java.util.TreeMap;
 import java.util.UUID;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.level.pathfinder.Path;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import pl.polishforests.client.entity.PolishAnimalRenderer;
@@ -45,15 +47,17 @@ import pl.polishforests.season.SubSeason;
  * {@value #RANGE_SLACK} blocks, median at least 1 block (they move).
  * <li><b>Groups</b> ({@link #groups}): mid winter for {@value #GROUP_WINTER_TICKS} ticks (groups merge), then mid summer
  * for {@value #GROUP_SUMMER_TICKS} ticks (groups split): the sizes of the groups of every roe deer within
- * {@value #NEAR} blocks. Pass: summer every group 1-3; winter every group at most 6 and at least {@value #WINTER_SHARE}
- * of the deer in groups of 2-6.
+ * {@value #NEAR} blocks whose chunk ticks entities (a deer in a chunk that does not tick cannot join or leave a group; how
+ * many were left out is reported, with the distance of each lone deer to the nearest other deer). Pass: summer every group
+ * 1-3; winter every group at most 6 and at least {@value #WINTER_SHARE} of the deer in groups of 2-6.
  * <li><b>Looks</b> ({@link #looks}): in each given sub-season, after {@value #LOOK_TICKS} ticks, every roe deer within
  * {@value #NEAR} blocks has the coat and antlers of the sub-season ({@code RoeDeer.looksAsIn}): 100%; every variant seen
  * and every variant of {@code RoeDeer.variants()} has its texture in the client's resources.
  * <li><b>Flight distance</b> ({@link #flightDistance}): a visible player walks (teleport steps of 1 block every 5 ticks, not
  * sprinting, not sneaking) towards a roe deer 50 blocks away: the distance at which it starts to flee is 20-40 blocks, it
  * barks and flares its rump patch.
- * <li><b>Alarm</b> ({@link #alarm}): a test alarm of radius 40 and strength 1 at the player: a deer 8 blocks away flees (it
+ * <li><b>Alarm</b> ({@link #alarm}): a test alarm of radius 40 and strength 1 at the player: a deer 8 blocks away on the
+ * side from which it has somewhere to run (open ground, a path that reaches 32 blocks) flees (it
  * is more than 16 blocks away after 100 ticks), one 30 blocks away on the other side stands alert with the patch flared
  * and does not flee.
  * <li><b>MSPT</b> ({@link #mspt}, {@code -Psites=mspt}, KFA-6): 40 roe deer around the player, the server ticks of the
@@ -243,10 +247,15 @@ final class FaunaTrials {
 		SeasonDates.set(sp, SubSeason.MID_WINTER, 0, label);
 		context.waitTicks(GROUP_WINTER_TICKS);
 		Map<Integer, Integer> winter = sp.getServer().computeOnServer(s -> herdSizes(s.overworld()));
+		String winterLone = sp.getServer().computeOnServer(s -> loneReport(s.overworld()));
 		SeasonDates.set(sp, SubSeason.MID_SUMMER, 0, label);
 		context.waitTicks(GROUP_SUMMER_TICKS);
 		Map<Integer, Integer> summer = sp.getServer().computeOnServer(s -> herdSizes(s.overworld()));
 		AnimalProfile p = RoeDeer.PROFILE;
+		String summerLarge = sp.getServer().computeOnServer(s -> largeGroups(s.overworld(), p.summerGroup().max()));
+		if (!summerLarge.isEmpty()) {
+			census.line("%s groups above %d in summer: %s", label, p.summerGroup().max(), summerLarge);
+		}
 		int winterDeer = 0;
 		int winterOk = 0;
 		boolean winterTooLarge = false;
@@ -259,9 +268,9 @@ final class FaunaTrials {
 		}
 		boolean summerOk = summer.keySet().stream().allMatch(p.summerGroup()::contains);
 		double share = winterDeer == 0 ? 0 : winterOk / (double) winterDeer;
-		census.line("%s groups (size: count) within %d blocks: winter after %d ticks %s, %.2f of %d deer in groups of %d-%d; summer after"
-				+ " %d ticks %s", label, NEAR, GROUP_WINTER_TICKS, winter, share, winterDeer, p.winterGroup().min(), p.winterGroup().max(),
-				GROUP_SUMMER_TICKS, summer);
+		census.line("%s groups (size: count) within %d blocks: winter after %d ticks %s, %.2f of %d deer in groups of %d-%d (%s); summer"
+				+ " after %d ticks %s", label, NEAR, GROUP_WINTER_TICKS, winter, share, winterDeer, p.winterGroup().min(), p.winterGroup().max(),
+				winterLone, GROUP_SUMMER_TICKS, summer);
 		if (winterDeer == 0 || winterTooLarge || share < WINTER_SHARE) {
 			census.fail("%s groups: winter %s (%.2f in %d-%d, at least %.2f, none above %d)", label, winter, share, p.winterGroup().min(),
 					p.winterGroup().max(), WINTER_SHARE, p.winterGroup().max());
@@ -271,16 +280,81 @@ final class FaunaTrials {
 		}
 	}
 
-	/** The sizes of the groups (by group id) of the live roe deer within {@value #NEAR} blocks of the player: size to count. */
+	/**
+	 * The sizes of the groups (by group id) of the live roe deer within {@value #NEAR} blocks of the player in chunks that
+	 * tick entities: size to count.
+	 */
 	static Map<Integer, Integer> herdSizes(ServerLevel level) {
 		ServerPlayer p = level.players().getFirst();
 		Map<UUID, Integer> groups = new HashMap<>();
 		for (RoeDeer d : near(level, p.position())) {
-			groups.merge(d.herdId(), 1, Integer::sum);
+			if (level.isPositionEntityTicking(d.blockPosition())) {
+				groups.merge(d.herdId(), 1, Integer::sum);
+			}
 		}
 		Map<Integer, Integer> sizes = new TreeMap<>();
 		groups.values().forEach(n -> sizes.merge(n, 1, Integer::sum));
 		return sizes;
+	}
+
+	/** The groups larger than {@code max} among the ticking deer: leader (young?), members (young, mother in group, distance). */
+	private static String largeGroups(ServerLevel level, int max) {
+		ServerPlayer p = level.players().getFirst();
+		Map<UUID, List<RoeDeer>> groups = new HashMap<>();
+		for (RoeDeer d : near(level, p.position())) {
+			if (level.isPositionEntityTicking(d.blockPosition())) {
+				groups.computeIfAbsent(d.herdId(), k -> new ArrayList<>()).add(d);
+			}
+		}
+		StringBuilder b = new StringBuilder();
+		groups.forEach((id, list) -> {
+			if (list.size() <= max) {
+				return;
+			}
+			RoeDeer leader = list.stream().filter(d -> d.getUUID().equals(id)).findFirst().orElse(null);
+			b.append(String.format(Locale.ROOT, "[leader %s%s, count %d:", leader == null ? "absent" : leader.isBaby() ? "young" : "grown",
+					leader == null ? "" : " led by " + (leader.isHerdLeader() ? "itself" : "another") + " size " + leader.herdSize(), list.size()));
+			for (RoeDeer d : list) {
+				if (d == leader) {
+					continue;
+				}
+				boolean motherIn = d.motherId() != null && list.stream().anyMatch(o -> o.getUUID().equals(d.motherId()));
+				b.append(String.format(Locale.ROOT, " %s%s %.0f", d.isBaby() ? "young" : "grown", d.motherId() == null ? "" : motherIn
+						? "+mother" : "-mother", leader == null ? -1 : d.distanceTo(leader)));
+			}
+			b.append("] ");
+		});
+		return b.toString().trim();
+	}
+
+	/** The deer left out (chunk not ticking entities) and the distance of each lone ticking deer to the nearest other deer. */
+	private static String loneReport(ServerLevel level) {
+		ServerPlayer p = level.players().getFirst();
+		List<RoeDeer> all = near(level, p.position());
+		Map<UUID, Integer> groups = new HashMap<>();
+		int notTicking = 0;
+		for (RoeDeer d : all) {
+			if (level.isPositionEntityTicking(d.blockPosition())) {
+				groups.merge(d.herdId(), 1, Integer::sum);
+			} else {
+				notTicking++;
+			}
+		}
+		List<Long> lone = new ArrayList<>();
+		for (RoeDeer d : all) {
+			if (!level.isPositionEntityTicking(d.blockPosition()) || groups.getOrDefault(d.herdId(), 0) != 1) {
+				continue;
+			}
+			double best = Double.MAX_VALUE;
+			for (RoeDeer o : all) {
+				if (o != d) {
+					best = Math.min(best, d.distanceTo(o));
+				}
+			}
+			lone.add(best == Double.MAX_VALUE ? -1 : Math.round(best));
+		}
+		lone.sort(null);
+		return "not ticking " + notTicking + ", lone deer: nearest other deer " + lone + " blocks";
 	}
 
 	private static List<RoeDeer> near(ServerLevel level, Vec3 at) {
@@ -409,13 +483,27 @@ final class FaunaTrials {
 			ServerLevel level = s.overworld();
 			ServerPlayer p = level.players().getFirst();
 			List<RoeDeer> out = new ArrayList<>();
-			for (int[] off : new int[][] {{8, 0}, {-30, 0}}) {
-				Vec3 at = FaunaCensus.trialSpot(level, p.getBlockX() + off[0], p.getBlockZ() + off[1]);
-				RoeDeer d = ModEntities.roeDeer().create(level, EntitySpawnReason.COMMAND);
-				d.snapTo(at.x, at.y, at.z, 0, 0);
-				level.addFreshEntity(d);
-				out.add(d);
+			// The near deer on a side where it has somewhere to run: the side with open ground first
+			// (FaunaCensus.openSide), else the first side from which its path reaches a place 32 blocks from the player (a
+			// shore or a ring of shrubs right behind it stopped the flight at 15 blocks); the far one on the other side.
+			int[] open = FaunaCensus.openSide(level, p.getBlockX(), p.getBlockZ());
+			List<int[]> sides = new ArrayList<>(List.of(new int[] {open[0], open[1]}, new int[] {1, 0}, new int[] {-1, 0}, new int[] {0, 1},
+					new int[] {0, -1}));
+			int[] side = sides.getFirst();
+			for (int i = 0; i < sides.size(); i++) {
+				int[] sd = sides.get(i);
+				RoeDeer d = place(level, p.getBlockX() + sd[0] * 8, p.getBlockZ() + sd[1] * 8);
+				Vec3 goal = FaunaCensus.trialSpot(level, p.getBlockX() + sd[0] * 32, p.getBlockZ() + sd[1] * 32);
+				Path path = d.getNavigation().createPath(BlockPos.containing(goal), 1);
+				d.getNavigation().stop();
+				if (path != null && path.canReach() || i == sides.size() - 1) {
+					side = sd;
+					out.add(d);
+					break;
+				}
+				d.discard();
 			}
+			out.add(place(level, p.getBlockX() - side[0] * 30, p.getBlockZ() - side[1] * 30));
 			return out;
 		});
 		context.waitTicks(40);
@@ -426,10 +514,19 @@ final class FaunaTrials {
 		});
 		boolean[] state = new boolean[4];
 		double[] far = {0};
+		StringBuilder track = new StringBuilder(sp.getServer().computeOnServer(s -> {
+			RoeDeer n = deer.get(0);
+			ServerPlayer p = s.overworld().players().getFirst();
+			return String.format(Locale.ROOT, "player %.1f %.1f %.1f, near deer from %.1f %.1f %.1f:", p.getX(), p.getY(), p.getZ(), n.getX(),
+					n.getY(), n.getZ());
+		}));
 		for (int i = 0; i < 10; i++) {
 			context.waitTicks(10);
 			sp.getServer().runOnServer(s -> {
 				ServerPlayer p = s.overworld().players().getFirst();
+				RoeDeer n = deer.get(0);
+				track.append(String.format(Locale.ROOT, " %.1f%s%s", n.distanceTo(p), n.isFleeing() ? "f" : "", n.getNavigation().isInProgress() ? "n"
+						: ""));
 				state[0] |= deer.get(0).isFleeing();
 				state[1] |= deer.get(1).isFleeing();
 				state[2] |= deer.get(1).isAlerted() || deer.get(1).action() == PolishAnimal.Action.ALERT;
@@ -440,11 +537,20 @@ final class FaunaTrials {
 		long heard = ForestAlarm.HEARD.sum() - heard0;
 		census.line("%s alarm (radius 40, strength 1): near deer at %.1f fled %s, largest distance %.1f; far deer at %.1f fled %s, alert %s,"
 				+ " flared %s; heard %d", label, d0[0], state[0], far[0], d0[1], state[1], state[2], state[3], heard);
+		census.line("%s alarm track (distance every 10 ticks, f fleeing, n path in progress): %s", label, track);
 		if (!state[0] || far[0] <= 16 || state[1] || !state[2] || !state[3]) {
 			census.fail("%s alarm: near fled %s (largest %.1f), far fled %s, alert %s, flared %s", label, state[0], far[0], state[1], state[2],
 					state[3]);
 		}
 		sp.getServer().runOnServer(s -> deer.forEach(Entity::discard));
+	}
+
+	private static RoeDeer place(ServerLevel level, int x, int z) {
+		Vec3 at = FaunaCensus.trialSpot(level, x, z);
+		RoeDeer d = ModEntities.roeDeer().create(level, EntitySpawnReason.COMMAND);
+		d.snapTo(at.x, at.y, at.z, 0, 0);
+		level.addFreshEntity(d);
+		return d;
 	}
 
 	// ------------------------------------------------------------------ MSPT

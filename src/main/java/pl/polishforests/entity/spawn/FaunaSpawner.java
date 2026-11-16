@@ -466,6 +466,7 @@ public final class FaunaSpawner {
 				animal.followLeader(leader);
 				if (young) {
 					animal.setBaby(true);
+					animal.setMother(leader);
 				}
 			}
 			level.addFreshEntityWithPassengers(animal);

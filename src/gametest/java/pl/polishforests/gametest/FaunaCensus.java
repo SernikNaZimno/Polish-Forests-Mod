@@ -58,7 +58,8 @@ import pl.polishforests.worldgen.vanilla.VanillaForestsBiomeSource;
  * <li><b>Despawn</b>: a roe deer of the fauna spawner (spawn reason {@code NATURAL}) placed 140 blocks from the player
  * despawns unless named or persistent, one at 100 blocks stays; roe deer from a spawn egg, the chunk generation and a
  * command with NBT (no {@code finalizeSpawn}) placed 140 blocks away stay.
- * <li><b>Flight</b>: a roe deer placed 12 blocks from a visible standing player runs to beyond 20 blocks.
+ * <li><b>Flight</b>: a roe deer placed 12 blocks from a visible standing player (on the side with open ground,
+ * {@link #openSide}) runs to beyond 20 blocks.
  * <li><b>Vanilla animals</b> (KFA-4): two fresh gameplay worlds of the same seed, one with {@code forest_fauna} off: wolves,
  * foxes and rabbits within 96 blocks of two places after the same time; the difference is reported, and fails only when
  * the world with the fauna has clearly fewer (less than half of the other minus 3).
@@ -413,7 +414,8 @@ final class FaunaCensus {
 		RoeDeer deer = sp.getServer().computeOnServer(s -> {
 			ServerLevel level = s.overworld();
 			ServerPlayer p = level.players().getFirst();
-			Vec3 at = trialSpot(level, p.getBlockX() + 12, p.getBlockZ());
+			int[] side = openSide(level, p.getBlockX(), p.getBlockZ());
+			Vec3 at = trialSpot(level, p.getBlockX() + side[0] * 12, p.getBlockZ() + side[1] * 12);
 			RoeDeer d = ModEntities.roeDeer().create(level, EntitySpawnReason.COMMAND);
 			d.snapTo(at.x, at.y, at.z, 0, 0);
 			level.addFreshEntity(d);
@@ -448,6 +450,32 @@ final class FaunaCensus {
 	 * A valid place of a roe deer (the predicate of the spawners, not counted) on the nearest column to the given one within
 	 * 16 blocks, so a trial animal never stands on a crown or in water; the column itself when there is none.
 	 */
+	/**
+	 * Step FA2 (stage 2): the side of the player (+x, -x, +z, -z) with the most places a roe deer could stand on 8-40 blocks
+	 * away, every 4 blocks: a deer of a flight trial is put on that side, so a shore, a cliff or a stand of trunks right
+	 * behind it does not stop its flight (the alarm trial in "Default + Polish Forests" stopped at 15 blocks). Returns
+	 * {dx, dz, open places}.
+	 */
+	static int[] openSide(ServerLevel level, int x, int z) {
+		int[][] sides = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+		int[] best = {1, 0, -1};
+		for (int[] side : sides) {
+			int open = 0;
+			for (int k = 8; k <= 40; k += 4) {
+				int cx = x + side[0] * k;
+				int cz = z + side[1] * k;
+				level.getChunk(cx >> 4, cz >> 4);
+				if (FaunaSpawner.placeUncounted(level, ModEntities.roeDeer(), cx, cz) != null) {
+					open++;
+				}
+			}
+			if (open > best[2]) {
+				best = new int[] {side[0], side[1], open};
+			}
+		}
+		return best;
+	}
+
 	static Vec3 trialSpot(ServerLevel level, int x, int z) {
 		for (int r = 0; r <= 16; r++) {
 			for (int dx = -r; dx <= r; dx++) {

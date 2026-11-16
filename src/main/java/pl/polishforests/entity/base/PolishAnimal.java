@@ -8,10 +8,13 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.LongAdder;
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.util.Mth;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.entity.AgeableMob;
@@ -25,6 +28,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ServerLevelAccessor;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.AABB;
@@ -53,9 +57,11 @@ import pl.polishforests.season.SubSeason;
  * <li><b>Groups</b> (FA2, {@link #updateHerd}): an animal follows a group leader ({@link #herdId()}; not saved, so a
  * loaded world forms its groups anew from the animals near each other). In the sub-seasons of the winter groups a leader
  * whose group is smaller than the winter maximum joins the nearest other group within {@value #MERGE_WINTER} blocks that
- * still fits; outside them only groups within {@value #MERGE_SUMMER} blocks join, up to the summer maximum, and the members
- * of a group larger than the season's maximum leave it (the last ones by id; the young of a mother stay). Members walk,
- * feed and rest near their leader ({@link DailyRoutine}).
+ * still fits (an animal alone looks for one within {@value #LONE_WINTER} blocks); outside them only groups within
+ * {@value #MERGE_SUMMER} blocks join, up to the summer maximum, and the members of a group larger than the season's maximum
+ * leave it (the last ones by id). The young of a mother follow her group: when she leaves one, they leave with her. A leader that joins another group hands its members over at
+ * once, so the counts of the groups stay exact and no group overfills and sheds lone animals. Members walk, feed and rest
+ * near their leader ({@link DailyRoutine}).
  * <li><b>The alarm</b> (FA2, {@link ForestAlarm.Listener}): an alarm heard at the flight intensity makes the animal flee
  * from its source ({@link FleeFromPlayers}); a weaker one makes it stand alert for a few seconds.
  * <li>No breeding (C10) and no food; the young of a mother appear with her at spawn and grow up as vanilla's young.
@@ -84,10 +90,12 @@ public abstract class PolishAnimal<T extends PolishAnimal<T>> extends Animal imp
 	public static final int SLOW_INTERVAL = 100;
 	/** Radius (blocks) within which groups join in the sub-seasons of the winter groups. */
 	public static final double MERGE_WINTER = 48;
+	/** Radius (blocks) within which an animal alone looks for a group in the sub-seasons of the winter groups. */
+	public static final double LONE_WINTER = 80;
 	/** Radius (blocks) within which groups join in the rest of the year. */
 	public static final double MERGE_SUMMER = 8;
 	/** Distance (blocks) from its leader beyond which an animal leaves its group. */
-	public static final double HERD_LOST = 64;
+	public static final double HERD_LOST = 96;
 	/** Ticks an alarm below the flight intensity keeps the animal alert. */
 	static final int ALERT_TICKS = 80;
 
@@ -121,6 +129,8 @@ public abstract class PolishAnimal<T extends PolishAnimal<T>> extends Animal imp
 	private boolean wanderer;
 	/** The leader of its group, or null when it leads itself (not saved). */
 	private @Nullable UUID herdLeader;
+	/** The mother of a young one from a spawned group (not saved): the young follow her group. */
+	private @Nullable UUID mother;
 	/** The size of its group at the last count (a leader's own group, or its leader's for a member). */
 	private int herdSize = 1;
 	/** Where it lives: where it appeared or was loaded (not saved); the walk targets of a leader lead back within its range. */
@@ -357,6 +367,54 @@ public abstract class PolishAnimal<T extends PolishAnimal<T>> extends Animal imp
 		herdLeader = leader == null || leader == this ? null : leader.getUUID();
 	}
 
+	/** Whether it can mother young (grown; a species may add more, e.g. no buck). */
+	protected boolean canMother() {
+		return !isBaby();
+	}
+
+	/** Radius (blocks) within which a young one without a mother finds one. */
+	static final double ADOPT_RADIUS = 16;
+
+	/**
+	 * A young one without a mother (the link is not saved, so the young of a loaded chunk, e.g. of the chunk generation,
+	 * have none) takes the nearest animal of its species within {@value #ADOPT_RADIUS} blocks that can mother young and has
+	 * fewer than two young.
+	 */
+	private void adoptMother(ServerLevel level) {
+		PolishAnimal<?> best = null;
+		double bestDist = Double.MAX_VALUE;
+		List<Entity> near = level.getEntities(this, getBoundingBox().inflate(ADOPT_RADIUS + 4, 8, ADOPT_RADIUS + 4),
+				e -> e.getType() == getType() && e.isAlive());
+		for (Entity e : near) {
+			if (!(e instanceof PolishAnimal<?> a) || !a.canMother() || a.isNoAi()) {
+				continue;
+			}
+			double d = distanceTo(a);
+			if (d > ADOPT_RADIUS || d >= bestDist) {
+				continue;
+			}
+			UUID id = a.getUUID();
+			long young = near.stream().filter(o -> o instanceof PolishAnimal<?> y && y.isBaby() && id.equals(y.mother)).count();
+			if (young < 2) {
+				best = a;
+				bestDist = d;
+			}
+		}
+		if (best != null) {
+			mother = best.getUUID();
+		}
+	}
+
+	/** The id of the mother of a young one from a spawned group, or null. */
+	public @Nullable UUID motherId() {
+		return mother;
+	}
+
+	/** Makes a young one follow its mother's group (the spawners set it for the young of a mother). */
+	public void setMother(@Nullable PolishAnimal<?> mother) {
+		this.mother = mother == null ? null : mother.getUUID();
+	}
+
 	/** Its leader on the server, or null when it leads itself or the leader is gone. */
 	public @Nullable PolishAnimal<?> leader() {
 		if (herdLeader == null || !(level() instanceof ServerLevel server)) {
@@ -386,6 +444,19 @@ public abstract class PolishAnimal<T extends PolishAnimal<T>> extends Animal imp
 	 */
 	void updateHerd(ServerLevel level, SubSeason subSeason) {
 		AnimalProfile.Range range = profile().group(subSeason);
+		if (isBaby() && mother == null) {
+			adoptMother(level);
+		}
+		if (mother != null) {
+			// A young one follows the group of its mother (so it leaves a group with her); grown up, it is on its own.
+			Entity m = isBaby() ? level.getEntity(mother) : null;
+			if (m instanceof PolishAnimal<?> pm && pm.isAlive() && distanceTo(pm) <= HERD_LOST) {
+				UUID id = pm.herdId();
+				herdLeader = id.equals(getUUID()) ? null : id;
+			} else {
+				mother = null;
+			}
+		}
 		PolishAnimal<?> leader = leader();
 		if (leader != null && leader.herdLeader != null) {
 			// Its leader joined another group: follow that group's leader.
@@ -400,12 +471,13 @@ public abstract class PolishAnimal<T extends PolishAnimal<T>> extends Animal imp
 		if (leader != null) {
 			List<PolishAnimal<?>> members = members(level, leader);
 			herdSize = members.size() + 1;
-			if (!isBaby() && herdSize > range.max()) {
-				// The young stay with the group; of the grown members the last ones by id leave.
+			if (!(isBaby() && mother != null) && herdSize > range.max()) {
+				// The young of a mother go where she goes; of the other members (grown, or young without a mother) the last
+				// ones by id leave.
 				int young = 0;
 				int rank = 0;
 				for (PolishAnimal<?> m : members) {
-					if (m.isBaby()) {
+					if (m.isBaby() && m.mother != null) {
 						young++;
 					} else if (m.getUUID().compareTo(getUUID()) < 0) {
 						rank++;
@@ -415,32 +487,55 @@ public abstract class PolishAnimal<T extends PolishAnimal<T>> extends Animal imp
 					herdLeader = null;
 					herdSize = 1;
 					home = position();
+					// A mother takes her young along at once (else she could join another group alone and her young
+					// would follow her there later, overfilling it).
+					UUID self = getUUID();
+					for (PolishAnimal<?> m : members) {
+						if (m.isBaby() && self.equals(m.mother)) {
+							m.herdLeader = self;
+							herdSize++;
+						}
+					}
 				}
 			}
 			return;
 		}
-		herdSize = members(level, this).size() + 1;
-		if (herdSize >= range.max() || isBaby()) {
+		List<PolishAnimal<?>> own = members(level, this);
+		herdSize = own.size() + 1;
+		if (herdSize >= range.max()) {
 			return;
 		}
-		double radius = profile().winterGroups(subSeason) ? MERGE_WINTER : MERGE_SUMMER;
+		boolean winter = profile().winterGroups(subSeason);
+		double radius = !winter ? MERGE_SUMMER : herdSize == 1 ? LONE_WINTER : MERGE_WINTER;
 		PolishAnimal<?> best = null;
 		double bestDist = Double.MAX_VALUE;
 		for (Entity e : level.getEntities(this, getBoundingBox().inflate(radius, 16, radius), e -> e.getType() == getType() && e.isAlive())) {
 			if (!(e instanceof PolishAnimal<?> other) || other.herdLeader != null || other.isBaby() || other.isNoAi()) {
 				continue;
 			}
-			int size = other.herdSize;
+			double d = distanceTo(other);
+			if (d > radius || d >= bestDist) {
+				continue;
+			}
+			// The group counted now, not at its leader's last update: members that came in since (young following their
+			// mother, members handed over) would else let it overfill.
+			int size = members(level, other).size() + 1;
+			other.herdSize = size;
 			// Join a group that fits; of two groups of one size the one with the smaller id leads (no two leaders join each other).
 			boolean leads = size > herdSize || size == herdSize && other.getUUID().compareTo(getUUID()) < 0;
-			double d = distanceTo(other);
-			if (leads && size + herdSize <= range.max() && d <= radius && d < bestDist) {
+			if (leads && size + herdSize <= range.max()) {
 				best = other;
 				bestDist = d;
 			}
 		}
 		if (best != null) {
-			herdLeader = best.getUUID();
+			UUID id = best.getUUID();
+			herdLeader = id;
+			// Hand the members over at once (else the new leader would count them only after their own update and could
+			// take in another group meanwhile, overfill and shed lone animals).
+			for (PolishAnimal<?> m : own) {
+				m.herdLeader = id;
+			}
 			best.herdSize += herdSize;
 			herdSize = best.herdSize;
 		}
@@ -491,6 +586,60 @@ public abstract class PolishAnimal<T extends PolishAnimal<T>> extends Animal imp
 			onCalendar(subSeason);
 			updateHerd(level, subSeason);
 		}
+		if (Math.floorMod(level.getGameTime() + getId(), (long) LEAF_CHECK_INTERVAL) == 0) {
+			stepOffLeaves(level);
+		}
+	}
+
+	// ------------------------------------------------------------------ never on the leaves (KFA-4)
+
+	/** Ticks between two checks whether the animal stands on leaves. */
+	static final int LEAF_CHECK_INTERVAL = 5;
+
+	/**
+	 * Step FA2: an animal that ended up on a leaf block (pushed by its group in a thicket, or lifted by a jump the walk
+	 * control made at the edge of a bush; the navigation never plans a step on leaves, {@link ForestGroundNavigation})
+	 * steps down to the nearest column within 2 blocks whose ground is no higher than its feet, with no leaf under it and room
+	 * for the body.
+	 */
+	private void stepOffLeaves(ServerLevel level) {
+		if (!onGround() || !level.getBlockState(BlockPos.containing(getX(), getY() - 0.2, getZ())).is(BlockTags.LEAVES)) {
+			return;
+		}
+		BlockPos feet = blockPosition();
+		BlockPos best = null;
+		int bestDist = Integer.MAX_VALUE;
+		for (int dx = -2; dx <= 2; dx++) {
+			for (int dz = -2; dz <= 2; dz++) {
+				int d = dx * dx + dz * dz;
+				if (d == 0 || d >= bestDist) {
+					continue;
+				}
+				int x = feet.getX() + dx;
+				int z = feet.getZ() + dz;
+				BlockPos at = new BlockPos(x, level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z), z);
+				if (at.getY() <= feet.getY() && Thicket.standable(level, at)) {
+					best = at;
+					bestDist = d;
+				}
+			}
+		}
+		if (best != null) {
+			getNavigation().stop();
+			Vec3 dir = new Vec3(best.getX() + 0.5 - getX(), 0, best.getZ() + 0.5 - getZ()).normalize().scale(0.3);
+			setDeltaMovement(dir.x, getDeltaMovement().y, dir.z);
+		}
+	}
+
+	/** Step FA2: no jump onto a leaf block just ahead (the walk control jumps at a bush that blocks the way). */
+	@Override
+	public void jumpFromGround() {
+		float yaw = getYRot() * Mth.DEG_TO_RAD;
+		BlockPos ahead = BlockPos.containing(getX() - Mth.sin(yaw) * 0.9, getY() + 0.5, getZ() + Mth.cos(yaw) * 0.9);
+		if (!isInWater() && level().getBlockState(ahead).is(BlockTags.LEAVES)) {
+			return;
+		}
+		super.jumpFromGround();
 	}
 
 	// ------------------------------------------------------------------ spawn caps and despawn

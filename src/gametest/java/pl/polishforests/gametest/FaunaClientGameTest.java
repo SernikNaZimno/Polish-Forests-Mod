@@ -88,9 +88,10 @@ public final class FaunaClientGameTest implements FabricClientGameTest {
 			return;
 		}
 		// Step FA1: -Psites=model is the model calibration of V8 below, the default (-Psites=census) the census of the
-		// fauna in the worlds of the mod (FaunaCensus); -Psites=model,census runs both.
+		// fauna in the worlds of the mod (FaunaCensus); -Psites=model,census runs both. Step FA2: -Psites=behaviour and
+		// -Psites=mspt are modes of the census.
 		String sites = System.getProperty("polishforests.sites", "");
-		if (sites.isBlank() || sites.contains("census")) {
+		if (sites.isBlank() || sites.contains("census") || sites.contains("behaviour") || sites.contains("mspt")) {
 			List<String> censusFailures = new FaunaCensus(context, sites).run();
 			if (!sites.contains("model")) {
 				if (!censusFailures.isEmpty()) {

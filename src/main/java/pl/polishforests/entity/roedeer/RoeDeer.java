@@ -369,6 +369,12 @@ public class RoeDeer extends PolishAnimal<RoeDeer> {
 		setBuck(false);
 	}
 
+	/** Only a grown doe mothers the young (FA2: a young one without a mother takes the nearest doe). */
+	@Override
+	protected boolean canMother() {
+		return super.canMother() && !isBuck();
+	}
+
 	// ------------------------------------------------------------------ alarm
 
 	/** The bark "bo-bo" of a new flight (not of a flight from another deer's bark): a sound and an alarm for the group. */

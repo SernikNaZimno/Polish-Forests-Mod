@@ -6984,9 +6984,9 @@ Puszone białe lustro (V8-t) to osobny wariant tekstury `<wariant>_flared` z `to
 Słuchacze to wszystkie zwierzęta moda (`PolishAnimal` implementuje `ForestAlarm.Listener`). Liczniki `RAISED` i `HEARD` idą do spisu.
 
 **Grupy (`PolishAnimal.updateHerd`, co 100 ticków na zwierzę, rozłożone według id).** Każda sarna ma przewodnika (`herdId`). Spawnery łączą członków spawnowanej grupy pod pierwszą sarną. Grupa nie jest zapisywana: po wczytaniu świata grupy tworzą się od nowa z saren stojących blisko siebie.
-- **Zima** (podsezony grup zimowych XI–III, rudle): przewodnik grupy mniejszej niż 6 dołącza do najbliższej innej grupy w promieniu 48 bloków, jeśli razem zmieszczą się w 6. Z dwóch równych grup prowadzi ta z mniejszym id.
-- **Reszta roku:** łączą się tylko grupy w promieniu 8 bloków, do 3 saren. Członkowie grupy większej niż maksimum podsezonu odchodzą (ostatni według id). Koźlęta matki zostają w grupie.
-- Członek, który oddalił się od przewodnika na ponad 64 bloki albo stracił przewodnika, prowadzi sam siebie. Domem staje się wtedy miejsce, w którym jest.
+- **Zima** (podsezony grup zimowych XI–III, rudle): przewodnik grupy mniejszej niż 6 dołącza do najbliższej innej grupy w promieniu 48 bloków, jeśli razem zmieszczą się w 6 (etap 2: samotna sarna szuka grupy do 80 bloków). Z dwóch równych grup prowadzi ta z mniejszym id. Etap 2: przewodnik, który dołącza, od razu przekazuje swoich członków nowemu przewodnikowi.
+- **Reszta roku:** łączą się tylko grupy w promieniu 8 bloków, do 3 saren. Członkowie grupy większej niż maksimum podsezonu odchodzą (ostatni według id). Koźlęta idą za grupą swojej matki (etap 2), więc odchodzą razem z nią.
+- Członek, który oddalił się od przewodnika na ponad 96 bloków (etap 2; było 64) albo stracił przewodnika, prowadzi sam siebie. Domem staje się wtedy miejsce, w którym jest.
 
 Spawner przy zimowej grupie daje co najmniej 2 sarny (zaokrąglenie celu nie robi już pojedynczych saren zimą).
 
