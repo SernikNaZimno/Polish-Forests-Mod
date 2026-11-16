@@ -17,11 +17,13 @@ import pl.polishforests.entity.base.PolishAnimal;
  * {@code geckolib/models/entity/<species>.geo.json}, the animations {@code geckolib/animations/entity/<species>.animation.json}
  * and the texture {@code textures/entity/<species>/<variant>.png}, all from {@code tools/fauna}. The renderer does not see
  * the entity when the model is drawn, so the variant ({@link PolishAnimal#variant()}) goes to the render state through the
- * {@link #VARIANT} {@code DataTicket}. {@link BoneProbe} lets the fauna game test read the bone positions of a frame.
+ * {@link #VARIANT} {@code DataTicket}, and the bones not drawn through {@link #HIDDEN} (step FA2). {@link BoneProbe} lets the fauna game test read the bone positions of a frame.
  */
 public class PolishAnimalRenderer<T extends PolishAnimal<T>, R extends LivingEntityRenderState & GeoRenderState>
 		extends GeoEntityRenderer<T, R> {
 	static final DataTicket<String> VARIANT = DataTicket.create("polishforests_animal_variant", String.class);
+	/** The bones not drawn (comma separated, {@link PolishAnimal#hiddenBones()}; step FA2: the cast antlers of a buck). */
+	static final DataTicket<String> HIDDEN = DataTicket.create("polishforests_animal_hidden", String.class);
 
 	public PolishAnimalRenderer(EntityRendererProvider.Context context, String species, String defaultVariant) {
 		super(context, new Model<>(species, defaultVariant));
@@ -31,6 +33,18 @@ public class PolishAnimalRenderer<T extends PolishAnimal<T>, R extends LivingEnt
 	public void addRenderData(T animatable, Void relatedObject, R renderState, float partialTick) {
 		super.addRenderData(animatable, relatedObject, renderState, partialTick);
 		renderState.addGeckolibData(VARIANT, animatable.variant());
+		renderState.addGeckolibData(HIDDEN, animatable.hiddenBones());
+	}
+
+	@Override
+	public void adjustModelBonesForRender(RenderPassInfo<R> renderPassInfo, com.geckolib.renderer.base.BoneSnapshots snapshots) {
+		super.adjustModelBonesForRender(renderPassInfo, snapshots);
+		String hidden = renderPassInfo.renderState().getOrDefaultGeckolibData(HIDDEN, "");
+		if (!hidden.isEmpty()) {
+			for (String bone : hidden.split(",")) {
+				snapshots.ifPresent(bone, s -> s.skipRender(true));
+			}
+		}
 	}
 
 	@Override

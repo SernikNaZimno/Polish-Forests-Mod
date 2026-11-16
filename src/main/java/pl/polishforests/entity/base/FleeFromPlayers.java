@@ -16,7 +16,10 @@ import org.jspecify.annotations.Nullable;
 /**
  * Flight from players (step FA1, stage 2; docs/04-pionowy-wycinek.md "Stan po FA1"): when a player is closer than the
  * animal's {@link PolishAnimal#fleeDistance flight distance}, the animal runs away from it, re-aiming every second, until
- * it is {@code beyond} blocks further than that distance (or {@value #MAX_TICKS} ticks have passed).
+ * it is {@code beyond} blocks further than that distance (or {@value #MAX_TICKS} ticks have passed). Step FA2: also from the
+ * source of a {@link ForestAlarm} heard at the flight intensity ({@link PolishAnimal#alarmSource()}), for
+ * {@value #ALARM_TICKS} ticks; a flight starts with the animal's warning ({@link PolishAnimal#markFleeing(int, boolean)}),
+ * except a flight from the warning of another animal.
  *
  * <p>Unlike SmartBrainLib's {@code AvoidEntity} this does not read the memory of visible entities: that memory needs a
  * line of sight from the animal's eyes, which the trunks and the leaves of a forest block within a few blocks, and its
@@ -35,7 +38,12 @@ public class FleeFromPlayers<E extends PolishAnimal<?>> extends ExtendedBehaviou
 
 	private final float speed;
 	private final float beyond;
+	/** Ticks of a flight from an alarm. */
+	public static final int ALARM_TICKS = 100;
 	private @Nullable Player threat;
+	private @Nullable Vec3 alarm;
+	private boolean warns;
+	private long alarmUntil;
 
 	public FleeFromPlayers(float speed, float beyond) {
 		this.speed = speed;
@@ -51,16 +59,25 @@ public class FleeFromPlayers<E extends PolishAnimal<?>> extends ExtendedBehaviou
 	@Override
 	protected boolean checkExtraStartConditions(ServerLevel level, E animal) {
 		threat = animal.nearestThreat();
-		return threat != null;
+		alarm = threat == null ? animal.alarmSource() : null;
+		warns = threat != null || !animal.alarmFromBark();
+		return threat != null || alarm != null;
 	}
 
 	@Override
 	protected void start(E animal) {
+		if (alarm != null) {
+			alarmUntil = animal.level().getGameTime() + ALARM_TICKS;
+			animal.clearAlarm();
+		}
 		runAway(animal);
 	}
 
 	@Override
 	protected boolean shouldKeepRunning(E animal) {
+		if (alarm != null) {
+			return animal.level().getGameTime() < alarmUntil;
+		}
 		Player p = threat;
 		return p != null && p.isAlive() && !p.isRemoved() && p.level() == animal.level() && !p.isSpectator()
 				&& animal.distanceTo(p) < animal.fleeDistance(p) + beyond;
@@ -76,17 +93,19 @@ public class FleeFromPlayers<E extends PolishAnimal<?>> extends ExtendedBehaviou
 	@Override
 	protected void stop(E animal) {
 		threat = null;
+		alarm = null;
 	}
 
 	private void runAway(E animal) {
 		Player p = threat;
-		if (p == null) {
+		Vec3 from = p != null ? p.position() : alarm;
+		if (from == null) {
 			return;
 		}
-		Vec3 away = DefaultRandomPos.getPosAway(animal, LEG, 7, p.position());
+		Vec3 away = DefaultRandomPos.getPosAway(animal, LEG, 7, from);
 		if (away != null) {
 			BrainUtil.setMemory(animal, MemoryModuleType.WALK_TARGET, new WalkTarget(away, speed, 0));
 		}
-		animal.markFleeing(40);
+		animal.markFleeing(40, warns);
 	}
 }

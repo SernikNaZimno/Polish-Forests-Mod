@@ -45,13 +45,13 @@ import pl.polishforests.worldgen.vanilla.VanillaForestsBiomeSource;
  * <li><b>At generation</b> ({@link #spawnAtGeneration}): the last generation stage of a chunk ({@code spawnOriginalMobs})
  * reads the chunk's {@link ChunkHabitats} before it drops them, and after vanilla's own spawn
  * ({@code NaturalSpawner.spawnMobsForChunkGeneration}, unchanged, so it sees the same chunk as before) places groups whose
- * expected number is the target density times the weighted columns of the chunk (up to {@value #GENERATION_TRIES} columns
+ * expected number is the density of the generation (the profile's generation factor) times the weighted columns of the chunk (up to {@value #GENERATION_TRIES} columns
  * drawn per group). The draw has its own random source from the seed, the chunk and the new salt
  * {@link #GENERATION_SALT}: no block, no other random source and no vanilla spawn changes. These animals stay with their
  * chunk (they never despawn, as vanilla's animals of the chunk generation are persistent by their category).
  * Chunks generated before this step get no animals this way (KFA-1): the spawner fills them.
  * <li><b>The fauna spawner</b> ({@link #tick}): every {@value #INTERVAL} ticks, around each player (not spectators), the
- * target is the density times the weighted forest area within {@value #AREA_RADIUS} blocks (a lattice of
+ * target is the spawner's density (the profile's spawner factor, calibrated apart, R16) times the weighted forest area within {@value #AREA_RADIUS} blocks (a lattice of
  * {@value #AREA_STEP} blocks over the loaded chunks), capped by the profile's own limit; when fewer animals of the species
  * are within {@value #COUNT_RADIUS} blocks, one group appears {@value #SPAWN_MIN}-{@value #SPAWN_MAX} blocks away from the
  * player (never closer than {@value #SPAWN_MIN} blocks to any player), on an entity-ticking chunk. These animals (wanderers,
@@ -110,6 +110,8 @@ public final class FaunaSpawner {
 	public static final LongAdder GENERATION_GROUPS = new LongAdder();
 	public static final LongAdder SPAWNER_ANIMALS = new LongAdder();
 	public static final LongAdder SPAWNER_GROUPS = new LongAdder();
+	/** Groups spawned as a mother with young (step FA2). */
+	public static final LongAdder YOUNG_GROUPS = new LongAdder();
 	/** Ground blocks of the places refused for {@link Reason#GROUND}, by id (for the census). */
 	public static final java.util.concurrent.ConcurrentHashMap<String, LongAdder> GROUND_REFUSED = new java.util.concurrent.ConcurrentHashMap<>();
 
@@ -123,6 +125,7 @@ public final class FaunaSpawner {
 	public static void register() {
 		FaunaRules.register();
 		ServerTickEvents.END_LEVEL_TICK.register(FaunaSpawner::tick);
+		pl.polishforests.entity.base.ForestAlarm.register();
 	}
 
 	/** Whether the level is of a world type of the mod. */
@@ -165,8 +168,8 @@ public final class FaunaSpawner {
 			if (loaded >= cap) {
 				return;
 			}
-			double target = Math.min(profile.maxNearPlayer(), profile.densityPerBlock() * forestArea(level, profile, player.getBlockX(),
-					player.getBlockZ()));
+			double target = Math.min(profile.maxNearPlayer(), profile.spawnerDensityPerBlock() * forestArea(level, profile,
+					player.getBlockX(), player.getBlockZ()));
 			int want = stochasticRound(target, random) - near(level, s.type(), player.position(), COUNT_RADIUS);
 			if (want <= 0) {
 				continue;
@@ -175,7 +178,10 @@ public final class FaunaSpawner {
 			if (spot == null) {
 				continue;
 			}
-			int size = Math.min(want, profile.group(Seasons.provider().subSeason(level)).sample(random::nextInt));
+			// A group of the season's size, cut to what is missing but never below the season's least group (FA2: winter
+			// groups of at least two).
+			AnimalProfile.Range group = profile.group(Seasons.provider().subSeason(level));
+			int size = Math.max(group.min(), Math.min(want, group.sample(random::nextInt)));
 			int n = spawnGroup(level, s, spot, size, EntitySpawnReason.NATURAL, random, null);
 			if (n > 0) {
 				SPAWNER_GROUPS.increment();
@@ -304,9 +310,9 @@ public final class FaunaSpawner {
 		}
 	}
 
-	/** Expected groups in a chunk: the target density times the weighted columns, over the mean group size. */
+	/** Expected groups in a chunk: the density of the generation times the weighted columns, over the mean group size. */
 	public static double expectedGroups(AnimalProfile profile, AnimalProfile.Range group, double weightedColumns) {
-		return profile.densityPerBlock() * weightedColumns / ((group.min() + group.max()) / 2.0);
+		return profile.generationDensityPerBlock() * weightedColumns / group.mean();
 	}
 
 	/** The random source of the spawn at generation of a chunk (new salt {@link #GENERATION_SALT}). */
@@ -409,12 +415,22 @@ public final class FaunaSpawner {
 
 	/**
 	 * Spawns a group of up to {@code size} animals: the first at {@code first}, the others on valid places within
-	 * {@value #GROUP_SPREAD} blocks (inside {@code chunk} when given). Returns how many appeared.
+	 * {@value #GROUP_SPREAD} blocks (inside {@code chunk} when given); all follow the first (step FA2: a spawned group is a
+	 * group of the brain). In the sub-seasons of the young ({@link AnimalProfile#young}) a group of at least two is with the
+	 * profile's chance a mother ({@code becomeMother}) with up to two young (vanilla's young, which grow up in a vanilla
+	 * time; C10: no breeding). Returns how many appeared.
 	 */
 	static int spawnGroup(ServerLevelAccessor level, Species s, Vec3 first, int size, EntitySpawnReason reason, RandomSource random,
 			@Nullable ChunkPos chunk) {
 		int n = 0;
 		SpawnGroupData data = null;
+		AnimalProfile profile = s.profile();
+		boolean young = size >= 2 && profile.young(Seasons.provider().subSeason(level.getLevel())) && random.nextFloat() < profile.youngChance();
+		if (young) {
+			size = Math.min(size, 3);
+			YOUNG_GROUPS.increment();
+		}
+		PolishAnimal<?> leader = null;
 		for (int i = 0; i < size; i++) {
 			Vec3 at = first;
 			if (i > 0) {
@@ -441,6 +457,17 @@ public final class FaunaSpawner {
 			// (PolishAnimal.finalizeSpawn), like vanilla's: else those of the chunks generated 128-192 blocks ahead of a
 			// walking player would despawn before he comes.
 			data = animal.finalizeSpawn(level, level.getCurrentDifficultyAt(animal.blockPosition()), reason, data);
+			if (leader == null) {
+				leader = animal;
+				if (young) {
+					animal.becomeMother();
+				}
+			} else {
+				animal.followLeader(leader);
+				if (young) {
+					animal.setBaby(true);
+				}
+			}
 			level.addFreshEntityWithPassengers(animal);
 			n++;
 		}

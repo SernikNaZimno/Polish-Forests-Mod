@@ -31,8 +31,9 @@ class FaunaProfileTest {
 	void roeDeerProfileIsSane() {
 		AnimalProfile p = RoeDeer.PROFILE;
 		assertEquals("roe_deer", p.species());
-		// PW-15 (b), CP-D.3: the game density is about 20-50 times the real one.
-		assertTrue(p.factor() >= 20 && p.factor() <= 50, "factor " + p.factor());
+		// PW-15 (b), CP-D.3: the game density is about 20-50 times the real one, the generation and the spawner apart (R16).
+		assertTrue(p.generationFactor() >= 20 && p.generationFactor() <= 50, "generation factor " + p.generationFactor());
+		assertTrue(p.spawnerFactor() >= 20 && p.spawnerFactor() <= 50, "spawner factor " + p.spawnerFactor());
 		// Every forest of the mod is a habitat, no water and no open land (open land only as the forest edge).
 		for (HabitatBiome b : HabitatBiome.values()) {
 			if (b.isForest()) {
@@ -43,9 +44,9 @@ class FaunaProfileTest {
 		}
 		assertTrue(p.edgeWeight() > 0 && p.edgeWeight() < 1);
 		assertEquals(0, p.weight(null));
-		// Groups of 1-3 in summer (FA1), more in winter (FA2).
+		// Groups of 1-3 in summer, 2-6 in winter (FA2).
 		assertEquals(new AnimalProfile.Range(1, 3), p.group(SubSeason.MID_SUMMER));
-		assertTrue(p.group(SubSeason.MID_WINTER).max() > 3);
+		assertEquals(new AnimalProfile.Range(2, 6), p.group(SubSeason.MID_WINTER));
 		// The flight distances of the plan: 20-40 blocks.
 		assertEquals(20, p.fleeMin());
 		assertEquals(40, p.fleeMax());
@@ -89,10 +90,12 @@ class FaunaProfileTest {
 		AnimalProfile p = RoeDeer.PROFILE;
 		// A chunk of oak-hornbeam forest (weight 1): density × 256 columns; with ×30 about 0.08 roe deer per chunk, so a
 		// circle of 64 blocks (about 50 chunks) holds about 3-4 of them, and the 128-block despawn circle about 15.
-		double perChunk = p.densityPerBlock() * 256;
+		double perChunk = p.generationDensityPerBlock() * 256;
 		assertTrue(perChunk > 0.04 && perChunk < 0.2, "per chunk " + perChunk);
-		double circle = p.densityPerBlock() * Math.PI * FaunaSpawner.AREA_RADIUS * FaunaSpawner.AREA_RADIUS;
+		double circle = p.generationDensityPerBlock() * Math.PI * FaunaSpawner.AREA_RADIUS * FaunaSpawner.AREA_RADIUS;
 		assertTrue(circle >= 1 && circle <= p.maxNearPlayer(), "circle " + circle);
+		double target = p.spawnerDensityPerBlock() * Math.PI * FaunaSpawner.AREA_RADIUS * FaunaSpawner.AREA_RADIUS;
+		assertTrue(target >= circle && target <= p.maxNearPlayer(), "spawner target " + target);
 		double groups = FaunaSpawner.expectedGroups(p, p.summerGroup(), 256);
 		assertEquals(perChunk / 2, groups, 1e-12);
 	}

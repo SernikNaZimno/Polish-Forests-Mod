@@ -516,6 +516,15 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		b.add("polishforests.fauna.state.resting", "resting");
 		b.add("polishforests.fauna.state.alert", "alert");
 		b.add("polishforests.fauna.state.idle", "standing");
+		// Step FA2: groups and looks in /polishforests fauna.
+		b.add("polishforests.command.fauna_groups", "  groups: %s (sizes %s); %s");
+		b.add("polishforests.fauna.look.young", "young");
+		b.add("polishforests.fauna.look.summer_coat", "summer coat");
+		b.add("polishforests.fauna.look.winter_coat", "winter coat");
+		b.add("polishforests.fauna.look.antlers_hard", "polished antlers");
+		b.add("polishforests.fauna.look.antlers_velvet", "antlers in velvet");
+		b.add("polishforests.fauna.look.antlers_cast", "antlers cast");
+		b.add("polishforests.fauna.look.antlers_none", "no antlers");
 	}
 
 	private static void polish(TranslationBuilder b) {
@@ -642,6 +651,14 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		b.add("polishforests.fauna.state.resting", "odpoczywa");
 		b.add("polishforests.fauna.state.alert", "czuwa");
 		b.add("polishforests.fauna.state.idle", "stoi");
+		b.add("polishforests.command.fauna_groups", "  grupy: %s (wielkości %s); %s");
+		b.add("polishforests.fauna.look.young", "młode");
+		b.add("polishforests.fauna.look.summer_coat", "futro letnie");
+		b.add("polishforests.fauna.look.winter_coat", "futro zimowe");
+		b.add("polishforests.fauna.look.antlers_hard", "parostki wytarte");
+		b.add("polishforests.fauna.look.antlers_velvet", "parostki w scypule");
+		b.add("polishforests.fauna.look.antlers_cast", "parostki zrzucone");
+		b.add("polishforests.fauna.look.antlers_none", "bez parostków");
 		b.add("modmenu.descriptionTranslation.polishforests", "Proceduralne krajobrazy Polski w skali 1:1 z przyrodniczo "
 				+ "wiernymi lasami, florą i fauną oraz integracją z porami roku Serene Seasons.");
 	}

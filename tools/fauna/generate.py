@@ -9,6 +9,9 @@ Files (paths relative to the project):
     src/main/resources/assets/polishforests/geckolib/models/entity/roe_deer.geo.json        model (format 1.12.0)
     src/main/resources/assets/polishforests/geckolib/animations/entity/roe_deer.animation.json
     src/main/resources/assets/polishforests/textures/entity/roe_deer/<doe|buck>_<summer|winter>.png
+    src/main/resources/assets/polishforests/textures/entity/roe_deer/buck_winter_hard.png   (step FA2: October)
+    src/main/resources/assets/polishforests/textures/entity/roe_deer/<variant>_flared.png   (step FA2: rump patch puffed)
+    src/main/resources/assets/polishforests/textures/entity/roe_deer/kid.png                (step FA2: a young one)
     src/main/resources/assets/polishforests/textures/item/roe_deer_spawn_egg.png
     src/gametest/resources/assets/polishforests_probe/...                                    the axis gauge (game test only)
     src/test/resources/fauna/fauna_expected.json   bone and locator positions (rest pose; the held misc.alert pose;
@@ -41,6 +44,13 @@ EXPECTED = 'src/test/resources/fauna'
 
 SEXES = ('doe', 'buck')
 SEASONS = ('summer', 'winter')
+# Step FA2: the variants beyond the four of V8 (name -> shader arguments); RoeDeer.variants() lists the same names.
+EXTRA_VARIANTS = {'buck_winter_hard': dict(sex='buck', season='winter', antlers='hard')}
+for _sex in SEXES:
+    for _season in SEASONS:
+        EXTRA_VARIANTS[f'{_sex}_{_season}_flared'] = dict(sex=_sex, season=_season, flared=True)
+EXTRA_VARIANTS['buck_winter_hard_flared'] = dict(sex='buck', season='winter', antlers='hard', flared=True)
+EXTRA_VARIANTS['kid'] = dict(sex='doe', season='summer', kid=True)
 ANTLERS = ('antler_left', 'antler_right')
 
 # The 4-side views of the fauna game test: the camera stays, the animal turns (yaw in Minecraft degrees). The camera
@@ -100,6 +110,12 @@ def build_all():
             rel = f'{ASSETS}/textures/entity/roe_deer/{sex}_{season}.png'
             files[rel] = ('png', img)
             details[rel] = det
+    for name, args in EXTRA_VARIANTS.items():
+        a = dict(args)
+        img, det = paint.paint_model(deer, paint.roe_deer_shader(deer, a.pop('sex'), a.pop('season'), **a), with_details=True)
+        rel = f'{ASSETS}/textures/entity/roe_deer/{name}.png'
+        files[rel] = ('png', img)
+        details[rel] = det
     files[f'{ASSETS}/textures/item/roe_deer_spawn_egg.png'] = ('png', paint.spawn_egg((186, 108, 60), (234, 220, 192)))
 
     gauge = axis_gauge()

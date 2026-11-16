@@ -737,6 +737,7 @@ CP-D.1 zlecił faunę i dźwięk według planu (V14, V15, V16, potem V17), CP-D.
 - **Zakres:** (1) Harmonogram dobowy SBL: żer rano, w południe i o zmierzchu, odpoczynek w gęstwinie (kolumny z podszytem, odnowieniem albo młodnikiem z planu drzewostanu) w środku dnia i nocą; ucieczka z 20–40 bloków ze szczekiem „bo-bo” (dźwięk zastępczy wanilii po id do FA4) i białym lustrem (puszone lustro osobnym wariantem tekstury albo kością z `tools/fauna`, V8-t). (2) Grupy: 1–3 latem, 2–6 zimą (łączenie i rozpad grup według podsezonu), koza z koźlętami latem. (3) Futro i parostki według podsezonu (z SS i bez): futro zimowe X–IV, parostki wytarte V–X, zrzut X–XI, scypuł XII–IV; zmiana w ticku według kalendarza, zapis w istniejących polach albo nowych z wartością domyślną (KFA-1). (4) `ForestAlarm`: interfejs zdarzenia alarmu (źródło, promień, siła); sarna reaguje ucieczką albo czujnością; w FA2 źródłem jest test i biegnący gracz, skrzek sójki dochodzi w FA4, encja sójki w FA6. (5) Kalibracja gęstości (KFA-5): ok. ×20–50 rzeczywistej gęstości saren w lasach Polski [Ź], dwie kalibracje (generacja i spawner), wagi według siedliska (bory, grądy, olsy, łęgi, lasy górskie, skraje), także w świecie „Default + Polish Forests”. (6) MSPT: jeden przebieg kontrolny (KFA-6). (7) Gametest `fauna`: aktywność według pory dnia (udział saren żerujących, w ruchu i odpoczywających o świcie, w południe, o zmierzchu i nocą, z ustawianiem godziny), wielkość grup latem i zimą (`SeasonDates`), wariant futra i parostków w 4 podsezonach, odległość ucieczki, reakcja na `ForestAlarm`, zasięg dobowy (przemieszczenie sarny w godzinach gry).
 - **Ukończony, gdy:** po 5 minutach w lesie wycinka średnio ≥ 1 sarna w promieniu 64 bloków (obie skale, oba tryby, świat wanilii z lasami moda), liczba nie rośnie przy eksploracji; aktywność według pory zgodna z harmonogramem (np. udział żerujących o świcie i zmierzchu wyższy niż w południe i nocą — progi w „Projekt FA2”); grupy latem 1–3, zimą 2–6; futro i parostki zgodne z podsezonem w 100% spisu; MSPT ≤ 0,05 ms na sarnę (albo opisany jako orientacyjny przy drugiej pracy); gęstości i źródła w „Stan po FA2”; KFA-1 … KFA-10. Lista „Do sprawdzenia w grze”: `find biome oak_hornbeam_forest` o świcie i w południe (`/time set`) — sarny żerują rano, w południe częściej leżą w gęstwinie; podejście biegiem — szczek i białe lustro; zima Serene Seasons — grupy większe, futro szare, kozły bez parostków albo w scypule; `/polishforests fauna 64` — liczby saren w lesie.
 - **Ryzyko:** średnie (harmonogram SBL, kalibracja na zrzutach zastąpiona spisem liczb).
+- **Stan:** etap 1 (kod, zasoby, testy jednostkowe, fastTest) 2026-11-16, zob. „Projekt FA2”; przebiegi gametestu i „Stan po FA2” w etapie 2.
 
 ### FA3. Dzik: wataha, rytm nocny, buchtowisko (V15; B, 1,5–2 dnia)
 
@@ -6935,3 +6936,149 @@ Baza rundy: `5741367` (koniec etapu 2). Przebiegi według `python tools/dev/test
 **Do sprawdzenia w grze (zmiany rundy):**
 1. Postaw sarnę z jaja (zakładka jaj), odejdź ponad 200 bloków (np. `/tp ~300 ~ ~` w trybie twórczym) i wróć: sarna z jaja nadal stoi. Tak samo sarna z `/summon polishforests:roe_deer`.
 2. W lesie z sarnami (`/polishforests find biome oak_hornbeam_forest`) odejdź ponad 200 bloków i wróć: sarny z generacji zostają, a liczba w okolicy (`/polishforests fauna 96`) jest podobna i nie rośnie.
+
+## Projekt FA2 (2026-11-16, etap 1: kod, zasoby z `tools/fauna`, testy jednostkowe, kod gametestu)
+
+Krok FA2 (§3 „Kroki FA”, V14 część 2, G.62) obejmuje rytm dnia sarny, grupy według podsezonu, futro i parostki w ticku, `ForestAlarm`, szczek i puszone lustro, koźlęta, kalibrację gęstości i scenę MSPT. Etap 1 to kod, zasoby, testy jednostkowe i fastTest. Do etapu 2 należą przebiegi gametestu `fauna` (spis i próby zachowania, scena MSPT, `-Psites=model`) według `test_plan.py 12fa96e` oraz „Stan po FA2”. Baza kroku: `12fa96e` (ostatni commit FA1).
+
+**Zgodność (KFA-1, KFA-2).** Generacja bloków jest bez zmian: spawn przy generacji zmienia tylko liczbę grup (gęstość) i dołącza koźlęta, nie stawia bloków. Złote pliki są bez zmian. Stare sole są bez zmian. Dochodzi jedna nowa stała mieszania: `0x5A4E_FA02_A47E_105DL` w `RoeDeer.earlyShedder` (stały los osobnika z jego UUID: czy kozioł zrzuca parostki już w październiku; to nie jest strumień generacji świata). Nowe stałe enumów są tylko w nowych typach (`ForestAlarm.Kind`, `RoeDeer.Antlers`). Istniejące enumy (`PolishAnimal.Action`, `State`, `RoeDeer.Display`) są bez zmian. **Pola zapisu są bez zmian**: futro dalej w `WinterCoat`, płeć w `Buck`, wędrowiec w `Wanderer`. Parostki, grupa, dom, flaga lustra i stan alarmu nie są zapisywane, bo wynikają z daty albo odtwarzają się po wczytaniu. Dlatego migawka rejestru jest bez zmian (`RegistrySnapshotTest` PASS bez regeneracji) i nie ma nowych bloków, przedmiotów ani typów encji.
+
+**Harmonogram dobowy (SBL, `DailyRoutine`).** `AnimalProfile.Period` ma teraz udziały żeru, odpoczynku i ruchu (zamiast jednej czynności z FA1). Rytm dnia sarny opiera się na raporcie 07 §3.2: szczyty aktywności wczesnym rankiem, w południe i wieczorem, możliwy żer nocny, cykle żeru i przeżuwania co 2–3 h.
+
+| Od (tick, godzina) | Żer | Odpoczynek | Ruch |
+|---|---|---|---|
+| 0 (6:00, świt i ranek) | 0,70 | 0,10 | 0,20 |
+| 2500 (8:30, przedpołudnie) | 0,15 | 0,70 | 0,15 |
+| 5000 (11:00, południe) | 0,35 | 0,50 | 0,15 |
+| 7000 (13:00, popołudnie) | 0,15 | 0,70 | 0,15 |
+| 11000 (17:00, zmierzch i wieczór) | 0,70 | 0,10 | 0,20 |
+| 14500 (20:30, noc) | 0,20 | 0,65 | 0,15 |
+| 22000 (4:00, świt) | 0,70 | 0,10 | 0,20 |
+
+`DailyRoutine` (zachowanie bezczynności SBL, po czuwaniu) losuje okres doby z tych udziałów:
+- **Żer** trwa 200–600 ticków: na miejscu albo, w połowie okresów, po kilku krokach w promieniu 6 bloków.
+- **Odpoczynek** trwa 500–1400 ticków. Przewodnik grupy albo samotna sarna idzie do najlepszej gęstwiny w promieniu 16 bloków (`Thicket`) i tam leży. Członek grupy leży przy przewodniku.
+- **Ruch** to marsz do celu w promieniu 12 bloków. Przewodnik, który odszedł od domu dalej niż `homeRange` = 48 bloków, idzie z powrotem, więc zasięg dobowy jest ograniczony.
+
+Członek grupy w 80% okresów bierze czynność przewodnika i trzyma się do 6 bloków od niego. Okres kończy się, gdy:
+- minie jego czas;
+- zmieni się okres harmonogramu;
+- członek oddali się od przewodnika na ponad 16 bloków;
+- sarna ucieka;
+- gracz jest blisko albo był alarm (wtedy czuwa).
+
+**Gęstwina (`Thicket`)** jest liczona ze spisu bloków, bo plan drzewostanu istnieje tylko w czasie generacji chunka. Wynik miejsca to liczba bloków podszytu (liście i sadzonki: krzewy, odnowienie, niskie korony młodnika) w kwadracie 5 × 5 kolumn na wysokości stóp i do 3 bloków nad nimi. Gęstwina ma wynik co najmniej 6. Wybór sprawdza 16 losowych miejsc z gruntem z mapy `MOTION_BLOCKING_NO_LEAVES` (pod krzewami i koronami), na którym sarna może leżeć (cienka warstwa ściółki albo mchu jest dozwolona).
+
+**Ucieczka, szczek i lustro.** Ucieczka po odległości zostaje z FA1: 20 bloków przed skradającym się graczem, 30 przed idącym, 40 przed biegnącym. `FleeFromPlayers` ucieka teraz także od źródła `ForestAlarm` usłyszanego z siłą ucieczki. Nowa ucieczka zaczyna się od szczeku „bo-bo”:
+- dźwięk zastępczy wanilii po id `entity.fox.screech` (głośność 1,6, wysokość 0,55–0,65), własny dźwięk przyjdzie w FA4;
+- przerwa między szczekami co najmniej 100 ticków;
+- szczek podnosi alarm `BARK` (promień 32, siła 0,8): grupa i sąsiedzi uciekają do 12 bloków, dalej czuwają;
+- sarna uciekająca przed szczekiem innej nie szczeka, więc alarm nie biegnie przez cały las.
+
+Puszone białe lustro (V8-t) to osobny wariant tekstury `<wariant>_flared` z `tools/fauna`. Elipsa lustra ma tam półszerokość 3,0 px, skalę wysokości 2,7, miękki brzeg 0,6 px i kolor (240, 236, 226) w obu futrach. Ogon jest biały. Względem wariantu bez puszenia różni się 33–34 teksele. Flagę „flared” (synchronizowana, bez zapisu) sarna ma podczas ucieczki i przez 80 ticków czujności po alarmie.
+
+**`ForestAlarm`** (`entity/base`) to rekord: źródło, promień, siła, rodzaj (`TEST`, `RUNNING_PLAYER`, `BARK`; nowe rodzaje tylko na końcu, w FA4 sójka) i przyczyna. Natężenie maleje liniowo od siły przy źródle do 0 na promieniu. Natężenie co najmniej 0,5 oznacza ucieczkę od źródła (100 ticków). Słabsze natężenie daje czujność (animacja `alert`, 80 ticków). Źródła w FA2:
+- test (gametest i API);
+- biegnący gracz: co 10 ticków wokół gracza, który sprintuje i nie jest obserwatorem ani niewidzialny, promień 64, siła 1. Do 32 bloków sarny uciekają (i tak uciekają z 40 bloków), dalej, do 64 bloków, czuwają.
+
+Słuchacze to wszystkie zwierzęta moda (`PolishAnimal` implementuje `ForestAlarm.Listener`). Liczniki `RAISED` i `HEARD` idą do spisu.
+
+**Grupy (`PolishAnimal.updateHerd`, co 100 ticków na zwierzę, rozłożone według id).** Każda sarna ma przewodnika (`herdId`). Spawnery łączą członków spawnowanej grupy pod pierwszą sarną. Grupa nie jest zapisywana: po wczytaniu świata grupy tworzą się od nowa z saren stojących blisko siebie.
+- **Zima** (podsezony grup zimowych XI–III, rudle): przewodnik grupy mniejszej niż 6 dołącza do najbliższej innej grupy w promieniu 48 bloków, jeśli razem zmieszczą się w 6. Z dwóch równych grup prowadzi ta z mniejszym id.
+- **Reszta roku:** łączą się tylko grupy w promieniu 8 bloków, do 3 saren. Członkowie grupy większej niż maksimum podsezonu odchodzą (ostatni według id). Koźlęta matki zostają w grupie.
+- Członek, który oddalił się od przewodnika na ponad 64 bloki albo stracił przewodnika, prowadzi sam siebie. Domem staje się wtedy miejsce, w którym jest.
+
+Spawner przy zimowej grupie daje co najmniej 2 sarny (zaokrąglenie celu nie robi już pojedynczych saren zimą).
+
+**Koźlęta (C10, dorastanie wanilijne).** W podsezonach młodych (V–VIII) grupa letnia z co najmniej dwiema sarnami jest z szansą 0,6 kozą (`becomeMother`) z 1–2 koźlętami. Koźlęta to młode wanilii (`setBaby`), które dorastają w czasie wanilii, czyli 20 minut. Rozmnażania nie ma. Koźlę ma teksturę `kid` (letnie futro z jasnymi cętkami na górze boków, bez parostków i bez puszenia, 13 tekseli różnicy względem `doe_summer`). Hitbox i model są w skali 0,5: robią to wanilia i GeckoLib (`LivingEntity.getScale`). Liczba grup z koźlętami trafia do licznika `YOUNG_GROUPS` w spisie.
+
+**Futro i parostki w ticku.** `PolishAnimal` co 100 ticków (i przy spawnie) podaje gatunkowi podsezon ze źródła pór roku (`onCalendar`; z Serene Seasons i bez, `FallbackCalendar`). Zwierzę bez AI (`NoAI`, kalibracja modelu V8) zachowuje wygląd.
+- Futro zimowe X–IV (reguła V8 bez zmian).
+- Parostki kozła (`RoeDeer.antlers`, raport 07 §3.2: zrzucane od końca X do XI, odrastają w scypule, wycierane na przełomie IV i V):
+
+| Podsezon | Parostki |
+|---|---|
+| V–IX | wytarte (`HARD`) |
+| X | wytarte albo zrzucone (połowa kozłów, stały los z UUID) |
+| XI | zrzucone (`CAST`, kości poroża ukryte) |
+| XII–IV | w scypule (`VELVET`) |
+
+Koza i koźlę nie mają parostków. Warianty tekstur:
+- `doe_summer`, `doe_winter`, `buck_summer` (wytarte), `buck_winter` (scypuł; z ukrytym porożem także kozioł po zrzucie);
+- nowy `buck_winter_hard`: futro zimowe z wytartymi parostkami w październiku, 68 tekseli różnicy względem `buck_winter`;
+- do każdego z tych pięciu wariant `_flared` oraz `kid`, razem 11 plików.
+
+Renderer dostaje ukryte kości przez nowy `DataTicket` `HIDDEN` (`PolishAnimal.hiddenBones()`). Dawne „ukryj poroże, gdy wariant nie zaczyna się od `buck`” zastąpiono tym mechanizmem. `checkArt` PASS dla 11 tekstur (krok sąsiadów p95 21,6–22,8 przy progu 24, anizotropia 0,66–0,73).
+
+**Kalibracja gęstości (KFA-5, PW-15, R16).** Gęstość rzeczywista to **0,085 sarny na ha lasu**. [Ź: GUS „Leśnictwo” i PZŁ 2025 według raportu 07 §2: ok. 810 tys. saren na ok. 9,5 mln ha lasu, czyli ok. 85 na 1000 ha lasu; raport 07 §2.2 podaje 30–80 na 1000 ha lasu przy sarnach polnych liczonych osobno; przybliżenie]. Dwie osobne kalibracje (R16):
+- **spawn przy generacji ×30** (2,55 sarny na ha lasu o wadze 1): ok. 0,065 sarny na chunk, 3,3 sarny w kole o promieniu 64 bloków grądu, 2,6 w borze świeżym;
+- **cel spawnera ×45** (3,8 na ha): spawner dopełnia sarny przy graczu (licząc sarny z generacji) do 4,9 w kole grądu, z limitem 8. Dopełnianie działa w chunkach sprzed kroku, w świecie „Default + Polish Forests”, gdzie lasy moda są mniejsze, i po odejściu wędrowców.
+
+Oba mnożniki mieszczą się w ×20–50. Wagi siedlisk działają tak samo w obu typach świata, bo biomy lasów moda są tymi samymi siedliskami:
+
+| Siedlisko | Waga |
+|---|---|
+| grąd, las mieszany, dąbrowy i pozostałe liściaste | 1,0 |
+| łęgi (jesionowo-olszowy, wiązowo-jesionowy, wierzbowo-topolowy), bór mieszany | 0,9 |
+| bór świeży, bór wilgotny | 0,8 |
+| olszyna górska | 0,7 |
+| skraj lasu (otwarty teren do 8 bloków od lasu) | 0,6 |
+| bór suchy, bór bażynowy, buczyna niżowa | 0,6 |
+| buczyna karpacka, jedlina | 0,5 |
+| ols | 0,4 |
+| świerczyna górska | 0,35 |
+| bór bagienny | 0,3 |
+| kosodrzewina | 0,15 |
+
+Uzasadnienie wag: sarna żeruje na skrajach i w lasach z podszytem i młodnikami (raport 07 §3.2: ekoton las–pole, młodniki, zarośla, doliny). Buczyny i jedliny mają mało podszytu, a ols, świerczyna i kosodrzewina są mokre albo ubogie.
+
+**MSPT (KFA-6).** `PolishAnimal.setTiming(true)` mierzy czas pełnego serwerowego ticku każdego zwierzęcia moda (ruch, mózg, nawigacja, kalendarz, grupa; liczniki `TICK_NANOS`, `TICKS`). Przy wyłączonym pomiarze koszt to jedno sprawdzenie flagi. Scena `-Psites=mspt` w świecie GAMEPLAY N, w grądzie `oak_hornbeam_1`, ma spawnery wyłączone i 40 saren próby. Pomiar trwa 1200 ticków. Budżet to ≤ 0,05 ms na zwierzę i tick (FAIL), a z `-PtimingsReportOnly` wynik jest tylko raportowany. Obok raportu idzie średni tick serwera przed sceną i po niej.
+
+**Gametest `fauna` (`FaunaTrials`, `FaunaCensus`).** Spis FA1 jest bez zmian, z jednym wyjątkiem: próg średniej w miejscu wynosi teraz **≥ 1** sarna w promieniu 64 bloków (było > 0). Linia spisu ma też grupy i wygląd. W każdym świecie spisu (REAL i GAMEPLAY w trybach N i D oraz „Default + Polish Forests”) w pierwszym miejscu biegną próby FA2 z własnymi sarnami (`COMMAND`, nie znikają), przy graczu twórczym i niewidzialnym:
+
+| Próba | Przebieg | Zalicza, gdy |
+|---|---|---|
+| aktywność według pory | 8 grup po 3 sarny 16–40 bloków od gracza; świt 500 (6:30), południe 6000, zmierzch 12500 (18:30), noc 18000 przez `SeasonDates.setTimeOfDay` (czas zatrzymany); po 400 tickach 6 próbek co 100 ticków | udział żerujących o świcie i o zmierzchu każdy ≥ udział w południe i w nocy + 0,10 oraz odpoczywających w południe > o świcie; udział odpoczywających w gęstwinie w raporcie |
+| zasięg dobowy | te same sarny przez 8 pór co 3 h, po 300 ticków | największe przemieszczenie ≤ `homeRange` + 32 = 80 bloków, mediana ≥ 1 blok |
+| grupy | połowa zimy 1200 ticków (łączenie), potem połowa lata 400 ticków (rozpad); wszystkie sarny w promieniu 192 bloków | lato: każda grupa 1–3; zima: żadna > 6 i ≥ 90% saren w grupach 2–6 |
+| futro i parostki | w GAMEPLAY N wszystkie 12 podsezonów, gdzie indziej X, XI, I, VII (`SeasonDates.set`), po 120 tickach | 100% saren w promieniu 192 bloków zgodnych z podsezonem (`looksAsIn`); każdy wariant ma teksturę w zasobach klienta |
+| odległość ucieczki | widoczny gracz idzie (teleport po 1 bloku co 5 ticków, bez sprintu i skradania) do sarny 50 bloków dalej | ucieczka zaczyna się w 20–42 blokach, lustro puszone, ≥ 1 szczek |
+| `ForestAlarm` | alarm testowy (promień 40, siła 1) przy graczu; sarna 8 bloków od niego i druga 30 bloków po drugiej stronie | bliska ucieka (> 16 bloków po 100 tickach), daleka czuwa z puszonym lustrem i nie ucieka |
+
+Próby FA1 (despawn, ucieczka z 12 bloków, eksploracja, zwierzęta wanilii) biegną dalej w GAMEPLAY N. `-Psites=behaviour` uruchamia same próby FA2 we wszystkich światach, bez 5-minutowego spisu miejsc, a `-Psites=mspt` samą scenę MSPT. Skale, tryby i Serene Seasons wybiera się jak w FA1 (`-Pscales`, `-Pmodes`, `-PnoSeasons`).
+
+**Komenda `/polishforests fauna`.** Pod każdym gatunkiem moda jest linia z grupami (liczba grup i wielkości zwierząt w promieniu) i wyglądem: młode, futro letnie albo zimowe, parostki wytarte, w scypule albo zrzucone. Teksty są w en_us i pl_pl.
+
+**Testy jednostkowe.**
+- `FaunaBehaviourTest` (6 testów):
+  - udziały żeru o świcie i zmierzchu co najmniej o 0,3 większe niż w południe i w nocy, a odpoczynku w południe większe niż o świcie;
+  - grupy i młode według 12 podsezonów;
+  - parostki według 12 podsezonów i ok. 50% kozłów zrzucających w październiku;
+  - każdy wariant ma plik tekstury, a każdy plik jest używany;
+  - natężenie alarmu i zasięg szczeku;
+  - kalibracja i wagi.
+- `FaunaProfileTest` (10 testów; dwa mnożniki, grupy 2–6 zimą, cel spawnera ≤ limit).
+
+PASS także: `FaunaModelTest`, `RegistrySnapshotTest`, `MixinTargetsTest`, `PolishForestsCommandsTest`, `checkDatagen` (po `runDatagen`: lang), `checkArt` i fastTest.
+
+| # | Wybór FA2 | Wartość i powód |
+|---|---|---|
+| FA2-a | Harmonogram | Udziały czynności w 7 okresach doby (tabela wyżej), nie jedna czynność na okres: południe ma krótszy żer (0,35) wśród odpoczynku (0,50), noc trochę żeru (0,20); raport 07 §3.2 |
+| FA2-b | Gęstwina | Spis bloków: liście i sadzonki w 5 × 5 × 3 przy stopach, próg 6, 16 losowych miejsc do 16 bloków; plan drzewostanu jest tylko w czasie generacji |
+| FA2-c | Dźwięk szczeku | `entity.fox.screech` wanilii po id (głośność 1,6, wysokość 0,55–0,65) do FA4 |
+| FA2-d | Lustro puszone | Osobne tekstury `_flared` (5) zamiast kości: lustro na 5 × 6 tekselach zadu, kość dałaby wypukłość niezgodną z modelem V8 |
+| FA2-e | Parostki w październiku | Połowa kozłów zrzuca już w X (stały los z UUID, nowa stała mieszania), reszta w XI; tekstura `buck_winter_hard` dla wytartych parostków w futrze zimowym |
+| FA2-f | Pola zapisu | Bez nowych: parostki z daty, grupa i dom odtwarzane po wczytaniu, flaga lustra i alarm chwilowe; migawka rejestru bez zmian |
+| FA2-g | Grupy zimowe | Podsezony XI–III (rudle; raport 07: zimą rudle, latem rozproszone, kozły terytorialne III/IV–VIII), łączenie do 48 bloków, poza nimi do 8 bloków |
+| FA2-h | Koźlęta | V–VIII, szansa 0,6 na grupę ≥ 2, 1–2 młode wanilii (20 min dorastania), tekstura `kid` z cętkami; bez rozmnażania (C10) |
+| FA2-i | Gęstość | 0,085 na ha [Ź], generacja ×30, cel spawnera ×45 (dopełnia W1 i stare chunki); wagi siedlisk z tabeli |
+| FA2-j | Alarm biegnącego gracza | Promień 64, siła 1, co 10 ticków; niewidzialny i obserwator nie alarmują |
+| FA2-k | Zasięg dobowy | Dom przewodnika = miejsce pojawienia się albo wczytania (bez zapisu), `homeRange` 48 bloków |
+| FA2-l | Spis | Próg średniej ≥ 1 sarna w promieniu 64 bloków; próby FA2 w pierwszym miejscu każdego świata; `-Psites=behaviour` i `-Psites=mspt` |
+
+**Do sprawdzenia w grze (etap 1; pełna lista w „Stan po FA2”).**
+1. `/polishforests find biome oak_hornbeam_forest`, potem `/time set 0` (świt) i `/polishforests fauna 64`: większość saren żeruje. Potem `/time set 6000` (południe): więcej saren leży, często w krzewach i młodnikach.
+2. Podbiegnij do sarny (sprint): ucieka z ok. 40 bloków ze szczekiem (na razie głos lisa, niższy), z białym, powiększonym lustrem; sarny obok też uciekają albo podnoszą głowy.
+3. Zima z Serene Seasons (`/season set mid_winter`), chwila w lesie: grupy większe (2–6, `/polishforests fauna 96`: linia grup), futro szare, kozły w scypule; w listopadzie (`/season set late_autumn`) kozły bez parostków.
+4. Lato (`/season set early_summer`) w nowych chunkach: kozy z koźlętami (małe, cętkowane), które idą za matką.
+5. `/polishforests fauna 64` w lesie wycinka: kilka saren (zwykle 2–5).

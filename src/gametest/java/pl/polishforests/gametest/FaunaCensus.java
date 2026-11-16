@@ -51,7 +51,7 @@ import pl.polishforests.worldgen.vanilla.VanillaForestsBiomeSource;
  * {@value #RADIUS} blocks are counted, and every roe deer within 160 blocks is checked: none on leaves or above the ground
  * of {@code MOTION_BLOCKING_NO_LEAVES}, none in water, none inside blocks; the ground under them, the share under a canopy
  * and the counters of the spawners (places refused by reason) go to the report. Each place must have on average more than
- * 0 roe deer within {@value #RADIUS} blocks over the last three counts (KFA-5 for FA1; FA2 calibrates to at least 1).
+ * 1 roe deer within {@value #RADIUS} blocks over the last three counts (KFA-5; FA1 asked for more than 0).
  * <li><b>Exploration</b> (gameplay scale, natural mode): {@value #TRIPS} places 512 blocks apart, {@value #TRIP_TICKS}
  * ticks each: the roe deer in the loaded chunks per loaded chunk must not grow (last place at most 1.5 times the first
  * two plus 0.02).
@@ -62,7 +62,15 @@ import pl.polishforests.worldgen.vanilla.VanillaForestsBiomeSource;
  * <li><b>Vanilla animals</b> (KFA-4): two fresh gameplay worlds of the same seed, one with {@code forest_fauna} off: wolves,
  * foxes and rabbits within 96 blocks of two places after the same time; the difference is reported, and fails only when
  * the world with the fauna has clearly fewer (less than half of the other minus 3).
+ * <li><b>Behaviour</b> (step FA2, {@link FaunaTrials}): in every world, at its first place, after the census: activity by
+ * time of day, daily range, groups in winter and summer, coat and antlers by sub-season (all 12 in the gameplay world of
+ * the natural mode, 4 elsewhere), flight distance and the alarm. {@code -Psites=behaviour} runs only these (without the
+ * census of the places and the trials of FA1), {@code -Psites=mspt} only the MSPT scene (KFA-6) in the gameplay world of
+ * the natural mode.
  * </ol>
+ *
+ * <p>Step FA2 counts in each place also the groups and the looks of the roe deer (the census line of the fauna command), and
+ * the census needs on average at least 1 roe deer within {@value #RADIUS} blocks over the last three counts.
  */
 final class FaunaCensus {
 	static final int RADIUS = 64;
@@ -83,12 +91,26 @@ final class FaunaCensus {
 	private final boolean allSites;
 	private final String scales = System.getProperty("polishforests.scales", "");
 	private final String modes = System.getProperty("polishforests.modes", "");
+	/** Step FA2: the census of the places with the trials of FA1, the behaviour trials, the MSPT scene. */
+	private final boolean places;
+	private final boolean behaviour;
+	private final boolean mspt;
+	private final FaunaTrials trials;
+	/** The sub-seasons of the looks trial: all in the gameplay world of the natural mode, these four elsewhere. */
+	static final List<pl.polishforests.season.SubSeason> LOOK_SEASONS = List.of(pl.polishforests.season.SubSeason.MID_SUMMER,
+			pl.polishforests.season.SubSeason.MID_AUTUMN, pl.polishforests.season.SubSeason.LATE_AUTUMN,
+			pl.polishforests.season.SubSeason.MID_WINTER);
 
 	FaunaCensus(ClientGameTestContext context, String sites) {
 		this.context = context;
 		double minutes = Double.parseDouble(System.getProperty("polishforests.fauna.minutes", String.valueOf(DEFAULT_MINUTES)));
 		this.ticks = Math.max(100, (int) Math.round(minutes * 1200));
 		this.allSites = sites.contains("all");
+		boolean only = sites.contains("behaviour") || sites.contains("mspt");
+		this.places = !only;
+		this.behaviour = !only || sites.contains("behaviour");
+		this.mspt = sites.contains("mspt");
+		this.trials = new FaunaTrials(context, this);
 	}
 
 	/** Runs every part and returns the failures (the report is written to build/fauna/census.txt). */
@@ -98,8 +120,15 @@ final class FaunaCensus {
 			mc.options.renderDistance().set(12);
 			mc.options.simulationDistance().set(12);
 		});
-		line("census: %d ticks per place, radius %d, profile density %.5f per block (real %.2f/ha × %.0f)", ticks, RADIUS,
-				RoeDeer.PROFILE.densityPerBlock(), RoeDeer.PROFILE.realDensity(), RoeDeer.PROFILE.factor());
+		line("census: %d ticks per place, radius %d, densities per block: generation %.6f (real %.3f/ha × %.0f), spawner %.6f (× %.0f);"
+				+ " places %s, behaviour %s, mspt %s", ticks, RADIUS, RoeDeer.PROFILE.generationDensityPerBlock(), RoeDeer.PROFILE.realDensity(),
+				RoeDeer.PROFILE.generationFactor(), RoeDeer.PROFILE.spawnerDensityPerBlock(), RoeDeer.PROFILE.spawnerFactor(), places, behaviour,
+				mspt);
+		if (mspt && !places && !behaviour) {
+			msptWorld();
+			write();
+			return failures;
+		}
 		for (boolean real : new boolean[] {true, false}) {
 			String scale = real ? "realistic" : "gameplay";
 			if (!scales.isBlank() && !scales.contains(scale)) {
@@ -116,8 +145,11 @@ final class FaunaCensus {
 		if (scales.isBlank() || scales.contains("vanilla")) {
 			vanillaWorld();
 		}
-		if (scales.isBlank() || scales.contains("gameplay")) {
+			if (places && (scales.isBlank() || scales.contains("gameplay"))) {
 			vanillaAnimals();
+		}
+		if (mspt) {
+			msptWorld();
 		}
 		write();
 		return failures;
@@ -133,11 +165,18 @@ final class FaunaCensus {
 		try (TestSingleplayerContext sp = context.worldBuilder().adjustSettings(ui -> SliceClientGameTest.select(ui, preset, presentDay))
 				.create()) {
 			prepare(sp, true);
-			for (SliceSites.Place p : places) {
-				site(sp, label + " " + p.name() + " (" + p.biome() + ")", p.x(), p.z());
+			if (this.places) {
+				for (SliceSites.Place p : places) {
+					site(sp, label + " " + p.name() + " (" + p.biome() + ")", p.x(), p.z());
+				}
 			}
-			if (!real && !presentDay) {
-				SliceSites.Place first = places.getFirst();
+			SliceSites.Place first = places.getFirst();
+			if (behaviour) {
+				// All 12 sub-seasons of the looks in the gameplay world of the natural mode, 4 elsewhere.
+				trials.all(sp, label, first.x(), first.z(), !real && !presentDay ? List.of(pl.polishforests.season.SubSeason.values())
+						: LOOK_SEASONS);
+			}
+			if (this.places && !real && !presentDay) {
 				despawn(sp, first.x(), first.z());
 				flight(sp, first.x(), first.z());
 				exploration(sp, first.x(), first.z());
@@ -150,6 +189,7 @@ final class FaunaCensus {
 		resetCounters();
 		try (TestSingleplayerContext sp = context.worldBuilder().adjustSettings(this::selectVanilla).create()) {
 			prepare(sp, true);
+			boolean first = true;
 			for (HabitatBiome b : List.of(HabitatBiome.OAK_HORNBEAM_FOREST, HabitatBiome.FRESH_PINE_FOREST)) {
 				double[] at = sp.getServer().computeOnServer(s -> FaunaSites.locate(s.overworld(), b, 0, 0));
 				if (at == null) {
@@ -157,7 +197,15 @@ final class FaunaCensus {
 					continue;
 				}
 				// The nearest column of the biome on the search lattice (find biome): the count circle covers its forest.
-				site(sp, "default_polish_forests " + b.id(), (int) Math.floor(at[0]), (int) Math.floor(at[1]));
+				int x = (int) Math.floor(at[0]);
+				int z = (int) Math.floor(at[1]);
+				if (places) {
+					site(sp, "default_polish_forests " + b.id(), x, z);
+				}
+				if (behaviour && first) {
+					trials.all(sp, "default_polish_forests " + b.id(), x, z, LOOK_SEASONS);
+				}
+				first = false;
 			}
 			counters("default_polish_forests");
 		}
@@ -187,7 +235,7 @@ final class FaunaCensus {
 		}
 	}
 
-	private static void teleport(TestSingleplayerContext sp, int x, int z) {
+	static void teleport(TestSingleplayerContext sp, int x, int z) {
 		// Load the chunk first: the height of a column in a chunk that is not loaded is the bottom of the world, and a player
 		// teleported there stands 200 blocks under the deer (and makes every one of them despawn).
 		int y = sp.getServer().computeOnServer(s -> {
@@ -222,8 +270,8 @@ final class FaunaCensus {
 		String census = sp.getServer().computeOnServer(server -> censusLine(server.overworld(), x, z));
 		line("%s at %d %d: roe deer within %d blocks %s, mean of the last three %.2f; checked %d, under a canopy %d; ground %s; %s",
 				label, x, z, RADIUS, java.util.Arrays.toString(counts), lastMean, checked, underCanopy, grounds, census);
-		if (lastMean <= 0) {
-			fail("%s: no roe deer within %d blocks after %d ticks", label, RADIUS, ticks);
+		if (lastMean < 1) {
+			fail("%s: on average %.2f roe deer within %d blocks after %d ticks (at least 1)", label, lastMean, RADIUS, ticks);
 		}
 	}
 
@@ -274,7 +322,8 @@ final class FaunaCensus {
 				z + 0.5), RADIUS);
 		StringBuilder b = new StringBuilder("fauna " + RADIUS + ": " + c.total);
 		c.lines.forEach((type, line) -> b.append(", ").append(BuiltInRegistries.ENTITY_TYPE.getKey(type).getPath()).append(' ')
-				.append(line.count).append(line.states.isEmpty() ? "" : " " + line.states));
+				.append(line.count).append(line.states.isEmpty() ? "" : " " + line.states)
+				.append(line.mod ? " groups " + line.groupSizes() + " looks " + line.looks : ""));
 		return b.toString();
 	}
 
@@ -399,7 +448,7 @@ final class FaunaCensus {
 	 * A valid place of a roe deer (the predicate of the spawners, not counted) on the nearest column to the given one within
 	 * 16 blocks, so a trial animal never stands on a crown or in water; the column itself when there is none.
 	 */
-	private static Vec3 trialSpot(ServerLevel level, int x, int z) {
+	static Vec3 trialSpot(ServerLevel level, int x, int z) {
 		for (int r = 0; r <= 16; r++) {
 			for (int dx = -r; dx <= r; dx++) {
 				for (int dz = -r; dz <= r; dz++) {
@@ -465,7 +514,11 @@ final class FaunaCensus {
 		FaunaSpawner.GENERATION_GROUPS.reset();
 		FaunaSpawner.SPAWNER_ANIMALS.reset();
 		FaunaSpawner.SPAWNER_GROUPS.reset();
+		FaunaSpawner.YOUNG_GROUPS.reset();
 		FaunaSpawner.GROUND_REFUSED.clear();
+		pl.polishforests.entity.base.ForestAlarm.RAISED.reset();
+		pl.polishforests.entity.base.ForestAlarm.HEARD.reset();
+		RoeDeer.BARKS.reset();
 	}
 
 	private void counters(String label) {
@@ -475,9 +528,11 @@ final class FaunaCensus {
 		}
 		Map<String, Long> refused = new TreeMap<>();
 		FaunaSpawner.GROUND_REFUSED.forEach((k, v) -> refused.put(k, v.sum()));
-		line("%s spawners: at generation %d animals in %d groups, spawner %d animals in %d groups; places:%s; ground refused %s", label,
-				FaunaSpawner.GENERATION_ANIMALS.sum(), FaunaSpawner.GENERATION_GROUPS.sum(), FaunaSpawner.SPAWNER_ANIMALS.sum(),
-				FaunaSpawner.SPAWNER_GROUPS.sum(), b, refused);
+		line("%s spawners: at generation %d animals in %d groups, spawner %d animals in %d groups, %d groups with young; places:%s;"
+				+ " ground refused %s; alarms raised %d, heard %d, barks %d", label, FaunaSpawner.GENERATION_ANIMALS.sum(),
+				FaunaSpawner.GENERATION_GROUPS.sum(), FaunaSpawner.SPAWNER_ANIMALS.sum(), FaunaSpawner.SPAWNER_GROUPS.sum(),
+				FaunaSpawner.YOUNG_GROUPS.sum(), b, refused, pl.polishforests.entity.base.ForestAlarm.RAISED.sum(),
+				pl.polishforests.entity.base.ForestAlarm.HEARD.sum(), RoeDeer.BARKS.sum());
 	}
 
 	private static String fmt(double[] v) {
@@ -488,13 +543,27 @@ final class FaunaCensus {
 		return b.append(']').toString();
 	}
 
-	private void line(String format, Object... args) {
+	/** The MSPT scene (step FA2, KFA-6) in a gameplay world of the natural mode at the first oak-hornbeam place. */
+	private void msptWorld() {
+		ResourceKey<WorldPreset> preset = ResourceKey.create(Registries.WORLD_PRESET, PolishForests.id("poland_gameplay"));
+		SliceSites.Place first = SliceSites.of(false, false).stream().filter(p -> !p.transect() && p.name().endsWith("_1")).findFirst()
+				.orElseThrow();
+		try (TestSingleplayerContext sp = context.worldBuilder().adjustSettings(ui -> SliceClientGameTest.select(ui, preset, false))
+				.create()) {
+			prepare(sp, true);
+			// The spawners off during the timing (only the 40 trial deer and those of the generation tick).
+			sp.getServer().runCommand("gamerule polishforests:forest_fauna false");
+			trials.mspt(sp, "gameplay/natural " + first.name(), first.x(), first.z());
+		}
+	}
+
+	void line(String format, Object... args) {
 		String s = String.format(Locale.ROOT, format, args);
 		report.add(s);
 		PolishForests.LOG.info("[fauna] " + s);
 	}
 
-	private void fail(String format, Object... args) {
+	void fail(String format, Object... args) {
 		String s = String.format(Locale.ROOT, format, args);
 		failures.add(s);
 		line("FAIL " + s);

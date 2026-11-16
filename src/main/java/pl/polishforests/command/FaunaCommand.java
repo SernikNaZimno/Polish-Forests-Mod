@@ -28,6 +28,8 @@ import pl.polishforests.entity.spawn.FaunaRules;
  * {@value #DEFAULT_RADIUS}, at most {@value #MAX_RADIUS} blocks) by species, the animals of the mod with their states
  * (fleeing, walking, grazing, resting, alert, standing), the vanilla animals (the creature, ambient, axolotl and water
  * creature categories) by count. For the lists "Do sprawdzenia w grze", next to {@code find}, {@code here} and {@code list}.
+ * Step FA2: under each species of the mod its groups (by group id, sizes of the animals in the radius) and looks (young,
+ * coat, antlers).
  */
 public final class FaunaCommand {
 	public static final int DEFAULT_RADIUS = 64;
@@ -68,6 +70,21 @@ public final class FaunaCommand {
 				}
 				MutableComponent row = Component.translatable("polishforests.command.fauna_species", e.getKey().getDescription(), text);
 				source.sendSuccess(() -> line.mod ? row.withStyle(ChatFormatting.GREEN) : row, false);
+				if (line.mod) {
+					MutableComponent looks = Component.empty();
+					boolean first = true;
+					for (Map.Entry<String, Integer> lk : line.looks.entrySet()) {
+						if (!first) {
+							looks.append(", ");
+						}
+						first = false;
+						looks.append(Component.translatable("polishforests.fauna.look." + lk.getKey())).append(" " + lk.getValue());
+					}
+					List<Integer> sizes = line.groupSizes();
+					MutableComponent groups = Component.translatable("polishforests.command.fauna_groups", sizes.size(),
+							sizes.toString().replace("[", "").replace("]", ""), looks);
+					source.sendSuccess(() -> groups.withStyle(ChatFormatting.DARK_GREEN), false);
+				}
 			}
 		}
 		if (!FaunaRules.spawning(source.getLevel())) {
@@ -82,6 +99,17 @@ public final class FaunaCommand {
 		public final boolean mod;
 		public int count;
 		public final Map<PolishAnimal.State, Integer> states = new EnumMap<>(PolishAnimal.State.class);
+		/** Animals of the mod by look key (young, coat, antlers; step FA2). */
+		public final Map<String, Integer> looks = new java.util.TreeMap<>();
+		/** Animals of the mod in the radius by group id (step FA2). */
+		public final Map<java.util.UUID, Integer> groups = new LinkedHashMap<>();
+
+		/** The sizes of the groups in the radius, largest first. */
+		public List<Integer> groupSizes() {
+			List<Integer> sizes = new ArrayList<>(groups.values());
+			sizes.sort(java.util.Comparator.reverseOrder());
+			return sizes;
+		}
 
 		Line(boolean mod) {
 			this.mod = mod;
@@ -116,7 +144,12 @@ public final class FaunaCommand {
 		for (Entity e : mod) {
 			Line line = c.lines.computeIfAbsent(e.getType(), t -> new Line(true));
 			line.count++;
-			line.states.merge(((PolishAnimal<?>) e).state(), 1, Integer::sum);
+			PolishAnimal<?> a = (PolishAnimal<?>) e;
+			line.states.merge(a.state(), 1, Integer::sum);
+			line.groups.merge(a.herdId(), 1, Integer::sum);
+			for (String look : a.looks()) {
+				line.looks.merge(look, 1, Integer::sum);
+			}
 			c.total++;
 		}
 		for (Entity e : vanilla) {

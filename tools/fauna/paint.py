@@ -147,6 +147,13 @@ ROE_DARK = dict(eye=(48, 37, 32), eye_rim=(92, 74, 62), nose=(56, 47, 43), lip=(
                 ear_tip=(84, 72, 64))
 ANTLERS = {'summer': dict(beam=(118, 94, 70), tip=(212, 198, 168)),     # polished antlers (V-X)
            'winter': dict(beam=(128, 112, 96), tip=(156, 140, 120))}    # in velvet (scypuł, XII-IV)
+# The antlers of a variant: 'hard' (polished, V-X, also with the winter coat in October) or 'velvet' (XII-IV).
+ANTLER_KINDS = {'hard': 'summer', 'velvet': 'winter'}
+# The flared rump patch (step FA2, V8-t): puffed up in flight and on alarm, large and white in both coats. Half width and
+# height scale of the ellipse, and the width of its soft edge (px).
+FLARED_PATCH = dict(half_width=3.0, height=2.7, edge=0.6, color=(240, 236, 226))
+# The spots of a young one (koźlę, report 07 §13: spotted V-VIII): pale spots in rows along the upper flanks.
+KID_SPOT = (228, 210, 176)
 
 
 # The coat of the trunk and the neck (review of V8: rows of one tone looked like a striped blanket): the tone borders move
@@ -161,10 +168,12 @@ COAT_STEP = 0.03
 COAT_TONES = 8
 
 
-def roe_deer_shader(model, sex, season, seed='roe_deer'):
-    """The shader of one texture variant: sex 'doe' or 'buck', season 'summer' or 'winter'."""
+def roe_deer_shader(model, sex, season, seed='roe_deer', antlers=None, flared=False, kid=False):
+    """The shader of one texture variant: sex 'doe' or 'buck', season 'summer' or 'winter'; antlers 'hard' or 'velvet'
+    (default: those of the coat, polished in summer, velvet in winter); flared: the rump patch puffed up (step FA2); kid: a
+    young one (summer coat with pale spots)."""
     C = ROE_COATS[season]
-    A = ANTLERS[season]
+    A = ANTLERS[ANTLER_KINDS[antlers] if antlers else season]
     fur = Noise3(f'{seed}/{season}/fur', period=3.0)
     fine = Noise3(f'{seed}/{season}/fine', period=1.6)
     body = model.bone('body').cubes
@@ -174,6 +183,12 @@ def roe_deer_shader(model, sex, season, seed='roe_deer'):
     # The rump patch (lustro): large and white in winter, smaller and creamy in summer, when it shows mostly in flight.
     rump_patch = 2.4 if season == 'winter' else 1.9     # half width on the back of the rump, px
     patch_strength = 1.0 if season == 'winter' else 0.7
+    patch_height = 2.2 if season == 'winter' else 1.6
+    patch_edge = 0.45
+    patch_color = C['patch']
+    if flared:
+        rump_patch, patch_height, patch_edge = FLARED_PATCH['half_width'], FLARED_PATCH['height'], FLARED_PATCH['edge']
+        patch_strength, patch_color = 1.0, FLARED_PATCH['color']
 
     edge = Noise3(f'{seed}/{season}/edge', period=COAT_EDGE_PERIOD)
     tuft = Noise3(f'{seed}/{season}/tuft', period=COAT_TUFT_PERIOD)
@@ -206,13 +221,21 @@ def roe_deer_shader(model, sex, season, seed='roe_deer'):
         if dz > 1.2:
             return 0.0
         dx = abs(p[0]) / rump_patch
-        dy = (p[1] - cy) / (2.2 if season == 'winter' else 1.6)
-        if sex == 'doe' and season == 'winter' and dy < 0 and abs(p[0]) < 0.8:
+        dy = (p[1] - cy) / patch_height
+        if sex == 'doe' and season == 'winter' and not flared and dy < 0 and abs(p[0]) < 0.8:
             dy *= 0.6     # the tuft
-        if sex == 'buck' and dy > 0.4 and abs(p[0]) < 0.6:
+        if sex == 'buck' and not flared and dy > 0.4 and abs(p[0]) < 0.6:
             dy += 0.5     # the notch
         r = math.hypot(dx, dy) + 0.6 * dz
-        return patch_strength * min(1.0, max(0.0, (1.15 - r) / 0.45))
+        return patch_strength * min(1.0, max(0.0, (1.15 - r) / patch_edge))
+
+    def kid_spot(t, h):
+        """A pale spot of a young one: on the sides and the top of the trunk, in rows along the upper flanks (h 0.45-0.92
+        of the trunk height), every third texel along a row, the rows shifted against each other."""
+        if not kid or t.face not in ('left', 'right', 'up') or not (0.45 <= h <= 0.92):
+            return False
+        row = int(round(h * 6))
+        return (int(math.floor(t.p[2] * 0.75)) + row) % 3 == 0
 
     def shader(t):
         part, face, p = t.part, t.face, t.p
@@ -226,7 +249,10 @@ def roe_deer_shader(model, sex, season, seed='roe_deer'):
             if part == 'hind':
                 w = patch_weight(p, t.cube)
                 if w > 0:
-                    col = mix(col, shade(C['patch'], posterize(variation(p, 0.025))), w)
+                    col = mix(col, shade(patch_color, posterize(variation(p, 0.025))), w)
+            if kid_spot(t, h) and (part != 'hind' or patch_weight(p, t.cube) < 0.2):
+                t.detail = True
+                col = mix(col, KID_SPOT, 0.7)
             if part == 'chest' and face == 'front':
                 # chest front a little lighter below (towards the throat)
                 col = mix(col, C['throat'], 0.35 * (1 - t.j / max(1, t.h - 1)))
@@ -327,11 +353,11 @@ def roe_deer_shader(model, sex, season, seed='roe_deer'):
         if part == 'tail':
             # hidden in the rump patch: in summer the coat of the rump around it, in winter the white of the patch
             t.detail = True
-            if season == 'winter':
-                return shade(C['patch'], posterize(variation(p, 0.02)) * (0.94 if face == 'down' else 1.0))
+            if season == 'winter' or flared:
+                return shade(patch_color, posterize(variation(p, 0.02)) * (0.94 if face == 'down' else 1.0))
             hind = body[-1]
             col = coat((p[1] - trunk_y0) / (trunk_y1 - trunk_y0), p, span=trunk_y1 - trunk_y0)
-            return mix(col, shade(C['patch'], posterize(variation(p, 0.025))), patch_weight(p, hind))
+            return mix(col, shade(patch_color, posterize(variation(p, 0.025))), patch_weight(p, hind))
         raise ValueError(f'roe deer: no paint for part {part}')
 
     return shader
