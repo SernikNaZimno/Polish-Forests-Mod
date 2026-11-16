@@ -1,6 +1,6 @@
 # Brief projektu „Polish Forests” (dla agentów)
 
-Stan: 2026-11-15. Krótki punkt wejścia: przeczytaj to zamiast całych planów; szczegóły w dokumentach z ostatniej sekcji. Pełna dawna wersja briefu z opisami wszystkich kroków: `docs/historia-stanu.md`.
+Stan: 2026-11-16. Krótki punkt wejścia: przeczytaj to zamiast całych planów; szczegóły w dokumentach z ostatniej sekcji. Pełna dawna wersja briefu z opisami wszystkich kroków: `docs/historia-stanu.md`.
 
 ## Czym jest projekt
 
@@ -34,6 +34,7 @@ Mod Fabric do Minecrafta 26.3 (Java 25, Loom, Gradle 9.7, JDK z `gradle.properti
 - **CP-D przyjęty** (2026-11-15, `docs/00` G.57: drobne wybory G.27–G.56 przyjęte, potem fauna V14–V17 i opcje O1–O4). **Plan kroków C** przed fauną (`docs/04` §3 „Kroki C”, §4.3, G.58): C1 bór limbowy w kępach z lukami i rumosz piętra turni, C2 śnieg z wysokości w świecie „Default + Polish Forests” i progi wydajności CP-D.5 w kodzie, C3 dwublokowe pokrzywa i kosaciec żółty.
 - **C1 zrobione** (2026-11-15, `docs/04` „Projekt C1”, „Stan po C1”, G.59): bór limbowy luźny, w kępach (szanse luk jak świerczyna, większe luki i 2 luki rozsiane z nową solą), kosodrzewina w lukach; piętro turni z rumoszem granitowym (na wapieniu wapiennym) i kępami darni 15–16%; N5 limbowej w grze 9,2–18,1% przy regułach spisu C1-c i C1-i (**do potwierdzenia**); złote pliki bez zmian, poza Tatrami 0 różnic.
 - **C2 zrobione** (2026-11-15, `docs/04` „Projekt C2”, „Stan po C2”, G.60): w świecie „Default + Polish Forests” temperatura biomów moda = temperatura biomu wanilii kolumny z poprawką wysokości wanilii (załącznik chunka `polishforests:column_climate`, trwały i zsynchronizowany z klientem), śnieg i lód przy generacji także na koronach przy granicy chunka (`BorderFreeze`); spis: dawna `snowy_taiga` 100%, góry 100% zimnych kolumn ze śniegiem (runda 1 przeglądu: tańszy test `BorderFreeze` na wysokości śniegu), ciepłe 0, klient = serwer; progi CP-D.5 w kodzie (`PerformanceThresholds`, werdykty F7 jak w G.57); „Polska” i złote pliki bez zmian.
+- **C3 zrobione** (2026-11-16, `docs/04` „Projekt C3”, „Stan po C3”, G.61): dwublokowe `tall_nettle` i `tall_yellow_iris` (fazy postaci jednoblokowej, tekstury z `tools/art`) w olsie, łęgach i ziołoroślach nad wodą; §4.6 bez jednoblokowych pokrzywy i kosaćca: mały strumień z OlJ 68,4% / 63,8% (N), w trybie D GAMEPLAY 58,3% (**B3 i zamiana pod koronami C3-c do decyzji**); spisy połówek liczą stan po przetwarzaniu końcowym (C3-l).
 - Tor sarny **V8** gotowy na gałęzi `slice-fauna` (model i kalibracja GeckoLib, runda 1 poprawek), **wstrzymany przez użytkownika, nie scalać**.
 
 ## Konwencje

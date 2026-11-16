@@ -346,10 +346,12 @@ public final class VegetationClientGameTest implements FabricClientGameTest {
 			report.append(String.format(Locale.ROOT, " %s: one-block herbs (HERB) %.1f%%, together without them %.1f%%;",
 					names[t], 100.0 * herbs / Math.max(1, land), 100 * (tall - (double) herbs / Math.max(1, land))));
 			// Step C3 (G.58-d): the second reading of §4.6, without the one-block nettle and yellow iris (the tall forms of two
-			// blocks and the other one-block herbs count); the official reading is "together" below.
+			// blocks and the other one-block herbs count); the official reading is "together" below. Stage 2 of C3: nor the lower
+			// halves left bare when the post-processing of the chunk removes them before a player sees it (TallHerbCensus; under a
+			// crown the column counts as a shrub either way).
 			report.append(String.format(Locale.ROOT, " %s: one-block nettle and iris %.1f%%, together without them %.1f%%; %s;",
-					names[t], 100.0 * nettleIris / Math.max(1, land), 100 * (tall - (double) nettleIris / Math.max(1, land)),
-					tallHerbs.report(names[t])));
+					names[t], 100.0 * nettleIris / Math.max(1, land),
+					100 * (tall - (double) (nettleIris + tallHerbs.pendingLowerOpen()) / Math.max(1, land)), tallHerbs.report(names[t])));
 			if (tallHerbs.faults() > 0) {
 				failures.add(names[t] + ": " + tallHerbs.faults() + " halves of the tall herbs without their pair or in water (C3)");
 			}

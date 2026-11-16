@@ -894,6 +894,8 @@ W strefach WIKLINA, OKRAJEK, ZIOLOROSLA, SZUWAR_*, ŁOZOWISKO i KAMIENIEC oraz w
 
 Sprawdza to gametest (§12.3).
 
+**Postaci dwublokowe (krok C3 wycinka, 2026-11-16, `docs/04` „Stan po C3”, `docs/00` G.61):** wysoka pokrzywa i wysoki kosaciec żółty (`tall_nettle`, `tall_yellow_iris`, dwa bloki jak duża paproć) liczą się jako rośliny wysokie w klasyfikatorze gametestów `vegetation` i `present_day`, w `GroundLayerPlanTest` i w `ForestCensus`. Reguła ma dwa odczyty (G.58-d): urzędowy, w którym jednoblokowe byliny `HERB` też liczą się jako wysokie (F2-v′ (a)), i drugi, bez jednoblokowych pokrzywy i kosaćca; mały strumień z łęgiem jesionowo-olszowym ma w drugim odczycie 68,4% (REAL) i 63,8% (GAMEPLAY) w trybie N, a w trybie D GAMEPLAY 58,3% (odczyt urzędowy 63,9%, zob. warianty B3 w „Stan po C3”).
+
 ---
 
 ## 5. Piętra górskie i wybrzeże
