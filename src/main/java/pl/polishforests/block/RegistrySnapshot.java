@@ -13,16 +13,21 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
 import pl.polishforests.PolishForests;
+import pl.polishforests.entity.ModEntities;
 
 /**
  * The part of the registries that goes into the saved worlds (rule ZW-4, decision PW-11 of docs/04-pionowy-wycinek.md):
- * every block of the mod with its properties, their values in order and the default state, and every item with the
- * block it places. {@code RegistrySnapshotTest} compares these lines with {@code src/test/resources/registry_snapshot.txt}
+ * every block of the mod with its properties, their values in order and the default state, every item with the
+ * block it places, and (from step V8) every entity type with the names of the fields it adds to the saved entity data
+ * (the size and category of a type are not saved, so they are not listed: a hitbox change does not break saves).
+ * {@code RegistrySnapshotTest} compares these lines with {@code src/test/resources/registry_snapshot.txt}
  * (regenerated on purpose with {@code -PwriteRegistrySnapshot}, like the golden terrain), and the trunk samples game
  * test compares the registry of the running game with the same file. After checkpoint CP-B the file is frozen: new
  * blocks, items and property values only at the end of their lists, new properties with a default matching old saves.
  */
 public final class RegistrySnapshot {
+	// The header text of before step V8 (step FA1: the merge of V8 only appends lines to the frozen snapshot; the entity
+	// lines explain themselves).
 	public static final String HEADER = "# Blocks, properties, values and items of polishforests that go into saved worlds (PW-11). "
 			+ "Regenerate on purpose: ./gradlew test --tests '*RegistrySnapshotTest*' -PwriteRegistrySnapshot";
 
@@ -54,6 +59,11 @@ public final class RegistrySnapshot {
 					String placed = item instanceof BlockItem bi ? " block=" + BuiltInRegistries.BLOCK.getKey(bi.getBlock()) : "";
 					out.add("item " + e.getKey().identifier() + placed);
 				});
+		BuiltInRegistries.ENTITY_TYPE.entrySet().stream()
+				.filter(e -> e.getKey().identifier().getNamespace().equals(PolishForests.MOD_ID))
+				.sorted(Comparator.comparing(e -> e.getKey().identifier().toString()))
+				.forEach(e -> out.add("entity " + e.getKey().identifier() + " saved="
+						+ String.join(",", ModEntities.savedFields(e.getValue()))));
 		return out;
 	}
 

@@ -1220,6 +1220,7 @@ item polishforests:reed_canary_grass block=polishforests:reed_canary_grass
 item polishforests:reindeer_lichen block=polishforests:reindeer_lichen
 item polishforests:rendzina block=polishforests:rendzina
 item polishforests:rock_lichen block=polishforests:rock_lichen
+item polishforests:roe_deer_spawn_egg
 item polishforests:rowan_button block=polishforests:rowan_button
 item polishforests:rowan_fence block=polishforests:rowan_fence
 item polishforests:rowan_fence_gate block=polishforests:rowan_fence_gate
@@ -1358,3 +1359,4 @@ item polishforests:wild_garlic block=polishforests:wild_garlic
 item polishforests:wood_anemone block=polishforests:wood_anemone
 item polishforests:wood_sorrel block=polishforests:wood_sorrel
 item polishforests:yellow_iris block=polishforests:yellow_iris
+entity polishforests:roe_deer saved=Buck,WinterCoat

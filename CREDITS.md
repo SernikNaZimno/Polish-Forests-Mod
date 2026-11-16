@@ -6,7 +6,7 @@
 
 - **Code** (Java sources, build scripts, tools): MIT, see `LICENSE`.
 - **Assets** (textures and other art in `src/main/resources/assets/polishforests/`, block and item models, animations and sounds made for this mod): Creative Commons Attribution 4.0 International (CC BY 4.0), see `LICENSE-assets`. Attribution: "Polish Forests by SernikNaZimno" (https://github.com/SernikNaZimno/Polish-Forests-Mod).
-- Textures are generated procedurally by `tools/art` (recipes, palettes and style lint in the repository). Minecraft textures, models and sounds are not included: vanilla assets are only referenced by their identifiers, and no file of Mojang or of other mods was copied, traced or edited.
+- Textures are generated procedurally by `tools/art` (recipes, palettes and style lint in the repository), animal models, animations and their textures by `tools/fauna` (species measures, painter and validator in the repository). Minecraft textures, models and sounds are not included: vanilla assets are only referenced by their identifiers, and no file of Mojang or of other mods was copied, traced or edited.
 
 ## Palette reference photos
 

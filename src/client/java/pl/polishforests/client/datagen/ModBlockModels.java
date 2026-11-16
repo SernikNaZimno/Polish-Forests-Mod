@@ -14,6 +14,7 @@ import net.minecraft.client.data.models.blockstates.MultiPartGenerator;
 import net.minecraft.client.data.models.blockstates.MultiVariantGenerator;
 import net.minecraft.client.data.models.blockstates.PropertyDispatch;
 import net.minecraft.client.data.models.model.ItemModelUtils;
+import net.minecraft.client.data.models.model.ModelLocationUtils;
 import net.minecraft.client.data.models.model.ModelTemplate;
 import net.minecraft.client.data.models.model.ModelTemplates;
 import net.minecraft.client.data.models.model.TextureMapping;
@@ -28,6 +29,7 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
 import pl.polishforests.block.BerryShrubBlock;
 import pl.polishforests.block.GroundPlant;
+import net.minecraft.world.item.Item;
 import pl.polishforests.PolishForests;
 import pl.polishforests.block.ModBlocks;
 import pl.polishforests.block.TreeFoliage;
@@ -36,6 +38,7 @@ import pl.polishforests.block.TrunkBlock;
 import pl.polishforests.block.WoodBlocks;
 import pl.polishforests.block.WoodSet;
 import pl.polishforests.season.FoliageCurve;
+import pl.polishforests.entity.ModEntities;
 
 /**
  * Blockstates, block models and item models of the blocks of the mod (step V2: the thin trunks; step V7: the LITE Scots
@@ -163,6 +166,12 @@ final class ModBlockModels extends FabricModelProvider {
 		for (TreeTrunk t : TreeTrunk.values()) {
 			trunk(gen, t);
 		}
+		// Step V8: the spawn egg of the roe deer, a flat item with the egg texture of tools/fauna. Written here, where the
+		// item model output is reachable (the flat item helpers of ItemModelGenerators are private in 26.3).
+		Item egg = ModEntities.roeDeerSpawnEgg();
+		Identifier eggModel = ModelTemplates.FLAT_ITEM.create(ModelLocationUtils.getModelLocation(egg),
+				TextureMapping.layer0(egg), gen.modelOutput);
+		gen.itemModelOutput.accept(egg, ItemModelUtils.plainModel(eggModel));
 		// Step I1: the root flares (the bark of the species' lower trunk) and the underground root (own root bark, the oak
 		// log top as its rings, by id).
 		for (pl.polishforests.block.RootFlare f : pl.polishforests.block.RootFlare.values()) {

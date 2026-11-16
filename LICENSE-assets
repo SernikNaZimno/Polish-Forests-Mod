@@ -8,7 +8,7 @@ license (CC BY 4.0), reproduced below (https://creativecommons.org/licenses/by/4
 "Assets" means the textures, images, block and item models, entity models, animations and sounds made for this
 mod: the files in src/main/resources/assets/polishforests/ and src/main/generated/assets/polishforests/ of the
 source repository and the same files inside the mod jar. The source code, the build scripts and the tools that
-generate assets (including tools/art) are licensed under the MIT license (file LICENSE).
+generate assets (including tools/art and tools/fauna) are licensed under the MIT license (file LICENSE).
 
 Attribution: "Polish Forests by SernikNaZimno", with a link to https://github.com/SernikNaZimno/Polish-Forests-Mod
 and to this license. Outside sources used to make the assets (CC0 or public-domain reference photos, CC0 or
