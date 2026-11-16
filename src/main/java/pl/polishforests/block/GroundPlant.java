@@ -11,7 +11,8 @@ import java.util.Locale;
  * PW-8 (a), step V13), {@link GroundCoverBlock} (a litter of 1–4 segments like vanilla leaf litter, not tinted, with the
  * mossy underside), a tall fern of two blocks (vanilla {@code DoublePlantBlock}; green, brown from mid-autumn in V13) and,
  * since step F2, a herb of one block as a cross ({@link SeasonalHerbBlock}: sedges, iris, ferns, nettle) and, since step F5,
- * a climber on a trunk or a shrub ({@link ClimberBlock}: the hop).
+ * a climber on a trunk or a shrub ({@link ClimberBlock}: the hop), and since step C3 a herb of two blocks
+ * ({@link SeasonalTallHerbBlock}: the tall nettle and the tall yellow iris).
  * The ids go into saved worlds and are frozen (PW-11): new constants only at the end.
  */
 public enum GroundPlant {
@@ -133,16 +134,29 @@ public enum GroundPlant {
 	 * Rock lichens (Rhizocarpon geographicum, Umbilicaria): the yellow-green and gray crusts on the rocks of the subnival
 	 * belt and the rock grasslands, a litter of 1–4 segments (step TT3).
 	 */
-	ROCK_LICHEN(Kind.COVER);
+	ROCK_LICHEN(Kind.COVER),
+	/**
+	 * Stinging nettle in its tall form (step C3, CP-D.10): two blocks like vanilla's large fern, the clumps of the floodplain
+	 * and alder forests and of the tall herb fringes by the water (0.5-2 m in nature); the phases of the one-block
+	 * {@link #NETTLE} ({@link #phases()}).
+	 */
+	TALL_NETTLE(Kind.TALL_HERB),
+	/**
+	 * Yellow iris in its tall form (step C3, CP-D.10): two blocks, the stands of sword leaves on the banks of the alder
+	 * forests and of the herb fringes; the phases of the one-block {@link #YELLOW_IRIS} ({@link #phases()}).
+	 */
+	TALL_YELLOW_IRIS(Kind.TALL_HERB);
 
 	/**
 	 * The block family of an entry (not saved: the order may change). Step F2: {@link #HERB}, a single-block cross plant
 	 * of the size of vanilla's short grass with baked colors (not tinted) and the seasonal looks of {@link SeasonalHerbBlock}.
 	 * Step F5: {@link #CLIMBER}, a climber on the side of a trunk, a log or leaves ({@link ClimberBlock}: a plane on one face
 	 * like vanilla's vine, baked colors, the seasonal looks of the herbs).
+	 * Step C3: {@link #TALL_HERB}, a herb of two blocks ({@link SeasonalTallHerbBlock}: the lower and upper half of a double
+	 * plant as vanilla's large fern, baked colors, the seasonal looks of its one-block form, {@link GroundPlant#phases()}).
 	 */
 	public enum Kind {
-		BERRY_SHRUB, SEASONAL, COVER, TALL, HERB, CLIMBER
+		BERRY_SHRUB, SEASONAL, COVER, TALL, HERB, CLIMBER, TALL_HERB
 	}
 
 	private final Kind kind;
@@ -158,6 +172,23 @@ public enum GroundPlant {
 	/** Block and item path, e.g. {@code wood_anemone}. */
 	public String id() {
 		return name().toLowerCase(Locale.ROOT);
+	}
+
+	/**
+	 * The plant whose phases of the year ({@code GroundPhases}) this one shows: the one-block form for the tall forms of step
+	 * C3 (both halves of a tall nettle look like a nettle in the same phase), else itself.
+	 */
+	public GroundPlant phases() {
+		return switch (this) {
+			case TALL_NETTLE -> NETTLE;
+			case TALL_YELLOW_IRIS -> YELLOW_IRIS;
+			default -> this;
+		};
+	}
+
+	/** Whether the block is a double plant of two halves (the bracken, the tall forms of step C3). */
+	public boolean doubleHigh() {
+		return kind == Kind.TALL || kind == Kind.TALL_HERB;
 	}
 
 	/** Whether the block has the mossy underside (PW-7): the dwarf shrub and the litter of the pine forests. */

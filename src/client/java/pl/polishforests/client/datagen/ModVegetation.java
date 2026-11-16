@@ -1353,11 +1353,18 @@ final class ModVegetation {
 		HabitatBiome[] lowland = Arrays.stream(HabitatBiome.values()).filter(b -> !b.isWater() && !b.isMountain()
 				&& b != GRAY_ALDER_FOREST && b != UPLAND_FIR_FOREST).toArray(HabitatBiome[]::new);
 		l.rule(biomes(REEDBED).withZones(), Medium.SHORE, 1, 64, List.of(), 0.75F, 3, reed);
+		// Step C3 (CP-D.10): the tall yellow iris on the bank of the herb fringe and the tall herbs (Iris pseudacorus of the
+		// Phalaridion and Glycerietum fringes), a quarter of the reed's columns there (the same coverage and patches, so the
+		// columns without iris keep their reed).
+		l.rule(HabitatCondition.zones(Zone.HERB_FRINGE, Zone.TALL_HERBS).withBiomes(lowland), Medium.SHORE, 1, 64, List.of(),
+				0.7F, 3, herb(GroundPlant.TALL_YELLOW_IRIS, 1), reed.withWeight(3));
 		l.rule(HabitatCondition.zones(Zone.SHORE_REEDBED, Zone.WILLOW_SCRUB, Zone.HERB_FRINGE, Zone.TALL_HERBS, Zone.WILLOW_CARR)
 				.withBiomes(lowland), Medium.SHORE, 1, 64, List.of(), 0.7F, 3, reed);
 		// Step F2: the hollows of the alder forests, by the water and the puddles of the micro-relief: the yellow iris and the
 		// marsh marigold with some sedge, by the water also the reed (before the reed rules of the eutrophic waters).
-		Plant[] hollow = cat(herb(GroundPlant.YELLOW_IRIS, 6), marigold(5), herb(GroundPlant.TUSSOCK_SEDGE, 3));
+		// Step C3: half of the iris in its tall form (the weight split in place, so the other plants keep their columns).
+		Plant[] hollow = cat(herb(GroundPlant.YELLOW_IRIS, 3), herb(GroundPlant.TALL_YELLOW_IRIS, 3), marigold(5),
+				herb(GroundPlant.TUSSOCK_SEDGE, 3));
 		l.rule(biomes(ALDER_CARR, ASH_ALDER_FOREST), Medium.SHORE, 1, 64, List.of(), 0.8F, 3, cat(hollow, reed.withWeight(4)));
 		l.rule(biomes(reedBanks), Medium.SHORE, 1, 64, List.of(), 0.5F, 3, reed);
 		// Puddles of the micro-relief: reed only here and there (the herb layer of an alder carr is mostly sedges, ferns
@@ -1423,8 +1430,17 @@ final class ModVegetation {
 		Plant dryGrass = b(Blocks.SHORT_DRY_GRASS, 1);
 		// Step F5: the osier scrub and the riverside willows with their own tall herbs (the reed canary grass and the nettle,
 		// N8 70-100%) with tall grass and some hop-free bush.
+		// Step C3 (CP-D.10): most of the nettle of the scrub, the floodplain and alder forests in its tall form (from about
+		// half in the alder carr to five sixths in the ash-alder forest, whose small stream banks keep §4.6 also without
+		// the one-block herbs, G.58-d); the weights split in place, so every column without nettle keeps its plant.
 		l.land(HabitatCondition.zones(Zone.WILLOW_SCRUB, Zone.RIVERSIDE_WILLOWS), 0.88F, 3, cat(herb(GroundPlant.REED_CANARY_GRASS, 34),
-				herb(GroundPlant.NETTLE, 18), tallGrass.withWeight(30), largeFern.withWeight(8), bush.withWeight(6)));
+				herb(GroundPlant.NETTLE, 6), herb(GroundPlant.TALL_NETTLE, 12), tallGrass.withWeight(30), largeFern.withWeight(8),
+				bush.withWeight(6)));
+		// Step C3 (CP-D.10): the lowland herb fringe and tall herbs by the water (Urtico-Calystegietum, Convolvuletalia) with
+		// the tall nettle in place of part of the tall grass (the same coverage and patches, so the other plants keep their
+		// columns); the montane tall herbs, the scrub and the bars keep the rule below.
+		l.land(HabitatCondition.zones(Zone.HERB_FRINGE, Zone.TALL_HERBS), 0.85F, 3, herb(GroundPlant.TALL_NETTLE, 20),
+				tallGrass.withWeight(35), largeFern.withWeight(25), bush.withWeight(10), fern.withWeight(10));
 		l.land(HabitatCondition.zones(Zone.HERB_FRINGE, Zone.TALL_HERBS, Zone.MONTANE_TALL_HERBS, Zone.WILLOW_SCRUB,
 				Zone.WILLOW_CARR, Zone.SPRING_AREA, Zone.SHORE_REEDBED, Zone.RIVERSIDE_WILLOWS, Zone.GRAVEL_BAR, Zone.POINT_BAR),
 				0.85F, 3, tallGrass.withWeight(55), largeFern.withWeight(25), bush.withWeight(10), fern.withWeight(10));
@@ -1459,15 +1475,18 @@ final class ModVegetation {
 				herb(GroundPlant.TUSSOCK_SEDGE, 30), herb(GroundPlant.MARSH_FERN, 22), marigold(4), fern.withWeight(4)),
 				cat(forestMoss.withWeight(6)), null);
 		l.blobs(biomes(ALDER_CARR), 0.97F, 5, cat(herb(GroundPlant.TUSSOCK_SEDGE, 26), herb(GroundPlant.MARSH_FERN, 18),
-				herb(GroundPlant.YELLOW_IRIS, 8), marigold(7), herb(GroundPlant.NETTLE, 7), tallGrass.withWeight(6),
+				herb(GroundPlant.YELLOW_IRIS, 4), herb(GroundPlant.TALL_YELLOW_IRIS, 4), marigold(7), herb(GroundPlant.NETTLE, 3),
+				herb(GroundPlant.TALL_NETTLE, 4), tallGrass.withWeight(6),
 				b(Blocks.FIREFLY_BUSH, 2)), cat(forestMoss.withWeight(8)), null);
-		l.blobs(biomes(ASH_ALDER_FOREST), 0.98F, 5, cat(herb(GroundPlant.NETTLE, 24), herb(GroundPlant.TUSSOCK_SEDGE, 16),
+		l.blobs(biomes(ASH_ALDER_FOREST), 0.98F, 5, cat(herb(GroundPlant.NETTLE, 4), herb(GroundPlant.TALL_NETTLE, 20),
+				herb(GroundPlant.TUSSOCK_SEDGE, 16),
 				marigold(4), anemone(4), herb(GroundPlant.MARSH_FERN, 6), fern.withWeight(12), tallGrass.withWeight(6),
 				litter(4)), cat(forestMoss.withWeight(4)), null);
 		// Step F6 (docs/04 "Projekt F6", research/06 §4.4, N8 70-100%): the gray alder forest (Alnetum incanae), the
 		// butterbur carpets by the streams with the nettle, the tall grass (Chaerophyllum hirsutum, Stellaria nemorum as
 		// the tall herbs of M2), the ferns and the marsh marigold.
-		l.blobs(biomes(GRAY_ALDER_FOREST), 0.95F, 5, cat(herb(GroundPlant.BUTTERBUR, 28), herb(GroundPlant.NETTLE, 16),
+		l.blobs(biomes(GRAY_ALDER_FOREST), 0.95F, 5, cat(herb(GroundPlant.BUTTERBUR, 28), herb(GroundPlant.NETTLE, 4),
+				herb(GroundPlant.TALL_NETTLE, 12),
 				tallGrass.withWeight(14), largeFern.withWeight(10), fern.withWeight(8), marigold(5), herb(GroundPlant.TUSSOCK_SEDGE, 4)),
 				cat(forestMoss.withWeight(4)), null);
 		// Step F5 (docs/04 "Projekt F5", N8 70-100%, N9): the own herb layer of the floodplain forests in rounded patches.
@@ -1475,17 +1494,19 @@ final class ModVegetation {
 		// lesser celandine in spring, sedges and tall grass, no moss on the floor the floods cover with silt. The elm-ash forest
 		// (Ficario-Ulmetum): the lesser celandine carpets in spring (the name-giving Ficaria), the wild garlic in patches, the
 		// wood anemone, then the nettle in summer, ferns and the leaf litter; moss in small cushions scattered per column.
-		l.blobs(biomes(WILLOW_POPLAR_FOREST), 0.98F, 5, cat(herb(GroundPlant.NETTLE, 28), herb(GroundPlant.REED_CANARY_GRASS, 26),
+		l.blobs(biomes(WILLOW_POPLAR_FOREST), 0.98F, 5, cat(herb(GroundPlant.NETTLE, 7), herb(GroundPlant.TALL_NETTLE, 21),
+				herb(GroundPlant.REED_CANARY_GRASS, 26),
 				celandine(6), herb(GroundPlant.TUSSOCK_SEDGE, 4), tallGrass.withWeight(8), largeFern.withWeight(4)),
 				cat(fern.withWeight(3)), null);
 		// The tall herbs (the nettle, tall grass and large fern) keep to the density rule of §4.6 (at least 60%); the spring
 		// geophytes fill the rest of the patches.
-		l.blobs(biomes(ELM_ASH_FOREST), 0.97F, 5, cat(herb(GroundPlant.NETTLE, 32), tallGrass.withWeight(10),
+		l.blobs(biomes(ELM_ASH_FOREST), 0.97F, 5, cat(herb(GroundPlant.NETTLE, 8), herb(GroundPlant.TALL_NETTLE, 24),
+				tallGrass.withWeight(10),
 				largeFern.withWeight(12), celandine(14), garlic(8), anemone(3), fern.withWeight(2), litter(3)),
 				cat(forestMoss.withWeight(3)), null);
 		l.land(biomes(REEDBED), 0.85F, 3, tallGrass.withWeight(80), largeFern.withWeight(10), grass.withWeight(5));
-		l.land(biomes(WILLOW_SCRUB), 0.88F, 3, cat(herb(GroundPlant.REED_CANARY_GRASS, 34), herb(GroundPlant.NETTLE, 18),
-				tallGrass.withWeight(30), largeFern.withWeight(8), bush.withWeight(6)));
+		l.land(biomes(WILLOW_SCRUB), 0.88F, 3, cat(herb(GroundPlant.REED_CANARY_GRASS, 34), herb(GroundPlant.NETTLE, 6),
+				herb(GroundPlant.TALL_NETTLE, 12), tallGrass.withWeight(30), largeFern.withWeight(8), bush.withWeight(6)));
 		l.land(biomes(FEN), 0.75F, 3, tallGrass.withWeight(40), grass.withWeight(25), fern.withWeight(10), moss.withWeight(10),
 				b(Blocks.ALLIUM, 3));
 		l.land(biomes(WET_MEADOW), 0.85F, 3, tallGrass.withWeight(35), grass.withWeight(35), b(Blocks.ALLIUM, 4),

@@ -1704,6 +1704,33 @@ TEXTURES = [
             params=dict(form='stems', count=3, top=1, node=3, leaf=2, flowers=0,
                         colors=['#2f5222', '#3a6229', '#487432', '#45583a']),
             note='stinging nettle without flowers (step F2, spring and autumn)'),
+    # Step C3 (CP-D.10): the tall forms of the nettle and the yellow iris, two blocks like vanilla's large fern
+    # (ground.tall_herb: one drawing of 16 x 32 cut into the halves, the same seed for both; the flowers only in the upper
+    # half, so the lower half also serves outside the flowering), the colors of their one-block forms.
+    Texture('tall_nettle_bottom', 'plant', ground.tall_herb, 'tall_nettle/1', None,
+            params=dict(part='bottom', form='stems', count=4, top=2, node=3, leaf=3, flowers=5,
+                        colors=['#2f5222', '#3a6229', '#487432', '#45583a', '#6a7e3e', '#7d9248', '#8ea456']),
+            note='tall stinging nettle, lower half (step C3): the upright stems with opposite pointed dark leaves'),
+    Texture('tall_nettle_top', 'plant', ground.tall_herb, 'tall_nettle/1', None,
+            params=dict(part='top', form='stems', count=4, top=2, node=3, leaf=3, flowers=5,
+                        colors=['#2f5222', '#3a6229', '#487432', '#45583a', '#6a7e3e', '#7d9248', '#8ea456']),
+            note='tall stinging nettle, upper half (step C3): the stem tops with smaller leaves, drooping green flower strands (summer)'),
+    Texture('tall_nettle_top_leaves', 'plant', ground.tall_herb, 'tall_nettle/1', None,
+            params=dict(part='top', form='stems', count=4, top=2, node=3, leaf=3, flowers=0,
+                        colors=['#2f5222', '#3a6229', '#487432', '#45583a']),
+            note='tall stinging nettle without flowers, upper half (step C3, spring and autumn)'),
+    Texture('tall_yellow_iris_bottom', 'plant', ground.tall_herb, 'tall_yellow_iris/1', None,
+            params=dict(part='bottom', form='blades', count=10, spread=1.3, top=3, flowers=2,
+                        colors=['#3d6a3a', '#4a7c44', '#5a8e50', '#56603a', '#c8a020', '#dcb52c', '#e8c84a']),
+            note='tall yellow iris, lower half (step C3): the fan of gray-green sword leaves from the base'),
+    Texture('tall_yellow_iris_top', 'plant', ground.tall_herb, 'tall_yellow_iris/1', None,
+            params=dict(part='top', form='blades', count=10, spread=1.3, top=3, flowers=2,
+                        colors=['#3d6a3a', '#4a7c44', '#5a8e50', '#56603a', '#c8a020', '#dcb52c', '#e8c84a']),
+            note='tall yellow iris, upper half (step C3): the sword leaf tips, yellow flowers on stalks above them (June)'),
+    Texture('tall_yellow_iris_top_leaves', 'plant', ground.tall_herb, 'tall_yellow_iris/1', None,
+            params=dict(part='top', form='blades', count=10, spread=1.3, top=3, flowers=0,
+                        colors=['#3d6a3a', '#4a7c44', '#5a8e50', '#56603a']),
+            note='tall yellow iris outside the flowering, upper half (step C3): the same sword leaf tips'),
     # Step F3: the herb layer of the fir and the Carpathian beech forests: the glandular toothwort and the white wood-rush
     # as flower beds (the toothwort a spring geophyte, the wood-rush evergreen), the perennial honesty of the sycamore
     # ravines as a one-block cross with baked colors.

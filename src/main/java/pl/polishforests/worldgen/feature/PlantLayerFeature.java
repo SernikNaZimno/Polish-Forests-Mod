@@ -90,6 +90,9 @@ public final class PlantLayerFeature implements Feature {
 	/** Whether a plant of the palette has its own mossy underside, so the ground under it stays (the plant indices). */
 	private final boolean[] ownUnderside;
 	private final boolean anyPlantGround;
+	/** Step C3: the plant indices of the nettle and the yellow iris, one-block or tall ({@link ModFeatures#HERB_PLANS}). */
+	private final boolean[] nettleIris;
+	private final boolean anyNettleIris;
 	/** Rules whose plant ground covers every podzol column they claim (step V13, {@link PlantPalette.Rule#plantGroundColumns}). */
 	private final boolean[] plantGroundColumns;
 	private final boolean anyPlantGroundColumns;
@@ -155,6 +158,13 @@ public final class PlantLayerFeature implements Feature {
 		for (int k = 0; k < ownUnderside.length; k++) {
 			ownUnderside[k] = plants.get(k).block().map(PlantLayerFeature::ownUnderside).orElse(true);
 		}
+		this.nettleIris = new boolean[plants.size()];
+		boolean anyHerb = false;
+		for (int k = 0; k < nettleIris.length; k++) {
+			nettleIris[k] = plants.get(k).block().map(PlantLayerFeature::nettleOrIris).orElse(false);
+			anyHerb |= nettleIris[k];
+		}
+		this.anyNettleIris = anyHerb;
 		this.shore = anyShore;
 		this.seaward = anySeaward;
 		this.edges = anyEdge;
@@ -224,9 +234,13 @@ public final class PlantLayerFeature implements Feature {
 		int placed = 0;
 		BlockPos.MutableBlockPos at = new BlockPos.MutableBlockPos();
 		boolean positional = !DecorationRandom.CHUNK_SEQUENCE;
+		ModFeatures.HerbPlans herbPlans = anyNettleIris ? ModFeatures.HERB_PLANS : null;
 		for (int p : planned) {
 			int column = ColumnPlan.column(p);
 			PlantPalette.Plant plant = plants.get(ColumnPlan.plant(p));
+			if (herbPlans != null && nettleIris[ColumnPlan.plant(p)]) {
+				herbPlans.planned(pos.getMinBlockX() + (column >> 4), pos.getMinBlockZ() + (column & 15));
+			}
 			if (positional) {
 				// Step L1: the draws of this plant depend on its column only, not on the plants before it in the chunk.
 				random.setSeed(DecorationRandom.plantSeed(level.getSeed(), pos.getMinBlockX() + (column >> 4),
@@ -303,6 +317,15 @@ public final class PlantLayerFeature implements Feature {
 		int r = plan.ruleFor(columns.codes()[column], columns.waterDepth()[column], columns.ground()[column], columns.side()[column],
 				columns.edge() == null ? 0 : columns.edge()[column]);
 		return r < 0 ? null : plantGround[r];
+	}
+
+	/** Step C3: the nettle or the yellow iris, one-block or tall. */
+	static boolean nettleOrIris(BlockState state) {
+		Block b = state.getBlock();
+		return b == pl.polishforests.block.ModBlocks.ground(pl.polishforests.block.GroundPlant.NETTLE)
+				|| b == pl.polishforests.block.ModBlocks.ground(pl.polishforests.block.GroundPlant.YELLOW_IRIS)
+				|| b == pl.polishforests.block.ModBlocks.ground(pl.polishforests.block.GroundPlant.TALL_NETTLE)
+				|| b == pl.polishforests.block.ModBlocks.ground(pl.polishforests.block.GroundPlant.TALL_YELLOW_IRIS);
 	}
 
 	/**

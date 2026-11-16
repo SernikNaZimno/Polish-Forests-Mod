@@ -11,7 +11,11 @@
         },
         {
           "block": "polishforests:nettle",
-          "weight": 18
+          "weight": 6
+        },
+        {
+          "block": "polishforests:tall_nettle",
+          "weight": 12
         },
         {
           "block": "minecraft:tall_grass",
@@ -29,6 +33,36 @@
       "zones": [
         "willow_scrub",
         "riverside_willows"
+      ]
+    },
+    {
+      "coverage": 0.85,
+      "patch": 3,
+      "plants": [
+        {
+          "block": "polishforests:tall_nettle",
+          "weight": 20
+        },
+        {
+          "block": "minecraft:tall_grass",
+          "weight": 35
+        },
+        {
+          "block": "minecraft:large_fern",
+          "weight": 25
+        },
+        {
+          "block": "minecraft:bush",
+          "weight": 10
+        },
+        {
+          "block": "minecraft:fern",
+          "weight": 10
+        }
+      ],
+      "zones": [
+        "herb_fringe",
+        "tall_herbs"
       ]
     },
     {
@@ -329,7 +363,11 @@
         },
         {
           "block": "polishforests:yellow_iris",
-          "weight": 8
+          "weight": 4
+        },
+        {
+          "block": "polishforests:tall_yellow_iris",
+          "weight": 4
         },
         {
           "block": {
@@ -363,7 +401,11 @@
         },
         {
           "block": "polishforests:nettle",
-          "weight": 7
+          "weight": 3
+        },
+        {
+          "block": "polishforests:tall_nettle",
+          "weight": 4
         },
         {
           "block": "minecraft:tall_grass",
@@ -391,7 +433,11 @@
       "plants": [
         {
           "block": "polishforests:nettle",
-          "weight": 24
+          "weight": 4
+        },
+        {
+          "block": "polishforests:tall_nettle",
+          "weight": 20
         },
         {
           "block": "polishforests:tussock_sedge",
@@ -521,7 +567,11 @@
         },
         {
           "block": "polishforests:nettle",
-          "weight": 16
+          "weight": 4
+        },
+        {
+          "block": "polishforests:tall_nettle",
+          "weight": 12
         },
         {
           "block": "minecraft:tall_grass",
@@ -587,7 +637,11 @@
       "plants": [
         {
           "block": "polishforests:nettle",
-          "weight": 28
+          "weight": 7
+        },
+        {
+          "block": "polishforests:tall_nettle",
+          "weight": 21
         },
         {
           "block": "polishforests:reed_canary_grass",
@@ -653,7 +707,11 @@
       "plants": [
         {
           "block": "polishforests:nettle",
-          "weight": 32
+          "weight": 8
+        },
+        {
+          "block": "polishforests:tall_nettle",
+          "weight": 24
         },
         {
           "block": "minecraft:tall_grass",
@@ -829,7 +887,11 @@
         },
         {
           "block": "polishforests:nettle",
-          "weight": 18
+          "weight": 6
+        },
+        {
+          "block": "polishforests:tall_nettle",
+          "weight": 12
         },
         {
           "block": "minecraft:tall_grass",

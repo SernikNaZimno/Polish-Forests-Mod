@@ -326,6 +326,8 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 		long beachColumns = 0;
 		long sandForest = 0;
 		long forestColumns = 0;
+		// Step C3: the tall nettle and the tall yellow iris on the dry columns of the sites, by biome and zone.
+		TallHerbCensus tallHerbs = new TallHerbCensus();
 		List<int[]> sites = new ArrayList<>(List.of(real ? CENSUS_REAL : CENSUS_GAMEPLAY));
 		sites.addAll(places.subList(0, Math.min(3, places.size())));
 		// Step F1 (KF-1): the first natural and the first managed sample plot of each forest of the steps F (outside the
@@ -378,6 +380,8 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 					}
 					int code = planCodes[(x >> 4) - cx0][(z >> 4) - cz0][column];
 					HabitatBiome b = Habitat.biome(code);
+					tallHerbs.column(level, x, top, z, Habitat.zone(code) == pl.polishforests.worldgen.habitat.Zone.NONE ? b.id()
+							: b.id() + "/" + Habitat.zone(code).id());
 					boolean trunk = trunk(level, x, top, z);
 					// Step F2 (stage 2): the forests of the planner count trees as N1 does, not the coppice stems of a
 					// stool, the root flares and the stems of the shrubs (TreeBases).
@@ -459,6 +463,17 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 		}
 		if (!deepVanillaAt.isEmpty()) {
 			PolishForests.LOG.info("[habitats] KF-1 vanilla log trunks deep in a forest: {}", deepVanillaAt);
+		}
+		// Step C3: 0 halves without their pair (none under a crown or a branch written over the upper half), none in water,
+		// and the tall nettle grows on the sites (its forests have sample plots among them).
+		PolishForests.LOG.info("[habitats] {}", tallHerbs.report(real ? "realistic" : "gameplay"));
+		report.append(String.format(Locale.ROOT, " tall herbs (C3): tall nettle %d, tall yellow iris %d, faults %d;", tallHerbs.tall(0),
+				tallHerbs.tall(1), tallHerbs.faults()));
+		if (tallHerbs.faults() > 0) {
+			failures.add(tallHerbs.faults() + " halves of the tall herbs without their pair or in water (C3)");
+		}
+		if (tallHerbs.tall(0) == 0) {
+			failures.add("no tall nettle on the census sites (C3)");
 		}
 		report.append(" KF-1 deep in the forests of the planner (planner trunks per chunk, vanilla log trunks):");
 		for (HabitatBiome b : ForestBlend.FORESTS) {

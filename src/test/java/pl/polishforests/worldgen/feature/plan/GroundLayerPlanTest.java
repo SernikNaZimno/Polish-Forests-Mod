@@ -235,7 +235,12 @@ class GroundLayerPlanTest {
 
 	/** Tall plants of §4.6; since the S7 review the one-block shrubs (bush, firefly bush, sweet berry bush) are dwarf shrubs, not tall. */
 	private static final Set<String> TALL = Set.of("minecraft:tall_grass", "minecraft:large_fern", "minecraft:sugar_cane",
-			"minecraft:big_dripleaf", "minecraft:small_dripleaf");
+			"minecraft:big_dripleaf", "minecraft:small_dripleaf", "polishforests:tall_nettle", "polishforests:tall_yellow_iris");
+	/**
+	 * Step C3 (G.58-d): the one-block nettle and yellow iris, left out of the tall plants in the second reading of §4.6 (the
+	 * tall forms of two blocks stay tall in both).
+	 */
+	private static final Set<String> ONE_BLOCK_NETTLE_IRIS = Set.of("polishforests:nettle", "polishforests:yellow_iris");
 	private static final Set<String> SMALL = Set.of("minecraft:short_grass", "minecraft:dandelion", "minecraft:poppy",
 			"minecraft:oxeye_daisy", "minecraft:cornflower", "minecraft:azure_bluet", "minecraft:allium",
 			"minecraft:lily_of_the_valley", "minecraft:wildflowers", "minecraft:pink_petals");
@@ -274,7 +279,60 @@ class GroundLayerPlanTest {
 		for (Zone z : DENSE_ZONES) {
 			check(rules, HabitatBiome.WILLOW_POPLAR_FOREST, z, report);
 		}
-		System.out.println("ground layer of the dense habitats (small, tall, bare): " + report);
+		System.out.println("ground layer of the dense habitats (small, tall, tall without the one-block nettle and iris, tall "
+				+ "without the one-block herbs, bare): " + report);
+	}
+
+	/**
+	 * Step C3 (G.58-d): the palette of the ash-alder forest, whose small stream banks are the transect of §4.6 that needed
+	 * its one-block herbs (F2-v′), gives at least 60% tall plants also without the one-block nettle and yellow iris (the
+	 * tall forms of two blocks count, the other one-block herbs too).
+	 */
+	@Test
+	void ashAlderForestMeetsTheDensityRuleWithoutTheOneBlockNettleAndIris() {
+		JsonArray rules = BiomeJsonTest.json(BiomeJsonTest.GENERATED.resolve(
+				"data/polishforests/worldgen/feature/ground_layer.json")).getAsJsonArray("rules");
+		for (JsonElement e : rules) {
+			JsonObject r = e.getAsJsonObject();
+			String medium = r.has("medium") ? r.get("medium").getAsString() : "land";
+			if (medium.equals("land") && contains(r, "biomes", HabitatBiome.ASH_ALDER_FOREST.id()) && contains(r, "zones", Zone.NONE.id())
+					&& !r.has("site_types")) {
+				double[] shares = shares(r);
+				assertTrue(shares[2] >= 0.60, "ash-alder forest: tall plants without the one-block nettle and iris " + shares[2]);
+				assertTrue(shares[1] >= shares[2], "the official reading counts at least as many");
+				return;
+			}
+		}
+		throw new AssertionError("no ground layer rule for the ash-alder forest");
+	}
+
+	/**
+	 * Shares of the land columns of a rule: short grass and small flowers, tall plants (official reading, F2-v′ (a): the
+	 * one-block herbs {@code HERB} count), tall plants without the one-block nettle and yellow iris (step C3), tall plants
+	 * without any one-block herb (the reading of F2-v′), bare ground.
+	 */
+	private static double[] shares(JsonObject rule) {
+		double coverage = rule.get("coverage").getAsDouble();
+		double all = 0;
+		double small = 0;
+		double tall = 0;
+		double nettleIris = 0;
+		double herbs = 0;
+		for (JsonElement e : rule.getAsJsonArray("plants")) {
+			JsonObject p = e.getAsJsonObject();
+			double w = p.get("weight").getAsDouble();
+			all += w;
+			String block = p.has("block") ? blockName(p.get("block")) : "feature";
+			if (SMALL.contains(block)) {
+				small += w;
+			} else if (TALL.contains(block) || HERBS.contains(block) || block.equals("feature")) {
+				tall += w;
+				nettleIris += ONE_BLOCK_NETTLE_IRIS.contains(block) ? w : 0;
+				herbs += HERBS.contains(block) ? w : 0;
+			}
+		}
+		return new double[] {coverage * small / all, coverage * tall / all, coverage * (tall - nettleIris) / all,
+				coverage * (tall - herbs) / all, 1 - coverage};
 	}
 
 	/**
@@ -663,26 +721,12 @@ class GroundLayerPlanTest {
 	}
 
 	private static void checkRule(JsonObject rule, HabitatBiome b, Zone z, List<String> report) {
-		double coverage = rule.get("coverage").getAsDouble();
-		double all = 0;
-		double small = 0;
-		double tall = 0;
-		for (JsonElement e : rule.getAsJsonArray("plants")) {
-			JsonObject p = e.getAsJsonObject();
-			double w = p.get("weight").getAsDouble();
-			all += w;
-			String block = p.has("block") ? blockName(p.get("block")) : "feature";
-			if (SMALL.contains(block)) {
-				small += w;
-			} else if (TALL.contains(block) || HERBS.contains(block) || block.equals("feature")) {
-				tall += w;
-			}
-		}
-		double s = coverage * small / all;
-		double t = coverage * tall / all;
-		double bare = 1 - coverage;
+		double[] shares = shares(rule);
+		double s = shares[0];
+		double t = shares[1];
+		double bare = shares[4];
 		String where = b.id() + "/" + z.id() + (rule.has("site_types") ? "/" + rule.get("site_types") : "");
-		report.add(String.format(Locale.ROOT, "%s %.2f %.2f %.2f", where, s, t, bare));
+		report.add(String.format(Locale.ROOT, "%s %.2f %.2f %.2f %.2f %.2f", where, s, t, shares[2], shares[3], bare));
 		assertTrue(s <= 0.10, where + ": short grass and small flowers " + s);
 		assertTrue(t >= 0.60, where + ": tall plants and shrubs " + t);
 		assertTrue(bare <= 0.25, where + ": bare ground " + bare);

@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/cross",
+  "textures": {
+    "cross": "polishforests:block/tall_yellow_iris_bottom"
+  }
+}

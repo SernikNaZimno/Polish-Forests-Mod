@@ -330,6 +330,8 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 				case CLUSIUS_GENTIAN -> polish ? "Goryczka Clusiusa" : "Clusius's Gentian";
 				case LEAST_WILLOW -> polish ? "Wierzba zielna" : "Least Willow";
 				case ROCK_LICHEN -> polish ? "Porosty naskalne" : "Rock Lichens";
+				case TALL_NETTLE -> polish ? "Wysoka pokrzywa zwyczajna" : "Tall Stinging Nettle";
+				case TALL_YELLOW_IRIS -> polish ? "Wysoki kosaciec żółty" : "Tall Yellow Iris";
 			});
 		}
 		builder.add(ModBlocks.bilberries(), polish ? "Czarne jagody" : "Bilberries");

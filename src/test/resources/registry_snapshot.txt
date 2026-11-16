@@ -963,6 +963,10 @@ block polishforests:sycamore_maple_trunk states=84 default=parent=down,radius=4,
   property waterlogged: true false
 block polishforests:sycamore_maple_wood states=3 default=axis=y
   property axis: x y z
+block polishforests:tall_nettle states=2 default=half=lower
+  property half: upper lower
+block polishforests:tall_yellow_iris states=2 default=half=lower
+  property half: upper lower
 block polishforests:tatra_granite states=1 default=
 block polishforests:tatra_moor_grass states=1 default=
 block polishforests:three_leaved_rush states=1 default=
@@ -1327,6 +1331,8 @@ item polishforests:sycamore_maple_slab block=polishforests:sycamore_maple_slab
 item polishforests:sycamore_maple_stairs block=polishforests:sycamore_maple_stairs
 item polishforests:sycamore_maple_trunk block=polishforests:sycamore_maple_trunk
 item polishforests:sycamore_maple_wood block=polishforests:sycamore_maple_wood
+item polishforests:tall_nettle block=polishforests:tall_nettle
+item polishforests:tall_yellow_iris block=polishforests:tall_yellow_iris
 item polishforests:tatra_granite block=polishforests:tatra_granite
 item polishforests:tatra_moor_grass block=polishforests:tatra_moor_grass
 item polishforests:three_leaved_rush block=polishforests:three_leaved_rush

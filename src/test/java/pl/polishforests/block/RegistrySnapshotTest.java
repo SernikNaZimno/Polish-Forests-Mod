@@ -2,6 +2,7 @@ package pl.polishforests.block;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -123,11 +124,13 @@ class RegistrySnapshotTest {
 		// the rock lichens, a cover of 32 states (facing 4 x segments 4 x mossy), and the three-leaved rush, the two-rowed
 		// Oreochloa, the Tatra moor grass and the variegated fescue, herbs of one state each.
 		int tatraPlants = 3 * 16 + 32 + 4;
+		// Step C3: + the tall nettle and the tall yellow iris, double plants of 2 states each (half).
+		int tallHerbs = 2 * 2;
 		assertEquals(4, ModBlocks.tatraRocks().size());
 		assertEquals(3, ModBlocks.tatraSurface().size());
 		assertEquals(84 * TreeTrunk.values().length + foliage * (112 + 2 + 1) + marcescent * 112 + 4 * 3 + 1
 				+ 84 * (RootFlare.values().length + 1) + ground + review + pineForests + floodplain + montane + 84 * StrippedTrunk.values().length + woods
-				+ tatra + tatraPlants,
+				+ tatra + tatraPlants + tallHerbs,
 				RegistrySnapshot.stateCount());
 	}
 
@@ -149,6 +152,7 @@ class RegistrySnapshotTest {
 				case TALL -> net.minecraft.world.level.block.DoublePlantBlock.class;
 				case HERB -> pl.polishforests.block.SeasonalHerbBlock.class;
 				case CLIMBER -> ClimberBlock.class;
+				case TALL_HERB -> pl.polishforests.block.SeasonalTallHerbBlock.class;
 			};
 			assertTrue(family.isInstance(b), g.id() + " is a " + family.getSimpleName());
 			if (g.mossy()) {
@@ -157,6 +161,46 @@ class RegistrySnapshotTest {
 		}
 		assertTrue(!ModBlocks.ground(GroundPlant.BILBERRY).defaultBlockState().getValue(BerryShrubBlock.BERRIES));
 		assertEquals(ModBlocks.BILBERRIES, BuiltInRegistries.ITEM.getKey(ModBlocks.bilberries()).getPath());
+	}
+
+	/**
+	 * Step C3 (CP-D.10): the tall nettle and the tall yellow iris are double plants of two states (half, lower by default,
+	 * no water property: never waterlogged) with one item that sets both halves, the phases of their one-block forms, and
+	 * an outline of a little under two blocks (out of a level: no season, never withdrawn). The one-block nettle and iris
+	 * stay as they were (old worlds).
+	 */
+	@Test
+	void tallHerbsOfStepC3() {
+		java.util.Map<GroundPlant, GroundPlant> forms = java.util.Map.of(GroundPlant.TALL_NETTLE, GroundPlant.NETTLE,
+				GroundPlant.TALL_YELLOW_IRIS, GroundPlant.YELLOW_IRIS);
+		for (var e : forms.entrySet()) {
+			net.minecraft.world.level.block.Block b = ModBlocks.ground(e.getKey());
+			SeasonalTallHerbBlock tall = assertInstanceOf(SeasonalTallHerbBlock.class, b, e.getKey().id());
+			assertEquals(e.getKey(), tall.plant());
+			assertEquals(e.getValue(), e.getKey().phases());
+			assertTrue(e.getKey().doubleHigh());
+			assertEquals(2, b.getStateDefinition().getPossibleStates().size(), e.getKey().id());
+			assertFalse(b.defaultBlockState().hasProperty(net.minecraft.world.level.block.state.properties.BlockStateProperties.WATERLOGGED));
+			assertEquals(net.minecraft.world.level.block.state.properties.DoubleBlockHalf.LOWER,
+					b.defaultBlockState().getValue(net.minecraft.world.level.block.DoublePlantBlock.HALF));
+			assertInstanceOf(net.minecraft.world.item.DoubleHighBlockItem.class, b.asItem(), e.getKey().id());
+			BlockState upper = b.defaultBlockState().setValue(net.minecraft.world.level.block.DoublePlantBlock.HALF,
+					net.minecraft.world.level.block.state.properties.DoubleBlockHalf.UPPER);
+			double lowTop = b.defaultBlockState().getShape(net.minecraft.world.level.EmptyBlockGetter.INSTANCE, net.minecraft.core.BlockPos.ZERO).max(Direction.Axis.Y);
+			double highTop = upper.getShape(net.minecraft.world.level.EmptyBlockGetter.INSTANCE, net.minecraft.core.BlockPos.ZERO).max(Direction.Axis.Y);
+			assertEquals(1.0, lowTop, 1e-9, e.getKey().id());
+			assertEquals(14.0 / 16, highTop, 1e-9, e.getKey().id());
+			// The loot of the one-block herbs: itself with shears only (the broken half drops it once).
+			String loot;
+			try {
+				loot = Files.readString(Path.of("src/main/generated/data/polishforests/loot_table/blocks/" + e.getKey().id() + ".json"));
+			} catch (IOException ex) {
+				throw new AssertionError(ex);
+			}
+			assertTrue(loot.contains("minecraft:tool/can_shear") && loot.contains("\"polishforests:" + e.getKey().id() + "\""), loot);
+			assertInstanceOf(SeasonalHerbBlock.class, ModBlocks.ground(e.getValue()), "the one-block form stays");
+			assertEquals(1, ModBlocks.ground(e.getValue()).getStateDefinition().getPossibleStates().size());
+		}
 	}
 
 	/**

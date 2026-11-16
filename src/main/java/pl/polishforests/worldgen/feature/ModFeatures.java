@@ -52,6 +52,19 @@ public final class ModFeatures {
 
 	public static volatile @Nullable WoodyPlacements WOODY_PLACEMENTS;
 
+	/**
+	 * Step C3 (KC-3, test switch of the game test {@code determinism -PdeterminismStepHerbs}): observer of the columns whose
+	 * planned plant of a column layer is the nettle or the yellow iris, one-block or tall (also where the plant then does not
+	 * fit: a tall form under a crown). These are the only columns whose decoration step C3 may change. Null outside that
+	 * test; reading it costs one volatile read per planned plant of the layers with such plants and does not change what is
+	 * generated. Called on the generation threads, so the observer must be thread-safe.
+	 */
+	public interface HerbPlans {
+		void planned(int x, int z);
+	}
+
+	public static volatile @Nullable HerbPlans HERB_PLANS;
+
 	/** Reports a placed woody plant to {@link #WOODY_PLACEMENTS}, if set. */
 	static void woodyPlaced(BlockPos at, @Nullable Species species) {
 		WoodyPlacements w = WOODY_PLACEMENTS;

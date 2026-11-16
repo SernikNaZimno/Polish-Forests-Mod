@@ -262,7 +262,8 @@ final class ModBlockModels extends FabricModelProvider {
 	 * with its texture and the shared stem {@code forest_flower_stem}, segments as vanilla's flower beds. A litter: the
 	 * vanilla leaf litter templates with its texture, or with {@code mossy} the templates one pixel higher
 	 * ({@link GroundTemplates#mossyLitter}) over the moss layer; segments as vanilla's leaf litter. The tall fern: the
-	 * vanilla tinted double plant with the textures {@code <id>_bottom} and {@code <id>_top}.
+	 * vanilla tinted double plant with the textures {@code <id>_bottom} and {@code <id>_top}. Step C3: the tall herbs as
+	 * untinted double plants with leaves-only alternatives of both halves.
 	 */
 	private static void ground(BlockModelGenerators gen, GroundPlant g, MultiVariant moss) {
 		Block block = ModBlocks.ground(g);
@@ -362,6 +363,17 @@ final class ModBlockModels extends FabricModelProvider {
 				gen.blockStateOutput.accept(MultiVariantGenerator.dispatch(block, BlockModelGenerators.plainVariant(cones))
 						.with(PropertyDispatch.modify(pl.polishforests.block.ClimberBlock.FACING).generate(ModBlockModels::facing)));
 				gen.registerSimpleFlatItemModel(block);
+			}
+			// Step C3: a tall herb as vanilla's untinted double plants (the sunflower's lower half, the vanilla cross by id)
+			// with the textures <id>_bottom and <id>_top (in flower), the item flat from <id>_top; the leaves-only crosses
+			// block/<id>_bottom_leaves (the lower half has no flowers: its own texture) and block/<id>_top_leaves with
+			// <id>_top_leaves, the seasonal alternatives of the client.
+			case TALL_HERB -> {
+				gen.createDoublePlantWithDefaultItem(block, BlockModelGenerators.PlantType.NOT_TINTED);
+				ModelTemplates.CROSS.create(pl.polishforests.client.ClientSeasonModels.tallHerbLeaves(g, false),
+						TextureMapping.cross(new Material(own(g.id() + "_bottom"))), gen.modelOutput);
+				ModelTemplates.CROSS.create(pl.polishforests.client.ClientSeasonModels.tallHerbLeaves(g, true),
+						TextureMapping.cross(new Material(own(g.id() + "_top_leaves"))), gen.modelOutput);
 			}
 		}
 	}

@@ -285,10 +285,15 @@ public final class ModBlocks {
 				case CLIMBER -> block(g.id(), p -> new ClimberBlock(g, p), BlockBehaviour.Properties.of().mapColor(MapColor.PLANT)
 						.replaceable().noCollision().strength(0.2F).sound(SoundType.VINE).ignitedByLava()
 						.pushReaction(PushReaction.POPPED));
+				// Step C3: the tall nettle and the tall yellow iris, double plants with the properties of the one-block herbs.
+				case TALL_HERB -> block(g.id(), p -> new SeasonalTallHerbBlock(g, p), BlockBehaviour.Properties.of()
+						.mapColor(MapColor.PLANT).replaceable().noCollision().instabreak().sound(SoundType.GRASS)
+						.offsetType(BlockBehaviour.OffsetType.XZ).ignitedByLava().pushReaction(PushReaction.POPPED));
 			};
-			Item.Properties props = new Item.Properties().compostable(g.kind() == GroundPlant.Kind.TALL
+			// The double plants compost as vanilla's large fern (medium), the others as its fern (low).
+			Item.Properties props = new Item.Properties().compostable(g.doubleHigh()
 					? ContextIntProviders.COMPOSTABLE_MEDIUM : ContextIntProviders.COMPOSTABLE_LOW);
-			if (g.kind() == GroundPlant.Kind.TALL) {
+			if (g.doubleHigh()) {
 				ResourceKey<Item> key = ResourceKey.create(Registries.ITEM, PolishForests.id(g.id()));
 				DoubleHighBlockItem item = new DoubleHighBlockItem(block, props.setId(key).useBlockDescriptionPrefix());
 				item.registerBlocks(Item.BY_BLOCK, item);

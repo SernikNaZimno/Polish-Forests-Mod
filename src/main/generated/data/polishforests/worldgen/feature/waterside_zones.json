@@ -96,6 +96,53 @@
       "patch": 3,
       "plants": [
         {
+          "block": "polishforests:tall_yellow_iris",
+          "weight": 1
+        },
+        {
+          "block": "minecraft:sugar_cane",
+          "max_height": 4,
+          "min_height": 2,
+          "weight": 3
+        }
+      ],
+      "zones": [
+        "herb_fringe",
+        "tall_herbs"
+      ]
+    },
+    {
+      "biomes": [
+        "dry_pine_forest",
+        "fresh_pine_forest",
+        "coastal_pine_forest",
+        "moist_pine_forest",
+        "bog_woodland",
+        "mixed_pine_forest",
+        "mixed_forest",
+        "oak_hornbeam_forest",
+        "lowland_beech_forest",
+        "alder_carr",
+        "ash_alder_forest",
+        "willow_poplar_forest",
+        "elm_ash_forest",
+        "raised_bog",
+        "fen",
+        "reedbed",
+        "willow_scrub",
+        "heath",
+        "wet_meadow",
+        "hay_meadow",
+        "arable_land",
+        "beach",
+        "white_dune",
+        "gray_dune"
+      ],
+      "coverage": 0.7,
+      "medium": "shore",
+      "patch": 3,
+      "plants": [
+        {
           "block": "minecraft:sugar_cane",
           "max_height": 4,
           "min_height": 2,
@@ -121,7 +168,11 @@
       "plants": [
         {
           "block": "polishforests:yellow_iris",
-          "weight": 6
+          "weight": 3
+        },
+        {
+          "block": "polishforests:tall_yellow_iris",
+          "weight": 3
         },
         {
           "block": {
@@ -206,7 +257,11 @@
       "plants": [
         {
           "block": "polishforests:yellow_iris",
-          "weight": 6
+          "weight": 3
+        },
+        {
+          "block": "polishforests:tall_yellow_iris",
+          "weight": 3
         },
         {
           "block": {

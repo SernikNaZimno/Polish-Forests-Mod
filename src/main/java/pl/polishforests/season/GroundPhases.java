@@ -242,6 +242,10 @@ public final class GroundPhases {
 
 	/** What the client draws of a herb at a color step (the herbs without phases: {@link Look#FULL}). */
 	public static Look look(GroundPlant plant, int step, int x, int z) {
+		if (plant.phases() != plant) {
+			// Step C3: the tall forms show the phases of their one-block plant (both halves alike: the same column).
+			return look(plant.phases(), step, x, z);
+		}
 		double at = position(step, x, z);
 		return switch (plant) {
 			case WOOD_ANEMONE -> at >= ANEMONE_FLOWERS && at < ANEMONE_FLOWERS_END ? Look.FULL

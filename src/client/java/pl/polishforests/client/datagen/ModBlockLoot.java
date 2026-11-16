@@ -105,6 +105,9 @@ final class ModBlockLoot extends FabricBlockLootSubProvider {
 				case HERB -> add(block, createShearsOnlyDrop(block));
 				// Step F5: the climber as vanilla's vine (itself with shears only).
 				case CLIMBER -> add(block, createShearsOnlyDrop(block));
+				// Step C3: a tall herb gives itself with shears only, once (as its one-block form): the broken half drops
+				// (DoublePlantBlock#playerWillDestroy), the other half goes without loot.
+				case TALL_HERB -> add(block, createShearsOnlyDrop(block));
 			}
 		}
 	}

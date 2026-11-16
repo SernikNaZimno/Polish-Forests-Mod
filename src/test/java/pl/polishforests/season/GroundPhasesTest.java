@@ -86,6 +86,32 @@ class GroundPhasesTest {
 		assertEquals(0.65, fertile / 10000.0, 0.03);
 	}
 
+	/**
+	 * Step C3: the tall nettle and the tall yellow iris show the phases of their one-block forms at every step and place
+	 * (shoots, flowers, gone), so both halves of a plant and a tall plant beside a one-block one agree.
+	 */
+	@Test
+	void tallHerbsHaveThePhasesOfTheirOneBlockForms() {
+		java.util.Set<Look> seen = java.util.EnumSet.noneOf(Look.class);
+		for (int step = 0; step < SeasonPhase.STEPS; step++) {
+			for (int x = 0; x < 6; x++) {
+				for (int z = 0; z < 6; z++) {
+					assertEquals(GroundPhases.look(GroundPlant.NETTLE, step, x, z), GroundPhases.look(GroundPlant.TALL_NETTLE, step, x, z));
+					assertEquals(GroundPhases.look(GroundPlant.YELLOW_IRIS, step, x, z),
+							GroundPhases.look(GroundPlant.TALL_YELLOW_IRIS, step, x, z));
+					assertEquals(GroundPhases.withdrawn(GroundPlant.NETTLE, step, x, z),
+							GroundPhases.withdrawn(GroundPlant.TALL_NETTLE, step, x, z));
+					seen.add(GroundPhases.look(GroundPlant.TALL_NETTLE, step, x, z));
+				}
+			}
+		}
+		assertEquals(java.util.EnumSet.of(Look.NONE, Look.LEAVES, Look.FULL), seen, "shoots, flowers and gone in the year");
+		for (GroundPlant g : GroundPlant.values()) {
+			assertEquals(g.kind() == GroundPlant.Kind.TALL_HERB, g.phases() != g, g.id());
+			assertTrue(g.phases().kind() != GroundPlant.Kind.TALL_HERB, g.id());
+		}
+	}
+
 	@Test
 	void plantsWithoutPhasesAreAlwaysFull() {
 		for (int step = 0; step < SeasonPhase.STEPS; step++) {

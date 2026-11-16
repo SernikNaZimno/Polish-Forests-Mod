@@ -639,6 +639,11 @@ tasks.named('runClientGameTest') {
 	if (project.hasProperty('determinismStepSoil')) {
 		jvmArgs '-Dpolishforests.determinism.stepSoil=true'
 	}
+	// Step C3 (KC-3): with -PdeterminismStepZones, -PdeterminismStepHerbs lets the decorated columns differ from the reference
+	// only where the planned plant is the nettle or the yellow iris (one-block or tall), reported as zone N.
+	if (project.hasProperty('determinismStepHerbs')) {
+		jvmArgs '-Dpolishforests.determinism.stepHerbs=true'
+	}
 	// Norms card of step V4 (-Pgametest=slice): the census of the plots and transects, build/norms/karta-norm.csv.
 	jvmArgs "-Dpolishforests.norms.out=${layout.buildDirectory.dir('norms').get().asFile.absolutePath}"
 	// Render trials of step V3 (-Pgametest=probes): the measured colors, shares and frame times of each run.

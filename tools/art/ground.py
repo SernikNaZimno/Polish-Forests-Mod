@@ -591,6 +591,92 @@ def herb(tex, palettes):
     return t.paint(np.clip(val, 0, len(colors) - 1), colors, alpha)
 
 
+def tall_herb(tex, palettes):
+    """A herb of two blocks (step C3, CP-D.10: the tall nettle and the tall yellow iris; vanilla's untinted double plant
+    model by id, the colors baked in): one drawing of 16 x 32 px seen from the side, the ground at the bottom row, cut into
+    the lower half (p['part'] 'bottom') and the upper half ('top'). Both halves of a plant use the same seed, so the stems
+    and leaves run on across the block edge; the flowers (p['flowers'], 0 for the leaves-only texture of the season) only
+    in the upper half, so the lower half is the same in and out of flower. p['form']: 'stems' (stinging nettle: p['count']
+    upright stems, opposite pointed leaves at every p['node'] px, longest in the middle of the stem, the drooping green
+    flower strands from the upper leaf axils) or 'blades' (yellow iris: a fan of p['count'] sword leaves from the base up to
+    rows p['top'] ... p['top'] + 7 with dried tips, the yellow flowers on stalks above them). The colors p['colors']: 0-2 leaves (shade,
+    body, light), 3 stem or leaf base, 4-6 the flower (shade, body, light). Steps between neighbours are small (CP-A)."""
+    p = tex.params
+    rng = t.Rng(tex.seed)
+    h = 2 * N
+    val = np.full((h, N), -1, int)
+    form = p['form']
+
+    def put(x, y, tone, over=True):
+        if 0 <= x < N and 0 <= y < h and (over or val[y, x] < 0):
+            val[y, x] = tone
+
+    axils = []
+    if form == 'stems':
+        k = p['count']
+        for i in range(k):
+            bx = 2 + (N - 5) * i // max(k - 1, 1) + rng.integers(0, 2)
+            ty = p['top'] + rng.integers(0, 6)
+            lean = rng.integers(-1, 2)
+            xs = {}
+            for y in range(h - 1, ty - 1, -1):
+                f = (h - 1 - y) / max(h - 1 - ty, 1)
+                xs[y] = int(round(bx + lean * f * f))
+                put(xs[y], y, 3)
+            offset = rng.integers(0, p['node'])
+            for y in range(ty + 1 + offset, h - 3, p['node']):
+                f = (y - ty) / max(h - 1 - ty, 1)
+                # longest leaves in the middle of the stem, small at the tip and at the base
+                length = 1 + int(round(p['leaf'] * np.sin(np.pi * min(1.0, 0.25 + 0.9 * f))))
+                x = xs[y]
+                for side in (-1, 1):
+                    for s_ in range(1, length + 1):
+                        put(x + side * s_, y - (1 if s_ == length else 0), 2 if side < 0 else 1, over=False)
+                        if s_ < length:
+                            put(x + side * s_, y + 1, 0, over=False)
+                axils.append((x, y))
+    else:  # blades
+        k = p['count']
+        for i in range(k):
+            bx = 5 + (i % 6)
+            lean = (i - (k - 1) / 2) * p['spread'] + rng.integers(-1, 2) * 0.4
+            ty = p['top'] + rng.integers(0, 8)
+            tone = 2 if lean < 0 else 0 if i % 3 == 2 else 1
+            for y in range(h - 1, ty - 1, -1):
+                f = (h - 1 - y) / max(h - 1 - ty, 1)
+                x = int(round(bx + lean * f ** 1.6))
+                # the tip of a sword leaf a little dried (the stem tone), as the iris leaves often are from June
+                put(x, y, tone if y > ty else 3)
+                if y > h - 5:
+                    put(x + (1 if lean >= 0 else -1), y, 3, over=False)
+    flowers = p.get('flowers', 0)
+    if form == 'blades':
+        for j in range(flowers):
+            x0 = 3 + (N - 8) * j // max(flowers - 1, 1) + rng.integers(0, 2)
+            y0 = 1 + rng.integers(0, 3)
+            for y in range(y0 + 2, N):
+                put(x0 + 1, y, 3)
+            for dy in range(-1, 4):
+                for dx in range(-1, 4):
+                    if val[min(max(y0 + dy, 0), h - 1), min(max(x0 + dx, 0), N - 1)] in (0, 1):
+                        put(x0 + dx, y0 + dy, 2)
+            for dx, dy, tone in ((0, 0, 5), (1, 0, 6), (2, 0, 5), (0, 1, 5), (1, 1, 6), (2, 1, 4), (1, 2, 4)):
+                put(x0 + dx, y0 + dy, tone)
+    elif form == 'stems' and axils:
+        upper = [a for a in axils if 4 <= a[1] < N - 3]
+        for _ in range(min(flowers, len(upper))):
+            bx, y = upper[rng.integers(0, len(upper))]
+            side = rng.choice([-1, 1])
+            for s_ in range(1, 4):
+                put(bx + side * s_, y + s_ - 1 if s_ > 1 else y, 5 if s_ < 3 else 4)
+                put(bx + side * s_, y + s_, 4, over=False)
+    rows = slice(0, N) if p['part'] == 'top' else slice(N, h)
+    part = val[rows]
+    alpha = np.where(part >= 0, 255, 0).astype(np.uint8)
+    colors = [t.hex_to_rgb(c) for c in p['colors']]
+    return t.paint(np.clip(part, 0, len(colors) - 1), colors, alpha)
+
+
 def climber(tex, palettes):
     """The hop of the floodplain forests (step F5, Humulus lupulus; the plane of vanilla's vine model by id, seen from the
     side of the trunk it climbs, not tinted, the colors baked in): p['stems'] stems twining up the whole tile in a slow

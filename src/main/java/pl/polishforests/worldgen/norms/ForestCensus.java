@@ -126,7 +126,10 @@ public final class ForestCensus {
 	 * the own block.
 	 */
 	public static final Set<String> BILBERRY_PLANTS = Set.of("minecraft:bush", "polishforests:bilberry");
-	/** The herb layer of step V12 (own blocks, decision PW-6). */
+	/**
+	 * The herb layer of step V12 (own blocks, decision PW-6). Step C3: the tall nettle and the tall yellow iris (double
+	 * plants; the census reads the lower half on the ground), tall plants of §4.6 as the bracken.
+	 */
 	public static final Set<String> OWN_HERB_PLANTS = Set.of("polishforests:bilberry", "polishforests:wood_anemone",
 			"polishforests:hepatica", "polishforests:bracken", "polishforests:sweet_woodruff", "polishforests:hairy_wood_rush",
 			"polishforests:wood_sorrel", "polishforests:coralroot", "polishforests:marsh_marigold", "polishforests:yellow_iris",
@@ -135,7 +138,8 @@ public final class ForestCensus {
 			"polishforests:heather", "polishforests:crowberry", "polishforests:bog_bilberry", "polishforests:labrador_tea",
 			"polishforests:purple_moor_grass", "polishforests:reed_canary_grass", "polishforests:lesser_celandine",
 			"polishforests:wild_garlic", "polishforests:alpine_coltsfoot", "polishforests:hairy_small_reed",
-			"polishforests:alpine_lady_fern", "polishforests:butterbur");
+			"polishforests:alpine_lady_fern", "polishforests:butterbur", "polishforests:tall_nettle",
+			"polishforests:tall_yellow_iris");
 	/**
 	 * Spring geophytes: part of the herb layer in spring only (the client shows nothing from early summer, PW-8 (a), N12);
 	 * liverleaf keeps its leaves all year. Step F1: the coralroot (gone from mid-June); the sweet woodruff keeps its leaves

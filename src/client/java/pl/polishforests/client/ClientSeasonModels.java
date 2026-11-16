@@ -77,6 +77,11 @@ public final class ClientSeasonModels {
 		return PolishForests.id("block/" + plant.id() + "_leaves");
 	}
 
+	/** Step C3: the model id of the leaves-only cross of a half of a tall herb (datagen writes it). */
+	public static Identifier tallHerbLeaves(GroundPlant plant, boolean upper) {
+		return PolishForests.id("block/" + plant.id() + (upper ? "_top_leaves" : "_bottom_leaves"));
+	}
+
 	/** The model id of the bilberry flowers (datagen writes it). */
 	public static Identifier flowers(GroundPlant plant) {
 		return PolishForests.id("block/" + plant.id() + "_flowers");
@@ -237,6 +242,19 @@ public final class ClientSeasonModels {
 						case LEAVES -> 1;
 						default -> SeasonalModel.Look.BASE;
 					}, List.of(new SeasonalModel.Alternative(s -> leaves, false, false, false)), leaves);
+				}
+				if (g.kind() == GroundPlant.Kind.TALL_HERB) {
+					// Step C3: a tall herb, both halves in the phase of its column (the one-block plant's phases): in flower
+					// (the base models), with the leaves-only cross of each half, or nothing while withdrawn.
+					List<Variant> bottom = List.of(new Variant(tallHerbLeaves(g, false)));
+					List<Variant> top = List.of(new Variant(tallHerbLeaves(g, true)));
+					return new SeasonalModel.Root(model, (s, pos) -> switch (GroundPhases.look(g, step(), pos.getX(), pos.getZ())) {
+						case NONE -> SeasonalModel.Look.NOTHING;
+						case LEAVES -> 1;
+						default -> SeasonalModel.Look.BASE;
+					}, List.of(new SeasonalModel.Alternative(s -> s.getValue(net.minecraft.world.level.block.DoublePlantBlock.HALF)
+							== net.minecraft.world.level.block.state.properties.DoubleBlockHalf.UPPER ? top : bottom, false, false, false)),
+							List.of(bottom.get(0), top.get(0)));
 				}
 				if (g.kind() == GroundPlant.Kind.CLIMBER) {
 					// Step F5: the climber with cones (the base model), with its leaves only, or nothing while withdrawn; the
