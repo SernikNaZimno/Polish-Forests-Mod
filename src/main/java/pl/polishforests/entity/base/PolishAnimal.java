@@ -8,14 +8,20 @@ import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Difficulty;
+import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.entity.AgeableMob;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.SpawnGroupData;
 import net.minecraft.world.entity.ai.navigation.PathNavigation;
 import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.ServerLevelAccessor;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import net.tslat.smartbrainlib.api.SmartBrainOwner;
 import org.jspecify.annotations.Nullable;
 
@@ -36,13 +42,14 @@ import org.jspecify.annotations.Nullable;
  * {@link #requiresCustomPersistence()} is true, which keeps them out of the mob counts of vanilla's {@code NaturalSpawner}
  * ({@code createState} skips such mobs), so they take no place of the wolves, foxes and rabbits; the mod's own
  * {@code FaunaSpawner} keeps its own limits. Since that flag also stops vanilla's {@code checkDespawn}, this class does
- * the despawn itself: {@link #removeWhenFarAway} is true only beyond {@value #DESPAWN_DISTANCE} blocks from the nearest
- * player and only for an animal without a name, a leash or {@code persistenceRequired}; nothing despawns closer (the
- * random despawn of vanilla's mobs after 30 s without action is left out). In 26.3 the {@code CREATURE} category is
- * persistent (vanilla spawns it only on chunk spawn every 400 ticks) and {@link Animal#removeWhenFarAway} is false: a
- * vanilla animal never despawns, so without this rule the population would only grow with exploration. The animals of
- * the spawn at generation are {@code persistenceRequired} (they belong to their chunk, as vanilla's animals do), so only
- * those of the fauna spawner despawn.
+ * the despawn itself: {@link #removeWhenFarAway} is true only for a {@linkplain #isWanderer() wanderer} (an animal of the
+ * fauna spawner, {@link EntitySpawnReason#NATURAL}), only beyond {@value #DESPAWN_DISTANCE} blocks from the nearest
+ * player and only without a name, a leash or {@code persistenceRequired}; nothing despawns closer (the random despawn of
+ * vanilla's mobs after 30 s without action is left out). In 26.3 the {@code CREATURE} category is persistent (vanilla
+ * spawns it only on chunk spawn every 400 ticks) and {@link Animal#removeWhenFarAway} is false: a vanilla animal never
+ * despawns, so without this rule the population of the spawner would only grow with exploration. Every other animal
+ * never despawns, as a vanilla animal: those of the spawn at generation (they belong to their chunk), and those from a
+ * spawn egg, a dispenser, a spawner block or {@code /summon} (also with NBT, which skips {@code finalizeSpawn}).
  * </ul>
  *
  * @param <T> the species class itself (SmartBrainLib's self type)
@@ -70,6 +77,8 @@ public abstract class PolishAnimal<T extends PolishAnimal<T>> extends Animal imp
 	private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
 	/** Game time until which the animal is fleeing (set by the flight behaviour), for the state only. */
 	private long fleeingUntil;
+	/** An animal of the fauna spawner (saved): the only kind that despawns ({@link #removeWhenFarAway}). */
+	private boolean wanderer;
 
 	protected PolishAnimal(EntityType<? extends T> type, Level level) {
 		super(type, level);
@@ -168,6 +177,38 @@ public abstract class PolishAnimal<T extends PolishAnimal<T>> extends Animal imp
 
 	// ------------------------------------------------------------------ spawn caps and despawn
 
+	/** The tag of {@link #isWanderer()} in the saved data. */
+	public static final String TAG_WANDERER = "Wanderer";
+
+	/**
+	 * Marks the animals of the fauna spawner ({@link EntitySpawnReason#NATURAL}) as {@linkplain #isWanderer() wanderers};
+	 * every other reason (chunk generation, spawn egg, dispenser, spawner block, command) gives an animal that never
+	 * despawns, as a vanilla animal.
+	 */
+	@Override
+	public @Nullable SpawnGroupData finalizeSpawn(ServerLevelAccessor level, DifficultyInstance difficulty, EntitySpawnReason reason,
+			@Nullable SpawnGroupData groupData) {
+		wanderer = reason == EntitySpawnReason.NATURAL;
+		return super.finalizeSpawn(level, difficulty, reason, groupData);
+	}
+
+	/** True for an animal of the fauna spawner: it despawns beyond {@value #DESPAWN_DISTANCE} blocks. */
+	public boolean isWanderer() {
+		return wanderer;
+	}
+
+	@Override
+	protected void addAdditionalSaveData(ValueOutput output) {
+		super.addAdditionalSaveData(output);
+		output.putBoolean(TAG_WANDERER, wanderer);
+	}
+
+	@Override
+	protected void readAdditionalSaveData(ValueInput input) {
+		super.readAdditionalSaveData(input);
+		wanderer = input.getBooleanOr(TAG_WANDERER, false);
+	}
+
 	/** Keeps the animal out of vanilla's mob counts (see the class comment); the despawn is {@link #checkDespawn()}. */
 	@Override
 	public boolean requiresCustomPersistence() {
@@ -176,7 +217,7 @@ public abstract class PolishAnimal<T extends PolishAnimal<T>> extends Animal imp
 
 	@Override
 	public boolean removeWhenFarAway(double distSqr) {
-		return distSqr > (double) DESPAWN_DISTANCE * DESPAWN_DISTANCE && !hasCustomName() && !isLeashed() && !isPersistenceRequired();
+		return wanderer && distSqr > (double) DESPAWN_DISTANCE * DESPAWN_DISTANCE && !hasCustomName() && !isLeashed() && !isPersistenceRequired();
 	}
 
 	/** Vanilla's despawn without the random despawn closer than {@value #DESPAWN_DISTANCE} blocks (the animals are friendly). */

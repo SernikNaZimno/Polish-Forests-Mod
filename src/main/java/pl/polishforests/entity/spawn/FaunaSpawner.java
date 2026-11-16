@@ -48,13 +48,14 @@ import pl.polishforests.worldgen.vanilla.VanillaForestsBiomeSource;
  * expected number is the target density times the weighted columns of the chunk (up to {@value #GENERATION_TRIES} columns
  * drawn per group). The draw has its own random source from the seed, the chunk and the new salt
  * {@link #GENERATION_SALT}: no block, no other random source and no vanilla spawn changes. These animals stay with their
- * chunk ({@code persistenceRequired}, as vanilla's animals of the chunk generation are persistent by their category).
+ * chunk (they never despawn, as vanilla's animals of the chunk generation are persistent by their category).
  * Chunks generated before this step get no animals this way (KFA-1): the spawner fills them.
  * <li><b>The fauna spawner</b> ({@link #tick}): every {@value #INTERVAL} ticks, around each player (not spectators), the
  * target is the density times the weighted forest area within {@value #AREA_RADIUS} blocks (a lattice of
  * {@value #AREA_STEP} blocks over the loaded chunks), capped by the profile's own limit; when fewer animals of the species
  * are within {@value #COUNT_RADIUS} blocks, one group appears {@value #SPAWN_MIN}-{@value #SPAWN_MAX} blocks away from the
- * player (never closer than {@value #SPAWN_MIN} blocks to any player), on an entity-ticking chunk. These animals despawn
+ * player (never closer than {@value #SPAWN_MIN} blocks to any player), on an entity-ticking chunk. These animals (wanderers,
+ * {@code PolishAnimal#isWanderer}) despawn
  * beyond 128 blocks, and a limit of the level on them ({@code maxNearPlayer} times the players) stops their number from
  * growing with exploration.
  * </ol>
@@ -153,8 +154,9 @@ public final class FaunaSpawner {
 
 	private static void spawnAround(ServerLevel level, Species s, List<ServerPlayer> players, RandomSource random) {
 		AnimalProfile profile = s.profile();
-		// The level's limit counts the animals that can despawn: those of the spawn at generation belong to their chunks
-		// (persistent, like vanilla's animals), so their number follows the loaded chunks and does not grow with exploration.
+		// The level's limit counts the animals that can despawn (the spawner's own): those of the spawn at generation belong to
+		// their chunks (they never despawn, like vanilla's animals), so their number follows the loaded chunks and does not
+		// grow with exploration; those from eggs, spawners and commands are the players' own.
 		int loaded = level.getEntities(s.type(), e -> e.removeWhenFarAway(Double.MAX_VALUE)).size();
 		int cap = profile.maxNearPlayer() * players.size();
 		List<ServerPlayer> order = new ArrayList<>(players);
@@ -435,12 +437,10 @@ public final class FaunaSpawner {
 				continue;
 			}
 			animal.snapTo(at.x, at.y, at.z, random.nextFloat() * 360.0F, 0.0F);
+			// NATURAL makes a wanderer that despawns beyond 128 blocks; the animals of the chunk generation never despawn
+			// (PolishAnimal.finalizeSpawn), like vanilla's: else those of the chunks generated 128-192 blocks ahead of a
+			// walking player would despawn before he comes.
 			data = animal.finalizeSpawn(level, level.getCurrentDifficultyAt(animal.blockPosition()), reason, data);
-			if (reason == EntitySpawnReason.CHUNK_GENERATION) {
-				// The animals of a chunk stay with it, like vanilla's animals of the chunk generation: without this the
-				// animals of the chunks generated 128-192 blocks ahead of a walking player would despawn before he comes.
-				animal.setPersistenceRequired();
-			}
 			level.addFreshEntityWithPassengers(animal);
 			n++;
 		}

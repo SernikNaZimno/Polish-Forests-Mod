@@ -55,8 +55,9 @@ import pl.polishforests.worldgen.vanilla.VanillaForestsBiomeSource;
  * <li><b>Exploration</b> (gameplay scale, natural mode): {@value #TRIPS} places 512 blocks apart, {@value #TRIP_TICKS}
  * ticks each: the roe deer in the loaded chunks per loaded chunk must not grow (last place at most 1.5 times the first
  * two plus 0.02).
- * <li><b>Despawn</b>: roe deer placed 140 blocks from the player despawn unless named or persistent; one at 100 blocks
- * stays.
+ * <li><b>Despawn</b>: a roe deer of the fauna spawner (spawn reason {@code NATURAL}) placed 140 blocks from the player
+ * despawns unless named or persistent, one at 100 blocks stays; roe deer from a spawn egg, the chunk generation and a
+ * command with NBT (no {@code finalizeSpawn}) placed 140 blocks away stay.
  * <li><b>Flight</b>: a roe deer placed 12 blocks from a visible standing player runs to beyond 20 blocks.
  * <li><b>Vanilla animals</b> (KFA-4): two fresh gameplay worlds of the same seed, one with {@code forest_fauna} off: wolves,
  * foxes and rabbits within 96 blocks of two places after the same time; the difference is reported, and fails only when
@@ -306,11 +307,18 @@ final class FaunaCensus {
 			ServerLevel level = s.overworld();
 			ServerPlayer p = level.players().getFirst();
 			List<RoeDeer> out = new ArrayList<>();
-			int[][] offsets = {{140, 0}, {0, 140}, {-140, 0}, {100, 0}};
+			// Spawner deer: plain, named and persistent at 140 blocks, plain at 100; then a spawn egg, the chunk generation and
+			// a command with NBT (no finalizeSpawn) at 140 blocks.
+			int[][] offsets = {{140, 0}, {0, 140}, {-140, 0}, {100, 0}, {0, -140}, {99, 99}, {-99, -99}};
+			EntitySpawnReason[] reasons = {EntitySpawnReason.NATURAL, EntitySpawnReason.NATURAL, EntitySpawnReason.NATURAL,
+					EntitySpawnReason.NATURAL, EntitySpawnReason.SPAWN_ITEM_USE, EntitySpawnReason.CHUNK_GENERATION, null};
 			for (int i = 0; i < offsets.length; i++) {
-				RoeDeer d = ModEntities.roeDeer().create(level, EntitySpawnReason.COMMAND);
+				RoeDeer d = ModEntities.roeDeer().create(level, reasons[i] == null ? EntitySpawnReason.COMMAND : reasons[i]);
 				Vec3 at = trialSpot(level, p.getBlockX() + offsets[i][0], p.getBlockZ() + offsets[i][1]);
 				d.snapTo(at.x, at.y, at.z, 0, 0);
+				if (reasons[i] != null) {
+					d.finalizeSpawn(level, level.getCurrentDifficultyAt(d.blockPosition()), reasons[i], null);
+				}
 				if (i == 1) {
 					d.setCustomName(Component.literal("named"));
 				} else if (i == 2) {
@@ -336,10 +344,15 @@ final class FaunaCensus {
 			return r;
 		});
 		line("despawn details:%s", why);
-		line("despawn: plain at 140 removed %s, named at 140 removed %s, persistent at 140 removed %s, plain at 100 removed %s",
-				removed[0], removed[1], removed[2], removed[3]);
-		if (!removed[0] || removed[1] || removed[2] || removed[3]) {
-			fail("despawn: expected only the plain deer at 140 blocks to despawn, removed %s", java.util.Arrays.toString(removed));
+		line("despawn: spawner deer plain at 140 removed %s, named at 140 removed %s, persistent at 140 removed %s, plain at 100"
+				+ " removed %s; at 140 egg removed %s, chunk generation removed %s, command with NBT removed %s", removed[0], removed[1],
+				removed[2], removed[3], removed[4], removed[5], removed[6]);
+		boolean ok = removed[0];
+		for (int i = 1; i < removed.length; i++) {
+			ok &= !removed[i];
+		}
+		if (!ok) {
+			fail("despawn: expected only the plain spawner deer at 140 blocks to despawn, removed %s", java.util.Arrays.toString(removed));
 		}
 		sp.getServer().runOnServer(s -> deer.forEach(Entity::discard));
 	}
