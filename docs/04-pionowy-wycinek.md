@@ -730,6 +730,7 @@ CP-D.1 zlecił faunę i dźwięk według planu (V14, V15, V16, potem V17), CP-D.
 - **Zakres:** (1) Scalenie `slice-fauna` z `main` (jak wyżej): kod V8 (`entity/ModEntities`, `entity/roedeer/RoeDeer`, `client/entity/RoeDeerRenderer`, `BoneProbe`, `gametest/FaunaClientGameTest`, `probe/FaunaProbes*`), zasoby GeckoLib, `tools/fauna`, zmiany `tools/art` (`checkArt`/`generateArt` uruchamiają `tools/fauna`), `RegistrySnapshot` (typy encji), `GameRegistries`, `ModBlockModels` (jajo), lang, `build.gradle` (flagi gametestu `fauna`), `CREDITS.md`, `LICENSE-assets`, README; dokumentacja V8 („Stan po V8”, „Runda 1 poprawek po przeglądzie V8” do tego pliku, R17 zamknięte; wybory V8-a … V8-u do `docs/00` jako osobna podsekcja bez przenumerowania istniejących); migawka rejestru przegenerowana świadomie (dopisane: jajo i encja `roe_deer`); dostosowanie do dzisiejszego API (Fabric API, GeckoLib 5.5.7, SBL 2.0.3). Po scaleniu `checkArt`, `checkDatagen`, `FaunaModelTest`, `RegistrySnapshotTest` i gametest `fauna` (kalibracja modelu V8) PASS. (2) Szkielet: `entity/base/PolishAnimal` (Animal + GeoEntity + SmartBrainOwner), `AnimalProfile` (rekord: wymiary, grupy latem i zimą, harmonogram dobowy, sezon futra, siedliska z wagami według `HabitatBiome` i ekotonu, gęstość docelowa), wariant przez `DataTicket`; `RoeDeer` na `PolishAnimal` (pola zapisu V8 `Buck`, `WinterCoat` bez zmian — encja nie trafiła do wydanych światów, ale migawka je pilnuje). (3) Spawn: własny `FaunaSpawner` (serwerowy, co kilkaset ticków wokół graczy, cel gęstości z profilu × kolumny lasu w zasięgu, własny limit, reguła gry `polishforests:forestFauna`, domyślnie włączona) i spawn przy generacji (w „Polsce” w `PolandChunkGenerator.spawnOriginalMobs`, w „Default + Polish Forests” w mixinie `NoiseBasedChunkGeneratorMixin` przy `spawnOriginalMobs`, w obu przed usunięciem `ChunkHabitats`, z siedliska kolumny); predykat: tag `polishforests:forest_animals_spawnable_on` (`grass_block`, `podzol`, `coarse_dirt`, `rooted_dirt`, `moss_block` i grunty moda: omszona bielica, mchy, torf tam, gdzie sarna bywa), próg światła ≥ 5 (z pomiaru V10, do kalibracji), `MOTION_BLOCKING_NO_LEAVES` (0 zwierząt na koronach), sucha kolumna; zwierzęta moda poza liczeniem limitu `CREATURE` wanilii (KFA-4). Despawn: `removeWhenFarAway` tylko > 128 bloków bez imienia, smyczy i `persistenceRequired` — zachowanie trwałości kategorii w 26.3 sprawdzić w kodzie gry (R15). (4) Sarna, mózg podstawowy (SBL): wędrówka z celami ważonymi lasem (nie odchodzi daleko w pole), żer i postój, ucieczka przed graczem z 20–40 bloków, animacje V8 (`idle`, `walk`, `run`, `eat`, `alert`, `rest`); grupy 1–3 przy spawnie. (5) Komenda `/polishforests fauna [promień]` (en_us i pl_pl). (6) Gametest `fauna`: tryb `-Psites=model` (kalibracja V8) i nowy spis `-Psites=census` (domyślny): miejsca lasów wycinka w obu skalach i trybach N, D oraz lasy moda w świecie „Default + Polish Forests” (`HabitatTargets`), po czasie T liczba saren w promieniu 64 bloków, 0 na liściach, w wodzie i w blokach, pętla eksploracji (teleport przez N miejsc: liczba wszystkich saren ograniczona), despawn > 128 bloków, zwierzęta wanilii z fauną i bez; raport `build/fauna/census.txt`. (7) Obszar `fauna` w mapie testów (KFA-9).
 - **Ukończony, gdy:** historia `main` zawiera 4 commity V8 przez scalenie (bez force-push), `slice-fauna` i jej worktree bez zmian; testy V8 przechodzą na `main`; sarny pojawiają się w obu typach świata, obu skalach i trybach, także w borze na `podzol` i pod okapem, 0 na koronach i w wodzie; średnio > 0 saren w promieniu 64 bloków w każdym lesie wycinka po 5 minutach (kalibracja docelowa w FA2), liczba nie rośnie przy eksploracji; zwierzęta wanilii jak bez fauny (KFA-4); `determinism` 0 różnic, złote pliki bez zmian, migawka rejestru — same dopisane wiersze; KFA-1 … KFA-10. Lista „Do sprawdzenia w grze”: nowy świat „Polska”, `/polishforests find biome oak_hornbeam_forest`, chwila w lesie, `/polishforests fauna 64` — sarny w pobliżu; `find biome fresh_pine_forest` — sarny na bielicy pod sosnami; podejście do sarny — ucieka; świat „Default + Polish Forests”: `find biome oak_hornbeam_forest` — sarny też tam; wilki, lisy i króliki nadal w lesie; `/gamerule polishforests:forestFauna false` — nowe sarny przestają się pojawiać.
 - **Ryzyko:** wysokie (scalenie starej gałęzi z wieloma wspólnymi plikami, R20; rejestracja encji, spawn i despawn R14–R16; mixin przy `spawnOriginalMobs`).
+- **Stan (2026-11-16): etap 1 zrobiony** („Projekt FA1”): scalenie `34f735e`, szkielet, spawner i spawn przy generacji, mózg sarny, komenda `fauna`, spis w gametescie, obszar `fauna`; reguła gry nazywa się `polishforests:forest_fauna` (FA1-a). Etap 2 (gametesty, „Stan po FA1”, G.63) w toku.
 
 ### FA2. Sarna: rytm dnia, pory roku, alarm i kalibracja gęstości (V14, część 2; B, 1,5–2 dnia)
 
@@ -6672,3 +6673,165 @@ Autotest sprawdza na zepsutych przykładach, że walidator wykrywa futro w pasac
 **Pomiary** (gametest `fauna` 2026-10-16, bez paczki i z `-Poptimization`): model próbny w spoczynku i w `calib.pose` 19 z 19 pozycji, sarna 16 widoków po 28 pozycji i kozioł w `misc.alert` 28 pozycji. Największa różnica wszędzie 0,0001 px w modelu i 0,00001 bloku w świecie. Sylwetki IoU 1,0000 w każdym z 16 widoków (koza: przód 5994 px, bok 8508, tył 5392; kozioł: 6588, 8974, 5734). UV: 942 z 2048 tekseli, żaden użyty dwa razy, 18 prostopadłościanów, 108 ścian. Uszy kozy sięgają 18,4 px, a parostki kozła 20,2 px, ponad wysokość hitboksu 17,6 px (V8-s).
 
 **Testy.** `checkArt` (z nowymi kontrolami i autotestem), `fastTest`, `RegistrySnapshotTest` (po świadomej regeneracji), `FaunaModelTest`, `runClientGameTest -Pgametest=fauna` bez paczki i z `-Poptimization` (PASS), pełny zestaw `tools/dev/run-tests test`.
+
+## Projekt FA1 (2026-11-16, etap 1: scalenie, kod, dane, testy jednostkowe, kod gametestu)
+
+Krok FA1 (§3 „Kroki FA”, V14 część 1, G.62) obejmuje scalenie toru sarny, szkielet fauny, spawner, podstawową sarnę, komendę `fauna`, spis w gametescie i obszar `fauna` w mapie testów. Etap 1 to scalenie, kod, dane, testy jednostkowe i fastTest. Do etapu 2 należą gametesty (spis `fauna` i `-Psites=model`, `determinism`, `vanilla_forests`, `ui`, złote pliki) oraz „Stan po FA1”. Baza kroku: `b03e6a1`. Stare sole są bez zmian, dochodzi jedna nowa sól (spawn przy generacji, opis niżej). Nowe stałe enumów są tylko w nowych klasach. Złote pliki terenu są bez zmian, bo krok nie zmienia bloków. Zamrożona kopia `landscape/m1/` jest nietknięta. Wybory FA1-a … FA1-l (tabela niżej) trafią do `docs/00` G.63 w etapie 2.
+
+**Scalenie (`34f735e`).** Scalenie zrobiono przez `git merge --no-ff slice-fauna`. Historia `main` zawiera 4 commity V8, a gałąź `slice-fauna` i jej worktree są bez zmian (nadal `d2d5a29`). Konflikty rozwiązano ręcznie i zachowano obie strony:
+- `build.gradle`: flagi gametestu `fauna` obok flag z `main`.
+- `ModBlockModels`: model jaja przeniesiony za pętlę pni.
+- `fabric.mod.json` gametestów: watchdog, sondy fauny, wszystkie klasy z `main` i `FaunaClientGameTest`.
+- `PolishForests`: `TrunkBaseCondition` i `ModEntities`.
+
+Dokumentacja V8 jest na końcu tego pliku („Stan po V8”, „Runda 1 poprawek po przeglądzie V8”; R17 zamknięte). Wybory V8-a … V8-u trafiły do `docs/00` jako G.V8 (na gałęzi były w G.9; istniejących sekcji nie przenumerowano). BRIEF i `src/main/generated` wzięto z `main`, potem uruchomiono `runDatagen`. Migawkę rejestru przegenerowano: doszły dwa wiersze (`item polishforests:roe_deer_spawn_egg` i `entity polishforests:roe_deer saved=Buck,WinterCoat`). Nagłówek `RegistrySnapshot.HEADER` przywrócono do tekstu sprzed V8 (z komentarzem), żeby zmiana migawki była samym dopisaniem. Po scaleniu przeszły: `checkDatagen`, `checkArt` (241 tekstur, zasoby zwierząt zgodne z `tools/fauna`), `FaunaModelTest`, `RegistrySnapshotTest` i fastTest. Gametest `fauna -Psites=model` jest w etapie 2.
+
+**Szkielet (`entity/base`).** `AnimalProfile` to rekord z polami:
+- gatunek i wymiary;
+- wielkość grupy latem i zimą (`Range`);
+- harmonogram dobowy (`Period`: od którego ticku obowiązuje `Activity` FEED, REST albo MOVE);
+- podsezony futra zimowego;
+- wagi siedlisk według `HabitatBiome`;
+- waga skraju lasu (`edgeWeight`, dla otwartego terenu do `EDGE_REACH` = 8 bloków od lasu);
+- gęstość rzeczywista na ha i mnożnik gry;
+- limit zwierząt przy graczu i odległości ucieczki.
+
+`PolishAnimal<T>` łączy `Animal`, `GeoEntity` i `SmartBrainOwner<T>`. Ma:
+- stan dla komendy i spisu (`State`: ucieka, idzie, żeruje, odpoczywa, czuwa, stoi), liczony z synchronizowanej akcji `Action` i z ruchu, bez zapisu;
+- odległość ucieczki zależną od chodu gracza: skradanie daje `fleeMin`, sprint `fleeMax`, zwykły chód wartość pośrodku, a tryb obserwatora 0;
+- nawigację `SmoothGroundNavigation`;
+- brak rozmnażania (od FA2 albo później).
+
+Wariant tekstury idzie przez `DataTicket<String>` (`PolishAnimalRenderer.VARIANT`, wspólny renderer GeckoLib z `BoneProbe`). `RoeDeerRenderer` dziedziczy po nim: warianty to `doe`, `buck_summer` i `buck_winter`, a poroże rysuje się tylko u kozła. `RoeDeer` dziedziczy po `PolishAnimal`. Pola zapisu V8 (`Buck`, `WinterCoat`), animacje i reguła futra są bez zmian, czego pilnują `FaunaProfileTest.savedFieldsOfStepV8Unchanged` i `winterCoatAsInStepV8`.
+
+**Kategoria i limit (G.62-j, KFA-4, R15).** Sarna zostaje w kategorii `CREATURE`, ale nie liczy się do limitu wanilii. `NaturalSpawner.createState` pomija moby, dla których `isPersistenceRequired() || requiresCustomPersistence()` jest prawdą. Dlatego `PolishAnimal.requiresCustomPersistence()` zwraca `true`, a o despawnie decyduje własne `checkDespawn`:
+- w trybie spokojnym działa jak w wanilii;
+- poza nim zwierzę znika tylko wtedy, gdy najbliższy gracz jest dalej niż 128 bloków (`DESPAWN_DISTANCE`), a zwierzę nie ma imienia, smyczy ani `persistenceRequired`.
+
+Wynik odczytu kodu 26.3 (R15): kategoria `CREATURE` jest trwała (`isPersistent`), a `Animal.removeWhenFarAway` zwraca `false`, więc zwierzęta wanilii nie migają. Losowy despawn powyżej 32 bloków, opisany w R15, już ich nie dotyczy. Spawner ma własny limit: `maxNearPlayer` × liczba graczy (bez obserwatorów), liczony dla wszystkich załadowanych saren.
+
+**Spawn (`entity/spawn`).** Oba spawny wyłącza reguła gry `polishforests:forest_fauna` albo wanilijna `spawn_mobs`. Reguła jest domyślnie włączona, w kategorii SPAWNING. Jej id jest pisane małymi literami, bo 26.3 nie przyjmuje wielkich liter w id reguł (plan miał `forestFauna`). Spawn działa tylko w typach świata moda: w „Polsce” (`PolandChunkGenerator`) i w „Default + Polish Forests” (`VanillaForestsBiomeSource`). Listy spawnów biomów są bez zmian (KFA-4).
+
+*Spawner* (`FaunaSpawner.tick` na `END_LEVEL_TICK`, co 300 ticków) dla każdego gracza:
+1. Wylicza cel: mniejszą z wartości `maxNearPlayer` oraz gęstość × ważona powierzchnia lasu w promieniu 64 bloków. Powierzchnię liczy na kracie co 8 bloków. Waga kolumny pochodzi z biomu wierzchu (`MOTION_BLOCKING_NO_LEAVES`); gdy las jest w zasięgu 8 bloków, kolumna dostaje wagę skraju.
+2. Zaokrągla cel losowo i odejmuje sarny w promieniu 80 bloków.
+3. Brakującą grupę stawia 24–64 bloki od gracza, w chunku, który tyka encje, nie bliżej niż 24 bloki od innego gracza. Siedlisko losuje według wagi.
+
+*Spawn przy generacji* (`spawnAtGeneration`):
+- W „Polsce” wywołuje go `PolandChunkGenerator.spawnOriginalMobs` z `ChunkHabitats` zdjętymi z chunka.
+- W „Default + Polish Forests” wywołuje go mixin `NoiseBasedChunkGeneratorMixin`: wstrzyknięcie na HEAD zdejmuje siedliska do `FaunaSpawner.HELD_HABITATS`, a wstrzyknięcie na RETURN spawnuje, chyba że ustawienia generatora wyłączają moby.
+- W obu typach świata spawn moda biegnie po spawnie wanilii, więc zwierzęta wanilii są losowane jak przed krokiem (sarna nie zajmuje im miejsca).
+- Oczekiwana liczba grup = gęstość × suma wag kolumn chunka / średnia wielkość grupy. Kolumnę losuje według wag: las 1, skraj w obrębie chunka `edgeWeight`, woda i zajęte bloki 0.
+- Los pochodzi z własnego `XoroshiroRandomSource`, liczonego z ziarna świata, pozycji chunka i **nowej soli `FaunaSpawner.GENERATION_SALT` = `0x5A4E_FA01_6E4E_5A17L`**. Żadna stara sól ani stary strumień losowań nie jest używany.
+- Spawn nie stawia bloków, więc wyniki `determinism` i złote pliki się nie zmieniają.
+
+*Miejsce* (`place`, R14) musi spełnić wszystkie warunki:
+- wysokość z mapy `MOTION_BLOCKING_NO_LEAVES`, więc 0 zwierząt na koronach; warstwa śniegu jest pomijana;
+- grunt z tagu `polishforests:forest_animals_spawnable_on`: `grass_block`, `podzol`, `coarse_dirt`, `rooted_dirt`, `moss_block`, `dirt`, omszona bielica, mchy torfowce i rędzina;
+- brak płynu w gruncie i w kolumnie;
+- cienki blok z kolizją (ściółka, dywan mchu) podnosi stopy zwierzęcia;
+- światło `getRawBrightness(pos, 0)` ≥ 5 (próg z V10, do kalibracji w FA2);
+- wolne miejsce na pudełko kolizji encji.
+
+Grupa rozchodzi się do 4 bloków od pierwszej sarny, a przy generacji zostaje w granicach chunka. Liczniki przyczyn odrzucenia i liczby spawnów (`REASONS`, `GENERATION_*`, `SPAWNER_*`) trafiają do spisu w gametescie.
+
+**Gęstość (KFA-5, R16).** Sarna: 0,1 osobnika na ha lasu × 30 = 3 na ha. Gęstość rzeczywista to ok. 10 na km², rząd wielkości z danych GUS o liczebności saren i powierzchni lasów Polski (przybliżenie [Ź]); mnożnik 30 to środek przedziału ×20–50 z CP-D.3. Daje to ok. 0,077 sarny na chunk lasu. Przy średniej grupie 2 to 0,038 grupy na chunk, w przedziale startowym R16 (0,02–0,04). W kole o promieniu 64 bloków wypada ok. 3,9 sarny (`FaunaProfileTest.forestChunkExpectsAFewDeer`), a limit przy graczu to 8. Wagi siedlisk:
+
+| Siedlisko | Waga |
+|---|---|
+| lasy liściaste i mieszane | 1,0 |
+| bory, jedlina, buczyna górska, olszyna szara | 0,8 |
+| ols, świerczyna górska | 0,5 |
+| bór bagienny | 0,4 |
+| skraj lasu | 0,35 |
+| kosodrzewina | 0,2 |
+
+Kalibracja docelowa jest w FA2.
+
+**Mózg sarny (SBL).** Czujniki:
+- gracze w promieniu 50 × 12 (`NearbyLivingEntitySensor`, co 10 ticków); zasięg widzenia wynika z atrybutu `FOLLOW_RANGE` = 40;
+- `HurtBySensor`.
+
+Zachowania działające zawsze:
+- wypływanie na powierzchnię;
+- panika po ciosie (prędkość 2,4);
+- ucieczka przed graczem (`AvoidEntity`): gdy gracz jest bliżej niż odległość ucieczki, sarna biegnie, aż będzie o 16 bloków dalej niż ta odległość;
+- patrzenie na cel i ruch do celu.
+
+Zachowania w bezczynności:
+- czujność (animacja `alert`), gdy gracz jest w zasięgu widzenia;
+- w przeciwnym razie losowo jedno z trzech:
+  - wędrówka: cel w promieniu 12 × 4, tylko w kolumnie z wagą siedliska > 0, więc sarna nie odchodzi w pole dalej niż na skraj;
+  - żer: animacja `eat`, 80–240 ticków;
+  - odpoczynek: animacja `rest`, 200–600 ticków.
+
+Animacje V8 zależą od stanu; w ruchu to `walk` albo `run`. Harmonogram dobowy jest już w profilu, ale mózgiem steruje dopiero od FA2.
+
+**Komenda `/polishforests fauna [promień]`.** Domyślny promień to 64 (zakres 1–256), komenda nie wymaga uprawnień. Wypisuje:
+- nagłówek;
+- linie według gatunku: zwierzęta moda na zielono, ze stanami;
+- zwierzęta wanilii z kategorii `CREATURE` i `AMBIENT`, aksolotle i zwierzęta wodne;
+- dopisek, gdy reguła `forest_fauna` jest wyłączona.
+
+Teksty są w en_us i pl_pl. Z `FaunaCommand.census` korzysta też gametest.
+
+**Gametest `fauna`.** Bez `-Psites` (albo z `-Psites=census`) uruchamia spis FA1 (`FaunaCensus`).
+
+*Światy:*
+- „Polska” REAL i GAMEPLAY, każdy w trybach N i D, w miejscach `*_1` wycinka (`-Psites=census,all` daje wszystkie miejsca);
+- „Default + Polish Forests” (ziarno 20261104), miejsca z `FaunaSites.locate` dla grądu i boru świeżego.
+
+*Warunki spisu:* gracz jest w trybie twórczym i niewidzialny (sarny przed nim nie uciekają, a spawner go liczy), czas jest zamrożony na 6000.
+
+*Pomiar w każdym miejscu:* 5 próbek w ciągu `-PfaunaMinutes` minut (domyślnie 5). Każda próbka zapisuje:
+- liczbę saren w promieniu 64 bloków;
+- sarny na liściach i nad gruntem, w wodzie i w bloku (FAIL, gdy którakolwiek z tych liczb > 0);
+- histogram gruntu, liczbę saren pod okapem i linię komendy.
+
+FAIL jest też wtedy, gdy średnia z trzech ostatnich próbek ≤ 0.
+
+*Dodatkowe próby w GAMEPLAY N:*
+- despawn: sarna zwykła, nazwana i trwała na 140 blokach oraz zwykła na 100; ma zniknąć tylko zwykła na 140. Próba wymaga dystansu symulacji 12.
+- ucieczka: widoczny gracz 12 bloków od sarny; sarna musi przejść w stan FLEEING i oddalić się na ponad 20 bloków.
+- eksploracja: 8 przeskoków co 512 bloków, po 600 ticków każdy; liczba saren na załadowany chunk nie może przekroczyć 1,5 × wartość początkowa + 0,02.
+
+*Zwierzęta wanilii:* dwa światy GAMEPLAY N, z regułą `forest_fauna` włączoną i wyłączoną. Liczone są wilki, lisy, króliki i żaby w promieniu 96 bloków. FAIL tylko wtedy, gdy z fauną jest ich mniej niż połowa liczby bez fauny minus 3.
+
+Raport trafia do `build/fauna/census.txt`. `-Psites=model` uruchamia kalibrację V8 (z regułą `forest_fauna` ustawioną na false).
+
+**Mapa testów (KFA-9).** Obszar `fauna` w `tools/dev/test_plan.py` obejmuje ścieżki `entity/` (main), `client/entity/`, `gametest/Fauna*` i `tools/fauna/`. Wybiera dla nich `FaunaModelTest`, `FaunaProfileTest`, `checkArt`, gametest `fauna` i `fauna -Psites=model`. Opis jest w regule 10 w `docs/mapa-testow.md`.
+
+**Testy jednostkowe.** `FaunaProfileTest` (10 testów) sprawdza:
+- profil sarny: mnożnik 20–50, wagi tylko dla lasów, grupy 1–3 latem, ucieczka z 20–40 bloków, wymiary z C2;
+- futro z V8 i pola zapisu z V8;
+- harmonogram pokrywający całą dobę;
+- gęstość na chunk i w kole 64 bloków;
+- że losowe zaokrąglenie zachowuje średnią;
+- że los generacji zależy od chunka i ziarna;
+- losowanie kolumny według wag;
+- odległości despawnu i spawnu;
+- wagę skraju w chunku, który jest w połowie lasem, a w połowie łąką.
+
+Przeszły też `FaunaModelTest`, `RegistrySnapshotTest`, `MixinTargetsTest`, `PolishForestsCommandsTest`, `checkDatagen`, `checkArt` i fastTest.
+
+| # | Wybór FA1 | Wartość i powód |
+|---|---|---|
+| FA1-a | Reguła gry | `polishforests:forest_fauna` zamiast `forestFauna` z planu, bo 26.3 przyjmuje w id reguł tylko małe litery; klucz tłumaczenia `gamerule.polishforests.forest_fauna` |
+| FA1-b | Kategoria i limit | `CREATURE`, ale `requiresCustomPersistence()` = `true` (poza limitem wanilii) i własne `checkDespawn` (powyżej 128 bloków, bez imienia, smyczy i `persistenceRequired`) |
+| FA1-c | Kolejność przy generacji | Spawn moda po spawnie wanilii w tym samym kroku generacji, więc zwierzęta wanilii są jak przed FA1 |
+| FA1-d | Sól | Nowa sól `GENERATION_SALT` = `0x5A4E_FA01_6E4E_5A17L` dla losu spawnu przy generacji; spawner w grze używa losu poziomu |
+| FA1-e | Tag gruntu | Lista z planu plus `minecraft:dirt` (odsłonięta ziemia w lukach) i rędzina moda; bez piasku (sarna bywa na wydmach tylko przechodząc) |
+| FA1-f | Skraj lasu | Przy generacji tylko w obrębie chunka (siedliska sąsiednich chunków są niedostępne); w spawnerze z 4 punktów 8 bloków od kolumny |
+| FA1-g | Siedlisko w grze | Spawner bierze biom wierzchu (`MOTION_BLOCKING_NO_LEAVES`), a nie kody ekotonu, bo te istnieją tylko w czasie generacji |
+| FA1-h | Gęstość | 0,1 sarny na ha × 30, źródło GUS (przybliżenie); kalibracja w FA2 |
+| FA1-i | Gracz spisu | Twórczy i niewidzialny, żeby sarny nie uciekały z koła pomiaru; ucieczkę sprawdza osobna próba z widocznym graczem |
+| FA1-j | Despawn w spisie | Dystans symulacji 12, żeby sarna 140 bloków od gracza była jeszcze tykana |
+| FA1-k | Migawka rejestru | Nagłówek sprzed V8, żeby zmiana była samym dopisaniem dwóch wierszy |
+| FA1-l | Harmonogram | Jest w profilu od FA1 (test pokrycia doby), mózg korzysta z niego od FA2 |
+
+**Do sprawdzenia w grze (etap 1; pełna lista w „Stan po FA1”).**
+1. Nowy świat „Polska”: wpisz `/polishforests find biome oak_hornbeam_forest`, pobądź chwilę w lesie, potem wpisz `/polishforests fauna 64`. Sarny powinny być w pobliżu.
+2. `/polishforests find biome fresh_pine_forest`: sarny na bielicy pod sosnami.
+3. Podejdź do sarny: powinna uciec.
+4. Świat „Default + Polish Forests”: `/polishforests find biome oak_hornbeam_forest`. Sarny powinny być i tam, a wilki, lisy i króliki nadal w lesie (sprawdź `/polishforests fauna 96`).
+5. `/gamerule polishforests:forest_fauna false`: nowe sarny przestają się pojawiać.
