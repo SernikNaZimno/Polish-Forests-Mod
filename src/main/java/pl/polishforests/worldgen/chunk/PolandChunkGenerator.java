@@ -1084,12 +1084,14 @@ public final class PolandChunkGenerator extends ChunkGenerator implements Forest
 	@Override
 	public void spawnOriginalMobs(WorldGenRegion worldGenRegion) {
 		ChunkPos center = worldGenRegion.getCenter();
-		// The last generation stage: the chunk habitats are no longer needed (§8.3).
-		worldGenRegion.getChunk(center.x(), center.z()).removeAttached(ModFeatures.CHUNK_HABITATS);
+		// The last generation stage: the chunk habitats are no longer needed (§8.3). Step FA1: the fauna spawn reads them
+		// first and places its animals after vanilla's spawn, which sees the same chunk as before.
+		ChunkHabitats habitats = worldGenRegion.getChunk(center.x(), center.z()).removeAttached(ModFeatures.CHUNK_HABITATS);
 		BlockPos sourcePos = center.getWorldPosition().atY(worldGenRegion.getMaxY());
 		WorldgenRandom random = new WorldgenRandom(new LegacyRandomSource(RandomSupport.generateUniqueSeed()));
 		random.setDecorationSeed(worldGenRegion.getSeed(), center.getMinBlockX(), center.getMinBlockZ());
 		NaturalSpawner.spawnMobsForChunkGeneration(worldGenRegion, sourcePos, center, random);
+		pl.polishforests.entity.spawn.FaunaSpawner.spawnAtGeneration(worldGenRegion, habitats);
 	}
 
 	@Override

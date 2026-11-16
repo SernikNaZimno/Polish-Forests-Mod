@@ -1,0 +1,13 @@
+{
+  "values": [
+    "minecraft:grass_block",
+    "minecraft:podzol",
+    "minecraft:coarse_dirt",
+    "minecraft:rooted_dirt",
+    "minecraft:moss_block",
+    "minecraft:dirt",
+    "polishforests:mossy_podzol",
+    "polishforests:sphagnum_block",
+    "polishforests:rendzina"
+  ]
+}

@@ -235,7 +235,9 @@ public final class PolishForestsCommands {
 						.then(Commands.argument("radius_km", IntegerArgumentType.integer(1, 200))
 								.executes(ctx -> highest(ctx, IntegerArgumentType.getInteger(ctx, "radius_km")))))
 				.then(Commands.literal("list").executes(PolishForestsCommands::list))
-				.then(Commands.literal("here").executes(PolishForestsCommands::here)));
+				.then(Commands.literal("here").executes(PolishForestsCommands::here))
+				// Step FA1: the animals around the player by species and state.
+				.then(FaunaCommand.node()));
 	}
 
 	private static LandscapeModel modelOrNull(ServerLevel level) {

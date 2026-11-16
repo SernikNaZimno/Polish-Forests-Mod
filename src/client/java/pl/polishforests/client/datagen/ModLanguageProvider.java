@@ -504,6 +504,18 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 				+ "%s m deep, O %s, P %s, %s °C, trees: %s");
 		b.add("polishforests.command.here_no_trees", "none");
 		b.add("polishforests.command.here_placeholder", "%s (placeholder until M3)");
+		// Step FA1: the fauna game rule and /polishforests fauna.
+		b.add("gamerule.polishforests.forest_fauna", "Spawn forest animals of Polish Forests");
+		b.add("polishforests.command.fauna", "Animals within %s blocks: %s");
+		b.add("polishforests.command.fauna_none", "No animals within %s blocks");
+		b.add("polishforests.command.fauna_species", "%s: %s");
+		b.add("polishforests.command.fauna_off", "New forest animals are off (game rule %s or spawn_mobs)");
+		b.add("polishforests.fauna.state.fleeing", "fleeing");
+		b.add("polishforests.fauna.state.moving", "walking");
+		b.add("polishforests.fauna.state.grazing", "grazing");
+		b.add("polishforests.fauna.state.resting", "resting");
+		b.add("polishforests.fauna.state.alert", "alert");
+		b.add("polishforests.fauna.state.idle", "standing");
 	}
 
 	private static void polish(TranslationBuilder b) {
@@ -619,6 +631,17 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 				+ "O %s, P %s, %s °C, drzewa: %s");
 		b.add("polishforests.command.here_no_trees", "brak");
 		b.add("polishforests.command.here_placeholder", "%s (zastępstwo do M3)");
+		b.add("gamerule.polishforests.forest_fauna", "Pojawianie się leśnych zwierząt Polish Forests");
+		b.add("polishforests.command.fauna", "Zwierzęta w promieniu %s bloków: %s");
+		b.add("polishforests.command.fauna_none", "Brak zwierząt w promieniu %s bloków");
+		b.add("polishforests.command.fauna_species", "%s: %s");
+		b.add("polishforests.command.fauna_off", "Nowe leśne zwierzęta są wyłączone (reguła gry %s albo spawn_mobs)");
+		b.add("polishforests.fauna.state.fleeing", "ucieka");
+		b.add("polishforests.fauna.state.moving", "idzie");
+		b.add("polishforests.fauna.state.grazing", "żeruje");
+		b.add("polishforests.fauna.state.resting", "odpoczywa");
+		b.add("polishforests.fauna.state.alert", "czuwa");
+		b.add("polishforests.fauna.state.idle", "stoi");
 		b.add("modmenu.descriptionTranslation.polishforests", "Proceduralne krajobrazy Polski w skali 1:1 z przyrodniczo "
 				+ "wiernymi lasami, florą i fauną oraz integracją z porami roku Serene Seasons.");
 	}

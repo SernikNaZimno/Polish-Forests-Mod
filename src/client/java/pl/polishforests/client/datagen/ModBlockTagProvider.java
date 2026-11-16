@@ -18,6 +18,7 @@ import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 import pl.polishforests.PolishForests;
+import pl.polishforests.entity.spawn.FaunaRules;
 import pl.polishforests.block.ModBlocks;
 import pl.polishforests.block.GroundPlant;
 import pl.polishforests.block.TreeFoliage;
@@ -222,6 +223,12 @@ final class ModBlockTagProvider {
 			}
 			builder(BlockTags.BLOCKS_MOTION_NO_LEAVES).add(key(surface.get(0))).add(key(surface.get(1))).add(sphagnumBlock)
 					.add(key(ModBlocks.treeRoot()));
+			// Step FA1: the ground the forest animals of the mod appear on (FaunaSpawner): the forest soils of vanilla and of the
+			// mod (mossy podzol, sphagnum block, rendzina of the Tatra forests); no sand, mud, scree or rock.
+			builder(FaunaRules.SPAWNABLE_ON).add(key(net.minecraft.world.level.block.Blocks.GRASS_BLOCK))
+					.add(key(net.minecraft.world.level.block.Blocks.PODZOL)).add(key(net.minecraft.world.level.block.Blocks.COARSE_DIRT))
+					.add(key(net.minecraft.world.level.block.Blocks.ROOTED_DIRT)).add(key(net.minecraft.world.level.block.Blocks.MOSS_BLOCK))
+					.add(key(net.minecraft.world.level.block.Blocks.DIRT)).add(mossyPodzol).add(sphagnumBlock).add(key(surface.get(2)));
 		}
 	}
 

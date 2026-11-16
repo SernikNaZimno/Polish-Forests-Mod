@@ -39,8 +39,10 @@ import pl.polishforests.entity.roedeer.RoeDeer;
 import pl.polishforests.gametest.probe.FaunaProbes;
 
 /**
- * The fauna of step V8 (docs/04-pionowy-wycinek.md §3), {@code -Pgametest=fauna}, only by name: the roe deer model in the
- * game against the preview from code, and the calibration of GeckoLib's axes and rotations.
+ * The fauna game test, {@code -Pgametest=fauna}, only by name. Step FA1: the default ({@code -Psites=census}) is the census of
+ * the animals in the worlds of the mod ({@link FaunaCensus}); {@code -Psites=model} is the model check of step V8
+ * (docs/04-pionowy-wycinek.md §3) described here: the roe deer model in the game against the preview from code, and the
+ * calibration of GeckoLib's axes and rotations.
  *
  * <ol>
  * <li><b>Axis gauge</b> ({@link FaunaProbes}): two gauges, one at rest facing south, one in its animation pose
@@ -85,6 +87,19 @@ public final class FaunaClientGameTest implements FabricClientGameTest {
 		if (!"fauna".equals(System.getProperty("polishforests.gametest", "all"))) {
 			return;
 		}
+		// Step FA1: -Psites=model is the model calibration of V8 below, the default (-Psites=census) the census of the
+		// fauna in the worlds of the mod (FaunaCensus); -Psites=model,census runs both.
+		String sites = System.getProperty("polishforests.sites", "");
+		if (sites.isBlank() || sites.contains("census")) {
+			List<String> censusFailures = new FaunaCensus(context, sites).run();
+			if (!sites.contains("model")) {
+				if (!censusFailures.isEmpty()) {
+					throw new AssertionError("Fauna census failed:\n" + String.join("\n", censusFailures));
+				}
+				return;
+			}
+			failures.addAll(censusFailures);
+		}
 		if (!FaunaProbes.enabled()) {
 			throw new AssertionError("The axis gauge is not registered");
 		}
@@ -103,7 +118,8 @@ public final class FaunaClientGameTest implements FabricClientGameTest {
 		});
 		try (TestSingleplayerContext sp = context.worldBuilder().create()) {
 			for (String c : new String[] {"gamerule advance_time false", "gamerule advance_weather false", "gamerule spawn_mobs false",
-					"time set " + NOON, "weather clear", "difficulty peaceful", "gamerule send_command_feedback false"}) {
+					"time set " + NOON, "weather clear", "difficulty peaceful", "gamerule send_command_feedback false",
+				"gamerule polishforests:forest_fauna false"}) {
 				sp.getServer().runCommand(c);
 			}
 			BlockPos o = sp.getServer().computeOnServer(FaunaClientGameTest::buildBackdrop);

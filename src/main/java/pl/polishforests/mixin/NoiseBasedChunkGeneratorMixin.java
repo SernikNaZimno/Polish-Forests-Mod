@@ -20,6 +20,8 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+import pl.polishforests.entity.spawn.FaunaSpawner;
+import pl.polishforests.worldgen.chunk.ChunkHabitats;
 import pl.polishforests.worldgen.feature.ModFeatures;
 import pl.polishforests.worldgen.vanilla.VanillaForestsBiomeSource;
 
@@ -48,7 +50,22 @@ abstract class NoiseBasedChunkGeneratorMixin {
 	@Inject(method = "spawnOriginalMobs", at = @At("HEAD"))
 	private void polishforests$removeHabitats(WorldGenRegion region, CallbackInfo ci) {
 		if (((ChunkGenerator) (Object) this).getBiomeSource() instanceof VanillaForestsBiomeSource) {
-			region.getChunk(region.getCenter().x(), region.getCenter().z()).removeAttached(ModFeatures.CHUNK_HABITATS);
+			// Step FA1: kept for the fauna spawn after vanilla's (below), which sees the chunk as before.
+			ChunkAccess chunk = region.getChunk(region.getCenter().x(), region.getCenter().z());
+			FaunaSpawner.HELD_HABITATS.set(chunk.removeAttached(ModFeatures.CHUNK_HABITATS));
+		}
+	}
+
+	/**
+	 * Step FA1: the spawn of the mod's animals at generation, after vanilla's spawn, from the habitats the chunk held
+	 * ({@code FaunaSpawner.spawnAtGeneration}); not when the generator settings disable the mob generation.
+	 */
+	@Inject(method = "spawnOriginalMobs", at = @At("RETURN"))
+	private void polishforests$spawnFauna(WorldGenRegion region, CallbackInfo ci) {
+		ChunkHabitats habitats = FaunaSpawner.HELD_HABITATS.get();
+		FaunaSpawner.HELD_HABITATS.remove();
+		if (habitats != null && !((NoiseBasedChunkGenerator) (Object) this).generatorSettings().value().disableMobGeneration()) {
+			FaunaSpawner.spawnAtGeneration(region, habitats);
 		}
 	}
 

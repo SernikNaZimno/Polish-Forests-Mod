@@ -560,8 +560,10 @@ tasks.register('generateArt', ArtTask) {
 // (ecotones: only by name, not in all; screenshots of biome borders, step S8b)
 // (slice -Psites=felling: step G1, felling trees with a tree-felling mod; needs -PtreeFelling=fallingtree|treeharvester,
 // results in build/felling/<mod>.txt)
-// (fauna: only by name; step V8, the roe deer model against the preview of tools/fauna and the axis gauge of GeckoLib,
-// screenshots fauna_*, results in build/fauna/fauna.txt)
+// (fauna: only by name; step FA1: default -Psites=census, the census of the roe deer in the worlds of the mod (-Pscales=
+// realistic|gameplay|vanilla, -Pmodes, -PfaunaMinutes=<minutes per place, default 5>, -Psites=census,all for all places),
+// results in build/fauna/census.txt; -Psites=model is step V8, the roe deer model against the preview of tools/fauna and the
+// axis gauge of GeckoLib, screenshots fauna_*, results in build/fauna/fauna.txt)
 // (slice: only by name; the fixed places of the vertical slice from src/test/resources/slice_sites.txt, step V0;
 // -Pmodes=natural|present_day picks a vegetation mode, -Psites=<place names>|none; the cameras come from
 // src/test/resources/slice_cameras.txt, -PfindSliceCameras chooses them anew and writes the file; -Pgametest=stages
@@ -752,6 +754,9 @@ tasks.named('runClientGameTest') {
 	// results (build/fauna/fauna.txt).
 	jvmArgs "-Dpolishforests.fauna.expected=${file('src/test/resources/fauna').absolutePath}"
 	jvmArgs "-Dpolishforests.fauna.out=${layout.buildDirectory.dir('fauna').get().asFile.absolutePath}"
+	if (project.hasProperty('faunaMinutes')) {
+		jvmArgs "-Dpolishforests.fauna.minutes=${project.property('faunaMinutes')}"
+	}
 	if (project.hasProperty('profile')) {
 		jvmArgs "-XX:StartFlightRecording=filename=${layout.buildDirectory.file('profile.jfr').get().asFile.absolutePath},settings=profile"
 	}

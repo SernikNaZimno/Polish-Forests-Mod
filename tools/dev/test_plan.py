@@ -18,6 +18,7 @@ import sys
 MAP = [
     ('docs/', []),
     ('tools/art/', ['art']),
+    ('tools/fauna/', ['art', 'fauna']),
     ('tools/', []),
     ('.dev-handoff/', []),
     ('src/main/java/pl/polishforests/worldgen/landscape/', ['unit', 'terrain', 'tatra', 'generation']),
@@ -38,7 +39,7 @@ MAP = [
     ('src/main/java/pl/polishforests/worldgen/', ['unit', 'terrain', 'generation', 'norms']),
     ('src/main/generated/data/polishforests/worldgen/', ['unit', 'generation', 'norms']),
     ('src/main/java/pl/polishforests/block/', ['unit', 'blocks']),
-    ('src/main/java/pl/polishforests/entity/', ['unit', 'blocks']),
+    ('src/main/java/pl/polishforests/entity/', ['unit', 'blocks', 'fauna']),
     ('src/main/generated/', ['unit', 'blocks', 'datagen']),
     ('src/main/java/pl/polishforests/season/', ['unit', 'seasons']),
     ('src/main/java/pl/polishforests/command/', ['unit', 'ui']),
@@ -46,8 +47,11 @@ MAP = [
     ('src/main/java/pl/polishforests/compat/', ['unit', 'mixins']),
     ('src/main/resources/assets/', ['render']),
     ('src/client/', ['unit', 'render']),
+    # Step FA1: the fauna (animal base, spawners, renderers, the fauna game test and tools/fauna).
+    ('src/client/java/pl/polishforests/client/entity/', ['unit', 'render', 'fauna']),
     ('src/gametest/', ['gametest_code']),
     ('src/gametest/java/pl/polishforests/gametest/TatraClientGameTest', ['gametest_code', 'tatra']),
+    ('src/gametest/java/pl/polishforests/gametest/Fauna', ['gametest_code', 'fauna']),
     ('src/gametest/java/pl/polishforests/gametest/TatraDetailsCheck', ['gametest_code', 'tatra']),
     ('src/test/', ['unit']),
     # Step TT1: the Tatra tests and the golden Tatra file.
@@ -82,6 +86,10 @@ TESTS = {
     'mixins': (["./gradlew test --tests '*MixinTargetsTest*'"], ['./gradlew runClientGameTest -Pgametest=probes   # only for render mixins']),
     'render': (['# screenshots of the affected board only, once per round that changes rendering; never to check repeatability'], []),
     'art': (['./gradlew checkArt', 'python tools/art/lint.py'], []),
+    'fauna': (["./gradlew test --tests '*FaunaModelTest*' --tests '*FaunaProfileTest*'   # V8 model files, FA1 profiles and spawn arithmetic",
+               './gradlew checkArt   # tools/fauna assets',
+               './gradlew runClientGameTest -Pgametest=fauna -Psites=model   # V8 model calibration, only after a change of the model or renderer',
+               './gradlew runClientGameTest -Pgametest=fauna   # FA1 census: build/fauna/census.txt'], []),
     'gametest_code': (['./gradlew compileGametestJava   # plus the changed game test itself',
                        "./gradlew test --tests '*PerformanceThresholdsTest*'   # CP-D.5 thresholds on the F7 numbers (step C2)"], []),
 }
