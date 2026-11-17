@@ -238,6 +238,9 @@ class FaunaBehaviourTest {
 		// A sow lets a player come closer than the flight distance of a sneaking one before she warns, and stops short.
 		assertTrue(WildBoar.WARN_DISTANCE < B.fleeMin());
 		assertTrue(WarnCharge.STOP_SHORT >= 1 && WarnCharge.STOP_SHORT < WarnCharge.STOP_AT);
+		// Her young count as near anywhere in her sounder: mother and young each stay within the reach of their leader
+		// (FA3 stage 2: a radius of the reach itself let the lagging young switch the holding off).
+		assertTrue(WildBoar.YOUNG_NEAR >= 2 * pl.polishforests.entity.base.DailyRoutine.LEADER_REACH);
 		// Sounders all year, no winter groups and no winter coat.
 		assertEquals(B.summerGroup(), B.group(SubSeason.MID_WINTER));
 		assertFalse(B.winterCoat(SubSeason.MID_WINTER));

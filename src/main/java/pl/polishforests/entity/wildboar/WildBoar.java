@@ -107,8 +107,13 @@ public class WildBoar extends PolishAnimal<WildBoar> {
 	public static final float WARN_DISTANCE = 10;
 	/** Ticks between two warnings of one sow. */
 	public static final int WARN_COOLDOWN = 600;
-	/** Radius (blocks) within which her young make a sow hold her ground. */
-	public static final double YOUNG_NEAR = 16;
+	/**
+	 * Radius (blocks) within which her young make a sow hold her ground: twice the reach of a group
+	 * ({@link DailyRoutine#LEADER_REACH}), since the young and their mother each stay within that reach of their leader and
+	 * the young follow only once beyond it (FA3 stage 2: with the reach itself, 16, the young lagging behind a sow on her
+	 * way to her bed switched the holding off).
+	 */
+	public static final double YOUNG_NEAR = 2 * DailyRoutine.LEADER_REACH;
 	/** The sub-seasons in which a sow with young holds her ground (March to June, report 07 §3.4). */
 	public static final Set<SubSeason> WARN_SEASONS = EnumSet.of(SubSeason.EARLY_SPRING, SubSeason.MID_SPRING, SubSeason.LATE_SPRING,
 			SubSeason.EARLY_SUMMER);
@@ -160,6 +165,9 @@ public class WildBoar extends PolishAnimal<WildBoar> {
 	private boolean rootDug;
 	/** Whether the rest being walked to is a wallow (set by {@link #restTarget}, taken by {@link #settle}). */
 	private boolean wallowNext;
+	/** The patches this boar has rooted since it was loaded and the blocks of the last one (not saved; the fauna game test). */
+	private int rootedPatches;
+	private List<BlockPos> lastPatch = List.of();
 
 	public WildBoar(EntityType<? extends WildBoar> type, Level level) {
 		super(type, level);
@@ -330,6 +338,27 @@ public class WildBoar extends PolishAnimal<WildBoar> {
 		return holdsGround() ? Math.min(WARN_DISTANCE, super.fleeDistance(player)) : super.fleeDistance(player);
 	}
 
+	/** The state behind {@link #holdsGround()} for the census of the fauna game test. */
+	public String warnState() {
+		int linked = 0;
+		int babies = 0;
+		double nearest = Double.NaN;
+		java.util.UUID id = getUUID();
+		for (Entity e : level().getEntities(this, getBoundingBox().inflate(64, 16, 64), e -> e.getType() == getType())) {
+			if (e instanceof WildBoar b && id.equals(b.motherId())) {
+				linked++;
+				if (b.isBaby()) {
+					babies++;
+				}
+				double d = distanceTo(b);
+				nearest = Double.isNaN(nearest) ? d : Math.min(nearest, d);
+			}
+		}
+		return "sub-season " + subSeason + ", young near " + youngNear + " (linked " + linked + ", young " + babies + ", nearest "
+				+ String.format(java.util.Locale.ROOT, "%.1f", nearest) + "), cooldown over "
+				+ (level().getGameTime() - lastWarn >= WARN_COOLDOWN);
+	}
+
 	/** Whether the warning charge runs ({@link WarnCharge}). */
 	public boolean isWarning() {
 		return warning;
@@ -344,14 +373,28 @@ public class WildBoar extends PolishAnimal<WildBoar> {
 		lastWarn = level().getGameTime();
 	}
 
-	/** A member of a fleeing sounder follows in single file; nobody flees while warning. */
+	/**
+	 * A member of a fleeing sounder follows in single file; nobody flees while warning; a young one whose mother holds her
+	 * ground or warns stays by her (FA3 stage 2: young that fled from the player before the sow could warn took her reason
+	 * to hold her ground away, and she fled instead of warning).
+	 */
 	@Override
 	public boolean fleesAlone() {
-		if (warning) {
+		if (warning || isBaby() && motherHolds()) {
 			return false;
 		}
 		PolishAnimal<?> leader = leader();
 		return leader == null || !leader.isFleeing() || distanceTo(leader) > 2 * DailyRoutine.LEADER_REACH;
+	}
+
+	/** Whether the mother of this young one is near and holds her ground or warns. */
+	private boolean motherHolds() {
+		java.util.UUID id = motherId();
+		if (id == null || !(level() instanceof ServerLevel server)) {
+			return false;
+		}
+		return server.getEntity(id) instanceof WildBoar sow && sow.isAlive() && (sow.isWarning() || sow.holdsGround())
+				&& distanceTo(sow) <= YOUNG_NEAR;
 	}
 
 	/** A new flight (not one from another animal's warning) starts with a snort; a leader puts its sounder in single file. */
@@ -435,13 +478,27 @@ public class WildBoar extends PolishAnimal<WildBoar> {
 				rootDug = true;
 				rootTimer = -1;
 				if (getRandom().nextFloat() < BoarRooting.PATCH_CHANCE) {
-					BoarRooting.dig(level, blockPosition(), getRandom());
+					List<BlockPos> patch = BoarRooting.dig(level, blockPosition(), getRandom());
+					if (!patch.isEmpty()) {
+						rootedPatches++;
+						lastPatch = patch;
+					}
 				}
 			}
 		}
 		if ((tickCount + getId()) % 20 == 0) {
 			youngNear = !isMale() && !isBaby() && youngNear(level);
 		}
+	}
+
+	/** The patches this boar has rooted since it was loaded (the fauna game test). */
+	public int rootedPatches() {
+		return rootedPatches;
+	}
+
+	/** The ground blocks of the last patch it rooted (the fauna game test). */
+	public List<BlockPos> lastPatch() {
+		return lastPatch;
 	}
 
 	/** Whether one of her young is within {@value #YOUNG_NEAR} blocks. */

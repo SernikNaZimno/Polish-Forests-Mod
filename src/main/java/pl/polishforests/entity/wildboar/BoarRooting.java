@@ -32,7 +32,8 @@ import pl.polishforests.worldgen.habitat.HabitatBiome;
  * dirt ({@value #COARSE_SHARE} of them) or rooted dirt, at most one block above or below its feet, in the habitats of
  * {@link #ROOTING} (the fertile broadleaf and riparian forests of report 07: oak-hornbeam and beech forests, the mixed
  * forest, the riparian forests). The plant on such a block (grass, a fern, a herb, a flower, a snow layer) is removed
- * without drops; a block with a sapling, leaves, a fluid or a solid block on it stays.
+ * without drops (a double plant whole: its upper half goes with the lower one); a block with a sapling, leaves, a climber,
+ * a fluid or a solid block (a trunk, a root, a root flare) on it stays.
  * <li><b>Wallowing</b> (kąpielisko): in the wet forests of {@link #WALLOWING} a rest of a leader or a lone boar goes with
  * the chance {@value #WALLOW_CHANCE} to the ground next to water within {@value #WALLOW_RADIUS} blocks; there, with the
  * chance {@value #MUD_CHANCE}, one grass or dirt block next to the water becomes mud.
@@ -64,6 +65,8 @@ public final class BoarRooting {
 	public static final LongAdder PATCHES = new LongAdder();
 	public static final LongAdder BLOCKS = new LongAdder();
 	public static final LongAdder REFUSED = new LongAdder();
+	/** Attempts under the rules that found no grass block to root (bare ground, litter, a plant that stays). */
+	public static final LongAdder BARE = new LongAdder();
 	public static final LongAdder WALLOWS = new LongAdder();
 	public static final LongAdder MUD = new LongAdder();
 
@@ -75,6 +78,7 @@ public final class BoarRooting {
 		PATCHES.reset();
 		BLOCKS.reset();
 		REFUSED.reset();
+		BARE.reset();
 		WALLOWS.reset();
 		MUD.reset();
 	}
@@ -90,16 +94,16 @@ public final class BoarRooting {
 	}
 
 	/**
-	 * The patch of a rooting bout around the feet of a boar (see the class comment). Returns the number of blocks changed (0
-	 * when the rules refuse it or no grass block is at hand).
+	 * The patch of a rooting bout around the feet of a boar (see the class comment). Returns the ground blocks changed
+	 * (empty when the rules refuse it or no grass block is at hand).
 	 */
-	public static int dig(ServerLevel level, BlockPos feet, RandomSource random) {
+	public static List<BlockPos> dig(ServerLevel level, BlockPos feet, RandomSource random) {
 		if (!rootsAt(level, feet)) {
-			return 0;
+			return List.of();
 		}
 		if (!FaunaRules.rooting(level)) {
 			REFUSED.increment();
-			return 0;
+			return List.of();
 		}
 		int want = PATCH_MIN + random.nextInt(PATCH_MAX - PATCH_MIN + 1);
 		List<BlockPos> patch = new ArrayList<>();
@@ -118,7 +122,8 @@ public final class BoarRooting {
 			}
 		}
 		if (patch.size() < PATCH_MIN) {
-			return 0;
+			BARE.increment();
+			return List.of();
 		}
 		for (BlockPos ground : patch) {
 			BlockPos above = ground.above();
@@ -130,7 +135,12 @@ public final class BoarRooting {
 		}
 		PATCHES.increment();
 		BLOCKS.add(patch.size());
-		return patch.size();
+		return List.copyOf(patch);
+	}
+
+	/** Whether a boar standing at these feet finds a grass block to root (the fauna game test picks its place by it). */
+	public static boolean grassAt(Level level, BlockPos feet) {
+		return groundAt(level, feet) != null;
 	}
 
 	/**
@@ -153,7 +163,9 @@ public final class BoarRooting {
 		if (state.isAir()) {
 			return true;
 		}
-		if (!level.getFluidState(pos).isEmpty() || state.is(BlockTags.SAPLINGS) || state.is(BlockTags.LEAVES)) {
+		// A climber (the hop, a vine) hangs on a trunk: the boar leaves it and the trunk alone.
+		if (!level.getFluidState(pos).isEmpty() || state.is(BlockTags.SAPLINGS) || state.is(BlockTags.LEAVES)
+				|| state.is(BlockTags.CLIMBABLE)) {
 			return false;
 		}
 		return state.canBeReplaced() || state.is(Blocks.SNOW);
@@ -205,6 +217,11 @@ public final class BoarRooting {
 			return false;
 		}
 		BlockState state = level.getBlockState(ground);
+		BlockPos above = ground.above();
+		// As at rooting: only under air or a plant the boar uproots (never under a sapling, a climber or a trunk).
+		if (!uprootable(level, above)) {
+			return false;
+		}
 		if (!(state.is(Blocks.GRASS_BLOCK) || state.is(Blocks.DIRT) || state.is(Blocks.COARSE_DIRT) || state.is(Blocks.ROOTED_DIRT))) {
 			return false;
 		}
@@ -212,8 +229,7 @@ public final class BoarRooting {
 			REFUSED.increment();
 			return false;
 		}
-		BlockPos above = ground.above();
-		if (!level.getBlockState(above).isAir() && uprootable(level, above)) {
+		if (!level.getBlockState(above).isAir()) {
 			level.destroyBlock(above, false);
 		}
 		level.setBlock(ground, Blocks.MUD.defaultBlockState(), Block.UPDATE_ALL);
