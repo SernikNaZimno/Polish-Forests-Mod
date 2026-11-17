@@ -1,6 +1,6 @@
 # Brief projektu „Polish Forests” (dla agentów)
 
-Stan: 2026-11-16. Krótki punkt wejścia: przeczytaj to zamiast całych planów; szczegóły w dokumentach z ostatniej sekcji. Pełna dawna wersja briefu z opisami wszystkich kroków: `docs/historia-stanu.md`.
+Stan: 2026-11-17. Krótki punkt wejścia: przeczytaj to zamiast całych planów; szczegóły w dokumentach z ostatniej sekcji. Pełna dawna wersja briefu z opisami wszystkich kroków: `docs/historia-stanu.md`.
 
 ## Czym jest projekt
 
@@ -38,6 +38,7 @@ Mod Fabric do Minecrafta 26.3 (Java 25, Loom, Gradle 9.7, JDK z `gradle.properti
 - **Plan kroków FA** (2026-11-16, `docs/04` §3 „Kroki FA”, §4.4, `docs/00` G.62; CP-D.1–CP-D.3): FA1 scalenie toru sarny V8 i szkielet fauny (własny spawner, wanilia bez zmian), FA2 sarna (rytm dnia, pory roku, kalibracja ×20–50), FA3 dzik, FA4 pejzaż dźwiękowy i żaba trawna, FA5 wiewiórka (O1), FA6 sójka (O2), FA7 drzwi, klapy, półki i tabliczki każdego drewna moda (O3), FA8 łodzie i mrowiska (O3, O4), FA9 przebieg zbiorczy testów i karta norm końcowa, FA10 pomiar A/B, MSPT fauny i strona zamknięcia (V17).
 - **FA1 zrobione** (2026-11-16, `docs/04` „Projekt FA1”, „Stan po FA1”, G.63, G.V8): tor sarny V8 scalony z `main`, szkielet fauny (`PolishAnimal`, `AnimalProfile`), `FaunaSpawner` i spawn przy generacji w obu typach świata (reguła `polishforests:forest_fauna`, sarny poza limitem `CREATURE` wanilii, znika > 128 bloków tylko sarna spawnera moda, sarny z generacji, jaja i komendy zostają jak zwierzęta wanilii), sarna z ucieczką po odległości, komenda `/polishforests fauna`, gametest `fauna` (spis); w każdym lesie wycinka 1,67–4,33 sarny w promieniu 64 bloków po 5 min, zwierzęta wanilii bez zmian. Gęstość i rytm dnia w FA2.
 - **FA2 zrobione** (2026-11-17, `docs/04` „Projekt FA2”, „Stan po FA2”, G.64): sarna z rytmem dnia (żer o świcie, w południe i o zmierzchu, odpoczynek w gęstwinie), grupami 1–3 latem i 2–6 zimą (łączenie bez zapisu, koźlęta przy matce), futrem i parostkami według podsezonu (z SS i bez), `ForestAlarm` (test, biegnący gracz, szczek) z puszonym lustrem, schodzeniem z liści i gęstością 0,085/ha × 30 (generacja) i × 45 (spawner); w każdym lesie wycinka 2,00–5,00 sarny w promieniu 64 bloków po 5 min, MSPT 0,0157 ms na sarnę (lato). Runda 1 przeglądu: koźlęta tylko V–VIII (poza nimi dorastają, bez losowych młodych wanilii; G.64 FA2-t).
+- **FA3 zrobione** (2026-11-17, `docs/04` „Projekt FA3”, „Stan po FA3”, G.65): dzik (odyniec, locha, warchlak w pasy z `tools/fauna`), rytm zmierzchowo-nocny z barłogiem, watahy 3–8 za lochą o najwyższej randze i samotne odyńce, ucieczka gęsiego z chrapnięciem (zastępczym do FA4), ostrzegawcza szarża lochy z warchlakami III–VI bez obrażeń (warchlaki zostają przy niej), buchtowanie `grass_block` → `coarse_dirt`/`rooted_dirt` i rzadkie błoto babrzyska tylko pod regułą `polishforests:boar_rooting` i `mob_griefing`; 0,03/ha × 34 / × 50 (0,4 sarny); spis PASS we wszystkich światach, MSPT 0,0148 ms na dzika. Następny krok: FA4 (pejzaż dźwiękowy i żaba trawna).
 
 ## Konwencje
 
