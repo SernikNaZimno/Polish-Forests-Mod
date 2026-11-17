@@ -1,0 +1,117 @@
+{
+ "ambient.forest.chaffinch": {
+  "sounds": [
+   "polishforests:ambient/forest/chaffinch_1",
+   "polishforests:ambient/forest/chaffinch_2",
+   "polishforests:ambient/forest/chaffinch_3"
+  ],
+  "subtitle": "subtitles.polishforests.ambient.forest.chaffinch"
+ },
+ "ambient.forest.blackbird": {
+  "sounds": [
+   "polishforests:ambient/forest/blackbird_1",
+   "polishforests:ambient/forest/blackbird_2",
+   "polishforests:ambient/forest/blackbird_3"
+  ],
+  "subtitle": "subtitles.polishforests.ambient.forest.blackbird"
+ },
+ "ambient.forest.robin": {
+  "sounds": [
+   "polishforests:ambient/forest/robin_1",
+   "polishforests:ambient/forest/robin_2",
+   "polishforests:ambient/forest/robin_3"
+  ],
+  "subtitle": "subtitles.polishforests.ambient.forest.robin"
+ },
+ "ambient.forest.great_tit": {
+  "sounds": [
+   "polishforests:ambient/forest/great_tit_1",
+   "polishforests:ambient/forest/great_tit_2",
+   "polishforests:ambient/forest/great_tit_3"
+  ],
+  "subtitle": "subtitles.polishforests.ambient.forest.great_tit"
+ },
+ "ambient.forest.coal_tit": {
+  "sounds": [
+   "polishforests:ambient/forest/coal_tit_1",
+   "polishforests:ambient/forest/coal_tit_2"
+  ],
+  "subtitle": "subtitles.polishforests.ambient.forest.coal_tit"
+ },
+ "ambient.forest.goldcrest": {
+  "sounds": [
+   "polishforests:ambient/forest/goldcrest_1",
+   "polishforests:ambient/forest/goldcrest_2"
+  ],
+  "subtitle": "subtitles.polishforests.ambient.forest.goldcrest"
+ },
+ "ambient.forest.cuckoo": {
+  "sounds": [
+   "polishforests:ambient/forest/cuckoo_1",
+   "polishforests:ambient/forest/cuckoo_2"
+  ],
+  "subtitle": "subtitles.polishforests.ambient.forest.cuckoo"
+ },
+ "ambient.forest.woodpecker_drum": {
+  "sounds": [
+   "polishforests:ambient/forest/woodpecker_drum_1",
+   "polishforests:ambient/forest/woodpecker_drum_2",
+   "polishforests:ambient/forest/woodpecker_drum_3"
+  ],
+  "subtitle": "subtitles.polishforests.ambient.forest.woodpecker_drum"
+ },
+ "ambient.forest.woodpecker_call": {
+  "sounds": [
+   "polishforests:ambient/forest/woodpecker_call_1",
+   "polishforests:ambient/forest/woodpecker_call_2"
+  ],
+  "subtitle": "subtitles.polishforests.ambient.forest.woodpecker_call"
+ },
+ "ambient.forest.tawny_owl": {
+  "sounds": [
+   "polishforests:ambient/forest/tawny_owl_1",
+   "polishforests:ambient/forest/tawny_owl_2",
+   "polishforests:ambient/forest/tawny_owl_3"
+  ],
+  "subtitle": "subtitles.polishforests.ambient.forest.tawny_owl"
+ },
+ "ambient.forest.jay": {
+  "sounds": [
+   "polishforests:ambient/forest/jay_1",
+   "polishforests:ambient/forest/jay_2",
+   "polishforests:ambient/forest/jay_3"
+  ],
+  "subtitle": "subtitles.polishforests.ambient.forest.jay"
+ },
+ "entity.common_frog.croak": {
+  "sounds": [
+   "polishforests:entity/common_frog/croak_1",
+   "polishforests:entity/common_frog/croak_2",
+   "polishforests:entity/common_frog/croak_3"
+  ],
+  "subtitle": "subtitles.polishforests.entity.common_frog.croak"
+ },
+ "entity.roe_deer.bark": {
+  "sounds": [
+   "polishforests:entity/roe_deer/bark_1",
+   "polishforests:entity/roe_deer/bark_2",
+   "polishforests:entity/roe_deer/bark_3"
+  ],
+  "subtitle": "subtitles.polishforests.entity.roe_deer.bark"
+ },
+ "entity.wild_boar.grunt": {
+  "sounds": [
+   "polishforests:entity/wild_boar/grunt_1",
+   "polishforests:entity/wild_boar/grunt_2",
+   "polishforests:entity/wild_boar/grunt_3"
+  ],
+  "subtitle": "subtitles.polishforests.entity.wild_boar.grunt"
+ },
+ "entity.wild_boar.snort": {
+  "sounds": [
+   "polishforests:entity/wild_boar/snort_1",
+   "polishforests:entity/wild_boar/snort_2"
+  ],
+  "subtitle": "subtitles.polishforests.entity.wild_boar.snort"
+ }
+}

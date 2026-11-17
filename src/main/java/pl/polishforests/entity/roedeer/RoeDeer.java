@@ -14,7 +14,6 @@ import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
@@ -389,8 +388,8 @@ public class RoeDeer extends PolishAnimal<RoeDeer> {
 		}
 		lastBark = now;
 		BARKS.increment();
-		// Placeholder until step FA4 (own sound of tools/sound): the vanilla fox screech by id, lower.
-		playSound(SoundEvents.FOX_SCREECH, 1.6F, 0.55F + getRandom().nextFloat() * 0.1F);
+		// Step FA4: the own bark of tools/sound (until FA3 the vanilla fox screech by id).
+		playSound(pl.polishforests.sound.ModSounds.ROE_DEER_BARK, 2.0F, 0.95F + getRandom().nextFloat() * 0.1F);
 		ForestAlarm.raise(server, new ForestAlarm(position(), BARK_RADIUS, BARK_STRENGTH, ForestAlarm.Kind.BARK, this));
 	}
 

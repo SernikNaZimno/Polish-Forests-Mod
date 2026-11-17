@@ -35,6 +35,31 @@ class MixinTargetsTest {
 		assertEquals(3, found);
 	}
 
+	@Test
+	void injectTargetsOfTheFrogMixins() {
+		// Step FA4: the common frog's croak and the persistence of the frog spawner's frogs (targets by name, no descriptor).
+		assertTrue(declares(net.minecraft.world.entity.animal.frog.Frog.class, "getAmbientSound", 0), "Frog.getAmbientSound()");
+		assertTrue(declares(net.minecraft.world.entity.Mob.class, "requiresCustomPersistence", 0), "Mob.requiresCustomPersistence()");
+		for (Class<?> mixin : List.of(FrogSoundMixin.class, MobPersistenceMixin.class)) {
+			int handlers = 0;
+			for (Method handler : mixin.getDeclaredMethods()) {
+				if (handler.getAnnotation(Inject.class) != null) {
+					handlers++;
+				}
+			}
+			assertEquals(1, handlers, mixin.getSimpleName());
+		}
+	}
+
+	private static boolean declares(Class<?> owner, String name, int parameters) {
+		for (Method m : owner.getDeclaredMethods()) {
+			if (m.getName().equals(name) && m.getParameterCount() == parameters) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	/** Whether {@link Biome} declares a method with the name and descriptor from {@code name(descriptor)}. */
 	private static boolean hasMethod(String target) {
 		int paren = target.indexOf('(');

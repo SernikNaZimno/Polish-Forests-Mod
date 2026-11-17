@@ -6,7 +6,7 @@
 
 - **Code** (Java sources, build scripts, tools): MIT, see `LICENSE`.
 - **Assets** (textures and other art in `src/main/resources/assets/polishforests/`, block and item models, animations and sounds made for this mod): Creative Commons Attribution 4.0 International (CC BY 4.0), see `LICENSE-assets`. Attribution: "Polish Forests by SernikNaZimno" (https://github.com/SernikNaZimno/Polish-Forests-Mod).
-- Textures are generated procedurally by `tools/art` (recipes, palettes and style lint in the repository), animal models, animations and their textures by `tools/fauna` (species measures, painter and validator in the repository). Minecraft textures, models and sounds are not included: vanilla assets are only referenced by their identifiers, and no file of Mojang or of other mods was copied, traced or edited.
+- Textures are generated procedurally by `tools/art` (recipes, palettes and style lint in the repository), animal models, animations and their textures by `tools/fauna` (species measures, painter and validator in the repository), sounds by `tools/sound` (synthesis recipes in the repository). Minecraft textures, models and sounds are not included: vanilla assets are only referenced by their identifiers, and no file of Mojang or of other mods was copied, traced or edited.
 
 ## Palette reference photos
 
@@ -31,4 +31,22 @@ The colors of some textures were measured (k-means clustering of a crop) from th
 
 ## Sounds
 
-None yet (sounds will be CC0 or CC BY only, listed here with their authors).
+Every sound of the mod is synthesized by `tools/sound` (Python and NumPy recipes written from field-guide descriptions of the calls: note frequencies, lengths, rhythm) and encoded to OGG Vorbis by the Gradle task `generateSound`. No recording was used, traced or resampled, and no Minecraft sound was copied: the other sounds the mod plays are vanilla sounds referenced by their identifiers. License CC BY 4.0, author SernikNaZimno; every file with its recipe and seed is listed in `src/main/resources/assets/polishforests/sounds/manifest.json`.
+
+| Sound event | Files | Source |
+|---|---|---|
+| `polishforests:ambient.forest.chaffinch` | 3 | synthesized, recipe `chaffinch` (chaffinch song, descending trill with the terminal flourish) |
+| `polishforests:ambient.forest.blackbird` | 3 | synthesized, recipe `blackbird` (blackbird song, fluting low phrase and a squeaky end) |
+| `polishforests:ambient.forest.robin` | 3 | synthesized, recipe `robin` (robin song, liquid warble of thin high notes) |
+| `polishforests:ambient.forest.great_tit` | 3 | synthesized, recipe `great_tit` (great tit "tea-cher" song) |
+| `polishforests:ambient.forest.coal_tit` | 2 | synthesized, recipe `coal_tit` (coal tit "pitchu" song) |
+| `polishforests:ambient.forest.goldcrest` | 2 | synthesized, recipe `goldcrest` (goldcrest high cyclic song) |
+| `polishforests:ambient.forest.cuckoo` | 2 | synthesized, recipe `cuckoo` (cuckoo "cu-coo" call) |
+| `polishforests:ambient.forest.woodpecker_drum` | 3 | synthesized, recipe `woodpecker_drum` (great spotted woodpecker drumming roll) |
+| `polishforests:ambient.forest.woodpecker_call` | 2 | synthesized, recipe `woodpecker_call` (great spotted woodpecker "kix" call) |
+| `polishforests:ambient.forest.tawny_owl` | 3 | synthesized, recipe `tawny_owl` (tawny owl hoot of the male; the female "ke-wick") |
+| `polishforests:ambient.forest.jay` | 3 | synthesized, recipe `jay` (jay screech) |
+| `polishforests:entity.common_frog.croak` | 3 | synthesized, recipe `common_frog` (common frog purring croak; the third file a small chorus) |
+| `polishforests:entity.roe_deer.bark` | 3 | synthesized, recipe `roe_deer_bark` (roe deer alarm bark) |
+| `polishforests:entity.wild_boar.grunt` | 3 | synthesized, recipe `wild_boar_grunt` (wild boar contact grunts) |
+| `polishforests:entity.wild_boar.snort` | 2 | synthesized, recipe `wild_boar_snort` (wild boar alarm snort) |

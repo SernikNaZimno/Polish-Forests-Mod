@@ -21,7 +21,8 @@ import org.jspecify.annotations.Nullable;
  * animal that reacts to a bark does not bark itself, so the alarm does not run on through the forest). The screech of the
  * jay joins in step FA4 and the jay as an entity in FA6 (new kinds only at the end of the enum). Step FA3: the snort of a
  * wild boar at the start of a flight ({@link Kind#SNORT}), a warning like the bark (an animal that flees from it does not
- * warn again).
+ * warn again). Step FA4: the screech of a jay a running player startles ({@link Kind#JAY}, {@code sound/ForestAmbience}, radius
+ * 32 blocks), a warning like the bark.
  *
  * @param source   where the alarm comes from
  * @param radius   how far it is heard (blocks)
@@ -42,7 +43,23 @@ public record ForestAlarm(Vec3 source, double radius, float strength, Kind kind,
 
 	/** What raised an alarm. New kinds only at the end. */
 	public enum Kind {
-		TEST, RUNNING_PLAYER, BARK, SNORT
+		TEST, RUNNING_PLAYER, BARK, SNORT, JAY
+	}
+
+	/** Animals that heard an alarm, by its kind (step FA4: the census counts those of the jay apart). */
+	public static final LongAdder[] HEARD_BY_KIND = heardByKind();
+
+	private static LongAdder[] heardByKind() {
+		LongAdder[] a = new LongAdder[Kind.values().length];
+		for (int i = 0; i < a.length; i++) {
+			a[i] = new LongAdder();
+		}
+		return a;
+	}
+
+	/** Whether the alarm is the warning of another animal (an animal that flees from it does not warn again). */
+	public boolean warning() {
+		return kind == Kind.BARK || kind == Kind.SNORT || kind == Kind.JAY;
 	}
 
 	/** An animal that hears the alarms of the forest. */
@@ -82,6 +99,7 @@ public record ForestAlarm(Vec3 source, double radius, float strength, Kind kind,
 			}
 		}
 		HEARD.add(n);
+		HEARD_BY_KIND[alarm.kind().ordinal()].add(n);
 		return n;
 	}
 

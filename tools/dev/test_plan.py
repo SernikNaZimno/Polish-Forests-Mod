@@ -19,6 +19,7 @@ MAP = [
     ('docs/', []),
     ('tools/art/', ['art']),
     ('tools/fauna/', ['art', 'fauna']),
+    ('tools/sound/', ['sound']),
     ('tools/', []),
     ('.dev-handoff/', []),
     ('src/main/java/pl/polishforests/worldgen/landscape/', ['unit', 'terrain', 'tatra', 'generation']),
@@ -49,6 +50,14 @@ MAP = [
     ('src/client/', ['unit', 'render']),
     # Step FA1: the fauna (animal base, spawners, renderers, the fauna game test and tools/fauna).
     ('src/client/java/pl/polishforests/client/entity/', ['unit', 'render', 'fauna']),
+    # Step FA4: the forest ambience, the sounds of tools/sound and the common frog.
+    ('src/main/java/pl/polishforests/sound/', ['unit', 'sound', 'fauna']),
+    ('src/main/resources/assets/polishforests/sounds', ['sound']),
+    ('src/main/resources/data/polishforests/frog_variant/', ['unit', 'sound']),
+    ('src/main/java/pl/polishforests/entity/spawn/FrogSpawner', ['unit', 'fauna', 'sound']),
+    ('src/main/java/pl/polishforests/mixin/FrogSoundMixin', ['unit', 'mixins', 'sound']),
+    ('src/main/java/pl/polishforests/mixin/MobPersistenceMixin', ['unit', 'mixins', 'sound']),
+    ('src/gametest/java/pl/polishforests/gametest/FaunaSound', ['gametest_code', 'sound']),
     ('src/gametest/', ['gametest_code']),
     ('src/gametest/java/pl/polishforests/gametest/TatraClientGameTest', ['gametest_code', 'tatra']),
     ('src/gametest/java/pl/polishforests/gametest/Fauna', ['gametest_code', 'fauna']),
@@ -90,6 +99,9 @@ TESTS = {
                './gradlew checkArt   # tools/fauna assets',
                './gradlew runClientGameTest -Pgametest=fauna -Psites=model   # V8 model calibration, only after a change of the model or renderer',
                './gradlew runClientGameTest -Pgametest=fauna   # FA1 census: build/fauna/census.txt'], []),
+    'sound': (['./gradlew checkSound   # tools/sound files against the generator (decoded samples), manifest, sounds.json',
+               "./gradlew test --tests '*ForestAmbienceTest*' --tests '*ModSoundsTest*' --tests '*CommonFrogTest*'   # FA4 rules",
+               './gradlew runClientGameTest -Pgametest=fauna -Psites=sound   # FA4 ambience counts, jay alarm, frog census: build/fauna/sound.txt'], []),
     'gametest_code': (['./gradlew compileGametestJava   # plus the changed game test itself',
                        "./gradlew test --tests '*PerformanceThresholdsTest*'   # CP-D.5 thresholds on the F7 numbers (step C2)"], []),
 }

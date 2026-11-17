@@ -26,7 +26,10 @@ public final class PolishForests implements ModInitializer {
 	public void onInitialize() {
 		ModBlocks.register();
 		pl.polishforests.block.TrunkBaseCondition.register();
+		// Step FA4: the sound events of tools/sound (before the animals that use them) and the forest ambience.
+		pl.polishforests.sound.ModSounds.register();
 		ModEntities.register();
+		pl.polishforests.sound.ForestAmbience.register();
 		PolishForestsWorldgen.register();
 		PolishForestsCommands.register();
 		Seasons.init();

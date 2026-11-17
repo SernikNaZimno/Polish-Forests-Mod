@@ -534,6 +534,11 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		b.add("polishforests.fauna.state.wallowing", "wallowing");
 		b.add("polishforests.fauna.look.boar_male", "boar (male)");
 		b.add("polishforests.fauna.look.sow", "sow");
+		// Step FA4: the subtitles of the sounds of tools/sound and the game rule of the forest ambience.
+		for (pl.polishforests.sound.ModSounds.Subtitle t : pl.polishforests.sound.ModSounds.subtitles()) {
+			b.add(t.key(), t.english());
+		}
+		b.add("gamerule.polishforests.forest_ambience", "Forest sounds of Polish Forests (birds, owls, frogs)");
 	}
 
 	private static void polish(TranslationBuilder b) {
@@ -673,6 +678,10 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		b.add("polishforests.fauna.state.wallowing", "tarza się w błocie");
 		b.add("polishforests.fauna.look.boar_male", "odyniec");
 		b.add("polishforests.fauna.look.sow", "locha");
+		for (pl.polishforests.sound.ModSounds.Subtitle t : pl.polishforests.sound.ModSounds.subtitles()) {
+			b.add(t.key(), t.polish());
+		}
+		b.add("gamerule.polishforests.forest_ambience", "Odgłosy lasu Polish Forests (ptaki, sowy, żaby)");
 		b.add("modmenu.descriptionTranslation.polishforests", "Proceduralne krajobrazy Polski w skali 1:1 z przyrodniczo "
 				+ "wiernymi lasami, florą i fauną oraz integracją z porami roku Serene Seasons.");
 	}

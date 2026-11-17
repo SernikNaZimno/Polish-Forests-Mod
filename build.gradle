@@ -161,6 +161,28 @@ java {
 	targetCompatibility = JavaVersion.VERSION_25
 }
 
+// Step FA4 (G.62-d): the OGG Vorbis step of tools/sound. Its own configuration and source set, never part of the mod: the
+// pure-Java port of libvorbis (encoder, BSD-style license of Xiph) and JOrbis (the decoder Minecraft uses), both from Maven
+// Central; tools/sound/java/.../SoundCodec encodes the WAV files of tools/sound/generate.py and decodes the committed
+// files for checkSound.
+configurations {
+	soundCodec
+}
+
+dependencies {
+	soundCodec 'com.github.axet:jvorbis:1.3.6'
+	soundCodec 'org.jcraft:jorbis:0.0.17'
+}
+
+sourceSets {
+	soundTool {
+		java.srcDirs = ['tools/sound/java']
+		resources.srcDirs = []
+		compileClasspath = configurations.soundCodec
+		runtimeClasspath = output + configurations.soundCodec
+	}
+}
+
 // Landscape model preview rendered to PNG, without launching the game.
 tasks.register('landscapePreview', JavaExec) {
 	group = 'polishforests'
@@ -470,6 +492,11 @@ abstract class ArtTask extends DefaultTask {
 	@Input
 	abstract Property<String> getScript()
 
+	// Step FA4: arguments of the script (tools/sound).
+	@Input
+	@Optional
+	abstract ListProperty<String> getScriptArgs()
+
 	@TaskAction
 	void run() {
 		def dir = root.get().asFile
@@ -503,7 +530,7 @@ abstract class ArtTask extends DefaultTask {
 					"Tried: ${tried.join('; ')}. Name an interpreter with -Ppython=<path>. ${name} is not part of 'build'.")
 		}
 		def result = execOperations.exec { spec ->
-			spec.commandLine(chosen + [new File(dir, script.get()).path])
+			spec.commandLine(chosen + [new File(dir, script.get()).path] + scriptArgs.getOrElse([]))
 			spec.workingDir = dir
 			spec.environment('PYTHONIOENCODING', 'utf-8')
 			spec.ignoreExitValue = true
@@ -523,6 +550,63 @@ tasks.register('checkArt', ArtTask) {
 		python = project.property('python').toString()
 	}
 	outputs.upToDateWhen { false }
+}
+
+// Step FA4 (G.62-d, KFA-7): the sounds of tools/sound. generateSound synthesizes the WAV files and the JSON files
+// (sounds.json, the license manifest) with tools/sound/generate.py and encodes the WAV files to mono OGG Vorbis in
+// src/main/resources/assets/polishforests/sounds/; checkSound decodes the committed OGG files with JOrbis and compares
+// them with a fresh run of the generator with a tolerance (tools/sound/check.py, never the bytes). checkArt runs checkSound.
+def soundWav = layout.buildDirectory.dir('sound/wav')
+def soundDecoded = layout.buildDirectory.dir('sound/decoded')
+def soundResources = 'src/main/resources/assets/polishforests/sounds'
+
+tasks.register('generateSoundWav', ArtTask) {
+	group = 'polishforests'
+	description = 'Synthesizes the WAV files, sounds.json and the sound license manifest with tools/sound.'
+	root = layout.projectDirectory
+	script = 'tools/sound/generate.py'
+	scriptArgs = ['--wav', soundWav.get().asFile.absolutePath]
+	if (project.hasProperty('python')) {
+		python = project.property('python').toString()
+	}
+	outputs.upToDateWhen { false }
+}
+
+tasks.register('generateSound', JavaExec) {
+	group = 'polishforests'
+	description = 'Regenerates the sounds with tools/sound and encodes them to OGG Vorbis (SoundCodec, configuration soundCodec).'
+	dependsOn 'generateSoundWav'
+	classpath = sourceSets.soundTool.runtimeClasspath
+	mainClass = 'pl.polishforests.tools.sound.SoundCodec'
+	args 'encode', soundWav.get().asFile.absolutePath, file(soundResources).absolutePath
+	outputs.upToDateWhen { false }
+}
+
+tasks.register('decodeSound', JavaExec) {
+	group = 'verification'
+	description = 'Decodes the committed OGG files with JOrbis for checkSound.'
+	classpath = sourceSets.soundTool.runtimeClasspath
+	mainClass = 'pl.polishforests.tools.sound.SoundCodec'
+	// check.py reads only the files of the generator's list, so older decoded files do no harm.
+	args 'decode', file(soundResources).absolutePath, soundDecoded.get().asFile.absolutePath
+	outputs.upToDateWhen { false }
+}
+
+tasks.register('checkSound', ArtTask) {
+	group = 'verification'
+	description = 'Checks that the committed sounds, sounds.json and the license manifest are what tools/sound makes (decoded samples with a tolerance).'
+	dependsOn 'decodeSound'
+	root = layout.projectDirectory
+	script = 'tools/sound/check.py'
+	scriptArgs = ['--decoded', soundDecoded.get().asFile.absolutePath]
+	if (project.hasProperty('python')) {
+		python = project.property('python').toString()
+	}
+	outputs.upToDateWhen { false }
+}
+
+tasks.named('checkArt') {
+	dependsOn 'checkSound'
 }
 
 tasks.register('generateArt', ArtTask) {
@@ -563,7 +647,9 @@ tasks.register('generateArt', ArtTask) {
 // (fauna: only by name; step FA1: default -Psites=census, the census of the roe deer in the worlds of the mod (-Pscales=
 // realistic|gameplay|vanilla, -Pmodes, -PfaunaMinutes=<minutes per place, default 5>, -Psites=census,all for all places),
 // results in build/fauna/census.txt; -Psites=model is step V8, the roe deer model against the preview of tools/fauna and the
-// axis gauge of GeckoLib, screenshots fauna_*, results in build/fauna/fauna.txt)
+// axis gauge of GeckoLib, screenshots fauna_*, results in build/fauna/fauna.txt; step FA4: -Psites=sound, the forest
+// ambience counts, the jay alarm and the frog census (-Pscales as above, -PsoundTicks=<ticks per ambience sample, default
+// 600>, -PfrogTicks=<ticks before the frog count, default 2000>), results in build/fauna/sound.txt)
 // (slice: only by name; the fixed places of the vertical slice from src/test/resources/slice_sites.txt, step V0;
 // -Pmodes=natural|present_day picks a vegetation mode, -Psites=<place names>|none; the cameras come from
 // src/test/resources/slice_cameras.txt, -PfindSliceCameras chooses them anew and writes the file; -Pgametest=stages
@@ -756,6 +842,12 @@ tasks.named('runClientGameTest') {
 	jvmArgs "-Dpolishforests.fauna.out=${layout.buildDirectory.dir('fauna').get().asFile.absolutePath}"
 	if (project.hasProperty('faunaMinutes')) {
 		jvmArgs "-Dpolishforests.fauna.minutes=${project.property('faunaMinutes')}"
+	}
+	if (project.hasProperty('soundTicks')) {
+		jvmArgs "-Dpolishforests.sound.ticks=${project.property('soundTicks')}"
+	}
+	if (project.hasProperty('frogTicks')) {
+		jvmArgs "-Dpolishforests.frog.ticks=${project.property('frogTicks')}"
 	}
 	if (project.hasProperty('profile')) {
 		jvmArgs "-XX:StartFlightRecording=filename=${layout.buildDirectory.file('profile.jfr').get().asFile.absolutePath},settings=profile"

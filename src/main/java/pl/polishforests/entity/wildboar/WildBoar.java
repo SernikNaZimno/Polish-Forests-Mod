@@ -16,7 +16,6 @@ import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.sounds.SoundEvents;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.DifficultyInstance;
@@ -411,8 +410,19 @@ public class WildBoar extends PolishAnimal<WildBoar> {
 		}
 	}
 
+	/** Step FA4: the contact grunts of tools/sound, about every 15 s on average (vanilla's default would be every 4 s). */
+	@Override
+	protected net.minecraft.sounds.@Nullable SoundEvent getAmbientSound() {
+		return pl.polishforests.sound.ModSounds.WILD_BOAR_GRUNT;
+	}
+
+	@Override
+	public int getAmbientSoundInterval() {
+		return 300;
+	}
+
 	/**
-	 * A snort (placeholder until step FA4, the own sound of tools/sound: the vanilla hoglin's angry sound by id, lower); with
+	 * A snort (step FA4: the own snort of tools/sound; until FA3 the vanilla hoglin's angry sound by id); with
 	 * {@code alarm} and at most once in {@value #SNORT_COOLDOWN} ticks also a {@link ForestAlarm.Kind#SNORT} alarm.
 	 */
 	void snort(boolean alarm) {
@@ -424,7 +434,7 @@ public class WildBoar extends PolishAnimal<WildBoar> {
 			return;
 		}
 		SNORTS.increment();
-		playSound(SoundEvents.HOGLIN_ANGRY, 1.2F, (isBaby() ? 1.3F : 0.75F) + getRandom().nextFloat() * 0.1F);
+		playSound(pl.polishforests.sound.ModSounds.WILD_BOAR_SNORT, 1.5F, (isBaby() ? 1.35F : 0.95F) + getRandom().nextFloat() * 0.1F);
 		if (alarm) {
 			lastSnort = now;
 			ForestAlarm.raise(server, new ForestAlarm(position(), SNORT_RADIUS, SNORT_STRENGTH, ForestAlarm.Kind.SNORT, this));

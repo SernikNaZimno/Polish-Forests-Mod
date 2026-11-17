@@ -1,11 +1,12 @@
-"""Generates CREDITS.md (repository root) from tools/art/palettes.json and the recipes.
+"""Generates CREDITS.md (repository root) from tools/art/palettes.json, the recipes and the sound recipes of tools/sound.
 
 CREDITS.md lists the licenses of the code and the assets and every outside source the assets were made with: the CC0 and
-public-domain photos the palettes were measured from (only colors are taken, decision D5) and, from step V16 on, the
-CC0 / CC BY sounds. checkArt fails when the file is not up to date; regenerate it with tools/art/generate.py.
+public-domain photos the palettes were measured from (only colors are taken, decision D5) and the sounds (step FA4: all
+synthesized by tools/sound, no recordings; a CC0 / CC BY recording, if one is ever added, is listed with its author). checkArt fails when the file is not up to date; regenerate it with tools/art/generate.py.
 
 Usage: python tools/art/credits.py [--check]
 """
+import importlib.util
 import json
 import os
 import sys
@@ -17,6 +18,38 @@ import recipes  # noqa: E402
 ROOT = os.path.normpath(os.path.join(HERE, '..', '..'))
 CREDITS = os.path.join(ROOT, 'CREDITS.md')
 PALETTES = os.path.join(HERE, 'palettes.json')
+SOUND_TOOLS = os.path.join(ROOT, 'tools', 'sound')
+
+
+def sound_voices():
+    """The voices of tools/sound/recipes.py (loaded under another module name: tools/art has its own recipes)."""
+    if SOUND_TOOLS not in sys.path:
+        sys.path.append(SOUND_TOOLS)
+    spec = importlib.util.spec_from_file_location('sound_recipes', os.path.join(SOUND_TOOLS, 'recipes.py'))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.VOICES
+
+
+def sounds_section():
+    out = [
+        '## Sounds',
+        '',
+        'Every sound of the mod is synthesized by `tools/sound` (Python and NumPy recipes written from field-guide'
+        ' descriptions of the calls: note frequencies, lengths, rhythm) and encoded to OGG Vorbis by the Gradle task'
+        ' `generateSound`. No recording was used, traced or resampled, and no Minecraft sound was copied: the other'
+        ' sounds the mod plays are vanilla sounds referenced by their identifiers. License CC BY 4.0, author'
+        ' SernikNaZimno; every file with its recipe and seed is listed in'
+        ' `src/main/resources/assets/polishforests/sounds/manifest.json`.',
+        '',
+        '| Sound event | Files | Source |',
+        '|---|---|---|',
+    ]
+    for v in sound_voices():
+        out.append(f'| `polishforests:{v.event}` | {v.variants} | synthesized, recipe `{v.recipe.__name__}`'
+                   f' ({v.description}) |')
+    out.append('')
+    return out
 
 
 def render():
@@ -45,7 +78,7 @@ def render():
         ' (https://github.com/SernikNaZimno/Polish-Forests-Mod).',
         '- Textures are generated procedurally by `tools/art` (recipes, palettes and style lint in the repository),'
         ' animal models, animations and their textures by `tools/fauna` (species measures, painter and validator in the'
-        ' repository).'
+        ' repository), sounds by `tools/sound` (synthesis recipes in the repository).'
         ' Minecraft textures, models and sounds are not included: vanilla assets are only referenced by their'
         ' identifiers, and no file of Mojang or of other mods was copied, traced or edited.',
         '',
@@ -66,13 +99,8 @@ def render():
             lic = f'[{s["license"]}]({s["license_url"]})' if s.get('license_url') else s['license']
             out.append(f'| {"`" + name + "`" if i == 0 else ""} | {users if i == 0 else ""} | [{s["title"]}]({s["url"]}) '
                        f'| {s["author"]} | {lic} |')
-    out += [
-        '',
-        '## Sounds',
-        '',
-        'None yet (sounds will be CC0 or CC BY only, listed here with their authors).',
-        '',
-    ]
+    out.append('')
+    out += sounds_section()
     return '\n'.join(out)
 
 

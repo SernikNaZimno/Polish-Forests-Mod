@@ -76,6 +76,10 @@ final class ModBiomeTagProvider extends FabricTagsProvider<Biome> {
 		STRUCTURES.put("abandoned_camp_swamp", List.of(ALDER_CARR));
 	}
 
+	/** Step FA4: the wet zones and fresh waters of the common frog's tag besides the forests. */
+	private static final List<HabitatBiome> COMMON_FROG_WETLANDS = List.of(RAISED_BOG, FEN, REEDBED, WILLOW_SCRUB, WET_MEADOW, RIVER, STREAM,
+			LAKE, DYSTROPHIC_LAKE, MOUNTAIN_TARN);
+
 	ModBiomeTagProvider(FabricPackOutput output, CompletableFuture<HolderLookup.Provider> registries) {
 		super(output, Registries.BIOME, registries);
 	}
@@ -104,6 +108,9 @@ final class ModBiomeTagProvider extends FabricTagsProvider<Biome> {
 				REEDBED, WILLOW_SCRUB));
 		add(own("montane"), List.of(MONTANE_BEECH_FOREST, MONTANE_SPRUCE_FOREST, GRAY_ALDER_FOREST, DWARF_PINE_SCRUB,
 				ALPINE_GRASSLAND, SUBNIVAL_ROCKS));
+		// Step FA4 (G.62-f): the biomes where every frog is a common frog (frog_variant polishforests:common_frog, priority
+		// 2 over the vanilla variants): the forests of the mod and the wet zones and fresh waters.
+		add(own("spawns_common_frog"), biomes(b -> b.isForest() || COMMON_FROG_WETLANDS.contains(b)));
 	}
 
 	private void add(TagKey<Biome> tag, List<HabitatBiome> biomes) {

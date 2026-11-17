@@ -9,7 +9,10 @@ Checks, in order:
 3. the validator (validate.py): models from the committed .geo.json files (bones, parents, UV inside the texture, no
    texel shared), animations, textures (opaque faces, transparent rest, no pure black, smoothness), spawn eggs, the
    expected positions of the game test;
-4. the self-test (selftest.py): the kinematics against corners posed by GeckoLib itself, and the validator against
+4. the common frog texture (step FA4, frog.py): every box face of the vanilla frog model opaque, smoothness and darkest
+   texel within the validator's limits, and no opaque texel equal to the vanilla frog textures (read from the Minecraft
+   client jar in Loom's cache, by path; skipped with a note when the cache is absent);
+5. the self-test (selftest.py): the kinematics against corners posed by GeckoLib itself, and the validator against
    broken examples.
 Exit status 0 when everything passes, 1 otherwise; the fix is usually 'python tools/fauna/generate.py' (or
 './gradlew generateArt').
@@ -17,15 +20,19 @@ Exit status 0 when everything passes, 1 otherwise; the fix is usually 'python to
 Usage: python tools/fauna/check.py   (./gradlew checkArt runs it after the block textures of tools/art)
 """
 import fnmatch
+import glob
+import io
 import json
 import os
 import sys
+import zipfile
 
 import numpy as np
 from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+import frog  # noqa: E402
 import generate  # noqa: E402
 import selftest  # noqa: E402
 import validate  # noqa: E402
@@ -143,12 +150,74 @@ def validation(files, details):
     return errors, report
 
 
+VANILLA_FROGS = ('temperate', 'warm', 'cold')
+
+
+def vanilla_frog_textures():
+    """The vanilla frog textures (name -> RGBA) from the client jar in Loom's cache, or None when it is absent. Only read
+    to prove that no texel is copied; nothing of them is written anywhere."""
+    pattern = os.path.join(generate.ROOT, '.gradle', 'loom-cache', 'minecraftMaven', 'net', 'minecraft',
+                           'minecraft-clientOnly-*', '*', 'minecraft-clientOnly-*.jar')
+    for jar in sorted(glob.glob(pattern)):
+        if jar.endswith('-sources.jar'):
+            continue
+        with zipfile.ZipFile(jar) as z:
+            names = [f'assets/minecraft/textures/entity/frog/frog_{n}.png' for n in VANILLA_FROGS]
+            if all(n in z.namelist() for n in names):
+                out = {}
+                for n, entry in zip(VANILLA_FROGS, names):
+                    with Image.open(io.BytesIO(z.read(entry))) as im:
+                        out[n] = np.array(im.convert('RGBA'), dtype=np.uint8)
+                return out
+    return None
+
+
+def frog_report():
+    """(errors, report lines) of the common frog texture as committed."""
+    path = os.path.join(generate.ROOT, generate.FROG_TEXTURE)
+    if not os.path.exists(path):
+        return [], []
+    img = load_png(path)
+    errors, report = [], []
+    if img.shape != (frog.SIZE, frog.SIZE, 4):
+        return [f'{generate.FROG_TEXTURE}: size {img.shape[1]} x {img.shape[0]}, expected {frog.SIZE} x {frog.SIZE}'], []
+    for name, box in frog.BOXES.items():
+        if name.endswith(('_hand', '_foot')):
+            continue
+        for side, (u, v, w, h) in frog.faces(*box).items():
+            if w and h and (img[v:v + h, u:u + w, 3] < 255).any():
+                errors.append(f'{generate.FROG_TEXTURE}: {name} {side} face not opaque')
+    mean, p95, top = frog.smoothness(img)
+    lum = img[..., :3].astype(float) @ np.array([0.2126, 0.7152, 0.0722])
+    darkest = float(lum[img[..., 3] > 0].min())
+    if mean > validate.SMOOTH_MEAN or p95 > validate.SMOOTH_P95:
+        errors.append(f'{generate.FROG_TEXTURE}: neighbour step mean {mean:.1f} / p95 {p95:.1f} above '
+                      f'{validate.SMOOTH_MEAN} / {validate.SMOOTH_P95} (CP-A)')
+    if darkest < validate.DARKEST:
+        errors.append(f'{generate.FROG_TEXTURE}: darkest texel {darkest:.1f} < {validate.DARKEST}')
+    report.append(f'  common_frog.png          neighbour step mean {mean:4.1f}, p95 {p95:4.1f}, largest {top:5.1f}; '
+                  f'darkest texel {darkest:5.1f}')
+    vanilla = vanilla_frog_textures()
+    if vanilla is None:
+        report.append('  common_frog.png          vanilla frog textures not found in the Loom cache: copy check skipped')
+    else:
+        parts = []
+        for n, v in vanilla.items():
+            same = int(((img[..., 3] > 0) & (v[..., 3] > 0) & np.all(img == v, axis=2)).sum())
+            parts.append(f'{n} {same}')
+            if same:
+                errors.append(f'{generate.FROG_TEXTURE}: {same} texels equal to the vanilla frog_{n} texture')
+        report.append('  common_frog.png          texels equal to vanilla frog textures: ' + ', '.join(parts))
+    return errors, report
+
+
 def run():
     """(errors, report lines) of the whole check."""
     files, models = generate.build_all()
     errors = compare(files) + strays(files)
     verrs, report = validation(files, models['details'])
-    return errors + verrs + ['selftest: ' + e for e in selftest.run()], report
+    ferrs, freport = frog_report()
+    return errors + verrs + ferrs + ['selftest: ' + e for e in selftest.run()], report + freport
 
 
 def main():

@@ -126,6 +126,8 @@ public final class FaunaSpawner {
 		FaunaRules.register();
 		ServerTickEvents.END_LEVEL_TICK.register(FaunaSpawner::tick);
 		pl.polishforests.entity.base.ForestAlarm.register();
+		// Step FA4: the common frogs by the waters of the forests.
+		FrogSpawner.register();
 	}
 
 	/** Whether the level is of a world type of the mod. */

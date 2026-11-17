@@ -17,6 +17,8 @@ Files (paths relative to the project):
     src/main/resources/assets/polishforests/geckolib/animations/entity/wild_boar.animation.json
     src/main/resources/assets/polishforests/textures/entity/wild_boar/<boar|sow|piglet>.png
     src/main/resources/assets/polishforests/textures/item/wild_boar_spawn_egg.png
+    src/main/resources/assets/polishforests/textures/entity/frog/common_frog.png            (step FA4: frog.py, the
+                                                   frog variant polishforests:common_frog on the vanilla frog model)
     src/gametest/resources/assets/polishforests_probe/...                                    the axis gauge (game test only)
     src/test/resources/fauna/fauna_expected.json   bone and locator positions (rest pose; the held misc.alert pose;
                                                    the axis gauge at rest and posed), cameras of the 4-side views
@@ -35,6 +37,7 @@ from PIL import Image
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import animations  # noqa: E402
+import frog  # noqa: E402
 import paint  # noqa: E402
 import render  # noqa: E402
 import species  # noqa: E402
@@ -45,6 +48,7 @@ ROOT = os.path.normpath(os.path.join(HERE, '..', '..'))
 ASSETS = 'src/main/resources/assets/polishforests'
 PROBE_ASSETS = 'src/gametest/resources/assets/polishforests_probe'
 EXPECTED = 'src/test/resources/fauna'
+FROG_TEXTURE = f'{ASSETS}/textures/entity/frog/common_frog.png'
 
 SEXES = ('doe', 'buck')
 SEASONS = ('summer', 'winter')
@@ -142,6 +146,7 @@ def build_all():
         files[rel] = ('png', img)
         details[rel] = det
     files[f'{ASSETS}/textures/item/wild_boar_spawn_egg.png'] = ('png', paint.spawn_egg(*BOAR_EGG))
+    files[FROG_TEXTURE] = ('png', frog.paint())
 
     gauge = axis_gauge()
     gauge_anims = animations.calibration_animations(species.AXIS_GAUGE_ANIM)

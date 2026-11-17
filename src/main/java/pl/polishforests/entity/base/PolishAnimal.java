@@ -419,8 +419,9 @@ public abstract class PolishAnimal<T extends PolishAnimal<T>> extends Animal imp
 		if (alarm.fleesAt(distance)) {
 			alarmSource = alarm.source();
 			alarmFleeUntil = now + 40;
-			// The warning of another animal (the roe deer's bark, the wild boar's snort): a flight from it does not warn again.
-			alarmFromBark = alarm.kind() == ForestAlarm.Kind.BARK || alarm.kind() == ForestAlarm.Kind.SNORT;
+			// The warning of another animal (the roe deer's bark, the wild boar's snort, step FA4 the jay's screech): a flight
+			// from it does not warn again.
+			alarmFromBark = alarm.warning();
 		} else if (!isFleeing()) {
 			alertUntil = Math.max(alertUntil, now + ALERT_TICKS);
 			flaredUntil = Math.max(flaredUntil, alertUntil);

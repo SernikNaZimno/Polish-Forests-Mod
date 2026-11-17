@@ -1,0 +1,12 @@
+{
+  "asset_id": "polishforests:entity/frog/common_frog",
+  "spawn_conditions": [
+    {
+      "condition": {
+        "type": "minecraft:biome",
+        "biomes": "#polishforests:spawns_common_frog"
+      },
+      "priority": 2
+    }
+  ]
+}

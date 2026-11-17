@@ -751,6 +751,7 @@ CP-D.1 zlecił faunę i dźwięk według planu (V14, V15, V16, potem V17), CP-D.
 - **Zakres:** (1) Dźwięki: generator `tools/sound` (Python i NumPy, jak `tools/art`: przepisy, wynik CC BY 4.0) z syntezą głosów: zięba, kos, rudzik, sikora bogatka, kukułka, bębnienie i głos dzięcioła dużego, puszczyk, skrzek sójki, szczek sarny, chrząkanie i chrapnięcie dzika, rechot żaby trawnej (wybór gatunków w projekcie, według PW-16); mono OGG Vorbis przez koder dostępny z Gradle ze standardowych repozytoriów Maven (sposób w projekcie); `checkSound` (w `checkArt` albo obok) porównuje zdekodowane próbki z generatorem z tolerancją, nie bajty; manifest licencji każdego pliku; nagrania CC0 / CC BY tylko według KFA-7; dźwięki zastępcze wanilii po id dla brakujących. `sounds.json`, napisy en_us i pl_pl, `CREDITS.md`, `LICENSE-assets`; szczek sarny i głosy dzika z FA2–FA3 przechodzą na własne dźwięki. (2) `ForestAmbience`: serwerowe zdarzenie co 10–40 s z losowego wysokiego pnia w promieniu 24–64 bloków od gracza, według biomu, podsezonu i pory dnia (PW-16: świt i zmierzch głośniej, noc puszczyk, zima cicho), w obu typach świata; skrzek sójki, gdy gracz biegnie przez las, wysyła `ForestAlarm` do saren i dzików w promieniu 32 bloków. (3) Żaba trawna `polishforests:common_frog` w rejestrze `frog_variant`: tekstura 48 × 48 malowana od nowa przez `tools/fauna` albo `tools/art` na układzie UV żaby wanilii (bez kopiowania pikseli), warunek spawnu po tagach biomów lasów moda i stref wilgotnych; żaby w grądach przy kałużach, w olsach i łęgach przez spawner fauny (profil `Spawns.FOREST` bez zmian, KFA-4), wanilijne odmiany nie w tych biomach. (4) Gametest `fauna` (albo tryb `-Psites=sound`): liczba zdarzeń dźwięku według pory dnia i podsezonu (licznik po stronie serwera), łańcuch sójka → alarm → sarny, spis żab według odmiany i biomu.
 - **Ukończony, gdy:** liczby zdarzeń dźwięku zgodne z PW-16 (więcej o świcie i zmierzchu niż w południe, nocą tylko głosy nocne, zimą mniej — progi w projekcie); każdy plik dźwięku ma źródło i licencję w manifeście, `checkSound` PASS; żaba trawna pojawia się w grądach i olsach (obie skale, oba typy świata), wanilijne odmiany w tych biomach 0; alarm sójki dociera do saren w 32 blokach; KFA-1 … KFA-10. Lista „Do sprawdzenia w grze”: `find biome oak_hornbeam_forest` o świcie — śpiew ptaków, napisy dźwięków po włączeniu napisów; nocą w borze (`find biome fresh_pine_forest`) — puszczyk; bieg przez las — skrzek sójki i ucieczka saren; `find biome alder_carr` — żaby trawne (brązowe), rechot.
 - **Ryzyko:** średnie (koder OGG z Gradle, jakość syntezy głosów, R18).
+- **Stan:** etap 1 (kod, dźwięki z `tools/sound`, tekstura żaby z `tools/fauna`, testy jednostkowe, kod gametestu, fastTest) 2026-11-17, zob. „Projekt FA4”, G.66; etap 2 (przebiegi gametestu `fauna -Psites=sound`, dokumentacja) do zrobienia.
 
 ### FA5. Wiewiórka (O1; B, 2–2,5 dnia)
 
@@ -7326,3 +7327,77 @@ Etap 2 kroku FA3 (V15, G.62). Baza kroku: `8b4c7eb`; etap 1: `c507320`; poprawki
 10. Zapis i wczytanie świata przy watasze: wataha odtwarza się po chwili i dalej idzie za lochą.
 11. Jajo przyzywające dzika (zakładka z jajem sarny): daje lochę albo odyńca (ok. 30%).
 12. Paczka `.mrpack` z tego kroku wczytuje się w Modrinth App albo Prism Launcher (Minecraft 26.3, Fabric) bez błędów.
+
+## Projekt FA4 (2026-11-17, etap 1: kod, dźwięki z `tools/sound`, tekstura żaby z `tools/fauna`, testy jednostkowe, kod gametestu)
+
+Krok FA4 (§3 „Kroki FA”, V16, PW-16) dodaje dźwięki własne z generatora `tools/sound`, pejzaż dźwiękowy lasu `ForestAmbience`, skrzek sójki jako źródło `ForestAlarm` i żabę trawną jako wariant żaby wanilii. Etap 1 to kod, dane, zasoby z generatorów, testy jednostkowe, kod gametestu i fastTest. Do etapu 2 należą przebiegi według `test_plan.py 38d992c` (gametest `fauna -Psites=sound`, `determinism`) i „Stan po FA4”. Baza kroku: `38d992c` (ostatni commit FA3).
+
+**Zgodność (KFA-1, KFA-2, PW-11).**
+- Generacja bloków się nie zmienia: pejzaż i spawner żab działają tylko w ticku serwera, spawn przy generacji (FA1–FA3) jest bez zmian. Gametest `determinism` ma `spawn_mobs false`.
+- Stare sole bez zmian. Nowa sól `ForestAmbience.SALT = 0x5A4E_FA04_A3B1_E7C5` (losowanie głosów, pni i sójki; strumień na gracza z ziarna świata i UUID). Spawner żab losuje z `level.getRandom()`, jak spawnery FA1–FA3.
+- Nowa stała enumu tylko na końcu: `ForestAlarm.Kind.JAY`. Nowe enumy `ForestVoice`, `AmbienceRules.Phase` i `AmbienceRules.ForestKind` (liczniki spisu według porządku; `ForestAmbienceTest` pilnuje, że stałe tylko się dopisuje).
+- Bez nowych bloków, przedmiotów i encji. Zdarzenia dźwięku nie są zapisywane w świecie, a warianty żab są w rejestrze danych (`frog_variant`), więc migawka rejestru się nie zmienia (sprawdza `RegistrySnapshotTest`). Żaba zapisuje wariant po id, jak w wanilii; świat otwarty bez moda wczyta żabę trawną jako wariant domyślny wanilii.
+
+**Dźwięki (`tools/sound`, KFA-7, R18).**
+- Synteza w Pythonie i NumPy (`synth.py`: oscylatory z harmonicznymi i glissandem, szum filtrowany w dziedzinie częstotliwości, rezonatory, impulsy, krótki pogłos). Przepisy głosów w `recipes.py` powstały z opisów śpiewu w przewodnikach terenowych (częstotliwości nut, długości, rytm, glissanda), nigdy z nagrań. Każdy plik ma stałe ziarno (`seed × 1000 + wariant`), więc wynik jest powtarzalny.
+- 15 zdarzeń, 40 plików (2–3 warianty): zięba, kos, rudzik, bogatka, sosnówka, mysikrólik, kukułka, bębnienie i głos „kix” dzięcioła dużego, puszczyk (pohukiwanie samca i „ke-wick” samicy), skrzek sójki, rechot żaby trawnej (trzeci plik to mały chór), szczek sarny, chrząkanie i chrapnięcie dzika. Wybór według PW-16: głosy grądu (zięba, kos, rudzik, bogatka), boru (sosnówka, mysikrólik), dzięcioł bębniący I–V, puszczyk nocą; z listy PW-16 brak śpiewaka i czubatki (zob. odstępstwa).
+- Koder: konfiguracja Gradle `soundCodec` z `com.github.axet:jvorbis:1.3.6` (port libvorbis 1.3.6 do Javy, licencja BSD Xiph, z `com.github.axet:jogg:1.3.3`) i dekoderem `com.jcraft:jorbis:0.0.17` (tym samym, którym gra czyta dźwięki). To tylko narzędzie budowania (`sourceSet soundTool`, `tools/sound/java/.../SoundCodec.java`); nic z tego nie trafia do jaru moda. Wariant B3 (koder spoza Mavena) nie był potrzebny.
+- Zadania: `generateSoundWav` (`generate.py --wav build/sound/wav`: WAV 16 bit mono 44,1 kHz, `sounds.json`, manifest) → `generateSound` (`SoundCodec encode`: mono OGG Vorbis, jakość 0,4, komentarze TITLE, ARTIST, LICENSE). `decodeSound` dekoduje pliki z repozytorium do `build/sound/decoded`, a `checkSound` (`check.py`) porównuje je z generatorem. `checkArt` zależy od `checkSound`.
+- `checkSound` porównuje zdekodowane próbki z wyjściem generatora z tolerancją, nie bajty: długość ±2048 próbek, poziom RMS ±1 dB, średnia różnica obwiedni 32 pasm (60 Hz – Nyquist, dynamika 45 dB) ≤ 3 dB, korelacja obwiedni ≥ 0,90 (Vorbis przy jakości 0,4: od 0,948 przy szumowym szczeku sarny wzwyż; inny plik: najwyżej 0,62); SNR tylko w raporcie (Vorbis wypełnia pasma szumem). Do tego `sounds.json` i manifest równe generatorowi, każdy plik w manifeście ze źródłem, autorem i licencją (CC BY 4.0 albo CC0 1.0), brak obcych plików w `sounds/`, długość i pasmo dominującej częstotliwości każdego pliku w zakresie przepisu. Selftest: inny wariant, inne ziarno, inny głos, kopia przesunięta, kopia o połowę cichsza i kopia z filtrem dolnoprzepustowym nie przechodzą; kopia z szumem −40 dB przechodzi.
+- Manifest `assets/polishforests/sounds/manifest.json`: plik, zdarzenie, źródło (przepis, wariant, ziarno), opis, autor, licencja z adresem, `recordings: none`. `CREDITS.md` ma sekcję „Sounds” generowaną przez `tools/art/credits.py` z przepisów `tools/sound`; `LICENSE-assets` wymienia `tools/sound`.
+- Napisy: klucze `subtitles.polishforests.<zdarzenie>` w en_us i pl_pl z `ModSounds` (datagen). Szczek sarny i chrapnięcie dzika (dotąd dźwięki wanilii po id) grają teraz własne pliki; dzik dostał też chrząkanie jako dźwięk otoczenia (co ok. 15 s). Pozostałe dźwięki zwierząt (rany, śmierć, kroki, jedzenie, język żaby) zostają wanilii po id.
+- Nagrań z sieci nie pobierano. Nagrania CC0 / CC BY (bez NC) wejdą tylko od użytkownika albo po jego zgodzie (pytanie w raporcie kroku).
+
+**Pejzaż (`ForestAmbience`, `AmbienceRules`, `ForestVoice`).**
+
+| # | Wybór FA4 | Wartość i powód |
+|---|---|---|
+| FA4-a | Kadencja | Zdarzenie na gracza co 200–360 ticków o świcie, 400–800 w dzień, 240–480 o zmierzchu, 480–800 nocą (10–40 s; PW-16: świt i zmierzch gęściej); pierwsze 200–800 ticków po wejściu |
+| FA4-b | Pory dnia | Świt 4:30–8:00, dzień 8:00–16:30, zmierzch 16:30–19:30, noc 19:30–4:30 (z zegara świata, z SS i bez) |
+| FA4-c | Chór o świcie | O świcie w IV–VI po głosie drugi za 20–60 ticków (PW-16 „chór o świcie IV–VI”) |
+| FA4-d | Cisza | Szansa zdarzenia bez głosu: XII 0,55, I 0,6, II 0,45 (sikory zaczynają śpiewać), XI 0,3, IX–X 0,15, VIII 0,1, poza tym 0 |
+| FA4-e | Głosy | Zięba, kos, rudzik III–VII (rudzik też IX–X); bogatka, sosnówka, mysikrólik i głos dzięcioła cały rok; kukułka IV–VI; bębnienie I–V; sójka cały rok; puszczyk nocą cały rok (o zmierzchu rzadko); żaba trawna III–IV o zmierzchu i nocą, tylko w lasach wilgotnych. Wagi pór i rodzaju lasu (liściasty, mieszany, iglasty) w `ForestVoice`: sosnówka i mysikrólik głównie w borach, kos i zięba w lasach liściastych |
+| FA4-f | Źródło | Wysoki pień (szczyt `MOTION_BLOCKING_NO_LEAVES` to kłoda, pod nią ≥ 6 kłód) w pierścieniu 24–64 bloków: do 6 prób, w każdej najwyższy pień z łatki 5 × 5. Siedlisko z biomu pnia (las moda w obu typach świata), najwyżej 80 bloków od oczu gracza (w jaskini ptaków nie słychać). Głośność `max(zasięg głosu, odległość + 8) / 16`, wysokość 0,94–1,06, kategoria `AMBIENT` (suwak „Otoczenie”) |
+| FA4-g | Reguła gry | `polishforests:forest_ambience` (boolean, domyślnie true, kategoria różne); działa tam, gdzie spawner fauny (`FaunaSpawner.applies`: „Polska” w obu skalach i „Default + Polish Forests”) |
+| FA4-h | Sójka | Co 10 ticków biegnący gracz (sprint, widoczny, nie obserwator: `ForestAlarm.runningThreat`) w lesie moda, nie nocą: szansa 0,35, przerwa 200–400 ticków. Skrzek z pnia 8–24 bloków od gracza i alarm `JAY` (promień 32, siła 1,0) do saren i dzików. `JAY` to ostrzeżenie jak szczek i chrapnięcie: zwierzę uciekające przed nim nie ostrzega dalej. Zwykły głos sójki jest też w losowaniu pejzażu, ale bez alarmu |
+| FA4-i | Progi PW-16 | Świt ≥ 1,5 × i zmierzch ≥ 1,3 × zdarzeń na godzinę dnia (IV–VII); noc tylko głosy nocne (puszczyk, żaba) i zawsze puszczyk; XII i I ≤ 0,6 × maja i > 0; w styczniu bez zięby, kosa, rudzika, kukułki i żaby. Te same progi w `ForestAmbienceTest` (symulacja 400 dni) i w gametescie `-Psites=sound` (liczniki serwera) |
+
+**Żaba trawna.**
+
+| # | Wybór FA4 | Wartość i powód |
+|---|---|---|
+| FA4-j | Wariant | `data/polishforests/frog_variant/common_frog.json`: tekstura `polishforests:entity/frog/common_frog`, warunek biomu `#polishforests:spawns_common_frog`, priorytet 2 (wanilia: umiarkowana 0, ciepła i zimna 1). W biomach tagu każda żaba (z list spawnu biomów, z kijanki, z jaja, z komendy) jest żabą trawną, więc wanilijnych odmian tam nie ma |
+| FA4-k | Tag biomów | 18 lasów moda i strefy wilgotne: torfowisko wysokie, torfowisko niskie, szuwar, wikliny, łąka wilgotna, rzeka, potok, jezioro, jezioro dystroficzne, staw tatrzański (datagen `ModBiomeTagProvider`) |
+| FA4-l | Tekstura | `tools/fauna/frog.py`: 48 × 48 na układzie pudełek `FrogModel` wanilii (przesunięcia UV i wymiary z geometrii gry, bez pikseli). Kolory z opisów gatunku: oliwkowobrązowy grzbiet z ciemnymi plamami i jaśniejszymi fałdami grzbietowo-bocznymi, ciemna plama skroniowa za okiem z jasną wargą, poprzeczne pasy na nogach, kremowy brzuch z szarobrązowym marmurkiem, złote oczy z poziomą źrenicą, błona pławna na stopach. Plamy z gładkiego szumu, wygładzenie w obrębie ściany (3 przejścia, 0,6). `check.py`: średni skok 3,6, p95 19,7 (limity 6 i 24), najciemniejszy teksel 37,3; tekseli równych teksturom wanilii (umiarkowana, ciepła, zimna; czytane z jaru klienta w cache Loom tylko do porównania) 0 / 0 / 0 |
+| FA4-m | Spawner żab | `FrogSpawner` co 400 ticków, III–X (zimą hibernacja). Wagi siedlisk: ols i łęg jesionowo-olszowy 1, łęgi wierzbowo-topolowy i wiązowo-jesionowy 0,8, olszyna górska 0,6, grąd i bór bagienny 0,5, bór wilgotny i las mieszany 0,3, buczyna niżowa 0,2; tylko kolumna lądu w ≤ 6 blokach od wody (kałuże mikroreliefu, brzegi). Cel: 20 żab na ha ważonej powierzchni w promieniu 48 bloków (gęstość rzeczywista przy wodach rozrodu, bez mnożnika, bo żaba trawna jest pospolita), najwyżej 6 przy graczu, grupy 1–3 w 16–48 blokach. Żaby spawnera mają znacznik `polishforests.forest_frog`: są poza limitami mobów wanilii i despawnem wanilii (`MobPersistenceMixin`), a spawner usuwa je dalej niż 128 bloków od graczy. Profil `Spawns.FOREST` bez zmian (KFA-4) |
+| FA4-n | Rechot | `FrogSoundMixin`: żaba trawna ma rechot z `tools/sound` jako dźwięk otoczenia; pozostałe odmiany bez zmian |
+
+**Gametest `fauna -Psites=sound` (kod; przebiegi w etapie 2).** Światy „Polska” w obu skalach (tryb N, ziarno wycinka) i „Default + Polish Forests” (`-Pscales`).
+1. Pejzaż: miejsce `oak_hornbeam_1` (w świecie wanilii najbliższy grąd), gracz niewidzialny, `ForestAmbience.timeScale = 50`, czas zatrzymany o świcie, w południe, o zmierzchu i o północy późnej wiosny i stycznia, po 600 ticków (`-PsoundTicks`). W GAMEPLAY wszystkie 8 próbek i progi FA4-i, w pozostałych światach świt późnej wiosny (> 0 zdarzeń, licznik braku pnia).
+2. Sójka: sarna i dzik 4 bloki od gracza (w 32 blokach od każdego pnia, na którym może siedzieć sójka) i 72 bloki dalej, potem `ForestAmbience.screech`. Bliskie reagują (czujność albo ucieczka), dalekie nie. Następnie widoczny gracz sprintuje 400 ticków przez las i musi spłoszyć ≥ 1 sójkę.
+3. Żaby: żaba zrobiona w olsie jak z jaja musi być żabą trawną. Po 2000 ticków (`-PfrogTicks`) przy olsie i przy grądzie ≥ 1 żaba trawna w 96 blokach i 0 wanilijnych odmian w biomach tagu.
+
+Raport `build/fauna/sound.txt`.
+
+**Testy jednostkowe.**
+- `ForestAmbienceTest`: progi FA4-i w symulacji; noc tylko głosy nocne we wszystkich lasach i podsezonach; żaba tylko w lasach wilgotnych w III–IV; sosnówka w borze; interwały 200–800; enumy tylko dopisywane.
+- `ModSoundsTest`: zdarzenia `ModSounds` = klucze `sounds.json` w kolejności przepisów; pliki OGG istnieją; manifest = pliki; licencje; napisy en_us i pl_pl; głosy pejzażu z `ModSounds`.
+- `CommonFrogTest`: wariant, priorytet, tag, siedliska i miesiące spawnera.
+- `MixinTargetsTest`: cele mixinów żaby.
+- `FaunaBehaviourTest`: kolejność `ForestAlarm.Kind`, `JAY` jako ostrzeżenie.
+- Mapa testów: nowy obszar `sound` (`test_plan.py`, `docs/mapa-testow.md`).
+
+**Odstępstwa od planu.**
+1. Śpiewak i czubatka z PW-16 nie mają własnych przepisów (kos i sosnówka pełnią ich rolę w grądzie i borze). Mogą dojść jako nowe głosy na końcu `ForestVoice` i `VOICES`.
+2. Tag żaby obejmuje też strefy wilgotne poza lasem (torfowiska, szuwar, wody), bo tam żaby pojawiają się z list spawnu biomów; bez tego byłyby tam odmiany wanilii.
+3. Reguła gry `forest_ambience` dodana poza planem (wyłączenie pejzażu bez wyłączania fauny).
+4. Gęstość żab bez mnożnika ×20–50: KFA-5 dotyczy zwierząt moda, a żaba trawna to wariant wanilii z dużą gęstością rzeczywistą przy wodzie.
+
+**Do sprawdzenia w grze (etap 1; pełna lista w „Stan po FA4”).**
+1. Włączyć napisy dźwięków (Opcje → Dostępność → Napisy). `/polishforests find biome oak_hornbeam_forest`, `/time set 23500` (świt): śpiew zięby, kosa, rudzika i bogatki z różnych stron, napisy „Zięba śpiewa” itd. O świcie gęściej niż w południe (`/time set noon`).
+2. `/polishforests find biome fresh_pine_forest`, `/time set midnight`: pohukiwanie puszczyka, bez ptaków dnia. Za dnia sosnówka i mysikrólik.
+3. Bieg (sprint) przez las w trybie przetrwania: co jakiś czas skrzek sójki, a sarny i dziki w pobliżu uciekają albo stają czujnie.
+4. `/polishforests find biome alder_carr`: brązowe żaby trawne przy wodzie (z ciemną plamą za okiem) i ich rechot. `/summon minecraft:frog` w olsie też daje żabę trawną.
+5. Zimą (`/season set mid_winter` z Serene Seasons) wyraźnie ciszej: tylko sikory, mysikrólik, dzięcioł, sójka i puszczyk. `/gamerule polishforests:forest_ambience false` wyłącza pejzaż.
+6. Szczek sarny i chrapnięcie dzika brzmią inaczej niż wcześniej (własne dźwięki); dzik czasem chrząka.
+7. Paczka `.mrpack` z kroku.

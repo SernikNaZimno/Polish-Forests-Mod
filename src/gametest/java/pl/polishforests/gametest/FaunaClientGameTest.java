@@ -66,7 +66,8 @@ import pl.polishforests.gametest.probe.FaunaProbes;
  * <li>Screenshots for the review (field of view 70): the 4 variants side by side on grass from the front and from behind,
  * each animation (from the right: idle, walk, run, eat, alert on a buck, rest), the spawn egg in the hotbar.
  * </ol>
- * Numbers go to the log ({@code [fauna]}) and to {@code build/fauna/fauna.txt}; screenshots {@code fauna_*}.
+ * Numbers go to the log ({@code [fauna]}) and to {@code build/fauna/fauna.txt}; screenshots {@code fauna_*}. Step FA4:
+ * {@code -Psites=sound} runs {@link FaunaSound} instead (the forest ambience, the jay's alarm, the common frog).
  */
 public final class FaunaClientGameTest implements FabricClientGameTest {
 	private static final int NOON = 6000;
@@ -92,6 +93,14 @@ public final class FaunaClientGameTest implements FabricClientGameTest {
 		// fauna in the worlds of the mod (FaunaCensus); -Psites=model,census runs both. Step FA2: -Psites=behaviour and
 		// -Psites=mspt are modes of the census.
 		String sites = System.getProperty("polishforests.sites", "");
+		// Step FA4: -Psites=sound, the forest ambience, the jay's alarm and the frog census (FaunaSound).
+		if (sites.contains("sound")) {
+			List<String> soundFailures = new FaunaSound(context, sites).run();
+			if (!soundFailures.isEmpty()) {
+				throw new AssertionError("Fauna sound test failed:\n" + String.join("\n", soundFailures));
+			}
+			return;
+		}
 		if (sites.isBlank() || sites.contains("census") || sites.contains("behaviour") || sites.contains("mspt")) {
 			List<String> censusFailures = new FaunaCensus(context, sites).run();
 			if (!sites.contains("model")) {

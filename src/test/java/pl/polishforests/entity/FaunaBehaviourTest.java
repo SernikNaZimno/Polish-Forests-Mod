@@ -184,8 +184,13 @@ class FaunaBehaviourTest {
 		// A running player is heard beyond the largest flight distance (alert there).
 		assertTrue(ForestAlarm.PLAYER_RADIUS > P.fleeMax());
 		// New kinds only at the end (FA3: the snort of the wild boar; FA4: the jay).
-		assertEquals(List.of(ForestAlarm.Kind.TEST, ForestAlarm.Kind.RUNNING_PLAYER, ForestAlarm.Kind.BARK, ForestAlarm.Kind.SNORT),
-				List.of(ForestAlarm.Kind.values()));
+		assertEquals(List.of(ForestAlarm.Kind.TEST, ForestAlarm.Kind.RUNNING_PLAYER, ForestAlarm.Kind.BARK, ForestAlarm.Kind.SNORT,
+				ForestAlarm.Kind.JAY), List.of(ForestAlarm.Kind.values()));
+		// The warnings of other animals (FA4: also the jay's screech) make the deer stay alert after the flight.
+		for (ForestAlarm.Kind k : ForestAlarm.Kind.values()) {
+			boolean warning = k == ForestAlarm.Kind.BARK || k == ForestAlarm.Kind.SNORT || k == ForestAlarm.Kind.JAY;
+			assertEquals(warning, new ForestAlarm(Vec3.ZERO, 32, 1.0F, k, null).warning(), k.name());
+		}
 		// The snort of a boar: its neighbours flee within about 9 blocks, stand alert within 24.
 		ForestAlarm snort = new ForestAlarm(Vec3.ZERO, WildBoar.SNORT_RADIUS, WildBoar.SNORT_STRENGTH, ForestAlarm.Kind.SNORT, null);
 		assertTrue(snort.fleesAt(9));
