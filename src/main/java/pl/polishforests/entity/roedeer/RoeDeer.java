@@ -345,9 +345,12 @@ public class RoeDeer extends PolishAnimal<RoeDeer> {
 		return getUUID().getLeastSignificantBits() ^ getUUID().getMostSignificantBits();
 	}
 
-	/** Whether the coat and the antlers of this deer are those of a sub-season (the census checks every deer). */
+	/**
+	 * Whether the coat and the antlers of this deer are those of a sub-season (the census checks every deer); a young one
+	 * (the spotted texture) only in the sub-seasons of the young.
+	 */
 	public boolean looksAsIn(SubSeason subSeason) {
-		return hasWinterCoat() == winterCoat(subSeason)
+		return hasWinterCoat() == winterCoat(subSeason) && !outOfSeasonYoung(PROFILE, subSeason, isBaby(), isAgeLocked())
 				&& (!isBuck() || isBaby() || antlers() == antlers(subSeason, true, false, individual()));
 	}
 

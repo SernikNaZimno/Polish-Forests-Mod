@@ -92,6 +92,19 @@ class FaunaBehaviourTest {
 	}
 
 	@Test
+	void youngOnlyInTheirSubSeasons() {
+		// FA2 review: a spotted young roe deer only V-VIII (born V-VI, spots lost by autumn); out of season it grows up in the
+		// calendar tick (also the young of a summer chunk unloaded until winter), unless a player locked its age.
+		Set<SubSeason> young = Set.of(SubSeason.LATE_SPRING, SubSeason.EARLY_SUMMER, SubSeason.MID_SUMMER, SubSeason.LATE_SUMMER);
+		for (SubSeason s : SubSeason.values()) {
+			assertEquals(young.contains(s), RoeDeer.PROFILE.young(s), s.name());
+			assertEquals(!young.contains(s), PolishAnimal.outOfSeasonYoung(RoeDeer.PROFILE, s, true, false), s.name());
+			assertFalse(PolishAnimal.outOfSeasonYoung(RoeDeer.PROFILE, s, false, false), s.name());
+			assertFalse(PolishAnimal.outOfSeasonYoung(RoeDeer.PROFILE, s, true, true), s.name());
+		}
+	}
+
+	@Test
 	void antlersBySubSeason() {
 		long[] ids = new long[2000];
 		for (int i = 0; i < ids.length; i++) {

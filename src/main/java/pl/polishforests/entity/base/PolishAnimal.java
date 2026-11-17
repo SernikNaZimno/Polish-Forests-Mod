@@ -64,7 +64,9 @@ import pl.polishforests.season.SubSeason;
  * near their leader ({@link DailyRoutine}).
  * <li><b>The alarm</b> (FA2, {@link ForestAlarm.Listener}): an alarm heard at the flight intensity makes the animal flee
  * from its source ({@link FleeFromPlayers}); a weaker one makes it stand alert for a few seconds.
- * <li>No breeding (C10) and no food; the young of a mother appear with her at spawn and grow up as vanilla's young.
+ * <li>No breeding (C10) and no food; the young of a mother appear with her at spawn and grow up as vanilla's young, at the
+ * latest when the sub-seasons of the young end ({@link #outOfSeasonYoung}); vanilla's random young of a spawned group are
+ * off.
  * <li><b>Spawn caps and despawn (R15, KFA-4, KFA-5).</b> The animals keep their vanilla category ({@code CREATURE}), but
  * {@link #requiresCustomPersistence()} is true, which keeps them out of the mob counts of vanilla's {@code NaturalSpawner}
  * ({@code createState} skips such mobs), so they take no place of the wolves, foxes and rabbits; the mod's own
@@ -170,6 +172,27 @@ public abstract class PolishAnimal<T extends PolishAnimal<T>> extends Animal imp
 
 	/** Called on the server every {@value #SLOW_INTERVAL} ticks and at spawn with the sub-season (coat, antlers). */
 	protected void onCalendar(SubSeason subSeason) {
+	}
+
+	/**
+	 * The calendar of the animal: a young one outside the sub-seasons of the young grows up at once (FA2 review: the young
+	 * of a summer chunk, whose age does not run while the chunk is unloaded, are no longer spotted young in winter), then
+	 * {@link #onCalendar} sets the look of the sub-season.
+	 */
+	private void calendar(SubSeason subSeason) {
+		if (outOfSeasonYoung(profile(), subSeason, isBaby(), isAgeLocked())) {
+			setAge(0);
+		}
+		onCalendar(subSeason);
+	}
+
+	/**
+	 * Whether an animal is a young one out of its season: young outside the sub-seasons of the young of its profile
+	 * ({@link AnimalProfile#young}). Such a young one grows up in the calendar tick; one whose age a player locked (a golden
+	 * dandelion) stays young.
+	 */
+	public static boolean outOfSeasonYoung(AnimalProfile profile, SubSeason subSeason, boolean baby, boolean ageLocked) {
+		return baby && !ageLocked && !profile.young(subSeason);
 	}
 
 	/** Makes the animal the mother of a group with young (the spawners call it on the first animal of such a group). */
@@ -583,7 +606,7 @@ public abstract class PolishAnimal<T extends PolishAnimal<T>> extends Animal imp
 		}
 		if (Math.floorMod(level.getGameTime() + getId(), (long) SLOW_INTERVAL) == 0) {
 			SubSeason subSeason = Seasons.provider().subSeason(level);
-			onCalendar(subSeason);
+			calendar(subSeason);
 			updateHerd(level, subSeason);
 		}
 		if (Math.floorMod(level.getGameTime() + getId(), (long) LEAF_CHECK_INTERVAL) == 0) {
@@ -678,14 +701,16 @@ public abstract class PolishAnimal<T extends PolishAnimal<T>> extends Animal imp
 	/**
 	 * Marks the animals of the fauna spawner ({@link EntitySpawnReason#NATURAL}) as {@linkplain #isWanderer() wanderers};
 	 * every other reason (chunk generation, spawn egg, dispenser, spawner block, command) gives an animal that never
-	 * despawns, as a vanilla animal. Sets the look of the sub-season ({@link #onCalendar}).
+	 * despawns, as a vanilla animal. Never makes a vanilla young one. Sets the look of the sub-season ({@link #onCalendar}).
 	 */
 	@Override
 	public @Nullable SpawnGroupData finalizeSpawn(ServerLevelAccessor level, DifficultyInstance difficulty, EntitySpawnReason reason,
 			@Nullable SpawnGroupData groupData) {
 		wanderer = reason == EntitySpawnReason.NATURAL;
-		SpawnGroupData data = super.finalizeSpawn(level, difficulty, reason, groupData);
-		onCalendar(Seasons.provider().subSeason(level.getLevel()));
+		// No vanilla young (AgeableMob gives every second and later animal of a group a 5% chance in any season): the young
+		// come only with a mother of a group of the spawners, in the sub-seasons of the young (FA2 review).
+		SpawnGroupData data = super.finalizeSpawn(level, difficulty, reason, groupData == null ? new AgeableMob.AgeableMobGroupData(false) : groupData);
+		calendar(Seasons.provider().subSeason(level.getLevel()));
 		return data;
 	}
 

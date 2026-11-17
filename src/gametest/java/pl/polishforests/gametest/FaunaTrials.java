@@ -51,7 +51,8 @@ import pl.polishforests.season.SubSeason;
  * many were left out is reported, with the distance of each lone deer to the nearest other deer). Pass: summer every group
  * 1-3; winter every group at most 6 and at least {@value #WINTER_SHARE} of the deer in groups of 2-6.
  * <li><b>Looks</b> ({@link #looks}): in each given sub-season, after {@value #LOOK_TICKS} ticks, every roe deer within
- * {@value #NEAR} blocks has the coat and antlers of the sub-season ({@code RoeDeer.looksAsIn}): 100%; every variant seen
+ * {@value #NEAR} blocks has the coat and antlers of the sub-season ({@code RoeDeer.looksAsIn}; a young one, with its
+ * spotted texture, only in the sub-seasons of the young): 100%; every variant seen
  * and every variant of {@code RoeDeer.variants()} has its texture in the client's resources.
  * <li><b>Flight distance</b> ({@link #flightDistance}): a visible player walks (teleport steps of 1 block every 5 ticks, not
  * sprinting, not sneaking) towards a roe deer 50 blocks away: the distance at which it starts to flee is 20-40 blocks, it

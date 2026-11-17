@@ -418,7 +418,7 @@ public final class FaunaSpawner {
 	 * {@value #GROUP_SPREAD} blocks (inside {@code chunk} when given); all follow the first (step FA2: a spawned group is a
 	 * group of the brain). In the sub-seasons of the young ({@link AnimalProfile#young}) a group of at least two is with the
 	 * profile's chance a mother ({@code becomeMother}) with up to two young (vanilla's young, which grow up in a vanilla
-	 * time; C10: no breeding). Returns how many appeared.
+	 * time and at the latest when the sub-seasons of the young end; C10: no breeding). Returns how many appeared.
 	 */
 	static int spawnGroup(ServerLevelAccessor level, Species s, Vec3 first, int size, EntitySpawnReason reason, RandomSource random,
 			@Nullable ChunkPos chunk) {
