@@ -49,7 +49,8 @@ import pl.polishforests.worldgen.vanilla.VanillaForestsBiomeSource;
  * {@code find biome}): the player (creative, invisible, so the deer do not flee from it) stands {@code minutes} (default
  * {@value #DEFAULT_MINUTES}, {@code -PfaunaMinutes}) at the place, at noon; every fifth of that time the roe deer within
  * {@value #RADIUS} blocks are counted, and every roe deer within 160 blocks is checked: none on leaves or above the ground
- * of {@code MOTION_BLOCKING_NO_LEAVES}, none in water, none inside blocks; the ground under them, the share under a canopy
+ * of {@code MOTION_BLOCKING_NO_LEAVES} (step FA2: none still there {@value #LEAF_RECHECK} ticks later, since an animal on a
+ * leaf steps off it by itself; how many did is reported), none in water, none inside blocks; the ground under them, the share under a canopy
  * and the counters of the spawners (places refused by reason) go to the report. Each place must have on average more than
  * 1 roe deer within {@value #RADIUS} blocks over the last three counts (KFA-5; FA1 asked for more than 0).
  * <li><b>Exploration</b> (gameplay scale, natural mode): {@value #TRIPS} places 512 blocks apart, {@value #TRIP_TICKS}
@@ -256,6 +257,7 @@ final class FaunaCensus {
 		Map<String, Integer> grounds = new TreeMap<>();
 		int checked = 0;
 		int underCanopy = 0;
+		int leafSteps = 0;
 		for (int i = 0; i < samples; i++) {
 			context.waitTicks(ticks / samples);
 			Sample s = sp.getServer().computeOnServer(server -> sample(server.overworld(), new Vec3(x + 0.5, 0, z + 0.5)));
@@ -266,11 +268,31 @@ final class FaunaCensus {
 			for (String bad : s.bad) {
 				fail("%s: %s", label, bad);
 			}
+			if (!s.onLeaves.isEmpty()) {
+				// Step FA2: an animal on a leaf steps off it by itself (PolishAnimal.stepOffLeaves, every 5 ticks); a deer
+				// still on the leaves or above the ground LEAF_RECHECK ticks later fails.
+				context.waitTicks(LEAF_RECHECK);
+				List<String> still = sp.getServer().computeOnServer(server -> {
+					List<String> out = new ArrayList<>();
+					for (RoeDeer d : s.onLeaves) {
+						String bad = d.isAlive() ? onLeaves(server.overworld(), d) : null;
+						if (bad != null) {
+							out.add(bad);
+						}
+					}
+					return out;
+				});
+				leafSteps += s.onLeaves.size() - still.size();
+				for (String bad : still) {
+					fail("%s: %s still %d ticks later", label, bad, LEAF_RECHECK);
+				}
+			}
 		}
 		double lastMean = (counts[samples - 1] + counts[samples - 2] + counts[samples - 3]) / 3.0;
 		String census = sp.getServer().computeOnServer(server -> censusLine(server.overworld(), x, z));
-		line("%s at %d %d: roe deer within %d blocks %s, mean of the last three %.2f; checked %d, under a canopy %d; ground %s; %s",
-				label, x, z, RADIUS, java.util.Arrays.toString(counts), lastMean, checked, underCanopy, grounds, census);
+		line("%s at %d %d: roe deer within %d blocks %s, mean of the last three %.2f; checked %d, under a canopy %d, on a leaf and off it %d"
+				+ " ticks later %d; ground %s; %s", label, x, z, RADIUS, java.util.Arrays.toString(counts), lastMean, checked, underCanopy,
+				LEAF_RECHECK, leafSteps, grounds, census);
 		if (lastMean < 1) {
 			fail("%s: on average %.2f roe deer within %d blocks after %d ticks (at least 1)", label, lastMean, RADIUS, ticks);
 		}
@@ -282,7 +304,24 @@ final class FaunaCensus {
 		int checked;
 		int underCanopy;
 		final List<String> bad = new ArrayList<>();
+		/** Deer on leaves or above the ground at the sample, checked again {@value #LEAF_RECHECK} ticks later. */
+		final List<RoeDeer> onLeaves = new ArrayList<>();
 		final Map<String, Integer> grounds = new TreeMap<>();
+	}
+
+	/** Ticks after which a deer seen on leaves or above the ground is checked again (step FA2). */
+	static final int LEAF_RECHECK = 40;
+
+	/** "roe deer at x y z on leaves or above the ground (ground Y g)", or null when it stands on the ground. */
+	private static @org.jspecify.annotations.Nullable String onLeaves(ServerLevel level, RoeDeer d) {
+		BlockPos feet = d.blockPosition();
+		BlockPos below = BlockPos.containing(d.getX(), d.getY() - 0.2, d.getZ());
+		int ground = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, feet.getX(), feet.getZ());
+		if (level.getBlockState(below).is(BlockTags.LEAVES) || d.getY() > ground + 1.5) {
+			return String.format(Locale.ROOT, "roe deer at %.1f %.1f %.1f on leaves or above the ground (ground Y %d)", d.getX(), d.getY(),
+					d.getZ(), ground);
+		}
+		return null;
 	}
 
 	private static Sample sample(ServerLevel level, Vec3 at) {
@@ -298,10 +337,9 @@ final class FaunaCensus {
 			s.checked++;
 			BlockPos feet = d.blockPosition();
 			BlockPos below = BlockPos.containing(d.getX(), d.getY() - 0.2, d.getZ());
-			int ground = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, feet.getX(), feet.getZ());
 			String where = String.format(Locale.ROOT, "roe deer at %.1f %.1f %.1f", d.getX(), d.getY(), d.getZ());
-			if (level.getBlockState(below).is(BlockTags.LEAVES) || d.getY() > ground + 1.5) {
-				s.bad.add(where + " on leaves or above the ground (ground Y " + ground + ")");
+			if (onLeaves(level, d) != null) {
+				s.onLeaves.add(d);
 			}
 			if (d.isInWater()) {
 				s.bad.add(where + " in water");

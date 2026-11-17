@@ -596,44 +596,72 @@ public abstract class PolishAnimal<T extends PolishAnimal<T>> extends Animal imp
 	/** Ticks between two checks whether the animal stands on leaves. */
 	static final int LEAF_CHECK_INTERVAL = 5;
 
+	/** Largest drop (blocks) an animal takes to step off leaves; higher up it is moved down (see {@link #stepOffLeaves}). */
+	static final int LEAF_DROP = 3;
+
 	/**
 	 * Step FA2: an animal that ended up on a leaf block (pushed by its group in a thicket, or lifted by a jump the walk
 	 * control made at the edge of a bush; the navigation never plans a step on leaves, {@link ForestGroundNavigation})
-	 * steps down to the nearest column within 2 blocks whose ground is no higher than its feet, with no leaf under it and room
-	 * for the body.
+	 * steps off it: towards the nearest column within 2 blocks that is free at its feet and head, has no leaf from its feet
+	 * down to the ground, and ground at most {@value #LEAF_DROP} blocks below its feet where it can stand. An animal stranded
+	 * higher (on a crown that touches a slope) with no such column is put on the nearest ground within 2 blocks where it can
+	 * stand (up to 16 blocks below); it is not walked across the crown.
 	 */
 	private void stepOffLeaves(ServerLevel level) {
 		if (!onGround() || !level.getBlockState(BlockPos.containing(getX(), getY() - 0.2, getZ())).is(BlockTags.LEAVES)) {
 			return;
 		}
 		BlockPos feet = blockPosition();
-		BlockPos best = null;
-		int bestDist = Integer.MAX_VALUE;
+		BlockPos step = null;
+		BlockPos ground = null;
+		int stepDist = Integer.MAX_VALUE;
+		int groundDist = Integer.MAX_VALUE;
+		BlockPos.MutableBlockPos p = new BlockPos.MutableBlockPos();
 		for (int dx = -2; dx <= 2; dx++) {
 			for (int dz = -2; dz <= 2; dz++) {
 				int d = dx * dx + dz * dz;
-				if (d == 0 || d >= bestDist) {
+				if (d == 0 || d >= groundDist && d >= stepDist) {
 					continue;
 				}
 				int x = feet.getX() + dx;
 				int z = feet.getZ() + dz;
 				BlockPos at = new BlockPos(x, level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z), z);
-				if (at.getY() <= feet.getY() && Thicket.standable(level, at)) {
-					best = at;
-					bestDist = d;
+				if (at.getY() > feet.getY() || !Thicket.standable(level, at)) {
+					continue;
+				}
+				if (d < groundDist && feet.getY() - at.getY() <= 16) {
+					ground = at;
+					groundDist = d;
+				}
+				if (d >= stepDist || feet.getY() - at.getY() > LEAF_DROP) {
+					continue;
+				}
+				boolean clear = true;
+				for (int y = at.getY(); y <= feet.getY() + 1 && clear; y++) {
+					var state = level.getBlockState(p.set(x, y, z));
+					clear = !state.is(BlockTags.LEAVES) && (y < feet.getY() || state.getCollisionShape(level, p).isEmpty());
+				}
+				if (clear) {
+					step = at;
+					stepDist = d;
 				}
 			}
 		}
-		if (best != null) {
+		if (step != null) {
 			getNavigation().stop();
-			Vec3 dir = new Vec3(best.getX() + 0.5 - getX(), 0, best.getZ() + 0.5 - getZ()).normalize().scale(0.3);
+			Vec3 dir = new Vec3(step.getX() + 0.5 - getX(), 0, step.getZ() + 0.5 - getZ()).normalize().scale(0.3);
 			setDeltaMovement(dir.x, getDeltaMovement().y, dir.z);
+		} else if (ground != null && feet.getY() - ground.getY() > LEAF_DROP) {
+			getNavigation().stop();
+			teleportTo(ground.getX() + 0.5, ground.getY(), ground.getZ() + 0.5);
 		}
 	}
 
 	/** Step FA2: no jump onto a leaf block just ahead (the walk control jumps at a bush that blocks the way). */
 	@Override
 	public void jumpFromGround() {
+		// Only the block straight ahead: a wider check (35 degrees to the sides, or no jump while on a leaf) also stopped
+		// the jumps up a step of the ground next to a bush, and a fleeing deer stood still (FA2 stage 2).
 		float yaw = getYRot() * Mth.DEG_TO_RAD;
 		BlockPos ahead = BlockPos.containing(getX() - Mth.sin(yaw) * 0.9, getY() + 0.5, getZ() + Mth.cos(yaw) * 0.9);
 		if (!isInWater() && level().getBlockState(ahead).is(BlockTags.LEAVES)) {
