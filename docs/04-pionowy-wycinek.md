@@ -7160,3 +7160,28 @@ Pierwszy spis urzędowy (kod `c048aca`, 3 h 20 min, `build/fa2_census_ss.txt`) d
 10. Świat „Default + Polish Forests”: `find biome oak_hornbeam_forest` i `find biome fresh_pine_forest`, kilka minut w lesie: sarny też tam (w małych płatach lasu moda pojawiają się po kilku minutach), wilki, lisy i króliki dalej w lesie.
 11. Zapis i wczytanie świata przy grupie saren z koźlętami: grupy i koźlęta przy kozach odtwarzają się po chwili (grupa nie jest zapisywana).
 12. Paczka `.mrpack` z tego kroku wczytuje się w Modrinth App albo Prism Launcher (Minecraft 26.3, Fabric) bez błędów.
+
+## Runda 1 poprawek po przeglądzie FA2 (2026-11-17)
+
+Baza rundy: `ca6ade8` (koniec etapu 2). Przebiegi według `python tools/dev/test_plan.py ca6ade8` (obszary unit, blocks, fauna, gametest_code). Zgodnie z G.36 U-1 bez oceny wyglądu i bez zrzutów. Przegląd zgłosił jedną sprawę „major” (prawdziwa, poprawiona) i 4 drobne (sprawdzone, prawdziwe; według progu z 2026-10-21 bez poprawek, na liście „Do kroku porządkowego” jako DP-182 … DP-184, a DP-177 przesunięte do FA3 albo kroku porządkowego). Czekanie na grę użytkownika: 0 min.
+
+**Sprawa główna: cętkowane koźlęta w każdej porze roku.** `RoeDeer.variant()` daje teksturę koźlęcia (`kid`) każdemu młodemu, a młode powstawały też poza podsezonami koźląt (V–VIII): (1) `AgeableMob.finalizeSpawn` wanilii daje każdemu drugiemu i dalszemu zwierzęciu spawnowanej grupy 5% szansy na młode w każdej porze roku, a `spawnGroup` przekazuje dalej `SpawnGroupData`, więc zimowa grupa 2–6 miała koźlę w ok. 15% przypadków; (2) koźlęta spawnu przy generacji z lata stały w niewczytanych chunkach bez ticku (wiek nie biegnie) i gracz zastawał je jesienią i zimą jako cętkowane. Spis tego nie łapał, bo `looksAsIn` sprawdzał tylko flagę futra: w urzędowym spisie etapu 2 „looks in MID_WINTER: 48 of 48 … young 11”. Poprawka (G.64 FA2-t):
+- `PolishAnimal.finalizeSpawn` podaje wanilii `AgeableMobGroupData(false)`, gdy grupa nie ma danych: losowych młodych wanilii nie ma, młode są tylko przy matce z grupy spawnerów (`spawnGroup`, w podsezonach koźląt).
+- Tick kalendarza (co 100 ticków i przy spawnie) najpierw każe dorosnąć młodemu poza podsezonami koźląt profilu (`PolishAnimal.outOfSeasonYoung`, `setAge(0)`), potem ustawia futro i parostki, więc dorosły kozioł od razu dostaje parostki podsezonu. Koźlę z zablokowanym wiekiem (złoty mniszek, mechanika wanilii) zostaje młode.
+- `RoeDeer.looksAsIn` liczy młode poza podsezonami koźląt jako niezgodne z podsezonem (spis sprawdza teraz to, co jest rysowane). Test jednostkowy `FaunaBehaviourTest.youngOnlyInTheirSubSeasons`.
+- Bez nowego zapisu (KFA-1), migawka rejestru bez zmian.
+
+**Przebiegi.**
+- `compileJava`, `compileGametestJava`, `fastTest` (`run-tests --reuse`, PASS w 1262 s, drzewo `885d5d87aa41`), `FaunaBehaviourTest` (7 testów, z nowym), `FaunaProfileTest`, `FaunaModelTest`, `PerformanceThresholdsTest`: PASS.
+- Próby zachowania z Serene Seasons `fauna -Psites=behaviour -Pscales=realistic,vanilla -Pmodes=present_day -PtimingsReportOnly` (21 min 50 s), PASS bez FAIL: rytm dnia jak w harmonogramie; zima 1,00 saren w grupach 2–6 (REAL i „Default + Polish Forests”), lato grupy 1–3; wygląd 39 z 39 i 27 z 27 saren zgodny z podsezonem w MID_SUMMER, MID_AUTUMN, LATE_AUTUMN i MID_WINTER, młodych 0 w każdym (w etapie 2 te same próby REAL dawały 7 cętkowanych koźląt także zimą: próba zimowych grup biegnie przed próbą wyglądu, więc koźlęta z generacji dorastają już w niej); ucieczka z 30,7 i 28,8 bloku; alarm: bliska sarna ucieka (do 54,9 i 36,9 bloku), daleka czuwa. Raport `handoff/FA2/r1_behaviour.txt`.
+- Pełny spis urzędowy (3 h) i `-Psites=model` bez przebiegu: gęstość, spawnery (poza tym, że żadne zwierzę nie jest już losowym młodym wanilii), mózg, nawigacja, model i render bez zmian, a zmiana wyglądu i grup ma swoje próby wyżej (jak w rundzie 1 FA1).
+- Na koniec rundy według `test_plan.py ca6ade8 --end`: `checkDatagen` i `checkArt` (241 tekstur) PASS, pełny `tools/dev/run-tests test` PASS (2020 s, drzewo `eef9d266314a`, log `build/test-logs/eef9d266314a-test-a9263e06d0.log`; z `RegistrySnapshotTest`).
+
+**Uwaga.** Próba wyglądu w spisie nie widzi już koźląt w MID_SUMMER (dorosły w próbie zimowych grup), więc tekstury `kid` pilnuje tylko sprawdzenie „każdy wariant `RoeDeer.variants()` ma teksturę”, a reguły podsezonów test jednostkowy.
+
+**Drobne (bez poprawek, DP-182 … DP-184, DP-177):** scena MSPT mierzy tylko letnią ścieżkę grup; próby ucieczki i alarmu stoją po łatwej stronie i nie łapią biegania tam i z powrotem przy brzegu; osierocony Javadoc `trialSpot` i „more than 1” w Javadoc `FaunaCensus`; nieużywany czujnik i `LookAtTarget` w mózgu sarny (DP-177 przesunięte).
+
+**Do sprawdzenia w grze (zmiany rundy):**
+1. Z Serene Seasons, w lesie z sarnami (`/polishforests find biome oak_hornbeam_forest`), `/season set mid_summer`: koza z 1–2 cętkowanymi koźlętami jak dotąd; potem `/season set early_autumn` (albo dowolny podsezon jesieni lub zimy) i chwila (do 5 s): koźlęta dorastają do pełnej wielkości z futrem podsezonu, `/polishforests fauna 64` nie pokazuje młodych.
+2. Zimą (`/season set mid_winter`) w kilku lasach (`find biome fresh_pine_forest`, `find biome oak_hornbeam_forest`) i w nowo odkrytych chunkach: w grupach saren żadnego cętkowanego koźlęcia; `/polishforests fauna 64` bez młodych.
+3. Nowy świat, las odwiedzony latem, potem `/season set mid_winter`, odejście ponad 200 bloków i powrót: dawne koźlęta są dorosłe.
