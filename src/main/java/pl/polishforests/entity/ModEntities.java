@@ -18,16 +18,19 @@ import org.jspecify.annotations.Nullable;
 import pl.polishforests.PolishForests;
 import pl.polishforests.entity.roedeer.RoeDeer;
 import pl.polishforests.entity.spawn.FaunaSpawner;
+import pl.polishforests.entity.wildboar.WildBoar;
 
 /**
  * Entity types of the mod and their spawn eggs (vertical slice: from step V8 the roe deer, for rendering only). The ids
  * go into saved worlds, so {@code RegistrySnapshotTest} compares them with {@code src/test/resources/registry_snapshot.txt}
  * like the blocks and items (frozen after checkpoint CP-B, PW-11). From step FA1 the animals spawn in the world types of the
- * mod ({@link #fauna()}, {@code spawn/FaunaSpawner}).
+ * mod ({@link #fauna()}, {@code spawn/FaunaSpawner}). Step FA3: the wild boar (new ids appended, PW-11).
  */
 public final class ModEntities {
 	private static @Nullable EntityType<RoeDeer> roeDeer;
 	private static @Nullable Item roeDeerSpawnEgg;
+	private static @Nullable EntityType<WildBoar> wildBoar;
+	private static @Nullable Item wildBoarSpawnEgg;
 
 	private ModEntities() {
 	}
@@ -37,8 +40,11 @@ public final class ModEntities {
 		registerContent();
 		FaunaSpawner.register();
 		FabricDefaultAttributeRegistry.register(roeDeer(), RoeDeer.createAttributes());
-		CreativeModeTabEvents.modifyOutputEvent(CreativeModeTabs.SPAWN_EGGS).register(out -> out.insertAfter(Items.RAVAGER_SPAWN_EGG,
-				roeDeerSpawnEgg()));
+		FabricDefaultAttributeRegistry.register(wildBoar(), WildBoar.createAttributes());
+		CreativeModeTabEvents.modifyOutputEvent(CreativeModeTabs.SPAWN_EGGS).register(out -> {
+			out.insertAfter(Items.RAVAGER_SPAWN_EGG, roeDeerSpawnEgg());
+			out.insertAfter(roeDeerSpawnEgg(), wildBoarSpawnEgg());
+		});
 	}
 
 	/**
@@ -53,6 +59,24 @@ public final class ModEntities {
 		roeDeer = type("roe_deer", EntityType.Builder.of(RoeDeer::new, MobCategory.CREATURE).sized(0.7F, 1.1F).eyeHeight(1.0F)
 				.clientTrackingRange(10).noLootTable());
 		roeDeerSpawnEgg = spawnEgg("roe_deer_spawn_egg", roeDeer);
+		// Step FA3: the wild boar, 0.9 x 0.95 blocks (the young at vanilla's baby scale), creature category; no loot (C8).
+		wildBoar = type("wild_boar", EntityType.Builder.of(WildBoar::new, MobCategory.CREATURE).sized(0.9F, 0.95F).eyeHeight(0.7F)
+				.clientTrackingRange(10).noLootTable());
+		wildBoarSpawnEgg = spawnEgg("wild_boar_spawn_egg", wildBoar);
+	}
+
+	public static EntityType<WildBoar> wildBoar() {
+		if (wildBoar == null) {
+			throw new IllegalStateException("The entity types are not registered yet");
+		}
+		return wildBoar;
+	}
+
+	public static Item wildBoarSpawnEgg() {
+		if (wildBoarSpawnEgg == null) {
+			throw new IllegalStateException("The spawn eggs are not registered yet");
+		}
+		return wildBoarSpawnEgg;
 	}
 
 	public static EntityType<RoeDeer> roeDeer() {
@@ -67,12 +91,18 @@ public final class ModEntities {
 	 * registry snapshot lists them, so renaming a field, which breaks saved worlds after CP-B, fails its test.
 	 */
 	public static List<String> savedFields(EntityType<?> type) {
-		return type == roeDeer ? RoeDeer.SAVED_FIELDS : List.of();
+		if (type == roeDeer) {
+			return RoeDeer.SAVED_FIELDS;
+		}
+		return type == wildBoar ? WildBoar.SAVED_FIELDS : List.of();
 	}
 
-	/** The species the fauna spawners place, with their profiles (step FA1). */
+	/**
+	 * The species the fauna spawners place, with their profiles (step FA1; step FA3 the wild boar after the roe deer, so the
+	 * draws of the roe deer at generation stay those of FA2).
+	 */
 	public static List<FaunaSpawner.Species> fauna() {
-		return List.of(new FaunaSpawner.Species(roeDeer(), RoeDeer.PROFILE));
+		return List.of(new FaunaSpawner.Species(roeDeer(), RoeDeer.PROFILE), new FaunaSpawner.Species(wildBoar(), WildBoar.PROFILE));
 	}
 
 	public static Item roeDeerSpawnEgg() {

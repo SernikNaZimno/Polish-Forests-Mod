@@ -35,6 +35,9 @@ import pl.polishforests.entity.ModEntities;
 import pl.polishforests.entity.base.PolishAnimal;
 import pl.polishforests.entity.roedeer.RoeDeer;
 import pl.polishforests.entity.spawn.FaunaSpawner;
+import pl.polishforests.entity.wildboar.BoarRooting;
+import pl.polishforests.entity.wildboar.WarnCharge;
+import pl.polishforests.entity.wildboar.WildBoar;
 import pl.polishforests.worldgen.habitat.HabitatBiome;
 import pl.polishforests.worldgen.vanilla.VanillaForestsBiomeSource;
 
@@ -73,6 +76,11 @@ import pl.polishforests.worldgen.vanilla.VanillaForestsBiomeSource;
  *
  * <p>Step FA2 counts in each place also the groups and the looks of the roe deer (the census line of the fauna command), and
  * the census needs on average at least 1 roe deer within {@value #RADIUS} blocks over the last three counts.
+ *
+ * <p>Step FA3 (docs/04 "Projekt FA3"): the wild boars are counted and checked in every sample like the roe deer (none on
+ * leaves, in water or inside blocks), the exploration counts them too, and every world needs at least one boar within
+ * {@value #CHECK_RADIUS} blocks of one of its places at the last sample (KFA-5: the boar lives in both world types, both
+ * scales and both modes); the counters add the snorts, the warnings of the sows and the rooting.
  */
 final class FaunaCensus {
 	static final int RADIUS = 64;
@@ -97,6 +105,8 @@ final class FaunaCensus {
 	private final boolean places;
 	private final boolean behaviour;
 	private final boolean mspt;
+	/** Step FA3: the most wild boars within {@value #CHECK_RADIUS} blocks at the last sample of a place of the current world. */
+	private int worldBoars;
 	private final FaunaTrials trials;
 	/** The sub-seasons of the looks trial: all in the gameplay world of the natural mode, these four elsewhere. */
 	static final List<pl.polishforests.season.SubSeason> LOOK_SEASONS = List.of(pl.polishforests.season.SubSeason.MID_SUMMER,
@@ -126,6 +136,11 @@ final class FaunaCensus {
 				+ " places %s, behaviour %s, mspt %s", ticks, RADIUS, RoeDeer.PROFILE.generationDensityPerBlock(), RoeDeer.PROFILE.realDensity(),
 				RoeDeer.PROFILE.generationFactor(), RoeDeer.PROFILE.spawnerDensityPerBlock(), RoeDeer.PROFILE.spawnerFactor(), places, behaviour,
 				mspt);
+		line("census: wild boar densities per block: generation %.6f (real %.3f/ha × %.0f), spawner %.6f (× %.0f); to the roe deer %.2f"
+				+ " and %.2f", WildBoar.PROFILE.generationDensityPerBlock(), WildBoar.PROFILE.realDensity(), WildBoar.PROFILE.generationFactor(),
+				WildBoar.PROFILE.spawnerDensityPerBlock(), WildBoar.PROFILE.spawnerFactor(),
+				WildBoar.PROFILE.generationDensityPerBlock() / RoeDeer.PROFILE.generationDensityPerBlock(),
+				WildBoar.PROFILE.spawnerDensityPerBlock() / RoeDeer.PROFILE.spawnerDensityPerBlock());
 		if (mspt && !places && !behaviour) {
 			msptWorld();
 			write();
@@ -164,6 +179,7 @@ final class FaunaCensus {
 		List<SliceSites.Place> places = SliceSites.of(real, presentDay).stream().filter(p -> !p.transect())
 				.filter(p -> allSites || p.name().endsWith("_1")).toList();
 		resetCounters();
+		worldBoars = 0;
 		try (TestSingleplayerContext sp = context.worldBuilder().adjustSettings(ui -> SliceClientGameTest.select(ui, preset, presentDay))
 				.create()) {
 			prepare(sp, true);
@@ -176,7 +192,7 @@ final class FaunaCensus {
 			if (behaviour) {
 				// All 12 sub-seasons of the looks in the gameplay world of the natural mode, 4 elsewhere.
 				trials.all(sp, label, first.x(), first.z(), !real && !presentDay ? List.of(pl.polishforests.season.SubSeason.values())
-						: LOOK_SEASONS);
+						: LOOK_SEASONS, !real && !presentDay);
 			}
 			if (this.places && !real && !presentDay) {
 				despawn(sp, first.x(), first.z());
@@ -189,6 +205,7 @@ final class FaunaCensus {
 
 	private void vanillaWorld() {
 		resetCounters();
+		worldBoars = 0;
 		try (TestSingleplayerContext sp = context.worldBuilder().adjustSettings(this::selectVanilla).create()) {
 			prepare(sp, true);
 			boolean first = true;
@@ -205,7 +222,7 @@ final class FaunaCensus {
 					site(sp, "default_polish_forests " + b.id(), x, z);
 				}
 				if (behaviour && first) {
-					trials.all(sp, "default_polish_forests " + b.id(), x, z, LOOK_SEASONS);
+					trials.all(sp, "default_polish_forests " + b.id(), x, z, LOOK_SEASONS, false);
 				}
 				first = false;
 			}
@@ -255,13 +272,17 @@ final class FaunaCensus {
 		int samples = 5;
 		int[] counts = new int[samples];
 		Map<String, Integer> grounds = new TreeMap<>();
+		int[] boars = new int[samples];
 		int checked = 0;
 		int underCanopy = 0;
 		int leafSteps = 0;
+		int boarsChecked = 0;
 		for (int i = 0; i < samples; i++) {
 			context.waitTicks(ticks / samples);
 			Sample s = sp.getServer().computeOnServer(server -> sample(server.overworld(), new Vec3(x + 0.5, 0, z + 0.5)));
 			counts[i] = s.near;
+			boars[i] = s.boarsNear;
+			boarsChecked = s.boarsChecked;
 			checked += s.checked;
 			underCanopy += s.underCanopy;
 			s.grounds.forEach((k, v) -> grounds.merge(k, v, Integer::sum));
@@ -274,7 +295,7 @@ final class FaunaCensus {
 				context.waitTicks(LEAF_RECHECK);
 				List<String> still = sp.getServer().computeOnServer(server -> {
 					List<String> out = new ArrayList<>();
-					for (RoeDeer d : s.onLeaves) {
+					for (PolishAnimal<?> d : s.onLeaves) {
 						String bad = d.isAlive() ? onLeaves(server.overworld(), d) : null;
 						if (bad != null) {
 							out.add(bad);
@@ -293,19 +314,27 @@ final class FaunaCensus {
 		line("%s at %d %d: roe deer within %d blocks %s, mean of the last three %.2f; checked %d, under a canopy %d, on a leaf and off it %d"
 				+ " ticks later %d; ground %s; %s", label, x, z, RADIUS, java.util.Arrays.toString(counts), lastMean, checked, underCanopy,
 				LEAF_RECHECK, leafSteps, grounds, census);
+		line("%s: wild boars within %d blocks %s, within %d blocks at the last sample %d", label, RADIUS, java.util.Arrays.toString(boars),
+				CHECK_RADIUS, boarsChecked);
+		worldBoars = Math.max(worldBoars, boarsChecked);
 		if (lastMean < 1) {
 			fail("%s: on average %.2f roe deer within %d blocks after %d ticks (at least 1)", label, lastMean, RADIUS, ticks);
 		}
 	}
 
-	/** What a sample counts: deer near the place, the checked deer, the bad ones, the ground under them. */
+	/**
+	 * What a sample counts: deer near the place, the checked deer, the bad ones, the ground under them; step FA3 the wild
+	 * boars near the place and within the check radius (checked like the deer).
+	 */
 	private static final class Sample {
 		int near;
 		int checked;
 		int underCanopy;
+		int boarsNear;
+		int boarsChecked;
 		final List<String> bad = new ArrayList<>();
-		/** Deer on leaves or above the ground at the sample, checked again {@value #LEAF_RECHECK} ticks later. */
-		final List<RoeDeer> onLeaves = new ArrayList<>();
+		/** Animals on leaves or above the ground at the sample, checked again {@value #LEAF_RECHECK} ticks later. */
+		final List<PolishAnimal<?>> onLeaves = new ArrayList<>();
 		final Map<String, Integer> grounds = new TreeMap<>();
 	}
 
@@ -313,13 +342,13 @@ final class FaunaCensus {
 	static final int LEAF_RECHECK = 40;
 
 	/** "roe deer at x y z on leaves or above the ground (ground Y g)", or null when it stands on the ground. */
-	private static @org.jspecify.annotations.Nullable String onLeaves(ServerLevel level, RoeDeer d) {
+	private static @org.jspecify.annotations.Nullable String onLeaves(ServerLevel level, PolishAnimal<?> d) {
 		BlockPos feet = d.blockPosition();
 		BlockPos below = BlockPos.containing(d.getX(), d.getY() - 0.2, d.getZ());
 		int ground = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, feet.getX(), feet.getZ());
 		if (level.getBlockState(below).is(BlockTags.LEAVES) || d.getY() > ground + 1.5) {
-			return String.format(Locale.ROOT, "roe deer at %.1f %.1f %.1f on leaves or above the ground (ground Y %d)", d.getX(), d.getY(),
-					d.getZ(), ground);
+			return String.format(Locale.ROOT, "%s at %.1f %.1f %.1f on leaves or above the ground (ground Y %d)", d.profile().species(),
+					d.getX(), d.getY(), d.getZ(), ground);
 		}
 		return null;
 	}
@@ -352,6 +381,24 @@ final class FaunaCensus {
 			}
 			s.grounds.merge(BuiltInRegistries.BLOCK.getKey(level.getBlockState(below).getBlock()).getPath(), 1, Integer::sum);
 		}
+		for (WildBoar b : level.getEntities(ModEntities.wildBoar(), box, e -> e.isAlive())) {
+			double dx = b.getX() - at.x;
+			double dz = b.getZ() - at.z;
+			if (dx * dx + dz * dz <= RADIUS * RADIUS) {
+				s.boarsNear++;
+			}
+			s.boarsChecked++;
+			String where = String.format(Locale.ROOT, "wild boar at %.1f %.1f %.1f", b.getX(), b.getY(), b.getZ());
+			if (onLeaves(level, b) != null) {
+				s.onLeaves.add(b);
+			}
+			if (b.isInWater()) {
+				s.bad.add(where + " in water");
+			}
+			if (b.isInWall()) {
+				s.bad.add(where + " inside a block");
+			}
+		}
 		return s;
 	}
 
@@ -371,19 +418,28 @@ final class FaunaCensus {
 	private void exploration(TestSingleplayerContext sp, int x0, int z0) {
 		double[] perChunk = new double[TRIPS];
 		int[] loaded = new int[TRIPS];
+		double[] boarPerChunk = new double[TRIPS];
+		int[] boarLoaded = new int[TRIPS];
 		for (int i = 0; i < TRIPS; i++) {
 			teleport(sp, x0 + 512 * (i + 1), z0);
 			context.waitTicks(TRIP_TICKS);
 			int[] n = sp.getServer().computeOnServer(s -> new int[] {s.overworld().getEntities(ModEntities.roeDeer(), e -> e.isAlive()).size(),
-					s.overworld().getChunkSource().getLoadedChunksCount()});
+					s.overworld().getChunkSource().getLoadedChunksCount(), s.overworld().getEntities(ModEntities.wildBoar(), e -> e.isAlive()).size()});
 			loaded[i] = n[0];
 			perChunk[i] = n[0] / (double) Math.max(1, n[1]);
+			boarLoaded[i] = n[2];
+			boarPerChunk[i] = n[2] / (double) Math.max(1, n[1]);
 		}
-		line("exploration: %d places 512 blocks apart, %d ticks each: loaded roe deer %s, per loaded chunk %s", TRIPS, TRIP_TICKS,
-				java.util.Arrays.toString(loaded), fmt(perChunk));
+		line("exploration: %d places 512 blocks apart, %d ticks each: loaded roe deer %s, per loaded chunk %s; wild boars %s, per loaded"
+				+ " chunk %s", TRIPS, TRIP_TICKS, java.util.Arrays.toString(loaded), fmt(perChunk), java.util.Arrays.toString(boarLoaded),
+				fmt(boarPerChunk));
 		double start = Math.max(perChunk[0], perChunk[1]);
 		if (perChunk[TRIPS - 1] > 1.5 * start + 0.02) {
 			fail("exploration: roe deer per loaded chunk grew from %.3f to %.3f", start, perChunk[TRIPS - 1]);
+		}
+		double boarStart = Math.max(boarPerChunk[0], boarPerChunk[1]);
+		if (boarPerChunk[TRIPS - 1] > 1.5 * boarStart + 0.02) {
+			fail("exploration: wild boars per loaded chunk grew from %.3f to %.3f", boarStart, boarPerChunk[TRIPS - 1]);
 		}
 	}
 
@@ -515,6 +571,11 @@ final class FaunaCensus {
 	}
 
 	static Vec3 trialSpot(ServerLevel level, int x, int z) {
+		return trialSpot(level, ModEntities.roeDeer(), x, z);
+	}
+
+	/** A valid place for an animal of the type near a column (step FA3: also for the wild boar). */
+	static Vec3 trialSpot(ServerLevel level, EntityType<?> type, int x, int z) {
 		for (int r = 0; r <= 16; r++) {
 			for (int dx = -r; dx <= r; dx++) {
 				for (int dz = -r; dz <= r; dz++) {
@@ -522,7 +583,7 @@ final class FaunaCensus {
 						continue;
 					}
 					level.getChunk((x + dx) >> 4, (z + dz) >> 4);
-					Vec3 at = FaunaSpawner.placeUncounted(level, ModEntities.roeDeer(), x + dx, z + dz);
+					Vec3 at = FaunaSpawner.placeUncounted(level, type, x + dx, z + dz);
 					if (at != null) {
 						return at;
 					}
@@ -585,6 +646,9 @@ final class FaunaCensus {
 		pl.polishforests.entity.base.ForestAlarm.RAISED.reset();
 		pl.polishforests.entity.base.ForestAlarm.HEARD.reset();
 		RoeDeer.BARKS.reset();
+		WildBoar.SNORTS.reset();
+		WarnCharge.WARNINGS.reset();
+		BoarRooting.resetCounters();
 	}
 
 	private void counters(String label) {
@@ -599,6 +663,12 @@ final class FaunaCensus {
 				FaunaSpawner.GENERATION_GROUPS.sum(), FaunaSpawner.SPAWNER_ANIMALS.sum(), FaunaSpawner.SPAWNER_GROUPS.sum(),
 				FaunaSpawner.YOUNG_GROUPS.sum(), b, refused, pl.polishforests.entity.base.ForestAlarm.RAISED.sum(),
 				pl.polishforests.entity.base.ForestAlarm.HEARD.sum(), RoeDeer.BARKS.sum());
+		line("%s wild boar: snorts %d, warnings %d, rooting patches %d (%d blocks), refused by the rules %d, wallows %d, mud %d", label,
+				WildBoar.SNORTS.sum(), WarnCharge.WARNINGS.sum(), BoarRooting.PATCHES.sum(), BoarRooting.BLOCKS.sum(), BoarRooting.REFUSED.sum(),
+				BoarRooting.WALLOWS.sum(), BoarRooting.MUD.sum());
+		if (places && worldBoars < 1) {
+			fail("%s: no wild boar within %d blocks of any place at its last sample (KFA-5)", label, CHECK_RADIUS);
+		}
 	}
 
 	private static String fmt(double[] v) {
@@ -620,6 +690,8 @@ final class FaunaCensus {
 			// The spawners off during the timing (only the 40 trial deer and those of the generation tick).
 			sp.getServer().runCommand("gamerule polishforests:forest_fauna false");
 			trials.mspt(sp, "gameplay/natural " + first.name(), first.x(), first.z());
+			// Step FA3: the same with 40 wild boars (the roe deer removed).
+			trials.boars.mspt(sp, "gameplay/natural " + first.name(), first.x(), first.z());
 		}
 	}
 

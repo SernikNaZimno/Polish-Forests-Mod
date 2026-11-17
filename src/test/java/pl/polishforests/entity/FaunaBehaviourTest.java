@@ -20,6 +20,9 @@ import pl.polishforests.entity.base.ForestAlarm;
 import pl.polishforests.entity.base.PolishAnimal;
 import pl.polishforests.entity.roedeer.RoeDeer;
 import pl.polishforests.entity.roedeer.RoeDeer.Antlers;
+import pl.polishforests.entity.wildboar.BoarRooting;
+import pl.polishforests.entity.wildboar.WarnCharge;
+import pl.polishforests.entity.wildboar.WildBoar;
 import pl.polishforests.season.SubSeason;
 import pl.polishforests.worldgen.habitat.HabitatBiome;
 
@@ -180,9 +183,93 @@ class FaunaBehaviourTest {
 		assertTrue(bark.intensityAt(31) > 0);
 		// A running player is heard beyond the largest flight distance (alert there).
 		assertTrue(ForestAlarm.PLAYER_RADIUS > P.fleeMax());
-		// New kinds only at the end (FA4: the jay).
-		assertEquals(List.of(ForestAlarm.Kind.TEST, ForestAlarm.Kind.RUNNING_PLAYER, ForestAlarm.Kind.BARK),
+		// New kinds only at the end (FA3: the snort of the wild boar; FA4: the jay).
+		assertEquals(List.of(ForestAlarm.Kind.TEST, ForestAlarm.Kind.RUNNING_PLAYER, ForestAlarm.Kind.BARK, ForestAlarm.Kind.SNORT),
 				List.of(ForestAlarm.Kind.values()));
+		// The snort of a boar: its neighbours flee within about 9 blocks, stand alert within 24.
+		ForestAlarm snort = new ForestAlarm(Vec3.ZERO, WildBoar.SNORT_RADIUS, WildBoar.SNORT_STRENGTH, ForestAlarm.Kind.SNORT, null);
+		assertTrue(snort.fleesAt(9));
+		assertFalse(snort.fleesAt(10));
+	}
+
+	@Test
+	void actionsAndStatesOnlyAppended() {
+		// The synchronized action is an ordinal: new actions (FA3: rooting, wallowing) only at the end.
+		assertEquals(List.of("NONE", "EAT", "REST", "ALERT", "ROOT", "WALLOW"),
+				Stream.of(PolishAnimal.Action.values()).map(Enum::name).toList());
+		assertEquals(List.of("fleeing", "moving", "grazing", "resting", "alert", "idle", "rooting", "wallowing"),
+				Stream.of(PolishAnimal.State.values()).map(PolishAnimal.State::id).toList());
+	}
+
+	// ------------------------------------------------------------------ step FA3: the wild boar
+
+	private static final AnimalProfile B = WildBoar.PROFILE;
+
+	/** The share of the active bouts (feeding, rooting and moving) at a time of day. */
+	private static double active(AnimalProfile p, long time) {
+		return p.share(Activity.FEED, time) + p.share(Activity.MOVE, time);
+	}
+
+	@Test
+	void wildBoarIsCrepuscularAndNocturnal() {
+		// Report 07 §3.4: active at dusk and at night, resting by day in a thicket bed. The design margin is larger than the
+		// threshold of the activity trial of the game test.
+		assertTrue(active(B, NIGHT) >= active(B, NOON) + 0.5, "night " + active(B, NIGHT) + " against noon " + active(B, NOON));
+		assertTrue(active(B, DUSK) >= active(B, NOON) + 0.5, "dusk");
+		assertEquals(Activity.REST, B.activity(NOON));
+		assertEquals(Activity.REST, B.activity(9_000));
+		assertEquals(Activity.FEED, B.activity(NIGHT));
+		assertEquals(Activity.FEED, B.activity(DUSK));
+		// The opposite of the roe deer at night: the roe deer rests, the boar feeds.
+		assertTrue(B.share(Activity.FEED, NIGHT) > P.share(Activity.FEED, NIGHT) + 0.3);
+	}
+
+	@Test
+	void wildBoarSeasonsOfTheYoungAndTheWarning() {
+		// The young (warchlaki, striped) III-VII; a sow with young holds her ground III-VI (C6).
+		Set<SubSeason> young = Set.of(SubSeason.EARLY_SPRING, SubSeason.MID_SPRING, SubSeason.LATE_SPRING, SubSeason.EARLY_SUMMER,
+				SubSeason.MID_SUMMER);
+		for (SubSeason s : SubSeason.values()) {
+			assertEquals(young.contains(s), B.young(s), s.name());
+			assertTrue(!WildBoar.WARN_SEASONS.contains(s) || young.contains(s), "warning outside the young: " + s);
+		}
+		assertEquals(Set.of(SubSeason.EARLY_SPRING, SubSeason.MID_SPRING, SubSeason.LATE_SPRING, SubSeason.EARLY_SUMMER),
+				WildBoar.WARN_SEASONS);
+		// A sow lets a player come closer than the flight distance of a sneaking one before she warns, and stops short.
+		assertTrue(WildBoar.WARN_DISTANCE < B.fleeMin());
+		assertTrue(WarnCharge.STOP_SHORT >= 1 && WarnCharge.STOP_SHORT < WarnCharge.STOP_AT);
+		// Sounders all year, no winter groups and no winter coat.
+		assertEquals(B.summerGroup(), B.group(SubSeason.MID_WINTER));
+		assertFalse(B.winterCoat(SubSeason.MID_WINTER));
+	}
+
+	@Test
+	void wildBoarVariantsAndTusks() {
+		assertEquals(WildBoar.BOAR, WildBoar.variant(true, false));
+		assertEquals(WildBoar.SOW, WildBoar.variant(false, false));
+		assertEquals(WildBoar.PIGLET, WildBoar.variant(true, true));
+		assertEquals(WildBoar.PIGLET, WildBoar.variant(false, true));
+		assertEquals(List.of("boar", "sow", "piglet"), WildBoar.variants());
+		assertEquals("tusk_left,tusk_right", WildBoar.TUSKS);
+	}
+
+	@Test
+	void rootingHabitatsAreTheFertileForests() {
+		// C9: rooting in the oak-hornbeam and broadleaf forests (and the riparian forests), never in the pine forests; the
+		// wallows in the wet forests. Every rooting or wallowing habitat is a habitat of the boar.
+		assertTrue(BoarRooting.ROOTING.contains(HabitatBiome.OAK_HORNBEAM_FOREST));
+		assertTrue(BoarRooting.ROOTING.contains(HabitatBiome.LOWLAND_BEECH_FOREST));
+		assertFalse(BoarRooting.ROOTING.contains(HabitatBiome.FRESH_PINE_FOREST));
+		assertFalse(BoarRooting.ROOTING.contains(HabitatBiome.DRY_PINE_FOREST));
+		assertTrue(BoarRooting.WALLOWING.contains(HabitatBiome.ALDER_CARR));
+		for (HabitatBiome b : BoarRooting.ROOTING) {
+			assertTrue(b.isForest() && B.weight(b) > 0, b.name());
+		}
+		for (HabitatBiome b : BoarRooting.WALLOWING) {
+			assertTrue(b.isForest() && B.weight(b) > 0, b.name());
+		}
+		assertTrue(BoarRooting.PATCH_MIN >= 2 && BoarRooting.PATCH_MAX <= 4 && BoarRooting.PATCH_MIN <= BoarRooting.PATCH_MAX);
+		assertTrue(BoarRooting.DIG_MIN < BoarRooting.DIG_MAX && BoarRooting.DIG_MAX < 200, "a patch within a feeding bout");
 	}
 
 	@Test

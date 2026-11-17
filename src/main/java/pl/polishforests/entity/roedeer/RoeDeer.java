@@ -127,7 +127,7 @@ public class RoeDeer extends PolishAnimal<RoeDeer> {
 			EnumSet.of(SubSeason.MID_AUTUMN, SubSeason.LATE_AUTUMN, SubSeason.EARLY_WINTER, SubSeason.MID_WINTER, SubSeason.LATE_WINTER,
 					SubSeason.EARLY_SPRING, SubSeason.MID_SPRING),
 			EnumSet.of(SubSeason.LATE_SPRING, SubSeason.EARLY_SUMMER, SubSeason.MID_SUMMER, SubSeason.LATE_SUMMER), 0.6F,
-			habitats(), 0.6F, 0.085F, 30, 45, 8, 20, 40, 48);
+			habitats(), 0.6F, 0.085F, 30, 45, 8, 20, 40, 48, 0, 2);
 
 	/** The antlers of a buck (not saved: they follow from the date; a doe and a young one have none). */
 	public enum Antlers {
@@ -500,6 +500,9 @@ public class RoeDeer extends PolishAnimal<RoeDeer> {
 				case REST -> REST;
 				case ALERT -> ALERT;
 				case NONE -> IDLE;
+				// the actions of the wild boar (step FA3), never set on a roe deer
+				case ROOT -> EAT;
+				case WALLOW -> REST;
 			};
 		};
 		return animation == null ? PlayState.STOP : test.setAndContinue(animation);

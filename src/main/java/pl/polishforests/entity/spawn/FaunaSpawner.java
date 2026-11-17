@@ -310,9 +310,9 @@ public final class FaunaSpawner {
 		}
 	}
 
-	/** Expected groups in a chunk: the density of the generation times the weighted columns, over the mean group size. */
+	/** Expected groups in a chunk: the density of the generation times the weighted columns, over the mean group size (with the lone animals of the profile, step FA3). */
 	public static double expectedGroups(AnimalProfile profile, AnimalProfile.Range group, double weightedColumns) {
-		return profile.generationDensityPerBlock() * weightedColumns / group.mean();
+		return profile.generationDensityPerBlock() * weightedColumns / profile.meanGroupSize(group);
 	}
 
 	/** The random source of the spawn at generation of a chunk (new salt {@link #GENERATION_SALT}). */
@@ -417,19 +417,32 @@ public final class FaunaSpawner {
 	 * Spawns a group of up to {@code size} animals: the first at {@code first}, the others on valid places within
 	 * {@value #GROUP_SPREAD} blocks (inside {@code chunk} when given); all follow the first (step FA2: a spawned group is a
 	 * group of the brain). In the sub-seasons of the young ({@link AnimalProfile#young}) a group of at least two is with the
-	 * profile's chance a mother ({@code becomeMother}) with up to two young (vanilla's young, which grow up in a vanilla
-	 * time and at the latest when the sub-seasons of the young end; C10: no breeding). Returns how many appeared.
+	 * profile's chance one or more mothers ({@code becomeMother}) with their young: one mother per
+	 * {@link AnimalProfile#maxYoung} young (rounded up), the young shared out among the mothers in turn (vanilla's young,
+	 * which grow up in a vanilla time and at the latest when the sub-seasons of the young end; C10: no breeding). Step FA3:
+	 * with the profile's {@link AnimalProfile#soloShare} the group is one lone animal ({@code becomeSolitary}, the wild boar
+	 * male), otherwise its first animal leads it ({@code becomeHerdLeader}, the oldest sow) and the other grown animals
+	 * {@code becomeMember}. The roe deer (solo share 0, two young per mother, at most three animals in summer) draws and
+	 * places exactly as in step FA2. Returns how many appeared.
 	 */
 	static int spawnGroup(ServerLevelAccessor level, Species s, Vec3 first, int size, EntitySpawnReason reason, RandomSource random,
 			@Nullable ChunkPos chunk) {
 		int n = 0;
 		SpawnGroupData data = null;
 		AnimalProfile profile = s.profile();
+		// The draw of a lone animal only for a species that has them, so the roe deer's random sequence stays that of FA2.
+		boolean solo = profile.soloShare() > 0 && random.nextFloat() < profile.soloShare();
+		if (solo) {
+			size = 1;
+		}
 		boolean young = size >= 2 && profile.young(Seasons.provider().subSeason(level.getLevel())) && random.nextFloat() < profile.youngChance();
+		int adults = size;
 		if (young) {
-			size = Math.min(size, 3);
+			adults = Math.max(1, (size + profile.maxYoung()) / (1 + profile.maxYoung()));
 			YOUNG_GROUPS.increment();
 		}
+		List<PolishAnimal<?>> mothers = new ArrayList<>();
+		int youngPlaced = 0;
 		PolishAnimal<?> leader = null;
 		for (int i = 0; i < size; i++) {
 			Vec3 at = first;
@@ -459,14 +472,26 @@ public final class FaunaSpawner {
 			data = animal.finalizeSpawn(level, level.getCurrentDifficultyAt(animal.blockPosition()), reason, data);
 			if (leader == null) {
 				leader = animal;
+				if (solo) {
+					animal.becomeSolitary();
+				} else {
+					animal.becomeHerdLeader();
+				}
 				if (young) {
 					animal.becomeMother();
+					mothers.add(animal);
 				}
 			} else {
 				animal.followLeader(leader);
-				if (young) {
+				if (young && i >= adults) {
 					animal.setBaby(true);
-					animal.setMother(leader);
+					animal.setMother(mothers.get(youngPlaced++ % mothers.size()));
+				} else {
+					animal.becomeMember();
+					if (young) {
+						animal.becomeMother();
+						mothers.add(animal);
+					}
 				}
 			}
 			level.addFreshEntityWithPassengers(animal);

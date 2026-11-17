@@ -364,6 +364,9 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		// Step V8: the roe deer (vanilla Polish names spawn eggs "Jajo przyzywające <biernik>").
 		builder.add(ModEntities.roeDeer(), polish ? "Sarna" : "Roe Deer");
 		builder.add(ModEntities.roeDeerSpawnEgg(), polish ? "Jajo przyzywające sarnę" : "Roe Deer Spawn Egg");
+		// Step FA3: the wild boar.
+		builder.add(ModEntities.wildBoar(), polish ? "Dzik" : "Wild Boar");
+		builder.add(ModEntities.wildBoarSpawnEgg(), polish ? "Jajo przyzywające dzika" : "Wild Boar Spawn Egg");
 		if (polish) {
 			polish(builder);
 		} else {
@@ -525,6 +528,12 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		b.add("polishforests.fauna.look.antlers_velvet", "antlers in velvet");
 		b.add("polishforests.fauna.look.antlers_cast", "antlers cast");
 		b.add("polishforests.fauna.look.antlers_none", "no antlers");
+		// Step FA3: the wild boar.
+		b.add("gamerule.polishforests.boar_rooting", "Wild boars root up the ground of Polish Forests");
+		b.add("polishforests.fauna.state.rooting", "rooting");
+		b.add("polishforests.fauna.state.wallowing", "wallowing");
+		b.add("polishforests.fauna.look.boar_male", "boar (male)");
+		b.add("polishforests.fauna.look.sow", "sow");
 	}
 
 	private static void polish(TranslationBuilder b) {
@@ -659,6 +668,11 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		b.add("polishforests.fauna.look.antlers_velvet", "parostki w scypule");
 		b.add("polishforests.fauna.look.antlers_cast", "parostki zrzucone");
 		b.add("polishforests.fauna.look.antlers_none", "bez parostków");
+		b.add("gamerule.polishforests.boar_rooting", "Dziki ryją ziemię Polish Forests");
+		b.add("polishforests.fauna.state.rooting", "ryje");
+		b.add("polishforests.fauna.state.wallowing", "tarza się w błocie");
+		b.add("polishforests.fauna.look.boar_male", "odyniec");
+		b.add("polishforests.fauna.look.sow", "locha");
 		b.add("modmenu.descriptionTranslation.polishforests", "Proceduralne krajobrazy Polski w skali 1:1 z przyrodniczo "
 				+ "wiernymi lasami, florą i fauną oraz integracją z porami roku Serene Seasons.");
 	}

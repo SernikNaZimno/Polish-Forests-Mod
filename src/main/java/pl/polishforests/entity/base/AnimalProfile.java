@@ -11,7 +11,8 @@ import pl.polishforests.worldgen.habitat.HabitatBiome;
 /**
  * What the fauna code needs to know about a species of the mod (step FA1, docs/04-pionowy-wycinek.md "Projekt FA1"; step
  * FA2 "Projekt FA2": the daily schedule as shares of activities, the sub-seasons of the winter groups and of the young,
- * two density calibrations and the home range): its size, its groups in summer and in winter, its daily schedule, the
+ * two density calibrations and the home range; step FA3 "Projekt FA3": the share of lone animals and the young of a
+ * mother): its size, its groups in summer and in winter, its daily schedule, the
  * season of its winter coat, the habitats it lives in with their weights and the densities the spawners aim at. One record
  * per species ({@code RoeDeer.PROFILE}); the spawn at generation and the fauna spawner read only this, so a new species is
  * a new profile, an entity class and its assets.
@@ -43,11 +44,15 @@ import pl.polishforests.worldgen.habitat.HabitatBiome;
  * @param fleeMax            distance (blocks) at which a sprinting player makes the animal flee (a walking one: the middle)
  * @param homeRange          distance (blocks) from its home (where a group leader appeared or was loaded) beyond which the
  *                           walk targets lead back (step FA2: the daily range stays bounded)
+ * @param soloShare          the share of the groups placed by the spawners that are one lone animal (step FA3: the adult
+ *                           wild boar males live alone; 0 for the roe deer, whose lone animals come from the group range)
+ * @param maxYoung           the most young one mother has (step FA3: roe deer 2, wild boar 4); a young one without a mother
+ *                           takes one with fewer, and a spawned group with young has one mother per this many young
  */
 public record AnimalProfile(String species, float width, float height, Range summerGroup, Range winterGroup,
 		Set<SubSeason> winterGroupSeasons, List<Period> schedule, Set<SubSeason> winterCoat, Set<SubSeason> youngSeasons,
 		float youngChance, Map<HabitatBiome, Float> habitats, float edgeWeight, float realDensity, float generationFactor,
-		float spawnerFactor, int maxNearPlayer, int fleeMin, int fleeMax, int homeRange) {
+		float spawnerFactor, int maxNearPlayer, int fleeMin, int fleeMax, int homeRange, float soloShare, int maxYoung) {
 	/** Distance (blocks) from a forest within which an open column is the forest edge. */
 	public static final int EDGE_REACH = 8;
 	/** Blocks in a hectare: one block is one meter in both scales for the animals (KFA-3: animals 1:1). */
@@ -78,6 +83,9 @@ public record AnimalProfile(String species, float width, float height, Range sum
 		}
 		if (edgeWeight < 0 || edgeWeight > 1 || fleeMin > fleeMax || youngChance < 0 || youngChance > 1 || homeRange <= 0) {
 			throw new IllegalArgumentException("Bad edge weight, flee distances, young chance or home range of " + species);
+		}
+		if (soloShare < 0 || soloShare >= 1 || maxYoung < 1) {
+			throw new IllegalArgumentException("Bad solo share or young per mother of " + species);
 		}
 	}
 
@@ -169,6 +177,15 @@ public record AnimalProfile(String species, float width, float height, Range sum
 	/** Whether the species wears its winter coat in a sub-season. */
 	public boolean winterCoat(SubSeason subSeason) {
 		return winterCoat.contains(subSeason);
+	}
+
+	/**
+	 * The mean number of animals of a group placed by the spawners with a group range (step FA3): the lone animals
+	 * ({@link #soloShare}) count one, the rest the mean of the range. Equal to the mean of the range for {@code soloShare}
+	 * 0 (the roe deer).
+	 */
+	public double meanGroupSize(Range group) {
+		return soloShare <= 0 ? group.mean() : soloShare + (1 - soloShare) * group.mean();
 	}
 
 	/** Whether a sub-season has the winter groups. */

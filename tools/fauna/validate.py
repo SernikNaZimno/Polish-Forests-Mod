@@ -30,7 +30,9 @@ import animations
 import paint
 import uvpack
 
-REQUIRED = {'roe_deer': ('misc.idle', 'move.walk', 'move.run', 'misc.eat', 'misc.alert', 'misc.rest')}
+REQUIRED = {'roe_deer': ('misc.idle', 'move.walk', 'move.run', 'misc.eat', 'misc.alert', 'misc.rest'),
+            'wild_boar': ('misc.idle', 'move.walk', 'move.run', 'misc.eat', 'misc.alert', 'misc.rest', 'misc.root',
+                          'misc.wallow')}
 DARKEST = 30.0          # luminance 0-255 of the darkest allowed texel
 SMOOTH_MEAN = 6.0       # mean luminance step between neighbours inside a face (roe deer 4.4-4.8)
 SMOOTH_P95 = 24.0       # (roe deer 21-22; vanilla horse and pig coats about 28, whole textures)
@@ -40,7 +42,8 @@ SINGLE_TONE_ROWS = 0.25
 GROUND_TOLERANCE = 0.05     # px a vertex may dip under the ground between keyframes
 CONTACT = 0.1               # px: a hoof this close to the ground carries the animal
 FLIGHT = {'move.run': 0.3}  # animations with a flight: the share of frames that must touch the ground
-FOLDED = ('misc.rest',)     # lying: the one-piece legs fold under the trunk over each other (hidden), not checked
+FOLDED = ('misc.rest', 'misc.wallow')     # lying (and rolling in the mud, step FA3): the one-piece legs fold under the
+                                         # trunk over each other (hidden), not checked
 
 
 def _vec(v, n=3):

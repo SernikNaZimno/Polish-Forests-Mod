@@ -178,8 +178,8 @@ def rest_skull_pitch(model):
     return model.bone('neck').rotation[0] + model.bone('head').rotation[0]
 
 
-def eat_pose(model, neck_down):
-    head = EAT_SKULL - EAT_BODY - neck_down - rest_skull_pitch(model)
+def eat_pose(model, neck_down, skull=EAT_SKULL):
+    head = skull - EAT_BODY - neck_down - rest_skull_pitch(model)
     sx = EAT_EARS[2]
     pose = {'body': {'rotation': (EAT_BODY, 0, 0)}, 'neck': {'rotation': (neck_down, 0, 0)},
             'head': {'rotation': (head, 0, 0)},
@@ -190,10 +190,11 @@ def eat_pose(model, neck_down):
     return grounded(model, pose)
 
 
-def eat(model, length=3.2):
-    """Grazing: the neck goes down to the grass, the head nips and chews, then the cycle repeats from the low pose."""
+def eat(model, length=3.2, skull=EAT_SKULL):
+    """Grazing: the neck goes down to the grass, the head nips and chews, then the cycle repeats from the low pose (skull:
+    its pitch below the horizontal in the world; step FA3: the boar's deep skull hangs less, BOAR_SKULL)."""
     down = EAT_DOWN
-    low = eat_pose(model, grazing_neck_angle(model))
+    low = eat_pose(model, grazing_neck_angle(model, skull=skull), skull)
     bones = {}
     for b, p in low.items():
         r = list(p['rotation'])
@@ -260,16 +261,86 @@ def rest(model, length=8.0):
     return {'loop': True, 'animation_length': length, 'bones': bones}
 
 
-def grazing_neck_angle(model):
+# Rooting (step FA3, buchtowanie of the wild boar): the grazing pose with the snout in the litter (ROOT_NOSE px above the
+# ground), the head shoving forward and up and the neck nodding in short strokes, the body swaying a little.
+ROOT_NOSE = 2.5
+ROOT_STROKE = 0.4       # seconds of one stroke of the snout
+# The pitch of the boar's skull in the world while it grazes or roots: its skull is deep (the eyes high on it), so at the
+# deer's 80 degrees the eyes came in front of the snout (the head tucked under).
+BOAR_SKULL = 62.0
+
+
+def root(model, length=3.2, skull=BOAR_SKULL):
+    """Rooting: down to the grazing pose with the nose ROOT_NOSE px above the ground, then strokes of the snout (the head
+    turns up and back down, the neck nods), loops from the low pose."""
+    down = EAT_DOWN
+    low = eat_pose(model, grazing_neck_angle(model, ROOT_NOSE, skull), skull)
+    strokes = int((length - down) // ROOT_STROKE)
+    bones = {}
+    for b, p in low.items():
+        r = list(p['rotation'])
+        if b == 'head':
+            pts = [(0, [0, 0, 0]), (down, r)]
+            for k in range(strokes):
+                t0 = down + k * ROOT_STROKE
+                pts += [(t0 + 0.45 * ROOT_STROKE, [r[0] - 9, 0, (4 if k % 2 else -4)]), (t0 + ROOT_STROKE, r)]
+            track = {'rotation': keys(pts + [(length, r)])}
+        elif b == 'neck':
+            pts = [(0, [0, 0, 0]), (down, r)]
+            for k in range(strokes):
+                t0 = down + k * ROOT_STROKE
+                pts += [(t0 + 0.45 * ROOT_STROKE, [r[0] - 3, 0, 0]), (t0 + ROOT_STROKE, r)]
+            track = {'rotation': keys(pts + [(length, r)])}
+        else:
+            track = {'rotation': keys([(0, [0, 0, 0]), (down, r), (length, r)])}
+        bones[b] = track
+    heights = []
+    for k in range(EAT_DOWN_STEPS + 1):
+        f = k / EAT_DOWN_STEPS
+        pose = {b: {'rotation': tuple(f * v for v in low[b]['rotation'])} for b in LEGS + ('body',)}
+        heights.append((down * f, [0, -lowest(model, pose, LEGS), 0]))
+    bones['body']['position'] = keys(heights + [(length, heights[-1][1])])
+    bones['tail'] = {'rotation': sample(length, lambda t: [0, 0, 10.0 * math.sin(2 * math.pi * 4 * t)], steps=32)}
+    return {'loop': True, 'animation_length': length, 'bones': bones}
+
+
+# Wallowing (step FA3, babranie of the wild boar): lying with the legs folded, the trunk rolling from side to side by
+# WALLOW_ROLL degrees, the body height computed in every keyframe so that the lowest vertex touches the ground.
+WALLOW_ROLL = 24.0
+
+
+def wallow(model, length=4.0, steps=32):
+    bones = {b: {'rotation': {}} for b in REST_LEGS}
+    body_rot, body_pos = {}, {}
+    for k in range(steps + 1):
+        t = k / steps
+        key = f'{length * t:.4f}'
+        roll = WALLOW_ROLL * math.sin(2 * math.pi * t)
+        pose = {b: {'rotation': r} for b, r in REST_LEGS.items()}
+        pose['body'] = {'rotation': (0, 0, roll)}
+        y = -lowest(model, pose)
+        for b, r in REST_LEGS.items():
+            bones[b]['rotation'][key] = _r(r)
+        body_rot[key] = _r([0, 0, roll])
+        body_pos[key] = _r([0, y, 0])
+    bones['body'] = {'rotation': body_rot, 'position': body_pos}
+    bones['neck'] = {'rotation': keys([(0, [-6, 0, 0]), (length, [-6, 0, 0])])}
+    bones['head'] = {'rotation': sample(length, lambda t: [4, 0, -0.5 * WALLOW_ROLL * math.sin(2 * math.pi * t)])}
+    return {'loop': True, 'animation_length': length, 'bones': bones}
+
+
+def grazing_neck_angle(model, nose_target=None, skull=EAT_SKULL):
     """Neck rotation (added to the rest pose) of the grazing pose: the smallest angle that brings the nose locator (top
     front of the muzzle) to EAT_NOSE pixels above the ground, so the muzzle is in the grass; if the neck cannot reach
-    that low, the angle of the lowest nose. Searched on the kinematics of model.py."""
+    that low, the angle of the lowest nose. Searched on the kinematics of model.py. nose_target: another height of the
+    nose (step FA3: the rooting snout)."""
     from model import pivots_and_locators
+    target = EAT_NOSE if nose_target is None else nose_target
     best = None
     for tenth in range(0, 1501):
         a = tenth / 10.0
-        y = pivots_and_locators(model, eat_pose(model, a))['locator:nose'][1]
-        if y <= EAT_NOSE:
+        y = pivots_and_locators(model, eat_pose(model, a, skull))['locator:nose'][1]
+        if y <= target:
             return a
         if best is None or y < best[1]:
             best = (a, y)
@@ -289,6 +360,16 @@ def quadruped_animations(model):
             'misc.rest': rest(model),
         },
     }
+
+
+def boar_animations(model):
+    """The wild boar (step FA3): the quadruped animations, with misc.alert as the snort (head up, a fore hoof stamped,
+    the tail up), plus misc.root (rooting) and misc.wallow (wallowing)."""
+    anims = quadruped_animations(model)
+    anims['animations']['misc.eat'] = eat(model, skull=BOAR_SKULL)
+    anims['animations']['misc.root'] = root(model)
+    anims['animations']['misc.wallow'] = wallow(model)
+    return anims
 
 
 def calibration_animations(pose):

@@ -81,6 +81,13 @@ import pl.polishforests.season.SubSeason;
  * spawn egg, a dispenser, a spawner block or {@code /summon} (also with NBT, which skips {@code finalizeSpawn}).
  * <li><b>Timing</b> (KFA-6): with {@link #timing} on, the server ticks of the animals of the mod are timed
  * ({@link #TICK_NANOS}, {@link #TICKS}) for the MSPT scene of the fauna game test.
+ * <li><b>Hooks of step FA3</b> (docs/04 "Projekt FA3"; each defaults to the behaviour of the roe deer of FA2): whether an
+ * animal lives in groups at all ({@link #herds()}: the adult wild boar male lives alone), its rank in a group
+ * ({@link #seniority()}: the oldest sow leads the sounder), whether it flees on its own ({@link #fleesAlone()}: a member
+ * of a fleeing sounder follows in single file instead, {@link FollowHerd}), the action of a settled bout of the daily
+ * routine ({@link #settle}: rooting, wallowing), the place of a rest ({@link #restTarget}), the composition of a spawned
+ * group ({@link #becomeSolitary}, {@link #becomeHerdLeader}, {@link #becomeMember}) and a server tick of the species
+ * ({@link #onServerTick}).
  * </ul>
  *
  * @param <T> the species class itself (SmartBrainLib's self type)
@@ -112,12 +119,13 @@ public abstract class PolishAnimal<T extends PolishAnimal<T>> extends Animal imp
 
 	/** What a standing animal does (for the animation and {@code /polishforests fauna}). Not saved. */
 	public enum Action {
-		NONE, EAT, REST, ALERT
+		/** New actions only at the end (step FA3: ROOT and WALLOW of the wild boar). */
+		NONE, EAT, REST, ALERT, ROOT, WALLOW
 	}
 
-	/** The state the fauna command reports. */
+	/** The state the fauna command reports (new states only at the end). */
 	public enum State {
-		FLEEING, MOVING, GRAZING, RESTING, ALERT, IDLE;
+		FLEEING, MOVING, GRAZING, RESTING, ALERT, IDLE, ROOTING, WALLOWING;
 
 		public String id() {
 			return name().toLowerCase(java.util.Locale.ROOT);
@@ -146,6 +154,8 @@ public abstract class PolishAnimal<T extends PolishAnimal<T>> extends Animal imp
 	private @Nullable Vec3 alarmSource;
 	private long alarmFleeUntil;
 	private boolean alarmFromBark;
+	/** The animal ahead of it in the single file of a fleeing group (step FA3, {@link FollowHerd}; not saved). */
+	private @Nullable UUID fileAhead;
 
 	protected PolishAnimal(EntityType<? extends T> type, Level level) {
 		super(type, level);
@@ -197,6 +207,92 @@ public abstract class PolishAnimal<T extends PolishAnimal<T>> extends Animal imp
 
 	/** Makes the animal the mother of a group with young (the spawners call it on the first animal of such a group). */
 	public void becomeMother() {
+	}
+
+	/** Step FA3: makes the animal a lone one (a spawned "group" of one of {@link AnimalProfile#soloShare}: the boar male). */
+	public void becomeSolitary() {
+	}
+
+	/** Step FA3: makes the animal the leader of a spawned group (the first animal; the wild boar: the oldest sow). */
+	public void becomeHerdLeader() {
+	}
+
+	/** Step FA3: makes the animal a grown member of a spawned group (the wild boar: a sow or a yearling, no adult male). */
+	public void becomeMember() {
+	}
+
+	/** Step FA3: whether the animal lives in a group (false: it leads itself and no group takes it or joins it). */
+	public boolean herds() {
+		return true;
+	}
+
+	/**
+	 * Step FA3: the rank of the animal in its group; a member of a strictly higher rank than its leader takes the lead (the
+	 * oldest sow leads the sounder). 0 for every roe deer, so their groups keep the leaders of FA2.
+	 */
+	public int seniority() {
+		return 0;
+	}
+
+	/**
+	 * Step FA3: whether the animal flees from a player or an alarm on its own ({@link FleeFromPlayers}); a member of a fleeing
+	 * wild boar sounder follows the one ahead of it in single file instead ({@link FollowHerd}).
+	 */
+	public boolean fleesAlone() {
+		return true;
+	}
+
+	/**
+	 * Step FA3: called when a bout of the daily routine settles (the animal has arrived or stays); returns the action it
+	 * shows: grazing for feeding, lying for resting, nothing for moving (the wild boar roots or wallows instead).
+	 */
+	public Action settle(AnimalProfile.Activity activity) {
+		return switch (activity) {
+			case FEED -> Action.EAT;
+			case REST -> Action.REST;
+			case MOVE -> Action.NONE;
+		};
+	}
+
+	/**
+	 * Step FA3: the place of a rest of a leader or a lone animal: the best {@link Thicket} within {@code radius} blocks, or
+	 * null to lie down where it stands (the wild boar also goes to a wallow).
+	 */
+	public @Nullable Vec3 restTarget(int radius, net.minecraft.util.RandomSource random) {
+		BlockPos t = Thicket.find(level(), blockPosition(), radius, random);
+		return t == null ? null : Vec3.atBottomCenterOf(t);
+	}
+
+	/** Step FA3: a server tick of the species (after the calendar, the group and the leaf check); not for an animal without AI. */
+	protected void onServerTick(ServerLevel level) {
+	}
+
+	/** Step FA3: the animal ahead of it in the single file of its fleeing group, or null ({@link FollowHerd}). */
+	public @Nullable PolishAnimal<?> fileAhead() {
+		if (fileAhead == null || !(level() instanceof ServerLevel server)) {
+			return null;
+		}
+		Entity e = server.getEntity(fileAhead);
+		return e instanceof PolishAnimal<?> a && a.isAlive() && a.getType() == getType() ? a : null;
+	}
+
+	public void setFileAhead(@Nullable PolishAnimal<?> ahead) {
+		fileAhead = ahead == null ? null : ahead.getUUID();
+	}
+
+	/**
+	 * Step FA3: puts the members of the group this animal leads in single file behind it: the grown ones by rank (highest
+	 * first), the young last, each following the one ahead ({@link FollowHerd}).
+	 */
+	public void formFile(ServerLevel level) {
+		List<PolishAnimal<?>> file = new ArrayList<>(members(level, this));
+		file.sort(Comparator.<PolishAnimal<?>>comparingInt(a -> a.isBaby() ? 1 : 0).thenComparing(a -> -a.seniority())
+				.thenComparing(Entity::getUUID));
+		PolishAnimal<?> ahead = this;
+		for (PolishAnimal<?> a : file) {
+			a.setFileAhead(ahead);
+			ahead = a;
+		}
 	}
 
 	/** Called when the animal starts to flee; {@code warns} is false when it flees from the warning of another animal. */
@@ -265,6 +361,8 @@ public abstract class PolishAnimal<T extends PolishAnimal<T>> extends Animal imp
 			case REST -> State.RESTING;
 			case ALERT -> State.ALERT;
 			case NONE -> State.IDLE;
+			case ROOT -> State.ROOTING;
+			case WALLOW -> State.WALLOWING;
 		};
 	}
 
@@ -321,7 +419,8 @@ public abstract class PolishAnimal<T extends PolishAnimal<T>> extends Animal imp
 		if (alarm.fleesAt(distance)) {
 			alarmSource = alarm.source();
 			alarmFleeUntil = now + 40;
-			alarmFromBark = alarm.kind() == ForestAlarm.Kind.BARK;
+			// The warning of another animal (the roe deer's bark, the wild boar's snort): a flight from it does not warn again.
+			alarmFromBark = alarm.kind() == ForestAlarm.Kind.BARK || alarm.kind() == ForestAlarm.Kind.SNORT;
 		} else if (!isFleeing()) {
 			alertUntil = Math.max(alertUntil, now + ALERT_TICKS);
 			flaredUntil = Math.max(flaredUntil, alertUntil);
@@ -401,7 +500,7 @@ public abstract class PolishAnimal<T extends PolishAnimal<T>> extends Animal imp
 	/**
 	 * A young one without a mother (the link is not saved, so the young of a loaded chunk, e.g. of the chunk generation,
 	 * have none) takes the nearest animal of its species within {@value #ADOPT_RADIUS} blocks that can mother young and has
-	 * fewer than two young.
+	 * fewer young than {@link AnimalProfile#maxYoung} (two for the roe deer).
 	 */
 	private void adoptMother(ServerLevel level) {
 		PolishAnimal<?> best = null;
@@ -418,7 +517,7 @@ public abstract class PolishAnimal<T extends PolishAnimal<T>> extends Animal imp
 			}
 			UUID id = a.getUUID();
 			long young = near.stream().filter(o -> o instanceof PolishAnimal<?> y && y.isBaby() && id.equals(y.mother)).count();
-			if (young < 2) {
+			if (young < profile().maxYoung()) {
 				best = a;
 				bestDist = d;
 			}
@@ -480,13 +579,19 @@ public abstract class PolishAnimal<T extends PolishAnimal<T>> extends Animal imp
 				mother = null;
 			}
 		}
+		if (!herds()) {
+			// Step FA3: an animal that lives alone (the boar male) leads itself, and no group takes it.
+			herdLeader = null;
+			herdSize = 1;
+			return;
+		}
 		PolishAnimal<?> leader = leader();
 		if (leader != null && leader.herdLeader != null) {
 			// Its leader joined another group: follow that group's leader.
 			herdLeader = leader.herdLeader;
 			leader = leader();
 		}
-		if (herdLeader != null && (leader == null || distanceTo(leader) > HERD_LOST)) {
+		if (herdLeader != null && (leader == null || distanceTo(leader) > HERD_LOST || !leader.herds())) {
 			herdLeader = null;
 			leader = null;
 			home = position();
@@ -525,6 +630,9 @@ public abstract class PolishAnimal<T extends PolishAnimal<T>> extends Animal imp
 		}
 		List<PolishAnimal<?>> own = members(level, this);
 		herdSize = own.size() + 1;
+		if (handOverLead(own)) {
+			return;
+		}
 		if (herdSize >= range.max()) {
 			return;
 		}
@@ -533,7 +641,7 @@ public abstract class PolishAnimal<T extends PolishAnimal<T>> extends Animal imp
 		PolishAnimal<?> best = null;
 		double bestDist = Double.MAX_VALUE;
 		for (Entity e : level.getEntities(this, getBoundingBox().inflate(radius, 16, radius), e -> e.getType() == getType() && e.isAlive())) {
-			if (!(e instanceof PolishAnimal<?> other) || other.herdLeader != null || other.isBaby() || other.isNoAi()) {
+			if (!(e instanceof PolishAnimal<?> other) || other.herdLeader != null || other.isBaby() || other.isNoAi() || !other.herds()) {
 				continue;
 			}
 			double d = distanceTo(other);
@@ -562,6 +670,33 @@ public abstract class PolishAnimal<T extends PolishAnimal<T>> extends Animal imp
 			best.herdSize += herdSize;
 			herdSize = best.herdSize;
 		}
+	}
+
+	/**
+	 * Step FA3: a leader hands the lead to the grown member of the highest rank when that rank is strictly above its own
+	 * ({@link #seniority()}); the group follows the new leader at once. Returns whether it did.
+	 */
+	private boolean handOverLead(List<PolishAnimal<?>> own) {
+		PolishAnimal<?> best = null;
+		for (PolishAnimal<?> m : own) {
+			if (!m.isBaby() && !m.isNoAi() && m.seniority() > (best == null ? seniority() : best.seniority())) {
+				best = m;
+			}
+		}
+		if (best == null) {
+			return false;
+		}
+		UUID id = best.getUUID();
+		best.herdLeader = null;
+		best.herdSize = herdSize;
+		best.home = home();
+		for (PolishAnimal<?> m : own) {
+			if (m != best) {
+				m.herdLeader = id;
+			}
+		}
+		herdLeader = id;
+		return true;
 	}
 
 	// ------------------------------------------------------------------ server tick: calendar, groups, flag, timing
@@ -612,6 +747,7 @@ public abstract class PolishAnimal<T extends PolishAnimal<T>> extends Animal imp
 		if (Math.floorMod(level.getGameTime() + getId(), (long) LEAF_CHECK_INTERVAL) == 0) {
 			stepOffLeaves(level);
 		}
+		onServerTick(level);
 	}
 
 	// ------------------------------------------------------------------ never on the leaves (KFA-4)

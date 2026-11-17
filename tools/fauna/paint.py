@@ -363,6 +363,170 @@ def roe_deer_shader(model, sex, season, seed='roe_deer', antlers=None, flared=Fa
     return shader
 
 
+# ------------------------------------------------------------------ wild boar (step FA3)
+
+# Coats (report 07 §3.4 and §13: an adult about (55, 45, 40), dark brown with grey tips, from nearly black to rusty brown;
+# a young one (warchlak) brown (150, 100, 60) with pale stripes (230, 200, 150) along the body for 3-4 months), lightened
+# like the roe deer (V8-d: the sides get about half the light in the game, and a darker boar would read as a black blot).
+# The boar (odyniec) is darker and greyer with a dark mane, the sow (locha) a warmer, more rusty brown.
+BOAR_COATS = {
+    'boar': dict(back=(58, 50, 45), flank=(80, 69, 61), belly=(98, 86, 76), face=(84, 72, 64), snout=(70, 60, 56),
+                 disc=(122, 100, 94), leg=(60, 52, 47), mane=(46, 41, 38), tips=(150, 142, 132), ear=(62, 54, 49)),
+    'sow': dict(back=(70, 54, 44), flank=(96, 74, 58), belly=(116, 94, 76), face=(98, 78, 64), snout=(80, 64, 56),
+                disc=(130, 104, 96), leg=(70, 56, 47), mane=(56, 46, 40), tips=(156, 138, 118), ear=(74, 58, 49)),
+    'piglet': dict(back=(118, 80, 52), flank=(150, 102, 64), belly=(170, 128, 90), face=(140, 98, 66), snout=(116, 86, 70),
+                   disc=(156, 120, 106), leg=(120, 84, 56), mane=(110, 76, 50), tips=(186, 150, 110), ear=(118, 82, 56)),
+}
+BOAR_DARK = dict(eye=(44, 36, 33), hoof=(52, 46, 43), nostril=(62, 50, 48), tusk=(226, 218, 196), tuft=(48, 42, 39))
+# The stripes of a young one: pale bands along the sides of the trunk and the neck, PIGLET_STRIPES of them between the
+# belly and the back, their borders wandering by about half a texel along the body, plus two along the top; they are
+# detail texels for the smoothness and coat checks.
+PIGLET_STRIPE = (230, 200, 150)
+PIGLET_STRIPES = 4
+# The grey tips of the bristles: the coat lightened towards the tip color by up to BOAR_GRIZZLE where a fine noise is high
+# (soft clusters, not single texels).
+BOAR_GRIZZLE = 0.22
+
+
+def wild_boar_shader(model, variant, seed='wild_boar'):
+    """The shader of one texture variant of the wild boar: 'boar' (odyniec: dark grey-brown, dark mane, white tusks),
+    'sow' (locha: warmer brown; the renderer hides her tusks) or 'piglet' (warchlak: brown with pale stripes)."""
+    C = BOAR_COATS[variant]
+    young = variant == 'piglet'
+    fur = Noise3(f'{seed}/{variant}/fur', period=3.0)
+    fine = Noise3(f'{seed}/{variant}/fine', period=1.6)
+    grizzle = Noise3(f'{seed}/{variant}/grizzle', period=1.3)
+    edge = Noise3(f'{seed}/{variant}/edge', period=COAT_EDGE_PERIOD)
+    tuft = Noise3(f'{seed}/{variant}/tuft', period=COAT_TUFT_PERIOD)
+    wave = Noise3(f'{seed}/{variant}/stripe', period=5.0)
+    body = [c for c in model.bone('body').cubes if c.part != 'mane']
+    trunk_y0 = min(c.origin[1] for c in body)
+    trunk_y1 = max(c.origin[1] + c.size[1] for c in body)
+
+    def variation(p, amount=0.05):
+        return 1.0 + amount * (0.75 * fur(p) + 0.25 * fine(p))
+
+    def coat(t, p, span=6.0):
+        """Countershading by height t (0 belly .. 1 back) in tone bands with wandering borders, as the roe deer (V8-q),
+        with the grey tips of the bristles on the adults."""
+        t = t + (COAT_EDGE * edge(p) + COAT_TUFT * tuft(p)) / span
+        t = round(t * COAT_TONES) / COAT_TONES
+        if t < 0.5:
+            c = mix(C['belly'], C['flank'], (t + 0.1) / 0.4)
+        else:
+            c = mix(C['flank'], C['back'], (t - 0.6) / 0.4)
+        g = grizzle(p)
+        if not young and g > 0.25:
+            c = mix(c, C['tips'], BOAR_GRIZZLE * min(1.0, (g - 0.25) / 0.4))
+        return shade(c, posterize(variation(p, COAT_VARIATION), COAT_STEP))
+
+    def stripe(t, h):
+        """Whether a texel of a young one lies on a pale stripe: on the sides (h 0.2-0.95 of the height) and the top."""
+        if not young or t.face in ('front', 'back', 'down'):
+            return False
+        if t.face == 'up':
+            return 0.8 <= abs(t.p[0]) + 0.5 * wave(t.p) <= 1.9
+        if not 0.2 <= h <= 0.95:
+            return False
+        x = h * PIGLET_STRIPES * 2 + 0.5 * wave(t.p)
+        return int(math.floor(x)) % 2 == 1
+
+    def shader(t):
+        part, face, p = t.part, t.face, t.p
+        if part in ('chest', 'hind'):
+            h = (p[1] - trunk_y0) / (trunk_y1 - trunk_y0)
+            if face == 'up':
+                h = 1.0
+            elif face == 'down':
+                h = 0.0
+            col = coat(h, p, span=trunk_y1 - trunk_y0)
+            if stripe(t, h):
+                t.detail = True
+                col = mix(col, PIGLET_STRIPE, 0.62)
+            return col
+        if part == 'mane':
+            # the crest of long dark bristles along the back, grey-tipped on the adults
+            t.detail = True
+            col = shade(C['mane'], posterize(variation(p, 0.06)))
+            if face == 'up' and not young and grizzle(p) > 0.1:
+                col = mix(col, C['tips'], 0.3)
+            return col
+        if part == 'neck':
+            if face == 'up':
+                return coat(0.95, p, span=t.cube.size[1] / 0.6)
+            if face == 'down':
+                return shade(C['belly'], posterize(variation(p, 0.04)))
+            h = 0.85 - 0.6 * t.j / max(1, t.h - 1)
+            col = coat(h, p, span=t.cube.size[1] / 0.6)
+            if stripe(t, h):
+                t.detail = True
+                col = mix(col, PIGLET_STRIPE, 0.5)
+            return col
+        if part == 'skull':
+            col = shade(C['face'], posterize(variation(p, 0.05)))
+            if not young and grizzle(p) > 0.3:
+                col = mix(col, C['tips'], 0.15)
+            if face in ('left', 'right'):
+                if t.j == 1 and t.i == t.w // 2:
+                    t.detail = True
+                    return BOAR_DARK['eye']
+                if t.j == t.h - 1:
+                    col = mix(col, C['belly'], 0.25)        # lighter cheek
+            if face == 'down':
+                col = mix(col, C['belly'], 0.35)
+            if face == 'up':
+                col = shade(col, 0.9)                        # darker forehead
+            return col
+        if part == 'muzzle':
+            col = shade(C['snout'], posterize(variation(p, 0.04)))
+            if face == 'front':
+                # the snout disc: pinkish grey with two darker nostrils in the middle row
+                t.detail = True
+                col = mix(C['disc'], col, 0.1)
+                if t.j == t.h // 2 and t.i in (0, t.w - 1) and t.w >= 3:
+                    return mix(col, BOAR_DARK['nostril'], 0.7)
+                return col
+            if face in ('left', 'right'):
+                front = (t.i == t.w - 1) if face == 'right' else (t.i == 0)
+                if front:
+                    t.detail = True
+                    return mix(col, C['disc'], 0.45)          # the rim of the disc wraps the corner
+            if face == 'down':
+                col = mix(col, C['belly'], 0.2)
+            return col
+        if part == 'ear':
+            t.detail = True
+            col = shade(C['ear'], posterize(variation(p, 0.04)))
+            if face == 'front':
+                col = mix(col, C['belly'], 0.25)              # the inner side a little lighter
+            if p[1] > t.cube.origin[1] + t.cube.size[1] - 0.75:
+                col = mix(col, BOAR_DARK['tuft'], 0.4)        # the dark tufted tip
+            return col
+        if part == 'tusk':
+            t.detail = True
+            col = shade(BOAR_DARK['tusk'], posterize(variation(p, 0.03)))
+            if p[1] < t.cube.origin[1] + 0.75:
+                col = shade(col, 0.86)                        # the root, out of the lip
+            return col
+        if part in ('leg_front', 'leg_back'):
+            h = p[1] / t.cube.size[1]
+            col = mix(C['leg'], C['back'], 0.3 * (1 - h))     # the legs darker towards the hooves
+            col = shade(col, posterize(variation(p, 0.04)))
+            if face == 'down' or p[1] < 1.0:
+                t.detail = True
+                return BOAR_DARK['hoof']
+            return col
+        if part == 'tail':
+            t.detail = True
+            col = shade(C['back'], posterize(variation(p, 0.04)))
+            if p[1] < t.cube.origin[1] + 1.0:
+                col = mix(col, BOAR_DARK['tuft'], 0.6)        # the tuft at the end
+            return col
+        raise ValueError(f'wild boar: no paint for part {part}')
+
+    return shader
+
+
 # ------------------------------------------------------------------ axis gauge
 
 GAUGE_COLORS = {'base': (150, 150, 150), 'pitch': (220, 60, 50), 'yaw': (60, 190, 70), 'roll': (60, 90, 220),

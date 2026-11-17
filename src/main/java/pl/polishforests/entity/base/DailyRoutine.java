@@ -36,7 +36,9 @@ import pl.polishforests.entity.base.AnimalProfile.Activity;
  *
  * A bout ends when its time is up, when the period of the schedule changes, when a member is farther than
  * {@value #LEADER_REACH} blocks from its leader, when the animal flees, or when {@code interrupt} holds (a player near, an
- * alarm: the alert behaviour of the species takes over).
+ * alarm: the alert behaviour of the species takes over). Step FA3: the action of a settled bout and the place of a rest
+ * come from the species ({@link PolishAnimal#settle}, {@link PolishAnimal#restTarget}: the wild boar roots while feeding
+ * and may rest in a wallow).
  *
  * @param <E> the species
  */
@@ -111,8 +113,7 @@ public class DailyRoutine<E extends PolishAnimal<?>> extends ExtendedBehaviour<E
 				if (leader != null) {
 					target = far ? pointNear(animal, base, 3, random) : null;
 				} else {
-					BlockPos t = Thicket.find(animal.level(), animal.blockPosition(), THICKET_RADIUS, random);
-					target = t == null ? null : Vec3.atBottomCenterOf(t);
+					target = animal.restTarget(THICKET_RADIUS, random);
 				}
 			}
 			case MOVE -> target = moveTarget(animal, leader, random);
@@ -130,11 +131,7 @@ public class DailyRoutine<E extends PolishAnimal<?>> extends ExtendedBehaviour<E
 
 	private void settle(E animal) {
 		settled = true;
-		animal.setAction(switch (activity) {
-			case FEED -> PolishAnimal.Action.EAT;
-			case REST -> PolishAnimal.Action.REST;
-			case MOVE -> PolishAnimal.Action.NONE;
-		});
+		animal.setAction(animal.settle(activity));
 	}
 
 	@Override
@@ -169,7 +166,7 @@ public class DailyRoutine<E extends PolishAnimal<?>> extends ExtendedBehaviour<E
 
 	@Override
 	protected void stop(E animal) {
-		if (animal.action() == PolishAnimal.Action.EAT || animal.action() == PolishAnimal.Action.REST) {
+		if (animal.action() != PolishAnimal.Action.NONE && animal.action() != PolishAnimal.Action.ALERT) {
 			animal.setAction(PolishAnimal.Action.NONE);
 		}
 		animal.setBout(null);

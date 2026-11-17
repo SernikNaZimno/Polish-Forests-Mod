@@ -36,6 +36,7 @@ import pl.polishforests.client.entity.BoneProbe;
 import pl.polishforests.client.entity.RoeDeerRenderer;
 import pl.polishforests.entity.ModEntities;
 import pl.polishforests.entity.roedeer.RoeDeer;
+import pl.polishforests.entity.wildboar.WildBoar;
 import pl.polishforests.gametest.probe.FaunaProbes;
 
 /**
@@ -132,6 +133,8 @@ public final class FaunaClientGameTest implements FabricClientGameTest {
 			gauges(context, sp, o, expected);
 			fourSides(context, sp, o, expected, screen);
 			alertPose(context, sp, o, expected, screen);
+			boarFourSides(context, sp, o, expected, screen);
+			boarAlertPose(context, sp, o, expected);
 			BoneProbe.stop();
 			context.runOnClient(mc -> mc.options.fov().set(70));
 			showcase(context, sp, o);
@@ -174,6 +177,13 @@ public final class FaunaClientGameTest implements FabricClientGameTest {
 		ids.add(PolishForests.id("textures/item/roe_deer_spawn_egg.png"));
 		ids.add(PolishForests.id("geckolib/models/entity/roe_deer.geo.json"));
 		ids.add(PolishForests.id("geckolib/animations/entity/roe_deer.animation.json"));
+		// Step FA3: the wild boar.
+		for (String v : WildBoar.variants()) {
+			ids.add(PolishForests.id("textures/entity/wild_boar/" + v + ".png"));
+		}
+		ids.add(PolishForests.id("textures/item/wild_boar_spawn_egg.png"));
+		ids.add(PolishForests.id("geckolib/models/entity/wild_boar.geo.json"));
+		ids.add(PolishForests.id("geckolib/animations/entity/wild_boar.animation.json"));
 		List<Identifier> missing = context.computeOnClient(mc -> ids.stream()
 				.filter(id -> mc.getResourceManager().getResource(id).isEmpty()).toList());
 		if (!missing.isEmpty()) {
@@ -216,7 +226,7 @@ public final class FaunaClientGameTest implements FabricClientGameTest {
 		sp.getServer().runOnServer(s -> {
 			List<Entity> all = new ArrayList<>();
 			s.overworld().getAllEntities().forEach(e -> {
-				if (e instanceof RoeDeer || e instanceof FaunaProbes.AxisGauge) {
+				if (e instanceof RoeDeer || e instanceof WildBoar || e instanceof FaunaProbes.AxisGauge) {
 					all.add(e);
 				}
 			});
@@ -394,6 +404,67 @@ public final class FaunaClientGameTest implements FabricClientGameTest {
 		BoneProbe.start();
 		checkBones(context, "roe deer buck in " + deer.get("alert_animation").getAsString() + " (held), yaw " + GAUGE_YAW, pos, GAUGE_YAW,
 				deer.getAsJsonObject("alert"), List.of());
+		clear(sp);
+		context.waitTicks(2);
+	}
+
+	// ------------------------------------------------------------------ wild boar from 4 sides (step FA3)
+
+	/** Spawns a grown wild boar (no AI) and returns its position. */
+	private static Vec3 boar(TestSingleplayerContext sp, double x, double y, double z, float yaw, boolean male, WildBoar.Display display) {
+		return sp.getServer().computeOnServer(s -> {
+			ServerLevel level = s.overworld();
+			WildBoar b = ModEntities.wildBoar().create(level, EntitySpawnReason.COMMAND);
+			place(b, x, y, z, yaw);
+			b.setMale(male);
+			b.setDisplay(display);
+			level.addFreshEntity(b);
+			return b.position();
+		});
+	}
+
+	/**
+	 * The boar and the sow (the sow without the tusks) from 4 sides, as the roe deer: every bone and locator against
+	 * fauna_expected.json and the silhouette against the preview of tools/fauna ({@code wild_boar_<boar|sow>_<view>.png}).
+	 */
+	private void boarFourSides(ClientGameTestContext context, TestSingleplayerContext sp, BlockPos o, JsonObject expected, int[] screen) {
+		JsonObject boar = expected.getAsJsonObject("models").getAsJsonObject("wild_boar");
+		JsonObject cam = expected.getAsJsonObject("camera");
+		double[] eye = doubles(cam.getAsJsonArray("eye"));
+		Path dir = Path.of(System.getProperty("polishforests.fauna.expected", "src/test/resources/fauna"));
+		double feetX = o.getX() + 0.5;
+		double feetZ = o.getZ() + 0.5;
+		double worstIou = 1;
+		for (boolean male : new boolean[] {true, false}) {
+			String variant = WildBoar.variant(male, false);
+			List<String> hidden = male ? List.of() : List.of(WildBoar.TUSKS.split(","));
+			for (JsonElement view : expected.getAsJsonArray("views")) {
+				String name = view.getAsJsonObject().get("name").getAsString();
+				float yaw = view.getAsJsonObject().get("yaw").getAsFloat();
+				BoneProbe.start();
+				Vec3 pos = boar(sp, feetX, o.getY(), feetZ, yaw, male, WildBoar.Display.NONE);
+				String shotName = "fauna_wild_boar_" + variant + "_" + name;
+				Path shot = shot(context, sp, shotName, feetX + eye[0], o.getY() + eye[1], feetZ + eye[2], cam.get("yaw").getAsDouble(),
+						cam.get("pitch").getAsDouble(), screen[0], screen[1]);
+				checkBones(context, "wild boar " + variant + " " + name, pos, yaw, boar.getAsJsonObject("rest"), hidden);
+				String mask = boar.getAsJsonObject("masks").get(variant + "_" + name).getAsString();
+				double iou = silhouette(shot, dir.resolve(mask), shotName);
+				worstIou = Math.min(worstIou, iou);
+				clear(sp);
+				context.waitTicks(2);
+			}
+		}
+		result("wild boar 4 sides: smallest silhouette IoU game / preview %.4f (at least %.2f)", worstIou, MIN_IOU);
+	}
+
+	/** A boar in {@code misc.alert}, held: every bone and locator where tools/fauna puts it ({@code alert}). */
+	private void boarAlertPose(ClientGameTestContext context, TestSingleplayerContext sp, BlockPos o, JsonObject expected) {
+		JsonObject boar = expected.getAsJsonObject("models").getAsJsonObject("wild_boar");
+		Vec3 pos = boar(sp, o.getX() + 0.5, o.getY(), o.getZ() + 0.5, GAUGE_YAW, true, WildBoar.Display.ALERT);
+		context.waitTicks(40);
+		BoneProbe.start();
+		checkBones(context, "wild boar in " + boar.get("alert_animation").getAsString() + " (held), yaw " + GAUGE_YAW, pos, GAUGE_YAW,
+				boar.getAsJsonObject("alert"), List.of());
 		clear(sp);
 		context.waitTicks(2);
 	}

@@ -6,6 +6,14 @@ height with the head, legs about 55% of the withers height, large ears, antlers 
 (30 cm: 5 px, so the beam ends above the back tine). The neck is carried steeply (58 degrees) and the muzzle clearly
 lowered (38 degrees below the horizontal), not level as in a llama. Hitbox 0.7 x 1.1 blocks (docs/04 §0.3, C2).
 
+WILD_BOAR: the wild boar (Sus scrofa), a Polish adult from docs/research/07-fauna-polski-siedliska-zachowania.md §3.4 and
+§13 (step FA3): withers 85 cm, the rump lower (76 cm: the wedge profile, high withers and low rump), trunk about 1.4 x the
+withers height without the head, legs about 45% of the withers height (short), no visible neck (a short thick neck
+carried nearly level, the head and the nape one wedge), a long head (skull and snout 53 cm) carried low, 45 degrees
+below the horizontal, the snout ending in a flat disc; small upright ears, a crest of bristles along the withers, a
+straight tail of 25 cm hanging down, and the tusks of the boar (the renderer hides them for a sow and a young one).
+Hitbox 0.9 x 0.95 blocks (docs/04 "Projekt FA3"); the young (warchlak) are the vanilla young at half the scale.
+
 AXIS_GAUGE: the calibration model of the fauna game test (step V8): arms turned by known angles about each axis, a chain
 of two turned bones, a bone with a rest rotation that an animation moves and turns further (with a turned child that
 must follow it), and markers on the left side (+X) and the front, each with a locator at its tip. It lives only in the game test mod (namespace polishforests_probe).
@@ -25,6 +33,20 @@ ROE_DEER_SHAPE = Quadruped(
 
 def roe_deer():
     return build(ROE_DEER_SHAPE, (64, 64))
+
+
+WILD_BOAR_SHAPE = Quadruped(
+    id='wild_boar',
+    withers=85, rump=76, trunk_length=115, chest_share=0.55, chest_depth=50, flank_depth=44, width=38,
+    neck_length=31, neck_thickness=38, neck_width=27, neck_angle=8,
+    head_length=28, head_height=27, head_width=30, muzzle_length=25, muzzle_height=15, muzzle_width=17,
+    head_angle=45,
+    ear_length=13, ear_width=8, ear_spread=18,
+    leg_width=12.5, tail_length=25, antler_length=0, hitbox=(0.9, 0.95), tusk_length=10, mane_height=6.25)
+
+
+def wild_boar():
+    return build(WILD_BOAR_SHAPE, (64, 64))
 
 
 # The pose the axis gauge animation 'calib.pose' holds (the game test checks the bone 'anim' in it).

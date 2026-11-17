@@ -106,6 +106,86 @@
     "buck_right": "roe_deer_buck_right.png"
    }
   },
+  "wild_boar": {
+   "rest": {
+    "bone:body": [0.0, 9.0, 0.0],
+    "bone:ear_left": [2.25, 12.339, -9.7483],
+    "bone:ear_right": [-2.25, 12.339, -9.7483],
+    "bone:head": [0.0, 11.2783, -7.9805],
+    "bone:leg_back_left": [2.25, 5.5, 7.0],
+    "bone:leg_back_right": [-2.25, 5.5, 7.0],
+    "bone:leg_front_left": [2.25, 6.5, -7.0],
+    "bone:leg_front_right": [-2.25, 6.5, -7.0],
+    "bone:neck": [0.0, 11.0, -6.0],
+    "bone:root": [0.0, 0.0, 0.0],
+    "bone:tail": [0.0, 11.75, 8.5],
+    "bone:tusk_left": [1.5, 5.6215, -11.5161],
+    "bone:tusk_right": [-1.5, 5.6215, -11.5161],
+    "locator:body_back": [0.0, 8.5, 9.0],
+    "locator:body_front": [0.0, 10.0, -9.0],
+    "locator:ear_left_tip": [3.3342, 13.7999, -10.718],
+    "locator:ear_right_tip": [-3.3342, 13.7999, -10.718],
+    "locator:eye_left": [2.5, 9.8641, -10.1019],
+    "locator:eye_right": [-2.5, 9.8641, -10.1019],
+    "locator:leg_back_left_tip": [2.25, 0.0, 7.0],
+    "locator:leg_back_right_tip": [-2.25, 0.0, 7.0],
+    "locator:leg_front_left_tip": [2.25, 0.0, -7.0],
+    "locator:leg_front_right_tip": [-2.25, 0.0, -7.0],
+    "locator:neck_tip": [0.0, 11.6959, -10.9513],
+    "locator:nose": [0.0, 5.2679, -13.2838],
+    "locator:tail_tip": [0.0, 7.75, 9.5],
+    "locator:tusk_left_tip": [1.9017, 7.3237, -12.4862],
+    "locator:tusk_right_tip": [-1.9017, 7.3237, -12.4862]
+   },
+   "alert": {
+    "bone:body": [0.0, 9.274, 0.0],
+    "bone:ear_left": [2.0393, 14.0125, -9.2797],
+    "bone:ear_right": [-2.4361, 13.8063, -8.8569],
+    "bone:head": [0.0, 12.3589, -7.7241],
+    "bone:leg_back_left": [2.25, 5.5318, 6.8736],
+    "bone:leg_back_right": [-2.25, 5.5318, 6.8736],
+    "bone:leg_front_left": [2.25, 7.0198, -7.083],
+    "bone:leg_front_right": [-2.25, 7.0198, -7.083],
+    "bone:neck": [0.0, 11.4822, -5.9265],
+    "bone:root": [0.0, 0.0, 0.0],
+    "bone:tail": [0.0, 11.7257, 8.5908],
+    "bone:tusk_left": [1.2081, 8.1337, -12.9623],
+    "bone:tusk_right": [-1.7755, 7.9962, -12.6804],
+    "locator:body_back": [0.0, 8.4602, 8.9771],
+    "locator:body_front": [0.0, 10.5875, -8.9596],
+    "locator:ear_left_tip": [2.58, 15.7668, -10.2177],
+    "locator:ear_right_tip": [-3.3002, 15.4959, -9.6622],
+    "locator:eye_left": [2.2873, 11.7794, -10.4041],
+    "locator:eye_right": [-2.6853, 11.5503, -9.9344],
+    "locator:leg_back_left_tip": [2.25, 0.0352, 6.6816],
+    "locator:leg_back_right_tip": [-2.25, 0.0352, 6.6816],
+    "locator:leg_front_left_tip": [2.25, 2.0405, -11.2611],
+    "locator:leg_front_right_tip": [-2.25, 0.5238, -7.3098],
+    "locator:neck_tip": [0.0, 13.674, -10.4205],
+    "locator:nose": [-0.4615, 8.2709, -14.6035],
+    "locator:tail_tip": [0.0, 10.4541, 12.5129],
+    "locator:tusk_left_tip": [1.4824, 10.0679, -13.3907],
+    "locator:tusk_right_tip": [-2.3001, 9.8936, -13.0334]
+   },
+   "alert_animation": "misc.alert",
+   "hidden": {
+    "boar": [],
+    "sow": [
+     "tusk_left",
+     "tusk_right"
+    ]
+   },
+   "masks": {
+    "boar_front": "wild_boar_boar_front.png",
+    "boar_left": "wild_boar_boar_left.png",
+    "boar_back": "wild_boar_boar_back.png",
+    "boar_right": "wild_boar_boar_right.png",
+    "sow_front": "wild_boar_sow_front.png",
+    "sow_left": "wild_boar_sow_left.png",
+    "sow_back": "wild_boar_sow_back.png",
+    "sow_right": "wild_boar_sow_right.png"
+   }
+  },
   "axis_gauge": {
    "rest": {
     "bone:anim": [6.0, 4.0, 0.0],

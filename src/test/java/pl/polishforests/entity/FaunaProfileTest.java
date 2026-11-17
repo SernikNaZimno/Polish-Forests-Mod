@@ -13,6 +13,7 @@ import pl.polishforests.entity.base.AnimalProfile;
 import pl.polishforests.entity.base.PolishAnimal;
 import pl.polishforests.entity.roedeer.RoeDeer;
 import pl.polishforests.entity.spawn.FaunaSpawner;
+import pl.polishforests.entity.wildboar.WildBoar;
 import pl.polishforests.season.SubSeason;
 import pl.polishforests.worldgen.chunk.ChunkHabitats;
 import pl.polishforests.worldgen.habitat.HabitatBiome;
@@ -71,7 +72,63 @@ class FaunaProfileTest {
 	void savedFieldsOfStepV8Unchanged() {
 		assertEquals(List.of("Buck", "WinterCoat"), RoeDeer.SAVED_FIELDS);
 		assertEquals(RoeDeer.SAVED_FIELDS, ModEntities.savedFields(ModEntities.roeDeer()));
-		assertEquals(1, ModEntities.fauna().size());
+		// Step FA3: the wild boar after the roe deer (the roe deer's draws at generation stay those of FA2).
+		assertEquals(2, ModEntities.fauna().size());
+		assertEquals(RoeDeer.PROFILE, ModEntities.fauna().get(0).profile());
+		assertEquals(WildBoar.PROFILE, ModEntities.fauna().get(1).profile());
+		assertEquals(List.of("Male", "Seniority"), WildBoar.SAVED_FIELDS);
+		assertEquals(WildBoar.SAVED_FIELDS, ModEntities.savedFields(ModEntities.wildBoar()));
+	}
+
+	@Test
+	void wildBoarProfileIsSane() {
+		AnimalProfile p = WildBoar.PROFILE;
+		assertEquals("wild_boar", p.species());
+		// KFA-5: about 20-50 times the real density, generation and spawner apart.
+		assertTrue(p.generationFactor() >= 20 && p.generationFactor() <= 50, "generation factor " + p.generationFactor());
+		assertTrue(p.spawnerFactor() >= 20 && p.spawnerFactor() <= 50, "spawner factor " + p.spawnerFactor());
+		// C3: about 4 boars to 10 roe deer at the same weight, at generation and for the spawner.
+		double generation = p.generationDensityPerBlock() / RoeDeer.PROFILE.generationDensityPerBlock();
+		double spawner = p.spawnerDensityPerBlock() / RoeDeer.PROFILE.spawnerDensityPerBlock();
+		assertEquals(0.4, generation, 0.05, "generation ratio");
+		assertEquals(0.4, spawner, 0.05, "spawner ratio");
+		// The habitats of the plan: oak-hornbeam and beech forests, alder carrs and riparian forests, mixed pine and mixed
+		// forests carry the most; no open land and no water (the edge apart), no dwarf pine.
+		for (HabitatBiome b : List.of(HabitatBiome.OAK_HORNBEAM_FOREST, HabitatBiome.LOWLAND_BEECH_FOREST, HabitatBiome.ALDER_CARR,
+				HabitatBiome.ASH_ALDER_FOREST, HabitatBiome.ELM_ASH_FOREST, HabitatBiome.WILLOW_POPLAR_FOREST, HabitatBiome.MIXED_PINE_FOREST,
+				HabitatBiome.MIXED_FOREST)) {
+			assertTrue(p.weight(b) >= 0.7F, b + " " + p.weight(b));
+		}
+		for (HabitatBiome b : HabitatBiome.values()) {
+			if (!b.isForest()) {
+				assertEquals(0, p.weight(b), b + " has a weight");
+			}
+			assertTrue(p.weight(b) <= p.weight(HabitatBiome.OAK_HORNBEAM_FOREST), b.name());
+		}
+		assertEquals(0, p.weight(HabitatBiome.DWARF_PINE_SCRUB));
+		assertTrue(p.weight(HabitatBiome.DRY_PINE_FOREST) < p.weight(HabitatBiome.MIXED_PINE_FOREST));
+		// Sounders of 3-8, a quarter lone males, up to four young per sow.
+		assertEquals(new AnimalProfile.Range(3, 8), p.group(SubSeason.MID_SUMMER));
+		assertEquals(0.25F, p.soloShare());
+		assertEquals(4, p.maxYoung());
+		assertEquals(0.9F, p.width());
+		assertEquals(0.95F, p.height());
+	}
+
+	@Test
+	void loneAnimalsCountInTheExpectedGroups() {
+		// The roe deer has no lone animals of its own: the mean group is the mean of the range (FA2 unchanged).
+		assertEquals(RoeDeer.PROFILE.summerGroup().mean(), RoeDeer.PROFILE.meanGroupSize(RoeDeer.PROFILE.summerGroup()));
+		// The wild boar: a quarter of the groups one lone male, the rest sounders of 3-8 (mean 5.5).
+		AnimalProfile p = WildBoar.PROFILE;
+		double mean = 0.25 + 0.75 * 5.5;
+		assertEquals(mean, p.meanGroupSize(p.summerGroup()), 1e-9);
+		assertEquals(p.generationDensityPerBlock() * 256 / mean, FaunaSpawner.expectedGroups(p, p.summerGroup(), 256), 1e-12);
+		// A circle of 64 blocks of oak-hornbeam forest: a few boars, within the spawner's own limit.
+		double circle = p.generationDensityPerBlock() * Math.PI * FaunaSpawner.AREA_RADIUS * FaunaSpawner.AREA_RADIUS;
+		assertTrue(circle >= 1 && circle <= p.maxNearPlayer(), "circle " + circle);
+		double target = p.spawnerDensityPerBlock() * Math.PI * FaunaSpawner.AREA_RADIUS * FaunaSpawner.AREA_RADIUS;
+		assertTrue(target >= circle && target <= p.maxNearPlayer(), "spawner target " + target);
 	}
 
 	@Test

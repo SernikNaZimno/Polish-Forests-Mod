@@ -13,6 +13,10 @@ Files (paths relative to the project):
     src/main/resources/assets/polishforests/textures/entity/roe_deer/<variant>_flared.png   (step FA2: rump patch puffed)
     src/main/resources/assets/polishforests/textures/entity/roe_deer/kid.png                (step FA2: a young one)
     src/main/resources/assets/polishforests/textures/item/roe_deer_spawn_egg.png
+    src/main/resources/assets/polishforests/geckolib/models/entity/wild_boar.geo.json       (step FA3: the wild boar)
+    src/main/resources/assets/polishforests/geckolib/animations/entity/wild_boar.animation.json
+    src/main/resources/assets/polishforests/textures/entity/wild_boar/<boar|sow|piglet>.png
+    src/main/resources/assets/polishforests/textures/item/wild_boar_spawn_egg.png
     src/gametest/resources/assets/polishforests_probe/...                                    the axis gauge (game test only)
     src/test/resources/fauna/fauna_expected.json   bone and locator positions (rest pose; the held misc.alert pose;
                                                    the axis gauge at rest and posed), cameras of the 4-side views
@@ -52,6 +56,12 @@ for _sex in SEXES:
 EXTRA_VARIANTS['buck_winter_hard_flared'] = dict(sex='buck', season='winter', antlers='hard', flared=True)
 EXTRA_VARIANTS['kid'] = dict(sex='doe', season='summer', kid=True)
 ANTLERS = ('antler_left', 'antler_right')
+# Step FA3: the texture variants of the wild boar (WildBoar.variant() names the same) and the bones the sow and the young
+# one hide (the tusks show only on the boar).
+BOAR_VARIANTS = ('boar', 'sow', 'piglet')
+TUSKS = ('tusk_left', 'tusk_right')
+BOAR_HIDDEN = {'boar': (), 'sow': TUSKS, 'piglet': TUSKS}
+BOAR_EGG = ((86, 70, 60), (156, 146, 134))
 
 # The 4-side views of the fauna game test: the camera stays, the animal turns (yaw in Minecraft degrees). The camera
 # is given relative to the animal's feet; the game test builds a lime concrete backdrop and floor around them.
@@ -73,6 +83,10 @@ def packed(m):
 
 def roe_deer():
     return packed(species.roe_deer())
+
+
+def wild_boar():
+    return packed(species.wild_boar())
 
 
 def axis_gauge():
@@ -118,6 +132,17 @@ def build_all():
         details[rel] = det
     files[f'{ASSETS}/textures/item/roe_deer_spawn_egg.png'] = ('png', paint.spawn_egg((186, 108, 60), (234, 220, 192)))
 
+    boar = wild_boar()
+    boar_anims = animations.boar_animations(boar)
+    files[f'{ASSETS}/geckolib/models/entity/wild_boar.geo.json'] = ('json', geo_json(boar))
+    files[f'{ASSETS}/geckolib/animations/entity/wild_boar.animation.json'] = ('json', boar_anims)
+    for variant in BOAR_VARIANTS:
+        img, det = paint.paint_model(boar, paint.wild_boar_shader(boar, variant), with_details=True)
+        rel = f'{ASSETS}/textures/entity/wild_boar/{variant}.png'
+        files[rel] = ('png', img)
+        details[rel] = det
+    files[f'{ASSETS}/textures/item/wild_boar_spawn_egg.png'] = ('png', paint.spawn_egg(*BOAR_EGG))
+
     gauge = axis_gauge()
     gauge_anims = animations.calibration_animations(species.AXIS_GAUGE_ANIM)
     files[f'{PROBE_ASSETS}/geckolib/models/entity/axis_gauge.geo.json'] = ('json', geo_json(gauge))
@@ -150,6 +175,20 @@ def build_all():
             rel = f'{EXPECTED}/roe_deer_{sex}_{name}.png'
             files[rel] = ('mask', mask)
             expected['models']['roe_deer']['masks'][f'{sex}_{name}'] = os.path.basename(rel)
+    boar_alert = boar_anims['animations']['misc.alert']
+    expected['models']['wild_boar'] = {
+        'rest': _round(pivots_and_locators(boar)),
+        'alert': _round(pivots_and_locators(boar, animations.pose_at(boar_alert, boar_alert['animation_length']))),
+        'alert_animation': 'misc.alert',
+        'hidden': {v: list(BOAR_HIDDEN[v]) for v in ('boar', 'sow')},
+        'masks': {},
+    }
+    for variant in ('boar', 'sow'):     # the young one is the same model at the vanilla baby scale
+        for name, yaw in VIEWS:
+            mask = render.silhouette(boar, cam, None, (0, 0, 0), yaw, BOAR_HIDDEN[variant])
+            rel = f'{EXPECTED}/wild_boar_{variant}_{name}.png'
+            files[rel] = ('mask', mask)
+            expected['models']['wild_boar']['masks'][f'{variant}_{name}'] = os.path.basename(rel)
     expected['models']['axis_gauge'] = {
         'rest': _round(pivots_and_locators(gauge)),
         'posed': _round(pivots_and_locators(gauge, species.AXIS_GAUGE_ANIM)),
@@ -157,7 +196,7 @@ def build_all():
     }
     files[f'{EXPECTED}/fauna_expected.json'] = ('json', expected)
     return files, dict(deer=deer, deer_anims=deer_anims, deer_textures=textures, gauge=gauge, gauge_anims=gauge_anims,
-                       details=details)
+                       boar=boar, boar_anims=boar_anims, details=details)
 
 
 def _round(d):
@@ -216,6 +255,7 @@ def main():
     files, models = write_all(a.out or ROOT)
     print(f'fauna: wrote {len(files)} files under {a.out or ROOT}')
     print(f'fauna: roe deer eat pose: nose {eat_pose_check(models["deer"], models["deer_anims"]):.2f} px above the ground')
+    print(f'fauna: wild boar eat pose: nose {eat_pose_check(models["boar"], models["boar_anims"]):.2f} px above the ground')
 
 
 if __name__ == '__main__':

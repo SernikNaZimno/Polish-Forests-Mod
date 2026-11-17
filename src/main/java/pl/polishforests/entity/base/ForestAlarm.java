@@ -19,7 +19,9 @@ import org.jspecify.annotations.Nullable;
  * {@value #PLAYER_INTERVAL} ticks around each sprinting player that is not a spectator, radius {@value #PLAYER_RADIUS}
  * blocks, strength 1), and the warning bark of a fleeing roe deer ({@link Kind#BARK}: its group and neighbours hear it, an
  * animal that reacts to a bark does not bark itself, so the alarm does not run on through the forest). The screech of the
- * jay joins in step FA4 and the jay as an entity in FA6 (new kinds only at the end of the enum).
+ * jay joins in step FA4 and the jay as an entity in FA6 (new kinds only at the end of the enum). Step FA3: the snort of a
+ * wild boar at the start of a flight ({@link Kind#SNORT}), a warning like the bark (an animal that flees from it does not
+ * warn again).
  *
  * @param source   where the alarm comes from
  * @param radius   how far it is heard (blocks)
@@ -40,7 +42,7 @@ public record ForestAlarm(Vec3 source, double radius, float strength, Kind kind,
 
 	/** What raised an alarm. New kinds only at the end. */
 	public enum Kind {
-		TEST, RUNNING_PLAYER, BARK
+		TEST, RUNNING_PLAYER, BARK, SNORT
 	}
 
 	/** An animal that hears the alarms of the forest. */

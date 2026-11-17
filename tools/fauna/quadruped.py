@@ -7,8 +7,11 @@ Bones (names are stable: animations, the renderer and later hand edits in Blockb
           head              pivot at the end of the neck; skull and muzzle cubes; locators eye_left/right, nose
             ear_left/right  pivot at the base of the ear
             antler_left/right  (species with antlers; the renderer hides them for females) beam with tines
+            tusk_left/right    (species with tusks, step FA3: the wild boar; the renderer hides them for sows and young)
         leg_front_left/right, leg_back_left/right   pivot at the top of the leg (shoulder, hip), one cube each
-        tail                pivot at the top of the rump
+        tail                pivot at the top of the rump (a short nub sunk in the rump, or a hanging tail)
+A species with a mane (step FA3: the bristle crest of the wild boar) has one more cube on the body bone, 'mane', along
+the top of the chest.
 Every bone has a locator at its far end ('<bone>_tip'), the head also 'nose', 'eye_left' and 'eye_right', the body
 'body_front' and 'body_back'; GeckoLib looks locators up by name, so the names are unique in the model. The in-game check
 of the bone positions (fauna game test) reads them.
@@ -56,6 +59,8 @@ class Quadruped:
     tail_length: float
     antler_length: float = 0.0   # 0 = no antlers
     hitbox: tuple = (0.7, 1.1)
+    tusk_length: float = 0.0     # 0 = no tusks (step FA3: the wild boar's lower canines, out of the sides of the snout)
+    mane_height: float = 0.0     # 0 = no mane (step FA3: the bristle crest along the withers of the wild boar)
 
 
 def build(q, texture_size=(64, 64)):
@@ -77,7 +82,13 @@ def build(q, texture_size=(64, 64)):
     chest = Cube((-hw, withers - chest_d, z_front), (W, chest_d, Lc), 'chest')
     hind = Cube((-hw, rump - flank_d, z_mid), (W, flank_d, Lh), 'hind')
     body_pivot = (0, (withers + rump) / 2.0 - chest_d / 2.0, 0)
-    bones.append(Bone('body', body_pivot, 'root', cubes=[chest, hind],
+    body_cubes = [chest, hind]
+    if q.mane_height > 0:
+        # The crest of bristles along the withers: a narrow cube sunk 0.5 px into the top of the chest, from 0.5 px behind
+        # its front to 0.5 px before its back (no face in a plane of a chest or hindquarters face).
+        mh = px(q.mane_height)
+        body_cubes.append(Cube((-1, withers - 0.5, z_front + 0.5), (2, mh, Lc - 1), 'mane'))
+    bones.append(Bone('body', body_pivot, 'root', cubes=body_cubes,
                       locators={'body_front': (0, withers - chest_d / 2.0, z_front), 'body_back': (0, rump - flank_d / 2.0, z_back)}))
 
     # Neck: a square cube pointing forward (-Z) from the top front of the chest, raised by neck_angle.
@@ -130,6 +141,18 @@ def build(q, texture_size=(64, 64)):
             back_tine = Cube((x0, top + back_y, hp[2] - 1.0), (1, 1, 1), 'antler_tine')
             bones.append(Bone(f'antler_{side}', base, 'head', rotation=(-12, 0, sx * 8),
                               cubes=[beam, front_tine, back_tine], locators={f'antler_{side}_tip': (x0 + 0.5, top + al, hp[2] - 1.5)}))
+
+    # Tusks (step FA3): the lower canines of a boar, 1 px square, rising out of the sides of the snout 1.5 px behind the
+    # nose, half inside it (their faces off the planes of the snout).
+    if q.tusk_length > 0:
+        tl_ = px(q.tusk_length)
+        zf = hp[2] - hl - ml
+        y0 = hp[1] - hh / 2.0 + 0.5
+        for side, sx in (('left', 1), ('right', -1)):
+            x0 = sx * mw / 2.0 - 0.5
+            tusk = Cube((x0, y0, zf + 1.0), (1, tl_, 1), 'tusk')
+            bones.append(Bone(f'tusk_{side}', (sx * mw / 2.0, y0, zf + 1.5), 'head', rotation=(-15, 0, sx * 12), cubes=[tusk],
+                              locators={f'tusk_{side}_tip': (sx * mw / 2.0, y0 + tl_, zf + 1.5)}))
 
     # Legs: one cube each from the ground to 1 px inside the trunk, at the sides of the trunk (+X = left), turning about
     # a pivot 0.5 px inside the trunk: no gap opens at the shoulder or hip when a leg swings, and no face of the leg lies

@@ -26,6 +26,7 @@ import pl.polishforests.entity.base.ForestAlarm;
 import pl.polishforests.entity.base.PolishAnimal;
 import pl.polishforests.entity.base.Thicket;
 import pl.polishforests.entity.roedeer.RoeDeer;
+import pl.polishforests.entity.wildboar.WildBoar;
 import pl.polishforests.season.Seasons;
 import pl.polishforests.season.SubSeason;
 
@@ -87,14 +88,21 @@ final class FaunaTrials {
 
 	private final ClientGameTestContext context;
 	private final FaunaCensus census;
+	/** Step FA3: the trials of the wild boar (the sounders run with the activity trial of the roe deer). */
+	final BoarTrials boars;
 
 	FaunaTrials(ClientGameTestContext context, FaunaCensus census) {
 		this.context = context;
 		this.census = census;
+		this.boars = new BoarTrials(context, census);
 	}
 
-	/** Every trial at one place of a world (the MSPT scene apart); the looks in the given sub-seasons. */
-	void all(TestSingleplayerContext sp, String label, int x, int z, List<SubSeason> lookSeasons) {
+	/**
+	 * Every trial at one place of a world (the MSPT scene apart); the looks in the given sub-seasons. Step FA3: with
+	 * {@code boarExtras} also the rooting and the warning trials of the wild boar (in one world: they change blocks and
+	 * the player's game mode).
+	 */
+	void all(TestSingleplayerContext sp, String label, int x, int z, List<SubSeason> lookSeasons, boolean boarExtras) {
 		SeasonDates.set(sp, SubSeason.MID_SUMMER, 0, label);
 		List<RoeDeer> herd = activity(sp, label, x, z);
 		range(sp, label, herd);
@@ -104,6 +112,10 @@ final class FaunaTrials {
 		SeasonDates.set(sp, SubSeason.MID_SUMMER, 0, label);
 		flightDistance(sp, label, x, z);
 		alarm(sp, label, x, z);
+		if (boarExtras) {
+			boars.warning(sp, label, x, z);
+			boars.rooting(sp, label, x, z);
+		}
 	}
 
 	// ------------------------------------------------------------------ herd
@@ -143,6 +155,8 @@ final class FaunaTrials {
 		FaunaCensus.teleport(sp, x, z);
 		context.waitTicks(200);
 		List<RoeDeer> herd = herd(sp);
+		List<WildBoar> sounders = boars.sounders(sp);
+		double[] boarActive = new double[TIMES.length];
 		double[][] shares = new double[TIMES.length][];
 		for (int t = 0; t < TIMES.length; t++) {
 			SeasonDates.setTimeOfDay(sp, TIMES[t], label);
@@ -154,6 +168,7 @@ final class FaunaTrials {
 				for (int k = 0; k < sum.length; k++) {
 					sum[k] += s[k] / ACTIVITY_SAMPLES;
 				}
+				boarActive[t] += sp.getServer().computeOnServer(server -> boars.sample(server.overworld(), sounders)) / ACTIVITY_SAMPLES;
 			}
 			shares[t] = sum;
 			census.line("%s activity at %s (%d): grazing %.2f, resting %.2f, moving %.2f, other %.2f; resting in a thicket %.2f", label,
@@ -171,6 +186,8 @@ final class FaunaTrials {
 			census.fail("%s activity: grazing at dawn and dusk not %.2f above noon and night, or resting at noon not above dawn", label,
 					ACTIVITY_MARGIN);
 		}
+		boars.verdict(label, boarActive, sounders, sp);
+		sp.getServer().runOnServer(s -> sounders.forEach(Entity::discard));
 		return herd;
 	}
 

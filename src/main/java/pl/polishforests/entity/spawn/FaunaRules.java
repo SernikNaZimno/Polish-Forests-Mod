@@ -19,11 +19,16 @@ import pl.polishforests.PolishForests;
  * entry with an identifier, whose path must be lower case, hence {@code forest_fauna} instead of the plan's
  * {@code forestFauna} (G.63). The rule is saved in the world by that identifier.
  *
+ * <p>{@code polishforests:boar_rooting} (boolean, default true, category mobs; step FA3, docs/04 "Projekt FA3"): whether
+ * the wild boar roots up the ground (grass to coarse or rooted dirt) and leaves mud at a wallow. Vanilla game rule
+ * {@code mob_griefing} off turns it off as well ({@link #rooting}). Lower case for the same reason as above.
+ *
  * <p>{@code #polishforests:forest_animals_spawnable_on}: the ground the forest animals of the mod appear on (data/…/tags).
  */
 public final class FaunaRules {
 	public static final TagKey<Block> SPAWNABLE_ON = TagKey.create(Registries.BLOCK, PolishForests.id("forest_animals_spawnable_on"));
 	private static @Nullable GameRule<Boolean> forestFauna;
+	private static @Nullable GameRule<Boolean> boarRooting;
 
 	private FaunaRules() {
 	}
@@ -33,6 +38,23 @@ public final class FaunaRules {
 			forestFauna = GameRuleBuilder.forBoolean(true).category(GameRuleCategory.SPAWNING)
 					.buildAndRegister(PolishForests.id("forest_fauna"));
 		}
+		if (boarRooting == null) {
+			boarRooting = GameRuleBuilder.forBoolean(true).category(GameRuleCategory.MOBS)
+					.buildAndRegister(PolishForests.id("boar_rooting"));
+		}
+	}
+
+	public static GameRule<Boolean> boarRooting() {
+		if (boarRooting == null) {
+			throw new IllegalStateException("The fauna game rules are not registered yet");
+		}
+		return boarRooting;
+	}
+
+	/** Whether the animals of the mod may change blocks (rooting, mud): the own rule and vanilla mob_griefing. */
+	public static boolean rooting(ServerLevel level) {
+		GameRules rules = level.getGameRules();
+		return rules.get(boarRooting()) && rules.get(GameRules.MOB_GRIEFING);
 	}
 
 	public static GameRule<Boolean> forestFauna() {

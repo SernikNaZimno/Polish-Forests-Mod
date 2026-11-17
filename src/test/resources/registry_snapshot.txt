@@ -1355,8 +1355,10 @@ item polishforests:white_willow_stairs block=polishforests:white_willow_stairs
 item polishforests:white_willow_trunk block=polishforests:white_willow_trunk
 item polishforests:white_willow_wood block=polishforests:white_willow_wood
 item polishforests:white_wood_rush block=polishforests:white_wood_rush
+item polishforests:wild_boar_spawn_egg
 item polishforests:wild_garlic block=polishforests:wild_garlic
 item polishforests:wood_anemone block=polishforests:wood_anemone
 item polishforests:wood_sorrel block=polishforests:wood_sorrel
 item polishforests:yellow_iris block=polishforests:yellow_iris
 entity polishforests:roe_deer saved=Buck,WinterCoat
+entity polishforests:wild_boar saved=Male,Seniority

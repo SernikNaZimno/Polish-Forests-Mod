@@ -18,9 +18,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
- * The roe deer files of tools/fauna (step V8) without the game: the model has the 13 bones of the quadruped archetype
+ * The animal files of tools/fauna (step V8 the roe deer, step FA3 the wild boar) without the game: each model has the 13
+ * bones of the quadruped archetype (the antlers of the roe deer are the tusks of the wild boar)
  * with a valid hierarchy, the animations the renderer and V14 use, and its bone pivots and locators, computed here with
  * GeckoLib's conventions (as calibrated in the game by the fauna game test: rotations X, Y, Z about the pivot with the X
  * and Y angles mirrored, child pivots in model space), equal the positions tools/fauna wrote to
@@ -28,21 +31,44 @@ import org.junit.jupiter.api.Test;
  * expected file, or a generator change that moves a bone, fails here and in the game test.
  */
 class FaunaModelTest {
-	private static final String MODEL = "/assets/polishforests/geckolib/models/entity/roe_deer.geo.json";
-	private static final String ANIMATIONS = "/assets/polishforests/geckolib/animations/entity/roe_deer.animation.json";
 	private static final String EXPECTED = "/fauna/fauna_expected.json";
-	private static final Set<String> BONES = Set.of("root", "body", "neck", "head", "ear_left", "ear_right", "antler_left",
-			"antler_right", "leg_front_left", "leg_front_right", "leg_back_left", "leg_back_right", "tail");
+	private static final Set<String> COMMON_BONES = Set.of("root", "body", "neck", "head", "ear_left", "ear_right", "leg_front_left",
+			"leg_front_right", "leg_back_left", "leg_back_right", "tail");
 	private static final List<String> ANIMATION_NAMES = List.of("misc.idle", "move.walk", "move.run", "misc.eat", "misc.alert",
 			"misc.rest");
+
+	private static String model(String species) {
+		return "/assets/polishforests/geckolib/models/entity/" + species + ".geo.json";
+	}
+
+	private static String animations(String species) {
+		return "/assets/polishforests/geckolib/animations/entity/" + species + ".animation.json";
+	}
+
+	/** The bones of a species: the common ones, the antlers of the roe deer, the tusks of the wild boar. */
+	private static Set<String> bonesOf(String species) {
+		Set<String> out = new java.util.HashSet<>(COMMON_BONES);
+		out.addAll(species.equals("wild_boar") ? List.of("tusk_left", "tusk_right") : List.of("antler_left", "antler_right"));
+		return out;
+	}
+
+	/** The animations of a species: those of the quadruped, and the rooting and the wallow of the wild boar. */
+	private static List<String> animationsOf(String species) {
+		List<String> out = new ArrayList<>(ANIMATION_NAMES);
+		if (species.equals("wild_boar")) {
+			out.addAll(List.of("misc.root", "misc.wallow"));
+		}
+		return out;
+	}
 
 	private record Bone(String name, String parent, double[] pivot, double[] rotation, Map<String, double[]> locators) {
 	}
 
-	@Test
-	void modelHasTheBonesOfTheQuadruped() throws IOException {
-		Map<String, Bone> bones = bones(read(MODEL));
-		assertEquals(BONES, bones.keySet());
+	@ParameterizedTest
+	@ValueSource(strings = {"roe_deer", "wild_boar"})
+	void modelHasTheBonesOfTheQuadruped(String species) throws IOException {
+		Map<String, Bone> bones = bones(read(model(species)));
+		assertEquals(bonesOf(species), bones.keySet());
 		for (Bone b : bones.values()) {
 			int depth = 0;
 			for (String p = b.parent(); p != null; p = bones.get(p).parent()) {
@@ -50,16 +76,17 @@ class FaunaModelTest {
 				assertTrue(++depth < bones.size(), b.name() + ": parent cycle");
 			}
 		}
-		JsonObject description = read(MODEL).getAsJsonArray("minecraft:geometry").get(0).getAsJsonObject()
+		JsonObject description = read(model(species)).getAsJsonArray("minecraft:geometry").get(0).getAsJsonObject()
 				.getAsJsonObject("description");
-		assertEquals("geometry.roe_deer", description.get("identifier").getAsString());
-		assertEquals("1.12.0", read(MODEL).get("format_version").getAsString());
+		assertEquals("geometry." + species, description.get("identifier").getAsString());
+		assertEquals("1.12.0", read(model(species)).get("format_version").getAsString());
 	}
 
-	@Test
-	void restPositionsMatchToolsFauna() throws IOException {
-		Map<String, Bone> bones = bones(read(MODEL));
-		JsonObject rest = read(EXPECTED).getAsJsonObject("models").getAsJsonObject("roe_deer").getAsJsonObject("rest");
+	@ParameterizedTest
+	@ValueSource(strings = {"roe_deer", "wild_boar"})
+	void restPositionsMatchToolsFauna(String species) throws IOException {
+		Map<String, Bone> bones = bones(read(model(species)));
+		JsonObject rest = read(EXPECTED).getAsJsonObject("models").getAsJsonObject(species).getAsJsonObject("rest");
 		Map<String, double[][]> matrices = new HashMap<>();
 		int checked = 0;
 		for (Bone b : bones.values()) {
@@ -75,11 +102,12 @@ class FaunaModelTest {
 		assertEquals(rest.size(), checked, "fauna_expected.json lists other bones or locators than the model");
 	}
 
-	@Test
-	void animationsUseTheBonesOfTheModel() throws IOException {
-		Map<String, Bone> bones = bones(read(MODEL));
-		JsonObject all = read(ANIMATIONS).getAsJsonObject("animations");
-		for (String name : ANIMATION_NAMES) {
+	@ParameterizedTest
+	@ValueSource(strings = {"roe_deer", "wild_boar"})
+	void animationsUseTheBonesOfTheModel(String species) throws IOException {
+		Map<String, Bone> bones = bones(read(model(species)));
+		JsonObject all = read(animations(species)).getAsJsonObject("animations");
+		for (String name : animationsOf(species)) {
 			assertTrue(all.has(name), "missing animation " + name);
 		}
 		for (Map.Entry<String, JsonElement> a : all.entrySet()) {
@@ -107,6 +135,20 @@ class FaunaModelTest {
 			}
 		}
 		assertNotNull(FaunaModelTest.class.getResource("/assets/polishforests/textures/item/roe_deer_spawn_egg.png"));
+	}
+
+	/** Step FA3: every variant of the wild boar has its texture, and the expected file names the tusks the sow hides. */
+	@Test
+	void texturesOfTheWildBoarExist() throws IOException {
+		for (String variant : List.of("boar", "sow", "piglet")) {   // WildBoar.variants() (FaunaBehaviourTest)
+			assertNotNull(FaunaModelTest.class.getResource("/assets/polishforests/textures/entity/wild_boar/" + variant + ".png"), variant);
+		}
+		assertNotNull(FaunaModelTest.class.getResource("/assets/polishforests/textures/item/wild_boar_spawn_egg.png"));
+		JsonObject hidden = read(EXPECTED).getAsJsonObject("models").getAsJsonObject("wild_boar").getAsJsonObject("hidden");
+		List<String> sow = new ArrayList<>();
+		hidden.getAsJsonArray("sow").forEach(e -> sow.add(e.getAsString()));
+		assertEquals(List.of("tusk_left", "tusk_right"), sow);
+		assertEquals(0, hidden.getAsJsonArray("boar").size());
 	}
 
 	// ------------------------------------------------------------------ GeckoLib kinematics in Bedrock space

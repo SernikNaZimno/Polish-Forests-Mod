@@ -744,6 +744,7 @@ CP-D.1 zlecił faunę i dźwięk według planu (V14, V15, V16, potem V17), CP-D.
 - **Zakres:** (1) `tools/fauna`: model z archetypu czworonoga — odyniec, locha, warchlak pasiasty (pasy na teksturze, mniejszy model albo skala młodego), animacje `idle`, `walk`, `run`, `eat`, `root` (buchtowanie), `rest` (barłóg), `wallow` (babranie), `alert` (chrapnięcie); walidator, sylwetki i kalibracja w gametescie `fauna -Psites=model` jak V8; encja `polishforests:wild_boar` (warianty przez `DataTicket`, pola zapisu z wartościami domyślnymi), jajo przyzywające, migawka rejestru. (2) Zachowanie (SBL): aktywność zmierzchowo-nocna, w dzień barłóg w gęstwinie; wataha 3–8 za najstarszą lochą (`FollowEntity` z pamięci, `HerdLeader`), odyńce samotnie; ucieczka gęsiego z chrapnięciem; agresja według C6 (G.3): locha z warchlakami (III–VI) tylko ostrzega (szarża zatrzymana przed graczem), bez obrażeń; reakcja na `ForestAlarm`. (3) Buchtowisko (C9): `grass_block` → `coarse_dirt` i `rooted_dirt` płatami 2–4 bloków w grądzie i lasach liściastych (zdjęcie roślin runa nad płatem), reguła gry `polishforests:boarRooting` (domyślnie włączona, wyłączana też przez `mobGriefing`), tylko po generacji; babrzysko przy kałużach mikroreliefu i brzegach w olsach i łęgach (bez zmiany bloków albo z rzadkim błotem — wybór w projekcie). (4) Gęstość (KFA-5): ×20–50 rzeczywistej [Ź], stosunek do sarny ok. 4 : 10 (C3, G.3), siedliska: grądy, buczyny, olsy, łęgi, bory mieszane. (5) Gametest `fauna`: spis dzików (watahy, odległość od lochy prowadzącej, udział aktywnych nocą i w dzień), liczba płatów buchtowania w czasie T z regułą włączoną, wyłączoną i z `mobGriefing false` (0), ostrzeżenie lochy bez obrażeń, MSPT z dzikami.
 - **Ukończony, gdy:** `fauna` obejmuje dzika w obu typach świata, skalach i trybach; watahy trzymają się lochy (np. ≥ 80% członków w promieniu 16 bloków — próg w projekcie); aktywność nocą wyższa niż w dzień; buchtowisko powstaje tylko po generacji i tylko z regułą (0 płatów z regułą wyłączoną i przy `mobGriefing false`), `determinism` 0 różnic; locha nie zadaje obrażeń; MSPT ≤ 0,05 ms na dzika; KFA-1 … KFA-10. Lista „Do sprawdzenia w grze”: `find biome oak_hornbeam_forest` nocą (`/time set night`) — wataha w ruchu, warchlaki w pasy; za dnia — dziki w barłogu, buchtowiska (rozgrzebana ziemia płatami); `find biome alder_carr` — babrzysko; `/gamerule polishforests:boarRooting false` — bez nowych buchtowisk; podejście do lochy z młodymi wiosną — ostrzeżenie bez ran.
 - **Ryzyko:** średnie (ścieżki watahy w gęstym podszycie, zmiana bloków przez zwierzę, nowy model).
+- **Stan:** etap 1 (kod, zasoby z `tools/fauna`, testy jednostkowe, kod gametestu, fastTest) 2026-11-17, zob. „Projekt FA3”; etap 2 (przebiegi gametestu, „Stan po FA3”) do zrobienia.
 
 ### FA4. Pejzaż dźwiękowy i żaba trawna (V16; A, 1,5–2 dnia)
 
@@ -7185,3 +7186,73 @@ Baza rundy: `ca6ade8` (koniec etapu 2). Przebiegi według `python tools/dev/test
 1. Z Serene Seasons, w lesie z sarnami (`/polishforests find biome oak_hornbeam_forest`), `/season set mid_summer`: koza z 1–2 cętkowanymi koźlętami jak dotąd; potem `/season set early_autumn` (albo dowolny podsezon jesieni lub zimy) i chwila (do 5 s): koźlęta dorastają do pełnej wielkości z futrem podsezonu, `/polishforests fauna 64` nie pokazuje młodych.
 2. Zimą (`/season set mid_winter`) w kilku lasach (`find biome fresh_pine_forest`, `find biome oak_hornbeam_forest`) i w nowo odkrytych chunkach: w grupach saren żadnego cętkowanego koźlęcia; `/polishforests fauna 64` bez młodych.
 3. Nowy świat, las odwiedzony latem, potem `/season set mid_winter`, odejście ponad 200 bloków i powrót: dawne koźlęta są dorosłe.
+
+
+## Projekt FA3 (2026-11-17, etap 1: kod, zasoby z `tools/fauna`, testy jednostkowe, kod gametestu)
+
+Krok FA3 (§3 „Kroki FA”, V15) dodaje dzika: model z archetypu czworonoga w trzech postaciach, watahę za najstarszą lochą i samotne odyńce, rytm zmierzchowo-nocny z barłogiem w gęstwinie, ucieczkę gęsiego z chrapnięciem, ostrzegawczą szarżę lochy bez obrażeń (C6), buchtowisko i babrzysko pod regułą gry (C9) oraz kalibrację gęstości (KFA-5, C3). Etap 1 to kod, zasoby, testy jednostkowe, kod gametestu i fastTest. Do etapu 2 należą przebiegi gametestu `fauna` (`-Psites=model`, spis z próbami, `-Psites=mspt`), `determinism` i „Stan po FA3”. Baza kroku: `8b4c7eb` (ostatni commit FA2).
+
+**Zgodność (KFA-1, KFA-2, PW-11).**
+- Generacja bloków się nie zmienia. Spawn przy generacji stawia dodatkowo grupy dzików z tego samego strumienia (`FaunaSpawner.GENERATION_SALT`, bez nowej soli), ale po sarnach. Dlatego losowania saren przy generacji są takie same jak w FA2: `ModEntities.fauna()` ma kolejność sarna, dzik. Losowanie samotnika odbywa się tylko dla gatunku z `soloShare > 0`. Złożenie grupy z młodymi daje dla sarny tę samą liczbę matek i młodych co w FA2.
+- Buchtowanie i błoto powstają tylko w ticku żywego dzika, nigdy w generacji. Gametest `determinism` ma `spawn_mobs false`, więc żaden dzik się w nim nie pojawia.
+- Stare sole i stałe enumów zostają. Nowe stałe są tylko na końcu enumów: `PolishAnimal.Action` (ROOT, WALLOW), `PolishAnimal.State` (ROOTING, WALLOWING), `ForestAlarm.Kind` (SNORT).
+- Migawka rejestru (regenerowana celowo, `-PwriteRegistrySnapshot`) ma tylko nowe wiersze: `item polishforests:wild_boar_spawn_egg` i `entity polishforests:wild_boar saved=Male,Seniority`. Pola sarny są bez zmian.
+- Pola zapisu dzika mają wartości domyślne: brak `Male` oznacza lochę, brak `Seniority` oznacza rangę 0.
+
+**Model i zasoby (`tools/fauna`).**
+- Archetyp czworonoga dostał dwa opcjonalne elementy: `tusk_length` (szable `tusk_left` i `tusk_right` na głowie, z lokatorami końców) oraz `mane_height` (grzywa na grzbiecie).
+- `species.WILD_BOAR_SHAPE`: kłąb 85 cm, zad 76, tułów 115, głowa 28 cm pochylona o 45°, hitbox 0,9 × 0,95 bloku.
+- Model ma 13 kości i 15 sześcianów, tekstura 64 × 64.
+- Animacje: z archetypu `idle`, `walk`, `run`, `alert` i `rest`; własne `eat` (czaszka 62°, nie 80° jak u sarny, bo krótki pysk trafia wtedy przed oczy), `root` (rycie: głowa w dół, uderzenia co 0,4 s z odchyleniem na boki) i `wallow` (leżenie z przetaczaniem tułowia o ±24°).
+- Walidator: `REQUIRED['wild_boar']` (8 animacji). `misc.wallow` jest w `FOLDED`, jak `misc.rest`.
+- Tekstury `wild_boar/<boar|sow|piglet>.png` z `paint.wild_boar_shader`:
+  - odyniec: ciemny szarobrązowy z siwymi końcówkami, ciemna grzywa, białe szable;
+  - locha: cieplejszy, rdzawy brąz, bez szabel (renderer chowa kości szabel);
+  - warchlak: brąz z jasnymi pasami wzdłuż boków (detal), w skali młodego wanilii 0,5;
+  - wspólne: tarcza ryja z nozdrzami, czarne racice.
+- `checkArt`: średni skok między sąsiednimi tekselami 2,4–3,7 (p95 8–13), najciemniejszy teksel 37,5, wzdłuż / w dół 0,77–0,87.
+- Jajo przyzywające jest ciemnobrązowe z szarymi plamami.
+- `fauna_expected.json` dostał wpis `wild_boar` (rest, alert, sylwetki 4 stron dla odyńca i lochy).
+- `check.py`: zgodność z generatorem, walidator i selftest PASS.
+
+**Zachowanie (SBL; nowe haki `PolishAnimal`, domyślnie zachowanie sarny z FA2).**
+
+| # | Wybór FA3 | Wartość i powód |
+|---|---|---|
+| FA3-a | Reguła gry | `polishforests:boar_rooting` (boolean, domyślnie true, kategoria mobs). Małe litery jak `forest_fauna` (G.63: w 26.3 ścieżka id reguły musi być małymi literami), zamiast `boarRooting` z planu. Zmiana bloków wymaga też wanilijnego `mob_griefing` (`FaunaRules.rooting`) |
+| FA3-b | Harmonogram | 6:00 żer 0,30 / odpoczynek 0,40 / ruch 0,30; 8:00 0,05 / 0,90 / 0,05 (barłóg); 17:30 0,55 / 0,10 / 0,35; 20:00 0,65 / 0,10 / 0,25; 3:00 0,55 / 0,15 / 0,30. Udział aktywnych nocą 0,90, w południe 0,10 (raport 07 §3.4: zmierzchowo-nocny) |
+| FA3-c | Wataha | Grupy 3–8 przez cały rok (bez grup zimowych). Przewodzi locha o najwyższej randze `Seniority`: przy spawnie przewodniczka dostaje 10–19, reszta 0–9, a członek o wyższej randze przejmuje prowadzenie (`handOverLead`). 25% grup ze spawnerów to samotny odyniec (`soloShare`, nowy składnik `AnimalProfile`). Dorosły samiec ma `herds() = false`: prowadzi sam siebie, nikt się do niego nie przyłącza, a on do nikogo |
+| FA3-d | Warchlaki | III–VII (`youngSeasons`), szansa 0,7 na watahę. Do 4 młodych na lochę (`maxYoung`, nowy składnik; sarna 2): watahę z młodymi tworzy jedna locha na każde 4 młode (zaokrąglenie w górę), a młode trafiają do loch po kolei. Młode bez matki adoptują lochę mającą mniej niż `maxYoung` młodych |
+| FA3-e | Podążanie (`FollowHerd`) | Rozszerza SBL `FollowEntity`. Śledzony zwierz pochodzi z łączy grupy w encji: id przewodnika i szyk, trzymane jak pamięć; pamięć widocznych bytów wymagałaby linii wzroku, którą zasłania podszyt. Gdy przewodnik ucieka, członek idzie gęsiego za poprzednikiem: szyk ustawia przewodnik na starcie ucieczki (dorosłe według rangi, młode na końcu), prędkość ×2,3, podąża od 2,5 bloku do 1,5. Poza ucieczką członek dalej niż 16 bloków wraca na 6 bloków. Ścieżka nigdy nie prowadzi przez wodę |
+| FA3-f | Ucieczka | Dystans 12 (skradanie), 21 (chód), 30 (sprint); bieg ×2,3 do 16 bloków za dystansem. Członek uciekającej watahy nie ucieka sam (`fleesAlone`), tylko idzie gęsiego. Nowa ucieczka zaczyna się chrapnięciem (zastępczo `entity.hoglin.angry` po id, niżej, do FA4) z alarmem `SNORT` (promień 24, siła 0,8, ucieczka do ok. 9 bloków). Zwierzę uciekające przed chrapnięciem lub szczekiem nie ostrzega dalej |
+| FA3-g | Ostrzeżenie lochy (C6) | Locha z młodymi w promieniu 16 bloków w III–VI (`WARN_SEASONS`) trzyma pozycję: dystans ucieczki spada do 10 bloków. Gdy gracz podejdzie bliżej, `WarnCharge` biegnie (×2,2, najwyżej 40 ticków) do punktu 2,5 bloku przed graczem i staje najpóźniej 3 bloki od niego. Potem stoi 25 ticków w pozie czujności z chrapnięciem i ucieka z watahą. Kolejne ostrzeżenie najwcześniej po 600 tickach. Dzik nie ma żadnego ataku (brak `ATTACK_DAMAGE`, brak zachowania ataku), więc obrażeń nie ma z konstrukcji |
+| FA3-h | Buchtowisko (C9) | Żer w grądzie, buczynach, jedlinie, lesie mieszanym i łęgach (`BoarRooting.ROOTING`) daje akcję `ROOT`. Raz na żer, po 40–120 tickach, z szansą 0,5 powstaje płat 2–4 sąsiednich `grass_block` (±1 blok wysokości): 60% `coarse_dirt`, 40% `rooted_dirt`. Roślinę nad płatem zdejmuje `destroyBlock` bez łupu; nie rusza siewki, liści ani bloków z płynem. Młode nie ryją. Licznik `REFUSED` liczy próby zablokowane regułą |
+| FA3-i | Babrzysko | W olsach i łęgach (`WALLOWING`) odpoczynek przewodnika albo samotnika z szansą 0,4 kończy się na brzegu przy wodzie w promieniu 16 bloków (akcja `WALLOW`). Przy babraniu z szansą 0,25, tylko pod regułą, `grass_block`, `dirt`, `coarse_dirt` albo `rooted_dirt` pod dzikiem przy wodzie zamienia się w `mud` („rzadkie błoto”) |
+| FA3-j | Gęstość (KFA-5, C3) | 0,03 dzika na ha lasu [Ź: GUS „Leśnictwo” i PZŁ, lata przed odstrzałem z powodu ASF, ok. 2014–2017: ok. 280 tys. dzików na ok. 9,4 mln ha lasu; w 2025 ok. 0,007/ha po odstrzałach; przybliżenie]. Generacja ×34 (1,02 na ha wagi 1), cel spawnera ×50 (1,5 na ha), limit 10. Stosunek do sarny 0,40 przy generacji i 0,39 w spawnerze. Średnia grupa ze spawnera to 0,25 + 0,75 × 5,5 = 4,4 (`meanGroupSize`) |
+| FA3-k | Siedliska | Grąd 1, buczyna niżowa 1, buczyna karpacka 0,8, las mieszany 0,9, łęgi jesionowo-olszowy i wiązowo-jesionowy 0,9, ols i łęg wierzbowo-topolowy 0,8, bór mieszany 0,7, jedlina 0,6, olszyna górska 0,5, bór wilgotny 0,4, bór świeży 0,3, bór bagienny 0,2, świerczyna górska i bór bażynowy 0,15, bór suchy 0,1, kosodrzewina 0; skraj lasu 0,4 |
+| FA3-l | Wygląd | Warianty `boar`, `sow`, `piglet`. Szable rysowane tylko u dorosłego odyńca. Warchlak to ten sam model w skali młodego wanilii (bez osobnego modelu). Jajo i `/summon` dają 30% odyńców. Akcja `ROOT` i `WALLOW` w stanie fauna: „ryje”, „tarza się w błocie”; wygląd „odyniec” / „locha” |
+
+**Spis i próby gametestu (kod; przebiegi w etapie 2).**
+- `-Psites=model`: odyniec i locha z 4 stron (kości i lokatory według `fauna_expected.json`, IoU sylwetek ≥ 0,97) oraz trzymana poza `misc.alert`.
+- Spis: w każdej próbce oprócz saren liczone i sprawdzane są dziki (liście, woda, wnętrze bloku), a eksploracja liczy też dziki na chunk. Każdy świat (obie skale, oba tryby, „Default + Polish Forests”) musi mieć ≥ 1 dzika w promieniu 160 bloków od któregoś miejsca przy ostatniej próbce. Liczniki: chrapnięcia, ostrzeżenia, płaty, odmowy reguły, babrania, błoto.
+- Próby (`BoarTrials`), z próbą aktywności saren: 3 watahy (locha prowadząca, 2 lochy, 2 warchlaki) i 2 samotne odyńce. Udział aktywnych o północy musi być ≥ udział w południe + 0,2, o zmierzchu nie mniejszy niż w południe. Średnio ≥ 0,8 członków w promieniu 16 bloków od przewodnika.
+- Tylko w świecie GAMEPLAY N:
+  - ostrzeżenie: późna wiosna, locha z 2 warchlakami 14 bloków od widocznego gracza w trybie przetrwania, który podchodzi na 7 bloków. Wymagane ≥ 1 ostrzeżenie, najbliżej ≥ 1 blok, zdrowie gracza bez zmian;
+  - buchtowanie: 6 dzików nocą przez 1200 ticków w trzech fazach: `boar_rooting false` (0 płatów, brak nowej rozgrzebanej ziemi w promieniu 32), `mob_griefing false` (to samo) i obie reguły włączone (≥ 1 płat).
+- MSPT: osobna scena z 40 dzikami (sarny usunięte), ≤ 0,05 ms na dzika albo opis orientacyjny (`-PtimingsReportOnly`).
+
+**Testy jednostkowe.**
+- `FaunaModelTest`: parametryzowany przez sarnę i dzika (kości, pozycje spoczynkowe, animacje), plus tekstury dzika i ukryte szable lochy.
+- `FaunaProfileTest`: mnożniki ×20–50, stosunek 0,4 ± 0,05 do sarny, siedliska, grupy, `soloShare`, `maxYoung`, średnia grupa w `expectedGroups`, koło 64 bloków, pola zapisu, kolejność `fauna()`.
+- `FaunaBehaviourTest`: rytm nocny, sezony młodych i ostrzeżeń, warianty, siedliska buchtowania i babrzysk, enumy tylko dopisywane, zasięg chrapnięcia.
+- PASS także `RegistrySnapshotTest` (po regeneracji), `checkDatagen` (lang, model jaja), `checkArt` i fastTest.
+
+**Nie zrobione w etapie 1:** DP-177 (`LookAtTarget` bez `LOOK_TARGET`) zostaje na krok porządkowy. Dzik ma ten sam czujnik co sarna, a jego koszt pokaże scena MSPT.
+
+**Do sprawdzenia w grze (etap 1; pełna lista w „Stan po FA3”).**
+1. `/polishforests find biome oak_hornbeam_forest`, `/time set night`, `/polishforests fauna 64`: watahy w ruchu, żerują i ryją (stan „ryje”). Wiosną i latem warchlaki w pasy idą za lochą.
+2. `/time set noon`: dziki leżą w barłogu w gęstwinie; na ziemi świeże buchtowiska (płaty rozgrzebanej ziemi 2–4 bloki).
+3. `/polishforests find biome alder_carr`: dzik leży przy wodzie (babrzysko), czasem z błotem pod sobą.
+4. `/gamerule polishforests:boar_rooting false` (albo `/gamerule mob_griefing false`): po kilku nocach bez nowych płatów.
+5. Wiosną (`/season set late_spring`), w trybie przetrwania, podejście do lochy z warchlakami: locha szarżuje z chrapnięciem, zatrzymuje się przed graczem i nie zadaje obrażeń, potem ucieka z watahą gęsiego.
+6. Paczka `.mrpack` z kroku.

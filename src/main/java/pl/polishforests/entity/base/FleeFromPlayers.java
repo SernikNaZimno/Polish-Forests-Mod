@@ -22,7 +22,8 @@ import org.jspecify.annotations.Nullable;
  * it is {@code beyond} blocks further than that distance (or {@value #MAX_TICKS} ticks have passed). Step FA2: also from the
  * source of a {@link ForestAlarm} heard at the flight intensity ({@link PolishAnimal#alarmSource()}), for
  * {@value #ALARM_TICKS} ticks; a flight starts with the animal's warning ({@link PolishAnimal#markFleeing(int, boolean)}),
- * except a flight from the warning of another animal.
+ * except a flight from the warning of another animal. Step FA3: only an animal that {@linkplain PolishAnimal#fleesAlone()
+ * flees on its own} starts or keeps a flight (a member of a fleeing wild boar sounder follows in single file instead).
  *
  * <p>Unlike SmartBrainLib's {@code AvoidEntity} this does not read the memory of visible entities: that memory needs a
  * line of sight from the animal's eyes, which the trunks and the leaves of a forest block within a few blocks, and its
@@ -63,6 +64,9 @@ public class FleeFromPlayers<E extends PolishAnimal<?>> extends ExtendedBehaviou
 
 	@Override
 	protected boolean checkExtraStartConditions(ServerLevel level, E animal) {
+		if (!animal.fleesAlone()) {
+			return false;
+		}
 		threat = animal.nearestThreat();
 		alarm = threat == null ? animal.alarmSource() : null;
 		warns = threat != null || !animal.alarmFromBark();
@@ -80,6 +84,9 @@ public class FleeFromPlayers<E extends PolishAnimal<?>> extends ExtendedBehaviou
 
 	@Override
 	protected boolean shouldKeepRunning(E animal) {
+		if (!animal.fleesAlone()) {
+			return false;
+		}
 		if (alarm != null) {
 			return animal.level().getGameTime() < alarmUntil;
 		}
