@@ -7482,7 +7482,11 @@ Baza rundy: `529f5a9` (koniec etapu 2). Przebiegi według `python tools/dev/test
 
 **Drobne.** DP-185 (żaby w zapisie rosną z odwiedzonymi terenami wilgotnymi), DP-186 (`LISTENERS` bez usuwania przy rozłączeniu), DP-187 (`MAX_HEARD` a jaskinie). Czwarta uwaga: zlecenie użytkownika „Najpierw CP-D” — CP-D jest przyjęty (G.57, 2026-11-15) i CP-D.1 zleca faunę i dźwięk, więc FA4 nie przeczy zapisanej decyzji; co użytkownik ma na myśli (nowy punkt kontrolny, paczka do sprawdzenia w grze przed FA5, odłożony przebieg zbiorczy), to pytanie w raporcie, nie zmiana kodu.
 
-**Przebiegi.** PRZEBIEGI_RUNDY
+**Przebiegi.** Czekanie na grę użytkownika: 0 min (przed każdym przebiegiem tylko bezczynny Epic Games Launcher, bez gry).
+- `compileJava`, `compileGametestJava`, `fastTest` (`run-tests --reuse`, PASS w 1344 s, drzewo `404f08cde95e`), `FaunaModelTest`, `FaunaProfileTest`, `ForestAmbienceTest`, `ModSoundsTest`, `CommonFrogTest` (4 testy, z nowym), `checkSound`: PASS.
+- Gametest `fauna -Psites=sound` z Serene Seasons we wszystkich trzech światach (25 min 54 s, `build/fa4r1_sound.txt`, raport `build/fauna/sound.txt`), PASS: pejzaż GAMEPLAY świt / dzień / zmierzch / noc 235 / 52 / 91 / 49 (4,52 i 1,75; styczeń / maj 0,25), świt REAL 231, „Default + Polish Forests” 206; skrzek sójki słyszany przez 7 / 3 / 3 zwierzęta (bliskie reagują, dalekie w 72 blokach nie), łańcuch 1 / 2 / 2 skrzeki; żaby trawne ols / grąd GAMEPLAY 6 / 1, REAL 7 / 1, „Default + Polish Forests” 4 / 1, odmian wanilii 0.
+- Pełny spis `fauna` (3 h) i `-Psites=model` bez przebiegu: zmiana dotyczy tylko usuwania żab spawnera (sarny, dziki, model i render bez zmian), a spis żab jest w `-Psites=sound` wyżej.
+- Na koniec rundy według `test_plan.py 529f5a9 --end`: `checkArt` (z `checkSound`, 241 tekstur) PASS, pełny `tools/dev/run-tests test` PASS (2247 s, drzewo `06587e6c1d45` = kod rundy z dokumentacją bez tego zdania, log `build/test-logs/06587e6c1d45-test-a9263e06d0.log`).
 
 **Do sprawdzenia w grze (zmiany rundy):**
 1. `/polishforests find biome alder_carr`, poczekać przy wodzie na żaby trawne, potem `/gamemode spectator` i stać w miejscu ponad minutę: żaby zostają (wcześniej znikały po ok. 20 s). Powrót do `/gamemode survival`: żaby dalej są, nowych nie przybywa ponad zwykłą liczbę.
