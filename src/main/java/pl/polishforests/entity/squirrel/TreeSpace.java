@@ -198,11 +198,27 @@ public final class TreeSpace {
 		return new Trunk(pos.getX(), pos.getZ(), base, top);
 	}
 
-	/** The half width of the trunk at the height y (its block there), or the nearest block's when y is past an end. */
-	public static double halfAt(Level level, Trunk trunk, double y) {
-		int by = Mth.clamp(Mth.floor(y), trunk.baseY(), trunk.topY());
-		BlockState state = level.getBlockState(new BlockPos(trunk.x(), by, trunk.z()));
-		return climbable(state) ? half(state) : TreeGeometry.VANILLA_LOG_HALF;
+	/**
+	 * The largest half width of the trunk's collision over the heights [y0, y1] (a hitbox's span; review of FA5, round 1):
+	 * {@link TreeGeometry#columnHalfOver} with the block's own part and the arm of its upright child above as
+	 * {@code TrunkShapes} draws them, so a squirrel clinging past a step where the trunk narrows keeps off the wider core
+	 * that reaches 8 + r px into the lower block. A vanilla log is 0.5 all the way up.
+	 */
+	public static double halfOver(Level level, Trunk trunk, double y0, double y1) {
+		BlockPos.MutableBlockPos p = new BlockPos.MutableBlockPos();
+		return TreeGeometry.columnHalfOver(trunk.baseY(), trunk.topY(), y0, y1, (by, f0, f1) -> {
+			BlockState state = level.getBlockState(p.set(trunk.x(), by, trunk.z()));
+			if (!climbable(state)) {
+				return TreeGeometry.VANILLA_LOG_HALF;
+			}
+			if (!(state.getBlock() instanceof TrunkBlock)) {
+				return half(state);
+			}
+			double own = half(state);
+			BlockState above = level.getBlockState(p.set(trunk.x(), by + 1, trunk.z()));
+			double arm = above.getBlock() instanceof TrunkBlock && above.getValue(TrunkBlock.PARENT) == Direction.DOWN ? half(above) : 0.0;
+			return TreeGeometry.blockHalfOver(own, 0.5 + own, arm, f0, f1);
+		});
 	}
 
 	/** Whether the trunk is still there at the height y (an upright block in its column). */

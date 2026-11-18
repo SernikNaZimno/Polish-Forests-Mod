@@ -24,7 +24,7 @@ import pl.polishforests.entity.squirrel.TreeSpace.Trunk;
  * <li>{@link Kind#RUN}: a straight run (to the foot of a trunk from the ground, around a trunk to another side, onto a
  * lying log);
  * <li>{@link Kind#CLIMB} and {@link Kind#DESCEND}: up or down the trunk on one of its four sides at the clinging distance
- * ({@link TreeGeometry#clingXZ}; the distance follows the radius of the trunk's block at the height), facing the trunk going
+ * ({@link TreeGeometry#clingXZ}; the distance follows the widest bark the hitbox spans, {@link TreeSpace#halfOver}), facing the trunk going
  * up and away from it going down head first; a descent ends on the ground where the next step would hit it;
  * <li>{@link Kind#LEAP}: a parabola from one trunk to another 1-4 blocks away ({@link TreeGeometry#arc}), through the
  * leaves of the crowns;
@@ -140,9 +140,13 @@ public final class TreeMotion {
 		return TreeSpace.box(feet, squirrel.getBbWidth(), squirrel.getBbHeight());
 	}
 
-	/** The feet of a squirrel clinging to the trunk on the side at the height y. */
+	/**
+	 * The feet of a squirrel clinging to the trunk on the side at the height y: off the widest bark its hitbox spans
+	 * ({@link TreeSpace#halfOver}; until the review of FA5 the radius of the block at feet + 0.2, which put the box into the
+	 * wider core below a step where the trunk narrows).
+	 */
 	Vec3 clingPoint(Trunk t, Direction s, double y) {
-		double[] xz = TreeGeometry.clingXZ(t.x(), t.z(), s, TreeSpace.halfAt(level(), t, y + 0.2));
+		double[] xz = TreeGeometry.clingXZ(t.x(), t.z(), s, TreeSpace.halfOver(level(), t, y, y + squirrel.getBbHeight()));
 		return new Vec3(xz[0], y, xz[1]);
 	}
 
@@ -356,7 +360,7 @@ public final class TreeMotion {
 			return false;
 		}
 		Vec3 here = squirrel.position();
-		double half = TreeSpace.halfAt(level(), t, here.y + 0.2);
+		double half = TreeSpace.halfOver(level(), t, here.y, here.y + squirrel.getBbHeight());
 		for (Direction s : new Direction[] {side, side.getClockWise(), side.getCounterClockWise(), side.getOpposite()}) {
 			for (double out = 0.5; out <= JUMP_OUT + 1.0E-6; out += 0.5) {
 				Vec3 from = new Vec3(t.x() + 0.5 + s.getStepX() * (half + out), here.y, t.z() + 0.5 + s.getStepZ() * (half + out));

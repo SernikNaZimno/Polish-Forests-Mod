@@ -32,6 +32,8 @@ public final class TreeGeometry {
 	public static final double LEAP_SPEED = 0.32;
 	/** Shortest leap in ticks. */
 	public static final int MIN_LEAP_TICKS = 6;
+	/** Tolerance of {@link #blockHalfOver} (blocks). */
+	static final double SHAPE_EPS = 1.0E-6;
 
 	private TreeGeometry() {
 	}
@@ -39,6 +41,52 @@ public final class TreeGeometry {
 	/** Distance (blocks) from the axis to the bark of a trunk of the mod of the radius (px). */
 	public static double trunkHalf(int radiusPx) {
 		return radiusPx / 16.0;
+	}
+
+	/**
+	 * The largest distance (blocks) from the axis to the bark of one upright block of a trunk over the share [f0, f1] of its
+	 * height (0 its bottom, 1 its top), as {@code TrunkShapes} builds the collision of a trunk of the mod (review of FA5,
+	 * round 1): the block's own part of the half width {@code own} from its bottom up to {@code coreTop} (0.5 + own: the core
+	 * ends r px past the center) and the arm of its upright child above, of the half width {@code arm} (0: no child), from
+	 * the center up to the top. So a trunk narrowing going up keeps the lower block's width up to 8 + r px into that block,
+	 * and one widening has the upper block's width from the center of the lower one. A vanilla log: own 0.5, coreTop 1, arm 0.
+	 * A span touching a part within {@value #SHAPE_EPS} counts (an outward error only adds air off the bark).
+	 */
+	public static double blockHalfOver(double own, double coreTop, double arm, double f0, double f1) {
+		double m = 0;
+		if (f0 < coreTop + SHAPE_EPS && f1 > -SHAPE_EPS) {
+			m = own;
+		}
+		if (arm > 0 && f0 < 1 + SHAPE_EPS && f1 > 0.5 - SHAPE_EPS) {
+			m = Math.max(m, arm);
+		}
+		return m;
+	}
+
+	/** The largest distance from the axis to the bark of one block of a trunk over the share [f0, f1] of its height. */
+	@FunctionalInterface
+	public interface BlockHalf {
+		double over(int y, double f0, double f1);
+	}
+
+	/**
+	 * The largest distance (blocks) from the axis to the bark of the trunk from {@code baseY} to {@code topY} over the heights
+	 * [y0, y1] (the span of a squirrel's hitbox): the widest of the blocks the span covers, each over its share of the span
+	 * ({@link #blockHalfOver}). A span past an end of the trunk, or over the bare tip above a top's core, takes the whole
+	 * nearest block (as the clinging distance before the review of FA5).
+	 */
+	public static double columnHalfOver(int baseY, int topY, double y0, double y1, BlockHalf block) {
+		int b0 = Math.clamp((long) Math.floor(y0), baseY, topY);
+		int b1 = Math.clamp((long) Math.floor(y1 - 1.0E-7), baseY, topY);
+		double m = 0;
+		for (int by = b0; by <= b1; by++) {
+			double f0 = Math.clamp(y0 - by, 0.0, 1.0);
+			double f1 = Math.clamp(y1 - by, 0.0, 1.0);
+			if (f1 > f0) {
+				m = Math.max(m, block.over(by, f0, f1));
+			}
+		}
+		return m > 0 ? m : block.over(b0, 0.0, 1.0);
 	}
 
 	/** Distance (blocks) of a clinging squirrel's centre from the axis of a trunk whose bark is {@code half} from it. */
