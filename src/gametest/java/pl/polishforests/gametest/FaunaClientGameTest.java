@@ -373,7 +373,10 @@ public final class FaunaClientGameTest implements FabricClientGameTest {
 		return toWorld(p, pos, yaw, 1.0);
 	}
 
-	/** As above for a model drawn at {@code scale} (tools/fauna to_world with Model.scale). */
+	/**
+	 * As above for a model drawn at {@code scale} (tools/fauna to_world with Model.scale): GeckoLib scales the pose before
+	 * its lift, so the lift scales too (measured in step FA5: 0.005 block at the scale 0.5).
+	 */
 	static Vec3 toWorld(double[] p, Vec3 pos, double yaw, double scale) {
 		double xj = -p[0] / 16.0 * scale;
 		double y = p[1] / 16.0 * scale;
@@ -381,7 +384,7 @@ public final class FaunaClientGameTest implements FabricClientGameTest {
 		double a = Math.toRadians(180.0 - yaw);
 		double c = Math.cos(a);
 		double s = Math.sin(a);
-		return new Vec3(pos.x + xj * c + z * s, pos.y + y + ENTITY_LIFT, pos.z - xj * s + z * c);
+		return new Vec3(pos.x + xj * c + z * s, pos.y + y + ENTITY_LIFT * scale, pos.z - xj * s + z * c);
 	}
 
 	// ------------------------------------------------------------------ roe deer from 4 sides

@@ -52,6 +52,9 @@ public final class SquirrelMind {
 	/** Ticks a run to a trunk may take. */
 	private static final int TO_TREE_TICKS = 240;
 	private static final int THINK = 10;
+	/** Sides tried for a descent before the jump down, and the ticks it waits after a failed way down. */
+	private static final int DOWN_SIDES = 3;
+	private static final int DOWN_WAIT = 100;
 
 	/** Counters for the census of the fauna game test. */
 	public static final LongAdder FLIGHTS = new LongAdder();
@@ -79,6 +82,8 @@ public final class SquirrelMind {
 	private long nextStop;
 	private @Nullable Vec3 logTop;
 	private int stuckTries;
+	private int downTries;
+	private long downAgain;
 	private boolean climbed;
 
 	SquirrelMind(RedSquirrel squirrel) {
@@ -218,6 +223,16 @@ public final class SquirrelMind {
 			goTo(best, now, true);
 			return;
 		}
+		if (s.motion().grab(3)) {
+			// on top of a crown: the trunk next to it, then up (the next think climbs)
+			goal = Goal.TREE;
+			return;
+		}
+		if (onLeaves()) {
+			// on top of a crown with no trunk to take: it keeps still there (a run would take it off the edge)
+			s.setAction(Action.ALERT);
+			return;
+		}
 		// No trunk near: away on the ground, as the other animals.
 		Vec3 away = LandRandomPos.getPosAway(s, 12, 5, from);
 		if (away != null) {
@@ -291,7 +306,7 @@ public final class SquirrelMind {
 		RandomSource r = s.getRandom();
 		switch (bout) {
 			case FEED -> {
-				if (r.nextFloat() < GROUND_FEED) {
+				if (r.nextFloat() < GROUND_FEED && !onLeaves()) {
 					startForage(now);
 				} else {
 					toTree(level, now);
@@ -313,6 +328,13 @@ public final class SquirrelMind {
 			s.setAction(Action.NONE);
 			// after the feeding, up a tree (to rest, to the next bout)
 			toTree(level, now);
+			return;
+		}
+		if (onLeaves() && s.motion().grab(3)) {
+			// fed on top of a crown or a bush: back to the trunk next to it
+			s.setAction(Action.NONE);
+			goal = Goal.TREE;
+			climbed = false;
 			return;
 		}
 		Vec3 top = logTop;
@@ -375,6 +397,12 @@ public final class SquirrelMind {
 
 	/** Runs to a trunk near (the nearest few, back towards home beyond the home range) to climb it. */
 	private void toTree(ServerLevel level, long now) {
+		if (onLeaves() && s.motion().grab(3)) {
+			// on top of a crown or a bush: the trunk next to it
+			goal = Goal.TREE;
+			climbed = false;
+			return;
+		}
 		List<Trunk> trunks = TreeSpace.trunksNear(level, s.getBlockX(), s.getBlockY(), s.getBlockZ(), TREE_RADIUS, 6);
 		if (trunks.isEmpty()) {
 			// no tree near: feed on the ground (the next bout looks again)
@@ -478,7 +506,7 @@ public final class SquirrelMind {
 			case FEED -> {
 				boolean cone = RedSquirrel.coneForest(FaunaHabitat.surface(level, s.getBlockX(), s.getBlockZ()));
 				if (!cone && s.action() != Action.EAT || r.nextFloat() < 0.02F) {
-					down(m);
+					down(m, now);
 					return;
 				}
 				if (!climbed) {
@@ -504,27 +532,48 @@ public final class SquirrelMind {
 						return;
 					}
 					if (++stuckTries > 4) {
-						down(m);
+						down(m, now);
 					}
 				}
 			}
 		}
 	}
 
-	/** Down the trunk to the ground: head first, from another side when a branch blocks the way, a drop when low enough. */
-	private void down(TreeMotion m) {
+	/**
+	 * Down the trunk to the ground: head first, from another side when a branch blocks the way (up to {@value #DOWN_SIDES}
+	 * sides), else a jump down to a free place on the ground ({@link TreeMotion#jumpDown}), else a drop when low enough (from a
+	 * free place near, or it keeps clinging); after a failed try it waits {@value #DOWN_WAIT} ticks.
+	 */
+	private void down(TreeMotion m, long now) {
 		s.setAction(Action.NONE);
-		if (m.descend(TreeMotion.CLIMB_SPEED)) {
+		if (now < downAgain) {
 			return;
 		}
-		Direction side = m.side();
-		for (Direction other : new Direction[] {side.getClockWise(), side.getCounterClockWise(), side.getOpposite()}) {
-			if (m.switchSide(other)) {
-				return;
+		if (m.descend(TreeMotion.CLIMB_SPEED)) {
+			downTries = 0;
+			return;
+		}
+		if (downTries < DOWN_SIDES) {
+			Direction side = m.side();
+			for (Direction other : new Direction[] {side.getClockWise(), side.getCounterClockWise(), side.getOpposite()}) {
+				if (m.switchSide(other)) {
+					downTries++;
+					return;
+				}
 			}
+		}
+		downTries = 0;
+		if (m.jumpDown()) {
+			return;
 		}
 		if (m.heightOnTrunk() < RedSquirrel.SAFE_FALL - 2) {
 			m.drop();
 		}
+		downAgain = now + DOWN_WAIT;
+	}
+
+	/** Whether it stands on leaves (on the ground mode, on top of a crown or a bush). */
+	private boolean onLeaves() {
+		return s.level().getBlockState(BlockPos.containing(s.getX(), s.getY() - 0.2, s.getZ())).is(net.minecraft.tags.BlockTags.LEAVES);
 	}
 }

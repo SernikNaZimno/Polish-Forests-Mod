@@ -431,8 +431,9 @@ final class FaunaCensus {
 			if (q.isInWater()) {
 				s.bad.add(where + " in water");
 			}
-			if (SquirrelTrials.stuck(level, q)) {
-				s.bad.add(where + " stuck in blocks");
+			String in = SquirrelTrials.blocker(level, q);
+			if (in != null) {
+				s.bad.add(where + " stuck in blocks: in " + in);
 			}
 		}
 		return s;

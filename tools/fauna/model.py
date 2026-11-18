@@ -213,11 +213,12 @@ ENTITY_LIFT = 0.01
 def to_world(p, entity_pos, yaw, lift=ENTITY_LIFT, scale=1.0):
     """Model point (pixels) of an entity at entity_pos (blocks) with body yaw in degrees (Minecraft: 0 = south, +Z;
     90 = west) -> world position in blocks. GeckoLib mirrors X, the entity renderer turns the model by 180 - yaw and
-    lifts it by ENTITY_LIFT; a model with a render scale (step FA5) is scaled about the feet first."""
+    lifts it by ENTITY_LIFT; a model with a render scale (step FA5) is scaled about the feet first, and the lift with it
+    (GeckoLib applies withScale before adjustRenderPose: the fauna game test measured 0.005 block for the scale 0.5)."""
     xj, y, z = -p[0] / 16.0 * scale, p[1] / 16.0 * scale, p[2] / 16.0 * scale
     a = math.radians(180.0 - yaw)
     c, s = math.cos(a), math.sin(a)
-    return np.array([entity_pos[0] + xj * c + z * s, entity_pos[1] + y + lift, entity_pos[2] - xj * s + z * c])
+    return np.array([entity_pos[0] + xj * c + z * s, entity_pos[1] + y + lift * scale, entity_pos[2] - xj * s + z * c])
 
 
 # ------------------------------------------------------------------ export

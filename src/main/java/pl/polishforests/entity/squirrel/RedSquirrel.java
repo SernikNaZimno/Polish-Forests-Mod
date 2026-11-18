@@ -63,7 +63,7 @@ import pl.polishforests.worldgen.habitat.HabitatBiome;
  *
  * <p><b>Movement</b> ({@link TreeMotion}): on the ground the ground navigation of the mod (a step height of
  * {@value #STEP} blocks, so it runs onto a lying log of the mod); in the trees its own tree mode without the vanilla physics.
- * It may stand on leaves ({@link #staysOffLeaves()} false). A fall up to {@value #SAFE_FALL} blocks does not hurt it.
+ * It may stand on leaves ({@link #staysOffLeaves()} false). A fall up to {@value #HARMLESS_FALL} blocks does not hurt it.
  *
  * <p><b>Spawn.</b> Category {@code AMBIENT}; like the other animals of the mod outside vanilla's mob counts, with its own
  * limit of the fauna spawner ({@link AnimalProfile#maxNearPlayer()}).
@@ -88,11 +88,22 @@ public class RedSquirrel extends PolishAnimal<RedSquirrel> {
 	/** Share of the dark morph in the montane spruce and the fir forests, and elsewhere. */
 	public static final float DARK_MOUNTAIN = 0.4F;
 	public static final float DARK_ELSEWHERE = 0.15F;
-	/** Fall (blocks) it takes without damage, and its step height (a lying log of radius 7 px is 0.94 blocks high). */
+	/**
+	 * Fall (blocks) its own moves stay within (a jump down, a drop from the trunk), and its step height (a lying log of radius
+	 * 7 px is 0.94 blocks high).
+	 */
 	public static final double SAFE_FALL = 10;
+	/**
+	 * Fall (blocks) it takes without damage (the attribute): a squirrel of 300 g with its tail spread falls slowly and lands
+	 * unhurt from the tops of the crowns, so a slip off a crown on the ground mode does not hurt it either (stage 2 of FA5,
+	 * FA5-r; the trees of the realistic scale are up to about 35 blocks high).
+	 */
+	public static final double HARMLESS_FALL = 40;
 	public static final double STEP = 1.0;
 	/** Speed above which a moving squirrel on the ground hops instead of walking (blocks per tick, horizontal). */
 	private static final double HOP_SPEED = 0.09;
+	/** Ticks between two checks on the ground mode that its hitbox is free ({@link TreeMotion#rescue}). */
+	private static final int RESCUE_CHECK = 10;
 	/** Falls with damage (the fauna game test needs none). */
 	public static final LongAdder FALL_HURT = new LongAdder();
 
@@ -195,10 +206,10 @@ public class RedSquirrel extends PolishAnimal<RedSquirrel> {
 		return subSeason != null && SHORT_DAYS.contains(subSeason) ? WINTER_SCHEDULE : SUMMER_SCHEDULE;
 	}
 
-	/** Red squirrel: 250-350 g; quick on the ground, falls of up to {@value #SAFE_FALL} blocks harmless. */
+	/** Red squirrel: 250-350 g; quick on the ground, falls of up to {@value #HARMLESS_FALL} blocks harmless. */
 	public static AttributeSupplier.Builder createAttributes() {
 		return Animal.createAnimalAttributes().add(Attributes.MAX_HEALTH, 4.0).add(Attributes.MOVEMENT_SPEED, 0.3)
-				.add(Attributes.FOLLOW_RANGE, 16.0).add(Attributes.SAFE_FALL_DISTANCE, SAFE_FALL).add(Attributes.STEP_HEIGHT, STEP);
+				.add(Attributes.FOLLOW_RANGE, 16.0).add(Attributes.SAFE_FALL_DISTANCE, HARMLESS_FALL).add(Attributes.STEP_HEIGHT, STEP);
 	}
 
 	@Override
@@ -370,8 +381,9 @@ public class RedSquirrel extends PolishAnimal<RedSquirrel> {
 		if (subSeason == null) {
 			onCalendar(pl.polishforests.season.Seasons.provider().subSeason(level));
 		}
-		if (!motion.active()) {
-			motion.tryCatch();
+		if (!motion.active() && !motion.tryCatch() && Math.floorMod(tickCount + getId(), RESCUE_CHECK) == 0) {
+			// inside the leaves of a crown on the ground mode (after a load, a fall): the trunk next to it, or out
+			motion.rescue();
 		}
 		motion.tick();
 		mind.tick(level);

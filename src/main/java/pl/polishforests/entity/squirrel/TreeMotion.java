@@ -2,6 +2,7 @@ package pl.polishforests.entity.squirrel;
 
 import java.util.ArrayDeque;
 import java.util.concurrent.atomic.LongAdder;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
@@ -32,9 +33,13 @@ import pl.polishforests.entity.squirrel.TreeSpace.Trunk;
  *
  * A leg whose box is no longer clear (a block placed, a branch the plan missed) ends the queue: the squirrel clings where it
  * is if its trunk is still there, otherwise it drops ({@link #drop}) and the vanilla physics takes over (a squirrel takes no
- * damage from up to {@value RedSquirrel#SAFE_FALL} blocks). The tree mode ends on the ground or on a lying log only where the
- * hitbox is {@linkplain TreeSpace#free free} (on top of the leaves of a bush when the descent ends in one). Nothing of it is
- * saved: a squirrel loaded in the air falls and catches the nearest trunk ({@link #tryCatch}).
+ * damage from up to {@value RedSquirrel#SAFE_FALL} blocks). The tree mode ends only where the hitbox is
+ * {@linkplain TreeSpace#free free} ({@link #freeNear}: on top of the leaves of a bush when the descent ends in one, or a
+ * little aside); deep in a crown with no free place near, the squirrel keeps clinging to its trunk instead of letting go
+ * inside the leaves (stage 2 of FA5, FA5-p). A descent that a branch blocks on every side ends in a jump down
+ * ({@link #jumpDown}) to a free place on the ground. Nothing of the tree mode is saved: a squirrel loaded in the air falls
+ * and catches the nearest trunk ({@link #tryCatch}); one loaded inside the leaves of a crown takes the trunk next to it or
+ * climbs out ({@link #rescue}).
  */
 public final class TreeMotion {
 	/** The kind of the current leg, synchronized to the client for the animation (new kinds only at the end). */
@@ -51,6 +56,8 @@ public final class TreeMotion {
 	private static final double CHECK_STEP = 0.2;
 	/** Ticks between two checks that the trunk of a clinging squirrel is still there. */
 	private static final int HOLD_CHECK = 20;
+	/** Farthest (blocks) from the bark a jump down looks for its place on the ground. */
+	private static final double JUMP_OUT = 1.5;
 
 	/** Counters for the census of the fauna game test. */
 	public static final LongAdder CLIMBS = new LongAdder();
@@ -60,6 +67,11 @@ public final class TreeMotion {
 	public static final LongAdder DROPS = new LongAdder();
 	public static final LongAdder ABORTS = new LongAdder();
 	public static final LongAdder LOG_RUNS = new LongAdder();
+	public static final LongAdder JUMPS_DOWN = new LongAdder();
+	public static final LongAdder GRABS = new LongAdder();
+	public static final LongAdder RESCUES = new LongAdder();
+	/** Every counter of the class. */
+	private static final LongAdder[] COUNTERS = {CLIMBS, CLIMB_TICKS, LEAPS, GAP_LEAPS, DROPS, ABORTS, LOG_RUNS, JUMPS_DOWN, GRABS, RESCUES};
 
 	/** One leg of the queue: for CLIMB and DESCEND only {@code to.y} counts (the x and z follow the trunk). */
 	private record Leg(Kind kind, Vec3 to, int ticks, double arc, @Nullable Trunk trunk, Direction side, boolean ground) {
@@ -80,7 +92,7 @@ public final class TreeMotion {
 	}
 
 	public static void resetCounters() {
-		for (LongAdder a : new LongAdder[] {CLIMBS, CLIMB_TICKS, LEAPS, GAP_LEAPS, DROPS, ABORTS, LOG_RUNS}) {
+		for (LongAdder a : COUNTERS) {
 			a.reset();
 		}
 	}
@@ -323,6 +335,170 @@ public final class TreeMotion {
 		return true;
 	}
 
+	/**
+	 * Down from the trunk when the descent is blocked on every side (a branch under it): a jump down, out from the bark
+	 * (up to {@value #JUMP_OUT} blocks) to a free place on the ground at most {@code SAFE_FALL - 1} blocks below, along an
+	 * arc clear of every block but the leaves; the vanilla physics takes over there. False when no such place is found.
+	 */
+	public boolean jumpDown() {
+		Trunk t = trunk;
+		if (t == null || busy()) {
+			return false;
+		}
+		Vec3 here = squirrel.position();
+		double half = TreeSpace.halfAt(level(), t, here.y + 0.2);
+		for (Direction s : new Direction[] {side, side.getClockWise(), side.getCounterClockWise(), side.getOpposite()}) {
+			for (double out = 0.5; out <= JUMP_OUT + 1.0E-6; out += 0.5) {
+				Vec3 from = new Vec3(t.x() + 0.5 + s.getStepX() * (half + out), here.y, t.z() + 0.5 + s.getStepZ() * (half + out));
+				Vec3 land = groundBelow(from, RedSquirrel.SAFE_FALL - 1);
+				if (land == null) {
+					continue;
+				}
+				int ticks = Math.max(4, (int) Math.ceil(here.distanceTo(land) / 0.45));
+				if (!arcClear(here, land, 0.3, ticks)) {
+					continue;
+				}
+				legs.add(new Leg(Kind.LEAP, land, ticks, 0.3, null, side, true));
+				JUMPS_DOWN.increment();
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * The feet on the first collision under the point that is not leaves (the ground, a log), on a free place there (or up to
+	 * 2 blocks higher, on a bush), at most {@code maxFall} blocks down; null when there is none.
+	 */
+	private @Nullable Vec3 groundBelow(Vec3 from, double maxFall) {
+		if (!TreeSpace.clear(level(), boxAt(from))) {
+			return null;
+		}
+		double y = from.y;
+		double bottom = from.y - maxFall;
+		while (y - 0.25 >= bottom && TreeSpace.clear(level(), boxAt(new Vec3(from.x, y - 0.25, from.z)))) {
+			y -= 0.25;
+		}
+		if (y - 0.25 < bottom) {
+			return null;
+		}
+		// down to 1/16 block above the collision
+		while (TreeSpace.clear(level(), boxAt(new Vec3(from.x, y - 1.0 / 16, from.z)))) {
+			y -= 1.0 / 16;
+		}
+		return freeNear(new Vec3(from.x, y, from.z), false);
+	}
+
+	/**
+	 * A free place for the hitbox near the feet ({@link TreeSpace#free}: no leaves either): the point itself, up to 2 blocks
+	 * higher (on top of the leaves of a bush) and, when {@code aside}, up to 1.5 blocks aside at up to 1 block higher; null
+	 * when there is none (deep in a crown).
+	 */
+	@Nullable Vec3 freeNear(Vec3 at, boolean aside) {
+		for (double lift = 0; lift <= 2.0 + 1.0E-6; lift += 1.0 / 16) {
+			Vec3 up = at.add(0, lift, 0);
+			if (TreeSpace.free(level(), boxAt(up))) {
+				return up;
+			}
+		}
+		if (aside) {
+			for (double r = 0.5; r <= 1.5 + 1.0E-6; r += 0.5) {
+				for (int k = 0; k < 8; k++) {
+					double a = Math.PI / 4 * k;
+					for (double lift = 0; lift <= 1.0 + 1.0E-6; lift += 0.25) {
+						Vec3 p = at.add(Math.cos(a) * r, lift, Math.sin(a) * r);
+						if (TreeSpace.free(level(), boxAt(p))) {
+							return p;
+						}
+					}
+				}
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * Takes a trunk next to it at the height of its feet: an upright trunk within {@code radius} blocks (not the one it
+	 * clings to) whose clinging place, the nearest of the four sides, is clear and reached by a clear run; the tree mode
+	 * starts with that run. For a squirrel on top of a crown, inside the leaves of one after a load, or whose clinging place
+	 * a growing tree took. False when there is none.
+	 */
+	public boolean grab(int radius) {
+		Vec3 here = squirrel.position();
+		int bx = Mth.floor(here.x);
+		int by = Mth.floor(here.y + 0.2);
+		int bz = Mth.floor(here.z);
+		Trunk best = null;
+		Direction bestSide = Direction.NORTH;
+		Vec3 bestAt = null;
+		double bestD = Double.MAX_VALUE;
+		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+		for (int dx = -radius; dx <= radius; dx++) {
+			for (int dz = -radius; dz <= radius; dz++) {
+				for (int dy : new int[] {0, -1, 1}) {
+					pos.set(bx + dx, by + dy, bz + dz);
+					if (!level().hasChunkAt(pos) || !TreeSpace.upright(level().getBlockState(pos))) {
+						continue;
+					}
+					Trunk t = TreeSpace.trunkAt(level(), pos);
+					if (t == null || t.height() < TreeSpace.MIN_TRUNK || t.equals(trunk)) {
+						break;
+					}
+					double y = Mth.clamp(here.y, t.baseY(), t.topY() + 1.0 - squirrel.getBbHeight() * 0.5);
+					for (Direction s : Direction.Plane.HORIZONTAL) {
+						Vec3 at = clingPoint(t, s, y);
+						double d = at.distanceTo(here);
+						if (d < bestD && d <= radius + 0.8 && TreeSpace.clear(level(), boxAt(at)) && (lineClear(here, at)
+								|| !TreeSpace.clear(level(), boxAt(here)))) {
+							best = t;
+							bestSide = s;
+							bestAt = at;
+							bestD = d;
+						}
+					}
+					break;
+				}
+			}
+		}
+		if (best == null) {
+			return false;
+		}
+		boolean inside = !TreeSpace.clear(level(), boxAt(here));
+		enter();
+		trunk = best;
+		side = bestSide;
+		if (inside) {
+			// inside a block (a rescue): straight onto the clinging place, a run from in there would be stopped at once
+			squirrel.setPos(bestAt);
+			face(TreeGeometry.climbYaw(bestSide));
+		} else {
+			legs.add(new Leg(Kind.RUN, bestAt, runTicks(here, bestAt, RUN_SPEED), 0, best, bestSide, false));
+		}
+		GRABS.increment();
+		return true;
+	}
+
+	/**
+	 * On the ground mode with the hitbox not free (inside the leaves of a crown after a load or a fall, a block placed into
+	 * it): the trunk next to it ({@link #grab}), else a free place near ({@link #freeNear}). True when it moved.
+	 */
+	public boolean rescue() {
+		if (active() || TreeSpace.free(level(), boxAt(squirrel.position()))) {
+			return false;
+		}
+		RESCUES.increment();
+		if (grab(2)) {
+			return true;
+		}
+		Vec3 p = freeNear(squirrel.position(), true);
+		if (p != null) {
+			squirrel.setPos(p);
+			squirrel.setDeltaMovement(Vec3.ZERO);
+			return true;
+		}
+		return false;
+	}
+
 	// ------------------------------------------------------------------ mode changes
 
 	private void enter() {
@@ -337,17 +513,24 @@ public final class TreeMotion {
 		leg = null;
 	}
 
-	/** Ends the tree mode where it is; on top of the leaves of a bush when its box is in one (up to 2 blocks higher). */
+	/**
+	 * Ends the tree mode at a free place near ({@link #freeNear}: on top of the leaves of a bush when its box is in one, or a
+	 * little aside). With no free place near it keeps clinging to its trunk when the trunk is there (the mind tries again
+	 * later); only without a trunk it lets go where it is ({@link #rescue} takes over on the ground).
+	 */
 	private void land() {
-		Vec3 at = squirrel.position();
-		if (!TreeSpace.free(level(), boxAt(at))) {
-			for (double lift = 1.0 / 16; lift <= 2.0; lift += 1.0 / 16) {
-				Vec3 up = at.add(0, lift, 0);
-				if (TreeSpace.free(level(), boxAt(up))) {
-					squirrel.setPos(up);
-					break;
-				}
-			}
+		Vec3 p = freeNear(squirrel.position(), true);
+		if (p != null) {
+			squirrel.setPos(p);
+			exit();
+			return;
+		}
+		Trunk t = trunk;
+		if (t != null && TreeSpace.holds(level(), t, squirrel.getY() + 0.2) && TreeSpace.clear(level(), boxAt(squirrel.position()))) {
+			legs.clear();
+			leg = null;
+			setKind(Kind.CLING);
+			return;
 		}
 		exit();
 	}
@@ -362,11 +545,14 @@ public final class TreeMotion {
 		setKind(Kind.GROUND);
 	}
 
-	/** Lets go: the tree mode ends in the air and the squirrel falls (the vanilla physics). */
+	/**
+	 * Lets go: the tree mode ends at a free place near and the squirrel falls (the vanilla physics); deep in a crown it
+	 * keeps clinging instead ({@link #land}).
+	 */
 	public void drop() {
 		if (active()) {
 			DROPS.increment();
-			exit();
+			land();
 		}
 	}
 
@@ -492,7 +678,7 @@ public final class TreeMotion {
 			// another side
 			ABORTS.increment();
 			if (l.kind() == Kind.LEAP && l.ground()) {
-				exit();
+				land();
 				return;
 			}
 			halt();
@@ -514,13 +700,23 @@ public final class TreeMotion {
 		}
 	}
 
-	/** Clinging still: every {@value #HOLD_CHECK} ticks a check that the trunk is still there (else it drops). */
+	/**
+	 * Clinging still: every {@value #HOLD_CHECK} ticks a check that the trunk is still there and the place clear, else it
+	 * takes another trunk next to it ({@link #grab}) or lets go from a free place near.
+	 */
 	private void hold() {
 		squirrel.setDeltaMovement(Vec3.ZERO);
 		if ((squirrel.tickCount + squirrel.getId()) % HOLD_CHECK == 0) {
 			Trunk t = trunk;
 			if (t == null || !TreeSpace.holds(level(), t, squirrel.getY() + 0.2) || !TreeSpace.clear(level(), boxAt(squirrel.position()))) {
-				drop();
+				if (!grab(2)) {
+					DROPS.increment();
+					Vec3 p = freeNear(squirrel.position(), true);
+					if (p != null) {
+						squirrel.setPos(p);
+					}
+					exit();
+				}
 			}
 		}
 	}

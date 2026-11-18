@@ -13,6 +13,7 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.BooleanOp;
+import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jspecify.annotations.Nullable;
@@ -29,7 +30,8 @@ import pl.polishforests.block.TrunkBlock;
  * Y axis. A squirrel climbs a column of upright blocks (a trunk) from its base to where it bends or ends.
  * <li><b>Lying</b>: a log whose parent or axis is horizontal (the dead wood of the forests, a fallen trunk).
  * <li><b>Clear</b> ({@link #clear}): no collision of a block other than leaves in the box (the live collision of the
- * trunks, {@code TrunkShapes}: core, arms, no lying twigs of radius 1) and no fluid: the space of the tree mode, where the
+ * trunks, {@code TrunkShapes}: core, arms, no lying twigs of radius 1, asked with a collision context, since the getter
+ * without one returns the state cache's prism, which goes past the drawn tip of a trunk; stage 2 of FA5, FA5-p) and no fluid: the space of the tree mode, where the
  * squirrel moves through the leaves. <b>Free</b> ({@link #free}): no collision at all, leaves included: where the squirrel
  * may end the tree mode and stand with the vanilla physics again.
  * </ul>
@@ -103,6 +105,14 @@ public final class TreeSpace {
 	}
 
 	private static boolean fits(Level level, AABB box, boolean throughLeaves) {
+		return collision(level, box, throughLeaves) == null;
+	}
+
+	/**
+	 * The first block in the box that collides with it (a fluid, an unloaded chunk too), the leaves skipped when
+	 * {@code throughLeaves}; null when the box fits. The fauna game test names it for a squirrel stuck in blocks.
+	 */
+	public static @Nullable BlockPos collision(Level level, AABB box, boolean throughLeaves) {
 		int x0 = Mth.floor(box.minX);
 		int y0 = Mth.floor(box.minY);
 		int z0 = Mth.floor(box.minZ);
@@ -116,16 +126,18 @@ public final class TreeSpace {
 				for (int z = z0; z <= z1; z++) {
 					p.set(x, y, z);
 					if (!level.hasChunkAt(p)) {
-						return false;
+						return p.immutable();
 					}
 					BlockState state = level.getBlockState(p);
 					if (!state.getFluidState().isEmpty()) {
-						return false;
+						return p.immutable();
 					}
 					if (state.isAir() || throughLeaves && state.is(BlockTags.LEAVES)) {
 						continue;
 					}
-					VoxelShape shape = state.getCollisionShape(level, p);
+					// with a context: the block's own shape in the world (the drawn trunk with its arms, TrunkShapes), as the
+					// movement of entities sees it; the getter without one returns the state cache's prism of the trunks
+					VoxelShape shape = state.getCollisionShape(level, p, CollisionContext.empty());
 					if (shape.isEmpty()) {
 						continue;
 					}
@@ -133,12 +145,12 @@ public final class TreeSpace {
 						boxShape = Shapes.create(box);
 					}
 					if (Shapes.joinIsNotEmpty(shape.move(p), boxShape, BooleanOp.AND)) {
-						return false;
+						return p.immutable();
 					}
 				}
 			}
 		}
-		return true;
+		return null;
 	}
 
 	/** Whether there is a leaf block within one block of the point (the squirrel is in a crown). */

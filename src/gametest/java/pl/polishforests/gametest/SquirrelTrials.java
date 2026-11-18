@@ -81,8 +81,17 @@ final class SquirrelTrials {
 	 * by 0.02 blocks), on the ground any collision (leaves included) or vanilla's "in a wall".
 	 */
 	static boolean stuck(ServerLevel level, RedSquirrel q) {
+		return blocker(level, q) != null;
+	}
+
+	/** What a stuck squirrel is stuck in ({@link #stuck}): the block and its position, or null when it is not stuck. */
+	static @Nullable String blocker(ServerLevel level, RedSquirrel q) {
 		AABB box = q.getBoundingBox().deflate(0.02);
-		return q.inTree() ? !TreeSpace.clear(level, box) : !TreeSpace.free(level, box) || q.isInWall();
+		BlockPos at = TreeSpace.collision(level, box, q.inTree());
+		if (at == null && !q.inTree() && q.isInWall()) {
+			at = BlockPos.containing(q.getEyePosition());
+		}
+		return at == null ? null : level.getBlockState(at) + " at " + at.toShortString();
 	}
 
 	static void resetCounters() {
@@ -91,14 +100,34 @@ final class SquirrelTrials {
 		RedSquirrel.FALL_HURT.reset();
 	}
 
-	/** The counters of the squirrels' movement as one line. */
+	/** The counters of the movement now, in the order of {@link #counters(long[])}: a trial reports the differences. */
+	static long[] mark() {
+		return new long[] {TreeMotion.CLIMBS.sum(), TreeMotion.CLIMB_TICKS.sum(), TreeMotion.LEAPS.sum(), TreeMotion.GAP_LEAPS.sum(),
+				TreeMotion.LOG_RUNS.sum(), TreeMotion.DROPS.sum(), TreeMotion.JUMPS_DOWN.sum(), TreeMotion.ABORTS.sum(), TreeMotion.GRABS.sum(),
+				TreeMotion.RESCUES.sum(), SquirrelMind.FLIGHTS.sum(), SquirrelMind.FLIGHTS_TO_TREE.sum(), SquirrelMind.FLIGHT_CLIMB_TICKS.sum(),
+				SquirrelMind.GROUND_FLIGHTS.sum(), RedSquirrel.FALL_HURT.sum()};
+	}
+
+	/** Falls with damage since the mark. */
+	static long fallsSince(long[] since) {
+		return RedSquirrel.FALL_HURT.sum() - since[14];
+	}
+
+	/** The counters of the squirrels' movement since the census of the world began, as one line. */
 	static String counters() {
-		long flights = SquirrelMind.FLIGHTS_TO_TREE.sum();
-		return String.format(Locale.ROOT, "climbs %d (%d ticks up), leaps %d (over a gap %d), runs onto a log %d, drops %d, aborted legs %d,"
-				+ " flights %d (up a tree %d, mean climb %.1f ticks; on the ground %d), falls with damage %d", TreeMotion.CLIMBS.sum(),
-				TreeMotion.CLIMB_TICKS.sum(), TreeMotion.LEAPS.sum(), TreeMotion.GAP_LEAPS.sum(), TreeMotion.LOG_RUNS.sum(), TreeMotion.DROPS.sum(),
-				TreeMotion.ABORTS.sum(), SquirrelMind.FLIGHTS.sum(), flights, flights == 0 ? Double.NaN
-						: SquirrelMind.FLIGHT_CLIMB_TICKS.sum() / (double) flights, SquirrelMind.GROUND_FLIGHTS.sum(), RedSquirrel.FALL_HURT.sum());
+		return counters(new long[15]);
+	}
+
+	/** The counters of the squirrels' movement since the mark, as one line. */
+	static String counters(long[] since) {
+		long[] n = mark();
+		for (int i = 0; i < n.length; i++) {
+			n[i] -= since[i];
+		}
+		return String.format(Locale.ROOT, "climbs %d (%d ticks up), leaps %d (over a gap %d), runs onto a log %d, drops %d, jumps down %d,"
+				+ " aborted legs %d, trunks taken from the crown %d, rescues from the leaves %d, flights %d (up a tree %d, mean climb %.1f"
+				+ " ticks; on the ground %d), falls with damage %d", n[0], n[1], n[2], n[3], n[4], n[5], n[6], n[7], n[8], n[9], n[10], n[11],
+				n[11] == 0 ? Double.NaN : n[12] / (double) n[11], n[13], n[14]);
 	}
 
 	// ------------------------------------------------------------------ life in the trees
@@ -144,7 +173,7 @@ final class SquirrelTrials {
 	void life(TestSingleplayerContext sp, String label, int x, int z) {
 		FaunaCensus.teleport(sp, x, z);
 		context.waitTicks(200);
-		resetCounters();
+		long[] since = sp.getServer().computeOnServer(s -> mark());
 		List<RedSquirrel> squirrels = place(sp, LIFE_COUNT);
 		Map<String, Integer> where = new TreeMap<>();
 		int samples = 0;
@@ -158,9 +187,10 @@ final class SquirrelTrials {
 						continue;
 					}
 					where.merge(where(level, q), 1, Integer::sum);
-					if (stuck(level, q)) {
-						stuck.add(String.format(Locale.ROOT, "at %.2f %.2f %.2f (%s, %s)", q.getX(), q.getY(), q.getZ(), q.motionKind(),
-								where(level, q)));
+					String in = blocker(level, q);
+					if (in != null) {
+						stuck.add(String.format(Locale.ROOT, "at %.2f %.2f %.2f (%s, %s) in %s", q.getX(), q.getY(), q.getZ(), q.motionKind(),
+								where(level, q), in));
 					}
 				}
 			});
@@ -172,7 +202,7 @@ final class SquirrelTrials {
 		census.line("%s squirrels in a mixed pine forest at %d %d: %d placed (%d alive after %d ticks), %d samples: %s; in the trees %.1f%%"
 				+ " (trunk %.1f%%, crown %.1f%%); stuck %d; %s", label, x, z, LIFE_COUNT, alive, LIFE_TICKS, samples, where,
 				100.0 * inTrees / Math.max(1, all), 100.0 * where.getOrDefault("trunk", 0) / Math.max(1, all),
-				100.0 * where.getOrDefault("crown", 0) / Math.max(1, all), stuck.size(), counters());
+				100.0 * where.getOrDefault("crown", 0) / Math.max(1, all), stuck.size(), counters(since));
 		if (inTrees == 0) {
 			census.fail("%s: no squirrel on a trunk or in a crown in %d samples", label, samples);
 		}
@@ -180,27 +210,47 @@ final class SquirrelTrials {
 			census.fail("%s: squirrels stuck in blocks %d times: %s", label, stuck.size(), String.join("; ", stuck.subList(0,
 					Math.min(5, stuck.size()))));
 		}
-		if (RedSquirrel.FALL_HURT.sum() > 0) {
-			census.fail("%s: %d falls of squirrels with damage", label, RedSquirrel.FALL_HURT.sum());
+		long hurt = fallsSince(since);
+		if (hurt > 0) {
+			census.fail("%s: %d falls of squirrels with damage", label, hurt);
 		}
 		sp.getServer().runOnServer(s -> squirrels.forEach(Entity::discard));
 	}
 
 	// ------------------------------------------------------------------ flight up a tree
 
-	/** A trunk of at least 6 blocks 6-16 blocks from the player with a place on the ground next to it, or null. */
+	/**
+	 * A trunk of at least 6 blocks 6-16 blocks from the player with a place on the ground {@value #FLIGHT_FROM_TRUNK}
+	 * blocks from it at its base, nearest first, or null. Every column of the ring is looked at (trunksNear stops one ring
+	 * after the nearest trunk, which in a forest is closer than 6 blocks), its base within 3 blocks of the player's feet.
+	 */
 	private static int @Nullable [] flightSpot(ServerLevel level, ServerPlayer p) {
-		for (TreeSpace.Trunk t : TreeSpace.trunksNear(level, p.getBlockX(), p.getBlockY(), p.getBlockZ(), 16, 40)) {
-			double d = Math.hypot(t.x() - p.getX(), t.z() - p.getZ());
-			if (t.height() < 6 || d < 6) {
-				continue;
-			}
-			for (int[] side : new int[][] {{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
-				int x = t.x() + side[0] * FLIGHT_FROM_TRUNK;
-				int z = t.z() + side[1] * FLIGHT_FROM_TRUNK;
-				Vec3 at = pl.polishforests.entity.spawn.FaunaSpawner.placeUncounted(level, ModEntities.redSquirrel(), x, z);
-				if (at != null && Math.abs(at.y - t.baseY()) <= 1) {
-					return new int[] {x, z, t.x(), t.z()};
+		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+		for (int r = 6; r <= 16; r++) {
+			for (int dx = -r; dx <= r; dx++) {
+				for (int dz = -r; dz <= r; dz++) {
+					if (Math.max(Math.abs(dx), Math.abs(dz)) != r) {
+						continue;
+					}
+					for (int dy = -3; dy <= 3; dy++) {
+						pos.set(p.getBlockX() + dx, p.getBlockY() + dy, p.getBlockZ() + dz);
+						if (!TreeSpace.upright(level.getBlockState(pos))) {
+							continue;
+						}
+						TreeSpace.Trunk t = TreeSpace.trunkAt(level, pos);
+						if (t == null || t.height() < 6 || Math.abs(t.baseY() - p.getBlockY()) > 3) {
+							break;
+						}
+						for (int[] side : new int[][] {{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
+							int x = t.x() + side[0] * FLIGHT_FROM_TRUNK;
+							int z = t.z() + side[1] * FLIGHT_FROM_TRUNK;
+							Vec3 at = pl.polishforests.entity.spawn.FaunaSpawner.placeUncounted(level, ModEntities.redSquirrel(), x, z);
+							if (at != null && Math.abs(at.y - t.baseY()) <= 1) {
+								return new int[] {x, z, t.x(), t.z()};
+							}
+						}
+						break;
+					}
 				}
 			}
 		}
@@ -210,7 +260,7 @@ final class SquirrelTrials {
 	void flight(TestSingleplayerContext sp, String label, int x, int z) {
 		FaunaCensus.teleport(sp, x, z);
 		context.waitTicks(200);
-		resetCounters();
+		long[] since = sp.getServer().computeOnServer(s -> mark());
 		int[] spot = sp.getServer().computeOnServer(s -> flightSpot(s.overworld(), s.overworld().players().getFirst()));
 		if (spot == null) {
 			census.fail("%s squirrel flight: no trunk of 6 blocks with a place next to it within 16 blocks of %d %d", label, x, z);
@@ -249,7 +299,7 @@ final class SquirrelTrials {
 		String end = sp.getServer().computeOnServer(s -> String.format(Locale.ROOT, "squirrel at %.1f %.1f %.1f, %s, state %s",
 				q.getX(), q.getY(), q.getZ(), where(s.overworld(), q), q.state().id()));
 		census.line("%s squirrel flight: trunk at %d %d, squirrel %d blocks from it, player 5 blocks away: fleeing %s, highest %.1f blocks up"
-				+ " a trunk in %d ticks; %s; %s", label, spot[2], spot[3], FLIGHT_FROM_TRUNK, fled[0], best[0], FLIGHT_TICKS, end, counters());
+				+ " a trunk in %d ticks; %s; %s", label, spot[2], spot[3], FLIGHT_FROM_TRUNK, fled[0], best[0], FLIGHT_TICKS, end, counters(since));
 		if (best[0] < 4) {
 			census.fail("%s: the squirrel did not flee up a tree (fleeing %s, highest %.1f blocks up a trunk)", label, fled[0], best[0]);
 		}
