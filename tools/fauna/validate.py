@@ -19,6 +19,9 @@ on the ground (within CONTACT px; lying: the trunk or a folded leg) in every fra
 the share of frames in contact it needs); no leg through another leg (except the folded legs of a lying animal, FOLDED,
 which lie over each other under the trunk); in the middle of misc.eat (grazing) the nose in front of the eyes and the ear and
 antler tips above them.
+Climbing (step FA5, animations.CLIMBING of a model with a bark plane in animations.CLIMB_PLANE): instead of the ground,
+the bark: a vertical plane in front of the feet (up the trunk) or behind them (down the trunk); no vertex goes through
+it (GROUND_TOLERANCE), a paw touches it (within CONTACT) in every frame, and no vertex is under the feet.
 Spawn egg: 16 x 16, transparent outside the egg.
 """
 import itertools
@@ -32,7 +35,10 @@ import uvpack
 
 REQUIRED = {'roe_deer': ('misc.idle', 'move.walk', 'move.run', 'misc.eat', 'misc.alert', 'misc.rest'),
             'wild_boar': ('misc.idle', 'move.walk', 'move.run', 'misc.eat', 'misc.alert', 'misc.rest', 'misc.root',
-                          'misc.wallow')}
+                          'misc.wallow'),
+            # step FA5: the red squirrel (hop: its bounds; climb and descend: up and down a trunk; jump: a leap between crowns)
+            'red_squirrel': ('misc.idle', 'move.walk', 'move.hop', 'move.climb', 'move.descend', 'move.jump', 'misc.eat',
+                             'misc.alert', 'misc.rest')}
 DARKEST = 30.0          # luminance 0-255 of the darkest allowed texel
 SMOOTH_MEAN = 6.0       # mean luminance step between neighbours inside a face (roe deer 4.4-4.8)
 SMOOTH_P95 = 24.0       # (roe deer 21-22; vanilla horse and pig coats about 28, whole textures)
@@ -41,7 +47,8 @@ LARGE_FACE = 12
 SINGLE_TONE_ROWS = 0.25
 GROUND_TOLERANCE = 0.05     # px a vertex may dip under the ground between keyframes
 CONTACT = 0.1               # px: a hoof this close to the ground carries the animal
-FLIGHT = {'move.run': 0.3}  # animations with a flight: the share of frames that must touch the ground
+FLIGHT = {'move.run': 0.3,   # animations with a flight: the share of frames that must touch the ground
+          'move.hop': 0.3, 'move.jump': 0.0}    # step FA5: the squirrel's bounds, and its leap held in the air
 FOLDED = ('misc.rest', 'misc.wallow')     # lying (and rolling in the mud, step FA3): the one-piece legs fold under the
                                          # trunk over each other (hidden), not checked
 
@@ -331,6 +338,29 @@ def _frames(anim, per_key=2):
     return out + times[-1:]
 
 
+def check_climbing(name, anim, model, sign, plane):
+    """The bark plane of a climbing animation (see the module doc)."""
+    errs = []
+    legs = [b.name for b in model.bones if b.name.startswith('leg_')]
+    for t in _frames(anim):
+        pose = animations.pose_at(anim, t)
+        verts = animations.posed_vertices(model, pose)
+        allv = np.vstack([v for b, v in verts.items() if not b.startswith('food_')])
+        depth = sign * allv[:, 2] - plane          # > 0: through the bark
+        paws = np.vstack([verts[b] for b in legs])
+        gap = plane - (sign * paws[:, 2]).max()     # > 0: no paw on the bark
+        if depth.max() > GROUND_TOLERANCE:
+            errs.append(f'{name} at {t:.3f} s: a vertex {depth.max():.2f} px through the bark')
+            break
+        if gap > CONTACT:
+            errs.append(f'{name} at {t:.3f} s: no paw on the bark ({gap:.2f} px off)')
+            break
+        if allv[:, 1].min() < -GROUND_TOLERANCE:
+            errs.append(f'{name} at {t:.3f} s: a vertex {-allv[:, 1].min():.2f} px under the feet')
+            break
+    return errs
+
+
 def check_poses(anims, model):
     """Ground contact, legs and the grazing head of every animation (see the module doc)."""
     errs = []
@@ -338,11 +368,16 @@ def check_poses(anims, model):
     if not legs:
         return errs
     for name, anim in sorted(anims.get('animations', {}).items()):
+        if name in animations.CLIMBING and model.id in animations.CLIMB_PLANE:
+            errs += check_climbing(name, anim, model, animations.CLIMBING[name], animations.CLIMB_PLANE[model.id])
+            continue
         frames = _frames(anim)
         contact, low_worst, high_worst, crossing = 0, None, None, None
+        # the food a squirrel holds is drawn only while it eats (step FA5): it does not count for the ground
+        solid = [b.name for b in model.bones if b.cubes and not b.name.startswith('food_')]
         for t in frames:
             pose = animations.pose_at(anim, t)
-            low = animations.lowest(model, pose)
+            low = animations.lowest(model, pose, solid)
             if low_worst is None or low < low_worst[1]:
                 low_worst = (t, low)
             if high_worst is None or low > high_worst[1]:

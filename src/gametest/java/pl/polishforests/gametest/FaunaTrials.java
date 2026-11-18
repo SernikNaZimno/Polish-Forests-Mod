@@ -90,11 +90,14 @@ final class FaunaTrials {
 	private final FaunaCensus census;
 	/** Step FA3: the trials of the wild boar (the sounders run with the activity trial of the roe deer). */
 	final BoarTrials boars;
+	/** Step FA5: the trials of the red squirrel (life in the trees, flight up a tree, MSPT). */
+	final SquirrelTrials squirrels;
 
 	FaunaTrials(ClientGameTestContext context, FaunaCensus census) {
 		this.context = context;
 		this.census = census;
 		this.boars = new BoarTrials(context, census);
+		this.squirrels = new SquirrelTrials(context, census);
 	}
 
 	/**
@@ -116,6 +119,8 @@ final class FaunaTrials {
 			boars.warning(sp, label, x, z);
 			boars.rooting(sp, label, x, z);
 		}
+		// Step FA5: the red squirrel in a mixed pine forest near the place.
+		squirrels.all(sp, label, x, z);
 	}
 
 	// ------------------------------------------------------------------ herd

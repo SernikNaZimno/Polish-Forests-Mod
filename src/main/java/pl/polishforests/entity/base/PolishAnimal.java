@@ -123,9 +123,9 @@ public abstract class PolishAnimal<T extends PolishAnimal<T>> extends Animal imp
 		NONE, EAT, REST, ALERT, ROOT, WALLOW
 	}
 
-	/** The state the fauna command reports (new states only at the end). */
+	/** The state the fauna command reports (new states only at the end; step FA5: CLIMBING and IN_TREE of the red squirrel). */
 	public enum State {
-		FLEEING, MOVING, GRAZING, RESTING, ALERT, IDLE, ROOTING, WALLOWING;
+		FLEEING, MOVING, GRAZING, RESTING, ALERT, IDLE, ROOTING, WALLOWING, CLIMBING, IN_TREE;
 
 		public String id() {
 			return name().toLowerCase(java.util.Locale.ROOT);
@@ -261,6 +261,14 @@ public abstract class PolishAnimal<T extends PolishAnimal<T>> extends Animal imp
 	public @Nullable Vec3 restTarget(int radius, net.minecraft.util.RandomSource random) {
 		BlockPos t = Thicket.find(level(), blockPosition(), radius, random);
 		return t == null ? null : Vec3.atBottomCenterOf(t);
+	}
+
+	/**
+	 * Step FA5: whether the animal keeps off the leaves (KFA-4: the ground animals step off a leaf block and never jump onto
+	 * one, {@link #stepOffLeaves}, {@link #jumpFromGround}); the red squirrel lives in the crowns and returns false.
+	 */
+	protected boolean staysOffLeaves() {
+		return true;
 	}
 
 	/** Step FA3: a server tick of the species (after the calendar, the group and the leaf check); not for an animal without AI. */
@@ -745,7 +753,7 @@ public abstract class PolishAnimal<T extends PolishAnimal<T>> extends Animal imp
 			calendar(subSeason);
 			updateHerd(level, subSeason);
 		}
-		if (Math.floorMod(level.getGameTime() + getId(), (long) LEAF_CHECK_INTERVAL) == 0) {
+		if (staysOffLeaves() && Math.floorMod(level.getGameTime() + getId(), (long) LEAF_CHECK_INTERVAL) == 0) {
 			stepOffLeaves(level);
 		}
 		onServerTick(level);
@@ -824,7 +832,7 @@ public abstract class PolishAnimal<T extends PolishAnimal<T>> extends Animal imp
 		// the jumps up a step of the ground next to a bush, and a fleeing deer stood still (FA2 stage 2).
 		float yaw = getYRot() * Mth.DEG_TO_RAD;
 		BlockPos ahead = BlockPos.containing(getX() - Mth.sin(yaw) * 0.9, getY() + 0.5, getZ() + Mth.cos(yaw) * 0.9);
-		if (!isInWater() && level().getBlockState(ahead).is(BlockTags.LEAVES)) {
+		if (staysOffLeaves() && !isInWater() && level().getBlockState(ahead).is(BlockTags.LEAVES)) {
 			return;
 		}
 		super.jumpFromGround();

@@ -367,6 +367,9 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		// Step FA3: the wild boar.
 		builder.add(ModEntities.wildBoar(), polish ? "Dzik" : "Wild Boar");
 		builder.add(ModEntities.wildBoarSpawnEgg(), polish ? "Jajo przyzywające dzika" : "Wild Boar Spawn Egg");
+		// Step FA5: the red squirrel.
+		builder.add(ModEntities.redSquirrel(), polish ? "Wiewiórka" : "Red Squirrel");
+		builder.add(ModEntities.redSquirrelSpawnEgg(), polish ? "Jajo przyzywające wiewiórkę" : "Red Squirrel Spawn Egg");
 		if (polish) {
 			polish(builder);
 		} else {
@@ -534,6 +537,11 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		b.add("polishforests.fauna.state.wallowing", "wallowing");
 		b.add("polishforests.fauna.look.boar_male", "boar (male)");
 		b.add("polishforests.fauna.look.sow", "sow");
+		// Step FA5: the red squirrel in /polishforests fauna.
+		b.add("polishforests.fauna.state.climbing", "climbing");
+		b.add("polishforests.fauna.state.in_tree", "in a tree");
+		b.add("polishforests.fauna.look.red_morph", "red");
+		b.add("polishforests.fauna.look.dark_morph", "dark brown");
 		// Step FA4: the subtitles of the sounds of tools/sound and the game rule of the forest ambience.
 		for (pl.polishforests.sound.ModSounds.Subtitle t : pl.polishforests.sound.ModSounds.subtitles()) {
 			b.add(t.key(), t.english());
@@ -678,6 +686,10 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		b.add("polishforests.fauna.state.wallowing", "tarza się w błocie");
 		b.add("polishforests.fauna.look.boar_male", "odyniec");
 		b.add("polishforests.fauna.look.sow", "locha");
+		b.add("polishforests.fauna.state.climbing", "wspina się");
+		b.add("polishforests.fauna.state.in_tree", "na drzewie");
+		b.add("polishforests.fauna.look.red_morph", "ruda");
+		b.add("polishforests.fauna.look.dark_morph", "ciemnobrązowa");
 		for (pl.polishforests.sound.ModSounds.Subtitle t : pl.polishforests.sound.ModSounds.subtitles()) {
 			b.add(t.key(), t.polish());
 		}

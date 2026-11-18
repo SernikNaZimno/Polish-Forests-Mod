@@ -14,12 +14,19 @@ below the horizontal, the snout ending in a flat disc; small upright ears, a cre
 straight tail of 25 cm hanging down, and the tusks of the boar (the renderer hides them for a sow and a young one).
 Hitbox 0.9 x 0.95 blocks (docs/04 "Projekt FA3"); the young (warchlak) are the vanilla young at half the scale.
 
+RED_SQUIRREL: the red squirrel (Sciurus vulgaris), step FA5, the small mammal archetype (smallmammal.py) enlarged twice
+(F3, G.3: animals under 30 cm × 2): head and body 20-22 cm (trunk 15, head 4.5 + muzzle 2.5), the tail 17-18 cm of long
+hair (about 7 cm wide where it is bushiest), short front legs, large haunches with long hind feet, ears 2.8 cm with
+winter tufts up to 3.5 cm (Lurz et al. 2005, Mammalian Species 769; report 07). The tail curls up over the back in an S.
+Hitbox 0.4 x 0.45 blocks (docs/04 "Projekt FA5").
+
 AXIS_GAUGE: the calibration model of the fauna game test (step V8): arms turned by known angles about each axis, a chain
 of two turned bones, a bone with a rest rotation that an animation moves and turns further (with a turned child that
 must follow it), and markers on the left side (+X) and the front, each with a locator at its tip. It lives only in the game test mod (namespace polishforests_probe).
 """
 from model import Bone, Cube, Model
 from quadruped import Quadruped, build
+import smallmammal
 
 ROE_DEER_SHAPE = Quadruped(
     id='roe_deer',
@@ -47,6 +54,18 @@ WILD_BOAR_SHAPE = Quadruped(
 
 def wild_boar():
     return build(WILD_BOAR_SHAPE, (64, 64))
+
+
+RED_SQUIRREL_SHAPE = smallmammal.SmallMammal(
+    id='red_squirrel', up=2.0,
+    trunk_length=15, chest_depth=6.5, hind_depth=7.5, chest_width=6.5, hind_width=8, front_height=4,
+    head_length=4.5, head_height=5, head_width=3.5, muzzle_length=2.5, muzzle_height=3, muzzle_width=3, head_angle=6,
+    ear_height=3, ear_spread=10, tuft_height=4.5,
+    tail_segments=((5, 4.5), (7, 8), (6, 6)), tail_angles=(45, 40, 55), hitbox=(0.4, 0.45))
+
+
+def red_squirrel():
+    return smallmammal.build(RED_SQUIRREL_SHAPE, (64, 64))
 
 
 # The pose the axis gauge animation 'calib.pose' holds (the game test checks the bone 'anim' in it).

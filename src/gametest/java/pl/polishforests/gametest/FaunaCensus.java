@@ -37,6 +37,7 @@ import pl.polishforests.entity.roedeer.RoeDeer;
 import pl.polishforests.entity.spawn.FaunaSpawner;
 import pl.polishforests.entity.wildboar.BoarRooting;
 import pl.polishforests.entity.wildboar.WarnCharge;
+import pl.polishforests.entity.squirrel.RedSquirrel;
 import pl.polishforests.entity.wildboar.WildBoar;
 import pl.polishforests.worldgen.habitat.HabitatBiome;
 import pl.polishforests.worldgen.vanilla.VanillaForestsBiomeSource;
@@ -81,6 +82,12 @@ import pl.polishforests.worldgen.vanilla.VanillaForestsBiomeSource;
  * leaves, in water or inside blocks), the exploration counts them too, and every world needs at least one boar within
  * {@value #CHECK_RADIUS} blocks of one of its places at the last sample (KFA-5: the boar lives in both world types, both
  * scales and both modes); the counters add the snorts, the warnings of the sows and the rooting.
+ *
+ * <p>Step FA5 (docs/04 "Projekt FA5"): the red squirrels are counted in every sample by where they are
+ * ({@link SquirrelTrials#where}: ground, lying log, trunk, crown; a squirrel may be on leaves and above the ground, so it is
+ * not checked like the ground animals), none may be stuck in blocks ({@link SquirrelTrials#stuck}) or in water, every world
+ * needs at least one within {@value #CHECK_RADIUS} blocks of one of its places at the last sample, and no squirrel may fall
+ * with damage; the counters add their climbs, leaps and flights.
  */
 final class FaunaCensus {
 	static final int RADIUS = 64;
@@ -107,6 +114,8 @@ final class FaunaCensus {
 	private final boolean mspt;
 	/** Step FA3: the most wild boars within {@value #CHECK_RADIUS} blocks at the last sample of a place of the current world. */
 	private int worldBoars;
+	/** Step FA5: the most red squirrels within {@value #CHECK_RADIUS} blocks at the last sample of a place of the current world. */
+	private int worldSquirrels;
 	private final FaunaTrials trials;
 	/** The sub-seasons of the looks trial: all in the gameplay world of the natural mode, these four elsewhere. */
 	static final List<pl.polishforests.season.SubSeason> LOOK_SEASONS = List.of(pl.polishforests.season.SubSeason.MID_SUMMER,
@@ -136,6 +145,10 @@ final class FaunaCensus {
 				+ " places %s, behaviour %s, mspt %s", ticks, RADIUS, RoeDeer.PROFILE.generationDensityPerBlock(), RoeDeer.PROFILE.realDensity(),
 				RoeDeer.PROFILE.generationFactor(), RoeDeer.PROFILE.spawnerDensityPerBlock(), RoeDeer.PROFILE.spawnerFactor(), places, behaviour,
 				mspt);
+		line("census: red squirrel densities per block: generation %.6f (real %.3f/ha × %.0f), spawner %.6f (× %.0f), limit %d near a"
+				+ " player", RedSquirrel.PROFILE.generationDensityPerBlock(), RedSquirrel.PROFILE.realDensity(),
+				RedSquirrel.PROFILE.generationFactor(), RedSquirrel.PROFILE.spawnerDensityPerBlock(), RedSquirrel.PROFILE.spawnerFactor(),
+				RedSquirrel.PROFILE.maxNearPlayer());
 		line("census: wild boar densities per block: generation %.6f (real %.3f/ha × %.0f), spawner %.6f (× %.0f); to the roe deer %.2f"
 				+ " and %.2f", WildBoar.PROFILE.generationDensityPerBlock(), WildBoar.PROFILE.realDensity(), WildBoar.PROFILE.generationFactor(),
 				WildBoar.PROFILE.spawnerDensityPerBlock(), WildBoar.PROFILE.spawnerFactor(),
@@ -180,6 +193,7 @@ final class FaunaCensus {
 				.filter(p -> allSites || p.name().endsWith("_1")).toList();
 		resetCounters();
 		worldBoars = 0;
+		worldSquirrels = 0;
 		try (TestSingleplayerContext sp = context.worldBuilder().adjustSettings(ui -> SliceClientGameTest.select(ui, preset, presentDay))
 				.create()) {
 			prepare(sp, true);
@@ -206,6 +220,7 @@ final class FaunaCensus {
 	private void vanillaWorld() {
 		resetCounters();
 		worldBoars = 0;
+		worldSquirrels = 0;
 		try (TestSingleplayerContext sp = context.worldBuilder().adjustSettings(this::selectVanilla).create()) {
 			prepare(sp, true);
 			boolean first = true;
@@ -277,12 +292,16 @@ final class FaunaCensus {
 		int underCanopy = 0;
 		int leafSteps = 0;
 		int boarsChecked = 0;
+		int squirrelsChecked = 0;
+		Map<String, Integer> squirrelWhere = new TreeMap<>();
 		for (int i = 0; i < samples; i++) {
 			context.waitTicks(ticks / samples);
 			Sample s = sp.getServer().computeOnServer(server -> sample(server.overworld(), new Vec3(x + 0.5, 0, z + 0.5)));
 			counts[i] = s.near;
 			boars[i] = s.boarsNear;
 			boarsChecked = s.boarsChecked;
+			squirrelsChecked = s.squirrelsChecked;
+			s.squirrelWhere.forEach((k, v) -> squirrelWhere.merge(k, v, Integer::sum));
 			checked += s.checked;
 			underCanopy += s.underCanopy;
 			s.grounds.forEach((k, v) -> grounds.merge(k, v, Integer::sum));
@@ -317,6 +336,9 @@ final class FaunaCensus {
 		line("%s: wild boars within %d blocks %s, within %d blocks at the last sample %d", label, RADIUS, java.util.Arrays.toString(boars),
 				CHECK_RADIUS, boarsChecked);
 		worldBoars = Math.max(worldBoars, boarsChecked);
+		line("%s: red squirrels within %d blocks at the last sample %d; where over the samples %s", label, CHECK_RADIUS, squirrelsChecked,
+				squirrelWhere);
+		worldSquirrels = Math.max(worldSquirrels, squirrelsChecked);
 		if (lastMean < 1) {
 			fail("%s: on average %.2f roe deer within %d blocks after %d ticks (at least 1)", label, lastMean, RADIUS, ticks);
 		}
@@ -332,6 +354,8 @@ final class FaunaCensus {
 		int underCanopy;
 		int boarsNear;
 		int boarsChecked;
+		int squirrelsChecked;
+		final Map<String, Integer> squirrelWhere = new TreeMap<>();
 		final List<String> bad = new ArrayList<>();
 		/** Animals on leaves or above the ground at the sample, checked again {@value #LEAF_RECHECK} ticks later. */
 		final List<PolishAnimal<?>> onLeaves = new ArrayList<>();
@@ -397,6 +421,18 @@ final class FaunaCensus {
 			}
 			if (b.isInWall()) {
 				s.bad.add(where + " inside a block");
+			}
+		}
+		// Step FA5: the red squirrels, by where they are; none stuck in blocks, none in water.
+		for (RedSquirrel q : level.getEntities(ModEntities.redSquirrel(), box, e -> e.isAlive())) {
+			s.squirrelsChecked++;
+			s.squirrelWhere.merge(SquirrelTrials.where(level, q), 1, Integer::sum);
+			String where = String.format(Locale.ROOT, "red squirrel at %.2f %.2f %.2f (%s)", q.getX(), q.getY(), q.getZ(), q.motionKind());
+			if (q.isInWater()) {
+				s.bad.add(where + " in water");
+			}
+			if (SquirrelTrials.stuck(level, q)) {
+				s.bad.add(where + " stuck in blocks");
 			}
 		}
 		return s;
@@ -649,6 +685,7 @@ final class FaunaCensus {
 		WildBoar.SNORTS.reset();
 		WarnCharge.WARNINGS.reset();
 		BoarRooting.resetCounters();
+		SquirrelTrials.resetCounters();
 	}
 
 	private void counters(String label) {
@@ -666,6 +703,13 @@ final class FaunaCensus {
 		line("%s wild boar: snorts %d, warnings %d, rooting patches %d (%d blocks), refused by the rules %d, wallows %d, mud %d", label,
 				WildBoar.SNORTS.sum(), WarnCharge.WARNINGS.sum(), BoarRooting.PATCHES.sum(), BoarRooting.BLOCKS.sum(), BoarRooting.REFUSED.sum(),
 				BoarRooting.WALLOWS.sum(), BoarRooting.MUD.sum());
+		line("%s red squirrel: %s", label, SquirrelTrials.counters());
+		if (places && worldSquirrels < 1) {
+			fail("%s: no red squirrel within %d blocks of any place at its last sample (KFA-5)", label, CHECK_RADIUS);
+		}
+		if (RedSquirrel.FALL_HURT.sum() > 0) {
+			fail("%s: %d falls of red squirrels with damage", label, RedSquirrel.FALL_HURT.sum());
+		}
 		if (places && worldBoars < 1) {
 			fail("%s: no wild boar within %d blocks of any place at its last sample (KFA-5)", label, CHECK_RADIUS);
 		}
@@ -692,6 +736,8 @@ final class FaunaCensus {
 			trials.mspt(sp, "gameplay/natural " + first.name(), first.x(), first.z());
 			// Step FA3: the same with 40 wild boars (the roe deer removed).
 			trials.boars.mspt(sp, "gameplay/natural " + first.name(), first.x(), first.z());
+			// Step FA5: the same with 40 red squirrels in a mixed pine forest near the place (the other animals removed).
+			trials.squirrels.mspt(sp, "gameplay/natural " + first.name(), first.x(), first.z());
 		}
 	}
 

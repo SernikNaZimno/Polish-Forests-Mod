@@ -13,6 +13,7 @@ import pl.polishforests.entity.base.AnimalProfile;
 import pl.polishforests.entity.base.PolishAnimal;
 import pl.polishforests.entity.roedeer.RoeDeer;
 import pl.polishforests.entity.spawn.FaunaSpawner;
+import pl.polishforests.entity.squirrel.RedSquirrel;
 import pl.polishforests.entity.wildboar.WildBoar;
 import pl.polishforests.season.SubSeason;
 import pl.polishforests.worldgen.chunk.ChunkHabitats;
@@ -73,11 +74,64 @@ class FaunaProfileTest {
 		assertEquals(List.of("Buck", "WinterCoat"), RoeDeer.SAVED_FIELDS);
 		assertEquals(RoeDeer.SAVED_FIELDS, ModEntities.savedFields(ModEntities.roeDeer()));
 		// Step FA3: the wild boar after the roe deer (the roe deer's draws at generation stay those of FA2).
-		assertEquals(2, ModEntities.fauna().size());
+		// Step FA5: the red squirrel last (the draws of the roe deer and the wild boar at generation stay those of FA3).
+		assertEquals(3, ModEntities.fauna().size());
 		assertEquals(RoeDeer.PROFILE, ModEntities.fauna().get(0).profile());
 		assertEquals(WildBoar.PROFILE, ModEntities.fauna().get(1).profile());
+		assertEquals(RedSquirrel.PROFILE, ModEntities.fauna().get(2).profile());
+		assertEquals(List.of("Dark"), RedSquirrel.SAVED_FIELDS);
+		assertEquals(RedSquirrel.SAVED_FIELDS, ModEntities.savedFields(ModEntities.redSquirrel()));
 		assertEquals(List.of("Male", "Seniority"), WildBoar.SAVED_FIELDS);
 		assertEquals(WildBoar.SAVED_FIELDS, ModEntities.savedFields(ModEntities.wildBoar()));
+	}
+
+	/** Step FA5: the red squirrel's profile (docs/04 "Projekt FA5"). */
+	@Test
+	void redSquirrelProfileIsSane() {
+		AnimalProfile p = RedSquirrel.PROFILE;
+		assertEquals("red_squirrel", p.species());
+		// KFA-5: about 20-50 times the real density, generation and spawner apart.
+		assertTrue(p.generationFactor() >= 20 && p.generationFactor() <= 50, "generation factor " + p.generationFactor());
+		assertTrue(p.spawnerFactor() >= 20 && p.spawnerFactor() <= 50, "spawner factor " + p.spawnerFactor());
+		// The conifer and mixed forests of the plan carry the most; the oak-hornbeam and beech forests are habitats too; no open
+		// land, no water, no forest edge, no dwarf pine.
+		for (HabitatBiome b : List.of(HabitatBiome.MIXED_PINE_FOREST, HabitatBiome.MIXED_FOREST, HabitatBiome.MONTANE_SPRUCE_FOREST,
+				HabitatBiome.FRESH_PINE_FOREST)) {
+			assertTrue(p.weight(b) >= 0.9F, b + " " + p.weight(b));
+		}
+		for (HabitatBiome b : List.of(HabitatBiome.OAK_HORNBEAM_FOREST, HabitatBiome.LOWLAND_BEECH_FOREST, HabitatBiome.MONTANE_BEECH_FOREST,
+				HabitatBiome.UPLAND_FIR_FOREST)) {
+			assertTrue(p.weight(b) >= 0.7F, b + " " + p.weight(b));
+		}
+		for (HabitatBiome b : HabitatBiome.values()) {
+			if (!b.isForest()) {
+				assertEquals(0, p.weight(b), b + " has a weight");
+			}
+		}
+		assertEquals(0, p.weight(HabitatBiome.DWARF_PINE_SCRUB));
+		assertEquals(0, p.edgeWeight());
+		// Alone all year, no young (C10), and its size (0.4 x 0.45).
+		assertEquals(new AnimalProfile.Range(1, 1), p.group(SubSeason.MID_SUMMER));
+		assertEquals(new AnimalProfile.Range(1, 1), p.group(SubSeason.MID_WINTER));
+		assertEquals(0, p.youngChance());
+		for (SubSeason s : SubSeason.values()) {
+			assertTrue(!p.young(s), s.name());
+		}
+		assertEquals(0.4F, p.width());
+		assertEquals(0.45F, p.height());
+		// The winter coat with the ear tufts from mid autumn to early spring, the summer coat from mid spring to early autumn.
+		assertTrue(p.winterCoat(SubSeason.MID_WINTER));
+		assertTrue(p.winterCoat(SubSeason.MID_AUTUMN));
+		assertTrue(!p.winterCoat(SubSeason.MID_SUMMER));
+		assertTrue(!p.winterCoat(SubSeason.MID_SPRING));
+		// The dark morph more often in the montane spruce and the fir forests; a cone in the conifer forests, a nut elsewhere.
+		assertTrue(RedSquirrel.darkShare(HabitatBiome.MONTANE_SPRUCE_FOREST) > RedSquirrel.darkShare(HabitatBiome.OAK_HORNBEAM_FOREST));
+		assertTrue(RedSquirrel.coneForest(HabitatBiome.FRESH_PINE_FOREST));
+		assertTrue(RedSquirrel.coneForest(HabitatBiome.MONTANE_SPRUCE_FOREST));
+		assertTrue(!RedSquirrel.coneForest(HabitatBiome.OAK_HORNBEAM_FOREST));
+		assertTrue(!RedSquirrel.coneForest(null));
+		// The texture variants of the generator.
+		assertEquals(List.of("red_summer", "red_winter", "dark_summer", "dark_winter"), RedSquirrel.variants());
 	}
 
 	@Test

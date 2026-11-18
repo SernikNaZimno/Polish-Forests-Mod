@@ -55,6 +55,8 @@ class Model:
     bones: list
     texture_size: tuple = (64, 64)
     hitbox: tuple = (0.7, 1.1)    # entity width, height in blocks (for the preview frame only)
+    scale: float = 1.0      # render scale of the model in the game (step FA5: the squirrel is modelled at twice the
+                            # resolution, 1 px = 3.125 cm, and drawn at 0.5; the renderer's withScale)
 
     def bone(self, name):
         for b in self.bones:
@@ -208,11 +210,11 @@ def pivots_and_locators(model, pose=None):
 ENTITY_LIFT = 0.01
 
 
-def to_world(p, entity_pos, yaw, lift=ENTITY_LIFT):
+def to_world(p, entity_pos, yaw, lift=ENTITY_LIFT, scale=1.0):
     """Model point (pixels) of an entity at entity_pos (blocks) with body yaw in degrees (Minecraft: 0 = south, +Z;
     90 = west) -> world position in blocks. GeckoLib mirrors X, the entity renderer turns the model by 180 - yaw and
-    lifts it by ENTITY_LIFT."""
-    xj, y, z = -p[0] / 16.0, p[1] / 16.0, p[2] / 16.0
+    lifts it by ENTITY_LIFT; a model with a render scale (step FA5) is scaled about the feet first."""
+    xj, y, z = -p[0] / 16.0 * scale, p[1] / 16.0 * scale, p[2] / 16.0 * scale
     a = math.radians(180.0 - yaw)
     c, s = math.cos(a), math.sin(a)
     return np.array([entity_pos[0] + xj * c + z * s, entity_pos[1] + y + lift, entity_pos[2] - xj * s + z * c])

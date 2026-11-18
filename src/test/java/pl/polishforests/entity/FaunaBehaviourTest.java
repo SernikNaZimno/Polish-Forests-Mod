@@ -202,7 +202,8 @@ class FaunaBehaviourTest {
 		// The synchronized action is an ordinal: new actions (FA3: rooting, wallowing) only at the end.
 		assertEquals(List.of("NONE", "EAT", "REST", "ALERT", "ROOT", "WALLOW"),
 				Stream.of(PolishAnimal.Action.values()).map(Enum::name).toList());
-		assertEquals(List.of("fleeing", "moving", "grazing", "resting", "alert", "idle", "rooting", "wallowing"),
+		// Step FA5: climbing and in a tree (the red squirrel) appended.
+		assertEquals(List.of("fleeing", "moving", "grazing", "resting", "alert", "idle", "rooting", "wallowing", "climbing", "in_tree"),
 				Stream.of(PolishAnimal.State.values()).map(PolishAnimal.State::id).toList());
 	}
 

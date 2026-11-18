@@ -1216,6 +1216,7 @@ item polishforests:poplar_root_flare block=polishforests:poplar_root_flare
 item polishforests:poplar_sapling block=polishforests:poplar_sapling
 item polishforests:poplar_trunk block=polishforests:poplar_trunk
 item polishforests:purple_moor_grass block=polishforests:purple_moor_grass
+item polishforests:red_squirrel_spawn_egg
 item polishforests:reed_canary_grass block=polishforests:reed_canary_grass
 item polishforests:reindeer_lichen block=polishforests:reindeer_lichen
 item polishforests:rendzina block=polishforests:rendzina
@@ -1360,5 +1361,6 @@ item polishforests:wild_garlic block=polishforests:wild_garlic
 item polishforests:wood_anemone block=polishforests:wood_anemone
 item polishforests:wood_sorrel block=polishforests:wood_sorrel
 item polishforests:yellow_iris block=polishforests:yellow_iris
+entity polishforests:red_squirrel saved=Dark
 entity polishforests:roe_deer saved=Buck,WinterCoat
 entity polishforests:wild_boar saved=Male,Seniority

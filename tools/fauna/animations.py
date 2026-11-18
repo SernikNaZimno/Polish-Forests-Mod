@@ -412,3 +412,236 @@ def pose_at(anim, t):
     for bone, tracks in anim['bones'].items():
         pose[bone] = {k: _interp(tracks[k], t) for k in ('rotation', 'position') if k in tracks}
     return pose
+
+
+# ------------------------------------------------------------------ small mammal (step FA5: the red squirrel)
+
+# The climbing poses turn the whole model (the root) by 90 degrees about X: up the trunk the front points up and the belly
+# faces the entity's front (the entity faces the trunk), down the trunk the head points down and the belly faces the
+# entity's back (the entity faces away from it). The paws then touch a vertical plane CLIMB_PLANE px in front of (behind)
+# the feet of the entity, where the entity code puts the bark: half the hitbox width (0.2 blocks) at the render scale 0.5
+# is 6.4 px. validate.check_poses checks the plane instead of the ground for these animations.
+CLIMB_PLANE = {'red_squirrel': 0.2 * 16 / 0.5}
+CLIMBING = {'move.climb': -1, 'move.descend': 1}
+SQ_TAIL = ('tail_base', 'tail_mid', 'tail_tip')
+SQ_FOOD = ('food_cone', 'food_nut')
+
+
+def _all_vertices(model, pose, skip=SQ_FOOD):
+    v = posed_vertices(model, pose)
+    return np.vstack([a for b, a in v.items() if b not in skip])
+
+
+def sq_walk(model, length=1.0, amp=22.0):
+    phases = {'leg_back_left': 0.0, 'leg_front_left': 0.25, 'leg_back_right': 0.5, 'leg_front_right': 0.75}
+    bones = gait(model, length, lambda t: {b: leg_swing(t + ph, amp) for b, ph in phases.items()},
+                 lambda t: [0, 0, 1.5 * math.sin(2 * math.pi * t)], lambda t: 0.0, steps=32)
+    bones['head'] = {'rotation': sample(length, lambda t: [2.0 * math.sin(4 * math.pi * t + 0.6), 0, 0])}
+    bones['tail_base'] = {'rotation': sample(length, lambda t: [3.0 * math.sin(2 * math.pi * t), 0, 3.0 * math.sin(2 * math.pi * t)])}
+    bones['tail_tip'] = {'rotation': sample(length, lambda t: [4.0 * math.sin(2 * math.pi * t - 1.0), 0, 0])}
+    return {'loop': True, 'animation_length': length, 'bones': bones}
+
+
+def sq_hop_legs(t):
+    """The bound of a squirrel: the front legs land together, then the long hind feet come down in front of where the
+    front paws were and push off."""
+    def fore(ph):
+        return [-34.0 * math.sin(2 * math.pi * ph), 0, 0]
+
+    def hind(ph):
+        return [-30.0 * math.sin(2 * math.pi * ph + math.pi), 0, 0]
+
+    return {'leg_front_left': fore(t), 'leg_front_right': fore(t + 0.04),
+            'leg_back_left': hind(t + 0.12), 'leg_back_right': hind(t + 0.16)}
+
+
+def sq_hop_flight(t):
+    s = math.sin(2 * math.pi * (t - 0.05))
+    return 2.0 * s * s if s > 0.35 else 0.0
+
+
+def sq_hop(model, length=0.5):
+    bones = gait(model, length, sq_hop_legs, lambda t: [-9.0 * math.cos(2 * math.pi * t), 0, 0], sq_hop_flight)
+    bones['head'] = {'rotation': sample(length, lambda t: [5.0 * math.cos(2 * math.pi * t), 0, 0])}
+    # the tail streams back and waves with the bounds
+    bones['tail_base'] = {'rotation': sample(length, lambda t: [-25.0 + 6.0 * math.cos(2 * math.pi * t), 0, 0])}
+    bones['tail_mid'] = {'rotation': sample(length, lambda t: [-20.0 + 8.0 * math.cos(2 * math.pi * t - 0.8), 0, 0])}
+    bones['tail_tip'] = {'rotation': sample(length, lambda t: [-15.0 + 10.0 * math.cos(2 * math.pi * t - 1.6), 0, 0])}
+    return {'loop': True, 'animation_length': length, 'bones': bones}
+
+
+SQ_CLIMB_HEAD = {-1: (-18.0, 0, 0), 1: (-38.0, 0, 0)}
+SQ_CLIMB_TAIL = ((-55.0, 0, 0), (-35.0, 0, 0), (-40.0, 0, 0))
+
+
+def sq_climb_legs(t):
+    return {'leg_front_left': [-32.0 * math.sin(2 * math.pi * t), 0, 0],
+            'leg_front_right': [-32.0 * math.sin(2 * math.pi * t + 0.4), 0, 0],
+            'leg_back_left': [-26.0 * math.sin(2 * math.pi * t + math.pi), 0, 0],
+            'leg_back_right': [-26.0 * math.sin(2 * math.pi * t + math.pi + 0.4), 0, 0]}
+
+
+def sq_climbing(model, sign, length=0.4, steps=16):
+    """Up (sign -1) or down (sign +1) a trunk: the front pair and the hind pair grip by turns, the body moved in every
+    keyframe so that the nearest paw touches the bark plane and nothing goes through it, and the lowest vertex is at the
+    feet of the entity (y 0); the tail trails along the bark."""
+    plane = sign * CLIMB_PLANE[model.id]
+    tracks = {b: {} for b in LEGS}
+    root_pos = {}
+    head = SQ_CLIMB_HEAD[sign]
+    for k in range(steps + 1):
+        t = k / steps
+        key = f'{length * t:.4f}'
+        legs = sq_climb_legs(t)
+        pose = {b: {'rotation': tuple(r)} for b, r in legs.items()}
+        pose['root'] = {'rotation': (90.0 * sign, 0, 0)}
+        pose['head'] = {'rotation': head}
+        for b, r in zip(SQ_TAIL, SQ_CLIMB_TAIL):
+            pose[b] = {'rotation': r}
+        v = _all_vertices(model, pose)
+        y = -float(v[:, 1].min())
+        z = plane - (float(v[:, 2].min()) if sign < 0 else float(v[:, 2].max()))
+        for b in LEGS:
+            tracks[b][key] = _r(legs[b])
+        root_pos[key] = _r([0, y, z])
+    bones = {b: {'rotation': tr} for b, tr in tracks.items()}
+    bones['root'] = {'rotation': keys([(0, [90.0 * sign, 0, 0]), (length, [90.0 * sign, 0, 0])]), 'position': root_pos}
+    bones['head'] = {'rotation': keys([(0, list(head)), (length, list(head))])}
+    for b, r in zip(SQ_TAIL, SQ_CLIMB_TAIL):
+        bones[b] = {'rotation': keys([(0, list(r)), (length, list(r))])}
+    return {'loop': True, 'animation_length': length, 'bones': bones}
+
+
+SQ_JUMP_LIFT = 3.0
+
+
+def sq_jump(model, length=0.5):
+    """A leap from crown to crown: front legs reaching forward, hind legs stretched back, the tail streaming behind as a
+    rudder; held a little above the ground (the entity is in the air while it plays)."""
+    held = {'leg_front_left': (-70, 0, 0), 'leg_front_right': (-66, 0, 0), 'leg_back_left': (68, 0, 0),
+            'leg_back_right': (64, 0, 0), 'head': (-10, 0, 0), 'tail_base': (-45, 0, 0), 'tail_mid': (-30, 0, 0),
+            'tail_tip': (-40, 0, 0), 'body': (-6, 0, 0)}
+    pose = {b: {'rotation': r} for b, r in held.items()}
+    y = SQ_JUMP_LIFT - float(_all_vertices(model, pose)[:, 1].min())
+    bones = {b: {'rotation': keys([(0, list(r)), (length, list(r))])} for b, r in held.items()}
+    bones['body']['position'] = keys([(0, [0, y, 0]), (length, [0, y, 0])])
+    return {'loop': True, 'animation_length': length, 'bones': bones}
+
+
+SQ_SIT = -52.0      # the body pitched up when it sits on its haunches (eating, watching)
+SQ_SIT_STEPS = 32   # keyframes of the body height while it sits up (the lowest vertex moves fast as the body turns)
+
+
+def _sitting(model, body, front, head, tail, extra=None):
+    """A sitting pose: the body pitched up, the haunches kept upright in the world, the given front legs, head and tail;
+    the body lowered so the lowest vertex touches the ground."""
+    pose = {'body': {'rotation': (body, 0, 0)},
+            'leg_back_left': {'rotation': (-body, 0, -4)}, 'leg_back_right': {'rotation': (-body, 0, 4)},
+            'leg_front_left': {'rotation': front}, 'leg_front_right': {'rotation': (front[0], -front[1], -front[2])},
+            'head': {'rotation': head}}
+    for b, r in zip(SQ_TAIL, tail):
+        pose[b] = {'rotation': r}
+    for b, r in (extra or {}).items():
+        pose[b] = {'rotation': r}
+    y = -float(_all_vertices(model, pose)[:, 1].min())
+    pose['body']['position'] = (0, y, 0)
+    return pose
+
+
+SQ_EAT_FRONT = (-62.0, 0, -6.0)
+SQ_EAT_HEAD = (58.0, 0, 0)
+SQ_EAT_TAIL = ((-28.0, 0, 0), (12.0, 0, 0), (30.0, 0, 0))
+
+
+def sq_eat(model, length=3.0):
+    """Eating: sitting up on the haunches with the food in the front paws at the mouth, the head nibbling, the tail up
+    along the back."""
+    low = _sitting(model, SQ_SIT, SQ_EAT_FRONT, SQ_EAT_HEAD, SQ_EAT_TAIL)
+    down = 0.35
+    bones = {}
+    for b, p in low.items():
+        r = list(p['rotation'])
+        if b == 'head':
+            pts = [(0, [0, 0, 0]), (down, r)] + [(down + 0.25 * k, [r[0] + (6 if k % 2 else 0), r[1], r[2] + (3 if k % 4 == 1 else 0)])
+                                                 for k in range(1, 10)] + [(length, r)]
+            bones[b] = {'rotation': keys(pts)}
+        else:
+            bones[b] = {'rotation': keys([(0, [0, 0, 0]), (down, r), (length, r)])}
+    # the body height while it sits up: the lowest vertex stays on the ground
+    heights = []
+    for k in range(SQ_SIT_STEPS + 1):
+        f = k / SQ_SIT_STEPS
+        pose = {b: {'rotation': tuple(f * v for v in low[b]['rotation'])} for b in low}
+        heights.append((down * f, [0, -float(_all_vertices(model, pose)[:, 1].min()), 0]))
+    bones['body']['position'] = keys(heights + [(length, heights[-1][1])])
+    return {'loop': True, 'animation_length': length, 'bones': bones}
+
+
+def sq_alert(model, length=0.4):
+    """Watching (held): sitting bolt upright, the front paws folded to the chest, the head level, the tail up."""
+    pose = _sitting(model, -66.0, (-20.0, 0, -4.0), (70.0, 0, 0), ((-22.0, 0, 0), (10.0, 0, 0), (25.0, 0, 0)),
+                    {'ear_left': (8, 0, -4), 'ear_right': (8, 0, 4)})
+    bones = {b: {'rotation': keys([(0, [0, 0, 0]), (length, list(p['rotation']))])} for b, p in pose.items()}
+    heights = []
+    for k in range(SQ_SIT_STEPS + 1):
+        f = k / SQ_SIT_STEPS
+        fp = {b: {'rotation': tuple(f * v for v in pose[b]['rotation'])} for b in pose}
+        heights.append((length * f, [0, -float(_all_vertices(model, fp)[:, 1].min()), 0]))
+    bones['body']['position'] = keys(heights)
+    return {'loop': 'hold_on_last_frame', 'animation_length': length, 'bones': bones}
+
+
+SQ_REST_LEGS = {'leg_front_left': (80, 0, -8), 'leg_front_right': (76, 0, 8), 'leg_back_left': (-70, 0, -6),
+                'leg_back_right': (-66, 0, 6)}
+SQ_REST_TAIL = ((28.0, 0, 0), (34.0, 0, 0), (40.0, 0, 0))
+
+
+def sq_rest(model, length=6.0):
+    """Resting (in the drey or on a branch): lying with the legs folded under it, the head down on the paws and the
+    bushy tail curled forward over the back; slow breathing."""
+    pose = {b: {'rotation': r} for b, r in SQ_REST_LEGS.items()}
+    pose['head'] = {'rotation': (14, 0, 0)}
+    for b, r in zip(SQ_TAIL, SQ_REST_TAIL):
+        pose[b] = {'rotation': r}
+    drop = float(_all_vertices(model, pose)[:, 1].min()) - REST_BREATH
+    bones = {'body': {'position': sample(length, lambda t: [0, -drop + REST_BREATH * math.sin(2 * math.pi * 3 * t), 0], steps=24)},
+             'head': {'rotation': keys([(0, [14, 0, 0]), (length, [14, 0, 0])])}}
+    for b, r in SQ_REST_LEGS.items():
+        bones[b] = {'rotation': keys([(0, list(r)), (length, list(r))])}
+    for b, r in zip(SQ_TAIL, SQ_REST_TAIL):
+        bones[b] = {'rotation': keys([(0, list(r)), (length, list(r))])}
+    bones['ear_left'] = {'rotation': keys([(0, [0, 0, 0]), (4.0, [0, 0, 0]), (4.1, [-10, 0, 12]), (4.25, [0, 0, 0]), (length, [0, 0, 0])])}
+    return {'loop': True, 'animation_length': length, 'bones': bones}
+
+
+def sq_idle(length=5.0):
+    """Standing on all fours: breathing, quick looks to the sides, ear twitches and the flick of the tail."""
+    bones = {
+        'body': {'position': sample(length, lambda t: [0, 0.03 + 0.03 * math.sin(2 * math.pi * 4 * t), 0], steps=24)},
+        'head': {'rotation': keys([(0, [0, 0, 0]), (0.8, [0, 0, 0]), (0.9, [-6, 24, 0]), (1.9, [-6, 24, 0]), (2.0, [0, 0, 0]),
+                                   (3.2, [0, 0, 0]), (3.3, [-4, -20, 0]), (4.2, [-4, -20, 0]), (4.3, [0, 0, 0]), (length, [0, 0, 0])])},
+        'ear_left': {'rotation': keys([(0, [0, 0, 0]), (2.4, [0, 0, 0]), (2.5, [-12, 0, 14]), (2.65, [0, 0, 0]), (length, [0, 0, 0])])},
+        'tail_mid': {'rotation': keys([(0, [0, 0, 0]), (1.2, [0, 0, 0]), (1.3, [-14, 0, 0]), (1.4, [8, 0, 0]), (1.5, [-10, 0, 0]),
+                                       (1.6, [0, 0, 0]), (length, [0, 0, 0])])},
+        'tail_tip': {'rotation': keys([(0, [0, 0, 0]), (1.25, [0, 0, 0]), (1.35, [-18, 0, 0]), (1.45, [12, 0, 0]), (1.55, [-12, 0, 0]),
+                                       (1.65, [0, 0, 0]), (length, [0, 0, 0])])},
+    }
+    return {'loop': True, 'animation_length': length, 'bones': bones}
+
+
+def squirrel_animations(model):
+    """All animations of the red squirrel (step FA5)."""
+    return {
+        'format_version': '1.8.0',
+        'animations': {
+            'misc.idle': sq_idle(),
+            'move.walk': sq_walk(model),
+            'move.hop': sq_hop(model),
+            'move.climb': sq_climbing(model, -1),
+            'move.descend': sq_climbing(model, 1),
+            'move.jump': sq_jump(model),
+            'misc.eat': sq_eat(model),
+            'misc.alert': sq_alert(model),
+            'misc.rest': sq_rest(model),
+        },
+    }

@@ -22,8 +22,9 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
- * The animal files of tools/fauna (step V8 the roe deer, step FA3 the wild boar) without the game: each model has the 13
- * bones of the quadruped archetype (the antlers of the roe deer are the tusks of the wild boar)
+ * The animal files of tools/fauna (step V8 the roe deer, step FA3 the wild boar, step FA5 the red squirrel of the small
+ * mammal archetype) without the game: each quadruped model has the 13 bones of the quadruped archetype (the antlers of the
+ * roe deer are the tusks of the wild boar), the squirrel the 16 of {@code tools/fauna/smallmammal.py},
  * with a valid hierarchy, the animations the renderer and V14 use, and its bone pivots and locators, computed here with
  * GeckoLib's conventions (as calibrated in the game by the fauna game test: rotations X, Y, Z about the pivot with the X
  * and Y angles mirrored, child pivots in model space), equal the positions tools/fauna wrote to
@@ -45,8 +46,18 @@ class FaunaModelTest {
 		return "/assets/polishforests/geckolib/animations/entity/" + species + ".animation.json";
 	}
 
+	/** Step FA5: the bones of the small mammal archetype (the red squirrel). */
+	private static final Set<String> SQUIRREL_BONES = Set.of("root", "body", "head", "ear_left", "ear_right", "tuft_left", "tuft_right",
+			"food_cone", "food_nut", "leg_front_left", "leg_front_right", "leg_back_left", "leg_back_right", "tail_base", "tail_mid", "tail_tip");
+	/** Step FA5: the animations of the red squirrel (tools/fauna/animations.py squirrel_animations). */
+	private static final List<String> SQUIRREL_ANIMATIONS = List.of("misc.idle", "move.walk", "move.hop", "move.climb", "move.descend",
+			"move.jump", "misc.eat", "misc.alert", "misc.rest");
+
 	/** The bones of a species: the common ones, the antlers of the roe deer, the tusks of the wild boar. */
 	private static Set<String> bonesOf(String species) {
+		if (species.equals("red_squirrel")) {
+			return SQUIRREL_BONES;
+		}
 		Set<String> out = new java.util.HashSet<>(COMMON_BONES);
 		out.addAll(species.equals("wild_boar") ? List.of("tusk_left", "tusk_right") : List.of("antler_left", "antler_right"));
 		return out;
@@ -54,6 +65,9 @@ class FaunaModelTest {
 
 	/** The animations of a species: those of the quadruped, and the rooting and the wallow of the wild boar. */
 	private static List<String> animationsOf(String species) {
+		if (species.equals("red_squirrel")) {
+			return SQUIRREL_ANIMATIONS;
+		}
 		List<String> out = new ArrayList<>(ANIMATION_NAMES);
 		if (species.equals("wild_boar")) {
 			out.addAll(List.of("misc.root", "misc.wallow"));
@@ -65,7 +79,7 @@ class FaunaModelTest {
 	}
 
 	@ParameterizedTest
-	@ValueSource(strings = {"roe_deer", "wild_boar"})
+	@ValueSource(strings = {"roe_deer", "wild_boar", "red_squirrel"})
 	void modelHasTheBonesOfTheQuadruped(String species) throws IOException {
 		Map<String, Bone> bones = bones(read(model(species)));
 		assertEquals(bonesOf(species), bones.keySet());
@@ -83,7 +97,7 @@ class FaunaModelTest {
 	}
 
 	@ParameterizedTest
-	@ValueSource(strings = {"roe_deer", "wild_boar"})
+	@ValueSource(strings = {"roe_deer", "wild_boar", "red_squirrel"})
 	void restPositionsMatchToolsFauna(String species) throws IOException {
 		Map<String, Bone> bones = bones(read(model(species)));
 		JsonObject rest = read(EXPECTED).getAsJsonObject("models").getAsJsonObject(species).getAsJsonObject("rest");
@@ -103,7 +117,7 @@ class FaunaModelTest {
 	}
 
 	@ParameterizedTest
-	@ValueSource(strings = {"roe_deer", "wild_boar"})
+	@ValueSource(strings = {"roe_deer", "wild_boar", "red_squirrel"})
 	void animationsUseTheBonesOfTheModel(String species) throws IOException {
 		Map<String, Bone> bones = bones(read(model(species)));
 		JsonObject all = read(animations(species)).getAsJsonObject("animations");
@@ -149,6 +163,26 @@ class FaunaModelTest {
 		hidden.getAsJsonArray("sow").forEach(e -> sow.add(e.getAsString()));
 		assertEquals(List.of("tusk_left", "tusk_right"), sow);
 		assertEquals(0, hidden.getAsJsonArray("boar").size());
+	}
+
+	/**
+	 * Step FA5: the four textures of the red squirrel, its spawn egg, the render scale 0.5 in the expected file, and the
+	 * bones a summer squirrel hides (the ear tufts and the food) and a winter one (the food).
+	 */
+	@Test
+	void texturesOfTheRedSquirrelExist() throws IOException {
+		for (String variant : List.of("red_summer", "red_winter", "dark_summer", "dark_winter")) {   // RedSquirrel.variants()
+			assertNotNull(FaunaModelTest.class.getResource("/assets/polishforests/textures/entity/red_squirrel/" + variant + ".png"), variant);
+		}
+		assertNotNull(FaunaModelTest.class.getResource("/assets/polishforests/textures/item/red_squirrel_spawn_egg.png"));
+		JsonObject squirrel = read(EXPECTED).getAsJsonObject("models").getAsJsonObject("red_squirrel");
+		assertEquals(0.5, squirrel.get("scale").getAsDouble());
+		List<String> summer = new ArrayList<>();
+		squirrel.getAsJsonObject("hidden").getAsJsonArray("red_summer").forEach(e -> summer.add(e.getAsString()));
+		assertEquals(List.of("tuft_left", "tuft_right", "food_cone", "food_nut"), summer);
+		List<String> winter = new ArrayList<>();
+		squirrel.getAsJsonObject("hidden").getAsJsonArray("red_winter").forEach(e -> winter.add(e.getAsString()));
+		assertEquals(List.of("food_cone", "food_nut"), winter);
 	}
 
 	// ------------------------------------------------------------------ GeckoLib kinematics in Bedrock space

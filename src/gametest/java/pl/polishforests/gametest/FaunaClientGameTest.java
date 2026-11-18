@@ -36,6 +36,7 @@ import pl.polishforests.client.entity.BoneProbe;
 import pl.polishforests.client.entity.RoeDeerRenderer;
 import pl.polishforests.entity.ModEntities;
 import pl.polishforests.entity.roedeer.RoeDeer;
+import pl.polishforests.entity.squirrel.RedSquirrel;
 import pl.polishforests.entity.wildboar.WildBoar;
 import pl.polishforests.gametest.probe.FaunaProbes;
 
@@ -66,6 +67,9 @@ import pl.polishforests.gametest.probe.FaunaProbes;
  * <li>Screenshots for the review (field of view 70): the 4 variants side by side on grass from the front and from behind,
  * each animation (from the right: idle, walk, run, eat, alert on a buck, rest), the spawn egg in the hotbar.
  * </ol>
+ * Step FA5: the red squirrel from 4 sides (red morph, summer and winter coat: the ear tufts) and held in {@code misc.alert},
+ * as the wild boar, from its own nearer camera ({@code camera} of its entry in fauna_expected.json); the model is drawn at
+ * half the size ({@code scale} 0.5), so the expected world positions are scaled by it (the model positions are not).
  * Numbers go to the log ({@code [fauna]}) and to {@code build/fauna/fauna.txt}; screenshots {@code fauna_*}. Step FA4:
  * {@code -Psites=sound} runs {@link FaunaSound} instead (the forest ambience, the jay's alarm, the common frog).
  */
@@ -144,6 +148,8 @@ public final class FaunaClientGameTest implements FabricClientGameTest {
 			alertPose(context, sp, o, expected, screen);
 			boarFourSides(context, sp, o, expected, screen);
 			boarAlertPose(context, sp, o, expected);
+			squirrelFourSides(context, sp, o, expected, screen);
+			squirrelAlertPose(context, sp, o, expected);
 			BoneProbe.stop();
 			context.runOnClient(mc -> mc.options.fov().set(70));
 			showcase(context, sp, o);
@@ -193,6 +199,13 @@ public final class FaunaClientGameTest implements FabricClientGameTest {
 		ids.add(PolishForests.id("textures/item/wild_boar_spawn_egg.png"));
 		ids.add(PolishForests.id("geckolib/models/entity/wild_boar.geo.json"));
 		ids.add(PolishForests.id("geckolib/animations/entity/wild_boar.animation.json"));
+		// Step FA5: the red squirrel.
+		for (String v : RedSquirrel.variants()) {
+			ids.add(PolishForests.id("textures/entity/red_squirrel/" + v + ".png"));
+		}
+		ids.add(PolishForests.id("textures/item/red_squirrel_spawn_egg.png"));
+		ids.add(PolishForests.id("geckolib/models/entity/red_squirrel.geo.json"));
+		ids.add(PolishForests.id("geckolib/animations/entity/red_squirrel.animation.json"));
 		List<Identifier> missing = context.computeOnClient(mc -> ids.stream()
 				.filter(id -> mc.getResourceManager().getResource(id).isEmpty()).toList());
 		if (!missing.isEmpty()) {
@@ -235,7 +248,7 @@ public final class FaunaClientGameTest implements FabricClientGameTest {
 		sp.getServer().runOnServer(s -> {
 			List<Entity> all = new ArrayList<>();
 			s.overworld().getAllEntities().forEach(e -> {
-				if (e instanceof RoeDeer || e instanceof WildBoar || e instanceof FaunaProbes.AxisGauge) {
+				if (e instanceof RoeDeer || e instanceof WildBoar || e instanceof RedSquirrel || e instanceof FaunaProbes.AxisGauge) {
 					all.add(e);
 				}
 			});
@@ -307,6 +320,12 @@ public final class FaunaClientGameTest implements FabricClientGameTest {
 	 * hidden may be absent.
 	 */
 	private void checkBones(ClientGameTestContext context, String what, Vec3 pos, float yaw, JsonObject expected, List<String> hidden) {
+		checkBones(context, what, pos, yaw, expected, hidden, 1.0);
+	}
+
+	/** As above for a model drawn at {@code scale} (step FA5: the red squirrel at 0.5): the world positions scale with it. */
+	private void checkBones(ClientGameTestContext context, String what, Vec3 pos, float yaw, JsonObject expected, List<String> hidden,
+			double scale) {
 		context.waitFor(mc -> BoneProbe.points(pos).size() >= expected.size() - hidden.size() * 2, 200);
 		Map<String, BoneProbe.Point> pts = BoneProbe.points(pos);
 		double worstModel = 0;
@@ -331,7 +350,7 @@ public final class FaunaClientGameTest implements FabricClientGameTest {
 						p.model().z, want[0], want[1], want[2]));
 			}
 			if (p.world() != null) {
-				Vec3 w = toWorld(want, pos, yaw);
+				Vec3 w = toWorld(want, pos, yaw, scale);
 				double dw = p.world().distanceTo(w);
 				worstWorld = Math.max(worstWorld, dw);
 				if (dw > WORLD_TOLERANCE) {
@@ -351,9 +370,14 @@ public final class FaunaClientGameTest implements FabricClientGameTest {
 
 	/** tools/fauna/model.py to_world: model pixels (Bedrock axes) of an entity at pos with body yaw -> world blocks. */
 	static Vec3 toWorld(double[] p, Vec3 pos, double yaw) {
-		double xj = -p[0] / 16.0;
-		double y = p[1] / 16.0;
-		double z = p[2] / 16.0;
+		return toWorld(p, pos, yaw, 1.0);
+	}
+
+	/** As above for a model drawn at {@code scale} (tools/fauna to_world with Model.scale). */
+	static Vec3 toWorld(double[] p, Vec3 pos, double yaw, double scale) {
+		double xj = -p[0] / 16.0 * scale;
+		double y = p[1] / 16.0 * scale;
+		double z = p[2] / 16.0 * scale;
 		double a = Math.toRadians(180.0 - yaw);
 		double c = Math.cos(a);
 		double s = Math.sin(a);
@@ -474,6 +498,79 @@ public final class FaunaClientGameTest implements FabricClientGameTest {
 		BoneProbe.start();
 		checkBones(context, "wild boar in " + boar.get("alert_animation").getAsString() + " (held), yaw " + GAUGE_YAW, pos, GAUGE_YAW,
 				boar.getAsJsonObject("alert"), List.of());
+		clear(sp);
+		context.waitTicks(2);
+	}
+
+	// ------------------------------------------------------------------ red squirrel from 4 sides (step FA5)
+
+	/** Spawns a red squirrel (no AI) and returns its position. */
+	private static Vec3 squirrel(TestSingleplayerContext sp, double x, double y, double z, float yaw, boolean winter,
+			RedSquirrel.Display display) {
+		return sp.getServer().computeOnServer(s -> {
+			ServerLevel level = s.overworld();
+			RedSquirrel q = ModEntities.redSquirrel().create(level, EntitySpawnReason.COMMAND);
+			place(q, x, y, z, yaw);
+			q.setDark(false);
+			q.setWinterCoat(winter);
+			q.setDisplay(display);
+			level.addFreshEntity(q);
+			return q.position();
+		});
+	}
+
+	/** The bones a squirrel of the coat hides in the checks (fauna_expected.json {@code hidden}). */
+	private static List<String> squirrelHidden(JsonObject squirrel, String variant) {
+		List<String> out = new ArrayList<>();
+		squirrel.getAsJsonObject("hidden").getAsJsonArray(variant).forEach(e -> out.add(e.getAsString()));
+		return out;
+	}
+
+	/**
+	 * The red squirrel (red morph) in the summer and the winter coat from 4 sides, from its own camera: every bone and locator
+	 * against fauna_expected.json (world positions at the model's scale) and the silhouette against the preview
+	 * ({@code red_squirrel_red_<summer|winter>_<view>.png}).
+	 */
+	private void squirrelFourSides(ClientGameTestContext context, TestSingleplayerContext sp, BlockPos o, JsonObject expected, int[] screen) {
+		JsonObject squirrel = expected.getAsJsonObject("models").getAsJsonObject("red_squirrel");
+		JsonObject cam = squirrel.getAsJsonObject("camera");
+		double scale = squirrel.get("scale").getAsDouble();
+		double[] eye = doubles(cam.getAsJsonArray("eye"));
+		Path dir = Path.of(System.getProperty("polishforests.fauna.expected", "src/test/resources/fauna"));
+		double feetX = o.getX() + 0.5;
+		double feetZ = o.getZ() + 0.5;
+		double worstIou = 1;
+		for (boolean winter : new boolean[] {false, true}) {
+			String variant = RedSquirrel.variant(false, winter);
+			List<String> hidden = squirrelHidden(squirrel, variant);
+			for (JsonElement view : expected.getAsJsonArray("views")) {
+				String name = view.getAsJsonObject().get("name").getAsString();
+				float yaw = view.getAsJsonObject().get("yaw").getAsFloat();
+				BoneProbe.start();
+				Vec3 pos = squirrel(sp, feetX, o.getY(), feetZ, yaw, winter, RedSquirrel.Display.NONE);
+				String shotName = "fauna_red_squirrel_" + variant + "_" + name;
+				Path shot = shot(context, sp, shotName, feetX + eye[0], o.getY() + eye[1], feetZ + eye[2], cam.get("yaw").getAsDouble(),
+						cam.get("pitch").getAsDouble(), screen[0], screen[1]);
+				checkBones(context, "red squirrel " + variant + " " + name, pos, yaw, squirrel.getAsJsonObject("rest"), hidden, scale);
+				String mask = squirrel.getAsJsonObject("masks").get(variant + "_" + name).getAsString();
+				double iou = silhouette(shot, dir.resolve(mask), shotName);
+				worstIou = Math.min(worstIou, iou);
+				clear(sp);
+				context.waitTicks(2);
+			}
+		}
+		result("red squirrel 4 sides: smallest silhouette IoU game / preview %.4f (at least %.2f)", worstIou, MIN_IOU);
+	}
+
+	/** A red squirrel in {@code misc.alert}, held: every bone and locator where tools/fauna puts it ({@code alert}). */
+	private void squirrelAlertPose(ClientGameTestContext context, TestSingleplayerContext sp, BlockPos o, JsonObject expected) {
+		JsonObject squirrel = expected.getAsJsonObject("models").getAsJsonObject("red_squirrel");
+		Vec3 pos = squirrel(sp, o.getX() + 0.5, o.getY(), o.getZ() + 0.5, GAUGE_YAW, false, RedSquirrel.Display.ALERT);
+		context.waitTicks(40);
+		BoneProbe.start();
+		checkBones(context, "red squirrel in " + squirrel.get("alert_animation").getAsString() + " (held), yaw " + GAUGE_YAW, pos, GAUGE_YAW,
+				squirrel.getAsJsonObject("alert"), squirrelHidden(squirrel, RedSquirrel.variant(false, false)),
+				squirrel.get("scale").getAsDouble());
 		clear(sp);
 		context.waitTicks(2);
 	}

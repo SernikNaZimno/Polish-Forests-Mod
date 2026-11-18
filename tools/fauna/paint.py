@@ -527,6 +527,165 @@ def wild_boar_shader(model, variant, seed='wild_boar'):
     return shader
 
 
+# ------------------------------------------------------------------ red squirrel (step FA5)
+
+# The two colour morphs of Polish red squirrels (report 07; Lurz et al. 2005): the common rufous one and the dark brown
+# one (more frequent in the mountains and the spruce forests), each in the summer coat (bright, short) and the winter coat
+# (denser, browner on the back with grey frosting, darker tail, the ear tufts). The belly is white to cream in all of
+# them, with a sharp but soft-edged border on the flanks (the border texels are details for the smoothness check).
+SQUIRREL_COATS = {
+    ('red', 'summer'): dict(back=(168, 84, 44), flank=(190, 102, 54), belly=(238, 230, 214), face=(178, 92, 48),
+                            tail=(160, 78, 42), tail_core=(140, 66, 36), ear=(170, 86, 46), tuft=(150, 74, 40)),
+    ('red', 'winter'): dict(back=(138, 94, 72), flank=(158, 106, 78), belly=(236, 230, 220), face=(150, 98, 72),
+                            tail=(140, 74, 46), tail_core=(118, 62, 40), ear=(146, 88, 62), tuft=(122, 68, 46)),
+    ('dark', 'summer'): dict(back=(96, 60, 42), flank=(114, 72, 50), belly=(226, 214, 196), face=(104, 64, 46),
+                             tail=(80, 52, 40), tail_core=(68, 46, 36), ear=(98, 62, 44), tuft=(80, 52, 40)),
+    ('dark', 'winter'): dict(back=(90, 70, 60), flank=(104, 80, 68), belly=(224, 216, 206), face=(94, 72, 62),
+                             tail=(72, 52, 44), tail_core=(62, 46, 40), ear=(88, 66, 56), tuft=(66, 48, 42)),
+}
+SQUIRREL_DARK = dict(eye=(44, 34, 32), ring=(212, 194, 168), nose=(98, 66, 60), claw=(74, 56, 48))
+SQUIRREL_FROST = (176, 168, 160)
+SQUIRREL_FROST_SHARE = 0.18
+CONE = dict(scale=(122, 84, 52), edge=(158, 118, 76), tip=(98, 70, 46))
+NUT = dict(shell=(156, 112, 62), base=(206, 186, 150))
+# Height (0 belly .. 1 back) of the white belly border on the flanks.
+BELLY_LINE = 0.3
+
+
+def red_squirrel_shader(model, morph, season, seed='red_squirrel'):
+    """The shader of one texture of the red squirrel: morph 'red' or 'dark', season 'summer' or 'winter'."""
+    C = SQUIRREL_COATS[(morph, season)]
+    winter = season == 'winter'
+    fur = Noise3(f'{seed}/{morph}/{season}/fur', period=3.0)
+    fine = Noise3(f'{seed}/{morph}/{season}/fine', period=1.6)
+    frost = Noise3(f'{seed}/{morph}/{season}/frost', period=1.4)
+    edge = Noise3(f'{seed}/{morph}/{season}/edge', period=COAT_EDGE_PERIOD)
+    tuft = Noise3(f'{seed}/{morph}/{season}/tuft', period=COAT_TUFT_PERIOD)
+    line = Noise3(f'{seed}/{morph}/{season}/line', period=2.5)
+    body = model.bone('body').cubes
+    trunk_y0 = min(c.origin[1] for c in body)
+    trunk_y1 = max(c.origin[1] + c.size[1] for c in body)
+
+    def variation(p, amount=0.05):
+        return 1.0 + amount * (0.75 * fur(p) + 0.25 * fine(p))
+
+    def frosted(c, p):
+        g = frost(p)
+        if winter and g > 0.2:
+            c = mix(c, SQUIRREL_FROST, SQUIRREL_FROST_SHARE * min(1.0, (g - 0.2) / 0.4))
+        return c
+
+    def coat(t, p, span):
+        """Back to flank in tone bands with wandering borders (V8-q), the frosted tips in winter."""
+        t = t + (COAT_EDGE * edge(p) + COAT_TUFT * tuft(p)) / span
+        t = round(t * COAT_TONES) / COAT_TONES
+        c = mix(C['flank'], C['back'], (t - 0.45) / 0.55)
+        return shade(frosted(c, p), posterize(variation(p, COAT_VARIATION), COAT_STEP))
+
+    def belly(t, h, p):
+        """The white underside below BELLY_LINE (with a wandering border); the border texels are details."""
+        b = BELLY_LINE + 0.12 * line(p)
+        if h < b - 0.08:
+            return shade(C['belly'], posterize(variation(p, 0.03), COAT_STEP))
+        if h < b + 0.08:
+            t.detail = True
+            return shade(mix(C['belly'], C['flank'], 0.5), posterize(variation(p, 0.03), COAT_STEP))
+        return None
+
+    def shader(t):
+        part, face, p = t.part, t.face, t.p
+        if part in ('chest', 'hind'):
+            h = (p[1] - trunk_y0) / (trunk_y1 - trunk_y0)
+            if face == 'up':
+                h = 1.0
+            elif face == 'down':
+                h = 0.0
+            w = belly(t, h, p)
+            return w if w is not None else coat(h, p, span=trunk_y1 - trunk_y0)
+        if part == 'skull':
+            col = shade(frosted(C['face'], p), posterize(variation(p, 0.05)))
+            if face in ('left', 'right'):
+                # the eye with its pale ring in the upper middle of the side
+                ci, cj = t.w // 2, 1
+                if t.j == cj and t.i == ci:
+                    t.detail = True
+                    return SQUIRREL_DARK['eye']
+                if abs(t.j - cj) + abs(t.i - ci) == 1:
+                    t.detail = True
+                    return mix(col, SQUIRREL_DARK['ring'], 0.55)
+                if t.j == t.h - 1:
+                    t.detail = True
+                    return mix(col, C['belly'], 0.6)           # the pale cheek and chin
+            if face == 'down':
+                t.detail = True
+                return shade(C['belly'], posterize(variation(p, 0.03)))
+            if face == 'up':
+                col = shade(col, 0.94)
+            return col
+        if part == 'muzzle':
+            col = shade(C['face'], posterize(variation(p, 0.04)))
+            if face == 'front':
+                t.detail = True
+                if t.j == 0:
+                    return mix(col, SQUIRREL_DARK['nose'], 0.7)  # the nose at the top of the front
+                return mix(col, C['belly'], 0.45)               # the pale lips
+            if face == 'down':
+                t.detail = True
+                return shade(C['belly'], posterize(variation(p, 0.03)))
+            return col
+        if part == 'ear':
+            t.detail = True
+            col = shade(C['ear'], posterize(variation(p, 0.04)))
+            if face == 'front':
+                col = mix(col, C['belly'], 0.3)                  # the paler inside
+            return col
+        if part == 'tuft':
+            t.detail = True
+            col = shade(C['tuft'], posterize(variation(p, 0.05)))
+            if p[1] > t.cube.origin[1] + t.cube.size[1] - 1.0:
+                col = shade(col, 0.88)                           # the darker brush tip
+            return col
+        if part == 'leg_front':
+            col = shade(C['flank'], posterize(variation(p, 0.04)))
+            if face in ('front', 'down') or p[1] < 1.0:
+                t.detail = True
+                return mix(col, SQUIRREL_DARK['claw'], 0.45 if p[1] < 1.0 else 0.2)
+            return col
+        if part == 'leg_back':
+            h = p[1] / max(1.0, t.cube.size[1])
+            col = coat(0.55 + 0.35 * h, p, span=t.cube.size[1])
+            if face == 'down' or p[1] < 1.0:
+                t.detail = True
+                return mix(col, SQUIRREL_DARK['claw'], 0.4)      # the long hind foot, darker sole and claws
+            return col
+        if part in ('tail_base', 'tail_mid', 'tail_tip'):
+            # the bushy tail: darker along the core, the hair tips lighter at the edges of the faces, frosted in winter
+            u = abs(2.0 * (t.i + 0.5) / t.w - 1.0)
+            v = abs(2.0 * (t.j + 0.5) / t.h - 1.0)
+            core = 1.0 - max(u, v)
+            col = mix(C['tail'], C['tail_core'], 0.45 * core)
+            return shade(frosted(col, p), posterize(variation(p, 0.07), COAT_STEP))
+        if part == 'cone':
+            t.detail = True
+            row = int(math.floor(p[1] * 1.0 + 0.5 * (t.i % 2)))
+            col = CONE['edge'] if row % 2 else CONE['scale']
+            if p[1] > t.cube.origin[1] + t.cube.size[1] - 0.75:
+                col = CONE['tip']
+            return shade(col, posterize(variation(p, 0.04)))
+        if part == 'nut':
+            t.detail = True
+            col = NUT['shell']
+            if p[1] < t.cube.origin[1] + 0.75:
+                col = NUT['base']
+            return shade(col, posterize(variation(p, 0.04)))
+        raise ValueError(f'red squirrel: no paint for part {part}')
+
+    return shader
+
+
+SQUIRREL_EGG = ((176, 90, 46), (236, 226, 208))
+
+
 # ------------------------------------------------------------------ axis gauge
 
 GAUGE_COLORS = {'base': (150, 150, 150), 'pitch': (220, 60, 50), 'yaw': (60, 190, 70), 'roll': (60, 90, 220),

@@ -17,6 +17,11 @@ Files (paths relative to the project):
     src/main/resources/assets/polishforests/geckolib/animations/entity/wild_boar.animation.json
     src/main/resources/assets/polishforests/textures/entity/wild_boar/<boar|sow|piglet>.png
     src/main/resources/assets/polishforests/textures/item/wild_boar_spawn_egg.png
+    src/main/resources/assets/polishforests/geckolib/models/entity/red_squirrel.geo.json    (step FA5: the red squirrel,
+                                                   smallmammal.py, drawn at half size)
+    src/main/resources/assets/polishforests/geckolib/animations/entity/red_squirrel.animation.json
+    src/main/resources/assets/polishforests/textures/entity/red_squirrel/<red|dark>_<summer|winter>.png
+    src/main/resources/assets/polishforests/textures/item/red_squirrel_spawn_egg.png
     src/main/resources/assets/polishforests/textures/entity/frog/common_frog.png            (step FA4: frog.py, the
                                                    frog variant polishforests:common_frog on the vanilla frog model)
     src/gametest/resources/assets/polishforests_probe/...                                    the axis gauge (game test only)
@@ -66,6 +71,14 @@ BOAR_VARIANTS = ('boar', 'sow', 'piglet')
 TUSKS = ('tusk_left', 'tusk_right')
 BOAR_HIDDEN = {'boar': (), 'sow': TUSKS, 'piglet': TUSKS}
 BOAR_EGG = ((86, 70, 60), (156, 146, 134))
+# Step FA5: the red squirrel's two colour morphs and two coats (RedSquirrel.variant() names the same textures); the ear
+# tufts show only in the winter coat, the food only while it eats (the renderer hides them otherwise).
+SQUIRREL_MORPHS = ('red', 'dark')
+TUFTS = ('tuft_left', 'tuft_right')
+FOOD = ('food_cone', 'food_nut')
+SQUIRREL_HIDDEN = {'summer': TUFTS + FOOD, 'winter': FOOD}
+# The squirrel is small (0.45 block): its 4-side views come from a nearer camera, same field of view and screen.
+SQUIRREL_CAMERA = dict(eye=(0.0, 0.22, -2.6), yaw=0.0, pitch=0.0)
 
 # The 4-side views of the fauna game test: the camera stays, the animal turns (yaw in Minecraft degrees). The camera
 # is given relative to the animal's feet; the game test builds a lime concrete backdrop and floor around them.
@@ -93,6 +106,10 @@ def wild_boar():
     return packed(species.wild_boar())
 
 
+def red_squirrel():
+    return packed(species.red_squirrel())
+
+
 def axis_gauge():
     return packed(species.axis_gauge())
 
@@ -109,8 +126,8 @@ def deer_animations(m):
     return anims
 
 
-def view_camera():
-    return render.Camera(VIEW_CAMERA['eye'], VIEW_CAMERA['yaw'], VIEW_CAMERA['pitch'], FOV, *SCREEN)
+def view_camera(c=VIEW_CAMERA):
+    return render.Camera(c['eye'], c['yaw'], c['pitch'], FOV, *SCREEN)
 
 
 def build_all():
@@ -147,6 +164,18 @@ def build_all():
         details[rel] = det
     files[f'{ASSETS}/textures/item/wild_boar_spawn_egg.png'] = ('png', paint.spawn_egg(*BOAR_EGG))
     files[FROG_TEXTURE] = ('png', frog.paint())
+
+    squirrel = red_squirrel()
+    squirrel_anims = animations.squirrel_animations(squirrel)
+    files[f'{ASSETS}/geckolib/models/entity/red_squirrel.geo.json'] = ('json', geo_json(squirrel))
+    files[f'{ASSETS}/geckolib/animations/entity/red_squirrel.animation.json'] = ('json', squirrel_anims)
+    for morph in SQUIRREL_MORPHS:
+        for season in SEASONS:
+            img, det = paint.paint_model(squirrel, paint.red_squirrel_shader(squirrel, morph, season), with_details=True)
+            rel = f'{ASSETS}/textures/entity/red_squirrel/{morph}_{season}.png'
+            files[rel] = ('png', img)
+            details[rel] = det
+    files[f'{ASSETS}/textures/item/red_squirrel_spawn_egg.png'] = ('png', paint.spawn_egg(*paint.SQUIRREL_EGG))
 
     gauge = axis_gauge()
     gauge_anims = animations.calibration_animations(species.AXIS_GAUGE_ANIM)
@@ -194,6 +223,23 @@ def build_all():
             rel = f'{EXPECTED}/wild_boar_{variant}_{name}.png'
             files[rel] = ('mask', mask)
             expected['models']['wild_boar']['masks'][f'{variant}_{name}'] = os.path.basename(rel)
+    sq_alert = squirrel_anims['animations']['misc.alert']
+    sq_cam = view_camera(SQUIRREL_CAMERA)
+    expected['models']['red_squirrel'] = {
+        'scale': squirrel.scale,       # the renderer draws it at this size (withScale); world positions scale with it
+        'camera': {'eye': list(SQUIRREL_CAMERA['eye']), 'yaw': SQUIRREL_CAMERA['yaw'], 'pitch': SQUIRREL_CAMERA['pitch']},
+        'rest': _round(pivots_and_locators(squirrel)),
+        'alert': _round(pivots_and_locators(squirrel, animations.pose_at(sq_alert, sq_alert['animation_length']))),
+        'alert_animation': 'misc.alert',
+        'hidden': {f'red_{season}': list(SQUIRREL_HIDDEN[season]) for season in SEASONS},
+        'masks': {},
+    }
+    for season in SEASONS:              # the dark morph has the same shape
+        for name, yaw in VIEWS:
+            mask = render.silhouette(squirrel, sq_cam, None, (0, 0, 0), yaw, SQUIRREL_HIDDEN[season])
+            rel = f'{EXPECTED}/red_squirrel_red_{season}_{name}.png'
+            files[rel] = ('mask', mask)
+            expected['models']['red_squirrel']['masks'][f'red_{season}_{name}'] = os.path.basename(rel)
     expected['models']['axis_gauge'] = {
         'rest': _round(pivots_and_locators(gauge)),
         'posed': _round(pivots_and_locators(gauge, species.AXIS_GAUGE_ANIM)),
@@ -201,7 +247,7 @@ def build_all():
     }
     files[f'{EXPECTED}/fauna_expected.json'] = ('json', expected)
     return files, dict(deer=deer, deer_anims=deer_anims, deer_textures=textures, gauge=gauge, gauge_anims=gauge_anims,
-                       boar=boar, boar_anims=boar_anims, details=details)
+                       boar=boar, boar_anims=boar_anims, squirrel=squirrel, squirrel_anims=squirrel_anims, details=details)
 
 
 def _round(d):
@@ -261,6 +307,7 @@ def main():
     print(f'fauna: wrote {len(files)} files under {a.out or ROOT}')
     print(f'fauna: roe deer eat pose: nose {eat_pose_check(models["deer"], models["deer_anims"]):.2f} px above the ground')
     print(f'fauna: wild boar eat pose: nose {eat_pose_check(models["boar"], models["boar_anims"]):.2f} px above the ground')
+    print(f'fauna: red squirrel eat pose: nose {eat_pose_check(models["squirrel"], models["squirrel_anims"]):.2f} px above the ground')
 
 
 if __name__ == '__main__':

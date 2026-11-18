@@ -49,7 +49,7 @@ def world_quads(model, texture, pose, entity_pos, yaw, hidden=()):
                 if c.size[0] == 0 and face in ('left', 'right') or c.size[1] == 0 and face in ('up', 'down') \
                         or c.size[2] == 0 and face in ('front', 'back'):
                     continue
-                pts = [to_world((m @ np.array([*p, 1.0]))[:3], entity_pos, yaw) for p, _ in corners]
+                pts = [to_world((m @ np.array([*p, 1.0]))[:3], entity_pos, yaw, scale=model.scale) for p, _ in corners]
                 uvs = [t for _, t in corners]
                 n_model = (m[:3, :3] @ np.array(NORMALS[face], float))
                 n_world = to_world(n_model, (0, 0, 0), yaw, lift=0.0) * 16.0

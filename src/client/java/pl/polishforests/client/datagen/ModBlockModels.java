@@ -169,7 +169,7 @@ final class ModBlockModels extends FabricModelProvider {
 		// Step V8: the spawn egg of the roe deer, a flat item with the egg texture of tools/fauna. Written here, where the
 		// item model output is reachable (the flat item helpers of ItemModelGenerators are private in 26.3).
 		// Step FA3: the same for the wild boar.
-		for (Item egg : List.of(ModEntities.roeDeerSpawnEgg(), ModEntities.wildBoarSpawnEgg())) {
+		for (Item egg : List.of(ModEntities.roeDeerSpawnEgg(), ModEntities.wildBoarSpawnEgg(), ModEntities.redSquirrelSpawnEgg())) {
 			Identifier eggModel = ModelTemplates.FLAT_ITEM.create(ModelLocationUtils.getModelLocation(egg),
 					TextureMapping.layer0(egg), gen.modelOutput);
 			gen.itemModelOutput.accept(egg, ItemModelUtils.plainModel(eggModel));

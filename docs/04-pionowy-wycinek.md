@@ -758,6 +758,7 @@ CP-D.1 zlecił faunę i dźwięk według planu (V14, V15, V16, potem V17), CP-D.
 - **Zakres:** (1) `tools/fauna`: archetyp małego zwierzęcia ze strzępiastym ogonem, wiewiórka ×2 (F3, G.3: zwierzęta poniżej 30 cm ×2), warianty ruda i ciemnobrązowa, pędzelki uszu zimą; animacje `idle`, `walk`, `hop`, `climb`, `jump`, `eat` (szyszka, orzech); kalibracja modelu jak V8. Encja `polishforests:red_squirrel`, jajo, migawka rejestru. (2) Ruch: wspinanie po pniach moda o promieniu 1–7 (kształty `TrunkShapes`, także pnie okorowane i wanilii), po kłodach martwego drewna, skoki między koronami (liście gatunków, krótkie skoki przez luki), na ziemi żer i zbieranie; ucieczka na drzewo przed graczem; aktywność dzienna, zimą krócej. (3) Siedliska: bory, lasy mieszane, świerczyny, grądy z leszczyną, buczyny; kategoria (domyślnie `AMBIENT` z własnym limitem spawnera, wybór w projekcie), gęstość według KFA-5. (4) Gametest `fauna`: spis wiewiórek (na ziemi, na pniach, w koronach), 0 utkniętych w blokach i 0 spadających z obrażeniami, czas wspinaczki, MSPT.
 - **Ukończony, gdy:** wiewiórki są w lasach iglastych i mieszanych obu typów świata i skal; udział na pniach i w koronach > 0 i opisany; 0 utkniętych w blokach w spisie; ucieczka na drzewo działa; MSPT ≤ 0,05 ms na wiewiórkę; KFA-1 … KFA-10. Lista „Do sprawdzenia w grze”: `find biome mixed_pine_forest` albo `find biome montane_spruce_forest` — wiewiórki na pniach i w koronach, skoki między drzewami; podejście — ucieka na pień; zima — pędzelki uszu.
 - **Ryzyko:** wysokie (nawigacja po cienkich pniach i koronach, kolizje kształtów `TrunkBlock`).
+- **Stan:** w toku. Etap 1 (kod, zasoby z `tools/fauna`, testy jednostkowe, kod gametestu, fastTest) 2026-11-18, zob. „Projekt FA5”, G.67; etap 2 (przebiegi gametestu `fauna`, MSPT, `determinism`, „Stan po FA5”) do zrobienia.
 
 ### FA6. Sójka jako encja (O2; B, 1,5–2 dnia)
 
@@ -7491,3 +7492,95 @@ Baza rundy: `529f5a9` (koniec etapu 2). Przebiegi według `python tools/dev/test
 **Do sprawdzenia w grze (zmiany rundy):**
 1. `/polishforests find biome alder_carr`, poczekać przy wodzie na żaby trawne, potem `/gamemode spectator` i stać w miejscu ponad minutę: żaby zostają (wcześniej znikały po ok. 20 s). Powrót do `/gamemode survival`: żaby dalej są, nowych nie przybywa ponad zwykłą liczbę.
 2. W olsie z żabami odlecieć w trybie obserwatora (albo przetrwania) ponad 150 bloków i odczekać chwilę: żaby spawnera przy dalekiej wodzie znikają jak dotąd (gdy chunki zostały wczytane).
+
+## Projekt FA5 (2026-11-18, etap 1: kod, zasoby z `tools/fauna`, testy jednostkowe, kod gametestu)
+
+Krok FA5 (§3 „Kroki FA”, O1, CP-D.1) dodaje wiewiórkę pospolitą `polishforests:red_squirrel`: nowy archetyp małego zwierzęcia w `tools/fauna`, własny tryb ruchu po drzewach (pnie, skoki między pniami, korony) i życie dzienne z ucieczką na drzewo. Etap 1 to kod, dane, zasoby z generatora, testy jednostkowe, kod gametestu i fastTest. Do etapu 2 należą przebiegi według `test_plan.py 5863465` (gametest `fauna`: spis, próby wiewiórki, `-Psites=model`, scena MSPT; `determinism`) i „Stan po FA5”. Baza kroku: `5863465` (FA4 review fixes, round 1).
+
+**Zgodność (KFA-1, KFA-2, PW-11).**
+- Generacja bloków się nie zmienia: wiewiórka nie stawia ani nie zmienia bloków. Spawn przy generacji (FA1) losuje wiewiórkę po sarnie i dziku, bo `ModEntities.fauna()` ma ją dopisaną na końcu. Losowania saren i dzików są więc takie jak w FA3.
+- Bez nowych soli. Wiewiórka losuje z `random` encji, jak sarna i dzik.
+- Nowe stałe enumu tylko na końcu: `PolishAnimal.State.CLIMBING`, `IN_TREE` (`FaunaBehaviourTest` pilnuje kolejności). Nowe enumy: `TreeMotion.Kind` i `RedSquirrel.Display`; nie są zapisywane.
+- Rejestr: dopisane dwa wiersze migawki: `item polishforests:red_squirrel_spawn_egg` i `entity polishforests:red_squirrel saved=Dark`. Zapisywany jest tylko odcień (`Dark`). Szata wynika z kalendarza, a tryb drzewa nie jest zapisywany: po wczytaniu wiewiórka spada albo łapie się pnia (`tryCatch`).
+
+**Model i tekstury (`tools/fauna`, KFA-7).**
+- Nowy archetyp `smallmammal.py`: 16 kości i 17 sześcianów:
+  - tułów, głowa, uszy z pędzelkami;
+  - cztery nogi;
+  - ogon z trzech członów (`tail_base`, `tail_mid`, `tail_tip`, strzępiasty i podniesiony);
+  - szyszka i orzech w łapach.
+- Model ma podwójną rozdzielczość (F3, G.3: zwierzę poniżej 30 cm ×2) i jest rysowany w połowie wielkości. `RedSquirrelRenderer` używa `withScale(0.5)` z GeckoLib, a `fauna_expected.json` ma `scale 0.5`. Tekstura 64 × 32.
+- Cztery tekstury `textures/entity/red_squirrel/<red|dark>_<summer|winter>.png` i jajo. Kolory pochodzą z opisów gatunku:
+  - ruda szata;
+  - ciemnobrązowa szata (odcień górski);
+  - kremowy brzuch z ostrą granicą;
+  - zimą szarawy nalot (0,18) i długie pędzelki uszu.
+  `check.py` PASS:
+  - rude tekstury: średni krok 2,2–3,8, p95 7,5–11,5;
+  - `dark_winter`: średni krok 4,9, p95 18,6;
+  - najciemniejszy teksel 36.
+- Animacje (`animations.py`):
+  - `misc.idle`, `move.walk`, `move.hop`, `move.climb`, `move.descend`, `move.jump`, `misc.eat`, `misc.alert` (graj i trzymaj), `misc.rest`;
+  - płaszczyzna kory animacji wspinaczki `CLIMB_PLANE` 6,4 px modelu (w skali 0,5 to 0,2 bloku) to połowa szerokości hitboxu, więc łapy leżą na korze.
+- Ukryte kości (DataTicket jak u sarny):
+  - latem pędzelki uszu;
+  - poza jedzeniem obie potrawy;
+  - w trakcie jedzenia ta potrawa, której nie trzyma (szyszka w borach i świerczynach, orzech laskowy gdzie indziej).
+
+**Ruch po drzewach (`TreeSpace`, `TreeMotion`, `TreeGeometry`).**
+
+| # | Wybór FA5 | Wartość i powód |
+|---|---|---|
+| FA5-a | Tryb drzewa | Własny tryb bez fizyki wanilii (`noPhysics`, `travel` pominięte): pozycja ustawiana co tick serwera wzdłuż kolejki odcinków `RUN`, `CLIMB`, `DESCEND`, `LEAP`, `CLING`. Każdy odcinek sprawdzony przed startem (`TreeSpace.clear`: żadnej kolizji poza liśćmi, żadnego płynu, chunki wczytane), wiszenie sprawdzane co 20 ticków. Wyjście z trybu tylko na miejsce bez żadnej kolizji (`TreeSpace.free`), w razie potrzeby na wierzch liści. Nawigacja wanilii po cienkich pniach `TrunkBlock` (kształty o promieniu 1–7) nie działa, a nawigacja wspinaczki pająka nie zna koron |
+| FA5-b | Pień | Kłoda pionowa: `TrunkBlock` moda z rodzicem w dół albo kłoda wanilii z osią Y (tag `#logs`, więc też pnie okorowane). Pień ≥ 4 kłody (`MIN_TRUNK`). Szukanie pni: pierścienie wokół zwierzęcia, podstawa ±2 bloki, koniec jeden pierścień za pierwszym trafieniem |
+| FA5-c | Uczepienie | Na jednej z czterech stron świata, środek `r/16 + 0,2 + 0,02` bloku od osi pnia o promieniu r px (kłoda wanilii 0,72), więc hitbox jest 0,02 bloku od kory. W górę przodem do pnia, w dół głową w dół, tyłem do pnia (jak wiewiórka). Zmiana strony przez narożnik |
+| FA5-d | Prędkości | Wspinaczka 0,12 bloku na tick, w ucieczce 0,24; bieg po kłodzie 0,18; skok 0,32 poziomo, ≥ 6 ticków |
+| FA5-e | Skoki | Między pniami 2–5 kolumn od siebie, tzn. 1–4 bloki lotu od kory do kory, spadek ≤ 3, wzniesienie ≤ 1. Łuk to paraboła o wysokości `0,4 + 0,15 · lot + max(0, wzniesienie)` nad linią prostą. Lot przez liście jest dozwolony (wiewiórka skacze przez korony), przez inne bloki nie |
+| FA5-f | Upadek | Bezpieczny upadek 10 bloków. W trybie ziemi przy spadaniu > 1,5 bloku łapie się pnia obok (`tryCatch`). Zablokowane zejście kończy się na ziemi tylko ≤ 1,6 bloku nad podstawą pnia, wyżej wiewiórka wisi i wybiera inną drogę (licznik `ABORTS`). Gametest wymaga 0 upadków z obrażeniami |
+| FA5-g | Martwe drewno | Kłody leżące moda: wysokość kroku 1 blok (kłoda o promieniu 7 px ma 0,94), więc wiewiórka wbiega na kłodę nawigacją ziemi i żeruje na niej (`LOG_RUNS`) |
+| FA5-h | Liście | Nowy hak `PolishAnimal.staysOffLeaves()` (domyślnie true). Wiewiórka ma false: może stać na liściach i z nich skakać. Sarna i dzik bez zmian |
+
+**Życie (`SquirrelMind`).**
+
+| # | Wybór FA5 | Wartość i powód |
+|---|---|---|
+| FA5-i | Rytm dnia | Lato (profil): 6:00–10:00 szczyt poranny, 12:30 odpoczynek w południe, 14:30–18:30 szczyt popołudniowy, noc w gnieździe (Wauters i Dhondt: dwa szczyty latem). Zima (XI-późna jesień – II): jeden okres aktywności 8:00–14:30, reszta w gnieździe. Aktywność dzienna: latem 10 500 ticków, zimą 6500 (`SquirrelGeometryTest`) |
+| FA5-j | Cele | `IDLE`, `FORAGE` (żer na ziemi, w 60% okresów żeru; kłoda leżąca, jeśli jest w pobliżu; animacja `eat` z szyszką albo orzechem), `TO_TREE` (pień w ≤ 12 blokach, najwyżej 240 ticków), `TREE` (w koronie: odpoczynek, żer, przejścia skokami), `RUN_AWAY`. Okresy 200–700 ticków według harmonogramu. Noc i odpoczynek w koronie (gniazdo, bez bloku gniazda) |
+| FA5-k | Ucieczka | Przed graczem (od 4 bloków przy skradaniu do 12 przy biegu, jak w profilach FA2), przed alarmem `ForestAlarm` i po zranieniu. Na ziemi biegnie do najlepszego pnia w 12 blokach (bliski i z dala od zagrożenia) i wspina się ≥ 4 bloki (`SAFE_HEIGHT`), a gdy pnia nie ma, ucieka po ziemi. Na drzewie wchodzi wyżej, przechodzi na drugą stronę pnia albo skacze do następnej korony |
+| FA5-l | Profil | Gęstość rzeczywista 0,25 na ha lasu [Ź: Lurz, Gurnell, Magris 2005, Mammalian Species 769 (0,1–1,5 na ha w lasach iglastych i mieszanych); Wauters i Dhondt 1990; przybliżone]. Generacja ×20, spawner ×24 (KFA-5). Sama przez cały rok, bez młodych (C10), bez stada (`herds() false`), dom 40 bloków. Hitbox 0,4 × 0,45, zdrowie 4, prędkość 0,3 |
+| FA5-m | Siedliska | Bór mieszany, las mieszany, świerczyna górska 1,0; bór świeży 0,9; jedlina i grąd 0,8; buczyny i bór wilgotny 0,7; bór suchy, bór nadmorski, łęg wiązowo-jesionowy 0,5; łęg jesionowo-olszowy 0,4; bór bagienny, ols, łęg wierzbowo-topolowy, olszyna górska 0,3. Bez kosodrzewiny, otwartych terenów i skraju lasu |
+| FA5-n | Odcień | Ciemnobrązowy z szansą 0,4 w świerczynie górskiej i jedlinie, 0,15 gdzie indziej (odcień ciemny częstszy w górach); losowany przy spawnie i zapisywany |
+| FA5-o | Kategoria | `AMBIENT`; jak inne zwierzęta moda poza licznikami wanilii (`requiresCustomPersistence`), z własnym limitem spawnera fauny: 10 przy graczu |
+
+**Gametest `fauna` (kod; przebiegi w etapie 2).**
+- Spis: w każdej próbce wiewiórki są liczone według miejsca (`SquirrelTrials.where`: ziemia, kłoda leżąca, liście, pień, korona). Żadna nie może tkwić w bloku (`stuck`) ani być w wodzie. Każdy świat potrzebuje ≥ 1 wiewiórki w promieniu sprawdzenia przy ostatniej próbce któregoś miejsca, a upadki z obrażeniami muszą być 0. Linia liczników: wspinaczki, skoki, skoki przez lukę, spadki, przerwania, wbiegnięcia na kłody, ucieczki (na drzewo, po ziemi).
+- Próby (w każdym świecie z próbami FA2, przy pierwszym miejscu; najbliższy bór mieszany z `FaunaSites.locate`):
+  - `life`: 12 wiewiórek przez 2400 ticków z próbką co 100. Wymaga udziału na pniach albo w koronach > 0, 0 utkniętych i 0 upadków z obrażeniami.
+  - `flight`: pień ≥ 6 bloków, wiewiórka 2 bloki od niego, gracz 5 bloków dalej. W 120 tickach wiewiórka musi uciec ≥ 4 bloki w górę pnia.
+- Scena MSPT: 40 wiewiórek w borze mieszanym, inne zwierzęta moda usunięte, 400 ticków ustalania, potem pomiar jak w FA2. Próg ≤ 0,05 ms na wiewiórkę i tick.
+- Kalibracja modelu (`-Psites=model`): kości w skali 0,5, sylwetki z czterech stron (IoU), poza `misc.alert` trzymana, ukryte kości latem i zimą.
+
+**Testy jednostkowe.**
+- `SquirrelGeometryTest`:
+  - geometria uczepienia (odstęp od kory, `CLIMB_PLANE` = połowa hitboxu);
+  - kierunki w górę i w dół;
+  - zasięg i łuk skoków;
+  - harmonogramy lata i zimy.
+- `FaunaModelTest`: 16 kości i 9 animacji wiewiórki, tekstury, skala 0,5, ukryte kości.
+- `FaunaProfileTest`: kolejność `fauna()` (wiewiórka trzecia), pola zapisu i profil (KFA-5, siedliska, szata, odcień, potrawy).
+- `FaunaBehaviourTest`: stany `climbing`, `in_tree`.
+- `RegistrySnapshotTest`: dwa dopisane wiersze.
+
+**Odstępstwa od planu.**
+1. Skoki „między koronami” to skoki między pniami (1–4 bloki lotu przez liście), a nie chodzenie po liściach. Korony z liści gatunków nie mają stałej struktury gałęzi, po której dałoby się prowadzić ścieżkę. Wiewiórka może jednak stać na liściach po wyjściu z trybu drzewa.
+2. Bez bloku gniazda: odpoczynek i noc spędza uczepiona w koronie.
+3. Animacja `descend` (w dół głową) i `rest` dodane poza listą planu.
+4. Eksploracja w spisie nie liczy wiewiórek (sprawdza wzrost saren i dzików jak dotąd).
+
+**Do sprawdzenia w grze (etap 1; pełna lista w „Stan po FA5”).**
+1. `/polishforests find biome mixed_pine_forest` albo `/polishforests find biome montane_spruce_forest`, za dnia: wiewiórki na pniach i w koronach, skoki z pnia na pień, żer na ziemi i na kłodach leżących z szyszką w łapach.
+2. Podejście (sprint) do wiewiórki na ziemi: ucieka na najbliższy pień i wspina się wyżej; na drzewie przechodzi na drugą stronę pnia albo skacze dalej.
+3. Zima (`/season set mid_winter` z Serene Seasons): szata z szarawym nalotem i pędzelki uszu; krótszy dzień aktywności (po 14:30 w koronach).
+4. W świerczynie górskiej częściej ciemnobrązowe wiewiórki.
+5. `/polishforests fauna 32`: wiewiórki w spisie ze stanem „wspina się” / „na drzewie”.
+6. Paczka `.mrpack` z kroku.

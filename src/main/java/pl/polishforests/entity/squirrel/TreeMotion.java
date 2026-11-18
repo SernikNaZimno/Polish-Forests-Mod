@@ -1,0 +1,533 @@
+package pl.polishforests.entity.squirrel;
+
+import java.util.ArrayDeque;
+import java.util.concurrent.atomic.LongAdder;
+import net.minecraft.core.Direction;
+import net.minecraft.util.Mth;
+import net.minecraft.world.entity.ai.memory.MemoryModuleType;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
+import net.tslat.smartbrainlib.util.BrainUtil;
+import org.jspecify.annotations.Nullable;
+import pl.polishforests.entity.squirrel.TreeSpace.Trunk;
+
+/**
+ * The red squirrel's own movement in the trees (step FA5, docs/04 "Projekt FA5"): the <b>tree mode</b>. Vanilla's
+ * physics and the ground navigation know no climbing (a ladder moves only up and down inside its block), so in the tree mode
+ * the squirrel has {@code noPhysics} on, {@link RedSquirrel#travel} does nothing (no gravity, no walk control), and this
+ * class sets its position every server tick along a queue of legs, each checked against the collision of every block
+ * except the leaves ({@link TreeSpace#clear}) when it is planned and again in every tick:
+ *
+ * <ul>
+ * <li>{@link Kind#RUN}: a straight run (to the foot of a trunk from the ground, around a trunk to another side, onto a
+ * lying log);
+ * <li>{@link Kind#CLIMB} and {@link Kind#DESCEND}: up or down the trunk on one of its four sides at the clinging distance
+ * ({@link TreeGeometry#clingXZ}; the distance follows the radius of the trunk's block at the height), facing the trunk going
+ * up and away from it going down head first; a descent ends on the ground where the next step would hit it;
+ * <li>{@link Kind#LEAP}: a parabola from one trunk to another 1-4 blocks away ({@link TreeGeometry#arc}), through the
+ * leaves of the crowns;
+ * <li>{@link Kind#CLING}: holding still on the trunk (eating a cone, resting, watching).
+ * </ul>
+ *
+ * A leg whose box is no longer clear (a block placed, a branch the plan missed) ends the queue: the squirrel clings where it
+ * is if its trunk is still there, otherwise it drops ({@link #drop}) and the vanilla physics takes over (a squirrel takes no
+ * damage from up to {@value RedSquirrel#SAFE_FALL} blocks). The tree mode ends on the ground or on a lying log only where the
+ * hitbox is {@linkplain TreeSpace#free free} (on top of the leaves of a bush when the descent ends in one). Nothing of it is
+ * saved: a squirrel loaded in the air falls and catches the nearest trunk ({@link #tryCatch}).
+ */
+public final class TreeMotion {
+	/** The kind of the current leg, synchronized to the client for the animation (new kinds only at the end). */
+	public enum Kind {
+		GROUND, RUN, CLIMB, DESCEND, LEAP, CLING
+	}
+
+	/** Climbing speed (blocks per tick) of a calm squirrel and of a fleeing one. */
+	public static final double CLIMB_SPEED = 0.12;
+	public static final double FLEE_CLIMB_SPEED = 0.24;
+	/** Running speed on the bark and on the ground (blocks per tick). */
+	static final double RUN_SPEED = 0.18;
+	/** Step (blocks) of the boxes checked along a planned leg. */
+	private static final double CHECK_STEP = 0.2;
+	/** Ticks between two checks that the trunk of a clinging squirrel is still there. */
+	private static final int HOLD_CHECK = 20;
+
+	/** Counters for the census of the fauna game test. */
+	public static final LongAdder CLIMBS = new LongAdder();
+	public static final LongAdder CLIMB_TICKS = new LongAdder();
+	public static final LongAdder LEAPS = new LongAdder();
+	public static final LongAdder GAP_LEAPS = new LongAdder();
+	public static final LongAdder DROPS = new LongAdder();
+	public static final LongAdder ABORTS = new LongAdder();
+	public static final LongAdder LOG_RUNS = new LongAdder();
+
+	/** One leg of the queue: for CLIMB and DESCEND only {@code to.y} counts (the x and z follow the trunk). */
+	private record Leg(Kind kind, Vec3 to, int ticks, double arc, @Nullable Trunk trunk, Direction side, boolean ground) {
+	}
+
+	private final RedSquirrel squirrel;
+	private final ArrayDeque<Leg> legs = new ArrayDeque<>();
+	private Kind kind = Kind.GROUND;
+	private @Nullable Trunk trunk;
+	private Direction side = Direction.NORTH;
+	private @Nullable Leg leg;
+	private Vec3 legFrom = Vec3.ZERO;
+	private int legTick;
+	private double speed = CLIMB_SPEED;
+
+	TreeMotion(RedSquirrel squirrel) {
+		this.squirrel = squirrel;
+	}
+
+	public static void resetCounters() {
+		for (LongAdder a : new LongAdder[] {CLIMBS, CLIMB_TICKS, LEAPS, GAP_LEAPS, DROPS, ABORTS, LOG_RUNS}) {
+			a.reset();
+		}
+	}
+
+	/** Whether the squirrel is in the tree mode. */
+	public boolean active() {
+		return kind != Kind.GROUND;
+	}
+
+	public Kind kind() {
+		return kind;
+	}
+
+	/** The trunk it clings to, or null on the ground or in a leap. */
+	public @Nullable Trunk trunk() {
+		return trunk;
+	}
+
+	public Direction side() {
+		return side;
+	}
+
+	/** Whether it moves along legs (not clinging still). */
+	public boolean busy() {
+		return leg != null || !legs.isEmpty();
+	}
+
+	/** Height (blocks) of the feet above the base of its trunk (0 without a trunk). */
+	public double heightOnTrunk() {
+		return trunk == null ? 0 : squirrel.getY() - trunk.baseY();
+	}
+
+	// ------------------------------------------------------------------ planning
+
+	private Level level() {
+		return squirrel.level();
+	}
+
+	private AABB boxAt(Vec3 feet) {
+		return TreeSpace.box(feet, squirrel.getBbWidth(), squirrel.getBbHeight());
+	}
+
+	/** The feet of a squirrel clinging to the trunk on the side at the height y. */
+	Vec3 clingPoint(Trunk t, Direction s, double y) {
+		double[] xz = TreeGeometry.clingXZ(t.x(), t.z(), s, TreeSpace.halfAt(level(), t, y + 0.2));
+		return new Vec3(xz[0], y, xz[1]);
+	}
+
+	/** Whether every box along the straight line from a to b (steps of {@value #CHECK_STEP} blocks) is clear. */
+	private boolean lineClear(Vec3 a, Vec3 b) {
+		int n = Math.max(1, (int) Math.ceil(a.distanceTo(b) / CHECK_STEP));
+		for (int i = 1; i <= n; i++) {
+			if (!TreeSpace.clear(level(), boxAt(a.lerp(b, i / (double) n)))) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	private boolean arcClear(Vec3 a, Vec3 b, double arc, int ticks) {
+		for (int i = 1; i <= ticks; i++) {
+			if (!TreeSpace.clear(level(), boxAt(TreeGeometry.arc(a, b, i / (double) ticks, arc)))) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	private static int runTicks(Vec3 a, Vec3 b, double speed) {
+		return Math.max(1, (int) Math.ceil(a.distanceTo(b) / speed));
+	}
+
+	/**
+	 * From the ground: runs to the foot of the trunk on the side (where its feet are now, or up to 0.6 blocks higher) and
+	 * enters the tree mode clinging there. Returns false (nothing changes) when the place or the run is not clear.
+	 */
+	public boolean attach(Trunk t, Direction s) {
+		Vec3 here = squirrel.position();
+		for (double lift = 0; lift <= 0.6; lift += 0.2) {
+			Vec3 at = clingPoint(t, s, here.y + lift);
+			if (TreeGeometry.horizontal(here, at) > 1.6 || !TreeSpace.clear(level(), boxAt(at))) {
+				continue;
+			}
+			Vec3 up = new Vec3(here.x, at.y, here.z);
+			if (!TreeSpace.clear(level(), boxAt(up)) || !lineClear(up, at)) {
+				continue;
+			}
+			enter();
+			trunk = t;
+			side = s;
+			legs.add(new Leg(Kind.RUN, at, runTicks(here, at, RUN_SPEED), 0, t, s, false));
+			return true;
+		}
+		return false;
+	}
+
+	/**
+	 * Up the trunk to the height {@code toY} of the feet (clamped to the top of the trunk), as far as the boxes are clear;
+	 * returns the height it will reach (its feet now when it cannot climb at all). Queued after the legs already planned.
+	 */
+	public double climb(double toY, double climbSpeed) {
+		Trunk t = trunk;
+		if (t == null) {
+			return squirrel.getY();
+		}
+		double startY = legs.isEmpty() ? squirrel.getY() : legs.peekLast().to().y;
+		double top = Math.min(toY, t.topY() + 1.0 - squirrel.getBbHeight() * 0.5);
+		double reach = startY;
+		for (double y = startY + CHECK_STEP; y <= top + 1.0E-6; y += CHECK_STEP) {
+			if (!TreeSpace.clear(level(), boxAt(clingPoint(t, side, y)))) {
+				break;
+			}
+			reach = y;
+		}
+		if (reach > startY + 0.5) {
+			speed = climbSpeed;
+			legs.add(new Leg(Kind.CLIMB, new Vec3(0, reach, 0), 0, 0, t, side, false));
+			CLIMBS.increment();
+		}
+		return reach;
+	}
+
+	/** Head first down the trunk to the ground (or onto a bush there); false when even the first step is blocked. */
+	public boolean descend(double climbSpeed) {
+		Trunk t = trunk;
+		if (t == null || busy()) {
+			return false;
+		}
+		if (!TreeSpace.clear(level(), boxAt(clingPoint(t, side, squirrel.getY() - CHECK_STEP)))) {
+			return false;
+		}
+		speed = climbSpeed;
+		legs.add(new Leg(Kind.DESCEND, new Vec3(0, t.baseY() - 4.0, 0), 0, 0, t, side, true));
+		return true;
+	}
+
+	/**
+	 * Around the trunk to another side at the same height: two runs through the point by the corner between the sides (or
+	 * straight across to the opposite side, through both corners). False when a box on the way is not clear.
+	 */
+	public boolean switchSide(Direction to) {
+		Trunk t = trunk;
+		if (t == null || busy() || to == side || !to.getAxis().isHorizontal()) {
+			return false;
+		}
+		double y = squirrel.getY();
+		Vec3 here = squirrel.position();
+		Direction via = to == side.getOpposite() ? side.getClockWise() : null;
+		java.util.List<Vec3> points = new java.util.ArrayList<>();
+		Direction from = side;
+		for (Direction next : via == null ? new Direction[] {to} : new Direction[] {via, to}) {
+			Vec3 a = clingPoint(t, from, y);
+			Vec3 b = clingPoint(t, next, y);
+			// the corner point: the clinging distances of both sides, so the box keeps off the bark there too
+			points.add(new Vec3(from.getStepX() != 0 ? a.x : b.x, y, from.getStepZ() != 0 ? a.z : b.z));
+			points.add(b);
+			from = next;
+		}
+		Vec3 prev = here;
+		for (Vec3 p : points) {
+			if (!TreeSpace.clear(level(), boxAt(p)) || !lineClear(prev, p)) {
+				return false;
+			}
+			prev = p;
+		}
+		prev = here;
+		for (int i = 0; i < points.size(); i++) {
+			Vec3 p = points.get(i);
+			Direction s = i < points.size() - 1 ? side : to;
+			legs.add(new Leg(Kind.RUN, p, runTicks(prev, p, RUN_SPEED), 0, t, i == points.size() - 1 ? to : s, false));
+			prev = p;
+		}
+		return true;
+	}
+
+	/**
+	 * A leap from the trunk it clings to onto the side of {@code to} that faces it, at the nearest height of that trunk
+	 * within the drop and the rise of a leap; first around its own trunk to the side that faces the target when it is
+	 * elsewhere. False when the leap is out of reach or not clear.
+	 */
+	public boolean leap(Trunk to) {
+		Trunk t = trunk;
+		if (t == null || busy() || to.equals(t)) {
+			return false;
+		}
+		Direction out = TreeGeometry.sideTowards(t.x(), t.z(), to.x() + 0.5, to.z() + 0.5);
+		Direction in = TreeGeometry.sideTowards(to.x(), to.z(), t.x() + 0.5, t.z() + 0.5);
+		double y = squirrel.getY();
+		Vec3 start = clingPoint(t, out, y);
+		double landY = Mth.clamp(y, to.baseY() + 1.0, to.topY() + 1.0 - squirrel.getBbHeight() * 0.5);
+		Vec3 land = clingPoint(to, in, landY);
+		double h = TreeGeometry.horizontal(start, land);
+		if (!TreeGeometry.leapable(h, land.y - start.y) || !TreeSpace.clear(level(), boxAt(land))) {
+			return false;
+		}
+		int ticks = TreeGeometry.leapTicks(h);
+		double arc = TreeGeometry.arcHeight(h, land.y - start.y);
+		if (!arcClear(start, land, arc, ticks)) {
+			return false;
+		}
+		if (out != side && !switchSide(out)) {
+			return false;
+		}
+		legs.add(new Leg(Kind.LEAP, land, ticks, arc, to, in, false));
+		LEAPS.increment();
+		if (gap(start, land, arc)) {
+			GAP_LEAPS.increment();
+		}
+		return true;
+	}
+
+	/** A leap over open air: no leaf and no log within a block under the top of the arc. */
+	private boolean gap(Vec3 a, Vec3 b, double arc) {
+		Vec3 mid = TreeGeometry.arc(a, b, 0.5, arc);
+		for (int dy = 0; dy >= -2; dy--) {
+			var state = level().getBlockState(net.minecraft.core.BlockPos.containing(mid.x, mid.y + dy, mid.z));
+			if (state.is(net.minecraft.tags.BlockTags.LEAVES) || TreeSpace.climbable(state)) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/** From the ground: a hop onto the top of a lying log (its feet there), after which the vanilla physics takes over. */
+	public boolean hopOnto(Vec3 top) {
+		Vec3 here = squirrel.position();
+		double h = TreeGeometry.horizontal(here, top);
+		if (h > 1.8 || top.y - here.y > 1.2 || !TreeSpace.free(level(), boxAt(top))) {
+			return false;
+		}
+		int ticks = Math.max(4, (int) Math.ceil(h / RUN_SPEED));
+		double arc = 0.3 + Math.max(0, top.y - here.y) * 0.5;
+		if (!arcClear(here, top, arc, ticks)) {
+			return false;
+		}
+		enter();
+		trunk = null;
+		legs.add(new Leg(Kind.LEAP, top, ticks, arc, null, side, true));
+		LOG_RUNS.increment();
+		return true;
+	}
+
+	// ------------------------------------------------------------------ mode changes
+
+	private void enter() {
+		if (kind == Kind.GROUND) {
+			squirrel.getNavigation().stop();
+			BrainUtil.clearMemory(squirrel, MemoryModuleType.WALK_TARGET);
+			squirrel.setDeltaMovement(Vec3.ZERO);
+			squirrel.noPhysics = true;
+			setKind(Kind.CLING);
+		}
+		legs.clear();
+		leg = null;
+	}
+
+	/** Ends the tree mode where it is; on top of the leaves of a bush when its box is in one (up to 2 blocks higher). */
+	private void land() {
+		Vec3 at = squirrel.position();
+		if (!TreeSpace.free(level(), boxAt(at))) {
+			for (double lift = 1.0 / 16; lift <= 2.0; lift += 1.0 / 16) {
+				Vec3 up = at.add(0, lift, 0);
+				if (TreeSpace.free(level(), boxAt(up))) {
+					squirrel.setPos(up);
+					break;
+				}
+			}
+		}
+		exit();
+	}
+
+	private void exit() {
+		legs.clear();
+		leg = null;
+		trunk = null;
+		squirrel.noPhysics = false;
+		squirrel.setDeltaMovement(Vec3.ZERO);
+		squirrel.resetFallDistance();
+		setKind(Kind.GROUND);
+	}
+
+	/** Lets go: the tree mode ends in the air and the squirrel falls (the vanilla physics). */
+	public void drop() {
+		if (active()) {
+			DROPS.increment();
+			exit();
+		}
+	}
+
+	/** Stops the legs still to come; the squirrel clings where it is (or drops without a trunk). */
+	public void halt() {
+		legs.clear();
+		leg = null;
+		if (active()) {
+			if (trunk != null && TreeSpace.holds(level(), trunk, squirrel.getY() + 0.2)) {
+				setKind(Kind.CLING);
+			} else {
+				drop();
+			}
+		}
+	}
+
+	private void setKind(Kind k) {
+		kind = k;
+		squirrel.syncMotion(k);
+	}
+
+	/**
+	 * A falling squirrel on the ground mode (more than 1.5 blocks of fall) grabs an upright trunk whose clinging place
+	 * on the side towards it is within 0.8 blocks and clear: the tree mode starts there, clinging.
+	 */
+	public boolean tryCatch() {
+		if (active() || squirrel.onGround() || squirrel.fallDistance < 1.5) {
+			return false;
+		}
+		Vec3 here = squirrel.position();
+		int bx = Mth.floor(here.x);
+		int by = Mth.floor(here.y + 0.2);
+		int bz = Mth.floor(here.z);
+		for (int dx = -1; dx <= 1; dx++) {
+			for (int dz = -1; dz <= 1; dz++) {
+				var pos = new net.minecraft.core.BlockPos(bx + dx, by, bz + dz);
+				if (!TreeSpace.upright(level().getBlockState(pos))) {
+					continue;
+				}
+				Trunk t = TreeSpace.trunkAt(level(), pos);
+				if (t == null) {
+					continue;
+				}
+				Direction s = TreeGeometry.sideTowards(t.x(), t.z(), here.x, here.z);
+				Vec3 at = clingPoint(t, s, here.y);
+				if (TreeGeometry.horizontal(here, at) <= 0.8 && TreeSpace.clear(level(), boxAt(at))) {
+					enter();
+					trunk = t;
+					side = s;
+					squirrel.setPos(at);
+					squirrel.resetFallDistance();
+					face(TreeGeometry.climbYaw(s));
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	// ------------------------------------------------------------------ tick
+
+	/** One server tick of the tree mode (nothing on the ground). */
+	void tick() {
+		if (!active()) {
+			return;
+		}
+		squirrel.resetFallDistance();
+		squirrel.setOnGround(false);
+		if (leg == null) {
+			leg = legs.poll();
+			legFrom = squirrel.position();
+			legTick = 0;
+			if (leg != null) {
+				if (leg.trunk() != null || leg.kind() == Kind.LEAP) {
+					trunk = leg.trunk();
+				}
+				setKind(leg.kind());
+			}
+		}
+		Leg l = leg;
+		if (l == null) {
+			if (kind != Kind.CLING) {
+				setKind(Kind.CLING);
+			}
+			hold();
+			return;
+		}
+		Vec3 before = squirrel.position();
+		Vec3 next;
+		boolean done;
+		switch (l.kind()) {
+			case CLIMB, DESCEND -> {
+				Trunk t = l.trunk();
+				boolean up = l.kind() == Kind.CLIMB;
+				double y = before.y + (up ? speed : -speed);
+				done = up ? y >= l.to().y : y <= l.to().y;
+				if (done) {
+					y = l.to().y;
+				}
+				next = clingPoint(t, side, y);
+				if (up) {
+					CLIMB_TICKS.increment();
+				}
+				face(up ? TreeGeometry.climbYaw(side) : TreeGeometry.descendYaw(side));
+			}
+			default -> {
+				legTick++;
+				double t = Math.min(1.0, legTick / (double) Math.max(1, l.ticks()));
+				next = l.kind() == Kind.LEAP ? TreeGeometry.arc(legFrom, l.to(), t, l.arc()) : legFrom.lerp(l.to(), t);
+				done = legTick >= l.ticks();
+				if (next.distanceToSqr(before) > 1.0E-6) {
+					face(TreeGeometry.yawFacing(next.x - before.x, next.z - before.z));
+				}
+			}
+		}
+		if (!TreeSpace.clear(level(), boxAt(next))) {
+			if (l.kind() == Kind.DESCEND && (l.trunk() == null || before.y <= l.trunk().baseY() + 1.6)) {
+				// the ground (or a root, a stone) under the next step: the descent ends here
+				land();
+				return;
+			}
+			// higher up a branch of the trunk (or of another tree) blocks the way: it clings there, and the mind tries
+			// another side
+			ABORTS.increment();
+			if (l.kind() == Kind.LEAP && l.ground()) {
+				exit();
+				return;
+			}
+			halt();
+			return;
+		}
+		squirrel.setPos(next);
+		squirrel.setDeltaMovement(next.subtract(before));
+		if (done) {
+			leg = null;
+			if (l.trunk() != null) {
+				side = l.side();
+			}
+			if (l.ground()) {
+				land();
+			} else if (legs.isEmpty()) {
+				setKind(Kind.CLING);
+				face(TreeGeometry.climbYaw(side));
+			}
+		}
+	}
+
+	/** Clinging still: every {@value #HOLD_CHECK} ticks a check that the trunk is still there (else it drops). */
+	private void hold() {
+		squirrel.setDeltaMovement(Vec3.ZERO);
+		if ((squirrel.tickCount + squirrel.getId()) % HOLD_CHECK == 0) {
+			Trunk t = trunk;
+			if (t == null || !TreeSpace.holds(level(), t, squirrel.getY() + 0.2) || !TreeSpace.clear(level(), boxAt(squirrel.position()))) {
+				drop();
+			}
+		}
+	}
+
+	private void face(float yaw) {
+		squirrel.setYRot(yaw);
+		squirrel.setYBodyRot(yaw);
+		squirrel.setYHeadRot(yaw);
+	}
+}

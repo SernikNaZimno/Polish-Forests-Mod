@@ -1,6 +1,7 @@
 package pl.polishforests.client;
 
 import net.fabricmc.api.ClientModInitializer;
+import pl.polishforests.client.entity.RedSquirrelRenderer;
 import pl.polishforests.client.entity.RoeDeerRenderer;
 import pl.polishforests.client.entity.WildBoarRenderer;
 
@@ -22,5 +23,7 @@ public final class PolishForestsClient implements ClientModInitializer {
 		RoeDeerRenderer.register();
 		// Step FA3: the wild boar.
 		WildBoarRenderer.register();
+		// Step FA5: the red squirrel.
+		RedSquirrelRenderer.register();
 	}
 }
