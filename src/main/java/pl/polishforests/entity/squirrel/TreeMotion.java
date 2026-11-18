@@ -56,6 +56,11 @@ public final class TreeMotion {
 	private static final double CHECK_STEP = 0.2;
 	/** Ticks between two checks that the trunk of a clinging squirrel is still there. */
 	private static final int HOLD_CHECK = 20;
+	/** Farthest (blocks) from a clinging place at which a stopped squirrel still holds on to the bark. */
+	private static final double AT_BARK = 0.75;
+	/** Highest hop (blocks) onto a trunk from the ground, and the farthest (blocks, horizontal) to its clinging place. */
+	private static final double ATTACH_LIFT = 1.6;
+	public static final double ATTACH_REACH = 2.0;
 	/** Farthest (blocks) from the bark a jump down looks for its place on the ground. */
 	private static final double JUMP_OUT = 1.5;
 
@@ -166,24 +171,29 @@ public final class TreeMotion {
 	}
 
 	/**
-	 * From the ground: runs to the foot of the trunk on the side (where its feet are now, or up to 0.6 blocks higher) and
-	 * enters the tree mode clinging there. Returns false (nothing changes) when the place or the run is not clear.
+	 * From the ground: runs (or hops) to the foot of the trunk on the side, where its feet are now or up to
+	 * {@value #ATTACH_LIFT} blocks higher (above the root flares of an old tree, stage 2 of FA5), and enters the tree mode
+	 * clinging there. Returns false (nothing changes) when the place or the way is not clear.
 	 */
 	public boolean attach(Trunk t, Direction s) {
 		Vec3 here = squirrel.position();
-		for (double lift = 0; lift <= 0.6; lift += 0.2) {
+		for (double lift = 0; lift <= ATTACH_LIFT + 1.0E-6; lift += 0.2) {
 			Vec3 at = clingPoint(t, s, here.y + lift);
-			if (TreeGeometry.horizontal(here, at) > 1.6 || !TreeSpace.clear(level(), boxAt(at))) {
+			if (TreeGeometry.horizontal(here, at) > ATTACH_REACH || !TreeSpace.clear(level(), boxAt(at))) {
 				continue;
 			}
+			// the way checked is the way taken: straight up (a hop) first, then across to the bark
 			Vec3 up = new Vec3(here.x, at.y, here.z);
-			if (!TreeSpace.clear(level(), boxAt(up)) || !lineClear(up, at)) {
+			if (lift > 0 && !lineClear(here, up) || !lineClear(up, at)) {
 				continue;
 			}
 			enter();
 			trunk = t;
 			side = s;
-			legs.add(new Leg(Kind.RUN, at, runTicks(here, at, RUN_SPEED), 0, t, s, false));
+			if (lift > 0) {
+				legs.add(new Leg(Kind.RUN, up, runTicks(here, up, RUN_SPEED), 0, t, s, false));
+			}
+			legs.add(new Leg(Kind.RUN, at, runTicks(up, at, RUN_SPEED), 0, t, s, false));
 			return true;
 		}
 		return false;
@@ -556,17 +566,34 @@ public final class TreeMotion {
 		}
 	}
 
-	/** Stops the legs still to come; the squirrel clings where it is (or drops without a trunk). */
+	/**
+	 * Stops the legs still to come; the squirrel clings where it is when it is at the bark, else it takes a trunk next to
+	 * it or drops (a leap or a run onto a trunk stopped in the air).
+	 */
 	public void halt() {
 		legs.clear();
 		leg = null;
 		if (active()) {
-			if (trunk != null && TreeSpace.holds(level(), trunk, squirrel.getY() + 0.2)) {
+			if (trunk != null && TreeSpace.holds(level(), trunk, squirrel.getY() + 0.2) && nearBark(trunk)) {
 				setKind(Kind.CLING);
-			} else {
+			} else if (!grab(2)) {
 				drop();
 			}
 		}
+	}
+
+	/**
+	 * Whether the squirrel is at the bark of the trunk: within {@value #AT_BARK} blocks of the clinging place of one of its
+	 * sides (a run onto the trunk stopped on its way from the ground is not).
+	 */
+	private boolean nearBark(Trunk t) {
+		Vec3 here = squirrel.position();
+		for (Direction s : Direction.Plane.HORIZONTAL) {
+			if (TreeGeometry.horizontal(here, clingPoint(t, s, here.y)) <= AT_BARK) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private void setKind(Kind k) {

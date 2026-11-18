@@ -221,7 +221,7 @@ public class RedSquirrel extends PolishAnimal<RedSquirrel> {
 		return motion;
 	}
 
-	SquirrelMind mind() {
+	public SquirrelMind mind() {
 		return mind;
 	}
 

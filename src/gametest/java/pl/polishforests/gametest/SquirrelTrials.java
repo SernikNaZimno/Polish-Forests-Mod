@@ -11,6 +11,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.BlockTags;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.level.block.state.BlockState;
@@ -39,7 +40,7 @@ import pl.polishforests.worldgen.habitat.HabitatBiome;
  * (trunk and crown) must be above 0, no squirrel stuck and no fall with damage.
  * <li><b>Flight up a tree</b> ({@link #flight}): a squirrel on the ground {@value #FLIGHT_FROM_TRUNK} blocks from a trunk
  * of at least 6 blocks, a visible standing player 5 blocks from it on the other side: within {@value #FLIGHT_TICKS} ticks
- * it must be at least 4 blocks up a trunk; the climb time (ticks from the start of the flight to 4 blocks up) is reported.
+ * it must flee and be at least 4 blocks up a trunk; the climb time (ticks from the start of the flight to 4 blocks up) is reported.
  * <li><b>MSPT</b> ({@link #mspt}): 40 squirrels around the player in the trees and on the ground, their server ticks timed:
  * at most {@value FaunaTrials#MSPT_BUDGET} ms per squirrel and tick (report only with {@code -PtimingsReportOnly}).
  * </ol>
@@ -105,7 +106,7 @@ final class SquirrelTrials {
 		return new long[] {TreeMotion.CLIMBS.sum(), TreeMotion.CLIMB_TICKS.sum(), TreeMotion.LEAPS.sum(), TreeMotion.GAP_LEAPS.sum(),
 				TreeMotion.LOG_RUNS.sum(), TreeMotion.DROPS.sum(), TreeMotion.JUMPS_DOWN.sum(), TreeMotion.ABORTS.sum(), TreeMotion.GRABS.sum(),
 				TreeMotion.RESCUES.sum(), SquirrelMind.FLIGHTS.sum(), SquirrelMind.FLIGHTS_TO_TREE.sum(), SquirrelMind.FLIGHT_CLIMB_TICKS.sum(),
-				SquirrelMind.GROUND_FLIGHTS.sum(), RedSquirrel.FALL_HURT.sum()};
+				SquirrelMind.GROUND_FLIGHTS.sum(), RedSquirrel.FALL_HURT.sum(), SquirrelMind.ATTACH_FAILS.sum(), SquirrelMind.TO_TREE_TIMEOUTS.sum()};
 	}
 
 	/** Falls with damage since the mark. */
@@ -115,7 +116,7 @@ final class SquirrelTrials {
 
 	/** The counters of the squirrels' movement since the census of the world began, as one line. */
 	static String counters() {
-		return counters(new long[15]);
+		return counters(new long[17]);
 	}
 
 	/** The counters of the squirrels' movement since the mark, as one line. */
@@ -126,8 +127,8 @@ final class SquirrelTrials {
 		}
 		return String.format(Locale.ROOT, "climbs %d (%d ticks up), leaps %d (over a gap %d), runs onto a log %d, drops %d, jumps down %d,"
 				+ " aborted legs %d, trunks taken from the crown %d, rescues from the leaves %d, flights %d (up a tree %d, mean climb %.1f"
-				+ " ticks; on the ground %d), falls with damage %d", n[0], n[1], n[2], n[3], n[4], n[5], n[6], n[7], n[8], n[9], n[10], n[11],
-				n[11] == 0 ? Double.NaN : n[12] / (double) n[11], n[13], n[14]);
+				+ " ticks; on the ground %d), runs to a trunk not taken %d (time over %d), falls with damage %d", n[0], n[1], n[2], n[3], n[4],
+				n[5], n[6], n[7], n[8], n[9], n[10], n[11], n[11] == 0 ? Double.NaN : n[12] / (double) n[11], n[13], n[15], n[16], n[14]);
 	}
 
 	// ------------------------------------------------------------------ life in the trees
@@ -222,7 +223,8 @@ final class SquirrelTrials {
 	/**
 	 * A trunk of at least 6 blocks 6-16 blocks from the player with a place on the ground {@value #FLIGHT_FROM_TRUNK}
 	 * blocks from it at its base, nearest first, or null. Every column of the ring is looked at (trunksNear stops one ring
-	 * after the nearest trunk, which in a forest is closer than 6 blocks), its base within 3 blocks of the player's feet.
+	 * after the nearest trunk, which in a forest is closer than 6 blocks), its base within 3 blocks of the player's feet, and
+	 * the ground 5 blocks further out (where the trial player stands) within 2 blocks of the squirrel's.
 	 */
 	private static int @Nullable [] flightSpot(ServerLevel level, ServerPlayer p) {
 		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
@@ -245,7 +247,11 @@ final class SquirrelTrials {
 							int x = t.x() + side[0] * FLIGHT_FROM_TRUNK;
 							int z = t.z() + side[1] * FLIGHT_FROM_TRUNK;
 							Vec3 at = pl.polishforests.entity.spawn.FaunaSpawner.placeUncounted(level, ModEntities.redSquirrel(), x, z);
-							if (at != null && Math.abs(at.y - t.baseY()) <= 1) {
+							// the player's ground 5 blocks further out near the squirrel's (not on a rock, a hill or a stump)
+							int px = Mth.floor(x + 0.5 + side[0] * 5);
+							int pz = Mth.floor(z + 0.5 + side[1] * 5);
+							int py = level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, px, pz);
+							if (at != null && Math.abs(at.y - t.baseY()) <= 1 && Math.abs(py - at.y) <= 2) {
 								return new int[] {x, z, t.x(), t.z()};
 							}
 						}
@@ -287,21 +293,30 @@ final class SquirrelTrials {
 		double groundY = q.getY();
 		double[] best = {0};
 		boolean[] fled = {false};
+		double[] dist = {Double.MAX_VALUE};
+		List<String> goals = new ArrayList<>();
 		for (int t = 0; t < FLIGHT_TICKS; t += 5) {
 			context.waitTicks(5);
 			sp.getServer().runOnServer(s -> {
 				fled[0] |= q.isFleeing();
+				dist[0] = Math.min(dist[0], q.distanceTo(s.overworld().players().getFirst()));
 				if (q.inTree()) {
 					best[0] = Math.max(best[0], q.getY() - groundY);
+				}
+				String g = String.format(Locale.ROOT, "%s at %.1f %.1f %.1f", q.mind().describe(), q.getX(), q.getY(), q.getZ());
+				if (goals.isEmpty() || !goals.getLast().startsWith(q.mind().describe() + " at")) {
+					goals.add(g);
 				}
 			});
 		}
 		String end = sp.getServer().computeOnServer(s -> String.format(Locale.ROOT, "squirrel at %.1f %.1f %.1f, %s, state %s",
 				q.getX(), q.getY(), q.getZ(), where(s.overworld(), q), q.state().id()));
-		census.line("%s squirrel flight: trunk at %d %d, squirrel %d blocks from it, player 5 blocks away: fleeing %s, highest %.1f blocks up"
-				+ " a trunk in %d ticks; %s; %s", label, spot[2], spot[3], FLIGHT_FROM_TRUNK, fled[0], best[0], FLIGHT_TICKS, end, counters(since));
-		if (best[0] < 4) {
-			census.fail("%s: the squirrel did not flee up a tree (fleeing %s, highest %.1f blocks up a trunk)", label, fled[0], best[0]);
+		census.line("%s squirrel flight: trunk at %d %d, squirrel %d blocks from it, player 5 blocks away (nearest %.1f): fleeing %s, highest"
+				+ " %.1f blocks up a trunk in %d ticks; %s; %s", label, spot[2], spot[3], FLIGHT_FROM_TRUNK, dist[0], fled[0], best[0], FLIGHT_TICKS, end,
+				counters(since));
+		if (best[0] < 4 || !fled[0]) {
+			census.fail("%s: the squirrel did not flee up a tree (fleeing %s, highest %.1f blocks up a trunk); goals: %s", label, fled[0], best[0],
+					String.join("; ", goals.subList(0, Math.min(10, goals.size()))));
 		}
 		sp.getServer().runOnServer(s -> q.discard());
 		sp.getServer().runCommand("effect give @a minecraft:invisibility infinite 0 true");

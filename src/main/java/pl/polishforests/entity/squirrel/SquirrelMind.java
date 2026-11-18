@@ -55,6 +55,8 @@ public final class SquirrelMind {
 	/** Sides tried for a descent before the jump down, and the ticks it waits after a failed way down. */
 	private static final int DOWN_SIDES = 3;
 	private static final int DOWN_WAIT = 100;
+	/** Ticks a trunk it could not take is left out of its choices. */
+	private static final int REFUSED_TICKS = 200;
 
 	/** Counters for the census of the fauna game test. */
 	public static final LongAdder FLIGHTS = new LongAdder();
@@ -62,6 +64,9 @@ public final class SquirrelMind {
 	/** Ticks from the start of a flight on the ground to {@value #SAFE_HEIGHT} blocks up a trunk, summed over those flights. */
 	public static final LongAdder FLIGHT_CLIMB_TICKS = new LongAdder();
 	public static final LongAdder GROUND_FLIGHTS = new LongAdder();
+	/** Runs to a trunk that ended without taking it: every side refused, or the time of the run over. */
+	public static final LongAdder ATTACH_FAILS = new LongAdder();
+	public static final LongAdder TO_TREE_TIMEOUTS = new LongAdder();
 
 	enum Goal {
 		IDLE, FORAGE, TO_TREE, TREE, RUN_AWAY
@@ -82,6 +87,9 @@ public final class SquirrelMind {
 	private long nextStop;
 	private @Nullable Vec3 logTop;
 	private int stuckTries;
+	/** A trunk it could not take (every side refused) and until when it leaves that trunk out. */
+	private @Nullable Trunk refused;
+	private long refusedUntil;
 	private int downTries;
 	private long downAgain;
 	private boolean climbed;
@@ -91,13 +99,20 @@ public final class SquirrelMind {
 	}
 
 	public static void resetCounters() {
-		for (LongAdder a : new LongAdder[] {FLIGHTS, FLIGHTS_TO_TREE, FLIGHT_CLIMB_TICKS, GROUND_FLIGHTS}) {
+		for (LongAdder a : new LongAdder[] {FLIGHTS, FLIGHTS_TO_TREE, FLIGHT_CLIMB_TICKS, GROUND_FLIGHTS, ATTACH_FAILS, TO_TREE_TIMEOUTS}) {
 			a.reset();
 		}
 	}
 
 	Goal goal() {
 		return goal;
+	}
+
+	/** Its goal and the trunk it runs to, for the fauna game test (numbers only). */
+	public String describe() {
+		Trunk t = target;
+		return goal + (t == null ? "" : " to " + t.x() + " " + t.z() + " (base " + t.baseY() + ", top " + t.topY() + ", side " + targetSide + ")")
+				+ (fleeing ? ", fleeing" : "");
 	}
 
 	/** Hurt by something at {@code from} (or nowhere in particular): a flight from there. */
@@ -209,6 +224,9 @@ public final class SquirrelMind {
 		double bestScore = Double.MAX_VALUE;
 		Vec3 here = s.position();
 		for (Trunk t : trunks) {
+			if (refused(t, now)) {
+				continue;
+			}
 			Vec3 axis = t.axis(here.y);
 			double d = TreeGeometry.horizontal(here, axis);
 			// towards the threat (the trunk on the threat's side of the squirrel) only when nothing else is near
@@ -409,6 +427,11 @@ public final class SquirrelMind {
 			startForage(now);
 			return;
 		}
+		trunks = trunks.stream().filter(t -> !refused(t, now)).toList();
+		if (trunks.isEmpty()) {
+			startForage(now);
+			return;
+		}
 		Vec3 home = s.home();
 		boolean far = TreeGeometry.horizontal(s.position(), home) > s.profile().homeRange();
 		Trunk pick = trunks.get(s.getRandom().nextInt(trunks.size()));
@@ -430,24 +453,33 @@ public final class SquirrelMind {
 		goalUntil = now + TO_TREE_TICKS;
 		s.setAction(Action.NONE);
 		walkTo(t, flight);
+		// already next to the trunk: takes it at once
+		approach(now);
 	}
 
 	private void walkTo(Trunk t, boolean flight) {
 		Vec3 at = s.motion().clingPoint(t, targetSide, t.baseY());
-		BrainUtil.setMemory(s, MemoryModuleType.WALK_TARGET, new WalkTarget(at, flight ? 2.2F : 1.2F, 0));
+		// close enough a block from the clinging place: the cells next to an old trunk are often its root flares
+		BrainUtil.setMemory(s, MemoryModuleType.WALK_TARGET, new WalkTarget(at, flight ? 2.2F : 1.2F, 1));
 	}
 
 	/** On the way to the trunk: close enough, it takes the trunk (the side towards it, else another) and climbs. */
 	private void approach(long now) {
 		Trunk t = target;
 		if (t == null || now > goalUntil) {
+			if (t != null) {
+				TO_TREE_TIMEOUTS.increment();
+			}
 			target = null;
 			goal = Goal.IDLE;
 			return;
 		}
 		TreeMotion m = s.motion();
 		Vec3 foot = m.clingPoint(t, targetSide, s.getY());
-		if (TreeGeometry.horizontal(s.position(), foot) > 1.4) {
+		// close to the clinging place, or stopped near the trunk (the walk target may lie in a root flare of an old tree)
+		boolean near = TreeGeometry.horizontal(s.position(), foot) <= TreeMotion.ATTACH_REACH || !s.getNavigation().isInProgress()
+				&& TreeGeometry.horizontal(s.position(), t.axis(s.getY())) <= TreeMotion.ATTACH_REACH + 0.6;
+		if (!near) {
 			if (!s.getNavigation().isInProgress() && Math.floorMod(now + s.getId(), 20L) == 0) {
 				walkTo(t, fleeing);
 			}
@@ -465,8 +497,15 @@ public final class SquirrelMind {
 				return;
 			}
 		}
+		ATTACH_FAILS.increment();
+		refused = t;
+		refusedUntil = now + REFUSED_TICKS;
 		target = null;
 		goal = Goal.IDLE;
+	}
+
+	private boolean refused(Trunk t, long now) {
+		return now < refusedUntil && t.equals(refused);
 	}
 
 	/** The height of the feet in the crown of a trunk: 1.5-3 blocks below its top, at least 3 above its base. */
