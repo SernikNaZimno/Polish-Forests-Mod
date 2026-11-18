@@ -42,8 +42,10 @@ import pl.polishforests.worldgen.habitat.HabitatBiome;
  * {@value #AREA_RADIUS} blocks (the real density near breeding waters, not multiplied: frogs are common), at most
  * {@value #MAX_NEAR} near a player; frogs within {@value #COUNT_RADIUS} blocks (any variant) count. A group of 1-3 appears
  * {@value #SPAWN_MIN}-{@value #SPAWN_MAX} blocks away. These frogs carry the entity tag {@value #TAG}: they are outside
- * vanilla's mob counts ({@code MobPersistenceMixin}, KFA-4) and this spawner removes them beyond {@value #DESPAWN} blocks
- * from every player, so their number does not grow with exploration. Off with {@code polishforests:forest_fauna} or
+ * vanilla's mob counts ({@code MobPersistenceMixin}, KFA-4) and this spawner removes the loaded ones beyond
+ * {@value #DESPAWN} blocks from every player of the level (spectators included; with no player in the level nothing is
+ * removed), so their number near a player stays bounded. Frogs saved with chunks the player left before the next check
+ * stay in the save (a few per wet area, DP-185). Off with {@code polishforests:forest_fauna} or
  * {@code spawn_mobs} like the other animals of the mod.
  */
 public final class FrogSpawner {
@@ -134,13 +136,20 @@ public final class FrogSpawner {
 		if (Math.floorMod(level.getGameTime() + 131, INTERVAL) != 0 || !FaunaSpawner.applies(level)) {
 			return;
 		}
+		List<ServerPlayer> all = level.players();
+		if (all.isEmpty()) {
+			// Nobody in the level (chunks kept loaded by a ticket): nothing to measure against, so nothing is removed.
+			return;
+		}
+		// Review round 1: the distance counts every player, spectators included (only spawning leaves them out), so a
+		// spectator alone in an alder carr does not see its frogs vanish.
+		removeFar(level, all);
 		List<ServerPlayer> players = new ArrayList<>();
-		for (ServerPlayer p : level.players()) {
+		for (ServerPlayer p : all) {
 			if (!p.isSpectator()) {
 				players.add(p);
 			}
 		}
-		removeFar(level, players);
 		if (players.isEmpty() || !FaunaRules.spawning(level) || !active(Seasons.provider().subSeason(level))) {
 			return;
 		}
@@ -278,20 +287,36 @@ public final class FrogSpawner {
 		return false;
 	}
 
-	/** Removes the frogs of this spawner that are farther than {@value #DESPAWN} blocks from every player (not named ones). */
+	/**
+	 * Removes the frogs of this spawner that are farther than {@value #DESPAWN} blocks from every player of the level,
+	 * spectators included (not named or leashed ones).
+	 */
 	private static void removeFar(ServerLevel level, List<ServerPlayer> players) {
+		List<Vec3> at = new ArrayList<>(players.size());
+		for (ServerPlayer p : players) {
+			at.add(p.position());
+		}
 		for (Frog f : level.getEntities(EntityTypes.FROG, f -> f.entityTags().contains(TAG) && !f.hasCustomName() && !f.isLeashed())) {
-			boolean near = false;
-			for (ServerPlayer p : players) {
-				if (p.distanceToSqr(f) <= (double) DESPAWN * DESPAWN) {
-					near = true;
-					break;
-				}
-			}
-			if (!near) {
+			if (farFromAll(at, f.position())) {
 				f.discard();
 				REMOVED.increment();
 			}
 		}
+	}
+
+	/**
+	 * Whether a frog at {@code frog} is to be removed: there is at least one player and every one is farther than
+	 * {@value #DESPAWN} blocks (with no player nothing is removed).
+	 */
+	public static boolean farFromAll(List<Vec3> players, Vec3 frog) {
+		if (players.isEmpty()) {
+			return false;
+		}
+		for (Vec3 p : players) {
+			if (p.distanceToSqr(frog) <= (double) DESPAWN * DESPAWN) {
+				return false;
+			}
+		}
+		return true;
 	}
 }

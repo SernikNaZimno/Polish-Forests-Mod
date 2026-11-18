@@ -1517,7 +1517,7 @@ Krok: `docs/04-pionowy-wycinek.md` §3 „FA3”, „Projekt FA3” (etap 1, FA3
 
 ### G.66 Drobne wybory kroku FA4 (domyślne, do potwierdzenia; 2026-11-17)
 
-Krok: `docs/04-pionowy-wycinek.md` §3 „FA4”, „Projekt FA4” (etap 1, FA4-a … FA4-n, tabele tam) i „Stan po FA4” (etap 2, FA4-o … FA4-t). Krok realizuje pejzaż dźwiękowy z PW-16 (b), skrzek sójki jako źródło `ForestAlarm` i żabę trawną z planu FA (V16) według G.62.
+Krok: `docs/04-pionowy-wycinek.md` §3 „FA4”, „Projekt FA4” (etap 1, FA4-a … FA4-n, tabele tam) i „Stan po FA4” (etap 2, FA4-o … FA4-t; runda 1 poprawek FA4-u). Krok realizuje pejzaż dźwiękowy z PW-16 (b), skrzek sójki jako źródło `ForestAlarm` i żabę trawną z planu FA (V16) według G.62.
 
 | # | Wybór | Wartość i powód |
 |---|---|---|
@@ -1530,3 +1530,4 @@ Krok: `docs/04-pionowy-wycinek.md` §3 „FA4”, „Projekt FA4” (etap 1, FA4
 | FA4-r | Łańcuch sójki w gametescie | Sprint na najbliższej suchej kolumnie lasu moda (≤ 48 bloków od miejsca); miejsce z `find biome` w świecie „Default + Polish Forests” było brzegiem poza lasem |
 | FA4-s | Pejzaż przy wielu graczach | Głos pejzażu idzie pakietem dźwięku tylko do słuchacza (każdy gracz ma własny harmonogram; przez `Level.playSound` gracze obok siebie słyszeliby zdarzenia wszystkich). Skrzek sójki słyszą wszyscy w zasięgu |
 | FA4-t | Próba ostrzeżenia lochy | `fall_damage false` na czas próby: utrata zdrowia 20,0 → 15,9 w szybkim spisie FA4 była upadkiem z gałęzi po kroku teleportu, nie atakiem lochy. Rytm saren i alarm w szybkim spisie: rozrzut prób FA2, w powtórce (`-Psites=behaviour`, obie skale N) PASS |
+| FA4-u | Usuwanie dalekich żab (runda 1 poprawek) | Odległość liczy się od wszystkich graczy poziomu, także obserwatorów (spawn nadal ich pomija); gdy w poziomie nie ma żadnego gracza (chunki trzymane biletem), spawner niczego nie usuwa. Wcześniej jedyny gracz w trybie obserwatora tracił wszystkie żaby spawnera w ciągu 400 ticków |

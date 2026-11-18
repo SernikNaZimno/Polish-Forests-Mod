@@ -12,7 +12,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
+import net.minecraft.world.phys.Vec3;
 import org.junit.jupiter.api.Test;
 import pl.polishforests.entity.spawn.FrogSpawner;
 import pl.polishforests.season.SubSeason;
@@ -79,5 +81,17 @@ class CommonFrogTest {
 		assertTrue(FrogSpawner.active(SubSeason.MID_AUTUMN));
 		assertFalse(FrogSpawner.active(SubSeason.LATE_AUTUMN));
 		assertFalse(FrogSpawner.active(SubSeason.MID_WINTER));
+	}
+
+	@Test
+	void farFrogsGoOnlyWhenSomePlayerIsThere() {
+		Vec3 frog = new Vec3(0, 64, 0);
+		Vec3 near = new Vec3(FrogSpawner.DESPAWN - 1, 64, 0);
+		Vec3 far = new Vec3(FrogSpawner.DESPAWN + 1, 64, 0);
+		// Review round 1: no player (or the only one a spectator, who now counts) never wipes the frogs.
+		assertFalse(FrogSpawner.farFromAll(List.of(), frog));
+		assertFalse(FrogSpawner.farFromAll(List.of(near), frog));
+		assertFalse(FrogSpawner.farFromAll(List.of(far, near), frog));
+		assertTrue(FrogSpawner.farFromAll(List.of(far), frog));
 	}
 }
