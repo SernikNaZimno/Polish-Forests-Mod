@@ -11,6 +11,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.level.WorldGenRegion;
+import net.minecraft.tags.TagKey;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.EntitySpawnReason;
@@ -18,6 +19,7 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.SpawnGroupData;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.ServerLevelAccessor;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
@@ -355,6 +357,15 @@ public final class FaunaSpawner {
 		return v.reason() == Reason.PLACED ? new Vec3(x + 0.5, v.feet(), z + 0.5) : null;
 	}
 
+	/**
+	 * Like {@link #placeUncounted} with a further ground tag of the species (step FA4: the common frog also on the mud of
+	 * puddles and alder carrs, vanilla's {@code #minecraft:frogs_spawnable_on}).
+	 */
+	public static @Nullable Vec3 placeUncounted(ServerLevelAccessor level, EntityType<?> type, int x, int z, TagKey<Block> alsoOn) {
+		Verdict v = check(level, type, x, z, alsoOn);
+		return v.reason() == Reason.PLACED ? new Vec3(x + 0.5, v.feet(), z + 0.5) : null;
+	}
+
 	/** The verdict on a column: the reason ({@link Reason#PLACED} when valid), the feet height and the ground block. */
 	private record Verdict(Reason reason, double feet, @Nullable BlockState ground) {
 		static Verdict of(Reason reason, @Nullable BlockState ground) {
@@ -372,6 +383,14 @@ public final class FaunaSpawner {
 	}
 
 	private static Verdict check(ServerLevelAccessor level, EntityType<?> type, int x, int z) {
+		return check(level, type, x, z, null);
+	}
+
+	private static boolean groundOk(BlockState ground, @Nullable TagKey<Block> alsoOn) {
+		return ground.is(FaunaRules.SPAWNABLE_ON) || alsoOn != null && ground.is(alsoOn);
+	}
+
+	private static Verdict check(ServerLevelAccessor level, EntityType<?> type, int x, int z, @Nullable TagKey<Block> alsoOn) {
 		if (!level.hasChunk(x >> 4, z >> 4)) {
 			return Verdict.of(Reason.NO_CHUNK, null);
 		}
@@ -381,12 +400,12 @@ public final class FaunaSpawner {
 		BlockState ground = level.getBlockState(groundPos);
 		// A thin block with collision (a snow layer, a litter or moss layer of the mod) is the top of the heightmap: the
 		// animal stands on it, and the block under it is the ground.
-		if (!ground.is(FaunaRules.SPAWNABLE_ON) && thinTop(level, groundPos, ground)) {
+		if (!groundOk(ground, alsoOn) && thinTop(level, groundPos, ground)) {
 			pos = groundPos;
 			groundPos = pos.below();
 			ground = level.getBlockState(groundPos);
 		}
-		if (!ground.is(FaunaRules.SPAWNABLE_ON)) {
+		if (!groundOk(ground, alsoOn)) {
 			return Verdict.of(level.getFluidState(groundPos).isEmpty() ? Reason.GROUND : Reason.WATER, ground);
 		}
 		if (!level.getFluidState(groundPos).isEmpty() || !level.getFluidState(pos).isEmpty()) {

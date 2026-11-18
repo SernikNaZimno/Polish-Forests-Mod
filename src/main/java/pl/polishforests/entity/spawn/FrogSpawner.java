@@ -9,8 +9,8 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.TagKey;
-import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityTypes;
@@ -64,6 +64,8 @@ public final class FrogSpawner {
 
 	public static final LongAdder SPAWNED = new LongAdder();
 	public static final LongAdder REMOVED = new LongAdder();
+	/** Draws whose column took no frog ({@code FaunaSpawner.placeUncounted}: ground, water, room). */
+	public static final LongAdder PLACE_FAILED = new LongAdder();
 
 	private FrogSpawner() {
 	}
@@ -104,8 +106,12 @@ public final class FrogSpawner {
 		return w > 0 && !water(level, x, z) && nearWater(level, x, z) ? w : 0;
 	}
 
+	/**
+	 * Water at the surface of a column: the top of {@code MOTION_BLOCKING_NO_LEAVES} (stage 2: {@code MOTION_BLOCKING} stops
+	 * at the leaves, so a puddle under a canopy was not seen).
+	 */
 	private static boolean water(LevelReader level, int x, int z) {
-		int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING, x, z) - 1;
+		int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z) - 1;
 		FluidState f = level.getFluidState(new BlockPos(x, y, z));
 		return !f.isEmpty();
 	}
@@ -144,28 +150,54 @@ public final class FrogSpawner {
 			if (loaded >= MAX_NEAR * players.size()) {
 				return;
 			}
-			double target = Math.min(MAX_NEAR, DENSITY_PER_HA / 10000.0 * wetArea(level, player.getBlockX(), player.getBlockZ()));
+			List<WetColumn> wet = wetColumns(level, player.getBlockX(), player.getBlockZ());
+			double target = Math.min(MAX_NEAR, DENSITY_PER_HA / 10000.0 * area(wet));
 			int want = FaunaSpawner.stochasticRound(target, random) - frogsNear(level, player.position());
 			if (want <= 0) {
 				continue;
 			}
-			loaded += spawnNear(level, player, players, Math.min(want, 1 + random.nextInt(3)), random);
+			loaded += spawnNear(level, player, players, wet, Math.min(want, 1 + random.nextInt(3)), random);
 		}
 	}
 
-	/** The weighted wet forest area around a column (blocks). */
-	public static double wetArea(ServerLevel level, int cx, int cz) {
-		double sum = 0;
+	/** A column of the sample lattice with its weight above 0. */
+	public record WetColumn(int x, int z, float weight) {
+	}
+
+	/**
+	 * The columns of weight above 0 on a lattice of step {@value #AREA_STEP} within {@value #AREA_RADIUS} blocks of a column
+	 * (loaded chunks only): the wet forest area and, in stage 2, the places a group may appear (a random column 16-48
+	 * blocks away rarely hit the narrow belt by the water, so the spawner missed its target).
+	 */
+	public static List<WetColumn> wetColumns(LevelReader level, int cx, int cz) {
+		List<WetColumn> out = new ArrayList<>();
 		for (int dx = -AREA_RADIUS; dx <= AREA_RADIUS; dx += AREA_STEP) {
 			for (int dz = -AREA_RADIUS; dz <= AREA_RADIUS; dz += AREA_STEP) {
 				int x = cx + dx;
 				int z = cz + dz;
 				if (dx * dx + dz * dz <= AREA_RADIUS * AREA_RADIUS && level.hasChunk(x >> 4, z >> 4)) {
-					sum += weight(level, x, z);
+					float w = weight(level, x, z);
+					if (w > 0) {
+						out.add(new WetColumn(x, z, w));
+					}
 				}
 			}
 		}
+		return out;
+	}
+
+	/** The weighted wet forest area of the lattice columns (square blocks). */
+	public static double area(List<WetColumn> wet) {
+		double sum = 0;
+		for (WetColumn c : wet) {
+			sum += c.weight();
+		}
 		return sum * AREA_STEP * AREA_STEP;
+	}
+
+	/** The weighted wet forest area around a column (square blocks). */
+	public static double wetArea(LevelReader level, int cx, int cz) {
+		return area(wetColumns(level, cx, cz));
 	}
 
 	/** Frogs of any variant within {@value #COUNT_RADIUS} blocks. */
@@ -175,21 +207,43 @@ public final class FrogSpawner {
 				f -> f.distanceToSqr(at.x, f.getY(), at.z) <= r * r).size();
 	}
 
-	private static int spawnNear(ServerLevel level, ServerPlayer player, List<ServerPlayer> players, int size, RandomSource random) {
-		for (int i = 0; i < TRIES; i++) {
-			double angle = random.nextDouble() * Math.PI * 2;
-			double d = SPAWN_MIN + random.nextDouble() * (SPAWN_MAX - SPAWN_MIN);
-			int x = Mth.floor(player.getX() + Math.cos(angle) * d);
-			int z = Mth.floor(player.getZ() + Math.sin(angle) * d);
-			if (!level.isPositionEntityTicking(new BlockPos(x, player.getBlockY(), z)) || nearAny(players, x, z)
-					|| random.nextFloat() >= weight(level, x, z)) {
+	/**
+	 * A group at a wet lattice column {@value #SPAWN_MIN}-{@value #SPAWN_MAX} blocks from the player, drawn by weight, at
+	 * most {@value #TRIES} draws.
+	 */
+	private static int spawnNear(ServerLevel level, ServerPlayer player, List<ServerPlayer> players, List<WetColumn> wet, int size,
+			RandomSource random) {
+		List<WetColumn> places = new ArrayList<>();
+		double total = 0;
+		for (WetColumn c : wet) {
+			double dx = player.getX() - c.x() - 0.5;
+			double dz = player.getZ() - c.z() - 0.5;
+			double d2 = dx * dx + dz * dz;
+			if (d2 <= (double) SPAWN_MAX * SPAWN_MAX && !nearAny(players, c.x(), c.z())) {
+				places.add(c);
+				total += c.weight();
+			}
+		}
+		for (int i = 0; i < TRIES && total > 0; i++) {
+			double pick = random.nextDouble() * total;
+			WetColumn c = places.getLast();
+			for (WetColumn q : places) {
+				pick -= q.weight();
+				if (pick < 0) {
+					c = q;
+					break;
+				}
+			}
+			int x = c.x();
+			int z = c.z();
+			if (!level.isPositionEntityTicking(new BlockPos(x, player.getBlockY(), z))) {
 				continue;
 			}
 			int n = 0;
 			for (int k = 0; k < size; k++) {
 				int fx = k == 0 ? x : x + random.nextInt(5) - 2;
 				int fz = k == 0 ? z : z + random.nextInt(5) - 2;
-				Vec3 at = FaunaSpawner.placeUncounted(level, EntityTypes.FROG, fx, fz);
+				Vec3 at = FaunaSpawner.placeUncounted(level, EntityTypes.FROG, fx, fz, BlockTags.FROGS_SPAWNABLE_ON);
 				if (at == null) {
 					continue;
 				}
@@ -202,6 +256,10 @@ public final class FrogSpawner {
 				frog.addTag(TAG);
 				level.addFreshEntityWithPassengers(frog);
 				n++;
+			}
+			if (n == 0) {
+				PLACE_FAILED.increment();
+				continue;
 			}
 			SPAWNED.add(n);
 			return n;

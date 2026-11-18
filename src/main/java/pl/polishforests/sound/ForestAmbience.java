@@ -8,6 +8,8 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.gamerule.v1.GameRuleBuilder;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.protocol.game.ClientboundSoundPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
@@ -34,8 +36,10 @@ import pl.polishforests.worldgen.habitat.HabitatBiome;
  * The sound of the forest (step FA4, decision PW-16, docs/04-pionowy-wycinek.md "Projekt FA4"): a server event for each
  * player every 10-40 s ({@link AmbienceRules#interval}), from a random tall trunk ({@value #MIN_TRUNK} or more logs)
  * {@value #MIN_DISTANCE}-{@value #MAX_DISTANCE} blocks from the player, in a forest habitat of the mod, with a voice chosen
- * by the forest, the sub-season and the time of day ({@link AmbienceRules#choose}), heard by every player in range
- * ({@code Level.playSound}, category ambient, so the "Ambient/Environment" slider sets its loudness). It works in the world
+ * by the forest, the sub-season and the time of day ({@link AmbienceRules#choose}), heard by that player only (stage 2: a
+ * sound packet to the listener, so players together do not hear each other's schedules; category ambient, so the
+ * "Ambient/Environment" slider sets its loudness). The cost is a few heightmap reads per event ({@link #tallTrunk}: at most
+ * {@value #TREE_TRIES} patches of 5 x 5 columns), nothing every tick. It works in the world
  * types of the mod ("Poland" in both scales, "Default + Polish Forests"), with or without Serene Seasons (the season comes
  * from {@link Seasons#provider()}). Game rule {@code polishforests:forest_ambience} (default true) turns it off.
  *
@@ -211,11 +215,16 @@ public final class ForestAmbience {
 		}
 	}
 
+	/**
+	 * Plays a voice to its listener only (stage 2): each player has a schedule of their own, so a voice sent to everyone in
+	 * range would make players standing together hear the events of all of them (n players, n times the events).
+	 */
 	private static void play(ServerLevel level, ServerPlayer p, Vec3 at, ForestVoice voice, RandomSource random) {
 		double d = at.distanceTo(p.getEyePosition());
 		float volume = (float) Math.max(voice.range(), d + 8) / 16.0F;
 		float pitch = 0.94F + random.nextFloat() * 0.12F;
-		level.playSound(null, at.x, at.y, at.z, voice.sound(), SoundSource.AMBIENT, volume, pitch);
+		p.connection.send(new ClientboundSoundPacket(BuiltInRegistries.SOUND_EVENT.wrapAsHolder(voice.sound()), SoundSource.AMBIENT, at.x, at.y,
+				at.z, volume, pitch, random.nextLong()));
 	}
 
 	/**

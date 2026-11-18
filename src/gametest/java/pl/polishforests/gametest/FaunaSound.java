@@ -23,6 +23,7 @@ import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.animal.frog.Frog;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.presets.WorldPreset;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -60,10 +61,11 @@ import pl.polishforests.worldgen.vanilla.VanillaForestsBiomeSource;
  * trunk the jay can sit on) and far ({@value #FAR} blocks), then {@link ForestAmbience#screech}: the near animals must hear
  * the {@code JAY} alarm (alert or fleeing), the far ones not. Then the natural chain: the player visible and sprinting
  * through the forest for {@value #RUN_TICKS} ticks must startle at least one jay.
- * <li><b>Frogs</b>: a frog made in an alder carr (spawn egg reason, the variant drawn by vanilla's selection) must be the
- * common frog; then the frogs at an alder carr and an oak-hornbeam forest after {@value #FROG_TICKS} ticks
- * ({@code -PfrogTicks}), by variant and biome: at least one common frog in each, and no vanilla variant in a biome of
- * {@code #polishforests:spawns_common_frog}.
+ * <li><b>Frogs</b>: at an alder carr and an oak-hornbeam forest (a column of the biome by water, see {@link #frogs}), a
+ * frog made there (spawn egg reason, the variant drawn by vanilla's selection) must be the common frog; then the frogs
+ * after {@value #FROG_TICKS} ticks ({@code -PfrogTicks}), by variant and biome: at least one common frog in each of the two
+ * biomes, and no
+ * vanilla variant in a biome of {@code #polishforests:spawns_common_frog}.
  * </ol>
  */
 final class FaunaSound {
@@ -77,6 +79,12 @@ final class FaunaSound {
 	static final int RUN_TICKS = 400;
 	static final int FROG_TICKS = 2000;
 	static final int FROG_RADIUS = 96;
+	/** Reach of the search for a forest column for the jay chain (blocks). */
+	static final int FOREST_SEARCH = 48;
+	/** Reach of the search for a wet column of the biome around a place (blocks; within the loaded chunks). */
+	static final int FROG_SEARCH = 64;
+	/** Places tried at most for one biome. */
+	static final int FROG_CANDIDATES = 4;
 	/** Times of day of the samples: dawn 6:30, noon, dusk 18:30, midnight (as the activity trial of FA2). */
 	private static final int[] TIMES = {500, 6000, 12500, 18000};
 	private static final ResourceKey<WorldPreset> VANILLA = ResourceKey.create(Registries.WORLD_PRESET, PolishForests.id("default_polish_forests"));
@@ -156,7 +164,7 @@ final class FaunaSound {
 		SeasonDates.checkNewWorldStart(sp, "sound " + label);
 		ambience(sp, label, x, z, full);
 		jay(sp, label, x, z);
-		frogs(sp, label);
+		frogs(sp, label, label.startsWith("realistic") ? Boolean.TRUE : label.startsWith("gameplay") ? Boolean.FALSE : null);
 	}
 
 	/**
@@ -300,7 +308,18 @@ final class FaunaSound {
 		}
 		sp.getServer().runOnServer(s -> animals.forEach(Entity::discard));
 
-		// The natural chain: a visible player sprinting through the forest startles a jay.
+		// The natural chain: a visible player sprinting through the forest startles a jay. Stage 2: on a column of a forest of
+		// the mod (the place of "Default + Polish Forests" from find biome can be an edge column of another biome, where the
+		// jay rightly stays quiet: the first run had 0 screeches there).
+		int[] forest = sp.getServer().computeOnServer(s -> forestColumn(s.overworld(), x, z));
+		if (forest == null) {
+			fail("%s jay chain: no column of a forest of the mod within %d blocks", label, FOREST_SEARCH);
+			return;
+		}
+		if (forest[0] != x || forest[1] != z) {
+			FaunaCensus.teleport(sp, forest[0], forest[1]);
+			context.waitTicks(20);
+		}
 		long screeches0 = ForestAmbience.JAY_SCREECHES.sum();
 		sp.getServer().runCommand("effect clear @a minecraft:invisibility");
 		sp.getServer().runCommand("gamemode survival @a");
@@ -319,6 +338,23 @@ final class FaunaSound {
 		}
 	}
 
+	/** The nearest dry column to (x, z) with a forest of the mod at the surface, on a lattice of step 4 within {@value #FOREST_SEARCH}. */
+	private static int @Nullable [] forestColumn(ServerLevel level, int x, int z) {
+		for (int r = 0; r <= FOREST_SEARCH; r += 4) {
+			for (int dx = -r; dx <= r; dx += 4) {
+				for (int dz = -r; dz <= r; dz += 4) {
+					if (Math.max(Math.abs(dx), Math.abs(dz)) == r && level.hasChunk((x + dx) >> 4, (z + dz) >> 4)
+							&& pl.polishforests.sound.AmbienceRules.kind(FaunaHabitat.surface(level, x + dx, z + dz)) != null
+							&& level.getFluidState(new BlockPos(x + dx, level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x + dx, z + dz) - 1,
+									z + dz)).isEmpty()) {
+						return new int[] {x + dx, z + dz};
+					}
+				}
+			}
+		}
+		return null;
+	}
+
 	private static <T extends PolishAnimal<?>> PolishAnimal<?> place(ServerLevel level, EntityType<T> type, int x, int z) {
 		Vec3 at = FaunaCensus.trialSpot(level, type, x, z);
 		T a = type.create(level, EntitySpawnReason.COMMAND);
@@ -329,34 +365,107 @@ final class FaunaSound {
 
 	// ------------------------------------------------------------------ frogs
 
-	private void frogs(TestSingleplayerContext sp, String label) {
+	/**
+	 * The frogs at an alder carr and an oak-hornbeam forest. Stage 2: the nearest lattice column of the biome ({@code find
+	 * biome}) may have no water within reach of the spawner (the first run found 0 frogs at both), so the places tried are
+	 * the plots of the biome ({@code slice_plots.txt}, Poland worlds) and the found column, and around each the column of
+	 * the biome with the largest wet area of that biome for the spawner ({@link FrogSpawner#wetColumns}) within
+	 * {@value #FROG_SEARCH} blocks; the first place with a wet area is used. A common frog must be found in the biome itself.
+	 */
+	private void frogs(TestSingleplayerContext sp, String label, @Nullable Boolean realistic) {
 		for (HabitatBiome b : List.of(HabitatBiome.ALDER_CARR, HabitatBiome.OAK_HORNBEAM_FOREST)) {
-			double[] at = sp.getServer().computeOnServer(s -> FaunaSites.locate(s.overworld(), b, 0, 0));
-			if (at == null) {
+			List<int[]> candidates = new ArrayList<>();
+			if (realistic != null) {
+				for (SlicePlots.Plot p : SlicePlots.of(realistic)) {
+					if (p.biome().equals(b.id())) {
+						candidates.add(new int[] {p.x(), p.z()});
+					}
+				}
+			}
+			double[] found = sp.getServer().computeOnServer(s -> FaunaSites.locate(s.overworld(), b, 0, 0));
+			if (found != null) {
+				candidates.add(new int[] {(int) Math.floor(found[0]), (int) Math.floor(found[1])});
+			}
+			if (candidates.isEmpty()) {
 				fail("%s frogs: no %s found", label, b.id());
 				continue;
 			}
-			int x = (int) Math.floor(at[0]);
-			int z = (int) Math.floor(at[1]);
+			int[] spot = null;
+			double spotArea = 0;
+			int tried = 0;
+			for (int[] c : candidates) {
+				if (tried++ >= FROG_CANDIDATES) {
+					break;
+				}
+				FaunaCensus.teleport(sp, c[0], c[1]);
+				context.waitTicks(60);
+				double[] best = sp.getServer().computeOnServer(s -> wettest(s.overworld(), b, c[0], c[1]));
+				line("%s frogs %s: place %d %d, wettest column of the biome within %d blocks %s", label, b.id(), c[0], c[1], FROG_SEARCH,
+						best == null ? "none" : String.format(Locale.ROOT, "%d %d (wet area %.0f)", (int) best[0], (int) best[1], best[2]));
+				if (best != null) {
+					spot = new int[] {(int) best[0], (int) best[1]};
+					spotArea = best[2];
+					break;
+				}
+			}
+			if (spot == null) {
+				fail("%s frogs: no column of %s with water within reach of the frog spawner near %d places", label, b.id(), tried);
+				continue;
+			}
+			int x = spot[0];
+			int z = spot[1];
 			FaunaCensus.teleport(sp, x, z);
 			context.waitTicks(60);
 			String made = sp.getServer().computeOnServer(s -> madeFrog(s.overworld(), x, z));
-			line("%s frogs %s at %d %d: a frog made here is %s", label, b.id(), x, z, made);
-			if (b == HabitatBiome.ALDER_CARR && !made.startsWith(FrogSpawner.COMMON_FROG.identifier().toString())) {
+			line("%s frogs %s at %d %d (wet area %.0f): a frog made here is %s", label, b.id(), x, z, spotArea, made);
+			if (!made.startsWith(FrogSpawner.COMMON_FROG.identifier().toString())) {
 				fail("%s frogs: a frog made in %s is %s, not the common frog", label, b.id(), made);
 			}
 			long spawned0 = FrogSpawner.SPAWNED.sum();
+			long failed0 = FrogSpawner.PLACE_FAILED.sum();
 			context.waitTicks(frogTicks);
 			FrogCount c = sp.getServer().computeOnServer(s -> count(s.overworld(), new Vec3(x + 0.5, 0, z + 0.5)));
 			line("%s frogs %s after %d ticks within %d blocks: by variant %s, by biome %s; vanilla variants in the tagged biomes %d; spawned by the"
-					+ " frog spawner %d", label, b.id(), frogTicks, FROG_RADIUS, c.byVariant, c.byBiome, c.vanillaInTag, FrogSpawner.SPAWNED.sum() - spawned0);
-			if (c.common < 1) {
-				fail("%s frogs: no common frog within %d blocks of %s after %d ticks", label, FROG_RADIUS, b.id(), frogTicks);
+					+ " frog spawner %d (draws without a frog %d)", label, b.id(), frogTicks, FROG_RADIUS, c.byVariant, c.byBiome, c.vanillaInTag,
+					FrogSpawner.SPAWNED.sum() - spawned0, FrogSpawner.PLACE_FAILED.sum() - failed0);
+			int inBiome = c.byBiome.getOrDefault(b.id() + " " + FrogSpawner.COMMON_FROG.identifier().getPath(), 0);
+			if (c.common < 1 || inBiome < 1) {
+				fail("%s frogs: %d common frogs within %d blocks of %s after %d ticks, %d of them in the biome", label, c.common, FROG_RADIUS,
+						b.id(), frogTicks, inBiome);
 			}
 			if (c.vanillaInTag > 0) {
 				fail("%s frogs: %d frogs of a vanilla variant in biomes of #%s", label, c.vanillaInTag, FrogSpawner.SPAWNS_COMMON_FROG.location());
 			}
 		}
+	}
+
+	/**
+	 * The column of the biome (at the surface) with the largest wet area of the frog spawner in that biome (weighted wet
+	 * columns of the biome within the spawner's area) on a lattice of step 8 within
+	 * {@value #FROG_SEARCH} blocks of (cx, cz), {x, z, area}, or null when no such column has a wet area.
+	 */
+	private static double @Nullable [] wettest(ServerLevel level, HabitatBiome biome, int cx, int cz) {
+		double[] best = null;
+		for (int dx = -FROG_SEARCH; dx <= FROG_SEARCH; dx += 8) {
+			for (int dz = -FROG_SEARCH; dz <= FROG_SEARCH; dz += 8) {
+				int x = cx + dx;
+				int z = cz + dz;
+				if (dx * dx + dz * dz > FROG_SEARCH * FROG_SEARCH || !level.hasChunk(x >> 4, z >> 4) || FaunaHabitat.surface(level, x, z) != biome) {
+					continue;
+				}
+				// The wet area of the biome itself (a place whose wet columns are mostly of a neighbor would census the neighbor).
+				double area = 0;
+				for (FrogSpawner.WetColumn c : FrogSpawner.wetColumns(level, x, z)) {
+					if (FaunaHabitat.surface(level, c.x(), c.z()) == biome) {
+						area += c.weight() * FrogSpawner.AREA_STEP * FrogSpawner.AREA_STEP;
+					}
+				}
+				if (area > 0 && (best == null || area > best[2])) {
+					best = new double[] {x, z, area};
+				}
+			}
+		}
+		return best;
 	}
 
 	/** The variant and biome of a frog made at a column the way a spawn egg makes it (vanilla's variant selection). */

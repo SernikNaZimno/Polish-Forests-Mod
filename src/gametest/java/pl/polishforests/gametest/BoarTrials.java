@@ -380,7 +380,9 @@ final class BoarTrials {
 			holds = sp.getServer().computeOnServer(s -> sow.holdsGround());
 		}
 		String state = sp.getServer().computeOnServer(s -> sow.warnState());
-		for (String c : new String[] {"gamemode survival @a", "effect clear @a minecraft:invisibility"}) {
+		// Step FA4: without fall damage, so the health shows only harm from the sow (the teleport steps follow the top of
+		// MOTION_BLOCKING_NO_LEAVES, which may be a branch: the FA4 census saw 20.0 -> 15.9 from a drop of about 7 blocks).
+		for (String c : new String[] {"gamemode survival @a", "effect clear @a minecraft:invisibility", "gamerule fall_damage false"}) {
 			sp.getServer().runCommand(c);
 		}
 		float health0 = sp.getServer().computeOnServer(s -> s.overworld().players().getFirst().getHealth());
@@ -414,6 +416,7 @@ final class BoarTrials {
 			}
 		}
 		float health1 = sp.getServer().computeOnServer(s -> s.overworld().players().getFirst().getHealth());
+		sp.getServer().runCommand("gamerule fall_damage true");
 		long warnings = WarnCharge.WARNINGS.sum() - warnings0;
 		census.line("%s wild boar warning: sow holding her ground %s (%s), player from %.1f blocks to %.0f; warnings %d, closest %.2f blocks;"
 				+ " player health %.1f -> %.1f", label, holds, state, startDist, APPROACH_TO, warnings, minDist,
