@@ -59,6 +59,27 @@ class AnthillPlanTest {
 		};
 	}
 
+	/** A pine forest whose gaps are only at the centers of the given mound corners (packed x, z), deep enough there. */
+	private static AnthillPlan.Site gapsAt(java.util.Set<Long> corners, int w) {
+		return new AnthillPlan.Site() {
+			@Override
+			public int code(int x, int z) {
+				return PINE;
+			}
+
+			@Override
+			public double gapDepth(int x, int z) {
+				long key = (long) (x - w / 2) << 32 | (z - w / 2) & 0xFFFF_FFFFL;
+				return corners.contains(key) ? 5 : 0;
+			}
+
+			@Override
+			public boolean lightStand(int x, int z) {
+				return false;
+			}
+		};
+	}
+
 	/** A pine forest for x at least 0, a meadow west of it, no gaps: the forest edge runs along x = 0. */
 	private static final AnthillPlan.Site EDGE = new AnthillPlan.Site() {
 		@Override
@@ -152,7 +173,7 @@ class AnthillPlanTest {
 				// The home chunk lists it.
 				assertTrue(AnthillPlan.candidatesInChunk(SEED, a.chunkX(), a.chunkZ()).stream().anyMatch(b -> b.x() == a.x() && b.z() == a.z()),
 						"the home chunk lists " + a.x() + ", " + a.z());
-				for (int t = 0; t < AnthillPlan.TRIES; t++) {
+				for (int t = 0; t < AnthillPlan.WRITE_TRIES; t++) {
 					AnthillPlan.Anthill p = AnthillPlan.tried(SEED, i, j, a, t);
 					assertEquals(a.chunkX(), p.x() >> 4, "inside the home chunk in x");
 					assertEquals(a.chunkX(), (p.x() + w - 1) >> 4, "inside the home chunk in x");
@@ -194,6 +215,7 @@ class AnthillPlanTest {
 		AnthillPlan.Site mixedLight = uniform(code(HabitatBiome.MIXED_FOREST), 0, true);
 		AnthillPlan.Site oakLight = uniform(code(HabitatBiome.OAK_HORNBEAM_FOREST), 0, true);
 		int sited = 0;
+		int lateOnly = 0;
 		int edges = 0;
 		for (int i = -30; i < 30; i++) {
 			for (int j = -30; j < 30; j++) {
@@ -216,7 +238,23 @@ class AnthillPlanTest {
 				assertNull(AnthillPlan.sited(SEED, i, j, pineClosed, 1));
 				assertEquals(AnthillPlan.Reason.NOT_EDGE_OR_GAP, AnthillPlan.whyNot(SEED, i, j, a, pineClosed, 1));
 				assertEquals(AnthillPlan.Reason.HABITAT, AnthillPlan.whyNot(SEED, i, j, a, oakGaps, 1));
-				assertEquals(AnthillPlan.TRIES, AnthillPlan.sitedTries(SEED, i, j, a, pineGaps, 1).size());
+				assertEquals(AnthillPlan.WRITE_TRIES, AnthillPlan.sitedTries(SEED, i, j, a, pineGaps, 1).size());
+				assertTrue(AnthillPlan.sitedTries(SEED, i, j, a, pineClosed, 1).isEmpty());
+				// Only the later write tries sited (a gap away from the plan's tries): the plan has no mound, the feature none.
+				java.util.Set<Long> late = new java.util.HashSet<>();
+				for (int t = AnthillPlan.TRIES; t < AnthillPlan.WRITE_TRIES; t++) {
+					AnthillPlan.Anthill p = AnthillPlan.tried(SEED, i, j, a, t);
+					late.add((long) p.x() << 32 | p.z() & 0xFFFF_FFFFL);
+				}
+				for (int t = 0; t < AnthillPlan.TRIES; t++) {
+					AnthillPlan.Anthill p = AnthillPlan.tried(SEED, i, j, a, t);
+					late.remove((long) p.x() << 32 | p.z() & 0xFFFF_FFFFL);
+				}
+				AnthillPlan.Site lateGaps = gapsAt(late, a.width());
+				if (!late.isEmpty() && AnthillPlan.sited(SEED, i, j, lateGaps, 1) == null) {
+					assertTrue(AnthillPlan.sitedTries(SEED, i, j, a, lateGaps, 1).isEmpty(), "no mound outside the plan");
+					lateOnly++;
+				}
 				sited++;
 				// Along the edge at x = 0: the mounds within the reach of the meadow, not at the very edge.
 				AnthillPlan.Reason edge = AnthillPlan.siting(a, EDGE, 1);
@@ -235,6 +273,7 @@ class AnthillPlanTest {
 		}
 		assertTrue(sited > 100, "mounds: " + sited);
 		assertTrue(edges > 0, "mounds on the edge: " + edges);
+		assertTrue(lateOnly > 0, "candidates with only later write tries sited: " + lateOnly);
 		// The small scale halves the reach, down to its least value.
 		assertEquals(AnthillPlan.EDGE_REACH, AnthillPlan.edgeReach(1));
 		assertEquals(AnthillPlan.EDGE_REACH_MIN, AnthillPlan.edgeReach(0.5));

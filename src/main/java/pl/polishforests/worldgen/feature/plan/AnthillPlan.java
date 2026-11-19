@@ -64,6 +64,11 @@ public final class AnthillPlan {
 	public static final double LIGHT_STAND_CHANCE = 1 / 3.0;
 	/** The positions of a candidate tried in its home chunk, in order (the first sited one is the mound of the plan). */
 	public static final int TRIES = 4;
+	/**
+	 * The positions the feature may write a mound of the plan at, in order: the tries of the plan, then more in the same
+	 * home chunk for a mound that does not fit (wood, uneven ground; stage 2 of FA8: 4 tries wrote about 40% of the mounds).
+	 */
+	public static final int WRITE_TRIES = 12;
 	/** The least distance of a mound corner from the lower borders of its home chunk, blocks. */
 	public static final int WINDOW_MIN = 2;
 	/** The least distance of two mound centers, blocks (kept by the home chunks and {@link #WINDOW_MIN}). */
@@ -236,7 +241,7 @@ public final class AnthillPlan {
 		return (chunk << 4) + WINDOW_MIN + (int) (n.unit(i, j, salt) * (16 - w - WINDOW_MIN + 1));
 	}
 
-	/** The candidate a of cell (i, j) at its try t (0 … {@value #TRIES} − 1). */
+	/** The candidate a of cell (i, j) at its try t (0 … {@value #WRITE_TRIES} − 1). */
 	public static Anthill tried(long worldSeed, int i, int j, Anthill a, int t) {
 		if (t == 0) {
 			return a;
@@ -330,10 +335,17 @@ public final class AnthillPlan {
 		return false;
 	}
 
-	/** The sited tries of the spaced candidate a of cell (i, j), in the order of the tries (empty: none is sited). */
+	/**
+	 * The positions the feature may write the spaced candidate a of cell (i, j) at: when the plan has a mound there (a
+	 * sited try among the first {@value #TRIES}), every sited try of the {@value #WRITE_TRIES} in order (the first is the
+	 * mound of the plan); else none. The feature writes no mound the plan does not know.
+	 */
 	public static List<Anthill> sitedTries(long worldSeed, int i, int j, Anthill a, Site site, double k) {
-		List<Anthill> out = new ArrayList<>(TRIES);
-		for (int t = 0; t < TRIES; t++) {
+		List<Anthill> out = new ArrayList<>(WRITE_TRIES);
+		for (int t = 0; t < WRITE_TRIES; t++) {
+			if (t == TRIES && out.isEmpty()) {
+				break;
+			}
 			Anthill p = tried(worldSeed, i, j, a, t);
 			if (siting(p, site, k) == null) {
 				out.add(p);

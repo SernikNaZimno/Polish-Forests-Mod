@@ -38,7 +38,10 @@ import pl.polishforests.worldgen.tree.ForestStandMap;
  * forest (mounds only on edges and in gaps) are reported;</li>
  * <li><b>world</b>: the columns of the generated chunks around the census sites (the 5 × 5 chunks of the tree census) with
  * an anthill block: by forest of the column, and the faults, which must be 0: a mound on a trunk, a root flare or a log, a
- * mound on a water column or in water, a mound outside the forests of the ant.</li>
+ * mound on a water column or in water, a mound outside the forests of the ant;</li>
+ * <li><b>written</b> (stage 2 of FA8): every mound the feature wrote since {@link #record} (observer
+ * {@link AnthillFeature#PLACEMENTS}), with the same faults per column (the census chunks alone held none
+ * in both scales); a column whose mound a later tree of a neighbor chunk took is counted, not a fault.</li>
  * </ul>
  */
 final class AnthillCensus {
@@ -48,6 +51,20 @@ final class AnthillCensus {
 	static final double DENSITY_TOLERANCE = 0.35;
 
 	private AnthillCensus() {
+	}
+
+	/** The mounds the feature wrote since {@link #record}: the corner (ground + 1 of the lowest column) and the width. */
+	private static final List<int[]> WRITTEN = java.util.Collections.synchronizedList(new ArrayList<>());
+
+	/** Starts recording the written mounds (before the world is created; the list is cleared). */
+	static void record() {
+		WRITTEN.clear();
+		AnthillFeature.PLACEMENTS = (corner, a) -> WRITTEN.add(new int[] {corner.getX(), corner.getY(), corner.getZ(), a.width()});
+	}
+
+	/** Stops recording. */
+	static void stopRecording() {
+		AnthillFeature.PLACEMENTS = null;
 	}
 
 	/** The census; failures go to {@code failures}, the report is returned. */
@@ -176,15 +193,70 @@ final class AnthillCensus {
 				}
 			}
 		}
+		// Every mound written in this world (its chunk is generated; a saved chunk is loaded again).
+		List<int[]> written;
+		synchronized (WRITTEN) {
+			written = new ArrayList<>(WRITTEN);
+		}
+		long mounds = 0;
+		long writtenColumns = 0;
+		long taken = 0;
+		Map<HabitatBiome, long[]> writtenByForest = new EnumMap<>(HabitatBiome.class);
+		for (int[] m : written) {
+			mounds++;
+			ChunkAccess chunk = level.getChunk(m[0] >> 4, m[2] >> 4);
+			ChunkHabitats h = chunk.getAttached(ModFeatures.CHUNK_HABITATS);
+			for (int dx = 0; dx < m[3]; dx++) {
+				for (int dz = 0; dz < m[3]; dz++) {
+					int wx = m[0] + dx;
+					int wz = m[2] + dz;
+					int lowest = Integer.MIN_VALUE;
+					for (int y = m[1] + 2; y >= m[1] - 1; y--) {
+						if (level.getBlockState(new BlockPos(wx, y, wz)).getBlock() instanceof AnthillBlock) {
+							lowest = y;
+						}
+					}
+					if (lowest == Integer.MIN_VALUE) {
+						taken++;
+						continue;
+					}
+					writtenColumns++;
+					BlockState below = level.getBlockState(new BlockPos(wx, lowest - 1, wz));
+					// A chunk saved and loaded again has no habitats attached: the classifier's code (the plan's site).
+					int code = h != null ? h.code(wx & 15, wz & 15) : world.code(wx, wz);
+					boolean water = h != null && h.hasWater(ChunkHabitats.index(wx & 15, wz & 15))
+							|| !level.getFluidState(new BlockPos(wx, lowest, wz)).isEmpty() || below.getFluidState().isSource();
+					boolean wood = below.getBlock() instanceof TrunkBlock || below.getBlock() instanceof RootFlareBlock || below.is(BlockTags.LOGS);
+					onWood += wood ? 1 : 0;
+					onWater += water ? 1 : 0;
+					if (code == -1 || !AnthillPlan.antForest(code)) {
+						outside++;
+					} else {
+						writtenByForest.computeIfAbsent(Habitat.biome(code), b -> new long[1])[0]++;
+					}
+					if ((wood || water || code == -1 || !AnthillPlan.antForest(code)) && faults.size() < 10) {
+						faults.add(String.format(Locale.ROOT, "written (%d, %d, %d) on %s, %s", wx, lowest, wz, below,
+								code == -1 ? "no habitat" : Habitat.biome(code).id()));
+					}
+				}
+			}
+		}
+		if (mounds == 0) {
+			failures.add("anthills: the feature wrote no mound in this world");
+		}
 		if (onWood > 0 || onWater > 0 || outside > 0) {
 			failures.add(String.format(Locale.ROOT, "anthills: %d columns on wood, %d on water, %d outside the forests of the ant (0 each): %s",
 					onWood, onWater, outside, faults));
 		}
 		List<String> world2 = new ArrayList<>();
 		columns.forEach((b, c) -> world2.add(b.id() + " " + c[0]));
+		List<String> written2 = new ArrayList<>();
+		writtenByForest.forEach((b, c) -> written2.add(b.id() + " " + c[0]));
 		return String.format(Locale.ROOT, "anthills (step FA8): plan around %d sites (%.1f s): %.2f/ha in the pine forests (norm %.2f), "
-				+ "sited share %.2f (SITED_SHARE %.2f); %s; world around the sites: %d anthill columns (%s), on wood %d, on water %d, "
-				+ "outside the forests %d; %s", sites.size(), planSeconds, density, AnthillPlan.DENSITY, share, AnthillPlan.SITED_SHARE,
-				String.join("; ", parts), anthillColumns, String.join(", ", world2), onWood, onWater, outside, AnthillFeature.stats());
+				+ "sited share %.2f (SITED_SHARE %.2f); %s; world around the sites: %d anthill columns (%s); written mounds: "
+				+ "%d, %d columns (%s), %d columns taken by later trees; faults: on wood %d, on water %d, outside the "
+				+ "forests %d; %s", sites.size(), planSeconds, density, AnthillPlan.DENSITY, share, AnthillPlan.SITED_SHARE,
+				String.join("; ", parts), anthillColumns, String.join(", ", world2), mounds, writtenColumns,
+				String.join(", ", written2), taken, onWood, onWater, outside, AnthillFeature.stats());
 	}
 }

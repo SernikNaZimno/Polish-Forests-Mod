@@ -778,7 +778,7 @@ CP-D.1 zlecił faunę i dźwięk według planu (V14, V15, V16, potem V17), CP-D.
 
 - **Zakres:** (1) Łodzie i łodzie ze skrzynią dla każdego `WoodSet` (typy encji, przedmioty, receptury, en_us i pl_pl, migawka rejestru z typami encji): model warstwy łodzi wanilii po id, tekstura encji liczona w kliencie z tekstury łodzi wanilii po id jak deski P2 (tekstura poza atlasem bloków — sposób w projekcie), awaryjnie `tools/art`; test: łódź pływa, wsiadanie, skrzynia trzyma przedmioty, zapis i wczytanie. (2) Mrowiska rudnicy (O4): blok kopca z igliwia i gałązek (1–2 bloki wysokości, 2–3 szerokości; bloki z `tools/art`, cząstki mrówek po stronie klienta), ficzer `polishforests:anthill` w borach, borach mieszanych, lasach mieszanych i świerczynach na skrajach i w lukach (kody `Ecotone`, luki planu drzewostanu), z dala od pni i roślin planu; gęstość ok. 0,13 na ha [Ź] ×5 (G.62-g, odstępstwo jawne w karcie §6); pole rozmieszczenia z nową solą `feature.ground.anthills`; cel `find anthill`; w obu typach świata i skalach. (3) Testy: `RegistrySnapshotTest`, `checkDatagen`, `checkArt`, test planu mrowisk (determinizm, odstępy, tylko w siedliskach), gametest `slice -Psites=planks` (łodzie), `habitats` (spis mrowisk według lasu, 0 na pniach i w wodzie), `determinism` z obszarem zmiany = kolumny mrowisk (tryb jak `-PdeterminismStepHerbs` z C3).
 - **Ukończony, gdy:** łodzie każdego drewna moda pływają i zapisują się; mrowiska stoją w borach na skrajach i w lukach z gęstością z G.62-g (spis), poza ich kolumnami 0 różnic dekoracji, teren i złote pliki bez zmian; KFA-1 … KFA-10. Lista „Do sprawdzenia w grze”: łódź z desek buku albo limby na jeziorze (`find biome lake` albo najbliższa woda); `/polishforests find anthill` — kopiec mrowiska na skraju boru, mrówki na powierzchni.
-- **Stan (2026-11-19): etap 1** („Projekt FA8”): 30 typów encji łodzi i 30 przedmiotów, tekstury łodzi liczone w kliencie, blok i ficzer mrowiska (krok 10, nowa sól), `find anthill`, testy jednostkowe i kod gametestów; przebiegi w grze, kalibracja `SITED_SHARE` i „Stan po FA8” w etapie 2.
+- **Stan (2026-11-19): zrobione z odstępstwem** („Projekt FA8”, „Stan po FA8”, G.70): łodzie i łodzie ze skrzynią 15 drewien moda (30 z 30 pływa, wsiadanie, 15 z 15 skrzyń po ponownym wczytaniu); mrowiska rudnicy w borach na skrajach, w lukach i — odstępstwo FA8-i′, do potwierdzenia — w jasnych drzewostanach dojrzałych (same skraje i luki to 1–2% lasów mrówki), plan 0,58 / 0,63 kopca na ha borów (norma 0,65 ± 35%), zapisane kopce 0 na drewnie i w wodzie, `determinism` 0 różnic poza kolumnami mrowisk, teren identyczny.
 - **Ryzyko:** średnie (tekstury encji poza atlasem w kliencie, nowa warstwa generacji z nową solą).
 
 ### FA9. Integracja i przebieg zbiorczy testów (V17, część 1; A, 1–1,5 dnia)
@@ -8043,3 +8043,82 @@ Krok FA8 (§3 „Kroki FA”, O3 część 2 i O4, CP-D.2, G.62-c, G.62-g) daje k
 4. Łopata zbiera mrowisko warstwami; stawiane warstwy rosną jak śnieg.
 5. F3 + T: tekstury łodzi i ich przedmiotów zostają.
 6. Paczka `.mrpack` z etapu 2 importuje się i startuje.
+
+## Stan po FA8 (2026-11-19, etap 2: przebiegi w grze, poprawka siedliska mrowisk, bez recenzji wizualnej)
+
+Etap 2 kroku FA8 (O3 część 2, O4, CP-D.2, G.62-c, G.62-g). Baza kroku: `eff283e`; etap 1: `bc28966`; etap 2: WIP `7cb6d6e` i commit końcowy. Przebiegi według `python tools/dev/test_plan.py eff283e` (obszary `unit`, `generation`, `norms`, `vanilla_world`, `blocks`, `datagen`, `ui`, `mixins`, `render`, `art`, `fauna`, `gametest_code`) i `--end` (na koniec jeden pełny `tools/dev/run-tests test`). Zgodnie z G.36 bez oceny wyglądu: liczby i asercje; zrzut `boats_table` jest tylko dowodem przebiegu. Polecenie „Najpierw CP-D”: CP-D jest zamknięty (G.57, 2026-11-15), więc etap 2 idzie dalej jak etap 1.
+
+**Pierwsze przebiegi (kod etapu 1, uruchamiacz).** `slice -Psites=planks`, `determinism`, `slice -Psites=none`, W1, `ui`, szybkie testy, `checkDatagen`, `checkArt`, lint i pełny `run-tests test` przeszły. Nie przeszedł `habitats`: plan dawał 0,01 kopca na ha przy normie 0,65, a zmierzony `sited share` wynosił 0,01 zamiast założonych 0,30. W `determinism` strefa `A` miała 0 kolumn, w W1 żaden kopiec nie stanął, a w `slice` z 17 kopców z siedliskiem stanęły 3 (14 odrzuconych przez drewno).
+
+**Diagnoza (testy jednostkowe na ścieżce bez generatora, ziarno 20260927, miejsca spisu).** Skraje (teren otwarty 3–12·k bloków) i luki planu drzewostanu zajmują w świecie tylko 1–2% lasów mrówki. Luki > 0: 0,9% (GAMEPLAY) i 1,2% (REAL), skraje 0,4% i 0%. Gdy sprawdzić 32 pozycje w jednym chunku komórki, siedlisko znajduje się w 2,3% / 1,8% komórek. Nawet z kandydatem w każdej komórce dałoby to najwyżej ok. 0,2 kopca na ha. Na samych skrajach i lukach norma G.62-g jest więc nieosiągalna; to cecha świata, nie kalibracji.
+
+**Poprawki etapu 2** (G.70: FA8-h′, FA8-i′, FA8-m, FA8-n):
+- **Siedlisko (FA8-i′).** W borach (Bs, Bśw, Bw, BMśw) kopiec może stanąć także w jasnym drzewostanie dojrzałym albo starodrzewie (nie w drągowinie), ale tylko 1/3 kandydatów (`LIGHT_STAND_CHANCE`). Skraje i luki mają więc ok. 3 razy większe zagęszczenie niż wnętrze jasnych borów. Las mieszany i świerczyna górska (zwarty okap) — tylko skraje i luki. Norma liczona na borach („na ha borów”, G.62-g).
+- **Rozmieszczenie (FA8-h′).** Kandydat komórki 32 × 32 leży w jednym z jej czterech chunków (chunk domowy, losowany) i ma 4 pozycje próbne. Pierwsza z siedliskiem to kopiec planu, ją pokazuje `find anthill`. Odstęp ≥ 20 bloków między środkami zapewniają chunki domowe: z dwóch kandydatów o stykających się chunkach domowych zostaje ten o wyższym priorytecie. Test czyta tylko losowania komórek 3 × 3, bez siedlisk, więc jest lokalny i niezależny od kolejności chunków (`AnthillPlanTest`: odstęp między wszystkimi pozycjami różnych komórek). Każda pozycja leży w całości w chunku domowym, ≥ 2 bloki od jego dolnych brzegów. Pozycje i chunk domowy losuje pole tej samej, nowej soli `feature.ground.anthills`; stare sole bez zmian.
+- **Zapis.** Ficzer próbuje po kolei pozycji z siedliskiem spośród 12 (`WRITE_TRIES`) w chunku domowym, aż kopiec się zmieści (drewno, nierówny grunt), ale tylko dla kopca, który plan zna; kopca spoza planu nie pisze. Z 4 pozycjami stawało ok. 40% kopców planu, z 12 ok. 70%. Kolumny wszystkich próbowanych pozycji należą do strefy `A` testu `determinism`.
+- **Kalibracja (FA8-m).** `SITED_SHARE` 0,23, `CELL_CHANCE` 0,289.
+- **Spis zapisanych kopców (FA8-n).** `habitats` zbiera każdy kopiec zapisany przez ficzer w świecie spisu (obserwator `AnthillFeature.PLACEMENTS`) i sprawdza kolumny: 0 na drewnie, 0 w wodzie, 0 poza lasami mrówki. Okna 5 × 5 chunków wokół miejsc spisu nie miały żadnego kopca, więc sprawdzenie z etapu 1 nic nie sprawdzało. Kod siedliska chunka wczytanego ponownie z dysku pochodzi z klasyfikatora: chunk zapisany i wczytany nie ma załącznika `ChunkHabitats`.
+
+**`habitats`** (`build/fa8s2_hab.out`, EXIT 0, 19 min; plan w kwadratach ±2048 bloków wokół miejsc spisu):
+
+| Skala | Bory razem | Bs | Bśw | Bw | BMśw | Las mieszany | Udział z siedliskiem | Kopce zapisane w świecie spisu |
+|---|---|---|---|---|---|---|---|---|
+| REAL | **0,58 / ha** | — | 0,60 | 0,71 | 0,57 | 0,02 | 0,21 | 6 (39 kolumn: Bs 30, Bśw 9), wady 0 |
+| GAMEPLAY | **0,63 / ha** | 0,74 | 0,60 | 0,55 | 0,66 | 0,05 | 0,22 | 2 (13 kolumn), wady 0 |
+
+Norma 0,65 ± 35% w obu skalach. Ficzer w `habitats`: GAMEPLAY 19 kandydatów z siedliskiem, 13 postawionych (odrzucone: drewno 4, teren 1, nierówność 1), 0,0046 ms na chunk.
+
+**`determinism`** wobec referencji sprzed kroku (`handoff/FA8/determinism_ref`, kod `eff283e`; `-PdeterminismStepZones -PdeterminismStepAnthills`, `build/fa8s2_det.out`, 22 min, EXIT 0):
+- Teren identyczny w 48 oknach obu skal i trybów.
+- Dekoracja: 0 różnic we wszystkich strefach poza `A`, także „elsewhere”.
+- W strefie `A` (kolumny mrowisk) różnice w trzech oknach: 13 z 76, 13 z 76 i 4 z 13 kolumn. To kopce, których nie było przed krokiem; pozostałe kolumny strefy to próbowane, a niezapisane pozycje.
+- Kolejności swobodna i odwrócona tylko w raporcie, jak dotąd; chmiel bez podparcia 0.
+- Wynik skopiowany do `handoff/FA8/determinism_fa8/` (referencja następnego kroku).
+
+**`slice -Psites=none`** (`build/fa8s2_slice.out`, EXIT 0): w 33 682 chunkach 2062 kandydatów, 135 z siedliskiem, 96 postawionych (71%); odrzucone: drewno 30, teren 5, przeszkoda 3, nierówność 1. Koszt 0,0021 ms na chunk.
+
+**W1** (`vanilla_forests`, EXIT 0): w 791 chunkach 5 kopców z siedliskiem, 4 postawione (etap 1: 0). Koszt 0,016 ms na chunk. Testy jednostkowe W1 w pełnym zestawie.
+
+**`ui`** (EXIT 0): `find anthill` znajduje kopiec 248 m od gracza w 0,1 s (etap 1: 796 m).
+
+**`slice -Psites=planks`** (łodzie; etap 2 nie zmienia łodzi, przebieg powtórzony tylko dla zrzutu, który usunął późniejszy gametest): EXIT 0, `# problems: 0`; 225 z 225 tekstur pochodnych; przed zapisem 30 z 30 łodzi na wodzie (dno 0,48 pod lustrem, tolerancja 0,6), 30 wsiadań, 15 z 15 skrzyń z przedmiotami; po ponownym otwarciu 30 z 30 łodzi na wodzie i 15 z 15 skrzyń. Zrzuty `boats_table.png`, `wood_parts_table.png` skopiowane do `handoff/FA8/screenshots/` (bez oceny).
+
+**Koszt (KFA-6, przebieg kontrolny).** Najwyżej 0,016 ms na chunk (W1), w świecie „Polska” 0,002–0,009 ms, czyli poniżej progu 0,5 ms ze spisu ficzerów, więc bez przebiegu kontrolnego (zgodnie z „Projekt FA8”).
+
+**Szybkie sprawdzenia i pełny zestaw.**
+- Etap 2: `AnthillPlanTest` (5 testów), `PolishForestsCommandsTest`, `compileGametestJava`, fastTest PASS (`run-tests`, drzewo `f5a62a919350`, przed WIP `7cb6d6e`).
+- `checkDatagen`, `checkArt` (243 tekstury zgodne z `tools/art`) i lint bez błędów, także `anthill` i `anthill_top`.
+- Pełny `tools/dev/run-tests test` na kodzie końcowym: PASS w 2119 s (drzewo `c2641aa162f9`, log `build/test-logs/c2641aa162f9-test-a9263e06d0.log`, `build/fa8s2_full.out`). Obejmuje złote pliki terenu i Tatr, `RegistrySnapshotTest`, testy W1 i kolejności ficzerów; progi FPS z paczką 20 razy PASS.
+- `test_plan.py eff283e --end` wymienia też `determinism -Poptimization` (C2ME): nieuruchomiony, zostaje do przebiegu zbiorczego FA9, jak w FA1–FA7. Ficzer pisze tylko do swojego chunku, a kolumny zależne od kolejności leżą w strefie `A`.
+- Bez pikseli wanilii (KFA-7): z PNG od bazy doszły tylko `anthill.png` i `anthill_top.png` (z `tools/art`); jar `polishforests-0.3.0-dev.31.jar` nie ma tekstur łodzi.
+
+**KFA-1 … KFA-10.**
+- KFA-1: jedna nowa sól (`feature.ground.anthills`), stare bez zmian; nowe stałe enumów (`Target.ANTHILL`, `Kind.ANTHILL`) na końcu; migawka rejestru tylko z dopisanymi wierszami (+63 / −0, etap 1); łodzie bez pola zapisu moda.
+- KFA-2: złote pliki w pełnym zestawie; `determinism`: 0 różnic poza kolumnami mrowisk, teren identyczny.
+- KFA-3: mrowiska w obu typach świata i obu skalach (W1: 4 kopce, REAL i GAMEPLAY w `habitats`), łodzie w każdym świecie (rejestr wspólny).
+- KFA-4: wanilia bez zmian; ficzer w kroku 10 nie przesuwa indeksów (`FeatureOrderIndexTest`).
+- KFA-5: nie dotyczy (bez fauny).
+- KFA-6: koszt wyżej.
+- KFA-7: tekstury łodzi liczone w kliencie, mrowisko z `tools/art`.
+- KFA-8: dowody niewizualne, zrzut tylko tablicy łodzi.
+- KFA-9: tylko testy z mapy; progi i asercje bez poluzowania. Spis mrowisk jest teraz ostrzejszy (każdy zapisany kopiec).
+- KFA-10: „Projekt FA8”, ten rozdział, stan w opisie kroku, karta §6, G.70, BRIEF.
+
+**Czekanie na grę użytkownika.** Przed każdym gametestem i długim przebiegiem Gradle sprawdzana była gra; skrypt przebiegów sprawdzał ją też co minutę w trakcie. Działał tylko bezczynny Epic Games Launcher (bez gry), traktowany jak brak gry (jak w FA4–FA7). Czekanie: 0 min.
+
+**Paczka:** `build/distributions/Polish-Forests-0.3.0-dev.31.mrpack` (`./gradlew assemble -Pmod_version=0.3.0-dev.31`, `python tools/build_mrpack.py`).
+
+**Odstępstwa** (etap 2 dopisuje dwa, oba w G.70):
+- **Jasne bory (FA8-i′).** Kopce także w jasnych drzewostanach dojrzałych borów, nie tylko na skrajach i w lukach (nieosiągalna norma). Do potwierdzenia razem z G.62-g; wariant dosłowny „0,65 na ha skrajów i luk” dałby ok. 0,01 kopca na ha borów, czyli kopiec raz na ok. 100 ha.
+- **Pozycja w świecie a `find anthill`.** `find anthill` wskazuje kopiec planu (pierwszą pozycję z siedliskiem). Zapisany kopiec może leżeć na dalszej pozycji w tym samym chunku, a ok. 30% kopców planu nie staje wcale (drewno, teren).
+- Z etapu 1 bez zmian: krok 10 zamiast 9 (FA8-e), śnieg na kopcu tylko na pełnym bloku (FA8-k), skraj z terenu otwartego `Ecotone.openLand`, gęstość ×5 jawnie w karcie §6, stos łodzi 1 niesprawdzany w testach jednostkowych, zakres 15 gatunków (G.62-c).
+
+**Do sprawdzenia w grze** (paczka `build/distributions/Polish-Forests-0.3.0-dev.31.mrpack`):
+1. Nowy świat „Polska” (GAMEPLAY), `/polishforests find biome lake`: z desek bukowych (`/polishforests find biome lowland_beech_forest`, buk ścięty siekierą) albo limbowych zrób łódź (5 desek w kształcie litery U). Postaw ją na wodzie: pływa, wsiadasz prawym klikiem, płynie i skręca jak łódź wanilii. Drewno ma kolor desek gatunku, wiosła i kształt są wanilii.
+2. Łódź ze skrzynią (łódź + skrzynia w stole): włóż przedmioty, wyjdź ze świata i wróć — przedmioty zostają. Rozbita łódź daje swój przedmiot (np. „Łódź bukowa ze skrzynią”).
+3. `/polishforests find anthill`, potem `/tp` na podane współrzędne: kopiec z igliwia (1–2 bloki wysokości, 2–3 szerokości) na skraju boru, w luce albo w widnym starym borze, nie przy pniu. Za dnia, bez deszczu, od kwietnia do października po wierzchu chodzą mrówki (drobne rude cząstki), nocą i w deszczu nie. Jeśli w podanym miejscu nie ma kopca, może stać kilka bloków dalej w tym samym chunku, a czasem wcale (ok. 30% kopców planu odpada przy pniach).
+4. Kilka razy `find anthill` z różnych miejsc boru (`/polishforests find biome fresh_pine_forest`): kopce w borach co kilkadziesiąt do ponad stu metrów, w lesie mieszanym rzadko, w grądzie i buczynie wcale.
+5. Łopata zbiera mrowisko warstwami (jedna warstwa na przedmiot); stawiane warstwy rosną jak śnieg; mrowisko się pali.
+6. Świat „Default + Polish Forests”: `/polishforests find anthill` też znajduje kopiec (bory W1).
+7. F3 + T (przeładowanie zasobów): tekstury łodzi, łodzi ze skrzynią i ich przedmiotów zostają (nie zmieniają się w szachownicę).
+8. Paczka `Polish-Forests-0.3.0-dev.31.mrpack` importuje się i startuje.

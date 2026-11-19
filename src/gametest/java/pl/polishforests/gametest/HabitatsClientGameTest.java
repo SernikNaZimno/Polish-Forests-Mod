@@ -95,6 +95,8 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 			}
 			ResourceKey<WorldPreset> preset = ResourceKey.create(Registries.WORLD_PRESET,
 					PolishForests.id(scale == PolandScale.REALISTIC ? "poland" : "poland_gameplay"));
+			// Step FA8: the mounds the feature writes in this world (the anthill census checks them all).
+			AnthillCensus.record();
 			try (TestSingleplayerContext sp = context.worldBuilder().adjustSettings(ui -> select(ui, preset)).create()) {
 				sp.getServer().runCommand("gamerule advance_time false");
 				sp.getServer().runCommand("gamerule advance_weather false");
@@ -133,6 +135,7 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 				anthillSites.addAll(places.subList(0, Math.min(3, places.size())));
 				PolishForests.LOG.info("[habitats] {}: {}", name, sp.getServer().computeOnServer(
 						s -> AnthillCensus.run(s, anthillSites, anthillFailures)));
+				AnthillCensus.stopRecording();
 				if (!anthillFailures.isEmpty()) {
 					throw new AssertionError("[habitats] " + name + ": " + anthillFailures);
 				}
