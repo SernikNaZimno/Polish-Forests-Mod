@@ -463,6 +463,10 @@ final class FaunaCensus {
 			s.jaysChecked++;
 			String w = JayTrials.where(level, j);
 			s.jayWhere.merge(w, 1, Integer::sum);
+			if (w.equals("flying")) {
+				// round 1 of the FA6 review: the flight samples against their own column (JayTrials.flightPlace)
+				s.jayWhere.merge("flying " + JayTrials.flightPlace(level, j), 1, Integer::sum);
+			}
 			String where = String.format(Locale.ROOT, "Eurasian jay at %.2f %.2f %.2f (%s)", j.getX(), j.getY(), j.getZ(), w);
 			if (j.isInWater()) {
 				s.bad.add(where + " in water");
@@ -798,7 +802,7 @@ final class FaunaCensus {
 	void fail(String format, Object... args) {
 		String s = String.format(Locale.ROOT, format, args);
 		failures.add(s);
-		line("FAIL " + s);
+		line("%s", "FAIL " + s);   // the message is formatted already: a '%' in it is no conversion (round 1 of the FA6 review)
 	}
 
 	private void write() {

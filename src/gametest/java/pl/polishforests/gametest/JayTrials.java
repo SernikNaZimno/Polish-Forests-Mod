@@ -43,10 +43,12 @@ import pl.polishforests.worldgen.habitat.HabitatBiome;
  * {@value #LIFE_SAMPLE} ticks: where they are ({@link #where}: flying, on a branch, on the leaves of a crown, on the
  * ground, else in the air), every flight sample against the local canopy top ({@link JaySpace#localCanopy}, the canopy
  * heightmap {@code MOTION_BLOCKING} within {@value JayGeometry#LOCAL_RADIUS} blocks: under it when the top of the hitbox
- * is below, {@link JayGeometry#underCanopy}) and against the canopy top of its own column (reported), and how many are
- * stuck in blocks ({@link #stuck}). Pass: at least {@value #MIN_FLIGHT_SAMPLES} flight samples, at least
- * {@value #UNDER_CANOPY_SHARE} of them under the local canopy top, some perched samples (branch or leaves), some on the
- * ground, none stuck.
+ * is below, {@link JayGeometry#underCanopy}) and against its own column ({@link #flightPlace}: under its crown, in a gap
+ * between the crowns, over its leaves taking off or landing, over the understory, over a crown in the canopy layer), and how
+ * many are stuck in blocks ({@link #stuck}). Pass: at least {@value #MIN_FLIGHT_SAMPLES} flight samples, at least
+ * {@value #UNDER_CANOPY_SHARE} of them under the local canopy top, at most {@value #OVER_CROWN_SHARE} of them over a crown
+ * in the canopy layer (the local measure alone counts a flight over a lower crown beside taller ones as under the canopy),
+ * some perched samples (branch or leaves), some on the ground, none stuck.
  * <li><b>Alarm</b> ({@link #alarm}): the direct chain: a jay on the ground, a roe deer and a wild boar 10 blocks from it,
  * a roe deer and a boar 40 blocks from it on the other sides, the player invisible and still: the jay's screech
  * ({@link JayMind#screech}) must make the near two react (alert or fleeing) and not the far two. The natural chain: three
@@ -67,6 +69,15 @@ final class JayTrials {
 	static final int LIFE_SAMPLE = 5;
 	static final int MIN_FLIGHT_SAMPLES = 50;
 	static final double UNDER_CANOPY_SHARE = 0.9;
+	/** Round 1 of the FA6 review: the feet at most this high over the leaves of the column count as taking off or landing. */
+	static final double LOW_OVER = 1.5;
+	/**
+	 * Round 1 of the FA6 review: the top of the hitbox less than this far under the local canopy top counts as in the canopy
+	 * layer (blocks); deeper, over the leaves of a lower tree, the jay flies over the understory under the taller crowns.
+	 */
+	static final double CANOPY_LAYER = 4.0;
+	/** Round 1 of the FA6 review: the largest share of the flight samples over a crown in the canopy layer ({@link #flightPlace} {@code over}). */
+	static final double OVER_CROWN_SHARE = 0.10;
 	static final int RUN_TICKS = 200;
 	static final int ALARM_NEAR = 10;
 	static final int ALARM_FAR = 40;
@@ -99,6 +110,29 @@ final class JayTrials {
 		}
 		int ground = JaySpace.ground(level, j.getBlockX(), j.getBlockZ());
 		return j.getY() <= ground + 0.6 ? "ground" : "air";
+	}
+
+	/**
+	 * Where a flying jay is against its own column (round 1 of the FA6 review): {@code crown} (the top of the hitbox under the
+	 * canopy top of its column: leaves or a log above it), {@code gap} (over the canopy top of its column, a column without
+	 * leaves or logs over the ground: a gap between the crowns), {@code low} (over the leaves of its column, the feet at most
+	 * {@value #LOW_OVER} blocks over them: taking off from or landing on that crown), {@code understory} (over the leaves of
+	 * its column, higher, but the top of the hitbox at least {@value #CANOPY_LAYER} blocks under the local canopy top: over a
+	 * shrub or a young tree under the taller crowns), {@code over} (else: over a crown in the canopy layer).
+	 */
+	static String flightPlace(ServerLevel level, EurasianJay j) {
+		int top = JaySpace.canopyTop(level, j.getBlockX(), j.getBlockZ());
+		if (JayGeometry.underCanopy(j.getY(), j.getBbHeight(), top)) {
+			return "crown";
+		}
+		if (top <= JaySpace.ground(level, j.getBlockX(), j.getBlockZ())) {
+			return "gap";
+		}
+		if (j.getY() <= top + LOW_OVER) {
+			return "low";
+		}
+		int local = JaySpace.localCanopy(level, j.getX(), j.getZ());
+		return j.getY() + j.getBbHeight() <= local - CANOPY_LAYER ? "understory" : "over";
 	}
 
 	/** Whether a jay is stuck in blocks: any collision in its hitbox shrunk by 0.02 blocks (the leaves included), or "in a wall". */
@@ -209,7 +243,12 @@ final class JayTrials {
 		List<EurasianJay> jays = place(sp, LIFE_COUNT, 4, 24);
 		Map<String, Integer> where = new TreeMap<>();
 		int[] flight = new int[4];   // samples in flight, under the local canopy top, under the column's own, in the band
+		Map<String, Integer> places = new TreeMap<>();   // flight samples against their own column (flightPlace)
 		List<String> over = new ArrayList<>();
+		List<String> overCrown = new ArrayList<>();
+		// flight samples over the leaves of their own column higher than LOW_OVER, by the depth of the top of the hitbox under
+		// the local canopy top: <4, 4-8, 8-16, 16+ blocks
+		int[] depth = new int[4];
 		List<String> stuck = new ArrayList<>();
 		for (int t = 0; t < LIFE_TICKS; t += LIFE_SAMPLE) {
 			context.waitTicks(LIFE_SAMPLE);
@@ -237,6 +276,17 @@ final class JayTrials {
 						if (JaySpace.inBand(level, j.position(), h)) {
 							flight[3]++;
 						}
+						String place = flightPlace(level, j);
+						places.merge(place, 1, Integer::sum);
+						if (place.equals("over") || place.equals("understory")) {
+							double d = local - (j.getY() + h);
+							depth[d < 4 ? 0 : d < 8 ? 1 : d < 16 ? 2 : 3]++;
+						}
+						if (place.equals("over") && overCrown.size() < 5) {
+							overCrown.add(String.format(Locale.ROOT, "%.1f %.1f %.1f (column top %d, local canopy %d, ground %d)", j.getX(), j.getY(),
+									j.getZ(), JaySpace.canopyTop(level, j.getBlockX(), j.getBlockZ()), local,
+									JaySpace.ground(level, j.getBlockX(), j.getBlockZ())));
+						}
 					}
 					String in = blocker(level, j);
 					if (in != null) {
@@ -247,17 +297,33 @@ final class JayTrials {
 		}
 		int perched = where.getOrDefault("branch", 0) + where.getOrDefault("leaves", 0);
 		double under = flight[0] == 0 ? Double.NaN : flight[1] / (double) flight[0];
+		int n = Math.max(1, flight[0]);
+		double overShare = places.getOrDefault("over", 0) / (double) n;
+		int overLeaves = places.getOrDefault("low", 0) + places.getOrDefault("understory", 0) + places.getOrDefault("over", 0);
 		long alive = sp.getServer().computeOnServer(s -> jays.stream().filter(Entity::isAlive).count());
 		census.line("%s jays in an oak-hornbeam forest at %d %d: %d placed (%d alive after %d ticks), samples every %d ticks %s; flight samples"
 				+ " %d: under the local canopy top %.1f%% (threshold %.0f%%), under the column's own canopy top %.1f%%, in the cruise band"
-				+ " %.1f%%; perched %d, stuck %d; %s%s", label, x, z, LIFE_COUNT, alive, LIFE_TICKS, LIFE_SAMPLE, where, flight[0], 100 * under,
-				100 * UNDER_CANOPY_SHARE, 100.0 * flight[2] / Math.max(1, flight[0]), 100.0 * flight[3] / Math.max(1, flight[0]), perched,
-				stuck.size(), counters(since), over.isEmpty() ? "" : "; above the canopy e.g. " + String.join("; ", over));
+				+ " %.1f%%; against the own column %s: under its crown %.1f%%, in a gap between the crowns %.1f%%, over its leaves %.1f%% (of"
+				+ " them taking off or landing, at most %.1f blocks over them, %.1f%%; higher, over the understory %.0f+ blocks under the local"
+				+ " canopy top, %.1f%%; over a crown in the canopy layer %.1f%%, threshold %.0f%%; these two by the depth of the top of the"
+				+ " hitbox under the local canopy top <4 / 4-8 / 8-16 / 16+ blocks %s); perched"
+				+ " %d, stuck %d; %s%s%s", label, x, z, LIFE_COUNT, alive, LIFE_TICKS, LIFE_SAMPLE, where, flight[0], 100 * under,
+				100 * UNDER_CANOPY_SHARE, 100.0 * flight[2] / n, 100.0 * flight[3] / n, places, 100.0 * places.getOrDefault("crown", 0) / n,
+				100.0 * places.getOrDefault("gap", 0) / n, 100.0 * overLeaves / n, LOW_OVER, 100.0 * places.getOrDefault("low", 0) / n,
+				CANOPY_LAYER, 100.0 * places.getOrDefault("understory", 0) / n, 100 * overShare, 100 * OVER_CROWN_SHARE,
+				java.util.Arrays.toString(depth), perched, stuck.size(), counters(since),
+				over.isEmpty() ? "" : "; above the canopy e.g. " + String.join("; ", over),
+				overCrown.isEmpty() ? "" : "; over a crown e.g. " + String.join("; ", overCrown));
 		if (flight[0] < MIN_FLIGHT_SAMPLES) {
 			census.fail("%s: only %d flight samples of jays (at least %d)", label, flight[0], MIN_FLIGHT_SAMPLES);
 		} else if (!(under >= UNDER_CANOPY_SHARE)) {
 			census.fail("%s: %.1f%% of the jays' flight samples under the local canopy top (at least %.0f%%)", label, 100 * under,
 					100 * UNDER_CANOPY_SHARE);
+		}
+		if (flight[0] >= MIN_FLIGHT_SAMPLES && overShare > OVER_CROWN_SHARE) {
+			census.fail("%s: %.1f%% of the jays' flight samples over a crown in the canopy layer (over the leaves of their own column, top of"
+					+ " the hitbox less than %.0f blocks under the local canopy top; at most %.0f%%)", label, 100 * overShare, CANOPY_LAYER,
+					100 * OVER_CROWN_SHARE);
 		}
 		if (perched == 0) {
 			census.fail("%s: no jay on a branch or the leaves of a crown in the samples", label);
