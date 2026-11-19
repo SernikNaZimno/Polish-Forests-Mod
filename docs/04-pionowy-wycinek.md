@@ -976,7 +976,7 @@ Mierzona w `slice` (V4) na powierzchniach 1 ha (100 × 100 bloków ≈ 39 chunk�
 | N9 | mchy | 50–95% | [L 06 §5.1; S] |
 | N10 | martwe drewno | ok. 2,5 obiektu na chunk, 60–200 m³/ha, ≥ 3 grube kawałki na ha (limba zamiera stojąc, świerk w wiatrołomach) | [L 06 §4.3; PW-5 b; S] |
 
-Odstępstwa celowe, jawnie w karcie: gęstość fauny ×20–50 (PW-15), gęstość mrowisk rudnicy ×5 (ok. 0,65 zamiast 0,13 kopca na ha borów, G.62-g, „Projekt FA8”), żaba w rozmiarze wanilii, brak pierśnicy jako miary (dokładność ±15%), N11, N13, N14, N16 i N17 z planu „wierność” poza kartą (forma śmierci i okap sprawdzane na zrzutach, gleby i mrowiska poza wycinkiem, fauna w gametest `fauna`).
+Odstępstwa celowe, jawnie w karcie: gęstość fauny ×20–50 (PW-15), gęstość mrowisk rudnicy ×5 (ok. 0,65 zamiast 0,13 kopca na ha borów, G.62-g, „Projekt FA8”; w borach na skrajach, w lukach i w jasnych drzewostanach dojrzałych, w lasach mieszanych i świerczynach tylko na skrajach i w lukach, „Stan po FA8” FA8-i′), żaba w rozmiarze wanilii, brak pierśnicy jako miary (dokładność ±15%), N11, N13, N14, N16 i N17 z planu „wierność” poza kartą (forma śmierci i okap sprawdzane na zrzutach, gleby i mrowiska poza wycinkiem, fauna w gametest `fauna`).
 
 ---
 
@@ -8027,7 +8027,7 @@ Krok FA8 (§3 „Kroki FA”, O3 część 2 i O4, CP-D.2, G.62-c, G.62-g) daje k
 | FA8-k | Śnieg | Gdzie kolumna miała śnieg zamarzania, kopiec dostaje warstwę śniegu tylko przy pełnym bloku na górze (śnieg wanilii nie stoi na niepełnym bloku warstw); pozostałe kolumny zostają bez śniegu |
 | FA8-l | `find anthill` | Cel `/polishforests find anthill` („mrowisko mrówki rudnicy”) w obu typach świata i skalach: najbliższy kopiec planu z siedliskiem świata i planem drzewostanu generatora, pierścieniami chunków do 2000 bloków (`AnthillPlan.nearest`). Komenda nie sprawdza zapisu w chunku (FA8-j może odrzucić kopiec, np. przy pniu); spis `habitats` liczy te odrzucenia |
 
-**Gęstość (G.62-g, odstępstwo jawne w karcie §6).** Źródło podaje ok. 0,13 kopca na ha borów [Ź]; G.62-g bierze ×5, `DENSITY` = 0,65 na ha lasu mrówki. Szansa komórki to gęstość podzielona przez udział kandydatów stojących na skraju albo w luce (`SITED_SHARE`). W etapie 1 udział jest założony na 0,3, co daje `CELL_CHANCE` ≈ 0,222. Etap 2 mierzy udział spisem `habitats` (plan w kwadratach ±2048 bloków wokół miejsc spisu) i poprawia stałą, gdy gęstość wychodzi poza ±35% normy. Odstępstwo jest wpisane w kartę §6 obok gęstości fauny.
+**Gęstość (G.62-g, odstępstwo jawne w karcie §6).** (Etap 2 zmienił siedlisko, rozmieszczenie i kalibrację: „Stan po FA8”, FA8-h′, FA8-i′, FA8-m.) Źródło podaje ok. 0,13 kopca na ha borów [Ź]; G.62-g bierze ×5, `DENSITY` = 0,65 na ha lasu mrówki. Szansa komórki to gęstość podzielona przez udział kandydatów stojących na skraju albo w luce (`SITED_SHARE`). W etapie 1 udział jest założony na 0,3, co daje `CELL_CHANCE` ≈ 0,222. Etap 2 mierzy udział spisem `habitats` (plan w kwadratach ±2048 bloków wokół miejsc spisu) i poprawia stałą, gdy gęstość wychodzi poza ±35% normy. Odstępstwo jest wpisane w kartę §6 obok gęstości fauny.
 
 **Testy (etap 1).**
 - `AnthillPlanTest` (5 testów): ten sam plan dla tego samego ziarna, inny dla innego; odstępy ≥ 20, kopiec w jednym chunku, warstwy 1–16, kandydaci na komórkę = `CELL_CHANCE` ± 0,03, każdy rozmiar > 10%; kopce tylko w lasach mrówki: w luce każdy, w zwartym lesie żaden, na sztucznym skraju łąka / bór w pasie 3–12 bloków; `nearest` znajduje najbliższy kopiec z list chunków.

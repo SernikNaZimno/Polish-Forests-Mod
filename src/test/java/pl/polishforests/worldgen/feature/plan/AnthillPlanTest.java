@@ -20,8 +20,9 @@ import pl.polishforests.worldgen.habitat.Zone;
 
 /**
  * Step FA8: the plan of the anthills ({@link AnthillPlan}) is a pure function of the seed and the site: the same mounds for
- * the same seed, none closer than the spacing, every mound inside one chunk, only in the forests of the ant, and there only
- * on an edge or in a canopy gap; {@code nearest} finds the mound the chunk lists hold.
+ * the same seed, none closer than the spacing whatever their tries, every mound inside its home chunk, only in the forests of
+ * the ant, and there only on an edge, in a canopy gap or (the pine forests, a third of the candidates) in a light stand;
+ * {@code nearest} finds the mound the chunk lists hold.
  */
 class AnthillPlanTest {
 	private static final long SEED = 20260927L;
@@ -33,9 +34,19 @@ class AnthillPlanTest {
 	private static final int PINE = code(HabitatBiome.FRESH_PINE_FOREST);
 	private static final int MEADOW = code(HabitatBiome.HAY_MEADOW);
 
-	/** Every column the given code, no gaps (or gaps of the given depth everywhere). */
+	/** Every column the given code, no gaps (or gaps of the given depth everywhere), the dense pole stage. */
 	private static AnthillPlan.Site uniform(int code, double gap) {
+		return uniform(code, gap, false);
+	}
+
+	/** Every column the given code, gaps of the given depth everywhere, light stands or not. */
+	private static AnthillPlan.Site uniform(int code, double gap, boolean light) {
 		return new AnthillPlan.Site() {
+			@Override
+			public boolean lightStand(int x, int z) {
+				return light;
+			}
+
 			@Override
 			public int code(int x, int z) {
 				return code;
@@ -58,6 +69,11 @@ class AnthillPlanTest {
 		@Override
 		public double gapDepth(int x, int z) {
 			return 0;
+		}
+
+		@Override
+		public boolean lightStand(int x, int z) {
+			return false;
 		}
 	};
 
@@ -101,10 +117,13 @@ class AnthillPlanTest {
 	}
 
 	@Test
-	void moundsAreSpacedInsideOneChunkAndOfTheirSize() {
+	void moundsAreSpacedInsideTheirHomeChunkAndOfTheirSize() {
 		List<AnthillPlan.Anthill> all = new ArrayList<>();
+		List<Integer> cellOf = new ArrayList<>();
 		int candidates = 0;
+		int spaced = 0;
 		int cells = 0;
+		int light = 0;
 		int[] sizes = new int[AnthillPlan.Size.values().length];
 		for (int i = -30; i < 30; i++) {
 			for (int j = -30; j < 30; j++) {
@@ -118,24 +137,39 @@ class AnthillPlanTest {
 				if (a == null) {
 					continue;
 				}
-				all.add(a);
+				spaced++;
+				light += a.light() ? 1 : 0;
 				sizes[a.size().ordinal()]++;
 				int w = a.width();
 				assertTrue(w == 2 || w == 3);
-				assertEquals(a.x() >> 4, (a.x() + w - 1) >> 4, "inside one chunk in x");
-				assertEquals(a.z() >> 4, (a.z() + w - 1) >> 4, "inside one chunk in z");
 				assertEquals(w * w, a.layers().length);
 				for (int l : a.layers()) {
 					assertTrue(l >= 1 && l <= 16, "layers " + l);
 				}
 				assertTrue(a.height() >= 7, "height " + a.height());
-				// The chunk of its corner lists it.
-				assertTrue(AnthillPlan.candidatesInChunk(SEED, a.x() >> 4, a.z() >> 4).stream().anyMatch(b -> b.x() == a.x() && b.z() == a.z()),
-						"the chunk of its corner lists " + a.x() + ", " + a.z());
+				assertEquals(i, AnthillPlan.cellOfChunk(a.chunkX()), "the home chunk lies in the cell");
+				assertEquals(j, AnthillPlan.cellOfChunk(a.chunkZ()), "the home chunk lies in the cell");
+				// The home chunk lists it.
+				assertTrue(AnthillPlan.candidatesInChunk(SEED, a.chunkX(), a.chunkZ()).stream().anyMatch(b -> b.x() == a.x() && b.z() == a.z()),
+						"the home chunk lists " + a.x() + ", " + a.z());
+				for (int t = 0; t < AnthillPlan.TRIES; t++) {
+					AnthillPlan.Anthill p = AnthillPlan.tried(SEED, i, j, a, t);
+					assertEquals(a.chunkX(), p.x() >> 4, "inside the home chunk in x");
+					assertEquals(a.chunkX(), (p.x() + w - 1) >> 4, "inside the home chunk in x");
+					assertEquals(a.chunkZ(), p.z() >> 4, "inside the home chunk in z");
+					assertEquals(a.chunkZ(), (p.z() + w - 1) >> 4, "inside the home chunk in z");
+					assertTrue((p.x() & 15) >= AnthillPlan.WINDOW_MIN && (p.z() & 15) >= AnthillPlan.WINDOW_MIN, "the window");
+					all.add(p);
+					cellOf.add(i * 1000 + j);
+				}
 			}
 		}
+		// Any try of a mound and any try of another: at least the spacing apart.
 		for (int p = 0; p < all.size(); p++) {
 			for (int q = p + 1; q < all.size(); q++) {
+				if (cellOf.get(p).equals(cellOf.get(q))) {
+					continue;
+				}
 				AnthillPlan.Anthill a = all.get(p);
 				AnthillPlan.Anthill b = all.get(q);
 				assertTrue(Math.hypot(a.centerX() - b.centerX(), a.centerZ() - b.centerZ()) >= AnthillPlan.MIN_SPACING,
@@ -144,9 +178,10 @@ class AnthillPlanTest {
 		}
 		double chance = (double) candidates / cells;
 		assertEquals(AnthillPlan.CELL_CHANCE, chance, 0.03, "candidates per cell");
-		assertTrue(all.size() > 0.75 * candidates, "the spacing keeps " + all.size() + " of " + candidates);
+		assertTrue(spaced > 0.7 * candidates, "the spacing keeps " + spaced + " of " + candidates);
+		assertEquals(AnthillPlan.LIGHT_STAND_CHANCE, (double) light / spaced, 0.05, "candidates that may take a light stand");
 		for (AnthillPlan.Size s : AnthillPlan.Size.values()) {
-			assertTrue(sizes[s.ordinal()] > 0.1 * all.size(), s + ": " + sizes[s.ordinal()]);
+			assertTrue(sizes[s.ordinal()] > 0.1 * spaced, s + ": " + sizes[s.ordinal()]);
 		}
 	}
 
@@ -155,6 +190,9 @@ class AnthillPlanTest {
 		AnthillPlan.Site oakGaps = uniform(code(HabitatBiome.OAK_HORNBEAM_FOREST), 5);
 		AnthillPlan.Site pineGaps = uniform(PINE, 5);
 		AnthillPlan.Site pineClosed = uniform(PINE, 0);
+		AnthillPlan.Site pineLight = uniform(PINE, 0, true);
+		AnthillPlan.Site mixedLight = uniform(code(HabitatBiome.MIXED_FOREST), 0, true);
+		AnthillPlan.Site oakLight = uniform(code(HabitatBiome.OAK_HORNBEAM_FOREST), 0, true);
 		int sited = 0;
 		int edges = 0;
 		for (int i = -30; i < 30; i++) {
@@ -166,6 +204,19 @@ class AnthillPlanTest {
 				assertEquals(AnthillPlan.Reason.HABITAT, AnthillPlan.siting(a, oakGaps, 1));
 				assertNull(AnthillPlan.siting(a, pineGaps, 1), "a pine forest gap holds every mound");
 				assertEquals(AnthillPlan.Reason.NOT_EDGE_OR_GAP, AnthillPlan.siting(a, pineClosed, 1));
+				// A light stand of a pine forest takes the candidates drawn for it; the mixed forest only edges and gaps.
+				assertEquals(a.light() ? null : AnthillPlan.Reason.NOT_EDGE_OR_GAP, AnthillPlan.siting(a, pineLight, 1));
+				assertEquals(AnthillPlan.Reason.NOT_EDGE_OR_GAP, AnthillPlan.siting(a, mixedLight, 1));
+				assertEquals(AnthillPlan.Reason.HABITAT, AnthillPlan.siting(a, oakLight, 1));
+				// The mound of the plan is the first sited try; no try is sited in the closed forest.
+				AnthillPlan.Anthill first = AnthillPlan.sited(SEED, i, j, pineGaps, 1);
+				assertNotNull(first);
+				assertEquals(a.x(), first.x());
+				assertEquals(a.z(), first.z());
+				assertNull(AnthillPlan.sited(SEED, i, j, pineClosed, 1));
+				assertEquals(AnthillPlan.Reason.NOT_EDGE_OR_GAP, AnthillPlan.whyNot(SEED, i, j, a, pineClosed, 1));
+				assertEquals(AnthillPlan.Reason.HABITAT, AnthillPlan.whyNot(SEED, i, j, a, oakGaps, 1));
+				assertEquals(AnthillPlan.TRIES, AnthillPlan.sitedTries(SEED, i, j, a, pineGaps, 1).size());
 				sited++;
 				// Along the edge at x = 0: the mounds within the reach of the meadow, not at the very edge.
 				AnthillPlan.Reason edge = AnthillPlan.siting(a, EDGE, 1);

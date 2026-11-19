@@ -27,6 +27,7 @@ import pl.polishforests.worldgen.chunk.ChunkHabitats;
 import pl.polishforests.worldgen.chunk.ForestWorld;
 import pl.polishforests.worldgen.feature.plan.AnthillPlan;
 import pl.polishforests.worldgen.feature.plan.Ecotone;
+import pl.polishforests.worldgen.tree.AgeClass;
 import pl.polishforests.worldgen.tree.StandMap;
 
 /**
@@ -38,7 +39,9 @@ import pl.polishforests.worldgen.tree.StandMap;
  * scales: the habitat codes of the chunk and its neighbors ({@code VegetationColumns.region}, as the ecotones), the stand
  * map of the world ({@link ForestWorld#standMap}) and its local scale.
  *
- * <p>A sited mound is written only where it fits whole: every column of the footprint on dry ground of the chunk habitats
+ * <p>The sited tries of a candidate ({@link AnthillPlan#sitedTries}) are written in order until one fits (the first is
+ * the mound of the plan, the one {@code find anthill} shows; a later one lies in the same chunk). A mound is written only
+ * where it fits whole: every column of the footprint on dry ground of the chunk habitats
  * (no water, no structure piece, no top opened by a cave, no blocked column), the ground at most one block uneven and the
  * top block solid; in the footprint and the ring of one column around it (inside the chunk) no wood: no trunk, root flare,
  * underground root, log or sapling of the stand plan; and up to the height of the mound only air or plants that a tree
@@ -135,25 +138,39 @@ public final class AnthillFeature implements Feature {
 			public double gapDepth(int x, int z) {
 				return stands.gapDepth(x, z);
 			}
+
+			@Override
+			public boolean lightStand(int x, int z) {
+				return stands.ageClass(x, z) != AgeClass.POLE_STAGE;
+			}
 		};
+		int i = AnthillPlan.cellOfChunk(chunkX);
+		int j = AnthillPlan.cellOfChunk(chunkZ);
 		boolean any = false;
 		for (AnthillPlan.Anthill a : candidates) {
 			CANDIDATES.increment();
-			AnthillPlan.Reason reason = AnthillPlan.siting(a, site, k);
+			AnthillPlan.Reason reason = AnthillPlan.whyNot(seed, i, j, a, site, k);
 			if (reason != null) {
 				NOT_SITED.get(reason).increment();
 				continue;
 			}
 			SITED.increment();
-			ModFeatures.AnthillPlans plans = ModFeatures.ANTHILL_PLANS;
-			if (plans != null) {
-				for (int dx = 0; dx < a.width(); dx++) {
-					for (int dz = 0; dz < a.width(); dz++) {
-						plans.planned(a.x() + dx, a.z() + dz);
+			// The sited tries in order: the first is the mound of the plan; where it does not fit (wood, ground), the next.
+			Rejection rejection = null;
+			for (AnthillPlan.Anthill p : AnthillPlan.sitedTries(seed, i, j, a, site, k)) {
+				ModFeatures.AnthillPlans plans = ModFeatures.ANTHILL_PLANS;
+				if (plans != null) {
+					for (int dx = 0; dx < p.width(); dx++) {
+						for (int dz = 0; dz < p.width(); dz++) {
+							plans.planned(p.x() + dx, p.z() + dz);
+						}
 					}
 				}
+				rejection = write(level, habitats, p);
+				if (rejection == null) {
+					break;
+				}
 			}
-			Rejection rejection = write(level, habitats, a);
 			if (rejection != null) {
 				REJECTED.get(rejection).increment();
 				continue;

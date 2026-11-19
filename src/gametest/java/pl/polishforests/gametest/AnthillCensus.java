@@ -23,6 +23,7 @@ import pl.polishforests.worldgen.feature.ModFeatures;
 import pl.polishforests.worldgen.feature.plan.AnthillPlan;
 import pl.polishforests.worldgen.habitat.Habitat;
 import pl.polishforests.worldgen.habitat.HabitatBiome;
+import pl.polishforests.worldgen.tree.AgeClass;
 import pl.polishforests.worldgen.tree.ForestStandMap;
 
 /**
@@ -30,9 +31,11 @@ import pl.polishforests.worldgen.tree.ForestStandMap;
  * <ul>
  * <li><b>plan</b>: over a square of {@value #PLAN_HALF} blocks around each census site, on the habitat classifier and the
  * stand map of the world, the area of each forest of the ant (one code per plan cell of {@value AnthillPlan#CELL} ×
- * {@value AnthillPlan#CELL} blocks), the spaced candidates in it and the sited ones; the density of the sited mounds per
- * hectare of each forest against {@link AnthillPlan#DENSITY} (G.62-g) and the measured sited share against
- * {@link AnthillPlan#SITED_SHARE} (the calibration of the plan; reported, the norm is checked on the sum of the forests);</li>
+ * {@value AnthillPlan#CELL} blocks: the code of its center), the drawn candidates of these cells and the mounds of the plan
+ * ({@link AnthillPlan#sited}); the density of the mounds per hectare of each forest, and on the pine forests together
+ * ({@link AnthillPlan#LIGHT_FORESTS}, G.62-g: "of the pine forests") against {@link AnthillPlan#DENSITY}, and their measured
+ * sited share against {@link AnthillPlan#SITED_SHARE} (the calibration of the plan). The mixed forest and the montane spruce
+ * forest (mounds only on edges and in gaps) are reported;</li>
  * <li><b>world</b>: the columns of the generated chunks around the census sites (the 5 × 5 chunks of the tree census) with
  * an anthill block: by forest of the column, and the faults, which must be 0: a mound on a trunk, a root flare or a log, a
  * mound on a water column or in water, a mound outside the forests of the ant.</li>
@@ -41,7 +44,7 @@ import pl.polishforests.worldgen.tree.ForestStandMap;
 final class AnthillCensus {
 	/** Half the side of the square of the plan census around a site, blocks. */
 	static final int PLAN_HALF = 2_048;
-	/** The density of all the forests of the ant together may be this far from the norm (calibration in stage 2). */
+	/** The density of the pine forests together may be this far from the norm. */
 	static final double DENSITY_TOLERANCE = 0.35;
 
 	private AnthillCensus() {
@@ -65,6 +68,11 @@ final class AnthillCensus {
 			public double gapDepth(int x, int z) {
 				return stands.gapDepth(x, z);
 			}
+
+			@Override
+			public boolean lightStand(int x, int z) {
+				return stands.ageClass(x, z) != AgeClass.POLE_STAGE;
+			}
 		};
 		Map<HabitatBiome, long[]> plan = new EnumMap<>(HabitatBiome.class);
 		for (HabitatBiome b : AnthillPlan.FORESTS) {
@@ -83,12 +91,11 @@ final class AnthillCensus {
 						continue;
 					}
 					c[0]++;
-					AnthillPlan.Anthill a = AnthillPlan.spaced(seed, i, j);
-					if (a == null) {
+					if (AnthillPlan.candidate(seed, i, j) == null) {
 						continue;
 					}
 					c[1]++;
-					c[2] += AnthillPlan.siting(a, site, k) == null ? 1 : 0;
+					c[2] += AnthillPlan.sited(seed, i, j, site, k) != null ? 1 : 0;
 				}
 			}
 		}
@@ -99,16 +106,18 @@ final class AnthillCensus {
 		long sited = 0;
 		for (Map.Entry<HabitatBiome, long[]> e : plan.entrySet()) {
 			long[] c = e.getValue();
-			cells += c[0];
-			candidates += c[1];
-			sited += c[2];
-			parts.add(String.format(Locale.ROOT, "%s %.0f ha, %d candidates, %d sited (%.2f/ha, sited share %.2f)", e.getKey().id(),
+			if (AnthillPlan.LIGHT_FORESTS.contains(e.getKey())) {
+				cells += c[0];
+				candidates += c[1];
+				sited += c[2];
+			}
+			parts.add(String.format(Locale.ROOT, "%s %.0f ha, %d candidates, %d mounds (%.2f/ha, sited share %.2f)", e.getKey().id(),
 					c[0] * cellHa, c[1], c[2], c[2] / Math.max(cellHa, c[0] * cellHa), (double) c[2] / Math.max(1, c[1])));
 		}
 		double density = sited / Math.max(cellHa, cells * cellHa);
 		double share = (double) sited / Math.max(1, candidates);
 		if (cells > 0 && Math.abs(density / AnthillPlan.DENSITY - 1) > DENSITY_TOLERANCE) {
-			failures.add(String.format(Locale.ROOT, "anthills: plan density %.2f/ha in the forests of the ant, the norm %.2f/ha (G.62-g) "
+			failures.add(String.format(Locale.ROOT, "anthills: plan density %.2f/ha in the pine forests, the norm %.2f/ha (G.62-g) "
 					+ "± %.0f%%; the measured sited share %.2f against SITED_SHARE %.2f", density, AnthillPlan.DENSITY,
 					100 * DENSITY_TOLERANCE, share, AnthillPlan.SITED_SHARE));
 		}
@@ -173,7 +182,7 @@ final class AnthillCensus {
 		}
 		List<String> world2 = new ArrayList<>();
 		columns.forEach((b, c) -> world2.add(b.id() + " " + c[0]));
-		return String.format(Locale.ROOT, "anthills (step FA8): plan around %d sites (%.1f s): %.2f/ha in the forests of the ant (norm %.2f), "
+		return String.format(Locale.ROOT, "anthills (step FA8): plan around %d sites (%.1f s): %.2f/ha in the pine forests (norm %.2f), "
 				+ "sited share %.2f (SITED_SHARE %.2f); %s; world around the sites: %d anthill columns (%s), on wood %d, on water %d, "
 				+ "outside the forests %d; %s", sites.size(), planSeconds, density, AnthillPlan.DENSITY, share, AnthillPlan.SITED_SHARE,
 				String.join("; ", parts), anthillColumns, String.join(", ", world2), onWood, onWater, outside, AnthillFeature.stats());

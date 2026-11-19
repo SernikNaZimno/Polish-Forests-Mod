@@ -738,6 +738,11 @@ public final class PolishForestsCommands {
 			public double gapDepth(int x, int z) {
 				return stands == null ? 0 : stands.gapDepth(x, z);
 			}
+
+			@Override
+			public boolean lightStand(int x, int z) {
+				return stands != null && stands.ageClass(x, z) != pl.polishforests.worldgen.tree.AgeClass.POLE_STAGE;
+			}
 		};
 	}
 
