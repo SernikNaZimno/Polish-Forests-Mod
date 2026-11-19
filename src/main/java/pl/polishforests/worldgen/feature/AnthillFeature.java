@@ -273,6 +273,37 @@ public final class AnthillFeature implements Feature {
 		return null;
 	}
 
+	/** How far below and above the motion-blocking ground (no leaves) {@link #standing} looks for anthill layers. */
+	static final int STANDING_BELOW = 4;
+	static final int STANDING_ABOVE = 3;
+
+	/**
+	 * The mound standing in a generated chunk (FA8 review round 1: what {@code find anthill} and the habitats census check
+	 * against the plan, whose mound the feature may write at a later try or not at all): the column of the chunk with the
+	 * highest anthill layer near the ground, as {x, y, z} with y the block above that layer, or null. The plan has at most one
+	 * mound per chunk (its home chunk), and the feature writes only into it.
+	 */
+	public static int @Nullable [] standing(ChunkAccess chunk) {
+		int minX = chunk.getPos().getMinBlockX();
+		int minZ = chunk.getPos().getMinBlockZ();
+		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+		int[] best = null;
+		for (int x = 0; x < 16; x++) {
+			for (int z = 0; z < 16; z++) {
+				int ground = chunk.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
+				for (int y = ground + STANDING_ABOVE; y >= ground - STANDING_BELOW; y--) {
+					if (chunk.getBlockState(pos.set(minX + x, y, minZ + z)).getBlock() instanceof AnthillBlock) {
+						if (best == null || y + 1 > best[1]) {
+							best = new int[] {minX + x, y + 1, minZ + z};
+						}
+						break;
+					}
+				}
+			}
+		}
+		return best;
+	}
+
 	/** A plant the mound may replace: what a tree replaces, but no leaves (and no other mound), or a snow layer. */
 	static boolean plant(BlockState s) {
 		return s.is(BlockTags.REPLACEABLE_BY_TREES) && !s.is(BlockTags.LEAVES) && !(s.getBlock() instanceof AnthillBlock)

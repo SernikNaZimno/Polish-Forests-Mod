@@ -39,8 +39,11 @@ import pl.polishforests.worldgen.landscape.Noise;
  *
  * <p><b>Density.</b> The source gives about {@value #SOURCE_DENSITY} mounds per hectare of the pine forests [Ź]; G.62-g
  * takes five times as many ({@link #DENSITY}, an explicit deviation of the norms card, docs/04 §6: a player meets a mound
- * on a walk, not once in a few kilometers). The chance of a cell is the density over the share of the drawn candidates of
- * the pine forests that end as mounds of the plan ({@link #SITED_SHARE}, calibrated on the census of the habitats gametest).
+ * on a walk, not once in a few kilometers). The density is that of the mounds standing in the world: the chance of a cell
+ * is the density over the share of the drawn candidates of the pine forests that end as mounds of the plan
+ * ({@link #SITED_SHARE}) and over the share of the mounds of the plan the feature writes ({@link #WRITTEN_SHARE}: trunks and
+ * uneven ground take the rest), both calibrated on the census of the habitats gametest (FA8 review round 1: before it the
+ * plan alone was calibrated, so about 0.72 of the norm stood in the world).
  */
 public final class AnthillPlan {
 	/** The salt of the placement field (new in FA8; the old salts are not touched). */
@@ -55,11 +58,22 @@ public final class AnthillPlan {
 	public static final double DENSITY = SOURCE_DENSITY * DENSITY_FACTOR;
 	/**
 	 * The share of the drawn candidates of the pine forests ({@link #LIGHT_FORESTS}) that end as mounds of the plan (after
-	 * the spacing and the tries), from the habitats census (stage 2 of FA8).
+	 * the spacing and the tries), from the habitats census (stage 2 of FA8: 0.21–0.22 at the cell chance 0.289, where the
+	 * spacing keeps 0.83 of the candidates; the sited share of the kept candidates is thus about 0.26; FA8 review round 1:
+	 * 0.19 measured at the cell chance 0.487, where the spacing keeps 0.733; FA8 review round 2: the spacing keeps 0.70 at
+	 * the cell chance below, by the exact expectation over the priorities and home chunks of the 8 neighbors, so
+	 * 0.26 × 0.70 ≈ 0.18).
 	 */
-	public static final double SITED_SHARE = 0.23;
-	/** The chance of a cell to hold a candidate. */
-	public static final double CELL_CHANCE = Math.min(1, DENSITY * CELL * CELL / 10_000.0 / SITED_SHARE);
+	public static final double SITED_SHARE = 0.18;
+	/**
+	 * The share of the mounds of the plan of the pine forests the feature writes (the rest on wood, uneven ground or
+	 * terrain); the habitats census measures it on the home chunks of the planned mounds around its sites (FA8 review round
+	 * 2: 0.64, 36 of 56, in the REALISTIC census of round 1; the feature's own counters gave 115 of 160 = 0.72 in stage 2,
+	 * but they count the tries the feature sites on the chunk's habitats, not the plan the classifier sites).
+	 */
+	public static final double WRITTEN_SHARE = 0.66;
+	/** The chance of a cell to hold a candidate (the density of the written mounds over both shares). */
+	public static final double CELL_CHANCE = Math.min(1, DENSITY * CELL * CELL / 10_000.0 / SITED_SHARE / WRITTEN_SHARE);
 	/** The chance of the candidate of a cell to take a light stand of a pine forest (edges and gaps: always). */
 	public static final double LIGHT_STAND_CHANCE = 1 / 3.0;
 	/** The positions of a candidate tried in its home chunk, in order (the first sited one is the mound of the plan). */
@@ -419,13 +433,25 @@ public final class AnthillPlan {
 	 */
 	public static double @Nullable [] nearest(long worldSeed, Site site, double k, double ox, double oz, double radius,
 			BooleanSupplier cancelled) {
+		List<Anthill> found = nearest(worldSeed, site, k, ox, oz, radius, 1, cancelled);
+		return found == null || found.isEmpty() ? null : new double[] {found.getFirst().centerX(), found.getFirst().centerZ()};
+	}
+
+	/**
+	 * The {@code limit} nearest mounds of the plan to (ox, oz) within {@code radius} blocks, nearest first (FA8 review round
+	 * 1: {@code find anthill} goes on to the next one when the home chunk of a mound is generated without it), searched in
+	 * rings of cells outward; null when {@code cancelled} turns true.
+	 */
+	public static @Nullable List<Anthill> nearest(long worldSeed, Site site, double k, double ox, double oz, double radius,
+			int limit, BooleanSupplier cancelled) {
 		int ci = (int) Math.floor(ox / CELL);
 		int cj = (int) Math.floor(oz / CELL);
 		int rings = (int) Math.ceil(radius / CELL) + 1;
-		double[] best = null;
-		double bestDistance = Double.MAX_VALUE;
+		List<Anthill> best = new ArrayList<>(limit + 1);
+		List<Double> distances = new ArrayList<>(limit + 1);
 		for (int ring = 0; ring <= rings; ring++) {
-			if (best != null && bestDistance < (ring - 1) * CELL) {
+			double bound = best.size() == limit ? distances.getLast() : Double.MAX_VALUE;
+			if (bound < (ring - 1) * CELL) {
 				break;
 			}
 			if (cancelled.getAsBoolean()) {
@@ -437,7 +463,8 @@ public final class AnthillPlan {
 						continue;
 					}
 					// Every try lies in its cell: skip the cells that cannot hold a nearer mound.
-					if (cellDistance(ci + di, cj + dj, ox, oz) > Math.min(bestDistance, radius)) {
+					double worst = best.size() == limit ? distances.getLast() : Double.MAX_VALUE;
+					if (cellDistance(ci + di, cj + dj, ox, oz) > Math.min(worst, radius)) {
 						continue;
 					}
 					Anthill a = sited(worldSeed, ci + di, cj + dj, site, k);
@@ -445,9 +472,18 @@ public final class AnthillPlan {
 						continue;
 					}
 					double d = Math.hypot(a.centerX() - ox, a.centerZ() - oz);
-					if (d < bestDistance && d <= radius) {
-						best = new double[] {a.centerX(), a.centerZ()};
-						bestDistance = d;
+					if (d > radius || d >= worst) {
+						continue;
+					}
+					int at = 0;
+					while (at < distances.size() && distances.get(at) <= d) {
+						at++;
+					}
+					best.add(at, a);
+					distances.add(at, d);
+					if (best.size() > limit) {
+						best.removeLast();
+						distances.removeLast();
 					}
 				}
 			}

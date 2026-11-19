@@ -133,8 +133,16 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 				List<String> anthillFailures = new ArrayList<>();
 				List<int[]> anthillSites = new ArrayList<>(List.of(real ? CENSUS_REAL : CENSUS_GAMEPLAY));
 				anthillSites.addAll(places.subList(0, Math.min(3, places.size())));
+				// FA8 review round 2: the standing sample site by site, the server unloading its chunks in between.
+				AnthillCensus.Census ants = sp.getServer().computeOnServer(s -> AnthillCensus.plan(s, anthillSites));
+				int antsBaseline = AnthillCensus.loaded(sp);
+				for (int a = 0; a < anthillSites.size(); a++) {
+					int siteIndex = a;
+					sp.getServer().runOnServer(s -> AnthillCensus.sample(s, ants, siteIndex));
+					AnthillCensus.release(context, sp, ants, antsBaseline);
+				}
 				PolishForests.LOG.info("[habitats] {}: {}", name, sp.getServer().computeOnServer(
-						s -> AnthillCensus.run(s, anthillSites, anthillFailures)));
+						s -> AnthillCensus.finish(s, ants, anthillFailures)));
 				AnthillCensus.stopRecording();
 				if (!anthillFailures.isEmpty()) {
 					throw new AssertionError("[habitats] " + name + ": " + anthillFailures);

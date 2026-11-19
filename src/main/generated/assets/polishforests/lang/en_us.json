@@ -575,6 +575,7 @@
   "polishforests.command.fauna_off": "New forest animals are off (game rule %s or spawn_mobs)",
   "polishforests.command.fauna_species": "%s: %s",
   "polishforests.command.found": "Found %s %s m away: %s",
+  "polishforests.command.found_planned": "Found %s %s m away: %s (the planned place: its chunk is not loaded, so the mound may stand a few blocks away in that chunk or be missing; run the command again there)",
   "polishforests.command.found_unconfirmed": "Found %s %s m away: %s (the search stopped after %s s, so a nearer place may exist)",
   "polishforests.command.here": "Here: %s, ground at %s m above sea level, substrate: %s, water: %s, landforms: %s",
   "polishforests.command.here_belt": "Belt: %s (profile: %s)",

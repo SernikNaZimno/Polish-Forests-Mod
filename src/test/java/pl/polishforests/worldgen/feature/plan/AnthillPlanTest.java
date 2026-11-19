@@ -199,7 +199,9 @@ class AnthillPlanTest {
 		}
 		double chance = (double) candidates / cells;
 		assertEquals(AnthillPlan.CELL_CHANCE, chance, 0.03, "candidates per cell");
-		assertTrue(spaced > 0.7 * candidates, "the spacing keeps " + spaced + " of " + candidates);
+		// FA8 review round 2: at the cell chance of the written density (0.56) the spacing keeps about 0.70 of the candidates
+		// (the expectation SITED_SHARE is derived from).
+		assertEquals(0.70, (double) spaced / candidates, 0.03, "the spacing keeps " + spaced + " of " + candidates);
 		assertEquals(AnthillPlan.LIGHT_STAND_CHANCE, (double) light / spaced, 0.05, "candidates that may take a light stand");
 		for (AnthillPlan.Size s : AnthillPlan.Size.values()) {
 			assertTrue(sizes[s.ordinal()] > 0.1 * spaced, s + ": " + sizes[s.ordinal()]);
@@ -299,5 +301,37 @@ class AnthillPlanTest {
 		}
 		assertNull(AnthillPlan.nearest(SEED, uniform(MEADOW, 5), 1, 0, 0, 300, () -> false), "no mound on a meadow");
 		assertNull(AnthillPlan.nearest(SEED, site, 1, 0, 0, 300, () -> true), "a cancelled search");
+	}
+
+	/** FA8 review round 1: the list of the nearest mounds ({@code find anthill} goes on to the next one) is the plan's, sorted. */
+	@Test
+	void nearestListsTheClosestMoundsInOrder() {
+		AnthillPlan.Site site = uniform(PINE, 5);
+		double ox = 1234;
+		double oz = -987;
+		List<AnthillPlan.Anthill> found = AnthillPlan.nearest(SEED, site, 1, ox, oz, 500, 16, () -> false);
+		assertNotNull(found);
+		assertEquals(16, found.size());
+		List<Double> all = new ArrayList<>();
+		int c0x = (int) Math.floor(ox / 16);
+		int c0z = (int) Math.floor(oz / 16);
+		for (int cx = c0x - 32; cx <= c0x + 32; cx++) {
+			for (int cz = c0z - 32; cz <= c0z + 32; cz++) {
+				for (AnthillPlan.Anthill a : AnthillPlan.inChunk(SEED, cx, cz, site, 1)) {
+					all.add(Math.hypot(a.centerX() - ox, a.centerZ() - oz));
+				}
+			}
+		}
+		all.sort(null);
+		for (int n = 0; n < found.size(); n++) {
+			AnthillPlan.Anthill a = found.get(n);
+			assertEquals(all.get(n), Math.hypot(a.centerX() - ox, a.centerZ() - oz), 1e-9, "mound " + n);
+			assertNotNull(AnthillPlan.sited(SEED, AnthillPlan.cellOfChunk(a.chunkX()), AnthillPlan.cellOfChunk(a.chunkZ()), site, 1));
+		}
+		double[] first = AnthillPlan.nearest(SEED, site, 1, ox, oz, 500, () -> false);
+		assertNotNull(first);
+		assertEquals(found.getFirst().centerX(), first[0], 1e-9);
+		assertEquals(found.getFirst().centerZ(), first[1], 1e-9);
+		assertTrue(AnthillPlan.nearest(SEED, uniform(MEADOW, 5), 1, 0, 0, 300, 4, () -> false).isEmpty(), "no mound on a meadow");
 	}
 }

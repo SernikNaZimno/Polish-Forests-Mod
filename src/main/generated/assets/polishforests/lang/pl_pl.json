@@ -576,6 +576,7 @@
   "polishforests.command.fauna_off": "Nowe leśne zwierzęta są wyłączone (reguła gry %s albo spawn_mobs)",
   "polishforests.command.fauna_species": "%s: %s",
   "polishforests.command.found": "Znaleziono: %s, odległość %s m: %s",
+  "polishforests.command.found_planned": "Znaleziono: %s, odległość %s m: %s (miejsce z planu: jego chunk nie jest wczytany, więc kopiec może stać kilka bloków dalej w tym chunku albo go nie być; powtórz polecenie na miejscu)",
   "polishforests.command.found_unconfirmed": "Znaleziono: %s, odległość %s m: %s (szukanie przerwane po %s s, więc może być bliższe miejsce)",
   "polishforests.command.here": "Tutaj: %s, grunt %s m n.p.m., podłoże %s, wody: %s, formy: %s",
   "polishforests.command.here_belt": "Piętro: %s (profil: %s)",

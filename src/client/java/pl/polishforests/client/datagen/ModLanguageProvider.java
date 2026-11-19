@@ -469,6 +469,8 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		b.add("polishforests.command.found", "Found %s %s m away: %s");
 		b.add("polishforests.command.found_unconfirmed", "Found %s %s m away: %s (the search stopped after %s s, so a "
 				+ "nearer place may exist)");
+		b.add("polishforests.command.found_planned", "Found %s %s m away: %s (the planned place: its chunk is not loaded, so "
+				+ "the mound may stand a few blocks away in that chunk or be missing; run the command again there)");
 		b.add("polishforests.command.not_found", "No %s found within %s km");
 		b.add("polishforests.command.here", "Here: %s, ground at %s m above sea level, substrate: %s, water: %s, landforms: %s");
 		b.add("polishforests.command.not_poland", "This command only works in a Poland world");
@@ -626,6 +628,8 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		b.add("polishforests.command.found", "Znaleziono: %s, odległość %s m: %s");
 		b.add("polishforests.command.found_unconfirmed", "Znaleziono: %s, odległość %s m: %s (szukanie przerwane po %s s, "
 				+ "więc może być bliższe miejsce)");
+		b.add("polishforests.command.found_planned", "Znaleziono: %s, odległość %s m: %s (miejsce z planu: jego chunk nie jest "
+				+ "wczytany, więc kopiec może stać kilka bloków dalej w tym chunku albo go nie być; powtórz polecenie na miejscu)");
 		b.add("polishforests.command.not_found", "Nie znaleziono: %s w promieniu %s km");
 		b.add("polishforests.command.here", "Tutaj: %s, grunt %s m n.p.m., podłoże %s, wody: %s, formy: %s");
 		b.add("polishforests.command.not_poland", "Ta komenda działa tylko w świecie typu Polska");

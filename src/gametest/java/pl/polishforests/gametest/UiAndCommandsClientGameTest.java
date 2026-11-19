@@ -208,6 +208,7 @@ public final class UiAndCommandsClientGameTest implements FabricClientGameTest {
 						: command.endsWith(" montane_tall_herbs") ? "polishforests.command.not_in_scale" : "polishforests.command.found";
 				search(context, server[0], command, expected, problems);
 			}
+			anthillOnTheGround(context, sp, server[0], problems);
 			f3(context, problems);
 		}
 		try (TestSingleplayerContext sp = context.worldBuilder().adjustSettings(ui -> select(ui, true)).create()) {
@@ -243,14 +244,108 @@ public final class UiAndCommandsClientGameTest implements FabricClientGameTest {
 		Component last = messages.isEmpty() ? null : messages.getLast();
 		String result = last == null ? "no message" : last.getString();
 		// S9 review round 1: a place found by a search cut short at 60 s counts as found (its nearness is unconfirmed).
+		// FA8 review round 1: find anthill reports the plan's position while the mound's chunk is not loaded.
 		boolean unconfirmed = last != null && expected.equals("polishforests.command.found")
-				&& key(last).equals("polishforests.command.found_unconfirmed");
+				&& (key(last).equals("polishforests.command.found_unconfirmed")
+						|| command.endsWith(" anthill") && key(last).equals("polishforests.command.found_planned"));
 		if (unconfirmed) {
-			PolishForests.LOG.warn("[ui] /{}: found, but the search stopped at the time limit", command);
+			PolishForests.LOG.warn("[ui] /{}: found, but {}", command, key(last).equals("polishforests.command.found_planned")
+					? "at the plan's position (the mound's chunk is not loaded)" : "the search stopped at the time limit");
 		} else if (last == null || !key(last).equals(expected)) {
 			problems.add("/" + command + ": " + result);
 		}
 		PolishForests.LOG.info(String.format(Locale.ROOT, "[ui] /%s: %s (%.1f s)", command, result, s));
+	}
+
+	/** FA8 review round 1: the tries of {@link #anthillOnTheGround}. */
+	private static final int ANTHILL_TRIES = 8;
+
+	/**
+	 * FA8 review round 1: {@code find anthill} leads to a mound standing in the world. While it reports the plan's position
+	 * ({@code found_planned}: the home chunk not loaded), the chunk there is force-loaded (generated) and the command runs
+	 * again; it then reports the standing mound of that chunk, or goes on to the next planned one when the feature did not
+	 * write it. A {@code found} must have an anthill layer at or below the reported block, at most
+	 * {@value #ANTHILL_TRIES} rounds.
+	 */
+	private static void anthillOnTheGround(ClientGameTestContext context, TestSingleplayerContext sp, MinecraftServer server,
+			List<String> problems) {
+		List<long[]> forced = new ArrayList<>();
+		int planned = 0;
+		String outcome = null;
+		try {
+			for (int t = 0; t < ANTHILL_TRIES && outcome == null; t++) {
+				List<Component> messages = run(context, server, "polishforests find anthill", 2);
+				Component last = messages.isEmpty() ? null : messages.getLast();
+				int[] p = last == null ? null : coordinates(last);
+				if (p == null) {
+					outcome = "no coordinates: " + (last == null ? "no message" : last.getString());
+					problems.add("find anthill on the ground: " + outcome);
+				} else if (key(last).equals("polishforests.command.found_planned")) {
+					planned++;
+					int cx = p[0] >> 4;
+					int cz = p[2] >> 4;
+					forced.add(new long[] {cx, cz});
+					sp.getServer().runOnServer(s -> {
+						s.overworld().setChunkForced(cx, cz, true);
+						s.overworld().getChunk(cx, cz);
+					});
+					context.waitTicks(5);
+				} else if (key(last).equals("polishforests.command.found")) {
+					boolean mound = sp.getServer().computeOnServer(s -> {
+						for (int y = p[1]; y >= p[1] - 3; y--) {
+							if (s.overworld().getBlockState(new net.minecraft.core.BlockPos(p[0], y, p[2])).getBlock()
+									instanceof pl.polishforests.block.AnthillBlock) {
+								return true;
+							}
+						}
+						return false;
+					});
+					outcome = (mound ? "a standing mound at " : "NO MOUND at ") + p[0] + ", " + p[1] + ", " + p[2] + " after " + planned
+							+ " planned places";
+					if (!mound) {
+						problems.add("find anthill on the ground: " + outcome);
+					}
+				} else {
+					outcome = last.getString();
+					problems.add("find anthill on the ground: " + outcome);
+				}
+			}
+			if (outcome == null) {
+				outcome = "still the plan's position after " + ANTHILL_TRIES + " rounds";
+				problems.add("find anthill on the ground: " + outcome);
+			}
+		} finally {
+			sp.getServer().runOnServer(s -> forced.forEach(c -> s.overworld().setChunkForced((int) c[0], (int) c[1], false)));
+		}
+		PolishForests.LOG.info("[ui] find anthill on the ground: {}", outcome);
+	}
+
+	/** The block coordinates of the first {@code chat.coordinates} in a message, or null. */
+	private static int[] coordinates(Component c) {
+		if (c.getContents() instanceof TranslatableContents t) {
+			if (t.getKey().equals("chat.coordinates") && t.getArgs().length == 3) {
+				int[] p = new int[3];
+				for (int i = 0; i < 3; i++) {
+					p[i] = Integer.parseInt(String.valueOf(t.getArgs()[i] instanceof Component a ? a.getString() : t.getArgs()[i]));
+				}
+				return p;
+			}
+			for (Object arg : t.getArgs()) {
+				if (arg instanceof Component a) {
+					int[] p = coordinates(a);
+					if (p != null) {
+						return p;
+					}
+				}
+			}
+		}
+		for (Component sibling : c.getSiblings()) {
+			int[] p = coordinates(sibling);
+			if (p != null) {
+				return p;
+			}
+		}
+		return null;
 	}
 
 	/** Runs a command on the server and waits (at most {@link #COMMAND_WAIT_TICKS}) until it has sent {@code count} messages. */

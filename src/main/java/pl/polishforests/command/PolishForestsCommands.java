@@ -33,6 +33,7 @@ import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 import pl.polishforests.PolishForests;
 import pl.polishforests.worldgen.chunk.PolandChunkGenerator;
+import pl.polishforests.worldgen.feature.AnthillFeature;
 import pl.polishforests.worldgen.feature.plan.AnthillPlan;
 import pl.polishforests.worldgen.feature.tatra.TatraSites;
 import pl.polishforests.worldgen.habitat.AltitudinalBelts;
@@ -433,8 +434,7 @@ public final class PolishForestsCommands {
 			PolandChunkGenerator generator = generator(source);
 			long seed = source.getLevel().getSeed();
 			AnthillPlan.Site site = anthillSite((x, z) -> world.code(x, z), generator.standMap(seed));
-			runSearch(source, origin, cancelled -> AnthillPlan.nearest(seed, site, generator.localScale(), origin.x, origin.z, ANTHILL_RADIUS,
-					cancelled), ANTHILL_RADIUS, target.displayName());
+			runAnthillSearch(source, origin, seed, site, generator.localScale(), target.displayName());
 			return 1;
 		}
 		double[][] phases = phases(model, target.fine);
@@ -469,8 +469,7 @@ public final class PolishForestsCommands {
 			source.sendSuccess(() -> Component.translatable("polishforests.command.searching", target.displayName()), false);
 			long seed = source.getLevel().getSeed();
 			AnthillPlan.Site site = anthillSite(world::surfaceCode, world.standMap(seed));
-			runSearch(source, origin, cancelled -> AnthillPlan.nearest(seed, site, world.localScale(), origin.x, origin.z, ANTHILL_RADIUS,
-					cancelled), ANTHILL_RADIUS, target.displayName());
+			runAnthillSearch(source, origin, seed, site, world.localScale(), target.displayName());
 			return 1;
 		}
 		IntPredicate test = VanillaTargets.target(target);
@@ -951,6 +950,49 @@ public final class PolishForestsCommands {
 				}));
 	}
 
+	/** FA8 review round 1: the nearest mounds of the plan {@code find anthill} checks against the loaded chunks. */
+	static final int ANTHILL_CHECKED = 16;
+
+	/**
+	 * FA8 review round 1: {@code find anthill}. The plan's nearest mounds ({@link AnthillPlan#nearest}, off the server
+	 * thread), then on the server thread, nearest first: a mound whose home chunk is loaded is reported where it stands
+	 * ({@link AnthillFeature#standing}: the feature may write it at a later try, a few blocks from the plan's), or skipped
+	 * when the feature did not write it (wood, ground); a mound whose home chunk is not loaded is reported at the plan's
+	 * position with {@code found_planned} (it may stand a few blocks away in that chunk, or not at all).
+	 */
+	private static void runAnthillSearch(CommandSourceStack source, Vec3 origin, long seed, AnthillPlan.Site site, double k,
+			Component name) {
+		ServerLevel level = source.getLevel();
+		Deadline cancelled = new Deadline(SEARCH_LIMIT_MS, () -> !source.getServer().isRunning());
+		String seconds = String.valueOf(SEARCH_LIMIT_MS / 1000);
+		CompletableFuture.supplyAsync(() -> AnthillPlan.nearest(seed, site, k, origin.x, origin.z, ANTHILL_RADIUS, ANTHILL_CHECKED,
+				cancelled), SEARCH_POOL).whenComplete((found, error) -> source.getServer().execute(() -> {
+					if (error != null) {
+						PolishForests.LOG.error("Search for {} failed", name.getString(), error);
+						source.sendFailure(Component.translatable("polishforests.command.search_failed", name));
+						return;
+					}
+					if (found == null) {
+						source.sendFailure(Component.translatable("polishforests.command.search_timeout", name, seconds));
+						return;
+					}
+					for (AnthillPlan.Anthill a : found) {
+						net.minecraft.world.level.chunk.LevelChunk chunk = level.getChunkSource().getChunkNow(a.chunkX(), a.chunkZ());
+						if (chunk == null) {
+							report(source, level, origin, new double[] {a.centerX(), a.centerZ()}, "polishforests.command.found_planned", name);
+							return;
+						}
+						int[] m = AnthillFeature.standing(chunk);
+						if (m != null) {
+							report(source, level, origin, new double[] {m[0] + 0.5, m[2] + 0.5, m[1]}, "polishforests.command.found", name);
+							return;
+						}
+					}
+					source.sendFailure(Component.translatable("polishforests.command.not_found", name,
+							String.format(Locale.ROOT, "%.0f", ANTHILL_RADIUS / 1000.0)));
+				}));
+	}
+
 	/** Points of the ring search tested together (step S9: in parallel; the first hit in ring order wins). */
 	static final int SEARCH_BATCH = 4_096;
 
@@ -1075,8 +1117,9 @@ public final class PolishForestsCommands {
 			Component name, Object... extra) {
 		int x = (int) Math.floor(found[0]);
 		int z = (int) Math.floor(found[1]);
-		int y = level.getChunkSource().getGenerator().getBaseHeight(x, z, Heightmap.Types.WORLD_SURFACE_WG, level,
-				level.getChunkSource().randomState());
+		// FA8 review round 1: a third value is the height of a place found in the world (a standing anthill).
+		int y = found.length > 2 ? (int) found[2] : level.getChunkSource().getGenerator().getBaseHeight(x, z,
+				Heightmap.Types.WORLD_SURFACE_WG, level, level.getChunkSource().randomState());
 		int distance = (int) Math.round(Math.hypot(found[0] - origin.x, found[1] - origin.z));
 		Component coords = ComponentUtils.wrapInSquareBrackets(Component.translatable("chat.coordinates", x, y, z))
 				.withStyle(s -> s.withColor(ChatFormatting.GREEN)
