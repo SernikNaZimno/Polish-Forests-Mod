@@ -53,10 +53,20 @@ class FaunaModelTest {
 	private static final List<String> SQUIRREL_ANIMATIONS = List.of("misc.idle", "move.walk", "move.hop", "move.climb", "move.descend",
 			"move.jump", "misc.eat", "misc.alert", "misc.rest");
 
+	/** Step FA6: the bones of the bird archetype (the Eurasian jay, tools/fauna/bird.py). */
+	private static final Set<String> JAY_BONES = Set.of("root", "body", "head", "crest", "food_acorn", "wing_left", "wing_tip_left",
+			"wing_right", "wing_tip_right", "tail", "leg_left", "leg_right");
+	/** Step FA6: the animations of the Eurasian jay (tools/fauna/animations.py bird_animations). */
+	private static final List<String> JAY_ANIMATIONS = List.of("misc.idle", "move.hop", "move.fly", "move.glide", "misc.alert", "misc.eat",
+			"misc.rest");
+
 	/** The bones of a species: the common ones, the antlers of the roe deer, the tusks of the wild boar. */
 	private static Set<String> bonesOf(String species) {
 		if (species.equals("red_squirrel")) {
 			return SQUIRREL_BONES;
+		}
+		if (species.equals("eurasian_jay")) {
+			return JAY_BONES;
 		}
 		Set<String> out = new java.util.HashSet<>(COMMON_BONES);
 		out.addAll(species.equals("wild_boar") ? List.of("tusk_left", "tusk_right") : List.of("antler_left", "antler_right"));
@@ -67,6 +77,9 @@ class FaunaModelTest {
 	private static List<String> animationsOf(String species) {
 		if (species.equals("red_squirrel")) {
 			return SQUIRREL_ANIMATIONS;
+		}
+		if (species.equals("eurasian_jay")) {
+			return JAY_ANIMATIONS;
 		}
 		List<String> out = new ArrayList<>(ANIMATION_NAMES);
 		if (species.equals("wild_boar")) {
@@ -79,7 +92,7 @@ class FaunaModelTest {
 	}
 
 	@ParameterizedTest
-	@ValueSource(strings = {"roe_deer", "wild_boar", "red_squirrel"})
+	@ValueSource(strings = {"roe_deer", "wild_boar", "red_squirrel", "eurasian_jay"})
 	void modelHasTheBonesOfTheQuadruped(String species) throws IOException {
 		Map<String, Bone> bones = bones(read(model(species)));
 		assertEquals(bonesOf(species), bones.keySet());
@@ -97,7 +110,7 @@ class FaunaModelTest {
 	}
 
 	@ParameterizedTest
-	@ValueSource(strings = {"roe_deer", "wild_boar", "red_squirrel"})
+	@ValueSource(strings = {"roe_deer", "wild_boar", "red_squirrel", "eurasian_jay"})
 	void restPositionsMatchToolsFauna(String species) throws IOException {
 		Map<String, Bone> bones = bones(read(model(species)));
 		JsonObject rest = read(EXPECTED).getAsJsonObject("models").getAsJsonObject(species).getAsJsonObject("rest");
@@ -117,7 +130,7 @@ class FaunaModelTest {
 	}
 
 	@ParameterizedTest
-	@ValueSource(strings = {"roe_deer", "wild_boar", "red_squirrel"})
+	@ValueSource(strings = {"roe_deer", "wild_boar", "red_squirrel", "eurasian_jay"})
 	void animationsUseTheBonesOfTheModel(String species) throws IOException {
 		Map<String, Bone> bones = bones(read(model(species)));
 		JsonObject all = read(animations(species)).getAsJsonObject("animations");
@@ -183,6 +196,22 @@ class FaunaModelTest {
 		List<String> winter = new ArrayList<>();
 		squirrel.getAsJsonObject("hidden").getAsJsonArray("red_winter").forEach(e -> winter.add(e.getAsString()));
 		assertEquals(List.of("food_cone", "food_nut"), winter);
+	}
+
+	/**
+	 * Step FA6: the texture of the Eurasian jay, its spawn egg, the render scale 0.25 in the expected file (and in the
+	 * entity's model), and the acorn in the bill hidden by default.
+	 */
+	@Test
+	void texturesOfTheEurasianJayExist() throws IOException {
+		assertNotNull(FaunaModelTest.class.getResource("/assets/polishforests/textures/entity/eurasian_jay/adult.png"));
+		assertNotNull(FaunaModelTest.class.getResource("/assets/polishforests/textures/item/eurasian_jay_spawn_egg.png"));
+		JsonObject jay = read(EXPECTED).getAsJsonObject("models").getAsJsonObject("eurasian_jay");
+		assertEquals(0.25, jay.get("scale").getAsDouble());
+		List<String> hidden = new ArrayList<>();
+		jay.getAsJsonObject("hidden").getAsJsonArray("adult").forEach(e -> hidden.add(e.getAsString()));
+		assertEquals(List.of("food_acorn"), hidden);
+		assertEquals("misc.alert", jay.get("alert_animation").getAsString());
 	}
 
 	// ------------------------------------------------------------------ GeckoLib kinematics in Bedrock space

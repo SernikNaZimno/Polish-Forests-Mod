@@ -38,7 +38,9 @@ REQUIRED = {'roe_deer': ('misc.idle', 'move.walk', 'move.run', 'misc.eat', 'misc
                           'misc.wallow'),
             # step FA5: the red squirrel (hop: its bounds; climb and descend: up and down a trunk; jump: a leap between crowns)
             'red_squirrel': ('misc.idle', 'move.walk', 'move.hop', 'move.climb', 'move.descend', 'move.jump', 'misc.eat',
-                             'misc.alert', 'misc.rest')}
+                             'misc.alert', 'misc.rest'),
+            # step FA6: the Eurasian jay (hop on the ground; fly and glide in the air; eat: pecking, also hiding an acorn)
+            'eurasian_jay': ('misc.idle', 'move.hop', 'move.fly', 'move.glide', 'misc.alert', 'misc.eat', 'misc.rest')}
 DARKEST = 30.0          # luminance 0-255 of the darkest allowed texel
 SMOOTH_MEAN = 6.0       # mean luminance step between neighbours inside a face (roe deer 4.4-4.8)
 SMOOTH_P95 = 24.0       # (roe deer 21-22; vanilla horse and pig coats about 28, whole textures)
@@ -48,7 +50,8 @@ SINGLE_TONE_ROWS = 0.25
 GROUND_TOLERANCE = 0.05     # px a vertex may dip under the ground between keyframes
 CONTACT = 0.1               # px: a hoof this close to the ground carries the animal
 FLIGHT = {'move.run': 0.3,   # animations with a flight: the share of frames that must touch the ground
-          'move.hop': 0.3, 'move.jump': 0.0}    # step FA5: the squirrel's bounds, and its leap held in the air
+          'move.hop': 0.3, 'move.jump': 0.0,    # step FA5: the squirrel's bounds, and its leap held in the air
+          'move.fly': 0.0, 'move.glide': 0.0}   # step FA6: the bird in the air (every vertex above the ground)
 FOLDED = ('misc.rest', 'misc.wallow')     # lying (and rolling in the mud, step FA3): the one-piece legs fold under the
                                          # trunk over each other (hidden), not checked
 
@@ -385,7 +388,8 @@ def check_poses(anims, model):
             contact += low <= CONTACT
             if crossing is None and name not in FOLDED:
                 for a, b in itertools.combinations(_boxes(model, pose, legs), 2):
-                    if boxes_intersect(a, b, eps=0.02):
+                    # the cubes of one leg (step FA6: the tarsus and the foot of a bird) may overlap each other
+                    if a[0] != b[0] and boxes_intersect(a, b, eps=0.02):
                         crossing = f'{name} at {t:.3f} s: {a[0]} goes through {b[0]}'
                         break
         if low_worst[1] < -GROUND_TOLERANCE:

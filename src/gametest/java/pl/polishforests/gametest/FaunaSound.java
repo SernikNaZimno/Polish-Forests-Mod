@@ -321,6 +321,9 @@ final class FaunaSound {
 			context.waitTicks(20);
 		}
 		long screeches0 = ForestAmbience.JAY_SCREECHES.sum();
+		// Step FA6: where a jay entity is near, it screeches itself and the ambience leaves the screech to it.
+		long birds0 = pl.polishforests.entity.jay.JayMind.SCREECHES.sum();
+		long deferred0 = ForestAmbience.JAY_DEFERRED.sum();
 		sp.getServer().runCommand("effect clear @a minecraft:invisibility");
 		sp.getServer().runCommand("gamemode survival @a");
 		for (int t = 0; t < RUN_TICKS; t += 5) {
@@ -330,9 +333,12 @@ final class FaunaSound {
 		sp.getServer().runOnServer(s -> s.overworld().players().getFirst().setSprinting(false));
 		sp.getServer().runCommand("gamemode creative @a");
 		sp.getServer().runCommand("effect give @a minecraft:invisibility infinite 0 true");
-		long screeches = ForestAmbience.JAY_SCREECHES.sum() - screeches0;
-		line("%s jay chain: %d screeches in %d ticks of sprinting (chance %.2f every %d ticks, cooldown %d-%d)", label, screeches, RUN_TICKS,
-				ForestAmbience.JAY_CHANCE, ForestAmbience.JAY_CHECK, ForestAmbience.JAY_COOLDOWN, ForestAmbience.JAY_COOLDOWN_MAX);
+		long ambient = ForestAmbience.JAY_SCREECHES.sum() - screeches0;
+		long birds = pl.polishforests.entity.jay.JayMind.SCREECHES.sum() - birds0;
+		long screeches = ambient + birds;
+		line("%s jay chain: %d screeches in %d ticks of sprinting (ambience %d, chance %.2f every %d ticks, cooldown %d-%d; jay entities %d,"
+				+ " ambience left to a jay %d)", label, screeches, RUN_TICKS, ambient, ForestAmbience.JAY_CHANCE, ForestAmbience.JAY_CHECK,
+				ForestAmbience.JAY_COOLDOWN, ForestAmbience.JAY_COOLDOWN_MAX, birds, ForestAmbience.JAY_DEFERRED.sum() - deferred0);
 		if (screeches < 1) {
 			fail("%s jay chain: no screech in %d ticks of sprinting through the forest", label, RUN_TICKS);
 		}

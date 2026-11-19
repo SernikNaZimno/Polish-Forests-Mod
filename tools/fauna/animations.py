@@ -645,3 +645,221 @@ def squirrel_animations(model):
             'misc.rest': sq_rest(model),
         },
     }
+
+
+# ------------------------------------------------------------------ bird (step FA6: the Eurasian jay)
+
+# The bird stands on two legs; the flight poses spread the wings by bird.SPREAD (left; the right wing mirrors Y and Z)
+# and flap them about the axis of the body (the Z angle). Every pose keeps the feet on the ground, or in the air every
+# vertex above it: the body is lifted by the lowest point the flapping wings reach over the whole cycle.
+BD_LEGS = ('leg_left', 'leg_right')
+BD_FOOD = ('food_acorn',)
+SPREAD_Z = 90.0          # the Z angle of the spread left wing (bird.SPREAD)
+BD_FLAP = 38.0           # degrees of the wing stroke about the spread pose
+BD_TUCK = 72.0           # the legs folded back under the tail in the air
+BD_GLIDE_DIHEDRAL = 8.0  # the wings held a little above the horizontal in the glide
+
+
+def _bd_vertices(model, pose):
+    return _all_vertices(model, pose, skip=BD_FOOD)
+
+
+def _wing(rz_left, rx=90.0, ry=0.0):
+    """Rotation offsets of the left and the right wing for a Z angle of the left wing (mirrored for the right one)."""
+    return {'wing_left': [rx, ry, rz_left], 'wing_right': [rx, -ry, -rz_left]}
+
+
+def _bd_ground(model, pose, lift=0.0):
+    """The body height (pixels) that puts the lowest foot vertex lift pixels above the ground in the pose."""
+    p = {k: dict(v) for k, v in pose.items()}
+    p.setdefault('body', {}).pop('position', None)
+    return lift - lowest(model, p, BD_LEGS)
+
+
+def _bd_ground_all(model, pose, lift=0.0):
+    """The body height that puts the lowest vertex of the whole bird (the food left out) lift pixels above the ground."""
+    p = {k: dict(v) for k, v in pose.items()}
+    p.setdefault('body', {}).pop('position', None)
+    return lift - float(_bd_vertices(model, p)[:, 1].min())
+
+
+def bd_idle(length=4.0):
+    """Perched or on the ground: breathing, the quick turns of the head of a bird, a flick of the tail, the crest twitching."""
+    bones = {
+        'body': {'position': sample(length, lambda t: [0, 0.03 + 0.03 * math.sin(2 * math.pi * 4 * t), 0], steps=24)},
+        'head': {'rotation': keys([(0, [0, 0, 0]), (0.5, [0, 0, 0]), (0.56, [-4, 32, 0]), (1.3, [-4, 32, 0]), (1.36, [0, 0, 0]),
+                                   (2.0, [0, 0, 0]), (2.06, [6, -28, 4]), (2.8, [6, -28, 4]), (2.86, [-8, 0, 0]), (3.4, [-8, 0, 0]),
+                                   (3.46, [0, 0, 0]), (length, [0, 0, 0])])},
+        'tail': {'rotation': keys([(0, [0, 0, 0]), (1.6, [0, 0, 0]), (1.68, [14, 0, 0]), (1.8, [-4, 0, 0]), (1.9, [0, 0, 0]),
+                                   (length, [0, 0, 0])])},
+        'crest': {'rotation': keys([(0, [0, 0, 0]), (3.0, [0, 0, 0]), (3.1, [-14, 0, 0]), (3.5, [-14, 0, 0]), (3.6, [0, 0, 0]),
+                                    (length, [0, 0, 0])])},
+    }
+    return {'loop': True, 'animation_length': length, 'bones': bones}
+
+
+def bd_hop_legs(t):
+    """Both legs together: they swing forward as the bird lands and push back as it takes off."""
+    a = -26.0 * math.sin(2 * math.pi * t + 0.6)
+    return {'leg_left': [a, 0, 0], 'leg_right': [a, 0, 0]}
+
+
+def bd_hop(model, length=0.45, steps=16):
+    """Hops on the ground (a jay hops, it does not walk): the body is lifted in the flight of each hop and pitched with it,
+    the tail bobbing and the wings flicking a little."""
+    tracks = {b: {} for b in BD_LEGS}
+    body_rot, body_pos = {}, {}
+    for k in range(steps + 1):
+        t = k / steps
+        key = f'{length * t:.4f}'
+        legs = bd_hop_legs(t)
+        pose = {b: {'rotation': tuple(r)} for b, r in legs.items()}
+        rot = [-6.0 * math.cos(2 * math.pi * t), 0, 0]
+        pose['body'] = {'rotation': tuple(rot)}
+        y = _bd_ground(model, pose, sq_hop_flight(t))
+        for b in BD_LEGS:
+            tracks[b][key] = _r(legs[b])
+        body_rot[key] = _r(rot)
+        body_pos[key] = _r([0, y, 0])
+    bones = {b: {'rotation': tr} for b, tr in tracks.items()}
+    bones['body'] = {'rotation': body_rot, 'position': body_pos}
+    bones['tail'] = {'rotation': sample(length, lambda t: [8.0 * math.cos(2 * math.pi * t - 0.8), 0, 0])}
+    bones['head'] = {'rotation': sample(length, lambda t: [4.0 * math.cos(2 * math.pi * t), 0, 0])}
+    for w, sx in (('wing_left', 1), ('wing_right', -1)):
+        bones[w] = {'rotation': sample(length, lambda t, sx=sx: [0, 0, sx * 6.0 * max(0.0, math.sin(2 * math.pi * t))])}
+    return {'loop': True, 'animation_length': length, 'bones': bones}
+
+
+def _air_lift(model, poses):
+    """The body height that keeps every vertex of every pose of a flight cycle above the ground (a constant)."""
+    return max(_bd_ground_all(model, p) for p in poses)
+
+
+def _held_track(frames, length):
+    """Rotation tracks of a flight cycle from (time, {bone: rotation}) frames, and the body lifted above the ground."""
+    return {b: {'rotation': keys([(t, f[b]) for t, f in frames])} for b in frames[0][1]}
+
+
+def bd_fly(model, length=0.3, steps=16):
+    """Flapping flight: the wings spread and beating about the axis of the body (the hand lagging the arm), the legs tucked
+    back, the tail closed behind; the body held at one height above every point the wings reach."""
+    frames = []
+    for k in range(steps + 1):
+        t = k / steps
+        r = _wing(SPREAD_Z + BD_FLAP * math.sin(2 * math.pi * t))
+        lag = math.sin(2 * math.pi * t - 0.9)
+        r.update({'wing_tip_left': [0, -14.0 * lag, 0], 'wing_tip_right': [0, 14.0 * lag, 0],
+                  'leg_left': [BD_TUCK, 0, 0], 'leg_right': [BD_TUCK, 0, 0], 'tail': [4.0, 0, 0], 'head': [-6.0, 0, 0]})
+        frames.append((length * t, r))
+    y = _air_lift(model, [{b: {'rotation': tuple(v)} for b, v in f.items()} for _, f in frames])
+    bones = _held_track(frames, length)
+    bones['body'] = {'position': keys([(0, [0, y, 0]), (length, [0, y, 0])])}
+    return {'loop': True, 'animation_length': length, 'bones': bones}
+
+
+def bd_glide(model, length=1.2, steps=8):
+    """Gliding between the trees: the wings held spread a little above the horizontal, swaying slightly, the legs tucked."""
+    frames = []
+    for k in range(steps + 1):
+        t = k / steps
+        r = _wing(SPREAD_Z - BD_GLIDE_DIHEDRAL + 2.0 * math.sin(2 * math.pi * t))
+        r.update({'wing_tip_left': [0, -4.0, 0], 'wing_tip_right': [0, 4.0, 0], 'leg_left': [BD_TUCK, 0, 0],
+                  'leg_right': [BD_TUCK, 0, 0], 'tail': [2.0, 0, 0], 'head': [-4.0, 0, 0]})
+        frames.append((length * t, r))
+    y = _air_lift(model, [{b: {'rotation': tuple(v)} for b, v in f.items()} for _, f in frames])
+    bones = _held_track(frames, length)
+    bones['body'] = {'position': keys([(0, [0, y, 0]), (length, [0, y, 0])])}
+    return {'loop': True, 'animation_length': length, 'bones': bones}
+
+
+BD_ALERT = {'crest': (-42.0, 0, 0), 'head': (-14.0, 0, 0), 'tail': (18.0, 0, 0), 'body': (-8.0, 0, 0),
+            'leg_left': (8.0, 0, 0), 'leg_right': (8.0, 0, 0), 'wing_left': (0, 0, 6.0), 'wing_right': (0, 0, -6.0)}
+
+
+def bd_alert(model, length=0.3, steps=16):
+    """The alarm (held): the crest raised, the head up, the tail cocked and the wings drooped a little from the body,
+    standing upright on its feet (the screech)."""
+    bones = {b: {'rotation': keys([(0, [0, 0, 0]), (length, list(r))])} for b, r in BD_ALERT.items()}
+    heights = []
+    for k in range(steps + 1):
+        f = k / steps
+        pose = {b: {'rotation': tuple(f * v for v in r)} for b, r in BD_ALERT.items()}
+        heights.append((length * f, [0, _bd_ground(model, pose), 0]))
+    bones['body']['position'] = keys(heights)
+    return {'loop': 'hold_on_last_frame', 'animation_length': length, 'bones': bones}
+
+
+BD_EAT_BODY = 24.0       # the body pitched forward (front down) while it pecks
+BD_EAT_HEAD = 30.0       # the head lowered between the pecks
+BD_EAT_TAIL = -14.0      # the tail kept up while the body tips forward
+BD_PECK_MAX = 80.0       # the deepest peck tried; the deepest that keeps the bill above the ground is used
+
+
+def _bd_eat_pose(head, f=1.0):
+    return {'body': {'rotation': (f * BD_EAT_BODY, 0, 0)}, 'leg_left': {'rotation': (-f * BD_EAT_BODY, 0, 0)},
+            'leg_right': {'rotation': (-f * BD_EAT_BODY, 0, 0)}, 'head': {'rotation': (head, 0, 0)},
+            'tail': {'rotation': (f * BD_EAT_TAIL, 0, 0)}}
+
+
+def bd_peck_angle(model):
+    """The deepest head angle (degrees) of a peck at which no vertex of the bird (the acorn left out) is under the ground."""
+    best, a = BD_EAT_HEAD, BD_EAT_HEAD
+    while a <= BD_PECK_MAX:
+        pose = _bd_eat_pose(a)
+        pose['body']['position'] = (0, _bd_ground(model, pose), 0)
+        if float(_bd_vertices(model, pose)[:, 1].min()) >= -1e-6:
+            best = a
+        a += 1.0
+    return best
+
+
+def bd_eat(model, length=2.4):
+    """Feeding or hiding an acorn: the body tipped forward on upright legs, the bill striking the ground in quick pecks."""
+    peck = bd_peck_angle(model)
+    down = 0.3
+    points = [(0.0, 0.0), (down, BD_EAT_HEAD)]
+    t = down
+    for _ in range(6):
+        points += [(t + 0.12, peck), (t + 0.22, BD_EAT_HEAD), (t + 0.34, BD_EAT_HEAD)]
+        t += 0.34
+    points.append((length, BD_EAT_HEAD))
+    bones = {'head': {'rotation': keys([(tt, [h, 0, 0]) for tt, h in points])}}
+    for b, r in (('body', BD_EAT_BODY), ('leg_left', -BD_EAT_BODY), ('leg_right', -BD_EAT_BODY), ('tail', BD_EAT_TAIL)):
+        bones[b] = {'rotation': keys([(0, [0, 0, 0]), (down, [r, 0, 0]), (length, [r, 0, 0])])}
+    heights = []
+    for k in range(17):
+        f = k / 16
+        heights.append((down * f, [0, _bd_ground(model, _bd_eat_pose(f * BD_EAT_HEAD, f)), 0]))
+    bones['body']['position'] = keys(heights + [(length, heights[-1][1])])
+    return {'loop': True, 'animation_length': length, 'bones': bones}
+
+
+BD_REST_LEGS = (-80.0, 0, 0)
+
+
+def bd_rest(model, length=6.0):
+    """Roosting on a branch: sitting down on the folded legs, the head drawn in, slow breathing."""
+    pose = {'leg_left': {'rotation': BD_REST_LEGS}, 'leg_right': {'rotation': BD_REST_LEGS},
+            'head': {'rotation': (16.0, 0, 0)}, 'tail': {'rotation': (-4.0, 0, 0)}}
+    drop = _bd_ground_all(model, pose)
+    bones = {'body': {'position': sample(length, lambda t: [0, drop + REST_BREATH + REST_BREATH * math.sin(2 * math.pi * 3 * t), 0],
+                                         steps=24)}}
+    for b, p in pose.items():
+        bones[b] = {'rotation': keys([(0, list(p['rotation'])), (length, list(p['rotation']))])}
+    return {'loop': True, 'animation_length': length, 'bones': bones}
+
+
+def bird_animations(model):
+    """All animations of the Eurasian jay (step FA6)."""
+    return {
+        'format_version': '1.8.0',
+        'animations': {
+            'misc.idle': bd_idle(),
+            'move.hop': bd_hop(model),
+            'move.fly': bd_fly(model),
+            'move.glide': bd_glide(model),
+            'misc.alert': bd_alert(model),
+            'misc.eat': bd_eat(model),
+            'misc.rest': bd_rest(model),
+        },
+    }

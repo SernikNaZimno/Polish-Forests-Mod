@@ -686,6 +686,151 @@ def red_squirrel_shader(model, morph, season, seed='red_squirrel'):
 SQUIRREL_EGG = ((176, 90, 46), (236, 226, 208))
 
 
+# ------------------------------------------------------------------ Eurasian jay (step FA6)
+
+# Plumage from the descriptions of the species (field guides; report 07): the body pinkish brown (vinaceous), greyer on
+# the back and paler on the belly, the undertail and the rump white; the crown whitish with dark streaks (the crest), a
+# black moustache stripe from the base of the bill, a white throat and a pale blue eye; the wing black with a white
+# panel on the secondaries and the bright blue patch of the coverts barred with black and white at the bend of the wing
+# (the "lusterko"); the tail black; the bill dark grey and the legs pinkish brown. No pure black (CP-A): the darkest
+# feathers are a dark blue-black above the DARKEST luminance of the validator.
+JAY = dict(back=(160, 126, 116), body=(186, 146, 128), belly=(206, 172, 152), rump=(236, 234, 230), throat=(232, 226, 216),
+           crown=(222, 214, 206), streak=(70, 62, 66), moustache=(50, 46, 52), eye=(176, 196, 216), pupil=(58, 56, 66),
+           bill=(66, 64, 70), leg=(166, 128, 114), black=(52, 50, 60), feather_edge=(74, 70, 80), white=(232, 234, 236),
+           blue=(70, 128, 206), blue_light=(140, 182, 232), blue_dark=(44, 58, 100), inner=(98, 88, 92),
+           acorn=(150, 106, 54), cup=(116, 92, 60))
+# The blue patch of the folded wing: along the top (leading) edge from JAY_PATCH_Z0 to JAY_PATCH_Z1 of its length, down
+# to JAY_PATCH_Y of its height; the white panel lower down behind it.
+JAY_PATCH_Z0, JAY_PATCH_Z1, JAY_PATCH_Y = 0.08, 0.42, 0.5
+JAY_PANEL_Z0, JAY_PANEL_Z1, JAY_PANEL_Y = 0.42, 0.68, 0.55
+
+
+def eurasian_jay_shader(model, seed='eurasian_jay'):
+    """The shader of the Eurasian jay (one plumage for both sexes and all seasons)."""
+    fur = Noise3(f'{seed}/feathers', period=3.0)
+    fine = Noise3(f'{seed}/fine', period=1.6)
+    edge = Noise3(f'{seed}/edge', period=COAT_EDGE_PERIOD)
+    tuft = Noise3(f'{seed}/tuft', period=COAT_TUFT_PERIOD)
+    body = model.bone('body').cubes[0]
+    y0, y1 = body.origin[1], body.origin[1] + body.size[1]
+
+    def variation(p, amount=0.05):
+        return 1.0 + amount * (0.75 * fur(p) + 0.25 * fine(p))
+
+    def plumage(c, p, amount=0.05):
+        return shade(c, posterize(variation(p, amount), COAT_STEP))
+
+    def wing_face(t, ct):
+        """The pattern of a wing face (the same on both faces: the outer one shows on the folded wing, the inner one on
+        top of the spread wing); ct = position along the wing (0 shoulder .. 1 tip) and up it (0 bottom .. 1 top)."""
+        along, up = ct
+        p = t.p
+        if JAY_PATCH_Z0 <= along <= JAY_PATCH_Z1 and up >= JAY_PATCH_Y:
+            t.detail = True
+            bar = int(math.floor((along - JAY_PATCH_Z0) * t.w * 1.0 + 0.5 * (t.j % 2))) % 3
+            return (JAY['blue'], JAY['blue_light'], JAY['blue_dark'])[bar]
+        if along < JAY_PATCH_Z0 and up >= JAY_PATCH_Y:
+            return plumage(mix(JAY['back'], JAY['body'], 0.3), p, 0.04)      # the scapulars over the shoulder
+        if JAY_PANEL_Z0 <= along <= JAY_PANEL_Z1 and up < JAY_PANEL_Y:
+            t.detail = True
+            return plumage(JAY['white'], p, 0.02)                         # the white panel of the secondaries
+        # the black flight feathers, the paler edge of each feather running down the wing
+        sheen = 0.5 + 0.5 * math.sin(2 * math.pi * along * t.w / 3.5)    # the separate feathers along the wing
+        col = mix(JAY['black'], JAY['feather_edge'], 0.15 * (1.0 - up) + 0.3 * sheen + 0.15 * (0.5 + 0.5 * tuft(p)))
+        return plumage(col, p, 0.06)
+
+    def shader(t):
+        part, face, p = t.part, t.face, t.p
+        if part == 'body':
+            h = (p[1] - y0) / (y1 - y0)
+            if face == 'up':
+                h = 1.0
+            elif face == 'down':
+                h = 0.0
+            back_t = t.cube_t[2]
+            # the white rump and undertail: a marking (detail texels), with an in-between tone at its border
+            if face in ('up', 'back') and back_t > 0.78 + 0.06 * edge(p) or face == 'down' and back_t > 0.66 + 0.06 * edge(p):
+                t.detail = True
+                if face != 'back' and back_t < (0.86 if face == 'up' else 0.74) + 0.06 * edge(p):
+                    return mix(JAY['rump'], JAY['back'] if face == 'up' else JAY['belly'], 0.5)
+                return plumage(JAY['rump'], p, 0.02)
+            # tone bands with wandering borders (V8-q), so the rows of the flanks are not of one tone
+            tone = round((h + (COAT_EDGE * edge(p) + COAT_TUFT * tuft(p)) / (y1 - y0)) * COAT_TONES) / COAT_TONES
+            if tone >= 0.6:
+                c = mix(JAY['body'], JAY['back'], (tone - 0.6) / 0.4)
+            else:
+                c = mix(JAY['belly'], JAY['body'], tone / 0.6)
+            return plumage(c, p, COAT_VARIATION * 0.6)
+        if part == 'skull':
+            col = plumage(JAY['body'], p, 0.04)
+            if face == 'up':
+                # the whitish crown, streaked
+                t.detail = True
+                return JAY['streak'] if (t.i + 2 * t.j) % 3 == 0 else plumage(JAY['crown'], p, 0.02)
+            if face in ('left', 'right'):
+                front = t.i if face == 'right' else t.w - 1 - t.i      # 0 at the front of the head (the bill side)
+                if t.j == 1 and front == 1:
+                    t.detail = True
+                    return JAY['eye']
+                if t.j == 0:
+                    t.detail = True
+                    return mix(JAY['crown'], JAY['streak'], 0.35)           # the streaked edge of the crown
+                if front <= 1 and t.j >= t.h - 2:
+                    t.detail = True
+                    return JAY['moustache']                                # the moustache stripe from the bill
+                if t.j == t.h - 1:
+                    t.detail = True
+                    return plumage(JAY['throat'], p, 0.02)
+                return col
+            if face == 'front':
+                t.detail = True
+                if t.j >= t.h - 1:
+                    return plumage(JAY['throat'], p, 0.02)
+                return JAY['moustache'] if t.j == t.h - 2 and t.i in (0, t.w - 1) else mix(JAY['crown'], JAY['body'], 0.5)
+            if face == 'down':
+                t.detail = True
+                return plumage(JAY['throat'], p, 0.02)
+            return col
+        if part == 'crest':
+            t.detail = True
+            return JAY['streak'] if (t.i + t.j) % 2 == 0 and face == 'up' else plumage(JAY['crown'], p, 0.03)
+        if part == 'bill':
+            t.detail = True
+            return plumage(JAY['bill'], p, 0.03)
+        if part in ('wing', 'primaries'):
+            along = t.cube_t[2]
+            up = t.cube_t[1]
+            if part == 'primaries':
+                t.detail = True
+                col = JAY['black'] if up > 0.3 else mix(JAY['black'], JAY['feather_edge'], 0.6)
+                return plumage(col, p, 0.03)
+            if face in ('left', 'right'):
+                return wing_face(t, (along, up))
+            if face == 'up':
+                t.detail = True
+                return wing_face(t, (along, 1.0))
+            t.detail = True
+            return plumage(JAY['inner'] if face == 'down' else JAY['black'], p, 0.03)
+        if part == 'tail':
+            t.detail = True
+            col = JAY['black']
+            if face == 'up' and t.cube_t[2] < 0.25:
+                col = mix(JAY['black'], JAY['blue_dark'], 0.5)              # the faint blue base of the tail
+            return plumage(col, p, 0.03)
+        if part in ('leg', 'foot'):
+            t.detail = True
+            return plumage(JAY['leg'] if part == 'leg' else shade(JAY['leg'], 0.88), p, 0.03)
+        if part == 'acorn':
+            t.detail = True
+            return plumage(JAY['cup'] if p[1] > t.cube.origin[1] + 1.25 else JAY['acorn'], p, 0.04)
+        raise ValueError(f'eurasian jay: no paint for part {part}')
+
+    return shader
+
+
+JAY_EGG = ((182, 142, 124), (72, 126, 204))
+
+
 # ------------------------------------------------------------------ axis gauge
 
 GAUGE_COLORS = {'base': (150, 150, 150), 'pitch': (220, 60, 50), 'yaw': (60, 190, 70), 'roll': (60, 90, 220),

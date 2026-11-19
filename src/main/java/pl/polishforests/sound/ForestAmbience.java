@@ -24,6 +24,7 @@ import net.minecraft.world.level.levelgen.XoroshiroRandomSource;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 import pl.polishforests.PolishForests;
+import pl.polishforests.entity.ModEntities;
 import pl.polishforests.entity.base.ForestAlarm;
 import pl.polishforests.entity.spawn.FaunaHabitat;
 import pl.polishforests.entity.spawn.FaunaSpawner;
@@ -49,6 +50,11 @@ import pl.polishforests.worldgen.habitat.HabitatBiome;
  * {@value #JAY_MIN_DISTANCE}-{@value #JAY_MAX_DISTANCE} blocks away and a {@link ForestAlarm.Kind#JAY} alarm with radius
  * {@value #JAY_RADIUS} that the roe deer and the wild boars hear.
  *
+ * <p>Step FA6: where the Eurasian jay lives as an entity, it screeches itself at a running player it sees
+ * ({@code entity/jay/JayMind}). So the screech of the ambience, and the jay among the voices of an event, stay only where
+ * no jay is within {@value #JAY_NEAR} blocks of the player ({@link #jayNear}: no doubled screech, no doubled alarm); the
+ * draws stay those of FA4 (the check comes after them, counters {@link #JAY_DEFERRED} and {@link #JAY_VOICE_DEFERRED}).
+ *
  * <p>The draws have their own random source per player from the seed and the new salt {@link #SALT} (KFA-1: no salt of the
  * world and no block changes). Counters for the census of the fauna game test ({@code -Psites=sound}).
  */
@@ -69,6 +75,8 @@ public final class ForestAmbience {
 	public static final int JAY_MAX_DISTANCE = 24;
 	public static final double JAY_RADIUS = 32;
 	public static final float JAY_STRENGTH = 1.0F;
+	/** Radius (blocks, horizontal) within which a jay entity takes over the jay of the ambience (step FA6). */
+	public static final double JAY_NEAR = 48;
 	/** Salt of the draws of the ambience (new). */
 	public static final long SALT = 0x5A4E_FA04_A3B1_E7C5L;
 
@@ -82,6 +90,9 @@ public final class ForestAmbience {
 	public static final LongAdder CHORUS = new LongAdder();
 	public static final LongAdder JAY_SCREECHES = new LongAdder();
 	public static final LongAdder JAY_HEARD = new LongAdder();
+	/** Step FA6: screeches and jay voices of the ambience left out because a jay entity was near. */
+	public static final LongAdder JAY_DEFERRED = new LongAdder();
+	public static final LongAdder JAY_VOICE_DEFERRED = new LongAdder();
 
 	/**
 	 * Divides the intervals and cooldowns (only the fauna game test sets it, to count many events in a short time; the
@@ -140,7 +151,8 @@ public final class ForestAmbience {
 		for (LongAdder a : SILENT) {
 			a.reset();
 		}
-		for (LongAdder a : new LongAdder[] {NO_TREE, NOT_FOREST, TOO_FAR, CHORUS, JAY_SCREECHES, JAY_HEARD}) {
+		for (LongAdder a : new LongAdder[] {NO_TREE, NOT_FOREST, TOO_FAR, CHORUS, JAY_SCREECHES, JAY_HEARD, JAY_DEFERRED,
+				JAY_VOICE_DEFERRED}) {
 			a.reset();
 		}
 	}
@@ -177,7 +189,11 @@ public final class ForestAmbience {
 					&& AmbienceRules.kind(FaunaHabitat.surface(level, p.getBlockX(), p.getBlockZ())) != null
 					&& s.random.nextFloat() < JAY_CHANCE) {
 				s.nextJay = now + scaled(JAY_COOLDOWN + s.random.nextInt(JAY_COOLDOWN_MAX - JAY_COOLDOWN + 1));
-				screech(level, p, s.random);
+				if (jayNear(level, p.position())) {
+					JAY_DEFERRED.increment();
+				} else {
+					screech(level, p, s.random);
+				}
 			}
 		}
 	}
@@ -201,6 +217,10 @@ public final class ForestAmbience {
 			return;
 		}
 		ForestVoice voice = AmbienceRules.choose(habitat, sub, phase, s.random);
+		if (voice == ForestVoice.JAY && jayNear(level, p.position())) {
+			JAY_VOICE_DEFERRED.increment();
+			return;
+		}
 		if (voice == null) {
 			SILENT[phase.ordinal()].increment();
 			return;
@@ -225,6 +245,11 @@ public final class ForestAmbience {
 		float pitch = 0.94F + random.nextFloat() * 0.12F;
 		p.connection.send(new ClientboundSoundPacket(BuiltInRegistries.SOUND_EVENT.wrapAsHolder(voice.sound()), SoundSource.AMBIENT, at.x, at.y,
 				at.z, volume, pitch, random.nextLong()));
+	}
+
+	/** Whether a Eurasian jay entity is within {@value #JAY_NEAR} blocks (horizontal) of a point (step FA6). */
+	public static boolean jayNear(ServerLevel level, Vec3 at) {
+		return FaunaSpawner.near(level, ModEntities.eurasianJay(), at, JAY_NEAR) > 0;
 	}
 
 	/**

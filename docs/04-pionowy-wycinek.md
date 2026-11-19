@@ -765,6 +765,7 @@ CP-D.1 zlecił faunę i dźwięk według planu (V14, V15, V16, potem V17), CP-D.
 - **Zakres:** (1) `tools/fauna`: archetyp ptaka (tułów, głowa, skrzydła, ogon, nogi; animacje `idle`, `hop`, `fly`, `glide`, `alarm`), sójka 1:1 (ok. 34 cm, F3 nie dotyczy), tekstura własna (różowobrązowa, niebieskie lusterko skrzydła), kalibracja modelu jak V8. Encja `polishforests:eurasian_jay`, jajo, migawka rejestru. (2) Lot pod koronami (nawigacja lotu z wysokością poniżej okapu, siadanie na gałęziach i krawędziach koron), skoki po ziemi, chowanie żołędzi w grądach (zachowanie bez zmiany bloków); kategoria `AMBIENT` z własnym limitem (domyślnie). (3) Alarm przechodzi z dźwięku na encję: sójka, która widzi biegnącego gracza, skrzeczy i wysyła `ForestAlarm`; zdarzenie skrzeku z FA4 zostaje tylko tam, gdzie w pobliżu nie ma sójki. (4) Gametest `fauna`: spis sójek, udział lotów pod okapem (wysokość lotu wobec wierzchu koron), łańcuch sójka → alarm → sarny i dziki, MSPT.
 - **Ukończony, gdy:** sójki w lasach liściastych i mieszanych obu typów świata i skal, loty w ≥ 90% pomiarów pod wierzchem okapu (próg w projekcie), alarm od encji dociera do saren, skrzek ambientowy nie dubluje sójki; MSPT ≤ 0,05 ms na sójkę; KFA-1 … KFA-10. Lista „Do sprawdzenia w grze”: `find biome oak_hornbeam_forest` — sójki przelatują pod koronami, siadają na gałęziach; bieg przez las — sójka skrzeczy, sarny uciekają.
 - **Ryzyko:** średnie (nawigacja lotu pod koronami, pierwsza encja latająca).
+- **Stan:** w toku. Etap 1 (kod, zasoby z `tools/fauna`, testy jednostkowe, kod gametestu, fastTest) 2026-11-19, zob. „Projekt FA6”; etap 2 (przebiegi gametestu `fauna`, `-Psites=model`, `-Psites=sound`, scena MSPT, poprawki, „Stan po FA6”) do zrobienia.
 
 ### FA7. Pełne zestawy drewna: drzwi, klapy, półki, tabliczki (O3, część 1; A, 1,5–2,5 dnia)
 
@@ -7682,3 +7683,79 @@ Baza rundy: `2cfddda` (koniec etapu 2). Przebiegi według `python tools/dev/test
 1. `/polishforests find biome mixed_pine_forest`: wiewiórka wspinająca się po grubej starej sośnie albo dębie mija miejsca, gdzie pień cienieje, bez zatrzymania i bez zawracania; schodząc głową w dół przechodzi przez nie aż do ziemi (nie zatrzymuje się na zwężeniu i nie skacze z niego w dół).
 2. Tamże przy zwężeniu pnia wiewiórka nie wchodzi łapami w szerszą część pnia pod sobą; tuż nad stopniem trzyma się na chwilę odrobinę dalej od kory (o różnicę grubości), potem znów przy korze.
 3. `/polishforests find biome oak_hornbeam_forest` (grube dęby): to samo na dębach i grabach.
+
+## Projekt FA6 (2026-11-19, etap 1: kod, zasoby z `tools/fauna`, testy jednostkowe, kod gametestu)
+
+Krok FA6 (§3 „Kroki FA”, O2, CP-D.1) dodaje sójkę `polishforests:eurasian_jay`: pierwszy archetyp ptaka w `tools/fauna`, pierwszą encję latającą moda (własny tryb lotu pod koronami, siadanie na gałęziach i krawędziach koron, skoki po ziemi), chowanie żołędzi jesienią i alarm od encji zamiast skrzeku z pejzażu FA4. Etap 1 to kod, dane, zasoby z generatora, testy jednostkowe, kod gametestu i fastTest. Do etapu 2 należą przebiegi według `test_plan.py ee870cb` (gametest `fauna`: pełny spis, który przejmuje też DP-191, próby sójki, `-Psites=model`, `-Psites=sound`, scena MSPT; `determinism`), poprawki po nich, „Stan po FA6”, G.68 i BRIEF. Baza kroku: `ee870cb` (FA5 review fixes, round 1). Polecenie „Najpierw CP-D” z 2026-11-19: punkt kontrolny CP-D jest zamknięty (G.57, decyzje CP-D.1–CP-D.3 wpisane przed FA1), kroki FA to plan po CP-D, więc FA6 idzie dalej bez zmian.
+
+**Zgodność (KFA-1, KFA-2, PW-11).**
+- Generacja bloków się nie zmienia: sójka nie stawia ani nie zmienia bloków (żołędzie chowa bez bloków). Spawn przy generacji losuje sójkę po sarnie, dziku i wiewiórce, bo `ModEntities.fauna()` ma ją dopisaną na końcu; ich losowania są takie jak w FA5.
+- Bez nowych soli: sójka losuje z `random` encji. Pejzaż FA4 losuje dokładnie jak dotąd (sprawdzenie sójki w pobliżu jest po losowaniach).
+- Nowe stałe enumów tylko na końcu: `PolishAnimal.State.FLYING`, `PERCHED`, `CACHING` i `ForestAlarm.Kind.JAY_BIRD` (`FaunaBehaviourTest` pilnuje kolejności). Nowe enumy `JayFlight.Kind`, `JayFlight.Landing`, `EurasianJay.Display` nie są zapisywane.
+- Rejestr: dopisane dwa wiersze migawki: `item polishforests:eurasian_jay_spawn_egg` i `entity polishforests:eurasian_jay saved=` (bez pól własnych: lot nie jest zapisywany, sójka wczytana w powietrzu spada na to, co pod nią).
+
+**Model i tekstura (`tools/fauna`, KFA-7).**
+- Nowy archetyp `bird.py`: 12 kości, 14 sześcianów, 84 ściany: tułów, głowa z dziobem, czubek (`crest`, stroszony w alarmie), żołądź w dziobie (`food_acorn`), skrzydła z lotkami (`wing_left` / `wing_tip_left` i prawe), ogon, dwie nogi (skok i stopa). Lokatory czubków, nosa, oczu, przodu i tyłu tułowia jak u innych gatunków.
+- Sójka 1:1 (ok. 34 cm, F3 nie dotyczy), model w poczwórnej rozdzielczości (1 px = 1,5625 cm) rysowany w skali 0,25 (`EurasianJayRenderer`, `withScale(0.25)`, `fauna_expected.json` `scale 0.25`), hitbox 0,4 × 0,3; rozpiętość rozłożonych skrzydeł 53 cm. Tekstura 64 × 64 `textures/entity/eurasian_jay/adult.png` i jajo (różowobrązowe z niebieskim).
+- Tekstura malowana od nowa (`paint.py eurasian_jay_shader`): różowobrązowe ciało w pasmach tonu z szumem krawędzi, biały kuper i podogonie, kreskowane ciemię, czarny wąs, jasne gardło; skrzydło z prążkowanym niebieskim lusterkiem, białym polem i czarnymi lotkami z połyskiem; dziób, nogi i żołądź. `check.py` PASS: średni krok 3,6, p95 10,3, najciemniejszy teksel 47, wzdłuż / w poprzek 0,60, wiersze jednego tonu 4%.
+- Animacje (`animations.py`): `misc.idle`, `move.hop`, `move.fly` (bicie skrzydeł 0,3 s), `move.glide` (ślizg 1,2 s ze skrzydłami w lekkim V), `misc.alert` (graj i trzymaj: czubek, głowa, ogon w górę), `misc.eat` (dziobanie, dziób ok. 1 px nad ziemią), `misc.rest`. Walidator: `FLIGHT` dopuszcza oderwanie od ziemi w `move.fly` i `move.glide`; sprawdzenie skrzyżowania nóg pomija pary sześcianów tej samej kości (skok i stopa).
+- Ukryta kość (DataTicket jak u sarny): żołądź, gdy sójka jej nie niesie.
+
+**Lot (`JayGeometry`, `JaySpace`, `JayFlight`).**
+
+| # | Wybór FA6 | Wartość i powód |
+|---|---|---|
+| FA6-a | Tryb lotu | Własny tryb zamiast nawigacji latającej wanilii (planuje w całych blokach, nie zna cienkich pni moda ani okapu, szuka ścieżki na każdy cel): trasa z jednego albo dwóch prostych odcinków, ruch wanilii z kolizjami (`MoverType.SELF`) z prędkością prosto na kolejny punkt, bez grawitacji w locie (`travel` pomija wanilię), dystans upadku zerowany. Lądowanie na końcu trasy, potem znów fizyka wanilii |
+| FA6-b | Wierzch okapu | Mapa wysokości `MOTION_BLOCKING` (liście się liczą); ziemia `MOTION_BLOCKING_NO_LEAVES`. Lokalny wierzch okapu: najwyższy wierzch kolumn w promieniu 4 bloków na siatce co 2 (korony obok trasy albo luki) |
+| FA6-c | Pas przelotu | Od 1,5 bloku nad ziemią do 0,8 bloku pod lokalnym wierzchem okapu (wierzch hitboxa pod koronami), najwyżej 12 bloków nad ziemią (środkowe piętra lasu); kolumna bez okapu ≥ 4 bloki nad ziemią nie ma pasa. Wysokość losowa w pasie, częściej w dolnej połowie |
+| FA6-d | Plan trasy | Najpierw odcinek prosty; gdy nie pasuje, do 6 punktów pośrednich w pasie przelotu w promieniu 4 bloków od środka drogi. Odcinek pasuje, gdy hitbox jest wolny w każdym punkcie co 0,25 bloku (żadnej kolizji, także liści: sójka omija korony, nie przelatuje przez nie; bez płynów, chunki wczytane) i ≤ 20% punktów co 2 bloki leży poza pasem (krótkie przejście przez lukę). Start (odlot z ziemi albo gałęzi) się nie liczy. Cel bez trasy jest pomijany (`NO_ROUTE`) |
+| FA6-e | Prędkości | Przelot 0,30 bloku na tick (ok. 6 m/s), ucieczka 0,42; zmiana prędkości ≤ 0,05 na tick; obrót ≤ 30° na tick; zniżanie bardziej strome niż 0,25 bloku na blok poziomo przy ≥ 60% prędkości przelotu to ślizg (`move.glide`), reszta bicie skrzydeł |
+| FA6-f | Przerwanie | Lot bez postępu przez 30 ticków albo dłuższy niż 400 ticków kończy się tam, gdzie sójka jest (spada na to, co pod nią, bez obrażeń: `causeFallDamage` false); licznik `STALLED` |
+| FA6-g | Grzęda | Wierzch bloku liści (krawędź korony) albo kłody (gałąź moda, pień, kłoda wanilii) ≥ 2 bloki nad ziemią, z wolnym hitboxem nad nim i pod okapem: liście wyżej w tej kolumnie albo lokalny wierzch okapu ≥ 2 bloki nad grzędą (wierzch niższej korony obok wyższych). Szukanie: do 10 losowych kolumn w pierścieniu, w każdej najwyższa grzęda od lokalnego wierzchu w dół |
+
+**Życie (`JayMind`).**
+
+| # | Wybór FA6 | Wartość i powód |
+|---|---|---|
+| FA6-h | Rytm dnia | Dzienna: 6:00 żer 0,55, 11:00 spokojniejsze południe (odpoczynek 0,30), 14:00 żer 0,50, 18:30 noc na grzędzie (odpoczynek 0,96), 4:48 świt. Okresy 200–700 ticków według harmonogramu, decyzja co 10 ticków |
+| FA6-i | Żer | 55% okresów żeru na ziemi (zlot, dziobanie 40–120 ticków, kilka skoków do następnego miejsca nawigacją ziemi), reszta na grzędzie w koronie (ta sama poza dziobania); odpoczynek na grzędzie; ruch to przelot do grzędy 8–24 bloki dalej, poza zasięgiem domowym (48 bloków) w stronę domu |
+| FA6-j | Żołędzie | Wczesna – późna jesień w grądzie, lesie mieszanym, borze mieszanym i łęgu wiązowo-jesionowym (`acornForest`): 60% okresów żeru to chowanie: podniesienie żołędzia z ziemi (40 ticków, żołądź widać w dziobie), przelot 8–24 bloki na inne miejsce na ziemi, schowanie (60 ticków dziobania). Bez zmiany bloków; licznik `CACHES` |
+| FA6-k | Alarm | Sójka, która widzi biegnącego gracza (sprint, widoczny, nie obserwator, ≤ 24 bloki, linia wzroku `hasLineOfSight`), skrzeczy (dźwięk `jay` z FA4, kategoria `NEUTRAL`, głośność 3) i wysyła `ForestAlarm` rodzaju `JAY_BIRD` o promieniu 32 i sile 1 (jak skrzek FA4; ostrzeżenie jak szczek; przyczyna: sójka, która sama go nie słyszy), najwyżej raz na 200–400 ticków, nie na nocnej grzędzie. Alarm biegnącego gracza (`RUNNING_PLAYER`) sójka pomija: patrzy sama |
+| FA6-l | Ucieczka | Przed graczem (od 6 bloków przy skradaniu do 16 przy biegu), przed alarmem o sile ucieczki i po zranieniu: przelot z prędkością ucieczki do grzędy 10–22 bloki dalej po drugiej stronie od zagrożenia, inaczej na ziemię tam, potem 60 ticków czujności (`misc.alert`). Alarm innej sójki płoszy, ale nie wywołuje jej skrzeku (łańcuch się nie niesie) |
+| FA6-m | Pejzaż bez dublowania | `ForestAmbience`: skrzek przy sprincie i głos sójki w zdarzeniu pejzażu zostają tylko, gdy żadna sójka-encja nie jest ≤ 48 bloków od gracza (`jayNear`); inaczej liczniki `JAY_DEFERRED` i `JAY_VOICE_DEFERRED`. Losowania pejzażu bez zmian (sprawdzenie po nich) |
+| FA6-n | Profil | 0,3 ptaka na ha lasu liściastego [Ź: Tomiałojć, Wesołowski i Walankiewicz 1984, Acta Ornithologica 20 (ptaki lęgowe drzewostanów naturalnych BPN: sójka ok. 1–3 par na 10 ha grądu); Atlas rozmieszczenia ptaków lęgowych Polski (pospolita w lasach liściastych i mieszanych); przybliżone]. Generacja ×20, spawner ×24 (KFA-5), w okręgu 64 bloków grądu ok. 7,7 przy generacji, cel spawnera 9,3 przy limicie 10 przy graczu. Para (2) albo w 40% sama, bez młodych (C10), bez stada (`herds() false`), dom 48 bloków. Zdrowie 5, prędkość na ziemi 0,22 |
+| FA6-o | Siedliska | Grąd 1,0; las mieszany i bór mieszany 0,9; buczyna niżowa i łęg wiązowo-jesionowy 0,8; buczyna górska 0,7; łęg jesionowo-olszowy 0,6; jedlina i łęg wierzbowo-topolowy 0,5; ols, olszyna górska, bór świeży i bór wilgotny 0,3; świerczyna górska 0,2. Bez kosodrzewiny, otwartych terenów i skraju lasu |
+| FA6-p | Kategoria | `AMBIENT` (G.62-j); jak inne zwierzęta moda poza licznikami wanilii, z własnym limitem spawnera fauny 10 przy graczu; spawn na ziemi (miejsca spawnera), sójka sama podlatuje na grzędę |
+
+**Gametest `fauna` (kod; przebiegi w etapie 2).**
+- Spis: w każdej próbce sójki są liczone według miejsca (`JayTrials.where`: w locie, na gałęzi, na liściach, na ziemi, w powietrzu); żadna nie może tkwić w bloku (`stuck`) ani być w wodzie; każdy świat potrzebuje ≥ 1 sójki w promieniu sprawdzenia przy ostatniej próbce któregoś miejsca (obie skale, oba tryby, „Default + Polish Forests”). Linia liczników: przeloty (ticki w powietrzu, trasy z dwóch odcinków), lądowania na gałęzi, liściach i ziemi, trasy nieznalezione, przerwane loty, skrzeki (i ile zwierząt je słyszało), schowane żołędzie, ucieczki, skrzeki i głosy pejzażu oddane sójce.
+- Próby (w każdym świecie z próbami FA2, przy pierwszym miejscu; najbliższy grąd z `FaunaSites.locate`):
+  - `life` (środek lata, południe): 12 sójek przez 2400 ticków, próbka co 5 ticków. Każda próbka w locie porównana z lokalnym wierzchem okapu (wierzch hitboxa poniżej, `JayGeometry.underCanopy`); w raporcie także wobec wierzchu własnej kolumny i udział w pasie przelotu. Próg: ≥ 50 próbek w locie, z nich ≥ 90% pod lokalnym wierzchem okapu; próbki na grzędzie (gałąź albo liście) > 0 i na ziemi > 0; 0 utkniętych.
+  - `alarm`: łańcuch bezpośredni (skrzek jednej sójki przy niewidzialnym, stojącym graczu: sarna i dzik 10 bloków od niej reagują, sarna i dzik 40 bloków dalej nie; `JAY_BIRD` słyszany ≥ 2 razy) i naturalny (3 sójki 6–14 bloków od widocznego gracza, który biegnie 200 ticków przy włączonym pejzażu: ≥ 1 skrzek sójki usłyszany przez zwierzęta, 0 skrzeków pejzażu).
+  - `caching` (środek jesieni): 12 sójek przez 2400 ticków w grądzie, ≥ 1 schowany żołądź i ≥ 1 próbka z żołędziem w dziobie.
+- Scena MSPT: 40 sójek w grądzie, inne zwierzęta moda usunięte, 400 ticków ustalania, potem pomiar jak w FA2; próg ≤ 0,05 ms na sójkę i tick.
+- Kalibracja modelu (`-Psites=model`): kości w skali 0,25, sylwetki z czterech stron (IoU ≥ 0,97), poza `misc.alert` trzymana, żołądź ukryta.
+- `-Psites=sound`: łańcuch naturalny FA4 liczy skrzeki pejzażu i sójek-encji razem (gdzie sójka jest blisko, pejzaż oddaje jej skrzek), z liczbą oddanych.
+- `test_plan.py`: `BoarTrials`, `SquirrelTrials` i `JayTrials` w obszarze `fauna` (DP-192).
+
+**Testy jednostkowe.**
+- `JayGeometryTest`: pas przelotu pod okapem (każda wysokość pasa pod wierzchem; brak pasa w luce), próbka pod okapem = wierzch hitboxa, punkty sprawdzenia odcinka, sterowanie (przyspieszanie, zwalnianie, bez przelotu za punkt), ślizg i kąt obrotu.
+- `FaunaModelTest`: 12 kości i 7 animacji sójki, pozycje spoczynkowe, tekstura i jajo, skala 0,25, ukryta żołądź.
+- `FaunaProfileTest`: kolejność `fauna()` (sójka czwarta), brak pól zapisu, profil (KFA-5, siedliska, para albo sama, dzienna, okrąg 64 bloków w limicie), pory i lasy chowania żołędzi.
+- `FaunaBehaviourTest`: stany `flying`, `perched`, `caching` i rodzaj alarmu `JAY_BIRD` (ostrzeżenie) dopisane na końcu.
+- `RegistrySnapshotTest`: dwa dopisane wiersze.
+
+**Odstępstwa od planu.**
+1. Animacja alarmu nazywa się `misc.alert` (jak u innych gatunków, gametest i `fauna_expected.json` jej szukają), nie `alarm`; dodane `misc.eat` i `misc.rest` poza listą planu.
+2. „Nawigacja lotu” to własny tryb lotu z trasą z jednego albo dwóch odcinków (FA6-a, FA6-d), bez nawigacji latającej wanilii.
+3. Pomiar „pod wierzchem okapu” odnosi się do lokalnego wierzchu (promień 4 bloki), nie tylko do kolumny pod sójką: przelot przez wąską lukę między koronami albo pod skrajem korony nie jest lotem nad okapem. Udział wobec kolumny pod sójką jest w raporcie obok.
+4. Głos sójki w zwykłych zdarzeniach pejzażu też ustępuje sójce-encji (nie tylko skrzek przy sprincie), bo sójka-encja odzywa się sama (`getAmbientSound`, średnio co 80 s).
+5. Siedliska szersze niż lista planu (jedlina, olsy, bory świeże i wilgotne, świerczyna z małymi wagami): sójka bywa we wszystkich lasach z domieszką liściastych.
+
+**Do sprawdzenia w grze (etap 1; pełna lista w „Stan po FA6”).**
+1. `/polishforests find biome oak_hornbeam_forest`, za dnia: sójki przelatują pod koronami (nie nad nimi), siadają na gałęziach i na krawędziach koron, skaczą po ziemi i dziobią.
+2. Bieg (sprint) przez grąd: sójka, która widzi gracza, skrzeczy i odlatuje; sarny i dziki w pobliżu uciekają albo stają czujnie; nie słychać przy tym podwójnego skrzeku (pejzaż milknie, gdy sójka jest blisko).
+3. Jesień (`/season set mid_autumn` z Serene Seasons): sójki w grądzie podnoszą żołędzie (widać żołądź w dziobie), przenoszą je i chowają w ziemi.
+4. Wieczorem (po 18:30) sójki siedzą na grzędach w koronach.
+5. `/polishforests fauna 32`: sójki w spisie ze stanem „leci” / „siedzi na gałęzi” / „chowa żołądź”.
+6. Paczka `.mrpack` z kroku.

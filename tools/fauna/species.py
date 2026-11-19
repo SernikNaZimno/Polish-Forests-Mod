@@ -20,12 +20,18 @@ hair (about 7 cm wide where it is bushiest), short front legs, large haunches wi
 winter tufts up to 3.5 cm (Lurz et al. 2005, Mammalian Species 769; report 07). The tail curls up over the back in an S.
 Hitbox 0.4 x 0.45 blocks (docs/04 "Projekt FA5").
 
+EURASIAN_JAY: the Eurasian jay (Garrulus glandarius), step FA6, the bird archetype (bird.py) at real size (34 cm long, so
+the F3 enlargement does not apply): body 14 cm long and about 9 cm deep, head 6 cm with a 3 cm stout bill and the erectile
+crown feathers, the folded wing about 16 cm with the primaries 8 cm beyond it (wingspan 52-58 cm), the tail 12.5 cm, the
+tarsus about 4.5 cm (field guides; report 07). Hitbox 0.4 x 0.3 blocks (docs/04 "Projekt FA6").
+
 AXIS_GAUGE: the calibration model of the fauna game test (step V8): arms turned by known angles about each axis, a chain
 of two turned bones, a bone with a rest rotation that an animation moves and turns further (with a turned child that
 must follow it), and markers on the left side (+X) and the front, each with a locator at its tip. It lives only in the game test mod (namespace polishforests_probe).
 """
 from model import Bone, Cube, Model
 from quadruped import Quadruped, build
+import bird
 import smallmammal
 
 ROE_DEER_SHAPE = Quadruped(
@@ -66,6 +72,17 @@ RED_SQUIRREL_SHAPE = smallmammal.SmallMammal(
 
 def red_squirrel():
     return smallmammal.build(RED_SQUIRREL_SHAPE, (64, 64))
+
+
+EURASIAN_JAY_SHAPE = bird.Bird(
+    id='eurasian_jay', body_length=14, body_depth=9.4, body_width=7.8, leg_height=4.7,
+    head_length=6.25, head_height=6.25, head_width=5, bill_length=3, crest_length=4.7,
+    wing_length=15.6, wing_height=7.8, primaries_length=7.8, primaries_height=4.7,
+    tail_length=12.5, tail_width=6.25, hitbox=(0.4, 0.3))
+
+
+def eurasian_jay():
+    return bird.build(EURASIAN_JAY_SHAPE, (64, 64))
 
 
 # The pose the axis gauge animation 'calib.pose' holds (the game test checks the bone 'anim' in it).

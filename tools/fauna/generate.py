@@ -22,6 +22,11 @@ Files (paths relative to the project):
     src/main/resources/assets/polishforests/geckolib/animations/entity/red_squirrel.animation.json
     src/main/resources/assets/polishforests/textures/entity/red_squirrel/<red|dark>_<summer|winter>.png
     src/main/resources/assets/polishforests/textures/item/red_squirrel_spawn_egg.png
+    src/main/resources/assets/polishforests/geckolib/models/entity/eurasian_jay.geo.json    (step FA6: the Eurasian jay,
+                                                   bird.py, drawn at a quarter of the size)
+    src/main/resources/assets/polishforests/geckolib/animations/entity/eurasian_jay.animation.json
+    src/main/resources/assets/polishforests/textures/entity/eurasian_jay/adult.png
+    src/main/resources/assets/polishforests/textures/item/eurasian_jay_spawn_egg.png
     src/main/resources/assets/polishforests/textures/entity/frog/common_frog.png            (step FA4: frog.py, the
                                                    frog variant polishforests:common_frog on the vanilla frog model)
     src/gametest/resources/assets/polishforests_probe/...                                    the axis gauge (game test only)
@@ -80,6 +85,12 @@ SQUIRREL_HIDDEN = {'summer': TUFTS + FOOD, 'winter': FOOD}
 # The squirrel is small (0.45 block): its 4-side views come from a nearer camera, same field of view and screen.
 SQUIRREL_CAMERA = dict(eye=(0.0, 0.22, -2.6), yaw=0.0, pitch=0.0)
 
+# Step FA6: the Eurasian jay has one plumage (EurasianJay.variant() names it); the acorn shows only while it carries one.
+JAY_VARIANTS = ('adult',)
+JAY_HIDDEN = {'adult': ('food_acorn',)}
+# The jay is small (0.2 block high, 0.36 long): its 4-side views come from a nearer camera, same field of view and screen.
+JAY_CAMERA = dict(eye=(0.0, 0.1, -1.4), yaw=0.0, pitch=0.0)
+
 # The 4-side views of the fauna game test: the camera stays, the animal turns (yaw in Minecraft degrees). The camera
 # is given relative to the animal's feet; the game test builds a lime concrete backdrop and floor around them.
 SCREEN = (854, 480)
@@ -108,6 +119,10 @@ def wild_boar():
 
 def red_squirrel():
     return packed(species.red_squirrel())
+
+
+def eurasian_jay():
+    return packed(species.eurasian_jay())
 
 
 def axis_gauge():
@@ -177,6 +192,17 @@ def build_all():
             details[rel] = det
     files[f'{ASSETS}/textures/item/red_squirrel_spawn_egg.png'] = ('png', paint.spawn_egg(*paint.SQUIRREL_EGG))
 
+    jay = eurasian_jay()
+    jay_anims = animations.bird_animations(jay)
+    files[f'{ASSETS}/geckolib/models/entity/eurasian_jay.geo.json'] = ('json', geo_json(jay))
+    files[f'{ASSETS}/geckolib/animations/entity/eurasian_jay.animation.json'] = ('json', jay_anims)
+    for variant in JAY_VARIANTS:
+        img, det = paint.paint_model(jay, paint.eurasian_jay_shader(jay), with_details=True)
+        rel = f'{ASSETS}/textures/entity/eurasian_jay/{variant}.png'
+        files[rel] = ('png', img)
+        details[rel] = det
+    files[f'{ASSETS}/textures/item/eurasian_jay_spawn_egg.png'] = ('png', paint.spawn_egg(*paint.JAY_EGG))
+
     gauge = axis_gauge()
     gauge_anims = animations.calibration_animations(species.AXIS_GAUGE_ANIM)
     files[f'{PROBE_ASSETS}/geckolib/models/entity/axis_gauge.geo.json'] = ('json', geo_json(gauge))
@@ -240,6 +266,23 @@ def build_all():
             rel = f'{EXPECTED}/red_squirrel_red_{season}_{name}.png'
             files[rel] = ('mask', mask)
             expected['models']['red_squirrel']['masks'][f'red_{season}_{name}'] = os.path.basename(rel)
+    jay_alert = jay_anims['animations']['misc.alert']
+    jay_cam = view_camera(JAY_CAMERA)
+    expected['models']['eurasian_jay'] = {
+        'scale': jay.scale,
+        'camera': {'eye': list(JAY_CAMERA['eye']), 'yaw': JAY_CAMERA['yaw'], 'pitch': JAY_CAMERA['pitch']},
+        'rest': _round(pivots_and_locators(jay)),
+        'alert': _round(pivots_and_locators(jay, animations.pose_at(jay_alert, jay_alert['animation_length']))),
+        'alert_animation': 'misc.alert',
+        'hidden': {v: list(JAY_HIDDEN[v]) for v in JAY_VARIANTS},
+        'masks': {},
+    }
+    for variant in JAY_VARIANTS:
+        for name, yaw in VIEWS:
+            mask = render.silhouette(jay, jay_cam, None, (0, 0, 0), yaw, JAY_HIDDEN[variant])
+            rel = f'{EXPECTED}/eurasian_jay_{variant}_{name}.png'
+            files[rel] = ('mask', mask)
+            expected['models']['eurasian_jay']['masks'][f'{variant}_{name}'] = os.path.basename(rel)
     expected['models']['axis_gauge'] = {
         'rest': _round(pivots_and_locators(gauge)),
         'posed': _round(pivots_and_locators(gauge, species.AXIS_GAUGE_ANIM)),
@@ -247,7 +290,8 @@ def build_all():
     }
     files[f'{EXPECTED}/fauna_expected.json'] = ('json', expected)
     return files, dict(deer=deer, deer_anims=deer_anims, deer_textures=textures, gauge=gauge, gauge_anims=gauge_anims,
-                       boar=boar, boar_anims=boar_anims, squirrel=squirrel, squirrel_anims=squirrel_anims, details=details)
+                       boar=boar, boar_anims=boar_anims, squirrel=squirrel, squirrel_anims=squirrel_anims, jay=jay, jay_anims=jay_anims,
+                       details=details)
 
 
 def _round(d):
@@ -308,6 +352,7 @@ def main():
     print(f'fauna: roe deer eat pose: nose {eat_pose_check(models["deer"], models["deer_anims"]):.2f} px above the ground')
     print(f'fauna: wild boar eat pose: nose {eat_pose_check(models["boar"], models["boar_anims"]):.2f} px above the ground')
     print(f'fauna: red squirrel eat pose: nose {eat_pose_check(models["squirrel"], models["squirrel_anims"]):.2f} px above the ground')
+    print(f'fauna: eurasian jay peck: deepest head angle {animations.bd_peck_angle(models["jay"]):.0f} degrees')
 
 
 if __name__ == '__main__':

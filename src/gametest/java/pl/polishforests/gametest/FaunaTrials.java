@@ -92,12 +92,15 @@ final class FaunaTrials {
 	final BoarTrials boars;
 	/** Step FA5: the trials of the red squirrel (life in the trees, flight up a tree, MSPT). */
 	final SquirrelTrials squirrels;
+	/** Step FA6: the trials of the Eurasian jay (life under the crowns, the alarm, the acorns, MSPT). */
+	final JayTrials jays;
 
 	FaunaTrials(ClientGameTestContext context, FaunaCensus census) {
 		this.context = context;
 		this.census = census;
 		this.boars = new BoarTrials(context, census);
 		this.squirrels = new SquirrelTrials(context, census);
+		this.jays = new JayTrials(context, census);
 	}
 
 	/**
@@ -121,6 +124,8 @@ final class FaunaTrials {
 		}
 		// Step FA5: the red squirrel in a mixed pine forest near the place.
 		squirrels.all(sp, label, x, z);
+		// Step FA6: the Eurasian jay in an oak-hornbeam forest near the place.
+		jays.all(sp, label, x, z);
 	}
 
 	// ------------------------------------------------------------------ herd

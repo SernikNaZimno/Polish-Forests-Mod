@@ -123,9 +123,10 @@ public abstract class PolishAnimal<T extends PolishAnimal<T>> extends Animal imp
 		NONE, EAT, REST, ALERT, ROOT, WALLOW
 	}
 
-	/** The state the fauna command reports (new states only at the end; step FA5: CLIMBING and IN_TREE of the red squirrel). */
+	/** The state the fauna command reports (new states only at the end; step FA5: CLIMBING and IN_TREE of the red squirrel;
+	 * step FA6: FLYING, PERCHED and CACHING of the Eurasian jay). */
 	public enum State {
-		FLEEING, MOVING, GRAZING, RESTING, ALERT, IDLE, ROOTING, WALLOWING, CLIMBING, IN_TREE;
+		FLEEING, MOVING, GRAZING, RESTING, ALERT, IDLE, ROOTING, WALLOWING, CLIMBING, IN_TREE, FLYING, PERCHED, CACHING;
 
 		public String id() {
 			return name().toLowerCase(java.util.Locale.ROOT);

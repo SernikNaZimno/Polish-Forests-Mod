@@ -11,6 +11,8 @@ import org.junit.jupiter.api.Test;
 import pl.polishforests.block.GameRegistries;
 import pl.polishforests.entity.base.AnimalProfile;
 import pl.polishforests.entity.base.PolishAnimal;
+import pl.polishforests.entity.jay.EurasianJay;
+import pl.polishforests.entity.jay.JayMind;
 import pl.polishforests.entity.roedeer.RoeDeer;
 import pl.polishforests.entity.spawn.FaunaSpawner;
 import pl.polishforests.entity.squirrel.RedSquirrel;
@@ -75,10 +77,14 @@ class FaunaProfileTest {
 		assertEquals(RoeDeer.SAVED_FIELDS, ModEntities.savedFields(ModEntities.roeDeer()));
 		// Step FA3: the wild boar after the roe deer (the roe deer's draws at generation stay those of FA2).
 		// Step FA5: the red squirrel last (the draws of the roe deer and the wild boar at generation stay those of FA3).
-		assertEquals(3, ModEntities.fauna().size());
+		// Step FA6: the Eurasian jay last again (the draws of the three before stay those of FA5); no saved fields of its own.
+		assertEquals(4, ModEntities.fauna().size());
 		assertEquals(RoeDeer.PROFILE, ModEntities.fauna().get(0).profile());
 		assertEquals(WildBoar.PROFILE, ModEntities.fauna().get(1).profile());
 		assertEquals(RedSquirrel.PROFILE, ModEntities.fauna().get(2).profile());
+		assertEquals(EurasianJay.PROFILE, ModEntities.fauna().get(3).profile());
+		assertEquals(List.of(), EurasianJay.SAVED_FIELDS);
+		assertEquals(EurasianJay.SAVED_FIELDS, ModEntities.savedFields(ModEntities.eurasianJay()));
 		assertEquals(List.of("Dark"), RedSquirrel.SAVED_FIELDS);
 		assertEquals(RedSquirrel.SAVED_FIELDS, ModEntities.savedFields(ModEntities.redSquirrel()));
 		assertEquals(List.of("Male", "Seniority"), WildBoar.SAVED_FIELDS);
@@ -132,6 +138,63 @@ class FaunaProfileTest {
 		assertTrue(!RedSquirrel.coneForest(null));
 		// The texture variants of the generator.
 		assertEquals(List.of("red_summer", "red_winter", "dark_summer", "dark_winter"), RedSquirrel.variants());
+	}
+
+	/** Step FA6: the Eurasian jay's profile (docs/04 "Projekt FA6"). */
+	@Test
+	void eurasianJayProfileIsSane() {
+		AnimalProfile p = EurasianJay.PROFILE;
+		assertEquals("eurasian_jay", p.species());
+		// KFA-5: about 20-50 times the real density, generation and spawner apart.
+		assertTrue(p.generationFactor() >= 20 && p.generationFactor() <= 50, "generation factor " + p.generationFactor());
+		assertTrue(p.spawnerFactor() >= 20 && p.spawnerFactor() <= 50, "spawner factor " + p.spawnerFactor());
+		// The deciduous and mixed forests of the plan (oak-hornbeam, beech, fresh mixed, mixed pine, floodplain forests); the
+		// oak-hornbeam forest the most; no open land, no forest edge, no dwarf pine; less in the pine forests.
+		for (HabitatBiome b : List.of(HabitatBiome.OAK_HORNBEAM_FOREST, HabitatBiome.MIXED_FOREST, HabitatBiome.MIXED_PINE_FOREST,
+				HabitatBiome.LOWLAND_BEECH_FOREST, HabitatBiome.MONTANE_BEECH_FOREST, HabitatBiome.ELM_ASH_FOREST)) {
+			assertTrue(p.weight(b) >= 0.7F, b + " " + p.weight(b));
+		}
+		for (HabitatBiome b : List.of(HabitatBiome.ASH_ALDER_FOREST, HabitatBiome.WILLOW_POPLAR_FOREST)) {
+			assertTrue(p.weight(b) >= 0.5F, b + " " + p.weight(b));
+		}
+		for (HabitatBiome b : HabitatBiome.values()) {
+			if (!b.isForest()) {
+				assertEquals(0, p.weight(b), b + " has a weight");
+			}
+			assertTrue(p.weight(b) <= p.weight(HabitatBiome.OAK_HORNBEAM_FOREST), b.name());
+		}
+		assertEquals(0, p.weight(HabitatBiome.DWARF_PINE_SCRUB));
+		assertEquals(0, p.edgeWeight());
+		assertTrue(p.weight(HabitatBiome.FRESH_PINE_FOREST) < p.weight(HabitatBiome.MIXED_PINE_FOREST));
+		// Alone or a pair, no young (C10), its size (0.4 x 0.3).
+		assertEquals(new AnimalProfile.Range(2, 2), p.group(SubSeason.MID_SUMMER));
+		assertEquals(new AnimalProfile.Range(2, 2), p.group(SubSeason.MID_WINTER));
+		assertEquals(0.4F, p.soloShare());
+		assertEquals(0, p.youngChance());
+		for (SubSeason s : SubSeason.values()) {
+			assertTrue(!p.young(s), s.name());
+			assertTrue(!p.winterCoat(s), s.name());
+		}
+		assertEquals(0.4F, p.width());
+		assertEquals(0.3F, p.height());
+		// Diurnal: the night on a roost.
+		assertEquals(AnimalProfile.Activity.REST, p.activity(18_000));
+		assertEquals(AnimalProfile.Activity.FEED, p.activity(1_000));
+		// A circle of 64 blocks of oak-hornbeam forest: a few jays at generation, the spawner's target within its own limit.
+		double circle = p.generationDensityPerBlock() * Math.PI * FaunaSpawner.AREA_RADIUS * FaunaSpawner.AREA_RADIUS;
+		assertTrue(circle >= 2 && circle <= p.maxNearPlayer(), "circle " + circle);
+		double target = p.spawnerDensityPerBlock() * Math.PI * FaunaSpawner.AREA_RADIUS * FaunaSpawner.AREA_RADIUS;
+		assertTrue(target >= circle && target <= p.maxNearPlayer(), "spawner target " + target);
+		// The acorns: hidden in the autumn in the forests with oaks only.
+		assertTrue(JayMind.cachingSeason(SubSeason.MID_AUTUMN));
+		assertTrue(JayMind.cachingSeason(SubSeason.EARLY_AUTUMN));
+		assertTrue(!JayMind.cachingSeason(SubSeason.MID_SUMMER));
+		assertTrue(!JayMind.cachingSeason(SubSeason.MID_WINTER));
+		assertTrue(!JayMind.cachingSeason(null));
+		assertTrue(JayMind.acornForest(HabitatBiome.OAK_HORNBEAM_FOREST));
+		assertTrue(!JayMind.acornForest(HabitatBiome.LOWLAND_BEECH_FOREST));
+		assertTrue(!JayMind.acornForest(null));
+		assertEquals(List.of("adult"), EurasianJay.variants());
 	}
 
 	@Test

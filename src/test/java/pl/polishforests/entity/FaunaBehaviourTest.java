@@ -183,12 +183,14 @@ class FaunaBehaviourTest {
 		assertTrue(bark.intensityAt(31) > 0);
 		// A running player is heard beyond the largest flight distance (alert there).
 		assertTrue(ForestAlarm.PLAYER_RADIUS > P.fleeMax());
-		// New kinds only at the end (FA3: the snort of the wild boar; FA4: the jay).
+		// New kinds only at the end (FA3: the snort of the wild boar; FA4: the jay; FA6: the jay entity).
 		assertEquals(List.of(ForestAlarm.Kind.TEST, ForestAlarm.Kind.RUNNING_PLAYER, ForestAlarm.Kind.BARK, ForestAlarm.Kind.SNORT,
-				ForestAlarm.Kind.JAY), List.of(ForestAlarm.Kind.values()));
-		// The warnings of other animals (FA4: also the jay's screech) make the deer stay alert after the flight.
+				ForestAlarm.Kind.JAY, ForestAlarm.Kind.JAY_BIRD), List.of(ForestAlarm.Kind.values()));
+		// The warnings of other animals (FA4: also the jay's screech, FA6 that of the jay entity) make the deer stay alert
+		// after the flight.
 		for (ForestAlarm.Kind k : ForestAlarm.Kind.values()) {
-			boolean warning = k == ForestAlarm.Kind.BARK || k == ForestAlarm.Kind.SNORT || k == ForestAlarm.Kind.JAY;
+			boolean warning = k == ForestAlarm.Kind.BARK || k == ForestAlarm.Kind.SNORT || k == ForestAlarm.Kind.JAY
+					|| k == ForestAlarm.Kind.JAY_BIRD;
 			assertEquals(warning, new ForestAlarm(Vec3.ZERO, 32, 1.0F, k, null).warning(), k.name());
 		}
 		// The snort of a boar: its neighbours flee within about 9 blocks, stand alert within 24.
@@ -202,8 +204,9 @@ class FaunaBehaviourTest {
 		// The synchronized action is an ordinal: new actions (FA3: rooting, wallowing) only at the end.
 		assertEquals(List.of("NONE", "EAT", "REST", "ALERT", "ROOT", "WALLOW"),
 				Stream.of(PolishAnimal.Action.values()).map(Enum::name).toList());
-		// Step FA5: climbing and in a tree (the red squirrel) appended.
-		assertEquals(List.of("fleeing", "moving", "grazing", "resting", "alert", "idle", "rooting", "wallowing", "climbing", "in_tree"),
+		// Step FA5: climbing and in a tree (the red squirrel) appended; step FA6 flying, perched and caching (the jay).
+		assertEquals(List.of("fleeing", "moving", "grazing", "resting", "alert", "idle", "rooting", "wallowing", "climbing", "in_tree",
+				"flying", "perched", "caching"),
 				Stream.of(PolishAnimal.State.values()).map(PolishAnimal.State::id).toList());
 	}
 

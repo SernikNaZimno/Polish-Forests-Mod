@@ -17,6 +17,7 @@ import net.minecraft.world.item.SpawnEggItem;
 import org.jspecify.annotations.Nullable;
 import pl.polishforests.PolishForests;
 import pl.polishforests.entity.roedeer.RoeDeer;
+import pl.polishforests.entity.jay.EurasianJay;
 import pl.polishforests.entity.spawn.FaunaSpawner;
 import pl.polishforests.entity.squirrel.RedSquirrel;
 import pl.polishforests.entity.wildboar.WildBoar;
@@ -26,7 +27,7 @@ import pl.polishforests.entity.wildboar.WildBoar;
  * go into saved worlds, so {@code RegistrySnapshotTest} compares them with {@code src/test/resources/registry_snapshot.txt}
  * like the blocks and items (frozen after checkpoint CP-B, PW-11). From step FA1 the animals spawn in the world types of the
  * mod ({@link #fauna()}, {@code spawn/FaunaSpawner}). Step FA3: the wild boar (new ids appended, PW-11); step FA5 the red
- * squirrel (appended).
+ * squirrel (appended); step FA6 the Eurasian jay (appended).
  */
 public final class ModEntities {
 	private static @Nullable EntityType<RoeDeer> roeDeer;
@@ -35,6 +36,8 @@ public final class ModEntities {
 	private static @Nullable Item wildBoarSpawnEgg;
 	private static @Nullable EntityType<RedSquirrel> redSquirrel;
 	private static @Nullable Item redSquirrelSpawnEgg;
+	private static @Nullable EntityType<EurasianJay> eurasianJay;
+	private static @Nullable Item eurasianJaySpawnEgg;
 
 	private ModEntities() {
 	}
@@ -46,10 +49,12 @@ public final class ModEntities {
 		FabricDefaultAttributeRegistry.register(roeDeer(), RoeDeer.createAttributes());
 		FabricDefaultAttributeRegistry.register(wildBoar(), WildBoar.createAttributes());
 		FabricDefaultAttributeRegistry.register(redSquirrel(), RedSquirrel.createAttributes());
+		FabricDefaultAttributeRegistry.register(eurasianJay(), EurasianJay.createAttributes());
 		CreativeModeTabEvents.modifyOutputEvent(CreativeModeTabs.SPAWN_EGGS).register(out -> {
 			out.insertAfter(Items.RAVAGER_SPAWN_EGG, roeDeerSpawnEgg());
 			out.insertAfter(roeDeerSpawnEgg(), wildBoarSpawnEgg());
 			out.insertAfter(wildBoarSpawnEgg(), redSquirrelSpawnEgg());
+			out.insertAfter(redSquirrelSpawnEgg(), eurasianJaySpawnEgg());
 		});
 	}
 
@@ -74,6 +79,25 @@ public final class ModEntities {
 		redSquirrel = type("red_squirrel", EntityType.Builder.of(RedSquirrel::new, MobCategory.AMBIENT).sized(0.4F, 0.45F).eyeHeight(0.35F)
 				.clientTrackingRange(8).updateInterval(2).noLootTable());
 		redSquirrelSpawnEgg = spawnEgg("red_squirrel_spawn_egg", redSquirrel);
+		// Step FA6: the Eurasian jay, 0.4 x 0.3 blocks, ambient category (G.62-j: outside vanilla's counts, its own limit of
+		// the fauna spawner); position updates every 2 ticks for the flight; no loot (C8).
+		eurasianJay = type("eurasian_jay", EntityType.Builder.of(EurasianJay::new, MobCategory.AMBIENT).sized(0.4F, 0.3F).eyeHeight(0.25F)
+				.clientTrackingRange(8).updateInterval(2).noLootTable());
+		eurasianJaySpawnEgg = spawnEgg("eurasian_jay_spawn_egg", eurasianJay);
+	}
+
+	public static EntityType<EurasianJay> eurasianJay() {
+		if (eurasianJay == null) {
+			throw new IllegalStateException("The entity types are not registered yet");
+		}
+		return eurasianJay;
+	}
+
+	public static Item eurasianJaySpawnEgg() {
+		if (eurasianJaySpawnEgg == null) {
+			throw new IllegalStateException("The spawn eggs are not registered yet");
+		}
+		return eurasianJaySpawnEgg;
 	}
 
 	public static EntityType<RedSquirrel> redSquirrel() {
@@ -122,17 +146,20 @@ public final class ModEntities {
 		if (type == redSquirrel) {
 			return RedSquirrel.SAVED_FIELDS;
 		}
+		if (type == eurasianJay) {
+			return EurasianJay.SAVED_FIELDS;
+		}
 		return type == wildBoar ? WildBoar.SAVED_FIELDS : List.of();
 	}
 
 	/**
 	 * The species the fauna spawners place, with their profiles (step FA1; step FA3 the wild boar after the roe deer, so the
 	 * draws of the roe deer at generation stay those of FA2; step FA5 the red squirrel last, so those of the roe deer and the
-	 * wild boar stay those of FA3).
+	 * wild boar stay those of FA3; step FA6 the Eurasian jay last again).
 	 */
 	public static List<FaunaSpawner.Species> fauna() {
 		return List.of(new FaunaSpawner.Species(roeDeer(), RoeDeer.PROFILE), new FaunaSpawner.Species(wildBoar(), WildBoar.PROFILE),
-				new FaunaSpawner.Species(redSquirrel(), RedSquirrel.PROFILE));
+				new FaunaSpawner.Species(redSquirrel(), RedSquirrel.PROFILE), new FaunaSpawner.Species(eurasianJay(), EurasianJay.PROFILE));
 	}
 
 	public static Item roeDeerSpawnEgg() {

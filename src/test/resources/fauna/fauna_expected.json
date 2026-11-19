@@ -291,6 +291,84 @@
     "red_winter_right": "red_squirrel_red_winter_right.png"
    }
   },
+  "eurasian_jay": {
+   "scale": 0.25,
+   "camera": {
+    "eye": [0.0, 0.1, -1.4],
+    "yaw": 0.0,
+    "pitch": 0.0
+   },
+   "rest": {
+    "bone:body": [0.0, 6.0, 0.0],
+    "bone:crest": [0.0, 11.5, -4.0],
+    "bone:food_acorn": [0.0, 8.5, -9.0],
+    "bone:head": [0.0, 8.5, -4.0],
+    "bone:leg_left": [1.25, 3.25, 0.0],
+    "bone:leg_right": [-1.25, 3.25, 0.0],
+    "bone:root": [0.0, 0.0, 0.0],
+    "bone:tail": [0.0, 7.0, 4.0],
+    "bone:wing_left": [2.5, 8.5, -3.5],
+    "bone:wing_right": [-2.5, 8.5, -3.5],
+    "bone:wing_tip_left": [2.5, 8.5, 6.0],
+    "bone:wing_tip_right": [-2.5, 8.5, 6.0],
+    "locator:body_back": [0.0, 6.0, 4.5],
+    "locator:body_front": [0.0, 6.0, -4.5],
+    "locator:crest_tip": [0.0, 12.0, -7.0],
+    "locator:eye_left": [1.5, 10.0, -6.0],
+    "locator:eye_right": [-1.5, 10.0, -6.0],
+    "locator:food_acorn_tip": [0.0, 7.0, -9.0],
+    "locator:head_tip": [0.0, 11.5, -7.5],
+    "locator:leg_left_tip": [1.25, 0.0, 0.0],
+    "locator:leg_right_tip": [-1.25, 0.0, 0.0],
+    "locator:nose": [0.0, 9.0, -9.5],
+    "locator:tail_tip": [0.0, 6.1638, 11.9562],
+    "locator:wing_left_tip": [3.0, 6.0, 6.5],
+    "locator:wing_right_tip": [-3.0, 6.0, 6.5],
+    "locator:wing_tip_left_tip": [3.1, 6.0, 11.0],
+    "locator:wing_tip_right_tip": [-3.1, 6.0, 11.0]
+   },
+   "alert": {
+    "bone:body": [0.0, 5.973, 0.0],
+    "bone:crest": [0.0, 11.7869, -2.4893],
+    "bone:food_acorn": [0.0, 10.8784, -8.2491],
+    "bone:head": [0.0, 9.0054, -3.6131],
+    "bone:leg_left": [1.25, 3.2498, -0.3827],
+    "bone:leg_right": [-1.25, 3.2498, -0.3827],
+    "bone:root": [0.0, 0.0, 0.0],
+    "bone:tail": [0.0, 6.4066, 4.1002],
+    "bone:wing_left": [2.5, 8.9358, -3.118],
+    "bone:wing_right": [-2.5, 8.9358, -3.118],
+    "bone:wing_tip_left": [2.5, 7.6136, 6.2895],
+    "bone:wing_tip_right": [-2.5, 7.6136, 6.2895],
+    "locator:body_back": [0.0, 5.3467, 4.4562],
+    "locator:body_front": [0.0, 6.5993, -4.4562],
+    "locator:crest_tip": [0.0, 14.7025, -3.355],
+    "locator:eye_left": [1.5, 11.1454, -4.9056],
+    "locator:eye_right": [-1.5, 11.1454, -4.9056],
+    "locator:food_acorn_tip": [0.0, 9.4876, -8.811],
+    "locator:head_tip": [0.0, 13.098, -5.7345],
+    "locator:leg_left_tip": [1.25, -0.0002, -0.3827],
+    "locator:leg_right_tip": [-1.25, -0.0002, -0.3827],
+    "locator:nose": [0.0, 11.5293, -8.5253],
+    "locator:tail_tip": [0.0, 6.9646, 12.0808],
+    "locator:wing_left_tip": [2.7359, 5.0302, 6.4314],
+    "locator:wing_right_tip": [-2.7359, 5.0302, 6.4314],
+    "locator:wing_tip_left_tip": [2.8354, 4.3936, 10.8861],
+    "locator:wing_tip_right_tip": [-2.8354, 4.3936, 10.8861]
+   },
+   "alert_animation": "misc.alert",
+   "hidden": {
+    "adult": [
+     "food_acorn"
+    ]
+   },
+   "masks": {
+    "adult_front": "eurasian_jay_adult_front.png",
+    "adult_left": "eurasian_jay_adult_left.png",
+    "adult_back": "eurasian_jay_adult_back.png",
+    "adult_right": "eurasian_jay_adult_right.png"
+   }
+  },
   "axis_gauge": {
    "rest": {
     "bone:anim": [6.0, 4.0, 0.0],

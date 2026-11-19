@@ -1107,6 +1107,7 @@ item polishforests:elm_slab block=polishforests:elm_slab
 item polishforests:elm_stairs block=polishforests:elm_stairs
 item polishforests:elm_trunk block=polishforests:elm_trunk
 item polishforests:elm_wood block=polishforests:elm_wood
+item polishforests:eurasian_jay_spawn_egg
 item polishforests:fir_button block=polishforests:fir_button
 item polishforests:fir_fence block=polishforests:fir_fence
 item polishforests:fir_fence_gate block=polishforests:fir_fence_gate
@@ -1361,6 +1362,7 @@ item polishforests:wild_garlic block=polishforests:wild_garlic
 item polishforests:wood_anemone block=polishforests:wood_anemone
 item polishforests:wood_sorrel block=polishforests:wood_sorrel
 item polishforests:yellow_iris block=polishforests:yellow_iris
+entity polishforests:eurasian_jay saved=
 entity polishforests:red_squirrel saved=Dark
 entity polishforests:roe_deer saved=Buck,WinterCoat
 entity polishforests:wild_boar saved=Male,Seniority

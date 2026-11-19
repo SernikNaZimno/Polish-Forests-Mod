@@ -22,7 +22,9 @@ import org.jspecify.annotations.Nullable;
  * jay joins in step FA4 and the jay as an entity in FA6 (new kinds only at the end of the enum). Step FA3: the snort of a
  * wild boar at the start of a flight ({@link Kind#SNORT}), a warning like the bark (an animal that flees from it does not
  * warn again). Step FA4: the screech of a jay a running player startles ({@link Kind#JAY}, {@code sound/ForestAmbience}, radius
- * 32 blocks), a warning like the bark.
+ * 32 blocks), a warning like the bark. Step FA6: the screech of a Eurasian jay entity that sees a running player
+ * ({@link Kind#JAY_BIRD}, {@code entity/jay/JayMind}, radius 32 blocks, the jay as its cause), a warning like the bark;
+ * the ambient screech of FA4 then stays only where no jay is near.
  *
  * @param source   where the alarm comes from
  * @param radius   how far it is heard (blocks)
@@ -43,7 +45,7 @@ public record ForestAlarm(Vec3 source, double radius, float strength, Kind kind,
 
 	/** What raised an alarm. New kinds only at the end. */
 	public enum Kind {
-		TEST, RUNNING_PLAYER, BARK, SNORT, JAY
+		TEST, RUNNING_PLAYER, BARK, SNORT, JAY, JAY_BIRD
 	}
 
 	/** Animals that heard an alarm, by its kind (step FA4: the census counts those of the jay apart). */
@@ -59,7 +61,7 @@ public record ForestAlarm(Vec3 source, double radius, float strength, Kind kind,
 
 	/** Whether the alarm is the warning of another animal (an animal that flees from it does not warn again). */
 	public boolean warning() {
-		return kind == Kind.BARK || kind == Kind.SNORT || kind == Kind.JAY;
+		return kind == Kind.BARK || kind == Kind.SNORT || kind == Kind.JAY || kind == Kind.JAY_BIRD;
 	}
 
 	/** An animal that hears the alarms of the forest. */

@@ -61,6 +61,10 @@ MAP = [
     ('src/gametest/', ['gametest_code']),
     ('src/gametest/java/pl/polishforests/gametest/TatraClientGameTest', ['gametest_code', 'tatra']),
     ('src/gametest/java/pl/polishforests/gametest/Fauna', ['gametest_code', 'fauna']),
+    # Step FA6: the trials of the animals in their own classes (BoarTrials, SquirrelTrials, JayTrials) belong to the fauna test.
+    ('src/gametest/java/pl/polishforests/gametest/BoarTrials', ['gametest_code', 'fauna']),
+    ('src/gametest/java/pl/polishforests/gametest/SquirrelTrials', ['gametest_code', 'fauna']),
+    ('src/gametest/java/pl/polishforests/gametest/JayTrials', ['gametest_code', 'fauna']),
     ('src/gametest/java/pl/polishforests/gametest/TatraDetailsCheck', ['gametest_code', 'tatra']),
     ('src/test/', ['unit']),
     # Step TT1: the Tatra tests and the golden Tatra file.
