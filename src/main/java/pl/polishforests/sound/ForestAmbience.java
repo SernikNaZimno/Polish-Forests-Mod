@@ -26,6 +26,7 @@ import org.jspecify.annotations.Nullable;
 import pl.polishforests.PolishForests;
 import pl.polishforests.entity.ModEntities;
 import pl.polishforests.entity.base.ForestAlarm;
+import pl.polishforests.entity.jay.JayMind;
 import pl.polishforests.entity.spawn.FaunaHabitat;
 import pl.polishforests.entity.spawn.FaunaSpawner;
 import pl.polishforests.season.Seasons;
@@ -52,8 +53,10 @@ import pl.polishforests.worldgen.habitat.HabitatBiome;
  *
  * <p>Step FA6: where the Eurasian jay lives as an entity, it screeches itself at a running player it sees
  * ({@code entity/jay/JayMind}). So the screech of the ambience, and the jay among the voices of an event, stay only where
- * no jay is within {@value #JAY_NEAR} blocks of the player ({@link #jayNear}: no doubled screech, no doubled alarm); the
- * draws stay those of FA4 (the check comes after them, counters {@link #JAY_DEFERRED} and {@link #JAY_VOICE_DEFERRED}).
+ * no jay is within {@value #JAY_NEAR} blocks of the player ({@link #jayNear}: no doubled screech, no doubled alarm); where
+ * jays are, the drawn screech goes to the nearest of them ({@link JayMind#answerAmbience}: the jay entity screeches and
+ * raises its own alarm, none when one of them screeched just before). The draws stay those of FA4 (the check comes after
+ * them, counters {@link #JAY_DEFERRED} and {@link #JAY_VOICE_DEFERRED}).
  *
  * <p>The draws have their own random source per player from the seed and the new salt {@link #SALT} (KFA-1: no salt of the
  * world and no block changes). Counters for the census of the fauna game test ({@code -Psites=sound}).
@@ -189,7 +192,7 @@ public final class ForestAmbience {
 					&& AmbienceRules.kind(FaunaHabitat.surface(level, p.getBlockX(), p.getBlockZ())) != null
 					&& s.random.nextFloat() < JAY_CHANCE) {
 				s.nextJay = now + scaled(JAY_COOLDOWN + s.random.nextInt(JAY_COOLDOWN_MAX - JAY_COOLDOWN + 1));
-				if (jayNear(level, p.position())) {
+				if (JayMind.answerAmbience(level, p.position(), JAY_NEAR, now)) {
 					JAY_DEFERRED.increment();
 				} else {
 					screech(level, p, s.random);

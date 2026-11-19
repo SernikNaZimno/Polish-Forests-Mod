@@ -52,6 +52,23 @@ class JayGeometryTest {
 	}
 
 	@Test
+	void plannedCeilingIsStricterThanTheMeasure() {
+		// stage 2 (FA6-q): a planned point needs the top of its hitbox 0.3 under the local canopy top
+		assertTrue(JayGeometry.plannedUnder(70 - H - JayGeometry.CEILING_MARGIN, H, 70));
+		assertFalse(JayGeometry.plannedUnder(70 - H - JayGeometry.CEILING_MARGIN + 0.01, H, 70));
+		// below the band (a take-off from the ground, a landing on it) is not over the ceiling
+		assertTrue(JayGeometry.plannedUnder(64, H, 72));
+		// every planned point is under the canopy by the measure of the game test
+		for (double y = 60; y <= 80; y += 0.05) {
+			if (JayGeometry.plannedUnder(y, H, 72)) {
+				assertTrue(JayGeometry.underCanopy(y, H, 72), "y " + y);
+			}
+		}
+		// the share of a leg over the ceiling stays under the measured threshold of the game test (90% under)
+		assertTrue(JayGeometry.ABOVE_SHARE <= 0.1);
+	}
+
+	@Test
 	void sweepPointsCoverTheSegment() {
 		Vec3 a = new Vec3(0, 70, 0);
 		Vec3 b = new Vec3(3, 70, 4);   // 5 blocks

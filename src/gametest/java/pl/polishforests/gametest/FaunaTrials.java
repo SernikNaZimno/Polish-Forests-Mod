@@ -82,6 +82,11 @@ final class FaunaTrials {
 	static final int MSPT_TICKS = 1200;
 	static final double MSPT_BUDGET = 0.05;
 	private static final boolean REPORT_ONLY = Boolean.getBoolean("polishforests.timings.reportOnly");
+	/**
+	 * Stage 2 of FA6: {@code -PfaunaOnly=jay} runs only the trials of the Eurasian jay (the behaviour trials and the MSPT
+	 * scene), for quick runs while its flight is tuned; the full runs go without it.
+	 */
+	static final boolean JAYS_ONLY = "jay".equals(System.getProperty("polishforests.fauna.only", ""));
 	/** Times of day of the activity trial: dawn 6:30, noon, dusk 18:30, midnight. */
 	static final int[] TIMES = {500, 6000, 12500, 18000};
 	static final String[] TIME_NAMES = {"dawn", "noon", "dusk", "night"};
@@ -109,6 +114,10 @@ final class FaunaTrials {
 	 * the player's game mode).
 	 */
 	void all(TestSingleplayerContext sp, String label, int x, int z, List<SubSeason> lookSeasons, boolean boarExtras) {
+		if (JAYS_ONLY) {
+			jays.all(sp, label, x, z);
+			return;
+		}
 		SeasonDates.set(sp, SubSeason.MID_SUMMER, 0, label);
 		List<RoeDeer> herd = activity(sp, label, x, z);
 		range(sp, label, herd);

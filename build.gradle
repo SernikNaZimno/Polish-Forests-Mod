@@ -843,6 +843,10 @@ tasks.named('runClientGameTest') {
 	if (project.hasProperty('faunaMinutes')) {
 		jvmArgs "-Dpolishforests.fauna.minutes=${project.property('faunaMinutes')}"
 	}
+	// Step FA6 stage 2: -PfaunaOnly=jay runs only the jay's trials of the fauna game test (quick runs while tuning).
+	if (project.hasProperty('faunaOnly')) {
+		jvmArgs "-Dpolishforests.fauna.only=${project.property('faunaOnly')}"
+	}
 	if (project.hasProperty('soundTicks')) {
 		jvmArgs "-Dpolishforests.sound.ticks=${project.property('soundTicks')}"
 	}

@@ -10,6 +10,7 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.ai.memory.WalkTarget;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.tslat.smartbrainlib.util.BrainUtil;
 import org.jspecify.annotations.Nullable;
@@ -42,7 +43,8 @@ import pl.polishforests.worldgen.habitat.HabitatBiome;
  * <li><b>The alarm</b>: a running player it sees (sprinting, visible, within {@value #ALARM_RANGE} blocks and in its line
  * of sight; {@link ForestAlarm#runningThreat}) makes it screech (the sound of {@code tools/sound}, FA4) and raise a
  * {@link ForestAlarm.Kind#JAY_BIRD} alarm of radius {@value #ALARM_RADIUS} that the roe deer and the wild boars hear, at
- * most once in {@value #SCREECH_COOLDOWN}-{@value #SCREECH_COOLDOWN_MAX} ticks, not when it roosts at night.
+ * most once in {@value #SCREECH_COOLDOWN}-{@value #SCREECH_COOLDOWN_MAX} ticks, not when it roosts at night. The screech
+ * the forest ambience draws for a running player is handed to the nearest jay ({@link #answerAmbience}).
  * <li><b>Flight</b>: a player within its flight distance, an alarm heard at the flight intensity (not the running player's
  * own alarm: the jay uses its eyes), or a hurt make it fly to a perch {@value #FLEE_MIN}-{@value #FLEE_MAX} blocks away on
  * the far side from the threat (else a spot on the ground there), then watch (alert).
@@ -80,6 +82,8 @@ public final class JayMind {
 	public static final LongAdder FLIGHTS_FROM_THREAT = new LongAdder();
 	public static final LongAdder GROUND_FEEDS = new LongAdder();
 	public static final LongAdder NO_PERCH = new LongAdder();
+	/** Screeches of the ambience a jay entity took over ({@link #answerAmbience}). */
+	public static final LongAdder AMBIENCE_HANDED = new LongAdder();
 
 	enum Goal {
 		IDLE, FORAGE, PICK, CARRY, HIDE, PERCHED, FLYING, WATCH
@@ -92,6 +96,7 @@ public final class JayMind {
 	private long goalUntil;
 	private long nextStop;
 	private long nextScreech;
+	private long lastScreech = -1;
 	private boolean perched;
 	private boolean fleeing;
 	private @Nullable Vec3 threat;
@@ -104,7 +109,7 @@ public final class JayMind {
 	}
 
 	public static void resetCounters() {
-		for (LongAdder a : new LongAdder[] {SCREECHES, SCREECH_HEARD, CACHES, FLIGHTS_FROM_THREAT, GROUND_FEEDS, NO_PERCH}) {
+		for (LongAdder a : new LongAdder[] {SCREECHES, SCREECH_HEARD, CACHES, FLIGHTS_FROM_THREAT, GROUND_FEEDS, NO_PERCH, AMBIENCE_HANDED}) {
 			a.reset();
 		}
 	}
@@ -220,9 +225,52 @@ public final class JayMind {
 
 	// ------------------------------------------------------------------ the alarm
 
+	/** Whether it may screech now: the cooldown over and not on its night roost. */
+	boolean canScreech(long now) {
+		return now >= nextScreech && !(bout == Activity.REST && j.profile().period(j.timeOfDay()).main() == Activity.REST);
+	}
+
+	/**
+	 * The screech of the forest ambience handed to the jay entities (stage 2 of FA6, choice FA6-t): when the ambience of FA4
+	 * draws a screech for a running player and jays live within {@code radius} blocks (horizontal) of the player, the
+	 * nearest of them that may screech ({@link #canScreech}) screeches itself, with its {@link ForestAlarm.Kind#JAY_BIRD}
+	 * alarm; none does when one of them screeched in the last {@value #SCREECH_COOLDOWN} ticks (it already warned the forest:
+	 * no doubled screech) or all roost. Returns false when no jay lives there (the ambience screeches as in FA4).
+	 */
+	public static boolean answerAmbience(ServerLevel level, Vec3 at, double radius, long now) {
+		AABB box = new AABB(at.x - radius, at.y - 64, at.z - radius, at.x + radius, at.y + 64, at.z + radius);
+		double r2 = radius * radius;
+		List<EurasianJay> near = level.getEntities(ModEntities.eurasianJay(), box, e -> {
+			double dx = e.getX() - at.x;
+			double dz = e.getZ() - at.z;
+			return e.isAlive() && dx * dx + dz * dz <= r2;
+		});
+		if (near.isEmpty()) {
+			return false;
+		}
+		EurasianJay best = null;
+		double bestD = Double.MAX_VALUE;
+		for (EurasianJay e : near) {
+			JayMind m = e.mind();
+			if (m.lastScreech >= 0 && now - m.lastScreech < SCREECH_COOLDOWN) {
+				return true;
+			}
+			double d = e.distanceToSqr(at);
+			if (m.canScreech(now) && d < bestD) {
+				best = e;
+				bestD = d;
+			}
+		}
+		if (best != null) {
+			AMBIENCE_HANDED.increment();
+			best.mind().screech(level, now);
+		}
+		return true;
+	}
+
 	/** A running player it sees: the screech and the alarm (see the class comment). */
 	private void watchForRunners(ServerLevel level, long now) {
-		if (now < nextScreech || bout == Activity.REST && j.profile().period(j.timeOfDay()).main() == Activity.REST) {
+		if (!canScreech(now)) {
 			return;
 		}
 		for (ServerPlayer p : level.players()) {
@@ -237,6 +285,7 @@ public final class JayMind {
 	public int screech(ServerLevel level, long now) {
 		RandomSource r = j.getRandom();
 		nextScreech = now + SCREECH_COOLDOWN + r.nextInt(SCREECH_COOLDOWN_MAX - SCREECH_COOLDOWN + 1);
+		lastScreech = now;
 		level.playSound(null, j.getX(), j.getEyeY(), j.getZ(), ModSounds.JAY, SoundSource.NEUTRAL, 3.0F, 0.94F + r.nextFloat() * 0.12F);
 		SCREECHES.increment();
 		int heard = ForestAlarm.raise(level, new ForestAlarm(j.getEyePosition(), ALARM_RADIUS, ALARM_STRENGTH, ForestAlarm.Kind.JAY_BIRD, j));

@@ -15,6 +15,13 @@ import net.minecraft.world.phys.Vec3;
  * ground to {@value #UNDER_CANOPY} blocks under the local canopy top (the top of its hitbox below the crowns), at most
  * {@value #CRUISE_ABOVE_GROUND} blocks above the ground (jays fly through the middle storeys of the forest); a column
  * without a canopy of at least {@value #MIN_CANOPY} blocks over the ground has no band.
+ *
+ * <p>Stage 2 of FA6 (choice FA6-q): a planned flight is checked against the <b>canopy ceiling</b> only
+ * ({@link #plannedUnder}: the top of the hitbox at least {@value #CEILING_MARGIN} blocks under the local canopy top, at
+ * points {@value #PLAN_STEP} block apart), not against the lower edge of the band: the take-off from the ground and the
+ * landing on it lie below the band by nature, and the collisions are checked on their own. At most
+ * {@value #ABOVE_SHARE} of the points of a leg may lie over the ceiling (a short crossing of a gap). The band stays the
+ * choice of the heights of the waypoints ({@link #cruiseLow}, {@link #cruiseHigh}).
  */
 public final class JayGeometry {
 	/** Radius (blocks) of the columns of the local canopy top, and the spacing of the columns read. */
@@ -32,8 +39,12 @@ public final class JayGeometry {
 	public static final double SWEEP_STEP = 0.25;
 	/** Spacing (blocks) of the points a path segment is checked at against the cruise band. */
 	public static final double BAND_STEP = 2.0;
-	/** The share of the band points of a planned flight that may lie outside the band (a short crossing of a gap). */
-	public static final double OUT_OF_BAND_SHARE = 0.2;
+	/** Least gap from the top of the hitbox to the local canopy top at the points of a planned flight (blocks). */
+	public static final double CEILING_MARGIN = 0.3;
+	/** Spacing (blocks) of the points a planned leg is checked at against the canopy ceiling. */
+	public static final double PLAN_STEP = 1.0;
+	/** The share of the points of a planned leg that may lie over the canopy ceiling (a short crossing of a gap). */
+	public static final double ABOVE_SHARE = 0.1;
 
 	private JayGeometry() {
 	}
@@ -65,6 +76,11 @@ public final class JayGeometry {
 	/** Whether a flight sample is under the canopy: the top of the hitbox below the local canopy top. */
 	public static boolean underCanopy(double feetY, float height, double localCanopy) {
 		return feetY + height <= localCanopy;
+	}
+
+	/** Whether a point of a planned flight lies under the canopy ceiling: the top of the hitbox {@value #CEILING_MARGIN} under it. */
+	public static boolean plannedUnder(double feetY, float height, double localCanopy) {
+		return feetY + height + CEILING_MARGIN <= localCanopy + 1.0E-6;
 	}
 
 	/** The number of collision checks of a segment ({@value #SWEEP_STEP} blocks apart, both ends included). */

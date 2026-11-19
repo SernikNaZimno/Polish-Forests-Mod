@@ -775,6 +775,10 @@ final class FaunaCensus {
 			prepare(sp, true);
 			// The spawners off during the timing (only the 40 trial deer and those of the generation tick).
 			sp.getServer().runCommand("gamerule polishforests:forest_fauna false");
+			if (FaunaTrials.JAYS_ONLY) {
+				trials.jays.mspt(sp, "gameplay/natural " + first.name(), first.x(), first.z());
+				return;
+			}
 			trials.mspt(sp, "gameplay/natural " + first.name(), first.x(), first.z());
 			// Step FA3: the same with 40 wild boars (the roe deer removed).
 			trials.boars.mspt(sp, "gameplay/natural " + first.name(), first.x(), first.z());

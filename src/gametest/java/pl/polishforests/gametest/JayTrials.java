@@ -119,6 +119,8 @@ final class JayTrials {
 	static void resetCounters() {
 		JayFlight.resetCounters();
 		JayMind.resetCounters();
+		JaySpace.PERCHES_UNDER.reset();
+		JaySpace.PERCHES_EDGE.reset();
 	}
 
 	/** The counters of the jays now, in the order of {@link #counters(long[])}. */
@@ -126,12 +128,13 @@ final class JayTrials {
 		return new long[] {JayFlight.FLIGHTS.sum(), JayFlight.FLIGHT_TICKS.sum(), JayFlight.LANDED_BRANCH.sum(), JayFlight.LANDED_LEAVES.sum(),
 				JayFlight.LANDED_GROUND.sum(), JayFlight.NO_ROUTE.sum(), JayFlight.STALLED.sum(), JayFlight.TWO_LEGS.sum(), JayMind.SCREECHES.sum(),
 				JayMind.SCREECH_HEARD.sum(), JayMind.CACHES.sum(), JayMind.FLIGHTS_FROM_THREAT.sum(), JayMind.GROUND_FEEDS.sum(),
-				JayMind.NO_PERCH.sum(), ForestAmbience.JAY_DEFERRED.sum(), ForestAmbience.JAY_VOICE_DEFERRED.sum()};
+				JayMind.NO_PERCH.sum(), ForestAmbience.JAY_DEFERRED.sum(), ForestAmbience.JAY_VOICE_DEFERRED.sum(), JayFlight.PLAN_HIGH.sum(),
+				JayFlight.PLAN_BLOCKED.sum(), JaySpace.PERCHES_UNDER.sum(), JaySpace.PERCHES_EDGE.sum(), JayMind.AMBIENCE_HANDED.sum()};
 	}
 
 	/** The counters of the jays since the census of the world began, as one line. */
 	static String counters() {
-		return counters(new long[16]);
+		return counters(new long[21]);
 	}
 
 	/** The counters of the jays since the mark, as one line. */
@@ -140,11 +143,12 @@ final class JayTrials {
 		for (int i = 0; i < n.length; i++) {
 			n[i] -= since[i];
 		}
-		return String.format(Locale.ROOT, "flights %d (%d ticks in the air, mean %.1f; two legs %d), landings on a branch %d, on leaves %d, on"
-				+ " the ground %d, no route %d, stalled %d; screeches %d (heard by %d), acorns hidden %d, flights from a threat %d, ground feeding"
-				+ " bouts %d, no perch found %d; ambience screeches left to a jay %d, ambience jay voices left out %d", n[0], n[1],
-				n[0] == 0 ? Double.NaN : n[1] / (double) n[0], n[7], n[2], n[3], n[4], n[5], n[6], n[8], n[9], n[10], n[11], n[12], n[13], n[14],
-				n[15]);
+		return String.format(Locale.ROOT, "flights %d (%d ticks in the air, mean %.1f; of more legs %d), landings on a branch %d, on leaves %d,"
+				+ " on the ground %d, no route %d (legs left over the canopy %d, blocked %d), stalled %d; perches found under a crown %d, on the"
+				+ " edge of one %d; screeches %d (heard by %d), acorns hidden %d, flights from a threat %d, ground feeding bouts %d, no perch"
+				+ " found %d; ambience screeches left to a jay %d (taken over by a jay %d), ambience jay voices left out %d", n[0], n[1],
+				n[0] == 0 ? Double.NaN : n[1] / (double) n[0], n[7], n[2], n[3], n[4], n[5], n[16], n[17], n[6], n[18], n[19], n[8], n[9], n[10],
+				n[11], n[12], n[13], n[14], n[20], n[15]);
 	}
 
 	// ------------------------------------------------------------------ places

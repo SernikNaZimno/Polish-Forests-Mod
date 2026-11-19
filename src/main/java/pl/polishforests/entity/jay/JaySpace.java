@@ -2,6 +2,7 @@ package pl.polishforests.entity.jay;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.LongAdder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.tags.BlockTags;
@@ -24,11 +25,13 @@ import pl.polishforests.entity.squirrel.TreeSpace;
  * <ul>
  * <li><b>Flight space</b> ({@link #segmentClear}): no collision at all in the hitbox (the leaves included: a jay flies round
  * the crowns, not through them; the trunks of the mod with their arms by their live shape, {@link TreeSpace#collision}),
- * no fluid, loaded chunks, at the sweep points of {@link JayGeometry#sweepPoints}.
+ * no fluid, loaded chunks, at the sweep points of {@link JayGeometry#sweepPoints}; under the canopy ceiling
+ * ({@link #aboveShare}).
  * <li><b>Perch</b> ({@link #perch}): the top of a leaf block (the edge of a crown) or of a log (a branch of the mod, a
  * trunk, a vanilla log) at least {@value #PERCH_ABOVE_GROUND} blocks above the ground, with the hitbox free on it and under
- * the canopy: leaves above it in its column, or a local canopy top at least {@value #PERCH_COVER} blocks over it (the top
- * of a lower crown beside taller ones).
+ * the canopy: leaves above it in its column (under a crown: preferred), or a local canopy top at least
+ * {@value #PERCH_COVER} blocks over it (the top of a lower crown beside taller ones).
+ * <li><b>Approach</b> ({@link #approach}): the point beside a perch from which the last short leg lands on it.
  * </ul>
  */
 public final class JaySpace {
@@ -36,6 +39,10 @@ public final class JaySpace {
 	public static final int PERCH_ABOVE_GROUND = 2;
 	/** Least height of the local canopy top above an uncovered perch (blocks). */
 	public static final double PERCH_COVER = 2.0;
+	/** The approach point beside a perch: to the side and up (blocks); above a ground spot (blocks). */
+	public static final double APPROACH_SIDE = 1.25;
+	public static final double APPROACH_RISE = 0.35;
+	public static final double APPROACH_DROP = 1.5;
 	/** Longest scan down a column for a perch (blocks). */
 	static final int MAX_SCAN = 40;
 
@@ -95,19 +102,20 @@ public final class JaySpace {
 	}
 
 	/**
-	 * The share of the band points of a segment (every {@link JayGeometry#BAND_STEP} blocks, the end included) that lie
-	 * outside the cruise band of their column; the start (the take-off from the ground or a perch) is left out.
+	 * The share of the points of a segment (every {@link JayGeometry#PLAN_STEP} blocks, the end included, the start left
+	 * out) that lie over the canopy ceiling of their place ({@link JayGeometry#plannedUnder} against
+	 * {@link #localCanopy}).
 	 */
-	public static double outOfBand(Level level, Vec3 a, Vec3 b, float height) {
-		int n = Math.max(1, (int) Math.ceil(a.distanceTo(b) / JayGeometry.BAND_STEP));
-		int out = 0;
+	public static double aboveShare(Level level, Vec3 a, Vec3 b, float height) {
+		int n = Math.max(1, (int) Math.ceil(a.distanceTo(b) / JayGeometry.PLAN_STEP));
+		int above = 0;
 		for (int k = 1; k <= n; k++) {
 			Vec3 p = a.lerp(b, k / (double) n);
-			if (!inBand(level, p, height)) {
-				out++;
+			if (!JayGeometry.plannedUnder(p.y, height, localCanopy(level, p.x, p.z))) {
+				above++;
 			}
 		}
-		return out / (double) n;
+		return above / (double) n;
 	}
 
 	/** Whether feet at a point are in the cruise band of its column. */
@@ -131,15 +139,25 @@ public final class JaySpace {
 
 	// ------------------------------------------------------------------ perches
 
-	/** A perch: the feet position on top of the block, and whether it is a branch (a log) rather than leaves. */
-	public record Perch(Vec3 feet, boolean branch) {
+	/**
+	 * A perch: the feet position on top of the block, whether it is a branch (a log) rather than leaves, and whether it lies
+	 * under a crown (leaves of its own column above it) rather than on the edge of one.
+	 */
+	public record Perch(Vec3 feet, boolean branch, boolean underCrown) {
 	}
 
+	/** Perches found under a crown and on the edge of one (counters of the fauna game test). */
+	public static final LongAdder PERCHES_UNDER = new LongAdder();
+	public static final LongAdder PERCHES_EDGE = new LongAdder();
+
 	/**
-	 * The highest perch of a column (see the class comment), scanning down from the local canopy top to
-	 * {@value #PERCH_ABOVE_GROUND} blocks above the ground, or null.
+	 * The perch of a column (see the class comment), scanning down from the local canopy top to
+	 * {@value #PERCH_ABOVE_GROUND} blocks above the ground, or null. Stage 2 (choice FA6-r): the highest perch under a crown
+	 * of the column (a branch or the top of a lower crown, reached from below) comes first; the top of the column on the edge
+	 * of a taller crown only when the column has none. Only perches with a free side to land from count
+	 * ({@link #approach}): a branch or a pocket inside a crown, closed by the leaves, is no perch.
 	 */
-	public static @Nullable Perch perch(Level level, int x, int z, float width, float height) {
+	public static @Nullable Perch perch(Level level, int x, int z, float width, float height, RandomSource random) {
 		if (!level.hasChunk(x >> 4, z >> 4)) {
 			return null;
 		}
@@ -147,6 +165,7 @@ public final class JaySpace {
 		int top = canopyTop(level, x, z);
 		int local = localCanopy(level, x + 0.5, z + 0.5);
 		int start = Math.min(local, g + MAX_SCAN);
+		Perch edge = null;
 		BlockPos.MutableBlockPos p = new BlockPos.MutableBlockPos();
 		for (int y = start; y >= g + PERCH_ABOVE_GROUND - 1; y--) {
 			BlockState s = level.getBlockState(p.set(x, y, z));
@@ -162,14 +181,43 @@ public final class JaySpace {
 			if (feetY < g + PERCH_ABOVE_GROUND) {
 				break;
 			}
-			// covered: leaves of the column above the perch, or a taller crown next to it
-			boolean covered = top > feetY + 1.0 || local >= feetY + PERCH_COVER;
-			if (!covered) {
+			boolean under = top > feetY + 1.0;
+			if (!under && (edge != null || local < feetY + PERCH_COVER)) {
 				continue;
 			}
 			Vec3 feet = new Vec3(x + 0.5, feetY, z + 0.5);
-			if (free(level, feet, width, height)) {
-				return new Perch(feet, !leaf);
+			if (!free(level, feet, width, height) || approach(level, feet, false, width, height, random) == null) {
+				continue;
+			}
+			if (under) {
+				PERCHES_UNDER.increment();
+				return new Perch(feet, !leaf, true);
+			}
+			edge = new Perch(feet, !leaf, false);
+		}
+		if (edge != null) {
+			PERCHES_EDGE.increment();
+		}
+		return edge;
+	}
+
+	/**
+	 * A point beside a perch or a ground spot from which the jay flies the last short leg onto it (stage 2, choice FA6-s):
+	 * for a perch {@value #APPROACH_SIDE} blocks to a side and {@value #APPROACH_RISE} up, for the ground
+	 * {@value #APPROACH_DROP} straight above; the hitbox free there and on the leg to the spot. Null when none of the sides
+	 * (in a random order) fits.
+	 */
+	public static @Nullable Vec3 approach(Level level, Vec3 spot, boolean ground, float width, float height, RandomSource random) {
+		if (ground) {
+			Vec3 a = spot.add(0, APPROACH_DROP, 0);
+			return free(level, a, width, height) && segmentClear(level, a, spot, width, height) ? a : null;
+		}
+		int first = random.nextInt(8);
+		for (int i = 0; i < 8; i++) {
+			double angle = (first + i) % 8 * Math.PI / 4;
+			Vec3 a = spot.add(Math.cos(angle) * APPROACH_SIDE, APPROACH_RISE, Math.sin(angle) * APPROACH_SIDE);
+			if (free(level, a, width, height) && segmentClear(level, a, spot, width, height)) {
+				return a;
 			}
 		}
 		return null;
@@ -191,11 +239,13 @@ public final class JaySpace {
 			double d = min + random.nextDouble() * (max - min);
 			int x = Mth.floor(at.x + Math.cos(angle) * d);
 			int z = Mth.floor(at.z + Math.sin(angle) * d);
-			Perch perch = perch(level, x, z, width, height);
+			Perch perch = perch(level, x, z, width, height, random);
 			if (perch != null) {
 				out.add(perch);
 			}
 		}
+		// under a crown first (reached from below), the edges of the crowns after them
+		out.sort((a, b) -> Boolean.compare(b.underCrown(), a.underCrown()));
 		return out;
 	}
 }
