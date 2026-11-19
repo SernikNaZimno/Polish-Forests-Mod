@@ -95,12 +95,22 @@ class FeatureOrderIndexTest {
 
 	private static List<List<String>> withoutCaveFeatures(List<List<String>> steps) {
 		return steps.stream().map(step -> step.stream().filter(id -> !id.startsWith("polishforests:cave/")
-				&& !id.startsWith("polishforests:tatra/")).toList()).toList();
+				&& !id.startsWith("polishforests:tatra/") && !id.startsWith("polishforests:ground/")).toList()).toList();
 	}
 
-	/** Before step TT6: without the Tatra details, with the cave features. */
+	/** Before step TT6: without the Tatra details (and the later anthills), with the cave features. */
 	private static List<List<String>> withoutTatraDetails(List<List<String>> steps) {
-		return steps.stream().map(step -> step.stream().filter(id -> !id.startsWith("polishforests:tatra/")).toList()).toList();
+		return steps.stream().map(step -> step.stream().filter(id -> !id.startsWith("polishforests:tatra/")
+				&& !id.startsWith("polishforests:ground/")).toList()).toList();
+	}
+
+	/** Before step FA8: without the anthills. */
+	private static List<List<String>> withoutAnthills(List<List<String>> steps) {
+		return steps.stream().map(step -> step.stream().filter(id -> !id.startsWith("polishforests:ground/")).toList()).toList();
+	}
+
+	private static boolean late(String id) {
+		return id.startsWith("polishforests:tatra/") || id.startsWith("polishforests:ground/");
 	}
 
 	private List<List<String>> names(List<FeatureSorter.StepFeatureData> steps) {
@@ -134,7 +144,18 @@ class FeatureOrderIndexTest {
 		List<List<String>> before = names(FeatureSorter.buildFeaturesPerStep(List.copyOf(habitats),
 				b -> sets(withoutCaveFeatures(now.get(b))), false));
 		List<List<String>> after = names(FeatureOrder.build(biomes, habitats, b -> sets(now.get(b)),
-				h -> ids.get(h).startsWith("polishforests:cave/"), h -> ids.get(h).startsWith("polishforests:tatra/")));
+				h -> ids.get(h).startsWith("polishforests:cave/"), h -> late(ids.get(h))));
+		// Step FA8: every feature of before FA8 (the Tatra details too) keeps its index.
+		List<List<String>> beforeAnthills = names(FeatureOrder.build(biomes, habitats, b -> sets(withoutAnthills(now.get(b))),
+				h -> ids.get(h).startsWith("polishforests:cave/"), h -> late(ids.get(h))));
+		for (int step = 0; step < beforeAnthills.size(); step++) {
+			for (int i = 0; i < beforeAnthills.get(step).size(); i++) {
+				assertEquals(i, after.get(step).indexOf(beforeAnthills.get(step).get(i)), "step " + step + ": "
+						+ beforeAnthills.get(step).get(i) + " moved by the anthills");
+			}
+		}
+		assertEquals(BiomeDecoration.ANTHILLS, after.get(BiomeDecoration.TOP_LAYER_STEP).getLast(), "the anthills come last");
+
 		// Step TT6: every feature of before TT6 (also the cave ones and those of the vanilla cave biomes) keeps its index.
 		List<List<String>> beforeTatra = names(FeatureOrder.build(biomes, habitats, b -> sets(withoutTatraDetails(now.get(b))),
 				h -> ids.get(h).startsWith("polishforests:cave/")));

@@ -71,19 +71,24 @@ class FeatureOrderTest {
 		}
 		// Step J2: the underground features of the worlds with caves (polishforests:cave/*) follow the features of before.
 		List<String> dispatchers = reference.get(BiomeDecoration.VEGETATION_STEP).stream()
-				.filter(id -> !id.startsWith("polishforests:cave/") && !id.startsWith("polishforests:tatra/")).toList();
+				.filter(id -> !id.startsWith("polishforests:cave/") && !id.startsWith("polishforests:tatra/")
+						&& !id.startsWith("polishforests:ground/")).toList();
 		for (BiomeDecoration.CaveFeature f : BiomeDecoration.CaveFeature.values()) {
 			List<String> step = reference.get(f.step());
 			assertTrue(step.contains(f.id()), f.id() + " missing in step " + f.step());
 			for (int i = step.indexOf(f.id()) + 1; i < step.size(); i++) {
 				// Step TT6: the Tatra details follow the cave features, at the end of step 9.
-				assertTrue(step.get(i).startsWith("polishforests:cave/") || step.get(i).startsWith("polishforests:tatra/"),
-						f.id() + " before " + step.get(i));
+				// Step FA8: the anthills after them.
+				assertTrue(step.get(i).startsWith("polishforests:cave/") || step.get(i).startsWith("polishforests:tatra/")
+						|| step.get(i).startsWith("polishforests:ground/"), f.id() + " before " + step.get(i));
 			}
 		}
 		// Step TT6: the Tatra details are the last feature of step 9 before the carrier.
 		List<String> vegetation = reference.get(BiomeDecoration.VEGETATION_STEP);
 		assertEquals(BiomeDecoration.TATRA_DETAILS, vegetation.getLast());
+		// Step FA8: the anthills after the freezing of the top layer, the last feature of step 10.
+		assertEquals(List.of("minecraft:freeze_top_layer", BiomeDecoration.ANTHILLS), reference.get(BiomeDecoration.TOP_LAYER_STEP));
+
 		assertEquals(List.of("polishforests:tree_stand", "polishforests:deadwood", "polishforests:understory",
 				"polishforests:waterside_zones", "polishforests:ground_layer", "polishforests:aquatic_plants"), dispatchers);
 	}

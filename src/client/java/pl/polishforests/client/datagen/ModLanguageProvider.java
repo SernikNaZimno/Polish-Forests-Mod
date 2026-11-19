@@ -70,6 +70,9 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		// Step TT7: the foreland north of the Podhale and the river gorges through it.
 		TARGETS.put("tatra_foreland", new String[] {"foreland north of the Podhale (Gorce type)", "przedgórze za Podhalem (typu Gorców)"});
 		TARGETS.put("foreland_gorge", new String[] {"river gorge through the foreland", "przełom rzeki przez przedgórze"});
+		// Step FA8: the mound of the red wood ant.
+		TARGETS.put("anthill", new String[] {"anthill of the red wood ant", "mrowisko mrówki rudnicy"});
+
 		TARGETS.put("moraine", new String[] {"moraine", "morena"});
 		TARGETS.put("snow_patch", new String[] {"perennial snow patch", "płat wieloletniego śniegu"});
 		TARGETS.put("old_glacial_plain", new String[] {"old glacial plain", "równina staroglacjalna"});
@@ -283,6 +286,14 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 			builder.add(parts.sign(), polish ? "Tabliczka " + f : en + " Sign");
 			builder.add(parts.hangingSign(), polish ? "Tabliczka wisząca " + f : en + " Hanging Sign");
 			builder.add(parts.shelf(), polish ? "Półka " + f : en + " Shelf");
+			// Step FA8: the boats and chest boats, items and entities (as vanilla's: "Łódź dębowa", "Łódź dębowa ze skrzynią").
+			pl.polishforests.entity.WoodBoats.Set boats = pl.polishforests.entity.WoodBoats.of(set);
+			String boat = polish ? "Łódź " + f : en + " Boat";
+			String chestBoat = polish ? "Łódź " + f + " ze skrzynią" : en + " Boat with Chest";
+			builder.add(boats.boatItem(), boat);
+			builder.add(boats.chestBoatItem(), chestBoat);
+			builder.add(boats.boat(), boat);
+			builder.add(boats.chestBoat(), chestBoat);
 			if (set != pl.polishforests.block.WoodSet.SCOTS_PINE) {
 				builder.add(tagKey(ModBlockTagProvider.fullLogs(set).location().getPath()), polish ? "Kłody " + n : en + " Logs");
 			}
@@ -346,6 +357,9 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		builder.add(ModBlocks.bilberries(), polish ? "Czarne jagody" : "Bilberries");
 		builder.add(ModBlocks.forestMossCarpet(), polish ? "Dywan mchu leśnego" : "Forest Moss Carpet");
 		builder.add(ModBlocks.mossyPodzol(), polish ? "Omszona bielica" : "Mossy Podzol");
+		// Step FA8: the mound of the red wood ant.
+		builder.add(ModBlocks.anthill(), polish ? "Mrowisko" : "Anthill");
+
 		builder.add(ModBlocks.sphagnumCarpet(), polish ? "Dywan torfowców" : "Sphagnum Carpet");
 		builder.add(ModBlocks.sphagnumBlock(), polish ? "Torfowiec" : "Sphagnum Block");
 		// Step TT1: the Tatra rocks.
@@ -480,6 +494,7 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		b.add("polishforests.kind.landform", "Landforms");
 		b.add("polishforests.kind.tatra", "Tatras");
 		b.add("polishforests.kind.site", "Tatra details");
+		b.add("polishforests.kind.anthill", "Forest floor");
 		b.add("polishforests.command.no_tatra", "This world has no Tatras (the Tatras option was off when it was created)");
 		b.add("polishforests.command.here_tatra", "Tatras: %s, rock: %s, %s m above sea level (Y %s)");
 		b.add("polishforests.command.here_belt", "Belt: %s (profile: %s)");
@@ -636,6 +651,7 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 		b.add("polishforests.kind.landform", "Formy terenu");
 		b.add("polishforests.kind.tatra", "Tatry");
 		b.add("polishforests.kind.site", "Szczegóły Tatr");
+		b.add("polishforests.kind.anthill", "Dno lasu");
 		b.add("polishforests.command.no_tatra", "Ten świat nie ma Tatr (opcja Tatry była wyłączona przy jego tworzeniu)");
 		b.add("polishforests.command.here_tatra", "Tatry: %s, skała: %s, %s m n.p.m. (Y %s)");
 		b.add("polishforests.command.here_belt", "Piętro: %s (profil: %s)");

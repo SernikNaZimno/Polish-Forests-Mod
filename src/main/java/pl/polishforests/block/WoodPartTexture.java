@@ -15,6 +15,12 @@ package pl.polishforests.block;
  * planks range lies on the ramp of the palette as the planks of P2 do ({@link PlanksTexture#ramp}); a darker one (the dark
  * outlines and the post of a sign) is the darkest tone of the palette darkened in proportion, a lighter one the lightest
  * tone lightened in proportion towards white.
+ *
+ * <p>Step FA8: the boats and chest boats of the sets, the entity textures ({@code textures/entity/boat/<wood>.png},
+ * {@code chest_boat/<wood>.png}) and the items, derived the same way from vanilla's boat textures of the base wood. The
+ * chest boat keeps what is not the boat as it is ({@link Part#shared()}, {@link #deriveShared}): only the pixels equal to
+ * the boat texture of the base at the same position are recolored (measured on vanilla 26.3: the chest of the entity
+ * texture and of the item is the same in every wood, its brown wood stays vanilla's chest).
  */
 public final class WoodPartTexture {
 	/** Least HSV saturation of a wood pixel. */
@@ -40,7 +46,18 @@ public final class WoodPartTexture {
 		/** The background of the sign edit screen ({@code textures/gui/signs/<wood>.png}). */
 		SIGN_SCREEN(Kind.SCREEN, "signs"),
 		/** The background of the hanging sign edit screen ({@code textures/gui/hanging_signs/<wood>.png}). */
-		HANGING_SIGN_SCREEN(Kind.SCREEN, "hanging_signs");
+		HANGING_SIGN_SCREEN(Kind.SCREEN, "hanging_signs"),
+		/** Step FA8: the entity texture of the boat ({@code textures/entity/boat/<wood>.png}). */
+		BOAT(Kind.ENTITY, "boat"),
+		/**
+		 * Step FA8: the entity texture of the chest boat ({@code textures/entity/chest_boat/<wood>.png}); only the pixels it
+		 * shares with the boat of the same base are wood of the set, the chest stays ({@link #shared()}).
+		 */
+		CHEST_BOAT(Kind.ENTITY, "chest_boat"),
+		/** Step FA8: the flat item of the boat ({@code item/<wood>_boat}). */
+		BOAT_ITEM(Kind.ITEM, "boat"),
+		/** Step FA8: the flat item of the chest boat ({@code item/<wood>_chest_boat}); the chest stays ({@link #shared()}). */
+		CHEST_BOAT_ITEM(Kind.ITEM, "chest_boat");
 
 		private final Kind kind;
 		private final String name;
@@ -55,6 +72,20 @@ public final class WoodPartTexture {
 		}
 
 		/**
+		 * Step FA8: the part whose base pixels this part shares (the boat for the chest boat, entity and item): only the
+		 * pixels of this part's base equal to the shared base's pixel at the same place are recolored, the others (the chest,
+		 * the same in every vanilla chest boat: measured on 26.3, 0 of 1228 chest pixels differ between oak and spruce) stay as
+		 * they are ({@link #deriveShared}). Null for a part that is recolored whole.
+		 */
+		public Part shared() {
+			return switch (this) {
+				case CHEST_BOAT -> BOAT;
+				case CHEST_BOAT_ITEM -> BOAT_ITEM;
+				default -> null;
+			};
+		}
+
+		/**
 		 * The path of the texture of a wood in its namespace: a sprite id ({@code block/<wood>_door_top},
 		 * {@code item/<wood>_door}) or, for a screen, the texture file ({@code textures/gui/signs/<wood>.png}).
 		 */
@@ -63,15 +94,25 @@ public final class WoodPartTexture {
 				case BLOCK -> "block/" + wood + "_" + name;
 				case ITEM -> "item/" + wood + "_" + name;
 				case SCREEN -> "textures/gui/" + name + "/" + wood + ".png";
+				case ENTITY -> "textures/entity/" + name + "/" + wood + ".png";
 			};
 		}
 	}
 
-	/** Where a derived texture goes: the block atlas, the item atlas, or a screen texture of its own. */
+	/**
+	 * Where a derived texture goes: the block atlas, the item atlas, a screen texture of its own, or (step FA8) an entity
+	 * texture of its own (outside every atlas, as vanilla's boat textures).
+	 */
 	public enum Kind {
 		BLOCK,
 		ITEM,
-		SCREEN
+		SCREEN,
+		ENTITY;
+
+		/** Whether the texture is a file of its own in the texture manager, not an atlas sprite. */
+		public boolean ownFile() {
+			return this == SCREEN || this == ENTITY;
+		}
 	}
 
 	private WoodPartTexture() {
@@ -103,6 +144,29 @@ public final class WoodPartTexture {
 		for (int i = 0; i < part.length; i++) {
 			if (wood(part[i])) {
 				out[i] = (part[i] & 0xff000000) | tone(PlanksTexture.luminance(part[i]), lo, hi, palette);
+			}
+		}
+		return out;
+	}
+
+	/**
+	 * Step FA8: {@link #derive} of a part that shares its wood with another part of the same base (the chest boat with the
+	 * boat, {@link Part#shared()}): a pixel of {@code part} is derived only where {@code shared} ({@code sharedWidth ×
+	 * sharedHeight}, the same pixel scale) has the same ARGB at the same place; every other pixel (outside the shared texture
+	 * or different from it: the chest) stays as it is.
+	 */
+	public static int[] deriveShared(int[] part, int width, int height, int[] shared, int sharedWidth, int sharedHeight, int[] planks,
+			int planksWidth, int planksHeight, int[] palette) {
+		if (shared.length != sharedWidth * sharedHeight) {
+			throw new IllegalArgumentException("shared part of " + shared.length + " pixels is not " + sharedWidth + " x " + sharedHeight);
+		}
+		int[] out = derive(part, width, height, planks, planksWidth, planksHeight, palette);
+		for (int y = 0; y < height; y++) {
+			for (int x = 0; x < width; x++) {
+				int i = y * width + x;
+				if (x >= sharedWidth || y >= sharedHeight || shared[y * sharedWidth + x] != part[i]) {
+					out[i] = part[i];
+				}
 			}
 		}
 		return out;

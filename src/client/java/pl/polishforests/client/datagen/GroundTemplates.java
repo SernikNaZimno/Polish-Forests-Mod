@@ -65,6 +65,15 @@ final class GroundTemplates implements DataProvider {
 		return "block/template_mossy_litter_" + k;
 	}
 
+	/**
+	 * Step FA8: model id of the anthill template of {@code layers} layers (1–7, 2 px each; the full block of 8 layers is
+	 * vanilla's {@code cube_column}): a box of the height with {@code #top} up, {@code #side} on the sides (the lower part of
+	 * the texture, as vanilla's snow layers) and down.
+	 */
+	static String anthillHeight(int layers) {
+		return "block/template_anthill_height_" + layers;
+	}
+
 	@Override
 	public CompletableFuture<?> run(CachedOutput cache) {
 		List<CompletableFuture<?>> out = new ArrayList<>();
@@ -79,6 +88,9 @@ final class GroundTemplates implements DataProvider {
 		for (int k = 1; k <= 4; k++) {
 			double[] p = planes[k - 1];
 			out.add(DataProvider.saveStable(cache, litter(p), models.json(PolishForests.id(mossyLitter(k)))));
+		}
+		for (int layers = 1; layers < pl.polishforests.block.AnthillBlock.MAX_LAYERS; layers++) {
+			out.add(DataProvider.saveStable(cache, anthill(layers), models.json(PolishForests.id(anthillHeight(layers)))));
 		}
 		return CompletableFuture.allOf(out.toArray(CompletableFuture[]::new));
 	}
@@ -242,7 +254,41 @@ final class GroundTemplates implements DataProvider {
 		return m;
 	}
 
+	private static JsonObject anthill(int layers) {
+		int h = 2 * layers;
+		JsonObject e = new JsonObject();
+		e.add("from", vector(new double[] {0, 0, 0}));
+		e.add("to", vector(new double[] {16, h, 16}));
+		JsonObject faces = new JsonObject();
+		for (String side : List.of("north", "south", "west", "east")) {
+			JsonObject f = new JsonObject();
+			f.add("uv", vector(new double[] {0, 16 - h, 16, 16}));
+			f.addProperty("texture", "#side");
+			f.addProperty("cullface", side);
+			faces.add(side, f);
+		}
+		JsonObject up = new JsonObject();
+		up.add("uv", vector(new double[] {0, 0, 16, 16}));
+		up.addProperty("texture", "#top");
+		faces.add("up", up);
+		JsonObject down = new JsonObject();
+		down.add("uv", vector(new double[] {0, 0, 16, 16}));
+		down.addProperty("texture", "#side");
+		down.addProperty("cullface", "down");
+		faces.add("down", down);
+		e.add("faces", faces);
+		JsonArray elements = new JsonArray();
+		elements.add(e);
+		JsonObject m = new JsonObject();
+		JsonObject textures = new JsonObject();
+		textures.addProperty("particle", "#side");
+		m.add("textures", textures);
+		m.add("elements", elements);
+		return m;
+	}
+
 	private static JsonArray vector(double[] v) {
+
 		JsonArray a = new JsonArray();
 		for (double x : v) {
 			if (x == Math.rint(x)) {

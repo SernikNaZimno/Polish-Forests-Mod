@@ -30,6 +30,19 @@ public final class BiomeDecoration {
 	 */
 	public static final String TATRA_DETAILS = PolishForests.id(FeatureOrder.TATRA_PREFIX + "details").toString();
 
+	/** Step of the top layer ({@code TOP_LAYER_MODIFICATION}: the freezing of the top layer). */
+	public static final int TOP_LAYER_STEP = 10;
+
+	/**
+	 * Step FA8: the anthills of the red wood ant ({@code AnthillFeature}), the last feature of step 10, after the freezing of
+	 * the top layer. In step 9 any new feature moved the features after it in the plain vanilla sort of the world type
+	 * "Default + Polish Forests" (the bone meal carriers, the vanilla vegetation of the vanilla biomes: other seeds, other
+	 * decoration); step 10 has only {@code minecraft:freeze_top_layer} in every biome, so the anthills come after it in both
+	 * world types, and the path prefix {@code ground/} keeps them last in a "Poland" world ({@code FeatureOrder}). It does
+	 * nothing outside the forests of the ant.
+	 */
+	public static final String ANTHILLS = PolishForests.id(FeatureOrder.GROUND_PREFIX + "anthills").toString();
+
 	/** Lava lakes only below Y 0 (decision M2-4). */
 	public static final String DEEP_LAVA_LAKE = PolishForests.id("deep_lava_lake").toString();
 
@@ -123,8 +136,10 @@ public final class BiomeDecoration {
 			steps.get(f.step()).add(f.id());
 		}
 		steps.get(VEGETATION_STEP).add(TATRA_DETAILS);
+
 		steps.get(VEGETATION_STEP).add(boneMealCarrier(biome));
-		steps.get(10).add("minecraft:freeze_top_layer");
+		steps.get(TOP_LAYER_STEP).add("minecraft:freeze_top_layer");
+		steps.get(TOP_LAYER_STEP).add(ANTHILLS);
 		return steps.stream().<List<String>>map(List::copyOf).toList();
 	}
 }

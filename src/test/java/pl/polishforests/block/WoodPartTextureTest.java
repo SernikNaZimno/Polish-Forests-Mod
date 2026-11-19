@@ -162,6 +162,48 @@ class WoodPartTextureTest {
 				WoodSet.ASH.planksPalette()));
 	}
 
+	/**
+	 * Step FA8: a chest boat is recolored only where it equals the boat texture at the same position (the hull): its own
+	 * pixels (the chest, of brown wood too) and the rows below the boat texture stay vanilla's.
+	 */
+	@Test
+	void theChestBoatKeepsItsChest() {
+		int[] boat = part();
+		int tall = 2 * H;
+		int[] chestBoat = new int[W * tall];
+		for (int y = 0; y < tall; y++) {
+			for (int x = 0; x < W; x++) {
+				// The upper half is the boat, but for a square of chest wood; the lower half is chest wood only.
+				boolean chest = y >= H || x >= 4 && x < 8 && y >= 4 && y < 8;
+				chestBoat[y * W + x] = chest ? argb(255, brown(60 + (x * 7 + y * 13) % 120)) : boat[y * W + x];
+			}
+		}
+		int[] palette = WoodSet.BEECH.planksPalette();
+		int[] derivedBoat = WoodPartTexture.derive(boat, W, H, planks(), W, H, palette);
+		int[] out = WoodPartTexture.deriveShared(chestBoat, W, tall, boat, W, H, planks(), W, H, palette);
+		int changed = 0;
+		for (int y = 0; y < tall; y++) {
+			for (int x = 0; x < W; x++) {
+				int i = y * W + x;
+				boolean hull = y < H && chestBoat[i] == boat[i];
+				if (hull) {
+					assertEquals(derivedBoat[i], out[i], "the hull as the boat at " + x + ", " + y);
+					changed += out[i] != chestBoat[i] ? 1 : 0;
+				} else {
+					assertEquals(chestBoat[i], out[i], "the chest stays at " + x + ", " + y);
+				}
+			}
+		}
+		assertTrue(changed > W * H / 2, "recolored hull pixels: " + changed);
+		assertEquals(WoodPartTexture.Part.BOAT, WoodPartTexture.Part.CHEST_BOAT.shared());
+		assertEquals(WoodPartTexture.Part.BOAT_ITEM, WoodPartTexture.Part.CHEST_BOAT_ITEM.shared());
+		assertEquals(null, WoodPartTexture.Part.BOAT.shared());
+		assertEquals("textures/entity/chest_boat/oak.png", WoodPartTexture.Part.CHEST_BOAT.path("oak"));
+		assertEquals("item/beech_chest_boat", WoodPartTexture.Part.CHEST_BOAT_ITEM.path("beech"));
+		assertTrue(WoodPartTexture.Kind.ENTITY.ownFile() && WoodPartTexture.Kind.SCREEN.ownFile());
+		assertFalse(WoodPartTexture.Kind.ITEM.ownFile());
+	}
+
 	@Test
 	void partPathsAndBases() {
 		assertEquals("block/beech_door_top", WoodPartTexture.Part.DOOR_TOP.path("beech"));

@@ -127,6 +127,15 @@ public final class HabitatsClientGameTest implements FabricClientGameTest {
 				PolishForests.LOG.info("[habitats] {}: {}", name, sp.getServer().computeOnServer(s -> biomesPerChunk(s, real)));
 				PolishForests.LOG.info("[habitats] {}: {}", name, sp.getServer().computeOnServer(HabitatsClientGameTest::habitatMisses));
 				PolishForests.LOG.info("[habitats] {}: {}", name, sp.getServer().computeOnServer(s -> census(s, real, places)));
+				// Step FA8: the census of the anthills (plan density by forest, the mounds of the census chunks).
+				List<String> anthillFailures = new ArrayList<>();
+				List<int[]> anthillSites = new ArrayList<>(List.of(real ? CENSUS_REAL : CENSUS_GAMEPLAY));
+				anthillSites.addAll(places.subList(0, Math.min(3, places.size())));
+				PolishForests.LOG.info("[habitats] {}: {}", name, sp.getServer().computeOnServer(
+						s -> AnthillCensus.run(s, anthillSites, anthillFailures)));
+				if (!anthillFailures.isEmpty()) {
+					throw new AssertionError("[habitats] " + name + ": " + anthillFailures);
+				}
 				PolishForests.LOG.info("[habitats] {}: {}", name, sp.getServer().computeOnServer(s -> soilPlaces(s, real)));
 				PolishForests.LOG.info("[habitats] {}: {}", name, shelf(context, sp, real, name));
 				PolishForests.LOG.info("[habitats] {}: {}", name, revisit(context, sp, real));

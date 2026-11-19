@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/cube_column",
+  "textures": {
+    "end": "polishforests:block/anthill_top",
+    "side": "polishforests:block/anthill"
+  }
+}

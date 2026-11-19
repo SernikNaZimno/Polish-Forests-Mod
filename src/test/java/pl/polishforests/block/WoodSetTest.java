@@ -37,6 +37,7 @@ import net.minecraft.world.level.block.TrapDoorBlock;
 import net.minecraft.world.level.block.WallHangingSignBlock;
 import net.minecraft.world.level.block.WallSignBlock;
 import pl.polishforests.PolishForests;
+import pl.polishforests.entity.WoodBoats;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import pl.polishforests.worldgen.feature.ProceduralTreeFeature;
@@ -229,7 +230,9 @@ class WoodSetTest {
 	void partsOfEveryWoodSet() {
 		List<Block> all = ModBlocks.all();
 		int firstPart = all.indexOf(ModBlocks.woodParts(WoodSet.values()[0]).door());
-		assertEquals(all.size() - WoodSet.values().length * WoodParts.SUFFIXES.size(), firstPart, "the parts are registered last");
+		// Step FA8: the anthill after them.
+		assertEquals(all.size() - WoodSet.values().length * WoodParts.SUFFIXES.size() - 1, firstPart, "the parts are registered last");
+		assertSame(ModBlocks.anthill(), all.getLast(), "the anthill after the parts");
 		Set<String> names = new HashSet<>();
 		for (WoodSet set : WoodSet.values()) {
 			WoodParts w = ModBlocks.woodParts(set);
@@ -261,6 +264,55 @@ class WoodSetTest {
 			assertEquals(w.sign().getDescriptionId(), w.wallSign().getDescriptionId(), set.toString());
 			assertEquals(set.planksBase().replace("_planks", ""), set.partsBase());
 		}
+	}
+
+	/**
+	 * Step FA8: every wood set has its boat and chest boat, entity types of vanilla's boat classes with the size of vanilla's
+	 * oak boat, items of vanilla's boat item (one to a stack, fuel), vanilla's recipes from the planks and from the boat and
+	 * a chest, vanilla's item tags, names in both languages and flat item models (the sprites derived in the client).
+	 */
+	@Test
+	void boatsOfEveryWoodSet() throws IOException {
+		JsonObject en = json(GENERATED.resolve("assets/polishforests/lang/en_us.json"));
+		JsonObject pl = json(GENERATED.resolve("assets/polishforests/lang/pl_pl.json"));
+		String boats = read(GENERATED.resolve("data/minecraft/tags/item/boats.json"));
+		String chestBoats = read(GENERATED.resolve("data/minecraft/tags/item/chest_boats.json"));
+		assertEquals(WoodSet.values().length, WoodBoats.all().size());
+		for (WoodSet set : WoodSet.values()) {
+			String p = set.prefix();
+			WoodBoats.Set s = WoodBoats.of(set);
+			assertEquals(p + "_boat", BuiltInRegistries.ENTITY_TYPE.getKey(s.boat()).getPath());
+			assertEquals(p + "_chest_boat", BuiltInRegistries.ENTITY_TYPE.getKey(s.chestBoat()).getPath());
+			assertEquals(p + "_boat", BuiltInRegistries.ITEM.getKey(s.boatItem()).getPath());
+			assertEquals(p + "_chest_boat", BuiltInRegistries.ITEM.getKey(s.chestBoatItem()).getPath());
+			for (var pair : List.of(List.of(net.minecraft.world.entity.EntityTypes.OAK_BOAT, s.boat()),
+					List.of(net.minecraft.world.entity.EntityTypes.OAK_CHEST_BOAT, s.chestBoat()))) {
+				var want = pair.get(0).getDimensions();
+				var got = pair.get(1).getDimensions();
+				assertEquals(List.of(want.width(), want.height(), want.eyeHeight()), List.of(got.width(), got.height(), got.eyeHeight()), p);
+				assertEquals(pair.get(0).clientTrackingRange(), pair.get(1).clientTrackingRange(), p);
+			}
+			assertTrue(s.boatItem() instanceof net.minecraft.world.item.BoatItem && s.chestBoatItem() instanceof net.minecraft.world.item.BoatItem);
+			assertTrue(WoodBoats.boat(s.boat()) && WoodBoats.boat(s.chestBoat()), p);
+			JsonObject boat = json(GENERATED.resolve("data/polishforests/recipe/" + p + "_boat.json"));
+			assertTrue(boat.toString().contains("polishforests:" + p + "_planks"), p + ": the boat of the planks");
+			assertEquals("boat", boat.get("group").getAsString());
+			JsonObject chest = json(GENERATED.resolve("data/polishforests/recipe/" + p + "_chest_boat.json"));
+			assertTrue(chest.toString().contains("polishforests:" + p + "_boat") && chest.toString().contains("minecraft:chest"), p);
+			assertTrue(boats.contains("\"polishforests:" + p + "_boat\""), p + " in #boats");
+			assertTrue(chestBoats.contains("\"polishforests:" + p + "_chest_boat\""), p + " in #chest_boats");
+			for (String key : List.of(s.boatItem().getDescriptionId(), s.chestBoatItem().getDescriptionId(), s.boat().getDescriptionId(),
+					s.chestBoat().getDescriptionId())) {
+				assertTrue(en.has(key) && pl.has(key), key);
+			}
+			for (String id : List.of(p + "_boat", p + "_chest_boat")) {
+				assertTrue(read(GENERATED.resolve("assets/polishforests/models/item/" + id + ".json")).contains("polishforests:item/" + id), id);
+				assertTrue(Files.exists(GENERATED.resolve("assets/polishforests/items/" + id + ".json")), id + " item model");
+			}
+		}
+		assertEquals("Beech Boat with Chest", en.get("item.polishforests.beech_chest_boat").getAsString());
+		assertEquals("Łódź bukowa ze skrzynią", pl.get("item.polishforests.beech_chest_boat").getAsString());
+		assertEquals("Łódź limbowa", pl.get("entity.polishforests.stone_pine_boat").getAsString());
 	}
 
 	/** Step FA7: loot, vanilla tags, names and the atlas declarations of the parts (datagen in src/main/generated). */
@@ -304,8 +356,7 @@ class WoodSetTest {
 		for (WoodSet set : WoodSet.values()) {
 			for (WoodPartTexture.Part part : WoodPartTexture.Part.values()) {
 				String path = part.path(set.prefix());
-				Path file = RESOURCES.resolve("assets/polishforests/" + (part.kind() == WoodPartTexture.Kind.SCREEN ? path
-						: "textures/" + path + ".png"));
+				Path file = RESOURCES.resolve("assets/polishforests/" + (part.kind().ownFile() ? path : "textures/" + path + ".png"));
 				assertTrue(!Files.exists(file), file + ": derived in the client, no file in the mod");
 			}
 		}

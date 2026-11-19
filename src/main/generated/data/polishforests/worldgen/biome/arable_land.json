@@ -167,7 +167,8 @@
       "polishforests:bone_meal/meadow"
     ],
     [
-      "minecraft:freeze_top_layer"
+      "minecraft:freeze_top_layer",
+      "polishforests:ground/anthills"
     ]
   ],
   "has_precipitation": true,

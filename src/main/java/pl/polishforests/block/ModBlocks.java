@@ -81,6 +81,7 @@ public final class ModBlocks {
 	/** Round 1 of the V12 review: the own moss carpet and the podzol under feather moss. */
 	private static Block forestMossCarpet;
 	private static Block mossyPodzol;
+	private static Block anthill;
 	/** Step F4: the sphagnum of the bogs, a carpet and a ground block. */
 	private static Block sphagnumCarpet;
 	private static Block sphagnumBlock;
@@ -158,6 +159,9 @@ public final class ModBlocks {
 			fire.add(b, 60, 100);
 		}
 		fire.add(forestMossCarpet, 60, 100);
+		// Step FA8: the anthill of needles and twigs as leaves (FireBlock 30 / 60); its ant particles.
+		fire.add(anthill, 30, 60);
+		ModParticles.register();
 		for (TrunkBlock b : STRIPPED.values()) {
 			fire.add(b, IGNITE_ODDS, BURN_ODDS);
 		}
@@ -210,6 +214,8 @@ public final class ModBlocks {
 			}
 			out.insertAfter(Items.MOSS_CARPET, forestMossCarpet);
 			out.insertAfter(Items.PODZOL, mossyPodzol);
+			out.insertAfter(mossyPodzol.asItem(), anthill);
+
 			// Step TT1: the Tatra rocks after the vanilla deepslate.
 			previous = Items.DEEPSLATE;
 			for (Block b : TATRA_ROCK_BLOCKS) {
@@ -413,6 +419,10 @@ public final class ModBlocks {
 		for (WoodSet w : WoodSet.values()) {
 			PARTS.put(w, parts(w, WOODS.get(w)));
 		}
+		// Step FA8, registered last: the mound of the red wood ant (needles and twigs: dug as rooted dirt, burns as litter).
+		anthill = block(ANTHILL, AnthillBlock::new, BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_BROWN).strength(0.5F)
+				.sound(SoundType.ROOTED_DIRT).ignitedByLava());
+		item(ANTHILL, anthill, new Item.Properties());
 	}
 
 	/**
@@ -583,6 +593,14 @@ public final class ModBlocks {
 	/** The podzol under feather moss, under the trunks and root flares of the pine forests (round 1 of the V12 review). */
 	public static Block mossyPodzol() {
 		return registered(mossyPodzol);
+	}
+
+	/** Block and item path of the mound of the red wood ant (step FA8). */
+	public static final String ANTHILL = "anthill";
+
+	/** The mound of the red wood ant (step FA8, {@link AnthillBlock}). */
+	public static Block anthill() {
+		return registered(anthill);
 	}
 
 	/** Item path of the bilberry fruit (step V12). */

@@ -177,7 +177,8 @@
       "polishforests:bone_meal/mountain"
     ],
     [
-      "minecraft:freeze_top_layer"
+      "minecraft:freeze_top_layer",
+      "polishforests:ground/anthills"
     ]
   ],
   "has_precipitation": true,

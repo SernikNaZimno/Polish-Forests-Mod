@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "polishforests:item/gray_alder_boat"
+  }
+}

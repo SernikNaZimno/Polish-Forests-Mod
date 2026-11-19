@@ -768,6 +768,32 @@ def rock(tex, palettes):
             x, y = rng.integers(0, N), rng.integers(0, N)
             idx[y, x] = n - 1
         return t.paint(idx, [t.hex_to_rgb(c) for c in p['colors']])
+    if form == 'anthill':
+        # Step FA8: the mound of the red wood ant, a loose mat of pine needles and short twigs that the ants carry: a
+        # cloudy base in the middle tones (the shaded depth of the mat), needles of 2-4 px in all directions over it in the
+        # inner tones, a few twigs of 3-5 px in the lightest tone, and sparse dark pits (the openings of the galleries, the
+        # darkest tone). Stamps wrap around the edges, so the texture tiles. p['needles'], p['twigs'], p['pits'].
+        v = 0.6 * t.fbm(rng, 2, 4, 4, 0.6) + p['grain'] * t.value_noise(rng, 16, 16)
+        idx = t.quantize(v, n - 2) + 1
+        dirs = [(1, 0), (0, 1), (1, 1), (1, -1), (2, 1), (1, 2), (2, -1), (1, -2)]
+        for count, lengths, tones in ((p['needles'], (2, 5), (1, n - 1)), (p['twigs'], (3, 6), (n - 1, n))):
+            for _ in range(count):
+                dx, dy = dirs[rng.integers(0, len(dirs))]
+                if rng.random() < 0.5:
+                    dx, dy = -dx, -dy
+                step = max(abs(dx), abs(dy))
+                tone = rng.integers(*tones)
+                fx, fy = float(rng.integers(0, N)), float(rng.integers(0, N))
+                for _ in range(rng.integers(*lengths)):
+                    idx[int(round(fy)) % N, int(round(fx)) % N] = tone
+                    fx += dx / step
+                    fy += dy / step
+        idx = t.majority(idx, 1)
+        for _ in range(p['pits']):
+            x, y = rng.integers(0, N), rng.integers(0, N)
+            idx[y, x] = 0
+            idx[y, (x + 1) % N] = 0
+        return t.paint(idx, [t.hex_to_rgb(c) for c in p['colors']])
     if form == 'gneiss':
         warp = 2.2 * (t.value_noise(rng, 4, 2) - 0.5)
         band = 0.5 + 0.5 * np.sin(2 * np.pi * (ys + warp) * p['bands'] / N)

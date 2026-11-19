@@ -31,7 +31,12 @@ import pl.polishforests.block.WoodSet;
  * vanilla's screen texture of the base wood and its planks, read through the resource manager; no pixel of vanilla in the
  * mod) and registered in the texture manager as dynamic textures under their ids. A resource pack with its own texture of
  * ours keeps it (our dynamic texture is released, the texture manager then loads the pack's file).
+ *
+ * <p>Step FA8: the same for the entity textures of the boats and chest boats ({@code polishforests:textures/entity/boat/<wood>.png},
+ * {@code textures/entity/chest_boat/<wood>.png}, from vanilla's boat textures of the base wood; the chest of the chest boat
+ * stays as vanilla's), which the boat renderers of the mod draw ({@link pl.polishforests.client.entity.WoodBoatRenderer}).
  */
+
 public final class DerivedSignScreens extends SimpleReloadListener<Map<Identifier, DerivedSignScreens.Prepared>> {
 	private static final Logger LOG = LogUtils.getLogger();
 	public static final Identifier ID = PolishForests.id("derived_sign_screens");
@@ -55,8 +60,10 @@ public final class DerivedSignScreens extends SimpleReloadListener<Map<Identifie
 		ResourceManager resources = state.resourceManager();
 		Map<Identifier, Prepared> out = new LinkedHashMap<>();
 		for (WoodSet set : WoodSet.values()) {
-			for (WoodPartTexture.Part part : new WoodPartTexture.Part[] {WoodPartTexture.Part.SIGN_SCREEN,
-					WoodPartTexture.Part.HANGING_SIGN_SCREEN}) {
+			for (WoodPartTexture.Part part : WoodPartTexture.Part.values()) {
+				if (!part.kind().ownFile()) {
+					continue;
+				}
 				Identifier id = DerivedWoodSource.id(set, part);
 				Identifier base = DerivedWoodSource.base(set, part);
 				if (resources.getResource(id).isPresent()) {
@@ -65,15 +72,15 @@ public final class DerivedSignScreens extends SimpleReloadListener<Map<Identifie
 					continue;
 				}
 				Optional<Resource> in = resources.getResource(base);
-				Optional<Resource> planks = resources.getResource(DerivedWoodSource.planksFile(set));
-				if (in.isEmpty() || planks.isEmpty()) {
-					LOG.warn("[wood parts] screen texture {} or its planks not found, {} stays missing", base, id);
-					DerivedWoodSource.record(new DerivedWoodSource.Result(id, base, false, "base texture not found", 0, 0, 0));
-					out.put(id, new Prepared(null));
-					continue;
-				}
 				try {
-					DerivedPlanksSource.Pixels px = DerivedWoodSource.derive(in.get(), planks.get(), set.planksPalette());
+					Optional<DerivedPlanksSource.Pixels> derived = DerivedWoodSource.derive(resources, set, part);
+					if (in.isEmpty() || derived.isEmpty()) {
+						LOG.warn("[wood parts] texture {} or its planks not found, {} stays missing", base, id);
+						DerivedWoodSource.record(new DerivedWoodSource.Result(id, base, false, "base texture not found", 0, 0, 0));
+						out.put(id, new Prepared(null));
+						continue;
+					}
+					DerivedPlanksSource.Pixels px = derived.get();
 					DerivedWoodSource.record(new DerivedWoodSource.Result(id, base, true, "derived from " + in.get().sourcePackId(),
 							px.width(), px.height(), DerivedPlanksSource.hash(px.argb())));
 					out.put(id, new Prepared(px));

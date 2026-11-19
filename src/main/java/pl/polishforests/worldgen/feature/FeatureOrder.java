@@ -35,6 +35,11 @@ public final class FeatureOrder {
 	 * before TT6 (those of before J2 and the cave ones), so none of them changes its index and seed.
 	 */
 	public static final String TATRA_PREFIX = "tatra/";
+	/**
+	 * Step FA8: path prefix of the ground features ({@code ground/anthills}, step 10 after the freezing of the top layer), a
+	 * fourth layer with the Tatra details after all the others, so no feature of before FA8 changes its index and seed.
+	 */
+	public static final String GROUND_PREFIX = "ground/";
 
 	private FeatureOrder() {
 	}
@@ -45,11 +50,16 @@ public final class FeatureOrder {
 				&& k.identifier().getPath().startsWith(CAVE_PREFIX)).orElse(false);
 	}
 
-	/** Step TT6: whether the placed feature is one of the Tatra details that the habitat biomes got in step TT6. */
+	/**
+	 * Step TT6: whether the placed feature is one of the Tatra details that the habitat biomes got in step TT6; step FA8: or
+	 * one of the ground features ({@value #GROUND_PREFIX}), after them in the order of the vanilla sort of the full lists.
+	 */
 	static boolean addedWithTatra(Holder<PlacedFeature> feature) {
 		return feature.unwrapKey().map(k -> k.identifier().getNamespace().equals(PolishForests.MOD_ID)
-				&& k.identifier().getPath().startsWith(TATRA_PREFIX)).orElse(false);
+				&& (k.identifier().getPath().startsWith(TATRA_PREFIX) || k.identifier().getPath().startsWith(GROUND_PREFIX)))
+				.orElse(false);
 	}
+
 
 	/**
 	 * The features per step for the possible biomes {@code biomes}, of which {@code habitats} are the habitat biomes.

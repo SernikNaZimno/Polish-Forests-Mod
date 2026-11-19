@@ -234,6 +234,14 @@ final class ModBlockTagProvider {
 			}
 			builder(BlockTags.BLOCKS_MOTION_NO_LEAVES).add(key(surface.get(0))).add(key(surface.get(1))).add(sphagnumBlock)
 					.add(key(ModBlocks.treeRoot()));
+			// Step FA8: the anthill is dug with a shovel and blocks motion (rain and snow stop on the mound); a tree or the
+			// dead wood written after it takes its place, as the moss carpets, so the order of the decoration does not decide
+			// which of the two stands in a column.
+			ResourceKey<Block> anthill = key(ModBlocks.anthill());
+			for (TagKey<Block> t : List.of(BlockTags.MINEABLE_WITH_SHOVEL, BlockTags.BLOCKS_MOTION_NO_LEAVES, BlockTags.REPLACEABLE_BY_TREES)) {
+				builder(t).add(anthill);
+			}
+
 			// Step FA1: the ground the forest animals of the mod appear on (FaunaSpawner): the forest soils of vanilla and of the
 			// mod (mossy podzol, sphagnum block, rendzina of the Tatra forests); no sand, mud, scree or rock.
 			builder(FaunaRules.SPAWNABLE_ON).add(key(net.minecraft.world.level.block.Blocks.GRASS_BLOCK))
@@ -273,6 +281,12 @@ final class ModBlockTagProvider {
 			copy(BlockItemTags.FLOWERS.block(), BlockItemTags.FLOWERS.item());
 			builder(ItemTags.FOX_FOOD).add(BuiltInRegistries.ITEM.getResourceKey(ModBlocks.bilberries()).orElseThrow());
 			copy(SUMMER_CROPS, item(SUMMER_CROPS));
+			// Step FA8: the boats and chest boats of the wood sets (vanilla's #boats, #chest_boats).
+			for (pl.polishforests.entity.WoodBoats.Set s : pl.polishforests.entity.WoodBoats.all().values()) {
+				builder(ItemTags.BOATS).add(BuiltInRegistries.ITEM.getResourceKey(s.boatItem()).orElseThrow());
+				builder(ItemTags.CHEST_BOATS).add(BuiltInRegistries.ITEM.getResourceKey(s.chestBoatItem()).orElseThrow());
+			}
+
 			// Step TT1: the Tatra rocks make stone tools and the stone recipes (furnace, stone cutter) as cobblestone.
 			for (Block b : ModBlocks.tatraRocks()) {
 				for (TagKey<net.minecraft.world.item.Item> t : List.of(ItemTags.STONE_TOOL_MATERIALS, ItemTags.STONE_CRAFTING_MATERIALS)) {

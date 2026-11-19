@@ -185,6 +185,8 @@ public final class VanillaForestsClientGameTest implements FabricClientGameTest 
 					TreeStandFeature.PLANNED.sum(), TreeStandFeature.SKIPPED_BLOCKED.sum(), TreeStandFeature.SKIPPED_STRUCTURE.sum(),
 					TreeStandFeature.SKIPPED_BASE.sum(), TreeStandFeature.SKIPPED_WRITE.sum(),
 					TreeStandFeature.SKIPPED_SUPPRESSED.sum()));
+			// Step FA8: the anthills of the world type (the plan on the chunk habitats of the vanilla terrain).
+			report.append(pl.polishforests.worldgen.feature.AnthillFeature.stats()).append(System.lineSeparator());
 		}
 		// 4. Determinism, the reverse order in a second world of the same seed.
 		try (TestSingleplayerContext sp = context.worldBuilder().adjustSettings(ui -> select(ui, PRESET, true)).create()) {

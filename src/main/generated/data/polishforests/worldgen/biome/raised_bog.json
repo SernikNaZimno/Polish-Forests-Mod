@@ -164,7 +164,8 @@
       "polishforests:bone_meal/wetland"
     ],
     [
-      "minecraft:freeze_top_layer"
+      "minecraft:freeze_top_layer",
+      "polishforests:ground/anthills"
     ]
   ],
   "has_precipitation": true,

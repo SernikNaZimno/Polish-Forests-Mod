@@ -41,7 +41,9 @@ import pl.polishforests.client.DerivedPlanksSource;
  * definition.</li>
  * </ul>
  * Step FA7 adds the doors, trapdoors, signs, hanging signs and shelves ({@link WoodPartSamples}: their derived textures,
- * models, and a table in a flat world with the one screenshot of the step). Results in {@code build/planks/planks.txt}; any
+ * models, and a table in a flat world with the one screenshot of the step); step FA8 the boats and chest boats
+ * ({@link BoatSamples}: afloat on a pool, boarded, the chests, save and reopen, with the anthill beside the pool in the one
+ * screenshot of the step; their derived textures in {@link WoodPartSamples}). Results in {@code build/planks/planks.txt}; any
  * problem fails the test.
  */
 final class PlankSamples {
@@ -133,6 +135,8 @@ final class PlankSamples {
 		});
 		// Step FA7: the table of the parts in a world (opening, texts, items, save and reopen) and its screenshot.
 		WoodPartSamples.world(context, lines, problems);
+		// Step FA8: the boats and chest boats on a pool (floating, boarding, chests, save and reopen) and the anthill beside it.
+		BoatSamples.world(context, lines, problems);
 		lines.add("# problems: " + problems.size());
 		lines.addAll(problems);
 		write(lines);

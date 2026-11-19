@@ -1,0 +1,7 @@
+{
+  "parent": "polishforests:block/template_anthill_height_4",
+  "textures": {
+    "side": "polishforests:block/anthill",
+    "top": "polishforests:block/anthill_top"
+  }
+}

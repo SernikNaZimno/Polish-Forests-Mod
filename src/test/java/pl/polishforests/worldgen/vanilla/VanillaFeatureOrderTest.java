@@ -114,4 +114,35 @@ class VanillaFeatureOrderTest {
 		// Another order of the possible biomes sorts too (the order is the source's).
 		assertDoesNotThrow(() -> FeatureSorter.buildFeaturesPerStep(order.reversed(), b -> sets(lists.get(b)), false));
 	}
+
+	/**
+	 * Step FA8: the anthills ({@code polishforests:ground/anthills}) move no feature of the world type: the plain vanilla
+	 * sort of the lists with them keeps the index of every other feature (the index is its seed), so the vanilla biomes and
+	 * the forests decorate as before.
+	 */
+	@Test
+	void theAnthillsMoveNoFeature() {
+		Map<String, List<List<String>>> with = new HashMap<>();
+		Map<String, List<List<String>>> without = new HashMap<>();
+		LinkedHashSet<String> biomes = new LinkedHashSet<>();
+		for (String b : VanillaForestsTest.tag("is_overworld")) {
+			HabitatBiome target = VanillaForests.replacement(b);
+			String id = target == null ? b : "polishforests:" + target.id();
+			if (biomes.add(id)) {
+				List<List<String>> steps = target == null ? vanillaSteps(b) : BiomeDecoration.steps(target);
+				with.put(id, steps);
+				without.put(id, steps.stream().map(step -> step.stream().filter(f -> !f.equals(BiomeDecoration.ANTHILLS)).toList()).toList());
+			}
+		}
+		for (List<String> order : List.of(List.copyOf(biomes), List.copyOf(biomes).reversed())) {
+			List<FeatureSorter.StepFeatureData> before = FeatureSorter.buildFeaturesPerStep(order, b -> sets(without.get(b)), false);
+			List<FeatureSorter.StepFeatureData> after = FeatureSorter.buildFeaturesPerStep(order, b -> sets(with.get(b)), false);
+			for (int step = 0; step < before.size(); step++) {
+				List<PlacedFeature> b = before.get(step).features();
+				for (int i = 0; i < b.size(); i++) {
+					assertEquals(i, after.get(step).features().indexOf(b.get(i)), "step " + step + ": feature " + i + " of " + b.size() + " moved");
+				}
+			}
+		}
+	}
 }

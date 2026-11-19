@@ -93,10 +93,11 @@ final class WoodPartSamples {
 				DerivedWoodSource.Result r = DerivedWoodSource.results().get(id);
 				int width;
 				int height;
-				if (part.kind() == WoodPartTexture.Kind.SCREEN) {
+				// Step FA8: the entity textures of the boats are textures of the texture manager too.
+				if (part.kind().ownFile()) {
 					AbstractTexture texture = mc.getTextureManager().getTexture(id);
 					if (!(texture instanceof DynamicTexture dynamic) || dynamic.getPixels() == null) {
-						problems.add(set + " " + part + ": the screen texture " + id + " is not the derived dynamic texture (" + texture + ")");
+						problems.add(set + " " + part + ": the texture " + id + " is not the derived dynamic texture (" + texture + ")");
 						continue;
 					}
 					width = dynamic.getPixels().getWidth();
@@ -115,14 +116,14 @@ final class WoodPartSamples {
 					problems.add(set + " " + part + ": not derived (" + (r == null ? "no result" : r.reason()) + ")");
 					continue;
 				}
-				Optional<Resource> base = mc.getResourceManager().getResource(DerivedWoodSource.file(r.base(), part));
-				Optional<Resource> planks = mc.getResourceManager().getResource(DerivedWoodSource.planksFile(set));
-				if (base.isEmpty() || planks.isEmpty()) {
-					problems.add(set + " " + part + ": base " + r.base() + " not found again");
-					continue;
-				}
 				try {
-					DerivedPlanksSource.Pixels again = DerivedWoodSource.derive(base.get(), planks.get(), set.planksPalette());
+					// Step FA8: through the shared part too (the boat of a chest boat).
+					Optional<DerivedPlanksSource.Pixels> recomputed = DerivedWoodSource.derive(mc.getResourceManager(), set, part);
+					if (recomputed.isEmpty()) {
+						problems.add(set + " " + part + ": base " + r.base() + " not found again");
+						continue;
+					}
+					DerivedPlanksSource.Pixels again = recomputed.get();
 					if (DerivedPlanksSource.hash(again.argb()) != r.hash()) {
 						problems.add(set + " " + part + ": differs from a recomputation from " + r.base());
 					}
@@ -136,7 +137,7 @@ final class WoodPartSamples {
 				derived++;
 			}
 		}
-		lines.add(String.format(Locale.ROOT, "FA7 derived textures: %d of %d (block and item sprites, screen textures), e.g. %s",
+		lines.add(String.format(Locale.ROOT, "FA7/FA8 derived textures: %d of %d (block and item sprites, screen and boat textures), e.g. %s",
 				derived, WoodSet.values().length * WoodPartTexture.Part.values().length,
 				DerivedWoodSource.results().get(DerivedWoodSource.id(WoodSet.BEECH, WoodPartTexture.Part.DOOR_TOP))));
 		BlockStateModelSet models = mc.getModelManager().getBlockStateModelSet();

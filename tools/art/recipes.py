@@ -2107,6 +2107,19 @@ TEXTURES = [
             params=dict(form='rendzina', grain=0.35, light=7,
                         colors=['#221d19', '#2b2521', '#342d28', '#3d352f', '#9a9487']),
             note='rendzina of the limestone (step TT2): crumbly black humus with sparse pale limestone flecks'),
+    # Step FA8: the mound of the red wood ant (an opaque cube of layers, not tinted; the rock checks: tiled, opaque, the
+    # smoothness of the vanilla natural blocks): pine needles and twigs in rust and gray-brown tones after field
+    # photographs of Formica rufa mounds (own palettes, no vanilla texture), the top a little lighter and drier.
+    Texture('anthill', 'rock', ground.rock, 'anthill/1', None,
+            params=dict(form='anthill', grain=0.3, needles=70, twigs=6, pits=3,
+                        colors=['#2c1d14', '#5a3a24', '#674329', '#734b2e', '#7f5434', '#8f6a4a']),
+            note='side of an anthill of the red wood ant (step FA8): a mat of rust-brown pine needles and short gray-brown '
+                 'twigs with a few dark gallery openings'),
+    Texture('anthill_top', 'rock', ground.rock, 'anthill_top/1', None,
+            params=dict(form='anthill', grain=0.3, needles=80, twigs=8, pits=4,
+                        colors=['#2e1f15', '#64412a', '#71492f', '#7d5234', '#895b3a', '#9a7656']),
+            note='top of an anthill of the red wood ant (step FA8): the drier, lighter needles and twigs of the dome with '
+                 'the openings of the galleries'),
 ]
 
 TEXTURES_BY_NAME = {tx.name: tx for tx in TEXTURES}

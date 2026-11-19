@@ -30,8 +30,10 @@ import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 import pl.polishforests.PolishForests;
 import pl.polishforests.worldgen.chunk.PolandChunkGenerator;
+import pl.polishforests.worldgen.feature.plan.AnthillPlan;
 import pl.polishforests.worldgen.feature.tatra.TatraSites;
 import pl.polishforests.worldgen.habitat.AltitudinalBelts;
 import pl.polishforests.worldgen.habitat.Calibration;
@@ -71,7 +73,9 @@ public final class PolishForestsCommands {
 		/** Step TT1: the parts of the Tatra complexes, searched around the Tatra massifs ({@link #searchTatra}). */
 		TATRA,
 		/** Step TT6: the anchors of the Tatra details ({@link TatraSites}), searched in rings of cells around the massifs. */
-		SITE
+		SITE,
+		/** Step FA8: the anthills of the plan ({@link AnthillPlan}), searched in rings of its cells. */
+		ANTHILL
 	}
 
 	/**
@@ -147,7 +151,9 @@ public final class PolishForestsCommands {
 		// Step TT7: the foreland north of the Podhale (a Gorce-type flysch ridge) and a river in a gorge through it.
 		TATRA_FORELAND(Kind.TATRA, false, false, d -> d.sample().terrain().tatraPart() == TatraPart.FORELAND),
 		FORELAND_GORGE(Kind.TATRA, true, false,
-				d -> d.sample().terrain().tatraPart() == TatraPart.FORELAND && d.sample().waterKind() == WaterKind.RIVER);
+				d -> d.sample().terrain().tatraPart() == TatraPart.FORELAND && d.sample().waterKind() == WaterKind.RIVER),
+		// Step FA8: a mound of the red wood ant on a forest edge or in a canopy gap (both world types).
+		ANTHILL(Kind.ANTHILL, true, false, d -> false);
 
 		final Kind kind;
 		final boolean fine;
@@ -423,6 +429,14 @@ public final class PolishForestsCommands {
 		}
 		Vec3 origin = source.getPosition();
 		source.sendSuccess(() -> Component.translatable("polishforests.command.searching", target.displayName()), false);
+		if (target.kind == Kind.ANTHILL) {
+			PolandChunkGenerator generator = generator(source);
+			long seed = source.getLevel().getSeed();
+			AnthillPlan.Site site = anthillSite((x, z) -> world.code(x, z), generator.standMap(seed));
+			runSearch(source, origin, cancelled -> AnthillPlan.nearest(seed, site, generator.localScale(), origin.x, origin.z, ANTHILL_RADIUS,
+					cancelled), ANTHILL_RADIUS, target.displayName());
+			return 1;
+		}
 		double[][] phases = phases(model, target.fine);
 		if ((target.kind == Kind.TATRA || target.kind == Kind.SITE) && !model.hasTatra()) {
 			source.sendFailure(Component.translatable("polishforests.command.no_tatra"));
@@ -448,6 +462,16 @@ public final class PolishForestsCommands {
 		} catch (IllegalArgumentException e) {
 			source.sendFailure(Component.translatable("polishforests.command.unknown_target", arg.toLowerCase(Locale.ROOT)));
 			return 0;
+		}
+		if (target.kind == Kind.ANTHILL) {
+			// Step FA8: the plan on the surface codes of the world's biome source and the stand map of the world type.
+			Vec3 origin = source.getPosition();
+			source.sendSuccess(() -> Component.translatable("polishforests.command.searching", target.displayName()), false);
+			long seed = source.getLevel().getSeed();
+			AnthillPlan.Site site = anthillSite(world::surfaceCode, world.standMap(seed));
+			runSearch(source, origin, cancelled -> AnthillPlan.nearest(seed, site, world.localScale(), origin.x, origin.z, ANTHILL_RADIUS,
+					cancelled), ANTHILL_RADIUS, target.displayName());
+			return 1;
 		}
 		IntPredicate test = VanillaTargets.target(target);
 		if (test == null) {
@@ -590,6 +614,14 @@ public final class PolishForestsCommands {
 			return TatraSites.find(model, target.site, ox, oz, tatraRadius(model), presentDay(world),
 					world.classifier() == null ? null : world::code, cancelled);
 		}
+		if (target.kind == Kind.ANTHILL) {
+			// Step FA8, without the generator (the tests of the plan): the stand map of the uniform stand profiles and the
+			// default share of managed stands (D9), close to the world's (whose profiles come from the forest blend).
+			if (world.classifier() == null) {
+				throw new IllegalArgumentException("The target " + target.id() + " needs the habitat classifier");
+			}
+			return AnthillPlan.nearest(model.seed(), anthillSite(world), model.scale().local(), ox, oz, ANTHILL_RADIUS, cancelled);
+		}
 		if (target.kind == Kind.TATRA) {
 			return searchTatra(model, test, ox, oz, target.fine ? TATRA_FINE_STEP : TATRA_STEP, cancelled);
 		}
@@ -662,6 +694,10 @@ public final class PolishForestsCommands {
 		if (target.habitat != null) {
 			return target.habitat.test(world.code(p[0], p[1]));
 		}
+		if (target.kind == Kind.ANTHILL) {
+			// Step FA8: p is the center of a sited mound (the site of a search without the generator).
+			return world.classifier() != null && AnthillPlan.sitedAt(model.seed(), anthillSite(world), model.scale().local(), p[0], p[1]);
+		}
 		if (target.site != null) {
 			// Step TT6: p is the anchor of a detail of the kind.
 			int x = (int) Math.round(p[0]);
@@ -674,7 +710,39 @@ public final class PolishForestsCommands {
 		return found && (target != Target.CLIFF || hasSeawardWall(model, p[0], p[1]));
 	}
 
+	/** Step FA8: the radius of {@code find anthill}, blocks. */
+	static final double ANTHILL_RADIUS = 2_000;
+	/** Step FA8: the default share of managed stands (D9) of the stand map of a search without the generator. */
+	static final double DEFAULT_MANAGED_SHARE = 0.85;
+
+	/**
+	 * Step FA8: the site of the anthill plan of a world without the generator (the tests of the plan): its habitat codes and
+	 * the stand map of the uniform stand profiles with the default share of managed stands (D9), close to the world's
+	 * (whose profiles come from the forest blend).
+	 */
+	static AnthillPlan.Site anthillSite(HabitatTargets.World world) {
+		LandscapeModel model = world.model();
+		return anthillSite((x, z) -> world.code(x, z),
+				new pl.polishforests.worldgen.tree.ForestStandMap(model.seed(), model.scale().local(), DEFAULT_MANAGED_SHARE));
+	}
+
+	/** Step FA8: the site of the anthill plan from a habitat code function and the stand map (null: no gaps). */
+	static AnthillPlan.Site anthillSite(java.util.function.IntBinaryOperator code, pl.polishforests.worldgen.tree.@Nullable StandMap stands) {
+		return new AnthillPlan.Site() {
+			@Override
+			public int code(int x, int z) {
+				return code.applyAsInt(x, z);
+			}
+
+			@Override
+			public double gapDepth(int x, int z) {
+				return stands == null ? 0 : stands.gapDepth(x, z);
+			}
+		};
+	}
+
 	/** Step K8b2: least height of a cliff found by {@code find cliff} (m). */
+
 	static final double CLIFF_MIN_HEIGHT = 12;
 	/** Step K8b2: the ground {@value #CLIFF_RUN} m seaward of a cliff lies at least {@value #CLIFF_MIN_DROP} m lower. */
 	static final double CLIFF_RUN = 4;

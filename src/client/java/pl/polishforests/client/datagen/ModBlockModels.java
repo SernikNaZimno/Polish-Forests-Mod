@@ -199,7 +199,13 @@ final class ModBlockModels extends FabricModelProvider {
 					new Material(strippedEnd(set.stripped())))).logWithHorizontal(w.strippedLog()).wood(w.strippedWood());
 			gen.family(w.planks()).generateFor(ModWoodFamilies.family(set));
 			parts(gen, set);
+			// Step FA8: the boat and chest boat items, flat items of the sprites polishforests:item/<wood>_boat and
+			// _chest_boat, which the client derives from vanilla's boat items of the base wood (DerivedWoodSource).
+			pl.polishforests.entity.WoodBoats.Set boats = pl.polishforests.entity.WoodBoats.of(set);
+			gen.registerSimpleFlatItemModel(boats.boatItem());
+			gen.registerSimpleFlatItemModel(boats.chestBoatItem());
 		}
+		anthill(gen);
 
 		for (TreeFoliage f : TreeFoliage.values()) {
 			leaves(gen, f);
@@ -614,7 +620,34 @@ final class ModBlockModels extends FabricModelProvider {
 		gen.registerSimpleItemModel(shelf, ModelTemplates.SHELF_INVENTORY.create(shelf, shelfMapping, gen.modelOutput));
 	}
 
+	/**
+	 * Step FA8: the anthill in its eight heights (the own templates {@code template_anthill_height_<layers>} of
+	 * {@link GroundTemplates} up to 7 layers, vanilla's {@code cube_column} for the full block), the own textures
+	 * {@code polishforests:block/anthill} on the sides and {@code anthill_top} on top (tools/art); the item is the model of
+	 * one layer, as vanilla's snow layer item.
+	 */
+	private static void anthill(BlockModelGenerators gen) {
+		Block anthill = ModBlocks.anthill();
+		TextureMapping textures = new TextureMapping().put(TextureSlot.SIDE, new Material(own("anthill")))
+				.put(TextureSlot.TOP, new Material(own("anthill_top"))).put(TextureSlot.END, new Material(own("anthill_top")));
+		PropertyDispatch.C1<MultiVariant, Integer> heights = PropertyDispatch.initial(pl.polishforests.block.AnthillBlock.LAYERS);
+		Identifier one = null;
+		for (int layers = 1; layers <= pl.polishforests.block.AnthillBlock.MAX_LAYERS; layers++) {
+			Identifier model = layers == pl.polishforests.block.AnthillBlock.MAX_LAYERS
+					? ModelTemplates.CUBE_COLUMN.create(anthill, textures, gen.modelOutput)
+					: new ModelTemplate(Optional.of(PolishForests.id(GroundTemplates.anthillHeight(layers))), Optional.of("_height" + 2 * layers),
+							TextureSlot.SIDE, TextureSlot.TOP).create(anthill, textures, gen.modelOutput);
+			if (layers == 1) {
+				one = model;
+			}
+			heights.select(layers, BlockModelGenerators.plainVariant(model));
+		}
+		gen.blockStateOutput.accept(MultiVariantGenerator.dispatch(anthill).with(heights));
+		gen.registerSimpleItemModel(anthill, one);
+	}
+
 	private static Identifier own(String name) {
+
 		return PolishForests.id("block/" + name);
 	}
 

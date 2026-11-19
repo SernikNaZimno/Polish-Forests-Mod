@@ -1,0 +1,11 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "group": "chest_boat",
+  "ingredients": [
+    "minecraft:chest",
+    "polishforests:beech_boat"
+  ],
+  "result": {
+    "id": "polishforests:beech_chest_boat"
+  }
+}

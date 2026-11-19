@@ -173,8 +173,9 @@ public final class UiAndCommandsClientGameTest implements FabricClientGameTest {
 			MinecraftServer[] server = new MinecraftServer[1];
 			sp.getServer().runOnServer(s -> server[0] = s);
 			List<Component> list = run(context, server[0], "polishforests list", 1);
-			// Five target kinds, the Tatra kind (step TT1), the Tatra details kind (step TT6), the biomes and the zones.
-			int expectedLines = 9;
+			// Five target kinds, the Tatra kind (step TT1), the Tatra details kind (step TT6), the anthill kind (step FA8), the
+			// biomes and the zones.
+			int expectedLines = 10;
 			if (list.size() != expectedLines) {
 				problems.add("list: " + list.size() + " lines instead of " + expectedLines);
 			}

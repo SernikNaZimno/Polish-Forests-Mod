@@ -28,7 +28,12 @@ public final class PolishForestsClient implements ClientModInitializer {
 		RedSquirrelRenderer.register();
 		// Step FA6: the Eurasian jay.
 		EurasianJayRenderer.register();
-		// Step FA7: the backgrounds of the sign edit screens of the wood sets (the atlas textures come from DerivedWoodSource).
+		// Step FA7: the backgrounds of the sign edit screens of the wood sets (the atlas textures come from DerivedWoodSource);
+		// step FA8: also the entity textures of the boats.
 		DerivedSignScreens.register();
+		// Step FA8: the boats of the wood sets (vanilla model layers by id, derived textures) and the ants of the anthills.
+		pl.polishforests.client.entity.WoodBoatRenderer.register();
+		AntParticle.register();
+
 	}
 }

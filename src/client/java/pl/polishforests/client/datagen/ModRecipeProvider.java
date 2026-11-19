@@ -47,6 +47,11 @@ final class ModRecipeProvider extends FabricRecipeProvider {
 					// (six from six stripped logs of the species).
 					generateRecipes(ModWoodFamilies.recipes(set), FeatureFlags.VANILLA_SET);
 					shelf(ModBlocks.woodParts(set).shelf(), w.strippedLog());
+					// Step FA8: the boat from five planks, the chest boat from the boat and a chest (vanilla's recipes).
+					pl.polishforests.entity.WoodBoats.Set boats = pl.polishforests.entity.WoodBoats.of(set);
+					woodenBoat(boats.boatItem(), w.planks());
+					chestBoat(boats.chestBoatItem(), boats.boatItem());
+
 				}
 			}
 		};

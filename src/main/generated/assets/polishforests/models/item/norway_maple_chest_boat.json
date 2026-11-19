@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "polishforests:item/norway_maple_chest_boat"
+  }
+}

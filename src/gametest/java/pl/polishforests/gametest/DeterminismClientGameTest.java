@@ -249,12 +249,19 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 				// Step C3 (KC-3, -PdeterminismStepHerbs): the columns whose planned plant is the nettle or the yellow iris,
 				// recorded while world 1 is generated and decorated (from its creation, so no chunk of an area is missed).
 				java.util.Set<Long> herbColumns = java.util.concurrent.ConcurrentHashMap.newKeySet();
+				// Step FA8 (-PdeterminismStepAnthills): the columns of the sited anthills, recorded the same way.
+				java.util.Set<Long> anthillColumns = java.util.concurrent.ConcurrentHashMap.newKeySet();
 				for (int w = 0; w < WORLDS; w++) {
 					boolean fixedOrder = w < 2 || w == 4;
 					boolean reversed = w == 4;
 					if (w == 0 && STEP_HERBS) {
 						herbColumns.clear();
 						pl.polishforests.worldgen.feature.ModFeatures.HERB_PLANS = (hx, hz) -> herbColumns.add(
+								net.minecraft.world.level.ChunkPos.pack(hx, hz));
+					}
+					if (w == 0 && STEP_ANTHILLS) {
+						anthillColumns.clear();
+						pl.polishforests.worldgen.feature.ModFeatures.ANTHILL_PLANS = (hx, hz) -> anthillColumns.add(
 								net.minecraft.world.level.ChunkPos.pack(hx, hz));
 					}
 					Path deepFile = deepDir != null && (w == 0 || w == 2 || w == 3)
@@ -297,7 +304,10 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 								int ai = a;
 								zones[a] = sp.getServer().computeOnServer(s -> stepZones(s.overworld(), ox, oz, worlds[0][ai]));
 								if (STEP_HERBS) {
-									herbZones(zones[a], ox, oz, herbColumns);
+									herbZones(zones[a], ox, oz, herbColumns, 'N');
+								}
+								if (STEP_ANTHILLS) {
+									herbZones(zones[a], ox, oz, anthillColumns, 'A');
 								}
 							}
 							if (full != null) {
@@ -309,6 +319,7 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 					} finally {
 						if (w == 0) {
 							pl.polishforests.worldgen.feature.ModFeatures.HERB_PLANS = null;
+							pl.polishforests.worldgen.feature.ModFeatures.ANTHILL_PLANS = null;
 						}
 						if (full != null) {
 							try {
@@ -892,16 +903,19 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 				String zone = zones.get(key.substring("decorated ".length()));
 				PolishForests.LOG.info("[determinism] {} vs {}: {} differences by zone of the steps F: {}", label, refName, key,
 						zoneReport(ours, theirs, zone));
-				if (STEP_HERBS && Boolean.getBoolean("polishforests.determinism.stepZones") && !otherSet) {
+				if ((STEP_HERBS || STEP_ANTHILLS) && Boolean.getBoolean("polishforests.determinism.stepZones") && !otherSet) {
 					// Step C3 (KC-3): against the build before the step the decoration may differ only in the columns whose
 					// planned plant is the nettle or the yellow iris (zone N), in the forests of the steps F as anywhere else.
+					// Step FA8: with -PdeterminismStepAnthills only in the columns of the sited anthills (zone A).
+					char allowed = STEP_ANTHILLS ? 'A' : 'N';
 					int away = 0;
 					for (int c = 0; c < ours.length && c < zone.length(); c++) {
-						away += zone.charAt(c) != 'N' && ours[c] != theirs[c] ? 1 : 0;
+						away += zone.charAt(c) != allowed && ours[c] != theirs[c] ? 1 : 0;
 					}
 					if (away > 0) {
-						failures.add(label + " vs " + refName + ": " + key + " differs in " + away
-								+ " columns away from the nettle and iris columns (KC-3 of step C3)");
+						failures.add(label + " vs " + refName + ": " + key + " differs in " + away + (STEP_ANTHILLS
+								? " columns away from the anthill columns (step FA8)"
+								: " columns away from the nettle and iris columns (KC-3 of step C3)"));
 					}
 					continue;
 				}
@@ -1001,15 +1015,21 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 	 * may differ.
 	 */
 	private static final boolean STEP_HERBS = Boolean.getBoolean("polishforests.determinism.stepHerbs");
+	/**
+	 * Step FA8: {@code -PdeterminismStepAnthills} (with {@code -PdeterminismStepZones}) marks the columns of the sited
+	 * anthills as zone {@code A} (recorded through {@code ModFeatures.ANTHILL_PLANS} in world 1), and against the reference
+	 * of the build before the step only those columns may differ.
+	 */
+	private static final boolean STEP_ANTHILLS = Boolean.getBoolean("polishforests.determinism.stepAnthills");
 
-	/** Step C3: marks the recorded nettle and iris columns of an area as zone {@code N}. */
-	private static void herbZones(char[] zone, int ox, int oz, java.util.Set<Long> herbColumns) {
+	/** Step C3: marks the recorded nettle and iris columns of an area as zone {@code N} (step FA8: the anthills as {@code A}). */
+	private static void herbZones(char[] zone, int ox, int oz, java.util.Set<Long> herbColumns, char mark) {
 		for (int cx = 0; cx < SIZE; cx++) {
 			for (int cz = 0; cz < SIZE; cz++) {
 				for (int x = 0; x < 16; x++) {
 					for (int z = 0; z < 16; z++) {
 						if (herbColumns.contains(net.minecraft.world.level.ChunkPos.pack(((ox + cx) << 4) + x, ((oz + cz) << 4) + z))) {
-							zone[(cx * SIZE + cz) * 256 + x * 16 + z] = 'N';
+							zone[(cx * SIZE + cz) * 256 + x * 16 + z] = mark;
 						}
 					}
 				}
@@ -1166,11 +1186,11 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 	 * step F4 and their reach, in the slice forests, outside the forest of step F7, elsewhere).
 	 */
 	private static String zoneReport(long[] ours, long[] theirs, String zones) {
-		int[] differ = new int[8];
-		int[] columns = new int[8];
+		int[] differ = new int[9];
+		int[] columns = new int[9];
 		for (int i = 0; i < ours.length && i < zones.length(); i++) {
 			char c = zones.charAt(i);
-			int z = c == 'F' ? 0 : c == 'B' ? 1 : c == 'H' ? 2 : c == 'R' ? 4 : c == 'M' ? 5 : c == 'T' ? 6 : c == 'N' ? 7 : 3;
+			int z = c == 'F' ? 0 : c == 'B' ? 1 : c == 'H' ? 2 : c == 'R' ? 4 : c == 'M' ? 5 : c == 'T' ? 6 : c == 'N' ? 7 : c == 'A' ? 8 : 3;
 			columns[z]++;
 			differ[z] += ours[i] != theirs[i] ? 1 : 0;
 		}
@@ -1178,9 +1198,10 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 				+ "gray dune, osier scrub, riverside willows and timberline and their reach %d of %d, in the slice forests (the rowan of "
 				+ "step F6) and their reach %d of %d, on the meadows, tree rows, lake shore alders and bars (step F7) and their reach "
 				+ "%d of %d, in the influence of a Tatra complex (step TT1) %d of %d, elsewhere %d of %d, nettle and iris columns (step "
-				+ "C3, zone N, with -PdeterminismStepHerbs) %d of %d", differ[0], columns[0],
+				+ "C3, zone N, with -PdeterminismStepHerbs) %d of %d, anthill columns (step FA8, zone A, with "
+				+ "-PdeterminismStepAnthills) %d of %d", differ[0], columns[0],
 				differ[1], columns[1], differ[2], columns[2], differ[4], columns[4], differ[5], columns[5], differ[6], columns[6],
-				differ[3], columns[3], differ[7], columns[7]);
+				differ[3], columns[3], differ[7], columns[7], differ[8], columns[8]);
 	}
 
 	/** Differing blocks against the block-by-block file next to the reference; empty if that file is missing. */

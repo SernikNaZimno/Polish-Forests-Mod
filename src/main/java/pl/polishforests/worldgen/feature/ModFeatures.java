@@ -65,6 +65,18 @@ public final class ModFeatures {
 
 	public static volatile @Nullable HerbPlans HERB_PLANS;
 
+	/**
+	 * Step FA8 (test switch of the game test {@code determinism -PdeterminismStepAnthills}): observer of the columns of the
+	 * sited anthills ({@link AnthillFeature}: every column of the footprint, also where the feature then rejects the mound).
+	 * These are the only columns whose decoration step FA8 may change. Null outside that test; called on the generation
+	 * threads, so the observer must be thread-safe.
+	 */
+	public interface AnthillPlans {
+		void planned(int x, int z);
+	}
+
+	public static volatile @Nullable AnthillPlans ANTHILL_PLANS;
+
 	/** Reports a placed woody plant to {@link #WOODY_PLACEMENTS}, if set. */
 	static void woodyPlaced(BlockPos at, @Nullable Species species) {
 		WoodyPlacements w = WOODY_PLACEMENTS;
@@ -171,6 +183,8 @@ public final class ModFeatures {
 		Registry.register(BuiltInRegistries.FEATURE_TYPE, PolishForests.id("creeping_shrub"), CreepingShrubFeature.CODEC);
 		// Step TT6: the Tatra details (waterfalls, springs, cave mouths, huts, boulders).
 		Registry.register(BuiltInRegistries.FEATURE_TYPE, PolishForests.id("tatra_details"), TatraDetailsFeature.CODEC);
+		Registry.register(BuiltInRegistries.FEATURE_TYPE, PolishForests.id("anthill"), AnthillFeature.CODEC);
+
 		Registry.register(BuiltInRegistries.PLACEMENT_MODIFIER_TYPE, PolishForests.id("habitat"), HabitatFilter.CODEC);
 		// Step J2: the gate of the underground features of the worlds with caves and the biome check of the dispatchers above
 		// the cave biomes.

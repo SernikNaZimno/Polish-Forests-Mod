@@ -164,8 +164,20 @@ final class ModBlockLoot extends FabricBlockLootSubProvider {
 			}
 		}
 
+		// Step FA8: the anthill gives one item per layer (as vanilla's snow layers give snowballs by layers), so digging a
+		// mound and placing it again keeps its height.
+		Block anthill = ModBlocks.anthill();
+		LootItem.Builder<?> mound = LootItem.lootTableItem(anthill);
+		for (int n = 1; n <= pl.polishforests.block.AnthillBlock.MAX_LAYERS; n++) {
+			mound.apply(SetItemCountFunction.setCount(ContextIntProviders.exactly(n)).when(MatchBlock.blockMatches(blocks, anthill,
+					StatePropertiesPredicate.Builder.properties().hasProperty(pl.polishforests.block.AnthillBlock.LAYERS, n))));
+		}
+		add(anthill, LootTable.lootTable().withPool(LootPool.lootPool().setRolls(ContextIntProviders.exactly(1))
+				.add((LootPoolEntryContainer.Builder<?>) applyExplosionDecay(anthill, mound))));
+
 		for (TreeFoliage f : TreeFoliage.values()) {
 			add(ModBlocks.leaves(f), createLeavesDrops(ModBlocks.leaves(f), ModBlocks.sapling(f), NORMAL_LEAVES_SAPLING_CHANCES));
+
 			dropSelf(ModBlocks.sapling(f));
 			dropPottedContents(ModBlocks.potted(f));
 		}

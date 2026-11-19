@@ -27,7 +27,8 @@ import pl.polishforests.entity.wildboar.WildBoar;
  * go into saved worlds, so {@code RegistrySnapshotTest} compares them with {@code src/test/resources/registry_snapshot.txt}
  * like the blocks and items (frozen after checkpoint CP-B, PW-11). From step FA1 the animals spawn in the world types of the
  * mod ({@link #fauna()}, {@code spawn/FaunaSpawner}). Step FA3: the wild boar (new ids appended, PW-11); step FA5 the red
- * squirrel (appended); step FA6 the Eurasian jay (appended).
+ * squirrel (appended); step FA6 the Eurasian jay (appended); step FA8 the boats and chest boats of the wood sets
+ * ({@link WoodBoats}, appended; vanilla's boat classes, no saved field of the mod).
  */
 public final class ModEntities {
 	private static @Nullable EntityType<RoeDeer> roeDeer;
@@ -55,6 +56,17 @@ public final class ModEntities {
 			out.insertAfter(roeDeerSpawnEgg(), wildBoarSpawnEgg());
 			out.insertAfter(wildBoarSpawnEgg(), redSquirrelSpawnEgg());
 			out.insertAfter(redSquirrelSpawnEgg(), eurasianJaySpawnEgg());
+		});
+		// Step FA8: the boats and chest boats of the wood sets in the tools tab after vanilla's poplar chest boat (the last
+		// boat of wood before the bamboo rafts), in the order of the sets; the dispensers place them as vanilla's boats.
+		WoodBoats.registerBehavior();
+		CreativeModeTabEvents.modifyOutputEvent(CreativeModeTabs.TOOLS_AND_UTILITIES).register(out -> {
+			Item previous = Items.POPLAR_CHEST_BOAT;
+			for (WoodBoats.Set s : WoodBoats.all().values()) {
+				out.insertAfter(previous, s.boatItem());
+				out.insertAfter(s.boatItem(), s.chestBoatItem());
+				previous = s.chestBoatItem();
+			}
 		});
 	}
 
@@ -84,6 +96,8 @@ public final class ModEntities {
 		eurasianJay = type("eurasian_jay", EntityType.Builder.of(EurasianJay::new, MobCategory.AMBIENT).sized(0.4F, 0.3F).eyeHeight(0.25F)
 				.clientTrackingRange(8).updateInterval(2).noLootTable());
 		eurasianJaySpawnEgg = spawnEgg("eurasian_jay_spawn_egg", eurasianJay);
+		// Step FA8, registered last: the boats and chest boats of every wood set (entity types and items, WoodBoats).
+		WoodBoats.registerContent();
 	}
 
 	public static EntityType<EurasianJay> eurasianJay() {
