@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/template_shelf_unpowered",
+  "textures": {
+    "all": "polishforests:block/norway_maple_shelf",
+    "particle": "polishforests:block/stripped_norway_maple_trunk"
+  }
+}

@@ -24,6 +24,7 @@ import pl.polishforests.block.GroundPlant;
 import pl.polishforests.block.TreeFoliage;
 import pl.polishforests.block.TreeTrunk;
 import pl.polishforests.block.WoodBlocks;
+import pl.polishforests.block.WoodParts;
 import pl.polishforests.block.WoodSet;
 
 import pl.polishforests.worldgen.habitat.Species;
@@ -140,6 +141,16 @@ final class ModBlockTagProvider {
 				builder(BlockItemTags.FENCE_GATES.block()).add(key(w.fenceGate()));
 				builder(BlockItemTags.WOODEN_PRESSURE_PLATES.block()).add(key(w.pressurePlate()));
 				builder(BlockItemTags.WOODEN_BUTTONS.block()).add(key(w.button()));
+				// Step FA7: the doors, trapdoors, signs and shelves in vanilla's tags (through them in #mineable/axe,
+				// #doors, #trapdoors, #signs, #all_hanging_signs, #all_signs; villagers open #wooden_doors).
+				WoodParts parts = ModBlocks.woodParts(set);
+				builder(BlockItemTags.WOODEN_DOORS.block()).add(key(parts.door()));
+				builder(BlockItemTags.WOODEN_TRAPDOORS.block()).add(key(parts.trapdoor()));
+				builder(BlockItemTags.SIGNS.block()).add(key(parts.sign()));
+				builder(BlockTags.WALL_SIGNS).add(key(parts.wallSign()));
+				builder(BlockItemTags.HANGING_SIGNS.block()).add(key(parts.hangingSign()));
+				builder(BlockTags.WALL_HANGING_SIGNS).add(key(parts.wallHangingSign()));
+				builder(BlockItemTags.WOODEN_SHELVES.block()).add(key(parts.shelf()));
 			}
 			for (TreeFoliage f : TreeFoliage.values()) {
 				builder(BlockItemTags.LEAVES.block()).add(key(ModBlocks.leaves(f)));
@@ -250,7 +261,10 @@ final class ModBlockTagProvider {
 			}
 			copy(BlockItemTags.PLANKS.block(), BlockItemTags.PLANKS.item());
 			for (var t : List.of(BlockItemTags.WOODEN_STAIRS, BlockItemTags.WOODEN_SLABS, BlockItemTags.WOODEN_FENCES,
-					BlockItemTags.FENCE_GATES, BlockItemTags.WOODEN_PRESSURE_PLATES, BlockItemTags.WOODEN_BUTTONS)) {
+					BlockItemTags.FENCE_GATES, BlockItemTags.WOODEN_PRESSURE_PLATES, BlockItemTags.WOODEN_BUTTONS,
+					// Step FA7.
+					BlockItemTags.WOODEN_DOORS, BlockItemTags.WOODEN_TRAPDOORS, BlockItemTags.SIGNS, BlockItemTags.HANGING_SIGNS,
+					BlockItemTags.WOODEN_SHELVES)) {
 				copy(t.block(), t.item());
 			}
 			copy(BlockItemTags.LEAVES.block(), BlockItemTags.LEAVES.item());

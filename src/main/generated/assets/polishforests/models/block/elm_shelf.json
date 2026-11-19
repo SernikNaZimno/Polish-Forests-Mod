@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/template_shelf_body",
+  "textures": {
+    "all": "polishforests:block/elm_shelf",
+    "particle": "polishforests:block/stripped_elm_trunk"
+  }
+}

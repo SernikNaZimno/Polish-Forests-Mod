@@ -25,6 +25,18 @@ import net.minecraft.world.level.block.PressurePlateBlock;
 import net.minecraft.world.level.block.RotatedPillarBlock;
 import net.minecraft.world.level.block.SlabBlock;
 import net.minecraft.world.level.block.StairBlock;
+import net.minecraft.world.item.DoubleHighBlockItem;
+import net.minecraft.world.item.HangingSignItem;
+import net.minecraft.world.item.StandingAndWallBlockItem;
+import net.minecraft.world.level.block.CeilingHangingSignBlock;
+import net.minecraft.world.level.block.DoorBlock;
+import net.minecraft.world.level.block.ShelfBlock;
+import net.minecraft.world.level.block.SignBlock;
+import net.minecraft.world.level.block.StandingSignBlock;
+import net.minecraft.world.level.block.TrapDoorBlock;
+import net.minecraft.world.level.block.WallHangingSignBlock;
+import net.minecraft.world.level.block.WallSignBlock;
+import pl.polishforests.PolishForests;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import pl.polishforests.worldgen.feature.ProceduralTreeFeature;
@@ -206,6 +218,97 @@ class WoodSetTest {
 			}
 		}
 		assertTrue(read(RESOURCES.resolve("assets/minecraft/atlases/blocks.json")).contains("\"polishforests:derived_planks\""));
+	}
+
+	/**
+	 * Step FA7: every wood set has its door, trapdoor, signs and shelf with vanilla's block classes and items, the block set
+	 * type and wood type of the set (oak's behavior under the name of the set), the wall forms with the loot and name of
+	 * their standing form and without an item of their own, the parts after every block of the earlier steps.
+	 */
+	@Test
+	void partsOfEveryWoodSet() {
+		List<Block> all = ModBlocks.all();
+		int firstPart = all.indexOf(ModBlocks.woodParts(WoodSet.values()[0]).door());
+		assertEquals(all.size() - WoodSet.values().length * WoodParts.SUFFIXES.size(), firstPart, "the parts are registered last");
+		Set<String> names = new HashSet<>();
+		for (WoodSet set : WoodSet.values()) {
+			WoodParts w = ModBlocks.woodParts(set);
+			for (int i = 0; i < w.all().size(); i++) {
+				assertEquals(set.prefix() + WoodParts.SUFFIXES.get(i), BuiltInRegistries.BLOCK.getKey(w.all().get(i)).getPath());
+			}
+			assertTrue(w.door() instanceof DoorBlock d && d.type() == set.blockSetType(), set + " door");
+			assertTrue(w.trapdoor() instanceof TrapDoorBlock, set + " trapdoor");
+			assertTrue(w.sign() instanceof StandingSignBlock && w.wallSign() instanceof WallSignBlock, set + " signs");
+			assertTrue(w.hangingSign() instanceof CeilingHangingSignBlock && w.wallHangingSign() instanceof WallHangingSignBlock,
+					set + " hanging signs");
+			assertTrue(w.shelf() instanceof ShelfBlock, set + " shelf");
+			for (Block b : w.signs()) {
+				assertSame(set.woodType(), ((SignBlock) b).type(), set + " wood type");
+			}
+			assertEquals("polishforests:" + set.prefix(), set.woodType().name());
+			assertEquals("polishforests:" + set.prefix(), set.blockSetType().name());
+			assertSame(set.blockSetType(), set.woodType().setType());
+			assertTrue(set.blockSetType().canOpenByHand() && set.blockSetType().canOpenByWindCharge());
+			assertTrue(names.add(set.woodType().name()));
+			assertTrue(w.door().asItem() instanceof DoubleHighBlockItem, set + " door item");
+			assertTrue(w.sign().asItem() instanceof StandingAndWallBlockItem, set + " sign item");
+			assertTrue(w.hangingSign().asItem() instanceof HangingSignItem, set + " hanging sign item");
+			assertSame(w.sign().asItem(), w.wallSign().asItem(), set + ": the sign item places the wall sign");
+			assertSame(w.hangingSign().asItem(), w.wallHangingSign().asItem(), set.toString());
+			assertTrue(BuiltInRegistries.ITEM.getOptional(PolishForests.id(set.prefix() + "_wall_sign")).isEmpty(), set + ": no wall sign item");
+			assertEquals(w.sign().getLootTable(), w.wallSign().getLootTable(), set.toString());
+			assertEquals(w.hangingSign().getLootTable(), w.wallHangingSign().getLootTable(), set.toString());
+			assertEquals(w.sign().getDescriptionId(), w.wallSign().getDescriptionId(), set.toString());
+			assertEquals(set.planksBase().replace("_planks", ""), set.partsBase());
+		}
+	}
+
+	/** Step FA7: loot, vanilla tags, names and the atlas declarations of the parts (datagen in src/main/generated). */
+	@Test
+	void dataOfTheParts() throws IOException {
+		String[][] tags = {{"block/wooden_doors", "_door"}, {"item/wooden_doors", "_door"}, {"block/wooden_trapdoors", "_trapdoor"},
+				{"item/wooden_trapdoors", "_trapdoor"}, {"block/standing_signs", "_sign"}, {"item/signs", "_sign"},
+				{"block/wall_signs", "_wall_sign"}, {"block/ceiling_hanging_signs", "_hanging_sign"}, {"item/hanging_signs", "_hanging_sign"},
+				{"block/wall_hanging_signs", "_wall_hanging_sign"}, {"block/wooden_shelves", "_shelf"}, {"item/wooden_shelves", "_shelf"}};
+		JsonObject en = json(GENERATED.resolve("assets/polishforests/lang/en_us.json"));
+		JsonObject pl = json(GENERATED.resolve("assets/polishforests/lang/pl_pl.json"));
+		for (WoodSet set : WoodSet.values()) {
+			String p = set.prefix();
+			for (String[] t : tags) {
+				assertTrue(read(GENERATED.resolve("data/minecraft/tags/" + t[0] + ".json")).contains("\"polishforests:" + p + t[1] + "\""),
+						"#" + t[0] + ": " + set);
+			}
+			WoodParts w = ModBlocks.woodParts(set);
+			for (Block b : w.withItems()) {
+				String id = BuiltInRegistries.BLOCK.getKey(b).getPath();
+				String table = read(GENERATED.resolve("data/polishforests/loot_table/blocks/" + id + ".json"));
+				assertTrue(table.contains("\"polishforests:" + id + "\""), id + " drops itself");
+				assertTrue(en.has(b.getDescriptionId()) && pl.has(b.getDescriptionId()), id);
+				assertTrue(Files.exists(GENERATED.resolve("assets/polishforests/items/" + id + ".json")), id + " item model");
+			}
+			assertTrue(read(GENERATED.resolve("data/polishforests/loot_table/blocks/" + p + "_door.json")).contains("\"lower\""),
+					p + ": the door drops from its lower half");
+			for (Block b : w.all()) {
+				String id = BuiltInRegistries.BLOCK.getKey(b).getPath();
+				assertTrue(Files.exists(GENERATED.resolve("assets/polishforests/blockstates/" + id + ".json")), id + " blockstate");
+			}
+		}
+		assertEquals("Beech Hanging Sign", en.get("block.polishforests.beech_hanging_sign").getAsString());
+		assertEquals("Tabliczka wisząca bukowa", pl.get("block.polishforests.beech_hanging_sign").getAsString());
+		assertEquals("Drzwi modrzewiowe", pl.get("block.polishforests.larch_door").getAsString());
+		assertEquals("Półka limbowa", pl.get("block.polishforests.stone_pine_shelf").getAsString());
+		assertEquals("Klapa sosnowa", pl.get("block.polishforests.scots_pine_trapdoor").getAsString());
+		// The parts' textures are derived in the client by the atlas source of both atlases, no texture file in the mod.
+		assertTrue(read(RESOURCES.resolve("assets/minecraft/atlases/blocks.json")).contains("\"polishforests:derived_wood\""));
+		assertTrue(read(RESOURCES.resolve("assets/minecraft/atlases/items.json")).contains("\"polishforests:derived_wood\""));
+		for (WoodSet set : WoodSet.values()) {
+			for (WoodPartTexture.Part part : WoodPartTexture.Part.values()) {
+				String path = part.path(set.prefix());
+				Path file = RESOURCES.resolve("assets/polishforests/" + (part.kind() == WoodPartTexture.Kind.SCREEN ? path
+						: "textures/" + path + ".png"));
+				assertTrue(!Files.exists(file), file + ": derived in the client, no file in the mod");
+			}
+		}
 	}
 
 	private static String read(Path p) throws IOException {

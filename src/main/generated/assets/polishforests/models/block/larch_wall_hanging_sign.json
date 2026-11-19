@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/template_wall_hanging_sign",
+  "textures": {
+    "all": "polishforests:block/larch_hanging_sign",
+    "particle": "polishforests:block/stripped_larch_trunk"
+  }
+}

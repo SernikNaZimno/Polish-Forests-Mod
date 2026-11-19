@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/door_top_left",
+  "textures": {
+    "bottom": "polishforests:block/white_willow_door_bottom",
+    "top": "polishforests:block/white_willow_door_top"
+  }
+}

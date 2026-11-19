@@ -12,11 +12,13 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import pl.polishforests.client.DerivedPlanksSource;
+import pl.polishforests.client.DerivedWoodSource;
 
 /**
  * Step P2: registers the atlas sprite source {@code polishforests:derived_planks} ({@link DerivedPlanksSource}, the planks of
  * the wood sets derived from the vanilla planks) next to vanilla's five types, at the end of {@code SpriteSources.bootstrap}
- * (the client bootstrap, before any atlas definition is read). Fabric API has no registry for sprite source types.
+ * (the client bootstrap, before any atlas definition is read). Fabric API has no registry for sprite source types. Step
+ * FA7: also {@code polishforests:derived_wood} ({@link DerivedWoodSource}, the doors, trapdoors, signs and shelves).
  */
 @Mixin(SpriteSources.class)
 abstract class SpriteSourcesMixin {
@@ -27,5 +29,6 @@ abstract class SpriteSourcesMixin {
 	@Inject(method = "bootstrap", at = @At("TAIL"))
 	private static void polishforests$derivedPlanks(CallbackInfo ci) {
 		ID_MAPPER.put(DerivedPlanksSource.TYPE, DerivedPlanksSource.MAP_CODEC);
+		ID_MAPPER.put(DerivedWoodSource.TYPE, DerivedWoodSource.MAP_CODEC);
 	}
 }

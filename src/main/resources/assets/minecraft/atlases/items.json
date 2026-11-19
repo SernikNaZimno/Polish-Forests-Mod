@@ -1,0 +1,8 @@
+{
+  "sources": [
+    {
+      "type": "polishforests:derived_wood",
+      "atlas": "item"
+    }
+  ]
+}

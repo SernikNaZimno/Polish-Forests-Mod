@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/template_shelf_right",
+  "textures": {
+    "all": "polishforests:block/fir_shelf",
+    "particle": "polishforests:block/stripped_fir_trunk"
+  }
+}

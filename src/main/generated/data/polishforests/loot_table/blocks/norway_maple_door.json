@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:block",
+  "pools": [
+    {
+      "condition": {
+        "type": "minecraft:survives_explosion"
+      },
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "condition": {
+            "type": "minecraft:match_block",
+            "blocks": "polishforests:norway_maple_door",
+            "state": {
+              "half": "lower"
+            }
+          },
+          "name": "polishforests:norway_maple_door"
+        }
+      ],
+      "rolls": 1
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/template_shelf_unpowered",
+  "textures": {
+    "all": "polishforests:block/beech_shelf",
+    "particle": "polishforests:block/stripped_beech_trunk"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/door_top_right_open",
+  "textures": {
+    "bottom": "polishforests:block/sycamore_maple_door_bottom",
+    "top": "polishforests:block/sycamore_maple_door_top"
+  }
+}

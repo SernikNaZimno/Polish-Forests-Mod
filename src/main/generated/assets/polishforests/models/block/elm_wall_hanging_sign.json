@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/template_wall_hanging_sign",
+  "textures": {
+    "all": "polishforests:block/elm_hanging_sign",
+    "particle": "polishforests:block/stripped_elm_trunk"
+  }
+}

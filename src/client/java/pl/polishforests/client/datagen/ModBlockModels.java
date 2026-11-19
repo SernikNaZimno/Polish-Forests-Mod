@@ -27,6 +27,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
+import net.minecraft.world.level.block.state.properties.SideChainPart;
 import pl.polishforests.block.BerryShrubBlock;
 import pl.polishforests.block.GroundPlant;
 import net.minecraft.world.item.Item;
@@ -36,6 +37,7 @@ import pl.polishforests.block.TreeFoliage;
 import pl.polishforests.block.TreeTrunk;
 import pl.polishforests.block.TrunkBlock;
 import pl.polishforests.block.WoodBlocks;
+import pl.polishforests.block.WoodParts;
 import pl.polishforests.block.WoodSet;
 import pl.polishforests.season.FoliageCurve;
 import pl.polishforests.entity.ModEntities;
@@ -196,6 +198,7 @@ final class ModBlockModels extends FabricModelProvider {
 			gen.new WoodProvider(TextureMapping.column(new Material(strippedSide(set.stripped())),
 					new Material(strippedEnd(set.stripped())))).logWithHorizontal(w.strippedLog()).wood(w.strippedWood());
 			gen.family(w.planks()).generateFor(ModWoodFamilies.family(set));
+			parts(gen, set);
 		}
 
 		for (TreeFoliage f : TreeFoliage.values()) {
@@ -558,6 +561,57 @@ final class ModBlockModels extends FabricModelProvider {
 
 	private static TextureMapping textures(Identifier bark, Identifier end) {
 		return new TextureMapping().put(BARK, new Material(bark)).put(TextureSlot.END, new Material(end));
+	}
+
+	/**
+	 * Step FA7: the parts of a wood set outside its family of models (the door and the signs are family models): the
+	 * trapdoor as vanilla's of the base (oak's does not turn with its facing, spruce's does), the hanging and wall hanging
+	 * sign and the shelf as vanilla's with the particle of the side of the stripped log (vanilla's family helper and shelf
+	 * helper take a texture named after the stripped log block, which the wood sets do not have). The textures
+	 * ({@code polishforests:block/<wood>_trapdoor}, {@code _hanging_sign}, {@code _shelf}, the door and sign ones, the flat
+	 * items {@code polishforests:item/<wood>_door}, {@code _sign}, {@code _hanging_sign}) are derived in the client from
+	 * vanilla's of the same part ({@code DerivedWoodSource}).
+	 */
+	private static void parts(BlockModelGenerators gen, WoodSet set) {
+		WoodParts parts = ModBlocks.woodParts(set);
+		if (set.partsBase().equals("oak")) {
+			gen.createTrapdoor(parts.trapdoor());
+		} else {
+			gen.createOrientableTrapdoor(parts.trapdoor());
+		}
+		Material particle = new Material(strippedSide(set.stripped()));
+		Block hanging = parts.hangingSign();
+		TextureMapping signs = new TextureMapping().put(TextureSlot.ALL, TextureMapping.getBlockTexture(hanging))
+				.put(TextureSlot.PARTICLE, particle);
+		ModelTemplate[] free = {ModelTemplates.HANGING_SIGN_ROT_0, ModelTemplates.HANGING_SIGN_ROT_1, ModelTemplates.HANGING_SIGN_ROT_2,
+				ModelTemplates.HANGING_SIGN_ROT_3};
+		ModelTemplate[] attached = {ModelTemplates.ATTACHED_HANGING_SIGN_ROT_0, ModelTemplates.ATTACHED_HANGING_SIGN_ROT_1,
+				ModelTemplates.ATTACHED_HANGING_SIGN_ROT_2, ModelTemplates.ATTACHED_HANGING_SIGN_ROT_3};
+		MultiVariant[] v = new MultiVariant[8];
+		for (int r = 0; r < 4; r++) {
+			v[r] = BlockModelGenerators.plainVariant(free[r].create(ModelLocationUtils.getModelLocation(hanging, "_rot_" + r), signs,
+					gen.modelOutput));
+			v[4 + r] = BlockModelGenerators.plainVariant(attached[r].create(ModelLocationUtils.getModelLocation(hanging,
+					"_attached_rot_" + r), signs, gen.modelOutput));
+		}
+		gen.blockStateOutput.accept(BlockModelGenerators.createHangingSign(hanging, v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7]));
+		MultiVariant wall = BlockModelGenerators.plainVariant(ModelTemplates.WALL_HANGING_SIGN.create(parts.wallHangingSign(), signs,
+				gen.modelOutput));
+		gen.blockStateOutput.accept(MultiVariantGenerator.dispatch(parts.wallHangingSign(), wall)
+				.with(BlockModelGenerators.ROTATION_HORIZONTAL_FACING_ALT));
+		gen.registerSimpleFlatItemModel(hanging.asItem());
+		Block shelf = parts.shelf();
+		TextureMapping shelfMapping = new TextureMapping().put(TextureSlot.ALL, TextureMapping.getBlockTexture(shelf))
+				.put(TextureSlot.PARTICLE, particle);
+		MultiPartGenerator shelfParts = MultiPartGenerator.multiPart(shelf);
+		gen.addShelfPart(shelf, shelfMapping, shelfParts, ModelTemplates.SHELF_BODY, null, null);
+		gen.addShelfPart(shelf, shelfMapping, shelfParts, ModelTemplates.SHELF_UNPOWERED, false, null);
+		gen.addShelfPart(shelf, shelfMapping, shelfParts, ModelTemplates.SHELF_UNCONNECTED, true, SideChainPart.UNCONNECTED);
+		gen.addShelfPart(shelf, shelfMapping, shelfParts, ModelTemplates.SHELF_LEFT, true, SideChainPart.LEFT);
+		gen.addShelfPart(shelf, shelfMapping, shelfParts, ModelTemplates.SHELF_CENTER, true, SideChainPart.CENTER);
+		gen.addShelfPart(shelf, shelfMapping, shelfParts, ModelTemplates.SHELF_RIGHT, true, SideChainPart.RIGHT);
+		gen.blockStateOutput.accept(shelfParts);
+		gen.registerSimpleItemModel(shelf, ModelTemplates.SHELF_INVENTORY.create(shelf, shelfMapping, gen.modelOutput));
 	}
 
 	private static Identifier own(String name) {

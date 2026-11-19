@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=east": {
+      "model": "polishforests:block/ash_wall_sign",
+      "y": 270
+    },
+    "facing=north": {
+      "model": "polishforests:block/ash_wall_sign",
+      "y": 180
+    },
+    "facing=south": {
+      "model": "polishforests:block/ash_wall_sign"
+    },
+    "facing=west": {
+      "model": "polishforests:block/ash_wall_sign",
+      "y": 90
+    }
+  }
+}

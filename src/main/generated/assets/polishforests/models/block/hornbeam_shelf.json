@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/template_shelf_body",
+  "textures": {
+    "all": "polishforests:block/hornbeam_shelf",
+    "particle": "polishforests:block/stripped_hornbeam_trunk"
+  }
+}

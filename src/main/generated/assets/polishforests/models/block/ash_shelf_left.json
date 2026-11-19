@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/template_shelf_left",
+  "textures": {
+    "all": "polishforests:block/ash_shelf",
+    "particle": "polishforests:block/stripped_ash_trunk"
+  }
+}

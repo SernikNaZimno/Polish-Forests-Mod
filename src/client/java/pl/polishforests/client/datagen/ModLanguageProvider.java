@@ -276,6 +276,13 @@ abstract class ModLanguageProvider extends FabricLanguageProvider {
 			builder.add(w.fenceGate(), polish ? "Furtka " + f : en + " Fence Gate");
 			builder.add(w.pressurePlate(), polish ? "Płyta naciskowa " + f : en + " Pressure Plate");
 			builder.add(w.button(), polish ? "Przycisk " + m : en + " Button");
+			// Step FA7: the door, trapdoor, signs and shelf (the wall forms share the names of the standing forms).
+			pl.polishforests.block.WoodParts parts = ModBlocks.woodParts(set);
+			builder.add(parts.door(), polish ? "Drzwi " + n : en + " Door");
+			builder.add(parts.trapdoor(), polish ? "Klapa " + f : en + " Trapdoor");
+			builder.add(parts.sign(), polish ? "Tabliczka " + f : en + " Sign");
+			builder.add(parts.hangingSign(), polish ? "Tabliczka wisząca " + f : en + " Hanging Sign");
+			builder.add(parts.shelf(), polish ? "Półka " + f : en + " Shelf");
 			if (set != pl.polishforests.block.WoodSet.SCOTS_PINE) {
 				builder.add(tagKey(ModBlockTagProvider.fullLogs(set).location().getPath()), polish ? "Kłody " + n : en + " Logs");
 			}

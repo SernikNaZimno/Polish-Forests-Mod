@@ -28,5 +28,7 @@ public final class PolishForestsClient implements ClientModInitializer {
 		RedSquirrelRenderer.register();
 		// Step FA6: the Eurasian jay.
 		EurasianJayRenderer.register();
+		// Step FA7: the backgrounds of the sign edit screens of the wood sets (the atlas textures come from DerivedWoodSource).
+		DerivedSignScreens.register();
 	}
 }

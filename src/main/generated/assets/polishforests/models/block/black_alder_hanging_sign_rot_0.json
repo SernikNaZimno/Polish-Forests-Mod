@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/template_hanging_sign_rot_0",
+  "textures": {
+    "all": "polishforests:block/black_alder_hanging_sign",
+    "particle": "polishforests:block/stripped_black_alder_trunk"
+  }
+}

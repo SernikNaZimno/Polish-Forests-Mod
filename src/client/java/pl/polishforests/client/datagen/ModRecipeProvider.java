@@ -22,6 +22,10 @@ import pl.polishforests.block.WoodSet;
  * fence, fence gate, pressure plate, button; group {@code wooden_<variant>}, unlocked by having the planks). Charcoal and
  * fuel come with {@code #minecraft:logs_that_burn} and the item properties; sticks, crafting tables, chests … with
  * {@code #minecraft:planks}.
+ *
+ * <p>Step FA7: the doors (three from six planks), trapdoors (two from six planks), signs (three from six planks and a
+ * stick) and hanging signs (six from six stripped logs and two iron chains) of vanilla's wood families and the shelves
+ * (six from six stripped logs), all of the species' own wood.
  */
 final class ModRecipeProvider extends FabricRecipeProvider {
 	ModRecipeProvider(FabricPackOutput output, CompletableFuture<HolderLookup.Provider> registries) {
@@ -39,7 +43,10 @@ final class ModRecipeProvider extends FabricRecipeProvider {
 					planksFromLogs(w.planks(), ModBlockTagProvider.item(ModBlockTagProvider.fullLogs(set)), 4);
 					woodFromLogs(w.wood(), w.log());
 					woodFromLogs(w.strippedWood(), w.strippedLog());
-					generateRecipes(ModWoodFamilies.family(set), FeatureFlags.VANILLA_SET);
+					// Step FA7: the door, trapdoor, sign and hanging sign from the family of the recipes, the shelf as vanilla's
+					// (six from six stripped logs of the species).
+					generateRecipes(ModWoodFamilies.recipes(set), FeatureFlags.VANILLA_SET);
+					shelf(ModBlocks.woodParts(set).shelf(), w.strippedLog());
 				}
 			}
 		};

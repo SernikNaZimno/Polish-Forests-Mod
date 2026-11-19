@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:block",
+  "pools": [
+    {
+      "condition": {
+        "type": "minecraft:survives_explosion"
+      },
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "condition": {
+            "type": "minecraft:match_block",
+            "blocks": "polishforests:beech_door",
+            "state": {
+              "half": "lower"
+            }
+          },
+          "name": "polishforests:beech_door"
+        }
+      ],
+      "rolls": 1
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=east": {
+      "model": "polishforests:block/gray_alder_wall_hanging_sign",
+      "y": 270
+    },
+    "facing=north": {
+      "model": "polishforests:block/gray_alder_wall_hanging_sign",
+      "y": 180
+    },
+    "facing=south": {
+      "model": "polishforests:block/gray_alder_wall_hanging_sign"
+    },
+    "facing=west": {
+      "model": "polishforests:block/gray_alder_wall_hanging_sign",
+      "y": 90
+    }
+  }
+}

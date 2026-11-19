@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/template_shelf_body",
+  "textures": {
+    "all": "polishforests:block/stone_pine_shelf",
+    "particle": "polishforests:block/stripped_stone_pine_trunk"
+  }
+}

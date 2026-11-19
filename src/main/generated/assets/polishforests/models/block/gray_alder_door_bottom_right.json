@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/door_bottom_right",
+  "textures": {
+    "bottom": "polishforests:block/gray_alder_door_bottom",
+    "top": "polishforests:block/gray_alder_door_top"
+  }
+}

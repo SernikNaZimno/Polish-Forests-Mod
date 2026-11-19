@@ -1,6 +1,13 @@
 package pl.polishforests.block;
 
+import java.util.EnumMap;
 import java.util.Locale;
+import java.util.Map;
+import net.fabricmc.fabric.api.object.builder.v1.block.type.BlockSetTypeBuilder;
+import net.fabricmc.fabric.api.object.builder.v1.block.type.WoodTypeBuilder;
+import net.minecraft.world.level.block.state.properties.BlockSetType;
+import net.minecraft.world.level.block.state.properties.WoodType;
+import pl.polishforests.PolishForests;
 import pl.polishforests.worldgen.habitat.Species;
 
 /**
@@ -15,6 +22,11 @@ import pl.polishforests.worldgen.habitat.Species;
  * ({@link #planksPalette()}, dark to light, the colors of the fallback texture of {@code tools/art}) and a small change of
  * the grain decided by the species ({@link #planksStyle()}: the grain of every board moved and mirrored around its butt
  * joint, the contrast of the grain, knots). The seams and the joints of the vanilla planks stay where they are.
+ *
+ * <p>Step FA7: every set also has its door, trapdoor, standing and wall sign, hanging and wall hanging sign and shelf
+ * ({@link WoodParts}) with its own block set type and wood type ({@link #blockSetType()}, {@link #woodType()}: the oak's
+ * behavior and sounds under the name {@code polishforests:<prefix>}); their textures are derived in the client from the
+ * vanilla textures of the same part of {@link #partsBase()} ({@link WoodPartTexture}).
  */
 public enum WoodSet {
 	/** Scots pine (softwood): vanilla's conifer planks as the base, a distinct grain and two knots. */
@@ -146,6 +158,60 @@ public enum WoodSet {
 	/** How the planks texture of the species changes the vanilla planks (deterministic from the species). */
 	public PlanksTexture.Style planksStyle() {
 		return new PlanksTexture.Style(palette.clone(), contrast, knots, PlanksTexture.seed(prefix));
+	}
+
+	/**
+	 * The vanilla wood whose door, trapdoor, sign, hanging sign and shelf textures the parts of this set are derived from
+	 * (step FA7): {@code spruce} for the conifers, {@code oak} for the broadleaves, as the base of the planks.
+	 */
+	public String partsBase() {
+		return planksBase.substring(0, planksBase.length() - "_planks".length());
+	}
+
+	/**
+	 * The block set type of the doors, trapdoors (step FA7) of the set: vanilla oak's (opened by hand and by wind charges,
+	 * the wooden sounds) under the name {@code polishforests:<prefix>}, registered on the first use.
+	 */
+	public BlockSetType blockSetType() {
+		return Types.SETS.get(this);
+	}
+
+	/**
+	 * The wood type of the signs and hanging signs (step FA7): vanilla oak's sounds under the name
+	 * {@code polishforests:<prefix>}, so the sign edit screens take {@code polishforests:textures/gui/signs/<prefix>.png} and
+	 * {@code polishforests:textures/gui/hanging_signs/<prefix>.png} (Fabric API's screens read a namespaced wood type name).
+	 */
+	public WoodType woodType() {
+		return Types.WOODS.get(this);
+	}
+
+	/**
+	 * The block set types and wood types of the sets, registered by their names in the order of the sets when first needed
+	 * (Fabric API's builders). The unit tests run without the runtime access Fabric API gives to vanilla's private
+	 * registration of the types and keep them unregistered (the blocks hold the instances; the names are only looked up by
+	 * the codecs of the types).
+	 */
+	private static final class Types {
+		private static final Map<WoodSet, BlockSetType> SETS = new EnumMap<>(WoodSet.class);
+		private static final Map<WoodSet, WoodType> WOODS = new EnumMap<>(WoodSet.class);
+
+		static {
+			for (WoodSet w : WoodSet.values()) {
+				BlockSetTypeBuilder setBuilder = BlockSetTypeBuilder.copyOf(BlockSetType.OAK);
+				WoodTypeBuilder woodBuilder = WoodTypeBuilder.copyOf(WoodType.OAK);
+				BlockSetType set;
+				WoodType wood;
+				try {
+					set = setBuilder.register(PolishForests.id(w.prefix));
+					wood = woodBuilder.register(PolishForests.id(w.prefix), set);
+				} catch (IllegalAccessError unitTest) {
+					set = setBuilder.build(PolishForests.id(w.prefix));
+					wood = woodBuilder.build(PolishForests.id(w.prefix), set);
+				}
+				SETS.put(w, set);
+				WOODS.put(w, wood);
+			}
+		}
 	}
 
 	/** The path of the planks block and of its texture ({@code polishforests:block/<prefix>_planks}). */

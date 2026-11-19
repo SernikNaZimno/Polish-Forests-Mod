@@ -8,11 +8,16 @@ import java.util.Map;
 import net.fabricmc.fabric.api.creativetab.v1.CreativeModeTabEvents;
 import net.fabricmc.fabric.api.item.v1.BlockTransformerHelper;
 import net.fabricmc.fabric.api.registry.FlammableBlockRegistry;
+import net.minecraft.core.Direction;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.HangingSignItem;
+import net.minecraft.world.item.StandingAndWallBlockItem;
+import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.DoubleHighBlockItem;
@@ -21,6 +26,14 @@ import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.ButtonBlock;
+import net.minecraft.world.level.block.CeilingHangingSignBlock;
+import net.minecraft.world.level.block.DoorBlock;
+import net.minecraft.world.level.block.ShelfBlock;
+import net.minecraft.world.level.block.StandingSignBlock;
+import net.minecraft.world.level.block.TrapDoorBlock;
+import net.minecraft.world.level.block.WallHangingSignBlock;
+import net.minecraft.world.level.block.WallSignBlock;
+import net.minecraft.world.level.block.entity.BlockEntityTypes;
 import net.minecraft.world.level.block.FenceBlock;
 import net.minecraft.world.level.block.FenceGateBlock;
 import net.minecraft.world.level.block.PressurePlateBlock;
@@ -79,6 +92,8 @@ public final class ModBlocks {
 	private static final Map<StrippedTrunk, TrunkBlock> STRIPPED = new EnumMap<>(StrippedTrunk.class);
 	/** Step P2: the wood sets (the Scots pine's with the LITE blocks of V7). */
 	private static final Map<WoodSet, WoodBlocks> WOODS = new EnumMap<>(WoodSet.class);
+	/** Step FA7: the doors, trapdoors, signs and shelves of the wood sets. */
+	private static final Map<WoodSet, WoodParts> PARTS = new EnumMap<>(WoodSet.class);
 	/** Hardness and blast resistance of the underground root: as vanilla mangrove roots, quicker than a log. */
 	private static final float ROOT_STRENGTH = 0.7F;
 	/** Every block of the mod in registration order. */
@@ -126,6 +141,17 @@ public final class ModBlocks {
 			for (Block b : List.of(w.planks(), w.stairs(), w.slab(), w.fence(), w.fenceGate())) {
 				fire.add(b, 5, 20);
 			}
+		}
+		// Step FA7: the shelves burn as vanilla's (FireBlock 30 / 20); doors, trapdoors and signs do not (as vanilla's). The
+		// signs, hanging signs and shelves get the block entities of vanilla's (text, items), so the block entity types
+		// accept them (Fabric API: the valid blocks of a vanilla type; the renderers of the types draw the text and items).
+		for (WoodParts w : PARTS.values()) {
+			fire.add(w.shelf(), 30, 20);
+			BlockEntityTypes.SIGN.addValidBlock(w.sign());
+			BlockEntityTypes.SIGN.addValidBlock(w.wallSign());
+			BlockEntityTypes.HANGING_SIGN.addValidBlock(w.hangingSign());
+			BlockEntityTypes.HANGING_SIGN.addValidBlock(w.wallHangingSign());
+			BlockEntityTypes.SHELF.addValidBlock(w.shelf());
 		}
 		// Step V12: the herb layer as vanilla plants (FireBlock: grass and flowers 60 / 100, leaf litter 60 / 100).
 		for (Block b : GROUND.values()) {
@@ -201,11 +227,32 @@ public final class ModBlocks {
 				out.insertAfter(Items.SWEET_BERRIES, bilberries));
 		CreativeModeTabEvents.modifyOutputEvent(CreativeModeTabs.BUILDING_BLOCKS).register(out -> {
 			Item previous = Items.PALE_OAK_BUTTON;
-			for (WoodBlocks w : WOODS.values()) {
+			for (Map.Entry<WoodSet, WoodBlocks> e : WOODS.entrySet()) {
+				WoodBlocks w = e.getValue();
 				for (Block b : w.all()) {
 					out.insertAfter(previous, b);
 					previous = b.asItem();
+					// Step FA7: the door and the trapdoor after the fence gate, in vanilla's order of a wood family.
+					if (b == w.fenceGate()) {
+						WoodParts parts = PARTS.get(e.getKey());
+						out.insertAfter(previous, parts.door());
+						out.insertAfter(parts.door().asItem(), parts.trapdoor());
+						previous = parts.trapdoor().asItem();
+					}
 				}
+			}
+		});
+		// Step FA7: the shelves after vanilla's poplar shelf, the signs and hanging signs after its poplar hanging sign (the
+		// last wood of the overworld in vanilla's functional blocks tab), in the order of the sets.
+		CreativeModeTabEvents.modifyOutputEvent(CreativeModeTabs.FUNCTIONAL_BLOCKS).register(out -> {
+			Item shelf = Items.POPLAR_SHELF;
+			Item sign = Items.POPLAR_HANGING_SIGN;
+			for (WoodParts w : PARTS.values()) {
+				out.insertAfter(shelf, w.shelf());
+				shelf = w.shelf().asItem();
+				out.insertAfter(sign, w.sign());
+				out.insertAfter(w.sign().asItem(), w.hangingSign());
+				sign = w.hangingSign().asItem();
 			}
 		});
 	}
@@ -362,6 +409,64 @@ public final class ModBlocks {
 			item(TATRA_SURFACE.get(s), surface[s], new Item.Properties());
 			TATRA_SURFACE_BLOCKS.add(surface[s]);
 		}
+		// Step FA7, registered last: the doors, trapdoors, signs and shelves of every wood set (the order of WoodSet).
+		for (WoodSet w : WoodSet.values()) {
+			PARTS.put(w, parts(w, WOODS.get(w)));
+		}
+	}
+
+	/**
+	 * Step FA7: the door, trapdoor, standing and wall sign, hanging and wall hanging sign and shelf of a wood set, each with
+	 * the properties of vanilla's oak one (hardness, sound, collision, the pop on a piston) in the map color of the planks
+	 * (the hanging signs in the color of the log, as vanilla's), the block set type and wood type of the set
+	 * ({@link WoodSet#blockSetType()}, {@link WoodSet#woodType()}), and the items of vanilla's: the door a double high
+	 * block item, the signs 16 to a stack with their text, the shelf with an empty container, the fuel of vanilla's items.
+	 * The wall forms take the loot table and the name of their standing form (vanilla's {@code wallVariant}).
+	 */
+	private static WoodParts parts(WoodSet w, WoodBlocks wood) {
+		MapColor color = wood.planks().defaultMapColor();
+		MapColor logColor = wood.log().defaultMapColor();
+		String p = w.prefix();
+		Block door = block(p + "_door", q -> new DoorBlock(w.blockSetType(), q),
+				BlockBehaviour.Properties.ofFullCopy(Blocks.OAK_DOOR).mapColor(color));
+		item(p + "_door", door, q -> new DoubleHighBlockItem(door, q),
+				new Item.Properties().cookingFuel(ContextIntProviders.COOKING_TIME_WOOD_ITEMS_LARGE));
+		Block trapdoor = block(p + "_trapdoor", q -> new TrapDoorBlock(w.blockSetType(), q),
+				BlockBehaviour.Properties.ofFullCopy(Blocks.OAK_TRAPDOOR).mapColor(color));
+		item(p + "_trapdoor", trapdoor, woodFuel());
+		Block sign = block(p + "_sign", q -> new StandingSignBlock(w.woodType(), q), signProperties(color));
+		Block wallSign = block(p + "_wall_sign", q -> new WallSignBlock(w.woodType(), q), wallVariant(sign, signProperties(color)));
+		item(p + "_sign", sign, q -> new StandingAndWallBlockItem(sign, wallSign, Direction.DOWN, q), new Item.Properties()
+				.cookingFuel(ContextIntProviders.COOKING_TIME_WOOD_ITEMS_LARGE).stacksTo(16).signText());
+		Block hanging = block(p + "_hanging_sign", q -> new CeilingHangingSignBlock(w.woodType(), q), signProperties(logColor));
+		Block wallHanging = block(p + "_wall_hanging_sign", q -> new WallHangingSignBlock(w.woodType(), q),
+				wallVariant(hanging, signProperties(logColor)));
+		item(p + "_hanging_sign", hanging, q -> new HangingSignItem(hanging, wallHanging, q), new Item.Properties()
+				.cookingFuel(ContextIntProviders.COOKING_TIME_HANGING_SIGNS).stacksTo(16).signText());
+		Block shelf = block(p + "_shelf", ShelfBlock::new, BlockBehaviour.Properties.ofFullCopy(Blocks.OAK_SHELF).mapColor(color));
+		item(p + "_shelf", shelf, new Item.Properties().component(DataComponents.CONTAINER, ItemContainerContents.EMPTY)
+				.cookingFuel(ContextIntProviders.COOKING_TIME_WOOD_BLOCKS));
+		return new WoodParts(door, trapdoor, sign, wallSign, hanging, wallHanging, shelf);
+	}
+
+	/** Step FA7: the properties of vanilla's signs and hanging signs (no collision, a solid block for the pistons). */
+	private static BlockBehaviour.Properties signProperties(MapColor color) {
+		return BlockBehaviour.Properties.of().mapColor(color).forceSolidOn().instrument(NoteBlockInstrument.BASS).noCollision()
+				.strength(1.0F).ignitedByLava();
+	}
+
+	/** Step FA7: the wall form of a sign takes the loot table and the name of the standing form (vanilla's wallVariant). */
+	private static BlockBehaviour.Properties wallVariant(Block standing, BlockBehaviour.Properties properties) {
+		return properties.overrideLootTable(standing.getLootTable()).overrideDescription(standing.getDescriptionId());
+	}
+
+	/** Step FA7: the doors, trapdoors, signs and shelf of a wood set. */
+	public static WoodParts woodParts(WoodSet w) {
+		return registered(PARTS.get(w));
+	}
+
+	public static Map<WoodSet, WoodParts> woodPartSets() {
+		return Collections.unmodifiableMap(PARTS);
 	}
 
 	/**
@@ -596,8 +701,14 @@ public final class ModBlocks {
 	}
 
 	private static Item item(String path, Block block, Item.Properties properties) {
+		return item(path, block, q -> new BlockItem(block, q), properties);
+	}
+
+	/** A block item made by {@code factory} (step FA7: the double high door, the sign items that also place the wall form). */
+	private static Item item(String path, Block block, java.util.function.Function<Item.Properties, BlockItem> factory,
+			Item.Properties properties) {
 		ResourceKey<Item> key = ResourceKey.create(Registries.ITEM, PolishForests.id(path));
-		BlockItem item = new BlockItem(block, properties.setId(key).useBlockDescriptionPrefix());
+		BlockItem item = factory.apply(properties.setId(key).useBlockDescriptionPrefix());
 		item.registerBlocks(Item.BY_BLOCK, item);
 		return Registry.register(BuiltInRegistries.ITEM, key, item);
 	}

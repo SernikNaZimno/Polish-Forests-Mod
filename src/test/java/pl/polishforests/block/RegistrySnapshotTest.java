@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -126,11 +127,21 @@ class RegistrySnapshotTest {
 		int tatraPlants = 3 * 16 + 32 + 4;
 		// Step C3: + the tall nettle and the tall yellow iris, double plants of 2 states each (half).
 		int tallHerbs = 2 * 2;
+		// Step FA7: + the door, trapdoor, standing and wall sign, hanging and wall hanging sign and shelf of every wood set,
+		// with the states of vanilla's oak ones (door 64, trapdoor 64, sign 32, wall sign 8, hanging sign 64, wall hanging
+		// sign 8, shelf 64).
+		int partStates = 0;
+		for (net.minecraft.world.level.block.Block b : List.of(Blocks.OAK_DOOR, Blocks.OAK_TRAPDOOR, Blocks.OAK_SIGN,
+				Blocks.OAK_WALL_SIGN, Blocks.OAK_HANGING_SIGN, Blocks.OAK_WALL_HANGING_SIGN, Blocks.OAK_SHELF)) {
+			partStates += b.getStateDefinition().getPossibleStates().size();
+		}
+		int parts = WoodSet.values().length * partStates;
+		assertEquals(WoodSet.values().length, ModBlocks.woodPartSets().size());
 		assertEquals(4, ModBlocks.tatraRocks().size());
 		assertEquals(3, ModBlocks.tatraSurface().size());
 		assertEquals(84 * TreeTrunk.values().length + foliage * (112 + 2 + 1) + marcescent * 112 + 4 * 3 + 1
 				+ 84 * (RootFlare.values().length + 1) + ground + review + pineForests + floodplain + montane + 84 * StrippedTrunk.values().length + woods
-				+ tatra + tatraPlants + tallHerbs,
+				+ tatra + tatraPlants + tallHerbs + parts,
 				RegistrySnapshot.stateCount());
 	}
 

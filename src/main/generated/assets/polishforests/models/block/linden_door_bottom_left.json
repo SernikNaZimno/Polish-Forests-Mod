@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/door_bottom_left",
+  "textures": {
+    "bottom": "polishforests:block/linden_door_bottom",
+    "top": "polishforests:block/linden_door_top"
+  }
+}

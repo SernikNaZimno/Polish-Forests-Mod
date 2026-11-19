@@ -40,7 +40,9 @@ import pl.polishforests.client.DerivedPlanksSource;
  * not the missing texture (the products and the planks show the planks sprite), and every block item has its item model
  * definition.</li>
  * </ul>
- * Results in {@code build/planks/planks.txt}; any problem fails the test.
+ * Step FA7 adds the doors, trapdoors, signs, hanging signs and shelves ({@link WoodPartSamples}: their derived textures,
+ * models, and a table in a flat world with the one screenshot of the step). Results in {@code build/planks/planks.txt}; any
+ * problem fails the test.
  */
 final class PlankSamples {
 	private PlankSamples() {
@@ -49,7 +51,7 @@ final class PlankSamples {
 	static void run(ClientGameTestContext context) {
 		List<String> lines = new ArrayList<>();
 		List<String> problems = new ArrayList<>();
-		lines.add("# Step P2: the derived planks in the block atlas, the models of the wood sets");
+		lines.add("# Step P2: the derived planks in the block atlas, the models of the wood sets; step FA7: doors, trapdoors, signs, shelves");
 		context.waitTicks(20);
 		context.runOnClient(mc -> {
 			TextureAtlas atlas = mc.getAtlasManager().getAtlasOrThrow(AtlasIds.BLOCKS);
@@ -126,7 +128,11 @@ final class PlankSamples {
 				}
 			}
 			lines.add("block states checked: " + states);
+			// Step FA7: the derived textures and the models of the doors, trapdoors, signs and shelves.
+			WoodPartSamples.client(mc, lines, problems);
 		});
+		// Step FA7: the table of the parts in a world (opening, texts, items, save and reopen) and its screenshot.
+		WoodPartSamples.world(context, lines, problems);
 		lines.add("# problems: " + problems.size());
 		lines.addAll(problems);
 		write(lines);

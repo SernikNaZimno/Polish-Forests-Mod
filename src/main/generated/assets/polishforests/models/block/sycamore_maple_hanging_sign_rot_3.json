@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/template_hanging_sign_rot_3",
+  "textures": {
+    "all": "polishforests:block/sycamore_maple_hanging_sign",
+    "particle": "polishforests:block/stripped_sycamore_maple_trunk"
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/template_trapdoor_open",
+  "textures": {
+    "texture": "polishforests:block/gray_alder_trapdoor"
+  }
+}

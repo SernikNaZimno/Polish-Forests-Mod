@@ -1,5 +1,6 @@
 package pl.polishforests.client.datagen;
 
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import net.fabricmc.fabric.api.datagen.v1.FabricPackOutput;
 import net.fabricmc.fabric.api.datagen.v1.provider.FabricBlockLootSubProvider;
@@ -151,6 +152,15 @@ final class ModBlockLoot extends FabricBlockLootSubProvider {
 				} else {
 					dropSelf(b);
 				}
+			}
+		}
+		// Step FA7: the door drops itself from its lower half (vanilla's door table), the trapdoor, the signs and the shelf
+		// drop themselves (the shelf its items from its block entity, as vanilla's); the wall forms use the table of their
+		// standing form.
+		for (pl.polishforests.block.WoodParts w : ModBlocks.woodPartSets().values()) {
+			add(w.door(), createDoorTable(w.door()));
+			for (Block b : List.of(w.trapdoor(), w.sign(), w.hangingSign(), w.shelf())) {
+				dropSelf(b);
 			}
 		}
 
