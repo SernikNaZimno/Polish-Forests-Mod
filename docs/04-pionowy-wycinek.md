@@ -765,7 +765,7 @@ CP-D.1 zlecił faunę i dźwięk według planu (V14, V15, V16, potem V17), CP-D.
 - **Zakres:** (1) `tools/fauna`: archetyp ptaka (tułów, głowa, skrzydła, ogon, nogi; animacje `idle`, `hop`, `fly`, `glide`, `alarm`), sójka 1:1 (ok. 34 cm, F3 nie dotyczy), tekstura własna (różowobrązowa, niebieskie lusterko skrzydła), kalibracja modelu jak V8. Encja `polishforests:eurasian_jay`, jajo, migawka rejestru. (2) Lot pod koronami (nawigacja lotu z wysokością poniżej okapu, siadanie na gałęziach i krawędziach koron), skoki po ziemi, chowanie żołędzi w grądach (zachowanie bez zmiany bloków); kategoria `AMBIENT` z własnym limitem (domyślnie). (3) Alarm przechodzi z dźwięku na encję: sójka, która widzi biegnącego gracza, skrzeczy i wysyła `ForestAlarm`; zdarzenie skrzeku z FA4 zostaje tylko tam, gdzie w pobliżu nie ma sójki. (4) Gametest `fauna`: spis sójek, udział lotów pod okapem (wysokość lotu wobec wierzchu koron), łańcuch sójka → alarm → sarny i dziki, MSPT.
 - **Ukończony, gdy:** sójki w lasach liściastych i mieszanych obu typów świata i skal, loty w ≥ 90% pomiarów pod wierzchem okapu (próg w projekcie), alarm od encji dociera do saren, skrzek ambientowy nie dubluje sójki; MSPT ≤ 0,05 ms na sójkę; KFA-1 … KFA-10. Lista „Do sprawdzenia w grze”: `find biome oak_hornbeam_forest` — sójki przelatują pod koronami, siadają na gałęziach; bieg przez las — sójka skrzeczy, sarny uciekają.
 - **Ryzyko:** średnie (nawigacja lotu pod koronami, pierwsza encja latająca).
-- **Stan:** w toku. Etap 1 (kod, zasoby z `tools/fauna`, testy jednostkowe, kod gametestu, fastTest) 2026-11-19, zob. „Projekt FA6”; etap 2 (przebiegi gametestu `fauna`, `-Psites=model`, `-Psites=sound`, scena MSPT, poprawki, „Stan po FA6”) do zrobienia.
+- **Stan:** zrobione. Etap 1 (kod, zasoby z `tools/fauna`, testy jednostkowe, kod gametestu, fastTest) 2026-11-19, zob. „Projekt FA6”; etap 2 (przebiegi gametestu `fauna`, `-Psites=model`, `-Psites=sound`, scena MSPT, poprawki planu lotu, grzęd i przekazania skrzeku pejzażu sójce, dokumentacja) 2026-11-19, zob. „Stan po FA6”, G.68.
 
 ### FA7. Pełne zestawy drewna: drzwi, klapy, półki, tabliczki (O3, część 1; A, 1,5–2,5 dnia)
 
@@ -7759,3 +7759,84 @@ Krok FA6 (§3 „Kroki FA”, O2, CP-D.1) dodaje sójkę `polishforests:eurasian
 4. Wieczorem (po 18:30) sójki siedzą na grzędach w koronach.
 5. `/polishforests fauna 32`: sójki w spisie ze stanem „leci” / „siedzi na gałęzi” / „chowa żołądź”.
 6. Paczka `.mrpack` z kroku.
+
+## Stan po FA6 (2026-11-19, etap 2: przebiegi w grze, poprawki lotu i przekazania skrzeku, bez recenzji wizualnej)
+
+Etap 2 kroku FA6 (O2, CP-D.1, G.62). Baza kroku: `ee870cb`; etap 1: `f1d8555`. Przebiegi według `python tools/dev/test_plan.py ee870cb` (w trakcie) i `--end` (na koniec jeden pełny `tools/dev/run-tests test`): obszary `unit` (fastTest), `blocks`/`datagen` (`checkDatagen`, `RegistrySnapshotTest`), `art` (`checkArt`, `lint.py`: bez zmian `tools/fauna` w etapie 2), `fauna` (testy modelu i profilu, `JayGeometryTest`, gametest `fauna`: próby, spis, `-Psites=model`, scena MSPT), `sound` (`checkSound`, testy FA4, `-Psites=sound`), `gametest_code` (`compileGametestJava`, `PerformanceThresholdsTest`), `render` (bez oceny zrzutów, G.36). Zgodnie z G.36 bez oceny wyglądu: tylko liczby i asercje; zrzuty `-Psites=model` tylko jako dowód przebiegu, nieoglądane.
+
+**Pierwsze przebiegi (kod etapu 1, uruchamiacz).** `-Psites=model` PASS (sójka: 27 z 27 kości i lokatorów ze wszystkich stron, największa różnica 0,0001 px, IoU sylwetek najmniej 0,9991 przy progu 0,97, `misc.alert` trzymana; wiewiórka IoU 1,0000). Nie przeszły: (1) próba `life` w GAMEPLAY N: 0 próbek w locie przy progu 50 (12 sójek żywych, 5661 próbek na ziemi; w całym świecie 79 przelotów, wszystkie przez punkt pośredni, 8144 tras nieznalezionych, 2607 szukań grzędy bez skutku, 0 lądowań na gałęzi); łańcuch bezpośredni i naturalny, żołędzie (98 schowanych) i próby sarny, dzika i wiewiórki w tym świecie przeszły; (2) `-Psites=sound`: łańcuch sprintu w GAMEPLAY N i „Default + Polish Forests” bez skrzeku (pejzaż oddał skrzek sójce w pobliżu, ale żadna sójka nie widziała gracza w 24 blokach). Spis, scena MSPT i `determinism` czekały na poprawki.
+
+**Przyczyny i poprawki.**
+1. **Pas przelotu w sprawdzeniu trasy** (FA6-q): plan odrzucał odcinek, gdy > 20% punktów co 2 bloki leżało poza pasem, także *pod* nim. Start z ziemi i lądowanie na ziemi leżą pod pasem z natury (koniec odcinka liczył się zawsze), a grzędy wybierane od góry kolumny leżały na wierzchu koron, do których prosty odcinek spod okapu nie dolatuje (dlatego 79 z 79 przelotów szło przez punkt pośredni). Teraz odcinek sprawdza tylko sufit okapu: wierzch hitboxa ≥ 0,3 bloku pod lokalnym wierzchem okapu w punktach co 1 blok (`JayGeometry.plannedUnder`, `JaySpace.aboveShare`), najwyżej 10% punktów nad nim (krótka luka); dolny brzeg pasa zostaje tylko wyborem wysokości punktów pośrednich. Sufit planu jest ostrzejszy od miary gametestu (`underCanopy`), co pilnuje `JayGeometryTest`.
+2. **Grzędy** (FA6-r): najpierw najwyższa grzęda pod koroną własnej kolumny (liście nad nią: wierzch niższej korony, gałąź pod okapem), dopiero bez niej wierzch kolumny na krawędzi wyższej korony; liczy się tylko grzęda z wolnym bokiem do lądowania (`JaySpace.approach`), bo gałąź albo kieszeń zamknięta liśćmi w środku korony jest nieosiągalna. Wybór między kolumnami: najpierw grzędy pod koroną.
+3. **Trasa przez punkt odlotu i podejścia** (FA6-s): gdy odcinek prosty nie pasuje, trasa idzie przez punkt odlotu z grzędy (1,25 bloku w wolny bok, 0,3 w górę; z ziemi bez niego), punkt podejścia celu (przy grzędzie 1,25 bloku z boku i 0,35 w górę, nad miejscem na ziemi 1,5 bloku) i w razie potrzeby jeden z 8 punktów pośrednich w pasie (było 6); trasa ma 1–4 odcinki. Krótkie odcinki odlotu i podejścia sprawdza tylko kolizja.
+4. **Skrzek pejzażu oddany sójce** (FA6-t, zmienia FA6-m): gdy pejzaż FA4 wylosuje skrzek dla biegnącego gracza, a w 48 blokach żyją sójki, skrzeczy najbliższa z nich, która może (`JayMind.answerAmbience`: po swojej przerwie 200–400 ticków, nie na nocnej grzędzie), z własnym alarmem `JAY_BIRD`; żadna, gdy któraś skrzeczała w ostatnich 200 tickach (już ostrzegła las: bez podwójnego skrzeku). Bez sójek pejzaż skrzeczy jak w FA4. Wcześniej pejzaż milkł przy każdej sójce w 48 blokach, a sójka skrzeczy sama tylko przy linii wzroku i ≤ 24 blokach, więc bieg przez las z sójką 30 bloków dalej był cichy. Losowania pejzażu bez zmian (sprawdzenie po nich). Pętli alarmów nie ma: alarm `JAY_BIRD` płoszy inne sójki, ale skrzek wywołuje tylko biegnący gracz albo pejzaż.
+5. **Gametest** (FA6-u): `-PfaunaOnly=jay` uruchamia tylko próby sójki (próby i scena MSPT, ok. 5 min na świat) do szybkich przebiegów przy strojeniu; w linii prób liczniki planu: odcinki odrzucone nad okapem i przez kolizję, grzędy pod koroną i na krawędzi, skrzeki pejzażu przejęte przez sójkę.
+
+**Próby sójki** (kod końcowy, `-Psites=behaviour -PfaunaOnly=jay`, wszystkie 5 światów, `build/fa6_jay2.out`, 38 min, EXIT 0; wcześniej GAMEPLAY N sam przed warunkiem wolnego boku grzędy, `build/fa6_jay1.out`, PASS: 102 próbki w locie, 100% pod okapem). `life`: 12 sójek w grądzie przez 2400 ticków, próbka co 5 ticków:
+
+| Świat | próbki w locie | pod lokalnym wierzchem okapu (próg 90%) | pod wierzchem własnej kolumny | w pasie przelotu | na liściach / gałęzi / ziemi / w powietrzu | utknięte |
+|---|---|---|---|---|---|---|
+| REAL N | 198 | 100,0% | 52,0% | 67,7% | 2183 / 5 / 3350 / 24 | 0 |
+| REAL D | 176 | 100,0% | 49,4% | 42,0% | 3771 / 4 / 1787 / 22 | 0 |
+| GAMEPLAY N | 200 | 99,5% | 66,0% | 49,5% | 2241 / 45 / 3232 / 42 | 0 |
+| GAMEPLAY D | 114 | 99,1% | 32,5% | 22,8% | 993 / 89 / 4523 / 41 | 0 |
+| „Default + Polish Forests” | 144 | 100,0% | 41,7% | 61,1% | 2879 / 363 / 2360 / 14 | 0 |
+
+- Wszędzie 12 z 12 sójek żywych, 0 utkniętych w blokach, 0 przerwanych lotów (`stalled`). Przeloty w próbie (z sójkami spawnera w pobliżu) 32–109, lądowania na liściach 27–99, na ziemi 3–15, na gałęzi 0; trasy nieznalezione 178–651 (odcinki odrzucone przez kolizję 1580–5870, nad okapem 3–50); grzędy pod koroną 111–414 i na krawędzi 120–388.
+- „Pod wierzchem własnej kolumny” 32–66%: sójka przelatuje często między koronami (pod lokalnym wierzchem, nie pod liśćmi własnej kolumny), co miara lokalna uznaje za lot pod okapem (odstępstwo 3 z „Projekt FA6”).
+- Lądowań na gałęzi 0: gałęzie moda leżą wewnątrz liści koron, bez wolnego boku do lądowania (FA6-r), więc sójki siadają na wierzchu liści niższych koron i na krawędziach koron. Próbki „na gałęzi” (4–363) to sójki stojące na kłodach i pniach (najwięcej w świecie z drzewami wanilii).
+- Łańcuch bezpośredni wszędzie: sarna i dzik 10 bloków od sójki reagują, 40 bloków dalej nie (`JAY_BIRD` słyszany 3–9 razy). Łańcuch naturalny (3 sójki, sprint 200 ticków): 1–3 skrzeki sójek, alarm `JAY_BIRD` usłyszany 7–29 razy, 0 skrzeków pejzażu (1 oddany sójce w każdym świecie).
+- Żołędzie (środek jesieni, 12 sójek, 2400 ticków): żołądź w dziobie w 43–95 próbkach z 1440, schowane 23–69.
+
+**`-Psites=sound`** (kod końcowy, `build/fa6_sound.out`, `build/fa6_sound.txt`): łańcuch sprintu ma skrzek we wszystkich trzech światach: GAMEPLAY N 1 (sójka-encja 1, pejzaż 0, oddany 1), REAL N 2 (pejzaż 1, sójka 1), „Default + Polish Forests” 2 (sójki 2, oddane 2); bezpośredni skrzek pejzażu bez zmian (sarna i dzik blisko reagują, 72 bloki dalej nie). Pierwszy przebieg z kodem końcowym dał jeden `FAIL` spoza FA6: żaby w grądzie REAL N (0 żab w 2000 tickach przy powierzchni wilgotnej 224 bloków; spawner żab nie wylosował grupy); powtórka (`build/fa6_sound2.out`, 26 min, EXIT 0) przeszła w całości: tam 1 żaba ze spawnera, łańcuch sprintu GAMEPLAY N 1 skrzek (sójka 1), REAL N 1 (sójka 1, oddany 1), „Default + Polish Forests” 2 (sójki 2), liczby zdarzeń pejzażu i progi PW-16 jak w FA4.
+
+**MSPT (KFA-6).** Scena jak w FA2 tylko z sójkami (`-Psites=mspt -PfaunaOnly=jay`, `build/fa6_mspt.out`, bez `-PtimingsReportOnly`, bez gry użytkownika, CPU 9%, GPU 0% przed startem): 40 sójek w grądzie (na starcie ziemia 35, liście 3, gałąź 2), 48 000 ticków zwierząt w 1200 tickach: **0,0132 ms na sójkę i tick** (budżet 0,05). Sarna, dzik i wiewiórka bez zmian kodu od FA5 (0,0172 / 0,0157 / 0,0077 w „Stan po FA5”), więc scena nie była dla nich powtarzana.
+
+**Spis** (kod końcowy, szybki: `-PfaunaMinutes=2`, wszystkie światy z próbami wszystkich gatunków, `build/fa6_census_quick.out`, `build/fa6_census_quick.txt`, 3 h 24 min, EXIT 0, brak `FAIL`). Gęstość: generacja 0,000600 na blok (0,3/ha × 20), spawner 0,000720 (× 24), limit 10 przy graczu. Sójki w okręgu 160 bloków przy ostatniej próbce i rozkład miejsc ze wszystkich próbek:
+
+| Świat / miejsce | Sójki | w locie | liście | ziemia | gałąź / kłoda | w powietrzu |
+|---|---|---|---|---|---|---|
+| REAL N `oak_hornbeam_1` | 43 | 7 | 81 | 115 | 2 | 5 |
+| REAL N `fresh_pine_1` | 22 | 3 | 77 | 29 | 0 | 0 |
+| REAL D `oak_hornbeam_1` | 30 | 7 | 70 | 68 | 0 | 4 |
+| REAL D `fresh_pine_1` | 16 | 3 | 47 | 30 | 0 | 0 |
+| GAMEPLAY N `oak_hornbeam_1` | 49 | 6 | 141 | 99 | 0 | 2 |
+| GAMEPLAY N `fresh_pine_1` | 32 | 5 | 100 | 48 | 0 | 1 |
+| GAMEPLAY D `oak_hornbeam_1` | 35 | 3 | 86 | 87 | 2 | 0 |
+| GAMEPLAY D `fresh_pine_1` | 29 | 3 | 98 | 41 | 0 | 0 |
+| „Default + Polish Forests” grąd | 17 | 2 | 67 | 16 | 0 | 0 |
+| „Default + Polish Forests” bór świeży | 5 | 2 | 8 | 13 | 0 | 0 |
+
+- Sójki są we wszystkich pięciu światach (obie skale, oba tryby, „Default + Polish Forests”), w grądach więcej niż w borach świeżych (waga 1,0 wobec 0,3; okrąg 160 bloków sięga też innych lasów). 0 sójek utkniętych w blokach i 0 w wodzie we wszystkich miejscach.
+- Liczniki światów (cały przebieg świata): przeloty 212–805 (średnio 65–67 ticków w powietrzu), lądowania na liściach 159–622, na ziemi 49–134, na gałęzi 0, przerwane loty 0–2, grzędy pod koroną 695–3048 i na krawędzi 825–3342, schowane żołędzie 24–55, skrzeki 2–4.
+- Próba `life` w tym przebiegu (drugi pomiar kodu końcowego): REAL N 199 próbek w locie, 100,0% pod okapem; REAL D 271, 100,0%; GAMEPLAY N 111, 100,0%; GAMEPLAY D 122, 100,0%; „Default + Polish Forests” 82, 98,8%; wszędzie 0 utkniętych. Próby sarny, dzika i wiewiórki (z progami FA2–FA5) przeszły we wszystkich światach; spis wiewiórek bez utkniętych (DP-191).
+
+**`determinism`.** Kod końcowy (`build/fa6_determinism.out`, 22 min, EXIT 0): 0 z 16384 kolumn różnic w stałej kolejności (teren i dekoracja) we wszystkich 12 miejscach czterech światów Polski (48 porównań); kolejność swobodna i odwrócona tylko w raporcie, jak dotąd. Sójka nie stawia bloków, spawn przy generacji ma własną sól (FA1).
+
+**KFA-1 … KFA-10.** KFA-1: bez nowych soli (sójka losuje z `random` encji, pejzaż losuje jak w FA4), nowe stałe enumów tylko na końcu (etap 1; etap 2 dodaje tylko liczniki), migawka rejestru z dwoma dopisanymi wierszami etapu 1 bez zmian w etapie 2. KFA-2: złote pliki w pełnym zestawie, `determinism` (wyżej). KFA-3: `checkDatagen` bez zmian (3554 pliki). KFA-4: wanilia bez zmian (sójka `AMBIENT` z własnym limitem spawnera fauny 10 przy graczu, poza licznikami mobów wanilii; spawn tylko w lasach moda). KFA-5: gęstość 0,3/ha [Ź: Tomiałojć, Wesołowski i Walankiewicz 1984], × 20 / × 24, sójki w spisie (wyżej). KFA-6: 0,0132 ms na sójkę. KFA-7: zasoby tylko z `tools/fauna` (model, tekstura, jajo, maski) i `tools/sound` (skrzek z FA4), `checkArt` PASS. KFA-8: kalibracja modelu `-Psites=model` PASS (uruchamiacz; model i renderer bez zmian w etapie 2). KFA-9: testy z mapy (`test_plan.py`), bez poluzowania progów (90% pod okapem, 50 próbek w locie, 0,05 ms). KFA-10: dokumentacja (ten rozdział, G.68, BRIEF, `docs/mapa-testow.md`), lista do gry i paczka.
+
+**Testy końcowe.** Z kodem końcowym: `compileGametestJava`, `checkDatagen` (3554 pliki bez zmian), `checkSound`, `FaunaModelTest`, `FaunaProfileTest`, `FaunaBehaviourTest`, `JayGeometryTest` (nowy test sufitu planu), `RegistrySnapshotTest`, `PerformanceThresholdsTest`, `ForestAmbienceTest`, `ModSoundsTest`, `CommonFrogTest` PASS (`build/fa6_quick.out`); fastTest PASS w 1330 s (drzewo `846e7156d388`); `test_plan.py ee870cb --end` (`build/fa6_plan_end.txt`) i jeden pełny `tools/dev/run-tests test` PASS w 2332 s (drzewo `4cd10cb6b839`, `build/fa6_test.out`). Gametesty: próby sójki we wszystkich światach, spis z próbami wszystkich gatunków, `-Psites=sound` (powtórka), scena MSPT, `determinism` PASS (wyżej); `-Psites=model` PASS w przebiegu uruchamiacza (bez zmian modelu i renderu w etapie 2). Paczka `build/distributions/Polish-Forests-0.3.0-dev.29.mrpack` (`./gradlew assemble -Pmod_version=0.3.0-dev.29`, `python tools/build_mrpack.py`).
+
+**Czekanie na grę użytkownika.** Przed każdym gametestem, pełnym zestawem i długim przebiegiem Gradle sprawdzana była gra użytkownika (procesy Java spoza repozytorium, Steam, Epic, Riot, launchery Minecrafta), w trakcie przebiegów strażnik co 60 s. Działał tylko bezczynny Epic Games Launcher (bez gry), traktowany jak brak gry (jak w FA4 i FA5). Czekanie: 0 min (gra użytkownika nie pojawiła się przed żadnym przebiegiem ani w trakcie).
+
+**Odstępstwa i uwagi.**
+- Lądowania na gałęziach 0 we wszystkich światach: gałęzie moda leżą w liściach koron; sójki siadają na wierzchu liści (niższe korony pod okapem i krawędzie koron). Siadanie na gałęzi wymagałoby gałęzi z wolnym bokiem pod okapem (sprawa planera drzew, nie sójki).
+- Trasa ma do 4 odcinków (punkt odlotu, punkt pośredni, punkt podejścia), nie „jeden albo dwa” z FA6-a/FA6-d; sprawdzenie pasa zastąpione sufitem okapu (FA6-q).
+- Skrzek pejzażu przy sójkach nie milknie, tylko przechodzi na najbliższą sójkę (FA6-t); głos sójki w zwykłych zdarzeniach pejzażu nadal milknie przy sójce w 48 blokach (FA6-m), bo sójka odzywa się sama.
+- Próby sarny, dzika i wiewiórki z kodem FA6 przeszły w GAMEPLAY N (uruchamiacz); w pozostałych światach ich kod jest taki jak w FA5 (tam przeszły we wszystkich światach), a spis z kodem końcowym obejmuje je we wszystkich światach (wyżej). Pełna próba wszystkich gatunków we wszystkich światach (2 h) nie była powtarzana.
+- Pierwszy commit etapu 2 (`6aa884a`) ma tytuł sklejony z punktami (brak pustej linii w wiadomości); opublikowany, więc bez poprawki.
+- Próba żab w grądzie (FA4) jest krucha przy małej powierzchni wilgotnej (224 bloki w grądzie REAL N: cel spawnera ok. 0,45 żaby, więc w 5 sprawdzeniach po 400 ticków bywa 0). Sójki dokładają losowań z losowania poziomu (spawner fauny), więc kolejność losowań żab jest inna niż w FA5; raz 0 żab, w powtórce 1. Do decyzji (user_decisions_needed w raporcie): próba żab w miejscu o większej powierzchni wilgotnej albo dłuższa.
+
+**Do sprawdzenia w grze** (paczka `build/distributions/Polish-Forests-0.3.0-dev.29.mrpack`):
+1. `/polishforests find biome oak_hornbeam_forest`, za dnia (`/time set 1000`): sójki przelatują pod koronami (nie nad nimi), między pniami i pod okapem, bez przelatywania przez liście i pnie.
+2. Tam: sójki siadają na wierzchu liści niższych koron i na krawędziach koron, nie zawisają w powietrzu nad dziurą i nie tkwią w liściach; na ziemi skaczą i dziobią.
+3. Bieg (sprint) przez grąd: sójka, która widzi gracza, skrzeczy i odlatuje; sarny i dziki w pobliżu uciekają albo stają czujnie.
+4. Ten sam bieg: jeden skrzek naraz, bez podwójnego (skrzek z pejzażu przechodzi na najbliższą sójkę, a gdy sójka właśnie skrzeczała, pejzaż milczy); daleko od sójek (np. w borze bez nich) skrzek pejzażu jak w FA4.
+5. Jesień (`/season set mid_autumn` z Serene Seasons): sójki w grądzie podnoszą żołędzie (żołądź widać w dziobie), przelatują i chowają je w ziemi (dziobanie), bez zmiany bloków.
+6. Wieczór (`/time set 13000`): sójki siedzą na grzędach w koronach i nie latają.
+7. `/polishforests fauna 32`: sójki w spisie ze stanami „leci” / „siedzi na gałęzi” / „chowa żołądź”.
+8. `/polishforests find biome lowland_beech_forest` i `/polishforests find biome mixed_forest` w świecie REAL i GAMEPLAY: sójki także tu (rzadziej w borach).
+9. Animacje: bicie skrzydeł w locie, ślizg przy zniżaniu, skoki po ziemi, czubek stroszony w alarmie.
+10. Świat „Default + Polish Forests”: sójki w lasach moda, siadanie także na drzewach wanilii.
+11. Paczka `Polish-Forests-0.3.0-dev.29.mrpack` importuje się i startuje.
