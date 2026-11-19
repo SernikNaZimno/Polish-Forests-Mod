@@ -1567,3 +1567,19 @@ Krok: `docs/04-pionowy-wycinek.md` §3 „FA6”, „Projekt FA6” (etap 1, FA6
 | FA6-t | Skrzek pejzażu oddany sójce (etap 2) | Skrzek wylosowany przez pejzaż FA4 przy sójkach w 48 blokach skrzeczy najbliższa sójka, która może (po swojej przerwie, nie na nocnej grzędzie), z własnym alarmem `JAY_BIRD`; żadna, gdy któraś skrzeczała w ostatnich 200 tickach (bez podwójnego skrzeku); bez sójek pejzaż jak w FA4. Losowania pejzażu bez zmian |
 | FA6-u | Gametest sójki (etap 2) | `-PfaunaOnly=jay` uruchamia tylko próby sójki (szybkie przebiegi przy strojeniu); liczniki planu w linii prób (odcinki odrzucone nad okapem i przez kolizję, grzędy pod koroną i na krawędzi, skrzeki pejzażu przejęte przez sójkę) |
 | FA6-v | Miara „nie nad koronami” (runda 1 przeglądu) | Próba `life` dzieli próbki w locie względem własnej kolumny (`JayTrials.flightPlace`): pod jej koroną, w luce między koronami (kolumna bez liści), nad jej liśćmi przy starcie lub lądowaniu (stopy ≤ 1,5 bloku nad nimi), nad podszytem (wierzch hitboxa ≥ 4 bloki pod lokalnym wierzchem okapu: nad krzewem albo młodym drzewem pod wyższymi koronami), nad koroną w warstwie okapu (< 4 bloki pod lokalnym wierzchem); próg: najwyżej 10% próbek nad koroną w warstwie okapu. Lot nad podszytem (8–16 i więcej bloków pod okapem) to lot pod koronami drzew okapu, więc się nie liczy. Wariant: próg na wszystkie próbki nad liśćmi własnej kolumny (3–26%, z podszytem) albo granica warstwy 8 bloków |
+
+### G.69 Drobne wybory kroku FA7 (domyślne, do potwierdzenia; 2026-11-19)
+
+Krok: `docs/04-pionowy-wycinek.md` §3 „FA7”, „Projekt FA7” (etap 1, FA7-a … FA7-k, tabele tam) i „Stan po FA7” (etap 2: przebiegi w grze, bez nowych wyborów). Krok realizuje O3 część 1 z CP-D.2 według G.62 (G.62-c: zakres 15 gatunków, nadal **do potwierdzenia**).
+
+| # | Wybór | Wartość i powód |
+|---|---|---|
+| FA7-a | Typy gatunku | `BlockSetType` i `WoodType` `polishforests:<gatunek>` dla każdego `WoodSet`, kopie dębu przez Fabric API (dźwięki, otwieranie ręką); wyroby P2 zostają przy typach dębu (zapisane bloki bez zmian) |
+| FA7-b … FA7-d | Bloki, przedmioty, encje bloku | Klasy i właściwości wanilii (kopie dębowych, kolor mapy desek, tabliczki wiszące w kolorze kłody), formy ścienne z łupem i nazwą formy stojącej; przedmioty, stosy po 16 i paliwo jak wanilia; `SIGN`, `HANGING_SIGN`, `SHELF` przyjmują nowe bloki (`addValidBlock`) |
+| FA7-e | Palność i kompost | Tylko półka 30 / 20 (jak wanilia); bez kompostowania (wanilia nie kompostuje wyrobów drewnianych) |
+| FA7-f | Zakładki | Mod nie ma własnej zakładki: drzwi i klapa za furtką gatunku w „Budulec”, półki i tabliczki za topolowymi w „Bloki użytkowe”; bez „Mechanizmów” |
+| FA7-g, FA7-h | Tekstury: części i baza | 11 tekstur na gatunek (6 w atlasie bloków, 3 w atlasie przedmiotów, 2 ekrany edycji), 165 razem; baza `oak_*` albo `spruce_*` według `planksBase`, klapa obracalna tylko przy bazie świerkowej (jak wanilia) |
+| FA7-i | Przemalowanie | Piksele drewna (nasycenie ≥ 0,18, odcień 10–60°) na rampę palety desek P2 według jasności; okucia, łańcuchy, szyby i alfa bez zmian |
+| FA7-j, FA7-k | Bez plików awaryjnych; źródło atlasu i ekrany | Żadnej tekstury części w repozytorium i jarze, bez `tools/art`; źródło `polishforests:derived_wood` w atlasach bloków i przedmiotów, ekrany edycji jako `DynamicTexture` ze słuchacza przeładowania; paczka zasobów z własną teksturą ma pierwszeństwo |
+| FA7 (odstępstwa) | Receptury i atlas tabliczek | Tabliczka wisząca i półka z okorowanej kłody gatunku (jak wanilia), reszta z desek; tekstury tabliczek w atlasie bloków, bo 26.3 nie ma atlasu tabliczek |
+| FA7 (pytanie) | Zakres 15 gatunków (G.62-c) | Zrobione dla wszystkich 15 `WoodSet` jednym mechanizmem; rekomendacja: zostawić 15 (spójne drewno każdego gatunku z własnymi deskami). Zawężenie do sześciu z CP-D.2 zmienia rejestr, więc tylko przed wydaniem |
