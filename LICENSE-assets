@@ -16,7 +16,10 @@ and to this license. Outside sources used to make the assets (CC0 or public-doma
 CC BY sounds) are listed in CREDITS.md.
 
 Minecraft assets are not part of this mod and are not covered by this license: vanilla textures, models and
-sounds are only referenced by their identifiers.
+sounds are only referenced by their identifiers. The textures of the planks of several woods of the mod and of the
+wooden items made from them (doors, trapdoors, shelves, signs, hanging signs and their edit screens, boats and chest
+boats) are not files of the mod either: the game client computes them at resource loading by recoloring the vanilla
+textures of the player's own game, so they are not covered by this license.
 
 -----------------------------------------------------------------------------------------------------------------
 

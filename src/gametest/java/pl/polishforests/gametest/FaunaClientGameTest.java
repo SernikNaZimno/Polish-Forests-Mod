@@ -107,7 +107,9 @@ public final class FaunaClientGameTest implements FabricClientGameTest {
 			}
 			return;
 		}
-		if (sites.isBlank() || sites.contains("census") || sites.contains("behaviour") || sites.contains("mspt")) {
+		// Step FA9: -Psites=habitats, the census by habitat (FaunaHabitatCensus), a mode of the census.
+		if (sites.isBlank() || sites.contains("census") || sites.contains("behaviour") || sites.contains("mspt")
+				|| sites.contains("habitats")) {
 			List<String> censusFailures = new FaunaCensus(context, sites).run();
 			if (!sites.contains("model")) {
 				if (!censusFailures.isEmpty()) {

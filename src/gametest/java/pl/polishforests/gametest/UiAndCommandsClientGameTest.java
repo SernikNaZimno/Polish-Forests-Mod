@@ -259,22 +259,27 @@ public final class UiAndCommandsClientGameTest implements FabricClientGameTest {
 
 	/** FA8 review round 1: the tries of {@link #anthillOnTheGround}. */
 	private static final int ANTHILL_TRIES = 8;
+	/** Step FA9: ticks after the teleport to a planned place before the next search (the chunks around the player load). */
+	private static final int ANTHILL_SETTLE = 60;
 
 	/**
-	 * FA8 review round 1: {@code find anthill} leads to a mound standing in the world. While it reports the plan's position
-	 * ({@code found_planned}: the home chunk not loaded), the chunk there is force-loaded (generated) and the command runs
-	 * again; it then reports the standing mound of that chunk, or goes on to the next planned one when the feature did not
-	 * write it. A {@code found} must have an anthill layer at or below the reported block, at most
-	 * {@value #ANTHILL_TRIES} rounds.
+	 * FA8 review round 1: {@code find anthill} leads to a mound standing in the world. Step FA9 (the open check of the FA8
+	 * review): the test follows the player's way of the in-game list. While the command reports the plan's position
+	 * ({@code found_planned}: the home chunk not loaded), the player is teleported there (as by {@code /tp} on the clickable
+	 * coordinates), the chunks around load, and the command runs again from the player's new place; it then reports the
+	 * standing mound of that chunk, or goes on to the next planned one when the feature did not write it. A {@code found}
+	 * must have an anthill layer at or below the reported block, at most {@value #ANTHILL_TRIES} rounds. The player goes
+	 * back to where it stood afterwards.
 	 */
 	private static void anthillOnTheGround(ClientGameTestContext context, TestSingleplayerContext sp, MinecraftServer server,
 			List<String> problems) {
-		List<long[]> forced = new ArrayList<>();
+		Vec3 home = sp.getServer().computeOnServer(s -> s.getPlayerList().getPlayers().getFirst().position());
+		Vec3 from = new Vec3(0.5, 100, 0.5);
 		int planned = 0;
 		String outcome = null;
 		try {
 			for (int t = 0; t < ANTHILL_TRIES && outcome == null; t++) {
-				List<Component> messages = run(context, server, "polishforests find anthill", 2);
+				List<Component> messages = run(context, server, "polishforests find anthill", 2, from);
 				Component last = messages.isEmpty() ? null : messages.getLast();
 				int[] p = last == null ? null : coordinates(last);
 				if (p == null) {
@@ -282,14 +287,9 @@ public final class UiAndCommandsClientGameTest implements FabricClientGameTest {
 					problems.add("find anthill on the ground: " + outcome);
 				} else if (key(last).equals("polishforests.command.found_planned")) {
 					planned++;
-					int cx = p[0] >> 4;
-					int cz = p[2] >> 4;
-					forced.add(new long[] {cx, cz});
-					sp.getServer().runOnServer(s -> {
-						s.overworld().setChunkForced(cx, cz, true);
-						s.overworld().getChunk(cx, cz);
-					});
-					context.waitTicks(5);
+					sp.getServer().runCommand(String.format(Locale.ROOT, "tp @a %d.5 %d %d.5", p[0], p[1] + 1, p[2]));
+					context.waitTicks(ANTHILL_SETTLE);
+					from = new Vec3(p[0] + 0.5, p[1] + 1, p[2] + 0.5);
 				} else if (key(last).equals("polishforests.command.found")) {
 					boolean mound = sp.getServer().computeOnServer(s -> {
 						for (int y = p[1]; y >= p[1] - 3; y--) {
@@ -301,7 +301,7 @@ public final class UiAndCommandsClientGameTest implements FabricClientGameTest {
 						return false;
 					});
 					outcome = (mound ? "a standing mound at " : "NO MOUND at ") + p[0] + ", " + p[1] + ", " + p[2] + " after " + planned
-							+ " planned places";
+							+ " planned places (teleports)";
 					if (!mound) {
 						problems.add("find anthill on the ground: " + outcome);
 					}
@@ -315,7 +315,8 @@ public final class UiAndCommandsClientGameTest implements FabricClientGameTest {
 				problems.add("find anthill on the ground: " + outcome);
 			}
 		} finally {
-			sp.getServer().runOnServer(s -> forced.forEach(c -> s.overworld().setChunkForced((int) c[0], (int) c[1], false)));
+			sp.getServer().runCommand(String.format(Locale.ROOT, "tp @a %.2f %.2f %.2f", home.x, home.y, home.z));
+			context.waitTicks(ANTHILL_SETTLE);
 		}
 		PolishForests.LOG.info("[ui] find anthill on the ground: {}", outcome);
 	}
@@ -350,9 +351,14 @@ public final class UiAndCommandsClientGameTest implements FabricClientGameTest {
 
 	/** Runs a command on the server and waits (at most {@link #COMMAND_WAIT_TICKS}) until it has sent {@code count} messages. */
 	private static List<Component> run(ClientGameTestContext context, MinecraftServer server, String command, int count) {
+		return run(context, server, command, count, new Vec3(0.5, 100, 0.5));
+	}
+
+	/** Step FA9: a command run from a given place (the player's place after a teleport). */
+	private static List<Component> run(ClientGameTestContext context, MinecraftServer server, String command, int count, Vec3 at) {
 		List<Component> messages = new CopyOnWriteArrayList<>();
 		CommandSourceStack source = server.createCommandSourceStack().withSource(capture(messages)).withLevel(server.overworld())
-				.withPosition(new Vec3(0.5, 100, 0.5));
+				.withPosition(at);
 		server.execute(() -> server.getCommands().performPrefixedCommand(source, command));
 		for (int t = 0; t < COMMAND_WAIT_TICKS && (messages.size() < count || failed(messages)); t++) {
 			if (failed(messages)) {

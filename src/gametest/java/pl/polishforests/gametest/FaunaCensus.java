@@ -74,6 +74,9 @@ import pl.polishforests.worldgen.vanilla.VanillaForestsBiomeSource;
  * the natural mode, 4 elsewhere), flight distance and the alarm. {@code -Psites=behaviour} runs only these (without the
  * census of the places and the trials of FA1), {@code -Psites=mspt} only the MSPT scene (KFA-6) in the gameplay world of
  * the natural mode.
+ * <li><b>By habitat</b> (step FA9, {@link FaunaHabitatCensus}): {@code -Psites=habitats} alone (report
+ * {@code build/fauna/habitats.txt}) or with {@code census}: in every world each habitat biome of the four species, the
+ * animals per hectare of the biome against the band of KFA-5, pooled by scale and world type at the end.
  * </ol>
  *
  * <p>Step FA2 counts in each place also the groups and the looks of the roe deer (the census line of the fauna command), and
@@ -125,6 +128,10 @@ final class FaunaCensus {
 	/** Step FA6: the most Eurasian jays within {@value #CHECK_RADIUS} blocks at the last sample of a place of the current world. */
 	private int worldJays;
 	private final FaunaTrials trials;
+	/** Step FA9: the census by habitat ({@code -Psites=habitats}), or null. */
+	private final @org.jspecify.annotations.Nullable FaunaHabitatCensus habitats;
+	/** Step FA9: the report file ({@code habitats.txt} when only the census by habitat runs). */
+	private final String reportName;
 	/** The sub-seasons of the looks trial: all in the gameplay world of the natural mode, these four elsewhere. */
 	static final List<pl.polishforests.season.SubSeason> LOOK_SEASONS = List.of(pl.polishforests.season.SubSeason.MID_SUMMER,
 			pl.polishforests.season.SubSeason.MID_AUTUMN, pl.polishforests.season.SubSeason.LATE_AUTUMN,
@@ -135,11 +142,15 @@ final class FaunaCensus {
 		double minutes = Double.parseDouble(System.getProperty("polishforests.fauna.minutes", String.valueOf(DEFAULT_MINUTES)));
 		this.ticks = Math.max(100, (int) Math.round(minutes * 1200));
 		this.allSites = sites.contains("all");
-		boolean only = sites.contains("behaviour") || sites.contains("mspt");
+		// Step FA9: -Psites=habitats alone runs only the census by habitat (FaunaHabitatCensus); with census it runs after it.
+		boolean habitatsOnly = sites.contains("habitats") && !sites.contains("census");
+		boolean only = sites.contains("behaviour") || sites.contains("mspt") || habitatsOnly;
 		this.places = !only;
 		this.behaviour = !only || sites.contains("behaviour");
 		this.mspt = sites.contains("mspt");
 		this.trials = new FaunaTrials(context, this);
+		this.habitats = sites.contains("habitats") ? new FaunaHabitatCensus(context, this) : null;
+		this.reportName = habitatsOnly && !behaviour && !mspt ? "habitats.txt" : "census.txt";
 	}
 
 	/** Runs every part and returns the failures (the report is written to build/fauna/census.txt). */
@@ -193,6 +204,9 @@ final class FaunaCensus {
 		if (mspt) {
 			msptWorld();
 		}
+		if (habitats != null) {
+			habitats.summary();
+		}
 		write();
 		return failures;
 	}
@@ -226,6 +240,9 @@ final class FaunaCensus {
 				flight(sp, first.x(), first.z());
 				exploration(sp, first.x(), first.z());
 			}
+			if (habitats != null) {
+				habitats.world(sp, label, scale(real), first.x(), first.z());
+			}
 			counters(label);
 		}
 	}
@@ -255,8 +272,15 @@ final class FaunaCensus {
 				}
 				first = false;
 			}
+			if (habitats != null) {
+				habitats.world(sp, "default_polish_forests", "default_polish_forests", 0, 0);
+			}
 			counters("default_polish_forests");
 		}
+	}
+
+	private static String scale(boolean real) {
+		return real ? "realistic" : "gameplay";
 	}
 
 	private void selectVanilla(WorldCreationUiState ui) {
@@ -809,7 +833,7 @@ final class FaunaCensus {
 		Path out = Path.of(System.getProperty("polishforests.fauna.out", "build/fauna"));
 		try {
 			Files.createDirectories(out);
-			Files.writeString(out.resolve("census.txt"), String.join("\n", report) + "\n", StandardCharsets.UTF_8);
+			Files.writeString(out.resolve(reportName), String.join("\n", report) + "\n", StandardCharsets.UTF_8);
 		} catch (IOException e) {
 			throw new java.io.UncheckedIOException(e);
 		}

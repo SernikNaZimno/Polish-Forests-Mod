@@ -71,7 +71,7 @@ python tools/art/generate.py   # albo ./gradlew generateArt
 ./gradlew checkArt
 ```
 
-Tekstury bloków powstają proceduralnie w `tools/art` (przepisy gatunków, palety ze zdjęć CC0 i z domeny publicznej, lint stylu), a modele zwierząt GeckoLib (`.geo.json`, animacje, tekstury i jaja przyzywające) w `tools/fauna` (opis gatunku w centymetrach, podgląd z kodu: `python tools/fauna/sheet.py`). `generateArt` zapisuje je do `src/main/resources/assets/polishforests/` razem z `CREDITS.md`, a `checkArt` sprawdza, czy pliki w repozytorium są dokładnie tym, co dają generatory, i czy przechodzą lint i walidator. Oba zadania potrzebują Pythona 3.10+ z Pillow i NumPy (`pip install pillow numpy`) i nie wchodzą do `build`; inny interpreter wskazuje `-Ppython=<ścieżka>`.
+Tekstury bloków powstają proceduralnie w `tools/art` (przepisy gatunków, palety ze zdjęć CC0 i z domeny publicznej, lint stylu), a modele zwierząt GeckoLib (`.geo.json`, animacje, tekstury i jaja przyzywające) w `tools/fauna` (opis gatunku w centymetrach, podgląd z kodu: `python tools/fauna/sheet.py`). Dźwięki (pejzaż lasu i głosy zwierząt) syntetyzuje `tools/sound` (przepisy w Pythonie z NumPy, kodowanie do OGG Vorbis: `./gradlew generateSound`; `./gradlew checkSound` porównuje pliki z generatorem po zdekodowaniu i sprawdza manifest licencji). `generateArt` zapisuje je do `src/main/resources/assets/polishforests/` razem z `CREDITS.md`, a `checkArt` sprawdza, czy pliki w repozytorium są dokładnie tym, co dają generatory, i czy przechodzą lint i walidator. Oba zadania potrzebują Pythona 3.10+ z Pillow i NumPy (`pip install pillow numpy`) i nie wchodzą do `build`; inny interpreter wskazuje `-Ppython=<ścieżka>`.
 
 ## W grze
 
@@ -87,13 +87,39 @@ Przycisk „Dostosuj” otwiera opcje generowania: skalę, rozmiar regionów, tr
 | Komenda | Działanie |
 |---|---|
 | `/polishforests find <target>` | najbliższy krajobraz lub forma terenu z klikalnymi współrzędnymi |
-| `/polishforests list` | klikalna lista 31 celów w pięciu grupach |
+| `/polishforests list` | klikalna lista celów `find` w grupach (krajobrazy, piętra górskie, wody, wybrzeże, formy terenu, Tatry, szczegóły Tatr, dno lasu) oraz biomów i stref |
+| `/polishforests find biome <biom>`, `find zone <strefa>` | najbliższe siedlisko (np. `oak_hornbeam_forest`, `fresh_pine_forest`) albo strefa (np. `bare_rock`) |
+| `/polishforests find anthill` | najbliższe mrowisko rudnicy w borze; we wczytanym chunku kopiec, który tam stoi, w niewczytanym pozycja z planu (po teleporcie ponowne `find anthill` wskaże stojący kopiec) |
 | `/polishforests elevation <from> <to>` | najbliższy teren o wysokości w przedziale, w m n.p.m. |
 | `/polishforests highest [radius_km]` | najwyższy punkt w okolicy |
 | `/polishforests here` | krajobraz, wysokość, podłoże, wody i formy terenu pod graczem |
 | `/polishforests fauna [radius]` | zwierzęta moda i wanilii w promieniu (domyślnie 64 bloki) według gatunku i stanu |
 
-Sarny moda pojawiają się w lasach światów „Polska” i „Default + Polish Forests” (przy generacji chunka i ze spawnera fauny wokół graczy); wyłącza je reguła gry `/gamerule polishforests:forest_fauna false` (zwierzęta wanilii zostają bez zmian).
+### Zwierzęta i dźwięki lasu
+
+Zwierzęta moda żyją w lasach moda w obu typach świata „Polska” i w „Default + Polish Forests”, w obu skalach (zwierzęta zawsze w naturalnej wielkości) i obu trybach roślinności. Pojawiają się przy generacji chunka i ze spawnera fauny wokół graczy, w gęstości ok. 20–50 razy większej niż w polskich lasach (inaczej gracz prawie by ich nie spotkał); znikają tylko dalej niż 128 bloków od gracza, nigdy z imieniem ani na smyczy. Zwierzęta wanilii (wilk, lis, królik, żaba) zostają w lasach bez zmian. Sarna, dzik, wiewiórka i sójka mają jaja przyzywające.
+
+| Zwierzę | Gdzie i jak żyje |
+|---|---|
+| Sarna (`polishforests:roe_deer`) | wszystkie lasy, najwięcej grądy, łęgi i bory mieszane; rytm dnia (żer o świcie i zmierzchu, odpoczynek w gęstwinie), latem pojedynczo albo z koźlętami, zimą w grupach, futro i parostki według pory roku; ucieka przed graczem ze szczekiem i alarmuje inne zwierzęta |
+| Dzik (`polishforests:wild_boar`) | lasy liściaste i mieszane, łęgi i olsy (tarzanie w błocie przy wodzie); watahy z lochą i warchlakami, odyńce pojedynczo, rytm nocny; locha z młodymi szarżuje ostrzegawczo bez obrażeń; ryje buchtowiska |
+| Wiewiórka pospolita (`polishforests:red_squirrel`) | bory i lasy mieszane, świerczyny, rzadziej grądy; wspina się po pniach i skacze między koronami, żeruje z szyszką, zimą z pędzelkami na uszach |
+| Sójka (`polishforests:eurasian_jay`) | grądy, buczyny i lasy mieszane, rzadziej bory; lata pod koronami, siada na gałęziach, jesienią chowa żołędzie; skrzeczy na widok gracza i płoszy sarny i dziki |
+| Żaba trawna | wariant żaby wanilii (`polishforests:common_frog`) przy wodzie w olsach, łęgach i przy kałużach w lasach; zimą spawner nie dodaje żab |
+
+Pejzaż dźwiękowy lasu: śpiew ptaków (zięba, kos, rudzik, bogatka, sosnówka, mysikrólik, kukułka), bębnienie i głos dzięcioła, pohukiwanie puszczyka nocą, skrzek sójki; o świcie i zmierzchu gęściej, zimą ciszej. Do tego szczek sarny, chrząkanie i chrapnięcie dzika i rechot żaby trawnej. Wszystkie dźwięki są syntezowane przez `tools/sound` (bez nagrań), z napisami po angielsku i polsku; głośność reguluje suwak „Otoczenie/Środowisko”.
+
+| Reguła gry | Domyślnie | Działanie |
+|---|---|---|
+| `polishforests:forest_fauna` | `true` | zwierzęta moda (spawn przy generacji i spawner); wyłączona: nowe się nie pojawiają, istniejące zostają |
+| `polishforests:boar_rooting` | `true` | dziki ryją buchtowiska (płaty ziemi gruboziarnistej i ukorzenionej); wyłącza je też `mob_griefing false` |
+| `polishforests:forest_ambience` | `true` | pejzaż dźwiękowy lasu (zwierzęta zostają) |
+
+### Drewno, łodzie i mrowiska
+
+Gatunki drzew moda z własnym drewnem mają pełny zestaw wyrobów: kłody, drewno, okorowane pnie, deski, schody, płyty, płoty, furtki, płyty naciskowe, przyciski, drzwi, klapy, półki, tabliczki i tabliczki wiszące, łodzie i łodzie ze skrzynią (w zakładkach i książce receptur obok wyrobów wanilii). Tekstury desek i wyrobów z nich gra liczy przy wczytywaniu zasobów z tekstur wanilii (przebarwienie), więc w modzie nie ma pikseli Minecrafta.
+
+Mrowiska rudnicy (kopce z igliwia, 1–2 bloki wysokości) stoją na skrajach borów, w lukach i w widnych starych borach, w lesie mieszanym rzadko. Łopata zbiera je warstwami, stawiane warstwy rosną jak śnieg, mrowisko się pali; za dnia od kwietnia do października po kopcu chodzą mrówki.
 
 Do M2-9 komendy i cele miały polskie nazwy (`/polskielasy znajdz <cel>` itd.); zestawienie dawnych nazw jest w `docs/01-architektura.md`, sekcja 14.
 
@@ -102,7 +128,10 @@ Cele:
 - piętra górskie: lower_montane, upper_montane;
 - wody i mokradła: river, lake, tunnel_valley_lake, kettle_pond, peatland, stream, headwaters, oxbow_lake, lagoon, river_mouth;
 - wybrzeże morskie: beach, coastal_dunes, cliff;
-- formy terenu: river_valley, valley_slope, tunnel_valley, inland_dunes, end_moraine, ridge, summit, mountain_pass, mountain_valley.
+- formy terenu: river_valley, valley_slope, tunnel_valley, inland_dunes, end_moraine, ridge, summit, mountain_pass, mountain_valley;
+- Tatry (w światach z Tatrami): tatra, high_tatra, western_tatra, podhale, tatra_foreland, foreland_gorge, cirque, u_valley, tarn, pinnacle, gully, scree, moraine, snow_patch;
+- szczegóły Tatr: karst_spring, cave_mouth, waterfall, shepherd_hut (szałasy tylko w trybie „dzisiejsza Polska”);
+- dno lasu: anthill.
 
 Rzeki meandrują zależnie od spadku terenu, zostawiają starorzecza i uchodzą do morza. Wybrzeże ma plaże, klify, wydmy i zalewy.
 
@@ -125,7 +154,7 @@ Mody do ścinania całych drzew (krok G1): FallingTree i Tree Harvester ścinaj�
 
 ## Licencja
 
-Kod (Java, skrypty budowania, narzędzia, w tym `tools/art` i `tools/fauna`) jest na licencji MIT (`LICENSE`). Zasoby moda, czyli tekstury, modele, animacje i dźwięki w `src/main/resources/assets/polishforests/` i `src/main/generated/assets/polishforests/`, są na licencji Creative Commons Uznanie autorstwa 4.0 (CC BY 4.0, `LICENSE-assets`): można je wykorzystywać i przerabiać, także w innych modach i paczkach zasobów, z podaniem autorstwa („Polish Forests by SernikNaZimno” z odnośnikiem do repozytorium). `CREDITS.md` wymienia źródła zewnętrzne (zdjęcia CC0 i z domeny publicznej, z których mierzono same kolory palet; w przyszłości dźwięki CC0 i CC BY). Mod nie zawiera plików Minecrafta: do tekstur i modeli wanilii odwołuje się tylko po identyfikatorach. Obie licencje są też w pliku moda (`LICENSE_polishforests`, `LICENSE-assets_polishforests`, `CREDITS_polishforests.md`).
+Kod (Java, skrypty budowania, narzędzia, w tym `tools/art` i `tools/fauna`) jest na licencji MIT (`LICENSE`). Zasoby moda, czyli tekstury, modele, animacje i dźwięki w `src/main/resources/assets/polishforests/` i `src/main/generated/assets/polishforests/`, są na licencji Creative Commons Uznanie autorstwa 4.0 (CC BY 4.0, `LICENSE-assets`): można je wykorzystywać i przerabiać, także w innych modach i paczkach zasobów, z podaniem autorstwa („Polish Forests by SernikNaZimno” z odnośnikiem do repozytorium). `CREDITS.md` wymienia źródła zewnętrzne (zdjęcia CC0 i z domeny publicznej, z których mierzono same kolory palet) i opisuje dźwięki, wszystkie syntetyzowane przez `tools/sound`, bez nagrań. Mod nie zawiera plików Minecrafta: do tekstur i modeli wanilii odwołuje się tylko po identyfikatorach, a tekstury desek i wyrobów z drewna moda (drzwi, klapy, półki, tabliczki, łodzie) liczy klient gry z tekstur wanilii gracza przy wczytywaniu zasobów, więc nie są plikami moda ani nie obejmuje ich licencja zasobów. Obie licencje są też w pliku moda (`LICENSE_polishforests`, `LICENSE-assets_polishforests`, `CREDITS_polishforests.md`).
 
 ## Logo
 

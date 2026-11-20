@@ -7,6 +7,7 @@
 - **Code** (Java sources, build scripts, tools): MIT, see `LICENSE`.
 - **Assets** (textures and other art in `src/main/resources/assets/polishforests/`, block and item models, animations and sounds made for this mod): Creative Commons Attribution 4.0 International (CC BY 4.0), see `LICENSE-assets`. Attribution: "Polish Forests by SernikNaZimno" (https://github.com/SernikNaZimno/Polish-Forests-Mod).
 - Textures are generated procedurally by `tools/art` (recipes, palettes and style lint in the repository), animal models, animations and their textures by `tools/fauna` (species measures, painter and validator in the repository), sounds by `tools/sound` (synthesis recipes in the repository). Minecraft textures, models and sounds are not included: vanilla assets are only referenced by their identifiers, and no file of Mojang or of other mods was copied, traced or edited.
+- Textures computed in the client: the planks of several woods of the mod and the wooden items made from them (doors, trapdoors, shelves, signs and hanging signs with their edit screens, boats and chest boats) are not files of the mod. The game client computes them when it loads resources, by recoloring the vanilla textures of the player's own game (atlas sources `polishforests:derived_planks` and `polishforests:derived_wood`, and with them the sign screens and the boat entity textures), so no vanilla pixel is in the repository or the mod jar; these images are neither part of the mod nor covered by its license.
 
 ## Palette reference photos
 

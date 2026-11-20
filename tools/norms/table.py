@@ -5,8 +5,10 @@ the transects (order of the indicators, the stretches and the widths of the tran
 Polish headings for docs/.
 
 Usage (Git Bash, project directory):
-    python tools/norms/table.py [<karta-norm.csv>] [--out <file.md>]
-The default input is build/norms/karta-norm.csv; without --out the tables go to the standard output.
+    python tools/norms/table.py [<karta-norm.csv>] [--out <file.md>] [--compare <older card.csv> [--compare-name <name>]]
+The default input is build/norms/karta-norm.csv; without --out the tables go to the standard output. Step FA9: --compare
+adds the cells out of the tolerance that are new against an older card and those that are no longer out (by scale, mode,
+plot, measure and part), e.g. the final card of the slice against the card of step F7.
 """
 import csv
 import io
@@ -30,7 +32,10 @@ FORESTS = [('oak_hornbeam', 'Grąd', 'oak_hornbeam_natural', 'oak_hornbeam_manag
            ('elm_ash', 'Łęg wiązowo-jesionowy (F5)', 'elm_ash_natural', 'elm_ash_managed'),
            ('upland_fir', 'Wyżynna jedlina i buczyna (F3)', 'upland_fir_natural', 'upland_fir_managed'),
            ('montane_beech', 'Buczyna karpacka (F3)', 'montane_beech_natural', 'montane_beech_managed'),
-           ('montane_spruce', 'Świerczyna górska (F6)', 'montane_spruce_natural', 'montane_spruce_managed')]
+           ('montane_spruce', 'Świerczyna górska (F6)', 'montane_spruce_natural', 'montane_spruce_managed'),
+           # Step FA9: the two plots of the stone pine variant of the montane spruce forest in the Tatras (steps TT4, TT5,
+           # C1); their rows have the forest montane_spruce_natural with the norms of the variant.
+           ('tatra_stone_pine', 'Limbowa świerczyna Tatr (TT4, C1)', 'montane_spruce_natural', 'montane_spruce_managed')]
 SEQUENCE = {'fresh_pine_forest': 'Bśw', 'mixed_pine_forest': 'BMśw', 'mixed_forest': 'LMśw', 'oak_hornbeam_forest': 'grąd'}
 
 
@@ -149,13 +154,81 @@ def transects(rows, out):
         out.write(f"| {SCALE[s]} {MODE[m]} | {order} | {widths} | " + ' | '.join(stretch) + ' |\n')
 
 
+def forest_of(place):
+    """(index, title) of the forest of a plot, the transect last."""
+    for i, (prefix, title, _, _) in enumerate(FORESTS):
+        if place.startswith(prefix + '_'):
+            return i, title
+    return len(FORESTS), 'Transekt' if place == 'transect' else place
+
+
+def world(r):
+    return f"{SCALE.get(r['scale'], r['scale'])} {MODE.get(r['mode'], r['mode'])}"
+
+
+def metric_name(r):
+    return f"`{r['metric']}`" + (f" ({r['part']})" if r['part'] else '')
+
+
+def compare(rows, older, name, out):
+    """Step FA9: the cells out of the tolerance that are new against an older card (on the plots of both cards, and on
+    plots the older card did not have) and the cells that were out and are no longer (with the verdict now)."""
+    def key(r):
+        return r['scale'], r['mode'], r['place'], r['metric'], r['part']
+    now = {key(r): r for r in rows}
+    then = {key(r): r for r in older}
+    places_then = {r['place'] for r in older}
+    new = [r for k, r in now.items() if r['verdict'] == 'out' and (k not in then or then[k]['verdict'] != 'out')]
+    gone = [r for k, r in then.items() if r['verdict'] == 'out' and (k not in now or now[k]['verdict'] != 'out')]
+
+    def order(r):
+        return forest_of(r['place'])[0], r['metric'], r['part'], r['scale'], r['mode'], r['place']
+    new.sort(key=order)
+    gone.sort(key=order)
+    on_new_plots = sum(1 for r in new if r['place'] not in places_then)
+    count_now = sum(1 for r in rows if r['verdict'] == 'out')
+    count_then = sum(1 for r in older if r['verdict'] == 'out')
+    head = f'| Las | Świat | Powierzchnia | Miara | Wartość ({name}) | Wartość teraz |\n|---|---|---|---|---|---|\n'
+    out.write(f"\n**Porównanie z kartą {name}** (komórki ✗: teraz {count_now}, w karcie {name} {count_then}; nowe ✗: "
+              f"{len(new)}, w tym {on_new_plots} na powierzchniach, których karta {name} nie miała; znikłe ✗: {len(gone)})\n\n")
+    out.write('Nowe komórki poza tolerancją:\n\n')
+    if new:
+        out.write(head)
+        for r in new:
+            old = then.get(key(r))
+            before = cell(old) if old else ('nowa powierzchnia' if r['place'] not in places_then else 'brak miary')
+            out.write(f"| {forest_of(r['place'])[1]} | {world(r)} | {label(r['place'], r['forest'])} | {metric_name(r)} "
+                      f"| {before} | {cell(r)} |\n")
+    else:
+        out.write('—\n')
+    out.write('\nKomórki, które przestały być poza tolerancją:\n\n')
+    if gone:
+        out.write(head)
+        for r in gone:
+            cur = now.get(key(r))
+            out.write(f"| {forest_of(r['place'])[1]} | {world(r)} | {label(r['place'], r['forest'])} | {metric_name(r)} "
+                      f"| {cell(r)} | {cell(cur) if cur else 'brak w karcie'} |\n")
+    else:
+        out.write('—\n')
+
+
 def main(argv):
     path = 'build/norms/karta-norm.csv'
     target = None
+    older = None
+    name = None
     args = list(argv)
     if '--out' in args:
         i = args.index('--out')
         target = args[i + 1]
+        del args[i:i + 2]
+    if '--compare' in args:
+        i = args.index('--compare')
+        older = args[i + 1]
+        del args[i:i + 2]
+    if '--compare-name' in args:
+        i = args.index('--compare-name')
+        name = args[i + 1]
         del args[i:i + 2]
     if args:
         path = args[0]
@@ -165,6 +238,11 @@ def main(argv):
     seasons = sorted({r['season'] for r in rows})
     buf.write(f"Pora roku przy pomiarze: {', '.join(seasons)}.\n")
     summary(rows, buf)
+    if older:
+        with open(older, encoding='utf-8', newline='') as f:
+            old_rows = list(csv.DictReader(f))
+        base = older.replace('\\', '/').rsplit('/', 1)[-1]
+        compare(rows, old_rows, name or base.removeprefix('karta-norm-').removesuffix('.csv').upper(), buf)
     plots(rows, buf)
     transects(rows, buf)
     if target:

@@ -81,6 +81,13 @@ def render():
         ' repository), sounds by `tools/sound` (synthesis recipes in the repository).'
         ' Minecraft textures, models and sounds are not included: vanilla assets are only referenced by their'
         ' identifiers, and no file of Mojang or of other mods was copied, traced or edited.',
+        '- Textures computed in the client: the planks of several woods of the mod and the wooden items made from'
+        ' them (doors, trapdoors, shelves, signs and hanging signs with their edit screens, boats and chest boats) are'
+        ' not files of the mod. The game client computes them when it loads resources, by recoloring the vanilla'
+        ' textures of the player\'s own game (atlas sources `polishforests:derived_planks` and'
+        ' `polishforests:derived_wood`, and with them the sign screens and the boat entity textures), so no vanilla'
+        ' pixel is in the repository or the mod jar; these images are'
+        ' neither part of the mod nor covered by its license.',
         '',
         '## Palette reference photos',
         '',
