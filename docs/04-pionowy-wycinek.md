@@ -8247,9 +8247,9 @@ Siedliska z co najmniej 5 zwierzętami poza pasmem: sarna REAL buczyna niżowa �
 **KFA-1 … KFA-10 dla całego FA (FA1–FA9).**
 - KFA-1: stare sole bez zmian (nowe tylko `feature.ground.anthills` i sole encji z „Projekt FA<n>”), stałe enumów na końcu, migawka rejestru tylko z dopisanymi wierszami (FA1–FA8; FA9 bez zmian, `RegistrySnapshotTest` PASS), zamrożona kopia `landscape/m1` bez zmian.
 - KFA-2: złote pliki bit w bit (`-PgoldenStrict`, `GoldenTatraTest`); `determinism` bez paczki wobec kodu sprzed FA1 różni się tylko w kolumnach mrowisk (wyjątek FA8), teren identyczny. Ten przebieg (jak wszystkie `determinism` od FA1) szedł ze `spawn_mobs` wyłączonym, więc spawnu przy generacji nie obejmował; sprawdzenie ze spawnem dodała runda 1 przeglądu FA9 (DP-178, niżej).
-- KFA-3: fauna w „Polska” REAL i GAMEPLAY, w „Default + Polish Forests”, w trybach N i D, z SS i bez (`behaviour`, `sound` z `-PnoSeasons`).
+- KFA-3: fauna w „Polska” REAL i GAMEPLAY, w „Default + Polish Forests”, w trybach N i D, z SS i bez (`behaviour`, `sound` z `-PnoSeasons`). Spis miejsc (liczby, despawn, ucieczka, wędrówka, zwierzęta wanilii KFA-4) bez SS w FA9 nie szedł, więc DP-180 zostaje otwarte (przegląd FA9, rundy 1–2): spis `fauna -PnoSeasons` w FA10 albo w kroku porządkowym.
 - KFA-4: listy spawnów biomów bez zmian (`checkDatagen`), zwierzęta wanilii 20 / 18 z fauną i bez.
-- KFA-5: sarna i dzik w paśmie; wiewiórka i sójka ×13–20 — **niespełnione, opisane z wariantami (B3-3)**; populacja bez narastania (spis miejsc).
+- KFA-5: sarna i dzik w paśmie; wiewiórka i sójka ×13–20 — **niespełnione, opisane z wariantami (B3-3)**; populacja bez narastania (spis miejsc). Spis według siedlisk liczy 400 ticków po teleporcie, więc pokazuje głównie kalibrację generacji, nie równowagę spawnera (DP-204; przegląd FA9, rundy 1–2).
 - KFA-6: MSPT w FA10 (bez pomiarów czasu w FA9).
 - KFA-7: `checkArt` (tekstury, `tools/fauna`) i `checkSound` PASS; `CREDITS.md` i `LICENSE-assets` aktualne (FA9-d); nic z sieci, zależności tylko z Mavena.
 - KFA-8: bez recenzji wizualnej, dowody liczbowe; zrzuty `planks`, `probes`, `fauna model` tylko istnieją.
@@ -8263,7 +8263,7 @@ Siedliska z co najmniej 5 zwierzętami poza pasmem: sarna REAL buczyna niżowa �
 - *M4 (piętra):* palety runa z postacią wysoką (C3) i spisem połówek po przetwarzaniu końcowym; plany małych ficzerów z własną solą i obserwatorem spisu (wzór mrowisk FA8: `AnthillPlan` czysty, ficzer w kroku 10, `find` z planu i ze świata, spis zapisanych) dla dziupli, hub, grzybów; fenologia z `SeasonDates` dla runa i owoców.
 - *M6 (fauna):* `PolishAnimal` i `AnimalProfile` (gęstość rzeczywista, krotności generacji i spawnera, siedliska z wagami, grupy, ucieczka) dla kolejnych gatunków; `FaunaSpawner` i spawn przy generacji poza limitem wanilii; archetypy `tools/fauna` (czworonóg, mały ssak, ptak) i synteza `tools/sound` z `checkArt` / `checkSound`; `ForestAlarm` jako wspólny język ostrzeżeń; gametest `fauna` z trybami `model`, `behaviour`, `sound` i spisem według siedlisk (`-Psites=habitats`) jako kryterium gęstości każdego nowego gatunku; profil gatunku do JSON (plan §6 docs/01) dopiero, gdy gatunków będzie więcej niż kilka.
 
-**Lista „Do kroku porządkowego”** (stan po FA9): wpisy DP-1 … DP-202; 10 usuniętych jako zrobione, 5 przekreślonych albo zamkniętych w tabeli (DP-5, DP-7, DP-34, DP-127, DP-129), w FA9 domknięte przebiegami DP-103 (`vegetation`, `present_day`) i DP-173 (`vanilla_forests -Poptimization`; dopiski w tabeli), DP-97 częściowo (`ecotones` i `present_day` z jaskiniami; zostają `cover` i lawa Y −10 … −1); reszta (185) otwarta, w tym znane z przebiegu zbiorczego DP-126 (B3-2), DP-128, DP-139, DP-144, DP-151, DP-154 (B3-1). FA9 nie dodaje nowych wpisów.
+**Lista „Do kroku porządkowego”** (stan po FA9): wpisy DP-1 … DP-202; 10 usuniętych jako zrobione, 5 przekreślonych albo zamkniętych w tabeli (DP-5, DP-7, DP-34, DP-127, DP-129), w FA9 domknięte przebiegami DP-103 (`vegetation`, `present_day`) i DP-173 (`vanilla_forests -Poptimization`; dopiski w tabeli), DP-97 częściowo (`ecotones` i `present_day` z jaskiniami; zostają `cover` i lawa Y −10 … −1); reszta (185) otwarta, w tym znane z przebiegu zbiorczego DP-126 (B3-2), DP-128, DP-139, DP-144, DP-151, DP-154 (B3-1). FA9 nie dodaje nowych wpisów. Przegląd FA9 (runda 1) dopisał DP-203 … DP-206 i dopisek w DP-180; runda 2 nie dodaje nowych wpisów.
 
 **Do sprawdzenia w grze** (zbiorcza lista z FA1–FA8, 57 punktów, z miejscami przez `/polishforests find …`, `fauna`, `here`, `list`): `docs/wycinek/v17/do-sprawdzenia-w-grze.md`, paczka `Polish-Forests-0.3.0-dev.32.mrpack`; do strony FA10.
 
@@ -8294,3 +8294,19 @@ Baza rundy: `fcc8235` (koniec FA9). Przebiegi według `python tools/dev/test_pla
 **Przebiegi rundy** (`build/fa9r1_<nazwa>.out`): `run-tests --reuse fastTest` PASS; klasy `RegistrySnapshotTest`, `MixinTargetsTest`, `FaunaModelTest`, `FaunaProfileTest`, `PerformanceThresholdsTest` EXIT 0; `checkDatagen` EXIT 0; `determinism -PdeterminismSpawnMobs` EXIT 0 (wyżej); pełny `tools/dev/run-tests test` PASS (2326 s, drzewo `60060a3a826a` = kod końcowy rundy, przed dopisaniem tego wyniku do dokumentów; 750 testów, 4 pominięte, 0 błędów). Pominięte z planu `--end`: spis `fauna` (4 h 36 min w FA9) i `fauna -Psites=habitats` — zmiana w `entity/` to tylko puste poza `determinism` pole obserwatora, bez zmiany spawnu, gęstości i zachowania, a `determinism -PdeterminismSpawnMobs` przeszedł przez ten kod; `fauna -Psites=model`, `checkArt` i `probes` — model, renderer, zasoby i mixiny renderu bez zmian. KFA-1: bez nowych soli, enumów, bloków i pól zapisu (migawka rejestru bez zmian). KFA-2: wyżej, także ze spawnem przy generacji.
 
 **Do sprawdzenia w grze:** punkt 57 w `docs/wycinek/v17/do-sprawdzenia-w-grze.md` (dwa światy z tym samym ziarnem, te same zwierzęta z generacji; lista ma teraz 58 punktów).
+
+## Runda 2 poprawek po przeglądzie FA9 (2026-11-25, bez recenzji wizualnej)
+
+Baza rundy: `f0bba89` (koniec rundy 1). Przegląd nie zgłosił spraw „blocking” ani „major”; zgłosił 6 drobnych, tych samych co w rundzie 1 (sprawdzone ponownie w kodzie i dokumentach, wszystkie prawdziwe, żadna nie jest fałszywym alarmem; według progu z 2026-10-21 bez poprawek kodu). Wszystkie były już na liście „Do kroku porządkowego” albo w G.72; runda tylko dopisuje odsyłacze w „Stan po FA9”, o które prosiły wskazówki przeglądu:
+- Kryterium „`determinism` z C2ME w limitach G.33 O2-i” (`docs/00` G.72, B3-1): bez zmian, czeka na decyzję użytkownika.
+- DP-180: w „Stan po FA9” przy KFA-3 dopisano, że spis miejsc bez SS nie szedł i wpis zostaje otwarty (spis `fauna -PnoSeasons` w FA10 albo w kroku porządkowym).
+- DP-203 (`JayTrials.java` ok. linii 402: czyszczenie zwierząt przed łańcuchem bezpośrednim a tryb łączony `-Psites=census,habitats`; przyczyna FA9-m bez liczników): wpis bez zmian.
+- DP-204 (`FaunaHabitatCensus`, `SETTLE` 400 ticków: kalibracja generacji, nie równowaga spawnera): zastrzeżenie było przy B3-3; teraz także przy KFA-5 w „Stan po FA9”.
+- DP-205 (`UiAndCommandsClientGameTest` ok. linii 290, `tp @a %d.5 …` dla ujemnych współrzędnych): wpis bez zmian.
+- DP-206 (przedłużenie FA9-j nie zadziałało w powtórkach): wpis bez zmian.
+
+W „Stan po FA9” poprawiono też zdanie o liście „Do kroku porządkowego” („FA9 nie dodaje nowych wpisów”): odsyłacz do DP-203 … DP-206 z rundy 1.
+
+**Przebiegi rundy.** Zmienione tylko dokumenty; `python tools/dev/test_plan.py f0bba89` nie wypisuje gametestów. Pełny `tools/dev/run-tests test` na drzewie rundy (wynik w podsumowaniu commita i w `handoff/FA9/results.md`). Czekanie na grę użytkownika: w `build/fa9r2_waits.log`.
+
+**Do sprawdzenia w grze:** bez nowych punktów (runda zmienia tylko dokumenty); lista `docs/wycinek/v17/do-sprawdzenia-w-grze.md` bez zmian (58 punktów).
