@@ -45,7 +45,8 @@ import pl.polishforests.worldgen.habitat.HabitatBiome;
  * heightmap {@code MOTION_BLOCKING} within {@value JayGeometry#LOCAL_RADIUS} blocks: under it when the top of the hitbox
  * is below, {@link JayGeometry#underCanopy}) and against its own column ({@link #flightPlace}: under its crown, in a gap
  * between the crowns, over its leaves taking off or landing, over the understory, over a crown in the canopy layer), and how
- * many are stuck in blocks ({@link #stuck}). Pass: at least {@value #MIN_FLIGHT_SAMPLES} flight samples, at least
+ * many are stuck in blocks ({@link #stuck}). Pass: at least {@value #MIN_FLIGHT_SAMPLES} flight samples (step FA9: up to
+ * {@value #LIFE_EXTENSIONS} more rounds of {@value #LIFE_TICKS} ticks while there are fewer), at least
  * {@value #UNDER_CANOPY_SHARE} of them under the local canopy top, at most {@value #OVER_CROWN_SHARE} of them over a crown
  * in the canopy layer (the local measure alone counts a flight over a lower crown beside taller ones as under the canopy),
  * some perched samples (branch or leaves), some on the ground, none stuck.
@@ -68,6 +69,12 @@ final class JayTrials {
 	static final int LIFE_TICKS = 2400;
 	static final int LIFE_SAMPLE = 5;
 	static final int MIN_FLIGHT_SAMPLES = 50;
+	/**
+	 * Step FA9: how many more {@value #LIFE_TICKS}-tick rounds the trial samples while it has fewer than
+	 * {@value #MIN_FLIGHT_SAMPLES} flight samples (the count of one round varied 30-252 between runs at the same place; the
+	 * thresholds of the shares stay the same, only the sample grows).
+	 */
+	static final int LIFE_EXTENSIONS = 2;
 	static final double UNDER_CANOPY_SHARE = 0.9;
 	/** Round 1 of the FA6 review: the feet at most this high over the leaves of the column count as taking off or landing. */
 	static final double LOW_OVER = 1.5;
@@ -81,6 +88,8 @@ final class JayTrials {
 	static final int RUN_TICKS = 200;
 	static final int ALARM_NEAR = 10;
 	static final int ALARM_FAR = 40;
+	/** Step FA9: the animals of the mod within this many blocks (horizontal) of the player are removed before the direct chain. */
+	static final int ISOLATION = 96;
 	private static final boolean REPORT_ONLY = Boolean.getBoolean("polishforests.timings.reportOnly");
 
 	private final ClientGameTestContext context;
@@ -250,7 +259,11 @@ final class JayTrials {
 		// the local canopy top: <4, 4-8, 8-16, 16+ blocks
 		int[] depth = new int[4];
 		List<String> stuck = new ArrayList<>();
-		for (int t = 0; t < LIFE_TICKS; t += LIFE_SAMPLE) {
+		int ticks = LIFE_TICKS;
+		for (int t = 0; t < ticks; t += LIFE_SAMPLE) {
+			if (t + LIFE_SAMPLE >= ticks && flight[0] < MIN_FLIGHT_SAMPLES && ticks < LIFE_TICKS * (1 + LIFE_EXTENSIONS)) {
+				ticks += LIFE_TICKS;   // step FA9: too few flight samples yet, one more round
+			}
 			context.waitTicks(LIFE_SAMPLE);
 			sp.getServer().runOnServer(s -> {
 				ServerLevel level = s.overworld();
@@ -307,7 +320,7 @@ final class JayTrials {
 				+ " them taking off or landing, at most %.1f blocks over them, %.1f%%; higher, over the understory %.0f+ blocks under the local"
 				+ " canopy top, %.1f%%; over a crown in the canopy layer %.1f%%, threshold %.0f%%; these two by the depth of the top of the"
 				+ " hitbox under the local canopy top <4 / 4-8 / 8-16 / 16+ blocks %s); perched"
-				+ " %d, stuck %d; %s%s%s", label, x, z, LIFE_COUNT, alive, LIFE_TICKS, LIFE_SAMPLE, where, flight[0], 100 * under,
+				+ " %d, stuck %d; %s%s%s", label, x, z, LIFE_COUNT, alive, ticks, LIFE_SAMPLE, where, flight[0], 100 * under,
 				100 * UNDER_CANOPY_SHARE, 100.0 * flight[2] / n, 100.0 * flight[3] / n, places, 100.0 * places.getOrDefault("crown", 0) / n,
 				100.0 * places.getOrDefault("gap", 0) / n, 100.0 * overLeaves / n, LOW_OVER, 100.0 * places.getOrDefault("low", 0) / n,
 				CANOPY_LAYER, 100.0 * places.getOrDefault("understory", 0) / n, 100 * overShare, 100 * OVER_CROWN_SHARE,
@@ -381,6 +394,12 @@ final class JayTrials {
 		sp.getServer().runOnServer(s -> {
 			ServerLevel level = s.overworld();
 			ServerPlayer p = level.players().getFirst();
+			// Step FA9: the animals of the mod around are removed first, so that only the screech can alarm the trial animals
+			// (in one run of 15 the far roe deer reacted although the screech is heard only 32 blocks away, most likely to the
+			// bark of an animal of the spawners that heard the screech and fled).
+			List<Entity> around = level.getEntities((Entity) null, p.getBoundingBox().inflate(ISOLATION, 64, ISOLATION),
+					e -> e instanceof PolishAnimal<?>);
+			around.forEach(Entity::discard);
 			EurasianJay j = spawn(level, FaunaCensus.trialSpot(level, ModEntities.eurasianJay(), p.getBlockX() + 4, p.getBlockZ() + 4));
 			animals.add(j);
 			int jx = j.getBlockX();

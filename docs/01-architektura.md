@@ -106,6 +106,8 @@ Podszyt, runo z geofitami wiosennymi, warstwa mchów, ściółka z wanilijnym `l
 
 Grzyby jadalne i trujące pojawiają się zależnie od gatunku drzewa w pobliżu (mikoryza), podsezonu, niedawnego deszczu i temperatury. Mają efekty po zjedzeniu. Owoce krzewinek i krzewów są stanami bloków zależnymi od pory roku.
 
+**Stan po pionowym wycinku (FA9, 2026-11-25).** Z planu lasu działa w świecie „Polska” (obie skale, tryby N i D) i w „Default + Polish Forests”: mapa wydzieleń (`worldgen/tree/StandMap`), planer drzew `TreeShapePlan` z pniami `TrunkBlock` (promień 1–7 px, 15 gatunków z własnym drewnem P2), liście gatunków z kolorami pór roku, 18 typów lasu z drzewostanem planera, skrajami i mieszaniem par (`ForestBlend`, F1–F7), runo, podszyt, mchy i ściółka (V11–V13, L1), dwublokowe pokrzywa i kosaciec (C3), martwe drewno (F1), korzenie i nabiegi (I1), mrowiska rudnicy (FA8) oraz wyroby z drewna i łodzie każdego gatunku (FA7, FA8). Normy przyrodnicze sprawdza karta norm z gry (`docs/wycinek/karta-norm-v17.md`). Nie ma jeszcze dynamiki lasu (wzrost, sukcesja, wiatrołomy), grzybów i owoców sezonowych; to zakres M3 i M4.
+
 ## 6. Fauna
 
 - **Modele**: GeckoLib; zasoby `.geo.json` i `.animation.json` generowane skryptem z parametrycznego opisu gatunku, dopracowywane w Blockbench.
@@ -113,6 +115,13 @@ Grzyby jadalne i trujące pojawiają się zależnie od gatunku drzewa w pobliżu
 - **Dane gatunków w JSON**: morfologia, paleta, profil AI, zagęszczenie na km², siedliska, kalendarz. Poprawki przyrodnicze nie wymagają zmian kodu.
 - **Spawn w trzech warstwach**: populacja przy generacji chunka, własne spawnery per gildia z zagęszczeniami z raportu 07, domy jako bloki z BlockEntity (gawra, nora, żeremie, gniazdo) z rejestrem w `SavedData`.
 - **Kolejność gatunków**: sarna jako gatunek testowy, potem dzik, jeleń, wilk, bóbr, bocian biały; dalej reszta T1 z raportu 07.
+
+**Stan po pionowym wycinku (FA1–FA9, 2026-11-25).** Pięć gatunków: sarna, dzik, wiewiórka i sójka jako encje moda (`entity/roedeer`, `wildboar`, `squirrel`, `jay`, wspólna baza `entity/base`: `PolishAnimal`, `AnimalProfile`, rytm dnia, ucieczka, wataha, alarm lasu `ForestAlarm`) oraz żaba trawna jako odmiana żaby wanilii (`polishforests:common_frog`). Odstępstwa od planu wyżej:
+- modele i animacje GeckoLib z generatora `tools/fauna` (Python: archetypy czworonoga, małego ssaka i ptaka, tekstury, UV, walidator, `checkArt`), bez ręcznej pracy w Blockbench;
+- profil gatunku w Javie (`AnimalProfile`: gęstość rzeczywista, krotności generacji i spawnera, siedliska z wagami, grupy, ucieczka), nie w JSON; ruch po drzewach wiewiórki i lot sójki to własne tryby (`TreeMotion`, `JayFlight`), nie zadania SmartBrainLib;
+- spawn w dwóch warstwach: przy generacji chunka i własny spawner fauny (`entity/spawn/FaunaSpawner`, `FrogSpawner`, siedlisko z biomu kolumny `FaunaHabitat`), poza listami spawnów biomów i limitem `CREATURE` wanilii (CP-D.3: wilk, lis, królik zostają); bez domów (`SavedData`);
+- reguły gry `polishforests:forest_fauna`, `boar_rooting` (`FaunaRules`) i `forest_ambience`; pejzaż dźwiękowy (`sound/ForestAmbience`, głosy według biomu, podsezonu i pory) z dźwiękami z generatora `tools/sound` (CC BY 4.0);
+- gęstość ×20–50 rzeczywistej (PW-15 (b)), spis według siedlisk w gametescie `fauna -Psites=habitats` (KFA-5, „Stan po FA9” w `docs/04`).
 
 ## 7. Pory roku
 
@@ -135,6 +144,8 @@ Zrobione w kamieniu milowym M0: interfejs `SeasonProvider`, własny kalendarz i 
 
 **Pionowy wycinek po M2 (decyzja P2, 2026-10-05).** Po zamknięciu M2, zanim M3–M7 poszerzą zakres na całą Polskę, powstaje jeden kompletny las, np. grąd i bór świeży: drzewa, runo, martwe drewno i kilka zwierząt. Wycinek bierze po kawałku z M3, M4 i M6 i sprawdza w grze, czy warstwy do siebie pasują; pozostałe siedliska i gatunki dochodzą potem w kolejnych kamieniach. **Stan 2026-10-15:** plan `docs/04-pionowy-wycinek.md` zaakceptowany (CP-0, decyzje w `docs/00` G), krok V0 (przygotowanie) zrobiony: stałe miejsca wycinka, gametest `slice`, baza pomiarowa M2 (tag `m2-baseline-r1` po rundzie 1 poprawek V0, ze stałymi kamerami `slice_cameras.txt`), puste pakiety `block/`, `worldgen/tree/` i `entity/`. **2026-10-16:** krok V1 (`tools/art`, pierwsze tekstury) i V2 (cienkie pnie `TrunkBlock`, 10 bloków, migawka rejestru, tablica próbek w grze) zrobione.
 
+**Stan wycinka 2026-11-25 (po FA9).** Zrobione części 1–5 planu `docs/04-pionowy-wycinek.md`: V0–V13 (drzewa, runo, pory roku, karta norm, optymalizacje O1–O2), punkty kontrolne CP-A … CP-D, P1–P2 (pnie, drewno), W1 (lasy moda w świecie wanilii), F1–F7 (18 typów lasu), TT1–TT7 (Tatry), C1–C3 (poprawki po CP-D), FA1–FA9 (fauna, dźwięk, wyroby z drewna, łodzie, mrowiska, przebieg zbiorczy testów i karta norm końcowa). Zostaje FA10: pomiar zbiorczy wydajności, MSPT fauny i strona zamknięcia wycinka; potem decyzje z `docs/00` G.72 i kamienie M3, M4 i M6 w pełnym zakresie (co uogólnić: „Stan po FA9”).
+
 ## 9. Struktura kodu
 
 ```
@@ -150,9 +161,10 @@ pl.polishforests
 │   └── feature/                dyspozytory kroku 9 (drzewostan, martwe drewno, podszyt, strefy nadwodne, runo, rośliny wodne), czyste plany (plan/), palety (config/), filtr siedliska, szybkie drzewa
 ├── command/                    /polishforests: cele find, find biome/zone (plany szukania, siatka komórek, transekty), opis siedliska kolumny (here, F3)
 ├── block/                      pnie (od V2: TrunkBlock, TreeTrunk, ModBlocks, RegistrySnapshot), liście, runo, grzyby, gleby
-├── entity/                     zwierzęta, AI, spawnery, domy
+├── entity/                     zwierzęta: base/ (PolishAnimal, AnimalProfile, rytm, ucieczka, alarm), roedeer/, wildboar/, squirrel/, jay/, spawn/ (spawner fauny i żab, reguły gry), łodzie drewna moda
+├── sound/                      dźwięki moda, pejzaż dźwiękowy lasu (ForestAmbience, reguła forest_ambience)
 └── client/                     rendery, kolory, HUD, wpis F3 siedliska, datagen (wynik w src/main/generated)
-tools/                          skrypty Python: art/ (tekstury bloków: biblioteka, przepisy gatunków, palety, lint, checkArt, overrides/ na ręczne poprawki), logo/, paczka .mrpack, dev/run-tests
+tools/                          skrypty Python: art/ (tekstury bloków: biblioteka, przepisy gatunków, palety, lint, checkArt, overrides/ na ręczne poprawki), fauna/ (modele, animacje i tekstury zwierząt), sound/ (synteza dźwięków, checkSound), norms/ (karta norm), logo/, paczka .mrpack, dev/run-tests i test_plan
 src/main/resources/assets/polishforests/textures/   tylko pliki z tools/art (checkArt); zasoby na CC BY 4.0 (LICENSE-assets, CREDITS.md)
 ```
 

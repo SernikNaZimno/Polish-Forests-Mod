@@ -1604,3 +1604,51 @@ Krok: `docs/04-pionowy-wycinek.md` §3 „FA8”, „Projekt FA8” (etap 1, FA8
 | FA8-r | Próba stojących w spisie (przegląd, runda 2) | Próba chunków domowych idzie miejsce po miejscu (osobne zadania serwera, między nimi serwer może odładować chunki), a spis zapisanych kopców czyta chunk niewczytany w pełni w stanie ficzerów (kopiec już jest), bez generowania jego sąsiadów. W rundzie 1 cała próba w jednym zadaniu serwera i spis zapisanych na pełnych chunkach poprzedziły `OutOfMemoryError` w następnych sprawdzeniach `habitats` (REAL); w rundzie 2 przebieg bez błędu pamięci (REAL: po próbie do 24 tys. wczytanych chunków i 7,6 GB z 8 GB sterty, głównie z wcześniejszych spisów; liczba chunków wracała do stanu sprzed próby w 10 tickach) |
 | FA8 (odstępstwo) | Gęstość ×5 | 0,65 zamiast 0,13 kopca na ha borów, jawnie w karcie §6 |
 | FA8 (pytanie) | Siedlisko w jasnych borach (FA8-i′) | Rekomendacja: zostawić (bez tego 0,01 kopca na ha, kopiec raz na ok. 100 ha). Wariant dosłowny G.62-g „0,65 na ha skrajów i luk”: same skraje i luki, ok. 0,01 kopca na ha borów |
+
+### G.71 Drobne wybory kroku FA9 (domyślne, do potwierdzenia; 2026-11-20 … 2026-11-25)
+
+Krok: `docs/04-pionowy-wycinek.md` §3 „FA9”, „Projekt FA9” (etap 1: FA9-a … FA9-i) i „Stan po FA9” (etap 2: FA9-j … FA9-m). Przebieg zbiorczy testów od `b03e6a1` (przed FA1), karta norm końcowa, spis fauny zbiorczy, dokumentacja wycinka; bez pomiarów czasu (FA10).
+
+| # | Wybór | Wartość i powód |
+|---|---|---|
+| FA9-a | `find anthill` w gametescie `ui` | Sprawdzenie idzie drogą gracza: przy `found_planned` teleport gracza na pozycję planu, 60 ticków, ponowne `find anthill` z nowego miejsca; `found` musi mieć warstwę mrowiska w podanym bloku albo do 3 bloków niżej (najwyżej 8 rund). Bez wymuszania chunka siłą |
+| FA9-b | Spis fauny według siedlisk | `-Pgametest=fauna -Psites=habitats` (`FaunaHabitatCensus`, raport `build/fauna/habitats.txt`): każdy biom z wagą > 0 któregoś gatunku, w każdym świecie spisu, 400 ticków postoju, kwadrat 192 × 192 bloki; krotność wobec rzeczywistej gęstości × waga, werdykt `in` (×20–50), `out`, `few` (< 5 zwierząt). Sam raport, bez porażek |
+| FA9-c | Porównanie kart norm | `tools/norms/table.py --compare <starsza.csv>`: klucz skala, tryb, powierzchnia, miara, część; lista nowych i znikłych ✗ |
+| FA9-d | Licencje tekstur liczonych w kliencie | `CREDITS.md` i `LICENSE-assets`: deski, drzwi, klapy, półki, tabliczki i łodzie liczy klient z tekstur wanilii gracza, więc nie są plikami moda ani zasobami na CC BY 4.0 |
+| FA9-e | README | Opis celów `find` bez ich liczby (lista rośnie z krokami) |
+| FA9-f | Strażnik gry użytkownika w przebiegach | Procesy `EpicGamesLauncher`, `EpicWebHelper`, `EpicOnlineServices*` i nakładka `EOSOverlayRenderer-Win64-Shipping` bez procesu gry nie są grą (w rundzie 2 FA8 sama nakładka wstrzymała przebiegi na godziny); gra uruchomiona z Epic (np. Fortnite) dalej się liczy. **Do potwierdzenia przez użytkownika** |
+| FA9-g | Jeden `determinism` bez paczki | Przebieg wobec referencji sprzed FA8 z flagami kroku mrowisk zamyka uwagę FA8 i jest referencją dla przebiegu z C2ME |
+| FA9-h | Fauna bez Serene Seasons | Tylko próby zachowania (`-Psites=behaviour`) i dźwięku, bez drugiego pełnego spisu (gęstość nie zależy od kalendarza) |
+| FA9-i | `slice -Psites=planks` | Gametest mechaniki obszaru blocks (łodzie, wyroby FA7) w przebiegu zbiorczym |
+| FA9-j | Próba `life` sójki (etap 2) | Przy mniej niż 50 próbkach w locie po 2400 tickach próba zbiera dalej, najwyżej 2 dodatkowe rundy po 2400 ticków (`JayTrials.LIFE_EXTENSIONS`). Progi udziałów (≥ 90% pod okapem, ≤ 10% nad koroną) bez zmian; w jednej rundzie liczba próbek w locie wahała się 30–252 między przebiegami w tym samym miejscu, a przebieg bez SS w GAMEPLAY N miał 30 |
+| FA9-k | Karta norm końcowa (etap 2) | `docs/wycinek/karta-norm-v17.csv` i `.md` z przebiegu `slice -Psites=none` 2026-11-20 (kod FA8 po rundzie 2 = kod końcowy FA9; FA9 nie zmienia generacji) |
+| FA9-l | Spis fauny KFA-5 (etap 2) | Pasmo ×20–50 oceniane dla gatunku jako całości w skali i typie świata (zwierzęta / ha ważone wagą siedliska); siedliska z < 5 zwierzętami (`few`) tylko w raporcie. Wiewiórka i sójka ×13–20 (pod pasmem), sarna w „Default + Polish Forests” ×16,9 przy 6 zwierzętach: warianty w G.72 |
+| FA9-m | Łańcuch bezpośredni sójki (etap 2) | Przed łańcuchem bezpośrednim próba usuwa zwierzęta moda w promieniu 96 bloków od gracza (`JayTrials.ISOLATION`, jak scena MSPT): w 1 z 15 prób sarna 40 bloków od sójki zareagowała na szczek zwierzęcia spawnera (skrzek sięga 32 bloków). Progi bez zmian |
+
+### G.72 Otwarte warianty B3 i decyzje do potwierdzenia (zbiorczo, stan 2026-11-25, po FA9)
+
+Jedno miejsce na sprawy czekające na użytkownika po pionowym wycinku. Rekomendacja pierwsza; liczby z „Stan po FA9” i kroków źródłowych w `docs/04`.
+
+**Warianty B3 (wymagają wyboru).**
+
+| # | Sprawa | Warianty | Rekomendacja |
+|---|---|---|---|
+| B3-1 | `determinism` z C2ME poza limitami G.33 O2-i (DP-128, DP-139, DP-144, DP-151, DP-154; od F1/F5/F6/F7/TT1, te same liczby od C1): teren różny w 34 z 48 obszarów, najwięcej 3259 bloków (inna jaskinia pod buczyną GAMEPLAY), poza tym 1–23 bloki; dekoracja najwięcej 14 091 kolumn na obszar, wszystko pod ziemią (sculk, rudy, komnata prób, jaskinie pod masywami) | (a) przyjąć jako tolerancję J1-q z listą znanych obszarów w teście (świat bez zmian, test nadal łapie nowe obszary); (b) liczyć limit dekoracji tylko w oknie nad gruntem, a pod ziemią sam raport (zmiana pomiaru, ok. 0,5 dnia); (c) osobny krok jaskiń: zbadać, który carver albo szum zależy od C2ME (ok. 1–2 dni, wynik niepewny, bo to optymalizacje C2ME) | (b) + (a) dla DP-128 (teren) |
+| B3-2 | `present_day` GAMEPLAY: wieś (4089, −3980), 11 kolumn podłogi wisi do 3 bloków nad jaskinią (DP-126, od J1; z `-Pcaves=off` PASS) | (a) przyjąć jako zachowanie wanilii (carvery wanilii też wycinają pod wsiami) i w teście tylko raport wiszących podłóg nad powietrzem jaskini; (b) wypełnić pustkę pod podłogą wsi przy jaskiniach (zmiana terenu, nowy krok, nowe chunki); (c) carvery bez jaskiń pod pudełkami struktur (odstępstwo od wanilii, zmienia jaskinie) | (a) |
+| B3-3 | Gęstość wiewiórki i sójki w spisie według siedlisk ×13,4–19,9 rzeczywistej (pasmo KFA-5 ×20–50); profile mają generację ×20 i spawner ×24, czyli dolną granicę pasma | (a) generacja i spawner ×30 dla obu gatunków (zmiana dwóch liczb w profilach, tylko encje, bez bloków; ponowny spis `habitats` i `fauna`, ok. 5 h maszyny); (b) przyjąć (×20 było celem, a spis po 400 tickach traci zwierzęta, które odeszły z kolumn biomu); (c) wyższy limit `AMBIENT` przy graczu (10 → 14), żeby spawner dopełniał | (a) w FA10 albo w kroku porządkowym |
+| B3-4 | Sarna w „Default + Polish Forests” ×16,9 (6 zwierząt na 6,5 ha) | (a) przyjąć: próba za mała (przedział losowy obejmuje pasmo); (b) dłuższy spis W1 (więcej miejsc) w FA10 | (a), sprawdzić przy B3-3 (a) |
+| B3-5 | C3-c: dwublokowe byliny pod nisko zawieszoną koroną; N8 łęgu wiązowo-jesionowego REAL 2–3 punkty niżej, 4 nowe ✗ karty (gosp. N8.herbs 39,9 / 39,1 przy 40, N8.herbs_spring 54,25 / 55,06 przy 56) | (a) przyjąć (tuż pod progiem, wygląd w grze); (b) dolna połowa pod liśćmi albo pniem zamienia się w postać jednoblokową przy generacji i w `updateShape` (karta jak przed C3, ok. 0,5 dnia) | (b) |
+| B3-6 | C3: cel §4.6 przy małym strumieniu w trybie D GAMEPLAY 58,3% (próg 60%; tryb N spełniony) | (a) więcej postaci wysokiej w palecie OlJ; (b) wysoka pokrzywa w strefach brzegu i szpalerach trybu D; (c) przyjąć | (c) |
+
+**Decyzje domyślne do potwierdzenia (bez wariantów do wyboru).**
+
+| # | Sprawa | Stan |
+|---|---|---|
+| P-1 | Drobne wybory G.58–G.71 i G.V8 (kroki C1–C3, FA1–FA9, tor sarny V8) | domyślne; G.27–G.56 przyjęte przy CP-D (CP-D.4) |
+| P-2 | G.62-c: wyroby z drewna i łodzie dla wszystkich 15 gatunków moda (CP-D.2 wymieniał sześć) | rekomendacja: zostawić 15; zawężenie zmienia rejestr, więc tylko przed wydaniem |
+| P-3 | G.62-g / FA8: gęstość mrowisk ×5 (0,65 kopca na ha borów zamiast 0,13) i siedlisko w jasnych borach (FA8-i′) | rekomendacja: zostawić (bez jasnych borów 0,01 kopca na ha) |
+| P-4 | C1-c i C1-i: reguła spisu N5 na powierzchniach limbowych (granica lasu, potoki i wychodnie skalne) | zmiana pomiaru, nie normy; karta końcowa limbowej świerczyny 78 ✓ / 34 ≈ / 0 ✗ |
+| P-5 | CP-D.5: liczby progu górskiego strażnika z jaskiniami (REAL ≥ 0,35 ×, GAMEPLAY ≥ 0,45 × M2) i REAL `lowland_beech_1` 0,698 | sprawdzenie w pomiarze zbiorczym FA10 |
+| P-6 | FA9-f (strażnik gry bez procesów samego launchera Epic), FA9-j (dłuższa próba lotu sójki) i FA9-m (próba łańcucha skrzeku bez zwierząt spawnera) | domyślne |
+
+Zamknięte w FA9: TT7-q (karta norm powierzchni limbowych GAMEPLAY jest w karcie końcowej `docs/wycinek/karta-norm-v17.md`), zaległe przebiegi rundy 2 przeglądu FA8.
