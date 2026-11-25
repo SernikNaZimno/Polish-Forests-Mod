@@ -98,9 +98,25 @@ import pl.polishforests.worldgen.chunk.PolandScale;
  * blocks ({@link TerrainBlocks}): it counts the differing terrain blocks from the block-by-block files
  * {@code <label>_terrain.txt.gz}, which every run writes next to its hashes. Runs when {@code -Dpolishforests.gametest} is
  * {@code determinism} or {@code all}; {@code -Pscales} limits the scales.
+ *
+ * <p>The worlds of the test run with {@code gamerule spawn_mobs false}, which also turns off the mod's spawn at
+ * generation ({@code FaunaSpawner.spawnAtGeneration}, {@code FaunaRules.spawning}). Review of FA9, round 1 (DP-178): with
+ * {@code -PdeterminismSpawnMobs} the rule stays on (only {@code polishforests:boar_rooting} goes off, so that no wild boar
+ * near the player changes blocks while the areas are generated), and every animal placed at generation is recorded through
+ * {@code FaunaSpawner.GENERATION_OBSERVER} (chunk, type, position, yaw, young). Per area the animals of the area's chunks
+ * give a hash: the two fixed-order worlds must agree exactly, the reversed and free orders are a report; the lines go to
+ * {@code <label>_fauna.txt} next to the hashes, and a run in which no animal was placed fails (the check would be empty).
+ * With a reference of the same mod set written without the switch the block hashes must still match exactly: the spawn at
+ * generation changes no block.
  */
 public final class DeterminismClientGameTest implements FabricClientGameTest {
 	private static final String SEED = "20260927";
+	/** Review of FA9, round 1 (DP-178): the spawn rule on and the animals placed at generation compared per area. */
+	private static final boolean SPAWN_MOBS = Boolean.getBoolean("polishforests.determinism.spawnMobs");
+	/** Lines of the comparison of the animals placed at generation ({@code -PdeterminismSpawnMobs}; test thread only). */
+	private static final List<String> FAUNA_LINES = new ArrayList<>();
+	/** Animals placed at generation in the areas of the fixed-order world 1, over all scales and modes. */
+	private static long faunaTotal;
 	/**
 	 * North-west corners (blocks) of the areas: the river and Beskids areas of the stages test and (step V9) the sites
 	 * oak_hornbeam_1 and fresh_pine_1 of the vertical slice ({@code slice_sites.txt}), where the procedural trees stand;
@@ -198,6 +214,8 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 		List<String> out = new ArrayList<>();
 		List<String> failures = new ArrayList<>();
 		UNSUPPORTED_CLIMBERS.set(0);
+		FAUNA_LINES.clear();
+		faunaTotal = 0;
 		String dir = System.getProperty("polishforests.determinism.out", "");
 		Path blocksFile = dir.isBlank() ? null : Path.of(dir, TerrainBlocks.blocksFileName(label));
 		Path windowFile = dir.isBlank() ? null : Path.of(dir, label + "_window_diff.txt");
@@ -214,8 +232,19 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 				Files.createDirectories(file.getParent());
 				Files.write(file, out, StandardCharsets.UTF_8);
 				PolishForests.LOG.info("[determinism] column hashes written to {}", file);
+				if (SPAWN_MOBS) {
+					Path fauna = Path.of(dir, label + "_fauna.txt");
+					Files.write(fauna, FAUNA_LINES, StandardCharsets.UTF_8);
+					PolishForests.LOG.info("[determinism] animals placed at generation written to {}", fauna);
+				}
 			} catch (IOException e) {
 				throw new AssertionError("Cannot write the determinism file", e);
+			}
+		}
+		if (SPAWN_MOBS) {
+			PolishForests.LOG.info("[determinism] animals placed at generation in the areas of world 1: {}", faunaTotal);
+			if (faunaTotal == 0) {
+				failures.add("-PdeterminismSpawnMobs: no animal placed at generation in any area (DP-178 check empty)");
 			}
 		}
 		String reference = System.getProperty("polishforests.determinism.reference", "");
@@ -244,6 +273,7 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 			for (boolean presentDay : new boolean[] {false, true}) {
 				String name = scale.getSerializedName() + (presentDay ? " present_day" : " natural");
 				Area[][] worlds = new Area[WORLDS][];
+				FaunaArea[][] fauna = new FaunaArea[WORLDS][areas.length];
 				char[][] zones = new char[areas.length][];
 				String fileKey = scale.getSerializedName() + "_" + (presentDay ? "present_day" : "natural");
 				// Step C3 (KC-3, -PdeterminismStepHerbs): the columns whose planned plant is the nettle or the yellow iris,
@@ -264,6 +294,15 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 						pl.polishforests.worldgen.feature.ModFeatures.ANTHILL_PLANS = (hx, hz) -> anthillColumns.add(
 								net.minecraft.world.level.ChunkPos.pack(hx, hz));
 					}
+					// DP-178 (-PdeterminismSpawnMobs): the animals placed at generation in this world, by chunk.
+					Map<Long, List<String>> placed = new java.util.concurrent.ConcurrentHashMap<>();
+					if (SPAWN_MOBS) {
+						pl.polishforests.entity.spawn.FaunaSpawner.GENERATION_OBSERVER = (chunk, type, x, y, z, yaw, young) ->
+								placed.computeIfAbsent(net.minecraft.world.level.ChunkPos.pack(chunk.x(), chunk.z()),
+										k -> Collections.synchronizedList(new ArrayList<>())).add(
+										net.minecraft.world.entity.EntityType.getKey(type) + " " + x + " " + y + " " + z + " " + yaw
+												+ (young ? " young" : ""));
+					}
 					Path deepFile = deepDir != null && (w == 0 || w == 2 || w == 3)
 							? deepDir.resolve(label + "_full_" + fileKey + "_w" + (w + 1) + ".txt.gz") : null;
 					BufferedWriter full;
@@ -274,7 +313,11 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 					}
 					try (TestSingleplayerContext sp = context.worldBuilder()
 							.adjustSettings(ui -> select(ui, preset, presentDay)).create()) {
-						sp.getServer().runCommand("gamerule spawn_mobs false");
+						if (SPAWN_MOBS) {
+							sp.getServer().runCommand("gamerule polishforests:boar_rooting false");
+						} else {
+							sp.getServer().runCommand("gamerule spawn_mobs false");
+						}
 						sp.getServer().runCommand("gamemode spectator @a");
 						long t0 = System.nanoTime();
 						worlds[w] = new Area[areas.length];
@@ -300,6 +343,9 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 								}
 							}
 							worlds[w][a] = sp.getServer().computeOnServer(s -> decorated(s.overworld(), ox, oz, terrain));
+							if (SPAWN_MOBS) {
+								fauna[w][a] = FaunaArea.of(placed, ox, oz);
+							}
 							if (w == 0) {
 								int ai = a;
 								zones[a] = sp.getServer().computeOnServer(s -> stepZones(s.overworld(), ox, oz, worlds[0][ai]));
@@ -317,6 +363,7 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 						PolishForests.LOG.info(String.format(Locale.ROOT, "[determinism] %s: world %d (%s order) generated in %.1f s",
 								name, w + 1, reversed ? "reversed" : fixedOrder ? "fixed" : "free", (System.nanoTime() - t0) / 1e9));
 					} finally {
+						pl.polishforests.entity.spawn.FaunaSpawner.GENERATION_OBSERVER = null;
 						if (w == 0) {
 							pl.polishforests.worldgen.feature.ModFeatures.HERB_PLANS = null;
 							pl.polishforests.worldgen.feature.ModFeatures.ANTHILL_PLANS = null;
@@ -342,6 +389,9 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 					PolishForests.LOG.info("[determinism] {}", compare(name + " / " + AREA_NAMES[a] + ", fixed against free order "
 							+ "(terrain exactly, decoration report only)", worlds[0][a], worlds[2][a], Mode.REPORT, tolerance, corner,
 							windowDump, failures));
+					if (SPAWN_MOBS) {
+						compareFauna(name + " / " + AREA_NAMES[a], key, fauna, a, failures);
+					}
 					out.add("terrain " + key + " " + Long.toHexString(worlds[0][a].terrainHash()));
 					out.add("decorated " + key + " " + worlds[0][a].decoratedHex());
 					out.add(STEP_ZONE + key + " " + new String(zones[a]));
@@ -357,6 +407,75 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 	private static BufferedWriter gzipWriter(Path file) throws IOException {
 		Files.createDirectories(file.getParent());
 		return new BufferedWriter(new OutputStreamWriter(new GZIPOutputStream(Files.newOutputStream(file)), StandardCharsets.UTF_8));
+	}
+
+	/**
+	 * Review of FA9, round 1 (DP-178): the animals placed at generation in the 8 × 8 chunks of an area, as the entries of
+	 * {@code FaunaSpawner.GENERATION_OBSERVER} in chunk order (the entries of one chunk in the order of its spawn, which runs
+	 * on one thread), with their count and a 64-bit FNV-1a hash.
+	 */
+	private record FaunaArea(int count, long hash, List<String> entries) {
+		static FaunaArea of(Map<Long, List<String>> placed, int ox, int oz) {
+			List<String> entries = new ArrayList<>();
+			for (int cx = 0; cx < SIZE; cx++) {
+				for (int cz = 0; cz < SIZE; cz++) {
+					List<String> chunk = placed.get(net.minecraft.world.level.ChunkPos.pack(ox + cx, oz + cz));
+					if (chunk != null) {
+						synchronized (chunk) {
+							for (String e : chunk) {
+								entries.add((ox + cx) + "," + (oz + cz) + " " + e);
+							}
+						}
+					}
+				}
+			}
+			long h = 0xcbf29ce484222325L;
+			for (String e : entries) {
+				for (int i = 0; i < e.length(); i++) {
+					h = (h ^ e.charAt(i)) * 0x100000001b3L;
+				}
+				h = (h ^ '\n') * 0x100000001b3L;
+			}
+			return new FaunaArea(entries.size(), h, entries);
+		}
+
+		/** Entries of this area missing in the other one (at most {@code limit}). */
+		List<String> missingIn(FaunaArea other, int limit) {
+			java.util.Set<String> theirs = new java.util.HashSet<>(other.entries);
+			List<String> missing = new ArrayList<>();
+			for (String e : entries) {
+				if (!theirs.contains(e) && missing.size() < limit) {
+					missing.add(e);
+				}
+			}
+			return missing;
+		}
+	}
+
+	/**
+	 * DP-178: the animals placed at generation in area {@code a}: the two fixed-order worlds exactly (a difference fails), the
+	 * fixed against the reversed order and the two free-order worlds as a report (their decoration near chunk borders may
+	 * differ within the window limits, and the places of the spawn depend on the ground).
+	 */
+	private static void compareFauna(String name, String key, FaunaArea[][] fauna, int a, List<String> failures) {
+		FaunaArea w1 = fauna[0][a];
+		faunaTotal += w1.count();
+		String fixed = fauna[0][a].hash() == fauna[1][a].hash() ? "same" : "DIFFERENT";
+		String reversed = fauna[0][a].hash() == fauna[4][a].hash() ? "same" : "different";
+		String free = fauna[2][a].hash() == fauna[3][a].hash() ? "same" : "different";
+		String line = String.format(Locale.ROOT, "fauna %s animals %d/%d/%d/%d/%d hash %016x fixed %s reversed %s free %s", key,
+				fauna[0][a].count(), fauna[1][a].count(), fauna[2][a].count(), fauna[3][a].count(), fauna[4][a].count(), w1.hash(),
+				fixed, reversed, free);
+		FAUNA_LINES.add(line);
+		PolishForests.LOG.info("[determinism] {}: {}", name, line);
+		if (!fixed.equals("same")) {
+			failures.add(name + ": the animals placed at generation differ between the fixed-order worlds (only in world 1: "
+					+ w1.missingIn(fauna[1][a], 3) + "; only in world 2: " + fauna[1][a].missingIn(w1, 3) + ")");
+		}
+		if (!reversed.equals("same")) {
+			PolishForests.LOG.info("[determinism] {}: fixed against reversed order, only in fixed: {}; only in reversed: {}", name,
+					w1.missingIn(fauna[4][a], 5), fauna[4][a].missingIn(w1, 5));
+		}
 	}
 
 	private static BufferedReader gzipReader(Path file) throws IOException {

@@ -117,6 +117,18 @@ public final class FaunaSpawner {
 	/** Ground blocks of the places refused for {@link Reason#GROUND}, by id (for the census). */
 	public static final java.util.concurrent.ConcurrentHashMap<String, LongAdder> GROUND_REFUSED = new java.util.concurrent.ConcurrentHashMap<>();
 
+	/**
+	 * Review of FA9, round 1 (DP-178; test switch of the game test {@code determinism -PdeterminismSpawnMobs}): observer of
+	 * every animal placed by the spawn at generation, with the chunk being generated, the entity type, the position, the
+	 * yaw and whether it is young. Null outside that test; called on the generation threads (one chunk on one thread), so
+	 * the observer must be thread-safe.
+	 */
+	public interface GenerationObserver {
+		void placed(ChunkPos chunk, EntityType<?> type, double x, double y, double z, float yaw, boolean young);
+	}
+
+	public static volatile @Nullable GenerationObserver GENERATION_OBSERVER;
+
 	/** A species the spawners place: its entity type and its profile. */
 	public record Species(EntityType<? extends PolishAnimal<?>> type, AnimalProfile profile) {
 	}
@@ -517,6 +529,10 @@ public final class FaunaSpawner {
 			}
 			level.addFreshEntityWithPassengers(animal);
 			n++;
+			GenerationObserver observer = GENERATION_OBSERVER;
+			if (observer != null && reason == EntitySpawnReason.CHUNK_GENERATION && chunk != null) {
+				observer.placed(chunk, s.type(), at.x, at.y, at.z, animal.getYRot(), animal.isBaby());
+			}
 		}
 		return n;
 	}
