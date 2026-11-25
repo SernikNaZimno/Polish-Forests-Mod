@@ -1652,4 +1652,4 @@ Jedno miejsce na sprawy czekające na użytkownika po pionowym wycinku. Rekomend
 | P-5 | CP-D.5: liczby progu górskiego strażnika z jaskiniami (REAL ≥ 0,35 ×, GAMEPLAY ≥ 0,45 × M2) i REAL `lowland_beech_1` 0,698 | sprawdzenie w pomiarze zbiorczym FA10 |
 | P-6 | FA9-f (strażnik gry bez procesów samego launchera Epic), FA9-j (dłuższa próba lotu sójki) i FA9-m (próba łańcucha skrzeku bez zwierząt spawnera) | domyślne |
 
-Zamknięte w FA9: TT7-q (karta norm powierzchni limbowych GAMEPLAY jest w karcie końcowej `docs/wycinek/karta-norm-v17.md`), zaległe przebiegi rundy 2 przeglądu FA8.
+Zamknięte w FA9: TT7-q (karta norm powierzchni limbowych GAMEPLAY jest w karcie końcowej `docs/wycinek/karta-norm-v17.md`), zaległe przebiegi rundy 2 przeglądu FA8; w rundzie 1 przeglądu FA9 DP-178 (`determinism -PdeterminismSpawnMobs`: zwierzęta przy generacji w obu światach stałej kolejności identyczne w 48 z 48 obszarów, bloki identyczne z referencją; G.71 FA9-n, do potwierdzenia w P-1).

@@ -1,4 +1,4 @@
-# Do sprawdzenia w grze: zbiorcza lista kroków FA1–FA8 (fauna, dźwięk, drewno, łodzie, mrowiska)
+# Do sprawdzenia w grze: zbiorcza lista kroków FA1–FA8 i przeglądu FA9 (fauna, dźwięk, drewno, łodzie, mrowiska)
 
 Zebrane w kroku FA9 (`docs/04-pionowy-wycinek.md` „Projekt FA9”) z list „Do sprawdzenia w grze” w „Stan po FA1” … „Stan po FA8” i z rund poprawek. Gdzie runda zmieniła punkt, jest tu wersja po rundzie. Lista trafi na stronę zamknięcia wycinka (FA10). Miejsca wskazują komendy `/polishforests find …`, `fauna`, `here` i `list`, bez stałych współrzędnych (G.37 U-9). Jeśli nie podano inaczej: nowy świat „Polska” (skala rozgrywki, ustawienia domyślne), tryb twórczy z komendami. Wygląd ocenia tylko użytkownik (G.36 U-1).
 
@@ -84,6 +84,8 @@ Paczka: `build/distributions/Polish-Forests-0.3.0-dev.32.mrpack` (krok FA9; `./g
 55. W obu typach świata wilki, lisy i króliki nadal są w lasach (`/polishforests fauna 96`, linie wanilii).
 56. `/gamerule polishforests:forest_fauna false`, potem nowe chunki: zwierzęta moda się nie pojawiają, istniejące zostają, `/polishforests fauna` pisze, że reguła jest wyłączona.
 
+57. (Przegląd FA9, runda 1, DP-178.) Dwa nowe światy „Polska” (GAMEPLAY) z tym samym ziarnem: w każdym od razu `/polishforests find biome oak_hornbeam_forest`, teleport i `/polishforests fauna 64` przed upływem minuty. Liczba saren, dzików, wiewiórek i sójek z generacji jest w obu światach taka sama (różnić mogą się tylko zwierzęta spawnera, które dochodzą później).
+
 ## Paczka
 
-57. Paczka `Polish-Forests-0.3.0-dev.32.mrpack` importuje się w Modrinth App albo Prism Launcher (Minecraft 26.3, Fabric) i startuje bez błędów, z Serene Seasons i FallingTree (opcjonalny) z konfiguracją z paczki.
+58. Paczka `Polish-Forests-0.3.0-dev.32.mrpack` importuje się w Modrinth App albo Prism Launcher (Minecraft 26.3, Fabric) i startuje bez błędów, z Serene Seasons i FallingTree (opcjonalny) z konfiguracją z paczki.

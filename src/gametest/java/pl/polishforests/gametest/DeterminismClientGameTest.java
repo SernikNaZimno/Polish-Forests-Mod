@@ -101,8 +101,9 @@ import pl.polishforests.worldgen.chunk.PolandScale;
  *
  * <p>The worlds of the test run with {@code gamerule spawn_mobs false}, which also turns off the mod's spawn at
  * generation ({@code FaunaSpawner.spawnAtGeneration}, {@code FaunaRules.spawning}). Review of FA9, round 1 (DP-178): with
- * {@code -PdeterminismSpawnMobs} the rule stays on (only {@code polishforests:boar_rooting} goes off, so that no wild boar
- * near the player changes blocks while the areas are generated), and every animal placed at generation is recorded through
+ * {@code -PdeterminismSpawnMobs} the rule is turned on (the Fabric test world builder turns it off by itself; only
+ * {@code polishforests:boar_rooting} goes off, so that no wild boar near the player changes blocks while the areas are
+ * generated), and every animal placed at generation is recorded through
  * {@code FaunaSpawner.GENERATION_OBSERVER} (chunk, type, position, yaw, young). Per area the animals of the area's chunks
  * give a hash: the two fixed-order worlds must agree exactly, the reversed and free orders are a report; the lines go to
  * {@code <label>_fauna.txt} next to the hashes, and a run in which no animal was placed fails (the check would be empty).
@@ -314,6 +315,9 @@ public final class DeterminismClientGameTest implements FabricClientGameTest {
 					try (TestSingleplayerContext sp = context.worldBuilder()
 							.adjustSettings(ui -> select(ui, preset, presentDay)).create()) {
 						if (SPAWN_MOBS) {
+							// The consistent settings of the Fabric test world builder turn spawn_mobs off (FaunaCensus):
+							// without turning it on, the spawn at generation places nothing (first run of the round: 0 animals).
+							sp.getServer().runCommand("gamerule spawn_mobs true");
 							sp.getServer().runCommand("gamerule polishforests:boar_rooting false");
 						} else {
 							sp.getServer().runCommand("gamerule spawn_mobs false");
