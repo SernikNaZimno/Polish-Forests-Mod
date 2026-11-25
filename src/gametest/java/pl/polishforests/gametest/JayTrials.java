@@ -219,7 +219,7 @@ final class JayTrials {
 	}
 
 	/** Places up to n jays 4-24 blocks around the player on valid places of the spawners. */
-	private static List<EurasianJay> place(TestSingleplayerContext sp, int n, int min, int max) {
+	static List<EurasianJay> place(TestSingleplayerContext sp, int n, int min, int max) {
 		return sp.getServer().computeOnServer(s -> {
 			ServerLevel level = s.overworld();
 			ServerPlayer p = level.players().getFirst();

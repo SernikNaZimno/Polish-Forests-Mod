@@ -793,7 +793,10 @@ final class FaunaCensus {
 		return b.append(']').toString();
 	}
 
-	/** The MSPT scene (step FA2, KFA-6) in a gameplay world of the natural mode at the first oak-hornbeam place. */
+	/**
+	 * The MSPT scenes (step FA2, KFA-6) in a gameplay world of the natural mode at the first oak-hornbeam place: one species
+	 * each (FA2, FA3, FA5, FA6), then from step FA10 the common frog and the mixed scene ({@link FaunaMspt}).
+	 */
 	private void msptWorld() {
 		ResourceKey<WorldPreset> preset = ResourceKey.create(Registries.WORLD_PRESET, PolishForests.id("poland_gameplay"));
 		SliceSites.Place first = SliceSites.of(false, false).stream().filter(p -> !p.transect() && p.name().endsWith("_1")).findFirst()
@@ -814,6 +817,10 @@ final class FaunaCensus {
 			trials.squirrels.mspt(sp, "gameplay/natural " + first.name(), first.x(), first.z());
 			// Step FA6: the same with 40 Eurasian jays in an oak-hornbeam forest near the place (the other animals removed).
 			trials.jays.mspt(sp, "gameplay/natural " + first.name(), first.x(), first.z());
+			// Step FA10: 40 common frogs in the nearest alder carr, then the mixed scene of all five species at the place.
+			FaunaMspt scenes = new FaunaMspt(context, this, trials);
+			scenes.frogs(sp, "gameplay/natural " + first.name(), first.x(), first.z());
+			scenes.mixed(sp, "gameplay/natural " + first.name(), first.x(), first.z());
 		}
 	}
 

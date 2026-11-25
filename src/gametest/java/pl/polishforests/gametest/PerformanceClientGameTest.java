@@ -190,7 +190,18 @@ public final class PerformanceClientGameTest implements FabricClientGameTest {
 					.getGenerator().getClass().getSimpleName()));
 			sp.getServer().runCommand("gamerule advance_time false");
 			sp.getServer().runCommand("gamerule advance_weather false");
-			sp.getServer().runCommand("gamerule spawn_mobs false");
+			String fauna = System.getProperty("polishforests.perfFauna", "");
+			if (poland && (fauna.equals("on") || fauna.equals("off"))) {
+				// Step FA10 (ZW-8): the flights with and without the fauna. Both with vanilla's spawns on (the animals of the chunk
+				// generation), the mod's rule on or off; the spectator camera starts no natural spawn, so the two differ only by
+				// the animals of the mod placed at the generation of the flight areas.
+				sp.getServer().runCommand("gamerule spawn_mobs true");
+				sp.getServer().runCommand("gamerule polishforests:forest_fauna " + fauna.equals("on"));
+				PolishForests.LOG.info("[performance] {}: fauna {} (spawn_mobs true, polishforests:forest_fauna {})", name, fauna,
+						fauna.equals("on"));
+			} else {
+				sp.getServer().runCommand("gamerule spawn_mobs false");
+			}
 			sp.getServer().runCommand("time set 6000");
 			sp.getServer().runCommand("weather clear");
 			sp.getServer().runCommand("gamemode spectator @a");

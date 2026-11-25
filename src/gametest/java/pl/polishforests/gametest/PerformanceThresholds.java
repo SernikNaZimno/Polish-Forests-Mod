@@ -174,6 +174,53 @@ public final class PerformanceThresholds {
 		return results;
 	}
 
+	/**
+	 * Step FA10: the verdicts as a Markdown section for {@code docs/wycinek/v17/ab_v17.md}: a summary (rows per metric and
+	 * verdict), then every row with its value, threshold, verdict and rule, FAIL rows first. The heading names no metric, so
+	 * {@link #parseMarkdown} skips the section when the file is read again.
+	 */
+	public static String verdictMarkdown(List<Result> results) {
+		StringBuilder b = new StringBuilder("## Werdykty progów (PerformanceThresholds, CP-D.5)\n\n");
+		b.append("| metryka |");
+		for (Verdict v : Verdict.values()) {
+			b.append(' ').append(v).append(" |");
+		}
+		b.append("\n|---|").append("---|".repeat(Verdict.values().length)).append('\n');
+		for (Metric m : Metric.values()) {
+			int[] n = new int[Verdict.values().length];
+			boolean any = false;
+			for (Result r : results) {
+				if (r.row().metric() == m) {
+					n[r.verdict().ordinal()]++;
+					any = true;
+				}
+			}
+			if (!any) {
+				continue;
+			}
+			b.append("| ").append(m).append(" |");
+			for (int k : n) {
+				b.append(' ').append(k).append(" |");
+			}
+			b.append('\n');
+		}
+		b.append("\n| metryka | skala | miejsce | wartość | próg | werdykt | reguła |\n|---|---|---|---|---|---|---|\n");
+		List<Result> sorted = new ArrayList<>(results);
+		sorted.sort(java.util.Comparator.comparing((Result r) -> r.verdict() != Verdict.FAIL).thenComparing(r -> r.row().metric()));
+		for (Result r : sorted) {
+			boolean stage = r.row().metric().ordinal() >= Metric.FEATURES.ordinal();
+			String value = stage ? String.format(Locale.ROOT, "%.2f ms (%.3f ×)", r.row().ms(), r.row().ratio())
+					: String.format(Locale.ROOT, "%.3f ×", r.row().ratio());
+			String site = r.row().site() + (r.row().view() == null ? "" : " " + r.row().view());
+			String verdict = r.verdict() == Verdict.FAIL ? "**FAIL**" : r.verdict().name();
+			String threshold = Double.isNaN(r.threshold()) ? "—" : String.format(Locale.ROOT, "%.3f", r.threshold());
+			b.append("| ").append(r.row().metric()).append(" | ").append(r.row().scale()).append(" | ").append(site).append(" | ")
+					.append(value.replace('.', ',')).append(" | ").append(threshold.replace('.', ',')).append(" | ").append(verdict)
+					.append(" | ").append(r.rule()).append(" |\n");
+		}
+		return b.toString();
+	}
+
 	// ------------------------------------------------------------------ A/B tables of docs/wycinek
 
 	/**

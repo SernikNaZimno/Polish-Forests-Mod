@@ -22,3 +22,19 @@ cd "../pl-m1-pomiar"
 ```
 
 W nowym katalogu Loom przygotuje Minecrafta od nowa (pierwsze uruchomienie trwa dłużej). Wyniki są w logu, w wierszach `[wydajnosc]`. Potem ten sam pomiar w projekcie, na bieżącym kodzie: `./gradlew runClientGameTest -Pgametest=stages` (wiersze `[performance]`). Dopóki `src/main` było równe M1 (przed S2), wystarczał tryb `etapy` w samym projekcie.
+
+## `m2-baseline-r1-harness.patch` (krok FA10)
+
+- SHA-256: `9357fe5fa1efcda63cdee2c9ecf6213a714b24226167316357623f08207bb6c6`
+- Data: 2026-11-25, przed pomiarem zbiorczym FA10.
+- Zawartość: uprząż pomiarowa bazy M2, która dotąd była tylko niezapisanymi zmianami w worktree `pl-m2-baseline` (tag `m2-baseline-r1` + uprząż V10, `-PloadOnly` z O1, `-PnoNvidium`, `ForestPerformance` z miejscami F1–F6, bez Tatr): `build.gradle`, `PerformanceClientGameTest.java` i nowy plik `ForestPerformance.java`. Sprawdzone: `git archive m2-baseline-r1` + `git apply` daje pliki identyczne z worktree (poza końcami linii).
+- Po co: worktree `pl-m2-baseline` ma zniknąć po FA10 (CP-D.12, G.62-i), a tag sam nie ma uprzęży. Z tagu i łatki bazę M2 da się odbudować:
+
+```
+git worktree add --detach "../pl-m2-baseline" m2-baseline-r1
+cd "../pl-m2-baseline"
+git apply "../Przyrodniczo zgodne lasy minecraft/migawki/m2-baseline-r1-harness.patch"
+./gradlew runClientGameTest -Pgametest=performance -Psites=slice -Poptimization -PloadOnly -Pcaves=off
+```
+
+Loom przygotuje Minecrafta od nowa (pierwsze uruchomienie trwa dłużej). Baza nie czyta `-Pcaves`, `-PperfSites` ani `-PperfFauna` (świat M2 nie ma jaskiń moda ani fauny).

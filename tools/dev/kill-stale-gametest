@@ -10,15 +10,18 @@
 #   tools/dev/kill-stale-gametest --list                only list them (process id, age in minutes, kind)
 #   tools/dev/kill-stale-gametest --older-than 180      end only those running for at least 180 minutes (a hung run)
 #   tools/dev/kill-stale-gametest --older-than 180 --watch 5   repeat that every 5 minutes until stopped
+#   tools/dev/kill-stale-gametest --folder pl-m2-baseline   the same for another checkout of the project (step FA10: the
+#                                                       M2 baseline worktree of the A/B runs); the folder name only
 # Every ended process is logged with the time to build/stale-gametest.log.
 set -u
 cd "$(dirname "$0")/../.." || exit 1
-list=0 older=0 watch=0
+list=0 older=0 watch=0 folder='Przyrodniczo zgodne lasy minecraft'
 while [ $# -gt 0 ]; do
 	case "$1" in
 		--list) list=1 ;;
 		--older-than) older="$2"; shift ;;
 		--watch) watch="$2"; shift ;;
+		--folder) folder="$2"; shift ;;
 		*) echo "unknown argument: $1" >&2; exit 2 ;;
 	esac
 	shift
@@ -27,12 +30,13 @@ mkdir -p build
 
 once() {
 	# The folder name as it appears in the command lines (forward or back slashes; Loom also writes spaces as @@0020).
+	local loom=${folder// /@@0020}
 	powershell.exe -NoProfile -NonInteractive -Command "
 		\$list = $list; \$older = $older
 		\$now = Get-Date
 		Get-CimInstance Win32_Process -Filter \"Name='java.exe'\" | ForEach-Object {
 			\$c = [string]\$_.CommandLine
-			\$mine = \$c -like '*Przyrodniczo zgodne lasy minecraft*' -or \$c -like '*Przyrodniczo@@0020zgodne@@0020lasy@@0020minecraft*'
+			\$mine = \$c -like '*$folder*' -or \$c -like '*$loom*'
 			\$kind = if (\$c -like '*-Dfabric.client.gametest*') { 'client' } elseif (\$c -like '*gradle-wrapper.jar*runClientGameTest*') { 'wrapper' } else { \$null }
 			if (\$mine -and \$kind) {
 				\$age = [int]((\$now - \$_.CreationDate).TotalMinutes)

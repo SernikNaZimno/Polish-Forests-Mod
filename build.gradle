@@ -650,7 +650,8 @@ tasks.register('generateArt', ArtTask) {
 // axis gauge of GeckoLib, screenshots fauna_*, results in build/fauna/fauna.txt; step FA4: -Psites=sound, the forest
 // ambience counts, the jay alarm and the frog census (-Pscales as above, -PsoundTicks=<ticks per ambience sample, default
 // 600>, -PfrogTicks=<ticks before the frog count, default 2000>), results in build/fauna/sound.txt;
-// step FA9: -Psites=habitats, the census of the animals by habitat against KFA-5, results in build/fauna/habitats.txt)
+// step FA9: -Psites=habitats, the census of the animals by habitat against KFA-5, results in build/fauna/habitats.txt;
+// step FA10: -Psites=mspt also times 40 common frogs and a mixed scene of the five species, lines '[fauna] ... MSPT')
 // (slice: only by name; the fixed places of the vertical slice from src/test/resources/slice_sites.txt, step V0;
 // -Pmodes=natural|present_day picks a vegetation mode, -Psites=<place names>|none; the cameras come from
 // src/test/resources/slice_cameras.txt, -PfindSliceCameras chooses them anew and writes the file; -Pgametest=stages
@@ -789,6 +790,14 @@ tasks.named('runClientGameTest') {
 	// Review round 1 of V13: -PperfSeason=<sub-season> sets the date of the flights of -Pgametest=performance -Psites=slice.
 	if (project.hasProperty('perfSeason')) {
 		jvmArgs "-Dpolishforests.perfSeason=${project.property('perfSeason')}"
+	}
+	// Step FA10: -PperfFauna=on|off flies with the animals of the mod placed at generation or without them (spawn_mobs on in
+	// both; the forest_fauna rule decides), -PperfSites=<site,...> keeps only the named sites of -Psites=slice.
+	if (project.hasProperty('perfFauna')) {
+		jvmArgs "-Dpolishforests.perfFauna=${project.property('perfFauna')}"
+	}
+	if (project.hasProperty('perfSites')) {
+		jvmArgs "-Dpolishforests.perfSites=${project.property('perfSites')}"
 	}
 	jvmArgs "-Dpolishforests.leaves.out=${layout.buildDirectory.dir('leaves').get().asFile.absolutePath}"
 	// Step G1: the results of -Pgametest=slice -Psites=felling (with -PtreeFelling=fallingtree|treeharvester).

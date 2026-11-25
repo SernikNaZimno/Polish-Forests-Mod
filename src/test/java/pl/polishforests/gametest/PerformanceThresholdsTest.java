@@ -112,6 +112,58 @@ class PerformanceThresholdsTest {
 				.verdict());
 	}
 
+	@Test
+	void theVerdictSectionSumsUpEveryRow() throws IOException {
+		List<Result> results = f7();
+		String md = PerformanceThresholds.verdictMarkdown(results);
+		// The summary: one line per metric with the counts of the verdicts (chunks without caves: 15 PASS, 1 ACCEPTED).
+		assertTrue(md.contains("| CHUNKS_NO_CAVES | 15 | 0 | 1 | 0 | 0 |"), md);
+		assertTrue(md.contains("| FPS | 20 | 0 | 0 | 12 | 0 |"), md);
+		// Every row once, and the section is skipped when the file is parsed again (its heading names no metric).
+		assertEquals(results.size(), md.lines().filter(l -> l.matches("\\| [A-Z_]+ \\| (REALISTIC|GAMEPLAY) \\|.*")).count());
+		List<String> again = new java.util.ArrayList<>(Files.readAllLines(Path.of("docs/wycinek/f7/ab_f7.md"), StandardCharsets.UTF_8));
+		again.addAll(md.lines().toList());
+		assertEquals(results.size(), PerformanceThresholds.parseMarkdown(again).size());
+	}
+
+	/**
+	 * Step FA10: the tables of the collective run ({@code docs/wycinek/v17/ab_v17.md}, made by {@code tools/dev/ab_tables.py})
+	 * are complete, and their verdicts are written to {@code build/ab/verdicts_v17.md}; when the file already holds the
+	 * verdict section, it must be the one the thresholds give. Skipped until the file exists (stage 2 of FA10).
+	 */
+	@Test
+	void theCollectiveRunIsJudged() throws IOException {
+		Path file = Path.of("docs/wycinek/v17/ab_v17.md");
+		org.junit.jupiter.api.Assumptions.assumeTrue(Files.exists(file), "no " + file + " yet");
+		List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
+		List<Result> results = PerformanceThresholds.judge(PerformanceThresholds.parseMarkdown(lines));
+		Map<Metric, Integer> rows = new EnumMap<>(Metric.class);
+		for (Result r : results) {
+			if (!r.row().site().startsWith("tatra")) {
+				rows.merge(r.row().metric(), 1, Integer::sum);
+			}
+		}
+		assertEquals(16, rows.get(Metric.CHUNKS_NO_CAVES));
+		assertEquals(16, rows.get(Metric.CHUNKS_WITH_CAVES));
+		assertEquals(32, rows.get(Metric.FPS));
+		assertEquals(20, rows.get(Metric.FEATURES));
+		assertEquals(20, rows.get(Metric.LIGHT));
+		assertEquals(20, rows.get(Metric.WHOLE_CHUNK));
+		String md = PerformanceThresholds.verdictMarkdown(results);
+		Files.createDirectories(Path.of("build/ab"));
+		Files.writeString(Path.of("build/ab/verdicts_v17.md"), md, StandardCharsets.UTF_8);
+		for (Result r : results) {
+			System.out.println(r);
+		}
+		String text = String.join("\n", lines);
+		int at = text.indexOf("## Werdykty progów");
+		if (at >= 0) {
+			int end = text.indexOf("\n## ", at + 1);
+			String section = (end < 0 ? text.substring(at) : text.substring(at, end)).strip();
+			assertEquals(md.strip(), section, "the verdict section of " + file + " is not the one of the thresholds");
+		}
+	}
+
 	private static Verdict judge(Metric metric, Scale scale, String site, String view, double ratio) {
 		return PerformanceThresholds.judge(new Row(metric, scale, site, view, ratio, Double.NaN)).verdict();
 	}

@@ -1653,3 +1653,16 @@ Jedno miejsce na sprawy czekające na użytkownika po pionowym wycinku. Rekomend
 | P-6 | FA9-f (strażnik gry bez procesów samego launchera Epic), FA9-j (dłuższa próba lotu sójki) i FA9-m (próba łańcucha skrzeku bez zwierząt spawnera) | domyślne |
 
 Zamknięte w FA9: TT7-q (karta norm powierzchni limbowych GAMEPLAY jest w karcie końcowej `docs/wycinek/karta-norm-v17.md`), zaległe przebiegi rundy 2 przeglądu FA8; w rundzie 1 przeglądu FA9 DP-178 (`determinism -PdeterminismSpawnMobs`: zwierzęta przy generacji w obu światach stałej kolejności identyczne w 48 z 48 obszarów, bloki identyczne z referencją; G.71 FA9-n, do potwierdzenia w P-1).
+
+### G.73 Drobne wybory kroku FA10 (domyślne, do potwierdzenia; 2026-11-25)
+
+Krok: `docs/04-pionowy-wycinek.md` §3 „FA10”, „Projekt FA10” (etap 1: FA10-a … FA10-f) i „Stan po FA10” (etap 2: od FA10-g). Pomiar A/B wobec M2 z jaskiniami i bez, MSPT fauny, FPS z fauną i bez, strona zamknięcia wycinka; kod moda bez zmian.
+
+| # | Wybór | Wartość i powód |
+|---|---|---|
+| FA10-a | Rundy normy lasu bez jaskiń | 6 rund ABBA zamiast 4 z F7: REAL `lowland_beech_1` leżało o 0,002 pod progiem przy ilorazach rund 0,683–0,739, więc mediana z 6 par jest pewniejsza (ok. +20 min maszyny) |
+| FA10-b | Rundy strażnika z jaskiniami | 4 rundy ABBA zamiast 2: miejsca górskie są blisko progów CP-D.5; iloraz wobec M2 z tych samych rund (jak F7), w tabeli także wobec M2 ze wszystkich przebiegów (`load` + jaskinie) |
+| FA10-c | MSPT żaby trawnej | 40 żab w olsie najbliższym miejscu grądu GAMEPLAY N; tick mierzony mixinem gametestu `FrogTimingMixin` (żaba to żaba wanilii z wariantem moda), budżet ten sam 0,05 ms |
+| FA10-d | Scena mieszana | 10 saren, 8 dzików, 8 wiewiórek, 8 sójek, 6 żab (40 jak w scenach jednego gatunku) w miejscu grądu GAMEPLAY N; jeden licznik na wszystkie (zwierzęta moda i żaby także osobno); gatunki osobno dają sceny jednego gatunku |
+| FA10-e | Przeloty z fauną i bez | Tylko build FA10, bez progu (raport; KFA-6 ma budżet tylko dla MSPT); z paczką, 3 lasy z sarną, dzikiem, wiewiórką i sójką (`oak_hornbeam_1`, `fresh_pine_1`, `lowland_beech_1`) w obu skalach, 2 rundy bez / z, z / bez; `spawn_mobs` włączone w obu, różni je reguła `polishforests:forest_fauna` (zwierzęta moda z generacji obszaru przelotu) |
+| FA10-f | Uprząż bazy M2 | Zapisana jako łatka `migawki/m2-baseline-r1-harness.patch` (sprawdzona na `git archive m2-baseline-r1`), żeby po usunięciu worktree `pl-m2-baseline` bazę dało się odbudować z tagu; samo usunięcie worktree tylko za zgodą użytkownika (uwaga z 2026-11-24) |

@@ -212,6 +212,11 @@ final class ForestPerformance {
 		places.add(new Object[] {"tatra_high_1", TATRA_HIGH_SITE[real ? 0 : 1]});
 		places.add(new Object[] {"tatra_stone_pine_1", TATRA_STONE_PINE_SITE[real ? 0 : 1]});
 		places.add(new Object[] {"tatra_regle_1", TATRA_REGLE_SITE[real ? 0 : 1]});
+		// Step FA10: -PperfSites=<site,...> keeps only the named sites (the flights with and without the fauna).
+		List<String> only = siteFilter(System.getProperty("polishforests.perfSites", ""));
+		if (!only.isEmpty()) {
+			places.removeIf(p -> !only.contains((String) p[0]));
+		}
 		for (Object[] place : places) {
 			int[] m = (int[]) place[1];
 			String label = name + " / " + place[0];
@@ -270,6 +275,9 @@ final class ForestPerformance {
 				// Step O1: only the load of new terrain (-PloadOnly), the flight left out.
 				continue;
 			}
+			// Step FA10: the animals in the flight area (the flights with and without the fauna, -PperfFauna=on|off).
+			PolishForests.LOG.info("[performance] {}: {}", label, sp.getServer().computeOnServer(s -> animals(s.overworld(), m[0], m[1],
+					ORBIT_RADIUS + 64)));
 			for (boolean canopy : new boolean[] {true, false}) {
 				double[][] points = new double[FLIGHT_POINTS][];
 				sp.getServer().runOnServer(s -> {
@@ -283,6 +291,51 @@ final class ForestPerformance {
 				sweeps(context, sp, label + (canopy ? " canopy" : " eye"), points);
 			}
 		}
+	}
+
+	/**
+	 * Step FA10: the site names of {@code -PperfSites} (comma-separated, blanks ignored; empty = every site). Plain Java, so
+	 * the same filter would also work on the M2 baseline.
+	 */
+	static List<String> siteFilter(String property) {
+		List<String> out = new java.util.ArrayList<>();
+		for (String part : property.split(",")) {
+			String t = part.trim().toLowerCase(Locale.ROOT);
+			if (!t.isEmpty()) {
+				out.add(t);
+			}
+		}
+		return out;
+	}
+
+	/**
+	 * Step FA10: the living entities in a square of the given half side around a place, by kind: the animals of the mod
+	 * (entity types of the namespace {@code polishforests}), frogs, the other animals ({@link MobCategory#CREATURE} and
+	 * {@link MobCategory#AMBIENT}) and the monsters. Only vanilla classes and the registry, so the class still runs on the
+	 * M2 baseline (it has no animals of the mod).
+	 */
+	static String animals(ServerLevel level, int x, int z, int half) {
+		AABB box = new AABB(x - half, level.getMinY(), z - half, x + half + 1, level.getMaxY(), z + half + 1);
+		java.util.Map<String, Integer> mod = new java.util.TreeMap<>();
+		int frogs = 0;
+		int other = 0;
+		int monsters = 0;
+		for (net.minecraft.world.entity.Entity e : level.getEntities((net.minecraft.world.entity.Entity) null, box,
+				e -> e.isAlive() && e instanceof net.minecraft.world.entity.Mob)) {
+			net.minecraft.resources.Identifier id = BuiltInRegistries.ENTITY_TYPE.getKey(e.getType());
+			if (id.getNamespace().equals("polishforests")) {
+				mod.merge(id.getPath(), 1, Integer::sum);
+			} else if (e instanceof net.minecraft.world.entity.animal.frog.Frog) {
+				frogs++;
+			} else if (e.getType().getCategory() == MobCategory.MONSTER) {
+				monsters++;
+			} else {
+				other++;
+			}
+		}
+		int modAll = mod.values().stream().mapToInt(Integer::intValue).sum();
+		return String.format(Locale.ROOT, "animals in the flight area (%d blocks around): mod %d %s, frogs %d, other animals %d, "
+				+ "monsters %d", half, modAll, mod, frogs, other, monsters);
 	}
 
 	/**

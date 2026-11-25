@@ -151,7 +151,7 @@ final class SquirrelTrials {
 	}
 
 	/** Places up to n squirrels 4-24 blocks around the player on valid places of the spawners. */
-	private static List<RedSquirrel> place(TestSingleplayerContext sp, int n) {
+	static List<RedSquirrel> place(TestSingleplayerContext sp, int n) {
 		return sp.getServer().computeOnServer(s -> {
 			ServerLevel level = s.overworld();
 			ServerPlayer p = level.players().getFirst();

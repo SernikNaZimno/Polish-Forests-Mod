@@ -140,7 +140,7 @@ final class FaunaTrials {
 	// ------------------------------------------------------------------ herd
 
 	/** Places {@value #HERD_GROUPS} groups of three roe deer 16-40 blocks around the player, each following its first. */
-	private List<RoeDeer> herd(TestSingleplayerContext sp) {
+	List<RoeDeer> herd(TestSingleplayerContext sp) {
 		return sp.getServer().computeOnServer(s -> {
 			ServerLevel level = s.overworld();
 			ServerPlayer p = level.players().getFirst();
