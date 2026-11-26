@@ -1,6 +1,5 @@
 package pl.polishforests.worldgen.feature.plan;
 
-import java.util.concurrent.atomic.AtomicLongArray;
 import pl.polishforests.worldgen.habitat.Association;
 import pl.polishforests.worldgen.habitat.ForestSiteType;
 import pl.polishforests.worldgen.habitat.Habitat;
@@ -9,6 +8,8 @@ import pl.polishforests.worldgen.habitat.LandCover;
 import pl.polishforests.worldgen.habitat.Soil;
 import pl.polishforests.worldgen.habitat.Zone;
 import pl.polishforests.worldgen.landscape.Noise;
+import pl.polishforests.worldgen.memo.MemoLongTable;
+import pl.polishforests.worldgen.memo.MemoTable;
 
 /**
  * Wide ecotones of the forests with the trees of the tree planner (step Z1 of docs/04-pionowy-wycinek.md, decision CP-B.1,
@@ -501,14 +502,14 @@ public final class ForestBlend {
 	}
 
 	/**
-	 * Shares of the lattice nodes (the kernel sums), a direct-mapped table shared by all threads without locks: a slot
-	 * holds an immutable entry with its lattice point (final fields, so a reader sees a whole entry or none), and an
-	 * overwritten entry is only computed again.
+	 * Shares of the lattice nodes (the kernel sums), a table shared by all threads without locks: a slot holds an
+	 * immutable entry with its lattice point (final fields, so a reader sees a whole entry or none), and an overwritten
+	 * entry is only computed again. Step OP1: sets of four slots ({@link MemoTable}) and 2^{@value #BITS} slots instead of a
+	 * direct-mapped table of 2^16, whose shared slots pushed nodes of one loaded area out on every alternate access.
 	 */
 	private static final class Nodes {
-		private static final int BITS = 16;
-		private final java.util.concurrent.atomic.AtomicReferenceArray<Node> slots =
-				new java.util.concurrent.atomic.AtomicReferenceArray<>(1 << BITS);
+		private static final int BITS = 17;
+		private final MemoTable<Node> slots = new MemoTable<>(BITS);
 
 		static final class Node {
 			final int i;
@@ -522,29 +523,40 @@ public final class ForestBlend {
 			}
 		}
 
-		private static int slot(int i, int j) {
-			return (int) (Noise.mix(i * 0xC2B2_AE3D_27D4_EB4FL + j * 0x9E37_79B9_7F4A_7C15L) >>> (64 - BITS));
+		private static long hash(int i, int j) {
+			return Noise.mix(i * 0xC2B2_AE3D_27D4_EB4FL + j * 0x9E37_79B9_7F4A_7C15L);
 		}
 
 		@org.jspecify.annotations.Nullable Node get(int i, int j) {
-			Node e = slots.getOpaque(slot(i, j));
-			return e != null && e.i == i && e.j == j ? e : null;
+			long h = hash(i, j);
+			for (int w = 0; w < MemoTable.WAYS; w++) {
+				Node e = slots.slot(h, w);
+				if (e != null && e.i == i && e.j == j) {
+					return e;
+				}
+			}
+			return null;
 		}
 
 		void put(Node e) {
-			slots.setRelease(slot(e.i, e.j), e);
+			slots.put(hash(e.i, e.j), e);
 		}
 	}
 
 	/**
-	 * Categories of the lattice points, a direct-mapped table shared by all threads without locks (as the candidate
-	 * table of step O1): one {@code long} per slot holds the lattice point and its category, so a reader never sees half
-	 * of another thread's entry, and an overwritten entry is only computed again.
+	 * Categories of the lattice points, a table shared by all threads without locks (as the candidate table of step O1):
+	 * one {@code long} per slot holds the lattice point and its category, so a reader never sees half of another
+	 * thread's entry, and an overwritten entry is only computed again. Step OP1: sets of four slots ({@link MemoLongTable})
+	 * and 2^{@value #BITS} slots (4 MB) instead of a direct-mapped table of 2^17: there the points that shared a slot pushed each
+	 * other out on every alternate access, and the lattice of a loaded area was sampled about six times per point
+	 * ({@code GenerationMemoTest}).
 	 */
 	private static final class Lattice {
-		private static final int BITS = 17;
+		private static final int BITS = 19;
 		private static final int COORD_BITS = 26;
 		private static final long COORD_MASK = (1L << COORD_BITS) - 1;
+		/** The bits of an entry that hold its lattice point. */
+		private static final long KEY_MASK = ~0xFFFL;
 		/**
 		 * Bits 1–6 of an entry hold the category (up to 62 forests), bit 7 the stone pine variant (step TT4,
 		 * {@link #STONE_PINE_VARIANT}); bits 8–11 stay free.
@@ -552,7 +564,7 @@ public final class ForestBlend {
 		static final int CATEGORY_MASK = 63;
 		/** The bits of an entry's value: the category and the variant. */
 		private static final int VALUE_MASK = 127;
-		private final AtomicLongArray slots = new AtomicLongArray(1 << BITS);
+		private final MemoLongTable slots = new MemoLongTable(BITS);
 
 		private static boolean fits(int g) {
 			return g >= -(1 << (COORD_BITS - 1)) && g < 1 << (COORD_BITS - 1);
@@ -562,16 +574,16 @@ public final class ForestBlend {
 			return (i & COORD_MASK) << 38 | (j & COORD_MASK) << 12;
 		}
 
-		private static int slot(int i, int j) {
-			return (int) (Noise.mix(i * 0x9E37_79B9_7F4A_7C15L + j * 0xC2B2_AE3D_27D4_EB4FL) >>> (64 - BITS));
+		private static long hash(int i, int j) {
+			return Noise.mix(i * 0x9E37_79B9_7F4A_7C15L + j * 0xC2B2_AE3D_27D4_EB4FL);
 		}
 
 		int get(int i, int j) {
 			if (!fits(i) || !fits(j)) {
 				return -1;
 			}
-			long e = slots.getOpaque(slot(i, j));
-			if ((e & 1) == 0 || (e & ~0xFFFL) != cell(i, j)) {
+			long e = slots.find(hash(i, j), cell(i, j), KEY_MASK);
+			if (e == 0) {
 				return -1;
 			}
 			return (int) (e >>> 1 & VALUE_MASK);
@@ -579,7 +591,7 @@ public final class ForestBlend {
 
 		void put(int i, int j, int category) {
 			if (fits(i) && fits(j)) {
-				slots.setOpaque(slot(i, j), cell(i, j) | (long) category << 1 | 1);
+				slots.put(hash(i, j), cell(i, j) | (long) category << 1 | 1);
 			}
 		}
 	}

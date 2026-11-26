@@ -355,6 +355,8 @@ public final class TreeShapePlan {
 		private final long[] splitValues = new long[1 << SPLIT_BITS];
 		private @Nullable StandMap splitStands;
 		private long splitSeed;
+		/** Step OP1: the split surfaces shared by the threads, of a world's stand map (the memo above is the first level). */
+		private @Nullable SplitMemo splitShared;
 		private final float[] reach = new float[AZIMUTH_BINS];
 		// Open land of an edge tree (columns, and the azimuth bins that reach it) and the nodes of its low branches.
 		private final boolean[] openColumn = new boolean[SIDE * SIDE];
@@ -474,6 +476,9 @@ public final class TreeShapePlan {
 				Arrays.fill(splitKeys, Long.MIN_VALUE);
 				splitStands = r.stands();
 				splitSeed = r.worldSeed();
+				// Step OP1: only a world's stand map has a memo shared by the threads (a uniform map of a preview, a
+				// deadwood plan or a test is made per request and would only allocate one per tree).
+				splitShared = r.stands() instanceof ForestStandMap world ? world.splitMemo(r.worldSeed()) : null;
 			}
 			splitGrid(r);
 			AgeClass age = r.age();
@@ -592,7 +597,8 @@ public final class TreeShapePlan {
 		 * The split surfaces at a column relative to the trunk: {upper, lower}, as {@link #split}. Step O1: with a stand map,
 		 * the surfaces of a world column before the shift of the ground are memoized by column in this thread
 		 * ({@link #SPLIT_BITS}); they are a pure function of the seed, the stand map and the column, the same for every
-		 * tree that reaches the column.
+		 * tree that reaches the column. Step OP1: a miss of the thread's memo asks the memo shared by the threads
+		 * ({@link SplitMemo}) before it computes the surfaces.
 		 */
 		private int[] splitsAt(int dx, int dz, int[] out) {
 			int x = request.x() + dx;
@@ -605,8 +611,16 @@ public final class TreeShapePlan {
 				if (splitKeys[slot] == key) {
 					v = splitValues[slot];
 				} else {
-					splitsOf(x, z, out);
-					v = (long) out[0] << 32 | out[1] & 0xFFFF_FFFFL;
+					// Step OP1: the memo shared by the threads (a world's stand map) before the computation.
+					SplitMemo shared = splitShared;
+					v = shared != null ? shared.get(x, z) : SplitMemo.MISS;
+					if (v == SplitMemo.MISS) {
+						splitsOf(x, z, out);
+						v = (long) out[0] << 32 | out[1] & 0xFFFF_FFFFL;
+						if (shared != null) {
+							shared.put(x, z, out[0], out[1]);
+						}
+					}
 					splitKeys[slot] = key;
 					splitValues[slot] = v;
 				}
@@ -643,6 +657,10 @@ public final class TreeShapePlan {
 		}
 
 		private final int[] splitTmp = new int[2];
+		/** Step OP1: the radius of the crown's empty core by height ({@link #hollowAt}) and the plan it belongs to. */
+		private final double[] hollowLimit = new double[MAX_HEIGHT];
+		private final int[] hollowStamp = new int[MAX_HEIGHT];
+		private int hollowPlan;
 
 		/** Lowest block of the tree's layer at the column (dx, dz). */
 		private int floorAt(int dx, int dz) {
@@ -694,6 +712,10 @@ public final class TreeShapePlan {
 			if (++current == 0) {
 				Arrays.fill(stamp, 0);
 				current = 1;
+			}
+			if (++hollowPlan == 0) {
+				Arrays.fill(hollowStamp, 0);
+				hollowPlan = 1;
 			}
 			nodes = 0;
 			woods = 0;
@@ -2232,12 +2254,31 @@ public final class TreeShapePlan {
 
 		/** Whether a leaf cell lies in the empty core of a large crown (below its top fifth). */
 		private boolean hollowAt(int x, int y, int z) {
-			double t = (y - size.crownBase()) / Math.max(0.5, crownLength);
-			if (t >= 0.8) {
+			double limit;
+			if (y >= 0 && y < MAX_HEIGHT) {
+				// Step OP1: the radius of the core depends on the height only, so it is computed once per row of the plan.
+				if (hollowStamp[y] != hollowPlan) {
+					hollowLimit[y] = hollowLimit(y);
+					hollowStamp[y] = hollowPlan;
+				}
+				limit = hollowLimit[y];
+			} else {
+				limit = hollowLimit(y);
+			}
+			if (Double.isNaN(limit)) {
 				return false;
 			}
 			double rho = Math.sqrt((double) x * x + (double) z * z);
-			return rho < shape.hollow() * size.crownRadius() * profile.at(t);
+			return rho < limit;
+		}
+
+		/** Radius of the empty core of the crown at height y, or NaN in the crown's top fifth (no core). */
+		private double hollowLimit(int y) {
+			double t = (y - size.crownBase()) / Math.max(0.5, crownLength);
+			if (t >= 0.8) {
+				return Double.NaN;
+			}
+			return shape.hollow() * size.crownRadius() * profile.at(t);
 		}
 
 		/**

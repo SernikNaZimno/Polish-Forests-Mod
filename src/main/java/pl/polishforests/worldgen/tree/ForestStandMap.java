@@ -1,6 +1,7 @@
 package pl.polishforests.worldgen.tree;
 
 import pl.polishforests.worldgen.landscape.Noise;
+import pl.polishforests.worldgen.memo.MemoTable;
 
 /**
  * The lite stand map of the world (decision PW-4 b, step V9 of docs/04-pionowy-wycinek.md): a pure function of the world
@@ -112,7 +113,7 @@ public final class ForestStandMap implements StandMap {
 	/** Size of the stand cache of {@link #stand} (2^16 columns, about 3 MB with the entries: 256 chunks). */
 	private static final int STAND_CACHE_BITS = 16;
 
-	private final StandEntry[] standCache = new StandEntry[1 << STAND_CACHE_BITS];
+	private final MemoTable<StandEntry> standCache = new MemoTable<>(STAND_CACHE_BITS);
 	private final Noise cells;
 	private final Noise ages;
 	private final Noise naturals;
@@ -169,7 +170,7 @@ public final class ForestStandMap implements StandMap {
 	private final double[] nestChanceMax = new double[3];
 	private static final int PROFILE_CACHE_BITS = 12;
 	/** Profiles of the gap cells and of the stand sites (direct-mapped, immutable entries, as {@link #stand}). */
-	private final ProfileEntry[] profileCache = new ProfileEntry[1 << PROFILE_CACHE_BITS];
+	private final MemoTable<ProfileEntry> profileCache = new MemoTable<>(PROFILE_CACHE_BITS);
 
 	private record ProfileEntry(long key, StandProfile profile) {
 	}
@@ -177,13 +178,15 @@ public final class ForestStandMap implements StandMap {
 	/** The profile of gap cell (i, j) (kind 0, at its center cx, cz) or of stand site (i, j) (kind 1), memoized. */
 	private StandProfile profile(int kind, int i, int j, double px, double pz) {
 		long key = ((long) i << 32 | j & 0xFFFF_FFFFL) ^ (kind == 0 ? 0 : 0x5DEE_CE66_D1CE_4E5BL);
-		int slot = (int) (Noise.mix(key) >>> (64 - PROFILE_CACHE_BITS));
-		ProfileEntry e = profileCache[slot];
-		if (e != null && e.key() == key) {
-			return e.profile();
+		long hash = Noise.mix(key);
+		for (int w = 0; w < MemoTable.WAYS; w++) {
+			ProfileEntry e = profileCache.slot(hash, w);
+			if (e != null && e.key() == key) {
+				return e.profile();
+			}
 		}
 		StandProfile p = profiles.at((int) Math.floor(px), (int) Math.floor(pz));
-		profileCache[slot] = new ProfileEntry(key, p);
+		profileCache.put(hash, new ProfileEntry(key, p));
 		return p;
 	}
 
@@ -242,20 +245,23 @@ public final class ForestStandMap implements StandMap {
 	}
 
 	/**
-	 * The stand of column (x, z), with the age ramp at the borders. Step O1: memoized in a direct-mapped cache shared by
-	 * the generation threads ({@link #STAND_CACHE_BITS}); the stand is a pure function of the column, so a cached answer
+	 * The stand of column (x, z), with the age ramp at the borders. Step O1: memoized in a cache shared by the generation
+	 * threads ({@link #STAND_CACHE_BITS}; step OP1: sets of four slots, {@link MemoTable},
+	 * instead of a direct-mapped array); the stand is a pure function of the column, so a cached answer
 	 * is the computed one. Entries are immutable records (final fields), so a thread that reads an entry another thread
 	 * has just written sees it whole; a lost or overwritten entry is only computed again.
 	 */
 	public Stand stand(int x, int z) {
 		long key = (long) x << 32 | z & 0xFFFF_FFFFL;
-		int slot = (int) (Noise.mix(key) >>> (64 - STAND_CACHE_BITS));
-		StandEntry e = standCache[slot];
-		if (e != null && e.key() == key) {
-			return e.stand();
+		long hash = Noise.mix(key);
+		for (int w = 0; w < MemoTable.WAYS; w++) {
+			StandEntry e = standCache.slot(hash, w);
+			if (e != null && e.key() == key) {
+				return e.stand();
+			}
 		}
 		Stand stand = computeStand(x, z);
-		standCache[slot] = new StandEntry(key, stand);
+		standCache.put(hash, new StandEntry(key, stand));
 		return stand;
 	}
 
@@ -378,6 +384,8 @@ public final class ForestStandMap implements StandMap {
 	}
 
 	private @org.jspecify.annotations.Nullable Park park;
+	/** Step OP1: {@link #splitMemo}, null until the first request and after a change of the park. */
+	private volatile @org.jspecify.annotations.Nullable SplitMemo splitMemo;
 	private final ParkEntry[] parkCache = new ParkEntry[1 << PROFILE_CACHE_BITS];
 
 	private record ParkEntry(long key, boolean park) {
@@ -390,8 +398,23 @@ public final class ForestStandMap implements StandMap {
 	public ForestStandMap withPark(@org.jspecify.annotations.Nullable Park park) {
 		this.park = park;
 		java.util.Arrays.fill(parkCache, null);
-		java.util.Arrays.fill(standCache, null);
+		standCache.clear();
+		splitMemo = null;
 		return this;
+	}
+
+	/**
+	 * Step OP1: the split surfaces of {@link TreeShapePlan} on this map shared by the generation threads, for the world
+	 * seed asked last ({@link SplitMemo}, 2 MB, made on the first request). The memo goes with the map, so a world's memo
+	 * goes with its world; two threads that make one at once each get a correct memo, and one of them is kept.
+	 */
+	SplitMemo splitMemo(long worldSeed) {
+		SplitMemo m = splitMemo;
+		if (m == null || m.worldSeed() != worldSeed) {
+			m = new SplitMemo(worldSeed);
+			splitMemo = m;
+		}
+		return m;
 	}
 
 	/** Whether the site of grid cell (i, j) lies in the park, memoized. */

@@ -4,6 +4,8 @@ import java.util.Arrays;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
 import pl.polishforests.worldgen.landscape.Noise;
+import pl.polishforests.worldgen.memo.MemoLongTable;
+import pl.polishforests.worldgen.memo.MemoTable;
 import pl.polishforests.worldgen.tree.AgeClass;
 import pl.polishforests.worldgen.tree.CrownLayer;
 import pl.polishforests.worldgen.tree.CrownTerritories;
@@ -601,7 +603,8 @@ public final class TreeStandPlan {
 		private static volatile @Nullable KeptTable last;
 
 		private final long worldSeed;
-		private final java.util.concurrent.atomic.AtomicLongArray slots = new java.util.concurrent.atomic.AtomicLongArray(1 << KEPT_BITS);
+		/** Step OP1: sets of four slots ({@link MemoLongTable}) instead of a direct-mapped array. */
+		private final MemoLongTable slots = new MemoLongTable(KEPT_BITS);
 
 		private KeptTable(long worldSeed) {
 			this.worldSeed = worldSeed;
@@ -626,8 +629,8 @@ public final class TreeStandPlan {
 			return (gx & COORD_MASK) << 38 | (gz & COORD_MASK) << 12;
 		}
 
-		private static int slot(int gx, int gz) {
-			return (int) (Noise.mix(gx * 0x9E37_79B9_7F4A_7C15L + gz * 0xC2B2_AE3D_27D4_EB4FL) >>> (64 - KEPT_BITS));
+		private static long hash(int gx, int gz) {
+			return Noise.mix(gx * 0x9E37_79B9_7F4A_7C15L + gz * 0xC2B2_AE3D_27D4_EB4FL);
 		}
 
 		/** The memoized state of a cell: 1 kept, 0 not, -1 unknown. */
@@ -635,8 +638,8 @@ public final class TreeStandPlan {
 			if (!fits(gx) || !fits(gz)) {
 				return -1;
 			}
-			long e = slots.getOpaque(slot(gx, gz));
-			if ((e & 1) == 0 || (e & ~0xFFFL) != cell(gx, gz)) {
+			long e = slots.find(hash(gx, gz), cell(gx, gz), ~0xFFFL);
+			if (e == 0) {
 				return -1;
 			}
 			return (int) (e >>> 1 & 1);
@@ -644,7 +647,7 @@ public final class TreeStandPlan {
 
 		void put(int gx, int gz, boolean kept) {
 			if (fits(gx) && fits(gz)) {
-				slots.setOpaque(slot(gx, gz), cell(gx, gz) | (kept ? 2 : 0) | 1);
+				slots.put(hash(gx, gz), cell(gx, gz) | (kept ? 2 : 0) | 1);
 			}
 		}
 
@@ -654,14 +657,27 @@ public final class TreeStandPlan {
 		 * written sees it whole; the rank is a pure function of the seed, the cell and its hash, all three part of the key.
 		 */
 		private static final int RANK_BITS = 16;
-		private final RankEntry[] ranks = new RankEntry[1 << RANK_BITS];
+		/** Step OP1: sets of four slots ({@link MemoTable}) instead of a direct-mapped array. */
+		private final MemoTable<RankEntry> ranks = new MemoTable<>(RANK_BITS);
 
+		private static long rankHash(int gx, int gz) {
+			return Noise.mix(gx * 0xC2B2_AE3D_27D4_EB4FL + gz * 0x9E37_79B9_7F4A_7C15L);
+		}
+
+		/** The memoized rank entry of cell (gx, gz), or null (the caller compares the hash of the entry). */
 		@Nullable RankEntry rank(int gx, int gz) {
-			return ranks[(int) (Noise.mix(gx * 0xC2B2_AE3D_27D4_EB4FL + gz * 0x9E37_79B9_7F4A_7C15L) >>> (64 - RANK_BITS))];
+			long hash = rankHash(gx, gz);
+			for (int w = 0; w < MemoTable.WAYS; w++) {
+				RankEntry e = ranks.slot(hash, w);
+				if (e != null && e.gx() == gx && e.gz() == gz) {
+					return e;
+				}
+			}
+			return null;
 		}
 
 		void putRank(RankEntry e) {
-			ranks[(int) (Noise.mix(e.gx() * 0xC2B2_AE3D_27D4_EB4FL + e.gz() * 0x9E37_79B9_7F4A_7C15L) >>> (64 - RANK_BITS))] = e;
+			ranks.put(rankHash(e.gx(), e.gz()), e);
 		}
 	}
 

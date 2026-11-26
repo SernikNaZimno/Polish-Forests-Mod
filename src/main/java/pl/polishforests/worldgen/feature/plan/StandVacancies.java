@@ -38,7 +38,14 @@ public final class StandVacancies implements Vacancies {
 	private final Neighbors neighbors;
 	private final TreeStandPlan.Candidates candidates;
 	private final long seed;
-	/** Memo of {@link #surelyVacant} (1 vacant, 0 not; step O1: a fastutil map, see {@code TreeStandPlan.Pattern}). */
+	/**
+	 * Memo of {@link #surelyVacant} (1 vacant, 0 not, -1 unknown) for the columns of the chunk and its 8 neighbors, by
+	 * column of that window of 48 × 48 (step OP1: an array instead of the map of step O1; the crown territories ask only
+	 * there, the map below keeps any other column).
+	 */
+	private final byte[] window = new byte[WINDOW * WINDOW];
+	private static final int WINDOW = 48;
+	/** Memo of {@link #surelyVacant} outside {@link #window} (1 vacant, 0 not; step O1: a fastutil map). */
 	private final Long2ByteOpenHashMap sure = new Long2ByteOpenHashMap();
 	private final TreeStandPlan.Stand[] stands = new TreeStandPlan.Stand[9];
 
@@ -60,6 +67,7 @@ public final class StandVacancies implements Vacancies {
 		this.neighbors = neighbors;
 		this.candidates = candidates;
 		this.seed = seed;
+		java.util.Arrays.fill(window, (byte) -1);
 	}
 
 	@Override
@@ -72,6 +80,17 @@ public final class StandVacancies implements Vacancies {
 
 	@Override
 	public boolean surelyVacant(int x, int z) {
+		int wx = x - (chunkX << 4) + 16;
+		int wz = z - (chunkZ << 4) + 16;
+		if (wx >= 0 && wx < WINDOW && wz >= 0 && wz < WINDOW) {
+			int i = wx * WINDOW + wz;
+			byte known = window[i];
+			if (known < 0) {
+				known = (byte) (compute(x, z) ? 1 : 0);
+				window[i] = known;
+			}
+			return known == 1;
+		}
 		long key = (long) x << 32 | z & 0xFFFF_FFFFL;
 		byte known = sure.getOrDefault(key, (byte) -1);
 		if (known < 0) {

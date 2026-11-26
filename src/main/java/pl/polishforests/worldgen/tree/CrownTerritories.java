@@ -6,6 +6,7 @@ import java.util.List;
 import org.jspecify.annotations.Nullable;
 import pl.polishforests.worldgen.feature.plan.TreeStandPlan;
 import pl.polishforests.worldgen.landscape.Noise;
+import pl.polishforests.worldgen.memo.MemoTable;
 
 /**
  * Crown territories (step V5 of docs/04-pionowy-wycinek.md, decision PW-9 variant a): every kept candidate of the M2
@@ -95,6 +96,8 @@ public final class CrownTerritories {
 	 * an entry another thread has just written sees its sites; a lost entry is only computed again.
 	 */
 	private static final int TILE_CACHE_BITS = 12;
+	// Step OP1: sets of four slots (MemoTable) instead of a direct-mapped array, so tiles sharing a slot do not push each
+	// other out on every alternate access.
 
 	/** A cached tile: the sites of the kept candidates of one chunk. */
 	private record TileEntry(long key, Site[] sites) {
@@ -103,7 +106,7 @@ public final class CrownTerritories {
 	private final long worldSeed;
 	private final Noise crown;
 	private final StandMap stands;
-	private final TileEntry[] tileCache = new TileEntry[1 << TILE_CACHE_BITS];
+	private final MemoTable<TileEntry> tileCache = new MemoTable<>(TILE_CACHE_BITS);
 
 	public CrownTerritories(long worldSeed, StandMap stands) {
 		this.worldSeed = worldSeed;
@@ -228,16 +231,20 @@ public final class CrownTerritories {
 			if (tiles.size() >= MAX_TILES) {
 				tiles.clear();
 			}
-			int slot = (int) (Noise.mix(key) >>> (64 - TILE_CACHE_BITS));
-			TileEntry shared = tileCache[slot];
-			Site[] sites;
-			if (shared != null && shared.key() == key) {
-				sites = shared.sites();
-			} else {
+			long hash = Noise.mix(key);
+			Site[] sites = null;
+			for (int w = 0; w < MemoTable.WAYS; w++) {
+				TileEntry shared = tileCache.slot(hash, w);
+				if (shared != null && shared.key() == key) {
+					sites = shared.sites();
+					break;
+				}
+			}
+			if (sites == null) {
 				List<Site> out = new ArrayList<>();
 				candidates.forEach(chunkX * 16, chunkZ * 16, chunkX * 16 + 15, chunkZ * 16 + 15, (x, z) -> out.add(site(x, z)));
 				sites = out.toArray(new Site[0]);
-				tileCache[slot] = new TileEntry(key, sites);
+				tileCache.put(hash, new TileEntry(key, sites));
 			}
 			tiles.put(key, sites);
 			return sites;

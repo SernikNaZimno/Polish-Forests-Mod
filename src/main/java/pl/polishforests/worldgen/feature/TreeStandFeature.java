@@ -105,6 +105,9 @@ public final class TreeStandFeature implements Feature {
 	 */
 	public static final int CROWN_BUILDING_GAP = 1;
 
+	/** Side of the window of {@code open}'s memo in {@link #plant}: the chunk and its 8 neighbors (step OP1). */
+	private static final int OPEN_WINDOW = 48;
+
 	/** Salts of the noises of the tree stand (new fields, new salts). */
 	private static final String RAMP_SALT = "feature.tree_stand.range_ramp";
 	private static final String GAP_SALT = "feature.tree_stand.gaps";
@@ -339,15 +342,26 @@ public final class TreeStandFeature implements Feature {
 		// unknown and then not open), so a canopy tree there carries low branches on that side.
 		Ecotone.Region region = ecotones.region();
 		long worldSeed = level.getSeed();
-		// Memo by column (1 open, 0 not; step O1: a fastutil map, a HashMap<Long, …> hashed the column to x ^ z).
+		// Memo by column (1 open, 0 not; step O1: a fastutil map, a HashMap<Long, …> hashed the column to x ^ z). Step OP1:
+		// the columns of the chunk and its 8 neighbors (the crowns of its trunks reach at most that far) in an array, any
+		// other column in the map.
 		it.unimi.dsi.fastutil.longs.Long2ByteOpenHashMap openMemo = new it.unimi.dsi.fastutil.longs.Long2ByteOpenHashMap();
+		byte[] openWindow = new byte[OPEN_WINDOW * OPEN_WINDOW];
+		java.util.Arrays.fill(openWindow, (byte) -1);
 		TreeShapePlan.Open open = (wx, wz) -> {
+			int ox = wx - pos.getMinBlockX() + 16;
+			int oz = wz - pos.getMinBlockZ() + 16;
+			boolean inWindow = ox >= 0 && ox < OPEN_WINDOW && oz >= 0 && oz < OPEN_WINDOW;
 			long key = (long) wx << 32 | wz & 0xFFFF_FFFFL;
-			byte known = openMemo.getOrDefault(key, (byte) -1);
+			byte known = inWindow ? openWindow[ox * OPEN_WINDOW + oz] : openMemo.getOrDefault(key, (byte) -1);
 			if (known < 0) {
 				known = (byte) (Ecotone.openLand(Ecotone.provableTrees(region, worldSeed, Ecotone.TREES_SALT, wx - pos.getMinBlockX(),
 						wz - pos.getMinBlockZ())) ? 1 : 0);
-				openMemo.put(key, known);
+				if (inWindow) {
+					openWindow[ox * OPEN_WINDOW + oz] = known;
+				} else {
+					openMemo.put(key, known);
+				}
 			}
 			return known == 1;
 		};
