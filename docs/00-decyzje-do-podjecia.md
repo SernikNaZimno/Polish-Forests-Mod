@@ -1626,7 +1626,7 @@ Krok: `docs/04-pionowy-wycinek.md` §3 „FA9”, „Projekt FA9” (etap 1: FA9
 | FA9-m | Łańcuch bezpośredni sójki (etap 2) | Przed łańcuchem bezpośrednim próba usuwa zwierzęta moda w promieniu 96 bloków od gracza (`JayTrials.ISOLATION`, jak scena MSPT): w 1 z 15 prób sarna 40 bloków od sójki zareagowała na szczek zwierzęcia spawnera (skrzek sięga 32 bloków). Progi bez zmian |
 | FA9-n | `determinism -PdeterminismSpawnMobs` (przegląd FA9, runda 1, DP-178) | Reguła `spawn_mobs` włączona, `polishforests:boar_rooting` wyłączona (dzik przy graczu nie zmienia bloków w czasie generowania obszarów); zwierzęta postawione przy generacji zbierane obserwatorem `FaunaSpawner.GENERATION_OBSERVER` (zmiana w kodzie głównym tylko o pole testowe, puste poza tym gametestem); hasz na obszar: dwa światy stałej kolejności dokładnie, kolejność odwrócona i swobodna tylko raport (miejsca spawnu zależą od gruntu przy brzegach chunków, gdzie okno dekoracji ma tolerancję); przebieg bez żadnego zwierzęcia pada; hasze bloków wobec referencji bez flagi dokładnie. Świat „Default + Polish Forests” poza tym gametestem |
 
-### G.72 Otwarte warianty B3 i decyzje do potwierdzenia (zbiorczo, stan 2026-11-25, po FA9)
+### G.72 Otwarte warianty B3 i decyzje do potwierdzenia (zbiorczo, stan 2026-11-26, po FA10)
 
 Jedno miejsce na sprawy czekające na użytkownika po pionowym wycinku. Rekomendacja pierwsza; liczby z „Stan po FA9” i kroków źródłowych w `docs/04`.
 
@@ -1640,21 +1640,23 @@ Jedno miejsce na sprawy czekające na użytkownika po pionowym wycinku. Rekomend
 | B3-4 | Sarna w „Default + Polish Forests” ×16,9 (6 zwierząt na 6,5 ha) | (a) przyjąć: próba za mała (przedział losowy obejmuje pasmo); (b) dłuższy spis W1 (więcej miejsc) w FA10 | (a), sprawdzić przy B3-3 (a) |
 | B3-5 | C3-c: dwublokowe byliny pod nisko zawieszoną koroną; N8 łęgu wiązowo-jesionowego REAL 2–3 punkty niżej, 4 nowe ✗ karty (gosp. N8.herbs 39,9 / 39,1 przy 40, N8.herbs_spring 54,25 / 55,06 przy 56) | (a) przyjąć (tuż pod progiem, wygląd w grze); (b) dolna połowa pod liśćmi albo pniem zamienia się w postać jednoblokową przy generacji i w `updateShape` (karta jak przed C3, ok. 0,5 dnia) | (b) |
 | B3-6 | C3: cel §4.6 przy małym strumieniu w trybie D GAMEPLAY 58,3% (próg 60%; tryb N spełniony) | (a) więcej postaci wysokiej w palecie OlJ; (b) wysoka pokrzywa w strefach brzegu i szpalerach trybu D; (c) przyjąć | (c) |
+| B3-7 | FA10: norma lasu bez jaskiń (PW-10, ≥ 0,70 × M2) w 3 z 16 miejsc pod progiem: REAL `lowland_beech_1` 0,691 (F7 0,698, wtedy `ACCEPTED`), GAMEPLAY `oak_hornbeam_1` 0,692, GAMEPLAY `alder_carr_1` 0,697; od F7 generacja ok. +3% (etapy FA10 / F7 0,93–1,07, kroki TT, C1–C3, mrowiska FA8) | (a) przyjąć jako wynik na progu (różnica 0,003–0,009, mniejsza niż rozrzut par rund), norma 0,70 zostaje dla M3; (b) krok optymalizacji generacji bez zmiany wyniku (wzór O1: profil JFR, drzewostan planera, przetwarzanie roślin wysokich C3, plan mrowisk, `ForestBlend`), szac. +2–5% → ok. 0,71–0,73, ok. 1 dzień + A/B `load` ok. 1,5 h; (c) niższa norma, np. 0,68 (niezalecane: ukrywa dryf) | (b) przed M3, do tego czasu (a) |
+| B3-8 | FA10: strażnik z jaskiniami GAMEPLAY `floodplain_1` 0,543 przy 0,55 (F7 0,603; mediana ilorazów par 0,555, koszt jaskiń 1,79 ms na chunk) | (a) przyjąć (0,007 pod progiem); (b) ta sama optymalizacja co B3-7 (b), szac. 0,55–0,57; (c) tańsze jaskinie pod łęgami (wbrew G.34, niezalecane) | (b) razem z B3-7, do tego czasu (a) |
 
 **Decyzje domyślne do potwierdzenia (bez wariantów do wyboru).**
 
 | # | Sprawa | Stan |
 |---|---|---|
-| P-1 | Drobne wybory G.58–G.71 i G.V8 (kroki C1–C3, FA1–FA9, tor sarny V8) | domyślne; G.27–G.56 przyjęte przy CP-D (CP-D.4) |
+| P-1 | Drobne wybory G.58–G.73 i G.V8 (kroki C1–C3, FA1–FA10, tor sarny V8) | domyślne; G.27–G.56 przyjęte przy CP-D (CP-D.4) |
 | P-2 | G.62-c: wyroby z drewna i łodzie dla wszystkich 15 gatunków moda (CP-D.2 wymieniał sześć) | rekomendacja: zostawić 15; zawężenie zmienia rejestr, więc tylko przed wydaniem |
 | P-3 | G.62-g / FA8: gęstość mrowisk ×5 (0,65 kopca na ha borów zamiast 0,13) i siedlisko w jasnych borach (FA8-i′) | rekomendacja: zostawić (bez jasnych borów 0,01 kopca na ha) |
 | P-4 | C1-c i C1-i: reguła spisu N5 na powierzchniach limbowych (granica lasu, potoki i wychodnie skalne) | zmiana pomiaru, nie normy; karta końcowa limbowej świerczyny 78 ✓ / 34 ≈ / 0 ✗ |
-| P-5 | CP-D.5: liczby progu górskiego strażnika z jaskiniami (REAL ≥ 0,35 ×, GAMEPLAY ≥ 0,45 × M2) i REAL `lowland_beech_1` 0,698 | sprawdzenie w pomiarze zbiorczym FA10 |
+| P-5 | CP-D.5: liczby progu górskiego strażnika z jaskiniami (REAL ≥ 0,35 ×, GAMEPLAY ≥ 0,45 × M2) i REAL `lowland_beech_1` 0,698 | FA10: próg górski spełniony (`upland_fir_1` REAL 0,385, `montane_spruce_1` GAMEPLAY 0,461; liczby do potwierdzenia); REAL `lowland_beech_1` 0,691 poniżej 0,698, więc `FAIL` i wariant B3-7 |
 | P-6 | FA9-f (strażnik gry bez procesów samego launchera Epic), FA9-j (dłuższa próba lotu sójki) i FA9-m (próba łańcucha skrzeku bez zwierząt spawnera) | domyślne |
 
-Zamknięte w FA9: TT7-q (karta norm powierzchni limbowych GAMEPLAY jest w karcie końcowej `docs/wycinek/karta-norm-v17.md`), zaległe przebiegi rundy 2 przeglądu FA8; w rundzie 1 przeglądu FA9 DP-178 (`determinism -PdeterminismSpawnMobs`: zwierzęta przy generacji w obu światach stałej kolejności identyczne w 48 z 48 obszarów, bloki identyczne z referencją; G.71 FA9-n, do potwierdzenia w P-1).
+Dopisane w FA10: B3-7 i B3-8 (pomiar zbiorczy, „Stan po FA10” w `docs/04`); P-5 rozstrzygnięte pomiarem. Do decyzji także usunięcie worktree `pl-m2-baseline` po pomiarach (uprząż bazy w `migawki/m2-baseline-r1-harness.patch`, tagi `m2-baseline*` zostają; rekomendacja: usunąć). Zamknięte w FA9: TT7-q (karta norm powierzchni limbowych GAMEPLAY jest w karcie końcowej `docs/wycinek/karta-norm-v17.md`), zaległe przebiegi rundy 2 przeglądu FA8; w rundzie 1 przeglądu FA9 DP-178 (`determinism -PdeterminismSpawnMobs`: zwierzęta przy generacji w obu światach stałej kolejności identyczne w 48 z 48 obszarów, bloki identyczne z referencją; G.71 FA9-n, do potwierdzenia w P-1).
 
-### G.73 Drobne wybory kroku FA10 (domyślne, do potwierdzenia; 2026-11-25)
+### G.73 Drobne wybory kroku FA10 (domyślne, do potwierdzenia; 2026-11-25 … 2026-11-26)
 
 Krok: `docs/04-pionowy-wycinek.md` §3 „FA10”, „Projekt FA10” (etap 1: FA10-a … FA10-f) i „Stan po FA10” (etap 2: od FA10-g). Pomiar A/B wobec M2 z jaskiniami i bez, MSPT fauny, FPS z fauną i bez, strona zamknięcia wycinka; kod moda bez zmian.
 
@@ -1666,3 +1668,9 @@ Krok: `docs/04-pionowy-wycinek.md` §3 „FA10”, „Projekt FA10” (etap 1: F
 | FA10-d | Scena mieszana | 10 saren, 8 dzików, 8 wiewiórek, 8 sójek, 6 żab (40 jak w scenach jednego gatunku) w miejscu grądu GAMEPLAY N; jeden licznik na wszystkie (zwierzęta moda i żaby także osobno); gatunki osobno dają sceny jednego gatunku |
 | FA10-e | Przeloty z fauną i bez | Tylko build FA10, bez progu (raport; KFA-6 ma budżet tylko dla MSPT); z paczką, 3 lasy z sarną, dzikiem, wiewiórką i sójką (`oak_hornbeam_1`, `fresh_pine_1`, `lowland_beech_1`) w obu skalach, 2 rundy bez / z, z / bez; `spawn_mobs` włączone w obu, różni je reguła `polishforests:forest_fauna` (zwierzęta moda z generacji obszaru przelotu) |
 | FA10-f | Uprząż bazy M2 | Zapisana jako łatka `migawki/m2-baseline-r1-harness.patch` (sprawdzona na `git archive m2-baseline-r1`), żeby po usunięciu worktree `pl-m2-baseline` bazę dało się odbudować z tagu; samo usunięcie worktree tylko za zgodą użytkownika (uwaga z 2026-11-24) |
+| FA10-g | Liczenie zwierząt w obszarze przelotu | W rundach 1–2 przelotów z fauną linia liczenia szła przed przelotami, gdy kamera stała 450 bloków dalej (encje obszaru niewczytane, zawsze 0, także wanilii). Poprawka w uprzęży: liczenie po przelotach (`animals in the flight area after the flights …`), parser czyta tylko nową linię; runda 3 bez / z fauną z poprawką; FPS jako mediany 3 rund (przeloty rund 1–2 były poprawne, zła była tylko liczba) |
+| FA10-h | Werdykty z rundą odstającą | Runda 3 `load` buildu FA10 była we wszystkich miejscach GAMEPLAY o 10–20% wolniejsza (próbnik nie zgłosił zakłócenia); werdykty liczą wszystkie rundy jak w planie (mediana), bez powtórek „do skutku”; wynik bez rundy 3 tylko dla informacji w „Stan po FA10” (te same `FAIL`) |
+| FA10-i | Liczba wierszy werdyktów | 124 wiersze tabeli werdyktów (108 `PASS`, 12 `REPORT`, 4 `FAIL`); liczby 219 / 24 / 4 z raportu uruchamiacza liczyły też wiersze podsumowania i inne linie z `PASS` |
+| FA10-j | Worktree `pl-m2-baseline` | Zostaje po pomiarach do zgody użytkownika (uwaga z 2026-11-24, ma pierwszeństwo przed CP-D.12 i G.62-i); rekomendacja: usunąć (`git worktree remove --force`), uprząż w łatce, tagi zostają |
+| FA10-k | Strona zamknięcia | Prywatny Artifact z liczbami wprost z `ab_v17.md`, `karta-norm-v17.md` i listy „Do sprawdzenia w grze” (skrypt składa stronę z plików), bez zrzutów; zaznaczenia listy tylko w przeglądarce widza |
+| FA10-l | Spis `fauna -PnoSeasons` (DP-180) | Nie szedł w FA10 (opcjonalny, kod fauny bez zmian od FA9); zostaje na liście „Do kroku porządkowego”, tak samo B3-3 |

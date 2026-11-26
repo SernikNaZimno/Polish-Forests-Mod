@@ -2,7 +2,7 @@
 
 Zebrane w kroku FA9 (`docs/04-pionowy-wycinek.md` „Projekt FA9”) z list „Do sprawdzenia w grze” w „Stan po FA1” … „Stan po FA8” i z rund poprawek. Gdzie runda zmieniła punkt, jest tu wersja po rundzie. Lista trafi na stronę zamknięcia wycinka (FA10). Miejsca wskazują komendy `/polishforests find …`, `fauna`, `here` i `list`, bez stałych współrzędnych (G.37 U-9). Jeśli nie podano inaczej: nowy świat „Polska” (skala rozgrywki, ustawienia domyślne), tryb twórczy z komendami. Wygląd ocenia tylko użytkownik (G.36 U-1).
 
-Paczka: `build/distributions/Polish-Forests-0.3.0-dev.32.mrpack` (krok FA9; `./gradlew assemble -Pmod_version=0.3.0-dev.32`, `python tools/build_mrpack.py`).
+Paczka: `build/distributions/Polish-Forests-0.3.0-dev.33.mrpack` (krok FA10; `./gradlew assemble -Pmod_version=0.3.0-dev.33`, `python tools/build_mrpack.py`). Punkt 59 dopisał krok FA10 (przelot z fauną i bez); ta lista jest też na stronie zamknięcia wycinka.
 
 ## Sarna (FA1, FA2)
 
@@ -88,4 +88,8 @@ Paczka: `build/distributions/Polish-Forests-0.3.0-dev.32.mrpack` (krok FA9; `./g
 
 ## Paczka
 
-58. Paczka `Polish-Forests-0.3.0-dev.32.mrpack` importuje się w Modrinth App albo Prism Launcher (Minecraft 26.3, Fabric) i startuje bez błędów, z Serene Seasons i FallingTree (opcjonalny) z konfiguracją z paczki.
+58. Paczka `Polish-Forests-0.3.0-dev.33.mrpack` importuje się w Modrinth App albo Prism Launcher (Minecraft 26.3, Fabric) i startuje bez błędów, z Serene Seasons i FallingTree (opcjonalny) z konfiguracją z paczki.
+
+## Płynność z fauną (FA10)
+
+59. Przelot przez las z fauną i bez (płynność). Nowy świat „Polska” (skala rozgrywki) z paczki `0.3.0-dev.33` (Sodium, C2ME), tryb twórczy, F3 pokazuje FPS. `/polishforests find biome oak_hornbeam_forest`, teleport, `/polishforests fauna 64` (sarny, dziki, wiewiórki, sójki w pobliżu), potem kilka minut lotu: nisko między pniami i nad okapem, także w `find biome fresh_pine_forest` i `find biome lowland_beech_forest`. Następnie `/gamerule polishforests:forest_fauna false` i ten sam lot w nowe chunki (np. 500 bloków dalej): płynność i FPS bez wyraźnej różnicy (pomiar FA10: z fauną 0,92–1,00 × FPS bez fauny), bez przycięć przy wczytywaniu chunków ze zwierzętami, zwierzęta nie przeskakują i nie drgają przy granicy chunków. Na koniec `/gamerule polishforests:forest_fauna true`.

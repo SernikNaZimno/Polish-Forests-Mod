@@ -33,7 +33,10 @@ SL = re.compile(r"\[performance\] (poland\S* / slice \S+): stages for 64 chunks.
 SW = re.compile(r"\[performance\] (poland\S* / slice \S+): whole chunk ([\d.]+) ms/chunk")
 F = re.compile(r"\[performance\] (poland\S* / \S+ (?:canopy|eye)) flight:.*?FPS ([\d.]+) ")
 G = re.compile(r"\[performance\] (poland\S* / \S+ (?:canopy|eye)) flight:.*?GPU time of the level pass per frame ([\d.]+) ms")
-AN = re.compile(r"\[performance\] (poland\S* / \S+): animals in the flight area \(\d+ blocks around\): mod (\d+) (\{[^}]*\}), frogs (\d+)")
+# Only the count after the flights (stage 2 of FA10): the earlier line "animals in the flight area (… blocks around)" was
+# logged before the flights, with the camera 450 blocks away and the entities of the flight area not loaded (always 0).
+AN = re.compile(r"\[performance\] (poland\S* / \S+): animals in the flight area after the flights \(\d+ blocks around\): "
+                r"mod (\d+) (\{[^}]*\}), frogs (\d+)")
 MS = re.compile(r"\[fauna\] (\S+ \S+) MSPT( [A-Za-z ]+?)?: .*?: ([\d.]+|NaN) ms per animal and tick")
 MSB = re.compile(r"server average tick ([\d.]+) ms before, ([\d.]+) ms after")
 
@@ -269,7 +272,7 @@ def main():
             q = med(on[k]) / med(off[k])
             site = name(k).rsplit(' ', 1)[0]
             md.append(f"| {name(k)} | {med(off[k]):.0f} | {med(on[k]):.0f} | {f3(q)} | {f3(1000 / med(on[k]) - 1000 / med(off[k]))} | "
-                      f"{ani[site][0] if ani.get(site) else '—'} |")
+                      f"{' / '.join(ani[site]) if ani.get(site) else '—'} |")
             raw.append(f"ffly {name(k)}: off {' '.join(map(str, off[k]))}; on {' '.join(map(str, on[k]))}")
 
     if a.verdicts:

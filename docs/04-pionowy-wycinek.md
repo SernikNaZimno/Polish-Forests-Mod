@@ -793,7 +793,7 @@ CP-D.1 zlecił faunę i dźwięk według planu (V14, V15, V16, potem V17), CP-D.
 - **Zakres:** (1) Tylko na spokojnej maszynie (bez drugiej pracy z klientem gry i bez gry użytkownika; czekanie opisane, nigdy z `-PtimingsReportOnly` jako wynik końcowy): pomiar A/B wobec M2 (worktree `C:/Users/henke/Desktop/code/pl-m2-baseline`, tag `m2-baseline-r1`, uprząż `ForestPerformance`, ABBA jak F7) bez jaskiń (`-Pcaves=off`) i z jaskiniami, w miejscach F7 w obu skalach; werdykty z `PerformanceThresholds` (CP-D.5: norma lasu ≥ 0,70 × M2, cel 0,75; strażnik z jaskiniami REAL ≥ 0,40, GAMEPLAY ≥ 0,55; próg górski REAL ≥ 0,35, GAMEPLAY ≥ 0,45; FEATURES ≤ 2,0 × i ≤ 10 ms, LIGHT ≤ 1,75 × i ≤ 12 ms, cały chunk ≤ 48 ms; FPS z paczką ≥ 0,8 × poza przelotami nad okapem lasów F1–F6, te w raporcie); ponowne sprawdzenie REAL `lowland_beech_1` (F7: 0,698); miejsca Tatr opisowo (KT-6). (2) MSPT z fauną (ZW-8): scena mieszana (sarny, dziki, wiewiórki, sójki, żaby) i po gatunku, ms na zwierzę wobec budżetu 0,05 ms; FPS w przelocie z fauną i bez. (3) Strona zamknięcia wycinka (Artifact prywatny, link w raporcie): liczby wydajności i werdykty, karta norm końcowa (FA9), spis fauny, ziarna i miejsca przez `/polishforests find …`, zbiorcza lista „Do sprawdzenia w grze”, otwarte decyzje i warianty B3; bez galerii zrzutów do oceny. (4) Po pomiarach usunięcie worktree `pl-m2-baseline` (`git worktree remove`, tagi `m2-baseline` i `m2-baseline-r1` zostają, więc bazę można odbudować) — CP-D.12.
 - **Ukończony, gdy:** tabela A/B z werdyktami (z jaskiniami i bez) i MSPT fauny w `docs/wycinek/v17/` i w „Stan po FA10”; każdy próg spełniony albo zgłoszony z wariantami (B3); REAL `lowland_beech_1` ponownie zmierzone; strona opublikowana; worktree `pl-m2-baseline` usunięte, tagi zostają; drzewo czyste i wypchnięte; KFA-1 … KFA-10.
 - **Ryzyko:** średnie (pomiary tylko na spokojnej maszynie — czekanie na koniec drugiej pracy, R21).
-- **Stan (2026-11-25): etap 1 zrobiony** („Projekt FA10”, `docs/00` G.73): plan pomiaru (6 rund `load`, 4 jaskiń, 4 etapów, 2 przelotów, MSPT, przeloty z fauną i bez), uprząż: MSPT żaby i scena mieszana, `-PperfFauna`, `-PperfSites`, werdykty w Markdown, `tools/dev/ab_tables.py`, łatka uprzęży bazy M2; przebiegi w etapie 2. Usunięcie worktree `pl-m2-baseline` tylko za zgodą użytkownika (2026-11-24).
+- **Stan (2026-11-26): zrobione z odstępstwami** („Projekt FA10”, „Stan po FA10”, `docs/00` G.73, tabele `docs/wycinek/v17/ab_v17.md`, strona zamknięcia https://claude.ai/artifact/RADA9HcG6Zd7pXTNkK127b): A/B wobec M2 z jaskiniami i bez — 108 `PASS`, 12 `REPORT`, 4 `FAIL` (norma lasu REAL `lowland_beech_1` 0,691 — zmierzone ponownie —, GAMEPLAY `oak_hornbeam_1` 0,692 i `alder_carr_1` 0,697; strażnik GAMEPLAY `floodplain_1` 0,543; warianty B3-7, B3-8 w G.72); MSPT fauny w budżecie (najwięcej żaba 0,0432 ms, scena mieszana 0,0185 ms); przeloty z fauną i bez; uprząż: liczenie zwierząt po przelotach (FA10-g). Worktree `pl-m2-baseline` **nie** usunięte: uwaga użytkownika z 2026-11-24 (usunięcie tylko za zgodą), tagi zostają.
 
 ### V14. Szkielet fauny i sarna (B, 3–3,5 dnia)
 
@@ -831,6 +831,7 @@ CP-D.1 zlecił faunę i dźwięk według planu (V14, V15, V16, potem V17), CP-D.
 ### V17. Integracja, pełne testy, dokumentacja (A, 1,5–2 dnia)
 
 - **Plan 2026-11-16:** wykonują kroki FA9 (testy, karta norm końcowa, dokumentacja) i FA10 (pomiar A/B, MSPT fauny, strona zamknięcia, usunięcie worktree `pl-m2-baseline`).
+- **Stan (2026-11-26): zrobione przez FA9 i FA10** („Stan po FA9”, „Stan po FA10”): pełne testy, karta norm końcowa, pomiar A/B z werdyktami (4 progi niespełnione, warianty B3-7 i B3-8), MSPT fauny w budżecie, strona zamknięcia wycinka; worktree `pl-m2-baseline` czeka na zgodę użytkownika.
 
 - **Zakres:** pełny `tools/dev/run-tests test`, `checkDatagen`, `checkArt`, `runClientGameTest` (`slice`, `fauna`, `determinism` z C2ME i bez, `all` w częściach jak w S10); końcowy A/B `stages`; karta norm końcowa; zrzuty w 8 podsezonach; dokumentacja: `docs/04` (stan), BRIEF, `docs/00`, `docs/01` §5, §6, §8, README (nowe bloki i zwierzęta), `LICENSE-assets`; lista „co uogólnić w M3, M4 i M6”.
 - **Ukończony, gdy:** wszystko przechodzi, budżety spełnione albo zgłoszone (B3), drzewo robocze czyste i wypchnięte, strona CP-D gotowa.
@@ -8343,3 +8344,96 @@ Razem ok. 8 h maszyny bez czekania. **Warunek spokojnej maszyny** (jak powtórka
 **Testy etapu 1.** `run-tests --reuse fastTest`, `PerformanceThresholdsTest` (5: 4 PASS, `theCollectiveRunIsJudged` pominięty bez `ab_v17.md`; z tymczasowym plikiem z dzienników F7 5 PASS, także z dopisaną sekcją werdyktów), `MixinTargetsTest`, `FaunaModelTest`, `FaunaProfileTest`, `checkArt`, `compileGametestJava`. Gametesty `fauna -Psites=mspt` i przeloty z nowymi flagami pierwszy raz w etapie 2 (to są przebiegi pomiaru).
 
 **Do etapu 2:** przebiegi sterownika, `ab_v17.md` z werdyktami, każdy niespełniony próg z 2–3 wariantami i kosztami (B3; warianty F7 jako punkt wyjścia), „Stan po FA10”, strona zamknięcia (prywatny Artifact), BRIEF, `docs/00` G.73 (FA10-g …), przebieg `test_plan.py 1c5e239 --end` z pełnym `run-tests test`, ostatni commit. Worktree `pl-m2-baseline` zostaje (decyzja użytkownika).
+
+## Stan po FA10 (2026-11-25 … 2026-11-26, etap 2: pomiar zbiorczy A/B, MSPT fauny, przeloty z fauną i bez, strona zamknięcia; bez recenzji wizualnej)
+
+Baza kroku `1c5e239` (ostatni commit FA9), etap 1 `86686ed`. Kod moda (`src/main`, `src/client`) i generacja bez zmian (`git diff 1c5e239 -- src/main src/client` pusty); etap 2 zmienił tylko uprząż pomiaru (FA10-g) i dokumenty. Sole, enumy i `landscape/m1` nietknięte. Zgodnie z G.36 U-1 bez oceny wyglądu i bez zrzutów. Tabele A/B z werdyktami: `docs/wycinek/v17/ab_v17.md` (z dzienników sterownika `handoff/FA10/ab/` przez `tools/dev/ab_tables.py`; werdykty liczy `PerformanceThresholds`, test `theCollectiveRunIsJudged` pilnuje, że sekcja werdyktów w pliku jest tą z progów). Drobne wybory: `docs/00` G.73 (FA10-g … FA10-l), warianty B3-7 i B3-8 w G.72. Strona zamknięcia wycinka (prywatny Artifact, G.62-h): https://claude.ai/artifact/RADA9HcG6Zd7pXTNkK127b.
+
+**Wynik w skrócie.** 124 wiersze werdyktów (16 normy lasu, 16 strażnika, 32 FPS, 3 × 20 etapów): 108 `PASS`, 12 `REPORT` (przeloty nad okapem lasów F1–F6), 4 `FAIL`, 0 `ACCEPTED` (raport uruchamiacza podał 219 / 24 / 4, licząc razem wiersze podsumowania i listy; liczby tu są z tabeli werdyktów). Niespełnione: norma lasu bez jaskiń w 3 z 16 miejsc (REAL `lowland_beech_1` 0,691, GAMEPLAY `oak_hornbeam_1` 0,692, GAMEPLAY `alder_carr_1` 0,697 przy 0,70) i strażnik z jaskiniami w 1 z 16 (GAMEPLAY `floodplain_1` 0,543 przy 0,55); warianty B3-7 i B3-8 niżej. Spełnione: próg górski strażnika (`upland_fir_1` REAL 0,385 ≥ 0,35, `montane_spruce_1` GAMEPLAY 0,461 ≥ 0,45; P-5), pozostały strażnik (REAL `fresh_pine_1` 0,427 ≥ 0,40, w F7 0,419), etapy (FEATURES ≤ 1,710 × i ≤ 8,62 ms, LIGHT ≤ 1,469 × i ≤ 10,02 ms, cały chunk ≤ 26,15 ms), FPS z paczką w 20 z 20 przelotów z progiem (najmniej 0,814 × nad okapem grądu GAMEPLAY, na wysokości oczu najmniej 0,833 × w świerczynie REAL; nad okapem lasów F1–F6 0,720–0,922 × w raporcie), MSPT fauny w 6 z 6 scen (najwięcej żaba trawna 0,0432 ms na zwierzę i tick, scena mieszana 0,0185 ms; budżet 0,05 ms).
+
+**Warunki pomiaru.** Sterownik `handoff/FA10/run_ab_fa10.sh` (wzór F7): 38 przebiegów 2026-11-25 23:06 … 2026-11-26 08:34, ABBA (rundy nieparzyste baza pierwsza), ten sam harness `ForestPerformance` w obu buildach (M2 = `pl-m2-baseline` przy `858965f` z łatką uprzęży FA10-f, FA10 = `86686ed`), obie skale, bez jaskiń (`-Pcaves=off`) i z jaskiniami. Przed każdym przebiegiem 3 próbki co 20 s: brak gry użytkownika (zapytanie z zasad pracy) i programu java drugiej pracy, CPU < 20%, GPU ≤ 5% karty; w trakcie próbnik co 20 s. Czekanie łącznie 417 s (na grę użytkownika 0 s); 2 przebiegi (`load_r5` i `caves_r4` buildu FA10) przerwał obcy `java.exe`, poszły do `ab/disturbed/` i zostały powtórzone. Pierwsze uruchomienie sterownika wystartowało go omyłkowo dwa razy; oba zatrzymane (`kill-stale-gametest`), dzienniki odłożone do `ab_aborted_double_start/`, sterownik uruchomiony od nowa (do tabel nie weszły). Runda 3 przelotów z fauną (FA10-g, `handoff/FA10/run_ffly_r3.sh`, te same funkcje ciszy) 2026-11-26 14:20 … 15:06, czekanie 21 s. Żaden przebieg nie używał `-PtimingsReportOnly`. Rundy: `load` 6, jaskinie 4, `stages` 4, MSPT 2, przeloty z fauną 3 (bez / z, z / bez, bez / z), FPS 2.
+
+**Norma lasu bez jaskiń (PW-10, ≥ 0,70 × M2, cel 0,75)** — chunki na sekundę z C2ME, iloraz median 6 rund:
+
+| miejsce | REAL | GAMEPLAY | F7 (REAL / GAMEPLAY) |
+|---|---|---|---|
+| `oak_hornbeam_1` | 0,756 | **0,692 FAIL** | 0,714 / 0,719 |
+| `fresh_pine_1` | 0,736 | 0,702 | 0,735 / 0,736 |
+| `lowland_beech_1` | **0,691 FAIL** | 0,754 | 0,698 / 0,712 |
+| `alder_carr_1` | 0,790 | **0,697 FAIL** | 0,755 / 0,729 |
+| `upland_fir_1` | 0,741 | 0,754 | 0,743 / 0,744 |
+| `bog_woodland_1` | 0,759 | 0,750 | 0,782 / 0,749 |
+| `floodplain_1` | 0,715 | 0,705 | 0,747 / 0,724 |
+| `montane_spruce_1` | 0,797 | 0,729 | 0,757 / 0,719 |
+
+Razem 0,691 / 0,739 / 0,797 (min / mediana / maks.), cel 0,75 osiągnięty w 7 z 16 miejsc. **REAL `lowland_beech_1` zmierzone ponownie:** 0,691 (ilorazy par rund 0,667–0,704; F7 0,698, przyjęte w CP-D.5 jako `ACCEPTED` od 0,698), więc teraz `FAIL`. Runda 3 buildu FA10 była we wszystkich miejscach GAMEPLAY o 10–20% wolniejsza niż pozostałe (np. `oak_hornbeam_1` 116,8 wobec 143,5–153,0 chunków na sekundę; próbnik nie zgłosił zakłócenia). Werdykty liczą wszystkie rundy, jak ustalono w planie; dla informacji bez rundy 3: 0,695 / 0,696 / 0,697 — trzy `FAIL` zostają, `floodplain_1` z jaskiniami byłoby 0,552.
+
+**Strażnik z jaskiniami (G.34, CP-D.5)** — świat z jaskiniami wobec M2 bez jaskiń, mediany 4 rund: REAL 0,385–0,599 (górskie `upland_fir_1` 0,385 i `montane_spruce_1` 0,412, oba ≥ 0,35; pozostałe ≥ 0,427 przy 0,40), GAMEPLAY 0,461–0,679 (górskie 0,575 i 0,461 ≥ 0,45; `floodplain_1` **0,543 FAIL** przy 0,55, w F7 0,603; pozostałe ≥ 0,590). Koszt jaskiń w FA10: REAL 1,40–7,02 ms na chunk, GAMEPLAY 0,49–4,80 ms. REAL `lowland_beech_1` z jaskiniami 0,528 (F7 0,719: wtedy szybciej z jaskiniami niż bez, czyli odczyt F7 tego miejsca był nietypowy).
+
+**Etapy bez jaskiń (`stages`, 20 obszarów wycinka, 4 rundy):** FEATURES 6,42–8,62 ms (1,40–1,71 × M2), LIGHT 8,51–10,02 ms (1,20–1,47 ×), cały chunk 19,80–26,15 ms — wszystko `PASS`. Wobec F7 (te same obszary): FEATURES 0,93–1,06 ×, LIGHT 1,01–1,07 ×, cały chunk 1,00–1,05 × (mediana ok. 1,03): od F7 generacja kosztuje ok. 3% więcej (kroki TT1–TT7, C1–C3, mrowiska FA8). To tłumaczy spadek normy w miejscach GAMEPLAY o 0,02–0,03 i trzy `FAIL` tuż pod progiem.
+
+**FPS z paczką** (Sodium, Nvidium, C2ME, świat z jaskiniami; 2 rundy): przeloty z progiem 0,814–1,044 × (20 `PASS`), nad okapem lasów F1–F6 0,720–0,922 × (12 `REPORT`, jak w F7: 0,707–0,924). FPS bezwzględny FA10 1163–1562.
+
+**Tatry (KT-6, opis bez progu):** chunki na sekundę bez jaskiń 117,6–189,5, z jaskiniami 57,1–82,8 (koszt jaskiń 5,2–9,5 ms na chunk, najwięcej REAL `tatra_stone_pine_1`); FPS z paczką 1317–1598 (najmniej nad reglem REAL).
+
+**MSPT fauny (KFA-6, ZW-8; `-Pgametest=fauna -Psites=mspt`, GAMEPLAY N, 2 przebiegi).** Metoda: 40 zwierząt sceny, zwierzęta moda i żaby wokół usunięte, spawnery wyłączone regułą, 400 ticków na rozejście, 1200 ticków pomiaru (48 000 ticków zwierząt); czas ticku zwierząt moda mierzy licznik `PolishAnimal`, żab mixin gametestu `FrogTimingMixin` (40 z 40 żab wariantu `common_frog`, 48 000 ticków żab: mixin działa).
+
+| scena | zwierzęta | ms na zwierzę i tick (przebiegi) | mediana | budżet 0,05 ms |
+|---|---|---|---|---|
+| sarna | 40 | 0,0144 / 0,0145 | 0,0145 | PASS |
+| dzik | 40 | 0,0161 / 0,0168 | 0,0164 | PASS |
+| wiewiórka | 40 | 0,0079 / 0,0081 | 0,0080 | PASS |
+| sójka | 40 | 0,0127 / 0,0125 | 0,0126 | PASS |
+| żaba trawna | 40 (w olsie) | 0,0414 / 0,0450 | 0,0432 | PASS |
+| scena mieszana | 10 saren, 8 dzików, 8 wiewiórek, 8 sójek, 6 żab | 0,0182 / 0,0188 (zwierzęta moda 0,0140 / 0,0138, żaby 0,0418 / 0,0470) | 0,0185 | PASS |
+
+Wszystkie 40 zwierząt sceny mieszanej żyło na końcu. Średni tick serwera przed i po: sarny 5,99 → 5,41 i 6,19 → 5,32 ms, żaby 5,58 → 6,65 i 5,81 → 6,80 ms, scena mieszana 4,48 → 5,45 i 4,94 → 5,62 ms. Żaba trawna jest najbliżej budżetu (86% w medianie): to tick żaby wanilii (mózg i ścieżki), mod dodaje tylko wariant; jej liczbę ogranicza spawner przy wodzie (w olsie zwykle 4–7 przy graczu).
+
+**Przeloty z fauną i bez** (FA10-e, reguła `polishforests:forest_fauna`, `spawn_mobs` włączone w obu, z paczką, bez progu; FPS jako mediany 3 rund, zwierzęta w obszarze przelotu z rundy 3):
+
+| przelot | bez fauny, FPS | z fauną, FPS | iloraz | czas klatki z fauną − bez, ms | zwierzęta moda w obszarze (runda 3) |
+|---|---|---|---|---|---|
+| REAL oak_hornbeam_1 okap | 1332 | 1297 | 0,974 | 0,020 | 44 {eurasian_jay=20, red_squirrel=18, roe_deer=6} |
+| REAL oak_hornbeam_1 oko | 1512 | 1430 | 0,946 | 0,038 | 44 {eurasian_jay=20, red_squirrel=18, roe_deer=6} |
+| REAL fresh_pine_1 okap | 1252 | 1248 | 0,997 | 0,003 | 27 {eurasian_jay=10, red_squirrel=14, roe_deer=3} |
+| REAL fresh_pine_1 oko | 1333 | 1277 | 0,958 | 0,033 | 27 {eurasian_jay=10, red_squirrel=14, roe_deer=3} |
+| REAL lowland_beech_1 okap | 1186 | 1176 | 0,992 | 0,007 | 35 {eurasian_jay=16, red_squirrel=11, roe_deer=8} |
+| REAL lowland_beech_1 oko | 1367 | 1312 | 0,960 | 0,031 | 35 {eurasian_jay=16, red_squirrel=11, roe_deer=8} |
+| GAMEPLAY oak_hornbeam_1 okap | 1301 | 1290 | 0,991 | 0,007 | 39 {eurasian_jay=18, red_squirrel=14, roe_deer=4, wild_boar=3} |
+| GAMEPLAY oak_hornbeam_1 oko | 1533 | 1406 | 0,917 | 0,059 | 39 {eurasian_jay=18, red_squirrel=14, roe_deer=4, wild_boar=3} |
+| GAMEPLAY fresh_pine_1 okap | 1332 | 1288 | 0,967 | 0,025 | 35 {eurasian_jay=10, red_squirrel=13, roe_deer=12} |
+| GAMEPLAY fresh_pine_1 oko | 1393 | 1307 | 0,939 | 0,047 | 35 {eurasian_jay=10, red_squirrel=13, roe_deer=12} |
+| GAMEPLAY lowland_beech_1 okap | 1162 | 1138 | 0,980 | 0,018 | 42 {eurasian_jay=9, red_squirrel=16, roe_deer=17} |
+| GAMEPLAY lowland_beech_1 oko | 1417 | 1305 | 0,921 | 0,061 | 42 {eurasian_jay=9, red_squirrel=16, roe_deer=17} |
+
+Z fauną FPS 0,917–0,997 × FPS bez fauny (czas klatki +0,003 … +0,061 ms); najwięcej kosztują przeloty na wysokości oczu (0,917–0,960 ×), gdzie zwierzęta są w kadrze, nad okapem 0,967–0,997 ×. W obszarze przelotu (kwadrat 208 × 208 bloków) po przelotach 27–44 zwierząt moda: sójki, wiewiórki i sarny, w grądzie GAMEPLAY także 3 dziki; żab 0 (miejsca bez wody). Bez fauny 0 zwierząt moda; zwierzęta wanilii 2–40 w obu wariantach.
+
+**Odstępstwo w uprzęży (FA10-g).** W rundach 1–2 linia `animals in the flight area …` pokazywała wszędzie 0 zwierząt (także wanilii). Przyczyna w uprzęży: liczenie szło przed przelotami, gdy kamera stała po ostatnim wczytaniu 450 bloków na południe, poza widokiem obszaru przelotu, więc encje tego obszaru nie były wczytane. Poprawka: liczenie po obu przelotach, gdy kamera jest jeszcze na orbicie (linia `animals in the flight area after the flights …`; parser `ab_tables.py` czyta tylko nową linię). Same przeloty rund 1–2 były poprawne (świat, reguły i trasa te same, spawn przy generacji powtarzalny, DP-178), więc FPS bez / z fauną liczy mediany wszystkich 3 rund.
+
+**Przebiegi końca kroku** (`python tools/dev/test_plan.py 1c5e239 --end`; obszary unit, mixins, fauna, gametest_code): pełny `tools/dev/run-tests test` PASS (2026-11-26, 37 min, na kodzie etapu 1; po poprawce FA10-g jeszcze raz na drzewie końcowym, wynik w opisie commita), `MixinTargetsTest`, `FaunaModelTest`, `FaunaProfileTest`, `checkArt` EXIT 0, `PerformanceThresholdsTest` (5 testów, `theCollectiveRunIsJudged` na `ab_v17.md`) PASS, `compileGametestJava` po FA10-g. Spis `fauna` EXIT 0 bez `FAIL` (ok. 4,6 h w 7 startach serwera, `build/fauna/census.txt`). `determinism -PdeterminismSpawnMobs` wobec `handoff/FA9/determinism_plain/plain.txt`: EXIT 0, 144 porównania, wszystkie 0 różnic albo identyczne. Pominięte z własnych warunków: `-Psites=model` (model i renderer bez zmian), `probes` (bez mixinów renderu), `-Psites=habitats` (bez zmian gęstości i siedlisk). Opcjonalny spis `fauna -PnoSeasons` (DP-180) nie szedł: zostaje na liście „Do kroku porządkowego”. Paczka `build/distributions/Polish-Forests-0.3.0-dev.33.mrpack` (3072 KB, sha1 `6ff7ab1b21f07083bb9e8698eeb2520c97fb39d1`; poprawka FA10-g jest w gametestach, poza jarem moda).
+
+**Warianty B3 dla niespełnionych progów** (liczby przy (b) i (c) to szacunki, nie pomiary).
+
+*B3-7, norma lasu bez jaskiń* (3 z 16 miejsc 0,691–0,697 przy 0,70; od F7 ok. +3% kosztu generacji):
+
+| wariant | norma × M2 | świat | koszt |
+|---|---|---|---|
+| (a) przyjąć jako wynik na progu (różnica 0,003–0,009 mniejsza niż rozrzut par rund, np. 0,568–0,733 w GAMEPLAY `oak_hornbeam_1`); norma 0,70 zostaje dla M3 | bez zmian: 0,691–0,697 | bez zmian | decyzja, bez pracy |
+| **(b) rekomendowany:** krok optymalizacji generacji bez zmiany wyniku przed M3 (wzór O1: profil JFR, potem pamięci i mniej powtórzonych zapytań w drzewostanie planera, przetwarzaniu roślin wysokich C3, planie mrowisk i `ForestBlend`); do tego czasu (a) | ok. +2–5%: ok. 0,71–0,73 | bez zmian (`determinism` identyczny) | ok. 1 dzień + A/B `load` (ok. 1,5 h maszyny) |
+| (c) niższa norma (np. 0,68) | bez zmian | bez zmian | decyzja; niezalecane: ukrywa dryf +3% od F7, a M3 i M4 dodadzą kosztu |
+
+*B3-8, strażnik z jaskiniami GAMEPLAY `floodplain_1`* (0,543 przy 0,55; mediana ilorazów par 0,555, koszt jaskiń 1,79 ms na chunk):
+
+| wariant | strażnik × M2 | świat | koszt |
+|---|---|---|---|
+| (a) przyjąć (0,007 pod progiem, w granicach rozrzutu rund) | bez zmian: 0,543 | bez zmian | decyzja, bez pracy |
+| **(b) rekomendowany:** ta sama optymalizacja co B3-7 (b); do tego czasu (a) | ok. 0,55–0,57 | bez zmian | w koszcie B3-7 (b) |
+| (c) tańsze jaskinie pod łęgami (mniej łat sculku, płytsze carvery) | ok. 0,57–0,60 | jaskinie inne niż w wanilii, wbrew G.34; niezalecane | ok. 1 dzień + A/B |
+
+**KFA-1 … KFA-10 (FA10).** KFA-1: bez nowych soli, enumów, bloków i pól zapisu, `landscape/m1` bez zmian. KFA-2: `determinism -PdeterminismSpawnMobs` 0 różnic wobec FA9. KFA-6: MSPT w budżecie we wszystkich scenach. KFA-8: bez recenzji wizualnej, dowody liczbowe. KFA-9: przebiegi według `test_plan.py 1c5e239` i `--end`, strażnik gry przed każdym przebiegiem. KFA-10: „Projekt FA10”, ten wpis, stan w opisie FA10 i V17, BRIEF, `docs/00` G.72 i G.73, lista „Do sprawdzenia w grze” (punkt 59). Pozostałe KFA jak w FA9 (kod fauny bez zmian).
+
+**Worktree `pl-m2-baseline`.** Po pomiarach zostaje (uwaga użytkownika z 2026-11-24: usunięcie worktree poza repozytorium tylko za zgodą). Nie ma w nim niezapisanych zmian poza uprzężą bazy, a ta jest w `migawki/m2-baseline-r1-harness.patch` (sprawdzona na `git archive m2-baseline-r1`); tagi `m2-baseline` i `m2-baseline-r1` zostają, więc po zgodzie wystarczy `git worktree remove --force C:/Users/henke/Desktop/code/pl-m2-baseline` (CP-D.12, G.62-i). Innych worktree (w tym `polishforests-fauna`) krok nie dotyka.
+
+**Do sprawdzenia w grze:** zbiorcza lista `docs/wycinek/v17/do-sprawdzenia-w-grze.md` (teraz 59 punktów: nowy punkt 59, przelot przez las z fauną i bez dla oceny płynności), paczka `Polish-Forests-0.3.0-dev.33.mrpack`; ta sama lista na stronie zamknięcia.
+
+**Stan wycinka (po FA10).** Wszystkie kroki planu zrobione (V0–V13, CP-A … CP-D, kroki C, F, TT, FA1–FA10). Otwarte do decyzji użytkownika: warianty B3-1 … B3-8 i decyzje P-1 … P-6 (`docs/00` G.72), usunięcie worktree `pl-m2-baseline`, lista „Do kroku porządkowego”.

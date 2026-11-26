@@ -275,9 +275,6 @@ final class ForestPerformance {
 				// Step O1: only the load of new terrain (-PloadOnly), the flight left out.
 				continue;
 			}
-			// Step FA10: the animals in the flight area (the flights with and without the fauna, -PperfFauna=on|off).
-			PolishForests.LOG.info("[performance] {}: {}", label, sp.getServer().computeOnServer(s -> animals(s.overworld(), m[0], m[1],
-					ORBIT_RADIUS + 64)));
 			for (boolean canopy : new boolean[] {true, false}) {
 				double[][] points = new double[FLIGHT_POINTS][];
 				sp.getServer().runOnServer(s -> {
@@ -290,6 +287,12 @@ final class ForestPerformance {
 				});
 				sweeps(context, sp, label + (canopy ? " canopy" : " eye"), points);
 			}
+			// Step FA10: the animals in the flight area (the flights with and without the fauna, -PperfFauna=on|off), counted
+			// after the flights, while the camera is still on the orbit: before them the camera stood 450 blocks south after
+			// the last load, the flight area's chunks were out of the view and their entities not loaded, so the count gave 0
+			// (stage 2 of FA10, rounds 1 and 2 of the fauna flights).
+			PolishForests.LOG.info("[performance] {}: {}", label, sp.getServer().computeOnServer(s -> animals(s.overworld(), m[0], m[1],
+					ORBIT_RADIUS + 64)));
 		}
 	}
 
@@ -334,7 +337,7 @@ final class ForestPerformance {
 			}
 		}
 		int modAll = mod.values().stream().mapToInt(Integer::intValue).sum();
-		return String.format(Locale.ROOT, "animals in the flight area (%d blocks around): mod %d %s, frogs %d, other animals %d, "
+		return String.format(Locale.ROOT, "animals in the flight area after the flights (%d blocks around): mod %d %s, frogs %d, other animals %d, "
 				+ "monsters %d", half, modAll, mod, frogs, other, monsters);
 	}
 
