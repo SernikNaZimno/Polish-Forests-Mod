@@ -99,3 +99,9 @@ Paczka: `build/distributions/Polish-Forests-0.3.0-dev.33.mrpack` (krok FA10; `./
 60. (OP1) Świat ten sam co w dev.32 / dev.33. Paczka `Polish-Forests-0.3.0-dev.34.mrpack`, nowy świat „Polska” (skala rozgrywki, potem 1:1) z tym samym ziarnem co w poprzednich próbach: `/polishforests find biome oak_hornbeam_forest`, `find biome fresh_pine_forest`, `find biome lowland_beech_forest`, `find biome alder_carr` i teleport — te same miejsca, te same drzewa, runo i martwe drewno co w dev.33 (krok zmienił tylko pamięci generacji, bloki są te same według `determinism`).
 
 61. (OP1) Szybkość wczytywania nowych chunków. Tryb twórczy, F3, lot sprintem nad niezwiedzonym lasem (grąd, buczyna, ols; zacznij od `find biome oak_hornbeam_forest`) przez 1–2 minuty w jednym kierunku: nowe chunki pojawiają się tak samo szybko jak w dev.33, bez dziur na horyzoncie i bez zacięć. Krok nie dał mierzalnego przyspieszenia (pomiar OP1 wobec FA10 ok. 1,00), więc oczekiwana jest ta sama płynność, nie lepsza; wyraźnie gorsza byłaby błędem.
+
+## Wczytywanie po OP2
+
+62. (OP2) Świat ten sam co w dev.32 i dev.34. Paczka `Polish-Forests-0.3.0-dev.35.mrpack`, nowy świat „Polska” (skala rozgrywki, potem 1:1) z tym samym ziarnem co w poprzednich próbach: `/polishforests find biome oak_hornbeam_forest`, `find biome lowland_beech_forest`, `find biome alder_carr`, `find biome fresh_pine_forest` i teleport — te same miejsca, te same drzewa (korony, odstępy, luki), runo i martwe drewno co w dev.34; to samo w świecie „Default + Polish Forests” z tym samym ziarnem.
+
+63. (OP2) Szybkość wczytywania nowych chunków. Tryb twórczy, F3, lot sprintem nad niezwiedzonym lasem (grąd, buczyna, ols; zacznij od `find biome oak_hornbeam_forest`) przez 1–2 minuty w jednym kierunku: nowe chunki pojawiają się co najmniej tak szybko jak w dev.34, bez dziur na horyzoncie i bez zacięć. Krok skrócił planowanie drzew o ok. 13%, w pomiarze to ok. 3% etapu dekoracji, więc różnica może być niezauważalna.

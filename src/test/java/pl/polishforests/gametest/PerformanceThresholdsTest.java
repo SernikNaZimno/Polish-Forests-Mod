@@ -143,7 +143,21 @@ class PerformanceThresholdsTest {
 	 */
 	@Test
 	void theRunOfStepOp1IsJudged() throws IOException {
-		List<Result> results = judgeCollective(Path.of("docs/wycinek/op1/ab_op1.md"), Path.of("build/ab/verdicts_op1.md"), 0);
+		normStaysFailBelowTheThreshold(judgeCollective(Path.of("docs/wycinek/op1/ab_op1.md"), Path.of("build/ab/verdicts_op1.md"), 0));
+	}
+
+	/**
+	 * Step OP2: the A/B tables of the step ({@code docs/wycinek/op2/ab_op2.md}, run because the cost gate passed) are
+	 * complete without FPS rows (no client or render code changed), and their verdict section is the one the thresholds
+	 * give ({@code build/ab/verdicts_op2.md}). The norm is not loosened: every site below 0.70 stays {@code FAIL}.
+	 */
+	@Test
+	void theRunOfStepOp2IsJudged() throws IOException {
+		normStaysFailBelowTheThreshold(judgeCollective(Path.of("docs/wycinek/op2/ab_op2.md"), Path.of("build/ab/verdicts_op2.md"), 0));
+	}
+
+	/** Every forest-norm row below 0.70 (except the accepted 0.698 of the REAL beech site) is {@code FAIL}. */
+	private static void normStaysFailBelowTheThreshold(List<Result> results) {
 		for (Result r : results) {
 			boolean accepted = r.row().scale() == Scale.REALISTIC && r.row().site().equals("lowland_beech_1")
 					&& r.row().ratio() >= PerformanceThresholds.ACCEPTED_LOWLAND_BEECH_REAL;
