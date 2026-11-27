@@ -362,6 +362,18 @@ tasks.withType(Test).configureEach {
 	if (project.hasProperty('costRuns')) {
 		systemProperty 'polishforests.cost.runs', project.property('costRuns')
 	}
+	// Step OP2 (StandCostTest): -PstandCostSide=<chunks> the side of the square of chunks around each site (default 9),
+	// -PstandCostThreads=<n> planning threads (default 1), -PstandCostSites=<name,...> only these sites,
+	// -PstandCostReport=<file> where the report goes (default build/stand-cost/report.txt), -PcostJfr a JFR recording
+	// of the cost test JVM to build/stand-cost/cost.jfr (profile settings; for finding the hot methods, not for timing).
+	['standCostSide': 'side', 'standCostThreads': 'threads', 'standCostSites': 'sites', 'standCostReport': 'report'].each { p, k ->
+		if (project.hasProperty(p)) {
+			systemProperty "polishforests.standCost.${k}", project.property(p)
+		}
+	}
+	if (project.hasProperty('costJfr')) {
+		jvmArgs "-XX:StartFlightRecording=filename=${file('build/stand-cost/cost.jfr').absolutePath},settings=profile"
+	}
 }
 
 tasks.named('test', Test) {
@@ -394,6 +406,8 @@ tasks.register('costTest', Test) {
 	maxParallelForks = 1
 	// A timing report: always rerun, never alongside other test JVMs of the same build.
 	outputs.upToDateWhen { false }
+	def standCostDir = file('build/stand-cost')
+	doFirst { standCostDir.mkdirs() }
 	mustRunAfter tasks.named('test'), tasks.named('fastTest')
 }
 
