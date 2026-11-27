@@ -133,7 +133,32 @@ class PerformanceThresholdsTest {
 	 */
 	@Test
 	void theCollectiveRunIsJudged() throws IOException {
-		Path file = Path.of("docs/wycinek/v17/ab_v17.md");
+		judgeCollective(Path.of("docs/wycinek/v17/ab_v17.md"), Path.of("build/ab/verdicts_v17.md"), 32);
+	}
+
+	/**
+	 * Step OP1: the A/B tables of the step ({@code docs/wycinek/op1/ab_op1.md}) are complete without FPS rows (the step
+	 * changes no client or render code, so no flights ran), and their verdict section is the one the thresholds give
+	 * ({@code build/ab/verdicts_op1.md}). The norm is not loosened: every site below 0.70 stays {@code FAIL}.
+	 */
+	@Test
+	void theRunOfStepOp1IsJudged() throws IOException {
+		List<Result> results = judgeCollective(Path.of("docs/wycinek/op1/ab_op1.md"), Path.of("build/ab/verdicts_op1.md"), 0);
+		for (Result r : results) {
+			boolean accepted = r.row().scale() == Scale.REALISTIC && r.row().site().equals("lowland_beech_1")
+					&& r.row().ratio() >= PerformanceThresholds.ACCEPTED_LOWLAND_BEECH_REAL;
+			if (r.row().metric() == Metric.CHUNKS_NO_CAVES && r.row().ratio() < PerformanceThresholds.CHUNKS_NORM && !accepted) {
+				assertEquals(Verdict.FAIL, r.verdict(), r.toString());
+			}
+		}
+	}
+
+	/**
+	 * The rows of a collective A/B file by metric (16 forest-norm sites, 16 guard sites, {@code fpsRows} flights, 20
+	 * areas of each stage; the Tatra sites are only described), its verdicts written to {@code verdicts}, and the verdict
+	 * section of the file, when present, equal to the one of the thresholds.
+	 */
+	private static List<Result> judgeCollective(Path file, Path verdicts, int fpsRows) throws IOException {
 		org.junit.jupiter.api.Assumptions.assumeTrue(Files.exists(file), "no " + file + " yet");
 		List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
 		List<Result> results = PerformanceThresholds.judge(PerformanceThresholds.parseMarkdown(lines));
@@ -145,13 +170,13 @@ class PerformanceThresholdsTest {
 		}
 		assertEquals(16, rows.get(Metric.CHUNKS_NO_CAVES));
 		assertEquals(16, rows.get(Metric.CHUNKS_WITH_CAVES));
-		assertEquals(32, rows.get(Metric.FPS));
+		assertEquals(fpsRows, rows.getOrDefault(Metric.FPS, 0));
 		assertEquals(20, rows.get(Metric.FEATURES));
 		assertEquals(20, rows.get(Metric.LIGHT));
 		assertEquals(20, rows.get(Metric.WHOLE_CHUNK));
 		String md = PerformanceThresholds.verdictMarkdown(results);
-		Files.createDirectories(Path.of("build/ab"));
-		Files.writeString(Path.of("build/ab/verdicts_v17.md"), md, StandardCharsets.UTF_8);
+		Files.createDirectories(verdicts.getParent());
+		Files.writeString(verdicts, md, StandardCharsets.UTF_8);
 		for (Result r : results) {
 			System.out.println(r);
 		}
@@ -162,6 +187,7 @@ class PerformanceThresholdsTest {
 			String section = (end < 0 ? text.substring(at) : text.substring(at, end)).strip();
 			assertEquals(md.strip(), section, "the verdict section of " + file + " is not the one of the thresholds");
 		}
+		return results;
 	}
 
 	private static Verdict judge(Metric metric, Scale scale, String site, String view, double ratio) {

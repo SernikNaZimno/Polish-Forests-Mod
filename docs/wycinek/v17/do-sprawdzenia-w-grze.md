@@ -93,3 +93,9 @@ Paczka: `build/distributions/Polish-Forests-0.3.0-dev.33.mrpack` (krok FA10; `./
 ## Płynność z fauną (FA10)
 
 59. Przelot przez las z fauną i bez (płynność). Nowy świat „Polska” (skala rozgrywki) z paczki `0.3.0-dev.33` (Sodium, C2ME), tryb twórczy, F3 pokazuje FPS. `/polishforests find biome oak_hornbeam_forest`, teleport, `/polishforests fauna 64` (sarny, dziki, wiewiórki, sójki w pobliżu), potem kilka minut lotu: nisko między pniami i nad okapem, także w `find biome fresh_pine_forest` i `find biome lowland_beech_forest`. Następnie `/gamerule polishforests:forest_fauna false` i ten sam lot w nowe chunki (np. 500 bloków dalej): płynność i FPS bez wyraźnej różnicy (pomiar FA10: z fauną 0,92–1,00 × FPS bez fauny), bez przycięć przy wczytywaniu chunków ze zwierzętami, zwierzęta nie przeskakują i nie drgają przy granicy chunków. Na koniec `/gamerule polishforests:forest_fauna true`.
+
+## Wczytywanie po OP1
+
+60. (OP1) Świat ten sam co w dev.32 / dev.33. Paczka `Polish-Forests-0.3.0-dev.34.mrpack`, nowy świat „Polska” (skala rozgrywki, potem 1:1) z tym samym ziarnem co w poprzednich próbach: `/polishforests find biome oak_hornbeam_forest`, `find biome fresh_pine_forest`, `find biome lowland_beech_forest`, `find biome alder_carr` i teleport — te same miejsca, te same drzewa, runo i martwe drewno co w dev.33 (krok zmienił tylko pamięci generacji, bloki są te same według `determinism`).
+
+61. (OP1) Szybkość wczytywania nowych chunków. Tryb twórczy, F3, lot sprintem nad niezwiedzonym lasem (grąd, buczyna, ols; zacznij od `find biome oak_hornbeam_forest`) przez 1–2 minuty w jednym kierunku: nowe chunki pojawiają się tak samo szybko jak w dev.33, bez dziur na horyzoncie i bez zacięć. Krok nie dał mierzalnego przyspieszenia (pomiar OP1 wobec FA10 ok. 1,00), więc oczekiwana jest ta sama płynność, nie lepsza; wyraźnie gorsza byłaby błędem.

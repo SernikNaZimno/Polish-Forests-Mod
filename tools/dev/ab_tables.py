@@ -17,7 +17,7 @@ name no metric, so the parser skips them. The verdicts are not computed here: Pe
 
 Usage:
   python tools/dev/ab_tables.py <log dir> --out docs/wycinek/v17/ab_v17.md [--raw raw.txt] [--ref docs/wycinek/f7/ab_f7.md]
-         [--name FA10] [--header header.md] [--verdicts build/ab/verdicts_v17.md]
+         [--name FA10] [--ref-name "F7 (2026-11-11)"] [--header header.md] [--verdicts build/ab/verdicts_v17.md]
 """
 import argparse
 import collections
@@ -123,10 +123,13 @@ def main():
     ap.add_argument('--raw')
     ap.add_argument('--ref', default='docs/wycinek/f7/ab_f7.md')
     ap.add_argument('--name', default='FA10')
+    ap.add_argument('--ref-name', default='F7 (2026-11-11)',
+                    help='column label of the reference file (the build measured there, e.g. "FA10 (2026-11-26)")')
     ap.add_argument('--header', help='Markdown put before the tables (title and method)')
     ap.add_argument('--verdicts', help='verdict section written by PerformanceThresholdsTest, appended at the end')
     a = ap.parse_args()
-    d, N = a.logs, a.name
+    d, N, R = a.logs, a.name, a.ref_name
+    R7 = R.split(' (')[0]
     ref = reference(a.ref)
     md, raw = [], []
     if a.header:
@@ -139,7 +142,7 @@ def main():
     b, h = runs(d, 'load', 'base', L), runs(d, 'load', 'head', L)
     bs, hs = series(b), series(h)
     md.append(f"\n## Chunki na sekundę z C2ME bez jaskiń (`-Pcaves=off`, `-PloadOnly`); próg ≥ 0,7 × M2\n\n"
-              f"| miejsce | M2 | {N} | iloraz | ilorazy rund (min–max) | F7 (2026-11-11) |\n|---|---|---|---|---|---|")
+              f"| miejsce | M2 | {N} | iloraz | ilorazy rund (min–max) | {R} |\n|---|---|---|---|---|---|")
     rs = []
     for k in hs:
         if '/ tatra' in k:
@@ -167,7 +170,7 @@ def main():
     md.append(f"\n## Strażnik z jaskiniami: chunki na sekundę z C2ME (świat z jaskiniami wobec M2 bez jaskiń); próg REAL ≥ 0,4 ×, "
               f"GAMEPLAY ≥ 0,55 ×, lasy górskie REAL ≥ 0,35 ×, GAMEPLAY ≥ 0,45 ×\n\n"
               f"| miejsce | M2 | {N} | iloraz | {N} bez jaskiń | koszt jaskiń {N}, ms na chunk | iloraz wobec M2 ze wszystkich przebiegów |"
-              f" F7 |\n|---|---|---|---|---|---|---|---|")
+              f" {R7} |\n|---|---|---|---|---|---|---|---|")
     for k in hs:
         if '/ tatra' in k:
             tatra[name(k)]['caves'] = med(hs[k])
@@ -186,7 +189,7 @@ def main():
                                            ("cały chunk", SW, 1, "", 48, 'WHOLE')):
         bs, hs = series(runs(d, 'stages', 'base', rx)), series(runs(d, 'stages', 'head', rx))
         md.append(f"\n## {title}, ms na chunk (`stages -Psites=slice -Pcaves=off`, 20 obszarów miejsc wycinka); próg {lim}≤ {absl} ms\n\n"
-                  f"| obszar | M2 | F7 (2026-11-11) | {N} | {N} / M2 | {N} / F7 |\n|---|---|---|---|---|---|")
+                  f"| obszar | M2 | {R} | {N} | {N} / M2 | {N} / {R7} |\n|---|---|---|---|---|---|")
         for k in bs:
             if k not in hs:
                 continue
@@ -198,10 +201,12 @@ def main():
     # 4. FPS with the pack (world with caves).
     bs, hs = series(runs(d, 'fly', 'base', F)), series(runs(d, 'fly', 'head', F))
     bg, hg = series(runs(d, 'fly', 'base', G)), series(runs(d, 'fly', 'head', G))
-    md.append(f"\n## FPS z paczką (`-Poptimization`: Sodium, Nvidium, C2ME; świat z jaskiniami; okap = 42 bloki nad gruntem, oko = "
-              f"wysokość oczu); próg ≥ 0,8 × M2, przeloty nad okapem lasów F1–F6 tylko w raporcie\n\n"
-              f"| przelot | M2 FPS | {N} FPS | iloraz | M2 GPU ms/klatkę | {N} GPU ms/klatkę | {N} czas klatki − M2, ms | F7 |\n"
-              f"|---|---|---|---|---|---|---|---|")
+    # Step OP1: a run without flights (no client or render change) gets no FPS section.
+    if bs or hs:
+        md.append(f"\n## FPS z paczką (`-Poptimization`: Sodium, Nvidium, C2ME; świat z jaskiniami; okap = 42 bloki nad gruntem, "
+                  f"oko = wysokość oczu); próg ≥ 0,8 × M2, przeloty nad okapem lasów F1–F6 tylko w raporcie\n\n"
+                  f"| przelot | M2 FPS | {N} FPS | iloraz | M2 GPU ms/klatkę | {N} GPU ms/klatkę | {N} czas klatki − M2, ms | {R7} |\n"
+                  f"|---|---|---|---|---|---|---|---|")
     for k in hs:
         if '/ tatra' in k:
             tatra[name(k)]['fps'] = med(hs[k])
