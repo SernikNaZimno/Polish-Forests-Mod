@@ -8569,3 +8569,9 @@ Przegląd: jedna sprawa „major” (prawdziwa, zrobiona) i 3 drobne (sprawdzone
 - DP-210: `MemoLongTable.put` i `MemoTable.put` przy wyścigu mogą zapisać drugą kopię wpisu i wyrzucić najstarszy (sprawdzone na przykładzie [a, b, new, c] → [new, a, b, new]); wynik bez wpływu.
 
 Lista „Do sprawdzenia w grze” bez zmian (poprawki dotyczą tylko dokumentacji): punkty 60–61 z „Stan po OP1”.
+
+## Runda 2 poprawek po przeglądzie OP1 (2026-11-27)
+
+Przegląd: 0 spraw blokujących i „major”, 3 drobne — wszystkie sprawdzone i prawdziwe, a każda to powtórka wpisu, który runda 1 już dopisała do listy „Do kroku porządkowego”: tożsamość świata co do bloków tylko dla typu „Polska”, typ „Default + Polish Forests” bez świata w `determinism` (= DP-208, zdanie w „Stan po OP1”); strażnik z jaskiniami GAMEPLAY `montane_spruce_1` 0,451 na medianie rund, 0,447 ze wszystkich przebiegów (= DP-209, wiersz 49 `ab_op1.md`, „Stan po OP1” B3-8 i G.72 B3-8: w M3 miejsce zagrożone); `MemoLongTable.put` i `MemoTable.put` przy wyścigu zapisują drugą kopię wpisu i wyrzucają najstarszy (= DP-210; ponownie prześledzone w kodzie: warunek `e == moved` porównuje stary wpis slotu z wpisem właśnie przesuwanym, nie z nowym, więc [a, b, new, c] → [new, a, b, new]; numery wierszy w zgłoszeniu (368, 436) nie pasują do plików o 74 i 69 wierszach, chodzi o `put` w wierszach 57 i 45). Bez nowych wpisów i bez poprawek kodu (próg z 2026-10-21), bez nowych wyborów domyślnych w `docs/00`. Fałszywych alarmów nie było. Kod bez zmian; pełny zestaw `tools/dev/run-tests test` przed commitem rundy: PASS (drzewo `a26391b108cb`; Gradle uznał `test` za aktualny, bo wejścia testów są te same co w przebiegu rundy 1 na `4a59586d6c2d`, 2257 s, 762 testy, 0 błędów). Czekanie na grę użytkownika: 0 min.
+
+Lista „Do sprawdzenia w grze” bez zmian: punkty 60–61 z „Stan po OP1”.
