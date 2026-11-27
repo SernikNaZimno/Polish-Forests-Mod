@@ -439,6 +439,7 @@ public final class Ecotone {
 			}
 			this.blend = blend;
 			this.blendField = null;
+			this.provable = null;
 			this.pairs[0] = null;
 			this.pairs[1] = null;
 			this.pairs[2] = null;
@@ -591,6 +592,73 @@ public final class Ecotone {
 			warpSeed = worldSeed;
 			warp = w;
 			return w;
+		}
+
+		/** Step OP2: the memo of {@link Ecotone#provableTrees} by column of the region, for one world seed and salt. */
+		private int @Nullable [] provable;
+		private long provableSeed;
+		private long provableSalt;
+
+		int[] provable(long worldSeed, long salt) {
+			int[] p = provable;
+			if (p == null || provableSeed != worldSeed || provableSalt != salt) {
+				p = provable = new int[SPAN * SPAN];
+				java.util.Arrays.fill(p, NOT_PROVED_YET);
+				provableSeed = worldSeed;
+				provableSalt = salt;
+			}
+			return p;
+		}
+
+		/** Step OP2: the corners of the meander's grid of 4 blocks over the region ({@link #warpAt}), x and z by corner. */
+		private double @Nullable [] warpCorners;
+		private long warpCornersSeed;
+		private static final int WARP_CORNERS = SPAN / 4 + 1;
+
+		/**
+		 * The meander of world column (x, z) ({@link Ecotone#warpAt}) into {@code out}: the corners of the grid of the
+		 * columns of the region (chunk-local −{@value #REACH} … 15 + {@value #REACH}) are computed once per region and world
+		 * seed (step OP2; {@link Ecotone#provableTrees} asked for the same corners column after column, eight noise
+		 * samples each), the same values interpolated the same way; other columns as before.
+		 */
+		void warpAt(long worldSeed, int x, int z, int[] out) {
+			int gx = Math.floorDiv(x, 4) * 4;
+			int gz = Math.floorDiv(z, 4) * 4;
+			int i = (gx - ((chunkX << 4) - REACH)) / 4;
+			int j = (gz - ((chunkZ << 4) - REACH)) / 4;
+			if (gx < (chunkX << 4) - REACH || gz < (chunkZ << 4) - REACH || i + 1 >= WARP_CORNERS || j + 1 >= WARP_CORNERS) {
+				int[] w = Ecotone.warpAt(worldSeed, k, x, z);
+				out[0] = w[0];
+				out[1] = w[1];
+				return;
+			}
+			double[] c = warpCorners;
+			if (c == null || warpCornersSeed != worldSeed) {
+				c = warpCorners = new double[2 * WARP_CORNERS * WARP_CORNERS];
+				java.util.Arrays.fill(c, Double.NaN);
+				warpCornersSeed = worldSeed;
+			}
+			double[] cx = new double[4];
+			double[] cz = new double[4];
+			Noise n = null;
+			double wavelength = Math.max(WARP_MIN_WAVELENGTH, WARP_WAVELENGTH * k);
+			for (int a = 0; a < 2; a++) {
+				for (int b = 0; b < 2; b++) {
+					int at = 2 * ((i + a) * WARP_CORNERS + j + b);
+					if (Double.isNaN(c[at])) {
+						if (n == null) {
+							n = Noises.of(worldSeed).warp();
+						}
+						warpCorner(n, wavelength, gx + 4 * a, gz + 4 * b, c, at);
+					}
+					cx[a * 2 + b] = c[at];
+					cz[a * 2 + b] = c[at + 1];
+				}
+			}
+			double fx = (x - gx) / 4.0;
+			double fz = (z - gz) / 4.0;
+			out[0] = (int) Math.round(corners(cx, fx, fz));
+			out[1] = (int) Math.round(corners(cz, fx, fz));
 		}
 
 		/** Index of each cell's code among the region's distinct codes ({@link #codeOf}), -1 where not known (lazily). */
@@ -863,9 +931,29 @@ public final class Ecotone {
 	 * decision V5-i: the exact vacancies of the crown territories in the chunks around the decorated one).
 	 */
 	public static int provableTrees(Region region, long worldSeed, long salt, int x, int z) {
+		// Step OP2: memoized by column of the region (the vacancies of the crown territories and the open land of the
+		// forest edge ask for the same columns), the code a pure function of the region, the seed, the salt and the column.
+		if (x >= -REACH && x < 16 + REACH && z >= -REACH && z < 16 + REACH) {
+			int[] memo = region.provable(worldSeed, salt);
+			int i = (x + REACH) * SPAN + z + REACH;
+			int known = memo[i];
+			if (known == NOT_PROVED_YET) {
+				known = memo[i] = provableTreesOf(region, worldSeed, salt, x, z);
+			}
+			return known;
+		}
+		return provableTreesOf(region, worldSeed, salt, x, z);
+	}
+
+	/** Marks a column of {@link Region#provable} not computed yet (no code: codes are non-negative or {@link #UNKNOWN}). */
+	private static final int NOT_PROVED_YET = Integer.MIN_VALUE;
+
+	/** {@link #provableTrees} without the memo of the region. */
+	static int provableTreesOf(Region region, long worldSeed, long salt, int x, int z) {
 		int worldX = (region.chunkX() << 4) + x;
 		int worldZ = (region.chunkZ() << 4) + z;
-		int[] w = warpAt(worldSeed, region.k(), worldX, worldZ);
+		int[] w = new int[2];
+		region.warpAt(worldSeed, worldX, worldZ, w);
 		int code = provableRamp(region, worldSeed, salt, x, z, w);
 		if (region.blend() != null && ForestBlend.member(code) > 0) {
 			// The wide blend (step Z1): a pure function of the column, its code and the world's lattice.
@@ -980,22 +1068,30 @@ public final class Ecotone {
 		int gz = Math.floorDiv(z, 4) * 4;
 		double[] cx = new double[4];
 		double[] cz = new double[4];
+		double[] corner = new double[2];
 		for (int a = 0; a < 2; a++) {
 			for (int b = 0; b < 2; b++) {
-				double wx = WARP * Math.clamp(n.at(gx + 4 * a, gz + 4 * b, wavelength) / 0.5, -1, 1);
-				double wz = WARP * Math.clamp(n.at(gx + 4 * a + 5_003.0, gz + 4 * b - 3_001.0, wavelength) / 0.5, -1, 1);
-				double len = Math.sqrt(wx * wx + wz * wz);
-				if (len > WARP) {
-					wx *= WARP / len;
-					wz *= WARP / len;
-				}
-				cx[a * 2 + b] = wx;
-				cz[a * 2 + b] = wz;
+				warpCorner(n, wavelength, gx + 4 * a, gz + 4 * b, corner, 0);
+				cx[a * 2 + b] = corner[0];
+				cz[a * 2 + b] = corner[1];
 			}
 		}
 		double fx = (x - gx) / 4.0;
 		double fz = (z - gz) / 4.0;
 		return new int[] {(int) Math.round(corners(cx, fx, fz)), (int) Math.round(corners(cz, fx, fz))};
+	}
+
+	/** The meander at a corner (cx, cz) of the grid of 4 blocks (x, z in blocks) into out[at], out[at + 1]. */
+	private static void warpCorner(Noise n, double wavelength, int cx, int cz, double[] out, int at) {
+		double wx = WARP * Math.clamp(n.at(cx, cz, wavelength) / 0.5, -1, 1);
+		double wz = WARP * Math.clamp(n.at(cx + 5_003.0, cz - 3_001.0, wavelength) / 0.5, -1, 1);
+		double len = Math.sqrt(wx * wx + wz * wz);
+		if (len > WARP) {
+			wx *= WARP / len;
+			wz *= WARP / len;
+		}
+		out[at] = wx;
+		out[at + 1] = wz;
 	}
 
 	/** Bilinear interpolation of the corners {(0,0), (0,1), (1,0), (1,1)} as {@code Region.bilinear} computes it. */

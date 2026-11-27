@@ -176,6 +176,17 @@ public final class TreeShapePlan {
 	private static final double[] MIRROR = {0.45, 0.5, 0.55};
 	private static final double GOLDEN = StrictMath.toRadians(137.5);
 	private static final int AZIMUTH_BINS = 32;
+	/** Step OP2: the cosine and sine of the middle azimuth of each bin, once ({@code columns} computed them per tree). */
+	private static final double[] BIN_COS = new double[AZIMUTH_BINS];
+	private static final double[] BIN_SIN = new double[AZIMUTH_BINS];
+
+	static {
+		for (int b = 0; b < AZIMUTH_BINS; b++) {
+			double a = 2 * Math.PI * b / AZIMUTH_BINS;
+			BIN_COS[b] = StrictMath.cos(a);
+			BIN_SIN[b] = StrictMath.sin(a);
+		}
+	}
 	/** Largest number of nodes of one branch curve. */
 	private static final int CURVE_MAX = 48;
 
@@ -660,6 +671,9 @@ public final class TreeShapePlan {
 		/** Step OP1: the radius of the crown's empty core by height ({@link #hollowAt}) and the plan it belongs to. */
 		private final double[] hollowLimit = new double[MAX_HEIGHT];
 		private final int[] hollowStamp = new int[MAX_HEIGHT];
+		/** Step OP2: the integer bound of the core by height ({@link #hollowAtSquare}), valid where stamped with the plan. */
+		private final long[] hollowSquare = new long[MAX_HEIGHT];
+		private final int[] hollowSquareStamp = new int[MAX_HEIGHT];
 		private int hollowPlan;
 
 		/** Lowest block of the tree's layer at the column (dx, dz). */
@@ -671,6 +685,28 @@ public final class TreeShapePlan {
 				case SUBCANOPY -> splitsAt(dx, dz, splitTmp)[1];
 				case REGENERATION -> 0;
 			};
+		}
+
+		/**
+		 * {@link #floorAt} and {@link #capAt} of the column (dx, dz) into {@link #floorY} and {@link #capY} of column c, with
+		 * the split surfaces asked for once (step OP2: before, the subcanopy and the regeneration asked twice).
+		 */
+		private void floorCap(int dx, int dz, int c) {
+			switch (request.layer()) {
+				case CANOPY -> {
+					floorY[c] = floorAt(dx, dz);
+					capY[c] = MAX_HEIGHT - 1;
+				}
+				case SUBCANOPY -> {
+					int[] s = splitsAt(dx, dz, splitTmp);
+					floorY[c] = s[1];
+					capY[c] = s[0] - 1;
+				}
+				case REGENERATION -> {
+					floorY[c] = 0;
+					capY[c] = splitsAt(dx, dz, splitTmp)[1] - 1;
+				}
+			}
 		}
 
 		/** Highest block of the tree's layer at the column (dx, dz). */
@@ -715,6 +751,7 @@ public final class TreeShapePlan {
 			}
 			if (++hollowPlan == 0) {
 				Arrays.fill(hollowStamp, 0);
+				Arrays.fill(hollowSquareStamp, 0);
 				hollowPlan = 1;
 			}
 			nodes = 0;
@@ -747,8 +784,7 @@ public final class TreeShapePlan {
 					leafColumn[c] = in;
 					woodColumn[c] = in;
 					if (in || dx == 0 && dz == 0) {
-						floorY[c] = floorAt(dx, dz);
-						capY[c] = capAt(dx, dz);
+						floorCap(dx, dz, c);
 					}
 				}
 			}
@@ -795,9 +831,8 @@ public final class TreeShapePlan {
 			}
 			openLand(r);
 			for (int b = 0; b < AZIMUTH_BINS; b++) {
-				double a = 2 * Math.PI * b / AZIMUTH_BINS;
-				double c = StrictMath.cos(a);
-				double s = StrictMath.sin(a);
+				double c = BIN_COS[b];
+				double s = BIN_SIN[b];
 				float d = 0;
 				for (double step = 0.5; step <= REACH; step += 0.5) {
 					if (!leaf(Math.round(step * c), Math.round(step * s))) {
@@ -2234,7 +2269,7 @@ public final class TreeShapePlan {
 						if (e > 0.2 && cellUnit(x, y, z, 2) > fill) {
 							continue;
 						}
-						if (hollow && hollowAt(x, y, z)) {
+						if (hollow && hollowAtSquare(x, y, z)) {
 							continue;
 						}
 						if (nearSplit(x, y, z) && cellUnit(x, y, z, 3) < EDGE_THIN) {
@@ -2270,6 +2305,41 @@ public final class TreeShapePlan {
 			}
 			double rho = Math.sqrt((double) x * x + (double) z * z);
 			return rho < limit;
+		}
+
+		/**
+		 * {@link #hollowAt} by an integer bound of the row (step OP2): x² + z² below the least q whose square root is at
+		 * least the core's radius at height y ({@link #hollowSquare}), the same answer as √(x² + z²) &lt; radius, since the
+		 * square root is monotone; -1 for a row without a core.
+		 */
+		private boolean hollowAtSquare(int x, int y, int z) {
+			if (y < 0 || y >= MAX_HEIGHT) {
+				return hollowAt(x, y, z);
+			}
+			if (hollowSquareStamp[y] != hollowPlan) {
+				hollowSquare[y] = hollowSquare(hollowLimit(y));
+				hollowSquareStamp[y] = hollowPlan;
+			}
+			long q = hollowSquare[y];
+			return q > 0 && (long) x * x + (long) z * z < q;
+		}
+
+		/** The least integer q ≥ 0 with √q ≥ limit (0 when no q has √q below it; -1 for NaN, no core). */
+		static long hollowSquare(double limit) {
+			if (Double.isNaN(limit)) {
+				return -1;
+			}
+			if (!(limit > 0)) {
+				return 0;
+			}
+			long q = (long) Math.ceil(Math.min(limit * limit, 1e12));
+			while (q > 0 && Math.sqrt((double) (q - 1)) >= limit) {
+				q--;
+			}
+			while (Math.sqrt((double) q) < limit) {
+				q++;
+			}
+			return q;
 		}
 
 		/** Radius of the empty core of the crown at height y, or NaN in the crown's top fifth (no core). */

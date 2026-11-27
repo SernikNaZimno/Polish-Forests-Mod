@@ -170,6 +170,52 @@ public final class CrownTerritories {
 		return new Session(exactChunks, sureChunks);
 	}
 
+	/**
+	 * The columns of row dz of a territory (bit dx + {@value #R}): the columns within the disc of {@code reach16}
+	 * (16 · (dx² + dz²) ≤ reach16, |dx| ≤ span) that the trunk wins against every pair partner i &lt; m (at (px, pz)
+	 * with the weights pa of the trunk and pb of the partner; equal powers go to the trunk where {@code pFirst}). Step
+	 * OP2: the trunk wins the column against partner i when 16 · (dx² + dz²) − pa ≤ 16 · ((dx − px)² + (dz − pz)²) − pb,
+	 * that is 32 · px · dx ≤ 16 · (px² + pz²) + pa − pb − 32 · pz · dz (strictly without {@code pFirst}), a bound on dx
+	 * in exact integers, so a row is the intersection of an interval of the disc and one half-line per partner; before,
+	 * every column of the row was tested against every partner. The territory is convex, so the columns of a row are
+	 * contiguous (the scan of before took the first run of winning columns, the same interval).
+	 */
+	static long row(int dz, int span, long reach16, int[] px, int[] pz, int[] pa, int[] pb, boolean[] pFirst, int m) {
+		long q = reach16 - 16L * dz * dz;
+		if (q < 0) {
+			return 0;
+		}
+		long most = q / 16;
+		long r = (long) Math.sqrt((double) most);
+		while (r * r > most) {
+			r--;
+		}
+		while ((r + 1) * (r + 1) <= most) {
+			r++;
+		}
+		long lo = Math.max(-span, -r);
+		long hi = Math.min(span, r);
+		for (int i = 0; i < m && lo <= hi; i++) {
+			long a = 32L * px[i];
+			long k = 16L * ((long) px[i] * px[i] + (long) pz[i] * pz[i]) + pa[i] - pb[i] - 32L * pz[i] * dz;
+			if (!pFirst[i]) {
+				k--;
+			}
+			if (a > 0) {
+				hi = Math.min(hi, Math.floorDiv(k, a));
+			} else if (a < 0) {
+				lo = Math.max(lo, -Math.floorDiv(k, -a));
+			} else if (k < 0) {
+				return 0;
+			}
+		}
+		if (lo > hi) {
+			return 0;
+		}
+		long bits = hi - lo + 1 == 64 ? -1L : (1L << (hi - lo + 1)) - 1;
+		return bits << (lo + R);
+	}
+
 	public final class Session {
 		private static final int MAX_TILES = 256;
 		/** Chunks around the trunk's chunk that hold its possible pair partners: {@value #SEARCH} blocks. */
@@ -177,6 +223,8 @@ public final class CrownTerritories {
 
 		private final TreeStandPlan.Candidates candidates = new TreeStandPlan.Candidates(worldSeed);
 		private final Long2ObjectOpenHashMap<Site[]> tiles = new Long2ObjectOpenHashMap<>();
+		/** Step OP2: the kept states of the candidate pattern by chunk tile ({@link TreeStandPlan.Candidates#keptMask}). */
+		private final it.unimi.dsi.fastutil.longs.Long2LongOpenHashMap keptMasks = new it.unimi.dsi.fastutil.longs.Long2LongOpenHashMap();
 		// Pairs of the territory being computed (reused arrays).
 		private int[] px = new int[64];
 		private int[] pz = new int[64];
@@ -214,7 +262,8 @@ public final class CrownTerritories {
 
 			@Override
 			public void forEach(int minX, int minZ, int maxX, int maxZ, TreeShapePlan.Trunks.Column visitor) {
-				candidates.forEach(minX, minZ, maxX, maxZ, visitor::accept);
+				// Step OP2: the kept states from the session's masks of chunk tiles (the same candidates in the same order).
+				candidates.forEach(minX, minZ, maxX, maxZ, visitor::accept, keptMasks);
 			}
 		};
 
@@ -242,7 +291,7 @@ public final class CrownTerritories {
 			}
 			if (sites == null) {
 				List<Site> out = new ArrayList<>();
-				candidates.forEach(chunkX * 16, chunkZ * 16, chunkX * 16 + 15, chunkZ * 16 + 15, (x, z) -> out.add(site(x, z)));
+				candidates.forEach(chunkX * 16, chunkZ * 16, chunkX * 16 + 15, chunkZ * 16 + 15, (x, z) -> out.add(site(x, z)), keptMasks);
 				sites = out.toArray(new Site[0]);
 				tileCache.put(hash, new TileEntry(key, sites));
 			}
@@ -331,20 +380,20 @@ public final class CrownTerritories {
 			long[] rows = new long[2 * R + 1];
 			int span = (int) Math.floor(reach);
 			for (int dz = -span; dz <= span; dz++) {
-				long row = 0;
-				for (int dx = -span; dx <= span; dx++) {
-					long own = 16L * (dx * dx + dz * dz);
-					boolean in = own <= reach16 && wins(dx, dz, own, m);
-					if (in) {
-						row |= 1L << (dx + R);
-					} else if (row != 0) {
-						// The territory is convex, so its columns in a row are contiguous.
-						break;
-					}
-				}
-				rows[dz + R] = row;
+				rows[dz + R] = row(dz, span, reach16, px, pz, pa, pb, pFirst, m);
 			}
 			return new CrownTerritory(t.x(), t.z(), t.layer(), t.radius(), (float) reach, edge, rows);
+		}
+
+		/**
+		 * Whether a pair of tree t with a partner at (dx, dz) of squared distance d2 and weights a (of t) and b (of the
+		 * partner) is dropped by {@link #territory}: its boundary lies beyond {@code limit} (the largest reach t can have
+		 * plus the margin of 0.01). The same arithmetic as the filter there.
+		 */
+		private static boolean beyond(int d2, int a, int b, double limit) {
+			double d = Math.sqrt(d2);
+			double s = (16 * d * d + a - b) / (32 * d);
+			return s > limit;
 		}
 
 		/**
@@ -359,6 +408,12 @@ public final class CrownTerritories {
 			// pair would be dropped below without setting the edge, so its vacancy is not asked for. One block of margin.
 			double markerLimit = 2 * Math.min(MAX_REACH, edgeLimit) + 1;
 			int markerLimit2 = (int) Math.ceil(markerLimit * markerLimit);
+			// Step OP2: a pair whose boundary lies beyond the largest reach the trunk can have (its edge reach) and which
+			// cannot set the edge (farther than the edge limit) is dropped by territory() whatever the vacancy of its site,
+			// so neither its vacancy is asked for (the sure vacancies of the neighbors were the largest part of the cost of
+			// the territories) nor the pair is kept.
+			double limit = Math.min(MAX_REACH, EDGE_REACH * t.radius()) + 0.01;
+			boolean asks = vacancies != null && (exact || sure);
 			for (Site u : sites) {
 				int dx = u.x() - t.x();
 				int dz = u.z() - t.z();
@@ -368,6 +423,19 @@ public final class CrownTerritories {
 				}
 				if (u.layer() != layer && d2 > markerLimit2) {
 					continue;
+				}
+				if (d2 > edgeLimit * edgeLimit) {
+					boolean gapMarker = u.gap() && layer != CrownLayer.REGENERATION;
+					boolean markerKept = (gapMarker || asks) && !beyond(d2, t.edgeWeight(), 0, limit);
+					boolean treeKept = false;
+					if (!markerKept && !gapMarker && u.layer() == layer) {
+						int m2 = Math.min(Math.min(sq(dx - 1, dz), sq(dx + 1, dz)), Math.min(sq(dx, dz - 1), sq(dx, dz + 1)));
+						int cap = 16 * Math.max(2, m2) - 17;
+						treeKept = !beyond(d2, Math.min(t.weight(), u.weight() + cap), Math.min(u.weight(), t.weight() + cap), limit);
+					}
+					if (!markerKept && !treeKept) {
+						continue;
+					}
 				}
 				boolean uMarker = (u.gap() && layer != CrownLayer.REGENERATION) || (vacancies != null
 						&& (exact ? vacancies.vacant(u.x(), u.z()) : sure && vacancies.surelyVacant(u.x(), u.z())));
@@ -405,20 +473,6 @@ public final class CrownTerritories {
 				pFirst[n] = t.before(u);
 				n++;
 			}
-		}
-
-		/** Whether the trunk wins the column (dx, dz) against every pair partner. */
-		private boolean wins(int dx, int dz, long own, int m) {
-			for (int i = 0; i < m; i++) {
-				long ex = dx - px[i];
-				long ez = dz - pz[i];
-				long mine = own - pa[i];
-				long theirs = 16 * (ex * ex + ez * ez) - pb[i];
-				if (mine > theirs || (mine == theirs && !pFirst[i])) {
-					return false;
-				}
-			}
-			return true;
 		}
 
 		private static int sq(int x, int z) {

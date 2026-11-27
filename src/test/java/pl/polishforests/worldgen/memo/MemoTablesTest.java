@@ -50,6 +50,36 @@ class MemoTablesTest {
 		assertEquals(0, t.find(Long.MIN_VALUE, 3L << 12, KEY_MASK));
 	}
 
+	/**
+	 * Step OP2 (DP-210): a key put again while it is not first in its set (a second writer of the same key) moves to the
+	 * front without a second copy, so the set still holds four different keys: [c, b, a] + b → [b, c, a], then + d →
+	 * [d, b, c, a] (before the fix [b, c, b, a] and [d, b, c, b], key a dropped out).
+	 */
+	@Test
+	void aKeyPutAgainIsNotKeptTwice() {
+		MemoLongTable t = new MemoLongTable(4);
+		t.put(0, entry(1));
+		t.put(0, entry(2));
+		t.put(0, entry(3));
+		t.put(0, entry(2));
+		t.put(0, entry(4));
+		for (long k = 1; k <= 4; k++) {
+			assertEquals(entry(k), t.find(0, k << 12, KEY_MASK), "key " + k + " kept");
+		}
+		MemoTable<long[]> o = new MemoTable<>(4);
+		long[] a = {1};
+		long[] b = {2};
+		long[] c = {3};
+		long[] d = {4};
+		for (long[] e : List.of(a, b, c, b, d)) {
+			o.put(0, e);
+		}
+		List<long[]> expected = List.of(d, b, c, a);
+		for (int w = 0; w < MemoTable.WAYS; w++) {
+			assertSame(expected.get(w), o.slot(0, w), "slot " + w);
+		}
+	}
+
 	@Test
 	void objectTableKeepsItsLastFourEntriesPerSet() {
 		MemoTable<long[]> t = new MemoTable<>(4);

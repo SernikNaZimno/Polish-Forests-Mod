@@ -39,8 +39,9 @@ public final class MemoTable<T> {
 	}
 
 	/**
-	 * Puts an entry into the first slot of the set of {@code hash}; the entries before the first empty slot move one slot
-	 * on, the last one drops out when the set is full.
+	 * Puts an entry into the first slot of the set of {@code hash}; the entries before the first empty slot (or before the
+	 * old copy of the same entry) move one slot on, the last one drops out when the set is full. Two threads that compute
+	 * the same key put two equal objects, which may both stay in the set (harmless: either is the value).
 	 */
 	public void put(long hash, T entry) {
 		int s = set(hash);
@@ -48,7 +49,8 @@ public final class MemoTable<T> {
 		for (int w = 0; w < WAYS; w++) {
 			T e = slots.getOpaque(s + w);
 			slots.setOpaque(s + w, moved);
-			if (e == null || e == moved) {
+			// Step OP2 (DP-210): stop at the old copy of the new entry (the same object put again), as MemoLongTable.
+			if (e == null || e == entry) {
 				return;
 			}
 			moved = e;

@@ -218,6 +218,54 @@ public final class TreeStandPlan {
 			return m2None && (!anyLayered || candidates.rank(x, z) >= layered);
 		}
 
+		/**
+		 * {@link #surelyTreeless} with the highest chances of the rules computed once for the conditions of a chunk
+		 * ({@link #highest}; step OP2: the vacancies of a chunk ask for hundreds of candidates, and each call went through
+		 * every rule). The same answer: the highest chance of the M2 rules and of the layered rules at the candidate's
+		 * stand are the same maxima, and the stand facts and the rank value are asked for only when the draw has not
+		 * already decided (they are pure functions).
+		 */
+		public boolean surelyTreeless(Candidates candidates, int x, int z, Stand stand, Highest highest) {
+			boolean m2None = stand.gap(x, z) || candidates.draw(x, z) >= highest.m2;
+			if (!m2None) {
+				return false;
+			}
+			if (!highest.anyLayered) {
+				return true;
+			}
+			double layered;
+			if (stand.crowns() == null) {
+				layered = highest.layeredAny;
+			} else {
+				StandSite site = stand.site(x, z);
+				layered = highest.layered[Highest.index(site.natural(), site.age(), site.gap())];
+			}
+			return candidates.rank(x, z) >= layered;
+		}
+
+		/** The highest chances of the rules under the conditions {@code stand} (whether it has gaps), for {@link #surelyTreeless}. */
+		public Highest highest(Stand stand) {
+			Highest h = new Highest();
+			for (Rule rule : rules) {
+				Layers l = rule.layers();
+				if (l == null) {
+					h.m2 = Math.max(h.m2, chance(rule.treesPerChunk(), stand.gaps() != null));
+				} else {
+					h.anyLayered = true;
+					h.layeredAny = Math.max(h.layeredAny, l.highest());
+					for (boolean natural : new boolean[] {false, true}) {
+						for (AgeClass age : AgeClass.values()) {
+							for (boolean gap : new boolean[] {false, true}) {
+								int i = Highest.index(natural, age, gap);
+								h.layered[i] = Math.max(h.layered[i], l.chance(natural, age, gap));
+							}
+						}
+					}
+				}
+			}
+			return h;
+		}
+
 		/** Whether any rule has a layered stand. */
 		public boolean layered() {
 			for (Rule rule : rules) {
@@ -232,6 +280,18 @@ public final class TreeStandPlan {
 		public float treesPerChunk(int code) {
 			int r = ruleFor(code);
 			return r < 0 ? 0 : rules.get(r).treesPerChunk();
+		}
+	}
+
+	/** The highest chances of the rules of a palette under the conditions of a chunk ({@link Palette#highest}, step OP2). */
+	public static final class Highest {
+		private double m2;
+		private boolean anyLayered;
+		private double layeredAny;
+		private final double[] layered = new double[2 * AgeClass.values().length * 2];
+
+		private static int index(boolean natural, AgeClass age, boolean gap) {
+			return ((natural ? 1 : 0) * AgeClass.values().length + age.ordinal()) * 2 + (gap ? 1 : 0);
 		}
 	}
 
@@ -498,6 +558,75 @@ public final class TreeStandPlan {
 			for (int gx = gx0; gx <= gx1; gx++) {
 				for (int gz = gz0; gz <= gz1; gz++) {
 					if (!pattern.kept(gx, gz)) {
+						continue;
+					}
+					long h = pattern.hash(gx, gz);
+					int x = gx * CELL + offsetX(h);
+					int z = gz * CELL + offsetZ(h);
+					if (x >= minX && x <= maxX && z >= minZ && z <= maxZ) {
+						visitor.accept(x, z);
+					}
+				}
+			}
+		}
+
+		/**
+		 * The kept states of the {@value #TILE} × {@value #TILE} cells of tile (tileX, tileZ) (the cells of one chunk):
+		 * bit {@code i * TILE + j} for cell (tileX · TILE + i, tileZ · TILE + j). Step OP2: a session keeps these masks
+		 * ({@link #forEach(int, int, int, int, Visitor, it.unimi.dsi.fastutil.longs.Long2LongOpenHashMap)}), so an area is
+		 * visited without asking the shared table of kept states for every cell.
+		 */
+		public long keptMask(int tileX, int tileZ) {
+			Pattern pattern = pattern();
+			long mask = 0;
+			for (int i = 0; i < TILE; i++) {
+				for (int j = 0; j < TILE; j++) {
+					if (pattern.kept(tileX * TILE + i, tileZ * TILE + j)) {
+						mask |= 1L << (i * TILE + j);
+					}
+				}
+			}
+			return mask;
+		}
+
+		/** Cells of a side of a tile of {@link #keptMask}. */
+		public static final int TILE = CELLS;
+		/** Masks a memo of {@link #forEach(int, int, int, int, Visitor, it.unimi.dsi.fastutil.longs.Long2LongOpenHashMap)} keeps before it starts anew. */
+		private static final int MAX_MASKS = 4096;
+
+		/**
+		 * {@link #forEach(int, int, int, int, Visitor)} with the kept states from a memo of tile masks ({@link #keptMask})
+		 * owned by one thread (a crown territories session): the same candidates in the same order.
+		 */
+		public void forEach(int minX, int minZ, int maxX, int maxZ, Visitor visitor, it.unimi.dsi.fastutil.longs.Long2LongOpenHashMap masks) {
+			Pattern pattern = pattern();
+			int gx0 = Math.floorDiv(minX, CELL);
+			int gx1 = Math.floorDiv(maxX, CELL);
+			int gz0 = Math.floorDiv(minZ, CELL);
+			int gz1 = Math.floorDiv(maxZ, CELL);
+			long tileKey = 0;
+			long mask = 0;
+			boolean any = false;
+			for (int gx = gx0; gx <= gx1; gx++) {
+				int tx = Math.floorDiv(gx, TILE);
+				int i = gx - tx * TILE;
+				for (int gz = gz0; gz <= gz1; gz++) {
+					int tz = Math.floorDiv(gz, TILE);
+					long key = (long) tx << 32 | tz & 0xFFFF_FFFFL;
+					if (!any || key != tileKey) {
+						long m = masks.getOrDefault(key, -1L);
+						if (m == -1L && !masks.containsKey(key)) {
+							if (masks.size() >= MAX_MASKS) {
+								masks.clear();
+							}
+							m = keptMask(tx, tz);
+							masks.put(key, m);
+						}
+						mask = m;
+						tileKey = key;
+						any = true;
+					}
+					if ((mask >>> (i * TILE + gz - tz * TILE) & 1) == 0) {
 						continue;
 					}
 					long h = pattern.hash(gx, gz);

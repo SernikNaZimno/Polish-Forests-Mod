@@ -52,15 +52,19 @@ public final class MemoLongTable {
 
 	/**
 	 * Puts a valid entry (bit 0 set) into the first slot of the set of {@code hash}; the entries before the first empty
-	 * slot move one slot on, the last one drops out when the set is full.
+	 * slot (or before the old copy of the same entry) move one slot on, the last one drops out when the set is full.
 	 */
 	public void put(long hash, long entry) {
 		int s = set(hash);
-		long moved = entry | 1;
+		long fresh = entry | 1;
+		long moved = fresh;
 		for (int w = 0; w < WAYS; w++) {
 			long e = slots.getOpaque(s + w);
 			slots.setOpaque(s + w, moved);
-			if ((e & 1) == 0 || e == moved) {
+			// Step OP2 (DP-210): stop at the old copy of the new entry (a second writer of the same key), so the set never
+			// holds it twice; before, the copy was compared with the entry being moved and the set could end as
+			// [new, a, b, new].
+			if ((e & 1) == 0 || e == fresh) {
 				return;
 			}
 			moved = e;

@@ -48,6 +48,8 @@ public final class StandVacancies implements Vacancies {
 	/** Memo of {@link #surelyVacant} outside {@link #window} (1 vacant, 0 not; step O1: a fastutil map). */
 	private final Long2ByteOpenHashMap sure = new Long2ByteOpenHashMap();
 	private final TreeStandPlan.Stand[] stands = new TreeStandPlan.Stand[9];
+	/** Step OP2: the highest chances of the palette under the chunk's conditions, once per chunk. */
+	private final TreeStandPlan.Highest highest;
 
 	/**
 	 * @param planned the trees of the chunk's plan ({@link TreeStandPlan#of}, packed with their columns)
@@ -67,6 +69,7 @@ public final class StandVacancies implements Vacancies {
 		this.neighbors = neighbors;
 		this.candidates = candidates;
 		this.seed = seed;
+		this.highest = palette.highest(stand);
 		java.util.Arrays.fill(window, (byte) -1);
 	}
 
@@ -104,7 +107,7 @@ public final class StandVacancies implements Vacancies {
 		if (x >> 4 == chunkX && z >> 4 == chunkZ) {
 			return vacant(x, z);
 		}
-		if (palette.surelyTreeless(candidates, x, z, stand)) {
+		if (palette.surelyTreeless(candidates, x, z, stand, highest)) {
 			return true;
 		}
 		int depth = neighbors.waterDepth(x, z);
